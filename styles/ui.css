@@ -93,9 +93,20 @@ button:disabled { opacity: .4; cursor: default; }
 /* boot overlay */
 #boot-overlay { inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 38%, #0a1426, #03050a); transition: opacity .5s ease; }
 #boot-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-.boot-inner { font-family: var(--mono); letter-spacing: .42em; font-size: 34px; color: var(--accent); text-shadow: 0 0 26px var(--accent); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.boot-inner { font-family: var(--mono); display: flex; flex-direction: column; align-items: center; gap: 12px; min-width: min(76vw, 380px); }
+.boot-title { letter-spacing: .42em; font-size: 34px; color: var(--accent); text-shadow: 0 0 26px var(--accent); }
 .boot-sub { font-size: 11px; letter-spacing: .22em; color: var(--ink-dim); text-shadow: none; }
+.boot-detail { min-height: 1.4em; font-size: 10px; line-height: 1.4; letter-spacing: .08em; color: rgba(216, 229, 241, .72); text-align: center; text-shadow: none; }
+.boot-progress { position: relative; display: block; width: min(72vw, 340px); height: 3px; overflow: hidden; border-radius: 99px; background: rgba(123, 158, 182, .2); box-shadow: inset 0 0 0 1px rgba(123, 158, 182, .12); }
+.boot-progress > span { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4aa5b7, var(--accent)); box-shadow: 0 0 12px rgba(57, 208, 255, .42); transition: width .22s ease-out; }
+.boot-progress::after { content: ''; position: absolute; inset: 0 auto 0 -32%; width: 28%; background: linear-gradient(90deg, transparent, rgba(210,248,255,.8), transparent); transform: translateX(0); animation: sf-loading-sweep 1.35s linear infinite; will-change: transform; }
+@keyframes sf-loading-sweep { to { transform: translateX(470%); } }
 .boot-error { color: var(--danger); font-family: var(--mono); font-size: 13px; max-width: 70ch; white-space: pre-wrap; letter-spacing: normal; text-shadow: none; text-align: left; }
+
+@media (prefers-reduced-motion: reduce) {
+  #boot-overlay, .boot-progress > span { transition: none; }
+  .boot-progress::after { animation: none; display: none; }
+}
 
 /* ==================== PROFESSIONAL POLISH (post asset integration) ==================== */
 /* Use generated assets (menu_background, pilot portrait, icons_atlas, reticle, bible colors) for beauty and "SpaceFace" identity.

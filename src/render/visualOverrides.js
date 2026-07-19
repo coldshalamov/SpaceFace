@@ -1,8 +1,7 @@
 // Bespoke visual overrides for hero assets plus the authored-asset boundary.
-//
-// The existing visualFactory remains the procedural fallback for the complete ship catalog in
-// development. Release mode is stricter: the player Kestrel hero must build, because a procedural
-// fallback would hide a broken authored-asset path from CI and packaged startup.
+// Explicit authored identities fail closed. A load/build problem may leave an entity temporarily
+// absent and diagnostic, but it must never publish a visually unrelated procedural body first.
+import * as THREE from 'three';
 import { buildKestrelHero } from './ships/kestrelHero.js';
 import { buildConcordPatrol } from './ships/concordPatrol.js';
 import { buildReaverPirate } from './ships/reaverPirate.js';
@@ -53,6 +52,7 @@ function releaseAssetError(message, cause) {
 function assertReleaseHeroVisual(entity, visual, releaseMode) {
   if (!releaseMode || !isPlayerKestrel(entity)) return;
   if (visual && visual.userData && visual.userData.assetId === KESTREL_HERO_ASSET_ID) return;
+  if (visual && visual.userData && visual.userData.authoredAdmissionSubstrate === true) return;
   throw releaseAssetError('[visualOverrides] release mode requires Kestrel hero asset; procedural fallback is forbidden');
 }
 
@@ -63,6 +63,41 @@ function reportVisualWarning(options, message, error) {
   }
   if (error) console.warn(message, error);
   else console.warn(message);
+}
+
+function unavailableVisual(entity, reason, error) {
+  const root = new THREE.Group();
+  const kind = entity && entity.type ? entity.type : 'entity';
+  root.name = `${kind}_AuthoredVisualUnavailable`;
+  root.visible = false;
+  root.userData.kind = kind;
+  root.userData.authoredAssetState = 'unavailable';
+  root.userData.authoredVisualRoot = 'none-build-failed';
+  root.userData.visualBuildFailed = true;
+  root.userData.visualBuildFailureReason = reason;
+  if (error && error.message) root.userData.visualBuildFailureMessage = error.message;
+  root.userData.renderContract = {
+    assetBoundary: 'fail-closed authored identity',
+    gracefulFallback: false,
+  };
+  return root;
+}
+
+function directAuthoredAdmissionSubstrate(entity) {
+  const root = new THREE.Group();
+  root.name = `${entity && entity.data && entity.data.defId || 'ship'}_DirectAuthoredAdmission`;
+  root.visible = false;
+  root.userData.kind = 'ship';
+  root.userData.authoredAdmissionSubstrate = true;
+  root.userData.authoredAdmissionTemporaryDrawables = 0;
+  root.userData.shipConstruction = 'authored-direct';
+  root.userData.assetId = 'DIRECT_AUTHORED_ADMISSION';
+  root.userData.renderContract = {
+    assetBoundary: 'resident authored identity admission substrate',
+    gracefulFallback: false,
+    temporaryDrawables: 0,
+  };
+  return root;
 }
 
 // Faction bespoke ships intercept by enemy type id (data.lootTableId, set in combat.js). Each maps a
@@ -77,6 +112,7 @@ const FACTION_BUILDERS = {
 };
 
 const SCENARIO_47A_SHIP_BUILDERS = {
+  enemy_reaver_interceptor: { build: buildReaverPirate, label: '47-A Reaver interceptor' },
   enemy_reaver_skirmisher: { build: buildReaverPirate, label: '47-A Reaver skirmisher' },
   enemy_reaver_tug: { build: buildReaverPirate, label: '47-A Reaver tug' },
   'asset.slice.meridian_recovery_tug': { build: buildConcordPatrol, label: '47-A Concord recovery tug' },
@@ -94,16 +130,41 @@ export function installVisualOverrides(factory, options = {}) {
   const releaseMode = isReleaseAssetMode(options);
   const authoredShips = options.authoredShips !== false;
   const authoredWholeShipsOnly = options.authoredWholeShipsOnly === true;
+  const directAuthoredMount = options.directAuthoredMount === true;
   const kestrelBuilder = typeof options.kestrelBuilder === 'function' ? options.kestrelBuilder : buildKestrelHero;
+  const authoredPlaceBuilder = typeof options.authoredPlaceBuilder === 'function'
+    ? options.authoredPlaceBuilder
+    : buildAuthoredPlaceProp;
+  const authoredStationBuilder = typeof options.authoredStationBuilder === 'function'
+    ? options.authoredStationBuilder
+    : buildAuthoredStationArchetype;
   factory.build = (entity) => {
     let visual = null;
-    const scenarioProp = isWorldPlaceProp(entity) ? null : build47aScenarioProp(entity);
-    if (isWorldPlaceProp(entity)) {
-      try { visual = buildAuthoredPlaceProp(entity, { releaseMode }); }
-      catch (error) { reportVisualWarning(options, '[visualOverrides] authored place prop failed; using renderer fallback', error); }
+    const requiredWholeShip = requiresProductionWholeShip(entity);
+    const directShip = directAuthoredMount
+      && authoredShips
+      && entity && entity.type === 'ship'
+      && !(entity.data && entity.data.precompileProbe === true)
+      && !(authoredWholeShipsOnly && !requiredWholeShip);
+    const scenarioProp = directShip || isWorldPlaceProp(entity) ? null : build47aScenarioProp(entity);
+    if (directShip) {
+      // The production catalog is resident before control. The live route therefore needs only a
+      // zero-draw ownership boundary while the exact GLB composition is committed; constructing a
+      // complete bespoke/procedural ship here would allocate and dispose an object graph that is
+      // intentionally never shown.
+      visual = directAuthoredAdmissionSubstrate(entity);
+    } else if (isWorldPlaceProp(entity)) {
+      try { visual = authoredPlaceBuilder(entity, { releaseMode }); }
+      catch (error) {
+        reportVisualWarning(options, '[visualOverrides] authored place prop failed closed', error);
+        visual = unavailableVisual(entity, 'authored-place-build-failed', error);
+      }
     } else if (hasStationArchetype(entity)) {
-      try { visual = buildAuthoredStationArchetype(entity, { releaseMode }); }
-      catch (error) { reportVisualWarning(options, '[visualOverrides] authored station archetype failed; using procedural fallback', error); }
+      try { visual = authoredStationBuilder(entity, { releaseMode }); }
+      catch (error) {
+        reportVisualWarning(options, '[visualOverrides] authored station archetype failed closed', error);
+        visual = unavailableVisual(entity, 'authored-station-build-failed', error);
+      }
     } else if (scenarioProp) {
       visual = batchScenarioPropOpaqueMeshes(scenarioProp);
     } else if (isPlayerKestrel(entity)) {
@@ -112,7 +173,8 @@ export function installVisualOverrides(factory, options = {}) {
         if (releaseMode) {
           throw releaseAssetError('[visualOverrides] release mode requires Kestrel hero asset; hero build failed', error);
         }
-        reportVisualWarning(options, '[visualOverrides] Kestrel hero build failed; using procedural fallback', error);
+        reportVisualWarning(options, '[visualOverrides] Kestrel hero build failed closed', error);
+        visual = unavailableVisual(entity, 'kestrel-hero-build-failed', error);
       }
       assertReleaseHeroVisual(entity, visual, releaseMode);
     } else if (entity && entity.type === 'ship' && entity.data) {
@@ -121,7 +183,10 @@ export function installVisualOverrides(factory, options = {}) {
       const entry = SCENARIO_47A_SHIP_BUILDERS[entity.data.assetRef] || FACTION_BUILDERS[entity.data.lootTableId];
       if (entry) {
         try { visual = entry.build(entity); }
-        catch (error) { reportVisualWarning(options, `[visualOverrides] ${entry.label} build failed; using procedural fallback`, error); }
+        catch (error) {
+          reportVisualWarning(options, `[visualOverrides] ${entry.label} build failed closed`, error);
+          visual = unavailableVisual(entity, 'bespoke-ship-build-failed', error);
+        }
       }
     }
 
@@ -131,7 +196,6 @@ export function installVisualOverrides(factory, options = {}) {
     configureTransparentSinglePassSurfaces(visual);
     if (!authoredShips) return visual;
 
-    const requiredWholeShip = requiresProductionWholeShip(entity);
     // Inspection surfaces must not replace a readable catalog ship with the generic modular kit.
     // That assembly is useful as a flight fallback, but it is not a validated complete body and its
     // asynchronous hot-swap creates the visible "clay ship -> different ship" discontinuity. Only
@@ -141,11 +205,13 @@ export function installVisualOverrides(factory, options = {}) {
       return visual;
     }
 
-    // The wrapper is synchronous. Any later transport, validation, or composition failure leaves
-    // the selected procedural/bespoke visual mounted and alive.
+    // The wrapper is synchronous and fail-closed. Live direct mounts carry no renderables; preview
+    // modes may still provide a hidden bespoke/procedural substrate for isolated inspection tools.
     try {
       return wrapShipWithAuthoredParts(entity, visual, {
         releaseMode,
+        libraryScope: options.authoredLibraryScope,
+        bootstrapPlan: options.authoredBootstrapPlan,
         // The authored boundary is opt-in: only player hulls with a production whole-ship mapping
         // may bypass modular assembly. Keep the Kestrel boot rule intact while allowing a later
         // player switch to the production Wasp to select its complete body on undock and Continue.

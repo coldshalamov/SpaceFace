@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createShipAuxPool, syncShipAuxPools } from '../src/render/renderer.js';
+import { createShipAuxPool, shouldPresentShieldBubble, syncShipAuxPools } from '../src/render/renderer.js';
+
+assert.equal(shouldPresentShieldBubble(100, 0), false, 'an idle charged shield is not a permanent sphere');
+assert.equal(shouldPresentShieldBubble(100, 0.25), true, 'shield impact flash is visible');
+assert.equal(shouldPresentShieldBubble(0, 0.25), false, 'a broken shield cannot retain its bubble');
 
 const scene = new THREE.Scene();
 const pool = createShipAuxPool(scene);
@@ -104,8 +108,9 @@ assert.deepEqual({
   navColor: pool.nav.mesh.instanceColor.version,
 }, staticVersions, 'unchanged auxiliary instances must not re-upload GPU buffers');
 
+bubbleMaterial.uniforms.uFlash.value = 0;
 syncShipAuxPools(pool, entities.slice(0, 2), meshes);
-assert.equal(pool.shield.mesh.count, 2);
+assert.equal(pool.shield.mesh.count, 0, 'idle shields do not enter the auxiliary draw pool');
 assert.equal(pool.nav.mesh.count, 4);
 assert.equal(pool.entityPasses, 1);
 

@@ -22,8 +22,12 @@ import {
   runNewGameStartTransition,
 } from './core/newGameStartTransition.js';
 import { applyAccessibility } from './ui/accessibility.js';
+import { createLoadingPresenter } from './ui/loadingPresenter.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
-import { waitForCurrentRenderPipelines as waitForRenderPipelineWarmup } from './render/pipelineReadiness.js';
+import {
+  waitForCurrentRenderPipelines as waitForRenderPipelineWarmup,
+  waitForOpeningGpuResources,
+} from './render/pipelineReadiness.js';
 import {
   SCENARIO_47A_CONTRACT_PATH,
   mark47aPlayerActor,
@@ -93,6 +97,7 @@ async function boot() {
     const runTransitionGuard = createRunTransitionGuard();
     timeEffects.set('runtime:boot-menu', { scale: 0 });
     const bus = createBus();
+    const loadingPresenter = createLoadingPresenter({ document, bus });
     const contract = await loadScenarioContract(new URL('./data/scenarios/47a.scenario.json', import.meta.url), SCENARIO_47A_CONTRACT_PATH);
     const helpers = {
       scenarioContract: contract.document,
@@ -104,12 +109,35 @@ async function boot() {
     const registry = createRegistry(ctx);
     ctx.registry = registry;
     registry.init();
-    helpers.beginLoadedGameTransition = () => runTransitionGuard.begin('load');
+    helpers.deferLoadedGameRestore = (restore) => {
+      bus.emit('game:loadingProgress', {
+        id: 'restoring-save',
+        progress: 0.05,
+        label: 'Restoring flight state',
+        detail: 'Rebuilding the saved sector and critical visuals',
+        transition: 'continue',
+      });
+      nextPaint().then(restore).catch((error) => {
+        console.error('[SpaceFace] deferred save restore failed', error);
+        bus.emit('save:error', { slot: 'latest', reason: 'load_failed' });
+      });
+      return true;
+    };
+    helpers.beginLoadedGameTransition = () => {
+      bus.emit('game:loadingProgress', {
+        id: 'restoring-save',
+        progress: 0.05,
+        label: 'Restoring flight state',
+        detail: 'Rebuilding the saved sector and critical visuals',
+      });
+      return runTransitionGuard.begin('load');
+    };
     helpers.finalizeLoadedGame = (payload) => finalizeLoadedGame(
       state, bus, registry, runTransitionGuard, payload || {},
     );
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', () => {
+        try { loadingPresenter.destroy(); } catch (_) {}
         try { registry.destroy(); } catch (_) { /* teardown must not throw during navigation */ }
       });
     }
@@ -278,6 +306,15 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       );
       return pipelinesReady && authoredVisualReadiness(state).ready;
     },
+    waitForGpuResources: () => waitForOpeningGpuResources(
+      state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
+    ),
+    reportProgress: (stage) => bus.emit('game:loadingProgress', {
+      ...stage,
+      detail: loadingDetailForStage(stage && stage.id),
+      transition: 'new-game',
+    }),
+    yieldForPresentation: nextPaint,
     enterFlight() {
       enterFlightMode(state, bus);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
@@ -315,11 +352,25 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
   enterLoadingMode(state, bus);
   if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
   try {
+    bus.emit('game:loadingProgress', {
+      id: 'authored-library',
+      progress: 0.25,
+      label: 'Loading critical flight assets',
+      detail: 'Keeping authored visuals intact while the saved sector returns',
+      transition: 'continue',
+    });
     const libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!libraryReady) {
       throw new Error('Authored ship asset library did not preload after save load; refusing to enter flight with procedural fallback ships.');
     }
+    bus.emit('game:loadingProgress', {
+      id: 'authored-visuals',
+      progress: 0.5,
+      label: 'Building the opening scene',
+      detail: 'Committing authored objects before the first playable frame',
+      transition: 'continue',
+    });
     const visualsReady = await waitForInitialAuthoredVisuals(
       state,
       INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
@@ -329,6 +380,13 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     if (!visualsReady) {
       throw new Error('Loaded authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
     }
+    bus.emit('game:loadingProgress', {
+      id: 'render-pipelines',
+      progress: 0.78,
+      label: 'Preparing flight shaders',
+      detail: 'Warming the current render path to avoid first-use stalls',
+      transition: 'continue',
+    });
     const pipelinesReady = await waitForRenderPipelineWarmup(
       state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
     );
@@ -347,6 +405,31 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       );
     }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    bus.emit('game:loadingProgress', {
+      id: 'gpu-resources',
+      progress: 0.9,
+      label: 'Preparing the opening route',
+      detail: 'Uploading opening materials in responsive batches',
+      transition: 'continue',
+    });
+    const gpuReady = await waitForOpeningGpuResources(
+      state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
+    );
+    if (!gpuReady) {
+      throw new GameStartReadinessError(
+        'GPU_RESIDENCY_UNAVAILABLE',
+        'gpu-resources',
+        'Opening flight resources did not finish preparing.',
+      );
+    }
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    bus.emit('game:loadingProgress', {
+      id: 'entering-flight',
+      progress: 0.96,
+      label: 'Handing over flight control',
+      detail: 'Finalizing the playable frame',
+      transition: 'continue',
+    });
     runTransitionGuard.commit(transitionToken, () => {
       enterFlightMode(state, bus);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
@@ -456,10 +539,27 @@ function authoredVisualReadiness(state) {
   return authoredCriticalVisualReadiness(state);
 }
 
+function loadingDetailForStage(stageId) {
+  if (stageId === 'preparing-run') return 'Creating the pilot, ship, and starting sector';
+  if (stageId === 'authored-library') return 'Loading only assets required by the opening composition';
+  if (stageId === 'authored-visuals') return 'Committing authored objects before the first playable frame';
+  if (stageId === 'render-pipelines') return 'Warming the current render path to avoid first-use stalls';
+  if (stageId === 'gpu-resources') return 'Uploading opening materials in responsive batches';
+  if (stageId === 'entering-flight') return 'Finalizing the playable frame';
+  return 'Preparing the playable scene';
+}
+
 function nextFrame() {
   return new Promise((resolve) => {
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => resolve());
     else setTimeout(resolve, 16);
+  });
+}
+
+function nextPaint() {
+  if (typeof requestAnimationFrame !== 'function') return delay(0);
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
   });
 }
 

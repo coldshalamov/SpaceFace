@@ -90,10 +90,14 @@ async function runViewportProbe(browser, viewport, runIndex) {
   await page.evaluate(() => window.SF.bus.emit('game:new', { name: 'Flight Probe' }));
   step('flight-ready');
   await page.waitForFunction(
-    () => window.SF.state.mode === 'flight'
-      && window.SF.state.playerId
-      && window.SF.state.entities.get(window.SF.state.playerId)
-      && window.SF.state.entities.get(window.SF.state.playerId).mesh,
+    () => {
+      const state = window.SF && window.SF.state;
+      if (!state || state.mode !== 'flight' || !state.playerId) return false;
+      const player = Array.isArray(state.entityList)
+        ? state.entityList.find((entity) => entity && entity.id === state.playerId)
+        : state.entities && state.entities.get(state.playerId);
+      return !!(player && (player.mesh || player.view && player.view.root));
+    },
     null,
     { timeout: FLIGHT_START_TIMEOUT_MS },
   );

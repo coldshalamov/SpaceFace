@@ -32,6 +32,9 @@ not have to reconcile several conflicting handoffs before working.
 8. [`06_RETAINED_FUTURE_BACKLOG.md`](./06_RETAINED_FUTURE_BACKLOG.md) — only valuable outcomes not yet
    mapped to an `F/G/T/A/W/R` packet.
 9. [`07_HISTORICAL_BUILDS.md`](./07_HISTORICAL_BUILDS.md) — finished handoffs and later verification.
+10. [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md) — isolated graphics
+    integration truth, rejected evidence, remaining visual work, squash-promotion procedure, and
+    post-promotion worktree cleanup.
 
 The roadmap owns **packet work order**, not completion truth. Files `01–05` own verified/remaining/
 acceptance/integration truth at their stated evidence revision. `06` is not a competing queue: when an

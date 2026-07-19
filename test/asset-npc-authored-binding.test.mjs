@@ -108,6 +108,24 @@ test('render residency keeps the active sector and a seam runway without buildin
   assert.deepEqual(queue, [player.id, targetedFar.id, currentFar.id, neighborNear.id]);
 });
 
+test('loading residency admits only the authored opening composition before flight', () => {
+  const player = { id: 1, type: 'ship', isPlayer: true, pos: { x: 0, z: 0 } };
+  const state = {
+    mode: 'loading',
+    playerId: 1,
+    player: { targetId: null },
+    entities: new Map([[1, player]]),
+    world: { currentSectorId: 'sector_helios_prime' },
+  };
+  const currentFar = {
+    id: 2, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 9000, z: 0 },
+  };
+
+  assert.equal(isEntityRenderRelevant(player, state), true);
+  assert.equal(isEntityRenderRelevant(currentFar, state), false,
+    'noncritical active-sector roots stream after the opening frame instead of bloating it');
+});
+
 test('authored assets preload ahead of visibility without decoding the whole active sector', () => {
   assert.equal(typeof isEntityAuthoredUpgradeRelevant, 'function');
   const state = {

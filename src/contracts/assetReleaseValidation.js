@@ -260,15 +260,17 @@ function releaseMetrics(gltf, bytes) {
   const ktx2TextureCount = textures.filter((texture) =>
     !!(texture.extensions && texture.extensions.KHR_texture_basisu)).length;
   const imageMimeTypes = new Set((gltf.images || []).map((image) => image && image.mimeType).filter(Boolean));
-  const materialTextureSlotCount = countMaterialTextureSlots(gltf.materials || []);
   let primitiveCount = 0;
   let dracoPrimitiveCount = 0;
+  const usedMaterialIndices = new Set();
   for (const mesh of gltf.meshes || []) {
     for (const primitive of mesh.primitives || []) {
       primitiveCount++;
+      if (Number.isInteger(primitive.material)) usedMaterialIndices.add(primitive.material);
       if (primitive.extensions && primitive.extensions.KHR_draco_mesh_compression) dracoPrimitiveCount++;
     }
   }
+  const materialTextureSlotCount = countMaterialTextureSlots(gltf.materials || [], usedMaterialIndices);
   let meshoptBufferViewCount = 0;
   for (const view of gltf.bufferViews || []) {
     if (view.extensions && (view.extensions.EXT_meshopt_compression || view.extensions.KHR_meshopt_compression)) {
@@ -301,7 +303,7 @@ function releaseMetrics(gltf, bytes) {
   };
 }
 
-function countMaterialTextureSlots(materials) {
+function countMaterialTextureSlots(materials, usedMaterialIndices) {
   let count = 0;
   const visit = (value, key = '') => {
     if (!value || typeof value !== 'object') return;
@@ -311,7 +313,9 @@ function countMaterialTextureSlots(materials) {
     }
     for (const [childKey, childValue] of Object.entries(value)) visit(childValue, childKey);
   };
-  for (const material of materials) visit(material);
+  for (const [index, material] of materials.entries()) {
+    if (usedMaterialIndices.has(index)) visit(material);
+  }
   return count;
 }
 

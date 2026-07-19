@@ -1,0 +1,76 @@
+{
+  "schema": "spaceface.kestrelSurfaceVerify.v2",
+  "remasterId": "kestrel-role-surface-v5",
+  "roles": [
+    {
+      "role": "hull",
+      "sha256": "077070bbde942ff5fa90a0a5a1158aae7efe134b78c1cbc9deadda4a187d1063",
+      "roughnessMean": 0.43134352564811707,
+      "metallicMean": 0.03647269681096077,
+      "normalZMean": 0.9986722469329834
+    },
+    {
+      "role": "mechanical",
+      "sha256": "4aea9e31e301e70f2d0cce5b090258138e24fbe096e27a3d0021cae2b739051b",
+      "roughnessMean": 0.4730575382709503,
+      "metallicMean": 0.7799987196922302,
+      "normalZMean": 0.9959621429443359
+    },
+    {
+      "role": "armor_dark",
+      "sha256": "e9921a05638d3c506014e292ba7dedbbb7858e95fd2e47dfd97f0343488d8c6e",
+      "roughnessMean": 0.6815807223320007,
+      "metallicMean": 0.30420705676078796,
+      "normalZMean": 0.9984520673751831
+    },
+    {
+      "role": "brushed_metal",
+      "sha256": "b32f7e95c661898185584e24ea19d69a7fb643ad0c75c9a47823c98da7ff7c74",
+      "roughnessMean": 0.4105183780193329,
+      "metallicMean": 0.9200030565261841,
+      "normalZMean": 0.9965339303016663
+    },
+    {
+      "role": "frontier_cyan",
+      "sha256": "6fa7dc84aca91bb684e5f8cd56437a4c3f86bf52d4f6069296369fa0cc66320e",
+      "roughnessMean": 0.501094400882721,
+      "metallicMean": 0.041293561458587646,
+      "normalZMean": 0.9988093972206116
+    },
+    {
+      "role": "warning_orange",
+      "sha256": "4926a2b493058eacc237f126cff75d9067f471120ea1f33c179138fe02bfbbd0",
+      "roughnessMean": 0.5415405631065369,
+      "metallicMean": 0.03702268376946449,
+      "normalZMean": 0.9986207485198975
+    },
+    {
+      "role": "repair_green",
+      "sha256": "ce69770df51b0c9eb2a6038336557041cca9709d3fe099afe09ed72a145cba0c",
+      "roughnessMean": 0.673325777053833,
+      "metallicMean": 0.035454656928777695,
+      "normalZMean": 0.9979234337806702
+    },
+    {
+      "role": "rubber",
+      "sha256": "8bacc89f601d61bd245a610028232d5aa5f546044e08a97cbe0fd0ce7bcbf5fa",
+      "roughnessMean": 0.8418031334877014,
+      "metallicMean": 0.0,
+      "normalZMean": 0.9951903223991394
+    },
+    {
+      "role": "engine_ceramic",
+      "sha256": "71132bc72f837030fc51d215666da215d08a0da117474ea471a038434680297e",
+      "roughnessMean": 0.7434653043746948,
+      "metallicMean": 0.019999947398900986,
+      "normalZMean": 0.9980219602584839
+    },
+    {
+      "role": "radiator",
+      "sha256": "50bbb5beef2ed1176fd5b4317b91efe59e60f52b0a0aeed7a657e0f2993d199c",
+      "roughnessMean": 0.5622060298919678,
+      "metallicMean": 0.6799978613853455,
+      "normalZMean": 0.9972972869873047
+    }
+  ]
+}

@@ -23,8 +23,8 @@ for (const sector of SECTORS) {
   for (const field of COLOR_FIELDS) {
     if (!isColorHex(palette[field])) issues.push(`${sector.id}: palette.${field} must be a 0x000000-0xffffff number`);
   }
-  if (!Number.isFinite(palette.fogDensity) || palette.fogDensity <= 0) {
-    issues.push(`${sector.id}: palette.fogDensity must be a positive finite number`);
+  if (!Number.isFinite(palette.fogDensity) || palette.fogDensity < 0) {
+    issues.push(`${sector.id}: palette.fogDensity must be a non-negative finite number`);
   }
 
   const className = classNameForPalette(palette);

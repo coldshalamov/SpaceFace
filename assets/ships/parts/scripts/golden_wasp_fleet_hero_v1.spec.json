@@ -1,0 +1,88 @@
+{
+  "schema": "spaceface.goldenWaspFleetHero.recipeSpec.v1",
+  "recipeId": "golden-wasp-fleet-hero-v1",
+  "packet": "WASP-FLEET-HERO-01",
+  "assetId": "SF_WASP_PRODUCTION_V1",
+  "inputManifestSha256": "694558DA46F25BE410831005C3ECEFFF1C3026BA68598380A40F9766E0C8DA80",
+  "manufacturer": {
+    "name": "Frontier Pursuit Works",
+    "family": "Needlewing enforcement fighter",
+    "language": "arrowhead armor, separated drive nacelles, exposed recoil roots, bounded teal identification, ochre service indexing, and field-replaceable thermal hardware",
+    "markingAtlas": {
+      "manufacturerSerial": "FPW-W17",
+      "maintenanceHistory": "SV09-R3",
+      "rule": "ochre identity and maintenance ink is authored as flush mask-only vector strokes embedded into a ray-verified planar hull surface; the warning PBR role exists only inside glyphs, so no carrier pixels, transparent card, unmatched UV sample, or plate rectangle can survive"
+    }
+  },
+  "inputs": {
+    "lod0": {
+      "file": "assets/ships/parts/wholeships/wasp_production_v1.glb",
+      "bytes": 12797604,
+      "sha256": "FDFD7C76C793C5BE9593E9C095BADE0708C36163086F181FF08BDDFBE5173E5A",
+      "bounds": {"min": [-10.0, -1.38, -8.08183], "max": [12.0, 2.319466, 8.08183]}
+    },
+    "lod1": {
+      "file": "assets/ships/parts/wholeships/wasp_production_v1_lod1.glb",
+      "bytes": 12615760,
+      "sha256": "10E47344EB1974B4428312A9D25673AE64647794E68A13C8A8B87436F1A98DD0",
+      "bounds": {"min": [-10.0, -1.38, -8.08183], "max": [12.0, 1.790296, 8.08183]}
+    },
+    "lod2": {
+      "file": "assets/ships/parts/wholeships/wasp_production_v1_lod2.glb",
+      "bytes": 12505480,
+      "sha256": "885028EB6B575AC77D9DD6351FDF248CE2FCF527E61C225A70B296DEFE576583",
+      "bounds": {"min": [-10.0, -1.38, -8.08183], "max": [12.0, 1.790296, 8.08183]}
+    },
+    "releaseLod0": {
+      "file": "assets/ships/release/parts/wholeships/wasp_production_v1.glb",
+      "bytes": 13468440,
+      "sha256": "A23354195D95D57BDC2D2E8E32D5CD4FCC1F6C05D570033A7C1849AC87408DDE"
+    }
+  },
+  "coordinateContract": {
+    "blender": "+X forward, +Z up, +Y starboard, metres",
+    "gltf": "+X forward, +Y up, +Z starboard, metres",
+    "pivot": [0.0, 0.0, 0.0],
+    "collision": "Preserve the exact source convex COLLISION_HULL point envelope",
+    "silhouette": "Do not exceed source X/Z planform bounds; preserve arrowhead nose, negative-space wings, and separated twin nacelles"
+  },
+  "socketsBlender": {
+    "SOCKET_Weapon_Front": [10.6, 0.0, 0.1],
+    "SOCKET_Mining_Front": [10.2, 0.0, -0.35],
+    "SOCKET_Engine_Main": [-9.7, 0.0, 0.0],
+    "SOCKET_Trail_Main": [-10.0, 0.0, 0.0],
+    "SOCKET_Trail_Port": [-9.8, -5.55, 0.0],
+    "SOCKET_Trail_Starboard": [-9.8, 5.55, 0.0],
+    "SOCKET_Utility_Dorsal": [-1.1, 0.0, 1.5],
+    "SOCKET_Cargo_Ventral": [-2.2, 0.0, -1.15],
+    "SOCKET_Camera_Focus": [0.2, 0.0, 0.35],
+    "SOCKET_RCS_Port": [-1.8, -7.0, 0.05],
+    "SOCKET_RCS_Starboard": [-1.8, 7.0, 0.05]
+  },
+  "lodPolicy": {
+    "lod0": "full macro, meso, and restrained micro construction with ten semantic material draws",
+    "lod1": "preserve armor layering, weapon roots, radiators, heat collars, drive apertures, and faction markings while dropping fasteners",
+    "lod2": "preserve the exact gameplay silhouette plus broad armor/composite/radiator/thermal/aperture identity without alpha or emissive dependence"
+  },
+  "surfaceConstructionContract": {
+    "transforms": "apply rotation and scale before UV projection, beveling, and tangent export",
+    "edgeResponse": "physically exposed hard-surface parts receive scale-aware two-segment bevels; inherited custom split normals and triangulation sharp flags are cleared after the semantic join, then manifold edges are selectively smoothed by role while open panel borders and true hard construction breaks remain sharp",
+    "normalAnglesDegrees": {"coatedArmor": 38, "darkComposite": 35, "structuralAlloy": 32, "canopy": 40, "thermalHardware": 32, "radiatorAndRecesses": 30},
+    "texelScale": "metric cube projection is preserved across generated parts; mask-only marking strokes use their own bounded ink response and introduce no rectangular atlas carrier",
+    "paintHierarchy": "non-directional deterministic orange peel plus broad nonperiodic waviness, restrained panel-scale roughness, sparse finite handling scratches, and recess-limited dust; no UV-space checker, texture-wide grunge, or all-edge wear",
+    "functionalMeso": "plate steps, access wells, vents, radiator ribs, gun-root interfaces, injector rings, four-point engine actuators, thermal seals, ceramic shrouds, clamps, and fasteners follow assembly and service zones",
+    "distanceRule": "microstructure must remain mip-stable while macro silhouette, material blocks, and major construction survive the default and maximum gameplay cameras"
+  },
+  "materialProfiles": {
+    "coated_armor": {"materialName": "Material_Hull", "baseRgb": [0.31, 0.345, 0.365], "secondaryRgb": [0.49, 0.515, 0.525], "roughnessRange": [0.3, 0.63], "metallicRange": [0.0, 0.022], "aoRange": [0.77, 0.99], "pattern": "painted_panels", "normalStrength": 0.48, "coatWeight": 0.14, "coatRoughness": 0.43},
+    "dark_composite": {"materialName": "Material_Armor", "baseRgb": [0.014, 0.025, 0.038], "secondaryRgb": [0.085, 0.115, 0.145], "roughnessRange": [0.48, 0.79], "metallicRange": [0.0, 0.025], "aoRange": [0.66, 0.96], "pattern": "composite_laminate", "normalStrength": 0.58},
+    "structural_alloy": {"materialName": "Material_Mechanical", "baseRgb": [0.105, 0.13, 0.145], "secondaryRgb": [0.32, 0.36, 0.38], "roughnessRange": [0.19, 0.52], "metallicRange": [0.79, 0.96], "aoRange": [0.7, 0.98], "pattern": "brushed_alloy", "normalStrength": 0.56, "anisotropy": 0.34},
+    "identity_cyan": {"materialName": "Material_Accent", "baseRgb": [0.018, 0.13, 0.16], "secondaryRgb": [0.035, 0.37, 0.43], "roughnessRange": [0.4, 0.68], "metallicRange": [0.0, 0.04], "aoRange": [0.82, 1.0], "pattern": "worn_marking", "normalStrength": 0.3},
+    "service_marking": {"materialName": "Material_Warning", "baseRgb": [0.64, 0.19, 0.018], "secondaryRgb": [0.82, 0.34, 0.055], "roughnessRange": [0.4, 0.58], "metallicRange": [0.0, 0.01], "aoRange": [0.88, 1.0], "pattern": "worn_marking", "normalStrength": 0.18},
+    "sensor_glass": {"materialName": "Material_Canopy", "baseRgb": [0.003, 0.014, 0.024], "secondaryRgb": [0.018, 0.065, 0.082], "roughnessRange": [0.075, 0.22], "metallicRange": [0.04, 0.17], "aoRange": [0.9, 1.0], "pattern": "glass_laminate", "normalStrength": 0.13, "coatWeight": 0.72, "coatRoughness": 0.09},
+    "drive_aperture": {"materialName": "Material_Thruster", "baseRgb": [0.002, 0.045, 0.06], "secondaryRgb": [0.055, 0.31, 0.36], "roughnessRange": [0.2, 0.43], "metallicRange": [0.04, 0.14], "aoRange": [0.75, 1.0], "pattern": "powered_aperture", "normalStrength": 0.25, "emissiveRgb": [0.08, 0.68, 0.82], "emissiveStrength": 1.65},
+    "heat_alloy": {"materialName": "Material_HeatMetal", "baseRgb": [0.045, 0.052, 0.06], "secondaryRgb": [0.3, 0.105, 0.04], "roughnessRange": [0.24, 0.73], "metallicRange": [0.73, 0.95], "aoRange": [0.62, 0.95], "pattern": "thermal_bands", "normalStrength": 0.72, "anisotropy": 0.28},
+    "radiator_laminate": {"materialName": "Material_Radiator", "baseRgb": [0.022, 0.037, 0.045], "secondaryRgb": [0.11, 0.15, 0.17], "roughnessRange": [0.44, 0.75], "metallicRange": [0.09, 0.29], "aoRange": [0.58, 0.94], "pattern": "radiator_channels", "normalStrength": 0.76},
+    "recessed_machinery": {"materialName": "Material_Recessed", "baseRgb": [0.012, 0.016, 0.02], "secondaryRgb": [0.075, 0.06, 0.045], "roughnessRange": [0.48, 0.82], "metallicRange": [0.32, 0.68], "aoRange": [0.48, 0.9], "pattern": "machinery_channels", "normalStrength": 0.74}
+  }
+}

@@ -109,3 +109,13 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
   const result = await settleWithin(exact, timeoutMs);
   return result.ok;
 }
+
+export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {
+  const render = state && state.render;
+  const prepare = render && render.prepareOpeningGpuResources;
+  if (typeof prepare !== 'function') return true;
+  const readiness = Promise.resolve().then(() => prepare());
+  render.openingGpuResidencyReady = readiness;
+  const result = await settleWithin(readiness, timeoutMs);
+  return result.ok;
+}

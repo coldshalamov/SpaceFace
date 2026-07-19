@@ -79,11 +79,15 @@ try {
   const startupTrace = await getStartupTrace(cdp);
   const badFlightSnapshots = startupTrace.filter((entry) => entry.mode === 'flight' && (
     entry.playerState !== 'authored'
-    || !entry.criticalStations.some((station) => station.stationId === 'station_helios' && station.assetState === 'authored')
+    || entry.nonAuthored !== 0
+    || entry.criticalStations.some((station) => station.presented && station.assetState !== 'authored')
   ));
   assert.equal(report.mode, 'flight', 'live probe should be in playable flight mode');
   assert.deepEqual(badFlightSnapshots, [],
-    `flight mode must not become active until the player and Helios hub are authored: ${JSON.stringify(badFlightSnapshots)}`);
+    `flight handoff may stream off-camera boundaries, but must never present unauthored ships or stations: ${JSON.stringify(badFlightSnapshots)}`);
+  assert.ok(report.criticalStations.some((station) => (
+    station.stationId === 'station_helios' && station.assetState === 'authored'
+  )), `Helios must finish authored admission on the live route: ${JSON.stringify(report.criticalStations)}`);
   assert.ok(report.tick >= startTick, 'gameplay tick should be advancing after authored startup readiness');
   assert.ok(player, 'player ship should be present in the live scene');
   assert.equal(player.state, 'authored', 'player ship should be authored before playable flight starts');
@@ -98,12 +102,14 @@ try {
     'player authoredSlots should correspond to live Object3D part URLs');
   assert.ok(report.authoredShipCount >= MIN_AUTHORED_SHIPS,
     `expected at least ${MIN_AUTHORED_SHIPS} authored live ships; got ${report.authoredShipCount}`);
-  assert.equal(report.authoredShipCount, report.shipCount,
-    `all live ships should be authored in playable flight: ${JSON.stringify(report.ships.filter((ship) => ship.state !== 'authored').map(summarizeShip))}`);
-  assert.deepEqual(report.ships.filter((ship) => !(ship.authoredBodyProof && ship.authoredBodyProof.ok)).map(summarizeShip), [],
-    'all live authored ships should include a main hull/body-sized authored surface');
-  assert.deepEqual(report.ships.filter((ship) => ship.state === 'authored' && ship.mode !== 'release').map(summarizeShip), [],
-    'all authored live ships should use release asset mode');
+  assert.equal(report.authoredShipCount, report.presentedShipCount,
+    `every presented live ship should be authored in playable flight: ${JSON.stringify(report.ships.filter((ship) => ship.presented && ship.state !== 'authored').map(summarizeShip))}`);
+  assert.deepEqual(report.ships.filter((ship) => ship.presented && !(ship.authoredBodyProof && ship.authoredBodyProof.ok)).map(summarizeShip), [],
+    'all visibly presented live ships should include a main hull/body-sized authored surface');
+  assert.deepEqual(report.ships.filter((ship) => ship.presented && ship.state === 'authored' && ship.mode !== 'release').map(summarizeShip), [],
+    'all visibly presented authored ships should use release asset mode');
+  assert.deepEqual(report.ships.filter((ship) => !ship.presented && ship.state !== 'awaiting-authored-admission').map(summarizeShip), [],
+    'non-presented ship boundaries may wait for spatial admission but must not expose a fallback identity');
   assert.equal(report.loaderDiagnostics.available, true,
     `authored asset runtime diagnostics should be available: ${JSON.stringify(report.loaderDiagnostics)}`);
   assert.equal(report.loaderDiagnostics.release, true, 'live asset probe should exercise default release mode');
@@ -143,6 +149,7 @@ try {
     mode: report.mode,
     tick: report.tick,
     shipCount: report.shipCount,
+    presentedShipCount: report.presentedShipCount,
     authoredShipCount: report.authoredShipCount,
     instancePoolCount: report.instancePoolCount,
     instancePoolLiveCount: report.instancePoolLiveCount,
@@ -188,8 +195,8 @@ async function waitForAuthoredShips(cdp) {
     isReady: (snapshot) => !!(
       snapshot
       && snapshot.playerState === 'authored'
-      && snapshot.shipCount >= MIN_AUTHORED_SHIPS
-      && snapshot.authoredShipCount === snapshot.shipCount
+      && snapshot.presentedShipCount >= MIN_AUTHORED_SHIPS
+      && snapshot.authoredShipCount === snapshot.presentedShipCount
     ),
   });
   const diagnosticsStartedAtMs = performance.now();
@@ -205,7 +212,14 @@ async function waitForAuthoredShips(cdp) {
       mode: report.mode,
       tick: report.tick,
       shipCount: report.shipCount,
+      presentedShipCount: report.presentedShipCount,
       authoredShipCount: report.authoredShipCount,
+      nonAuthoredShips: report.ships
+        .filter((ship) => ship.presented && ship.state !== 'authored')
+        .map(summarizeShip),
+      pendingInvisibleAdmissions: report.ships
+        .filter((ship) => !ship.presented)
+        .map(summarizeShip),
       criticalStations: report.criticalStations,
       authoredUpgradeDiagnostics: report.authoredUpgradeDiagnostics,
     }, null, 2)}`);
@@ -220,17 +234,36 @@ function collectAuthoredGateSnapshot(cdp) {
       ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
       : [];
     let authoredShipCount = 0;
+    let presentedShipCount = 0;
     let playerState = 'missing';
     for (const entity of ships) {
       const root = entity.mesh || entity.view && entity.view.root || null;
       const assetState = root && root.userData && root.userData.authoredAssetState || 'missing-mesh';
-      if (assetState === 'authored') authoredShipCount++;
+      const presented = hasPresentedSurface(root);
+      if (presented) presentedShipCount++;
+      if (presented && assetState === 'authored') authoredShipCount++;
       if (state && entity.id === state.playerId) playerState = assetState;
+    }
+    function hasPresentedSurface(root) {
+      let presented = false;
+      if (!root) return false;
+      root.traverse((object) => {
+        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite)) return;
+        let cursor = object;
+        while (cursor) {
+          if (cursor.visible === false) return;
+          if (cursor === root) break;
+          cursor = cursor.parent;
+        }
+        if (cursor === root && object.geometry && object.material) presented = true;
+      });
+      return presented;
     }
     return {
       mode: state && state.mode || null,
       tick: state && state.tick || 0,
       shipCount: ships.length,
+      presentedShipCount,
       authoredShipCount,
       playerState,
     };
@@ -252,16 +285,21 @@ async function collectAuthoredReport(cdp) {
       ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
       : [];
     const reports = ships.map((entity) => inspectShip(entity, state)).filter(Boolean);
-    const authoredShips = reports.filter((entry) => entry.state === 'authored');
+    const presentedShips = reports.filter((entry) => entry.presented);
+    const authoredShips = presentedShips.filter((entry) => entry.state === 'authored');
     const player = reports.find((entry) => entry.id === state.playerId) || null;
     const criticalStations = state && Array.isArray(state.entityList)
       ? state.entityList.filter((entity) => entity && entity.type === 'station' && entity.alive !== false)
-        .map((entity) => ({
-          id: entity.id,
-          stationId: entity.data && entity.data.stationId || null,
-          archetypeGlb: entity.data && entity.data.archetypeGlb || null,
-          assetState: entity.mesh && entity.mesh.userData && entity.mesh.userData.authoredAssetState || 'missing-mesh',
-        }))
+        .map((entity) => {
+          const root = entity.mesh || entity.view && entity.view.root || null;
+          return {
+            id: entity.id,
+            stationId: entity.data && entity.data.stationId || null,
+            archetypeGlb: entity.data && entity.data.archetypeGlb || null,
+            assetState: root && root.userData && root.userData.authoredAssetState || 'missing-mesh',
+            presented: hasPresentedSurface(root),
+          };
+        })
         .filter((station) => station.stationId === 'station_helios' || station.archetypeGlb === 'place_station_trade_hub')
       : [];
     const nonReleasePartUrls = [...new Set(reports
@@ -283,6 +321,7 @@ async function collectAuthoredReport(cdp) {
       tick: state && state.tick || 0,
       playerId: state && state.playerId || null,
       shipCount: ships.length,
+      presentedShipCount: presentedShips.length,
       authoredShipCount: authoredShips.length,
       instancePoolCount: instancePools.length,
       instancePoolLiveCount: instancePools.reduce((sum, pool) => sum + (pool.count || 0), 0),
@@ -341,6 +380,7 @@ async function collectAuthoredReport(cdp) {
         scenarioActorId: entity.data && entity.data.scenarioActorId || null,
         team: entity.team,
         factionId: entity.factionId || null,
+        presented: hasPresentedSurface(root),
         state: data.authoredAssetState || 'unknown',
         mode: data.authoredAssetMode || null,
         compositionId: data.authoredCompositionId || null,
@@ -359,6 +399,22 @@ async function collectAuthoredReport(cdp) {
         staticBatchCount,
         authoredBodyProof: bodyProof,
       };
+    }
+
+    function hasPresentedSurface(root) {
+      let presented = false;
+      if (!root) return false;
+      root.traverse((object) => {
+        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite)) return;
+        let cursor = object;
+        while (cursor) {
+          if (cursor.visible === false) return;
+          if (cursor === root) break;
+          cursor = cursor.parent;
+        }
+        if (cursor === root && object.geometry && object.material) presented = true;
+      });
+      return presented;
     }
 
     function inspectAuthoredBodyProof(root, entity) {
@@ -719,23 +775,32 @@ async function installStartupTrace(cdp) {
         ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
         : [];
       const states = {};
+      let presentedShipCount = 0;
+      let authoredPresentedCount = 0;
       for (const ship of ships) {
         const root = ship.mesh || (ship.view && ship.view.root) || null;
         const assetState = root && root.userData && root.userData.authoredAssetState || 'missing-mesh';
         states[assetState] = (states[assetState] || 0) + 1;
+        if (hasPresentedSurface(root)) {
+          presentedShipCount++;
+          if (assetState === 'authored') authoredPresentedCount++;
+        }
       }
-      const authored = states.authored || 0;
       const player = ships.find((ship) => ship.id === state.playerId) || null;
       const playerRoot = player && (player.mesh || (player.view && player.view.root)) || null;
       const playerState = playerRoot && playerRoot.userData && playerRoot.userData.authoredAssetState || 'missing-mesh';
       const criticalStations = Array.isArray(state.entityList)
         ? state.entityList.filter((entity) => entity && entity.type === 'station' && entity.alive !== false)
-          .map((entity) => ({
-            id: entity.id,
-            stationId: entity.data && entity.data.stationId || null,
-            archetypeGlb: entity.data && entity.data.archetypeGlb || null,
-            assetState: entity.mesh && entity.mesh.userData && entity.mesh.userData.authoredAssetState || 'missing-mesh',
-          }))
+          .map((entity) => {
+            const root = entity.mesh || entity.view && entity.view.root || null;
+            return {
+              id: entity.id,
+              stationId: entity.data && entity.data.stationId || null,
+              archetypeGlb: entity.data && entity.data.archetypeGlb || null,
+              assetState: root && root.userData && root.userData.authoredAssetState || 'missing-mesh',
+              presented: hasPresentedSurface(root),
+            };
+          })
           .filter((station) => station.stationId === 'station_helios' || station.archetypeGlb === 'place_station_trade_hub')
         : [];
       trace.push({
@@ -743,13 +808,30 @@ async function installStartupTrace(cdp) {
         mode: state.mode || null,
         tick: state.tick || 0,
         shipCount: ships.length,
-        authored,
+        presentedShipCount,
+        authored: authoredPresentedCount,
         states,
-        nonAuthored: Math.max(0, ships.length - authored),
+        nonAuthored: Math.max(0, presentedShipCount - authoredPresentedCount),
+        pendingInvisibleAdmissions: Math.max(0, ships.length - presentedShipCount),
         playerState,
         criticalStations,
         ...detail,
       });
+    };
+    const hasPresentedSurface = (root) => {
+      let presented = false;
+      if (!root) return false;
+      root.traverse((object) => {
+        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite)) return;
+        let cursor = object;
+        while (cursor) {
+          if (cursor.visible === false) return;
+          if (cursor === root) break;
+          cursor = cursor.parent;
+        }
+        if (cursor === root && object.geometry && object.material) presented = true;
+      });
+      return presented;
     };
     window.__SF_AUTHORED_ASSET_STARTUP_TRACE__ = trace;
     sf.bus.on('mode:changed', () => snapshot('mode:changed'));
@@ -1090,6 +1172,7 @@ function summarizeShip(ship) {
     id: ship.id,
     defId: ship.defId,
     scenarioActorId: ship.scenarioActorId,
+    presented: ship.presented,
     state: ship.state,
     requiredSlotMode: ship.requiredSlotMode,
     slots: ship.slots,
@@ -1109,8 +1192,15 @@ function compactStartupFailure(report, startupTrace, cause, pageIssues) {
     mode: report && report.mode || null,
     tick: report && report.tick || 0,
     shipCount: report && report.shipCount || 0,
+    presentedShipCount: report && report.presentedShipCount || 0,
     authoredShipCount: report && report.authoredShipCount || 0,
     player: report && report.player ? summarizeShip(report.player) : null,
+    nonAuthoredShips: report && Array.isArray(report.ships)
+      ? report.ships.filter((ship) => ship.presented && ship.state !== 'authored').map(summarizeShip)
+      : [],
+    pendingInvisibleAdmissions: report && Array.isArray(report.ships)
+      ? report.ships.filter((ship) => !ship.presented).map(summarizeShip)
+      : [],
     loaderDiagnostics: {
       available: loader.available,
       release: loader.release,

@@ -56,8 +56,8 @@ const PALETTE_FRINGE = Object.freeze({
   rim: 0xff3f2d,
   fill: 0xffaa66,
   ambient: 0x584343,
-  fog: 0x2a0d0a,
-  fogDensity: 0.00042,
+  fog: 0x090504,
+  fogDensity: 0.00003,
   nebulaTint: 0x8a1e1e,
   dust: 0xc15032,
 });
@@ -67,8 +67,8 @@ const PALETTE_ANOMALY = Object.freeze({
   rim: 0x54ffb0,
   fill: 0x4ddc92,
   ambient: 0x494760,
-  fog: 0x160d2c,
-  fogDensity: 0.00036,
+  fog: 0x08050d,
+  fogDensity: 0.00012,
   nebulaTint: 0x5a1e8a,
   dust: 0x79ffc8,
 });

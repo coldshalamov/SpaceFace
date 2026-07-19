@@ -52,12 +52,12 @@ export const SOUTH_ORIGINS = Object.freeze({
 
 /** Palette blocks mirrored from SECTOR_PALETTE_CLASSES (no shared import). */
 const PALETTE_CORE = Object.freeze({
-  key: 0xd8e8ff,
-  rim: 0x7a6cff,
-  fill: 0x4ad8ff,
-  ambient: 0x384868,
-  fog: 0x081228,
-  fogDensity: 0.00022,
+  key: 0xe8edf4,
+  rim: 0x8fa4bf,
+  fill: 0xb8c2cc,
+  ambient: 0x3e4652,
+  fog: 0x05070b,
+  fogDensity: 0,
   nebulaTint: 0x2450a0,
   dust: 0x8ec0e8,
 });
@@ -67,8 +67,8 @@ const PALETTE_FRINGE = Object.freeze({
   rim: 0xff3f2d,
   fill: 0xffaa66,
   ambient: 0x584343,
-  fog: 0x2a0d0a,
-  fogDensity: 0.00042,
+  fog: 0x090504,
+  fogDensity: 0.00003,
   nebulaTint: 0x8a1e1e,
   dust: 0xc15032,
 });
@@ -78,8 +78,8 @@ const PALETTE_ANOMALY = Object.freeze({
   rim: 0x54ffb0,
   fill: 0x4ddc92,
   ambient: 0x494760,
-  fog: 0x160d2c,
-  fogDensity: 0.00036,
+  fog: 0x08050d,
+  fogDensity: 0.00012,
   nebulaTint: 0x5a1e8a,
   dust: 0x79ffc8,
 });

@@ -5,7 +5,11 @@
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createPlumeVolume, updateEnergyMaterial } from '../src/render/energy/energyMaterials.js';
+import * as THREE from 'three';
+import { ContinuousPlumeSystem } from '../src/render/thruster/systems/continuousPlume.js';
+import { RcsImpulseSystem, assertRcsStructurallyDistinct } from '../src/render/thruster/systems/rcsImpulse.js';
+import { KESTREL_MAIN_PLUME_RECIPE, KESTREL_RCS_RECIPE } from '../src/render/thruster/recipes/kestrelRecipes.js';
+import { validateRecipe } from '../src/render/thruster/recipes/validate.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const VFX = resolve(ROOT, 'src/render/vfx.js');
@@ -17,15 +21,15 @@ const assert = (c, m) => { if (!c) failures.push(m); };
 const src = readFileSync(VFX, 'utf8');
 
 const cycles = [
-  { id: 1, name: 'energy plume ensure', re: /_ensureEnergyPlume/ },
-  { id: 2, name: 'place plume at socket', re: /_placeEnergyPlumeAtSocket/ },
-  { id: 3, name: 'engine trail emit', re: /_emitEngineTrail|_emitTrails/ },
-  { id: 4, name: 'boostBlend plume scale', re: /boostBlend/ },
-  { id: 5, name: 'createPlumeVolume usage', re: /createPlumeVolume/ },
+  { id: 1, name: 'batched continuous plume', re: /new ContinuousPlumeSystem/ },
+  { id: 2, name: 'authored socket binding', re: /_writeProductionPlumeSockets/ },
+  { id: 3, name: 'legacy Kestrel trail suppression', re: /_usesProductionThruster\(e\).*return \{ particles: 0, streaks: 0 \}/s },
+  { id: 4, name: 'continuous boost response', re: /opts\.boost = driveInfo\.boost/ },
+  { id: 5, name: 'directional RCS system', re: /new RcsImpulseSystem/ },
   { id: 6, name: 'trail socket objects', re: /_trailSocketObjects/ },
-  { id: 7, name: 'engine profile palette', re: /_engineProfile|plumeCore|plumeHalo/ },
-  { id: 8, name: 'rank3 longer plume length', re: /drive \* 1\.75|1\.75 \+ boostBlend/ },
-  { id: 9, name: 'rank3 hotter core intensity', re: /coreIntensity \* 0\.78|0\.78\) \+ drive \* 4\.2/ },
+  { id: 7, name: 'deterministic texture binding', re: /loadKestrelThrusterTextures/ },
+  { id: 8, name: 'recipe-driven plume geometry', re: /KESTREL_MAIN_PLUME_RECIPE/ },
+  { id: 9, name: 'RCS structural separation', re: /KESTREL_RCS_RECIPE/ },
   { id: 10, name: 'hide energy plumes idle', re: /_hideEnergyPlumes/ },
 ];
 
@@ -35,35 +39,26 @@ const cycleResults = cycles.map((c) => {
   return { id: c.id, name: c.name, ok };
 });
 
-// Drive real plume material API
+// Drive the real recipe, material, batching, lifecycle, and accessibility APIs.
 try {
-  const plume = createPlumeVolume(null, {
-    name: 'sf-test-plume',
-    colorA: 0x36c8ff,
-    colorB: 0x6a4cff,
-    coreIntensity: 6.5,
-    haloIntensity: 2.6,
-  });
-  // createPlumeVolume may need geo — if it throws, try updateEnergyMaterial only
-  if (plume && plume.userData) {
-    const core = plume.userData.energyCore;
-    if (core && core.material) {
-      updateEnergyMaterial(core.material, {
-        time: 1, colorA: { r: 0.2, g: 0.8, b: 1 }, colorB: { r: 0.4, g: 0.3, b: 1 },
-        boost: 0.5, swirl: 0.5, fork: 0.5, flowSpeed: 2.4, noiseScale: 1.6,
-        intensity: 8, opacity: 0.4,
-      });
-    }
-  }
+  assert(validateRecipe(KESTREL_MAIN_PLUME_RECIPE).ok, 'main plume recipe invalid');
+  assert(validateRecipe(KESTREL_RCS_RECIPE).ok, 'RCS recipe invalid');
+  assert(assertRcsStructurallyDistinct(KESTREL_MAIN_PLUME_RECIPE, KESTREL_RCS_RECIPE).ok,
+    'RCS is not structurally distinct from main plume');
+  const plume = new ContinuousPlumeSystem(THREE, KESTREL_MAIN_PLUME_RECIPE, { distortionEnabled: false });
+  const rcs = new RcsImpulseSystem(THREE, KESTREL_RCS_RECIPE);
+  assert(plume.assertLayerBindings().ok, 'main plume layer binding failed');
+  assert(rcs.assertLayerBindings().ok, 'RCS layer binding failed');
+  const sockets = [{ x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 }];
+  const driven = plume.update(1 / 60, 1, sockets, { boost: 0.6, a11y: { reducedMotion: false, reducedFlash: false, lowQuality: false, qualityTier: 'high' } });
+  assert(driven.activeCount > 0 && driven.frameAllocations === 0, 'main plume did not batch without frame allocations');
+  rcs.fire([0, 0, 0], [0, 0, 1], 1);
+  const impulse = rcs.update(1 / 60, { reducedMotion: false, reducedFlash: false, lowQuality: false, qualityTier: 'high' });
+  assert(impulse.activeSlotCount > 0 && impulse.frameAllocations === 0, 'RCS did not batch without frame allocations');
+  plume.dispose();
+  rcs.dispose();
 } catch (e) {
-  // Geometry may be required; still validate updateEnergyMaterial on massline ribbon path
-  try {
-    const { createMasslineRibbonMaterial } = await import('../src/render/energy/energyMaterials.js');
-    const m = createMasslineRibbonMaterial({ name: 'sf-test', color: 0x36c8ff });
-    updateEnergyMaterial(m, { time: 1, color: { r: 0.2, g: 0.8, b: 1 }, intensity: 5, opacity: 0.5 });
-  } catch (e2) {
-    assert(false, `material API failed: ${e.message}; fallback ${e2.message}`);
-  }
+  assert(false, `production thruster API failed: ${e.message}`);
 }
 
 mkdirSync(OUT, { recursive: true });
@@ -80,7 +75,7 @@ writeFileSync(REPORT, JSON.stringify(report, null, 2));
 writeFileSync(resolve(OUT, 'thruster-pack-note.txt'), [
   'Thruster/RCS VFX pack (rank 3)',
   `cycles: ${report.cyclesPassed}/10 ok=${report.ok}`,
-  'States: idle fade, drive plume, boost heat/length, multi-socket, trail emit',
+  'States: idle fade, continuous throttle/boost, multi-socket, paired RCS, reduced-motion/flash',
 ].join('\n'));
 
 if (!report.ok) {

@@ -22,7 +22,10 @@ export async function runNewGameStartTransition(options = {}) {
     waitForLibrary,
     waitForVisuals,
     waitForWarmup,
+    waitForGpuResources,
     enterFlight,
+    reportProgress,
+    yieldForPresentation,
   } = options;
   requireTransitionDependencies({ guard, prepareRun, waitForLibrary, waitForVisuals, enterFlight });
 
@@ -32,10 +35,14 @@ export async function runNewGameStartTransition(options = {}) {
 
   let preparationStarted = false;
   try {
+    publishProgress(reportProgress, current, 'preparing-run', 0.08, 'Preparing flight systems');
+    if (typeof yieldForPresentation === 'function') await yieldForPresentation();
+    if (!current()) return stale();
     preparationStarted = true;
     await prepareRun();
     if (!current()) return stale();
 
+    publishProgress(reportProgress, current, 'authored-library', 0.25, 'Loading critical flight assets');
     const libraryReady = await waitForLibrary();
     if (!current()) return stale();
     if (!libraryReady) {
@@ -46,6 +53,7 @@ export async function runNewGameStartTransition(options = {}) {
       );
     }
 
+    publishProgress(reportProgress, current, 'authored-visuals', 0.5, 'Building the opening scene');
     const visualsReady = await waitForVisuals();
     if (!current()) return stale();
     if (!visualsReady) {
@@ -57,6 +65,7 @@ export async function runNewGameStartTransition(options = {}) {
     }
 
     if (typeof waitForWarmup === 'function') {
+      publishProgress(reportProgress, current, 'render-pipelines', 0.78, 'Preparing flight shaders');
       const warmupReady = await waitForWarmup();
       if (warmupReady === false) {
         throw new GameStartReadinessError(
@@ -67,6 +76,19 @@ export async function runNewGameStartTransition(options = {}) {
       }
     }
     if (!current()) return stale();
+    if (typeof waitForGpuResources === 'function') {
+      publishProgress(reportProgress, current, 'gpu-resources', 0.9, 'Preparing the opening route');
+      const gpuReady = await waitForGpuResources();
+      if (gpuReady === false) {
+        throw new GameStartReadinessError(
+          'GPU_RESIDENCY_UNAVAILABLE',
+          'gpu-resources',
+          'Opening flight resources did not finish preparing.',
+        );
+      }
+    }
+    if (!current()) return stale();
+    publishProgress(reportProgress, current, 'entering-flight', 0.96, 'Handing over flight control');
     const enteredFlight = guard.commit(token, enterFlight);
     return enteredFlight ? { stale: false, enteredFlight: true } : stale();
   } catch (error) {
@@ -76,6 +98,12 @@ export async function runNewGameStartTransition(options = {}) {
     }
     throw error;
   }
+}
+
+function publishProgress(reportProgress, current, id, progress, label) {
+  if (typeof reportProgress !== 'function' || !current()) return;
+  try { reportProgress({ id, progress, label }); }
+  catch (error) { console.warn('[startup] loading progress reporter failed', error); }
 }
 
 export function describeGameStartFailure(error) {
@@ -89,6 +117,8 @@ export function describeGameStartFailure(error) {
     text = 'The starter ship did not finish preparing. Retry Launch; saved games are unchanged.';
   } else if (code === 'RENDER_PIPELINE_UNAVAILABLE') {
     text = 'The flight renderer did not finish preparing. Retry Launch; saved games are unchanged.';
+  } else if (code === 'GPU_RESIDENCY_UNAVAILABLE') {
+    text = 'The opening flight materials did not finish preparing. Retry Launch; saved games are unchanged.';
   }
   return { code, stage, retryable, text };
 }

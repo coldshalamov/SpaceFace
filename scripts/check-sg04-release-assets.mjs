@@ -95,6 +95,14 @@ const SCENARIO_47A_ASSET_COVERAGE = Object.freeze({
     assetId: 'SF_REACH_REAVER_PIRATE',
     note: '47-A Reaver skirmisher assetRef routes to the bespoke Reaver pirate runtime asset.',
   },
+  enemy_reaver_interceptor: {
+    status: 'authored-runtime-asset',
+    kind: 'enemy-ship',
+    releaseReady: true,
+    evidence: ['src/render/ships/reaverPirate.js', 'src/render/visualOverrides.js', 'scripts/check-47a-visual-assets.mjs', 'scripts/check-reaver-pirate.mjs'],
+    assetId: 'SF_REACH_REAVER_PIRATE',
+    note: '47-A Reaver interceptor assetRef routes to the bespoke Reaver pirate runtime asset.',
+  },
   enemy_reaver_tug: {
     status: 'authored-runtime-asset',
     kind: 'enemy-ship',

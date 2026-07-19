@@ -87,7 +87,12 @@ export const save = {
     this._loadProfileSettings();
     // UI / input route F5/F9 and menu buttons through these (§4.4).
     bus.on('game:save', (p) => this.save((p && p.slot) || 'quick', { reason: 'manual' }));
-    bus.on('game:load', (p) => this.load((p && p.slot) || 'latest'));
+    bus.on('game:load', (p) => {
+      const load = () => this.load((p && p.slot) || 'latest');
+      const defer = this.helpers && this.helpers.deferLoadedGameRestore;
+      if (typeof defer === 'function' && defer(load) === true) return;
+      load();
+    });
     bus.on('settings:changed', (payload) => {
       if (!payload || payload.persist !== false) this._writeProfileSettings();
     });

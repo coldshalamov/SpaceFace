@@ -18,20 +18,22 @@ export const POI_TYPES     = ['beacon', 'derelict', 'cache', 'colony', 'anomaly'
 export const SECTOR_PALETTE_CLASSES = {
   // Helios / core — Top-50 rank-10 sky kit: cooler deeper void, cyan fill, readable fog depth.
   core: {
-    key: 0xd8e8ff, rim: 0x7a6cff, fill: 0x4ad8ff, ambient: 0x384868,
-    fog: 0x081228, fogDensity: 0.00022, nebulaTint: 0x2450a0, dust: 0x8ec0e8,
+    // Civilized space uses a neutral photographic rig. Sector identity comes from authored
+    // landmarks and localized background structure, not a cyan wash painted over every hull.
+    key: 0xe8edf4, rim: 0x8fa4bf, fill: 0xb8c2cc, ambient: 0x3e4652,
+    fog: 0x05070b, fogDensity: 0, nebulaTint: 0x2450a0, dust: 0x8ec0e8,
   },
   belt: {
     key: 0xffd59a, rim: 0xb56d2f, fill: 0xffb13d, ambient: 0x594a42,
-    fog: 0x2a160c, fogDensity: 0.00034, nebulaTint: 0x8a4a1e, dust: 0xc0793d,
+    fog: 0x090705, fogDensity: 0.00002, nebulaTint: 0x8a4a1e, dust: 0xc0793d,
   },
   fringe: {
     key: 0xffb07a, rim: 0xff3f2d, fill: 0xffaa66, ambient: 0x584343,
-    fog: 0x2a0d0a, fogDensity: 0.00042, nebulaTint: 0x8a1e1e, dust: 0xc15032,
+    fog: 0x090504, fogDensity: 0.00003, nebulaTint: 0x8a1e1e, dust: 0xc15032,
   },
   anomaly: {
     key: 0xc8b6ff, rim: 0x54ffb0, fill: 0x4ddc92, ambient: 0x494760,
-    fog: 0x160d2c, fogDensity: 0.00036, nebulaTint: 0x5a1e8a, dust: 0x79ffc8,
+    fog: 0x08050d, fogDensity: 0.00012, nebulaTint: 0x5a1e8a, dust: 0x79ffc8,
   },
 };
 

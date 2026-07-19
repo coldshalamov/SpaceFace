@@ -58,19 +58,13 @@ async function precompileNow(renderer, scene, camera, shipSpecs, includeGlobalPi
 
   try {
     const vf = installVisualOverrides(createVisualFactory(), { releaseMode: true });
-    let index = 0;
-    for (const spec of shipSpecs) {
-      const mesh = vf.build(makeShipEntity(spec, index));
-      if (!mesh) continue;
-      mesh.position.set((index % 8) * COMPILE_GRID_SPACING, 0, Math.floor(index / 8) * COMPILE_GRID_SPACING);
-      staging.add(mesh);
-      index++;
-    }
-    if (includeGlobalPipelines && !globalPipelinesCompiled) {
-      addWeaponProjectileWarmup(staging, vf, index);
-      addBeamWarmup(staging);
-      staging.add(createVfxPrecompileSalvo());
-    }
+    const incremental = options.incremental === true
+      && !includeGlobalPipelines
+      && typeof options.preparePipelines === 'function';
+    const yieldToMain = typeof options.yieldToMain === 'function'
+      ? options.yieldToMain
+      : yieldToBrowser;
+
     // Warm shaders against the EXACT light configuration the game runs with. three bakes the
     // visible light count into every shader program, so compiling against a different count
     // makes every warmed program a cache miss — the whole scene then recompiles synchronously
@@ -86,17 +80,42 @@ async function precompileNow(renderer, scene, camera, shipSpecs, includeGlobalPi
       standIn.position.set(i * 24, 10, 0);
       staging.add(standIn);
     }
+
+    if (incremental) await yieldToMain();
+    let index = 0;
+    for (const spec of shipSpecs) {
+      const mesh = vf.build(makeShipEntity(spec, index));
+      if (!mesh) continue;
+      mesh.position.set((index % 8) * COMPILE_GRID_SPACING, 0, Math.floor(index / 8) * COMPILE_GRID_SPACING);
+      staging.add(mesh);
+      index++;
+      if (incremental) {
+        staging.updateMatrixWorld(true);
+        await options.preparePipelines(mesh);
+        compiledShipKeys.add(spec.key);
+        await yieldToMain();
+      }
+    }
+    if (includeGlobalPipelines && !globalPipelinesCompiled) {
+      addWeaponProjectileWarmup(staging, vf, index);
+      addBeamWarmup(staging);
+      staging.add(createVfxPrecompileSalvo());
+    }
     const authoredQueue = getAuthoredUpgradeQueueStats(scene);
-    staging.updateMatrixWorld(true);
-    if (typeof options.preparePipelines === 'function') {
-      await options.preparePipelines(staging);
-    } else {
-      await renderer.compileAsync(staging, camera, scene);
+    if (!incremental) {
+      staging.updateMatrixWorld(true);
+      if (typeof options.preparePipelines === 'function') {
+        await options.preparePipelines(staging);
+      } else {
+        await renderer.compileAsync(staging, camera, scene);
+      }
     }
     if (includeGlobalPipelines && typeof options.warmPostProcess === 'function') {
       await options.warmPostProcess();
     }
-    for (const spec of shipSpecs) compiledShipKeys.add(spec.key);
+    if (!incremental) {
+      for (const spec of shipSpecs) compiledShipKeys.add(spec.key);
+    }
     if (includeGlobalPipelines) globalPipelinesCompiled = true;
     return {
       skipped: false,
@@ -109,6 +128,13 @@ async function precompileNow(renderer, scene, camera, shipSpecs, includeGlobalPi
     scene.remove(staging);
     disposeObject(staging);
   }
+}
+
+function yieldToBrowser() {
+  if (globalThis.scheduler && typeof globalThis.scheduler.yield === 'function') {
+    return globalThis.scheduler.yield();
+  }
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 function allShipSpecsForPrecompile() {

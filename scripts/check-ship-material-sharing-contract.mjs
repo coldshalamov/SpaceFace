@@ -25,7 +25,10 @@ assert.equal(probe.hullShareMerged, true, 'opaque hull variants with negligible 
 assert.equal(probe.maplessHullCanonicalized, true, 'mapless hull tint variants should resolve to the textured hull canonical');
 assert.equal(probe.canopyShareMerged, true, 'canopy glass should stay on one shared variant');
 assert.equal(probe.readabilityShellMerged, true, 'readability shells with same palette should share one material');
-assert.ok(probe.sharedVariantCount <= 3, `expected <=3 shared variants in probe, got ${probe.sharedVariantCount}`);
+assert.equal(probe.geologyPreservesAuthoredColor, true, 'authored geology should not inherit hull tint or fake emissive');
+assert.equal(probe.warningPreservesAuthoredColor, true, 'authored warning/paint colors should not inherit faction accent');
+assert.equal(probe.mechanicalUsesDarkPalette, true, 'authored machinery should retain the structural dark palette role');
+assert.ok(probe.sharedVariantCount <= 6, `expected <=6 shared variants in probe, got ${probe.sharedVariantCount}`);
 
 const MATERIAL_KEY_CEILING = 49;
 if (existsSync(PERF_PROFILE)) {
@@ -49,5 +52,5 @@ if (existsSync(PERF_PROFILE)) {
   console.log('warn  no .devshots/perf/performance-profile.json — skipping live material-key ceiling check');
 }
 
-console.log('ok    runMaterialSharingContractProbe hull/canopy/readability sharing');
+console.log('ok    runMaterialSharingContractProbe hull/canopy/readability sharing and semantic tint routing');
 console.log('PASS  check:ship-material-sharing');

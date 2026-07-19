@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { vfx } from '../src/render/vfx.js';
+import { KESTREL_MAIN_PLUME_RECIPE } from '../src/render/thruster/recipes/kestrelRecipes.js';
+
+const KESTREL_PLUME_LAYER_COUNT = KESTREL_MAIN_PLUME_RECIPE.layers.filter((layer) => layer.enabled !== false).length;
 
 function makeBus() {
   const listeners = new Map();
@@ -66,6 +69,7 @@ function makeHarness(overrides = {}) {
 {
   const { state, system } = makeHarness({ video: { energyMaterials: true } });
   const player = state.entities.get(state.playerId);
+  player.data = { defId: 'ship_kestrel' };
   player._flightFrame = { throttle: 1 };
   player.rot = 0;
 
@@ -86,31 +90,33 @@ function makeHarness(overrides = {}) {
   player.view = { root };
 
   system.update(1 / 60);
-  const plume = system._energy && system._energy.plume;
-  assert(plume && plume.visible, 'energy plume should be visible under throttle');
-  const portPlume = system._energy && system._energy.plumes && system._energy.plumes[1];
-  assert(portPlume && portPlume.visible, 'energy plume should spawn for each trail socket');
+  const plumeSystem = system._energy && system._energy.plumeSystem;
+  assert(plumeSystem && plumeSystem.group.visible, 'production plume should be visible under throttle');
+  assert.equal(plumeSystem.pool.activeCount, KESTREL_PLUME_LAYER_COUNT * 2,
+    'production plume should batch every active layer for both authored sockets');
   socket.updateWorldMatrix(true, false);
   const expected = new THREE.Vector3();
   const expectedQuat = new THREE.Quaternion();
   const expectedScale = new THREE.Vector3();
   socket.matrixWorld.decompose(expected, expectedQuat, expectedScale);
   const expectedForward = new THREE.Vector3(-1, 0, 0).applyQuaternion(expectedQuat).normalize();
-  assertClose(plume.position.x, expected.x, 'energy plume should share trail socket x');
-  assertClose(plume.position.y, expected.y, 'energy plume should share trail socket y');
-  assertClose(plume.position.z, expected.z, 'energy plume should share trail socket z');
-  assertQuaternionClose(plume.quaternion, expectedQuat, 'energy plume should inherit the full trail socket orientation');
-  const plumeForward = new THREE.Vector3(-1, 0, 0).applyQuaternion(plume.quaternion).normalize();
-  assertVectorClose(plumeForward, expectedForward, 'energy plume should align to trail socket direction');
-  assert(Math.abs(plume.rotation.y - player.rot) > 0.25, 'energy plume should not use entity rot when a socket pose exists');
+  const first = plumeSystem.pool.slots[0];
+  assertClose(first.offset[0], expected.x, 'energy plume should share trail socket x');
+  assertClose(first.offset[1], expected.y, 'energy plume should share trail socket y');
+  assertClose(first.offset[2], expected.z, 'energy plume should share trail socket z');
+  assertClose(first.axis[0], -expectedForward.x, 'energy plume axis should oppose exhaust x');
+  assertClose(first.axis[1], -expectedForward.y, 'energy plume axis should oppose exhaust y');
+  assertClose(first.axis[2], -expectedForward.z, 'energy plume axis should oppose exhaust z');
   portSocket.updateWorldMatrix(true, false);
   const portExpected = new THREE.Vector3();
   const portExpectedQuat = new THREE.Quaternion();
   portSocket.matrixWorld.decompose(portExpected, portExpectedQuat, expectedScale);
-  assertClose(portPlume.position.x, portExpected.x, 'port energy plume should share its socket x');
-  assertClose(portPlume.position.y, portExpected.y, 'port energy plume should share its socket y');
-  assertClose(portPlume.position.z, portExpected.z, 'port energy plume should share its socket z');
-  assertQuaternionClose(portPlume.quaternion, portExpectedQuat, 'port energy plume should inherit its socket orientation');
+  const port = plumeSystem.pool.slots[KESTREL_PLUME_LAYER_COUNT];
+  assertClose(port.offset[0], portExpected.x, 'port energy plume should share its socket x');
+  assertClose(port.offset[1], portExpected.y, 'port energy plume should share its socket y');
+  assertClose(port.offset[2], portExpected.z, 'port energy plume should share its socket z');
+  assert.equal(system._liveCount, 0, 'production Kestrel plume must not add bead particles');
+  assert.equal(system._liveTrailStreakCount, 0, 'production Kestrel plume must not add detached streak cards');
 }
 
 {
@@ -205,7 +211,10 @@ function makeHarness(overrides = {}) {
   const inspect = system.inspect();
   assert.equal(inspect.trails.trailEmittersFull, 2, 'player and selected target should keep full trail quality');
   assert(inspect.trails.trailEmittersSkipped >= 1, 'far off-radar NPC should skip trail emission');
-  assert(inspect.trails.trailParticlesSpawned > 0, 'near actors should still spawn trail particles');
+  assert.equal(inspect.trails.trailParticlesSpawned, 0,
+    'engine trails must not reintroduce moving point-particle bead chains');
+  assert(inspect.trails.trailStreaksSpawned > 0,
+    'near actors should retain a bounded directional engine cue');
 }
 
 {
@@ -230,9 +239,10 @@ function makeHarness(overrides = {}) {
     'streak fragment must use live procedural sampler');
   assert(streak.material.uniforms.uTrailTime, 'streak must animate warp via uTrailTime');
   const inspect = system.inspect();
-  assert(inspect.trails.trailStreaksSpawned >= 2, 'thrusting ship should spawn multiple procedural streak meshes per trail tick');
+  assert(inspect.trails.trailStreaksSpawned >= 1, 'thrusting ship should spawn a procedural streak layer');
   assert(system._liveTrailStreakCount > 0, 'dedicated streak pool should retain live meshes after thrust frames');
-  assert(inspect.trails.trailParticlesSpawned > 0, 'thrusting ship should spawn axis-aligned trail particles');
+  assert.equal(inspect.trails.trailParticlesSpawned, 0,
+    'thrusting ship should not spawn axis-aligned point-particle beads');
   let ribbonProcedural = false;
   for (const [, trail] of system._ribbonTrails || []) {
     const mat = trail.getMaterial();

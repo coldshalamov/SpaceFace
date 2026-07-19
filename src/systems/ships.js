@@ -20,6 +20,11 @@ import {
   roleOperationalBiases,
 } from '../data/shipRoleLattice.js';
 import { syncDerivedPhysicsMass } from '../core/physicsAuthority.js';
+import {
+  defaultShipAppearance,
+  normalizeShipAppearance,
+  shipAppearanceSignature,
+} from '../core/shipAppearance.js';
 
 // ---- catalog lookup tables (built once at module load) ------------------------------------
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -435,7 +440,7 @@ function buildMiningBeam(shipDef, fittings, isPlayer) {
  * makeShipEntitySpec(defId, opts) -> a spawnEntity spec (type:'ship') with the derived stat fields
  * copied onto the top level AND a full data block per the shared shape (§3.4.1).
  */
-export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings = [], isPlayer = false, player = null, pos = null, rot = 0, ai = null } = {}) {
+export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings = [], appearance = null, isPlayer = false, player = null, pos = null, rot = 0, ai = null } = {}) {
   const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
   const derived = getDerivedStats(shipDef.id, fittings, player);
   const weapons = buildWeaponList(shipDef, fittings, isPlayer);
@@ -468,6 +473,7 @@ export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings
       // read tier + place visible props. Current starter weapons are explicit fittings; legacy
       // fallback weapons are still backfilled here so old saves show the barrel they can fire.
       fittings: fittingsForView(shipDef, fittings, weapons),
+      appearance: appearance ? normalizeShipAppearance(appearance, shipDef.id) : null,
       combat: { targetId: null, lockTarget: null, lockProgress: 0 },
       intent: null,
       ai,
@@ -509,6 +515,7 @@ export const ships = {
     bus.on('ui:fitModule', (p) => this.fitModule(p || {}));
     bus.on('ui:unfitModule', (p) => this.unfitModule(p || {}));
     bus.on('ui:unlockTech', (p) => this.unlockTech((p && p.nodeId) || null));
+    bus.on('ui:setShipAppearance', (p) => this.setShipAppearance(p || {}));
   },
 
   // Event-only system. Cargo owns the registered per-tick coalescing boundary and emits one
@@ -626,7 +633,8 @@ export const ships = {
     const prevAppearance = e.data._appearance || '';
     const newWeapons = buildWeaponList(shipDef, fit, isPlayer);
     const newViewFittings = fittingsForView(shipDef, fit, newWeapons);
-    const newAppearance = defId + '|' + newViewFittings.join(',');
+    const newAppearance = defId + '|' + newViewFittings.join(',') + '|'
+      + shipAppearanceSignature(e.data.appearance, defId);
 
     e.data.derived = derived;
     e.data.weapons = newWeapons;
@@ -786,7 +794,11 @@ export const ships = {
       if (price) this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyShip:' + defId });
     }
     const slots = buildSlotList(def);
-    p.ownedShips.push({ defId, fittings: new Array(slots.length).fill(null) });
+    p.ownedShips.push({
+      defId,
+      fittings: new Array(slots.length).fill(null),
+      appearance: defaultShipAppearance(defId),
+    });
     const newIndex = p.ownedShips.length - 1;
     this.bus.emit('ship:purchased', { defId, price: grant ? 0 : (def.price || 0) });
     if (setActive) this.setActiveShip(newIndex);
@@ -830,6 +842,7 @@ export const ships = {
     const e = this.state.entities.get(this.state.playerId);
     if (e) {
       e.data.defId = owned.defId;
+      e.data.appearance = normalizeShipAppearance(owned.appearance, owned.defId);
       this.recomputeEntity(e.id, owned.fittings);
     }
     if (isTransition) {
@@ -839,6 +852,23 @@ export const ships = {
         announce: true,
       });
     }
+    return true;
+  },
+
+  setShipAppearance({ shipIndex = null, appearance = null } = {}) {
+    const owned = this.ownedShip(shipIndex);
+    if (!owned) return false;
+    const normalized = normalizeShipAppearance(appearance, owned.defId);
+    if (shipAppearanceSignature(owned.appearance, owned.defId)
+        === shipAppearanceSignature(normalized, owned.defId)) return true;
+    owned.appearance = normalized;
+    const index = shipIndex == null ? this.state.player.activeShipIndex : shipIndex;
+    if (index === this.state.player.activeShipIndex) {
+      const entity = this.activeShipEntity();
+      if (entity && entity.data) entity.data.appearance = normalized;
+      if (entity) this.bus.emit('ship:appearanceChanged', { id: entity.id, appearance: normalized });
+    }
+    this.bus.emit('ship:appearanceSaved', { shipIndex: index, appearance: normalized });
     return true;
   },
 
@@ -957,6 +987,7 @@ export const ships = {
     p.ownedShips = [{
       defId: NEW_GAME.shipId,
       fittings: this.fittingsFromDefaults(NEW_GAME.shipId, NEW_GAME.fittedModules || []),
+      appearance: defaultShipAppearance(NEW_GAME.shipId),
     }];
     p.activeShipIndex = 0;
     p.moduleInventory = [];

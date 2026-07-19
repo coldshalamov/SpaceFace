@@ -3,7 +3,7 @@
  *
  * Locks the boot gate contract without a browser:
  *   1. Soft-failed / empty preload payloads are not "ready"
- *   2. The player hull and current-sector landmark must be present in a usable boot library
+ *   2. The player hull must be present; off-camera landmarks use entity-demand streaming
  *   3. Rejected library promises must not stick in the per-renderer cache forever
  */
 import assert from 'node:assert/strict';
@@ -49,14 +49,14 @@ function testUsableLibraryRequiresBootCriticalAssets() {
     url: `${PART_LIBRARY_CONTRACT.releaseRoot}${file}`,
     assetId: 'SF_K0_KESTREL_BORROWED_TIME',
   }))]]);
-  assert.equal(isAuthoredPartLibraryUsable(playerOnly), false,
-    'the player body alone must not hide a missing current-sector landmark');
+  assert.equal(isAuthoredPartLibraryUsable(playerOnly), true,
+    'the exact player body satisfies bootstrap while off-camera landmarks stream on demand');
 
   const complete = new Map(Object.entries(plan).map(([slot, files]) => [slot, files.map((file) => ({
     url: `${PART_LIBRARY_CONTRACT.releaseRoot}${file}`,
   }))]));
   assert.equal(isAuthoredPartLibraryUsable(complete), true,
-    'player and current-sector authored assets satisfy the scoped boot gate');
+    'the scoped player bootstrap plan satisfies the boot gate');
 }
 
 /**
@@ -138,11 +138,11 @@ function testMainAndPartsLibraryWireTheUsabilityGate() {
     'waitForAuthoredPartLibrary must inspect the settled payload, not ignore it');
   assert.match(partsSrc, /export function isAuthoredPartLibraryUsable/,
     'partsLibrary must export the usability predicate');
-  assert.match(partsSrc, /promises\.delete\(partRoot\)/,
+  assert.match(partsSrc, /promises\.delete\(cacheKey\)/,
     'loadCanonicalLibrary must drop failed promises so retries are not sticky');
   assert.match(partsSrc, /invalidateFailedAuthoredAssets/,
     'retry must evict inner fulfilled-null loader tasks, not only the outer library promise');
-  assert.match(partsSrc, /assertCanonicalLibraryUsable/,
+  assert.match(partsSrc, /assertLibraryPlanUsable/,
     'preload must refuse to publish an unusable library into the resolved cache');
   assert.match(partsSrc, /loadPlanIntoLibrary/,
     'boot and entity admission must share the bounded preload planner');

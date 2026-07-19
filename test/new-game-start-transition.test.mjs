@@ -34,6 +34,10 @@ test('fresh New Game prepares the player and world before waiting for authored a
       timeline.push('wait:warmup');
       return true;
     },
+    waitForGpuResources() {
+      timeline.push('wait:gpu-resources');
+      return true;
+    },
     enterFlight() {
       flights += 1;
       timeline.push('enter:flight');
@@ -49,7 +53,64 @@ test('fresh New Game prepares the player and world before waiting for authored a
   assert.deepEqual(await transition, { stale: false, enteredFlight: true });
   assert.equal(flights, 1);
   assert.deepEqual(timeline, [
-    'prepare:player-world', 'wait:library', 'wait:visuals', 'wait:warmup', 'enter:flight',
+    'prepare:player-world', 'wait:library', 'wait:visuals', 'wait:warmup',
+    'wait:gpu-resources', 'enter:flight',
+  ]);
+});
+
+test('New Game yields a presentation frame before synchronous preparation and reports truthful stages', async () => {
+  const guard = createRunTransitionGuard();
+  const token = guard.begin('new-game');
+  const timeline = [];
+
+  const result = await runNewGameStartTransition({
+    guard,
+    token,
+    reportProgress(stage) {
+      timeline.push(`progress:${stage.id}:${stage.progress}`);
+    },
+    yieldForPresentation() {
+      timeline.push('yield:presentation');
+    },
+    prepareRun() {
+      timeline.push('prepare:player-world');
+    },
+    waitForLibrary() {
+      timeline.push('wait:library');
+      return true;
+    },
+    waitForVisuals() {
+      timeline.push('wait:visuals');
+      return true;
+    },
+    waitForWarmup() {
+      timeline.push('wait:warmup');
+      return true;
+    },
+    waitForGpuResources() {
+      timeline.push('wait:gpu-resources');
+      return true;
+    },
+    enterFlight() {
+      timeline.push('enter:flight');
+    },
+  });
+
+  assert.deepEqual(result, { stale: false, enteredFlight: true });
+  assert.deepEqual(timeline, [
+    'progress:preparing-run:0.08',
+    'yield:presentation',
+    'prepare:player-world',
+    'progress:authored-library:0.25',
+    'wait:library',
+    'progress:authored-visuals:0.5',
+    'wait:visuals',
+    'progress:render-pipelines:0.78',
+    'wait:warmup',
+    'progress:gpu-resources:0.9',
+    'wait:gpu-resources',
+    'progress:entering-flight:0.96',
+    'enter:flight',
   ]);
 });
 

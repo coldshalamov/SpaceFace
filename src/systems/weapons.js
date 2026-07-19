@@ -16,6 +16,7 @@ import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import {
   aimTrueProjectileVelocity, solveTetherLeadSolution, solutionToleranceRad,
 } from '../combat/tetherFireControl.js';
+import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
@@ -64,9 +65,10 @@ export const weapons = {
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     this._rng = this.helpers.mulberry32(this.helpers.hash32(seed, 'weapons'));
 
-    // Track which beam owners were firing last tick so we can emit combat:beamStop on release.
+    // Track individual beam mounts so presentation can update one persistent beam per hardpoint.
     this._beamFiring = new Set();
     this._beamFiringPrev = new Set();
+    this._beamActiveMeta = new Map();
     this._autoFireScratch = [];
     this._autoLeadVel = new Map();
     this._diag = {
@@ -152,16 +154,15 @@ export const weapons = {
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
       const intent = e.data && e.data.intent;
-      const firing = !!(intent && intent.fire);
+      const firing = !!(intent && intent.fire)
+        && presentationAllowsPlayerFacingAction(e, state);
       // NPC aim = its intent aimAngle (already a lead/intercept angle from ai.js). fall back to nose.
       const aimAngle = (intent && intent.aimAngle != null) ? intent.aimAngle : e.rot;
       this._serviceShip(e, firing, false, dt, state, aimAngle, null);
     }
 
-    // 3) beam release → combat:beamStop for owners who stopped firing a continuous weapon.
-    for (const ownerId of this._beamFiringPrev) {
-      if (!this._beamFiring.has(ownerId)) this.bus.emit('combat:beamStop', { ownerId });
-    }
+    // 3) beam release → one precise stop receipt for each mount that stopped firing.
+    this._emitStoppedBeams();
     state.weaponRuntime = state.weaponRuntime || {};
     state.weaponRuntime.diagnostics = this._diag;
   },
@@ -442,12 +443,44 @@ export const weapons = {
         damagePacket: weaponDamagePacket(w, def, damage, damageType),
       });
     }
-    this._beamFiring.add(e.id);
+    const beamKey = `${String(e.id)}:${Number.isFinite(w.slotIndex) ? w.slotIndex : 0}`;
+    const phase = this._beamFiringPrev.has(beamKey) ? 'update' : 'begin';
+    this._beamFiring.add(beamKey);
+    let beamMeta = this._beamActiveMeta.get(beamKey);
+    if (!beamMeta) {
+      beamMeta = {
+        beamKey,
+        ownerId: e.id,
+        weaponId: w.defId,
+        hardpointIdx: w.slotIndex,
+      };
+      this._beamActiveMeta.set(beamKey, beamMeta);
+    }
     this.bus.emit('combat:fire', {
       ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex,
-      origin, dir,
+      origin, from: origin, to, dir, range, damageType,
+      beamKey, continuous: true, phase,
     });
     return capLeft;
+  },
+
+  _emitStoppedBeams() {
+    for (const beamKey of this._beamFiringPrev) {
+      if (this._beamFiring.has(beamKey)) continue;
+      const meta = this._beamActiveMeta.get(beamKey);
+      if (meta) {
+        let ownerStillFiring = false;
+        for (const activeKey of this._beamFiring) {
+          const active = this._beamActiveMeta.get(activeKey);
+          if (active && active.ownerId === meta.ownerId) {
+            ownerStillFiring = true;
+            break;
+          }
+        }
+        this.bus.emit('combat:beamStop', { ...meta, continuous: true, phase: 'end', ownerStillFiring });
+        this._beamActiveMeta.delete(beamKey);
+      }
+    }
   },
 
   // Projectile weapon: gate on cooldown/cap/heat (+lock/+arc), spawn a projectile, emit combat:fire.

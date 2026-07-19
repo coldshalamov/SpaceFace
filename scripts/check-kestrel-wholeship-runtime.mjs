@@ -15,16 +15,16 @@ const LIVE_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME_V4';
 const MAX_GITHUB_BYTES = 100 * 1024 * 1024;
 const FAMILY = Object.freeze([
   Object.freeze({
-    lod: 'lod0', file: 'kestrel.glb', triangles: [19_000, 21_000], maxDraws: 15,
-    acceptedCandidateSha256: '2EAC62E9796707D910938A474A73AD86F0DC51606797C0D0BBBB0A5814888B9D',
+    lod: 'lod0', file: 'kestrel.glb', triangles: [25_500, 28_000], maxDraws: 20,
+    acceptedCandidateSha256: '70DA3992DE98FAE65E3C2C274355B7D51AAABB613D95E623EEB645A820504BAC',
   }),
   Object.freeze({
-    lod: 'lod1', file: 'kestrel_lod1.glb', triangles: [13_000, 15_000], maxDraws: 12,
-    acceptedCandidateSha256: '33BE2EBB0D5274DF4D28CD324926C99F4E8EE6740C6D0F499266B6FCC7BCE3E0',
+    lod: 'lod1', file: 'kestrel_lod1.glb', triangles: [15_500, 17_500], maxDraws: 17,
+    acceptedCandidateSha256: 'BEE5928062F55211A45F9E35E4FB91D2C10D0110DF57C994284461CAEF5D2689',
   }),
   Object.freeze({
-    lod: 'lod2', file: 'kestrel_lod2.glb', triangles: [12_000, 13_500], maxDraws: 8,
-    acceptedCandidateSha256: '1F19E69C16FB4FA15E1BC731A80C615D669337A10B0BD6ECD42A9F067BE48241',
+    lod: 'lod2', file: 'kestrel_lod2.glb', triangles: [13_000, 14_500], maxDraws: 12,
+    acceptedCandidateSha256: 'A92BA3F714CC0BD726CB1D836C65F84EBFF8798CFEF3D7D167437EAEB1045016',
   }),
 ]);
 const REQUIRED_SOCKETS = Object.freeze([
@@ -71,11 +71,22 @@ const REQUIRED_LOD0_MATERIALS = Object.freeze([
   'Material_Emissive_Cyan',
   'Material_Emissive_DriveCore',
   'Material_Emissive_Orange',
+  'Material_EngineCeramic',
   'Material_Glass_Canopy',
   'Material_Hull',
   'Material_Mechanical',
+  'Material_Radiator',
   'Material_RepairGreen',
   'Material_Rubber',
+].sort());
+const FACTOR_ONLY_MATERIALS = Object.freeze([
+  'Material_Decal_BorrowedTime',
+  'Material_Decal_Hazard',
+  'Material_Decal_Stencils',
+  'Material_Emissive_Cyan',
+  'Material_Emissive_DriveCore',
+  'Material_Emissive_Orange',
+  'Material_Glass_Canopy',
 ].sort());
 
 await MeshoptDecoder.ready;
@@ -122,7 +133,7 @@ for (const member of FAMILY) {
 }
 
 assert.deepEqual(sourceFamily[0].materials, REQUIRED_LOD0_MATERIALS,
-  'LOD0 must preserve the accepted V4 semantic material set exactly');
+  'LOD0 must preserve the V5 golden-pass semantic material set exactly');
 for (const member of sourceFamily) {
   const collisionRatios = member.collisionDimensions.map((value, index) => value / member.visibleDimensions[index]);
   assert.ok(collisionRatios.every((ratio) => ratio >= 0.90 && ratio <= 0.94),
@@ -148,9 +159,11 @@ for (const member of FAMILY) {
   assert.ok(partsLibrary.includes(`'wholeships/${member.file}'`),
     `${member.lod} must remain in the explicit V4 LOD family catalog`);
 }
-assert.match(partsLibrary, /AUTHORED_BOOTSTRAP_PLAN[\s\S]*hull:\s*Object\.freeze\(\['wholeships\/kestrel\.glb'\]\)/,
-  'bootstrap residency must decode only V4 LOD0');
-assert.match(partsLibrary, /wholeShip\s*\?\s*false\s*:/,
+assert.match(partsLibrary, /AUTHORED_BOOTSTRAP_PLAN\s*=\s*Object\.freeze\(\{\s*hull:\s*Object\.freeze\(\['wholeships\/kestrel\.glb'\]\),?\s*\}\)/,
+  'bootstrap residency must decode only the exact Kestrel identity before control');
+assert.match(partsLibrary, /shouldBuildReadabilitySafetyCore\s*\(\s*\{[\s\S]*?wholeShip,[\s\S]*?authoredHullLevelCount:/,
+  'whole-ship composition must route readability-shell ownership through the shared safety-core contract');
+assert.match(partsLibrary, /function\s+shouldBuildReadabilitySafetyCore[\s\S]*?return\s+!wholeShip\s*&&\s*Number\(authoredHullLevelCount\)\s*<=\s*0/,
   'a validated whole ship must disable the readability safety shell');
 assert.match(partsLibrary, /authored\.wholeShip\s*===\s*true/,
   'the production whole ship must replace, not retain, procedural/modular fallback');
@@ -163,7 +176,7 @@ console.log('Kestrel Borrowed Time V4 live whole-ship family: PASS');
 console.log(JSON.stringify({
   assetId: LIVE_ASSET_ID,
   runtimeLod: 'lod0',
-  decodedAtBoot: ['wholeships/kestrel.glb'],
+  decodedAtBoot: 'opening-shot Kestrel and Helios trade hub authored assets',
   source: sourceFamily.map(summary),
   release: releaseFamily.map(summary),
 }, null, 2));
@@ -182,13 +195,17 @@ function verifyMember(result, member, label) {
     assertVectorNear(result.socketForwards[name], expected, `${label} ${member.lod} ${name} forward`);
   }
   assert.deepEqual(result.plumeNodes, [], `${label} ${member.lod} must not embed a plume`);
-  assert.equal(result.primitiveCount, result.uvPrimitiveCount, `${label} ${member.lod} requires TEXCOORD_0`);
   assert.equal(result.primitiveCount, result.normalPrimitiveCount, `${label} ${member.lod} requires NORMAL`);
-  assert.equal(result.primitiveCount, result.tangentPrimitiveCount, `${label} ${member.lod} requires TANGENT`);
+  assert.equal(result.pbrSurfacePrimitiveCount, result.pbrSurfaceUvPrimitiveCount,
+    `${label} ${member.lod} mapped PBR surfaces require TEXCOORD_0`);
+  assert.equal(result.pbrSurfacePrimitiveCount, result.pbrSurfaceTangentPrimitiveCount,
+    `${label} ${member.lod} mapped PBR surfaces require TANGENT`);
   assert.equal(result.asset.assetId, LIVE_ASSET_ID, `${label} ${member.lod} asset identity`);
   assert.equal(result.asset.contractVersion, 2, `${label} ${member.lod} must retain V4 contract v2`);
   assert.equal(result.asset.textureCompression, label === 'source' ? 'PNG-source' : 'KTX2/BasisU+mips',
     `${label} ${member.lod} texture metadata must describe the actual container and mip contract`);
+  assert.deepEqual([...(result.asset.factorOnlyMaterials || [])].sort(), FACTOR_ONLY_MATERIALS,
+    `${label} ${member.lod} must declare the intentional decal/emissive/glass factor-only materials`);
   assert.equal(result.asset.acceptedCandidateSha256, member.acceptedCandidateSha256,
     `${label} ${member.lod} must retain accepted-candidate provenance`);
   assert.equal(result.asset.wiringStatus, member.lod === 'lod0' ? 'live_player_only' : 'retained_lod_family_member',
@@ -206,6 +223,9 @@ async function inspect(path, member, { inspectBounds }) {
   let uvPrimitiveCount = 0;
   let normalPrimitiveCount = 0;
   let tangentPrimitiveCount = 0;
+  let pbrSurfacePrimitiveCount = 0;
+  let pbrSurfaceUvPrimitiveCount = 0;
+  let pbrSurfaceTangentPrimitiveCount = 0;
   for (const node of nodes) {
     const mesh = node.getMesh();
     if (!mesh) continue;
@@ -218,6 +238,12 @@ async function inspect(path, member, { inspectBounds }) {
       if (primitive.getAttribute('TEXCOORD_0')) uvPrimitiveCount++;
       if (primitive.getAttribute('NORMAL')) normalPrimitiveCount++;
       if (primitive.getAttribute('TANGENT')) tangentPrimitiveCount++;
+      const materialName = primitive.getMaterial()?.getName() || '';
+      if (!FACTOR_ONLY_MATERIALS.includes(materialName)) {
+        pbrSurfacePrimitiveCount++;
+        if (primitive.getAttribute('TEXCOORD_0')) pbrSurfaceUvPrimitiveCount++;
+        if (primitive.getAttribute('TANGENT')) pbrSurfaceTangentPrimitiveCount++;
+      }
     }
   }
   assert.deepEqual([...lodBuckets], [member.lod], `${member.file} must not bundle another LOD`);
@@ -239,6 +265,9 @@ async function inspect(path, member, { inspectBounds }) {
     uvPrimitiveCount,
     normalPrimitiveCount,
     tangentPrimitiveCount,
+    pbrSurfacePrimitiveCount,
+    pbrSurfaceUvPrimitiveCount,
+    pbrSurfaceTangentPrimitiveCount,
     materials: root.listMaterials().map((material) => material.getName()).sort(),
     sockets,
     socketPositions: Object.fromEntries(nodes

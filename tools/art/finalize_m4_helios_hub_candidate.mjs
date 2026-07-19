@@ -585,6 +585,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const params = new URLSearchParams(location.search);
 const mode = params.get('mode') || 'close';
@@ -597,22 +598,24 @@ renderer.setSize(w, h, false);
 renderer.setPixelRatio(1);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.10;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0c10);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.055).texture;
 const camera = new THREE.PerspectiveCamera(40, w / h, 0.05, 800);
 
-const hemi = new THREE.HemisphereLight(0xb0c4de, 0x1a1c22, 0.55);
+const hemi = new THREE.HemisphereLight(0xb0c4de, 0x1a1c22, 0.78);
 scene.add(hemi);
-const key = new THREE.DirectionalLight(0xfff2e0, 1.35);
+const key = new THREE.DirectionalLight(0xfff2e0, 1.55);
 key.position.set(18, 20, 12);
 scene.add(key);
-const fill = new THREE.DirectionalLight(0x88aacc, 0.45);
+const fill = new THREE.DirectionalLight(0x88aacc, 0.72);
 fill.position.set(-16, 8, -10);
 scene.add(fill);
-const rim = new THREE.DirectionalLight(0x44ddff, 0.4);
+const rim = new THREE.DirectionalLight(0x44ddff, 0.52);
 rim.position.set(-8, 6, 16);
 scene.add(rim);
 
@@ -629,7 +632,7 @@ function fitCamera(root, mode) {
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z, 1);
-  const distMul = mode === 'close' ? 1.7 : mode === 'mid' ? 2.8 : 4.5;
+  const distMul = mode === 'close' ? 0.85 : mode === 'mid' ? 1.7 : 3.2;
   const dist = maxDim * distMul;
   camera.position.set(center.x + dist * 0.72, center.y + dist * 0.42, center.z + dist * 0.78);
   camera.near = Math.max(0.05, dist / 200);
