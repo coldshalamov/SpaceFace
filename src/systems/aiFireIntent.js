@@ -1,7 +1,15 @@
-import { ObjectiveKind } from '../ai/contracts.js';
+import { ObjectiveKind, ContactKind } from '../ai/contracts.js';
 import { canFireByDoctrine } from '../ai/doctrine.js';
 import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
 import { assessFriendlyFireLane } from '../ai/fireDiscipline.js';
+import {
+  isPdScreenActor,
+  resolvePdCharge,
+  selectPdInterceptTarget,
+  ensurePdSaturation,
+  beginPdIntercept,
+  PD_SCREEN_DEFAULT_RADIUS,
+} from '../ai/pdScreen.js';
 import { isPlayerWanted } from './heat.js';
 
 const RECENT_DEFENSIVE_DAMAGE_TICKS = 180;
@@ -16,38 +24,60 @@ export function applyAIFiringIntent(decision, state) {
   const data = e.data || (e.data = {});
   const intent = mutableIntent(data);
   const objective = decision.directive && decision.directive.objective;
-  const targetId = objective && objective.targetId;
-  const attack = objective && (objective.kind === ObjectiveKind.FOCUS || objective.kind === ObjectiveKind.ENGAGE);
   const combatDoctrine = decision.combatDoctrine || null;
+  const pdActor = isPdScreenActor(e);
 
-  if (!attack || targetId == null || (combatDoctrine && !combatDoctrine.fireWindow)) {
+  // W04: pd_screen_escort policy overrides target selection with screen priority + saturation.
+  // Honest v1 — priority-targeting + cap (projectile kill seam not shipped on weapons.intercepts).
+  let targetId = objective && objective.targetId;
+  if (pdActor) {
+    const pdTarget = applyPdScreenTargetPolicy(e, state, decision);
+    if (pdTarget != null) targetId = pdTarget;
+  }
+
+  const attack = objective && (
+    objective.kind === ObjectiveKind.FOCUS
+    || objective.kind === ObjectiveKind.ENGAGE
+    || objective.kind === ObjectiveKind.SCREEN
+  );
+  const fireWindowOk = !combatDoctrine || combatDoctrine.fireWindow || pdActor;
+  if ((!attack && !pdActor) || targetId == null || !fireWindowOk) {
     clearFire(intent);
     return;
   }
 
   const target = state.entities.get(targetId);
+  if (!target || !target.alive) {
+    clearFire(intent);
+    return;
+  }
   const ai = data.ai || {};
   const recentlyDamaged = recentlyDamagedBy(state, e.id, targetId);
+  const objectiveKind = (objective && objective.kind) || (pdActor ? ObjectiveKind.SCREEN : null);
   const permitted = canFireByDoctrine({
     activity: ai.activity,
     roe: ai.roe,
-    objectiveKind: objective.kind,
+    objectiveKind,
     target,
     self: e,
     wanted: isPlayerWanted(state),
     recentlyDamaged,
   });
-  const authorization = permitted ? authorizeAIEngagement({
+  const hostile = isHostileForAI(state, e, target)
+    || !!(target.type === 'projectile')
+    || (target.team != null && e.team != null && target.team !== e.team);
+  const authorization = (permitted || pdActor) ? authorizeAIEngagement({
     state,
     self: e,
     target,
     tick: state.tick,
-    objectiveReason: objective.reason,
-    hostile: isHostileForAI(state, e, target),
+    objectiveReason: (objective && objective.reason) || (pdActor ? 'pd_screen_intercept' : ''),
+    hostile,
     wanted: isPlayerWanted(state),
     recentlyDamaged,
   }) : null;
-  if (!permitted || !authorization || !authorization.ok) {
+  const pdOpen = pdActor && hostile;
+  if ((!permitted || !authorization || !authorization.ok) && !pdOpen) {
     clearFire(intent);
     return;
   }
@@ -55,13 +85,14 @@ export function applyAIFiringIntent(decision, state) {
   const aimAngle = leadAngleFor(e, target, data.weapons);
   const combat = data.combat || (data.combat = {});
   combat.targetId = targetId;
+  combat.pdScreen = pdActor;
   const lane = assessFriendlyFireLane({
     shooter: e,
     target,
     aimAngle,
     entities: state.entityList || state.entities,
   });
-  if (!lane.clear) {
+  if (!lane.clear && target.type !== 'projectile') {
     clearFire(intent, lane.reason, lane.blockerId);
     intent.aimAngle = aimAngle;
     return;
@@ -72,6 +103,88 @@ export function applyAIFiringIntent(decision, state) {
   intent.fireBlockerId = null;
   intent.aimAngle = aimAngle;
   ai.lastAggressionTrace = aggressionTrace(decision, state, targetId, ai);
+}
+
+/**
+ * Apply PD screen target policy. Returns targetId or null.
+ * Records selection on entity.data.pdScreenRuntime for inspection / saturation.
+ */
+export function applyPdScreenTargetPolicy(entity, state, decision = null) {
+  if (!entity || !isPdScreenActor(entity)) return null;
+  const tick = Number.isInteger(state && state.tick) ? state.tick : 0;
+  const sat = ensurePdSaturation(entity);
+  const charge = resolvePdCharge(entity, state, decision && decision.perception);
+  const contacts = collectPdContacts(entity, state, charge);
+  const selected = selectPdInterceptTarget({
+    self: entity,
+    charge,
+    contacts,
+    screenRadius: (entity.data && entity.data.pdScreenRadius) || PD_SCREEN_DEFAULT_RADIUS,
+    saturation: sat,
+    tick,
+  });
+  const runtime = entity.data.pdScreenRuntime;
+  if (!selected) {
+    runtime.lastTargetId = null;
+    runtime.lastScore = null;
+    return null;
+  }
+  if (runtime.lastTargetId !== selected.targetId) {
+    beginPdIntercept(sat, tick);
+  }
+  runtime.lastTargetId = selected.targetId;
+  runtime.lastScore = selected.score;
+  runtime.lastKind = selected.kind;
+  runtime.inside = selected.inside;
+  runtime.chargeId = charge && charge.id;
+  return selected.targetId;
+}
+
+function collectPdContacts(self, state, charge) {
+  const out = [];
+  const list = state.entityList || [];
+  const selfTeam = self.team;
+  for (const e of list) {
+    if (!e || !e.alive || e.id === self.id) continue;
+    if (charge && e.id === charge.id) continue;
+    if (e.type === 'projectile') {
+      // Hostile projectile: owner not on our team.
+      const owner = e.ownerId != null && state.entities ? state.entities.get(e.ownerId) : null;
+      const hostile = owner
+        ? (owner.team != null && selfTeam != null && owner.team !== selfTeam)
+        : (e.team != null && selfTeam != null && e.team !== selfTeam);
+      if (!hostile) continue;
+      out.push({
+        id: e.id,
+        kind: ContactKind.PROJECTILE,
+        pos: e.pos,
+        vel: e.vel,
+        alive: true,
+        valid: true,
+        visible: true,
+        hostile: true,
+        threat: 0.9,
+      });
+      continue;
+    }
+    if (e.type !== 'ship' && e.type !== 'drone') continue;
+    if (e.team != null && selfTeam != null && e.team === selfTeam) continue;
+    const hostile = isHostileForAI(state, self, e)
+      || (e.team != null && selfTeam != null && e.team !== selfTeam);
+    if (!hostile) continue;
+    out.push({
+      id: e.id,
+      kind: ContactKind.SHIP,
+      pos: e.pos,
+      vel: e.vel,
+      alive: true,
+      valid: true,
+      visible: true,
+      hostile: true,
+      threat: 0.6,
+    });
+  }
+  return out;
 }
 
 function aggressionTrace(decision, state, targetId, ai) {
