@@ -208,7 +208,13 @@ test('T03 §8: module source is clock-free, RNG-free, DOM-free, NUL-free', () =>
 test('T03 §9: only the sanctioned consumers import this module', () => {
   // autoTargetMode (rung 08) and the rung-07 check script are the sanctioned importers. A new
   // importer appearing is a wiring decision for T04+, not an accident this suite lets pass.
-  const allowed = new Set(['src/combat/autoTargetMode.js', 'scripts/check-massline-target-scoring.mjs']);
+  const allowed = new Set([
+    'src/combat/autoTargetMode.js',
+    'scripts/check-massline-target-scoring.mjs',
+    // T04 (w2/t04-latch-eligibility): the tether latch is the first sanctioned runtime consumer
+    // of the T03 axes — eligibility + ranking with readable denial reasons.
+    'src/systems/tetherGameplay.js',
+  ]);
   const found = [];
   const walk = (dir) => {
     for (const name of readdirSync(dir)) {
