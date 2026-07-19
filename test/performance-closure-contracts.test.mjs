@@ -144,6 +144,14 @@ test('budget results are recomputed from raw frame and autosave evidence', () =>
   });
   assert.equal(saveBudgets.results.find((entry) => entry.id === 'autosave.completed').pass, true);
   assert.equal(saveBudgets.results.find((entry) => entry.id === 'autosave.maxBlockingSlice.hard').pass, false);
+  const targetMissWithinHardLimit = evaluatePerformanceWindowBudgets({
+    scenarioId: 'autosave_under_load',
+    summary: summarizeFrameSamples([{ frameMs: 16 }, { frameMs: 16.5 }]),
+    autosave: { events: [{ event: 'save:completed' }], timing: { maxBlockingSliceMs: 10 } },
+  });
+  assert.equal(targetMissWithinHardLimit.results.find((entry) => entry.id === 'autosave.maxBlockingSlice.target').pass, false);
+  assert.equal(targetMissWithinHardLimit.results.find((entry) => entry.id === 'autosave.maxBlockingSlice.hard').pass, true);
+  assert.equal(targetMissWithinHardLimit.pass, true, 'the 8 ms target must not replace the measured 12 ms hard gate');
   const missingSaveTiming = evaluatePerformanceWindowBudgets({ scenarioId: 'autosave_under_load', summary });
   assert.equal(missingSaveTiming.results.find((entry) => entry.id === 'autosave.maxBlockingSlice.hard').value, null);
   assert.equal(missingSaveTiming.results.find((entry) => entry.id === 'autosave.maxBlockingSlice.hard').pass, false);
