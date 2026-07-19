@@ -5,7 +5,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
-import { mines, MINE_OWNER_CAP, MINE_ARM_DELAY_S, MINE_TYPE, MINE_TELEGRAPH_CUE, countOwnerMines, listMines } from '../src/systems/mines.js';
+import { Masks } from '../src/core/entity.js';
+import { physics } from '../src/core/physics.js';
+import { mines, MINE_TYPE, MINE_TELEGRAPH_CUE, countOwnerMines, listMines } from '../src/systems/mines.js';
 import { combat } from '../src/systems/combat.js';
 import { ENCOUNTER_SCRIPTS } from '../src/systems/encounterScripts.js';
 
@@ -22,11 +24,11 @@ function boot(seed = 3251) {
   });
   state.playerId = player.id;
   const events = {
-    placed: [], triggered: [], armed: [], released: [], routeDamage: [], telegraph: [], cap: [],
+    placed: [], triggered: [], armed: [], released: [], routeDamage: [], telegraph: [], cap: [], order: [],
   };
   bus.on('mines:placed', (p) => events.placed.push(p));
-  bus.on('mines:triggered', (p) => events.triggered.push(p));
-  bus.on('mines:armed', (p) => events.armed.push(p));
+  bus.on('mines:triggered', (p) => { events.triggered.push(p); events.order.push(`triggered:${p.mineId}`); });
+  bus.on('mines:armed', (p) => { events.armed.push(p); events.order.push(`armed:${p.mineId}`); });
   bus.on('mines:released', (p) => events.released.push(p));
   bus.on('mines:capReached', (p) => events.cap.push(p));
   bus.on('combat:routeDamage', (p) => events.routeDamage.push(p));
@@ -45,24 +47,37 @@ test('ownership + arm delay + per-owner cap lifecycle', () => {
   assert.equal(m1.type, MINE_TYPE);
   assert.equal(m1.ownerId, owner.id);
   assert.equal(m1.data.armed, false);
-  assert.ok(m1.data.armedAt > t.state.simTime);
+  assert.equal(m1.data.armedAt, 2, 'default arm delay is independently pinned at two seconds');
+  assert.deepEqual(m1.physicsBody, {
+    dynamic: false,
+    ccd: false,
+    material: 'projectile',
+  }, 'Rapier authors mines as fixed ghost bodies; projectile hits remain swept in physics.js');
   assert.equal(t.events.placed.length, 1);
   assert.ok(t.events.telegraph.some((e) => e.cue === MINE_TELEGRAPH_CUE || e.kind === MINE_TELEGRAPH_CUE));
 
-  // Cap enforcement.
-  for (let i = 0; i < MINE_OWNER_CAP + 2; i++) {
-    t.minesSys.placeMine({
+  // The fifth and sixth owner mines succeed; the seventh is rejected.
+  for (let i = 1; i < 6; i++) {
+    assert.ok(t.minesSys.placeMine({
       ownerId: owner.id,
       pos: { x: 430 + i * 20, z: 10 },
       team: 1,
       telegraph: false,
-    });
+    }));
   }
-  assert.equal(countOwnerMines(t.state, owner.id), MINE_OWNER_CAP);
-  assert.ok(t.events.cap.length >= 1);
+  assert.equal(countOwnerMines(t.state, owner.id), 6);
+  assert.equal(t.minesSys.placeMine({
+    ownerId: owner.id, pos: { x: 570, z: 10 }, team: 1, telegraph: false,
+  }), null);
+  assert.equal(countOwnerMines(t.state, owner.id), 6);
+  assert.deepEqual(t.events.cap.at(-1), { ownerId: owner.id, cap: 6 });
 
-  // Arm after delay.
-  t.sim.runTicks(Math.ceil((MINE_ARM_DELAY_S + 0.05) / SIM_DT));
+  // Independently pin both sides and the exact arm boundary.
+  t.state.simTime = 1.999;
+  t.minesSys.update(SIM_DT, t.state);
+  assert.equal(m1.data.armed, false);
+  t.state.simTime = 2;
+  t.minesSys.update(SIM_DT, t.state);
   assert.equal(m1.data.armed, true);
   assert.ok(t.events.armed.some((e) => e.mineId === m1.id));
 
@@ -70,7 +85,126 @@ test('ownership + arm delay + per-owner cap lifecycle', () => {
   t.bus.emit('sector:exit', { sectorId: 'sector_test_mines' });
   t.sim.runTicks(1);
   assert.equal(listMines(t.state).length, 0);
+  assert.equal(t.state.entities.has(m1.id), false, 'lifecycle sweep removes the released physics entity');
   assert.ok(t.events.released.some((e) => e.reason === 'sector_exit'));
+});
+
+test('arming is emitted before an exact-boundary proximity trigger', () => {
+  const t = boot(3203);
+  const owner = t.sim.spawn({
+    type: 'ship', team: 1, pos: { x: 500, z: 0 }, radius: 12, hull: 100, hullMax: 100, data: {},
+  });
+  const mine = t.minesSys.placeMine({
+    ownerId: owner.id, pos: { x: 55, z: 0 }, team: 1, telegraph: false,
+  });
+
+  t.state.simTime = 1.999;
+  t.minesSys.update(SIM_DT, t.state);
+  assert.equal(mine.alive, true);
+  assert.deepEqual(t.events.order, []);
+
+  t.state.simTime = 2;
+  t.minesSys.update(SIM_DT, t.state);
+  assert.equal(mine.alive, false);
+  assert.deepEqual(t.events.order, [`armed:${mine.id}`, `triggered:${mine.id}`]);
+});
+
+test('proximity radius is inclusive at 55 and rejects the immediately beyond side', () => {
+  const run = (mineX) => {
+    const t = boot(3255);
+    const owner = t.sim.spawn({
+      type: 'ship', team: 1, pos: { x: 500, z: 0 }, radius: 12, hull: 100, hullMax: 100, data: {},
+    });
+    const mine = t.minesSys.placeMine({
+      ownerId: owner.id, pos: { x: mineX, z: 0 }, team: 1,
+      armDelayS: 0, triggerRadius: 55, telegraph: false,
+    });
+    t.sim.runTicks(1);
+    return { alive: mine.alive, triggers: t.events.triggered.length };
+  };
+
+  assert.deepEqual(run(55), { alive: false, triggers: 1 });
+  assert.deepEqual(run(55.000001), { alive: true, triggers: 0 });
+});
+
+test('proximity comparison remains defined at 1e308-class coordinates', () => {
+  const run = (playerX, radius) => {
+    const t = boot(3308);
+    t.player.pos.x = playerX;
+    const owner = t.sim.spawn({
+      type: 'ship', team: 1, pos: { x: -100, z: 0 }, radius: 12, hull: 100, hullMax: 100, data: {},
+    });
+    const mine = t.minesSys.placeMine({
+      ownerId: owner.id, pos: { x: 0, z: 0 }, team: 1,
+      armDelayS: 0, triggerRadius: radius, telegraph: false,
+    });
+    t.sim.runTicks(1);
+    return { alive: mine.alive, triggers: t.events.triggered.length };
+  };
+
+  assert.deepEqual(run(1e308, 1e308), { alive: false, triggers: 1 }, 'extreme at-bound target triggers');
+  assert.deepEqual(run(Number.MAX_VALUE, 1e308), { alive: true, triggers: 0 }, 'finite extreme beyond target does not trigger');
+});
+
+test('mines have projectile-only custom collision: no ship/station/asteroid/payload/mine shove', () => {
+  const rigidTypes = [
+    { type: 'station', collisionMask: undefined },
+    { type: 'ship', collisionMask: undefined },
+    { type: 'asteroid', collisionMask: undefined },
+    { type: 'payload', collisionMask: undefined },
+    { type: 'mine', collisionMask: Masks.PROJECTILE },
+  ];
+
+  for (const fixture of rigidTypes) {
+    const sim = createSimulation({ seed: 303, systems: [mines, physics] });
+    sim.state.mode = 'flight';
+    sim.state.settings.gameplay.physicsBackend = 'custom';
+    const mine = sim.registry.get('mines').placeMine({
+      ownerId: null, pos: { x: 0, z: 0 }, team: 1, armDelayS: 99, telegraph: false,
+    });
+    const other = sim.spawn({
+      type: fixture.type,
+      team: 1,
+      pos: { x: 8, z: 0 },
+      vel: { x: 0, z: 0 },
+      radius: fixture.type === 'mine' ? 6 : 12,
+      mass: 8,
+      hull: 100,
+      hullMax: 100,
+      ...(fixture.collisionMask == null ? {} : { collisionMask: fixture.collisionMask }),
+      data: fixture.type === 'mine' ? { mine: true, armed: false } : {},
+    });
+    const before = { mineX: mine.pos.x, otherX: other.pos.x };
+    sim.runTicks(1);
+    assert.deepEqual(
+      { mineX: mine.pos.x, otherX: other.pos.x },
+      before,
+      `${fixture.type} rigid contact must not move an unarmed mine or its neighbor`,
+    );
+  }
+});
+
+test('normal and mine-category projectiles can hit a mine', () => {
+  for (const collisionMask of [undefined, 256]) {
+    const sim = createSimulation({ seed: 304, systems: [mines, physics] });
+    sim.state.mode = 'flight';
+    sim.state.settings.gameplay.physicsBackend = 'custom';
+    const mine = sim.registry.get('mines').placeMine({
+      ownerId: null, pos: { x: 20, z: 0 }, team: 1, armDelayS: 99, telegraph: false,
+    });
+    if (collisionMask === 256) mine.collisionMask = 0;
+    const projectile = sim.spawn({
+      type: 'projectile', team: 0, ownerId: 999,
+      pos: { x: 0, z: 0 }, vel: { x: 1200, z: 0 }, radius: 1,
+      ...(collisionMask == null ? {} : { collisionMask }),
+      data: { damage: 1 },
+    });
+    const hits = [];
+    sim.bus.on('projectile:hit', (event) => hits.push(event));
+    sim.runTicks(1);
+    assert.equal(projectile.alive, false, `projectile mask ${collisionMask ?? 'default'} is consumed by the mine hit`);
+    assert.equal(hits.at(-1)?.targetId, mine.id, `projectile mask ${collisionMask ?? 'default'} reaches mine category`);
+  }
 });
 
 test('proximity trigger routes damage through combat commands (no direct hull write by mines)', () => {

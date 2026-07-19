@@ -56,7 +56,7 @@ export const mines = {
 
     const now = state.simTime || 0;
     const armDelay = Number.isFinite(opts.armDelayS) ? Math.max(0, opts.armDelayS) : MINE_ARM_DELAY_S;
-    const triggerRadius = Number.isFinite(opts.triggerRadius) ? opts.triggerRadius : MINE_TRIGGER_RADIUS;
+    const triggerRadius = Number.isFinite(opts.triggerRadius) ? Math.max(0, opts.triggerRadius) : MINE_TRIGGER_RADIUS;
     const hull = Number.isFinite(opts.hull) ? Math.max(1, opts.hull) : MINE_HULL;
     const team = opts.team != null ? opts.team : teamOf(state, ownerId);
 
@@ -69,8 +69,15 @@ export const mines = {
       hull,
       hullMax: hull,
       collides: true,
-      // Reuse SHIP mask bit so projectiles (mask includes SHIP) can hit mines for counterplay.
-      collisionMask: Masks.PROJECTILE | Masks.SHIP,
+      // Mines accept projectile sweeps only; their distinct category is owned by physics.js.
+      collisionMask: Masks.PROJECTILE,
+      // Rapier solver contacts are disabled. Projectile damage remains authoritative in the
+      // deterministic swept-segment path in physics.js.
+      physicsBody: {
+        dynamic: false,
+        ccd: false,
+        material: 'projectile',
+      },
       team,
       ownerId,
       factionId: opts.factionId || null,
@@ -137,14 +144,13 @@ export const mines = {
   },
 
   _findTriggerVictim(state, mine, data) {
-    const r = data.triggerRadius || MINE_TRIGGER_RADIUS;
-    const r2 = r * r;
+    const r = Number.isFinite(data.triggerRadius) ? Math.max(0, data.triggerRadius) : MINE_TRIGGER_RADIUS;
     const mx = mine.pos.x;
     const mz = mine.pos.z;
     const ownerId = data.ownerId;
     const team = mine.team;
     let best = null;
-    let bestD2 = Infinity;
+    let bestDistance = Infinity;
     const source = (state.entityIndex && state.entityIndex.shipLike) || state.entityList || [];
     for (const e of source) {
       if (!e || !e.alive || e.id === mine.id) continue;
@@ -153,10 +159,12 @@ export const mines = {
       if (team != null && e.team != null && e.team === team) continue;
       const dx = e.pos.x - mx;
       const dz = e.pos.z - mz;
-      const d2 = dx * dx + dz * dz;
-      if (d2 > r2) continue;
-      if (d2 < bestD2) {
-        bestD2 = d2;
+      // Math.hypot scales before squaring, so finite 1e308-class coordinates retain
+      // an ordered at/beyond comparison instead of collapsing both sides to Infinity.
+      const distance = Math.hypot(dx, dz);
+      if (distance > r) continue;
+      if (distance < bestDistance) {
+        bestDistance = distance;
         best = e;
       }
     }

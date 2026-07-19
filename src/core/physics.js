@@ -813,6 +813,8 @@ function createDeferredSg02CombatPhysicsPort(host) {
   });
 }
 
+const MINE_COLLISION_CATEGORY = 1 << 8;
+
 function maskOf(e) {
   switch (e.type) {
     case 'ship': return Masks.SHIP;
@@ -823,8 +825,7 @@ function maskOf(e) {
     case 'drone': return Masks.DRONE;
     case 'payload': return Masks.PAYLOAD;
     case 'wreck': return Masks.WRECK;
-    // W03 mines are shootable: projectiles carry SHIP in their collision mask.
-    case 'mine': return Masks.SHIP;
+    case 'mine': return MINE_COLLISION_CATEGORY;
     default: return 0;
   }
 }
