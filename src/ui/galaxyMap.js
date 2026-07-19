@@ -23,7 +23,7 @@ import { SECTORS } from '../data/sectors.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { BODY_SPECIALIZATION_BY_ID } from '../data/claimableBodies.js';
-import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
+import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat } from '../data/sectorZones.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
 import { sectorLawProfile } from './securityReadout.js';
@@ -1092,12 +1092,45 @@ export function buildGalaxyModel(state) {
 // ---------------------------------------------------------------------------------------------
 
 /**
+ * Split one authored anchor into the system model's two declared frames. Authored station/gate/POI
+ * anchors are SECTOR-LOCAL, so the old code handed them to resolveCourseTarget unconverted and
+ * armed the autopilot at the wrong end of the lattice for every sector whose origin is not (0,0).
+ * A null anchor keeps both frames null: the point still lists (so you can course toward its sector)
+ * and the click resolver degrades it to a sector route.
+ */
+function anchorFrames(anchor, sid, localZ) {
+  if (!anchor) return { x: null, z: null, drawPos: null };
+  const local = { x: Number(anchor.x) || 0, z: localZ };
+  const global = sectorLocalToGlobalForSector(local, sid);
+  return { x: global.x, z: global.z, drawPos: local };
+}
+
+/**
  * Build the system-level draw model for `sectorId` (defaults to the current sector). Zones come from
  * sectorZones (labeled tinted discs). Stations/gates/POIs prefer LIVE entity positions from state
  * (so the map matches what's actually flying), and fall back to the static sector record so the
  * model is non-empty even before entities stream in. Pure — no DOM.
  *
- * @returns {{ level:'system', sectorId, sectorName, zones:Array, points:Array }}
+ * TWO COORDINATE FRAMES, both declared, never mixed within one field. Do not collapse them:
+ *
+ *   - `x`/`z` on points and ownership markers are GALACTIC-GLOBAL WU (core/coordinates
+ *     `global_v1`, the frame sim entities live in). This is the NAV frame: resolveCourseTarget
+ *     copies it into the `ui:setCourse` payload, and world.js `_onSetCourse` writes it straight
+ *     to `state.nav.autopilot.target`. An autopilot fix must be global or the ship flies to the
+ *     wrong sector.
+ *   - `drawPos`/`drawCenter`/`drawFixedPos` and the zone `x`/`z` are SECTOR-LOCAL WU for
+ *     `sectorId` (global minus that sector's origin). This is the DRAW frame — the only frame
+ *     the SYSTEM canvas may project.
+ *
+ * `player` carries the same pair (and the same frame buildLocalModel uses for its own player
+ * field), plus `inSector` — false when you survey a sector you are not standing in — and a
+ * `bearing`/`distance` measured from the SURVEYED sector's origin, so the screen can pin an
+ * off-chart indicator instead of dropping the "you are here" mark. It is null when there is no
+ * player entity; it is never a fabricated origin position.
+ *
+ * @returns {{ level:'system', sectorId, sectorName, zones:Array, points:Array, ownership:Array,
+ *             bearings:Array,
+ *             player:{id,x,z,drawPos,rot,inSector,bearing,distance}|null }}
  */
 export function buildSystemModel(state, sectorId, options = {}) {
   const sid = sectorId || currentSectorId(state);
@@ -1157,7 +1190,15 @@ export function buildSystemModel(state, sectorId, options = {}) {
           id: e.id,
           kind: isGate ? 'gate' : 'station',
           name: data.name || e.name || (isGate ? 'Gate' : 'Station'),
+          // Sim entities are galactic-global; the zones and static anchors beside them are
+          // sector-local. Drawing e.pos raw put Tethys Junction's own station 12,288 WU from its
+          // own zone (its origin is at 3*4096, 2*4096) — the auto-fit below spans over point
+          // extents, so the sector's furniture collapsed into an unreadable dot at the centre.
+          // Helios Prime is the ONLY sector where this is invisible, because its origin is (0,0),
+          // and it is the starting sector — which is why it survived. Carry both frames: x/z stay
+          // global for the autopilot fix, drawPos is what the canvas is allowed to project.
           x: e.pos.x, z: e.pos.z,
+          drawPos: globalToSectorLocalForSector(e.pos, sid),
           entityId: e.id,
           stationId: data.stationId || null,
           factionId: e.factionId || data.factionId || null,
@@ -1175,12 +1216,14 @@ export function buildSystemModel(state, sectorId, options = {}) {
     for (const st of record.stations) {
       if (!st || !st.id || seenIds.has(st.id)) continue;
       const anchor = st.pos || st.anchor || st.position || null; // sectorAnchors merges canonical pos
+      const frames = anchorFrames(anchor, sid, anchor ? (Number(anchor.z) || 0) : 0);
       points.push({
         id: st.id,
         kind: 'station',
         name: st.name || st.id,
-        x: anchor ? (Number(anchor.x) || 0) : null,
-        z: anchor ? (Number(anchor.z) || 0) : null,
+        x: frames.x,
+        z: frames.z,
+        drawPos: frames.drawPos,
         entityId: null,
         stationId: st.id,
         factionId: st.factionId || null,
@@ -1200,12 +1243,15 @@ export function buildSystemModel(state, sectorId, options = {}) {
       const anchor = gate.pos || gate.anchor || gate.position || null;
       const gateId = gate.id || `gate:${sid}:${destId}`;
       if (seenIds.has(gateId)) continue;
+      // Authored gate anchors predate the XZ convention and may still carry `y` for depth.
+      const frames = anchorFrames(anchor, sid, anchor ? (Number(anchor.z != null ? anchor.z : anchor.y) || 0) : 0);
       points.push({
         id: gateId,
         kind: 'gate',
         name: `Gate → ${(dest && dest.name) || destId}`,
-        x: anchor ? (Number(anchor.x) || 0) : null,
-        z: anchor ? (Number(anchor.z != null ? anchor.z : anchor.y) || 0) : null,
+        x: frames.x,
+        z: frames.z,
+        drawPos: frames.drawPos,
         entityId: null,
         stationId: null,
         factionId: null,
@@ -1220,20 +1266,52 @@ export function buildSystemModel(state, sectorId, options = {}) {
     for (const poi of record.pois) {
       if (!poi || !poi.id) continue;
       const anchor = poi.anchor || poi.center || poi.position || null;
+      const frames = anchorFrames(anchor, sid, anchor ? (Number(anchor.z) || 0) : 0);
       points.push({
         id: poi.id,
         kind: 'poi',
         poiType: poi.type || 'poi',
         name: poi.name || poi.id,
-        x: anchor ? (Number(anchor.x) || 0) : null,
-        z: anchor ? (Number(anchor.z) || 0) : null,
+        x: frames.x,
+        z: frames.z,
+        drawPos: frames.drawPos,
         entityId: null,
         sectorId: sid,
       });
     }
   }
 
-  return { level: 'system', sectorId: sid, sectorName, ...confidence, zones, points, ownership, bearings };
+  // "You are here" at system scale. The SYSTEM model shipped without a player field at all, so the
+  // one question the map must always answer had no answer between LOCAL and GALAXY. You are also
+  // allowed to survey a sector you are not standing in, and in that case the mark belongs OFF the
+  // chart rather than at a bogus in-sector position — so carry `inSector` plus a bearing/distance
+  // from the surveyed sector's origin and let the screen pin an edge indicator.
+  const player = playerEntity(state);
+  let playerMark = null;
+  if (player && player.pos) {
+    const local = globalToSectorLocalForSector(player.pos, sid);
+    const inSector = currentSectorId(state) === sid;
+    playerMark = {
+      id: player.id,
+      // Same two-frame shape as points and ownership markers, and the same frame buildLocalModel
+      // already uses for ITS player field — `x`/`z` global, `drawPos` sector-local. A player mark
+      // whose x/z meant something different from every other x/z in the model (and from the
+      // sibling builder's identically-named field) is how the next agent reintroduces this defect.
+      x: player.pos.x,
+      z: player.pos.z,
+      drawPos: local,
+      rot: player.rot || 0,
+      inSector,
+      // Math.atan2(z, x) matches the canvas' own XZ convention (see the gate mark's angle above).
+      bearing: inSector ? 0 : Math.atan2(local.z, local.x),
+      distance: inSector ? 0 : Math.hypot(local.x, local.z),
+    };
+  }
+
+  return {
+    level: 'system', sectorId: sid, sectorName, ...confidence,
+    zones, points, ownership, bearings, player: playerMark,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -3217,6 +3295,9 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         sectorId: curSecId,
         x: p.x,
         z: p.z,
+        // Carry the draw frame too: selecting a result centers the SYSTEM camera, which projects
+        // sector-local, while x/z must stay global for the course action on the same target.
+        drawPos: p.drawPos,
         stationId: p.stationId,
         entityId: p.entityId || null,
         targetSectorId: p.targetSectorId || null,
@@ -4488,8 +4569,13 @@ export const galaxyMapScreen = {
       this._zoom = LEVEL_SYSTEM_AT + 0.5; // system scale
       this._targetZoom = this._zoom;
       const cam = this._cams.system;
-      cam.cx = target.x;
-      cam.cy = target.z;
+      // The SYSTEM camera lives in the sector-local draw frame, but a search target carries the
+      // GLOBAL nav frame so the same object can arm a course. Centering on the raw nav position
+      // parks the camera a whole sector origin away from the thing you just picked.
+      const focus = target.drawPos
+        || globalToSectorLocalForSector(target, target.sectorId || currentSectorId(state));
+      cam.cx = focus.x;
+      cam.cy = focus.z;
     } else {
       this._zoom = LEVEL_LOCAL_AT + 0.5; // local scale
       this._targetZoom = this._zoom;
@@ -5285,7 +5371,10 @@ export const galaxyMapScreen = {
     let span = 3000;
     const pts = [];
     for (const z of model.zones) pts.push({ x: z.x, z: z.z, r: z.radius });
-    for (const p of model.points) if (Number.isFinite(p.x) && Number.isFinite(p.z)) pts.push({ x: p.x, z: p.z, r: 0 });
+    // Everything in `pts` must be SECTOR-LOCAL: the span below is a radius about the sector centre,
+    // so a single global position mixed in here drags the fit out by that sector's whole origin
+    // offset (12,288 WU at Tethys) and squeezes the real furniture into a dot.
+    for (const p of model.points) if (p.drawPos) pts.push({ x: p.drawPos.x, z: p.drawPos.z, r: 0 });
     for (const marker of model.ownership) {
       if (marker.drawPos) pts.push({ x: marker.drawPos.x, z: marker.drawPos.z, r: 0 });
     }
@@ -5293,7 +5382,12 @@ export const galaxyMapScreen = {
       const point = bearing.drawFixedPos || bearing.drawCenter;
       if (point) pts.push({ x: point.x, z: point.z, r: bearing.drawFixedPos ? 0 : bearing.radius });
     }
-    if (wp && wp.pos && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z)) pts.push({ x: wp.pos.x, z: wp.pos.z, r: 180 });
+    // nav.waypoint.pos is the armed autopilot fix, which world.js stores GLOBAL. It reaches the
+    // span independently of the model, so an armed waypoint reproduced the blowout on its own.
+    const wpDraw = wp && wp.pos && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z)
+      ? globalToSectorLocalForSector(wp.pos, model.sectorId)
+      : null;
+    if (wpDraw) pts.push({ x: wpDraw.x, z: wpDraw.z, r: 180 });
     if (pts.length) {
       let m = 0;
       for (const p of pts) m = Math.max(m, Math.hypot(p.x, p.z) + (p.r || 0));
@@ -5325,11 +5419,19 @@ export const galaxyMapScreen = {
     g.restore();
 
     // Player position marker on the system map: amber heading triangle with a white keyline.
-    const player = playerEntity(state);
-    if (player && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z)) {
-      const px = sx(player.pos.x), py = sz(player.pos.z);
+    // This mark was already here, but it projected the GLOBAL player position onto a sector-local
+    // canvas — so anywhere but Helios (origin 0,0) "you are here" silently landed off-canvas at the
+    // sector's origin offset. model.player is the converted mark.
+    //
+    // `inSector` is always true on this path today (the call above passes sectorId=null, so the
+    // model is built for the sector you are standing in). It is checked anyway because the model
+    // supports surveying a REMOTE sector, and drawing this triangle for a remote player would put
+    // a confident "you are here" on a chart the player is nowhere near. The model carries
+    // bearing/distance for that case; no caller needs the off-chart indicator yet, so none is drawn.
+    if (model.player && model.player.inSector) {
+      const px = sx(model.player.drawPos.x), py = sz(model.player.drawPos.z);
       g.save();
-      g.translate(px, py); g.rotate(Math.PI + (player.rot || 0));
+      g.translate(px, py); g.rotate(Math.PI + model.player.rot);
       g.fillStyle = INK.amber;
       g.strokeStyle = 'rgba(237, 232, 216, 0.85)';
       g.lineWidth = 1;
@@ -5338,22 +5440,29 @@ export const galaxyMapScreen = {
       g.restore();
     }
 
-    // Draw active system waypoint (tether path)
-    if (wp && wp.pos && this._layers.route) {
-      const player = playerEntity(state);
-      if (player) {
-        g.save();
-        g.strokeStyle = INK.amber; g.lineWidth = 1.8; g.setLineDash([5, 5]);
-        g.beginPath(); g.moveTo(sx(player.pos.x), sz(player.pos.z)); g.lineTo(sx(wp.pos.x), sz(wp.pos.z)); g.stroke();
-        g.restore();
-      }
+    // Draw active system waypoint (tether path). Both ends were read global straight onto a
+    // sector-local canvas, so outside Helios the tether ran off to the lattice corner; model.player
+    // and wpDraw are the converted pair.
+    if (wpDraw && this._layers.route && model.player) {
+      g.save();
+      g.strokeStyle = INK.amber; g.lineWidth = 1.8; g.setLineDash([5, 5]);
+      g.beginPath();
+      g.moveTo(sx(model.player.drawPos.x), sz(model.player.drawPos.z));
+      g.lineTo(sx(wpDraw.x), sz(wpDraw.z));
+      g.stroke();
+      g.restore();
     }
     // Zones
     for (const z of model.zones) {
       const x = sx(z.x), y = sz(z.z), rr = z.radius * baseScale * cam.zoom;
 
+      // Zone centres are authored sector-local, but the click target arms an autopilot fix, which
+      // world.js stores global — so "Align Autopilot" on a Tethys zone used to plot a course a
+      // whole lattice offset short of the zone the player actually clicked.
+      const zoneNav = sectorLocalToGlobalForSector({ x: z.x, z: z.z }, model.sectorId);
       this._clickTargets.push({
-        sx: x, sy: y, radiusPx: Math.max(16, rr), kind: 'zone', id: z.id, x: z.x, z: z.z, radius: z.radius, name: z.name,
+        sx: x, sy: y, radiusPx: Math.max(16, rr), kind: 'zone', id: z.id,
+        x: zoneNav.x, z: zoneNav.z, radius: z.radius, name: z.name,
         factionId: z.factionId, detail: `Zone · ${z.typeLabel} · threat ${z.threat || 0}`
       });
 
@@ -5466,19 +5575,21 @@ export const galaxyMapScreen = {
     // Gate-name multiplicity (continuous residency can park neighbour twins on-screen).
     const systemGateNameCounts = new Map();
     for (const p of model.points) {
-      if (p.kind !== 'gate' || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
+      if (p.kind !== 'gate' || !p.drawPos) continue;
       const base = String(p.name || 'Gate');
       systemGateNameCounts.set(base, (systemGateNameCounts.get(base) || 0) + 1);
     }
 
-    // Points of interest
+    // Points of interest. `drawPos` is the sector-local projection; `p.x`/`p.z` stay global because
+    // the click target below feeds resolveCourseTarget, which arms a global autopilot fix.
     for (const p of model.points) {
-      if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
-      const x = sx(p.x), y = sz(p.z);
+      if (!p.drawPos) continue;
+      const x = sx(p.drawPos.x), y = sz(p.drawPos.z);
       const isGate = p.kind === 'gate';
       const isStation = p.kind === 'station';
+      // Gate labels disambiguate by bearing from the SECTOR centre, so this is the local frame.
       const displayName = isGate
-        ? disambiguateGateLabel(p.name, p.x, p.z, 0, 0, systemGateNameCounts)
+        ? disambiguateGateLabel(p.name, p.drawPos.x, p.drawPos.z, 0, 0, systemGateNameCounts)
         : p.name;
 
       this._clickTargets.push({
@@ -5495,7 +5606,7 @@ export const galaxyMapScreen = {
       }
 
       const col = isGate ? INK.teal : isStation ? INK.brass : INK.amber;
-      if (isGate) drawGateMark(g, x, y, Math.atan2(p.z || 0, p.x || 1));
+      if (isGate) drawGateMark(g, x, y, Math.atan2(p.drawPos.z || 0, p.drawPos.x || 1));
       else if (isStation) drawStationMark(g, x, y);
       else drawPoiMark(g, x, y);
 
@@ -5588,9 +5699,9 @@ export const galaxyMapScreen = {
     }
 
     let objectivePlacement = null;
-    if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
-      const wx = sx(wp.pos.x);
-      const wy = sz(wp.pos.z);
+    if (wpDraw && (this._layers.route || this._layers.mission)) {
+      const wx = sx(wpDraw.x);
+      const wy = sz(wpDraw.z);
       const objectiveLabel = waypointMapLabel(wp);
       labelCandidates.push(makeMapLabelCandidate(g, {
         id: 'objective:active-waypoint',
@@ -5603,6 +5714,8 @@ export const galaxyMapScreen = {
         anchorRadius: 16,
         color: INK.amberHot,
       }));
+      // waypointClickTarget carries the GLOBAL wp.pos into the click payload on purpose; only the
+      // sx/sy screen anchor is sector-local.
       const target = waypointClickTarget(wp, wx, wy);
       if (target) this._clickTargets.push(target);
     }
@@ -5621,15 +5734,17 @@ export const galaxyMapScreen = {
     // a signal source. Drawn under the pin so the tracked objective still owns the eye.
     if (this._layers.mission) {
       for (const point of missionMapGeometry(state, trackedMissionOf(state))) {
-        const mx = sx(point.x), my = sz(point.z);
+        // missionMapGeometry reads entity/station positions, so its points are global.
+        const local = globalToSectorLocalForSector(point, model.sectorId);
+        const mx = sx(local.x), my = sz(local.z);
         if (mx < 8 || my < 8 || mx > w - 8 || my > h - 8) continue;
         drawMissionPoint(g, mx, my, point.kind, point.done);
       }
     }
 
     // Objective marker renders last, with the first label reservation and strongest contrast.
-    if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
-      drawWaypointPin(g, sx(wp.pos.x), sz(wp.pos.z), waypointMapLabel(wp), w, objectivePlacement);
+    if (wpDraw && (this._layers.route || this._layers.mission)) {
+      drawWaypointPin(g, sx(wpDraw.x), sz(wpDraw.z), waypointMapLabel(wp), w, objectivePlacement);
     }
   },
 
