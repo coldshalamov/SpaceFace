@@ -32,7 +32,7 @@ function residencyFixtureLoader(renderer, controls = {}) {
   return { registry, load, resources };
 }
 
-test('boot preload is a bounded player plan; off-camera landmarks stay on demand', async () => {
+test('boot preload is a bounded player plan; opening-runway entities retain their own assets', async () => {
   assert.equal(typeof partsLibrary.authoredBootstrapPreloadPlan, 'function');
 
   const plan = partsLibrary.authoredBootstrapPreloadPlan();
@@ -138,7 +138,7 @@ test('authored visual admission awaits the exact GPU pipeline compiler when avai
   );
 });
 
-test('startup readiness gates the authored opening composition without waiting on distant NPCs', () => {
+test('startup readiness gates the authored opening runway without waiting on distant NPCs', () => {
   assert.equal(typeof partsLibrary.authoredCriticalVisualReadiness, 'function');
   const player = { id: 1, type: 'ship', alive: true, mesh: { userData: { authoredAssetState: 'authored' } } };
   const hub = {
@@ -169,19 +169,19 @@ test('startup readiness gates the authored opening composition without waiting o
   player.pos = { x: 0, z: 0 };
   hub.pos = { x: 1800, z: 0 };
   hub.mesh.userData.authoredAssetState = 'loading';
-  npc.pos = { x: 1200, z: 0 };
+  npc.pos = { x: 3000, z: 0 };
   npc.mesh.userData.authoredAssetState = 'loading';
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true,
-    'off-camera traffic and Helios stream after handoff without publishing placeholders');
-  npc.pos.x = 200;
+    'traffic beyond the authored runway streams after handoff without publishing placeholders');
+  npc.pos.x = 1200;
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false,
-    'a camera-local ship in the opening composition must settle before control begins');
+    'a ship inside the opening authored runway must settle before control begins');
   npc.mesh.userData.authoredAssetState = 'compiling-pipelines';
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).pipelineReady, true);
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false);
   npc.mesh.userData.authoredAssetState = 'authored';
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true);
-  npc.pos.x = 1200;
+  npc.pos.x = 3000;
   npc.mesh.userData.authoredAssetState = 'loading';
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true,
     'a distant NPC remains an on-demand asset and must not extend startup');

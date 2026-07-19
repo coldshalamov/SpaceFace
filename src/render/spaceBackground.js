@@ -944,6 +944,42 @@ const WORMHOLE_FRAG = /* glsl */`
   }
 `;
 
+export function createWormholePipelineMesh({
+  size = 1,
+  l1Texture = null,
+  palette = PALETTES.AZURE,
+  intensity = 1,
+  lowTier = false,
+  tierName = 'high',
+  name = 'L5b_wormhole',
+} = {}) {
+  const geometry = new THREE.PlaneGeometry(size, size);
+  const material = new THREE.ShaderMaterial({
+    vertexShader: QUAD_VERT,
+    fragmentShader: WORMHOLE_FRAG,
+    uniforms: {
+      uL1: { value: l1Texture },
+      uTime: { value: 0 },
+      uColor: { value: new THREE.Color(palette.emission) },
+      uCore: { value: new THREE.Color(palette.core) },
+      uIntensity: { value: intensity },
+      uLensing: { value: lowTier ? 0 : 1 },
+      uChromatic: { value: tierName === 'high' ? 1 : 0 },
+    },
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    fog: false,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = name;
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.renderOrder = -55;
+  mesh.frustumCulled = false;
+  mesh.position.y = HERO_DEPTH + 1;
+  return mesh;
+}
+
 // ----------------------------------------------------------------------------
 // Helpers
 // ----------------------------------------------------------------------------
@@ -2094,32 +2130,16 @@ export class SpaceBackground {
 
   _spawnWormhole(spec) {
     const size = spec.frac * this.H * this.heroSizeK * 2.2;
-    const geo = new THREE.PlaneGeometry(size, size);
     const pal = PALETTES[this.currentPaletteName];
-    const mat = new THREE.ShaderMaterial({
-      vertexShader: QUAD_VERT,
-      fragmentShader: WORMHOLE_FRAG,
-      uniforms: {
-        uL1: { value: this.l1Target.texture },
-        uTime: { value: 0 },
-        uColor: { value: new THREE.Color(pal.emission) },
-        uCore: { value: new THREE.Color(pal.core) },
-        uIntensity: { value: this.bgIntensity },
-        uLensing: { value: this.lowTier ? 0 : 1 },
-        uChromatic: { value: this.tierName === 'high' ? 1 : 0 },
-      },
-      transparent: true,
-      depthWrite: false,
-      depthTest: true,
-      fog: false,
+    const mesh = createWormholePipelineMesh({
+      size,
+      l1Texture: this.l1Target.texture,
+      palette: pal,
+      intensity: this.bgIntensity,
+      lowTier: this.lowTier,
+      tierName: this.tierName,
     });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.name = 'L5b_wormhole';
-    mesh.rotation.x = -Math.PI / 2;    // flat, facing the top-down camera
-    mesh.renderOrder = -55;
-    mesh.frustumCulled = false;
-    mesh.position.y = HERO_DEPTH + 1;
-    this.wormhole = { mesh, material: mat, spec };
+    this.wormhole = { mesh, material: mesh.material, spec };
     this.group.add(mesh);
   }
 

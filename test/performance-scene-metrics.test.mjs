@@ -59,6 +59,14 @@ test('scene metrics count actual visible instances, surfaces, semantic roles, an
   assert.equal(result.roles.canopy, 1);
   assert.equal(result.roles.plume, 1);
   assert.equal(result.roles.shadowCaster, 1);
+  assert.deepEqual(result.authoredShipAdmission, {
+    relevant: 1,
+    ready: 1,
+    pending: 0,
+    fallback: 0,
+    missingMesh: 0,
+    ignoredNonresident: 0,
+  });
   assert.equal(result.authoredPools.visibleChunks, 1);
   assert.equal(result.authoredPools.visibleInstances, 10);
   assert.equal(result.stationPlaceHlod.stationEntities, 1);
@@ -146,6 +154,13 @@ test('invisible pending authored admission is not misreported as a procedural fa
   assert.equal(readiness.authoredPresentedCount, 1);
   assert.equal(readiness.authoredPendingCount, 1);
   assert.equal(readiness.authoredFallbackCount, 0);
+  const structure = collectPerformanceSceneStructure({ state });
+  assert.deepEqual(structure.authoredShipStates, {
+    authored: 1,
+    'awaiting-authored-admission': 1,
+  });
+  assert.equal(structure.authoredShipAdmission.pending, 1);
+  assert.equal(structure.authoredShipAdmission.fallback, 0);
 
   pending.presentationAdmission = 'unavailable';
   pending.mesh.userData.authoredAssetState = 'fallback-after-error';

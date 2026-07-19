@@ -237,16 +237,16 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
 });
 
 // The player-facing boot gate used to decode every authored file in the catalog at once. Keep the
-// gate honest, but scope it to the assets that are guaranteed to be visible in the first frame:
-// the player's production Kestrel. Helios and every other off-camera asset are admitted through
-// the existing scene upgrade queue when its entity exists; world places already have a one-file
-// on-demand boundary. This preserves authored quality while bounding renderer/GPU residency.
+// canonical cache bootstrap scoped to the player's production Kestrel. Other opening-runway ships
+// are admitted through their live entity boundaries while loading, so their residency can hand off
+// and release normally instead of being pinned by a global bootstrap owner.
 const AUTHORED_BOOTSTRAP_PLAN = Object.freeze({
   hull: Object.freeze(['wholeships/kestrel.glb']),
 });
-// Default chase framing is tight. Keep only camera-local actors in the blocking opening set; the
-// authored-only boundaries for everything else remain hidden and stream through the flight runway.
-const INITIAL_SHIP_COMPOSITION_RADIUS = 320;
+// Gate the same spatial runway used by live authored prefetch so its initial decode/composition and
+// associated garbage collection finish behind loading. Distant authored-only boundaries remain
+// hidden and continue to stream on demand.
+const INITIAL_SHIP_COMPOSITION_RADIUS = 2400;
 const INITIAL_PLACE_COMPOSITION_RADIUS = 700;
 const REGULAR_HULL_FILES = Object.freeze(
   PART_LIBRARY_CONTRACT.slots.hull.filter((file) => !String(file).startsWith('wholeships/')),
