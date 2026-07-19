@@ -55,6 +55,10 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
       activityTimer: null,
       timeScale: state.timeScale,
       playerTargetId: state.player?.targetId ?? null,
+      flybyFocus: id.startsWith('station_') && state.player?.flybyFocus
+        ? { ...state.player.flybyFocus }
+        : null,
+      isolatesFlybyFocus: false,
       player: {
         pos: vector(player.pos),
         prevPos: vector(player.prevPos),
@@ -157,6 +161,18 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
     } else if (id === 'station_arrival_approach' || id === 'station_visible_steady') {
       const station = state.entityList.find((entity) => entity?.alive !== false && entity.type === 'station');
       if (!station) throw new Error(`${id} requires a live station entity`);
+      // The synthetic station pose can cross a naturally moving hostile and arm Flyby Focus. Its
+      // 0.5 time lease then begins or expires inside the sample window, invalidating comparable
+      // station cost and leaking into the next scenario. Cancel that unrelated encounter beat and
+      // hold its cooldown beyond this diagnostic window; the exact focus journal is restored later.
+      sf.bus?.emit?.('flybyFocus:cancel', { reason: 'performance-station-scenario' });
+      if (state.player?.flybyFocus) {
+        state.player.flybyFocus.cooldownUntil = Math.max(
+          Number(state.player.flybyFocus.cooldownUntil) || 0,
+          (Number(state.simTime) || 0) + 60,
+        );
+      }
+      snapshot.isolatesFlybyFocus = true;
       const distance = id === 'station_arrival_approach' ? 520 : 150;
       player.pos.set(station.pos.x + distance, 0, station.pos.z);
       player.prevPos.copy(player.pos);
@@ -277,6 +293,14 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
         player.flags.noInterp = snapshot.player.noInterp === true;
       }
     }
+    if (snapshot.isolatesFlybyFocus) {
+      // Clear any request created during the diagnostic arm before restoring the journal. The
+      // player's target and derived timeScale are restored immediately below.
+      sf.bus?.emit?.('flybyFocus:cancel', { reason: 'performance-station-restore' });
+      if (snapshot.flybyFocus && state.player?.flybyFocus) {
+        Object.assign(state.player.flybyFocus, snapshot.flybyFocus);
+      }
+    }
     state.timeScale = snapshot.timeScale;
     if (state.player && !routeProgression) state.player.targetId = snapshot.playerTargetId;
     const checks = routeProgression ? {
@@ -292,6 +316,8 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
       playerPreviousPosition: sameVector(player?.prevPos, snapshot.player.prevPos),
       playerVelocity: sameVector(player?.vel, snapshot.player.vel),
       playerRotation: player?.rot === snapshot.player.rot && player?.prevRot === snapshot.player.prevRot,
+      flybyFocus: !snapshot.isolatesFlybyFocus
+        || sameFlybyFocus(state.player?.flybyFocus, snapshot.flybyFocus),
       activityStopped: snapshot.activityTimer == null,
       playerNoInterp: !player?.flags || player.flags.noInterp === snapshot.player.noInterp,
     };
@@ -313,6 +339,10 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
       return Math.abs((actual?.x || 0) - expected.x) < 1e-6
         && Math.abs((actual?.y || 0) - expected.y) < 1e-6
         && Math.abs((actual?.z || 0) - expected.z) < 1e-6;
+    }
+    function sameFlybyFocus(actual, expected) {
+      if (!expected) return actual == null;
+      return Object.keys(expected).every((key) => actual?.[key] === expected[key]);
     }
   }, scenarioId);
   log(`[scenario] restored ${scenarioId} ok=${receipt.restored}`);
