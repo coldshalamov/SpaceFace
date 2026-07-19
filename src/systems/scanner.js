@@ -1,10 +1,12 @@
 // Scanner pulse system (GDD 2.0 §7.4).
 //
 // Consumes the locked input edge `state.input.actions.scanPulse` and annotates live entities with
-// plain data fields that UI/render layers can read. No RNG; all durations are simTime-based.
+// plain data fields that UI/render layers can read. No wall-clock; durations are simTime-based.
+// Ghost reveal uses entity-keyed deterministic streams (hash32), not ambient Math.random.
 import { ASTEROIDS } from '../data/mining.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
+import { hash32 } from '../core/rng.js';
 import { isPlayerWanted } from './heat.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity } from '../data/weakPoints.js';
@@ -31,6 +33,12 @@ const CONTACT_HAIL_POLL_TICKS = 12; // 5 Hz at the fixed 60 Hz sim cadence.
 const UNSAFE_PLAYER_SECURITY = 0.45;
 const LANE_CONTEXT_INNER_R = 900;
 const LANE_CONTEXT_OUTER_R = 2200;
+
+// W05 sensor-ghost — sim-truth on entity.data. Scanner owns uncertainty; HUD/map read only.
+export const GHOST_REVEAL_STAGE_MAX = 3;
+export const GHOST_ESCAPE_RANGE = 2400;
+export const GHOST_ESCAPE_HOLD_S = 18;
+const GHOST_STAGE_CONFIDENCE = Object.freeze([0.12, 0.34, 0.58, 0.82]);
 const PLAYER_DANGER_CONTEXTS = new Set([
   'interdiction', 'spawn_request', 'bounty_hunter', 'mission', 'encounter', 'tutorial_pirate',
   'zone_hostile', // WORLD_OVERHAUL_2_1: pirates/raiders camping a named ambush/outlaw zone
@@ -50,6 +58,121 @@ export function scannerProfileForState(state) {
     hiddenPoiRadius: HIDDEN_POI_RADIUS * radiusMult,
     pingPersistS: PINGED_S * pingPersistMult,
   };
+}
+
+/**
+ * Mark a live ship as a sensor ghost (W05). Known contact is uncertain (isGhost, low confidence,
+ * revealStage); the live entity still exists. Does not touch HUD/map — readers already honor
+ * entity.data.isGhost | ghost | kind==='unknown'.
+ */
+export function markEntityGhost(entity, opts = {}) {
+  if (!entity || !entity.alive) return null;
+  const data = entity.data || (entity.data = {});
+  const stage = Math.max(0, Math.min(GHOST_REVEAL_STAGE_MAX - 1, (opts.revealStage | 0) || 0));
+  data.isGhost = true;
+  data.ghost = true;
+  if (!data.kind || data.kind === 'ship') data.kind = 'unknown';
+  data.revealStage = stage;
+  data.ghostConfidence = Number.isFinite(opts.ghostConfidence)
+    ? clamp01(opts.ghostConfidence)
+    : GHOST_STAGE_CONFIDENCE[stage];
+  data.ghostSpawnedAt = Number.isFinite(opts.spawnedAt) ? opts.spawnedAt : null;
+  data.ghostEscapeRange = Number.isFinite(opts.escapeRange) ? opts.escapeRange : GHOST_ESCAPE_RANGE;
+  data.ghostEscapeHoldS = Number.isFinite(opts.escapeHoldS) ? opts.escapeHoldS : GHOST_ESCAPE_HOLD_S;
+  data.ghostBeyondSince = null;
+  data.ghostFullyRevealed = false;
+  return data;
+}
+
+/** Deterministic unit draw for a ghost entity stream (keyed by entity id; never Math.random). */
+export function ghostStreamUnit(state, entityId, salt = 'reveal') {
+  const seed = (state && state.meta && state.meta.seed) || 1;
+  // Independent stream per (seed, entityId, salt). Callers that need multi-draw should re-key salt.
+  const h = hash32(seed, entityId, salt);
+  return ((h >>> 0) % 10000) / 10000;
+}
+
+/**
+ * Advance one reveal stage on a ghost contact. Full reveal clears isGhost and returns
+ * { revealed: true }. Deterministic: stage thresholds use entity-keyed stream, not wall clock.
+ */
+export function advanceGhostReveal(entity, state, opts = {}) {
+  if (!entity || !entity.alive) return { ok: false, reason: 'missing' };
+  const data = entity.data || (entity.data = {});
+  if (!data.isGhost && !data.ghost) return { ok: false, reason: 'not_ghost' };
+  if (data.ghostFullyRevealed) return { ok: true, revealed: true, stage: GHOST_REVEAL_STAGE_MAX, confidence: 1 };
+
+  const pulseIndex = Math.max(0, (opts.pulseIndex | 0) || (data.ghostPulseCount | 0));
+  data.ghostPulseCount = pulseIndex + 1;
+  // Entity stream decides whether this pulse advances (always advances for stage 0→1 at close range).
+  const unit = ghostStreamUnit(state, entity.id, `pulse:${data.ghostPulseCount}`);
+  const near = opts.near === true || (Number.isFinite(opts.distance) && opts.distance <= 600);
+  const advance = near || unit < 0.72 + data.revealStage * 0.08;
+  if (!advance) {
+    return {
+      ok: true,
+      revealed: false,
+      stage: data.revealStage | 0,
+      confidence: data.ghostConfidence,
+    };
+  }
+
+  const nextStage = Math.min(GHOST_REVEAL_STAGE_MAX, (data.revealStage | 0) + 1);
+  data.revealStage = nextStage;
+  data.ghostConfidence = GHOST_STAGE_CONFIDENCE[Math.min(nextStage, GHOST_STAGE_CONFIDENCE.length - 1)];
+
+  if (nextStage >= GHOST_REVEAL_STAGE_MAX) {
+    clearGhostFlags(data);
+    data.ghostFullyRevealed = true;
+    data.revealStage = GHOST_REVEAL_STAGE_MAX;
+    data.ghostConfidence = 1;
+    return { ok: true, revealed: true, stage: GHOST_REVEAL_STAGE_MAX, confidence: 1 };
+  }
+  return {
+    ok: true,
+    revealed: false,
+    stage: data.revealStage,
+    confidence: data.ghostConfidence,
+  };
+}
+
+function clearGhostFlags(data) {
+  data.isGhost = false;
+  data.ghost = false;
+  if (data.kind === 'unknown') data.kind = 'ship';
+}
+
+/**
+ * Deception consequence: an unrevealed ghost that stays beyond escape range long enough
+ * despawns (alive=false). Emits nothing itself — caller emits scanner:ghostEscaped.
+ */
+export function tickGhostEscape(entity, state, now = null) {
+  if (!entity || !entity.alive) return { escaped: false };
+  const data = entity.data;
+  if (!data || (!data.isGhost && !data.ghost) || data.ghostFullyRevealed) return { escaped: false };
+  const t = Number.isFinite(now) ? now : (state && state.simTime) || 0;
+  const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  if (!player || !player.alive || !player.pos || !entity.pos) return { escaped: false };
+  const dx = (entity.pos.x || 0) - (player.pos.x || 0);
+  const dz = (entity.pos.z || 0) - (player.pos.z || 0);
+  const d = Math.hypot(dx, dz);
+  const escapeR = Number.isFinite(data.ghostEscapeRange) ? data.ghostEscapeRange : GHOST_ESCAPE_RANGE;
+  const holdS = Number.isFinite(data.ghostEscapeHoldS) ? data.ghostEscapeHoldS : GHOST_ESCAPE_HOLD_S;
+  if (d < escapeR) {
+    data.ghostBeyondSince = null;
+    return { escaped: false, distance: d };
+  }
+  if (data.ghostBeyondSince == null) data.ghostBeyondSince = t;
+  if (t - data.ghostBeyondSince < holdS) return { escaped: false, distance: d, holdS: t - data.ghostBeyondSince };
+  entity.alive = false;
+  data.ghostEscaped = true;
+  return { escaped: true, distance: d, reason: 'beyond_escape_range' };
+}
+
+function clamp01(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(1, n));
 }
 
 const ASTEROID_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
@@ -455,6 +578,7 @@ export const scanner = {
     this._updateContactHail(state);
     if (state.mode !== 'flight') return;
     this._updateTrackedSignal(state);
+    this._tickGhostContacts(state);
     const actions = state.input && state.input.actions;
     if (!actions?.scanPulse) return;
     actions.scanPulse = false;
@@ -469,6 +593,25 @@ export const scanner = {
     this._pulse(state, player, now);
   },
 
+  /** Escape / decay for unrevealed ghosts (deception consequence). */
+  _tickGhostContacts(state) {
+    const list = state.entityList || [];
+    const now = state.simTime || 0;
+    for (const entity of list) {
+      if (!entity || !entity.alive || !entity.data) continue;
+      if (!entity.data.isGhost && !entity.data.ghost) continue;
+      const result = tickGhostEscape(entity, state, now);
+      if (result.escaped) {
+        this.bus.emit('scanner:ghostEscaped', {
+          entityId: entity.id,
+          reason: result.reason || 'beyond_escape_range',
+          distance: result.distance,
+          simTime: now,
+        });
+      }
+    }
+  },
+
   _pulse(state, player, now) {
     const sectorId = state.world && state.world.currentSectorId || null;
     const origin = pos2(player.pos);
@@ -480,7 +623,8 @@ export const scanner = {
 
     for (const entity of candidates) {
       if (!entity || !entity.alive || entity.id === player.id || !entity.pos) continue;
-      if (dist(origin, entity.pos) > profile.nearRadius) continue;
+      const distance = dist(origin, entity.pos);
+      if (distance > profile.nearRadius) continue;
       const data = entity.data || (entity.data = {});
       if (entity.type === 'asteroid') {
         data.scanHighlightUntil = now + ASTEROID_HIGHLIGHT_S;
@@ -499,6 +643,18 @@ export const scanner = {
       } else if (isAnomalyLike(entity)) {
         data.pingedUntil = now + profile.pingPersistS;
         found.anomalies++;
+      } else if ((entity.type === 'ship' || entity.type === 'drone') && (data.isGhost || data.ghost)) {
+        // W05: scan pulses advance ghost reveal stages (sim-truth on entity.data).
+        const result = advanceGhostReveal(entity, state, { distance, near: distance <= 600 });
+        data.pingedUntil = now + profile.pingPersistS;
+        if (result.revealed) {
+          this.bus.emit('scanner:ghostRevealed', {
+            entityId: entity.id,
+            stage: result.stage,
+            confidence: result.confidence,
+            simTime: now,
+          });
+        }
       }
     }
 

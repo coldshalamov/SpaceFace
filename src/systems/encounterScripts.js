@@ -31,6 +31,7 @@ import {
   uniqueWreckPingElite,
   uniqueWreckSilverDraftCleaner,
 } from './uniqueWreckEncounterScripts.js';
+import { markEntityGhost } from './scanner.js';
 
 // ── shared tuning ─────────────────────────────────────────────────────────────────────────────────
 const TOLL_PAY_DIST = 520;        // brake inside this of the toll leader to hand over the toll
@@ -315,6 +316,19 @@ const ambush = {
     const ships = live.plan.ships.map((sh) => ({ ...sh, passive: true }));
     const ids = d.spawnShips(live, ships);
     if (!ids.length) return d.abort(live, 'no_budget');
+    // W05 shape 327: ghost_on_the_bearing spawns quiet_ghost actors as scanner ghosts
+    // (isGhost / ghostConfidence / revealStage on entity.data — sim-truth path A).
+    if (live.shapeId === 'ghost_on_the_bearing' && state.entities && typeof state.entities.get === 'function') {
+      for (const id of ids) {
+        const ent = state.entities.get(id);
+        if (!ent || !ent.alive) continue;
+        const roleId = String((ent.data && (ent.data.lootTableId || ent.data.enemyTypeId)) || '');
+        const arch = String((ent.data && ent.data.ai && ent.data.ai.archetype) || '');
+        if (roleId === 'quiet_ghost' || roleId === 'lancer_sniper' || arch === 'sniper') {
+          markEntityGhost(ent, { spawnedAt: d.now(), revealStage: 0 });
+        }
+      }
+    }
     live.phase = 'offer';                               // "offer" = the telegraph window
     live.data.springAt = d.now() + 4;
     live.data.snared = false;
