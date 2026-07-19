@@ -13,8 +13,6 @@ import {
   tickGhostEscape,
   ghostStreamUnit,
   GHOST_REVEAL_STAGE_MAX,
-  GHOST_ESCAPE_RANGE,
-  GHOST_ESCAPE_HOLD_S,
 } from '../src/systems/scanner.js';
 import { ENCOUNTER_SCRIPTS } from '../src/systems/encounterScripts.js';
 
@@ -92,16 +90,53 @@ test('reveal determinism: same seeds yield same stages across runs', () => {
   }
   const a = runOnce(4242);
   const b = runOnce(4242);
-  assert.deepEqual(a.stages, b.stages);
-  assert.equal(a.confidence, b.confidence);
-  assert.equal(a.revealed, b.revealed);
-  assert.deepEqual(a.units, b.units);
+  assert.equal(JSON.stringify(a), JSON.stringify(b), 'identical fixed-tick runs are byte-equal');
   // Different seed must be able to diverge (not a trivial constant).
   const c = runOnce(9991);
   assert.ok(
     JSON.stringify(a.units) !== JSON.stringify(c.units)
     || JSON.stringify(a.stages) !== JSON.stringify(c.stages),
     'different seeds produce distinct streams or stages',
+  );
+});
+
+test('far reveal uses independent entity-keyed streams on both sides of stage thresholds', () => {
+  const state = { meta: { seed: 4242 } };
+  assert.equal(ghostStreamUnit(state, 2, 'pulse:1'), 0.6743);
+  assert.equal(ghostStreamUnit(state, 3, 'pulse:1'), 0.782);
+  assert.equal(ghostStreamUnit(state, 2, 'pulse:1'), 0.6743, 'same id and salt reproduce the same stream unit');
+  assert.notEqual(
+    ghostStreamUnit(state, 2, 'pulse:1'),
+    ghostStreamUnit(state, 3, 'pulse:1'),
+    'different entity ids own independent streams',
+  );
+
+  const stageZeroAdvance = ghostEntity(2, 0);
+  const stageZeroHold = ghostEntity(3, 0);
+  assert.equal(advanceGhostReveal(stageZeroAdvance, state, {
+    distance: Number.MAX_VALUE, near: false, pulseIndex: 0,
+  }).stage, 1, '0.6743 advances stage 0 even at extreme range');
+  assert.equal(advanceGhostReveal(stageZeroHold, state, {
+    distance: Number.MAX_VALUE, near: false, pulseIndex: 0,
+  }).stage, 0, '0.782 holds stage 0 at extreme range');
+
+  assert.equal(ghostStreamUnit(state, 11, 'pulse:3'), 0.7891);
+  assert.equal(ghostStreamUnit(state, 'ghost_a', 'pulse:3'), 0.8604);
+  const laterAdvance = ghostEntity(11, 1);
+  const laterHold = ghostEntity('ghost_a', 1);
+  assert.equal(advanceGhostReveal(laterAdvance, state, {
+    distance: Number.MAX_VALUE, near: false, pulseIndex: 2,
+  }).stage, 2, '0.7891 advances the later-stage far gate');
+  assert.equal(advanceGhostReveal(laterHold, state, {
+    distance: Number.MAX_VALUE, near: false, pulseIndex: 2,
+  }).stage, 1, '0.8604 holds the later-stage far gate');
+
+  const sameA = ghostEntity(2, 0);
+  const sameB = ghostEntity(2, 0);
+  assert.deepEqual(
+    advanceGhostReveal(sameA, state, { distance: Number.MAX_VALUE, near: false, pulseIndex: 0 }),
+    advanceGhostReveal(sameB, state, { distance: Number.MAX_VALUE, near: false, pulseIndex: 0 }),
+    'separate ghosts with the same stable id consume the same keyed draw',
   );
 });
 
@@ -132,36 +167,58 @@ test('escape path: unrevealed ghost beyond range holds then despawns with event'
   const t = boot(301);
   const ghost = t.sim.spawn({
     type: 'ship', team: 1,
-    pos: { x: GHOST_ESCAPE_RANGE + 200, z: 0 },
+    pos: { x: 2600, z: 0 },
     radius: 12, hull: 80, hullMax: 80, data: {},
   });
-  markEntityGhost(ghost, {
-    spawnedAt: 0,
-    escapeRange: GHOST_ESCAPE_RANGE,
-    escapeHoldS: GHOST_ESCAPE_HOLD_S,
-  });
+  markEntityGhost(ghost, { spawnedAt: 0 });
+  assert.equal(ghost.data.ghostEscapeRange, 2400);
+  assert.equal(ghost.data.ghostEscapeHoldS, 18);
   // First ticks: beyond range but hold not satisfied.
   t.sim.runTicks(Math.ceil(2 / SIM_DT));
   assert.equal(ghost.alive, true);
   assert.equal(t.events.escaped.length, 0);
 
   // Advance past hold.
-  t.sim.runTicks(Math.ceil((GHOST_ESCAPE_HOLD_S + 1) / SIM_DT));
+  t.sim.runTicks(Math.ceil(19 / SIM_DT));
   assert.equal(ghost.alive, false);
   assert.equal(t.events.escaped.length, 1);
   assert.equal(t.events.escaped[0].entityId, ghost.id);
   assert.equal(t.events.escaped[0].reason, 'beyond_escape_range');
 });
 
-test('escape pure helper returns false while inside escape range', () => {
-  const t = boot(8);
-  const ghost = t.sim.spawn({
-    type: 'ship', team: 1, pos: { x: 100, z: 0 }, radius: 12, hull: 50, hullMax: 50, data: {},
-  });
-  markEntityGhost(ghost, { escapeRange: 2000, escapeHoldS: 5 });
-  const r = tickGhostEscape(ghost, t.state, 100);
-  assert.equal(r.escaped, false);
-  assert.equal(ghost.alive, true);
+test('escape range is strict beyond with hard-coded 2399/2400/2401 sides', () => {
+  const inspect = (distance) => {
+    const t = boot(8);
+    const ghost = t.sim.spawn({
+      type: 'ship', team: 1, pos: { x: distance, z: 0 }, radius: 12, hull: 50, hullMax: 50, data: {},
+    });
+    markEntityGhost(ghost, { escapeRange: 2400, escapeHoldS: 18 });
+    const result = tickGhostEscape(ghost, t.state, 100);
+    return { result, beyondSince: ghost.data.ghostBeyondSince, alive: ghost.alive };
+  };
+
+  assert.equal(inspect(2399).beyondSince, null);
+  assert.equal(inspect(2400).beyondSince, null, 'at-bound is still inside; only beyond starts the hold');
+  const beyond = inspect(2401);
+  assert.equal(beyond.beyondSince, 100);
+  assert.equal(beyond.result.escaped, false);
+  assert.equal(beyond.alive, true);
+});
+
+test('escape hold is independently pinned just before, at, and after 18 seconds', () => {
+  const elapsedResult = (elapsed) => {
+    const t = boot(18);
+    const ghost = t.sim.spawn({
+      type: 'ship', team: 1, pos: { x: 2401, z: 0 }, radius: 12, hull: 50, hullMax: 50, data: {},
+    });
+    markEntityGhost(ghost, { escapeRange: 2400, escapeHoldS: 18 });
+    tickGhostEscape(ghost, t.state, 100);
+    return tickGhostEscape(ghost, t.state, 100 + elapsed);
+  };
+
+  assert.equal(elapsedResult(17.999).escaped, false);
+  assert.equal(elapsedResult(18).escaped, true);
+  assert.equal(elapsedResult(18.001).escaped, true);
 });
 
 test('shape 327 wiring: ghost_on_the_bearing ambush marks quiet_ghost as ghost', () => {
@@ -223,3 +280,15 @@ test('no wall clock or DOM in ghost path', () => {
   tickGhostEscape(ghost, t.state, t.state.simTime);
   assert.ok(Number.isFinite(t.state.simTime));
 });
+
+function ghostEntity(id, revealStage) {
+  const entity = {
+    id,
+    type: 'ship',
+    alive: true,
+    pos: { x: Number.MAX_VALUE, z: 0 },
+    data: {},
+  };
+  markEntityGhost(entity, { revealStage });
+  return entity;
+}

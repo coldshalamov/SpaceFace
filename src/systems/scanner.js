@@ -158,7 +158,7 @@ export function tickGhostEscape(entity, state, now = null) {
   const d = Math.hypot(dx, dz);
   const escapeR = Number.isFinite(data.ghostEscapeRange) ? data.ghostEscapeRange : GHOST_ESCAPE_RANGE;
   const holdS = Number.isFinite(data.ghostEscapeHoldS) ? data.ghostEscapeHoldS : GHOST_ESCAPE_HOLD_S;
-  if (d < escapeR) {
+  if (d <= escapeR) {
     data.ghostBeyondSince = null;
     return { escaped: false, distance: d };
   }
