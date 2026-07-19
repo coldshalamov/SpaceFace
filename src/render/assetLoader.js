@@ -598,6 +598,8 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
   const markers = [];
   scene.traverse((node) => {
     if (node === scene) return;
+    const lodRangeIssue = authoredLodMaxMetadataIssue(node.userData);
+    if (lodRangeIssue) errors.push(`${label(node)} ${lodRangeIssue}`);
     const tags = collectTags(node, scene, metadata.slot, metadata.legacyPart === true);
     if (tags.tint && !ASSET_AUTHORING_CONTRACT.tintRoles.includes(String(tags.tint).toLowerCase())) {
       errors.push(`${label(node)} declares unknown tint role "${tags.tint}"`);
@@ -1132,6 +1134,17 @@ function cleanRuntimeTags(tags) {
   const next = { ...tags };
   delete next.driveAnchorObject;
   return next;
+}
+
+/**
+ * `sf_lod_max` describes a visibility range, while the runtime selects one exact authored LOD tag
+ * per primitive. Guessing max=2 as lod2 would hide the primitive at lod0/lod1, so reject the
+ * ambiguous metadata until a real range policy owns it.
+ */
+export function authoredLodMaxMetadataIssue(userData = {}) {
+  const data = userData && typeof userData === 'object' ? userData : {};
+  if (!Object.hasOwn(data, 'sf_lod_max')) return null;
+  return `declares unsupported sf_lod_max=${JSON.stringify(data.sf_lod_max)}; export an exact LOD0_*/LOD1_*/LOD2_* name or spaceface.lod tag instead`;
 }
 
 function applyNodeTags(tags, node, slot, legacyPart) {

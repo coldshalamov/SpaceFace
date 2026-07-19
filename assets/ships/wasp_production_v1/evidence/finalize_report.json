@@ -2,12 +2,62 @@
   "schema": "spaceface.waspProductionV1.finalize.v1",
   "packet": "SF-WASP-PRODUCTION-V1-001",
   "assetId": "SF_WASP_PRODUCTION_V1",
-  "status": "technical_candidate_no_promote",
-  "promoted": false,
+  "status": "accepted_live",
+  "promoted": true,
+  "promotion": {
+    "acceptedAt": "2026-07-14",
+    "manifestId": "wholeship_wasp_production_v1",
+    "runtimeShipId": "ship_wasp",
+    "authoringBlend": {
+      "path": "assets/ships/wasp_production_v1/blender/wasp_production_v1.blend",
+      "bytes": 12751842,
+      "sha256": "D2A4D2BBDB03D1461198B23225BF5928E95AE99FCBD6383633504F2CCBD54D41"
+    },
+    "sourceLods": [
+      {
+        "lod": 0,
+        "path": "assets/ships/parts/wholeships/wasp_production_v1.glb",
+        "bytes": 12797604,
+        "sha256": "FDFD7C76C793C5BE9593E9C095BADE0708C36163086F181FF08BDDFBE5173E5A"
+      },
+      {
+        "lod": 1,
+        "path": "assets/ships/parts/wholeships/wasp_production_v1_lod1.glb",
+        "bytes": 12615760,
+        "sha256": "10E47344EB1974B4428312A9D25673AE64647794E68A13C8A8B87436F1A98DD0"
+      },
+      {
+        "lod": 2,
+        "path": "assets/ships/parts/wholeships/wasp_production_v1_lod2.glb",
+        "bytes": 12505480,
+        "sha256": "885028EB6B575AC77D9DD6351FDF248CE2FCF527E61C225A70B296DEFE576583"
+      }
+    ],
+    "releaseLods": [
+      {
+        "lod": 0,
+        "path": "assets/ships/release/parts/wholeships/wasp_production_v1.glb",
+        "bytes": 13468440,
+        "sha256": "A23354195D95D57BDC2D2E8E32D5CD4FCC1F6C05D570033A7C1849AC87408DDE"
+      },
+      {
+        "lod": 1,
+        "path": "assets/ships/release/parts/wholeships/wasp_production_v1_lod1.glb",
+        "bytes": 12615760,
+        "sha256": "10E47344EB1974B4428312A9D25673AE64647794E68A13C8A8B87436F1A98DD0"
+      },
+      {
+        "lod": 2,
+        "path": "assets/ships/release/parts/wholeships/wasp_production_v1_lod2.glb",
+        "bytes": 12505480,
+        "sha256": "885028EB6B575AC77D9DD6351FDF248CE2FCF527E61C225A70B296DEFE576583"
+      }
+    ]
+  },
   "lods": [
     {
       "lod": 0,
-      "path": "assets/ships/wasp_production_v1/release_candidates/wholeships/wasp_production_v1_lod0.glb",
+      "path": "assets/ships/parts/wholeships/wasp_production_v1.glb",
       "bytes": 12797604,
       "sha256": "FDFD7C76C793C5BE9593E9C095BADE0708C36163086F181FF08BDDFBE5173E5A",
       "triangles": 11526,
@@ -99,7 +149,7 @@
     },
     {
       "lod": 1,
-      "path": "assets/ships/wasp_production_v1/release_candidates/wholeships/wasp_production_v1_lod1.glb",
+      "path": "assets/ships/parts/wholeships/wasp_production_v1_lod1.glb",
       "bytes": 12615760,
       "sha256": "10E47344EB1974B4428312A9D25673AE64647794E68A13C8A8B87436F1A98DD0",
       "triangles": 7678,
@@ -191,7 +241,7 @@
     },
     {
       "lod": 2,
-      "path": "assets/ships/wasp_production_v1/release_candidates/wholeships/wasp_production_v1_lod2.glb",
+      "path": "assets/ships/parts/wholeships/wasp_production_v1_lod2.glb",
       "bytes": 12505480,
       "sha256": "885028EB6B575AC77D9DD6351FDF248CE2FCF527E61C225A70B296DEFE576583",
       "triangles": 5394,

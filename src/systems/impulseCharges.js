@@ -75,6 +75,13 @@ function toLocalOffset(host, wx, wz) {
   return { x: dx * cos - dz * sin, z: dx * sin + dz * cos };
 }
 
+function normalizeAngle(angle) {
+  const tau = Math.PI * 2;
+  let value = Number.isFinite(angle) ? angle : 0;
+  value = ((value + Math.PI) % tau + tau) % tau - Math.PI;
+  return value;
+}
+
 function activeCharges(state, ownerId) {
   const out = [];
   for (const e of state.entityList) {
@@ -147,6 +154,12 @@ export const impulseCharges = {
         e.pos.z = w.z;
         e.vel.x = host.vel.x;
         e.vel.z = host.vel.z;
+        if (!Number.isFinite(d.localRot)) {
+          // Backward-compatible recovery for charges restored from saves written before sticky pose
+          // tracked orientation. Preserve the visible pose on the first tick, then follow the host.
+          d.localRot = normalizeAngle((e.rot || 0) - (host.rot || 0));
+        }
+        e.rot = normalizeAngle((host.rot || 0) + d.localRot);
         d.armed = true;
         continue;
       }
@@ -178,6 +191,7 @@ export const impulseCharges = {
 
     d.hostId = best.id;
     d.localOffset = toLocalOffset(best, charge.pos.x, charge.pos.z);
+    d.localRot = normalizeAngle((charge.rot || 0) - (best.rot || 0));
     d.armed = true;
     charge.vel.x = best.vel.x;
     charge.vel.z = best.vel.z;
@@ -244,6 +258,7 @@ export const impulseCharges = {
         ownerId: player.id,
         hostId: null,
         localOffset: null,
+        localRot: null,
         armed: aftDrop,
         aftDrop,
         propulsionImpulseMult: aftDrop ? BOMB_PROPULSION_DIALS.selfImpulseMult : 1,

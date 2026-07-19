@@ -169,8 +169,11 @@ assert.match(partsLibrary, /authored\.wholeShip\s*===\s*true/,
   'the production whole ship must replace, not retain, procedural/modular fallback');
 assert.doesNotMatch(assetLoader, /fetch\(url,\s*\{\s*cache:\s*['"]force-cache['"]\s*\}\)/,
   'whole-ship validation must not pin stale GLBs on Electron stable origins');
-assert.match(assetLoader, /fetch\(url,\s*\{\s*cache:\s*['"]no-cache['"]\s*\}\)/,
-  'whole-ship validation must revalidate current on-disk GLBs');
+assert.match(assetLoader,
+  /loadGltfDocument\(url,\s*loader,\s*fetchImpl\s*=\s*globalThis\.fetch\)/,
+  'whole-ship validation must retain a production fetch default and an injectable test seam');
+assert.match(assetLoader, /fetchImpl\(url,\s*\{\s*cache:\s*['"]no-cache['"]\s*\}\)/,
+  'whole-ship validation must revalidate current on-disk GLBs through the injected fetch seam');
 
 console.log('Kestrel Borrowed Time V4 live whole-ship family: PASS');
 console.log(JSON.stringify({

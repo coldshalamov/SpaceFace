@@ -86,7 +86,7 @@
 | A-005 | Water Ice asteroid (hero) | High / Now | DONE | assets/ores/ore_ice_hero.jpg | Full body from 60° chase + key angles + surface study (bright cracked ice). Consistent refs. |
 | A-008 | Luminite Crystal asteroid (hero) | High / Now | DONE | assets/ores/ore_luminite_hero.jpg | Full multi-angle body (incl. 60° chase) + 1024 tileable surface with strong internal emissive glow. Direct chain to B-009 + C-INTRO-03. |
 | A-010 | Xenium asteroid (hero) | High / Now | DONE | assets/ores/ore_xenium_hero.jpg | Full multi-angle body (incl. 60° chase) + 1024 tileable surface with pulsing dangerous exotic glow. Chained to B-009. |
-| FX-007 | Main thruster flame (idle + powered) | High / Now | DONE | assets/fx/fx_thruster_main.jpg | Idle and full-power cool cyan flame with glow/distortion. Exact match to fighter engines in refs. |
+| FX-007 | Main thruster flame (idle + powered) | High / Now | DONE | assets/fx/thruster/manifest.json | Deterministically generated plume/core/sheath/vapor texture set from scripts/generate-thruster-textures.mjs. The older fx_thruster_main.jpg is reference-only, not a runtime texture. |
 | FX- mining beam | Mining beam (core system) | High / Now | DONE | assets/fx/fx_mining_beam.jpg | Focused cutting beam + impact on ore with particle scatter and emissive interaction. Chained to B-009 and C-INTRO-03. |
 | FX-001 / FX-003 | Small explosion elements | High / Now | DONE | assets/fx/fx_explosion_small_elements.jpg | Core flash, smoke/debris, sparks layers for compositing. Consistent emissive language. |
 | PF-001 | Core SpaceFace portrait variants | Medium / Selective Now | DONE | assets/pilots/pf_spaceface_portraits.jpg | 6-8 helmeted pilot portraits with visor faces, varied expressions, consistent dramatic lighting and industrial style from bible. Ready for identity/cinematics. |
@@ -944,7 +944,7 @@ User reported the game had reached a "complete" but janky state: bad graphics (p
 - Controls fixed (src/systems/input.js): full Arrow key support (↑↓←→ for thrust/strafe) alongside WASD. Hints added to teach immediately.
 - **All plan assets integrated + more generated for the "now that more finished" opportunity**:
   - Visuals: src/render/visualFactory.js now loads real textures (getExternalTexture cache + THREE.TextureLoader). Asteroids use ore_*_hero.jpg as map + emissive (Luminite/Xenium glow pop using B-009 + C-INTRO language). Fighter uses the generated fighter_albedo_emissive.jpg on hull for detailed lived-in look.
-  - VFX: src/render/vfx.js loads and uses fx_thruster_main.jpg and fx_explosion_small_elements.jpg for high-detail sprites on thrust/explosions (huge upgrade from dots/rings).
+  - VFX: src/render/vfx.js binds the deterministic texture set under assets/fx/thruster/ to the pooled plume and RCS systems. The older fx_thruster_main.jpg and fx_explosion_small_elements.jpg sheets remain reference/contact-sheet assets and are not runtime sources.
   - renderer.js: early preload of 10+ key assets for zero pop-in.
   - Additional assets generated on the fly (chained to bible): reticle.jpg, fighter_albedo_emissive.jpg, icons_atlas.jpg, menu_background.jpg. All copied to assets/ subdirs and used.
   - Cinematics: full 4-shot intro (stills + 6s videos) now playable via "Watch Intro Cinematic" button in mainMenu + dedicated splash on boot using C-INTRO stills + pilot + menu bg.
