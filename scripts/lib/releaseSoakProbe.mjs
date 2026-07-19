@@ -720,6 +720,14 @@ async function probeWebGlContextLoss(page, { outputDir, log }) {
       pixelProof: pixels > 1000,
       rafCount: window.__M6_CONTEXT_EVENTS__.rafCount,
       frameAdvanced: window.__M6_CONTEXT_EVENTS__.rafCount > 2,
+      contextRecovery: state.render.contextRecovery ? {
+        losses: state.render.contextRecovery.losses,
+        restores: state.render.contextRecovery.restores,
+        generation: state.render.contextRecovery.generation,
+        pending: state.render.contextRecovery.pending,
+        detachedStaleDisposeListeners: state.render.contextRecovery.detachedStaleDisposeListeners,
+        detachedContextResources: state.render.contextRecovery.detachedContextResources,
+      } : null,
     };
     window.__M6_CONTEXT_EVENTS__.active = false;
     return result;
