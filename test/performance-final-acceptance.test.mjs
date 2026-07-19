@@ -48,6 +48,19 @@ test('rejects missing scenarios, duplicate evidence, and dirty worktrees', () =>
   assert.match(result.failures.join('\n'), /one baseline window for every performance scenario/);
 });
 
+test('fails closed when residency or admission metrics are absent', () => {
+  const input = fixture();
+  const window = input.matrices[0].document.windows.find((entry) => entry.scenarioId === 'flight_steady');
+  delete window.memory.renderer.delta.programs;
+  delete window.memory.heap.growthBytes;
+  delete window.pipeline.start.activeAdmissionJobs;
+  const result = evaluatePerformanceFinalAcceptance(input);
+  assert.equal(result.pass, false);
+  assert.match(result.failures.join('\n'), /lacks stable program residency/);
+  assert.match(result.failures.join('\n'), /lacks finite heap evidence/);
+  assert.match(result.failures.join('\n'), /active or uncontrolled asset admission/);
+});
+
 function fixture() {
   return {
     expectedCommit: COMMIT,
