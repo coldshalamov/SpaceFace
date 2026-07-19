@@ -457,13 +457,41 @@ async function publicUndockFromStation(page) {
   ).then(() => true).catch(() => false);
   if (leftWithoutConfirmation) return;
 
-  // The protected station UI asks for an explicit departure confirmation. Complete the same
-  // public keyboard/mouse route a player sees; never bypass it with an injected dock-state write.
-  const canonicalConfirm = page.locator('button.st-undock');
-  const computedUndockRole = page.getByRole('button', { name: /\bundock\b/i });
-  const confirm = canonicalConfirm.and(computedUndockRole);
-  await confirm.waitFor({ state: 'visible', timeout: 5_000 });
-  await confirm.click();
+  // The active Orbital Command shell turns an implicit E exit into its visible Departure Check.
+  // Complete that public confirmation when present. Keep the structural Undock routes below for
+  // ready-state pointer recovery and the compatibility station shell; never inject dock state.
+  const departureLaunch = page.locator('button[data-pop-launch]')
+    .and(page.getByRole('button', { name: /\blaunch\b/i }));
+  if (await departureLaunch.isVisible().catch(() => false)) {
+    await departureLaunch.click();
+  } else {
+    const activeUndock = page.locator('button[data-act="undock"]')
+      .and(page.getByRole('button', { name: /\bundock\b/i }));
+    const legacyUndock = page.locator('button.st-undock')
+      .and(page.getByRole('button', { name: /\bundock\b/i }));
+    const legacyModalConfirm = page.locator('button.sf-confirm__ok')
+      .and(page.getByRole('button', { name: /\bundock\b/i }));
+    const candidates = [legacyModalConfirm, activeUndock, legacyUndock];
+    let clicked = false;
+    for (const candidate of candidates) {
+      if (!await candidate.isVisible().catch(() => false)) continue;
+      await candidate.click();
+      clicked = true;
+      break;
+    }
+    assert.equal(clicked, true, 'station recovery requires a visible public Departure Check or Undock action');
+
+    // A risk/check Undock action may open Departure Check instead of committing immediately.
+    const leftAfterUndockAction = await page.waitForFunction(
+      () => window.SF?.state?.ui?.docked === false,
+      null,
+      { timeout: 1_500 },
+    ).then(() => true).catch(() => false);
+    if (!leftAfterUndockAction) {
+      await departureLaunch.waitFor({ state: 'visible', timeout: 5_000 });
+      await departureLaunch.click();
+    }
+  }
   await page.waitForFunction(() => window.SF?.state?.ui?.docked === false, null, { timeout: 20_000 });
 }
 
@@ -1001,10 +1029,12 @@ async function sampleRafWindow(page, {
         longTaskObserver.observe({ entryTypes: ['longtask'] });
       } catch (_) { longTaskObserver = null; }
       try {
-        gcObserver = new PerformanceObserver((list) => {
-          for (const entry of list.getEntries()) gcSignals.push({ startTime: entry.startTime, durationMs: entry.duration, kind: entry.kind || null });
-        });
-        gcObserver.observe({ entryTypes: ['gc'] });
+        if (PerformanceObserver.supportedEntryTypes?.includes('gc')) {
+          gcObserver = new PerformanceObserver((list) => {
+            for (const entry of list.getEntries()) gcSignals.push({ startTime: entry.startTime, durationMs: entry.duration, kind: entry.kind || null });
+          });
+          gcObserver.observe({ entryTypes: ['gc'] });
+        }
       } catch (_) { gcObserver = null; }
       if (autosaveUnderLoad && window.SF?.bus?.on) {
         unsubscribeSaveCompleted = window.SF.bus.on('save:completed', (payload = {}) => saveEvents.push({ event: 'save:completed', ...payload }));
@@ -2369,6 +2399,9 @@ async function runPerformanceAttributionProbe({
         log: doLog,
         flightTimeoutMs,
         dockTimeoutMs,
+        // The performance route validates the active station shell through its Market tab and
+        // trade controls below. Do not apply the shared baseline's legacy stationHub DOM contract.
+        skipStationHubAcceptance: true,
       });
     } catch (error) {
       // The market/hub route is binding when requested. For flight-only attribution, a live

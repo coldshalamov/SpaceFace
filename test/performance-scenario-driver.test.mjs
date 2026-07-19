@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
 import {
@@ -37,4 +38,10 @@ test('restoration receipt fails closed on any leaked state or injected entity', 
   assert.equal(failed.pass, false);
   assert.match(failed.failures.join(' | '), /timeScale/);
   assert.match(failed.failures.join(' | '), /injected entities remain/);
+});
+
+test('browser restoration resolves the live SF authority in every evaluation scope', async () => {
+  const source = await readFile(new URL('../scripts/lib/performanceScenarioDriver.mjs', import.meta.url), 'utf8');
+  const restoreSource = source.slice(source.indexOf('export async function restorePerformanceScenario'));
+  assert.match(restoreSource, /const receipt = await page\.evaluate\([\s\S]*const sf = window\.SF;[\s\S]*sf\.registry/);
 });

@@ -235,7 +235,8 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
     await page.waitForFunction((ids) => ids.every((id) => !window.SF?.state?.entities?.has?.(id)), removal.injectedIds, { timeout: 30_000 });
   }
   const receipt = await page.evaluate((expectedId) => {
-    const state = window.SF?.state;
+    const sf = window.SF;
+    const state = sf?.state;
     const snapshot = window.__SF_PERFORMANCE_SCENARIO_RESTORE__;
     if (!snapshot) return { scenarioId: expectedId, restored: true, reason: 'nothing-to-restore' };
     const player = state?.entities?.get?.(state.playerId);

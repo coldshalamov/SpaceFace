@@ -141,7 +141,15 @@ export async function runBrowserPublicRoute({
       await page.keyboard.up('Shift').catch(() => {});
       await page.keyboard.up('KeyW').catch(() => {});
     }
-    await page.waitForTimeout(180);
+    // Shader admission can briefly occupy the page immediately after launch. Wait for the public
+    // keyup events to reach a later fixed tick instead of sampling the still-held fields in the
+    // same blocked frame. This remains a player-input proof; it does not write input or sim state.
+    await page.waitForFunction((heldTick) => {
+      const state = window.SF?.state;
+      return Number(state?.tick || 0) > heldTick
+        && Math.abs(Number(state?.input?.moveZ || 0)) < 0.02
+        && state?.input?.boost !== true;
+    }, Number(boostHeld?.tick || 0), { timeout: 30_000 });
     const released = await readFlightSnapshot(page);
     const flightInputCausality = evaluateFlightInputCausality({
       baselineStart,

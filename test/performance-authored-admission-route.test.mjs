@@ -32,11 +32,24 @@ test('public performance route accepts invisible pending ships but rejects real 
   }
 });
 
-test('performance recovery binds the canonical Undock action without pinning presentation copy', async () => {
+test('public flight proof waits for key release on a later fixed tick', async () => {
+  const source = await readFile(new URL('../scripts/lib/alphaLiveBaselineRoute.mjs', import.meta.url), 'utf8');
+  assert.match(source, /page\.waitForFunction\(\(heldTick\)\s*=>[\s\S]*state\?\.tick[\s\S]*state\?\.input\?\.moveZ[\s\S]*state\?\.input\?\.boost/);
+  assert.match(source, /Number\(boostHeld\?\.tick \|\| 0\)/);
+});
+
+test('performance recovery completes the active Departure Check and retains structural Undock fallbacks', async () => {
   const source = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
+  assert.match(source, /locator\(['"]button\[data-pop-launch\]['"]\)/);
+  assert.match(source, /getByRole\(['"]button['"],\s*\{\s*name:\s*\/\\blaunch\\b\/i\s*\}\)/);
+  assert.match(source, /departureLaunch\.click\(\)/);
+  assert.match(source, /locator\(['"]button\[data-act=[\\'"]undock[\\'"]\]['"]\)/);
   assert.match(source, /locator\(['"]button\.st-undock['"]\)/);
   assert.match(source, /getByRole\(['"]button['"],\s*\{\s*name:\s*\/\\bundock\\b\/i\s*\}\)/);
-  assert.match(source, /canonicalConfirm\.and\(computedUndockRole\)/);
+  assert.match(source, /skipStationHubAcceptance:\s*true/,
+    'the performance route owns active Market-shell acceptance instead of the legacy stationHub DOM contract');
+  assert.match(source, /PerformanceObserver\.supportedEntryTypes\?\.includes\(['"]gc['"]\)/,
+    'optional GC observation must not emit a browser warning when unsupported');
   assert.doesNotMatch(source, /getByRole\(['"]button['"],\s*\{\s*name:\s*['"]Undock['"],\s*exact:\s*true/);
 });
 
