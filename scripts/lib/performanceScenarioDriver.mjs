@@ -64,6 +64,21 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
     };
     window.__SF_PERFORMANCE_SCENARIO_RESTORE__ = snapshot;
 
+    // The public route deliberately proves ordinary thrust before attribution begins. Synthetic
+    // render scenarios can then spend several seconds admitting authored ships while that retained
+    // velocity carries the camera away from the fleet that was placed around its starting pose.
+    // Hold the player at the journaled pose for steady-state measurement so admission latency does
+    // not silently change culling, LOD, draw count, or triangle count between comparable runs.
+    const holdsMeasuredPose = id !== 'docked_market_ui'
+      && id !== 'flight_steady'
+      && id !== 'station_arrival_approach'
+      && id !== 'jump_asset_admission';
+    if (holdsMeasuredPose) {
+      player.vel.set(0, 0, 0);
+      player.prevPos.copy(player.pos);
+      snapshot.physicsPoseSynchronized = syncPlayerPhysics(player, snapshot.player.noInterp);
+    }
+
     const spawnFleet = async (count, { transparentHeavy = false, combat = false } = {}) => {
       const { makeShipEntitySpec } = await import('/src/systems/ships.js');
       const defs = transparentHeavy || combat ? ['ship_kestrel', 'ship_wasp'] : ['ship_kestrel'];
@@ -159,6 +174,7 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
       baselineEntityCount: snapshot.entityCount,
       resourceStartTime: snapshot.resourceStartTime,
       activity: snapshot.activityTimer != null,
+      holdsMeasuredPose,
       physicsPoseSynchronized: snapshot.physicsPoseSynchronized === true,
     };
 

@@ -45,3 +45,10 @@ test('browser restoration resolves the live SF authority in every evaluation sco
   const restoreSource = source.slice(source.indexOf('export async function restorePerformanceScenario'));
   assert.match(restoreSource, /const receipt = await page\.evaluate\([\s\S]*const sf = window\.SF;[\s\S]*sf\.registry/);
 });
+
+test('steady synthetic workloads hold a measured pose without changing public steady flight or transitions', async () => {
+  const source = await readFile(new URL('../scripts/lib/performanceScenarioDriver.mjs', import.meta.url), 'utf8');
+  assert.match(source, /const holdsMeasuredPose = id !== 'docked_market_ui'[\s\S]*id !== 'flight_steady'[\s\S]*id !== 'station_arrival_approach'[\s\S]*id !== 'jump_asset_admission'/);
+  assert.match(source, /if \(holdsMeasuredPose\) \{[\s\S]*player\.vel\.set\(0, 0, 0\);[\s\S]*syncPlayerPhysics/);
+  assert.match(source, /player\.vel\.set\(snapshot\.player\.vel\.x, snapshot\.player\.vel\.y, snapshot\.player\.vel\.z\)/);
+});
