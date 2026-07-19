@@ -71,4 +71,10 @@ test('only injected non-transition workloads hold the measured pose', async () =
   const source = await readFile(new URL('../scripts/lib/performanceScenarioDriver.mjs', import.meta.url), 'utf8');
   assert.match(source, /if \(holdsMeasuredPose\) \{[\s\S]*player\.vel\.set\(0, 0, 0\);[\s\S]*syncPlayerPhysics/);
   assert.match(source, /player\.vel\.set\(snapshot\.player\.vel\.x, snapshot\.player\.vel\.y, snapshot\.player\.vel\.z\)/);
+  assert.match(source, /id\.startsWith\('station_'\)[\s\S]*flybyFocus:[\s\S]*performance-station-scenario/,
+    'station scenarios journal and isolate unrelated Flyby Focus slow-time');
+  assert.match(source, /performance-station-restore[\s\S]*Object\.assign\(state\.player\.flybyFocus, snapshot\.flybyFocus\)/,
+    'station scenarios restore the exact Flyby Focus journal after measurement');
+  assert.match(source, /flybyFocus: !snapshot\.isolatesFlybyFocus[\s\S]*sameFlybyFocus/,
+    'restoration fails closed when the Flyby Focus journal does not round-trip');
 });
