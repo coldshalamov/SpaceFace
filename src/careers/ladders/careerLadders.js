@@ -136,6 +136,8 @@ export function getLadderProgress(state, careerId = null) {
 export function createCareerLaddersSystem() {
   return {
     name: 'careerLadders',
+    // serializeCareerLadders deep-copies metadata and every ladder leaf.
+    saveSnapshotOwned: true,
     state: null,
     bus: null,
     registry: null,

@@ -74,6 +74,7 @@ const DEFAULT_GOODS = ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_food', 'cmdt
 
 export const sectorSim = {
   name: 'sectorSim',
+  saveSnapshotOwned: true,
 
   init(ctx) {
     this.state = ctx.state;
@@ -653,7 +654,7 @@ export const sectorSim = {
         rngSeed: ss.meta.rngSeed || 0,
         lastTickSimT: ss.meta.lastTickSimT || 0,
         lastWallT: Date.now(),
-        lossLog: (ss.meta.lossLog || []).slice(-50),
+        lossLog: clonePlain((ss.meta.lossLog || []).slice(-50)),
         nextImpulseSeq: ss.meta.nextImpulseSeq || 1,
         transitCounter: ss.meta.transitCounter || 0,
         marketAccumulatorDays: ss.meta.marketAccumulatorDays || 0,

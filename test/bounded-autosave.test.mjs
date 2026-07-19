@@ -1019,3 +1019,21 @@ test('save serializer ownership is explicit and unmarked systems retain defensiv
   copied.nested.value = 99;
   assert.equal(borrowed.nested.value, 2);
 });
+
+test('autosave capture preparation is loading-only and exercises each production reader once', () => {
+  const harness = Object.create(save);
+  const calls = [];
+  harness.state = { mode: 'flight' };
+  harness._hasPlayerEntity = () => true;
+  harness._saveCapturePlan = () => [
+    ['first', () => { calls.push('first'); return { value: 1 }; }],
+    ['second', () => { calls.push('second'); return { value: 2 }; }],
+  ];
+
+  assert.equal(harness.primeAutosaveCapture(), false,
+    'capture preparation must never run after the playable route is exposed');
+  assert.deepEqual(calls, []);
+  harness.state.mode = 'loading';
+  assert.equal(harness.primeAutosaveCapture(), true);
+  assert.deepEqual(calls, ['first', 'second']);
+});
