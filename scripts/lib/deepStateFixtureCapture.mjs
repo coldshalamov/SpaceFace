@@ -99,7 +99,8 @@ export async function readClaimSnapshot(page) {
     return {
       mode: state.mode || null,
       hasPlayerEntity: playerPresent,
-      playerShipDefId: (player && (player.shipDefId || (player.data && player.data.shipDefId))) || null,
+      playerShipDefId: (player && (player.defId || player.shipDefId
+        || (player.data && (player.data.defId || player.data.shipDefId)))) || null,
       pilotName: (state.meta && state.meta.pilotName) || (state.player && state.player.name) || null,
       careers: state.careers ? {
         hasOrigins: !!state.careers.origins,
@@ -187,31 +188,53 @@ export async function proveRestore({ context, rootUrl, artifactText, plan, log =
   return { steps, snapshot };
 }
 
-/** Evaluate the fixture's requiredClaims against capture + restore snapshots. */
-export function evaluateClaims(fixtureId, captureSnapshot, restoreSnapshot) {
+/**
+ * Evaluate the fixture's requiredClaims against capture + restore snapshots plus the pilot run
+ * facts. Round-3 hardening: no claim may be true by construction — the no-injection claim is
+ * DERIVED from the pilot run (milestone evidence + no blocker + real public actions), the
+ * objective claim requires the RESTORED runtime (a capture-side fallback would mask restore-side
+ * loss), and the ship/career comparisons require non-null identity on both sides.
+ */
+export function evaluateClaims(fixtureId, captureSnapshot, restoreSnapshot, pilotFacts = {}) {
   const claims = [];
   const claim = (text, ok, evidence) => claims.push({ text, ok: !!ok, evidence });
   if (fixtureId === 'fresh-start') {
-    claim('player entity and career are restorable',
+    claim('player entity and career-progression state are restorable',
       restoreSnapshot.hasPlayerEntity && !!restoreSnapshot.careers
+        && !!captureSnapshot.pilotName
         && restoreSnapshot.pilotName === captureSnapshot.pilotName
-        && restoreSnapshot.playerShipDefId === captureSnapshot.playerShipDefId,
+        && !!captureSnapshot.playerShipDefId
+        && restoreSnapshot.playerShipDefId === captureSnapshot.playerShipDefId
+        && JSON.stringify(restoreSnapshot.careers) === JSON.stringify(captureSnapshot.careers),
       {
         restoredPlayer: restoreSnapshot.hasPlayerEntity,
-        careersSubtree: restoreSnapshot.careers,
+        careers: [captureSnapshot.careers, restoreSnapshot.careers],
         pilotName: [captureSnapshot.pilotName, restoreSnapshot.pilotName],
         ship: [captureSnapshot.playerShipDefId, restoreSnapshot.playerShipDefId],
       });
     claim('starter objective is reachable',
-      restoreSnapshot.activeMissionCount >= 1 || captureSnapshot.activeMissionCount >= 1,
-      { activeMissions: [captureSnapshot.activeMissionCount, restoreSnapshot.activeMissionCount] });
-    claim('save contains no injected support state', true,
-      { producer: 'runGoldCorridorPublicPilot', injectedState: false });
+      restoreSnapshot.activeMissionCount >= 1,
+      { restoredActiveMissions: restoreSnapshot.activeMissionCount });
+    claim('save contains no injected support state',
+      pilotFacts.blocker == null
+        && Array.isArray(pilotFacts.milestones) && pilotFacts.milestones.includes('run-started')
+        && (pilotFacts.publicActionCount || 0) > 0,
+      {
+        producer: 'runGoldCorridorPublicPilot (static no-injection contract over its own source)',
+        milestones: pilotFacts.milestones || [],
+        publicActionCount: pilotFacts.publicActionCount || 0,
+        blocker: pilotFacts.blocker || null,
+      });
   } else if (fixtureId === 'first-station') {
-    claim('docked station identity restores',
-      restoreSnapshot.docked && !!restoreSnapshot.dockedStationId
-        && restoreSnapshot.dockedStationId === captureSnapshot.dockedStationId,
-      { stationId: [captureSnapshot.dockedStationId, restoreSnapshot.dockedStationId] });
+    claim('saved berth remains reachable and re-docks to the same station identity',
+      restoreSnapshot.docked && !!captureSnapshot.dockedStationId
+        && restoreSnapshot.dockedStationId === captureSnapshot.dockedStationId
+        && restoreSnapshot.currentSectorId === captureSnapshot.currentSectorId,
+      {
+        stationId: [captureSnapshot.dockedStationId, restoreSnapshot.dockedStationId],
+        sectorId: [captureSnapshot.currentSectorId, restoreSnapshot.currentSectorId],
+        note: 'docked is a shipped TRANSIENT save flag; restore lands beside the berth and one public KeyE hold re-docks',
+      });
     claim('station services remain reachable',
       restoreSnapshot.dockTabCount >= 1,
       { dockTabs: restoreSnapshot.dockTabCount });
@@ -283,7 +306,11 @@ export async function captureDeepStateFixture({
     await freshContext.close().catch(() => {});
   }
 
-  const claims = evaluateClaims(fixtureId, captureSnapshot, restore.snapshot);
+  const claims = evaluateClaims(fixtureId, captureSnapshot, restore.snapshot, {
+    milestones: reached,
+    publicActionCount: Array.isArray(pilotResult.actions) ? pilotResult.actions.length : 0,
+    blocker: pilotResult.classification ? pilotResult.classification.blocker : null,
+  });
   const claimsOk = claims.every((c) => c.ok);
 
   const captureReceipt = {
@@ -330,7 +357,7 @@ export async function captureDeepStateFixture({
       status: 'captured',
       artifact: artifactRel,
       sha256: artifactSha,
-      capture: { commit, publicRouteReceipt: captureReceiptRel },
+      capture: { commit, publicRouteReceipt: captureReceiptRel, restoreReceipt: restoreReceiptRel },
     },
   };
 }

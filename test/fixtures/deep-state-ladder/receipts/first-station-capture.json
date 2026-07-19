@@ -1,7 +1,7 @@
 {
   "schema": "spaceface.deepStateCapture.v1",
   "fixtureId": "first-station",
-  "commit": "61e840714d4250ea5b353a12897d4f814791e045",
+  "commit": "3cd5c5fc4e92b990e09d63d00ee5826106f9b75e",
   "career": "hauler",
   "pilotStop": "save",
   "savedVia": "pilot-save-milestone",
@@ -21,11 +21,11 @@
     "save-written"
   ],
   "artifact": "test/fixtures/deep-state-ladder/artifacts/first-station.spaceface-save.json",
-  "artifactSha256": "15d756c83650d2179fe132f8333047b3b56a96fe8bdf2779433cda1fb947c116",
+  "artifactSha256": "eb8b43b394d5a8fce6cd8fe4d9fb13241df82a94c2e1b17e42a51cef44733fee",
   "captureSnapshot": {
     "mode": "flight",
     "hasPlayerEntity": true,
-    "playerShipDefId": null,
+    "playerShipDefId": "ship_kestrel",
     "pilotName": "Wren",
     "careers": {
       "hasOrigins": true,

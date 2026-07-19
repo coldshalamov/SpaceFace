@@ -1,7 +1,7 @@
 {
   "schema": "spaceface.deepStateRestore.v1",
   "fixtureId": "fresh-start",
-  "commit": "61e840714d4250ea5b353a12897d4f814791e045",
+  "commit": "3cd5c5fc4e92b990e09d63d00ee5826106f9b75e",
   "seededKey": "sf.save.quick",
   "restoredThrough": "public-menu-continue",
   "steps": [
@@ -29,7 +29,7 @@
   "restoreSnapshot": {
     "mode": "flight",
     "hasPlayerEntity": true,
-    "playerShipDefId": null,
+    "playerShipDefId": "ship_kestrel",
     "pilotName": "Wren",
     "careers": {
       "hasOrigins": true,
@@ -44,21 +44,27 @@
   },
   "claims": [
     {
-      "text": "player entity and career are restorable",
+      "text": "player entity and career-progression state are restorable",
       "ok": true,
       "evidence": {
         "restoredPlayer": true,
-        "careersSubtree": {
-          "hasOrigins": true,
-          "hasLadders": true
-        },
+        "careers": [
+          {
+            "hasOrigins": true,
+            "hasLadders": true
+          },
+          {
+            "hasOrigins": true,
+            "hasLadders": true
+          }
+        ],
         "pilotName": [
           "Wren",
           "Wren"
         ],
         "ship": [
-          null,
-          null
+          "ship_kestrel",
+          "ship_kestrel"
         ]
       }
     },
@@ -66,18 +72,21 @@
       "text": "starter objective is reachable",
       "ok": true,
       "evidence": {
-        "activeMissions": [
-          1,
-          1
-        ]
+        "restoredActiveMissions": 1
       }
     },
     {
       "text": "save contains no injected support state",
       "ok": true,
       "evidence": {
-        "producer": "runGoldCorridorPublicPilot",
-        "injectedState": false
+        "producer": "runGoldCorridorPublicPilot (static no-injection contract over its own source)",
+        "milestones": [
+          "title-visible",
+          "new-game-opened",
+          "run-started"
+        ],
+        "publicActionCount": 3,
+        "blocker": null
       }
     }
   ],

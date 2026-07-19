@@ -11,19 +11,21 @@
       "publicRoute": [
         "Title",
         "New Game",
-        "Choose career",
+        "Launch",
         "Enter flight"
       ],
+      "routeNote": "Reconciled 2026-07-18 with the shipped order: New Game offers pilot name/difficulty/starter ship; career ORIGIN acceptance is a post-dock Mission Log action, so it cannot appear on this pre-dock rung. Career-progression state (the careers subtree with zero accepted origins) is what this rung persists.",
       "requiredClaims": [
-        "player entity and career are restorable",
+        "player entity and career-progression state are restorable",
         "starter objective is reachable",
         "save contains no injected support state"
       ],
       "artifact": "test/fixtures/deep-state-ladder/artifacts/fresh-start.spaceface-save.json",
-      "sha256": "1ded849b0dd2ed6da1f347f83cd106544539b65d006dcfa587a215b6d1a155f9",
+      "sha256": "d581ab36fd0be3aa4239fca86abb79dc2cac5486fa052137b0b380d8065fc874",
       "capture": {
-        "commit": "61e840714d4250ea5b353a12897d4f814791e045",
-        "publicRouteReceipt": "test/fixtures/deep-state-ladder/receipts/fresh-start-capture.json"
+        "commit": "3cd5c5fc4e92b990e09d63d00ee5826106f9b75e",
+        "publicRouteReceipt": "test/fixtures/deep-state-ladder/receipts/fresh-start-capture.json",
+        "restoreReceipt": "test/fixtures/deep-state-ladder/receipts/fresh-start-restore.json"
       }
     },
     {
@@ -40,15 +42,17 @@
         "Save"
       ],
       "requiredClaims": [
-        "docked station identity restores",
+        "saved berth remains reachable and re-docks to the same station identity",
         "station services remain reachable",
         "undock remains available"
       ],
+      "routeNote": "Reconciled 2026-07-18: 'docked' is a shipped TRANSIENT save flag (saveSystem TRANSIENT_ENTITY_FLAGS), so a docked save deliberately restores to flight beside the berth; the claim is proven by the public KeyE re-dock recorded in the restore receipt.",
       "artifact": "test/fixtures/deep-state-ladder/artifacts/first-station.spaceface-save.json",
-      "sha256": "15d756c83650d2179fe132f8333047b3b56a96fe8bdf2779433cda1fb947c116",
+      "sha256": "eb8b43b394d5a8fce6cd8fe4d9fb13241df82a94c2e1b17e42a51cef44733fee",
       "capture": {
-        "commit": "61e840714d4250ea5b353a12897d4f814791e045",
-        "publicRouteReceipt": "test/fixtures/deep-state-ladder/receipts/first-station-capture.json"
+        "commit": "3cd5c5fc4e92b990e09d63d00ee5826106f9b75e",
+        "publicRouteReceipt": "test/fixtures/deep-state-ladder/receipts/first-station-capture.json",
+        "restoreReceipt": "test/fixtures/deep-state-ladder/receipts/first-station-restore.json"
       }
     },
     {

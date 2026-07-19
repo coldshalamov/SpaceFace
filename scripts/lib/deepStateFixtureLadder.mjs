@@ -1,7 +1,11 @@
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { fnv1a } from '../../src/save/checksum.js';
+import { CURRENT_VERSION } from '../../src/data/saveVersion.js';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -138,7 +142,10 @@ export async function validateDeepStateFixtureArtifacts(manifest, { root = REPO_
     if (envelope?.fmt !== manifest.artifactFormat) {
       issues.push({ code: 'artifact-bad-format', path: `${fixturePath}.artifact` });
     }
-    if (!Number.isInteger(envelope?.version) || envelope.version < 1) {
+    // Version must be a REAL save version: 1 .. the current shipped version. Accepting an
+    // arbitrary integer (a round-3 review proved 1e308 passed) lets a fabricated envelope
+    // masquerade as a capture.
+    if (!Number.isInteger(envelope?.version) || envelope.version < 1 || envelope.version > CURRENT_VERSION) {
       issues.push({ code: 'artifact-bad-version', path: `${fixturePath}.artifact` });
     }
     if (!envelope?.data || typeof envelope.data !== 'object' || Array.isArray(envelope.data)) {
@@ -149,20 +156,86 @@ export async function validateDeepStateFixtureArtifacts(manifest, { root = REPO_
     }
     if (typeof envelope?.checksum !== 'string' || envelope.checksum.length === 0) {
       issues.push({ code: 'artifact-missing-checksum', path: `${fixturePath}.artifact` });
+    } else if (envelope?.data && typeof envelope.data === 'object'
+      && envelope.checksum !== fnv1a(JSON.stringify(envelope.data))) {
+      // The game's own internal integrity mark: checksum = fnv1a over the stringified data
+      // payload (saveSystem.serialize). An outer SHA-256 alone only proves the FILE is intact;
+      // this proves the ENVELOPE is a genuine, uncorrupted save the game would accept.
+      issues.push({ code: 'artifact-checksum-mismatch', path: `${fixturePath}.artifact` });
+    }
+
+    // Commit binding: the capturing commit must be a real object in this repository. A
+    // fabricated or garbage-collected commit id breaks the capture's identity chain.
+    if (typeof fixture.capture?.commit === 'string' && /^[0-9a-f]{40}$/.test(fixture.capture.commit)) {
+      try {
+        // The commit lives in THIS repository's object store regardless of where the artifact
+        // root points (tests validate artifacts from a temp root; the identity chain does not
+        // move with them).
+        execFileSync('git', ['cat-file', '-e', fixture.capture.commit], { cwd: REPO_ROOT, stdio: 'ignore' });
+      } catch (error) {
+        if (error && error.code === 'ENOENT') {
+          // git itself unavailable (packaged/CI-less environment): identity stays receipt-bound.
+        } else {
+          issues.push({ code: 'capture-commit-unknown', path: `${fixturePath}.capture.commit` });
+        }
+      }
     }
 
     const receiptPath = containedPath(root, fixture.capture?.publicRouteReceipt);
     if (!receiptPath) {
       issues.push({ code: 'receipt-outside-root', path: `${fixturePath}.capture.publicRouteReceipt` });
     } else {
-      try {
-        await readFile(receiptPath);
-      } catch (error) {
-        issues.push({ code: 'receipt-missing', path: `${fixturePath}.capture.publicRouteReceipt`, detail: error.code || 'read-error' });
+      const receipt = await readJson(receiptPath);
+      if (!receipt) {
+        issues.push({ code: 'receipt-missing', path: `${fixturePath}.capture.publicRouteReceipt` });
+      } else {
+        if (receipt.fixtureId !== fixture.id) {
+          issues.push({ code: 'receipt-fixture-mismatch', path: `${fixturePath}.capture.publicRouteReceipt` });
+        }
+        if (receipt.artifactSha256 !== fixture.sha256) {
+          issues.push({ code: 'receipt-digest-mismatch', path: `${fixturePath}.capture.publicRouteReceipt` });
+        }
+        if (receipt.injectedState !== false) {
+          issues.push({ code: 'receipt-injected-state', path: `${fixturePath}.capture.publicRouteReceipt` });
+        }
+        if (!isNonEmptyStringArray(receipt.milestones)) {
+          issues.push({ code: 'receipt-missing-milestones', path: `${fixturePath}.capture.publicRouteReceipt` });
+        }
+      }
+    }
+
+    // Restore evidence is REQUIRED for a captured fixture: a save nobody has proven restorable
+    // is not a fixture, it is a file. (Round-3 review: absent/failed restore evidence was green.)
+    const restorePath = containedPath(root, fixture.capture?.restoreReceipt);
+    if (!restorePath) {
+      issues.push({ code: 'restore-receipt-missing', path: `${fixturePath}.capture.restoreReceipt` });
+    } else {
+      const restore = await readJson(restorePath);
+      if (!restore) {
+        issues.push({ code: 'restore-receipt-missing', path: `${fixturePath}.capture.restoreReceipt` });
+      } else {
+        if (restore.fixtureId !== fixture.id) {
+          issues.push({ code: 'restore-fixture-mismatch', path: `${fixturePath}.capture.restoreReceipt` });
+        }
+        if (restore.claimsOk !== true) {
+          issues.push({ code: 'restore-claims-failed', path: `${fixturePath}.capture.restoreReceipt` });
+        }
+        if (!Array.isArray(restore.steps) || restore.steps.length === 0
+          || !restore.steps.every((s) => s && s.ok === true)) {
+          issues.push({ code: 'restore-steps-failed', path: `${fixturePath}.capture.restoreReceipt` });
+        }
       }
     }
   }
   return issues;
+}
+
+async function readJson(filePath) {
+  try {
+    return JSON.parse(await readFile(filePath, 'utf8'));
+  } catch {
+    return null;
+  }
 }
 
 function containedPath(root, relativePath) {

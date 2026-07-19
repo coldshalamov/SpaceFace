@@ -1,7 +1,7 @@
 {
   "schema": "spaceface.deepStateRestore.v1",
   "fixtureId": "first-station",
-  "commit": "61e840714d4250ea5b353a12897d4f814791e045",
+  "commit": "3cd5c5fc4e92b990e09d63d00ee5826106f9b75e",
   "seededKey": "sf.save.quick",
   "restoredThrough": "public-menu-continue + public-KeyE-redock (docked is a shipped transient flag)",
   "steps": [
@@ -34,7 +34,7 @@
   "restoreSnapshot": {
     "mode": "flight",
     "hasPlayerEntity": true,
-    "playerShipDefId": null,
+    "playerShipDefId": "ship_kestrel",
     "pilotName": "Wren",
     "careers": {
       "hasOrigins": true,
@@ -49,13 +49,18 @@
   },
   "claims": [
     {
-      "text": "docked station identity restores",
+      "text": "saved berth remains reachable and re-docks to the same station identity",
       "ok": true,
       "evidence": {
         "stationId": [
           "station_helios",
           "station_helios"
-        ]
+        ],
+        "sectorId": [
+          "sector_helios_prime",
+          "sector_helios_prime"
+        ],
+        "note": "docked is a shipped TRANSIENT save flag; restore lands beside the berth and one public KeyE hold re-docks"
       }
     },
     {
