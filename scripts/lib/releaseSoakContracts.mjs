@@ -492,7 +492,15 @@ function validateAttributionWindow(window, index) {
       const vfx = window.routeProof.vfxSubsystems || {};
       const mining = Number(vfx.miningBeam) || 0;
       const tether = Number(vfx.tetherCable) || 0;
-      if (mining < 1 && tether < 1) {
+      const startVfx = window.routeProof.start?.vfxSubsystems || {};
+      const startMining = Number(startVfx.miningBeam) || 0;
+      const startTether = Number(startVfx.tetherCable) || 0;
+      const vfxIsolationWindow = window.diagnostic === true && window.diagnosticVariant === 'vfx_hidden';
+      if (vfxIsolationWindow && (startMining < 1 && startTether < 1)) {
+        failures.push(`${prefix} vfx_hidden must prove miningBeam or tetherCable active before isolation`);
+      } else if (vfxIsolationWindow && (mining > 0 || tether > 0)) {
+        failures.push(`${prefix} vfx_hidden must suppress miningBeam and tetherCable during measurement`);
+      } else if (!vfxIsolationWindow && mining < 1 && tether < 1) {
         failures.push(`${prefix} mining_tether_active must prove miningBeam or tetherCable VFX active`);
       }
     }
