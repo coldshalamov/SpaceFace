@@ -35,8 +35,11 @@ assert.equal(canopy.material.opacity, 0.772);
 assert.equal(canopy.material.clearcoat, 1, 'authored PBR clearcoat is preserved');
 assert.equal(canopy.material.roughness, 0.1, 'authored roughness is preserved');
 assert.equal(canopy.material.ior, 1.4, 'authored optical metadata is preserved');
+assert.equal(canopy.material.thickness, 0.06, 'authored thickness is preserved');
 assert.equal(canopy.material.userData.spacefaceCanopyOptics.strategy, 'environment-alpha-glass');
 assert.equal(canopy.material.userData.spacefaceCanopyOptics.sourceTransmission, 0.6);
+assert.equal(canopy.material.userData.spacefaceCanopyOptics.sourceIor, 1.4);
+assert.equal(canopy.material.userData.spacefaceCanopyOptics.sourceThickness, 0.06);
 assert.equal(configureRealtimeCanopyMaterials(root), 0, 'policy is idempotent after transmission is removed');
 
 const hull = new THREE.MeshStandardMaterial({ color: 0xffffff });
