@@ -238,8 +238,9 @@ export async function runTextileJourney(ctx) {
       outcome: 'pass',
       evidence: `contract ${accepted.mission.id} active+tracked: haul ${accepted.mission.qty}u `
         + `${accepted.mission.cmdtyId} to ${accepted.mission.destStationId} in ${accepted.mission.destSectorId} `
-        + `(origin sector ${dock.sectorId}); hold loaded ${load.have}u; undocked=${undock.ok}. ${note}`,
-      detail: { mission: accepted.mission, load, undock, textile: !!textile, offers: offers.length },
+        + `(origin sector ${dock.sectorId}); hold loaded ${load.have}u; undocked=${undock.ok}. ${note}`
+        + ` [approach: ${dock.pausedFrames || 0} paused frame(s) recovered, sim tick ${dock.firstTick}→${dock.lastTick}]`,
+      detail: { mission: accepted.mission, load, undock, textile: !!textile, offers: offers.length, dock },
     };
   });
 
@@ -763,6 +764,10 @@ async function dockAtNearestStation(page, helpers, log) {
   let inRange = false;
   let closestWU = Infinity;
   let lastAp = null;
+  let pausedFrames = 0;
+  let reachedDockRadius = false;
+  let firstTick = null;
+  let lastTick = null;
   while (Date.now() < deadline) {
     const probe = await page.evaluate((stationName) => {
       const j = window.__JOURNEY__;
@@ -785,10 +790,32 @@ async function dockAtNearestStation(page, helpers, log) {
         apActive: ap?.active === true,
         apStatus: ap?.status || null,
         speed: player?.vel ? Math.hypot(player.vel.x || 0, player.vel.z || 0) : 0,
+        // DIAGNOSTIC ONLY — neither field can pass this step; both exist so a failure is
+        // attributable. `mode` separates "the autopilot cannot close" from "the harness was
+        // grading a PAUSED game", which produce byte-identical frozen readings. `tick` proves the
+        // simulation advanced at all. A repro measured 94 consecutive frozen frames that looked
+        // exactly like an autopilot defect and were really `mode === 'paused'`.
+        mode: state?.mode ?? null,
+        tick: state?.tick ?? null,
       };
     }, target.name);
     lastAp = probe;
+    if (probe.tick != null) { if (firstTick == null) firstTick = probe.tick; lastTick = probe.tick; }
+    if (probe.mode === 'paused') {
+      // A paused game is not evidence about navigation. Recover through the public key and count
+      // it, so the recovery can never hide how long the measurement was invalid.
+      pausedFrames += 1;
+      await page.bringToFront().catch(() => {});
+      await returnFocusToGame(page);
+      await page.keyboard.press('Escape').catch(() => {});
+      await page.waitForTimeout(250);
+      continue;
+    }
     if (probe.dist != null && probe.dist < closestWU) closestWU = probe.dist;
+    // Physical arrival is recorded SEPARATELY from the dock:range receipt. If the ship reaches the
+    // dock radius and the receipt never fires, that is a real defect — and it must not be
+    // indistinguishable from never arriving. This does NOT pass the step; only the receipt does.
+    if (probe.dist != null && probe.dockRadius != null && probe.dist <= probe.dockRadius) reachedDockRadius = true;
     if (probe.inRange) { inRange = true; break; }
     await page.waitForTimeout(900);
   }
@@ -802,8 +829,14 @@ async function dockAtNearestStation(page, helpers, log) {
         + `station "${armed.station ? armed.station.name : '?'}" at `
         + `${armed.station ? `(${Math.round(armed.station.x)},${Math.round(armed.station.z)})` : 'null'} — `
         + `target-to-station ${armed.targetToStationWU != null ? Math.round(armed.targetToStationWU) : '?'} WU `
-        + '(≈0 means the autopilot was aimed correctly and still did not arrive; large means the harness armed the wrong mark)',
-      target, closestWU, lastAp, armed,
+        + '(≈0 means the autopilot was aimed correctly and still did not arrive; large means the harness armed the wrong mark). '
+        + `SIM ADVANCED: tick ${firstTick} -> ${lastTick}${firstTick != null && lastTick === firstTick ? ' (FROZEN — this is not a navigation result)' : ''}; `
+        + `paused frames recovered: ${pausedFrames}. `
+        + (reachedDockRadius
+          ? 'NOTE: the ship DID physically reach the dock radius but no dock:range receipt ever fired — '
+            + 'that is a receipt defect, not an approach defect.'
+          : 'The ship never physically reached the dock radius.'),
+      target, closestWU, lastAp, armed, pausedFrames, reachedDockRadius, firstTick, lastTick,
     };
   }
 
@@ -818,7 +851,14 @@ async function dockAtNearestStation(page, helpers, log) {
     stationId: window.SF?.state?.ui?.dockedStationId || null,
     sectorId: window.SF?.state?.world?.currentSectorId || null,
   }));
-  return { ok: true, stationId: where.stationId, sectorId: where.sectorId, target };
+  // `pausedFrames` rides the SUCCESS path too, deliberately. A step that only passed after N
+  // focus-recoveries is not a clean pass — it is evidence that this gate is fragile on any runner
+  // that cannot hold the window foreground. Reporting it only on failure would hide exactly the
+  // fragility the release gate needs to state.
+  return {
+    ok: true, stationId: where.stationId, sectorId: where.sectorId, target,
+    pausedFrames, reachedDockRadius, firstTick, lastTick,
+  };
 }
 
 /** Read the contract board the player is looking at. Observation only. */

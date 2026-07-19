@@ -21,8 +21,8 @@
 //   * `_avoidanceSide` + `status`       -> H3 shows a latched side and status 'avoiding'
 //   * path length vs net displacement   -> H3's smoking gun: high path, ~zero net closure
 //
-// It also runs a SECOND condition with the tutorial finished, because H1 predicts the approach
-// succeeds once onboarding no longer owns nav, and H3 predicts it fails identically.
+// It also records the onboarding state without mutating it, so H1 remains auditable without
+// turning a diagnostic into a second gameplay-state writer.
 //
 // Usage: node scripts/repro-station-approach.mjs
 
@@ -103,7 +103,7 @@ const SAMPLE_FN = (stationName) => {
   };
 };
 
-async function armStationAndTrack(page, helpers, label) {
+async function armStationAndTrack(page, helpers, label, { unconditionalEscape = false, recoverPause = true } = {}) {
   const target = await page.evaluate(() => {
     const state = window.SF?.state;
     const player = state?.entities?.get(state.playerId);
@@ -129,52 +129,77 @@ async function armStationAndTrack(page, helpers, label) {
   await helpers.clickPersistentButton(page, setWp);
   await page.waitForFunction(() => window.SF?.state?.nav?.autopilot?.active === true, null, { timeout: 10_000 })
     .catch(() => {});
+  // THE A/B. `dockAtNearestStation` in the journey harness presses Escape UNCONDITIONALLY here.
+  // If Set Waypoint already dismissed the chart, that keystroke lands in FLIGHT, where Escape is
+  // the pause key — so the journey then polls a paused game for 300 s.
   const mapStillVisible = await page.locator('[data-screen="galaxyMap"]').first().isVisible().catch(() => false);
-  if (mapStillVisible) await page.keyboard.press('Escape').catch(() => {});
+  if (unconditionalEscape || mapStillVisible) await page.keyboard.press('Escape').catch(() => {});
   await page.locator('#gl-canvas').focus().catch(() => {});
+  const modeAfterEscape = await page.evaluate(() => window.SF?.state?.mode ?? null);
+  log(`[${label}] chart still visible after Set Waypoint = ${mapStillVisible}; mode after escape = ${modeAfterEscape}`);
   const flightResumed = await page.waitForFunction(() => window.SF?.state?.mode === 'flight', null, { timeout: 10_000 })
     .then(() => true).catch(() => false);
-  if (!flightResumed) return { label, ok: false, reason: 'map waypoint flow did not return to flight mode' };
+  if (!flightResumed && !unconditionalEscape) return { label, ok: false, reason: 'map waypoint flow did not return to flight mode' };
 
   const samples = [];
+  let pausedSamples = 0;
   const deadline = Date.now() + APPROACH_S * 1000;
   while (Date.now() < deadline) {
     samples.push(await page.evaluate(SAMPLE_FN, target.name));
     const last = samples[samples.length - 1];
+    // MEASUREMENT GUARD, learned the hard way: this game auto-pauses when the window loses focus,
+    // and a headed Playwright window loses focus to ANY other process that opens a window. A first
+    // run of this script sampled 94 consecutive frames at `mode='paused'`, tick frozen at 155 and
+    // path length 0 WU, which reads exactly like "the sim is not integrating" (H2) but was really
+    // "another check stole focus". Never grade a frozen tick without checking `mode` first.
+    if (last.mode === 'paused') {
+      pausedSamples += 1;
+      // Condition B deliberately does NOT recover: it must reproduce the journey faithfully.
+      if (!recoverPause) { await page.waitForTimeout(SAMPLE_MS); continue; }
+      await page.bringToFront().catch(() => {});
+      await page.locator('#gl-canvas').focus().catch(() => {});
+      await page.keyboard.press('Escape').catch(() => {});
+      await page.waitForTimeout(200);
+      continue;
+    }
     if (last.dist != null && last.dockRadius != null && last.dist <= last.dockRadius) break;
     await page.waitForTimeout(SAMPLE_MS);
   }
 
-  // Derived discriminators.
-  const moved = samples.filter((s) => s.pos);
+  // Derived discriminators. Paused frames are EXCLUDED from motion maths — including them would
+  // dilute path length toward zero and manufacture a false orbit/frozen signature.
+  const live = samples.filter((s) => s.mode !== 'paused');
+  const moved = live.filter((s) => s.pos);
   let pathLen = 0;
   for (let i = 1; i < moved.length; i += 1) {
     pathLen += Math.hypot(moved[i].pos.x - moved[i - 1].pos.x, moved[i].pos.z - moved[i - 1].pos.z);
   }
   const first = moved[0]; const last = moved[moved.length - 1];
   const netDisp = first && last ? Math.hypot(last.pos.x - first.pos.x, last.pos.z - first.pos.z) : 0;
-  const dists = samples.map((s) => s.dist).filter((d) => d != null);
-  const tickAdvanced = samples.length > 1 && samples[samples.length - 1].tick > samples[0].tick;
-  const targetEverNull = samples.some((s) => s.apActive && !s.apTarget);
-  const targetChanged = samples.some((s) => s.apTarget && samples[0].apTarget
-    && Math.hypot(s.apTarget.x - samples[0].apTarget.x, s.apTarget.z - samples[0].apTarget.z) > 1);
-  const statuses = [...new Set(samples.map((s) => s.apStatus).filter(Boolean))];
-  const sides = [...new Set(samples.map((s) => s.avoidanceSide).filter((v) => v != null))];
-  const obstacleNames = [...new Set(samples.flatMap((s) => s.obstacles.map((o) => `${o.type}:${o.name}`)))];
+  const dists = live.map((s) => s.dist).filter((d) => d != null);
+  const tickAdvanced = live.length > 1 && live[live.length - 1].tick > live[0].tick;
+  const targetEverNull = live.some((s) => s.apActive && !s.apTarget);
+  const targetChanged = live.some((s) => s.apTarget && live[0] && live[0].apTarget
+    && Math.hypot(s.apTarget.x - live[0].apTarget.x, s.apTarget.z - live[0].apTarget.z) > 1);
+  const statuses = [...new Set(live.map((s) => s.apStatus).filter(Boolean))];
+  const sides = [...new Set(live.map((s) => s.avoidanceSide).filter((v) => v != null))];
+  const obstacleNames = [...new Set(live.flatMap((s) => s.obstacles.map((o) => `${o.type}:${o.name}`)))];
 
   return {
     label,
     ok: true,
     station: target.name,
     samples: samples.length,
+    liveSamples: live.length,
+    pausedSamples,
     tickAdvanced,
-    tickFirst: samples[0]?.tick ?? null,
-    tickLast: samples[samples.length - 1]?.tick ?? null,
+    tickFirst: live[0]?.tick ?? null,
+    tickLast: live[live.length - 1]?.tick ?? null,
     distFirst: dists[0] ?? null,
     distLast: dists[dists.length - 1] ?? null,
     distMin: dists.length ? Math.min(...dists) : null,
     distMax: dists.length ? Math.max(...dists) : null,
-    dockRadius: samples.find((s) => s.dockRadius != null)?.dockRadius ?? null,
+    dockRadius: live.find((s) => s.dockRadius != null)?.dockRadius ?? null,
     pathLen,
     netDisp,
     // The orbit signature: the ship flies a long way and ends up the same distance out.
@@ -212,12 +237,24 @@ try {
   await page.bringToFront();
   await bootToAuthoredFlight({ page, outputDir: null, log });
 
-  // ---- Condition A: exactly as the journey does it (onboarding untouched) ----
-  const a = await armStationAndTrack(page, TRAVEL_PUBLIC_HELPERS, 'A-as-journey');
+  // ---- Condition A: conditional Escape (press it only if the chart is actually still up) ----
+  const a = await armStationAndTrack(page, TRAVEL_PUBLIC_HELPERS, 'A-conditional-escape');
   report.conditions.push(a);
 
-  // ---- Condition B: same, after retiring the tutorial through the PUBLIC settings toggle ----
-  // H1 predicts B succeeds. H3 predicts B fails identically. This is the discriminating run.
+  // ---- Condition B: historical unconditional-Escape defect, from a fresh identical boot ----
+  // A cannot be followed by B in the same run: A ends at Helios, so its world state and camera are
+  // no longer comparable. Reload to a fresh public-route New Game before changing the one variable.
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
+  await page.bringToFront();
+  await bootToAuthoredFlight({ page, outputDir: null, log });
+  const b = await armStationAndTrack(page, TRAVEL_PUBLIC_HELPERS, 'B-historical-unconditional-escape', {
+    unconditionalEscape: true,
+    recoverPause: false,
+  });
+  report.conditions.push(b);
+
+  // ---- Read-only onboarding state probe ----
+  // Do not mutate tutorial state in a diagnostic. Record it so the H1 hypothesis remains auditable.
   const toggled = await page.evaluate(() => {
     const s = window.SF?.state;
     if (!s?.settings?.gameplay) return false;

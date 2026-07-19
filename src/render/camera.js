@@ -8,6 +8,7 @@ import { globalToFrame } from '../core/coordinates.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 import { CameraDirectorMode, createCameraDirector } from './cameraDirector.js';
+import { readVelocityLanguage } from './velocityLanguage.js';
 
 // M2 floating origin: chase focus / camera pose are frame-local. Entity.pos stays galactic-global.
 const _frameOriginScratch = { x: 0, z: 0 };
@@ -478,6 +479,17 @@ export function createChaseCamera(state) {
           const laCap = isCruising(state) ? LOOKAHEAD_MAX_CRUISE : LOOKAHEAD_MAX;
           const la = Math.min(c.lookAhead, laCap, playerSpeed * LOOKAHEAD_SPEED_SCALE);
           fx += (vx / playerSpeed) * la; fz += (vz / playerSpeed) * la;
+          // Band-3 velocity lead (ADR D7): at >5x combat speed a few WU of camera lead along the
+          // velocity vector read as terrifying speed. READ, never re-derived — `readVelocityLanguage`
+          // is the one consumer of the record `feel.js` publishes; a reader that derived its own band
+          // would become a second producer and drift from what the streaks and the sky are saying.
+          // The record forces cameraLeadWU to 0 under motionReduce, so this single read respects it
+          // without the camera lane second-guessing the field's reduction.
+          const vl = readVelocityLanguage(state);
+          const leadWU = vl && vl.drive && Number.isFinite(vl.drive.cameraLeadWU) ? vl.drive.cameraLeadWU : 0;
+          if (leadWU > 0) {
+            fx += (vx / playerSpeed) * leadWU; fz += (vz / playerSpeed) * leadWU;
+          }
         }
         const aimLead = resolveAimLead(state.input, p);
         fx += aimLead.x;
@@ -609,7 +621,15 @@ export function createChaseCamera(state) {
       if (c.trauma > 0) {
         c.trauma = decayCameraTrauma(c.trauma, frameDt);
         const t2 = c.trauma * c.trauma;
-        const shakeScale = isMotionReduced(state) ? MOTION_REDUCE_SHAKE_SCALE : 1;
+        // Shake amplitude = motionReduce factor × band-3 shakeScale × trauma². The two reductions are
+        // composed deliberately rather than folded: motionReduce is the player's accessibility choice
+        // and is owned HERE; shakeScale is the ADR D7 band-3 design choice (1 → 0.55 across ratio
+        // 5 → 10) and is owned by velocityLanguage.js, which the field leaves UNSCALED by motionReduce
+        // so the camera lane's own motionReduce handling is what carries the accessibility reduction.
+        const motionScale = isMotionReduced(state) ? MOTION_REDUCE_SHAKE_SCALE : 1;
+        const vl = readVelocityLanguage(state);
+        const bandShake = vl && vl.drive && Number.isFinite(vl.drive.shakeScale) ? vl.drive.shakeScale : 1;
+        const shakeScale = motionScale * bandShake;
         c.shakeOffset.set(
           (Math.random() * 2 - 1) * SHAKE_POS_MAX * shakeScale * t2,
           0,
