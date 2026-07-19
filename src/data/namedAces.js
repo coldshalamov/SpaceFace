@@ -131,6 +131,31 @@ const VARIETY_ROSTER = Object.freeze([
     baseReturnLevel: 4,
     signatureBark: 'THIRD REFRAINS: the Pattern names you. Answer in fire.',
   }),
+  Object.freeze({
+    // Named Drift defender: the worker voice gets a face, not just the Reach lane-kingpins.
+    // Voss's suspended claim (narrative.js pers_voss_suspended) gets a body behind it.
+    id: 'ace_voss_shaft_seven',
+    name: 'Voss of Shaft Seven',
+    crew: 'The Last Two',
+    factionId: 'faction_dmc',
+    gimmickTag: 'belt-claimer',
+    returnArchetype: 'miner_bruiser',
+    escortArchetype: 'miner_bruiser',
+    baseReturnLevel: 4,
+    signatureBark: 'THE LAST TWO: Shaft Seven filed us as moisture. We file you as salvage.',
+  }),
+  Object.freeze({
+    // Reach ace whose arithmetic is the testimony: counts hulls, names the short one.
+    id: 'ace_drell_short_fall',
+    name: 'Drell Short-Fall',
+    crew: 'The Weigh-Slip Open',
+    factionId: 'faction_reach',
+    gimmickTag: 'tether-cutter',
+    returnArchetype: 'corsair_raider',
+    escortArchetype: 'wasp_swarmer',
+    baseReturnLevel: 5,
+    signatureBark: 'WEIGH-SLIP OPEN: four hulls this cycle. You are the one that falls short.',
+  }),
 ]);
 
 export const NAMED_ACE_IDS = Object.freeze(CORE_ROSTER.map((ace) => ace.id));

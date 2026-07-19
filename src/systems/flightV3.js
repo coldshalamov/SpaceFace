@@ -499,6 +499,23 @@ export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0, 
   input.coastAssistScale = massline2Flag('cloak') && cloak && cloak.active && coasting
     ? CLOAK_COAST_ASSIST_SCALE
     : 1;
+
+  // Travel Burn (atlas D5 / W1-5): forward the latch's published drive block into the kernel input.
+  //
+  // This one line is the entire consumer seam for the travel-drive axis. `normalizeCraftInput`
+  // (:556) builds an explicit 8-key literal with no spread, so `state.input.travelDrive` is
+  // otherwise dropped before `stepPropulsion` ever sees it — the axis would remain unreachable no
+  // matter what the latch published. It belongs HERE rather than in `normalizeCraftInput` because
+  // this function is player-only: NPCs must not get a travel drive from the player's latch.
+  //
+  // The kernel consumes `cap` and republishes the advanced value at `result.telemetry.travelCap`,
+  // which `assignFlightFrame` copies onto `_flightFrame`; the latch reads it back next tick. That
+  // round trip IS the ramp. Flag read at CALL TIME — under node it is false, so this block does
+  // not execute, no key is attached, and both sim goldens are untouched.
+  if (travelFlag('travelBurn')) {
+    const drive = state && state.input && state.input.travelDrive;
+    if (drive && typeof drive === 'object') input.travelDrive = drive;
+  }
   return input;
 }
 

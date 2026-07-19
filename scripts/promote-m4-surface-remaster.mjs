@@ -74,6 +74,7 @@ const target = resolve(ROOT, ASSETS[asset]);
 const candidateRel = slash(relative(ROOT, candidate));
 if (!candidateRel.startsWith('.devshots/graphics/surface-candidates/')
     && !candidateRel.startsWith('.devshots/graphics/helios-pbr-v3/')
+    && !candidateRel.startsWith('.devshots/graphics/helios-surface-v3-candidate/')
     && !candidateRel.startsWith('.devshots/graphics/helios-golden-v4-export-')
     && !candidateRel.startsWith('assets/ships/m4_helios_hub/production/')) {
   throw new Error(`candidate must remain under an approved graphics candidate root: ${candidateRel}`);
@@ -93,6 +94,9 @@ const isRecipeReport = isGoldenStation || isGoldenProduction;
 const reportedRemaster = isRecipeReport ? report.recipeId : report.remasterId;
 const reportedGlb = isRecipeReport ? report.outputGlb : report.candidateGlb;
 const reportedGlbSha256 = isRecipeReport ? report.outputGlbSha256 : report.candidateGlbSha256;
+const tangentReportPath = args['tangent-report'] ? resolve(ROOT, args['tangent-report']) : null;
+const tangentReport = tangentReportPath ? JSON.parse(readFileSync(tangentReportPath, 'utf8')) : null;
+const candidateSha256 = sha256(readFileSync(candidate));
 const reportedBlend = isGoldenProduction
   ? report.outputBlend
   : (isGoldenStation ? report.sourceBlend : report.candidateBlend);
@@ -100,8 +104,24 @@ const reportedBlendSha256 = isGoldenProduction
   ? report.outputBlendSha256
   : (isGoldenStation ? report.sourceBlendSha256 : report.candidateBlendSha256);
 if (reportedRemaster !== expectedRemaster) throw new Error(`unexpected remaster id: ${reportedRemaster}`);
-if (resolve(reportedGlb) !== candidate) throw new Error('report candidate path does not match --candidate');
-if (sha256(readFileSync(candidate)) !== reportedGlbSha256) throw new Error('candidate hash does not match report');
+if (tangentReport) {
+  if (tangentReport.schema !== 'spaceface.glbTangentSanitize.v1') {
+    throw new Error(`unexpected tangent report schema: ${tangentReport.schema}`);
+  }
+  if (resolve(tangentReport.input.path) !== resolve(reportedGlb)
+      || tangentReport.input.sha256.toUpperCase() !== reportedGlbSha256.toUpperCase()) {
+    throw new Error('tangent report input does not match the Blender candidate report');
+  }
+  if (resolve(tangentReport.output.path) !== candidate
+      || tangentReport.output.sha256.toUpperCase() !== candidateSha256.toUpperCase()) {
+    throw new Error('tangent report output does not match --candidate');
+  }
+} else {
+  if (resolve(reportedGlb) !== candidate) throw new Error('report candidate path does not match --candidate');
+  if (candidateSha256.toUpperCase() !== reportedGlbSha256.toUpperCase()) {
+    throw new Error('candidate hash does not match report');
+  }
+}
 const candidateBlend = resolve(reportedBlend || '');
 const authoringBlend = resolve(ROOT, AUTHORING_BLENDS[asset]);
 if (!reportedBlend || sha256(readFileSync(candidateBlend)) !== reportedBlendSha256) {
@@ -172,7 +192,13 @@ try {
     asset,
     remasterId: reportedRemaster,
     candidate: candidateRel,
-    candidateSha256: reportedGlbSha256,
+    candidateSha256,
+    tangentSanitize: tangentReport ? {
+      report: slash(relative(ROOT, tangentReportPath)),
+      repaired: tangentReport.repaired,
+      fallbackRepaired: tangentReport.fallbackRepaired,
+      normalizedRepaired: tangentReport.normalizedRepaired,
+    } : null,
     source: ASSETS[asset],
     sourceSha256: sha256(readFileSync(target)),
     sourceBytes: readFileSync(target).length,

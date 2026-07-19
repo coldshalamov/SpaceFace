@@ -88,6 +88,50 @@ export const MORAL_TRAPS = Object.freeze({
       ]),
     }),
   }),
+
+  // Air-is-owed: the sealed atmo canisters are diverted relief. Delivering them poisons the Pit’s ledger.
+  // Closes audit II.2 (named beneficiary this cycle): MTS holds the short; the canisters widen it.
+  air_is_owed: Object.freeze({
+    id: 'air_is_owed',
+    fitsTypes: Object.freeze(['smuggling_run', 'cargo_delivery']),
+    revealAt: 'mid_run',
+    revealLine: 'The canister seals match a Pit relief batch withdrawn three cycles ago. This is rebreathed air sold back to the station that was promised it.',
+    choice: Object.freeze({
+      prompt: 'The air was stolen from the people waiting for it. What do you do?',
+      options: Object.freeze([
+        Object.freeze({
+          id: 'deliver', label: 'Deliver to the buyer', blurb: 'The Pit pays twice for its own air. You keep the margin. Meridian’s Clear-Air position widens.',
+          consequence: Object.freeze({ channel: 'credits', amount: 1.2, repChannel: 'faction_mts', repDelta: 6 }),
+        }),
+        Object.freeze({
+          id: 'return', label: 'Divert to the Pit dock', blurb: 'Hand the canisters to the station they were stolen from. No pay. The Pit breathes one cycle longer.',
+          consequence: Object.freeze({ channel: 'rep', repChannel: 'faction_dmc', repDelta: 14 }),
+        }),
+      ]),
+    }),
+  }),
+
+  // Ore-is-mass-grave: the “refined slurry” is ballast from a shaft collapse that killed nine.
+  // Closes audit II.1 (close the arithmetic): the 0.7t moisture-loss column is the cover for the dead.
+  ore_is_mass_grave: Object.freeze({
+    id: 'ore_is_mass_grave',
+    fitsTypes: Object.freeze(['cargo_delivery', 'smuggling_run']),
+    revealAt: 'mid_run',
+    revealLine: 'The slurry assay reads organic. Two crew from Shaft 7 are still listed as 0.7t moisture loss. This ore is the column that hides them.',
+    choice: Object.freeze({
+      prompt: 'The cargo is the cover for two dead miners. What do you do?',
+      options: Object.freeze([
+        Object.freeze({
+          id: 'deliver', label: 'Deliver as logged', blurb: 'The moisture-loss column stands. The two stay filed as tonnes. Drift remembers, and so does the ledger.',
+          consequence: Object.freeze({ channel: 'credits', amount: 1.0, repChannel: 'faction_dmc', repDelta: -18 }),
+        }),
+        Object.freeze({
+          id: 'reweigh', label: 'Reweigh and refile', blurb: 'Strip the moisture-loss line and log the two by name. The ore pays less. The dead leave the column.',
+          consequence: Object.freeze({ channel: 'rep', repChannel: 'faction_dmc', repDelta: 16 }),
+        }),
+      ]),
+    }),
+  }),
 });
 
 /** All trap ids. */

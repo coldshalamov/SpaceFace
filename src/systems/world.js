@@ -1048,6 +1048,10 @@ export const world = {
           collisionRadius,
           services: st.services || [], factionId: st.factionId || sector.factionId,
           name: st.name, size,
+          // Chart note travels onto the live entity: the star chart's station lookup prefers live
+          // entity data over the static catalog, so a catalog-only note would vanish once the
+          // sector spawns. See src/ui/galaxyMap.js `findStationRecord`.
+          chartNote: st.chartNote || null,
           contested: !!st.contested, repGated: !!st.repGated, sectorId: sector.id,
           homeSectorId: sector.id,
           archetypeGlb: st.archetypeGlb || null,

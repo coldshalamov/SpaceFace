@@ -18,6 +18,14 @@
 import { damp } from '../core/math.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import { WEAPONS } from '../data/weapons.js';
+import {
+  VL_COLOR,
+  VL_COMPOSITE,
+  publishVelocityLanguage,
+  resolveRegionCrossfade,
+  velocityBandDrive,
+  velocityLanguageFlag,
+} from './velocityLanguage.js';
 
 // Weapon recoil weight lookup (built once). The player's own gun firing produces zero camera
 // response today — that inertness is the #1 "combat feels flat" tell. We scale the recoil kick by
@@ -91,6 +99,14 @@ const SL_CLEAR_FADE = 0.085;   // × min(w,h) — fade band outside that radius,
                                //     streaks parting around the ship rather than a stamped-out circle
 const SL_BRIGHT_MAX = 0.95;    // × — the largest per-streak brightness `b` _newStreak can roll (0.40+0.55)
 
+// Band-3 grain field (D7). A small repeating tile is orders of magnitude cheaper than per-pixel
+// noise and, being baked once from a fixed hash, is byte-identical on every boot.
+const SL_NO_STREAKS = Object.freeze([]);   // iterated when the streak pass is skipped entirely
+const GRAIN_TILE = 96;             // px — tile edge; also the modulo that bounds the scroll offset
+const GRAIN_SCROLL_PX_S = 340;     // px/s — the field shears past at a fixed rate; only its OPACITY
+                                   //     tracks speed, because a field that also accelerates reads
+                                   //     as a strobe, which is the loud tell the redesign removes
+
 // Math.min/Math.max PROPAGATE NaN — `Math.min(1, Math.max(0, NaN))` is NaN, not 0. A non-finite
 // velocity (a physics hiccup, a zero-mass divide) would therefore sail straight through a naive
 // clamp and reach the canvas as an Infinity line width or a NaN gradient stop. Non-finite collapses
@@ -102,7 +118,32 @@ const clampTo = (x, max) => (Number.isFinite(x) ? (x < 0 ? 0 : x > max ? max : x
 // (scripts/check-speed-lines.mjs) — the canvas loop below is the only caller, so the probe tests
 // the shipped math rather than a copy that can drift. Geometry and the centre guard stay in the
 // loop; this owns only the numbers that used to run away.
+//
+// ONE SEAM, TWO VOCABULARIES. Wave 3 replaces the language entirely (ADR D7 — see
+// ./velocityLanguage.js), but the redesign is flag-switched here rather than pasted over the legacy
+// body, for two reasons that are not ceremony:
+//
+//   1. The legacy branch stays REACHABLE AND PINNED. `scripts/check-speed-lines.mjs` asserts exact
+//      literals for cruise/boost against the pre-Slice-0 formulas, and those assertions exist to
+//      prove the BOUNDING work never restyled ordinary flight. Deleting the branch would delete the
+//      proof along with it; rewriting the literals to match the new language would be weakening the
+//      assertion to fit the change, which is the one thing a regression check must never allow.
+//   2. It is a kill switch. If the new vocabulary reads wrong in play, one boolean restores a known,
+//      bounded, shipped look without a revert.
+//
+// The flag defaults ON in the browser, so the four-band language is what actually runs in the game;
+// the legacy branch is what runs under node, which is why the existing pins still describe it.
+// Read at CALL TIME — a cached flag cannot be opted into by a headless test.
 export function speedLineDrive(speed, maxSpeed, boosting, motionReduce) {
+  if (velocityLanguageFlag('bands')) {
+    return velocityBandDrive(speed, maxSpeed, boosting, motionReduce);
+  }
+  return speedLineDriveLegacy(speed, maxSpeed, boosting, motionReduce);
+}
+
+// The Slice 0 bounded drive, verbatim. Exported so the probe can assert the legacy branch directly
+// without having to toggle a global, and so this file states plainly which numbers are historical.
+export function speedLineDriveLegacy(speed, maxSpeed, boosting, motionReduce) {
   const maxSpd = Math.max(1, Number.isFinite(maxSpeed) ? maxSpeed : 1);
   const speedRatio = Number.isFinite(speed) ? Math.max(0, speed) / maxSpd : 0;
 
@@ -229,6 +270,9 @@ export const feel = {
     this._slOpacity = 0;      // current smooth-damped opacity
     this._slW = 0;             // cached canvas width
     this._slH = 0;             // cached canvas height
+    this._slGrain = 0;         // current smooth-damped band-3 field opacity
+    this._grainU = 0;          // grain scroll phase, px along the flow axis
+    this._grainPattern = null; // rebuilt against the new context — a pattern outlives its canvas
   },
 
   _updateSpeedLines(frameDt) {
@@ -276,11 +320,32 @@ export const feel = {
     const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
     const drive = speedLineDrive(speed, maxSpd, boosting, mr);
 
+    // Region volumes (D7, second half). `player.pos` is GLOBAL (`global_v1`) — world.js spawns
+    // entities through `_toGlobal`, and the render frame membrane converts to the rebased draw frame
+    // only at draw time. Resolving the crossfade HERE, from the one position we know is global, is
+    // what lets the background consume it without ever seeing a frame-local coordinate: the render
+    // frame rebases every 8192 WU, and a region blend keyed on a rebasing frame would jump.
+    let region = null;
+    if (velocityLanguageFlag('regionVolumes') && player && player.pos) {
+      region = resolveRegionCrossfade(player.pos);
+    }
+
+    // ONE PRODUCER. Published before every early return below, so a consumer never sees a stale
+    // record just because the overlay happened to be silent this frame — "silent" is itself the
+    // band-0 signal the background needs in order to stop streaming.
+    publishVelocityLanguage(this.state, drive, region);
+
     // Smooth-damp toward target (rate 8 = responsive but not jarring). Re-clamped after the damp
     // because damp() returns NaN for a NaN dt, and a NaN opacity here would poison every gradient.
     this._slOpacity = clampTo(damp(this._slOpacity, drive.targetOpacity, 8, frameDt), SL_OPACITY_MAX);
 
-    if (this._slOpacity <= 0.01) {
+    // Band 3's grain is a SEPARATE channel from the streaks and outlives them by design: the whole
+    // point of the inversion is that particles vanish while the field remains. Gating the canvas on
+    // streak opacity alone would therefore switch the field off at exactly the speed it takes over.
+    const grain = clampTo(drive.grain || 0, 1);
+    this._slGrain = clampTo(damp(this._slGrain || 0, grain, 4, frameDt), 1);
+
+    if (this._slOpacity <= 0.01 && this._slGrain <= 0.002) {
       if (this._streaks) this._streaks.length = 0;   // reset so streaks re-seed on next burst
       if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
       return;
@@ -313,15 +378,27 @@ export const feel = {
 
     const flowSpeed = drive.flowSpeed;
     const lenScale = drive.lenScale;
-    const widthMul = boosting ? 1.4 : 1.0;
+    // The band language supplies its own stroke weight (motes are THINNER than the legacy streaks,
+    // not merely dimmer — thickness is half of why the old look read as lasers). The legacy branch
+    // keeps its boost-only widening.
+    const widthMul = Number.isFinite(drive.widthScale) ? drive.widthScale : (boosting ? 1.4 : 1.0);
+    // 'lighter' is the additive composite that made per-streak alpha above 1 saturate to opaque
+    // white. The band language composites NORMALLY in every band; only the legacy branch is additive.
+    const composite = drive.composite === VL_COMPOSITE ? VL_COMPOSITE : 'lighter';
+    const banded = composite === VL_COMPOSITE;
     // Centre-exclusion radii, hoisted out of the per-streak loop.
     const minDim = Math.min(w, h);
     const clearR = minDim * SL_CLEAR_R;
     const clearFade = minDim * SL_CLEAR_FADE;
 
-    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalCompositeOperation = composite;
     ctx.lineCap = 'round';
-    for (const s of this._streaks) {
+    // Band 3 fades the streaks out entirely while the grain field remains, so once the overlay is
+    // below the visibility floor the streak pass is skipped WHOLESALE rather than walking the array
+    // to reject every stroke individually. Iterating a shared frozen empty array keeps the skip
+    // allocation-free and, unlike an `if (...) for (...)` prefix, cannot be misread as guarding only
+    // the first statement of a loop body this long.
+    for (const s of this._slOpacity > 0.01 ? this._streaks : SL_NO_STREAKS) {
       // Advance the streak along the flow direction (opposite to ship travel).
       s.uv += flowSpeed * frameDt * s.v;
 
@@ -355,14 +432,92 @@ export const feel = {
       if (a <= 0.012) continue;
 
       const grad = ctx.createLinearGradient(tailX, tailY, leadX, leadY);
-      grad.addColorStop(0, 'rgba(160,205,255,0)');
-      grad.addColorStop(0.55, `rgba(195,230,255,${(a * 0.45).toFixed(3)})`);
-      grad.addColorStop(1, `rgba(232,248,255,${a.toFixed(3)})`);
+      if (banded) {
+        // Desaturated warm-white head with the faintest teal through the body (D7). No pure white
+        // anywhere, and normal compositing, so two overlapping motes stay motes instead of summing
+        // into a hot spot the way the additive branch does.
+        const B = VL_COLOR.body, H = VL_COLOR.head;
+        grad.addColorStop(0, `rgba(${B.r},${B.g},${B.b},0)`);
+        grad.addColorStop(0.6, `rgba(${B.r},${B.g},${B.b},${(a * 0.5).toFixed(3)})`);
+        grad.addColorStop(1, `rgba(${H.r},${H.g},${H.b},${a.toFixed(3)})`);
+      } else {
+        grad.addColorStop(0, 'rgba(160,205,255,0)');
+        grad.addColorStop(0.55, `rgba(195,230,255,${(a * 0.45).toFixed(3)})`);
+        grad.addColorStop(1, `rgba(232,248,255,${a.toFixed(3)})`);
+      }
       ctx.strokeStyle = grad;
       ctx.lineWidth = s.w * widthMul;
       ctx.beginPath(); ctx.moveTo(tailX, tailY); ctx.lineTo(leadX, leadY); ctx.stroke();
     }
     ctx.globalCompositeOperation = 'source-over';
+
+    // ---- band 3: the field ----
+    if (this._slGrain > 0.002) this._drawGrainField(ctx, w, h, flowX, flowY, frameDt);
+  },
+
+  // Barely-there full-screen directional grain — what remains at extreme velocity once individual
+  // particles have become physically invisible (D7 band 3).
+  //
+  // THIS IS EXPLICITLY NOT A VIGNETTE. The user has rejected the visor/cockpit framing twice, and a
+  // radial or peripheral falloff is that framing regardless of what it is called. The grain is
+  // UNIFORM: one tiled pattern filling the whole viewport at a single opacity, with no radius, no
+  // edge term and no centre bias anywhere in this function. It scrolls along the flow axis, so it
+  // reads as the medium itself shearing past — a field, not a frame around the player's head.
+  _drawGrainField(ctx, w, h, flowX, flowY, frameDt) {
+    const pattern = this._ensureGrainPattern(ctx);
+    if (!pattern) return;
+
+    // Scroll offset integrated per frame rather than derived from position, so the field never jumps
+    // when the speed band changes: the RATE changes, the phase stays continuous.
+    const dt = Number.isFinite(frameDt) ? frameDt : 0;
+    this._grainU = ((this._grainU || 0) + GRAIN_SCROLL_PX_S * dt) % GRAIN_TILE;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = this._slGrain;
+    // Translate the pattern along the flow axis. The tile wraps, so the modulo above keeps the
+    // translation bounded no matter how long the burn lasts.
+    ctx.translate(-flowX * this._grainU, -flowY * this._grainU);
+    ctx.fillStyle = pattern;
+    // Overfill by one tile in every direction to cover the translation.
+    ctx.fillRect(-GRAIN_TILE, -GRAIN_TILE, w + GRAIN_TILE * 2, h + GRAIN_TILE * 2);
+    ctx.restore();
+  },
+
+  // The grain tile, baked once. Anisotropic on purpose: short strokes rather than round dots, so the
+  // field has a grain DIRECTION even before it is translated.
+  _ensureGrainPattern(ctx) {
+    if (this._grainPattern) return this._grainPattern;
+    const tile = document.createElement('canvas');
+    tile.width = GRAIN_TILE;
+    tile.height = GRAIN_TILE;
+    const tctx = tile.getContext && tile.getContext('2d');
+    if (!tctx) return null;
+    const C = VL_COLOR.grain;
+    tctx.lineCap = 'butt';
+    // Deterministic hash rather than Math.random: the grain must be identical on every boot, or a
+    // screenshot comparison of the background sees noise that is not the thing it is measuring.
+    let s = 0x9e3779b9 >>> 0;
+    const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+    for (let i = 0; i < 220; i++) {
+      const x = rnd() * GRAIN_TILE;
+      const y = rnd() * GRAIN_TILE;
+      const len = 2 + rnd() * 5;
+      // Both lighter AND darker specks around the mean, so the field reads as grain rather than as
+      // a uniform brightening — a flat lift would just be additive white saturation by another name.
+      const dark = rnd() < 0.45;
+      const a = 0.10 + rnd() * 0.28;
+      tctx.strokeStyle = dark
+        ? `rgba(12,14,18,${a.toFixed(3)})`
+        : `rgba(${C.r},${C.g},${C.b},${a.toFixed(3)})`;
+      tctx.lineWidth = 0.6 + rnd() * 0.9;
+      tctx.beginPath();
+      tctx.moveTo(x, y);
+      tctx.lineTo(x + len, y);      // horizontal strokes; the caller rotates the FIELD, not the tile
+      tctx.stroke();
+    }
+    this._grainPattern = ctx.createPattern(tile, 'repeat');
+    return this._grainPattern;
   },
 
   // One lateral streak in screen-space coordinates.

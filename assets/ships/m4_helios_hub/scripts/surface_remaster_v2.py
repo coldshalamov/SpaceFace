@@ -52,20 +52,20 @@ PROFILES = {
     # These roles intentionally use different physical frequency bands and response ranges.
     # Hull is coated structural steel; armor is a tougher, rougher coating rather than hull tint.
     "hull": ManufacturedProfile((0.185, 0.197, 0.212), 0.51, 0.14, 0.035, 0.11,
-                                0.12, 0.15, 12, chip_density=0.008,
+                                0.12, 0.15, 12, chip_density=0.004,
                                 recess_dust=0.12, coated_metal=True),
     "armor": ManufacturedProfile((0.135, 0.146, 0.162), 0.58, 0.15, 0.08, 0.12,
-                                 0.08, 0.12, 18, chip_density=0.012,
+                                 0.08, 0.12, 18, chip_density=0.006,
                                  recess_dust=0.10, coated_metal=True),
     "armor_dark": ManufacturedProfile((0.048, 0.058, 0.074), 0.69, 0.11, 0.24, 0.10,
-                                       0.07, 0.10, 10, chip_density=0.006,
+                                       0.07, 0.10, 10, chip_density=0.003,
                                        recess_dust=0.08, coated_metal=True),
     # The licensed donor trim previously remained near-white and spatially uniform across the
     # habitat/citadel modules. Keep the maintained light industrial identity, but move it into a
     # physically coated mid-value response with visible orange-peel, course variation, localized
     # substrate exposure, and enough roughness separation to stop reading as molded plastic.
-    "structure_light": ManufacturedProfile((0.385, 0.400, 0.420), 0.57, 0.19, 0.025, 0.085,
-                                             0.13, 0.18, 18, chip_density=0.010,
+    "structure_light": ManufacturedProfile((0.285, 0.302, 0.326), 0.57, 0.19, 0.025, 0.11,
+                                             0.13, 0.18, 18, chip_density=0.004,
                                              recess_dust=0.16, coated_metal=True),
     # Machinery is exposed, directional brushed metal with service scratches and oily recesses.
     "mechanical": ManufacturedProfile((0.105, 0.115, 0.125), 0.43, 0.15, 0.86, 0.15,
@@ -81,12 +81,12 @@ PROFILES = {
                                    recess_dust=0.24),
     # Service/access modules receive coarser maintenance paint and accumulation in recesses.
     "service": ManufacturedProfile((0.18, 0.195, 0.215), 0.65, 0.17, 0.06, 0.14,
-                                   0.17, 0.20, 24, chip_density=0.016,
+                                   0.17, 0.20, 24, chip_density=0.008,
                                    recess_dust=0.28, coated_metal=True),
     # Non-emissive safety ochre gives orientation and hazard graphics a painted,
     # abraded identity instead of turning every readable marking into a neon light.
     "marking": ManufacturedProfile((0.50, 0.255, 0.048), 0.59, 0.16, 0.025, 0.10,
-                                   0.08, 0.14, 20, chip_density=0.020,
+                                   0.08, 0.14, 20, chip_density=0.010,
                                    recess_dust=0.10, coated_metal=True),
     # Glazing varies only subtly; its identity comes from low roughness and restrained micro scuffing.
     "window": ManufacturedProfile((0.012, 0.035, 0.055), 0.17, 0.035, 0.08, 0.055,
@@ -209,6 +209,97 @@ def _localized_mask(broad: np.ndarray, detail: np.ndarray, density: float, seed:
     return np.clip(chips * 0.78 + shoulder * 0.22, 0.0, 1.0)
 
 
+def _soft_band(distance: np.ndarray, core: float, feather: float) -> np.ndarray:
+    """Return an antialiased 1-at-center band for deterministic manufactured details."""
+    value = np.clip((distance - core) / max(feather, 1e-6), 0.0, 1.0)
+    value = value * value * (3.0 - 2.0 * value)
+    return (1.0 - value).astype(np.float32)
+
+
+def _periodic_grooves(coordinate: np.ndarray, frequency: float, core: float = 0.035) -> np.ndarray:
+    phase = np.mod(coordinate * frequency, 1.0)
+    distance = np.minimum(phase, 1.0 - phase)
+    return _soft_band(distance, core, core * 1.65)
+
+
+def _manufactured_structure_fields(role: str, width: int, height: int, seed: int) -> dict[str, np.ndarray]:
+    """Author coherent UV-space construction detail instead of material-agnostic grunge.
+
+    These masks are deliberately shared by color, ORM, and normal generation. A seam that is
+    visually dark is therefore also recessed and AO-heavy; a docking abrasion is smoother and
+    more metallic; radiator grooves have directional relief. The layouts differ by functional
+    role so station identity is not a color swap.
+    """
+    layouts = {
+        "hull": (3, 2, 0.42),
+        "armor": (2, 2, 0.34),
+        "armor_dark": (3, 2, 0.24),
+        "structure_light": (3, 2, 0.48),
+        "mechanical": (4, 3, 0.32),
+        "radiator": (2, 2, 0.18),
+        "docking": (2, 2, 0.28),
+        "service": (2, 2, 0.68),
+        "marking": (3, 2, 0.20),
+        "window": (2, 1, 0.08),
+    }
+    columns, rows, hatch_coverage = layouts[role]
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:height, 0:width].astype(np.float32)
+    xx /= max(1, width - 1)
+    yy /= max(1, height - 1)
+
+    # A small deterministic row offset avoids a wallpaper-perfect square grid while keeping
+    # every boundary stable and mip-friendly.
+    row_index = np.minimum((yy * rows).astype(np.int32), rows - 1)
+    row_offsets = rng.uniform(-0.12, 0.12, size=rows).astype(np.float32)
+    shifted_x = xx * columns + row_offsets[row_index]
+    column_index = np.mod(np.floor(shifted_x).astype(np.int32), columns)
+    local_u = np.mod(shifted_x, 1.0)
+    local_v = np.mod(yy * rows, 1.0)
+
+    edge_distance = np.minimum.reduce((local_u, 1.0 - local_u, local_v, 1.0 - local_v))
+    seam = _soft_band(edge_distance, 0.006, 0.016)
+    panel_values = rng.uniform(-1.0, 1.0, size=(rows, columns)).astype(np.float32)
+    panel = panel_values[row_index, column_index]
+
+    selected = rng.random((rows, columns)) < hatch_coverage
+    selected_pixels = selected[row_index, column_index].astype(np.float32)
+    du = np.abs(local_u - 0.5)
+    dv = np.abs(local_v - 0.5)
+    hatch_sdf = np.maximum(du - 0.305, dv - 0.255)
+    hatch = _soft_band(np.abs(hatch_sdf), 0.010, 0.018) * selected_pixels
+
+    # Fasteners sit at consistent inset corners and appear only on panels selected for access or
+    # high-load construction. This prevents the indiscriminate "rivets everywhere" look.
+    fastener_selection = np.logical_or(selected, rng.random((rows, columns)) < 0.24)
+    fastener_pixels = fastener_selection[row_index, column_index].astype(np.float32)
+    corner_u = np.minimum(np.abs(local_u - 0.16), np.abs(local_u - 0.84))
+    corner_v = np.minimum(np.abs(local_v - 0.17), np.abs(local_v - 0.83))
+    fastener_radius = np.sqrt((corner_u / 0.020) ** 2 + (corner_v / 0.024) ** 2)
+    fastener = np.exp(-0.5 * fastener_radius * fastener_radius).astype(np.float32) * fastener_pixels
+
+    directional = np.zeros((height, width), dtype=np.float32)
+    if role == "mechanical":
+        directional = _periodic_grooves(yy + xx * 0.035, 62.0, 0.028)
+    elif role == "radiator":
+        directional = _periodic_grooves(xx + yy * 0.018, 46.0, 0.045)
+    elif role == "docking":
+        directional = _periodic_grooves(xx * 0.72 + yy * 0.28, 21.0, 0.055)
+    elif role == "marking":
+        # Smooth alternating diagonal hazard bands; wear and chips are applied later.
+        directional = (0.5 + 0.5 * np.tanh(np.sin((xx + yy * 0.78) * np.pi * 14.0) * 4.0)).astype(np.float32)
+    elif role == "window":
+        directional = _periodic_grooves(xx + yy * 0.08, 18.0, 0.018) * 0.20
+
+    return {
+        "panel": panel.astype(np.float32),
+        "seam": seam,
+        "hatch": hatch.astype(np.float32),
+        "fastener": fastener,
+        "directional": directional,
+    }
+
+
 def _manufactured_maps(role: str, width: int, height: int) -> dict[str, np.ndarray]:
     profile = PROFILES[role]
     if not isinstance(profile, ManufacturedProfile):
@@ -218,41 +309,72 @@ def _manufactured_maps(role: str, width: int, height: int) -> dict[str, np.ndarr
     scratches = _scratch_mask(height, width, seed + 113, profile.scratch_density, profile.scratch_directional)
     chips = _localized_mask(broad, detail, profile.chip_density, seed + 167)
     recess = np.clip((-broad - 0.28) * 0.56 + (-detail - 1.05) * 0.11, 0.0, 1.0)
+    structure = _manufactured_structure_fields(role, width, height, seed + 223)
+    panel = structure["panel"]
+    seam = structure["seam"]
+    hatch = structure["hatch"]
+    fastener = structure["fastener"]
+    directional = structure["directional"]
 
     base = np.asarray(profile.base_rgb, dtype=np.float32)[None, None, :]
     warm_cool = np.stack((broad * 0.65, broad * 0.12, -broad * 0.32), axis=-1)
-    # The variation is intentionally large enough to survive mip filtering at the
-    # gameplay camera while remaining subordinate to modeled seams and material roles.
-    # This is controlled coating response, not uniform grunge pasted over every asset.
-    base_rgb = np.clip(base * (1.0 + broad[:, :, None] * 0.052 + detail[:, :, None] * 0.022)
-                       + warm_cool * 0.0032, 0.002, 0.92)
+    # Color carries restrained coating drift and panel-to-panel maintenance history. Fine
+    # manufacture belongs in roughness/normal response; putting it into albedo creates grunge.
+    base_rgb = np.clip(base * (1.0 + broad[:, :, None] * 0.022 + detail[:, :, None] * 0.006
+                                      + panel[:, :, None] * 0.065)
+                       + warm_cool * 0.0015, 0.002, 0.92)
     base_rgb *= 1.0 - recess[:, :, None] * profile.recess_dust * 0.20
     base_rgb *= 1.0 - scratches[:, :, None] * (0.045 if profile.scratch_directional else 0.065)
+    base_rgb *= 1.0 - seam[:, :, None] * (0.10 if role == "window" else 0.18)
+    base_rgb *= 1.0 - hatch[:, :, None] * (0.05 if role == "window" else 0.13)
+    base_rgb *= 1.0 - fastener[:, :, None] * 0.16
+    if role == "radiator":
+        base_rgb *= 1.0 - directional[:, :, None] * 0.14
+    elif role == "mechanical":
+        base_rgb *= 1.0 - directional[:, :, None] * 0.055
+    elif role == "docking":
+        base_rgb *= 1.0 + directional[:, :, None] * 0.075
+    elif role == "marking":
+        base_rgb *= 0.66 + directional[:, :, None] * 0.34
     if profile.coated_metal:
         exposed = np.asarray((0.18, 0.195, 0.205), dtype=np.float32)[None, None, :]
         base_rgb = base_rgb * (1.0 - chips[:, :, None] * 0.80) + exposed * chips[:, :, None] * 0.80
 
-    ao = np.clip(0.978 + broad * 0.010 + detail * 0.005 - recess * profile.recess_dust * 0.04, 0.88, 1.0)
+    ao = np.clip(0.982 + broad * 0.008 + detail * 0.004
+                 - recess * profile.recess_dust * 0.05
+                 - seam * 0.18 - hatch * 0.10 - fastener * 0.12
+                 - directional * (0.055 if role in {"mechanical", "radiator"} else 0.018),
+                 0.66, 1.0)
     roughness = np.clip(
-        profile.roughness + broad * profile.roughness_variation * 0.52
-        + detail * profile.roughness_variation * 0.26
-        + micro * profile.roughness_variation * 0.10
+        profile.roughness + broad * profile.roughness_variation * 0.30
+        + detail * profile.roughness_variation * 0.12
+        + micro * profile.roughness_variation * 0.045
+        + panel * profile.roughness_variation * 0.28
         + recess * profile.recess_dust * 0.18
         + scratches * (-0.07 if profile.scratch_directional else 0.075)
-        - chips * 0.14,
+        - chips * 0.14 + seam * 0.13 + hatch * 0.08
+        + fastener * 0.035
+        + directional * (-0.14 if role == "docking" else 0.055),
         0.09 if role == "window" else 0.18,
         0.94,
     )
     metallic = np.clip(profile.metallic + broad * min(0.04, profile.metallic * 0.03), 0.0, 1.0)
     if profile.coated_metal:
         metallic = metallic * (1.0 - chips) + chips * 0.84
+    metallic = metallic * (1.0 - fastener * 0.82) + fastener * 0.76
+    if role == "docking":
+        metallic = np.clip(metallic + directional * 0.12, 0.0, 1.0)
 
-    height_field = normalized(
-        broad * profile.macro_waviness + detail * 0.34 + micro * profile.micro_detail
-        - scratches * 0.70 - chips * 0.45 - recess * 0.10
-    )
+    directional_depth = 0.16 if role in {"mechanical", "radiator"} else 0.07
+    height_field = (
+        broad * profile.macro_waviness + detail * 0.07 + micro * profile.micro_detail * 0.30
+        + panel * 0.035 - scratches * 0.24 - chips * 0.18 - recess * 0.08
+        - seam * 0.38 - hatch * 0.24 - fastener * 0.20
+        - directional * directional_depth
+    ).astype(np.float32)
     dy, dx = np.gradient(height_field)
-    nx, ny = -dx * profile.normal_strength, -dy * profile.normal_strength
+    texel_scale = max(1.0, min(width, height) / 256.0)
+    nx, ny = -dx * profile.normal_strength * texel_scale, -dy * profile.normal_strength * texel_scale
     nz = np.ones_like(nx)
     length = np.sqrt(nx * nx + ny * ny + nz * nz)
     normal = (np.stack((nx / length, ny / length, nz / length), axis=-1) * 0.5 + 0.5).astype(np.float32)

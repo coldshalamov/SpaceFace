@@ -25,8 +25,10 @@ import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
-import { estimateBrakingSolution } from '../core/flight/flightTelemetry.js';
+import { estimateBrakingSolution, evaluateArrivalCue } from '../core/flight/flightTelemetry.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { resolveTravelCeiling, TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
+import { travelFlag } from '../data/featureFlags.js';
 import { BINDINGS } from './bindings.js';
 import { coreText } from './localizedCoreCopy.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
@@ -640,11 +642,108 @@ function injectDeathStyle() {
   document.head.appendChild(s);
 }
 
+// Travel Burn instrument styles (atlas D5 / W1-6 / W1-9). Lives here rather than in uiRoot.js's
+// injectHudCss because hud.js already owns several self-injected stylesheets and this instrument is
+// wholly hud-local.
+//
+// Colour is never the only carrier of state (WCAG 1.4.1 and this repo's non-colour-semantics rule):
+// every drive state also prints its NAME, V-MAX is a labelled rule, the earned cap is a labelled
+// caret, and BRAKE NOW pairs a ▲ glyph with the words. A forced-colors block restates every
+// hairline in system colours so the instrument survives with author colours discarded.
+function injectTravelTapeStyle() {
+  if (document.getElementById('sf-vtape-style')) return;
+  const s = document.createElement('style');
+  s.id = 'sf-vtape-style';
+  s.textContent = `
+  .sf-vtape { --vt-brass:#c9a227; --vt-amber:#e8a33d; --vt-teal:#5fb6ac; --vt-ink:#0d0b09;
+    position:relative; width:min(340px,46vw); margin:0 auto 6px; padding:5px 9px 4px;
+    display:flex; flex-direction:column; gap:3px; pointer-events:none;
+    background:linear-gradient(180deg, rgba(13,11,9,.82), rgba(13,11,9,.62));
+    border:1px solid color-mix(in srgb, var(--vt-brass) 34%, transparent); border-radius:3px;
+    box-shadow:0 2px 10px rgba(0,0,0,.45); opacity:0; visibility:hidden;
+    transition:opacity .22s ease, visibility .22s; }
+  .sf-vtape.sf-vtape--on { opacity:1; visibility:visible; }
+  .sf-vtape__head { display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+    font-family:var(--mono,Consolas,monospace); font-size:9px; letter-spacing:.2em; text-transform:uppercase; }
+  .sf-vtape__state { color:var(--vt-brass); }
+  .sf-vtape[data-state="engaged"] .sf-vtape__state { color:var(--vt-amber); }
+  .sf-vtape[data-state="cooldown"] .sf-vtape__state { color:#a08c6a; }
+  .sf-vtape__spool { color:#8a7a5e; font-family:var(--mono,Consolas,monospace); font-size:9px; letter-spacing:.14em; }
+  /* --- the tape itself: a linear 0..headroom scale --- */
+  .sf-vtape__track { position:relative; height:11px; border-radius:2px; overflow:hidden;
+    background:rgba(0,0,0,.55); border:1px solid color-mix(in srgb, var(--vt-brass) 22%, transparent); }
+  /* Surveyor's graticule — the same grid identity the chart uses (D4), not decoration. */
+  .sf-vtape__grat { position:absolute; inset:0;
+    background-image:repeating-linear-gradient(90deg, color-mix(in srgb, var(--vt-brass) 26%, transparent) 0 1px, transparent 1px 10%); }
+  .sf-vtape__fill { position:absolute; left:0; top:0; bottom:0; width:100%;
+    transform:scaleX(0); transform-origin:left center;
+    background:linear-gradient(90deg, color-mix(in srgb, var(--vt-teal) 42%, transparent), color-mix(in srgb, var(--vt-teal) 74%, transparent));
+    transition:transform .1s linear; }
+  .sf-vtape[data-state="engaged"] .sf-vtape__fill {
+    background:linear-gradient(90deg, color-mix(in srgb, var(--vt-teal) 40%, transparent), color-mix(in srgb, var(--vt-amber) 78%, transparent)); }
+  /* Earned-cap caret: how much of the ceiling the ramp has actually unlocked so far. */
+  .sf-vtape__cap { position:absolute; top:0; bottom:0; width:2px; left:0; transform:translateX(-1px);
+    background:color-mix(in srgb, var(--vt-amber) 85%, transparent); transition:left .1s linear; }
+  .sf-vtape__caplabel { position:absolute; bottom:calc(100% + 1px); left:50%; transform:translateX(-50%);
+    font-size:7px; letter-spacing:.14em; color:var(--vt-amber); opacity:.9; }
+  /* V-MAX: the per-family ceiling from resolveTravelCeiling(). A LABELLED RULE, never a bare tint. */
+  .sf-vtape__vmax { position:absolute; top:-2px; bottom:-2px; width:0; left:88%;
+    border-left:1px dashed var(--vt-brass); }
+  .sf-vtape__vmaxlabel { position:absolute; bottom:calc(100% + 1px); left:2px; white-space:nowrap;
+    font-size:7px; letter-spacing:.14em; color:var(--vt-brass); }
+  /* --- approach row: the stopping arc (W1-9) --- */
+  .sf-vtape__approach { display:none; flex-direction:column; gap:2px; margin-top:2px; }
+  .sf-vtape--approach .sf-vtape__approach { display:flex; }
+  .sf-vtape__arc { position:relative; height:5px; border-radius:2px; background:rgba(0,0,0,.5);
+    border:1px solid color-mix(in srgb, var(--vt-brass) 18%, transparent); }
+  /* Span from the ship to where it would actually come to rest. */
+  .sf-vtape__arcstop { position:absolute; left:0; top:0; bottom:0; width:0;
+    background:color-mix(in srgb, var(--vt-teal) 60%, transparent); transition:width .1s linear; }
+  /* The arrival ring. When the stop span runs past it, you are going to overshoot — and that is
+     allowed to happen (D9.8): the instrument reports, it never brakes for you. */
+  .sf-vtape__arcring { position:absolute; top:-2px; bottom:-2px; width:0; left:50%;
+    border-left:1px solid var(--vt-amber); transition:left .1s linear; }
+  .sf-vtape__arclabel { font-family:var(--mono,Consolas,monospace); font-size:8px; letter-spacing:.12em;
+    color:#9a8a6c; text-transform:uppercase; }
+  .sf-vtape--overshoot .sf-vtape__arcstop { background:color-mix(in srgb, #d4573f 70%, transparent); }
+  .sf-vtape--overshoot .sf-vtape__arclabel { color:#e0876f; }
+  /* --- BRAKE NOW --- */
+  .sf-vtape__brake { display:none; align-items:center; justify-content:center; gap:5px; margin-top:2px;
+    padding:2px 0; border-top:1px solid color-mix(in srgb, var(--vt-amber) 30%, transparent);
+    font-family:var(--mono,Consolas,monospace); font-size:10px; letter-spacing:.24em; color:var(--vt-amber); }
+  .sf-vtape--brake .sf-vtape__brake { display:flex; animation:sf-vtape-brake 1s steps(2,end) infinite; }
+  .sf-vtape__brakeglyph { font-size:9px; }
+  @keyframes sf-vtape-brake { 0%,50%{opacity:1;} 51%,100%{opacity:.42;} }
+  /* Reduced motion: kill the pulse and the eases, KEEP the information. The cue still appears, it
+     just stops blinking — suppressing the animation must never suppress the message. */
+  @media (prefers-reduced-motion: reduce) {
+    .sf-vtape, .sf-vtape__fill, .sf-vtape__cap, .sf-vtape__arcstop, .sf-vtape__arcring { transition:none; }
+    .sf-vtape--brake .sf-vtape__brake { animation:none; opacity:1; }
+  }
+  /* The shared DRIVE gauge, while the burn is the consumer using it (W1-4 one-pool-one-gauge).
+     The numeric readout also gains a ⟫ marker, so this is never colour-only. */
+  .sf-bar--burn .sf-bar__fill { background:linear-gradient(90deg,
+    color-mix(in srgb, #5fb6ac 50%, transparent), color-mix(in srgb, #e8a33d 85%, transparent)); }
+  /* Forced colors: author colours are discarded, so restate every hairline structurally. */
+  @media (forced-colors: active) {
+    .sf-vtape { border:1px solid CanvasText; background:Canvas; forced-color-adjust:none;
+      color:CanvasText; }
+    .sf-vtape__track, .sf-vtape__arc { border:1px solid CanvasText; background:Canvas; }
+    .sf-vtape__fill, .sf-vtape__arcstop { background:Highlight; }
+    .sf-vtape__cap, .sf-vtape__vmax, .sf-vtape__arcring { border-color:CanvasText; background:CanvasText; }
+    .sf-vtape__vmax { border-left:1px dashed CanvasText; background:none; }
+    .sf-vtape__state, .sf-vtape__caplabel, .sf-vtape__vmaxlabel, .sf-vtape__arclabel, .sf-vtape__brake { color:CanvasText; }
+  }
+  `;
+  document.head.appendChild(s);
+}
+
 export function createHud(ctx, alerts) {
   const { state, helpers } = ctx;
   const root = document.getElementById('hud');
   root.innerHTML = '';
   root.dataset.objectiveHierarchy = 'one-objective-one-action-one-threat';
+  injectTravelTapeStyle();
 
   // ---- bottom-left: ship schematic (hull + shield) + thin micro-bars (energy/heat/boost) ----
   // Bottom-left anchor (SPEC3-36 three-anchor law, design/revamp/HUD_THREE_ANCHOR.md): one flex
@@ -687,7 +786,13 @@ export function createHud(ctx, alerts) {
   // Thin micro-bars. Hull + shield are on the schematic; energy/boost/weapon-heat/fuel live here.
   const barDefs = [
     ['energy', 'ENGY', 'energy'],
-    ['boost', 'BOOST', 'boost'],   // Phase 3: boost/dash energy (hidden if the ship can't boost)
+    // W1-4 "one energy pool, one gauge" (D5: "All three draw one energy pool; one gauge").
+    // Dash and boost ALREADY share `p.boost` — there was never a second pool to merge, only a
+    // label that named one of its three consumers. Renamed at the READ SITE (the packet's explicit
+    // instruction, and gameState.js is quarantined) so the gauge is identified by the resource it
+    // measures rather than by whichever verb spends it. Travel burn is the third consumer and is
+    // shown on this same gauge; see the honest caveat where it is updated below.
+    ['boost', 'DRIVE', 'boost'],   // shared drive-energy pool: dash + boost + burn (hidden if the ship can't boost)
     ['heat', 'HEAT', 'heat'],      // weapon-instance heat (max across p.data.weapons), not WANTED heat
     ['fuel', 'FUEL', 'fuel'],
   ];
@@ -810,6 +915,68 @@ export function createHud(ctx, alerts) {
     <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="credits"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span></div>
     <div class="sf-stat sf-stat--wide sf-stat--chip" id="sf-rolestat" data-chip="role"><span class="sf-stat__k">CLASS</span><span class="sf-stat__v mono" data-k="role">—</span></div>`;
   commandDeck.prepend(center);
+
+  // ---- Travel Burn instrument (atlas D5 / W1-6 / W1-9) -----------------------------------------
+  // A CONTEXTUAL instrument, not a new permanent panel. D9.9 forbids permanent panels because the
+  // reported density paradox ("too little useful information, yet crowded") is a progressive-
+  // disclosure failure; an instrument that is entirely absent during ordinary flight and reveals
+  // only while the travel drive is spooling/engaged/cooling — or while the ship is closing on its
+  // own ceiling — serves that reasoning rather than skirting it. It reuses the appear-then-fade
+  // idiom the contextual stat chips above already established, so it inherits an existing visual
+  // vocabulary instead of introducing a competing one, and it fades out COMPLETELY (an instrument
+  // that reveals and then stays is a permanent panel with extra steps).
+  //
+  // NOTE FOR THE RECORD: D5 says to draw V-MAX "on the velocity tape" as though that instrument
+  // already shipped. It does not exist — speed was a bare numeric chip with a hover tip, and the
+  // "prograde tick" is a world-projected vector marker, not a linear scale. The tape is built here.
+  //
+  // Aesthetics are bound by the Surveyor's Table identity: warm black, brass, amber, restrained
+  // teal, technical type. Deliberately NOT built: any screen-edge arc, peripheral vignette or
+  // cockpit framing (rejected first-person motifs — this is a third-person game).
+  const vtape = document.createElement('div');
+  vtape.className = 'sf-vtape';
+  vtape.dataset.state = 'off';
+  // Not a live region: speed changes continuously and would flood a screen reader. The BRAKE NOW
+  // cue below carries its own assertive live region, because that one IS an event worth announcing.
+  vtape.setAttribute('role', 'group');
+  vtape.setAttribute('aria-label', 'Travel drive');
+  vtape.innerHTML =
+    '<div class="sf-vtape__head">' +
+      '<span class="sf-vtape__state mono" data-k="tstate">OFF</span>' +
+      '<span class="sf-vtape__spool" data-k="tspool"></span>' +
+    '</div>' +
+    '<div class="sf-vtape__track">' +
+      '<div class="sf-vtape__grat"></div>' +
+      '<div class="sf-vtape__fill" data-k="tfill"></div>' +
+      '<div class="sf-vtape__cap" data-k="tcap"><span class="sf-vtape__caplabel mono">CAP</span></div>' +
+      '<div class="sf-vtape__vmax" data-k="tvmax"><span class="sf-vtape__vmaxlabel mono" data-k="tvmaxtext">V-MAX</span></div>' +
+    '</div>' +
+    '<div class="sf-vtape__approach" data-k="tapproach">' +
+      '<div class="sf-vtape__arc"><div class="sf-vtape__arcstop" data-k="tarcstop"></div>' +
+      '<div class="sf-vtape__arcring" data-k="tarcring"></div></div>' +
+      '<div class="sf-vtape__arclabel mono" data-k="tarclabel"></div>' +
+    '</div>' +
+    '<div class="sf-vtape__brake" data-k="tbrake" role="alert" aria-live="assertive">' +
+      '<span class="sf-vtape__brakeglyph" aria-hidden="true">▲</span>' +
+      '<span class="mono">BRAKE NOW</span></div>';
+  commandDeck.prepend(vtape);
+  const vt = {
+    root: vtape,
+    state: vtape.querySelector('[data-k=tstate]'),
+    spool: vtape.querySelector('[data-k=tspool]'),
+    fill: vtape.querySelector('[data-k=tfill]'),
+    cap: vtape.querySelector('[data-k=tcap]'),
+    vmax: vtape.querySelector('[data-k=tvmax]'),
+    vmaxText: vtape.querySelector('[data-k=tvmaxtext]'),
+    approach: vtape.querySelector('[data-k=tapproach]'),
+    arcStop: vtape.querySelector('[data-k=tarcstop]'),
+    arcRing: vtape.querySelector('[data-k=tarcring]'),
+    arcLabel: vtape.querySelector('[data-k=tarclabel]'),
+    brake: vtape.querySelector('[data-k=tbrake]'),
+  };
+  let _vtapeAlpha = 0;      // smooth-damped reveal so it eases in rather than popping
+  let _vtapeBrakeOn = false;
+
   const elSpeed = center.querySelector('[data-k=speed]');
   const elCargo = center.querySelector('[data-k=cargo]');
   const elCredits = center.querySelector('[data-k=credits]');
@@ -3087,6 +3254,112 @@ export function createHud(ctx, alerts) {
     setArc(targetArcHull, rHull, hullFrac);
   }
 
+  // Travel Burn instrument update (D5 / W1-6 / W1-9).
+  //
+  // Reveal rule (D9.9 progressive disclosure): absent during ordinary flight; present while the
+  // drive is spooling/engaged/cooling, or while the ship is closing on its own ceiling under its
+  // own steam — the two moments the ceiling and the stopping arc are worth screen space.
+  //
+  // THE CUE IS ADVISORY ONLY. Nothing in here touches state.input or applies a brake. D9.8 rejects
+  // auto-magic arrival and the product direction wants overshoot to stay possible: ignoring BRAKE
+  // NOW and sailing past the station IS the gameplay. The route follower auto-brakes; manual does
+  // not, and that asymmetry is deliberate.
+  const VTAPE_HEADROOM = 1.14;   // scale runs to 114% of V-MAX so the ceiling is a line, not the edge
+  function updateTravelTape(p, dtS, slow) {
+    if (!vt.root) return;
+    if (!travelFlag('travelBurn') || !p) {
+      if (_vtapeAlpha !== 0) { _vtapeAlpha = 0; setClass(vt.root, 'sf-vtape--on', false); }
+      return;
+    }
+
+    const drive = (state.input && state.input.travelDrive) || null;
+    const driveState = drive && TRAVEL_DRIVE_STATES.includes(drive.state) ? drive.state : 'off';
+    const profile = resolvePropulsionProfile(p);
+    // Never re-derive the ceiling here: prefer the value the kernel published, else the exported
+    // resolver. One owner for the rule (D5's amendment exists because a second copy drifted).
+    const ceiling = (drive && Number.isFinite(drive.ceiling) && drive.ceiling > 0)
+      ? drive.ceiling
+      : resolveTravelCeiling(profile);
+    const speed = Math.hypot(p.vel.x, p.vel.z);
+    const active = driveState !== 'off';
+    const nearCeiling = ceiling > 0 && speed >= ceiling * 0.8;
+    const want = active || nearCeiling;
+
+    // Reveal/retire. The CSS opacity+visibility transition does the easing (and is disabled under
+    // prefers-reduced-motion); this tracked value only decides when the element is fully retired
+    // and can stop being updated at all. Fades out COMPLETELY when neither condition holds — an
+    // instrument that reveals and then lingers is a permanent panel with extra steps.
+    const rate = Math.max(0, dtS) * 4;
+    _vtapeAlpha = want ? Math.min(1, _vtapeAlpha + rate) : Math.max(0, _vtapeAlpha - rate);
+    setClass(vt.root, 'sf-vtape--on', want);
+    if (!want && _vtapeAlpha <= 0.001) {
+      setClass(vt.root, 'sf-vtape--brake', false);
+      setClass(vt.root, 'sf-vtape--approach', false);
+      _vtapeBrakeOn = false;
+      return;
+    }
+
+    if (vt.root.dataset.state !== driveState) vt.root.dataset.state = driveState;
+
+    // --- tape: current speed against the per-family ceiling ---
+    const scale = Math.max(1, ceiling * VTAPE_HEADROOM);
+    setScaleX(vt.fill, clamp01(speed / scale));
+    setStyle(vt.cap, 'left', (clamp01((drive ? drive.cap : 0) / scale) * 100).toFixed(1) + '%');
+    setStyle(vt.vmax, 'left', (clamp01(ceiling / scale) * 100).toFixed(1) + '%');
+
+    if (slow) {
+      setText(vt.vmaxText, 'V-MAX ' + Math.round(ceiling));
+      // Every state prints its NAME — hue is never the only carrier (WCAG 1.4.1).
+      setText(vt.state, driveState === 'off' ? 'DRIVE OFF' : 'DRIVE ' + driveState.toUpperCase());
+      let note = '';
+      if (driveState === 'spooling') note = 'SPOOLING…';
+      else if (driveState === 'engaged') note = Math.round(speed) + ' / ' + Math.round(ceiling) + ' WU/S';
+      else if (driveState === 'cooldown') note = 'COOLDOWN' + (drive && drive.breakReason ? ' · ' + String(drive.breakReason).toUpperCase() : '');
+      else if (nearCeiling) note = 'AT CEILING';
+      setText(vt.spool, note);
+    }
+
+    // --- approach row: the stopping arc, manual burns only ---
+    const nav = state.nav || {};
+    const autopilotActive = !!(nav.autopilot && nav.autopilot.active);
+    const executorActive = !!(nav.executor && nav.executor.active);
+    const manual = !autopilotActive && !executorActive;
+    const wp = nav.waypoint && nav.waypoint.pos ? nav.waypoint.pos : (nav.autopilot && nav.autopilot.target);
+    const arrival = wp && Number.isFinite(wp.x) && Number.isFinite(wp.z)
+      ? { x: wp.x, z: wp.z, radius: Math.max(0, Number(nav.autopilot && nav.autopilot.arrivalRadius) || 36) }
+      : null;
+
+    // The follower auto-brakes, so its arc would be noise. Only a hand-flown approach gets this.
+    const cue = (manual && arrival) ? evaluateArrivalCue(p, profile, arrival) : null;
+    const showArc = !!(cue && cue.active && Number.isFinite(cue.distance));
+    setClass(vt.root, 'sf-vtape--approach', showArc);
+
+    if (showArc) {
+      // The arc reads as a span: how far the ship WILL travel before rest, against where the
+      // arrival ring actually sits. When the stop span overruns the ring, you are overshooting.
+      const span = Math.max(cue.distance, cue.stopDistance, 1) * 1.1;
+      setStyle(vt.arcStop, 'width', (clamp01(cue.stopDistance / span) * 100).toFixed(1) + '%');
+      setStyle(vt.arcRing, 'left', (clamp01(cue.distance / span) * 100).toFixed(1) + '%');
+      setClass(vt.root, 'sf-vtape--overshoot', !!cue.overshoot);
+      if (slow) {
+        setText(vt.arcLabel, cue.overshoot
+          ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' WU / ARRIVAL ' + Math.round(cue.distance) + ' WU'
+          : 'STOP ' + Math.round(cue.stopDistance) + ' WU · ARRIVAL ' + Math.round(cue.distance)
+            + ' WU · ' + String(cue.bestMode).replace('-', ' ').toUpperCase());
+      }
+    }
+
+    // --- BRAKE NOW ---
+    const brakeOn = !!(cue && cue.brakeNow);
+    if (brakeOn !== _vtapeBrakeOn) {
+      _vtapeBrakeOn = brakeOn;
+      setClass(vt.root, 'sf-vtape--brake', brakeOn);
+      // role=alert announces once on reveal; keep the node in the tree so it is not re-announced
+      // every frame while the condition persists.
+      if (vt.brake) vt.brake.setAttribute('aria-hidden', brakeOn ? 'false' : 'true');
+    }
+  }
+
   function frame(dt) {
     const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 1 / 60;
     const numericDt = consumeHudClock(numericClock, frameDt);
@@ -3131,7 +3404,14 @@ export function createHud(ctx, alerts) {
         const dashCost = Number.isFinite(boost.dashCost) ? boost.dashCost : 28;
         const dashReady = boost.dashImpulse > 0 && boost.dashCdT <= 0 && boost.energy >= dashCost;
         setClass(fillEls.boost && fillEls.boost.parentElement, 'sf-bar--ready', dashReady);
-        if (slow) setText(numEls.boost, Math.round(bf * 100) + (dashReady ? ' ▸' : '%'));
+        // Third consumer of the same gauge (W1-4). CAVEAT, stated rather than implied: the burn is
+        // currently shown on this pool but does not yet SPEND from it — a travel-drive energy
+        // demand would have to be produced as `resourceDelta` by the propulsion kernel, which this
+        // packet does not own. So this marks the gauge the burn belongs to; it is not yet a drain.
+        const burning = !!(travelFlag('travelBurn') && state.input && state.input.travelDrive
+          && state.input.travelDrive.state === 'engaged');
+        setClass(fillEls.boost && fillEls.boost.parentElement, 'sf-bar--burn', burning);
+        if (slow) setText(numEls.boost, Math.round(bf * 100) + (burning ? ' ⟫' : (dashReady ? ' ▸' : '%')));
       } else if (boostRow) {
         setStyle(boostRow, 'display', 'none');   // no boost capacity (e.g. a stripped hull) — hide the row
       }
@@ -3227,6 +3507,8 @@ export function createHud(ctx, alerts) {
         }
       }
     }
+
+    updateTravelTape(p, frameDt, slow);
 
     // --- speed (numerics @10Hz) — THR/STOP live in the SPD hover tip now (HUD 2.0) ---
     if (slow && p) {

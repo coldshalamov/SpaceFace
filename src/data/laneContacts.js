@@ -36,6 +36,27 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     ship: 'ship_wasp',
     sectorIds: Object.freeze(['sector_helios_prime']),
   }),
+  Object.freeze({
+    // Drift worker voice on the lane: the audit wants the body under the load to have a face.
+    // Voss of Shaft Seven is also a named ace; this is her sister-rig running the claim ore out.
+    id: 'lane_rell_moisture',
+    name: 'Rell of the Moisture Column',
+    callsign: 'MOIST-LOG',
+    role: 'miner',
+    gimmick: 'ore-tally',
+    ship: 'ship_mule',
+    sectorIds: Object.freeze(['sector_ceres_belt', 'sector_pallas_drift']),
+  }),
+  Object.freeze({
+    // Veil research-station supply run: the audit wants the silence-that-has-a-budget to have a courier.
+    id: 'lane_venn_veil_run',
+    name: 'Venn of the Sealed Manifest',
+    callsign: 'VEIL-RUN',
+    role: 'courier',
+    gimmick: 'sealed-cargo',
+    ship: 'ship_kestrel',
+    sectorIds: Object.freeze(['sector_veil_nebula']),
+  }),
 ]);
 
 /**
@@ -68,4 +89,8 @@ export const LANE_GIMMICK_LABELS = Object.freeze({
   priority_mail: 'PRIORITY MAIL',
   'customs-scan': 'CUSTOMS SCAN',
   customs_scan: 'CUSTOMS SCAN',
+  'ore-tally': 'ORE TALLY',
+  ore_tally: 'ORE TALLY',
+  'sealed-cargo': 'SEALED CARGO',
+  sealed_cargo: 'SEALED CARGO',
 });

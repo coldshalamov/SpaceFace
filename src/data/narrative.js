@@ -146,6 +146,23 @@ export const COMMS = {
       note: "The Quiet's booth. 'Origin unspecified' is the tell. The buyer pays for anonymity, not the air." },
     { id: 'amb_helios_vent',    sender: 'HELIOS PRIME — MAINTENANCE', text: 'VENTILATION REVIEW CLOSED: BAY 7 ODOR CONSISTENT WITH TRANSIT. NO ACTION. TICKET Y3-C2.',
       note: "A fourteen-year-old ticket about a smell in a Core warehouse. The player will not understand this popup the first time they see it. The grid that left the Pit in year 3 arrived at Helios, was shelved because Helios already had a better one, and has sat in bay 7 ever since. The smell complaint is the only record at the destination that the grid exists. Seeds the wrong-grid reveal the player uncovers at Ashfall Reach." },
+    // Beneficiary-cycle lines (audit II.2): MTS books a recurring gain when outer air fails.
+    // One legible receipt per cycle. No lecture. The number does the work.
+    { id: 'amb_mts_atmo_short', sender: 'MERIDIAN EXCHANGE',
+      text: 'ATMO TOKENS — SECTOR 0 BID RAISED 0.4. SECTOR 6 BID RAISED 0.6. POSITION HELD. NEXT CLEAR IN 12 CYCLES.',
+      note: 'The Pit’s air gets worse; the token price climbs; the same desk holds the position. Twelve cycles later it clears again. One beneficiary, every cycle, with a line item.' },
+    { id: 'amb_pit_filter_recall', sender: 'CONCORD ALA DIVISION',
+      text: 'FILTER RECALL NOTICE: SECTOR 0 BATCH R3-CARRIER WITHDRAWN. REPLACEMENT SCHEDULE: PENDING ALLOCATION REVIEW.',
+      note: 'The replacement never comes because the allocation review never closes. The recall line is the only record the replacement existed. R3-CARRIER is the grid now shelved in Helios Bay 7.' },
+    { id: 'amb_d shaft_collapse', sender: 'DRIFT MINERS COLLECTIVE',
+      text: 'SHAFT 7 STATUS: OPERATIONAL. CREW RETURN: 9 / 11. MOISTURE LOSS: 0.7T LOGGED.',
+      note: 'Two miners did not return. The discrepancy is filed as 0.7t moisture loss — the sub-tonne skim column that keeps the real number off the casualty line. The 0.7t is lawful. The two are not on the casualty line because they were never on the crew line.' },
+    { id: 'amb_quiet_count', sender: '[UNCORROBORATED RELAY]',
+      text: 'FORTY-ONE REGISTERED HULLS THIS LANE. FORTY-ONE TRANSIT FILINGS. ZERO DECLARED CARGO.',
+      note: 'The Quiet move mass without manifest. The count matches the filings because the filings say nothing. The relay is uncorroborated because no one will sign it.' },
+    { id: 'amb_reach_weigh_slip', sender: 'CRIMSON REACH — FREQUENCY 13',
+      text: 'WEIGH-SLIP OPEN: FOUR HULLS THIS CYCLE. THREE FILLED. ONE SHORT. SHORT FALLS TO THE LANE.',
+      note: 'Reach counts in hulls, not credits. The short one is the hauler who did not pay the tithe. The lane keeps the body. The weigh-slip keeps the tonnage. The two ledgers do not reconcile.' },
   ],
 
   // TRAPS — mid-game, during jump charging or transit. Conditions gate them.
@@ -162,6 +179,12 @@ export const COMMS = {
     { id: 'trap_distress', sender: 'FREE FRONTIER RELAY', text: 'DISTRESS SIGNAL: COORDINATES ATTACHED. REWARD POSTED.',
       note: 'The coordinates are in the contested corridor where Crimson Reach disables drives mid-transit.',
       cond: (s) => (s.story && s.story.beatIndex >= 4) },
+    { id: 'trap_audit_fee', sender: 'MERIDIAN TRANSIT HUB', text: 'RESOLUTION FEE INVOICED: ACCOUNT VHL-4471-T. PAYMENT WINDOW: 6 CYCLES. POSTED BEFORE INSPECTION.',
+      note: 'The fee was invoiced before the inspection that justifies it. The timestamp is the tell. The player who reads timestamps learns the inspection is the invoice.',
+      cond: (s) => (s.story && s.story.beatIndex >= 3) },
+    { id: 'trap_medicine_trace', sender: 'CONCORD CUSTOMS', text: 'RELIEF CARGO TRACE: BATCH R3-CARRIER / SHIPMENT 47-A / ORIGIN: PENDING. NOTIFY HALE IF LOCATED.',
+      note: 'The medicine the player may have hauled at B1 is being traced. Hale is the filer. The origin is pending because the origin is the Pit grid that never arrived. The player is the link and does not know it yet.',
+      cond: (s) => (s.story && s.story.beatIndex >= 2 && s.story.beatIndex <= 5) },
   ],
 
   // PERSONAL — mid-game, tied to story beats. Fire once.
@@ -178,6 +201,12 @@ export const COMMS = {
     { id: 'pers_voss_suspended', sender: 'HOLLOW STATION CLAIM OFFICE', text: 'VOSS FILING SUSPENDED: DISPUTE PENDING. NEW CREW ADVISE.',
       note: 'The second crew filed in time. The suspension will be lifted. The original claim reinstated. The second crew will not be notified.',
       beat: 5, once: true },
+    { id: 'pers_elroy_unsigned', sender: '[RETURNED — RECIPIENT UNKNOWN]', text: 'TO: E. / RE: THE THIRD TAG / YOU SAW IT. I KNOW YOU SAW IT. FILE OR DON\u2019T. THE TAG DID.',
+      note: 'Unsigned message addressed to a single initial. Elroy was the B2 target; the third tag flickered 0.5s before the kill feed overwrote it. This message is the residue the flicker left — the same-dock guarantee that the moral bruise was real. The recipient is unknown because Elroy no longer has an address.',
+      beat: 3, once: true },
+    { id: 'pers_kessler_margin', sender: 'TYCHO RELAY — PRIVATE QUEUE', text: 'KESSLER: YOUR DISCREPANCY CLOSED ITSELF. SIGNATURE ON FILE: VALE, D. NO ACTION REQUIRED FROM YOU.',
+      note: 'The player’s 47-A discrepancy was closed by someone who was not the player. The signature is Vale’s. Kessler is told, not asked. The player is neither. This is how the algorithm signs.',
+      beat: 5, once: true },
   ],
 
   // LATE GAME — Phase 3 HUD, B6-B7.
@@ -193,6 +222,16 @@ export const COMMS = {
       beat: 6, persist: true }, // persists across sessions until the player flies there
     { id: 'late_atmo_debt', sender: 'CONCORD ALA DIVISION', text: 'ATMO DEBT NOTICE: SECTOR 0 (THE PIT) / ACCUMULATED BALANCE: [FIGURE REDACTED] / STATUS: ADMINISTRATIVE CLOSURE PENDING / AUTHORIZED: D. VALE.',
       note: 'Internal administrative notice that should not appear to the player. Appears because they have secondary-log access. Balance = 14 years of deferred Silt maintenance = 12.4t of recycler catalyst grid relocated under code VALE-ALA-47A.',
+      beat: 7, once: true },
+    // Audit II.3: the algorithm recommends; Vale initials. Player sees the recommendation, not the choice.
+    { id: 'late_algo_recommend', sender: 'CONCORD ALA — ALLOCATION ENGINE',
+      text: 'RECOMMENDATION 7-SECTOR: REALLOCATE UNDERSERVICED ATMOSPHERIC ASSETS. NET BENEFIT PER CYCLE: POSITIVE. DISPOSITION: SIGNED D. VALE. FILED.',
+      note: 'The engine does not name the Pit. The engine does not name anyone. The engine recommends a category. The category, this cycle, resolves to the Pit, to six outer sectors, to nine million breathers. Vale initials. The signature is correct. The signature is always correct. That is the horror: nothing in this filing is wrong.',
+      beat: 7, once: true, persist: true },
+    // Audit II.4: the Vethari silence has a budget. A division exists because the secret exists.
+    { id: 'late_xenolinguistics_line', sender: 'RESEARCH STATION VEIL — INTERNAL',
+      text: 'DIVISION 6 BUDGET RENEWED. LINE ITEM: SIGNAL CONTAINMENT. DURATION: INDEFINITE. JUSTIFICATION: SEALED. AUTHORIZED: D. VALE / REF 44-C.',
+      note: 'Division 6 exists because the Vethari signal exists. Its budget renews every cycle under the same code that files everything else. The justification is sealed under REF 44-C — the same drawer. The player who has read the Kurtz ledger understands: someone is paying to keep the silence, and the payment is on the same ledger as the Pit’s air debt.',
       beat: 7, once: true },
   ],
 
@@ -263,6 +302,17 @@ export const GRAFFITI = {
 
   // Thread B post-endgame addition (STORY-STRUCTURE).
   COORDINATES_DONT_MATCH:    'THE COORDINATES DON\u2019T MATCH ANYTHING ON FILE.',
+
+  // New testimony-form additions. Each names a beneficiary, a number, or a fact.
+  // No maxims, no chiasmus — the wall states the receipt; the reader keeps the verdict.
+  MOISTURE_LOSS_NINE:        'SHAFT 7. 9 OF 11 RETURNED. 0.7T FILED AS MOISTURE. THE MATH IS LEGAL.',
+  ATMO_SHORT_HELD:           'THE PIT\u2019S AIR FELL. THE TOKEN ROSE. SAME DESK. BOTH BOOKS.',
+  ALGO_RECOMMENDS_VALE_SIGNS:'THE ENGINE DID NOT NAME US. THE ENGINE DOES NOT NAME ANYONE.',
+  ELROY_THIRD_TAG:           'THE THIRD TAG WAS THERE FOR HALF A SECOND. IT COUNTED.',
+  KESSLER_DAUGHTER_BERTH:    'KESSLER. SCALE 4. TYCHO. NINETEEN YEARS. ONE BERTH.',
+  FILTER_RECALL_PENDING:     'R3-CARRIER WITHDRAWN YEAR 3. REPLACEMENT PENDING YEAR 17.',
+  QUITE_COUNT_DOORS:         'FORTY-ONE HULLS. FORTY-ONE FILINGS. ZERO CARGO. COUNT DOORS.',
+  REACH_WEIGH_SHORT:         'WEIGH-SLIP OPEN. FOUR HULLS. THREE FILLED. ONE SHORT TO THE LANE.',
 };
 
 // ── Beat → narrative content (replaces the flat BEAT_HINT tutorial strings) ──────────────────
@@ -300,7 +350,11 @@ export const BEAT_CONTENT = [
   { // B2 — FIRST BLOOD (Elroy)
     beat: 2, phase: 1,
     hint: 'Eliminate the hostile. The tag will read UNKNOWN before, THREAT NEUTRALIZED after. There is a third tag, briefly. You may not catch it.',
-    graffiti: [{ line: GRAFFITI.THEY_WERE_CARRYING_MEDICINE, where: 'airlock', delayS: 2 }],
+    graffiti: [
+      { line: GRAFFITI.THEY_WERE_CARRYING_MEDICINE, where: 'airlock', delayS: 2 },
+      // Same-session residue (audit W06): even if the 0.5s flicker is missed, the wall names it.
+      { line: GRAFFITI.ELROY_THIRD_TAG, where: 'airlock', delayS: 6 },
+    ],
     comms: [],
     hudLie: 'civilian_tag_flicker', // CIVILIAN VESSEL — REGISTERED flickers 0.5s, then kill feed overwrites
   },
@@ -341,8 +395,12 @@ export const BEAT_CONTENT = [
   { // B7 — THE DEEP REACH
     beat: 7, phase: 3,
     hint: 'Deep Reach operation, then Ashfall desk. Ledger COUNTERPARTY: your prior transponder; Elroy DECEASED (B2). Five dispositions — not a title.',
-    graffiti: [{ line: GRAFFITI.THEY_ALWAYS_KNEW, where: 'bulkhead' }],
-    comms: ['late_atmo_debt'],
+    graffiti: [
+      { line: GRAFFITI.THEY_ALWAYS_KNEW, where: 'bulkhead' },
+      // The algorithm line lands here, beside the Kurtz ledger: the horror is that nothing was wrong.
+      { line: GRAFFITI.ALGO_RECOMMENDS_VALE_SIGNS, where: 'bulkhead', delayS: 4 },
+    ],
+    comms: ['late_atmo_debt', 'late_algo_recommend', 'late_xenolinguistics_line'],
     hudLie: 'phase3_freeze', // final contract entry PENDING; cannot be closed
   },
 ];

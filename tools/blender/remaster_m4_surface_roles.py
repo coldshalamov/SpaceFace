@@ -52,6 +52,11 @@ def args() -> argparse.Namespace:
     parser.add_argument("--asset", required=True, choices=sorted(ASSETS))
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--maps-root", type=Path)
+    parser.add_argument(
+        "--surface-only",
+        action="store_true",
+        help="Preserve an already-normalized production mesh and update only materials/images.",
+    )
     return parser.parse_args(tail)
 
 
@@ -193,15 +198,37 @@ def assign_role_images(material, role: str) -> dict:
         node.image = images[channel]
         node.label = f"{role} {channel}"
         matched[channel].append(node)
-    ambiguous = {channel: len(nodes) for channel, nodes in matched.items() if len(nodes) != 1}
+    # Blender's glTF round-trip graph may contain two nodes using the same ORM image: one for
+    # metallic/roughness and one for AO. Retarget both to the same authored image, but keep the
+    # metallic/roughness node as the canonical source when consolidating glTF occlusion binding.
+    ambiguous = {
+        channel: len(nodes)
+        for channel, nodes in matched.items()
+        if (channel != "orm" and len(nodes) != 1) or (channel == "orm" and len(nodes) < 1)
+    }
     if ambiguous:
         raise RuntimeError(f"{material.name}: ambiguous PBR graph while binding {role}: {ambiguous}")
-    pbr_binding = ensure_gltf_occlusion_binding(material, matched["orm"][0])
+    def feeds_principled_response(node) -> bool:
+        color = node.outputs.get("Color")
+        if color is None:
+            return False
+        return any(
+            downstream.to_node.type == "BSDF_PRINCIPLED"
+            and downstream.to_socket.name in {"Roughness", "Metallic"}
+            for link in color.links
+            if link.to_node.type == "SEPARATE_COLOR"
+            for output in link.to_node.outputs
+            for downstream in output.links
+        )
+
+    primary_orm = next((node for node in matched["orm"] if feeds_principled_response(node)), matched["orm"][0])
+    pbr_binding = ensure_gltf_occlusion_binding(material, primary_orm)
     material["spacefaceMaterialRole"] = role
     material["spacefaceSurfaceRemaster"] = REMASTER_ID
     return {
         "baseColorNode": matched["basecolor"][0].name,
         "normalNode": matched["normal"][0].name,
+        "ormNodes": [node.name for node in matched["orm"]],
         **pbr_binding,
     }
 
@@ -229,6 +256,56 @@ def refresh_image_binding_counts(image_report: list[dict]) -> None:
             for node in material.node_tree.nodes
             if node.type == "TEX_IMAGE" and node.image is image
         )
+
+
+def remove_superseded_surface_images() -> list[dict]:
+    """Drop packed maps displaced by a later deterministic surface pass.
+
+    Blender retains renamed image datablocks after every rebind. Leaving those zero-user PNGs in
+    the authoring blend silently grows it by another full texture set on each iteration.
+    """
+    removed = []
+    for image in list(bpy.data.images):
+        if not image.name.startswith("__source_"):
+            continue
+        if image.users != 0:
+            raise RuntimeError(f"superseded surface image still has users: {image.name} ({image.users})")
+        removed.append({
+            "name": image.name,
+            "packed": bool(image.packed_file),
+        })
+        bpy.data.images.remove(image)
+    return removed
+
+
+def externalize_station_surface_images(image_report: list[dict]) -> list[dict]:
+    """Reference the tracked deterministic PNGs instead of duplicating them inside the blend.
+
+    The candidate blend is a promotion payload for ``assets/ships/m4_helios_hub/blender``. Its
+    relative paths are therefore authored for that final location, not for the ignored scratch
+    directory that temporarily holds the reviewed candidate.
+    """
+    texture_root = ROOT / "assets" / "ships" / "m4_helios_hub" / "textures"
+    externalized = []
+    for item in image_report:
+        image = bpy.data.images.get(item["image"])
+        if image is None:
+            raise RuntimeError(f"missing surface image during externalization: {item['image']}")
+        source = Path(item["source"]).resolve()
+        canonical = texture_root / f"{item['role']}_{item['channel']}.png"
+        if not canonical.is_file() or sha256(canonical) != sha256(source):
+            raise RuntimeError(f"tracked surface map does not match candidate source: {canonical}")
+        image.filepath_raw = str(canonical)
+        if image.packed_file:
+            image.unpack(method="REMOVE")
+        image.filepath_raw = f"//../textures/{canonical.name}"
+        image.reload()
+        externalized.append({
+            "image": image.name,
+            "path": image.filepath_raw,
+            "sha256": sha256(canonical),
+        })
+    return externalized
 
 
 def replace_material_users(source_name: str, replacement) -> int:
@@ -354,7 +431,7 @@ def bind_station_material_roles() -> list[dict]:
     return report
 
 
-def calibrate_materials(asset: str) -> None:
+def calibrate_materials(asset: str) -> list[dict]:
     if asset == "helios_rock_a":
         warm = find_principled(bpy.data.materials.get("Material_Warm"))
         if warm:
@@ -362,10 +439,77 @@ def calibrate_materials(asset: str) -> None:
                 warm.inputs["Emission Color"].default_value = (0.0, 0.0, 0.0, 1.0)
             if warm.inputs.get("Emission Strength"):
                 warm.inputs["Emission Strength"].default_value = 0.0
-        return
+        return [{"material": "Material_Warm", "emissionStrength": 0.0}]
 
-    # Station structural roles are bound in bind_station_material_roles(). Emission-only signal
-    # materials stay authored and localized; their surface response is not used as hull shading.
+    # Station structural roles are bound in bind_station_material_roles(). Their physical scale and
+    # response are intentionally role-specific: the previous universal 2.4x transform, 0.72 normal
+    # scale, and broad runtime palette mutation filtered every authored surface into the same pale
+    # plastic response at the game camera.
+    station_profiles = {
+        "SF_HullMid_K0PBR": {"textureScale": 0.55, "normalStrength": 0.95, "coatWeight": 0.035, "coatRoughness": 0.42},
+        "SF_Armor_K0PBR": {"textureScale": 0.62, "normalStrength": 1.05, "coatWeight": 0.025, "coatRoughness": 0.48},
+        "SF_HullDark_K0PBR": {"textureScale": 0.75, "normalStrength": 1.00, "coatWeight": 0.0, "coatRoughness": 0.50},
+        "SF_StructuralLight_PBR": {"textureScale": 0.48, "normalStrength": 1.00, "coatWeight": 0.020, "coatRoughness": 0.46},
+        "SF_Machinery_K0PBR": {"textureScale": 1.10, "normalStrength": 1.10, "coatWeight": 0.0, "coatRoughness": 0.50},
+        "SF_Radiator_PBR": {"textureScale": 1.10, "normalStrength": 1.15, "coatWeight": 0.0, "coatRoughness": 0.55},
+        "SF_DockingContact_PBR": {"textureScale": 0.75, "normalStrength": 1.10, "coatWeight": 0.0, "coatRoughness": 0.48},
+        "SF_ServiceAccess_PBR": {"textureScale": 0.55, "normalStrength": 1.00, "coatWeight": 0.020, "coatRoughness": 0.50},
+        "SF_IndustrialMarking_PBR": {"textureScale": 0.75, "normalStrength": 0.85, "coatWeight": 0.015, "coatRoughness": 0.55},
+        "SF_Window_PBR": {"textureScale": 1.00, "normalStrength": 0.28, "coatWeight": 0.24, "coatRoughness": 0.12},
+    }
+    runtime_roles = {
+        "SF_HullMid_K0PBR": "hull",
+        "SF_Armor_K0PBR": "hull",
+        "SF_HullDark_K0PBR": "mechanical",
+        "SF_StructuralLight_PBR": "hull",
+        "SF_Machinery_K0PBR": "mechanical",
+        "SF_Radiator_PBR": "radiator",
+        "SF_DockingContact_PBR": "docking",
+        "SF_ServiceAccess_PBR": "service",
+        "SF_IndustrialMarking_PBR": "warning",
+        "SF_Window_PBR": "glass",
+    }
+    report = []
+    for material_name, profile in station_profiles.items():
+        material = bpy.data.materials.get(material_name)
+        if material is None or material.node_tree is None:
+            raise RuntimeError(f"missing station material for physical calibration: {material_name}")
+        material["spacefaceMaterialRole"] = runtime_roles[material_name]
+        material["spacefacePaletteTint"] = "none"
+        material["spacefaceSurfacePhysicalScale"] = "role-specific-v1"
+        material.use_backface_culling = True
+
+        mapping_nodes = [node for node in material.node_tree.nodes if node.type == "MAPPING"]
+        for mapping in mapping_nodes:
+            current = mapping.inputs["Scale"].default_value
+            current[0] = profile["textureScale"]
+            current[1] = profile["textureScale"]
+
+        normal_nodes = [node for node in material.node_tree.nodes if node.type == "NORMAL_MAP"]
+        if len(normal_nodes) != 1:
+            raise RuntimeError(f"{material_name}: expected one Normal Map node, found {len(normal_nodes)}")
+        normal_nodes[0].inputs["Strength"].default_value = profile["normalStrength"]
+
+        principled = find_principled(material)
+        if principled is None:
+            raise RuntimeError(f"{material_name}: missing Principled BSDF during physical calibration")
+        if principled.inputs.get("Coat Weight"):
+            principled.inputs["Coat Weight"].default_value = profile["coatWeight"]
+        if principled.inputs.get("Coat Roughness"):
+            principled.inputs["Coat Roughness"].default_value = profile["coatRoughness"]
+
+        report.append({
+            "material": material_name,
+            "runtimeRole": runtime_roles[material_name],
+            "paletteTint": "none",
+            "backfaceCulling": True,
+            "textureScale": profile["textureScale"],
+            "normalStrength": profile["normalStrength"],
+            "coatWeight": profile["coatWeight"],
+            "coatRoughness": profile["coatRoughness"],
+            "mappingNodes": len(mapping_nodes),
+        })
+    return report
 
 
 def reproject_rock_uvs() -> list[dict]:
@@ -716,9 +860,18 @@ def main() -> None:
     image_report = apply_to_blender_images(bpy, config["roles"], maps_root)
     material_role_report = bind_station_material_roles() if parsed.asset == "helios_hub_station" else []
     refresh_image_binding_counts(image_report)
-    calibrate_materials(parsed.asset)
+    superseded_images = remove_superseded_surface_images()
+    material_calibration = calibrate_materials(parsed.asset)
     uv_report = reproject_rock_uvs() if parsed.asset == "helios_rock_a" else []
-    geometry_normalization = normalize_export_geometry(parsed.asset)
+    geometry_normalization = (
+        [{
+            "mode": "preserved-production-geometry",
+            "reason": "surface-only authoring pass",
+            "meshObjects": len([obj for obj in export_objects(parsed.asset) if obj.type == "MESH"]),
+        }]
+        if parsed.surface_only
+        else normalize_export_geometry(parsed.asset)
+    )
 
     for scene in bpy.data.scenes:
         scene["spacefaceSurfaceRemaster"] = REMASTER_ID
@@ -727,9 +880,16 @@ def main() -> None:
             obj["spacefaceSurfaceRemaster"] = REMASTER_ID
 
     previews = write_previews(output, config["roles"])
+    externalized_images = (
+        externalize_station_surface_images(image_report)
+        if parsed.asset == "helios_hub_station" and maps_root is not None
+        else []
+    )
     blend = output / f"{parsed.asset}_{REMASTER_ID}.blend"
     glb = output / f"{parsed.asset}_{REMASTER_ID}.glb"
-    bpy.ops.wm.save_as_mainfile(filepath=str(blend), check_existing=False)
+    # Keep the authoritative authoring source below repository hosting limits without duplicating
+    # the tracked deterministic maps. Blender's lossless file compression does not alter export data.
+    bpy.ops.wm.save_as_mainfile(filepath=str(blend), check_existing=False, compress=True)
     export_glb(glb, export_objects(parsed.asset))
     report = {
         "schema": "spaceface.m4SurfaceRemaster.v2",
@@ -742,7 +902,10 @@ def main() -> None:
         "candidateGlb": str(glb),
         "candidateGlbSha256": sha256(glb),
         "images": image_report,
+        "supersededImagesRemoved": superseded_images,
+        "externalizedImages": externalized_images,
         "materialRoles": material_role_report,
+        "materialCalibration": material_calibration,
         "geometryNormalization": geometry_normalization,
         "uvProjection": uv_report,
         "surfaceSource": [

@@ -263,6 +263,31 @@ stay sane. Approached asymptotically through the ramp so it never reads as a wal
 > rebases. **TORCH lands 2.4–2.9× above every REACTION drive**, so the ship-identity intent this
 > decision cared about is satisfied — by derivation rather than by a number picked in prose.
 
+> **Amendment 2 (2026-07-19): there is no velocity tape.** This decision says V-MAX is "drawn as a
+> marked line on the velocity tape", phrased as though describing an instrument that already ships.
+> It does not exist. Verified: speed is a bare DOM numeric stat chip (`sf-stat--speed`,
+> `src/ui/hud.js:806`) with a hover tip, and the "prograde tick" (`hud.js:1026`) is a world-projected
+> velocity-vector marker, not a linear scale. `grep -niE "velocity-tape|speedTape|velocityTape"`
+> across `hud.js` returns nothing. **There is no linear speed instrument anywhere to mark.**
+>
+> This is the second place D5 asserted something the codebase contradicts (the first was
+> "V-MAX 3,200"). Both came from writing the decision in prose without reading the thing being
+> decided about. The pattern is worth naming because it is cheap to avoid: **an ADR may specify a
+> requirement freely, but the moment it names a specific artifact — a number, a widget, a file — that
+> artifact must be checked or explicitly marked as to-be-built.**
+>
+> **Ruling: the tape is built as a *contextual* instrument, not a permanent one.** It is absent
+> during ordinary flight and reveals only while the travel drive is spooling / engaged / cooling, or
+> while the ship is approaching its ceiling — reusing the HUD's established appear-then-fade chip
+> idiom rather than introducing a competing vocabulary. It must fade back out completely (an
+> instrument that reveals and then stays is a permanent panel with extra steps), and `motionReduce`
+> must suppress the *animation* without suppressing the *information*.
+>
+> This satisfies D9.9 rather than skirting it. D9.9 forbids new permanent panels **because** the
+> reported density paradox — "too little useful information, yet crowded" — is a progressive-
+> disclosure failure. An instrument that appears exactly when its information becomes load-bearing is
+> the remedy that decision was reaching for, not an exception to it.
+
 **Arrival.** What transfers from Elite is *deceleration as the player's problem with perfect
 information* — the 75%-throttle discipline works because the instrument tells the truth. What must not
 transfer is auto-magic arrival in manual mode: the product direction explicitly wants overshoot to be
@@ -430,6 +455,26 @@ definition of done, not a follow-up.
 > one deliberately declined to fix a defect in the other's file on the grounds that two writers in
 > one function was how the damage happened in the first place. **That restraint is the behaviour to
 > preserve; the dispatch is the thing to fix.**
+
+> **D10.2 — Quarantine by enumeration, never by glob (2026-07-19).**
+>
+> The lead wrote the quarantine list using `src/ui/screens/*.js`. Only **three** files in that
+> directory were actually held by the concurrent agent (`base.js`, `gameOver.js`, `missionLog.js`);
+> `settings.js` was clean the whole time. An implementer correctly obeyed the stated list and
+> reported that the Travel Burn latch would ship rebindable in *data* but with **no visible rebind
+> row**, because the row is driven by a hardcoded `REBINDABLE` array at `settings.js:78-80`. A
+> keybind with no rebind row is not rebindable to a player, so an over-broad glob came within one
+> report of silently dropping a stated requirement — and it would have looked like a complete packet.
+>
+> **Rule: the quarantine list is an enumeration of paths observed dirty in `git status`, never a
+> pattern.** A glob quarantines files nobody is editing, and its cost is invisible: the implementer
+> obeys, the feature quietly loses scope, and every test still passes. Re-derive the list from
+> `git status --short` at the start of each wave rather than copying it forward.
+>
+> Corollary, and the reason this was caught at all: **an implementer who reports a constraint-driven
+> gap instead of quietly absorbing it is doing the job correctly.** Both of this wave's over-broad
+> constraints — this one and the `flightV3.js` forwarding point — surfaced because implementers
+> flagged them rather than either guessing or silently shipping less.
 
 ---
 

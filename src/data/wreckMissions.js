@@ -132,6 +132,44 @@ export const WRECK_MISSIONS = [
     reward_cr: 1250,
     tag: 'wreck_salvage',
   },
+  {
+    // The moisture-loss wreck: closes the audit's arithmetic gap in play.
+    // The hauler's black box records the discrepancy the column was built to hide.
+    id: 'wm_shaft_seven_blackbox',
+    title: 'The Shaft Seven Box',
+    type: 'salvage_retrieval',
+    giver: 'Drift hauler flight recorder',
+    log: 'Cargo reweighed on accept: 11.2t. Cargo on departure: 9.4t. Two crew aboard. The 1.8t is logged moisture loss. The two are filed as 0.7t of it. Somebody wrote the other 1.1t into a column that does not have our names.',
+    summary: 'Recover the hauler black box whose mass log is the cover for two missing Drift miners. Deliver it — to the buyer who pays, or the one who counts.',
+    reward_cr: 1180,
+    choice: {
+      prompt: 'The box proves the 0.7t was two names. Who gets it?',
+      options: [
+        { id: 'drift', label: 'Hand it to Drift Claims', blurb: 'The Collective refiles the dead by name. No bounty. The moisture-loss column closes for Shaft 7.' },
+        { id: 'mts', label: 'Sell it to Meridian', blurb: 'The box vanishes into a drawer. The 0.7t stays moisture. You keep the fee — and the column.' },
+      ],
+    },
+    tag: 'wreck_salvage',
+  },
+  {
+    // The relief-canister wreck: closes the audit's beneficiary-cycle gap in play.
+    // The canisters are the Pit's own air, sold back to it.
+    id: 'wm_recall_canisters',
+    title: 'The Recalled Air',
+    type: 'cargo_delivery',
+    giver: 'Sealed atmo canister beacon',
+    log: 'Batch R3-CARRIER. Withdrawn from Sector 0 three cycles ago under recall. Never destroyed. Seals re-stamped. Resold under a new lot number. The Pit is still waiting on the replacement that this is.',
+    summary: 'A float of rebreathed air drifts off a wreck — relief stock resold to the station it was taken from. Haul it to a buyer, or back to the people who breathed it first.',
+    reward_cr: 940,
+    choice: {
+      prompt: 'The canisters are the Pit\u2019s own replacement. Where do they go?',
+      options: [
+        { id: 'buyer', label: 'Sell to the off-station buyer', blurb: 'Meridian clears the position again. You take the margin. The Pit buys its air twice.' },
+        { id: 'pit', label: 'Return to the Pit dock', blurb: 'No pay. The Pit breathes one cycle on air it was already owed.' },
+      ],
+    },
+    tag: 'wreck_salvage',
+  },
 ];
 
 const BY_ID = new Map(WRECK_MISSIONS.map((m) => [m.id, m]));

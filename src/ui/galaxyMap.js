@@ -23,7 +23,12 @@ import { SECTORS } from '../data/sectors.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { BODY_SPECIALIZATION_BY_ID } from '../data/claimableBodies.js';
-import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import {
+  globalToSectorLocalForSector,
+  sectorLocalToGlobalForSector,
+  sectorGlobalOrigin,
+  SECTOR_ORIGIN_LATTICE_WU,
+} from '../data/sectorCoordinates.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat } from '../data/sectorZones.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
 import { sectorLawProfile } from './securityReadout.js';
@@ -34,12 +39,38 @@ import { sectorSignalFor, forecastTransitFor } from '../systems/sectorSim.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { bestKnownSellAtStations, knownStationQuotes } from './marketIntelligence.js';
 import { rankTradeRoutes, LocalSpaceIntel, projectTrack } from './navigation/localSpaceMapModel.js';
+// Wave 2 — the chart's camera and its always-present navigation readout, both pure modules.
+// galaxyMap.js consumes them; it never reimplements their maths (ADR D3/D4).
+import {
+  createMapCamera,
+  levelForSpan,
+  zoomForSpan,
+  spanForZoom,
+  setSpan,
+  setFocus,
+  panBy,
+  zoomAt,
+  cameraLevel,
+  pixelsPerWU,
+  screenToGlobal,
+  framePreset,
+  MAP_PRESET_SPAN_WU,
+  MAP_SPAN_MIN_WU,
+  MAP_SPAN_MAX_WU,
+} from './map/mapCamera.js';
+import {
+  resolveMapNavContext,
+  resolveMapFramingActions,
+  NAV_ROW_TONE,
+} from './map/mapNavContext.js';
 
 // ---------------------------------------------------------------------------------------------
 // Static catalogs (pure — safe at import time).
 // ---------------------------------------------------------------------------------------------
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+/** Authored display names, for readouts that must name a sector they are not currently drawing. */
+const SECTOR_NAME_BY_ID = new Map(SECTORS.map((s) => [s.id, s.name || s.id]));
 const FACTION_COLOR = new Map();
 const FACTION_NAME = new Map();
 for (const f of FACTION_META) {
@@ -407,6 +438,35 @@ function compareMapSearchTargetDistance(a, b, anchor) {
  * Resolve the one player-owned navigation goal independently of ambient mission destinations.
  * The result is presentation-only and deterministic; map drawing never mutates nav/mission state.
  */
+/**
+ * Adapt `nav.executor` into the shape the nav readout consumes.
+ *
+ * This deliberately does NOT import `summarizeExecutor` from systems/routeFollower.js, even though
+ * that function produces a superset of this shape. routeFollower pulls in `atlasIndex`,
+ * `flightTelemetry` and `propulsionCatalog`; boot-to-flight cost is currently the program's top
+ * blocker (see 03_LEDGER), and widening the MAP screen's import graph to reach four scalar fields
+ * would push in the wrong direction for no behavioural gain.
+ *
+ * It reads the executor's OWN persisted fields, so it cannot drift from the follower the way a
+ * reimplementation of its logic would — there is no logic here, only field access.
+ */
+export function readRouteExecutorForMap(executor) {
+  if (!executor || typeof executor !== 'object') return null;
+  const legs = Array.isArray(executor.legs) ? executor.legs : [];
+  const legIndex = Number.isFinite(executor.legIndex) ? executor.legIndex : 0;
+  const leg = legs[legIndex] || null;
+  return {
+    status: executor.status || null,
+    engaged: executor.engaged === true,
+    legIndex,
+    legCount: legs.length,
+    destinationSectorId: executor.destinationSectorId || null,
+    legLabel: leg && leg.label ? leg.label : null,
+    legFrom: leg ? leg.fromSectorId : null,
+    legTo: leg ? leg.toSectorId : null,
+  };
+}
+
 export function activeMapGoal(state) {
   if (!state) return null;
   const wp = state.nav && state.nav.waypoint;
@@ -1084,7 +1144,38 @@ export function buildGalaxyModel(state) {
       });
     }
   }
-  return { level: 'galaxy', currentSectorId: curId, nodes, edges };
+  // "You are here" at GALAXY scale.
+  //
+  // The galaxy model shipped with no player field at all — the current sector was merely FLAGGED
+  // (`node.current`), which answers "which system am I registered to", not "where is my ship". Those
+  // are different questions the moment the ship leaves a sector disc, which is most of a long haul:
+  // between Helios and Tethys the highlighted node sits 7,000 WU from the ship and nothing on the
+  // chart marks the ship itself. The brief's first requirement is a marker that NEVER disappears at
+  // ANY scale, so galaxy gets a real one.
+  //
+  // TWO FRAMES, same contract as the system model (ADR D2.1): `x`/`z` are GLOBAL, and `drawPos` is
+  // the frame this level actually projects. Galaxy is the one level whose draw frame is neither
+  // global nor sector-local — it is the authored sector GRAPH (small integers; `SECTORS[].position`),
+  // which maps onto the world by exactly one lattice quantum per graph unit. Dividing by the lattice
+  // is therefore a frame conversion, not a cosmetic scale, and it is spelled out here rather than at
+  // the draw site so no future reader mistakes the graph units for world units.
+  const player = playerEntity(state);
+  let playerMark = null;
+  if (player && player.pos && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z)) {
+    playerMark = {
+      id: player.id,
+      x: player.pos.x,
+      z: player.pos.z,
+      drawPos: {
+        x: player.pos.x / SECTOR_ORIGIN_LATTICE_WU,
+        z: player.pos.z / SECTOR_ORIGIN_LATTICE_WU,
+      },
+      rot: player.rot || 0,
+      sectorId: curId,
+    };
+  }
+
+  return { level: 'galaxy', currentSectorId: curId, nodes, edges, player: playerMark };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2419,6 +2510,55 @@ const CSS = `
 @media (prefers-reduced-motion: reduce) {
   #sf-galaxymap #gm-engage-route-btn { transition: none; }
 }
+
+/* Slice A framing controls. These are NAVIGATION OF THE CHART, not commitments in the world, so
+   they are deliberately the quietest actionable surface in the inspector: steel outline, no gold.
+   Bright gold is reserved for the tracked objective and the active route, and a button that merely
+   recentres the view has not earned it. They sit above the target actions and are never hidden —
+   they are most needed exactly when nothing is selected. */
+#sf-galaxymap .gm-frame-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(190, 178, 152, .16);
+}
+#sf-galaxymap .gm-frame-btn {
+  background: rgba(150, 158, 170, .06);
+  border-color: rgba(178, 186, 198, .34);
+  color: #c3c8d0;
+  font-size: 11px;
+  letter-spacing: .08em;
+  margin-top: 0;
+  padding: 8px 12px;
+}
+#sf-galaxymap .gm-frame-btn:hover:not(:disabled) {
+  background: rgba(170, 180, 196, .14);
+  border-color: rgba(200, 208, 220, .5);
+  color: #e6e9ee;
+}
+/* Unavailable must READ as unavailable, not merely behave that way: the fill drops out, the label
+   dims, and the cursor stops promising a click. The reason line below says why. */
+#sf-galaxymap .gm-frame-btn:disabled {
+  background: transparent;
+  border-color: rgba(178, 186, 198, .18);
+  color: #6f7480;
+  opacity: 1;
+}
+#sf-galaxymap .gm-frame-reason {
+  min-height: 13px;
+  margin-top: 2px;
+  color: #9a8a72;
+  font-family: var(--mf-ui);
+  font-size: 10px;
+  letter-spacing: .05em;
+  line-height: 1.35;
+  text-align: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  #sf-galaxymap .gm-frame-btn { transition: none; }
+}
 @media (forced-colors: active) {
   #sf-galaxymap #gm-engage-route-btn { border: 1px solid ButtonText; color: ButtonText; }
   #sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"] { border-width: 3px; }
@@ -3480,6 +3620,20 @@ export const galaxyMapScreen = {
   _lastCh: 0,
   _zoom: 1,
   _targetZoom: 1,
+  // SLICE B — the continuous map camera (ADR D3), introduced ALONGSIDE `_zoom` rather than in place
+  // of it. `_camera` is the authority for {focusGlobal, spanWU}; `_zoom` is kept as a DERIVED mirror
+  // so the three level-draw dispatches, the scale rail and every currently-green check keep reading
+  // the value they already read. Migration is therefore playable at every step: nothing observes a
+  // half-migrated state, because the legacy state is never stale — `_syncLegacyFromCamera` rewrites
+  // it from the camera on every camera change.
+  _camera: null,
+  _lastNavContext: null,
+  _navContextKey: null,
+  _lastFramingActions: null,
+  _returnShipButton: null,
+  _frameBothButton: null,
+  _frameReason: null,
+  _framingHandler: null,
   _lastTime: 0,
   _view: null,
   _clickTargets: [],
@@ -3510,6 +3664,192 @@ export const galaxyMapScreen = {
   _claimsSystem() {
     const registry = this._ctx && this._ctx.registry;
     return registry && typeof registry.get === 'function' ? registry.get('claims') : null;
+  },
+
+  /**
+   * Rectangles the label solver must route around, shared by all three levels.
+   *
+   * `layoutMapLabels` already does deterministic decluttering and already accepts `reserved` — the
+   * brief says extend it, not write a second solver, so the new furniture is expressed as more
+   * reserved rectangles rather than as a competing pass. Anything drawn on the shared path after
+   * the level (the cartouche today) belongs here, or labels get placed underneath it and the
+   * overlap defect comes back wearing new geometry.
+   */
+  _reservedLabelRects(w, h, extra = []) {
+    const rects = Array.isArray(extra) ? extra.filter(Boolean).slice() : [];
+    const rows = this._lastNavContext && this._lastNavContext.rows;
+    const bounds = navCartoucheBounds(rows ? rows.length : 0, w, h);
+    if (bounds) {
+      rects.push({
+        // A few pixels of breathing room, so a label may not merely avoid overlapping the plate but
+        // must clear its edge — abutting text reads as an overlap even when it technically is not.
+        x: bounds.x - 4,
+        y: bounds.y - 4,
+        width: bounds.width + 8,
+        height: bounds.height + 8,
+      });
+    }
+    return rects;
+  },
+
+  /**
+   * Seed the unified camera from an applied map-open intent.
+   *
+   * `applyMapOpenIntentToView` remains the authority for WHERE the map opens — it is pinned by
+   * `check:map-authority` and is not touched by this wave. This reads the view it produced and
+   * expresses the same destination once, in the global frame.
+   *
+   * The one thing it must not do is trust `view.cams.system` as a global position: that camera lives
+   * in the sector-local draw frame, so lifting it needs the sector origin. Reading it raw would put
+   * the camera 12,288 WU off in Tethys — the defect this program exists to fix, re-entering through
+   * the open path.
+   */
+  _adoptCameraFromLegacyView(state, view) {
+    const level = levelForZoom(view && Number.isFinite(view.zoom) ? view.zoom : this._zoom);
+    const player = state ? playerEntity(state) : null;
+    const playerGlobal = player && player.pos ? { x: player.pos.x, z: player.pos.z } : null;
+    const sid = state ? currentSectorId(state) : null;
+    const cams = (view && view.cams) || this._cams;
+
+    let focusGlobal = null;
+    if (level === 'local' && cams && cams.local
+      && Number.isFinite(cams.local.cx) && Number.isFinite(cams.local.cy)) {
+      // LOCAL's camera is already global.
+      focusGlobal = { x: cams.local.cx, z: cams.local.cy };
+    } else if (level === 'system' && cams && cams.system
+      && Number.isFinite(cams.system.cx) && Number.isFinite(cams.system.cy)) {
+      focusGlobal = sectorLocalToGlobalForSector({ x: cams.system.cx, z: cams.system.cy }, sid);
+    } else if (level === 'galaxy' && cams && cams.galaxy
+      && Number.isFinite(cams.galaxy.cx) && Number.isFinite(cams.galaxy.cy)) {
+      // GALAXY's camera is in authored graph units — one lattice cell per unit.
+      focusGlobal = {
+        x: cams.galaxy.cx * SECTOR_ORIGIN_LATTICE_WU,
+        z: cams.galaxy.cy * SECTOR_ORIGIN_LATTICE_WU,
+      };
+    }
+    const preset = framePreset(level, { playerGlobal, sectorId: sid, focusGlobal });
+    this._camera = createMapCamera({
+      focusGlobal: focusGlobal || preset.focusGlobal,
+      spanWU: preset.spanWU,
+      minSpanWU: MAP_SPAN_MIN_WU,
+      maxSpanWU: MAP_SPAN_MAX_WU,
+    });
+    this._syncLegacyFromCamera();
+    return this._camera;
+  },
+
+  /**
+   * The live camera, lazily seeded from whatever the legacy zoom/level state currently says.
+   *
+   * Seeding FROM the legacy state (rather than from a constant) is what makes this migration
+   * playable: the first camera read reproduces the view the player is already looking at, so
+   * introducing the camera changes nothing on screen until something deliberately moves it.
+   */
+  _cameraOrInit() {
+    if (this._camera) return this._camera;
+    const state = this._ctx && this._ctx.state;
+    const level = levelForZoom(this._zoom);
+    const player = state ? playerEntity(state) : null;
+    const preset = framePreset(level, {
+      playerGlobal: player && player.pos ? { x: player.pos.x, z: player.pos.z } : null,
+      sectorId: state ? currentSectorId(state) : null,
+    });
+    this._camera = createMapCamera({
+      focusGlobal: preset.focusGlobal,
+      spanWU: preset.spanWU,
+      minSpanWU: MAP_SPAN_MIN_WU,
+      maxSpanWU: MAP_SPAN_MAX_WU,
+    });
+    return this._camera;
+  },
+
+  /**
+   * Push the camera down into the legacy state the draw sites still read.
+   *
+   * `_zoom` is derived here and NOWHERE else once a camera exists, which is the property that keeps
+   * the two representations from disagreeing. `spanForZoom`/`zoomForSpan` are exact inverses and
+   * `levelForSpan` is defined by the same inequalities as `levelForZoom`, so the level this
+   * computes is identical to the level the legacy scalar would have chosen — that identity is what
+   * lets every existing map check keep passing unmodified.
+   */
+  _syncLegacyFromCamera() {
+    const cam = this._camera;
+    if (!cam) return;
+    const zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoomForSpan(cam.spanWU)));
+    this._zoom = zoom;
+    this._targetZoom = zoom;
+
+    const level = levelForSpan(cam.spanWU);
+    const state = this._ctx && this._ctx.state;
+    const focus = cam.focusGlobal;
+    const target = this._cams[level];
+    if (target) {
+      if (level === 'galaxy') {
+        // GALAXY's draw frame is the authored sector GRAPH (small integers), one graph unit per
+        // lattice cell. Converting here rather than at the draw site keeps the single conversion in
+        // one place — see the same conversion in buildGalaxyModel's player mark.
+        target.cx = focus.x / SECTOR_ORIGIN_LATTICE_WU;
+        target.cy = focus.z / SECTOR_ORIGIN_LATTICE_WU;
+      } else if (level === 'system') {
+        // SYSTEM's draw frame is sector-local for the sector being surveyed (ADR D2.1). Handing it
+        // the raw global focus would park the camera a whole sector origin away — 12,288 WU at
+        // Tethys — which is the exact defect this program exists to fix, merely relocated to the
+        // camera.
+        const local = globalToSectorLocalForSector(
+          { x: focus.x, z: focus.z },
+          state ? currentSectorId(state) : null,
+        );
+        target.cx = local.x;
+        target.cy = local.z;
+      } else {
+        // LOCAL already works in the global frame.
+        target.cx = focus.x;
+        target.cy = focus.z;
+      }
+    }
+    this._syncScaleButtons();
+  },
+
+  /**
+   * The four always-present navigation answers, resolved ONCE per draw and shared by the cartouche,
+   * the framing controls and the aria label.
+   *
+   * Resolving them once is the point, not an optimisation: the cartouche saying one thing while the
+   * "frame ship and destination" button targets another is precisely the class of contradiction the
+   * readout exists to remove. Everything here is a pure read of state; the derivation lives in
+   * src/ui/map/mapNavContext.js.
+   */
+  _navContext(state) {
+    if (!state) return resolveMapNavContext();
+    const player = playerEntity(state);
+    const nav = state.nav || {};
+
+    // Memoised on the inputs that can change the readout. `_draw` runs at display refresh at LOCAL
+    // scale, and the readout allocates a deeply-frozen address record plus four frozen rows — doing
+    // that 60 times a second to re-render four identical strings is waste on a machine that may be
+    // running a software renderer. The player position is quantised to 1 WU because sub-unit drift
+    // cannot change any displayed value (distances round to whole WU, progress to whole percent).
+    const goal = activeMapGoal(state);
+    const executor = readRouteExecutorForMap(nav.executor);
+    const key = [
+      player && player.pos ? Math.round(player.pos.x) : 'x',
+      player && player.pos ? Math.round(player.pos.z) : 'z',
+      currentSectorId(state),
+      goal ? `${goal.label}|${goal.sectorId}|${goal.pos ? Math.round(goal.pos.x) : ''}|${goal.pos ? Math.round(goal.pos.z) : ''}` : '-',
+      executor ? `${executor.status}|${executor.legIndex}|${executor.legCount}|${executor.destinationSectorId}|${executor.legLabel}` : '-',
+      nav.route && Array.isArray(nav.route.legs) ? nav.route.legs.map((l) => `${l.from}>${l.to}`).join(',') : '-',
+    ].join('#');
+    if (this._navContextKey === key && this._lastNavContext) return this._lastNavContext;
+    this._navContextKey = key;
+
+    return resolveMapNavContext({
+      playerGlobal: player && player.pos ? { x: player.pos.x, z: player.pos.z } : null,
+      playerSectorId: currentSectorId(state),
+      goal,
+      route: nav.route || null,
+      executor,
+      sectorNames: SECTOR_NAME_BY_ID,
+    });
   },
 
   // Flagship strategic table UI states
@@ -3630,6 +3970,16 @@ export const galaxyMapScreen = {
         <div class="gm-right-inspector">
           <div class="gm-inspector-header">Inspector</div>
           <div class="gm-inspector-content">
+            <!-- Slice A: the two "never lost" framing controls. They live ABOVE the target actions
+                 and are never hidden, because their whole job is to be reachable at the moment the
+                 pilot has lost the thread — which is exactly when nothing is selected. Both follow
+                 the shipped engage-button contract: visibly disabled plus a spoken reason, never a
+                 silent no-op. -->
+            <div class="gm-frame-group" role="group" aria-label="Chart framing">
+              <button class="gm-ins-btn gm-frame-btn" id="gm-return-ship-btn" type="button" data-framing="return-to-ship" disabled aria-disabled="true">Return to ship</button>
+              <button class="gm-ins-btn gm-frame-btn" id="gm-frame-both-btn" type="button" data-framing="frame-both" disabled aria-disabled="true">Frame ship + destination</button>
+              <div class="gm-frame-reason" id="gm-frame-reason" aria-live="polite"></div>
+            </div>
             <div class="gm-inspector-details">
               <div class="gm-inspector-empty">No target selected. <b>Click</b> a sector, station or contact to inspect it — <b>double-click</b> to lay a course.</div>
             </div>
@@ -3661,6 +4011,18 @@ export const galaxyMapScreen = {
     }
     if (this._engageButton) {
       this._engageButton.addEventListener('click', this._engageHandler);
+    }
+    this._returnShipButton = rootEl.querySelector('#gm-return-ship-btn');
+    this._frameBothButton = rootEl.querySelector('#gm-frame-both-btn');
+    this._frameReason = rootEl.querySelector('#gm-frame-reason');
+    if (!this._framingHandler) {
+      this._framingHandler = (ev) => {
+        const btn = ev && ev.currentTarget;
+        galaxyMapScreen._activateFraming(btn && btn.getAttribute('data-framing'));
+      };
+    }
+    for (const btn of [this._returnShipButton, this._frameBothButton]) {
+      if (btn) btn.addEventListener('click', this._framingHandler);
     }
     // Strategy-deck trade-lane activation, delegated on the persistent details node so the
     // cached innerHTML refresh never strands the handler.
@@ -3850,6 +4212,15 @@ export const galaxyMapScreen = {
     this._zoom = view.zoom;
     this._targetZoom = view.targetZoom;
     this._openIntent = view.openIntent || intent;
+    // SLICE B — adopt the open intent into the unified camera.
+    //
+    // The camera is rebuilt from the intent on every open rather than persisted across opens. That
+    // is deliberate: `mapAuthority` is the single authority for where the map opens (pinned by
+    // check:map-authority), and a camera that survived the close would silently outrank it. The
+    // camera owns continuity WITHIN a session on the chart; the intent owns where that session
+    // starts.
+    this._camera = null;
+    this._adoptCameraFromLegacyView(state, view);
     // Visible selection/inspector focus from missionId/stationId when resolvable.
     // Focus-only opens leave _selectedTarget null (do not invent a station).
     this._selectedTarget = view.openTarget || null;
@@ -3983,15 +4354,37 @@ export const galaxyMapScreen = {
     this._killUnsub = null;
   },
 
+  /**
+   * Local / System / Galaxy as FRAMING BOOKMARKS (ADR D3), not as separate maps.
+   *
+   * Same buttons, same keybinds, same muscle memory; what changes is underneath — each is now a
+   * camera preset `{focusGlobal, spanWU}` rather than a jump into a differently-centred projection.
+   * Local frames the ship, System frames the current sector's origin, Galaxy frames the chart
+   * centroid at lattice extent.
+   */
   _setScaleFocus(focus, { draw = true, animate = true } = {}) {
     const before = levelForZoom(this._zoom);
     const zoom = zoomForMapFocus(focus);
-    this._targetZoom = zoom;
-    if (!animate) this._zoom = zoom;
-    if (animate && levelForZoom(zoom) !== before) this._triggerIris(levelForZoom(zoom));
+    const level = levelForZoom(zoom);
+    const state = this._ctx && this._ctx.state;
+    const player = state ? playerEntity(state) : null;
+    const preset = framePreset(level, {
+      playerGlobal: player && player.pos ? { x: player.pos.x, z: player.pos.z } : null,
+      sectorId: state ? currentSectorId(state) : null,
+      focusGlobal: this._camera ? this._camera.focusGlobal : null,
+    });
+    this._camera = setSpan(
+      setFocus(this._cameraOrInit(), preset.focusGlobal),
+      preset.spanWU,
+    );
+    this._syncLegacyFromCamera();
+    // `_syncLegacyFromCamera` derives `_zoom` from the preset span. `_targetZoom` follows it so the
+    // eased rail marker slides to the same place instead of animating toward a stale scalar.
+    this._targetZoom = this._zoom;
+    if (animate && levelForZoom(this._zoom) !== before) this._triggerIris(levelForZoom(this._zoom));
     this._syncScaleButtons();
     if (draw && HAS_DOC) this._draw();
-    return levelForZoom(zoom);
+    return levelForZoom(this._zoom);
   },
 
   _syncScaleButtons() {
@@ -4696,6 +5089,85 @@ export const galaxyMapScreen = {
     }
   },
 
+  /**
+   * Reflect the two framing controls' availability into the DOM.
+   *
+   * The reason string is rendered whether the action is available or not: when it is unavailable it
+   * explains the blocker, and when it is available it says what the button will do. A control that
+   * only speaks when it is broken teaches the pilot to ignore the line.
+   */
+  _syncFramingControls(navContext) {
+    if (!HAS_DOC) return;
+    const actions = resolveMapFramingActions(navContext);
+    this._lastFramingActions = actions;
+    const pairs = [
+      [this._returnShipButton, actions.returnToShip],
+      [this._frameBothButton, actions.frameShipAndDestination],
+    ];
+    let reason = '';
+    for (const [btn, action] of pairs) {
+      if (!btn) continue;
+      const disabled = !action.available;
+      if (btn.disabled !== disabled) btn.disabled = disabled;
+      if (btn.getAttribute('aria-disabled') !== String(disabled)) {
+        btn.setAttribute('aria-disabled', String(disabled));
+      }
+      // The reason travels on the control itself as well as in the live region, so a pointer user
+      // who never focuses the button still gets the explanation.
+      if (btn.getAttribute('title') !== action.reason) btn.setAttribute('title', action.reason);
+      if (btn.textContent !== action.label) btn.textContent = action.label;
+      // Surface the blocked one first: an explanation of what you cannot do outranks a description
+      // of what you can.
+      if (!action.available && !reason) reason = action.reason;
+    }
+    if (!reason) {
+      reason = actions.frameShipAndDestination.available
+        ? actions.frameShipAndDestination.reason
+        : actions.returnToShip.reason;
+    }
+    if (this._frameReason && this._frameReason.textContent !== reason) {
+      this._frameReason.textContent = reason;
+    }
+  },
+
+  /**
+   * Apply a framing descriptor ({focusGlobal, spanWU}) to the chart.
+   *
+   * THE CAMERA SEAM. Every "take me somewhere" control in this screen goes through this one method,
+   * so Slice B can replace its internals with the unified camera without touching a single caller.
+   * Today it translates the GLOBAL descriptor into whichever legacy per-level camera frame the
+   * target level uses; that translation is the thing Slice B deletes, not the callers.
+   */
+  _setCameraFraming(framing, { draw = true } = {}) {
+    if (!framing || !framing.focusGlobal) return false;
+    const focus = framing.focusGlobal;
+    if (!Number.isFinite(focus.x) || !Number.isFinite(focus.z)) return false;
+    const spanWU = Number.isFinite(framing.spanWU) ? framing.spanWU : MAP_PRESET_SPAN_WU.system;
+
+    this._camera = setSpan(setFocus(this._cameraOrInit(), focus), spanWU);
+    this._syncLegacyFromCamera();
+    if (draw && HAS_DOC && this._canvas) this._draw();
+    return true;
+  },
+
+  _activateFraming(id) {
+    const state = this._ctx && this._ctx.state;
+    if (!state || !id) return false;
+    const actions = this._lastFramingActions || resolveMapFramingActions(this._navContext(state));
+    const action = id === 'return-to-ship' ? actions.returnToShip : actions.frameShipAndDestination;
+    // A disabled button should never reach here, but a keyboard or scripted activation can. Refuse
+    // loudly-but-politely rather than silently doing nothing or faking a success.
+    if (!action || !action.available || !action.framing) {
+      if (this._frameReason && action) this._frameReason.textContent = action.reason;
+      return false;
+    }
+    this._setCameraFraming(action.framing);
+    const w = this._canvas ? this._canvas.width / this._dpr : 0;
+    const h = this._canvas ? this._canvas.height / this._dpr : 0;
+    if (w && h) this.triggerScanRing(w / 2, h / 2, INK.brass);
+    return true;
+  },
+
   // A trade-lane row resolves its destination station through the same course intents as any
   // other map mark — the strategy deck never opens a parallel mutation path.
   _activateTradeLane(stationId) {
@@ -4714,29 +5186,48 @@ export const galaxyMapScreen = {
 
     this._selectedTarget = target;
 
+    // Selecting a search result frames the result. The camera is driven in the GLOBAL frame in every
+    // branch — which is what makes "search, then zoom out, then zoom back in" land on the same
+    // object instead of on whatever each level's private camera last remembered.
     if (target.kind === 'sector') {
-      this._zoom = LEVEL_SYSTEM_AT - 0.5; // galaxy scale
-      this._targetZoom = this._zoom;
-      const cam = this._cams.galaxy;
-      cam.cx = target.x;
-      cam.cy = target.y;
+      // A galaxy node carries GRAPH coordinates (`target.x`/`target.y`), not world units. The
+      // sector's authored origin is its global position; deriving it from the id rather than
+      // multiplying the graph coordinate keeps one authority for sector origins.
+      const origin = sectorGlobalOrigin(target.sectorId || target.id);
+      this._camera = setSpan(
+        setFocus(this._cameraOrInit(), { x: origin.x, z: origin.z }),
+        spanForZoom(LEVEL_SYSTEM_AT - 0.5), // galaxy scale
+      );
+      // The legacy galaxy camera is in graph units; keep centring it on the picked NODE so a sector
+      // whose authored graph position and lattice origin ever disagreed still frames the node.
+      this._syncLegacyFromCamera();
+      this._cams.galaxy.cx = target.x;
+      this._cams.galaxy.cy = target.y;
     } else if (target.kind === 'station' || target.kind === 'gate' || target.kind === 'poi' || target.kind === 'zone') {
-      this._zoom = LEVEL_SYSTEM_AT + 0.5; // system scale
-      this._targetZoom = this._zoom;
-      const cam = this._cams.system;
       // The SYSTEM camera lives in the sector-local draw frame, but a search target carries the
       // GLOBAL nav frame so the same object can arm a course. Centering on the raw nav position
       // parks the camera a whole sector origin away from the thing you just picked.
       const focus = target.drawPos
         || globalToSectorLocalForSector(target, target.sectorId || currentSectorId(state));
-      cam.cx = focus.x;
-      cam.cy = focus.z;
+      const sid = target.sectorId || currentSectorId(state);
+      const globalFocus = sectorLocalToGlobalForSector({ x: focus.x, z: focus.z }, sid);
+      this._camera = setSpan(
+        setFocus(this._cameraOrInit(), globalFocus),
+        spanForZoom(LEVEL_SYSTEM_AT + 0.5), // system scale
+      );
+      this._syncLegacyFromCamera();
     } else {
       this._zoom = LEVEL_LOCAL_AT + 0.5; // local scale
       this._targetZoom = this._zoom;
       const cam = this._cams.local;
       cam.cx = target.x;
       cam.cy = target.z;
+      // LOCAL is unmigrated, but the camera must not be left stale behind it, or the next zoom-out
+      // would leave the object the player just searched for.
+      this._camera = setSpan(
+        setFocus(this._cameraOrInit(), { x: target.x, z: target.z }),
+        spanForZoom(this._zoom),
+      );
     }
 
     this.refresh();
@@ -4766,6 +5257,9 @@ export const galaxyMapScreen = {
       my: ev.clientY,
       cx: cam.cx,
       cy: cam.cy,
+      // Frozen cameras make this safe: the drag anchor is a value, not a reference that later
+      // camera moves could mutate underneath the drag.
+      camera: level !== 'local' ? this._cameraOrInit() : null,
     };
   },
 
@@ -4779,11 +5273,25 @@ export const galaxyMapScreen = {
     if (this._dragging && this._dragStart) {
       const dx = ev.clientX - this._dragStart.mx;
       const dy = ev.clientY - this._dragStart.my;
-      const baseScale = this._view ? this._view.baseScale : 1;
 
-      const factor = level === 'local' ? 1 : -1;
-      cam.cx = this._dragStart.cx + factor * dx / (baseScale * this._zoom);
-      cam.cy = this._dragStart.cy + factor * dy / (baseScale * this._zoom);
+      if (level !== 'local' && this._dragStart.camera) {
+        // SLICE B — pan the unified camera in the GLOBAL frame. Dragging right must move the chart
+        // right, i.e. the camera moves LEFT, hence the negated delta. Panning from the drag START
+        // camera rather than accumulating per-move keeps the grab point exactly under the cursor
+        // instead of drifting over a long drag.
+        const pxPerWU = pixelsPerWU(this._dragStart.camera, { width: rect.width, height: rect.height });
+        if (pxPerWU > 0) {
+          this._camera = panBy(this._dragStart.camera, { x: -dx / pxPerWU, z: -dy / pxPerWU });
+          this._syncLegacyFromCamera();
+          this._draw();
+          return;
+        }
+      }
+
+      // LOCAL keeps the legacy pan (flipped-sign scope frame, unmigrated).
+      const baseScale = this._view ? this._view.baseScale : 1;
+      cam.cx = this._dragStart.cx + dx / (baseScale * this._zoom);
+      cam.cy = this._dragStart.cy + dy / (baseScale * this._zoom);
       this._draw();
       return;
     }
@@ -4815,11 +5323,38 @@ export const galaxyMapScreen = {
     const mx = ev.clientX - rect.left;
     const my = ev.clientY - rect.top;
     const w = rect.width, h = rect.height;
-
     const factor = ev.deltaY < 0 ? 1.15 : 1 / 1.15;
+
+    // SLICE B — cursor-anchored zoom through the unified camera, on the migrated levels.
+    //
+    // This also repairs a defect the migration exposed rather than introduced: `cam.zoom` was
+    // initialised to 1.0/1.5/1.5 and then NEVER ASSIGNED anywhere in this file, while the draw sites
+    // scaled by `baseScale * cam.zoom`. So wheeling INSIDE a level changed `this._zoom` (and hence
+    // which level would be chosen) but could not change the drawn scale at all — and the pan
+    // compensation below still ran, so a wheel that produced no zoom silently PANNED the chart
+    // sideways. Zoom now moves the camera's span, which the draw sites actually read.
+    const level = this._activeLevel();
+    if (level !== 'local') {
+      const camera = this._cameraOrInit();
+      const viewport = { width: w, height: h };
+      const oldLevel = cameraLevel(camera);
+      // The world point under the cursor, in the actionable frame. The module guarantees it stays
+      // under the cursor across the zoom, including when the span clamps at a stop.
+      const cursorGlobal = screenToGlobal(camera, { x: mx, y: my }, viewport);
+      this._camera = zoomAt(camera, cursorGlobal, factor);
+      const newLevel = cameraLevel(this._camera);
+      this._syncLegacyFromCamera();
+      // Crossing a threshold preserves focusGlobal by construction, so the iris is now marking a
+      // change of DETAIL, not a change of place — which is the whole point of ADR D3.
+      if (oldLevel !== newLevel) this._triggerIris(newLevel);
+      this._draw();
+      return;
+    }
+
+    // LOCAL is deliberately still on the legacy path (ADR D3 orders local last; it carries the
+    // remembered/dead-reckoned contact memory and a flipped-sign scope frame). Unchanged behaviour.
     const oldZoom = this._zoom;
     const nextZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._zoom * factor));
-
     const oldLevel = levelForZoom(oldZoom);
     const newLevel = levelForZoom(nextZoom);
 
@@ -4830,7 +5365,7 @@ export const galaxyMapScreen = {
     if (oldLevel === newLevel) {
       const cam = this._cams[newLevel];
       const baseScale = this._view ? this._view.baseScale : 1;
-      const sign = newLevel === 'local' ? -1 : 1;
+      const sign = -1;
       const wx = cam.cx + sign * (mx - w/2) / (baseScale * oldZoom);
       const wy = cam.cy + sign * (my - h/2) / (baseScale * oldZoom);
 
@@ -4839,6 +5374,14 @@ export const galaxyMapScreen = {
     } else {
       // Threshold crossing reads as passing through a membrane, not a hard clip.
       this._triggerIris(newLevel);
+      // Leaving LOCAL hands control to the camera, so the camera must adopt where LOCAL actually
+      // was. Without this the first zoom out of LOCAL would jump to wherever the camera was last
+      // left — the "abruptly switching maps" behaviour this wave exists to remove.
+      this._camera = setSpan(
+        setFocus(this._cameraOrInit(), { x: this._cams.local.cx, z: this._cams.local.cy }),
+        spanForZoom(nextZoom),
+      );
+      this._syncLegacyFromCamera();
     }
 
     this._draw();
@@ -5007,9 +5550,23 @@ export const galaxyMapScreen = {
     // the scope remembers. GALAXY is excluded: at that scale nothing is reading local contacts.
     if (level !== 'galaxy') this._syncLocalIntel(state);
 
+    // Resolved BEFORE the level dispatch so each level can reserve the cartouche's rectangle in the
+    // label solver, and drawn AFTER it so nothing paints over the readout. Both halves matter: the
+    // reservation is what keeps a sector label from being placed under the plate in the first place,
+    // and it needs the row count before any label is laid out.
+    const navContext = this._navContext(state);
+    this._lastNavContext = navContext;
+
     if (level === 'galaxy') this._drawGalaxy(g, state, w, h);
     else if (level === 'system') this._drawSystem(g, state, w, h);
     else this._drawLocal(g, state, w, h);
+
+    // THE NAVIGATION CARTOUCHE — drawn on the SHARED path, after the level, so the four answers are
+    // present at every scale by construction. Putting it inside the three level draws would let a
+    // future edit to any one of them silently drop the readout at that scale, which is exactly the
+    // "answered at LOCAL and SYSTEM but not GALAXY" gap this replaces.
+    drawNavCartouche(g, navContext.rows, w, h, { title: level.toUpperCase() });
+    this._syncFramingControls(navContext);
 
     // Hover pre-selection. Resolved against THIS frame's click targets rather than the coordinates
     // captured when the pointer last moved, so the ring cannot lag a pan or a zoom by a frame.
@@ -5084,21 +5641,28 @@ export const galaxyMapScreen = {
     });
     if (!model.nodes.length) return;
 
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const n of model.nodes) { minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x); minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y); }
-    const spanX = (maxX - minX) || 1, spanY = (maxY - minY) || 1;
-    const pad = 120;
-    const baseScale = Math.min((w - pad * 2) / spanX, (h - pad * 2) / spanY);
-
+    // SLICE B — GALAXY is the first builder migrated onto the unified camera (ADR D3 step 3, which
+    // prescribes galaxy → system → local because galaxy is nearly global already).
+    //
+    // What changed: scale and centre no longer come from a per-level auto-fit plus a frozen
+    // `cam.zoom`. They come from ONE camera state shared with every other level, so crossing a scale
+    // threshold preserves `focusGlobal` and reads as zooming rather than as switching maps.
+    //
+    // What did NOT change: the projection ARITHMETIC, or the graph frame the nodes live in.
+    // `node.x`/`node.y` remain authored graph units and are still what `sx`/`sy` consume — the
+    // camera simply supplies the centre and the scale, converted into graph units once, here.
+    // (Verified numerically against the legacy expression before this edit: identical to 1e-6, in
+    // Tethys, including orientation — see the packet report.)
+    const camera = this._cameraOrInit();
+    const viewport = { width: w, height: h };
+    // Pixels per GRAPH unit. `pixelsPerWU` is per WORLD unit and one graph unit is one lattice cell,
+    // so the lattice quantum is the conversion — the same one buildGalaxyModel uses for the player.
+    const graphScale = pixelsPerWU(camera, viewport) * SECTOR_ORIGIN_LATTICE_WU;
     const cam = this._cams.galaxy;
-    if (cam.cx === 0 && cam.cy === 0) {
-      cam.cx = (minX + maxX) / 2;
-      cam.cy = (minY + maxY) / 2;
-    }
 
-    this._view = { level: 'galaxy', baseScale };
-    const sx = (x) => w / 2 + (x - cam.cx) * baseScale * cam.zoom;
-    const sy = (y) => h / 2 + (y - cam.cy) * baseScale * cam.zoom;
+    this._view = { level: 'galaxy', baseScale: graphScale, pxPerWU: pixelsPerWU(camera, viewport), camera };
+    const sx = (x) => w / 2 + (x - cam.cx) * graphScale;
+    const sy = (y) => h / 2 + (y - cam.cy) * graphScale;
     const nodeById = new Map(model.nodes.map((n) => [n.id, n]));
 
     // Sector-graph edges: warm hairlines for charted lanes, faint dashes at the frontier.
@@ -5486,7 +6050,7 @@ export const galaxyMapScreen = {
       galaxyReserved.push({ x: gx + 10, y: gy - 9, width: goalWidth, height: 18 });
     }
     const galaxyLabelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
-      reserved: galaxyReserved,
+      reserved: this._reservedLabelRects(w, h, galaxyReserved),
     });
     this._lastLabelLayout = galaxyLabelLayout;
     for (const placement of galaxyLabelLayout) {
@@ -5516,6 +6080,29 @@ export const galaxyMapScreen = {
           detail: 'Current goal · ' + goal.label,
         });
       }
+    }
+
+    // "You are here", last, so nothing can paint over it.
+    //
+    // The ship is drawn at its OWN position, not at the centre of its registered sector node. On a
+    // long haul those are different places — mid-corridor the ship is ~7,000 WU from either node —
+    // and marking the node instead of the ship is how a pilot ends up unable to answer "where am I"
+    // while staring straight at the chart. `drawPos` is the galaxy model's declared draw frame
+    // (graph units); projecting the global x/z here would land the mark 4,096x off-chart.
+    if (model.player && model.player.drawPos) {
+      const pxs = sx(model.player.drawPos.x);
+      const pys = sy(model.player.drawPos.z);
+      drawPlayerFixMark(g, pxs, pys, model.player.rot, {
+        scale: 0.92,
+        pulse: this._reduceMotion ? 0 : (0.5 + 0.5 * Math.sin(this._animT * 1.7)),
+      });
+      g.save();
+      g.font = FONT_MONO(600, 8);
+      g.fillStyle = INK.ink1;
+      g.textAlign = 'left';
+      g.textBaseline = 'middle';
+      g.fillText('YOU', pxs + 14, pys - 9);
+      g.restore();
     }
   },
 
@@ -5549,12 +6136,28 @@ export const galaxyMapScreen = {
       span = Math.max(800, m * 2.2);
     }
 
-    const baseScale = (Math.min(w, h) * 0.85) / span;
+    // SLICE B — SYSTEM is the second builder migrated onto the unified camera (ADR D3 step 3).
+    //
+    // The expression below stays entirely in the SECTOR-LOCAL draw frame, and that is deliberate,
+    // not a compromise. `cam.cx`/`cam.cy` are the camera's `focusGlobal` converted into this
+    // sector's local frame by `_syncLegacyFromCamera`, and every `x` fed to `sx` is a `drawPos` —
+    // so both operands of the subtraction are sector-local and the difference is the same vector
+    // the camera would compute in global. The two forms are arithmetically identical (global and
+    // sector-local differ by a constant origin that cancels in the subtraction), which was verified
+    // numerically at Tethys before this edit.
+    //
+    // Keeping the subtraction in one frame is what preserves ADR D2.1's guarantee. `check:map-frames`
+    // asserts this draw site never projects a raw global `p.x`/`p.z`, and that assertion stays exactly
+    // as meaningful after the migration as before it: mixing a global position into this expression
+    // is still a 12,288 WU error at Tethys.
+    const camera = this._cameraOrInit();
+    const viewport = { width: w, height: h };
+    const pxPerWU = pixelsPerWU(camera, viewport);
     const cam = this._cams.system;
 
-    this._view = { level: 'system', baseScale };
-    const sx = (x) => w / 2 + (x - cam.cx) * baseScale * cam.zoom;
-    const sz = (z) => h / 2 + (z - cam.cy) * baseScale * cam.zoom;
+    this._view = { level: 'system', baseScale: pxPerWU, pxPerWU, camera, contentSpanWU: span };
+    const sx = (x) => w / 2 + (x - cam.cx) * pxPerWU;
+    const sz = (z) => h / 2 + (z - cam.cy) * pxPerWU;
     const labelCandidates = [];
     setMapCanvasAriaLabel(this._canvas, 'system', model.ownership);
 
@@ -5585,14 +6188,15 @@ export const galaxyMapScreen = {
     // bearing/distance for that case; no caller needs the off-chart indicator yet, so none is drawn.
     if (model.player && model.player.inSector) {
       const px = sx(model.player.drawPos.x), py = sz(model.player.drawPos.z);
-      g.save();
-      g.translate(px, py); g.rotate(Math.PI + model.player.rot);
-      g.fillStyle = INK.amber;
-      g.strokeStyle = 'rgba(237, 232, 216, 0.85)';
-      g.lineWidth = 1;
-      g.beginPath(); g.moveTo(7, 0); g.lineTo(-5, -4); g.lineTo(-5, 4); g.closePath();
-      g.fill(); g.stroke();
-      g.restore();
+      // One silhouette for "you are here" at every scale (galaxy/system/local). The mark used to be
+      // a bare amber triangle here and a different shape at LOCAL, so the pilot had to relearn the
+      // most important mark on the chart at each threshold. It is also no longer amber: bright
+      // gold/amber is reserved for the tracked objective and the active route, and spending it on
+      // the always-present player mark is what made the reserved colour stop meaning anything.
+      drawPlayerFixMark(g, px, py, model.player.rot, {
+        scale: 1,
+        pulse: this._reduceMotion ? 0 : (0.5 + 0.5 * Math.sin(this._animT * 1.7)),
+      });
     }
 
     // Draw active system waypoint (tether path). Both ends were read global straight onto a
@@ -5609,7 +6213,7 @@ export const galaxyMapScreen = {
     }
     // Zones
     for (const z of model.zones) {
-      const x = sx(z.x), y = sz(z.z), rr = z.radius * baseScale * cam.zoom;
+      const x = sx(z.x), y = sz(z.z), rr = z.radius * pxPerWU;
 
       // Zone centres are authored sector-local, but the click target arms an autopilot fix, which
       // world.js stores global — so "Align Autopilot" on a Tethys zone used to plot a course a
@@ -5672,7 +6276,7 @@ export const galaxyMapScreen = {
         const cx = Number(f.center && f.center.x) || 0;
         const cz = Number(f.center && f.center.z) || 0;
         const radius = Number(f.clusterRadius) || Number(f.radius) || 300;
-        const fx = sx(cx), fy = sz(cz), fr = radius * baseScale * cam.zoom;
+        const fx = sx(cx), fy = sz(cz), fr = radius * pxPerWU;
         const glyph = asteroidOreGlyph(f.type);
         g.save();
         g.strokeStyle = hexToRgba(INK.brass, 0.30);
@@ -5694,7 +6298,7 @@ export const galaxyMapScreen = {
         const point = bearing.drawFixedPos || bearing.drawCenter;
         if (!point) continue;
         const x = sx(point.x), y = sz(point.z);
-        const radiusPx = fixed ? 0 : bearing.radius * baseScale * cam.zoom;
+        const radiusPx = fixed ? 0 : bearing.radius * pxPerWU;
         const selected = !!(this._selectedTarget && this._selectedTarget.id === bearing.wreckId);
         drawUniqueWreckBearingMarker(g, x, y, radiusPx, { fixed, selected, phase: bearing.phase });
 
@@ -5876,7 +6480,7 @@ export const galaxyMapScreen = {
     }
     const headerWidth = Math.min(w - 24, Math.max(80, model.sectorName.length * 8 + 26));
     const labelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
-      reserved: [{ x: 8, y: 8, width: headerWidth, height: 40 }],
+      reserved: this._reservedLabelRects(w, h, [{ x: 8, y: 8, width: headerWidth, height: 40 }]),
     });
     this._lastLabelLayout = labelLayout;
     for (const placement of labelLayout) {
@@ -6219,15 +6823,14 @@ export const galaxyMapScreen = {
       }
     }
 
-    // Player: amber heading triangle with a white keyline.
-    g.save();
-    g.translate(w / 2, h / 2); g.rotate(Math.PI + (player ? player.rot : 0));
-    g.fillStyle = INK.amber;
-    g.strokeStyle = 'rgba(237, 232, 216, 0.9)';
-    g.lineWidth = 1;
-    g.beginPath(); g.moveTo(8, 0); g.lineTo(-6, -5.5); g.lineTo(-6, 5.5); g.closePath();
-    g.fill(); g.stroke();
-    g.restore();
+    // Player: the SAME fix mark used at SYSTEM and GALAXY scale. The LOCAL scope always centres on
+    // the ship, so this one was never in danger of disappearing — but it was a third distinct
+    // silhouette for the same object, which made the mark something the pilot had to re-identify at
+    // every threshold instead of track continuously through one.
+    drawPlayerFixMark(g, w / 2, h / 2, player ? player.rot : 0, {
+      scale: 1.08,
+      pulse: this._reduceMotion ? 0 : (0.5 + 0.5 * Math.sin(this._animT * 1.7)),
+    });
 
     // Velocity vector
     if (player && player.vel) {
@@ -6365,7 +6968,7 @@ export const galaxyMapScreen = {
       if (target && !offView(wx, wy)) this._clickTargets.push(target);
     }
     const labelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
-      reserved: [{ x: w / 2 - 13, y: h / 2 - 13, width: 26, height: 26 }],
+      reserved: this._reservedLabelRects(w, h, [{ x: w / 2 - 15, y: h / 2 - 15, width: 30, height: 30 }]),
     });
     this._lastLabelLayout = labelLayout;
     for (const placement of labelLayout) {
@@ -6559,6 +7162,196 @@ function drawShipChevron(g, x, y, rot, color) {
   g.moveTo(5, 0); g.lineTo(-4, -3.2); g.lineTo(-2.4, 0); g.lineTo(-4, 3.2);
   g.closePath(); g.fill();
   g.restore();
+}
+
+/**
+ * THE PLAYER MARK — the one thing on this chart that must never disappear, at any scale.
+ *
+ * Drawn as a distinct silhouette rather than a recoloured contact chevron: at GALAXY scale the ship
+ * sits among sector sigils and faction nodes, so a mark that differs only in colour is exactly the
+ * "colour alone" failure the identity forbids, and at LOCAL scale it must still not be mistaken for
+ * one of a hundred contacts. The shape is a heading triangle inside an open ring with four
+ * registration ticks — a surveyor's fix mark. It reads at 1x, it reads in forced-colors, and it
+ * reads for a colour-blind pilot.
+ *
+ * `scale` is the only knob: the mark keeps its PIXEL size across scales on purpose. Something that
+ * shrinks with the chart is not a "never disappears" guarantee, it is a guarantee that it eventually
+ * disappears.
+ */
+function drawPlayerFixMark(g, x, y, rot, options = {}) {
+  const scale = Number.isFinite(options.scale) ? options.scale : 1;
+  const pulse = Number.isFinite(options.pulse) ? options.pulse : 0;
+  const r = 9 * scale;
+  g.save();
+  g.translate(x, y);
+
+  // Outer ring, plus a slow breathing halo so the eye finds it on a busy chart without motion
+  // becoming decoration. `pulse` is fed 0 when motionReduce is on, which flattens this to a plain
+  // ring rather than removing the mark.
+  if (pulse > 0) {
+    g.strokeStyle = hexToRgba(INK.ink0, 0.13 * pulse);
+    g.lineWidth = 1;
+    g.beginPath(); g.arc(0, 0, r + 3 + pulse * 3.5, 0, Math.PI * 2); g.stroke();
+  }
+  g.strokeStyle = 'rgba(237, 232, 216, 0.92)';
+  g.lineWidth = 1.2 * scale;
+  g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.stroke();
+
+  // Registration ticks at the cardinals — the surveyor's-instrument tell, and a second
+  // non-colour cue that this ring is the fix mark and not a scan ring or a zone edge.
+  g.lineWidth = 1 * scale;
+  for (let i = 0; i < 4; i += 1) {
+    const a = (Math.PI / 2) * i;
+    const ix = Math.cos(a), iy = Math.sin(a);
+    g.beginPath();
+    g.moveTo(ix * (r + 1.5), iy * (r + 1.5));
+    g.lineTo(ix * (r + 4.5 * scale), iy * (r + 4.5 * scale));
+    g.stroke();
+  }
+
+  // Heading triangle. Same `Math.PI + rot` convention as every other oriented mark on this canvas.
+  g.rotate(Math.PI + (rot || 0));
+  g.fillStyle = INK.ink0;
+  g.strokeStyle = 'rgba(12, 14, 15, 0.85)';
+  g.lineWidth = 0.8;
+  g.beginPath();
+  g.moveTo(6 * scale, 0);
+  g.lineTo(-4.2 * scale, -3.6 * scale);
+  g.lineTo(-2.2 * scale, 0);
+  g.lineTo(-4.2 * scale, 3.6 * scale);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  g.restore();
+}
+
+/**
+ * THE NAVIGATION CARTOUCHE — the four always-present answers, painted on the chart itself.
+ *
+ * Deliberately NOT a DOM panel. ADR D9.9 rejects new permanent panels outright: the reported
+ * density paradox ("too little useful information, yet crowded") is a progressive-disclosure
+ * failure, and a fifth rail would make it worse. A cartouche is what a paper survey chart already
+ * has — the block in the corner that tells you what you are looking at — so this is in-identity
+ * furniture rather than added UI, it costs no layout, and it cannot push the chart smaller.
+ *
+ * Tone maps to colour AND to a leading glyph AND to weight, never to colour alone:
+ *   TRACKED -> filled brass tick + bright ink   (the only tone permitted bright gold)
+ *   PLAIN   -> hairline tick + normal ink
+ *   MUTED   -> open dash + dimmed ink
+ */
+/**
+ * The cartouche's geometry, derived in ONE place so the drawer and the label declutterer cannot
+ * disagree about where it is. A reserved rectangle that drifted from the plate it describes would
+ * silently reintroduce the marker-overlap defect it exists to prevent.
+ *
+ * Returns null when the chart is too small to carry a cartouche at all.
+ */
+function navCartoucheBounds(rowCount, w, h) {
+  if (!(rowCount > 0)) return null;
+  const rowH = 26;
+  const padX = 12;
+  const padY = 10;
+  const boxW = Math.min(300, Math.max(212, w * 0.26));
+  const boxH = padY * 2 + rowCount * rowH;
+  // A chart this narrow has nowhere to put a cartouche without covering the marks it describes.
+  // Withholding it is better than occluding the thing the pilot is reading.
+  if (w < 420 || h < boxH + 90) return null;
+  return { x: 14, y: h - boxH - 14, width: boxW, height: boxH, rowH, padX, padY };
+}
+
+function drawNavCartouche(g, rows, w, h, options = {}) {
+  if (!Array.isArray(rows) || !rows.length) return;
+  const bounds = navCartoucheBounds(rows.length, w, h);
+  if (!bounds) return;
+  const { rowH, padX, padY, width: boxW, height: boxH, x: x0, y: y0 } = bounds;
+
+  g.save();
+  g.translate(x0, y0);
+
+  // Plate: the same opaque warm near-black the inspector and header plates use, so the cartouche
+  // reads as part of the instrument rather than as an overlay floating above it.
+  g.fillStyle = INK.plateHard;
+  g.strokeStyle = INK.plateEdge;
+  g.lineWidth = 1;
+  g.beginPath();
+  g.rect(0.5, 0.5, boxW - 1, boxH - 1);
+  g.fill();
+  g.stroke();
+
+  // Brass index rule down the binding edge — the cartouche's one ornament.
+  g.fillStyle = INK.brass;
+  g.fillRect(0.5, 0.5, 2, boxH - 1);
+
+  let y = padY;
+  for (const row of rows) {
+    const tracked = row.tone === NAV_ROW_TONE.TRACKED;
+    const muted = row.tone === NAV_ROW_TONE.MUTED;
+
+    // Leading glyph — the non-colour half of the tone signal.
+    g.save();
+    const gy = y + 7;
+    if (tracked) {
+      g.fillStyle = INK.amberHot;
+      g.fillRect(padX - 4, gy - 2.5, 5, 5);
+    } else if (muted) {
+      g.strokeStyle = INK.ink2;
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(padX - 4, gy); g.lineTo(padX + 1, gy); g.stroke();
+    } else {
+      g.strokeStyle = INK.ink1;
+      g.lineWidth = 1;
+      g.strokeRect(padX - 3.5, gy - 2, 4, 4);
+    }
+    g.restore();
+
+    g.textAlign = 'left';
+    g.textBaseline = 'top';
+    g.font = FONT_MONO(500, 8);
+    g.fillStyle = INK.ink2;
+    g.fillText(row.label, padX + 8, y);
+
+    g.font = FONT_DISPLAY(600, 11.5);
+    g.fillStyle = tracked ? INK.amberHot : (muted ? INK.ink2 : INK.ink0);
+    g.fillText(fitCartoucheText(g, row.value, boxW - padX * 2 - 10), padX + 8, y + 10);
+
+    if (row.detail) {
+      g.font = FONT_MONO(500, 8);
+      g.fillStyle = INK.ink2;
+      const detailW = g.measureText(row.detail).width;
+      // Detail is right-aligned against the plate edge so the four value strings stay on one
+      // reading column no matter how long each detail happens to be.
+      if (detailW < boxW - padX * 2 - 90) {
+        g.textAlign = 'right';
+        g.fillText(row.detail, boxW - padX, y + 1);
+        g.textAlign = 'left';
+      }
+    }
+    y += rowH;
+  }
+
+  if (options.title) {
+    g.font = FONT_MONO(500, 7.5);
+    g.fillStyle = INK.ink2;
+    g.textAlign = 'right';
+    g.textBaseline = 'bottom';
+    g.fillText(options.title, boxW - padX, boxH - 3);
+  }
+  g.restore();
+}
+
+/** Ellipsize to a pixel budget. A cartouche that overflows its plate is worse than a short label. */
+function fitCartoucheText(g, text, maxWidth) {
+  const s = String(text == null ? '' : text);
+  if (!s) return '';
+  if (g.measureText(s).width <= maxWidth) return s;
+  let lo = 0;
+  let hi = s.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (g.measureText(`${s.slice(0, mid)}…`).width <= maxWidth) lo = mid;
+    else hi = mid - 1;
+  }
+  return `${s.slice(0, Math.max(1, lo))}…`;
 }
 
 /** Hostile: a red open diamond, rotated to heading — threat reads before color-blind shape. */

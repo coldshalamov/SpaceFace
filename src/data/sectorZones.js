@@ -1,6 +1,7 @@
 // src/data/sectorZones.js — NAMED ZONES per sector (the "why does this exist here" layer).
 
 import { FRONTIER_ZONES } from './frontierRegions/index.js';
+import { appendAuthoredZones } from './authoredPlaces.js';
 //
 // Problem this solves: content used to be scattered on random radial rings, so a sector read as a
 // flat disc of unrelated dots — "a test room." This module gives every sector a set of NAMED zones,
@@ -225,10 +226,12 @@ const CORE_SECTOR_ZONES = {
   ],
 };
 
-export const SECTOR_ZONES = {
+// Additive authored places (src/data/authoredPlaces.js) are APPENDED, never spread: a spread would
+// replace a sector's whole authored zone list with the additions instead of extending it.
+export const SECTOR_ZONES = appendAuthoredZones({
   ...CORE_SECTOR_ZONES,
   ...FRONTIER_ZONES,
-};
+});
 
 /** All zones for a sector (empty array if the sector has no authored zones → legacy behaviour). */
 export function zonesForSector(sectorId) {

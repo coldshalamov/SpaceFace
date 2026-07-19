@@ -188,6 +188,14 @@ async function boot() {
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)
     SF_DEBUG_ONLY: if (SF_DEBUG) {
       window.SF = Object.assign(window.SF || {}, { state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace });
+      // Expose the game's OWN authored-visual readiness contract to acceptance harnesses.
+      // Without this a harness cannot ask "are the visuals that matter ready?" and is forced to
+      // reinvent the check from entity internals — which is exactly how the professional-travel
+      // route came to demand `ships.every(authoredAssetState === 'authored')`, a condition the
+      // engine deliberately never satisfies (distant NPCs stay dormant by design, pinned by
+      // test/asset-npc-authored-binding.test.mjs). Publishing the real contract is what stops
+      // that divergence recurring: harnesses consume this, they do not re-derive it.
+      window.SF.authoredVisualReadiness = () => authoredVisualReadiness(state);
       console.log('[SpaceFace] booted -> main menu. seed=%d', seed);
     }
 

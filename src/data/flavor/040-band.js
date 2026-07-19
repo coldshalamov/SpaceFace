@@ -37,6 +37,10 @@ export default defineFlavorPack({
         { id: 'margin_06', eventKey: 'player.destroy_freighter', text: 'Tessera dropped a freighter. Prices followed. Someone planned both.' },
         { id: 'margin_07', eventKey: 'player.cross_vale_closure', text: "Tessera crossed Vale's closure. The people remained inside." },
         { id: 'margin_08', text: 'If you saw it, send proof. Names protected.' },
+        { id: 'margin_09', text: 'Shaft 7 logged 0.7t moisture loss. Two miners unaccounted. The column is shorter than the names.' },
+        { id: 'margin_10', text: 'R3-CARRIER filter batch: withdrawn year 3, replacement still pending. We are asking why.' },
+        { id: 'margin_11', text: 'The Clear-Air index moved again. Same desk holds the position. We printed the desk.' },
+        { id: 'margin_12', text: 'Division 6 renewed its budget under REF 44-C. No public scope. We are counting the cycles.' },
       ],
     },
     {
@@ -112,6 +116,9 @@ export default defineFlavorPack({
         { id: 'numbers_06', text: 'THE THIRD LIGHT LIES.' },
         { id: 'numbers_07', text: 'COUNT DOORS, NOT SHIPS.' },
         { id: 'numbers_08', text: 'CODE ENDS WHEN SOMEONE ANSWERS.' },
+        { id: 'numbers_09', text: 'ELEVEN. TWO. ZERO POINT SEVEN. SAY NOTHING.' },
+        { id: 'numbers_10', text: 'R3. CARRIER. YEAR THREE. STILL WAITING.' },
+        { id: 'numbers_11', text: 'FORTY-ONE. ZERO. COUNT THE DOORS.' },
       ],
     },
     {

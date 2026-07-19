@@ -25,5 +25,15 @@ export default defineFlavorPack({
     { id: 'senna_01', set: 'senna_name', templateKey: 'recoveredName', text: '{name} WAS HERE. WE REMEMBERED.' },
     { id: 'senna_02', set: 'senna_name', templateKey: 'recoveredName', text: 'SENNA FOUND {name}. KEEP IT FOUND.' },
     { id: 'senna_03', set: 'senna_name', templateKey: 'recoveredName', text: '{name} MADE IT HOME IN INK.' },
+    // Testimony set: named numbers, named beneficiaries. The wall keeps the receipt.
+    { id: 'test_01', set: 'testimony', text: 'SHAFT 7. NINE OF ELEVEN. THE OTHER TWO ARE A COLUMN.' },
+    { id: 'test_02', set: 'testimony', text: 'R3-CARRIER LEFT YEAR 3. NEVER REPLACED. YEAR 17.' },
+    { id: 'test_03', set: 'testimony', text: 'THE ENGINE DID NOT NAME US. THE ENGINE DOES NOT NAME ANYONE.' },
+    { id: 'test_04', set: 'testimony', text: 'ATMO TOKEN UP. PIT AIR DOWN. SAME DESK.' },
+    { id: 'test_05', set: 'testimony', text: 'FORTY-ONE HULLS. FORTY-ONE FILINGS. ZERO CARGO.' },
+    { id: 'test_06', set: 'testimony', text: 'KESSLER. SCALE 4. TYCHO. NINETEEN YEARS.' },
+    // Elroy residue: the third tag the kill feed overwrote. Same-dock guarantee.
+    { id: 'elroy_01', set: 'elroy_tag', text: 'THE TAG FLICKERED HALF A SECOND. IT COUNTED.' },
+    { id: 'elroy_02', set: 'elroy_tag', text: 'THEY WERE CARRYING MEDICINE. THE FEED SAYS THREAT.' },
   ],
 });
