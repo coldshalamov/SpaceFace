@@ -1080,10 +1080,21 @@ async function inspectDestination(page, helpers, sectorId) {
   await helpers.searchAndSelect(page, name, /sector|system/i);
   await page.waitForTimeout(700);
   return page.evaluate(() => {
-    const panel = document.querySelector('.gm-inspector, [data-map-inspector], .gm-detail, .gm-selection');
+    // Selector corrected 2026-07-19. This previously queried `.gm-inspector`, `[data-map-inspector]`,
+    // `.gm-detail` and `.gm-selection` — NONE of which exist in the chart. The inspector renders as
+    // `.gm-inspector-content` / `.gm-inspector-details` inside `#gm-tabpanel`, so this step reported
+    // "no inspector panel rendered" while the panel was on screen the whole time. Proven by
+    // scripts/repro-engage-control-reachability.mjs, which probed both selector sets side by side:
+    // the journey's four all matched false, the real three all matched true.
+    //
+    // This corrects the QUESTION, it does not lower the bar: the content assertions below are
+    // untouched, so a panel that renders without an arrival reason still fails. A grader that
+    // cannot see the thing it grades reports absence, which is indistinguishable from a real
+    // product gap — the same failure mode as the D11 launch predicate.
+    const panel = document.querySelector('.gm-inspector-content, .gm-inspector-details, #gm-tabpanel');
     if (!panel) return { ok: false, reason: 'no inspector panel rendered for the selection' };
     const text = (panel.innerText || '').trim();
-    const titleEl = panel.querySelector('h2, h3, .gm-inspector-title, .gm-detail-title');
+    const titleEl = panel.querySelector('h2, h3, .gm-inspector-title, .gm-inspector-h, .gm-detail-title');
     const title = titleEl ? (titleEl.innerText || '').trim() : text.split('\n')[0] || '';
     // An "arrival reason" is a statement of WHY this place is the destination — a tracked mission
     // objective, a contract, or a delivery. A bare name/distance readout is not one.

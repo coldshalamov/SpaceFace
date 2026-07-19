@@ -6346,6 +6346,22 @@ export const galaxyMapScreen = {
     const action = resolveGalaxyMapPrimaryAction(this._ctx.state, this._selectedTarget);
     if (!action) return;
     if (!emitGalaxyMapPrimaryAction(this._ctx.bus, action)) return;
+    // PLOT must not dismiss the chart (atlas W1-8 / ADR D6). Plot and Engage are two separate
+    // acts, and Engage lives on this screen — so closing here made the pair impossible to perform
+    // in one sitting: the pilot plotted, the chart vanished, and Engage was only reachable by
+    // reopening the map. Measured by scripts/repro-engage-control-reachability.mjs: after a plot
+    // the engage button had a 0x0 rect (a hidden ancestor, not a broken control), and on reopen
+    // with the same route it read "2 legs plotted — ready to fly" and was enabled.
+    //
+    // A 'route' action is the plot-only one. Every other kind is a commitment the pilot makes to
+    // leave the chart with — 'jump' commits the gate transition, and the station/gate/poi/local
+    // kinds arm a waypoint to fly manually — so those still close, which is the behaviour that was
+    // always right and is deliberately unchanged.
+    if (action.kind === 'route') {
+      this._updateEngageControl();
+      this._updateRailSections(this._ctx.state);
+      return;
+    }
     popCurrentScreen(this._ctx);
   },
 
