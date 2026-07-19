@@ -2,11 +2,11 @@
 //
 // Protection geometry: a defended radius around the escorted charge (ward).
 // Target policy: prioritize threats that have entered the screen.
-// Saturation: max simultaneous intercepts with recovery over sim ticks.
+// Saturation: a two-charge acquisition budget with deterministic recovery over sim ticks.
 //
 // Honest v1: shipped weapons do not consume weapon.intercepts for projectile
 // kill/divert at runtime (data-only flag). This module implements
-// priority-targeting + saturation cap + doctrine distinction. Projectile
+// priority-targeting + recovery-charge cap + doctrine distinction. Projectile
 // contacts, when present in the sensor frame, score highest inside the screen.
 
 import { ContactKind, distance2, finite, stableId } from './contracts.js';
@@ -115,7 +115,7 @@ export function selectPdInterceptTarget({
   const selfPos = self.pos;
   const radius = Number.isFinite(screenRadius) ? screenRadius : PD_SCREEN_DEFAULT_RADIUS;
 
-  // Saturation: block new intercepts while at cap.
+  // Saturation: block new target acquisitions while every recovery charge is spent.
   if (saturation && !pdSaturationAllows(saturation, tick)) return null;
 
   let best = null;
@@ -154,6 +154,7 @@ export function ensurePdSaturation(entity) {
       lastReleaseTick: -Infinity,
       maxIntercepts: PD_SCREEN_MAX_INTERCEPTS,
       recoveryTicks: PD_SCREEN_RECOVERY_TICKS,
+      saturationModel: 'recovery_charges',
     };
   }
   return data.pdScreenRuntime;
@@ -187,6 +188,7 @@ export function beginPdIntercept(sat, tick) {
   return true;
 }
 
+/** Free one spent charge early when an authoritative intercept-lifecycle receipt exists. */
 export function releasePdIntercept(sat, tick) {
   if (!sat) return;
   sat.activeIntercepts = Math.max(0, (sat.activeIntercepts || 0) - 1);
