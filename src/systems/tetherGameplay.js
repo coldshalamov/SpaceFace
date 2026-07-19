@@ -2,7 +2,12 @@
 // Consumes the locked input action contract and wires the existing SG-03/SG-02 attachment
 // service into player flight. SG-02 owns momentum exchange; this system only targets,
 // reels, cuts, and emits player-facing gameplay events.
+//
+// T04: latch eligibility/ranking consumes T03 rankMasslineTargets (ownership + latched axes).
+// isObstructed is intentionally NOT wired here — T03's contract is caller-resolved, and
+// terrain/LOS obstruction queries belong to T13. Leave that opt absent until T13 owns it.
 import { lockedHostileEntity } from '../combat/autoTargetMode.js';
+import { rankMasslineTargets } from '../combat/masslineTargetScoring.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer } from './scanner.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -54,6 +59,7 @@ export const tetherGameplay = {
     this._ignoreReleaseCutUntilReelIdle = false;
     this._latchGraceUntil = 0;
     this._reelStrength = 0;
+    this._lastLatchDenial = null;
     this._resetPhaseMirror();
   },
 
@@ -147,13 +153,22 @@ export const tetherGameplay = {
     this._resetPhaseMirror();
     this._mirror(state, null, 0);
     if (!actions?.tetherFire) return;
-    if (now < this._noRelatchUntil) return;
+    // Readable failure reasons (T04): never fail latch silently.
+    if (now < this._noRelatchUntil) {
+      this.bus.emit('tether:latchDenied', { reason: 'cooldown' });
+      return;
+    }
     const def = attachmentDef(kernel, TETHER_DEF_ID);
     if (!def) return;
+    this._lastLatchDenial = null;
     const nearestMode = state.input?.tetherMode === 'nearest' || softNearestPreferred(state, player);
     const latch = this._acquireTarget(player, def, state, nearestMode);
     const target = latch && latch.entity;
-    if (!target) return;
+    if (!target) {
+      const denial = this._lastLatchDenial || { reason: 'no-target' };
+      this.bus.emit('tether:latchDenied', denial);
+      return;
+    }
 
     // Context-aware attachment (Wave M2 §3.2, flag massline2.contextAttach — OFF headless): one
     // tether key, intent read from the target. A HOSTILE ship keeps the authored nose anchor —
@@ -168,7 +183,14 @@ export const tetherGameplay = {
       targetId: target.id,
       ...attachWorlds,
     });
-    if (!result || !result.ok || !result.attachment) return;
+    if (!result || !result.ok || !result.attachment) {
+      // Passthrough of the attachment authority's existing result.reason (e.g. owner_attachment_limit).
+      this.bus.emit('tether:latchDenied', {
+        reason: (result && result.reason) || 'create_failed',
+        targetId: target.id,
+      });
+      return;
+    }
 
     this._active = {
       attachmentId: result.attachment.id,
@@ -194,7 +216,10 @@ export const tetherGameplay = {
       // Combat can kill or deauthorize the leased target after flybyFocus updates but before this
       // later system consumes F. The lease stays fail-closed for that tick; its owner clears it on
       // the next update rather than allowing tether targeting to retarget or mutate Focus state.
-      if (!isAuthorizedFocusTarget(state, player, focusTarget)) return null;
+      if (!isAuthorizedFocusTarget(state, player, focusTarget)) {
+        this._lastLatchDenial = { reason: 'no-target' };
+        return null;
+      }
       const focusDx = focusTarget.pos.x - player.pos.x;
       const focusDz = focusTarget.pos.z - player.pos.z;
       const focusDistance = Math.hypot(focusDx, focusDz);
@@ -204,17 +229,10 @@ export const tetherGameplay = {
       // A valid Focus lease remains exclusive even before the target enters tether reach. Falling
       // through here would turn the authored exact-target window into nearest-mode assistance and
       // let nearby rocks or traffic steal the press.
+      this._lastLatchDenial = { reason: 'out-of-range', targetId: focusTarget.id };
       return null;
     }
-    const locked = lockedHostileEntity(state);
-    if (locked && isAttachable(locked, player.id) && isHostileToPlayer(locked, player.team, state)) {
-      const lockDx = locked.pos.x - player.pos.x;
-      const lockDz = locked.pos.z - player.pos.z;
-      const lockDistance = Math.hypot(lockDx, lockDz);
-      if (lockDistance <= maxLength + (locked.radius || 0)) {
-        return { entity: locked, targetWorld: surfacePointToward(locked, player.pos) };
-      }
-    }
+
     const aim = aimWorldFor(player, state, maxLength);
     const candidates = queryNearbyEntities(
       state,
@@ -233,10 +251,6 @@ export const tetherGameplay = {
       this._nonCollidingTargetScratch,
     );
 
-    let best = null;
-    let bestScore = Infinity;
-    let bestId = Infinity;
-    let bestTargetWorld = null;
     const aimDx = aim.x - player.pos.x;
     const aimDz = aim.z - player.pos.z;
     const aimLen = Math.hypot(aimDx, aimDz);
@@ -244,33 +258,131 @@ export const tetherGameplay = {
     const uz = aimLen > 1e-6 ? aimDz / aimLen : Math.sin(state.input?.aimAngle || player.rot || 0);
     const rayLength = Math.max(MIN_AIM_RAY_LENGTH, Math.min(maxLength, aimLen || maxLength));
 
+    // Build the attachable pool, then let T03 rankMasslineTargets own eligibility + ranking.
+    // Cursor/ray still soft-filters the aim path so F does not steal distant off-reticle clutter;
+    // ownership/hostility/ally damping and preferred/locked ranking are the scorer's job.
+    const attachable = [];
+    const byId = new Map();
     for (const entity of candidates) {
       if (!isAttachable(entity, player.id)) continue;
       const dxPlayer = entity.pos.x - player.pos.x;
       const dzPlayer = entity.pos.z - player.pos.z;
       const playerDistance = Math.hypot(dxPlayer, dzPlayer);
       if (playerDistance > maxLength + (entity.radius || 0)) continue;
+      attachable.push(entity);
+      byId.set(entity.id, entity);
+    }
 
-      let score = Infinity;
-      let targetWorld = null;
-      if (nearestMode) {
-        score = Math.max(0, playerDistance - (entity.radius || 0));
-        targetWorld = surfacePointToward(entity, player.pos);
-      } else {
-        const hit = cursorAimScore(entity, aim, player, ux, uz, rayLength, state);
-        score = hit.score;
-        targetWorld = hit.targetWorld;
+    // Locked hostile remains an explicit preferred paint (same short-circuit authority as before,
+    // expressed as preferredId so the scorer still applies ownership gates).
+    const locked = lockedHostileEntity(state);
+    let preferredId = null;
+    if (locked && byId.has(locked.id) && isHostileToPlayer(locked, player.team, state)) {
+      preferredId = locked.id;
+    } else if (state.player?.targetId != null && byId.has(state.player.targetId)) {
+      preferredId = state.player.targetId;
+    }
+
+    if (!attachable.length) {
+      this._lastLatchDenial = { reason: 'no-target' };
+      return null;
+    }
+
+    const latchedId = state.player?.tether?.active ? state.player.tether.targetId : null;
+    // isObstructed intentionally omitted — terrain/LOS is T13 (see file header).
+    // Scorer owns eligibility (protected/out/ally damp) and massline ranking among peers.
+    const ranked = rankMasslineTargets(player, attachable, {
+      maxRange: maxLength,
+      intentDir: nearestMode ? undefined : { x: ux, z: uz },
+      preferredId,
+      isHostile: (t) => isHostileToPlayer(t, player.team, state),
+      isLatched: latchedId != null ? (t) => t.id === latchedId : null,
+      ownershipOf: (t) => resolveMasslineOwnership(t, player, state),
+    });
+
+    const eligible = ranked.filter((rec) => rec && rec.score > 0);
+    if (!eligible.length) {
+      const protectedRec = ranked.find((rec) => rec && rec.rating === 'protected');
+      if (protectedRec) {
+        this._lastLatchDenial = { reason: 'protected', targetId: protectedRec.id };
+        return null;
       }
-      if (!Number.isFinite(score)) continue;
-      const id = sortableId(entity.id);
-      if (score < bestScore || (score === bestScore && id < bestId)) {
-        best = entity;
-        bestScore = score;
-        bestId = id;
-        bestTargetWorld = targetWorld;
+      const outRec = ranked.find((rec) => rec && rec.rating === 'out');
+      if (outRec) {
+        this._lastLatchDenial = { reason: 'out-of-range', targetId: outRec.id };
+        return null;
+      }
+      this._lastLatchDenial = { reason: 'no-target' };
+      return null;
+    }
+
+    // Locked hostile preferred paint: keep the pre-T04 exclusive lock when still eligible.
+    if (preferredId != null && locked && preferredId === locked.id) {
+      const lockRec = eligible.find((rec) => rec.id === preferredId);
+      if (lockRec) {
+        const lockEntity = byId.get(preferredId);
+        if (lockEntity) {
+          return { entity: lockEntity, targetWorld: surfacePointToward(lockEntity, player.pos) };
+        }
       }
     }
-    return best ? { entity: best, targetWorld: bestTargetWorld || surfacePointToward(best, player.pos) } : null;
+
+    let bestEntity = null;
+    let bestTargetWorld = null;
+    if (nearestMode) {
+      let bestDist = Infinity;
+      let bestSortId = Infinity;
+      for (const rec of eligible) {
+        const entity = byId.get(rec.id) || (state.entities && state.entities.get ? state.entities.get(rec.id) : null);
+        if (!entity || !entity.pos) continue;
+        const dist = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
+        const sid = sortableId(entity.id);
+        if (dist < bestDist || (dist === bestDist && sid < bestSortId)) {
+          bestEntity = entity;
+          bestDist = dist;
+          bestSortId = sid;
+          bestTargetWorld = surfacePointToward(entity, player.pos);
+        }
+      }
+    } else {
+      // Reticle path: among scorer-eligible candidates, preserve cursor/ray ranking so an aimed
+      // ship is not stolen by a nearer rock that merely intersects the aim ray. Massline score
+      // breaks exact cursor ties (hostile ranks first among comparable reticle peers).
+      const masslineRank = new Map(eligible.map((rec, index) => [rec.id, index]));
+      let bestCursor = Infinity;
+      let bestMassline = Infinity;
+      let bestSortId = Infinity;
+      for (const rec of eligible) {
+        const entity = byId.get(rec.id) || (state.entities && state.entities.get ? state.entities.get(rec.id) : null);
+        if (!entity) continue;
+        const hit = cursorAimScore(entity, aim, player, ux, uz, rayLength, state);
+        if (!Number.isFinite(hit.score)) continue;
+        const mRank = masslineRank.has(rec.id) ? masslineRank.get(rec.id) : Infinity;
+        const sid = sortableId(entity.id);
+        const better = hit.score < bestCursor
+          || (hit.score === bestCursor && mRank < bestMassline)
+          || (hit.score === bestCursor && mRank === bestMassline && sid < bestSortId);
+        if (better) {
+          bestEntity = entity;
+          bestTargetWorld = hit.targetWorld;
+          bestCursor = hit.score;
+          bestMassline = mRank;
+          bestSortId = sid;
+        }
+      }
+      // No reticle/ray hit: fail closed (pre-T04 default path never latched off-reticle clutter).
+      // Nearest mode above still latches by distance; pure massline auto-pick is not the latch path.
+      if (!bestEntity) {
+        this._lastLatchDenial = { reason: 'no-target' };
+        return null;
+      }
+    }
+
+    if (!bestEntity) {
+      this._lastLatchDenial = { reason: 'no-target' };
+      return null;
+    }
+    return { entity: bestEntity, targetWorld: bestTargetWorld || surfacePointToward(bestEntity, player.pos) };
   },
 
   // Adopt a player-owned active tether we aren't tracking: after save-reload (this._active is
@@ -599,6 +711,36 @@ function aimWorldFor(player, state, range) {
 function isAttachable(entity, playerId) {
   if (!entity || !entity.alive || !entity.pos || entity.id === playerId) return false;
   return ATTACHABLE_TYPES.has(entity.type);
+}
+
+/**
+ * Runtime ownership resolution for T03 rankMasslineTargets (T04).
+ * - own: player-owned deployables / wingman-tagged craft
+ * - station: station-class entities (gated protected)
+ * - hostile: existing isHostileToPlayer resolution
+ * - ally: friendly-team ships/drones (eligible but damped by the scorer)
+ * - neutral: everything else (asteroids, wrecks, passive traffic, …)
+ */
+function resolveMasslineOwnership(entity, player, state) {
+  if (!entity) return 'neutral';
+  if (entity.type === 'station') return 'station';
+
+  const playerId = player && player.id;
+  const ownerId = entity.ownerId ?? entity.data?.ownerId ?? entity.data?.owner ?? null;
+  if (playerId != null && ownerId != null && ownerId === playerId) return 'own';
+  if (entity.data?.isWingman === true) return 'own';
+  if (entity.data?.echoOfPlayer === true) return 'own';
+
+  if (isHostileToPlayer(entity, player && player.team, state)) return 'hostile';
+
+  if ((entity.type === 'ship' || entity.type === 'drone')
+      && player
+      && entity.team === player.team
+      && entity.id !== playerId) {
+    return 'ally';
+  }
+
+  return 'neutral';
 }
 
 function appendNonCollidingAttachableCandidates(candidates, entities, player, maxLength, scratch) {
