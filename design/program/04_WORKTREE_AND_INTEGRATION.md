@@ -1,27 +1,23 @@
 # Worktree and Integration Inventory
 
-**Current integration snapshot:** 2026-07-19 after graphics promotion `cbdf1589`. The older
+**Current integration snapshot:** 2026-07-19 after combined merge `b235f062`. The older
 July-14 repository tables remain below as labeled history. Re-run the commands at the end before
-acting: the isolated performance lane and primary diagnostic process can move after this document is
-written. Use [`NOW.md`](./NOW.md) for volatile ownership and
+acting: donor worktrees can move after this document is written. Use [`NOW.md`](./NOW.md) for volatile ownership and
 [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md) for donor disposition.
 
 ## Current integration checkpoint — 2026-07-19
 
-- Primary branch: `master` at graphics merge `cbdf1589`.
-- Graphics closeout: `codex/graphics-closeout-20260719` was clean, fast-forwarded with
-  `git merge --ff-only master`, and is at the same `cbdf1589` tip before this documentation draft.
+- Primary branch: `master` at combined merge `b235f062`.
+- Graphics closeout: clean at `8e860439`; all commits are ancestors of `b235f062`.
 - Earlier unified checkpoint: performance `1bdde6c8`, graphics `e3ad1caf`, and paused Claude
   `1905cac8` were synthesized at `a752702b`, promoted as `ee9e0ab3`, and hardened through
   `f0b3b154`. Their accepted changes remain ancestors of current `master`.
 - Later graphics closeout: `bd79f2ba`, `5219491d`, `98e1e429`, `1de8a861`, and `5863331c` are
   promoted by `cbdf1589`. These changes are now `master` implementation, not donor-only work.
-- Newer performance closure: `codex/performance-closure-20260719` remains isolated and was at
-  `6559e3b4` when the worktree list was sampled. Its final head, dirty state, evidence, and overlap
-  resolutions must be refreshed after its owner stops. Do not describe it as integrated.
-- Primary diagnostics: the last coordinator snapshot reported a foreign edit to
-  `scripts/repro-station-approach.mjs` and quarantined untracked `design/program/_review/`. The
-  graphics closeout neither reads nor stages those paths. Refresh primary status before promotion.
+- Performance closure: clean final tip `99cad5b5`; its unique changes were reviewed, replayed, and
+  merged at `b235f062` while patch-equivalent duplicates were skipped.
+- Primary diagnostics: the Atlas/camera transaction is committed at `21d82428`. Only quarantined
+  untracked `design/program/_review/` remains and was never opened or staged.
 - No remaining donor is authoritative over `master`. Whole-branch merges are rejected for the
   Depth, Kimi, Helios, and graphics-overhaul donors; use the selective disposition ledger.
 
@@ -29,9 +25,9 @@ written. Use [`NOW.md`](./NOW.md) for volatile ownership and
 
 | Worktree | Tip | Disposition |
 |---|---|---|
-| `SpaceFace` | `cbdf1589` (`master`) | Product authority; preserve foreign dirty diagnostics. |
-| `SpaceFace-graphics-closeout` | `cbdf1589` | Documentation staging lane; removable after its reviewed docs are promoted. |
-| `SpaceFace-performance-closure` | `6559e3b4` sampled | Active/protected; review and synthesize after a clean owner handoff. |
+| `SpaceFace` | `b235f062` (`master`) | Product authority; preserve quarantined review material. |
+| `SpaceFace-graphics-closeout` | `8e860439` | Fully merged; removable after reviewed docs and route evidence are promoted. |
+| `SpaceFace-performance-closure` | `99cad5b5` | Fully synthesized; removable after final combined route proof and recovery confirmation. |
 | `SpaceFace-graphics-overhaul` | `cab2d122` | Retain; substantial dirty Blender/source assets still need asset-by-asset disposition. |
 | `SpaceFace-oc-helios-golden` | `4c367cd7` | Full replacement rejected; preserve only until the batching concept and rejection receipts are durably recorded. |
 | `SpaceFace-depth-actualization` | `bf1dfce2` | Never whole-merge; selective product donor only. |
@@ -112,8 +108,8 @@ Every residual dirty path or coherent checkpoint subsystem should receive:
 
 The bulk checkpoint already exists. These are audit units, not permission to rewrite or re-stage it:
 
-1. **CHECKPOINT-IDENTITY** — keep `cbdf1589`, the isolated performance tip, primary dirty paths,
-   and registered worktree inventory explicit until the final combined checkpoint is promoted.
+1. **CHECKPOINT-IDENTITY** — keep `b235f062`, donor tips, quarantined paths, and registered worktree
+   inventory explicit until the final route evidence is promoted.
 2. **DEPTH-REVALIDATION** — never whole-merge `bf1dfce2`; port only the selected product slices in
    the donor ledger, then rerun aggregate and focused bad-fixture matrices from current HEAD;
    preserve 0/31 DONE until natural routes and evidence pass.
@@ -121,9 +117,8 @@ The bulk checkpoint already exists. These are audit units, not permission to rew
    asset changes under their owners. Do not infer approval from checkpoint inclusion.
 4. **EVIDENCE-DURABILITY** — promote only reviewed manifests/media needed by a clean checkout;
    `.devshots` remains ignored by default.
-5. **PERFORMANCE-SYNTHESIS** — merge the isolated performance branch only after its owner hands off a
-   clean reviewed tip; manually preserve graphics semantic materials/admission in `partsLibrary.js`
-   and `renderer.js`, and Atlas velocity/background truth in `spaceBackground.js`.
+5. **PERFORMANCE-SYNTHESIS** — complete at `b235f062`; 167/167 performance-modified tests and 49/49
+   graphics/PBR/VFX tests pass on the synthesized tree. Headed acceptance remains a separate gate.
 6. **RESIDUAL-WIP** — use `09_DONOR_VALUE_LEDGER.md`; remove physical worktrees only after every
    valuable dirty/untracked product path is promoted, retained by branch/tag, or deliberately rejected.
 

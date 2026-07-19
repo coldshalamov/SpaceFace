@@ -22,9 +22,9 @@ Dirty-path counts and ahead/behind counts are audit snapshots and must be refres
 
 | Worktree / branch | Audit snapshot | Product ruling | Physical cleanup condition |
 |---|---|---|---|
-| `SpaceFace` / `master` | `cbdf1589` | Product authority. Graphics closeout is promoted. | Never remove. Preserve foreign station diagnostics and quarantined review material. |
-| `SpaceFace-graphics-closeout` / `codex/graphics-closeout-20260719` | Fast-forwarded cleanly to `cbdf1589` before this uncommitted documentation pass. | No unique product work after the docs are promoted. | Remove after reviewed program-doc changes reach `master` and status is clean. |
-| `SpaceFace-performance-closure` / `codex/performance-closure-20260719` | Active; sampled at `6559e3b4`. | Protected integration donor. Finish and review in isolation; synthesize render overlaps manually. | Remove only after final clean tip is integrated, combined graphics/performance proof passes, and branch recovery is confirmed. |
+| `SpaceFace` / `master` | `b235f062` | Product authority. Graphics and reviewed performance synthesis are promoted. | Never remove. Preserve quarantined review material. |
+| `SpaceFace-graphics-closeout` / `codex/graphics-closeout-20260719` | Clean at `8e860439`; every commit is reachable from `b235f062`. | No unique product work. | Remove after this reviewed ledger and final route receipt reach `master`. |
+| `SpaceFace-performance-closure` / `codex/performance-closure-20260719` | Clean final tip `99cad5b5`; replayed with duplicate patches skipped. | Integrated at `b235f062`; branch is recovery history only. | Remove after final combined route proof and branch recovery are confirmed. |
 | `SpaceFace-graphics-overhaul` / `codex/graphics-overhaul` | Audit: 96 master-only / 24 branch-only commits and about 244 dirty paths. | Retain. It contains substantial uncommitted Blender/source assets and cannot be reduced to a branch-only history yet. Never whole-merge. | Keep physical worktree until asset-by-asset source inventory and promote/reject receipts are complete. |
 | `SpaceFace-oc-helios-golden` / `opencode/helios-golden-station` | Audit: about 70 commits behind, 0 unique commits, and about 257 dirty paths. | Full station replacement rejected. Retain only the batching recipe described below. | After hashes/rejection/batching recipe are durable and no unique source value remains, remove the physical worktree; retain a branch/tag only if useful. |
 | `SpaceFace-depth-actualization` / `grok/depth-player-route-actualization` | `bf1dfce2`; audit: about 90 master-only / 42 branch-only commits and 17 untracked raw artifacts. | Selective product donor only. Whole merge rejected because it would delete or regress large current surfaces. | Record or port the selected slices, reject the raw artifacts, preserve branch/tag, then remove physical worktree. |
@@ -102,7 +102,7 @@ station-route browser/Electron capture. Prompt, log, cache, and worker-return ar
 
 ## 6. Performance synthesis contract
 
-When the isolated performance branch is ready, resolve these overlaps semantically:
+The performance branch was resolved semantically at `b235f062` using this contract:
 
 | Seam | Preserve from current graphics/Atlas | Preserve from performance closure |
 |---|---|---|
@@ -111,14 +111,14 @@ When the isolated performance branch is ready, resolve these overlaps semantical
 | `src/render/spaceBackground.js` | Atlas velocity smear and reduced-motion truth. | Exported wormhole pipeline factory/precompile and measured pass/resource work. |
 | `src/render/precompile.js`, `src/render/bloom.js` | Retain black-space/de-haze and current visual contracts. | Preserve reviewed performance improvements that do not lower default authored quality. |
 
-After synthesis, rerun focused performance tests, graphics receipt/admission/material/visual-family tests,
+After synthesis, all 167 performance-modified tests and 49 graphics receipt/admission/material/
+visual-family tests pass together; camera, AI-telegraph, and exact receipt checks also pass.
 `check:sim:compare`, asset/live/visual-stability/flight checks, and one owned browser plus Electron/GPU
-acceptance route. The graphics closeout's rock admission/preload means old performance evidence alone is
-not final combined evidence.
+acceptance route remain the final combined evidence. Old performance evidence alone is not final.
 
 ## 7. Cleanup order
 
-1. Finish and integrate the performance closure; remove its worktree only after combined proof.
+1. Performance integration is complete; remove its clean worktree after combined route proof.
 2. Promote these program docs; remove the clean graphics-closeout worktree.
 3. Confirm the Helios rejection/batching record is sufficient; remove the rejected Helios worktree.
 4. Recheck each small satellite for dirty product paths; port/reject its listed value, then remove it.

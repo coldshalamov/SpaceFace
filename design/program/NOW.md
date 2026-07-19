@@ -1,11 +1,10 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-19 at graphics promotion `cbdf1589`. The new graphics closeout is on
-`master`; this board does **not** claim that the newer isolated performance-closure lane, final
-browser/Electron visual acceptance, or release performance evidence is integrated. The primary
-checkout may still contain the foreign station-approach diagnostic edit and the quarantined
-untracked `design/program/_review/`; neither is owned, read, or promoted by this graphics closeout.
-Refresh `git status --short`, active processes, and every worktree tip before the next integration.
+**Snapshot:** 2026-07-19 at combined graphics/performance merge `b235f062`. The graphics closeout,
+the reviewed performance-closure tip `99cad5b5`, and the Atlas/camera evidence repair `21d82428` are
+now on `master`. This board does **not** claim final browser/Electron/GPU frame-time acceptance: the
+older performance matrices are diagnostic artifacts, not qualifying <=16.7 ms runs. The primary
+checkout retains only quarantined untracked `design/program/_review/`, which was not read or staged.
 
 **Integrated checkpoint:** the earlier Atlas/map/travel, performance, and graphics synthesis remains
 reachable through `ee9e0ab3` and its context-recovery hardening `f0b3b154`. The later closeout adds
@@ -13,27 +12,28 @@ golden asset receipts and common-rock maps (`bd79f2ba`), truthful authored admis
 routing, rock preload, runtime visual-family identities, and sticky impulse-charge orientation
 (`5219491d`), the resumable long-term architecture (`98e1e429`, `1de8a861`), the Atlas/journey
 verification transaction (`b05d2cf9` through `6a4bebd7`), and the checkpoint gate wiring
-(`5863331c`). Merge `cbdf1589` promotes that coherent graphics slice to `master`.
+(`5863331c`). Merge `cbdf1589` promoted that graphics slice; `21d82428` repaired the current
+journey/velocity evidence surface, and `b235f062` integrated the reviewed performance synthesis.
 
 **Acceptance boundary:** `npm run check:graphics:asset-receipts` passes on the promoted tree and pins
 the exact Helios, representative-rock, Wasp-candidate, and RCS artifacts. Focused runtime/admission,
-material, visual-family, and interaction tests passed before promotion. That is integrated and
-focused-green implementation, not final visual acceptance: natural Helios/rock motion, hardware
-Electron parity, GPU-state capture, combined performance after the isolated performance branch,
+material, visual-family, and interaction tests passed before promotion. On the final combined tree,
+all 167 performance-modified tests and 49 graphics/PBR/VFX identity tests pass together with camera,
+AI-telegraph, and exact asset-receipt checks. That is integrated and focused-green implementation,
+not final visual acceptance: natural Helios/rock motion, hardware Electron parity, GPU-state capture,
 and broader fleet/station/rock/wreck PBR remain open. See
 [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md) and the long-term
 architecture in
 [`../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md`](../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md).
 
-**Current isolated lanes:** `codex/performance-closure-20260719` remains active and must be merged by
-semantic synthesis after it reaches a reviewed clean tip; it overlaps graphics in `partsLibrary.js`
-and `renderer.js`, and Atlas work in `spaceBackground.js`. The clean graphics-closeout worktree is
-now fast-forwarded to `cbdf1589` only to draft this uncommitted ledger update. Donor and cleanup
-decisions are recorded in [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md).
+**Current isolated lanes:** no performance or graphics-closeout product work remains outside
+`master`; their clean worktrees are cleanup candidates after this ledger is committed and final route
+evidence is recorded. Dirty Depth, Kimi/Helios, satellite, and Blender-source donors remain selective
+donors only. Decisions are recorded in [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md).
 
-**Immediate safe work:** finish the isolated performance lane, synthesize the three overlap seams,
-rerun combined graphics/performance checks, and capture one owned browser/Electron acceptance route.
-After that coherent checkpoint, the highest-return graphics work is natural-route Helios/rock
+**Immediate safe work:** capture one clean owned browser/Electron acceptance route on `b235f062`,
+including startup/loading, authored admission, thrusters/RCS, natural Helios/rock motion, and measured
+frame pacing. Then the highest-return graphics work is natural-route Helios/rock
 parity, combat/destruction visual acceptance, localized authored space structure without
 screen-wide haze, and the next high-frequency PBR family. The Kimi/OpenCode Helios replacement is
 already rejected; only its batching concept is retained for an independently rebuilt optimization

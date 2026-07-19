@@ -13,7 +13,7 @@ requirement only if the controller explicitly adopts the draft production policy
 M2’s architecture was previously marked complete, but its current combined browser/Electron check
 exited red during Electron launch and must be revalidated.
 
-## Graphics checkpoint chain (2026-07-19) — promoted at `ee9e0ab3`, hardened at `f0b3b154`, closed out at `cbdf1589`
+## Graphics checkpoint chain (2026-07-19) — graphics at `cbdf1589`, combined synthesis at `b235f062`
 
 | Area | Verified result | Acceptance level |
 |---|---|---|
@@ -27,7 +27,8 @@ exited red during Electron launch and must be revalidated.
 | Golden asset receipts | `bd79f2ba` closes reproducible receipts for the exact Helios source (79,717,896 bytes / 1,664,738 triangles), representative rock A (1,970,132 bytes / 1,977 triangles), Wasp candidate (12,797,604 bytes / 11,526 triangles), and RCS source (238,516 bytes / 1,040 triangles). `5863331c` wires `check:graphics:asset-receipts` into `check:art`; the receipt gate passed again on the promoted tree. | Exact artifact identity and focused gate are verified. Wasp remains an accessory-only/unclassified candidate, not an accepted live whole ship. |
 | Truthful authored runtime coverage | `5219491d` extends no-visible-fallback admission, semantic PBR tinting, common-rock surface preload, weapon/projectile/mine/impulse/wreck visual identities, authored bounds handling, and sticky charge orientation through current runtime seams. | Integrated and focused-green. Final natural-route browser/Electron motion, GPU-state, dense-combat, and combined performance acceptance remain open. |
 | Resumable graphics architecture | `98e1e429` plus `1de8a861` records the long-term resolve/prepare/admit, stable-transform, interaction, PBR foundry, chassis/appearance, VFX, and asset-family slices in [`LONG_TERM_GRAPHICS_OVERHAUL.md`](../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md). The OpenCode Helios replacement is explicitly rejected while its primitive-batching concept is retained as a future measured optimization experiment. | Durable plan and donor decision; no visual completion claim. |
-| Graphics promotion | `cbdf1589` promotes the reviewed graphics closeout and its gate wiring to `master`. | Coherent graphics checkpoint. The newer isolated performance-closure branch and its final combined acceptance are not part of this merge. |
+| Performance synthesis | Reviewed performance tip `99cad5b5` was replayed without duplicate patches, preserving semantic PBR/admission, black-space background, rock preload, and authored bounds while adding renderer-scoped precompile/context readiness, measured admission, tactical-AI staggering, and owned autosave snapshots. `b235f062` merges the result. | Integrated and CPU-green: 167/167 performance-modified tests plus 49/49 graphics/PBR/VFX identity tests on final `master`. Fresh headed browser/Electron/GPU acceptance remains open. |
+| Graphics promotion | `cbdf1589` promotes the reviewed graphics closeout and its gate wiring to `master`; `b235f062` retains it in the combined tree. | Coherent combined checkpoint. No final M6 or release-performance exit is claimed. |
 
 ## Wave-01 (PROGRAM-WAVE-01-RECOVERY-ROOTS, 2026-07-18) — verified at `c751b9a9`
 
@@ -59,7 +60,7 @@ exited red during Electron launch and must be revalidated.
 
 | Commit(s) | Implemented outcome | What remains before final acceptance |
 |---|---|---|
-| `cbdf1589` (including `bd79f2ba`, `5219491d`, `98e1e429`, `1de8a861`, `5863331c`) | Golden graphics artifacts are hash-bound, common-rock PBR maps and runtime surfacing are wired, authored entities fail closed instead of showing blue boxes, combat/world visual identities use typed geometry, and the long-term overhaul has one durable resumption plan. | Integrate the still-isolated performance closure, rerun the combined matrix, and complete natural browser/Electron/GPU visual acceptance before promoting any M6 exit. |
+| `cbdf1589` (including `bd79f2ba`, `5219491d`, `98e1e429`, `1de8a861`, `5863331c`) | Golden graphics artifacts are hash-bound, common-rock PBR maps and runtime surfacing are wired, authored entities fail closed instead of showing blue boxes, combat/world visual identities use typed geometry, and the long-term overhaul has one durable resumption plan. | Performance synthesis is integrated at `b235f062`; rerun the combined headed matrix and complete natural browser/Electron/GPU visual acceptance before promoting any M6 exit. |
 | `850c80f3` | Bulk July-14 recovery checkpoint: Depth validators/content/runtime/tests, broad gameplay/UI work, asset sources/candidates/tooling, and program documentation are now recoverable from local `master`. | Rerun focused/full gates at current HEAD; audit telemetry goldens and other high-risk inclusions; create durable evidence manifests; complete natural routes and independent visual review. Committed does not mean accepted. |
 | `50bd5505` | Prospector copy tests no longer impose a fixed English word-count taste budget. | No feature acceptance change; this is a follow-up contract cleanup. |
 | `7b0ad557` | Autopilot retains its course after obstacle avoidance. | Later clean-checkout G04 evidence closes browser-route attribution; current Electron journey acceptance remains open. |

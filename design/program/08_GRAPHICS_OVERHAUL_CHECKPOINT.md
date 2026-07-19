@@ -4,7 +4,7 @@
 
 **Status:** GRAPHICS CLOSEOUT PROMOTED TO `master`; FOCUSED-GREEN CHECKPOINT, FINAL ACCEPTANCE PENDING
 
-**Current graphics master revision:** `cbdf1589`
+**Current combined master revision:** `b235f062`
 
 **Earlier unified promotion:** `ee9e0ab3`, hardened through `f0b3b154`
 
@@ -13,6 +13,8 @@
 **Graphics donor revision:** `e3ad1caf` on `codex/graphics-integration-20260718`
 
 **Graphics closeout commits:** `bd79f2ba`, `5219491d`, `98e1e429`, `1de8a861`, `5863331c`
+
+**Performance synthesis donor:** `99cad5b5`, integrated by `b235f062`
 
 This is the durable resumption and promotion record for the multi-day graphics overhaul. It records
 what the current integration tree actually presents, what has only structural evidence, what has
@@ -28,10 +30,9 @@ closeout added exact golden receipts and rock maps (`bd79f2ba`), truthful author
 (`5219491d`), the durable long-term architecture and Helios donor ruling (`98e1e429`, `1de8a861`),
 and gate wiring (`5863331c`). Merge `cbdf1589` places that coherent graphics slice on `master`.
 
-A newer performance-closure branch is still isolated. Its final merge must synthesize, not overwrite,
-the current graphics semantics in `partsLibrary.js` and `renderer.js`, and must retain the Atlas
-velocity/background work in `spaceBackground.js`. The browser/Electron/GPU performance matrix must
-then be rerun on the final combined tree.
+The reviewed performance closure is now synthesized without overwriting graphics semantics in
+`partsLibrary.js`, `renderer.js`, or `spaceBackground.js`. CPU integration proof is green; the
+browser/Electron/GPU performance matrix must still be rerun on this final combined tree.
 
 The final integration tree has no file over 100 MiB. Its largest tracked asset is the sanitized
 Helios source GLB at about 79.7 MB. The runtime release GLB is about 79.1 MB. Re-check these facts in
@@ -171,11 +172,10 @@ catalog entries merely to make that broad pre-existing count green.
   controlled browser/Electron surface frames but still needs natural approach/undock motion. The
   seamed and graffiti world-dressing landmarks now have accepted browser evidence but still need
   Electron parity.
-- The earlier performance checkpoint and its context-recovery repairs are integrated through
-  `f0b3b154`. A newer `codex/performance-closure-20260719` lane is **not** integrated at
-  `cbdf1589`; it contains further tactical-AI/autosave/economy/world work plus render overlaps. Its
-  final reviewed tip must be synthesized without losing semantic PBR/admission, rock preload,
-  relative-velocity prefetch/precompile, or Atlas velocity/background behavior. Fresh long-soak,
+- The performance closure final tip `99cad5b5` is integrated at `b235f062` without losing semantic
+  PBR/admission, rock preload, relative-velocity prefetch/precompile, or Atlas velocity/background
+  behavior. All 167 performance-modified and 49 graphics/PBR/VFX tests pass on the combined tree.
+  Fresh long-soak,
   floor-GPU, memory, dense-combat, autosave, and combined graphics/performance measurements remain
   required before claiming the M6 performance exit.
 - Combat VFX has structural implementation and lifecycle evidence, but no full visual-family
@@ -236,8 +236,8 @@ catalog entries merely to make that broad pre-existing count green.
    authored admission, semantic PBR routing, runtime visual-family identity, authored bounds, rock
    preload, and impulse-charge orientation. `98e1e429`/`1de8a861` recorded the long-term plan and
    Helios donor decision; `5863331c` added the receipt gate to `check:art`.
-8. Merge `cbdf1589` promoted that closeout to `master`. The newer isolated performance branch is not
-   part of this graphics merge and requires a separate reviewed synthesis and combined evidence run.
+8. Merge `cbdf1589` promoted that closeout to `master`; `21d82428` committed the Atlas/camera evidence
+   repair, and `b235f062` integrated the reviewed performance synthesis.
 9. This promotion is a coherent playable checkpoint, not a claim that combat-family, background-
    authoring, asset-family PBR, long-soak performance, or release parity is complete.
 
@@ -260,16 +260,16 @@ untracked files, branch tip, unique commits, and patch equivalence to final `mas
   The full Helios-golden replacement is rejected; its batching experiment is retained only as a
   future recipe. Depth and Kimi satellites must be handled exactly as recorded in
   [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md), never by whole-branch merge. The
-  performance worktree remains active until its owner produces a reviewed clean tip.
+  performance and graphics-closeout worktrees are clean and contain no product commit absent from
+  `master`; remove them after the final combined route receipt is recorded.
 - Delete a branch only after its accepted product result is reachable from final `master`, every
   valuable dirty/untracked file has been deliberately preserved or rejected, and its worktree is
   clean.
 
 ## 8. Definition of the next coherent checkpoint
 
-The promoted graphics checkpoint is `cbdf1589`. The next coherent checkpoint first integrates the
-reviewed isolated performance lane through semantic overlap resolution and reruns the combined
-graphics/performance matrix. It then adds current natural-route browser/Electron proof for Helios
+The combined checkpoint is `b235f062`. The next coherent checkpoint reruns the combined
+graphics/performance matrix and adds current natural-route browser/Electron proof for Helios
 and the representative rock, visual-family Electron/GPU acceptance for combat effects and
 destruction, one localized authored space-structure vertical that does not lift the black floor,
 and the next high-frequency PBR asset family. The authoritative continuation order and architecture

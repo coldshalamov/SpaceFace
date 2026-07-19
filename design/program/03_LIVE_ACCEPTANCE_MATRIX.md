@@ -8,9 +8,10 @@ carry their own evidence and do not promote any milestone row.
 paused Atlas/map/travel work were promoted together at `ee9e0ab3`; context-recovery hardening is
 reachable through `f0b3b154`. Graphics closeout `cbdf1589` is now on `master`, including exact golden
 asset receipts, authored fail-closed admission, semantic PBR/native-color routing, common-rock maps,
-typed projectile/mine/impulse/wreck identities, and Atlas/journey verification gates. The old
-lease/blocker columns below are historical. A newer performance-closure lane remains isolated, and
-final combined browser/Electron/GPU performance evidence has not been rerun. This checkpoint updates
+typed projectile/mine/impulse/wreck identities, and Atlas/journey verification gates. The reviewed
+performance tip `99cad5b5` and Atlas/camera repair `21d82428` are integrated at `b235f062`. The old
+lease/blocker columns below are historical. Final combined browser/Electron/GPU performance evidence
+has not been rerun. This checkpoint updates
 M1/M6 implementation truth but exits neither milestone; remaining visual/performance acceptance is
 recorded in [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md).
 
@@ -69,7 +70,7 @@ lane should repair, not whether it is repaired.
 | M3 | Origins, cohorts, Hunter intent, damage/death substantially built | Career origins green | Natural damage/Game Over proven; recovery and three full 90-minute routes open | Damage/after-action images exist | 0 recorded | NOT EXITED |
 | M4 | Regional ecology/POI foundations built | RED 8/9 on registry/save initialization order | Sparse/normal/crowded diversity routes open | Art/classification incomplete | 0 recorded | NOT EXITED |
 | M5 | Story/endings/outposts/role foundations built | Role continuity green | Supporting injected role route only; ordinary story/ownership routes open | Partial | 0 recorded | NOT EXITED |
-| M6 | Capture/release/localization/perf foundations, loading/admission, de-hazed background, pooled thruster/RCS, golden Kestrel/Helios/geology surfaces, and Wasp routing were integrated at `ee9e0ab3`; context recovery is integrated at `f0b3b154`; exact asset receipts, common-rock maps, authored fail-closed admission, semantic PBR routing, and typed combat/world identities are integrated at `cbdf1589` | Prior asset-live, visual-stability, launch-policy, focused VFX/background/post checks, five strict desktop/mobile flight runs, and context-loss recovery passed; `check:graphics:asset-receipts` passes on `cbdf1589`; final combined rebaseline awaits the isolated performance lane | Authored browser and thruster Electron routes pass; current natural Helios/rock motion, combat-family Electron/GPU, and packaged-store matrix remain incomplete | Hitch glare and Helios bulk-material defects repaired; full OpenCode Helios replacement rejected; Wasp classification, combat-family final acceptance, natural Helios/rock parity, localized background art, fleet-wide PBR, and release evidence remain | 0 recorded | NOT EXITED |
+| M6 | Capture/release/localization/perf foundations, loading/admission, de-hazed background, pooled thruster/RCS, golden Kestrel/Helios/geology surfaces, Wasp routing, exact receipts, authored fail-closed admission, semantic PBR routing, and typed combat/world identities are retained in combined `master` at `b235f062` | Prior asset-live, visual-stability, launch-policy, focused VFX/background/post checks, five strict desktop/mobile flight runs, and context-loss recovery passed; exact receipts plus 167 performance and 49 graphics tests pass on the combined tree; fresh headed rebaseline remains open | Authored browser and thruster Electron routes pass; current natural Helios/rock motion, combat-family Electron/GPU, and packaged-store matrix remain incomplete | Hitch glare and Helios bulk-material defects repaired; full OpenCode Helios replacement rejected; Wasp classification, combat-family final acceptance, natural Helios/rock parity, localized background art, fleet-wide PBR, and release evidence remain | 0 recorded | NOT EXITED |
 | Depth | Checkpoint `850c80f3` preserves focused implementations for 16 chunks after W1 correction | Pre-checkpoint aggregate green; not rerun at current HEAD | Many routes compress state/timing; final unassisted routes open | All Depth `.devshots` ignored; no chunk DONE | N/A | 0 / 31 DONE |
 
 ## Fresh audit details
@@ -84,11 +85,13 @@ lane should repair, not whether it is repaired.
 - `npm run check:m3:career-origins`.
 - `npm run check:m5:role-continuity`.
 - Release-capture contract 4/4 and no-browser self-test.
-- `npm run check:graphics:asset-receipts` — PASS at `cbdf1589`, pinning Helios
+- `npm run check:graphics:asset-receipts` — PASS at combined `b235f062`, pinning Helios
   `94CB9DC7...A578`, rock A `E9997140...FDA`, Wasp candidate `FDFD7C76...3E5A`, and RCS
   `EBB28EE...4934` with exact byte/triangle receipts in the checker output.
 - Focused authored-admission, surface-tint, rock-surface, projectile-family, impulse-charge,
-  runtime-visual-coverage, and wreck-identity tests passed before graphics promotion.
+  runtime-visual-coverage, and wreck-identity tests pass 49/49 on combined `master`.
+- All 17 performance-modified test files pass 167/167 together on combined `master`; camera and live
+  AI-telegraph checks also pass.
 - Last recorded `npm run check:depth-program:contracts` before checkpoint `850c80f3`; rerun at current
   HEAD is required before calling it current green.
 - Last recorded S4/W1 isolated tests — 18/18 before the checkpoint; no acceptance promotion.
@@ -113,8 +116,9 @@ lane should repair, not whether it is repaired.
 - Performance artifact — 49.4 ms p95, 75 hitches, 22.9 ms callback p95, 6.9 ms sim p95,
   zero autosaves completed during capture.
 - Real store capture and release clean waves — absent.
-- Newer `codex/performance-closure-20260719` changes are not yet on `master`; combined graphics plus
-  performance browser/Electron/GPU evidence must be rerun after semantic overlap resolution.
+- Performance synthesis is now on `master`, but its earlier matrices are diagnostic-measurement
+  artifacts, not acceptance: several player-frame windows still show ~33.3 ms rAF p95 and >32 ms
+  gaps. Three fresh consecutive <=16.7 ms acceptance runs remain required on the combined tree.
 - Natural Helios approach/undock motion, mining-distance representative-rock parity, and final
   hardware-Electron/GPU combat-family evidence remain incomplete.
 
