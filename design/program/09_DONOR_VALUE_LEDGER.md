@@ -26,8 +26,8 @@ Dirty-path counts and ahead/behind counts are audit snapshots and must be refres
 | `SpaceFace-graphics-closeout` / `codex/graphics-closeout-20260719` | Clean at `8e860439`; every commit is reachable from `b235f062`. | No unique product work. | Remove after this reviewed ledger and final route receipt reach `master`. |
 | `SpaceFace-performance-closure` / `codex/performance-closure-20260719` | Clean final tip `99cad5b5`; replayed with duplicate patches skipped. | Integrated at `b235f062`; branch is recovery history only. | Remove after final combined route proof and branch recovery are confirmed. |
 | `SpaceFace-graphics-overhaul` / `codex/graphics-overhaul` | Audit: 96 master-only / 24 branch-only commits and about 244 dirty paths. | Retain. It contains substantial uncommitted Blender/source assets and cannot be reduced to a branch-only history yet. Never whole-merge. | Keep physical worktree until asset-by-asset source inventory and promote/reject receipts are complete. |
-| `SpaceFace-oc-helios-golden` / `opencode/helios-golden-station` | Audit: about 70 commits behind, 0 unique commits, and about 257 dirty paths. | Full station replacement rejected. Retain only the batching recipe described below. | After hashes/rejection/batching recipe are durable and no unique source value remains, remove the physical worktree; retain a branch/tag only if useful. |
-| `SpaceFace-depth-actualization` / `grok/depth-player-route-actualization` | `bf1dfce2`; audit: about 90 master-only / 42 branch-only commits and 17 untracked raw artifacts. | Selective product donor only. Whole merge rejected because it would delete or regress large current surfaces. | Record or port the selected slices, reject the raw artifacts, preserve branch/tag, then remove physical worktree. |
+| `SpaceFace-oc-helios-golden` / `opencode/helios-golden-station` | Re-audited at current master: 101 commits behind, 0 unique commits, 257 dirty/untracked paths totaling 2,532,129,189 bytes. | Full station replacement rejected. The builder, precursor hash, editable final blend, accepted three-LOD source, and release asset are already preserved on `master`; no unique recipe remains in this worktree. | Safe to force-remove through Git after this ledger is committed; no asset copy is required. |
+| `SpaceFace-depth-actualization` / `grok/depth-player-route-actualization` | `bf1dfce2`; audit at `041f5fae`: 123 master-only / 42 branch-only commits and 17 untracked raw artifacts totaling 7.58 MiB. | Selective product donor only. Whole merge rejected because it would delete or regress large current surfaces. | Record the remaining black-box docking candidate below, archive/hash the untracked artifacts, preserve branch plus annotated tag, then remove the physical worktree. |
 | `SpaceFace-orch-codex-gt-sample` / `orch/codex-gt-sample` | `f3e49b4f` | Committed product history is contained in or patch-equivalent to the Depth donor. | Remove after this ledger is promoted and dirty paths, if any, are rechecked. |
 | `SpaceFace-orch-codex-natural` / `orch/codex-natural-routes` | `de5397bc` | Committed product history is superseded by the Depth donor. | Same as above. |
 | `SpaceFace-orch-codex-recovery` / `orch/codex-m3-recovery` | `de5397bc` | Committed product history is superseded by the Depth donor. | Same as above. |
@@ -40,21 +40,24 @@ The accepted live station remains the three-LOD Helios on `master`.
 
 Rejected full replacement facts:
 
-- zero of the donor's 30 texture hashes match the current accepted payload;
+- zero of the donor's 30 changed station-map hashes match the current accepted payload; six inherited
+  accent/glass maps are byte-identical and add no donor value;
 - its map set is older/heavier than the accepted iteration-2 surfaces;
 - its release shortcut removes `LOD1`, `LOD2`, and `SOCKET_Structure_Core`;
 - roughly 1.02 million triangles would remain active at every distance;
 - it has no evidence that the replacement beats the live station in a natural game camera.
 
-Retained concept, not accepted artifact:
+Preserved recipe, not accepted replacement:
 
-- a scratch Blender pass reduces 777 glTF primitives to 45 while retaining three LODs, twelve
-  semantic roles, and the structure socket;
-- the candidate is still about 228 MB / 1.64 million triangles, loses authored anisotropy in glTF,
-  and has no normal-route or performance proof;
-- reimplement the batching recipe only against the accepted station, with genuinely reduced LOD
-  geometry, current compression, matched approach/undock captures, and measured draw-call,
-  residency, and frame-time improvement.
+- the newline-normalized builder is already tracked at
+  `assets/ships/m4_helios_hub/scripts/build_station_golden02.py`; the exact precursor hash is in the
+  production receipt, and the authoritative editable blend plus accepted three-LOD source remain on
+  `master`;
+- the rejected worktree instead wires a 68-primitive / 1,021,872-triangle LOD-stripped asset and an
+  obsolete map set that is 29% heavier at the same resolution;
+- any future batching optimization starts from the accepted asset and must retain real LOD geometry,
+  current compression, matched approach/undock captures, and measured draw-call, residency, and
+  frame-time improvement. It does not depend on this worktree.
 
 Do not cherry-pick the donor loader, manifest, release GLB, or texture replacement.
 
@@ -72,6 +75,10 @@ Never merge `bf1dfce2` as a branch. Review and port these bounded slices against
    current producers and localization.
 7. **Flight/HUD/mining concepts:** compare `0580a007` and `156aec66` with final current routes; port
    only demonstrably superior bounded behavior and do not overwrite the active mining owner.
+8. **Investigation-chain docking:** selectively re-evaluate only the `src/data/missions.js` hunk from
+   `1735d640` that assigns `recover_the_black_box.destStationId = station_reach`. Current mission
+   completion skips a docked mission whose `destStationId` is null. Keep rejecting that commit's
+   unrelated 96-damage EMP shortcut.
 
 Reject:
 
