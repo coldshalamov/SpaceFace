@@ -4,6 +4,7 @@ import * as THREE from 'three';
 
 import {
   ASTEROID_INSTANCE_VARIANT_COUNT,
+  asteroidInstanceMembership,
   clearAsteroidInstancePool,
   createAsteroidInstancePool,
   disposeAsteroidInstancePool,
@@ -48,6 +49,19 @@ assert.equal(first.registered, 70);
 assert.equal(first.submitted, 70, 'every eligible common rock remains visibly submitted');
 assert.equal(first.visibleBatches, 5, '70 exact bodies collapse into five geometry variants');
 assert.equal(leaves.every((leaf) => leaf.visible === false), true, 'only duplicate source submissions are hidden');
+const firstMembership = asteroidInstanceMembership(pool, 1);
+assert.deepEqual({
+  registered: firstMembership.registered,
+  variant: firstMembership.variant,
+  adopted: firstMembership.adopted,
+  submitted: firstMembership.submitted,
+}, { registered: true, variant: 1, adopted: true, submitted: true });
+assert.equal(firstMembership.sourceRootUuid, roots[0].uuid);
+assert.equal(firstMembership.sourceLeafUuid, leaves[0].uuid);
+assert.equal(firstMembership.sourceGeometryUuid, leaves[0].geometry.uuid);
+assert.equal(firstMembership.sourceMaterialUuid, leaves[0].material.uuid);
+assert.equal(typeof firstMembership.poolMeshUuid, 'string');
+assert(firstMembership.submittedIndex >= 0);
 
 const pools = scene.children.filter((object) => object.userData && object.userData.asteroidInstancePool);
 assert.equal(pools.length, 5);
@@ -93,6 +107,13 @@ const hitMesh = pools.find((mesh) => mesh.count > 0);
 const hitId = resolveAsteroidInstanceEntityId(pool, hitMesh, 0);
 assert.ok(Number.isInteger(hitId) && hitId >= 1 && hitId <= 10, 'instance hit resolves to a live entity id');
 assert.equal(releaseAsteroidInstancesForEntity(pool, hitId), true);
+assert.deepEqual(asteroidInstanceMembership(pool, hitId), {
+  entityId: hitId,
+  registered: false,
+  adopted: false,
+  submitted: false,
+  submittedIndex: -1,
+});
 assert.equal(
   syncAsteroidInstancePool(pool, { camera: viewCamera, shadowCamera }).submitted,
   shadowSubmitted - 1,
