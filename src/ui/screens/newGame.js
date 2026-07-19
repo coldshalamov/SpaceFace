@@ -17,6 +17,13 @@ const DIFFICULTIES = [
   ['ironman', 'Ironman', 'Veteran combat. Death ends the run.'],
 ];
 
+export function parseUniverseSeed(value) {
+  const text = String(value ?? '').trim();
+  if (!/^\d{1,10}$/.test(text)) return null;
+  const seed = Number(text);
+  return Number.isSafeInteger(seed) && seed > 0 && seed <= 0xffffffff ? seed : null;
+}
+
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
   if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
@@ -323,8 +330,8 @@ export const newGameScreen = {
       // Only forward a seed when the player actually supplied a usable one. `resetRunState`
       // requires a finite positive number and otherwise randomises, so passing NaN or 0 through
       // would silently mean "random" while looking deliberate.
-      const rawSeed = Number.parseInt(String(seed.value || '').trim(), 10);
-      const seedOpt = Number.isFinite(rawSeed) && rawSeed > 0 ? { seed: rawSeed >>> 0 } : {};
+      const rawSeed = parseUniverseSeed(seed.value);
+      const seedOpt = rawSeed == null ? {} : { seed: rawSeed };
       // First-run splash (spec2/03 §3): a single full-screen line on black, 2.5s, then B0.
       try { showFirstRunSplash(ctx); } catch (e) { /* non-blocking */ }
       ctx.bus.emit('game:new', { name: pilot, shipId: STARTER_SHIP, difficulty: diff.value, ...seedOpt });

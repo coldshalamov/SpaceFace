@@ -90,7 +90,7 @@ try {
       result.tabOrder = await verifyNewGameTabOrder(page);
       assert.deepEqual(
         result.tabOrder.map((entry) => entry.control),
-        ['pilot-name', 'difficulty', 'back', 'launch'],
+        ['pilot-name', 'difficulty', 'universe-seed', 'back', 'launch'],
         `${viewport.width}x${viewport.height}: New Game tab order must reach both actions directly`,
       );
       assert.equal(
@@ -220,7 +220,7 @@ async function focusButtonWithKeyboard(page, label) {
 async function verifyNewGameTabOrder(page) {
   const order = [];
   order.push(await focusedControlSnapshot(page));
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     await page.keyboard.press('Tab');
     order.push(await focusedControlSnapshot(page));
   }
@@ -233,9 +233,11 @@ async function focusedControlSnapshot(page) {
     const body = panel && panel.querySelector('.sf-ng-body');
     const active = document.activeElement;
     const name = panel && panel.querySelector('input[type="text"]');
+    const seed = panel && panel.querySelector('#sf-ng-seed');
     const difficulty = panel && panel.querySelector('select');
     const buttons = panel ? Array.from(panel.querySelectorAll('button')) : [];
     let control = active === name ? 'pilot-name' : active === difficulty ? 'difficulty' : 'unknown';
+    if (active === seed) control = 'universe-seed';
     if (buttons.includes(active)) control = active.textContent.trim().toLowerCase();
     return {
       control,
