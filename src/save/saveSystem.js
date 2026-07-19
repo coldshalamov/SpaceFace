@@ -2705,11 +2705,71 @@ function mergePlain(base, patch) {
 function sanitizeNavState(nav) {
   const source = nav && typeof nav === 'object' && !Array.isArray(nav) ? nav : {};
   const route = sanitizeNavRoute(source.route);
-  return {
+  const out = {
     route,
     autoTravel: !!route && source.autoTravel === true,
     waypoint: sanitizeNavWaypoint(source.waypoint),
     autopilot: sanitizeNavAutopilot(source.autopilot),
+  };
+  // The route follower's executor (src/systems/routeFollower.js) rides along with the route it is
+  // following, so a cross-sector trip resumes at the leg it reached instead of orphaning. The key is
+  // OMITTED when there is nothing to persist, so the default nav shape stays byte-identical — several
+  // suites deep-equal a whole nav against a literal with no executor key
+  // (test/unified-map-professional.test.mjs:203, scripts/check-sectorSim.mjs:205).
+  const executor = sanitizeNavExecutor(source.executor, route);
+  if (executor) out.executor = executor;
+  return out;
+}
+
+/** Executor legs carry a GLOBAL target (`global_v1`) resolved through the atlas at engage time. It is
+ *  persisted rather than re-resolved on load so a restored trip cannot silently retarget if authored
+ *  content moves under an old save; an unresolved leg stays unresolved and the follower interrupts. */
+function sanitizeNavExecutorLeg(leg) {
+  if (!leg || typeof leg !== 'object' || Array.isArray(leg)) return null;
+  const from = navString(leg.fromSectorId);
+  const to = navString(leg.toSectorId);
+  if (!from || !to) return null;
+  const target = sanitizeNavPos(leg.target);
+  return {
+    index: Number.isFinite(leg.index) ? Math.max(0, Math.floor(leg.index)) : 0,
+    fromSectorId: from,
+    toSectorId: to,
+    final: leg.final === true,
+    resolved: !!target && leg.resolved === true,
+    targetNodeId: navString(leg.targetNodeId),
+    targetKind: navString(leg.targetKind),
+    target,
+    arrivalRadius: Number.isFinite(leg.arrivalRadius)
+      ? Math.max(12, Math.min(500, leg.arrivalRadius))
+      : 36,
+    label: navString(leg.label) || `${from} → ${to}`,
+  };
+}
+
+function sanitizeNavExecutor(executor, route) {
+  if (!route) return null;   // an executor without its route is an orphan; drop it
+  if (!executor || typeof executor !== 'object' || Array.isArray(executor)) return null;
+  const legs = Array.isArray(executor.legs)
+    ? executor.legs.map(sanitizeNavExecutorLeg).filter(Boolean)
+    : [];
+  if (!legs.length) return null;
+  const status = navString(executor.status) || 'idle';
+  return {
+    schema: navString(executor.schema) || 'route_executor_v1',
+    status,
+    // A save can only be written between ticks, so a restored executor is never mid-arm. Clearing
+    // armedLegIndex forces the follower to re-arm the local autopilot for the leg it resumes on,
+    // which is the same edge-triggered path a fresh engage takes.
+    armedLegIndex: null,
+    engaged: executor.engaged === true,
+    legIndex: Number.isFinite(executor.legIndex)
+      ? Math.max(0, Math.min(legs.length - 1, Math.floor(executor.legIndex)))
+      : 0,
+    legs,
+    destinationSectorId: navString(executor.destinationSectorId) || legs[legs.length - 1].toSectorId,
+    interruptReason: navString(executor.interruptReason),
+    brakeMode: navString(executor.brakeMode),
+    handoffWU: Number.isFinite(executor.handoffWU) ? Math.max(0, executor.handoffWU) : null,
   };
 }
 
