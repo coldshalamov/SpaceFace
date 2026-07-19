@@ -234,10 +234,34 @@ Braking breaks the latch; steering does not. Damage or lane disruption forces Co
 interdiction hook.
 
 **Speed ceiling: yes, and proudly systemic.** Per drive family (`TORCH` high, `REACTION` modest — the
-family system exists, use it for ship identity), drawn as a marked line on the velocity tape
-("V-MAX 3,200"), upgradeable by drive tier. The engineering reason is real: per-tick displacement must
+family system exists, use it for ship identity), drawn as a marked line on the velocity tape,
+upgradeable by drive tier. The engineering reason is real: per-tick displacement must
 stay well under collision-geometry scale and rebase cadence (`FRAME_REBASE_THRESHOLD_WU` = 8192) must
 stay sane. Approached asymptotically through the ramp so it never reads as a wall.
+
+> **Amendment (2026-07-19), on implementation.** This decision originally illustrated the tape marking
+> as *"V-MAX 3,200"*. That number was written before the drive catalogue was consulted and **does not
+> survive its own engineering justification** — it was an illustrative figure, not a derived one. The
+> implementer flagged the discrepancy rather than silently coding to one or the other, which is the
+> correct move; a decision record that drifts from the code becomes fiction.
+>
+> The binding rule is now the derivation, not a literal: the ceiling is a per-family multiple of each
+> drive's own governed `combatSpeed` (`TRAVEL_CEILING_FAMILY_MULT` in `propulsionKernel.js`), clamped
+> by the drive's `solverSpeedLimit` and by an absolute bound `TRAVEL_CEILING_ABSOLUTE_WU_S = 1200`.
+> Measured across the shipped catalogue:
+>
+> | Drive | Family | combatSpeed | V-MAX |
+> |---|---|---|---|
+> | `drive_torch_l` | TORCH | 320 | **1120** |
+> | `drive_pulse_plate_m` | PULSE_PLATE | 260 | 715 |
+> | `drive_reaction_s` / `_m` / `_l` | REACTION | 210 / 195 / 170 | 473 / 439 / 383 |
+> | `drive_gravimetric_s` / `_m` | GRAVIMETRIC | — | 252 / 225 |
+> | `drive_field_sail_m` | SAIL | 95 | 190 |
+>
+> The absolute bound is where the engineering argument actually lives: at 1200 WU/s a 1/60 s tick
+> displaces 20 WU, which stays well under hull-radius scale and leaves ~410 ticks between frame
+> rebases. **TORCH lands 2.4–2.9× above every REACTION drive**, so the ship-identity intent this
+> decision cared about is satisfied — by derivation rather than by a number picked in prose.
 
 **Arrival.** What transfers from Elite is *deceleration as the player's problem with perfect
 information* — the 75%-throttle discipline works because the instrument tells the truth. What must not

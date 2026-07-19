@@ -85,3 +85,49 @@ export const MASSLINE2_FLAGS = {
 export function massline2Flag(name) {
   return !!(MASSLINE2_FLAGS.enabled && MASSLINE2_FLAGS[name]);
 }
+
+// Travel Burn (Universe Atlas Wave 1, design/program/atlas/01_DECISIONS.md D5 — "Travel Burn is the
+// travel-drive axis, not a fourth assist regime"). Same Tier-B determinism model as the two blocks
+// above: every flag defaults to IS_BROWSER (OFF in the node golden harnesses, ON in live browser
+// play), each is a mutable module export so a headless test can opt in
+// (`TRAVEL_FLAGS.boostNeverBrakes = true`), and each is read at CALL TIME — never cached at init,
+// because the golden run and the test suite share one module instance and a cached read would leak
+// the browser default into node.
+//
+// These are load-bearing, not discipline: the propulsion kernel is inside BOTH golden paths
+// (`check:sim:compare` runs the legacy `flight` system, `check:sim:v3:compare` runs `flightV3`;
+// both call `stepPropulsion`), so an ungated change here moves a frozen hash.
+export const TRAVEL_FLAGS = {
+  // The travel-drive axis itself: Off / Spooling / Engaged / Cooldown, orthogonal to the assist
+  // regime and to the control owner. Gates two distinct things, and BOTH matter:
+  //   1. behaviour — the governor's cap ramp while Engaged, and treating Cooldown as earned
+  //      momentum so a disengage decays instead of being confiscated;
+  //   2. output SHAPE — the new `telemetry.travelDrive` / `travelCeiling` / `travelCap` fields.
+  // Gating the shape is not paranoia: the 47a golden hashes kernel telemetry, so an unconditional
+  // new key would move the hash even with the drive parked at Off and no travel input supplied.
+  // Flag off ⇒ the result object is byte-identical to the pre-Travel-Burn kernel, which
+  // test/travel-drive.test.mjs pins against a frozen fixture.
+  travelBurn: IS_BROWSER,
+  // RC-4, the verified defect. `applySpeedGovernor` makes assisted throttle a SPEED COMMAND, so
+  // above `throttle × combatSpeed × boostSpeedMult` the commanded forward goes NEGATIVE down to
+  // `-limits.reverse × overspeedBrakeFraction` — the ship fires real reverse thrust while boost
+  // energy drains, i.e. held boost SLOWS you at high speed. With this on, boost above the cap
+  // clamps the commanded forward to >= 0: "holding what I have", never a hidden anchor.
+  // Scope note: the UNBOOSTED overspeed brake is deliberate governor behaviour and STAYS — this
+  // flag only removes the reverse authority while the pilot is actually holding boost.
+  boostNeverBrakes: IS_BROWSER,
+  // Dash-earned overspeed decays through the EXISTING `physicsEarnedMomentum` exponential instead
+  // of being slammed flat by the governor's overspeed brake — the same grammar the tether /
+  // self-sling exit already uses, honouring the kernel's stated philosophy that "momentum earned
+  // through play is spent, not confiscated". Read in the flightV3 input adapter (the kernel is
+  // pure and cannot set its own input; the dash impulse is already baked into `body.vel` by
+  // `queuePhysicsImpulse` before the kernel ever sees it), which sits on the
+  // `check:sim:v3:compare` golden path — so this gate is load-bearing there.
+  dashMomentum: IS_BROWSER,
+};
+
+/** Read a travel flag by name; unknown names read false. Pure. */
+export function travelFlag(name) {
+  return !!TRAVEL_FLAGS[name];
+}
+

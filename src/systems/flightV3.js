@@ -14,7 +14,7 @@ import { queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthori
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import { computeFlightTelemetry, solveIntercept } from '../core/flight/flightTelemetry.js';
-import { massline2Flag } from '../data/featureFlags.js';
+import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 
 // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
 // stick. A ship carving at speed rolls into the turn like an aircraft; the same ship pivoting
@@ -72,6 +72,11 @@ const TETHER_HELM_PHASE_MULT = Object.freeze({
 // weakens neutral counter-thrust only while the pilot is genuinely coasting; explicit brake and
 // any translation input keep full authority.
 const MASSLINE_SLING_TAG_S = 1.0;
+// Travel Burn requirement 5 (atlas D5): a dash is an earned-momentum verb like the self-sling, so
+// its overspeed is tagged for the same window and spends itself through the governor's exponential
+// decay instead of being slammed flat by the overspeed brake. One grammar for all three verbs —
+// "thrust sets speed, boost raises the cap, dash injects impulse, burn ramps the cap".
+const TRAVEL_DASH_TAG_S = 1.0;
 const MASSLINE_SLING_DECAY_TAU_S = 6.0;
 const MASSLINE_EARNED_ASSIST_SCALE = 0.24;
 const CLOAK_COAST_ASSIST_SCALE = 0.28;
@@ -109,6 +114,9 @@ export const flightV3 = {
     this._prevBoost = false;
     this._suppressBoostUntilRelease = false;
     this._masslineSlingUntil = 0;
+    // Dash-earned momentum window (simTime seconds). Instance state, not sim state: it is derived
+    // presentation-free input tagging, so it must not enter the save or the sim snapshot.
+    this._dashEarnedUntil = 0;
     this._diag = {
       version: 3,
       shipId: null,
@@ -128,8 +136,8 @@ export const flightV3 = {
     };
 
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('save:loaded', () => { this._masslineSlingUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'load'); });
-      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
+      this.bus.on('save:loaded', () => { this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'load'); });
+      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
       this.bus.on('tether:latched', () => this._setFlightMode('manual', 'tether'));
       this.bus.on('massline:selfSling', () => {
         if (!massline2Flag('throw')) return;
@@ -233,7 +241,7 @@ export const flightV3 = {
       const autoBoost = !!((pursuit && pursuit.active) || (autopilot && autopilot.active));
       boosting = this._stepPlayerBoost(entity, input.boost, dt, state, { suppressDash: autoBoost });
       input.boost = boosting;
-      applyMasslineFlightModifiers(input, state, this._masslineSlingUntil);
+      applyMasslineFlightModifiers(input, state, this._masslineSlingUntil, this._dashEarnedUntil);
     }
 
     const body = bodySnapshot(entity, profile);
@@ -337,6 +345,13 @@ export const flightV3 = {
     queuePhysicsImpulse(e, { x: cf * imp * mass, y: 0, z: sf * imp * mass });
     boost.energy = Math.max(0, boost.energy - boost.dashCost);
     boost.dashCdT = boost.dashCd;
+    // The dash impulse is queued through physics authority above, so by the time the pure kernel
+    // runs it is already baked into `body.vel` and is indistinguishable from any other overspeed.
+    // Tagging the window here is the only place the "this velocity was earned" fact exists.
+    this._dashEarnedUntil = Math.max(
+      finite(this._dashEarnedUntil, 0),
+      finite(state && state.simTime, 0) + TRAVEL_DASH_TAG_S
+    );
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('ship:dash', { shipId: e.id, impulse: imp });
     }
@@ -461,13 +476,18 @@ export const flight = flightV3;
 /** Annotate the already-allocated player input packet with optional MASSLINE flight modifiers.
  * The kernel stays state-agnostic; feature flags and player-only reachability stay at this adapter.
  * Mutating the packet avoids adding a new allocation to the 60 Hz craft update. */
-export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0) {
+export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0, dashEarnedUntil = 0) {
   if (!input || typeof input !== 'object') return input;
   const now = finite(state && state.simTime, 0);
   const tether = state && state.player && state.player.tether;
   const tetherTagged = !!(tether && (tether.slingshot || finite(tether.slingshotT, 0) > 0));
-  input.physicsEarnedMomentum = massline2Flag('throw')
-    && (tetherTagged || finite(eventSlingUntil, 0) > now);
+  // Travel Burn requirement 5: a recent dash counts as earned momentum on the same terms as a
+  // tether sling. Read the flag at CALL TIME — under node it is false, so this OR-term vanishes
+  // and the expression is identical to its pre-Travel-Burn form, keeping the v3 golden still.
+  const dashEarned = travelFlag('dashMomentum') && finite(dashEarnedUntil, 0) > now;
+  input.physicsEarnedMomentum = (massline2Flag('throw')
+    && (tetherTagged || finite(eventSlingUntil, 0) > now))
+    || dashEarned;
   input.earnedMomentumDecayTauS = MASSLINE_SLING_DECAY_TAU_S;
   input.earnedMomentumAssistScale = input.physicsEarnedMomentum ? MASSLINE_EARNED_ASSIST_SCALE : 1;
 

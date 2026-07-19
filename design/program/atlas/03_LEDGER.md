@@ -54,15 +54,34 @@ deltas are presentation-cue counts and originate in concurrent content work
 (`barks.js`, `narrative.js`, `world.js`, `gameState.js` are all dirty), not in map, VFX or flight
 code. Exact attribution belongs to that lane. **No `expected.json` was touched.**
 
-### Environment / boot-budget reds — reported by Wave 0, not re-run by the lead
+### Environment / boot-budget reds — **re-run by the lead 2026-07-19; now the program's top blocker**
 
 Four browser harnesses fail on the same `state.mode === 'flight'` predicate. Boot-to-flight measured
 91.4 s idle, 121.0 s under load, 134.5 s independently, against budgets of 45 s / 90 s / 120 s / 150 s:
 `check:mission-log-map:runtime` (45 s), `check:wave15-flight-boot` (90 s),
 `check:galaxy-map-search-pointer` (120 s), `check:m2:galaxy-live` (150 s, boots via Continue so its
-attribution is inferred). **This is a real risk to the program's finish line** — the acceptance
-journey runs in a browser harness, so boot cost must come down or budgets must be re-derived before
-`check:journey:textile` can be trusted.
+attribution is inferred).
+
+**The lead re-ran the finish-line ancestor directly and it fails.** `npm run
+check:professional-travel:public-route:browser` at `c6cee0cf`: all 16 contract tests pass, the boot
+sequence reaches `observers-armed` → `intro-dismissed` → `main-menu-visible` → `new-game-visible`,
+then `page.waitForFunction: Timeout 150000ms exceeded` at
+`scripts/lib/professionalTravelPublicRoute.mjs:283` (`flightReadyInPage`, `flightTimeoutMs = 150_000`
+at `:206`). So boot-to-flight now exceeds even the most generous budget in the suite.
+
+**This is the program's finish line, failing.** `check:journey:textile` (D11) extends this exact
+harness. Three perfect waves would still not turn it green.
+
+> **Measurement note.** The first run appeared to exit 0. That was an artifact of piping the command
+> through `tail` — the pipeline reports `tail`'s status, not npm's. The script does call
+> `process.exit(1)` (`scripts/check-professional-travel-public-route-browser.mjs:168`). The gate is
+> sound; the reading was not. Same lesson as the region-data correction above: verify the control
+> before asserting the conclusion.
+
+A dedicated investigation is open on the fork — **reduce boot cost** vs **re-derive the budgets**.
+Re-deriving an acceptance threshold so a check passes brushes directly against this program's own
+rule ("do not edit or weaken tests merely to make a feature pass"), so that branch requires an
+explicit, justified ruling and does not get taken silently.
 
 ### Green at baseline
 
@@ -138,6 +157,24 @@ landed, the consumer did not — which is the recurring seam in this codebase an
 | W1-8 | Plot and engage are separate actions, reachable on the default route (wired-features contract) | W1-7 | blocked |
 | W1-9 | Manual burn shows stopping arc + BRAKE NOW; overshoot remains possible. Route follower auto-brakes and flip-and-burns when `bestMode` says so | W1-7 | blocked |
 | W1-10 | Route survives save/load in every executor state | W1-7 | blocked |
+
+> **CORRECTION (2026-07-19) — W1-7 was never blocked.** An earlier revision recorded the route
+> follower as blocked because "its `UPDATE_ORDER` registration requires `src/systems/world.js`, which
+> is foreign-dirty." **That was wrong.** `UPDATE_ORDER` is declared in `src/core/registry.js:199-202`,
+> not in `world.js`, and `registry.js` is **clean**. `world.js` only *writes* `nav.autoTravel`
+> (`:2072`, `:2096`, `:2485`); it neither owns the update order nor needs editing to gain a reader.
+> `nav.route` / `nav.autoTravel` / `nav.autopilot` already exist in the (quarantined) `gameState.js`
+> initial state at `:128`, so no field additions are needed there either. Wave 1 could have started
+> immediately. Logged rather than quietly deleted, because a phantom blocker that stalls a wave is
+> exactly the kind of error this ledger exists to catch.
+
+**Golden safety for W1-7 is structural, not disciplinary.** `scripts/sf-sim.mjs` — which runs the
+deterministic 47a golden — never imports `registry.js`. It hardcodes its own curated systems array
+(`sf-sim.mjs:279-297`: 13 systems, or 16 under `--tactical-ai`) and passes it explicitly to
+`createSimulation`. **Registering a new system in `registry.js` therefore cannot move the 47a golden
+at all.** What *is* on the golden path is `propulsionKernel.js` (reached via `flight`, and via
+`flightV3` under `check:sim:v3`), so Travel Burn's kernel changes still require the Tier-B
+`IS_BROWSER` flag gate. Verified by reading `sf-sim.mjs`, not inferred.
 
 **Wave 2 entry gate:** W1-7 drives Helios → Tethys end-to-end through
 `professionalTravelPublicRoute`, engaged from a default-route UI action, goldens unmoved, Slice 0 landed.

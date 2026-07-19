@@ -19,13 +19,59 @@
 //   6. Every result is deterministic for the same input stream.
 //   7. Coast helm: when main throttle and boost are idle, yaw rate/accel rise so pilots can
 //      let off the thrusters and flip more nimbly (strategic, not free while thrusting).
+//   8. Travel drive (atlas D5) is a THIRD orthogonal axis, not a fourth assist regime: it enters
+//      as `input.travelDrive` and only ever SHAPES the governor's cap. The kernel stays pure —
+//      the latch, its timers and its bindings live with the input owner.
 
 import { DRIVE_FAMILIES, normalizeProfile } from './propulsionCatalog.js';
+import { travelFlag } from '../../data/featureFlags.js';
 
 export const PROPULSION_RUNTIME_SCHEMA_VERSION = 1;
 export const FLIGHT_ASSIST_MODES = Object.freeze(['assisted', 'drift', 'newtonian']);
 /** Yaw authority multiplier while main thrusters are idle (let-off-and-flip primitive). */
 export const COAST_HELM_YAW_MULT = 1.2;
+
+/**
+ * Travel-drive axis (atlas D5). Orthogonal to the assist regime (assisted/drift/newtonian) and to
+ * the control owner (manual / local autopilot / route follower): *route-follower + assisted +
+ * engaged* is autopilot cruise, *manual + engaged* is hand-flown cruise, and a disruption is a
+ * forced state transition regardless of who is commanding.
+ */
+export const TRAVEL_DRIVE_STATES = Object.freeze(['off', 'spooling', 'engaged', 'cooldown']);
+
+/**
+ * Per-family travel-speed ceiling, expressed as a multiple of the drive's own governed combat
+ * speed so it reads as ship identity rather than a global constant. TORCH is the long-haul drive
+ * and gets the most headroom; REACTION is modest; GRAVIMETRIC is an envelope drive whose whole
+ * bargain is a hard maxSpeed, so it gains the least; SAIL is slow but patient.
+ */
+export const TRAVEL_CEILING_FAMILY_MULT = Object.freeze({
+  [DRIVE_FAMILIES.TORCH]: 3.5,
+  [DRIVE_FAMILIES.PULSE_PLATE]: 2.75,
+  [DRIVE_FAMILIES.REACTION]: 2.25,
+  [DRIVE_FAMILIES.SAIL]: 2.0,
+  [DRIVE_FAMILIES.GRAVIMETRIC]: 1.5,
+});
+
+/**
+ * Hard ceiling on any travel ceiling, in WU/s. This is an engineering bound, not a feel knob: at
+ * 1200 WU/s a 1/60 s tick displaces 20 WU, which stays well under collision-geometry scale (hull
+ * radii are single-digit-to-tens of WU) and keeps frame rebasing sane — `FRAME_REBASE_THRESHOLD_WU`
+ * is 8192 in src/core/coordinates.js, i.e. ~410 ticks of travel between rebases at the absolute
+ * ceiling. Raising this without re-checking both of those is how you get tunnelling.
+ */
+export const TRAVEL_CEILING_ABSOLUTE_WU_S = 1200;
+
+/** Seconds of ramp to cover the full ceiling span at nominal rate (before the asymptotic taper). */
+const TRAVEL_RAMP_FULL_S = 9;
+/**
+ * Floor on the tapered ramp rate as a fraction of nominal. The taper is what makes the ceiling
+ * read as asymptotic rather than as a wall (D5: "approached asymptotically ... so it never reads
+ * as a wall"); the floor is what keeps it reachable in finite time instead of asymptotic forever.
+ */
+const TRAVEL_RAMP_TAPER_FLOOR = 0.12;
+/** Exponential decay constant for a disengaged travel cap — mirrors the tether-exit sling decay. */
+const TRAVEL_DISENGAGE_DECAY_TAU_S = 5;
 
 const EPS = 1e-9;
 const TAU = Math.PI * 2;
@@ -79,6 +125,82 @@ export function previewCounterThrust(bodyLike, profileLike, assistMode = 'assist
     assistMode: mode,
   }, profile, true);
   return scale2(assist.accel, clamp(finite(scale, 1), 0, 1));
+}
+
+/**
+ * Resolve a drive's travel-speed ceiling in WU/s. Pure, side-effect free and exported so the HUD
+ * can draw the V-MAX line on the velocity tape without re-deriving the rule (D5).
+ *
+ * Precedence: an authored `profile.travelCeiling` wins (drive-tier upgrades hang off this), else
+ * the family multiplier applied to the drive's own governed speed. The result is clamped by the
+ * drive's `solverSpeedLimit` — an envelope drive must not be handed a travel ceiling its own
+ * solver refuses to integrate — and by the absolute engineering bound.
+ */
+export function resolveTravelCeiling(profileLike) {
+  const profile = normalizeProfile(profileLike || {});
+  const base = positive(profile.combatSpeed, positive(profile.maxSpeed, 150));
+  const mult = positive(TRAVEL_CEILING_FAMILY_MULT[profile.family], TRAVEL_CEILING_FAMILY_MULT[DRIVE_FAMILIES.REACTION]);
+  const authored = positive(profile.travelCeiling, 0);
+  const raw = authored > 0 ? authored : base * mult;
+  return Math.min(raw, finiteOrInfinity(profile.solverSpeedLimit), TRAVEL_CEILING_ABSOLUTE_WU_S);
+}
+
+/**
+ * Normalize the drive block the input owner hands in. `cap` is the ramp's carried state: the
+ * kernel advances it and republishes it on the result, and the owner feeds it back next tick —
+ * exactly how `spool` works for the torch drive, except through the input packet rather than the
+ * serialized runtime, so the drive axis adds nothing to the saved propulsion runtime.
+ */
+function normalizeTravelDrive(raw) {
+  const d = raw && typeof raw === 'object' ? raw : {};
+  const state = TRAVEL_DRIVE_STATES.includes(d.state) ? d.state : 'off';
+  return {
+    state,
+    // Carried ramp state. 0 means "no travel cap in flight"; the first engaged tick seeds it.
+    cap: Math.max(0, finite(d.cap, 0)),
+    // Optional per-call overrides so a lane volume (D8) can multiply the drive's own numbers
+    // without the kernel knowing anything about lanes.
+    ceiling: positive(d.ceiling, 0),
+    rampRate: positive(d.rampRate, 0),
+    rampMult: positive(d.rampMult, 1),
+  };
+}
+
+/**
+ * Advance the travel-drive ramp for one tick and report what the governor should do with it.
+ * Pure: consumes the carried `drive.cap`, returns the next one.
+ *
+ * While Engaged the cap is a moving target climbing toward the ceiling, tapering as it closes so
+ * the ceiling is approached rather than hit. In every other state the cap does not snap back to
+ * the ordinary governed cap — it DECAYS exponentially and reports `physicsEarnedMomentum`, so the
+ * excess velocity a burn earned is spent by the existing decay path rather than confiscated by a
+ * reverse-thrust command. That is the same mechanism the tether/self-sling exit already uses.
+ */
+function advanceTravelDrive(drive, profile, baseCap, forwardSpeed, dt) {
+  const ceiling = drive.ceiling > 0
+    ? Math.min(drive.ceiling, TRAVEL_CEILING_ABSOLUTE_WU_S)
+    : resolveTravelCeiling(profile);
+  const engaged = drive.state === 'engaged';
+  const step = Math.max(0, finite(dt, 0));
+
+  if (engaged) {
+    // Seed from whatever the ship already has: engaging at speed must never yank the pilot down.
+    const seed = drive.cap > 0 ? drive.cap : Math.max(baseCap, finite(forwardSpeed, 0));
+    const from = Math.min(Math.max(seed, baseCap), ceiling);
+    const span = Math.max(EPS, ceiling - Math.min(baseCap, ceiling));
+    const remaining = clamp((ceiling - from) / span, 0, 1);
+    const nominal = drive.rampRate > 0 ? drive.rampRate : ceiling / TRAVEL_RAMP_FULL_S;
+    const rate = nominal * drive.rampMult * (TRAVEL_RAMP_TAPER_FLOOR + (1 - TRAVEL_RAMP_TAPER_FLOOR) * remaining);
+    const cap = Math.min(ceiling, from + rate * step);
+    return { state: drive.state, cap, ceiling, ramping: cap < ceiling - EPS, physicsEarnedMomentum: false };
+  }
+
+  // Off / Spooling / Cooldown: no cap contribution is being *added*, but anything already earned
+  // bleeds off gently. Spooling deliberately behaves like Off for the cap — it is the pre-engage
+  // window the latch owner times, not a partial burn.
+  const decayed = drive.cap > 0 ? drive.cap * Math.exp(-step / TRAVEL_DISENGAGE_DECAY_TAU_S) : 0;
+  const cap = decayed > baseCap ? decayed : 0;
+  return { state: drive.state, cap, ceiling, ramping: false, physicsEarnedMomentum: cap > 0 };
 }
 
 function stepReaction(body, input, profile, runtime, environment, dt) {
@@ -156,20 +278,58 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
   const earnedCap = physicsEarned
     ? localVelocity.forward * Math.exp(-Math.max(0, finite(dt, 0)) / decayTauS)
     : baseCap;
-  const cap = Math.max(baseCap, earnedCap);
+  // Travel drive (D5). A third axis, orthogonal to the assist regime and to who is holding the
+  // stick: it raises the *cap* along a ramp and never touches thruster authority, so assisted /
+  // drift / newtonian keep their existing meanings and `route-follower + assisted + engaged` is
+  // simply autopilot cruise. The governor is shaped here, never bypassed.
+  //
+  // Note the ramp cap is only consulted while there is throttle — this function has already
+  // returned null otherwise. That is correct rather than a gap: with no throttle the governor
+  // expresses no opinion at all, so a cap that is not applied is indistinguishable from no cap,
+  // and the coasting ship is carried by the existing earned-momentum decay instead.
+  const burn = travelFlag('travelBurn')
+    ? advanceTravelDrive(normalizeTravelDrive(input.travelDrive), profile, baseCap, localVelocity.forward, dt)
+    : null;
+  const cap = Math.max(baseCap, earnedCap, burn ? burn.cap : 0);
   const err = cap - localVelocity.forward;
   const responseS = positive(settings.governorResponseS, 0.9);
   const overspeedBrake = limits.reverse * clamp(finite(settings.overspeedBrakeFraction, 0.25), 0, 1);
-  const governed = clamp(err / responseS, -overspeedBrake, manualLocal.forward);
+  // RC-4. Above the cap with boost held, the shipped governor commanded *real reverse thrust*:
+  // on `drive_reaction_m` at 400 WU/s against a cap of 302.25 it drove manualLocal.forward to
+  // -6.24 m/s² — precisely `-reverseAccel 26 × overspeedBrakeFraction 0.24`, i.e. identical to
+  // the unboosted brake — while boost energy drained. Held boost therefore made the ship slower.
+  // Boost must read as "holding what I have", never as a hidden anchor, so above the cap its
+  // floor rises to coast. The UNBOOSTED overspeed brake is deliberate governor behaviour and is
+  // untouched; this only ever relaxes a command that was pulling backwards.
+  const brakeFloor = travelFlag('boostNeverBrakes') && input.boost && err < 0 ? 0 : -overspeedBrake;
+  const governed = clamp(err / responseS, brakeFloor, manualLocal.forward);
   const engaged = governed < manualLocal.forward - EPS;
   manualLocal.forward = governed;
-  return {
+  const telemetry = {
     cap,
     baseCap,
     engaged,
     overspeed: err < 0,
-    physicsEarned,
+    // A decaying travel cap IS earned momentum being spent. Reporting it here keeps one honest
+    // answer to "is the ship above its ordinary cap on purpose?" no matter which mechanism —
+    // tether sling or travel burn — earned the excess.
+    physicsEarned: physicsEarned || !!(burn && burn.physicsEarnedMomentum),
   };
+  // Shape gate, not just a behaviour gate. With the axis off this object must be byte-identical
+  // to HEAD — otherwise the frozen kernel baseline and the 47a hash both move with the drive
+  // parked at Off, which is the failure mode that makes "flags-off is a no-op" untrue.
+  if (burn) {
+    telemetry.travel = {
+      state: burn.state,
+      // Carried ramp state: the input owner feeds this straight back as `travelDrive.cap`.
+      cap: burn.cap,
+      ceiling: burn.ceiling,
+      ramping: burn.ramping,
+      // Disengage spends earned velocity through the existing decay rather than confiscating it.
+      earned: burn.physicsEarnedMomentum,
+    };
+  }
+  return telemetry;
 }
 
 function stepGravimetric(body, input, profile, runtime, environment, dt) {
@@ -664,7 +824,7 @@ function makeResult({ body, profile, input, runtime, acceleration, angularAccele
     y: finite(angularAcceleration, 0) * body.inertia,
     z: 0,
   };
-  return {
+  const result = {
     schemaVersion: PROPULSION_RUNTIME_SCHEMA_VERSION,
     driveId: profile.id,
     family: profile.family,
@@ -693,6 +853,25 @@ function makeResult({ body, profile, input, runtime, acceleration, angularAccele
       ...telemetry,
     },
   };
+  // Travel-drive publication (D5), FLAT and at the top level of telemetry rather than nested
+  // under `governor`. The nesting was the obvious place, but `governor` is null for the
+  // ungoverned families and whenever throttle sits below `deadInput` — so a nested V-MAX would
+  // vanish from the HUD at exactly the moment the pilot lets off the stick, which is when a
+  // pilot most wants to read the ceiling. Flat keeps one stable address for the tape.
+  //
+  // Shape-gated, like the governor block: with the axis off, not one key is attached, so a drive
+  // parked at Off leaves this result byte-identical to HEAD.
+  if (travelFlag('travelBurn')) {
+    const t = result.telemetry;
+    const advanced = t.governor && t.governor.travel;
+    const drive = input.travelDrive || { state: 'off', cap: 0 };
+    // Prefer the governor's advanced values when it ran this tick; otherwise report the carried
+    // input state and the drive's static ceiling, so the readout stays truthful rather than absent.
+    t.travelDrive = advanced ? advanced.state : drive.state;
+    t.travelCap = advanced ? advanced.cap : Math.max(0, finite(drive.cap, 0));
+    t.travelCeiling = advanced ? advanced.ceiling : resolveTravelCeiling(profile);
+  }
+  return result;
 }
 
 function idleResult(body, profile, runtime, input) {
@@ -758,6 +937,12 @@ function normalizeInput(input = {}) {
     earnedMomentumAssistScale: clamp(finite(input.earnedMomentumAssistScale, 1), 0, 1),
     coastAssistScale: clamp(finite(input.coastAssistScale, 1), 0, 1),
     assistMode: normalizeAssistMode(input.assistMode || input.flightMode),
+    // Travel-drive axis (D5). Normalized unconditionally because this object is rebuilt from
+    // scratch and an un-listed key would be dropped before the governor ever saw it. Purely
+    // internal: `makeResult` emits nothing from the normalized input except `assistMode`, and
+    // the drive rides the input packet rather than the serialized runtime, so it adds nothing to
+    // the saved propulsion state and cannot reach a save file.
+    travelDrive: normalizeTravelDrive(input.travelDrive),
   };
 }
 
