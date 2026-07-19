@@ -423,9 +423,21 @@ function autosaveHarness({
   };
 }
 
+function primeProductionAutosave(harness) {
+  const previousMode = harness.state.mode;
+  harness.state.mode = 'loading';
+  try {
+    assert.equal(save.primeAutosaveCapture(), true,
+      'timed production autosaves must exercise the loading-route preparation used by live play');
+  } finally {
+    harness.state.mode = previousMode;
+  }
+}
+
 test('production capture plan is fixed-tick, worker-encoded, phased, and reports every sync-wall observation', () => {
   const h = autosaveHarness({ productionCapture: true });
   try {
+    primeProductionAutosave(h);
     const old = encodeSavePayload({
       descriptor: { fmt: 'spaceface-save', version: CURRENT_VERSION, savedAt: '2026-07-12T11:00:00.000Z', playtimeS: 1100, slot: 'auto' },
       data: largeDataFixture(),
@@ -525,6 +537,7 @@ test('production capture plan is fixed-tick, worker-encoded, phased, and reports
 test('three serial production autosaves each preserve exact data and meet the raw 8/12ms receipt limits', () => {
   const h = autosaveHarness({ productionCapture: true });
   try {
+    primeProductionAutosave(h);
     const receipts = [];
     for (let run = 0; run < 3; run++) {
       const eventStart = h.events.length;
