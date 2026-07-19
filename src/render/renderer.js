@@ -9,7 +9,6 @@ import { installVisualOverrides } from './visualOverrides.js';
 import {
   createBloom,
   compileScenePipelinesForRenderTarget,
-  warmScenePipelinesForRenderTarget,
 } from './bloom.js';
 import { SpaceRenderGraph } from './post/spaceRenderGraph.js';
 import {
@@ -48,6 +47,7 @@ import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
 import { getAssetResidency } from './assetResidency.js';
 import { createPipelineAdmissionTracker } from './pipelineReadiness.js';
+import { prepareStartupGpuResidency, yieldToBrowser } from './startupGpuResidency.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -59,7 +59,7 @@ const _socketGlobalXZ = { x: 0, z: 0 };
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const SECTOR_PALETTE_LERP_SECONDS = 1.5;
-const SECTOR_LIGHT_INTENSITIES = { ambient: 0.22, key: 2.1, rim: 0.95, fill: 0.55 };
+const SECTOR_LIGHT_INTENSITIES = { ambient: 0.85, key: 1.7, rim: 0.7, fill: 0.35 };
 const ENTITY_VIEW_CULL_MIN_MARGIN = 900;
 const ENTITY_VIEW_CULL_ZOOM_MARGIN = 8;
 // World simulation deliberately keeps the current corridor sector plus reduced neighbours alive.
@@ -185,6 +185,7 @@ function entityIsOnApproachVector(entity, state, radius) {
 /** Pure render-streaming policy used by reconciliation and focused tests. */
 export function isEntityRenderRelevant(entity, state, radius = RENDER_STREAM_PREFETCH_RADIUS) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
+  if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
   if (entityIsExplicitRenderFocus(entity, state)) return true;
   const sectorId = entitySectorId(entity);
   const currentSectorId = state && state.world && state.world.currentSectorId;
@@ -195,9 +196,9 @@ export function isEntityRenderRelevant(entity, state, radius = RENDER_STREAM_PRE
 /** Pure authored-admission policy: spatial runway, explicit focus, never whole-sector eagerness. */
 export function isEntityAuthoredUpgradeRelevant(entity, state, radius = AUTHORED_ASSET_PREFETCH_RADIUS) {
   if (!entity || entity.alive === false) return false;
+  if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
   if (entityIsExplicitRenderFocus(entity, state)) return true;
   if (isCriticalStartingHub(entity)) return true;
-  if (state && state.mode === 'loading' && isInitialAuthoredCompositionEntity(entity, state)) return true;
   if (entityWithinPlayerRadius(entity, state, AUTHORED_ASSET_IMMEDIATE_RADIUS)) return true;
   return entityIsOnApproachVector(entity, state, radius);
 }
@@ -361,6 +362,13 @@ const SHIELD_POOL_FRAG = /* glsl */`
   }
 `;
 
+const SHIELD_PRESENTATION_EPSILON = 0.015;
+
+/** Shields read on impact instead of coating every healthy ship in a permanent translucent sphere. */
+export function shouldPresentShieldBubble(shield, flash) {
+  return Number(shield) > 0 && Number(flash) > SHIELD_PRESENTATION_EPSILON;
+}
+
 export function createShipAuxPool(scene) {
   const pool = {
     scene,
@@ -490,14 +498,15 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
     const bubble = root.userData.shieldBubble;
     if (bubble) {
       bubble.visible = false;
-      if (entity.shield > 0) {
+      const uniforms = bubble.material && bubble.material.uniforms;
+      const flash = uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0;
+      if (shouldPresentShieldBubble(entity.shield, flash)) {
         ensureShieldAuxCapacity(pool.shield, shieldCount + 1, pool.scene, shieldCount);
         const shieldMesh = pool.shield.mesh;
         const flashAttr = shieldMesh.geometry.getAttribute('instanceFlash');
         const baseAttr = shieldMesh.geometry.getAttribute('instanceBase');
         bubble.updateWorldMatrix(true, false);
         if (writeInstanceMatrixIfChanged(shieldMesh, shieldCount, bubble.matrixWorld)) shieldMatrixDirty = true;
-        const uniforms = bubble.material && bubble.material.uniforms;
         const color = uniforms && uniforms.uColor && uniforms.uColor.value;
         if (writeInstanceColorIfChanged(
           shieldMesh, shieldCount, color && color.isColor ? color : SHIP_AUX_COLOR.set(0x5fd0ff),
@@ -658,12 +667,6 @@ export const render = {
     const key = new THREE.DirectionalLight(corePalette.key, SECTOR_LIGHT_INTENSITIES.key); key.position.set(60, 140, 40); scene.add(key);
     const rim = new THREE.DirectionalLight(corePalette.rim, SECTOR_LIGHT_INTENSITIES.rim); rim.position.set(-70, 50, -60); scene.add(rim);
     const fill = new THREE.DirectionalLight(corePalette.fill, SECTOR_LIGHT_INTENSITIES.fill); fill.position.set(20, 30, 120); scene.add(fill);
-    // Boost image-based lighting from the baked nebula PMREM (three r163+): the env is a cool,
-    // directional, high-quality ambient — richer than the flat AmbientLight, and lets us hold that
-    // AmbientLight low. Hedged to 1.1 (can't verify on this software-GL box); push toward 1.25 on a
-    // GPU if chrome/metalness hulls don't specular-bloom past the 1.0 bloom threshold.
-    scene.environmentIntensity = 1.1;
-
     // Real shadow maps (graphics spec Workstream G). Keep one reusable key light regardless of the
     // boot setting; _ensureKeyLightShadows configures it once and _syncShadowMapEnabled gates work.
     // This lets a default shadows:false profile enable shadows live without allocating a new light.
@@ -677,6 +680,9 @@ export const render = {
     // intercepted before the procedural visualFactory. Narrow + failure-isolated — any throw falls
     // back to the original procedural builder, so non-Kestrel entities are completely unaffected.
     installVisualOverrides(vf, {
+      // Live play mounts a zero-draw admission substrate and publishes the authored GLB as the first
+      // visible identity. Preview-only factories may still opt into hidden diagnostic geometry.
+      directAuthoredMount: true,
       onAuthoredAssetSwap: ({ boundary, root } = {}) => {
         configureRealtimeCanopyMaterials(boundary || root);
         this._shadowReceiversDirty = true;
@@ -931,6 +937,8 @@ export const render = {
     this._meshBuildQueue = [];
     this._meshBuildQueueHead = 0;
     this._meshBuildQueuedIds = new Set();
+    this._deferNoncriticalMeshStreaming = false;
+    this._firstPlayablePaintScheduled = false;
     this._hazardVisuals = []; // hazard zone visual meshes for the current sector
     this._meshReconcileDirty = true;
     this._initialMeshReconcileComplete = false;
@@ -1025,6 +1033,11 @@ export const render = {
       // context after relaunch.
       state.render.softwareRenderer = true;
       try { if (this.bloom) this.bloom.setOptions({ bloom: false }); } catch (_) {}
+      // Do not submit the very first flight frame at full hardware resolution and only react after
+      // it freezes. The software-only emergency profile begins at its established adaptive floor;
+      // hardware contexts remain full-resolution and never enter this branch.
+      state.render.dynResScale = dynFloor;
+      this._applySize();
       setTimeout(() => {
         try {
           bus.emit('toast', {
@@ -1053,24 +1066,15 @@ export const render = {
         for (const root of batch) subject.add(root);
       }
       const video = state.settings && state.settings.video || {};
-      const loadingAdmission = state.mode === 'loading';
       let preparation;
       if (video.renderGraph && this._ensureRenderGraph()) {
-        preparation = loadingAdmission
-          ? warmScenePipelinesForRenderTarget(
-            renderer, this._renderGraph.sceneTarget, subject, cam.obj, scene,
-          )
-          : compileScenePipelinesForRenderTarget(
-            renderer, this._renderGraph.sceneTarget, subject, cam.obj, scene,
-          );
+        preparation = compileScenePipelinesForRenderTarget(
+          renderer, this._renderGraph.sceneTarget, subject, cam.obj, scene,
+        );
       } else if (this.bloom && video.bloom !== false) {
-        preparation = loadingAdmission
-          ? this.bloom.warmScenePipelines(subject, cam.obj, scene)
-          : this.bloom.compileScenePipelines(subject, cam.obj, scene);
+        preparation = this.bloom.compileScenePipelines(subject, cam.obj, scene);
       } else {
-        preparation = loadingAdmission
-          ? warmScenePipelinesForRenderTarget(renderer, null, subject, cam.obj, scene)
-          : compileScenePipelinesForRenderTarget(renderer, null, subject, cam.obj, scene);
+        preparation = compileScenePipelinesForRenderTarget(renderer, null, subject, cam.obj, scene);
       }
       return Promise.resolve(preparation).finally(() => {
         if (batch.length > 1) subject.clear();
@@ -1082,6 +1086,42 @@ export const render = {
     state.render.compileObjectPipelines = (subject) => pipelineAdmissions.compile(subject);
     state.render.compileCurrentPipelines = () => pipelineAdmissions.waitForPending();
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
+    state.render.prepareOpeningGpuResources = async () => {
+      const roots = [];
+      for (const [id, mesh] of this._meshes) {
+        const entity = state.entities && state.entities.get ? state.entities.get(id) : null;
+        if (isInitialAuthoredCompositionEntity(entity, state)) roots.push(mesh);
+      }
+      const result = await prepareStartupGpuResidency(renderer, roots, {
+        yieldToMain: yieldToBrowser,
+      });
+      if (this.bloom && typeof this.bloom.prepareResources === 'function') {
+        result.post = await this.bloom.prepareResources(yieldToBrowser);
+      }
+      // Submit the exact, deliberately small opening composition while the loading shell still
+      // covers the canvas. Textures and targets are resident by this point, and loading-mode mesh
+      // scope excludes the rest of the sector. This moves unavoidable first-driver work before the
+      // handoff instead of presenting a black/frozen flight canvas after mode changes.
+      await yieldToBrowser();
+      const openingFrameStarted = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const video = state.settings && state.settings.video || {};
+      if (video.renderGraph && this._ensureRenderGraph()) {
+        this._renderGraph.render(scene, cam.obj, { time: this._bgTime || 0 });
+      } else if (this.bloom && video.bloom !== false) {
+        this.bloom.render(scene, cam.obj);
+      } else {
+        renderer.setRenderTarget(null);
+        renderer.render(scene, cam.obj);
+      }
+      result.openingFrame = {
+        durationMs: (typeof performance !== 'undefined' ? performance.now() : Date.now())
+          - openingFrameStarted,
+        roots: roots.length,
+      };
+      await yieldToBrowser();
+      state.render.startupGpuResidency = result;
+      return result;
+    };
     // Collision/socket/landing debug toggle (spec §12.5), bound to F7 in ui/input.js. Capture the
     // render-system `this` once so the handle closures resolve the live collisionDebug regardless of
     // how they're invoked (method `this` would otherwise bind to the debug handle object itself).
@@ -1178,6 +1218,24 @@ export const render = {
       if (this._assetResidency) this._assetResidency.prepareSectorExit(sectorId);
       this._publishAssetResidencyDiagnostics();
     });
+    let deferredStartupPrecompile = null;
+    const compileSectorPipelines = (sector) => {
+      if (gpu.software) {
+        return Promise.resolve({
+          skipped: true,
+          reason: 'software renderer uses bounded on-demand pipeline admission',
+        });
+      }
+      return precompilePipelines(renderer, scene, cam.obj, {
+        sector,
+        incremental: true,
+        preparePipelines: compileForCurrentTarget,
+        video: state.settings && state.settings.video,
+      }).catch((error) => {
+        console.warn('[render] sector pipeline precompile failed', error);
+        return null;
+      });
+    };
     bus.on('sector:enter', ({ sectorId, sector } = {}) => {
       if (this._assetResidency) this._assetResidency.rotateSector(sectorId || sector && sector.id);
       this._publishAssetResidencyDiagnostics();
@@ -1196,16 +1254,35 @@ export const render = {
       // palette class (no-op when re-entering the same sector).
       if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector);
       this._updateHazardVisuals(sector);
-      const warmup = precompilePipelines(renderer, scene, cam.obj, {
-        sector,
-        preparePipelines: compileForCurrentTarget,
-        warmPostProcess: state.render.warmPostProcess,
-        video: state.settings && state.settings.video,
-      }).catch((error) => {
-        console.warn('[render] sector pipeline precompile failed', error);
-        return null;
-      });
-      state.render.pipelinePrecompileReady = warmup;
+      if (state.mode === 'loading') {
+        deferredStartupPrecompile = sector;
+        state.render.pipelinePrecompileReady = Promise.resolve({
+          skipped: true,
+          reason: 'deferred until the first playable frame',
+        });
+      } else {
+        state.render.pipelinePrecompileReady = compileSectorPipelines(sector);
+      }
+    });
+    bus.on('mode:changed', ({ mode } = {}) => {
+      if (mode === 'loading') {
+        state.render.firstPlayableFrameAt = null;
+        this._deferNoncriticalMeshStreaming = false;
+        this._firstPlayablePaintScheduled = false;
+      }
+      if (mode !== 'flight') return;
+      // The first visible flight draw contains only the already-resident opening composition.
+      // Bulk sector roots resume at the normal two-per-frame budget after that draw completes.
+      this._deferNoncriticalMeshStreaming = true;
+      if (!deferredStartupPrecompile) return;
+      const sector = deferredStartupPrecompile;
+      deferredStartupPrecompile = null;
+      const begin = () => {
+        if (state.mode !== 'flight') return;
+        state.render.backgroundPipelinePrecompileReady = compileSectorPipelines(sector);
+      };
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(begin, { timeout: 1200 });
+      else setTimeout(begin, 250);
     });
     bus.on('jump:arrive', ({ sectorId } = {}) => {
       const sector = sectorId && state.world && state.world.sectors ? state.world.sectors[sectorId] : null;
@@ -1580,12 +1657,12 @@ export const render = {
       if (m.userData.updateDamageState) m.userData.updateDamageState(e, now);
       if (m.userData.updateDriveState) m.userData.updateDriveState(e, now);
 
-      // GR-5: persistent 3D shield bubble visibility + impact flash. Shown while shields hold; the
-      // flash decays each frame and is punched up whenever the entity's shield value drops (impact).
+      // Shield geometry is an impact response, not a permanent bubble. The flash decays each frame
+      // and is punched up whenever the entity's shield value drops.
       const sb = m.userData.shieldBubble;
       if (sb) {
         const up = e.shield > 0;
-        if (sb.visible !== up) sb.visible = up;
+        let flash = 0;
         if (up) {
           const u = sb.material.uniforms;
           // detect shield loss since last frame -> punch the fresnel flash
@@ -1596,7 +1673,10 @@ export const render = {
           const dt = Math.min(0.1, now - (sb.userData._prevFlashT != null ? sb.userData._prevFlashT : now));
           sb.userData._prevFlashT = now;
           u.uFlash.value *= Math.pow(0.05, dt);
+          flash = u.uFlash.value;
         }
+        const visible = shouldPresentShieldBubble(e.shield, flash);
+        if (sb.visible !== visible) sb.visible = visible;
       }
     }
     endRenderEntityFrame(this._entityFrame);
@@ -1786,12 +1866,14 @@ export const render = {
     // Existing neighbour-sector entities do not emit a spawn event when the player simply flies
     // toward them. A low-frequency residency poll admits/evicts views and starts authored prefetch
     // as distance thresholds are crossed without putting a full entity scan in every frame.
-    this._renderResidencyPollS -= Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
-    if (this._renderResidencyPollS <= 0) {
-      this._renderResidencyPollS = RENDER_RESIDENCY_POLL_SECONDS;
-      this._meshReconcileDirty = true;
+    if (!this._deferNoncriticalMeshStreaming) {
+      this._renderResidencyPollS -= Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
+      if (this._renderResidencyPollS <= 0) {
+        this._renderResidencyPollS = RENDER_RESIDENCY_POLL_SECONDS;
+        this._meshReconcileDirty = true;
+      }
+      if (this._meshReconcileDirty) this.reconcileMeshes();
     }
-    if (this._meshReconcileDirty) this.reconcileMeshes();
     this._updateShipPitch(frameDt);
     this.syncEntityViews(alpha);
     this.cam.follow(frameDt);
@@ -1877,6 +1959,10 @@ export const render = {
 
   drawPreparedFrame() {
     if (this._contextLost) return false;
+    // The DOM loading shell completely covers the canvas. Drawing the hidden world here used to
+    // trigger the entire first texture/shader upload during a progress yield, freezing that shell
+    // for 5-8 seconds on SwiftShader and low-end drivers.
+    if (this.state.mode === 'loading') return false;
     // Entity roots may spawn/rebuild and VFX events may fire between render updates;
     // reassert diagnostic owner seams immediately before draw so nothing leaks a frame.
     try { this.state?.render?.perfEntityIsolation?.reassert?.(); } catch (_) { /* diagnostic only */ }
@@ -1919,6 +2005,19 @@ export const render = {
       }
     }
     if (useCpu) perf.recordRenderWork('drawPreparedFrame', performance.now() - t0);
+    if (this.state.mode === 'flight'
+        && !Number.isFinite(this.state.render.firstPlayableFrameAt)
+        && !this._firstPlayablePaintScheduled) {
+      this._firstPlayablePaintScheduled = true;
+      afterBrowserPaint(() => {
+        if (this.state.mode !== 'flight') return;
+        this.state.render.firstPlayableFrameAt = typeof performance !== 'undefined'
+          ? performance.now()
+          : Date.now();
+        this._deferNoncriticalMeshStreaming = false;
+        this._meshReconcileDirty = true;
+      });
+    }
     return true;
   },
 
@@ -2174,6 +2273,16 @@ export const render = {
     }
   },
 };
+
+function afterBrowserPaint(callback) {
+  if (typeof requestAnimationFrame !== 'function') {
+    setTimeout(callback, 0);
+    return;
+  }
+  requestAnimationFrame(() => {
+    setTimeout(() => requestAnimationFrame(callback), 0);
+  });
+}
 
 function applyRendererSize(renderer, state) {
   const vd = (state.settings && state.settings.video) || {};

@@ -1,0 +1,23 @@
+{
+  "schema": "spaceface.m4SurfacePromotion.v1",
+  "asset": "place_station_trade_hub",
+  "remasterId": "helios-golden-production-v1",
+  "candidate": "assets/ships/parts/places/place_station_trade_hub.glb",
+  "candidateSha256": "000EECEBCC9B7836EEDF3A92E2158385E145779BC0CBE0189AF19FAA6C3AA010",
+  "candidateBytes": 82441168,
+  "release": "assets/ships/release/parts/places/place_station_trade_hub.glb",
+  "releaseSha256": "ECE3AD4791ECEEA2B6ED82908EC768B916E99D3EB617E3692AA9B86BC5734234",
+  "releaseBytes": 81774852,
+  "source": "assets/ships/parts/places/place_station_trade_hub.glb",
+  "sourceSha256": "000EECEBCC9B7836EEDF3A92E2158385E145779BC0CBE0189AF19FAA6C3AA010",
+  "sourceBytes": 82441168,
+  "authoringBlend": "assets/ships/m4_helios_hub/blender/helios_hub_station_production.blend",
+  "authoringBlendSha256": "589988F65E71957BCB4E319EA9539F6FEB2D7B1E567727D12DD5059E750154A0",
+  "authoringBlendBytes": 74650920,
+  "externalTextureRoot": "assets/ships/m4_helios_hub/textures",
+  "rawIntermediateRetained": false,
+  "textures": 30,
+  "ktx2Textures": 30,
+  "meshoptBufferViews": 315,
+  "contractNodeCount": 31
+}

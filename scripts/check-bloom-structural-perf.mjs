@@ -96,7 +96,7 @@ try {
     bloomA.render(scene, camera);
     const stillWorksAfterPeerDispose = true;
 
-    // Levels=4 multi-scale path (halfW >= 320): still no upsample RTs, still zero steady allocs.
+    // Levels=2 multi-scale path (halfW >= 320): still no upsample RTs, still zero steady allocs.
     bloomA.setSize(1280, 720);
     const diagLevels2 = bloomA.diagnostics();
     resetPostRenderTargetSampleCounter();
@@ -148,7 +148,7 @@ try {
     report.diagnosticsInit.levels,
     'bloomPasses equals downsample levels (upsample chain removed)',
   );
-  assert.ok(report.diagnosticsInit.levels >= 1 && report.diagnosticsInit.levels <= 4);
+  assert.ok(report.diagnosticsInit.levels >= 1 && report.diagnosticsInit.levels <= 2);
   assert.equal(report.sharedQuadGeometry, true);
 
   assert.equal(
@@ -177,14 +177,14 @@ try {
   );
   assert.equal(report.stillWorksAfterPeerDispose, true);
 
-  assert.equal(report.diagnosticsLevels2.levels, 4, '1280x720 must use 4 pyramid levels');
+  assert.equal(report.diagnosticsLevels2.levels, 2, '1280x720 must use 2 pyramid levels');
   assert.equal(report.diagnosticsLevels2.upsampleTargets, 0);
   assert.equal(
     report.diagnosticsLevels2.renderTargetCount,
     1 + report.diagnosticsLevels2.levels,
     'levels=2 RT count = scene + 2 downs (no upsample RT)',
   );
-  assert.equal(report.diagnosticsLevels2.bloomPasses, 4);
+  assert.equal(report.diagnosticsLevels2.bloomPasses, 2);
   assert.equal(report.levels2AllocationsDuringSteady, 0);
   assert.equal(report.levels2TotalAllocDelta, 0);
 
@@ -200,8 +200,7 @@ try {
     let g = c.map((v, i) => v * (sBal[i] + (hBal[i] - sBal[i]) * t));
     const luma2 = 0.2126 * g[0] + 0.7152 * g[1] + 0.0722 * g[2];
     g = g.map((v) => Math.max(luma2 + (v - luma2) * 1.15, 0));
-    const out = c.map((v, i) => v + (g[i] - v) * uGrade);
-    return out.map((v) => Math.max(v - 0.006, 0) / (1 - 0.006));
+    return c.map((v, i) => v + (g[i] - v) * uGrade);
   };
   const NAN_PROBES = [
     [0, 0, 0], [0.01, 0.01, 0.01], [0.005, 0.01, 0.03], [0.02, 0, 0], [0.3, 0.05, 0.02], [0.5, 0.8, 2.0],

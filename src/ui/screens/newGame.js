@@ -4,7 +4,6 @@
 import { MODULES } from '../../data/modules.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { WEAPONS } from '../../data/weapons.js';
-import { createShipPreviewMount } from '../shipPreviewMount.js';
 import { coreText } from '../localizedCoreCopy.js';
 
 const STYLE_ID = 'sf-new-game-style';
@@ -63,12 +62,11 @@ function injectStyle() {
     display:flex; flex-direction:column; gap:14px; padding:16px 30px; scrollbar-gutter:stable; }
   .sf-menu .sf-ng-footer { flex:0 0 auto; margin:0; padding:14px 30px 18px;
     border-top:1px solid var(--panel-edge); background:rgba(12,14,15,.96); }
-  /* UX-1: rotating 3D preview of the starter ship. Sits above the stat grid so the hull reads as a
-     real object (with a history), not a table of numbers. flex:0 0 auto keeps the scrolling body's
-     flex pressure from crushing the canvas wrap to its border height (the body scrolls instead). */
+  /* Authored starter portrait. A pre-rendered production view avoids decoding the flight GLB in a
+     second WebGL context while preserving the exact ship identity and material work. */
   .sf-ng-preview { position: relative; flex: 0 0 auto; height: 150px; margin: 6px 0 10px; border: 1px solid var(--panel-edge);
     border-radius: 2px; overflow: hidden; background: radial-gradient(ellipse at 50% 70%, #171a1d, #0a0c0d 80%); }
-  .sf-ng-preview__canvas { width: 100%; height: 100%; display: block; }
+  .sf-ng-preview__still { width: 100%; height: 100%; display: block; object-fit: cover; object-position: 50% 49%; }
   /* Warmup veil (spec2/03 §3): the Launch disabled-state never shows >300ms — async warmup
      happens behind this veil, not a bare disabled button. */
   .sf-ng-warmup { position:absolute; inset:0; display:flex; flex-direction:column; gap:12px;
@@ -163,17 +161,6 @@ function starterLoadoutRows() {
 
 let refs = null;
 
-function disposePreviewMount(mount) {
-  if (!mount || typeof mount.dispose !== 'function') return;
-  try { mount.dispose(); } catch (e) {}
-}
-
-function disposeRefsPreview() {
-  if (!refs || !refs.preview) return;
-  disposePreviewMount(refs.preview);
-  refs.preview = null;
-}
-
 export const newGameScreen = {
   id: 'newGame',
 
@@ -182,7 +169,6 @@ export const newGameScreen = {
     if (refs && refs.unsubStartFailed) {
       try { refs.unsubStartFailed(); } catch (e) {}
     }
-    disposeRefsPreview();
     shell(rootEl, coreText('newGame'), 'sf-menu-narrow');
     rootEl.classList.remove('sf-menu-narrow');
     rootEl.classList.add('sf-ng-shell');
@@ -230,25 +216,17 @@ export const newGameScreen = {
     // Starter ship preview — ship identity comes first, then stats.
     // The Tessera has a history. The player should feel it before they click Launch.
     body.appendChild(el('h2', null, 'Starting Ship'));
-    // UX-1: rotating 3D preview of the starter hull. Lazy + guarded so a WebGL/factory failure never
-    // blocks game creation — the stat grid + Launch button still work without it.
+    // A stable authored source render keeps New Game responsive and avoids loading the same 20 MiB
+    // flight hull into a second renderer. Flight still admits the full production Kestrel.
     const previewWrap = el('div', 'sf-ng-preview');
-    const previewCanvas = el('canvas', 'sf-ng-preview__canvas');
-    previewCanvas.width = 380; previewCanvas.height = 150;
-    previewWrap.appendChild(previewCanvas);
+    const previewStill = el('img', 'sf-ng-preview__still');
+    previewStill.src = 'assets/ships/release/ui/kestrel_v5_starter_portrait.png';
+    previewStill.alt = 'Authored three-quarter view of the Kestrel starter ship';
+    previewStill.decoding = 'async';
+    previewStill.fetchPriority = 'high';
+    previewStill.draggable = false;
+    previewWrap.appendChild(previewStill);
     body.appendChild(previewWrap);
-    let ngPreview = null;
-    try {
-      const envMap = ctx.state && ctx.state.render && ctx.state.render.envMap;
-      ngPreview = createShipPreviewMount(previewCanvas, {
-        envMap,
-        fastPreview: false,
-        allowFastFallback: false,
-        authoredWarmup: true,
-      });
-      // Hitch hero mesh (same as flight).
-      ngPreview.show(STARTER_SHIP, { isPlayer: true, fittings: NEW_GAME.fittedModules || [] });
-    } catch (e) { console.warn('[newGame] ship preview failed', e); }
     const ship = starterShip(ctx);
     const grid = el('div', 'sf-grid2');
     const addStat = (k, v) => { grid.appendChild(el('div', 'k', k)); grid.appendChild(el('div', 'v', v)); };
@@ -317,48 +295,18 @@ export const newGameScreen = {
       const pilot = (name.value || '').trim() || 'Pilot';
       // First-run splash (spec2/03 §3): a single full-screen line on black, 2.5s, then B0.
       try { showFirstRunSplash(ctx); } catch (e) { /* non-blocking */ }
-      disposePreviewMount(ngPreview);
-      ngPreview = null;
-      if (refs) refs.preview = null;
       ctx.bus.emit('game:new', { name: pilot, shipId: STARTER_SHIP, difficulty: diff.value });
     });
     foot.appendChild(back); foot.appendChild(launch);
     rootEl.appendChild(foot);
 
-    refs = { name, launch, setLaunching, unsubStartFailed, preview: ngPreview, previewCanvas, ctx };
+    refs = { name, launch, setLaunching, unsubStartFailed, ctx };
   },
 
   onShow() {
-    const hitchShow = { isPlayer: true, fittings: NEW_GAME.fittedModules || [] };
-    if (refs && refs.preview) {
-      try {
-        if (typeof refs.preview.setActive === 'function') refs.preview.setActive(true);
-        refs.preview.show(STARTER_SHIP, hitchShow);
-      } catch (e) { console.warn('[newGame] ship preview resume failed', e); }
-    } else if (refs && refs.previewCanvas) {
-      try {
-        const envMap = refs.ctx && refs.ctx.state && refs.ctx.state.render && refs.ctx.state.render.envMap;
-        refs.preview = createShipPreviewMount(refs.previewCanvas, {
-          envMap,
-          fastPreview: false,
-          allowFastFallback: false,
-          authoredWarmup: true,
-        });
-        refs.preview.show(STARTER_SHIP, hitchShow);
-      } catch (e) { console.warn('[newGame] ship preview failed', e); }
-    }
     if (refs && refs.setLaunching) refs.setLaunching(false);
     if (refs && refs.name) try { refs.name.focus(); refs.name.select(); } catch (e) {}
   },
-  onHide() {
-    if (refs && refs.ctx && refs.ctx.state && refs.ctx.state.mode === 'flight') {
-      disposeRefsPreview();
-      return;
-    }
-    // ScreenManager caches this DOM; pause the turntable so reopening New Game can resume it.
-    if (refs && refs.preview && typeof refs.preview.setActive === 'function') {
-      try { refs.preview.setActive(false); } catch (e) {}
-    }
-  },
+  onHide() {},
   refresh() {},
 };

@@ -1,0 +1,609 @@
+{
+  "schema": "spaceface.kestrelSurfacePreview.v2",
+  "remasterId": "kestrel-role-surface-v5",
+  "sourceBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\blender\\kestrel_borrowed_time_v4_production.blend",
+  "images": [
+    {
+      "image": "hull_basecolor.png",
+      "role": "hull",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.2841273844242096,
+        0.30580341815948486,
+        0.32288312911987305
+      ],
+      "std": [
+        0.018044838681817055,
+        0.016583923250436783,
+        0.01515517570078373
+      ],
+      "directionality": 1.001784968718256,
+      "metallicTarget": null,
+      "macroWaviness": 0.12,
+      "orangePeel": 0.16,
+      "scratchDensity": 18,
+      "chipDensity": 0.014,
+      "recessDust": 0.12
+    },
+    {
+      "image": "hull_orm.png",
+      "role": "hull",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9768794178962708,
+        0.4315521717071533,
+        0.03504248708486557
+      ],
+      "std": [
+        0.013840685598552227,
+        0.06578980386257172,
+        0.07609179615974426
+      ],
+      "directionality": 1.0041183847985524,
+      "metallicTarget": 0.025,
+      "macroWaviness": 0.12,
+      "orangePeel": 0.16,
+      "scratchDensity": 18,
+      "chipDensity": 0.014,
+      "recessDust": 0.12
+    },
+    {
+      "image": "hull_normal.png",
+      "role": "hull",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5000188946723938,
+        0.49999701976776123,
+        0.999963641166687
+      ],
+      "std": [
+        0.019880104809999466,
+        0.019806183874607086,
+        0.0010883889626711607
+      ],
+      "directionality": 0.8212395061212423,
+      "metallicTarget": null,
+      "macroWaviness": 0.12,
+      "orangePeel": 0.16,
+      "scratchDensity": 18,
+      "chipDensity": 0.014,
+      "recessDust": 0.12
+    },
+    {
+      "image": "mechanical_basecolor.png",
+      "role": "mechanical",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.2052394449710846,
+        0.2261461615562439,
+        0.24230708181858063
+      ],
+      "std": [
+        0.011727053672075272,
+        0.005855526775121689,
+        0.0020659598521888256
+      ],
+      "directionality": 1.3324073950087418,
+      "metallicTarget": null,
+      "macroWaviness": 0.05,
+      "orangePeel": 0.03,
+      "scratchDensity": 34,
+      "chipDensity": 0.0,
+      "recessDust": 0.16
+    },
+    {
+      "image": "mechanical_orm.png",
+      "role": "mechanical",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9768909215927124,
+        0.47301408648490906,
+        0.7795298099517822
+      ],
+      "std": [
+        0.013885537162423134,
+        0.07236822694540024,
+        0.01947595551609993
+      ],
+      "directionality": 1.3107671865876989,
+      "metallicTarget": 0.78,
+      "macroWaviness": 0.05,
+      "orangePeel": 0.03,
+      "scratchDensity": 34,
+      "chipDensity": 0.0,
+      "recessDust": 0.16
+    },
+    {
+      "image": "mechanical_normal.png",
+      "role": "mechanical",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5000090003013611,
+        0.49999764561653137,
+        0.9995052218437195
+      ],
+      "std": [
+        0.03896486759185791,
+        0.03805503621697426,
+        0.003833005204796791
+      ],
+      "directionality": 1.153595923701797,
+      "metallicTarget": null,
+      "macroWaviness": 0.05,
+      "orangePeel": 0.03,
+      "scratchDensity": 34,
+      "chipDensity": 0.0,
+      "recessDust": 0.16
+    },
+    {
+      "image": "armor_dark_basecolor.png",
+      "role": "armor_dark",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.25355637073516846,
+        0.2799678146839142,
+        0.3103981912136078
+      ],
+      "std": [
+        0.015459057874977589,
+        0.013608342967927456,
+        0.011973993852734566
+      ],
+      "directionality": 1.0034789442217302,
+      "metallicTarget": null,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.1,
+      "scratchDensity": 12,
+      "chipDensity": 0.008,
+      "recessDust": 0.1
+    },
+    {
+      "image": "armor_dark_orm.png",
+      "role": "armor_dark",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9770995378494263,
+        0.6817735433578491,
+        0.3038051724433899
+      ],
+      "std": [
+        0.013952639885246754,
+        0.06708407402038574,
+        0.037151314318180084
+      ],
+      "directionality": 1.0005051832218808,
+      "metallicTarget": 0.3,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.1,
+      "scratchDensity": 12,
+      "chipDensity": 0.008,
+      "recessDust": 0.1
+    },
+    {
+      "image": "armor_dark_normal.png",
+      "role": "armor_dark",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.4999953806400299,
+        0.49999403953552246,
+        0.9999533295631409
+      ],
+      "std": [
+        0.021073924377560616,
+        0.0210487712174654,
+        0.001221245969645679
+      ],
+      "directionality": 0.7877624323769484,
+      "metallicTarget": null,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.1,
+      "scratchDensity": 12,
+      "chipDensity": 0.008,
+      "recessDust": 0.1
+    },
+    {
+      "image": "brushed_metal_basecolor.png",
+      "role": "brushed_metal",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.47179317474365234,
+        0.4914637506008148,
+        0.5002151727676392
+      ],
+      "std": [
+        0.008885800838470459,
+        0.006958113517612219,
+        0.005018523428589106
+      ],
+      "directionality": 1.3921225717045749,
+      "metallicTarget": null,
+      "macroWaviness": 0.035,
+      "orangePeel": 0.015,
+      "scratchDensity": 42,
+      "chipDensity": 0.0,
+      "recessDust": 0.06
+    },
+    {
+      "image": "brushed_metal_orm.png",
+      "role": "brushed_metal",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9769647121429443,
+        0.4105052053928375,
+        0.9207088351249695
+      ],
+      "std": [
+        0.01391970831900835,
+        0.06311073899269104,
+        0.022976307198405266
+      ],
+      "directionality": 1.3084714870371734,
+      "metallicTarget": 0.92,
+      "macroWaviness": 0.035,
+      "orangePeel": 0.015,
+      "scratchDensity": 42,
+      "chipDensity": 0.0,
+      "recessDust": 0.06
+    },
+    {
+      "image": "brushed_metal_normal.png",
+      "role": "brushed_metal",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.4999990165233612,
+        0.4999954104423523,
+        0.9996268153190613
+      ],
+      "std": [
+        0.0362720713019371,
+        0.035494063049554825,
+        0.003370005637407303
+      ],
+      "directionality": 1.1532105138321147,
+      "metallicTarget": null,
+      "macroWaviness": 0.035,
+      "orangePeel": 0.015,
+      "scratchDensity": 42,
+      "chipDensity": 0.0,
+      "recessDust": 0.06
+    },
+    {
+      "image": "frontier_cyan_basecolor.png",
+      "role": "frontier_cyan",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.17322573065757751,
+        0.5272589325904846,
+        0.5633714199066162
+      ],
+      "std": [
+        0.01967751979827881,
+        0.0062413522973656654,
+        0.00630623335018754
+      ],
+      "directionality": 0.9999451147389198,
+      "metallicTarget": null,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.13,
+      "scratchDensity": 10,
+      "chipDensity": 0.006,
+      "recessDust": 0.08
+    },
+    {
+      "image": "frontier_cyan_orm.png",
+      "role": "frontier_cyan",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9771232008934021,
+        0.5013486742973328,
+        0.03975324705243111
+      ],
+      "std": [
+        0.013881774619221687,
+        0.06134523078799248,
+        0.051525987684726715
+      ],
+      "directionality": 1.001203728664581,
+      "metallicTarget": 0.035,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.13,
+      "scratchDensity": 10,
+      "chipDensity": 0.006,
+      "recessDust": 0.08
+    },
+    {
+      "image": "frontier_cyan_normal.png",
+      "role": "frontier_cyan",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5000019669532776,
+        0.4999995231628418,
+        0.9999706149101257
+      ],
+      "std": [
+        0.018865924328565598,
+        0.018864717334508896,
+        0.000985975144430995
+      ],
+      "directionality": 0.8045643033532777,
+      "metallicTarget": null,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.13,
+      "scratchDensity": 10,
+      "chipDensity": 0.006,
+      "recessDust": 0.08
+    },
+    {
+      "image": "warning_orange_basecolor.png",
+      "role": "warning_orange",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.6808214783668518,
+        0.37429386377334595,
+        0.14475849270820618
+      ],
+      "std": [
+        0.014104294590651989,
+        0.009077020920813084,
+        0.024400098249316216
+      ],
+      "directionality": 0.998179249159497,
+      "metallicTarget": null,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.14,
+      "scratchDensity": 14,
+      "chipDensity": 0.009,
+      "recessDust": 0.1
+    },
+    {
+      "image": "warning_orange_orm.png",
+      "role": "warning_orange",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9771553874015808,
+        0.5417270064353943,
+        0.03593498840928078
+      ],
+      "std": [
+        0.013931366614997387,
+        0.06392195075750351,
+        0.057952605187892914
+      ],
+      "directionality": 1.0014092862334618,
+      "metallicTarget": 0.03,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.14,
+      "scratchDensity": 14,
+      "chipDensity": 0.009,
+      "recessDust": 0.1
+    },
+    {
+      "image": "warning_orange_normal.png",
+      "role": "warning_orange",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.4999971091747284,
+        0.5000073909759521,
+        0.9999606013298035
+      ],
+      "std": [
+        0.020276468247175217,
+        0.020259803161025047,
+        0.0011336898896843195
+      ],
+      "directionality": 0.8085753450254153,
+      "metallicTarget": null,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.14,
+      "scratchDensity": 14,
+      "chipDensity": 0.009,
+      "recessDust": 0.1
+    },
+    {
+      "image": "repair_green_basecolor.png",
+      "role": "repair_green",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.2361893504858017,
+        0.4838096499443054,
+        0.30569911003112793
+      ],
+      "std": [
+        0.022984927520155907,
+        0.010704565793275833,
+        0.0158073753118515
+      ],
+      "directionality": 1.0012733167897112,
+      "metallicTarget": null,
+      "macroWaviness": 0.15,
+      "orangePeel": 0.19,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.2
+    },
+    {
+      "image": "repair_green_orm.png",
+      "role": "repair_green",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9770467281341553,
+        0.6135852336883545,
+        0.04361990466713905
+      ],
+      "std": [
+        0.013897736556828022,
+        0.07541341334581375,
+        0.06977558881044388
+      ],
+      "directionality": 1.0002739765886062,
+      "metallicTarget": 0.035,
+      "macroWaviness": 0.15,
+      "orangePeel": 0.19,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.2
+    },
+    {
+      "image": "repair_green_normal.png",
+      "role": "repair_green",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5000024437904358,
+        0.5000064373016357,
+        0.9998883008956909
+      ],
+      "std": [
+        0.026235662400722504,
+        0.026213273406028748,
+        0.001866871491074562
+      ],
+      "directionality": 0.833241511308346,
+      "metallicTarget": null,
+      "macroWaviness": 0.15,
+      "orangePeel": 0.19,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.2
+    },
+    {
+      "image": "rubber_basecolor.png",
+      "role": "rubber",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.12120655179023743,
+        0.14249330759048462,
+        0.1514682024717331
+      ],
+      "std": [
+        0.021883955225348473,
+        0.006901174783706665,
+        0.00581787945702672
+      ],
+      "directionality": 1.0037930357173752,
+      "metallicTarget": null,
+      "macroWaviness": 0.04,
+      "orangePeel": 0.25,
+      "scratchDensity": 6,
+      "chipDensity": 0.0,
+      "recessDust": 0.08
+    },
+    {
+      "image": "rubber_orm.png",
+      "role": "rubber",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9770095348358154,
+        0.8417215943336487,
+        0.0
+      ],
+      "std": [
+        0.013907077722251415,
+        0.04950854554772377,
+        0.0
+      ],
+      "directionality": 1.0022769718370783,
+      "metallicTarget": 0.0,
+      "macroWaviness": 0.04,
+      "orangePeel": 0.25,
+      "scratchDensity": 6,
+      "chipDensity": 0.0,
+      "recessDust": 0.08
+    },
+    {
+      "image": "rubber_normal.png",
+      "role": "rubber",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.499994158744812,
+        0.5000043511390686,
+        0.9993478655815125
+      ],
+      "std": [
+        0.04123474285006523,
+        0.041178591549396515,
+        0.004327530041337013
+      ],
+      "directionality": 0.8543204288922285,
+      "metallicTarget": null,
+      "macroWaviness": 0.04,
+      "orangePeel": 0.25,
+      "scratchDensity": 6,
+      "chipDensity": 0.0,
+      "recessDust": 0.08
+    }
+  ],
+  "written": [
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\hull_basecolor.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\hull_orm.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\hull_normal.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\mechanical_basecolor.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\mechanical_orm.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\mechanical_normal.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\armor_dark_basecolor.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\armor_dark_orm.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\armor_dark_normal.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\brushed_metal_basecolor.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\brushed_metal_orm.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\brushed_metal_normal.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\frontier_cyan_basecolor.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\frontier_cyan_orm.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\frontier_cyan_normal.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\warning_orange_basecolor.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\warning_orange_orm.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\warning_orange_normal.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\repair_green_basecolor.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\repair_green_orm.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\repair_green_normal.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\rubber_basecolor.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\rubber_orm.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\evidence\\surface_v5\\preview\\rubber_normal.png"
+  ]
+}

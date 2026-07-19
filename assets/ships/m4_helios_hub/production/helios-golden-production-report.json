@@ -1,0 +1,631 @@
+{
+  "schema": "spaceface.heliosGoldenProduction.v1",
+  "recipeId": "helios-golden-production-v1",
+  "inputBlend": "external OpenCode precursor (not retained; production output below is authoritative)",
+  "inputBlendSha256": "C6633A421A1100C0BFC2896BCC491925F2A1111C233F66AB798E4D3FDF397686",
+  "outputBlend": "assets/ships/m4_helios_hub/blender/helios_hub_station_production.blend",
+  "outputBlendSha256": "589988F65E71957BCB4E319EA9539F6FEB2D7B1E567727D12DD5059E750154A0",
+  "outputBlendBytes": 74650920,
+  "packedTextures": 0,
+  "externalTextureRoot": "assets/ships/m4_helios_hub/textures",
+  "outputGlb": "assets/ships/parts/places/place_station_trade_hub.glb",
+  "outputGlbSha256": "000EECEBCC9B7836EEDF3A92E2158385E145779BC0CBE0189AF19FAA6C3AA010",
+  "outputGlbBytes": 82441168,
+  "releaseGlb": "assets/ships/release/parts/places/place_station_trade_hub.glb",
+  "releaseGlbSha256": "ECE3AD4791ECEEA2B6ED82908EC768B916E99D3EB617E3692AA9B86BC5734234",
+  "releaseGlbBytes": 81774852,
+  "rawIntermediate": {
+    "retained": false,
+    "sha256": "7A6249842385B20174B57B49D3332FE39DCCDCAA55AD21719667ECABD153E537",
+    "bytes": 229918088
+  },
+  "socket": "SOCKET_Structure_Core",
+  "socketWorldPosition": [
+    2.9996700286865234,
+    0.00165557861328125,
+    12.248682022094727
+  ],
+  "bounds": {
+    "min": [
+      -57.42290687561035,
+      -4.177635192871094,
+      -52.430946350097656
+    ],
+    "max": [
+      63.42224884033203,
+      28.674999237060547,
+      52.427635192871094
+    ],
+    "dimensionsM": [
+      120.84515571594238,
+      32.85263442993164,
+      104.85858154296875
+    ]
+  },
+  "materialLift": [
+    {
+      "object": "HeliosGolden02_CommonBatch",
+      "changed": 482,
+      "to": {
+        "SF_HullMid_K0PBR": 382,
+        "SF_Armor_K0PBR": 100
+      }
+    },
+    {
+      "object": "LOD0_HeliosGolden02_Batch",
+      "changed": 89882,
+      "to": {
+        "SF_Armor_K0PBR": 62627,
+        "SF_HullMid_K0PBR": 27154,
+        "SF_StructuralLight_PBR": 62,
+        "SF_ServiceAccess_PBR": 39
+      }
+    },
+    {
+      "object": "LOD1_HeliosGolden02_Batch",
+      "changed": 47091,
+      "to": {
+        "SF_HullMid_K0PBR": 14953,
+        "SF_Armor_K0PBR": 32023,
+        "SF_StructuralLight_PBR": 59,
+        "SF_ServiceAccess_PBR": 56
+      }
+    },
+    {
+      "object": "LOD2_HeliosGolden02_Batch",
+      "changed": 19579,
+      "to": {
+        "SF_HullMid_K0PBR": 2508,
+        "SF_Armor_K0PBR": 16956,
+        "SF_StructuralLight_PBR": 47,
+        "SF_ServiceAccess_PBR": 68
+      }
+    }
+  ],
+  "faceHistogramBefore": {
+    "HeliosGolden02_CommonBatch": {
+      "SF_Machinery_K0PBR": 4968,
+      "SF_Armor_K0PBR": 2160,
+      "SF_HullDark_K0PBR": 1728,
+      "SF_ServiceAccess_PBR": 6216,
+      "SF_DockingContact_PBR": 2376,
+      "SF_Window_PBR": 3888
+    },
+    "LOD0_HeliosGolden02_Batch": {
+      "SF_IndustrialMarking_PBR": 4212,
+      "SF_AmberEmission": 21300,
+      "SF_Armor_K0PBR": 3616,
+      "SF_ServiceAccess_PBR": 15259,
+      "SF_CyanEmission": 14048,
+      "SF_HullDark_K0PBR": 614396,
+      "SF_HullMid_K0PBR": 676,
+      "SF_Machinery_K0PBR": 298598,
+      "SF_StructuralLight_PBR": 2383,
+      "SF_Window_PBR": 3340,
+      "SF_DockingContact_PBR": 1872,
+      "SF_Radiator_PBR": 7000
+    },
+    "LOD0_SFG02_SupportedRingBay_00": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_01": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_02": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_03": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_04": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_05": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_06": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_07": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_08": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_09": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_10": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_11": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_12": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_13": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_14": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_15": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_HeliosGolden02_Batch": {
+      "SF_IndustrialMarking_PBR": 4212,
+      "SF_AmberEmission": 10358,
+      "SF_Armor_K0PBR": 1755,
+      "SF_ServiceAccess_PBR": 11156,
+      "SF_CyanEmission": 7380,
+      "SF_HullDark_K0PBR": 295043,
+      "SF_HullMid_K0PBR": 324,
+      "SF_Machinery_K0PBR": 143484,
+      "SF_StructuralLight_PBR": 1126,
+      "SF_Window_PBR": 1600,
+      "SF_DockingContact_PBR": 1006,
+      "SF_Radiator_PBR": 5042
+    },
+    "LOD1_SFG02_SupportedRingBay_00": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_SFG02_SupportedRingBay_01": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_SFG02_SupportedRingBay_02": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_SFG02_SupportedRingBay_03": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_SFG02_SupportedRingBay_04": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_SFG02_SupportedRingBay_05": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_SFG02_SupportedRingBay_06": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_SFG02_SupportedRingBay_07": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD2_HeliosGolden02_Batch": {
+      "SF_AmberEmission": 3162,
+      "SF_Armor_K0PBR": 605,
+      "SF_ServiceAccess_PBR": 1136,
+      "SF_CyanEmission": 1224,
+      "SF_HullDark_K0PBR": 98204,
+      "SF_HullMid_K0PBR": 108,
+      "SF_Machinery_K0PBR": 47326,
+      "SF_StructuralLight_PBR": 362,
+      "SF_Window_PBR": 532,
+      "SF_DockingContact_PBR": 209,
+      "SF_Radiator_PBR": 600
+    }
+  },
+  "faceHistogramAfter": {
+    "HeliosGolden02_CommonBatch": {
+      "SF_Machinery_K0PBR": 4968,
+      "SF_Armor_K0PBR": 2260,
+      "SF_HullMid_K0PBR": 382,
+      "SF_HullDark_K0PBR": 1246,
+      "SF_ServiceAccess_PBR": 6216,
+      "SF_DockingContact_PBR": 2376,
+      "SF_Window_PBR": 3888
+    },
+    "LOD0_HeliosGolden02_Batch": {
+      "SF_IndustrialMarking_PBR": 4212,
+      "SF_AmberEmission": 21300,
+      "SF_Armor_K0PBR": 66243,
+      "SF_ServiceAccess_PBR": 15298,
+      "SF_CyanEmission": 14048,
+      "SF_HullDark_K0PBR": 524557,
+      "SF_HullMid_K0PBR": 27830,
+      "SF_StructuralLight_PBR": 2445,
+      "SF_Machinery_K0PBR": 298555,
+      "SF_Window_PBR": 3340,
+      "SF_DockingContact_PBR": 1872,
+      "SF_Radiator_PBR": 7000
+    },
+    "LOD0_SFG02_SupportedRingBay_00": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_01": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_02": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_03": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_04": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_05": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_06": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_07": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_08": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_09": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_10": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_11": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_12": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_13": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_14": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD0_SFG02_SupportedRingBay_15": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_HeliosGolden02_Batch": {
+      "SF_IndustrialMarking_PBR": 4212,
+      "SF_AmberEmission": 10358,
+      "SF_Armor_K0PBR": 33778,
+      "SF_ServiceAccess_PBR": 11212,
+      "SF_CyanEmission": 7380,
+      "SF_HullDark_K0PBR": 248014,
+      "SF_HullMid_K0PBR": 15277,
+      "SF_StructuralLight_PBR": 1185,
+      "SF_Machinery_K0PBR": 143422,
+      "SF_Window_PBR": 1600,
+      "SF_DockingContact_PBR": 1006,
+      "SF_Radiator_PBR": 5042
+    },
+    "LOD1_SFG02_SupportedRingBay_00": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_SFG02_SupportedRingBay_01": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_SFG02_SupportedRingBay_02": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_SFG02_SupportedRingBay_03": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_SFG02_SupportedRingBay_04": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_SFG02_SupportedRingBay_05": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_SFG02_SupportedRingBay_06": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD1_SFG02_SupportedRingBay_07": {
+      "SF_Machinery_K0PBR": 270,
+      "SF_ServiceAccess_PBR": 108,
+      "SF_IndustrialMarking_PBR": 54
+    },
+    "LOD2_HeliosGolden02_Batch": {
+      "SF_AmberEmission": 3162,
+      "SF_Armor_K0PBR": 17561,
+      "SF_ServiceAccess_PBR": 1204,
+      "SF_CyanEmission": 1224,
+      "SF_HullDark_K0PBR": 78724,
+      "SF_HullMid_K0PBR": 2616,
+      "SF_StructuralLight_PBR": 409,
+      "SF_Machinery_K0PBR": 47227,
+      "SF_Window_PBR": 532,
+      "SF_DockingContact_PBR": 209,
+      "SF_Radiator_PBR": 600
+    }
+  },
+  "serviceBayVariance": [
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_00",
+      "uvOffset": [
+        0.0877,
+        0.0104
+      ],
+      "uvRotationQuarterTurns": 1
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_01",
+      "uvOffset": [
+        0.1678,
+        0.0279
+      ],
+      "uvRotationQuarterTurns": 1
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_02",
+      "uvOffset": [
+        0.2365,
+        0.2996
+      ],
+      "uvRotationQuarterTurns": 2
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_03",
+      "uvOffset": [
+        0.2174,
+        0.0139
+      ],
+      "uvRotationQuarterTurns": 1
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_04",
+      "uvOffset": [
+        0.3662,
+        0.094
+      ],
+      "uvRotationQuarterTurns": 3
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_05",
+      "uvOffset": [
+        0.1984,
+        0.2996
+      ],
+      "uvRotationQuarterTurns": 1
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_06",
+      "uvOffset": [
+        0.3204,
+        0.2543
+      ],
+      "uvRotationQuarterTurns": 3
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_07",
+      "uvOffset": [
+        0.2861,
+        0.2821
+      ],
+      "uvRotationQuarterTurns": 3
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_08",
+      "uvOffset": [
+        0.042,
+        0.2369
+      ],
+      "uvRotationQuarterTurns": 3
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_09",
+      "uvOffset": [
+        0.1106,
+        0.1846
+      ],
+      "uvRotationQuarterTurns": 0
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_10",
+      "uvOffset": [
+        0.0114,
+        0.1602
+      ],
+      "uvRotationQuarterTurns": 2
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_11",
+      "uvOffset": [
+        0.1831,
+        0.2926
+      ],
+      "uvRotationQuarterTurns": 0
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_12",
+      "uvOffset": [
+        0.1716,
+        0.0731
+      ],
+      "uvRotationQuarterTurns": 3
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_13",
+      "uvOffset": [
+        0.0,
+        0.2996
+      ],
+      "uvRotationQuarterTurns": 2
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_14",
+      "uvOffset": [
+        0.2479,
+        0.0697
+      ],
+      "uvRotationQuarterTurns": 2
+    },
+    {
+      "object": "LOD0_SFG02_SupportedRingBay_15",
+      "uvOffset": [
+        0.2708,
+        0.216
+      ],
+      "uvRotationQuarterTurns": 2
+    },
+    {
+      "object": "LOD1_SFG02_SupportedRingBay_00",
+      "uvOffset": [
+        0.2212,
+        0.2264
+      ],
+      "uvRotationQuarterTurns": 2
+    },
+    {
+      "object": "LOD1_SFG02_SupportedRingBay_01",
+      "uvOffset": [
+        0.3242,
+        0.1811
+      ],
+      "uvRotationQuarterTurns": 1
+    },
+    {
+      "object": "LOD1_SFG02_SupportedRingBay_02",
+      "uvOffset": [
+        0.2785,
+        0.0557
+      ],
+      "uvRotationQuarterTurns": 3
+    },
+    {
+      "object": "LOD1_SFG02_SupportedRingBay_03",
+      "uvOffset": [
+        0.0305,
+        0.1776
+      ],
+      "uvRotationQuarterTurns": 1
+    },
+    {
+      "object": "LOD1_SFG02_SupportedRingBay_04",
+      "uvOffset": [
+        0.206,
+        0.0522
+      ],
+      "uvRotationQuarterTurns": 3
+    },
+    {
+      "object": "LOD1_SFG02_SupportedRingBay_05",
+      "uvOffset": [
+        0.2479,
+        0.2264
+      ],
+      "uvRotationQuarterTurns": 2
+    },
+    {
+      "object": "LOD1_SFG02_SupportedRingBay_06",
+      "uvOffset": [
+        0.2899,
+        0.1358
+      ],
+      "uvRotationQuarterTurns": 1
+    },
+    {
+      "object": "LOD1_SFG02_SupportedRingBay_07",
+      "uvOffset": [
+        0.1297,
+        0.2055
+      ],
+      "uvRotationQuarterTurns": 2
+    }
+  ],
+  "preserved": {
+    "lodPrefixes": [
+      "LOD0_",
+      "LOD1_",
+      "LOD2_"
+    ],
+    "socket": "SOCKET_Structure_Core",
+    "sourceGeometryRetained": true
+  }
+}

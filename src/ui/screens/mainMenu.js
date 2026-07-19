@@ -61,7 +61,7 @@ function injectStyle() {
   @keyframes sf-stagger-in { to { opacity:1; transform:translateY(0); } }
   /* CONTINUE fade-to-game + location label (spec2/03 §3). The veil mounts on #ui-root, outside
      the .sf-menu token scope, so it carries its own fascia-matched type/color. */
-  .sf-continue-fade { position:fixed; inset:0; z-index:3000; background:#000; opacity:0;
+  .sf-continue-fade { position:fixed; inset:0; z-index:1900; background:#000; opacity:0;
     pointer-events:auto; transition:opacity 1s ease; display:flex; align-items:flex-end;
     justify-content:flex-start; padding:0 0 36px 36px; }
   .sf-continue-fade.open { opacity:1; }

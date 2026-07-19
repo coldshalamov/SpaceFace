@@ -107,6 +107,12 @@ for (const c of propCases) {
 
 const shipCases = [
   {
+    ref: 'enemy_reaver_interceptor',
+    defId: 'ship_wasp',
+    factionId: 'faction_reavers',
+    expected: 'SF_REACH_REAVER_PIRATE',
+  },
+  {
     ref: 'enemy_reaver_skirmisher',
     defId: 'ship_wasp',
     factionId: 'faction_reavers',

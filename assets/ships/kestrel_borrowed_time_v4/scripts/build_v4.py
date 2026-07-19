@@ -22,6 +22,10 @@ import bpy
 import bmesh
 from mathutils import Matrix, Vector
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from golden_asset_v5 import GOLDEN_PASS_ID, apply_golden_asset_v5
+from surface_maps_v2 import REMASTER_ID as SURFACE_REMASTER_ID, apply_to_blender_images
+
 
 FAMILY = Path(__file__).resolve().parents[1]
 DEFAULT_ZIP = Path(r"C:\Users\93rob\Downloads\SpaceFace_SF-K0_Borrowed-Time_Revamp.zip")
@@ -34,6 +38,17 @@ REQUIRED_SOCKETS = (
     "SOCKET_Trail_Main", "SOCKET_Utility_Dorsal", "SOCKET_Cargo_Ventral",
     "SOCKET_Camera_Focus", "SOCKET_RCS_Port", "SOCKET_RCS_Starboard",
 )
+SOCKET_CONTRACT = {
+    "SOCKET_Weapon_Front": ((12.62, 1.43, 0.0), "weapon_muzzle", (1.0, 0.0, 0.0)),
+    "SOCKET_Mining_Front": ((12.26, -1.08, 0.0), "mining_emitter", (1.0, 0.0, 0.0)),
+    "SOCKET_Engine_Main": ((-13.85, 0.0, 0.0), "engine_exhaust", (-1.0, 0.0, 0.0)),
+    "SOCKET_Trail_Main": ((-14.05, 0.0, 0.0), "engine_trail", (-1.0, 0.0, 0.0)),
+    "SOCKET_Utility_Dorsal": ((-1.45, 1.95, -3.8), "utility_dorsal", (0.0, 1.0, 0.0)),
+    "SOCKET_Cargo_Ventral": ((-0.8, -2.1, 0.0), "cargo_ventral", (0.0, -1.0, 0.0)),
+    "SOCKET_Camera_Focus": ((0.0, 0.35, 0.0), "camera_focus", (1.0, 0.0, 0.0)),
+    "SOCKET_RCS_Port": ((1.6, 0.45, -6.6), "rcs_port", (0.0, 0.0, -1.0)),
+    "SOCKET_RCS_Starboard": ((1.6, 0.45, 6.6), "rcs_starboard", (0.0, 0.0, 1.0)),
+}
 RIG_NAMES = ("RIG_EngineFan", "RIG_PulseGun_Yaw", "RIG_PulseGun_Recoil", "RIG_MiningEmitter")
 DELETE_EXACT_PREFIXES = (
     "Engine_Plume_", "GrabRail_", "Radiator_Lip_", "EngineRingBolt_", "HullBolt_",
@@ -130,6 +145,21 @@ def set_single_material(obj: bpy.types.Object, material_name: str) -> None:
         polygon.material_index = 0
 
 
+def enforce_socket_contract() -> list[dict]:
+    report = []
+    for name, (position, role, forward) in SOCKET_CONTRACT.items():
+        obj = bpy.data.objects.get(name)
+        if obj is None:
+            raise RuntimeError(f"missing required socket {name}")
+        # Blender exports +X/+Y/+Z as glTF +X/-Z/+Y. Store the inverse transform here so the
+        # exported node translation matches the canonical glTF socket contract above.
+        obj.location = (position[0], -position[2], position[1])
+        obj["socket"] = True
+        obj["spaceface"] = {"socket": True, "role": role, "forward": list(forward)}
+        report.append({"name": name, "position": list(position), "role": role, "forward": list(forward)})
+    return report
+
+
 def lift_dark_texture(image_name: str, floor: float, warm: tuple[float, float, float]) -> None:
     image = bpy.data.images.get(image_name)
     if not image or image.size[0] == 0:
@@ -154,7 +184,7 @@ def lift_dark_texture(image_name: str, floor: float, warm: tuple[float, float, f
         image.pack()
 
 
-def clean_source() -> tuple[bpy.types.Collection, list[str], list[dict]]:
+def clean_source() -> tuple[bpy.types.Collection, list[str], list[dict], list[dict], dict, list[dict]]:
     source = bpy.data.collections.get("SOURCE_HERO_LOD0")
     if source is None:
         raise RuntimeError("SOURCE_HERO_LOD0 missing")
@@ -183,6 +213,9 @@ def clean_source() -> tuple[bpy.types.Collection, list[str], list[dict]]:
         })
     lift_dark_texture("armor_dark_basecolor.png", 0.105, (0.92, 0.82, 0.70))
     lift_dark_texture("hull_basecolor.png", 0.075, (0.92, 0.84, 0.72))
+    surface_remaster = apply_to_blender_images(bpy)
+    golden_asset = apply_golden_asset_v5()
+    socket_contract = enforce_socket_contract()
     for material_name in ("Material_Plume_HotCore", "Material_Plume_Inner", "Material_Plume_Outer", "Material_StudioFloor", "Material_StudioPad", "Material_Clay"):
         material = bpy.data.materials.get(material_name)
         if material and material.users == 0:
@@ -195,13 +228,14 @@ def clean_source() -> tuple[bpy.types.Collection, list[str], list[dict]]:
         "packet": PACKET, "slot": "hull", "category": "wholeships", "forward": "+X",
         "up": "+Y", "starboard": "+Z", "unit": "metre", "normalConvention": "OpenGL",
         "ormChannels": "R=AO,G=Roughness,B=Metallic", "sourceGeometryPreservation": "85-95 percent",
+        "surfaceRemasterId": SURFACE_REMASTER_ID, "goldenPassId": GOLDEN_PASS_ID,
         "wiringStatus": "isolated_candidate_no_promote", "embeddedPlume": False,
     }
     source_objects = set(source.all_objects)
     for obj in list(bpy.data.objects):
         if obj not in source_objects and obj is not root and obj.type not in {"EMPTY", "MESH"}:
             delete_object(obj)
-    return source, sorted(removed), material_repairs
+    return source, sorted(removed), material_repairs, surface_remaster, golden_asset, socket_contract
 
 
 def visible_bounds(source: bpy.types.Collection) -> dict:
@@ -272,6 +306,86 @@ def join_group(objects: list[bpy.types.Object], name: str) -> bpy.types.Object |
     active.name = name
     bpy.ops.object.select_all(action="DESELECT")
     return active
+
+
+def repair_tangent_space(obj: bpy.types.Object) -> dict:
+    """Repair only triangles whose exported MikkTSpace tangent is invalid.
+
+    The donor contains a few collapsed UV triangles. Re-unwrapping an entire
+    semantic material group would destroy authored texture placement, so the
+    repair uses a stable local planar projection only on the affected faces.
+    """
+    mesh = obj.data
+    uv_layer = mesh.uv_layers.active
+    if uv_layer is None:
+        return {"object": obj.name, "removedDegenerateTriangles": 0, "patchedTriangles": 0, "badBefore": 0, "badAfter": 0}
+
+    # A few donor faces contain numerically collapsed edges after LOD
+    # evaluation. Remove only sub-micrometre degeneracy, then triangulate the
+    # surviving surface before evaluating tangent space.
+    before_polygons = len(mesh.polygons)
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.dissolve_degenerate(bm, dist=1e-7, edges=list(bm.edges))
+    bmesh.ops.triangulate(bm, faces=list(bm.faces), quad_method="BEAUTY", ngon_method="BEAUTY")
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+    removed_degenerate = max(0, before_polygons - len(mesh.polygons))
+    uv_layer = mesh.uv_layers.active
+    mesh.calc_tangents(uvmap=uv_layer.name)
+    bad_loops = {
+        index for index, loop in enumerate(mesh.loops)
+        if Vector(loop.tangent).length_squared < 0.25
+    }
+    mesh.free_tangents()
+    if not bad_loops:
+        return {"object": obj.name, "removedDegenerateTriangles": removed_degenerate, "patchedTriangles": 0, "badBefore": 0, "badAfter": 0}
+
+    patched = 0
+    for polygon in mesh.polygons:
+        if not bad_loops.intersection(polygon.loop_indices):
+            continue
+        normal = polygon.normal
+        axis = max(range(3), key=lambda item: abs(normal[item]))
+        projection_axes = ((1, 2), (0, 2), (0, 1))[axis]
+        # Object-space metres keep surface frequency consistent across the
+        # repaired triangles; the deterministic cell offset avoids stacking
+        # all repairs on the same texture texels.
+        offset_u = (polygon.index % 7) * 0.137
+        offset_v = ((polygon.index // 7) % 7) * 0.137
+        for loop_index in polygon.loop_indices:
+            coordinate = mesh.vertices[mesh.loops[loop_index].vertex_index].co
+            uv_layer.data[loop_index].uv = (
+                coordinate[projection_axes[0]] * 0.18 + offset_u,
+                coordinate[projection_axes[1]] * 0.18 + offset_v,
+            )
+        patched += 1
+    mesh.update()
+    mesh.calc_tangents(uvmap=uv_layer.name)
+    bad_after = sum(1 for loop in mesh.loops if Vector(loop.tangent).length_squared < 0.25)
+    mesh.free_tangents()
+    tangent_attribute_omitted = False
+    material_names = {material.name for material in mesh.materials if material is not None}
+    if bad_after and material_names == {"Material_Glass_Canopy"}:
+        # The canopy is deliberately factor-only and has no normal texture, so
+        # tangent space is semantically unused. Its donor laminate carries one
+        # collapsed tangent vertex; omit the unused UV/tangent attribute rather
+        # than corrupting the canopy mesh to manufacture a meaningless vector.
+        for layer in list(mesh.uv_layers):
+            mesh.uv_layers.remove(layer)
+        bad_after = 0
+        tangent_attribute_omitted = True
+    if bad_after:
+        raise RuntimeError(f"{obj.name} retains {bad_after} invalid tangent loops after local UV repair")
+    return {
+        "object": obj.name,
+        "removedDegenerateTriangles": removed_degenerate,
+        "patchedTriangles": patched,
+        "badBefore": len(bad_loops),
+        "badAfter": bad_after,
+        "tangentAttributeOmitted": tangent_attribute_omitted,
+    }
 
 
 def source_role(obj: bpy.types.Object, lod: int) -> str:
@@ -356,6 +470,14 @@ def create_lod(source: bpy.types.Collection, lod: int, bounds: dict) -> tuple[bp
             continue
         material = obj.data.materials[0].name if obj.data.materials else "NO_MATERIAL"
         override = None
+        if lod >= 1 and material == "Material_EngineCeramic":
+            # The refractory silhouette remains, but far LODs reuse the dark armor
+            # response so a hero-only material role does not create another draw.
+            material = "Material_ArmorDark"; override = material
+        if lod >= 1 and material == "Material_Radiator":
+            # Directional radiator metal converges to the existing structural-metal
+            # response after its individual fins fall below useful screen space.
+            material = "Material_BrushedMetal"; override = material
         if lod == 2 and material == "Material_Glass_Canopy":
             material = "Material_ArmorDark"; override = material
         if lod == 2 and material in {"Material_Emissive_Cyan", "Material_Accent_WarningOrange"}:
@@ -384,12 +506,14 @@ def create_lod(source: bpy.types.Collection, lod: int, bounds: dict) -> tuple[bp
             triangulate.keep_custom_normals = True
         bpy.context.view_layer.objects.active = obj; obj.select_set(True)
         bpy.ops.object.modifier_apply(modifier=triangulate.name); obj.select_set(False)
+    tangent_repairs = [repair_tangent_space(obj) for _, obj in targets]
     root = add_empty(f"KESTREL_V4_LOD{lod}_ROOT", collection)
     root["spacefaceAsset"] = {
         "assetId": "SF_K0_KESTREL_BORROWED_TIME_V4", "partId": "kestrel_borrowed_time_v4",
         "packet": PACKET, "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "up": "+Y", "starboard": "+Z", "unit": "metre",
         "normalConvention": "OpenGL", "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "surfaceRemasterId": SURFACE_REMASTER_ID, "goldenPassId": GOLDEN_PASS_ID,
         "embeddedPlume": False, "wiringStatus": "isolated_candidate_no_promote",
     }
     role_nodes = {"static": root}
@@ -412,7 +536,8 @@ def create_lod(source: bpy.types.Collection, lod: int, bounds: dict) -> tuple[bp
     draws = len(targets)
     return collection, {"lod": lod, "triangles": triangles, "draws": draws,
                         "animatedRoleException": sum(1 for role, _ in targets if role != "static"),
-                        "collisionTriangles": sum(max(0, len(poly.vertices) - 2) for poly in collision.data.polygons)}
+                        "collisionTriangles": sum(max(0, len(poly.vertices) - 2) for poly in collision.data.polygons),
+                        "tangentRepairs": [item for item in tangent_repairs if item["badBefore"]]}
 
 
 def export_lod(collection: bpy.types.Collection, lod: int) -> Path:
@@ -447,7 +572,7 @@ def main() -> int:
     args = parse_args()
     source_blend, zip_hash, blend_hash = extract_source(args.source_zip)
     bpy.ops.wm.open_mainfile(filepath=str(source_blend))
-    source, removed, material_repairs = clean_source()
+    source, removed, material_repairs, surface_remaster, golden_asset, socket_contract = clean_source()
     bounds = visible_bounds(source)
     production_blend = save_production_blend(source)
     # Free the canonical names so isolated export copies retain exact stable socket/rig names.
@@ -471,7 +596,9 @@ def main() -> int:
         "productionBlend": str(production_blend.relative_to(FAMILY)).replace("\\", "/"),
         "productionBlendBytes": production_blend.stat().st_size,
         "productionBlendSha256": sha256(production_blend), "removedObjects": removed,
-        "materialRepairs": material_repairs,
+        "materialRepairs": material_repairs, "surfaceRemasterId": SURFACE_REMASTER_ID,
+        "surfaceRemaster": surface_remaster, "goldenPassId": GOLDEN_PASS_ID,
+        "goldenAsset": golden_asset, "socketContract": socket_contract,
         "preservedGeometryPolicy": "source macro/meso retained; only technique-card exclusions removed",
         "visibleBoundsBlenderXYZ": bounds, "lods": reports, "outputs": [str(p) for p in outputs],
         "candidateOnly": True, "livePromotion": False,

@@ -32,13 +32,12 @@ function residencyFixtureLoader(renderer, controls = {}) {
   return { registry, load, resources };
 }
 
-test('boot preload is a bounded player and starting-sector plan, not the whole catalog', async () => {
+test('boot preload is a bounded player plan; off-camera landmarks stay on demand', async () => {
   assert.equal(typeof partsLibrary.authoredBootstrapPreloadPlan, 'function');
 
   const plan = partsLibrary.authoredBootstrapPreloadPlan();
   assert.deepEqual(plan, {
     hull: ['wholeships/kestrel.glb'],
-    place: ['places/place_station_trade_hub.glb'],
   });
 
   let inFlight = 0;
@@ -62,12 +61,11 @@ test('boot preload is a bounded player and starting-sector plan, not the whole c
   assert.equal(maxInFlight, 1, 'large GLBs must decode/upload serially during the boot gate');
   assert.deepEqual(requested.map((row) => row.url), [
     'assets/ships/release/parts/wholeships/kestrel.glb',
-    'assets/ships/release/parts/places/place_station_trade_hub.glb',
   ]);
   assert.equal(partsLibrary.isAuthoredPartLibraryUsable(library), true);
 
   for (let frame = 0; frame < 600; frame++) await Promise.resolve();
-  assert.equal(requested.length, 2,
+  assert.equal(requested.length, 1,
     'idle frames without entity demand must never drain the unused authored catalog');
 
   assert.equal(typeof partsLibrary.preloadAuthoredAssetsForEntity, 'function');
@@ -76,7 +74,7 @@ test('boot preload is a bounded player and starting-sector plan, not the whole c
     type: 'ship',
     data: { defId: 'ship_wasp', lootTableId: 'wasp_swarmer' },
   }, { releaseMode: true, loadAuthoredPart });
-  assert.deepEqual(requested.slice(2).map((row) => row.url), [
+  assert.deepEqual(requested.slice(1).map((row) => row.url), [
     'assets/ships/release/parts/wholeships/ashline_dart.glb',
   ]);
   assert.equal(maxInFlight, 1, 'demand loading must keep the same serial decode bound');
@@ -169,16 +167,21 @@ test('startup readiness gates the authored opening composition without waiting o
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false);
   hub.mesh.userData.authoredAssetState = 'authored';
   player.pos = { x: 0, z: 0 };
+  hub.pos = { x: 1800, z: 0 };
+  hub.mesh.userData.authoredAssetState = 'loading';
   npc.pos = { x: 1200, z: 0 };
   npc.mesh.userData.authoredAssetState = 'loading';
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true,
+    'off-camera traffic and Helios stream after handoff without publishing placeholders');
+  npc.pos.x = 200;
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false,
-    'a ship in the opening flight composition must settle before control begins');
+    'a camera-local ship in the opening composition must settle before control begins');
   npc.mesh.userData.authoredAssetState = 'compiling-pipelines';
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).pipelineReady, true);
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false);
   npc.mesh.userData.authoredAssetState = 'authored';
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true);
-  npc.pos.x = 7000;
+  npc.pos.x = 1200;
   npc.mesh.userData.authoredAssetState = 'loading';
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true,
     'a distant NPC remains an on-demand asset and must not extend startup');
@@ -238,11 +241,11 @@ test('departure while waiting in the admission lane is a quiet cancellation, not
 
 test('a boundary released while canonical bootstrap is pending cannot resurrect after the await', async () => {
   const renderer = {};
-  let resolveHub;
-  const hubGate = new Promise((resolve) => { resolveHub = resolve; });
+  let resolveKestrel;
+  const kestrelGate = new Promise((resolve) => { resolveKestrel = resolve; });
   const fixture = residencyFixtureLoader(renderer, {
     beforeLoad: async (url) => {
-      if (url.endsWith('place_station_trade_hub.glb')) await hubGate;
+      if (url.endsWith('kestrel.glb')) await kestrelGate;
     },
   });
   const boundary = {};
@@ -266,7 +269,7 @@ test('a boundary released while canonical bootstrap is pending cannot resurrect 
   active = false;
   fixture.registry.releaseOwner(boundary, 'boundary-detached-during-bootstrap');
   const before = fixture.registry.canonicalDiagnostics();
-  resolveHub();
+  resolveKestrel();
   await pending;
   const after = fixture.registry.canonicalDiagnostics();
 
@@ -274,7 +277,7 @@ test('a boundary released while canonical bootstrap is pending cannot resurrect 
     'the departed boundary is absent from every residency record');
   assert.equal(after.ownerCount, 1, 'only the bootstrap owner remains');
   assert.equal(after.residentResources, before.residentResources + 1,
-    'canonical completion adds only the pending bootstrap hub resource');
+    'canonical completion adds only the pending Kestrel bootstrap resource');
   assert.ok(after.assets.every((asset) => asset.refCount === 1));
   partsLibrary.invalidatePartsLibraryCaches(renderer);
 });

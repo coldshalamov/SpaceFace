@@ -31,13 +31,22 @@ export function configureRealtimeCanopyMaterials(root) {
 export function applyRealtimeCanopyPolicy(material) {
   if (!material || !(Number(material.transmission) > 0)) return false;
   const sourceTransmission = Number(material.transmission);
+  const priorOptics = material.userData && material.userData.spacefaceCanopyOptics || {};
   material.userData = {
     ...(material.userData || {}),
     spacefaceCanopyOptics: {
+      ...priorOptics,
       strategy: 'environment-alpha-glass',
       sourceTransmission,
       sourceIor: Number.isFinite(Number(material.ior)) ? Number(material.ior) : null,
       sourceThickness: Number.isFinite(Number(material.thickness)) ? Number(material.thickness) : null,
+      sourceAttenuationDistance: Number.isFinite(Number(material.attenuationDistance))
+        ? Number(material.attenuationDistance)
+        : null,
+      sourceAttenuationColor: material.attenuationColor && typeof material.attenuationColor.toArray === 'function'
+        ? material.attenuationColor.toArray()
+        : null,
+      sourceTransmissionMap: textureSamplingMetadata(material.transmissionMap),
     },
   };
   material.transmission = 0;
@@ -52,6 +61,22 @@ export function applyRealtimeCanopyPolicy(material) {
   }
   material.needsUpdate = true;
   return true;
+}
+
+function textureSamplingMetadata(texture) {
+  if (!texture || !texture.isTexture) return null;
+  if (texture.matrixAutoUpdate && typeof texture.updateMatrix === 'function') texture.updateMatrix();
+  return {
+    uuid: texture.uuid,
+    name: texture.name || '',
+    channel: Number(texture.channel) || 0,
+    colorSpace: texture.colorSpace || '',
+    offset: texture.offset && texture.offset.toArray ? texture.offset.toArray() : null,
+    repeat: texture.repeat && texture.repeat.toArray ? texture.repeat.toArray() : null,
+    center: texture.center && texture.center.toArray ? texture.center.toArray() : null,
+    rotation: Number(texture.rotation) || 0,
+    matrix: texture.matrix && texture.matrix.toArray ? texture.matrix.toArray() : null,
+  };
 }
 
 function isCanopyMaterial(material, tags) {

@@ -1,12 +1,13 @@
 // SpaceFace SPEC3-F8b — "Painted Deep-Field" background.
 //
 // One THREE.Group locked to the camera's X/Z, floating at a fixed depth below the play plane.
-// Layers (all depthTest/depthWrite off, explicit renderOrder, render-side only — never touches sim):
-//   L0  void gradient + galaxy band + micro-stars + distant galaxies   (baked tile, opaque)
-//   L1  main nebula: gas, dust lanes, star-forming knots               (baked tile, alpha blend)
-//   L2  glow wisps, finer scale                                        (baked tile, additive)
+// Runtime layers depth-test against gameplay geometry but never write depth; explicit negative group
+// order keeps them behind transparent canopies, shields, and VFX. Offscreen bake passes stay depthless.
+//   L0  clean near-black void                                           (baked tile, opaque)
+//   L1  rare sector-owned nebula structure                              (baked tile, alpha blend)
+//   L2  anomaly-only glow wisps                                         (baked tile, additive)
 //   L3  live star points, continuous per-star parallax + twinkle       (one THREE.Points)
-//   L4  hero flare stars (diffraction sprites), per-instance parallax  (one InstancedMesh)
+//   L4  hero stars (compact optical halos), per-instance parallax       (one InstancedMesh)
 //   L5  planet impostors (GLSL-baked sphere sprites, LRU-cached)       (sprites)
 //   L5b wormhole — the one live-animated shader, small quad only
 //   L6  comet streak (rare, subtle)
@@ -22,6 +23,15 @@
 //    each layer's visual repeat distance is >= ~25 screens of flight.
 import * as THREE from 'three';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
+import {
+  resolveBackgroundComposition,
+  resolveBackgroundStructure,
+  estimatePhenomenonCoverage,
+} from '../data/sectorVisualProfiles.js';
+import {
+  resolveDeepFieldStructureRecipe,
+  sampleAuthoredWidth,
+} from './deepFieldStructureRecipes.js';
 import { CAMERA_ZOOM_MAX, CONTEXT_ZOOM_MAX, SPEED_ZOOM_MAX } from './camera.js';
 import { isPlausibleCameraStep, readVelocityLanguage, streamPhaseStep } from './velocityLanguage.js';
 
@@ -51,25 +61,24 @@ function hash32(str) {
 // ----------------------------------------------------------------------------
 const PALETTES = {
   EMBER: {
-    void: '#04060d', haze: '#0e1c30', gas: '#1e4a5c', emission: '#c9743d',
-    core: '#ffe0b0', dust: '#02030a', accent: '#7fb4c9',
+    void: '#010204', haze: '#0a1218', gas: '#1a3a48', emission: '#c9743d',
+    core: '#ffe0b0', dust: '#010104', accent: '#7fb4c9',
   },
   ION: {
-    void: '#050510', haze: '#131238', gas: '#4a2160', emission: '#93307a',
-    accent: '#37c9c0', core: '#f2e8ff', dust: '#030309',
+    void: '#010104', haze: '#0c0a18', gas: '#3a1850', emission: '#93307a',
+    accent: '#37c9c0', core: '#f2e8ff', dust: '#010103',
   },
   VERDIGRIS: {
-    void: '#030809', haze: '#0c2622', gas: '#175146', emission: '#c8a24a',
-    core: '#fff3d0', dust: '#020604', accent: '#67c9a0',
+    void: '#010302', haze: '#081412', gas: '#134038', emission: '#c8a24a',
+    core: '#fff3d0', dust: '#010302', accent: '#67c9a0',
   },
-  // Helios/core sky — rank-10: deeper void, richer cyan gas, brighter emission for undock stills.
   AZURE: {
-    void: '#02060e', haze: '#0a1838', gas: '#1a4a80', emission: '#3d9ad4',
-    core: '#e8f4ff', dust: '#010308', accent: '#6ee0ff',
+    void: '#010204', haze: '#061018', gas: '#143860', emission: '#3d9ad4',
+    core: '#e8f4ff', dust: '#010103', accent: '#6ee0ff',
   },
   CRIMSON: {
-    void: '#0a0507', haze: '#261014', gas: '#582026', emission: '#c24a30',
-    core: '#ffd9b8', dust: '#060203', accent: '#e88a5a',
+    void: '#030102', haze: '#14080a', gas: '#481818', emission: '#c24a30',
+    core: '#ffd9b8', dust: '#020101', accent: '#e88a5a',
   },
 };
 const PALETTE_NAMES = ['EMBER', 'ION', 'VERDIGRIS', 'AZURE', 'CRIMSON'];
@@ -102,14 +111,107 @@ function pickBlackbody(rnd, tmpColor) {
 // is ~phi so the two nebula layers never visibly re-align with each other.
 const LAYER_DEFS = [
   { name: 'L0_void',   par: 0.03, tileH: 10.0, depth: -30, blend: 'opaque' },
-  { name: 'L1_nebula', par: 0.08, tileH: 6.0,  depth: -18, blend: 'normal' },
-  { name: 'L2_wisps',  par: 0.13, tileH: 3.71, depth: -8,  blend: 'additive' },
+  // Larger L1 tile so localized structure reads at game camera (not micro-repeat dust).
+  { name: 'L1_nebula', par: 0.08, tileH: 18.0, depth: -18, blend: 'normal' },
+  { name: 'L2_wisps',  par: 0.13, tileH: 11.0, depth: -8,  blend: 'additive' },
 ];
+export const SPACE_BACKGROUND_GROUP_ORDER = -100;
 const STAR_DEPTH = 6;       // group-local y for star/flare/hero planes (above the tiles)
 const HERO_DEPTH = 12;
 const PLANET_PAR = 0.055;   // single parallax factor for planet placement (bg-space grid)
 const WORM_PAR = 0.10;
 const LOOK_BIAS_Z = 0.30;   // camera never yaws; view center sits ahead (+Z) of the camera point
+
+export function applySpaceBackgroundRootContract(group, bgY) {
+  if (!group) return group;
+  group.name = 'SpaceBackground';
+  group.renderOrder = SPACE_BACKGROUND_GROUP_ORDER;
+  group.position.y = bgY;
+  return group;
+}
+
+/**
+ * Cast an authored safe NDC point through the matched camera onto the hero plane, then convert
+ * the world hit into closed-form parallax background coordinates.
+ * worldX = bx + camX * (1 - PLANET_PAR) when the rig is locked to camera XZ.
+ */
+export function screenNdcToParallaxAnchor(camera, ndcX, ndcY, cameraPos, metrics = {}) {
+  if (!camera) return null;
+  const bgY = Number.isFinite(metrics.bgY) ? metrics.bgY : -211.2;
+  const heroDepth = Number.isFinite(metrics.heroDepth) ? metrics.heroDepth : HERO_DEPTH;
+  const planeY = bgY + heroDepth;
+  const hit = castToPlane(camera, ndcX, ndcY, planeY, new THREE.Vector3());
+  if (!hit) return null;
+  const x = Number.isFinite(cameraPos && cameraPos.x) ? cameraPos.x : 0;
+  const z = Number.isFinite(cameraPos && cameraPos.z) ? cameraPos.z : 0;
+  return {
+    bx: hit.x - x * (1 - PLANET_PAR),
+    bz: hit.z - z * (1 - PLANET_PAR),
+    worldX: hit.x,
+    worldY: hit.y,
+    worldZ: hit.z,
+    planeY,
+  };
+}
+
+/** Project a world-space sphere (center + radius) into NDC and return edge margins in [0,1] of viewport. */
+export function projectSphereViewportMargins(camera, worldCenter, radiusWorld) {
+  if (!camera || !worldCenter) return null;
+  const center = worldCenter.clone();
+  center.project(camera);
+  // Approximate screen radius via a world-offset point along camera right.
+  const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).normalize();
+  const edge = worldCenter.clone().addScaledVector(right, Math.max(1e-3, radiusWorld));
+  edge.project(camera);
+  const rNdc = Math.hypot(edge.x - center.x, edge.y - center.y);
+  return {
+    ndcX: center.x,
+    ndcY: center.y,
+    radiusNdc: rNdc,
+    // Positive = fully inside; negative = clipped past that edge.
+    marginLeft: (center.x - rNdc) - (-1),
+    marginRight: 1 - (center.x + rNdc),
+    marginBottom: (center.y - rNdc) - (-1),
+    marginTop: 1 - (center.y + rNdc),
+  };
+}
+
+export function buildSignatureHeroAnchor(composition, cameraPos, metrics, seed, sectorId) {
+  const signature = composition && composition.signatureHero;
+  if (!signature) return null;
+  const x = Number.isFinite(cameraPos && cameraPos.x) ? cameraPos.x : 0;
+  const z = Number.isFinite(cameraPos && cameraPos.z) ? cameraPos.z : 0;
+  const screenHeight = Math.max(1, Number.isFinite(metrics && metrics.screenHeight) ? metrics.screenHeight : 96);
+  const safe = Number.isFinite(metrics && metrics.safeNdcMargin) ? metrics.safeNdcMargin : 0.20;
+  let bx;
+  let bz;
+  let placement = 'offset';
+  const camera = metrics && metrics.camera;
+  const ndcSrc = signature.screenNdc;
+  if (camera && Array.isArray(ndcSrc) && ndcSrc.length >= 2) {
+    const snx = Math.max(-1 + safe, Math.min(1 - safe, Number(ndcSrc[0]) || 0));
+    const sny = Math.max(-1 + safe, Math.min(1 - safe, Number(ndcSrc[1]) || 0));
+    const anchor = screenNdcToParallaxAnchor(camera, snx, sny, { x, z }, metrics);
+    if (anchor) {
+      bx = anchor.bx;
+      bz = anchor.bz;
+      placement = 'projection';
+    }
+  }
+  if (!Number.isFinite(bx) || !Number.isFinite(bz)) {
+    // Fallback: profile offsets are normalized to one measured gameplay-screen height.
+    bx = x * PLANET_PAR + (signature.offset ? signature.offset[0] : 0) * screenHeight;
+    bz = z * PLANET_PAR + (signature.offset ? signature.offset[1] : 0.2) * screenHeight;
+    placement = 'offset';
+  }
+  return {
+    ...signature,
+    bx,
+    bz,
+    placement,
+    seed: ((Number.isFinite(seed) ? seed : 0) ^ hash32(`signature:${sectorId || 'unknown'}`)) >>> 0,
+  };
+}
 
 // ----------------------------------------------------------------------------
 // GLSL: exactly-periodic value noise. vnoise(p, per) tiles with period `per`
@@ -194,7 +296,7 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
   uniform float uBiasZ;
   uniform vec3 uTintA;
   uniform vec3 uTintB;
-  uniform float uIntensity;
+  uniform float uNebulaOpacity;
   varying vec3 vWorldPosition;
 
   vec2 uvAtDepth(float depth, vec2 repeatUv, vec2 offsetUv) {
@@ -214,9 +316,12 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
     vec4 l1 = texture2D(uL1, uvAtDepth(uDepths.y, uRepeat1, uOffset1));
     vec4 l2 = texture2D(uL2, uvAtDepth(uDepths.z, uRepeat2, uOffset2));
 
-    float nebulaAlpha = clamp(l1.a * uIntensity, 0.0, 1.0);
-    float wispsAlpha = clamp(l2.a * uIntensity, 0.0, 1.0);
-    vec3 color = mix(l0.rgb, l1.rgb * uTintA, nebulaAlpha);
+    // Keep true L0 blacks: only structured alpha from L1/L2 lifts color (no fullscreen haze sheet).
+    // Peak-boost alpha so sparse structure reads without lifting empty blacks (mix only where a>0).
+    float nebulaAlpha = clamp(l1.a * uNebulaOpacity * 1.35, 0.0, 1.0);
+    float wispsAlpha = clamp(l2.a * uNebulaOpacity * 0.55, 0.0, 1.0);
+    vec3 color = l0.rgb;
+    color = mix(color, l1.rgb * uTintA * 1.15, nebulaAlpha);
     color += l2.rgb * uTintB * wispsAlpha;
     gl_FragColor = vec4(max(color, vec3(0.0)), 1.0);
     #include <tonemapping_fragment>
@@ -225,9 +330,8 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
 `;
 
 // ----------------------------------------------------------------------------
-// L0 — deep field base: void gradient, milky galaxy band, micro-stars, galaxies.
-// The band uses sin^2(pi * dot(p, ivec)) so it tiles exactly; integer direction
-// vectors keep the anisotropic streak noise periodic too.
+// L0 — clean deep-field base. Real stars live in L3; the opaque base must not add a second layer of
+// hash speckle, fake galaxies, or a full-screen milky smear behind them.
 // ----------------------------------------------------------------------------
 const L0_FRAG = /* glsl */`
   precision highp float;
@@ -240,59 +344,9 @@ const L0_FRAG = /* glsl */`
   ${NOISE_GLSL}
 
   void main() {
-    vec2 p = vUv;
-    // Base: near-black with a whisper of haze modulated by huge soft noise (keeps black alive).
-    float breath = fbm(p, 3, 2.0, uSeed + 3.0);
-    vec3 col = mix(uVoid, uHaze, 0.10 + 0.14 * breath);
-
-    // Galaxy band: broad periodic band along the (1,-1) diagonal. Bands recur every
-    // 1/sqrt(2) of the tile (~7H) — wider than the visible window, so at most ONE milky
-    // river crosses the sky at a time; with par 0.03 you cross one every ~230 screens.
-    float bandT = p.x + p.y;
-    float s = sin(3.14159265 * bandT);
-    float bandMask = exp(-s * s * 55.0);
-    // Anisotropic streak noise elongated ALONG the band ((1,-1) ⊥ (1,1); both integer →
-    // periodic). Compressing the across-axis stretches features along the band.
-    vec2 q = vec2((p.x - p.y) * 1.0, (p.x + p.y) * 4.0);
-    float streaks = fbm(q, 4, 3.0, uSeed + 11.0);
-    float dustGap = fbm(q + vec2(0.0, 17.0), 3, 6.0, uSeed + 23.0); // dark rifts in the band
-    float band = bandMask * (0.35 + 0.85 * streaks) * (1.0 - 0.55 * smoothstep(0.55, 0.8, dustGap));
-    col += uCore * band * 0.075;
-    col += uHaze * bandMask * 0.10;
-
-    // Micro-stars: hash speckle, density modulated by cluster noise and boosted inside the band.
-    float clusterMask = fbm(p, 3, 5.0, uSeed + 31.0);
-    float density = 0.0006 + 0.0026 * smoothstep(0.35, 0.75, clusterMask) + 0.0040 * bandMask;
-    vec2 cellPx = floor(p * uResolution);
-    float sh = hash2(cellPx + floor(uSeed));
-    float isStar = step(1.0 - density, sh);
-    float mag = hash2(cellPx + 71.3);            // brightness power law
-    float bright = 0.18 + 0.82 * mag * mag * mag;
-    float warm = hash2(cellPx + 39.7);
-    vec3 starCol = mix(vec3(0.72, 0.80, 1.0), vec3(1.0, 0.92, 0.78), warm * warm);
-    col += starCol * isStar * bright;
-
-    // A few distant galaxies: sparse hash grid, soft anisotropic blobs.
-    vec2 gp = p * 7.0;
-    vec2 gc = floor(gp);
-    for (int gy = -1; gy <= 1; gy++) {
-      for (int gx = -1; gx <= 1; gx++) {
-        vec2 cellId = mod(gc + vec2(float(gx), float(gy)), 7.0);
-        float has = hash2(cellId + floor(uSeed) * 0.31);
-        if (has < 0.90) continue;
-        vec2 jitter = vec2(hash2(cellId + 5.1), hash2(cellId + 9.7));
-        vec2 d = gp - (gc + vec2(float(gx), float(gy)) + jitter);
-        float ang = hash2(cellId + 13.3) * 6.28318;
-        vec2 rd = vec2(d.x * cos(ang) - d.y * sin(ang), (d.x * sin(ang) + d.y * cos(ang)) * (2.2 + 2.0 * hash2(cellId + 3.3)));
-        float rr = dot(rd, rd) * (90.0 + 240.0 * hash2(cellId + 21.0));
-        float glow = exp(-rr);
-        float warmth = hash2(cellId + 44.0);
-        col += mix(vec3(0.75, 0.82, 1.0), vec3(1.0, 0.86, 0.70), warmth) * glow * 0.16;
-      }
-    }
-
-    // Dither kills banding in the dark gradients (mandatory).
-    col += (hash2(gl_FragCoord.xy + fract(uSeed) * 100.0) - 0.5) * (2.0 / 255.0);
+    // True black space with sub-LSB dither only — no blue fabric lift.
+    vec3 col = vec3(0.0008, 0.0009, 0.0011);
+    col += (hash2(gl_FragCoord.xy + fract(uSeed) * 100.0) - 0.5) * (0.06 / 255.0);
     gl_FragColor = vec4(max(col, vec3(0.0)), 1.0);
   }
 `;
@@ -309,70 +363,208 @@ const NEBULA_FRAG = /* glsl */`
   uniform float uAlpha;
   uniform float uWarp;
   uniform float uDustAmt;
-  uniform vec2 uRegion;      // smoothstep(lo, hi) on the coverage mask
+  uniform vec2 uRegion;
+  uniform float uStructure;
+  uniform float uBandCenter;
+  uniform float uBandWidth;
+  uniform float uBandAngle;
+  uniform float uMaxCoverage;
+  // Fixed-tile phenomenon anchor so structure is legible at game camera (not random empty tile).
+  uniform vec2 uAnchor;
   varying vec2 vUv;
   ${NOISE_GLSL}
 
   void main() {
     vec2 p = vUv;
-
-    // Double domain warp (both warp fields periodic → result stays seamless).
     vec2 w1 = (fbm2(p, 4, 2.0, uSeed + 1.0) - 0.5) * uWarp;
     vec2 p1 = p + w1;
     vec2 w2 = (fbm2(p1, 3, 6.0, uSeed + 2.0) - 0.5) * uWarp * 0.5;
     vec2 p2 = p1 + w2;
 
-    // Regional mask: entire stretches of the tile stay empty void.
-    float region = smoothstep(uRegion.x, uRegion.y, fbm(p1, 3, 2.0, uSeed + 3.0));
+    // Seeded elliptical locus — one bounded phenomenon, not fullscreen soft field.
+    vec2 ac = uAnchor;
+    float ang = uBandAngle * 0.65 + 0.35;
+    float ca0 = cos(ang), sa0 = sin(ang);
+    vec2 dA = p - ac;
+    vec2 ar = vec2(dA.x * ca0 + dA.y * sa0, -dA.x * sa0 + dA.y * ca0);
+    // Large enough locus that after tile repeat it still occupies a readable screen region.
+    float ell = (ar.x * ar.x) / (0.16 * 0.16) + (ar.y * ar.y) / (0.11 * 0.11);
+    float locus = exp(-ell * 0.72);
 
-    // Density: soft billows + ridged filaments + fine grain so clouds have tooth.
+    float regionNoise = fbm(p1, 3, 2.0, uSeed + 3.0);
+    float region = smoothstep(uRegion.x, uRegion.y, regionNoise);
+    float ca = cos(uBandAngle), sa = sin(uBandAngle);
+    vec2 bp = vec2(p.x * ca + p.y * sa, -p.x * sa + p.y * ca);
+    float band = 1.0 - smoothstep(uBandWidth, uBandWidth * 1.85, abs(bp.y - uBandCenter));
+    // Torn ribbon, not a flat soft sheet.
+    band *= smoothstep(0.12, 0.42, fbm(vec2(bp.x * 3.1, bp.y * 5.2), 4, 3.0, uSeed + 11.0));
+    band *= 0.55 + 0.45 * locus;
+
+    if (uStructure < 0.5) {
+      region *= 0.08 * locus;
+    } else if (uStructure < 1.5) {
+      // sparse_wisps: filamentary knot around anchor — clearly legible, bounded.
+      float fil = 1.0 - abs(2.0 * fbm(p2 * 1.4 + ac, 5, 5.0, uSeed + 12.0) - 1.0);
+      float strands = pow(smoothstep(0.55, 0.92, fil), 1.35);
+      // Asymmetric tear: one side denser.
+      float bias = smoothstep(-0.02, 0.12, ar.x) * (0.55 + 0.45 * smoothstep(0.2, 0.0, ar.y));
+      region = locus * strands * (0.35 + 0.65 * bias);
+      region *= mix(0.4, 1.0, regionNoise);
+    } else if (uStructure < 2.5) {
+      // galactic_band: broken directional stream with density knot (no perfect ring).
+      float knot = exp(-ell * 1.1);
+      float stream = band * (0.35 + 0.65 * knot);
+      float break_ = smoothstep(0.35, 0.7, fbm(vec2(bp.x * 1.7, bp.y * 2.2), 3, 4.0, uSeed + 14.0));
+      region = stream * (0.25 + 0.75 * break_);
+    } else if (uStructure < 3.5) {
+      // ion_filaments: directional arcs with gravitational pull toward anchor.
+      float fil = 1.0 - abs(2.0 * fbm(p2, 4, 5.0, uSeed + 12.0) - 1.0);
+      float arcs = pow(smoothstep(0.58, 0.9, fil), 1.5);
+      float pull = exp(-length(dA) * 3.2) * (0.4 + 0.6 * abs(sin(atan(dA.y, dA.x) * 2.0 + uSeed)));
+      region = max(arcs * locus * 1.2, pull * 0.85);
+      region *= 0.55 + 0.45 * regionNoise;
+    } else {
+      // dust_lanes: hard lanes + dark occlusion, directional.
+      float lane = smoothstep(0.42, 0.8, fbm(vec2(p2.x * 1.35, p2.y * 4.2), 4, 4.0, uSeed + 13.0));
+      float lane2 = smoothstep(0.5, 0.85, fbm(vec2(p2.x * 0.6 + 2.0, p2.y * 5.5), 3, 5.0, uSeed + 15.0));
+      region = locus * max(lane, lane2 * 0.7);
+      region *= 0.5 + 0.5 * (1.0 - abs(ar.y) * 4.0);
+      region = clamp(region, 0.0, 1.0);
+    }
+
     float base = fbm(p2, 6, 4.0, uSeed + 4.0);
     float ridge = 1.0 - abs(2.0 * fbm(p2, 5, 6.0, uSeed + 5.0) - 1.0);
-    float d = clamp(base * 0.62 + ridge * ridge * 0.38, 0.0, 1.0);
+    float d = clamp(base * 0.52 + ridge * ridge * 0.48, 0.0, 1.0);
     d = pow(d, 1.25);
-    float grain = 0.82 + 0.36 * fbm(p2, 3, 16.0, uSeed + 8.0);
-    float gas = clamp(smoothstep(0.42, 0.70, d) * grain, 0.0, 1.0) * region;
-    float haze = smoothstep(0.22, 0.44, d) * region * 0.28;  // soft glow skirt around cores
-
-    // Hue variation drives the ramp position so color drifts across the cloud.
+    float grain = 0.72 + 0.48 * fbm(p2, 3, 18.0, uSeed + 8.0);
+    // Peak gas inside locus; thin skirt only where region is strong (no fullscreen haze).
+    float gas = clamp(smoothstep(0.42, 0.78, d) * grain, 0.0, 1.0) * region;
+    float haze = smoothstep(0.38, 0.62, d) * region * 0.12;
     float hueV = fbm(p2, 3, 5.0, uSeed + 6.0);
     float t = gas * (0.55 + 0.65 * hueV);
-    vec3 col = mix(uHaze, uGas, smoothstep(0.10, 0.42, t));
-    col = mix(col, uEmission, smoothstep(0.52, 0.86, t));
-    col = mix(col, uCore, smoothstep(0.82, 1.08, t));
-
-    // Accent wisps (secondary hue family, sparingly).
-    float wisp = smoothstep(0.80, 0.95, hueV) * gas;
+    vec3 col = mix(uHaze, uGas, smoothstep(0.08, 0.40, t));
+    col = mix(col, uEmission, smoothstep(0.48, 0.84, t));
+    col = mix(col, uCore, smoothstep(0.78, 1.05, t));
+    float wisp = smoothstep(0.78, 0.95, hueV) * gas;
     col = mix(col, uAccent, wisp * 0.45);
-
-    // Dark dust lanes: sharper warped noise. Erodes color AND contributes alpha so the
-    // lanes silhouette against background stars — the signature of real space art.
-    float dust = smoothstep(0.52, 0.74, fbm(p1 + w2 * 2.0, 4, 9.0, uSeed + 7.0));
+    float dust = smoothstep(0.52, 0.78, fbm(p1 + w2 * 2.0, 4, 9.0, uSeed + 7.0));
     float dustHere = dust * smoothstep(0.05, 0.30, region) * uDustAmt;
     col = mix(col, uDust, dustHere);
-
-    // Star-forming knots: hot near-white cores where density peaks.
-    float knot = smoothstep(0.88, 0.98, d * (0.75 + 0.5 * ridge)) * gas;
+    float knot = smoothstep(0.86, 0.98, d * (0.7 + 0.55 * ridge)) * gas;
     col = mix(col, uCore, knot * 0.85);
     col += uCore * knot * 0.35;
-
-    // keep the faint fringes dark — value structure over smoke
-    col *= (0.72 + 0.45 * gas);
-
-    float a = max(gas * uAlpha, haze * uAlpha * 0.55);
-    a = max(a, dustHere * 0.40);
-
-    col += (hash2(gl_FragCoord.xy + fract(uSeed) * 100.0) - 0.5) * (2.0 / 255.0);
+    col *= (0.5 + 0.65 * gas);
+    float a = max(gas * uAlpha, haze * uAlpha * 0.32);
+    a = max(a, dustHere * 0.28);
+    // Keep peak readable even on low maxCoverage budgets; coverage is spatial, not global dim.
+    a *= mix(0.75, 1.0, clamp(uMaxCoverage / 0.18, 0.0, 1.0));
+    a = min(a, 0.90);
+    // Hard spatial budget: suppress alpha outside locus for low-coverage kinds.
+    if (uMaxCoverage < 0.12) {
+      a *= smoothstep(0.02, 0.18, locus + region * 0.35);
+    }
+    col += (hash2(gl_FragCoord.xy + fract(uSeed) * 100.0) - 0.5) * (1.5 / 255.0);
     gl_FragColor = vec4(max(col, vec3(0.0)), a);
   }
 `;
 
-// ----------------------------------------------------------------------------
-// L3 — star points. Continuous per-star parallax (aPar): each star wraps inside a
-// camera-centered cell using its own factor, giving a smooth depth gradient rather
-// than discrete bands. Sizes are true-perspective (world size → pixels via the
-// projection), so zoom breathes them naturally.
-// ----------------------------------------------------------------------------
+// Geometry-authored ribbon: transverse UV feathering + longitudinal taper + dark sheath / ridge hierarchy.
+// Silhouette comes from the mesh; the shader only softens value/edges (no card, no VFX tongue).
+// uStyle: 0 = broad asymmetric dust sheath; 1 = discontinuous subordinate filament.
+const RIBBON_VERT = /* glsl */`
+  attribute float aAlong;
+  attribute float aAcross;
+  varying float vAlong;
+  varying float vAcross;
+  void main() {
+    vAlong = aAlong;
+    vAcross = aAcross;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+const RIBBON_FRAG = /* glsl */`
+  precision highp float;
+  uniform vec3 uSheath;
+  uniform vec3 uRidge;
+  uniform float uOpacity;
+  uniform float uSeed;
+  uniform float uStyle;
+  varying float vAlong;
+  varying float vAcross;
+  float hash21(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32 + uSeed);
+    return fract(p.x * p.y);
+  }
+  float noise21(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(hash21(i), hash21(i + vec2(1.0, 0.0)), u.x),
+      mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), u.x),
+      u.y
+    );
+  }
+  void main() {
+    float across = abs(vAcross);
+    float t = vAlong;
+    // Continuous two-scale density: fine particulate breakup over broad shallow structure.
+    // The macro silhouette itself comes from authored geometry, never this noise.
+    float broad = noise21(vec2(t * 7.0 + uSeed, vAcross * 2.7 - uSeed));
+    float fine = noise21(vec2(t * 31.0 - uSeed * 0.7, vAcross * 10.0 + uSeed));
+    float volume = noise21(vec2(t * 4.3 - uSeed * 0.31, vAcross * 1.35 + uSeed * 0.17));
+    float cellular = noise21(vec2(t * 12.0 + volume * 1.8, vAcross * 5.5 - uSeed));
+    float mott = 0.46 + broad * 0.24 + fine * 0.12 + volume * 0.28;
+    float edgeNoise = (broad - 0.5) * 0.14 + (fine - 0.5) * 0.045;
+    float feather = 1.0 - smoothstep(0.48 + edgeNoise, 1.0, across);
+    feather = pow(max(0.0, feather), 1.45);
+    float taper = smoothstep(0.0, 0.075, t) * smoothstep(1.0, 0.83, t);
+    float asymmetry = mix(0.82, 1.08, smoothstep(-1.0, 1.0, vAcross));
+
+    float dens;
+    vec3 col;
+    if (uStyle < 0.5) {
+      // Tidal/galactic sheath: broad translucent volume with knots, shadow pockets, and broken
+      // internal crests. This adds density hierarchy without converting the geometry into fog.
+      float crest = exp(-across * across * 4.2) * smoothstep(0.48, 0.82, broad);
+      float broken = smoothstep(0.24, 0.58, noise21(vec2(t * 13.0 + 4.0, uSeed)));
+      float knots = exp(-across * across * 2.8) * smoothstep(0.69, 0.90, cellular + volume * 0.16);
+      float pocket = smoothstep(0.18, 0.48, volume) * (0.68 + 0.32 * cellular);
+      dens = (feather * 0.68 + crest * broken * 0.23 + knots * 0.28)
+        * taper * mott * asymmetry * pocket;
+      dens = clamp(dens, 0.0, 1.0);
+      col = mix(uSheath, uRidge, crest * broken * 0.24 + knots * 0.32);
+      col *= 0.54 + dens * 0.38 + volume * 0.10;
+    } else if (uStyle < 1.5) {
+      // Fractured ion/mineral spur: narrow, explicitly gapped, never a continuous neon stroke.
+      float ridge = exp(-across * across * 8.0);
+      float gapNoise = noise21(vec2(t * 17.0 + uSeed, 1.7));
+      float gaps = smoothstep(0.42, 0.66,
+        gapNoise + 0.16 * sin(t * 37.0 + uSeed) + (cellular - 0.5) * 0.18);
+      float dissolve = 1.0 - smoothstep(0.70, 1.0, t) * (0.45 + 0.35 * fine);
+      dens = (feather * 0.28 + ridge * 0.72) * taper * gaps * dissolve * mott;
+      dens = clamp(dens, 0.0, 1.0);
+      col = mix(uSheath * 0.72, uRidge, ridge * (0.40 + 0.30 * broad + 0.18 * cellular));
+      col *= 0.48 + dens * 0.38;
+    } else {
+      // Dust lane: localized true-value occlusion, with a weak mineral rim but no glow sheet.
+      float core = exp(-across * across * 5.0);
+      float fissures = smoothstep(0.36, 0.68, broad + fine * 0.22);
+      dens = feather * taper * (0.68 + 0.28 * mott) * (0.78 + core * 0.20);
+      dens *= 0.72 + fissures * 0.28;
+      dens = clamp(dens, 0.0, 1.0);
+      float rim = smoothstep(0.38, 0.72, across) * feather * fissures;
+      col = mix(uSheath, uRidge, rim * 0.22);
+      col *= 0.54 + 0.18 * fine;
+    }
+
+    float a = dens * uOpacity;
+    if (a < 0.008) discard;
+    gl_FragColor = vec4(max(col, vec3(0.0)), clamp(a, 0.0, 0.86));
+  }
+`;
+
 const STAR_VERT = /* glsl */`
   attribute vec3 aColor;
   attribute float aSize;        // world units at the star plane
@@ -409,25 +601,30 @@ const STAR_FRAG = /* glsl */`
     vec2 c = gl_PointCoord * 2.0 - 1.0;
     float r2 = dot(c, c);
     if (r2 > 1.0) discard;
-    float a = exp(-r2 * 4.0);
-    gl_FragColor = vec4(vColor, vAlpha * a);
+    // Tight core + soft halo so magnitude steps read without lifting the whole frame.
+    float core = exp(-r2 * 7.5);
+    float halo = exp(-r2 * 2.2) * 0.35;
+    float a = clamp(core + halo, 0.0, 1.0);
+    gl_FragColor = vec4(vColor * (0.85 + 0.35 * core), vAlpha * a);
   }
 `;
 
 // ----------------------------------------------------------------------------
-// L4 — hero flare stars: instanced screen-facing quads with a baked diffraction
-// atlas. Same wrap-with-own-parallax as the points, so no popping ever.
+// L4 — hero stars: instanced screen-facing quads with a compact optical-response atlas.
+// Same wrap-with-own-parallax as the points, so no popping ever.
 // ----------------------------------------------------------------------------
 const FLARE_VERT = /* glsl */`
   attribute vec3 aColor;
   attribute float aSizePx;      // on-screen size in pixels (reference buffer height)
   attribute float aPar;
+  attribute float aRotation;    // breaks the repeated screen-aligned plus-sign vocabulary
   uniform vec2 uCamPos;
   uniform float uCellSize;
   uniform vec2 uWindowBias;
   uniform float uPerspScale;
   varying vec2 vUv;
   varying vec3 vColor;
+  varying float vRotation;
   void main() {
     vec3 inst = vec3(instanceMatrix[3].x, instanceMatrix[3].y, instanceMatrix[3].z);
     vec2 off = uCamPos * aPar;
@@ -439,6 +636,7 @@ const FLARE_VERT = /* glsl */`
     gl_Position = projectionMatrix * viewPos;
     vUv = position.xy * 0.5 + 0.5;
     vColor = aColor;
+    vRotation = aRotation;
   }
 `;
 const FLARE_FRAG = /* glsl */`
@@ -448,8 +646,12 @@ const FLARE_FRAG = /* glsl */`
   uniform float uIntensity;
   varying vec2 vUv;
   varying vec3 vColor;
+  varying float vRotation;
   void main() {
-    vec4 s = texture2D(uMap, vUv);
+    vec2 p = vUv - 0.5;
+    float c = cos(vRotation), s0 = sin(vRotation);
+    vec2 uv = mat2(c, -s0, s0, c) * p + 0.5;
+    vec4 s = texture2D(uMap, uv);
     if (s.a < 0.01) discard;
     gl_FragColor = vec4(vColor * uTint * s.rgb, s.a * uIntensity);
   }
@@ -480,14 +682,21 @@ const PLANET_FRAG = /* glsl */`
   vec3 surfaceColor(vec2 q, vec3 n) {
     float type = uType;
     if (type < 0.5) {
-      // gas giant: latitude bands, warped, compressed vertically
-      float latWarp = (fbm(q * 0.5 + 0.5, 3, 4.0, uSeed + 9.0) - 0.5) * 0.35;
-      float lat = q.y / max(0.25, n.z) * 0.72 + latWarp;   // slight sphere wrap
-      float bands = fbm(vec2(q.x * 0.35, lat * 2.6) + 0.5, 4, 4.0, uSeed + 2.0);
-      float storm = smoothstep(0.78, 0.92, fbm(q * 0.7 + 0.5, 3, 8.0, uSeed + 5.0));
-      vec3 c = mix(uColA, uColB, smoothstep(0.25, 0.65, bands));
-      c = mix(c, uColC, smoothstep(0.62, 0.92, bands));
-      c = mix(c, uColC * 1.25, storm * 0.5);
+      // Gas giant: nested zonal flow. Broad circulation establishes the bands; a separate
+      // sheared octave adds weather-scale turbulence so the result is not smooth painted stripes.
+      float circulation = fbm(vec2(q.x * 0.72, q.y * 5.4) + 0.5, 4, 5.0, uSeed + 9.0);
+      float shear = fbm(vec2(q.x * 2.6 + circulation * 0.34, q.y * 17.0) + 0.5,
+        4, 7.0, uSeed + 13.0);
+      float lat = q.y + (circulation - 0.5) * 0.11 + (shear - 0.5) * 0.028;
+      float zonal = 0.5 + 0.5 * sin(lat * 30.0 + circulation * 4.8 + sin(q.x * 7.0) * 0.42);
+      float fineBands = 0.5 + 0.5 * sin(lat * 78.0 + shear * 7.0);
+      float cells = fbm(vec2(q.x * 4.2 + shear * 0.25, q.y * 8.5) + 0.5,
+        4, 8.0, uSeed + 21.0);
+      float storm = smoothstep(0.72, 0.90, cells) * smoothstep(0.18, 0.92, n.z);
+      vec3 c = mix(uColA, uColB, smoothstep(0.18, 0.82, zonal));
+      c = mix(c, uColC, smoothstep(0.58, 0.94, fineBands) * 0.46);
+      c *= 0.88 + (shear - 0.5) * 0.24 + cells * 0.14;
+      c = mix(c, uColC * 1.18, storm * 0.42);
       return c;
     } else if (type < 1.5) {
       // rocky: mottled terrain + crater speckle + dark maria
@@ -500,10 +709,13 @@ const PLANET_FRAG = /* glsl */`
       c = mix(c, uColC, smoothstep(0.80, 0.95, terrain) * 0.5);
       return pow(c, vec3(1.18));
     }
-    // ice: pale bands + bright polar caps
-    float bands = fbm(vec2(q.x * 0.4, q.y * 1.8) + 0.5, 4, 4.0, uSeed + 4.0);
+    // ice: layered flow, fracture-scale response, and bright polar caps
+    float bands = fbm(vec2(q.x * 1.2, q.y * 5.4) + 0.5, 5, 6.0, uSeed + 4.0);
+    float fracture = smoothstep(0.55, 0.83,
+      fbm(vec2(q.x * 5.0 + bands * 0.3, q.y * 7.0) + 0.5, 3, 9.0, uSeed + 18.0));
     float caps = smoothstep(0.55, 0.85, abs(q.y));
     vec3 c = mix(uColA, uColB, bands);
+    c = mix(c, uColA * 0.72, fracture * 0.24);
     c = mix(c, uColC, caps * 0.85);
     return c;
   }
@@ -569,13 +781,14 @@ const PLANET_FRAG = /* glsl */`
       alpha = max(alpha, discMask);
     }
 
-    // ---- outer atmosphere glow -------------------------------------------------------
+    // ---- outer atmosphere glow (lit crescent only — avoid perfect bright ring read) ----
     if (r >= 1.0 - AA) {
-      float g = exp(-(r - 1.0) * 16.0) * step(1.0, r + AA);
+      float g = exp(-(r - 1.0) * 22.0) * step(1.0, r + AA);
       float litSide = clamp(dot(normalize(q + 1e-5), normalize(uLightDir)) * 0.5 + 0.5, 0.0, 1.0);
-      float glow = g * (0.16 + 0.66 * litSide) * atmK;
+      // Strongly bias atmosphere to the day side so the silhouette is a crescent, not a hoop.
+      float glow = g * (0.04 + 0.9 * pow(litSide, 1.35)) * atmK;
       col += uAtm * glow;
-      alpha = max(alpha, glow * 0.85);
+      alpha = max(alpha, glow * 0.7);
     }
 
     // ---- ring in front of the planet -------------------------------------------------
@@ -666,12 +879,17 @@ function castToPlane(camera, ndcX, ndcY, planeY, out) {
   return ok ? out : null;
 }
 
-// world-units-per-screen-height at the play plane (y=0) for the current camera pose
+// world-units-per-screen-height at the play plane (y=0) for the current camera pose.
+// Design target for the matched GAME_CAMERA pose is ~96. A raw top/bottom plane cast on a
+// strongly tilted perspective camera can report multi-screen spans (far-horizon stretch);
+// clamp to a stable gameplay screen height so stars/heroes/composition stay readable.
 function measureScreenHeightWorld(camera) {
   const top = castToPlane(camera, 0, 1, 0, new THREE.Vector3());
   const bottom = castToPlane(camera, 0, -1, 0, new THREE.Vector3());
   if (!top || !bottom) return 96;
-  return Math.max(1, top.distanceTo(bottom));
+  const raw = Math.max(1, top.distanceTo(bottom));
+  // Keep composition metrics in the authored gameplay band; prevent sparse blow-up.
+  return Math.min(120, Math.max(72, raw > 200 ? 96 : raw));
 }
 
 // ----------------------------------------------------------------------------
@@ -699,7 +917,7 @@ export class SpaceBackground {
     this._resolveTier();
 
     this.group = new THREE.Group();
-    this.group.name = 'SpaceBackground';
+    applySpaceBackgroundRootContract(this.group, this.bgY);
     scene.add(this.group);
 
     this.layers = [];
@@ -710,6 +928,8 @@ export class SpaceBackground {
     this.flares = null;
     this.planets = [];
     this.wormhole = null;
+    this.structureCard = null; // retired primary; kept null for legacy stats consumers
+    this.structureMacro = null; // explicit ribbon/geometry phenomenon (not L1b card)
     this.comet = null;
 
     this.bgTime = 0;
@@ -717,7 +937,16 @@ export class SpaceBackground {
     this.camZ = 0;
     // single user-facing dial for backdrop strength (also SF.bg.setIntensity in debug)
     this.bgIntensity = 0.75;
+    // The first frame must preserve the same black-space contract as resolved sector profiles.
+    // Sector-owned structure is applied explicitly; loading must never start with a global veil.
+    this.nebulaOpacity = 0;
     this.currentPaletteName = 'EMBER';
+    this.backgroundComposition = resolveBackgroundComposition(null);
+    this.backgroundStructure = resolveBackgroundStructure(null);
+    this.deepFieldRecipe = resolveDeepFieldStructureRecipe(this.backgroundStructure);
+    this._structureCoverage = estimatePhenomenonCoverage(this.backgroundStructure);
+    this._visualProfile = null;
+    this._signatureHeroAnchor = null;
     this.regionPaletteT = 0;
     this.regionLockUntil = 0;
     // World-streaming accumulator state (D7 band 2). `_streamPrimed` false means "no previous camera
@@ -802,8 +1031,9 @@ export class SpaceBackground {
     this.bakeSize = this.bakeSizes.L1_nebula; // L0 micro-star density keys off this
     // star counts look sparse relative to the wrap cell (sized for max zoom-out), so they
     // run higher than "visible stars": at default zoom only ~2-6% of the cell is on screen.
-    this.starCount = tier === 'low' ? 4200 : tier === 'mid' ? 7000 : 12000;
-    this.flareCount = tier === 'low' ? 28 : tier === 'mid' ? 44 : 60;
+    // Counts sized for wrap cell (~18H); higher density so default zoom still shows clusters.
+    this.starCount = tier === 'low' ? 6000 : tier === 'mid' ? 10000 : 16000;
+    this.flareCount = tier === 'low' ? 36 : tier === 'mid' ? 56 : 72;
   }
 
   // Renderer calls this right after detectGpu() (which runs later in init than our
@@ -921,6 +1151,41 @@ export class SpaceBackground {
     return u;
   }
 
+
+  _structureKindCode(kind) {
+    switch (kind) {
+      case 'void': return 0;
+      case 'sparse_wisps': return 1;
+      case 'galactic_band': return 2;
+      case 'ion_filaments': return 3;
+      case 'dust_lanes': return 4;
+      default: return 1;
+    }
+  }
+
+  _nebulaBakeUniforms(p, bakeSeed, layer) {
+    const st = this.backgroundStructure || resolveBackgroundStructure(null);
+    const isL2 = layer === 'L2';
+    // Sector-stable anchor: place phenomenon where the tilted camera looks (+Z bias).
+    const ax = 0.28 + ((this.skySeed % 17) * 0.012);
+    const ay = 0.62 + (((this.skySeed >> 3) % 11) * 0.008);
+    return {
+      uHaze: { value: p.haze }, uGas: { value: p.gas }, uEmission: { value: p.emission },
+      uCore: { value: p.core }, uDust: { value: p.dust }, uAccent: { value: p.accent },
+      uSeed: { value: bakeSeed + (isL2 ? 61.0 : 29.0) },
+      uAlpha: { value: isL2 ? st.l2Alpha : st.l1Alpha },
+      uWarp: { value: isL2 ? st.warp * 1.35 : st.warp },
+      uDustAmt: { value: isL2 ? st.dustAmt * 0.18 : st.dustAmt },
+      uRegion: { value: new THREE.Vector2(st.regionLo + (isL2 ? 0.04 : 0), Math.min(0.99, st.regionHi + (isL2 ? 0.04 : 0))) },
+      uStructure: { value: this._structureKindCode(st.structureKind) },
+      uBandCenter: { value: st.bandCenter },
+      uBandWidth: { value: st.bandWidth },
+      uBandAngle: { value: st.bandAngle },
+      uMaxCoverage: { value: st.maxCoverage },
+      uAnchor: { value: new THREE.Vector2(isL2 ? ax + 0.06 : ax, isL2 ? ay - 0.04 : ay) },
+    };
+  }
+
   bakeAll(paletteName = this.currentPaletteName) {
     const t0 = (typeof performance !== 'undefined') ? performance.now() : 0;
     this._disposeBakeTargets();
@@ -949,15 +1214,7 @@ export class SpaceBackground {
     const l1Mat = new THREE.ShaderMaterial({
       vertexShader: QUAD_VERT,
       fragmentShader: NEBULA_FRAG,
-      uniforms: {
-        uHaze: { value: p.haze }, uGas: { value: p.gas }, uEmission: { value: p.emission },
-        uCore: { value: p.core }, uDust: { value: p.dust }, uAccent: { value: p.accent },
-        uSeed: { value: bakeSeed + 29.0 },
-        uAlpha: { value: this.lowTier ? 0.52 : 0.58 },
-        uWarp: { value: 0.34 },
-        uDustAmt: { value: 0.72 },
-        uRegion: { value: new THREE.Vector2(0.50, 0.68) },
-      },
+      uniforms: this._nebulaBakeUniforms(p, bakeSeed, 'L1'),
       transparent: true,
     });
     this._bakeLayer(l1Mat, l1);
@@ -969,15 +1226,7 @@ export class SpaceBackground {
     const l2Mat = new THREE.ShaderMaterial({
       vertexShader: QUAD_VERT,
       fragmentShader: NEBULA_FRAG,
-      uniforms: {
-        uHaze: { value: p.haze }, uGas: { value: p.gas }, uEmission: { value: p.emission },
-        uCore: { value: p.core }, uDust: { value: p.dust }, uAccent: { value: p.accent },
-        uSeed: { value: bakeSeed + 61.0 },
-        uAlpha: { value: this.lowTier ? 0.10 : 0.13 },
-        uWarp: { value: 0.55 },
-        uDustAmt: { value: 0.12 },
-        uRegion: { value: new THREE.Vector2(0.56, 0.74) },
-      },
+      uniforms: this._nebulaBakeUniforms(p, bakeSeed, 'L2'),
       transparent: true,
     });
     this._bakeLayer(l2Mat, l2);
@@ -1015,29 +1264,13 @@ export class SpaceBackground {
       [this.l1Target, new THREE.ShaderMaterial({
         vertexShader: QUAD_VERT,
         fragmentShader: NEBULA_FRAG,
-        uniforms: {
-          uHaze: { value: p.haze }, uGas: { value: p.gas }, uEmission: { value: p.emission },
-          uCore: { value: p.core }, uDust: { value: p.dust }, uAccent: { value: p.accent },
-          uSeed: { value: bakeSeed + 29.0 },
-          uAlpha: { value: this.lowTier ? 0.52 : 0.58 },
-          uWarp: { value: 0.34 },
-          uDustAmt: { value: 0.72 },
-          uRegion: { value: new THREE.Vector2(0.50, 0.68) },
-        },
+        uniforms: this._nebulaBakeUniforms(p, bakeSeed, 'L1'),
         transparent: true,
       })],
       [this.l2Target, new THREE.ShaderMaterial({
         vertexShader: QUAD_VERT,
         fragmentShader: NEBULA_FRAG,
-        uniforms: {
-          uHaze: { value: p.haze }, uGas: { value: p.gas }, uEmission: { value: p.emission },
-          uCore: { value: p.core }, uDust: { value: p.dust }, uAccent: { value: p.accent },
-          uSeed: { value: bakeSeed + 61.0 },
-          uAlpha: { value: this.lowTier ? 0.10 : 0.13 },
-          uWarp: { value: 0.55 },
-          uDustAmt: { value: 0.12 },
-          uRegion: { value: new THREE.Vector2(0.56, 0.74) },
-        },
+        uniforms: this._nebulaBakeUniforms(p, bakeSeed, 'L2'),
         transparent: true,
       })],
     ];
@@ -1113,7 +1346,7 @@ export class SpaceBackground {
         uBiasZ: { value: this.quadSize * 0.14 },
         uTintA: { value: this._tintA },
         uTintB: { value: this._tintB },
-        uIntensity: { value: this.bgIntensity },
+        uNebulaOpacity: { value: this.nebulaOpacity },
       },
       transparent: false,
       blending: THREE.NoBlending,
@@ -1136,7 +1369,7 @@ export class SpaceBackground {
   }
 
   // --------------------------------------------------------------------------
-  // Flare atlas (canvas — soft core + 4 diffraction spikes; bake-time only)
+  // Flare atlas (canvas — compact Airy-like core plus restrained anisotropic lens response).
   // --------------------------------------------------------------------------
   _bakeFlareAtlas() {
     const c = document.createElement('canvas');
@@ -1144,25 +1377,37 @@ export class SpaceBackground {
     const ctx = c.getContext('2d');
     ctx.clearRect(0, 0, 256, 256);
     ctx.globalCompositeOperation = 'lighter';
-    const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 118);
+    const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 104);
     g.addColorStop(0, 'rgba(255,255,255,0.95)');
-    g.addColorStop(0.12, 'rgba(255,255,255,0.42)');
-    g.addColorStop(0.38, 'rgba(255,255,255,0.07)');
+    g.addColorStop(0.08, 'rgba(255,255,255,0.72)');
+    g.addColorStop(0.22, 'rgba(255,255,255,0.20)');
+    g.addColorStop(0.52, 'rgba(255,255,255,0.025)');
     g.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(128, 128, 118, 0, Math.PI * 2); ctx.fill();
-    for (let i = 0; i < 4; i++) {
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(128, 128, 104, 0, Math.PI * 2); ctx.fill();
+    // One long, low-energy lens axis and one much shorter cross-axis replace the repeated large
+    // four-spike crosses. Per-instance rotation below prevents a wallpaper of identical symbols.
+    const drawSpike = (angle, length, width, alpha) => {
       ctx.save();
       ctx.translate(128, 128);
-      ctx.rotate((Math.PI / 2) * i);
-      const sg = ctx.createLinearGradient(0, 0, 0, 126);
-      sg.addColorStop(0, 'rgba(255,255,255,0.6)');
-      sg.addColorStop(0.4, 'rgba(255,255,255,0.14)');
+      ctx.rotate(angle);
+      const sg = ctx.createLinearGradient(0, 0, length, 0);
+      sg.addColorStop(0, `rgba(255,255,255,${alpha})`);
+      sg.addColorStop(0.42, `rgba(255,255,255,${alpha * 0.22})`);
       sg.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = sg;
       ctx.beginPath();
-      ctx.moveTo(-2.2, 0); ctx.lineTo(2.2, 0); ctx.lineTo(0, 126); ctx.closePath();
+      ctx.moveTo(0, -width); ctx.lineTo(length, 0); ctx.lineTo(0, width); ctx.closePath();
       ctx.fill();
       ctx.restore();
+    };
+    drawSpike(0, 116, 1.25, 0.18);
+    drawSpike(Math.PI, 116, 1.25, 0.18);
+    drawSpike(Math.PI / 2, 44, 0.75, 0.07);
+    drawSpike(-Math.PI / 2, 44, 0.75, 0.07);
+    ctx.strokeStyle = 'rgba(255,255,255,0.055)';
+    ctx.lineWidth = 1;
+    for (const radius of [34, 57]) {
+      ctx.beginPath(); ctx.arc(128, 128, radius, 0, Math.PI * 2); ctx.stroke();
     }
     ctx.globalCompositeOperation = 'source-over';
     const tex = new THREE.CanvasTexture(c);
@@ -1174,7 +1419,8 @@ export class SpaceBackground {
   // L3 — stars
   // --------------------------------------------------------------------------
   _createStars() {
-    const count = this.starCount;
+    const st = this.backgroundStructure || resolveBackgroundStructure(null);
+    const count = Math.max(200, Math.floor(this.starCount * st.starDensity));
     const cell = this.starCell;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
@@ -1189,12 +1435,26 @@ export class SpaceBackground {
     // gaussian clusters give the 6:1 dense/sparse contrast; a floor keeps voids from being empty
     const clusterRnd = mulberry32(this.skySeed + 202);
     const clusters = [];
-    for (let i = 0; i < 6; i++) {
+    const nClusters = st.clusterCount;
+    for (let i = 0; i < nClusters; i++) {
       clusters.push({
         x: (clusterRnd() - 0.5) * cell,
         z: (clusterRnd() - 0.5) * cell,
         r: this.H * (0.5 + clusterRnd() * 1.6),
-        strength: 0.55 + clusterRnd() * 0.65,
+        strength: (0.55 + clusterRnd() * 0.65) * st.clusterStrength,
+      });
+    }
+    // Authored stellar associations establish sector composition independently from color.
+    // A randomized low-frequency blob layout made unrelated sectors read as the same sky tinted
+    // differently; the recipe owns the visible density knots and deliberate negative-space corridor.
+    const recipe = this.deepFieldRecipe || resolveDeepFieldStructureRecipe(st);
+    for (const association of recipe.starAssociations || []) {
+      clusters.push({
+        x: cell * association.x,
+        z: cell * association.z,
+        r: this.H * association.radiusH,
+        strength: association.strength * st.clusterStrength,
+        authored: true,
       });
     }
 
@@ -1204,7 +1464,7 @@ export class SpaceBackground {
       attempts++;
       const x = (rnd() - 0.5) * cell;
       const z = (rnd() - 0.5) * cell;
-      let density = 0.12;
+      let density = st.voidFloor;
       for (const cl of clusters) {
         const d2 = (x - cl.x) ** 2 + (z - cl.z) ** 2;
         density += cl.strength * Math.exp(-d2 / (2 * cl.r * cl.r));
@@ -1220,12 +1480,26 @@ export class SpaceBackground {
       colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
 
       // continuous parallax depth; nearer stars are a touch bigger and brighter
+      // Three magnitude tiers: faint field / mid cluster / sparse bright heads.
       const par = 0.10 + Math.pow(rnd(), 1.4) * 0.35;
       pars[i] = par;
       const parNorm = (par - 0.10) / 0.35;
-      const px = (1.1 + Math.pow(rnd(), 3) * 3.1) * (0.75 + 0.55 * parNorm);
+      // Bias mid/bright tiers slightly higher near cluster cores for depth hierarchy.
+      let nearCluster = 0;
+      for (const cl of clusters) {
+        const d2 = (x - cl.x) ** 2 + (z - cl.z) ** 2;
+        nearCluster = Math.max(nearCluster, Math.exp(-d2 / (2 * cl.r * cl.r)));
+      }
+      const tier = rnd();
+      let mag;
+      const midCut = 0.62 - nearCluster * 0.12;
+      const brightCut = 0.88 - nearCluster * 0.06;
+      if (tier < midCut) mag = Math.pow(rnd(), 2.5) * 0.42;              // faint field
+      else if (tier < brightCut) mag = 0.46 + Math.pow(rnd(), 1.25) * 0.40; // mid
+      else mag = 0.82 + Math.pow(rnd(), 0.8) * 0.24;                      // bright head
+      const px = (1.25 + mag * 6.6) * (0.78 + 0.55 * parNorm);
       sizes[i] = px * this.starPxToWorld;
-      bases[i] = (0.66 + rnd() * 0.34) * (0.7 + 0.3 * parNorm);
+      bases[i] = (0.52 + mag * 0.68) * (0.8 + 0.35 * parNorm);
 
       const doTwinkle = !this.lowTier && rnd() < 0.15;
       twinklePhase[i] = rnd() * Math.PI * 2;
@@ -1258,7 +1532,7 @@ export class SpaceBackground {
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
       fog: false,
     });
     const pts = new THREE.Points(geo, mat);
@@ -1274,11 +1548,13 @@ export class SpaceBackground {
   // L4 — hero flares
   // --------------------------------------------------------------------------
   _createFlares() {
-    const count = this.flareCount;
+    const stF = this.backgroundStructure || resolveBackgroundStructure(null);
+    const count = Math.max(4, Math.floor(this.flareCount * stF.flareDensity));
     const cell = this.starCell;
     const colors = new Float32Array(count * 3);
     const sizesPx = new Float32Array(count);
     const pars = new Float32Array(count);
+    const rotations = new Float32Array(count);
     const rnd = mulberry32(this.skySeed + 303);
     const tmp = new THREE.Color();
     const white = new THREE.Color(1, 1, 1);
@@ -1299,7 +1575,7 @@ export class SpaceBackground {
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
       fog: false,
     });
     const mesh = new THREE.InstancedMesh(geo, mat, count);
@@ -1312,12 +1588,14 @@ export class SpaceBackground {
       // hero stars trend hotter/whiter — mix toward white
       tmp.lerp(white, 0.35);
       colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
-      sizesPx[i] = 9 + Math.pow(rnd(), 2) * 17;    // 9..26 px
+      sizesPx[i] = 7 + Math.pow(rnd(), 2) * 12;    // 7..19 px, rare punctuation not screen symbols
       pars[i] = 0.24 + rnd() * 0.21;               // near-depth range
+      rotations[i] = rnd() * Math.PI;
     }
     geo.setAttribute('aColor', new THREE.InstancedBufferAttribute(colors, 3));
     geo.setAttribute('aSizePx', new THREE.InstancedBufferAttribute(sizesPx, 1));
     geo.setAttribute('aPar', new THREE.InstancedBufferAttribute(pars, 1));
+    geo.setAttribute('aRotation', new THREE.InstancedBufferAttribute(rotations, 1));
 
     mesh.name = 'L4_flares';
     mesh.frustumCulled = false;
@@ -1376,12 +1654,17 @@ export class SpaceBackground {
     const list = [];
     const windowR = this.quadSize * 0.5; // generous cull radius in render units
 
+    // A sector may declare one signature celestial anchor. It is fixed in parallax-space when the
+    // sector is entered (not camera-locked), so it provides memorable geography and then recedes
+    // naturally during travel. Procedural heroes remain the infinite continuation beyond it.
+    if (this._signatureHeroAnchor) list.push(this._signatureHeroAnchor);
+
     // planets
     for (let cx = pgx - 2; cx <= pgx + 2; cx++) {
       for (let cz = pgz - 2; cz <= pgz + 2; cz++) {
         const h = hash32(`p:${cx},${cz}:${this.skySeed}`);
         const r = mulberry32(h);
-        if (r() >= 0.35) continue;
+        if (r() >= this.backgroundComposition.planetChance) continue;
         const bx = (cx + r()) * planetCellW;
         const bz = (cz + r()) * planetCellW;
         const typeRoll = r();
@@ -1390,7 +1673,7 @@ export class SpaceBackground {
         const frac = giant ? 0.34 : (0.09 + r() * 0.10);
         const seed = (r() * 99999) | 0;
         const lightAngle = r() * Math.PI * 2;
-        const ring = type === 'gas' && r() < 0.45;
+        const ring = type === 'gas' && r() < this.backgroundComposition.ringChance;
         const ringTilt = (r() - 0.5) * 0.9;
         list.push({ kind: 'planet', bx, bz, type, frac, seed, lightAngle, ring, ringTilt });
       }
@@ -1400,7 +1683,7 @@ export class SpaceBackground {
       for (let cz = wgz - 2; cz <= wgz + 2; cz++) {
         const h = hash32(`w:${cx},${cz}:${this.skySeed}`);
         const r = mulberry32(h);
-        if (r() >= 0.18) continue;
+        if (r() >= this.backgroundComposition.wormholeChance) continue;
         const bx = (cx + r()) * wormCellW;
         const bz = (cz + r()) * wormCellW;
         const frac = 0.11 + r() * 0.09;
@@ -1431,13 +1714,15 @@ export class SpaceBackground {
       map: tex,
       transparent: true,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
       fog: false,
     });
     const sprite = new THREE.Sprite(mat);
     sprite.name = 'L5_planet';
-    // texture: planet radius = 0.42 of the quad half-extent → quad = diameter / 0.42
-    const diameter = spec.frac * this.H * this.heroSizeK;
+    // texture: planet radius = 0.42 of the quad half-extent → quad = diameter / 0.42.
+    // `frac` already expresses the authored gameplay-screen size. A second signature multiplier made
+    // the Helios planet cover most of the live frame even though the standalone camera looked safe.
+    const diameter = spec.frac * this.H * Math.max(1.15, this.heroSizeK);
     const quad = diameter / 0.42;
     sprite.scale.set(quad, quad, 1);
     sprite.renderOrder = -60;
@@ -1446,6 +1731,192 @@ export class SpaceBackground {
     sprite.userData = spec;
     this.group.add(sprite);
     this.planets.push({ sprite, mat, spec });
+  }
+
+  /** Dispose retired card or geometry macro structure. */
+  _disposeStructureMacro() {
+    if (this.structureCard) {
+      this.group.remove(this.structureCard.mesh);
+      this.structureCard.mesh.geometry.dispose();
+      this.structureCard.material.dispose();
+      this.structureCard = null;
+    }
+    if (this.structureMacro) {
+      this.group.remove(this.structureMacro.group);
+      for (const geo of this.structureMacro.geometries) geo.dispose();
+      for (const mat of this.structureMacro.materials) mat.dispose();
+      this.structureMacro = null;
+    }
+  }
+
+  /**
+   * Build a tapered ribbon strip along a spine with aAlong/aAcross attributes for
+   * geometry-aware transverse feathering. Silhouette is mesh-authored.
+   * Optional widthProfile(t, i) overrides linear half-width interpolation.
+   */
+  _buildTaperedRibbonGeometry(spine, halfWidthStart, halfWidthEnd, widthProfile = null) {
+    const n = spine.length;
+    if (n < 2) return new THREE.BufferGeometry();
+    const positions = new Float32Array(n * 2 * 3);
+    const along = new Float32Array(n * 2);
+    const across = new Float32Array(n * 2);
+    const indices = [];
+    for (let i = 0; i < n; i++) {
+      const p = spine[i];
+      const prev = spine[Math.max(0, i - 1)];
+      const next = spine[Math.min(n - 1, i + 1)];
+      let tx = next.x - prev.x;
+      let tz = next.z - prev.z;
+      const tlen = Math.hypot(tx, tz) || 1;
+      tx /= tlen; tz /= tlen;
+      const nx = -tz;
+      const nz = tx;
+      const t = i / (n - 1);
+      const hw = typeof widthProfile === 'function'
+        ? widthProfile(t, i)
+        : halfWidthStart + (halfWidthEnd - halfWidthStart) * t;
+      const y = p.y || 0;
+      positions[(i * 2) * 3] = p.x + nx * hw;
+      positions[(i * 2) * 3 + 1] = y;
+      positions[(i * 2) * 3 + 2] = p.z + nz * hw;
+      positions[(i * 2 + 1) * 3] = p.x - nx * hw;
+      positions[(i * 2 + 1) * 3 + 1] = y;
+      positions[(i * 2 + 1) * 3 + 2] = p.z - nz * hw;
+      along[i * 2] = t;
+      along[i * 2 + 1] = t;
+      across[i * 2] = 1;
+      across[i * 2 + 1] = -1;
+      if (i < n - 1) {
+        const a = i * 2;
+        const b = a + 1;
+        const c = a + 2;
+        const d = a + 3;
+        indices.push(a, c, b, b, c, d);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('aAlong', new THREE.BufferAttribute(along, 1));
+    geo.setAttribute('aAcross', new THREE.BufferAttribute(across, 1));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  _makeRibbonMaterial(sheath, ridge, opacity, seed, style = 0) {
+    return new THREE.ShaderMaterial({
+      vertexShader: RIBBON_VERT,
+      fragmentShader: RIBBON_FRAG,
+      uniforms: {
+        uSheath: { value: sheath.clone() },
+        uRidge: { value: ridge.clone() },
+        uOpacity: { value: opacity },
+        uSeed: { value: seed },
+        uStyle: { value: style },
+      },
+      transparent: true,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.NormalBlending,
+      side: THREE.DoubleSide,
+      fog: false,
+      toneMapped: true,
+    });
+  }
+
+  /**
+   * Macro far-structure from explicit tapered ribbons + bounded subordinate dust.
+   * Retires L1b card. Helios/void: no macro. Frontier ion: one asymmetric sheath +
+   * at most one discontinuous subordinate filament (not dual parallel arcs).
+   */
+  _spawnStructureCard() {
+    this._spawnMacroStructure();
+  }
+
+  _spawnMacroStructure() {
+    this._disposeStructureMacro();
+    const st = this.backgroundStructure || resolveBackgroundStructure(null);
+    const recipe = this.deepFieldRecipe || resolveDeepFieldStructureRecipe(st);
+    this.deepFieldRecipe = recipe;
+    // Void/core recipes intentionally use stars + landmarks only. This is negative-space art
+    // direction, not a missing or disabled layer.
+    if (!st || !recipe || !recipe.ribbons || recipe.ribbons.length === 0) return;
+    if (st.maxCoverage < 0.02) return;
+
+    const group = new THREE.Group();
+    group.name = `L1b_authored_${recipe.id}`;
+    group.renderOrder = SPACE_BACKGROUND_GROUP_ORDER;
+    group.userData.deepFieldRecipeId = recipe.id;
+    const geometries = [];
+    const materials = [];
+    const H = this.H;
+    // Recipe points are normalized source art. Keep the apparent scale below the old procedural
+    // sheath, which routinely covered the top half of the frame and resembled a fog overlay.
+    const scale = H * Math.max(1.24, this.heroSizeK * 0.38) * recipe.apparentScale;
+
+    for (let si = 0; si < recipe.ribbons.length; si++) {
+      const ribbon = recipe.ribbons[si];
+      const controls = ribbon.points.map((point) => new THREE.Vector3(
+        point[0] * scale,
+        point[1] * scale,
+        point[2] * scale,
+      ));
+      // The recipe remains the editable source of truth; centripetal resampling removes visible
+      // polygon elbows without allowing the curve to overshoot narrow gaps or fold back on itself.
+      const curve = new THREE.CatmullRomCurve3(controls, false, 'centripetal', 0.5);
+      const spine = curve.getPoints(Math.max(40, (controls.length - 1) * 6));
+      const widthProfile = (t) => Math.max(scale * 0.0035,
+        sampleAuthoredWidth(ribbon.widths, t) * scale);
+      const geo = this._buildTaperedRibbonGeometry(spine, widthProfile(0), widthProfile(1), widthProfile);
+      geo.userData.deepFieldRecipeId = recipe.id;
+      geo.userData.deepFieldRibbonId = ribbon.id;
+      geometries.push(geo);
+      const mat = this._makeRibbonMaterial(
+        new THREE.Color(ribbon.colors[0]),
+        new THREE.Color(ribbon.colors[1]),
+        Math.min(0.86, ribbon.opacity),
+        (this.skySeed % 1000) * 0.01 + si * 1.37,
+        ribbon.style,
+      );
+      mat.name = `SF_DeepField_${recipe.id}_${ribbon.id}`;
+      mat.userData.deepFieldRecipeId = recipe.id;
+      mat.userData.deepFieldRibbonId = ribbon.id;
+      materials.push(mat);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.name = `DeepField_${ribbon.id}`;
+      mesh.renderOrder = -72;
+      mesh.frustumCulled = false;
+      group.add(mesh);
+    }
+
+    group.position.y = STAR_DEPTH - 1.5;
+
+    const par = recipe.parallax;
+    const ndc = recipe.anchorNdc;
+    let bx = this.camX * par + 0.2 * H;
+    let bz = this.camZ * par + 0.22 * H;
+    if (this.camera) {
+      const anchor = screenNdcToParallaxAnchor(
+        this.camera, ndc[0], ndc[1],
+        { x: this.camX, z: this.camZ },
+        { bgY: this.bgY, heroDepth: STAR_DEPTH - 1.5 },
+      );
+      if (anchor) {
+        bx = anchor.worldX - this.camX * (1 - par);
+        bz = anchor.worldZ - this.camZ * (1 - par);
+      }
+    }
+
+    this.structureMacro = {
+      group,
+      geometries,
+      materials,
+      par,
+      bx,
+      bz,
+      recipeId: recipe.id,
+    };
+    this.group.add(group);
   }
 
   _getPlanetTexture(spec) {
@@ -1536,7 +2007,7 @@ export class SpaceBackground {
       },
       transparent: true,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
       fog: false,
     });
     const mesh = new THREE.Mesh(geo, mat);
@@ -1573,7 +2044,7 @@ export class SpaceBackground {
     tex.colorSpace = THREE.SRGBColorSpace;
     const mat = new THREE.SpriteMaterial({
       map: tex, transparent: true, blending: THREE.AdditiveBlending,
-      depthWrite: false, depthTest: false, fog: false,
+      depthWrite: false, depthTest: true, fog: false,
     });
     const sprite = new THREE.Sprite(mat);
     sprite.name = 'L6_comet';
@@ -1586,9 +2057,14 @@ export class SpaceBackground {
     this.group.add(sprite);
     this.comet = {
       sprite, mat, tex,
-      state: 'idle', timer: 12 + this.rng() * 25, progress: 0, duration: 2,
+      state: 'idle', timer: this._nextCometDelay(0.45), progress: 0, duration: 2,
       start: new THREE.Vector3(), end: new THREE.Vector3(),
     };
+  }
+
+  _nextCometDelay(scale = 1) {
+    const range = this.backgroundComposition.cometInterval;
+    return (range[0] + this.rng() * (range[1] - range[0])) * scale;
   }
 
   // --------------------------------------------------------------------------
@@ -1628,26 +2104,24 @@ export class SpaceBackground {
     }
     this._streamCamX = cx; this._streamCamZ = cz; this._streamPrimed = true;
 
-    // tile parallax: closed-form UV offset from the absolute camera position, in doubles,
-    // wrapped before upload. Slow drift on the nebula layers keeps the sky faintly alive.
+    // Tile parallax remains closed-form from absolute camera position. The extra high-speed phase is
+    // integrated from plausible camera deltas; there is deliberately no time-based UV drift, which
+    // would make distant structure crawl or swim while the ship is stationary.
     for (let i = 0; i < this.layers.length; i++) {
       const L = this.layers[i];
-      let du = 0, dv = 0;
-      if (i === 1) { du = this.bgTime * (0.0035 / 60); dv = this.bgTime * (0.0022 / 60); }
-      else if (i === 2) { du = -this.bgTime * (0.0045 / 60); dv = this.bgTime * (-0.0028 / 60); }
       // Same per-WU rate as the natural term, so `gain = 1` reads as exactly "twice the streaming"
       // rather than as an unrelated second motion the eye can separate out. The step itself lives in
       // velocityLanguage.js so the probe pins the integration the renderer actually runs.
       L.streamU = streamPhaseStep(L.streamU, dcx, L.par, L.tile, gain);
       L.streamV = streamPhaseStep(L.streamV, -dcz, L.par, L.tile, gain);
-      const u = (cx * L.par / L.tile + du + (L.streamU || 0)) % 1;
-      const v = (-cz * L.par / L.tile + dv + (L.streamV || 0)) % 1;
+      const u = (cx * L.par / L.tile + (L.streamU || 0)) % 1;
+      const v = (-cz * L.par / L.tile + (L.streamV || 0)) % 1;
       L.offset.set(u < 0 ? u + 1 : u, v < 0 ? v + 1 : v);
     }
     if (this.layerMaterial) {
       const un = this.layerMaterial.uniforms;
       un.uGroupOrigin.value.copy(this.group.position);
-      un.uIntensity.value = this.bgIntensity;
+      un.uNebulaOpacity.value = this.nebulaOpacity;
     }
 
     // pixel scale can change with dynamic resolution — one scalar, cheap to refresh
@@ -1671,13 +2145,23 @@ export class SpaceBackground {
     for (const p of this.planets) {
       p.sprite.position.x = p.spec.bx - cx * PLANET_PAR;
       p.sprite.position.z = p.spec.bz - cz * PLANET_PAR;
-      p.mat.opacity = Math.min(0.58, this.bgIntensity + 0.04);
+      // Fully integrated landmark (not a washed overlay).
+      p.mat.opacity = 1.0;
     }
     if (this.wormhole) {
       this.wormhole.mesh.position.x = this.wormhole.spec.bx - cx * WORM_PAR;
       this.wormhole.mesh.position.z = this.wormhole.spec.bz - cz * WORM_PAR;
       this.wormhole.material.uniforms.uTime.value = this.bgTime;
       this.wormhole.material.uniforms.uIntensity.value = this.bgIntensity;
+    }
+    if (this.structureMacro) {
+      const sc = this.structureMacro;
+      sc.group.position.x = sc.bx - cx * sc.par;
+      sc.group.position.z = sc.bz - cz * sc.par;
+    } else if (this.structureCard) {
+      const sc = this.structureCard;
+      sc.mesh.position.x = sc.bx - cx * sc.par;
+      sc.mesh.position.z = sc.bz - cz * sc.par;
     }
 
     this._updateRegionTint(cx, cz, dt, vl && vl.region);
@@ -1727,7 +2211,7 @@ export class SpaceBackground {
     this._tintB.setRGB(1, 1, 1).lerp(this._c0, strength * 0.7);
     this._starTint.setRGB(1, 1, 1).lerp(this._c0, strength * 0.35);
 
-    if (this.layerMaterial) this.layerMaterial.uniforms.uIntensity.value = this.bgIntensity;
+    if (this.layerMaterial) this.layerMaterial.uniforms.uNebulaOpacity.value = this.nebulaOpacity;
   }
 
   _valueNoise(x, z) {
@@ -1768,7 +2252,7 @@ export class SpaceBackground {
       c.progress += dt / c.duration;
       if (c.progress >= 1) {
         c.state = 'idle';
-        c.timer = 25 + this.rng() * 45;
+        c.timer = this._nextCometDelay();
         c.sprite.visible = false;
       } else {
         c.sprite.position.lerpVectors(c.start, c.end, c.progress);
@@ -1784,17 +2268,55 @@ export class SpaceBackground {
   // Per-sector sky: derive the generation seed from the sector id and swap to its
   // palette class. Rebaking the three tiles + stars costs one ~60-150ms frame, spent
   // during the jump-arrival transition (which is already the heavy moment).
-  onSectorEnter(sector) {
+  onSectorEnter(sector, visualProfile = null) {
     const id = sector && sector.id;
-    if (!id || id === this._sectorId) return;
+    if (!id) return;
+    // A sector entry can coincide with a jump or frame relocation. Re-prime the integrated speed
+    // phase so the arrival delta cannot shove the background, even when the destination keeps the
+    // same sector id.
+    this._streamPrimed = false;
+    this._streamCamX = this.camX;
+    this._streamCamZ = this.camZ;
+    for (let i = 0; i < this.layers.length; i++) {
+      this.layers[i].streamU = 0;
+      this.layers[i].streamV = 0;
+    }
+    if (id === this._sectorId) return;
     this._sectorId = id;
+    this._visualProfile = visualProfile || null;
+    this.backgroundComposition = resolveBackgroundComposition(visualProfile);
+    this.backgroundStructure = resolveBackgroundStructure(visualProfile);
+    this.deepFieldRecipe = resolveDeepFieldStructureRecipe(this.backgroundStructure);
+    this._structureCoverage = estimatePhenomenonCoverage(this.backgroundStructure);
+    this.nebulaOpacity = Math.max(0, Math.min(0.45,
+      Number(visualProfile && visualProfile.background && visualProfile.background.nebulaOpacity) || 0));
+    if (visualProfile && visualProfile.background && Number.isFinite(visualProfile.background.intensity)) {
+      this.bgIntensity = Math.max(0.08, Math.min(0.85, visualProfile.background.intensity));
+    }
+    this._signatureHeroAnchor = buildSignatureHeroAnchor(
+      this.backgroundComposition,
+      { x: this.camX, z: this.camZ },
+      {
+        screenHeight: this.H,
+        camera: this.camera,
+        bgY: this.bgY,
+        heroDepth: HERO_DEPTH,
+        safeNdcMargin: 0.22,
+      },
+      this.seed,
+      id,
+    );
+    if (this.comet && this.comet.state === 'idle') this.comet.timer = this._nextCometDelay(0.45);
     this.skySeed = (this.seed ^ hash32(String(id))) >>> 0;
-    const pal = this._skyPaletteForSector(sector)
+    const pal = visualProfile && PALETTES[visualProfile.skyPalette]
+      ? visualProfile.skyPalette
+      : this._skyPaletteForSector(sector)
       || PALETTE_NAMES[this.skySeed % PALETTE_NAMES.length];
     this.regionPaletteT = PALETTE_NAMES.indexOf(pal);
     this.regionLockUntil = this.bgTime + 8.0;   // let the new identity land before drift resumes
     this.bakeAll(pal);
     this._rebuildStarsAndFlares();
+    this._spawnStructureCard();
     this._refreshHeroes(true);
   }
 
@@ -1845,7 +2367,12 @@ export class SpaceBackground {
       quadSize: this.quadSize,
       bakeMs: this.bakeTimer,
       drawCalls: 1 + 1 + 1 + this.planets.length + (this.wormhole ? 1 : 0) +
+        (this.structureMacro ? (this.structureMacro.group.children.length) : (this.structureCard ? 1 : 0)) +
         (this.comet && this.comet.sprite.visible ? 1 : 0),
+      structureCard: false,
+      structureMacro: !!this.structureMacro,
+      structureMacroMeshes: this.structureMacro ? this.structureMacro.group.children.length : 0,
+      structureRecipeId: this.deepFieldRecipe ? this.deepFieldRecipe.id : null,
       layerGeometries: this.layerGeometry ? 1 : 0,
       stars: this.stars ? this.stars.count : 0,
       flares: this.flares ? this.flares.mesh.count : 0,
@@ -1861,15 +2388,18 @@ export class SpaceBackground {
   onResize() {
     this.H = measureScreenHeightWorld(this.camera);
     this.bgY = -this.H * 2.2;
+    this.group.position.y = this.bgY;
     this.regionNoiseScale = 1 / (this.H * 55);
     this._measureGeometry();
     this._buildLayers();
     this._rebuildStarsAndFlares();
+    this._spawnStructureCard();
     this._createComet();
     this._refreshHeroes(true);
   }
 
   dispose() {
+    this._disposeStructureMacro();
     this._disposeBakeTargets();
     if (this.flareAtlas) this.flareAtlas.dispose();
     for (const [, rt] of this.planetCache) rt.dispose();
@@ -1893,4 +2423,52 @@ export class SpaceBackground {
 
 export function createSpaceBackground(scene, state, opts = {}) {
   return new SpaceBackground(scene, state, opts);
+}
+
+
+export { mulberry32, hash32, PALETTES, LAYER_DEFS, PLANET_PAR, HERO_DEPTH, STAR_DEPTH };
+
+/** Deterministic star-field sample for unit tests (no WebGL). */
+export function generateStarFieldSample(seed, count, opts = {}) {
+  const rnd = mulberry32((seed >>> 0) || 1);
+  const clusterRnd = mulberry32(((seed >>> 0) + 202) || 1);
+  const cell = opts.cell || 1000;
+  const H = opts.H || 96;
+  const voidFloor = opts.voidFloor ?? 0.1;
+  const clusterCount = opts.clusterCount ?? 6;
+  const clusterStrength = opts.clusterStrength ?? 1;
+  const clusters = [];
+  for (let i = 0; i < clusterCount; i++) {
+    clusters.push({
+      x: (clusterRnd() - 0.5) * cell,
+      z: (clusterRnd() - 0.5) * cell,
+      r: H * (0.5 + clusterRnd() * 1.6),
+      strength: (0.55 + clusterRnd() * 0.65) * clusterStrength,
+    });
+  }
+  const stars = [];
+  let attempts = 0;
+  while (stars.length < count && attempts < count * 10) {
+    attempts++;
+    const x = (rnd() - 0.5) * cell;
+    const z = (rnd() - 0.5) * cell;
+    let density = voidFloor;
+    for (const cl of clusters) {
+      const d2 = (x - cl.x) ** 2 + (z - cl.z) ** 2;
+      density += cl.strength * Math.exp(-d2 / (2 * cl.r * cl.r));
+    }
+    if (rnd() > Math.min(1, density)) continue;
+    stars.push({ x, z, par: 0.10 + Math.pow(rnd(), 1.4) * 0.35 });
+  }
+  return { stars, clusters, accepted: stars.length };
+}
+
+/** Closed-form layer UV offset (no time term) — used by parallax stability tests. */
+export function layerUvOffset(camX, camZ, par, tile) {
+  const u = (camX * par / tile) % 1;
+  const v = (-camZ * par / tile) % 1;
+  return {
+    u: u < 0 ? u + 1 : u,
+    v: v < 0 ? v + 1 : v,
+  };
 }

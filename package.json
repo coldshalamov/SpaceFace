@@ -404,6 +404,7 @@
     "check:kestrel:wholeship": "node scripts/check-kestrel-wholeship-runtime.mjs",
     "check:kestrel:normal-routes": "node scripts/check-kestrel-normal-routes.mjs",
     "check:kestrel:electron-route": "node scripts/check-kestrel-electron-route.mjs",
+    "check:thruster:electron-route": "node scripts/check-thruster-electron-route.mjs",
     "test:commodity-flavor": "node test/commodity-flavor.test.mjs",
     "check:m1:tether-mass": "node scripts/check-m1-tether-mass-grounding.mjs",
     "check:demo-opening": "npm run check:launch-policy && node --test test/demo-opening-runtime-contract.test.mjs && node scripts/check-m3-player-facing-public-route.mjs --demo-opening",

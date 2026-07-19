@@ -32,12 +32,14 @@ assert.equal(
 );
 assert.equal(countCommand(pkg.scripts['check:art'], 'npm run check:visual-stability'), 1,
   'check:art reaches the combined visual-stability gate exactly once');
-for (const aggregate of ['check', 'check:ci']) {
+for (const aggregate of ['check']) {
   assert.equal(countCommand(pkg.scripts[aggregate], 'npm run check:art'), 1,
     `${aggregate} reaches visual stability through check:art exactly once`);
   assert.equal(countCommand(pkg.scripts[aggregate], 'npm run check:visual-stability'), 0,
     `${aggregate} must not duplicate the visual-stability gate outside check:art`);
 }
+assert.equal(pkg.scripts['check:ci'], 'npm run check:ci:report',
+  'check:ci remains the catalog-driven CI entrypoint instead of duplicating the local aggregate');
 for (const [scriptName, command] of Object.entries(pkg.scripts)) {
   if (scriptName === 'check:visual-stability') continue;
   assert.equal(countCommand(command, lifecycleCommand), 0,

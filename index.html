@@ -35,7 +35,14 @@
       <div id="toast-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
     </div>
     <div id="alerts"></div>
-    <div id="boot-overlay"><div class="boot-inner">SPACEFACE<span class="boot-sub">initializing systems…</span></div></div>
+    <div id="boot-overlay" role="status" aria-live="polite" aria-busy="true">
+      <div class="boot-inner">
+        <span class="boot-title">SPACEFACE</span>
+        <span class="boot-sub" data-loading-label>Initializing systems…</span>
+        <span class="boot-detail" data-loading-detail>Preparing the command deck</span>
+        <span class="boot-progress" aria-hidden="true"><span data-loading-progress></span></span>
+      </div>
+    </div>
   </div>
   <script type="module" src="./src/main.js"></script>
 </body>

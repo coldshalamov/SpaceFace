@@ -37,16 +37,26 @@
 import * as THREE from 'three';
 import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 
-const BALANCED_BLOOM_MAX_LEVELS = 4;
+const BALANCED_BLOOM_MAX_LEVELS = 2;
 const BALANCED_BLOOM_MSAA_SAMPLES = 0;
 const FILM_GRAIN_FPS = 12;
 const DEFAULT_BLOOM_STRENGTH = 0.35;
-const DEFAULT_FILM_GRAIN = 0.12;
-const DEFAULT_VIGNETTE = 0.35;
-const DEFAULT_COLOR_GRADE = 0.75;
+export const DEFAULT_POST_PRESENTATION = Object.freeze({ grain: 0, vignette: 0, grade: 0 });
+
+export function resolvePostPresentation(options = {}) {
+  return Object.freeze({
+    grain: clamp01(options.grain, DEFAULT_POST_PRESENTATION.grain),
+    vignette: clamp01(options.vignette, DEFAULT_POST_PRESENTATION.vignette),
+    grade: clamp01(options.grade, DEFAULT_POST_PRESENTATION.grade),
+  });
+}
+
+function clamp01(value, fallback) {
+  return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback;
+}
 // Multi-scale pyramid energy runs hotter than a single separable blur; composite multiplies by
 // this before uStrength scales the halo perceptually (0.02 ≈ subtle, 0.40 ≈ default).
-const BLOOM_PYRAMID_NORM = 0.9;
+const BLOOM_PYRAMID_NORM = 1.5;
 
 /**
  * Compile one Object3D subtree against the exact output target used by the live renderer.
@@ -219,29 +229,25 @@ const DOWNSAMPLE_FRAG = /* glsl */`
   }
 `;
 
-// (4-level pyramid weights live inline in render()'s composite wiring; no single coarse-weight const.)
+// Coarse-level weight for multi-scale composite (matches the prior upsample chain's uWeight so the
+// wide halo reads the same order of magnitude without a dedicated upsample RT + pass).
+const BLOOM_COARSE_WEIGHT = 0.36;
 
 // Composite: tonemap the scene first, THEN add strength-scaled multi-scale bloom on top. Adding bloom
 // before ACES saturated highlights and made the strength slider appear dead (1% looked like 100%).
 // Pyramid energy runs hot, so uBloomNorm reins it in before uStrength scales the halo perceptually.
 // Coarser pyramid levels are sampled directly (hardware bilinear) — no intermediate upsample target.
-// (color grade → atmospheric vignette → animated film grain) and sRGB encode. ACES lives here (not
+// Optional color grade, vignette, and film grain are independent presentation controls. They default
+// off: selective bloom must never imply a full-screen color or texture treatment. ACES lives here (not
 // on renderer.toneMapping) so the bloom-on/off paths stay in sync — see COLOR-MANAGEMENT INVARIANT.
-// The post grade is the single highest-value graphics lever: it touches EVERY asset at once, giving
-// the whole frame a cohesive cyberpunk-noir mood (cool black-preserving shadows, warm highlights, soft corner fall-off,
-// subtle film grain) instead of a flat render-engine default.
 const COMPOSITE_FRAG = /* glsl */`
   precision highp float;
   varying vec2 vUv;
   uniform sampler2D tScene;
   uniform sampler2D tBloom0;  // half-res bright extract (always present when bloom is on)
-  uniform sampler2D tBloom1;  // quarter-res
-  uniform sampler2D tBloom2;  // eighth-res
-  uniform sampler2D tBloom3;  // sixteenth-res (widest halo)
+  uniform sampler2D tBloom1;  // quarter-res (or same as tBloom0 when levels==1)
   uniform float uBloomW0;
   uniform float uBloomW1;
-  uniform float uBloomW2;
-  uniform float uBloomW3;
   uniform float uStrength;
   uniform float uBloomNorm;   // pyramid energy runs hot; normalize before perceptual strength
   uniform float uExposure;
@@ -270,12 +276,9 @@ const COMPOSITE_FRAG = /* glsl */`
 
   void main() {
     vec3 scene = texture2D(tScene, vUv).rgb;
-    // Multi-scale bloom pyramid: fine local brights → wide soft halo, each level sampled directly
-    // (hardware bilinear). 4 levels give a radiant AAA emissive glow vs a tight 2-level sport glow.
+    // Multi-scale bloom: fine local brights + hardware-bilinear coarse halo (no upsample RT).
     vec3 bloom = texture2D(tBloom0, vUv).rgb * uBloomW0
-               + texture2D(tBloom1, vUv).rgb * uBloomW1
-               + texture2D(tBloom2, vUv).rgb * uBloomW2
-               + texture2D(tBloom3, vUv).rgb * uBloomW3;
+               + texture2D(tBloom1, vUv).rgb * uBloomW1;
     vec3 hdr = max(scene, vec3(0.0)) * uExposure;
     // Tone-map the base scene first. Bloom is added AFTER so uStrength stays perceptually linear —
     // adding bloom before ACES saturated every highlight and hid slider movement.
@@ -285,30 +288,21 @@ const COMPOSITE_FRAG = /* glsl */`
     c += bloom * uStrength * uBloomNorm;
     c = max(c, vec3(0.0));
 
-    // ---- CINEMATIC COLOR GRADE (ASC-CDL lift/gamma/gain): cool-balanced shadows + warm-balanced
-    //      highlights applied by MULTIPLY so black maps to black (0→0) — no additive veil — then the
-    //      black point is lowered for true contrast. This is the "soul" pass; it unifies every asset
-    //      (ships, stations, asteroids, planets, nebula, VFX) under one mood WITHOUT lifting the void.
+    // Optional legacy color grade. Default uGrade is zero; sector identity belongs to world lighting
+    // and authored surfaces, not a tint over every pixel. The optional path remains multiplicative so
+    // true black stays black instead of becoming a full-screen cyan veil.
     vec3 graded = c;
     {
       float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
-      // Tint by MULTIPLY (not add) so black maps to black: cool the shadows, warm the highlights.
-      // Pivot low — post-ACES space frames concentrate in the low midtones.
-      vec3 shadowBal = vec3(0.88, 0.98, 1.10);   // cool the darks
-      vec3 highBal   = vec3(1.10, 1.00, 0.88);   // warm the brights
-      graded = c * mix(shadowBal, highBal, smoothstep(0.10, 0.60, luma));
-      // saturation lift around the POST-TINT luma, clamped >= 0. (Using the pre-tint luma with a >1
-      // extrapolation could drive a channel negative → NaN in the pow() sRGB-encode below.)
-      float luma2 = dot(graded, vec3(0.2126, 0.7152, 0.0722));
-      graded = max(mix(vec3(luma2), graded, 1.15), 0.0);
+      vec3 shadowBalance = vec3(0.88, 0.98, 1.10);
+      vec3 highlightBalance = vec3(1.10, 1.00, 0.88);
+      graded = c * mix(shadowBalance, highlightBalance, smoothstep(0.10, 0.60, luma));
+      float gradedLuma = dot(graded, vec3(0.2126, 0.7152, 0.0722));
+      graded = max(mix(vec3(gradedLuma), graded, 1.15), vec3(0.0));
     }
     c = mix(c, graded, uGrade);
-    // Unconditional black-point crush OUTSIDE the uGrade mix → a real floor (not a soft ramp), and not
-    // coupled to the bloom-strength slider. 0.006 ≈ sRGB 19/255, below the sub-visible grain floor.
-    c = max(c - 0.006, 0.0) / (1.0 - 0.006);
 
-    // ---- ATMOSPHERIC VIGNETTE: soft corner darkening for focus + a cinematic "shot through a lens"
-    //      feel. Cheaper than a real lens model but reads instantly as "movie" not "game engine".
+    // Optional vignette. Default uVignette is zero.
     {
       vec2 d = vUv - vec2(0.5);
       float dist = dot(d, d) * 2.2;            // 0 center → ~1.1 corners
@@ -341,7 +335,9 @@ const COMPOSITE_FRAG = /* glsl */`
  * @param {{ getPerf?: () => object|null, getGpuTimers?: () => object|null }} [instrumentation]
  *        Optional measurement hooks. CPU pass-group times use existing perfRuntime.recordRenderWork;
  *        GPU timers are capability-gated and only emit when the timer set is enabled.
- * @returns {{ render(scene,camera):void, setSize(w,h):void, setOptions(o):void, dispose():void,
+ * @returns {{ render(scene,camera):void, compileScenePipelines(subject,camera,lightingScene):Promise,
+ *            warmScenePipelines(subject,camera,lightingScene):Promise,
+ *            setSize(w,h):void, setOptions(o):void, dispose():void,
  *            get enabled():boolean, set enabled(v):void }}
  */
 export function createBloom(renderer, width, height, instrumentation = null) {
@@ -356,9 +352,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   const knee = 0.25;
   let exposure = 1.0;
   let aces = 1.0; // 1 = ACES filmic by default
-  let grain = DEFAULT_FILM_GRAIN;
-  let vignette = DEFAULT_VIGNETTE;
-  let grade = DEFAULT_COLOR_GRADE;
+  const defaultPresentation = resolvePostPresentation();
+  let grain = defaultPresentation.grain;
+  let vignette = defaultPresentation.vignette;
+  let grade = defaultPresentation.grade;
 
   // ---- render targets ----
   // rtScene is full-res (needs a depth buffer for the scene render). The pyramid targets halve each
@@ -459,12 +456,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     tScene:     { value: null },
     tBloom0:    { value: null },
     tBloom1:    { value: null },
-    tBloom2:    { value: null },
-    tBloom3:    { value: null },
     uBloomW0:   { value: 1.0 },
     uBloomW1:   { value: 0.0 },
-    uBloomW2:   { value: 0.0 },
-    uBloomW3:   { value: 0.0 },
     uStrength:  { value: strength },
     uBloomNorm: { value: BLOOM_PYRAMID_NORM },
     uExposure:  { value: exposure },
@@ -476,15 +469,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   });
 
   function postStyleScale() {
-    if (!enabled || strength <= 0.0001) return 0;
-    return Math.max(0, Math.min(1, strength / DEFAULT_BLOOM_STRENGTH));
+    return Math.max(grain, vignette, grade);
   }
 
   function applyPostStyleUniforms() {
-    // Only film grain fades with bloom strength; the grade + vignette are a fixed art-direction
-    // choice and must NOT be coupled to the bloom slider (lowering bloom shouldn't wash out the grade).
-    const s = postStyleScale();
-    compositeMat.uniforms.uGrain.value = grain * s;
+    compositeMat.uniforms.uGrain.value = grain;
     compositeMat.uniforms.uVignette.value = vignette;
     compositeMat.uniforms.uGrade.value = grade;
   }
@@ -559,17 +548,13 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // directly; coarser levels contribute the wide halo via hardware bilinear (weight matches the
     // retired upsample chain so perceptual strength stays in family).
     timePassGroup('bloomComposite', () => {
-      // Sample up to 4 pyramid levels directly (clamp to the deepest available on tiny screens).
-      const tex = (i) => down[Math.min(i, levels - 1)].texture;
+      const fine = down[0].texture;
+      const coarse = levels > 1 ? down[levels - 1].texture : fine;
       compositeMat.uniforms.tScene.value = rtScene.texture;
-      compositeMat.uniforms.tBloom0.value = tex(0);
-      compositeMat.uniforms.tBloom1.value = tex(1);
-      compositeMat.uniforms.tBloom2.value = tex(2);
-      compositeMat.uniforms.tBloom3.value = tex(3);
+      compositeMat.uniforms.tBloom0.value = fine;
+      compositeMat.uniforms.tBloom1.value = coarse;
       compositeMat.uniforms.uBloomW0.value = 1.0;
-      compositeMat.uniforms.uBloomW1.value = levels > 1 ? 0.5 : 0.0;
-      compositeMat.uniforms.uBloomW2.value = levels > 2 ? 0.30 : 0.0;
-      compositeMat.uniforms.uBloomW3.value = levels > 3 ? 0.20 : 0.0;
+      compositeMat.uniforms.uBloomW1.value = levels > 1 ? BLOOM_COARSE_WEIGHT : 0.0;
       compositeMat.uniforms.uStrength.value = strength;
       compositeMat.uniforms.uExposure.value = exposure;
       compositeMat.uniforms.uAces.value = aces;
@@ -592,6 +577,26 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     return warmScenePipelinesForRenderTarget(
       renderer, rtScene, subject, camera, lightingScene,
     );
+  }
+
+  async function prepareResources(yieldToMain = () => Promise.resolve()) {
+    if (typeof renderer.initRenderTarget !== 'function') {
+      return { skipped: true, reason: 'initRenderTarget unavailable', targets: 0 };
+    }
+    const targets = [rtScene, ...down];
+    const allocations = [];
+    for (const target of targets) {
+      await yieldToMain();
+      const started = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      renderer.initRenderTarget(target);
+      allocations.push({
+        width: target.width,
+        height: target.height,
+        durationMs: (typeof performance !== 'undefined' ? performance.now() : Date.now()) - started,
+      });
+    }
+    await yieldToMain();
+    return { skipped: false, targets: targets.length, allocations };
   }
 
   function rebuild() {
@@ -663,7 +668,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       aces = Math.max(0, Math.min(1, o.aces));
       compositeMat.uniforms.uAces.value = aces;
     }
-    // cinematic post grade (cyberpunk-noir) — adjustable via settings.video.*
+    // Optional full-screen presentation controls. These are independent of selective bloom.
     if (typeof o.grain === 'number') grain = Math.max(0, Math.min(1, o.grain));
     if (typeof o.vignette === 'number') vignette = Math.max(0, Math.min(1, o.vignette));
     if (typeof o.grade === 'number') grade = Math.max(0, Math.min(1, o.grade));
@@ -712,6 +717,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     render,
     compileScenePipelines,
     warmScenePipelines,
+    prepareResources,
     setSize,
     setOptions,
     setInstrumentation,

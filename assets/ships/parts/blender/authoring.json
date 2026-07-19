@@ -144,6 +144,28 @@
       "provenance_path": "assets/ships/kestrel_borrowed_time_v4/PROVENANCE.json",
       "semantic_note": "Accepted source-faithful K0 Borrowed Time V4; canonical player-only LOD0 plus retained independently authored LOD1/LOD2 family, stable sockets, collision proxy, semantic materials, no embedded plume",
       "min_tris": 1500
+    },
+    "place_asteroid_seamed": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/place_asteroid_seamed_authored.blend",
+      "exporter_path": "tools/blender/remaster_geology_landmark_family_v1.py",
+      "texture_role_owner": "blender-source-v1",
+      "min_tris": 8340,
+      "pipeline": "tools/blender/remaster_geology_landmark_family_v1.py",
+      "texture_pipeline": "tools/art/build_geology_landmark_maps_v1.py",
+      "family": "geology_landmark_family_v3",
+      "packet": "GEOLOGY-LANDMARK-FAMILY-01"
+    },
+    "place_asteroid_graffiti": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/place_asteroid_graffiti_authored.blend",
+      "exporter_path": "tools/blender/remaster_geology_landmark_family_v1.py",
+      "texture_role_owner": "blender-source-v1",
+      "min_tris": 9876,
+      "pipeline": "tools/blender/remaster_geology_landmark_family_v1.py",
+      "texture_pipeline": "tools/art/build_geology_landmark_maps_v1.py",
+      "family": "geology_landmark_family_v3",
+      "packet": "GEOLOGY-LANDMARK-FAMILY-01"
     }
   }
 }

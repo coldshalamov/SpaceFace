@@ -183,7 +183,14 @@ test('controller command is wired and restoration is failure-atomic', async () =
   assert.match(vfxSource, /trail\.getMesh\?\.\(\)/);
   assert.match(vfxSource, /for \(const object of this\._perfVfxRoots\(\)\)/);
   assert.match(trailSource, /getMesh\(\) \{ return mesh; \}/);
-  assert.match(probeSource, /getByRole\(['"]button['"],\s*\{\s*name:\s*['"]Undock['"],\s*exact:\s*true\s*\}\)/);
+  assert.match(probeSource, /locator\(['"]button\[data-pop-launch\]['"]\)/,
+    'performance recovery completes the active station Departure Check');
+  assert.match(probeSource, /locator\(['"]button\[data-act=[\\'"]undock[\\'"]\]['"]\)/,
+    'performance recovery retains the active station Undock action identity');
+  assert.match(probeSource, /locator\(['"]button\.st-undock['"]\)/,
+    'performance recovery retains the compatibility station Undock identity');
+  assert.match(probeSource, /getByRole\(['"]button['"],\s*\{\s*name:\s*\/\\bundock\\b\/i\s*\}\)/,
+    'performance recovery accepts the computed accessible Undock name');
   assert.doesNotMatch(probeSource, /bus\?\.emit\(['"]dock:undocked['"]/,
     'performance attribution must use the visible station departure confirmation');
   assert.match(bloomSource, /perf\.renderWorkEnabled/);

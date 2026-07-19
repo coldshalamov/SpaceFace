@@ -291,6 +291,10 @@ export function createShipPreviewMount(canvas, opts) {
   const onFirstFrame = typeof opts.onFirstFrame === 'function' ? opts.onFirstFrame : null;
   const onAssetSettled = typeof opts.onAssetSettled === 'function' ? opts.onAssetSettled : null;
   const authoredShips = opts.authoredShips !== false && opts.authoredWarmup !== false;
+  const authoredLibraryOptions = Object.freeze({
+    libraryScope: 'ship-preview',
+    bootstrapPlan: Object.freeze({}),
+  });
   // Station/menu pads must never silently sit on the box LOD. Only allow it if the caller
   // explicitly opts in (devtools). Outfitting/shipyard/new-game pass allowFastFallback:false.
   const fastPreview = opts.fastPreview === true;
@@ -338,6 +342,8 @@ export function createShipPreviewMount(canvas, opts) {
   if (vf) {
       installVisualOverrides(vf, {
         authoredShips,
+        authoredLibraryScope: authoredLibraryOptions.libraryScope,
+        authoredBootstrapPlan: authoredLibraryOptions.bootstrapPlan,
         // A player-facing turntable keeps one coherent body. Catalog ships without a validated
         // complete asset remain on their readable procedural model instead of hot-swapping into
         // the loose modular flight assembly several seconds after selection.
@@ -550,7 +556,7 @@ export function createShipPreviewMount(canvas, opts) {
   function warmAssets() {
     if (!authoredShips) return Promise.resolve(false);
     if (!warmupPromise) {
-      warmupPromise = preloadAuthoredPartLibrary(renderer)
+      warmupPromise = preloadAuthoredPartLibrary(renderer, authoredLibraryOptions)
         .then(() => {
           if (disposed) return false;
           requestCurrentAuthoredUpgrade();

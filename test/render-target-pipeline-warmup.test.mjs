@@ -5,6 +5,7 @@ import * as THREE from 'three';
 
 import {
   compileScenePipelinesForRenderTarget,
+  createBloom,
   warmScenePipelinesForRenderTarget,
 } from '../src/render/bloom.js';
 import {
@@ -118,6 +119,29 @@ test('loading warm-up renders the authored batch against the exact target and re
   assert.deepEqual(result, { skipped: false, programCount: 2, mode: 'forced-render' });
   leaf.geometry.dispose();
   leaf.material.dispose();
+});
+
+test('bloom instance exposes the loading warm-up contract used by renderer admission', async () => {
+  const targets = [];
+  const renderer = {
+    capabilities: { isWebGL2: false, maxSamples: 0 },
+    autoClear: true,
+    getRenderTarget: () => null,
+    setRenderTarget: (target) => { targets.push(target); },
+    render() {},
+    info: { programs: [] },
+  };
+  const bloom = createBloom(renderer, 64, 64);
+  const scene = new THREE.Scene();
+  const subject = new THREE.Group();
+
+  const result = await bloom.warmScenePipelines(subject, new THREE.PerspectiveCamera(), scene);
+
+  assert.equal(result.skipped, false);
+  assert.equal(result.mode, 'forced-render');
+  assert.equal(subject.parent, null);
+  assert.ok(targets.some(Boolean), 'warm-up selects the bloom HDR scene target');
+  bloom.dispose();
 });
 
 test('startup waits for procedural warm-up, then compiles the installed authored scene', async () => {

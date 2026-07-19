@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { copyFile, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,7 @@ import {
   inspectGlbReleaseCompression,
   inspectReleaseAssetPair,
 } from '../src/contracts/assetReleaseValidation.js';
+import { RELEASE_MESHOPT_OPTIONS } from './lib/releaseMeshoptProfile.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PART_MANIFEST = resolve(ROOT, 'assets/ships/parts/parts_manifest.json');
@@ -26,6 +27,17 @@ const PREVIOUS_RELEASE_ROOT = resolve(ROOT, 'assets/ships/release.__previous');
 const RELEASE_BUILD_LOCK = resolve(ROOT, 'assets/ships/release.__lock');
 const argvList = process.argv.slice(2);
 const argv = new Set(argvList);
+if (argv.has('--help') || argv.has('-h')) {
+  console.log([
+    'Usage: node scripts/build-sg04-release-assets.mjs [options]',
+    '',
+    '  --resume-valid       Reuse already-valid staged outputs during a full atomic build.',
+    '  --no-clean           Build directly into the live release directory.',
+    '  --only <id[,id...]>  Rebuild selected manifest ids; requires --no-clean.',
+    '  --help, -h           Print this help without acquiring the release lock.',
+  ].join('\n'));
+  process.exit(0);
+}
 const DIRECT_LIVE_BUILD = argv.has('--no-clean');
 const RESUME_VALID = argv.has('--resume-valid');
 const ONLY_IDS = readOnlyIds(argvList);
@@ -152,7 +164,7 @@ for (let index = 0; index < assets.length; index++) {
     if (sourceInspection.metrics.textureCount > 0 && !sourceAlreadyKtx2) {
       transforms.push(
         ktx2({
-          slots: /^baseColorTexture$/,
+          slots: /^(baseColorTexture|emissiveTexture)$/,
           imageDecoder: decodeImage,
           isUASTC: true,
           uastcLDRQualityLevel: 2,
@@ -162,7 +174,7 @@ for (let index = 0; index < assets.length; index++) {
           isSetKTX2SRGBTransferFunc: true,
         }),
         ktx2({
-          slots: /^normalTexture$/,
+          slots: /^(normalTexture|clearcoatNormalTexture)$/,
           imageDecoder: decodeImage,
           isUASTC: true,
           uastcLDRQualityLevel: 2,
@@ -173,7 +185,7 @@ for (let index = 0; index < assets.length; index++) {
           isSetKTX2SRGBTransferFunc: false,
         }),
         ktx2({
-          slots: /^(occlusionTexture|metallicRoughnessTexture|roughnessTexture|metalnessTexture)$/,
+          slots: /^(occlusionTexture|metallicRoughnessTexture|roughnessTexture|metalnessTexture|clearcoatTexture|clearcoatRoughnessTexture|anisotropyTexture|transmissionTexture)$/,
           imageDecoder: decodeImage,
           isUASTC: true,
           uastcLDRQualityLevel: 2,
@@ -186,13 +198,7 @@ for (let index = 0; index < assets.length; index++) {
     }
     transforms.push(meshopt({
       encoder: MeshoptEncoder,
-      level: 'high',
-      quantizePosition: 14,
-      quantizeNormal: 10,
-      quantizeTexcoord: 12,
-      quantizeColor: 8,
-      quantizeWeight: 8,
-      quantizeGeneric: 12,
+      ...RELEASE_MESHOPT_OPTIONS,
     }));
 
     await document.transform(...transforms);
@@ -200,24 +206,9 @@ for (let index = 0; index < assets.length; index++) {
     await mkdir(dirname(releaseAbs), { recursive: true });
     await writeDocumentAtomic(io, releaseAbs, document);
 
-    // gltf-transform deduplicates redundant texture objects on write (e.g. hull_starter
-    // ships 9 texture entries over 5 images). Compare against a normalized source snapshot
-    // so release.textureTopology checks image-backed slots, not duplicate JSON indices.
-    const normalizedSourceAbs = `${releaseAbs}.source-normalized.glb`;
-    let normalizedSourcePath = asset.source;
-    try {
-      const normalizedSourceDoc = await io.read(sourceAbs);
-      splitIncompatibleTextureSlots(normalizedSourceDoc);
-      await io.write(normalizedSourceAbs, normalizedSourceDoc);
-      normalizedSourcePath = relativeToRoot(normalizedSourceAbs);
-    } catch (normalizeError) {
-      console.warn(`[sg04] ${asset.id}: could not normalize source textures for parity check: ${errorMessage(normalizeError)}`);
-    }
-
-    const pair = inspectReleaseAssetPair(normalizedSourcePath, outputReleasePath, { root: ROOT });
-    if (normalizedSourceAbs !== asset.source) {
-      try { unlinkSync(normalizedSourceAbs); } catch (_) {}
-    }
+    // Compare the immutable source. Validation counts only slots on primitive-referenced materials,
+    // so production pruning may remove unused materials without a lossy temporary source rewrite.
+    const pair = inspectReleaseAssetPair(asset.source, outputReleasePath, { root: ROOT });
     if (!pair.ok) {
       throw new Error(`release asset failed SG-04 validation: ${outputReleasePath}\n${JSON.stringify(pair.issues, null, 2)}`);
     }

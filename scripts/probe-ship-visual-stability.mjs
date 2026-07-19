@@ -13,10 +13,10 @@ const DEFAULT_MIN_INSPECTED_FRAMES = 300;
 const PLAYER_LOD_SETTLE_FRAMES = 30;
 const PLAYER_READABLE_SCREEN_RADIUS_PX = 80;
 const PLAYER_MIN_VISIBLE_AUTHORED_SURFACES = 8;
-// A validated whole body intentionally consolidates its semantic materials into fewer live
-// surfaces than a modular assembly. Keep the modular floor at eight while requiring all six
-// production Kestrel LOD0 surfaces to remain visible.
-const PLAYER_WHOLE_SHIP_MIN_VISIBLE_AUTHORED_SURFACES = 6;
+// V5 carries 17 semantic materials and 33 texture bindings, then consolidates them into five
+// stable LOD0 authored draw surfaces. Keep the modular floor at eight while requiring every one
+// of those production whole-ship surfaces to remain visible.
+const PLAYER_WHOLE_SHIP_MIN_VISIBLE_AUTHORED_SURFACES = 5;
 const AUTHORED_BODY_PROOF = Object.freeze({
   minSurfaceCount: 1,
   minRadiusRatio: 0.20,
@@ -138,6 +138,11 @@ async function sampleVisualStability(page, options) {
 
     function inspectFrame(frame, ships) {
       for (const ship of ships) {
+        // Admission boundaries deliberately exist before their GLB is decoded, but contain zero
+        // renderable surfaces. They are not a visual identity and cannot flicker or swap on screen.
+        // Begin stability tracking only when the entity is in the camera runway or has actually
+        // published pixels; once that happens, every authored/root/LOD invariant below is strict.
+        if (!ship.inView && ship.visibleRenderableCount <= 0) continue;
         const key = trackKey(ship);
         let track = tracks.get(key);
         if (!track) {
@@ -161,7 +166,20 @@ async function sampleVisualStability(page, options) {
           fail(frame, ship, 'composition-changed-after-warmup', { was: track.compositionId, now: ship.compositionId });
         }
         if (ship.lodLevel !== track.lodLevel) {
-          fail(frame, ship, 'lod-level-changed-after-warmup', { was: track.lodLevel, now: ship.lodLevel });
+          if (ship.inView) {
+            track.lodTransitionFrames.push(frame);
+            const recentTransitions = track.lodTransitionFrames.filter((entry) => entry >= frame - 60);
+            if (recentTransitions.length > 2) {
+              fail(frame, ship, 'visible-lod-thrashing', {
+                was: track.lodLevel,
+                now: ship.lodLevel,
+                recentTransitionFrames: recentTransitions,
+              });
+            }
+          }
+          // A single distance-driven LOD transition is expected. Keep the live baseline so one
+          // transition does not get reported again on every subsequent frame.
+          track.lodLevel = ship.lodLevel;
         }
         if (ship.slotsKey !== track.slotsKey) {
           fail(frame, ship, 'authored-slots-changed-after-warmup', { was: track.slotsKey, now: ship.slotsKey });
@@ -320,6 +338,7 @@ async function sampleVisualStability(page, options) {
         authoredBodySurfaceCount: ship.authoredBodySurfaceCount,
         staticBatchCount: ship.staticBatchCount,
         instanceProxyCount: ship.instanceProxyCount,
+        lodTransitionFrames: [],
         framesSeen: 0,
         inViewFrames: 0,
         missingMeshFrames: 0,
@@ -711,6 +730,7 @@ async function sampleVisualStability(page, options) {
         authoredStates: Array.from(track.authoredStates).sort(),
         compositionIds: Array.from(track.compositionIds).sort(),
         lodLevels: Array.from(track.lodLevels).sort(),
+        visibleLodTransitionFrames: [...track.lodTransitionFrames],
         meshCounts: Array.from(track.meshCounts).sort(),
         authoredBodySurfaceCounts: Array.from(track.authoredBodySurfaceCounts).sort(),
         staticBatchCounts: Array.from(track.staticBatchCounts).sort(),

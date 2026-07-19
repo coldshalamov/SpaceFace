@@ -4,6 +4,7 @@ import { makeEntity } from './entity.js';
 import { isDynamicPhysicsBodyEntity, shouldSyncPhysicsBodyEntity } from './physicsAuthority.js';
 import { mulberry32, hash32, wrapAngle } from './rng.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
+import { initializePresentationAdmission } from './presentationAdmission.js';
 
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
 
@@ -20,6 +21,7 @@ export const core = {
       const index = ensureEntityIndex(state);
       reconcileEntityIndexSource(index, state.entityList);
       const e = makeEntity(spec);
+      initializePresentationAdmission(e);
       const id = state.freeIds.length ? state.freeIds.pop() : state.nextEntityId++;
       e.id = id;
       state.entities.set(id, e);
@@ -394,6 +396,10 @@ function refreshVolatileEntityIndex(index) {
 }
 
 function isMovableEntity(e) {
+  // Keep render interpolation aligned with the physics authority. Wrecks and fracture chunks are
+  // dynamic Rapier bodies; without a fresh previous pose, render alpha repeatedly pulls them back
+  // toward their spawn pose and creates the characteristic object-width flicker.
+  if (isDynamicPhysicsBodyEntity(e)) return true;
   switch (e.type) {
     case 'ship':
     case 'drone':

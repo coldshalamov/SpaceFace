@@ -28,7 +28,7 @@
     "maxBytesPerLandmark": 65000000,
     "maxTextureEdgePerLandmark": 4096,
     "maxBytesPerWholeShip": 32000000,
-    "maxBytesPerWholeShipNote": "Structural source/package guard, not a quality ceiling. Raised for the accepted source-faithful Kestrel V4 LOD0 (22.90MB source, 19,906 tris, 15 semantic draws); every live family member remains below GitHub's 100MiB hard limit and release residency is measured independently.",
+    "maxBytesPerWholeShipNote": "Structural source/package guard, not a quality ceiling. Raised for the accepted source-faithful Kestrel V5-plus LOD0 (44.92MB source, 27,340 total tris, 17 semantic draws); every live family member remains below GitHub's 100MiB hard limit and release residency is measured independently.",
     "maxBytesPerLandmarkNote": "Structural compressed-source guard for singular authored hero places. The accepted dense Helios hub is 58.13MB with 4096 KTX2, Meshopt, 40 draws per LOD, and one visible instance; this allowance never applies to ordinary modular parts.",
     "trianglesPerPartNote": "Measured structural-growth guard for ordinary modular parts, not a visible-quality ceiling. Raised max 15000->32000 for rock/gate parts; crossing it requires an explicit budgetClass rather than silent detail removal.",
     "trianglesPerLandmarkNote": "Measured LOD0 structural guard for authored hero places. The accepted Helios dense hub is 963696 LOD0 triangles with 40 draws, authored LOD1/LOD2, Meshopt, and KTX2; this separate class prevents ordinary parts inheriting the hero allowance."
@@ -2573,54 +2573,30 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_asteroid_seamed.glb",
-      "tris": 2585,
-      "bytes": 209200,
+      "tris": 13340,
+      "bytes": 22141308,
       "textureSize": 1024,
-      "tintable": {
-        "hull": "Material_Hull",
-        "accent": "Material_Accent"
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1232 tris.",
-      "factionAccentVariants": {
-        "core": {
-          "accent": "#39d0ff",
-          "thruster": "#88aaff"
-        },
-        "belt": {
-          "accent": "#ffb35c",
-          "thruster": "#ff8844"
-        },
-        "fringe": {
-          "accent": "#ff5c5c",
-          "thruster": "#ff4466"
-        },
-        "anomaly": {
-          "accent": "#8d66ff",
-          "thruster": "#4ddc92"
-        }
-      },
-      "hooks": [
-        "HOOK_Seam"
-      ],
+      "note": "Geology landmark V3 live promotion 2026-07-19 — dry-bedded-regolith-with-surveyed-mineral-fracture; authored LOD0/1/2 (8,340 / 3,552 / 1,448 tris), six functional PBR material roles with bound base-color/normal/ORM maps, explicit runtime geology/mechanical/warning roles, recessed fracture seats, preserved pivot and interaction markers, deterministic texture generation, no emission substitute, and dry nonuniform roughness reviewed at close/default/far standalone game-camera assumptions before live-route admission.",
+      "hooks": [],
       "sockets": [
         "SOCKET_Scan_Target"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -14,
-          -11,
-          -12
+          -14.233109474182129,
+          -10.274117469787598,
+          -11.860407829284668
         ],
         "max": [
-          14,
-          11,
-          12
+          14.450972557067871,
+          11.491243362426758,
+          12.745527267456055
         ],
         "dimensionsM": [
-          28,
-          22,
-          24
+          28.68408203125,
+          21.765360832214355,
+          24.605935096740723
         ]
       }
     },
@@ -3066,54 +3042,30 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_graffiti.glb",
-      "tris": 952,
-      "bytes": 196976,
+      "tris": 13456,
+      "bytes": 20678880,
       "textureSize": 1024,
-      "tintable": {
-        "hull": "Material_Hull",
-        "accent": "Material_Accent"
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 952 tris.",
-      "factionAccentVariants": {
-        "core": {
-          "accent": "#39d0ff",
-          "thruster": "#88aaff"
-        },
-        "belt": {
-          "accent": "#ffb35c",
-          "thruster": "#ff8844"
-        },
-        "fringe": {
-          "accent": "#ff5c5c",
-          "thruster": "#ff4466"
-        },
-        "anomaly": {
-          "accent": "#8d66ff",
-          "thruster": "#4ddc92"
-        }
-      },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "note": "Geology landmark V3 live promotion 2026-07-19 — dry-fractured-regolith-with-nonemissive-prospector-history; authored LOD0/1/2 (9,876 / 2,472 / 1,108 tris), six functional PBR material roles with bound base-color/normal/ORM maps, explicit runtime geology/mechanical/warning roles, recessed fracture seats, preserved pivot and interaction markers, deterministic texture generation, no emission substitute, and dry nonuniform roughness reviewed at close/default/far standalone game-camera assumptions before live-route admission.",
+      "hooks": [],
       "sockets": [
         "SOCKET_Camera_Focus"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -12,
-          -9,
-          -9.84808
+          -12.515837669372559,
+          -8.960908889770508,
+          -9.7459135055542
         ],
         "max": [
-          12,
-          9,
-          9.84808
+          12.232428550720215,
+          9.357056617736816,
+          9.92920207977295
         ],
         "dimensionsM": [
-          24,
-          18,
-          19.69616
+          24.748266220092773,
+          18.317965507507324,
+          19.67511558532715
         ]
       }
     },
@@ -3122,15 +3074,15 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_trade_hub.glb",
-      "tris": 963696,
+      "tris": 1664738,
       "budgetClass": "landmark",
-      "bytes": 58135288,
-      "textureSize": 4096,
+      "bytes": 82441168,
+      "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — 38 MCP viewport renders; trim/wear sheets + SF_EdgeWear/CavityDirt + per-role AO bakes; DET gold_trim/signage/lie_billboard/dock_collar/antenna/cargo_rib/deck_traffic_wear; bevel segs=2 + clearcoat hull + emissive windows. Character: Meridian gold trade hub (corporate polish over industrial grit). tris=6392. | M1-SLICEA-VISUAL-001 connected rebuild 2026-07-10 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=6B0F12B8AE91 | M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 2026-07-11 K0-quality continuous massline promote | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=5877B34B7844 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-12 sha=C04E4E78B5F0 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-12 sha=C04E4E78B5F0 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-12 sha=C04E4E78B5F0 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-12 sha=BE2FA3E5D3E2 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-12 sha=1068932AD6AC",
+      "note": "HELIOS-GOLDEN-PRODUCTION-V1 2026-07-19 — engineered STATION-GOLDEN-02 body; functional armor, hull, machinery, service, docking, radiator, window and marking roles; outward-face material lift; supported service-truss bays; 30 KTX2 PBR textures; deterministic Blender production scripts and promotion receipt. Runtime gameplay capture remains the final visual acceptance gate. | PRO Full Finish 2026-07-06 — Meridian gold trade hub foundation. | M4-HELIOS-HUB-ENV promoted 2026-07-11 through 2026-07-12.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3158,19 +3110,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -57.4200005531311,
-          -1.8208771357021103,
-          -43.62478883863023
+          -57.42290687561035,
+          -4.179576214557418,
+          -52.42861819240351
         ],
         "max": [
-          63.419999087602285,
-          28.674523317601864,
-          43.62478883863023
+          63.42224884033203,
+          28.67694025874687,
+          52.42530703517695
         ],
         "dimensionsM": [
-          120.8399996407334,
-          30.495400453303972,
-          87.24957767726046
+          120.84515571594238,
+          32.85651647330429,
+          104.85392522758046
         ]
       }
     },
@@ -3571,8 +3523,8 @@
       "category": "wholeships",
       "priority": "P0",
       "file": "wholeships/kestrel.glb",
-      "tris": 19906,
-      "bytes": 22897472,
+      "tris": 27340,
+      "bytes": 44916544,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3597,20 +3549,20 @@
         "min": [
           -13.937827110290527,
           -2.7696021625919744,
-          -7.01944236829297
+          -7.020640853021267
         ],
         "max": [
           13.901803970336914,
           4.172541050847447,
-          7.01944236829297
+          7.020640853021267
         ],
         "dimensionsM": [
           27.83963108062744,
           6.942143213439421,
-          14.03888473658594
+          14.041281706042534
         ]
       },
-      "note": "K0 Borrowed Time V4 live promotion 2026-07-13 — accepted source-faithful player-only LOD0 (19,906 tris / 15 semantic draws) with independently authored retained LOD1/LOD2 family (13,962 / 12,584 tris), 9 stable sockets, 92%-fit collision hull, KTX2/meshopt release path, no embedded plume, and exact project-original provenance at assets/ships/kestrel_borrowed_time_v4/PROVENANCE.json."
+      "note": "K0 Borrowed Time V5-plus live promotion 2026-07-18 — accepted source-faithful player-only LOD0 (27,318 visible tris / 17 semantic draws) with independently authored retained LOD1/LOD2 family (17,126 / 13,288 visible tris), 9 stable sockets, 92%-fit collision hull, KTX2/meshopt release path, no embedded plume, and exact project-original provenance at assets/ships/kestrel_borrowed_time_v4/PROVENANCE.json. Graphics surface remaster kestrel-role-surface-v5 plus kestrel-golden-asset-v5: layered functional construction, role-specific coated paint, structural and directional metal, engine ceramic, radiator, canopy glass, utility hardware, integrated service markings, and identity surfaces calibrated for the normal game camera."
     },
     {
       "id": "wholeship_pelican",

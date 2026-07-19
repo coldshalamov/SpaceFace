@@ -1,56 +1,69 @@
-/**
- * Structural verify for Top-50 rank-5 combat hit/shield/hull VFX pack.
- */
+/** Behavioral/structural verification for combat contact and damage-layer VFX. */
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveImpactPresentationProfile } from '../src/render/vfxProfiles.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const VFX = resolve(ROOT, 'src/render/vfx.js');
 const OUT = resolve(ROOT, '.devshots/slice-A');
 const REPORT = resolve(OUT, 'combat_hit_vfx_verify.json');
-const src = readFileSync(VFX, 'utf8');
+const vfx = readFileSync(resolve(ROOT, 'src/render/vfx.js'), 'utf8');
+const physics = readFileSync(resolve(ROOT, 'src/core/physics.js'), 'utf8');
+const damage = readFileSync(resolve(ROOT, 'src/combat/damage.js'), 'utf8');
+const beams = readFileSync(resolve(ROOT, 'src/render/combat/persistentBeams.js'), 'utf8');
+const projectileBlock = vfx.slice(vfx.indexOf('  _onProjectileHit(p)'), vfx.indexOf('  _onDamage(p)'));
+const muzzleBlock = vfx.slice(vfx.indexOf('  _spawnMuzzleBallistic('), vfx.indexOf('  _onProjectileHit(p)'));
+const damageBlock = vfx.slice(vfx.indexOf('  _onDamage(p)'), vfx.indexOf('  _onPresentationCue(p)'));
 const failures = [];
-const assert = (c, m) => { if (!c) failures.push(m); };
+const check = (name, condition, evidence) => {
+  const ok = !!condition;
+  if (!ok) failures.push(name);
+  return { name, ok, evidence };
+};
 
-const cycles = [
-  { id: 1, name: '_onDamage handler', re: /_onDamage\s*\(/ },
-  { id: 2, name: 'shield absorbed branch', re: /shieldAbsorbed/ },
-  { id: 3, name: 'brokeShield ring flash', re: /brokeShield[\s\S]{0,400}SPR_RING/ },
-  { id: 4, name: 'shield hit fresnel', re: /SPR_FRESNEL/ },
-  { id: 5, name: 'armor hit sparks elevated', re: /armorHit[\s\S]{0,500}Math\.max\(10/ },
-  { id: 6, name: 'hull hit smoke puff', re: /hullHit[\s\S]{0,300}SPR_PUFF/ },
-  { id: 7, name: 'hull embers elevated count', re: /hullHit[\s\S]{0,600}k < 7/ },
-  { id: 8, name: 'shield break particle floor 14', re: /Math\.max\(14, Math\.round\(24/ },
-  { id: 9, name: 'impactSparks helper', re: /_impactSparks/ },
-  { id: 10, name: 'camera shake on player hit', re: /camera:shake/ },
+const weaponIds = [
+  'wpn_autocannon_m',
+  'wpn_railgun_m',
+  'wpn_plasma_cannon_m',
+  'wpn_beam_laser_m',
+  'wpn_missile_rack_m',
+  'wpn_emp_disruptor_m',
 ];
+const profiles = weaponIds.map((weaponId) => ({ weaponId, ...resolveImpactPresentationProfile(weaponId) }));
+const modes = new Set(profiles.map((profile) => profile.mode));
+const shieldBreakStart = damageBlock.indexOf('if (p.brokeShield)');
+const shieldBreakEnd = damageBlock.indexOf('} else {', shieldBreakStart);
+const shieldBreak = damageBlock.slice(shieldBreakStart, shieldBreakEnd);
 
-const cycleResults = cycles.map((c) => {
-  const ok = c.re.test(src);
-  assert(ok, `cycle ${c.id}: ${c.name}`);
-  return { id: c.id, name: c.name, ok };
-});
+const validation = [
+  check('six structural impact modes', modes.size === weaponIds.length, [...modes]),
+  check('ordinary contacts do not spawn rings', !projectileBlock.includes('SPR_RING'), 'projectile contact block has no SPR_RING'),
+  check('ordinary muzzles do not spawn rings', !muzzleBlock.includes('SPR_RING'), 'muzzle block has no SPR_RING'),
+  check('muzzle structure consumes family and variant', muzzleBlock.includes('profile.family') && muzzleBlock.includes('profile.variant'), 'structural family branching'),
+  check('contacts consume approach and normal', projectileBlock.includes('p.approach') && projectileBlock.includes('p.normal'), 'directional event receipt'),
+  check('contacts use pooled directional streaks', projectileBlock.includes('_spawnProjectileTrailStreak'), 'instanced streak pool'),
+  check('physics publishes contact direction', physics.includes('approach,') && physics.includes('normal,'), 'projectileHitPayload'),
+  check('damage routing preserves contact direction', damage.includes('approach: packet.hit') && damage.includes('normal: packet.hit'), 'combat:damage receipt'),
+  check('beam body is persistent and bounded', beams.includes('class PersistentCombatBeamPool') && beams.includes('InstancedMesh'), 'two instanced meshes'),
+  check('beam contact retargets and throttles', damageBlock.includes('_combatBeams.retarget') && damageBlock.includes('_beamDamageCueNext'), 'sustained contact path'),
+  check('shield break uses attached tears without an annulus', shieldBreak.includes('_spawnProjectileTrailStreak') && !shieldBreak.includes('SPR_RING') && !shieldBreak.includes('SPR_FRESNEL'), 'fixed tangent tears'),
+  check('armor and hull material layers remain distinct', damageBlock.includes('p.armorHit') && damageBlock.includes('p.hullHit') && damageBlock.includes('SPR_PUFF'), 'metal ejecta versus cooling residue'),
+  check('player damage camera response retained', damageBlock.includes("camera:shake"), 'camera response'),
+];
 
 mkdirSync(OUT, { recursive: true });
 const report = {
-  schema: 'spaceface.combatHitVfxVerify.v1',
+  schema: 'spaceface.combatHitVfxVerify.v2',
   pack: 'combat_hit_vfx',
-  rank: 5,
-  cycles: cycleResults,
-  cyclesPassed: cycleResults.filter((c) => c.ok).length,
+  profiles,
+  validation,
   failures,
   ok: failures.length === 0,
 };
-writeFileSync(REPORT, JSON.stringify(report, null, 2));
-writeFileSync(resolve(OUT, 'combat-hit-pack-note.txt'), [
-  'Combat hit VFX pack (rank 5)',
-  `cycles: ${report.cyclesPassed}/10 ok=${report.ok}`,
-  'States: shield hit, shield break, armor sparks, hull smoke/embers, player camera kick',
-].join('\n'));
+writeFileSync(REPORT, `${JSON.stringify(report, null, 2)}\n`);
 
 if (!report.ok) {
   console.error('FAIL', failures);
   process.exit(1);
 }
-console.log(JSON.stringify({ ok: true, cycles: report.cyclesPassed, report: REPORT }, null, 2));
+console.log(JSON.stringify({ ok: true, checks: validation.length, modes: [...modes], report: REPORT }, null, 2));

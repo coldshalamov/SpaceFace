@@ -145,8 +145,10 @@ assert.match(main, /runtime:loading/, 'Loading must use a named time-effects req
 assert.match(main, /runtime:start-failed/, 'Startup failure must use a named time-effects request');
 assert.match(main, /const runTransitionGuard\s*=\s*createRunTransitionGuard\(\);/,
   'Browser/Electron must share one run-transition generation owner');
-assert.match(main, /helpers\.beginLoadedGameTransition\s*=\s*\(\)\s*=>\s*runTransitionGuard\.begin\('load'\);/,
+assert.match(main, /helpers\.beginLoadedGameTransition\s*=\s*\(\)\s*=>\s*(?:runTransitionGuard\.begin\('load'\)|\{[\s\S]{0,800}?return\s+runTransitionGuard\.begin\('load'\);[\s\S]{0,80}?\});/,
   'Save restore must reserve async route ownership before lifecycle events can reenter');
+assert.match(main, /beginLoadedGameTransition[\s\S]{0,500}?game:loadingProgress/,
+  'Save restore must publish a visible loading state before destructive restore work begins');
 assert.match(
   main,
   /bus\.on\('game:new',[\s\S]*const startNewGameTransition\s*=\s*\(\)\s*=>\s*\{[\s\S]*runTransitionGuard\.begin\('new-game'\)[\s\S]*registry\.get\('save'\)[\s\S]*deferRunTransition\(startNewGameTransition\)[\s\S]*startNewGameTransition\(\)/,

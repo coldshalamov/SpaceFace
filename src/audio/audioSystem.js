@@ -629,7 +629,9 @@ export const audio = {
 
     // --- event subscriptions (ARCHITECTURE §4.4 names + payloads) ---
     bus.on('combat:fire', (p) => this._onFire(p));
-    bus.on('combat:beamStop', (p) => this._stopBeam(p && p.ownerId));
+    bus.on('combat:beamStop', (p) => {
+      if (!p || p.ownerStillFiring !== true) this._stopBeam(p && p.ownerId);
+    });
     bus.on('projectile:hit', (p) => this._onHit(p, false));
     bus.on('combat:damage', (p) => this._onDamage(p));
     bus.on('collision', (p) => this._onCollision(p));

@@ -1,5 +1,6 @@
 // VFX system (ARCHITECTURE §2.4, §4.4; design/specs/10). A purely-cosmetic presentation layer.
-// It owns a pooled GPU particle cloud (one THREE.Points) plus a pool of additive Sprites, and is
+// It owns a pooled GPU particle cloud, three instanced additive sprite buckets, and one sorted
+// normal-blended smoke bucket, and is
 // driven entirely by event-bus events — it NEVER writes sim state. update(frameDt) is called every
 // animation frame inside renderFrame (after render.draw), so it integrates/ages pools and the new
 // state is drawn on the following frame. Determinism is irrelevant here: VFX may use Math.random()
@@ -10,7 +11,7 @@
 //   Lifecycle:       init (L88) · inspect/diagnostics (L126) · _initPools (L147) · _subscribe (L256) · update (L1928)
 //   Spawn helpers:   _spawnParticle (L318) · _spawnSprite (L337) · _activate/_retireParticle (L371/377) · _activate/_retireSprite (L394/399)
 //   Combat effects:  _onFire/muzzle flash (L590) · _onProjectileHit (L635) · _onDamage/shield ripple (L676) · _impactSparks (L746)
-//   Explosions:      _onKilled (L896) · _onDestroyed (L909) · _explode (L920) · _explodeSmall (L1008) · _explodeCapital (L1042)
+//   Explosions:      _onKilled · _onDestroyed · _queueExplosion · _emitExplosionPhase
 //   Mining:          _initMiningBeam (L1072) · _onMiningStart/Stop (L1112/1128) · _updateMiningBeam (L1136) · _onMiningTick (L1607) · _onMiningYield (L1649) · _initSeamMarkers (L1397)
 //   Tether:          _initTetherCable (L1202) · _updateTetherCable (L1278) · _onTetherSnap (L1461) · _onTetherLatch (L1483) · _initArcPreview/_updateArcPreview (rung 12, after _updateTetherCable)
 //   Cruise/jump:     _onCruiseCharging/Engaged/Dropped · _onDirectTravelPresentationCue · _spawnTravelVectorWake
@@ -23,7 +24,7 @@
 //   Event→handler wiring: see _subscribe (L256). Full event routing map: docs/EVENT_ROUTING.md
 // ── end index ──
 import * as THREE from 'three';
-import { createEnergyVolume, createPlumeVolume, createMasslineRibbonMaterial, updateEnergyMaterial } from './energy/energyMaterials.js';
+import { createEnergyVolume, createMasslineRibbonMaterial, updateEnergyMaterial } from './energy/energyMaterials.js';
 import {
   buildParticleTrailMaterial,
   commitTrailStreakInstances,
@@ -38,37 +39,50 @@ import {
   resolveEngineProfile,
   resolveMuzzleProfile,
   resolveProjectileTrailProfile,
+  resolveImpactPresentationProfile,
   buildProjectileTrailSpawnPlan,
+  createProjectileTrailSpawnPlanScratch,
   assertProjectileTrailProfileContracts,
 } from './vfxProfiles.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
+import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
+import { ContinuousPlumeSystem } from './thruster/systems/continuousPlume.js';
+import { RcsImpulseSystem } from './thruster/systems/rcsImpulse.js';
+import {
+  KESTREL_MAIN_PLUME_RECIPE,
+  KESTREL_RCS_RECIPE,
+} from './thruster/recipes/kestrelRecipes.js';
+import { PersistentCombatBeamPool } from './combat/persistentBeams.js';
+import {
+  explosionPattern01,
+  explosionPatternSigned,
+  PhasedExplosionLifecycle,
+} from './combat/phasedExplosions.js';
+import {
+  commitInstancedSpriteBuckets,
+  createInstancedSpriteBuckets,
+  resetInstancedSpriteBuckets,
+  writeInstancedSprite,
+  writeInstancedSpriteFields,
+} from './combat/instancedSpritePool.js';
 import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJets.js';
-import { computeFlightTelemetry } from '../core/flight/flightTelemetry.js';
 import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
+const EMPTY_PROJECTILE_DATA = Object.freeze({});
+const PROJECTILE_TRAIL_DIAG_CLASSES = Object.freeze([
+  'kinetic', 'rail', 'missile', 'plasma', 'pulse', 'emp', 'other',
+]);
 
 // ── RCS truth (ledger RC-3) ──────────────────────────────────────────────────────────────────
-// Attitude and translation jets are resolved from the SIGNED actuator demand the flight computer
-// publishes (src/core/flight/flightTelemetry.js `actuators`), never from input keys. See
-// ./rcsJets.js for the sign convention and the bow/stern resolver.
-//
-// Vocabulary note: RCS is deliberately a SMALLER language than the main plume. The main drive owns
-// the authored nozzle and the "liquid blue fire" plume volume; these are cold-gas puffs — short,
-// small, low-alpha, pale teal fading to hull shadow. No white core, no additive bloom bait.
-const RCS_CORE = '#a8c8c6';
-const RCS_TAIL = '#16222a';
-const RCS_MIN_INTENSITY = 0.06;
-// Per-frame ceiling on how many NON-player ships pay for an actuator resolve. The player is always
-// resolved and is not counted here — its block is computed by flightV3 each tick and simply read.
-const RCS_NPC_RESOLVE_BUDGET = 6;
-
+// Signed actuator demand selects the correct nozzles. The pooled production recipe owns their
+// directional shape, reduced-motion behavior, and lifecycle; no second particle-puff owner exists.
 // The event-light pool size is part of the shader-program cache key (three bakes visible light
-// count into every program). precompile.js must warm shaders against exactly this count, so the
-// size and its quality gate live here as the single source of truth.
+// count into every program). Keep the visible-light count invariant across live settings changes;
+// accessibility scales intensity at the event choke point instead of adding/removing lights and
+// forcing a whole-scene shader recompile.
 export const EVENT_LIGHT_POOL_SIZE = 6;
-export function eventLightPoolSizeFor(video) {
-  if (video && (video.motionReduce || video.particleQuality === 'low')) return 0;
+export function eventLightPoolSizeFor(_video) {
   return EVENT_LIGHT_POOL_SIZE;
 }
 
@@ -95,6 +109,51 @@ function getExternalTexture(path) {
   return tex;
 }
 
+// Thruster masks are authored as linear flow/envelope data, not display color. Keeping them in a
+// separate cache avoids the old external-texture helper's sRGB transform and gives the shader the
+// exact deterministic bytes generated by scripts/generate-thruster-textures.mjs.
+const _thrusterTexVfx = new Map();
+function getThrusterTexture(id) {
+  if (_thrusterTexVfx.has(id)) return _thrusterTexVfx.get(id);
+  if (typeof document === 'undefined' && typeof Image === 'undefined') {
+    const tex = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, THREE.RGBAFormat);
+    tex.name = `sf-thruster-test:${id}`;
+    tex.colorSpace = THREE.NoColorSpace;
+    tex.needsUpdate = true;
+    tex.userData.spacefaceThrusterTexture = true;
+    tex.userData.headlessPlaceholder = true;
+    _thrusterTexVfx.set(id, tex);
+    return tex;
+  }
+  const tex = new THREE.TextureLoader().load(
+    `assets/fx/thruster/${id}.png`,
+    () => { tex.needsUpdate = true; },
+    undefined,
+    () => { tex.userData.spacefaceLoadFailed = true; },
+  );
+  tex.name = `sf-thruster:${id}`;
+  tex.colorSpace = THREE.NoColorSpace;
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.anisotropy = 4;
+  tex.userData.spacefaceThrusterTexture = true;
+  _thrusterTexVfx.set(id, tex);
+  return tex;
+}
+
+function loadKestrelThrusterTextures() {
+  const textures = Object.create(null);
+  for (const recipe of [KESTREL_MAIN_PLUME_RECIPE, KESTREL_RCS_RECIPE]) {
+    for (const layer of recipe.layers) {
+      const id = layer.texture && layer.texture.id;
+      if (id && !textures[id]) textures[id] = getThrusterTexture(id);
+    }
+  }
+  return textures;
+}
+
 // ---- pool caps by particle-quality setting (spec: low/med/high -> 1500/3000/4000) ----
 const PARTICLE_CAP = { low: 1500, med: 3000, medium: 3000, high: 4000 };
 const SPRITE_CAP = 256;
@@ -106,6 +165,7 @@ const SPR_FLASH = 0;   // punch-out flash (muzzle, impact, explosion core): scal
 const SPR_RING = 1;    // expanding shockwave / shield ripple ring: radius eases out, opacity fades
 const SPR_PUFF = 2;    // soft drifting puff (dust, smoke): gentle grow + drift, opacity fades
 const SPR_FRESNEL = 3; // shield-hit fresnel ripple: bright rim ring that snaps to size then fades
+const SPR_COMBUSTION = 4; // asymmetric flame body: irregular edge, directional aspect, fast core-to-sheath fade
 
 // Per-quality spawn multiplier so "punchier" effects scale with the particle budget instead of
 // blindly multiplying spawns against a 1500-particle low cap (where recycle is O(cap) per spawn).
@@ -114,6 +174,7 @@ const BOOST_BURST_NOZZLE_CLEARANCE = 0.9;
 const TRAIL_NOZZLE_CLEARANCE = 0.35;
 const ENERGY_PLUME_NOZZLE_CLEARANCE = 1.15;
 const ENERGY_PLUME_WIDTH_CLEARANCE = 1.05;
+const TETHER_MARKER_SURFACE_EPS = 0.12;
 
 // Engine-trail relevance gating (quality-preserving: far/offscreen NPCs emit less; player/target stay full).
 const TRAIL_TIER = Object.freeze({ FULL: 'full', NORMAL: 'normal', REDUCED: 'reduced', SKIP: 'skip' });
@@ -163,13 +224,31 @@ function emptyTrailBudgetDiag() {
 }
 
 function emptyProjectileTrailDiag() {
-  return {
+  const diag = {
     candidates: 0,
     particlesSpawned: 0,
     streaksSpawned: 0,
     spritesSpawned: 0,
     byClass: {},
   };
+  for (let i = 0; i < PROJECTILE_TRAIL_DIAG_CLASSES.length; i++) {
+    diag.byClass[PROJECTILE_TRAIL_DIAG_CLASSES[i]] = { particles: 0, streaks: 0, sprites: 0 };
+  }
+  return diag;
+}
+
+function resetProjectileTrailDiag(diag) {
+  diag.candidates = 0;
+  diag.particlesSpawned = 0;
+  diag.streaksSpawned = 0;
+  diag.spritesSpawned = 0;
+  for (let i = 0; i < PROJECTILE_TRAIL_DIAG_CLASSES.length; i++) {
+    const totals = diag.byClass[PROJECTILE_TRAIL_DIAG_CLASSES[i]];
+    totals.particles = 0;
+    totals.streaks = 0;
+    totals.sprites = 0;
+  }
+  return diag;
 }
 
 function emptyVfxSubsystemDiag() {
@@ -180,6 +259,8 @@ function emptyVfxSubsystemDiag() {
     miningBeam: 0,
     tetherCable: 0,
     seamMarkers: 0,
+    combatBeams: 0,
+    explosions: 0,
     energy: 0,
     particles: 0,
     sprites: 0,
@@ -211,10 +292,31 @@ export const vfx = {
     this._socketForwardQuat = new THREE.Quaternion();
     this._socketReferenceForward = new THREE.Vector3(-1, 0, 0);
     this._driveScratch = { drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0 };
+    this._productionPlumeSockets = [
+      { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
+      { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
+      { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
+      { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
+    ];
+    this._productionPlumeSocketView = this._productionPlumeSockets.slice(0, 1);
+    this._productionThrusterA11y = {
+      reducedMotion: false,
+      reducedFlash: false,
+      lowQuality: false,
+      qualityTier: 'high',
+    };
+    this._productionThrusterOpts = { boost: 0, a11y: this._productionThrusterA11y };
+    this._rcsOrigins = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    this._rcsAxes = [[1, 0, 0], [-1, 0, 0], [1, 0, 0], [-1, 0, 0]];
     this._zeroPos = { x: 0, z: 0 };
     // M2: VFX particle/sprite/trail XZ is frame-local; spawn inputs stay galactic-global.
     this._frameMembrane = createRenderFrameMembrane().reset(ctx.state);
     this._spawnLocalXZ = { x: 0, z: 0 };
+    this._combatBeamLocalizer = (x, z, out) => this._toLocalXZ(x, z, out);
+    this._beamDamageCueNext = new Map();
+    this._explosions = new PhasedExplosionLifecycle({ capacity: 24 });
+    this._explosionEmitter = (phase, entry) => this._emitExplosionPhase(phase, entry);
+    this._flashAccessibilityScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0 };
     this._entityLocalXZ = { x: 0, z: 0 };
     // Renderer prepareFrame calls this on frameOriginSeq change (no effect erasure).
     if (ctx.state && ctx.state.render) {
@@ -239,6 +341,7 @@ export const vfx = {
     this._projectileListRef = null;
     this._projectileListLength = -1;
     this._projectileTrailDiag = emptyProjectileTrailDiag();
+    this._projectileTrailPlanScratch = createProjectileTrailSpawnPlanScratch();
     this._projectileTrailsWereRelevant = false;
     this._seamMarkersWereRelevant = false;
     this._energyPlumeWasRelevant = false;
@@ -290,16 +393,21 @@ export const vfx = {
     };
     add(this._points);
     add(this._trailStreakPool && this._trailStreakPool.mesh);
-    for (const sprite of this._spritePool || []) add(sprite);
+    add(this._spriteBatches && this._spriteBatches.glow.mesh);
+    add(this._spriteBatches && this._spriteBatches.ring.mesh);
+    add(this._spriteBatches && this._spriteBatches.smoke.mesh);
+    add(this._spriteBatches && this._spriteBatches.combustion.mesh);
     if (this._miningBeam) { add(this._miningBeam.mesh); add(this._miningBeam.glow); }
     if (this._tetherCable) {
       for (const key of ['mesh', 'glow', 'band', 'anchor', 'anchorCore', 'targetHalo']) add(this._tetherCable[key]);
     }
     add(this._arcPreview && this._arcPreview.mesh);
     add(this._seamMarkers && this._seamMarkers.mesh);
+    add(this._combatBeams && this._combatBeams.group);
     if (this._energy) {
       add(this._energy.ribbon);
-      for (const plume of this._energy.plumes || []) add(plume);
+      add(this._energy.plumeSystem && this._energy.plumeSystem.group);
+      add(this._energy.rcsSystem && this._energy.rcsSystem.group);
     }
     for (const trail of this._ribbonTrails?.values?.() || []) add(trail.getMesh?.());
     return roots;
@@ -383,6 +491,7 @@ export const vfx = {
     this._initTetherCable();
     this._initArcPreview();
     this._initSeamMarkers();
+    this._initCombatBeams();
     // ---- GPU point cloud ----
     const geo = new THREE.BufferGeometry();
     const positions = new Float32Array(cap * 3);
@@ -441,10 +550,13 @@ export const vfx = {
     for (let i = 0; i < cap; i++) this._freeParticles[i] = cap - 1 - i;
     this._freeParticleCount = cap;
 
-    // ---- discrete sprite pool (flash / ring / puff / fresnel) ----
-    // Two shared textures: a filled radial glow (flash/puff) and a hollow ring (shockwave/fresnel).
+    // ---- discrete sprite pool (flash / ring / smoke / fresnel) ----
+    // Smoke owns an irregular alpha field and ordinary blending; it must not reuse the additive
+    // circular glow card used by energy flashes.
     const tex = makeGlowTexture();
     const ringTex = makeRingTexture();
+    const smokeTex = makeSmokeTexture();
+    const combustionTex = makeCombustionTexture();
     this._glowTex = tex;
     this._ringTex = ringTex;
     this._trailStreakPool = initTrailStreakPool(scene, TRAIL_STREAK_CAP);
@@ -452,7 +564,7 @@ export const vfx = {
     for (let i = 0; i < TRAIL_STREAK_CAP; i++) {
       this._ts.push({
         alive: false, age: 0, life: 1, size0: 1, size1: 1, op0: 1,
-        x: 0, y: 0, z: 0, vx: 0, vz: 0, stretch: 3.2, r: 1, g: 1, b: 1,
+        x: 0, y: 0, z: 0, vx: 0, vz: 0, ax: 1, az: 0, stretch: 3.2, r: 1, g: 1, b: 1,
       });
     }
     this._trailStreakColor = new THREE.Color();
@@ -468,23 +580,22 @@ export const vfx = {
     // Thruster flame sprites use the procedural glow texture (makeGlowTexture above). The
     // assets/fx/*.jpg contact sheets are authoring-only and must not be live-referenced —
     // check:asset-reachability rejects them outside bundled roots.
-    this._spritePool = [];
     this._spr = []; // parallel CPU state
+    this._spriteBatches = createInstancedSpriteBuckets(
+      scene, SPRITE_CAP, tex, ringTex, smokeTex, combustionTex,
+    );
     for (let i = 0; i < SPRITE_CAP; i++) {
-      const glowMaterial = new THREE.SpriteMaterial({ map: tex, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true, transparent: true, opacity: 0 });
-      const ringMaterial = new THREE.SpriteMaterial({ map: ringTex, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true, transparent: true, opacity: 0 });
-      const s = new THREE.Sprite(glowMaterial);
-      s.userData.glowMaterial = glowMaterial;
-      s.userData.ringMaterial = ringMaterial;
-      s.visible = false;
-      s.frustumCulled = false;
-      s.renderOrder = 11;
-      scene.add(s);
-      this._spritePool.push(s);
-      this._spr.push({ alive: false, kind: SPR_FLASH, age: 0, life: 1, size0: 1, size1: 1, op0: 1, op1: 0, x: 0, y: 0, z: 0, vx: 0, vz: 0, roll: 0 });
+      this._spr.push({
+        alive: false, kind: SPR_FLASH, age: 0, life: 1, size0: 1, size1: 1,
+        op0: 1, op1: 0, x: 0, y: 0, z: 0, vx: 0, vz: 0, roll: 0, aspect: 1,
+        r: 1, g: 1, b: 1,
+      });
     }
     this._sHead = 0;
     this._activeSprites = new Int32Array(SPRITE_CAP);
+    // Normal-blended smoke must be written far-to-near. Keep its ordering workspace bounded and
+    // resident so dense explosions do not allocate or sort unrelated additive sprite families.
+    this._smokeSpriteOrder = new Int32Array(SPRITE_CAP);
     this._activeSpritePos = new Int32Array(SPRITE_CAP);
     this._activeSpritePos.fill(-1);
     this._freeSprites = new Int32Array(SPRITE_CAP);
@@ -588,6 +699,7 @@ export const vfx = {
     add('tether:attached', (p) => this._onTetherLatch(p));
     add('tether:broken', (p) => this._onTetherSnap(p));
     add('combat:fire', (p) => this._onFire(p));
+    add('combat:beamStop', (p) => this._onBeamStop(p));
     add('projectile:hit', (p) => this._onProjectileHit(p));
     add('combat:damage', (p) => this._onDamage(p));
     add('collision', (p) => this._onCollision(p));
@@ -595,8 +707,8 @@ export const vfx = {
     add('entity:destroyed', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onDestroyed(p); });
     add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
     add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._markEntityCacheDirty(); });
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); });
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); });
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       if (p.key === 'particleQuality' || p.key == null) this._syncParticleQuality();
@@ -694,17 +806,12 @@ export const vfx = {
         }
       }
       // Sprites
-      if (this._spr && this._spritePool) {
+      if (this._spr) {
         for (let i = 0; i < this._spr.length; i++) {
           const st = this._spr[i];
           if (!st || !st.alive) continue;
           st.x += ox;
           st.z += oz;
-          const spr = this._spritePool[i];
-          if (spr) {
-            spr.position.x += ox;
-            spr.position.z += oz;
-          }
         }
       }
       // Trail streaks
@@ -763,8 +870,26 @@ export const vfx = {
     this._alive[i] = 1;
   },
 
-  _spawnSprite(kind, x, y, z, life, size0, size1, op0, op1, color, vx, vz) {
+  _spawnSprite(kind, x, y, z, life, size0, size1, op0, op1, color, vx, vz, aspect = 1, roll = null) {
     if (!this._scene) return null;
+    if (kind === SPR_FLASH || kind === SPR_COMBUSTION) {
+      const authored = this._flashAccessibilityScratch;
+      authored.life = life;
+      authored.size0 = size0;
+      authored.size1 = size1;
+      authored.opacity0 = op0;
+      authored.opacity1 = op1;
+      applyFlashAccessibility(
+        authored,
+        resolveVfxAccessibilityProfile(this.state && this.state.settings),
+        authored,
+      );
+      life = authored.life;
+      size0 = authored.size0;
+      size1 = authored.size1;
+      op0 = authored.opacity0;
+      op1 = authored.opacity1;
+    }
     const n = SPRITE_CAP;
     let i;
     if (this._freeSpriteCount > 0) i = this._freeSprites[--this._freeSpriteCount];
@@ -777,19 +902,14 @@ export const vfx = {
     st.alive = true; st.kind = kind; st.age = 0; st.life = life;
     st.size0 = size0; st.size1 = size1; st.op0 = op0; st.op1 = op1;
     st.x = local.x; st.y = y || 0; st.z = local.z; st.vx = vx || 0; st.vz = vz || 0;
-    st.roll = Math.random() * Math.PI * 2;
+    st.roll = Number.isFinite(roll) ? roll : Math.random() * Math.PI * 2;
+    st.aspect = Math.max(0.35, Math.min(3.5, Number(aspect) || 1));
 
-    const spr = this._spritePool[i];
-    const wantRing = (kind === SPR_RING || kind === SPR_FRESNEL);
-    const wantMaterial = wantRing ? spr.userData.ringMaterial : spr.userData.glowMaterial;
-    if (spr.material !== wantMaterial) spr.material = wantMaterial;
     if (!wasAlive) this._activateSprite(i);
-    spr.visible = true;
-    spr.material.color.set(color);
-    spr.material.opacity = op0;
-    spr.material.rotation = st.roll;
-    spr.position.set(local.x, y || 0, local.z);
-    spr.scale.setScalar(size0);
+    this._ctmp.set(color);
+    st.r = this._ctmp.r;
+    st.g = this._ctmp.g;
+    st.b = this._ctmp.b;
     return st;
   },
 
@@ -803,31 +923,39 @@ export const vfx = {
     this._tsHead = (i + 1) % n;
     const st = this._ts[i];
     const wasAlive = st.alive;
+    const width = Math.max(0.04, size0);
+    const length = Math.max(0.5, size1);
+    const baseSize = width / 0.42;
     const local = this._toLocalXZ(x, z, this._spawnLocalXZ);
     st.alive = true;
     st.age = 0;
     st.life = life;
-    st.size0 = size0;
-    st.size1 = size1;
+    st.size0 = baseSize;
+    st.size1 = baseSize;
     st.op0 = op0;
     st.x = local.x;
     st.y = y || 0;
     st.z = local.z;
     st.vx = vx || 0;
     st.vz = vz || 0;
-    st.stretch = 3.2;
+    st.ax = st.vx;
+    st.az = st.vz;
+    if (Math.hypot(st.ax, st.az) < 1e-6) { st.ax = 1; st.az = 0; }
+    st.stretch = length / baseSize;
     this._trailStreakColor.set(color);
     st.r = this._trailStreakColor.r;
     st.g = this._trailStreakColor.g;
     st.b = this._trailStreakColor.b;
     if (!wasAlive) this._activateTrailStreak(i);
-    this._writeTrailStreakInstance(i, this._activeTrailStreakPos[i], size0, op0);
+    this._writeTrailStreakInstance(i, this._activeTrailStreakPos[i], baseSize, op0);
     this._commitTrailStreakInstances();
     return st;
   },
 
   // Projectile rail wisps — thin constant-width streak; not gated on engineTrails setting.
-  _spawnProjectileTrailStreak(x, y, z, life, width, length, op0, color, vx, vz) {
+  _spawnProjectileTrailStreak(
+    x, y, z, life, width, length, op0, color, vx, vz, axisX = null, axisZ = null,
+  ) {
     if (!this._scene || !this._trailStreakPool) return null;
     const n = TRAIL_STREAK_CAP;
     let i;
@@ -851,6 +979,9 @@ export const vfx = {
     st.z = local.z;
     st.vx = vx || 0;
     st.vz = vz || 0;
+    st.ax = Number.isFinite(axisX) ? axisX : st.vx;
+    st.az = Number.isFinite(axisZ) ? axisZ : st.vz;
+    if (Math.hypot(st.ax, st.az) < 1e-6) { st.ax = 1; st.az = 0; }
     st.stretch = len / baseSize;
     this._trailStreakColor.set(color);
     st.r = this._trailStreakColor.r;
@@ -887,7 +1018,7 @@ export const vfx = {
   _writeTrailStreakInstance(i, packedIndex, scale, opacity) {
     const s = this._ts[i];
     updateTrailStreakInstance(this._trailStreakPool, packedIndex, {
-      x: s.x, y: s.y, z: s.z, vx: s.vx, vz: s.vz,
+      x: s.x, y: s.y, z: s.z, vx: s.ax, vz: s.az,
       width: scale * 0.42,
       length: scale * (s.stretch || 3.2),
       opacity,
@@ -935,11 +1066,6 @@ export const vfx = {
     const st = this._spr[i];
     if (!st || !st.alive) return;
     st.alive = false;
-    const spr = this._spritePool[i];
-    if (spr) {
-      spr.visible = false;
-      spr.material.opacity = 0;
-    }
     const pos = this._activeSpritePos[i];
     if (pos >= 0) {
       const lastPos = --this._liveSpriteCount;
@@ -1042,6 +1168,7 @@ export const vfx = {
         if (e && e.view) {
           delete e.view.__vfxTrailSocket;
           delete e.view.__vfxTrailSockets;
+          delete e.view.__vfxRcsSockets;
         }
       }
       return;
@@ -1050,6 +1177,7 @@ export const vfx = {
     if (e && e.view) {
       delete e.view.__vfxTrailSocket;
       delete e.view.__vfxTrailSockets;
+      delete e.view.__vfxRcsSockets;
     }
   },
 
@@ -1085,12 +1213,10 @@ export const vfx = {
     if (this._socketForward.lengthSq() < 1e-8) this._socketForward.set(-1, 0, 0);
     this._socketForward.normalize().applyQuaternion(this._socketWorldQuat).normalize();
     // Mesh matrix is frame-local; spawn helpers expect galactic-global XZ (convert once here).
-    const globalXZ = this._frameMembrane
-      ? this._frameMembrane.toGlobal(
-        { x: this._socketWorldPos.x, z: this._socketWorldPos.z },
-        this._entityLocalXZ,
-      )
-      : { x: this._socketWorldPos.x, z: this._socketWorldPos.z };
+    const globalXZ = this._entityLocalXZ;
+    globalXZ.x = this._socketWorldPos.x;
+    globalXZ.z = this._socketWorldPos.z;
+    if (this._frameMembrane) this._frameMembrane.toGlobal(globalXZ, globalXZ);
     return this._writeTrailSocketPose(
       globalXZ.x,
       this._socketWorldPos.y,
@@ -1147,6 +1273,21 @@ export const vfx = {
     return EMPTY_TRAIL_SOCKETS;
   },
 
+  _rcsSocketObjects(e) {
+    const view = e && e.view;
+    const root = view && view.root;
+    if (!root || typeof root.getObjectByName !== 'function') return null;
+    let cache = view.__vfxRcsSockets;
+    if (!cache || cache.root !== root) {
+      cache = view.__vfxRcsSockets = {
+        root,
+        port: root.getObjectByName('SOCKET_RCS_Port') || null,
+        starboard: root.getObjectByName('SOCKET_RCS_Starboard') || null,
+      };
+    }
+    return cache;
+  },
+
   _trailSocketWorldPos(e) {
     return this._trailSocketWorldPose(e);
   },
@@ -1154,10 +1295,18 @@ export const vfx = {
   // -------------------------------------------------------------------------
   // Event handlers (each pushes pooled visuals; no per-event allocation of GPU objects)
   // -------------------------------------------------------------------------
+  _initCombatBeams() {
+    if (!this._scene || this._combatBeams) return;
+    this._combatBeams = new PersistentCombatBeamPool(THREE, { maxBeams: 16, timeoutS: 0.14 });
+    this._scene.add(this._combatBeams.group);
+  },
+
   _onFire(p) {
     if (!this._scene) return;
-    let origin = (p.origin && typeof p.origin.x === 'number') ? p.origin : this._posFrom(p, p.ownerId);
-    if (this.helpers.socketWorldPos && p.ownerId != null) {
+    let origin = (p.from && typeof p.from.x === 'number')
+      ? p.from
+      : ((p.origin && typeof p.origin.x === 'number') ? p.origin : this._posFrom(p, p.ownerId));
+    if (!origin && this.helpers.socketWorldPos && p.ownerId != null) {
       const sock = this.helpers.socketWorldPos(p.ownerId, 'SOCKET_Weapon_Front');
       if (sock) origin = sock;
     }
@@ -1165,6 +1314,14 @@ export const vfx = {
     const base = this._dirAngle(p.dir, p.ownerId);
     const owner = this._ent(p.ownerId);
     const profile = this._muzzleProfile(p, owner);
+    if (p.continuous === true && p.to && this._combatBeams) {
+      const startsBefore = this._combatBeams.startCount;
+      if (!this._combatBeams.upsert(p, this._t, profile)) return;
+      // A sustained beam gets one source ignition. The pool's actual inactive→active transition is
+      // authoritative, so malformed or compatibility receipts cannot strobe merely by omitting
+      // phase:'update'.
+      if (this._combatBeams.startCount === startsBefore) return;
+    }
     const burst = this._burst || 1;
     switch (profile.lane) {
       case 'beam': this._spawnMuzzleBeam(origin, base, profile, burst); break;
@@ -1174,27 +1331,49 @@ export const vfx = {
     }
   },
 
+  _onBeamStop(p) {
+    if (this._combatBeams) this._combatBeams.stop(p);
+    if (p && p.ownerId != null) {
+      const prefix = `${String(p.ownerId)}:`;
+      for (const key of this._beamDamageCueNext.keys()) {
+        if (key.startsWith(prefix)) this._beamDamageCueNext.delete(key);
+      }
+    }
+  },
+
   _spawnMuzzleBallistic(origin, base, profile, burst) {
     const sm = profile.sizeMul || 1;
     const col = profile.accentColor || '#ffcc88';
     const mx = origin.x + Math.cos(base) * 1.5, mz = origin.z + Math.sin(base) * 1.5;
-    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.08 * sm, 3.2 * sm, 5.8 * sm, 1.0, 0.0, profile.coreColor || '#ffffff', 0, 0);
-    this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.12 * sm, 4.6 * sm, 8.4 * sm, 0.92, 0.0, col, 0, 0);
-    if (profile.ring) {
-      this._spawnSprite(SPR_RING, origin.x, 0, origin.z, 0.10 * sm, 2.2 * sm, 6.5 * sm, 0.55, 0.0, col, 0, 0);
+    const rail = profile.family === 'rail';
+    const siege = profile.variant === 'siege-lance';
+    if (rail) {
+      const length = (siege ? 8.5 : 5.4) * sm;
+      this._spawnProjectileTrailStreak(mx, 0.28, mz, siege ? 0.10 : 0.075,
+        (siege ? 0.38 : 0.27) * sm, length * 1.22, 0.96, '#f4fbff',
+        Math.cos(base) * 24, Math.sin(base) * 24);
+      for (const offset of [-0.24, 0.24]) {
+        const a = base + offset;
+        this._spawnProjectileTrailStreak(origin.x, 0.18, origin.z, 0.09,
+          0.17 * sm, 2.8 * sm, 0.58, '#8ecfff', Math.cos(a) * 18, Math.sin(a) * 18);
+      }
+    } else {
+      this._spawnProjectileTrailStreak(mx, 0.16, mz, 0.085 * sm, 0.22 * sm, 3.2 * sm,
+        0.72, profile.coreColor || '#ffffff', Math.cos(base) * 20, Math.sin(base) * 20);
     }
-    if (profile.arc) {
-      this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.06 * sm, 2.0 * sm, 5.0 * sm, 0.7, 0.0, '#a8d8ff', 0, 0);
-    }
-    this._flashLight({ x: origin.x, z: origin.z }, profile.coreColor || '#ffffff', 4.8 * sm, 12, 170);
-    this._flashLight({ x: mx, z: mz }, col, 2.8 * sm, 14, 95);
-    this._c0.set(profile.coreColor || '#ffffff'); this._c1.set(col);
-    const n = Math.max(3, Math.round(9 * burst * (profile.sparkMul || 1)));
-    const spread = profile.rapid ? 0.38 : 0.52;
-    for (let k = 0; k < n; k++) {
-      const a = base + (Math.random() - 0.5) * spread;
-      const sp = 38 + Math.random() * 48;
-      this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.16, 2.0, 0.0, this._c0, this._c1, 3.2, 0, 0);
+    this._flashLight({ x: origin.x, z: origin.z }, profile.coreColor || '#ffffff', (rail ? 4.2 : 2.4) * sm, 12, rail ? 150 : 78);
+    // Mechanical muzzles eject only a few lateral casing glints. The previous forward orange fan
+    // made every ordinary shot look like the same detached impact explosion.
+    if (!rail) {
+      this._c0.set('#fff0c8'); this._c1.set('#50463b');
+      const side = base + Math.PI * 0.5;
+      const casingCount = Math.max(1, Math.round(2 * burst * (profile.rapid ? 0.6 : 1)));
+      for (let k = 0; k < casingCount; k++) {
+        const a = side + (Math.random() - 0.5) * 0.34;
+        const sp = 12 + Math.random() * 16;
+        this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp,
+          0.18, 0.85, 0.08, this._c0, this._c1, 2.8, 0, 0);
+      }
     }
   },
 
@@ -1202,56 +1381,58 @@ export const vfx = {
     const sm = profile.sizeMul || 1;
     const col = profile.accentColor || '#39d0ff';
     const mx = origin.x + Math.cos(base) * 1.6, mz = origin.z + Math.sin(base) * 1.6;
-    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.07 * sm, 3.8 * sm, 7.2 * sm, 1.0, 0.0, profile.coreColor || '#e8f8ff', 0, 0);
-    this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.11 * sm, 5.2 * sm, 9.8 * sm, 0.88, 0.0, col, 0, 0);
-    this._spawnSprite(SPR_RING, origin.x, 0, origin.z, 0.08 * sm, 1.8 * sm, 5.5 * sm, 0.62, 0.0, col, 0, 0);
-    this._flashLight({ x: origin.x, z: origin.z }, profile.lightColor || col, 5.2 * sm, 11, 185);
-    this._c0.set(profile.coreColor || '#ffffff'); this._c1.set(col);
-    const n = Math.max(4, Math.round(8 * burst * (profile.sparkMul || 1)));
-    for (let k = 0; k < n; k++) {
-      const a = base + (Math.random() - 0.5) * 0.28;
-      const sp = 44 + Math.random() * 36;
-      this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.14, 1.8, 0.0, this._c0, this._c1, 4.0, 0, 0);
+    const emp = profile.family === 'emp';
+    const thermal = profile.variant === 'thermal-bolt';
+    if (emp) {
+      for (const offset of [-0.42, 0, 0.42]) {
+        const a = base + offset;
+        this._spawnProjectileTrailStreak(mx, 0.24, mz, 0.12, 0.19 * sm,
+          (2.2 + Math.abs(offset) * 2) * sm, 0.72, offset === 0 ? '#f4ffff' : '#668cff',
+          Math.cos(a) * 22, Math.sin(a) * 22);
+      }
+    } else if (thermal) {
+      this._spawnSprite(SPR_COMBUSTION, mx, 0.18, mz, 0.15, 0.55 * sm, 1.35 * sm,
+        0.42, 0, '#ff6a24', Math.cos(base) * 4, Math.sin(base) * 4, 1.8, base);
+      for (const offset of [-0.22, 0, 0.22]) {
+        const a = base + offset;
+        this._spawnProjectileTrailStreak(mx, 0.18, mz, 0.16, 0.25 * sm,
+          (2.1 + (offset === 0 ? 1.4 : 0)) * sm, 0.62, col,
+          Math.cos(a) * 16, Math.sin(a) * 16);
+      }
+    } else {
+      this._spawnProjectileTrailStreak(mx, 0.20, mz, 0.095, 0.24 * sm, 4.8 * sm,
+        0.78, profile.coreColor || '#e8f8ff', Math.cos(base) * 25, Math.sin(base) * 25);
     }
+    this._flashLight({ x: origin.x, z: origin.z }, profile.lightColor || col,
+      (emp ? 3.8 : thermal ? 3.2 : 2.1) * sm, 11, emp ? 145 : 105);
   },
 
   _spawnMuzzleExplosive(origin, base, profile, burst) {
     const sm = profile.sizeMul || 1;
     const col = profile.accentColor || '#ff8844';
     const mx = origin.x + Math.cos(base) * 1.4, mz = origin.z + Math.sin(base) * 1.4;
-    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.12 * sm, 4.8 * sm, 10.5 * sm, 1.0, 0.0, profile.coreColor || '#fff0d0', 0, 0);
-    this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.18 * sm, 6.2 * sm, 12.0 * sm, 0.82, 0.0, col, 0, 0);
-    this._spawnSprite(SPR_RING, origin.x, 0, origin.z, 0.14 * sm, 2.8 * sm, 8.5 * sm, 0.68, 0.0, col, 0, 0);
-    if (profile.smoke) {
-      this._spawnSprite(SPR_PUFF, origin.x, 0, origin.z, 0.22 * sm, 3.5 * sm, 7.0 * sm, 0.42, 0.0, '#6a4030', 0, 0);
-    }
-    this._flashLight({ x: origin.x, z: origin.z }, profile.lightColor || col, 6.0 * sm, 10, 200);
-    this._c0.set(profile.coreColor || '#ffffff'); this._c1.set(col);
-    const n = Math.max(5, Math.round(11 * burst * (profile.sparkMul || 1)));
-    for (let k = 0; k < n; k++) {
-      const a = base + (Math.random() - 0.5) * 0.72;
-      const sp = 28 + Math.random() * 42;
-      this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.22, 2.4, 0.05, this._c0, this._c1, 2.4, 0, 0);
-    }
+    const torpedo = profile.variant === 'torpedo';
+    this._spawnProjectileTrailStreak(origin.x, 0.15, origin.z, torpedo ? 0.16 : 0.12,
+      (torpedo ? 0.34 : 0.25) * sm, (torpedo ? 5.2 : 3.8) * sm, 0.76,
+      profile.coreColor || '#fff0d0', -Math.cos(base) * 13, -Math.sin(base) * 13);
+    this._spawnSprite(SPR_COMBUSTION, mx, 0.14, mz, torpedo ? 0.20 : 0.14,
+      (torpedo ? 0.9 : 0.65) * sm, (torpedo ? 1.8 : 1.3) * sm, 0.58, 0,
+      '#ff7a24', -Math.cos(base) * 3, -Math.sin(base) * 3, 2.2, base + Math.PI);
+    this._spawnSprite(SPR_PUFF, origin.x - Math.cos(base) * 0.9, 0, origin.z - Math.sin(base) * 0.9,
+      0.38 * sm, 1.15 * sm, 3.6 * sm, 0.24, 0.0, '#3a312d',
+      -Math.cos(base) * 8, -Math.sin(base) * 8, 2.6, base + Math.PI);
+    this._flashLight({ x: origin.x, z: origin.z }, profile.lightColor || col, (torpedo ? 4.4 : 3.1) * sm, 10, torpedo ? 160 : 115);
   },
 
   _spawnMuzzleBeam(origin, base, profile, burst) {
     const sm = profile.sizeMul || 1;
     const col = profile.accentColor || '#66ccff';
     const mx = origin.x + Math.cos(base) * 2.0, mz = origin.z + Math.sin(base) * 2.0;
-    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.05 * sm, 2.6 * sm, 5.0 * sm, 0.75, 0.0, profile.coreColor || '#d8f0ff', 0, 0);
-    this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.08 * sm, 3.8 * sm, 7.5 * sm, 0.55, 0.0, col, 0, 0);
-    if (profile.ring) {
-      this._spawnSprite(SPR_RING, mx, 0, mz, 0.06 * sm, 1.4 * sm, 4.2 * sm, 0.45, 0.0, col, 0, 0);
-    }
+    const continuous = profile.family === 'beam';
+    this._spawnProjectileTrailStreak(mx, 0.24, mz, 0.09 * sm,
+      0.22 * sm, 5.4 * sm, 0.88, profile.coreColor || '#d8f0ff',
+      Math.cos(base) * 18, Math.sin(base) * 18);
     this._flashLight({ x: mx, z: mz }, profile.lightColor || col, 2.4 * sm, 18, 70);
-    this._c0.set(profile.coreColor || '#ffffff'); this._c1.set(col);
-    const n = Math.max(2, Math.round(4 * burst * (profile.sparkMul || 1)));
-    for (let k = 0; k < n; k++) {
-      const a = base + (Math.random() - 0.5) * 0.12;
-      const sp = 55 + Math.random() * 30;
-      this._spawnParticle(mx, mz, Math.cos(a) * sp, Math.sin(a) * sp, 0.10, 1.4, 0.0, this._c0, this._c1, 4.5, 0, 0);
-    }
   },
 
   // resolve a heading angle from a payload `dir` that may be a number (radians), a {x,z} vector, or
@@ -1270,37 +1451,195 @@ export const vfx = {
     const tgt = this._ent(p.targetId);
     const fid = (tgt && tgt.factionId) || null;
     const hitShield = tgt && tgt.shield > 0;
+    const profile = resolveImpactPresentationProfile(p && p.weaponId, p);
+    const scale = profile.scale || 1;
+    const approach = p && (p.approach || p.dir) || null;
+    let ax = approach && Number(approach.x) || 0;
+    let az = approach && Number(approach.z) || 0;
+    const approachLen = Math.hypot(ax, az) || 1;
+    ax /= approachLen;
+    az /= approachLen;
+    let nx = p && p.normal && Number(p.normal.x);
+    let nz = p && p.normal && Number(p.normal.z);
+    if (!Number.isFinite(nx) || !Number.isFinite(nz) || Math.hypot(nx, nz) < 1e-6) {
+      nx = -ax || 1;
+      nz = -az;
+    }
+    const normalLength = Math.hypot(nx, nz) || 1;
+    nx /= normalLength;
+    nz /= normalLength;
+    const normalAngle = Math.atan2(nz, nx);
+    // Contact geometry lies exactly on the gameplay collider. Depth-tested streaks centered there
+    // lost half (or all) of their area inside the target hull at the chase camera. Bias release
+    // residue a fraction of a world unit along the outward normal while keeping the gouge attached.
+    const surfaceX = pos.x + nx * 0.42 * scale;
+    const surfaceZ = pos.z + nz * 0.42 * scale;
+    const shieldColor = this._shieldColor(fid);
+    const materialColor = hitShield ? shieldColor : profile.accentColor;
+    const burst = this._burst || 1;
 
+    switch (profile.mode) {
+      case 'penetration-streak': {
+        // Rail contact leaves a narrow axial cut fixed at the contact while a much smaller exit fan
+        // departs along the surface normal. The cooler ionized scar survives the launch-white core,
+        // so release frames retain a family-specific line rather than collapsing to a few points.
+        this._spawnProjectileTrailStreak(surfaceX, 0.3, surfaceZ,
+          profile.life * 1.75, 0.32 * scale, 13.5 * scale, 1.0, profile.coreColor, 0, 0, ax, az);
+        this._spawnProjectileTrailStreak(surfaceX - ax * 0.55 * scale, 0.2, surfaceZ - az * 0.55 * scale,
+          profile.life * 2.35, 0.18 * scale, 8.8 * scale, 0.64, materialColor,
+          nx * 1.8, nz * 1.8, ax, az);
+        this._spawnProjectileTrailStreak(surfaceX, 0.2, surfaceZ,
+          profile.life * 2.05, 0.28 * scale, 5.2 * scale, 0.58, '#6cbfe8',
+          nx * 6, nz * 6, nx, nz);
+        this._impactParticleCone(surfaceX, surfaceZ, normalAngle, 0.46, 48, 86,
+          Math.max(3, Math.round(profile.fragmentCount * burst * 0.65)), 0.24, 0.88,
+          '#ffffff', '#70808a', 3.2);
+        break;
+      }
+      case 'thermal-splash': {
+        // Plasma becomes a lopsided attached thermal body, then peels into a few broad tongues.
+        // Two overlapping sheared volumes keep the contact visible at the gameplay camera without
+        // turning it into the missile family's three-lobed combustion burst or a generic flash.
+        this._spawnSprite(SPR_COMBUSTION, surfaceX, 0.22, surfaceZ, profile.life * 1.08,
+          1.35 * scale, 4.6 * scale, 0.92, 0, profile.accentColor,
+          nx * 2.4, nz * 2.4, 1.5, normalAngle);
+        const tx = -nz;
+        const tz = nx;
+        this._spawnSprite(SPR_COMBUSTION,
+          surfaceX + tx * 0.55 * scale, 0.20, surfaceZ + tz * 0.55 * scale,
+          profile.life * 0.9, 0.9 * scale, 3.2 * scale, 0.62, 0, '#ffb04c',
+          nx * 1.8 + tx * 1.2, nz * 1.8 + tz * 1.2, 1.15, normalAngle - 0.45);
+        this._spawnProjectileTrailStreak(surfaceX, 0.24, surfaceZ, 0.18 * scale,
+          0.38 * scale, 4.2 * scale, 0.90, profile.coreColor, 0, 0, nx, nz);
+        const tendrils = Math.max(3, Math.round(3 * burst));
+        for (let k = 0; k < tendrils; k++) {
+          const a = normalAngle + (k - (tendrils - 1) * 0.5) * 0.30 + (Math.random() - 0.5) * 0.12;
+          this._spawnProjectileTrailStreak(surfaceX, 0.16, surfaceZ, 0.32 + Math.random() * 0.14,
+            0.30 * scale, (2.7 + Math.random() * 2.0) * scale, 0.64, profile.accentColor,
+            Math.cos(a) * (9 + Math.random() * 10), Math.sin(a) * (9 + Math.random() * 10));
+        }
+        this._impactParticleCone(surfaceX, surfaceZ, normalAngle, 1.35, 10, 30,
+          Math.round(profile.fragmentCount * burst * 0.55), profile.life, 1.45,
+          profile.coreColor, '#4a1608', 1.35);
+        // Normal-blended cooling plasma remains attached after the additive tongues peel away.
+        this._spawnSprite(SPR_PUFF,
+          surfaceX - ax * 0.45 * scale, 0.08, surfaceZ - az * 0.45 * scale,
+          profile.life * 1.45, 1.0 * scale, 5.4 * scale, 0.34, 0,
+          '#8a341e', nx * 1.8, nz * 1.8, 2.35, normalAngle + 0.22);
+        break;
+      }
+      case 'combustion-burst': {
+        // Missile contact is a clustered, asymmetric ignition volume followed by casing debris.
+        // It never reuses the orange line starburst or an expanding ring.
+        for (let k = -1; k <= 1; k++) {
+          const ignitionAngle = normalAngle + k * 0.48;
+          const offset = Math.abs(k) * 0.8 * scale;
+          this._spawnSprite(SPR_COMBUSTION,
+            surfaceX + Math.cos(ignitionAngle) * offset, 0.2,
+            surfaceZ + Math.sin(ignitionAngle) * offset,
+            (0.24 + Math.abs(k) * 0.08) * scale,
+            (k === 0 ? 1.5 : 1.0) * scale, (k === 0 ? 4.4 : 3.0) * scale,
+            k === 0 ? 0.94 : 0.68, 0,
+            k === 0 ? profile.coreColor : profile.accentColor,
+            Math.cos(ignitionAngle) * 4, Math.sin(ignitionAngle) * 4,
+            k === 0 ? 1.6 : 2.2, ignitionAngle);
+        }
+        this._impactParticleCone(surfaceX, surfaceZ, normalAngle, 1.65, 24, 58,
+          Math.round(profile.fragmentCount * burst * 0.7), 0.52, 1.55,
+          '#f0d0a4', '#41362e', 1.8);
+        this._spawnSprite(SPR_PUFF, surfaceX - ax * 1.3, 0, surfaceZ - az * 1.3,
+          profile.life * 1.1, 2.0 * scale, 6.2 * scale, 0.42, 0, '#554038',
+          -ax * 7, -az * 7, 2.4, Math.atan2(-az, -ax));
+        const missileTangentX = -nz;
+        const missileTangentZ = nx;
+        this._spawnSprite(SPR_PUFF,
+          surfaceX + missileTangentX * 0.75 * scale, 0.04,
+          surfaceZ + missileTangentZ * 0.75 * scale,
+          profile.life * 1.45, 1.45 * scale, 5.3 * scale, 0.34, 0, '#5f463c',
+          -ax * 4 + missileTangentX * 2.2, -az * 4 + missileTangentZ * 2.2,
+          2.75, Math.atan2(-az, -ax) - 0.32);
+        for (let k = 0; k < 4; k++) {
+          const fragmentAngle = normalAngle + (k - 1.5) * 0.36;
+          this._spawnProjectileTrailStreak(surfaceX, 0.18, surfaceZ,
+            0.40 + k * 0.04, 0.10 * scale, (1.9 + k * 0.34) * scale,
+            0.62, k % 2 ? '#d09a62' : '#ffe1b2',
+            Math.cos(fragmentAngle) * (15 + k * 3), Math.sin(fragmentAngle) * (15 + k * 3));
+        }
+        break;
+      }
+      case 'disruption-arcs': {
+        // EMP contact forks along the surface in several short, high-frequency branches.
+        for (const offset of [-0.78, -0.28, 0.34, 0.82]) {
+          const a = normalAngle + offset;
+          this._spawnProjectileTrailStreak(pos.x, 0.28, pos.z, profile.life * (0.72 + Math.abs(offset) * 0.25),
+            0.10 * scale, (2.6 + Math.abs(offset) * 2.2) * scale, 0.78,
+            offset < 0 ? profile.coreColor : materialColor, Math.cos(a) * 20, Math.sin(a) * 20);
+        }
+        this._impactParticleCone(pos.x, pos.z, normalAngle, 1.3, 18, 36, profile.fragmentCount * burst, 0.20, 1.0, '#ffffff', materialColor, 3.8);
+        break;
+      }
+      case 'sustained-contact': {
+        this._spawnProjectileTrailStreak(surfaceX, 0.26, surfaceZ,
+          profile.life * 2.0, 0.34 * scale, 5.4 * scale, 0.96, materialColor, 0, 0, nx, nz);
+        const beamTangentX = -nz;
+        const beamTangentZ = nx;
+        for (let k = 0; k < 3; k++) {
+          const side = k - 1;
+          const scintillationAngle = normalAngle + side * 0.48;
+          this._spawnProjectileTrailStreak(
+            surfaceX + beamTangentX * side * 0.18 * scale, 0.24,
+            surfaceZ + beamTangentZ * side * 0.18 * scale,
+            0.15 + k * 0.02, 0.10 * scale, (2.1 + Math.abs(side) * 0.65) * scale,
+            0.70, k === 1 ? profile.coreColor : materialColor,
+            Math.cos(scintillationAngle) * (8 + Math.abs(side) * 5),
+            Math.sin(scintillationAngle) * (8 + Math.abs(side) * 5));
+        }
+        this._impactParticleCone(surfaceX, surfaceZ, normalAngle, 0.52, 16, 28,
+          Math.max(1, Math.round(profile.fragmentCount * burst * 0.5)), profile.life * 1.8,
+          0.65, profile.coreColor, materialColor, 3.4);
+        break;
+      }
+      default: {
+        // Kinetic/autocannon: an attached incidence gouge and tight cool-metal fragment fan.
+        this._spawnProjectileTrailStreak(surfaceX, 0.2, surfaceZ,
+          0.26, 0.30 * scale, 4.2 * scale, 0.96, profile.coreColor, 0, 0, ax, az);
+        for (let k = 0; k < 4; k++) {
+          const fragmentAngle = normalAngle + (k - 1.5) * 0.24;
+          this._spawnProjectileTrailStreak(surfaceX, 0.16, surfaceZ,
+            0.28 + k * 0.03, 0.10 * scale, (1.8 + k * 0.34) * scale,
+            0.68, k % 2 ? '#9c9388' : '#ffe0ad',
+            Math.cos(fragmentAngle) * (15 + k * 4), Math.sin(fragmentAngle) * (15 + k * 4));
+        }
+        this._impactParticleCone(surfaceX, surfaceZ, normalAngle, 1.05, 28, 74,
+          Math.round(profile.fragmentCount * burst * 0.7), profile.life * 1.5, 1.05,
+          '#fff2d4', '#5b5650', 2.8);
+        break;
+      }
+    }
+
+    // Shield material bends a pair of streaks along the surface; it never adds a full impact ring.
     if (hitShield) {
-      // Shield impact: distinct blue/cyan sparks + visible ripple so it reads differently from hull
-      const col = this._shieldColor(fid);
-      const r = (tgt && tgt.radius) || 6;
-      // expanding shield ripple ring at the hit point (smaller than _onDamage full bubble)
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.25, r * 0.6, r * 3.5, 0.7, 0.0, col, 0, 0);
-      // localized flash at the hit point
-      this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.10, 2.5, 5.0, 0.9, 0.0, '#ffffff', 0, 0);
-      this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.16, 3.5, 7.0, 0.6, 0.0, col, 0, 0);
-      // shield sparks skitter across the surface — more and faster
-      this._c0.set('#ffffff'); this._c1.set(col);
-      const sn = Math.max(6, Math.round(14 * (this._burst || 1)));
-      for (let k = 0; k < sn; k++) {
-        const a = Math.random() * Math.PI * 2;
-        const sp = 22 + Math.random() * 28;
-        this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.22, 1.6, 0.0, this._c0, this._c1, 3.5, 0, 0);
-      }
-      this._flashLight({ x: pos.x, z: pos.z }, col, 3.0, 12, 120);
-    } else {
-      // Hull impact: hot orange/yellow sparks — directional spray, more particles
-      const col = tgt ? this._engineColor(tgt) : '#ffcc66';
-      this._impactSparks(pos.x, pos.z, p.pos && p.dir ? p.dir : null, col, 18);
-      // extra hull debris — a few slower, longer-lived chunks
-      this._c0.set('#ffa040'); this._c1.set('#301008');
-      const dn = Math.max(2, Math.round(5 * (this._burst || 1)));
-      for (let k = 0; k < dn; k++) {
-        const a = Math.random() * Math.PI * 2;
-        const sp = 8 + Math.random() * 14;
-        this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.5 + Math.random() * 0.3, 1.4, 0.3, this._c0, this._c1, 1.2, 0, 0);
-      }
+      const tx = -nz;
+      const tz = nx;
+      this._spawnProjectileTrailStreak(pos.x, 0.18, pos.z, 0.18, 0.21 * scale, 3.4 * scale,
+        0.48, shieldColor, 0, 0, tx, tz);
+      this._spawnProjectileTrailStreak(pos.x, 0.18, pos.z, 0.18, 0.19 * scale, 2.7 * scale,
+        0.38, shieldColor, 0, 0, -tx, -tz);
+    }
+    this._flashLight({ x: pos.x, z: pos.z }, hitShield ? shieldColor : profile.accentColor,
+      profile.lightPeak * scale, 13, 110 * scale);
+  },
+
+  _impactParticleCone(x, z, base, spread, speedMin, speedMax, count, life, size, color0, color1, drag) {
+    this._c0.set(color0);
+    this._c1.set(color1);
+    const n = Math.max(1, count | 0);
+    for (let k = 0; k < n; k++) {
+      const a = base + (Math.random() - 0.5) * spread;
+      const speed = speedMin + Math.random() * Math.max(0, speedMax - speedMin);
+      this._spawnParticle(x, z, Math.cos(a) * speed, Math.sin(a) * speed,
+        life * (0.78 + Math.random() * 0.44), size * (0.72 + Math.random() * 0.48), 0,
+        this._c0, this._c1, drag, 0, 0);
     }
   },
 
@@ -1310,6 +1649,25 @@ export const vfx = {
     if (!pos) return;
     const tgt = this._ent(p.targetId);
     const fid = (tgt && tgt.factionId) || p.factionId || null;
+    const impactProfile = resolveImpactPresentationProfile(p && p.weaponId, p);
+    let nx = p && p.normal && Number(p.normal.x);
+    let nz = p && p.normal && Number(p.normal.z);
+    if (!Number.isFinite(nx) || !Number.isFinite(nz) || Math.hypot(nx, nz) < 1e-6) {
+      const approach = p && p.approach;
+      nx = approach && Number.isFinite(approach.x) ? -approach.x : 1;
+      nz = approach && Number.isFinite(approach.z) ? -approach.z : 0;
+    }
+    const normalLength = Math.hypot(nx, nz) || 1;
+    nx /= normalLength;
+    nz /= normalLength;
+    const normalAngle = Math.atan2(nz, nx);
+    if (impactProfile.family === 'beam') {
+      if (this._combatBeams) this._combatBeams.retarget(p, this._t);
+      const cueKey = `${String(p.attackerId)}:${String(p.targetId)}:${String(p.weaponId)}`;
+      const now = Number(this.state && this.state.simTime) || this._t;
+      if (!p.brokeShield && now < (this._beamDamageCueNext.get(cueKey) || 0)) return;
+      this._beamDamageCueNext.set(cueKey, now + 0.08);
+    }
     // NOTE: on combat:damage, `p.type` is the DAMAGE type (kinetic/energy/…), not a shield flag — so
     // the shield branch keys off `shieldAbsorbed` (authoritative: true when any shield HP absorbed
     // damage this hit) plus `brokeShield` (shield HP just hit zero). Both trigger shield VFX.
@@ -1320,63 +1678,56 @@ export const vfx = {
       const cx = tgt ? tgt.pos.x : pos.x, cz = tgt ? tgt.pos.z : pos.z;
 
       if (p.brokeShield) {
-        // Shield break (spec2/02 §3 + Top-50 rank-5): full-ring cyan flash, denser pop.
-        this._spawnSprite(SPR_RING, cx, 0, cz, 0.36, r * 0.8, r * 5.4, 1.0, 0.0, '#39d0ff', 0, 0);
-        this._spawnSprite(SPR_FRESNEL, cx, 0, cz, 0.44, r * 2.2, r * 3.4, 0.9, 0.0, col, 0, 0);
+        // Shield break: five fixed tangent tears crawl around the shell. No screen-facing annulus.
         this._flashLight({ x: cx, z: cz }, '#39d0ff', 7.2, 9, 240);
         this._c0.set(col); this._c1.set('#102040');
-        const bn = Math.max(14, Math.round(24 * (this._burst || 1)));
+        const bn = Math.max(8, Math.round(14 * (this._burst || 1)));
         for (let k = 0; k < bn; k++) {
-          const a = Math.random() * Math.PI * 2;
-          const dist = r * (0.8 + Math.random() * 0.5);
-          const sp = 36 + Math.random() * 52;
+          const a = normalAngle + (Math.random() - 0.5) * 2.5;
+          const dist = r * (0.78 + Math.random() * 0.3);
+          const sp = 24 + Math.random() * 34;
           this._spawnParticle(cx + Math.cos(a) * dist, cz + Math.sin(a) * dist,
             Math.cos(a) * sp, Math.sin(a) * sp, 0.36, 2.0, 0.0, this._c0, this._c1, 2.0, 0, 0);
         }
-      } else {
-        // Shield hit: stronger hex-ripple + flash so energy hits read at chase distance.
-        this._spawnSprite(SPR_FRESNEL, pos.x, 0, pos.z, 0.26, r * 0.4, r * 2.9, 0.95, 0.0, col, 0, 0);
-        this._flashLight({ x: pos.x, z: pos.z }, col, 2.8, 11, 110);
-        this._c0.set('#ffffff'); this._c1.set(col);
-        const sn = Math.max(4, Math.round(8 * (this._burst || 1)));
-        for (let k = 0; k < sn; k++) {
-          const a = Math.random() * Math.PI * 2;
-          const sp = 18 + Math.random() * 28;
-          this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-            0.18, 1.4, 0.0, this._c0, this._c1, 3.0, 0, 0);
+        for (let k = 0; k < 5; k++) {
+          const a = normalAngle - 1.25 + k * 0.62 + Math.random() * 0.16;
+          const tx = -Math.sin(a);
+          const tz = Math.cos(a);
+          this._spawnProjectileTrailStreak(cx + Math.cos(a) * r * 0.75, 0.22, cz + Math.sin(a) * r * 0.75,
+            0.28, 0.12, r * (0.45 + Math.random() * 0.28), 0.58, col,
+            0, 0, tx, tz);
         }
+      } else {
+        // Ordinary shield receipt reinforces only the local tangent scar already established by
+        // the weapon-family contact. It cannot become another generic circular flash.
+        this._spawnProjectileTrailStreak(pos.x, 0.2, pos.z, 0.14, 0.20,
+          Math.min(4.2, r * 0.55), 0.40, col, 0, 0, -nz, nx);
+        this._flashLight({ x: pos.x, z: pos.z }, col, 2.8, 11, 110);
       }
     }
     if (p.armorHit) {
       this._emitJuiceCue('combat.damage.armor', p, 1);
-      // Armor hit (Top-50 rank-5): 10–16 spark particles + chunk sprite; metallic clank.
-      const col = this._engineColor(tgt);
-      this._c0.set('#ffffff'); this._c1.set(col);
-      const count = Math.max(10, Math.min(16, Math.round(13 * (this._burst || 1))));
-      const base = p.normal ? Math.atan2(p.normal.z, p.normal.x) + Math.PI : Math.random() * Math.PI * 2;
-      for (let k = 0; k < count; k++) {
-        const a = base + (Math.random() - 0.5) * 1.2;
-        const sp = 26 + Math.random() * 48;
-        this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-          0.24, 1.8, 0.0, this._c0, this._c1, 2.6, 0, 0);
-      }
-      this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.32, 1.4, 2.8, 0.75, 0.0, '#c0a080',
-        (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
-      this._flashLight({ x: pos.x, z: pos.z }, col, 2.6, 13, 100);
+      // Material response is a tight, cool-metal reflected fan. Weapon color remains in the
+      // preceding contact event instead of recoloring every hull into the same orange spray.
+      const count = Math.max(5, Math.min(10, Math.round(8 * (this._burst || 1))));
+      this._impactParticleCone(pos.x, pos.z, normalAngle, 0.82, 24, 56, count,
+        0.23, 0.82, '#f6ead2', '#514c46', 2.8);
+      this._spawnProjectileTrailStreak(pos.x, 0.16, pos.z, 0.17, 0.18, 2.2,
+        0.44, '#b7aa96', 0, 0, nx, nz);
+      this._flashLight({ x: pos.x, z: pos.z }, '#d8c39e', 1.6, 13, 72);
     }
     if (p.hullHit) {
       this._emitJuiceCue('combat.damage.hull', p, 1);
-      // Hull hit (Top-50 rank-5): denser smoke + more embers so hull damage is obvious.
-      const col = this._engineColor(tgt);
-      this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.52, 1.8, 4.2, 0.62, 0.0, '#2a2520',
-        (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
-      this._c0.set('#ff8040'); this._c1.set('#401008');
-      for (let k = 0; k < 7; k++) {
-        const a = Math.random() * Math.PI * 2;
-        const sp = 8 + Math.random() * 14;
-        this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-          0.55, 1.15, 0.18, this._c0, this._c1, 1.1, 1.0 + Math.random() * 1.5, 4.0 + Math.random() * 3.0);
-      }
+      // Hull penetration vents one directional smoke tongue and a few hot internal fragments.
+      this._spawnSprite(SPR_PUFF, pos.x + nx * 0.3, 0, pos.z + nz * 0.3,
+        0.58, 1.2, 3.8, 0.48, 0.0, '#292521', nx * 5, nz * 5,
+        2.2, normalAngle);
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0.14, pos.z, 0.22, 0.55, 1.35,
+        0.42, 0, impactProfile.family === 'plasma' ? '#ff6a24' : '#d87332',
+        nx * 2, nz * 2, 1.7, normalAngle);
+      this._impactParticleCone(pos.x, pos.z, normalAngle, 0.95, 9, 24,
+        Math.max(3, Math.round(5 * (this._burst || 1))), 0.48, 0.78,
+        '#ffb36a', '#3a1710', 1.2);
       this._flashLight({ x: pos.x, z: pos.z }, '#ff7040', 2.2, 11, 90);
     }
     // player hits get a camera kick — STRONGER, proportional to damage
@@ -1742,8 +2093,7 @@ export const vfx = {
 
   _onKilled(p) {
     this._emitJuiceCue('combat.damage.kill', p, 2);
-    if (this._isCapitalKill(p)) this._explodeCapital(p);
-    else this._explodeSmall(p);
+    this._queueExplosion(p, this._isCapitalKill(p) ? 'capital' : 'ordinary');
   },
 
   _isCapitalKill(p) {
@@ -1769,155 +2119,322 @@ export const vfx = {
     this._explode(p, false);
   },
 
-  _explode(p, big) {
-    if (!this._scene) return;
-    const pos = this._posFrom(p, p.id);
-    if (!pos) return;
-    const r = Math.max(3, p.radius || 6);
-    const x = pos.x, z = pos.z;
+  _queueExplosion(p, classId) {
+    if (!this._scene || !this._explosions) return false;
+    const pos = this._posFrom(p, p && p.id);
+    if (!pos) return false;
+    const direction = p && (p.direction || p.vel || p.approach) || null;
+    this._explosions.start({
+      classId,
+      x: pos.x,
+      z: pos.z,
+      radius: Math.max(2, Number(p && p.radius) || 6),
+      direction,
+      sourceType: p && (p.type || p.victimClass) || null,
+    });
+    return true;
+  },
+
+  _emitExplosionPhase(phase, entry) {
+    const x = entry.x;
+    const z = entry.z;
+    const r = entry.radius;
+    // Radius already carries most of the visual scale. A large extra class multiplier made capital
+    // events cover half the gameplay frame with one texture card, so class identity now comes from
+    // phase count, spread, duration and debris structure instead of an unchecked size multiplier.
+    const classScale = entry.classId === 'capital' ? 1.12 : (entry.classId === 'small' ? 0.72 : 1);
+    const scale = classScale * Math.max(0.78, Math.min(1.65, Math.sqrt(r / 8)));
     const burst = this._burst || 1;
-    // Scale factor: bigger entities produce bigger explosions (a frigate blowing up should dwarf a fighter)
-    const sc = big ? Math.max(1, r / 6) : Math.max(0.7, r / 8);
+    const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = accessibility.flashOpacityScale < 1;
+    const dirAngle = Math.atan2(entry.dirZ, entry.dirX);
+    const tangentX = -entry.dirZ;
+    const tangentZ = entry.dirX;
 
-    // (a) MULTI-LAYER FLASH — BIGGER, entity-radius-scaled. Instant white core, hot mid,
-    //     broad neon outer bloom-feeder, plus a MASSIVE brief overbloom that feeds the bloom pass hard.
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.10, r * 2.0 * sc, r * 4.5 * sc, 1.0, 0.0, '#ffffff', 0, 0);
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.22, r * 3.5 * sc, r * 8.0 * sc, 1.0, 0.0, '#ffe8a0', 0, 0);
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.38, r * 4.5 * sc, r * 12.0 * sc, 0.8, 0.0, '#ff5fa0', 0, 0);
-    // massive overbloom flash — short-lived, feeds bloom hard for that blinding-white moment
-    if (big) this._spawnSprite(SPR_FLASH, x, 0, z, 0.06, r * 5.0 * sc, r * 15.0 * sc, 1.0, 0.0, '#ffffff', 0, 0);
-    // dynamic explosion light — BRIGHTER, WIDER, scaled to blast size. Two lights for depth:
-    // a white-hot core flash + a neon-warm sustained glow
-    this._flashLight({ x, z }, 0xffffff, Math.min(18, 6 + r * sc * 1.0), 10, 160 + r * sc * 15);
-    this._flashLight({ x, z }, 0xff70a0, Math.min(16, 5 + r * sc * 0.9), 4, 250 + r * sc * 18);
-
-    // (c) TRIPLE CHROMATIC SHOCKWAVE — BIGGER rings, scaled to entity radius
-    this._spawnSprite(SPR_RING, x, 0, z, 0.35, r * 0.8 * sc, r * 9.0 * sc, 1.0, 0.0, '#ffffff', 0, 0);
-    this._spawnSprite(SPR_RING, x, 0, z, 0.48, r * 1.0 * sc, r * 12.0 * sc, 0.85, 0.0, '#5fe0ff', 0, 0);
-    this._spawnSprite(SPR_RING, x, 0, z, 0.60, r * 1.2 * sc, r * 15.0 * sc, 0.65, 0.0, '#ff5fe0', 0, 0);
-    // big explosions get a FOURTH outer shockwave — the "pressure wave"
-    if (big) this._spawnSprite(SPR_RING, x, 0, z, 0.70, r * 2.0 * sc, r * 20.0 * sc, 0.4, 0.0, '#ffffff', 0, 0);
-
-    // (b) embers: MORE particles, BIGGER, FASTER — hot-yellow -> ember-red + neon magenta ionized debris
-    const embers = Math.max(12, Math.round((big ? 70 : 40) * burst * sc));
-    for (let k = 0; k < embers; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = (25 + Math.random() * 65) * sc;
-      const life = 0.7 + Math.random() * 0.6;
-      // ~1 in 4 embers is neon magenta (ionized debris)
-      if (k % 4 === 0) { this._c0.set('#ff5fe0'); this._c1.set('#60106a'); }
-      else { this._c0.set('#ffe08a'); this._c1.set('#802010'); }
-      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, life, 3.0 * sc, 0.0, this._c0, this._c1, 1.3, 0, 0);
+    if (phase === 'ignition') {
+      // Capital destruction starts in several separated machinery zones and propagates across the
+      // source footprint. A single radius-scaled card became a fullscreen soft disc even though its
+      // alpha mask was irregular. Ordinary events retain two offset ignition pockets; small events
+      // use one compact pocket. Accessibility prunes a zone, but does not change the visual grammar.
+      const zoneCount = entry.classId === 'capital' ? (reduced ? 3 : 4)
+        : (entry.classId === 'ordinary' ? 2 : 1);
+      const zoneSpacing = entry.classId === 'capital' ? 0.25 : 0.13;
+      for (let k = 0; k < zoneCount; k++) {
+        const centered = k - (zoneCount - 1) * 0.5;
+        const along = centered * r * zoneSpacing
+          + explosionPatternSigned(entry.serial, phase, k, 0) * r * 0.025;
+        const across = explosionPatternSigned(entry.serial, phase, k, 1)
+          * r * (entry.classId === 'capital' ? 0.11 : 0.055);
+        const px = x + entry.dirX * along + tangentX * across;
+        const pz = z + entry.dirZ * along + tangentZ * across;
+        const hot = k === Math.floor(zoneCount * 0.5);
+        const life = entry.classId === 'capital'
+          ? 0.38 + explosionPattern01(entry.serial, phase, k, 2) * 0.12
+          : 0.16 + explosionPattern01(entry.serial, phase, k, 2) * 0.06;
+        this._spawnSprite(SPR_COMBUSTION, px, 0.25 - k * 0.008, pz, life,
+          r * (hot ? 0.075 : 0.058) * scale,
+          r * (entry.classId === 'capital' ? 0.17 : 0.22) * scale,
+          hot ? 0.68 : 0.48, 0,
+          hot ? '#fff3d5' : (k % 2 ? '#ff9a3a' : '#ff6a28'),
+          entry.dirX * (1.0 + k * 0.35) + tangentX * centered * 0.8,
+          entry.dirZ * (1.0 + k * 0.35) + tangentZ * centered * 0.8,
+          1.18 + Math.abs(centered) * 0.14,
+          dirAngle + explosionPatternSigned(entry.serial, phase, k, 3) * 0.34);
+      }
+      this._flashLight({ x, z }, '#fff0c0', (entry.classId === 'capital' ? 8 : 4.5) * scale, 11, 120 + r * 5);
+      return;
     }
 
-    // (b2) fast bright SPARKS — MORE, FASTER, white-hot streaks for the initial flash-front snap
-    this._c0.set('#ffffff'); this._c1.set('#ffd070');
-    const sparks = Math.max(8, Math.round((big ? 30 : 16) * burst * sc));
-    for (let k = 0; k < sparks; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = (80 + Math.random() * 120) * sc;
-      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 0.18 + Math.random() * 0.12, 2.2, 0.0, this._c0, this._c1, 3.0, 0, 0);
+    if (phase === 'internal' || phase === 'internal-secondary') {
+      const side = phase === 'internal' ? -1 : 1;
+      const offset = r * (phase === 'internal' ? 0.28 : 0.48) * side;
+      const internalColor = phase === 'internal' ? '#ff9a36' : '#e94b24';
+      const internalRoll = dirAngle + side * (phase === 'internal' ? 0.42 : 0.62);
+      const pocketCount = entry.classId === 'capital' ? (reduced ? 2 : 3) : 2;
+      const baseX = x + tangentX * offset + entry.dirX * r * 0.13;
+      const baseZ = z + tangentZ * offset + entry.dirZ * r * 0.13;
+      for (let k = 0; k < pocketCount; k++) {
+        const centered = k - (pocketCount - 1) * 0.5;
+        const px = baseX + entry.dirX * centered * r * 0.15
+          + tangentX * explosionPatternSigned(entry.serial, phase, k, 0) * r * 0.045;
+        const pz = baseZ + entry.dirZ * centered * r * 0.15
+          + tangentZ * explosionPatternSigned(entry.serial, phase, k, 0) * r * 0.045;
+        const life = entry.classId === 'capital'
+          ? 0.52 + explosionPattern01(entry.serial, phase, k, 1) * 0.14
+          : 0.26 + explosionPattern01(entry.serial, phase, k, 1) * 0.08;
+        this._spawnSprite(SPR_COMBUSTION, px, 0.20 - k * 0.006, pz, life,
+          r * (k === 1 ? 0.082 : 0.062) * scale,
+          r * (entry.classId === 'capital' ? 0.23 : 0.28) * scale,
+          k === 1 ? 0.54 : 0.40, 0, k === 1 ? '#ffd08a' : internalColor,
+          tangentX * side * (2.0 + k * 0.7) + entry.dirX * centered,
+          tangentZ * side * (2.0 + k * 0.7) + entry.dirZ * centered,
+          1.18 + k * 0.11,
+          internalRoll + centered * 0.24
+            + explosionPatternSigned(entry.serial, phase, k, 2) * 0.18);
+      }
+      this._impactParticleCone(baseX, baseZ, dirAngle + side * 0.8, 0.86, 8, 25,
+        Math.round((reduced ? 3 : 5) * burst * scale), 0.38, 0.42 * scale,
+        '#ffe0a0', '#6a1608', 1.5);
+      return;
     }
 
-    // (d) debris chunks — MORE, BIGGER, LONGER-LIVED: slower tumbling specks that linger after the fire
-    this._c0.set('#c9b08a'); this._c1.set('#201810');
-    const debris = Math.max(5, Math.round((big ? 18 : 10) * burst * sc));
-    for (let k = 0; k < debris; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = (14 + Math.random() * 35) * sc;
-      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 2.0 + Math.random() * 1.0, 2.5 * sc, 0.8, this._c0, this._c1, 0.5, 0, 0);
-    }
-    // secondary hot debris — glowing orange chunks that cool to dark (reads as burning wreckage)
-    this._c0.set('#ff9030'); this._c1.set('#301008');
-    const hotDebris = Math.max(3, Math.round((big ? 12 : 6) * burst * sc));
-    for (let k = 0; k < hotDebris; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = (10 + Math.random() * 25) * sc;
-      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 1.8 + Math.random() * 1.2, 2.0 * sc, 0.5, this._c0, this._c1, 0.4, 0, 0);
+    if (phase === 'breakup') {
+      // Capital hulls fail along several structural seams before the main rupture. These short hot
+      // cuts and displaced combustion pockets make the progression travel across the source scale
+      // instead of jumping from a center flash directly to a radial starburst.
+      const seamCount = reduced ? 3 : 5;
+      for (let k = 0; k < seamCount; k++) {
+        const centered = k - (seamCount - 1) * 0.5;
+        const along = centered * r * 0.19;
+        const across = explosionPatternSigned(entry.serial, phase, k, 0) * r * 0.19;
+        const px = x + entry.dirX * along + tangentX * across;
+        const pz = z + entry.dirZ * along + tangentZ * across;
+        const seamAngle = dirAngle + centered * 0.13
+          + explosionPatternSigned(entry.serial, phase, k, 1) * 0.22;
+        this._spawnProjectileTrailStreak(px, 0.25, pz,
+          0.42 + explosionPattern01(entry.serial, phase, k, 2) * 0.22,
+          r * 0.012 * scale, r * (0.23 + explosionPattern01(entry.serial, phase, k, 3) * 0.15) * scale,
+          k === Math.floor(seamCount * 0.5) ? 0.54 : 0.34,
+          k % 2 ? '#ff6b2c' : '#ffd39a',
+          Math.cos(seamAngle) * (4 + k), Math.sin(seamAngle) * (4 + k),
+          Math.cos(seamAngle), Math.sin(seamAngle));
+        if (k % 2 === 0) {
+          this._spawnSprite(SPR_COMBUSTION, px, 0.20, pz,
+            0.48 + explosionPattern01(entry.serial, phase, k, 4) * 0.16,
+            r * 0.055 * scale, r * 0.19 * scale, 0.38, 0,
+            k === 2 ? '#fff0be' : '#c84524',
+            entry.dirX * 2 + tangentX * centered, entry.dirZ * 2 + tangentZ * centered,
+            1.34, seamAngle + 0.34);
+        }
+      }
+      return;
     }
 
-    // (e) SMOKE puffs — MORE, BIGGER, drift and grow, lingering after the fire dies
-    const puffs = Math.max(3, Math.round((big ? 8 : 5) * burst));
-    for (let k = 0; k < puffs; k++) {
+    if (phase === 'rupture') {
+      // Uneven overlapping combustion volumes form a biased tear, never a radial flower. Thin hot
+      // tongues are intentionally limited to one or two forward-biased fragments; the later debris
+      // phase owns the wider structural fan.
+      const lobeBase = entry.classId === 'capital' ? 9 : (entry.classId === 'small' ? 3 : 6);
+      const lobeCount = Math.max(3, Math.round(lobeBase * burst * (reduced ? 0.68 : 1)));
+      for (let k = 0; k < lobeCount; k++) {
+        const normalized = lobeCount > 1 ? k / (lobeCount - 1) - 0.5 : 0;
+        const longitudinal = r * scale * (
+          explosionPatternSigned(entry.serial, phase, k, 0)
+          * (entry.classId === 'capital' ? 0.16 : 0.12)
+          + normalized * 0.08);
+        const lateral = r * scale * (normalized * (entry.classId === 'capital' ? 0.28 : 0.22)
+          + explosionPatternSigned(entry.serial, phase, k, 1) * 0.05);
+        const roll = dirAngle + normalized * 0.22
+          + explosionPatternSigned(entry.serial, phase, k, 2) * 0.31;
+        const heat = 1 - Math.min(1, Math.abs(normalized) * 2);
+        const lobeColor = heat > 0.58 ? '#fff1c4' : (heat > 0.20 ? '#ff8a32' : '#d94720');
+        this._spawnSprite(SPR_COMBUSTION,
+          x + entry.dirX * longitudinal + tangentX * lateral, 0.22,
+          z + entry.dirZ * longitudinal + tangentZ * lateral,
+          (entry.classId === 'capital' ? 0.72 : 0.48)
+            + explosionPattern01(entry.serial, phase, k, 3) * 0.22,
+          r * scale * (0.12 + explosionPattern01(entry.serial, phase, k, 4) * 0.07),
+          r * scale * (0.25 + explosionPattern01(entry.serial, phase, k, 5) * 0.15),
+          heat > 0.58 ? 0.46 : 0.32, 0,
+          lobeColor,
+          entry.dirX * (3 + explosionPattern01(entry.serial, phase, k, 6) * 5) * scale
+            + tangentX * normalized * 3,
+          entry.dirZ * (3 + explosionPattern01(entry.serial, phase, k, 6) * 5) * scale
+            + tangentZ * normalized * 3,
+          1.08 + explosionPattern01(entry.serial, phase, k, 7) * 0.30, roll);
+        const tongueCount = entry.classId === 'capital' ? 2 : 1;
+        if (k < tongueCount) {
+          const debrisAngle = dirAngle + (k ? 0.42 : -0.28)
+            + explosionPatternSigned(entry.serial, phase, k, 8) * 0.12;
+          this._spawnProjectileTrailStreak(
+            x + Math.cos(debrisAngle) * r * 0.10, 0.24,
+            z + Math.sin(debrisAngle) * r * 0.10,
+            0.36 + explosionPattern01(entry.serial, phase, k, 9) * 0.16,
+            r * 0.012 * scale,
+            r * scale * (0.24 + explosionPattern01(entry.serial, phase, k, 10) * 0.14),
+            reduced ? 0.20 : 0.34, k % 2 ? '#ff7a2c' : '#ffd08a',
+            Math.cos(debrisAngle) * (10 + explosionPattern01(entry.serial, phase, k, 11) * 10) * scale,
+            Math.sin(debrisAngle) * (10 + explosionPattern01(entry.serial, phase, k, 11) * 10) * scale);
+        }
+      }
+      // A normal-blended, lopsided cooling sheath preserves the rupture silhouette when reduced
+      // flash shortens additive combustion. It expands slowly, stays directional, and cannot read
+      // as a clean ring because it uses the eroded smoke mask with an offset center and 2:1 aspect.
       this._spawnSprite(SPR_PUFF,
-        x + (Math.random() - 0.5) * r * sc,
-        0,
-        z + (Math.random() - 0.5) * r * sc,
-        1.2 + Math.random() * 0.8,
-        r * 1.2 * sc, r * 3.5 * sc,
-        0.6, 0.0, '#2a2a30',
-        (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
+        x - entry.dirX * r * 0.08 + tangentX * r * 0.07, 0.12,
+        z - entry.dirZ * r * 0.08 + tangentZ * r * 0.07,
+        entry.classId === 'capital' ? 0.92 : 0.68,
+        r * scale * 0.11, r * scale * (entry.classId === 'capital' ? 0.42 : 0.36),
+        reduced ? 0.30 : 0.24, 0,
+        reduced ? '#a65335' : '#7e3e2d',
+        entry.dirX * 1.8 + tangentX * 0.7, entry.dirZ * 1.8 + tangentZ * 0.7,
+        2.15, dirAngle + 0.31);
+      this._impactParticleCone(x, z, dirAngle,
+        entry.classId === 'capital' ? 1.55 : (entry.classId === 'small' ? 1.15 : 1.42),
+        14, entry.classId === 'capital' ? 42 : 36,
+        Math.round((entry.classId === 'capital' ? 10 : 6) * burst * scale * (reduced ? 0.62 : 1)),
+        entry.classId === 'capital' ? 0.72 : 0.52, 0.36 * scale,
+        '#ffe3a0', '#65301d', 1.35);
+      this._flashLight({ x, z }, '#ff7a30', (entry.classId === 'capital' ? 8 : 4.2) * scale, 5.5, 180 + r * 7);
+      const shake = entry.classId === 'capital' ? 0.62 : (entry.classId === 'small' ? 0.16 : 0.34);
+      this.bus.emit('camera:shake', { amount: reduced ? shake * 0.55 : shake });
+      return;
     }
 
-    // Camera shake — PROPORTIONAL to explosion size: big ships produce big shakes
-    const shakeAmt = big
-      ? Math.min(0.85, 0.15 * r * sc)
-      : Math.min(0.55, 0.12 * r * sc);
-    this.bus.emit('camera:shake', { amount: shakeAmt });
+    if (phase === 'debris') {
+      // Debris is made of narrow moving fragments with a few subordinate sparks. Large point
+      // sprites became floating orange beads after the combustion phase had cooled.
+      const fanCount = Math.max(3, Math.round((entry.classId === 'capital' ? 14 : entry.classId === 'small' ? 4 : 8)
+        * burst * (reduced ? 0.65 : 1)));
+      const fanSpread = entry.classId === 'capital' ? 1.92 : 1.52;
+      for (let k = 0; k < fanCount; k++) {
+        const normalized = fanCount > 1 ? k / (fanCount - 1) - 0.5 : 0;
+        const a = dirAngle + normalized * fanSpread
+          + explosionPatternSigned(entry.serial, phase, k, 0) * 0.11;
+        const speed = (entry.classId === 'capital' ? 14 : 11)
+          + explosionPattern01(entry.serial, phase, k, 1) * (entry.classId === 'capital' ? 34 : 24);
+        const longLived = entry.classId === 'capital' && k % 4 === 0;
+        this._spawnProjectileTrailStreak(
+          x + Math.cos(a) * r * 0.08, 0.23, z + Math.sin(a) * r * 0.08,
+          (longLived ? 1.75 : (entry.classId === 'capital' ? 0.92 : 0.62))
+            + explosionPattern01(entry.serial, phase, k, 2) * 0.34,
+          (0.05 + explosionPattern01(entry.serial, phase, k, 3) * 0.05) * scale,
+          (0.8 + explosionPattern01(entry.serial, phase, k, 4)
+            * (entry.classId === 'capital' ? 1.7 : 1.15)) * scale,
+          reduced ? 0.20 : (0.32 + explosionPattern01(entry.serial, phase, k, 5) * 0.20),
+          k % 3 === 0 ? '#ffe1ad' : '#c96a35',
+          Math.cos(a) * speed * scale, Math.sin(a) * speed * scale,
+          Math.cos(a), Math.sin(a));
+      }
+      if (entry.classId === 'capital') {
+        const reverseCount = reduced ? 2 : 4;
+        for (let k = 0; k < reverseCount; k++) {
+          const normalized = reverseCount > 1 ? k / (reverseCount - 1) - 0.5 : 0;
+          const a = dirAngle + Math.PI + normalized * 1.18
+            + explosionPatternSigned(entry.serial, phase, k, 6) * 0.10;
+          const speed = 9 + explosionPattern01(entry.serial, phase, k, 7) * 24;
+          this._spawnProjectileTrailStreak(x, 0.21, z,
+            1.0 + explosionPattern01(entry.serial, phase, k, 8) * 0.44,
+            (0.045 + explosionPattern01(entry.serial, phase, k, 9) * 0.045) * scale,
+            (0.72 + explosionPattern01(entry.serial, phase, k, 10) * 1.25) * scale,
+            reduced ? 0.15 : 0.27,
+            k % 2 ? '#aa4a28' : '#d8b58c', Math.cos(a) * speed, Math.sin(a) * speed,
+            Math.cos(a), Math.sin(a));
+        }
+      }
+      this._impactParticleCone(x, z, dirAngle, fanSpread,
+        12, entry.classId === 'capital' ? 46 : 34,
+        Math.round((entry.classId === 'capital' ? 9 : 5) * burst * (reduced ? 0.6 : 1)),
+        entry.classId === 'capital' ? 1.2 : 0.8, 0.34 * scale,
+        '#f2d2a2', '#33231c', 0.72);
+      return;
+    }
+
+    if (phase === 'pressure') {
+      // Space pressure is a broken pair of faint vapor shears. The gaps and unequal segment lengths
+      // prevent the cue from rebuilding a ring when multiple destruction events overlap.
+      const segmentCount = reduced ? 1 : 2;
+      for (const side of [-1, 1]) {
+        for (let segment = 0; segment < segmentCount; segment++) {
+          const along = (segment - (segmentCount - 1) * 0.5) * r * 0.32;
+          const segmentScale = 0.82 + explosionPattern01(entry.serial, phase, segment, side + 2) * 0.28;
+          this._spawnSprite(SPR_PUFF,
+            x + tangentX * side * r * (0.20 + segment * 0.07) + entry.dirX * along,
+            0,
+            z + tangentZ * side * r * (0.20 + segment * 0.07) + entry.dirZ * along,
+            (entry.classId === 'capital' ? 0.78 : 0.50) * segmentScale,
+            r * 0.12 * scale, r * (entry.classId === 'capital' ? 0.53 : 0.42) * scale * segmentScale,
+            reduced ? 0.055 : 0.082, 0, '#675a52',
+            tangentX * side * (6 + segment * 2), tangentZ * side * (6 + segment * 2),
+            2.8, Math.atan2(tangentZ * side, tangentX * side) + (segment ? 0.20 : -0.14));
+        }
+      }
+      return;
+    }
+
+    if (phase === 'residue') {
+      const puffs = Math.max(2, Math.round((entry.classId === 'capital' ? 7 : 4) * burst * (reduced ? 0.72 : 1)));
+      for (let k = 0; k < puffs; k++) {
+        const normalized = puffs > 1 ? k / (puffs - 1) - 0.5 : 0;
+        const a = dirAngle + normalized * 1.86
+          + explosionPatternSigned(entry.serial, phase, k, 0) * 0.23;
+        const distance = r * scale * (0.12 + explosionPattern01(entry.serial, phase, k, 1) * 0.34);
+        const speed = 1.2 + explosionPattern01(entry.serial, phase, k, 2) * 3.8;
+        this._spawnSprite(SPR_PUFF,
+          x + Math.cos(a) * distance, 0, z + Math.sin(a) * distance,
+          (entry.classId === 'capital' ? 2.15 : 1.08)
+            + explosionPattern01(entry.serial, phase, k, 3) * (entry.classId === 'capital' ? 0.65 : 0.32),
+          r * scale * (0.12 + explosionPattern01(entry.serial, phase, k, 4) * 0.07),
+          r * scale * (0.34 + explosionPattern01(entry.serial, phase, k, 5) * 0.22),
+          reduced ? 0.20 : 0.24, 0,
+          k % 2 ? (reduced ? '#81736b' : '#625b57') : (reduced ? '#a06547' : '#744c3d'),
+          Math.cos(a) * speed, Math.sin(a) * speed,
+          1.18 + explosionPattern01(entry.serial, phase, k, 6) * 0.54,
+          a + explosionPatternSigned(entry.serial, phase, k, 7) * 0.28);
+      }
+      // A few slow cooling fragments keep the source direction legible inside the residue without
+      // turning the smoke into identical circular puffs or extending gameplay obstruction.
+      const emberCount = entry.classId === 'capital' ? (reduced ? 2 : 4) : 2;
+      for (let k = 0; k < emberCount; k++) {
+        const a = dirAngle + (k - (emberCount - 1) * 0.5) * 0.52
+          + explosionPatternSigned(entry.serial, phase, k, 8) * 0.12;
+        this._spawnProjectileTrailStreak(x, 0.18, z,
+          entry.classId === 'capital' ? 1.65 + k * 0.11 : 0.78 + k * 0.08,
+          0.045 * scale, (0.72 + k * 0.23) * scale,
+          reduced ? 0.13 : 0.23, k % 2 ? '#a64b2c' : '#d78a52',
+          Math.cos(a) * (4 + k * 1.8), Math.sin(a) * (4 + k * 1.8),
+          Math.cos(a), Math.sin(a));
+      }
+    }
   },
 
-  // Spec2/02 §3 — small ship kill: interior flash → 2-stage breakup → shockwave ring 260 ms.
-  _explodeSmall(p) {
-    if (!this._scene) return;
-    const pos = this._posFrom(p, p.id);
-    if (!pos) return;
-    const r = Math.max(3, p.radius || 6);
-    const x = pos.x, z = pos.z;
-    const burst = this._burst || 1;
-
-    // interior flash
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.08, r * 0.8, r * 2.5, 1.0, 0.0, '#ffffff', 0, 0);
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.14, r * 1.2, r * 3.5, 0.75, 0.0, '#ffe8a0', 0, 0);
-    // 2-stage breakup sparks
-    this._c0.set('#ffffff'); this._c1.set('#ff9040');
-    for (let k = 0; k < Math.max(8, Math.round(18 * burst)); k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 35 + Math.random() * 55;
-      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp,
-        0.18 + Math.random() * 0.12, 1.8, 0.0, this._c0, this._c1, 2.5, 0, 0);
-    }
-    // shockwave ring 260 ms
-    this._spawnSprite(SPR_RING, x, 0, z, 0.26, r * 0.6, r * 6.0, 0.9, 0.0, '#ffffff', 0, 0);
-    this._spawnSprite(SPR_RING, x, 0, z, 0.34, r * 0.8, r * 7.5, 0.6, 0.0, '#5fe0ff', 0, 0);
-    // debris ticks
-    this._c0.set('#c9b08a'); this._c1.set('#201810');
-    for (let k = 0; k < Math.max(4, Math.round(8 * burst)); k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 10 + Math.random() * 22;
-      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp,
-        1.2 + Math.random() * 0.6, 1.4, 0.5, this._c0, this._c1, 0.6, 0, 0);
-    }
-    this._flashLight({ x, z }, '#ffffff', 5.0, 8, 140);
+  _explode(p, big) {
+    if (!this._scene) return false;
+    const radius = Math.max(3, p && p.radius || 6);
+    const classId = big || radius >= 45 ? 'capital' : (radius < 9 ? 'small' : 'ordinary');
+    return this._queueExplosion(p, classId);
   },
 
-  // Spec2/02 §3 — capital kill: 3 sequential internal flashes over 800 ms → core bloom → ring + debris fan.
-  _explodeCapital(p) {
-    if (!this._scene) return;
-    const pos = this._posFrom(p, p.id);
-    if (!pos) return;
-    const r = Math.max(12, p.radius || 30);
-    const x = pos.x, z = pos.z;
-    const burst = this._burst || 1;
-
-    // 3 sequential internal flashes over 800 ms
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.18, r * 1.0, r * 4.0, 0.9, 0.0, '#ffffff', 0, 0);
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.35, r * 1.4, r * 5.5, 0.85, 0.0, '#ffe8a0', 0, 0);
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.55, r * 1.8, r * 7.0, 0.75, 0.0, '#ff8040', 0, 0);
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.80, r * 2.2, r * 9.0, 0.65, 0.0, '#ff5c5c', 0, 0);
-    // core bloom
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.45, r * 2.5, r * 10.0, 0.55, 0.0, '#ff5c5c', 0, 0);
-    // ring + debris fan
-    this._spawnSprite(SPR_RING, x, 0, z, 0.80, r * 0.8, r * 12.0, 0.9, 0.0, '#ffffff', 0, 0);
-    this._spawnSprite(SPR_RING, x, 0, z, 0.80, r * 1.0, r * 14.0, 0.65, 0.0, '#ffb35c', 0, 0);
-    this._c0.set('#ff9040'); this._c1.set('#401008');
-    for (let k = 0; k < Math.max(24, Math.round(48 * burst)); k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 18 + Math.random() * 55;
-      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp,
-        0.8 + Math.random() * 0.8, 2.2, 0.3, this._c0, this._c1, 1.0, 0, 0);
-    }
-    this._flashLight({ x, z }, '#ff5c5c', 10.0, 6, 320);
-  },
 
   // ---- mining beam visual (energy line from ship to contact point) ----------
   _miningBeam: null,
@@ -2134,7 +2651,7 @@ export const vfx = {
     const bandMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color('#d7e6ff'),
       transparent: true, opacity: 0.16,
-      depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
       forceSinglePass: true,
     });
     const band = new THREE.Mesh(bandGeo, bandMat);
@@ -2148,8 +2665,9 @@ export const vfx = {
     const anchorMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color('#39d0ff'),
       transparent: true, opacity: 0.52,
-      depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
       forceSinglePass: true,
+      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2,
     });
     const anchor = new THREE.Mesh(anchorGeo, anchorMat);
     anchor.frustumCulled = false;
@@ -2162,8 +2680,9 @@ export const vfx = {
     const anchorCoreMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color('#a6f0ff'),
       transparent: true, opacity: 0.74,
-      depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
       forceSinglePass: true,
+      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2,
     });
     const anchorCore = new THREE.Mesh(anchorCoreGeo, anchorCoreMat);
     anchorCore.frustumCulled = false;
@@ -2176,8 +2695,9 @@ export const vfx = {
     const targetHaloMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color('#39d0ff'),
       transparent: true, opacity: 0.18,
-      depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
       forceSinglePass: true,
+      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
     });
     const targetHalo = new THREE.Mesh(targetHaloGeo, targetHaloMat);
     targetHalo.frustumCulled = false;
@@ -2329,12 +2849,19 @@ export const vfx = {
     const dist = Math.hypot(dxG, dzG) || 1;
     const tr = tetherVisualRadius(anchorEnt);
     const bxG = anchorEnt.pos.x - (dxG / dist) * tr * 0.88, bzG = anchorEnt.pos.z - (dzG / dist) * tr * 0.88;
+    // The cable chord remains slightly inset for a firm latch, while the attachment markers sit
+    // just outside the target surface. This bounded offset clears coplanar skin without pulling
+    // the markers through unrelated foreground geometry.
+    const mxG = anchorEnt.pos.x - (dxG / dist) * (tr + TETHER_MARKER_SURFACE_EPS);
+    const mzG = anchorEnt.pos.z - (dzG / dist) * (tr + TETHER_MARKER_SURFACE_EPS);
     let dx = bxG - axG; let dz = bzG - azG;
     const chord = Math.hypot(dx, dz) || 1;
     const aLocal = this._toLocalXZ(axG, azG, this._spawnLocalXZ);
     const bLocal = this._toLocalXZ(bxG, bzG, this._entityLocalXZ);
+    const mLocal = this._toLocalXZ(mxG, mzG, this._entityLocalXZ);
     const ax = aLocal.x, az = aLocal.z;
     const bx = bLocal.x, bz = bLocal.z;
+    const mx = mLocal.x, mz = mLocal.z;
     const visualTime = Number.isFinite(this.state && this.state.simTime)
       ? this.state.simTime
       : (typeof performance !== 'undefined' ? performance.now() / 1000 : Date.now() / 1000);
@@ -2447,7 +2974,7 @@ export const vfx = {
     }
     cable.band.geometry.attributes.position.needsUpdate = true;
     const isLargeAnchor = tr >= 18 || anchorEnt.type === 'station';
-    cable.anchor.position.set(bx, 1.62, bz);
+    cable.anchor.position.set(mx, 1.62, mz);
     const anchorScale = isLargeAnchor
       ? Math.max(6.5, Math.min(28, tr * 0.24))
       : Math.max(3.8, Math.min(18, tr * 0.16));
@@ -2455,7 +2982,7 @@ export const vfx = {
     cable.anchor.rotation.y = visualTime * 1.8;
     cable.anchor.material.color.copy(this._ctmp);
     cable.anchor.material.opacity = (0.36 + 0.24 * l + whipEnv * 0.2 + cable.reelGlow * 0.34) * cable.fade;
-    cable.anchorCore.position.set(bx, 1.64, bz);
+    cable.anchorCore.position.set(mx, 1.64, mz);
     cable.anchorCore.scale.setScalar(Math.max(1.8, anchorScale * 0.42));
     cable.anchorCore.rotation.y = -visualTime * 2.4;
     cable.anchorCore.material.color.copy(this._ctmp);
@@ -3147,20 +3674,20 @@ export const vfx = {
     this._flashLight({ x: pos.x, z: pos.z }, col, 6.0, 4.5, 200);
   },
 
+  _usesProductionThruster(e) {
+    return !!(e && e.type === 'ship' && e.data && e.data.defId === 'ship_kestrel');
+  },
+
   _onThrust(p) {
     // Authoritative trail is the per-frame velocity-driven emitter in update(); this handler simply
     // gives an extra burst when an explicit ship:thrust event arrives (most ships drive it per-frame).
     const id = p && (p.id != null ? p.id : p.shipId);
     const e = this._ent(id);
     if (!e) return;
+    if (this._usesProductionThruster(e)) return;
     const reverse = p && Number.isFinite(p.reverse) ? Math.max(0, Math.min(1, p.reverse)) : 0;
     const nozzles = p && Array.isArray(p.nozzles) ? p.nozzles : EMPTY_TRAIL_SOCKETS;
-    // The retro pair has ONE owner per ship. When the flight computer publishes signed demand, the
-    // per-frame RCS pass draws the retros with continuous intensity and this key-derived burst
-    // stands down; two owners on one nozzle would double the burn. The event path stays live for
-    // craft flown by the legacy controller, which publish no actuator block.
-    const rcsOwnsRetros = !!this._actuatorsFor(e);
-    if (reverse > 0 && !rcsOwnsRetros) {
+    if (reverse > 0) {
       for (let i = 0; i < nozzles.length; i++) {
         const n = nozzles[i];
         if (n && (n.role === 'reverse-left' || n.role === 'reverse-right')) {
@@ -3175,6 +3702,7 @@ export const vfx = {
 
   _emitReverseNozzleTrail(e, role, strength) {
     if (!this._scene || !e || !(strength > 0)) return;
+    if (this._usesProductionThruster(e)) return;
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const rx = -sf, rz = cf;
     const side = role === 'reverse-left' ? -1 : 1;
@@ -3216,6 +3744,7 @@ export const vfx = {
   _onBoost(p, on) {
     const e = this._ent(p && p.shipId);
     if (!e || !this._scene) return;
+    if (this._usesProductionThruster(e)) return;
     if (on) {
       // Boost ignition: a tight rear-nozzle kick, not a ship-sized bloom.
       const col = this._engineColor(e);
@@ -3304,16 +3833,13 @@ export const vfx = {
   // engine trail emitter — called per ship per frame from update(), throttled by accumulator
   _emitEngineTrail(e, throttle, dt) {
     if (!this._scene) return { particles: 0, streaks: 0 };
+    if (this._usesProductionThruster(e)) return { particles: 0, streaks: 0 };
     const drive = Math.max(0, Math.min(1.35, Number.isFinite(throttle) ? throttle : 0));
     if (drive <= 0.03) return { particles: 0, streaks: 0 };
     let particlesSpawned = 0;
     let streaksSpawned = 0;
     const prof = this._engineProfile(e);
     const col0 = prof.coreColor || this._engineColor(e);
-    const tailCol = prof.tailColor || '#10204a';
-    const spreadMul = prof.spreadMul || 1;
-    const particleMul = prof.particleMul || 1;
-    const streakMul = prof.streakMul || 1;
     const streakLenMul = prof.streakLenMul || 1;
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const boostBlend = e.flags && e.flags.boosting ? 1 : 0;
@@ -3350,65 +3876,28 @@ export const vfx = {
     const svx = (e.vel && e.vel.x) || 0;
     const svz = (e.vel && e.vel.z) || 0;
 
-    const pCount = Math.max(1, Math.min(6, Math.floor((1 + drive * 2.0 + boostBlend * 1.5 + cruiseBlend * 2.0) * particleMul)));
-    const spread = (0.18 + drive * 0.18 + boostBlend * 0.22 + cruiseBlend * 0.14) * spreadMul;
-    for (let pi = 0; pi < pCount; pi++) {
-      this._c0.set(col0); if (glowT > 0) this._c0.lerp(this._ctmp.set('#ffffff'), glowT); this._c1.set(tailCol);
-      if (boostBlend > 0) this._c0.lerp(this._ctmp.set(prof.boostCore || '#d8f0ff'), 0.45);
-      if (cruiseBlend > 0) { this._c0.lerp(this._ctmp.set(prof.cruiseCore || '#a6e8ff'), 0.55); this._c1.set('#0a2840'); }
-      const sp = (22 + drive * 38) * (1 + boostBlend * 0.55 + cruiseBlend * 0.70);
-      const a = baseA + (Math.random() - 0.5) * spread;
-      const jitter = 0.7 + drive * 1.1 + boostBlend * 1.2 + cruiseBlend * 0.6;
-      const life = 0.32 + drive * 0.18 + boostBlend * 0.22 + cruiseBlend * 0.32;
-      const sz = 0.55 + drive * 0.65 + boostBlend * 0.55 + cruiseBlend * 0.35;
-      const pvx = svx + Math.cos(a) * sp;
-      const pvz = svz + Math.sin(a) * sp;
-      this._spawnParticle(
-        bx + (Math.random() - 0.5) * jitter, bz + (Math.random() - 0.5) * jitter,
-        pvx, pvz, life, sz, 0.0, this._c0, this._c1, 0.38, 0, 0, Math.atan2(pvz, pvx), 1);
-      particlesSpawned++;
-    }
-
-    this._c0.set('#ffffff'); this._c1.set(col0); if (glowT > 0) this._c1.lerp(this._ctmp.set('#ffffff'), glowT);
-    if (boostBlend > 0) this._c1.lerp(this._ctmp.set(prof.boostCore || '#a6d8ff'), 0.65);
-    if (cruiseBlend > 0) this._c1.lerp(this._ctmp.set(prof.cruiseCore || '#39d0ff'), 0.55);
-    const a2 = baseA + (Math.random() - 0.5) * (0.16 + boostBlend * 0.14 + cruiseBlend * 0.10);
-    const sp2 = (26 + drive * 36) * (1 + boostBlend * 0.45 + cruiseBlend * 0.60);
-    const coreSize = 0.5 + drive * 0.55 + boostBlend * 0.48 + cruiseBlend * 0.30;
-    const pvx2 = svx + Math.cos(a2) * sp2;
-    const pvz2 = svz + Math.sin(a2) * sp2;
-    this._spawnParticle(bx, bz, pvx2, pvz2, 0.22 + drive * 0.10 + boostBlend * 0.14 + cruiseBlend * 0.18, coreSize, 0.0, this._c0, this._c1, 0.55, 0, 0, Math.atan2(pvz2, pvx2), 1);
-    particlesSpawned++;
-
-    // AFTERBURNER / CRUISE: when boosting or cruising, add extra bright wide particles.
-    if (boostBlend > 0 || cruiseBlend > 0 || drive > 1.05) {
-      // Extra wide bright outer particles — faction colored, bigger, slightly random y offset
-      this._c0.set(col0); if (glowT > 0) this._c0.lerp(this._ctmp.set('#ffffff'), glowT); this._c1.set('#ffffff');
-      if (cruiseBlend > 0) { this._c0.lerp(this._ctmp.set('#a6e8ff'), 0.6); this._c1.set('#d8f8ff'); }
-      const ab = baseA + (Math.random() - 0.5) * (0.6 + boostBlend * 0.28 + cruiseBlend * 0.20);
-      const absp = (28 + drive * 16 + Math.random() * 26) * (1 + boostBlend * 0.38 + cruiseBlend * 0.48);
-      const pvxAb = svx + Math.cos(ab) * absp;
-      const pvzAb = svz + Math.sin(ab) * absp;
-      this._spawnParticle(
-        bx + (Math.random() - 0.5) * (1.8 + boostBlend * 1.4 + cruiseBlend * 0.8), bz + (Math.random() - 0.5) * (1.8 + boostBlend * 1.4 + cruiseBlend * 0.8),
-        pvxAb, pvzAb, 0.38 + boostBlend * 0.16 + cruiseBlend * 0.24, 1.6 + drive * 0.55 + boostBlend * 0.8 + cruiseBlend * 0.6, 0.0, this._c0, this._c1, 0.32, 0, 0, Math.atan2(pvzAb, pvxAb), 1);
-      particlesSpawned++;
-    }
-
-    // Procedural streak meshes carry the bulk of the Saeki warp-line trail (shader planes along exhaust axis).
-    // Low-opacity streaks overlap axis-modulated point particles (and the HDR energy plume for the player)
-    // so exhaust reads as a continuous wavy jet instead of discrete glowing balls.
-    const puffCount = Math.max(2, Math.min(8, Math.floor((2 + drive * 3.0 + (boostBlend + cruiseBlend) * 2.2) * streakMul)));
-    for (let k = 0; k < puffCount; k++) {
-      const pa = baseA + (Math.random() - 0.5) * (0.55 + boostBlend * 0.2) * spreadMul;
-      const psp = (10 + drive * 16) * (0.85 + boostBlend * 0.4 + cruiseBlend * 0.5);
-      const pvxP = svx + Math.cos(pa) * psp;
-      const pvzP = svz + Math.sin(pa) * psp;
-      const plife = 0.32 + drive * 0.16 + boostBlend * 0.18;
-      const streakLen = (2.8 + drive * 2.4 + boostBlend * 1.6) * streakLenMul;
-      this._spawnTrailStreak(bx, 0, bz, plife, 0.65, streakLen, 0.48, col0, pvxP * 0.82, pvzP * 0.82);
-      streaksSpawned++;
-    }
+    // Legacy ships use the same pooled streak substrate, but never the old moving point-particle
+    // exhaust. Those particles accumulated into long diagonal bead chains whenever an NPC crossed
+    // the camera. Alternate a narrow hot core and broader colored sheath at the nozzle; their life
+    // is deliberately shorter than an object-width traversal, and inherited ship velocity keeps
+    // the layers attached instead of leaving detached cards in world space.
+    const corePass = ((this._trailFrameIndex + (Number(e.id) || 0)) & 1) === 0;
+    this._c0.set(corePass ? '#ffffff' : col0);
+    if (glowT > 0) this._c0.lerp(this._ctmp.set('#ffffff'), glowT * (corePass ? 0.25 : 0.6));
+    if (boostBlend > 0) this._c0.lerp(this._ctmp.set(prof.boostCore || '#a6d8ff'), corePass ? 0.35 : 0.62);
+    if (cruiseBlend > 0) this._c0.lerp(this._ctmp.set(prof.cruiseCore || '#39d0ff'), corePass ? 0.28 : 0.58);
+    const drift = 2.0 + drive * 2.6 + boostBlend * 1.8 + cruiseBlend * 1.5;
+    const pvx = svx + Math.cos(baseA) * drift;
+    const pvz = svz + Math.sin(baseA) * drift;
+    const life = 0.075 + drive * 0.018 + boostBlend * 0.018 + cruiseBlend * 0.015;
+    const width = (corePass ? 0.26 : 0.54) * (1 + drive * 0.18 + boostBlend * 0.34 + cruiseBlend * 0.24);
+    const length = (corePass ? 2.9 : 4.7)
+      * (1 + drive * 0.32 + boostBlend * 0.62 + cruiseBlend * 0.48) * streakLenMul;
+    this._spawnTrailStreak(
+      bx, 0, bz, life, width, length, corePass ? 0.62 : 0.34,
+      this._c0, pvx, pvz,
+    );
+    streaksSpawned = 1;
     return { particles: particlesSpawned, streaks: streaksSpawned };
   },
 
@@ -3431,10 +3920,6 @@ export const vfx = {
     if (!(dt > 0)) return;
     if (dt > 0.1) dt = 0.1; // clamp pauses/tab-switches so particles don't teleport
     this._t += dt;
-    // Frame id for the actuator memo. `_engineDriveFor` and the RCS pass both want the same block
-    // and are each called several times per frame from different subsystems; resolving once per
-    // entity per frame keeps them consistent AND keeps the NPC compute budget meaningful.
-    this._vfxFrameId = (this._vfxFrameId || 0) + 1;
     const trailScroll = (this._t * 0.35) % 1;
     if (this._particleMat) {
       if (this._particleMat.uniforms.uTrailScroll) this._particleMat.uniforms.uTrailScroll.value = trailScroll;
@@ -3460,7 +3945,7 @@ export const vfx = {
       }
     } else {
       this._projectileTrailsWereRelevant = false;
-      this._projectileTrailDiag = emptyProjectileTrailDiag();
+      resetProjectileTrailDiag(this._projectileTrailDiag);
       sub.projectileTrails = 0;
     }
     if (this._miningBeamActive()) {
@@ -3503,6 +3988,16 @@ export const vfx = {
       sub.seamMarkers = 0;
     }
     sub.energy = this._updateEnergy(dt) ? 1 : 0;
+    sub.explosions = this._explosions.update(dt, this._explosionEmitter) > 0 ? 1 : 0;
+    if (this._combatBeams) {
+      sub.combatBeams = this._combatBeams.update(
+        this._t,
+        this._combatBeamLocalizer,
+        resolveVfxAccessibilityProfile(this.state && this.state.settings),
+      ) > 0 ? 1 : 0;
+    } else {
+      sub.combatBeams = 0;
+    }
     if (this._liveCount > 0) {
       this._integrateParticles(dt);
       sub.particles = 1;
@@ -3578,7 +4073,12 @@ export const vfx = {
 
   _energyMaterialsEnabled() {
     const video = this.state.settings && this.state.settings.video;
-    return !!(video && video.energyMaterials && this._bloomRadianceScale() > 0.0001);
+    return !!(video && video.energyMaterials);
+  },
+
+  _productionThrusterEnabled() {
+    const video = this.state.settings && this.state.settings.video;
+    return !video || video.engineTrails !== false;
   },
 
   _bloomRadianceScale() {
@@ -3591,12 +4091,26 @@ export const vfx = {
   },
 
   _energyPlumeRelevant() {
+    if (!this._productionThrusterEnabled()) return false;
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
-    if (!player || !player.alive) return false;
+    if (!player || !player.alive || !this._usesProductionThruster(player)) return false;
     const energy = this._energy;
-    if (energy && (energy.plumeDrive > 0.02 || energy.boostBlend > 0.02)) return true;
+    if (energy && (
+      energy.plumeDrive > 0.02
+      || energy.boostBlend > 0.02
+      || (energy.rcsSystem && energy.rcsSystem.pool.activeImpulseCount > 0)
+    )) return true;
+    const actuators = this._actuatorsFor(player);
+    if (actuators && (
+      Math.abs(actuators.lateral || 0) > 0.001
+      || Math.abs(actuators.yaw || 0) > 0.001
+      || (actuators.reverse || 0) > 0.001
+    )) return true;
+    const turn = this.state.input && Number.isFinite(this.state.input.turnIntent)
+      ? Math.abs(this.state.input.turnIntent)
+      : 0;
     const driveInfo = this._engineDriveFor(player);
-    return driveInfo.drive > 0.03 || driveInfo.boost > 0;
+    return driveInfo.drive > 0.03 || driveInfo.boost > 0 || turn > 0.2;
   },
 
   _energyMasslineRelevant() {
@@ -3629,20 +4143,22 @@ export const vfx = {
   _subscribeOnce() { if (!this._subs.length) this._subscribe(); },
 
   // -------------------------------------------------------------------------
-  // HDR energy materials (spec §14.5 / INTEGRATION_MAP §8.5). An opt-in layer of real
-  // shader-driven energy volumes — a hot-core/turbulent-halo thruster plume and a tension-pulsing
-  // Massline ribbon — that write HDR radiance into the half-float bloom target. These are
-  // additive, depth-tested, toneMapped:false meshes layered alongside the particle trail, NOT a
-  // replacement for it. Gated on settings.video.energyMaterials (and bloom, since HDR radiance
-  // only reads correctly when the bloom composite tone-maps it). Purely cosmetic — never sim state.
+  // Production energy materials. The Kestrel plume is a batched, directional replacement for the
+  // old polygon volume + particle beads, and remains legible without bloom. The Massline ribbon
+  // continues to use its dedicated energy volume. Purely cosmetic — never sim state.
   // -------------------------------------------------------------------------
   _updateEnergy(dt) {
-    if (!this._energyMaterialsEnabled()) {
+    const productionThrusterEnabled = this._productionThrusterEnabled();
+    const legacyEnergyMaterialsEnabled = this._energyMaterialsEnabled();
+    if (!productionThrusterEnabled && !legacyEnergyMaterialsEnabled) {
       this._disposeEnergy();
       return false;
     }
-    const plumeRelevant = this._energyPlumeRelevant();
-    const masslineRelevant = this._energyMasslineRelevant();
+    // The production Hitch exhaust is the ship's primary propulsion feedback. It follows the
+    // Engine trails setting and must not disappear because a legacy profile disabled the older
+    // HDR-energy-material experiment. That legacy toggle continues to own only the Massline volume.
+    const plumeRelevant = productionThrusterEnabled && this._energyPlumeRelevant();
+    const masslineRelevant = legacyEnergyMaterialsEnabled && this._energyMasslineRelevant();
     if (!plumeRelevant && !masslineRelevant) {
       if (this._energy) {
         this._hideEnergyPlumes(0);
@@ -3681,16 +4197,20 @@ export const vfx = {
 
   _initEnergy() {
     if (!this._scene) return;
-    // Thruster plume: a small elongated cylinder energy volume positioned at the player's trail
-    // socket each frame. Two meshes (core + halo) share the geometry.
-    const plumeGeo = new THREE.CylinderGeometry(0.5, 1.6, 4.0, 24, 3, true);
-    plumeGeo.rotateZ(Math.PI / 2);
-    plumeGeo.translate(-2, 0, 0); // nozzle pivot at local origin; volume extends toward ship -X/rear
-    const plume = createPlumeVolume(plumeGeo, {
-      name: 'sf-energy-plume',
-      colorA: 0x36c8ff, colorB: 0x6a4cff,
-      coreIntensity: 6.5, haloIntensity: 2.6, noiseScale: 1.6, flowSpeed: 2.4,
+    const textures = loadKestrelThrusterTextures();
+    const plumeSystem = new ContinuousPlumeSystem(THREE, KESTREL_MAIN_PLUME_RECIPE, {
+      textures,
+      maxSockets: this._productionPlumeSockets.length,
+      distortionEnabled: false,
     });
+    const rcsSystem = new RcsImpulseSystem(THREE, KESTREL_RCS_RECIPE, {
+      textures,
+      maxImpulses: 12,
+    });
+    plumeSystem.group.visible = false;
+    rcsSystem.group.visible = false;
+    this._scene.add(plumeSystem.group);
+    this._scene.add(rcsSystem.group);
 
     // Massline ribbon: a thin tube energy volume drawn between the player and a tethered target.
     // Reuses the energy shader (turbulent core + halo) rather than the dedicated ribbon shader so it
@@ -3704,147 +4224,129 @@ export const vfx = {
       coreIntensity: 5.0, haloIntensity: 2.2, noiseScale: 2.4, flowSpeed: 3.2, pulse: 1.4,
     });
 
-    plume.visible = false;
-    plume.userData.spacefaceEnergyPlume = true;
     ribbonCore.visible = false;
     this._scene.add(ribbonCore);
-    this._energy = { plume, plumes: [plume], plumeGeo, ribbon: ribbonCore, ribbonGeo, plumeDrive: 0, boostBlend: 0 };
+    this._energy = {
+      plumeSystem,
+      rcsSystem,
+      ribbon: ribbonCore,
+      ribbonGeo,
+      plumeDrive: 0,
+      boostBlend: 0,
+      rcsCooldown: 0,
+    };
   },
 
   _updateEnergyPlume(dt) {
     const energy = this._energy;
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
-    if (!player || !player.alive) {
+    if (!player || !player.alive || !this._usesProductionThruster(player)) {
       this._hideEnergyPlumes(0);
       energy.plumeDrive = 0;
       energy.boostBlend = 0;
       return;
     }
     const driveInfo = this._engineDriveFor(player);
-    const targetBoost = driveInfo.boost;
-    const rawDrive = driveInfo.drive;
-    const driveRate = rawDrive > energy.plumeDrive ? 9.5 : 4.2;
-    const boostRate = targetBoost > energy.boostBlend ? 8.5 : 3.6;
-    energy.plumeDrive += (rawDrive - energy.plumeDrive) * (1 - Math.exp(-driveRate * Math.max(0, dt || 0)));
-    energy.boostBlend += (targetBoost - energy.boostBlend) * (1 - Math.exp(-boostRate * Math.max(0, dt || 0)));
-    const drive = energy.plumeDrive;
-    const boostBlend = energy.boostBlend;
-    const fade = Math.max(0, Math.min(1, (drive - 0.012) / 0.10 + boostBlend * 0.4));
-    if (fade <= 0.01) { this._hideEnergyPlumes(0); return; }
-    // Slightly longer/wider gaseous volume + stronger intensity so the volumetric plume reads as the
-    // primary "engine flame" that the point+ sprite particles augment rather than dominate.
-    const prof = this._engineProfile(player);
-    const radianceScale = this._bloomRadianceScale();
-    const opacityScale = Math.sqrt(radianceScale);
-    const widthMul = prof.plumeWidthMul || 1;
-    const lengthMul = prof.plumeLengthMul || 1;
-    // Top-50 rank-3 thruster pack: slightly longer/hotter plumes so boost reads at chase distance.
-    const width = (0.32 + drive * 0.42 + boostBlend * 0.32) * widthMul;
-    const length = (0.34 + drive * 1.75 + boostBlend * 2.15) * lengthMul;
-    // Cap the boost white-out at ~0.7 so each engine keeps a hint of its own hue at full afterburner
-    // (otherwise every drive collapses to the same white and the fleet's variety is lost at the top end).
-    const boostTint = Math.min(0.7, boostBlend);
-    const coreColor = this._c0.set(prof.plumeCore || '#36c8ff').lerp(this._c1.set('#fff4dd'), boostTint);
-    const haloColor = this._ctmp.set(prof.plumeHalo || '#6a4cff').lerp(this._c1.set('#c98cff'), boostTint);
-    const sockets = this._trailSocketObjects(player);
-    const count = Math.max(1, sockets.length);
+    const a11y = this._productionThrusterA11y;
+    const video = this.state.settings && this.state.settings.video || {};
+    const accessibility = this.state.settings && this.state.settings.accessibility || {};
+    const particleQuality = video.particleQuality || 'high';
+    a11y.reducedMotion = !!video.motionReduce;
+    a11y.reducedFlash = !!accessibility.flashReduce;
+    a11y.lowQuality = particleQuality === 'low';
+    a11y.qualityTier = particleQuality === 'med' ? 'medium' : particleQuality;
+
+    const socketCount = this._writeProductionPlumeSockets(player);
+    const opts = this._productionThrusterOpts;
+    opts.boost = driveInfo.boost;
+    const result = energy.plumeSystem.update(
+      dt,
+      driveInfo.drive,
+      socketCount > 0 ? this._productionPlumeSocketView : null,
+      opts,
+    );
+    energy.plumeDrive = result.drive;
+    energy.boostBlend = result.boostBlend;
+    this._updateProductionRcs(player, dt, a11y);
+  },
+
+  _writeProductionPlumeSockets(player) {
+    const authored = this._trailSocketObjects(player);
+    const count = Math.min(this._productionPlumeSockets.length, Math.max(1, authored.length));
+    this._productionPlumeSocketView.length = count;
     for (let i = 0; i < count; i++) {
-      const plume = this._ensureEnergyPlume(i);
-      const socket = sockets[i] || null;
-      if (socket) this._placeEnergyPlumeAtSocket(plume, socket, length, width);
-      else this._placeEnergyPlumeFallback(plume, player, length, width);
-      plume.visible = true;
-      const core = plume.userData.energyCore;
-      const halo = plume.userData.energyHalo;
-      const coreIntensity = prof.coreIntensity || 6.5;
-      const haloIntensity = prof.haloIntensity || 2.6;
-      // Liquid-fire character: engine family sets swirl/fork/flow, boost heats + lengthens the fire.
-      const plumeSwirl = prof.plumeSwirl != null ? prof.plumeSwirl : 0.5;
-      const plumeFork = prof.plumeFork != null ? prof.plumeFork : 0.5;
-      const plumeFlow = prof.flowSpeed || 2.4;
-      const plumeNoise = prof.noiseScale || 1.6;
-      if (core) updateEnergyMaterial(core.material, {
-        time: this._t, colorA: coreColor, colorB: haloColor,
-        boost: boostBlend, swirl: plumeSwirl, fork: plumeFork, flowSpeed: plumeFlow, noiseScale: plumeNoise,
-        intensity: ((coreIntensity * 0.78) + drive * 4.2 + boostBlend * 3.4) * radianceScale,
-        opacity: (0.26 + drive * 0.34 + boostBlend * 0.20) * fade * opacityScale,
-      });
-      if (halo) updateEnergyMaterial(halo.material, {
-        time: this._t, colorA: haloColor, colorB: coreColor,
-        boost: boostBlend, swirl: plumeSwirl, fork: plumeFork, flowSpeed: plumeFlow * 0.9, noiseScale: plumeNoise * 0.8,
-        intensity: ((haloIntensity * 0.55) + drive * 1.6 + boostBlend * 1.75) * radianceScale,
-        opacity: (0.07 + drive * 0.12 + boostBlend * 0.09) * fade * opacityScale,
-      });
+      const out = this._productionPlumeSockets[i];
+      this._productionPlumeSocketView[i] = out;
+      let pose = null;
+      if (authored[i]) pose = this._trailSocketPoseFromObject(authored[i]);
+      else if (i === 0) pose = this._trailSocketWorldPose(player);
+      if (pose) {
+        const local = this._toLocalXZ(pose.x, pose.z, this._spawnLocalXZ);
+        out.x = local.x;
+        out.y = pose.y;
+        out.z = local.z;
+        // Shader extends along -axis. Authored socket forward is exhaust direction.
+        out.ax = -pose.forwardX;
+        out.ay = -pose.forwardY;
+        out.az = -pose.forwardZ;
+      } else {
+        const cf = Math.cos(player.rot || 0);
+        const sf = Math.sin(player.rot || 0);
+        const back = (player.radius || 4) * 0.85;
+        const local = this._toLocalXZ(player.pos.x - cf * back, player.pos.z - sf * back, this._spawnLocalXZ);
+        out.x = local.x;
+        out.y = 0;
+        out.z = local.z;
+        out.ax = cf;
+        out.ay = 0;
+        out.az = sf;
+      }
     }
-    this._hideEnergyPlumes(count);
+    return count;
   },
 
-  _ensureEnergyPlume(index) {
+  _updateProductionRcs(player, dt, a11y) {
     const energy = this._energy;
-    while (energy.plumes.length <= index) {
-      const plume = createPlumeVolume(energy.plumeGeo, {
-        name: `sf-energy-plume-${energy.plumes.length}`,
-        colorA: 0x36c8ff, colorB: 0x6a4cff,
-        coreIntensity: 6.5, haloIntensity: 2.6, noiseScale: 1.6, flowSpeed: 2.4,
-      });
-      plume.visible = false;
-      plume.userData.spacefaceEnergyPlume = true;
-      energy.plumes.push(plume);
-    }
-    if (!energy.plume) energy.plume = energy.plumes[0];
-    return energy.plumes[index];
-  },
-
-  _hideEnergyPlumes(startIndex) {
-    const energy = this._energy;
-    if (!energy || !energy.plumes) return;
-    for (let i = startIndex; i < energy.plumes.length; i++) {
-      const plume = energy.plumes[i];
-      if (plume) plume.visible = false;
-    }
-  },
-
-  _placeEnergyPlumeAtSocket(plume, socket, length, width) {
-    socket.updateWorldMatrix(true, false);
-    socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
-    this._socketLocalForward.copy(this._socketReferenceForward);
-    const authoredForward = socket.userData && socket.userData.forward;
-    if (authoredForward) {
-      const fx = Array.isArray(authoredForward) ? authoredForward[0] : authoredForward.x;
-      const fy = Array.isArray(authoredForward) ? authoredForward[1] : authoredForward.y;
-      const fz = Array.isArray(authoredForward) ? authoredForward[2] : authoredForward.z;
-      this._socketLocalForward.set(
-        Number.isFinite(fx) ? fx : -1,
-        Number.isFinite(fy) ? fy : 0,
-        Number.isFinite(fz) ? fz : 0,
+    if (!energy || !energy.rcsSystem) return;
+    energy.rcsCooldown = Math.max(0, energy.rcsCooldown - dt);
+    const actuators = this._actuatorsFor(player);
+    if (actuators && energy.rcsCooldown <= 0) {
+      const pose = this._rcsPoseScratch || (this._rcsPoseScratch = { x: 0, z: 0, rot: 0, radius: 6 });
+      pose.x = player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
+      pose.z = player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
+      pose.rot = player.rot || 0;
+      pose.radius = player.radius || 6;
+      const firings = resolveRcsFirings(
+        actuators,
+        pose,
+        this._rcsScaleFor(player._flightFrame),
+        this._productionRcsFirings || (this._productionRcsFirings = []),
       );
-      if (this._socketLocalForward.lengthSq() < 1e-8) this._socketLocalForward.copy(this._socketReferenceForward);
-      this._socketLocalForward.normalize();
+      let fired = 0;
+      for (let i = 0; i < firings.length && fired < this._rcsOrigins.length; i++) {
+        const jet = firings[i];
+        if (!(jet.intensity > 0.001)) continue;
+        const local = this._toLocalXZ(jet.x, jet.z, this._spawnLocalXZ);
+        const origin = this._rcsOrigins[fired];
+        const axis = this._rcsAxes[fired];
+        origin[0] = local.x; origin[1] = 0; origin[2] = local.z;
+        axis[0] = jet.dirX; axis[1] = 0; axis[2] = jet.dirZ;
+        energy.rcsSystem.fire(origin, axis, jet.intensity);
+        fired++;
+      }
+      if (fired > 0) energy.rcsCooldown = a11y.reducedMotion ? 0.18 : 0.11;
     }
-    this._socketForwardQuat.setFromUnitVectors(this._socketReferenceForward, this._socketLocalForward);
-    this._socketForward.copy(this._socketLocalForward).applyQuaternion(this._socketWorldQuat).normalize();
-    plume.position.copy(this._socketWorldPos);
-    plume.quaternion.copy(this._socketWorldQuat).multiply(this._socketForwardQuat);
-    plume.scale.set(length, width, width);
-    if (!plume.parent) this._scene.add(plume);
+    energy.rcsSystem.update(dt, a11y);
   },
 
-  _placeEnergyPlumeFallback(plume, player, length, width) {
-    // _trailSocketWorldPose returns galactic-global XZ; convert for Three.js placement.
-    const socket = this._trailSocketWorldPose(player);
-    if (socket) {
-      const local = this._toLocalXZ(socket.x, socket.z, this._spawnLocalXZ);
-      plume.position.set(local.x, socket.y || 0, local.z);
-    } else {
-      const cf = Math.cos(player.rot || 0);
-      const sf = Math.sin(player.rot || 0);
-      const back = (player.radius || 4) * 0.85;
-      const local = this._toLocalXZ(player.pos.x - cf * back, player.pos.z - sf * back, this._spawnLocalXZ);
-      plume.position.set(local.x, 0, local.z);
-    }
-    plume.rotation.set(0, socket ? socket.rotationY : -(player.rot || 0), 0);
-    plume.scale.set(length, width, width);
-    if (!plume.parent) this._scene.add(plume);
+  _hideEnergyPlumes() {
+    const energy = this._energy;
+    if (!energy) return;
+    if (energy.plumeSystem) energy.plumeSystem.reset();
+    if (energy.rcsSystem) energy.rcsSystem.reset();
+    energy.plumeDrive = 0;
+    energy.boostBlend = 0;
+    energy.rcsCooldown = 0;
   },
 
   _updateEnergyMassline(dt) {
@@ -3891,15 +4393,14 @@ export const vfx = {
 
   _disposeEnergy() {
     if (!this._energy) return;
-    const plumes = this._energy.plumes || (this._energy.plume ? [this._energy.plume] : []);
-    for (const plume of plumes) {
-      if (!plume) continue;
-      if (plume.parent) plume.parent.remove(plume);
-      disposeEnergyVolumeMaterials(plume);
-    }
+    const plumeSystem = this._energy.plumeSystem;
+    const rcsSystem = this._energy.rcsSystem;
+    if (plumeSystem && plumeSystem.group && plumeSystem.group.parent) plumeSystem.group.parent.remove(plumeSystem.group);
+    if (rcsSystem && rcsSystem.group && rcsSystem.group.parent) rcsSystem.group.parent.remove(rcsSystem.group);
+    if (plumeSystem) plumeSystem.dispose();
+    if (rcsSystem) rcsSystem.dispose();
     if (this._energy.ribbon && this._energy.ribbon.parent) this._energy.ribbon.parent.remove(this._energy.ribbon);
     disposeEnergyVolumeMaterials(this._energy.ribbon);
-    if (this._energy.plumeGeo) this._energy.plumeGeo.dispose();
     if (this._energy.ribbonGeo) this._energy.ribbonGeo.dispose();
     this._energy = null;
   },
@@ -3927,125 +4428,13 @@ export const vfx = {
     return scale;
   },
 
-  /**
-   * The signed actuator block for an entity, or null when the flight computer has not produced one.
-   *
-   * The player's block is already computed every tick by flightV3 (`_publishPlayerDiagnostics`
-   * writes `state.flightRuntime.telemetry`), so reading it costs nothing and is guaranteed to be
-   * the same numbers the physics used. Other craft carry the raw kernel telemetry on `_flightFrame`
-   * but nobody derives actuators from it, so we run the same public seam here — under a per-frame
-   * budget, because that call allocates and there is no reason to pay for ships nobody is looking at.
-   *
-   * `profile` is deliberately omitted for non-player craft: `computeActuatorDemand` never reads it
-   * (only the braking/envelope fields do), so fetching a profile per entity would be work for a
-   * value this path discards.
-   */
+  /** Signed player actuator truth published by flightV3; presentation never re-simulates physics. */
   _actuatorsFor(e) {
-    if (!e) return null;
+    if (!e || e.id !== this.state.playerId) return null;
     const state = this.state;
-    const isPlayer = e.id === state.playerId;
-    if (isPlayer) {
-      // Fast path: flightV3 already computed this tick's block. Free, and guaranteed to be the
-      // same numbers the physics used.
-      const rt = state.flightRuntime;
-      const t = rt && rt.telemetry;
-      if (t && t.actuators) return t.actuators;
-      // Fall through to the _flightFrame compute rather than returning null. flightV3.update()
-      // returns early before `_publishPlayerDiagnostics` whenever the physics backend is not
-      // rapier-dynamic, and the legacy flight controller never publishes flightRuntime at all —
-      // so binding the player's jets to the diagnostics publisher would make the hero ship the one
-      // craft that silently loses them. The player is a single entity and is never budget-skipped.
-    }
-    if (!e._flightFrame) return null;
-
-    // Memoized per entity per frame. Without this the NPC budget would be spent by whichever
-    // subsystem happened to ask first, and two callers in one frame could disagree about what a
-    // ship is doing — the plume saying one thing and the jets another.
-    const frameId = this._vfxFrameId || 0;
-    let cache = this._rcsActuatorCache;
-    if (!cache) cache = this._rcsActuatorCache = new Map();
-    if (this._rcsActuatorFrame !== frameId) {
-      cache.clear();
-      this._rcsActuatorFrame = frameId;
-      this._rcsNpcBudget = RCS_NPC_RESOLVE_BUDGET;
-    }
-    if (cache.has(e.id)) return cache.get(e.id);
-    if (!isPlayer) {
-      if (this._rcsNpcBudget <= 0) return null; // not cached: a later frame may afford it
-      this._rcsNpcBudget--;
-    }
-    const body = this._rcsBodyScratch || (this._rcsBodyScratch = { pos: null, vel: null, rot: 0, angVel: 0 });
-    body.pos = e.pos; body.vel = e.vel; body.rot = e.rot || 0; body.angVel = e.angVel || 0;
-    // `profile` is omitted deliberately: computeActuatorDemand never reads it, so fetching one per
-    // entity would be work for a value this path discards.
-    const actuators = computeFlightTelemetry({ body, control: { telemetry: e._flightFrame } }).actuators;
-    cache.set(e.id, actuators);
-    return actuators;
-  },
-
-  /**
-   * Draw the attitude/translation jets an entity is actually firing this frame.
-   *
-   * Retros are drawn here too, with continuous intensity, which is why `_onThrust` stands down for
-   * any ship that has a truthful actuator block: two owners for one nozzle would double the burn.
-   * The legacy event path stays for craft flown by the old controller and for the `reverse-left` /
-   * `reverse-right` contract pinned at scripts/check-autopilot-v3.mjs:768-774.
-   */
-  _emitRcsJets(e, actuators, lowQuality) {
-    if (!this._scene || !e || !actuators) return 0;
-    const scale = this._rcsScaleFor(e._flightFrame);
-    const pose = this._rcsPoseScratch || (this._rcsPoseScratch = { x: 0, z: 0, rot: 0, radius: 6 });
-    pose.x = (e.pos && e.pos.x) || 0;
-    pose.z = (e.pos && e.pos.z) || 0;
-    pose.rot = e.rot || 0;
-    pose.radius = e.radius || 6;
-    const firings = resolveRcsFirings(actuators, pose, scale, this._rcsFirings || (this._rcsFirings = []));
-    if (!firings.length) return 0;
-
-    const isPlayer = e.id === this.state.playerId;
-    const burst = this._burst || 1;
-    const svx = (e.vel && e.vel.x) || 0;
-    const svz = (e.vel && e.vel.z) || 0;
-    let spawned = 0;
-
-    for (let i = 0; i < firings.length; i++) {
-      const jet = firings[i];
-      if (jet.intensity < RCS_MIN_INTENSITY) continue;
-      const strength = jet.intensity;
-      const dir = Math.atan2(jet.dirZ, jet.dirX);
-      // Cold gas: wide cone, quick stop. High drag is what makes it read as a PUFF rather than a
-      // streak, which is the whole point of keeping RCS distinct from the main plume.
-      const spread = 0.55 - strength * 0.18;
-      const count = lowQuality ? 1 : Math.max(1, Math.round((1 + strength * (isPlayer ? 2.2 : 1.1)) * burst));
-      this._c0.set(RCS_CORE);
-      this._c1.set(RCS_TAIL);
-      for (let k = 0; k < count; k++) {
-        const a = dir + (Math.random() - 0.5) * spread;
-        const sp = 14 + strength * 30 + Math.random() * 10;
-        this._spawnParticle(
-          jet.x + (Math.random() - 0.5) * 0.5,
-          jet.z + (Math.random() - 0.5) * 0.5,
-          svx + Math.cos(a) * sp,
-          svz + Math.sin(a) * sp,
-          0.10 + strength * 0.10,
-          0.34 + strength * 0.5,
-          0.0,
-          this._c0,
-          this._c1,
-          2.4,
-          0,
-          0
-        );
-        spawned++;
-      }
-      // A hard burn gets one small glow so a decisive manoeuvre reads at a glance. Opacity stays
-      // low and the sprite is faction-neutral: no additive white saturation anywhere.
-      if (isPlayer && strength > 0.55 && !lowQuality) {
-        this._spawnSprite(SPR_FLASH, jet.x, 0, jet.z, 0.10, 0.9 + strength * 1.1, 2.2 + strength * 1.6,
-          0.16 + strength * 0.14, 0.0, RCS_CORE, jet.dirX * 3, jet.dirZ * 3);
-      }
-    }
-    return spawned;
+    const runtime = state.flightRuntime;
+    const telemetry = runtime && runtime.telemetry;
+    return telemetry && telemetry.actuators ? telemetry.actuators : null;
   },
 
   _engineDriveFor(e, out = this._driveScratch) {
@@ -4072,7 +4461,7 @@ export const vfx = {
     // the thrust the drive is ACTUALLY producing — which includes assist and autopilot thrust the
     // pilot never commanded, and excludes the key the pilot is holding while the governor ignores it.
     const md = mainDriveDemand(this._actuatorsFor(e), this._rcsScaleFor(frame));
-    if (md) throttle = Math.max(throttle, md.main);
+    if (md) throttle = md.main;
     const cf = Math.cos(e.rot || 0);
     const sf = Math.sin(e.rot || 0);
     const forwardSpeed = Number.isFinite(frame.forwardSpeed) ? frame.forwardSpeed : (vx * cf + vz * sf);
@@ -4108,11 +4497,10 @@ export const vfx = {
   _LIGHT_NPOOL: EVENT_LIGHT_POOL_SIZE,
   _initEventLights() {
     if (!this._scene) return;
-    // Respect the motion-reduce / quality gates: on low quality or motion-reduce, skip the pool
-    // entirely (lights are a vestibular/visual load). _flashLight becomes a no-op if pool is null.
-    const v = this.state.settings && this.state.settings.video;
+    // The pool is structural shader state and therefore exists at every quality/accessibility
+    // setting. _flashLight applies the current accessibility intensity profile on every event, so
+    // motion/flash reduction remains live without changing the visible PointLight count.
     this._activeLightCount = 0;
-    if (eventLightPoolSizeFor(v) === 0) { this._lights = null; return; }
     this._lights = [];
     for (let i = 0; i < this._LIGHT_NPOOL; i++) {
       const l = new THREE.PointLight(0xffffff, 0, 400, 2.0); // color, intensity, distance, decay
@@ -4135,6 +4523,9 @@ export const vfx = {
   _flashLight(pos, color, peak, decayRate, dist) {
     const pool = this._lights;
     if (!pool || !pos) return false;
+    const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    peak *= accessibility.eventLightPeakScale;
+    if (peak <= 0) return false;
     // Cull if the event is far from the player (lights far away contribute nothing visible but
     // still cost a per-fragment eval). Generous radius so nearby fights still light up.
     // Distance uses global coordinates so the cull is origin-invariant.
@@ -4323,8 +4714,8 @@ export const vfx = {
   },
 
   _recordProjectileTrailClass(diag, cls, kind) {
-    if (!diag.byClass[cls]) diag.byClass[cls] = { particles: 0, streaks: 0, sprites: 0 };
-    diag.byClass[cls][kind]++;
+    const totals = diag.byClass[cls] || diag.byClass.other;
+    totals[kind]++;
   },
 
   _executeProjectileTrailPlan(plan, diag) {
@@ -4334,7 +4725,7 @@ export const vfx = {
     const { x: backX, z: backZ } = plan.backVel;
     const trailAxis = plan.trailAxis;
 
-    if (plan.mode === 'streak' && plan.streak) {
+    if ((plan.mode === 'streak' || plan.mode === 'tracer') && plan.streak) {
       const streak = this._spawnProjectileTrailStreak(
         bx, 0, bz, plan.life, plan.streak.width, plan.streak.length, plan.streak.opacity,
         plan.coreColor, vx * 0.12, vz * 0.12,
@@ -4353,35 +4744,51 @@ export const vfx = {
       return true;
     }
 
-    if (plan.mode === 'smoke' && plan.sprite) {
-      for (let pi = 0; pi < plan.emitCount; pi++) {
-        const jx = (Math.random() - 0.5) * 1.4;
-        const jz = (Math.random() - 0.5) * 1.4;
-        this._spawnSprite(SPR_PUFF, bx + jx, 0, bz + jz, plan.life, plan.sprite.size0, plan.sprite.size1,
-          0.40, 0.0, plan.coreColor, backX * 5, backZ * 5);
+    if (plan.mode === 'propelled' && plan.streak && plan.sprite) {
+      // The attached hot exhaust is continuous at the 45 Hz projectile cadence. Cooling vapor is
+      // sampled at one-third cadence and stretched down-axis, so it overlaps into a coherent wake
+      // instead of a row of independent smoke beads.
+      const exhaust = this._spawnProjectileTrailStreak(
+        bx, 0.12, bz, Math.min(0.12, plan.life * 0.4), plan.streak.width,
+        plan.streak.length, plan.streak.opacity, plan.coreColor,
+        vx * 0.04, vz * 0.04, backX, backZ,
+      );
+      if (exhaust) {
+        diag.streaksSpawned++;
+        this._recordProjectileTrailClass(diag, cls, 'streaks');
+      }
+      if (plan.emitSmoke) {
+        this._spawnSprite(SPR_PUFF, bx + backX * 0.45, 0, bz + backZ * 0.45,
+          plan.life, plan.sprite.size0, plan.sprite.size1,
+          0.22, 0.0, plan.tailColor, backX * 7, backZ * 7,
+          plan.sprite.aspect || 2.5, Math.atan2(backZ, backX));
         diag.spritesSpawned++;
         this._recordProjectileTrailClass(diag, cls, 'sprites');
-        this._c0.set(plan.coreColor); this._c1.set(plan.tailColor);
-        this._spawnParticle(bx + jx, bz + jz,
-          backX * 10 + (Math.random() - 0.5) * 2, backZ * 10 + (Math.random() - 0.5) * 2,
-          plan.life * 1.05, plan.particle.size0, plan.particle.size1,
-          this._c0, this._c1, plan.drag, 0, 0, 0, 0);
-        diag.particlesSpawned++;
-        this._recordProjectileTrailClass(diag, cls, 'particles');
       }
       return true;
     }
 
-    if (plan.mode === 'heat' && plan.particle) {
-      for (let pi = 0; pi < plan.emitCount; pi++) {
-        const spread = (Math.random() - 0.5) * 0.9;
-        this._c0.set(plan.coreColor); this._c1.set(plan.tailColor);
-        const pvx = vx * 0.04 + Math.cos(trailAxis + spread) * 4;
-        const pvz = vz * 0.04 + Math.sin(trailAxis + spread) * 4;
-        this._spawnParticle(bx, bz, pvx, pvz, plan.life, plan.particle.size0, plan.particle.size1,
-          this._c0, this._c1, plan.drag, 0, 0, trailAxis, plan.particle.stretch);
-        diag.particlesSpawned++;
-        this._recordProjectileTrailClass(diag, cls, 'particles');
+    if (plan.mode === 'thermal-wake' && plan.streak) {
+      // Two attached, overlapping streams create a directional thermal volume. Both share the
+      // projectile axis and retire before gaps can form at the 45 Hz emitter cadence; unlike the
+      // former point-particle recipe, neither layer can become a detached ball or bead trail.
+      const inner = this._spawnProjectileTrailStreak(
+        bx, 0.17, bz, plan.life, plan.streak.width, plan.streak.length,
+        plan.streak.opacity, plan.coreColor, vx * 0.055, vz * 0.055, backX, backZ,
+      );
+      const sheath = this._spawnProjectileTrailStreak(
+        bx + backX * 0.22, 0.12, bz + backZ * 0.22, plan.life * 1.25,
+        plan.streak.width * 1.85, plan.streak.length * 0.72,
+        plan.streak.opacity * 0.32, plan.tailColor,
+        vx * 0.035, vz * 0.035, backX, backZ,
+      );
+      if (inner) {
+        diag.streaksSpawned++;
+        this._recordProjectileTrailClass(diag, cls, 'streaks');
+      }
+      if (sheath) {
+        diag.streaksSpawned++;
+        this._recordProjectileTrailClass(diag, cls, 'streaks');
       }
       return true;
     }
@@ -4403,7 +4810,7 @@ export const vfx = {
 
   _emitProjectileTrails(dt) {
     if (!this._scene) return false;
-    this._projectileTrailDiag = emptyProjectileTrailDiag();
+    resetProjectileTrailDiag(this._projectileTrailDiag);
     this._refreshProjectileCandidates();
     const list = this._projectileCandidates;
     const diag = this._projectileTrailDiag;
@@ -4415,15 +4822,19 @@ export const vfx = {
     const qualityMul = q === 'low' ? 0.45 : (q === 'med' || q === 'medium' ? 0.72 : 1.0);
     const motionMul = (video && video.motionReduce) ? 0.5 : 1.0;
     const burst = (this._burst || 1) * qualityMul * motionMul;
+    this._projectileTrailFrameIndex = ((this._projectileTrailFrameIndex || 0) + 1) >>> 0;
 
     let anySpawned = false;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'projectile') continue;
-      const data = e.data || {};
+      const data = e.data || EMPTY_PROJECTILE_DATA;
       const prof = resolveProjectileTrailProfile(data.weaponId, data);
-      const plan = buildProjectileTrailSpawnPlan(prof, e, burst);
+      const plan = buildProjectileTrailSpawnPlan(prof, e, burst, this._projectileTrailPlanScratch);
       if (plan.skip) continue;
+      if (plan.mode === 'propelled') {
+        plan.emitSmoke = ((this._projectileTrailFrameIndex + i) % 3) === 0;
+      }
       if (this._executeProjectileTrailPlan(plan, diag)) anySpawned = true;
     }
     return anySpawned;
@@ -4444,28 +4855,10 @@ export const vfx = {
     let reducedEmitted = 0;
     this._trailBudgetDiag.trailCandidates = list.length;
 
-    // RCS gating. motionReduce suppresses attitude jets entirely — they are small, fast,
-    // high-frequency puffs and exactly the wrong thing to show someone who asked for less motion;
-    // the same information is on the HUD, so nothing becomes unreadable.
-    const video = this.state && this.state.settings && this.state.settings.video;
-    const rcsEnabled = !(video && (video.motionReduce || video.engineTrails === false));
-    const rcsLow = !!(video && video.particleQuality === 'low');
-
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
       if (e.flags && e.flags.docked) continue;
-
-      // Attitude jets run BEFORE the idle-drive gate below: a ship coasting with its main engine
-      // cold is still yawing, strafing and being trimmed by assist. That case — thrust idle, RCS
-      // busy — is precisely what the old input-key guess could not see. `_trailTierFor` is the
-      // side-effect-free classifier, so this cannot perturb the trail screen-check budget.
-      if (rcsEnabled) {
-        const rcsTier = this._trailTierFor(e, ctx);
-        if (rcsTier === TRAIL_TIER.FULL || rcsTier === TRAIL_TIER.NORMAL) {
-          this._emitRcsJets(e, this._actuatorsFor(e), rcsLow);
-        }
-      }
 
       const driveInfo = this._engineDriveFor(e);
       if (driveInfo.drive < 0.055) continue; // idle ships emit nothing
@@ -4687,15 +5080,20 @@ export const vfx = {
   },
 
   _integrateSprites(dt) {
-    if (this._liveSpriteCount <= 0) return;
-    const pool = this._spritePool, st = this._spr, active = this._activeSprites;
+    resetInstancedSpriteBuckets(this._spriteBatches);
+    if (this._liveSpriteCount <= 0) {
+      commitInstancedSpriteBuckets(this._spriteBatches);
+      return;
+    }
+    const st = this._spr, active = this._activeSprites;
+    const smokeOrder = this._smokeSpriteOrder;
+    let smokeCount = 0;
     let cursor = 0;
     while (cursor < this._liveSpriteCount) {
       const i = active[cursor];
       const s = st[i];
       s.age += dt;
       const t = s.age / s.life;
-      const spr = pool[i];
       if (t >= 1) { this._retireSprite(i); continue; }
       let scale, op;
       if (s.kind === SPR_RING) {
@@ -4713,17 +5111,95 @@ export const vfx = {
         scale = s.size0 + (s.size1 - s.size0) * t;
         op = s.op0 + (s.op1 - s.op0) * t;
         s.x += s.vx * dt; s.z += s.vz * dt;
+      } else if (s.kind === SPR_COMBUSTION) {
+        // Combustion develops quickly, then contracts optically as the hot core cools. The card is
+        // deliberately anisotropic and irregular, so overlapping events form flame volumes rather
+        // than a stack of expanding circular glows.
+        const develop = easeOutCubic(Math.min(1, t * 2.4));
+        scale = s.size0 + (s.size1 - s.size0) * develop;
+        op = s.op0 * Math.max(0, 1 - t * (0.75 + t * 0.25));
+        s.x += s.vx * dt; s.z += s.vz * dt;
       } else { // SPR_FLASH — quick punch
         const e = easeOutCubic(Math.min(1, t * 1.2));
         scale = s.size0 + (s.size1 - s.size0) * e;
         op = s.op0 * (1 - t * t);
       }
       s.y += 0; // sprites live on play plane
-      spr.position.set(s.x, s.y, s.z);
-      spr.scale.setScalar(Math.max(0.01, scale));
-      spr.material.opacity = Math.max(0, op);
+      if (s.kind === SPR_PUFF) {
+        smokeOrder[smokeCount++] = i;
+        cursor++;
+        continue;
+      }
+      const bucketKind = s.kind === SPR_COMBUSTION
+        ? 'combustion'
+        : (s.kind === SPR_RING || s.kind === SPR_FRESNEL);
+      writeInstancedSpriteFields(
+        this._spriteBatches,
+        bucketKind,
+        s.x,
+        s.y,
+        s.z,
+        scale,
+        scale * s.aspect,
+        scale / Math.sqrt(s.aspect),
+        s.roll,
+        s.r,
+        s.g,
+        s.b,
+        op,
+      );
       cursor++;
     }
+
+    // Three.js cannot sort the instances inside one transparent InstancedMesh. Sort only the
+    // normal-blended smoke instances by camera distance before writing them; glow and rings stay
+    // in their cheaper additive path. Insertion sort is allocation-free and efficient for this
+    // bounded, usually small pool whose ordering changes gradually between adjacent frames.
+    const camera = this.state && this.state.render && this.state.render.camera;
+    const camX = camera && camera.position ? camera.position.x : 0;
+    const camY = camera && camera.position ? camera.position.y : 0;
+    const camZ = camera && camera.position ? camera.position.z : 0;
+    for (let a = 1; a < smokeCount; a++) {
+      const index = smokeOrder[a];
+      const sprite = st[index];
+      const dx = sprite.x - camX;
+      const dy = sprite.y - camY;
+      const dz = sprite.z - camZ;
+      const distanceSq = dx * dx + dy * dy + dz * dz;
+      let b = a - 1;
+      while (b >= 0) {
+        const previous = st[smokeOrder[b]];
+        const pdx = previous.x - camX;
+        const pdy = previous.y - camY;
+        const pdz = previous.z - camZ;
+        const previousDistanceSq = pdx * pdx + pdy * pdy + pdz * pdz;
+        if (previousDistanceSq >= distanceSq) break;
+        smokeOrder[b + 1] = smokeOrder[b];
+        b--;
+      }
+      smokeOrder[b + 1] = index;
+    }
+    for (let orderIndex = 0; orderIndex < smokeCount; orderIndex++) {
+      const s = st[smokeOrder[orderIndex]];
+      const t = s.age / s.life;
+      const scale = s.size0 + (s.size1 - s.size0) * t;
+      writeInstancedSpriteFields(
+        this._spriteBatches,
+        'smoke',
+        s.x,
+        s.y,
+        s.z,
+        scale,
+        scale * s.aspect,
+        scale / Math.sqrt(s.aspect),
+        s.roll,
+        s.r,
+        s.g,
+        s.b,
+        s.op0 + (s.op1 - s.op0) * t,
+      );
+    }
+    commitInstancedSpriteBuckets(this._spriteBatches);
   },
 };
 
@@ -4776,30 +5252,46 @@ export function runProjectileTrailEmissionSelfCheck() {
     _selfCheckProjectile(11, 'wpn_missile_rack_m', { kind: 'missile', damageType: 'explosive' }),
     _selfCheckProjectile(12, 'wpn_plasma_cannon_m', { damageType: 'thermal' }),
     _selfCheckProjectile(13, 'wpn_railgun_m', { damageType: 'kinetic' }),
+    _selfCheckProjectile(14, 'wpn_pulse_laser_m', { damageType: 'energy' }),
   ];
   const system = _makeProjectileTrailSelfCheckHarness(projectiles);
   system._markProjectileCacheDirty();
   for (let f = 0; f < 8; f++) system.update(1 / 60);
 
   const pt = system.inspect().projectileTrails;
-  if (pt.candidates < 4) fail(`expected 4 projectile candidates, got ${pt.candidates}`);
-  if (pt.particlesSpawned <= 0) fail('projectile trails should spawn particles');
-  if (!pt.byClass.kinetic || pt.byClass.kinetic.particles <= 0) fail('kinetic class should emit sparks');
-  if (!pt.byClass.missile || (pt.byClass.missile.sprites <= 0 && pt.byClass.missile.particles <= 0)) {
-    fail('missile class should emit smoke');
+  if (pt.candidates < 5) fail(`expected 5 projectile candidates, got ${pt.candidates}`);
+  if (pt.streaksSpawned <= 0) fail('projectile trails should spawn directional streak geometry');
+  if (!pt.byClass.kinetic || pt.byClass.kinetic.streaks <= 0 || pt.byClass.kinetic.particles > 0) {
+    fail('kinetic class should emit a brief directional tracer without a glowing particle body');
   }
-  if (!pt.byClass.plasma || pt.byClass.plasma.particles <= 0) fail('plasma class should emit heat');
+  if (!pt.byClass.missile || pt.byClass.missile.streaks <= 0) {
+    fail('missile class should emit attached exhaust; bounded vapor remains intentionally cadence-sampled');
+  }
+  if (!pt.byClass.plasma || pt.byClass.plasma.streaks <= 0 || pt.byClass.plasma.particles > 0) {
+    fail('plasma class should emit a connected thermal wake without detached particles');
+  }
+  if (!pt.byClass.pulse || pt.byClass.pulse.streaks <= 0 || pt.byClass.pulse.particles > 0) {
+    fail('pulse class should emit a connected streak without heat particles');
+  }
   if (!pt.byClass.rail || pt.byClass.rail.streaks <= 0) fail('rail class should emit thin streaks');
 
-  const live = system._trailStreakPool && system._trailStreakPool.mesh.count > 0
-    ? system._trailStreakPool.mesh
+  // Inspect rail geometry in an isolated harness. The mixed-family pool deliberately interleaves
+  // missile, plasma, rail, and pulse instances, so selecting its first live slot does not prove a
+  // rail dimension and became invalid as soon as plasma gained a wider connected sheath.
+  const railSystem = _makeProjectileTrailSelfCheckHarness([
+    _selfCheckProjectile(20, 'wpn_railgun_m', { damageType: 'kinetic' }),
+  ]);
+  railSystem._markProjectileCacheDirty();
+  for (let f = 0; f < 3; f++) railSystem.update(1 / 60);
+  const live = railSystem._trailStreakPool && railSystem._trailStreakPool.mesh.count > 0
+    ? railSystem._trailStreakPool.mesh
     : null;
-  const liveIndex = system._ts ? system._ts.findIndex((s) => s.alive) : -1;
-  const st = liveIndex >= 0 ? system._ts[liveIndex] : null;
+  const liveIndex = railSystem._ts ? railSystem._ts.findIndex((s) => s.alive) : -1;
+  const st = liveIndex >= 0 ? railSystem._ts[liveIndex] : null;
   let railScale = null;
   if (!live) fail('rail streak mesh should be visible');
   else {
-    const packedIndex = system._activeTrailStreakPos[liveIndex];
+    const packedIndex = railSystem._activeTrailStreakPos[liveIndex];
     const matrix = new THREE.Matrix4();
     const scale = new THREE.Vector3();
     live.getMatrixAt(packedIndex, matrix);
@@ -4933,6 +5425,8 @@ export function createVfxPrecompileSalvo() {
 
   const glow = makeGlowTexture();
   const ring = makeRingTexture();
+  const smoke = makeSmokeTexture();
+  const combustion = makeCombustionTexture();
   const precompileTrail = createPrecompileTrailSurfaces();
   precompileTrail.ribbon.position.set(-8, 1, -4);
   precompileTrail.streak.position.set(10, 1, -6);
@@ -4940,28 +5434,47 @@ export function createVfxPrecompileSalvo() {
   group.add(precompileTrail.ribbon);
   group.add(precompileTrail.streak);
 
-  const spriteKinds = [
-    { name: 'flash', map: glow, scale: 5, color: 0xffffff },
-    { name: 'ring', map: ring, scale: 8, color: 0x66ccff },
-    { name: 'puff', map: glow, scale: 7, color: 0xffcc88 },
-    { name: 'fresnel', map: ring, scale: 9, color: 0x88f5ff },
-  ];
-  for (let i = 0; i < spriteKinds.length; i++) {
-    const kind = spriteKinds[i];
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: kind.map,
-      color: kind.color,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      depthTest: true,
-      transparent: true,
-      opacity: 0.8,
-    }));
-    sprite.name = `SF_Precompile_Sprite_${kind.name}`;
-    sprite.position.set(i * 3 - 4.5, 1.5, -6);
-    sprite.scale.setScalar(kind.scale);
-    group.add(sprite);
-  }
+  const spriteBatches = createInstancedSpriteBuckets(group, 6, glow, ring, smoke, combustion);
+  resetInstancedSpriteBuckets(spriteBatches);
+  writeInstancedSprite(spriteBatches, false, {
+    x: -3, y: 1.5, z: -6, scale: 5, opacity: 0.8, roll: 0, r: 1, g: 0.85, b: 0.5,
+  });
+  writeInstancedSprite(spriteBatches, false, {
+    x: 0, y: 1.5, z: -6, scale: 7, opacity: 0.6, roll: 0.4, r: 1, g: 0.5, b: 0.25,
+  });
+  writeInstancedSprite(spriteBatches, true, {
+    x: 3, y: 1.5, z: -6, scale: 8, opacity: 0.8, roll: 0, r: 0.4, g: 0.8, b: 1,
+  });
+  writeInstancedSprite(spriteBatches, true, {
+    x: 6, y: 1.5, z: -6, scale: 9, opacity: 0.65, roll: 0.2, r: 0.55, g: 0.96, b: 1,
+  });
+  writeInstancedSprite(spriteBatches, 'smoke', {
+    x: 0, y: 1.2, z: -9, scale: 6, opacity: 0.5, roll: 0.7, r: 0.24, g: 0.21, b: 0.19,
+  });
+  writeInstancedSprite(spriteBatches, 'combustion', {
+    x: 6, y: 1.2, z: -9, scale: 5, scaleX: 8, scaleY: 4, opacity: 0.65,
+    roll: 0.35, r: 1, g: 0.34, b: 0.08,
+  });
+  commitInstancedSpriteBuckets(spriteBatches);
+
+  // Warm the exact production Hitch shader/material path during startup. Without this staging
+  // draw the Kestrel suppresses its legacy trail immediately, then compiles five new plume layers
+  // on the first real burn. Besides the hitch, a failed/late compile can leave the player with no
+  // propulsion feedback at all. Keep this recipe-driven so startup and live draw states cannot
+  // silently drift apart.
+  const thrusterTextures = loadKestrelThrusterTextures();
+  const plume = new ContinuousPlumeSystem(THREE, KESTREL_MAIN_PLUME_RECIPE, {
+    textures: thrusterTextures,
+    maxSockets: 1,
+    distortionEnabled: false,
+  });
+  plume.update(1 / 60, 1, [{ x: -18, y: 1, z: -12, ax: 1, ay: 0, az: 0 }], {
+    boost: 0.65,
+    a11y: { reducedMotion: false, reducedFlash: false, lowQuality: false, qualityTier: 'high' },
+  });
+  plume.group.name = 'SF_Precompile_Hitch_Main_Plume';
+  plume.group.userData.precompileStaging = true;
+  group.add(plume.group);
 
   // Deliberately NO light here: precompile.js tops the scene up to the exact runtime event-light
   // pool count. An extra salvo light would warm shaders against count+1 — every warmed program
@@ -5142,4 +5655,140 @@ function makeRingTexture() {
   tex.minFilter = THREE.LinearFilter;
   tex.magFilter = THREE.LinearFilter;
   return tex;
+}
+
+// Irregular deterministic smoke/vapor card. Rotated instances break repetition further; ordinary
+// alpha blending preserves dark residue against black space instead of making it disappear under
+// additive blending. The lopsided lobes are deliberately not a circular radial gradient.
+function makeSmokeTexture() {
+  const size = 96;
+  const data = new Uint8Array(size * size * 4);
+  let seed = 0x51f15e;
+  const rnd = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  const lobes = Array.from({ length: 9 }, () => ({
+    x: 0.22 + rnd() * 0.56,
+    y: 0.22 + rnd() * 0.56,
+    sx: 0.10 + rnd() * 0.19,
+    sy: 0.08 + rnd() * 0.21,
+    weight: 0.45 + rnd() * 0.65,
+  }));
+  const voids = [
+    { x: 0.34, y: 0.38, sx: 0.10, sy: 0.08, weight: 0.72 },
+    { x: 0.61, y: 0.56, sx: 0.13, sy: 0.09, weight: 0.58 },
+    { x: 0.47, y: 0.72, sx: 0.09, sy: 0.12, weight: 0.48 },
+  ];
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = (x + 0.5) / size;
+      const v = (y + 0.5) / size;
+      let density = 0;
+      for (const lobe of lobes) {
+        const dx = (u - lobe.x) / lobe.sx;
+        const dy = (v - lobe.y) / lobe.sy;
+        density += Math.exp(-(dx * dx + dy * dy) * 1.8) * lobe.weight;
+      }
+      for (const pocket of voids) {
+        const dx = (u - pocket.x) / pocket.sx;
+        const dy = (v - pocket.y) / pocket.sy;
+        density -= Math.exp(-(dx * dx + dy * dy) * 1.7) * pocket.weight;
+      }
+      // A warped superellipse clips the lobes without recovering a circular radial-gradient edge.
+      const ux = (u - 0.49) * 1.75 + Math.sin(v * 17) * 0.045;
+      const vy = (v - 0.51) * 1.58 + Math.sin(u * 13 + 0.8) * 0.05;
+      const edge = Math.max(0, 1 - (Math.pow(Math.abs(ux), 2.35) + Math.pow(Math.abs(vy), 1.82)));
+      const turbulence = 0.82 + 0.18 * Math.sin(u * 31 + Math.sin(v * 19) * 2.2)
+        * Math.cos(v * 27 - u * 7);
+      const alpha = Math.max(0, Math.min(1, (density * 0.48 - 0.14) * edge * turbulence));
+      const offset = (y * size + x) * 4;
+      const body = 205 + Math.round(Math.min(1, density * 0.18) * 44);
+      data[offset] = body;
+      data[offset + 1] = body;
+      data[offset + 2] = body;
+      data[offset + 3] = Math.round(alpha * 255);
+    }
+  }
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
+  texture.name = 'SF_VFX_IrregularSmoke';
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+// Directional, asymmetric combustion mask. It is built from overlapping advected lobes and eroded
+// pockets, not a radial polar waveform: the latter produced hard five-point flowers at gameplay
+// distance. Multiple rotated instances now merge into a feathered turbulent volume while remaining
+// one bounded draw bucket; there is no expanding circular-disc stage.
+function makeCombustionTexture() {
+  const size = 96;
+  const data = new Uint8Array(size * size * 4);
+  const lobes = [
+    { x: 0.22, y: 0.52, sx: 0.16, sy: 0.21, weight: 1.00 },
+    { x: 0.37, y: 0.42, sx: 0.22, sy: 0.17, weight: 0.83 },
+    { x: 0.48, y: 0.61, sx: 0.25, sy: 0.18, weight: 0.74 },
+    { x: 0.64, y: 0.47, sx: 0.24, sy: 0.14, weight: 0.59 },
+    { x: 0.76, y: 0.57, sx: 0.16, sy: 0.11, weight: 0.38 },
+  ];
+  const pockets = [
+    { x: 0.43, y: 0.50, sx: 0.105, sy: 0.070, weight: 0.34 },
+    { x: 0.62, y: 0.59, sx: 0.125, sy: 0.065, weight: 0.28 },
+    { x: 0.70, y: 0.38, sx: 0.105, sy: 0.070, weight: 0.22 },
+  ];
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = (x + 0.5) / size;
+      const v = (y + 0.5) / size;
+      const shearV = v + Math.sin(u * 15.0 + 0.6) * 0.022 + Math.sin(u * 31.0) * 0.009;
+      let density = 0;
+      for (let i = 0; i < lobes.length; i++) {
+        const lobe = lobes[i];
+        const dx = (u - lobe.x) / lobe.sx;
+        const dy = (shearV - lobe.y) / lobe.sy;
+        density += Math.exp(-(dx * dx + dy * dy) * 1.55) * lobe.weight;
+      }
+      for (let i = 0; i < pockets.length; i++) {
+        const pocket = pockets[i];
+        const dx = (u - pocket.x) / pocket.sx;
+        const dy = (shearV - pocket.y) / pocket.sy;
+        density -= Math.exp(-(dx * dx + dy * dy) * 1.7) * pocket.weight;
+      }
+      const verticalEdge = Math.max(0, 1 - Math.pow(Math.abs((v - 0.51) * 1.78), 2.15));
+      const horizontalEdge = Math.max(0, Math.min(1, u * 8.0))
+        * Math.max(0, Math.min(1, (1 - u) * 7.2));
+      const erosion = 0.88
+        + Math.sin(u * 29.0 + Math.sin(v * 17.0) * 1.8) * 0.07
+        + Math.cos(v * 37.0 - u * 11.0) * 0.05;
+      const internalTurbulence = 0.5 + 0.5 * Math.sin(u * 43.0 + Math.sin(v * 23.0) * 2.1)
+        * Math.cos(v * 39.0 - u * 9.0);
+      const field = Math.max(0, density * verticalEdge * horizontalEdge
+        * erosion * (0.86 + internalTurbulence * 0.14) - 0.075);
+      // Wide feathering is intentional: mipmapping then retains an irregular flame mass instead
+      // of collapsing the alpha edge into a rigid emblem at the normal chase camera.
+      const alpha = Math.max(0, Math.min(1, field * 1.42));
+      const coreDx = (u - 0.27) / 0.28;
+      const coreDy = (v - 0.52) / 0.27;
+      const core = Math.max(0, Math.min(1, Math.exp(-(coreDx * coreDx + coreDy * coreDy) * 1.5)));
+      // Wide luminance range restores an internal hot core and cooler turbulent sheath after the
+      // family tint is applied. A nearly white mask made every lobe read as one flat soft smudge.
+      const luminosity = Math.round(105 + core * 125 + internalTurbulence * 25);
+      const offset = (y * size + x) * 4;
+      // Near-neutral texels let the per-family profile colors remain distinct. The previous baked
+      // orange texture multiplied every tint back into the same red/orange palette.
+      data[offset] = luminosity;
+      data[offset + 1] = luminosity;
+      data[offset + 2] = Math.round(luminosity * (0.94 + core * 0.06));
+      data[offset + 3] = Math.round(alpha * (0.66 + core * 0.34) * 255);
+    }
+  }
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
+  texture.name = 'SF_VFX_IrregularCombustion';
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
 }
