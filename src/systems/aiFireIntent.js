@@ -27,12 +27,16 @@ export function applyAIFiringIntent(decision, state) {
   const combatDoctrine = decision.combatDoctrine || null;
   const pdActor = isPdScreenActor(e);
 
-  // W04: pd_screen_escort policy overrides target selection with screen priority + saturation.
-  // Honest v1 — priority-targeting + cap (projectile kill seam not shipped on weapons.intercepts).
+  // W04: pd_screen_escort policy owns target selection, but never fire authorization.
+  // A null selection is an explicit saturated/unavailable result, not permission to fall back
+  // to the squad directive's target.
   let targetId = objective && objective.targetId;
   if (pdActor) {
-    const pdTarget = applyPdScreenTargetPolicy(e, state, decision);
-    if (pdTarget != null) targetId = pdTarget;
+    targetId = applyPdScreenTargetPolicy(e, state, decision);
+    if (targetId == null) {
+      clearFire(intent, 'pd_screen_unavailable');
+      return;
+    }
   }
 
   const attack = objective && (
@@ -40,8 +44,8 @@ export function applyAIFiringIntent(decision, state) {
     || objective.kind === ObjectiveKind.ENGAGE
     || objective.kind === ObjectiveKind.SCREEN
   );
-  const fireWindowOk = !combatDoctrine || combatDoctrine.fireWindow || pdActor;
-  if ((!attack && !pdActor) || targetId == null || !fireWindowOk) {
+  const fireWindowOk = !combatDoctrine || combatDoctrine.fireWindow;
+  if (!attack || targetId == null || !fireWindowOk) {
     clearFire(intent);
     return;
   }
@@ -51,33 +55,39 @@ export function applyAIFiringIntent(decision, state) {
     clearFire(intent);
     return;
   }
+  const engagementTarget = pdActor ? pdEngagementTarget(state, target) : target;
+  if (!engagementTarget) {
+    clearFire(intent, 'pd_target_not_authorized');
+    return;
+  }
   const ai = data.ai || {};
-  const recentlyDamaged = recentlyDamagedBy(state, e.id, targetId);
-  const objectiveKind = (objective && objective.kind) || (pdActor ? ObjectiveKind.SCREEN : null);
+  const recentlyDamaged = recentlyDamagedBy(state, e.id, engagementTarget.id);
+  // SCREEN activity.targetId names the defended charge, so it is not an offensive target lock.
+  // Map the selected intercept into the ordinary ENGAGE doctrine gate while preserving SCREEN
+  // activity/ROE semantics and the final engagement authority below.
+  const objectiveKind = pdActor ? ObjectiveKind.ENGAGE : objective && objective.kind;
+  const activity = pdActor && ai.activity
+    ? { ...ai.activity, targetId: null }
+    : ai.activity;
   const permitted = canFireByDoctrine({
-    activity: ai.activity,
+    activity,
     roe: ai.roe,
     objectiveKind,
-    target,
+    target: engagementTarget,
     self: e,
     wanted: isPlayerWanted(state),
     recentlyDamaged,
   });
-  const hostile = isHostileForAI(state, e, target)
-    || !!(target.type === 'projectile')
-    || (target.team != null && e.team != null && target.team !== e.team);
-  const authorization = (permitted || pdActor) ? authorizeAIEngagement({
+  const authorization = permitted ? authorizeAIEngagement({
     state,
     self: e,
-    target,
+    target: engagementTarget,
     tick: state.tick,
-    objectiveReason: (objective && objective.reason) || (pdActor ? 'pd_screen_intercept' : ''),
-    hostile,
+    objectiveReason: objective && objective.reason,
     wanted: isPlayerWanted(state),
     recentlyDamaged,
   }) : null;
-  const pdOpen = pdActor && hostile;
-  if ((!permitted || !authorization || !authorization.ok) && !pdOpen) {
+  if (!permitted || !authorization || !authorization.ok) {
     clearFire(intent);
     return;
   }
@@ -148,12 +158,10 @@ function collectPdContacts(self, state, charge) {
     if (!e || !e.alive || e.id === self.id) continue;
     if (charge && e.id === charge.id) continue;
     if (e.type === 'projectile') {
-      // Hostile projectile: owner not on our team.
+      // A projectile is hostile only through its live owner's authored hostility. Team mismatch
+      // and ownerless ordnance cannot broaden the final engagement authority.
       const owner = e.ownerId != null && state.entities ? state.entities.get(e.ownerId) : null;
-      const hostile = owner
-        ? (owner.team != null && selfTeam != null && owner.team !== selfTeam)
-        : (e.team != null && selfTeam != null && e.team !== selfTeam);
-      if (!hostile) continue;
+      if (!owner || !owner.alive || !isHostileForAI(state, self, owner)) continue;
       out.push({
         id: e.id,
         kind: ContactKind.PROJECTILE,
@@ -169,8 +177,7 @@ function collectPdContacts(self, state, charge) {
     }
     if (e.type !== 'ship' && e.type !== 'drone') continue;
     if (e.team != null && selfTeam != null && e.team === selfTeam) continue;
-    const hostile = isHostileForAI(state, self, e)
-      || (e.team != null && selfTeam != null && e.team !== selfTeam);
+    const hostile = isHostileForAI(state, self, e);
     if (!hostile) continue;
     out.push({
       id: e.id,
@@ -185,6 +192,14 @@ function collectPdContacts(self, state, charge) {
     });
   }
   return out;
+}
+
+function pdEngagementTarget(state, fireTarget) {
+  if (!fireTarget || fireTarget.alive === false) return null;
+  if (fireTarget.type !== 'projectile') return fireTarget;
+  if (fireTarget.ownerId == null || !state || !state.entities) return null;
+  const owner = state.entities.get(fireTarget.ownerId);
+  return owner && owner.alive ? owner : null;
 }
 
 function aggressionTrace(decision, state, targetId, ai) {
