@@ -1570,6 +1570,7 @@ async function samplePerformanceAttribution(page, {
   navigateToRoute = null,
   prepareScenario = null,
   restoreScenario = null,
+  captureWindow = null,
 } = {}) {
   const windows = [];
   const variantResults = [];
@@ -1662,6 +1663,9 @@ async function samplePerformanceAttribution(page, {
               playerInputPath: false,
               routeNote: 'DIAGNOSTIC STRESS — mining VFX via bus events, not player input path',
             };
+          }
+          if (typeof captureWindow === 'function') {
+            await captureWindow(page, { routeTag, variantId, attribution });
           }
         }
       } finally {
@@ -2517,6 +2521,11 @@ async function runPerformanceAttributionProbe({
       navigateToRoute,
       prepareScenario: (pg, scenarioId, scenarioLog) => preparePerformanceScenario(pg, scenarioId, { seed, log: scenarioLog }),
       restoreScenario: (pg, scenarioId, scenarioLog) => restorePerformanceScenario(pg, scenarioId, { log: scenarioLog }),
+      captureWindow: async (pg, { routeTag, variantId }) => {
+        const name = `scenario-${routeTag}-${variantId}.png`.replace(/[^a-z0-9_.-]+/gi, '-');
+        await pg.screenshot({ path: path.join(outputDir, name), type: 'png', animations: 'disabled' });
+        routeResult.screenshots = [...new Set([...(routeResult.screenshots || []), name])];
+      },
     });
     return await finalizePerformanceAttributionRun({
       root,
