@@ -13,7 +13,7 @@ requirement only if the controller explicitly adopts the draft production policy
 M2’s architecture was previously marked complete, but its current combined browser/Electron check
 exited red during Electron launch and must be revalidated.
 
-## Unified graphics/performance checkpoint (2026-07-19) — verified at `ee9e0ab3`
+## Unified graphics/performance checkpoint (2026-07-19) — promoted at `ee9e0ab3`, hardened at `f0b3b154`
 
 | Area | Verified result | Acceptance level |
 |---|---|---|
@@ -23,6 +23,7 @@ exited red during Electron launch and must be revalidated.
 | Background and post | True-black negative space, localized deep-field structure, stable camera-integrated parallax, restrained two-level bloom, and zero default grading offsets pass structural and depth/occlusion tests. | De-hazed foundation accepted; final localized authored phenomena remain open. |
 | Golden surfaces | Kestrel, Helios, and geology roles have authored or role-specific PBR material paths. Helios keeps its three-LOD production geometry and function-specific surface maps. | Promoted visual checkpoint; natural approach/undock, representative-rock parity, and fleet-wide PBR expansion remain open. |
 | Combined runtime | Map/Atlas/travel contracts, asset-live, visual-stability, launch-policy, and five strict desktop/mobile flight runs passed. The isolated timing rerun measured 1.02 ms/tick for 240 ships and 0.38 ms/tick for the physics/flight case. | Current integrated proof; no M0–M6 milestone exit is implied. |
+| Context recovery and capture truth | Late performance follow-ups were integrated and repaired so renderer-owned bloom/render-graph targets participate in context cleanup, scenario pose is held only for explicitly injected stable routes, and Market capture follows the visible shell. A live context-loss probe restored the route and authored Kestrel, detached 366 stale listeners, and passed evidence validation. | Focused behavioral and live-route proof at `f0b3b154`; long-soak and floor-hardware exit remain open. |
 
 ## Wave-01 (PROGRAM-WAVE-01-RECOVERY-ROOTS, 2026-07-18) — verified at `c751b9a9`
 

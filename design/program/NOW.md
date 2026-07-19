@@ -1,10 +1,12 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-19, after the graphics/performance/paused-Claude reconciliation.
-Master is `ee9e0ab3`. The tracked working tree is clean; untracked `design/program/_review/` remains
+**Snapshot:** 2026-07-19, after the graphics/performance/paused-Claude reconciliation and follow-up
+performance hardening. Master is `f0b3b154`. The tracked working tree is clean; untracked
+`design/program/_review/` remains
 quarantined and was neither read nor promoted. No active Claude agent or shared-tree path lease
-remains. OpenCode/Kimi is still isolated in `SpaceFace-orch-kimi-v2-present` and does not own files
-in the primary checkout.
+remains. Four stale Claude-launched OpenCode/Kimi CLI workers were stopped after they produced no
+file changes for more than a day; their uncommitted donor remains preserved in
+`SpaceFace-orch-kimi-v2-present` and does not own files in the primary checkout.
 
 **Integrated checkpoint:** Claude's final Atlas/map/travel state (`1905cac8`), the performance
 checkpoint (`1bdde6c8`), and the graphics checkpoint (`e3ad1caf`) were synthesized and validated in
@@ -12,7 +14,10 @@ checkpoint (`1bdde6c8`), and the graphics checkpoint (`e3ad1caf`) were synthesiz
 tracked master tree matched the validated unified tree exactly at promotion. Current proof includes
 map/Atlas/travel contracts, VFX pooling/settings/lifecycle/RCS checks, restrained bloom/background
 checks, live authored-asset admission, visual stability, launch policy, and five clean desktop plus
-mobile flight runs. See `08_GRAPHICS_OVERHAUL_CHECKPOINT.md` for visual truth and remaining work.
+mobile flight runs. Subsequent performance commits `abcd81be`, `d9162ebd`, and `45090dd5` were
+integrated, then repaired and behaviorally re-proved in `f0b3b154`; the live context-loss route
+restored the scenario and authored Kestrel while detaching 366 stale listeners. See
+`08_GRAPHICS_OVERHAUL_CHECKPOINT.md` for visual truth and remaining work.
 
 **Immediate safe work:** feature development may resume from `master`. The highest-return graphics
 work is natural-route Helios/rock parity, combat/destruction visual acceptance, localized authored

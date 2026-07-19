@@ -143,8 +143,12 @@ catalog entries merely to make that broad pre-existing count green.
   Electron parity.
 - The performance-closure work is integrated. Its scenario/attribution probes were repaired to use
   actual presented-asset and pixel evidence, and the combined tree passed live asset admission,
-  visual stability, launch policy, and the five-run clean flight route. Fresh long-soak, floor-GPU,
-  memory, and dense-combat measurements remain required before claiming the M6 performance exit.
+  visual stability, launch policy, and the five-run clean flight route. Follow-up performance work
+  at `f0b3b154` added renderer-owned bloom/render-graph targets to context cleanup, restricted stable
+  capture poses to explicitly injected routes, and scoped Market capture to the visible shell. A
+  live context-loss run restored the route and authored Kestrel, detached 366 stale listeners, and
+  passed evidence validation. Fresh long-soak, floor-GPU, memory, and dense-combat measurements
+  remain required before claiming the M6 performance exit.
 - Combat VFX has structural implementation and lifecycle evidence, but no full visual-family
   acceptance packet yet.
 - The current background has a better black-space/value foundation but lacks final localized
@@ -196,7 +200,11 @@ catalog entries merely to make that broad pre-existing count green.
    passed alone at 1.02 ms/tick for 240 ships and 0.38 ms/tick for the physics/flight case.
 5. The frozen Claude state was first committed on `master` as `ec6ee835`; the verified unified tree
    was then promoted as merge commit `ee9e0ab3`. The tracked result matched `a752702b` exactly.
-6. This promotion is a coherent playable checkpoint, not a claim that combat-family, background-
+6. Late performance commits `abcd81be`, `d9162ebd`, and `45090dd5` were integrated after promotion;
+   `f0b3b154` repaired their context-resource and route-evidence gaps and passed the live recovery
+   probe. The performance donor now contains a newer isolated opaque-batching experiment that is not
+   part of this checkpoint.
+7. This promotion is a coherent playable checkpoint, not a claim that combat-family, background-
    authoring, asset-family PBR, long-soak performance, or release parity is complete.
 
 ## 7. Worktree cleanup after promotion
@@ -204,22 +212,28 @@ catalog entries merely to make that broad pre-existing count green.
 Do not delete a worktree because its folder name looks stale. For each worktree, record dirty paths,
 untracked files, branch tip, unique commits, and patch equivalence to final `master`.
 
-- Promotion is complete. The graphics, performance, Claude-snapshot, and unified worktrees are now
-  represented by `master` and may be removed after a final clean/unique-commit/patch-equivalence
-  audit. Do not remove the still-running Kimi worktree until its return is classified.
-- Likely removable after patch-equivalence proof: `sf-bg-polish`, `sf-kv5`, and
-  `sf-startup-loading`; the first two are already represented in integration, while startup still
-  needs a final-tree comparison.
-- Wave-2 context/review and orchestration worktrees: retain only unique product diffs or durable
-  conclusions. Prompt logs, transcripts, return prose, build caches, and duplicate captures are
-  process artifacts governed by `docs/ARTIFACT_RETENTION.md`.
+- Promotion is complete. Nine clean or patch-equivalent promotion/helper worktrees were removed,
+  including the unified, Claude snapshot, background, Kestrel, startup, and superseded integration
+  checkouts.
+- Twelve Wave-2 context, implementation, review, and survey worktrees were removed after confirming
+  their product commits were already reachable or patch-equivalent and their only dirty files were
+  `CONTEXT-*`, `REVIEW-*`, or `SURVEY-*` process notes.
+- Three prompt/return-only orchestration checkouts were removed while their product branches were
+  retained. The unregistered `SpaceFace-orch-codex-helios` copy was hashed against Git history and
+  moved out of the GitHub directory to a recoverable Temp quarantine; its only unknown product
+  content was an obsolete game-state variant and was correctly rejected.
+- The graphics-overhaul and Helios-golden worktrees retain substantial source assets and candidate
+  maps; Depth/route orchestration trees retain product commits or dirty product files; the Kimi
+  tree retains uncommitted presentation work after its four stale CLI workers were stopped. The
+  performance worktree retains a newer uncommitted batching experiment. These are deliberately
+  retained until their useful product changes are classified and synthesized into current `master`.
 - Delete a branch only after its accepted product result is reachable from final `master`, every
   valuable dirty/untracked file has been deliberately preserved or rejected, and its worktree is
   clean.
 
 ## 8. Definition of the next coherent checkpoint
 
-The promoted-master checkpoint is achieved at `ee9e0ab3`. The next coherent graphics checkpoint is
+The promoted graphics checkpoint is `ee9e0ab3`, with current master hardening at `f0b3b154`. The next coherent graphics checkpoint is
 current natural-route browser/Electron proof for Helios and the representative rock, visual-family
 acceptance for combat effects and destruction, one localized authored space-structure vertical that
 does not lift the black floor, and the next high-frequency PBR asset family. Feature development may

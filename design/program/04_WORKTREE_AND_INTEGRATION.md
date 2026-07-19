@@ -7,18 +7,28 @@ Use [`NOW.md`](./NOW.md), not this snapshot, for current leases and dirty-path o
 
 ## Current integration checkpoint — 2026-07-19
 
-- Primary branch: `master` at `ee9e0ab3`.
+- Primary branch: `master` at `f0b3b154`.
 - Tracked primary tree: clean at promotion; untracked `design/program/_review/` remains quarantined.
 - Unified donor: `codex/unified-integration-20260719` at `a752702b`; tracked tree matched promoted
   `master` exactly.
 - Included donors: performance `1bdde6c8`, graphics `e3ad1caf`, and paused Claude snapshot
   `1905cac8`. Their accepted product changes are reachable from `master`.
-- The graphics, performance, Claude-snapshot, and unified worktrees are cleanup candidates only after
-  a final clean-state, unique-commit, and patch-equivalence audit. The Kimi/OpenCode worktree remains
-  active and must not be removed or merged until its return is classified.
-- The many July context/review/orchestration worktrees are not assumed disposable by name. Remove
-  each only after confirming no dirty paths, no unique product commit, and no accepted patch absent
-  from `master`. Process-only prompt/log/cache artifacts follow `docs/ARTIFACT_RETENTION.md`.
+- Follow-up performance commits `abcd81be`, `d9162ebd`, and `45090dd5` were integrated after
+  promotion. `f0b3b154` closes their context-resource and scenario-pose evidence gaps; its live
+  context-loss probe restored the route and authored Kestrel and detached 366 stale listeners.
+- Nine clean or patch-equivalent promotion/helper worktrees and twelve Wave-2 context/review
+  worktrees were removed after path, dirty-state, unique-commit, and patch-equivalence review. The
+  Wave-2 removals contained only `CONTEXT-*`, `REVIEW-*`, or `SURVEY-*` process notes.
+- Three additional orchestration checkouts containing only prompts/return notes were removed while
+  retaining their product-bearing branches. An unregistered Helios repository copy was hashed
+  against Git history and moved from the GitHub folder to a Temp quarantine; its only unknown
+  product blob was an obsolete game-state variant, so none of it was promoted.
+- Product-bearing donors remain intentionally registered: graphics-overhaul, Helios golden,
+  Depth/route orchestration branches, and the uncommitted Kimi presentation tree. The four stale
+  Kimi CLI workers were stopped without altering their files. The performance tree also remains
+  because a newer uncommitted opaque-batching/dirty-range experiment is isolated there.
+  None of these donors is an authority over `master`; classify and synthesize their useful product
+  diffs before removal. Process-only prompt/log/cache artifacts follow `docs/ARTIFACT_RETENTION.md`.
 
 Current graphics continuation and proof boundaries are recorded in
 [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md).
