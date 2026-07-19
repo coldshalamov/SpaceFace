@@ -42,6 +42,28 @@ test('attribution schema accepts the complete route matrix', () => {
   assert.equal(validatePerformanceAttribution({ ...document, qualityPreserving: false }).pass, false);
 });
 
+test('VFX isolation proves the mining workload before hiding it', () => {
+  const hidden = validWindow('mining_tether_active');
+  hidden.diagnostic = true;
+  hidden.diagnosticVariant = 'vfx_hidden';
+  hidden.routeProof.start = { vfxSubsystems: { miningBeam: 1, tetherCable: 0 } };
+  hidden.routeProof.vfxSubsystems = { miningBeam: 0, tetherCable: 0 };
+  const document = {
+    schema: PERFORMANCE_ATTRIBUTION_SCHEMA,
+    kind: 'diagnostic-measurement',
+    qualityPreserving: true,
+    windows: [hidden],
+    variants: [{ id: 'vfx_hidden', diagnostic: true, restored: true }],
+  };
+  assert.deepEqual(validatePerformanceAttribution(document), { pass: true, failures: [] });
+
+  hidden.routeProof.start.vfxSubsystems.miningBeam = 0;
+  assert.match(
+    validatePerformanceAttribution(document).failures.join('\n'),
+    /vfx_hidden must prove miningBeam or tetherCable active before isolation/,
+  );
+});
+
 test('render-work CPU attribution is default-off and explicitly gated', () => {
   const state = {};
   const perf = ensurePerfRuntime(state);
