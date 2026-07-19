@@ -11,16 +11,20 @@ authorize quality cuts, arbitrary asset budgets, or process metrics as substitut
 ## Authority and routing
 
 1. Root `AGENTS.md` owns repository safety, live-system routing, performance policy, and ownership.
-2. [`TOP50_WONDER_BUILD_PLAN.md`](TOP50_WONDER_BUILD_PLAN.md) owns **priority and build order**: what
+2. [`GRAPHICS_MERGE_CHECKPOINT_2026-07-18.md`](GRAPHICS_MERGE_CHECKPOINT_2026-07-18.md) owns the
+   **current graphics-worktree recovery stack, merge order, focused receipts, stop line, and blockers**.
+3. [`LONG_TERM_GRAPHICS_OVERHAUL.md`](LONG_TERM_GRAPHICS_OVERHAUL.md) owns the **activated 2026-07-16
+   architecture, intended vertical order, and final acceptance bar** for `codex/graphics-overhaul`.
+4. [`TOP50_WONDER_BUILD_PLAN.md`](TOP50_WONDER_BUILD_PLAN.md) owns **priority within asset production**: what
    produces the largest visible improvement first.
-3. [`FULL_GRAPHICS_REVAMP_GOAL.md`](FULL_GRAPHICS_REVAMP_GOAL.md) owns **coverage and outcome bar**:
+5. [`FULL_GRAPHICS_REVAMP_GOAL.md`](FULL_GRAPHICS_REVAMP_GOAL.md) owns **coverage and outcome bar**:
    which authored surfaces must ultimately reach a professional, coherent result.
-4. [`design/revamp/BP-08_VISUAL_ASSET_SPEC.md`](../revamp/BP-08_VISUAL_ASSET_SPEC.md) supplies missing
+6. [`design/revamp/BP-08_VISUAL_ASSET_SPEC.md`](../revamp/BP-08_VISUAL_ASSET_SPEC.md) supplies missing
    asset inventory and faction/role silhouette intent.
-5. [`QUALITY_RITUAL.md`](QUALITY_RITUAL.md) is an **evidence template**, not a quota system. Screenshots,
+7. [`QUALITY_RITUAL.md`](QUALITY_RITUAL.md) is an **evidence template**, not a quota system. Screenshots,
    written critique, live-route proof, contract checks, and independent visual judgment matter; iteration
    counts and self-scores do not prove quality.
-6. [`00_ORCHESTRATION.md`](00_ORCHESTRATION.md) routes concurrent lanes and single-writer integration.
+8. [`00_ORCHESTRATION.md`](00_ORCHESTRATION.md) routes concurrent lanes and single-writer integration.
 
 `GOAL_FULL_PROFESSIONAL_GRAPHICS_REVAMP.md` is historical correction/evidence from the first revamp. It
 documents why geometry-only claims were rejected, but it is not an active acceptance contract or current
@@ -49,6 +53,8 @@ captures.
 
 | Document | Role |
 |---|---|
+| `GRAPHICS_MERGE_CHECKPOINT_2026-07-18.md` | Current recovery stack, merge recipe, receipts, and stop line |
+| `LONG_TERM_GRAPHICS_OVERHAUL.md` | Activated architecture, migration order, and vertical-slice acceptance |
 | `TOP50_WONDER_BUILD_PLAN.md` | Ranked visual priority and slice exits |
 | `FULL_GRAPHICS_REVAMP_GOAL.md` | Full authored-asset coverage and professional outcome bar |
 | `QUALITY_RITUAL.md` | Optional evidence/critique structure |

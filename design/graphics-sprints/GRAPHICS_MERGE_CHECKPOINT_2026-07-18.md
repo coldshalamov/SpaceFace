@@ -67,14 +67,14 @@ Snapshot update, later on 2026-07-18:
 
 Latest checkpoint update:
 
-- `master` is now `b642611a92c6dd31ba7b806e7077740445af5a13`, 43 commits beyond the common
+- `master` is now `1bb71349e9a34d0e0b8acca4a022fbcc817b75e7`, 45 commits beyond the common
   base. It is still an active read-only target until the user confirms the three Claude tasks are
   finished.
 - The graphics implementation tip immediately before this receipt update is
-  `7fead19a813cab8eb103a94deea3f21aa803d285`, comprising 17 recoverable commits beyond the
-  common base. Against the recorded master it is 43 commits behind and 17 commits ahead; this is
+  `662d323e0ab5042b668e3bfd942eae5d30d33c9f`, comprising 23 recoverable commits beyond the
+  common base. Against the recorded master it is 45 commits behind and 23 commits ahead; this is
   donor history, not a branch to merge wholesale.
-- Dirty paths have fallen from roughly 496 to 237 because the graphics implementation and source
+- Dirty paths have fallen from roughly 496 to 225 because the graphics implementation and source
   assets have been partitioned into commits. The remaining tree is still intentionally dirty:
   generated catalog GLBs/manifests, UI/mining overlaps, candidate outputs, and unsafe release
   deletions remain quarantined.
@@ -98,7 +98,13 @@ Latest checkpoint update:
   - `93a02d9e` — Kestrel V5 authoring source, role maps, and evidence;
   - `56670a0d` — Helios Golden V4 source, functional PBR maps, and export tools;
   - `3b1b6c14` — reusable Blender/PBR foundry sources;
-  - `7fead19a` — repeatable release, Spector, and surface-receipt tooling.
+  - `7fead19a` — repeatable release, Spector, and surface-receipt tooling;
+  - `7b71eb5b` — refreshed merge/resume checkpoint;
+  - `2e6959c5` — bounded, role-specific procedural PBR bridge for legacy assets;
+  - `821b1a15` — authored canopy optical/PBR preservation;
+  - `f57cb0fb` — fail-closed authored identity and stable station LOD behavior;
+  - `0c34fc9e` — focused stable-presentation contract coverage;
+  - `662d323e` — removal of the obsolete generic station proxy substrate.
 
 High-risk current graphics state:
 
@@ -193,9 +199,13 @@ Port those ideas into the graphics architecture as follows:
 
 ### 4.3 Renderer — master control flow, graphics presentation modules
 
-Use current `master` as the eventual control-flow base because it is 26 commits newer. Manually port
+Use current `master` as the eventual control-flow base because it owns newer integration/control-flow work. Manually port
 graphics renderer changes rather than accepting either `renderer.js` wholesale. Required graphics
 features to preserve:
+
+The latest detailed renderer preflight used master `3cd5c5fc`; master advanced to `1bb71349` while the
+audit was running. Its ownership conclusions remain valid, but line numbers and exact overlap counts
+must be refreshed from the user-confirmed final Claude tip.
 
 - authored-direct admission and presentation readiness;
 - asset/render residency policy without visible fallback publication;
@@ -213,6 +223,12 @@ Renderer preflight blockers that the final synthesis must preserve explicitly:
 
 - keep master's `createPipelineAdmissionTracker`, current-generation pipeline ownership, and
   write-if-changed instance upload helpers;
+- keep master's render-target pipeline warmup, queued exact-pipeline commit, admission error handling,
+  and New Game/loaded-game readiness rechecks; the graphics branch must not bypass them;
+- keep master's shield/nav auxiliary pooling loop and port only the idle-hidden, impact-visible shield
+  presentation predicate so unconditional buffer uploads are not reintroduced;
+- preserve every newer master sector/POI addition; port only the de-haze palette/profile values and
+  localized background composition, never adjacent content deletions;
 - reapply the bounded 5.2k ship-authoring seam from `29ccbf09`, but do not restore whole-sector
   authored decode eagerness;
 - keep optional common-rock texture readiness separate from critical Hitch/Helios launch readiness;
@@ -308,7 +324,7 @@ Do not start by merging the dirty graphics branch. Use serial, independently ver
    - Keep mining/drilling and master UI/content WIP outside graphics staging.
 
 2. **Recoverable graphics history — complete for the current donor set**
-   - The 17-commit stack listed in section 2 now preserves the background, VFX, admission,
+   - The 23-commit stack listed in section 2 now preserves the background, VFX, admission,
      materials, identities, Kestrel/Helios/Wasp sources, Blender foundry, and evidence tooling.
    - It deliberately excludes bulk-generated catalog GLBs, both manifests, Kimi scratch outputs,
      live Wasp/Helios promotion, and unsafe release deletions.
@@ -402,6 +418,12 @@ versus KTX2/Meshopt parity, accessibility comparisons, and measured frame/draw/t
   Their own output correctly states that runtime visual acceptance is not implied.
 - Release/GPU evidence tooling: 8/8 focused tests green; release-builder `--help` exits before lock
   acquisition.
+- Procedural legacy-surface bridge: 9/9 authored-profile tests green and deterministic contact-sheet
+  generation succeeded. Canopy optical preservation, fail-closed admission, stable station LOD,
+  asteroid-instance identity, readability-core, and shield-presentation focused checks are green.
+- The dirty generated-catalog PBR test was deliberately excluded: the quarantined Wasp assembly
+  currently references 77 textures and fails its 64-reference budget. The budget was not weakened and
+  the generated GLBs/manifests were not staged.
 
 These receipts prove recoverability and narrow contracts. They do not replace the final normal-route
 browser/Electron captures, motion/LOD/flicker evidence, or the Kimi/Golden Helios comparison.
@@ -436,7 +458,7 @@ At pickup:
 
 The graphics worktree is **not merge-ready** at this snapshot because:
 
-- the donor implementation is now safely partitioned, but current master is still moving and is 43
+- the donor implementation is now safely partitioned, but current master is still moving and is 45
   commits beyond the common base;
 - overlap counts must be recalculated from the user's confirmed final Claude commit rather than the
   stale original count of 35;
