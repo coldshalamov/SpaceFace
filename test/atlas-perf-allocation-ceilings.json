@@ -1,0 +1,37 @@
+{
+  "schema": "spaceface.atlasPerfAllocationCeilings.v1",
+  "recordedAt": "2026-07-19",
+  "method": "node --expose-gc scripts/probe-atlas-perf-baseline.mjs — median of 5 forced-GC rounds",
+  "why": [
+    "Wall-clock is machine-relative and is never gated. Allocation per operation is a property of",
+    "the code rather than the host, so it is the axis that can be enforced across CI and dev machines.",
+    "Ceilings are set only on the PER-FRAME paths, where allocation churn is what produces hitches",
+    "and where the measurement is most stable (the three verification runs agreed exactly on all",
+    "three per-frame numbers).",
+    "A ceiling carries headroom above the measured value so a normal recompile does not flake it.",
+    "Headroom is NOT a target: 'measuredBytesPerOp' is the number to compare against when judging a",
+    "change, and raising a ceiling to make a regression pass requires a recorded justification."
+  ],
+  "ceilings": {
+    "interaction/pickMapTargetAt@500": {
+      "maxBytesPerOp": 64,
+      "measuredBytesPerOp": 0,
+      "why": "Runs on every pointer move over the map. It allocates nothing today and must keep allocating nothing — this is the input-to-highlight critical path."
+    },
+    "lane/projectOntoLane": {
+      "maxBytesPerOp": 160,
+      "measuredBytesPerOp": 72,
+      "why": "Called per tick while the travel drive is engaged (travelLanes.update -> resolveLaneSegment -> projectOntoLane). The 72 B is the returned {alongWU, offAxisWU} object, not hidden churn, but design/PERF_BUDGET.md forbids per-frame allocation on hot paths — see the P3 finding filed against this. The ceiling pins it from growing while that is adjudicated."
+    },
+    "lane/resolveLaneSegment": {
+      "maxBytesPerOp": 256,
+      "measuredBytesPerOp": 120,
+      "why": "The per-tick lane fix, called directly from travelLanes.update (line 197). Includes projectOntoLane's allocation. Same doctrine tension as above."
+    },
+    "markerLayout/layoutMapLabels@400": {
+      "maxBytesPerOp": 65536,
+      "measuredBytesPerOp": 44337,
+      "why": "The declutter/collision pass. Not per-frame today (it runs on map model rebuild), so the ceiling is generous and exists to catch a step change in the algorithm rather than to enforce a tight budget. Its WALL-CLOCK cost is the more interesting number and is recorded, not gated — see the P2 finding on superlinear growth."
+    }
+  }
+}
