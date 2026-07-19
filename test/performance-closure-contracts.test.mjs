@@ -140,8 +140,9 @@ test('budget results are recomputed from raw frame and autosave evidence', () =>
   const saveBudgets = evaluatePerformanceWindowBudgets({
     scenarioId: 'autosave_under_load',
     summary,
-    autosave: { timing: { maxBlockingSliceMs: 13 } },
+    autosave: { events: [{ event: 'save:completed' }], timing: { maxBlockingSliceMs: 13 } },
   });
+  assert.equal(saveBudgets.results.find((entry) => entry.id === 'autosave.completed').pass, true);
   assert.equal(saveBudgets.results.find((entry) => entry.id === 'autosave.maxBlockingSlice.hard').pass, false);
   const missingSaveTiming = evaluatePerformanceWindowBudgets({ scenarioId: 'autosave_under_load', summary });
   assert.equal(missingSaveTiming.results.find((entry) => entry.id === 'autosave.maxBlockingSlice.hard').value, null);

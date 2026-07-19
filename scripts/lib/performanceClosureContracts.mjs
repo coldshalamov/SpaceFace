@@ -134,7 +134,10 @@ export function evaluatePerformanceWindowBudgets({ scenarioId, summary, autosave
   ];
   if (scenarioId === 'autosave_under_load') {
     const maxBlockingSliceMs = finiteOrNull(autosave?.timing?.maxBlockingSliceMs);
+    const completed = Array.isArray(autosave?.events)
+      && autosave.events.some((event) => event?.event === 'save:completed');
     results.push(
+      truthBudget('autosave.completed', completed),
       budget('autosave.maxBlockingSlice.target', maxBlockingSliceMs, PERFORMANCE_BUDGETS.autosaveTargetBlockingSliceMs),
       budget('autosave.maxBlockingSlice.hard', maxBlockingSliceMs, PERFORMANCE_BUDGETS.autosaveHardBlockingSliceMs),
     );
@@ -358,6 +361,10 @@ function budget(id, value, limit) {
     limit,
     pass: measured != null && measured <= limit,
   };
+}
+
+function truthBudget(id, value) {
+  return { id, value: value === true, operator: '==', limit: true, pass: value === true };
 }
 
 function percentile(sorted, ratio) {
