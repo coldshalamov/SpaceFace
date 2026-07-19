@@ -384,6 +384,7 @@
     "check:rcs-jets": "node --test test/rcs-jet-mapping.test.mjs && node scripts/check-rcs-jet-wiring.mjs",
     "check:travel-drive": "node --test test/travel-drive.test.mjs",
     "check:travel-latch": "node --test test/travel-latch.test.mjs",
+    "check:travel-lanes": "node --test test/travel-lanes.test.mjs && node scripts/check-travel-lanes.mjs",
     "check:route-engage": "node --test test/route-engage-action.test.mjs",
     "check:route-follower": "node --test test/route-follower.test.mjs",
     "check:flight": "node test/flightV3.spec.mjs && node scripts/flight-lab-sim.mjs && node scripts/probe-flight-visual.mjs",

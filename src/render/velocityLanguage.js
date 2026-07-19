@@ -510,6 +510,47 @@ export function streamPhaseStep(prevPhase, deltaWU, par, tile, gain) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// along-flow smear (the band-2 load-bearing cue, second half)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * How far a bright background point is elongated along the flow axis at full `smear`.
+ *
+ * 3.4x is set by what the shape still READS as. Below ~2x the elongation is indistinguishable from
+ * the point sprite's own soft halo, so the cue costs a uniform and buys nothing; above ~4x a star
+ * becomes a line segment, which is the additive-streak vocabulary this packet exists to delete —
+ * merely relocated from the overlay into the sky, where it would be worse because there are
+ * thousands of them.
+ */
+export const VL_SMEAR_MAX_STRETCH = 3.4;
+
+/**
+ * The along-flow stretch factor for a `smear` value, and the alpha compensation that must accompany
+ * it. Pure, and exported, for the same reason `velocityBandDrive` is: `scripts/check-speed-lines.mjs`
+ * pins the math the shader actually runs rather than a copy in the test that can drift from it.
+ *
+ * ENERGY IS CONSERVED, AND THAT IS A HARD REQUIREMENT, NOT A REFINEMENT. The star and flare
+ * materials both composite with `THREE.AdditiveBlending` — that is pre-existing shipped behaviour
+ * this packet does not touch. Stretching an additive sprite without dimming it multiplies the light
+ * the sky contributes by exactly `stretch`, so at band 2 the whole starfield would brighten 3.4x at
+ * precisely the moment the player is going fastest. That is "additive white saturation at high
+ * speed" — the D7 prohibition, arrived at from the opposite direction. Dimming by `1/stretch` holds
+ * the integrated energy of each point constant: the star spreads, it does not glow.
+ *
+ * @param {number} smear 0..1, already motionReduce-scaled by `velocityBandDrive`
+ * @returns {{stretch:number, dim:number}} `stretch` >= 1 along flow; `dim` = 1/stretch
+ */
+export function smearStretch(smear) {
+  // Fail NEUTRAL, not dark and not bright: a non-finite smear yields no elongation and no dimming,
+  // which is exactly the band-0/1 sky. Clamping to the far end would either wash the field out or
+  // black it, and both are worse than simply not applying an optional cue.
+  if (!Number.isFinite(smear) || smear <= 0) return { stretch: 1, dim: 1 };
+  const s = smear > VL_SMEAR_MAX ? VL_SMEAR_MAX : smear;
+  const stretch = 1 + s * (VL_SMEAR_MAX_STRETCH - 1);
+  return { stretch, dim: 1 / stretch };
+}
+
+// ---------------------------------------------------------------------------------------------
 // the shared record
 // ---------------------------------------------------------------------------------------------
 

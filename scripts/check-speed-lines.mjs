@@ -58,8 +58,11 @@ import {
   isPlausibleCameraStep,
   resolveRegionCrossfade,
   resolveVelocityBand,
+  smearStretch,
   streamPhaseStep,
   velocityBandDrive,
+  VL_SMEAR_MAX,
+  VL_SMEAR_MAX_STRETCH,
 } from '../src/render/velocityLanguage.js';
 
 const MAX_SPEED = 150;   // a representative hull maxSpeed (propulsionCatalog: 150-168)
@@ -634,6 +637,75 @@ check('camera-step plausibility rejects a frame rebase but accepts real travel',
   assert.equal(isPlausibleCameraStep(0, Infinity), false, 'Infinity must be rejected');
 });
 
+// ---------------------------------------------------------------- along-flow smear (band 2, cue b)
+// The trap this section exists for is NOT that the smear might be too weak — it is that a smear on
+// ADDITIVELY BLENDED sprites brightens the sky unless the alpha is compensated. The star and flare
+// materials both use THREE.AdditiveBlending, so stretching a point over `stretch` times the area
+// without dividing its alpha by `stretch` multiplies the light the starfield contributes by exactly
+// that factor, at precisely the speed the player is going fastest. That is the D7 "no additive white
+// saturation" prohibition, reached from the direction nobody is watching. `dim * stretch === 1` is
+// the invariant that forecloses it, and it is asserted below as an identity rather than a bound.
+check('along-flow smear conserves energy — a stretched star spreads, it never glows', () => {
+  for (const s of [0, 0.05, 0.25, 0.5, 0.75, 1]) {
+    const { stretch, dim } = smearStretch(s);
+    assert.ok(stretch >= 1, `smear ${s}: stretch ${stretch} must never shrink a point`);
+    assert.ok(stretch <= VL_SMEAR_MAX_STRETCH,
+      `smear ${s}: stretch ${stretch} exceeds ${VL_SMEAR_MAX_STRETCH} — a star became a line`);
+    assert.ok(Math.abs(dim * stretch - 1) < 1e-12,
+      `smear ${s}: energy NOT conserved (dim ${dim} x stretch ${stretch} = ${dim * stretch}); ` +
+      'an additively blended starfield will brighten by that factor at speed');
+    assert.ok(dim <= 1, `smear ${s}: dim ${dim} would BRIGHTEN the point`);
+  }
+  // Monotone: more smear is always more stretch, never a fold-back.
+  let prev = 0;
+  for (let s = 0; s <= 1.0001; s += 0.05) {
+    const { stretch } = smearStretch(s);
+    assert.ok(stretch >= prev - 1e-12, `smear ramp folded back at ${s}`);
+    prev = stretch;
+  }
+  // Off is exactly OFF — an inert uniform, so bands 0 and 1 render byte-identically to the
+  // pre-smear starfield. A "1.0001" here would mean every frame of ordinary flight pays a
+  // different shader path than the one that shipped.
+  assert.equal(smearStretch(0).stretch, 1, 'smear 0 must be exactly 1.0 (inert)');
+  assert.equal(smearStretch(0).dim, 1, 'smear 0 must not dim');
+  // Fail NEUTRAL on garbage: not stretched, not dimmed. Clamping a NaN to the far end would either
+  // wash the field out or black it; both are worse than declining to apply an optional cue.
+  for (const bad of [NaN, Infinity, -Infinity, -1, undefined, null]) {
+    const { stretch, dim } = smearStretch(bad);
+    assert.equal(stretch, 1, `smear ${bad} must not stretch`);
+    assert.equal(dim, 1, `smear ${bad} must not dim`);
+  }
+  // Above the ceiling the result saturates rather than running away.
+  assert.equal(smearStretch(1e9).stretch, smearStretch(VL_SMEAR_MAX).stretch,
+    'smear above its ceiling must saturate, not keep stretching');
+});
+
+check('smear is a BAND 2 cue: silent below it, and motionReduce-respecting', () => {
+  // Bands 0 and 1 must leave the sky completely alone — the world only starts streaming at 2x.
+  for (const ratio of [0.5, 1, 1.5, 2]) {
+    const d = drive(ratio);
+    assert.equal(d.smear, 0, `ratio ${ratio}: smear must be 0 below band 2, got ${d.smear}`);
+    assert.equal(smearStretch(d.smear).stretch, 1,
+      `ratio ${ratio}: the sky must be untouched below band 2`);
+  }
+  // It ramps up through band 2 and holds at full through band 3 — the world keeps streaming while
+  // the particles fade out, which is the inversion the whole redesign is built on.
+  assert.ok(drive(3).smear > 0 && drive(3).smear < VL_SMEAR_MAX, 'smear must ramp inside band 2');
+  assert.ok(drive(4).smear > drive(3).smear, 'smear must rise across band 2');
+  assert.equal(drive(10).smear, VL_SMEAR_MAX, 'smear must hold at full through band 3');
+  assert.equal(drive(100).smear, VL_SMEAR_MAX, 'smear must not fall off at extreme speed');
+  // The consumer reads `drive.smear`, which velocityBandDrive has ALREADY reduced, so reduced-motion
+  // handling comes for free. Pinned because a future consumer reading a raw band instead would
+  // silently lose it.
+  for (const ratio of [3, 4, 5, 7.5, 10]) {
+    const full = smearStretch(drive(ratio, false, false).smear);
+    const red = smearStretch(drive(ratio, false, true).smear);
+    assert.ok(red.stretch < full.stretch,
+      `ratio ${ratio}: motionReduce must reduce the smear (${full.stretch} -> ${red.stretch})`);
+    assert.ok(red.stretch >= 1, `ratio ${ratio}: reduced smear must stay >= 1`);
+  }
+});
+
 // ---------------------------------------------------------------- the seam actually routes
 check('speedLineDrive routes to the band language when the flag is on', () => {
   const saved = VELOCITY_LANGUAGE_FLAGS.bands;
@@ -653,13 +725,15 @@ check('speedLineDrive routes to the band language when the flag is on', () => {
 
 // ---------------------------------------------------------------- band evidence table
 console.log('\nVELOCITY LANGUAGE (D7) — maxSpeed=150, motionReduce=off, boosting=false');
-console.log('  ratio | band | streaks | alpha  | length | parallax | grain  | lead');
-console.log('  ------+------+---------+--------+--------+----------+--------+------');
+console.log('  ratio | band | streaks | alpha  | length | parallax | smear→stretch | grain  | lead');
+console.log('  ------+------+---------+--------+--------+----------+---------------+--------+------');
 for (const ratio of [0.5, 1, 1.5, 2, 3, 4, 5, 6, 7.5, 10, 25, 100]) {
   const d = drive(ratio);
+  const sm = smearStretch(d.smear);
   console.log(
     `  ${String(ratio).padStart(5)} |    ${d.band} | ${String(d.count).padStart(7)} | ` +
     `${d.targetOpacity.toFixed(4)} | ${d.lenScale.toFixed(4)} | ${d.parallaxGain.toFixed(4)}   | ` +
+    `${d.smear.toFixed(3)}→${sm.stretch.toFixed(2)}x   | ` +
     `${d.grain.toFixed(4)} | ${d.cameraLeadWU.toFixed(2)}`);
 }
 
