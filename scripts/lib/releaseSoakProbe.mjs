@@ -1797,6 +1797,79 @@ function buildErrorEvidence(runtime, tracker) {
   };
 }
 
+async function readPerformanceRouteFailureState(page) {
+  if (!page || page.isClosed()) return null;
+  return page.evaluate(async () => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get?.(state.playerId) || null;
+    const ships = Array.isArray(state?.entityList)
+      ? state.entityList.filter((entity) => entity?.type === 'ship' && entity.alive !== false)
+      : [];
+    const statusCounts = {};
+    const nonAuthored = [];
+    for (const ship of ships) {
+      const status = ship?.mesh?.userData?.authoredAssetState || 'missing';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+      if (status !== 'authored' && nonAuthored.length < 50) {
+        nonAuthored.push({
+          id: ship?.id || null,
+          defId: ship?.defId || ship?.shipDefId || null,
+          status,
+          visible: ship?.mesh?.visible === true,
+        });
+      }
+    }
+
+    const visible = (element) => {
+      if (!element || element.hidden) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden'
+        && Number(style.opacity || 1) > 0.01 && rect.width > 1 && rect.height > 1;
+    };
+    const splashVisible = visible(document.getElementById('cinematic-splash'));
+    const firstRunVisible = visible(document.querySelector('[data-screen="firstRun"], .sf-first-run, [data-first-run]'));
+    const checks = {
+      flightMode: state?.mode === 'flight',
+      playerPresent: !!player,
+      playerAlive: !!player && player.alive !== false && Number(player.hull) > 0,
+      authoredShipsPresent: ships.length > 0,
+      allShipsAuthored: ships.length > 0 && nonAuthored.length === 0,
+      modalClosed: !document.body.classList.contains('ui-modal-open'),
+      cinematicClosed: !splashVisible,
+      firstRunClosed: !firstRunVisible,
+    };
+
+    let pipeline = null;
+    try {
+      const metrics = await import('/scripts/lib/performanceSceneMetrics.mjs');
+      pipeline = metrics.collectPerformancePipelineReadiness({
+        state,
+        registry: window.SF?.registry,
+      });
+    } catch (error) {
+      pipeline = { available: false, error: error?.message || String(error) };
+    }
+
+    return {
+      capturedAt: new Date().toISOString(),
+      pass: Object.values(checks).every(Boolean),
+      checks,
+      mode: state?.mode || null,
+      tick: Number(state?.tick || 0),
+      docked: state?.ui?.docked === true,
+      player: player ? {
+        id: player.id || null,
+        alive: player.alive !== false && Number(player.hull) > 0,
+        hull: Number(player.hull || 0),
+        authoredAssetState: player?.mesh?.userData?.authoredAssetState || 'missing',
+      } : null,
+      ships: { count: ships.length, statusCounts, nonAuthored },
+      pipeline,
+    };
+  }).catch((error) => ({ available: false, error: error?.message || String(error) }));
+}
+
 function normalizeCleanup(runtime, report) {
   if (runtime === 'electron') {
     return {
@@ -2381,6 +2454,7 @@ async function runPerformanceAttributionProbe({
       measurementState = { ...(await disableMeasurementGates(page)), verified: true };
       await page.screenshot({ path: path.join(outputDir, 'failure-screenshot.png'), type: 'png', animations: 'allow' }).catch(() => {});
     }
+    const routeFailureState = await readPerformanceRouteFailureState(page);
     const measurementDisabled = measurementState.verified === true
       && measurementState.renderWorkEnabled !== true
       && measurementState.systemTimingEnabled !== true
@@ -2419,6 +2493,7 @@ async function runPerformanceAttributionProbe({
         message: failureMessage,
         routePhase: error?.routePhase || null,
         routeProgress: error?.routeProgress || [],
+        routeState: routeFailureState,
         performanceTelemetry: error?.performanceTelemetry || null,
         urlChecks: error?.urlChecks || [],
       },
@@ -2466,5 +2541,6 @@ export {
   disableMeasurementGates,
   buildClosureWindows,
   inspectPerformanceActivity,
+  readPerformanceRouteFailureState,
   runPerformanceAttributionProbe,
 };

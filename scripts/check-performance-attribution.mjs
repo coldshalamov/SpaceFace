@@ -46,6 +46,8 @@ const variantScenarioIds = readArg('variant-scenarios')
 const seed = readInt('seed', 47);
 const warmupMs = readPositiveInt('warmup-ms', 2_000);
 const sampleMs = readPositiveInt('sample-ms', 5_000);
+const flightTimeoutMs = readPositiveInt('flight-timeout-ms', 150_000);
+const dockTimeoutMs = readPositiveInt('dock-timeout-ms', 90_000);
 const outputRoot = path.resolve(ROOT, readArg('output-root', '.devshots/perf'));
 
 const result = await runPerformanceAttributionProbe({
@@ -57,6 +59,8 @@ const result = await runPerformanceAttributionProbe({
   seed,
   warmupMs,
   sampleMs,
+  flightTimeoutMs,
+  dockTimeoutMs,
   log: (line) => console.log(`[perf-attribution] ${line}`),
 });
 

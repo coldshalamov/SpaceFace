@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
 import { comparisonKey } from '../scripts/lib/performanceClosureContracts.mjs';
-import { buildClosureWindows } from '../scripts/lib/releaseSoakProbe.mjs';
+import { buildClosureWindows, readPerformanceRouteFailureState } from '../scripts/lib/releaseSoakProbe.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 
@@ -76,4 +76,20 @@ test('profile and closure probes share scene metrics and bounded measurement gat
   assert.match(probe, /strictWorktreeFingerprint/);
   assert.match(command, /--full-matrix/);
   assert.match(command, /variant-scenarios/);
+  assert.match(command, /flight-timeout-ms/);
+  assert.match(command, /dock-timeout-ms/);
+  assert.match(probe, /routeState: routeFailureState/);
+  assert.match(probe, /nonAuthored\.length < 50/);
+});
+
+test('route-failure snapshot is unavailable after cleanup and preserves live evidence', async () => {
+  assert.equal(await readPerformanceRouteFailureState(null), null);
+  assert.equal(await readPerformanceRouteFailureState({ isClosed: () => true }), null);
+
+  const expected = { pass: false, checks: { allShipsAuthored: false } };
+  const page = {
+    isClosed: () => false,
+    evaluate: async () => expected,
+  };
+  assert.deepEqual(await readPerformanceRouteFailureState(page), expected);
 });
