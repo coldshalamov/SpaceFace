@@ -173,8 +173,10 @@ test('controller command is wired and restoration is failure-atomic', async () =
   assert.match(rendererSource, /entity\.type === 'station'/);
   assert.match(rendererSource, /entity\.type === 'fx'[\s\S]*placeId[\s\S]*landmarkGlb/);
   assert.match(rendererSource, /entity\.type === 'ship' \|\| entity\.type === 'drone'/);
-  assert.match(rendererSource, /mesh\.visible !== false/);
-  assert.match(rendererSource, /root\.visible !== false/);
+  assert.match(rendererSource, /visibility\.push\(\[id, mesh, mesh\.visible\]\)/);
+  assert.match(rendererSource, /mesh\.visible = wasVisible/);
+  assert.match(vfxSource, /map\(\(object\) => \[object, object\.visible\]\)/);
+  assert.match(vfxSource, /object\.visible = wasVisible/);
   assert.match(rendererSource, /perfMaterialIsolation/);
   assert.match(rendererSource, /overrideMaterial: scene\.overrideMaterial/);
   assert.match(rendererSource, /scene\.overrideMaterial = record\.overrideMaterial/);
