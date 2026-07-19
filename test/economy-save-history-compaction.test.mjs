@@ -43,7 +43,21 @@ economy._nextEventId = 1;
 economy._eventAccumulator = 0;
 economy._installRngFunction();
 
+economy.state.economy.marketIntel.station_test = {
+  seenAtT: 2190,
+  snapshot: { [commodityId]: { mid: 44, demandDrivers: [{ id: 'fixture', mult: 1.1 }] } },
+};
+economy.state.economy.econEvents.push({
+  id: 'evt_fixture', type: 'shortage', mods: [{ field: 'spread', mult: 1.2 }],
+});
+
 const serialized = economy.serialize();
+serialized.marketIntel.station_test.snapshot[commodityId].demandDrivers[0].mult = 99;
+serialized.econEvents[0].mods[0].mult = 99;
+assert.equal(economy.state.economy.marketIntel.station_test.snapshot[commodityId].demandDrivers[0].mult, 1.1,
+  'snapshot-owned economy serialization must not retain nested market-intel references');
+assert.equal(economy.state.economy.econEvents[0].mods[0].mult, 1.2,
+  'snapshot-owned economy serialization must not retain nested event references');
 assert.ok(Array.isArray(serialized.markets.station_test),
   'market entries persist as compact rows instead of one property-heavy object per commodity');
 const marketRow = serialized.markets.station_test.find((row) => row[0] === commodityId);

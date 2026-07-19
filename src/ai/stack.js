@@ -18,6 +18,7 @@ import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 
 const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
 const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
+const DOCTRINE_REFRESH_TICKS = 3;
 
 /**
  * Five-layer SG-06 tactical AI host.
@@ -53,6 +54,7 @@ export class TacticalAIStack {
     const runtimeConfig = config.runtime && typeof config.runtime === 'object' ? config.runtime : {};
     this.memberBatchSize = normalizeOptionalPositiveInt(runtimeConfig.memberBatchSize);
     this.memberBatchTargetTicks = normalizePositiveInt(runtimeConfig.memberBatchTargetTicks, 1);
+    this.memberBatchSpreadTicks = normalizePositiveInt(runtimeConfig.memberBatchSpreadTicks, 1);
     this.memberBatchEnabled = !!this.memberBatchSize || this.memberBatchTargetTicks > 1;
     this.memberCursor = 0;
     this.perceptionCache = new Map();
@@ -86,21 +88,19 @@ export class TacticalAIStack {
     const perceptionsByEntity = this.perceptionsByEntityScratch;
     perceptionsByEntity.clear();
     const orderedMembers = uniqueMembers(roster, roster[NORMALIZED_ROSTER_FLAG] === true, this.orderedMemberScratch, this.seenMemberScratch);
-    const activeMembers = this.memberBatchEnabled ? this._activeDecisionMembers(orderedMembers) : null;
+    const activeMembers = this.memberBatchEnabled ? this._activeDecisionMembers(orderedMembers, tick) : null;
     let liveFrames = null;
     if (!this.freezeResults && typeof this.ports.sensors.liveFramesFor === 'function') {
       const refreshIds = [];
       for (const member of orderedMembers) {
         const cached = this.memberBatchEnabled ? this.perceptionCache.get(member.id) : null;
-        const doctrineMember = normalizeCombatDoctrineId(member.combatDoctrineId) != null;
-        if (!this.memberBatchEnabled || !cached || activeMembers.has(member.id) || doctrineMember) refreshIds.push(member.id);
+        if (!this.memberBatchEnabled || !cached || memberRefreshDue(member, tick, activeMembers)) refreshIds.push(member.id);
       }
       liveFrames = this.ports.sensors.liveFramesFor(refreshIds, tick);
     }
     for (const member of orderedMembers) {
       let perception = this.memberBatchEnabled ? this.perceptionCache.get(member.id) : null;
-      const doctrineMember = normalizeCombatDoctrineId(member.combatDoctrineId) != null;
-      if (!this.memberBatchEnabled || !perception || activeMembers.has(member.id) || doctrineMember) {
+      if (!this.memberBatchEnabled || !perception || memberRefreshDue(member, tick, activeMembers)) {
         const frame = liveFrames && liveFrames.has(member.id)
           ? liveFrames.get(member.id)
           : !this.freezeResults && typeof this.ports.sensors.liveFrameFor === 'function'
@@ -136,17 +136,19 @@ export class TacticalAIStack {
         const directive = overrideDirectiveForWingOrder(squadDirective, perception, freeze);
         const doctrineId = normalizeCombatDoctrineId(directive.combatDoctrineId, perception.self && perception.self.combatDoctrineId);
         const retreatOrdered = directive.objective && directive.objective.kind === ObjectiveKind.RETREAT;
-        if (this.memberBatchEnabled && !doctrineId && !retreatOrdered && !activeMembers.has(member.id) && this.lastDecisionByEntity.has(member.id)) {
-          const cached = retickDecision(this.lastDecisionByEntity.get(member.id), tick);
-          this.ports.maneuver.request(cached.maneuver);
-          decisions.push(cached);
-          continue;
-        }
         if (retreatOrdered && doctrineId) this.combatDoctrine.forget(member.id);
         const doctrinePerception = perceptionForWingOrderCombatDoctrine(perception, directive, freeze);
         const combatDoctrine = doctrineId && !retreatOrdered ? this.combatDoctrine.update({
           tick, entityId: member.id, doctrineId, perception: doctrinePerception, directive,
         }) : null;
+        const priorDecision = this.lastDecisionByEntity.get(member.id);
+        if (this.memberBatchEnabled && !retreatOrdered && !memberRefreshDue(member, tick, activeMembers)
+          && priorDecision && !doctrineDecisionChanged(priorDecision.combatDoctrine, combatDoctrine)) {
+          const cached = retickDecision(priorDecision, tick, combatDoctrine);
+          this.ports.maneuver.request(cached.maneuver);
+          decisions.push(cached);
+          continue;
+        }
         const effectiveDirective = combatDoctrine ? overrideDirectiveForCombatDoctrine(directive, combatDoctrine) : directive;
         const actionDefs = this.ports.actions.list(member.id, this._actionContext(tick, perception, effectiveDirective)) || [];
         const current = !this.freezeResults && typeof this.executor.current === 'function'
@@ -228,7 +230,7 @@ export class TacticalAIStack {
     this.entitySquad.delete(entityId);
   }
 
-  _activeDecisionMembers(orderedMembers) {
+  _activeDecisionMembers(orderedMembers, tick) {
     const selected = this.activeMemberScratch;
     selected.clear();
     const count = orderedMembers.length;
@@ -238,6 +240,14 @@ export class TacticalAIStack {
     }
     const configured = this.memberBatchSize || Math.ceil(count / this.memberBatchTargetTicks);
     const batchSize = Math.max(1, Math.min(count, configured));
+    if (this.memberBatchSpreadTicks > 1 && this.memberBatchSize) {
+      const phase = tick % this.memberBatchSpreadTicks;
+      if (phase < batchSize) selected.add(orderedMembers[(this.memberCursor + phase) % count].id);
+      if (phase === this.memberBatchSpreadTicks - 1) {
+        this.memberCursor = (this.memberCursor + batchSize) % count;
+      }
+      return selected;
+    }
     if (batchSize >= count) {
       this.memberCursor = 0;
       for (const member of orderedMembers) selected.add(member.id);
@@ -369,20 +379,70 @@ function compareDecisionEntity(a, b) {
   return ak < bk ? -1 : (ak > bk ? 1 : 0);
 }
 
-function retickDecision(decision, tick) {
+function retickDecision(decision, tick, doctrine = decision && decision.combatDoctrine) {
   if (!decision || !decision.maneuver) return decision;
   const maneuver = retickManeuver(decision.maneuver, tick);
-  if (maneuver === decision.maneuver && decision.tick === tick) return decision;
+  const combatDoctrine = clearCachedDoctrineEdges(doctrine);
+  if (maneuver === decision.maneuver && combatDoctrine === decision.combatDoctrine && decision.tick === tick) return decision;
   if (!Object.isFrozen(decision)) {
     decision.tick = tick;
     decision.maneuver = maneuver;
+    decision.combatDoctrine = combatDoctrine;
     return decision;
   }
   return {
     ...decision,
     tick,
     maneuver,
+    combatDoctrine,
   };
+}
+
+function doctrineDecisionChanged(previous, next) {
+  if (!previous && !next) return false;
+  if (!previous || !next) return true;
+  return next.telegraphStarted === true
+    || next.phaseChanged === true
+    || previous.doctrineId !== next.doctrineId
+    || previous.phase !== next.phase
+    || previous.targetId !== next.targetId
+    || previous.actionId !== next.actionId
+    || previous.fireWindow !== next.fireWindow
+    || previous.maneuverKind !== next.maneuverKind;
+}
+
+function clearCachedDoctrineEdges(doctrine) {
+  if (!doctrine || (doctrine.telegraphStarted !== true && doctrine.phaseChanged !== true)) return doctrine;
+  if (!Object.isFrozen(doctrine)) {
+    doctrine.telegraphStarted = false;
+    doctrine.phaseChanged = false;
+    return doctrine;
+  }
+  return Object.freeze({ ...doctrine, telegraphStarted: false, phaseChanged: false });
+}
+
+function doctrineRefreshDue(member, tick) {
+  if (!member || normalizeCombatDoctrineId(member.combatDoctrineId) == null) return false;
+  const id = member.id;
+  let bucket = 0;
+  if (typeof id === 'number' && Number.isFinite(id)) {
+    bucket = Math.abs(Math.floor(id)) % DOCTRINE_REFRESH_TICKS;
+  } else {
+    const text = stableId(id);
+    let hash = 2166136261;
+    for (let index = 0; index < text.length; index++) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619) >>> 0;
+    }
+    bucket = hash % DOCTRINE_REFRESH_TICKS;
+  }
+  return bucket === tick % DOCTRINE_REFRESH_TICKS;
+}
+
+function memberRefreshDue(member, tick, activeMembers) {
+  return normalizeCombatDoctrineId(member && member.combatDoctrineId) != null
+    ? doctrineRefreshDue(member, tick)
+    : activeMembers.has(member.id);
 }
 
 function retickManeuver(request, tick) {

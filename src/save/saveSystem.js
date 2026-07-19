@@ -364,7 +364,12 @@ export const save = {
   _callSerialize(name) {
     const sys = this.registry && this.registry.get && this.registry.get(name);
     if (sys && typeof sys.serialize === 'function') {
-      try { return clonePlain(sys.serialize()); } catch (err) { console.error('[save] serialize ' + name, err); }
+      try {
+        const snapshot = sys.serialize();
+        // Opt-in serializers prove that every returned branch is newly allocated or explicitly
+        // copied from live state. Preserve the defensive clone for every unmarked subsystem.
+        return sys.saveSnapshotOwned === true ? snapshot : clonePlain(snapshot);
+      } catch (err) { console.error('[save] serialize ' + name, err); }
     }
     return null;
   },
@@ -849,6 +854,26 @@ export const save = {
       playtimeS: Math.floor(this.state.meta.playtimeS || 0),
       slot: AUTOSAVE_SLOT,
     };
+  },
+
+  /**
+   * Exercise the exact production capture readers once while the loading shell still owns the
+   * route. The first browser invocation pays module/JIT setup that can otherwise make the first
+   * real autosave exceed its 12 ms main-thread task limit even though subsequent captures are
+   * comfortably bounded. No snapshot is retained or written, and this is deliberately refused in
+   * playable modes so performance preparation can never become a hidden in-flight hitch.
+   */
+  primeAutosaveCapture() {
+    if (!this.state || this.state.mode !== 'loading' || !this._hasPlayerEntity()) return false;
+    try {
+      for (const [, read] of this._saveCapturePlan()) read();
+      return true;
+    } catch (error) {
+      // Save reliability does not depend on preparation. A later real save still owns its normal
+      // error receipt and defensive fallback behavior.
+      console.warn('[save] autosave capture preparation failed', error);
+      return false;
+    }
   },
 
   _captureAutosaveSlice(job, capture) {
@@ -1999,6 +2024,7 @@ export const save = {
         visualGatePending: !!finalizeLoadedGame,
         recovered: options.recovered === true,
       });
+      this.primeAutosaveCapture();
       if (finalizeLoadedGame) {
         let finalizerResult;
         try {

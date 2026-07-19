@@ -132,7 +132,7 @@ function runProductionDefaultBatchCase() {
     sensors: {
       frameFor(entityId, tick) {
         sensorCalls.push(`${tick}:${entityId}`);
-        return defaultBatchFrame(entityId, tick, entityId === 2 && tick === 3 ? [] : [defaultBatchTarget(targetId)]);
+        return defaultBatchFrame(entityId, tick, entityId === 2 && tick === 2 ? [] : [defaultBatchTarget(targetId)]);
       },
     },
     roster: { listSquads: () => defaultBatchRoster(actorIds) },
@@ -148,22 +148,40 @@ function runProductionDefaultBatchCase() {
     state.tick = tick;
     tacticalAI.update(1 / 60, state);
   }
-  assert.equal(sensorCalls.length, callsAfterTick0, 'production default decision cadence remains three ticks');
-  state.tick = 3;
-  tacticalAI.update(1 / 60, state);
-  const decision = tacticalAI.stack.lastResult.decisions.find((entry) => entry.entityId === 2);
-  assert(sensorCalls.includes('3:2'), 'non-active doctrine member refreshes under production-default member batching');
-  assert.equal(sensorCalls.includes('3:3'), false, 'ordinary non-active member remains batched under production defaults');
-  assert.equal(decision.combatDoctrine.targetId, null, 'fresh negative frame clears stale doctrine target');
-  assert.equal(decision.action.actionId, null, 'fresh negative frame cannot start an attack action');
+  assert(sensorCalls.length > callsAfterTick0,
+    'production default should stagger member decisions across intervening simulation ticks');
+  const decisionAtTick2 = tacticalAI.stack.lastResult.decisions.find((entry) => entry.entityId === 2);
+  assert(sensorCalls.includes('2:2'), 'authored doctrine member receives its deterministic three-tick stagger slot');
+  assert.equal(decisionAtTick2.combatDoctrine.targetId, null, 'fresh negative frame clears stale doctrine target');
+  assert.equal(decisionAtTick2.action.actionId, null, 'fresh negative frame cannot start an attack action');
   assert.equal(state.entities.get(2).data.intent.fire, false);
+  for (let tick = 3; tick <= 10; tick++) {
+    state.tick = tick;
+    tacticalAI.update(1 / 60, state);
+  }
+  const decision = tacticalAI.stack.lastResult.decisions.find((entry) => entry.entityId === 2);
+  for (const actorId of actorIds) {
+    const ticks = sensorCalls
+      .filter((entry) => entry.endsWith(`:${actorId}`))
+      .map((entry) => Number(entry.split(':')[0]));
+    assert(ticks.length >= 1, `actor ${actorId} must receive a production sensor refresh`);
+    for (let index = 1; index < ticks.length; index++) {
+      const expectedFreshness = actorId === 2 ? 3 : 6;
+      assert(ticks[index] - ticks[index - 1] <= expectedFreshness,
+        `actor ${actorId} sensor freshness must stay within its bounded stagger`);
+    }
+  }
+  assert.equal(decision.combatDoctrine.targetId, targetId,
+    'authored doctrine member reacquires from a later fresh staggered frame');
   return {
     memberCount: actorIds.length,
     memberBatchSize: tacticalAI.stack.memberBatchSize,
+    memberBatchTargetTicks: tacticalAI.stack.memberBatchTargetTicks,
+    memberBatchSpreadTicks: tacticalAI.stack.memberBatchSpreadTicks,
     executorMinCommitTicks: tacticalAI.stack.executor.config.minCommitTicks,
     selectorMinCommitTicks: tacticalAI.stack.selector.config.minCommitTicks,
-    decisionTicks: [0, 3],
-    tick3SensorCalls: sensorCalls.filter((entry) => entry.startsWith('3:')).sort(),
+    decisionTicks: Array.from({ length: 11 }, (_, tick) => tick),
+    tick2SensorCalls: sensorCalls.filter((entry) => entry.startsWith('2:')).sort(),
     telegraphs: telegraphs.filter((entry) => entry.entityId === 2),
     doctrineActionStarts: starts.filter((entry) => entry.entityId === 2),
     maneuverRequests: maneuverRequests.length,

@@ -470,6 +470,9 @@ export function deserializeCareerOrigins(state, blob) {
 export function createCareerOriginsSystem() {
   return {
     name: 'careerOrigins',
+    // Every branch is produced by the schema serializers below; saveSystem need not deep-clone
+    // the already-owned career blob a second time.
+    saveSnapshotOwned: true,
     state: null,
     bus: null,
     registry: null,

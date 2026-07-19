@@ -328,10 +328,15 @@ test('serialize/deserialize preserves embodiment applied set (no re-emit)', () =
   const ctx = makeCtx(42);
   boot(ctx);
   sectorSim._advanceModel(1.5, 'test');
+  ctx.state.sectorSim.meta.lossLog = [{ id: 'fixture_loss', detail: { count: 1 } }];
   const blob = sectorSim.serialize();
+  assert.equal(sectorSim.saveSnapshotOwned, true);
   assert.ok(blob.embodiment);
   assert.ok(Array.isArray(blob.embodiment.appliedIds));
   assert.ok(blob.embodiment.appliedIds.length > 0);
+  blob.meta.lossLog[0].detail.count = 99;
+  assert.equal(ctx.state.sectorSim.meta.lossLog[0].detail.count, 1,
+    'owned sector-sim snapshots must deep-copy nested loss receipts');
 
   const ctx2 = makeCtx(42);
   boot(ctx2);

@@ -255,12 +255,18 @@ test('save round-trip is deterministic and preserves unrelated career peers', ()
   system.accept('hunter');
   system.accept('prospector');
   const blob = serializeCareerOrigins(state);
+  assert.equal(system.saveSnapshotOwned, true);
+  const liveOfferNonce = state.careers.origins.__meta.offerNonce;
+  blob.origins.__meta.offerNonce = liveOfferNonce + 100;
+  assert.equal(state.careers.origins.__meta.offerNonce, liveOfferNonce,
+    'owned career-origin snapshots must not retain live nested references');
+  const pristineBlob = serializeCareerOrigins(state);
 
   const restored = makeState(999);
   restored.careers = {};
   restored.careers.guildRank = { courier: 7 };
-  deserializeCareerOrigins(restored, structuredClone(blob));
+  deserializeCareerOrigins(restored, structuredClone(pristineBlob));
 
-  assert.deepEqual(serializeCareerOrigins(restored), blob);
+  assert.deepEqual(serializeCareerOrigins(restored), pristineBlob);
   assert.deepEqual(restored.careers.guildRank, { courier: 7 });
 });

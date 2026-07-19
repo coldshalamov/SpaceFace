@@ -37,7 +37,11 @@ import { projectedWidthPx } from './lod.js';
 import { createCollisionDebug } from './collisionDebug.js';
 import { installDiagnostics } from './diagnostics.js';
 import { getPostRenderTargetTelemetry, resetPostRenderTargetSampleCounter } from './postTelemetry.js';
-import { precompilePipelines } from './precompile.js';
+import {
+  invalidatePrecompileState,
+  precompileGlobalPipelines,
+  precompilePipelines,
+} from './precompile.js';
 import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
@@ -191,7 +195,12 @@ function entityIsOnApproachVector(entity, state, radius) {
   const dz = entity.pos.z - player.pos.z;
   const distance = Math.hypot(dx, dz);
   if (!Number.isFinite(distance) || distance <= 0 || distance > radius) return false;
-  const closingSpeed = (dx * (Number(player.vel.x) || 0) + dz * (Number(player.vel.z) || 0)) / distance;
+  // Use relative velocity, not only player velocity. Inbound traffic can enter the camera runway
+  // while the player is stationary; ignoring the traffic velocity deferred its GLB decode/upload
+  // until the ship crossed the immediate radius and exposed that work during flight.
+  const relativeX = (Number(player.vel.x) || 0) - (Number(entity.vel?.x) || 0);
+  const relativeZ = (Number(player.vel.z) || 0) - (Number(entity.vel?.z) || 0);
+  const closingSpeed = (dx * relativeX + dz * relativeZ) / distance;
   if (closingSpeed <= 1) return false;
   const projectedDistance = distance - closingSpeed * AUTHORED_ASSET_LOOKAHEAD_SECONDS;
   return projectedDistance <= AUTHORED_ASSET_IMMEDIATE_RADIUS;
@@ -753,6 +762,10 @@ export const render = {
         this._contextRecovery.detachedStaleDisposeListeners = detachReceipt.listenersDetached;
         this._contextRecovery.detachedContextResources = detachReceipt;
         if (this._assetResidency) this._assetResidency.handleContextLost();
+        // The restored WebGL context has a fresh driver program cache. Drop only our JS-side
+        // admission receipts here; the detached warmup graph belongs to the lost context and must
+        // not dispatch stale dispose listeners after restoration.
+        invalidatePrecompileState(renderer, { dispose: false });
         this._publishAssetResidencyDiagnostics();
         this._contextRecovery.losses++;
         this._contextRecovery.pending = true;
@@ -811,6 +824,15 @@ export const render = {
           this._contextRecovery.generation++;
           this._contextRecovery.pending = false;
           if (this._assetResidency) this._assetResidency.handleContextRestored();
+          state.render.pipelinePrecompileReady = precompileGlobalPipelines(renderer, scene, cam.obj, {
+            incremental: true,
+            preparePipelines: compileForCurrentTarget,
+            video: state.settings && state.settings.video,
+            yieldToMain: yieldToBrowser,
+          }).catch((error) => {
+            console.warn('[render] restored-context pipeline precompile failed', error);
+            return null;
+          });
           this._publishAssetResidencyDiagnostics();
           bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
         } catch (err) {
@@ -1292,9 +1314,14 @@ export const render = {
       this._updateHazardVisuals(sector);
       if (state.mode === 'loading') {
         deferredStartupPrecompile = sector;
-        state.render.pipelinePrecompileReady = Promise.resolve({
-          skipped: true,
-          reason: 'deferred until the first playable frame',
+        state.render.pipelinePrecompileReady = precompileGlobalPipelines(renderer, scene, cam.obj, {
+          incremental: true,
+          preparePipelines: compileForCurrentTarget,
+          video: state.settings && state.settings.video,
+          yieldToMain: yieldToBrowser,
+        }).catch((error) => {
+          console.warn('[render] global pipeline precompile failed', error);
+          return null;
         });
       } else {
         state.render.pipelinePrecompileReady = compileSectorPipelines(sector);

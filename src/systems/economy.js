@@ -387,6 +387,9 @@ function nextTradeSequence(player, ledger) {
 
 export const economy = {
   name: 'economy',
+  // serialize() owns every returned branch, so saveSystem can avoid cloning the populated market
+  // payload a second time during the single-task autosave capture.
+  saveSnapshotOwned: true,
 
   init(ctx) {
     this.state = ctx.state;
@@ -1586,9 +1589,12 @@ export const economy = {
     return {
       markets,
       cycles: serializeCycles(this.state),
-      econEvents: (econ.econEvents || []).map((e) => ({ ...e })),
+      econEvents: (econ.econEvents || []).map((e) => ({
+        ...e,
+        mods: Array.isArray(e && e.mods) ? e.mods.map((mod) => ({ ...mod })) : [],
+      })),
       econClock: { ...econ.econClock },
-      marketIntel: econ.marketIntel,
+      marketIntel: cloneSaveTree(econ.marketIntel || {}),
       rngSeed: econ.rngSeed,
       nextEventId: this._nextEventId,
       eventAccumulator: Number.isFinite(this._eventAccumulator) ? this._eventAccumulator : 0,
@@ -1640,6 +1646,14 @@ export const economy = {
     this._installRngFunction();
   },
 };
+
+function cloneSaveTree(value) {
+  if (value == null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(cloneSaveTree);
+  const out = {};
+  for (const key of Object.keys(value)) out[key] = cloneSaveTree(value[key]);
+  return out;
+}
 
 // ---- exported public API (UI & other systems call without the bus) --------------------------
 export function quote(stationId, commodityId, side, qty) {

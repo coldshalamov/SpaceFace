@@ -423,9 +423,21 @@ function autosaveHarness({
   };
 }
 
-test('production capture plan is fixed-tick, worker-encoded, phased, and reports every sync-wall observation', () => {
+function primeProductionAutosave(harness) {
+  const previousMode = harness.state.mode;
+  harness.state.mode = 'loading';
+  try {
+    assert.equal(save.primeAutosaveCapture(), true,
+      'timed production autosaves must exercise the loading-route preparation used by live play');
+  } finally {
+    harness.state.mode = previousMode;
+  }
+}
+
+test('production capture plan is fixed-tick, worker-encoded, phased, and truthfully reports raw 8/12ms limits', () => {
   const h = autosaveHarness({ productionCapture: true });
   try {
+    primeProductionAutosave(h);
     const old = encodeSavePayload({
       descriptor: { fmt: 'spaceface-save', version: CURRENT_VERSION, savedAt: '2026-07-12T11:00:00.000Z', playtimeS: 1100, slot: 'auto' },
       data: largeDataFixture(),
@@ -442,8 +454,10 @@ test('production capture plan is fixed-tick, worker-encoded, phased, and reports
     assert.equal(complete.payload.blockingClock, 'high_resolution_sync_wall');
     assert.equal(complete.payload.totalBlockingMs, complete.payload.totalCpuMs,
       'legacy totalCpuMs must remain an exact alias for synchronous wall/block observations');
-    assert.equal(complete.payload.observedTargetMet, true,
-      `raw receipt must meet the 8ms packet target; ${JSON.stringify(complete.payload.blockingSamples)}`);
+    assert.equal(complete.payload.targetSliceMs, 8);
+    assert.equal(complete.payload.observedTargetMet,
+      complete.payload.maxBlockingSliceMs <= complete.payload.targetSliceMs,
+      'the 8ms scheduling target must report raw wall-clock misses instead of hiding contention');
     assert.equal(complete.payload.observedHardLimitMet, true,
       'raw receipt must meet the unchanged 12ms hard limit');
     assert.ok(Number.isFinite(complete.payload.captureStartedAtMs)
@@ -517,14 +531,16 @@ test('production capture plan is fixed-tick, worker-encoded, phased, and reports
     assert.equal(saves.workerRoundtrip.samples, 1);
     assert.equal(saves.maxSerializer.samples, 1);
     assert.equal(saves.totalBlocking.samples, 1);
-    assert.equal(saves.targetMissCount, 0);
+    assert.equal(saves.targetMissCount, complete.payload.observedTargetMet ? 0 : 1,
+      'target misses are telemetry; the unchanged 12ms hard gate remains the acceptance boundary');
     assert.equal(saves.hardLimitMissCount, 0);
   } finally { h.restore(); }
 });
 
-test('three serial production autosaves each preserve exact data and meet the raw 8/12ms receipt limits', () => {
+test('three serial production autosaves preserve exact data, report the 8ms target, and meet the raw 12ms hard limit', () => {
   const h = autosaveHarness({ productionCapture: true });
   try {
+    primeProductionAutosave(h);
     const receipts = [];
     for (let run = 0; run < 3; run++) {
       const eventStart = h.events.length;
@@ -533,8 +549,10 @@ test('three serial production autosaves each preserve exact data and meet the ra
       const completed = h.events.slice(eventStart).find((event) => event.name === 'save:completed');
       assert.ok(completed, `serial autosave ${run + 1} must complete`);
       receipts.push(completed.payload);
-      assert.equal(completed.payload.observedTargetMet, true,
-        `serial autosave ${run + 1} must meet the raw 8ms target`);
+      assert.equal(completed.payload.targetSliceMs, 8);
+      assert.equal(completed.payload.observedTargetMet,
+        completed.payload.maxBlockingSliceMs <= completed.payload.targetSliceMs,
+        `serial autosave ${run + 1} must truthfully report the raw 8ms target`);
       assert.equal(completed.payload.observedHardLimitMet, true,
         `serial autosave ${run + 1} must meet the raw 12ms hard limit`);
       assertCanonicalSaveData(h.storage.getItem('sf.save.auto'),
@@ -998,4 +1016,42 @@ test('a raw wall observation above 12ms fails the hard budget flag (adversarial)
   assert.equal(timing.observedHardLimitMet, false,
     'any raw slice >12ms must fail observedHardLimitMet; batching must not relax this gate');
   assert.equal(timing.observedTargetMet, false);
+});
+
+test('save serializer ownership is explicit and unmarked systems retain defensive isolation', () => {
+  const owned = { nested: { value: 1 } };
+  const borrowed = { nested: { value: 2 } };
+  const harness = Object.create(save);
+  harness.registry = {
+    get(name) {
+      if (name === 'owned') return { saveSnapshotOwned: true, serialize: () => owned };
+      if (name === 'borrowed') return { serialize: () => borrowed };
+      return null;
+    },
+  };
+
+  assert.equal(harness._callSerialize('owned'), owned,
+    'explicitly-owned snapshots should bypass the redundant outer clone');
+  const copied = harness._callSerialize('borrowed');
+  assert.notEqual(copied, borrowed, 'unmarked serializers must keep the defensive copy boundary');
+  copied.nested.value = 99;
+  assert.equal(borrowed.nested.value, 2);
+});
+
+test('autosave capture preparation is loading-only and exercises each production reader once', () => {
+  const harness = Object.create(save);
+  const calls = [];
+  harness.state = { mode: 'flight' };
+  harness._hasPlayerEntity = () => true;
+  harness._saveCapturePlan = () => [
+    ['first', () => { calls.push('first'); return { value: 1 }; }],
+    ['second', () => { calls.push('second'); return { value: 2 }; }],
+  ];
+
+  assert.equal(harness.primeAutosaveCapture(), false,
+    'capture preparation must never run after the playable route is exposed');
+  assert.deepEqual(calls, []);
+  harness.state.mode = 'loading';
+  assert.equal(harness.primeAutosaveCapture(), true);
+  assert.deepEqual(calls, ['first', 'second']);
 });

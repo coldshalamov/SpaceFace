@@ -1,39 +1,50 @@
 # Worktree and Integration Inventory
 
-**Historical audit snapshot:** 2026-07-14 after commits `850c80f3` and `50bd5505`, revalidated after concurrent
-upstream and working-tree movement during reconciliation. This file's containing commit is newer by
-definition. Treat the values below as checkpoint history and re-run the commands before acting.
-Use [`NOW.md`](./NOW.md), not this snapshot, for current leases and dirty-path ownership.
+**Current integration snapshot:** 2026-07-19 after graphics promotion `cbdf1589`. The older
+July-14 repository tables remain below as labeled history. Re-run the commands at the end before
+acting: the isolated performance lane and primary diagnostic process can move after this document is
+written. Use [`NOW.md`](./NOW.md) for volatile ownership and
+[`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md) for donor disposition.
 
 ## Current integration checkpoint — 2026-07-19
 
-- Primary branch: `master` at `f0b3b154`.
-- Tracked primary tree: clean at promotion; untracked `design/program/_review/` remains quarantined.
-- Unified donor: `codex/unified-integration-20260719` at `a752702b`; tracked tree matched promoted
-  `master` exactly.
-- Included donors: performance `1bdde6c8`, graphics `e3ad1caf`, and paused Claude snapshot
-  `1905cac8`. Their accepted product changes are reachable from `master`.
-- Follow-up performance commits `abcd81be`, `d9162ebd`, and `45090dd5` were integrated after
-  promotion. `f0b3b154` closes their context-resource and scenario-pose evidence gaps; its live
-  context-loss probe restored the route and authored Kestrel and detached 366 stale listeners.
-- Nine clean or patch-equivalent promotion/helper worktrees and twelve Wave-2 context/review
-  worktrees were removed after path, dirty-state, unique-commit, and patch-equivalence review. The
-  Wave-2 removals contained only `CONTEXT-*`, `REVIEW-*`, or `SURVEY-*` process notes.
-- Three additional orchestration checkouts containing only prompts/return notes were removed while
-  retaining their product-bearing branches. An unregistered Helios repository copy was hashed
-  against Git history and moved from the GitHub folder to a Temp quarantine; its only unknown
-  product blob was an obsolete game-state variant, so none of it was promoted.
-- Product-bearing donors remain intentionally registered: graphics-overhaul, Helios golden,
-  Depth/route orchestration branches, and the uncommitted Kimi presentation tree. The four stale
-  Kimi CLI workers were stopped without altering their files. The performance tree also remains
-  because a newer uncommitted opaque-batching/dirty-range experiment is isolated there.
-  None of these donors is an authority over `master`; classify and synthesize their useful product
-  diffs before removal. Process-only prompt/log/cache artifacts follow `docs/ARTIFACT_RETENTION.md`.
+- Primary branch: `master` at graphics merge `cbdf1589`.
+- Graphics closeout: `codex/graphics-closeout-20260719` was clean, fast-forwarded with
+  `git merge --ff-only master`, and is at the same `cbdf1589` tip before this documentation draft.
+- Earlier unified checkpoint: performance `1bdde6c8`, graphics `e3ad1caf`, and paused Claude
+  `1905cac8` were synthesized at `a752702b`, promoted as `ee9e0ab3`, and hardened through
+  `f0b3b154`. Their accepted changes remain ancestors of current `master`.
+- Later graphics closeout: `bd79f2ba`, `5219491d`, `98e1e429`, `1de8a861`, and `5863331c` are
+  promoted by `cbdf1589`. These changes are now `master` implementation, not donor-only work.
+- Newer performance closure: `codex/performance-closure-20260719` remains isolated and was at
+  `6559e3b4` when the worktree list was sampled. Its final head, dirty state, evidence, and overlap
+  resolutions must be refreshed after its owner stops. Do not describe it as integrated.
+- Primary diagnostics: the last coordinator snapshot reported a foreign edit to
+  `scripts/repro-station-approach.mjs` and quarantined untracked `design/program/_review/`. The
+  graphics closeout neither reads nor stages those paths. Refresh primary status before promotion.
+- No remaining donor is authoritative over `master`. Whole-branch merges are rejected for the
+  Depth, Kimi, Helios, and graphics-overhaul donors; use the selective disposition ledger.
+
+### Registered worktrees at this snapshot
+
+| Worktree | Tip | Disposition |
+|---|---|---|
+| `SpaceFace` | `cbdf1589` (`master`) | Product authority; preserve foreign dirty diagnostics. |
+| `SpaceFace-graphics-closeout` | `cbdf1589` | Documentation staging lane; removable after its reviewed docs are promoted. |
+| `SpaceFace-performance-closure` | `6559e3b4` sampled | Active/protected; review and synthesize after a clean owner handoff. |
+| `SpaceFace-graphics-overhaul` | `cab2d122` | Retain; substantial dirty Blender/source assets still need asset-by-asset disposition. |
+| `SpaceFace-oc-helios-golden` | `4c367cd7` | Full replacement rejected; preserve only until the batching concept and rejection receipts are durably recorded. |
+| `SpaceFace-depth-actualization` | `bf1dfce2` | Never whole-merge; selective product donor only. |
+| `SpaceFace-orch-codex-gt-sample` | `f3e49b4f` | Product history superseded by Depth donor; remove after ledger confirmation. |
+| `SpaceFace-orch-codex-helix` | `6475e2ef` | Unique faction edit rejected; remove after ledger confirmation. |
+| `SpaceFace-orch-codex-natural` | `de5397bc` | Product history superseded by Depth donor; remove after ledger confirmation. |
+| `SpaceFace-orch-codex-recovery` | `de5397bc` | Product history superseded by Depth donor; remove after ledger confirmation. |
+| `SpaceFace-orch-kimi-v2-present` | `de5397bc` | Selective station presentation donor; never whole-merge. |
 
 Current graphics continuation and proof boundaries are recorded in
 [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md).
 
-## Repository checkpoint
+## Historical repository checkpoint — 2026-07-14
 
 - Branch: `master`.
 - Snapshot local HEAD: `50bd550579338c6a62cf50be06354093f0bee52f`.
@@ -44,7 +55,7 @@ Current graphics continuation and proof boundaries are recorded in
 - At the reconciliation snapshot: 21 tracked unstaged modifications outside `design/program/**`,
   plus the 6 program-doc edits in this pass; 0 staged paths and 0 untracked paths.
 
-## Dominant clusters
+## Historical dominant clusters — 2026-07-14
 
 | Residual cluster | Tracked | Current interpretation |
 |---|---:|---|
@@ -56,7 +67,7 @@ Current graphics continuation and proof boundaries are recorded in
 | `src/ui/hud.js` | 1 | Active HUD WIP; protected lead-owned seam. |
 | `test/**` | 3 | Alpha-evidence, objective-navigation, and exporter-state contract WIP paired with other lanes. |
 
-## High-risk paths
+## Persistent high-risk paths
 
 Do not bulk-stage or automatically resolve:
 
@@ -71,7 +82,7 @@ Do not bulk-stage or automatically resolve:
 Any telemetry-golden change needs a separately named re-record decision. Station UI must retain its
 restored last-known-good presentation. Assets/render paths require active-lane coordination.
 
-## Recoverability truth
+## Historical recoverability truth
 
 - `850c80f3` is a broad local recovery checkpoint containing the July-14 Depth package aliases,
   scripts, systems, data, tests, UI work, asset sources/candidates, tools, and high-risk files.
@@ -97,20 +108,24 @@ Every residual dirty path or coherent checkpoint subsystem should receive:
 | Verification | exact command/evidence or “not yet verified” |
 | Intended disposition | commit batch ID, preserve outside git, regenerate, or deliberately remove after review |
 
-## Checkpoint follow-up review units
+## Current checkpoint follow-up review units
 
 The bulk checkpoint already exists. These are audit units, not permission to rewrite or re-stage it:
 
-1. **CHECKPOINT-IDENTITY** — keep `850c80f3`/`50bd5505`, local/upstream identity, and residual-tree
-   counts explicit until upstream synchronization is actually verified.
-2. **DEPTH-REVALIDATION** — rerun the aggregate and focused bad-fixture matrices from current HEAD;
+1. **CHECKPOINT-IDENTITY** — keep `cbdf1589`, the isolated performance tip, primary dirty paths,
+   and registered worktree inventory explicit until the final combined checkpoint is promoted.
+2. **DEPTH-REVALIDATION** — never whole-merge `bf1dfce2`; port only the selected product slices in
+   the donor ledger, then rerun aggregate and focused bad-fixture matrices from current HEAD;
    preserve 0/31 DONE until natural routes and evidence pass.
 3. **HIGH-RISK-REVIEW** — review input, telemetry goldens, station/HUD, render, exporter, and release
    asset changes under their owners. Do not infer approval from checkpoint inclusion.
 4. **EVIDENCE-DURABILITY** — promote only reviewed manifests/media needed by a clean checkout;
    `.devshots` remains ignored by default.
-5. **RESIDUAL-WIP** — keep the current Depth/spec/exporter/HUD/test edits in their active lanes and
-   commit them only as coherent verified follow-ups.
+5. **PERFORMANCE-SYNTHESIS** — merge the isolated performance branch only after its owner hands off a
+   clean reviewed tip; manually preserve graphics semantic materials/admission in `partsLibrary.js`
+   and `renderer.js`, and Atlas velocity/background truth in `spaceBackground.js`.
+6. **RESIDUAL-WIP** — use `09_DONOR_VALUE_LEDGER.md`; remove physical worktrees only after every
+   valuable dirty/untracked product path is promoted, retained by branch/tag, or deliberately rejected.
 
 ## Re-run inventory
 

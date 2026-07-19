@@ -530,7 +530,7 @@ for (const ship of ambush.ships) {
       frameFor(entityId, tick) {
         sensorCalls.push(`${tick}:${entityId}`);
         return stackSensorFrame(entityId, tick,
-          entityId === 2 && (tick === 3 || hideDoctrineTarget) ? [] : [stackTargetContact()]);
+          entityId === 2 && (tick === 2 || hideDoctrineTarget) ? [] : [stackTargetContact()]);
       },
     },
     roster: {
@@ -554,26 +554,31 @@ for (const ship of ambush.ships) {
   assert.equal(doctrineDecision.combatDoctrine.phase, 'engine_flare',
     'default-stack doctrine actor starts from a current live sensor frame');
 
-  state.tick = 3;
-  tactical.update(1 / 60, state);
+  for (const tick of [1, 2, 3]) {
+    state.tick = tick;
+    tactical.update(1 / 60, state);
+  }
   doctrineDecision = tactical.stack.lastResult.decisions.find((entry) => entry.entityId === 2);
-  assert(sensorCalls.includes('3:2'), 'non-active doctrine member receives a fresh current-tick sensor frame');
-  assert.equal(sensorCalls.includes('3:3'), false, 'non-doctrine non-active member preserves ordinary batching');
+  assert(sensorCalls.includes('2:2'), 'doctrine member receives a fresh frame in its deterministic stagger slot');
+  assert.equal(sensorCalls.includes('3:3'), false,
+    'ordinary non-doctrine members retain one-member-per-tick production batching');
   assert.equal(doctrineDecision.combatDoctrine.targetId, null,
     'fresh negative perception clears the non-active doctrine target instead of advancing stale memory');
   assert.equal(doctrineDecision.combatDoctrine.fireWindow, false);
   assert.equal(state.entities.get(2).data.intent.fire, false);
   assert(maneuvers.length >= actorIds.length * 2, 'N>=4 fixture exercises active and non-active maneuver decisions');
-  for (let tick = 6; tick <= 36; tick += 3) {
+  for (let tick = 4; tick <= 36; tick++) {
     state.tick = tick;
     tactical.update(1 / 60, state);
   }
   const doctrineStarts = starts.filter((entry) => entry.entityId === 2 && entry.actionId === 'action_burst');
-  assert.equal(doctrineStarts[0]?.startedTick, 36,
-    'default decision cadence and executor settings preserve the restarted 30-tick telegraph before action start');
+  assert.equal(doctrineStarts[0]?.startedTick, 35,
+    'staggered decision cadence preserves the restarted 30-tick telegraph before action start');
   hideDoctrineTarget = true;
-  state.tick = 39;
-  tactical.update(1 / 60, state);
+  for (const tick of [37, 38, 39]) {
+    state.tick = tick;
+    tactical.update(1 / 60, state);
+  }
   doctrineDecision = tactical.stack.lastResult.decisions.find((entry) => entry.entityId === 2);
   assert.equal(doctrineDecision.combatDoctrine.targetId, null);
   assert.equal(doctrineDecision.action.actionId, null,
@@ -631,7 +636,10 @@ for (const forbidden of ['Math.random', 'Date.now', 'performance.now', 'GameStat
   assert.equal(source.includes(forbidden), false, `pure doctrine source cannot reference ${forbidden}`);
 }
 const stackSource = readFileSync(new URL('../src/ai/stack.js', import.meta.url), 'utf8');
-assert(stackSource.includes('!doctrineId'), 'authored doctrine ships must bypass cached member-batch decisions so phase/fire gates advance every tick');
+assert.equal(stackSource.includes('!doctrineId'), false,
+  'authored doctrine ships should participate in the bounded stagger instead of forcing every-tick refresh');
+assert(stackSource.includes('clearCachedDoctrineEdges'),
+  'cached doctrine decisions must clear one-shot phase and telegraph edges between authored refreshes');
 const squadSource = readFileSync(new URL('../src/ai/squad.js', import.meta.url), 'utf8');
 assert(squadSource.includes('combatDoctrineId: member.combatDoctrineId'),
   'squad directives must carry the normalized doctrine identity into the live decision stack');

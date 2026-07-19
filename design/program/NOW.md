@@ -1,28 +1,43 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-19, after the graphics/performance/paused-Claude reconciliation and follow-up
-performance hardening. Master is `f0b3b154`. The tracked working tree is clean; untracked
-`design/program/_review/` remains
-quarantined and was neither read nor promoted. No active Claude agent or shared-tree path lease
-remains. Four stale Claude-launched OpenCode/Kimi CLI workers were stopped after they produced no
-file changes for more than a day; their uncommitted donor remains preserved in
-`SpaceFace-orch-kimi-v2-present` and does not own files in the primary checkout.
+**Snapshot:** 2026-07-19 at graphics promotion `cbdf1589`. The new graphics closeout is on
+`master`; this board does **not** claim that the newer isolated performance-closure lane, final
+browser/Electron visual acceptance, or release performance evidence is integrated. The primary
+checkout may still contain the foreign station-approach diagnostic edit and the quarantined
+untracked `design/program/_review/`; neither is owned, read, or promoted by this graphics closeout.
+Refresh `git status --short`, active processes, and every worktree tip before the next integration.
 
-**Integrated checkpoint:** Claude's final Atlas/map/travel state (`1905cac8`), the performance
-checkpoint (`1bdde6c8`), and the graphics checkpoint (`e3ad1caf`) were synthesized and validated in
-`codex/unified-integration-20260719` at `a752702b`, then promoted to `master` as `ee9e0ab3`. The
-tracked master tree matched the validated unified tree exactly at promotion. Current proof includes
-map/Atlas/travel contracts, VFX pooling/settings/lifecycle/RCS checks, restrained bloom/background
-checks, live authored-asset admission, visual stability, launch policy, and five clean desktop plus
-mobile flight runs. Subsequent performance commits `abcd81be`, `d9162ebd`, and `45090dd5` were
-integrated, then repaired and behaviorally re-proved in `f0b3b154`; the live context-loss route
-restored the scenario and authored Kestrel while detaching 366 stale listeners. See
-`08_GRAPHICS_OVERHAUL_CHECKPOINT.md` for visual truth and remaining work.
+**Integrated checkpoint:** the earlier Atlas/map/travel, performance, and graphics synthesis remains
+reachable through `ee9e0ab3` and its context-recovery hardening `f0b3b154`. The later closeout adds
+golden asset receipts and common-rock maps (`bd79f2ba`), truthful authored admission, semantic PBR
+routing, rock preload, runtime visual-family identities, and sticky impulse-charge orientation
+(`5219491d`), the resumable long-term architecture (`98e1e429`, `1de8a861`), the Atlas/journey
+verification transaction (`b05d2cf9` through `6a4bebd7`), and the checkpoint gate wiring
+(`5863331c`). Merge `cbdf1589` promotes that coherent graphics slice to `master`.
 
-**Immediate safe work:** feature development may resume from `master`. The highest-return graphics
-work is natural-route Helios/rock parity, combat/destruction visual acceptance, localized authored
-space structure without screen-wide haze, and the next high-frequency PBR family. Kimi's separate
-return must be classified before its worktree is removed or merged.
+**Acceptance boundary:** `npm run check:graphics:asset-receipts` passes on the promoted tree and pins
+the exact Helios, representative-rock, Wasp-candidate, and RCS artifacts. Focused runtime/admission,
+material, visual-family, and interaction tests passed before promotion. That is integrated and
+focused-green implementation, not final visual acceptance: natural Helios/rock motion, hardware
+Electron parity, GPU-state capture, combined performance after the isolated performance branch,
+and broader fleet/station/rock/wreck PBR remain open. See
+[`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md) and the long-term
+architecture in
+[`../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md`](../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md).
+
+**Current isolated lanes:** `codex/performance-closure-20260719` remains active and must be merged by
+semantic synthesis after it reaches a reviewed clean tip; it overlaps graphics in `partsLibrary.js`
+and `renderer.js`, and Atlas work in `spaceBackground.js`. The clean graphics-closeout worktree is
+now fast-forwarded to `cbdf1589` only to draft this uncommitted ledger update. Donor and cleanup
+decisions are recorded in [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md).
+
+**Immediate safe work:** finish the isolated performance lane, synthesize the three overlap seams,
+rerun combined graphics/performance checks, and capture one owned browser/Electron acceptance route.
+After that coherent checkpoint, the highest-return graphics work is natural-route Helios/rock
+parity, combat/destruction visual acceptance, localized authored space structure without
+screen-wide haze, and the next high-frequency PBR family. The Kimi/OpenCode Helios replacement is
+already rejected; only its batching concept is retained for an independently rebuilt optimization
+slice.
 
 ## Wave-01 integration record (all on `master`)
 
@@ -102,7 +117,7 @@ compares ok/hashEqual; ladder validator green (2 captured / 11 planned) with the
 | `SCREENS-2026-07-18` | `CLOSED / INTEGRATED` | Screen changes captured and promoted. |
 | `WAVE01-2026-07-18` | `CLOSED / INTEGRATED` | every Wave-01 path above; write-sets verified disjoint from all occupied leases at each staging |
 
-## Known reds — measured, attributed, NOT Wave-01 regressions
+## Historical known reds — remeasure before acting
 
 | Check | State | Attribution |
 |---|---|---|
@@ -114,6 +129,9 @@ compares ok/hashEqual; ladder validator green (2 captured / 11 planned) with the
 **Golden gate held through the entire wave:** `check:sim:compare` ok/deterministic and
 `check:sim:v3:compare` ok/hashEqual verified after every runtime-touching integration (W01
 repair, A02 wiring, A10 rulings). The gate remains the ACTUAL column.
+
+These rows describe the recorded Wave-01 audit, not the current `cbdf1589` tree. Do not treat them as
+live blockers until the named check is rerun.
 
 ## Historical Wave-02 queue (re-derive from current `master` before claim)
 

@@ -1,6 +1,8 @@
 // Browser-safe scene, pipeline, and residency measurement helpers shared by performance probes.
 // No Three.js import is required: the helpers inspect the live Object3D and diagnostic contracts.
 
+const PERFORMANCE_RENDER_PREFETCH_RADIUS = 5200;
+
 export function collectPerformanceSceneStructure({ state = globalThis.SF?.state, diagnostics = readDiagnostics() } = {}) {
   const renderState = state?.render || null;
   const scene = renderState?.scene || null;
@@ -42,6 +44,14 @@ export function collectPerformanceSceneStructure({ state = globalThis.SF?.state,
     surfaces: { opaque: 0, transparent: 0 },
     roles: { canopy: 0, plume: 0, fan: 0, signal: 0, decal: 0, shadowCaster: 0 },
     authoredShipStates: {},
+    authoredShipAdmission: {
+      relevant: 0,
+      ready: 0,
+      pending: 0,
+      fallback: 0,
+      missingMesh: 0,
+      ignoredNonresident: 0,
+    },
     authoredStaticBatches: { visible: 0, hidden: 0, total: 0 },
     authoredPools: {
       totalChunks: 0,
@@ -164,9 +174,17 @@ export function collectPerformanceSceneStructure({ state = globalThis.SF?.state,
   stats.visibleMaterialKeys = rankedCounts(materialKeyCounts, 32);
   stats.visibleMaterialKeysByCategory = rankedCounts(materialKeyCountsByCategory, 32);
   stats.visibleShipMaterialKeys = rankedCounts(shipMaterialKeyCounts, 48);
-  for (const entity of entities) {
-    if (!entity || entity.type !== 'ship' || entity.alive === false || !entity.mesh) continue;
-    const assetState = entity.mesh.userData?.authoredAssetState || 'unknown';
+  const authored = authoredAssetStatus(state);
+  stats.authoredShipAdmission = {
+    relevant: authored.shipCount,
+    ready: authored.readyCount,
+    pending: authored.pendingCount,
+    fallback: authored.fallbackCount,
+    missingMesh: authored.missingMeshCount,
+    ignoredNonresident: authored.ignoredNonresidentCount,
+  };
+  for (const entity of authored.entities) {
+    const assetState = entity.assetState || 'unknown';
     stats.authoredShipStates[assetState] = (stats.authoredShipStates[assetState] || 0) + 1;
   }
   if (stats.authoredPools.visibleChunks > 0) {
@@ -219,6 +237,8 @@ export function collectPerformancePipelineReadiness({
     authoredPresentedCount: authored.readyCount,
     authoredFallbackCount: authored.fallbackCount,
     authoredMissingMeshCount: authored.missingMeshCount,
+    authoredIgnoredNonresidentCount: authored.ignoredNonresidentCount,
+    authoredEntityStates: authored.entities,
     authoredPartLibraryPromisePresent: isPromiseLike(renderState.authoredPartLibraryReady),
     pipelinePrecompilePromisePresent: isPromiseLike(renderState.pipelinePrecompileReady),
     exactPipelineWarmupPromisePresent: isPromiseLike(renderState.exactPipelineWarmupReady),
@@ -256,10 +276,26 @@ export function authoredAssetStatus(state) {
     pendingCount: 0,
     fallbackCount: 0,
     missingMeshCount: 0,
+    ignoredNonresidentCount: 0,
+    entities: [],
   };
   for (const entity of state?.entityList || []) {
     if (entity?.type !== 'ship' || entity.alive === false) continue;
+    if (!isPerformanceRelevantShip(entity, state)) {
+      result.ignoredNonresidentCount++;
+      continue;
+    }
     result.shipCount++;
+    const detail = {
+      id: entity.id ?? null,
+      defId: entity.data?.defId || null,
+      trafficRole: entity.data?.trafficRole || null,
+      sectorId: performanceEntitySectorId(entity),
+      distanceToPlayer: performanceDistanceToPlayer(entity, state),
+      admission: entity.presentationAdmission || null,
+      assetState: entity.mesh?.userData?.authoredAssetState || 'missing-mesh',
+    };
+    result.entities.push(detail);
     if (!entity.mesh) {
       result.missingMeshCount++;
       result.fallbackCount++;
@@ -281,6 +317,32 @@ export function authoredAssetStatus(state) {
     }
   }
   return result;
+}
+
+function performanceEntitySectorId(entity) {
+  const data = entity?.data || {};
+  return entity?.homeSectorId || data.homeSectorId || data.sectorId || null;
+}
+
+function performanceDistanceToPlayer(entity, state) {
+  const player = state?.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : (state?.entityList || []).find((candidate) => candidate?.id === state?.playerId);
+  if (!player?.pos || !entity?.pos) return null;
+  const dx = Number(entity.pos.x) - Number(player.pos.x);
+  const dz = Number(entity.pos.z) - Number(player.pos.z);
+  return Number.isFinite(dx) && Number.isFinite(dz) ? Math.hypot(dx, dz) : null;
+}
+
+function isPerformanceRelevantShip(entity, state) {
+  if (entity?._noMesh) return false;
+  if (entity?.id === state?.playerId || entity?.isPlayer === true) return true;
+  const sectorId = performanceEntitySectorId(entity);
+  const currentSectorId = state?.world?.currentSectorId || null;
+  if (sectorId && currentSectorId) return String(sectorId) === String(currentSectorId);
+  if (sectorId || !currentSectorId) return true;
+  const distance = performanceDistanceToPlayer(entity, state);
+  return distance != null && distance <= PERFORMANCE_RENDER_PREFETCH_RADIUS;
 }
 
 function isEffectivelyVisible(object) {

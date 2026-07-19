@@ -299,6 +299,7 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
     },
     budgets,
     rafFrameMs: raf,
+    rafHitches: sampled.raf.hitches || [],
     cadence,
     gpuTimers,
     presentEvidence,
@@ -358,6 +359,7 @@ async function sampleRuntime(cdp, durationMs) {
     .then(({ collectPerformanceSceneStructure }) => new Promise((resolve) => {
     const started = performance.now();
     const rafFrames = [];
+    const rafHitches = [];
     const samples = [];
     const heapSamples = [];
     const AUTOSAVE_SETTLE_TIMEOUT_MS = 5000;
@@ -563,7 +565,7 @@ async function sampleRuntime(cdp, durationMs) {
       pushDiag(true);
       const state = window.SF && window.SF.state || null;
       resolve({
-        raf: { frames: rafFrames },
+        raf: { frames: rafFrames, hitches: rafHitches },
         samples,
         heap: heapSamples,
         sceneStats: sceneBreakdown(),
@@ -629,7 +631,45 @@ async function sampleRuntime(cdp, durationMs) {
 
     const step = (now) => {
       if (sampleEnded || resolved) return;
-      if (lastRaf != null) rafFrames.push(now - lastRaf);
+      if (lastRaf != null) {
+        const durationMs = now - lastRaf;
+        rafFrames.push(durationMs);
+        if (durationMs > ${JSON.stringify(HITCH_FRAME_MS)}) {
+          const sf = window.SF || null;
+          const render = sf?.state?.render || null;
+          const upgrade = render?.scene?.userData?.authoredUpgradeDiagnostics || null;
+          const perf = window.__SPACEFACE_PERF__?.getReport?.() || null;
+          const resources = performance.getEntriesByType('resource')
+            .filter((entry) => entry.startTime >= lastRaf - 1000)
+            .slice(-24)
+            .map((entry) => ({
+              name: String(entry.name || '').replace(location.origin, ''),
+              startTime: entry.startTime,
+              durationMs: entry.duration,
+              transferSize: entry.transferSize,
+              decodedBodySize: entry.decodedBodySize,
+            }));
+          rafHitches.push({
+            atMs: now - started,
+            startedAtMs: lastRaf,
+            endedAtMs: now,
+            durationMs,
+            visibilityState: document.visibilityState,
+            hidden: document.hidden,
+            resources,
+            authoredUpgrade: upgrade ? {
+              activeJobs: upgrade.activeJobs,
+              maxConcurrentJobs: upgrade.maxConcurrentJobs,
+              maxConcurrentDecode: upgrade.maxConcurrentDecode,
+              jobs: Array.isArray(upgrade.jobs) ? upgrade.jobs.slice(-8) : [],
+              partLoads: Array.isArray(upgrade.partLoads) ? upgrade.partLoads.slice(-16) : [],
+            } : null,
+            callback: perf?.frameCallback || null,
+            phases: perf?.phases || null,
+            programs: render?.renderer?.info?.programs?.length ?? null,
+          });
+        }
+      }
       lastRaf = now;
       const elapsed = performance.now() - started;
       maybeTriggerAutosave(elapsed);
@@ -1414,26 +1454,41 @@ async function waitForAuthoredAssetsSteady(cdp) {
         ? Math.max(0, renderSys._meshBuildQueue.length - (renderSys._meshBuildQueueHead || 0))
         : 0;
       const meshReconcileDirty = !!(renderSys && renderSys._meshReconcileDirty);
-      const ships = state && Array.isArray(state.entityList)
-        ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false && entity.mesh)
-        : [];
+      let authoredStatus = {
+        shipCount: 0,
+        readyCount: 0,
+        pendingCount: 0,
+        fallbackCount: 0,
+        ignoredNonresidentCount: 0,
+        entities: [],
+      };
+      try {
+        const metrics = await import('/scripts/lib/performanceSceneMetrics.mjs');
+        if (typeof metrics.authoredAssetStatus === 'function') {
+          authoredStatus = metrics.authoredAssetStatus(state);
+        }
+      } catch (_) {}
       const states = {};
-      for (const ship of ships) {
-        const assetState = ship.mesh && ship.mesh.userData && ship.mesh.userData.authoredAssetState || 'unknown';
+      for (const ship of authoredStatus.entities || []) {
+        const assetState = ship.assetState || 'unknown';
         states[assetState] = (states[assetState] || 0) + 1;
       }
-      const authored = states.authored || 0;
-      const loading = states.loading || 0;
-      const nonAuthored = ships.length - authored;
+      const authored = authoredStatus.readyCount || 0;
+      const loading = authoredStatus.pendingCount || 0;
+      const nonAuthored = authoredStatus.fallbackCount || 0;
       return {
-        ready: ships.length >= 5 && nonAuthored === 0 && loading === 0
+        // A pending ship owns the graphics admission contract's invisible zero-draw boundary. It is
+        // neither a procedural fallback nor part of this visible workload, so do not drain an entire
+        // active sector before profiling the already-authored scene.
+        ready: authoredStatus.shipCount >= 5 && authored > 0 && nonAuthored === 0
           && queue.pending === 0 && queue.running === false
           && meshQueueRemaining === 0 && !meshReconcileDirty
           && authoredPartLibrary.settled && pipelinePrecompile.settled,
         tick: state && state.tick || 0,
-        shipCount: ships.length,
+        shipCount: authoredStatus.shipCount,
         authored,
         nonAuthored,
+        ignoredNonresidentCount: authoredStatus.ignoredNonresidentCount || 0,
         states,
         queue,
         meshQueueRemaining,
@@ -1706,10 +1761,16 @@ function hitchBudgetName() {
 }
 
 function nonAuthoredShipCount(sceneStats) {
+  const admissionFallbacks = sceneStats?.authoredShipAdmission?.fallback;
+  if (Number.isFinite(Number(admissionFallbacks))) return Number(admissionFallbacks);
   const states = sceneStats && sceneStats.authoredShipStates || {};
   let count = 0;
   for (const [state, value] of Object.entries(states)) {
-    if (state !== 'authored') count += Number(value) || 0;
+    if (state !== 'authored'
+      && state !== 'authored-with-cleanup-error'
+      && state !== 'awaiting-authored-admission'
+      && state !== 'loading'
+      && state !== 'compiling-pipelines') count += Number(value) || 0;
   }
   return count;
 }

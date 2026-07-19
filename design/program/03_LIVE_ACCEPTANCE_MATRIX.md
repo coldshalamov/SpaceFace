@@ -4,12 +4,15 @@
 **Sprint 2 packet rows appended 2026-07-18** at commits `4f750412`, `cd784532`, `d5e0d6e7`; those rows
 carry their own evidence and do not promote any milestone row.
 
-**Integration checkpoint appended 2026-07-19:** graphics, performance, and paused Atlas/map/travel
-work were promoted together at `ee9e0ab3`. The old lease/blocker columns below are historical. The
-follow-up performance repairs are integrated at `f0b3b154`. The current tracked tree is clean and
-has no shared-tree path lease. This checkpoint updates M1/M6
-implementation truth but does not exit either milestone; remaining visual/performance acceptance is
-recorded in `08_GRAPHICS_OVERHAUL_CHECKPOINT.md`.
+**Integration checkpoint refreshed 2026-07-19:** graphics, the earlier performance checkpoint, and
+paused Atlas/map/travel work were promoted together at `ee9e0ab3`; context-recovery hardening is
+reachable through `f0b3b154`. Graphics closeout `cbdf1589` is now on `master`, including exact golden
+asset receipts, authored fail-closed admission, semantic PBR/native-color routing, common-rock maps,
+typed projectile/mine/impulse/wreck identities, and Atlas/journey verification gates. The old
+lease/blocker columns below are historical. A newer performance-closure lane remains isolated, and
+final combined browser/Electron/GPU performance evidence has not been rerun. This checkpoint updates
+M1/M6 implementation truth but exits neither milestone; remaining visual/performance acceptance is
+recorded in [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md).
 
 ## Sprint 2 — Corridor Contract Wave packet rows
 
@@ -19,7 +22,7 @@ recorded in `08_GRAPHICS_OVERHAUL_CHECKPOINT.md`.
 | `T01` | `FOCUSED_GREEN` + `INTEGRATED` | `test/massline-orbit-telemetry.test.mjs` 26/26 | `cd784532` | — |
 | `A01` | `FOCUSED_GREEN` + `INTEGRATED` | `test/asteroid-formation-model.test.mjs` 33/33 after the `5c1d9c0c` r4 overflow fix (31/31 as first landed) | `cd784532`, `5c1d9c0c` | — |
 | `W01` | `FOCUSED_GREEN` + `INTEGRATED` (coverage-only) | `test/e1-encounter-phase-dispatch.test.mjs` 14/14; seam held, no extraction | `cd784532` | — |
-| `G04` | `ATTEMPTED_STILL_RED` | Diagnosis landed and **inverted the row's stated cause**: autopilot is fully green, and the `G01` pilot docks Helios through public input at 152.1 / 155.2 WU — inside the 294.777 WU the ledger calls a RED best. No repair made; no clean-tree attribution. | — | measurement, not lease |
+| `G04` | `SUPERSEDED BY WAVE-01 ROUTE_ACCEPTED` | This first measurement inverted the stated cause; the later clean-checkout run closes attribution and is authoritative in the Wave-01 row below. | — | historical measurement |
 | `A03`, `G07` | `BLOCKED_BY_LEASE` | write-set needs `src/render/renderer.js` / `bloom.js`, both dirty | — | `MAP-2026-07-18` |
 | `W05` | `BLOCKED_BY_LEASE` | write-set needs HUD/map; `galaxyMap.js` observed changing twice mid-sprint | — | `MAP-2026-07-18` |
 | `G08` | `NOT_STARTED (dependency)` | depends on `G07` (blocked), `A04`, `A05` | — | via `G07` |
@@ -61,12 +64,12 @@ lane should repair, not whether it is repaired.
 | Track | Implementation | Fresh focused/current check | Public-route truth | Evidence truth | Conditional clean waves | Exit status |
 |---|---|---|---|---|---:|---|
 | M0 | Broad evidence/observatory foundations | Contract self-test green; live corpus RED: 13 issues / 20 records | Current-revision baseline not rerun | Old baselines exist; corpus invalid | 0 recorded | NOT EXITED |
-| M1 | Focus, camera, tether, doctrines, autopilot substantially built | Doctrines 23/23; tether/mass green; `check:autopilot` fully green 2026-07-18 | Strict Helios route row is **contradicted pending re-measurement** — the `G01` public pilot docks Helios at 152.1/155.2 WU (see Red-or-incomplete note); Focus/camera/counterplay incomplete | Partial/stale media | 0 recorded | NOT EXITED |
+| M1 | Focus, camera, tether, doctrines, autopilot substantially built | Doctrines 23/23; tether/mass green; `check:autopilot` fully green; clean-checkout G04 browser route accepted | Public browser pilot docks Helios through ordinary input; current Electron journey plus Focus/camera/counterplay remain incomplete | Partial/stale media | 0 recorded | NOT EXITED |
 | M2 | 24-region/global-coordinate architecture substantially built | Combined run RED on Electron websocket reset; browser portion reached save/Continue | Browser path passed during run; Electron incomplete | Existing receipt present but current combined result red | 0 recorded | REVALIDATION REQUIRED |
 | M3 | Origins, cohorts, Hunter intent, damage/death substantially built | Career origins green | Natural damage/Game Over proven; recovery and three full 90-minute routes open | Damage/after-action images exist | 0 recorded | NOT EXITED |
 | M4 | Regional ecology/POI foundations built | RED 8/9 on registry/save initialization order | Sparse/normal/crowded diversity routes open | Art/classification incomplete | 0 recorded | NOT EXITED |
 | M5 | Story/endings/outposts/role foundations built | Role continuity green | Supporting injected role route only; ordinary story/ownership routes open | Partial | 0 recorded | NOT EXITED |
-| M6 | Capture/release/localization/perf foundations, loading/admission, de-hazed background, pooled thruster/RCS, golden Kestrel/Helios/geology surfaces, and Wasp routing were integrated at `ee9e0ab3`; context-recovery/capture hardening is integrated at `f0b3b154` | Asset-live, visual-stability, launch-policy, focused VFX/background/post checks, five strict desktop/mobile flight runs, and a live context-loss recovery probe green; long-soak/floor-hardware rebaseline open | Authored browser and thruster Electron routes pass; current packaged store/Electron matrix remains incomplete | Hitch glare and Helios bulk-material defects repaired; Wasp classification, combat-family visual acceptance, natural Helios/rock parity, localized background art, and release evidence remain | 0 recorded | NOT EXITED |
+| M6 | Capture/release/localization/perf foundations, loading/admission, de-hazed background, pooled thruster/RCS, golden Kestrel/Helios/geology surfaces, and Wasp routing were integrated at `ee9e0ab3`; context recovery is integrated at `f0b3b154`; exact asset receipts, common-rock maps, authored fail-closed admission, semantic PBR routing, and typed combat/world identities are integrated at `cbdf1589` | Prior asset-live, visual-stability, launch-policy, focused VFX/background/post checks, five strict desktop/mobile flight runs, and context-loss recovery passed; `check:graphics:asset-receipts` passes on `cbdf1589`; final combined rebaseline awaits the isolated performance lane | Authored browser and thruster Electron routes pass; current natural Helios/rock motion, combat-family Electron/GPU, and packaged-store matrix remain incomplete | Hitch glare and Helios bulk-material defects repaired; full OpenCode Helios replacement rejected; Wasp classification, combat-family final acceptance, natural Helios/rock parity, localized background art, fleet-wide PBR, and release evidence remain | 0 recorded | NOT EXITED |
 | Depth | Checkpoint `850c80f3` preserves focused implementations for 16 chunks after W1 correction | Pre-checkpoint aggregate green; not rerun at current HEAD | Many routes compress state/timing; final unassisted routes open | All Depth `.devshots` ignored; no chunk DONE | N/A | 0 / 31 DONE |
 
 ## Fresh audit details
@@ -81,6 +84,11 @@ lane should repair, not whether it is repaired.
 - `npm run check:m3:career-origins`.
 - `npm run check:m5:role-continuity`.
 - Release-capture contract 4/4 and no-browser self-test.
+- `npm run check:graphics:asset-receipts` — PASS at `cbdf1589`, pinning Helios
+  `94CB9DC7...A578`, rock A `E9997140...FDA`, Wasp candidate `FDFD7C76...3E5A`, and RCS
+  `EBB28EE...4934` with exact byte/triangle receipts in the checker output.
+- Focused authored-admission, surface-tint, rock-surface, projectile-family, impulse-charge,
+  runtime-visual-coverage, and wreck-identity tests passed before graphics promotion.
 - Last recorded `npm run check:depth-program:contracts` before checkpoint `850c80f3`; rerun at current
   HEAD is required before calling it current green.
 - Last recorded S4/W1 isolated tests — 18/18 before the checkpoint; no acceptance promotion.
@@ -89,14 +97,11 @@ lane should repair, not whether it is repaired.
 
 - `npm run check:alpha:evidence` — 13 issues across 20 records.
 - ~~Strict M1 Helios route — best 294.777 WU, final 324.520 WU, no dock prompt.~~ **Contradicted
-  2026-07-18, pending re-measurement.** `check:autopilot` is fully green (finalDistance 37.84–37.87
-  WU), and the new `G01` public pilot docks `station_helios` through ordinary public input on three
-  runs at closest approach 152.111 / 155.158 WU — inside the quoted RED best — one of which also
-  completed service use, save, and Continue. Two older harnesses still fail
-  (`check:professional-travel:public-route:browser` before flight-ready,
-  `check:wave15-flight-boot` at the New Game button) but at *different* points, which points at
-  harness drift rather than one game break. All runs were on a dirty tree; clean-`bfb23570`
-  attribution is not established. Measure before repairing. See `02_REMAINING_WORK.md`.
+  2026-07-18 and clean-tree attribution closed.** `check:autopilot` is fully green, multiple public
+  pilots docked `station_helios`, and the clean `fb9a0c82` run reached 154.166 WU and docked through
+  ordinary input. The former red was stale harness behavior, not evidence of broken autopilot.
+  Current Electron journey evidence and final harness agreement remain open. See
+  `02_REMAINING_WORK.md`.
 - `npm run check:encounter-director` — RED, `two-day soak should produce encounters (got 2)`.
   Concurrent `CONTENT-2026-07-18` lease is editing encounter/flavor content.
 - `npm run check:save-schema` — RED from two causes: committed `$.sites` debt plus a foreign
@@ -108,6 +113,10 @@ lane should repair, not whether it is repaired.
 - Performance artifact — 49.4 ms p95, 75 hitches, 22.9 ms callback p95, 6.9 ms sim p95,
   zero autosaves completed during capture.
 - Real store capture and release clean waves — absent.
+- Newer `codex/performance-closure-20260719` changes are not yet on `master`; combined graphics plus
+  performance browser/Electron/GPU evidence must be rerun after semantic overlap resolution.
+- Natural Helios approach/undock motion, mining-distance representative-rock parity, and final
+  hardware-Electron/GPU combat-family evidence remain incomplete.
 
 ## Route qualification
 
@@ -116,10 +125,10 @@ has previously docked and opened the station. A green demo must never be used to
 
 The `G01` pilot is a third surface and must not be conflated with either. It is stricter than the demo
 route — no state injection, enforced by a static contract over its own source, ordinary keyboard and
-pointer input only — but it is newer than the strict M1 harness and has only been run on a dirty tree,
-in browser, never in Electron. Its three passing runs are strong evidence that the corridor is
-reachable; they are not by themselves an M1-ROUTE exit. Close M1-ROUTE only after `G01` passes on a
-clean checkout and in Electron, or after the strict harness is repaired and agrees.
+pointer input only — and it later passed on a clean checkout at `fb9a0c82` (dock at 96 s, closest
+154.166 WU, one public KeyE hold). That closes clean-tree attribution and proves the committed browser
+route is reachable. It does not by itself exit M1: current Electron pilot evidence and agreement from
+the repaired strict journey harness remain required.
 
 Depth captures that use `window.SF` to compress travel, eligibility, timing, or story gates are useful
 integration evidence, but they do not close an unassisted player-route requirement.

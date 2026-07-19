@@ -9,6 +9,9 @@ import {
   shipArchetypeKeyForDefId,
   shipArchetypesForPrecompile,
 } from './partsLibrary.js';
+import { applyRealtimeCanopyPolicy } from './canopyMaterialPolicy.js';
+import { build47aScenarioProp } from './scenarioProps47a.js';
+import { createWormholePipelineMesh } from './spaceBackground.js';
 import { createVfxPrecompileSalvo, eventLightPoolSizeFor } from './vfx.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
@@ -26,9 +29,11 @@ const TRAFFIC_ROLE_SHIPS = Object.freeze([
   'ship_hornet',
 ]);
 const COMPILE_GRID_SPACING = 92;
-const compiledShipKeys = new Set();
-let globalPipelinesCompiled = false;
-let globalPrecompilePromise = null;
+const compiledShipKeysByRenderer = new WeakMap();
+const pipelineKeepAliveByRenderer = new WeakMap();
+const globalPipelinesCompiledByRenderer = new WeakSet();
+const globalPrecompilePromiseByRenderer = new WeakMap();
+const precompileGenerationByRenderer = new WeakMap();
 
 export async function precompilePipelines(renderer, scene, camera, options = {}) {
   if (!renderer || !scene || !camera || typeof renderer.compileAsync !== 'function') {
@@ -36,30 +41,39 @@ export async function precompilePipelines(renderer, scene, camera, options = {})
   }
   const sector = options && options.sector || null;
   const includeGlobalPipelines = !sector || options.includeGlobalPipelines === true;
+  const compiledShipKeys = compiledShipKeysFor(renderer);
   const shipSpecs = (sector ? shipSpecsForSector(sector) : allShipSpecsForPrecompile())
     .filter((spec) => !compiledShipKeys.has(spec.key));
 
-  if (!shipSpecs.length && (!includeGlobalPipelines || globalPipelinesCompiled)) {
+  if (!shipSpecs.length && (!includeGlobalPipelines || globalPipelinesCompiledByRenderer.has(renderer))) {
     return { skipped: true, reason: 'already compiled' };
   }
-  if (!sector && globalPrecompilePromise) return globalPrecompilePromise;
+  if (!sector && globalPrecompilePromiseByRenderer.has(renderer)) {
+    return globalPrecompilePromiseByRenderer.get(renderer);
+  }
 
-  const run = precompileNow(renderer, scene, camera, shipSpecs, includeGlobalPipelines, options);
-  if (!sector) globalPrecompilePromise = run;
+  const generation = precompileGenerationFor(renderer);
+  const run = precompileNow(
+    renderer, scene, camera, shipSpecs, includeGlobalPipelines, compiledShipKeys, generation, options,
+  );
+  if (!sector) return rememberGlobalPrecompile(renderer, run);
   return run;
 }
 
-async function precompileNow(renderer, scene, camera, shipSpecs, includeGlobalPipelines, options = {}) {
+async function precompileNow(
+  renderer, scene, camera, shipSpecs, includeGlobalPipelines, compiledShipKeys, generation, options = {},
+) {
   const staging = new THREE.Group();
   staging.name = 'SF_Precompile_Staging';
   staging.userData.precompileStaging = true;
   staging.position.set(-50000, -50000, -50000);
   scene.add(staging);
+  let canopyPipelineWarmup = null;
+  let keepWarmupPrograms = false;
 
   try {
     const vf = installVisualOverrides(createVisualFactory(), { releaseMode: true });
     const incremental = options.incremental === true
-      && !includeGlobalPipelines
       && typeof options.preparePipelines === 'function';
     const yieldToMain = typeof options.yieldToMain === 'function'
       ? options.yieldToMain
@@ -92,14 +106,24 @@ async function precompileNow(renderer, scene, camera, shipSpecs, includeGlobalPi
       if (incremental) {
         staging.updateMatrixWorld(true);
         await options.preparePipelines(mesh);
-        compiledShipKeys.add(spec.key);
+        if (precompileGenerationFor(renderer) === generation) compiledShipKeys.add(spec.key);
         await yieldToMain();
       }
     }
-    if (includeGlobalPipelines && !globalPipelinesCompiled) {
-      addWeaponProjectileWarmup(staging, vf, index);
-      addBeamWarmup(staging);
-      staging.add(createVfxPrecompileSalvo());
+    if (includeGlobalPipelines && !globalPipelinesCompiledByRenderer.has(renderer)) {
+      const globalWarmup = new THREE.Group();
+      globalWarmup.name = 'SF_Precompile_Global_Pipelines';
+      staging.add(globalWarmup);
+      addWeaponProjectileWarmup(globalWarmup, vf, index);
+      addBeamWarmup(globalWarmup);
+      canopyPipelineWarmup = addAuthoredCanopyPipelineWarmup(globalWarmup);
+      addLateWorldPipelineWarmup(canopyPipelineWarmup);
+      globalWarmup.add(createVfxPrecompileSalvo());
+      if (incremental) {
+        globalWarmup.updateMatrixWorld(true);
+        await options.preparePipelines(globalWarmup);
+        await yieldToMain();
+      }
     }
     const authoredQueue = getAuthoredUpgradeQueueStats(scene);
     if (!incremental) {
@@ -113,21 +137,79 @@ async function precompileNow(renderer, scene, camera, shipSpecs, includeGlobalPi
     if (includeGlobalPipelines && typeof options.warmPostProcess === 'function') {
       await options.warmPostProcess();
     }
-    if (!incremental) {
+    const stillCurrent = precompileGenerationFor(renderer) === generation;
+    keepWarmupPrograms = !!canopyPipelineWarmup && stillCurrent;
+    if (!incremental && stillCurrent) {
       for (const spec of shipSpecs) compiledShipKeys.add(spec.key);
     }
-    if (includeGlobalPipelines) globalPipelinesCompiled = true;
+    if (includeGlobalPipelines && stillCurrent) globalPipelinesCompiledByRenderer.add(renderer);
     return {
       skipped: false,
       shipArchetypes: shipSpecs.length,
       globalPipelines: includeGlobalPipelines,
+      retainedCanopyVariants: countCanopyVariants(canopyPipelineWarmup),
       authoredUpgradeQueue: authoredQueue,
       programs: renderer.info && renderer.info.programs ? renderer.info.programs.length : 0,
     };
   } finally {
     scene.remove(staging);
+    if (canopyPipelineWarmup) {
+      canopyPipelineWarmup.removeFromParent();
+      if (keepWarmupPrograms) retainPipelineWarmup(renderer, canopyPipelineWarmup);
+      else disposeObject(canopyPipelineWarmup);
+    }
     disposeObject(staging);
   }
+}
+
+export function precompileGlobalPipelines(renderer, scene, camera, options = {}) {
+  if (!renderer || !scene || !camera || typeof renderer.compileAsync !== 'function') {
+    return Promise.resolve({ skipped: true, reason: 'compileAsync unavailable' });
+  }
+  if (globalPipelinesCompiledByRenderer.has(renderer)) {
+    return Promise.resolve({ skipped: true, reason: 'already compiled' });
+  }
+  if (globalPrecompilePromiseByRenderer.has(renderer)) {
+    return globalPrecompilePromiseByRenderer.get(renderer);
+  }
+  const run = precompileNow(
+    renderer, scene, camera, [], true, compiledShipKeysFor(renderer), precompileGenerationFor(renderer), options,
+  );
+  return rememberGlobalPrecompile(renderer, run);
+}
+
+export function invalidatePrecompileState(renderer, options = {}) {
+  if (!renderer) return;
+  compiledShipKeysByRenderer.delete(renderer);
+  globalPipelinesCompiledByRenderer.delete(renderer);
+  globalPrecompilePromiseByRenderer.delete(renderer);
+  precompileGenerationByRenderer.set(renderer, precompileGenerationFor(renderer) + 1);
+  const root = pipelineKeepAliveByRenderer.get(renderer);
+  pipelineKeepAliveByRenderer.delete(renderer);
+  if (root && options.dispose !== false) disposeObject(root);
+}
+
+export function getPrecompileKeepAliveDiagnostics(renderer) {
+  const root = renderer && pipelineKeepAliveByRenderer.get(renderer);
+  if (!root) return { retainedCanopyVariants: 0, variants: [] };
+  const variants = [];
+  root.traverse((object) => {
+    if (!object.userData || !object.userData.precompileCanopyVariant) return;
+    const material = object.material;
+    const properties = renderer.properties && typeof renderer.properties.get === 'function'
+      ? renderer.properties.get(material)
+      : null;
+    variants.push({
+      id: object.userData.precompileCanopyVariant,
+      programKey: properties && properties.currentProgram
+        ? String(properties.currentProgram.cacheKey || properties.currentProgram.id)
+        : null,
+    });
+  });
+  return {
+    retainedCanopyVariants: variants.length,
+    variants,
+  };
 }
 
 function yieldToBrowser() {
@@ -304,12 +386,118 @@ function addBeamWarmup(staging) {
   }
 }
 
+function compiledShipKeysFor(renderer) {
+  let keys = compiledShipKeysByRenderer.get(renderer);
+  if (!keys) {
+    keys = new Set();
+    compiledShipKeysByRenderer.set(renderer, keys);
+  }
+  return keys;
+}
+
+function precompileGenerationFor(renderer) {
+  return precompileGenerationByRenderer.get(renderer) || 0;
+}
+
+function rememberGlobalPrecompile(renderer, run) {
+  const tracked = Promise.resolve(run).catch((error) => {
+    if (globalPrecompilePromiseByRenderer.get(renderer) === tracked) {
+      globalPrecompilePromiseByRenderer.delete(renderer);
+    }
+    throw error;
+  });
+  globalPrecompilePromiseByRenderer.set(renderer, tracked);
+  return tracked;
+}
+
+function addAuthoredCanopyPipelineWarmup(staging) {
+  // The authored cockpit catalog deliberately contains three texture-slot layouts. They compile to
+  // distinct Three.js programs even though all three share the same semantic canopy material role.
+  // Warm those declared layouts with 1x1 textures so a late traffic spawn cannot compile a canopy
+  // shader during exposed flight. This creates no authored GLB residency and retains only the three
+  // tiny synthetic variants needed to keep their shared driver programs alive.
+  const baseColor = warmupTexture([210, 230, 250, 255], THREE.SRGBColorSpace);
+  const normal = warmupTexture([128, 128, 255, 255]);
+  const surface = warmupTexture([255, 180, 0, 255]);
+  const variants = [
+    { id: 'surface', roughnessMap: surface, metalnessMap: surface },
+    { id: 'normal-surface-ao', normalMap: normal, roughnessMap: surface, metalnessMap: surface, aoMap: surface },
+    { id: 'base-normal-surface', map: baseColor, normalMap: normal, roughnessMap: surface, metalnessMap: surface },
+  ];
+  const root = new THREE.Group();
+  root.name = 'SF_Precompile_Canopy_KeepAlive';
+  for (let i = 0; i < variants.length; i++) {
+    const { id, ...maps } = variants[i];
+    const material = new THREE.MeshPhysicalMaterial({
+      color: 0xd7edff,
+      metalness: 0,
+      roughness: 0.12,
+      transmission: 0.65,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      dithering: true,
+      ...maps,
+    });
+    material.name = `SF_Precompile_Canopy_${id}`;
+    applyRealtimeCanopyPolicy(material);
+    const geometry = new THREE.PlaneGeometry(8, 5);
+    geometry.computeTangents();
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = `SF_Precompile_Canopy_${id}`;
+    mesh.userData.precompileCanopyVariant = id;
+    mesh.position.set(i * 10, 28, 0);
+    root.add(mesh);
+  }
+  staging.add(root);
+  return root;
+}
+
+function addLateWorldPipelineWarmup(root) {
+  // These exact procedural owners can first appear well after the opening flight route: the rare
+  // deep-field wormhole and the 47-A evidence spindle. Retain their tiny materials beside the
+  // canopy probes so their driver programs cannot be evicted before the late world reveal.
+  const wormholeTexture = warmupTexture([3, 5, 12, 255], THREE.SRGBColorSpace);
+  const wormhole = createWormholePipelineMesh({
+    size: 2,
+    l1Texture: wormholeTexture,
+    name: 'SF_Precompile_L5b_Wormhole',
+  });
+  root.add(wormhole);
+  const spindle = build47aScenarioProp({
+    radius: 10,
+    data: { assetRef: 'asset.slice.47a_spindle' },
+  });
+  if (spindle) {
+    spindle.name = 'SF_Precompile_47A_Evidence_Spindle';
+    root.add(spindle);
+  }
+}
+
+function countCanopyVariants(root) {
+  let count = 0;
+  if (root) root.traverse((object) => { if (object.userData?.precompileCanopyVariant) count++; });
+  return count;
+}
+
+function warmupTexture(rgba, colorSpace = THREE.NoColorSpace) {
+  const texture = new THREE.DataTexture(new Uint8Array(rgba), 1, 1, THREE.RGBAFormat);
+  texture.colorSpace = colorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function retainPipelineWarmup(renderer, root) {
+  const previous = pipelineKeepAliveByRenderer.get(renderer);
+  if (previous && previous !== root) disposeObject(previous);
+  pipelineKeepAliveByRenderer.set(renderer, root);
+}
+
 function disposeObject(root) {
   root.traverse((object) => {
     if (object.geometry && typeof object.geometry.dispose === 'function') object.geometry.dispose();
     const materials = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
     for (const material of materials) {
-      for (const key of ['map', 'alphaMap', 'emissiveMap', 'roughnessMap', 'normalMap']) {
+      for (const key of ['map', 'alphaMap', 'aoMap', 'emissiveMap', 'metalnessMap', 'roughnessMap', 'normalMap']) {
         const texture = material && material[key];
         if (texture && typeof texture.dispose === 'function') texture.dispose();
       }
