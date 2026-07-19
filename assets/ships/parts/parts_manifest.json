@@ -1989,7 +1989,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2, profile=0.5) + WN last + AO/rough nodes via MCP for greeble antennas. Character: lightweight comms/sensor antennas, delicate tech with industrial paint wear, bolt mounts, cavity dirt. 2734 tris.",
+      "note": "Authored RCS maneuvering-jet cluster — four recessed nozzles, bolt-mounted base, mechanical and accent material separation, AO/roughness response, and a dedicated emissive hook. Editable source: assets/ships/parts/blender/greeble_rcs_authored.blend. Runtime impulse VFX is provided separately by src/render/thruster/RcsImpulseSystem.js. 1040 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2886,14 +2886,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_a.glb",
-      "tris": 1250,
-      "bytes": 1971324,
+      "tris": 1977,
+      "bytes": 1970132,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — trim+wear image-gen textures, SF_EdgeWear, AO bake Hull/Mech/Accent, bump/clearcoat; DET dust_lee + mining seams/ore vein/drill/impact; 32 MCP renders. Belt hero irregular mined rock. tris=9403. | M1-SLICEA-VISUAL-001 connected rebuild 2026-07-10 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=ECF9469D2DC1 | M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 2026-07-11 K0-quality continuous massline promote | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=BCD808FD7F3B",
+      "note": "Accepted Helios Rock A resource asteroid with three authored LODs, distinct rock/warm mineral materials, nonuniform PBR response, and an editable Blender source at assets/ships/m4_helios_hub/blender/helios_rock_a_production.blend. Exact source/release hashes are bound by the SG-04 release manifest and the Rock A closure receipt in assets/ships/m4_helios_hub/evidence/helios_rock_a_build_summary.json. 1977 triangles across the shipped three-LOD source.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3076,7 +3076,7 @@
       "file": "places/place_station_trade_hub.glb",
       "tris": 1664738,
       "budgetClass": "landmark",
-      "bytes": 82441168,
+      "bytes": 79717896,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

@@ -20,6 +20,14 @@
       "texture_role_owner": "finalizer-v1",
       "min_tris": 1500
     },
+    "greeble_rcs": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/greeble_rcs_authored.blend",
+      "exporter_path": "tools/art/blender/export_sprint_part.py",
+      "texture_role_owner": "finalizer-v1",
+      "semantic_note": "Editable four-nozzle RCS maneuvering cluster; the mesh/hardware source is separate from the pooled runtime impulse VFX.",
+      "min_tris": 1040
+    },
     "place_station_trade_hub": {
       "method": "blender_mcp",
       "concept_id": "concept_helios_overview",
@@ -144,6 +152,19 @@
       "provenance_path": "assets/ships/kestrel_borrowed_time_v4/PROVENANCE.json",
       "semantic_note": "Accepted source-faithful K0 Borrowed Time V4; canonical player-only LOD0 plus retained independently authored LOD1/LOD2 family, stable sockets, collision proxy, semantic materials, no embedded plume",
       "min_tris": 1500
+    },
+    "place_asteroid_rock_a": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/m4_helios_hub/blender/helios_rock_a_production.blend",
+      "exporter_path": "tools/blender/remaster_m4_surface_roles.py",
+      "texture_role_owner": "blender-source-v1",
+      "pipeline": "tools/blender/build_m4_helios_hub_v3.py",
+      "texture_pipeline": "assets/ships/m4_helios_hub/scripts/surface_remaster_v2.py",
+      "promotion_pipeline": "scripts/promote-m4-surface-remaster.mjs",
+      "family": "helios_hub_env",
+      "packet": "M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001",
+      "semantic_note": "Accepted three-LOD Helios resource rock; exact current source and release hashes are closed by the graphics asset receipt validator.",
+      "min_tris": 1977
     },
     "place_asteroid_seamed": {
       "method": "blender_generic",

@@ -501,7 +501,6 @@ class DetailMaker:
         obj["sf_module"] = self.module_id
         obj["sf_logical_name"] = logical_name
         obj["sf_detail_tier"] = tier
-        obj["sf_lod_max"] = TIER_MAX_LOD[tier]
         obj["sf_material_role"] = role
         obj["sf_uv_scale_metres"] = 1.0
         self.objects.append(obj)
@@ -569,7 +568,6 @@ class DetailMaker:
         joined["sf_module"] = self.module_id
         joined["sf_logical_name"] = name
         joined["sf_detail_tier"] = tier
-        joined["sf_lod_max"] = TIER_MAX_LOD[tier]
         joined["sf_material_role"] = role
         self.objects.append(joined)
         return joined
