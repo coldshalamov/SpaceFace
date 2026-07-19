@@ -131,61 +131,23 @@ export function attachStationHlod(root, entity) {
   if (root.userData && root.userData.hlodAttached) return root;
 
   const radius = stationVisualRadius(entity);
-  const palette = stationPalette(entity);
-  const wrapper = new THREE.Group();
-  wrapper.name = `${root.name || 'Station'}_HLOD`;
-
-  const preserved = { ...(root.userData || {}) };
-  const detailed = new THREE.Group();
-  detailed.name = 'HLOD_Detailed';
-  detailed.add(root);
-
-  const proxy = createStationHlodProxy(radius, palette);
-  proxy.visible = false;
-
-  wrapper.add(detailed);
-  wrapper.add(proxy);
-
-  Object.assign(wrapper.userData, preserved);
-  forwardStationAuthoredLifecycle(wrapper, root);
-  wrapper.userData.kind = 'station';
-  wrapper.userData.hlodAttached = true;
-  wrapper.userData.hlod = {
+  const innerUpdateLod = root.userData && root.userData.updateLod;
+  root.userData = root.userData || {};
+  root.userData.kind = 'station';
+  root.userData.hlodAttached = true;
+  root.userData.hlod = {
     target: 'station',
-    // Renderer LOD selection must use the visible station/gate envelope, not the much smaller
-    // gameplay collision radius. This preserves authored detail until the full silhouette is truly
-    // distant while retaining the same shared proxy and hysteresis thresholds.
     visualRadius: radius,
     detailedVisible: 1,
     proxyVisible: 0,
     swapped: false,
+    proxyDisabledReason: 'stable-authored-identity',
   };
-  if (typeof preserved.requestAuthoredUpgrade === 'function') {
-    wrapper.userData.requestAuthoredUpgrade = preserved.requestAuthoredUpgrade;
-  }
-  if (!wrapper.userData.hull) wrapper.userData.hull = preserved.hull || root;
-
-  let lastMode = 'detailed';
-  wrapper.userData.updateLod = function updateStationHlod(level) {
-    const useProxy = level === 'lod2';
-    const mode = useProxy ? 'proxy' : 'detailed';
-    if (mode !== lastMode) {
-      lastMode = mode;
-      detailed.visible = !useProxy;
-      proxy.visible = useProxy;
-      const h = wrapper.userData.hlod;
-      h.detailedVisible = useProxy ? 0 : 1;
-      h.proxyVisible = useProxy ? 1 : 0;
-      h.swapped = useProxy;
-    }
-    if (!useProxy) {
-      const inner = root.userData && root.userData.updateLod;
-      if (typeof inner === 'function') inner(level);
-    }
+  root.userData.updateLod = function updateStationStableLod(level) {
+    if (typeof innerUpdateLod === 'function') innerUpdateLod(level);
   };
-
-  attachLodState(wrapper);
-  return wrapper;
+  attachLodState(root);
+  return root;
 }
 
 function forwardStationAuthoredLifecycle(wrapper, root) {
@@ -203,7 +165,7 @@ function forwardStationAuthoredLifecycle(wrapper, root) {
   }
 }
 
-/** Headless contract probe: proxy swap toggles visibility without mutating the detailed subtree. */
+/** Headless contract probe: station LOD requests preserve one stable detailed identity. */
 export function runStationHlodContractProbe(THREE_NS = THREE) {
   const detailed = new THREE_NS.Group();
   detailed.name = 'ProbeStation';
@@ -218,16 +180,28 @@ export function runStationHlodContractProbe(THREE_NS = THREE) {
     data: { stationId: 'station_probe', dockRadius: 72 },
   };
   const wrapped = attachStationHlod(detailed, entity);
-  const detailedGroup = wrapped.children.find((child) => child.name === 'HLOD_Detailed');
-  const proxy = wrapped.children.find((child) => child.name === 'HLOD_StationProxy');
+  const rootUuid = wrapped.uuid;
+  const beforeMeshCount = countMeshes(wrapped);
   wrapped.userData.updateLod('lod2');
   return {
     hasLodState: !!(wrapped.userData.lod && typeof wrapped.userData.lod.resolve === 'function'),
-    proxyShownAtLod2: proxy && proxy.visible === true,
-    detailedHiddenAtLod2: detailedGroup && detailedGroup.visible === false,
-    detailedMeshCount: detailed.children.length,
-    proxyMeshCount: proxy ? proxy.children.length : 0,
-    proxyUsesBoxGeometry: !!(proxy && proxy.children.some((child) => child.geometry && child.geometry.type === 'BoxGeometry')),
+    rootStableAtLod2: wrapped.uuid === rootUuid,
+    detailedVisibleAtLod2: wrapped.visible !== false,
+    detailedMeshCount: countMeshes(wrapped),
+    beforeMeshCount,
+    proxyMeshCount: countNamed(wrapped, 'HLOD_StationProxy'),
     diagnostics: { ...(wrapped.userData.hlod || {}) },
   };
+}
+
+function countMeshes(root) {
+  let count = 0;
+  root.traverse((object) => { if (object.isMesh) count++; });
+  return count;
+}
+
+function countNamed(root, token) {
+  let count = 0;
+  root.traverse((object) => { if (String(object.name || '').includes(token)) count++; });
+  return count;
 }
