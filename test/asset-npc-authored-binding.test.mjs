@@ -138,10 +138,20 @@ test('authored assets preload ahead of visibility without decoding the whole act
   const approaching = { id: 3, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 2100, z: 0 } };
   const offAxis = { id: 4, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 0, z: 2100 } };
   const far = { id: 5, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 2900, z: 0 } };
+  const inboundTraffic = {
+    id: 6,
+    type: 'ship',
+    homeSectorId: 'sector_helios_prime',
+    pos: { x: 2100, z: 0 },
+    vel: { x: -160, z: 0 },
+  };
   assert.equal(isEntityAuthoredUpgradeRelevant(immediate, state), true, 'near content gets an immediate quality runway');
   assert.equal(isEntityAuthoredUpgradeRelevant(approaching, state), true, 'approaching content preloads before entry');
   assert.equal(isEntityAuthoredUpgradeRelevant(offAxis, state), false, 'stationary/off-axis content does not decode speculatively');
   assert.equal(isEntityAuthoredUpgradeRelevant(far, state), false, 'offscreen current-sector content stays dormant');
+  state.entities.get(1).vel.x = 0;
+  assert.equal(isEntityAuthoredUpgradeRelevant(inboundTraffic, state), true,
+    'inbound traffic preloads even while the player is stationary');
 });
 
 test('main-scene first renders do not decode every loading-screen entity', () => {

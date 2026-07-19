@@ -3,7 +3,7 @@
  *
  * Locks the boot gate contract without a browser:
  *   1. Soft-failed / empty preload payloads are not "ready"
- *   2. The player hull must be present; off-camera landmarks use entity-demand streaming
+ *   2. The player hull must be present; opening-runway entities use live-boundary admission
  *   3. Rejected library promises must not stick in the per-renderer cache forever
  */
 import assert from 'node:assert/strict';
@@ -50,7 +50,7 @@ function testUsableLibraryRequiresBootCriticalAssets() {
     assetId: 'SF_K0_KESTREL_BORROWED_TIME',
   }))]]);
   assert.equal(isAuthoredPartLibraryUsable(playerOnly), true,
-    'the exact player body satisfies bootstrap while off-camera landmarks stream on demand');
+    'the exact player body satisfies bootstrap while opening-runway entities own their residency');
 
   const complete = new Map(Object.entries(plan).map(([slot, files]) => [slot, files.map((file) => ({
     url: `${PART_LIBRARY_CONTRACT.releaseRoot}${file}`,

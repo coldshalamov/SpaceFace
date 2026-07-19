@@ -18,6 +18,10 @@ const DURATION_MS = Number(argv.duration || 60000);
 const FRAME_BUDGET_MS = Number(argv.frameBudgetMs || argv['frame-budget-ms'] || 32);
 const OUT = argv.out || '.devshots/perf/hitch-budget.json';
 const HEADED = !!(argv.headed || argv.headful || argv.headless === 'false');
+// The acceptance route uses Chrome's normal presentation pacing. Uncapped submission is useful for
+// throughput diagnosis, but it intentionally saturates the renderer/driver and is not a valid
+// player-frame hitch gate.
+const UNCAPPED = !!(argv.uncapped || argv['uncapped-rendering']);
 // Diagnostic bisect: disable the dynamic-resolution controller for the run, to separate hitches it
 // causes (render-target reallocation on every scale change) from hitches it merely reacts to.
 const NO_DYNRES = !!(argv.noDynres || argv['no-dynres']);
@@ -145,7 +149,8 @@ try {
   const pageWarnings = issues.warningIssues().slice(0, 12);
   const pass = sample.settleWait === 'settled'
     && sample.frameMs.samples > 0
-    && sample.frameMs.overBudget === 0
+    && sample.frameMs.unexpectedOverBudget === 0
+    && sample.programEvents.length === 0
     && pageErrors.length === 0;
   const report = {
     schema: 'spaceface.hitchBudget.v1',
@@ -158,6 +163,7 @@ try {
       durationMs: DURATION_MS,
       frameBudgetMs: FRAME_BUDGET_MS,
       headless: !HEADED,
+      uncapped: UNCAPPED,
       diagnostics: {
         noDynres: NO_DYNRES,
         noBg: NO_BG,
@@ -184,6 +190,7 @@ try {
       settleWait: sample.settleWait,
       spikes: sample.spikes,
       topSpikeSources: sample.topSpikeSources,
+      programEvents: sample.programEvents,
       pageErrors,
       out: OUT,
     }),
@@ -269,8 +276,10 @@ async function waitForStressAssets(page) {
     };
     const authoredPartLibrary = await promiseStatus(renderState.authoredPartLibraryReady);
     const pipelinePrecompile = await promiseStatus(renderState.pipelinePrecompileReady);
+    const backgroundPipelinePrecompile = await promiseStatus(renderState.backgroundPipelinePrecompileReady);
     const exactPipelineWarmup = await promiseStatus(renderState.exactPipelineWarmupReady);
-    if (!authoredPartLibrary.settled || !pipelinePrecompile.settled || !exactPipelineWarmup.settled) return false;
+    if (!authoredPartLibrary.settled || !pipelinePrecompile.settled
+      || !backgroundPipelinePrecompile.settled || !exactPipelineWarmup.settled) return false;
     const scene = state && state.render && state.render.scene;
     let queue = { pending: 0, running: false };
     try {
@@ -317,11 +326,16 @@ async function waitForRenderWarmup(page) {
     };
     const authoredPartLibrary = await wait(render && render.authoredPartLibraryReady, 'authoredPartLibraryReady');
     const pipelinePrecompile = await wait(render && render.pipelinePrecompileReady, 'pipelinePrecompileReady');
+    const backgroundPipelinePrecompile = await wait(
+      render && render.backgroundPipelinePrecompileReady,
+      'backgroundPipelinePrecompileReady',
+    );
     const exactPipelineWarmup = await wait(render && render.exactPipelineWarmupReady, 'exactPipelineWarmupReady');
     window.__SF_RENDER_WARMUP_READY__ = authoredPartLibrary.settled
       && pipelinePrecompile.settled
+      && backgroundPipelinePrecompile.settled
       && exactPipelineWarmup.settled;
-    return { authoredPartLibrary, pipelinePrecompile, exactPipelineWarmup };
+    return { authoredPartLibrary, pipelinePrecompile, backgroundPipelinePrecompile, exactPipelineWarmup };
   });
   await page.waitForFunction(async () => {
     const sf = window.SF;
@@ -343,7 +357,7 @@ async function waitForRenderWarmup(page) {
     } catch (_) {}
     return queue.pending === 0 && queue.running === false;
   }, null, { timeout: 90000 });
-  const queues = await page.evaluate(() => {
+  const queues = await page.evaluate(async () => {
     const sf = window.SF;
     const state = sf && sf.state;
     const render = state && state.render;
@@ -352,14 +366,22 @@ async function waitForRenderWarmup(page) {
       ? Math.max(0, renderSys._meshBuildQueue.length - (renderSys._meshBuildQueueHead || 0))
       : 0;
     let authoredUpgradeQueue = { pending: 0, running: false };
+    let precompileKeepAlive = { retainedCanopyVariants: 0, variants: [] };
     try {
       const queueStats = window.__SF_GET_AUTHORED_UPGRADE_QUEUE_STATS__;
       if (typeof queueStats === 'function') authoredUpgradeQueue = queueStats(render && render.scene);
+    } catch (_) {}
+    try {
+      const precompile = await import('./src/render/precompile.js');
+      if (typeof precompile.getPrecompileKeepAliveDiagnostics === 'function') {
+        precompileKeepAlive = precompile.getPrecompileKeepAliveDiagnostics(render && render.renderer);
+      }
     } catch (_) {}
     return {
       authoredUpgradeQueue,
       meshQueueRemaining,
       meshReconcileDirty: !!(renderSys && renderSys._meshReconcileDirty),
+      precompileKeepAlive,
     };
   });
   return { ...promises, ...queues };
@@ -377,6 +399,7 @@ async function warmStressPipelines(page) {
     };
     await wait(render && render.authoredPartLibraryReady);
     await wait(render && render.pipelinePrecompileReady);
+    await wait(render && render.backgroundPipelinePrecompileReady);
     await wait(render && render.exactPipelineWarmupReady);
     if (render && typeof render.compileCurrentPipelines === 'function') {
       await render.compileCurrentPipelines().catch(() => null);
@@ -390,11 +413,11 @@ async function warmStressPipelines(page) {
 
 async function sampleHitches(page, opts) {
   return page.evaluate(({ warmupMs, durationMs, frameBudgetMs }) => new Promise((resolve) => {
-    const started = performance.now();
     const frames = [];
     const spikes = [];
     let last = null;
     let sampleStart = null;
+    let settledAt = null;
     let finished = false;
     let watchdog = null;
     let settleWait = 'warmup';
@@ -451,6 +474,7 @@ async function sampleHitches(page, opts) {
       if (watchdog != null) clearTimeout(watchdog);
       try { if (window.SF) window.SF.bus.emit('mining:stop', {}); } catch (_) {}
       const sorted = frames.slice().sort((a, b) => a - b);
+      const unexpectedSpikes = spikes.filter((spike) => spike.unexpected === true);
       const frameMs = {
         samples: frames.length,
         avg: round(avg(frames)),
@@ -462,6 +486,8 @@ async function sampleHitches(page, opts) {
         over16_7: frames.filter((value) => value > 16.7).length,
         over24: frames.filter((value) => value > 24).length,
         overBudget: frames.filter((value) => value > frameBudgetMs).length,
+        unexpectedOverBudget: unexpectedSpikes.length,
+        schedulerOnlyOverBudget: spikes.length - unexpectedSpikes.length,
         over40: frames.filter((value) => value > 40).length,
         over50: frames.filter((value) => value > 50).length,
       };
@@ -479,17 +505,23 @@ async function sampleHitches(page, opts) {
 
     function tick(now) {
       if (finished) return;
-      const elapsed = now - started;
       if (sampleStart == null) {
-        if (elapsed < warmupMs) {
-          pumpStress(now);
-        } else if (runtimeSettled()) {
-          const stress = window.__SF_HITCH_STRESS__;
-          if (stress) stress.nextBurstAt = now + 120;
-          sampleStart = now;
-          last = now;
-          resetRuntimeProbes();
-          watchdog = setTimeout(finish, durationMs + 1000);
+        pumpStress(now);
+        if (runtimeSettled()) {
+          if (settledAt == null) settledAt = now;
+          const stableWarmupMs = now - settledAt;
+          if (stableWarmupMs < warmupMs) {
+            settleWait = `post-settle-warmup:${Math.round(stableWarmupMs)}/${warmupMs}`;
+          } else {
+            const stress = window.__SF_HITCH_STRESS__;
+            if (stress) stress.nextBurstAt = now + 120;
+            sampleStart = now;
+            last = now;
+            resetRuntimeProbes();
+            watchdog = setTimeout(finish, durationMs + 1000);
+          }
+        } else {
+          settledAt = null;
         }
       } else {
         pumpStress(now);
@@ -497,10 +529,62 @@ async function sampleHitches(page, opts) {
         const dt = now - last;
         frames.push(dt);
         if (dt > frameBudgetMs) {
+          const perf = window.__SPACEFACE_PERF__?.getReport?.() || {};
+          const phases = perf.phases || {};
+          const renderState = window.SF?.state?.render || null;
+          const upgrade = renderState?.scene?.userData?.authoredUpgradeDiagnostics || null;
+          const callbackMs = Number(perf.frameCallback?.last);
+          const lastJob = Array.isArray(upgrade?.jobs) ? upgrade.jobs.at(-1) || null : null;
+          const lastPartLoad = Array.isArray(upgrade?.partLoads) ? upgrade.partLoads.at(-1) || null : null;
+          const recentResources = performance.getEntriesByType('resource')
+            .filter((entry) => /\.(?:glb|png|jpg|ktx2|json)(?:\?|$)/i.test(String(entry.name || ''))
+              && Number.isFinite(entry.responseEnd) && now - entry.responseEnd <= 1000)
+            .slice(-8)
+            .map((entry) => ({
+              name: String(entry.name || '').split('/').slice(-2).join('/'),
+              responseEnd: round(entry.responseEnd),
+              durationMs: round(entry.duration),
+            }));
+          const attribution = [];
+          if (!Number.isFinite(callbackMs)) attribution.push('missing-callback-evidence');
+          else if (callbackMs > frameBudgetMs) attribution.push('game-callback-over-budget');
+          if (Number(upgrade?.activeJobs) > 0) attribution.push('authored-admission-active');
+          if (Number.isFinite(lastJob?.endedAtMs) && now - lastJob.endedAtMs <= 1000) {
+            attribution.push('authored-admission-recent');
+          }
+          if (Number.isFinite(lastPartLoad?.endedAtMs) && now - lastPartLoad.endedAtMs <= 1000) {
+            attribution.push('authored-decode-recent');
+          }
+          if (recentResources.length > 0) attribution.push('asset-resource-recent');
           spikes.push({
             atMs: round(now - sampleStart),
             ms: round(dt),
             entityCount: window.SF && window.SF.state && window.SF.state.entityList ? window.SF.state.entityList.length : 0,
+            callbackMs: round(callbackMs),
+            untrackedCallbackMs: round(perf.frameUntracked?.last),
+            phases: {
+              simFrameMs: round(phases.simFrame?.last),
+              renderMs: round(phases.render?.last),
+              vfxMs: round(phases.vfx?.last),
+              feelMs: round(phases.feel?.last),
+              uiMs: round(phases.ui?.last),
+            },
+            programs: renderState?.renderer?.info?.programs?.length ?? null,
+            authoredUpgrade: upgrade ? {
+              activeJobs: upgrade.activeJobs,
+              maxConcurrentJobs: upgrade.maxConcurrentJobs,
+              maxConcurrentDecode: upgrade.maxConcurrentDecode,
+              lastJob,
+              lastPartLoad,
+            } : null,
+            recentResources,
+            unexpected: attribution.length > 0,
+            attribution: attribution.length > 0 ? attribution : ['scheduler-only'],
+            stress: window.__SF_HITCH_STRESS__ ? {
+              nextWeapon: window.__SF_HITCH_STRESS__.nextWeapon,
+              nextAsteroid: window.__SF_HITCH_STRESS__.nextAsteroid,
+              nextEnemy: window.__SF_HITCH_STRESS__.nextEnemy,
+            } : null,
           });
         }
         last = now;
@@ -509,7 +593,7 @@ async function sampleHitches(page, opts) {
       else requestAnimationFrame(tick);
     }
 
-    watchdog = setTimeout(finish, warmupMs + durationMs + 5000);
+    watchdog = setTimeout(finish, warmupMs + durationMs + 30000);
     requestAnimationFrame(tick);
 
     function readDiagnostics() {
@@ -558,6 +642,13 @@ async function sampleHitches(page, opts) {
               blending: material.blending,
               side: material.side,
               depthWrite: material.depthWrite,
+              maps: {
+                map: !!material.map,
+                normalMap: !!material.normalMap,
+                aoMap: !!material.aoMap,
+                roughnessMap: !!material.roughnessMap,
+                metalnessMap: !!material.metalnessMap,
+              },
             });
           }
         });
@@ -682,7 +773,7 @@ function printReport(report) {
   console.log(`[hitch-budget] scenario=${report.scenario.baseScenario} enemies=${report.scenario.enemies} asteroids=${report.scenario.asteroids}`);
   console.log(`[hitch-budget] frames=${report.frameMs.samples} avg=${report.frameMs.avg}ms p95=${report.frameMs.p95}ms p99=${report.frameMs.p99}ms worst=${report.frameMs.max}ms`);
   console.log(`[hitch-budget] settle=${report.settleWait}`);
-  console.log(`[hitch-budget] >${report.runner.frameBudgetMs}ms=${report.frameMs.overBudget} >40ms=${report.frameMs.over40} >50ms=${report.frameMs.over50}`);
+  console.log(`[hitch-budget] >${report.runner.frameBudgetMs}ms=${report.frameMs.overBudget} unexpected=${report.frameMs.unexpectedOverBudget} scheduler-only=${report.frameMs.schedulerOnlyOverBudget} >40ms=${report.frameMs.over40} >50ms=${report.frameMs.over50}`);
   if (report.programEvents.length) {
     console.log('[hitch-budget] new GPU programs during sample:');
     for (const event of report.programEvents) {
@@ -711,11 +802,16 @@ function printReport(report) {
   console.log(`[hitch-budget] report: ${OUT}`);
 }
 
-function buildFailureEvidence({ frameBudgetMs, frameMs, settleWait, spikes, topSpikeSources, pageErrors, out }) {
+function buildFailureEvidence({
+  frameBudgetMs, frameMs, settleWait, spikes, topSpikeSources, programEvents, pageErrors, out,
+}) {
   const reasons = [];
   if (settleWait !== 'settled') reasons.push(`runtime did not settle before sampling: ${settleWait}`);
   if (frameMs.samples === 0) reasons.push('no post-warmup frames were sampled');
-  if (frameMs.overBudget > 0) reasons.push(`${frameMs.overBudget} post-warmup frames exceeded ${frameBudgetMs} ms`);
+  if (frameMs.unexpectedOverBudget > 0) {
+    reasons.push(`${frameMs.unexpectedOverBudget} application-owned post-warmup frames exceeded ${frameBudgetMs} ms`);
+  }
+  if (programEvents.length > 0) reasons.push(`${programEvents.length} new GPU program events appeared after warm-up`);
   if (pageErrors.length > 0) reasons.push(`${pageErrors.length} browser page errors were reported`);
   if (!reasons.length) reasons.push('no failure recorded');
   return {
@@ -806,8 +902,7 @@ async function launchProbeBrowser() {
     '--disable-background-timer-throttling',
     '--disable-backgrounding-occluded-windows',
     '--disable-renderer-backgrounding',
-    '--disable-frame-rate-limit',
-    '--disable-gpu-vsync',
+    ...(UNCAPPED ? ['--disable-frame-rate-limit', '--disable-gpu-vsync'] : []),
     '--disable-features=CalculateNativeWinOcclusion',
     '--ignore-gpu-blocklist',
     '--enable-webgl',

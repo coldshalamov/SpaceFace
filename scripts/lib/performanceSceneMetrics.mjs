@@ -44,6 +44,14 @@ export function collectPerformanceSceneStructure({ state = globalThis.SF?.state,
     surfaces: { opaque: 0, transparent: 0 },
     roles: { canopy: 0, plume: 0, fan: 0, signal: 0, decal: 0, shadowCaster: 0 },
     authoredShipStates: {},
+    authoredShipAdmission: {
+      relevant: 0,
+      ready: 0,
+      pending: 0,
+      fallback: 0,
+      missingMesh: 0,
+      ignoredNonresident: 0,
+    },
     authoredStaticBatches: { visible: 0, hidden: 0, total: 0 },
     authoredPools: {
       totalChunks: 0,
@@ -166,9 +174,17 @@ export function collectPerformanceSceneStructure({ state = globalThis.SF?.state,
   stats.visibleMaterialKeys = rankedCounts(materialKeyCounts, 32);
   stats.visibleMaterialKeysByCategory = rankedCounts(materialKeyCountsByCategory, 32);
   stats.visibleShipMaterialKeys = rankedCounts(shipMaterialKeyCounts, 48);
-  for (const entity of entities) {
-    if (!entity || entity.type !== 'ship' || entity.alive === false || !entity.mesh) continue;
-    const assetState = entity.mesh.userData?.authoredAssetState || 'unknown';
+  const authored = authoredAssetStatus(state);
+  stats.authoredShipAdmission = {
+    relevant: authored.shipCount,
+    ready: authored.readyCount,
+    pending: authored.pendingCount,
+    fallback: authored.fallbackCount,
+    missingMesh: authored.missingMeshCount,
+    ignoredNonresident: authored.ignoredNonresidentCount,
+  };
+  for (const entity of authored.entities) {
+    const assetState = entity.assetState || 'unknown';
     stats.authoredShipStates[assetState] = (stats.authoredShipStates[assetState] || 0) + 1;
   }
   if (stats.authoredPools.visibleChunks > 0) {

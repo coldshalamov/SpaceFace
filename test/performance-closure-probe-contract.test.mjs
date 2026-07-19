@@ -61,13 +61,23 @@ test('legacy attribution windows publish fail-closed closure window evidence', (
 });
 
 test('profile and closure probes share scene metrics and bounded measurement gates', async () => {
-  const [profile, probe, command] = await Promise.all([
+  const [profile, probe, command, hitch] = await Promise.all([
     readFile(new URL('../scripts/probe-performance-profile.mjs', import.meta.url), 'utf8'),
     readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8'),
     readFile(new URL('../scripts/check-performance-attribution.mjs', import.meta.url), 'utf8'),
+    readFile(new URL('../scripts/check-hitch-budget.mjs', import.meta.url), 'utf8'),
   ]);
   assert.match(profile, /import\('\/scripts\/lib\/performanceSceneMetrics\.mjs'\)/);
   assert.match(profile, /collectPerformanceSceneStructure/);
+  assert.match(profile, /authoredAssetStatus\(state\)/);
+  assert.match(profile, /rafHitches: sampled\.raf\.hitches \|\| \[\]/);
+  assert.match(hitch, /UNCAPPED \? \['--disable-frame-rate-limit', '--disable-gpu-vsync'\] : \[\]/);
+  assert.match(hitch, /sample\.programEvents\.length === 0/);
+  assert.match(hitch, /sample\.frameMs\.unexpectedOverBudget === 0/);
+  assert.match(hitch, /missing-callback-evidence/);
+  assert.match(hitch, /authored-admission-active/);
+  assert.match(hitch, /scheduler-only/);
+  assert.match(hitch, /new GPU program events appeared after warm-up/);
   assert.doesNotMatch(profile, /const sceneBreakdown = \(\) => \{[\s\S]*new WeakMap/);
   assert.match(probe, /setRenderWorkEnabled\(false\)/);
   assert.match(probe, /setSystemTimingEnabled\(false\)/);

@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
 
-import { precompilePipelines } from '../src/render/precompile.js';
+import {
+  invalidatePrecompileState,
+  precompileGlobalPipelines,
+  precompilePipelines,
+} from '../src/render/precompile.js';
 import { getAuthoredUpgradeQueueStats } from '../src/render/partsLibrary.js';
 
 test('deferred sector shader precompile admits one archetype per browser yield', async () => {
@@ -47,25 +51,101 @@ test('synthetic shader precompile creates zero authored asset residency demand',
 
   let legacyCompileCalls = 0;
   let exactTargetPrepareCalls = 0;
+  let canopyVariants = [];
+  let lateWorldOwners = [];
   const renderer = {
     compileAsync: async () => { legacyCompileCalls++; },
     info: { programs: [] },
   };
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10000);
-  const result = await precompilePipelines(renderer, scene, camera, {
-    includeGlobalPipelines: true,
+  const result = await precompileGlobalPipelines(renderer, scene, camera, {
+    incremental: true,
     video: { particleQuality: 'medium' },
     preparePipelines: async (subject) => {
       exactTargetPrepareCalls++;
-      assert.equal(subject.name, 'SF_Precompile_Staging');
-      assert.equal(subject.parent, scene);
+      assert.equal(subject.name, 'SF_Precompile_Global_Pipelines');
+      assert.equal(subject.parent?.name, 'SF_Precompile_Staging');
+      assert.equal(subject.parent?.parent, scene);
+      canopyVariants = [];
+      lateWorldOwners = [];
+      subject.traverse((object) => {
+        if (object.name === 'SF_Precompile_L5b_Wormhole'
+          || object.name === 'Spindle_Locked_Core_Glow') lateWorldOwners.push(object.name);
+        if (!object.userData?.precompileCanopyVariant) return;
+        const material = object.material;
+        canopyVariants.push({
+          id: object.userData.precompileCanopyVariant,
+          map: !!material.map,
+          normalMap: !!material.normalMap,
+          aoMap: !!material.aoMap,
+          roughnessMap: !!material.roughnessMap,
+          metalnessMap: !!material.metalnessMap,
+          transmission: material.transmission,
+          transparent: material.transparent,
+          depthWrite: material.depthWrite,
+          forceSinglePass: material.forceSinglePass,
+          dithering: material.dithering,
+          tangents: !!object.geometry?.getAttribute?.('tangent'),
+        });
+      });
     },
   });
 
   assert.equal(result.skipped, false);
+  assert.equal(result.retainedCanopyVariants, 3);
   assert.equal(exactTargetPrepareCalls, 1);
   assert.equal(legacyCompileCalls, 0);
+  assert.deepEqual(lateWorldOwners.sort(), ['SF_Precompile_L5b_Wormhole', 'Spindle_Locked_Core_Glow']);
+  assert.deepEqual(canopyVariants, [
+    {
+      id: 'surface', map: false, normalMap: false, aoMap: false,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'normal-surface-ao', map: false, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'base-normal-surface', map: true, normalMap: true, aoMap: false,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+  ]);
   assert.deepEqual(getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });
   assert.equal(scene.getObjectByName('SF_Precompile_Staging'), undefined);
+});
+
+test('precompile receipts are renderer-scoped and invalidated for context restoration', async () => {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10000);
+  const rendererA = { compileAsync: async () => {}, info: { programs: [] } };
+  const rendererB = { compileAsync: async () => {}, info: { programs: [] } };
+  let rendererAPrepares = 0;
+  let rendererBPrepares = 0;
+  const optionsA = {
+    incremental: true,
+    preparePipelines: async () => { rendererAPrepares++; },
+    yieldToMain: async () => {},
+  };
+  const optionsB = {
+    incremental: true,
+    preparePipelines: async () => { rendererBPrepares++; },
+    yieldToMain: async () => {},
+  };
+
+  assert.equal((await precompileGlobalPipelines(rendererA, scene, camera, optionsA)).skipped, false);
+  assert.equal((await precompileGlobalPipelines(rendererA, scene, camera, optionsA)).skipped, true);
+  assert.equal((await precompileGlobalPipelines(rendererB, scene, camera, optionsB)).skipped, false);
+  assert.equal(rendererAPrepares, 1);
+  assert.equal(rendererBPrepares, 1);
+
+  invalidatePrecompileState(rendererA, { dispose: false });
+  assert.equal((await precompileGlobalPipelines(rendererA, scene, camera, optionsA)).skipped, false);
+  assert.equal(rendererAPrepares, 2);
 });
