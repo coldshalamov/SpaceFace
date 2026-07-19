@@ -544,23 +544,27 @@ export async function runProfessionalTravelPublicRoute({
     await continueBtn.click({ timeout: 20_000 });
     mark('title-continue');
 
+    // Third and last instance of the same stale condition (see `flightReadyInPage`). Continue
+    // restores into the DESTINATION sector, where "every ship is authored" is even less reachable
+    // than at launch: the arrival sector is populated and its distant NPCs are dormant by design.
+    // Ask the engine its own readiness question instead.
     await page.waitForFunction((destId) => {
       const state = window.SF?.state;
       const player = state?.entities?.get(state.playerId);
-      const ships = Array.isArray(state?.entityList)
-        ? state.entityList.filter((e) => e?.type === 'ship' && e.alive !== false)
-        : [];
-      const authored = ships.length > 0 && ships.every((s) => s?.mesh?.userData?.authoredAssetState === 'authored');
+      const readiness = typeof window.SF?.authoredVisualReadiness === 'function'
+        ? window.SF.authoredVisualReadiness()
+        : null;
       return state?.mode === 'flight'
         && state?.world?.currentSectorId === destId
         && player && player.alive !== false
-        && authored;
+        && !!readiness?.ready;
     }, destination.sectorId, { timeout: continueTimeoutMs });
 
     const continueSnap = await readTravelSnapshot(page);
     assert.equal(continueSnap.sectorId, destination.sectorId,
       `Continue must restore destination sector; got ${continueSnap.sectorId}`);
-    assert.equal(continueSnap.authored?.ready, true, 'Continue must restore authored ships');
+    assert.equal(continueSnap.authored?.ready, true,
+      'Continue must restore the authored critical visuals (player, starting hub, opening composition)');
     screenshots.push(await shot(page, outputDir, TRAVEL_SCREENSHOTS.postContinue));
     mark('continue-destination-restored', {
       sectorId: continueSnap.sectorId,
