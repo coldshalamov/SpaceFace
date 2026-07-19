@@ -304,6 +304,10 @@ function appendEntityIndex(index, e) {
       index.wrecks.push(e);
       index.mineables.push(e);
       break;
+    case 'mine':
+      // W03 physical mines: shootable (damageables) so clearing a wake is counterplay.
+      index.damageables.push(e);
+      break;
   }
   index.version++;
 }
