@@ -1,0 +1,38 @@
+{
+  "schema": "spaceface.gateReachability.baseline.v2",
+  "note": "Scoped program contract. mustGate entries must remain reachable from [precheck,check], every direct check:atlas member must be pinned, and manualGates entries require a concrete reason while they remain outside the blocking matrix. Repository-wide orphan counts are inventory only until separately adjudicated.",
+  "recordedAt": "2026-07-19",
+  "manualGates": {
+    "check:atlas:perf:strict": "Manual until the Node 24 Windows heap-allocation ceilings are remeasured on the Node 20 Linux CI target; record-only measurement remains available as probe:atlas:perf.",
+    "check:journey:textile": "Headed multi-minute finish-line journey remains intentionally non-blocking while its evidence records the missing deterministic textile mission and unresolved station-approach route defects."
+  },
+  "mustGate": [
+    "check:actuator-telemetry",
+    "check:atlas",
+    "check:atlas-integrity",
+    "check:atlas-place-path",
+    "check:atlas-spatial-truth",
+    "check:deep-space-address",
+    "check:gate-reachability",
+    "check:journey:textile:contract",
+    "check:map-camera",
+    "check:map-frames",
+    "check:map-information-depth",
+    "check:map-nav-context",
+    "check:map-never-lost",
+    "check:navigation-stale-route",
+    "check:propulsion",
+    "check:propulsion:authority",
+    "check:propulsion:extreme",
+    "check:rcs-sign-truth",
+    "check:route-engage",
+    "check:route-follower",
+    "check:shader-compile",
+    "check:sim:compare",
+    "check:sim:v3:compare",
+    "check:speed-lines",
+    "check:travel-drive",
+    "check:travel-lanes",
+    "check:visual-stability"
+  ]
+}
