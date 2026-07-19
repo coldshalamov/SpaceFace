@@ -13,6 +13,7 @@ import {
 import { isPlayerWanted } from './heat.js';
 
 const RECENT_DEFENSIVE_DAMAGE_TICKS = 180;
+const FIRE_WINDOW_ADMISSION = new WeakMap();
 
 export function applyAIFiringIntent(decision, state) {
   if (!decision || !state || !state.entities || typeof state.entities.get !== 'function') return;
@@ -46,7 +47,15 @@ export function applyAIFiringIntent(decision, state) {
   );
   const fireWindowOk = !combatDoctrine || combatDoctrine.fireWindow;
   if (!attack || targetId == null || !fireWindowOk) {
+    if (!combatDoctrine || !fireWindowOk) FIRE_WINDOW_ADMISSION.delete(e);
     clearFire(intent);
+    return;
+  }
+  // A doctrine fire window authorizes action selection; the SG-03 executor remains the canonical
+  // proof that the action was actually accepted. Keep visible weapon intent closed while the
+  // predictive gate is blocked so it cannot lead the corresponding action.requested event.
+  if (!admittedFireWindow(e, combatDoctrine, decision.action)) {
+    clearFire(intent, 'action_request_pending');
     return;
   }
 
@@ -227,6 +236,18 @@ function clearFire(intent, reason = null, blockerId = null) {
   intent.fire = false;
   intent.fireBlockReason = reason;
   intent.fireBlockerId = blockerId;
+}
+
+function admittedFireWindow(entity, doctrine, action) {
+  if (!doctrine) return true;
+  const key = `${doctrine.doctrineId || ''}|${doctrine.cycle || 0}|${doctrine.phase || ''}|${doctrine.phaseStartedTick ?? ''}`;
+  let runtime = FIRE_WINDOW_ADMISSION.get(entity);
+  if (!runtime || runtime.key !== key) {
+    runtime = { key, admitted: false };
+    FIRE_WINDOW_ADMISSION.set(entity, runtime);
+  }
+  if (action && action.actionId) runtime.admitted = true;
+  return runtime.admitted;
 }
 
 function mutableIntent(data) {

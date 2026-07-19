@@ -4,9 +4,12 @@ import { TacticalAIStack } from '../ai/stack.js';
 import { NORMALIZED_THRUSTER_REQUEST_FLAG } from '../ai/contracts.js';
 import { applyAIFiringIntent } from './aiFireIntent.js';
 import {
+  maintainFirstSessionAttackerOwnership,
   refreshFirstSessionAttackerOwnership,
   resetFirstSessionAttackerOwnership,
 } from '../ai/engagementAuthority.js';
+
+const OWNERSHIP_REFRESH_TICKS = 3;
 
 /**
  * SG-06 simulation-system factory.
@@ -27,9 +30,9 @@ export function createTacticalAISystem({
   actionPortFactory = createSG03ActionPort,
 } = {}) {
   const runtime = config.runtime && typeof config.runtime === 'object' ? config.runtime : {};
-  const defaultRuntime = ('memberBatchSize' in runtime || 'memberBatchTargetTicks' in runtime)
+  const defaultRuntime = ('memberBatchSize' in runtime || 'memberBatchTargetTicks' in runtime || 'memberBatchSpreadTicks' in runtime)
     ? {}
-    : { memberBatchSize: 3 };
+    : { memberBatchSize: 3, memberBatchSpreadTicks: 3 };
   const runtimeConfig = {
     ...config,
     runtime: { ...defaultRuntime, ...runtime },
@@ -40,6 +43,7 @@ export function createTacticalAISystem({
   let inspection = null;
   let ctxRef = null;
   let lastDecisionTick = -Infinity;
+  let lastOwnershipRefreshTick = -Infinity;
   let lastManeuverRequests = [];
   const decisionIntervalTicks = runtimeDecisionInterval(config);
 
@@ -73,6 +77,7 @@ export function createTacticalAISystem({
     stack = null;
     inspection = null;
     lastDecisionTick = -Infinity;
+    lastOwnershipRefreshTick = -Infinity;
     lastManeuverRequests = [];
     resetFirstSessionAttackerOwnership(ctxRef && ctxRef.state);
   }
@@ -103,16 +108,21 @@ export function createTacticalAISystem({
     update(_dt, state) {
       const liveStack = ensureStack(state);
       const tick = Number.isInteger(state && state.tick) ? state.tick : liveStack.lastTick + 1;
-      if (tick - lastDecisionTick < decisionIntervalTicks && lastManeuverRequests.length) {
-        refreshFirstSessionAttackerOwnership(state, liveStack.lastResult && liveStack.lastResult.decisions || []);
-        replayLastManeuvers(liveStack, tick);
+      if (tick - lastDecisionTick < decisionIntervalTicks) {
+        maintainFirstSessionAttackerOwnership(state);
+        if (lastManeuverRequests.length) replayLastManeuvers(liveStack, tick);
         return;
       }
       const authored = typeof authoredEncounter === 'function'
         ? authoredEncounter(tick, state, ctxRef)
         : (authoredEncounter || {});
       const result = liveStack.update(tick, authored);
-      refreshFirstSessionAttackerOwnership(state, result.decisions || []);
+      if (tick - lastOwnershipRefreshTick >= OWNERSHIP_REFRESH_TICKS) {
+        refreshFirstSessionAttackerOwnership(state, result.decisions || []);
+        lastOwnershipRefreshTick = tick;
+      } else {
+        maintainFirstSessionAttackerOwnership(state);
+      }
       lastDecisionTick = tick;
       lastManeuverRequests.length = 0;
       for (const decision of result.decisions || []) {
@@ -161,8 +171,8 @@ export function createTacticalAISystem({
 
 function runtimeDecisionInterval(config = {}) {
   const runtime = config.runtime && typeof config.runtime === 'object' ? config.runtime : {};
-  const value = runtime.decisionIntervalTicks ?? config.decisionIntervalTicks ?? 3;
-  if (!Number.isFinite(value)) return 3;
+  const value = runtime.decisionIntervalTicks ?? config.decisionIntervalTicks ?? 1;
+  if (!Number.isFinite(value)) return 1;
   return Math.max(1, Math.min(12, Math.floor(value)));
 }
 

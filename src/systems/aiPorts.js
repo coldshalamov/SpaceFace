@@ -61,6 +61,8 @@ export const aiPorts = {
     this._tagCache = new Map();
     this._subsystemFractionCacheTick = -1;
     this._subsystemFractionCache = new Map();
+    this._contactBaseCacheTick = -1;
+    this._contactBaseCache = new Map();
     this._attachmentCacheTick = -1;
     this._attachmentIndexCache = { all: EMPTY_ATTACHMENTS, byEntity: new Map() };
     this._recentEventCacheTick = -1;
@@ -403,6 +405,22 @@ export const aiPorts = {
     return fractions;
   },
 
+  _contactBaseFor(entity, runtime, attachmentIndex, kind) {
+    const state = this.state;
+    const tick = Number.isInteger(state && state.tick) ? state.tick : -1;
+    if (this._contactBaseCacheTick !== tick) {
+      this._contactBaseCacheTick = tick;
+      this._contactBaseCache.clear();
+    }
+    const key = stableId(entity && entity.id);
+    let base = this._contactBaseCache.get(key);
+    if (!base) {
+      base = buildContactBase(state, entity, runtime, attachmentIndex, kind, identity, this);
+      this._contactBaseCache.set(key, base);
+    }
+    return base;
+  },
+
   _attachmentIndex() {
     const state = this.state;
     const tick = Number.isInteger(state && state.tick) ? state.tick : -1;
@@ -655,38 +673,48 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
     if (distanceSq > rangeSq) continue;
     const distance = Math.sqrt(distanceSq);
     const runtime = combatRuntimeFor(state, other.id);
-    const tags = cacheOwner && typeof cacheOwner._tagsFor === 'function'
-      ? cacheOwner._tagsFor(other, runtime)
-      : tagsFor(other, runtime, freeze);
     const hostile = isHostileForAI(state, self, other);
-    const bands = operationalBandsFor(state, other, runtime, attachmentIndex);
+    const base = cacheOwner && typeof cacheOwner._contactBaseFor === 'function'
+      ? cacheOwner._contactBaseFor(other, runtime, attachmentIndex, kind)
+      : buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, cacheOwner);
     out.push({
-      id: other.id,
-      kind,
-      team: other.team == null ? null : other.team,
-      classification: classificationFor(other),
-      pos: vec2(other.pos, freeze),
-      vel: vec2(other.vel, freeze),
-      radius: positive(other.radius, 0),
-      alive: true,
-      valid: true,
-      visible: true,
+      ...base,
       confidence: confidenceFor(distance, range, state, self),
-      threat: threatFor(state, self, other),
+      threat: threatFor(state, self, other, hostile),
       hostile,
-      targetId: other.data && other.data.combat ? other.data.combat.targetId : null,
-      ownerId: other.ownerId == null ? null : other.ownerId,
-      disabled: isDisabled(runtime, other),
-      tethered: attachmentsFor(attachmentIndex, other.id).length > 0,
-      exposed: false,
-      ownedBySelf: false,
-      objectiveValue: objectiveValueFor(other),
-      massClass: Math.max(1, Math.round(Math.log2(positive(other.mass, 1) + 1))),
-      ...bands,
-      tags,
     });
   }
   return out;
+}
+
+function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, cacheOwner) {
+  const tethered = attachmentsFor(attachmentIndex, other.id).length > 0;
+  const disabled = isDisabled(runtime, other);
+  const tags = cacheOwner && typeof cacheOwner._tagsFor === 'function'
+    ? cacheOwner._tagsFor(other, runtime)
+    : tagsFor(other, runtime, freeze);
+  return {
+    id: other.id,
+    kind,
+    team: other.team == null ? null : other.team,
+    classification: classificationFor(other),
+    pos: vec2(other.pos, freeze),
+    vel: vec2(other.vel, freeze),
+    radius: positive(other.radius, 0),
+    alive: true,
+    valid: true,
+    visible: true,
+    targetId: other.data && other.data.combat ? other.data.combat.targetId : null,
+    ownerId: other.ownerId == null ? null : other.ownerId,
+    disabled,
+    tethered,
+    exposed: false,
+    ownedBySelf: false,
+    objectiveValue: objectiveValueFor(other),
+    massClass: Math.max(1, Math.round(Math.log2(positive(other.mass, 1) + 1))),
+    ...operationalBandsFor(state, other, runtime, attachmentIndex, { tethered, disabled }),
+    tags,
+  };
 }
 
 function attachmentContacts(state, self, range, activeAttachments = null, freeze = Object.freeze, outScratch = null) {
@@ -926,13 +954,17 @@ function profileSignature(profile) {
     : '';
 }
 
-function operationalBandsFor(state, entity, runtime, attachmentIndex) {
+function operationalBandsFor(state, entity, runtime, attachmentIndex, facts = null) {
   const mass = operationalMassFor(state, entity);
   const maxSpeed = positive(entity && entity.maxSpeed, positive(entity && entity.flightModel && entity.flightModel.maxSpeed, 0));
   const turnRate = positive(entity && entity.turnRate, positive(entity && entity.flightModel && entity.flightModel.maxYawRate, 0));
   const cargoMass = cargoMassFor(state, entity);
-  const tethered = attachmentsFor(attachmentIndex, entity && entity.id).length > 0;
-  const disabled = isDisabled(runtime, entity);
+  const tethered = facts && typeof facts.tethered === 'boolean'
+    ? facts.tethered
+    : attachmentsFor(attachmentIndex, entity && entity.id).length > 0;
+  const disabled = facts && typeof facts.disabled === 'boolean'
+    ? facts.disabled
+    : isDisabled(runtime, entity);
   return {
     operationalMassBand: mass < 40 ? 'light' : mass < 140 ? 'medium' : mass < 700 ? 'heavy' : 'capital',
     mobilityBand: maxSpeed >= 135 || turnRate >= 2 ? 'high' : (maxSpeed > 0 && maxSpeed < 80) || (turnRate > 0 && turnRate < 0.8) ? 'low' : 'medium',
@@ -995,8 +1027,8 @@ function objectiveValueFor(entity) {
   return 0;
 }
 
-function threatFor(state, self, other) {
-  if (!isHostileForAI(state, self, other)) return 0;
+function threatFor(state, self, other, hostile = isHostileForAI(state, self, other)) {
+  if (!hostile) return 0;
   const armed = other.data && Array.isArray(other.data.weapons) && other.data.weapons.length ? 0.2 : 0;
   return clamp(0.45 + armed + positive(other.mass, 1) / 400, 0, 1);
 }
