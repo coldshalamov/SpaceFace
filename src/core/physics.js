@@ -823,6 +823,8 @@ function maskOf(e) {
     case 'drone': return Masks.DRONE;
     case 'payload': return Masks.PAYLOAD;
     case 'wreck': return Masks.WRECK;
+    // W03 mines are shootable: projectiles carry SHIP in their collision mask.
+    case 'mine': return Masks.SHIP;
     default: return 0;
   }
 }

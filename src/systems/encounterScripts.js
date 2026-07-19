@@ -32,6 +32,7 @@ import {
   uniqueWreckSilverDraftCleaner,
 } from './uniqueWreckEncounterScripts.js';
 import { markEntityGhost } from './scanner.js';
+import { mines as minesSystem, MINE_TELEGRAPH_CUE } from './mines.js';
 
 // ── shared tuning ─────────────────────────────────────────────────────────────────────────────────
 const TOLL_PAY_DIST = 520;        // brake inside this of the toll leader to hand over the toll
@@ -49,6 +50,75 @@ const DIST_TELL_R = 1500;         // scan-pulse inside this of a distress site r
 const CLAIM_TELEGRAPH_S = 3;      // arrival breath: read formation/motive before weapons open
 const CLAIM_RETREAT_R = 2400;     // leaving the defended site is a deliberate retreat
 const CLAIM_RETREAT_HOLD_S = 12;  // brief overshoots do not forfeit the defense
+const MINEFIELD_WAKE_COUNT = 3;   // mines seeded on minefield_wake spring
+const MINEFIELD_WAKE_SPACING = 70;
+
+/**
+ * W03: seed physical mines behind the jackal on minefield_wake spring.
+ * Prefer the registered mines system helper; fall back to bus placeRequest.
+ */
+function seedMinefieldWake(d, live, state, player) {
+  if (!live || !state || !player || !player.pos) return;
+  let jackal = null;
+  for (const id of live.ids || []) {
+    const e = state.entities && state.entities.get && state.entities.get(id);
+    if (!e || !e.alive) continue;
+    const role = String((e.data && e.data.lootTableId) || '');
+    if (role === 'mine_layer_jackal') { jackal = e; break; }
+  }
+  if (!jackal) {
+    // Fall back to first squad ship as the layer.
+    const firstId = live.ids && live.ids[0];
+    jackal = firstId != null && state.entities ? state.entities.get(firstId) : null;
+  }
+  if (!jackal || !jackal.pos) return;
+
+  const place = (opts) => {
+    const helpers = d.helpers || (state && state._helpers) || null;
+    if (helpers && typeof helpers.placeMine === 'function') return helpers.placeMine(opts);
+    if (minesSystem && minesSystem.state === state && typeof minesSystem.placeMine === 'function') {
+      return minesSystem.placeMine(opts);
+    }
+    if (typeof d.emit === 'function') d.emit('mines:placeRequest', opts);
+    return null;
+  };
+
+  // Wake geometry: lay mines along the vector from jackal toward player (player's approach wake).
+  const dx = (player.pos.x || 0) - (jackal.pos.x || 0);
+  const dz = (player.pos.z || 0) - (jackal.pos.z || 0);
+  const len = Math.hypot(dx, dz) || 1;
+  const ux = dx / len;
+  const uz = dz / len;
+  // Perpendicular for a short fence.
+  const px = -uz;
+  const pz = ux;
+  live.data.minesSeeded = live.data.minesSeeded || [];
+  for (let i = 0; i < MINEFIELD_WAKE_COUNT; i++) {
+    const along = 80 + i * MINEFIELD_WAKE_SPACING;
+    const side = ((i % 2) === 0 ? -1 : 1) * 28;
+    const pos = {
+      x: jackal.pos.x + ux * along + px * side,
+      z: jackal.pos.z + uz * along + pz * side,
+    };
+    const mine = place({
+      ownerId: jackal.id,
+      pos,
+      team: jackal.team,
+      factionId: jackal.factionId || null,
+      telegraph: i === 0,
+    });
+    if (mine && mine.id != null) live.data.minesSeeded.push(mine.id);
+  }
+  if (d.emit) {
+    d.emit('ai:telegraph', {
+      entityId: jackal.id,
+      kind: MINE_TELEGRAPH_CUE,
+      cue: MINE_TELEGRAPH_CUE,
+      shapeId: live.shapeId,
+      count: (live.data.minesSeeded || []).length,
+    });
+  }
+}
 
 // ── tiny vector helpers (no allocation in hot paths — these run at 1 Hz on a handful of ships) ───
 function dist2(ax, az, bx, bz) { const dx = ax - bx, dz = az - bz; return dx * dx + dz * dz; }
@@ -360,6 +430,8 @@ const ambush = {
         d.setPassive(live, false);
         live.phase = 'conflict';
         d.say(live, 'alert', 'ambush_spring');
+        // W03 shape 325: mine_layer_jackal seeds wake mines on spring (telegraph cue wake_mines).
+        if (live.shapeId === 'minefield_wake') seedMinefieldWake(d, live, state, p);
         return;
       }
       if (now >= live.deadlineAt) { d.despawnAll(live, 10); return d.resolve(live, 'escaped', { speak: false }); }
