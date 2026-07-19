@@ -77,7 +77,16 @@ export async function compileScenePipelinesForRenderTarget(
     : null;
   try {
     renderer.setRenderTarget(renderTarget || null);
-    await renderer.compileAsync(subject, camera, lightingScene || subject);
+    const admission = await compilePipelinesContextSafe(
+      renderer, subject, camera, lightingScene || subject,
+    );
+    if (admission && admission.contextLost) {
+      return {
+        skipped: true,
+        reason: admission.reason,
+        contextLost: true,
+      };
+    }
     return {
       skipped: false,
       programCount: Array.isArray(renderer.info && renderer.info.programs)
@@ -87,6 +96,110 @@ export async function compileScenePipelinesForRenderTarget(
   } finally {
     renderer.setRenderTarget(previousTarget || null);
   }
+}
+
+/**
+ * Three's compileAsync() owns an internal readiness timer that cannot be cancelled. If a WebGL
+ * context is lost while that timer is alive, it can resume after restoration and call
+ * glGetProgramiv() with program handles from the dead context. Use the same compile/isReady contract
+ * for real WebGLRenderer instances, but own the timer so context loss can retire it immediately.
+ * Lightweight render/test adapters keep using compileAsync() directly.
+ */
+function compilePipelinesContextSafe(renderer, subject, camera, lightingScene) {
+  const canvas = renderer && renderer.domElement;
+  const canOwnReadiness = typeof renderer.compile === 'function'
+    && renderer.properties && typeof renderer.properties.get === 'function'
+    && renderer.extensions && typeof renderer.extensions.get === 'function'
+    && canvas && typeof canvas.addEventListener === 'function'
+    && typeof canvas.removeEventListener === 'function'
+    && typeof renderer.getContext === 'function';
+  if (!canOwnReadiness) return renderer.compileAsync(subject, camera, lightingScene);
+
+  return new Promise((resolve, reject) => {
+    const gl = renderer.getContext();
+    let timer = null;
+    let settled = false;
+
+    const cleanup = () => {
+      if (timer != null) clearTimeout(timer);
+      timer = null;
+      canvas.removeEventListener('webglcontextlost', onContextLost, false);
+    };
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(result);
+    };
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+    const onContextLost = () => finish({
+      contextLost: true,
+      reason: 'WebGL context lost during shader compilation',
+    });
+
+    canvas.addEventListener('webglcontextlost', onContextLost, false);
+
+    let materials;
+    try {
+      materials = renderer.compile(subject, camera, lightingScene);
+    } catch (error) {
+      fail(error);
+      return;
+    }
+
+    const parallelCompile = renderer.extensions.get('KHR_parallel_shader_compile');
+    if (!parallelCompile || !materials || materials.size === 0) {
+      finish({ contextLost: false });
+      return;
+    }
+
+    const programs = new Set();
+    for (const material of materials) {
+      const properties = renderer.properties.get(material);
+      const program = properties && properties.currentProgram;
+      if (program && typeof program.isReady === 'function') programs.add(program);
+    }
+    if (programs.size === 0) {
+      finish({ contextLost: false });
+      return;
+    }
+
+    const checkProgramsReady = () => {
+      if (settled) return;
+      try {
+        if ((typeof gl.isContextLost === 'function' && gl.isContextLost())) {
+          onContextLost();
+          return;
+        }
+        for (const program of programs) {
+          // isProgram() is the guard Three's unowned timer lacks: after a restore, an old-context
+          // WebGLProgram is not a valid query target even though its JS wrapper still exists.
+          if (!program.program || (typeof gl.isProgram === 'function' && !gl.isProgram(program.program))) {
+            finish({
+              contextLost: true,
+              reason: 'WebGL program invalidated during shader compilation',
+            });
+            return;
+          }
+          if (program.isReady()) programs.delete(program);
+        }
+        if (programs.size === 0) {
+          finish({ contextLost: false });
+          return;
+        }
+        timer = setTimeout(checkProgramsReady, 10);
+      } catch (error) {
+        fail(error);
+      }
+    };
+
+    checkProgramsReady();
+  });
 }
 
 /**
