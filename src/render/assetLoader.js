@@ -3,8 +3,10 @@
 // This module deliberately owns transport, caching and authoring validation — not composition.
 // `partsLibrary.js` consumes immutable part blueprints from here and decides where parts mount.
 // The game keeps a synchronous visual-factory contract, so loads are started only after a real
-// renderer is available; callers always retain their procedural fallback while this Promise resolves.
+// renderer is available. Required authored entities remain unpublished until their blueprint is
+// ready; a temporary procedural body must never impersonate the final ship, station, or place.
 import * as THREE from 'three';
+import { configureAuthoredMaterialProfiles } from './authoredMaterialProfiles.js';
 import {
   disposeAssetResidency,
   getAssetResidency,
@@ -33,7 +35,14 @@ export const ASSET_AUTHORING_CONTRACT = Object.freeze({
     requiredContainer: 'KTX2/BasisU via KHR_texture_basisu; contract v2 release assets include mip chains',
   }),
   tintRoles: Object.freeze(['hull', 'dark', 'accent', 'thruster', 'none']),
-  canopy: Object.freeze({ material: 'MeshPhysicalMaterial', transmission: 0.6, ior: 1.4, clearcoat: 1.0 }),
+  canopy: Object.freeze({
+    material: 'MeshPhysicalMaterial',
+    transmission: 0.6,
+    ior: 1.4,
+    clearcoat: 1.0,
+    authoredOptics: 'preserve valid glTF physical-material factors, maps, UV transforms, and channels',
+    realtimeTransmission: 0,
+  }),
   topology: Object.freeze({ edgeTreatment: 'asset-specific; runtime requires valid finite triangle geometry, not one modeling technique' }),
   runtime: Object.freeze({
     gltfLoader: 'three/addons/loaders/GLTFLoader.js',
@@ -674,6 +683,12 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
 
   if (errors.length) throw new AssetContractError(url, errors, warnings);
 
+  // Blender-authored semantic names are the stable material API. Apply the shared response policy
+  // once to cached blueprint materials while preserving all authored maps, UV transforms, and tints.
+  const materialProfile = configureAuthoredMaterialProfiles(scene, {
+    assetId: metadata.assetId || fileStem(url),
+  });
+
   const ktx2Textures = new Set();
   for (const primitive of primitives) {
     for (const texture of materialTextures(primitive.material)) {
@@ -704,6 +719,10 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
       primitiveCount: primitives.length,
       markerCount: markers.length,
       ktx2TextureCount: ktx2Textures.size,
+      materialProfile: Object.freeze({
+        materials: materialProfile.materials,
+        roles: Object.freeze({ ...materialProfile.roles }),
+      }),
     }),
     residency: residencyState,
   });
@@ -890,9 +909,25 @@ function validatePrimitive(node, material, canopy, gltf, metadata, errors, warni
 
   if (canopy) {
     if (!material.isMeshPhysicalMaterial) errors.push(`${prefix} canopy did not normalize to MeshPhysicalMaterial`);
-    if (Math.abs(material.transmission - 0.6) > 0.001) errors.push(`${prefix} canopy transmission must be 0.6`);
-    if (Math.abs(material.ior - 1.4) > 0.001) errors.push(`${prefix} canopy ior must be 1.4`);
-    if (Math.abs(material.clearcoat - 1.0) > 0.001) errors.push(`${prefix} canopy clearcoat must be 1.0`);
+    if (!finiteInRange(material.transmission, 0, 1)) errors.push(`${prefix} canopy transmission must be finite in [0,1]`);
+    if (!finiteInRange(material.ior, 1, 2.333)) errors.push(`${prefix} canopy ior must be finite in [1,2.333]`);
+    if (!finiteInRange(material.clearcoat, 0, 1)) errors.push(`${prefix} canopy clearcoat must be finite in [0,1]`);
+    if (!finiteInRange(material.clearcoatRoughness, 0, 1)) errors.push(`${prefix} canopy clearcoat roughness must be finite in [0,1]`);
+    if (!Number.isFinite(Number(material.thickness)) || Number(material.thickness) < 0) {
+      errors.push(`${prefix} canopy thickness must be finite and non-negative`);
+    }
+    for (const [role, texture] of [
+      ['anisotropy', material.anisotropyMap],
+      ['clearcoat', material.clearcoatMap],
+      ['clearcoat roughness', material.clearcoatRoughnessMap],
+      ['clearcoat normal', material.clearcoatNormalMap],
+      ['transmission', material.transmissionMap],
+      ['thickness', material.thicknessMap],
+    ]) {
+      if (texture && texture.colorSpace === THREE.SRGBColorSpace) {
+        errors.push(`${prefix} ${role} map must be linear/non-color data`);
+      }
+    }
   } else if (material.transparent && material.opacity < 1) {
     warnings.push(`${prefix} is alpha-blended; only canopies/plumes should normally require per-ship sorting`);
   }
@@ -1164,34 +1199,43 @@ function applyHookString(tags, value, node) {
   else if (hook === 'damage.secondary') tags.damageRole = 'secondary';
 }
 
-function makeCanopyMaterial(source) {
-  const physical = new THREE.MeshPhysicalMaterial({
-    name: source.name || 'Authored_Canopy',
-    color: source.color ? source.color.clone() : new THREE.Color(0xffffff),
-    map: source.map || null,
-    normalMap: source.normalMap || null,
-    normalMapType: source.normalMapType,
-    normalScale: source.normalScale ? source.normalScale.clone() : new THREE.Vector2(1, 1),
-    aoMap: source.aoMap || null,
-    aoMapIntensity: source.aoMapIntensity == null ? 1 : source.aoMapIntensity,
-    roughnessMap: source.roughnessMap || null,
-    metalnessMap: source.metalnessMap || null,
-    roughness: source.roughness == null ? 0.12 : source.roughness,
-    metalness: source.metalness == null ? 0 : source.metalness,
-    emissive: source.emissive ? source.emissive.clone() : new THREE.Color(0x000000),
-    emissiveMap: source.emissiveMap || null,
-    emissiveIntensity: source.emissiveIntensity == null ? 1 : source.emissiveIntensity,
-    transmission: 0.6,
-    ior: 1.4,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.08,
-    thickness: 0.08,
-    transparent: true,
-    opacity: 1,
-    depthWrite: false,
-    side: source.side,
-  });
-  physical.userData = { ...(source.userData || {}), spacefaceCanopy: true };
+export function makeCanopyMaterial(source) {
+  const input = source || new THREE.MeshStandardMaterial();
+  let physical;
+  if (input.isMeshPhysicalMaterial) {
+    // GLTFLoader has already decoded every KHR_materials_* extension. Cloning preserves physical
+    // factors and texture identities, including texCoord channels and texture transforms.
+    physical = input.clone();
+  } else {
+    // MeshPhysicalMaterial.copy() expects a physical source. Invoke the standard copy path directly
+    // for legacy canopies, then restore the physical shader defines.
+    physical = new THREE.MeshPhysicalMaterial();
+    THREE.MeshStandardMaterial.prototype.copy.call(physical, input);
+    physical.defines = { STANDARD: '', PHYSICAL: '' };
+  }
+
+  physical.name = input.name || 'Authored_Canopy';
+  physical.roughness = finiteOr(input.roughness, 0.12);
+  physical.metalness = finiteOr(input.metalness, 0);
+  physical.transmission = finiteInRange(input.transmission, 0, 1)
+    ? Number(input.transmission)
+    : ASSET_AUTHORING_CONTRACT.canopy.transmission;
+  physical.ior = finiteInRange(input.ior, 1, 2.333)
+    ? Number(input.ior)
+    : ASSET_AUTHORING_CONTRACT.canopy.ior;
+  physical.clearcoat = finiteInRange(input.clearcoat, 0, 1)
+    ? Number(input.clearcoat)
+    : ASSET_AUTHORING_CONTRACT.canopy.clearcoat;
+  physical.clearcoatRoughness = finiteInRange(input.clearcoatRoughness, 0, 1)
+    ? Number(input.clearcoatRoughness)
+    : 0.08;
+  physical.thickness = Number.isFinite(Number(input.thickness)) && Number(input.thickness) >= 0
+    ? Number(input.thickness)
+    : 0.08;
+  physical.transparent = true;
+  physical.opacity = finiteInRange(input.opacity, 0, 1) ? Number(input.opacity) : 1;
+  physical.depthWrite = false;
+  physical.userData = { ...(input.userData || {}), spacefaceCanopy: true };
   return physical;
 }
 
@@ -1365,6 +1409,16 @@ function normalizeLod(value) {
 function finitePositive(value) {
   const n = Number(value);
   return Number.isFinite(n) && n > 0;
+}
+
+function finiteInRange(value, min, max) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= min && n <= max;
+}
+
+function finiteOr(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
 }
 
 function label(node) {
