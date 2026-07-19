@@ -5,12 +5,15 @@ import { spawnSync } from 'node:child_process';
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { MeshoptDecoder } from 'meshoptimizer';
 import { PNG } from 'pngjs';
 
 const input = resolve(process.argv[2] || 'assets/ships/parts/cockpits/cockpit_slab.glb');
 const stem = basename(input, extname(input));
 const output = resolve(process.argv[3] || `.devshots/graphics/catalog-pbr-maps/${stem}`);
-const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+const io = new NodeIO()
+  .registerExtensions(ALL_EXTENSIONS)
+  .registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
 const document = await io.read(input);
 const textures = document.getRoot().listTextures();
 
@@ -18,23 +21,41 @@ await mkdir(output, { recursive: true });
 const rows = [];
 const ormChannels = [];
 for (const [index, texture] of textures.entries()) {
-  const bytes = texture.getImage();
+  const sourceBytes = texture.getImage();
   const mimeType = texture.getMimeType();
-  if (!bytes || mimeType !== 'image/png') {
-    throw new Error(`${texture.getName() || index}: source texture must be embedded PNG, got ${mimeType || 'none'}`);
+  if (!sourceBytes || !['image/png', 'image/ktx2'].includes(mimeType)) {
+    throw new Error(`${texture.getName() || index}: expected embedded PNG or KTX2, got ${mimeType || 'none'}`);
   }
   const name = sanitize(texture.getName() || `texture_${index}`);
-  const path = resolve(output, `${String(index).padStart(2, '0')}_${name}.png`);
-  await writeFile(path, bytes);
+  const prefix = `${String(index).padStart(2, '0')}_${name}`;
+  const path = resolve(output, `${prefix}.png`);
+  let decodedBytes = sourceBytes;
+  let sourcePath = path;
+  if (mimeType === 'image/ktx2') {
+    sourcePath = resolve(output, `${prefix}.ktx2`);
+    await writeFile(sourcePath, sourceBytes);
+    const extraction = spawnSync('ktx', [
+      'extract', '--transcode', 'rgba8', sourcePath, path,
+    ], { encoding: 'utf8', windowsHide: true });
+    if (extraction.status !== 0) {
+      throw new Error(`KTX2 extraction failed (${extraction.status}) for ${name}: ${extraction.stderr || extraction.stdout}`);
+    }
+    decodedBytes = await readFile(path);
+  } else {
+    await writeFile(path, sourceBytes);
+  }
   rows.push({
     index,
     name: texture.getName() || name,
     path,
-    bytes: bytes.length,
-    sha256: sha256(bytes),
+    sourcePath,
+    mimeType,
+    bytes: sourceBytes.length,
+    sha256: sha256(sourceBytes),
+    decodedSha256: sha256(decodedBytes),
   });
   if (name.endsWith('_orm')) {
-    const png = PNG.sync.read(Buffer.from(bytes));
+    const png = PNG.sync.read(Buffer.from(decodedBytes));
     for (const [channel, offset] of [['ao', 0], ['roughness', 1], ['metallic', 2]]) {
       const grayscale = new PNG({ width: png.width, height: png.height });
       const values = [];
@@ -95,7 +116,7 @@ const materialRoles = document.getRoot().listMaterials().map((material) => ({
   occlusionTexture: material.getOcclusionTexture()?.getName() || null,
 }));
 const audit = {
-  schema: 'spaceface.catalogPbrMapEvidence.v1',
+  schema: 'spaceface.catalogPbrMapEvidence.v2',
   input,
   inputSha256: sha256(await readFile(input)),
   textureCount: rows.length,

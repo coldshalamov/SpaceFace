@@ -1100,20 +1100,6 @@
       "contractNodeCount": 17
     },
     {
-      "id": "place_station_trade_hub",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_station_trade_hub.glb",
-      "release": "assets/ships/release/parts/places/place_station_trade_hub.glb",
-      "sourceSha256": "000eecebcc9b7836eedf3a92e2158385e145779bc0cbe0189af19faa6c3aa010",
-      "releaseSha256": "ece3ad4791eceea2b6ed82908ec768b916e99d3eb617e3692aa9b86bc5734234",
-      "sourceBytes": 82441168,
-      "releaseBytes": 81774852,
-      "textures": 30,
-      "ktx2Textures": 30,
-      "meshoptBufferViews": 263,
-      "contractNodeCount": 31
-    },
-    {
       "id": "wholeship_wasp_production_v1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/wasp_production_v1.glb",
@@ -1154,6 +1140,20 @@
       "ktx2Textures": 18,
       "meshoptBufferViews": 69,
       "contractNodeCount": 19
+    },
+    {
+      "id": "place_station_trade_hub",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_station_trade_hub.glb",
+      "release": "assets/ships/release/parts/places/place_station_trade_hub.glb",
+      "sourceSha256": "94cb9dc727d606df2f7c32f2c0ffb274ee6a572a8fa7bd40836d721563d1a578",
+      "releaseSha256": "9540c8fa263359ff3b78302a9d48080af17cb903f47d43361814ba3666f0754a",
+      "sourceBytes": 79717896,
+      "releaseBytes": 79051580,
+      "textures": 30,
+      "ktx2Textures": 30,
+      "meshoptBufferViews": 263,
+      "contractNodeCount": 31
     }
   ]
 }
