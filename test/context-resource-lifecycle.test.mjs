@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { detachStaleWebGlDisposeListeners } from '../src/render/contextResourceLifecycle.js';
+import {
+  collectContextLossRoots,
+  detachStaleWebGlDisposeListeners,
+} from '../src/render/contextResourceLifecycle.js';
 
 test('context loss detaches only stale Three renderer GPU dispose listeners', () => {
   function onGeometryDispose() {}
@@ -46,6 +49,25 @@ test('context loss covers render-target attachments once and ignores unrelated o
   assert.equal(receipt.renderTargets, 1);
   assert.equal(receipt.textures, 2);
   assert.equal(receipt.listenersDetached, 3);
+});
+
+test('context loss root collection includes scene, background, bloom, graph, and live entity resources', () => {
+  const scene = { name: 'scene' };
+  const environment = { name: 'environment' };
+  const backgroundTarget = { name: 'background-target' };
+  const bloomTarget = { name: 'bloom-target' };
+  const graphTarget = { name: 'graph-target' };
+  const entityMesh = { name: 'entity-mesh' };
+  const roots = collectContextLossRoots({
+    scene,
+    environment,
+    spaceBackground: { contextLossResources: () => [backgroundTarget] },
+    bloom: { contextLossResources: () => [bloomTarget] },
+    renderGraph: { contextLossResources: () => [graphTarget] },
+    entities: [{ mesh: entityMesh }, null, {}],
+  });
+
+  assert.deepEqual(roots, [scene, environment, backgroundTarget, bloomTarget, graphTarget, entityMesh]);
 });
 
 function resource(fields, listeners) {

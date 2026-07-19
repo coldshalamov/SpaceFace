@@ -337,6 +337,16 @@ export class SpaceRenderGraph {
     };
   }
 
+  contextLossResources() {
+    return [
+      this.sceneTarget,
+      this.normalTarget,
+      this.aoTarget,
+      this.aoBlurTarget,
+      ...(this.bloomTargets || []),
+    ].filter(Boolean);
+  }
+
   dispose() {
     this._disposeTargets();
     this.normalMaterial.dispose();

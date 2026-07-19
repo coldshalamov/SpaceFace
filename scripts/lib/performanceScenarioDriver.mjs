@@ -31,11 +31,16 @@ export function performanceScenarioExecutionOrder(ids = PERFORMANCE_SCENARIO_IDS
   ];
 }
 
+export function performanceScenarioHoldsMeasuredPose(definition) {
+  return definition?.injectedState === true && definition?.transitionWindow !== true;
+}
+
 export async function preparePerformanceScenario(page, scenarioId, { seed = 47, log = () => {} } = {}) {
   const definition = performanceScenario(scenarioId);
   if (!definition) throw new Error(`unknown performance scenario: ${scenarioId}`);
   if (!Number.isInteger(seed)) throw new Error('performance scenario seed must be an integer');
-  const receipt = await page.evaluate(async ({ id, fleetCount, scenarioSeed }) => {
+  const holdsMeasuredPose = performanceScenarioHoldsMeasuredPose(definition);
+  const receipt = await page.evaluate(async ({ id, fleetCount, scenarioSeed, holdsMeasuredPose }) => {
     const sf = window.SF;
     const state = sf?.state;
     const helpers = sf?.helpers;
@@ -69,10 +74,6 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
     // velocity carries the camera away from the fleet that was placed around its starting pose.
     // Hold the player at the journaled pose for steady-state measurement so admission latency does
     // not silently change culling, LOD, draw count, or triangle count between comparable runs.
-    const holdsMeasuredPose = id !== 'docked_market_ui'
-      && id !== 'flight_steady'
-      && id !== 'station_arrival_approach'
-      && id !== 'jump_asset_admission';
     if (holdsMeasuredPose) {
       player.vel.set(0, 0, 0);
       player.prevPos.copy(player.pos);
@@ -191,7 +192,12 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
       entity.flags.noInterp = restoreNoInterp === true;
       return synchronized;
     }
-  }, { id: scenarioId, fleetCount: definition.fleetCount || 0, scenarioSeed: seed });
+  }, {
+    id: scenarioId,
+    fleetCount: definition.fleetCount || 0,
+    scenarioSeed: seed,
+    holdsMeasuredPose,
+  });
 
   if (definition.actualRenderedEntitiesRequired) {
     await waitForPerformanceScenarioReady(page, scenarioId);

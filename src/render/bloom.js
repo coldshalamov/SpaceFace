@@ -612,6 +612,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     down = next.down;
   }
 
+  function contextLossResources() {
+    return [rtScene, ...down].filter(Boolean);
+  }
+
   function setSize(w, h) {
     const nextW = Math.max(1, w | 0);
     const nextH = Math.max(1, h | 0);
@@ -718,6 +722,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     compileScenePipelines,
     warmScenePipelines,
     prepareResources,
+    contextLossResources,
     setSize,
     setOptions,
     setInstrumentation,

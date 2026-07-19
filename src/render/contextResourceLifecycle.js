@@ -14,6 +14,26 @@ const THREE_GPU_DISPOSE_LISTENER_NAMES = Object.freeze(new Set([
   'onRenderTargetDispose',
 ]));
 
+export function collectContextLossRoots({
+  scene = null,
+  environment = null,
+  spaceBackground = null,
+  bloom = null,
+  renderGraph = null,
+  entities = [],
+} = {}) {
+  const roots = [scene, environment];
+  for (const provider of [spaceBackground, bloom, renderGraph]) {
+    if (!provider || typeof provider.contextLossResources !== 'function') continue;
+    const resources = provider.contextLossResources();
+    if (Array.isArray(resources)) roots.push(...resources);
+  }
+  for (const entity of entities || []) {
+    if (entity?.mesh) roots.push(entity.mesh);
+  }
+  return roots.filter(Boolean);
+}
+
 export function detachStaleWebGlDisposeListeners(roots) {
   const seenObjects = new Set();
   const seenResources = new Set();
