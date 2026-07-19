@@ -201,6 +201,33 @@ export const newGameScreen = {
     const setDesc = () => { const d = DIFFICULTIES.find((x) => x[0] === diff.value); diffDesc.textContent = d ? d[2] : ''; };
     diff.addEventListener('change', setDesc); setDesc();
 
+    // Seed. A real player feature — a shareable, reproducible universe — and the ONLY way to make
+    // the run's procedural content repeatable. Board offers are drawn from
+    // `hash32(state.meta.seed, ...)` (missions.js `_generateOffers`), so the seed already decides
+    // which contracts, commodities and destinations a save will ever see; until now nothing could
+    // set it, and `resetRunState` fell back to `Date.now() ^ random`, re-rolling every boot.
+    //
+    // Blank means "surprise me" and keeps the existing random behaviour, so the default experience
+    // is unchanged. The plumbing below it already existed end to end — `game:new` carries opts,
+    // `resetRunState` honours `opts.seed` (main.js:589) — only this affordance was missing.
+    const seedRow = el('div', 'sf-row');
+    const seedLabel = el('label', null, 'Universe seed');
+    seedLabel.htmlFor = 'sf-ng-seed';
+    seedRow.appendChild(seedLabel);
+    const seedCtl = el('div', 'sf-ctl');
+    const seed = el('input');
+    seed.id = 'sf-ng-seed';
+    seed.type = 'text';
+    seed.inputMode = 'numeric';
+    seed.maxLength = 10;
+    seed.placeholder = 'Random';
+    seed.setAttribute('aria-describedby', 'sf-ng-seed-desc');
+    seed.style.flex = '1';
+    seedCtl.appendChild(seed); seedRow.appendChild(seedCtl); body.appendChild(seedRow);
+    const seedDesc = el('p', 'sf-muted', 'Leave blank for a random universe. The same seed always produces the same contracts and markets.');
+    seedDesc.id = 'sf-ng-seed-desc';
+    body.appendChild(seedDesc);
+
     const route = el('div', 'sf-ng-route');
     route.setAttribute('aria-label', coreText('firstMinutes'));
     route.innerHTML =
@@ -293,9 +320,14 @@ export const newGameScreen = {
       if (launching) return;
       setLaunching(true);
       const pilot = (name.value || '').trim() || 'Pilot';
+      // Only forward a seed when the player actually supplied a usable one. `resetRunState`
+      // requires a finite positive number and otherwise randomises, so passing NaN or 0 through
+      // would silently mean "random" while looking deliberate.
+      const rawSeed = Number.parseInt(String(seed.value || '').trim(), 10);
+      const seedOpt = Number.isFinite(rawSeed) && rawSeed > 0 ? { seed: rawSeed >>> 0 } : {};
       // First-run splash (spec2/03 §3): a single full-screen line on black, 2.5s, then B0.
       try { showFirstRunSplash(ctx); } catch (e) { /* non-blocking */ }
-      ctx.bus.emit('game:new', { name: pilot, shipId: STARTER_SHIP, difficulty: diff.value });
+      ctx.bus.emit('game:new', { name: pilot, shipId: STARTER_SHIP, difficulty: diff.value, ...seedOpt });
     });
     foot.appendChild(back); foot.appendChild(launch);
     rootEl.appendChild(foot);
