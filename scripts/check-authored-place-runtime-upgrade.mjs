@@ -169,11 +169,12 @@ const failedSwap = await upgradeAuthoredPlaceBoundaryForProbe(
   { releaseMode: true, loadAuthoredPart: async () => null },
 );
 assert.equal(failedSwap, false, 'failed authored load does not swap the boundary');
-assert.equal(failed.fallback.parent, failed.boundary, 'failed authored load retains the fallback root');
-assert.ok(visibleFallbackMeshNames(failed.visual).length > 0, 'failed authored load keeps fallback meshes visible');
+assert.equal(failed.fallback.parent, failed.boundary, 'failed authored load retains an off-screen diagnostic substrate');
+assert.deepEqual(visibleFallbackMeshNames(failed.visual), [], 'failed authored load never publishes fallback meshes');
 assert.equal(failed.boundary.userData.authoredAssetState, 'unavailable', 'failed load publishes unavailable state');
-assert.equal(failed.boundary.userData.authoredVisualRoot, 'readable-fallback', 'failed load keeps fallback authoritative');
-assert.equal(failed.boundary.userData.authoredReadableFallbackRetained, true, 'failed load reports retained fallback');
+assert.equal(failed.boundary.userData.authoredVisualRoot, 'none-load-failed', 'failed load publishes no substitute identity');
+assert.equal(failed.boundary.userData.authoredReadableFallbackRetained, false, 'failed load reports no readable fallback');
+assert.equal(failedEntity.presentationAdmission, 'unavailable', 'failed load releases the pending presentation admission');
 assert.equal(failed.wrapper.userData.authoredAssetState, 'unavailable', 'failed HLOD wrapper mirrors unavailable state');
 assert.equal(failed.wrapper.userData.hull, failed.fallback, 'failed HLOD wrapper keeps fallback active');
 
@@ -189,11 +190,14 @@ const failedPlaceSwap = await upgradeAuthoredPlaceBoundaryForProbe(
   { releaseMode: true, loadAuthoredPart: async () => null },
 );
 assert.equal(failedPlaceSwap, false, 'failed authored place load does not swap the boundary');
-assert.equal(failedPlace.fallback.parent, failedPlace.boundary, 'failed authored place load retains its fallback root');
-assert.equal(failedPlace.boundary.userData.authoredVisualRoot, 'readable-fallback',
-  'failed authored place load keeps fallback authoritative');
-assert.equal(failedPlace.boundary.userData.authoredReadableFallbackRetained, true,
-  'failed authored place load reports retained fallback');
+assert.equal(failedPlace.fallback.parent, failedPlace.boundary, 'failed authored place load retains an off-screen substrate');
+assert.deepEqual(visibleFallbackMeshNames(failedPlace.visual), [], 'failed authored place load never publishes fallback pixels');
+assert.equal(failedPlace.boundary.userData.authoredVisualRoot, 'none-load-failed',
+  'failed authored place load publishes no substitute identity');
+assert.equal(failedPlace.boundary.userData.authoredReadableFallbackRetained, false,
+  'failed authored place load reports no readable fallback');
+assert.equal(failedPlaceEntity.presentationAdmission, 'unavailable',
+  'failed authored place load releases the pending presentation admission');
 
 console.log('Authored place runtime upgrade checks OK');
 
@@ -212,7 +216,7 @@ function mountBoundary(entity) {
   const visual = entity.type === 'station'
     ? buildAuthoredStationArchetype(entity, { releaseMode: true })
     : buildAuthoredPlaceProp(entity, { releaseMode: true });
-  assert.ok(visual && visual.isObject3D, `${entity.id}: synchronous fallback boundary exists`);
+  assert.ok(visual && visual.isObject3D, `${entity.id}: synchronous admission boundary exists`);
   const scene = new THREE.Scene();
   scene.add(visual);
   const wrapper = entity.type === 'station' ? visual : null;
@@ -220,7 +224,8 @@ function mountBoundary(entity) {
   const boundary = wrapper ? detailed && detailed.children[0] : visual;
   assert.ok(boundary && /AuthoredAssetBoundary/.test(boundary.name), `${entity.id}: authored boundary is reachable`);
   const fallback = boundary.children.find((child) => /Fallback/.test(child.name));
-  assert.ok(fallback, `${entity.id}: fallback root is mounted before async success`);
+  assert.ok(fallback, `${entity.id}: hidden diagnostic substrate is mounted before async success`);
+  assert.equal(fallback.visible, false, `${entity.id}: diagnostic substrate cannot publish placeholder pixels`);
   return { visual, wrapper, boundary, fallback, scene };
 }
 
