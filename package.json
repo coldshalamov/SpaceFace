@@ -67,6 +67,7 @@
     "check:intent-glyphs": "node scripts/check-intent-glyphs.mjs",
     "check:known-vs-live-prices": "node scripts/check-known-vs-live-prices.mjs",
     "check:map-camera": "node --test test/map-camera.test.mjs",
+    "check:shader-compile": "node scripts/check-shader-compile.mjs",
     "check:map-confidence": "node scripts/check-map-confidence.mjs",
     "check:map-nav-context": "node --test test/map-nav-context.test.mjs",
     "check:map-never-lost": "node scripts/check-map-never-lost.mjs",
