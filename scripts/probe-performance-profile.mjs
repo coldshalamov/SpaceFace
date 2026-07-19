@@ -354,7 +354,8 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
 }
 
 async function sampleRuntime(cdp, durationMs) {
-  return evalJson(cdp, `new Promise((resolve) => {
+  return evalJson(cdp, `import('/scripts/lib/performanceSceneMetrics.mjs')
+    .then(({ collectPerformanceSceneStructure }) => new Promise((resolve) => {
     const started = performance.now();
     const rafFrames = [];
     const samples = [];
@@ -519,205 +520,9 @@ async function sampleRuntime(cdp, durationMs) {
       }
     };
 
-    const sceneBreakdown = () => {
-      const sf = window.SF || null;
-      const state = sf && sf.state || null;
-      const renderSys = state && state.render || null;
-      const scene = renderSys && renderSys.scene;
-      const ownerTypes = new WeakMap();
-      if (state && Array.isArray(state.entityList)) {
-        for (const entity of state.entityList) {
-          if (!entity || !entity.mesh || typeof entity.mesh.traverse !== 'function') continue;
-          const type = entity.type || 'entity:unknown';
-          entity.mesh.traverse((object) => ownerTypes.set(object, type));
-        }
-      }
-      const visibleMeshByCategory = {};
-      const visibleShipMeshByRole = {};
-      const visibleShipMeshByPart = {};
-      const visibleShipMeshByRoleAndPart = {};
-      const visibleShipMeshSamples = [];
-      const materialKeys = new Set();
-      const materialKeyCounts = {};
-      const materialKeyCountsByCategory = {};
-      const shipMaterialKeyCounts = {};
-      const increment = (map, key) => {
-        map[key] = (map[key] || 0) + 1;
-      };
-      const addCategory = (key) => {
-        increment(visibleMeshByCategory, key);
-      };
-      const materialKey = (material) => {
-        if (!material) return 'none';
-        const name = material.name || material.type || 'material';
-        const transparent = material.transparent ? ':transparent' : ':opaque';
-        const blending = material.blending != null ? ':blend' + material.blending : '';
-        return name + transparent + blending;
-      };
-      const materialList = (object) => Array.isArray(object.material) ? object.material : [object.material];
-      const isEffectivelyVisible = (object) => {
-        for (let cur = object; cur; cur = cur.parent) {
-          if (cur.visible === false) return false;
-        }
-        return true;
-      };
-      const compactPartUrl = (url) => {
-        if (!url) return 'unknown';
-        const parts = String(url).split(/[\\\\/]/).filter(Boolean);
-        return parts.slice(-2).join('/');
-      };
-      const shipMeshRoleKey = (object) => {
-        const tags = object && object.userData && object.userData.spacefaceTags || {};
-        const reasons = [];
-        if (tags.instance === false) reasons.push('instance:false');
-        if (tags.canopy) reasons.push('canopy');
-        if (tags.drive) reasons.push('drive:' + tags.drive);
-        if (tags.damageRole) reasons.push('damageRole:' + tags.damageRole);
-        if (tags.vfxRole) reasons.push('vfxRole:' + tags.vfxRole);
-        if (tags.decal) reasons.push('decal');
-        for (const material of materialList(object)) {
-          if (!material) continue;
-          if (material.transparent) reasons.push('transparent');
-          if (Number.isFinite(material.transmission) && material.transmission > 0) reasons.push('transmission');
-          if (material.depthWrite === false) reasons.push('depthWrite:false');
-        }
-        if (!reasons.length) reasons.push('unclassified');
-        return [...new Set(reasons)].join('+');
-      };
-      const stats = {
-        objects: 0,
-        visibleObjects: 0,
-        meshes: 0,
-        visibleMeshes: 0,
-        visibleNonPoolMeshes: 0,
-        instancedMeshes: 0,
-        castShadowObjects: 0,
-        visibleMeshByCategory,
-        visibleShipMeshByRole,
-        visibleShipMeshByPart,
-        visibleShipMeshByRoleAndPart,
-        visibleShipMeshSamples,
-        visibleMaterialKeys: [],
-        visibleMaterialKeysByCategory: [],
-        visibleShipMaterialKeys: [],
-        visibleMaterialKeyCount: 0,
-        authoredShipStates: {},
-        authoredStaticBatches: {
-          visible: 0,
-          hidden: 0,
-          total: 0,
-        },
-        authoredPools: {
-          totalChunks: 0,
-          visibleChunks: 0,
-          emptyChunks: 0,
-          visibleInstances: 0,
-          capacity: 0,
-          averageVisibleInstancesPerVisibleChunk: 0,
-          lowOccupancyVisibleChunks: 0,
-          chunkCounts: [],
-        },
-      };
-      if (scene && typeof scene.traverse === 'function') {
-        scene.traverse((object) => {
-          if (!object) return;
-          const visible = isEffectivelyVisible(object);
-          stats.objects++;
-          if (visible) stats.visibleObjects++;
-          if (object.isMesh || object.isInstancedMesh) {
-            stats.meshes++;
-            if (visible) stats.visibleMeshes++;
-          }
-          if (object.isInstancedMesh) stats.instancedMeshes++;
-          if (object.castShadow) stats.castShadowObjects++;
-          if ((object.isMesh || object.isInstancedMesh) && visible) {
-            let category = ownerTypes.get(object);
-            if (object.userData && object.userData.spacefaceStaticBatch) category = 'ship:authoredStaticBatch';
-            else if (object.userData && object.userData.spacefaceInstancePool) category = 'ship:authoredInstancePool';
-            else if (object.userData && object.userData.sharedContactShadow) category = 'contactShadow';
-            else if (!category) category = object.isInstancedMesh ? 'unowned:instanced' : 'unowned:mesh';
-            addCategory(category);
-            let roleKey = null;
-            let partKey = null;
-            if (category === 'ship' && object.isMesh) {
-              roleKey = shipMeshRoleKey(object);
-              partKey = compactPartUrl(object.userData && object.userData.spacefacePartUrl);
-              increment(visibleShipMeshByRole, roleKey);
-              increment(visibleShipMeshByPart, partKey);
-              increment(visibleShipMeshByRoleAndPart, roleKey + ' | ' + partKey);
-              if (visibleShipMeshSamples.length < 24) {
-                visibleShipMeshSamples.push({
-                  name: object.name || '',
-                  part: partKey,
-                  role: roleKey,
-                });
-              }
-            }
-            const materials = materialList(object);
-            for (const material of materials) {
-              const key = materialKey(material);
-              materialKeys.add(key);
-              increment(materialKeyCounts, key);
-              increment(materialKeyCountsByCategory, category + ' | ' + key);
-              if (category === 'ship' && roleKey && partKey) {
-                increment(shipMaterialKeyCounts, partKey + ' | ' + roleKey + ' | ' + key);
-              }
-            }
-          }
-          if (object.isInstancedMesh && object.userData && object.userData.spacefaceInstancePool) {
-            const count = object.count || 0;
-            const capacity = object.instanceMatrix && object.instanceMatrix.count || 0;
-            stats.authoredPools.totalChunks++;
-            stats.authoredPools.capacity += capacity;
-            stats.authoredPools.chunkCounts.push(count);
-            if (count > 0 && visible) {
-              stats.authoredPools.visibleChunks++;
-              stats.authoredPools.visibleInstances += count;
-              if (count <= 3) stats.authoredPools.lowOccupancyVisibleChunks++;
-            } else {
-              stats.authoredPools.emptyChunks++;
-            }
-          } else if ((object.isMesh || object.isInstancedMesh) && visible) {
-            stats.visibleNonPoolMeshes++;
-          }
-          if (object.isMesh && object.userData && object.userData.spacefaceStaticBatch) {
-            stats.authoredStaticBatches.total++;
-            if (visible) stats.authoredStaticBatches.visible++;
-            else stats.authoredStaticBatches.hidden++;
-          }
-        });
-      }
-      stats.visibleMaterialKeys = Object.entries(materialKeyCounts)
-        .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
-        .slice(0, 32)
-        .map(([key, count]) => ({ key, count }));
-      stats.visibleMaterialKeysByCategory = Object.entries(materialKeyCountsByCategory)
-        .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
-        .slice(0, 32)
-        .map(([key, count]) => ({ key, count }));
-      stats.visibleShipMaterialKeys = Object.entries(shipMaterialKeyCounts)
-        .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
-        .slice(0, 48)
-        .map(([key, count]) => ({ key, count }));
-      if (state && Array.isArray(state.entityList)) {
-        for (const entity of state.entityList) {
-          if (!entity || entity.type !== 'ship' || entity.alive === false || !entity.mesh) continue;
-          const assetState = entity.mesh.userData && entity.mesh.userData.authoredAssetState || 'unknown';
-          stats.authoredShipStates[assetState] = (stats.authoredShipStates[assetState] || 0) + 1;
-        }
-      }
-      if (stats.authoredPools.visibleChunks > 0) {
-        stats.authoredPools.averageVisibleInstancesPerVisibleChunk =
-          stats.authoredPools.visibleInstances / stats.authoredPools.visibleChunks;
-      }
-      stats.authoredPools.chunkCounts.sort((a, b) => a - b);
-      stats.visibleMaterialKeyCount = materialKeys.size;
-      const hlod = renderSys && renderSys.hlod || {};
-      stats.hlodDetailedVisible = Number(hlod.hlodDetailedVisible) || 0;
-      stats.hlodProxyVisible = Number(hlod.hlodProxyVisible) || 0;
-      stats.hlodObjectsSwapped = Number(hlod.hlodObjectsSwapped) || 0;
-      return stats;
-    };
+    const sceneBreakdown = () => collectPerformanceSceneStructure({
+      state: window.SF?.state || null,
+    });
 
     const hasTerminalAutosave = () => {
       const completed = autosaveProbe.events.some((event) => (
@@ -839,7 +644,7 @@ async function sampleRuntime(cdp, durationMs) {
     intervalId = setInterval(pushDiag, ${JSON.stringify(RUNTIME_SAMPLE_MS)});
     setTimeout(endSample, ${JSON.stringify(durationMs)} + 100);
     requestAnimationFrame(step);
-  })`);
+  }))`);
 }
 
 async function runEntityScaleSweeps(cdp) {

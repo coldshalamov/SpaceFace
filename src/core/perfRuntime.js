@@ -266,6 +266,26 @@ export function ensurePerfRuntime(state) {
       sample(frameCallbackStats, ms);
       sample(frameUntrackedStats, Math.max(0, ms - frameAccountedMs));
     },
+    /**
+     * Copy the current frame's scalar timing state into a caller-owned object.
+     * Probes call this only during bounded measurement windows. Normal gameplay pays no clocks,
+     * allocations, or property-copy work for this optional read surface.
+     */
+    readFrameSample(out = {}) {
+      out.frameDtMs = loop.lastFrameDtMs;
+      out.stepsThisFrame = loop.stepsThisFrame;
+      out.shedBacklogFrames = loop.shedBacklogFrames;
+      out.shedStepsTotal = loop.shedStepsTotal;
+      out.callbackMs = frameCallbackStats.last;
+      out.untrackedMs = frameUntrackedStats.last;
+      out.simMs = phaseStats.sim.last;
+      out.simFrameMs = phaseStats.simFrame.last;
+      out.renderMs = phaseStats.render.last;
+      out.vfxMs = phaseStats.vfx.last;
+      out.feelMs = phaseStats.feel.last;
+      out.uiMs = phaseStats.ui.last;
+      return out;
+    },
     recordSpatialHash({
       rebuilds = 0,
       dynamicRebuilds = 0,
