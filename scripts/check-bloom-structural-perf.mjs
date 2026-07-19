@@ -188,6 +188,31 @@ try {
   assert.equal(report.levels2AllocationsDuringSteady, 0);
   assert.equal(report.levels2TotalAllocDelta, 0);
 
+  // --- NaN regression net (mirrors COMPOSITE_FRAG's grade math in JS) ---
+  // The grade bug was mix(vec3(preTintLuma), graded, 1.15) driving a channel < 0, which then hit
+  // pow() in the sRGB encode → NaN. black→black (luma 0) never exercises it; dim SATURATED colors do.
+  // These probes assert the grade maps every probe to a finite, non-negative pre-encode value.
+  const smooth = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+  const gradeProbe = (c, uGrade = 0.75) => {
+    const luma = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    const t = smooth(0.10, 0.60, luma);
+    const sBal = [0.88, 0.98, 1.10], hBal = [1.10, 1.00, 0.88];
+    let g = c.map((v, i) => v * (sBal[i] + (hBal[i] - sBal[i]) * t));
+    const luma2 = 0.2126 * g[0] + 0.7152 * g[1] + 0.0722 * g[2];
+    g = g.map((v) => Math.max(luma2 + (v - luma2) * 1.15, 0));
+    return c.map((v, i) => v + (g[i] - v) * uGrade);
+  };
+  const NAN_PROBES = [
+    [0, 0, 0], [0.01, 0.01, 0.01], [0.005, 0.01, 0.03], [0.02, 0, 0], [0.3, 0.05, 0.02], [0.5, 0.8, 2.0],
+  ];
+  for (const p of NAN_PROBES) {
+    const o = gradeProbe(p);
+    assert.ok(
+      o.every((v) => Number.isFinite(v) && v >= 0),
+      `grade must map ${JSON.stringify(p)} to finite non-negative, got ${JSON.stringify(o)}`,
+    );
+  }
+
   console.log('bloom-structural-perf PASS', JSON.stringify(report));
 } finally {
   if (browser) await browser.close();

@@ -18,6 +18,7 @@ export default defineFlavorPack({
         { id: 'c1_02', text: 'The hull broke aft of the bridge. The Marker survived.' },
         { id: 'c1_03', text: 'Concord claims the bow. Frontier claims the stern.' },
         { id: 'c1_04', text: 'Neither tows it. Scavengers nest inside the engine bells.' },
+        { id: 'c1_05', text: 'Vigilant\u2019s nine-hour hold is a Concord training case. The civilians are a footnote in the same case file.' },
       ],
     },
     {
@@ -38,6 +39,7 @@ export default defineFlavorPack({
         { id: 'c3_02', text: 'Families paid for the candles. Concord pays only for flame.' },
         { id: 'c3_03', text: "Every damaged candle returns. Concord's incident ledger gains a line." },
         { id: 'c3_04', text: "Black-box telemetry smears once along the convoy's final course." },
+        { id: 'c3_05', text: 'The plinth was dark before the convoy sailed. Someone filed it lit anyway.' },
       ],
     },
     {
@@ -58,6 +60,7 @@ export default defineFlavorPack({
         { id: 'c5_02', text: 'Seven capital colors scar the ram-bow. Every color has provenance.' },
         { id: 'c5_03', text: 'The dorsal gap is a toll lane, not a mercy.' },
         { id: 'c5_04', text: 'Three lance shots. Three precursor constructs went dark.' },
+        { id: 'c5_05', text: 'The Maw keeps the toll lane lit. A MTS lease renews the fuel every cycle under REF 44-C.' },
       ],
     },
     {
@@ -188,6 +191,7 @@ export default defineFlavorPack({
         { id: 'c14_02', text: 'Cargo seals remain intact. Every boarding hatch remains closed.' },
         { id: 'c14_03', text: 'The Quiet preserve the formation, not the explanation.' },
         { id: 'c14_04', text: 'The violet buoy repeats one statement: they are not dead.' },
+        { id: 'c14_05', text: 'Seventeen transponders answer. Seventeen life-support returns are still under appeal.' },
       ],
     },
     {

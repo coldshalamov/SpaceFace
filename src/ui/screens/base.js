@@ -21,16 +21,19 @@ function injectStyle() {
   const s = document.createElement('style');
   s.id = STYLE_ID;
   s.textContent = `
-#sf-base { display:flex; flex-direction:column; gap:14px; padding:24px; min-width:min(92vw,720px);
-  max-height:90vh; overflow-y:auto; pointer-events:auto; }
+/* Layout only: the plate material, tokens, buttons and stamp come from styles/menu.css via the
+   .screen.sf-menu class mount() puts on the screen root. #sf-base is the inner column, so it
+   carries no padding/scroller of its own — the plate already provides both. */
+#sf-base { display:flex; flex-direction:column; gap:14px; padding:0; min-width:min(92vw,720px);
+  pointer-events:auto; }
 #sf-base .base-title { font-family:var(--mono); letter-spacing:.22em; font-size:17px;
-  color:var(--accent); text-shadow:0 0 14px rgba(57,208,255,.35); text-transform:uppercase; }
+  color:var(--accent); text-transform:uppercase; }
 #sf-base .base-sub { color:var(--ink-mute); font-size:12px; }
-#sf-base .base-plan { border:1px solid rgba(57,208,255,.28); border-radius:8px; padding:10px 12px;
-  background:rgba(10,18,32,.58); display:grid; gap:4px; }
-#sf-base .base-plan--ok { border-color:rgba(98,224,138,.35); background:rgba(25,54,42,.28); }
-#sf-base .base-plan--warn { border-color:rgba(255,198,77,.38); background:rgba(55,43,18,.28); }
-#sf-base .base-plan--bad { border-color:rgba(255,84,112,.38); background:rgba(52,18,28,.26); }
+#sf-base .base-plan { border:1px solid rgba(219,152,56,.28); border-radius:2px; padding:10px 12px;
+  background:rgba(23,27,31,.58); display:grid; gap:4px; }
+#sf-base .base-plan--ok { border-color:rgba(88,201,138,.35); background:rgba(24,42,34,.4); }
+#sf-base .base-plan--warn { border-color:rgba(227,161,61,.38); background:rgba(48,38,20,.4); }
+#sf-base .base-plan--bad { border-color:rgba(237,105,97,.38); background:rgba(46,24,22,.4); }
 #sf-base .base-plan-k { color:var(--accent); font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; }
 #sf-base .base-plan--ok .base-plan-k { color:var(--good); }
 #sf-base .base-plan--warn .base-plan-k { color:var(--warn); }
@@ -38,7 +41,7 @@ function injectStyle() {
 #sf-base .base-plan-title { color:var(--ink); font-weight:700; font-size:13px; }
 #sf-base .base-plan-body { color:var(--ink-dim); font-size:12px; line-height:1.35; }
 #sf-base .base-slots { display:flex; gap:10px; flex-wrap:wrap; }
-#sf-base .base-slot { flex:1; min-width:120px; border:1px solid var(--panel-edge); border-radius:8px;
+#sf-base .base-slot { flex:1; min-width:120px; border:1px solid var(--panel-edge); border-radius:2px;
   padding:12px; background:var(--panel); position:relative; }
 #sf-base .base-slot.empty { border-style:dashed; opacity:.6; display:flex; align-items:center;
   justify-content:center; color:var(--ink-mute); font-size:12px; min-height:80px; }
@@ -46,32 +49,38 @@ function injectStyle() {
 #sf-base .base-slot .eff { color:var(--accent); font-size:11px; font-family:var(--mono); }
 #sf-base .base-shop { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 #sf-base .base-specializations { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
-#sf-base .base-spec { border:1px solid var(--panel-edge); border-radius:8px; padding:12px;
+#sf-base .base-spec { border:1px solid var(--panel-edge); border-radius:2px; padding:12px;
   background:var(--panel); display:grid; gap:7px; align-content:start; }
-#sf-base .base-spec.active { border-color:rgba(57,208,255,.55); background:rgba(10,34,48,.72); }
+/* Active identity reads as a machined index notch, not a glow (mirrors menu.css .sf-slot.sel). */
+#sf-base .base-spec.active { border-color:#8a6a3c; background:var(--mf-worklight-dim);
+  box-shadow:inset 2px 0 0 var(--accent); }
 #sf-base .base-spec .nm { color:var(--ink); font-size:13px; font-weight:700; }
 #sf-base .base-spec .desc { color:var(--ink-mute); font-size:11px; line-height:1.35; }
 #sf-base .base-spec .verb { color:var(--accent); font-size:11px; font-weight:700; line-height:1.35; }
 #sf-base .base-spec .effect { color:var(--good); font-size:10px; line-height:1.35; }
 #sf-base .base-spec .risk { color:var(--warn); font-size:10px; line-height:1.35; }
-#sf-base .base-ledger { border:1px solid rgba(57,208,255,.25); border-radius:8px; padding:12px;
-  background:rgba(5,9,18,.88); display:grid; gap:8px; }
+#sf-base .base-ledger { border:1px solid rgba(219,152,56,.25); border-radius:2px; padding:12px;
+  background:rgba(14,17,19,.88); display:grid; gap:8px; }
 #sf-base .base-ledger-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
-#sf-base .base-ledger-cell { border-left:2px solid rgba(57,208,255,.32); padding-left:8px; }
+#sf-base .base-ledger-cell { border-left:2px solid rgba(219,152,56,.32); padding-left:8px; }
 #sf-base .base-ledger-k { color:var(--ink-mute); font-family:var(--mono); font-size:9px;
   letter-spacing:.12em; text-transform:uppercase; }
 #sf-base .base-ledger-v { color:var(--ink); font-size:12px; margin-top:2px; }
 #sf-base .base-freight { display:flex; gap:8px; flex-wrap:wrap; }
 #sf-base .base-receipt { color:var(--ink-dim); font-size:11px; }
-#sf-base .base-mod { border:1px solid var(--panel-edge); border-radius:8px; padding:12px; background:var(--panel); }
+#sf-base .base-mod { border:1px solid var(--panel-edge); border-radius:2px; padding:12px; background:var(--panel); }
 #sf-base .base-mod .nm { font-weight:600; color:var(--ink); font-size:13px; }
 #sf-base .base-mod .desc { color:var(--ink-mute); font-size:11px; margin:4px 0 8px; min-height:28px; }
 #sf-base .base-mod .meta { display:flex; justify-content:space-between; align-items:center; font-size:11px;
   color:var(--ink-dim); font-family:var(--mono); }
 #sf-base .base-foot { display:flex; gap:10px; justify-content:flex-end; }
 #sf-base button.sf-btn { width:auto; padding:8px 18px; }
-#sf-base button.sf-btn--primary { background:var(--accent); color:#04121a; }
-#sf-base .base-warn { color:var(--danger); font-size:11px; }
+#sf-base button.sf-btn--primary { background:linear-gradient(180deg,#ffc064,#db9838);
+  border-color:#6b4a26; color:#1c1206; }
+/* Build buttons set an inline width:100%/padding:6px, which the fascia's left index notch would
+   sit on top of. Drop the notch for those and center the label instead. */
+#sf-base .base-mod button.sf-btn { text-align:center; }
+#sf-base .base-mod button.sf-btn::before { display:none; }
 @media (max-width:760px) {
   #sf-base .base-specializations { grid-template-columns:1fr; }
   #sf-base .base-ledger-grid { grid-template-columns:1fr 1fr; }
@@ -298,6 +307,13 @@ export const baseScreen = {
   // opened and show its stale data on every subsequent open (the bug this file is fixing).
   mount(rootEl, ctx) {
     injectStyle();
+    // Fascia classes live on the screen root, not on the #sf-base child _render() rebuilds:
+    // rootEl.innerHTML = '' clears children, never classes, so this survives every re-render.
+    // styles/menu.css scopes its tokens to .screen.sf-menu and custom properties inherit, so
+    // #sf-base picks the whole palette up as a descendant.
+    rootEl.classList.add('panel', 'sf-menu');
+    // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
+    rootEl.dataset.stamp = 'CLAIM REGISTRY / OPERATIONS';
     this._rootEl = rootEl;
     this._ctx = ctx;
   },

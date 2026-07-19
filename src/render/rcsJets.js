@@ -1,0 +1,244 @@
+// SpaceFace — RCS jet resolver. The CONSUMER half of the signed actuator seam.
+//
+// Slice 0 (S0-6) made `computeFlightTelemetry` publish an `actuators` block carrying signed
+// demand plus per-nozzle non-negative magnitudes. Nothing consumed it: the renderer still
+// inferred jets from raw input keys, which is why turning fired both bow retros instead of the
+// opposite-side jet, and why assist counter-thrust and autopilot manoeuvres fired nothing at all.
+// This module closes that seam. It is pure (no THREE, no state, no allocation beyond its result)
+// so the mapping can be pinned by a node test against the real propulsion kernel.
+//
+// ---------------------------------------------------------------------------------------------
+// WHY THIS IS A RESOLVER AND NOT A LOOKUP TABLE
+// ---------------------------------------------------------------------------------------------
+// A channel→nozzle table gets pure inputs right and blends wrong: hold a starboard strafe while
+// yawing to starboard and a table lights four jets, two of which are fighting each other. A real
+// RCS quad resolves blended demand by summing the force each end of the hull is being asked to
+// receive and firing whatever satisfies the sum. Doing the same here is barely more code and is
+// correct by construction:
+//
+//   1. Accumulate the demanded push at two LOCATIONS — bow and stern — in ship-local axes.
+//        · translation  → the same lateral push at both ends (a force through the CoM)
+//        · yaw          → equal and OPPOSITE lateral pushes at the two ends (a couple)
+//        · reverse      → an aft push at the bow (that is where retros live)
+//   2. Per location, turn the accumulated push into nozzles:
+//        · a LATERAL push lights the single nozzle on the side OPPOSITE the push (Newton)
+//        · a purely LONGITUDINAL push lights the symmetric pair, no net torque
+//
+// Yaw-to-starboard therefore lights bow-PORT and stern-STARBOARD — a diagonal couple — and can
+// never light both bow jets, which is precisely the reported defect. Strafe-plus-yaw resolves to
+// one hard-working bow jet and a silent stern, which is what actually happens on a real quad.
+//
+// ---------------------------------------------------------------------------------------------
+// SIGN CONVENTION — the one load-bearing fact. Taken verbatim from the producer
+// (src/core/flight/flightTelemetry.js, `computeActuatorDemand`), NOT re-derived:
+// ---------------------------------------------------------------------------------------------
+//   forward > 0 → ship pushed along the nose      · forward < 0 → ship pushed aft
+//   lateral > 0 → ship pushed toward `rightUnit`, i.e. STARBOARD · lateral < 0 → PORT
+//   yaw     > 0 → nose swings toward STARBOARD (the `yawCw` channel)
+//
+// Channel names describe THE DIRECTION THE SHIP IS PUSHED, never the hull side the nozzle sits
+// on. Every firing this module emits therefore satisfies `exhaust === -push`, which is the
+// invariant the test asserts generally rather than case by case.
+//
+// `main` (forward > 0) is deliberately NOT an RCS jet here: the main drive already has its own
+// authored nozzle and the shipped "liquid blue fire" plume volume. This module reports the
+// normalized main demand so the plume can be driven by physics instead of by an input key, but
+// it never emits a jet for it — RCS is a smaller, colder vocabulary than the main plume.
+
+import { COAST_HELM_YAW_MULT } from '../core/flight/propulsionKernel.js';
+
+/** Ship-local axes for a heading. `f` is the nose, `r` is starboard. Matches localAxes(). */
+export function shipAxes(rot) {
+  const c = Math.cos(finite(rot));
+  const s = Math.sin(finite(rot));
+  return { fx: c, fz: s, rx: -s, rz: c };
+}
+
+// Station geometry, in fractions of hull radius. Bow retros sit further out than the stern quad
+// because that is where they read from a chase camera; the stern pair stays inboard of the main
+// nozzle so it never reads as a second engine.
+export const RCS_GEOMETRY = Object.freeze({
+  bowLong: 0.62,
+  sternLong: 0.42,
+  side: 0.40,
+});
+
+// Below this fraction of available authority a jet is not worth drawing: it would be a one-pixel
+// flicker every frame the assist trims a drift. Above it, intensity is continuous.
+export const RCS_DEADBAND = 0.06;
+
+/**
+ * Per-family denominators that turn raw accelerations into 0..1 authority fractions.
+ *
+ * The family branching mirrors `estimateBrakingSolution` (flightTelemetry.js:83-102) because the
+ * catalogue genuinely stores different fields per family: reaction/torch carry
+ * main/reverse/strafeAccel, pulse-plate carries rcs*Accel, gravimetric carries a single maxAccel,
+ * and the sail carries none of them. Falling back to a shared default rather than to zero matters:
+ * a zero denominator would make the sail's jets either invisible or permanently saturated.
+ */
+export function resolveActuatorScale(profile) {
+  const p = profile || {};
+  const family = String(p.family || 'reaction');
+  let main;
+  let reverse;
+  let strafe;
+  if (family === 'gravimetric') {
+    const cap = positive(p.maxAccel, positive(p.maxBrakeAccel, 60));
+    main = cap; reverse = cap; strafe = cap;
+  } else if (family === 'pulse_plate') {
+    main = positive(p.rcsForwardAccel, 10);
+    reverse = positive(p.rcsReverseAccel, 8);
+    strafe = positive(p.rcsStrafeAccel, 6);
+  } else {
+    main = positive(p.mainAccel, 40);
+    reverse = positive(p.reverseAccel, main * 0.55);
+    strafe = positive(p.strafeAccel, main * 0.45);
+  }
+  return { main, reverse, strafe, yaw: yawAuthority(p) };
+}
+
+/**
+ * Peak yaw authority the kernel can actually command, which is NOT `yawAccel`.
+ *
+ * Measured against the shipped kernel rather than assumed: the yaw controller is bang-bang, so a
+ * turn command saturates its own axis at any stick deflection. Normalising by `yawAccel` alone
+ * therefore pinned every yaw jet at intensity 1 and threw away the one distinction that is real —
+ * ARRESTING a spin costs more torque than entering one (`yawBrake`, and both are scaled by the
+ * coast-helm bonus). Normalising by the true ceiling makes swinging into a turn read at roughly
+ * 0.6 and snapping out of it read at 1.0, which is honest continuous data rather than a blink.
+ * `drive_reaction_m`: max(8.8, 14) * 1.2 = 16.8, exactly the peak the kernel emits.
+ */
+function yawAuthority(p) {
+  const accel = positive(p.yawAccel, 8);
+  const brake = positive(p.yawBrake, accel * 1.4);
+  return Math.max(accel, brake) * COAST_HELM_YAW_MULT;
+}
+
+/**
+ * Resolve the actuator block into concrete jet firings in WORLD space.
+ *
+ * @param {object} actuators  the `actuators` block from computeFlightTelemetry — consumed as-is
+ * @param {object} pose       { x, z, rot, radius } of the hull
+ * @param {object} scale      from resolveActuatorScale(profile)
+ * @returns {Array<Firing>}   at most 3 entries (bow pair counts as two), newest allocation per call
+ *
+ * Firing = {
+ *   station: 'bow'|'stern', side: -1|1,     // -1 = port hull, +1 = starboard hull
+ *   role,                                   // 'reverse-left'|'reverse-right'|'rcs-port'|'rcs-starboard'
+ *   x, z,                                   // world position of the nozzle
+ *   pushX, pushZ,                           // world unit vector the SHIP is pushed
+ *   dirX, dirZ,                             // world unit vector the EXHAUST leaves along (= -push)
+ *   intensity,                              // 0..1, continuous
+ *   channels,                               // which demands contributed, for debugging/capture
+ * }
+ */
+export function resolveRcsFirings(actuators, pose, scale, out = []) {
+  out.length = 0;
+  if (!actuators || !pose) return out;
+
+  const axes = shipAxes(pose.rot);
+  const radius = positive(pose.radius, 6);
+  const px = finite(pose.x);
+  const pz = finite(pose.z);
+
+  // Dimensionless authority fractions. Normalising BEFORE combining is what lets a torque
+  // (rad/s^2) and a translation (WU/s^2) be summed at a hull station at all.
+  const lat = clamp(finite(actuators.lateral) / scale.strafe, -1, 1);
+  const yaw = clamp(finite(actuators.yaw) / scale.yaw, -1, 1);
+  const rev = clamp(Math.max(0, finite(actuators.reverse)) / scale.reverse, 0, 1);
+
+  // Translation pushes both ends the same way; yaw pushes them opposite ways. yaw > 0 swings the
+  // nose to starboard, so the BOW is pushed +starboard and the STERN is pushed -starboard.
+  const bowLat = clamp(lat + yaw, -1, 1);
+  const sternLat = clamp(lat - yaw, -1, 1);
+
+  emitLateral(out, 'bow', bowLat, RCS_GEOMETRY.bowLong, axes, px, pz, radius, lat, yaw);
+  emitLateral(out, 'stern', sternLat, -RCS_GEOMETRY.sternLong, axes, px, pz, radius, lat, yaw);
+
+  // Aft push at the bow: the retro pair, symmetric so it produces no yaw. Kept as its own case
+  // rather than folded into the lateral solver because a longitudinal push has no side to be
+  // opposite of — it legitimately lights BOTH bow jets, and that is the one time it should.
+  if (rev > RCS_DEADBAND) {
+    for (const side of [-1, 1]) {
+      out.push(makeFiring({
+        station: 'bow',
+        side,
+        role: side < 0 ? 'reverse-left' : 'reverse-right',
+        longFrac: RCS_GEOMETRY.bowLong,
+        // Ship pushed aft (-nose); exhaust therefore leaves along the nose.
+        pushX: -axes.fx,
+        pushZ: -axes.fz,
+        intensity: rev,
+        channels: ['reverse'],
+        axes, px, pz, radius,
+      }));
+    }
+  }
+  return out;
+}
+
+function emitLateral(out, station, latDemand, longFrac, axes, px, pz, radius, lat, yaw) {
+  const mag = Math.abs(latDemand);
+  if (mag <= RCS_DEADBAND) return;
+  // The push is toward starboard when latDemand > 0, so the nozzle lives on the PORT hull and
+  // exhausts to port. This single line is the whole bug fix; getting it backwards merely moves
+  // the defect, which is why the test asserts `exhaust === -push` rather than trusting it.
+  const pushSign = latDemand > 0 ? 1 : -1;
+  const side = -pushSign;
+  const channels = [];
+  if (Math.abs(lat) > RCS_DEADBAND) channels.push('translation');
+  if (Math.abs(yaw) > RCS_DEADBAND) channels.push(yaw > 0 ? 'yawCw' : 'yawCcw');
+  out.push(makeFiring({
+    station,
+    side,
+    role: side < 0 ? 'rcs-port' : 'rcs-starboard',
+    longFrac,
+    pushX: axes.rx * pushSign,
+    pushZ: axes.rz * pushSign,
+    intensity: mag,
+    channels,
+    axes, px, pz, radius,
+  }));
+}
+
+function makeFiring({ station, side, role, longFrac, pushX, pushZ, intensity, channels, axes, px, pz, radius }) {
+  const lateralOffset = RCS_GEOMETRY.side * radius * side;
+  const longOffset = longFrac * radius;
+  return {
+    station,
+    side,
+    role,
+    x: px + axes.fx * longOffset + axes.rx * lateralOffset,
+    z: pz + axes.fz * longOffset + axes.rz * lateralOffset,
+    pushX,
+    pushZ,
+    // Newton's third law, stated once, in one place.
+    dirX: -pushX,
+    dirZ: -pushZ,
+    intensity: clamp(intensity, 0, 1),
+    channels,
+  };
+}
+
+/**
+ * Normalized main-drive demand, for driving the existing plume from physics rather than from an
+ * input key. Returns null when the actuator block is absent so callers keep their old fallback
+ * instead of reading a fabricated zero as "engine off".
+ */
+export function mainDriveDemand(actuators, scale) {
+  if (!actuators || !scale) return null;
+  const main = Math.max(0, finite(actuators.main));
+  const reverse = Math.max(0, finite(actuators.reverse));
+  return {
+    main: clamp(main / scale.main, 0, 1),
+    reverse: clamp(reverse / scale.reverse, 0, 1),
+    // A drive spending authority against its own velocity with zero forward demand is braking:
+    // its main nozzle must be dark while the retros fire. The renderer's speed-derived glow used
+    // to keep it lit, which read as a ship accelerating into its own brake.
+    retroOnly: main <= 0 && reverse > 0,
+  };
+}
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, finite(v))); }
+function finite(v, fallback = 0) { return Number.isFinite(v) ? v : fallback; }
+function positive(v, fallback) { return Number.isFinite(v) && v > 0 ? v : fallback; }

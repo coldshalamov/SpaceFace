@@ -16,7 +16,7 @@ export const HAZARD_TYPES  = ['dense_asteroid', 'nebula', 'radiation', 'debris']
 export const POI_TYPES     = ['beacon', 'derelict', 'cache', 'colony', 'anomaly', 'wormhole', 'wreck'];
 
 export const SECTOR_PALETTE_CLASSES = {
-  // Helios / core — Top-50 rank-10 sky kit: cooler deeper void, cyan fill, readable fog depth.
+  // Helios / core — neutral photographic rig with true-black negative space.
   core: {
     // Civilized space uses a neutral photographic rig. Sector identity comes from authored
     // landmarks and localized background structure, not a cyan wash painted over every hull.
@@ -47,8 +47,10 @@ const CORE_SECTORS = [
     trafficPerMin: 18, enemyDensity: 0, enemyLevel: [1, 2],
     neighbors: ['sector_ceres_belt', 'sector_tethys_junction', 'sector_vesta_forge'],
     stations: [
-      { id: 'station_helios',     name: 'Helios Station',  type: 'trade_hub', factionId: 'faction_scn', size: 'L', services: ['trade','shipyard','refuel','repair','missions'] },
-      { id: 'station_coalition',  name: 'Coalition HQ',    type: 'military',  factionId: 'faction_scn', size: 'M', services: ['missions','repair','refuel'] },
+      { id: 'station_helios',     name: 'Helios Station',  type: 'trade_hub', factionId: 'faction_scn', size: 'L', services: ['trade','shipyard','refuel','repair','missions'],
+        chartNote: "Everything in stock, everything watched. Fair prices, constant questions." },
+      { id: 'station_coalition',  name: 'Coalition HQ',    type: 'military',  factionId: 'faction_scn', size: 'M', services: ['missions','repair','refuel'],
+        chartNote: "Concord's desk. Clean contracts, and a clean record while you're docked." },
     ],
     // A small safe asteroid claim close to the spawn point so new pilots can learn mining before
     // the wider sector opens up (no hostiles here).
@@ -77,8 +79,10 @@ const CORE_SECTORS = [
     trafficPerMin: 10, enemyDensity: 0.18, enemyLevel: [2, 4],
     neighbors: ['sector_helios_prime', 'sector_tethys_junction', 'sector_pallas_drift'],
     stations: [
-      { id: 'station_ceres',   name: 'Ceres Refinery', type: 'refinery', factionId: 'faction_dmc', size: 'M', services: ['trade','refuel','repair','ore_buy','refine'] },
-      { id: 'station_beltout', name: 'Belt Outpost',   type: 'mining',   factionId: 'faction_dmc', size: 'S', services: ['trade','missions','ore_buy'] },
+      { id: 'station_ceres',   name: 'Ceres Refinery', type: 'refinery', factionId: 'faction_dmc', size: 'M', services: ['trade','refuel','repair','ore_buy','refine'],
+        chartNote: 'Refinery row — buys ore dear, sells plates cheap.' },
+      { id: 'station_beltout', name: 'Belt Outpost',   type: 'mining',   factionId: 'faction_dmc', size: 'S', services: ['trade','missions','ore_buy'],
+        chartNote: 'Rock crews and a scale. Ore moves same-shift; nothing else does.' },
     ],
     fields: [
       { id: 'f_ceres_1', type: 'ast_metallic',    countWeight: 1.0 },
@@ -98,8 +102,10 @@ const CORE_SECTORS = [
     trafficPerMin: 14, enemyDensity: 0.20, enemyLevel: [2, 4],
     neighbors: ['sector_helios_prime', 'sector_ceres_belt', 'sector_vesta_forge', 'sector_io_reach'],
     stations: [
-      { id: 'station_tethys',  name: 'Tethys Trade Hub', type: 'trade_hub', factionId: 'faction_mts', size: 'L', services: ['trade','shipyard','refuel','repair','missions'] },
-      { id: 'station_customs', name: 'Customs Gate',      type: 'military',  factionId: 'faction_scn', size: 'S', services: ['toll','scan','refuel'] },
+      { id: 'station_tethys',  name: 'Tethys Trade Hub', type: 'trade_hub', factionId: 'faction_mts', size: 'L', services: ['trade','shipyard','refuel','repair','missions'],
+        chartNote: 'Junction traffic sets the price twice a day. Arrive early or pay late.' },
+      { id: 'station_customs', name: 'Customs Gate',      type: 'military',  factionId: 'faction_scn', size: 'S', services: ['toll','scan','refuel'],
+        chartNote: 'Toll plate and a scanner. Everything transits; nothing transits unread.' },
     ],
     fields: [ { id: 'f_tethys_1', type: 'ast_common_rock', countWeight: 1.0 } ],
     hazards: [],
@@ -116,7 +122,8 @@ const CORE_SECTORS = [
     trafficPerMin: 9, enemyDensity: 0.25, enemyLevel: [3, 5],
     neighbors: ['sector_helios_prime', 'sector_tethys_junction', 'sector_charon_expanse'],
     stations: [
-      { id: 'station_forge',  name: 'Forge Foundry', type: 'fab',    factionId: 'faction_dmc',   size: 'M', services: ['trade','shipyard','repair','refine','module_craft'] },
+      { id: 'station_forge',  name: 'Forge Foundry', type: 'fab',    factionId: 'faction_dmc',   size: 'M', services: ['trade','shipyard','repair','refine','module_craft'],
+        chartNote: 'Plate and fittings out the door. Bring alloy, leave with modules.' },
       { id: 'station_depot3', name: 'Refuel Depot',  type: 'mining', factionId: 'faction_choir', size: 'S', services: ['refuel'] },
     ],
     fields: [
@@ -138,8 +145,10 @@ const CORE_SECTORS = [
     trafficPerMin: 7, enemyDensity: 0.40, enemyLevel: [4, 7],
     neighbors: ['sector_ceres_belt', 'sector_io_reach', 'sector_sker_haven'],
     stations: [
-      { id: 'station_drift',    name: 'Drift Market', type: 'trade_hub',   factionId: 'faction_mts',   size: 'M', services: ['trade','refuel','repair','missions'] },
-      { id: 'station_smuggler', name: 'Smuggler Den', type: 'blackmarket', factionId: 'faction_quiet', size: 'S', services: ['black_market','missions','refuel'] },
+      { id: 'station_drift',    name: 'Drift Market', type: 'trade_hub',   factionId: 'faction_mts',   size: 'M', services: ['trade','refuel','repair','missions'],
+        chartNote: 'Open board, thin oversight. Good rates on cargo nobody wants logged.' },
+      { id: 'station_smuggler', name: 'Smuggler Den', type: 'blackmarket', factionId: 'faction_quiet', size: 'S', services: ['black_market','missions','refuel'],
+        chartNote: 'No manifest, no memory. The Quiet keep the lights on, the records off.' },
     ],
     fields: [
       { id: 'f_pallas_1', type: 'ast_metallic', countWeight: 1.0 },
@@ -159,7 +168,8 @@ const CORE_SECTORS = [
     trafficPerMin: 5, enemyDensity: 0.50, enemyLevel: [5, 8],
     neighbors: ['sector_tethys_junction', 'sector_pallas_drift', 'sector_charon_expanse', 'sector_veil_nebula'],
     stations: [
-      { id: 'station_reach', name: 'Reach Station', type: 'trade_hub', factionId: 'faction_free', size: 'M', services: ['trade','repair','refuel','missions'], contested: true },
+      { id: 'station_reach', name: 'Reach Station', type: 'trade_hub', factionId: 'faction_free', size: 'M', services: ['trade','repair','refuel','missions'], contested: true,
+        chartNote: 'Contested floor. Prices swing with whoever holds the docks this week.' },
     ],
     fields: [
       { id: 'f_io_1', type: 'ast_metallic',    countWeight: 1.0 },
@@ -183,7 +193,8 @@ const CORE_SECTORS = [
     trafficPerMin: 4, enemyDensity: 0.50, enemyLevel: [5, 9],
     neighbors: ['sector_vesta_forge', 'sector_io_reach', 'sector_ashfall_reach'],
     stations: [
-      { id: 'station_expanse', name: 'Expanse Refinery', type: 'refinery', factionId: 'faction_dmc', size: 'M', services: ['ore_buy','refuel','repair','refine'] },
+      { id: 'station_expanse', name: 'Expanse Refinery', type: 'refinery', factionId: 'faction_dmc', size: 'M', services: ['ore_buy','refuel','repair','refine'],
+        chartNote: 'Deep-belt intake. Pays flat on volume and sorts the grades itself.' },
     ],
     fields: [
       { id: 'f_charon_1', type: 'ast_rare_exotic', countWeight: 0.7 },
@@ -207,7 +218,8 @@ const CORE_SECTORS = [
     trafficPerMin: 0, enemyDensity: 0.70, enemyLevel: [7, 11],
     neighbors: ['sector_pallas_drift', 'sector_veil_nebula'],
     stations: [
-      { id: 'station_sker', name: 'Sker Bazaar', type: 'blackmarket', factionId: 'faction_reach', size: 'M', services: ['black_market','repair','refuel','missions'], repGated: true },
+      { id: 'station_sker', name: 'Sker Bazaar', type: 'blackmarket', factionId: 'faction_reach', size: 'M', services: ['black_market','repair','refuel','missions'], repGated: true,
+        chartNote: "Reach hospitality — you're vouched for or you're cargo. Rates follow standing." },
     ],
     fields: [ { id: 'f_sker_1', type: 'ast_rare_exotic', countWeight: 0.8 } ],
     hazards: [
@@ -227,7 +239,8 @@ const CORE_SECTORS = [
     neighbors: ['sector_io_reach', 'sector_sker_haven'],
     wormholeTo: { sectorId: 'sector_ashfall_reach', gatedBy: 'tech:tech_long_range_survey' },
     stations: [
-      { id: 'station_veil', name: 'Research Station Veil', type: 'research', factionId: 'faction_free', size: 'M', services: ['scan_tech','missions','repair'] },
+      { id: 'station_veil', name: 'Research Station Veil', type: 'research', factionId: 'faction_free', size: 'M', services: ['scan_tech','missions','repair'],
+        chartNote: "Instruments first, hospitality never. Sells readings it won't explain." },
     ],
     fields: [ { id: 'f_veil_1', type: 'ast_gas_cloud', countWeight: 1.0 } ],
     hazards: [
@@ -246,7 +259,8 @@ const CORE_SECTORS = [
     trafficPerMin: 0, enemyDensity: 0.80, enemyLevel: [10, 15],
     neighbors: ['sector_charon_expanse'],
     stations: [
-      { id: 'station_ashcache', name: 'Ruined Cache Station', type: 'blackmarket', factionId: 'faction_vael', size: 'S', services: ['repair','refuel','missions'], repGated: true },
+      { id: 'station_ashcache', name: 'Ruined Cache Station', type: 'blackmarket', factionId: 'faction_vael', size: 'S', services: ['repair','refuel','missions'], repGated: true,
+        chartNote: "Vael salvage, half-lit. Buys what shouldn't exist at what it shouldn't cost." },
     ],
     fields: [
       { id: 'f_ash_1', type: 'ast_rare_exotic', countWeight: 1.0 },

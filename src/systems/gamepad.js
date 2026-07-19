@@ -57,6 +57,11 @@ const ACTION_MAP = {
   cancel: ['cancel'],
   tabPrev: ['l1'],
   tabNext: ['r1'],
+  // Travel Burn latch (atlas D5 / W1-5). L3 (left stick click, STD index 10) was the only
+  // standard-layout button still unbound, and it is the right one on the merits: the left stick
+  // is the throttle hand, so "press the throttle stick in" reads as committing to a long burn.
+  // It is an edge (`.pressed`), never a hold — the latch owns the state, not the button.
+  travelBurn: ['l3'],
 };
 
 const DEFAULT_DEADZONE = 0.12;

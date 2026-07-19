@@ -667,7 +667,6 @@ export const render = {
     const key = new THREE.DirectionalLight(corePalette.key, SECTOR_LIGHT_INTENSITIES.key); key.position.set(60, 140, 40); scene.add(key);
     const rim = new THREE.DirectionalLight(corePalette.rim, SECTOR_LIGHT_INTENSITIES.rim); rim.position.set(-70, 50, -60); scene.add(rim);
     const fill = new THREE.DirectionalLight(corePalette.fill, SECTOR_LIGHT_INTENSITIES.fill); fill.position.set(20, 30, 120); scene.add(fill);
-
     // Real shadow maps (graphics spec Workstream G). Keep one reusable key light regardless of the
     // boot setting; _ensureKeyLightShadows configures it once and _syncShadowMapEnabled gates work.
     // This lets a default shadows:false profile enable shadows live without allocating a new light.
@@ -1304,7 +1303,7 @@ export const render = {
     let bloomStrength = typeof vd.bloomStrength === 'number' ? vd.bloomStrength : 0.35;
     if (bloomStrength > 1) bloomStrength *= 0.5;
     bloomStrength = Math.max(0, Math.min(1, bloomStrength));
-    const bloomThreshold = typeof vd.bloomThreshold === 'number' ? vd.bloomThreshold : 0.72;
+    const bloomThreshold = typeof vd.bloomThreshold === 'number' ? vd.bloomThreshold : 1.0;
     return {
       bloom: vd.bloom,
       bloomStrength,
@@ -2260,7 +2259,7 @@ export const render = {
         bloom: true,
         renderScale: Math.min(1, Math.max(0.5, v.renderScale || 0.7)),
         bloomStrength: v.bloomStrength != null ? v.bloomStrength : 0.35,
-        bloomThreshold: v.bloomThreshold != null ? v.bloomThreshold : 0.72,
+        bloomThreshold: v.bloomThreshold != null ? v.bloomThreshold : 1.0,
       });
       this._renderGraph.setSize(drawSize.x, drawSize.y);
       // Expose for diagnostics + the energy-materials depth binding path.

@@ -65,6 +65,8 @@ import {
   writeInstancedSprite,
   writeInstancedSpriteFields,
 } from './combat/instancedSpritePool.js';
+import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJets.js';
+import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
 const EMPTY_PROJECTILE_DATA = Object.freeze({});
@@ -72,6 +74,9 @@ const PROJECTILE_TRAIL_DIAG_CLASSES = Object.freeze([
   'kinetic', 'rail', 'missile', 'plasma', 'pulse', 'emp', 'other',
 ]);
 
+// ── RCS truth (ledger RC-3) ──────────────────────────────────────────────────────────────────
+// Signed actuator demand selects the correct nozzles. The pooled production recipe owns their
+// directional shape, reduced-motion behavior, and lifecycle; no second particle-puff owner exists.
 // The event-light pool size is part of the shader-program cache key (three bakes visible light
 // count into every program). Keep the visible-light count invariant across live settings changes;
 // accessibility scales intensity at the event choke point instead of adding/removing lights and
@@ -301,8 +306,8 @@ export const vfx = {
       qualityTier: 'high',
     };
     this._productionThrusterOpts = { boost: 0, a11y: this._productionThrusterA11y };
-    this._rcsOrigins = [[0, 0, 0], [0, 0, 0]];
-    this._rcsAxes = [[1, 0, 0], [-1, 0, 0]];
+    this._rcsOrigins = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    this._rcsAxes = [[1, 0, 0], [-1, 0, 0], [1, 0, 0], [-1, 0, 0]];
     this._zeroPos = { x: 0, z: 0 };
     // M2: VFX particle/sprite/trail XZ is frame-local; spawn inputs stay galactic-global.
     this._frameMembrane = createRenderFrameMembrane().reset(ctx.state);
@@ -4095,6 +4100,12 @@ export const vfx = {
       || energy.boostBlend > 0.02
       || (energy.rcsSystem && energy.rcsSystem.pool.activeImpulseCount > 0)
     )) return true;
+    const actuators = this._actuatorsFor(player);
+    if (actuators && (
+      Math.abs(actuators.lateral || 0) > 0.001
+      || Math.abs(actuators.yaw || 0) > 0.001
+      || (actuators.reverse || 0) > 0.001
+    )) return true;
     const turn = this.state.input && Number.isFinite(this.state.input.turnIntent)
       ? Math.abs(this.state.input.turnIntent)
       : 0;
@@ -4223,7 +4234,6 @@ export const vfx = {
       plumeDrive: 0,
       boostBlend: 0,
       rcsCooldown: 0,
-      rcsLastSign: 0,
     };
   },
 
@@ -4299,62 +4309,33 @@ export const vfx = {
     const energy = this._energy;
     if (!energy || !energy.rcsSystem) return;
     energy.rcsCooldown = Math.max(0, energy.rcsCooldown - dt);
-    const turnRaw = this.state.input && Number.isFinite(this.state.input.turnIntent)
-      ? this.state.input.turnIntent
-      : 0;
-    const sign = Math.abs(turnRaw) > 0.2 ? Math.sign(turnRaw) : 0;
-    if (sign && (energy.rcsCooldown <= 0 || sign !== energy.rcsLastSign)) {
-      const cf = Math.cos(player.rot || 0);
-      const sf = Math.sin(player.rot || 0);
-      const rx = -sf;
-      const rz = cf;
-      const radius = player.radius || 4;
-      const nose = this._rcsOrigins[0];
-      const tail = this._rcsOrigins[1];
-      // The shader extends opposite its axis: the paired jets exhaust away from opposite hull sides.
-      const noseAxis = this._rcsAxes[0];
-      const tailAxis = this._rcsAxes[1];
-      const sockets = this._rcsSocketObjects(player);
-      const selectedSocket = sockets && (sign > 0 ? sockets.port : sockets.starboard);
-      const socketPose = selectedSocket ? this._trailSocketPoseFromObject(selectedSocket) : null;
-      if (socketPose) {
-        const noseLocal = this._toLocalXZ(socketPose.x, socketPose.z, this._spawnLocalXZ);
-        nose[0] = noseLocal.x; nose[1] = socketPose.y; nose[2] = noseLocal.z;
-        const tailLocal = this._toLocalXZ(
-          player.pos.x * 2 - socketPose.x,
-          player.pos.z * 2 - socketPose.z,
-          this._spawnLocalXZ,
-        );
-        tail[0] = tailLocal.x; tail[1] = socketPose.y; tail[2] = tailLocal.z;
-        noseAxis[0] = -socketPose.forwardX;
-        noseAxis[1] = -socketPose.forwardY;
-        noseAxis[2] = -socketPose.forwardZ;
-        tailAxis[0] = socketPose.forwardX;
-        tailAxis[1] = socketPose.forwardY;
-        tailAxis[2] = socketPose.forwardZ;
-      } else {
-        const noseLocal = this._toLocalXZ(
-          player.pos.x + cf * radius * 0.48 + rx * sign * radius * 0.26,
-          player.pos.z + sf * radius * 0.48 + rz * sign * radius * 0.26,
-          this._spawnLocalXZ,
-        );
-        nose[0] = noseLocal.x; nose[1] = 0; nose[2] = noseLocal.z;
-        const tailLocal = this._toLocalXZ(
-          player.pos.x - cf * radius * 0.48 - rx * sign * radius * 0.26,
-          player.pos.z - sf * radius * 0.48 - rz * sign * radius * 0.26,
-          this._spawnLocalXZ,
-        );
-        tail[0] = tailLocal.x; tail[1] = 0; tail[2] = tailLocal.z;
-        noseAxis[0] = -rx * sign; noseAxis[1] = 0; noseAxis[2] = -rz * sign;
-        tailAxis[0] = rx * sign; tailAxis[1] = 0; tailAxis[2] = rz * sign;
+    const actuators = this._actuatorsFor(player);
+    if (actuators && energy.rcsCooldown <= 0) {
+      const pose = this._rcsPoseScratch || (this._rcsPoseScratch = { x: 0, z: 0, rot: 0, radius: 6 });
+      pose.x = player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
+      pose.z = player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
+      pose.rot = player.rot || 0;
+      pose.radius = player.radius || 6;
+      const firings = resolveRcsFirings(
+        actuators,
+        pose,
+        this._rcsScaleFor(player._flightFrame),
+        this._productionRcsFirings || (this._productionRcsFirings = []),
+      );
+      let fired = 0;
+      for (let i = 0; i < firings.length && fired < this._rcsOrigins.length; i++) {
+        const jet = firings[i];
+        if (!(jet.intensity > 0.001)) continue;
+        const local = this._toLocalXZ(jet.x, jet.z, this._spawnLocalXZ);
+        const origin = this._rcsOrigins[fired];
+        const axis = this._rcsAxes[fired];
+        origin[0] = local.x; origin[1] = 0; origin[2] = local.z;
+        axis[0] = jet.dirX; axis[1] = 0; axis[2] = jet.dirZ;
+        energy.rcsSystem.fire(origin, axis, jet.intensity);
+        fired++;
       }
-      const strength = Math.min(1, 0.45 + Math.abs(turnRaw) * 0.55);
-      energy.rcsSystem.fire(nose, noseAxis, strength);
-      energy.rcsSystem.fire(tail, tailAxis, strength);
-      energy.rcsCooldown = a11y.reducedMotion ? 0.18 : 0.11;
-      energy.rcsLastSign = sign;
+      if (fired > 0) energy.rcsCooldown = a11y.reducedMotion ? 0.18 : 0.11;
     }
-    if (!sign) energy.rcsLastSign = 0;
     energy.rcsSystem.update(dt, a11y);
   },
 
@@ -4366,7 +4347,6 @@ export const vfx = {
     energy.plumeDrive = 0;
     energy.boostBlend = 0;
     energy.rcsCooldown = 0;
-    energy.rcsLastSign = 0;
   },
 
   _updateEnergyMassline(dt) {
@@ -4425,6 +4405,38 @@ export const vfx = {
     this._energy = null;
   },
 
+  // ---------------------------------------------------------------------------------------------
+  // RCS truth (ledger RC-3): the renderer consumes SIGNED actuator demand.
+  //
+  // Slice 0 published the demand; nothing read it. Presentation kept guessing nozzles from input
+  // keys, so a turn fired both bow retros and every jet the pilot did not personally command —
+  // assist drift-kill, autopilot manoeuvres, governor counter-thrust — was invisible. These three
+  // methods are the consumer half. They add no physics and re-derive nothing: the sign, the
+  // per-nozzle magnitudes and the drive-state flags all arrive from the telemetry seam.
+  // ---------------------------------------------------------------------------------------------
+
+  /** Per-drive normalization denominators, cached by driveId (the catalogue is immutable). */
+  _rcsScaleFor(frame) {
+    const driveId = frame && typeof frame.driveId === 'string' ? frame.driveId : null;
+    if (!driveId) return resolveActuatorScale(null);
+    if (!this._rcsScaleCache) this._rcsScaleCache = new Map();
+    let scale = this._rcsScaleCache.get(driveId);
+    if (!scale) {
+      scale = resolveActuatorScale(PROPULSION_PROFILES[driveId] || null);
+      this._rcsScaleCache.set(driveId, scale);
+    }
+    return scale;
+  },
+
+  /** Signed player actuator truth published by flightV3; presentation never re-simulates physics. */
+  _actuatorsFor(e) {
+    if (!e || e.id !== this.state.playerId) return null;
+    const state = this.state;
+    const runtime = state.flightRuntime;
+    const telemetry = runtime && runtime.telemetry;
+    return telemetry && telemetry.actuators ? telemetry.actuators : null;
+  },
+
   _engineDriveFor(e, out = this._driveScratch) {
     if (!out) out = this._driveScratch = { drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0 };
     if (!e) {
@@ -4445,11 +4457,21 @@ export const vfx = {
       const inp = this.state.input;
       if (inp && Number.isFinite(inp.moveZ) && inp.moveZ > 0) throttle = Math.max(throttle, Math.min(1.15, inp.moveZ));
     }
+    // Physics beats keys. When the flight computer has published signed demand, the plume follows
+    // the thrust the drive is ACTUALLY producing — which includes assist and autopilot thrust the
+    // pilot never commanded, and excludes the key the pilot is holding while the governor ignores it.
+    const md = mainDriveDemand(this._actuatorsFor(e), this._rcsScaleFor(frame));
+    if (md) throttle = md.main;
     const cf = Math.cos(e.rot || 0);
     const sf = Math.sin(e.rot || 0);
     const forwardSpeed = Number.isFinite(frame.forwardSpeed) ? frame.forwardSpeed : (vx * cf + vz * sf);
-    const forwardDrive = Math.min(1.1, Math.max(0, forwardSpeed) / Math.max(35, maxSpeed * 0.75));
-    const speedDrive = Math.min(1, speed / Math.max(40, maxSpeed * 0.75));
+    let forwardDrive = Math.min(1.1, Math.max(0, forwardSpeed) / Math.max(35, maxSpeed * 0.75));
+    let speedDrive = Math.min(1, speed / Math.max(40, maxSpeed * 0.75));
+    // A ship on its retros has a cold main nozzle. The speed-derived glow used to keep the engine
+    // lit while the bow jets fired, which read as accelerating into your own brake — the same class
+    // of lie as firing the wrong RCS jet. Damped rather than hard-zeroed so a hard brake at speed
+    // still shows a residual thermal glow instead of snapping to black.
+    if (md && md.retroOnly) { forwardDrive *= 0.18; speedDrive *= 0.18; }
     const boost = e.flags && e.flags.boosting ? 1 : 0;
     const drive = Math.min(1.35, Math.max(throttle, forwardDrive * 0.85, speedDrive * 0.40) + boost * 0.45);
     out.drive = drive;
@@ -4832,10 +4854,12 @@ export const vfx = {
     const screenChecks = { remaining: TRAIL_SCREEN_CHECK_MAX };
     let reducedEmitted = 0;
     this._trailBudgetDiag.trailCandidates = list.length;
+
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
       if (e.flags && e.flags.docked) continue;
+
       const driveInfo = this._engineDriveFor(e);
       if (driveInfo.drive < 0.055) continue; // idle ships emit nothing
       const tier = this._resolveTrailTier(e, ctx, screenChecks);
