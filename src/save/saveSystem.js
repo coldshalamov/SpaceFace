@@ -364,7 +364,12 @@ export const save = {
   _callSerialize(name) {
     const sys = this.registry && this.registry.get && this.registry.get(name);
     if (sys && typeof sys.serialize === 'function') {
-      try { return clonePlain(sys.serialize()); } catch (err) { console.error('[save] serialize ' + name, err); }
+      try {
+        const snapshot = sys.serialize();
+        // Opt-in serializers prove that every returned branch is newly allocated or explicitly
+        // copied from live state. Preserve the defensive clone for every unmarked subsystem.
+        return sys.saveSnapshotOwned === true ? snapshot : clonePlain(snapshot);
+      } catch (err) { console.error('[save] serialize ' + name, err); }
     }
     return null;
   },

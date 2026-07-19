@@ -999,3 +999,23 @@ test('a raw wall observation above 12ms fails the hard budget flag (adversarial)
     'any raw slice >12ms must fail observedHardLimitMet; batching must not relax this gate');
   assert.equal(timing.observedTargetMet, false);
 });
+
+test('save serializer ownership is explicit and unmarked systems retain defensive isolation', () => {
+  const owned = { nested: { value: 1 } };
+  const borrowed = { nested: { value: 2 } };
+  const harness = Object.create(save);
+  harness.registry = {
+    get(name) {
+      if (name === 'owned') return { saveSnapshotOwned: true, serialize: () => owned };
+      if (name === 'borrowed') return { serialize: () => borrowed };
+      return null;
+    },
+  };
+
+  assert.equal(harness._callSerialize('owned'), owned,
+    'explicitly-owned snapshots should bypass the redundant outer clone');
+  const copied = harness._callSerialize('borrowed');
+  assert.notEqual(copied, borrowed, 'unmarked serializers must keep the defensive copy boundary');
+  copied.nested.value = 99;
+  assert.equal(borrowed.nested.value, 2);
+});
