@@ -672,6 +672,9 @@ export const render = {
     // intercepted before the procedural visualFactory. Narrow + failure-isolated — any throw falls
     // back to the original procedural builder, so non-Kestrel entities are completely unaffected.
     installVisualOverrides(vf, {
+      // Live play mounts a zero-draw admission substrate and publishes the authored GLB as the first
+      // visible identity. Preview-only factories may still opt into hidden diagnostic geometry.
+      directAuthoredMount: true,
       onAuthoredAssetSwap: ({ boundary, root } = {}) => {
         configureRealtimeCanopyMaterials(boundary || root);
         this._shadowReceiversDirty = true;
