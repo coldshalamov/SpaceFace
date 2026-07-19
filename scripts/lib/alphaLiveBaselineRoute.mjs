@@ -502,7 +502,7 @@ async function readFlightSnapshot(page) {
     const ships = Array.isArray(state?.entityList)
       ? state.entityList.filter((item) => item?.type === 'ship' && item.alive !== false)
       : [];
-    const statuses = ships.map((ship) => ship?.mesh?.userData?.authoredAssetState || 'missing');
+    const authored = summarizeAuthoredPresentation(ships, player);
     const firstRunSplash = document.querySelector('[data-screen="firstRun"], .sf-first-run, [data-first-run]');
     return {
       mode: state?.mode || null,
@@ -516,11 +516,7 @@ async function readFlightSnapshot(page) {
         vel: { x: Number(player.vel?.x || 0), z: Number(player.vel?.z || 0) },
         speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
       } : null,
-      authored: {
-        ready: statuses.length > 0 && statuses.every((status) => status === 'authored'),
-        shipCount: statuses.length,
-        statuses,
-      },
+      authored,
       controls: {
         moveX: Number(state?.input?.moveX || 0),
         moveZ: Number(state?.input?.moveZ || 0),
@@ -538,16 +534,62 @@ async function readFlightSnapshot(page) {
       return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0.01
         && rect.width > 1 && rect.height > 1;
     }
+
+    function summarizeAuthoredPresentation(liveShips, livePlayer) {
+      const result = {
+        ready: false,
+        shipCount: liveShips.length,
+        presentedShipCount: 0,
+        pendingShipCount: 0,
+        fallbackShipCount: 0,
+        statuses: [],
+      };
+      for (const ship of liveShips) {
+        const status = ship?.mesh?.userData?.authoredAssetState || 'missing';
+        const admission = ship?.presentationAdmission || null;
+        result.statuses.push(status);
+        if ((status === 'authored' || status === 'authored-with-cleanup-error')
+            && (admission === 'ready' || admission == null)) result.presentedShipCount++;
+        else if (admission === 'pending' && (
+          status === 'awaiting-authored-admission'
+          || status === 'loading'
+          || status === 'compiling-pipelines'
+        )) result.pendingShipCount++;
+        else result.fallbackShipCount++;
+      }
+      const playerStatus = livePlayer?.mesh?.userData?.authoredAssetState || 'missing';
+      const playerReady = (playerStatus === 'authored' || playerStatus === 'authored-with-cleanup-error')
+        && (livePlayer?.presentationAdmission === 'ready' || livePlayer?.presentationAdmission == null);
+      result.ready = result.shipCount > 0 && playerReady && result.fallbackShipCount === 0;
+      return result;
+    }
   });
 }
 
-function flightReadyInPage() {
+export function flightReadyInPage() {
   const state = window.SF?.state;
   const player = state?.entities?.get(state.playerId);
   const ships = Array.isArray(state?.entityList)
     ? state.entityList.filter((item) => item?.type === 'ship' && item.alive !== false)
     : [];
-  const allAuthored = ships.length > 0 && ships.every((ship) => ship?.mesh?.userData?.authoredAssetState === 'authored');
+  let presentedShipCount = 0;
+  let fallbackShipCount = 0;
+  for (const ship of ships) {
+    const status = ship?.mesh?.userData?.authoredAssetState || 'missing';
+    const admission = ship?.presentationAdmission || null;
+    if ((status === 'authored' || status === 'authored-with-cleanup-error')
+        && (admission === 'ready' || admission == null)) presentedShipCount++;
+    else if (!(admission === 'pending' && (
+      status === 'awaiting-authored-admission'
+      || status === 'loading'
+      || status === 'compiling-pipelines'
+    ))) fallbackShipCount++;
+  }
+  const playerStatus = player?.mesh?.userData?.authoredAssetState || 'missing';
+  const playerReady = (playerStatus === 'authored' || playerStatus === 'authored-with-cleanup-error')
+    && (player?.presentationAdmission === 'ready' || player?.presentationAdmission == null);
+  const authoredPresentationReady = ships.length > 0 && presentedShipCount > 0
+    && playerReady && fallbackShipCount === 0;
   const modalOpen = document.body.classList.contains('ui-modal-open');
   const splash = document.getElementById('cinematic-splash');
   const splashStyle = splash ? getComputedStyle(splash) : null;
@@ -556,7 +598,7 @@ function flightReadyInPage() {
   const firstRunStyle = firstRun ? getComputedStyle(firstRun) : null;
   const firstRunVisible = !!(firstRun && !firstRun.hidden && firstRunStyle?.display !== 'none' && firstRunStyle?.visibility !== 'hidden');
   return state?.mode === 'flight' && player && player.alive !== false && Number(player.hull) > 0
-    && allAuthored && !modalOpen && !splashVisible && !firstRunVisible;
+    && authoredPresentationReady && !modalOpen && !splashVisible && !firstRunVisible;
 }
 
 async function readNavigationSnapshot(page) {

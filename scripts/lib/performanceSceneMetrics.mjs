@@ -208,9 +208,15 @@ export function collectPerformancePipelineReadiness({
       }))
     : [];
   return {
-    authoredReady: authored.shipCount > 0 && authored.fallbackCount === 0,
+    // Pending entities use the graphics admission contract's zero-draw boundary: they are not a
+    // procedural fallback and must not hold the playable opening route behind a whole-sector drain.
+    authoredReady: authored.shipCount > 0
+      && authored.readyCount > 0
+      && authored.fallbackCount === 0,
     authoredShipCount: authored.shipCount,
     authoredReadyCount: authored.readyCount,
+    authoredPendingCount: authored.pendingCount,
+    authoredPresentedCount: authored.readyCount,
     authoredFallbackCount: authored.fallbackCount,
     authoredMissingMeshCount: authored.missingMeshCount,
     authoredPartLibraryPromisePresent: isPromiseLike(renderState.authoredPartLibraryReady),
@@ -243,8 +249,14 @@ function ownerCategory(entity) {
   return entity?.type || 'entity:unknown';
 }
 
-function authoredAssetStatus(state) {
-  const result = { shipCount: 0, readyCount: 0, fallbackCount: 0, missingMeshCount: 0 };
+export function authoredAssetStatus(state) {
+  const result = {
+    shipCount: 0,
+    readyCount: 0,
+    pendingCount: 0,
+    fallbackCount: 0,
+    missingMeshCount: 0,
+  };
   for (const entity of state?.entityList || []) {
     if (entity?.type !== 'ship' || entity.alive === false) continue;
     result.shipCount++;
@@ -254,8 +266,19 @@ function authoredAssetStatus(state) {
       continue;
     }
     const assetState = entity.mesh.userData?.authoredAssetState;
-    if (assetState === 'authored') result.readyCount++;
-    else result.fallbackCount++;
+    const admission = entity.presentationAdmission;
+    if ((assetState === 'authored' || assetState === 'authored-with-cleanup-error')
+        && (admission === 'ready' || admission == null)) {
+      result.readyCount++;
+    } else if (admission === 'pending' && (
+      assetState === 'awaiting-authored-admission'
+      || assetState === 'loading'
+      || assetState === 'compiling-pipelines'
+    )) {
+      result.pendingCount++;
+    } else {
+      result.fallbackCount++;
+    }
   }
   return result;
 }

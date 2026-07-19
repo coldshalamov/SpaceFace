@@ -459,7 +459,9 @@ async function publicUndockFromStation(page) {
 
   // The protected station UI asks for an explicit departure confirmation. Complete the same
   // public keyboard/mouse route a player sees; never bypass it with an injected dock-state write.
-  const confirm = page.getByRole('button', { name: 'Undock', exact: true });
+  const canonicalConfirm = page.locator('button.st-undock');
+  const computedUndockRole = page.getByRole('button', { name: /\bundock\b/i });
+  const confirm = canonicalConfirm.and(computedUndockRole);
   await confirm.waitFor({ state: 'visible', timeout: 5_000 });
   await confirm.click();
   await page.waitForFunction(() => window.SF?.state?.ui?.docked === false, null, { timeout: 20_000 });
@@ -1807,14 +1809,27 @@ async function readPerformanceRouteFailureState(page) {
       : [];
     const statusCounts = {};
     const nonAuthored = [];
+    let presentedAuthored = 0;
+    let pendingAuthored = 0;
+    let fallbackAuthored = 0;
     for (const ship of ships) {
       const status = ship?.mesh?.userData?.authoredAssetState || 'missing';
+      const admission = ship?.presentationAdmission || null;
       statusCounts[status] = (statusCounts[status] || 0) + 1;
-      if (status !== 'authored' && nonAuthored.length < 50) {
+      if ((status === 'authored' || status === 'authored-with-cleanup-error')
+          && (admission === 'ready' || admission == null)) presentedAuthored++;
+      else if (admission === 'pending' && (
+        status === 'awaiting-authored-admission'
+        || status === 'loading'
+        || status === 'compiling-pipelines'
+      )) pendingAuthored++;
+      else fallbackAuthored++;
+      if (status !== 'authored' && status !== 'authored-with-cleanup-error' && nonAuthored.length < 50) {
         nonAuthored.push({
           id: ship?.id || null,
           defId: ship?.defId || ship?.shipDefId || null,
           status,
+          admission,
           visible: ship?.mesh?.visible === true,
         });
       }
@@ -1834,7 +1849,7 @@ async function readPerformanceRouteFailureState(page) {
       playerPresent: !!player,
       playerAlive: !!player && player.alive !== false && Number(player.hull) > 0,
       authoredShipsPresent: ships.length > 0,
-      allShipsAuthored: ships.length > 0 && nonAuthored.length === 0,
+      authoredPresentationSafe: ships.length > 0 && presentedAuthored > 0 && fallbackAuthored === 0,
       modalClosed: !document.body.classList.contains('ui-modal-open'),
       cinematicClosed: !splashVisible,
       firstRunClosed: !firstRunVisible,
@@ -1864,7 +1879,14 @@ async function readPerformanceRouteFailureState(page) {
         hull: Number(player.hull || 0),
         authoredAssetState: player?.mesh?.userData?.authoredAssetState || 'missing',
       } : null,
-      ships: { count: ships.length, statusCounts, nonAuthored },
+      ships: {
+        count: ships.length,
+        presentedAuthored,
+        pendingAuthored,
+        fallbackAuthored,
+        statusCounts,
+        nonAuthored,
+      },
       pipeline,
     };
   }).catch((error) => ({ available: false, error: error?.message || String(error) }));

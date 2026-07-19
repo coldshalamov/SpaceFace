@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  authoredAssetStatus,
   collectPerformancePipelineReadiness,
   collectPerformanceSceneStructure,
 } from '../scripts/lib/performanceSceneMetrics.mjs';
@@ -112,4 +113,38 @@ test('pipeline readiness exposes queue, fallback, admission, residency, and rece
   } finally {
     Object.defineProperty(globalThis, 'performance', { configurable: true, value: originalPerformance });
   }
+});
+
+test('invisible pending authored admission is not misreported as a procedural fallback', () => {
+  const authored = {
+    type: 'ship',
+    alive: true,
+    presentationAdmission: 'ready',
+    mesh: { userData: { authoredAssetState: 'authored' } },
+  };
+  const pending = {
+    type: 'ship',
+    alive: true,
+    presentationAdmission: 'pending',
+    mesh: { userData: { authoredAssetState: 'awaiting-authored-admission' } },
+  };
+  const state = { entityList: [authored, pending], render: {} };
+  assert.deepEqual(authoredAssetStatus(state), {
+    shipCount: 2,
+    readyCount: 1,
+    pendingCount: 1,
+    fallbackCount: 0,
+    missingMeshCount: 0,
+  });
+  const readiness = collectPerformancePipelineReadiness({ state });
+  assert.equal(readiness.authoredReady, true);
+  assert.equal(readiness.authoredPresentedCount, 1);
+  assert.equal(readiness.authoredPendingCount, 1);
+  assert.equal(readiness.authoredFallbackCount, 0);
+
+  pending.presentationAdmission = 'unavailable';
+  pending.mesh.userData.authoredAssetState = 'fallback-after-error';
+  const failed = collectPerformancePipelineReadiness({ state });
+  assert.equal(failed.authoredReady, false);
+  assert.equal(failed.authoredFallbackCount, 1);
 });
