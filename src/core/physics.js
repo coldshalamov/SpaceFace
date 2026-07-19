@@ -492,7 +492,7 @@ export const physics = {
       }
       proj.pos.x = bestHit.x;
       proj.pos.z = bestHit.z;
-      this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget.id, { x: proj.pos.x, z: proj.pos.z }));
+      this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget, { x: proj.pos.x, z: proj.pos.z }));
       proj.alive = false;
       this._diag.sweptProjectileHits++;
     }
@@ -530,7 +530,7 @@ export const physics = {
       const tgt = ta === 'projectile' ? b : a;
       if (tgt.type === 'projectile') return;
       if (proj.ownerId === tgt.id) return; // never hit owner
-      bus.emit('projectile:hit', projectileHitPayload(proj, tgt.id, { x: proj.pos.x, z: proj.pos.z }));
+      bus.emit('projectile:hit', projectileHitPayload(proj, tgt, { x: proj.pos.x, z: proj.pos.z }));
       proj.alive = false;
       return;
     }
@@ -838,21 +838,43 @@ function shouldStartBroadphasePairSearch(e) {
   return e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'pickup';
 }
 
-function projectileHitPayload(proj, targetId, pos) {
+export function projectileHitPayload(proj, targetOrId, pos) {
   const pd = proj.data || {};
+  const target = targetOrId && typeof targetOrId === 'object' ? targetOrId : null;
+  const targetId = target ? target.id : targetOrId;
+  const velocityX = Number(proj.vel && proj.vel.x);
+  const velocityZ = Number(proj.vel && proj.vel.z);
+  const rotation = Number(proj.rot) || 0;
+  const vx = Number.isFinite(velocityX) ? velocityX : Math.cos(rotation);
+  const vz = Number.isFinite(velocityZ) ? velocityZ : Math.sin(rotation);
+  const speed = Math.hypot(vx, vz) || 1;
+  const approach = { x: vx / speed, z: vz / speed };
+  let nx = target && target.pos ? Number(pos.x) - Number(target.pos.x) : -approach.x;
+  let nz = target && target.pos ? Number(pos.z) - Number(target.pos.z) : -approach.z;
+  const normalLength = Math.hypot(nx, nz);
+  if (normalLength > 1e-8) {
+    nx /= normalLength;
+    nz /= normalLength;
+  } else {
+    nx = -approach.x;
+    nz = -approach.z;
+  }
+  const normal = { x: nx, z: nz };
   const payload = {
     targetId,
     ownerId: proj.ownerId,
     damage: pd.damage || 0,
     damageType: pd.damageType || 'kinetic',
     pos,
+    approach,
+    normal,
   };
   if (pd.weaponId != null) payload.weaponId = pd.weaponId;
-  if (pd.damagePacket) payload.damagePacket = cloneDamagePacketWithHit(pd.damagePacket, pos);
+  if (pd.damagePacket) payload.damagePacket = cloneDamagePacketWithHit(pd.damagePacket, pos, approach, normal);
   return payload;
 }
 
-function cloneDamagePacketWithHit(packet, pos) {
+function cloneDamagePacketWithHit(packet, pos, approach, normal) {
   const out = {
     ...packet,
     channels: { ...(packet.channels || {}) },
@@ -862,6 +884,8 @@ function cloneDamagePacketWithHit(packet, pos) {
     hit: {
       ...(packet.hit || {}),
       pos: { x: Number(pos.x) || 0, z: Number(pos.z) || 0 },
+      approach: { ...approach },
+      normal: { ...normal },
     },
   };
   if (packet.impulse) out.impulse = { ...packet.impulse };

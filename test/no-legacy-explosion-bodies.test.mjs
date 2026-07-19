@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const source = readFileSync(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../src/render/vfx.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
 test('the phased lifecycle is the only executable explosion implementation', () => {
   assert.doesNotMatch(source, /\n\s*_explodeSmall\s*\(/,
