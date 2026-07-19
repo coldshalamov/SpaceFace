@@ -71,6 +71,12 @@ test('profile and closure probes share scene metrics and bounded measurement gat
   assert.match(profile, /collectPerformanceSceneStructure/);
   assert.match(profile, /authoredAssetStatus\(state\)/);
   assert.match(profile, /rafHitches: sampled\.raf\.hitches \|\| \[\]/);
+  assert.match(profile,
+    /name:\s*'raf\.frame\.p95\.target'[\s\S]{0,520}pass:\s*Number\.isFinite\(rafFrameP95\)\s*&&\s*rafFrameP95\s*<=\s*FRAME_TARGET_MS/,
+    'the measured environment floor must never waive the literal 16.7ms acceptance target');
+  assert.doesNotMatch(profile,
+    /name:\s*'raf\.frame\.p95\.target'[\s\S]{0,520}pass:[^\n]*\|\|[^\n]*environmentFloor/,
+    'environment-floor attribution must remain diagnostic rather than turning a target miss into a pass');
   assert.match(hitch, /UNCAPPED \? \['--disable-frame-rate-limit', '--disable-gpu-vsync'\] : \[\]/);
   assert.match(hitch, /sample\.programEvents\.length === 0/);
   assert.match(hitch, /sample\.frameMs\.unexpectedOverBudget === 0/);

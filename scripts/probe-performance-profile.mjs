@@ -1713,10 +1713,12 @@ function evaluateBudgets({ rafFrameP95, rafHitchCount, diagnosticFrameP95, rende
     value: round(rafFrameP95),
     op: '<=',
     limit: FRAME_TARGET_MS,
-    pass: (Number.isFinite(rafFrameP95) && rafFrameP95 <= FRAME_TARGET_MS) || !!(environmentFloor && environmentFloor.pass),
+    // The noop variant explains an environment-bound miss; it does not waive the shipping target.
+    // Final acceptance remains literal so a 30 Hz browser/vsync floor cannot be promoted as 60 fps.
+    pass: Number.isFinite(rafFrameP95) && rafFrameP95 <= FRAME_TARGET_MS,
     severity: 'required',
     note: environmentFloor && environmentFloor.pass
-      ? '60fps target is at the measured browser/vsync floor; WebGL-submit-noop is not faster'
+      ? '60fps target missed at the measured browser/vsync floor; WebGL-submit-noop is not faster'
       : '60fps target from real requestAnimationFrame samples',
   });
   if (environmentFloor) budgets.push(environmentFloor);
