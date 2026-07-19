@@ -50,6 +50,10 @@ test('performance recovery completes the active Departure Check and retains stru
     'the performance route owns active Market-shell acceptance instead of the legacy stationHub DOM contract');
   assert.match(source, /PerformanceObserver\.supportedEntryTypes\?\.includes\(['"]gc['"]\)/,
     'optional GC observation must not emit a browser warning when unsupported');
+  assert.match(source, /\.sx-trade__go\[data-go\], \.st-buy-btn/,
+    'Market readiness accepts the active shell while retaining compatibility coverage');
+  assert.match(source, /\[data-cmdty\]\[role=\\?['"]tab\\?['"]\]\[aria-selected=\\?['"]true\\?['"]\]/,
+    'the active Market roundtrip binds its selected public commodity tab');
   assert.doesNotMatch(source, /getByRole\(['"]button['"],\s*\{\s*name:\s*['"]Undock['"],\s*exact:\s*true/);
 });
 
