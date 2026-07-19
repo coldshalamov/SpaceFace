@@ -71,6 +71,7 @@
     "check:map-confidence": "node scripts/check-map-confidence.mjs",
     "check:map-nav-context": "node --test test/map-nav-context.test.mjs",
     "check:map-never-lost": "node scripts/check-map-never-lost.mjs",
+    "check:map-information-depth": "node --test test/map-route-ribbon.test.mjs && node scripts/check-map-information-depth.mjs",
     "check:map-frames": "node scripts/check-map-frames.mjs",
     "check:module-risk": "node scripts/check-module-risk.mjs",
     "check:handling-profile": "node scripts/check-handling-profile.mjs",
