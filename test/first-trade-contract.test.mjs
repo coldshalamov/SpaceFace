@@ -28,9 +28,20 @@ import {
   missions as missionsProto,
   missionReceiptFor,
 } from '../src/systems/missions.js';
-import { addCargo, removeCargo } from '../src/systems/cargo.js';
+import { addCargo, removeCargo, cargo as cargoSystem } from '../src/systems/cargo.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
+
+// Independent hard-coded payout / cargo footprint bounds (not derived from the live template
+// object for bound checks — kills Number.MAX_VALUE payout + cargo-cache desync mutants).
+const EXPECTED_PAYS_CR = 420;
+const EXPECTED_PAYS_CR_MAX = 10000;
+const EXPECTED_CMDTY_ID = 'cmdty_fuel_cells';
+const EXPECTED_QTY = 8;
+const EXPECTED_VOL_PER_U = 0.8;
+const EXPECTED_MASS_PER_U = 0.6;
+const EXPECTED_LOAD_VOLUME = EXPECTED_QTY * EXPECTED_VOL_PER_U; // 6.4
+const EXPECTED_LOAD_MASS = EXPECTED_QTY * EXPECTED_MASS_PER_U;   // 4.8
 
 function makeBus() {
   const handlers = new Map();
@@ -179,11 +190,19 @@ test('generation determinism: same seed produces identical first-trade offers', 
   assert.equal(typeof a.cargo.cmdtyId, 'string');
   assert.equal(typeof a.cargo.qty, 'number');
   assert.ok(Array.isArray(a.receipt.requiredFields));
+  // Independent payout bounds — reject Number.MAX_VALUE-scale degeneracy.
+  assert.equal(a.reward_cr, EXPECTED_PAYS_CR);
+  assert.ok(a.reward_cr > 0 && a.reward_cr < EXPECTED_PAYS_CR_MAX,
+    `payout must be within authored band (got ${a.reward_cr})`);
+  assert.ok(Number.isFinite(a.reward_cr) && a.reward_cr < 1e6);
+  assert.equal(a.params.cmdtyId, EXPECTED_CMDTY_ID);
+  assert.equal(a.params.qty, EXPECTED_QTY);
 
   const h = makeHarness({ seed: 47 });
   const planned = planFirstTradeOffer(h.state);
   assert.equal(planned.id, buildFirstTradeOffer(47, { nonce: 'helios', expiresAtEpoch: planned.expiresAtEpoch }).id);
-  assert.equal(planned.reward_cr, FIRST_TRADE_CONTRACT.terms.paysCr);
+  assert.equal(planned.reward_cr, EXPECTED_PAYS_CR);
+  assert.equal(FIRST_TRADE_CONTRACT.terms.paysCr, EXPECTED_PAYS_CR);
 });
 
 test('Helios dock offers the first-trade contract once; re-dock does not re-offer', () => {
@@ -200,12 +219,79 @@ test('Helios dock offers the first-trade contract once; re-dock does not re-offe
   assert.ok(board && Array.isArray(board.slots));
   const slot = board.slots.find((o) => o && o.source === FIRST_TRADE_CONTRACT_SOURCE);
   assert.ok(slot, 'first trade is boarded at Helios');
-  assert.equal(slot.terms.paysCr, FIRST_TRADE_CONTRACT.terms.paysCr);
-  assert.equal(slot.cargo.cmdtyId, FIRST_TRADE_CONTRACT.cargo.cmdtyId);
+  assert.equal(slot.terms.paysCr, EXPECTED_PAYS_CR);
+  assert.equal(slot.cargo.cmdtyId, EXPECTED_CMDTY_ID);
+});
+
+test('firstTradeOffered survives serialize/deserialize; cold re-dock does not re-offer', () => {
+  const h = makeHarness({ seed: 47 });
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.equal(h.state.economyContracts.firstTradeOffered, true);
+  const blob = h.econ.serialize();
+  assert.equal(blob.firstTradeOffered, true, 'serialize must carry firstTradeOffered');
+
+  // Cold harness: restore blob, re-dock must not re-offer.
+  const cold = makeHarness({ seed: 47 });
+  cold.econ.deserialize(blob);
+  assert.equal(cold.state.economyContracts.firstTradeOffered, true);
+  cold.bus.emitLog.length = 0;
+  cold.bus.emit('dock:docked', { stationId: 'station_helios' });
+  const reoffers = cold.bus.emitLog.filter((e) => e.evt === 'mission:offered'
+    && e.payload && e.payload.source === FIRST_TRADE_CONTRACT_SOURCE);
+  assert.equal(reoffers.length, 0, 'cold re-dock must not re-offer after serialized flag');
+
+  // Fresh-run control: a clean harness still posts once.
+  const fresh = makeHarness({ seed: 47 });
+  fresh.bus.emit('dock:docked', { stationId: 'station_helios' });
+  const freshOffers = fresh.bus.emitLog.filter((e) => e.evt === 'mission:offered'
+    && e.payload && e.payload.source === FIRST_TRADE_CONTRACT_SOURCE);
+  assert.equal(freshOffers.length, 1, 'fresh run still offers once');
+});
+
+test('first-trade board retention survives epoch 7; expires at 8 and 9', () => {
+  // planFirstTradeOffer uses expiresAtEpoch = epoch + 8 at offer time (epoch 0 → expires 8).
+  const h = makeHarness({ seed: 47 });
+  h.state.simTime = 10; // epoch 0 with refreshSec 600
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  const board0 = h.state.missions.boards.station_helios;
+  const offer = board0 && board0.slots.find((o) => o && o.source === FIRST_TRADE_CONTRACT_SOURCE);
+  assert.ok(offer, 'first-trade boarded');
+  assert.equal(offer.expiresAtEpoch, 8);
+
+  // Epoch 7: retained (expiresAtEpoch 8 > 7).
+  h.state.simTime = 7 * 600;
+  const board7 = h.missions.ensureBoard('station_helios');
+  assert.ok(board7.slots.find((o) => o && o.source === FIRST_TRADE_CONTRACT_SOURCE),
+    'epoch 7 retains first-trade offer');
+
+  // Epoch 8 (at-expiry): not retained (expiresAtEpoch 8 > 8 is false).
+  h.state.simTime = 8 * 600;
+  const board8 = h.missions.ensureBoard('station_helios');
+  assert.equal(
+    board8.slots.find((o) => o && o.source === FIRST_TRADE_CONTRACT_SOURCE),
+    undefined,
+    'epoch 8 drops first-trade at expiry',
+  );
+
+  // Epoch 9 (beyond): still absent.
+  h.state.simTime = 9 * 600;
+  const board9 = h.missions.ensureBoard('station_helios');
+  assert.equal(
+    board9.slots.find((o) => o && o.source === FIRST_TRADE_CONTRACT_SOURCE),
+    undefined,
+    'epoch 9 keeps first-trade absent',
+  );
 });
 
 test('sim walk: accept → load → deliver → receipt via single writers', () => {
   const h = makeHarness({ seed: 47 });
+  // Bind cargo module bus so addCargo/removeCargo emit cargo:changed (writer path).
+  const cargoChanged = [];
+  h.bus.on('cargo:changed', (p) => cargoChanged.push(p));
+  cargoSystem.init({ state: h.state, bus: h.bus, helpers: h.helpers });
+  // Reset hold after cargo.init (may recompute starter footprints).
+  h.state.player.cargo = { items: {}, usedVolume: 0, usedMass: 0, capVolume: 80, capMass: 120 };
+
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   const board = h.state.missions.boards.station_helios;
   const offer = board.slots.find((o) => o && o.source === FIRST_TRADE_CONTRACT_SOURCE);
@@ -221,13 +307,19 @@ test('sim walk: accept → load → deliver → receipt via single writers', () 
   const active = h.state.missions.active.find((m) => m && m.source === FIRST_TRADE_CONTRACT_SOURCE);
   assert.ok(active, 'active mission instance created');
   assert.equal(active.type, 'cargo_delivery');
-  assert.equal(active.params.cmdtyId, FIRST_TRADE_CONTRACT.cargo.cmdtyId);
-  assert.equal(active.params.qty, FIRST_TRADE_CONTRACT.cargo.qty);
+  assert.equal(active.params.cmdtyId, EXPECTED_CMDTY_ID);
+  assert.equal(active.params.qty, EXPECTED_QTY);
 
   // LOAD: preloaded cargo lands via cargo writer at accept.
-  const holdQty = Number(h.state.player.cargo.items[FIRST_TRADE_CONTRACT.cargo.cmdtyId]) || 0;
-  assert.equal(holdQty, FIRST_TRADE_CONTRACT.cargo.qty, 'sealed cargo loaded at accept');
+  const holdQty = Number(h.state.player.cargo.items[EXPECTED_CMDTY_ID]) || 0;
+  assert.equal(holdQty, EXPECTED_QTY, 'sealed cargo loaded at accept');
   cargoWriterPath.push({ step: 'load', qty: holdQty });
+  // Cargo-authority pin: volume/mass caches must advance with item deltas.
+  // A direct items write (bypass mutant) leaves usedVolume/usedMass at 0 → red.
+  assert.equal(h.state.player.cargo.usedVolume, EXPECTED_LOAD_VOLUME,
+    'usedVolume must match item footprint (cargo writer, not direct items write)');
+  assert.equal(h.state.player.cargo.usedMass, EXPECTED_LOAD_MASS,
+    'usedMass must match item footprint (cargo writer, not direct items write)');
 
   // No credits mutation on accept (zero collateral authored).
   assert.equal(h.state.player.credits, creditsBeforeAccept);
@@ -239,19 +331,22 @@ test('sim walk: accept → load → deliver → receipt via single writers', () 
   h.bus.emit('dock:docked', { stationId: FIRST_TRADE_CONTRACT_DEST_STATION_ID });
 
   // Cargo removed by cargo writer inside _deliverCargo
-  const afterHold = Number(h.state.player.cargo.items[FIRST_TRADE_CONTRACT.cargo.cmdtyId]) || 0;
+  const afterHold = Number(h.state.player.cargo.items[EXPECTED_CMDTY_ID]) || 0;
   assert.equal(afterHold, 0, 'manifest consumed at delivery');
   cargoWriterPath.push({ step: 'deliver', qty: afterHold });
+  assert.equal(h.state.player.cargo.usedVolume, 0, 'usedVolume cleared on delivery');
+  assert.equal(h.state.player.cargo.usedMass, 0, 'usedMass cleared on delivery');
 
   // Receipt recorded + credits via economy grant intent
   const grants = h.bus.emitLog.filter((e) => e.evt === 'economy:grantCredits');
   assert.ok(grants.length > grantBefore, 'completion emits economy:grantCredits');
   const rewardGrant = grants.find((e) => e.payload && String(e.payload.reason || '').includes('mission:'));
   assert.ok(rewardGrant, 'reward pays through economy single-writer intent');
-  assert.equal(rewardGrant.payload.amount, FIRST_TRADE_CONTRACT.terms.paysCr);
+  assert.equal(rewardGrant.payload.amount, EXPECTED_PAYS_CR);
+  assert.ok(rewardGrant.payload.amount < EXPECTED_PAYS_CR_MAX);
   assert.equal(
     h.state.player.credits,
-    creditsBeforeAccept + FIRST_TRADE_CONTRACT.terms.paysCr,
+    creditsBeforeAccept + EXPECTED_PAYS_CR,
   );
 
   const completed = h.bus.emitLog.some((e) => e.evt === 'mission:completed');
@@ -267,12 +362,12 @@ test('sim walk: accept → load → deliver → receipt via single writers', () 
   }
   assert.equal(receipt.outcome, 'completed');
   assert.equal(receipt.type, 'cargo_delivery');
-  assert.equal(receipt.rewardCr, FIRST_TRADE_CONTRACT.terms.paysCr);
+  assert.equal(receipt.rewardCr, EXPECTED_PAYS_CR);
   assert.equal(receipt.destStationId, FIRST_TRADE_CONTRACT_DEST_STATION_ID);
 
   // Pure receipt builder still types the same fields.
   const pure = missionReceiptFor(active, 'completed', 'delivered', {
-    rewardCr: FIRST_TRADE_CONTRACT.terms.paysCr,
+    rewardCr: EXPECTED_PAYS_CR,
     at_s: h.state.simTime,
   });
   assert.equal(typeof pure.id, 'string');
@@ -284,10 +379,10 @@ test('sim walk: accept → load → deliver → receipt via single writers', () 
     e.evt === 'economy:grantCredits' || e.evt === 'economy:chargeCredits');
   assert.ok(creditWrites.length >= 1);
   // Cargo path exercised load+deliver through addCargo/removeCargo (not free-form items write).
-  assert.equal(cargoWriterPath[0].qty, FIRST_TRADE_CONTRACT.cargo.qty);
+  assert.equal(cargoWriterPath[0].qty, EXPECTED_QTY);
   assert.equal(cargoWriterPath[1].qty, 0);
 
   // Sanity: removeCargo remains the writer for further holds.
-  addCargo(h.state, FIRST_TRADE_CONTRACT.cargo.cmdtyId, 1);
-  assert.equal(removeCargo(h.state, FIRST_TRADE_CONTRACT.cargo.cmdtyId, 1), 1);
+  addCargo(h.state, EXPECTED_CMDTY_ID, 1);
+  assert.equal(removeCargo(h.state, EXPECTED_CMDTY_ID, 1), 1);
 });

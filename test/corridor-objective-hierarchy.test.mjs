@@ -20,12 +20,19 @@ import {
   hasActiveTrackedMission,
   hasCorridorFirstDock,
   markCorridorFirstDock,
+  missions as missionsProto,
   resolveCorridorOpeningObjective,
 } from '../src/systems/missions.js';
 import {
   objectiveBearingGlyph,
   objectiveTravelReadout,
 } from '../src/ui/hud.js';
+
+// Independent hard-coded corridor fallback (must match CORRIDOR_OPENING_FALLBACK_POS but
+// must NOT be imported for bound checks — kills Infinityk-WU / MAX_VALUE mutants).
+const FALLBACK_X = 280;
+const FALLBACK_Z = -140;
+const MARKER_DISTANCE_MAX_WU = 1e6;
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
@@ -116,8 +123,47 @@ test('corridor waypoint falls back when Helios is not yet in the entity list', (
   state.entities.delete(4);
   const wp = buildCorridorOpeningWaypoint(state);
   assert.ok(wp);
-  assert.equal(wp.pos.x, CORRIDOR_OPENING_FALLBACK_POS.x);
-  assert.equal(wp.pos.z, CORRIDOR_OPENING_FALLBACK_POS.z);
+  // Independent literals (not re-read from the mutated module) + finite marker distance.
+  assert.equal(wp.pos.x, FALLBACK_X);
+  assert.equal(wp.pos.z, FALLBACK_Z);
+  assert.equal(CORRIDOR_OPENING_FALLBACK_POS.x, FALLBACK_X);
+  assert.equal(CORRIDOR_OPENING_FALLBACK_POS.z, FALLBACK_Z);
+  const travel = objectiveTravelReadout(state, wp);
+  assert.ok(Number.isFinite(travel.distanceWu), 'fallback distance must be finite');
+  assert.ok(travel.distanceWu >= 0 && travel.distanceWu < MARKER_DISTANCE_MAX_WU,
+    `fallback distance must be < 1e6 WU (got ${travel.distanceWu})`);
+  assert.doesNotMatch(String(travel.distanceText || ''), /Infinity/i);
+});
+
+test('_refreshNavigation never overwrites an existing trade waypoint with corridor idle', () => {
+  // Red-first P0 pin: a live trade route must survive corridor idle refresh.
+  const state = baseState();
+  const tradeWp = {
+    kind: 'trade',
+    stationId: 'station_ceres',
+    sectorId: 'sector_ceres_belt',
+    label: 'Ceres Refinery',
+    reason: 'Sell cargo at Ceres',
+    pos: { x: 900, z: 200 },
+  };
+  state.nav.waypoint = tradeWp;
+  const missions = Object.assign({}, missionsProto);
+  missions.init({
+    state,
+    bus: { on() {}, off() {}, emit() {} },
+    helpers: {},
+    registry: { get: () => null },
+  });
+  // Pre-first-dock, no tracked mission — corridor would otherwise claim the slot.
+  assert.equal(hasCorridorFirstDock(state), false);
+  assert.equal(hasActiveTrackedMission(state), false);
+  assert.ok(buildCorridorOpeningWaypoint(state), 'corridor is active when nav is empty');
+  missions._refreshNavigation({ silent: true });
+  assert.ok(state.nav.waypoint, 'waypoint must remain');
+  assert.equal(state.nav.waypoint.kind, 'trade', 'trade waypoint must not become corridor');
+  assert.equal(state.nav.waypoint.stationId, 'station_ceres');
+  assert.equal(state.nav.waypoint.pos.x, 900);
+  assert.equal(state.nav.waypoint.pos.z, 200);
 });
 
 test('tracker priority source pins include corridor idle before untracked/story recovery', () => {
@@ -129,19 +175,24 @@ test('tracker priority source pins include corridor idle before untracked/story 
   assert.match(missions, /export function markCorridorFirstDock/);
   assert.match(missions, /markCorridorFirstDock\(this\.state/);
   assert.match(missions, /buildCorridorOpeningWaypoint\(state\)/);
+  // P0: corridor install is gated on absent nav.waypoint.
+  assert.match(missions, /existingWp|!existingWp|!state\.nav\.waypoint|nav\.waypoint is absent|!existingWp/);
 
-  // HUD idle path: corridor sits after nav waypoint and before untracked-contract recovery.
+  // HUD: single paint arm — navWaypoint || buildCorridorOpeningWaypoint (no dual branch).
   const trackerBlock = hud.match(/\/\/ --- mission tracker @10Hz ---[\s\S]*?\/\/ --- credits \/ cargo/);
   assert.ok(trackerBlock, 'mission tracker tick block present');
   const block = trackerBlock[0];
-  const corridorIdx = block.indexOf('hasCorridorFirstDock');
+  assert.match(block, /navWaypoint\s*\|\|\s*buildCorridorOpeningWaypoint\(state\)/,
+    'HUD resolves corridor through the single navWaypoint paint arm');
+  assert.doesNotMatch(block, /hasCorridorFirstDock/,
+    'HUD no longer dual-gates corridor with hasCorridorFirstDock');
+  const corridorIdx = block.indexOf('buildCorridorOpeningWaypoint');
   const trackContractIdx = block.indexOf("coreText('trackContract'");
   const storyIdx = block.indexOf("coreText('chooseStoryAction'");
-  assert.ok(corridorIdx > 0, 'corridor idle branch is in the tracker tick');
+  assert.ok(corridorIdx > 0, 'corridor idle is in the tracker tick');
   assert.ok(trackContractIdx > corridorIdx, 'untracked-contract recovery follows corridor');
   assert.ok(storyIdx > corridorIdx, 'story recovery follows corridor');
-  assert.match(block, /buildCorridorOpeningWaypoint\(state\)/);
-  assert.match(block, /mtMarkerLine\(state, wp\)/, 'corridor reuses marker/distance/ETA line');
+  assert.match(block, /mtMarkerLine\(state, wp/, 'corridor reuses marker/distance/ETA line');
   // Threat slot remains owned by target panel, not the tracker hierarchy.
   assert.doesNotMatch(block, /current-threat|createTargetPanel/);
 });
