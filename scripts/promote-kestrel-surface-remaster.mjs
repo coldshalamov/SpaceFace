@@ -13,15 +13,15 @@ const MANIFEST = resolve(ROOT, 'assets/ships/parts/parts_manifest.json');
 const ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME_V4';
 const PART_ID = 'kestrel_borrowed_time_v4';
 const PACKET = 'SF-K0-BORROWED-TIME-V4-SOURCE-REMASTER-001';
-const FACTOR_ONLY_MATERIALS = Object.freeze([
-  'Material_Decal_BorrowedTime',
-  'Material_Decal_Hazard',
-  'Material_Decal_Stencils',
-  'Material_Emissive_Cyan',
-  'Material_Emissive_DriveCore',
-  'Material_Emissive_Orange',
-  'Material_Glass_Canopy',
-]);
+const FACTOR_ONLY_MATERIAL_ROLES = Object.freeze({
+  Material_Decal_BorrowedTime: 'decal',
+  Material_Decal_Hazard: 'decal',
+  Material_Decal_Stencils: 'decal',
+  Material_Emissive_Cyan: 'emissive',
+  Material_Emissive_DriveCore: 'emissive',
+  Material_Emissive_Orange: 'emissive',
+  Material_Glass_Canopy: 'canopy',
+});
 const MEMBERS = Object.freeze([
   Object.freeze({ lod: 0, id: 'wholeship_kestrel', familyFile: 'kestrel_borrowed_time_v4_lod0.glb', live: 'kestrel.glb' }),
   Object.freeze({ lod: 1, id: 'wholeship_kestrel_lod1', familyFile: 'kestrel_borrowed_time_v4_lod1.glb', live: 'kestrel_lod1.glb' }),
@@ -129,6 +129,11 @@ function stampAcceptedSource(path, member, acceptedCandidateSha256) {
   if (bytes.readUInt32LE(16) !== 0x4e4f534a) throw new Error(`GLB JSON chunk missing: ${path}`);
   const document = JSON.parse(bytes.subarray(20, 20 + jsonLength).toString('utf8').trimEnd());
   const triangles = countTriangles(document);
+  // Keep the complete semantic exception contract on every family member so
+  // source and compressed release LODs advertise the same material language.
+  // Individual material extras below are still stamped only when that LOD
+  // actually contains the material.
+  const factorOnlyMaterials = Object.keys(FACTOR_ONLY_MATERIAL_ROLES);
   const boundsDimensionsM = member.lod === 0 ? acceptedLod0Bounds.dimensionsM : undefined;
   document.asset = document.asset || {};
   document.asset.extras = document.asset.extras || {};
@@ -160,7 +165,8 @@ function stampAcceptedSource(path, member, acceptedCandidateSha256) {
     normalConvention: 'OpenGL',
     tangentConvention: 'MikkTSpace',
     ormChannels: 'R=AO,G=Roughness,B=Metallic',
-    factorOnlyMaterials: [...FACTOR_ONLY_MATERIALS],
+    chamfered: true,
+    factorOnlyMaterials,
     textureCompression: 'PNG-source',
     geometrySource: 'user Revamp ZIP source blend',
     sourceGeometryPreservation: '85-95 percent',
@@ -172,6 +178,16 @@ function stampAcceptedSource(path, member, acceptedCandidateSha256) {
     acceptanceClaim: true,
     wiringStatus: member.lod === 0 ? 'live_player_only' : 'retained_lod_family_member',
   };
+  for (const material of document.materials || []) {
+    const materialRole = FACTOR_ONLY_MATERIAL_ROLES[material.name];
+    if (!materialRole) continue;
+    material.extras = material.extras || {};
+    material.extras.spaceface = {
+      ...(material.extras.spaceface || {}),
+      factorOnly: true,
+      materialRole,
+    };
+  }
   const seenSockets = new Set();
   for (const node of document.nodes || []) {
     const contract = SOCKET_CONTRACT[node.name];

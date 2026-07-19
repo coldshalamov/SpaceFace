@@ -62,6 +62,11 @@ const CANDIDATE = [0, 1, 2].map((lod) => resolve(FAMILY, `release_candidates/who
 const BASELINE_ENTRIES = [0, 1, 2].map((lod) =>
   `SpaceFace_SF-K0_Borrowed-Time_Runtime/exports/SF_K0_Borrowed_Time_Runtime_LOD${lod}.glb`);
 const BASELINE = [0, 1, 2].map((lod) => resolve(process.env.TEMP || process.env.TMP || '.', `spaceface_kestrel_v4_baseline_lod${lod}.glb`));
+const BASELINE_SHA256 = Object.freeze([
+  'B02BFE94C868C363FF03C6CA11D5C8C0B55E86D0A9FE8ACF68C360694E2E3B98',
+  'C28C4DD616E1025E165A6B82050CE2FAAB36027CB691DEA3978CF3863791817F',
+  'E16655EE968FF1F1CD9BB0F7196AE48B3C08EF4FE6BA513BAE93452BE7F973D6',
+]);
 const CAPTURE_ONLY = process.argv.includes('--capture-only');
 const RESTAMP_ONLY = process.argv.includes('--restamp-only');
 const OPTIMIZE_LOD_ARG = process.argv.find((arg) => arg.startsWith('--optimize-lod='));
@@ -229,11 +234,21 @@ async function optimizeOne(io, source, target, lod) {
 }
 
 function extractBaselines() {
-  if (!existsSync(RUNTIME_ZIP)) throw new Error(`missing runtime ZIP ${RUNTIME_ZIP}`);
-  if (sha256(RUNTIME_ZIP) !== RUNTIME_ZIP_SHA256) throw new Error('runtime reference ZIP hash mismatch');
+  if (existsSync(RUNTIME_ZIP)) {
+    if (sha256(RUNTIME_ZIP) !== RUNTIME_ZIP_SHA256) throw new Error('runtime reference ZIP hash mismatch');
+    for (let lod = 0; lod < 3; lod++) {
+      const payload = execFileSync('tar', ['-xOf', RUNTIME_ZIP, BASELINE_ENTRIES[lod]], { maxBuffer: 100 * 1024 * 1024 });
+      writeFileSync(BASELINE[lod], payload);
+    }
+  }
   for (let lod = 0; lod < 3; lod++) {
-    const payload = execFileSync('tar', ['-xOf', RUNTIME_ZIP, BASELINE_ENTRIES[lod]], { maxBuffer: 100 * 1024 * 1024 });
-    writeFileSync(BASELINE[lod], payload);
+    if (!existsSync(BASELINE[lod])) {
+      throw new Error(`missing runtime ZIP and verified cached LOD${lod} baseline: ${RUNTIME_ZIP}`);
+    }
+    const actual = sha256(BASELINE[lod]);
+    if (actual !== BASELINE_SHA256[lod]) {
+      throw new Error(`cached LOD${lod} baseline hash mismatch: ${actual}`);
+    }
   }
 }
 

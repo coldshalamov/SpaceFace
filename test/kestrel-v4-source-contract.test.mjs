@@ -57,9 +57,7 @@ test('promoted Kestrel V4 source family declares its strict authored-material co
     const { json } = parseGlb(member.live);
     const metadata = json.asset?.extras?.spacefaceAsset;
     const materialsByName = new Map((json.materials || []).map((material) => [material.name, material]));
-    const expectedMaterials = Object.keys(SPECIAL_MATERIAL_ROLES)
-      .filter((name) => materialsByName.has(name))
-      .sort();
+    const expectedMaterials = Object.keys(SPECIAL_MATERIAL_ROLES).sort();
     assert.equal(metadata?.contractVersion, 2, `LOD${member.lod}: contract version`);
     assert.equal(metadata?.assetId, 'SF_K0_KESTREL_BORROWED_TIME_V4', `LOD${member.lod}: asset id`);
     assert.equal(metadata?.chamfered, true, `LOD${member.lod}: accepted hard-surface geometry has global chamfer evidence`);
