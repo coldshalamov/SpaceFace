@@ -3628,6 +3628,7 @@ export const galaxyMapScreen = {
   // it from the camera on every camera change.
   _camera: null,
   _lastNavContext: null,
+  _navContextKey: null,
   _lastFramingActions: null,
   _returnShipButton: null,
   _frameBothButton: null,
@@ -3844,9 +3845,9 @@ export const galaxyMapScreen = {
     return resolveMapNavContext({
       playerGlobal: player && player.pos ? { x: player.pos.x, z: player.pos.z } : null,
       playerSectorId: currentSectorId(state),
-      goal: activeMapGoal(state),
+      goal,
       route: nav.route || null,
-      executor: readRouteExecutorForMap(nav.executor),
+      executor,
       sectorNames: SECTOR_NAME_BY_ID,
     });
   },

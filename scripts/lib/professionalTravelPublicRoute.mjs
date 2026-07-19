@@ -727,6 +727,9 @@ async function readTravelSnapshot(page) {
       ? state.entityList.filter((item) => item?.type === 'ship' && item.alive !== false)
       : [];
     const statuses = ships.map((ship) => ship?.mesh?.userData?.authoredAssetState || 'missing');
+    const readiness = typeof window.SF?.authoredVisualReadiness === 'function'
+      ? window.SF.authoredVisualReadiness()
+      : null;
     const sectorId = state?.world?.currentSectorId || null;
     const sector = sectorId && state?.world?.sectors ? state.world.sectors[sectorId] : null;
     let gateInRange = false;
@@ -763,7 +766,21 @@ async function readTravelSnapshot(page) {
         speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
       } : null,
       authored: {
-        ready: statuses.length > 0 && statuses.every((s) => s === 'authored'),
+        // Same correction as `flightReadyInPage`: ask the engine its own question. `ready` is
+        // `authoredCriticalVisualReadiness().ready` — player + critical starting hub + the whole
+        // opening authored composition must be `authored`. Requiring EVERY ship in the sector to
+        // be authored is unsatisfiable by construction, because distant NPCs stay dormant on
+        // purpose (test/asset-npc-authored-binding.test.mjs:126 pins that and passes).
+        //
+        // `statuses` and `shipCount` are still reported, because they remain useful evidence in
+        // the run receipt — they are just no longer a pass/fail condition. Keeping the raw data
+        // while dropping the bad assertion is the point: this is a corrected question, not a
+        // discarded observation.
+        ready: !!readiness?.ready,
+        pipelineReady: !!readiness?.pipelineReady,
+        playerStatus: readiness?.playerStatus ?? null,
+        startingHubStatus: readiness?.startingHubStatus ?? null,
+        openingPending: (readiness?.openingPending || []).map((e) => `${e.id}:${e.status}`),
         shipCount: statuses.length,
         statuses,
       },
