@@ -78,6 +78,55 @@ test('pipeline warm-up reports unsupported renderers without mutating them', asy
   assert.equal(setCalls, 0);
 });
 
+test('pipeline warm-up cancels owned shader polling when the WebGL context is lost', async () => {
+  const listeners = new Map();
+  const material = {};
+  const nativeProgram = {};
+  let contextLost = false;
+  let readinessChecks = 0;
+  const program = {
+    program: nativeProgram,
+    isReady() {
+      readinessChecks++;
+      return false;
+    },
+  };
+  const canvas = {
+    addEventListener(type, listener) { listeners.set(type, listener); },
+    removeEventListener(type, listener) {
+      if (listeners.get(type) === listener) listeners.delete(type);
+    },
+  };
+  const renderer = {
+    domElement: canvas,
+    compile: () => new Set([material]),
+    compileAsync: async () => { throw new Error('real WebGL renderers must use owned polling'); },
+    properties: { get: () => ({ currentProgram: program }) },
+    extensions: { get: () => ({}) },
+    getContext: () => ({
+      isContextLost: () => contextLost,
+      isProgram: (candidate) => !contextLost && candidate === nativeProgram,
+    }),
+    getRenderTarget: () => null,
+    setRenderTarget() {},
+    info: { programs: [program] },
+  };
+
+  const pending = compileScenePipelinesForRenderTarget(renderer, null, {}, {}, {});
+  assert.equal(readinessChecks, 1, 'the owned readiness loop starts while the context is valid');
+  contextLost = true;
+  listeners.get('webglcontextlost')?.();
+
+  assert.deepEqual(await pending, {
+    skipped: true,
+    reason: 'WebGL context lost during shader compilation',
+    contextLost: true,
+  });
+  assert.equal(listeners.has('webglcontextlost'), false, 'loss retires the readiness listener and timer');
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(readinessChecks, 1, 'no stale program is queried after context loss');
+});
+
 test('loading warm-up renders the authored batch against the exact target and restores scene ownership', async () => {
   const previousTarget = { name: 'previous-target' };
   const hdrTarget = { name: 'flight-hdr-target' };
