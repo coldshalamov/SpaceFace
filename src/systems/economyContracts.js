@@ -32,6 +32,8 @@ import { hash32, mulberry32 } from '../core/rng.js';
 import { sectorSignalFor, effectiveDangerTierFor } from './sectorSim.js';
 import {
   selectEconContract, fillCause, SCARCITY_PAY_SCALE, BLOCKADE_PAY_SCALE, BLOCKADE_RELIEF_CMDTYS,
+  FIRST_TRADE_CONTRACT_STATION_ID,
+  buildFirstTradeOffer,
 } from '../data/economyContractTemplates.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
@@ -99,15 +101,38 @@ export function markStationEpochEvaluated(own, stationId, epoch) {
 
 /** Ensure / return the local dedupe state bag (economyContracts only — not missions). */
 export function ensureFieldContractState(state) {
-  if (!state || typeof state !== 'object') return { evaluatedEpochByStation: {} };
+  if (!state || typeof state !== 'object') {
+    return { evaluatedEpochByStation: {}, firstTradeOffered: false };
+  }
   if (!state.economyContracts || typeof state.economyContracts !== 'object') {
-    state.economyContracts = { evaluatedEpochByStation: {} };
+    state.economyContracts = { evaluatedEpochByStation: {}, firstTradeOffered: false };
   }
   if (!state.economyContracts.evaluatedEpochByStation
       || typeof state.economyContracts.evaluatedEpochByStation !== 'object') {
     state.economyContracts.evaluatedEpochByStation = {};
   }
+  if (typeof state.economyContracts.firstTradeOffered !== 'boolean') {
+    state.economyContracts.firstTradeOffered = !!state.economyContracts.firstTradeOffered;
+  }
   return state.economyContracts;
+}
+
+/**
+ * Plan the authored G06 first-trade offer for Helios. Deterministic for a seed.
+ * Pure over seed + options; does not mutate state.
+ */
+export function planFirstTradeOffer(state, options = {}) {
+  const seed = (state && state.meta && state.meta.seed) || 1;
+  const cfg = (state && state.missions && state.missions.config) || MISSION_TUNING;
+  const epoch = fieldContractEpoch(
+    (state && state.simTime) || 0,
+    (cfg && cfg.refreshSec) || 600,
+  );
+  return buildFirstTradeOffer(seed, {
+    nonce: 'helios',
+    expiresAtEpoch: epoch + 8,
+    ...options,
+  });
 }
 
 // Map-space sector distance → wu (same shape missions.js uses; deterministic, bounded).
@@ -136,7 +161,7 @@ export const economyContracts = {
   },
 
   newGame() {
-    this.state.economyContracts = { evaluatedEpochByStation: {} };
+    this.state.economyContracts = { evaluatedEpochByStation: {}, firstTradeOffered: false };
   },
 
   _ensureState() {
@@ -145,7 +170,10 @@ export const economyContracts = {
 
   serialize() {
     const own = this._ensureState();
-    return { evaluatedEpochByStation: { ...own.evaluatedEpochByStation } };
+    return {
+      evaluatedEpochByStation: { ...own.evaluatedEpochByStation },
+      firstTradeOffered: !!own.firstTradeOffered,
+    };
   },
 
   deserialize(data) {
@@ -157,7 +185,10 @@ export const economyContracts = {
         if (Number.isFinite(epoch)) evaluatedEpochByStation[stationId] = Math.floor(epoch);
       }
     }
-    this.state.economyContracts = { evaluatedEpochByStation };
+    this.state.economyContracts = {
+      evaluatedEpochByStation,
+      firstTradeOffered: !!(data && data.firstTradeOffered),
+    };
   },
 
   _epoch() {
@@ -181,6 +212,22 @@ export const economyContracts = {
       const info = STATION_INFO.get(stationId);
       if (!info) return; // gates / unknown stations post no contracts
       const own = this._ensureState();
+
+      // G06: one authored first-trade teaching contract at Helios on/after first dock.
+      // Emit-only — missions boards the offer via mission:offered. Once per run.
+      if (stationId === FIRST_TRADE_CONTRACT_STATION_ID && !own.firstTradeOffered) {
+        const firstTrade = planFirstTradeOffer(this.state);
+        own.firstTradeOffered = true;
+        this.bus.emit('mission:offered', firstTrade);
+        if (!isOnboardingActive(this.state)) {
+          const line = `Contract posted at ${info.name}: ${firstTrade.title}`;
+          const said = this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function'
+            ? this.helpers.voice.say({ channel: 'news', text: line, kind: 'contract' })
+            : false;
+          if (!said) this.bus.emit('toast', { text: line, kind: 'info', ttl: 4 });
+        }
+      }
+
       const epoch = this._epoch();
       // Dedupe per station-epoch: one field evaluation, offer or not.
       if (isStationEpochEvaluated(own, stationId, epoch)) return;

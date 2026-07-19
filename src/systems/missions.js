@@ -591,9 +591,20 @@ export const missions = {
     const retainedSetPieceOffers = previousSlots.filter((offer) => (
       offer && offer.source === SET_PIECE_MISSION_SOURCE && setPieceCauseOf(offer)
     ));
+    // G06 first-trade teach offer is once-per-run authored progress — keep it through epoch refresh
+    // until accepted or expired so ensureBoard cannot swallow the corridor lesson.
+    const retainedFirstTradeOffers = previousSlots.filter((offer) => (
+      offer && offer.source === 'firstTradeContract'
+      && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
+    )).slice(0, 1);
     board = {
       refreshEpoch: epoch,
-      slots: [...retainedSetPieceOffers, ...retainedPoiOffers, ...this._generateOffers(info, epoch)],
+      slots: [
+        ...retainedFirstTradeOffers,
+        ...retainedSetPieceOffers,
+        ...retainedPoiOffers,
+        ...this._generateOffers(info, epoch),
+      ],
     };
     state.missions.boards[stationId] = board;
     this._syncEmbodiedStoryOffer(info, board, epoch);
@@ -724,6 +735,7 @@ export const missions = {
   _onExternalBoardOffer(rawOffer) {
     const allowedSource = rawOffer && (
       rawOffer.source === 'economyContract'
+      || rawOffer.source === 'firstTradeContract'
       || rawOffer.source === 'encounterAftermath'
       || rawOffer.source === 'careerContract'
       || rawOffer.source === 'postEndingReplay'

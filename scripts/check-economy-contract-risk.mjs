@@ -157,10 +157,21 @@ function testCalmSilent() {
     const sys = { ...economyContracts };
     sys.init({ state, bus, helpers: { voice: { say() { return true; } } } });
     bus.emit('dock:docked', { stationId: STATION.id });
-    assert.equal(bus.emitLog.filter((e) => e.evt === 'mission:offered').length, 0);
+    // Field contracts stay silent on a calm field. Helios may still post the authored G06
+    // first-trade teach offer once — that is not a field-born contract.
+    const fieldOffers = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+      && e.payload && e.payload.source === 'economyContract');
+    assert.equal(fieldOffers.length, 0, 'calm field emits no field contract');
+    const firstTrade = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+      && e.payload && e.payload.source === 'firstTradeContract');
+    if (STATION.id === 'station_helios') {
+      assert.equal(firstTrade.length, 1, 'Helios posts first-trade teach offer once');
+    } else {
+      assert.equal(firstTrade.length, 0);
+    }
     assert.equal(sys.hasEvaluated(STATION.id), true, 'dedupe marks calm evaluation');
   });
-  ok('calm field is silent (no offer emit)');
+  ok('calm field is silent (no field offer emit)');
 }
 
 // ── 2. threshold deterministic + station-epoch dedupe ────────────────────────────────────────
@@ -180,8 +191,9 @@ function testThresholdDeterministicDeduped() {
 
     bus.emit('dock:docked', { stationId: STATION.id });
     bus.emit('dock:docked', { stationId: STATION.id });
-    const offers = bus.emitLog.filter((e) => e.evt === 'mission:offered');
-    assert.equal(offers.length, 1, 'station+epoch dedupe');
+    const offers = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+      && e.payload && e.payload.source === 'economyContract');
+    assert.equal(offers.length, 1, 'station+epoch field dedupe');
 
     const offer = offers[0].payload;
     const epoch = fieldContractEpoch(100, 600);
@@ -189,6 +201,11 @@ function testThresholdDeterministicDeduped() {
     assert.equal(offer.source, 'economyContract');
     assert.ok(offer.cause && offer.cause.line, 'cause-named board-ready offer');
     assert.equal(offer.cause.tag, 'route_scarcity');
+    const firstTrade = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+      && e.payload && e.payload.source === 'firstTradeContract');
+    if (STATION.id === 'station_helios') {
+      assert.equal(firstTrade.length, 1, 'first-trade teach offer once per run');
+    }
 
     // Bit-identical replan
     const info = {
