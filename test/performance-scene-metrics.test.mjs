@@ -135,6 +135,11 @@ test('invisible pending authored admission is not misreported as a procedural fa
     pendingCount: 1,
     fallbackCount: 0,
     missingMeshCount: 0,
+    ignoredNonresidentCount: 0,
+    entities: [
+      { id: null, defId: null, trafficRole: null, sectorId: null, distanceToPlayer: null, admission: 'ready', assetState: 'authored' },
+      { id: null, defId: null, trafficRole: null, sectorId: null, distanceToPlayer: null, admission: 'pending', assetState: 'awaiting-authored-admission' },
+    ],
   });
   const readiness = collectPerformancePipelineReadiness({ state });
   assert.equal(readiness.authoredReady, true);
@@ -147,4 +152,36 @@ test('invisible pending authored admission is not misreported as a procedural fa
   const failed = collectPerformancePipelineReadiness({ state });
   assert.equal(failed.authoredReady, false);
   assert.equal(failed.authoredFallbackCount, 1);
+});
+
+test('authored readiness excludes reduced neighbour ships from current-sector fallback truth', () => {
+  const current = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    homeSectorId: 'sector_current',
+    presentationAdmission: 'ready',
+    mesh: { userData: { authoredAssetState: 'authored' } },
+    data: { defId: 'ship_kestrel' },
+  };
+  const reducedNeighbour = {
+    id: 2,
+    type: 'ship',
+    alive: true,
+    homeSectorId: 'sector_neighbour',
+    data: { defId: 'ship_wasp' },
+  };
+  const state = {
+    playerId: 1,
+    entityList: [current, reducedNeighbour],
+    world: { currentSectorId: 'sector_current' },
+    render: {},
+  };
+
+  const status = authoredAssetStatus(state);
+  assert.equal(status.shipCount, 1);
+  assert.equal(status.readyCount, 1);
+  assert.equal(status.fallbackCount, 0);
+  assert.equal(status.ignoredNonresidentCount, 1);
+  assert.deepEqual(status.entities.map((entry) => entry.id), [1]);
 });
