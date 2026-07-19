@@ -66,6 +66,22 @@ A generated asset, isolated preview, or focused test remains a candidate until i
 to the default player route and survives the relevant browser/Electron, motion, accessibility, lifecycle,
 and performance evidence. Merely creating or passing a local artifact never changes the table above.
 
+### 2.1 Helios donor disposition
+
+Do not merge the current OpenCode Helios worktree as an asset replacement. Its later release shortcut
+removes `LOD1`, `LOD2`, and `SOCKET_Structure_Core`, leaving roughly 1.02 million triangles active at every
+distance. Its uncommitted texture set is also older and heavier than the accepted iteration-2 maps on
+`master`. The retained three-LOD live station and its accepted material payload remain authoritative.
+
+One donor technique is worth reimplementing in a dedicated optimization slice: its scratch Blender
+candidate consolidates the full three-LOD station from 777 glTF primitives to 45 while preserving twelve
+semantic PBR roles and the core socket. That candidate is not shippable as-is: it is about 228 MB and 1.64
+million triangles, has no executed normal-route visual packet, loses authored anisotropy in glTF export,
+and may expose repeated service-bay kit patterns at the game camera. Preserve the batching recipe as a
+reference, then rebuild it against the accepted station, author genuinely reduced LOD geometry, package it
+with the release compression path, and require matched approach/undock captures plus measured draw-call,
+residency, and frame-time improvement before promotion.
+
 ## 3. Architectural decision: hybrid data-driven composition
 
 Use Blender-authored assets where silhouette, construction, UVs, or material storytelling matters, and
