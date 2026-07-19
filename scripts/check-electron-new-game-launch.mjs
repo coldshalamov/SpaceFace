@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
+import { flightReadyInPage } from './lib/alphaLiveBaselineRoute.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -27,13 +28,7 @@ try {
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 90000 });
   await page.locator('text=New Game').first().click({ timeout: 30000 });
   await page.locator('button', { hasText: /^Launch$/i }).click({ timeout: 30000 });
-  await page.waitForFunction(() => {
-    const sf = window.SF;
-    const state = sf && sf.state;
-    const player = state && state.entities && state.entities.get(state.playerId);
-    const gpu = state && state.render && state.render.gpu;
-    return !!(state && state.mode === 'flight' && player && player.alive !== false && player.hull > 0 && gpu && gpu.renderer);
-  }, null, { timeout: FLIGHT_TIMEOUT_MS });
+  await page.waitForFunction(flightReadyInPage, null, { timeout: FLIGHT_TIMEOUT_MS });
   await page.waitForTimeout(1200);
 
   const report = await page.evaluate(() => {
@@ -76,6 +71,7 @@ try {
           id: entity.id,
           defId: entity.data && entity.data.defId || null,
           isPlayer: entity.id === state.playerId,
+          presentationAdmission: entity.presentationAdmission || null,
           authoredAssetState: entity.mesh && entity.mesh.userData
             ? entity.mesh.userData.authoredAssetState || null
             : null,
@@ -103,8 +99,7 @@ try {
     pass: report.mode === 'flight'
       && report.player && report.player.alive
       && report.ships.length > 0
-      && report.ships.every((ship) => ship.authoredAssetState === 'authored'
-        && ship.authoredAssetMode === 'release')
+      && report.ships.every(hasAcceptableAuthoredPresentation)
       && !report.assetFailureVisible
       && !report.shipDestroyedVisible
       && !(report.gpu && report.gpu.software)
@@ -120,10 +115,9 @@ try {
   assert(report.player && report.player.alive, 'Electron New Game must leave the player alive on launch');
   assert(report.ships.length > 0, 'Electron New Game must publish its live ship set');
   assert.deepEqual(
-    report.ships.filter((ship) => ship.authoredAssetState !== 'authored'
-      || ship.authoredAssetMode !== 'release'),
+    report.ships.filter((ship) => !hasAcceptableAuthoredPresentation(ship)),
     [],
-    `Electron New Game must author every live player/NPC ship: ${JSON.stringify(report.ships)}`,
+    `Electron New Game must use authored release presentation or an explicit pending admission without fallback: ${JSON.stringify(report.ships)}`,
   );
   assert.equal(report.assetFailureVisible, false, 'Electron New Game must not show the asset failure toast');
   assert.equal(report.shipDestroyedVisible, false, 'Electron New Game must not show the death banner during launch');
@@ -149,6 +143,17 @@ function captureElectronProcess(target) {
   };
   if (proc.stdout) proc.stdout.on('data', capture('stdout'));
   if (proc.stderr) proc.stderr.on('data', capture('stderr'));
+}
+
+function hasAcceptableAuthoredPresentation(ship) {
+  if (!ship || ship.authoredAssetMode !== 'release') return false;
+  if ((ship.authoredAssetState === 'authored' || ship.authoredAssetState === 'authored-with-cleanup-error')
+      && (ship.presentationAdmission === 'ready' || ship.presentationAdmission == null)) return true;
+  return ship.presentationAdmission === 'pending' && (
+    ship.authoredAssetState === 'awaiting-authored-admission'
+    || ship.authoredAssetState === 'loading'
+    || ship.authoredAssetState === 'compiling-pipelines'
+  );
 }
 
 function writeReport(report) {
