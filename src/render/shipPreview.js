@@ -17,10 +17,23 @@ import { wrapShipWithAuthoredParts } from './partsLibrary.js';
 // the textured authored hulls, not the procedural fallback. Default stays procedural for back-compat.
 const PREVIEW_AUTHORED = typeof location !== 'undefined'
   && new URLSearchParams(location.search).get('authored') === '1';
-function wrapIfAuthored(ent, mesh) {
-  if (!PREVIEW_AUTHORED) return mesh;
-  try { return wrapShipWithAuthoredParts(ent, mesh, { releaseMode: true }); }
-  catch (_) { return mesh; }
+export function prepareShipForPreview(ent, mesh, authored = PREVIEW_AUTHORED) {
+  if (!authored || !mesh) return mesh;
+  let boundary = mesh;
+  const existingRequest = boundary.userData && boundary.userData.requestAuthoredUpgrade;
+  if (typeof existingRequest !== 'function') {
+    try { boundary = wrapShipWithAuthoredParts(ent, mesh, { releaseMode: true }); }
+    catch (_) { boundary = mesh; }
+  }
+  return boundary;
+}
+
+export function requestPreviewAuthoredAdmission(boundary, renderer, scene, authored = PREVIEW_AUTHORED) {
+  if (!authored || !boundary || !boundary.parent) return false;
+  const request = boundary.userData && boundary.userData.requestAuthoredUpgrade;
+  if (typeof request !== 'function') return false;
+  request(renderer, scene);
+  return true;
 }
 // The authored upgrade is armed on first render (onBeforeRender) and completes asynchronously, so we
 // must keep rendering frames while we wait for the GLB swap to land.
@@ -33,7 +46,8 @@ async function awaitAuthoredSwap(renderer, scene, cam) {
     let pending = false;
     scene.traverse((o) => {
       const st = o.userData && o.userData.authoredAssetState;
-      if (st === 'loading' || st === 'procedural-fallback') pending = true;
+      if (st === 'awaiting-authored-admission' || st === 'loading'
+        || st === 'compiling-pipelines' || st === 'procedural-fallback') pending = true;
     });
     if (!pending) break;
   }
@@ -77,7 +91,7 @@ function sampleFittingsForTier(shipDef, wantTierName) {
 // Build a minimal ship entity the visual factory can consume (same shape makeShipEntitySpec makes,
 // but without requiring the full sim). defId + data.{defId,fittings,weapons,miningBeam} is what the
 // factory reads.
-function makePreviewEntity(defId, fittings, shipDef, seedId, factionVariant) {
+export function makePreviewEntity(defId, fittings, shipDef, seedId, factionVariant) {
   const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
   // backfill weapons runtime (facing from the slot) so hardpoint props place barrels correctly
   const slots = shipDef.slots || {};
@@ -94,8 +108,9 @@ function makePreviewEntity(defId, fittings, shipDef, seedId, factionVariant) {
   const fv = factionVariant || {};
   const team = fv.team != null ? fv.team : 0;
   const factionId = fv.factionId || 'faction_free';
+  const isPlayer = factionVariant == null ? true : fv.isPlayer === true;
   return {
-    id: seedId, type: 'ship', team, factionId,
+    id: seedId, type: 'ship', team, factionId, isPlayer,
     pos: { x: 0, z: 0 }, rot: Math.PI * 0.15, prevPos: { x: 0, z: 0 }, prevRot: 0, bank: 0,
     radius: shipDef.collisionRadius || 14,
     data: {
@@ -145,10 +160,11 @@ export async function runShipPreview(SF) {
       let mesh = null;
       try { mesh = vf.build(ent); } catch (err) { console.warn('[shipPreview] build failed', shipDef.id, err); continue; }
       if (!mesh) continue;
-      mesh = wrapIfAuthored(ent, mesh);
+      mesh = prepareShipForPreview(ent, mesh);
       // frame it: radius-based distance so big capitals still fit
       const R = ent.radius;
       tmp.add(mesh);
+      requestPreviewAuthoredAdmission(mesh, renderer, scene);
       // turntable angle: a rear 3/4 elevated view (matches the chase camera roughly)
       mesh.rotation.y = -ent.rot;
       const D = R * 3.2;
@@ -208,9 +224,12 @@ export async function runShipPreview(SF) {
       let mesh = null;
       try { mesh = vf.build(ent); } catch (err) { console.warn('[shipPreview] variant build failed', defId, fv.tag, err); continue; }
       if (!mesh) continue;
+      mesh = prepareShipForPreview(ent, mesh);
       const R = ent.radius; tmp.add(mesh); mesh.rotation.y = -ent.rot;
+      requestPreviewAuthoredAdmission(mesh, renderer, scene);
       const D = R * 3.2;
       cam.position.set(-D * 0.6, D * 0.7, -D * 0.8); cam.lookAt(0, 0, 0); cam.updateProjectionMatrix();
+      await awaitAuthoredSwap(renderer, scene, cam);
       mesh.traverse((c) => {
         const m = c.material; if (!m) return;
         for (const t of [m.map, m.normalMap, m.roughnessMap, m.emissiveMap, m.envMap]) {

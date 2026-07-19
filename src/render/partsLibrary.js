@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FACTION_PALETTES } from '../data/palettes.js';
+import { paletteWithShipAppearance } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
@@ -2679,7 +2680,7 @@ function dedicatedBatchKey(primitive) {
     geometryBatchSignature(primitive.geometry),
     tags.lod || 'always',
     tags.canopy ? 'canopy' : '',
-    tintRole(tags),
+    authoredSurfaceTintRole(tags, primitive.material),
     tags.drive || '',
     matrixBatchSignature(tags.driveAnchorMatrix),
   ].join('|');
@@ -2697,7 +2698,7 @@ function pooledBatchKey(primitive) {
     materialBatchSignature(primitive.material),
     geometryBatchSignature(primitive.geometry),
     tags.lod || 'always',
-    tintRole(tags),
+    authoredSurfaceTintRole(tags, primitive.material),
     tags.damageRole || '',
     tags.instance === false ? 'unique' : 'pooled',
   ].join('|');
@@ -3957,12 +3958,19 @@ export function runAuthoredInstanceFrameContractProbe() {
 // whose material uniforms are actually mutated at runtime receive ship-local clones.
 // -------------------------------------------------------------------------------------------------
 function sharedMaterialFor(base, tags, palette) {
-  const role = tintRole(tags, base);
+  const role = authoredSurfaceTintRole(tags, base);
   const tint = tintHex(palette, role);
-  const key = `${materialShareSignature(base, tags)}|${role}|${tint}`;
+  const explicitTint = appearanceOverrideForRole(palette, role);
+  const finish = palette.finish || 'authored';
+  const wear = Number.isFinite(Number(palette.wear)) ? Number(palette.wear).toFixed(2) : '-';
+  const key = `${materialShareSignature(base, tags)}|${role}|${tint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}`;
   let material = sharedMaterialVariants.get(key);
   if (!material) {
-    material = boundAuthoredEmission(tintMaterial(base.clone(), tint, role), base, role);
+    material = applyAppearanceFinish(
+      boundAuthoredEmission(
+        applyAuthoredSurfaceTint(base.clone(), tint, role, explicitTint), base, role,
+      ), palette, role,
+    );
     material.name = authoredMaterialName(base, tags, role, tint, false);
     const canonical = resolveCanonicalHullMaterial(material);
     if (canonical !== material) {
@@ -3986,12 +3994,19 @@ function materialNeedsShipLocalMutation(tags = {}) {
 }
 
 function mutableMaterialFor(base, tags, palette, cache, instanceKey) {
-  const role = tintRole(tags, base);
+  const role = authoredSurfaceTintRole(tags, base);
   const tint = tintHex(palette, role);
-  const key = `${materialBatchSignature(base)}|${role}|${tint}|${materialMutationScope(tags, instanceKey)}`;
+  const explicitTint = appearanceOverrideForRole(palette, role);
+  const finish = palette.finish || 'authored';
+  const wear = Number.isFinite(Number(palette.wear)) ? Number(palette.wear).toFixed(2) : '-';
+  const key = `${materialBatchSignature(base)}|${role}|${tint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}|${materialMutationScope(tags, instanceKey)}`;
   let material = cache.get(key);
   if (!material) {
-    material = boundAuthoredEmission(tintMaterial(base.clone(), tint, role), base, role);
+    material = applyAppearanceFinish(
+      boundAuthoredEmission(
+        applyAuthoredSurfaceTint(base.clone(), tint, role, explicitTint), base, role,
+      ), palette, role,
+    );
     material.name = authoredMaterialName(base, tags, role, tint, true);
     cache.set(key, material);
   }
@@ -4024,44 +4039,64 @@ function authoredMaterialFamily(base, tags = {}, role = 'hull') {
   return role || 'authored';
 }
 
-function tintMaterial(material, hex, role) {
+/**
+ * Apply identity or explicit player paint as a color multiplier only. Blender-authored maps and
+ * calibrated roughness/metalness remain authoritative; faction color must not flatten every PBR
+ * surface into the same smooth, emissive plastic.
+ */
+export function applyAuthoredSurfaceTint(material, hex, role, explicitOverride = false) {
   if (role === 'none') return material;
   const tint = new THREE.Color(hex);
   if (material.color) {
-    if (role === 'accent' || role === 'thruster') {
+    if (explicitOverride && (role === 'hull' || role === 'accent')) {
+      material.color.copy(tint);
+    } else if (role === 'accent' || role === 'thruster') {
       const sourceLuminance = 0.2126 * material.color.r + 0.7152 * material.color.g + 0.0722 * material.color.b;
       material.color.copy(tint).multiplyScalar(Math.max(0.72, Math.min(1.08, 0.62 + sourceLuminance * 0.52)));
+    } else if (role === 'hull') {
+      material.color.multiply(tint.clone().lerp(new THREE.Color(0xffffff), 0.86));
+    } else if (role === 'dark') {
+      material.color.multiply(tint.clone().lerp(new THREE.Color(0xffffff), 0.92));
     } else {
       material.color.multiply(tint);
     }
-    if (role === 'hull') {
-      material.color.lerp(tint, 0.58);
-      liftColorFloor(material.color, 0.34);
-    }
-  }
-  if (role === 'hull') {
-    if (Number.isFinite(material.metalness)) material.metalness = Math.min(material.metalness, 0.26);
-    if (Number.isFinite(material.roughness)) material.roughness = Math.max(material.roughness, 0.58);
   }
   if (material.emissive && material.emissive.getHex() !== 0 && (role === 'accent' || role === 'thruster')) {
     material.emissive.copy(tint);
-  }
-  if (role === 'hull' && material.emissive && material.emissive.getHex() === 0) {
-    material.emissive.copy(tint).multiplyScalar(0.11);
-    material.emissiveIntensity = Math.max(Number(material.emissiveIntensity) || 0, 0.42);
   }
   material.needsUpdate = true;
   return material;
 }
 
 function liftColorFloor(color, floor) {
-  const min = Number(floor) || 0;
-  color.r = Math.max(color.r, min);
-  color.g = Math.max(color.g, min);
-  color.b = Math.max(color.b, min);
+  const minimum = Number(floor) || 0;
+  color.r = Math.max(color.r, minimum);
+  color.g = Math.max(color.g, minimum);
+  color.b = Math.max(color.b, minimum);
 }
 
-function tintRole(tags = {}, material = null) {
+function appearanceOverrideForRole(palette, role) {
+  if (role === 'hull') return palette && palette.appearanceHullOverride === true;
+  if (role === 'accent') return palette && palette.appearanceAccentOverride === true;
+  return false;
+}
+
+const AUTHORED_SEMANTIC_TINT_ROLES = Object.freeze({
+  hull: 'hull',
+  painted_hull: 'hull',
+  painted_armor: 'hull',
+  coated_hull: 'hull',
+  accent: 'accent',
+  livery: 'accent',
+  painted_accent: 'accent',
+  mechanical: 'dark',
+  recessed_mechanical: 'dark',
+  dark_composite: 'dark',
+  drive: 'thruster',
+  thruster: 'thruster',
+});
+
+export function authoredSurfaceTintRole(tags = {}, material = null) {
   if (tags.canopy) return 'none';
   // Engine exports historically inherited `tint: hull` from their structural parent. A plume is
   // never hull paint: honoring that inherited tag turns its emissive disk neutral-white after tone
@@ -4075,25 +4110,43 @@ function tintRole(tags = {}, material = null) {
   if (['none', 'hull', 'accent', 'dark', 'thruster'].includes(paletteIntent)) return paletteIntent;
   const semanticRole = String(material?.userData?.spacefaceMaterialRole || '')
     .trim().toLowerCase().replace(/[\s-]+/g, '_');
-  if (semanticRole === 'drive') return 'thruster';
-  if (semanticRole === 'accent') return 'accent';
-  if (semanticRole === 'mechanical') return 'dark';
+  if (AUTHORED_SEMANTIC_TINT_ROLES[semanticRole]) return AUTHORED_SEMANTIC_TINT_ROLES[semanticRole];
   if (semanticRole && [
-    'geology', 'warning', 'signal', 'glass', 'radiator', 'docking', 'service', 'ceramic', 'rubber', 'repair',
+    'geology', 'warning', 'signal', 'glass', 'canopy_glass', 'sensor_lens', 'radiator', 'docking',
+    'service', 'ceramic', 'engine_ceramic', 'rubber', 'repair', 'exposed_alloy', 'heat_affected_alloy',
+    'copper_coil', 'maintenance_mark',
   ].includes(semanticRole)) return 'none';
   if (tags.damageRole === 'navLight' || tags.damageRole === 'sensor') return 'accent';
   const source = String(material && material.name || '').toLowerCase();
   if (/(?:glass|canopy|windscreen)/.test(source)) return 'none';
-  if (/(?:thruster|drive[_ -]?aperture)/.test(source)) return 'thruster';
+  if (/(?:thruster|drive[_ -]?(?:aperture|core)|engine[_ -]?(?:glow|core))/.test(source)) return 'thruster';
   // Older modular exports also stamped their whole LOD subtree as `tint: hull`, even where authored
   // material names carry a stronger semantic role. Preserve those authored material families so a
   // fighter keeps dark machinery and accent panels instead of collapsing to one flat grey value.
-  if (/(?:accent|trim|livery|stripe|warning)/.test(source)) return 'accent';
+  if (/(?:warning|hazard)/.test(source)) return 'none';
+  if (/(?:accent|trim|livery|stripe)/.test(source)) return 'accent';
   if (/(?:armor|armour|mechanical|machinery|mech|interior|rib|clamp|frame)/.test(source)) return 'dark';
-  if (/(?:energy|emit|glow|nav)/.test(source)) return 'accent';
+  if (/(?:energy|emiss|emit|glow|nav|display|sensor|mining.?lens)/.test(source)) return 'none';
   if (tags.tint) return String(tags.tint).toLowerCase();
   if (tags.drive) return 'thruster';
   return 'hull';
+}
+
+function applyAppearanceFinish(material, palette, role) {
+  if (!material || !palette || !Number.isFinite(Number(material.roughness))) return material;
+  if (!['hull', 'accent', 'dark'].includes(role)) return material;
+  const wear = Math.max(0, Math.min(1, Number(palette.wear) || 0));
+  if (palette.finish === 'polished') {
+    material.roughness = Math.max(0.22, material.roughness * 0.72 + wear * 0.06);
+  } else if (palette.finish === 'worn') {
+    material.roughness = Math.min(1, material.roughness * 1.04 + wear * 0.05);
+    if (Number.isFinite(Number(material.metalness))) material.metalness *= 0.97;
+  } else if (palette.finish === 'satin') {
+    material.roughness = Math.max(0.34, Math.min(0.9, material.roughness + wear * 0.02));
+  }
+  material.userData = { ...(material.userData || {}), spacefaceAppearanceFinish: palette.finish };
+  material.needsUpdate = true;
+  return material;
 }
 
 function boundAuthoredEmission(material, base, role) {
@@ -4420,22 +4473,23 @@ function ensureStandardSockets(hull) {
 
 function paletteFor(entity) {
   const faction = entity.factionId && FACTION_PALETTES[entity.factionId];
+  let base;
   if (faction) {
-    return {
+    base = {
       hull: faction.hull || faction.primary,
       accent: faction.accent || faction.primary,
       thruster: faction.thruster || faction.emissive || faction.accent || faction.primary,
       dark: faction.secondary || '#111820',
     };
-  }
-  if (entity.team === 0) {
+  } else if (entity.team === 0) {
     const free = FACTION_PALETTES.faction_free;
-    return { hull: free.hull, accent: free.accent, thruster: free.thruster, dark: free.secondary };
+    base = { hull: free.hull, accent: free.accent, thruster: free.thruster, dark: free.secondary };
+  } else if (entity.team === 1) {
+    base = { hull: '#7a3540', accent: '#ff5470', thruster: '#ff7a3c', dark: '#241116' };
+  } else {
+    base = { hull: '#6b7280', accent: '#b0b8c4', thruster: '#aebfd6', dark: '#171c24' };
   }
-  if (entity.team === 1) {
-    return { hull: '#7a3540', accent: '#ff5470', thruster: '#ff7a3c', dark: '#241116' };
-  }
-  return { hull: '#6b7280', accent: '#b0b8c4', thruster: '#aebfd6', dark: '#171c24' };
+  return paletteWithShipAppearance(entity, base);
 }
 
 function snapshotMounts(mounts) {
@@ -4588,6 +4642,8 @@ export function runMaterialSharingContractProbe(THREE_NS = THREE) {
     readabilityShellMerged: readabilityShellMaterial(matA, palette) === readabilityShellMaterial(matB, palette),
     geologyPreservesAuthoredColor: geology.color.getHex() === 0xffffff && geology.emissive.getHex() === 0x000000,
     warningPreservesAuthoredColor: warning.color.getHex() === 0xffffff && warning.emissive.getHex() === 0x000000,
-    mechanicalUsesDarkPalette: mechanical.color.getHex() === new THREE_NS.Color(palette.dark).getHex(),
+    mechanicalUsesDarkPalette: mechanical.color.b > mechanical.color.r
+      && mechanical.color.b > mechanical.color.g
+      && mechanical.color.r > 0.85,
   };
 }

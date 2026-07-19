@@ -46,6 +46,7 @@ import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
 import { getAssetResidency } from './assetResidency.js';
+import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import { createPipelineAdmissionTracker } from './pipelineReadiness.js';
 import { prepareStartupGpuResidency, yieldToBrowser } from './startupGpuResidency.js';
 import { collectContextLossRoots, detachStaleWebGlDisposeListeners } from './contextResourceLifecycle.js';
@@ -104,6 +105,19 @@ const SOCKET_WORLD_QUAT = new THREE.Quaternion();
 const SOCKET_WORLD_SCALE = new THREE.Vector3();
 const SOCKET_FORWARD = new THREE.Vector3();
 const RUNTIME_MESH_BUILD_BUDGET = 2;
+
+/** Use authored XZ bounds for view culling without changing gameplay/collision radius. */
+export function entityVisualCullRadius(entity, mesh = null) {
+  const simRadius = Math.max(0, Number(entity && entity.radius) || 0);
+  const hull = mesh && mesh.userData && mesh.userData.hull;
+  const bounds = hull && hull.userData && hull.userData.visualBounds
+    || mesh && mesh.userData && mesh.userData.visualBounds;
+  const size = bounds && bounds.size;
+  if (!Array.isArray(size)) return simRadius;
+  const x = Math.max(0, Number(size[0]) || 0);
+  const z = Math.max(0, Number(size[2]) || 0);
+  return Math.max(simRadius, Math.hypot(x, z) * 0.5);
+}
 
 function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
   if (!entity || entity._noMesh || meshes.has(entity.id) || queuedIds.has(entity.id)) return;
@@ -830,6 +844,11 @@ export const render = {
     };
     beginAuthoredPartLibraryPreload();
     state.render.retryAuthoredPartLibrary = () => beginAuthoredPartLibraryPreload(true);
+    // Common-rock maps are part of the opening GPU-residency contract even though asteroid meshes
+    // stream after the first playable paint. Decoding them now prevents the first rock from ever
+    // publishing the old flat/clay material and then changing identity a few frames later.
+    this.rockSurfaceLibraryReady = preloadRockSurfaceLibrary(renderer);
+    state.render.rockSurfaceLibraryReady = this.rockSurfaceLibraryReady;
     this._sectorPaletteRig = createSectorPaletteRig(scene, ambient, key, rim, fill);
     this._sectorPaletteTarget = corePalette;
     state.render.sectorPalette = corePalette;
@@ -1101,6 +1120,9 @@ export const render = {
     state.render.compileCurrentPipelines = () => pipelineAdmissions.waitForPending();
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
     state.render.prepareOpeningGpuResources = async () => {
+      // Flight admission waits behind the loading presenter, so every subsequently streamed common
+      // rock receives its final PBR maps on its first and only visual publication.
+      await this.rockSurfaceLibraryReady;
       const roots = [];
       for (const [id, mesh] of this._meshes) {
         const entity = state.entities && state.entities.get ? state.entities.get(id) : null;
@@ -1549,12 +1571,12 @@ export const render = {
     };
   },
 
-  _isEntityViewCulled(e, bounds) {
+  _isEntityViewCulled(e, bounds, mesh = null) {
     if (!e || !bounds || e.id === this.state.playerId) return false;
     if (e.flags && (e.flags.forceRender || e.flags.neverCull)) return false;
     if (!e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) return false;
     const local = this._frameMembrane.toLocal(e.pos, _cullLocalXZ);
-    const radius = Math.max(0, Number(e.radius) || 0);
+    const radius = entityVisualCullRadius(e, mesh);
     return Math.abs(local.x - bounds.x) > bounds.halfX + radius
       || Math.abs(local.z - bounds.z) > bounds.halfZ + radius;
   },
@@ -1613,7 +1635,7 @@ export const render = {
       const e = this.state.entities.get(id);
       if (!e || e.alive === false || !m) continue;
       if (this.collisionDebug && this.collisionDebug.on) m.userData.__lastEntity = e; // read-only debug overlay
-      const viewCulled = this._isEntityViewCulled(e, bounds);
+      const viewCulled = this._isEntityViewCulled(e, bounds, m);
       if (m.userData && m.userData.asteroidInstanceBody) {
         m.userData.asteroidInstanceViewCulled = viewCulled;
       }
@@ -1665,6 +1687,10 @@ export const render = {
       classifyRenderEntity(this._entityFrame, e, m, viewCulled);
       if (viewCulled) continue;
       fullSynced++;
+      // Small interactive props publish stateful material closures (for example mine/charge arming
+      // indicators). The closure swaps immutable cached materials only when state changes, so one
+      // entity cannot leak its status into another and the steady-state render loop allocates nothing.
+      if (m.userData.updateRuntimeState) m.userData.updateRuntimeState(e, now);
       // Hero-asset damage states (spec §9.11): hero meshes carry an updateDamageState closure that
       // modulates light groups / armor / drive from the live hull fraction so damage reads without the
       // HUD bar. Cheap no-op for non-hero meshes (no closure). Called once per frame per entity.

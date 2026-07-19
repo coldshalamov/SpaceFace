@@ -1,8 +1,9 @@
-// Builds Three.js meshes for entities from primitives + procedural canvas textures only
-// (no external assets, no three/addons). Contract:  createVisualFactory() -> { build(entity) }
+// Builds Three.js meshes for entities from primitives, deterministic procedural maps, and visual
+// libraries that were fully decoded before flight admission. Contract: createVisualFactory() ->
+// { build(entity) }
 // where build(entity) returns a THREE.Object3D whose +X axis is the ship's nose (the renderer
-// sets mesh.rotation.y = -entity.rot, so +X must point forward). Build must NEVER throw — any
-// failure falls back to a simple box mesh.
+// sets mesh.rotation.y = -entity.rot, so +X must point forward). Build must NEVER publish a
+// substitute identity: unsupported or failed visuals return an invisible diagnostic root.
 //
 // PERF / CACHING (per the art spec + the renderer's per-entity disposer in renderer.js):
 //   disposeObject() in renderer.js disposes geometry+material on entity:destroyed but NOT textures.
@@ -15,6 +16,16 @@
 //   Asteroids use a small pool of seeded displacement variants per type (deterministic, bounded)
 //   rather than a unique geometry per rock.
 import * as THREE from 'three';
+import { mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+import { getReadyRockSurfaceTextures } from './rockSurfaceLibrary.js';
+import {
+  COMMON_ROCK_MATERIAL_ROLES,
+  COMMON_ROCK_UV_TRANSFORMS,
+  COMMON_ROCK_VARIANTS,
+  displacementScalar as geologyDisplacement,
+  silhouetteRadius as geologySilhouetteRadius,
+  surfaceResponse as geologySurfaceResponse,
+} from './objectSpaceGeology.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture, makeStarTexture,
@@ -22,6 +33,7 @@ import {
   makeGrimeTexture, makePatchTexture, makeNoseArtTexture,
 } from './canvasTextures.js';
 import { FACTION_PALETTES, SHIP_RECIPES, paintProfileFor, PLAYER_NOSE_ART } from '../data/palettes.js';
+import { paletteWithShipAppearance } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
@@ -32,6 +44,8 @@ import { createEnergyMaterial } from './energy/energyMaterials.js';
 import * as kit from './ships/shipKit.js';
 import { attachStationHlod } from './hlod.js';
 import { attachLodState } from './lod.js';
+import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
+import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 
 // ---------------------------------------------------------------------------------------------
 // Lookups + palette resolution
@@ -58,7 +72,9 @@ export function setEnvMapForShips(env) { SHIP_ENV_MAP = env; }
 // self-applies to every NPC. The PLAYER (team 0 / faction_free) gets the haunted ex-gangster profile.
 function resolvePalette(e) {
   const personality = (e.factionId && FACTION_PERSONALITY.get(e.factionId)) || 'independent';
-  const profile = paintProfileFor(personality);
+  // paintProfileFor returns shared faction recipe data. Entity wear is presentation state, so keep
+  // it local instead of leaking one ship's wear into every later ship from the same manufacturer.
+  const profile = { ...paintProfileFor(personality) };
   let colors;
   if (e.team === 0) colors = PLAYER_PAL;
   else if (e.team === 1) colors = HOSTILE_PAL;
@@ -68,7 +84,9 @@ function resolvePalette(e) {
       ? { hull: fp.hull, accent: fp.accent || fp.primary, emissive: fp.emissive || fp.primary, thruster: fp.thruster || fp.accent }
       : NEUTRAL_PAL;
   }
-  return Object.assign({}, colors, { profile, isPlayer: e.team === 0 });
+  const appearance = paletteWithShipAppearance(e, colors);
+  if (Number.isFinite(Number(appearance.wear))) profile.grime = appearance.wear;
+  return Object.assign({}, appearance, { profile, isPlayer: e.team === 0 });
 }
 
 // Stable hash from an entity id (number or string) → small int, for seeding per-entity variety.
@@ -576,7 +594,7 @@ function engineGlow(pal, x, z, scale) {
 // Tier (Mk.I/II/III, from the sum of fitted module tiers) scales armor plating, greeble, fin arrays
 // and secondary structures so an upgraded ship visibly reads as upgraded. Geometry is cached by key
 // (family+section+tier) so the bounded _geo/_mat/_tex caches stay bounded; the per-entity Object3D
-// graph is what the renderer disposes on rebuild. Build never throws (try/catch → fallback box).
+// graph is what the renderer disposes on rebuild. Build never publishes a placeholder on failure.
 //
 // Nose is +X. `g` is the bankable hull group (rolled by the renderer); `outer` holds position/yaw.
 // =============================================================================================
@@ -1723,7 +1741,7 @@ const AST_TYPE = {
   // colors pushed toward the cyberpunk-noir neon palette: valuable ores glow in saturated magenta/
   // cyan/violet so they read as prizes against the moody backdrop. Common rock stays dull grey to
   // maximize the value contrast (a neon crystal cluster is instantly "that's the good stuff").
-  ast_common_rock: { color: 0x4a4540, rough: 0.98, metal: 0.04, emissive: 0x000000, ei: 0,    detail: 1, displace: 0.34, flat: true,  variant: 'rock' },
+  ast_common_rock: { color: 0xffffff, rough: 0.86, metal: 0.04, emissive: 0x000000, ei: 0,    detail: 2, displace: 0.20, flat: false, variant: 'rock' },
   ast_metallic:    { color: 0x5a6470, rough: 0.45, metal: 0.7,  emissive: 0x183040, ei: 0.18, detail: 1, displace: 0.30, flat: true,  variant: 'metal', veinColor: '#3fd0ff' },
   ast_icy:         { color: 0x8fd8f0, rough: 0.18, metal: 0.12, emissive: 0x105080, ei: 0.45, detail: 1, displace: 0.28, flat: false, variant: 'ice',  veinColor: '#5fe0ff' },
   ast_crystalline: { color: 0x5a3aa0, rough: 0.22, metal: 0.25, emissive: 0x9030e0, ei: 0.85, detail: 1, displace: 0.45, flat: true,  variant: 'crystal', veinColor: '#c060ff' },
@@ -1731,39 +1749,250 @@ const AST_TYPE = {
   ast_rare_exotic: { color: 0x282038, rough: 0.6,  metal: 0.5,  emissive: 0x7030d0, ei: 0.8,  detail: 2, displace: 0.32, flat: true,  variant: 'exotic', veinColor: '#ff40c0' },
 };
 
+function transformCommonRockUvs(geometry, variantIdx) {
+  const uv = geometry.getAttribute('uv');
+  const transform = COMMON_ROCK_UV_TRANSFORMS[variantIdx];
+  if (!uv || !transform) return null;
+  const cosine = Math.cos(transform.rotation);
+  const sine = Math.sin(transform.rotation);
+  for (let index = 0; index < uv.count; index++) {
+    const centeredU = uv.getX(index) - 0.5;
+    const centeredV = uv.getY(index) - 0.5;
+    const rotatedU = centeredU * cosine - centeredV * sine;
+    const rotatedV = centeredU * sine + centeredV * cosine;
+    uv.setXY(
+      index,
+      rotatedU * transform.scale[0] + 0.5 + transform.offset[0],
+      rotatedV * transform.scale[1] + 0.5 + transform.offset[1],
+    );
+  }
+  uv.needsUpdate = true;
+  return transform;
+}
+
 function astDisplacedGeometry(typeId, def, variantIdx) {
-  const key = `ast:${typeId}:${variantIdx}`;
+  const key = `ast:geology-v4:${typeId}:${variantIdx}`;
   return getGeometry(key, () => {
     const geo = new THREE.IcosahedronGeometry(1, def.detail + 1);
+    const uvTransform = typeId === 'ast_common_rock' ? transformCommonRockUvs(geo, variantIdx) : null;
     const pos = geo.attributes.position;
+    const normal = geo.attributes.normal;
+    const colors = typeId === 'ast_common_rock' ? new Float32Array(pos.count * 3) : null;
+    const geologyPbr = typeId === 'ast_common_rock' ? new Float32Array(pos.count * 4) : null;
+    const dominantRoleCounts = { matrix: 0, fracture: 0, regolith: 0, ferrite: 0 };
+    const responseRanges = {
+      ao: [Infinity, -Infinity],
+      roughness: [Infinity, -Infinity],
+      metalness: [Infinity, -Infinity],
+      normalStrength: [Infinity, -Infinity],
+      silhouetteRadius: [Infinity, -Infinity],
+    };
     const v = new THREE.Vector3();
+    const surfaceNormal = new THREE.Vector3();
     const rnd = mulberryLite(hashId(typeId) + variantIdx * 911);
     // per-geometry random lattice offsets so each variant displaces differently but deterministically
     const ox = rnd() * 100, oy = rnd() * 100, oz = rnd() * 100;
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i);
-      // cheap 3-octave value-ish noise from trig of the (offset) normal direction
-      const n = v.clone().normalize();
+      // Micro-breakup stays subordinate to the common rocks' object-space strata and joint fields.
+      surfaceNormal.copy(v).normalize();
       let d = 0, amp = 1, f = 1.7;
       for (let o = 0; o < 3; o++) {
-        d += amp * Math.sin(n.x * f * 3.1 + ox) * Math.cos(n.y * f * 2.7 + oy) * Math.sin(n.z * f * 3.3 + oz);
+        d += amp * Math.sin(surfaceNormal.x * f * 3.1 + ox)
+          * Math.cos(surfaceNormal.y * f * 2.7 + oy)
+          * Math.sin(surfaceNormal.z * f * 3.3 + oz);
         amp *= 0.5; f *= 2.0;
       }
-      const scale = 1 + def.displace * d;
+      const silhouetteRadius = typeId === 'ast_common_rock'
+        ? geologySilhouetteRadius(surfaceNormal.x, surfaceNormal.y, surfaceNormal.z, variantIdx)
+        : 1;
+      const scale = typeId === 'ast_common_rock'
+        ? silhouetteRadius
+          + geologyDisplacement(surfaceNormal.x, surfaceNormal.y, surfaceNormal.z, variantIdx) * 1.9
+          + def.displace * d * 0.18
+        : 1 + def.displace * d;
       v.multiplyScalar(Math.max(0.5, scale));
       pos.setXYZ(i, v.x, v.y, v.z);
+      // Keep an intermediate radial normal for deterministic geology tone sampling. Common rocks
+      // replace it below with merged displaced-surface normals so macro strata affect grazing light.
+      surfaceNormal.copy(v).normalize();
+      normal.setXYZ(i, surfaceNormal.x, surfaceNormal.y, surfaceNormal.z);
+      if (colors) {
+        const response = geologySurfaceResponse(
+          surfaceNormal.x,
+          surfaceNormal.y,
+          surfaceNormal.z,
+          variantIdx,
+        );
+        colors[i * 3] = response.baseColor[0];
+        colors[i * 3 + 1] = response.baseColor[1];
+        colors[i * 3 + 2] = response.baseColor[2];
+        geologyPbr[i * 4] = response.ao;
+        geologyPbr[i * 4 + 1] = response.roughness;
+        geologyPbr[i * 4 + 2] = response.metalness;
+        geologyPbr[i * 4 + 3] = response.normalStrength;
+        const dominantRole = Object.entries(response.roleWeights)
+          .reduce((best, entry) => (entry[1] > best[1] ? entry : best))[0];
+        dominantRoleCounts[dominantRole]++;
+        for (const [field, value] of Object.entries({
+          ao: response.ao,
+          roughness: response.roughness,
+          metalness: response.metalness,
+          normalStrength: response.normalStrength,
+          silhouetteRadius,
+        })) {
+          responseRanges[field][0] = Math.min(responseRanges[field][0], value);
+          responseRanges[field][1] = Math.max(responseRanges[field][1], value);
+        }
+      }
     }
-    geo.computeVertexNormals();
-    return geo;
+    normal.needsUpdate = true;
+    if (colors) geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    if (geologyPbr) geo.setAttribute('sfGeologyPbr', new THREE.BufferAttribute(geologyPbr, 4));
+    if (typeId === 'ast_common_rock') {
+      // IcosahedronGeometry is non-indexed, so computeVertexNormals on the original buffer would
+      // preserve triangle facets. Merge identical displaced vertices first: the resulting normals
+      // follow the authored strata/joint relief while remaining smooth across shared rock faces.
+      const smooth = mergeVertices(geo, 1e-5);
+      smooth.computeVertexNormals();
+      smooth.computeBoundingSphere();
+      // Preserve the dense, non-indexed representation expected by the asteroid instancing path;
+      // toNonIndexed duplicates the already-smoothed normals instead of recreating face normals.
+      const denseSmooth = toCreasedNormals(smooth, THREE.MathUtils.degToRad(42));
+      denseSmooth.computeBoundingSphere();
+      denseSmooth.userData.spacefaceGeology = {
+        schema: 'spaceface.commonRockGeology.v4',
+        variantIndex: variantIdx,
+        variantName: COMMON_ROCK_VARIANTS[variantIdx].name,
+        materialRoles: Object.keys(COMMON_ROCK_MATERIAL_ROLES),
+        dominantRoleCounts,
+        responseRanges,
+        uvTransform,
+        deterministic: true,
+        pbrAttribute: 'sfGeologyPbr',
+        pbrAttributeChannels: ['ao', 'roughness', 'metalness', 'normalStrength'],
+        normalPolicy: '42-degree selective crease with smooth intra-plane normals',
+      };
+      return denseSmooth;
+    }
+    // The original icosphere normals describe the undisplaced sphere, so retaining them makes
+    // every smooth-shaded variant (most visibly ice) reflect like a plastic ball even after its
+    // silhouette has been heavily displaced. Rebuild normals from the final surface. Merge first
+    // so neighboring faces share the same displaced vertex, then preserve deliberate geological
+    // breaks with a material-appropriate crease angle.
+    const displaced = mergeVertices(geo, 1e-5);
+    displaced.computeVertexNormals();
+    displaced.computeBoundingSphere();
+    const creaseDegrees = typeId === 'ast_icy' ? 62 : (def.flat ? 34 : 48);
+    const surfaced = toCreasedNormals(displaced, THREE.MathUtils.degToRad(creaseDegrees));
+    surfaced.computeBoundingSphere();
+    surfaced.userData.spacefaceGeology = {
+      schema: 'spaceface.asteroidSurfaceNormals.v1',
+      typeId,
+      variantIndex: variantIdx,
+      normalPolicy: `${creaseDegrees}-degree displaced-surface crease`,
+      deterministic: true,
+    };
+    return surfaced;
   });
+}
+
+const COMMON_ROCK_PBR_SHADER_KEY = 'spaceface-common-rock-geology-pbr-v4';
+
+function replaceRequiredShaderSource(source, needle, replacement, label) {
+  if (typeof source !== 'string' || !source.includes(needle)) {
+    throw new Error(`[render] common-rock PBR shader contract changed: missing ${label}`);
+  }
+  return source.replace(needle, replacement);
+}
+
+function configureCommonRockPbr(material) {
+  material.name = 'SF_CommonRock_GeologicalPBR_v4';
+  material.userData.spacefaceMaterialRoles = Object.keys(COMMON_ROCK_MATERIAL_ROLES);
+  material.userData.spacefacePbrAttribute = 'sfGeologyPbr';
+  material.userData.spacefaceSurfaceModel = 'macro-object-space+variant-uv+micro-texture';
+  material.userData.spacefaceNoEmissiveBlanket = true;
+  material.customProgramCacheKey = () => COMMON_ROCK_PBR_SHADER_KEY;
+  material.onBeforeCompile = (shader) => {
+    // Preserve Three's current tangent-space normal implementation, but scale its XY perturbation
+    // with the geological role stored in sfGeologyPbr.a. Fracture walls carry a sharper response;
+    // ferrite and accumulated regolith remain calmer instead of sharing one plastic normal strength.
+    const geologyNormalChunk = replaceRequiredShaderSource(
+      THREE.ShaderChunk.normal_fragment_maps,
+      'mapN.xy *= normalScale;',
+      'mapN.xy *= normalScale * vSfGeologyPbr.a;',
+      'normal-map scale hook',
+    );
+    shader.vertexShader = replaceRequiredShaderSource(
+      shader.vertexShader,
+      '#include <common>',
+      '#include <common>\nattribute vec4 sfGeologyPbr;\nvarying vec4 vSfGeologyPbr;',
+      'vertex common chunk',
+    );
+    shader.vertexShader = replaceRequiredShaderSource(
+      shader.vertexShader,
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\nvSfGeologyPbr = sfGeologyPbr;',
+      'vertex position hook',
+    );
+    shader.fragmentShader = replaceRequiredShaderSource(
+      shader.fragmentShader,
+      '#include <common>',
+      '#include <common>\nvarying vec4 vSfGeologyPbr;',
+      'fragment common chunk',
+    );
+    shader.fragmentShader = replaceRequiredShaderSource(
+      shader.fragmentShader,
+      '#include <normal_fragment_maps>',
+      geologyNormalChunk,
+      'fragment normal chunk',
+    );
+    shader.fragmentShader = replaceRequiredShaderSource(
+      shader.fragmentShader,
+      '#include <roughnessmap_fragment>',
+      [
+        '#include <roughnessmap_fragment>',
+        '// Blend the micro roughness map toward the object-space geological role response.',
+        'roughnessFactor = clamp(mix(roughnessFactor, vSfGeologyPbr.g, 0.84), 0.24, 1.0);',
+      ].join('\n'),
+      'fragment roughness chunk',
+    );
+    shader.fragmentShader = replaceRequiredShaderSource(
+      shader.fragmentShader,
+      '#include <metalnessmap_fragment>',
+      [
+        '#include <metalnessmap_fragment>',
+        '// Sparse ferrite can become metallic; matrix/fracture/regolith remain dielectric.',
+        'metalnessFactor = clamp(mix(metalnessFactor, vSfGeologyPbr.b, 0.9), 0.0, 1.0);',
+      ].join('\n'),
+      'fragment metalness chunk',
+    );
+    shader.fragmentShader = replaceRequiredShaderSource(
+      shader.fragmentShader,
+      '#include <aomap_fragment>',
+      [
+        '#include <aomap_fragment>',
+        '// Recess-linked macro occlusion supplements the packed micro AO without a screen pass.',
+        'reflectedLight.indirectDiffuse *= vSfGeologyPbr.r;',
+        'reflectedLight.indirectSpecular *= mix(0.72, 1.0, vSfGeologyPbr.r);',
+      ].join('\n'),
+      'fragment AO chunk',
+    );
+  };
+  return material;
 }
 
 function astMaterial(typeId, def, tint) {
   const key = `astmat:${typeId}:${tint || 'def'}`;
   return getMaterial(key, () => {
+    const commonSurface = typeId === 'ast_common_rock' && tint == null
+      ? getReadyRockSurfaceTextures()
+      : null;
     const color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
-    const rough = getTexture('noise:astrough', () =>
-      makeNoiseTexture({ size: 256, seed: 41, octaves: 4, baseCells: 6, contrast: 1.4, brightness: -0.05 }));
+    const rough = commonSurface || def.variant === 'crystal'
+      ? null
+      : getTexture('noise:astrough', () =>
+        makeNoiseTexture({ size: 256, seed: 41, octaves: 4, baseCells: 6, contrast: 1.4, brightness: -0.05 }));
 
     // Procedural surfaces only. (The generated ore_*_hero.jpg assets are LABELLED contact-sheet
     // references — multiple views + caption text — and were being emissive-mapped onto crystals, so
@@ -1774,13 +2003,23 @@ function astMaterial(typeId, def, tint) {
     if (t.includes('luminite') || t.includes('crystal') || def.variant === 'crystal') eiBoost = Math.max(eiBoost, 0.9);
     else if (t.includes('xenium') || t.includes('exotic') || def.variant === 'exotic') eiBoost = Math.max(eiBoost, 0.75);
 
-    return new THREE.MeshStandardMaterial({
+    const material = new THREE.MeshStandardMaterial({
       color,
-      roughness: def.rough, metalness: def.metal,
-      roughnessMap: def.variant === 'crystal' ? null : rough,
+      map: commonSurface && commonSurface.baseColor || null,
+      normalMap: commonSurface && commonSurface.normal || null,
+      normalScale: commonSurface ? new THREE.Vector2(0.96, 0.96) : new THREE.Vector2(1, 1),
+      aoMap: commonSurface && commonSurface.orm || null,
+      aoMapIntensity: commonSurface ? 0.78 : 1,
+      roughness: commonSurface ? 1 : def.rough,
+      metalness: commonSurface ? 1 : def.metal,
+      roughnessMap: commonSurface && commonSurface.orm
+        || (def.variant === 'crystal' ? null : rough),
+      metalnessMap: commonSurface && commonSurface.orm || null,
+      vertexColors: !!commonSurface,
       emissive: new THREE.Color(def.emissive), emissiveIntensity: eiBoost,
       flatShading: def.flat,
     });
+    return commonSurface ? configureCommonRockPbr(material) : material;
   });
 }
 
@@ -2222,7 +2461,9 @@ function buildPickup(e) {
 // ---------------------------------------------------------------------------------------------
 function buildProjectile(e) {
   const R = e.radius || 0.7;
-  const isMissile = e.data && e.data.kind === 'missile';
+  const wid = (e.data && e.data.weaponId) || '';
+  const presentation = resolveWeaponPresentationFamily(wid, e.data || null);
+  const isMissile = presentation.family === 'missile';
   // Hot neon bolt colors — pushed more saturated than the originals so energy weapons read as plasma
   // through bloom. Each team gets a primary + a chromatic fringe (the complementary hue) so bolts
   // shimmer with a two-tone neon edge, the signature cyberpunk energy-weapon look.
@@ -2233,21 +2474,32 @@ function buildProjectile(e) {
     const body = new THREE.Mesh(getGeometry('proj:mbody', () => new THREE.CylinderGeometry(0.4, 0.4, 2.0, 6).rotateZ(Math.PI / 2)),
       getMaterial('proj:mmat', () => new THREE.MeshStandardMaterial({ color: 0x3a3f4a, roughness: 0.6, metalness: 0.4 })));
     body.scale.setScalar(R); g.add(body);
-    const tip = new THREE.Mesh(getGeometry('proj:mtip', () => new THREE.ConeGeometry(0.4, 0.8, 6).rotateZ(-Math.PI / 2)), basicGlowMaterial(color));
+    body.name = 'ProjectileMissileBody';
+    const tip = new THREE.Mesh(getGeometry('proj:mtip', () => new THREE.ConeGeometry(0.4, 0.8, 8).rotateZ(-Math.PI / 2)),
+      getMaterial('proj:warhead', () => new THREE.MeshStandardMaterial({ color: 0x747b86, roughness: 0.46, metalness: 0.52 })));
     tip.position.x = R * 1.4; tip.scale.setScalar(R); g.add(tip);
-    const flame = makeHalo(color, R * 2.2); flame.position.x = -R * 1.2; g.add(flame);
-    // neon smoke trail fringe behind the missile
-    g.add(makeHalo(fringe, R * 1.4));
+    tip.name = 'ProjectileMissileWarhead';
+    const exhaust = boltMesh('proj:missile:exhaust',
+      () => new THREE.CapsuleGeometry(0.20, 1.55, 3, 8).rotateZ(Math.PI / 2), '#fff8df', color, 'missile-exhaust', R);
+    exhaust.name = 'ProjectileMissileExhaust';
+    exhaust.position.x = -R * 1.55;
+    tuneBoltMaterial(exhaust.material, { intensity: 5.8, core: 0.78, opacity: 0.94, flowSpeed: 9.0, noiseScale: 2.8 });
+    g.add(exhaust);
+    const exhaustSheath = boltMesh('proj:missile:sheath',
+      () => new THREE.CapsuleGeometry(0.38, 2.05, 3, 8).rotateZ(Math.PI / 2), color, fringe, 'missile-sheath', R);
+    exhaustSheath.name = 'ProjectileMissileExhaustSheath';
+    exhaustSheath.position.x = -R * 1.8;
+    tuneBoltMaterial(exhaustSheath.material, { intensity: 2.2, core: 0.16, opacity: 0.30, flowSpeed: 7.0, noiseScale: 2.1 });
+    exhaustSheath.renderOrder = 20;
+    exhaust.renderOrder = 21;
+    g.add(exhaustSheath);
   } else {
-    // --- Determine weapon variant from entity data ---
-    const wid = (e.data && e.data.weaponId) || '';
-    const dtype = (e.data && e.data.damageType) || 'energy';
-    const isRailgun    = wid.includes('railgun');
-    const isSiege      = wid.includes('siege');
-    const isFlak       = wid.includes('flak');
-    const isPlasma     = dtype === 'thermal';
-    const isAutocannon = !isRailgun && !isSiege && !isFlak && dtype === 'kinetic';
-    // isPulseLaser is the default/fallback (energy bolts)
+    const isSiege = presentation.variant === 'siege-lance';
+    const isRailgun = presentation.family === 'rail' && !isSiege;
+    const isFlak = presentation.variant === 'flak';
+    const isPlasma = presentation.variant === 'thermal-bolt';
+    const isEmp = presentation.family === 'emp';
+    const isAutocannon = presentation.family === 'kinetic' && !isFlak;
 
     if (isSiege) {
       // SIEGE LANCE — massive, very elongated energy streak. Brightest projectile in the game.
@@ -2272,26 +2524,42 @@ function buildProjectile(e) {
       tuneBoltMaterial(halo.material, { intensity: 3.2, core: 0.16, opacity: 0.4, fresnelPower: 1.6 });
       halo.renderOrder = 20; core.renderOrder = 21; g.add(halo);
     } else if (isPlasma) {
-      // PLASMA CANNON — larger, rounder bolt with a big glow sphere. Orange/hot tinted.
-      // Override colors: plasma always has an orange-hot tint blended with team color. Sphere geometry
-      // works with the energy shader's length(vLocal.yz) radial mask (it just becomes a 3D bead).
+      // PLASMA CANNON — a coherent directional packet with a turbulent wake, not a glowing ball.
       const plasmaCore = e.team === 1 ? '#ff6040' : (e.team === 0 ? '#80ffcc' : '#ffcc44');
       const plasmaGlow = e.team === 1 ? '#ff4020' : (e.team === 0 ? '#40ffa0' : '#ffaa22');
       const plasmaVariant = `plasma-${e.team == null ? 'n' : e.team}`;
       const core = boltMesh('proj:plasma:core',
-        () => new THREE.SphereGeometry(0.6, 12, 10), '#ffffee', plasmaCore, `${plasmaVariant}-core`, R);
+        () => new THREE.CapsuleGeometry(0.46, 1.85, 4, 10).rotateZ(Math.PI / 2), '#ffffee', plasmaCore, `${plasmaVariant}-core`, R);
+      core.position.x = R * 0.22;
       tuneBoltMaterial(core.material, { intensity: 6.5, core: 0.7, opacity: 1.0, noiseScale: 3.2, flowSpeed: 5.0 });
       g.add(core);
       const halo = boltMesh('proj:plasma:halo',
-        () => new THREE.SphereGeometry(1.55, 12, 10), plasmaCore, plasmaGlow, `${plasmaVariant}-halo`, R);
+        () => new THREE.CapsuleGeometry(0.92, 2.75, 4, 10).rotateZ(Math.PI / 2), plasmaCore, plasmaGlow, `${plasmaVariant}-halo`, R);
+      halo.position.x = -R * 0.26;
       tuneBoltMaterial(halo.material, { intensity: 2.6, core: 0.2, opacity: 0.4, fresnelPower: 1.4, noiseScale: 2.2 });
       halo.renderOrder = 20; core.renderOrder = 21; g.add(halo);
     } else if (isFlak) {
-      // FLAK / PD — tiny, fast dots. One small energy bead; minimal glow.
+      // FLAK / PD — a short needle tracer, intentionally distinct from plasma packets.
       const core = boltMesh('proj:flak:core',
-        () => new THREE.SphereGeometry(0.22, 8, 6), color, fringe, 'flak-core', R);
+        () => new THREE.CapsuleGeometry(0.11, 1.6, 3, 8).rotateZ(Math.PI / 2), '#fff4d2', color, 'flak-core', R);
       tuneBoltMaterial(core.material, { intensity: 5.0, core: 0.66, opacity: 0.95, noiseScale: 4.0 });
       g.add(core);
+    } else if (isEmp) {
+      // EMP — a forked electrical packet: narrow spine plus diverging prongs, not plasma recolored blue.
+      const spine = boltMesh('proj:emp:spine',
+        () => new THREE.CapsuleGeometry(0.16, 3.1, 3, 8).rotateZ(Math.PI / 2), '#ffffff', '#8edcff', 'emp-spine', R);
+      spine.name = 'ProjectileEmpSpine';
+      tuneBoltMaterial(spine.material, { intensity: 6.4, core: 0.78, opacity: 0.96, flowSpeed: 14.0, noiseScale: 4.4 });
+      g.add(spine);
+      for (const sign of [-1, 1]) {
+        const fork = boltMesh('proj:emp:fork',
+          () => new THREE.CapsuleGeometry(0.10, 1.45, 3, 8).rotateZ(Math.PI / 2), '#eaffff', '#4d7eff', 'emp-fork', R);
+        fork.name = sign < 0 ? 'ProjectileEmpFork' : 'ProjectileEmpForkB';
+        fork.position.set(-R * 1.15, 0, sign * R * 0.32);
+        fork.rotation.y = sign * 0.34;
+        tuneBoltMaterial(fork.material, { intensity: 4.8, core: 0.64, opacity: 0.80, flowSpeed: 18.0, noiseScale: 5.0 });
+        g.add(fork);
+      }
     } else if (isAutocannon) {
       // AUTOCANNON — shorter, fatter bolt. More solid/opaque, like a physical slug.
       const core = boltMesh('proj:auto:core',
@@ -2303,15 +2571,23 @@ function buildProjectile(e) {
       tuneBoltMaterial(shell.material, { intensity: 2.4, core: 0.2, opacity: 0.4, fresnelPower: 1.7 });
       shell.renderOrder = 20; core.renderOrder = 21; g.add(shell);
     } else {
-      // PULSE LASER (default) — thin, elongated bright energy bolt. Classic energy-weapon look.
-      // Core + halo two-layer energy volume replaces the old triple-capsule + double-sprite stack.
+      // PULSE LASER (default) — one tapered directional packet. Rounded capsule ends caused the
+      // translucent sheath to resolve as a detached blue bead beside a white bar at the live camera.
+      // A narrow conical cylinder keeps a coherent leading point and a dissipating tail.
       const core = boltMesh('proj:pulse:core',
-        () => new THREE.CapsuleGeometry(0.20, 5.2, 4, 10).rotateZ(Math.PI / 2), '#ffffff', color, 'pulse-core', R);
-      tuneBoltMaterial(core.material, { intensity: 6.5, core: 0.74, opacity: 1.0, flowSpeed: 11.0 });
+        () => new THREE.CylinderGeometry(0.075, 0.020, 3.4, 8, 1, false).rotateZ(Math.PI / 2),
+        '#34cfff', color, 'pulse-core', R);
+      core.name = 'ProjectilePulseCore';
+      // Keep the starter weapon visibly cyan at the live camera. A pure-white HDR core above ~5
+      // collapsed through the selective bloom pass into the same anonymous white dash as every
+      // other bright effect, erasing the packet's internal flow and family identity.
+      tuneBoltMaterial(core.material, { intensity: 0.95, core: 0.56, opacity: 0.90, flowSpeed: 11.0 });
       g.add(core);
       const halo = boltMesh('proj:pulse:halo',
-        () => new THREE.CapsuleGeometry(0.50, 5.8, 4, 10).rotateZ(Math.PI / 2), color, fringe, 'pulse-halo', R);
-      tuneBoltMaterial(halo.material, { intensity: 2.8, core: 0.18, opacity: 0.42, fresnelPower: 1.6, noiseScale: 1.9 });
+        () => new THREE.CylinderGeometry(0.16, 0.040, 3.9, 10, 1, true).rotateZ(Math.PI / 2),
+        color, fringe, 'pulse-halo', R);
+      halo.name = 'ProjectilePulseSheath';
+      tuneBoltMaterial(halo.material, { intensity: 0.58, core: 0.10, opacity: 0.34, fresnelPower: 1.8, noiseScale: 2.3 });
       halo.renderOrder = 20; core.renderOrder = 21; g.add(halo);
     }
   }
@@ -2354,49 +2630,415 @@ function buildDrone(e) {
   return g;
 }
 
+function wreckSurfaceTexture(role, channel = 'basecolor') {
+  return getTexture(`wreck-surface-v2:${role}:${channel}`, () => {
+    const size = 96;
+    const data = new Uint8Array(size * size * 4);
+    const palette = {
+      structure: [48, 57, 62],
+      plate: [82, 70, 58],
+      edge: [70, 48, 36],
+      ceramic: [156, 145, 123],
+      heat: [106, 48, 23],
+      cage: [57, 65, 67],
+      conduit: [39, 45, 42],
+    }[role] || [72, 72, 72];
+    const rnd = mulberryLite(hashId(`wreck:${role}:${channel}`));
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const index = (y * size + x) * 4;
+        const verticalSeam = x % 24 < 2;
+        const horizontalSeam = y % 32 < 2;
+        const seam = verticalSeam || horizontalSeam;
+        const directionalWear = Math.max(0, Math.sin((x * 0.14) + (y * 0.035) + role.length));
+        const restrainedNoise = (rnd() - 0.5) * 9;
+        if (channel === 'normal') {
+          data[index] = verticalSeam ? 88 : verticalSeam || horizontalSeam ? 128 : 126;
+          data[index + 1] = horizontalSeam ? 88 : 128;
+          data[index + 2] = seam ? 238 : 255;
+        } else if (channel === 'roughness') {
+          const base = role === 'structure' || role === 'cage' ? 150
+            : role === 'ceramic' ? 218 : role === 'heat' ? 205 : role === 'conduit' ? 184 : 194;
+          const value = Math.max(38, Math.min(242,
+            base + restrainedNoise + directionalWear * 16 + (seam ? 22 : 0)));
+          data[index] = value;
+          data[index + 1] = value;
+          const packedMetalness = role === 'structure' || role === 'cage' ? 208
+            : role === 'edge' ? 224
+              : role === 'heat' ? 168
+                : role === 'conduit' ? 96
+                  : role === 'ceramic' ? 4 : 34;
+          data[index + 2] = packedMetalness;
+        } else {
+          const heatBand = role === 'heat' ? Math.max(0, 1 - Math.abs(x / size - 0.55) * 3.2) : 0;
+          const shade = (seam ? 0.62 : 0.9 + directionalWear * 0.12) + restrainedNoise / 255;
+          data[index] = Math.max(0, Math.min(255, palette[0] * shade + heatBand * 72));
+          data[index + 1] = Math.max(0, Math.min(255, palette[1] * shade + heatBand * 20));
+          data[index + 2] = Math.max(0, Math.min(255, palette[2] * shade));
+        }
+        data[index + 3] = 255;
+      }
+    }
+    const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
+    texture.name = `WreckSurface_${role}_${channel}`;
+    texture.colorSpace = channel === 'basecolor' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1.5, 1.5);
+    texture.anisotropy = 4;
+    texture.needsUpdate = true;
+    return texture;
+  });
+}
+
+function wreckRoleMaterial(key, role, options = {}) {
+  return getMaterial(key, () => {
+    const material = new THREE.MeshStandardMaterial({
+      color: options.color || 0xffffff,
+      map: wreckSurfaceTexture(role, 'basecolor'),
+      normalMap: wreckSurfaceTexture(role, 'normal'),
+      normalScale: new THREE.Vector2(options.normalStrength || 0.65, options.normalStrength || 0.65),
+      roughnessMap: wreckSurfaceTexture(role, 'roughness'),
+      metalnessMap: wreckSurfaceTexture(role, 'roughness'),
+      roughness: options.roughness ?? 0.72,
+      metalness: options.metalness ?? 0.35,
+      emissive: options.emissive || 0x000000,
+      emissiveIntensity: options.emissiveIntensity || 0,
+    });
+    material.name = key;
+    material.userData.spacefaceMaterialRole = options.materialRole || `wreck-${role}`;
+    material.userData.spacefaceSurfaceSource = 'deterministic-role-texture-v2';
+    material.userData.spacefaceSharedMaterial = true;
+    return material;
+  });
+}
+
 function buildWreck(e) {
-  // Salvage wreckage — charred hull plates, not a molten blob. Cool steel + a thin heat halo
-  // so it still reads as "fresh kill debris" without looking like a lava marble.
   const R = e.radius || 6;
   const g = new THREE.Group();
-  const charred = getMaterial('wreck:mat', () => new THREE.MeshStandardMaterial({
-    color: 0x2a2e34, roughness: 0.92, metalness: 0.55, emissive: 0x1a1008, emissiveIntensity: 0.12,
-  }));
-  const plating = getMaterial('wreck:plate', () => new THREE.MeshStandardMaterial({
-    color: 0x3a424c, roughness: 0.78, metalness: 0.72, emissive: 0x0a0c10, emissiveIntensity: 0.08,
-  }));
+  const identity = interactionProfileForEntity(e);
+  const structure = wreckRoleMaterial('wreck:structure', 'structure', {
+    roughness: 0.6, metalness: 0.78, materialRole: 'load-bearing-metal',
+  });
+  const plate = wreckRoleMaterial('wreck:plate', 'plate', {
+    roughness: 0.83, metalness: 0.18, materialRole: 'damaged-coated-hull',
+  });
+  const cutEdge = wreckRoleMaterial('wreck:cut-edge', 'edge', {
+    roughness: 0.68, metalness: 0.72, emissive: 0x230900, emissiveIntensity: 0.1,
+    materialRole: 'torn-exposed-metal',
+  });
   const rnd = mulberryLite(hashId(e.id));
-  // Spine fragment — elongated so the silhouette reads as broken hull, not a sphere.
+
+  // A long, broken load-bearing spine gives wrecks an unmistakable manufactured axis. The old
+  // five-box clump plus a broad orange halo read as a molten asteroid at flight scale.
   const spine = new THREE.Mesh(
-    getGeometry('wreck:spine', () => new THREE.BoxGeometry(1.6, 0.35, 0.55)),
-    charred,
+    getGeometry('wreck:spine', () => new THREE.CylinderGeometry(0.11, 0.15, 1.75, 8).rotateZ(Math.PI / 2)),
+    structure,
   );
-  spine.scale.set(R * 0.95, R * 0.55, R * 0.7);
-  spine.rotation.set(0.15, rnd() * Math.PI, 0.35);
+  spine.name = 'Wreck_Spine_Broken';
+  spine.scale.setScalar(R);
+  spine.rotation.x = (rnd() - 0.5) * 0.18;
+  spine.rotation.y = (rnd() - 0.5) * 0.25;
   g.add(spine);
-  for (let i = 0; i < 6; i++) {
-    const long = i % 2 === 0;
-    const chunk = new THREE.Mesh(
-      getGeometry(`wreck:c${i}`, () => new THREE.BoxGeometry(long ? 1.1 : 0.55, 0.22, long ? 0.4 : 0.7)),
-      i < 3 ? charred : plating,
+
+  for (let i = 0; i < 4; i++) {
+    const side = i % 2 ? -1 : 1;
+    const hullPlate = new THREE.Mesh(
+      getGeometry(`wreck:hull-plate:${i}`, () => new THREE.BoxGeometry(0.72, 0.10, 0.46)),
+      i === 3 ? cutEdge : plate,
     );
-    chunk.position.set((rnd() - 0.5) * R * 1.1, (rnd() - 0.5) * R * 0.35, (rnd() - 0.5) * R * 1.1);
-    chunk.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
-    chunk.scale.setScalar(R * (0.35 + rnd() * 0.4));
-    g.add(chunk);
+    hullPlate.name = `Wreck_HullPlate_${i + 1}`;
+    hullPlate.position.set(R * (-0.55 + i * 0.34), R * (0.02 + (rnd() - 0.5) * 0.12), side * R * (0.28 + rnd() * 0.16));
+    hullPlate.rotation.set((rnd() - 0.5) * 0.55, (rnd() - 0.5) * 0.35, side * (0.16 + rnd() * 0.34));
+    hullPlate.scale.setScalar(R * (0.72 + rnd() * 0.18));
+    g.add(hullPlate);
   }
-  // Cool residual heat — grey-amber, not neon lava.
-  g.add(makeHalo('#c48a5a', R * 0.85));
+
+  for (let i = 0; i < 3; i++) {
+    const rib = new THREE.Mesh(
+      getGeometry(`wreck:torn-rib:${i}`, () => new THREE.TorusGeometry(0.34, 0.045, 6, 14, Math.PI * 1.45)),
+      structure,
+    );
+    rib.name = `Wreck_TornRib_${i + 1}`;
+    rib.position.x = R * (-0.5 + i * 0.5);
+    rib.rotation.set(Math.PI / 2 + (rnd() - 0.5) * 0.18, 0, rnd() * Math.PI * 2);
+    rib.scale.setScalar(R);
+    g.add(rib);
+  }
+
+  for (let i = 0; i < 2; i++) {
+    const spar = new THREE.Mesh(
+      getGeometry('wreck:spar', () => new THREE.CylinderGeometry(0.035, 0.035, 0.92, 6).rotateX(Math.PI / 2)),
+      structure,
+    );
+    spar.name = `Wreck_ServiceSpar_${i + 1}`;
+    spar.position.set(R * (i ? 0.38 : -0.28), R * 0.08, R * (i ? -0.34 : 0.38));
+    spar.rotation.z = (rnd() - 0.5) * 0.7;
+    spar.scale.setScalar(R);
+    g.add(spar);
+  }
+
+  if (identity.hazardous) {
+    const coreMaterial = getMaterial('wreck:reactor-core', () => new THREE.MeshStandardMaterial({
+      color: 0xffd0a0,
+      emissive: 0xff4b0b,
+      emissiveIntensity: 1.35,
+      roughness: 0.32,
+      metalness: 0.12,
+    }));
+    const core = new THREE.Mesh(
+      getGeometry('wreck:reactor-core-v2', () => new THREE.CylinderGeometry(0.16, 0.16, 0.48, 12).rotateZ(Math.PI / 2)),
+      coreMaterial,
+    );
+    core.name = 'Wreck_ReactorCore_Unstable';
+    core.position.set(R * 0.12, 0, 0);
+    core.scale.setScalar(R);
+    g.add(core);
+    const ceramicMaterial = wreckRoleMaterial('wreck:reactor-ceramic', 'ceramic', {
+      roughness: 0.9, metalness: 0.04, materialRole: 'reactor-ceramic', normalStrength: 0.38,
+    });
+    const heatMaterial = wreckRoleMaterial('wreck:heat-zone', 'heat', {
+      roughness: 0.76, metalness: 0.42, emissive: 0x351004, emissiveIntensity: 0.18,
+      materialRole: 'heat-affected-metal',
+    });
+    const cageMaterial = wreckRoleMaterial('wreck:reactor-cage', 'cage', {
+      roughness: 0.54, metalness: 0.82, materialRole: 'reactor-cage-metal',
+    });
+    const conduitMaterial = wreckRoleMaterial('wreck:reactor-conduit', 'conduit', {
+      roughness: 0.82, metalness: 0.24, materialRole: 'reactor-service-conduit',
+    });
+    for (const offset of [-0.19, 0.19]) {
+      const collar = new THREE.Mesh(
+        getGeometry('wreck:reactor-ceramic-collar', () => new THREE.CylinderGeometry(0.22, 0.22, 0.1, 12).rotateZ(Math.PI / 2)),
+        ceramicMaterial,
+      );
+      collar.name = `Wreck_ReactorCeramic_${offset < 0 ? 'A' : 'B'}`;
+      collar.position.set(R * (0.12 + offset), 0, 0);
+      collar.scale.setScalar(R);
+      g.add(collar);
+    }
+    for (let i = 0; i < 3; i++) {
+      const cage = new THREE.Mesh(
+        getGeometry('wreck:reactor-cage', () => new THREE.TorusGeometry(0.27, 0.028, 6, 16)),
+        cageMaterial,
+      );
+      cage.name = `Wreck_ReactorCage_${i + 1}`;
+      cage.position.copy(core.position);
+      cage.rotation.set(i === 0 ? Math.PI / 2 : 0, i === 1 ? Math.PI / 2 : 0, i === 2 ? Math.PI / 2 : 0);
+      cage.scale.setScalar(R);
+      g.add(cage);
+    }
+    for (let i = 0; i < 4; i++) {
+      const radiator = new THREE.Mesh(
+        getGeometry('wreck:reactor-radiator', () => new THREE.BoxGeometry(0.34, 0.035, 0.18)),
+        heatMaterial,
+      );
+      radiator.name = `Wreck_ReactorRadiator_${i + 1}`;
+      const side = i % 2 ? -1 : 1;
+      radiator.position.set(R * (0.08 + (i > 1 ? 0.18 : -0.08)), side * R * 0.29, side * R * (i > 1 ? -0.12 : 0.12));
+      radiator.rotation.x = side * (0.3 + i * 0.08);
+      radiator.scale.setScalar(R);
+      g.add(radiator);
+    }
+    for (let i = 0; i < 2; i++) {
+      const conduit = new THREE.Mesh(
+        getGeometry('wreck:reactor-conduit', () => new THREE.TorusGeometry(0.31, 0.025, 6, 18, Math.PI * 1.45)),
+        conduitMaterial,
+      );
+      conduit.name = `Wreck_ReactorConduit_${i + 1}`;
+      conduit.position.set(R * (i ? 0.22 : 0.02), R * (i ? -0.08 : 0.08), 0);
+      conduit.rotation.set(Math.PI / 2, i ? Math.PI : 0, i ? 0.5 : -0.5);
+      conduit.scale.setScalar(R);
+      g.add(conduit);
+    }
+  }
   g.userData.kind = 'wreck';
+  g.userData.interactionKind = identity.kind;
+  g.userData.visualLanguage = identity.hazardous ? 'mechanical-reactor-hazard' : 'mechanical-wreckage';
+  return g;
+}
+
+function buildMine(e) {
+  const R = Math.max(1, Number(e && e.radius) || 6);
+  const g = new THREE.Group();
+  const casing = getMaterial('mine:casing', () => new THREE.MeshStandardMaterial({
+    color: 0x252d31, roughness: 0.68, metalness: 0.58,
+  }));
+  const exposed = getMaterial('mine:exposed-alloy', () => new THREE.MeshStandardMaterial({
+    color: 0x747b7f, roughness: 0.39, metalness: 0.82,
+  }));
+  const warningSafe = getMaterial('mine:warning-lens:safe', () => new THREE.MeshStandardMaterial({
+    name: 'MineWarningLensSafe',
+    color: 0x421d17, emissive: 0x160300, emissiveIntensity: 0.08,
+    roughness: 0.51, metalness: 0.12,
+  }));
+  const warningArmed = getMaterial('mine:warning-lens:armed', () => new THREE.MeshStandardMaterial({
+    name: 'MineWarningLensArmed',
+    color: 0xff7b28, emissive: 0xff2e08, emissiveIntensity: 1.35,
+    roughness: 0.24, metalness: 0.12,
+  }));
+
+  const hull = new THREE.Mesh(
+    getGeometry('mine:disc-hull', () => new THREE.CylinderGeometry(0.5, 0.56, 0.24, 16)),
+    casing,
+  );
+  hull.name = 'MinePressureHull';
+  g.add(hull);
+  const armorRing = new THREE.Mesh(
+    getGeometry('mine:armor-ring', () => new THREE.TorusGeometry(0.48, 0.065, 6, 18).rotateX(Math.PI / 2)),
+    exposed,
+  );
+  armorRing.name = 'MineArmorRing';
+  armorRing.position.y = 0.08;
+  g.add(armorRing);
+  const lens = new THREE.Mesh(
+    getGeometry('mine:warning-lens', () => new THREE.CylinderGeometry(0.15, 0.18, 0.06, 12)),
+    warningSafe,
+  );
+  lens.name = 'MineArmingLens';
+  lens.position.y = 0.16;
+  g.add(lens);
+
+  const vaneGeometry = getGeometry('mine:sensor-vane', () => new THREE.BoxGeometry(0.42, 0.055, 0.13));
+  const tipGeometry = getGeometry('mine:sensor-tip', () => new THREE.ConeGeometry(0.09, 0.26, 6).rotateZ(-Math.PI / 2));
+  for (let i = 0; i < 4; i++) {
+    const angle = i * Math.PI / 2;
+    const vane = new THREE.Mesh(vaneGeometry, casing);
+    vane.name = `MineSensorVane_${i + 1}`;
+    vane.position.set(Math.cos(angle) * 0.67, 0, Math.sin(angle) * 0.67);
+    vane.rotation.y = -angle;
+    g.add(vane);
+    const tip = new THREE.Mesh(tipGeometry, exposed);
+    tip.name = `MineProximityAntenna_${i + 1}`;
+    tip.position.set(Math.cos(angle) * 0.96, 0, Math.sin(angle) * 0.96);
+    tip.rotation.y = -angle;
+    g.add(tip);
+  }
+  g.scale.setScalar(R);
+  g.userData.kind = 'mine';
+  g.userData.interactionKind = 'combat-mine';
+  g.userData.visualLanguage = 'armored-proximity-mine';
+  let visualArmed = null;
+  g.userData.updateRuntimeState = (entity) => {
+    const nextArmed = entity?.data?.armed === true;
+    if (nextArmed === visualArmed) return;
+    visualArmed = nextArmed;
+    lens.material = nextArmed ? warningArmed : warningSafe;
+    lens.scale.setScalar(nextArmed ? 1 : 0.82);
+    g.userData.visualArmed = nextArmed;
+  };
+  g.userData.updateRuntimeState(e);
+  return g;
+}
+
+function buildImpulseCharge(e) {
+  const R = Math.max(0.4, Number(e && e.radius) || 1.2);
+  const g = new THREE.Group();
+  const shell = getMaterial('charge:shell', () => new THREE.MeshStandardMaterial({
+    color: 0x31393e, roughness: 0.54, metalness: 0.64,
+  }));
+  const ceramic = getMaterial('charge:ceramic-band', () => new THREE.MeshStandardMaterial({
+    color: 0xd1c6ab, roughness: 0.77, metalness: 0.04,
+  }));
+  const safe = getMaterial('charge:status-strip:safe', () => new THREE.MeshStandardMaterial({
+    name: 'ImpulseChargeStatusSafe',
+    color: 0x293331, emissive: 0x00100b, emissiveIntensity: 0.06,
+    roughness: 0.58, metalness: 0.18,
+  }));
+  const armed = getMaterial('charge:status-strip:armed', () => new THREE.MeshStandardMaterial({
+    name: 'ImpulseChargeStatusArmed',
+    color: 0xffa23a, emissive: 0xff4a08, emissiveIntensity: 1.1,
+    roughness: 0.31, metalness: 0.18,
+  }));
+
+  const body = new THREE.Mesh(
+    getGeometry('charge:body', () => new THREE.CylinderGeometry(0.34, 0.4, 1.15, 12).rotateZ(Math.PI / 2)),
+    shell,
+  );
+  body.name = 'ImpulseChargePressureBody';
+  g.add(body);
+  for (const x of [-0.42, 0.42]) {
+    const collar = new THREE.Mesh(
+      getGeometry('charge:ceramic-collar', () => new THREE.TorusGeometry(0.38, 0.055, 6, 14).rotateY(Math.PI / 2)),
+      ceramic,
+    );
+    collar.position.x = x;
+    g.add(collar);
+  }
+  const statusStrip = new THREE.Mesh(
+    getGeometry('charge:status-strip', () => new THREE.BoxGeometry(0.5, 0.045, 0.08)),
+    safe,
+  );
+  statusStrip.name = 'ImpulseChargeArmingStrip';
+  statusStrip.position.set(0, 0.36, 0);
+  g.add(statusStrip);
+  const padGeometry = getGeometry('charge:adhesion-pad', () => new THREE.BoxGeometry(0.26, 0.08, 0.22));
+  for (const x of [-0.27, 0.27]) {
+    const pad = new THREE.Mesh(padGeometry, shell);
+    pad.name = 'ImpulseChargeAdhesionPad';
+    pad.position.set(x, -0.39, 0);
+    g.add(pad);
+  }
+  g.scale.setScalar(R);
+  g.userData.kind = 'charge';
+  g.userData.interactionKind = 'impulse-charge';
+  g.userData.visualLanguage = 'sticky-impulse-charge';
+  let visualArmed = null;
+  g.userData.updateRuntimeState = (entity) => {
+    const nextArmed = entity?.data?.armed === true;
+    if (nextArmed === visualArmed) return;
+    visualArmed = nextArmed;
+    statusStrip.material = nextArmed ? armed : safe;
+    statusStrip.scale.set(nextArmed ? 1 : 0.72, 1, 1);
+    g.userData.visualArmed = nextArmed;
+  };
+  g.userData.updateRuntimeState(e);
   return g;
 }
 
 function buildFallback(e) {
-  const R = (e && e.radius) || 3;
-  const mat = getMaterial('fallback:mat', () => new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.7, metalness: 0.3, emissive: 0x223040, emissiveIntensity: 0.3 }));
-  const m = new THREE.Mesh(getGeometry('fallback:geo', () => new THREE.BoxGeometry(1, 0.5, 1)), mat);
-  m.scale.setScalar(R);
-  return m;
+  const root = new THREE.Group();
+  root.name = `VisualBuildFailed_${e && e.type || 'unknown'}`;
+  root.visible = false;
+  root.userData.visualBuildFailed = true;
+  root.userData.failedEntityType = e && e.type || 'unknown';
+  return root;
+}
+
+function buildPayload(e) {
+  const R = Math.max(1, (e && e.radius) || 3);
+  const g = new THREE.Group();
+  const shell = getMaterial('payload:shell', () => new THREE.MeshStandardMaterial({
+    color: 0x46515a, roughness: 0.64, metalness: 0.58,
+  }));
+  const band = getMaterial('payload:band', () => new THREE.MeshStandardMaterial({
+    color: 0xd7862c, roughness: 0.5, metalness: 0.34,
+  }));
+  const body = new THREE.Mesh(
+    getGeometry('payload:body', () => new THREE.CylinderGeometry(0.42, 0.48, 1.25, 10).rotateZ(Math.PI / 2)),
+    shell,
+  );
+  g.add(body);
+  for (const x of [-0.48, 0.48]) {
+    const collar = new THREE.Mesh(
+      getGeometry('payload:collar', () => new THREE.TorusGeometry(0.48, 0.055, 6, 12).rotateY(Math.PI / 2)),
+      band,
+    );
+    collar.position.x = x;
+    g.add(collar);
+  }
+  const transponder = new THREE.Mesh(
+    getGeometry('payload:transponder', () => new THREE.OctahedronGeometry(0.16, 0)),
+    getMaterial('payload:transponder', () => new THREE.MeshStandardMaterial({
+      color: 0x8eeaff, emissive: 0x2abbd8, emissiveIntensity: 0.8, roughness: 0.38, metalness: 0.16,
+    })),
+  );
+  transponder.position.y = 0.47;
+  g.add(transponder);
+  g.scale.setScalar(R);
+  g.userData.kind = 'payload';
+  g.userData.interactionKind = 'payload';
+  g.userData.visualLanguage = 'sealed-cargo-canister';
+  return g;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2425,7 +3067,7 @@ export function createVisualFactory() {
   return {
     build(e) {
       try {
-        if (!e) return buildFallback(e);
+        if (!e) return null;
         switch (e.type) {
           case 'ship': return optimizeStaticBatches(buildShipMesh(e, resolvePalette(e)));
           case 'asteroid': return buildAsteroid(e);
@@ -2433,6 +3075,9 @@ export function createVisualFactory() {
           case 'pickup': return buildPickup(e);
           case 'projectile': return buildProjectile(e);
           case 'drone': return buildDrone(e);
+          case 'payload': return buildPayload(e);
+          case 'mine': return buildMine(e);
+          case 'charge': return buildImpulseCharge(e);
           case 'wreck': return buildWreck(e);
           case 'fx': return null; // fx entities are handled by the vfx particle system, not meshed
           default: return buildFallback(e);
