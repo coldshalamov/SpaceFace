@@ -221,7 +221,9 @@ function mountBoundary(entity) {
   scene.add(visual);
   const wrapper = entity.type === 'station' ? visual : null;
   const detailed = wrapper && wrapper.children.find((child) => child.name === 'HLOD_Detailed');
-  const boundary = wrapper ? detailed && detailed.children[0] : visual;
+  const boundary = wrapper
+    ? (/AuthoredAssetBoundary/.test(wrapper.name || '') ? wrapper : detailed && detailed.children[0])
+    : visual;
   assert.ok(boundary && /AuthoredAssetBoundary/.test(boundary.name), `${entity.id}: authored boundary is reachable`);
   const fallback = boundary.children.find((child) => /Fallback/.test(child.name));
   assert.ok(fallback, `${entity.id}: hidden diagnostic substrate is mounted before async success`);
