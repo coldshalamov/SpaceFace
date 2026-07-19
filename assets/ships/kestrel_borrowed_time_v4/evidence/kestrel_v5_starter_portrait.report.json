@@ -1,0 +1,41 @@
+{
+  "schema": "spaceface.kestrelStarterPortrait.v1",
+  "sourceGlb": "assets/ships/parts/wholeships/kestrel.glb",
+  "sourceSha256": "0c0be004fbf77202380384e7d925318262a2f9b75d886f592af9620e7f8da586",
+  "releaseGlb": "assets/ships/release/parts/wholeships/kestrel.glb",
+  "releaseSha256": "dc4b841191e76e175f9e3aac93f30a9b4a1578b2f4da4127b83146468185c1a2",
+  "output": "assets/ships/release/ui/kestrel_v5_starter_portrait.png",
+  "outputSha256": "7f25948127b0121eb32f0681e80a1428cc3e3a746269f8def71dc9fe103c76f3",
+  "resolution": [
+    760,
+    300
+  ],
+  "engine": "BLENDER_EEVEE",
+  "blenderVersion": "5.1.2",
+  "view": {
+    "boundsMin": [
+      -13.937827,
+      -7.02,
+      -2.77
+    ],
+    "boundsMax": [
+      13.901804,
+      7.02,
+      4.172
+    ],
+    "target": [
+      -0.018012,
+      0.0,
+      0.801
+    ],
+    "location": [
+      6.330564,
+      -53.328037,
+      35.083309
+    ],
+    "distance": 63.713899,
+    "lensMm": 58.0
+  },
+  "lighting": "four large neutral area lights; transparent film; no bloom or post glow",
+  "meshObjects": 17
+}
