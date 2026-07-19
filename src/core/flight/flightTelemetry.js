@@ -32,6 +32,7 @@ export function computeFlightTelemetry({ body, profile, control = null, target =
     acceleration: control && control.telemetry && control.telemetry.acceleration
       ? vec(control.telemetry.acceleration)
       : { x: 0, z: 0 },
+    actuators: computeActuatorDemand(control, axes, { forward: forwardSpeed, lateral: lateralSpeed }),
     braking,
     projectedStop: braking.projectedStop,
     precisionEnvelopeRatio: ratio(speed, positive(p.precisionSpeed, INF)),
@@ -246,6 +247,104 @@ export class FlightTelemetryBuffer {
     this.index = 0;
     this.count = 0;
   }
+}
+
+/**
+ * Resolve which thrusters the drive is actually asking for, in a shape presentation can
+ * consume without knowing the drive family.
+ *
+ * Why this exists: turning presentation was firing both bow jets instead of the opposite-side
+ * jet, because the only actuator signal leaving this module was an unsigned world-space
+ * `acceleration`. A renderer cannot pick a nozzle from a magnitude, so it guessed from input
+ * keys — and input keys do not know about assist counter-thrust, the governor, or reverse.
+ *
+ * SIGN CONVENTION (ship-local, gameplay XZ plane, +X is ship-forward at yaw 0):
+ *   forward > 0 → ship pushed along the nose        · forward < 0 → ship pushed aft
+ *   lateral > 0 → ship pushed toward `rightUnit`, i.e. STARBOARD · lateral < 0 → PORT
+ *   yaw     > 0 → nose swings toward starboard (+X rotates toward +Z). On the standard
+ *                 top-down chart (+X screen-right, +Z screen-down) that reads clockwise,
+ *                 hence the `yawCw`/`yawCcw` channel names — but the frame convention, not
+ *                 any camera up-vector, is the definition.
+ *
+ * Channel names describe THE DIRECTION THE SHIP IS PUSHED, never the hull side the nozzle
+ * sits on: the nozzle is always on the opposite side (`reverse` demand lights bow retros,
+ * `port` demand lights starboard jets). Yaw is a couple, so `yawCw` means bow pushed to
+ * starboard AND stern pushed to port. Publishing both the signed value and the two
+ * non-negative channels is deliberate: re-deriving a channel from a sign at every call site
+ * is exactly how the both-bow-jets bug got written in the first place.
+ *
+ * The signed backbone is projected from the top-level `acceleration`/`angularAcceleration`,
+ * which every family publishes, so gravimetric and sail — which never emit `manualLocal` —
+ * still light the correct nozzle. Projecting the applied acceleration (rather than the pilot
+ * axis) is also what presentation wants: assisted drift-kill fires real RCS with no pilot
+ * input at all. Caveat: for families that fold environmental drag into `acceleration` this
+ * block attributes that drag to a nozzle. Drag is zero outside authored nebulae and capped
+ * inside them, so this is left uncorrected rather than made family-specific.
+ *
+ * `manual`/`assist`/`governor` are provenance and vary by family; they are zeroed, never
+ * dropped, so the key set is identical for every drive and for `control = null`.
+ */
+function computeActuatorDemand(control, axes, localVelocity) {
+  const t = control && control.telemetry && typeof control.telemetry === 'object' ? control.telemetry : null;
+  const world = t ? vec(t.acceleration) : { x: 0, z: 0 };
+  const forward = world.x * axes.fx + world.z * axes.fz;
+  const lateral = world.x * axes.rx + world.z * axes.rz;
+  const yaw = finite(t && t.angularAcceleration);
+  const manual = t && t.manualLocal ? t.manualLocal : null;
+  const assist = t && t.assistLocal ? t.assistLocal : null;
+  const governor = t && t.governor && typeof t.governor === 'object' ? t.governor : null;
+  const reason = t && typeof t.assistReason === 'string' ? t.assistReason : 'none';
+  const driveState = t && typeof t.driveState === 'string' ? t.driveState : 'idle';
+  // Two different questions, deliberately two flags. `braking` is the physical one — is this
+  // drive spending authority against its own velocity — and is derived here because it is true
+  // for every family regardless of what the kernel chose to publish. `pilotBrake` is the
+  // narrower "the pilot pulled the brake actuator", and only reaction (assistReason) and
+  // pulse-plate (auto flip-burn) publish enough to answer it, so it stays false elsewhere
+  // rather than being faked. Neither reads an input key: both are physics outputs, which is the
+  // whole point of moving this off the renderer's guesswork.
+  const braking = forward * finite(localVelocity && localVelocity.forward)
+    + lateral * finite(localVelocity && localVelocity.lateral) < -EPS;
+  const pilotBrake = reason === 'pilot-brake' || driveState === 'flip-burn';
+  const governorEngaged = !!(governor && governor.engaged);
+  const overspeed = !!(governor && governor.overspeed);
+  const boostFraction = clamp(finite(t && t.boostFraction), 0, 1);
+
+  return {
+    forward,
+    lateral,
+    yaw,
+    yawRateTarget: finite(t && t.targetYawRate),
+    main: Math.max(0, forward),
+    reverse: Math.max(0, -forward),
+    starboard: Math.max(0, lateral),
+    port: Math.max(0, -lateral),
+    yawCw: Math.max(0, yaw),
+    yawCcw: Math.max(0, -yaw),
+    manual: { forward: finite(manual && manual.forward), lateral: finite(manual && manual.lateral) },
+    assist: { forward: finite(assist && assist.forward), lateral: finite(assist && assist.lateral), reason },
+    governor: {
+      engaged: governorEngaged,
+      overspeed,
+      // Both caps read 0 when the governor has no opinion this tick; check `engaged` first
+      // rather than treating 0 as "commanded to a standstill".
+      cap: positive(governor && governor.cap, 0),
+      baseCap: positive(governor && governor.baseCap, 0),
+      physicsEarned: !!(governor && governor.physicsEarned),
+    },
+    // Applied-versus-requested authority. The speed governor is the only demand clamp the
+    // kernel publishes; the hard per-axis envelope clamp is not observable from here, so it is
+    // deliberately not claimed rather than guessed at from a residual.
+    limited: governorEngaged,
+    limitReason: governorEngaged ? (overspeed ? 'governor-overspeed' : 'governor-cap') : 'none',
+    driveState,
+    assistMode: t && typeof t.assistMode === 'string' ? t.assistMode : 'none',
+    braking,
+    pilotBrake,
+    boosting: boostFraction > 0,
+    boostFraction,
+    coastHelm: !!(t && t.coastHelm),
+    impulseDeltaV: Math.max(0, finite(t && t.firedDeltaV)),
+  };
 }
 
 function directionalEnvelopeAccel(localDirection, limits) {
