@@ -70,6 +70,96 @@ const VIG_HEAVY = 0.18;   // peak vignette opacity for a heavy hit on the player
 const VIG_DEATH = 0.55;   // peak vignette opacity for player death
 const VIG_DECAY = 4.0;    // vignette fade rate
 
+// Speed-line ceilings. The streak drive is `intensity`, documented as 0..1 but historically never
+// clamped: it is derived from speed/maxSpeed, and long-distance travel and cruise push that ratio
+// far past 1 (ratio 10 produced intensity 15.5). Every downstream term scaled with it, and since
+// the streaks composite with 'lighter', per-streak alpha above 1 saturated to fully opaque white —
+// the screen washed out at high speed. These are hard ceilings, not taste: each is set at or above
+// the value legitimate flight already reaches, so ordinary and boosting gameplay is untouched and
+// only the runaway case is bounded.
+// The ceilings are exported so the probe asserts against these names rather than its own copies of
+// the numbers — a loosened ceiling here cannot pass by silently agreeing with a stale literal.
+export const SL_STREAK_MAX = 46;      // count — live streak ceiling (= the boost-tier count at intensity 1)
+export const SL_OPACITY_MAX = 0.55;   // 0..1 — overlay opacity ceiling (= the boost target the code aims at)
+export const SL_ALPHA_MAX = 0.55;     // 0..1 — per-streak composed alpha ceiling; no streak may reach opaque
+export const SL_LEN_SCALE_MAX = 1.96; // × — tail-length ceiling (0.55h clamp ÷ 0.28 max streak len: the
+                                      //     point where the longest streak already saturates that clamp)
+export const SL_FLOW_MAX = 2600;      // screen-px/s — streak flow ceiling; above this every streak
+                                      //     recycles every frame and the field degenerates to a strobe
+const SL_CLEAR_R = 0.075;      // × min(w,h) — radius around screen centre kept completely streak-free
+const SL_CLEAR_FADE = 0.085;   // × min(w,h) — fade band outside that radius, so the hole reads as the
+                               //     streaks parting around the ship rather than a stamped-out circle
+const SL_BRIGHT_MAX = 0.95;    // × — the largest per-streak brightness `b` _newStreak can roll (0.40+0.55)
+
+// Math.min/Math.max PROPAGATE NaN — `Math.min(1, Math.max(0, NaN))` is NaN, not 0. A non-finite
+// velocity (a physics hiccup, a zero-mass divide) would therefore sail straight through a naive
+// clamp and reach the canvas as an Infinity line width or a NaN gradient stop. Non-finite collapses
+// to the floor instead: the overlay fails dark, which is the correct direction for a whiteout bug.
+const clamp01 = (x) => (Number.isFinite(x) ? (x < 0 ? 0 : x > 1 ? 1 : x) : 0);
+const clampTo = (x, max) => (Number.isFinite(x) ? (x < 0 ? 0 : x > max ? max : x) : 0);
+
+// The scalar drive behind the speed-line overlay, extracted so it can be probed headlessly
+// (scripts/check-speed-lines.mjs) — the canvas loop below is the only caller, so the probe tests
+// the shipped math rather than a copy that can drift. Geometry and the centre guard stay in the
+// loop; this owns only the numbers that used to run away.
+export function speedLineDrive(speed, maxSpeed, boosting, motionReduce) {
+  const maxSpd = Math.max(1, Number.isFinite(maxSpeed) ? maxSpeed : 1);
+  const speedRatio = Number.isFinite(speed) ? Math.max(0, speed) / maxSpd : 0;
+
+  let intensity = 0;
+  let targetOpacity = 0;
+  if (boosting) {
+    targetOpacity = 0.55;
+    intensity = 1;
+  } else if (speedRatio > 0.38) {
+    // Ramp in over the top 62% of the speed range, then hold — past maxSpeed the effect is already
+    // at full strength and has nothing left to say.
+    intensity = clamp01((speedRatio - 0.38) / 0.62);
+    targetOpacity = intensity * 0.30;
+  }
+
+  // Motion-reduce: keep the information but halve the intensity/density. These stay two separate
+  // factors applied after the fact (not one folded scale) so reduced motion lands on exactly the
+  // 0.45/0.55 split it has always used.
+  if (motionReduce) {
+    targetOpacity *= 0.45;
+    intensity *= 0.55;
+  }
+  intensity = clamp01(intensity);
+  targetOpacity = clampTo(targetOpacity, SL_OPACITY_MAX);
+
+  // Speed scales with how fast the world is moving past the ship. We express it in screen-pixels/s
+  // so the overlay looks consistent regardless of camera zoom. Base speed is a moderate drift;
+  // boost pushes it toward "fast fly-by". Capped: raw `speed` is unbounded, so this term ran away
+  // even once intensity was bounded.
+  const baseFlow = 220 + (Number.isFinite(speed) ? Math.max(0, speed) : 0) * 1.2;
+  const flowSpeed = clampTo(baseFlow * (0.55 + 0.75 * intensity) * (boosting ? 1.55 : 1.0), SL_FLOW_MAX);
+
+  // FR-3: streak LENGTH tracks raw speed continuously so throttle is readable — decoupled from the
+  // opacity gate, and deliberately not routed through the motion-reduce scale. Length is geometry
+  // (contrast/parallax), not luminance, so nothing brightens. The tailLen min() below already
+  // clamps the drawn result; this bounds the underlying value so it cannot grow without limit.
+  const lenScale = clampTo((0.18 + 1.1 * speedRatio) * (boosting ? 1.15 : 1.0), SL_LEN_SCALE_MAX);
+
+  const count = Math.min(SL_STREAK_MAX, Math.round((boosting ? 46 : 28) * (0.50 + 0.50 * intensity)));
+
+  // Closed-form envelope of the per-streak alpha composed in the draw loop: opacity × the brightest
+  // roll, with every other factor (edge fade, centre bias, centre gate) bounded by 1.
+  const maxAlpha = clampTo(targetOpacity * SL_BRIGHT_MAX, SL_ALPHA_MAX);
+
+  return { speedRatio, intensity, targetOpacity, count, lenScale, flowSpeed, maxAlpha };
+}
+
+// How much a streak segment is allowed to draw, given its closest approach to screen centre.
+// Returns 0 inside the clear radius and eases to 1 across the fade band. We measure the whole
+// SEGMENT, not just its lead point: a streak whose head has just cleared the disc still has its
+// tail lying across the ship, which is exactly the case that made the reticle unreadable.
+export function speedLineCenterGate(uvLead, tailLen, p, clearR, fadeW) {
+  const uLo = uvLead - tailLen;                                   // tail sits at the lower uv
+  const nearU = uLo > 0 ? uLo : (uvLead < 0 ? -uvLead : 0);       // 0 when the segment straddles centre
+  return clamp01((Math.hypot(p, nearU) - clearR) / fadeW);
+}
+
 export const feel = {
   name: 'feel',
 
@@ -155,9 +245,7 @@ export const feel = {
     const pid = this.state.playerId;
     const player = ents && pid != null ? ents.get(pid) : null;
 
-    let targetOpacity = 0;
     let boosting = false;
-    let intensity = 0;          // 0..1 drive for streak density/length/speed
     let dirX = 0, dirY = -1;    // default fall-back: drift downward like light rain
     let speed = 0, maxSpd = 1;
 
@@ -165,17 +253,7 @@ export const feel = {
       const vel = player.vel;
       speed = Math.hypot(vel.x, vel.z);
       maxSpd = Math.max(1, player.maxSpeed || 1);
-      const speedRatio = speed / maxSpd;
       boosting = !!(player.flags && player.flags.boosting);
-
-      if (boosting) {
-        targetOpacity = 0.55;
-        intensity = 1;
-      } else if (speedRatio > 0.38) {
-        // Ramp in over the top 62% of the speed range.
-        intensity = (speedRatio - 0.38) / 0.62;
-        targetOpacity = intensity * 0.30;
-      }
 
       // Project world velocity onto the camera view plane analytically.
       // The chase camera is fixed in yaw, offset behind and above the player.
@@ -195,15 +273,12 @@ export const feel = {
       }
     }
 
-    // Motion-reduce: keep the information but halve the intensity/density.
     const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
-    if (mr) {
-      targetOpacity *= 0.45;
-      intensity *= 0.55;
-    }
+    const drive = speedLineDrive(speed, maxSpd, boosting, mr);
 
-    // Smooth-damp toward target (rate 8 = responsive but not jarring)
-    this._slOpacity = damp(this._slOpacity, targetOpacity, 8, frameDt);
+    // Smooth-damp toward target (rate 8 = responsive but not jarring). Re-clamped after the damp
+    // because damp() returns NaN for a NaN dt, and a NaN opacity here would poison every gradient.
+    this._slOpacity = clampTo(damp(this._slOpacity, drive.targetOpacity, 8, frameDt), SL_OPACITY_MAX);
 
     if (this._slOpacity <= 0.01) {
       if (this._streaks) this._streaks.length = 0;   // reset so streaks re-seed on next burst
@@ -232,20 +307,17 @@ export const feel = {
     const span = Math.max(w, h) * 0.55;
 
     if (!this._streaks) this._streaks = [];
-    const want = Math.round((boosting ? 46 : 28) * (0.50 + 0.50 * intensity));
+    const want = drive.count;
     while (this._streaks.length < want) this._streaks.push(this._newStreak(false, span));
     if (this._streaks.length > want) this._streaks.length = want;
 
-    // Speed scales with how fast the world is moving past the ship. We express it in screen-pixels/s
-    // so the overlay looks consistent regardless of camera zoom. Base speed is a moderate drift;
-    // boost pushes it toward "fast fly-by".
-    const baseFlow = 220 + speed * 1.2;                 // screen-pixels/s, tuned by eye
-    const flowSpeed = baseFlow * (0.55 + 0.75 * intensity) * (boosting ? 1.55 : 1.0);
-    // FR-3: streak LENGTH tracks raw speed continuously so throttle is readable — decoupled from
-    // the opacity gate. Length is geometry (contrast/parallax), not luminance, so nothing brightens.
-    const speedRatio = speed / maxSpd;
-    const lenScale = (0.18 + 1.1 * speedRatio) * (boosting ? 1.15 : 1.0);
+    const flowSpeed = drive.flowSpeed;
+    const lenScale = drive.lenScale;
     const widthMul = boosting ? 1.4 : 1.0;
+    // Centre-exclusion radii, hoisted out of the per-streak loop.
+    const minDim = Math.min(w, h);
+    const clearR = minDim * SL_CLEAR_R;
+    const clearFade = minDim * SL_CLEAR_FADE;
 
     ctx.globalCompositeOperation = 'lighter';
     ctx.lineCap = 'round';
@@ -275,7 +347,11 @@ export const feel = {
       const edgeFade = Math.min(1, travelled / (span * 0.12)) *
                        Math.max(0, 1 - Math.max(0, (travelled - span * 0.75) / (span * 0.35)));
       const centerBias = 1.0 - Math.min(1, Math.hypot(s.p, s.uv) / (span * 1.1));
-      const a = this._slOpacity * s.b * edgeFade * (0.55 + 0.45 * centerBias);
+      // centerBias makes the effect strongest exactly where the ship is, which is also where the
+      // player needs to read the reticle and the tracked destination. The gate wins over the bias:
+      // inside the clear radius a streak contributes nothing at all.
+      const centerClear = speedLineCenterGate(s.uv, tailLen, s.p, clearR, clearFade);
+      const a = clampTo(this._slOpacity * s.b * edgeFade * (0.55 + 0.45 * centerBias) * centerClear, SL_ALPHA_MAX);
       if (a <= 0.012) continue;
 
       const grad = ctx.createLinearGradient(tailX, tailY, leadX, leadY);
@@ -297,11 +373,20 @@ export const feel = {
     const w = window.innerWidth;
     const h = window.innerHeight;
     if (spawnCenter) {
-      // Spawn just ahead of center (negative uv) with a random lateral offset.
-      // uv = 0 is screen center; positive uv moves with the flow (behind the ship).
+      // Spawn ahead of center (negative uv) with a random lateral offset, so the streak still
+      // sweeps past the ship. uv = 0 is screen center; positive uv moves with the flow (behind the
+      // ship). The spread runs across the whole approach stretch rather than the old narrow
+      // 0.08..0.43 band: at high flow speed every streak recycles almost every frame, so a narrow
+      // band put the entire field inside one stripe of screen — the "streaks cluster at the top"
+      // artifact. The 1.05 outer bound is set by edgeFade, which extinguishes a streak once it has
+      // travelled 1.10 * span; spawning further out would kill it before it ever reached the ship.
+      const uv = -(0.08 + Math.random() * 0.97) * span;
       return {
-        uv: -(0.08 + Math.random() * 0.35) * span,
-        spawnU: -(0.08 + Math.random() * 0.35) * span,
+        uv,
+        // Same value, not a second independent draw. They used to diverge, so `travelled` started
+        // at a random offset and a recycled streak popped straight in at full brightness instead of
+        // fading up — the other half of the high-speed glare.
+        spawnU: uv,
         p: (Math.random() - 0.5) * Math.max(w, h) * 0.95,
         v: 0.65 + Math.random() * 0.85,
         len: 0.10 + Math.random() * 0.18,
