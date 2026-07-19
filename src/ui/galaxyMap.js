@@ -1627,6 +1627,67 @@ export function emitGalaxyMapPrimaryAction(bus, action) {
   return true;
 }
 
+// -------------------------------------------------------------------------------------------
+// PLOT vs ENGAGE (atlas W1-8). Two separate actions, deliberately (ADR D6 and the product
+// direction): plotting shows you the route, engaging hands it to the route follower. Never one
+// button — a pilot must be able to compare a route without committing to fly it.
+//
+// The primary action above is PLOT. This is ENGAGE, and it is the seam that gives
+// `src/systems/routeFollower.js` its only production trigger: nothing else in the tree emits
+// `nav:engageRoute`. Until this existed the follower was registered, unit-proven and unreachable,
+// which is the "producer landed, consumer did not" pattern the ledger tracks.
+// -------------------------------------------------------------------------------------------
+
+/**
+ * Decide what the engage control should say and do, from state alone. Pure so the whole matrix is
+ * testable without a DOM: an unavailable action must be VISIBLY unavailable and must EXPLAIN WHY,
+ * never a silent no-op and never a fake success state.
+ *
+ * @returns {{visible:boolean, enabled:boolean, label:string, reason:string, event:string|null}}
+ */
+export function resolveRouteEngageAction(state) {
+  const nav = state && state.nav;
+  const executor = nav && nav.executor;
+  const phase = executor && executor.phase;
+  const hidden = { visible: false, enabled: false, label: 'Engage Route', reason: '', event: null };
+  if (!nav) return hidden;
+
+  // Already flying it: the control becomes the way out, so a pilot is never trapped in a route.
+  if (phase && phase !== 'idle' && phase !== 'arrived') {
+    const leg = executor && Number.isFinite(executor.legIndex) ? executor.legIndex + 1 : null;
+    const total = executor && Number.isFinite(executor.legCount) ? executor.legCount : null;
+    const where = leg && total ? ` (leg ${leg}/${total})` : '';
+    if (phase === 'interrupted') {
+      return { visible: true, enabled: true, label: 'Resume Route', reason: `Interrupted${where} — itinerary kept`, event: 'nav:engageRoute' };
+    }
+    return { visible: true, enabled: true, label: 'Disengage', reason: `${titleCasePhase(phase)}${where}`, event: 'nav:abortRoute' };
+  }
+
+  if (!nav.route) {
+    return { visible: true, enabled: false, label: 'Engage Route', reason: 'No route plotted — set a course to a sector first', event: null };
+  }
+  const legs = Array.isArray(nav.route.path) ? nav.route.path.length : 0;
+  return {
+    visible: true,
+    enabled: true,
+    label: 'Engage Route',
+    reason: legs ? `${legs} leg${legs === 1 ? '' : 's'} plotted — ready to fly` : 'Route plotted — ready to fly',
+    event: 'nav:engageRoute',
+  };
+}
+
+function titleCasePhase(phase) {
+  const s = String(phase || '');
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+
+/** Emit the resolved engage/disengage intent. Returns false when the action is unavailable. */
+export function emitRouteEngageAction(bus, action) {
+  if (!bus || !action || !action.enabled || !action.event) return false;
+  bus.emit(action.event, action.event === 'nav:abortRoute' ? { reason: 'manual' } : {});
+  return true;
+}
+
 // ---------------------------------------------------------------------------------------------
 // DOM / canvas screen shell. Everything below is guarded so the module imports cleanly in Node.
 // ---------------------------------------------------------------------------------------------
@@ -2321,6 +2382,47 @@ const CSS = `
 }
 #sf-galaxymap .gm-ins-btn:active:not(:disabled) { transform: translateY(1px); }
 #sf-galaxymap .gm-ins-btn:disabled { opacity: .42; cursor: default; }
+
+/* W1-8 engage control. Plot keeps the filled-gold primary; engage sits one step quieter as a
+   brass outline, so the two reads as "look at this route" then "commit to it" rather than as two
+   competing calls to action. Bright gold is reserved for the tracked objective and the ACTIVE
+   route, so the fill only arrives once a route is genuinely engaged (below). */
+#sf-galaxymap #gm-engage-route-btn {
+  background: transparent;
+  border-color: #6b4a26;
+  color: #e2b271;
+}
+#sf-galaxymap #gm-engage-route-btn:hover:not(:disabled) {
+  background: rgba(219, 152, 56, .16);
+  color: #ffd08a;
+}
+/* Engaged: this control now represents the active route, which is what earns the gold. */
+#sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"] {
+  background: linear-gradient(180deg, #ffc064, #db9838);
+  color: #1c1206;
+}
+#sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"]:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffd284, #e6a643);
+  color: #1c1206;
+}
+/* The explanation is never optional: an unavailable action must say why it is unavailable. */
+#sf-galaxymap .gm-engage-reason {
+  min-height: 13px;
+  margin-top: 5px;
+  color: #9a8a72;
+  font-family: var(--mf-ui);
+  font-size: 10px;
+  letter-spacing: .06em;
+  line-height: 1.35;
+  text-align: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  #sf-galaxymap #gm-engage-route-btn { transition: none; }
+}
+@media (forced-colors: active) {
+  #sf-galaxymap #gm-engage-route-btn { border: 1px solid ButtonText; color: ButtonText; }
+  #sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"] { border-width: 3px; }
+}
 
 /* Service chips: pictogram + label, keyed teal */
 #sf-galaxymap .gm-svc-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
@@ -3385,6 +3487,10 @@ export const galaxyMapScreen = {
   _isHostile: isHostileToPlayer,
   _inspectorDetails: null,
   _setCourseButton: null,
+  _engageButton: null,
+  _engageReason: null,
+  _engageHandler: null,
+  _engageSubscribed: false,
   _inspectorDetailsHtml: null,
   _setCourseHandler: null,
   _scaleButtons: [],
@@ -3440,6 +3546,9 @@ export const galaxyMapScreen = {
     this._ctx = ctx;
     if (HAS_DOC && rootEl && this._setCourseButton && this._setCourseHandler) {
       this._setCourseButton.removeEventListener('click', this._setCourseHandler);
+    }
+    if (HAS_DOC && rootEl && this._engageButton && this._engageHandler) {
+      this._engageButton.removeEventListener('click', this._engageHandler);
     }
     this._root = rootEl;
     if (!HAS_DOC || !rootEl) return this;
@@ -3525,6 +3634,9 @@ export const galaxyMapScreen = {
               <div class="gm-inspector-empty">No target selected. <b>Click</b> a sector, station or contact to inspect it — <b>double-click</b> to lay a course.</div>
             </div>
             <button class="gm-ins-btn" id="gm-set-course-btn" type="button" hidden disabled>Set Waypoint</button>
+            <!-- W1-8: engage is a SEPARATE control from plot, never the same button. -->
+            <button class="gm-ins-btn" id="gm-engage-route-btn" type="button" hidden disabled>Engage Route</button>
+            <div class="gm-engage-reason" id="gm-engage-reason" aria-live="polite"></div>
           </div>
         </div>
       </div>
@@ -3535,12 +3647,20 @@ export const galaxyMapScreen = {
     this._g = this._canvas.getContext('2d');
     this._inspectorDetails = rootEl.querySelector('.gm-inspector-details');
     this._setCourseButton = rootEl.querySelector('#gm-set-course-btn');
+    this._engageButton = rootEl.querySelector('#gm-engage-route-btn');
+    this._engageReason = rootEl.querySelector('#gm-engage-reason');
     this._inspectorDetailsHtml = null;
     if (!this._setCourseHandler) {
       this._setCourseHandler = () => galaxyMapScreen._activateSelectedCourse();
     }
     if (this._setCourseButton) {
       this._setCourseButton.addEventListener('click', this._setCourseHandler);
+    }
+    if (!this._engageHandler) {
+      this._engageHandler = () => galaxyMapScreen._activateRouteEngage();
+    }
+    if (this._engageButton) {
+      this._engageButton.addEventListener('click', this._engageHandler);
     }
     // Strategy-deck trade-lane activation, delegated on the persistent details node so the
     // cached innerHTML refresh never strands the handler.
@@ -4172,6 +4292,9 @@ export const galaxyMapScreen = {
     const player = state ? playerEntity(state) : null;
     const detailsEl = this._inspectorDetails || this._root.querySelector('.gm-inspector-details');
     const btn = this._setCourseButton || this._root.querySelector('#gm-set-course-btn');
+    // The engage control tracks nav.executor, NOT the current selection, so it must refresh even
+    // when nothing is selected — a route stays engaged while you browse the chart.
+    this._updateEngageControl();
     if (!detailsEl || !btn) return;
 
     const t = this._selectedTarget;
@@ -4539,6 +4662,38 @@ export const galaxyMapScreen = {
     if (!action) return;
     if (!emitGalaxyMapPrimaryAction(this._ctx.bus, action)) return;
     popCurrentScreen(this._ctx);
+  },
+
+  // W1-8. Engage hands the already-plotted route to the route follower. Deliberately does NOT
+  // close the map: plotting and engaging are separate acts, and a pilot who just engaged usually
+  // wants to watch the first leg acquire before leaving the chart.
+  _activateRouteEngage() {
+    if (!this._ctx || !this._ctx.bus) return;
+    const action = resolveRouteEngageAction(this._ctx.state);
+    if (!emitRouteEngageAction(this._ctx.bus, action)) return;
+    this._updateEngageControl();
+  },
+
+  // Reflect real executor state onto the control. Everything shown here is read from
+  // `nav.executor`, which the route follower owns — the map never invents a status, and an
+  // unavailable action always carries its reason (no silent no-ops, no fake success).
+  _updateEngageControl() {
+    if (!HAS_DOC || !this._root) return;
+    const btn = this._engageButton || this._root.querySelector('#gm-engage-route-btn');
+    const reasonEl = this._engageReason || this._root.querySelector('#gm-engage-reason');
+    if (!btn) return;
+    const action = resolveRouteEngageAction(this._ctx && this._ctx.state);
+    if (btn.hidden !== !action.visible) btn.hidden = !action.visible;
+    if (btn.disabled !== !action.enabled) btn.disabled = !action.enabled;
+    if (btn.textContent !== action.label) btn.textContent = action.label;
+    // Non-colour semantics: the state is carried by the label and the reason text, not by hue.
+    if (btn.getAttribute('data-engage-state') !== (action.event || 'none')) {
+      btn.setAttribute('data-engage-state', action.event || 'none');
+    }
+    if (reasonEl && reasonEl.textContent !== action.reason) reasonEl.textContent = action.reason;
+    if (btn.getAttribute('aria-disabled') !== String(!action.enabled)) {
+      btn.setAttribute('aria-disabled', String(!action.enabled));
+    }
   },
 
   // A trade-lane row resolves its destination station through the same course intents as any

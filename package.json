@@ -377,6 +377,7 @@
     "check:flight:v3": "node test/flightV3.spec.mjs",
     "check:actuator-telemetry": "node --test test/flight-actuator-telemetry.test.mjs",
     "check:travel-drive": "node --test test/travel-drive.test.mjs",
+    "check:route-engage": "node --test test/route-engage-action.test.mjs",
     "check:route-follower": "node --test test/route-follower.test.mjs",
     "check:flight": "node test/flightV3.spec.mjs && node scripts/flight-lab-sim.mjs && node scripts/probe-flight-visual.mjs",
     "check:flight:clean": "node test/flightV3.spec.mjs && node scripts/flight-lab-sim.mjs && node scripts/probe-flight-visual.mjs --clean-runs 5 --strict-warnings --no-write",
