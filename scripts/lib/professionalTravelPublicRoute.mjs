@@ -225,78 +225,29 @@ export async function runProfessionalTravelPublicRoute({
 
   let phase = 'boot';
   try {
-    await page.waitForFunction(() => !!(window.SF && window.SF.state && window.SF.bus), null, { timeout: 60_000 });
-    await installTravelObservers(page);
-    mark('observers-armed');
-
-    // --- Splash / Main Menu ---
     phase = 'main-menu';
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      const splash = page.locator('#cinematic-splash');
-      if (await splash.isVisible().catch(() => false)) {
-        await page.keyboard.press('Space');
-        await splash.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
-        mark('intro-dismissed', { attempt });
-      }
-      const landed = await page.waitForFunction(() => {
-        const visible = (el) => {
-          if (!el || el.hidden) return false;
-          const style = getComputedStyle(el);
-          const rect = el.getBoundingClientRect();
-          return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0.01
-            && rect.width > 1 && rect.height > 1;
-        };
-        return visible(document.querySelector('[data-screen="mainMenu"]'))
-          || visible(document.querySelector('[data-screen="newGame"]'));
-      }, null, { timeout: 20_000 }).then(() => true).catch(() => false);
-      if (landed) break;
-      await page.keyboard.press('Escape').catch(() => {});
-      await page.keyboard.press('Space').catch(() => {});
-      await page.waitForTimeout(400);
-    }
-    await waitBootOverlayGone(page);
-    if (!(await page.locator('[data-screen="mainMenu"]').first().isVisible().catch(() => false))) {
-      await page.keyboard.press('Escape').catch(() => {});
-      await page.waitForTimeout(350);
-    }
-    await page.waitForFunction(() => {
-      const el = document.querySelector('[data-screen="mainMenu"]');
-      if (!el || el.hidden) return false;
-      const style = getComputedStyle(el);
-      const rect = el.getBoundingClientRect();
-      return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0.01
-        && rect.width > 1 && rect.height > 1;
-    }, null, { timeout: 60_000 });
-    screenshots.push(await shot(page, outputDir, TRAVEL_SCREENSHOTS.mainMenu));
-    mark('main-menu-visible');
-
-    // --- New Game ---
-    phase = 'new-game';
-    await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 30_000 });
-    await waitVisible(page, '[data-screen="newGame"]', 30_000, 'New Game');
-    screenshots.push(await shot(page, outputDir, TRAVEL_SCREENSHOTS.newGame));
-    mark('new-game-visible');
-
-    // --- Launch ---
-    phase = 'launch';
-    await page.getByRole('button', { name: 'Launch', exact: true }).click({ timeout: 30_000 });
-    await page.waitForFunction(flightReadyInPage, null, { timeout: flightTimeoutMs });
-    const launchSnapshot = await readTravelSnapshot(page);
-    assert.equal(launchSnapshot.mode, 'flight', 'Launch must enter flight');
-    assert.equal(launchSnapshot.player?.alive, true, 'Launch must leave player alive');
-    assert.equal(launchSnapshot.authored?.ready, true, 'Launch must show authored ships only');
-    assert.equal(launchSnapshot.sectorId, 'sector_helios_prime',
-      `expected Helios start, got ${launchSnapshot.sectorId}`);
-    screenshots.push(await shot(page, outputDir, TRAVEL_SCREENSHOTS.flightAuthored));
-    mark('authored-flight-ready', { tick: launchSnapshot.tick, authored: launchSnapshot.authored });
-
-    // Focus canvas for flight input.
-    const canvas = page.locator('#gl-canvas');
-    await canvas.waitFor({ state: 'visible', timeout: 30_000 });
-    const box = await canvas.boundingBox();
-    assert(box && box.width > 100, 'flight canvas must be visible');
-    await page.mouse.move(Math.round(box.x + box.width * 0.55), Math.round(box.y + box.height * 0.48));
-    await canvas.focus();
+    const launchSnapshot = await bootToAuthoredFlight({
+      page,
+      flightTimeoutMs,
+      onMilestone: async (name, detail) => {
+        if (name === 'observers-armed') mark(name, detail);
+        if (name === 'intro-dismissed') mark(name, detail);
+        if (name === 'main-menu-visible') {
+          screenshots.push(await shot(page, outputDir, TRAVEL_SCREENSHOTS.mainMenu));
+          mark(name, detail);
+          phase = 'new-game';
+        }
+        if (name === 'new-game-visible') {
+          screenshots.push(await shot(page, outputDir, TRAVEL_SCREENSHOTS.newGame));
+          mark(name, detail);
+          phase = 'launch';
+        }
+        if (name === 'authored-flight-ready') {
+          screenshots.push(await shot(page, outputDir, TRAVEL_SCREENSHOTS.flightAuthored));
+          mark(name, detail);
+        }
+      },
+    });
 
     // --- Arm physical gate waypoint (nearest live gate) ---
     // APPROACH_REPAIR_V1
@@ -340,7 +291,7 @@ export async function runProfessionalTravelPublicRoute({
     // `Set Waypoint` activated the normal autopilot above. Do not layer W/Shift/A/D/V on top:
     // V3 deliberately treats those as manual helm authority and disengages autopilot.
     phase = 'approach';
-    await canvas.focus();
+    await page.locator('#gl-canvas').focus();
     const startSectorId = launchSnapshot.sectorId;
     const approachDeadline = Date.now() + approachTimeoutMs;
     let approachSnap = null;
@@ -889,3 +840,113 @@ async function shot(page, outputDir, name) {
 export function repoRel(root, absPath) {
   return path.relative(root, absPath).replace(/\\/g, '/');
 }
+
+// ═════════════════════════════════════════════════════════════════════════════════════════════════
+// Journey extension surface (ADR D11)
+// ═════════════════════════════════════════════════════════════════════════════════════════════════
+//
+// `check:journey:textile` EXTENDS this harness rather than forking one. The professional route and
+// the journey both call the boot implementation below; route-specific screenshots and receipts are
+// supplied through milestone callbacks. The journey also reuses the public-UI helpers that already
+// know how to drive this game's chart.
+
+/**
+ * Boot the game to authored flight through the public route: splash → Main Menu → New Game → Launch.
+ *
+ * This is the SAME sequence `runProfessionalTravelPublicRoute` performs, factored out so the journey
+ * cannot drift from it. Readiness is `window.SF.authoredVisualReadiness()` — the engine's own
+ * question. Never reintroduce a `ships.every(authored)` style predicate here: it is structurally
+ * unsatisfiable (off-camera NPCs stay dormant by design) and no timeout can ever satisfy it.
+ */
+export async function bootToAuthoredFlight({
+  page,
+  outputDir = null,
+  log = () => {},
+  flightTimeoutMs = 150_000,
+  onMilestone = null,
+} = {}) {
+  assert(page, 'boot requires a Playwright page');
+  const milestone = async (name, detail = {}) => {
+    if (typeof onMilestone === 'function') await onMilestone(name, detail);
+  };
+  await page.waitForFunction(() => !!(window.SF && window.SF.state && window.SF.bus), null, { timeout: 60_000 });
+  await installTravelObservers(page);
+  await milestone('observers-armed');
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const splash = page.locator('#cinematic-splash');
+    if (await splash.isVisible().catch(() => false)) {
+      await page.keyboard.press('Space');
+      await splash.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
+      await milestone('intro-dismissed', { attempt });
+    }
+    const landed = await page.waitForFunction(() => {
+      const visible = (el) => {
+        if (!el || el.hidden) return false;
+        const style = getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0.01
+          && rect.width > 1 && rect.height > 1;
+      };
+      return visible(document.querySelector('[data-screen="mainMenu"]'))
+        || visible(document.querySelector('[data-screen="newGame"]'));
+    }, null, { timeout: 20_000 }).then(() => true).catch(() => false);
+    if (landed) break;
+    await page.keyboard.press('Escape').catch(() => {});
+    await page.keyboard.press('Space').catch(() => {});
+    await page.waitForTimeout(400);
+  }
+  await waitBootOverlayGone(page);
+  if (!(await page.locator('[data-screen="mainMenu"]').first().isVisible().catch(() => false))) {
+    await page.keyboard.press('Escape').catch(() => {});
+    await page.waitForTimeout(350);
+  }
+  await waitVisible(page, '[data-screen="mainMenu"]', 60_000, 'Main Menu');
+  await milestone('main-menu-visible');
+  log('[journey] main menu visible');
+
+  await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 30_000 });
+  await waitVisible(page, '[data-screen="newGame"]', 30_000, 'New Game');
+  await milestone('new-game-visible');
+  await page.getByRole('button', { name: 'Launch', exact: true }).click({ timeout: 30_000 });
+  await page.waitForFunction(flightReadyInPage, null, { timeout: flightTimeoutMs });
+
+  const snapshot = await readTravelSnapshot(page);
+  assert.equal(snapshot.mode, 'flight', 'Launch must enter flight');
+  assert.equal(snapshot.player?.alive, true, 'Launch must leave player alive');
+  assert.equal(snapshot.authored?.ready, true, 'Launch must show authored ships only');
+  assert.equal(snapshot.sectorId, 'sector_helios_prime',
+    `expected Helios start, got ${snapshot.sectorId}`);
+
+  const canvas = page.locator('#gl-canvas');
+  await canvas.waitFor({ state: 'visible', timeout: 30_000 });
+  const box = await canvas.boundingBox();
+  assert(box && box.width > 100, 'flight canvas must be visible');
+  await page.mouse.move(Math.round(box.x + box.width * 0.55), Math.round(box.y + box.height * 0.48));
+  await canvas.focus();
+  if (outputDir) await shot(page, outputDir, 'j00-authored-flight.png').catch(() => {});
+  await milestone('authored-flight-ready', { tick: snapshot.tick, authored: snapshot.authored });
+  log(`[journey] authored flight ready in ${snapshot.sectorId}`);
+  return snapshot;
+}
+
+/**
+ * The public-UI helper surface the journey drives the game through. Exported as one object so the
+ * journey never reimplements this game's chart-search / persistent-button / visibility idioms —
+ * those carry hard-won knowledge (the search field steals focus, map buttons detach on refresh).
+ */
+export const TRAVEL_PUBLIC_HELPERS = Object.freeze({
+  searchAndSelect,
+  clickPersistentButton,
+  readTravelSnapshot,
+  readNavSnapshot,
+  readNearestGate,
+  installTravelObservers,
+  waitBootOverlayGone,
+  shot,
+  /** Non-throwing visibility probe — the journey grades absence rather than crashing on it. */
+  async waitVisibleSafe(page, selector, timeout) {
+    return page.locator(selector).first().waitFor({ state: 'visible', timeout })
+      .then(() => true).catch(() => false);
+  },
+});
