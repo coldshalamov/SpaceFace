@@ -348,6 +348,7 @@ export async function strictWorktreeFingerprint(root) {
   await streamGitIntoHash(root, ['diff', '--cached', '--raw', '-z'], digest, 'INDEX');
   const changed = new Set([
     ...splitNul(await runGitCapture(root, ['diff', '--name-only', '-z'])),
+    ...splitNul(await runGitCapture(root, ['diff', '--cached', '--name-only', '-z'])),
     ...splitNul(await runGitCapture(root, ['ls-files', '--others', '--exclude-standard', '-z'])),
   ]);
   for (const relative of [...changed].sort()) {

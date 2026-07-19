@@ -19,6 +19,21 @@ test('headed release-soak checker contract exists', () => {
   assert.equal(existsSync(CHECKER_URL), true);
 });
 
+test('strict worktree fingerprints count staged-only changes as dirty', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'sf-release-soak-staged-dirty-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, 'fixture.txt'), 'before\n', 'utf8');
+  git(root, ['init']);
+  git(root, ['config', 'user.email', 'release-soak@example.invalid']);
+  git(root, ['config', 'user.name', 'Release Soak Test']);
+  git(root, ['add', 'fixture.txt']);
+  git(root, ['commit', '-m', 'fixture']);
+  await writeFile(path.join(root, 'fixture.txt'), 'after\n', 'utf8');
+  git(root, ['add', 'fixture.txt']);
+  const worktree = await strictWorktreeFingerprint(root);
+  assert.equal(worktree.changedFileCount, 1);
+});
+
 test('checker exports the read-only evidence gate API', async () => {
   const checker = await import(CHECKER_URL);
   assert.equal(typeof checker.checkHeadedReleaseSoakEvidence, 'function');
