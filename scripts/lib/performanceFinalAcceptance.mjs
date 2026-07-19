@@ -195,17 +195,27 @@ function validateMatrix(input, index, expectedCommit, failures) {
     }
     if (window.memory?.comparableState?.pass !== true) failures.push(`${windowPrefix} memory endpoints are not comparable`);
     const rendererDelta = window.memory?.renderer?.delta;
-    if (!rendererDelta || Number(rendererDelta.programs) > 0) failures.push(`${windowPrefix} compiled novel GPU programs`);
+    if (!finite(rendererDelta?.programs) || Number(rendererDelta.programs) > 0) {
+      failures.push(`${windowPrefix} lacks stable program residency or compiled novel GPU programs`);
+    }
     if (STEADY_RESIDENCY_SCENARIOS.has(scenarioId)
-      && (Number(rendererDelta?.geometries) > 0 || Number(rendererDelta?.textures) > 0 || Number(rendererDelta?.renderTargets) > 0)) {
+      && ['geometries', 'textures', 'renderTargets'].some((key) => !finite(rendererDelta?.[key]) || Number(rendererDelta[key]) > 0)) {
       failures.push(`${windowPrefix} steady-state GPU residency grew`);
     }
-    if (Number(window.memory?.heap?.growthBytes) > 30 * 1024 * 1024) failures.push(`${windowPrefix} heap grew by more than 30 MB`);
-    if (window.pipeline?.start?.activeAdmissionJobs !== 0 || window.pipeline?.end?.activeAdmissionJobs !== 0
-      || window.pipeline?.start?.meshBuildQueueRemaining !== 0 || window.pipeline?.end?.meshBuildQueueRemaining !== 0) {
+    if (!finite(window.memory?.heap?.growthBytes)
+      || Number(window.memory.heap.growthBytes) > 30 * 1024 * 1024) {
+      failures.push(`${windowPrefix} lacks finite heap evidence or grew by more than 30 MB`);
+    }
+    const pipelineStart = window.pipeline?.start;
+    const pipelineEnd = window.pipeline?.end;
+    if (!finite(pipelineStart?.activeAdmissionJobs) || !finite(pipelineEnd?.activeAdmissionJobs)
+      || !finite(pipelineStart?.meshBuildQueueRemaining) || !finite(pipelineEnd?.meshBuildQueueRemaining)
+      || Number(pipelineStart.activeAdmissionJobs) !== 0 || Number(pipelineEnd.activeAdmissionJobs) !== 0
+      || Number(pipelineStart.meshBuildQueueRemaining) !== 0 || Number(pipelineEnd.meshBuildQueueRemaining) !== 0) {
       failures.push(`${windowPrefix} captured active or uncontrolled asset admission work`);
     }
-    if (window.pipeline?.start?.programCount !== window.pipeline?.end?.programCount) {
+    if (!finite(pipelineStart?.programCount) || !finite(pipelineEnd?.programCount)
+      || Number(pipelineStart.programCount) !== Number(pipelineEnd.programCount)) {
       failures.push(`${windowPrefix} program residency changed during capture`);
     }
     if (window.restoration?.restored !== true || window.restoration?.measurementDisabled !== true) {
@@ -355,4 +365,5 @@ function stableStringify(value) {
 
 function nonempty(value) { return typeof value === 'string' && value.trim().length > 0; }
 function positive(value) { return Number.isFinite(value) && value > 0; }
+function finite(value) { return value != null && value !== '' && Number.isFinite(Number(value)); }
 function isIso8601(value) { return typeof value === 'string' && Number.isFinite(Date.parse(value)); }
