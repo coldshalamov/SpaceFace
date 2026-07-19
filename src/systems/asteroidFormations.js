@@ -70,11 +70,25 @@ export function formationBodyKey(body) {
   const data = body.data && typeof body.data === 'object' ? body.data : {};
   if (data.worldRecordId != null) return `rec:${data.worldRecordId}`;
   const pos = body.pos && typeof body.pos === 'object' ? body.pos : body;
-  const x = Number.isFinite(pos.x) ? Math.round(pos.x) : 0;
-  const z = Number.isFinite(pos.z) ? Math.round(pos.z) : 0;
   const typeId = typeof data.typeId === 'string' ? data.typeId : '?';
   const radius = Number.isFinite(body.radius) ? Math.round(body.radius) : 0;
-  return `pos:${x}|${z}|${typeId}|${radius}`;
+  return `pos:${quantizeAnchorCoord(pos.x)}|${quantizeAnchorCoord(pos.z)}|${typeId}|${radius}`;
+}
+
+/**
+ * Integer key coordinate, STABLE UNDER THE ANCHOR CYCLE. asteroidSites._anchorSite freezes a
+ * rock's pose at tenth precision (Math.round(v * 10) / 10) and _repairAnchors respawns it there,
+ * so a naive integer round straddled that map at half-boundaries: x 0.49 keyed to 0 before the
+ * anchor cycle and to 1 after it (0.49 → anchored 0.5 → round 1), re-labelling the formation the
+ * knowledge was about (the round-3 review's reproduction). Normalising through the SAME tenth
+ * grid FIRST makes the composition idempotent: quantize(x) === quantize(anchorRound(x)) for every
+ * x, because the tenth-rounding step is itself idempotent.
+ */
+export function quantizeAnchorCoord(v) {
+  if (!Number.isFinite(v)) return 0;
+  const tenths = Math.round(v * 10) / 10;
+  const q = Math.round(tenths);
+  return q === 0 ? 0 : q; // normalise -0
 }
 
 /** Compact, JSON-safe copy of one kernel formation record (strategic subset only). Pure. */

@@ -897,7 +897,7 @@ export const encounterDirector = {
   },
 
   _recordPlayerChoiceLine(live, choiceId) {
-    const choice = (live.shape.choices || []).find((entry) => entry && entry.id === choiceId);
+    const choice = ((live.shape && live.shape.choices) || []).find((entry) => entry && entry.id === choiceId);
     const line = choice && typeof choice.playerLine === 'string' ? choice.playerLine.trim() : '';
     if (!line) return;
     const story = this.state.story || (this.state.story = { flags: {} });

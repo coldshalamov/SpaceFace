@@ -955,3 +955,38 @@ test('PREFLIGHT: previewOverlayRemoval is non-mutating, matches confirmed spill,
   assert.deepEqual(missing.spilled, []);
   assert.deepEqual(missing.placed, []);
 });
+
+// ================================== 17. MACHINE REMOVAL SPILL (round-3 P1-5)
+
+test('A10 §17: dismantling a machine that anchors a loaded store is refused, then receipted on confirm', () => {
+  const { h, siteId, site } = anchoredSite();
+  // Weld a one-cell lane to the extractor so the extractor's component carries the store, then
+  // load it and strip the lane cell (freely — the machine still anchors the store).
+  paintCorridor(h, siteId, [[13, 3]]);
+  h.sys._runtime(site);
+  const anchored = laneWith(site, idx(13, 2));
+  anchored.store.cmdty_ore_iron = 25;
+  assert.equal(h.sys.setOverlay(siteId, 'lane', 13, 3, false).ok, true,
+    'clearing the welded cell spills nothing while the machine still conducts');
+  h.sys._runtime(site);
+  assert.equal(laneWith(site, idx(13, 2)).store.cmdty_ore_iron, 25);
+
+  const extractor = site.machines.find((m) => m.defId === 'sm_extractor');
+  const preview = h.sys.previewMachineRemoval(siteId, extractor.id);
+  assert.equal(preview.spilledTotal, 25, 'the preflight names the exact would-spill amount');
+
+  const refused = h.sys.removeMachine(siteId, extractor.id);
+  assert.equal(refused.ok, false);
+  assert.equal(refused.reason, 'would-spill');
+  assert.ok(site.machines.some((m) => m.id === extractor.id), 'refusal leaves the machine standing');
+  assert.equal(laneTotal(site), 25, 'refusal spills nothing');
+
+  const spills = [];
+  h.bus.on('site:laneSpilled', (p) => spills.push(p));
+  const confirmed = h.sys.removeMachine(siteId, extractor.id, { confirmSpill: true });
+  assert.equal(confirmed.ok, true);
+  assert.equal(spills.length, 1, 'one deterministic receipt');
+  assert.deepEqual(spills[0].goods, { cmdty_ore_iron: 25 });
+  h.sys._runtime(site);
+  assert.equal(laneTotal(site), 0, 'the confirmed loss executed');
+});

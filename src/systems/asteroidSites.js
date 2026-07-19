@@ -382,6 +382,11 @@ export const asteroidSites = {
    */
   _fundingStoresFor(site, col, row) {
     if (!site) return [];
+    // Reconcile FIRST: laneStores must reflect the current topology before eligibility is
+    // computed. A pending setOverlay leaves stale pre-change cell lists on the persisted stores,
+    // and intersecting against those let an install beside the MINORITY half of a fresh split
+    // consume stock the reconcile was about to hand to the majority (round-3 finding).
+    this._runtime(site);
     const machineCells = new Map();
     for (const m of site.machines) machineCells.set(tileIndex(m.col, m.row), m.id);
     const comp = wouldOwnComponent(
@@ -498,8 +503,30 @@ export const asteroidSites = {
     this._ensureBeacon(site);
   },
 
-  /** Dismantle a machine: the control unit comes back, the structural mass does not. */
-  removeMachine(siteId, machineId) {
+  /**
+   * NON-MUTATING preflight for dismantling a machine: machines CONDUCT, so removing one can
+   * orphan a lane store exactly like clearing a lane cell can (the round-3 review lost 25u this
+   * way). Same A10 ruling, same preview shape as previewOverlayRemoval.
+   */
+  previewMachineRemoval(siteId, machineId) {
+    const site = this.getSite(siteId);
+    const machine = site && site.machines.find((m) => m.id === machineId);
+    if (!site || !machine) return { spilledTotal: 0, spilled: [], placed: [] };
+    const machineCells = new Map();
+    for (const m of site.machines) {
+      if (m.id === machineId) continue;
+      machineCells.set(tileIndex(m.col, m.row), m.id);
+    }
+    const nextComps = buildComponents(new Set(site.overlays.lane), machineCells, COLS);
+    return previewStoreReconciliation(site.laneStores, nextComps);
+  },
+
+  /**
+   * Dismantle a machine: the control unit comes back, the structural mass does not. A removal
+   * whose reconciliation would spill network stock is REFUSED unless { confirmSpill: true } —
+   * the A10 destructive-removal ruling applies to conducting machines exactly as to lane cells.
+   */
+  removeMachine(siteId, machineId, opts) {
     const site = this.getSite(siteId);
     if (!site) return { ok: false, reason: 'no-site' };
     const idx = site.machines.findIndex((m) => m.id === machineId);
@@ -511,7 +538,34 @@ export const asteroidSites = {
       // whole site is a deliberate future verb, not an accidental click.
       return { ok: false, reason: 'core-locked' };
     }
+
+    let confirmedSpill = null;
+    {
+      const preview = this.previewMachineRemoval(siteId, machineId);
+      if (preview.spilledTotal > 0) {
+        if (!(opts && opts.confirmSpill)) {
+          return { ok: false, reason: 'would-spill', spill: preview };
+        }
+        confirmedSpill = preview;
+      }
+    }
+
     site.machines.splice(idx, 1);
+
+    if (confirmedSpill) {
+      const goods = {};
+      for (const s of confirmedSpill.spilled) {
+        for (const g of Object.keys(s.store).sort()) {
+          const q = Math.max(0, Number(s.store[g]) || 0);
+          if (q > 0) goods[g] = (goods[g] || 0) + q;
+        }
+      }
+      const summary = Object.keys(goods).sort().map((g) => `${Math.floor(goods[g])}u ${g}`).join(', ');
+      this._ledger(site, 'warn', `${def ? def.name : machine.defId} dismantled under load — spilled ${summary}.`);
+      this.bus.emit('site:laneSpilled', {
+        siteId, machineId, spilledTotal: confirmedSpill.spilledTotal, goods,
+      });
+    }
     if (def && def.cost && def.cost.cmdty_control_unit) {
       addCargo(this.state, 'cmdty_control_unit', def.cost.cmdty_control_unit);
     }

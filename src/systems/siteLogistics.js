@@ -113,9 +113,13 @@ export function wouldOwnComponent(overlayCells, machineCells, cols, insertCellId
   const components = buildComponents(overlayCells, withInsert, cols);
   const comp = componentForCell(components, insertCellIdx);
   if (!comp) return null;
-  // A component that is ONLY the hypothetical machine itself reaches no lane and no neighbor:
-  // that is a disconnected build site, not an owning network.
-  if (comp.cells.length === 1 && comp.cells[0] === insertCellIdx) return null;
+  // A component that is ONLY the hypothetical machine itself — standing on NO real lane cell —
+  // reaches nothing: that is a disconnected build site, not an owning network. But a machine
+  // installed directly ON an isolated painted lane cell IS on a real one-cell network (round-3
+  // finding: the length-only guard misread that legitimate case as hypothetical-only).
+  if (comp.cells.length === 1 && comp.cells[0] === insertCellIdx && !overlayCells.has(insertCellIdx)) {
+    return null;
+  }
   return comp;
 }
 

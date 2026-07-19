@@ -22,6 +22,7 @@ import {
   makeDefaultFormations,
   formationSeedFor,
   formationBodyKey,
+  quantizeAnchorCoord,
   compactFormationRecord,
   DISCOVERED_RECORD_FIELDS,
   FORMATIONS_SCHEMA_VERSION,
@@ -344,4 +345,25 @@ test('A02 §13c: mining out members changes the live model honestly without touc
   // Either way the durable discovered record is untouched by the loss.
   assert.equal(JSON.stringify(a.sys.discoveredRecord(multi.id)), durable,
     'mined-out members never mutate discovered knowledge');
+});
+
+// ── §14 anchor-cycle quantization (round-3: the tenth-grid straddle) ───────────────────────────
+
+test('A02 §14: body keys are stable under the anchor recipe map and pinned at the boundaries', () => {
+  const key = formationBodyKey;
+  const q = quantizeAnchorCoord;
+  const anchorMap = (v) => Math.round(v * 10) / 10; // asteroidSites._anchorSite's exact recipe
+  // Idempotence under the anchor cycle at hard-coded boundaries, both signs.
+  for (const x of [0.44, 0.449, 0.45, 0.49, 0.5, 0.51, 1.44, 1.45, -0.44, -0.45, -0.49, -0.5, -0.55, -1.45]) {
+    assert.equal(q(x), q(anchorMap(x)), `quantize(${x}) must equal quantize(anchorMap(${x}))`);
+  }
+  // Exact integer keys pinned as literals (kills a round->floor mutant: floor(0.5-tenths)=0).
+  assert.equal(q(0.49), 1, '0.49 anchors to 0.5 which keys to 1');
+  assert.equal(q(0.5), 1);
+  assert.equal(q(0.44), 0, '0.44 anchors to 0.4 which keys to 0');
+  assert.equal(q(1.4), 1);
+  assert.equal(q(-0.44), 0);
+  assert.equal(q(-0.5), 0, 'negative half rounds toward zero under Math.round and normalises -0');
+  const body = (x) => ({ id: 'e', type: 'asteroid', pos: { x, z: 0 }, radius: 8, data: { typeId: 't' } });
+  assert.equal(key(body(0.49)), key(body(0.5)), 'the pre-anchor and post-anchor rock share one key');
 });

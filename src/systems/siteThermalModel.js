@@ -158,7 +158,12 @@ function nz(n) {
  * 4c367cd7 defect. Symbols carry no numeric claim, so they read as NaN like any other non-number.
  */
 function toNumber(v) {
-  return typeof v === 'symbol' ? NaN : Number(v);
+  if (typeof v === 'symbol') return NaN;
+  try {
+    return Number(v);
+  } catch (_) {
+    return NaN; // boxed Symbols and hostile valueOf/toPrimitive objects coerce by throwing
+  }
 }
 
 /** Coerce to a finite number, else `fallback`. Never NaN, never Infinity, never -0, never a throw. */
@@ -401,7 +406,11 @@ export function heatPerMachine(def, profile, powerRatio, mode) {
  * (the reviewed 4c367cd7 defect). More power can now never report less capacity.
  */
 export function thermalCapacityFor(def) {
-  const mw = def && typeof def === 'object' ? Math.abs(num(def.power, 0)) : 0;
+  // hotNum, not num: a def declaring INFINITE power is an unbounded-magnitude claim and must
+  // saturate the capacity UP to the ceiling, not collapse to the base floor (round-3 finding —
+  // num() mapped Infinity to 0, reading the largest conceivable machine as the smallest).
+  // The abs comes FIRST: draw machines carry NEGATIVE power, and hotNum floors negatives.
+  const mw = def && typeof def === 'object' ? hotNum(Math.abs(toNumber(def.power))) : 0;
   const cap = SITE_THERMAL.capacityBase + mw * SITE_THERMAL.capacityPerMW;
   if (!Number.isFinite(cap) || cap > SITE_THERMAL.maxStored) return SITE_THERMAL.maxStored;
   return cap > 0 ? cap : SITE_THERMAL.capacityBase;
@@ -557,11 +566,13 @@ function machineKey(m) {
   const id = typeof m.id === 'string' && m.id.length > 0 ? m.id : '';
   const defId = typeof m.defId === 'string' ? m.defId : '';
   const prof = readContacts(m.profile);
-  const ores = Object.keys(prof.ores).sort().map((k) => k + ':' + prof.ores[k]).join(',');
-  const content = [
+  // JSON-encoded so arbitrary ore identifiers cannot forge delimiter collisions (a round-3
+  // review built two DIFFERENT profiles whose comma/colon join encoded identically).
+  const ores = Object.fromEntries(Object.keys(prof.ores).sort().map((k) => [k, prof.ores[k]]));
+  const content = JSON.stringify([
     num(m.powerRatio, -1), nonNegative(m.storedHeat), nonNegative(m.coolingRate),
     prof.matrix, prof.basalt, prof.gas, ores,
-  ].join('|');
+  ]);
   return [id, defId, num(m.col, -1), num(m.row, -1), typeof m.mode === 'string' ? m.mode : '', content]
     .join('\u0000');
 }

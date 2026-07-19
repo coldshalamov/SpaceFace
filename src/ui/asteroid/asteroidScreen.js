@@ -376,6 +376,7 @@ export const asteroidScreen = {
       }
       if (item.kind === 'remove') { commitRemoval(cursor); return; }
       if (!siteSys) return;
+      armedSpill = null; // any non-overlay action disarms a pending spill confirmation
       const res = siteSys.installMachine({ asteroidId: astId, defId: item.id, col: cursor.col, row: cursor.row });
       if (res.ok) {
         if (renderer3d) renderer3d.notify('install', { col: cursor.col, row: cursor.row });
@@ -394,7 +395,19 @@ export const asteroidScreen = {
       const s = site();
       const m = s && siteSys.machineAt(s, cursor.col, cursor.row);
       if (m) {
-        const res = siteSys.removeMachine(currentSiteId, m.id);
+        // Same refuse-then-confirm arming as lane clears: machines conduct, so dismantling one
+        // can orphan a loaded store. kind 'machine' keeps the two confirmations distinct.
+        const idx = tileIndex(cursor.col, cursor.row);
+        const confirmed = armedSpill && armedSpill.kind === 'machine' && armedSpill.idx === idx;
+        const res = siteSys.removeMachine(currentSiteId, m.id,
+          confirmed ? { confirmSpill: true } : undefined);
+        if (!res.ok && res.reason === 'would-spill') {
+          armedSpill = { kind: 'machine', idx };
+          const total = res.spill ? Math.floor(res.spill.spilledTotal) : 0;
+          announce(`Dismantling this machine would spill ${total}u of stored goods — dismantle it again to confirm the loss.`);
+          return;
+        }
+        armedSpill = null;
         announce(res.ok ? `${machineName(m.defId)} dismantled.` : placementReason(res));
         projDirty = true;
         return;
