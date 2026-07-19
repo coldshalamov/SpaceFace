@@ -2121,10 +2121,6 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     authoredSlots[slot].push(record.url);
   };
 
-  // A low-poly pressure shell is always retained as the close-range readability silhouette. The
-  // authored GLB parts remain the ship's detail layer, but this shell prevents a loaded ship from
-  // reading as a few dark fragments or only an aft rocket when the current authored hull is sparse.
-  const safetyCore = buildSafetyCore(hull, materials, palette);
   const hullRecord = selected.get('hull');
   if (hullRecord) {
     instantiatePart(hullRecord, hull, {
@@ -2135,11 +2131,13 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     fallbackParts.push('hull');
   }
   const authoredHullLevels = hullRecord ? authoredLevels(hullRecord) : new Set();
-  // A conforming authored hull is the silhouette authority. Keeping the larger emergency pressure
-  // shell visible at LOD0 covered its panel work with one flat grey surface (most obvious on the
-  // Wasp). The shell remains available only when the requested authored hull level is genuinely
-  // absent; it is continuity geometry, not a second skin.
-  safetyCore.visible = !wholeShip && authoredHullLevels.size === 0;
+  // Do not construct an opaque second skin when an authored hull exists; it would cover the actual
+  // panel and material work. Emergency geometry exists only for a genuinely absent hull level.
+  let safetyCore = null;
+  if (shouldBuildReadabilitySafetyCore({
+    wholeShip,
+    authoredHullLevelCount: authoredHullLevels.size,
+  })) safetyCore = buildSafetyCore(hull, materials, palette);
   // Snapshot only mounts supplied by the hull. Parts may themselves contain internal markers, but
   // assembly topology belongs to the hull grammar and must not change as later slots are mounted.
   const hullMounts = snapshotMounts(bindings.mounts);
@@ -3317,7 +3315,9 @@ function installAuthoredLod(root, bindings, safetyCore, authoredHullLevels, whol
       object.visible = baseVisible && requested !== 'lod2';
     }
     const visibleAuthoredHullLevel = closestAvailableLod(requested, authoredHullLevels);
-    safetyCore.visible = !wholeShip && !authoredHullLevels.has(visibleAuthoredHullLevel);
+    if (safetyCore) {
+      safetyCore.visible = !wholeShip && !authoredHullLevels.has(visibleAuthoredHullLevel);
+    }
     if (root.userData.damageState === 'critical') {
       for (const secondary of bindings.secondary) secondary.visible = false;
     }
@@ -4213,6 +4213,13 @@ function buildSafetyCore(hull, materials, palette) {
   mesh.userData.spacefaceStaticBatch = true;
   mesh.userData.spacefacePartUrl = 'readability/pressure_shell';
   return mesh;
+}
+
+export function shouldBuildReadabilitySafetyCore({
+  wholeShip = false,
+  authoredHullLevelCount = 0,
+} = {}) {
+  return !wholeShip && Number(authoredHullLevelCount) <= 0;
 }
 
 function readabilityShellMaterial(base, palette = {}) {

@@ -361,6 +361,13 @@ const SHIELD_POOL_FRAG = /* glsl */`
   }
 `;
 
+const SHIELD_PRESENTATION_EPSILON = 0.015;
+
+/** Shields read on impact instead of coating every healthy ship in a permanent translucent sphere. */
+export function shouldPresentShieldBubble(shield, flash) {
+  return Number(shield) > 0 && Number(flash) > SHIELD_PRESENTATION_EPSILON;
+}
+
 export function createShipAuxPool(scene) {
   const pool = {
     scene,
@@ -490,14 +497,15 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
     const bubble = root.userData.shieldBubble;
     if (bubble) {
       bubble.visible = false;
-      if (entity.shield > 0) {
+      const uniforms = bubble.material && bubble.material.uniforms;
+      const flash = uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0;
+      if (shouldPresentShieldBubble(entity.shield, flash)) {
         ensureShieldAuxCapacity(pool.shield, shieldCount + 1, pool.scene, shieldCount);
         const shieldMesh = pool.shield.mesh;
         const flashAttr = shieldMesh.geometry.getAttribute('instanceFlash');
         const baseAttr = shieldMesh.geometry.getAttribute('instanceBase');
         bubble.updateWorldMatrix(true, false);
         if (writeInstanceMatrixIfChanged(shieldMesh, shieldCount, bubble.matrixWorld)) shieldMatrixDirty = true;
-        const uniforms = bubble.material && bubble.material.uniforms;
         const color = uniforms && uniforms.uColor && uniforms.uColor.value;
         if (writeInstanceColorIfChanged(
           shieldMesh, shieldCount, color && color.isColor ? color : SHIP_AUX_COLOR.set(0x5fd0ff),
@@ -1578,12 +1586,12 @@ export const render = {
       if (m.userData.updateDamageState) m.userData.updateDamageState(e, now);
       if (m.userData.updateDriveState) m.userData.updateDriveState(e, now);
 
-      // GR-5: persistent 3D shield bubble visibility + impact flash. Shown while shields hold; the
-      // flash decays each frame and is punched up whenever the entity's shield value drops (impact).
+      // Shield geometry is an impact response, not a permanent bubble. The flash decays each frame
+      // and is punched up whenever the entity's shield value drops.
       const sb = m.userData.shieldBubble;
       if (sb) {
         const up = e.shield > 0;
-        if (sb.visible !== up) sb.visible = up;
+        let flash = 0;
         if (up) {
           const u = sb.material.uniforms;
           // detect shield loss since last frame -> punch the fresnel flash
@@ -1594,7 +1602,10 @@ export const render = {
           const dt = Math.min(0.1, now - (sb.userData._prevFlashT != null ? sb.userData._prevFlashT : now));
           sb.userData._prevFlashT = now;
           u.uFlash.value *= Math.pow(0.05, dt);
+          flash = u.uFlash.value;
         }
+        const visible = shouldPresentShieldBubble(e.shield, flash);
+        if (sb.visible !== visible) sb.visible = visible;
       }
     }
     endRenderEntityFrame(this._entityFrame);
