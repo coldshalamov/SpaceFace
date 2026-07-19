@@ -157,6 +157,9 @@ const DRESSING_RADIUS = Object.freeze({
 
 export const world = {
   name: 'world',
+  // records/embodiment serializers already return owned trees; the remaining live overlays are
+  // copied below so saveSystem does not duplicate the full world payload during autosave capture.
+  saveSnapshotOwned: true,
 
   init(ctx) {
     this.state = ctx.state;
@@ -2372,9 +2375,9 @@ export const world = {
     }
     return {
       currentSectorId: state.world.currentSectorId,
-      discovery: state.world.discovery,
-      scanPings: state.world.scanPings || {},
-      pendingSpawns: state.world.pendingSpawns || {},
+      discovery: cloneSaveTree(state.world.discovery || {}),
+      scanPings: cloneSaveTree(state.world.scanPings || {}),
+      pendingSpawns: cloneSaveTree(state.world.pendingSpawns || {}),
       // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
       records: serializeRecordsBag(ensureWorldRecords(state.world)),
       // Latest sectorSim recipes are bounded per sector and needed because sectorSim restores its
@@ -2486,6 +2489,14 @@ export const world = {
     state.nav.autopilot = { active: false, target: null, targetEntityId: null, label: '', arrivalRadius: 36, status: 'idle' };
   },
 };
+
+function cloneSaveTree(value) {
+  if (value == null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(cloneSaveTree);
+  const out = {};
+  for (const key of Object.keys(value)) out[key] = cloneSaveTree(value[key]);
+  return out;
+}
 
 // Module-private helper (kept out of the singleton so `this` stays simple in callers).
 function safeSector(state, id) {

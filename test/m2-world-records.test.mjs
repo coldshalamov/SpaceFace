@@ -410,6 +410,7 @@ test('world.serialize persists records in global space and never frame/residency
   state.world.frameOriginSeq = 3;
   state.world.residentSectors[TETHYS] = { tier: RESIDENCY_TIER.FULL, epoch: 0 };
   state.world.sectorContents[TETHYS] = { stations: [], enemies: [1] };
+  state.world.pendingSpawns[TETHYS] = [{ entityType: 'pirate', position: { x: 4, z: 8 }, tags: ['fixture'] }];
 
   const ser = world.serialize();
   assert.ok(ser.records);
@@ -420,6 +421,13 @@ test('world.serialize persists records in global space and never frame/residency
   assert.equal('residentSectors' in ser, false);
   assert.equal('sectorContents' in ser, false);
   assert.equal(ser.coordinateSchema, 'global_v1');
+  const liveDiscovery = state.world.discovery[HELIOS].discovered;
+  ser.discovery[HELIOS].discovered = !liveDiscovery;
+  ser.pendingSpawns[TETHYS][0].position.x = 999;
+  assert.equal(state.world.discovery[HELIOS].discovered, liveDiscovery,
+    'snapshot-owned world serialization must not retain discovery references');
+  assert.equal(state.world.pendingSpawns[TETHYS][0].position.x, 4,
+    'snapshot-owned world serialization must not retain pending-spawn references');
 });
 
 test('deserialize + enterSector rematerializes records once; no double sector-origin offset', () => {
