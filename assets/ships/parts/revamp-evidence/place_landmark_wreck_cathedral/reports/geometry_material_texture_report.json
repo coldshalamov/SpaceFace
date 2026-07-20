@@ -1,0 +1,358 @@
+{
+  "schema": "spaceface.wreckCathedralGeometryMaterialTextureReport.v1",
+  "assetId": "place_landmark_wreck_cathedral",
+  "glb": "assets/ships/parts/places/place_landmark_wreck_cathedral.glb",
+  "glbBytes": 11155156,
+  "trianglesByLod": {
+    "lod0": 91908,
+    "lod1": 34164,
+    "lod2": 8364,
+    "untagged": 0
+  },
+  "primitivesByLod": {
+    "lod0": 8,
+    "lod1": 8,
+    "lod2": 8,
+    "untagged": 0
+  },
+  "materialCount": 8,
+  "materials": [
+    "Material_Accent_ConcordBlue_Burned",
+    "Material_Armor_Scorched",
+    "Material_Conduit_Copper",
+    "Material_Emissive_ColdEmergency",
+    "Material_Emissive_MarkerAmber",
+    "Material_Hull_ConcordGray",
+    "Material_Interior_ExposedAlloy",
+    "Material_Mechanical_Exposed"
+  ],
+  "imageCount": 26,
+  "textureCount": 26,
+  "uvPrimitiveCount": 24,
+  "tangentPrimitiveCount": 24,
+  "lodOrderStrictlyReducing": true,
+  "flythroughClearanceProbe": {
+    "method": "75 deterministic BVH ray samples across a 64 m x 50 m inset of the 72 m x 58 m envelope",
+    "sampleCount": 75,
+    "hitCount": 0,
+    "pass": true,
+    "hits": []
+  },
+  "textures": [
+    {
+      "material": "Material_Hull_ConcordGray",
+      "channel": "basecolor",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Hull_ConcordGray_basecolor.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 273616,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "3a7172675af2f3cf0aa7d00b85542ea2efa93eaea5d1301ba3218231c90c250a"
+    },
+    {
+      "material": "Material_Hull_ConcordGray",
+      "channel": "normal",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Hull_ConcordGray_normal.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 194352,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "19a6283efa6e062606033afd5d47958fed388db651b1c1002b1435bee68a4620"
+    },
+    {
+      "material": "Material_Hull_ConcordGray",
+      "channel": "orm",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Hull_ConcordGray_orm.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 293637,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "af8fc3decdced8c67d955d635a92999218e94a1607d55bb3af5539e4a196b90b"
+    },
+    {
+      "material": "Material_Armor_Scorched",
+      "channel": "basecolor",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Armor_Scorched_basecolor.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 265470,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "a12601d3db57b7e69477270ea0ae6cdb9a20320ab434a7daf14eca590899bdec"
+    },
+    {
+      "material": "Material_Armor_Scorched",
+      "channel": "normal",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Armor_Scorched_normal.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 194546,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "0c74eb265cdf3678f63c50dc501d88f01014a1a154334586d4a0918c66018098"
+    },
+    {
+      "material": "Material_Armor_Scorched",
+      "channel": "orm",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Armor_Scorched_orm.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 299811,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "4e280e8589455f16dc8efbe2c5394854f34ce041ec9ca5ce4b12685c18ee9679"
+    },
+    {
+      "material": "Material_Accent_ConcordBlue_Burned",
+      "channel": "basecolor",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Accent_ConcordBlue_Burned_basecolor.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 287864,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "639472ff157d813f6c9bd16de0a45cad5d76a80820a3eb20d25517fb9cda046d"
+    },
+    {
+      "material": "Material_Accent_ConcordBlue_Burned",
+      "channel": "normal",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Accent_ConcordBlue_Burned_normal.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 194420,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "9f40de2e58258ba4c19127da5bab92361c890c0cae81eba3837ba815432d6b30"
+    },
+    {
+      "material": "Material_Accent_ConcordBlue_Burned",
+      "channel": "orm",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Accent_ConcordBlue_Burned_orm.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 294070,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "275abccda8ca76904cb9a980312a0ff491fe3eeef3b1b4973a7172508de185d8"
+    },
+    {
+      "material": "Material_Mechanical_Exposed",
+      "channel": "basecolor",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Mechanical_Exposed_basecolor.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 274713,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "cf2fdd8abb176fde488fba686619d4914c24fbd82859e7af8863061a8240b907"
+    },
+    {
+      "material": "Material_Mechanical_Exposed",
+      "channel": "normal",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Mechanical_Exposed_normal.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 194306,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "56ab44db619ff5f4fcc72483c2d2b46438a773fac8922adc443b80bc3014fab3"
+    },
+    {
+      "material": "Material_Mechanical_Exposed",
+      "channel": "orm",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Mechanical_Exposed_orm.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 292869,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "b643eb85c89399e90f360cf939eaeecf5045ac454e678e925ff86d605eabf6ab"
+    },
+    {
+      "material": "Material_Interior_ExposedAlloy",
+      "channel": "basecolor",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Interior_ExposedAlloy_basecolor.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 293625,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "87349e123ae8d5e718f5b9773bcfb1f6585b4ea0b3915f3091752c745d964891"
+    },
+    {
+      "material": "Material_Interior_ExposedAlloy",
+      "channel": "normal",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Interior_ExposedAlloy_normal.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 216911,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "b2932afc44ef17b5de9b3a666d36f3f842fd2109c537b5c057b609a4741dd682"
+    },
+    {
+      "material": "Material_Interior_ExposedAlloy",
+      "channel": "orm",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Interior_ExposedAlloy_orm.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 293387,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "de999d207d5b7dd6d7f1d13b7c684141b25dfd6e4c84ebf7bd7c871a36dfc191"
+    },
+    {
+      "material": "Material_Conduit_Copper",
+      "channel": "basecolor",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Conduit_Copper_basecolor.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 218782,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "f659cd5f9209b82805c1566d4bc1bcb1b12db010685bcc80e580f647fe015e71"
+    },
+    {
+      "material": "Material_Conduit_Copper",
+      "channel": "normal",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Conduit_Copper_normal.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 228797,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "654459fef94772a238e75536bc0beb31cc9ff0821b3fd0fbcb85363fe4ad0681"
+    },
+    {
+      "material": "Material_Conduit_Copper",
+      "channel": "orm",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Conduit_Copper_orm.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "fileBytes": 294289,
+      "estimatedGpuBytesRgba8WithMips": 1398102,
+      "sha256": "16f901d9e3fe981bc5e5dbde2d34d60778a300875714b2841bd68f342c69ff53"
+    },
+    {
+      "material": "Material_Emissive_ColdEmergency",
+      "channel": "basecolor",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_basecolor.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "fileBytes": 73263,
+      "estimatedGpuBytesRgba8WithMips": 349526,
+      "sha256": "50942afb76afcd8534732bcda4dbf37701bce51bb0fc02b00ea4a153dc2cc5f9"
+    },
+    {
+      "material": "Material_Emissive_ColdEmergency",
+      "channel": "normal",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_normal.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "fileBytes": 49640,
+      "estimatedGpuBytesRgba8WithMips": 349526,
+      "sha256": "4c0f08b2a0aa6b8196b44c3cacb8006684ff82d9b6dcc8b60e6c6f861225768e"
+    },
+    {
+      "material": "Material_Emissive_ColdEmergency",
+      "channel": "orm",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_orm.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "fileBytes": 71934,
+      "estimatedGpuBytesRgba8WithMips": 349526,
+      "sha256": "a31b341e42559c5db43e5e84252e4b3cb2bdd2367f6f65e13755a93b9f153606"
+    },
+    {
+      "material": "Material_Emissive_ColdEmergency",
+      "channel": "emissive",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_emissive.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "fileBytes": 1246,
+      "estimatedGpuBytesRgba8WithMips": 349526,
+      "sha256": "3f62ca9b9c2d0d4ba748c26643b57f405fb478d60b358b82f4511534705d5980"
+    },
+    {
+      "material": "Material_Emissive_MarkerAmber",
+      "channel": "basecolor",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_basecolor.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "fileBytes": 68232,
+      "estimatedGpuBytesRgba8WithMips": 349526,
+      "sha256": "6974408633525c998e536abb91b19f8f6e7e77a4dfcead633c94410ffc7f19ac"
+    },
+    {
+      "material": "Material_Emissive_MarkerAmber",
+      "channel": "normal",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_normal.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "fileBytes": 49595,
+      "estimatedGpuBytesRgba8WithMips": 349526,
+      "sha256": "8bdcea67e3bc74ead47bda5768b1e0ff797a544d604096664da7ccd2ecb9690c"
+    },
+    {
+      "material": "Material_Emissive_MarkerAmber",
+      "channel": "orm",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_orm.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "fileBytes": 72476,
+      "estimatedGpuBytesRgba8WithMips": 349526,
+      "sha256": "091a3bdcbf7aebfff0ee993cdc19e091d8b552f5d11ba1a4f49a428b929ccfb6"
+    },
+    {
+      "material": "Material_Emissive_MarkerAmber",
+      "channel": "emissive",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_emissive.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "fileBytes": 1244,
+      "estimatedGpuBytesRgba8WithMips": 349526,
+      "sha256": "ac16ec6cb6ecc009e18b7e1c5162991c0a3ac84ab9175a9468abbd90877d5038"
+    }
+  ],
+  "estimatedUniqueTextureMemoryBytesRgba8WithMips": 27962044,
+  "estimatedUniqueTextureMemoryMiB": 26.667,
+  "materialReuse": "same semantic material set reused by LOD0/LOD1/LOD2"
+}
