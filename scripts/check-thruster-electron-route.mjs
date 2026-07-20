@@ -54,18 +54,22 @@ try {
     window.SF.bus.emit('settings:changed', { section: 'video', key: 'engineTrails' });
   });
 
+  // Prove the yaw couple from the launch pose before building forward velocity. At speed the
+  // assisted flight computer legitimately blends lateral drift arrest into a turn; that can
+  // resolve to one hard-working nozzle and is not a stable test of the pure-yaw pair.
+  await page.keyboard.down('ArrowRight');
+  await page.waitForTimeout(48);
+  const hardTurnFrame = await captureThrusterFrame(page, RCS_SHOT);
+  const hardTurn = hardTurnFrame.projection;
+  const rcsPixels = measureProjectedSignal(hardTurnFrame.png, hardTurn.rcs.instances, hardTurn.viewport);
+  await page.keyboard.up('ArrowRight');
+  await page.waitForTimeout(160);
+
   await page.keyboard.down('KeyW');
   await page.waitForTimeout(1_200);
   const cruiseFrame = await captureThrusterFrame(page, CRUISE_SHOT);
   const cruise = cruiseFrame.projection;
   const cruisePixels = measureProjectedSignal(cruiseFrame.png, cruise.layers, cruise.viewport);
-
-  await page.keyboard.down('ArrowRight');
-  await page.waitForTimeout(80);
-  const hardTurnFrame = await captureThrusterFrame(page, RCS_SHOT);
-  const hardTurn = hardTurnFrame.projection;
-  const rcsPixels = measureProjectedSignal(hardTurnFrame.png, hardTurn.rcs.instances, hardTurn.viewport);
-  await page.keyboard.up('ArrowRight');
   await page.keyboard.up('KeyW');
 
   const diagnostics = await page.evaluate(() => {
