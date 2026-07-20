@@ -705,7 +705,7 @@
       "id": "PQ-010",
       "priority": 10,
       "title": "Physical weapon vertical slice and combat VFX acceptance",
-      "state": "planned",
+      "state": "integrated",
       "canonical": [
         "G10",
         "W03",
@@ -741,7 +741,10 @@
         "accessibility",
         "gpu-state"
       ],
-      "brief": "Deliver concussion, vector-mine, and RCS-disruptor gameplay with light-tier rebalance and mechanically distinct projectile, impact, and destruction presentation."
+      "brief": "Deliver concussion, vector-mine, and RCS-disruptor gameplay with light-tier rebalance and mechanically distinct projectile, impact, and destruction presentation.",
+      "integratedCommit": "226b4e44",
+      "acceptanceRef": "03_LIVE_ACCEPTANCE_MATRIX.md#program-batch-pq-001pq-010",
+      "receipt": "sf10 7/7 + PQ-009 14/14; check:combat repaired+green; impulse/physics/membrane green; sim gates hashEqual; VFX contracts 17+9; balance PASS; visual-stability acceptance attempt exit 0 (probe margin-flaky on this machine, matrix in ledger); dense-combat/GPU visual acceptance remains graphics-lane per checkpoint; data-refs red closed via light_beam_pressure rename"
     },
     {
       "id": "PQ-011",

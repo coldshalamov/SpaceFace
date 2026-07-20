@@ -38,12 +38,26 @@ with the 47a golden pinned byte-stable.
 
 ## Next queue position
 
-`PQ-004` (acquisition preview; after PQ-003 ✓) and `PQ-005` (orbit assist; T05 seam + orbit intent
-both landed) are the next unblocked items; then `PQ-006` (after PQ-005), `PQ-007`, and `PQ-010`
-(after PQ-009 ✓; owns combat route acceptance + the T08 terminal claim). Observed out-of-band lane:
-a user-driven codex session produces PQ-018 Wreck Cathedral SOURCE assets in `C:\Users\93rob\sf-pq018`
-(branch `codex/pq018-wreck-cathedral-source-20260720`, master read-only, `needs_review`,
-non-terminal) — do not double-assign PQ-018 authoring.
+**Integrated this session: PQ-001, PQ-002, PQ-003, PQ-004 (`87f523a9`), PQ-005 (`e05b31dd`),
+PQ-008, PQ-009, PQ-010 (`226b4e44`) — 8 of the batch's 10.** Remaining: `PQ-006` (release
+predictor; survey complete at `.tmp/orch/pq006-survey-last.md`) and `PQ-007` (pursuit slot); they
+share physics-authority + hud-styles so they serialize with each other.
+
+**Probe-margin debt (new):** `probe-ship-visual-stability` readiness deadline is margin-flaky on
+this machine — identical configs flip red/green under load (committed-HEAD worktree green;
+full-WIP primary red 3× under peak load; full-code worktree R then G back-to-back). All reds show
+every ship `meshState:"loading"` with `failureCount:0` — a streaming deadline, not instability.
+The probe needs deadline headroom or per-ship streaming diagnostics so machine load cannot
+masquerade as visual instability.
+
+**Observed out-of-band lanes (user-driven codex sessions in isolated worktrees — do NOT
+double-assign, do NOT touch their branches):** `sf-pq014` → `codex/pq014-npc-job-kernel-20260720`
+(PQ-014 NPC jobs, pre-work); `sf-pq018` → `codex/pq018-wreck-cathedral-source-20260720` (Wreck
+Cathedral SOURCE_GLB, needs_review, non-terminal); `sf-pq022` → `codex/pq022-military-station-
+remaster-20260720` (based at 77976fd3). Foreign untracked asset/tool files in the PRIMARY tree
+(hull_* texture sets, place_asteroid_rock_b/c, place_gate_jump_ring textures,
+assets/ships/parts/blender/**, tools/art/blender/**) belong to that asset-production effort —
+left untouched; their owner integrates them.
 
 **Integrated checkpoint:** the earlier Atlas/map/travel, performance, and graphics synthesis remains
 reachable through `ee9e0ab3` and its context-recovery hardening `f0b3b154`. The later closeout adds
