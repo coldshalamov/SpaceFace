@@ -132,6 +132,11 @@ test('authored instance pools consume bounded frame records, clean omissions, an
   assert.equal(result.stable.ownersVisited, 0, 'stable frame records avoid owner work');
   assert.equal(result.stable.slotsVisited, 0, 'stable frame records avoid a pooled-slot rescan');
   assert.equal(result.stableVersion, result.firstVersion, 'stable frame performs no GPU upload');
+  assert.equal(result.damageHidden.ownersVisited, 1,
+    'explicit damage visibility dirtiness overrides an otherwise stable owner record');
+  assert.equal(result.damageHidden.submittedInstanceSlots, 0,
+    'a stationary owner cannot retain a pooled secondary after damage hides its proxy');
+  assert.ok(result.damageVersion > result.stableVersion);
   assert.equal(result.replaced.submittedInstanceSlots, 1);
   assert.equal(result.replaced.ownersVisited, 2, 'new owner sync and omitted-owner cleanup are both bounded');
   assert.ok(result.replacedVersion > result.stableVersion);
@@ -160,6 +165,20 @@ test('authored ships instance merged composition batches instead of individual p
   assert.equal(result.afterFirstRelease.pooledInstanceSlots, 1);
   assert.equal(result.afterFirstRelease.submittedInstanceSlots, 1,
     'releasing one composition removes its slot without disturbing the shared batch');
+  assert.equal(result.afterFinalRelease.pooledInstanceSlots, 0);
+  assert.equal(result.finalPools, 0, 'the final owner retires the empty pool state');
+  assert.equal(result.finalPoolMeshes, 0, 'the final owner removes its empty InstancedMesh from the scene');
+  assert.equal(result.disposalsBeforeAdmissionClear, 0,
+    'an in-flight pipeline subject retains derived geometry after the final live owner leaves');
+  assert.equal(result.derivedGeometryDisposals, 1, 'the final owner releases the derived merged geometry');
+  assert.deepEqual(result.churn, {
+    iterations: 6,
+    peakPools: 1,
+    peakPoolMeshes: 1,
+    derivedGeometryDisposals: 6,
+    finalPools: 0,
+    finalPoolMeshes: 0,
+  }, 'repeated composition churn leaves no pool state, scene nodes, or derived geometry resident');
 });
 
 test('asteroid pool reuses a static matrix and uploads real instance data after transform and rebase', () => {

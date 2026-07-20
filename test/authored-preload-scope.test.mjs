@@ -127,11 +127,21 @@ test('authored instance pooling is restricted to ships in the exact live rendere
   assert.equal(partsLibrary.shouldUseAuthoredInstancePools(ship, previewScene, liveState), false);
   assert.equal(partsLibrary.shouldUseAuthoredInstancePools({ type: 'station' }, liveScene, liveState), false);
   assert.equal(partsLibrary.shouldUseAuthoredInstancePools(ship, liveScene, null), false);
+  assert.equal(partsLibrary.authoredShipInstanceCullRadius({ radius: 16 }), 36,
+    'pooled ship culling follows the visual owner radius instead of a scene-scale padding sphere');
+  assert.equal(partsLibrary.authoredShipInstanceCullRadius({ radius: 2 }), 24,
+    'small ships retain a conservative minimum culling radius');
 
   const source = readFileSync(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
   assert.match(source,
     /createStaticBatchCollector\(hull,\s*bindings,\s*options\.useAuthoredInstancePools === true\s*\? \{ scene, owner: ownerBoundary \}\s*:\s*null\)/s,
     'live pooled composition must merge compatible opaque parts before scene-level instancing');
+  assert.match(source, /boundary\.userData\.spacefaceCullRadius = authoredShipInstanceCullRadius\(entity\)/,
+    'the live authored boundary must carry its exact pooled culling radius');
+  assert.match(source, /after !== before \|\| after === 'critical'\) markOwnerInstancesDirty\(boundary\)/,
+    'damage transitions and critical flicker must dirty pooled descendant visibility');
+  assert.match(source, /level !== previous\) markOwnerInstancesDirty\(boundary\)/,
+    'LOD transitions must dirty pooled descendant visibility');
   assert.match(source, /residencyOptionsForBoundary\(entity, boundary, renderer, scene\)/,
     'the live ship wrapper must pass its exact renderer scene into residency policy');
 });

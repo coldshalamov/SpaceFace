@@ -35,6 +35,7 @@ const decodeAdmissionDiagnosticsByRenderer = new WeakMap();
 const sharedMaterialVariants = new Map();
 const sharedReadabilityShellVariants = new Map();
 const ownerReleaseState = new WeakMap();
+const instanceOwnerStates = new WeakMap();
 const compositionPrimitiveCache = new WeakMap();
 const upgradeQueuesByScene = new WeakMap();
 const bootstrapResidencyOwnersByRenderer = new WeakMap();
@@ -528,6 +529,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   // indirect through `active`, so the renderer never needs to know that a payload was replaced.
   Object.assign(boundary.userData, fallbackRoot.userData || {});
   boundary.userData.kind = 'ship';
+  boundary.userData.spacefaceCullRadius = authoredShipInstanceCullRadius(entity);
   boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
@@ -542,16 +544,22 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
 
   let active = fallbackRoot;
   boundary.userData.updateDamageState = (liveEntity, now) => {
+    const before = active && active.userData && active.userData.damageState;
     const fn = active && active.userData && active.userData.updateDamageState;
     if (typeof fn === 'function') fn(liveEntity, now);
     if (active && active.userData) {
       boundary.userData.damageState = active.userData.damageState;
       boundary.userData.hullFrac = active.userData.hullFrac;
     }
+    const after = active && active.userData && active.userData.damageState;
+    if (after !== before || after === 'critical') markOwnerInstancesDirty(boundary);
   };
   boundary.userData.updateLod = (level) => {
+    const previous = boundary.userData.authoredInstanceLodLevel;
     const fn = active && active.userData && active.userData.updateLod;
     if (typeof fn === 'function') fn(level);
+    boundary.userData.authoredInstanceLodLevel = level;
+    if (level !== previous) markOwnerInstancesDirty(boundary);
   };
   syncActiveSurface(boundary, active);
 
@@ -1246,6 +1254,11 @@ export function shouldUseAuthoredInstancePools(entity, scene, liveState = author
     && scene
     && liveState && liveState.render && liveState.render.scene === scene
   );
+}
+
+export function authoredShipInstanceCullRadius(entity) {
+  const radius = Number(entity && entity.radius);
+  return Math.max(24, (Number.isFinite(radius) && radius > 0 ? radius : 12) * 2.25);
 }
 
 function entityIsOnscreen(entity, state) {
@@ -3476,7 +3489,7 @@ function allocateInstance(scene, owner, proxy, geometry, material, label) {
   const key = instancePoolKey(geometry, material);
   let pool = state.pools.get(key);
   if (!pool) {
-    pool = { chunks: [], geometry, material, label, key };
+    pool = { chunks: [], geometry, material, label, key, pipelineAdmissions: 0, retired: false };
     state.pools.set(key, pool);
   } else if (pool.geometry !== geometry && geometry.userData && geometry.userData.spacefaceDerivedStaticBatch) {
     // Identical ship compositions derive identical merged geometry. The pool retains the first exact
@@ -3505,8 +3518,10 @@ function allocateInstance(scene, owner, proxy, geometry, material, label) {
   if (!ownerState) {
     ownerState = { slots: new Set(), submittedCount: 0, dirty: true };
     state.ownerSlots.set(owner, ownerState);
+    instanceOwnerStates.set(owner, ownerState);
   }
   ownerState.slots.add(slot);
+  ownerState.dirty = true;
   slot.ownerState = ownerState;
   chunk.mesh.count = Math.max(chunk.mesh.count, index + 1);
   chunk.mesh.setMatrixAt(index, ZERO_MATRIX);
@@ -3525,8 +3540,20 @@ function allocateInstance(scene, owner, proxy, geometry, material, label) {
     if (!ownerState.slots.size) {
       state.ownerSlots.delete(owner);
       state.activeFrameOwners.delete(owner);
+      if (instanceOwnerStates.get(owner) === ownerState) instanceOwnerStates.delete(owner);
     }
     chunk.free.push(index);
+    if (!chunk.slots.size) {
+      const chunkIndex = pool.chunks.indexOf(chunk);
+      if (chunkIndex >= 0) pool.chunks.splice(chunkIndex, 1);
+      chunk.visibleIndices.clear();
+      chunk.mesh.count = 0;
+      chunk.mesh.visible = false;
+      if (chunk.mesh.parent) chunk.mesh.parent.remove(chunk.mesh);
+      if (typeof chunk.mesh.dispose === 'function') chunk.mesh.dispose();
+      retireInstancePool(state, pool);
+      return;
+    }
     chunk.mesh.setMatrixAt(index, ZERO_MATRIX);
     chunk.mesh.count = highestSubmittedIndex(chunk) + 1;
     chunk.mesh.visible = chunk.mesh.count > 0;
@@ -3534,6 +3561,25 @@ function allocateInstance(scene, owner, proxy, geometry, material, label) {
   };
   registerOwnerRelease(owner, release);
   return release;
+}
+
+function markOwnerInstancesDirty(owner) {
+  const ownerState = owner && instanceOwnerStates.get(owner);
+  if (ownerState) ownerState.dirty = true;
+}
+
+function retireInstancePool(state, pool) {
+  if (!state || !pool || pool.chunks.length || pool.retired) return;
+  if (state.pools.get(pool.key) === pool) state.pools.delete(pool.key);
+  pool.retired = true;
+  disposeRetiredInstancePoolGeometry(pool);
+}
+
+function disposeRetiredInstancePoolGeometry(pool) {
+  if (!pool || !pool.retired || pool.pipelineAdmissions > 0 || pool.geometryDisposed) return;
+  if (!pool.geometry || !pool.geometry.userData || !pool.geometry.userData.spacefaceDerivedStaticBatch) return;
+  pool.geometryDisposed = true;
+  pool.geometry.dispose();
 }
 
 function createInstanceChunk(scene, pool, ordinal) {
@@ -3568,6 +3614,7 @@ function createOwnerInstancePipelineAdmission(scene, owner) {
     const pool = slot && slot.chunk && slot.chunk.pool;
     if (!pool || admittedPools.has(pool.key)) continue;
     admittedPools.add(pool.key);
+    pool.pipelineAdmissions = (pool.pipelineAdmissions || 0) + 1;
     const subject = new THREE.InstancedMesh(pool.geometry, pool.material, 1);
     subject.name = `SF_AuthoredInstancePipeline_${pool.label}`;
     subject.count = 1;
@@ -3575,7 +3622,30 @@ function createOwnerInstancePipelineAdmission(scene, owner) {
     subject.userData.spacefaceInstancePipelineAdmission = true;
     admission.add(subject);
   }
-  return admission.children.length ? admission : null;
+  if (!admission.children.length) return null;
+  const clear = admission.clear.bind(admission);
+  let released = false;
+  admission.clear = () => {
+    clear();
+    if (released) return admission;
+    released = true;
+    for (const key of admittedPools) {
+      // A final owner can retire a pool while its compile subject is still in flight. In that case
+      // the subject itself retains the old pool object, so recover it from its private receipt.
+      const admitted = admission.userData.spacefaceAdmittedPools.get(key);
+      if (!admitted) continue;
+      admitted.pipelineAdmissions = Math.max(0, (admitted.pipelineAdmissions || 0) - 1);
+      disposeRetiredInstancePoolGeometry(admitted);
+    }
+    admission.userData.spacefaceAdmittedPools.clear();
+    return admission;
+  };
+  admission.userData.spacefaceAdmittedPools = new Map();
+  for (const key of admittedPools) {
+    const pool = state.pools.get(key);
+    if (pool) admission.userData.spacefaceAdmittedPools.set(key, pool);
+  }
+  return admission;
 }
 
 function syncSceneState(state, opts = {}) {
@@ -4038,14 +4108,27 @@ export function runAuthoredInstanceFrameContractProbe() {
   }) };
   const stableVersion = chunk.mesh.instanceMatrix.version;
 
-  const replacedFrame = frame(3, [record(ownerB, true)]);
+  // Damage/LOD hooks run after classification in the production renderer. Explicit owner dirtiness
+  // must therefore override a stable frame record when a pooled descendant changes visibility.
+  proxyA.visible = false;
+  markOwnerInstancesDirty(ownerA);
+  const damageFrame = frame(3, [record(ownerA, false)]);
+  const damageHidden = { ...syncAuthoredInstancePools(scene, {
+    entityFrame: damageFrame,
+    authoredRecords: damageFrame.authored,
+  }) };
+  const damageVersion = chunk.mesh.instanceMatrix.version;
+  proxyA.visible = true;
+  markOwnerInstancesDirty(ownerA);
+
+  const replacedFrame = frame(4, [record(ownerB, true)]);
   const replaced = { ...syncAuthoredInstancePools(scene, {
     entityFrame: replacedFrame,
     authoredRecords: replacedFrame.authored,
   }) };
   const replacedVersion = chunk.mesh.instanceMatrix.version;
 
-  const emptyFrame = frame(4, []);
+  const emptyFrame = frame(5, []);
   const cleaned = { ...syncAuthoredInstancePools(scene, {
     entityFrame: emptyFrame,
     authoredRecords: emptyFrame.authored,
@@ -4062,12 +4145,14 @@ export function runAuthoredInstanceFrameContractProbe() {
     pipeline,
     first,
     stable,
+    damageHidden,
     replaced,
     cleaned,
     fallback,
     afterRelease,
     firstVersion,
     stableVersion,
+    damageVersion,
     replacedVersion,
   };
 }
@@ -4124,6 +4209,14 @@ export function runAuthoredStaticBatchPoolContractProbe() {
   const pipelineAdmission = createOwnerInstancePipelineAdmission(scene, ownerA);
   const pipelineSubject = pipelineAdmission && pipelineAdmission.children[0];
   const active = { ...syncAuthoredInstancePools(scene) };
+  let derivedGeometryDisposals = 0;
+  if (pool && pool.geometry && typeof pool.geometry.dispose === 'function') {
+    const dispose = pool.geometry.dispose.bind(pool.geometry);
+    pool.geometry.dispose = () => {
+      derivedGeometryDisposals++;
+      dispose();
+    };
+  }
   const result = {
     pools: pools.length,
     chunks: chunks.length,
@@ -4137,12 +4230,45 @@ export function runAuthoredStaticBatchPoolContractProbe() {
     pipelineUsesExactGeometry: !!(pipelineSubject && pool && pipelineSubject.geometry === pool.geometry),
     pipelineUsesExactMaterial: !!(pipelineSubject && pipelineSubject.material === material),
   };
-  if (pipelineAdmission) pipelineAdmission.clear();
-
   scene.remove(ownerA);
   result.afterFirstRelease = { ...syncAuthoredInstancePools(scene) };
   scene.remove(ownerB);
-  if (pool && pool.geometry && typeof pool.geometry.dispose === 'function') pool.geometry.dispose();
+  result.afterFinalRelease = { ...syncAuthoredInstancePools(scene) };
+  result.finalPools = state.pools.size;
+  result.finalPoolMeshes = scene.children.filter((object) => object.userData?.spacefaceInstancePool).length;
+  result.disposalsBeforeAdmissionClear = derivedGeometryDisposals;
+  if (pipelineAdmission) pipelineAdmission.clear();
+  result.derivedGeometryDisposals = derivedGeometryDisposals;
+
+  const churn = { iterations: 6, peakPools: 0, peakPoolMeshes: 0, derivedGeometryDisposals: 0 };
+  for (let index = 0; index < churn.iterations; index++) {
+    const owner = new THREE.Group();
+    const hull = new THREE.Group();
+    const part = new THREE.Object3D();
+    part.position.copy(partA.position);
+    part.updateMatrix();
+    owner.add(hull);
+    scene.add(owner);
+    const collector = createStaticBatchCollector(hull, createBindings(), { scene, owner });
+    collector.add({ record, primitive, partRoot: part, material });
+    collector.flush();
+    const churnPool = [...state.pools.values()][0];
+    if (churnPool && churnPool.geometry && typeof churnPool.geometry.dispose === 'function') {
+      const dispose = churnPool.geometry.dispose.bind(churnPool.geometry);
+      churnPool.geometry.dispose = () => {
+        churn.derivedGeometryDisposals++;
+        dispose();
+      };
+    }
+    syncAuthoredInstancePools(scene);
+    churn.peakPools = Math.max(churn.peakPools, state.pools.size);
+    churn.peakPoolMeshes = Math.max(churn.peakPoolMeshes,
+      scene.children.filter((object) => object.userData?.spacefaceInstancePool).length);
+    scene.remove(owner);
+  }
+  churn.finalPools = state.pools.size;
+  churn.finalPoolMeshes = scene.children.filter((object) => object.userData?.spacefaceInstancePool).length;
+  result.churn = churn;
   sourceGeometry.dispose();
   material.dispose();
   return result;
