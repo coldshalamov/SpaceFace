@@ -1,15 +1,18 @@
 # Worktree and Integration Inventory
 
-**Current integration snapshot:** 2026-07-19 after combined merge `b235f062`, performance-evidence
-hardening through `280cafb0`, propulsion repair `59f91d19`, and physical donor cleanup. The older
+**Current integration snapshot:** 2026-07-20 at audited `master` HEAD `1074c078`, after combined merge
+`b235f062`, performance-evidence hardening through `280cafb0`, propulsion repair `59f91d19`, geology
+truth `e8838e2c`, Electron RCS evidence repair `3d2dc765`, and physical donor cleanup. The older
 July-14 repository tables remain below as labeled history. Re-run the commands at the end before
 acting: donor worktrees can move after this document is written. Use [`NOW.md`](./NOW.md) for volatile ownership and
 [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md) for donor disposition.
 
-## Current integration checkpoint — 2026-07-19
+## Current integration checkpoint — 2026-07-20
 
-- Primary branch: `master`; combined product merge `b235f062`, evidence hardening through `280cafb0`,
-  propulsion repair `59f91d19`, and Atlas/journey work through audited `4f7bc87c` are all ancestors.
+- Primary branch: `master`; current audited HEAD `1074c078`. Combined product merge `b235f062`,
+  evidence hardening through `280cafb0`, propulsion repair `59f91d19`, Atlas/journey work through
+  `4f7bc87c`, geology/interaction repair `e8838e2c`, and Electron RCS evidence harness `3d2dc765` are
+  all ancestors.
 - Graphics closeout: all commits are ancestors of `b235f062`; its physical worktree is removed.
 - Earlier unified checkpoint: performance `1bdde6c8`, graphics `e3ad1caf`, and paused Claude
   `1905cac8` were synthesized at `a752702b`, promoted as `ee9e0ab3`, and hardened through
@@ -18,19 +21,26 @@ acting: donor worktrees can move after this document is written. Use [`NOW.md`](
   promoted by `cbdf1589`. These changes are now `master` implementation, not donor-only work.
 - Performance closure: `99cad5b5` is merged at `b235f062`; literal-target, exact-worktree,
   three-run, and residency-evidence hardening are on `master` through `280cafb0`. The later
-  `04805924..9d626fd8` pool/BatchedMesh range was measured, rejected, and left only on its recoverable
-  branch; its clean physical worktree is removed.
+  `04805924..9d626fd8` pool/BatchedMesh range was measured and rejected; its clean physical worktree is
+  removed and exact tip `9d626fd8` is preserved by annotated tag
+  `archive/performance-pooling-experiment-20260720`. `1074c078` records a bounded hybrid-batching
+  research hypothesis, not permission to replay any rejected implementation.
 - Primary diagnostics: the Atlas/camera transaction is committed at `21d82428`. Unread
   `design/program/_review/` residue was moved outside the worktree to the recoverable archives folder.
 - No remaining donor is authoritative over `master`. Whole-branch merges are rejected for the
   Depth, Kimi, Helios, and graphics-overhaul donors; use the selective disposition ledger.
+- At this audit the primary tree also contains a frozen, unaccepted presentation-continuity harness
+  in `scripts/check-m2-seamless-world.mjs`, `scripts/lib/presentationContinuity.mjs`, and
+  `test/floating-origin-render.test.mjs`, plus separately owned staged/untracked
+  `design/sequential-build-plan/**` artifacts. Preserve both groups; neither belongs in this
+  graphics-ledger commit.
 
 ### Registered worktrees at this snapshot
 
 | Worktree | Tip | Disposition |
 |---|---|---|
-| `SpaceFace` | current `master` | Product authority; graphics/performance/Atlas synthesis is integrated. |
-| `SpaceFace-graphics-overhaul` | `cab2d122` | Retain; substantial dirty Blender/source assets still need asset-by-asset disposition. |
+| `SpaceFace` | `1074c078` | Product authority; graphics/performance/Atlas synthesis and post-closeout geology/RCS fixes are integrated. |
+| `SpaceFace-graphics-overhaul` | `cab2d122` | Retain; 244 dirty paths mix 180 asset files, 39 code/tool/test files, and 25 process/contamination files. Asset-by-asset disposition is incomplete. |
 
 Removed physical worktrees retain recovery where needed: Kimi product candidates are committed at
 `0e2f2e51`; Depth remains on its branch plus annotated tag
@@ -108,8 +118,9 @@ Every residual dirty path or coherent checkpoint subsystem should receive:
 
 The bulk checkpoint already exists. These are audit units, not permission to rewrite or re-stage it:
 
-1. **CHECKPOINT-IDENTITY** — keep `b235f062`, later evidence-hardening/propulsion commits, archived
-   donor tips, and the two-worktree inventory explicit until final route evidence is promoted.
+1. **CHECKPOINT-IDENTITY** — keep `b235f062`, later evidence-hardening/propulsion commits,
+   `e8838e2c`, `3d2dc765`, archived donor tips, and the two-worktree inventory explicit until final
+   route evidence is promoted.
 2. **DEPTH-REVALIDATION** — never whole-merge `bf1dfce2`; port only the selected product slices in
    the donor ledger, then rerun aggregate and focused bad-fixture matrices from current HEAD;
    preserve 0/31 DONE until natural routes and evidence pass.
@@ -118,10 +129,14 @@ The bulk checkpoint already exists. These are audit units, not permission to rew
 4. **EVIDENCE-DURABILITY** — promote only reviewed manifests/media needed by a clean checkout;
    `.devshots` remains ignored by default.
 5. **PERFORMANCE-SYNTHESIS** — base synthesis is complete at `b235f062`; 167/167 performance-modified
-   tests and 49/49 graphics/PBR/VFX tests pass. Live authored ship pooling was investigated and
-   rejected; strict headed acceptance remains separate evidence-gated work on current master.
+   tests and 49/49 graphics/PBR/VFX tests pass. Four live-authored-ship pooling implementations were
+   investigated and rejected; strict headed acceptance remains separate evidence-gated work on
+   current master. The tag preserves the rejected code while `1074c078` preserves the hybrid research
+   hypothesis.
 6. **RESIDUAL-WIP** — physical donor cleanup is complete except the deliberately retained
-   Blender/source worktree. Use `09_DONOR_VALUE_LEDGER.md` for recovery refs.
+   Blender/source worktree. It is not clean or releasable: 80 release paths, 58 Kestrel
+   source/evidence paths, 42 parts/source paths, 39 unreviewed code/tool/test paths, and 25
+   contamination/process paths remain. Use `09_DONOR_VALUE_LEDGER.md` for recovery refs.
 
 ## Re-run inventory
 

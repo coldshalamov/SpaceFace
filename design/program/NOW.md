@@ -1,13 +1,14 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-19 after combined merge `b235f062`, evidence hardening through `280cafb0`,
-propulsion repair `59f91d19`, and Atlas/journey work through audited `4f7bc87c`. Graphics,
-Atlas/map/travel, startup/loading, and the reviewed performance synthesis are on `master`. This board
-does **not** claim final browser/Electron/GPU frame-time acceptance: old matrices are diagnostic, and
-all six post-synthesis scene-pool/BatchedMesh experiments were measured and rejected. The
-route-follower transaction is committed, and the only current primary-tree edits are this graphics
-checkpoint ledger update. Unread `design/program/_review/` residue was moved to
-`SpaceFace-archives/primary-review-quarantine-20260719` without being opened or imported.
+**Snapshot:** 2026-07-20 at audited `master` HEAD `1074c078`. Graphics, Atlas/map/travel,
+startup/loading, reviewed performance synthesis, geology semantic truth, and the refreshed Electron
+RCS harness are integrated. Final browser/Electron/GPU frame-time acceptance remains open; all six
+post-synthesis scene-pool/BatchedMesh experiments remain rejected, while `1074c078` retains only a
+future controlled hybrid-batching research hypothesis. Primary-tree WIP consists of a frozen,
+unaccepted continuity harness plus separately owned `design/sequential-build-plan/**` artifacts; do
+not include either accidentally in the graphics-ledger commit. Unread `design/program/_review/`
+residue was moved to `SpaceFace-archives/primary-review-quarantine-20260719` without being opened or
+imported.
 
 **Integrated checkpoint:** the earlier Atlas/map/travel, performance, and graphics synthesis remains
 reachable through `ee9e0ab3` and its context-recovery hardening `f0b3b154`. The later closeout adds
@@ -20,37 +21,44 @@ journey/velocity evidence surface, `b235f062` integrated the reviewed performanc
 `59f91d19` repaired authored propulsion socket binding, compact feedback, hot-path allocation, and
 save/sector lifecycle behavior.
 
+`e8838e2c` binds representative authored geology to real asteroid simulation identities, removes the
+known hidden instance-pool ghost path, supplies same-semantic fallback and stable LOD forwarding, and
+replaces misleading faux-rock dressing. `3d2dc765` repairs the Electron RCS evidence scenario.
+
 **Acceptance boundary:** `npm run check:graphics:asset-receipts` passes on the promoted tree and pins
 the exact Helios, representative-rock, Wasp-candidate, and RCS artifacts. Focused runtime/admission,
 material, visual-family, and interaction tests passed before promotion. On the final combined tree,
 all 167 performance-modified tests and 49 graphics/PBR/VFX identity tests pass together with camera,
 AI-telegraph, and exact asset-receipt checks. The committed propulsion repair additionally passes
 15 mapping tests, 11 production-wiring checks, sign truth, save/restore lifecycle, thruster-pack,
-settings, and sleep checks. That is integrated and focused-green implementation, not final visual
-acceptance: exact-head compact/dense/accessibility propulsion capture, natural Helios/rock motion,
-hardware Electron parity, GPU-state capture, and broader fleet/station/rock/wreck PBR remain open. See
+settings, and sleep checks. Fresh visual stability passes 360 frames with zero failures, and the
+normal-settings hardware Electron propulsion route proves four plume layers, two opposed RCS jets,
+and zero reported frame allocations. That is integrated and focused-green implementation, not final
+visual acceptance: compact/reduced/dense propulsion, natural Helios/rock motion, combined screen
+continuity, combat-family GPU evidence, and broader fleet/station/rock/wreck PBR remain open. See
 [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md) and the long-term
 architecture in
 [`../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md`](../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md).
 
 **Current isolated lanes:** only `SpaceFace-graphics-overhaul` remains registered beside `master`; it
-retains the uncommitted Blender/source inventory. The performance worktree was removed after its clean
-tip and rejection evidence were recorded. Primitive pools, composition-merged pools, corrected
-exact-key pools, and heterogeneous `THREE.BatchedMesh` pages all lost on target Intel hardware; the
+retains 244 dirty paths: 180 assets, 39 code/tool/test files, and 25 process/contamination files. It is
+not clean, fully classified, or releasable. The performance worktree was removed after its clean
+tip and rejection evidence were recorded. Measured primitive pools, composition-merged pools,
+corrected exact-key pools, and heterogeneous `THREE.BatchedMesh` pages all lost on target Intel hardware; the
 final candidate measured 250.1/616.8/433.3 ms p95 for 10/25/50 ships. None of
-`04805924..9d626fd8` belongs on `master`.
+`04805924..9d626fd8` belongs on `master`; exact tip `9d626fd8` is preserved by
+`archive/performance-pooling-experiment-20260720` rather than an obsolete local branch.
 Graphics-closeout, rejected Helios, Depth, Kimi, and orchestration satellite folders were removed only
 after their value was merged, committed on a donor branch, tagged/archived, or explicitly rejected.
 Decisions are recorded in [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md).
 
-**Immediate safe work:** commit this ledger transaction, then rerun the strict final performance
-contract on one clean exact commit with the measured ship-local batching winner. Capture
-exact-head propulsion settings/accessibility, natural Helios/rock motion, and combat/destruction GPU
-evidence. The highest-return graphics continuation is natural-route Helios/rock parity, fixing
-rock-shaped `fx` interaction identity, one combined admission/rebase/interpolation/LOD/HLOD/pool
-flicker-continuity packet, combat/destruction visual acceptance, localized authored space structure
-without screen-wide haze, and the next high-frequency PBR family. The Kimi/OpenCode Helios replacement
-is rejected, and its useful offline batching source was already preserved on `master`.
+**Immediate safe work:** commit this ledger transaction without the frozen continuity or sequential-
+build WIP. Repair the continuity harness's fail-open admission token and stale applied-LOD receipt,
+then rerun its browser/Electron route before promotion. Strict performance acceptance must wait for
+one exact clean integrated commit. Subsequent high-return graphics work remains natural Helios/rock
+parity, combat/destruction visual acceptance, localized authored space structure without screen-wide
+haze, and the next high-frequency PBR family. The Kimi/OpenCode Helios replacement is rejected, and
+its useful offline batching source was already preserved on `master`.
 
 ## Wave-01 integration record (all on `master`)
 

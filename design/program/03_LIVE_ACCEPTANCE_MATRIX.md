@@ -4,14 +4,16 @@
 **Sprint 2 packet rows appended 2026-07-18** at commits `4f750412`, `cd784532`, `d5e0d6e7`; those rows
 carry their own evidence and do not promote any milestone row.
 
-**Integration checkpoint refreshed 2026-07-19:** graphics, the earlier performance checkpoint, and
+**Integration checkpoint refreshed 2026-07-20:** graphics, the earlier performance checkpoint, and
 paused Atlas/map/travel work were promoted together at `ee9e0ab3`; context-recovery hardening is
 reachable through `f0b3b154`. Graphics closeout `cbdf1589` is now on `master`, including exact golden
 asset receipts, authored fail-closed admission, semantic PBR/native-color routing, common-rock maps,
 typed projectile/mine/impulse/wreck identities, and Atlas/journey verification gates. The reviewed
   performance tip `99cad5b5` and Atlas/camera repair `21d82428` are integrated at `b235f062`; strict
   evidence hardening is integrated through `280cafb0`, and authored propulsion wiring/lifecycle
-  repair `59f91d19` is also on `master`. The old lease/blocker columns below are historical. Final
+  repair `59f91d19`, geology/interaction truth `e8838e2c`, and the Electron RCS evidence repair
+  `3d2dc765` are also on `master`; current audited HEAD is `1074c078`. The old lease/blocker columns
+  below are historical. Final
   combined browser/Electron/GPU performance evidence has not passed. The isolated
   `04805924..9d626fd8` scene-pool/BatchedMesh range was measured and rejected on target Intel
   hardware; none of it is an integration candidate and current ship-local static batching remains.
@@ -74,7 +76,7 @@ lane should repair, not whether it is repaired.
 | M3 | Origins, cohorts, Hunter intent, damage/death substantially built | Career origins green | Natural damage/Game Over proven; recovery and three full 90-minute routes open | Damage/after-action images exist | 0 recorded | NOT EXITED |
 | M4 | Regional ecology/POI foundations built | RED 8/9 on registry/save initialization order | Sparse/normal/crowded diversity routes open | Art/classification incomplete | 0 recorded | NOT EXITED |
 | M5 | Story/endings/outposts/role foundations built | Role continuity green | Supporting injected role route only; ordinary story/ownership routes open | Partial | 0 recorded | NOT EXITED |
-| M6 | Capture/release/localization/perf foundations, loading/admission, de-hazed background, pooled thruster/RCS, golden Kestrel/Helios/geology surfaces, Wasp routing, exact receipts, authored fail-closed admission, semantic PBR routing, typed combat/world identities, and propulsion socket/settings/lifecycle repair `59f91d19` are retained in combined `master`; strict evidence gates are integrated through `280cafb0` | Prior asset-live, visual-stability, launch-policy, focused VFX/background/post checks, five checkpoint-baseline desktop/mobile flight runs, and context-loss recovery passed; exact receipts plus 167 performance, 49 graphics, 35 evidence-contract, 15 RCS-mapping, and 11 production-wiring checks pass; fresh headed promotion remains open | Authored browser and prior thruster Electron routes pass; exact-head compact/dense/accessibility propulsion proof, natural Helios/rock motion, combat-family Electron/GPU, and packaged-store matrix remain incomplete | Hitch glare and Helios bulk-material defects repaired; full OpenCode Helios and later live-pooling experiments rejected; Wasp classification, rock/FX semantic truth, natural-route flicker continuity, combat-family final acceptance, natural Helios/rock parity, localized background art, fleet-wide PBR, and release evidence remain | 0 recorded | NOT EXITED |
+| M6 | Capture/release/localization/perf foundations, loading/admission, de-hazed background, pooled thruster/RCS, golden Kestrel/Helios/geology surfaces, Wasp routing, exact receipts, authored fail-closed admission, semantic PBR routing, typed combat/world identities, propulsion repair `59f91d19`, geology truth `e8838e2c`, and RCS evidence repair `3d2dc765` are retained in combined `master`; strict evidence gates are integrated through `280cafb0` | Asset-live, launch-policy, focused VFX/background/post checks, and current visual stability pass; exact receipts plus 167 performance, 49 graphics, 35 evidence-contract, 15 RCS-mapping, and 11 production-wiring checks pass. Current stability is 360 frames / 315 inspected / zero failures; fresh normal-settings hardware Electron propulsion reports four layers, two RCS jets, zero allocations, and no issues. Fresh headed performance promotion remains open | Authored browser and normal-settings thruster Electron routes pass; compact/reduced/dense/Spector propulsion proof, natural Helios/rock motion, combined continuity, combat-family Electron/GPU, and packaged-store matrix remain incomplete | Hitch glare, Helios bulk material, faux-rock interaction, and the known hidden asteroid instance-pool ghost are repaired in implementation. Full OpenCode Helios and later live-pooling experiments are rejected; Wasp classification, broader natural-route flicker continuity, combat-family acceptance, natural Helios/rock parity, localized background art, fleet-wide PBR, and release evidence remain | 0 recorded | NOT EXITED |
 | Depth | Checkpoint `850c80f3` preserves focused implementations for 16 chunks after W1 correction | Pre-checkpoint aggregate green; not rerun at current HEAD | Many routes compress state/timing; final unassisted routes open | All Depth `.devshots` ignored; no chunk DONE | N/A | 0 / 31 DONE |
 
 ## Fresh audit details
@@ -96,6 +98,11 @@ lane should repair, not whether it is repaired.
   runtime-visual-coverage, and wreck-identity tests pass 49/49 on combined `master`.
 - Propulsion repair `59f91d19` passes 15 RCS mapping tests, 11 production-wiring checks, sign truth,
   save/restore/destroy lifecycle, thruster-pack, settings, and VFX-sleep checks.
+- Post-`e8838e2c` `npm run check:visual-stability` — PASS: 360 frames, 45 warmup, 315 inspected,
+  zero failures.
+- Fresh `npm run check:thruster:electron-route` after `3d2dc765` — PASS on hardware Intel
+  ANGLE/D3D11: four plume layers, two opposed RCS jets, zero frame allocations, no issues. The JSON
+  still lacks embedded Git identity.
 - All 17 performance-modified test files pass 167/167 together on combined `master`; camera and live
   AI-telegraph checks also pass.
 - Last recorded `npm run check:depth-program:contracts` before checkpoint `850c80f3`; rerun at current
@@ -125,15 +132,17 @@ lane should repair, not whether it is repaired.
 - Performance synthesis is now on `master`, but its earlier matrices are diagnostic-measurement
   artifacts, not acceptance: several player-frame windows still show ~33.3 ms rAF p95 and >32 ms
   gaps. Three fresh consecutive <=16.7 ms acceptance runs remain required on the combined tree.
-- Four post-synthesis pooling architectures across `04805924..9d626fd8` are rejected. The final
+- Four measured post-synthesis pooling implementations across `04805924..9d626fd8` are rejected. The final
   BatchedMesh candidate reduced visible pages but measured 250.1/616.8/433.3 ms p95 for 10/25/50
   ships, with every sampled frame over 32 ms; review also found child-transform invalidation,
   geometry-collision, reclamation, and PBR-parity defects. Do not replay this range.
 - Natural Helios approach/undock motion, mining-distance representative-rock parity, and final
-  hardware-Electron/GPU combat-family evidence remain incomplete.
-- Rock-shaped authored `fx` still disagree with asteroid drill/tether interaction truth; a natural
-  route also lacks one screen-continuity packet across authored admission, floating-origin rebase,
-  interpolation, LOD/HLOD, pool ownership, save/Continue, and context recovery.
+  hardware-Electron/GPU combat-family evidence remain incomplete. `e8838e2c` closes the known
+  faux-rock interaction mismatch and hidden instance-pool ghost mechanism in implementation.
+- The natural route still lacks accepted combined continuity evidence across authored admission,
+  floating-origin rebase, interpolation/scale, LOD/HLOD, pool ownership, save/Continue, and context
+  recovery. The frozen replacement harness is not evidence: review found fail-open admission telemetry
+  and a stale effective-LOD receipt.
 - Localized authored deep-space structure, fleet-wide PBR, and exact-head compact/reduced/dense/Spector
   propulsion evidence remain incomplete.
 

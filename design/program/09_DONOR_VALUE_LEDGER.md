@@ -1,6 +1,6 @@
 # Donor Value and Cleanup Ledger
 
-**Audit date:** 2026-07-19
+**Audit date:** 2026-07-20
 
 **Authority boundary:** `master` is the product authority. This ledger records selective donor value
 and cleanup decisions; it does not make any donor branch current, accepted, or safe to merge whole.
@@ -23,14 +23,21 @@ Dirty-path counts and ahead/behind counts are audit snapshots and must be refres
 
 | Worktree / branch | Audit snapshot | Product ruling | Physical cleanup condition |
 |---|---|---|---|
-| `SpaceFace` / `master` | Product merge `b235f062`; evidence hardening through `280cafb0`; propulsion repair `59f91d19`; Atlas/journey through audited `4f7bc87c`. | Product authority. Graphics and reviewed performance synthesis are promoted. | Never remove. |
+| `SpaceFace` / `master` | Product merge `b235f062`; evidence hardening through `280cafb0`; propulsion repair `59f91d19`; Atlas/journey through `4f7bc87c`; geology truth `e8838e2c`; Electron RCS evidence harness `3d2dc765`; hybrid-research disposition `1074c078`. | Product authority. Graphics and reviewed performance synthesis are promoted. | Never remove. |
 | `SpaceFace-graphics-closeout` / `codex/graphics-closeout-20260719` | Physical worktree removed; clean tip `8e860439` is reachable from `master`. | No unique product work. | Complete. |
-| `SpaceFace-performance-closure` / `codex/performance-closure-20260719` | Base tip `99cad5b5` is integrated; evidence hardening is replayed. Physical worktree removed at clean tip `9d626fd8`; branch retained. | Reject post-synthesis range `04805924..9d626fd8`. Primitive, merged, corrected exact-key, and BatchedMesh pooling candidates all lost to current ship-local batching on target Intel hardware; the final run measured 250.1/616.8/433.3 ms p95 for 10/25/50 ships and had correctness/PBR blockers. | Complete. Never replay the rejected range; retain branch/evidence for archaeology only. |
-| `SpaceFace-graphics-overhaul` / `codex/graphics-overhaul` | Audit: 96 master-only / 24 branch-only commits and about 244 dirty paths. | Retain. It contains substantial uncommitted Blender/source assets and cannot be reduced to a branch-only history yet. Never whole-merge. | Keep physical worktree until asset-by-asset source inventory and promote/reject receipts are complete. |
+| Rejected performance experiment / `archive/performance-pooling-experiment-20260720` | Base tip `99cad5b5` is integrated; evidence hardening is replayed. Physical worktree removed at clean tip `9d626fd8`; rejected implementation preserved by annotated tag and obsolete local branch retired. | Reject post-synthesis range `04805924..9d626fd8`. The measured primitive, merged, corrected exact-key, and BatchedMesh implementations all lost to current ship-local batching on target Intel hardware; the final run measured 250.1/616.8/433.3 ms p95 for 10/25/50 ships and had correctness/PBR blockers. This rejects those implementations, not every possible hybrid design. The bounded hybrid hypothesis is retained in `06_RETAINED_FUTURE_BACKLOG.md` at `1074c078`. | Complete. Never replay the rejected range; retain the tag/evidence for archaeology only. |
+| `SpaceFace-graphics-overhaul` / `codex/graphics-overhaul` | Tip `cab2d122`; 24 branch-only commits; 244 dirty paths. Dirty inventory: 180 assets (80 release, 58 Kestrel evidence/source, 42 parts), 15 `src`, 14 `scripts`, 10 `test`, 22 unrelated `docs/user-guide`, two `active_sessions` files, and one tracked Python cache. Only eight dirty asset files match current master; 236 paths differ. | Retain. Accepted runtime value was manually synthesized into master; no remaining branch commit is approved for whole replay. The dirty tree mixes valuable Blender/PBR source, rebuilt release output, unreviewed code/tests, and obvious process contamination, so it cannot be checkpointed wholesale. | Not releasable. Keep the physical worktree until the three asset groups receive per-family provenance/promote/reject receipts and every non-asset path is classified or deliberately removed. Never whole-merge. |
 | `SpaceFace-oc-helios-golden` / `opencode/helios-golden-station` | Physical worktree removed after a 101-behind / 0-unique / 2.53 GB audit. | Full replacement rejected. The useful builder, precursor receipt, editable blend, three-LOD source, and release asset are on `master`. | Complete. |
 | `SpaceFace-depth-actualization` / `grok/depth-player-route-actualization` | Physical worktree removed. Branch `bf1dfce2` and annotated archive tag remain; 17 raw artifacts are hash-archived externally. | Selective product donor only; the remaining black-box candidate is recorded below. | Complete; never whole-merge the branch. |
 | Four orchestration satellites | Physical worktrees removed after individual dirt/process audits. | Superseded station shell, incorrect Helix faction edit, old natural-route harness, and defective recovery variant rejected. Branch refs remain. | Complete. |
 | `SpaceFace-orch-kimi-v2-present` / `orch/kimi-v2-present` | Physical worktree removed after product-only donor commit `0e2f2e51` (focused test 4/4). | Never whole-merge. Only the station-presentation slices below remain candidate value. | Complete; selectively port or reject from the donor commit later. |
+
+The 2026-07-20 closeout found no completed, reviewed graphics implementation commit waiting off
+`master`. The 24 commits unique to `codex/graphics-overhaul` are historical donor history whose
+accepted concepts were manually synthesized into the promoted graphics commits; Git patch IDs are
+not equivalent because the integration was semantic rather than a branch replay. The remaining dirty
+worktree is mixed source/WIP, not another finished vertical. `0e2f2e51` likewise remains a candidate
+station-presentation donor, not accepted graphics implementation.
 
 ## 3. Helios/OpenCode ruling
 
@@ -121,8 +128,13 @@ visual-family tests pass together; camera, AI-telegraph, and exact receipt check
 `check:sim:compare`, asset/live/visual-stability/flight checks, and one owned browser plus Electron/GPU
 acceptance route remain the final combined evidence. Old performance evidence alone is not final.
 
+Post-geology visual stability passed 360 frames with 45 warmup, 315 inspected, and zero failures.
+Fresh normal-settings hardware Electron propulsion evidence after `3d2dc765` also passed with four
+plume layers, two opposed RCS jets, and zero reported frame allocations. Neither result closes the
+strict frame-time promotion gate or the broader natural-route continuity packet.
+
 The later `04805924..9d626fd8` experiment is not a continuation of that accepted synthesis. Its four
-pooling architectures were measured and rejected. In addition to the target-hardware frame regression,
+pooling implementations were measured and rejected. In addition to the target-hardware frame regression,
 review found missed child-hull transform invalidation, a non-exact geometry collision signature,
 zero-reference geometry retained in partially occupied pages, and no proof that master PBR/appearance
 semantics survived. Current `master` intentionally keeps ship-local static batching.
@@ -132,7 +144,10 @@ semantics survived. Current `master` intentionally keeps ship-local static batch
 1. Run the strict three-profile/three-matrix combined acceptance contract on one exact clean current
    master revision. Do not replay the rejected authored-pooling range to pursue that evidence.
 2. Keep `SpaceFace-graphics-overhaul` until its uncommitted Blender/source asset inventory is fully
-   classified. It is the only intentionally long-lived graphics donor in this ledger.
+   classified. It is the only intentionally long-lived graphics donor in this ledger. Its exact
+   remaining categories are release GLBs, Kestrel source/evidence, parts/source assets, unreviewed
+   render/tool/test changes, and unrelated session/user-guide/cache contamination. Do not turn that
+   mixed state into one preservation commit merely to make the worktree look clean.
 
 Completed 2026-07-19: graphics-closeout, rejected Helios, four superseded orchestration satellites,
 the product-preserved Kimi donor, the tagged/hash-archived Depth donor, and the clean rejected

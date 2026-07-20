@@ -1,11 +1,12 @@
 # Graphics Overhaul Integration Checkpoint
 
-**Checkpoint date:** 2026-07-19
+**Checkpoint date:** 2026-07-20
 
 **Status:** GRAPHICS CLOSEOUT PROMOTED TO `master`; FOCUSED-GREEN CHECKPOINT, FINAL ACCEPTANCE PENDING
 
-**Current audited master revision:** `4f7bc87c` (combined synthesis `b235f062`; propulsion repair
-`59f91d19`)
+**Current audited master revision:** `1074c078` (combined synthesis `b235f062`; propulsion repair
+`59f91d19`; geology/interaction repair `e8838e2c`; Electron RCS evidence harness `3d2dc765`;
+hybrid-batching research disposition `1074c078`)
 
 **Earlier unified promotion:** `ee9e0ab3`, hardened through `f0b3b154`
 
@@ -15,10 +16,13 @@
 
 **Graphics closeout commits:** `bd79f2ba`, `5219491d`, `98e1e429`, `1de8a861`, `5863331c`
 
+**Post-closeout graphics fixes:** `e8838e2c`, `3d2dc765`
+
 **Performance synthesis donor:** `99cad5b5`, integrated by `b235f062`
 
-**Rejected post-synthesis renderer experiment:** `04805924..9d626fd8` on the retained
-`codex/performance-closure-20260719` branch; none of this range belongs on `master`
+**Rejected post-synthesis renderer experiment:** `04805924..9d626fd8`, preserved at exact tip
+`9d626fd8` by recovery tag `archive/performance-pooling-experiment-20260720`; none of this range
+belongs on `master`
 
 This is the durable resumption and promotion record for the multi-day graphics overhaul. It records
 what the current integration tree actually presents, what has only structural evidence, what has
@@ -62,14 +66,14 @@ residency, and frame-time evidence before promotion.
 | Vertical | Current truth | Acceptance boundary |
 |---|---|---|
 | Starter ship | Borrowed Time / Kestrel V5 is the live New Game and Continue ship. The authored root mounts without a retained fallback, visible box, or proxy swap. Its five consolidated live surfaces retain 17 semantic material identities and 33 textures. | Browser and hardware Electron route evidence exists. The normal gameplay frame, not the Blender source, is decisive. |
-| Thrusters and RCS | Hitch/Kestrel uses a throttle-responsive white-hot core, directional inner plume, turbulent sheath, vapor layer, and directional RCS. Repair `59f91d19` invalidates stale authored-socket caches, binds lateral RCS to authored world-space nozzle transforms, coalesces duplicate same-side impulses, preserves geometric retro fallback, reuses hot-path records, and clears plume/RCS/light/cooldown state at save and sector boundaries. `engineTrails=false` now keeps a compact core/sheath and RCS response instead of removing propulsion feedback. | Focused mapping, wiring, lifecycle, settings, allocation, and sleep gates pass. Prior hardware Electron cruise/RCS captures show the same visible implementation, but are not commit-bound to `59f91d19` and exercise extended trails. Exact-current-HEAD compact, reduced-motion/flash, dense, and Spector proof remain open. |
-| Presentation stability | Authored ships/stations no longer present blue-clay boxes before replacement. `5219491d` extends the fail-closed admission contract and authored bounds behavior beyond the starter; hidden off-camera assets may stream after flight handoff, but they publish no unrelated primitive identity. | Focused admission tests pass. Natural stations, rocks, wrecks, NPCs, instances, LOD/HLOD, save/Continue, and context recovery still need one motion-based stability packet. |
+| Thrusters and RCS | Hitch/Kestrel uses a throttle-responsive white-hot core, directional inner plume, turbulent sheath, vapor layer, and directional RCS. Repair `59f91d19` invalidates stale authored-socket caches, binds lateral RCS to authored world-space nozzle transforms, coalesces duplicate same-side impulses, preserves geometric retro fallback, reuses hot-path records, and clears plume/RCS/light/cooldown state at save and sector boundaries. `engineTrails=false` now keeps a compact core/sheath and RCS response instead of removing propulsion feedback. | Focused mapping, wiring, lifecycle, settings, allocation, and sleep gates pass. A fresh hardware Electron run after `3d2dc765` exposed core, inner, sheath, and vapor layers, two opposed RCS jets, zero plume/RCS frame allocations, and no reported issues on Intel ANGLE/D3D11. The receipt still embeds no Git identity, so compact, reduced-motion/flash, dense, and Spector proof remain open. |
+| Presentation stability | Authored ships/stations no longer present blue-clay boxes before replacement. `5219491d` extends the fail-closed admission contract and authored bounds behavior beyond the starter; hidden off-camera assets may stream after flight handoff, but they publish no unrelated primitive identity. `e8838e2c` gives authored geology one stable presentation boundary, removes the hidden procedural `asteroidInstanceBody` from the global instance-pool path, and retains only a local same-semantic procedural asteroid when authored loading or compilation fails. | Focused admission tests and a fresh 360-frame visual-stability route pass. The broader continuity harness is frozen unaccepted after review found fail-open admission telemetry and a stale effective-LOD receipt; natural admission/rebase/interpolation/LOD/HLOD/pool/save/Continue/context continuity remains open until those P1 defects are repaired and both browser and Electron pass. |
 | Background | The accepted substrate restores black negative space and deterministic stars. Full-screen blue haze and rejected ribbon/card-like deep-field overlays are absent. Celestial layers remain behind gameplay. | This is a de-hazed foundation, not final authored deep space. Localized nebular/debris/tidal structure still needs an authored pass and matched browser/Electron review. |
 | PBR substrate | Semantic authored roles are bound during asset load. Incomplete assets receive bounded role-specific base-color, normal/bump, roughness, metallic, and AO fallback maps rather than a single shiny-plastic response. Kestrel, Helios, and the representative geology role have dedicated profiles. | A procedural fallback is compatibility coverage, not a substitute for asset-specific UVs, authored maps, bevels, material slots, and normal-route visual approval. |
 | Semantic palette routing | Blender/glTF materials can explicitly preserve native PBR color through `spacefacePaletteTint`; authored geology, warning paint, signals, glass, radiators, docking, service, ceramic, rubber, and repair roles no longer inherit an indiscriminate hull tint. Hull, accent, drive, and structural machinery remain palette-addressable. | Focused sharing/tint tests pass. Each newly authored family still needs a normal-route value and identity review. |
 | Helios | The existing three-LOD production geometry is retained and now carries deterministic, function-specific PBR maps for coated hull, armor, structural metal, machinery, radiators, docking contact, service paint, markings, and windows. Blanket palette tint, fake hull emissive, bulk clearcoat, and double-sided bulk materials are removed. Controlled post-public-launch browser/Electron frames prove the exact authored trade hub is visible and materially consistent on both routes. | Accepted as a surface-quality checkpoint in the controlled game camera. Natural approach/undock motion, transform continuity, mip-transition review, and measured station-specific performance remain open. The full OpenCode replacement is rejected; only its batching concept survives as an unimplemented experiment. |
-| Seamed/graffiti landmarks | The old two-material gray/cyan procedural GLBs have been replaced by Blender-authored V3 assets with three LODs, explicit geology/mechanical/warning identities, recessed fracture seats, non-emissive survey hardware/paint, and six complete PBR roles each. The live browser presents exactly 8,340/9,876 LOD0 triangles after batching and retains every reviewed texture role. | Close/default/far browser frames passed controller visual review, including a visible mineral seam and `P-9` prospector history. Electron parity remains open. These remain non-colliding, non-mineable world dressing and do not change mining ownership. |
-| Representative rock | `place_asteroid_rock_a` is authored and routed, its accidental unmasked molten emission is suppressed, and the geology profile has substantially higher/nonuniform roughness and normal variation than station metal. The closeout adds exact base-color/normal/ORM maps, a deterministic rock-surface library, and early preload of the final material state. | Mining-distance browser/Electron framing and positional-stability proof remain required. A separate world/content defect currently publishes some authored rock-shaped POI dressing as `type:'fx'`, so it looks mineable while interaction truth says it is not an asteroid. Fix that semantic identity at the world/content/interaction boundary without rewriting the mining system. |
+| Seamed/graffiti landmarks | The old two-material gray/cyan procedural GLBs have been replaced by Blender-authored V3 assets with three LODs, explicit geology/mechanical/warning identities, recessed fracture seats, non-emissive survey hardware/paint, and six complete PBR roles each. `e8838e2c` uses the seamed asset as a skin over a real common asteroid and replaces misleading rock-shaped belt/POI dressing one-for-one with survey buoys or mining drones. | The accepted close/default/far browser captures remain useful surface evidence, but predate the mineable semantic wiring. The new natural mineable route, Electron parity, and continuity still need proof. |
+| Representative rock | `e8838e2c` binds common, metallic, icy, and crystalline fields to material-matched authored representative geology without changing simulation identity or drill/tether authority. Authored failure retains a matching procedural asteroid rather than an unrelated primitive; rare exotic/Xenium geology deliberately remains procedural until a matching authored asset exists. Rock A retains exact base-color/normal/ORM maps, nonuniform roughness, and suppressed accidental molten emission. | Mining-distance browser/Electron framing, mip behavior, and positional continuity remain required. The prior rock-shaped `fx` interaction mismatch is closed in implementation, not yet route-accepted. |
 | Combat/world effects | Data-driven weapon families, directional impact receipts, pooled effect substrates, phased destruction schedules, non-ball projectile geometry, mine/impulse identity, sticky charge orientation, and wreck identity are integrated. Ordinary implementation no longer depends on one generic colored circle or blue-box fallback. | Focused geometry/lifecycle/coverage tests are not final visual acceptance. Each weapon family and destruction scale still needs current firing/flight/impact/motion/dense/accessibility Electron/GPU capture and defect-driven repair. |
 | Receipt gate | `check:graphics:asset-receipts` pins exact Helios, rock A, Wasp-candidate, and RCS source hashes, byte sizes, and triangle counts, and is now part of `check:art`. | Receipt closure proves artifact identity, not visual quality. Wasp remains unclassified/accessory-only until its live route and performance win. |
 | Startup presentation | New Game and Continue paint a real loading presentation instead of leaving the previous screen frozen. The first authored Kestrel is admitted before off-camera world assets stream. A static V5 portrait avoids a second competing WebGL preview during launch. | Isolated hardware Electron reaches flight in 3.00 s for New Game and 3.10 s for Continue, with loading feedback in 1.4-7.7 ms. The 10-13 s case reproduces only under software SwiftShader, where the loader still paints in 30-45 ms. The remaining bottleneck is the critical first GPU/driver submission, not off-camera streaming. |
@@ -84,12 +88,12 @@ Key evidence:
 - Kestrel: `.devshots/k0-kestrel/normal-routes.json`,
   `.devshots/k0-kestrel/electron-route.json`, and
   `.devshots/graphics/kestrel-v5-live/live-capture.json`.
-- Thrusters: the locally retained files are
+- Thrusters: the locally retained files regenerated after `3d2dc765` are
   `.devshots/graphics/thruster-acceptance/electron-route.json`,
   `.devshots/graphics/thruster-acceptance/electron-cruise.png`, and
   `.devshots/graphics/thruster-acceptance/electron-hard-turn-rcs.png`. The JSON records Intel
   ANGLE/D3D11, four main-plume layers, two hard-turn RCS instances, zero reported plume/RCS frame
-  allocations, and no reported issue. It has no commit identity and predates `59f91d19`; the older
+  allocations, and no reported issue. It still has no embedded commit identity; the older
   report/fixed-scenario/WebM pointers were not present locally and are not evidence claims.
 - Startup: `.devshots/perf/integrated-new-game-final.json`,
   `.devshots/perf/integrated-continue-final2.json`, and the isolated hardware/software reports under
@@ -102,8 +106,9 @@ Key evidence:
 - Geology landmarks: `.devshots/graphics/geology-landmark-live/capture-report.json` plus the six
   close/default/far PNGs. Both assets retained one root/hull and zero world, hull, or fixed-camera
   pixel movement across 240 frames; the final contact sheet is
-  `.devshots/graphics/geology-landmark-live/contact-sheet-final.png`.
-- Visual stability: the latest `npm run check:visual-stability` output at this checkpoint reports
+  `.devshots/graphics/geology-landmark-live/contact-sheet-final.png`. These controlled captures
+  predate `e8838e2c` and do not substitute for natural mineable-route proof.
+- Visual stability: the latest post-`e8838e2c` `npm run check:visual-stability` output reports
   360 frames, 45 warmup frames, 315 inspected frames, and zero failures.
 - Khronos validation: both Helios source and release GLBs report zero errors. Each reports 60 warnings
   because the locally installed validator does not recognize the KTX2 image format/transfer-function
@@ -189,14 +194,12 @@ catalog entries merely to make that broad pre-existing count green.
   controlled browser/Electron surface frames but still needs natural approach/undock motion. The
   seamed and graffiti world-dressing landmarks now have accepted browser evidence but still need
   Electron parity.
-- Some belt/POI dressing uses authored rock assets and asteroid-facing names while remaining
-  `type:'fx'`. The resulting target can accept a weapon/mining-beam visual yet fail asteroid tether or
-  drill eligibility. This is a world/content/interaction identity defect, not a reason to weaken the
-  mining authority.
 - Controlled geology fixtures establish zero movement for two named assets, but there is no combined
   natural-route screen-continuity packet across authored admission, floating-origin rebase,
   interpolation, LOD/HLOD, instance ownership, save/Continue, and context recovery. Acceptance
-  requires zero multi-width jumps and zero replacement-frame flicker.
+  requires zero multi-width jumps and zero replacement-frame flicker. The current continuity harness
+  is frozen unaccepted: adversarial review found its admission token still failed open and its
+  synchronous LOD receipt observed a stale selector rather than the visible applied level.
 - The performance closure base tip `99cad5b5` is integrated at `b235f062` without losing semantic
   PBR/admission, rock preload, relative-velocity prefetch/precompile, or Atlas velocity/background
   behavior. All 167 performance-modified and 49 graphics/PBR/VFX tests pass on the combined tree.
@@ -204,7 +207,7 @@ catalog entries merely to make that broad pre-existing count green.
   `280cafb0`. A later narrow fleet audit proved that live ships still used ship-local static batches.
   Primitive pools, composition-merged pools, corrected exact-key pools, and heterogeneous
   `THREE.BatchedMesh` pages were all implemented and measured in the isolated
-  `04805924..9d626fd8` range. Every architecture was rejected: the final page approach reduced visible
+  `04805924..9d626fd8` range. Every measured implementation was rejected: the final page approach reduced visible
   opaque batches to roughly 91-95 but regressed target Intel p95 to 250.1/616.8/433.3 ms for
   10/25/50 ships, with every sampled frame over 32 ms. Review also found child-hull transform
   invalidation, unsafe geometry collision signatures, dead geometry retained in partially occupied
@@ -228,8 +231,8 @@ catalog entries merely to make that broad pre-existing count green.
    `place_asteroid_rock_a` at mining distance and repeat the accepted seamed/graffiti views in
    Electron. Inspect scale, mips, draw state, target readability, and transform continuity. The
    stable OpenCode donor has no superior material payload and regresses distance rendering. Include
-   the combined admission/rebase/interpolation/LOD/HLOD/save/context screen-continuity packet and fix
-   rock-shaped `fx` so visual identity and drill/tether semantics agree.
+   the combined admission/rebase/interpolation/LOD/HLOD/save/context screen-continuity packet and
+   verify the committed `e8838e2c` geology/interaction repair on the natural route.
 2. **Visually accept or repair combat VFX.** Record kinetic, rail, plasma, beam, and missile muzzle,
    flight, shield hit, hull hit, and dense combat; then small/ship/capital destruction through time.
    Reject balls, generic circular flashes, primary rings, identical puffs, strobing beams, and
@@ -273,7 +276,13 @@ catalog entries merely to make that broad pre-existing count green.
    Helios donor decision; `5863331c` added the receipt gate to `check:art`.
 8. Merge `cbdf1589` promoted that closeout to `master`; `21d82428` committed the Atlas/camera evidence
    repair, and `b235f062` integrated the reviewed performance synthesis.
-9. This promotion is a coherent playable checkpoint, not a claim that combat-family, background-
+9. `e8838e2c` bound material-matched authored geology to real asteroid simulation identities, removed
+   the hidden instance-pool ghost path, supplied same-semantic fallbacks and stable LOD forwarding,
+   and replaced misleading faux-rock dressing.
+10. `3d2dc765` isolated pure-yaw RCS evidence before assisted-flight velocity blending; the subsequent
+   hardware Electron route passed with four plume layers, two opposed RCS jets, zero frame allocations,
+   and no issues.
+11. This promotion is a coherent playable checkpoint, not a claim that combat-family, background-
    authoring, asset-family PBR, long-soak performance, or release parity is complete.
 
 ## 7. Worktree cleanup after promotion
@@ -293,22 +302,30 @@ untracked files, branch tip, unique commits, and patch equivalence to final `mas
   content was an obsolete game-state variant and was correctly rejected.
 - `SpaceFace-graphics-overhaul` retains substantial dirty Blender/source assets and remains protected.
   The full Helios-golden replacement is rejected; its useful production builder is already on master.
+  The 2026-07-20 audit found 244 dirty paths: 180 under assets (80 release, 58 Kestrel evidence/source,
+  42 parts), 39 render/tool/test implementation paths, and 25 obvious or ambiguous contamination/
+  process paths. Only eight dirty asset files match current master; 236 paths differ. This is not a
+  clean releasable worktree and cannot be removed or checkpointed wholesale without asset-by-asset
+  provenance and rejection receipts.
   Graphics-closeout, Helios, Depth, Kimi, and four small orchestration satellites were removed after
   merge, rejection, donor commit, or branch/tag/hash-archive preservation. Only master, the protected
   Blender/source worktree remain registered. The rejected performance worktree was removed after its
   clean `9d626fd8` tip, artifact hashes, and explicit rejection range were recorded; its branch remains
-  recoverable.
+  recoverable through `archive/performance-pooling-experiment-20260720`; the obsolete local branch is
+  retired after this ledger transaction.
 - Delete a branch only after its accepted product result is reachable from final `master`, every
   valuable dirty/untracked file has been deliberately preserved or rejected, and its worktree is
   clean.
 
 ## 8. Definition of the next coherent checkpoint
 
-The current product checkpoint descends from `b235f062`, evidence hardening through `280cafb0`, and
-propulsion repair `59f91d19`. The next coherent checkpoint retains the measured ship-local batching
+The current product checkpoint descends from `b235f062`, evidence hardening through `280cafb0`,
+propulsion repair `59f91d19`, geology truth `e8838e2c`, and RCS evidence repair `3d2dc765`. The next
+coherent checkpoint retains the measured ship-local batching
 winner and reruns the strict combined graphics/performance matrix on one clean exact commit, then adds
 exact-head propulsion settings/accessibility proof, current natural-route browser/Electron proof for
-Helios and the representative rock, rock/FX semantic truth plus the full flicker-continuity packet,
+Helios and the representative rock, verifies the geology/interaction repair, and completes the full
+flicker-continuity packet,
 visual-family Electron/GPU acceptance for combat effects and
 destruction, one localized authored space-structure vertical that does not lift the black floor,
 and the next high-frequency PBR asset family. The authoritative continuation order and architecture
