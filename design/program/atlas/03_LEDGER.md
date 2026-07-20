@@ -37,8 +37,81 @@ Every status below was re-measured on the current tree by the independent verifi
 statuses this pass changed were changed because an earlier report was wrong, not because the code
 moved** — those corrections are recorded in full at "Corrections" below rather than silently applied.
 
-**Headline: the program finish line is `failing`.** `check:journey:textile` scores **3 of 11 steps**
-at HEAD, reproduced across runs. Phase 1 is met; nothing else is.
+> **SUPERSEDED 2026-07-19 (later same day) — the finish line now scores 10 of 11.** The pass below
+> was accurate when taken. Five product defects and four grader defects were fixed afterwards; the
+> current state is recorded in "Verification pass E-6" immediately below. The E-5 text is kept intact
+> because its *method* (pristine-tree controls, corrections C-1..C-3) is what found them.
+
+---
+
+## Verification pass E-6 — 2026-07-19, after the journey remediation
+
+**`check:journey:textile` scores 10 of 11 on the pinned universe.** Still `failing` as a gate — one
+step is red and stays red deliberately — but every step of the journey except instrument agreement
+now completes through the public player route.
+
+| Step | Result |
+|---|---|
+| accept-mission | **PASS** — contract `m_2`, 8u `cmdty_fuel_cells` → `station_ceres`, hold loaded, undocked |
+| open-map · identify-position · inspect-destination | **PASS** — all four nav questions answered and cross-checked against the sim |
+| compare-and-plot | **PASS** — 2 options compared on fuel/hops/risk/time, then plotted |
+| engage-separately | **PASS** — *"SEPARATION HELD: after plot the ship drifted 4.2 WU with no engaged executor; after Engage the executor is transiting and the ship travelled 566.5 WU"* |
+| truthful-instruments | **FAIL** — see below. Left red on purpose. |
+| interrupt-route · recover-itinerary | **PASS** — DISENGAGE, then resumed on the same leg |
+| arrive-and-deliver | **PASS** — *"arrived in sector_ceres_belt **under route control** and settled the contract at station_ceres: 8u left the hold, mission m_2 completed"* |
+| save-load-states | **PASS** — docked-with-contract survives cold reload → Continue |
+
+**Determinism was the precondition for all of it.** The board is `hash32(state.meta.seed, …)` but the
+seed came from wall-clock, so consecutive runs of the *identical tree* scored 5/11 then 3/11 — one
+drew a haul that loaded, the next one that did not. That made debugging dishonest: a step that moved
+between runs could not be attributed to a fix rather than to the dice. A **universe seed field** now
+exists on New Game (`parseUniverseSeed`, `#sf-ng-seed`) and the check pins it, typed through the
+public field at the pre-Launch milestone. The anti-injection contract still passes 16/16 — typing
+into a player-facing field is the public input surface it permits.
+
+**The product defects found and fixed** (each was invisible to the unit suites that covered it):
+
+1. **The route follower declared arrival without ever leaving the sector.** `resolveLegTarget` aims
+   the autopilot at the *gate*, so "autopilot arrived" means *reached the doorway*; the follower
+   treated that as leg completion, and on a one-leg route that completed the itinerary. Measured:
+   `status='arrived'`, `executorClaimedArrived=true`, ship in `sector_helios_prime`, jump receipts
+   all zero. Worse, it **never emitted `world:requestJump` at all**, so the transition its own header
+   promised could not happen. Now requests the handoff through the shipped public seam and advances
+   only on a real `sector:enter`. *The unit test asserted the defective behaviour and was rewritten
+   stricter* — see below.
+2. **A button labelled "Plot course" emitted `world:requestJump`** on an adjacent sector — committing
+   the transition while promising a plot. Reachable in ordinary play.
+3. **The route follower was unreachable for every adjacent sector**, because `Set Course & Jump` was
+   the only action offered. Wave 1's centrepiece could not be handed a route to the canonical
+   Helios→Ceres contract. Fixed additively; the pinned one-hop jump seam still passes 7/7.
+4. **Plotting dismissed the chart**, so plot and engage could not happen in one sitting.
+5. **DESTINATION / NEXT LEG were blank** until a route was plotted, even with an accepted contract.
+
+**The grader defects found and fixed** — all four measured the wrong thing rather than measuring
+wrongly, which is worse, because a grader that cannot see what it grades reports *absence*:
+
+- ETA compared `distance / |velocity|` against a HUD computing `dist / closingSpeed`, **and** against
+  a different target than the one displayed. Two separate identity errors in one number.
+- `.gm-inspector`, `.gm-route-ribbon` and the Resume lookup were selectors that match nothing. A
+  wrong selector does not error; it silently measures something else. Three instances.
+- A click staleness race (`items.nth(i)` read then clicked across a re-render) made step 1 fail
+  intermittently, taking seven downstream steps with it.
+
+**`truthful-instruments` is left FAILING deliberately.** The two sides now agree to within ~20%
+(displayed 17.00 vs 22.12; 15.00 vs 18.81; tolerance 3.00). The likeliest cause is *sampling skew*,
+not a lying instrument: headless rAF is throttled to a few frames per second, so the painted HUD lags
+the sim while the ship accelerates 0 → 151 WU/s during acquisition. **Widening the tolerance would
+turn this green and would be exactly the move this program has refused throughout.** It stays red
+until someone samples both sides at one instant or restricts the comparison to steady state.
+
+**Known limit, stated rather than buried:** the seed pins *content*, not *timing*. The click race is
+fixed, but any single run should be read as indicative rather than authoritative until the journey
+has been run several times consecutively without flake.
+
+---
+
+**Headline at pass E-5: the program finish line is `failing`.** `check:journey:textile` scored
+**3 of 11 steps** at HEAD, reproduced across runs. Phase 1 is met; nothing else is.
 
 Measured this pass, unpiped, on HEAD:
 
