@@ -1,8 +1,12 @@
 # PQ-014 / SF-15 receipt — deterministic NPC job-state kernel (subslice: deterministic_job_kernel)
 #
-# This is a CANDIDATE KERNEL, not a completed player-facing feature. It implements pure job logic
-# only: it spawns no ships, steers no live entities, alters no economy, and registers no system.
-# See `dependencies_remaining` for the integration work that turns this kernel into live NPCs.
+# ROUND 2. This receipt was rewritten after the round-1 candidate was rejected for five defects
+# (advance-cap divergence, kind-invalid-phase, wrong-return-target, payload aliasing/serialization,
+# and a stale self-referential result_commit). All five are fixed in the implementation commit below
+# and pinned by named adversarial regression tests.
+#
+# This is a CANDIDATE KERNEL, not a completed player-facing feature: pure job logic only, no live
+# entities, no steering, no cargo/credit/rep writes, no system registration.
 
 packet: PQ-014
 alias: SF-15
@@ -11,14 +15,19 @@ agent: codex/pq014-npc-job-kernel-20260720
 worktree: C:/Users/93rob/sf-pq014
 branch: codex/pq014-npc-job-kernel-20260720
 
-base_commit: aec26203573e1d78a499ddbb3ce586420acd8c4f
-# result_commit records the hash of the commit this receipt lives in. A receipt cannot contain its
-# own hash without an infinite-regress of amends, so this field lags by exactly one amend: the value
-# below is the immediately-prior commit hash. The AUTHORITATIVE result commit is whatever
-# `git rev-parse HEAD` on branch codex/pq014-npc-job-kernel-20260720 returns after the final amend.
-result_commit: 4235c98294cf978e26204e5cf0b28d6419b6bfa8
+# ─── Commits (truthful, non-self-referential) ─────────────────────────────────────────────────────
+# The implementation and the receipt live in SEPARATE commits so the receipt can record the
+# implementation commit's FINAL hash without an infinite-regress of self-referential amends.
+master_base_commit: aec26203573e1d78a499ddbb3ce586420acd8c4f   # master at worktree creation
+round1_commit: c0f66c08ca8704168ee55071b400cc57be7e0e13        # rejected candidate (5 defects)
+implementation_commit: 026478df8a07ed6d2c24c98c5334b57b9861e108  # the fixes + adversarial tests (THIS is what FOCUSED_GREEN binds to)
+# receipt_commit is the hash of the commit this file lives in. It is recorded by `git rev-parse HEAD`
+# AFTER the receipt commit lands; it is NOT recorded inside the receipt (a file cannot truthfully
+# contain its own hash without an amend cycle). See verification_commands below.
+receipt_commit: see git rev-parse HEAD on this branch after the receipt commit
 
 state_reached: FOCUSED_GREEN
+focal_commit: 026478df8a07ed6d2c24c98c5334b57b9861e108   # the commit the focused proof binds to
 terminal: false
 runtime_wired: false
 route_accepted: false
@@ -27,48 +36,65 @@ queue_status_changed: false
 canonical_mapping:
   status: unresolved
   note: >
-    Current roadmap W06 is the natural-occurrence census packet and must not be marked by this kernel.
+    Roadmap W06 is the natural-occurrence census packet and must not be marked by this kernel.
     PQ-014 aliases SF-15 and canonicals to W06 in program-queue.json; the queue row stays `planned`
     and is not edited by this packet (program-queue.json is a forbidden path here).
 
 paths_changed:
-  - src/systems/npcJobs.js          # new — the pure kernel (no importers; fully isolated)
-  - test/npc-jobs-kernel.test.mjs   # new — focused contract test, 34 cases
-  - design/program/roadmap/receipts/PQ-014-npc-job-kernel.yaml  # new — this receipt
+  # In implementation_commit 026478df (the FOCUSED_GREEN binding commit):
+  - src/systems/npcJobs.js          # the pure kernel — fixed for all 5 defects
+  - test/npc-jobs-kernel.test.mjs   # 48 cases (34 original + 14 adversarial)
+  # In the receipt commit (this file):
+  - design/program/roadmap/receipts/PQ-014-npc-job-kernel.yaml
 
 shared_change_requests: []   # none — the kernel crosses no mutex and edits no shared file
 
-# ─── Exported API summary ─────────────────────────────────────────────────────────────────────────
+# ─── Defects fixed in round 2 (each pinned by a named adversarial test) ───────────────────────────
+defects_fixed:
+  - id: ADVANCE-CAP-DIVERGENCE
+    pre_fix: "advance(big) silently set simTime=big while stopping transitions at the cap, so advance(5s) gave phase=return/loopCount=682/seq=4778 but advance(2.5s)+advance(2.5s) gave phase=approach/loopCount=833/seq=5833, both claiming simTime=5."
+    fix: "Cap raised to 100000 (legitimate virtualization stays under it). When it binds, simTime stops at the last crossing actually processed and a `truncated` intent reports {requestedDt, processedDt, remainingDt}; caller resumes with advance(job, remaining). Reaching FLEE/COMPLETE mid-interval is NOT truncation (time passes). Decomposability holds exactly when neither call truncates; scope documented."
+    tests: ["DEFECT 1 (advance-cap-divergence): a truncating advance does NOT silently advance simTime to the requested dt", "DEFECT 1: truncation is resumable — advance(remaining) continues from the honest stop point", "DEFECT 1: decomposability still holds EXACTLY when neither advance truncates", "DEFECT 1: no silent divergence between advance(big) and advance(big/2)+advance(big/2) — truncation is observable, not silent"]
+  - id: KIND-INVALID-PHASE
+    pre_fix: "normalizeJob validated phase against the global vocabulary, so miner+load was honored and advance() emitted npcjobs:load."
+    fix: "Phase validated against the kind's OWN graph (LEGAL_PHASES_BY_KIND, derived from PHASE_GRAPHS). Illegal kind/phase combos heal to the kind's start phase with a recorded heal note."
+    tests: ["DEFECT 2 (kind-invalid-phase): miner+load heals to start and never emits npcjobs:load", "DEFECT 2: every kind rejects the phases it cannot reach (patrol+work, hauler+hold, miner+hold)", "DEFECT 2: a legal phase for the kind is preserved (no false heal)"]
+  - id: WRONG-RETURN-TARGET
+    pre_fix: "RETURN intent used routeIndex (the origin = field) for `to`, so a miner arriving home reported to='field' while pos={x:0,z:0}."
+    fix: "RETURN intent now uses targetIndex (destination reached) for `to` and originIndex for `from`, mirroring TRANSIT."
+    tests: ["DEFECT 3 (wrong-return-target): a miner RETURN intent names the destination reached, not the origin", "DEFECT 3: TRANSIT intents already use from/to correctly (regression guard)"]
+  - id: PAYLOAD-ALIASING-AND-SERIALIZATION
+    pre_fix: "emit() shallow-copied payload, so mutating intent.payload.meta mutated job.payload.meta. A cyclic payload made serializeJob throw."
+    fix: "Payloads deep-cloned into every emitted intent and projection (emit/summarizeJob/describeMaterialization). JSON-safety contract (isJSONSafe/sanitizePayload) enforced at createJob/normalizeJob/serializeJob: cyclic and non-JSON values rejected to null predictably; serializeJob drops a cyclic payload instead of throwing."
+    tests: ["DEFECT 4a (payload aliasing): mutating a nested field on an emitted intent does NOT mutate the job", "DEFECT 4a: the returned intent array is also safe to mutate", "DEFECT 4b (cyclic payload): a cyclic payload is rejected at createJob, normalizeJob, AND serializeJob — never throws", "DEFECT 4b: non-JSON payload values (functions, undefined, class instances) are rejected", "DEFECT 4: summarizeJob and describeMaterialization also deep-clone payload"]
+  - id: STALE-RECEIPT-HASH
+    pre_fix: "The receipt recorded result_commit: pending, then a stale hash after amends, with a self-referential-hash note."
+    fix: "Receipt restructured: implementation and receipt are SEPARATE commits. The receipt records the implementation_commit's final immutable hash (026478df) truthfully; it does NOT contain its own hash. See the Commits section above."
+
+# ─── Exported API summary (unchanged from round 1 unless noted) ───────────────────────────────────
 exported_api:
   constants:
-    - NPC_JOB_SCHEMA          # 'npc_jobs_v1' — schema stamp on every record and projection
-    - NPC_JOB_KIND            # frozen { MINER, HAULER, PATROL }
-    - NPC_JOB_PHASE           # frozen { COMMISSION, DEPART, TRANSIT, APPROACH, WORK, LOAD, UNLOAD,
-                              #          RETURN, HOLD, FLEE, COMPLETE }
+    - NPC_JOB_SCHEMA, NPC_JOB_KIND, NPC_JOB_PHASE
   creation_and_validation:
-    - validateJobSpec(spec)                # -> { ok, errors }; legal kind + id + >=2 finite waypoints
-    - createJob(spec, masterSeed=0)        # -> fresh serializable record; deterministic in (id,kind,route,seed)
-    - normalizeJob(input)                  # heal any input into a legal record; corrupt:true if unrecoverable
+    - validateJobSpec(spec)
+    - createJob(spec, masterSeed=0)        # now rejects non-JSON-safe payloads to null
+    - normalizeJob(input)                  # now validates phase against the kind's graph; sanitizes payload
     - restoreJob(input)                    # save-seam alias for normalizeJob
   advance:
-    - advance(job, dt, sink?)              # THE machine; returns ordered intents; decomposable;
-                                           # identical path for materialized + virtualized jobs
+    - advance(job, dt, sink?)              # honest truncation when cap binds; simTime never past last crossing
+    - isTruncated(intent)                  # NEW: true if intent is the truncation safety-valve marker
   interrupt_resume:
-    - interrupt(job, threat=null)          # -> flee, remembering prior phase; idempotent
-    - resume(job)                          # restore exact prior phase/progress/routeIndex
+    - interrupt(job, threat=null), resume(job)
   virtualize_materialize:
-    - virtualize(job)                      # mark offscreen; pure structural flag (advance math is shared)
-    - materialize(job)                     # mark onscreen; returns describeMaterialization
-    - describeMaterialization(job)         # truthful {pos, heading, phase, targetId, payload, ...}
-    - routePosition(job)                   # interpolated world position NOW (null if corrupt)
+    - virtualize(job), materialize(job), describeMaterialization(job), routePosition(job)
   serialization:
-    - serializeJob(job)                    # deep-cloned, JSON-safe, schema-stamped record for save owner
-    - summarizeJob(job)                    # public projection for HUD/UI/acceptance (stable shape)
-    - snapFloat(value)                     # read-seam 1e-6 grid round (decomposability compare helper)
+    - serializeJob(job)                    # now drops non-JSON payloads instead of throwing
+    - summarizeJob(job)
+    - isJSONSafe(value)                    # NEW: the payload JSON-safety contract predicate
+    - snapFloat(value)                     # read-seam 1e-6 grid round
 
-# ─── Job-kind structural differences (not labels) ─────────────────────────────────────────────────
 job_graphs:
-  miner:   cyclic two-place; commission→transit→approach→work(at field)→return→approach→unload(at home)→transit(loop++); never terminates
+  miner:   cyclic two-place; commission→transit→approach→work(field)→return→approach→unload(home)→transit(loop++); never terminates
   hauler:  linear terminal; commission→load→depart→transit(chain)→approach→unload→complete; terminates once
   patrol:  cyclic N-place; commission→transit→approach→hold(dwell)→transit(wrap, loop++ on wrap-to-0); never terminates
 
@@ -76,40 +102,45 @@ job_graphs:
 invariants_proven:
   - "Same initial state and inputs produce identical states and intents (determinism test)"
   - "Progress never becomes NaN, negative, or unbounded (bounded-aggregation + heal tests)"
-  - "Large elapsed intervals advance through legal phase boundaries without duplicating completion intents (no-duplicate + huge-dt tests)"
+  - "advance(a);advance(b) ≡ advance(a+b) in state AND intents WHEN NEITHER TRUNCATES (3 decomposability tests + DEFECT 1 scope test)"
+  - "Truncation (when the transition cap binds) is honest: simTime stops at the last crossing, a truncated intent reports the shortfall, and the caller resumes deterministically (DEFECT 1 tests)"
   - "Repeated initialization is idempotent (createJob + normalizeJob idempotency tests)"
-  - "Save/restore preserves phase, route progress, payload intent, interruption state, and sequence identity (save/restore tests)"
-  - "Materialization never places a job at an unrelated origin or resets progress (truthful-continuity + unknown-phase-restart tests)"
-  - "Miner, hauler, and patrol loops differ structurally, not only by labels (structural-difference test)"
-  - "Kernel emits requests/intents only; owning systems remain responsible for spawning/movement/cargo/credits/rep (no-direct-mutation test)"
-  - "Unknown or corrupt saved phases fail safely through normalization (malformed-save tests)"
-  - "advance(a);advance(b) ≡ advance(a+b) in final state AND concatenated intent stream (3 decomposability tests)"
+  - "Save/restore preserves phase, route progress, payload intent, interruption state, and sequence identity"
+  - "Materialization never places a job at an unrelated origin or resets progress"
+  - "Miner, hauler, and patrol differ structurally, not by label"
+  - "Emits intents only; owning systems own spawning/movement/cargo/credits/rep (no-direct-mutation test)"
+  - "Phase is validated against the kind's graph; illegal combos heal without emitting impossible-phase intents (DEFECT 2)"
+  - "RETURN/TRANSIT intents name the destination actually reached (DEFECT 3)"
+  - "Payloads are JSON-safe and never alias through intents/projections; cyclic payloads never throw serializeJob (DEFECT 4)"
 
-# ─── Test commands and results ────────────────────────────────────────────────────────────────────
+# ─── Test commands and results (bound to implementation_commit 026478df) ──────────────────────────
 proof:
   - command: node --check src/systems/npcJobs.js
     result: exit 0 (syntax ok)
   - command: node --test test/npc-jobs-kernel.test.mjs
-    result: "34/34 pass, 0 fail, 0 skipped (duration ~130-185ms)"
+    result: "48/48 pass, 0 fail, 0 skipped (duration ~1.0-1.6s)"
   - command: git diff --check
     result: clean (no whitespace/conflict markers)
   - command: npm run check:sim:compare
     result: >
-      ENVIRONMENTAL-RED in this worktree, NOT caused by this packet. The freshly-created worktree has
-      no node_modules, so scripts/sf-sim.mjs fails at `Cannot find package '@dimforge/rapier3d-compat'
-      imported from src/core/sg02DynamicBodyOwner.js` before any sim tick. The kernel is pure JS with
-      ZERO importers in src/ or scripts/ (verified by grep), so it has no reachable path into the 47a
-      golden and cannot affect the sim compare. Re-running against an installed tree (primary
-      worktree) is the integration owner's rerun step; this packet does not depend on it.
-    classification: pre-existing environmental failure (missing Rapier WASM deps in new worktree)
+      ENVIRONMENTAL-RED in this worktree, NOT caused by this packet. The worktree has no node_modules,
+      so scripts/sf-sim.mjs fails at `Cannot find package '@dimforge/rapier3d-compat'` before any sim
+      tick. The kernel is pure JS with ZERO importers in src/ or scripts/ (verified by grep), so it has
+      no reachable path into the 47a golden and cannot affect the sim compare. The integration owner
+      reruns against an installed tree.
+    classification: pre-existing environmental failure (missing Rapier WASM deps in the worktree)
+
+verification_commands:
+  - "git -C C:/Users/93rob/sf-pq014 rev-parse HEAD   # after the receipt commit, this is the receipt_commit hash (recorded here, not inside the receipt)"
+  - "git -C C:/Users/93rob/sf-pq014 log --oneline aec26203573e1d78a499ddbb3ce586420acd8c4f..HEAD   # the four commits on this branch"
 
 # ─── Integration requests (this kernel wires nothing; these are the follow-ons) ───────────────────
 integration_requests:
-  - "encounterDirector: consume describeMaterialization() to spawn/move the real entity on sector enter; the kernel creates nothing."
-  - "sectorSim: call advance(job, elapsedDt) at the virtualization boundary; offscreen/onscreen equivalence is already exact."
-  - "tacticalAI / aiPorts: consume the per-tick movement intent (targetId, heading, pos) for live entity steering; combat stays in tacticalAI."
-  - "save owner: add an `npcJobs` key to the save plan table mapping to serializeJob/restoreJob (saveSystem.js:155-191); the records are already plain serializable data."
-  - "registry owner: IF this becomes a registered system later, add it via src/core/registry.js — explicitly deferred (registry is a mutex and the task forbids registration)."
+  - "encounterDirector: consume describeMaterialization() to spawn/move the real entity on sector enter."
+  - "sectorSim: call advance(job, elapsedDt) at the virtualization boundary; handle isTruncated() by resuming with remainingDt (rare; only pathological dt)."
+  - "tacticalAI / aiPorts: consume the per-tick movement intent (targetId, heading, pos) for live entity steering."
+  - "save owner: add an `npcJobs` key to the save plan table mapping to serializeJob/restoreJob."
+  - "registry owner: IF this becomes a registered system, add it via src/core/registry.js — explicitly deferred."
   - "natural producer + held-out-seed proof (PQ-014 evidence requirement) once materialization is wired."
 
 dependencies_remaining:
@@ -123,14 +154,13 @@ dependencies_remaining:
 
 known_limitations:
   - "Pure kernel only: no live entities, no steering, no cargo/credit/rep writes, no system registration — by design (this packet's scope)."
-  - "Continuous fields (progress, simTime, heading) are full-precision float internally; decomposability holds to ~1e-16. Byte-stable comparison (tests, save deepEqual) rounds at the READ SEAM (snapFloat / snap() in tests), not inside the math — the standard deterministic-sim pattern."
-  - "The kernel emits intents through a caller-provided sink; it does not yet attach to the event bus (integration owner wires `npcjobs:*` events)."
-  - "Pirate predator loop (the optional fourth loop named in the build plan) is intentionally NOT in this kernel; it stays a small later addition per SF-15's 'if the three primaries are green' gate."
-  - "check:sim:compare is environmental-red in the new worktree (missing Rapier WASM); not re-runnable here without `npm install`, which is out of scope for an isolated kernel packet."
+  - "Decomposability advance(a)+advance(b) === advance(a+b) holds EXACTLY when neither call truncates. When the transition cap (100000) binds, advance() truncates honestly (simTime stops, truncated intent emitted, caller resumes); this is the documented contract, not a violation."
+  - "Continuous fields (progress, simTime, heading) are full-precision float internally; byte-stable comparison rounds at the READ SEAM (snapFloat), the standard deterministic-sim pattern."
+  - "Pirate predator loop (the optional fourth loop named in the build plan) is intentionally NOT in this kernel."
+  - "check:sim:compare is environmental-red in the worktree (missing Rapier WASM); not re-runnable here without `npm install`, out of scope for an isolated kernel packet."
 
-# ─── Verification notes ───────────────────────────────────────────────────────────────────────────
 verification_notes:
   isolation: "grep -rn 'npcJobs' src/ scripts/ returns no live importer outside the new module itself. The kernel is unreachable from the default game route by construction."
-  forbidden_files: "git status --short shows ONLY the three allowed new paths. No existing file is modified — registry.js, encounterDirector.js, sectorSim.js, tacticalAI.js, aiPorts.js, world.js, gameState.js, package.json, NOW.md, program-queue.json all untouched."
-  determinism: "No Math.random, Date.now, timers, or wall time in the module. Per-job variance is a single uint32 rngSeed drawn once at createJob via drawSeeded (../core/rng.js) and never advanced by the advance() path."
-  discriminating_tests: "The three decomposability tests are the mutants' worst enemy: a wall-time-based progress mutant, a level-triggered (entry-emitted) completion mutant, or a per-step snap-drift mutant each pass the other 31 tests and fail at least one decomposability assertion."
+  forbidden_files: "Only the three allowed paths are touched across the branch. registry.js, encounterDirector.js, sectorSim.js, tacticalAI.js, aiPorts.js, world.js, gameState.js, package.json, NOW.md, program-queue.json all untouched."
+  determinism: "No Math.random, Date.now, timers, or wall time in the module. Per-job variance is a single uint32 rngSeed drawn once at createJob and never advanced by advance()."
+  discriminating_tests: "The 14 adversarial tests each name their defect and assert the post-fix contract; each was confirmed to reproduce against the round-1 (pre-fix) kernel before the fix was applied."
