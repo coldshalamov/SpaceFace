@@ -549,7 +549,7 @@ export async function runTextileJourney(ctx) {
         detail: arrive,
       };
     }
-    const deliver = await deliverCargoAtDestination(page, helpers, journey.destination);
+    const deliver = await deliverCargoAtDestination(page, helpers, journey.destination, log);
     await shoot(JOURNEY_SCREENSHOTS.delivered);
     if (!deliver.ok) {
       return {
@@ -679,22 +679,51 @@ async function installJourneyObservers(page) {
   }, JOURNEY_EVENTS.slice());
 }
 
-/** Fly to the nearest non-gate station on the public autopilot and dock with the public dock key. */
-async function dockAtNearestStation(page, helpers, log) {
-  const target = await page.evaluate(() => {
+/**
+ * Fly to a non-gate station on the public autopilot and dock with the public dock key.
+ *
+ * `wantStationId` chooses WHICH station, and passing it is not a convenience. A sector can hold
+ * several stations — `sector_ceres_belt` holds BOTH `station_ceres` and `station_beltout`, roughly
+ * 2500 WU apart — and a cargo contract settles only at its own berth: `_onDockedObjectives` in
+ * src/systems/missions.js skips every mission whose `destStationId !== stationId`. So docking at
+ * whichever station merely happened to be nearest yields a ship that is docked, in the correct
+ * sector, and still holding the goods, while the contract stays quietly active and emits no
+ * receipt — a failure that reads like a broken delivery loop and is really a wrong berth.
+ *
+ * Omit `wantStationId` only where any berth genuinely satisfies the goal (the opening dock, whose
+ * purpose is just to reach a contract board).
+ */
+async function dockAtNearestStation(page, helpers, log, wantStationId = null) {
+  const target = await page.evaluate((wantId) => {
     const state = window.SF?.state;
     const player = state?.entities?.get(state.playerId);
     if (!player?.pos || !Array.isArray(state?.entityList)) return null;
-    let best = null; let bestD = Infinity;
+    const stations = [];
     for (const e of state.entityList) {
       if (!e || e.alive === false || e.type !== 'station' || e.data?.isGate || !e.pos) continue;
-      const d = Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z);
-      if (d < bestD) { bestD = d; best = { id: e.data?.stationId || e.id, name: e.data?.name || 'Station', dist: d }; }
+      stations.push({
+        id: e.data?.stationId || e.id,
+        name: e.data?.name || 'Station',
+        dist: Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z),
+      });
     }
-    return best;
-  });
-  if (!target) return { ok: false, reason: 'no non-gate station entity in the starting sector' };
-  log(`[journey] docking target: ${target.name} at ${Math.round(target.dist)} WU`);
+    if (!stations.length) return null;
+    stations.sort((a, b) => a.dist - b.dist);
+    // Every berth in the sector rides along so a wrong-berth failure names its alternatives.
+    const seen = stations.map((s) => ({ id: s.id, dist: Math.round(s.dist) }));
+    const picked = wantId ? stations.find((s) => s.id === wantId) : stations[0];
+    return picked ? { ...picked, seen } : { missing: true, seen };
+  }, wantStationId);
+  if (!target) return { ok: false, reason: 'no non-gate station entity in this sector' };
+  if (target.missing) {
+    return {
+      ok: false,
+      reason: `the contract's destination berth ${wantStationId} is not present in this sector — `
+        + `stations here: ${JSON.stringify(target.seen)}`,
+    };
+  }
+  log(`[journey] docking target: ${target.name} at ${Math.round(target.dist)} WU`
+    + (wantStationId ? ` (contract destination ${wantStationId})` : ''));
 
   // Arm the station as a waypoint through the map, exactly as a player would.
   await page.keyboard.press('KeyN');
@@ -1469,8 +1498,9 @@ async function flyRouteToDestination(page, helpers, destination, log) {
   };
 }
 
-async function deliverCargoAtDestination(page, helpers, destination) {
-  const dock = await dockAtNearestStation(page, helpers, () => {});
+async function deliverCargoAtDestination(page, helpers, destination, log = () => {}) {
+  // Dock at the CONTRACT'S berth, not the nearest one — see dockAtNearestStation.
+  const dock = await dockAtNearestStation(page, helpers, log, destination.stationId);
   if (!dock.ok) return { ok: false, reason: `could not dock at the destination station: ${dock.reason}` };
 
   const settled = await page.waitForFunction((missionDest) => {
@@ -1483,22 +1513,35 @@ async function deliverCargoAtDestination(page, helpers, destination) {
     return delivered || completed || !stillActive;
   }, destination.stationId, { timeout: 30_000 }).then(() => true).catch(() => false);
 
-  const receipt = await page.evaluate(() => {
+  const receipt = await page.evaluate((want) => {
     const j = window.__JOURNEY__;
     const del = j && [...j.events].reverse().find((e) => e.event === 'cargo:delivered');
     const done = j && [...j.events].reverse().find((e) => e.event === 'mission:completed');
+    const state = window.SF?.state;
+    const docked = state?.ui?.dockedStationId || null;
     return {
       delivered: del ? del.payload : null,
       completed: done ? done.payload : null,
-      activeCount: (window.SF?.state?.missions?.active || []).length,
-      stationId: window.SF?.state?.ui?.dockedStationId || null,
+      activeCount: (state?.missions?.active || []).length,
+      stationId: docked,
+      // ATTRIBUTION. A null receipt has two entirely different causes with the same symptom:
+      // the ship docked at the wrong berth (`_onDockedObjectives` skips the mission), or it docked
+      // correctly but the hold no longer carries the goods (`_deliverCargo` returns false). Both
+      // facts are captured so the failure text can never be ambiguous about which one happened.
+      wantStationId: want.stationId,
+      dockedAtDestination: docked === want.stationId,
+      hold: Number(state?.player?.cargo?.items?.[want.cmdtyId]) || 0,
+      needQty: want.qty,
     };
-  });
+  }, destination);
 
   if (!settled || (!receipt.delivered && !receipt.completed)) {
     return {
       ok: false,
-      reason: 'docked at the destination but the contract produced no cargo:delivered / mission:completed receipt',
+      reason: `docked at ${receipt.stationId} but the contract produced no cargo:delivered / `
+        + `mission:completed receipt — contract berth is ${receipt.wantStationId} `
+        + `(dockedAtDestination=${receipt.dockedAtDestination}), hold carries ${receipt.hold}u of the `
+        + `${receipt.needQty}u ${destination.cmdtyId} the contract requires`,
       receipt, stationId: receipt.stationId,
     };
   }
