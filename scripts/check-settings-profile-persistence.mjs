@@ -78,6 +78,10 @@ assert.equal(booted.settings.video.renderScale, 1.1, 'profile video preference s
 assert.equal(booted.settings.audio.master, 0.23, 'profile audio should override old save audio');
 assert.equal(booted.settings.controls.gamepad.deadzone, 0.31, 'profile controls should override old save controls');
 assert.equal(booted.settings.controls.touch.enabled, false, 'profile touch mode should override old save controls');
+assert.deepEqual(booted.settings.controls.bindings, { boost: ['ShiftRight'] },
+  'profile keybind map must atomically replace migrated old-save bindings');
+assert.equal(booted.settings.controls.masslineBindingProfile, 'space-v1',
+  'the current profile must retain Space-primary Massline behavior across an old save load');
 assert.equal(booted.settings.gameplay.autosaveIntervalS, 300, 'profile autosave should override old save preference');
 assert.equal(booted.settings.gameplay.tutorialHints, false, 'profile tutorial preference should override old save preference');
 assert.equal(booted.settings.gameplay.difficulty, 'veteran', 'save-slot difficulty should remain run-scoped');

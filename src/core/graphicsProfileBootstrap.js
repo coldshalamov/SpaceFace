@@ -3,6 +3,8 @@
 // localStorage profile merely because it consumed it.
 
 export const PROFILE_SETTINGS_KEY = 'sf.settings.profile.v1';
+export const MASSLINE_BINDING_PROFILE_SPACE = 'space-v1';
+export const MASSLINE_BINDING_PROFILE_LEGACY = 'legacy-f-v1';
 
 const LOCKED_GAMEPLAY_KEYS = Object.freeze([
   'physicsBackend',
@@ -23,6 +25,27 @@ export function readProfileSettings(storage = globalThis.localStorage) {
   }
 }
 
+/** Pin pre-PQ-003 profiles to their current active-scheme behavior before merging them over the
+ * new Space-primary defaults. Existing custom bindings win; only absent actions are filled. */
+export function migrateLegacyMasslineBindingProfile(settings) {
+  if (!isPlainObject(settings)) return settings;
+  if (!isPlainObject(settings.controls)) settings.controls = {};
+  const controls = settings.controls;
+  if (controls.masslineBindingProfile === MASSLINE_BINDING_PROFILE_SPACE
+      || controls.masslineBindingProfile === MASSLINE_BINDING_PROFILE_LEGACY) {
+    return settings;
+  }
+
+  const bindings = isPlainObject(controls.bindings) ? controls.bindings : {};
+  if (!Object.prototype.hasOwnProperty.call(bindings, 'tether')) bindings.tether = ['KeyF'];
+  const scheme = isPlainObject(settings.gameplay) ? settings.gameplay.controlScheme : 'pilot';
+  const spaceAction = scheme === 'classic' ? 'fire' : 'brake';
+  if (!Object.prototype.hasOwnProperty.call(bindings, spaceAction)) bindings[spaceAction] = ['Space'];
+  controls.bindings = bindings;
+  controls.masslineBindingProfile = MASSLINE_BINDING_PROFILE_LEGACY;
+  return settings;
+}
+
 export function mergeProfileSettings(baseSettings, profileSettings) {
   const base = isPlainObject(baseSettings) ? baseSettings : {};
   const merged = mergePlain(base, isPlainObject(profileSettings) ? profileSettings : {});
@@ -39,7 +62,7 @@ export function mergeProfileSettings(baseSettings, profileSettings) {
 
 export function bootstrapProfileSettingsBeforeRegistry(state, storage = globalThis.localStorage) {
   if (!state || !isPlainObject(state.settings)) return false;
-  const profile = readProfileSettings(storage);
+  const profile = migrateLegacyMasslineBindingProfile(readProfileSettings(storage));
   if (!profile) return false;
   state.settings = mergeProfileSettings(state.settings, profile);
   return true;

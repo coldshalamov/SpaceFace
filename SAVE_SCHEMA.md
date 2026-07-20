@@ -295,6 +295,7 @@ Current save version: `11`
 | `$.settings.controls.gamepad.deadzone` | number | 0.12 |
 | `$.settings.controls.gamepad.enabled` | boolean | true |
 | `$.settings.controls.gamepad.invertY` | boolean | false |
+| `$.settings.controls.masslineBindingProfile` | string | space-v1 |
 | `$.settings.gameplay` | object | {} |
 | `$.settings.gameplay.aiBackend` | string | sg06-tactical |
 | `$.settings.gameplay.autosaveIntervalS` | number | 120 |
@@ -310,7 +311,7 @@ Current save version: `11`
 | `$.settings.video` | object | {} |
 | `$.settings.video.bloom` | boolean | true |
 | `$.settings.video.bloomStrength` | number | 0.35 |
-| `$.settings.video.bloomThreshold` | number | 0.72 |
+| `$.settings.video.bloomThreshold` | number | 1 |
 | `$.settings.video.chaseClose` | boolean | false |
 | `$.settings.video.dynamicResolution` | boolean | false |
 | `$.settings.video.energyMaterials` | boolean | true |

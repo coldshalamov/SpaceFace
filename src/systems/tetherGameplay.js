@@ -15,7 +15,7 @@ import { massline2Flag } from '../data/featureFlags.js';
 const TETHER_DEF_ID = 'tether_standard';
 const STRAIN_EVENT_INTERVAL_S = 0.2;
 const RELATCH_COOLDOWN_S = 0.25;   // after cut/break — prevents same-press ghost re-latches
-const TAP_CUT_DELAY_S = 0.22;       // lets held G become reel-in instead of immediate release
+const TAP_CUT_DELAY_S = 0.22;       // legacy direct-action path: hold becomes reel, tap becomes cut
 const CAPTURE_SLACK_S = 0.1;
 const STRETCH_EPSILON = 0.05;
 // Overnight B1: soft latch was pixel-tight at combat speed. Base grace is generous; Flyby Focus
@@ -40,6 +40,14 @@ const ATTACHABLE_TYPES = new Set(['asteroid', 'wreck', 'ship', 'drone', 'station
 // collidable-only spatial hash cannot be their sole acquisition source.
 const NON_COLLIDING_ACQUISITION_TYPES = new Set(['payload', 'pickup']);
 const TOW_TARGET_COM_TYPES = new Set(['wreck', 'ship', 'drone', 'payload', 'pickup']);
+const LINE_CONTROL_DENIAL_COPY = Object.freeze({
+  load_limit: 'line load too high',
+  minimum_length: 'minimum line length reached',
+  maximum_length: 'maximum line length reached',
+  reel_unavailable: 'winch unavailable',
+  attachment_missing: 'line no longer attached',
+});
+const NO_REEL_RESULT = Object.freeze({ changed: false, reason: null, attachment: null });
 
 export const tetherGameplay = {
   id: 'tetherGameplay',
@@ -59,6 +67,7 @@ export const tetherGameplay = {
     this._ignoreReleaseCutUntilReelIdle = false;
     this._latchGraceUntil = 0;
     this._reelStrength = 0;
+    this._lastLineControlDenial = null;
     this._lastLatchDenial = null;
     this._resetPhaseMirror();
   },
@@ -83,7 +92,18 @@ export const tetherGameplay = {
     this._adoptExisting(attachments, state);
     const actions = state.input?.actions;
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
-    const reelHeld = !!(actions?.reelDelta < 0);
+    const masslineCommand = actions && actions.massline;
+    const lineLengthCommand = masslineCommand && masslineCommand.lineControl
+      ? finite(masslineCommand.lineLength, 0)
+      : finite(actions && actions.reelDelta, 0);
+    const reelHeld = lineLengthCommand < 0;
+
+    // The normalized input grammar has already resolved tap vs hold. Execute its cut in this same
+    // tether tick; the legacy pending-cut path below remains for old tapes/direct harnesses.
+    if (this._active && masslineCommand && masslineCommand.cut) {
+      this._cutActive(attachments, state, player, now);
+      return;
+    }
 
     // After latch, ignore tap-to-cut until the player has held to reel or a short grace expires —
     // otherwise latch → release → press-again to winch reads as a cut on release.
@@ -123,7 +143,7 @@ export const tetherGameplay = {
         this._mirror(state, null, 0);
         return;
       }
-      // Holding F is reel intent — cancel the pending cut once the tap window expires so release
+      // Legacy held-action reel intent cancels pending cut once the tap window expires so release
       // does not cut. Reeling itself is never blocked by pendingCut (see _reelActive below).
       if (reelHeld && heldLongEnough) {
         this._pendingCut = null;
@@ -146,12 +166,27 @@ export const tetherGameplay = {
         this._mirror(state, null, 0);
         return;
       }
-      const reeled = this._reelActive(attachments, actions?.reelDelta, dt);
-      this._updateReelStrength(reelHeld, reeled, dt);
+      const reelResult = lineLengthCommand === 0
+        ? NO_REEL_RESULT
+        : this._reelActive(attachments, lineLengthCommand, dt);
+      this._updateReelStrength(reelHeld, reelResult.changed, dt);
+      if (lineLengthCommand !== 0 && !reelResult.changed && reelResult.reason) {
+        this._emitLineControlDenied(state, reelResult.reason, lineLengthCommand, reelResult.attachment);
+      } else if (lineLengthCommand === 0 || reelResult.changed) {
+        this._lastLineControlDenial = null;
+      }
       this._emitStrain(attachments, state);
       const att = attachments.get(this._active.attachmentId);
       const phase = this._phaseFor(state, att, dt, this._lastStrainRatio || 0);
-      this._mirror(state, this._active.targetId, this._lastStrainRatio || 0, att ? att.restLength : 0, phase, reelHeld);
+      this._mirror(
+        state,
+        this._active.targetId,
+        this._lastStrainRatio || 0,
+        att ? att.restLength : 0,
+        phase,
+        masslineCommand,
+        lineLengthCommand,
+      );
       return;
     }
 
@@ -442,28 +477,74 @@ export const tetherGameplay = {
   },
 
   _reelActive(attachments, reelDelta, dt) {
-    if (!this._active || !Number.isFinite(reelDelta) || reelDelta === 0) return false;
+    if (!this._active || !Number.isFinite(reelDelta) || reelDelta === 0) return { changed: false, reason: null, attachment: null };
     const attachment = attachments.get(this._active.attachmentId);
-    if (!attachment || attachment.state !== 'active') return false;
+    if (!attachment || attachment.state !== 'active') return { changed: false, reason: 'attachment_missing', attachment };
     const kernel = combatKernel(this);
     const def = attachmentDef(kernel, attachment.defId);
-    if (!def) return false;
+    if (!def) return { changed: false, reason: 'unknown_attachment_def', attachment };
 
     const policy = typeof attachments.reelPolicy === 'function' ? attachments.reelPolicy(attachment.id) : null;
     const reelRate = policy && Number.isFinite(policy.reelRate) ? policy.reelRate : def.reelRate;
     const maxStep = positive(reelRate, 0) * Math.max(0, Number(dt) || 0);
-    if (!(maxStep > 0)) return false;
+    if (!(maxStep > 0)) return { changed: false, reason: 'reel_unavailable', attachment };
     const requested = clamp(reelDelta, -maxStep, maxStep);
     const minLength = positive(def.minLength, 0);
     const maxLength = positive(def.maxLength, Infinity);
     const before = attachment.restLength || 0;
+
+    // Pulling a line that is already near its physical break ceiling is denied; paying out remains
+    // available so the player can unload it. The threshold comes from the attachment's snapshotted
+    // authority policy, not a parallel input-side constant.
+    const breakPolicy = policy && policy.break;
+    const maxTension = positive(breakPolicy && breakPolicy.maxTension, Infinity);
+    if (requested < 0 && Number.isFinite(maxTension) && finite(attachment.lastTension, 0) >= maxTension * 0.9) {
+      return { changed: false, reason: 'load_limit', attachment, before, after: before };
+    }
+
     const next = clamp(before + requested, minLength, maxLength);
     const delta = next - before;
-    if (Math.abs(delta) <= 1e-6) return false;
+    if (Math.abs(delta) <= 1e-6) {
+      return {
+        changed: false,
+        reason: requested < 0 ? 'minimum_length' : 'maximum_length',
+        attachment,
+        before,
+        after: before,
+      };
+    }
     const result = attachments.reel(attachment.id, delta, minLength);
-    if (!result || !result.ok) return false;
+    if (!result || !result.ok) {
+      return { changed: false, reason: result && result.reason || 'reel_rejected', attachment, before, after: before };
+    }
     const after = result.attachment && result.attachment.restLength;
-    return Number.isFinite(after) && after < before - 1e-6;
+    return {
+      changed: Number.isFinite(after) && Math.abs(after - before) > 1e-6,
+      reason: null,
+      attachment: result.attachment || attachment,
+      before,
+      after: Number.isFinite(after) ? after : before,
+    };
+  },
+
+  _emitLineControlDenied(state, reason, lineLengthCommand, attachment) {
+    const direction = lineLengthCommand < 0 ? 'reel_in' : 'pay_out';
+    const key = `${attachment && attachment.id || 'missing'}:${direction}:${reason}`;
+    if (this._lastLineControlDenial === key) return;
+    this._lastLineControlDenial = key;
+    this.bus.emit('tether:lineControlDenied', {
+      actorId: state.playerId,
+      targetId: this._active && this._active.targetId,
+      attachmentId: attachment && attachment.id || this._active && this._active.attachmentId,
+      direction,
+      reason,
+    });
+    const verb = direction === 'reel_in' ? 'reel-in' : 'pay-out';
+    this.bus.emit('toast', {
+      text: `Massline ${verb} blocked: ${LINE_CONTROL_DENIAL_COPY[reason] || String(reason).replaceAll('_', ' ')}`,
+      kind: 'warn',
+      ttl: 2,
+    });
   },
 
   _updateReelStrength(reelHeld, reeled, dt) {
@@ -540,6 +621,28 @@ export const tetherGameplay = {
     this._pendingCut = null;
     this._ignoreReleaseCutUntilReelIdle = false;
     this._latchGraceUntil = 0;
+    this._lastLineControlDenial = null;
+  },
+
+  _cutActive(attachments, state, player, now) {
+    if (!this._active) return false;
+    const targetId = this._active.targetId;
+    const cutPayload = this._cutPayload(state, player, targetId);
+    const result = attachments.cut(this._active.attachmentId, player.id, 'tether_cut');
+    if (result && result.ok) {
+      if (cutPayload.slingshot) this._grantSlingshotState(state, SLINGSHOT_STATE_S);
+      this.bus.emit('tether:cut', cutPayload);
+      this.bus.emit('tether:released', { targetId });
+      this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
+    }
+    this._active = null;
+    this._pendingCut = null;
+    this._ignoreReleaseCutUntilReelIdle = false;
+    this._lastLineControlDenial = null;
+    this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+    this._resetPhaseMirror();
+    this._mirror(state, null, 0);
+    return !!(result && result.ok);
   },
 
   _tickSlingshotState(state, dt) {
@@ -573,7 +676,7 @@ export const tetherGameplay = {
   // Mirror the tether state onto state.player.tether for HUD/VFX consumers (single-owner rule:
   // they read, we write). null targetId = no tether. restLength lets the cable visual compute
   // real slack (restLength - distance) instead of guessing from strain.
-  _mirror(state, targetId, strain, restLength = 0, phase = 'slack', reelHeld = false) {
+  _mirror(state, targetId, strain, restLength = 0, phase = 'slack', command = null, lineLengthCommand = 0) {
     const player = state.player || (state.player = {});
     const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, load: 0, attachmentId: null, restLength: 0, phase: 'slack' });
     t.active = targetId != null;
@@ -583,7 +686,12 @@ export const tetherGameplay = {
     t.phase = t.active ? normalizePhase(phase) : 'slack';
     t.load = t.active ? computeTetherLoad(t.phase, t.strain) : 0;
     t.attachmentId = this._active ? this._active.attachmentId : null;
-    t.reeling = !!(t.active && reelHeld);
+    t.lineControl = !!(t.active && command && command.lineControl);
+    t.lineLengthRate = t.lineControl ? finite(lineLengthCommand, 0) : 0;
+    t.orbitDirection = t.lineControl ? finite(command && command.orbitDirection, 0) : 0;
+    t.pump = !!(t.lineControl && command && command.pump);
+    t.reeling = !!(t.active && lineLengthCommand < 0);
+    t.payingOut = !!(t.active && lineLengthCommand > 0);
     t.reelStrength = t.active ? finite(this._reelStrength, 0) : 0;
     t.slingshotT = Math.max(0, finite(t.slingshotT, 0));
     t.slingshot = t.slingshotT > 0;

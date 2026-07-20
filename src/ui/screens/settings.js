@@ -6,6 +6,7 @@
 
 import { DEFAULTS as INPUT_DEFAULTS } from '../../systems/input.js';
 import { massline2Flag } from '../../data/featureFlags.js';
+import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
 import { BINDINGS } from '../bindings.js';
 
 const STYLE_ID = 'sf-settings-menu-style';
@@ -73,8 +74,8 @@ function nextControlId() { controlId += 1; return `sf-settings-control-${control
 // input.js owns the binding tables; the settings UI mirrors the active control scheme and overlays
 // saved custom keys so "reset to defaults" means the defaults for the selected scheme.
 const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
-// Flight actions the player may rebind. (Mouse buttons + Space-as-fire-alt are ergonomic constants
-// and stay out of the rebind grid to keep the model simple.)
+// Flight actions the player may rebind. Mouse buttons stay out of the grid; Space is the
+// new-profile Massline primary and F remains its permanent alias.
 const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
   'brake', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut',
   'bulletTime', 'cloak', 'travelBurn'];
@@ -87,8 +88,8 @@ const REBIND_LABELS = {
   strafeRight: 'Lateral thrust right',
   boost: 'Boost / dash',
   autoFire: 'Toggle auto-target',
-  brake: 'Brake to stop (Helm Assist)',
-  tether: 'Tether: latch / reel / release',
+  brake: 'Brake / reverse (S or Down)',
+  tether: 'Massline: tap latch/cut; hold line control',
   chargeThrow: 'Impulse charge: throw',
   chargeDetonate: 'Impulse charge: detonate',
   scanPulse: 'Scanner pulse',
@@ -422,7 +423,7 @@ export const settingsScreen = {
     rowToggle('Invert right-stick Y', () => !!gp.invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, invertY: v }));
     // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
-    pane.appendChild(el('p', 'sf-muted', 'Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, R3 countermeasure, A dock, X target, View star map, Y codex, Start → Pause → Mission Log.'));
+    pane.appendChild(el('p', 'sf-muted', 'Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, R3 countermeasure, A/Cross Massline (dock/accept when prompted), X/Square target, View star map, Y/Triangle codex, Start → Pause → Mission Log.'));
 
     const touchMode = () => {
       const cfg = s.controls.touch || {};
@@ -512,6 +513,7 @@ export const settingsScreen = {
     reset.style.width = 'auto';
     reset.addEventListener('click', () => {
       s.controls.bindings = null;
+      s.controls.masslineBindingProfile = MASSLINE_BINDING_PROFILE_SPACE;
       ctx.bus.emit('settings:changed', { section: 'controls', key: 'bindings', value: null });
       this._render(ctx);
     });

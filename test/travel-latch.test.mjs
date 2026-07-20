@@ -139,7 +139,7 @@ test('W1-5: off -> spooling -> engaged, then a second press disengages into cool
   });
 });
 
-test('W1-5: BRAKING BREAKS THE LATCH', () => {
+test('W1-5/PQ-003: new-profile Space is Massline, while reverse remains the deliberate burn brake', () => {
   withFlag(true, () => {
     const host = makeInput();
     const state = makeState();
@@ -147,11 +147,58 @@ test('W1-5: BRAKING BREAKS THE LATCH', () => {
     runTicks(host, state, 2.0);
     assert.equal(state.input.travelDrive.state, 'engaged');
 
-    // Space is `brake` in the default pilot scheme.
+    // Space is the new-profile Massline action and cannot silently brake the Travel Burn.
+    host._keys.Space = true;
+    host.update(DT, state);
+    assert.equal(state.input.travelDrive.state, 'engaged');
+    host._keys.Space = false;
+    host.update(DT, state);
+
+    host._keys.KeyS = true;
+    host.update(DT, state);
+    assert.equal(state.input.travelDrive.state, 'cooldown');
+    assert.equal(state.input.travelDrive.breakReason, 'brake');
+  });
+});
+
+test('PQ-003: a migrated legacy profile keeps Space brake and F-primary Massline', () => {
+  withFlag(true, () => {
+    const host = makeInput();
+    const state = makeState({
+      settings: {
+        gameplay: { controlScheme: 'pilot' },
+        controls: {
+          masslineBindingProfile: 'legacy-f-v1',
+          bindings: { tether: ['KeyF'], brake: ['Space'] },
+        },
+      },
+    });
+    tapKey(host, state, 'NumLock');
+    runTicks(host, state, 2.0);
     host._keys.Space = true;
     host.update(DT, state);
     assert.equal(state.input.travelDrive.state, 'cooldown');
     assert.equal(state.input.travelDrive.breakReason, 'brake');
+  });
+});
+
+test('PQ-003: the line-control threshold arbitrates pay-out before Travel Burn reads brake intent', () => {
+  withFlag(true, () => {
+    const host = makeInput();
+    const state = makeState();
+    tapKey(host, state, 'NumLock');
+    runTicks(host, state, 2.0);
+    assert.equal(state.input.travelDrive.state, 'engaged');
+
+    state.player.tether = { active: true, targetId: 'rock' };
+    host._keys.Space = true;
+    runTicks(host, state, 9);
+    host._keys.ArrowDown = true;
+    host.update(DT, state);
+
+    assert.equal(state.input.actions.massline.lineControl, true);
+    assert.equal(state.input.actions.massline.payOut, 1);
+    assert.equal(state.input.travelDrive.state, 'engaged', 'pay-out is not also a Travel Burn brake');
   });
 });
 
@@ -276,8 +323,8 @@ test('every published latch state is a member of the kernel-exported enum', () =
     const seen = new Set();
     tapKey(host, state, 'NumLock');
     for (let i = 0; i < 400; i++) {
-      if (i === 150) host._keys.Space = true;
-      if (i === 152) host._keys.Space = false;
+      if (i === 150) host._keys.KeyS = true;
+      if (i === 152) host._keys.KeyS = false;
       host.update(DT, state);
       seen.add(state.input.travelDrive.state);
     }

@@ -19,7 +19,13 @@ import { restoreCombatState, serializeCombatState } from '../combat/persistence.
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import { COORDINATE_SCHEMA, applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
-import { PROFILE_SETTINGS_KEY, readProfileSettings } from '../core/graphicsProfileBootstrap.js';
+import {
+  MASSLINE_BINDING_PROFILE_LEGACY,
+  MASSLINE_BINDING_PROFILE_SPACE,
+  PROFILE_SETTINGS_KEY,
+  migrateLegacyMasslineBindingProfile,
+  readProfileSettings,
+} from '../core/graphicsProfileBootstrap.js';
 import { encodeSavePayload, SAVE_WORKER_SOURCE } from './saveWorker.js';
 
 const LS_PREFIX = 'sf.save.';
@@ -321,7 +327,7 @@ export const save = {
   },
 
   _loadProfileSettings() {
-    const profile = this._readProfileSettings();
+    const profile = migrateLegacyMasslineBindingProfile(this._readProfileSettings());
     if (!profile) return false;
     this.state.settings = sanitizeRestoredSettings(mergePlain(this.state.settings, profile));
     return true;
@@ -2194,9 +2200,17 @@ export const save = {
   _restoreSettings(d) {
     if (!d) return;
     // Deep-merge so new nested defaults absent from an old save survive (forward-compat).
-    let restored = sanitizeRestoredSettings(mergePlain(this.state.settings, d));
-    const profile = this._readProfileSettings();
-    if (profile) restored = sanitizeRestoredSettings(mergePlain(restored, profile));
+    const saveSettings = migrateLegacyMasslineBindingProfile(clonePlain(d));
+    let restored = sanitizeRestoredSettings(mergePlain(this.state.settings, saveSettings));
+    const profile = migrateLegacyMasslineBindingProfile(this._readProfileSettings());
+    if (profile) {
+      restored = sanitizeRestoredSettings(mergePlain(restored, profile));
+      // Binding maps are an atomic player profile choice. Deep-merging here would retain keys
+      // injected by old-save migration underneath a newer Space-primary profile.
+      if (profile.controls && Object.prototype.hasOwnProperty.call(profile.controls, 'bindings')) {
+        restored.controls.bindings = normalizeControlBindings(profile.controls.bindings);
+      }
+    }
     this.state.settings = restored;
   },
 
@@ -3045,6 +3059,10 @@ function sanitizeRestoredSettings(settings) {
     s.controls.flightMode = DEFAULT_FLIGHT_MODE;
   }
   s.controls.bindings = normalizeControlBindings(s.controls.bindings);
+  if (s.controls.masslineBindingProfile !== MASSLINE_BINDING_PROFILE_LEGACY
+      && s.controls.masslineBindingProfile !== MASSLINE_BINDING_PROFILE_SPACE) {
+    s.controls.masslineBindingProfile = MASSLINE_BINDING_PROFILE_SPACE;
+  }
   if (!s.controls.gamepad || typeof s.controls.gamepad !== 'object' || Array.isArray(s.controls.gamepad)) {
     s.controls.gamepad = { enabled: true, deadzone: 0.12, invertY: false };
   }

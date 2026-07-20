@@ -109,8 +109,8 @@ assert.match(stylesSrc, /body\.sf-flight-cursor[\s\S]*cursor:\s*none/,
   'flight cursor mode must hide the OS cursor so the software bullseye is the cursor');
 assert.match(inputSrc, /G auto-target/,
   'input.js header must describe G as auto-target, not legacy auto-fire');
-assert.match(inputSrc, /F tether/,
-  'input.js header must describe F as tether latch/cut');
+assert.match(inputSrc, /Space\/F Massline/,
+  'input.js header must describe Space-primary Massline with the F alias');
 assert.match(inputSrc, /autopursuit:\s*\[\]/,
   'G must remain auto-target-only; autopursuit is held by MMB so arrow pilots keep flight control');
 const autoTargetAssistSrc = read('src/systems/autoTargetAssist.js');
@@ -296,6 +296,8 @@ assert.match(helpSrc, /Countermeasure[\s\S]*R3/, 'Help Controls must document ga
 assert.match(helpSrc, /Dock \/ activate[\s\S]*A \/ X \(when prompted\)/, 'Help Controls must document gamepad dock/activate');
 assert.match(uiInputSrc, /gp\.actions\.accept[\s\S]*dockInRange[\s\S]*doDock\(\)/,
   'UI input must let gamepad A/Cross dock when the dock prompt is active');
+assert.match(uiInputSrc, /state\.ui\.dockInRange\s*=\s*dockInRange/,
+  'UI input must publish dock-prompt context so gameplay A/Cross cannot also fire Massline');
 assert.match(uiInputSrc, /case BINDINGS\.dock\.key:\s*case BINDINGS\.dock\.label:\s*case 'Enter':/,
   'UI input must route the live dock key, visible dock label, and Enter to the dock action');
 assert.match(uiInputSrc, /isMapScreenId\(top\)[\s\S]*gp\.actions\.map[\s\S]*screenManager\.popScreen\(\)/,

@@ -198,12 +198,18 @@ function buildHarness(contacts, options = {}) {
     cut: [],
     released: [],
     broke: [],
+    reel: [],
+    lineControlDenied: [],
+    toasts: [],
   };
   bus.on('tether:latched', (payload) => events.latched.push(clone(payload)));
   bus.on('tether:latchDenied', (payload) => events.denied.push(clone(payload)));
   bus.on('tether:cut', (payload) => events.cut.push(clone(payload)));
   bus.on('tether:released', (payload) => events.released.push(clone(payload)));
   bus.on('tether:broke', (payload) => events.broke.push(clone(payload)));
+  bus.on('tether:reel', (payload) => events.reel.push(clone(payload)));
+  bus.on('tether:lineControlDenied', (payload) => events.lineControlDenied.push(clone(payload)));
+  bus.on('toast', (payload) => events.toasts.push(clone(payload)));
 
   const catalog = createCombatCatalog();
   const helpers = { combatPhysics: stubCombatPhysics() };
@@ -662,4 +668,64 @@ test('T04 §5: two identical runs produce byte-equal observed event streams', ()
 test('T04 fixture: tether_standard maxLength matches TETHER_DEF', () => {
   const catalog = createCombatCatalog();
   assert.equal(catalog.attachments.get('tether_standard').maxLength, TETHER_DEF.maxLength);
+});
+
+test('PQ-003 normalized pay-out reaches attachment authority, respects max length, and reports the boundary', () => {
+  const h = buildHarness([asteroid(701, { pos: { x: 120, z: 0 } })], { aimWorld: { x: 120, z: 0 } });
+  fireLatch(h);
+  const attachment = h.attachments.get(h.system._active.attachmentId);
+  const before = attachment.restLength;
+
+  h.state.input.actions = {
+    tetherFire: false, tetherCut: false, reelDelta: 0,
+    massline: { lineControl: true, lineLength: 1, payOut: 1, reelIn: 0, orbitDirection: 0, pump: false },
+  };
+  h.system.update(DT, h.state);
+  assert.ok(attachment.restLength > before, 'positive normalized line rate pays out authoritative rest length');
+  assert.equal(h.events.reel.length, 1);
+  assert.ok(h.events.reel[0].after > h.events.reel[0].before);
+
+  attachment.restLength = TETHER_DEF.maxLength;
+  h.system.update(DT, h.state);
+  assert.equal(attachment.restLength, TETHER_DEF.maxLength, 'pay-out cannot exceed authored max length');
+  assert.equal(h.events.lineControlDenied.at(-1)?.reason, 'maximum_length');
+});
+
+test('PQ-003 loaded reel-in fails closed with a named load-policy denial while pay-out remains available', () => {
+  const h = buildHarness([asteroid(702, { pos: { x: 120, z: 0 } })], { aimWorld: { x: 120, z: 0 } });
+  fireLatch(h);
+  const attachment = h.attachments.get(h.system._active.attachmentId);
+  const breakPolicy = h.attachments.breakPolicy(attachment.id);
+  attachment.lastTension = breakPolicy.maxTension * 0.95;
+  const before = attachment.restLength;
+
+  h.state.input.actions = {
+    tetherFire: false, tetherCut: false, reelDelta: 0,
+    massline: { lineControl: true, lineLength: -1, payOut: 0, reelIn: 1, orbitDirection: 0, pump: false },
+  };
+  h.system.update(DT, h.state);
+  assert.equal(attachment.restLength, before);
+  assert.equal(h.events.lineControlDenied.at(-1)?.reason, 'load_limit');
+  assert.equal(h.events.toasts.at(-1)?.text, 'Massline reel-in blocked: line load too high');
+  h.system.update(DT, h.state);
+  assert.equal(h.events.toasts.length, 1, 'a held blocked command produces one feedback pulse');
+
+  h.state.input.actions.massline.lineLength = 1;
+  h.state.input.actions.massline.reelIn = 0;
+  h.state.input.actions.massline.payOut = 1;
+  h.system.update(DT, h.state);
+  assert.ok(attachment.restLength > before, 'pay-out can unload a highly strained line');
+});
+
+test('PQ-003 normalized quick cut executes in the same tether tick', () => {
+  const h = buildHarness([asteroid(703, { pos: { x: 120, z: 0 } })], { aimWorld: { x: 120, z: 0 } });
+  fireLatch(h);
+  h.state.input.actions = {
+    tetherFire: false, tetherCut: false, reelDelta: 0,
+    massline: { cut: true, lineControl: false, lineLength: 0, payOut: 0, reelIn: 0, orbitDirection: 0, pump: false },
+  };
+
+  h.system.update(DT, h.state);
+  assert.equal(h.events.released.length, 1);
+  assert.equal(h.state.player.tether.active, false);
 });

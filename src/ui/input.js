@@ -64,6 +64,9 @@ export function createUiInput(ctx, screenManager) {
   unsubscribers.push(bus.on('dock:range', ({ stationId, inRange }) => {
     dockInRange = !!inRange;
     dockStationId = inRange ? stationId : null;
+    // PQ-003 contextual A/Cross arbitration: UI owns docking when the prompt is live; the flight
+    // input owner reads this UI-owned fact so the same press cannot also latch the Massline.
+    state.ui.dockInRange = dockInRange;
   }));
   unsubscribers.push(bus.on('dock:undocked', () => { /* HUD restoration handled in uiRoot */ }));
 

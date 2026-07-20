@@ -6,7 +6,7 @@
 // merged in src/systems/input.js; UI navigation is consumed in src/ui/input.js.
 //
 // Standard mapping (Xbox / PlayStation equivalent):
-//   0  A / Cross      -> accept / confirm (UI) or dock / activate (flight)
+//   0  A / Cross      -> accept / dock when prompted; otherwise Massline thumb action in flight
 //   1  B / Circle      -> cancel / back
 //   2  X / Square      -> cycle target
 //   3  Y / Triangle    -> codex / journal
@@ -54,6 +54,7 @@ const ACTION_MAP = {
   pause: ['menu'],
   countermeasure: ['r3'],
   accept: ['accept'],
+  massline: ['accept'],
   cancel: ['cancel'],
   tabPrev: ['l1'],
   tabNext: ['r1'],

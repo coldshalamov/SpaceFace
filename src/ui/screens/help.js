@@ -79,13 +79,14 @@ const SECTIONS = [
     ['Lateral thruster (left)', 'strafeLeft', 'Q / E'],
     ['Lateral thruster (right)', 'strafeRight', 'Q / E'],
     ['Boost (hold) / Dash (tap)', 'boost', 'Shift'],
-    ['Fire weapons', 'fire', 'LMB / Space'],
+    ['Fire weapons', 'fire', 'LMB'],
     ['Auto-target toggle', 'autoFire', 'G'],
     ['Countermeasure', 'countermeasure', 'X'],
-    // Rebindable tether verbs (live labels from settings; defaults KeyF / unbound / unbound).
-    ['Tether latch / cut', 'tether', 'F'],
-    ['Tether winch in', 'reelIn', '—'],
-    ['Tether winch out', 'reelOut', '—'],
+    // The primary/alias pair remains live and rebindable. Directional line control is contextual.
+    ['Massline tap: latch / cut', 'tether', 'Space / F'],
+    ['Massline line control', null, 'Hold + ↑/↓/←→: reel/pay out/orbit; Shift pump'],
+    ['Massline dedicated reel in', 'reelIn', '—'],
+    ['Massline dedicated pay out', 'reelOut', '—'],
   ]],
   ['Interface (fixed keys)', [
     ['Aim weapons', null, 'Mouse'],
@@ -112,6 +113,7 @@ const SECTIONS = [
     ['Mine beam', null, 'LT / L2'],
     ['Boost', null, 'RB / R1'],
     ['Brake / reverse', null, 'LB / L1'],
+    ['Massline', null, 'A / X: Massline (dock/accept when prompted)'],
     ['Countermeasure', null, 'R3'],
     ['Cycle target', null, 'X / □'],
     ['Open star-map', null, 'View / Select'],

@@ -16,6 +16,7 @@ function defaultSettings() {
     gameplay: { autosaveIntervalS: 120, tutorialHints: true, difficulty: 'standard', physicsBackend: 'rapier-dynamic', aiBackend: 'sg06-tactical', flightBackend: 'v3', controlScheme: 'pilot', controlSchemeV2: true },
     controls: {
       bindings: null,       // null = use input.js DEFAULT_BINDINGS; populated on first rebind
+      masslineBindingProfile: 'space-v1', // new profiles: Space primary + persistent F alias
       flightMode: 'assisted',
       gamepad: { enabled: true, deadzone: 0.12, invertY: false },
     },

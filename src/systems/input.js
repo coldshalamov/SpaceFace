@@ -3,26 +3,27 @@
 // ('pilot' default | 'helm-assist' | 'classic'):
 //
 //   PILOT (default) — KEYBOARD FLIES, MOUSE FIGHTS. Outside auto-target, the mouse never steers the nose: it aims
-//   weapons, picks targets and throws the tether. W/↑ thrust, S/↓ retro, Space brake-to-stop.
+//   weapons, picks targets and throws the Massline. W/↑ thrust, S/↓ brakes/reverses.
 //   A/D and ←/→ are CONTEXTUAL — one rule: while coasting they YAW the nose (line up a retro
 //   burn, whip the nose around mid-drift); while forward thrust is held they STRAFE, with a
 //   gentle coordinated carve (PILOT_CARVE_TURN) so W+D still banks into a curve instead of
-//   crab-sliding. Space brake restores full yaw authority so you can spin hard without releasing
+//   crab-sliding. S/↓ brake restores full yaw authority so you can spin hard without releasing
 //   thrust. Q/E strafe explicitly in every state (orbit-adjust during pursuit). LMB fire.
 //
 //   HELM ASSIST — the ship's NOSE FOLLOWS THE MOUSE CURSOR (rate-limited by the ship's
-//   own turn stats, so mass still reads). W/S thrust fwd/rev, A/D lateral strafe, Space =
-//   brake-to-stop (computed counter-thrust through the normal thrust pipeline — heavy ships brake
+//   own turn stats, so mass still reads). W thrusts, S/↓ brakes/reverses, A/D lateral strafe.
+//   Braking is computed through the normal thrust pipeline — heavy ships brake
 //   heavy). LMB fire. Arrows also fly: up/down thrust, left/right strafe while forward thrust is
 //   held; left/right arrows yaw the ship when forward thrust is not held so keyboard pilots still
 //   have direct nose control.
 //
 //   CLASSIC — the 1.x scheme: ↑/W throttle, A/D yaw the nose (bank into turns), Q/E strafe,
-//   mouse aims weapons independently, Space fires. The arrow cluster keeps the same flight split:
+//   mouse aims weapons independently, LMB fires. The arrow cluster keeps the same flight split:
 //   bare ←/→ yaw, W/↑ + ←/→ strafe.
 //
 //   ALL schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · G auto-target
-//   toggle (owned by autoTargetAssist — guns track lock, captured motion draws the flight route) · F tether latch/cut · Q charge throw (helm) · R detonate
+//   toggle (owned by autoTargetAssist — guns track lock, captured motion draws the flight route) ·
+//   Space/F Massline (tap latch/cut, hold line control) · Q charge throw (helm) · R detonate
 //   charges · C scanner pulse · V cruise.
 //   MMB TAP = pursuit/approach toggle: ship target → sustained autopursuit (tail + speed-match,
 //   fight with the mouse while the flight computer flies); station/other target → goto autopilot.
@@ -45,6 +46,7 @@
 // for movement so arrow-key players aren't stranded.
 import { createGamepad } from './gamepad.js';
 import { createTouch } from './touch.js';
+import { createMasslineInputGrammar } from './masslineInputGrammar.js';
 import { wrapAngle } from '../core/rng.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 import { TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
@@ -221,7 +223,7 @@ function stepTravelLatch(host, state, inp, dt) {
 
 // Verb keys shared by both schemes (GDD 2.0 physics verbs + sensors).
 const VERB_BINDINGS = {
-  tether:         ['KeyF'],   // edge: latch when free, cut when attached (WASD-adjacent)
+  tether:         ['Space', 'KeyF'], // PQ-003: Space primary, F retained as a permanent alias
   chargeDetonate: ['KeyR'],   // edge: detonate all armed impulse charges
   scanPulse:      ['KeyC'],   // edge: scanner pulse (8 s cd owned by scanner system)
   cruise:         ['KeyV'],   // edge: toggle cruise charge (cruise system owns state)
@@ -251,7 +253,7 @@ const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
   strafeLeft:  ['KeyQ'],
   strafeRight: ['KeyE'],
   boost:    ['ShiftLeft', 'ShiftRight'],
-  fire:     ['Space'],          // mouse LMB also fires (see update)
+  fire:     [],                 // LMB fires; Space is the new-profile Massline action
   brake:    [],                 // classic derives brake from reverse-held (legacy feel)
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],    // deploy chaff/ECM (P1-7) — X by default, remappable
@@ -271,8 +273,8 @@ const HELM_BINDINGS = {      // HELM ASSIST (default): mouse owns the nose
   strafeLeft:  ['KeyA', 'ArrowLeft'],
   strafeRight: ['KeyD', 'ArrowRight'],
   boost:    ['ShiftLeft', 'ShiftRight'],
-  fire:     [],                // LMB only — Space becomes brake
-  brake:    ['Space'],
+  fire:     [],                // LMB only
+  brake:    [],                // S/Down brakes; Space is Massline on new profiles
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],
   chargeThrow: ['KeyQ'],
@@ -290,7 +292,7 @@ const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fights
   strafeRight: ['KeyE'],
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     [],                      // LMB fires — the mouse is a weapon, not a rudder
-  brake:    ['Space'],
+  brake:    [],                      // S/Down brakes; Space is Massline on new profiles
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],
   chargeThrow: ['KeyY'],             // Q/E are strafe here, so throw lives on Y (classic parity)
@@ -563,6 +565,7 @@ export const input = {
     this._screen = { x: Math.floor(viewportW * 0.5), y: Math.floor(viewportH * 0.5), active: false };
     resetAutoTargetPath(this, this.state);
     this._m0 = false; this._m1 = false; this._m2 = false;
+    this._masslineGrammar = createMasslineInputGrammar();
     this._lastKbmMs = performance.now();
     this._canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
 
@@ -594,7 +597,11 @@ export const input = {
       const code = eventCode(e);
       if (code) keys[code] = false;
     });
-    addEventListener('blur', () => { for (const k in keys) keys[k] = false; this._m0 = this._m1 = this._m2 = false; });
+    addEventListener('blur', () => {
+      for (const k in keys) keys[k] = false;
+      this._m0 = this._m1 = this._m2 = false;
+      this._masslineGrammar.reset();
+    });
     const pointerSurface = this._canvas || window;
     const handlePointerMove = (e) => {
       if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
@@ -690,6 +697,7 @@ export const input = {
       chargeThrow: false, chargeDetonate: false, scanPulse: false, autopursuit: false, deployBeacon: false,
       bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false,
     });
+    const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     if (state.mode !== 'flight' || state.ui.screenStack.length > 0 || modalInputActive()) {
       // No flight input while docked/modal: zero thrust/turn/fire but keep aim so the reticle rests.
       inp.moveX = 0; inp.moveZ = 0; inp.turnIntent = 0;
@@ -698,6 +706,9 @@ export const input = {
       acts.reelDelta = 0; acts.chargeThrow = false; acts.chargeDetonate = false; acts.scanPulse = false; acts.autopursuit = false;
       acts.deployBeacon = false;
       acts.bulletTime = false; acts.cloakToggle = false; acts.throwArm = false; acts.travelBurn = false;
+      const masslineHeldThroughModal = this._held(state, 'tether')
+        || !!(gp && gp.isConnected() && gp.actions.massline && gp.actions.massline.held);
+      acts.massline = masslineGrammar.reset(masslineHeldThroughModal);
       inp.tetherMode = null;
       resetAutoTargetPath(this, state);
       inp.autoTargetVector = neutralAutoTargetVector();
@@ -723,12 +734,14 @@ export const input = {
     const kbdBrakeHeld = this._held(state, 'brake');
     let kbdTurn = 0;
     let kbdMoveX = 0;
+    let kbdLineOrbit = 0;
     if (pilot) {
       // PILOT: one rule. Coasting → side keys YAW the nose (line up retro burns, spin
       // mid-drift). Forward thrust held → side keys STRAFE, blended with a gentle carve yaw
       // so W+D banks into a curve. Brake restores coasting yaw so W+Space+A/D spins fast.
       // Q/E strafe explicitly in every state.
       const side = (this._held(state, 'yawRight') ? 1 : 0) - (this._held(state, 'yawLeft') ? 1 : 0);
+      kbdLineOrbit = side;
       const explicit = (this._held(state, 'strafeRight') ? 1 : 0) - (this._held(state, 'strafeLeft') ? 1 : 0);
       if (up && !kbdBrakeHeld) {
         kbdMoveX = Math.max(-1, Math.min(1, side + explicit));
@@ -758,6 +771,7 @@ export const input = {
         ? ((arrowRightHeld ? 1 : 0) - (arrowLeftHeld ? 1 : 0))
         : 0;
       kbdTurn = arrowTurn || ((right ? 1 : 0) - (left ? 1 : 0));
+      kbdLineOrbit = kbdTurn;
       kbdMoveX = (strafeRight ? 1 : 0) - (strafeLeft ? 1 : 0);
     }
     const kbdMoveZ = (up ? 1 : 0) - (down ? 1 : 0);
@@ -925,12 +939,30 @@ export const input = {
       edges[action] = held;
       return held && !was;
     };
-    const tetherEdge = edge('tether');
     const tetherHeld = this._held(state, 'tether');
+    const gpMassline = gp && gp.isConnected() && gp.actions.massline;
+    const gpMasslineAllowed = !(state.ui && state.ui.dockInRange);
+    const gpMasslineHeld = !!(gpMasslineAllowed && gpMassline && gpMassline.held);
+    const masslineHeld = tetherHeld || gpMasslineHeld;
+    const tetherActive = !!(state.player && state.player.tether && state.player.tether.active);
+    const dedicatedLineLength = (this._held(state, 'reelOut') ? 1 : 0) - (this._held(state, 'reelIn') ? 1 : 0);
+    const rawLineLength = dedicatedLineLength || -inp.moveZ;
+    const rawOrbitDirection = kbdLineOrbit || gpTurn || tpTurn;
+    const masslineCommand = (!tetherHeld && gpMassline && gpMassline.held && !gpMasslineAllowed)
+      ? masslineGrammar.reset(true)
+      : masslineGrammar.step(dt, {
+        attached: tetherActive,
+        held: masslineHeld,
+        lineLength: rawLineLength,
+        orbitDirection: rawOrbitDirection,
+        pump: inp.boost,
+        source: tetherHeld ? 'keyboard' : (gpMasslineHeld ? 'gamepad' : null),
+      });
     const nearestTetherMode = !!(this._keys.ControlLeft || this._keys.ControlRight);
-    acts.tetherFire = tetherEdge;    // tetherGameplay disambiguates by attach state:
-    acts.tetherCut = tetherEdge;     // free -> latch, attached -> cut (single F toggle)
-    inp.tetherMode = tetherEdge && nearestTetherMode ? 'nearest' : null;
+    acts.massline = masslineCommand;
+    acts.tetherFire = masslineCommand.latch;
+    acts.tetherCut = masslineCommand.cut;
+    inp.tetherMode = masslineCommand.latch && nearestTetherMode ? 'nearest' : null;
     acts.chargeThrow = edge('chargeThrow');
     acts.chargeDetonate = edge('chargeDetonate');
     acts.scanPulse = edge('scanPulse');
@@ -944,23 +976,28 @@ export const input = {
     acts.cloakToggle = edge('cloak');
     acts.throwArm = throwArmHeld;
     // Travel Burn latch (D5/W1-5). Edge-triggered toggle; the state machine below owns what a
-    // press MEANS in each state (arm a spool, cancel a spool, disengage a burn). Stepped after
-    // inp.brake/moveZ are final this tick, because braking is what breaks the latch.
+    // press MEANS in each state (arm a spool, cancel a spool, disengage a burn).
     const travelPressed = edge('travelBurn') || !!(gp && gp.isConnected() && gp.actions.travelBurn && gp.actions.travelBurn.pressed);
     this._travelEdge = travelPressed;
     acts.travelBurn = travelPressed;
-    stepTravelLatch(this, state, inp, dt);
-    // Holding F after latch SHORTENS the line. Positive reelDelta = longer rest length in the tether
-    // system. Arrow keys stay reserved for flight in Helm Assist.
-    const arrowReelDelta = (this._held(state, 'reelOut') ? 1 : 0) - (this._held(state, 'reelIn') ? 1 : 0);
-    const tetherActive = !!(state.player && state.player.tether && state.player.tether.active);
-    const holdReelDelta = tetherHeld && tetherActive ? -1 : 0;
-    acts.reelDelta = Math.max(-1, Math.min(1, arrowReelDelta + holdReelDelta));
+    // Positive reelDelta lengthens the authoritative line; line-control uses ship-local axes.
+    acts.reelDelta = masslineCommand.lineControl ? masslineCommand.lineLength : dedicatedLineLength;
+    if (masslineCommand.lineControl) {
+      // Line-control axes are ship-local commands, not simultaneous flight commands. Releasing the
+      // Massline action restores manual flight on the next fixed tick; weapon aim/fire stay free.
+      inp.moveX = 0;
+      inp.moveZ = 0;
+      inp.turnIntent = 0;
+      inp.boost = false;
+      inp.brake = false;
+    }
     acts.brake = inp.brake;
+    // Run after Massline arbitration so line-control axes cannot also masquerade as manual braking.
+    stepTravelLatch(this, state, inp, dt);
 
     // --- Helm Assist steering (GDD §4.1): the nose chases the cursor unless direct yaw is held.
     // Gamepad/touch players keep stick-yaw even in helm scheme (kbmRecent gates the override).
-    if (helm && p && kbmRecent && this._screen.active) {
+    if (helm && p && kbmRecent && this._screen.active && !masslineCommand.lineControl) {
       const manualYaw = Math.abs(inp.turnIntent) > 0.001;
       // Tether trailing (GDD §4.3): while latched and loaded, hand most attitude authority to
       // the line — the nose-anchored joint torques the hull, so the tail swings outboard and the

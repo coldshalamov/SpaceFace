@@ -1540,14 +1540,12 @@ export function createHud(ctx, alerts) {
 
   function buildTetherControlPrompt(tether) {
     if (!tether || !tether.active) return '';
-    // No hard-coded F: explicit empty rebind must not lie about the key.
     const cutLabel = resolveActionLabel(state, 'tether');
     const reelInLabel = resolveActionLabel(state, 'reelIn');
     const reelOutLabel = resolveActionLabel(state, 'reelOut');
     const parts = [];
-    // Hold tether still reels in (input contract); dedicated reel keys only when rebound.
+    if (cutLabel) parts.push(`HOLD [${cutLabel}] ↑ REEL · ↓ PAY OUT · ←→ ORBIT · SHIFT PUMP`);
     if (reelInLabel) parts.push(`[${reelInLabel}] REEL IN`);
-    else if (cutLabel) parts.push(`HOLD [${cutLabel}] REEL`);
     if (reelOutLabel) parts.push(`[${reelOutLabel}] PAY OUT`);
     if (cutLabel) parts.push(`TAP [${cutLabel}] CUT`);
     // Intentionally unbound tether: omit HOLD/TAP key copy; say UNBOUND truthfully when nothing else.
@@ -3525,7 +3523,8 @@ export function createHud(ctx, alerts) {
           const strain = tether.strain || 0;
           const targetEnt = state.entities.get(tether.targetId);
           const targetName = (targetEnt && (targetEnt.name || (targetEnt.data && targetEnt.data.name))) || (targetEnt ? targetEnt.type : '');
-          const status = strain > 0.85 ? 'CRITICAL' : strain > 0.6 ? 'STRAINED' : (tether.reeling ? 'REELING' : 'LOCKED');
+          const status = strain > 0.85 ? 'CRITICAL' : strain > 0.6 ? 'STRAINED' :
+            (tether.reeling ? 'REELING' : tether.payingOut ? 'PAYING OUT' : tether.lineControl ? 'LINE CONTROL' : 'LOCKED');
           const controls = buildTetherControlPrompt(tether);
           const nameBit = targetName ? ' · ' + String(targetName).toUpperCase() : '';
           setText(elTether, `${status}${nameBit}${controls ? ' · ' + controls : ''}`);

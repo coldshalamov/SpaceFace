@@ -94,6 +94,7 @@ currentPads = [makePad({ buttons: { 0: true, 1: true } })];
 gp.tick(0);
 assert(gp.actions.accept.pressed, 'A maps to accept');
 assert(gp.actions.cancel.pressed, 'B maps to cancel');
+assert(gp.actions.massline && gp.actions.massline.pressed, 'A also maps to contextual Massline in open flight');
 
 // Axis normalization and deadzone.
 currentPads = [makePad({ axes: [0.5, -0.8, 0.05, 0.05] })];

@@ -1,0 +1,93 @@
+packet: SF-04
+prompt_file: SF-04_HARD_Massline_Input_Grammar_Buffered_Intent_Reel_Pay_Out_and_Cut.md
+agent: /root
+base_commit: aec26203573e1d78a499ddbb3ce586420acd8c4f
+result_commit: uncommitted
+worktree: 'C:\Users\93rob\Documents\GitHub\SpaceFace'
+state_reached: FOCUSED_GREEN
+dependencies_seen:
+  - 'PQ-001: live integrated baseline authority'
+  - 'PQ-002 / SF-02: deterministic control lab at base HEAD aec26203'
+  - 'SF-03 declaration in the raw prompt is obsolete: canonical PQ-004 depends on PQ-003'
+paths_changed:
+  - SAVE_SCHEMA.md
+  - scripts/check-controls-discoverability.mjs
+  - scripts/check-gamepad.mjs
+  - scripts/check-input-modalities.mjs
+  - scripts/check-settings-profile-persistence.mjs
+  - src/core/gameState.js
+  - src/core/graphicsProfileBootstrap.js
+  - src/save/saveSystem.js
+  - src/systems/gamepad.js
+  - src/systems/input.js
+  - src/systems/masslineInputGrammar.js
+  - src/systems/tetherGameplay.js
+  - src/ui/controlPrompts.js
+  - src/ui/hud.js
+  - src/ui/input.js
+  - src/ui/screens/help.js
+  - src/ui/screens/settings.js
+  - test/massline-input-grammar.test.mjs
+  - test/tether-latch-eligibility.test.mjs
+  - test/travel-latch.test.mjs
+  - design/sequential-build-plan/PLANS/receipts/SF-04.yaml
+shared_change_requests:
+  - 'Lead: run the ordinary browser and Electron input routes plus a current Controls-screen capture under the browser/GPU mutex.'
+  - 'Lead: stage and commit only the reviewed PQ-003 write set; git-index ownership remains held by the controller.'
+  - 'Lead: update NOW and program-queue state only after integration and route evidence.'
+proof:
+  - command: 'node --test test/massline-input-grammar.test.mjs test/tether-latch-eligibility.test.mjs test/travel-latch.test.mjs'
+    result: 'exit 0; 40 passed, 0 failed'
+  - command: 'node scripts/check-gamepad.mjs'
+    result: 'exit 0; 22 assertions passed, 0 failed'
+  - command: 'node scripts/check-input-modalities.mjs'
+    result: 'exit 0; keyboard, mouse/trackpad, gamepad, touch, modal, and dock arbitration contract green'
+  - command: 'node scripts/check-controls-discoverability.mjs'
+    result: 'exit 0; Settings, Help, HUD, and persistent prompt contract green'
+  - command: 'npm run check:settings-profile'
+    result: 'exit 0; profile binding migration and atomic old-save override green'
+  - command: 'npm run check:save-schema'
+    result: 'exit 0; save schema v11, 257 paths'
+  - command: 'npm run check:massline'
+    result: 'exit 0; 23 child checks green'
+  - command: 'npm run check:massline:lab'
+    result: 'exit 0; 5 tests passed, deterministic digest e935221548baada12e2e58eccf322bf1455f08b872a3010d8d99fdd8cc7444e2'
+  - command: 'npm run check:sim:compare'
+    result: 'exit 0; deterministic true, uninterrupted/reload hashEqual true, firstDivergentTick null'
+  - command: 'node test/flightV3.spec.mjs && node scripts/flight-lab-sim.mjs'
+    result: 'exit 0; generated flight checks pass and headless lab ok'
+  - command: 'npm run check:ui-a11y'
+    result: 'exit 0; 9 checks passed'
+  - command: 'npm run check:wcag-contrast'
+    result: 'exit 0; all panel-composited text passes; 11 raw-nebula diagnostic pairs remain below threshold'
+  - command: 'git diff --check -- <PQ-003 write set>'
+    result: 'exit 0'
+  - command: 'node --input-type=module -e <required receipt field check>'
+    result: 'exit 0; required top-level receipt fields and identity/state present'
+  - command: "node --input-type=module -e <import YAML and parse receipt>"
+    result: "exit 1; tooling-only ERR_MODULE_NOT_FOUND because the repository does not install a YAML parser; no dependency was added"
+  - command: 'npm run check:flight:clean'
+    result: 'incomplete by coordination: flight spec and headless lab passed; Chrome probe was stopped after discovering the lead-held browser/GPU mutex'
+public_route:
+  status: not-run
+  route: 'Ordinary flight: preview a candidate, Space latch, hold Space plus Up/Down/Left/Right for reel/pay-out/orbit intent, Shift pump intent, release from hold without cutting, then quick-tap Space to cut; repeat with F alias and A/Cross gamepad mapping while verifying dock/accept priority.'
+  artifacts: []
+visual_review:
+  required: true
+  status: pending
+performance:
+  status: pass
+  metrics:
+    headless_flight_240_ships_ms_per_tick: 1.0210227777777776
+    headless_physics_40_ships_72_statics_ms_per_tick: 0.3953675000000004
+known_failures:
+  - 'No current browser, Electron, or Controls-screen capture exists for PQ-003 because the live lead owns that single-user evidence mutex.'
+  - 'check:sim:compare exits 0 and hashes match, but its expected-telemetry report retains the baseline expected-hash and nine presentation-count diffs; no golden was rewritten.'
+  - 'The generated save-schema refresh also corrected the pre-existing bloomThreshold sample from 0.72 to the live HEAD default 1.0.'
+  - 'The raw-nebula contrast diagnostic retains 11 below-threshold pairs; the checker confirms all panel-composited text passes.'
+unproven_claims:
+  - 'Ordinary player-route feel, thumb ergonomics, and current HUD/control-screen legibility are unproven until lead-owned browser/Electron acceptance.'
+  - 'Orbit direction and pump are normalized intents only; final orbit/pump physics authority remains deliberately outside PQ-003.'
+follow_ons:
+  - 'PQ-004 / SF-03: truthful pre-latch preview and intent-aware acquisition.'
+  - 'PQ-005 / SF-05: consume normalized orbit intent through bounded physics commands without changing this input grammar.'
