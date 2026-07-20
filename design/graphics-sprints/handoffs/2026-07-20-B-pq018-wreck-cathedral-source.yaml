@@ -1,8 +1,8 @@
 handoff_version: 1
 thread: B
-sprint_id: 2026-07-20-pq018-wreck-cathedral-source
-agent: codex-gpt5
-completed_at: 2026-07-20T10:32:43Z
+sprint_id: 2026-07-20-B-pq018-wreck-cathedral-source
+agent: codex-root
+completed_at: 2026-07-20T10:31:51Z
 
 packet: PQ-018
 subslice: source_asset
@@ -12,9 +12,13 @@ terminal: false
 review_status: needs_review
 runtime_wired: false
 route_accepted: false
+
+branch: codex/pq018-wreck-cathedral-source-20260720
+worktree: C:/Users/93rob/sf-pq018
 base_commit: aec26203573e1d78a499ddbb3ce586420acd8c4f
 result_commit: 68bb0e9f9ecd59e7364df016169a2065a5f29137
-handoff_path: design/graphics-sprints/handoffs/2026-07-20-B-pq018-wreck-cathedral-source.yaml
+result_commit_changed_path_count: 60
+handoff_changed_path: design/graphics-sprints/handoffs/2026-07-20-B-pq018-wreck-cathedral-source.yaml
 
 assets:
   - id: place_landmark_wreck_cathedral
@@ -28,70 +32,152 @@ assets:
     runtimeSlots: place
     blocked: false
     blocked_reason: ""
-    bounds_m: [633.5024, 369.8917, 282.5917]
-    lod_triangles:
-      LOD0: 91908
-      LOD1: 34164
-      LOD2: 8364
-    materials: 8
-    textures: 26
-    estimated_texture_memory_mib_rgba8_with_mips: 26.667
-    flythrough_clearance:
-      declared_width_m: 72
-      declared_height_m: 58
-      sampled_inset_width_m: 64
-      sampled_inset_height_m: 50
-      samples: 75
-      hits: 0
-      pass: true
+    authorship: project-original deterministic Blender construction; no external donor assets
 
 hashes:
-  blend_sha256: 1bc08169c13b76c9caf2273c50d07be51a6ce84bacd8dca8831c4f9bec48ac13
-  glb_sha256: f335935f9658bad0e721aceb5d66bb4c2f0457fe411442819b4a3455a00af704
-  sha256_manifest: assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/sha256-manifest.json
-  sha256_manifest_sha256: c6c881a38a5dfe3ccf8ec2c822b481ea06e59e7f73c662eb545ce2da6c32f169
-  texture_hash_coverage: all 26 authored texture files are enumerated in sha256_manifest
-  representative_captures:
-    neutral_close_3q: 48125e6eb77cf3d309d934d8a2f66f3ed8c8f15e8a9368f75a0ad5c17ef27166
-    neutral_gameplay_distance: fa520d4f22906c730085c4afdf1fd1d673d2be9aa281c4c4735fc90956970e7e
-    neutral_flythrough_cavity: 7c56440e8b8e7a1a982c74d2aa2ecabcf4d824fd0bf62a27c826c888cef81e78
-    wireframe_3q: 92634370f669cc6ca0bc8471dd7b1be4297c9ef86a975aade0414364ebc8b38d
-    silhouette_lod0: 64767180bd92c4aa6015afe6afdde88f17fb693026cea916dcdeeaa79f575d6b
-    silhouette_lod1: a6b4b171e81fa5a45da034c60f23cd6d1c4b98331edb2a75655a28410783f3eb
-    silhouette_lod2: 120e031c60da00b80188b4c81b61c9356c5bdeeb5a00f736069881b5d9e9356e
-    turntable: 1937900331abeef1c06c265ee5ecd42bbe4dc3d0376c1560c2561bfb73237c9a
+  algorithm: SHA-256
+  blend: 1bc08169c13b76c9caf2273c50d07be51a6ce84bacd8dca8831c4f9bec48ac13
+  glb: f335935f9658bad0e721aceb5d66bb4c2f0457fe411442819b4a3455a00af704
+  turntable: 1937900331abeef1c06c265ee5ecd42bbe4dc3d0376c1560c2561bfb73237c9a
+  neutral_close_3q: 48125e6eb77cf3d309d934d8a2f66f3ed8c8f15e8a9368f75a0ad5c17ef27166
+  neutral_flythrough_cavity: 7c56440e8b8e7a1a982c74d2aa2ecabcf4d824fd0bf62a27c826c888cef81e78
+  neutral_gameplay_distance: fa520d4f22906c730085c4afdf1fd1d673d2be9aa281c4c4735fc90956970e7e
+  complete_manifest: assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/sha256-manifest.json
+  complete_manifest_sha256: c6c881a38a5dfe3ccf8ec2c822b481ea06e59e7f73c662eb545ce2da6c32f169
+  complete_manifest_entries: 45
+  texture_hash_entries: 26
+
+metrics:
+  blend_bytes: 9603510
+  glb_bytes: 11155156
+  bounds_m: [633.5024, 369.8917, 282.5917]
+  triangles:
+    lod0: 91908
+    lod1: 34164
+    lod2: 8364
+  draw_groups_per_lod: 8
+  materials: 8
+  textures: 26
+  estimated_texture_memory_mib_rgba8_with_mips: 26.667
+  flythrough_clearance:
+    declared_width_m: 72
+    declared_height_m: 58
+    sampled_inset_width_m: 64
+    sampled_inset_height_m: 50
+    sample_count: 75
+    hit_count: 0
+    pass: true
 
 validation_commands:
-  - command: python tools/blender/spaceface_export.py --validate-only assets/ships/parts/places/place_landmark_wreck_cathedral.glb --kind landmark --id place_landmark_wreck_cathedral --asset-id SF_LANDMARK_PLACE_LANDMARK_WRECK_CATHEDRAL --slot place
-    exit_code: 0
-    result: spaceface.export.v1 ok=true; diagnostics=[]
-  - command: node tools/art/validate_gltf_assets.mjs --input C:/Users/93rob/sf-pq018/assets/ships/parts/places/place_landmark_wreck_cathedral.glb --out C:/Users/93rob/sf-pq018/assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/gltf-validator
-    exit_code: 0
-    result: Khronos glTF Validator 2.0.0-dev.3.10; 0 errors, 0 warnings, 0 infos, 0 hints
-  - command: ffprobe -v error -select_streams v:0 -count_frames -show_entries stream=codec_name,width,height,r_frame_rate,nb_read_frames,pix_fmt -show_entries format=duration,size -of json assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/turntable/place_landmark_wreck_cathedral_turntable.mp4
-    exit_code: 0
-    result: H.264 yuv420p; 1280x720; 30 fps; 60 frames; 2.0 seconds
-  - command: recompute SHA-256 for every reports/sha256-manifest.json entry
-    exit_code: 0
-    result: 45 entries checked; 0 mismatches
-  - command: parse every JSON file below the PQ-018 reports directory
-    exit_code: 0
-    result: 11 reports checked; 0 parse failures
-  - command: git diff --check
-    exit_code: 0
-    result: no whitespace errors
+  - >-
+    & 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python
+    'assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/author_wreck_cathedral.py'
+    -- --rebuild-textures
+  - >-
+    & 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background
+    'assets/ships/parts/blender/place_landmark_wreck_cathedral.blend' --python
+    'assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/render_wreck_cathedral_evidence.py'
+    -- --resume
+  - >-
+    python tools/blender/spaceface_export.py --validate-only
+    assets/ships/parts/places/place_landmark_wreck_cathedral.glb --kind landmark
+    --id place_landmark_wreck_cathedral
+    --asset-id SF_LANDMARK_PLACE_LANDMARK_WRECK_CATHEDRAL --slot place
+  - >-
+    node tools/art/validate_gltf_assets.mjs
+    --input C:/Users/93rob/sf-pq018/assets/ships/parts/places/place_landmark_wreck_cathedral.glb
+    --out C:/Users/93rob/sf-pq018/assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/gltf-validator
+  - >-
+    node assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/validate_gltf.cjs
+    C:/Users/93rob/AppData/Local/Temp/pq018-gltf-validator/node_modules/gltf-validator
+    assets/ships/parts/places/place_landmark_wreck_cathedral.glb
+    assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/gltf-validator.json
+  - >-
+    ffprobe -v error -select_streams v:0 -count_frames
+    -show_entries stream=codec_name,width,height,r_frame_rate,nb_read_frames,pix_fmt
+    -show_entries format=duration,size -of json
+    assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/turntable/place_landmark_wreck_cathedral_turntable.mp4
+  - >-
+    python -m py_compile
+    assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/author_wreck_cathedral.py
+    assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/render_wreck_cathedral_evidence.py
+  - >-
+    node --check assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/validate_gltf.cjs
+  - >-
+    node --check assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/generate_hash_manifest.cjs
+  - >-
+    node assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/generate_hash_manifest.cjs
+  - git diff --check
 
-evidence_reports:
-  geometry_material_texture: assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/geometry_material_texture_report.json
-  uv_material_roles: assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/uv_material_role_report.json
-  flythrough_clearance: assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/flythrough_clearance_probe.json
-  gltf_validator: assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/gltf-validator/place_landmark_wreck_cathedral.glb.report.json
-  render_manifest: assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/render_evidence_manifest.json
-  source_audit: assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/blender-source-audit.json
-  semantic_audit: assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/glb-semantic-audit.json
-  validation_receipt: assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/validation-receipt.json
+validation_results:
+  source_saved_clean: true
+  source_missing_external_files: 0
+  source_packed_images: 26
+  gltf_validator_version: 2.0.0-dev.3.10
+  gltf_errors: 0
+  gltf_warnings: 0
+  gltf_infos: 0
+  gltf_hints: 0
+  spaceface_exporter_ok: true
+  glb_semantic_audit_pass: true
+  missing_semantic_markers: []
+  uv_failures: []
+  lod_order_strictly_reducing: true
+  capture_count: 16
+  captures_1920x1080: true
+  turntable_h264_1280x720_30fps_60frames: true
 
-changed_paths:
+known_defects:
+  - SOURCE_GLB only; release compression, release metadata, manifest registration, and runtime LOD selection are deferred.
+  - Collision proxies and World Site component proxies are intentionally deferred to PQ-017 and PQ-018 integration.
+  - The uncompressed source GLB is 11.16 MB and the authored texture set estimates 26.667 MiB RGBA8 with mipmaps; release compression and measured residency remain unaccepted.
+  - The Marker and cold emergency emitters require later runtime binding and gameplay-distance verification on the normal route.
+  - No browser or Electron normal-route, Ceres placement, interaction, salvage, or measured performance acceptance is claimed.
+
+dependencies_remaining:
+  - PQ-017 World Site kernel
+  - PQ-018 runtime manifest and place registration
+  - Ceres placement
+  - interaction and salvage wiring
+  - browser/Electron normal-route acceptance
+  - measured performance acceptance
+
+integrator_actions:
+  - Independently review the BLEND, GLB, neutral renders, map isolates, LOD silhouettes, fly-through evidence, and turntable.
+  - Build collision and World Site component proxies under PQ-017/PQ-018 ownership; preserve the declared 72 m x 58 m fly-through envelope.
+  - After art approval, finalize and compress the release asset, add the runtime manifest/place registration, and establish the runtime LOD policy.
+  - Place the approved landmark at Ceres and wire the named bridge, propulsion, service, structural, salvage, hangar, and Marker semantics.
+  - Run asset reachability/live-load, Atlas integrity, visual stability, browser/Electron normal-route, and measured performance acceptance.
+
+thread_c_actions:
+  - Do not wire this SOURCE_GLB before the integrator reaches RELEASE_BUILT and owns the manifest/place-registration step.
+  - Consume SOCKET_Flythrough_Entry, SOCKET_Flythrough_Exit, SOCKET_TheMarker, zone markers, salvage markers, and INTERACTION_HangarCavity after registration.
+
+forbidden_for_thread_c_until: RELEASE_BUILT
+
+checks_required:
+  - check:assets:live
+  - check:asset-reachability
+  - check:atlas-integrity
+  - check:visual-stability
+  - browser/Electron normal-route acceptance
+  - measured performance acceptance
+
+screenshots_proven:
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_close_3q.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_gameplay_distance.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_flythrough_cavity.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_propulsion_zone.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_3q.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_flythrough.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod0.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod1.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod2.png
+
+turntable_proven:
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/turntable/place_landmark_wreck_cathedral_turntable.mp4
+
+exact_result_commit_changed_paths:
   - assets/ships/parts/blender/place_landmark_wreck_cathedral.blend
   - assets/ships/parts/places/place_landmark_wreck_cathedral.glb
   - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/author_wreck_cathedral.py
@@ -152,63 +238,3 @@ changed_paths:
   - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Mechanical_Exposed_orm.png
   - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/turntable/place_landmark_wreck_cathedral_turntable.mp4
   - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/validate_gltf.cjs
-  - design/graphics-sprints/handoffs/2026-07-20-B-pq018-wreck-cathedral-source.yaml
-
-known_defects:
-  - SOURCE_GLB only; release compression, manifest registration, and runtime LOD policy are deferred.
-  - Collision proxies and World Site component proxies are intentionally deferred to PQ-017 and PQ-018 integration.
-  - No browser or Electron normal-route acceptance is claimed.
-  - No measured in-zone performance acceptance is claimed.
-  - The source GLB is intentionally uncompressed and is not a release artifact.
-
-integrator_actions:
-  - Independently review the BLEND, source GLB, channel passes, LOD silhouettes, and turntable.
-  - Run finalize_part.mjs for the accepted place source candidate.
-  - Run the SG04 release-asset build only after review acceptance.
-  - Add the new parts manifest row and place registration; do not reuse a fallback place id.
-  - Coordinate the World Site component and collision proxies with PQ-017.
-  - Place the landmark at Ceres and wire interaction and salvage nodes.
-  - Run browser and Electron normal-route visual acceptance.
-  - Measure representative approach, fly-through, and close-zone performance.
-
-thread_c_actions:
-  - Add the accepted release GLB to the owning runtime place map after RELEASE_BUILT.
-  - Preserve SOCKET_TheMarker, fly-through sockets, salvage markers, zone markers, and LOD roots during integration.
-
-forbidden_for_thread_c_until: RELEASE_BUILT
-
-checks_required:
-  - check:assets:live
-  - check:asset-reachability
-  - check:visual-stability
-  - check:parts-manifest
-  - check:atlas-integrity
-  - browser/Electron normal-route acceptance
-  - measured performance acceptance
-
-screenshots_proven:
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_close_3q.png
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_gameplay_distance.png
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_flythrough_cavity.png
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_propulsion_zone.png
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_3q.png
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_basecolor_no_bloom.png
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_normal_no_bloom.png
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_roughness_no_bloom.png
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_metallic_no_bloom.png
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_ao_no_bloom.png
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_emissive_no_bloom.png
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod0.png
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod1.png
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod2.png
-
-turntable:
-  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/turntable/place_landmark_wreck_cathedral_turntable.mp4
-
-dependencies_remaining:
-  - PQ-017 World Site kernel
-  - PQ-018 runtime manifest and place registration
-  - Ceres placement
-  - interaction and salvage wiring
-  - browser/Electron normal-route acceptance
-  - measured performance acceptance
