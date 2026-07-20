@@ -1,0 +1,117 @@
+handoff_version: 1
+thread: B
+sprint_id: pq022-military-station-remaster-20260720
+packet: PQ-022
+subslice: place_station_military
+agent: codex-pq022
+completed_at: 2026-07-20T15:45:00Z
+
+assets:
+  - id: place_station_military
+    source_glb: assets/ships/parts/places/place_station_military.glb
+    blend_path: assets/ships/parts/blender/place_station_military_authored.blend
+    release_glb: assets/ships/release/parts/places/place_station_military.glb
+    art_status: full_finish
+    review_status: author_review_only
+    evidence: assets/ships/parts/revamp-evidence/place_station_military/
+    lifecycle: VISIBLE_IN_PLAY
+    manifest_row: exists
+    runtimeSlots: place
+    blocked: false
+    blocked_reason: ""
+    runtime_wired: true
+    route_accepted: false
+
+commit: 1ed44afa2551781f12e5ee64fdedf93e57946dca
+
+hashes:
+  source_glb_sha256: fe2676f628c8a7382e6827883128d63c53407c9a828493cac8ccb65a9ed2491e
+  release_glb_sha256: b37e51a4a57d57f53a2fe5e30ea5b2914b2d239e82d9fdf702ee526fd5a5dff2
+  blend_sha256: 5043a87ffccbdd5766613dab98e86e2a3697a5c07a8b5da2ad0535598c4586c9
+
+geometry:
+  lod0_tris: 65192
+  lod1_tris: 27302
+  lod2_tris: 5932
+  collision_tris: 44
+  draw_groups_per_lod: 10
+  materials: [Material_Hull, Material_Alloy, Material_Blast, Material_Machinery, Material_Radiator, Material_Dock, Material_Warning, Material_Glass, Material_Accent, Material_Warm]
+  emissive_materials: [Material_Glass, Material_Accent]
+  textures: { embedded_images: 30, embedded_bytes: 2880009 }
+  sockets_preserved: [SOCKET_Structure_Core, SOCKET_Emissive, SOCKET_Dock_Approach]
+  collision_hull: COLLISION_HULL (broadphase proxy)
+  forward: "+X"
+  up: "+Y"
+  starboard: "+Z"
+
+remaster_notes:
+  - Replaced stacked-box silhouette with terraced three-band armored bastion.
+  - Layered armor plate overlay with believable thickness + blast-shield skirts.
+  - Protected aft command citadel: shuttered window bands, sensor dome, parabolic dish, radar bar, whip antenna farm.
+  - Forward customs/docking inspection apron: recessed mouth, armored jaws, scan arch emitters, docking contact pads, guide lights, chevron warning plates, personnel airlock.
+  - Aft engineering: exposed frame longerons, machinery bay, heat exchangers, radiator wings, pipe runs.
+  - Keel truss: exposed structural alloy chords + cross beams + hardpoints + running lights.
+  - Deliberate asymmetry: port service/inspection flank (open bay frame, repair crane davit, cargo locks) vs starboard heavy armor bastion with point-defense turrets.
+  - 10 authored PBR materials with nonuniform roughness, authored normal/detail, bevels, panel variation, edge wear, recess dust, directional scratches, stencil + chevron decals, heat-affected zones.
+
+checks_run:
+  - { name: "promote:place-archetype", result: "already blender_mcp (skip)" }
+  - { name: "check:station-archetype-glb-load", result: "170 ok, 0 fail" }
+  - { name: "check:station-archetype-wiring", result: "199 ok, 0 fail + test ok" }
+  - { name: "check:authored-place-runtime", result: "OK" }
+  - { name: "check:asset-status", result: "OK (80 parts, 0 ambiguous)" }
+  - { name: "check:asset-reachability", result: "OK (16 runtime assets bundled)" }
+  - { name: "check:assets:live", result: "PASS" }
+  - { name: "check:visual-stability", result: "PASS (failureCount 0)" }
+  - { name: "git diff --check", result: "clean (only LF->CRLF whitespace on 2 json)" }
+  - { name: "khronos validation", result: "source + release load clean; correct extensions (KHR_texture_basisu on release)" }
+
+evidence:
+  before: assets/ships/parts/revamp-evidence/place_station_military/before/
+  after: assets/ships/parts/revamp-evidence/place_station_military/after/
+  motion: assets/ships/parts/revamp-evidence/place_station_military/motion/ (orbit.mp4 + approach.mp4)
+  reports:
+    - reports/build_report.json
+    - reports/triangle_material_report.json
+    - reports/khronos_validation.json
+  textures_src: textures/src/ (30 authored PNGs: basecolor/normal/orm per material)
+
+integrator_actions:
+  - finalize_part.mjs run (parts_manifest.json patched: tris=98470, dims 74.5x76.7x35.7)
+  - build_release_parts.mjs run (release 6.76MB -> 4.23MB, ktx2+meshopt)
+  - parts_manifest row updated for place_station_military
+  - natural Helios (station_coalition) and Tethys (station_customs) browser/Electron route captures pending GPU lease
+
+thread_c_actions: []
+forbidden_for_thread_c_until: RELEASE_BUILT
+
+checks_required:
+  - check:assets:live
+  - check:asset-reachability
+  - check:visual-stability
+  - check:station-archetype-glb-load
+  - check:station-archetype-wiring
+
+screenshots_proven:
+  - assets/ships/parts/revamp-evidence/place_station_military/after/after_default.png
+  - assets/ships/parts/revamp-evidence/place_station_military/after/after_close.png
+  - assets/ships/parts/revamp-evidence/place_station_military/after/after_lod0_silhouette.png
+  - assets/ships/parts/revamp-evidence/place_station_military/after/after_pass_emissive.png
+
+status:
+  asset_terminal: false   # pending natural Helios/Tethys gameplay captures (GPU lease) + independent review
+  packet_terminal: false  # PQ-022 covers many asset families
+  lifecycle: VISIBLE_IN_PLAY
+  runtime_wired: true
+  route_accepted: false   # needs current matched browser/Electron evidence
+  queue_status_changed: false
+
+remaining_defects:
+  - "Natural Helios station_coalition and Tethys station_customs gameplay captures not yet taken (GPU lease held by PQ-001 controller; not killed per instructions)."
+  - "Author review only; independent review recommended before marking asset_terminal."
+  - "LOD2 drops most small detail (turrets, pipes, window frames) by design; silhouette + material splits preserved."
+
+notes:
+  - Identity preserved: no new station ID created; existing manifest row + release path reused.
+  - station_coalition (Helios) and station_customs (Tethys) both reference place_station_military via sectorAnchors.js.
+  - 2 json files (authoring.json, iteration_ledger.json) touched only by whitespace (LF->CRLF) from the promote script; no semantic change.

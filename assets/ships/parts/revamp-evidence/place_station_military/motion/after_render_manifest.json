@@ -1,0 +1,11 @@
+{
+ "input": "C:\\Users\\93rob\\sf-pq022\\assets\\ships\\parts\\places\\place_station_military.glb",
+ "label": "after",
+ "renders": [
+  "after_close.png",
+  "after_default.png",
+  "after_far.png"
+ ],
+ "turntable_frames": 12,
+ "approach_frames": 12
+}

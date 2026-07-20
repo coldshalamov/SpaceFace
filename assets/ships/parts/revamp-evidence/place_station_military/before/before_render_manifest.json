@@ -1,0 +1,12 @@
+{
+ "input": "C:\\Users\\93rob\\sf-pq022\\assets\\ships\\parts\\places\\place_station_military.glb",
+ "label": "before",
+ "renders": [
+  "before_close.png",
+  "before_default.png",
+  "before_far.png",
+  "before_lod0_silhouette.png",
+  "before_lod1_silhouette.png",
+  "before_lod2_silhouette.png"
+ ]
+}

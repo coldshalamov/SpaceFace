@@ -1,0 +1,149 @@
+{
+  "schema": "spaceface.pq022.bastionBuild.v1",
+  "assetId": "place_station_military",
+  "blend": "assets/ships/parts/blender/place_station_military_authored.blend",
+  "source": "assets/ships/parts/places/place_station_military.glb",
+  "bytes": 6760108,
+  "lod": {
+    "lod0": {
+      "triangles": 65192,
+      "drawGroups": 10
+    },
+    "lod1": {
+      "triangles": 27302,
+      "drawGroups": 10
+    },
+    "lod2": {
+      "triangles": 5932,
+      "drawGroups": 10
+    }
+  },
+  "aabb": {
+    "min": [
+      -41.0,
+      -12.1,
+      -35.9
+    ],
+    "max": [
+      33.45,
+      20.85,
+      40.7812
+    ],
+    "size": [
+      74.45,
+      32.95,
+      76.6812
+    ]
+  },
+  "materials": [
+    "Material_Accent",
+    "Material_Alloy",
+    "Material_Blast",
+    "Material_Dock",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Machinery",
+    "Material_Radiator",
+    "Material_Warm",
+    "Material_Warning"
+  ],
+  "textures": {
+    "Material_Hull": {
+      "basecolor": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_hull_basecolor.png",
+      "normal": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_hull_normal.png",
+      "orm": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_hull_orm.png"
+    },
+    "Material_Alloy": {
+      "basecolor": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_alloy_basecolor.png",
+      "normal": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_alloy_normal.png",
+      "orm": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_alloy_orm.png"
+    },
+    "Material_Blast": {
+      "basecolor": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_blast_basecolor.png",
+      "normal": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_blast_normal.png",
+      "orm": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_blast_orm.png"
+    },
+    "Material_Machinery": {
+      "basecolor": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_machinery_basecolor.png",
+      "normal": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_machinery_normal.png",
+      "orm": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_machinery_orm.png"
+    },
+    "Material_Radiator": {
+      "basecolor": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_radiator_basecolor.png",
+      "normal": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_radiator_normal.png",
+      "orm": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_radiator_orm.png"
+    },
+    "Material_Dock": {
+      "basecolor": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_dock_basecolor.png",
+      "normal": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_dock_normal.png",
+      "orm": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_dock_orm.png"
+    },
+    "Material_Warning": {
+      "basecolor": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_warning_basecolor.png",
+      "normal": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_warning_normal.png",
+      "orm": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_warning_orm.png"
+    },
+    "Material_Glass": {
+      "basecolor": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_glass_basecolor.png",
+      "normal": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_glass_normal.png",
+      "orm": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_glass_orm.png"
+    },
+    "Material_Accent": {
+      "basecolor": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_accent_basecolor.png",
+      "normal": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_accent_normal.png",
+      "orm": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_accent_orm.png"
+    },
+    "Material_Warm": {
+      "basecolor": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_warm_basecolor.png",
+      "normal": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_warm_normal.png",
+      "orm": "assets/ships/parts/revamp-evidence/place_station_military/textures/src/mil_warm_orm.png"
+    }
+  },
+  "metadata": {
+    "contractVersion": 1,
+    "assetId": "SF_PLACE_STATION_MILITARY",
+    "partId": "place_station_military",
+    "liveId": "place_station_military",
+    "slot": "place",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "normalConvention": "OpenGL",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "textureCompression": "PNG-source",
+    "textureSize": 1024,
+    "chamfered": true,
+    "bevelRadiusM": 0.05,
+    "family": "helios_industrial_station_family",
+    "packet": "PQ-022",
+    "role": "armored_bastion",
+    "title": "Coalition Bastion",
+    "kind": "station_landmark",
+    "deliverableRole": "production_multi_lod",
+    "lods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ],
+    "triangleCount": 65192,
+    "lodTriangles": {
+      "lod0": 65192,
+      "lod1": 27302,
+      "lod2": 5932
+    },
+    "drawGroupsPerLod": {
+      "lod0": 10,
+      "lod1": 10,
+      "lod2": 10
+    },
+    "lod0AabbSize": [
+      74.45,
+      32.95,
+      76.6812
+    ],
+    "wiringStatus": "production_source",
+    "remaster": "pq022-military-station-remaster-20260720"
+  },
+  "elapsedSeconds": 29.17
+}

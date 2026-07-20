@@ -1,0 +1,59 @@
+{
+  "source": {
+    "file": "assets/ships/parts/places/place_station_military.glb",
+    "bytes": 6761824,
+    "container": {
+      "magic": true,
+      "version": 2,
+      "declaredLength": 6761824,
+      "actualLength": 6761824,
+      "jsonChunk": true,
+      "jsonParses": true
+    },
+    "gltfVersion": "2.0",
+    "generator": "SpaceFace tools/art/blender/author_place_archetype.py - Blender-authored place archetype",
+    "docLoaded": true,
+    "docError": null,
+    "counts": {
+      "meshes": 31,
+      "primitives": 31,
+      "materials": 10,
+      "textures": 30,
+      "nodes": 35,
+      "accessors": 143,
+      "extensionsUsed": [
+        "KHR_materials_emissive_strength"
+      ]
+    }
+  },
+  "release": {
+    "file": "assets/ships/release/parts/places/place_station_military.glb",
+    "bytes": 4232404,
+    "container": {
+      "magic": true,
+      "version": 2,
+      "declaredLength": 4232404,
+      "actualLength": 4232404,
+      "jsonChunk": true,
+      "jsonParses": true
+    },
+    "gltfVersion": "2.0",
+    "generator": "glTF-Transform v4.4.1",
+    "docLoaded": true,
+    "docError": null,
+    "counts": {
+      "meshes": 31,
+      "primitives": 31,
+      "materials": 10,
+      "textures": 30,
+      "nodes": 35,
+      "accessors": 143,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_materials_emissive_strength",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ]
+    }
+  }
+}
