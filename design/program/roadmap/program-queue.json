@@ -519,7 +519,7 @@
       "id": "PQ-005",
       "priority": 5,
       "title": "Anchor-relative orbit assist",
-      "state": "planned",
+      "state": "integrated",
       "canonical": [
         "T05"
       ],
@@ -547,7 +547,10 @@
         "public-route",
         "trackpad"
       ],
-      "brief": "Implement bounded anchor-relative radial damping while preserving tangent control, reversal, assist-off behavior, and deterministic physics authority."
+      "brief": "Implement bounded anchor-relative radial damping while preserving tangent control, reversal, assist-off behavior, and deterministic physics authority.",
+      "integratedCommit": "e05b31dd",
+      "acceptanceRef": "03_LIVE_ACCEPTANCE_MATRIX.md#program-batch-pq-001pq-010",
+      "receipt": "orbit-assist 14 tests; lab matrix 27/27 deterministic digest 31c29f85..f2be running the SHIPPED controller; public route + screenshot; flight:clean 5/5; sim gates hashEqual; membrane audit green"
     },
     {
       "id": "PQ-006",
