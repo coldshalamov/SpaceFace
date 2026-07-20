@@ -1292,7 +1292,12 @@ async function sampleInstruments(page) {
       return el ? (el.innerText || el.textContent || '').trim() : null;
     };
     const findLabelled = (re) => {
-      const nodes = [...document.querySelectorAll('.hud *, [data-screen] *, .gm-route-ribbon *, .sf-hud *')];
+      // `.gm-route-ribbon` was a CLASS that does not exist — the ribbon is
+      // `class="gm-ribbon" id="gm-route-ribbon"` (galaxyMap.js:4735), so that selector matched
+      // nothing and the scan silently fell through to whatever else was on screen. Third instance
+      // of this exact bug class in this harness; when a selector is wrong the grader does not
+      // error, it just measures something else.
+      const nodes = [...document.querySelectorAll('.hud *, [data-screen] *, #gm-route-ribbon *, .gm-ribbon *, .sf-hud *')];
       for (const el of nodes) {
         if (el.children.length) continue;
         const t = (el.innerText || '').trim();
@@ -1305,7 +1310,10 @@ async function sampleInstruments(page) {
     const dSpeed = num(textOf('[data-hud="speed"]') || textOf('.hud-speed') || findLabelled(/^\d+(\.\d+)?\s*(WU\/s|m\/s)$/i));
     const dStop = num(textOf('[data-hud="stopping"]') || textOf('.hud-stop-dist') || findLabelled(/stop|brake/i));
     const dEta = (() => {
-      const t = textOf('[data-route="eta"]') || textOf('.gm-route-eta') || findLabelled(/^ETA/i);
+      // `.sf-nav-eta` is the live flight-HUD ETA (hud.js:1159-1163) — the instrument the pilot
+      // actually reads while under way, since the chart is closed during transit. Preferred over
+      // the ribbon, which only updates while the map is open.
+      const t = textOf('[data-route="eta"]') || textOf('.sf-nav-eta') || textOf('.gm-route-eta') || findLabelled(/^ETA/i);
       if (!t) return null;
       const mm = String(t).match(/(\d+):(\d{2})/);
       if (mm) return Number(mm[1]) * 60 + Number(mm[2]);
@@ -1323,7 +1331,28 @@ async function sampleInstruments(page) {
     const legTarget = leg && leg.target ? leg.target : null;
     const distToNext = legTarget && player.pos
       ? Math.hypot(legTarget.x - player.pos.x, legTarget.z - player.pos.z) : null;
-    const actualEta = distToNext != null && actualSpeed > 1 ? distToNext / actualSpeed : null;
+    // ETA must be recomputed the way the INSTRUMENT defines it, not the way the grader finds
+    // convenient. `objectiveTravelReadout` (src/ui/hud.js:220-236) is explicit: ETA is
+    // `dist / closingSpeed`, where closing speed is the ship's velocity PROJECTED ONTO THE BEARING
+    // to the target — not its total speed — and the readout refuses entirely ("ETA —") below
+    // 5 WU/s rather than printing a number it cannot stand behind.
+    //
+    // Comparing that against `dist / |velocity|` compares two DIFFERENT QUANTITIES: they coincide
+    // only when the ship happens to be flying straight at the target, and diverge on every turn or
+    // slip. Doing so reported the HUD as "lying" (displayed 21.00 vs sim 28.26/48.11/65.65) when
+    // the HUD was telling the truth about a different, correctly-labelled thing.
+    //
+    // This corrects the QUESTION and does NOT relax the bar — the tolerance is untouched, and a
+    // genuinely wrong ETA still fails. Same principle as the D11 launch predicate and the
+    // `.gm-inspector` selector: a grader that measures the wrong identity manufactures defects,
+    // which is worse than missing them because it sends people to break working code.
+    const closingSpeed = distToNext != null && distToNext > 0 && player.vel && legTarget
+      ? (((Number(player.vel.x) || 0) * (legTarget.x - player.pos.x))
+        + ((Number(player.vel.z) || 0) * (legTarget.z - player.pos.z))) / distToNext
+      : 0;
+    // Mirror the instrument's own refusal threshold: below it the HUD shows no number, so there is
+    // nothing to be truthful or untruthful about.
+    const actualEta = distToNext != null && closingSpeed > 5 ? distToNext / closingSpeed : null;
 
     const cmp = (displayed, actual, relTol, absTol) => {
       if (displayed == null || actual == null) {
@@ -1405,16 +1434,63 @@ async function recoverItinerary(page, helpers, interruption) {
   const opened = await openGalaxyMap(page, helpers);
   if (!opened.ok) return { routeSurvived, ok: false, reason: 'could not reopen the chart to reach the resume control', kept };
 
-  const btn = page.getByRole('button', { name: /Resume Route|^Resume$|^Engage$/i }).first();
+  // Resume is offered by TWO surfaces — the inspector's engage control (#gm-engage-route-btn,
+  // label "Resume Route") and the ribbon's action row ([data-ribbon-action="resume"]). A bare
+  // `getByRole(...).first()` picks whichever comes first in DOM order, which may be visible yet
+  // unclickable, and then reports only "Timeout 8000ms exceeded" — a message that names neither
+  // the control nor the obstruction. Try every candidate and, on failure, say WHY each one could
+  // not be clicked. A grader that cannot explain its own failure sends people to fix the wrong
+  // thing; that has already happened twice in this program.
+  const candidates = [
+    { how: 'inspector engage control', loc: page.locator('#gm-engage-route-btn') },
+    { how: 'ribbon resume action', loc: page.locator('[data-ribbon-action="resume"]') },
+    { how: 'ribbon engage action', loc: page.locator('[data-ribbon-action="engage"]') },
+    { how: 'button by accessible name', loc: page.getByRole('button', { name: /Resume Route|^Resume$|^Engage$/i }) },
+  ];
   let control = null;
-  if (await btn.isVisible().catch(() => false)) {
-    control = (await btn.innerText().catch(() => 'Resume')).trim();
-    await helpers.clickPersistentButton(page, btn);
-  } else {
-    const alt = page.locator('[data-ribbon-action="resume"], [data-ribbon-action="engage"]').first();
-    if (await alt.isVisible().catch(() => false)) { control = 'resume'; await alt.click({ timeout: 6_000 }).catch(() => {}); }
+  const attempts = [];
+  for (const cand of candidates) {
+    const loc = cand.loc.first();
+    if (!(await loc.count().catch(() => 0))) { attempts.push(`${cand.how}: absent`); continue; }
+    const probe = await loc.evaluate((node) => {
+      const r = node.getBoundingClientRect();
+      const cs = getComputedStyle(node);
+      // elementFromPoint at the centre is THE test for pointer interception: if it returns
+      // something that is not this node or a descendant, another element is covering it.
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      const covered = !!(hit && hit !== node && !node.contains(hit));
+      return {
+        w: Math.round(r.width), h: Math.round(r.height),
+        disabled: node.disabled === true || node.getAttribute('aria-disabled') === 'true',
+        display: cs.display, visibility: cs.visibility, pointerEvents: cs.pointerEvents,
+        covered,
+        coveredBy: covered ? `${hit.tagName.toLowerCase()}${hit.id ? '#' + hit.id : ''}${hit.className && typeof hit.className === 'string' ? '.' + hit.className.split(/\s+/).filter(Boolean).join('.') : ''}` : null,
+        text: (node.innerText || '').trim().slice(0, 40),
+      };
+    }).catch((e) => ({ error: String(e && e.message ? e.message : e) }));
+    if (probe.error) { attempts.push(`${cand.how}: probe failed (${probe.error})`); continue; }
+    if (probe.disabled) { attempts.push(`${cand.how}: present but DISABLED ("${probe.text}")`); continue; }
+    if (probe.w === 0 || probe.h === 0) { attempts.push(`${cand.how}: zero-size rect (hidden ancestor)`); continue; }
+    if (probe.covered) { attempts.push(`${cand.how}: COVERED by ${probe.coveredBy}`); continue; }
+    if (probe.pointerEvents === 'none') { attempts.push(`${cand.how}: pointer-events:none`); continue; }
+    try {
+      await loc.click({ timeout: 8_000 });
+      control = probe.text || cand.how;
+      attempts.push(`${cand.how}: CLICKED ("${control}")`);
+      break;
+    } catch (e) {
+      attempts.push(`${cand.how}: click failed (${String(e && e.message ? e.message : e).split('\n')[0]})`);
+    }
   }
-  if (!control) return { routeSurvived, ok: false, reason: 'no resume control is offered for the kept itinerary', kept };
+  if (!control) {
+    return {
+      routeSurvived,
+      ok: false,
+      reason: `no resume control could be activated for the kept itinerary — ${attempts.join(' | ')}`,
+      kept,
+      attempts,
+    };
+  }
 
   const re = await page.waitForFunction(() => window.SF?.state?.nav?.executor?.engaged === true, null, { timeout: 12_000 })
     .then(() => true).catch(() => false);
