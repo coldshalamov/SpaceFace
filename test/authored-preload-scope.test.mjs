@@ -129,8 +129,9 @@ test('authored instance pooling is restricted to ships in the exact live rendere
   assert.equal(partsLibrary.shouldUseAuthoredInstancePools(ship, liveScene, null), false);
 
   const source = readFileSync(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
-  assert.match(source, /options\.useAuthoredInstancePools === true\s*\? null\s*:\s*createStaticBatchCollector\(hull, bindings\)/s,
-    'live pooled composition must bypass the ship-local opaque batch collector');
+  assert.match(source,
+    /createStaticBatchCollector\(hull,\s*bindings,\s*options\.useAuthoredInstancePools === true\s*\? \{ scene, owner: ownerBoundary \}\s*:\s*null\)/s,
+    'live pooled composition must merge compatible opaque parts before scene-level instancing');
   assert.match(source, /residencyOptionsForBoundary\(entity, boundary, renderer, scene\)/,
     'the live ship wrapper must pass its exact renderer scene into residency policy');
 });

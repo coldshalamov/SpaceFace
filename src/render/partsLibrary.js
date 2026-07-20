@@ -2182,9 +2182,8 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   const materials = fallbackMaterials(palette, seed);
   const bindings = createBindings();
   const mutableMaterials = new Map();
-  const staticBatches = options.useAuthoredInstancePools === true
-    ? null
-    : createStaticBatchCollector(hull, bindings);
+  const staticBatches = createStaticBatchCollector(hull, bindings,
+    options.useAuthoredInstancePools === true ? { scene, owner: ownerBoundary } : null);
   const fallbackParts = [];
   const usedParts = [];
   const authoredSlots = {};
@@ -2336,7 +2335,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
 
   if (!bindings.navLights.length) buildFallbackNavLights(hull, materials, bindings);
   ensureStandardSockets(hull);
-  if (staticBatches) staticBatches.flush();
+  staticBatches.flush();
   reconcileMaplessHullMaterialAliases(palette);
   canonicalizeMaplessHullMaterials(root, palette);
 
@@ -2393,7 +2392,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     authoredSlots: uniqueSlotMap(authoredSlots),
     proceduralFallbackParts: fallbackParts,
     instancing: options.useAuthoredInstancePools === true
-      ? 'opaque immutable primitives pooled by geometry and material across live-scene ships'
+      ? 'compatible opaque parts merged per composition, then instanced across live-scene ships'
       : 'opaque immutable primitives merged into ship-local static batches',
     hookBinding: 'HOOK_* / SOCKET_* / MOUNT_* / LOD* names bound to shipKit.finalizeShip + shipDamage',
     wholeShip,
@@ -2839,7 +2838,7 @@ function textureMatrixSig(texture) {
   return Array.prototype.map.call(elements, (value) => Number.isFinite(value) ? Number(value).toFixed(4) : 'x').join(',');
 }
 
-function createStaticBatchCollector(parent, bindings) {
+function createStaticBatchCollector(parent, bindings, instancePool = null) {
   const buckets = new Map();
   return {
     add({ record, primitive, partRoot, material }) {
@@ -2859,6 +2858,11 @@ function createStaticBatchCollector(parent, bindings) {
       if (record && record.url) bucket.urls.add(record.url);
     },
     flush() {
+      if (instancePool) {
+        for (const bucket of buckets.values()) flushStaticBatch(parent, bindings, bucket, instancePool);
+        buckets.clear();
+        return;
+      }
       const groups = new Map();
       for (const bucket of buckets.values()) {
         const key = staticBatchGroupKey(bucket.tags);
@@ -2891,20 +2895,41 @@ function staticBatchGroupKey(tags = {}) {
   ].join('|');
 }
 
-function flushStaticBatch(parent, bindings, bucket) {
+function flushStaticBatch(parent, bindings, bucket, instancePool = null) {
   const material = resolveCanonicalHullMaterial(bucket.material);
   const merged = buildStaticBatchGeometry(bucket);
   if (!merged) {
-    for (const entry of bucket.entries) {
+    for (let index = 0; index < bucket.entries.length; index++) {
+      const entry = bucket.entries[index];
       const geometry = entry.primitive.geometry.clone();
       promoteStaticPositionToFloat(geometry);
       geometry.applyMatrix4(entry.primitive.matrix);
       geometry.applyMatrix4(entry.partMatrix);
-      addStaticBatchMesh(parent, bindings, geometry, material, bucket.tags, [entry.record && entry.record.url], entry.primitive.name);
+      addStaticBatchMesh(parent, bindings, geometry, material, bucket.tags,
+        [entry.record && entry.record.url], entry.primitive.name, instancePool,
+        staticBatchPoolGeometryKey(bucket, `entry:${index}`));
     }
     return;
   }
-  addStaticBatchMesh(parent, bindings, merged, material, bucket.tags, [...bucket.urls], `StaticBatch_${bucket.entries.length}`);
+  addStaticBatchMesh(parent, bindings, merged, material, bucket.tags, [...bucket.urls],
+    `StaticBatch_${bucket.entries.length}`, instancePool, staticBatchPoolGeometryKey(bucket));
+}
+
+function staticBatchPoolGeometryKey(bucket, suffix = 'merged') {
+  const tags = bucket && bucket.tags || {};
+  const entries = bucket && bucket.entries || [];
+  return [
+    'authored-static-batch-v1',
+    suffix,
+    tags.lod || 'always',
+    tags.damageRole || '',
+    ...entries.map((entry) => [
+      entry.record && entry.record.url || '',
+      entry.primitive && entry.primitive.key || '',
+      matrixBatchSignature(entry.primitive && entry.primitive.matrix),
+      matrixBatchSignature(entry.partMatrix),
+    ].join('@')),
+  ].join('|');
 }
 
 function flushStaticBatchGroup(parent, bindings, buckets) {
@@ -3148,23 +3173,43 @@ function integerAttributeMax(ArrayType, normalized) {
   return 1;
 }
 
-function addStaticBatchMesh(parent, bindings, geometry, material, tags, urls, label) {
+function addStaticBatchMesh(
+  parent, bindings, geometry, material, tags, urls, label, instancePool = null, poolGeometryKey = null,
+) {
   if (geometry && typeof geometry.computeBoundingSphere === 'function') geometry.computeBoundingSphere();
   if (geometry && typeof geometry.computeBoundingBox === 'function') geometry.computeBoundingBox();
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.name = `GLTFKit_${label || 'StaticBatch'}`;
   const materials = Array.isArray(material) ? material : [material];
-  mesh.castShadow = materials.some((entry) => entry && !entry.transparent && entry.depthWrite !== false);
-  mesh.receiveShadow = materials.some((entry) => entry && !entry.transparent);
-  mesh.visible = !tags.lod || tags.lod === 'lod0';
   const partUrls = [...new Set((urls || []).filter(Boolean))];
-  mesh.userData = {
+  const userData = {
     spacefaceStaticBatch: true,
     spacefaceStaticBatchMaterials: materials.length,
     spacefacePartUrl: partUrls[0],
     spacefacePartUrls: partUrls,
     spacefaceTags: tags,
   };
+  if (instancePool) {
+    if (materials.length !== 1) throw new Error('Scene-pooled authored static batches require one material');
+    geometry.userData = {
+      ...(geometry.userData || {}),
+      spacefaceBatchKey: poolGeometryKey || geometry.uuid,
+      spacefaceDerivedStaticBatch: true,
+    };
+    const proxy = new THREE.Object3D();
+    proxy.name = `GLTFKit_${label || 'StaticBatch'}_InstanceProxy`;
+    proxy.visible = !tags.lod || tags.lod === 'lod0';
+    proxy.userData = { ...userData, spacefaceInstanceProxy: true };
+    parent.add(proxy);
+    allocateInstance(instancePool.scene, instancePool.owner, proxy, geometry, material, label || 'StaticBatch');
+    registerBinding(proxy, tags, bindings);
+    return proxy;
+  }
+
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = `GLTFKit_${label || 'StaticBatch'}`;
+  mesh.castShadow = materials.some((entry) => entry && !entry.transparent && entry.depthWrite !== false);
+  mesh.receiveShadow = materials.some((entry) => entry && !entry.transparent);
+  mesh.visible = !tags.lod || tags.lod === 'lod0';
+  mesh.userData = userData;
   parent.add(mesh);
   registerBinding(mesh, tags, bindings);
   return mesh;
@@ -3433,6 +3478,10 @@ function allocateInstance(scene, owner, proxy, geometry, material, label) {
   if (!pool) {
     pool = { chunks: [], geometry, material, label, key };
     state.pools.set(key, pool);
+  } else if (pool.geometry !== geometry && geometry.userData && geometry.userData.spacefaceDerivedStaticBatch) {
+    // Identical ship compositions derive identical merged geometry. The pool retains the first exact
+    // batch; later owners need only a transform slot, so release their redundant CPU/GPU candidate.
+    geometry.dispose();
   }
   let chunk = pool.chunks.find((candidate) => candidate.free.length || candidate.next < INSTANCE_CHUNK_SIZE);
   if (!chunk) {
@@ -4021,6 +4070,82 @@ export function runAuthoredInstanceFrameContractProbe() {
     stableVersion,
     replacedVersion,
   };
+}
+
+/**
+ * Contract probe for the production pooling granularity. Each owner first derives the same
+ * composition-local opaque batch; the scene must retain one merged geometry and instance the two
+ * owner transforms through one chunk instead of opening a pool for every authored primitive.
+ */
+export function runAuthoredStaticBatchPoolContractProbe() {
+  const scene = new THREE.Scene();
+  const sourceGeometry = new THREE.BoxGeometry(1, 1, 1);
+  const material = new THREE.MeshStandardMaterial();
+  material.userData = { ...(material.userData || {}), spacefaceBatchKey: 'static-batch-probe-material' };
+  const record = { url: '/fixture/ships/hulls/hull_probe.glb' };
+  const primitive = {
+    key: 'fixture:hull:opaque',
+    name: 'HullOpaque',
+    geometry: sourceGeometry,
+    matrix: new THREE.Matrix4().makeTranslation(0.25, 0, 0),
+    tags: Object.freeze({ lod: 'lod0' }),
+  };
+
+  const ownerA = new THREE.Group();
+  const ownerB = new THREE.Group();
+  const hullA = new THREE.Group();
+  const hullB = new THREE.Group();
+  const partA = new THREE.Object3D();
+  const partB = new THREE.Object3D();
+  ownerA.position.set(-3, 0, 0);
+  ownerB.position.set(3, 0, 0);
+  partA.position.set(0, 0.5, 0);
+  partB.position.copy(partA.position);
+  partA.updateMatrix();
+  partB.updateMatrix();
+  ownerA.add(hullA);
+  ownerB.add(hullB);
+  scene.add(ownerA, ownerB);
+
+  const collectorA = createStaticBatchCollector(hullA, createBindings(), { scene, owner: ownerA });
+  const collectorB = createStaticBatchCollector(hullB, createBindings(), { scene, owner: ownerB });
+  collectorA.add({ record, primitive, partRoot: partA, material });
+  collectorB.add({ record, primitive, partRoot: partB, material });
+  collectorA.flush();
+  collectorB.flush();
+
+  const state = sceneStates.get(scene);
+  const pools = state ? [...state.pools.values()] : [];
+  const pool = pools[0] || null;
+  const chunks = pool ? pool.chunks : [];
+  const proxies = [...hullA.children, ...hullB.children]
+    .filter((object) => object.userData && object.userData.spacefaceInstanceProxy);
+  const localMeshes = [...hullA.children, ...hullB.children].filter((object) => object.isMesh);
+  const pipelineAdmission = createOwnerInstancePipelineAdmission(scene, ownerA);
+  const pipelineSubject = pipelineAdmission && pipelineAdmission.children[0];
+  const active = { ...syncAuthoredInstancePools(scene) };
+  const result = {
+    pools: pools.length,
+    chunks: chunks.length,
+    proxies: proxies.length,
+    localMeshes: localMeshes.length,
+    pooledInstanceSlots: active.pooledInstanceSlots,
+    submittedInstanceSlots: active.submittedInstanceSlots,
+    poolGeometryIsDerived: !!(pool && pool.geometry && pool.geometry.userData
+      && pool.geometry.userData.spacefaceDerivedStaticBatch),
+    pipelineSubjects: pipelineAdmission ? pipelineAdmission.children.length : 0,
+    pipelineUsesExactGeometry: !!(pipelineSubject && pool && pipelineSubject.geometry === pool.geometry),
+    pipelineUsesExactMaterial: !!(pipelineSubject && pipelineSubject.material === material),
+  };
+  if (pipelineAdmission) pipelineAdmission.clear();
+
+  scene.remove(ownerA);
+  result.afterFirstRelease = { ...syncAuthoredInstancePools(scene) };
+  scene.remove(ownerB);
+  if (pool && pool.geometry && typeof pool.geometry.dispose === 'function') pool.geometry.dispose();
+  sourceGeometry.dispose();
+  material.dispose();
+  return result;
 }
 
 // -------------------------------------------------------------------------------------------------

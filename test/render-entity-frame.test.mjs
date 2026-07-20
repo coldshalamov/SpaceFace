@@ -142,6 +142,26 @@ test('authored instance pools consume bounded frame records, clean omissions, an
   assert.equal(result.afterRelease.submittedInstanceSlots, 1, 'removed owner leaves no ghost instance');
 });
 
+test('authored ships instance merged composition batches instead of individual primitives', () => {
+  assert.equal(typeof partsLibrary.runAuthoredStaticBatchPoolContractProbe, 'function');
+  const result = partsLibrary.runAuthoredStaticBatchPoolContractProbe();
+
+  assert.equal(result.pools, 1, 'identical opaque compositions share one merged geometry pool');
+  assert.equal(result.chunks, 1, 'two matching compositions fit in one draw chunk');
+  assert.equal(result.proxies, 2, 'each owner retains one transform and visibility proxy');
+  assert.equal(result.localMeshes, 0, 'pooled opaque batches do not leave duplicate local draw meshes');
+  assert.equal(result.pooledInstanceSlots, 2);
+  assert.equal(result.submittedInstanceSlots, 2);
+  assert.equal(result.poolGeometryIsDerived, true);
+  assert.equal(result.pipelineSubjects, 1);
+  assert.equal(result.pipelineUsesExactGeometry, true,
+    'pipeline admission compiles the retained merged geometry used by the live pool');
+  assert.equal(result.pipelineUsesExactMaterial, true);
+  assert.equal(result.afterFirstRelease.pooledInstanceSlots, 1);
+  assert.equal(result.afterFirstRelease.submittedInstanceSlots, 1,
+    'releasing one composition removes its slot without disturbing the shared batch');
+});
+
 test('asteroid pool reuses a static matrix and uploads real instance data after transform and rebase', () => {
   const harness = createAsteroidHarness([{ id: 7 }]);
   const [{ entity, root }] = harness.asteroids;
