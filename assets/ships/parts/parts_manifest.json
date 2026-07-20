@@ -3187,8 +3187,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_military.glb",
-      "tris": 25724,
-      "bytes": 7954940,
+      "tris": 98470,
+      "bytes": 6761824,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3222,19 +3222,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -43.6887,
-          -10,
-          -38.3397
+          -41,
+          -35.9,
+          -20.85
         ],
         "max": [
-          33.3182,
-          23.6,
-          38.3397
+          33.5025,
+          40.7812,
+          14.8275
         ],
         "dimensionsM": [
-          77.0069,
-          33.6,
-          76.6795
+          74.5025,
+          76.6812,
+          35.6775
         ]
       }
     },

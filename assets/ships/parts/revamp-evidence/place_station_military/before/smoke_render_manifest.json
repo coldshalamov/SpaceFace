@@ -1,0 +1,9 @@
+{
+ "input": "C:\\Users\\93rob\\sf-pq022\\assets\\ships\\parts\\places\\place_station_military.glb",
+ "label": "smoke",
+ "renders": [
+  "smoke_close.png",
+  "smoke_default.png",
+  "smoke_far.png"
+ ]
+}

@@ -1,0 +1,19 @@
+{
+ "input": "C:\\Users\\93rob\\sf-pq022\\assets\\ships\\parts\\places\\place_station_military.glb",
+ "label": "after",
+ "renders": [
+  "after_close.png",
+  "after_default.png",
+  "after_far.png",
+  "after_lod0_silhouette.png",
+  "after_lod1_silhouette.png",
+  "after_lod2_silhouette.png",
+  "after_pass_wire.png",
+  "after_pass_basecolor.png",
+  "after_pass_normal.png",
+  "after_pass_roughness.png",
+  "after_pass_metallic.png",
+  "after_pass_ao.png",
+  "after_pass_emissive.png"
+ ]
+}
