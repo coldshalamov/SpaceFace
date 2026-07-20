@@ -172,10 +172,13 @@ catalog entries merely to make that broad pre-existing count green.
   controlled browser/Electron surface frames but still needs natural approach/undock motion. The
   seamed and graffiti world-dressing landmarks now have accepted browser evidence but still need
   Electron parity.
-- The performance closure final tip `99cad5b5` is integrated at `b235f062` without losing semantic
+- The performance closure base tip `99cad5b5` is integrated at `b235f062` without losing semantic
   PBR/admission, rock preload, relative-velocity prefetch/precompile, or Atlas velocity/background
   behavior. All 167 performance-modified and 49 graphics/PBR/VFX tests pass on the combined tree.
-  Fresh long-soak,
+  Literal-frame-target, exact-worktree, three-run, and residency-evidence gates are integrated through
+  `280cafb0`. A later narrow fleet audit proved that live ships still used ship-local static batches;
+  its first scene-pool activation candidate failed closed during pipeline admission and was rejected.
+  The repaired candidate remains isolated until its 10/25/50-ship rerun survives review. Fresh long-soak,
   floor-GPU, memory, dense-combat, autosave, and combined graphics/performance measurements remain
   required before claiming the M6 performance exit.
 - Combat VFX has structural implementation and lifecycle evidence, but no full visual-family
@@ -257,19 +260,19 @@ untracked files, branch tip, unique commits, and patch equivalence to final `mas
   moved out of the GitHub directory to a recoverable Temp quarantine; its only unknown product
   content was an obsolete game-state variant and was correctly rejected.
 - `SpaceFace-graphics-overhaul` retains substantial dirty Blender/source assets and remains protected.
-  The full Helios-golden replacement is rejected; its batching experiment is retained only as a
-  future recipe. Depth and Kimi satellites must be handled exactly as recorded in
-  [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md), never by whole-branch merge. The
-  performance and graphics-closeout worktrees are clean and contain no product commit absent from
-  `master`; remove them after the final combined route receipt is recorded.
+  The full Helios-golden replacement is rejected; its useful production builder is already on master.
+  Graphics-closeout, Helios, Depth, Kimi, and four small orchestration satellites were removed after
+  merge, rejection, donor commit, or branch/tag/hash-archive preservation. Only master, the protected
+  Blender/source worktree, and the active performance repair remain registered.
 - Delete a branch only after its accepted product result is reachable from final `master`, every
   valuable dirty/untracked file has been deliberately preserved or rejected, and its worktree is
   clean.
 
 ## 8. Definition of the next coherent checkpoint
 
-The combined checkpoint is `b235f062`. The next coherent checkpoint reruns the combined
-graphics/performance matrix and adds current natural-route browser/Electron proof for Helios
+The current product checkpoint descends from `b235f062` and the evidence hardening through
+`280cafb0`. The next coherent checkpoint first resolves live authored ship pooling and reruns the
+strict combined graphics/performance matrix, then adds current natural-route browser/Electron proof for Helios
 and the representative rock, visual-family Electron/GPU acceptance for combat effects and
 destruction, one localized authored space-structure vertical that does not lift the black floor,
 and the next high-frequency PBR asset family. The authoritative continuation order and architecture

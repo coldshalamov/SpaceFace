@@ -9,9 +9,11 @@ paused Atlas/map/travel work were promoted together at `ee9e0ab3`; context-recov
 reachable through `f0b3b154`. Graphics closeout `cbdf1589` is now on `master`, including exact golden
 asset receipts, authored fail-closed admission, semantic PBR/native-color routing, common-rock maps,
 typed projectile/mine/impulse/wreck identities, and Atlas/journey verification gates. The reviewed
-performance tip `99cad5b5` and Atlas/camera repair `21d82428` are integrated at `b235f062`. The old
-lease/blocker columns below are historical. Final combined browser/Electron/GPU performance evidence
-has not been rerun. This checkpoint updates
+  performance tip `99cad5b5` and Atlas/camera repair `21d82428` are integrated at `b235f062`; strict
+  evidence hardening is integrated through `280cafb0`. The old lease/blocker columns below are
+  historical. Final combined browser/Electron/GPU performance evidence has not passed. A clean fleet
+  audit exposed live ships bypassing existing scene-level instance pools; its repaired candidate is
+  still isolated and must survive admission, warning, draw, and frame review before synthesis. This checkpoint updates
 M1/M6 implementation truth but exits neither milestone; remaining visual/performance acceptance is
 recorded in [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md).
 
@@ -70,7 +72,7 @@ lane should repair, not whether it is repaired.
 | M3 | Origins, cohorts, Hunter intent, damage/death substantially built | Career origins green | Natural damage/Game Over proven; recovery and three full 90-minute routes open | Damage/after-action images exist | 0 recorded | NOT EXITED |
 | M4 | Regional ecology/POI foundations built | RED 8/9 on registry/save initialization order | Sparse/normal/crowded diversity routes open | Art/classification incomplete | 0 recorded | NOT EXITED |
 | M5 | Story/endings/outposts/role foundations built | Role continuity green | Supporting injected role route only; ordinary story/ownership routes open | Partial | 0 recorded | NOT EXITED |
-| M6 | Capture/release/localization/perf foundations, loading/admission, de-hazed background, pooled thruster/RCS, golden Kestrel/Helios/geology surfaces, Wasp routing, exact receipts, authored fail-closed admission, semantic PBR routing, and typed combat/world identities are retained in combined `master` at `b235f062` | Prior asset-live, visual-stability, launch-policy, focused VFX/background/post checks, five strict desktop/mobile flight runs, and context-loss recovery passed; exact receipts plus 167 performance and 49 graphics tests pass on the combined tree; fresh headed rebaseline remains open | Authored browser and thruster Electron routes pass; current natural Helios/rock motion, combat-family Electron/GPU, and packaged-store matrix remain incomplete | Hitch glare and Helios bulk-material defects repaired; full OpenCode Helios replacement rejected; Wasp classification, combat-family final acceptance, natural Helios/rock parity, localized background art, fleet-wide PBR, and release evidence remain | 0 recorded | NOT EXITED |
+| M6 | Capture/release/localization/perf foundations, loading/admission, de-hazed background, pooled thruster/RCS, golden Kestrel/Helios/geology surfaces, Wasp routing, exact receipts, authored fail-closed admission, semantic PBR routing, and typed combat/world identities are retained in combined `master`; strict evidence gates are integrated through `280cafb0` | Prior asset-live, visual-stability, launch-policy, focused VFX/background/post checks, five strict desktop/mobile flight runs, and context-loss recovery passed; exact receipts plus 167 performance, 49 graphics, and 35 evidence-contract tests pass; fresh headed promotion remains open | Authored browser and thruster Electron routes pass; live authored ship pool repair, natural Helios/rock motion, combat-family Electron/GPU, and packaged-store matrix remain incomplete | Hitch glare and Helios bulk-material defects repaired; full OpenCode Helios replacement rejected; Wasp classification, pool activation proof, combat-family final acceptance, natural Helios/rock parity, localized background art, fleet-wide PBR, and release evidence remain | 0 recorded | NOT EXITED |
 | Depth | Checkpoint `850c80f3` preserves focused implementations for 16 chunks after W1 correction | Pre-checkpoint aggregate green; not rerun at current HEAD | Many routes compress state/timing; final unassisted routes open | All Depth `.devshots` ignored; no chunk DONE | N/A | 0 / 31 DONE |
 
 ## Fresh audit details

@@ -5,7 +5,8 @@
 **Authority boundary:** `master` is the product authority. This ledger records selective donor value
 and cleanup decisions; it does not make any donor branch current, accepted, or safe to merge whole.
 Dirty-path counts and ahead/behind counts are audit snapshots and must be refreshed before removal.
-`design/program/_review/` was not read or classified.
+`design/program/_review/` was not read or classified; it was moved unread to
+`SpaceFace-archives/primary-review-quarantine-20260719`.
 
 ## 1. Rules
 
@@ -22,17 +23,14 @@ Dirty-path counts and ahead/behind counts are audit snapshots and must be refres
 
 | Worktree / branch | Audit snapshot | Product ruling | Physical cleanup condition |
 |---|---|---|---|
-| `SpaceFace` / `master` | `b235f062` | Product authority. Graphics and reviewed performance synthesis are promoted. | Never remove. Preserve quarantined review material. |
-| `SpaceFace-graphics-closeout` / `codex/graphics-closeout-20260719` | Clean at `8e860439`; every commit is reachable from `b235f062`. | No unique product work. | Remove after this reviewed ledger and final route receipt reach `master`. |
-| `SpaceFace-performance-closure` / `codex/performance-closure-20260719` | Clean final tip `99cad5b5`; replayed with duplicate patches skipped. | Integrated at `b235f062`; branch is recovery history only. | Remove after final combined route proof and branch recovery are confirmed. |
+| `SpaceFace` / `master` | Product merge `b235f062`; evidence hardening through `280cafb0`; Atlas decision `f3bf00f4`. | Product authority. Graphics and reviewed performance synthesis are promoted. | Never remove. |
+| `SpaceFace-graphics-closeout` / `codex/graphics-closeout-20260719` | Physical worktree removed; clean tip `8e860439` is reachable from `master`. | No unique product work. | Complete. |
+| `SpaceFace-performance-closure` / `codex/performance-closure-20260719` | Base tip `99cad5b5` is integrated; evidence hardening is replayed. The physical lane remains active for live authored ship pooling. | Selective performance donor only until its new fleet evidence survives review. | Remove after the accepted repair is synthesized and final combined proof is recorded. |
 | `SpaceFace-graphics-overhaul` / `codex/graphics-overhaul` | Audit: 96 master-only / 24 branch-only commits and about 244 dirty paths. | Retain. It contains substantial uncommitted Blender/source assets and cannot be reduced to a branch-only history yet. Never whole-merge. | Keep physical worktree until asset-by-asset source inventory and promote/reject receipts are complete. |
-| `SpaceFace-oc-helios-golden` / `opencode/helios-golden-station` | Re-audited at current master: 101 commits behind, 0 unique commits, 257 dirty/untracked paths totaling 2,532,129,189 bytes. | Full station replacement rejected. The builder, precursor hash, editable final blend, accepted three-LOD source, and release asset are already preserved on `master`; no unique recipe remains in this worktree. | Safe to force-remove through Git after this ledger is committed; no asset copy is required. |
-| `SpaceFace-depth-actualization` / `grok/depth-player-route-actualization` | `bf1dfce2`; audit at `041f5fae`: 123 master-only / 42 branch-only commits and 17 untracked raw artifacts totaling 7.58 MiB. | Selective product donor only. Whole merge rejected because it would delete or regress large current surfaces. | Record the remaining black-box docking candidate below, archive/hash the untracked artifacts, preserve branch plus annotated tag, then remove the physical worktree. |
-| `SpaceFace-orch-codex-gt-sample` / `orch/codex-gt-sample` | `f3e49b4f` | Committed product history is contained in or patch-equivalent to the Depth donor. | Remove after this ledger is promoted and dirty paths, if any, are rechecked. |
-| `SpaceFace-orch-codex-natural` / `orch/codex-natural-routes` | `de5397bc` | Committed product history is superseded by the Depth donor. | Same as above. |
-| `SpaceFace-orch-codex-recovery` / `orch/codex-m3-recovery` | `de5397bc` | Committed product history is superseded by the Depth donor. | Same as above. |
-| `SpaceFace-orch-codex-helix` / `orch/codex-helix-d1` | `6475e2ef` | Unique one-line faction change is rejected as incorrect. | Recheck dirty paths, retain rejection record, then remove. |
-| `SpaceFace-orch-kimi-v2-present` / `orch/kimi-v2-present` | `de5397bc` plus uncommitted presentation work. | Never whole-merge. Only the station-presentation slices below remain candidate value. | Port or explicitly reject each listed slice, capture the normal station route if ported, then remove. |
+| `SpaceFace-oc-helios-golden` / `opencode/helios-golden-station` | Physical worktree removed after a 101-behind / 0-unique / 2.53 GB audit. | Full replacement rejected. The useful builder, precursor receipt, editable blend, three-LOD source, and release asset are on `master`. | Complete. |
+| `SpaceFace-depth-actualization` / `grok/depth-player-route-actualization` | Physical worktree removed. Branch `bf1dfce2` and annotated archive tag remain; 17 raw artifacts are hash-archived externally. | Selective product donor only; the remaining black-box candidate is recorded below. | Complete; never whole-merge the branch. |
+| Four orchestration satellites | Physical worktrees removed after individual dirt/process audits. | Superseded station shell, incorrect Helix faction edit, old natural-route harness, and defective recovery variant rejected. Branch refs remain. | Complete. |
+| `SpaceFace-orch-kimi-v2-present` / `orch/kimi-v2-present` | Physical worktree removed after product-only donor commit `0e2f2e51` (focused test 4/4). | Never whole-merge. Only the station-presentation slices below remain candidate value. | Complete; selectively port or reject from the donor commit later. |
 
 ## 3. Helios/OpenCode ruling
 
@@ -125,14 +123,13 @@ acceptance route remain the final combined evidence. Old performance evidence al
 
 ## 7. Cleanup order
 
-1. Performance integration is complete; remove its clean worktree after combined route proof.
-2. Promote these program docs; remove the clean graphics-closeout worktree.
-3. Confirm the Helios rejection/batching record is sufficient; remove the rejected Helios worktree.
-4. Recheck each small satellite for dirty product paths; port/reject its listed value, then remove it.
-5. Preserve the Depth branch/tag, finish the selective-port decisions, reject raw artifacts, then remove
-   the physical Depth worktree.
-6. Keep `SpaceFace-graphics-overhaul` until its uncommitted Blender/source asset inventory is fully
+1. Integrate only an independently reviewed live authored-instance-pool repair, then run the strict
+   three-profile/three-matrix combined acceptance contract and remove the performance worktree.
+2. Keep `SpaceFace-graphics-overhaul` until its uncommitted Blender/source asset inventory is fully
    classified. It is the only intentionally long-lived graphics donor in this ledger.
+
+Completed 2026-07-19: graphics-closeout, rejected Helios, four superseded orchestration satellites,
+the product-preserved Kimi donor, and the tagged/hash-archived Depth donor were removed through Git.
 
 Use `git worktree remove` only after verifying the resolved absolute target and clean/disposition state.
 Do not recursively delete computed paths, prune branches merely because a folder looks stale, or remove a

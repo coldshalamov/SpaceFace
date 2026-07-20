@@ -1,10 +1,12 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-19 at combined graphics/performance merge `b235f062`. The graphics closeout,
-the reviewed performance-closure tip `99cad5b5`, and the Atlas/camera evidence repair `21d82428` are
-now on `master`. This board does **not** claim final browser/Electron/GPU frame-time acceptance: the
-older performance matrices are diagnostic artifacts, not qualifying <=16.7 ms runs. The primary
-checkout retains only quarantined untracked `design/program/_review/`, which was not read or staged.
+**Snapshot:** 2026-07-19 after combined merge `b235f062`, evidence hardening through `280cafb0`, and
+the corrected Atlas journey decision `f3bf00f4`. Graphics, Atlas/map/travel, startup/loading, and the
+reviewed performance synthesis are on `master`. This board does **not** claim final
+browser/Electron/GPU frame-time acceptance: old matrices are diagnostic, and the first live
+authored-instance-pool candidate failed closed during its narrow fleet rerun. The primary checkout is
+clean; unread `design/program/_review/` residue was moved to
+`SpaceFace-archives/primary-review-quarantine-20260719` without being opened or imported.
 
 **Integrated checkpoint:** the earlier Atlas/map/travel, performance, and graphics synthesis remains
 reachable through `ee9e0ab3` and its context-recovery hardening `f0b3b154`. The later closeout adds
@@ -26,18 +28,21 @@ and broader fleet/station/rock/wreck PBR remain open. See
 architecture in
 [`../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md`](../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md).
 
-**Current isolated lanes:** no performance or graphics-closeout product work remains outside
-`master`; their clean worktrees are cleanup candidates after this ledger is committed and final route
-evidence is recorded. Dirty Depth, Kimi/Helios, satellite, and Blender-source donors remain selective
-donors only. Decisions are recorded in [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md).
+**Current isolated lanes:** only `SpaceFace-graphics-overhaul` and the active
+`SpaceFace-performance-closure` repair remain registered beside `master`. The former retains the
+uncommitted Blender/source inventory. The latter is validating live scene-level authored ship
+instance pools after its first pipeline-admission attempt exposed and repaired a nested-subject bug.
+Graphics-closeout, rejected Helios, Depth, Kimi, and orchestration satellite folders were removed only
+after their value was merged, committed on a donor branch, tagged/archived, or explicitly rejected.
+Decisions are recorded in [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md).
 
-**Immediate safe work:** capture one clean owned browser/Electron acceptance route on `b235f062`,
-including startup/loading, authored admission, thrusters/RCS, natural Helios/rock motion, and measured
-frame pacing. Then the highest-return graphics work is natural-route Helios/rock
+**Immediate safe work:** accept or reject the repaired live authored-instance-pool vertical from its
+clean 10/25/50-ship rerun, synthesize it manually with the current semantic-PBR path, and rerun the
+strict final performance contract on one clean exact commit. Then capture natural Helios/rock motion
+and combat/destruction GPU evidence. The highest-return graphics continuation is natural-route Helios/rock
 parity, combat/destruction visual acceptance, localized authored space structure without
 screen-wide haze, and the next high-frequency PBR family. The Kimi/OpenCode Helios replacement is
-already rejected; only its batching concept is retained for an independently rebuilt optimization
-slice.
+rejected, and its useful batching source was already preserved on `master`.
 
 ## Wave-01 integration record (all on `master`)
 

@@ -1,23 +1,26 @@
 # Worktree and Integration Inventory
 
-**Current integration snapshot:** 2026-07-19 after combined merge `b235f062`. The older
+**Current integration snapshot:** 2026-07-19 after combined merge `b235f062`, performance-evidence
+hardening through `280cafb0`, and physical donor cleanup. The older
 July-14 repository tables remain below as labeled history. Re-run the commands at the end before
 acting: donor worktrees can move after this document is written. Use [`NOW.md`](./NOW.md) for volatile ownership and
 [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md) for donor disposition.
 
 ## Current integration checkpoint — 2026-07-19
 
-- Primary branch: `master` at combined merge `b235f062`.
-- Graphics closeout: clean at `8e860439`; all commits are ancestors of `b235f062`.
+- Primary branch: `master`; combined product merge `b235f062`, evidence hardening through `280cafb0`,
+  and current Atlas decision `f3bf00f4` are all ancestors.
+- Graphics closeout: all commits are ancestors of `b235f062`; its physical worktree is removed.
 - Earlier unified checkpoint: performance `1bdde6c8`, graphics `e3ad1caf`, and paused Claude
   `1905cac8` were synthesized at `a752702b`, promoted as `ee9e0ab3`, and hardened through
   `f0b3b154`. Their accepted changes remain ancestors of current `master`.
 - Later graphics closeout: `bd79f2ba`, `5219491d`, `98e1e429`, `1de8a861`, and `5863331c` are
   promoted by `cbdf1589`. These changes are now `master` implementation, not donor-only work.
-- Performance closure: clean final tip `99cad5b5`; its unique changes were reviewed, replayed, and
-  merged at `b235f062` while patch-equivalent duplicates were skipped.
-- Primary diagnostics: the Atlas/camera transaction is committed at `21d82428`. Only quarantined
-  untracked `design/program/_review/` remains and was never opened or staged.
+- Performance closure: `99cad5b5` is merged at `b235f062`; literal-target, exact-worktree,
+  three-run, and residency-evidence hardening are on `master` through `280cafb0`. Its remaining
+  physical worktree is active only for the measured live authored-instance-pool repair.
+- Primary diagnostics: the Atlas/camera transaction is committed at `21d82428`. Unread
+  `design/program/_review/` residue was moved outside the worktree to the recoverable archives folder.
 - No remaining donor is authoritative over `master`. Whole-branch merges are rejected for the
   Depth, Kimi, Helios, and graphics-overhaul donors; use the selective disposition ledger.
 
@@ -25,17 +28,14 @@ acting: donor worktrees can move after this document is written. Use [`NOW.md`](
 
 | Worktree | Tip | Disposition |
 |---|---|---|
-| `SpaceFace` | `b235f062` (`master`) | Product authority; preserve quarantined review material. |
-| `SpaceFace-graphics-closeout` | `8e860439` | Fully merged; removable after reviewed docs and route evidence are promoted. |
-| `SpaceFace-performance-closure` | `99cad5b5` | Fully synthesized; removable after final combined route proof and recovery confirmation. |
+| `SpaceFace` | current `master` | Product authority; graphics/performance/Atlas synthesis is integrated. |
+| `SpaceFace-performance-closure` | active repair tip | Isolated measurement lane for live authored ship instance pooling; remove only after synthesis and final proof. |
 | `SpaceFace-graphics-overhaul` | `cab2d122` | Retain; substantial dirty Blender/source assets still need asset-by-asset disposition. |
-| `SpaceFace-oc-helios-golden` | `4c367cd7` | Full replacement rejected; preserve only until the batching concept and rejection receipts are durably recorded. |
-| `SpaceFace-depth-actualization` | `bf1dfce2` | Never whole-merge; selective product donor only. |
-| `SpaceFace-orch-codex-gt-sample` | `f3e49b4f` | Product history superseded by Depth donor; remove after ledger confirmation. |
-| `SpaceFace-orch-codex-helix` | `6475e2ef` | Unique faction edit rejected; remove after ledger confirmation. |
-| `SpaceFace-orch-codex-natural` | `de5397bc` | Product history superseded by Depth donor; remove after ledger confirmation. |
-| `SpaceFace-orch-codex-recovery` | `de5397bc` | Product history superseded by Depth donor; remove after ledger confirmation. |
-| `SpaceFace-orch-kimi-v2-present` | `de5397bc` | Selective station presentation donor; never whole-merge. |
+
+Removed physical worktrees retain recovery where needed: Kimi product candidates are committed at
+`0e2f2e51`; Depth remains on its branch plus annotated tag
+`archive/depth-player-route-actualization-20260719`, with 17 raw artifacts in the external archives
+folder; rejected Helios and four superseded satellites require no product recovery.
 
 Current graphics continuation and proof boundaries are recorded in
 [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md).
@@ -108,8 +108,8 @@ Every residual dirty path or coherent checkpoint subsystem should receive:
 
 The bulk checkpoint already exists. These are audit units, not permission to rewrite or re-stage it:
 
-1. **CHECKPOINT-IDENTITY** — keep `b235f062`, donor tips, quarantined paths, and registered worktree
-   inventory explicit until the final route evidence is promoted.
+1. **CHECKPOINT-IDENTITY** — keep `b235f062`, later evidence-hardening commits, archived donor tips,
+   and the three-worktree inventory explicit until final route evidence is promoted.
 2. **DEPTH-REVALIDATION** — never whole-merge `bf1dfce2`; port only the selected product slices in
    the donor ledger, then rerun aggregate and focused bad-fixture matrices from current HEAD;
    preserve 0/31 DONE until natural routes and evidence pass.
@@ -117,10 +117,11 @@ The bulk checkpoint already exists. These are audit units, not permission to rew
    asset changes under their owners. Do not infer approval from checkpoint inclusion.
 4. **EVIDENCE-DURABILITY** — promote only reviewed manifests/media needed by a clean checkout;
    `.devshots` remains ignored by default.
-5. **PERFORMANCE-SYNTHESIS** — complete at `b235f062`; 167/167 performance-modified tests and 49/49
-   graphics/PBR/VFX tests pass on the synthesized tree. Headed acceptance remains a separate gate.
-6. **RESIDUAL-WIP** — use `09_DONOR_VALUE_LEDGER.md`; remove physical worktrees only after every
-   valuable dirty/untracked product path is promoted, retained by branch/tag, or deliberately rejected.
+5. **PERFORMANCE-SYNTHESIS** — base synthesis is complete at `b235f062`; 167/167 performance-modified
+   tests and 49/49 graphics/PBR/VFX tests pass. Live authored ship pooling and strict headed
+   acceptance remain separate, evidence-gated work.
+6. **RESIDUAL-WIP** — physical donor cleanup is complete except the active performance lane and the
+   deliberately retained Blender/source worktree. Use `09_DONOR_VALUE_LEDGER.md` for recovery refs.
 
 ## Re-run inventory
 
