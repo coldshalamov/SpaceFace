@@ -570,7 +570,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       loadAuthoredPart: options.loadAuthoredPart,
       libraryScope: options.libraryScope,
       bootstrapPlan: options.bootstrapPlan,
-      ...residencyOptionsForBoundary(entity, boundary, renderer),
+      ...residencyOptionsForBoundary(entity, boundary, renderer, scene),
     };
     if (installResolvedBoundary(boundary, fallbackRoot, entity, renderer, scene, upgradeOptions, (next) => {
       active = next;
@@ -1211,7 +1211,7 @@ export function shouldAutoTriggerAuthoredUpgrade(entity, scene, liveState = auth
   return entityIsOnscreen(entity, liveState);
 }
 
-function residencyOptionsForBoundary(entity, boundary, renderer) {
+function residencyOptionsForBoundary(entity, boundary, renderer, scene = null) {
   const liveState = authoredRuntimeState();
   const data = entity && entity.data || {};
   const sectorId = data.sectorId || entity && entity.homeSectorId
@@ -1227,12 +1227,25 @@ function residencyOptionsForBoundary(entity, boundary, renderer) {
     residencyRole: entity && entity.isPlayer === true ? 'player' : 'current-sector',
     sectorId,
     isResidencyOwnerActive: () => !!boundary && !!boundary.parent && entity && entity.alive !== false,
+    useAuthoredInstancePools: shouldUseAuthoredInstancePools(entity, scene, liveState),
     prepareAuthoredPipelines: liveState && liveState.render
       && typeof liveState.render.compileObjectPipelines === 'function'
       ? (root) => liveState.render.compileObjectPipelines(root)
       : null,
     overlapAuthoredPipelineCompile: !!(liveState && liveState.mode !== 'flight'),
   };
+}
+
+/**
+ * Scene pools own world-space draw calls and therefore belong only to the production renderer scene.
+ * Previews and isolated inspection surfaces keep their authored meshes under the returned ship root.
+ */
+export function shouldUseAuthoredInstancePools(entity, scene, liveState = authoredRuntimeState()) {
+  return !!(
+    entity && entity.type === 'ship'
+    && scene
+    && liveState && liveState.render && liveState.render.scene === scene
+  );
 }
 
 function entityIsOnscreen(entity, state) {
@@ -1627,6 +1640,16 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   return prepare(root);
 }
 
+async function prepareComposedShipPipelines(authored, options = {}) {
+  const admission = authored && authored.pipelineAdmission;
+  const subjects = admission ? [authored.root, admission] : authored.root;
+  try {
+    return await prepareAuthoredVisualPipelines(subjects, options);
+  } finally {
+    if (admission) admission.clear();
+  }
+}
+
 export async function retryAuthoredPartLibrary(renderer, options = {}) {
   const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
   const cacheKey = libraryCacheKey(partRoot, options);
@@ -1652,7 +1675,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     }
     boundary.userData.authoredAssetState = 'compiling-pipelines';
     const completeAdmission = async () => {
-      await prepareAuthoredVisualPipelines(authored.root, options);
+      await prepareComposedShipPipelines(authored, options);
       swapped = commitAuthoredBoundary(
         boundary, fallbackRoot, entity, library, scene, options, setActive, authored,
       );
@@ -2156,7 +2179,9 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   const materials = fallbackMaterials(palette, seed);
   const bindings = createBindings();
   const mutableMaterials = new Map();
-  const staticBatches = createStaticBatchCollector(hull, bindings);
+  const staticBatches = options.useAuthoredInstancePools === true
+    ? null
+    : createStaticBatchCollector(hull, bindings);
   const fallbackParts = [];
   const usedParts = [];
   const authoredSlots = {};
@@ -2308,7 +2333,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
 
   if (!bindings.navLights.length) buildFallbackNavLights(hull, materials, bindings);
   ensureStandardSockets(hull);
-  staticBatches.flush();
+  if (staticBatches) staticBatches.flush();
   reconcileMaplessHullMaterialAliases(palette);
   canonicalizeMaplessHullMaterials(root, palette);
 
@@ -2347,8 +2372,8 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   root.add(shieldBubble);
   root.userData.shieldBubble = shieldBubble;
 
-  // Hidden geometry gives object-space tools/debuggers useful bounds even though opaque authored
-  // surfaces are rendered by scene-level instance pools rather than as children of this root.
+  // Hidden geometry gives object-space tools/debuggers useful bounds independent of whether opaque
+  // authored surfaces live under this root or are submitted by the production scene's instance pool.
   const boundsProxy = new THREE.Mesh(
     new THREE.BoxGeometry(1.8, 0.72, 1.18),
     new THREE.MeshBasicMaterial({ visible: false })
@@ -2364,11 +2389,17 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     authoredParts: [...new Set(usedParts)],
     authoredSlots: uniqueSlotMap(authoredSlots),
     proceduralFallbackParts: fallbackParts,
-    instancing: 'opaque immutable primitives merged into ship-local static batches',
+    instancing: options.useAuthoredInstancePools === true
+      ? 'opaque immutable primitives pooled by geometry and material across live-scene ships'
+      : 'opaque immutable primitives merged into ship-local static batches',
     hookBinding: 'HOOK_* / SOCKET_* / MOUNT_* / LOD* names bound to shipKit.finalizeShip + shipDamage',
     wholeShip,
     physicalCanopy: { transmission: 0.6, ior: 1.4, clearcoat: 1.0 },
   };
+
+  const pipelineAdmission = options.useAuthoredInstancePools === true
+    ? createOwnerInstancePipelineAdmission(scene, ownerBoundary)
+    : null;
 
   return {
     root,
@@ -2376,6 +2407,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     authoredSlots: uniqueSlotMap(authoredSlots),
     fallbackParts,
     wholeShip,
+    pipelineAdmission,
   };
 }
 
@@ -3468,6 +3500,32 @@ function createInstanceChunk(scene, pool, ordinal) {
   return chunk;
 }
 
+/**
+ * Pipeline admission must cover USE_INSTANCING without moving the live pool meshes out of the scene.
+ * These one-instance subjects share the exact geometry/material pairs but are never rendered.
+ */
+function createOwnerInstancePipelineAdmission(scene, owner) {
+  const state = scene && sceneStates.get(scene);
+  const ownerState = state && state.ownerSlots.get(owner);
+  if (!ownerState || !ownerState.slots.size) return null;
+
+  const admission = new THREE.Group();
+  admission.name = 'SF_AuthoredInstancePipelineAdmission';
+  const admittedPools = new Set();
+  for (const slot of ownerState.slots) {
+    const pool = slot && slot.chunk && slot.chunk.pool;
+    if (!pool || admittedPools.has(pool.key)) continue;
+    admittedPools.add(pool.key);
+    const subject = new THREE.InstancedMesh(pool.geometry, pool.material, 1);
+    subject.name = `SF_AuthoredInstancePipeline_${pool.label}`;
+    subject.count = 1;
+    subject.setMatrixAt(0, IDENTITY_MATRIX);
+    subject.userData.spacefaceInstancePipelineAdmission = true;
+    admission.add(subject);
+  }
+  return admission.children.length ? admission : null;
+}
+
 function syncSceneState(state, opts = {}) {
   const stats = resetPoolStats(state);
   if (!state.pools.size) return stats;
@@ -3895,6 +3953,16 @@ export function runAuthoredInstanceFrameContractProbe() {
   allocateInstance(scene, ownerB, proxyB, geometry, material, 'FrameContractProbe');
   const poolState = sceneStates.get(scene);
   const chunk = [...poolState.pools.values()][0].chunks[0];
+  const pipelineAdmission = createOwnerInstancePipelineAdmission(scene, ownerA);
+  const pipelineSubject = pipelineAdmission && pipelineAdmission.children[0];
+  const pipeline = {
+    subjects: pipelineAdmission ? pipelineAdmission.children.length : 0,
+    usesInstancing: pipelineSubject && pipelineSubject.isInstancedMesh === true,
+    sharesGeometry: pipelineSubject && pipelineSubject.geometry === geometry,
+    sharesMaterial: pipelineSubject && pipelineSubject.material === material,
+    livePoolRetainedInScene: chunk.mesh.parent === scene,
+  };
+  if (pipelineAdmission) pipelineAdmission.clear();
 
   const frame = (frameId, authored) => ({ frameId, authored });
   const record = (mesh, renderDirty) => ({
@@ -3939,6 +4007,7 @@ export function runAuthoredInstanceFrameContractProbe() {
   material.dispose();
 
   return {
+    pipeline,
     first,
     stable,
     replaced,

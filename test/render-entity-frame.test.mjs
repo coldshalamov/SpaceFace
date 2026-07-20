@@ -117,6 +117,13 @@ test('authored instance pools consume bounded frame records, clean omissions, an
     'parts library exposes a real-object contract probe for the retained frame path');
   const result = partsLibrary.runAuthoredInstanceFrameContractProbe();
 
+  assert.deepEqual(result.pipeline, {
+    subjects: 1,
+    usesInstancing: true,
+    sharesGeometry: true,
+    sharesMaterial: true,
+    livePoolRetainedInScene: true,
+  }, 'pipeline admission uses the exact pooled instancing program without reparenting the live mesh');
   assert.equal(result.first.frameBounded, true);
   assert.equal(result.first.ownersVisited, 1);
   assert.equal(result.first.slotsVisited, 1);

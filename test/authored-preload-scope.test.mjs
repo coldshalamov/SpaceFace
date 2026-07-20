@@ -116,6 +116,24 @@ test('world-place upgrades share the same bounded authored admission queue', () 
   assert.match(source, /typeof job\.run === 'function'/);
 });
 
+test('authored instance pooling is restricted to ships in the exact live renderer scene', () => {
+  const liveScene = new THREE.Scene();
+  const previewScene = new THREE.Scene();
+  const liveState = { render: { scene: liveScene } };
+  const ship = { type: 'ship' };
+
+  assert.equal(partsLibrary.shouldUseAuthoredInstancePools(ship, liveScene, liveState), true);
+  assert.equal(partsLibrary.shouldUseAuthoredInstancePools(ship, previewScene, liveState), false);
+  assert.equal(partsLibrary.shouldUseAuthoredInstancePools({ type: 'station' }, liveScene, liveState), false);
+  assert.equal(partsLibrary.shouldUseAuthoredInstancePools(ship, liveScene, null), false);
+
+  const source = readFileSync(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
+  assert.match(source, /options\.useAuthoredInstancePools === true\s*\? null\s*:\s*createStaticBatchCollector\(hull, bindings\)/s,
+    'live pooled composition must bypass the ship-local opaque batch collector');
+  assert.match(source, /residencyOptionsForBoundary\(entity, boundary, renderer, scene\)/,
+    'the live ship wrapper must pass its exact renderer scene into residency policy');
+});
+
 test('authored visual admission awaits the exact GPU pipeline compiler when available', async () => {
   assert.equal(typeof partsLibrary.prepareAuthoredVisualPipelines, 'function');
   const root = new THREE.Group();
