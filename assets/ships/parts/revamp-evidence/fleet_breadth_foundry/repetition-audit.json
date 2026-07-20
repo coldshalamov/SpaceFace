@@ -1,0 +1,1509 @@
+{
+  "generatedFrom": "codex/fleet-breadth-foundry-20260720 @ c740ae01",
+  "method": {
+    "scope": "Live runtime selection maps + default-route spawn systems only. Filenames and design prose are not treated as usage proof.",
+    "primarySources": [
+      "src/render/partsLibrary.js",
+      "src/render/visualOverrides.js",
+      "src/render/renderer.js",
+      "src/render/visualFactory.js",
+      "src/data/ships.js",
+      "src/data/enemies.js",
+      "src/data/palettes.js",
+      "src/data/sectors.js",
+      "src/data/sectorAnchors.js",
+      "src/data/frontierRegions/*.js",
+      "src/data/sectorZones.js",
+      "src/systems/world.js",
+      "src/systems/traffic.js",
+      "src/systems/combat.js",
+      "src/systems/encounterDirector.js",
+      "assets/ships/parts/parts_manifest.json"
+    ],
+    "liveAdmissionPath": "renderer.js installs installVisualOverrides with directAuthoredMount:true; ship entities receive a zero-draw substrate then wrapShipWithAuthoredParts admits authored GLBs. Bespoke FACTION_BUILDERS procedural heroes are skipped on the live direct path and only act as non-direct fallback substrates.",
+    "frequencyModel": "Time-weighted concurrent presence estimate for first ~30 minutes assuming Helios-heavy play (≈55% Helios, 20% Ceres, 15% Tethys, 10% Vesta). Traffic counts from trafficPerMin→ambientCountForSector; role mix from trafficRoleMixForSector; hostiles from enemyDensity×_enemyPool; dressing from _spawn*Dressing caps. Estimates are ordered ranks, not absolute ship-counts from a telemetry run.",
+    "ambiguities": [
+      "Cockpit/fin/greeble modular picks are pure entity-id seed hashes — not faction maps — so per-faction part frequency is entity-population dependent.",
+      "EncounterDirector weighted shapes add late-route variety; first-hour core (Helios enemyDensity 0) is dominated by traffic + stations + dressing, not director combat packs.",
+      "WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID catalogs lod1/lod2 files, but live whole-ship seam currently uses LOD0 only (partsLibrary.js comments at 395–398).",
+      "place_dock_interior* appear in UI hangar preview only (shipPreviewMount.js), not flight-space world spawns.",
+      "wholeship_pelican / wholeship_wasp (non-production) exist in parts_manifest but are not referenced by WHOLE_SHIP_* maps."
+    ]
+  },
+  "donors": [
+    {
+      "runtimeId": "place_station_trade_hub",
+      "kind": "place",
+      "sourcePath": "assets/ships/parts/places/place_station_trade_hub.glb",
+      "releasePath": "assets/ships/release/parts/places/place_station_trade_hub.glb",
+      "manifestMapping": "parts_manifest id place_station_trade_hub; category places; tris 1,664,738; bytes ~79.7MB; tintable hull+accent; landmark-scale station",
+      "runtimeSelection": [
+        {
+          "map": "STATION_ARCHETYPE_FILES / PLACE_FILE_BY_ID via placeFileForEntity(data.archetypeGlb)",
+          "cite": "partsLibrary.js:57-66; partsLibrary.js:1199-1209",
+          "defIds": []
+        },
+        {
+          "map": "sectorAnchors CORE + frontier stations stamp archetypeGlb; world._spawnStations copies st.archetypeGlb onto entity.data",
+          "cite": "sectorAnchors.js:22; world.js:1075; visualOverrides.js:46-48,178",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["faction_scn", "faction_mts", "faction_free", "frontier_trade_hub_owners"],
+      "rolesUsing": ["station_trade_hub"],
+      "routeFrequencyEstimate": "Highest-visibility station body on the default core route: Helios Station (SCN), Tethys Trade Hub (MTS), Drift Market (MTS), Reach Station (Free) plus frontier trade hubs (global anchor count 6). Player docks here first; paletteFor/station tint is the only faction differentiator.",
+      "visibleDeficiencies": [
+        "One mesh serves SCN/MTS/Free trade hubs — construction grammar identical across factions",
+        "Only hull+accent tintable roles in manifest despite mega-structure scale",
+        "Mega-tris landmark with limited material-role separation at gameplay camera"
+      ],
+      "recommendedReuseStrategy": "SAME NEED DIFFERENT ANSWER: keep trade-hub silhouette envelope; author 3 construction families (Concord plated docks, Meridian cargo-gantry, Free patchwork berth) as armor/overlay variants rather than recolors",
+      "constraints": {
+        "sockets": ["manifest: 3 sockets typical station family"],
+        "pivots": "station origin; dockRadius-driven placeTargetRadius (partsLibrary.js:667-680)",
+        "scaleRule": "stationArchetypeTargetRadius from dockRadius/visualRadius; world placeScale = dockRadius/14",
+        "lod": "authored LOD0/1/2 in GLB; station HLOD attachStationHlod",
+        "materials": ["Material_Hull", "Material_Accent (tintable)"]
+      }
+    },
+    {
+      "runtimeId": "place_lane_beacon",
+      "kind": "prop",
+      "sourcePath": "assets/ships/parts/places/place_lane_beacon.glb",
+      "releasePath": "assets/ships/release/parts/places/place_lane_beacon.glb",
+      "manifestMapping": "place_lane_beacon; tris 1292; bytes ~3.8MB; dims ~6.1×30.6×6.1 m; tintable hull+accent",
+      "runtimeSelection": [
+        {
+          "map": "PLACE_FILES + placeFileForEntity(data.placeId)",
+          "cite": "partsLibrary.js:72-74; partsLibrary.js:1199-1209",
+          "defIds": []
+        },
+        {
+          "map": "world._spawnCoreDressing spawns up to min(4, gates*2) per core-palette sector",
+          "cite": "world.js:1300-1316",
+          "defIds": []
+        },
+        {
+          "map": "sectorAnchors POI landmarkGlb also references place_lane_beacon",
+          "cite": "sectorAnchors.js:34,75,156",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["sector_owner_faction_tint"],
+      "rolesUsing": ["core_lane_dressing", "poi_landmark"],
+      "routeFrequencyEstimate": "Most-instanced flight prop in first hour: Helios (3 gates → 4 beacons) + Tethys (4 gates → 4 beacons) every sector enter. Tall thin silhouette (30 m vertical) reads at long range as identical poles.",
+      "visibleDeficiencies": [
+        "Single tall-bar construction for every core lane",
+        "Faction presence is color only",
+        "Micro trim on 1024 maps will mip away; needs bold collar/band/service detail"
+      ],
+      "recommendedReuseStrategy": "Beacon kit family: Concord tower beacon, DMC industrial strobe spar, Reach scavenged beacon — shared socket height, different joinery",
+      "constraints": {
+        "sockets": ["1 hook, 1 socket per manifest"],
+        "pivots": "base/origin placement from dressing spawn",
+        "scaleRule": "DRESSING_RADIUS place_lane_beacon=18 (world.js:145); placeScale default 1",
+        "lod": "part LOD if authored; otherwise full mesh",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "wholeship_wasp_production_v1",
+      "kind": "wholeship",
+      "sourcePath": "assets/ships/parts/wholeships/wasp_production_v1.glb",
+      "releasePath": "assets/ships/release/parts/wholeships/wasp_production_v1.glb",
+      "manifestMapping": "wholeship_wasp_production_v1; tris 11526; bytes ~12.8MB; tintable hull/dark/mechanical/accent/warning/canopy/thruster; 11 sockets",
+      "runtimeSelection": [
+        {
+          "map": "WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp",
+          "cite": "partsLibrary.js:387-390",
+          "defIds": ["ship_wasp"]
+        },
+        {
+          "map": "requiresProductionWholeShip true for any entity with defId ship_wasp (not player-only)",
+          "cite": "visualOverrides.js:30-37",
+          "defIds": ["ship_wasp"]
+        },
+        {
+          "map": "traffic TRAFFIC_ROLES.patrol/escort ship ship_wasp → trafficRole stamped but NOT in WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE, so defId whole-ship path wins",
+          "cite": "traffic.js:71-74; traffic.js:407; partsLibrary.js:429-433,486-495",
+          "defIds": ["ship_wasp"]
+        }
+      ],
+      "factionsUsing": ["faction_scn", "faction_mts", "faction_dmc", "faction_free", "any_sector_owner_via_traffic.factionId"],
+      "rolesUsing": ["patrol", "escort", "player_or_npc_ship_wasp", "enemy_types_with_shipId_ship_wasp_without_hostile_wholemap"],
+      "routeFrequencyEstimate": "Top concurrent traffic silhouette in high-sec: Helios role mix pushes patrol≈36% + escort≈9% of 6–8 ambient ships. Every sector-owning faction flies the same production Wasp body with paletteFor tint only.",
+      "visibleDeficiencies": [
+        "Lawful patrols of every core faction share one fighter body",
+        "lancer_sniper / choir_zealot / quiet_ghost use ship_wasp without hostile whole-ship override → same production body as patrols (enemies.js shipId + WHOLE_SHIP_FILE_BY_HOSTILE_ID gap)",
+        "Good semantic materials already — variation should be structural overlays, not more tint keys"
+      ],
+      "recommendedReuseStrategy": "Keep fighter envelope; faction service kits (SCN chevron armor, MTS courier-patrol fairings, Free jury plates). Separate hostile lance/sniper silhouettes from patrol Wasp via hostile whole-ship map entries.",
+      "constraints": {
+        "sockets": ["11 production sockets"],
+        "pivots": "whole-ship body; modular cockpit/engine/fin skipped when wholeShip=true (partsLibrary.js:2209-2210,2349)",
+        "scaleRule": "normalized assembly to entity.radius via kit.finalizeShip",
+        "lod": "WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID.ship_wasp lod0/1/2 catalogued; live seam LOD0 canonical (partsLibrary.js:399-409)",
+        "materials": ["hull", "dark", "mechanical", "accent", "warning", "canopy", "thruster"]
+      }
+    },
+    {
+      "runtimeId": "wholeship_helios_span",
+      "kind": "wholeship",
+      "sourcePath": "assets/ships/parts/wholeships/helios_span.glb",
+      "releasePath": "assets/ships/release/parts/wholeships/helios_span.glb",
+      "manifestMapping": "wholeship_helios_span; tris 16366; bytes ~15.8MB; tintable hull/accent/warm",
+      "runtimeSelection": [
+        {
+          "map": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler",
+          "cite": "partsLibrary.js:429-433",
+          "defIds": ["ship_mule"]
+        },
+        {
+          "map": "traffic stamps data.trafficRole='hauler' after spawn of ship_mule",
+          "cite": "traffic.js:65-66; traffic.js:274-280; traffic.js:407",
+          "defIds": ["ship_mule"]
+        },
+        {
+          "map": "wholeShipVisualForEntity prefers trafficRole over defId whole map",
+          "cite": "partsLibrary.js:464-485",
+          "defIds": ["ship_mule"]
+        }
+      ],
+      "factionsUsing": ["all_sector_owners_via_traffic.factionId"],
+      "rolesUsing": ["hauler"],
+      "routeFrequencyEstimate": "Dominant civilian bulk silhouette: base weight 30, boosted in industrial + high-sec mixes. Helios-weighted estimate ≈1.3 concurrent-equivalents; always near pocket stations in first hour.",
+      "visibleDeficiencies": [
+        "Every faction's cargo hauler is the same Helios Span body",
+        "Only 3 tint roles (hull/accent/warm) for a large freighter",
+        "express role uses ship_mule WITHOUT trafficRole hauler mapping → falls to modular hull_freighter (traffic.js:83-84 vs WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE keys) creating inconsistent mule look"
+      ],
+      "recommendedReuseStrategy": "Hauler construction families: SCN sealed corporate holds, DMC ore-box freighter, MTS container-lattice, Reach bolted scrap hauler — keep length envelope",
+      "constraints": {
+        "sockets": ["9 sockets; 3 hooks per manifest"],
+        "pivots": "complete body; no modular engines/fins",
+        "scaleRule": "entity radius from ship_mule (~18)",
+        "lod": "explicit LOD0/1/2 in asset notes",
+        "materials": ["hull", "accent", "warm"]
+      }
+    },
+    {
+      "runtimeId": "wholeship_kestrel",
+      "kind": "wholeship",
+      "sourcePath": "assets/ships/parts/wholeships/kestrel.glb",
+      "releasePath": "assets/ships/release/parts/wholeships/kestrel.glb",
+      "manifestMapping": "wholeship_kestrel; tris 27340; bytes ~44.9MB; tintable hull/accent/warning/repair; 9 sockets; player hero",
+      "runtimeSelection": [
+        {
+          "map": "WHOLE_SHIP_FILE_BY_DEF_ID.ship_kestrel + requiresProductionWholeShip only for isPlayerKestrel",
+          "cite": "partsLibrary.js:387-389; visualOverrides.js:25-37",
+          "defIds": ["ship_kestrel"]
+        },
+        {
+          "map": "AUTHORED_BOOTSTRAP_PLAN preloads kestrel only",
+          "cite": "partsLibrary.js:245-247",
+          "defIds": ["ship_kestrel"]
+        },
+        {
+          "map": "Courier traffic uses ship_kestrel gameplay def BUT WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.courier → helios_lark so player body is not reused for traffic",
+          "cite": "partsLibrary.js:429-433; traffic.js:67-68",
+          "defIds": ["ship_kestrel"]
+        }
+      ],
+      "factionsUsing": ["player_faction_free_default"],
+      "rolesUsing": ["player_starter"],
+      "routeFrequencyEstimate": "Always on screen (player). Not a cross-NPC repetition problem; included because it is the visual baseline the player compares every other ship against.",
+      "visibleDeficiencies": [
+        "Not repetitive across NPCs (traffic intentionally diverted to Helios Lark)",
+        "Highest-fidelity body — variation work should not dilute hero uniqueness"
+      ],
+      "recommendedReuseStrategy": "Do not mass-variant the player hero. Use as quality bar / socket reference for overlays on other families.",
+      "constraints": {
+        "sockets": ["9 sockets"],
+        "pivots": "complete production body",
+        "scaleRule": "player ship radius from ship_kestrel",
+        "lod": "lod0 live; lod1/lod2 catalogued (partsLibrary.js:399-404)",
+        "materials": ["hull", "accent", "warning", "repair"]
+      }
+    },
+    {
+      "runtimeId": "hull_interceptor",
+      "kind": "part",
+      "sourcePath": "assets/ships/parts/hulls/hull_interceptor.glb",
+      "releasePath": "assets/ships/release/parts/hulls/hull_interceptor.glb",
+      "manifestMapping": "hull_interceptor; tris 4539; bytes ~2.7MB; tintable hull only; 5 mounts + 2 sockets; dims ~11.2×1.35×5.4 m",
+      "runtimeSelection": [
+        {
+          "map": "HULL_FILE_BY_DEF_ID.ship_hornet",
+          "cite": "partsLibrary.js:369-383",
+          "defIds": ["ship_hornet"]
+        },
+        {
+          "map": "makeEnemySpawnSpec sets defId from ENEMY_TYPES.shipId; patrol_lawman/customs_cutter/corsair_raider use ship_hornet",
+          "cite": "enemies.js:114-147,231; combat.js:88-98,159",
+          "defIds": ["ship_hornet"]
+        },
+        {
+          "map": "corsair_raider overrides to wholeship ashline_rig via lootTableId before hull map",
+          "cite": "partsLibrary.js:414-418,464-475",
+          "defIds": ["ship_hornet"]
+        },
+        {
+          "map": "traffic pirate role uses ship_hornet modular (trafficRole 'pirate' not in whole-ship traffic map)",
+          "cite": "traffic.js:77-78; partsLibrary.js:429-433",
+          "defIds": ["ship_hornet"]
+        }
+      ],
+      "factionsUsing": ["faction_scn", "faction_reach", "sector_owner_for_traffic_pirate"],
+      "rolesUsing": ["patrol_lawman", "customs_cutter", "traffic_pirate", "ship_hornet_player"],
+      "routeFrequencyEstimate": "Primary modular combat hull in mid-core: Ceres/Tethys/Vesta high-sec ambient pool is LAWFUL_ENEMIES=['patrol_lawman'] only (world.js:129,1623-1626). Interceptor silhouette + engine_vector + seed fins/weapons reads as 'the other fighter' next to Wasp wholeships.",
+      "visibleDeficiencies": [
+        "Single Material_Hull tint channel over 11 m body",
+        "SCN law and Reach pirates (when not ashline-mapped) share modular interceptor grammar",
+        "Modular greebles at targetLength 0.14–0.16 vanish at 60–150 px gameplay scale"
+      ],
+      "recommendedReuseStrategy": "Law interceptor vs raider interceptor construction kits: reinforced chin plate + arrestor gear vs jagged armor overlays; keep MOUNT_* layout",
+      "constraints": {
+        "sockets": ["SOCKET_Trail_Main", "SOCKET_Weapon_Front"],
+        "pivots": "MOUNT_COCKPIT / ENGINE_* / FIN_*",
+        "scaleRule": "hull targetLength 1.72 then entity radius normalize (partsLibrary.js:2268-2269)",
+        "lod": "authored LOD meshes in hull GLB when present",
+        "materials": ["Material_Hull only"]
+      }
+    },
+    {
+      "runtimeId": "wholeship_helios_lark",
+      "kind": "wholeship",
+      "sourcePath": "assets/ships/parts/wholeships/helios_lark.glb",
+      "releasePath": "assets/ships/release/parts/wholeships/helios_lark.glb",
+      "manifestMapping": "wholeship_helios_lark; tris 14366; bytes ~15.7MB; tintable hull/accent/warm",
+      "runtimeSelection": [
+        {
+          "map": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.courier",
+          "cite": "partsLibrary.js:429-433",
+          "defIds": ["ship_kestrel"]
+        },
+        {
+          "map": "traffic courier role weight base 18; high-sec boost",
+          "cite": "traffic.js:67-68,103-113",
+          "defIds": ["ship_kestrel"]
+        }
+      ],
+      "factionsUsing": ["all_sector_owners_via_traffic.factionId"],
+      "rolesUsing": ["courier"],
+      "routeFrequencyEstimate": "Second civilian whole-ship after Span; continuous in Helios pocket. Distinct from player Kestrel by design.",
+      "visibleDeficiencies": [
+        "All-faction courier sameness",
+        "3 tint roles only"
+      ],
+      "recommendedReuseStrategy": "Courier kit: sealed navy pouch vs express lattice vs smuggler false-panel courier — same length class",
+      "constraints": {
+        "sockets": ["9"],
+        "pivots": "complete body",
+        "scaleRule": "ship_kestrel radius class",
+        "lod": "LOD0/1/2 authored",
+        "materials": ["hull", "accent", "warm"]
+      }
+    },
+    {
+      "runtimeId": "wholeship_helios_cradle",
+      "kind": "wholeship",
+      "sourcePath": "assets/ships/parts/wholeships/helios_cradle.glb",
+      "releasePath": "assets/ships/release/parts/wholeships/helios_cradle.glb",
+      "manifestMapping": "wholeship_helios_cradle; tris 15536; bytes ~15.8MB; tintable hull/accent/warm",
+      "runtimeSelection": [
+        {
+          "map": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.miner",
+          "cite": "partsLibrary.js:429-433",
+          "defIds": ["ship_pelican"]
+        },
+        {
+          "map": "traffic miner weight base 16; industrial sectors ×2.5",
+          "cite": "traffic.js:69-70,96",
+          "defIds": ["ship_pelican"]
+        }
+      ],
+      "factionsUsing": ["faction_dmc_heavy_in_belt", "all_sector_owners_via_traffic"],
+      "rolesUsing": ["miner"],
+      "routeFrequencyEstimate": "Belt-dominant (Ceres/Vesta industrial mix). First mining-run hour saturates this silhouette.",
+      "visibleDeficiencies": [
+        "Industrial factions still get the generic Helios miner body",
+        "No construction difference between DMC ore culture and SCN licensed miners"
+      ],
+      "recommendedReuseStrategy": "Miner families: DMC claw-rig barge, Free prospector frame, Quiet stripped hold — preserve drill-forward read",
+      "constraints": {
+        "sockets": ["9"],
+        "pivots": "complete body",
+        "scaleRule": "ship_pelican radius",
+        "lod": "LOD0/1/2",
+        "materials": ["hull", "accent", "warm"]
+      }
+    },
+    {
+      "runtimeId": "place_station_billboard",
+      "kind": "prop",
+      "sourcePath": "assets/ships/parts/places/place_station_billboard.glb",
+      "releasePath": "assets/ships/release/parts/places/place_station_billboard.glb",
+      "manifestMapping": "place_station_billboard; tris 988; bytes ~4.5MB; dims ~18×12×18; tintable hull+accent",
+      "runtimeSelection": [
+        {
+          "map": "world._spawnCoreDressing up to min(2, stations.length) per core sector",
+          "cite": "world.js:1317-1327",
+          "defIds": []
+        },
+        {
+          "map": "PLACE_FILES",
+          "cite": "partsLibrary.js:77",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["sector_owner_tint"],
+      "rolesUsing": ["core_station_signage"],
+      "routeFrequencyEstimate": "2 per core sector (Helios/Tethys). Large planar read near every major dock approach.",
+      "visibleDeficiencies": [
+        "Generic ad frame for all factions",
+        "Opportunity for faction construction/sign grammar unused"
+      ],
+      "recommendedReuseStrategy": "Billboard chassis variants: chrome authority pylon, corporate lightbox, pirate painted plate",
+      "constraints": {
+        "sockets": ["1 hook, 1 socket"],
+        "pivots": "station-relative dressing spawn",
+        "scaleRule": "DRESSING_RADIUS=28",
+        "lod": "single part",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "place_gate_jump_ring",
+      "kind": "place",
+      "sourcePath": "assets/ships/parts/places/place_gate_jump_ring.glb",
+      "releasePath": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
+      "manifestMapping": "place_gate_jump_ring; tris 40808; bytes ~10.0MB; tintable hull+accent",
+      "runtimeSelection": [
+        {
+          "map": "STATION_ARCHETYPE_FILES includes place_gate_jump_ring",
+          "cite": "partsLibrary.js:57-66",
+          "defIds": []
+        },
+        {
+          "map": "world._spawnGates defaults archetypeGlb to place_gate_jump_ring for every gate entity",
+          "cite": "world.js:1190-1210",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["sector.factionId on gate spawn"],
+      "rolesUsing": ["jump_gate"],
+      "routeFrequencyEstimate": "One instance per neighbor link: Helios 3 gates, Tethys 4, etc. Player passes these every sector transition — highly repeated infrastructure ring.",
+      "visibleDeficiencies": [
+        "All gates share one ring construction",
+        "Faction ownership only via palette tint"
+      ],
+      "recommendedReuseStrategy": "Gate frame families: Concord ring, industrial truss gate, scavenged Reach hoop — keep clear jump aperture",
+      "constraints": {
+        "sockets": ["station archetype sockets"],
+        "pivots": "station entity; type station",
+        "scaleRule": "station visual radius path",
+        "lod": "LOD0/1/2",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "place_station_military",
+      "kind": "place",
+      "sourcePath": "assets/ships/parts/places/place_station_military.glb",
+      "releasePath": "assets/ships/release/parts/places/place_station_military.glb",
+      "manifestMapping": "place_station_military; tris 98470; bytes ~6.8MB; tintable hull+accent",
+      "runtimeSelection": [
+        {
+          "map": "STATION_ARCHETYPE_FILES + anchors",
+          "cite": "partsLibrary.js:60; sectorAnchors.js:23,62",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["faction_scn", "frontier_customs_owners"],
+      "rolesUsing": ["military", "customs"],
+      "routeFrequencyEstimate": "Core early: Coalition HQ (Helios) + Customs Gate (Tethys) + frontier customs. Global anchor count 3. Always SCN-facing authority read with same mesh.",
+      "visibleDeficiencies": [
+        "Authority stations are one armor grammar",
+        "No structural difference between HQ and customs beyond size stamp"
+      ],
+      "recommendedReuseStrategy": "Military construction set: bastion HQ vs customs interdiction spire vs garrison pad — shared hardpoint language",
+      "constraints": {
+        "sockets": ["3"],
+        "pivots": "station origin",
+        "scaleRule": "dockRadius size S/M/L",
+        "lod": "LOD0/1/2",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "place_station_blackmarket",
+      "kind": "place",
+      "sourcePath": "assets/ships/parts/places/place_station_blackmarket.glb",
+      "releasePath": "assets/ships/release/parts/places/place_station_blackmarket.glb",
+      "manifestMapping": "place_station_blackmarket; tris 36996; bytes ~9.6MB; tintable hull+accent",
+      "runtimeSelection": [
+        {
+          "map": "STATION_ARCHETYPE_FILES; highest station archetype count across CORE+frontier (8 anchors)",
+          "cite": "partsLibrary.js:61; sectorAnchors.js:103,162,195; frontierRegions/* stations",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["faction_quiet", "faction_reach", "faction_vael", "frontier_outlaw_owners"],
+      "rolesUsing": ["blackmarket"],
+      "routeFrequencyEstimate": "Most-reused station archetype by map count (8). Mid/late first day (Pallas/Sker/Ashfall/frontier). Quiet/Reach/Vael look like recolors of one warren.",
+      "visibleDeficiencies": [
+        "Outlaw factions share identical warren silhouette",
+        "Missed opportunity for scrap-weld vs quiet-stealth vs vael-organic construction"
+      ],
+      "recommendedReuseStrategy": "Blackmarket family: Quiet cloaked dock, Reach scrap warren, Vael growth lattice — same service footprint",
+      "constraints": {
+        "sockets": ["3"],
+        "pivots": "station",
+        "scaleRule": "dock radius",
+        "lod": "LOD0/1/2",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "place_nav_buoy",
+      "kind": "prop",
+      "sourcePath": "assets/ships/parts/places/place_nav_buoy.glb",
+      "releasePath": "assets/ships/release/parts/places/place_nav_buoy.glb",
+      "manifestMapping": "place_nav_buoy; tris 1296; bytes ~3.8MB; dims ~3.1×5.4×2.2; tintable hull+accent",
+      "runtimeSelection": [
+        {
+          "map": "world._spawnBeltDressing / _spawnFringeDressing / _spawnAnomalyDressing",
+          "cite": "world.js:1330-1421",
+          "defIds": []
+        },
+        {
+          "map": "POI landmarkGlb references across anchors",
+          "cite": "sectorAnchors.js multiple landmarkGlb place_nav_buoy",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["sector_owner_tint"],
+      "rolesUsing": ["belt_survey", "fringe_nav", "anomaly_nav", "poi_marker"],
+      "routeFrequencyEstimate": "Top field prop with mining_drone: belt sectors spawn min(3,fields) buoys. Landmark POI count 8+ in anchors. Very common once player leaves pure core.",
+      "visibleDeficiencies": [
+        "One buoy barrel for all security bands",
+        "Should read survey vs distress vs smuggler marker by construction"
+      ],
+      "recommendedReuseStrategy": "Buoy kit: licensed survey can, flickering fringe can, quiet dark marker",
+      "constraints": {
+        "sockets": ["1 hook, 1 socket"],
+        "pivots": "dressing placement",
+        "scaleRule": "DRESSING_RADIUS=12",
+        "lod": "single",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "place_mining_drone",
+      "kind": "prop",
+      "sourcePath": "assets/ships/parts/places/place_mining_drone.glb",
+      "releasePath": "assets/ships/release/parts/places/place_mining_drone.glb",
+      "manifestMapping": "place_mining_drone; tris 580; bytes ~189KB; dims ~5×1.3×2.4; tintable hull+accent",
+      "runtimeSelection": [
+        {
+          "map": "belt/fringe/anomaly dressing spawns",
+          "cite": "world.js:1344-1348,1391-1396,1417-1420",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["sector_owner_tint"],
+      "rolesUsing": ["prospecting_drone_dressing"],
+      "routeFrequencyEstimate": "1:1 with field survey buoys in belt dressing (up to 3/sector) plus fringe/anomaly singles. Smallest repeated industrial actor.",
+      "visibleDeficiencies": [
+        "Primitive-feeling small body (580 tris) next to hero ships",
+        "No faction tool language"
+      ],
+      "recommendedReuseStrategy": "Drone tool families: DMC claw drone, Free probe, Reach scavenger grabber",
+      "constraints": {
+        "sockets": ["2 hooks, 1 socket"],
+        "pivots": "dressing",
+        "scaleRule": "DRESSING_RADIUS=8",
+        "lod": "single",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "wholeship_ashline_dart",
+      "kind": "wholeship",
+      "sourcePath": "assets/ships/parts/wholeships/ashline_dart.glb",
+      "releasePath": "assets/ships/release/parts/wholeships/ashline_dart.glb",
+      "manifestMapping": "wholeship_ashline_dart; tris 12500; bytes ~18.6MB; tintable hull/accent/warm",
+      "runtimeSelection": [
+        {
+          "map": "WHOLE_SHIP_FILE_BY_HOSTILE_ID.wasp_swarmer",
+          "cite": "partsLibrary.js:414-418",
+          "defIds": ["ship_wasp"]
+        },
+        {
+          "map": "lootTableId stamped makeEnemySpawnSpec; ambient/zone pools include wasp_swarmer",
+          "cite": "combat.js:159; world.js:130; sectorZones.js:46,54",
+          "defIds": ["ship_wasp"]
+        }
+      ],
+      "factionsUsing": ["faction_reach", "zone_faction_overrides"],
+      "rolesUsing": ["wasp_swarmer", "reinforcement_swarmer"],
+      "routeFrequencyEstimate": "Primary hostile whole-ship once player leaves Helios (enemyDensity 0). Zone archetypes and PIRATE_ENEMIES pool weight swarmers heavily. Distinct from production Wasp — good, but single Reach dart body for all swarmer instances.",
+      "visibleDeficiencies": [
+        "All swarmers identical construction",
+        "choir_zealot also ship_wasp silhouette drone_swarm but NO hostile whole map → wrong body (production wasp)"
+      ],
+      "recommendedReuseStrategy": "Swarm dart damage/patch variants + faction-of-origin scrap dialects; fix unmapped ship_wasp hostiles to use dart or dedicated bodies",
+      "constraints": {
+        "sockets": ["9"],
+        "pivots": "complete hostile body",
+        "scaleRule": "enemy collisionRadius ~12",
+        "lod": "LOD0/1/2",
+        "materials": ["hull", "accent", "warm"]
+      }
+    },
+    {
+      "runtimeId": "wholeship_ashline_rig",
+      "kind": "wholeship",
+      "sourcePath": "assets/ships/parts/wholeships/ashline_rig.glb",
+      "releasePath": "assets/ships/release/parts/wholeships/ashline_rig.glb",
+      "manifestMapping": "wholeship_ashline_rig; tris 10302; bytes ~18.5MB; tintable hull/accent/warm",
+      "runtimeSelection": [
+        {
+          "map": "WHOLE_SHIP_FILE_BY_HOSTILE_ID.reaver_pirate and corsair_raider BOTH map to ashline_rig",
+          "cite": "partsLibrary.js:414-418",
+          "defIds": ["ship_drifter", "ship_hornet"]
+        }
+      ],
+      "factionsUsing": ["faction_reach"],
+      "rolesUsing": ["reaver_pirate", "corsair_raider", "mine_layer_jackal_shares_silhouette_but_not_wholemap"],
+      "routeFrequencyEstimate": "Main pirate silhouette for ambient reaver/corsair and many zone dens. Critical mid-route repetition: two different enemy roles share one body.",
+      "visibleDeficiencies": [
+        "reaver_pirate and corsair_raider are intentionally different roles but identical whole-ship",
+        "mine_layer_jackal uses ship_drifter + pirate_swoop silhouette but is NOT in WHOLE_SHIP_FILE_BY_HOSTILE_ID → modular hull_multirole instead of ashline"
+      ],
+      "recommendedReuseStrategy": "Split raider family: reaver hooked scavenger vs corsair blade interceptor overlays; map jackal into ashline or dedicated mine-layer body",
+      "constraints": {
+        "sockets": ["10"],
+        "pivots": "complete body",
+        "scaleRule": "enemy radius ~18",
+        "lod": "LOD0/1/2",
+        "materials": ["hull", "accent", "warm"]
+      }
+    },
+    {
+      "runtimeId": "wholeship_ashline_lode",
+      "kind": "wholeship",
+      "sourcePath": "assets/ships/parts/wholeships/ashline_lode.glb",
+      "releasePath": "assets/ships/release/parts/wholeships/ashline_lode.glb",
+      "manifestMapping": "wholeship_ashline_lode; tris 15670; bytes ~18.8MB; tintable hull/accent/warm",
+      "runtimeSelection": [
+        {
+          "map": "WHOLE_SHIP_FILE_BY_HOSTILE_ID.bruiser_brawler",
+          "cite": "partsLibrary.js:416",
+          "defIds": ["ship_bastion"]
+        },
+        {
+          "map": "pd_screen_escort also ship_bastion + bruiser_armor silhouette but NOT in hostile whole map → modular hull_corvette",
+          "cite": "enemies.js:205-207; partsLibrary.js:414-418",
+          "defIds": ["ship_bastion"]
+        }
+      ],
+      "factionsUsing": ["faction_reach", "faction_vael_via_zone_templates"],
+      "rolesUsing": ["bruiser_brawler"],
+      "routeFrequencyEstimate": "Heavier hostile body in zone Vael packs and mid-tier dens. Less frequent than dart/rig but large on-screen read.",
+      "visibleDeficiencies": [
+        "Single heavy hostile body",
+        "pd_screen_escort fails into modular corvette — inconsistent heavy-enemy family"
+      ],
+      "recommendedReuseStrategy": "Heavy brawler armor dialects + map pd_screen_escort to lode or PD-screen overlay",
+      "constraints": {
+        "sockets": ["9"],
+        "pivots": "complete body",
+        "scaleRule": "radius ~20",
+        "lod": "LOD0/1/2",
+        "materials": ["hull", "accent", "warm"]
+      }
+    },
+    {
+      "runtimeId": "hull_multirole",
+      "kind": "part",
+      "sourcePath": "assets/ships/parts/hulls/hull_multirole.glb",
+      "releasePath": "assets/ships/release/parts/hulls/hull_multirole.glb",
+      "manifestMapping": "hull_multirole; tris 3534; bytes ~3.5MB; tintable hull only; dims ~12.3×4.0×4.9",
+      "runtimeSelection": [
+        {
+          "map": "HULL_FILE_BY_DEF_ID.ship_drifter / ship_ranger",
+          "cite": "partsLibrary.js:371,379",
+          "defIds": ["ship_drifter", "ship_ranger"]
+        },
+        {
+          "map": "traffic smuggler/rescue use ship_drifter without whole-ship traffic role",
+          "cite": "traffic.js:75-80",
+          "defIds": ["ship_drifter"]
+        },
+        {
+          "map": "reaver_pirate overrides to ashline_rig when lootTableId present; modular path for non-hostile drifters",
+          "cite": "partsLibrary.js:417,464-475",
+          "defIds": ["ship_drifter"]
+        }
+      ],
+      "factionsUsing": ["sector_owner_traffic", "player_if_owns_drifter"],
+      "rolesUsing": ["smuggler", "rescue", "multirole", "explorer"],
+      "routeFrequencyEstimate": "Low concurrent share in high-sec (~smuggler suppressed) but rises in mid-sec. Modular stack (hull+seed cockpit/fin+engine_ion_small) is the 'generic NPC multirole' look.",
+      "visibleDeficiencies": [
+        "Lowest tris among modular hulls",
+        "Single hull material",
+        "Smuggler/rescue/explorer share silhouette"
+      ],
+      "recommendedReuseStrategy": "Multirole kit: smuggler false panels, rescue gear hardpoints, ranger sensor boom",
+      "constraints": {
+        "sockets": ["2 sockets + 5 mounts"],
+        "pivots": "standard hull mounts",
+        "scaleRule": "targetLength 1.72",
+        "lod": "hull LODs if present",
+        "materials": ["Material_Hull"]
+      }
+    },
+    {
+      "runtimeId": "hull_freighter",
+      "kind": "part",
+      "sourcePath": "assets/ships/parts/hulls/hull_freighter.glb",
+      "releasePath": "assets/ships/release/parts/hulls/hull_freighter.glb",
+      "manifestMapping": "hull_freighter; tris 4621; bytes ~3.1MB; tintable hull only",
+      "runtimeSelection": [
+        {
+          "map": "HULL_FILE_BY_DEF_ID.ship_mule / ship_atlas",
+          "cite": "partsLibrary.js:375-376",
+          "defIds": ["ship_mule", "ship_atlas"]
+        },
+        {
+          "map": "traffic express uses ship_mule with trafficRole express — NOT in WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE → modular freighter (haulers use helios_span instead)",
+          "cite": "traffic.js:83-84; partsLibrary.js:429-433",
+          "defIds": ["ship_mule"]
+        }
+      ],
+      "factionsUsing": ["sector_owner_traffic_express", "player_hauler"],
+      "rolesUsing": ["express", "heavy_hauler", "freighter_when_not_traffic_hauler"],
+      "routeFrequencyEstimate": "Low concurrent but high confusion risk: express liners look modular freighter while normal haulers look Helios Span. Player-owned Mule also modular.",
+      "visibleDeficiencies": [
+        "Split presentation for same defId ship_mule depending on trafficRole",
+        "Single hull material over freighter volume",
+        "pod_cargo_container / skid_quad attach for freighter roles — small dorsal detail may vanish"
+      ],
+      "recommendedReuseStrategy": "Either map express→helios_span/variant or author express liner overlay family; freighter modular path needs bold container joinery",
+      "constraints": {
+        "sockets": ["2 + mounts"],
+        "pivots": "standard",
+        "scaleRule": "targetLength 1.72; radius≥17 doubles engines",
+        "lod": "hull LODs",
+        "materials": ["Material_Hull"]
+      }
+    },
+    {
+      "runtimeId": "hull_miner",
+      "kind": "part",
+      "sourcePath": "assets/ships/parts/hulls/hull_miner.glb",
+      "releasePath": "assets/ships/release/parts/hulls/hull_miner.glb",
+      "manifestMapping": "hull_miner; tris 12991; bytes ~4.0MB; tintable hull only; tall dims ~11×4.4×5.5",
+      "runtimeSelection": [
+        {
+          "map": "HULL_FILE_BY_DEF_ID.ship_pelican / ship_ironback",
+          "cite": "partsLibrary.js:373-374",
+          "defIds": ["ship_pelican", "ship_ironback"]
+        },
+        {
+          "map": "traffic miner prefers helios_cradle whole-ship; modular miner hull is player/NPC without trafficRole miner",
+          "cite": "partsLibrary.js:431; traffic.js:69-70",
+          "defIds": ["ship_pelican"]
+        }
+      ],
+      "factionsUsing": ["player", "non_traffic_miners"],
+      "rolesUsing": ["mining", "mining_barge"],
+      "routeFrequencyEstimate": "Player prospector route + any non-traffic miner. Traffic miners skip this hull. Still top modular industrial body.",
+      "visibleDeficiencies": [
+        "Player miner may not match ambient Helios Cradle language",
+        "hull-only material"
+      ],
+      "recommendedReuseStrategy": "Align modular miner overlays with Cradle construction family so player/NPC mining reads as one industry",
+      "constraints": {
+        "sockets": ["2 + mounts"],
+        "pivots": "standard",
+        "scaleRule": "1.72 + dual engines common",
+        "lod": "hull LODs",
+        "materials": ["Material_Hull"]
+      }
+    },
+    {
+      "runtimeId": "hull_fighter",
+      "kind": "part",
+      "sourcePath": "assets/ships/parts/hulls/hull_fighter.glb",
+      "releasePath": "assets/ships/release/parts/hulls/hull_fighter.glb",
+      "manifestMapping": "hull_fighter; tris 4690; bytes ~2.7MB; tintable hull only",
+      "runtimeSelection": [
+        {
+          "map": "HULL_FILE_BY_DEF_ID.ship_wasp — only used when whole-ship path fails or requiredWholeShip false",
+          "cite": "partsLibrary.js:372; visualOverrides.js:30-37",
+          "defIds": ["ship_wasp"]
+        }
+      ],
+      "factionsUsing": ["fallback_only_on_live_default_for_ship_wasp"],
+      "rolesUsing": ["fighter"],
+      "routeFrequencyEstimate": "Mapped but usually shadowed by wasp_production_v1 on live route. Still the modular fighter donor for previews/failures and any path without requiredWholeShip.",
+      "visibleDeficiencies": [
+        "Redundant with production Wasp on live route",
+        "Single material"
+      ],
+      "recommendedReuseStrategy": "Treat as modular fighter kit base for non-production wasps or enemy modular fallback; prefer wholeship variants for live NPCs",
+      "constraints": {
+        "sockets": ["2 + 5 mounts"],
+        "pivots": "standard",
+        "scaleRule": "1.72",
+        "lod": "hull LODs",
+        "materials": ["Material_Hull"]
+      }
+    },
+    {
+      "runtimeId": "engine_vector",
+      "kind": "part",
+      "sourcePath": "assets/ships/parts/engines/engine_vector.glb",
+      "releasePath": "assets/ships/release/parts/engines/engine_vector.glb",
+      "manifestMapping": "engine_vector; tris 5628; bytes ~393KB; dims ~2.4×1.1×1.1; tintable hull+accent; special plume normalize in partsLibrary.js:3790-3811",
+      "runtimeSelection": [
+        {
+          "map": "ENGINE_FILE_BY_DEF_ID ship_wasp/ship_hornet; ENGINE_FILE_BY_DRIVE_ID drive_reaction_s/drive_pulse_plate_m; fighter/interceptor role fallback",
+          "cite": "partsLibrary.js:343-367,2654-2666",
+          "defIds": ["ship_wasp", "ship_hornet", "ship_ironback"]
+        }
+      ],
+      "factionsUsing": ["any_modular_combatant"],
+      "rolesUsing": ["fighter", "interceptor", "modular_only"],
+      "routeFrequencyEstimate": "Top modular engine: every modular ship_hornet (patrol_lawman) mounts it; dual mounts when radius≥17. Whole-ships skip engine slot.",
+      "visibleDeficiencies": [
+        "Known plume over-read: runtime forces long narrow exhaust (partsLibrary.js:3796-3802)",
+        "Combat engines shared across law/piracy modular ships"
+      ],
+      "recommendedReuseStrategy": "Combat nozzle construction family: military sealed nozzle vs pirate scorched nozzle; keep HOOK plume contract",
+      "constraints": {
+        "sockets": ["drive hooks"],
+        "pivots": "MOUNT_ENGINE_*",
+        "scaleRule": "targetLength 0.58 per mount",
+        "lod": "part",
+        "materials": ["hull", "accent", "plume"]
+      }
+    },
+    {
+      "runtimeId": "engine_industrial",
+      "kind": "part",
+      "sourcePath": "assets/ships/parts/engines/engine_industrial.glb",
+      "releasePath": "assets/ships/release/parts/engines/engine_industrial.glb",
+      "manifestMapping": "engine_industrial; tris 10128; bytes ~951KB; tintable hull+accent",
+      "runtimeSelection": [
+        {
+          "map": "ENGINE_FILE_BY_DEF_ID ship_mule/ship_atlas; freighter/miner role fallback",
+          "cite": "partsLibrary.js:351-352,2661",
+          "defIds": ["ship_mule", "ship_atlas"]
+        }
+      ],
+      "factionsUsing": ["modular_haulers"],
+      "rolesUsing": ["freighter", "heavy_hauler"],
+      "routeFrequencyEstimate": "Express modular mules and player freighters. Traffic haulers skip (Helios Span baked engines).",
+      "visibleDeficiencies": [
+        "Industrial engine only appears when whole-ship path not used — inconsistent with Span",
+        "High tris for a part that may be under-seen"
+      ],
+      "recommendedReuseStrategy": "Keep as freighter kit nozzle family; align visual weight with Span exhaust read",
+      "constraints": {
+        "sockets": ["drive hooks"],
+        "pivots": "MOUNT_ENGINE_*",
+        "scaleRule": "0.58; often dual",
+        "lod": "part",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "engine_ion_small",
+      "kind": "part",
+      "sourcePath": "assets/ships/parts/engines/engine_ion_small.glb",
+      "releasePath": "assets/ships/release/parts/engines/engine_ion_small.glb",
+      "manifestMapping": "engine_ion_small; tris 14192; bytes ~874KB; largest engine part tris",
+      "runtimeSelection": [
+        {
+          "map": "ENGINE_FILE_BY_DEF_ID ship_kestrel/drifter/ranger; drive_reaction_m; default else branch",
+          "cite": "partsLibrary.js:344-347,361,2664",
+          "defIds": ["ship_kestrel", "ship_drifter", "ship_ranger"]
+        }
+      ],
+      "factionsUsing": ["modular_multirole_traffic"],
+      "rolesUsing": ["starter_modular", "multirole", "explorer"],
+      "routeFrequencyEstimate": "Default modular workhorse engine for multirole/smuggler/rescue. Player Kestrel uses whole-ship so does not show this on live hero.",
+      "visibleDeficiencies": [
+        "Highest engine tris but used on less-visible modular path",
+        "Shared across starter/multirole/explorer"
+      ],
+      "recommendedReuseStrategy": "General-purpose ion family variants by maintenance culture",
+      "constraints": {
+        "sockets": ["drive hooks"],
+        "pivots": "MOUNT_ENGINE_*",
+        "scaleRule": "0.58",
+        "lod": "part",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "weapon_pulse_cannon",
+      "kind": "part",
+      "sourcePath": "assets/ships/parts/weapons/weapon_pulse_cannon.glb",
+      "releasePath": "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb",
+      "manifestMapping": "weapon_pulse_cannon; tris 1944; bytes ~239KB; default weaponRecordFor file",
+      "runtimeSelection": [
+        {
+          "map": "weaponRecordFor default file weapons/weapon_pulse_cannon.glb for non-turret non-special weapons",
+          "cite": "partsLibrary.js:2669-2678",
+          "defIds": ["wpn_pulse_laser_s", "wpn_pulse_laser_m", "most_default_guns"]
+        }
+      ],
+      "factionsUsing": ["all_modular_armed"],
+      "rolesUsing": ["default_gun"],
+      "routeFrequencyEstimate": "Default barrel for modular armed ships. Whole-ships bake weapons so traffic wholeships skip this; patrol_lawman modular mounts pulse barrels.",
+      "visibleDeficiencies": [
+        "Most common barrel → gun sameness across factions",
+        "Small targetLength (0.24 S) — hard to read at gameplay distance unless bold silhouette"
+      ],
+      "recommendedReuseStrategy": "Barrel housing families: military shroud, industrial clamp, pirate welded jacket — keep muzzle axis",
+      "constraints": {
+        "sockets": ["1 socket"],
+        "pivots": "hardpoint pos from ship visuals",
+        "scaleRule": "weaponTargetLength by size (partsLibrary.js:2647-2651)",
+        "lod": "part",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "fin_wedge",
+      "kind": "part",
+      "sourcePath": "assets/ships/parts/fins/fin_wedge.glb",
+      "releasePath": "assets/ships/release/parts/fins/fin_wedge.glb",
+      "manifestMapping": "fin_wedge; tris 1058; bytes ~3.0MB (outlier vs other fins ~200KB); tintable hull+accent",
+      "runtimeSelection": [
+        {
+          "map": "seededContractFile('fin') / buildComposedShip seed pick over PART_LIBRARY_CONTRACT.slots.fin[6]",
+          "cite": "partsLibrary.js:195-202,320-322,2230-2233",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["any_modular_via_seed"],
+      "rolesUsing": ["all_modular_ships"],
+      "routeFrequencyEstimate": "One of six equally seed-weighted fins. Not role-mapped — any modular ship can show any fin. Highest-tris/bytes fin; variation is random not cultural.",
+      "visibleDeficiencies": [
+        "No faction/role construction mapping",
+        "Bytes outlier suggests texture-heavy plate that still reads as thin fin at distance",
+        "Fin variation exists but does not teach faction"
+      ],
+      "recommendedReuseStrategy": "Replace pure seed pool with role/faction fin families (radiator miner, swept smuggler, stabilizer freighter already exist as files — wire them by role)",
+      "constraints": {
+        "sockets": ["1 hook"],
+        "pivots": "MOUNT_FIN_L/R",
+        "scaleRule": "targetLength 0.62",
+        "lod": "part",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "place_station_refinery",
+      "kind": "place",
+      "sourcePath": "assets/ships/parts/places/place_station_refinery.glb",
+      "releasePath": "assets/ships/release/parts/places/place_station_refinery.glb",
+      "manifestMapping": "place_station_refinery; tris 141740; bytes ~23.4MB; tintable hull+accent",
+      "runtimeSelection": [
+        {
+          "map": "STATION_ARCHETYPE_FILES; core anchors Ceres/Charon + frontier Hyperion",
+          "cite": "partsLibrary.js:59; sectorAnchors.js:41,142",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["faction_dmc", "frontier_refinery_owners"],
+      "rolesUsing": ["refinery"],
+      "routeFrequencyEstimate": "Global count 3; early industrial route (Ceres) strongly features it. Shared DMC/frontier refinery silhouette.",
+      "visibleDeficiencies": [
+        "Industrial identity is one plant body",
+        "Only hull+accent for massive structure"
+      ],
+      "recommendedReuseStrategy": "Refinery construction dialects: clean DMC plant vs fringe jury plant",
+      "constraints": {
+        "sockets": ["3"],
+        "pivots": "station",
+        "scaleRule": "dock radius",
+        "lod": "LOD0/1/2",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "place_station_mining",
+      "kind": "place",
+      "sourcePath": "assets/ships/parts/places/place_station_mining.glb",
+      "releasePath": "assets/ships/release/parts/places/place_station_mining.glb",
+      "manifestMapping": "place_station_mining; tris 26660; bytes ~8.5MB",
+      "runtimeSelection": [
+        {
+          "map": "STATION_ARCHETYPE_FILES; 5 anchors including DMC + Choir + frontier",
+          "cite": "partsLibrary.js:64; sectorAnchors.js:42,82",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["faction_dmc", "faction_choir", "frontier"],
+      "rolesUsing": ["mining_outpost"],
+      "routeFrequencyEstimate": "Global count 5 — multi-faction mining rig. DMC Belt Outpost and Choir Refuel Depot share body.",
+      "visibleDeficiencies": [
+        "Choir vs DMC mining stations are recolors",
+        "Missed faction fabrication language"
+      ],
+      "recommendedReuseStrategy": "Mining rig family: DMC ore tower, Choir resonant rig, Free claim scaffold",
+      "constraints": {
+        "sockets": ["3"],
+        "pivots": "station",
+        "scaleRule": "dock radius",
+        "lod": "LOD0/1/2",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "place_station_research",
+      "kind": "place",
+      "sourcePath": "assets/ships/parts/places/place_station_research.glb",
+      "releasePath": "assets/ships/release/parts/places/place_station_research.glb",
+      "manifestMapping": "place_station_research; tris 64876; bytes ~12.9MB",
+      "runtimeSelection": [
+        {
+          "map": "STATION_ARCHETYPE_FILES; 6 anchors (Veil + many frontier research)",
+          "cite": "partsLibrary.js:65",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["faction_free", "frontier_research_owners"],
+      "rolesUsing": ["research"],
+      "routeFrequencyEstimate": "Second-highest station archetype count (6). Later route + frontier. Free Veil research shares body with frontier labs.",
+      "visibleDeficiencies": [
+        "Research stations are one science ring grammar"
+      ],
+      "recommendedReuseStrategy": "Lab construction: clean Free observatory vs fringe sealed lab vs Vael anomalous core",
+      "constraints": {
+        "sockets": ["3"],
+        "pivots": "station",
+        "scaleRule": "dock radius",
+        "lod": "LOD0/1/2",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "place_debris_chunk",
+      "kind": "prop",
+      "sourcePath": "assets/ships/parts/places/place_debris_chunk.glb",
+      "releasePath": "assets/ships/release/parts/places/place_debris_chunk.glb",
+      "manifestMapping": "place_debris_chunk; tris 1124; bytes ~182KB; dims ~24×7×10",
+      "runtimeSelection": [
+        {
+          "map": "fringe/anomaly dressing + many POI landmarkGlb (anchor count 18 highest landmark)",
+          "cite": "world.js:1384-1415; sectorAnchors landmarkGlb tallies",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["neutral_wreckage"],
+      "rolesUsing": ["poi_marker", "fringe_dressing"],
+      "routeFrequencyEstimate": "Highest landmarkGlb count (18) across anchors; also fringe/anomaly dressing. Ubiquitous 'scrap rock' prop.",
+      "visibleDeficiencies": [
+        "Generic debris for all story POIs",
+        "Elongated slab can read as unfinished bar mesh at distance"
+      ],
+      "recommendedReuseStrategy": "Debris dialects: hull plate wreck, cargo crate cluster, rock-metal hybrid — bold silhouettes",
+      "constraints": {
+        "sockets": ["1"],
+        "pivots": "POI/dressing",
+        "scaleRule": "DRESSING_RADIUS=26",
+        "lod": "single",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "place_dead_hulk",
+      "kind": "prop",
+      "sourcePath": "assets/ships/parts/places/place_dead_hulk.glb",
+      "releasePath": "assets/ships/release/parts/places/place_dead_hulk.glb",
+      "manifestMapping": "place_dead_hulk; tris 1740; bytes ~211KB; dims ~48×7.7×7 — long thin hulk",
+      "runtimeSelection": [
+        {
+          "map": "fringe dressing + POI landmarks (count 15)",
+          "cite": "world.js:1379-1383",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["neutral_wreckage"],
+      "rolesUsing": ["wreck_poi", "fringe_dressing"],
+      "routeFrequencyEstimate": "Second-most POI landmark prop. Large long-range silhouette; reads as repeated dead ship bar.",
+      "visibleDeficiencies": [
+        "Primitive bar proportions (48×7×7) with limited joinery read at gameplay distance",
+        "All wreck stories share one hulk"
+      ],
+      "recommendedReuseStrategy": "Hulk families: freighter carcass, fighter graveyard cluster, capital rib section",
+      "constraints": {
+        "sockets": ["1 hook, 2 sockets"],
+        "pivots": "POI/dressing",
+        "scaleRule": "DRESSING_RADIUS=42",
+        "lod": "single",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "place_conveyor_barge",
+      "kind": "prop",
+      "sourcePath": "assets/ships/parts/places/place_conveyor_barge.glb",
+      "releasePath": "assets/ships/release/parts/places/place_conveyor_barge.glb",
+      "manifestMapping": "place_conveyor_barge; tris 1144; bytes ~192KB; dims ~73×10×18",
+      "runtimeSelection": [
+        {
+          "map": "world._spawnBeltDressing one barge when station+field exist",
+          "cite": "world.js:1351-1358",
+          "defIds": []
+        },
+        {
+          "map": "POI landmark rare",
+          "cite": "sectorAnchors.js:155",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["belt_sector_owner"],
+      "rolesUsing": ["ore_conveyor_dressing"],
+      "routeFrequencyEstimate": "1 per belt sector with station+field (Ceres/Vesta). Large industrial prop — high visibility, low count.",
+      "visibleDeficiencies": [
+        "Very long bar mesh — needs joinery/rollers/service catwalks that survive distance",
+        "Faction-agnostic"
+      ],
+      "recommendedReuseStrategy": "Barge construction: sealed corporate conveyor vs open scrap hopper",
+      "constraints": {
+        "sockets": ["2 hooks, 1 socket"],
+        "pivots": "midpoint station-field",
+        "scaleRule": "DRESSING_RADIUS=48",
+        "lod": "single",
+        "materials": ["hull", "accent"]
+      }
+    },
+    {
+      "runtimeId": "hull_gunship",
+      "kind": "part",
+      "sourcePath": "assets/ships/parts/hulls/hull_gunship.glb",
+      "releasePath": "assets/ships/release/parts/hulls/hull_gunship.glb",
+      "manifestMapping": "hull_gunship; tris 4671; bytes ~3.7MB; in PART_LIBRARY_CONTRACT.slots.hull pool",
+      "runtimeSelection": [],
+      "factionsUsing": [],
+      "rolesUsing": [],
+      "routeFrequencyEstimate": "UNREFERENCED by HULL_FILE_BY_DEF_ID. Only reachable if an unmapped defId seed-picks the regular hull pool. No ship def currently maps to it. Not player-visible repetition on default route.",
+      "visibleDeficiencies": ["Mapped in library contract but not in live defId map — inventory asset not route donor"],
+      "recommendedReuseStrategy": "Wire to a role (gunship/battlecruiser ladder) or use as overlay donor; do not treat as live repetition",
+      "constraints": {
+        "sockets": ["standard hull mounts"],
+        "pivots": "standard",
+        "scaleRule": "1.72 if ever composed",
+        "lod": "hull LODs",
+        "materials": ["Material_Hull"]
+      }
+    },
+    {
+      "runtimeId": "place_dock_interior",
+      "kind": "place",
+      "sourcePath": "assets/ships/parts/places/place_dock_interior.glb",
+      "releasePath": "assets/ships/release/parts/places/place_dock_interior.glb",
+      "manifestMapping": "place_dock_interior (+ military/grit variants); tris 636 each",
+      "runtimeSelection": [
+        {
+          "map": "UI hangar backdrop only in shipPreviewMount DOCK_BY_STATION maps — not in PLACE_FILES flight library",
+          "cite": "src/ui/shipPreviewMount.js:32-40",
+          "defIds": []
+        }
+      ],
+      "factionsUsing": ["ui_preview"],
+      "rolesUsing": ["shipyard_backdrop"],
+      "routeFrequencyEstimate": "Seen in station UI, not open-space flight. Note for completeness; not a field repetition donor.",
+      "visibleDeficiencies": ["Three dock interiors share identical 636-tris geometry with accent differences only (per manifest notes)"],
+      "recommendedReuseStrategy": "If hangar breadth matters later, differentiate construction not just accent color",
+      "constraints": {
+        "sockets": ["1 hook, 1 socket"],
+        "pivots": "UI stage",
+        "scaleRule": "preview stage",
+        "lod": "single",
+        "materials": ["hull", "accent"]
+      }
+    }
+  ],
+  "repetitionFindings": {
+    "mostRepeatedShipHulls": [
+      {
+        "runtimeId": "wholeship_wasp_production_v1",
+        "why": "patrol+escort traffic dominate high-sec ambient; every sector owner faction tints the same body",
+        "cites": ["traffic.js:71-74", "visualOverrides.js:30-37", "partsLibrary.js:387-390"]
+      },
+      {
+        "runtimeId": "wholeship_helios_span",
+        "why": "hauler role highest base weight (30) + industrial/high-sec boosts",
+        "cites": ["traffic.js:65-66", "partsLibrary.js:429-432"]
+      },
+      {
+        "runtimeId": "hull_interceptor",
+        "why": "high-sec ambient enemies are exclusively patrol_lawman→ship_hornet modular",
+        "cites": ["world.js:129,1623-1624", "enemies.js:134-136", "partsLibrary.js:378"]
+      },
+      {
+        "runtimeId": "wholeship_helios_lark",
+        "why": "courier traffic continuous in core pocket",
+        "cites": ["traffic.js:67-68", "partsLibrary.js:430"]
+      },
+      {
+        "runtimeId": "wholeship_helios_cradle",
+        "why": "miner traffic ×2.5 in industrial belt sectors",
+        "cites": ["traffic.js:69-70,96", "partsLibrary.js:431"]
+      },
+      {
+        "runtimeId": "wholeship_ashline_rig",
+        "why": "reaver_pirate + corsair_raider share one whole-ship once hostiles appear",
+        "cites": ["partsLibrary.js:417-418", "world.js:130-131"]
+      }
+    ],
+    "mostRepeatedParts": {
+      "engines": [
+        {
+          "runtimeId": "engine_vector",
+          "why": "modular ship_hornet + fighter/interceptor role map; dual mounts common",
+          "cite": "partsLibrary.js:349-350,2654-2666"
+        },
+        {
+          "runtimeId": "engine_ion_small",
+          "why": "default modular multirole/starter/explorer map",
+          "cite": "partsLibrary.js:344-347,2664"
+        },
+        {
+          "runtimeId": "engine_industrial",
+          "why": "modular freighter path (express/player mule)",
+          "cite": "partsLibrary.js:351-352"
+        }
+      ],
+      "fins": [
+        {
+          "runtimeId": "fin_pool_seeded",
+          "files": [
+            "fins/fin_wedge.glb",
+            "fins/fin_radiator_grid.glb",
+            "fins/fin_swept_smuggler.glb",
+            "fins/fin_crystalline.glb",
+            "fins/fin_delta.glb",
+            "fins/fin_stabilator.glb"
+          ],
+          "why": "No role/faction map — pure seed pick across 6 fins for every modular ship",
+          "cite": "partsLibrary.js:195-202,2230-2233"
+        }
+      ],
+      "rails": [],
+      "weapons": [
+        {
+          "runtimeId": "weapon_pulse_cannon",
+          "why": "weaponRecordFor default for most fitted guns",
+          "cite": "partsLibrary.js:2669-2678"
+        },
+        {
+          "runtimeId": "weapon_turret_dual",
+          "why": "turret facing / auto_turret tracking",
+          "cite": "partsLibrary.js:2673"
+        },
+        {
+          "runtimeId": "weapon_gatling",
+          "why": "autocannon/gatling id match — common on reaver-style loadouts when modular",
+          "cite": "partsLibrary.js:2676"
+        }
+      ],
+      "pods": [
+        {
+          "runtimeId": "pod_cargo_container",
+          "why": "freighter role cargoSlots≥2",
+          "cite": "partsLibrary.js:2533-2544"
+        },
+        {
+          "runtimeId": "pod_utility",
+          "why": "miner utility + any utilitySlots>0 non-capital",
+          "cite": "partsLibrary.js:2533-2557"
+        },
+        {
+          "runtimeId": "pod_repair_patch",
+          "why": "starter/multirole/team1 hostiles",
+          "cite": "partsLibrary.js:2560-2571"
+        }
+      ],
+      "greebles": [
+        {
+          "runtimeId": "role_buckets",
+          "why": "miner/freighter→pipes+armor+vents; fighter/interceptor→nav_lights+rcs+vents; else hatches+antennas+armor; faction_vael gets none",
+          "cite": "partsLibrary.js:2591-2614"
+        }
+      ]
+    },
+    "factionsSharingSilhouettes": [
+      {
+        "factions": ["faction_scn", "faction_mts", "faction_free"],
+        "sharedAsset": "place_station_trade_hub",
+        "cite": "sectorAnchors.js:22,61,102,122 + sectors.js station factionIds; partsLibrary.js:58"
+      },
+      {
+        "factions": ["faction_quiet", "faction_reach", "faction_vael"],
+        "sharedAsset": "place_station_blackmarket",
+        "cite": "sectors.js station_smuggler/sker/ashcache; partsLibrary.js:61"
+      },
+      {
+        "factions": ["faction_dmc", "faction_choir"],
+        "sharedAsset": "place_station_mining",
+        "cite": "sectors.js station_beltout faction_dmc + station_depot3 faction_choir; sectorAnchors.js:42,82"
+      },
+      {
+        "factions": ["all_sector_owners_via_traffic"],
+        "sharedAsset": "wholeships/helios_{span,lark,cradle} + wasp_production_v1 for patrol/escort",
+        "cite": "traffic.js:64-85,274-277; partsLibrary.js:429-433,387-390; paletteFor partsLibrary.js:4569-4588"
+      },
+      {
+        "factions": ["faction_reach_hostiles"],
+        "sharedAsset": "ashline_rig for both reaver_pirate and corsair_raider",
+        "cite": "partsLibrary.js:417-418"
+      },
+      {
+        "factions": ["faction_scn", "faction_reach_when_modular"],
+        "sharedAsset": "hull_interceptor (ship_hornet) for patrol_lawman vs unmapped hornet paths",
+        "cite": "enemies.js:134-136; partsLibrary.js:378"
+      }
+    ],
+    "oversizedSingleMaterials": [
+      {
+        "asset": "hull_* modular hull family",
+        "evidence": "All 10 modular hulls declare tintable:['hull'] only in parts_manifest while spanning 3.5k–14.5k tris and up to ~14 m length — one material role over large dorsal area"
+      },
+      {
+        "asset": "place_station_trade_hub",
+        "evidence": "1.66M tris / ~80MB with only hull+accent tint roles"
+      },
+      {
+        "asset": "place_station_refinery",
+        "evidence": "141k tris / ~23MB with only hull+accent tint roles"
+      },
+      {
+        "asset": "wholeship_helios_* family",
+        "evidence": "14k–16k tris each with only hull/accent/warm — civilian fleet differentiated by role mesh, not material construction"
+      },
+      {
+        "asset": "fin_wedge",
+        "evidence": "1058 tris but ~3.0MB bytes vs peer fins ~0.2MB — texture weight concentrated on a thin fin that is sub-object scale in assembly"
+      }
+    ],
+    "primitiveBarMeshes": [
+      {
+        "asset": "place_lane_beacon",
+        "evidence": "manifest dims 6×30.6×6 — tall pole; construction must read as joined tower not rounded bar"
+      },
+      {
+        "asset": "place_dead_hulk",
+        "evidence": "manifest dims 48×7.7×7 — extreme length/width ratio; 1740 tris"
+      },
+      {
+        "asset": "place_conveyor_barge",
+        "evidence": "manifest dims 72.7×10×18 — long industrial bar; 1144 tris"
+      },
+      {
+        "asset": "procedural_station_fallback",
+        "evidence": "buildFallbackStationArchetype uses scaled box core + torus ring + box spars (partsLibrary.js:683-726) when authored GLB fails — true primitive bars"
+      },
+      {
+        "asset": "procedural_place_fallback",
+        "evidence": "buildFallbackPlaceProp / fallback geometries when place GLB missing (partsLibrary.js:608-614 path)"
+      }
+    ],
+    "largestRepeatedFieldProps": [
+      {
+        "asset": "place_lane_beacon",
+        "where": "core dressing along every gate radial (Helios/Tethys first hour)",
+        "approxInstanceCount": "up to 4 per core sector enter; 2+ core sectors typical first 30m → 4–8 live"
+      },
+      {
+        "asset": "place_station_billboard",
+        "where": "core dressing near each station",
+        "approxInstanceCount": "up to 2 per core sector → 2–4 live early"
+      },
+      {
+        "asset": "place_nav_buoy",
+        "where": "belt/fringe/anomaly dressing + POI landmarks",
+        "approxInstanceCount": "up to 3 per belt sector fields + fringe singles; POI markers across map"
+      },
+      {
+        "asset": "place_mining_drone",
+        "where": "paired with belt field dressing; also fringe/anomaly",
+        "approxInstanceCount": "up to 3 per belt sector + 1 fringe/anomaly"
+      },
+      {
+        "asset": "place_debris_chunk",
+        "where": "POI landmarks (18 anchor refs) + fringe/anomaly dressing",
+        "approxInstanceCount": "1–2 dressing + many static POI markers across progression"
+      },
+      {
+        "asset": "place_gate_jump_ring",
+        "where": "every sector gate station entity",
+        "approxInstanceCount": "3–4 per core sector"
+      }
+    ],
+    "detailSurvivability": "At 60–150 px ship scale under steep top-down camera, surviving reads are: whole-ship silhouettes (Wasp/Helios/Ashline/Kestrel), station massing, tall beacons, long hulks/barges, bold panel splits and large thruster plumes. Likely to vanish/shimmer: modular greebles at targetLength 0.14–0.16 (partsLibrary.js:2602-2606), thin fin edge wear maps, single-material micro rivets on hull-only tintables, high-frequency texture noise on 1024 maps once mipmapped. Runtime already special-cases vector engine plumes because broad emissive faces collapse to white disks (partsLibrary.js:3796-3802) — evidence that unscaled small emissive detail fails at flight distance. Faction identity currently survives mainly as paletteFor hull/accent colors (partsLibrary.js:4569-4588), not as construction grammar."
+  },
+  "top10VariationTargets": [
+    {
+      "runtimeId": "place_station_trade_hub",
+      "why": "First and most-docked station body; shared by SCN/MTS/Free — pure recolor problem at highest emotional importance",
+      "suggestedFamilies": ["concord_plated_hub", "meridian_gantry_hub", "free_patchwork_hub"]
+    },
+    {
+      "runtimeId": "wholeship_wasp_production_v1",
+      "why": "Most concurrent traffic combat silhouette across all core factions",
+      "suggestedFamilies": ["scn_patrol_armor_kit", "mts_escort_fairing_kit", "free_militia_plate_kit"]
+    },
+    {
+      "runtimeId": "wholeship_helios_span",
+      "why": "Dominant civilian bulk ship; all factions haul in the same body",
+      "suggestedFamilies": ["corporate_sealed_hold", "dmc_ore_box", "reach_scrap_hauler"]
+    },
+    {
+      "runtimeId": "place_lane_beacon",
+      "why": "Most-instanced core field prop; tall poles stamp sameness on every approach lane",
+      "suggestedFamilies": ["concord_tower_beacon", "industrial_strobe_spar", "scavenged_beacon"]
+    },
+    {
+      "runtimeId": "hull_interceptor",
+      "why": "Sole modular high-sec hostile/law hull (patrol_lawman); sits next to Wasp wholeships",
+      "suggestedFamilies": ["law_interceptor_kit", "raider_interceptor_kit"]
+    },
+    {
+      "runtimeId": "wholeship_helios_cradle",
+      "why": "Belt identity; industrial factions should not share generic Helios miner",
+      "suggestedFamilies": ["dmc_claw_barge", "free_prospector", "quiet_stripped_hold"]
+    },
+    {
+      "runtimeId": "wholeship_ashline_rig",
+      "why": "Two major pirate roles share one body — combat cast collapses",
+      "suggestedFamilies": ["reaver_hook_scavenger", "corsair_blade_raider"]
+    },
+    {
+      "runtimeId": "place_station_blackmarket",
+      "why": "Highest station archetype count (8) across Quiet/Reach/Vael/frontier — outlaw sameness",
+      "suggestedFamilies": ["quiet_cloaked_warren", "reach_scrap_warren", "vael_growth_dock"]
+    },
+    {
+      "runtimeId": "place_gate_jump_ring",
+      "why": "Every sector transition reuses one infrastructure ring",
+      "suggestedFamilies": ["concord_ring", "industrial_truss_gate", "scavenged_hoop"]
+    },
+    {
+      "runtimeId": "weapon_pulse_cannon",
+      "why": "Default modular gun; small but multiplies across every modular armed ship hardpoint",
+      "suggestedFamilies": ["military_shroud_barrel", "industrial_clamp_barrel", "pirate_weld_jacket"]
+    }
+  ],
+  "stationArchetypesMultiFaction": [
+    {
+      "archetype": "place_station_trade_hub",
+      "globalAnchorCount": 6,
+      "factionsObservedCore": ["faction_scn", "faction_mts", "faction_free"]
+    },
+    {
+      "archetype": "place_station_blackmarket",
+      "globalAnchorCount": 8,
+      "factionsObservedCore": ["faction_quiet", "faction_reach", "faction_vael"]
+    },
+    {
+      "archetype": "place_station_mining",
+      "globalAnchorCount": 5,
+      "factionsObservedCore": ["faction_dmc", "faction_choir"]
+    },
+    {
+      "archetype": "place_station_research",
+      "globalAnchorCount": 6,
+      "factionsObservedCore": ["faction_free", "frontier_owners"]
+    },
+    {
+      "archetype": "place_station_military",
+      "globalAnchorCount": 3,
+      "factionsObservedCore": ["faction_scn"]
+    },
+    {
+      "archetype": "place_station_refinery",
+      "globalAnchorCount": 3,
+      "factionsObservedCore": ["faction_dmc"]
+    },
+    {
+      "archetype": "place_station_fab",
+      "globalAnchorCount": 1,
+      "factionsObservedCore": ["faction_dmc"]
+    }
+  ],
+  "spawnFrequencyNotes": {
+    "heliosPrime": {
+      "enemyDensity": 0,
+      "trafficPerMin": 18,
+      "ambientTrafficCap": "6–8 (CORE_MIN_TRAFFIC)",
+      "hostileAmbient": "none (density 0); zone patrols may still schedule lawful presence via zones",
+      "cite": "sectors.js sector_helios_prime; traffic.js:48-52,127-140; world.js:1474-1475"
+    },
+    "highSecEnemyPool": {
+      "pool": ["patrol_lawman"],
+      "cite": "world.js:129,1623-1624"
+    },
+    "pirateEnemyPool": {
+      "pool": ["reaver_pirate", "wasp_swarmer", "corsair_raider"],
+      "cite": "world.js:130"
+    },
+    "frontierEnemyPool": {
+      "pool": ["corsair_raider", "reaver_pirate", "wasp_swarmer"],
+      "cite": "world.js:131,1625"
+    },
+    "trafficRoleWeightsBase": {
+      "hauler": 30,
+      "courier": 18,
+      "miner": 16,
+      "patrol": 14,
+      "escort": 8,
+      "smuggler": 6,
+      "pirate": 5,
+      "rescue": 3,
+      "express": 3,
+      "cite": "traffic.js:64-85"
+    },
+    "hostileWholeShipCoverageGaps": [
+      {
+        "enemyId": "lancer_sniper",
+        "shipId": "ship_wasp",
+        "result": "wasp_production_v1 (defId whole) not ashline",
+        "cite": "enemies.js:36-37; partsLibrary.js:414-418,387-390"
+      },
+      {
+        "enemyId": "mine_layer_jackal",
+        "shipId": "ship_drifter",
+        "result": "modular hull_multirole (no hostile whole map)",
+        "cite": "enemies.js:179; partsLibrary.js:414-418,371"
+      },
+      {
+        "enemyId": "pd_screen_escort",
+        "shipId": "ship_bastion",
+        "result": "modular hull_corvette (no hostile whole map)",
+        "cite": "enemies.js:205-206; partsLibrary.js:380"
+      },
+      {
+        "enemyId": "choir_zealot",
+        "shipId": "ship_wasp",
+        "result": "wasp_production_v1",
+        "cite": "enemies.js choir_zealot block; visualOverrides.js:36"
+      },
+      {
+        "enemyId": "quiet_ghost",
+        "shipId": "ship_wasp",
+        "result": "wasp_production_v1",
+        "cite": "enemies.js quiet_ghost block; visualOverrides.js:36"
+      }
+    ]
+  }
+}
