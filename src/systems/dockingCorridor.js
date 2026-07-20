@@ -74,10 +74,14 @@ export const dockingCorridor = {
       input.brake ? 1 : 0,
     );
 
-    // Bounded PD capture assist through the physics-command membrane. The impulse is additive on
-    // the membrane: the pilot's own thrust command is never overwritten, only supplemented.
+    // Bounded PD capture assist through the physics-command membrane. computeCaptureAssist owns
+    // the engagement gates (inside the capture volume, speed gate, heading gate) and covers BOTH
+    // the capture and berthed phases — gating on phase === 'capture' here would cut the assist
+    // exactly when the ship gets close and let it coast into the core deck. The impulse is
+    // additive on the membrane: the pilot's own thrust command is never overwritten, only
+    // supplemented.
     let assistApplied = null;
-    if (best && best.corridor.phase === 'capture' && dt > 0) {
+    if (best && dt > 0) {
       const assist = computeCaptureAssist(best.manifest, best.station, player.pos, player.vel, inputMag);
       if (assist && (assist.x !== 0 || assist.z !== 0)) {
         const mass = positive(player.physicsBody && player.physicsBody.mass, positive(player.mass, 1));

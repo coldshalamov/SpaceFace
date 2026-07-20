@@ -26,6 +26,7 @@ import {
 } from '../src/data/collisionProxyManifests.js';
 import { dockingCorridor } from '../src/systems/dockingCorridor.js';
 import { consumePhysicsCommand, writePhysicsControl } from '../src/core/physicsAuthority.js';
+import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 
 const HELIOS = COLLISION_PROXY_MANIFESTS.helios_trade_hub;
 const DEG = Math.PI / 180;
@@ -459,3 +460,71 @@ test('system update is deterministic across identical fresh states', () => {
   };
   assert.deepEqual(run(), run());
 });
+
+// ---------------------------------------------------------------------------------------------
+// regression: the REAL SG-02 authority (compound proxies registered) must settle the ship at the
+// berth — a pure-math trajectory cannot see the ship coasting ballistically into the core deck
+// when the assist disengages early (the phase-gate regression this guards).
+// ---------------------------------------------------------------------------------------------
+
+async function flyRealAuthorityTrajectory() {
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false });
+  try {
+    const station = heliosStation();
+    const player = {
+      id: 'player', type: 'ship', alive: true, collides: true, flags: {},
+      pos: framePos(105), vel: frameVel(-12), rot: 0, angVel: 0, radius: 14, mass: 32, data: {},
+    };
+    const state = {
+      mode: 'flight', playerId: player.id,
+      entities: new Map([[player.id, player], [station.id, station]]),
+      entityIndex: { stations: [station] }, entityList: [player, station], input: {}, ui: {},
+    };
+    dockingCorridor.init({ bus: null });
+    owner.syncFromEntities([station, player]);
+    const berth = resolveBerthWorld(station, HELIOS);
+    const series = [];
+    let maxDeltaV = 0;
+    for (let tick = 0; tick < 900; tick++) {
+      const prevVx = player.vel.x;
+      const prevVz = player.vel.z;
+      dockingCorridor.update(1 / 60, state);
+      owner.step(1 / 60);
+      const dv = Math.hypot(player.vel.x - prevVx, player.vel.z - prevVz);
+      if (dv > maxDeltaV) maxDeltaV = dv;
+      series.push([round6(player.pos.x), round6(player.pos.z), round6(player.vel.x), round6(player.vel.z)]);
+    }
+    return {
+      hash: createHash('sha256').update(JSON.stringify(series)).digest('hex'),
+      maxDeltaV,
+      distToBerth: Math.hypot(player.pos.x - berth.x, player.pos.z - berth.z),
+      speed: Math.hypot(player.vel.x, player.vel.z),
+      phase: state.dockingCorridor.phase,
+    };
+  } finally {
+    owner.dispose();
+  }
+}
+
+test('real authority: capture settles at the berth with bounded per-tick velocity change', async () => {
+  const run = await flyRealAuthorityTrajectory();
+  assert.ok(run.distToBerth < HELIOS.docking.berth.dockRadius,
+    `settled within the berth dock radius (${run.distToBerth.toFixed(2)} wu)`);
+  assert.ok(run.speed < HELIOS.docking.berth.speedGate,
+    `settled under the berth speed gate (${run.speed.toFixed(2)} wu/s)`);
+  // The coast-into-core regression guard: per-tick Δv must never exceed the bounded assist — a
+  // solver contact spike here means the assist let the ship coast into the station silhouette.
+  assert.ok(run.maxDeltaV <= MAX_ACCEL / 60 + EPS,
+    `per-tick Δv ${run.maxDeltaV} exceeds the bounded assist ${MAX_ACCEL / 60} (ricochet/yank/contact)`);
+  assert.equal(run.phase, 'berthed', 'the corridor resolves to berthed');
+});
+
+test('real authority: identical timeline produces an identical trajectory hash, twice', async () => {
+  const first = await flyRealAuthorityTrajectory();
+  const second = await flyRealAuthorityTrajectory();
+  assert.equal(first.hash, second.hash, 'same start conditions → byte-identical trajectory hash');
+});
+
+function round6(value) {
+  return Math.round(value * 1e6) / 1e6;
+}
