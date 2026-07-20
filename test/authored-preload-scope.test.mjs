@@ -156,6 +156,29 @@ test('authored visual admission awaits the exact GPU pipeline compiler when avai
   );
 });
 
+test('pooled ship pipeline admission presents one valid object tree and cleans its probe', async () => {
+  const root = new THREE.Group();
+  const admission = new THREE.Group();
+  admission.add(new THREE.InstancedMesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshStandardMaterial(),
+    1,
+  ));
+  const subjects = [];
+
+  await partsLibrary.prepareComposedShipPipelines({ root, pipelineAdmission: admission }, {
+    prepareAuthoredPipelines: async (subject) => {
+      subjects.push(subject);
+      assert.equal(subject, root);
+      assert.equal(admission.parent, root, 'instancing probe is a temporary child during compile');
+    },
+  });
+
+  assert.deepEqual(subjects, [root], 'pipeline tracker receives one Object3D rather than a nested array');
+  assert.equal(admission.parent, null);
+  assert.equal(admission.children.length, 0, 'temporary instancing subjects are released after compile');
+});
+
 test('startup readiness gates the authored opening runway without waiting on distant NPCs', () => {
   assert.equal(typeof partsLibrary.authoredCriticalVisualReadiness, 'function');
   const player = { id: 1, type: 'ship', alive: true, mesh: { userData: { authoredAssetState: 'authored' } } };

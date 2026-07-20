@@ -1640,13 +1640,16 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   return prepare(root);
 }
 
-async function prepareComposedShipPipelines(authored, options = {}) {
+export async function prepareComposedShipPipelines(authored, options = {}) {
   const admission = authored && authored.pipelineAdmission;
-  const subjects = admission ? [authored.root, admission] : authored.root;
+  if (admission) authored.root.add(admission);
   try {
-    return await prepareAuthoredVisualPipelines(subjects, options);
+    return await prepareAuthoredVisualPipelines(authored.root, options);
   } finally {
-    if (admission) admission.clear();
+    if (admission) {
+      authored.root.remove(admission);
+      admission.clear();
+    }
   }
 }
 
