@@ -104,6 +104,56 @@ function sectorDisplayName(sectorId, sectorNames) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Row copy
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The DESTINATION detail line.
+ *
+ * Three genuinely different states, three different sentences. The one that matters is the middle
+ * one: a contract destination with no course laid must say BOTH where you are going and that
+ * nothing is plotted, or the row reads as a plotted route and the pilot wonders why the ribbon is
+ * empty.
+ */
+function destinationDetail(destination) {
+  if (!destination) return 'Accept a contract or double-click a sector to set one';
+  if (destination.planned) {
+    const n = destination.legCount;
+    return `${destination.legsRemaining} of ${n} leg${n === 1 ? '' : 's'} remaining`;
+  }
+  if (destination.unreachable) {
+    // Never a silent absence: the row states the blocker rather than leaving a dash.
+    return 'Contract destination · no charted route from here yet';
+  }
+  const n = destination.legCount;
+  return `Contract destination · ${n} leg${n === 1 ? '' : 's'} when plotted`;
+}
+
+/**
+ * What NEXT LEG says when there is no leg to name.
+ *
+ * Deliberately still the bare placeholder "None". A destination we cannot path to has no next leg,
+ * and dressing that up as an answer would be exactly the fake-success this readout exists to
+ * prevent — the reason belongs in the detail line, where it does not masquerade as a leg.
+ */
+function nextLegAbsentValue() {
+  return 'None';
+}
+
+function nextLegDetail(nextLeg, destination) {
+  if (!nextLeg) {
+    if (destination && destination.unreachable) return 'No charted path — survey the space between first';
+    if (destination && !destination.planned) return 'Plot the course to resolve its legs';
+    return '';
+  }
+  const where = Number.isFinite(nextLeg.distanceWU)
+    ? `${formatDistanceWU(nextLeg.distanceWU)} · leg ${nextLeg.index + 1}/${nextLeg.count}`
+    : `leg ${nextLeg.index + 1}/${nextLeg.count}`;
+  // The preview is an estimate until it is plotted, and says so.
+  return nextLeg.planned ? where : `${where} · previewed, not plotted`;
+}
+
+// ---------------------------------------------------------------------------------------------
 // The readout
 // ---------------------------------------------------------------------------------------------
 
@@ -122,6 +172,9 @@ function sectorDisplayName(sectorId, sectorNames) {
  *   executor?: {status?:string, engaged?:boolean, legIndex?:number, legCount?:number,
  *               destinationSectorId?:string|null, legLabel?:string|null,
  *               legFrom?:string|null, legTo?:string|null}|null,
+ *   missionDestination?: {sectorId?:string|null, stationId?:string|null, label?:string|null,
+ *                         missionId?:string|null}|null,
+ *   previewRoute?: {legs?:Array<{from:string,to:string}>, totalFuel?:number}|null,
  *   sectorNames?: Map<string,string>|Record<string,string>|null,
  *   atlas?: object|null,
  * }} [input]
@@ -158,12 +211,47 @@ export function resolveMapNavContext(input = {}) {
     : null;
 
   // ---- 3. WHERE AM I ULTIMATELY GOING --------------------------------------------------------
+  //
+  // THE "NEVER LOST" CONTRACT DOES NOT START AT THE PLOT. This originally answered only from
+  // `nav.route` / `nav.executor`, so a pilot carrying an accepted cargo contract — who knows
+  // perfectly well where they are going, and whose station screen already told them — opened the
+  // chart and read "No route plotted / None". The chart was the one surface in the game that did
+  // not know the destination it exists to help you reach.
+  //
+  // So the destination resolves from a PLOTTED route first (it is the committed answer and
+  // outranks intent), and falls back to the accepted contract's own destination. The fallback is
+  // labelled as such and never dressed up as a plotted route: `planned` is false, the tone stays
+  // PLAIN (bright gold is reserved for the tracked objective and the ACTIVE route), and the detail
+  // row says in words that no course is laid yet.
   const route = src.route && typeof src.route === 'object' ? src.route : null;
-  const legs = route && Array.isArray(route.legs) ? route.legs.filter(Boolean) : [];
+  const plottedLegs = route && Array.isArray(route.legs) ? route.legs.filter(Boolean) : [];
   const executor = src.executor && typeof src.executor === 'object' ? src.executor : null;
-  const destSectorId = (executor && executor.destinationSectorId)
-    || (legs.length ? legs[legs.length - 1].to : null)
+
+  // A non-committal planner preview toward the mission destination. It is DISPLAY-ONLY: this
+  // module never writes `nav.route`, and the caller must not either — auto-plotting on map open
+  // would collapse the plot/engage separation ADR D6 makes unqualified.
+  const preview = src.previewRoute && typeof src.previewRoute === 'object' ? src.previewRoute : null;
+  const previewLegs = preview && Array.isArray(preview.legs) ? preview.legs.filter(Boolean) : [];
+
+  const missionDest = src.missionDestination && typeof src.missionDestination === 'object'
+    ? src.missionDestination
+    : null;
+  const missionDestSectorId = missionDest && missionDest.sectorId ? String(missionDest.sectorId) : null;
+
+  const plottedDestSectorId = (executor && executor.destinationSectorId)
+    || (plottedLegs.length ? plottedLegs[plottedLegs.length - 1].to : null)
     || null;
+  const destSectorId = plottedDestSectorId || missionDestSectorId;
+  const planned = !!plottedDestSectorId;
+
+  // The legs that answer "next leg". Plotted legs are truth; preview legs are intent, and are used
+  // only when there is no plotted route AND the preview actually leads to the destination we are
+  // reporting — a stale preview aimed somewhere else is worse than no answer.
+  const previewUsable = !planned
+    && previewLegs.length > 0
+    && !!missionDestSectorId
+    && previewLegs[previewLegs.length - 1].to === missionDestSectorId;
+  const legs = planned ? plottedLegs : (previewUsable ? previewLegs : []);
 
   let destination = null;
   if (destSectorId) {
@@ -171,8 +259,8 @@ export function resolveMapNavContext(input = {}) {
     const destGlobal = origin && Number.isFinite(origin.x)
       ? { x: origin.x, z: origin.z }
       : null;
-    const legIndex = executor && Number.isFinite(executor.legIndex) ? executor.legIndex : 0;
-    const legCount = executor && Number.isFinite(executor.legCount) && executor.legCount > 0
+    const legIndex = planned && executor && Number.isFinite(executor.legIndex) ? executor.legIndex : 0;
+    const legCount = planned && executor && Number.isFinite(executor.legCount) && executor.legCount > 0
       ? executor.legCount
       : legs.length;
     destination = Object.freeze({
@@ -185,15 +273,22 @@ export function resolveMapNavContext(input = {}) {
       // itinerary that reads "0 legs remaining" while the ship is still flying is a lie the pilot
       // notices immediately.
       legsRemaining: Math.max(0, legCount - legIndex),
-      engaged: !!(executor && executor.engaged),
-      status: (executor && executor.status) || null,
+      engaged: !!(planned && executor && executor.engaged),
+      status: (planned && executor && executor.status) || null,
+      /** True only when a real course is laid. False means "this is where the contract sends you". */
+      planned,
+      source: planned ? 'route' : 'mission',
+      missionId: !planned && missionDest ? (missionDest.missionId || null) : null,
+      stationId: !planned && missionDest ? (missionDest.stationId || null) : null,
+      /** Set when a mission destination is known but no charted path to it could be previewed. */
+      unreachable: !planned && !previewUsable,
     });
   }
 
   // ---- 4. WHAT IS THE NEXT REACHABLE LEG -----------------------------------------------------
   let nextLeg = null;
   if (legs.length) {
-    const idx = executor && Number.isFinite(executor.legIndex)
+    const idx = planned && executor && Number.isFinite(executor.legIndex)
       ? Math.max(0, Math.min(legs.length - 1, executor.legIndex))
       : 0;
     const leg = legs[idx];
@@ -209,10 +304,12 @@ export function resolveMapNavContext(input = {}) {
         toSectorId: leg.to,
         fromSectorName: sectorDisplayName(leg.from, sectorNames),
         toSectorName: sectorDisplayName(leg.to, sectorNames),
-        label: (executor && executor.legLabel)
+        label: (planned && executor && executor.legLabel)
           || `${sectorDisplayName(leg.from, sectorNames)} → ${sectorDisplayName(leg.to, sectorNames)}`,
         globalPos: toGlobal ? Object.freeze({ x: toGlobal.x, z: toGlobal.z }) : null,
         distanceWU: toGlobal && playerGlobal ? distanceWU(playerGlobal, toGlobal) : null,
+        /** False when this leg comes from the preview rather than from a laid course. */
+        planned,
       });
     }
   }
@@ -248,19 +345,22 @@ export function resolveMapNavContext(input = {}) {
       key: 'destination',
       label: 'DESTINATION',
       value: destination ? destination.sectorName : 'No route plotted',
-      detail: destination
-        ? `${destination.legsRemaining} of ${destination.legCount} leg${destination.legCount === 1 ? '' : 's'} remaining`
-        : 'Double-click a sector to plot one',
-      tone: destination ? NAV_ROW_TONE.TRACKED : NAV_ROW_TONE.MUTED,
+      detail: destinationDetail(destination),
+      // Gold is reserved for the tracked objective and the ACTIVE route. A contract destination
+      // that nobody has plotted a course to yet is a plain fact, not a live course, so it reads in
+      // ink — and the detail line, not the colour, is what says which of the two it is.
+      tone: destination
+        ? (destination.planned ? NAV_ROW_TONE.TRACKED : NAV_ROW_TONE.PLAIN)
+        : NAV_ROW_TONE.MUTED,
     }),
     Object.freeze({
       key: 'leg',
       label: 'NEXT LEG',
-      value: nextLeg ? nextLeg.label : 'None',
-      detail: nextLeg && Number.isFinite(nextLeg.distanceWU)
-        ? `${formatDistanceWU(nextLeg.distanceWU)} · leg ${nextLeg.index + 1}/${nextLeg.count}`
-        : (nextLeg ? `leg ${nextLeg.index + 1}/${nextLeg.count}` : ''),
-      tone: nextLeg ? NAV_ROW_TONE.TRACKED : NAV_ROW_TONE.MUTED,
+      value: nextLeg ? nextLeg.label : nextLegAbsentValue(destination),
+      detail: nextLegDetail(nextLeg, destination),
+      tone: nextLeg
+        ? (nextLeg.planned ? NAV_ROW_TONE.TRACKED : NAV_ROW_TONE.PLAIN)
+        : NAV_ROW_TONE.MUTED,
     }),
   ];
 

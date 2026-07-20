@@ -542,6 +542,39 @@ export function trackedMissionOf(state) {
 }
 
 /**
+ * Where an accepted contract actually sends the player — the destination the chart should already
+ * know before anybody plots anything ("Never Lost", ADR D4).
+ *
+ * Prefers the TRACKED mission, because tracking is the player's own statement of which contract
+ * they are flying. Falls back to the first active mission that names a destination sector, so a
+ * pilot who never pressed track is still told where they are going rather than being punished for
+ * not using a UI affordance they may not have found.
+ *
+ * Pure: reads state, returns a plain record, writes nothing. It deliberately does NOT resolve a
+ * route — a destination is an address, and turning it into a course is the plot action's job
+ * (ADR D6 keeps plot and engage separate, and this must not quietly perform the first of them).
+ *
+ * @returns {{sectorId:string, stationId:string|null, label:string|null, missionId:string|null}|null}
+ */
+export function resolveMissionDestination(state) {
+  if (!state) return null;
+  const active = (state.missions && state.missions.active) || [];
+  const destOf = (m) => (m && (m.destSectorId || (m.params && m.params.sectorId))) || null;
+  const tracked = trackedMissionOf(state);
+  const mission = (tracked && destOf(tracked))
+    ? tracked
+    : active.find((m) => m && m.status === 'active' && destOf(m));
+  const sectorId = destOf(mission);
+  if (!sectorId) return null;
+  return {
+    sectorId,
+    stationId: mission.destStationId || null,
+    label: String(mission.title || mission.name || '').replace(/\s+/g, ' ').trim() || null,
+    missionId: mission.id || null,
+  };
+}
+
+/**
  * Every live world position a mission wants the pilot at — not just the single tracked goal
  * (parity gap 8).
  *
@@ -1719,6 +1752,83 @@ export function resolveGalaxyMapPrimaryAction(state, target) {
   return { kind: 'waypoint', label, coursePayload };
 }
 
+/**
+ * Resolve the PLOT-ONLY action for a selected map target — a course laid, never flown.
+ *
+ * ─── WHY THIS EXISTS, AND WHY IT IS NOT A CHANGE TO THE PRIMARY ACTION ────────────────────────
+ *
+ * ADR D6 says plot and engage are separate actions, unqualified. The primary action honours that
+ * for a NON-neighbour ("Plot Course") and cannot for a neighbour, where it is deliberately
+ * "Set Course & Jump" — a commitment. That primary is correct and is pinned by
+ * `test/galaxy-map-gate-jump-seam.test.mjs`; a one-press jump to the sector next door is the right
+ * default and is not touched here.
+ *
+ * The gap it left is that for a neighbour there was NO way to merely plot. That matters more than
+ * it sounds: the route follower is this program's centrepiece, `nav:engageRoute` is its only
+ * production trigger, and the Engage control only lights up once `nav.route` holds legs. So for
+ * every adjacent destination — including the canonical Helios→Ceres contract — the follower was
+ * unreachable. A headline system you cannot get to is not shipped.
+ *
+ * Worse, the chart already rendered a button LABELLED "Plot course" (the place-action row) that
+ * resolved the primary action and then dismissed the chart. On a neighbour that button emitted
+ * `world:requestJump` — it committed the transition while promising a plot, which is precisely the
+ * fake-success this screen's own contract forbids.
+ *
+ * This resolver is therefore additive: same shipped emitter, same `world:requestRoute` intent, and
+ * it never returns a `jump`. Availability is reported with a REASON in both states, so a control
+ * driven by it is visibly unavailable and says why rather than silently doing nothing.
+ *
+ * @returns {{kind:'route', label:string, available:boolean, reason:string,
+ *            targetSectorId:string|null, coursePayload:object|null, redundant:boolean}}
+ */
+export function resolveGalaxyMapPlotAction(state, target) {
+  const unavailable = (reason) => ({
+    kind: 'route',
+    label: 'Plot Course',
+    available: false,
+    reason,
+    targetSectorId: null,
+    coursePayload: null,
+    redundant: false,
+  });
+
+  if (!target) return unavailable('Select a sector on the chart to plot a course to it');
+
+  const primary = resolveGalaxyMapPrimaryAction(state, target);
+  const coursePayload = resolveCourseTarget(target);
+  const sectorId = (target.kind === 'sector' ? (target.sectorId || target.id) : null)
+    || (primary && primary.targetSectorId)
+    || (coursePayload && coursePayload.type === 'sector' ? coursePayload.sectorId : null)
+    || target.sectorId
+    || target.targetSectorId
+    || null;
+
+  if (!sectorId) {
+    return unavailable('This mark is a local fix, not a destination — a course needs a sector to plot to');
+  }
+  const here = currentSectorId(state);
+  if (here && sectorId === here) {
+    return unavailable('You are already in this sector — nothing to plot');
+  }
+
+  return {
+    kind: 'route',
+    label: 'Plot Course',
+    available: true,
+    // Says what it does AND what it deliberately does not do. The separation is only real to a
+    // player if the control admits it is not going to fly them anywhere.
+    reason: 'Lay the course without flying it — Engage hands it to the route follower',
+    targetSectorId: sectorId,
+    // ALWAYS the sector payload, never the positional one. `world._onSetCourse` NULLS `nav.route`
+    // when it is handed a `pos` (it treats that as a local autopilot fix), so plotting through a
+    // positional payload would wipe the very route it just planned.
+    coursePayload: { type: 'sector', sectorId, path: null, label: target.name || sectorId },
+    // True when the primary action ALREADY is this exact plot, so a secondary control can hide
+    // instead of rendering a second button that does the same thing.
+    redundant: !!(primary && primary.kind === 'route' && primary.targetSectorId === sectorId),
+  };
+}
+
 /** Live proximity check: player is inside the physical gate's interact range. */
 export function isPlayerInGateRange(state, gateTarget) {
   if (!state || !gateTarget) return false;
@@ -2574,6 +2684,34 @@ const CSS = `
   background: linear-gradient(180deg, #ffd284, #e6a643);
   color: #1c1206;
 }
+/* Secondary plot control (ADR D6). It sits BELOW the committing primary and reads quieter than
+   it — a dashed brass outline, no fill — because it is the deliberate, reversible option next to
+   the decisive one. The dash is the load-bearing signal, not the hue: "provisional" survives
+   forced-colors and colour-blindness, where a slightly different brass would not. */
+#sf-galaxymap #gm-plot-course-btn {
+  background: transparent;
+  border: 1px dashed #6b4a26;
+  color: #d8ae74;
+}
+#sf-galaxymap #gm-plot-course-btn:hover:not(:disabled) {
+  background: rgba(219, 152, 56, .12);
+  color: #ffd08a;
+}
+#sf-galaxymap .gm-plot-reason {
+  min-height: 0;
+  margin-top: 4px;
+  color: #9a8a72;
+  font-family: var(--mf-ui);
+  font-size: 10px;
+  letter-spacing: .06em;
+  line-height: 1.35;
+  text-align: center;
+}
+#sf-galaxymap .gm-plot-reason:empty { margin-top: 0; }
+@media (prefers-reduced-motion: reduce) {
+  #sf-galaxymap #gm-plot-course-btn { transition: none; }
+}
+
 /* The explanation is never optional: an unavailable action must say why it is unavailable. */
 #sf-galaxymap .gm-engage-reason {
   min-height: 13px;
@@ -2640,6 +2778,9 @@ const CSS = `
 @media (forced-colors: active) {
   #sf-galaxymap #gm-engage-route-btn { border: 1px solid ButtonText; color: ButtonText; }
   #sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"] { border-width: 3px; }
+  /* The dash is restated explicitly: under forced-colors the brass tint is discarded, so the line
+     STYLE is the only thing left distinguishing the provisional plot from the committing primary. */
+  #sf-galaxymap #gm-plot-course-btn { border: 1px dashed ButtonText; color: ButtonText; }
 }
 
 /* Service chips: pictogram + label, keyed teal */
@@ -4137,6 +4278,16 @@ export const galaxyMapScreen = {
   _camera: null,
   _lastNavContext: null,
   _navContextKey: null,
+  // Display-only planner preview toward an accepted contract's destination, memoised on
+  // {origin > destination}. Never assigned to `nav.route` — see `_previewRouteTo`.
+  _previewRoute: null,
+  _previewRouteKey: null,
+  // Contextual reveal bookkeeping for the alternatives rail — see `_revealAlternatives`.
+  _altRevealedFor: null,
+  _altAutoOpened: false,
+  _plotButton: null,
+  _plotReason: null,
+  _plotHandler: null,
   _lastFramingActions: null,
   _returnShipButton: null,
   _frameBothButton: null,
@@ -4358,6 +4509,7 @@ export const galaxyMapScreen = {
     // cannot change any displayed value (distances round to whole WU, progress to whole percent).
     const goal = activeMapGoal(state);
     const executor = readRouteExecutorForMap(nav.executor);
+    const missionDestination = resolveMissionDestination(state);
     const key = [
       player && player.pos ? Math.round(player.pos.x) : 'x',
       player && player.pos ? Math.round(player.pos.z) : 'z',
@@ -4365,9 +4517,18 @@ export const galaxyMapScreen = {
       goal ? `${goal.label}|${goal.sectorId}|${goal.pos ? Math.round(goal.pos.x) : ''}|${goal.pos ? Math.round(goal.pos.z) : ''}` : '-',
       executor ? `${executor.status}|${executor.legIndex}|${executor.legCount}|${executor.destinationSectorId}|${executor.legLabel}` : '-',
       nav.route && Array.isArray(nav.route.legs) ? nav.route.legs.map((l) => `${l.from}>${l.to}`).join(',') : '-',
+      missionDestination ? `${missionDestination.missionId}|${missionDestination.sectorId}` : '-',
     ].join('#');
     if (this._navContextKey === key && this._lastNavContext) return this._lastNavContext;
     this._navContextKey = key;
+
+    // The preview is computed ONLY when there is nothing plotted — a laid course always outranks
+    // intent, and running the planner behind a live route would be wasted work every frame. It is
+    // handed in for DISPLAY and is never assigned to `nav.route`: previewing a path must not become
+    // a silent plot, or the separation ADR D6 requires would exist only in the button labels.
+    const previewRoute = (!nav.route && missionDestination)
+      ? this._previewRouteTo(missionDestination.sectorId)
+      : null;
 
     return resolveMapNavContext({
       playerGlobal: player && player.pos ? { x: player.pos.x, z: player.pos.z } : null,
@@ -4375,8 +4536,45 @@ export const galaxyMapScreen = {
       goal,
       route: nav.route || null,
       executor,
+      missionDestination,
+      previewRoute,
       sectorNames: SECTOR_NAME_BY_ID,
     });
+  },
+
+  /**
+   * Run the SHIPPED planner for a look, without committing to it.
+   *
+   * Deliberately `world.computeRoute` and nothing else — ADR D6 forbids new planning math in the
+   * map, and a second planner here would be free to disagree with the one that actually flies the
+   * ship. `computeRoute` is a pure read (it walks the discovered graph and returns a fresh record),
+   * so calling it for a preview cannot move the simulation.
+   *
+   * Memoised on {origin, destination} because `_navContext` is reached from `_draw`, which runs at
+   * display refresh at LOCAL scale — a Dijkstra per frame for an unchanging answer is exactly the
+   * kind of cost the map cannot afford on a software renderer.
+   */
+  _previewRouteTo(destSectorId) {
+    const state = this._ctx && this._ctx.state;
+    if (!state || !destSectorId) return null;
+    const here = currentSectorId(state);
+    if (!here || here === destSectorId) return null;
+    // Discovery is part of the key because `computeRoute` only walks DISCOVERED space: charting a
+    // new sector can shorten the path, and a memo keyed on endpoints alone would keep showing the
+    // longer one for the rest of the session.
+    const discovery = state.world && state.world.discovery;
+    const charted = discovery ? Object.keys(discovery).length : 0;
+    const key = `${here}>${destSectorId}#${charted}`;
+    if (this._previewRouteKey === key) return this._previewRoute;
+    const world = this._ctx && this._ctx.registry && typeof this._ctx.registry.get === 'function'
+      ? this._ctx.registry.get('world') : null;
+    let route = null;
+    if (world && typeof world.computeRoute === 'function') {
+      try { route = world.computeRoute(destSectorId, 'fuel'); } catch { route = null; }
+    }
+    this._previewRouteKey = key;
+    this._previewRoute = route;
+    return route;
   },
 
   // Flagship strategic table UI states
@@ -4575,6 +4773,13 @@ export const galaxyMapScreen = {
               <div class="gm-inspector-empty">No target selected. <b>Click</b> a sector, station or contact to inspect it — <b>double-click</b> to lay a course.</div>
             </div>
             <button class="gm-ins-btn" id="gm-set-course-btn" type="button" hidden disabled>Set Waypoint</button>
+            <!-- SECONDARY PLOT (ADR D6). Contextual, never permanent: it reveals ONLY when the
+                 primary action is a commitment — "Set Course & Jump" for an adjacent sector — and
+                 stays hidden whenever the primary already IS "Plot Course", so the chart never
+                 shows two buttons that do the same thing. Without it, plot-without-committing was
+                 unreachable for every neighbouring destination, which is most of them. -->
+            <button class="gm-ins-btn gm-plot-btn" id="gm-plot-course-btn" type="button" hidden disabled>Plot Course</button>
+            <div class="gm-plot-reason" id="gm-plot-reason" aria-live="polite"></div>
             <!-- W1-8: engage is a SEPARATE control from plot, never the same button. -->
             <button class="gm-ins-btn" id="gm-engage-route-btn" type="button" hidden disabled>Engage Route</button>
             <div class="gm-engage-reason" id="gm-engage-reason" aria-live="polite"></div>
@@ -4593,6 +4798,14 @@ export const galaxyMapScreen = {
     this._setCourseButton = rootEl.querySelector('#gm-set-course-btn');
     this._engageButton = rootEl.querySelector('#gm-engage-route-btn');
     this._engageReason = rootEl.querySelector('#gm-engage-reason');
+    this._plotButton = rootEl.querySelector('#gm-plot-course-btn');
+    this._plotReason = rootEl.querySelector('#gm-plot-reason');
+    if (!this._plotHandler) {
+      this._plotHandler = () => galaxyMapScreen._activatePlotOnlyCourse();
+    }
+    if (this._plotButton) {
+      this._plotButton.addEventListener('click', this._plotHandler);
+    }
     this._inspectorDetailsHtml = null;
     if (!this._setCourseHandler) {
       this._setCourseHandler = () => galaxyMapScreen._activateSelectedCourse();
@@ -5304,8 +5517,11 @@ export const galaxyMapScreen = {
     const detailsEl = this._inspectorDetails || this._root.querySelector('.gm-inspector-details');
     const btn = this._setCourseButton || this._root.querySelector('#gm-set-course-btn');
     // The engage control tracks nav.executor, NOT the current selection, so it must refresh even
-    // when nothing is selected — a route stays engaged while you browse the chart.
+    // when nothing is selected — a route stays engaged while you browse the chart. The secondary
+    // plot control is the opposite: it tracks the selection, and must clear itself when the
+    // selection goes away rather than stranding a button aimed at nothing.
     this._updateEngageControl();
+    this._updatePlotControl();
     if (!detailsEl || !btn) return;
 
     // SLICE C: the tablist and the place actions track the selection, so they refresh here too.
@@ -5929,10 +6145,13 @@ export const galaxyMapScreen = {
       if (host.innerHTML !== '') { host.innerHTML = ''; this._lastPlaceActionsHtml = ''; }
       return;
     }
-    const primary = resolveGalaxyMapPrimaryAction(state, t);
+    // `plot` reports availability from the PLOT-ONLY resolver, so its reason describes what the
+    // button will actually do. It used to key off the primary action, which meant the row claimed
+    // "Lay a course to this mark" for a neighbour and then committed a jump.
+    const plot = resolveGalaxyMapPlotAction(state, t);
     const sectorId = t.sectorId || (t.kind === 'sector' ? t.id : null);
     const acts = [
-      { id: 'plot', label: 'Plot course', available: !!primary, reason: primary ? 'Lay a course to this mark' : 'This mark cannot be a course target' },
+      { id: 'plot', label: 'Plot course', available: plot.available, reason: plot.reason },
       { id: 'frame', label: 'Frame', available: true, reason: 'Centre the chart on this mark' },
       { id: 'open-system', label: 'Open system', available: !!sectorId, reason: sectorId ? 'Zoom to this mark\'s own sector' : 'This mark has no parent sector' },
       { id: 'bookmark', label: 'Bookmark', available: true, reason: 'Save this view to the left rail' },
@@ -5950,10 +6169,18 @@ export const galaxyMapScreen = {
     const t = this._selectedTarget;
     if (!state || !t || !id) return false;
     if (id === 'plot') {
-      const action = resolveGalaxyMapPrimaryAction(state, t);
-      if (!action) return false;
+      // A button that says "Plot course" must PLOT. It previously resolved the PRIMARY action,
+      // which for an adjacent sector is "Set Course & Jump" — so it emitted `world:requestJump`
+      // and dismissed the chart while its own tooltip promised a course. That is a control lying
+      // about what it does, and it is why the route follower was unreachable on the canonical
+      // one-hop contract: the plot appeared to succeed, the chart vanished, and Engage was gone
+      // with it. It now goes through the plot-only resolver and leaves the chart open.
+      const action = resolveGalaxyMapPlotAction(state, t);
+      if (!action.available) return false;
       if (!emitGalaxyMapPrimaryAction(this._ctx.bus, action)) return false;
-      popCurrentScreen(this._ctx);
+      this._updateEngageControl();
+      this._updatePlotControl();
+      this._updateRailSections(state);
       return true;
     }
     if (id === 'bookmark') return this._addBookmark();
@@ -6277,6 +6504,7 @@ export const galaxyMapScreen = {
       if (bmHost.innerHTML !== html) bmHost.innerHTML = html;
     }
 
+    this._revealAlternatives(state);
     const altHost = openOf('alternatives') && this._root.querySelector('#gm-rail-alternatives');
     if (altHost) {
       const html = this._routeAlternativesHtml(state);
@@ -6293,34 +6521,125 @@ export const galaxyMapScreen = {
    * saying too: "cheapest is also shortest" is a real answer, not an empty state.
    */
   _routeAlternativesHtml(state) {
-    const route = state.nav && state.nav.route;
-    const dest = route && Array.isArray(route.legs) && route.legs.length
-      ? route.legs[route.legs.length - 1].to : null;
-    if (!dest) {
-      return '<div class="gm-ins-note">No route plotted. Set a course to a sector and its alternatives appear here.</div>';
+    const target = this._alternativesDestination(state);
+    if (!target.dest) {
+      return `<div class="gm-ins-note">${escapeMapHtml(target.reason)}</div>`;
     }
-    const cur = currentSectorId(state);
+    const dest = target.dest;
+    const route = state.nav && state.nav.route;
+    const plottedLegs = route && Array.isArray(route.legs) ? route.legs : null;
     const world = this._ctx && this._ctx.registry && typeof this._ctx.registry.get === 'function'
       ? this._ctx.registry.get('world') : null;
     if (!world || typeof world.computeRoute !== 'function') {
       return '<div class="gm-ins-note">Route planner unavailable — alternatives cannot be compared right now.</div>';
     }
     const rows = [];
+    const shapes = [];
     for (const [mode, label] of [['fuel', 'Cheapest'], ['hops', 'Fewest jumps']]) {
       let alt = null;
       try { alt = world.computeRoute(dest, mode); } catch { alt = null; }
       if (!alt || !Array.isArray(alt.legs) || !alt.legs.length) continue;
-      const same = alt.legs.length === route.legs.length
-        && alt.legs.every((l, i) => l.to === route.legs[i].to);
+      const same = !!plottedLegs && alt.legs.length === plottedLegs.length
+        && alt.legs.every((l, i) => l.to === plottedLegs[i].to);
       const worst = alt.legs.reduce((m, l) => Math.max(m, Number(l.interdict) || 0), 0);
-      rows.push(`<button class="gm-rail-item${same ? ' is-current' : ''}" type="button" data-rail-alt="${mode}">
+      shapes.push(alt.legs.map((l) => l.to).join('>'));
+      // `data-route-option` is the SEMANTIC hook: "this element is one weighable way of getting
+      // there". `data-rail-alt` stays as the activation key. Each option states its own cost in
+      // words — hops, fuel and worst-leg interdiction — so the comparison never rests on colour.
+      rows.push(`<button class="gm-rail-item${same ? ' is-current' : ''}" type="button"
+        data-rail-alt="${mode}" data-route-option="${mode}"
+        data-route-hops="${alt.legs.length}" data-route-fuel="${Math.round(alt.totalFuel || 0)}">
         <span class="gm-rail-item-t">${label}${same ? ' <span class="gm-rail-item-tag">plotted</span>' : ''}</span>
-        <span class="gm-rail-item-s">${alt.legs.length} hop${alt.legs.length === 1 ? '' : 's'} · ${Math.round(alt.totalFuel || 0)}F · worst leg ${Math.round(worst * 100)}% interdict</span>
+        <span class="gm-rail-item-s">${alt.legs.length} hop${alt.legs.length === 1 ? '' : 's'} · ${Math.round(alt.totalFuel || 0)}F · worst leg ${Math.round(worst * 100)}% interdict · ETA by fuel burn</span>
       </button>`);
     }
     if (!rows.length) return '<div class="gm-ins-note">No alternative path to that sector through charted space.</div>';
-    rows.push(`<div class="gm-ins-note">Selecting an alternative re-plots the route. It does not engage it — plot and engage stay separate acts.</div>`);
+    // When the two objectives agree, say so. "Cheapest is also shortest" is a real answer to
+    // "which should I take" and is more useful than hiding one of them and implying a choice that
+    // does not exist.
+    if (shapes.length === 2 && shapes[0] === shapes[1]) {
+      rows.push('<div class="gm-ins-note">Both objectives choose the same path here — cheapest is also shortest.</div>');
+    }
+    rows.push(`<div class="gm-ins-note">${escapeMapHtml(target.note)} Selecting an alternative re-plots the route. It does not engage it — plot and engage stay separate acts.</div>`);
     return rows.join('');
+  },
+
+  /**
+   * Reveal the alternatives section exactly when there is something to compare, and take the
+   * reveal back when there is not.
+   *
+   * This is progressive disclosure, not a new panel (ADR D9.9). A collapsed `<details>` whose body
+   * is never built costs nothing, which is what makes it safe to open on its own — but an
+   * instrument that reveals and then stays is a permanent panel with extra steps, so the auto-open
+   * is undone once the destination goes away.
+   *
+   * It opens ONCE per destination and never re-opens a section the pilot has collapsed: a panel
+   * that springs back open every frame is worse than one that never opens at all.
+   */
+  _revealAlternatives(state) {
+    if (!HAS_DOC || !this._root) return;
+    const sec = this._root.querySelector('[data-rail-sec="alternatives"]');
+    if (!sec) return;
+    const dest = this._alternativesDestination(state).dest;
+    if (!dest) {
+      // Only ever collapse a disclosure WE made — never one the pilot chose.
+      if (this._altAutoOpened && sec.open) sec.open = false;
+      this._altAutoOpened = false;
+      this._altRevealedFor = null;
+      return;
+    }
+    if (this._altRevealedFor === dest) return;
+    this._altRevealedFor = dest;
+    if (!sec.open) {
+      sec.open = true;
+      this._altAutoOpened = true;
+    }
+  },
+
+  /**
+   * WHICH destination the alternatives are comparing paths to.
+   *
+   * Originally this was the plotted route's terminal sector and nothing else, which put the
+   * comparison strictly AFTER the commitment it was supposed to inform: to weigh two ways of
+   * getting somewhere you first had to pick one. The order now matches how a pilot actually
+   * decides — a contract's destination is known the moment it is accepted, so the alternatives to
+   * it are available immediately and the plotted route, when there is one, simply outranks it.
+   *
+   * Precedence: plotted route → accepted contract → current chart selection.
+   */
+  _alternativesDestination(state) {
+    const route = state.nav && state.nav.route;
+    const plotted = route && Array.isArray(route.legs) && route.legs.length
+      ? route.legs[route.legs.length - 1].to : null;
+    if (plotted) {
+      return { dest: plotted, source: 'route', reason: '', note: 'Comparing paths to your plotted destination.' };
+    }
+    const mission = resolveMissionDestination(state);
+    const here = currentSectorId(state);
+    if (mission && mission.sectorId && mission.sectorId !== here) {
+      return {
+        dest: mission.sectorId,
+        source: 'mission',
+        reason: '',
+        note: `Comparing paths to ${sectorNameOf(state, mission.sectorId)}, your contract destination — nothing is plotted yet.`,
+      };
+    }
+    const sel = this._selectedTarget;
+    const selSector = sel ? (sel.kind === 'sector' ? (sel.sectorId || sel.id) : sel.sectorId) : null;
+    if (selSector && selSector !== here) {
+      return {
+        dest: selSector,
+        source: 'selection',
+        reason: '',
+        note: `Comparing paths to the selected ${sectorNameOf(state, selSector)}.`,
+      };
+    }
+    return {
+      dest: null,
+      source: null,
+      reason: 'Nothing to compare yet. Accept a contract or select a sector, and the ways of reaching it appear here.',
+      note: '',
+    };
   },
 
   /** Save the current camera as a named bookmark. Screen-owned, never written to sim state. */
@@ -6363,6 +6682,63 @@ export const galaxyMapScreen = {
       return;
     }
     popCurrentScreen(this._ctx);
+  },
+
+  /**
+   * Plot the selected sector WITHOUT committing to it (ADR D6).
+   *
+   * Shares the shipped emitter with the primary action, so there is exactly one mutation path into
+   * `nav.route` and the alternatives rail, the ribbon and the engage control all see the same
+   * result. Like the primary's own route branch, it leaves the chart OPEN — a plot the pilot
+   * cannot then act on without reopening the map is half an action.
+   */
+  _activatePlotOnlyCourse() {
+    if (!this._ctx || !this._ctx.bus) return false;
+    const state = this._ctx.state;
+    const action = resolveGalaxyMapPlotAction(state, this._selectedTarget);
+    // Refuse out loud. A disabled button should never reach here, but a keyboard or scripted
+    // activation can, and a silent no-op is the failure mode this screen's contract forbids.
+    if (!action.available) {
+      if (this._plotReason) this._plotReason.textContent = action.reason;
+      return false;
+    }
+    if (!emitGalaxyMapPrimaryAction(this._ctx.bus, action)) return false;
+    this._updateEngageControl();
+    this._updatePlotControl();
+    this._updateRailSections(state);
+    return true;
+  },
+
+  /**
+   * Reflect the secondary plot control's availability.
+   *
+   * It is hidden in the ordinary case — nothing selected, or the primary already offers the plot —
+   * and reveals only where plot-without-commit would otherwise be impossible. That is progressive
+   * disclosure rather than a new permanent panel (ADR D9.9): the control appears exactly when its
+   * action becomes unreachable by any other means, and goes away again.
+   */
+  _updatePlotControl() {
+    if (!HAS_DOC || !this._root) return;
+    const btn = this._plotButton || this._root.querySelector('#gm-plot-course-btn');
+    const reasonEl = this._plotReason || this._root.querySelector('#gm-plot-reason');
+    if (!btn) return;
+    const state = this._ctx && this._ctx.state;
+    const target = this._selectedTarget;
+    const action = resolveGalaxyMapPlotAction(state, target);
+    // Show it only where the primary commits. When the primary IS the plot, a second identical
+    // button would be clutter — the exact density failure D9.9 is about.
+    const show = !!target && action.available && !action.redundant;
+    if (btn.hidden !== !show) btn.hidden = !show;
+    if (btn.disabled !== !action.available) btn.disabled = !action.available;
+    if (btn.getAttribute('aria-disabled') !== String(!action.available)) {
+      btn.setAttribute('aria-disabled', String(!action.available));
+    }
+    if (btn.textContent !== action.label) btn.textContent = action.label;
+    if (btn.getAttribute('title') !== action.reason) btn.setAttribute('title', action.reason);
+    if (reasonEl) {
+      const text = show ? action.reason : '';
+      if (reasonEl.textContent !== text) reasonEl.textContent = text;
+    }
   },
 
   // W1-8. Engage hands the already-plotted route to the route follower. Deliberately does NOT
