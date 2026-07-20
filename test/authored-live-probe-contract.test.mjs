@@ -20,7 +20,14 @@ test('Electron normal route proves authored release identities without an artifi
   assert.doesNotMatch(electronSource, /requestAuthoredUpgrade/,
     'Electron acceptance must exercise production demand rather than forcing distant assets resident');
   assert.match(electronSource, /ship\.authoredAssetState === 'authored'/);
-  assert.match(electronSource, /ship\.authoredAssetMode === 'release'/);
+  assert.match(electronSource,
+    /function hasAcceptableAuthoredPresentation\(ship\)[\s\S]*?if \(!ship \|\| ship\.authoredAssetMode !== 'release'\) return false;/,
+    'the shared acceptance predicate must fail closed for every non-release ship');
+  assert.match(electronSource, /report\.ships\.every\(hasAcceptableAuthoredPresentation\)/,
+    'the written acceptance receipt must apply the shared release predicate to every live ship');
+  assert.match(electronSource,
+    /report\.ships\.filter\(\(ship\) => !hasAcceptableAuthoredPresentation\(ship\)\)/,
+    'the terminal assertion must reject every ship that fails the shared release predicate');
   assert.match(electronSource, /report\.mode === 'flight'/,
     'the proof remains a real playable-route handoff, not an isolated asset viewer');
 });
