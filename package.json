@@ -114,6 +114,7 @@
     "check:massline:telemetry": "node scripts/check-massline-telemetry.mjs",
     "check:massline:release": "node scripts/check-massline-release-rating.mjs",
     "check:massline:release-feedback": "node scripts/check-massline-release-feedback.mjs",
+    "check:massline:lab": "node --test test/massline-control-lab.test.mjs && node scripts/massline-control-lab.mjs --matrix --self-check",
     "check:massline:load": "node scripts/check-massline-load.mjs",
     "check:massline:snapcatch": "node scripts/check-massline-snapcatch.mjs",
     "check:massline:reelpump": "node scripts/check-massline-reelpump.mjs",
