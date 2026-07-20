@@ -292,6 +292,13 @@ export const vfx = {
     this._socketForwardQuat = new THREE.Quaternion();
     this._socketReferenceForward = new THREE.Vector3(-1, 0, 0);
     this._driveScratch = { drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0 };
+    this._mainDriveDemandScratch = { main: 0, reverse: 0, retroOnly: false };
+    this._rcsPoseScratch = { x: 0, z: 0, rot: 0, radius: 6 };
+    this._rcsDefaultScale = resolveActuatorScale(null);
+    this._rcsScaleCache = new Map();
+    for (const driveId of Object.keys(PROPULSION_PROFILES)) {
+      this._rcsScaleCache.set(driveId, resolveActuatorScale(PROPULSION_PROFILES[driveId]));
+    }
     this._productionPlumeSockets = [
       { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
       { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
@@ -308,6 +315,11 @@ export const vfx = {
     this._productionThrusterOpts = { boost: 0, a11y: this._productionThrusterA11y };
     this._rcsOrigins = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
     this._rcsAxes = [[1, 0, 0], [-1, 0, 0], [1, 0, 0], [-1, 0, 0]];
+    this._productionRcsFirings = [];
+    Object.defineProperty(this._productionRcsFirings, '__rcsRecords', {
+      value: [{}, {}, {}, {}],
+      configurable: true,
+    });
     this._zeroPos = { x: 0, z: 0 };
     // M2: VFX particle/sprite/trail XZ is frame-local; spawn inputs stay galactic-global.
     this._frameMembrane = createRenderFrameMembrane().reset(ctx.state);
@@ -707,8 +719,8 @@ export const vfx = {
     add('entity:destroyed', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onDestroyed(p); });
     add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
     add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._markEntityCacheDirty(); });
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); });
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._resetEnergyForBoundary(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._resetEnergyForBoundary(); });
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       if (p.key === 'particleQuality' || p.key == null) this._syncParticleQuality();
@@ -1255,7 +1267,11 @@ export const vfx = {
     const root = view && view.root;
     if (root && typeof root.traverse === 'function') {
       let cache = view.__vfxTrailSockets;
-      if (!cache || cache.root !== root) {
+      const assetState = root.userData && root.userData.authoredAssetState;
+      const compositionId = root.userData && root.userData.authoredCompositionId;
+      const childCount = root.children ? root.children.length : 0;
+      if (!cache || cache.root !== root || cache.assetState !== assetState
+        || cache.compositionId !== compositionId || cache.childCount !== childCount) {
         const sockets = [];
         const drivePlumes = [];
         root.traverse((o) => {
@@ -1265,7 +1281,13 @@ export const vfx = {
         });
         sockets.sort(sortTrailAnchors);
         drivePlumes.sort(sortTrailAnchors);
-        cache = view.__vfxTrailSockets = { root, sockets: sockets.length ? sockets : drivePlumes };
+        cache = view.__vfxTrailSockets = {
+          root,
+          assetState,
+          compositionId,
+          childCount,
+          sockets: sockets.length ? sockets : drivePlumes,
+        };
         view.__vfxTrailSocket = { root, socket: cache.sockets[0] || null };
       }
       return cache.sockets;
@@ -1278,14 +1300,51 @@ export const vfx = {
     const root = view && view.root;
     if (!root || typeof root.getObjectByName !== 'function') return null;
     let cache = view.__vfxRcsSockets;
-    if (!cache || cache.root !== root) {
+    const assetState = root.userData && root.userData.authoredAssetState;
+    const compositionId = root.userData && root.userData.authoredCompositionId;
+    const childCount = root.children ? root.children.length : 0;
+    if (!cache || cache.root !== root || cache.assetState !== assetState
+      || cache.compositionId !== compositionId || cache.childCount !== childCount) {
       cache = view.__vfxRcsSockets = {
         root,
+        assetState,
+        compositionId,
+        childCount,
         port: root.getObjectByName('SOCKET_RCS_Port') || null,
         starboard: root.getObjectByName('SOCKET_RCS_Starboard') || null,
       };
     }
     return cache;
+  },
+
+  _writeRcsSocketPose(socket, origin, axis) {
+    if (!socket || !origin || !axis) return false;
+    socket.updateWorldMatrix(true, false);
+    socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    const f = socket.userData && socket.userData.forward;
+    const arrayForward = Array.isArray(f);
+    const fx = arrayForward ? f[0] : (f && f.x);
+    const fy = arrayForward ? f[1] : (f && f.y);
+    const fz = arrayForward ? f[2] : (f && f.z);
+    this._socketForward.set(
+      Number.isFinite(fx) ? fx : 0,
+      Number.isFinite(fy) ? fy : 0,
+      Number.isFinite(fz) ? fz : 0,
+    );
+    if (this._socketForward.lengthSq() < 1e-8) return false;
+    this._socketForward.normalize().applyQuaternion(this._socketWorldQuat).normalize();
+    const globalXZ = this._entityLocalXZ;
+    globalXZ.x = this._socketWorldPos.x;
+    globalXZ.z = this._socketWorldPos.z;
+    if (this._frameMembrane) this._frameMembrane.toGlobal(globalXZ, globalXZ);
+    const local = this._toLocalXZ(globalXZ.x, globalXZ.z, this._spawnLocalXZ);
+    origin[0] = local.x;
+    origin[1] = this._socketWorldPos.y;
+    origin[2] = local.z;
+    axis[0] = this._socketForward.x;
+    axis[1] = this._socketForward.y;
+    axis[2] = this._socketForward.z;
+    return true;
   },
 
   _trailSocketWorldPos(e) {
@@ -4077,6 +4136,13 @@ export const vfx = {
   },
 
   _productionThrusterEnabled() {
+    // Compact core propulsion feedback is part of flight readability, not optional wake dressing.
+    // The Engine trails preference selects the lightweight core+sheath presentation below rather
+    // than erasing the main drive and RCS completely.
+    return true;
+  },
+
+  _extendedEngineTrailsEnabled() {
     const video = this.state.settings && this.state.settings.video;
     return !video || video.engineTrails !== false;
   },
@@ -4253,8 +4319,11 @@ export const vfx = {
     const particleQuality = video.particleQuality || 'high';
     a11y.reducedMotion = !!video.motionReduce;
     a11y.reducedFlash = !!accessibility.flashReduce;
-    a11y.lowQuality = particleQuality === 'low';
-    a11y.qualityTier = particleQuality === 'med' ? 'medium' : particleQuality;
+    const compactPropulsion = !this._extendedEngineTrailsEnabled();
+    a11y.lowQuality = particleQuality === 'low' || compactPropulsion;
+    a11y.qualityTier = compactPropulsion
+      ? 'low'
+      : (particleQuality === 'med' ? 'medium' : particleQuality);
 
     const socketCount = this._writeProductionPlumeSockets(player);
     const opts = this._productionThrusterOpts;
@@ -4311,7 +4380,7 @@ export const vfx = {
     energy.rcsCooldown = Math.max(0, energy.rcsCooldown - dt);
     const actuators = this._actuatorsFor(player);
     if (actuators && energy.rcsCooldown <= 0) {
-      const pose = this._rcsPoseScratch || (this._rcsPoseScratch = { x: 0, z: 0, rot: 0, radius: 6 });
+      const pose = this._rcsPoseScratch;
       pose.x = player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
       pose.z = player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
       pose.rot = player.rot || 0;
@@ -4320,17 +4389,42 @@ export const vfx = {
         actuators,
         pose,
         this._rcsScaleFor(player._flightFrame),
-        this._productionRcsFirings || (this._productionRcsFirings = []),
+        this._productionRcsFirings,
       );
       let fired = 0;
+      const authoredSockets = this._rcsSocketObjects(player);
       for (let i = 0; i < firings.length && fired < this._rcsOrigins.length; i++) {
         const jet = firings[i];
         if (!(jet.intensity > 0.001)) continue;
-        const local = this._toLocalXZ(jet.x, jet.z, this._spawnLocalXZ);
         const origin = this._rcsOrigins[fired];
         const axis = this._rcsAxes[fired];
-        origin[0] = local.x; origin[1] = 0; origin[2] = local.z;
-        axis[0] = jet.dirX; axis[1] = 0; axis[2] = jet.dirZ;
+        const authoredSocket = jet.role === 'rcs-port'
+          ? authoredSockets && authoredSockets.port
+          : (jet.role === 'rcs-starboard' ? authoredSockets && authoredSockets.starboard : null);
+        if (authoredSocket) {
+          // A composition exposes one lateral RCS nozzle per side. Pure translation resolves bow
+          // and stern forces on the same side; draw the strongest one once at the authored nozzle
+          // instead of stacking two identical impulses at one position.
+          let strongest = i;
+          for (let j = 0; j < firings.length; j++) {
+            if (firings[j].role !== jet.role) continue;
+            if (firings[j].intensity > firings[strongest].intensity) strongest = j;
+          }
+          if (strongest !== i) continue;
+          let earlierTie = false;
+          for (let j = 0; j < i; j++) {
+            if (firings[j].role === jet.role && firings[j].intensity === jet.intensity) {
+              earlierTie = true;
+              break;
+            }
+          }
+          if (earlierTie) continue;
+        }
+        if (!this._writeRcsSocketPose(authoredSocket, origin, axis)) {
+          const local = this._toLocalXZ(jet.x, jet.z, this._spawnLocalXZ);
+          origin[0] = local.x; origin[1] = 0; origin[2] = local.z;
+          axis[0] = jet.dirX; axis[1] = 0; axis[2] = jet.dirZ;
+        }
         energy.rcsSystem.fire(origin, axis, jet.intensity);
         fired++;
       }
@@ -4347,6 +4441,12 @@ export const vfx = {
     energy.plumeDrive = 0;
     energy.boostBlend = 0;
     energy.rcsCooldown = 0;
+  },
+
+  _resetEnergyForBoundary() {
+    this._hideEnergyPlumes();
+    this._energyPlumeWasRelevant = false;
+    if (this._energy && this._energy.ribbon) this._energy.ribbon.visible = false;
   },
 
   _updateEnergyMassline(dt) {
@@ -4418,14 +4518,7 @@ export const vfx = {
   /** Per-drive normalization denominators, cached by driveId (the catalogue is immutable). */
   _rcsScaleFor(frame) {
     const driveId = frame && typeof frame.driveId === 'string' ? frame.driveId : null;
-    if (!driveId) return resolveActuatorScale(null);
-    if (!this._rcsScaleCache) this._rcsScaleCache = new Map();
-    let scale = this._rcsScaleCache.get(driveId);
-    if (!scale) {
-      scale = resolveActuatorScale(PROPULSION_PROFILES[driveId] || null);
-      this._rcsScaleCache.set(driveId, scale);
-    }
-    return scale;
+    return driveId && this._rcsScaleCache.get(driveId) || this._rcsDefaultScale;
   },
 
   /** Signed player actuator truth published by flightV3; presentation never re-simulates physics. */
@@ -4460,7 +4553,11 @@ export const vfx = {
     // Physics beats keys. When the flight computer has published signed demand, the plume follows
     // the thrust the drive is ACTUALLY producing — which includes assist and autopilot thrust the
     // pilot never commanded, and excludes the key the pilot is holding while the governor ignores it.
-    const md = mainDriveDemand(this._actuatorsFor(e), this._rcsScaleFor(frame));
+    const md = mainDriveDemand(
+      this._actuatorsFor(e),
+      this._rcsScaleFor(frame),
+      this._mainDriveDemandScratch,
+    );
     if (md) throttle = md.main;
     const cf = Math.cos(e.rot || 0);
     const sf = Math.sin(e.rot || 0);

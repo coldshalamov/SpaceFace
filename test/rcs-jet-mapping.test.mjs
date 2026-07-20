@@ -327,6 +327,32 @@ test('a null or empty actuator block resolves to no jets rather than throwing', 
   assert.deepEqual(resolveRcsFirings({ yaw: 1 }, null, scale), []);
 });
 
+test('a supplied output reuses firing records and channel descriptors across active and idle frames', () => {
+  const pose = { x: 10, z: -4, rot: 0.5, radius: 6 };
+  const scale = resolveActuatorScale(PROPULSION_PROFILES.drive_reaction_m);
+  const out = [];
+  resolveRcsFirings({ lateral: 0, yaw: scale.yaw, reverse: 0 }, pose, scale, out);
+  assert.equal(out.length, 2);
+  const first = out[0];
+  const second = out[1];
+  const firstChannels = first.channels;
+  const secondChannels = second.channels;
+
+  resolveRcsFirings({ lateral: 0, yaw: 0, reverse: 0 }, pose, scale, out);
+  assert.equal(out.length, 0, 'idle frame publishes no live firings');
+  resolveRcsFirings({ lateral: 0, yaw: scale.yaw, reverse: 0 }, pose, scale, out);
+  assert.equal(out[0], first, 'first firing record must survive an idle frame');
+  assert.equal(out[1], second, 'second firing record must survive an idle frame');
+  assert.equal(out[0].channels, firstChannels, 'channel descriptors are immutable shared records');
+  assert.equal(out[1].channels, secondChannels, 'channel descriptors are immutable shared records');
+
+  const demand = { main: 0, reverse: 0, retroOnly: false };
+  assert.equal(mainDriveDemand({ main: scale.main, reverse: 0 }, scale, demand), demand,
+    'main-drive demand must support an allocation-free supplied output');
+  assert.equal(demand.main, 1);
+  assert.equal(demand.retroOnly, false);
+});
+
 test('every drive family resolves a usable scale, including the ones with no authored accels', () => {
   for (const driveId of FAMILY_DRIVES) {
     const scale = resolveActuatorScale(PROPULSION_PROFILES[driveId]);

@@ -136,20 +136,19 @@ export function resolveAccessibilityPresentationInto(recipe, flags, out, tables)
       // Rebuild from prefer then rest, cap maxLayers
       const tmp = out.roles;
       let count = 0;
-      const used = Object.create(null);
       for (let i = 0; i < prefer.length && count < maxLayers; i++) {
         const role = prefer[i];
         if (t.layerByRole[role] || role === 'core') {
-          tmp[count++] = role;
-          used[role] = 1;
+          let used = false;
+          for (let j = 0; j < count; j++) if (tmp[j] === role) used = true;
+          if (!used) tmp[count++] = role;
         }
       }
-      for (let i = 0; i < out.roleCount && count < maxLayers; i++) {
-        const role = out.roles[i];
-        if (!used[role]) {
-          tmp[count++] = role;
-          used[role] = 1;
-        }
+      for (let i = 0; i < srcRoles.length && count < maxLayers; i++) {
+        const role = srcRoles[i];
+        let used = false;
+        for (let j = 0; j < count; j++) if (tmp[j] === role) used = true;
+        if (!used) tmp[count++] = role;
       }
       out.roleCount = count;
     } else if (out.roleCount > maxLayers) {

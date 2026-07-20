@@ -67,6 +67,14 @@ export const RCS_GEOMETRY = Object.freeze({
 // flicker every frame the assist trims a drift. Above it, intensity is continuous.
 export const RCS_DEADBAND = 0.06;
 
+const CHANNELS_NONE = Object.freeze([]);
+const CHANNELS_TRANSLATION = Object.freeze(['translation']);
+const CHANNELS_YAW_CW = Object.freeze(['yawCw']);
+const CHANNELS_YAW_CCW = Object.freeze(['yawCcw']);
+const CHANNELS_TRANSLATION_YAW_CW = Object.freeze(['translation', 'yawCw']);
+const CHANNELS_TRANSLATION_YAW_CCW = Object.freeze(['translation', 'yawCcw']);
+const CHANNELS_REVERSE = Object.freeze(['reverse']);
+
 /**
  * Per-family denominators that turn raw accelerations into 0..1 authority fractions.
  *
@@ -120,7 +128,7 @@ function yawAuthority(p) {
  * @param {object} actuators  the `actuators` block from computeFlightTelemetry — consumed as-is
  * @param {object} pose       { x, z, rot, radius } of the hull
  * @param {object} scale      from resolveActuatorScale(profile)
- * @returns {Array<Firing>}   at most 3 entries (bow pair counts as two), newest allocation per call
+ * @returns {Array<Firing>}   at most 4 entries; a supplied `out` reuses its private firing records
  *
  * Firing = {
  *   station: 'bow'|'stern', side: -1|1,     // -1 = port hull, +1 = starboard hull
@@ -133,10 +141,22 @@ function yawAuthority(p) {
  * }
  */
 export function resolveRcsFirings(actuators, pose, scale, out = []) {
-  out.length = 0;
-  if (!actuators || !pose) return out;
+  let records = out.__rcsRecords;
+  if (!records) {
+    records = [];
+    Object.defineProperty(out, '__rcsRecords', { value: records, configurable: true });
+  }
+  if (!actuators || !pose) {
+    out.length = 0;
+    return out;
+  }
 
-  const axes = shipAxes(pose.rot);
+  // Keep the public shipAxes helper convenient, but do not allocate its object on this render path.
+  const rot = finite(pose.rot);
+  const fx = Math.cos(rot);
+  const fz = Math.sin(rot);
+  const rx = -fz;
+  const rz = fx;
   const radius = positive(pose.radius, 6);
   const px = finite(pose.x);
   const pz = finite(pose.z);
@@ -152,72 +172,70 @@ export function resolveRcsFirings(actuators, pose, scale, out = []) {
   const bowLat = clamp(lat + yaw, -1, 1);
   const sternLat = clamp(lat - yaw, -1, 1);
 
-  emitLateral(out, 'bow', bowLat, RCS_GEOMETRY.bowLong, axes, px, pz, radius, lat, yaw);
-  emitLateral(out, 'stern', sternLat, -RCS_GEOMETRY.sternLong, axes, px, pz, radius, lat, yaw);
+  let count = 0;
+  count = emitLateral(out, records, count, 'bow', bowLat, RCS_GEOMETRY.bowLong,
+    fx, fz, rx, rz, px, pz, radius, lat, yaw);
+  count = emitLateral(out, records, count, 'stern', sternLat, -RCS_GEOMETRY.sternLong,
+    fx, fz, rx, rz, px, pz, radius, lat, yaw);
 
   // Aft push at the bow: the retro pair, symmetric so it produces no yaw. Kept as its own case
   // rather than folded into the lateral solver because a longitudinal push has no side to be
   // opposite of — it legitimately lights BOTH bow jets, and that is the one time it should.
   if (rev > RCS_DEADBAND) {
-    for (const side of [-1, 1]) {
-      out.push(makeFiring({
-        station: 'bow',
-        side,
-        role: side < 0 ? 'reverse-left' : 'reverse-right',
-        longFrac: RCS_GEOMETRY.bowLong,
+    for (let side = -1; side <= 1; side += 2) {
+      writeFiring(out, records, count++, 'bow', side, side < 0 ? 'reverse-left' : 'reverse-right',
+        RCS_GEOMETRY.bowLong,
         // Ship pushed aft (-nose); exhaust therefore leaves along the nose.
-        pushX: -axes.fx,
-        pushZ: -axes.fz,
-        intensity: rev,
-        channels: ['reverse'],
-        axes, px, pz, radius,
-      }));
+        -fx, -fz, rev, CHANNELS_REVERSE,
+        fx, fz, rx, rz, px, pz, radius);
     }
   }
+  out.length = count;
   return out;
 }
 
-function emitLateral(out, station, latDemand, longFrac, axes, px, pz, radius, lat, yaw) {
+function emitLateral(out, records, index, station, latDemand, longFrac,
+  fx, fz, rx, rz, px, pz, radius, lat, yaw) {
   const mag = Math.abs(latDemand);
-  if (mag <= RCS_DEADBAND) return;
+  if (mag <= RCS_DEADBAND) return index;
   // The push is toward starboard when latDemand > 0, so the nozzle lives on the PORT hull and
   // exhausts to port. This single line is the whole bug fix; getting it backwards merely moves
   // the defect, which is why the test asserts `exhaust === -push` rather than trusting it.
   const pushSign = latDemand > 0 ? 1 : -1;
   const side = -pushSign;
-  const channels = [];
-  if (Math.abs(lat) > RCS_DEADBAND) channels.push('translation');
-  if (Math.abs(yaw) > RCS_DEADBAND) channels.push(yaw > 0 ? 'yawCw' : 'yawCcw');
-  out.push(makeFiring({
-    station,
-    side,
-    role: side < 0 ? 'rcs-port' : 'rcs-starboard',
-    longFrac,
-    pushX: axes.rx * pushSign,
-    pushZ: axes.rz * pushSign,
-    intensity: mag,
-    channels,
-    axes, px, pz, radius,
-  }));
+  const hasTranslation = Math.abs(lat) > RCS_DEADBAND;
+  const hasYaw = Math.abs(yaw) > RCS_DEADBAND;
+  let channels = CHANNELS_NONE;
+  if (hasTranslation && hasYaw) {
+    channels = yaw > 0 ? CHANNELS_TRANSLATION_YAW_CW : CHANNELS_TRANSLATION_YAW_CCW;
+  } else if (hasTranslation) channels = CHANNELS_TRANSLATION;
+  else if (hasYaw) channels = yaw > 0 ? CHANNELS_YAW_CW : CHANNELS_YAW_CCW;
+  writeFiring(out, records, index, station, side, side < 0 ? 'rcs-port' : 'rcs-starboard', longFrac,
+    rx * pushSign, rz * pushSign, mag, channels,
+    fx, fz, rx, rz, px, pz, radius);
+  return index + 1;
 }
 
-function makeFiring({ station, side, role, longFrac, pushX, pushZ, intensity, channels, axes, px, pz, radius }) {
+function writeFiring(out, records, index, station, side, role, longFrac, pushX, pushZ, intensity, channels,
+  fx, fz, rx, rz, px, pz, radius) {
   const lateralOffset = RCS_GEOMETRY.side * radius * side;
   const longOffset = longFrac * radius;
-  return {
-    station,
-    side,
-    role,
-    x: px + axes.fx * longOffset + axes.rx * lateralOffset,
-    z: pz + axes.fz * longOffset + axes.rz * lateralOffset,
-    pushX,
-    pushZ,
-    // Newton's third law, stated once, in one place.
-    dirX: -pushX,
-    dirZ: -pushZ,
-    intensity: clamp(intensity, 0, 1),
-    channels,
-  };
+  let firing = records[index];
+  if (!firing) firing = records[index] = {};
+  out[index] = firing;
+  firing.station = station;
+  firing.side = side;
+  firing.role = role;
+  firing.x = px + fx * longOffset + rx * lateralOffset;
+  firing.z = pz + fz * longOffset + rz * lateralOffset;
+  firing.pushX = pushX;
+  firing.pushZ = pushZ;
+  // Newton's third law, stated once, in one place.
+  firing.dirX = -pushX;
+  firing.dirZ = -pushZ;
+  firing.intensity = clamp(intensity, 0, 1);
+  firing.channels = channels;
+  return firing;
 }
 
 /**
@@ -225,18 +243,18 @@ function makeFiring({ station, side, role, longFrac, pushX, pushZ, intensity, ch
  * input key. Returns null when the actuator block is absent so callers keep their old fallback
  * instead of reading a fabricated zero as "engine off".
  */
-export function mainDriveDemand(actuators, scale) {
+export function mainDriveDemand(actuators, scale, out = null) {
   if (!actuators || !scale) return null;
   const main = Math.max(0, finite(actuators.main));
   const reverse = Math.max(0, finite(actuators.reverse));
-  return {
-    main: clamp(main / scale.main, 0, 1),
-    reverse: clamp(reverse / scale.reverse, 0, 1),
-    // A drive spending authority against its own velocity with zero forward demand is braking:
-    // its main nozzle must be dark while the retros fire. The renderer's speed-derived glow used
-    // to keep it lit, which read as a ship accelerating into its own brake.
-    retroOnly: main <= 0 && reverse > 0,
-  };
+  const demand = out || {};
+  demand.main = clamp(main / scale.main, 0, 1);
+  demand.reverse = clamp(reverse / scale.reverse, 0, 1);
+  // A drive spending authority against its own velocity with zero forward demand is braking:
+  // its main nozzle must be dark while the retros fire. The renderer's speed-derived glow used
+  // to keep it lit, which read as a ship accelerating into its own brake.
+  demand.retroOnly = main <= 0 && reverse > 0;
+  return demand;
 }
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, finite(v))); }

@@ -8,6 +8,7 @@ const { vfx } = await import('../src/render/vfx.js');
 
 function makeVfxSystem() {
   const scene = new THREE.Scene();
+  const handlers = new Map();
   const state = {
     playerId: 1,
     entities: new Map(),
@@ -19,11 +20,24 @@ function makeVfxSystem() {
   system.init({
     state,
     bus: {
-      on() { return () => {}; },
-      emit() { /* cosmetic camera:shake etc. — no-op in unit test */ },
+      on(name, fn) {
+        const list = handlers.get(name) || [];
+        list.push(fn);
+        handlers.set(name, list);
+        return () => {
+          const index = list.indexOf(fn);
+          if (index >= 0) list.splice(index, 1);
+        };
+      },
+      emit(name, payload) {
+        for (const fn of handlers.get(name) || []) fn(payload);
+      },
     },
     helpers: {},
   });
+  system.__emitForTest = (name, payload) => {
+    for (const fn of handlers.get(name) || []) fn(payload);
+  };
   assert.ok(system._scene, 'vfx must attach to the provided render scene');
   return system;
 }
@@ -86,6 +100,27 @@ for (const type of ['wreck', 'drone', 'asteroid_large', 'station_debris']) {
 }
 assert.deepEqual(snapshot(restoreSys), afterRestore,
   'save_restore must remain a no-op for all explode-eligible types');
+
+// Production propulsion pools are transient world-space presentation too. They must not survive
+// a save restore or sector boundary at their old coordinates.
+const energySys = makeVfxSystem();
+energySys._initEnergy();
+energySys._energy.rcsSystem.fire([4, 0, -3], [0, 0, -1], 1);
+energySys._energy.rcsSystem.update(1 / 60, {});
+assert.equal(energySys._energy.rcsSystem.pool.activeImpulseCount, 1,
+  'precondition: a production RCS impulse is live');
+energySys.__emitForTest('save:loaded');
+assert.equal(energySys._energy.rcsSystem.pool.activeImpulseCount, 0,
+  'save:loaded must clear production RCS impulses at pre-load coordinates');
+assert.equal(energySys._energy.plumeDrive, 0);
+assert.equal(energySys._energy.rcsCooldown, 0);
+
+energySys._energy.rcsSystem.fire([-2, 0, 6], [0, 0, 1], 1);
+energySys._energy.rcsSystem.update(1 / 60, {});
+assert.equal(energySys._energy.rcsSystem.pool.activeImpulseCount, 1);
+energySys.__emitForTest('sector:enter');
+assert.equal(energySys._energy.rcsSystem.pool.activeImpulseCount, 0,
+  'sector:enter must clear production RCS impulses at old-sector coordinates');
 
 // ── normal destroy: still produces destruction VFX ──────────────────────────
 const combatSys = makeVfxSystem();
