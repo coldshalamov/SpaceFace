@@ -26,7 +26,7 @@ Dirty-path counts and ahead/behind counts are audit snapshots and must be refres
 | `SpaceFace` / `master` | Product merge `b235f062`; evidence hardening through `280cafb0`; propulsion repair `59f91d19`; Atlas/journey through `4f7bc87c`; geology truth `e8838e2c`; Electron RCS evidence harness `3d2dc765`; hybrid-research disposition `1074c078`. | Product authority. Graphics and reviewed performance synthesis are promoted. | Never remove. |
 | `SpaceFace-graphics-closeout` / `codex/graphics-closeout-20260719` | Physical worktree removed; clean tip `8e860439` is reachable from `master`. | No unique product work. | Complete. |
 | Rejected performance experiment / `archive/performance-pooling-experiment-20260720` | Base tip `99cad5b5` is integrated; evidence hardening is replayed. Physical worktree removed at clean tip `9d626fd8`; rejected implementation preserved by annotated tag and obsolete local branch retired. | Reject post-synthesis range `04805924..9d626fd8`. The measured primitive, merged, corrected exact-key, and BatchedMesh implementations all lost to current ship-local batching on target Intel hardware; the final run measured 250.1/616.8/433.3 ms p95 for 10/25/50 ships and had correctness/PBR blockers. This rejects those implementations, not every possible hybrid design. The bounded hybrid hypothesis is retained in `06_RETAINED_FUTURE_BACKLOG.md` at `1074c078`. | Complete. Never replay the rejected range; retain the tag/evidence for archaeology only. |
-| `SpaceFace-graphics-overhaul` / `codex/graphics-overhaul` | Tip `cab2d122`; 24 branch-only commits; 244 dirty paths. Dirty inventory: 180 assets (80 release, 58 Kestrel evidence/source, 42 parts), 15 `src`, 14 `scripts`, 10 `test`, 22 unrelated `docs/user-guide`, two `active_sessions` files, and one tracked Python cache. Only eight dirty asset files match current master; 236 paths differ. | Retain. Accepted runtime value was manually synthesized into master; no remaining branch commit is approved for whole replay. The dirty tree mixes valuable Blender/PBR source, rebuilt release output, unreviewed code/tests, and obvious process contamination, so it cannot be checkpointed wholesale. | Not releasable. Keep the physical worktree until the three asset groups receive per-family provenance/promote/reject receipts and every non-asset path is classified or deliberately removed. Never whole-merge. |
+| `SpaceFace-graphics-overhaul` / `codex/graphics-overhaul` | Tip `cab2d122`; 24 branch-only commits; **223 dirty paths** (refreshed 2026-07-20 closeout; was 244). Dirty inventory: 180 assets, 15 `src`, 14 `scripts`, 10 `test`, 1 `tools`, 1 `docs`, 2 `active_sessions` process files. Only eight dirty asset files match current master. | Retain. Accepted runtime value was manually synthesized into master; no remaining branch commit is approved for whole replay. The dirty tree mixes valuable Blender/PBR source, rebuilt release output, unreviewed code/tests, and obvious process contamination, so it cannot be checkpointed wholesale. The Kimi station-UI candidates (`src/ui/station/adBoard.js`, `stationIdentity.js`, `test/station-ad-board.test.mjs`, the `bar.js` wreck rumor) remain missing from master but porting them is out of the 2026-07-20 closeout scope (would require owning focused checks + a normal station-route capture per §5 below). | Not releasable. Keep the physical worktree until the three asset groups receive per-family provenance/promote/reject receipts and every non-asset path is classified or deliberately removed. Never whole-merge. |
 | `SpaceFace-oc-helios-golden` / `opencode/helios-golden-station` | Physical worktree removed after a 101-behind / 0-unique / 2.53 GB audit. | Full replacement rejected. The useful builder, precursor receipt, editable blend, three-LOD source, and release asset are on `master`. | Complete. |
 | `SpaceFace-depth-actualization` / `grok/depth-player-route-actualization` | Physical worktree removed. Branch `bf1dfce2` and annotated archive tag remain; 17 raw artifacts are hash-archived externally. | Selective product donor only; the remaining black-box candidate is recorded below. | Complete; never whole-merge the branch. |
 | Four orchestration satellites | Physical worktrees removed after individual dirt/process audits. | Superseded station shell, incorrect Helix faction edit, old natural-route harness, and defective recovery variant rejected. Branch refs remain. | Complete. |
@@ -152,6 +152,27 @@ semantics survived. Current `master` intentionally keeps ship-local static batch
 Completed 2026-07-19: graphics-closeout, rejected Helios, four superseded orchestration satellites,
 the product-preserved Kimi donor, the tagged/hash-archived Depth donor, and the clean rejected
 performance experiment were removed through Git.
+
+## 8. 2026-07-20 closeout — PQ-014 / PQ-018 / PQ-022 donor cleanup
+
+Three donor worktrees were removed during the 2026-07-20 closeout after their accepted content was
+verified byte-identical on master (binary assets via `cmp`; yaml/text via git blob hash). Each
+donor branch is deleted; its history is preserved by an annotated recovery tag that records the
+cherry-pick mapping and the acceptance state. None of these donors was whole-merged; each was
+integrated through narrow cherry-picks of the feature commits only.
+
+| Removed worktree | Former branch | Recovery tag | Master commits | State |
+|---|---|---|---|---|
+| `sf-pq014` | `codex/pq014-npc-job-kernel-20260720` | `archive/pq014-npc-job-kernel-20260720` | `d6d5278c` (kernel) + `73159e05` (r2 defect repairs) + `fffe57db` (receipt) | FOCUSED_GREEN + INTEGRATED_KERNEL, runtime-UNWIRED (48/48 focused suite; zero live importers; queue row stays `planned`) |
+| `sf-pq018` | `codex/pq018-wreck-cathedral-source-20260720` | `archive/pq018-wreck-cathedral-source-20260720` | `6df5a210` (author) + `a31554fa` + `6b24baad` + `7330a85b` (handoff/provenance/validation) | SOURCE candidate preserved; PQ-017-dependent; NOT route-accepted (queue row stays `planned`) |
+| `sf-pq022` | `codex/pq022-military-station-remaster-20260720` | `archive/pq022-military-station-remaster-20260720` | `3ea2fe99` (remaster) | INTEGRATED + Helios/Tethys ROUTE_ACCEPTED subslice (queue row stays `planned`; PQ-022 covers many families) |
+
+**Untracked-batch classification (same closeout):** 263 foreign untracked files in the primary
+checkout classified and disposed. 17 durable canon/spec/tooling files committed (`a418c111`); 247
+reproducible category 3+4+5 files removed after a hash-bound SHA-256 recovery manifest was
+committed (`eb8ed839`). Recovery procedure and full disposition:
+`design/program/_archives/pq022-closeout-20260720/DISPOSITION.md`. Primary checkout untracked
+count is now 0.
 
 Use `git worktree remove` only after verifying the resolved absolute target and clean/disposition state.
 Do not recursively delete computed paths, prune branches merely because a folder looks stale, or remove a

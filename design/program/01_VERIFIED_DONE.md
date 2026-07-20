@@ -1,6 +1,7 @@
 # Verified Done and Implemented Work
 
 **Audit date:** 2026-07-19 for the integration checkpoint below; older rows retain their stated dates.
+**2026-07-20 closeout synthesis appended** below the PQ-001..PQ-010 row.
 
 **Rule:** this document separates accepted outcomes from implemented components. The whole Alpha and
 the whole Depth Program are not finished.
@@ -28,6 +29,25 @@ live-green continuity harness. The recorded `check:save-schema` dirty-tree red a
 are closed. Acceptance rows, named debts (strict-perf rows, `station-applied-lod-inert`,
 encounter-director, dated check:combat), and receipts: `03_LIVE_ACCEPTANCE_MATRIX.md` "Program
 batch PQ-001..PQ-010".
+
+## 2026-07-20 closeout subslices (commits `d6d5278c`..`eb8ed839`)
+
+Three partial subslices integrated during the 2026-07-20 closeout. **None checks off its queue
+outcome.** "Checked off" means the entire queue outcome is integrated with its required acceptance
+evidence; each row below records exactly what landed and exactly what remains.
+
+| Subslice | State | Integrated | What remains before the queue outcome is DONE |
+|---|---|---|---|
+| **PQ-014 deterministic NPC-job kernel** | `FOCUSED_GREEN` + `INTEGRATED_KERNEL`, runtime-UNWIRED | `d6d5278c` (kernel) + `73159e05` (r2 defect repairs) + `fffe57db` (receipt); `src/systems/npcJobs.js` + `test/npc-jobs-kernel.test.mjs` (48/48 pass on master) + receipt `PQ-014-npc-job-kernel.yaml`. Pure library, zero live importers (grep-verified), deterministic (no Math.random/Date.now), JSON-safe payload contract, decomposable advance. | encounterDirector materialization consumption; sectorSim virtualization (`advance` at the offscreen boundary + truncation resume); tacticalAI/aiPorts movement intent consumption; save-owner `npcJobs` save-plan key; **natural-occurrence census + held-out-seed proof** (PQ-014 evidence requirement); player-route acceptance. The queue row stays `planned`. |
+| **PQ-018 Wreck Cathedral source asset** | SOURCE candidate `IMPLEMENTED`/`needs_review`, preserved; NOT route-accepted | `6df5a210` (author source) + `a31554fa`/`6b24baad`/`7330a85b` (handoff/provenance/validation). Blend (9.6 MB) + GLB (11.2 MB) + 26 PBR textures + 15 captures + turntable MP4 + 11 reports + reproducible authoring scripts. SHA-256 manifest; gltf-validator clean; flythrough clearance probe pass. | Depends on **PQ-017** (World Site kernel). Then: manifest/release promotion, place registration, Atlas integrity, interaction/history/salvage wiring, save continuity, browser/Electron route acceptance, measured performance. The queue row stays `planned`. |
+| **PQ-022 place_station_military remaster** | `INTEGRATED` + **route-accepted subslice** (Helios + Tethys) | `3ea2fe99`. Manifest row preserved (same ID, sockets `SOCKET_Structure_Core/Emissive/Dock_Approach`, +X forward, collision proxy, 3 LODs 65192/27302/5932 tris, 10 PBR materials). Source + release GLB + Blender source + 30 authored texture PNGs + before/after/motion evidence. Owning checks green on the combined tree; 6 natural-route captures in `.devshots/pq022-military-station-routes/` (Helios `station_coalition` + Tethys `station_customs`, default/close/far); grok vision verdict ACCEPT (no blue-clay, no flicker/origin-jump/LOD-pop/material-swap, identity readable, PBR quality 4 close/3 far). | PQ-022 covers many asset families — this completes ONE (place_station_military). Other station archetypes, ship families, rocks, wrecks, and infrastructure remain. The queue row stays `planned`. |
+
+**Untracked-batch classification (also 2026-07-20):** 263 foreign untracked files classified into
+five categories per closeout spec. 17 durable canon/spec/tooling files committed (`a418c111`);
+247 reproducible category 3+4+5 files (Blender `*_export_tmp.glb` intermediates + auto-baked
+`Material_*_ao_1k.png`/`trim_sheet`/`wear_mask` textures + 2 scratch logs) removed after a
+hash-bound SHA-256 recovery manifest was committed (`eb8ed839`). Primary checkout untracked count
+is now **0**. Disposition record: `design/program/_archives/pq022-closeout-20260720/DISPOSITION.md`.
 
 ## Graphics checkpoint chain (2026-07-19) — graphics at `cbdf1589`, synthesis at `b235f062`, evidence hardening through `280cafb0`, propulsion repair at `59f91d19`
 

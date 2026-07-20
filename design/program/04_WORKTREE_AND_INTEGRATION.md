@@ -1,18 +1,20 @@
 # Worktree and Integration Inventory
 
-**Current integration snapshot:** 2026-07-20 at audited `master` HEAD `1074c078`, after combined merge
-`b235f062`, performance-evidence hardening through `280cafb0`, propulsion repair `59f91d19`, geology
-truth `e8838e2c`, Electron RCS evidence repair `3d2dc765`, and physical donor cleanup. The older
-July-14 repository tables remain below as labeled history. Re-run the commands at the end before
-acting: donor worktrees can move after this document is written. Use [`NOW.md`](./NOW.md) for volatile ownership and
+**Current integration snapshot:** 2026-07-20 at `master` HEAD `eb8ed839` (closeout synthesis). The
+earlier combined merge `b235f062`, evidence hardening through `280cafb0`, propulsion repair
+`59f91d19`, geology truth `e8838e2c`, Electron RCS evidence repair `3d2dc765`, and the PQ-001..PQ-010
+batch (`2bc3042f`..`b28d183b`) are all ancestors. This closeout adds the PQ-014 NPC-job kernel, the
+PQ-018 Wreck Cathedral source candidate, the PQ-022 place_station_military route-accepted subslice,
+the untracked-batch classification, and donor worktree cleanup. The older July-14 repository tables
+remain below as labeled history. Re-run the commands at the end before acting: donor worktrees can
+move after this document is written. Use [`NOW.md`](./NOW.md) for volatile ownership and
 [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md) for donor disposition.
 
-## Current integration checkpoint — 2026-07-20
+## Current integration checkpoint — 2026-07-20 (closeout)
 
-- Primary branch: `master`; current audited HEAD `1074c078`. Combined product merge `b235f062`,
-  evidence hardening through `280cafb0`, propulsion repair `59f91d19`, Atlas/journey work through
-  `4f7bc87c`, geology/interaction repair `e8838e2c`, and Electron RCS evidence harness `3d2dc765` are
-  all ancestors.
+- Primary branch: `master`; current HEAD `eb8ed839`. The full closeout commit chain
+  (`d6d5278c`..`eb8ed839`) is on master: PQ-014 kernel + r2 fixes + receipt; PQ-018 source + 3
+  handoff commits; PQ-022 station remaster; canon/tooling preservation; archive manifest.
 - Graphics closeout: all commits are ancestors of `b235f062`; its physical worktree is removed.
 - Earlier unified checkpoint: performance `1bdde6c8`, graphics `e3ad1caf`, and paused Claude
   `1905cac8` were synthesized at `a752702b`, promoted as `ee9e0ab3`, and hardened through
@@ -39,8 +41,17 @@ acting: donor worktrees can move after this document is written. Use [`NOW.md`](
 
 | Worktree | Tip | Disposition |
 |---|---|---|
-| `SpaceFace` | `1074c078` | Product authority; graphics/performance/Atlas synthesis and post-closeout geology/RCS fixes are integrated. |
-| `SpaceFace-graphics-overhaul` | `cab2d122` | Retain; 244 dirty paths mix 180 asset files, 39 code/tool/test files, and 25 process/contamination files. Asset-by-asset disposition is incomplete. |
+| `SpaceFace` | `eb8ed839` | Product authority; full closeout synthesis on master (PQ-014 kernel, PQ-018 source, PQ-022 station subslice, untracked-batch cleanup). |
+| `SpaceFace-graphics-overhaul` | `cab2d122` | Retain per `09_DONOR_VALUE_LEDGER.md`; 223 dirty paths mix 180 assets, 15 src, 14 scripts, 10 test, 4 process. Asset-by-asset disposition incomplete; Kimi station-UI candidates missing but out of closeout scope. |
+| `sf-pq011` (foreign, observed) | `422ec889` (master tip) | PQ-011 Mass Seed lane (`codex/pq011-mass-seed-20260720`). NOT in 2026-07-20 closeout scope; left untouched. Reconcile before claiming PQ-011. |
+
+Removed during this closeout (history preserved by annotated recovery tags):
+
+| Former worktree | Former branch | Recovery tag | Accepted content on master |
+|---|---|---|---|
+| `sf-pq014` | `codex/pq014-npc-job-kernel-20260720` | `archive/pq014-npc-job-kernel-20260720` | `d6d5278c`+`73159e05`+`fffe57db` (kernel + r2 fixes + receipt; 48/48 focused-green; runtime-unwired) |
+| `sf-pq018` | `codex/pq018-wreck-cathedral-source-20260720` | `archive/pq018-wreck-cathedral-source-20260720` | `6df5a210`+`a31554fa`+`6b24baad`+`7330a85b` (Wreck Cathedral SOURCE_GLB candidate; PQ-017-dependent; not route-accepted) |
+| `sf-pq022` | `codex/pq022-military-station-remaster-20260720` | `archive/pq022-military-station-remaster-20260720` | `3ea2fe99` (place_station_military remaster; Helios+Tethys route-accepted; one PQ-022 subslice) |
 
 Removed physical worktrees retain recovery where needed: Kimi product candidates are committed at
 `0e2f2e51`; Depth remains on its branch plus annotated tag

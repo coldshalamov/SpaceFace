@@ -97,8 +97,33 @@ nor the renderer's own steady-state selector (`lod1`) changes the visible bucket
 renders LOD0 unconditionally. Receipts in the m2 report; diagnosis in `.tmp/orch/diag4-helios-lod.mjs`
 output (2026-07-20).
 
-**Pre-existing red re-attributed:** `check:combat` fails an equal-player/AI-damage assertion stale
-since the 2026-07-16/17 difficulty multiplier (1.15×) — predates this batch.
+## PQ-014 / PQ-018 / PQ-022 closeout subslices (2026-07-20, commits `d6d5278c`..`eb8ed839`)
+
+Three partial subslices from the 2026-07-20 closeout synthesis. **No queue row is checked off.**
+Each row carries exactly the proof that landed and names what separates it from terminal.
+
+| Subslice | Terminal state | Evidence at commit | Commits |
+|---|---|---|---|
+| `PQ-014 deterministic NPC-job kernel` | `FOCUSED_GREEN` + `INTEGRATED_KERNEL`, runtime-UNWIRED (queue row stays `planned`) | `node --check src/systems/npcJobs.js` exit 0; `node --test test/npc-jobs-kernel.test.mjs` **48/48 pass** on master (34 original + 14 adversarial defect pins, each named ADVANCE-CAP-DIVERGENCE / KIND-INVALID-PHASE / WRONG-RETURN-TARGET / PAYLOAD-ALIASING / STALE-RECEIPT-HASH); zero live importers by grep; deterministic (no `Math.random`/`Date.now`/timers); JSON-safe payload contract; decomposable advance honest under the 100k transition cap. **NOT registered, NOT wired, NOT natural-occurrence-proven.** | `d6d5278c`,`73159e05`,`fffe57db` |
+| `PQ-018 Wreck Cathedral source asset` | SOURCE candidate `IMPLEMENTED`/`needs_review`, preserved; **NOT route-accepted** (queue row stays `planned`) | Blend SHA-256 `1bc08169…`, GLB SHA-256 `f335935f…` (both verified byte-identical on master); 91,908 / 34,164 / 8,364 triangles across 3 LODs; 8 materials / 26 textures / 8 draw groups per LOD; flythrough clearance 75 samples / 0 hits over the 72×58 m envelope; gltf-validator clean; turntable + 15 PBR-isolate captures; reproducible authoring (`author_wreck_cathedral.py`); full SHA-256 manifest (45 entries). **Manifests unchanged; not registered/placed/interactive/saved; depends on PQ-017.** | `6df5a210`,`a31554fa`,`6b24baad`,`7330a85b` |
+| `PQ-022 place_station_military remaster` | `INTEGRATED` + **subslice ROUTE_ACCEPTED** (Helios + Tethys; queue row stays `planned`) | Source GLB `fe2676f6…`, release GLB `b37e51a4…`, blend `5043a87f…` (all verified byte-identical on master); manifest row preserved (same ID, sockets, +X forward, collision proxy, 3 LODs 65192/27302/5932 tris); owning checks green on the combined tree: `check:station-archetype-glb-load` **170 ok/0 fail**, `check:station-archetype-wiring` **199 ok/0 fail + test ok**, `check:authored-place-runtime` OK, `check:asset-status` OK (80 parts, 0 ambiguous), `check:asset-reachability` OK (16 bundled), `check:assets:live` exit 0, `check:visual-stability` exit 0 (failureCount 0, 315 inspected frames), `check:sim:compare` exit 0 (determinism hashEqual), `check:launch-policy` OK. **Natural-route capture:** 6 frames in `.devshots/pq022-military-station-routes/` (Helios `station_coalition` + Tethys `station_customs`, default/close/far each). **Independent grok vision verdict: ACCEPT** — all 6 frames show the station visible (meshCount 6/6, state `authored`), military/customs identity readable, PBR quality 4 (close/default) / 3 (far, expected falloff), **no blue-clay first frame, no flicker, no origin jump, no LOD pop, no material swap**. **PQ-022 covers many families; this completes ONE subslice.** | `3ea2fe99` |
+
+**Worktree and untracked-batch cleanup evidence (same closeout):**
+
+- The three donor worktrees (`sf-pq014`, `sf-pq018`, `sf-pq022`) were removed only after their
+  accepted content was verified byte-identical on master (binary assets via `cmp`, yaml/text via git
+  blob hash). Each donor branch is deleted; its history is preserved by annotated recovery tags
+  `archive/pq014-npc-job-kernel-20260720`, `archive/pq018-wreck-cathedral-source-20260720`,
+  `archive/pq022-military-station-remaster-20260720`. Receipts and SHA-256s identify the recovery
+  point.
+- 263 foreign untracked files in the primary checkout were classified into five categories and
+  disposed: 17 durable canon/spec/tooling files committed (`a418c111`); 247 reproducible
+  category 3+4+5 files removed after a hash-bound SHA-256 recovery manifest was committed
+  (`eb8ed839`). Primary checkout untracked count: **0**. See
+  `design/program/_archives/pq022-closeout-20260720/DISPOSITION.md`.
+- `SpaceFace-graphics-overhaul` is **retained** per `09_DONOR_VALUE_LEDGER.md` (223 dirty paths at
+  this refresh: 180 assets, 15 src, 14 scripts, 10 test, 4 process; mixed source/WIP; no whole-merge;
+  Kimi station-UI candidates still missing but out of closeout scope).
 
 **4 of the sprint's 23 packets reached a declared terminal state.** With `F01–F17` that is 21/113
 (18.58%) of the packet program — not the 40/113 the sprint scoped. No packet is claimed beyond its

@@ -1,9 +1,44 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-20 at audited `master` HEAD `b28d183b` (+ this ledger transaction). The
-controller session integrated the first five outcomes of the canonical queue — PQ-001, PQ-002,
-PQ-003, PQ-008, PQ-009 — with lead-rerun proof at every commit. **All batch leases are RELEASED.**
-Full acceptance detail: `03_LIVE_ACCEPTANCE_MATRIX.md` "Program batch PQ-001..PQ-010".
+**Snapshot:** 2026-07-20 at `master` HEAD `eb8ed839` (closeout synthesis). The earlier PQ-001..PQ-010
+batch (`2bc3042f`..`b28d183b`) is integrated and reconciled; this closeout adds the **PQ-014 NPC-job
+kernel** (focused-green, unwired), the **PQ-018 Wreck Cathedral source candidate** (preserved, NOT
+route-accepted), the **PQ-022 place_station_military subslice** (route-accepted on Helios + Tethys),
+the untracked-graphics-batch classification, and donor worktree cleanup. **All closeout leases are
+RELEASED.** Full acceptance detail: `03_LIVE_ACCEPTANCE_MATRIX.md` "Program batch PQ-001..PQ-010" and
+"PQ-014 / PQ-018 / PQ-022 closeout subslices (2026-07-20)".
+
+## 2026-07-20 closeout synthesis (commits on `master`, `eb8ed839` at the documentation transaction)
+
+| Commit | What it is |
+|---|---|
+| `d6d5278c` `73159e05` `fffe57db` | feat/fix/docs(npcJobs) — PQ-014 deterministic job-state kernel for miner/hauler/patrol (48/48 focused-green, runtime-unwired, zero live importers) |
+| `6df5a210` `a31554fa` `6b24baad` `7330a85b` | feat/docs(assets) — PQ-018 Wreck Cathedral SOURCE_GLB candidate (validated, PQ-017-dependent, NOT route-accepted) |
+| `3ea2fe99` | feat(station) — PQ-022 place_station_military remaster into armored customs bastion (Helios+Tethys route-accepted) |
+| `a418c111` | docs/tools — preserve graphics-revamp canon, spec, tooling, PQ-022 capture tool (category 1+2 of untracked-batch classification) |
+| `eb8ed839` | docs(archive) — hash-bound recovery record for the 247 removed category 3+4+5 untracked files |
+
+**Closeout dispositions (truthful partial completion — no queue row fully checked off):**
+
+| Outcome | State | Evidence |
+|---|---|---|
+| PQ-014 (NPC jobs) | **INTEGRATED KERNEL, runtime-UNWIRED** (queue row stays `planned`) | `npcJobs.js` + 48/48 focused suite on master; zero live importers by grep; deterministic; not registered; natural-occurrence census + save/sectorSim/AI integration remain |
+| PQ-018 (Wreck Cathedral) | **SOURCE CANDIDATE PRESERVED, NOT route-accepted** (queue row stays `planned`) | Blend + 11.2 MB GLB + 26 PBR textures + 15 captures + turntable + reports on master; manifests unchanged; depends on PQ-017 Site kernel; not registered/placed/interactive |
+| PQ-022 (visual families) | **place_station_military SUBSLICE route-accepted** (queue row stays `planned`) | Manifest row preserved (same ID, sockets, +X forward, collision proxy, 3 LODs); 6 natural Helios/Tethys frames captured; grok vision ACCEPT; PQ-022 covers many families, one subslice only |
+
+**Worktree disposition:** the three donor worktrees (`sf-pq014`, `sf-pq018`, `sf-pq022`) are removed
+after their accepted content was verified byte-identical on master and preserved by annotated tags
+`archive/pq014-npc-job-kernel-20260720`, `archive/pq018-wreck-cathedral-source-20260720`,
+`archive/pq022-military-station-remaster-20260720`. The donor branches are deleted. The
+`SpaceFace-graphics-overhaul` worktree is **retained** per `09_DONOR_VALUE_LEDGER.md` (mixed
+source/WIP; no whole-merge; Kimi station-UI candidates still missing but out of closeout scope).
+A foreign `sf-pq011` worktree appeared during closeout (PQ-011 Mass Seed); it is NOT in this
+closeout's scope and was left untouched.
+
+**Untracked-batch cleanup:** 263 foreign untracked files classified and disposed. 17 durable canon/
+spec/tooling files committed (`a418c111`); 247 reproducible category 3+4+5 files removed after a
+hash-bound SHA-256 recovery manifest was committed (`eb8ed839` + `DISPOSITION.md` at
+`design/program/_archives/pq022-closeout-20260720/`). Primary checkout untracked count: **0**.
 
 Headlines: `check:m2:seamless-world` is GREEN on browser AND Electron for the first time
 (`b28d183b`, receipt in `.devshots/m2-floating-origin/`); the recorded `check:save-schema`
@@ -38,13 +73,26 @@ with the 47a golden pinned byte-stable.
 
 ## Next queue position
 
-**THE BATCH IS COMPLETE: all 10 frozen outcomes (PQ-001..PQ-010) are `INTEGRATED` on `master`.**
-PQ-006 landed at `0cd42f25` (15 Hz deterministic release predictor + accessible window + earned
-speed) and PQ-007 at `1a54e56b` (bounded pursuit slot; flailing autopursuit surfaces retired by
-audit). The next unchecked queue items are `PQ-011` (Mass Seed anchor; dependsOn PQ-006 ✓) and
-`PQ-014` (NPC jobs; dependsOn PQ-001 ✓ — NOTE the out-of-band `sf-pq014` lane below before
-claiming), then `PQ-012` (needs PQ-009 ✓ + PQ-011). All batch leases are RELEASED; the git-index
-mutex is free.
+**THE FIRST BATCH IS COMPLETE: all 10 frozen outcomes (PQ-001..PQ-010) are `INTEGRATED` on `master`,
+and the 2026-07-20 closeout added three partial subslices (PQ-014 kernel, PQ-018 source, PQ-022
+station). None of PQ-014, PQ-018, or PQ-022 is checked off as a queue outcome.**
+
+**Wave A — potentially parallel with disjoint ownership (next safe dispatch):**
+
+- **PQ-011 — Deployable Mass Seed anchor** (dependsOn PQ-006 ✓). A foreign `sf-pq011` worktree on
+  branch `codex/pq011-mass-seed-20260720` was observed during this closeout — reconcile its state
+  before claiming PQ-011.
+- **Full PQ-014 — natural NPC jobs integration** (dependsOn PQ-001 ✓). The deterministic kernel is
+  on master (`d6d5278c`/`73159e05`/`fffe57db`); remaining: encounterDirector materialization,
+  sectorSim virtualization, tacticalAI movement, save key, natural-occurrence census, held-out seeds.
+- **PQ-015 — shared interaction descriptors and component targeting** (dependsOn PQ-008 ✓).
+
+**Wave B:**
+
+- **PQ-012** after PQ-011 (needs PQ-009 ✓ + PQ-011).
+- **PQ-016** after PQ-015.
+- **PQ-017** (Persistent multi-component World Site kernel) unblocks PQ-018 Wreck Cathedral and
+  PQ-021 Ship's Ledger; the PQ-018 source candidate waits on `master` for that site substrate.
 
 **Probe-margin debt (new):** `probe-ship-visual-stability` readiness deadline is margin-flaky on
 this machine — identical configs flip red/green under load (committed-HEAD worktree green;
@@ -54,13 +102,12 @@ The probe needs deadline headroom or per-ship streaming diagnostics so machine l
 masquerade as visual instability.
 
 **Observed out-of-band lanes (user-driven codex sessions in isolated worktrees — do NOT
-double-assign, do NOT touch their branches):** `sf-pq014` → `codex/pq014-npc-job-kernel-20260720`
-(PQ-014 NPC jobs, pre-work); `sf-pq018` → `codex/pq018-wreck-cathedral-source-20260720` (Wreck
-Cathedral SOURCE_GLB, needs_review, non-terminal); `sf-pq022` → `codex/pq022-military-station-
-remaster-20260720` (based at 77976fd3). Foreign untracked asset/tool files in the PRIMARY tree
-(hull_* texture sets, place_asteroid_rock_b/c, place_gate_jump_ring textures,
-assets/ships/parts/blender/**, tools/art/blender/**) belong to that asset-production effort —
-left untouched; their owner integrates them.
+double-assign, do NOT touch their branches):** the three 2026-07-20 donor lanes (`sf-pq014`,
+`sf-pq018`, `sf-pq022`) were integrated into this closeout — their branches deleted and their
+history preserved by annotated recovery tags. A foreign `sf-pq011` lane (PQ-011 Mass Seed,
+`codex/pq011-mass-seed-20260720`) is observed; it is NOT in this closeout's scope and was left
+untouched. The earlier "foreign untracked asset/tool files in the PRIMARY tree" are now classified
+and disposed — see the 2026-07-20 closeout synthesis above and `DISPOSITION.md`.
 
 **Integrated checkpoint:** the earlier Atlas/map/travel, performance, and graphics synthesis remains
 reachable through `ee9e0ab3` and its context-recovery hardening `f0b3b154`. The later closeout adds

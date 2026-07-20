@@ -136,7 +136,7 @@ repository-state reconciliation, the roll-up remains **0 DONE, 16 IP-CP, 15 TODO
 | K1 five factions live | IP-CP | Revalidate live behavior/data; full repo gate and unassisted faction exposure review. |
 | PR1 props 1–8 | TODO | Author, optimize, wire, classify, and capture props 1–8. |
 | PR2 props 9–15 | TODO | Author, optimize, wire, classify, and capture props 9–15. |
-| H1a Wreck Cathedral | TODO | Author landmark, place it, give it a readable interaction/history, and accept it in play. |
+| H1a Wreck Cathedral | PARTIAL — SOURCE candidate on master | The 2026-07-20 closeout preserved the full SOURCE_GLB candidate at `6df5a210`..`7330a85b` (blend + 11.2 MB GLB + 26 PBR textures + 15 captures + turntable + 11 reports + reproducible authoring scripts; SHA-256 manifest; gltf-validator clean; PQ-017-dependent). Remaining: PQ-017 World Site kernel, then manifest/release promotion, place registration, Atlas integrity, interaction/history/salvage wiring, save continuity, browser/Electron route acceptance, measured performance. |
 | H1b Obelisk + Shard Sphere | TODO | Author/place/wire both landmark identities and accept in play. |
 | H1c Candle Fleet + Quiessence | TODO | Author/place/wire both and connect Band/story producers. |
 | H1d Lung + Funnel | TODO | Author/place/wire both with distinct behavior and accepted captures. |

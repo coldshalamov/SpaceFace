@@ -1,12 +1,17 @@
 # Graphics Overhaul Integration Checkpoint
 
-**Checkpoint date:** 2026-07-20
+**Checkpoint date:** 2026-07-20 (refreshed by the closeout synthesis at `eb8ed839`)
 
-**Status:** GRAPHICS CLOSEOUT PROMOTED TO `master`; FOCUSED-GREEN CHECKPOINT, FINAL ACCEPTANCE PENDING
+**Status:** GRAPHICS CLOSEOUT PROMOTED TO `master`; FOCUSED-GREEN CHECKPOINT, FINAL ACCEPTANCE PENDING;
+PQ-022 place_station_military SUBSLICE route-accepted; PQ-018 Wreck Cathedral SOURCE candidate
+preserved pending PQ-017.
 
-**Current audited master revision:** `1074c078` (combined synthesis `b235f062`; propulsion repair
+**Current audited master revision:** `eb8ed839` (closeout synthesis). Adds the PQ-014 NPC-job kernel
+(`d6d5278c`..`fffe57db`), the PQ-018 Wreck Cathedral source candidate (`6df5a210`..`7330a85b`), the
+PQ-022 place_station_military remaster (`3ea2fe99`), and the untracked-graphics-batch
+classification (`a418c111`, `eb8ed839`). Earlier: combined synthesis `b235f062`; propulsion repair
 `59f91d19`; geology/interaction repair `e8838e2c`; Electron RCS evidence harness `3d2dc765`;
-hybrid-batching research disposition `1074c078`)
+hybrid-batching research disposition `1074c078`.
 
 **Earlier unified promotion:** `ee9e0ab3`, hardened through `f0b3b154`
 
@@ -328,6 +333,61 @@ untracked files, branch tip, unique commits, and patch equivalence to final `mas
 - Delete a branch only after its accepted product result is reachable from final `master`, every
   valuable dirty/untracked file has been deliberately preserved or rejected, and its worktree is
   clean.
+
+## 7.5. 2026-07-20 closeout synthesis (commits `d6d5278c`..`eb8ed839`)
+
+This closeout promoted one PQ-022 visual-family subslice to route-acceptance, preserved one PQ-018
+source candidate pending its PQ-017 site substrate, and classified/disposed the foreign untracked
+graphics batch that had accumulated in the primary checkout.
+
+**PQ-022 place_station_military remaster — ROUTE-ACCEPTED subslice.** The stacked-box silhouette was
+replaced with a terraced three-band armored customs bastion at `3ea2fe99`: layered armor plates and
+blast-shield skirts, an aft command citadel (sensor dome, parabolic dish, antenna farm), a forward
+customs/docking apron (recessed mouth, armored jaws, scan arch, docking pads, chevron warnings,
+personnel airlock), an exposed-frame engineering keel with radiator wings, and deliberate port/
+starboard asymmetry. Ten authored PBR materials with nonuniform roughness, normal/detail, bevels,
+edge wear, and stenciled decals. The manifest row is preserved (same ID, sockets
+`SOCKET_Structure_Core/Emissive/Dock_Approach`, +X forward, collision proxy, 3 LODs at
+65192/27302/5932 triangles). Owning checks green on the combined tree (170 ok glb-load; 199 ok
+wiring; asset-status/reachability/live OK; visual-stability failureCount 0; sim:compare exit 0;
+launch-policy OK). **Natural-route capture:** 6 frames in
+`.devshots/pq022-military-station-routes/` — Helios `station_coalition` and Tethys `station_customs`
+in default/close/far framings. Independent grok vision verdict ACCEPT: all six frames show the
+station visible (meshCount 6/6, authored state), military/customs identity readable, PBR quality 4
+(close/default) softening to 3 (far, expected), no blue-clay first frame, no flicker, no origin
+jump, no LOD pop, no material swap. This completes ONE PQ-022 asset subslice; the queue outcome
+covers many families and remains `planned`.
+
+**PQ-018 Wreck Cathedral — source candidate preserved, NOT route-accepted.** The full SOURCE_GLB
+package landed at `6df5a210`..`7330a85b`: Blender source (9.6 MB), GLB (11.2 MB), 26 authored PBR
+textures, 15 PBR-isolate captures + 3 wireframes + 3 silhouettes, a turntable MP4, 11 reports
+including a 75-sample flythrough-clearance probe (0 hits over the 72×58 m envelope) and a clean
+gltf-validator result, reproducible authoring scripts, and a 45-entry SHA-256 manifest. It is NOT
+registered, placed, interactive, saved, or route-accepted. Full PQ-018 depends on PQ-017 (World
+Site kernel); the queue row stays `planned`.
+
+**Untracked-graphics-batch classification.** 263 foreign untracked files were classified into five
+categories per closeout spec. 17 durable canon/spec/tooling files committed (`a418c111`): the FACT
+Voice Bible, the 47-A opening comms script, SPEC3-F9 (the LIVE Full Finish Bar contract), the
+Gemini/T1c design briefs, the Blender authoring tooling (`revamp_full_finish.py`,
+`gen_revamp_textures.py`, `cli_export_part.py`, `update_place_manifest_notes.py`,
+`write_place_evidence.py`, three PowerShell runners), the evidence/contract scripts
+(`verify-full-finish-evidence.mjs`, `fix-revamp-part-contract.mjs`, `scrub-revamp-doc-contract.mjs`),
+and the PQ-022 capture tool (`capture-military-station-routes.mjs`). 247 reproducible category 3+4+5
+files were removed after a hash-bound SHA-256 recovery manifest was committed (`eb8ed839`): 23
+Blender `*_export_tmp.glb` intermediates (canonical `.blend` sources on master), 222 auto-baked
+`Material_*_ao_1k.png` / `trim_sheet` / `wear_mask` textures across 48 part dirs (10 overlap tracked
+content; 38 are unreferenced procedural — runtime uses embedded release-GLB textures), and 2 scratch
+batch logs that record the batch crashing with a PowerShell parameter-binding error. None of the
+removed files is referenced by any tracked manifest or source. Disposition record:
+`design/program/_archives/pq022-closeout-20260720/DISPOSITION.md`. Primary checkout untracked count
+is now 0.
+
+**Donor worktree cleanup.** `sf-pq014`, `sf-pq018`, `sf-pq022` removed after their accepted content
+was verified byte-identical on master; their branches deleted; their history preserved by annotated
+recovery tags. `SpaceFace-graphics-overhaul` retained per `09_DONOR_VALUE_LEDGER.md` (223 dirty paths
+at this refresh — mixed source/WIP, no whole-merge, Kimi station-UI candidates missing but out of
+scope).
 
 ## 8. Definition of the next coherent checkpoint
 

@@ -889,7 +889,8 @@
         "natural-occurrence",
         "save"
       ],
-      "brief": "Give materialized NPCs physical jobs and virtualized NPCs statistical continuity through existing state owners."
+      "brief": "Give materialized NPCs physical jobs and virtualized NPCs statistical continuity through existing state owners.",
+      "partialIntegration": "2026-07-20 closeout: deterministic job-state KERNEL on master at d6d5278c+73159e05+fffe57db (src/systems/npcJobs.js, 48/48 focused suite, zero live importers, runtime-UNWIRED). Recovery tag archive/pq014-npc-job-kernel-20260720. NOT registered/wired/natural-occurrence-proven. Full PQ-014 still needs encounterDirector materialization, sectorSim virtualization, tacticalAI movement, save key, natural-occurrence census, held-out seeds, player-route acceptance. State stays 'planned'; receipt at design/program/roadmap/receipts/PQ-014-npc-job-kernel.yaml."
     },
     {
       "id": "PQ-015",
@@ -1029,7 +1030,8 @@
         "visual-review",
         "public-route"
       ],
-      "brief": "Author, place, wire, and accept the Wreck Cathedral as a monumental site with recognizable components, salvage, history, and gameplay."
+      "brief": "Author, place, wire, and accept the Wreck Cathedral as a monumental site with recognizable components, salvage, history, and gameplay.",
+      "partialIntegration": "2026-07-20 closeout: full SOURCE_GLB candidate on master at 6df5a210+a31554fa+6b24baad+7330a85b (blend 9.6MB + GLB 11.2MB + 26 PBR textures + 15 captures + turntable + 11 reports + reproducible authoring scripts; SHA-256 manifest; gltf-validator clean). Recovery tag archive/pq018-wreck-cathedral-source-20260720. NOT registered/placed/interactive/saved/route-accepted; PQ-017-dependent. State stays 'planned'; handoff at design/graphics-sprints/handoffs/2026-07-20-B-pq018-wreck-cathedral-source.yaml."
     },
     {
       "id": "PQ-019",
@@ -1184,7 +1186,8 @@
         "performance",
         "provenance"
       ],
-      "brief": "Finish the reusable PBR/asset foundry and promote frequent ship, station, rock, wreck, and infrastructure families asset by asset."
+      "brief": "Finish the reusable PBR/asset foundry and promote frequent ship, station, rock, wreck, and infrastructure families asset by asset.",
+      "partialIntegration": "2026-07-20 closeout: place_station_military remastered into armored customs bastion at 3ea2fe99 (manifest row preserved: same ID/sockets/+X forward/collision proxy/3 LODs; 10 PBR materials; 65192/27302/5932 tris). Helios station_coalition + Tethys station_customs ROUTE-ACCEPTED via .devshots/pq022-military-station-routes/ (6 frames default/close/far; grok vision ACCEPT; no blue-clay/flicker/origin-jump/LOD-pop/material-swap). Recovery tag archive/pq022-military-station-remaster-20260720. This completes ONE PQ-022 subslice; many families remain. State stays 'planned'; handoff at design/graphics-sprints/handoffs/2026-07-20-B-place_station_military-remaster.yaml."
     },
     {
       "id": "PQ-023",
