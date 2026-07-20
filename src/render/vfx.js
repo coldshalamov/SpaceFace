@@ -715,6 +715,12 @@ export const vfx = {
     add('projectile:hit', (p) => this._onProjectileHit(p));
     add('combat:damage', (p) => this._onDamage(p));
     add('collision', (p) => this._onCollision(p));
+    // SF-10: the PQ-009 collision-consequence receipts (a hull slammed into terrain — the concussion
+    // cannon's kill move) had no renderer. Wire the wall-impact payoff on pooled substrates: consumes
+    // the receipt's pos/normal/count directly (no broadphase query), scales with reduced-flash, and
+    // emits no juice cue so cue-count contracts stay frozen.
+    add('combat:collisionConsequence', (p) => this._onCollisionConsequence(p));
+    add('combat:collisionDebris', (p) => this._onCollisionDebris(p));
     add('entity:killed', (p) => { this._markEntityCacheDirty(); this._onKilled(p); });
     add('entity:destroyed', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onDestroyed(p); });
     add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
@@ -2132,6 +2138,17 @@ export const vfx = {
     if (id === 'ship.tumble' || lane.includes('massline_tumble')) {
       return presentationStyle('#ffe2d6', '#ff5a48', SPR_PUFF, { radial: true, lightPeak: 2.6, lightDistance: 120, speed0: 22, speedJitter: 40, life0: 0.5, size0: 1.6, size1: 0.25, drag: 1.4 });
     }
+    // SF-10 vector-mine detonation — a fast cool-blue radial SHOVE (an impulse front driven outward),
+    // deliberately a punch-flash burst rather than a primary ring (graphics-checkpoint reject list),
+    // and distinct from the impulse charge's rings and the red tumble puff.
+    if (id === 'combat.vectorMine.detonate') {
+      return presentationStyle('#e6f2ff', '#5aa0ff', SPR_FLASH, { radial: true, lightPeak: 3.2, lightDistance: 170, speed0: 52, speedJitter: 40, life0: 0.32, size0: 1.8, size1: 0.2, drag: 1.1 });
+    }
+    // SF-10 RCS-disruptor tell — small, fast ion-blue sparks skittering off the hull (attitude
+    // drift), a punch-flash spark spray distinct from both the tumble puff and the mine shove.
+    if (id === 'ship.rcsDisrupt') {
+      return presentationStyle('#d8f4ff', '#5f8cff', SPR_FLASH, { radial: true, lightPeak: 1.8, lightDistance: 90, speed0: 30, speedJitter: 46, life0: 0.3, size0: 0.9, size1: 0.1, drag: 1.6 });
+    }
     if (lane.includes('pod_beacon') || id.includes('objective')) {
       return presentationStyle('#fff0a8', '#ffcc44', SPR_RING, { radial: true, echoRing: true, lightPeak: 3.4, lightDistance: 160, speed0: 18, speedJitter: 22, life0: 0.45 });
     }
@@ -3255,6 +3272,69 @@ export const vfx = {
         0.25 + Math.random() * 0.25, 1.8, 0.0, this._c0, this._c1, 2.0, 0, 0);
     }
     this._flashLight({ x: pos.x, z: pos.z }, '#39d0ff', 6.0, 8, 220);
+  },
+
+  // SF-10 wall-impact payoff (combat:collisionConsequence). A light hull slammed into terrain /
+  // structure by a concussion slug, a mine shove, or a massline throw. A compressive PUNCH plus
+  // directional dust skimming the contact — NOT a fireball (this is kinetic) and NOT a primary ring
+  // (graphics-checkpoint reject list). Scale tracks the receipted deltaV; a tumble reads harder.
+  // Pooled sprites/lights only; reduced-flash aware; consumes the receipt geometry (no query).
+  _onCollisionConsequence(p) {
+    if (!this._scene || !p || !p.pos) return;
+    const pos = p.pos;
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const dv = Math.max(0, Number(p.deltaV) || 0);
+    const hard = p.control === 'tumble';
+    const magnitude = Math.max(0.6, Math.min(2.4, dv / 14));
+    const scale = magnitude * acc.flashSizeScale;
+    const op = acc.flashOpacityScale;
+    const nx = Number(p.normal && p.normal.x) || 0;
+    const nz = Number(p.normal && p.normal.z) || 0;
+    const nlen = Math.hypot(nx, nz) || 1;
+    const ox = -nx / nlen, oz = -nz / nlen;        // outward from the struck surface
+    const tx = -oz, tz = ox;                        // tangent along the surface
+    const terrain = p.surface === 'terrain';
+    // Compression punch: a tight, brief flash driven outward along the contact, not a soft disc.
+    this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.10, 1.1 * scale, 3.4 * scale, 0.9 * op, 0.0,
+      terrain ? '#ffe9c4' : '#dfefff', ox * 6, oz * 6);
+    // Dust / spall skimming the surface, thrown outward + fanned along the tangent.
+    const puffs = hard ? 5 : 3;
+    for (let k = 0; k < puffs; k++) {
+      const spread = (k - (puffs - 1) * 0.5) * 0.5;
+      const vx = ox * (10 + dv * 0.4) + tx * spread * 14;
+      const vz = oz * (10 + dv * 0.4) + tz * spread * 14;
+      this._spawnSprite(SPR_PUFF, pos.x, 0.05, pos.z, 0.5 + 0.2 * scale, 1.6 * scale, 4.2 * scale,
+        0.42 * op, 0.0, terrain ? '#c9a878' : '#aac4e0', vx, vz);
+    }
+    const lightPeak = 2.6 * magnitude * acc.eventLightPeakScale;
+    if (lightPeak > 0.01) {
+      this._flashLight({ x: pos.x, z: pos.z }, terrain ? '#ffcaa0' : '#bcd8ff', lightPeak, 9, 120 + dv * 3);
+    }
+  },
+
+  // Deterministic debris count from the receipt → directional fragments flung off the contact along
+  // the surface normal. Pooled particle substrate (discrete event, no per-frame allocation) and the
+  // receipt's normal/count are consumed directly — never a spatial-hash query.
+  _onCollisionDebris(p) {
+    if (!this._scene || !p || !p.pos) return;
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const count = Math.max(0, Math.min(18, Math.round(Number(p.count) || 0)));
+    if (count <= 0) return;
+    const pos = p.pos;
+    const nx = Number(p.normal && p.normal.x) || 0;
+    const nz = Number(p.normal && p.normal.z) || 0;
+    const nlen = Math.hypot(nx, nz) || 1;
+    const baseAng = Math.atan2(-nz / nlen, -nx / nlen); // outward from the surface
+    const terrain = p.surface === 'terrain';
+    this._c0.set(terrain ? '#d8c090' : '#c4d8ec');
+    this._c1.set(terrain ? '#6a4a28' : '#33506e');
+    const emit = Math.max(1, Math.round(count * (acc.flashOpacityScale < 1 ? 0.5 : 1)));
+    for (let k = 0; k < emit; k++) {
+      const a = baseAng + (Math.random() - 0.5) * 1.4;
+      const v = 24 + Math.random() * 60;
+      this._spawnParticle(pos.x, pos.z, Math.cos(a) * v, Math.sin(a) * v,
+        0.3 + Math.random() * 0.35, 1.2, 0.0, this._c0, this._c1, 2.2, 0, 0);
+    }
   },
 
   // AI telegraph / flee / formation break markers (spec2/02 §3 + M1 doctrine tells).

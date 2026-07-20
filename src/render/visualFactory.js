@@ -2499,6 +2499,7 @@ function buildProjectile(e) {
     const isFlak = presentation.variant === 'flak';
     const isPlasma = presentation.variant === 'thermal-bolt';
     const isEmp = presentation.family === 'emp';
+    const isConcussion = presentation.family === 'concussion';
     const isAutocannon = presentation.family === 'kinetic' && !isFlak;
 
     if (isSiege) {
@@ -2570,6 +2571,23 @@ function buildProjectile(e) {
         () => new THREE.CapsuleGeometry(0.48, 2.2, 4, 10).rotateZ(Math.PI / 2), color, fringe, 'auto-shell', R);
       tuneBoltMaterial(shell.material, { intensity: 2.4, core: 0.2, opacity: 0.4, fresnelPower: 1.7 });
       shell.renderOrder = 20; core.renderOrder = 21; g.add(shell);
+    } else if (isConcussion) {
+      // CONCUSSION SLUG — a short, FAT, mostly-opaque mass round. Reads as WEIGHT rather than a bright
+      // energy bolt: a dense stubby core (fatter and shorter than the autocannon bolt) inside a thin
+      // compression haze. Never a bright streak, never a ball — its payoff is the terrain slam it sets
+      // up, so the round itself is a heavy, low-glow slug.
+      const slugCore = e.team === 1 ? '#ffb27a' : (e.team === 0 ? '#ffe0a8' : '#ffd24a');
+      const core = boltMesh('proj:concussion:core',
+        () => new THREE.CapsuleGeometry(0.5, 1.15, 4, 10).rotateZ(Math.PI / 2), '#fff0d2', slugCore, 'concussion-core', R);
+      core.name = 'ProjectileConcussionSlug';
+      tuneBoltMaterial(core.material, { intensity: 3.2, core: 0.86, opacity: 1.0, noiseScale: 2.2, flowSpeed: 3.0 });
+      g.add(core);
+      const haze = boltMesh('proj:concussion:haze',
+        () => new THREE.CapsuleGeometry(0.74, 1.75, 4, 10).rotateZ(Math.PI / 2), slugCore, fringe, 'concussion-haze', R);
+      haze.name = 'ProjectileConcussionHaze';
+      haze.position.x = -R * 0.35;
+      tuneBoltMaterial(haze.material, { intensity: 1.6, core: 0.16, opacity: 0.3, fresnelPower: 1.8, noiseScale: 1.8 });
+      haze.renderOrder = 20; core.renderOrder = 21; g.add(haze);
     } else {
       // PULSE LASER (default) — one tapered directional packet. Rounded capsule ends caused the
       // translucent sheath to resolve as a detached blue bead beside a white bar at the live camera.
@@ -2930,6 +2948,58 @@ function buildMine(e) {
   return g;
 }
 
+// SF-10 vector mine (type 'vectormine'). A compact IMPULSE emitter — deliberately distinct from the
+// armored, orange-warning damage mine above: a cool-blue charge core with four radial emitter fins
+// (the directional-shove motif) and an arming pip that lights when it goes live.
+function buildVectorMine(e) {
+  const R = Math.max(0.8, Number(e && e.radius) || 1.6);
+  const g = new THREE.Group();
+  const shell = getMaterial('vmine:shell', () => new THREE.MeshStandardMaterial({
+    color: 0x1c2a3a, roughness: 0.5, metalness: 0.66,
+  }));
+  const emitterSafe = getMaterial('vmine:emitter:safe', () => new THREE.MeshStandardMaterial({
+    name: 'VectorMineEmitterSafe',
+    color: 0x27506e, emissive: 0x0a2038, emissiveIntensity: 0.22, roughness: 0.4, metalness: 0.3,
+  }));
+  const emitterArmed = getMaterial('vmine:emitter:armed', () => new THREE.MeshStandardMaterial({
+    name: 'VectorMineEmitterArmed',
+    color: 0x5ab4ff, emissive: 0x2a8cff, emissiveIntensity: 1.5, roughness: 0.28, metalness: 0.2,
+  }));
+  const core = new THREE.Mesh(getGeometry('vmine:core', () => new THREE.OctahedronGeometry(0.5, 0)), shell);
+  core.name = 'VectorMineCore';
+  g.add(core);
+  const finGeo = getGeometry('vmine:emitter', () => new THREE.BoxGeometry(0.55, 0.07, 0.16));
+  const emitters = [];
+  for (let i = 0; i < 4; i++) {
+    const angle = i * Math.PI / 2;
+    const fin = new THREE.Mesh(finGeo, emitterSafe);
+    fin.name = `VectorMineEmitter_${i + 1}`;
+    fin.position.set(Math.cos(angle) * 0.62, 0, Math.sin(angle) * 0.62);
+    fin.rotation.y = -angle;
+    g.add(fin);
+    emitters.push(fin);
+  }
+  const pip = new THREE.Mesh(getGeometry('vmine:pip', () => new THREE.OctahedronGeometry(0.16, 0)), emitterSafe);
+  pip.name = 'VectorMineArmingPip';
+  pip.position.y = 0.36;
+  g.add(pip);
+  emitters.push(pip);
+  g.scale.setScalar(R);
+  g.userData.kind = 'vectormine';
+  g.userData.interactionKind = 'impulse-mine';
+  g.userData.visualLanguage = 'radial-impulse-emitter';
+  let visualArmed = null;
+  g.userData.updateRuntimeState = (entity) => {
+    const nextArmed = entity?.data?.armed === true;
+    if (nextArmed === visualArmed) return;
+    visualArmed = nextArmed;
+    for (const m of emitters) m.material = nextArmed ? emitterArmed : emitterSafe;
+    g.userData.visualArmed = nextArmed;
+  };
+  g.userData.updateRuntimeState(e);
+  return g;
+}
+
 function buildImpulseCharge(e) {
   const R = Math.max(0.4, Number(e && e.radius) || 1.2);
   const g = new THREE.Group();
@@ -3077,6 +3147,7 @@ export function createVisualFactory() {
           case 'drone': return buildDrone(e);
           case 'payload': return buildPayload(e);
           case 'mine': return buildMine(e);
+          case 'vectormine': return buildVectorMine(e);
           case 'charge': return buildImpulseCharge(e);
           case 'wreck': return buildWreck(e);
           case 'fx': return null; // fx entities are handled by the vfx particle system, not meshed

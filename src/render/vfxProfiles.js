@@ -261,6 +261,12 @@ const WEAPON_PRESENTATION = Object.freeze({
   pulse: Object.freeze({ family: 'plasma', variant: 'pulse-bolt' }),
   flak: Object.freeze({ family: 'kinetic', variant: 'flak' }),
   kinetic: Object.freeze({ family: 'kinetic', variant: 'autocannon' }),
+  // SF-10 physics-first families. Each is mechanically distinct from the DPS weapons AND from each
+  // other (STEP 9 forbidden shortcut #5 — the three must not share one VFX). The RCS disruptor
+  // deliberately keeps the emp family: it IS a disruption weapon, so concussion / mine / emp are
+  // three different families across the trio.
+  concussion: Object.freeze({ family: 'concussion', variant: 'concussion-slug' }),
+  mine: Object.freeze({ family: 'mine', variant: 'vector-mine' }),
 });
 
 export function resolveWeaponPresentationFamily(weaponId, weaponData = null, fallbackData = null) {
@@ -279,6 +285,11 @@ export function resolveWeaponPresentationFamily(weaponId, weaponData = null, fal
   if (continuous || projSpeed === Infinity || tracking === 'hitscan') {
     return WEAPON_PRESENTATION.beam;
   }
+  // SF-10: a deployed vector mine is neither projectile nor beam — resolve it to its own family
+  // (this also fills the missing "mine" particle family the graphics checkpoint calls out).
+  if (tracking === 'deploy' || id.includes('vector_mine')) {
+    return WEAPON_PRESENTATION.mine;
+  }
   if (tracking === 'homing' || id.includes('missile') || id.includes('torpedo') || id.includes('rack')) {
     return id.includes('torpedo') ? WEAPON_PRESENTATION.torpedo : WEAPON_PRESENTATION.missile;
   }
@@ -293,6 +304,11 @@ export function resolveWeaponPresentationFamily(weaponId, weaponData = null, fal
   }
   if (damageType === 'energy' || id.includes('pulse_laser')) {
     return WEAPON_PRESENTATION.pulse;
+  }
+  // SF-10: the concussion slug is kinetic mechanically but must NOT read as an autocannon tracer —
+  // give it its own heavy-slam family before the generic kinetic fallback.
+  if (id.includes('concussion')) {
+    return WEAPON_PRESENTATION.concussion;
   }
   if (id.includes('flak')) return WEAPON_PRESENTATION.flak;
   return WEAPON_PRESENTATION.kinetic;
@@ -323,6 +339,17 @@ const IMPACT_PRESENTATION_PROFILES = Object.freeze({
     mode: 'disruption-arcs', primaryShape: 'forks', life: 0.28, fragmentCount: 6,
     coreColor: '#f2ffff', accentColor: '#668cff', lightPeak: 2.0,
   }),
+  // SF-10 — distinct MODE + life:fragmentCount + a non-ring primaryShape from every family above.
+  // Concussion reads as a compressive slam (the payoff is really the terrain impact it sets up);
+  // the mine reads as an outward radial shove.
+  concussion: Object.freeze({
+    mode: 'concussive-slam', primaryShape: 'displacement-wave', life: 0.5, fragmentCount: 20,
+    coreColor: '#ffe9c4', accentColor: '#c98a4a', lightPeak: 3.6,
+  }),
+  mine: Object.freeze({
+    mode: 'radial-shove', primaryShape: 'shockfront', life: 0.36, fragmentCount: 18,
+    coreColor: '#cfe8ff', accentColor: '#5aa0ff', lightPeak: 2.6,
+  }),
 });
 
 export function resolveImpactPresentationProfile(weaponId, weaponData = null) {
@@ -338,6 +365,10 @@ function muzzleLaneForFamily(family) {
   if (family === 'beam') return 'beam';
   if (family === 'plasma' || family === 'emp') return 'energy';
   if (family === 'missile') return 'explosive';
+  // A concussion slug launches with a heavy recoil (smoke + ring), not a light tracer flash; a
+  // vector mine is lobbed. Keeps their muzzles off the autocannon's identity.
+  if (family === 'concussion') return 'explosive';
+  if (family === 'mine') return 'ballistic';
   return 'ballistic';
 }
 
@@ -503,6 +534,39 @@ export const PROJECTILE_TRAIL_PROFILES = Object.freeze({
     tailColor: '#3c72a8',
     drag: 0.22,
   }),
+  // SF-10 concussion slug: a heavy, slow, THICK tracer — the wide streak (class 'concussion' takes
+  // the 0.42 width factor) reads as mass in flight, distinct from the needle rail trace and the
+  // light autocannon tracer. Connected streak, never a glowing ball.
+  concussion: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'concussion',
+    mode: 'tracer',
+    life: 0.13,
+    size0: 0.92,
+    size1: 0.0,
+    stretch: 1.05,
+    streakLen: 1.9,
+    streakOpacity: 0.5,
+    particleCount: 1,
+    coreColor: '#ffdca0',
+    tailColor: '#7a4a24',
+    drag: 0.5,
+  }),
+  // SF-10 vector mine: a short cool arc as it lobs, then the deployed body carries its identity in
+  // the entity mesh (visualFactory buildVectorMine). Kept minimal — the mine is not a flight weapon.
+  mine: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'mine',
+    mode: 'spark',
+    life: 0.20,
+    size0: 0.6,
+    size1: 0.1,
+    stretch: 0.4,
+    particleCount: 1,
+    coreColor: '#bcd8ff',
+    tailColor: '#28527a',
+    drag: 0.8,
+  }),
 });
 
 const PROJECTILE_TRAIL_VARIANTS = Object.freeze({
@@ -516,6 +580,8 @@ const PROJECTILE_TRAIL_VARIANTS = Object.freeze({
   'pulse-bolt': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.pulse, variant: 'pulse-bolt' }),
   flak: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.kinetic, variant: 'flak' }),
   autocannon: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.kinetic, variant: 'autocannon' }),
+  'concussion-slug': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.concussion, variant: 'concussion-slug' }),
+  'vector-mine': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.mine, variant: 'vector-mine' }),
 });
 
 export function resolveProjectileTrailProfile(weaponId, projectileData = null) {

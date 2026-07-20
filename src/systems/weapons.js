@@ -10,8 +10,9 @@
 import { WEAPONS } from '../data/weapons.js';
 import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
-import { resolveWeaponImpulseForHit } from '../combat/impulseKernel.js';
+import { resolveWeaponImpulseForHit, readRecentImpulseProvenance, recordImpulseProvenance } from '../combat/impulseKernel.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { writePhysicsControl } from '../core/physicsAuthority.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from './scanner.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import {
@@ -22,6 +23,19 @@ import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmiss
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
 const AUTO_FIRE_QUERY_RADIUS_PAD = 128;
+
+// SF-10 RCS disruptor. A hit leaves the PQ-009 provenance tag 'rcs_disruptor_spike'; weapons latches
+// a suppression window off it only while that tag is fresh (RCS_TRIGGER_MAXAGE_TICKS), so a later hit
+// from another weapon cannot silently extend the disable. The override copies the tumbleStates
+// pattern — a last-writer force/torque-0 control command — but delivers NO entry spin, so a disrupted
+// hull DRIFTS straight (its identity) instead of tumbling (the concussion cannon's throw payoff).
+const RCS_TRIGGER_MAXAGE_TICKS = 8;
+const RCS_DISRUPT_CONTROL = Object.freeze({
+  mode: 'rcs_disrupted',
+  force: Object.freeze({ x: 0, y: 0, z: 0 }),
+  torque: Object.freeze({ x: 0, y: 0, z: 0 }),
+  source: 'rcs_disruptor',
+});
 
 // MissileV2 (BP-02, flag `combat.missileV2` — OFF in the golden): a missile burns fuel for a fixed
 // window, then the motor dies and it coasts ballistically ("break-and-coast"). While the motor burns,
@@ -72,6 +86,9 @@ export const weapons = {
     this._beamActiveMeta = new Map();
     this._autoFireScratch = [];
     this._autoLeadVel = new Map();
+    // SF-10 RCS-disruptor suppression windows, keyed by target entity. Transient (never serialized):
+    // a WeakMap keyed on the live entity graph, so reloads bring fresh entities and an empty map.
+    this._rcsDisrupt = new WeakMap();
     this._diag = {
       autoFireSpatialQueries: 0,
       autoFireCandidates: 0,
@@ -164,6 +181,13 @@ export const weapons = {
 
     // 3) beam release → one precise stop receipt for each mount that stopped firing.
     this._emitStoppedBeams();
+    // 4) physics-weapon consequences (SF-10): tick deployed vector mines (arm → proximity → radial
+    // impulse) and the RCS-disruptor turn-suppression windows. Both are strict no-ops in the node
+    // golden — they gate on weaponImpulseConsequences, which the 47a scenario pins OFF — so they
+    // cannot perturb the frozen sim hash. weapons is the last control-writer before physics, so the
+    // disruptor's control override is the authoritative command for the tick.
+    this._tickVectorMines(dt, state);
+    this._tickRcsDisruption(state);
     state.weaponRuntime = state.weaponRuntime || {};
     state.weaponRuntime.diagnostics = this._diag;
   },
@@ -387,8 +411,13 @@ export const weapons = {
     for (const w of ws) {
       const def = this._byId.get(w.defId) || {};
       const continuous = w.continuous != null ? w.continuous : def.continuous;
+      // DEPLOY verb (SF-10 vector mine): a third fire path alongside projectile + beam. It lobs a
+      // deployable that later detonates into a radial impulse; the weapon spends cap/heat here.
+      const deploy = (w.tracking || def.tracking) === 'deploy';
       if (continuous) {
         capLeft = this._serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle, forceTarget, fireGate);
+      } else if (deploy) {
+        if (firing) capLeft = this._serviceDeployWeapon(e, w, def, isPlayer, capLeft, state, aimAngle);
       } else if (firing) {
         capLeft = this._serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate);
       }
@@ -666,6 +695,209 @@ export const weapons = {
       collides: true,
       data,
     });
+  },
+
+  // --- SF-10 DEPLOY verb: vector mine ------------------------------------------------------------
+  // Fire a vector mine: gate on cooldown/cap/heat + the per-owner active-mine cap, spend cap/heat,
+  // and lob a deployable that later detonates into a radial impulse. Deploy is meaningful only when
+  // weapon impulse consequences are live (browser); the 47a golden pins the flag OFF, so a deploy
+  // weapon can never spawn a mine there even if one were somehow fitted — keeping the sim hash frozen.
+  _serviceDeployWeapon(e, w, def, isPlayer, capLeft, state, aimAngle) {
+    void aimAngle;
+    if (!combatFlag('weaponImpulseConsequences')) return capLeft;
+    if ((w._cooldown || 0) > 0) return capLeft;
+    const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0;
+    if (capLeft < energyCost) return capLeft;
+    const heatPerShot = (w.heat != null && Number.isFinite(w.heat) && w.heat > 0) ? w.heat
+      : (Number.isFinite(def.heatPerShot) ? def.heatPerShot : 0);
+    const heatMaxRaw = w.heatMax != null ? w.heatMax : (def.heatMax != null ? def.heatMax : Infinity);
+    const heatMax = heatPerShot > 0 && Number.isFinite(heatMaxRaw) && heatMaxRaw > 0 ? heatMaxRaw : Infinity;
+    if ((w._heat || 0) >= heatMax) return capLeft;
+    // Active-mine cap: refuse to deploy past mineMaxActive (the oldest is NOT auto-culled — the pilot
+    // must let mines resolve, so placement stays deliberate rather than a spammed field).
+    const maxActive = Math.max(1, def.mineMaxActive || 3);
+    if (this._countOwnerVectorMines(state, e.id) >= maxActive) {
+      if (isPlayer && this.bus) this.bus.emit('toast', { text: 'Mine bank full', kind: 'warn', ttl: 1.5 });
+      return capLeft;
+    }
+
+    capLeft -= energyCost;
+    if (heatPerShot) {
+      w._heat = Math.min(heatMax, (w._heat || 0) + heatPerShot);
+      if (w._heat >= heatMax) this._beginVent(e, state, w);
+    }
+    const rof = w.rof != null ? w.rof : def.rof || 0;
+    w._cooldown = rof > 0 ? 1 / rof : 2;
+    this._spawnVectorMine(e, w, def, state);
+    return capLeft;
+  },
+
+  // Drop a stationary vector mine BEHIND the ship's heading (STEP 9 "deploy behind"). It sits where
+  // dropped — the arm delay lets the deployer clear the blast — then arms and waits for a proximity
+  // trigger. collides:false, so like an impulse charge it is a logical trigger volume, not a physics
+  // body; its position is authored at spawn and never re-integrated (no motion writes at all).
+  _spawnVectorMine(e, w, def, state) {
+    const dir = (e.rot || 0) + Math.PI;
+    const standoff = (e.radius || 6) + 6;
+    const pos = { x: e.pos.x + Math.cos(dir) * standoff, z: e.pos.z + Math.sin(dir) * standoff };
+    const now = state.simTime || 0;
+    const mine = this.helpers.spawnEntity({
+      type: 'vectormine',
+      pos, vel: { x: 0, z: 0 }, rot: dir,
+      radius: 1.6, mass: 0.6, collides: false,
+      team: e.team, ownerId: e.id, factionId: e.factionId,
+      data: {
+        kind: 'vector_mine', weaponId: w.defId, ownerId: e.id,
+        armAt: now + (def.mineArmS != null ? def.mineArmS : 1.4),
+        dieAt: now + (def.mineLifeS != null ? def.mineLifeS : 30),
+        triggerRadius: def.mineTriggerRadius != null ? def.mineTriggerRadius : 60,
+        blastRadius: def.mineBlastRadius != null ? def.mineBlastRadius : 150,
+        impulse: w.impulsePerHit != null ? w.impulsePerHit : (def.impulsePerHit || 600),
+        provenance: def.impulseProvenance || 'vector_mine_pulse',
+        armed: false, spawnedAt: now,
+      },
+    });
+    if (this.bus) {
+      this.bus.emit('combat:fire', { ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex, origin: pos, dir, deploy: true });
+      this.bus.emit('weapons:mineDeployed', { ownerId: e.id, mineId: mine && mine.id, weaponId: w.defId, pos });
+    }
+    return mine;
+  },
+
+  _countOwnerVectorMines(state, ownerId) {
+    let n = 0;
+    const list = state.entityList || [];
+    for (const ent of list) {
+      if (ent.type === 'vectormine' && ent.alive && ent.data && ent.data.ownerId === ownerId) n++;
+    }
+    return n;
+  },
+
+  // Per-tick vector-mine lifecycle: expire → arm → proximity trigger. Strict no-op in the golden
+  // (flag pinned OFF). Proximity is a linear scan of the ship index, NOT a broadphase/spatial-hash
+  // query (perf-budget constraint), and touches only mine.data — no entity motion is written here.
+  _tickVectorMines(_dt, state) {
+    if (!combatFlag('weaponImpulseConsequences')) return;
+    const list = state.entityList;
+    if (!list) return;
+    const now = state.simTime || 0;
+    const ships = (state.entityIndex && state.entityIndex.ships) || list;
+    for (const mine of list) {
+      if (mine.type !== 'vectormine' || !mine.alive) continue;
+      const d = mine.data;
+      if (!d) { mine.alive = false; continue; }
+      if (now >= d.dieAt) {
+        mine.alive = false;
+        if (this.bus) this.bus.emit('weapons:mineExpired', { mineId: mine.id, ownerId: d.ownerId, pos: { x: mine.pos.x, z: mine.pos.z } });
+        continue;
+      }
+      if (!d.armed) {
+        if (now >= d.armAt) {
+          d.armed = true;
+          if (this.bus) this.bus.emit('weapons:mineArmed', { mineId: mine.id, ownerId: d.ownerId, pos: { x: mine.pos.x, z: mine.pos.z } });
+        }
+        continue;
+      }
+      const trigR = d.triggerRadius;
+      let triggered = false;
+      for (const s of ships) {
+        if (!s.alive || (s.type !== 'ship' && s.type !== 'drone')) continue;
+        const dx = s.pos.x - mine.pos.x, dz = s.pos.z - mine.pos.z;
+        const rr = trigR + (s.radius || 0);
+        if (dx * dx + dz * dz <= rr * rr) { triggered = true; break; }
+      }
+      if (triggered) this._detonateVectorMine(mine, d, state);
+    }
+  },
+
+  // Detonation: a mass-scaled radial impulse to every ship/drone in the blast — INCLUDING the owner
+  // (blast-yourself mobility). Zero hull damage (design Q9): no routeDamage, only the physics-authority
+  // impulse request. Provenance is recorded so a mine-thrown ship that meets terrain is attributed to
+  // the mine owner through the existing collision-consequence path. Rejected requests are skipped.
+  _detonateVectorMine(mine, d, state) {
+    const physics = this.helpers && this.helpers.combatPhysics;
+    const pos = { x: mine.pos.x, z: mine.pos.z };
+    const blastR = d.blastRadius;
+    const hits = [];
+    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList || [];
+    for (const s of ships) {
+      if (!s.alive || (s.type !== 'ship' && s.type !== 'drone')) continue;
+      const dx = s.pos.x - pos.x, dz = s.pos.z - pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > blastR) continue;
+      const falloff = Math.max(0, 1 - dist / blastR);
+      if (falloff <= 0) continue;
+      let dirX = 0, dirZ = 1;
+      if (dist > 1e-4) { dirX = dx / dist; dirZ = dz / dist; }
+      const mag = d.impulse * falloff;
+      if (physics && typeof physics.applyImpulse === 'function') {
+        const provenance = { actorId: d.ownerId == null ? null : d.ownerId, weaponId: d.weaponId, tag: d.provenance, appliedTick: state.tick };
+        const accepted = physics.applyImpulse({
+          entityId: s.id, impulse: { x: dirX * mag, z: dirZ * mag }, point: null,
+          reason: 'vector_mine', tick: state.tick, provenance,
+        });
+        if (accepted !== false) recordImpulseProvenance(s, { ...provenance, magnitude: mag });
+      }
+      hits.push(s.id);
+    }
+    mine.alive = false;
+    if (this.bus) {
+      this.bus.emit('weapons:mineDetonated', {
+        schemaVersion: 1, tick: state.tick, mineId: mine.id, ownerId: d.ownerId, weaponId: d.weaponId,
+        pos, blastRadius: blastR, hits,
+      });
+      // Directional impulse ring + scatter — NOT a generic explosion ball (graphics-checkpoint reject
+      // list). flashReduced:false lets vfxAccessibility resolve the reduced-flash variant downstream.
+      this.bus.emit('presentation:vfxCue', {
+        id: 'combat.vectorMine.detonate', lane: 'combat', particles: 30, lights: 1,
+        magnitude: Math.max(0.6, blastR / 150), position: pos, material: 'impulse',
+        sourceId: d.ownerId, targetId: null, flashReduced: false,
+      });
+      this.bus.emit('audio:cue', { id: 'sfx_vector_mine', position: pos, gain: 0.6 });
+    }
+  },
+
+  // --- SF-10 RCS disruptor: bounded turn-authority suppression -----------------------------------
+  // weapons runs last before physics, so writing a force/torque-0 control here overwrites the AI's
+  // queued command for the window (the tumbleStates pattern). The window is TRIGGERED off the PQ-009
+  // provenance an RCS-disruptor hit leaves ('rcs_disruptor_spike') and then LATCHED, so a subsequent
+  // hit from another weapon cannot cut it short. Strict no-op in the golden (flag pinned OFF); the
+  // local player is never a target. Reads provenance with the default (non-destructive) max age so it
+  // never evicts the record collisionConsequences also depends on.
+  _tickRcsDisruption(state) {
+    if (!combatFlag('weaponImpulseConsequences')) return;
+    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    if (!ships) return;
+    const tick = state.tick || 0;
+    if (!this._rcsDisrupt) this._rcsDisrupt = new WeakMap();
+    for (const s of ships) {
+      if (!s || s.type !== 'ship' || !s.alive || s.id === state.playerId) continue;
+      const prov = readRecentImpulseProvenance(s, tick);
+      if (prov && prov.tag === 'rcs_disruptor_spike' && (tick - prov.appliedTick) <= RCS_TRIGGER_MAXAGE_TICKS) {
+        const def = this._byId.get(prov.weaponId);
+        const windowTicks = Math.max(1, Math.round((def && def.rcsDisruptS != null ? def.rcsDisruptS : 1.6) * 60));
+        const until = prov.appliedTick + windowTicks;
+        const cur = this._rcsDisrupt.get(s);
+        if (!cur || until > cur.until) {
+          this._rcsDisrupt.set(s, { until });
+          if (!cur && this.bus) {
+            // Sparking + attitude-drift tell — distinct id from the massline tumble cue.
+            this.bus.emit('presentation:vfxCue', {
+              id: 'ship.rcsDisrupt', lane: 'combat', position: { x: s.pos.x, z: s.pos.z },
+              particles: 14, lights: 1, magnitude: 1, material: 'ion', targetId: s.id, flashReduced: false,
+            });
+            this.bus.emit('audio:cue', { id: 'sfx_rcs_disrupt', position: { x: s.pos.x, z: s.pos.z }, gain: 0.5 });
+          }
+        }
+      }
+      const latch = this._rcsDisrupt.get(s);
+      if (!latch) continue;
+      if (tick > latch.until) { this._rcsDisrupt.delete(s); continue; }
+      // Attitude drift for the window: no thrust, no steering, NO entry spin (the concussion cannon
+      // owns spin). The hull coasts on residual velocity and its guns cannot bear as it slides off
+      // their gimbal arc — "can't hold a firing line, slides into your tether arc".
+      writePhysicsControl(s, RCS_DISRUPT_CONTROL);
+    }
   },
 
   // --- helpers ---

@@ -9,6 +9,7 @@ import { selectHitSubsystem } from '../src/combat/geometry.js';
 import { createCombatCatalog, ensureCombatant } from '../src/combat/runtime.js';
 import { validateCombatCatalog } from '../src/combat/validate.js';
 import { ACTION_DEFS } from '../src/data/combatDefs.js';
+import { difficultyDamageScale } from '../src/data/difficulty.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const checks = [];
@@ -109,9 +110,13 @@ function checkMasteryTrace() {
 }
 
 function checkSharedPlayerAiPath() {
+  // Pure-hull targets: one linear damage layer with no shield/armor/flat-armor confound, so the
+  // only thing separating the two targets is the difficulty scale — the damage-taken ratio is exact
+  // and magnitude-independent (the same isolation trick used by the subsystem/swept-contact checks).
+  const pureHull = { hull: 1000, hullMax: 1000, shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0, armorFlat: 0 };
   const fixture = makeFixture([
-    makeShip(1, 0, 0), makeShip(2, 1, 100),
-    makeShip(3, 1, 0), makeShip(4, 0, 100),
+    makeShip(1, 0, 0), makeShip(2, 1, 100, pureHull),
+    makeShip(3, 1, 0), makeShip(4, 0, 100, pureHull),
   ]);
   requestAt(fixture, 0, { actorId: 1, actionId: 'action_burst', targetId: 2, source: { kind: 'player', controllerId: 'local' } });
   fixture.kernel.actions.requestAction({ actorId: 3, actionId: 'action_burst', targetId: 4, source: { kind: 'ai', controllerId: 'npc-3' } });
@@ -120,9 +125,23 @@ function checkSharedPlayerAiPath() {
 
   const playerTarget = fixture.state.entities.get(2);
   const aiTarget = fixture.state.entities.get(4);
-  assert.equal(playerTarget.shield, aiTarget.shield);
-  assert.equal(playerTarget.armorHp, aiTarget.armorHp);
-  assert.equal(playerTarget.hull, aiTarget.hull);
+  // Player- and AI-sourced action_burst run the SAME ActionDef path, so their raw packets are
+  // identical. The only legitimate divergence is the run-difficulty scale that the damage router
+  // (difficultyDamageScale) applies to any hit involving the local player: the player's outgoing
+  // burst (actor 1 → target 2) is multiplied by playerOutgoingDamage, while the AI-vs-AI burst
+  // (actor 3 → target 4, neither is the player) stays on the unscaled baseline. Since the 2026-07-16
+  // difficulty pass set standard playerOutgoingDamage to 1.15, the two targets take proportionally
+  // scaled — not equal — damage. Encode that scale truthfully instead of asserting stale equality;
+  // the property under test (source-neutral execution) is preserved by the ratio.
+  const playerScale = difficultyDamageScale(fixture.state, 1, 2); // player-involved outgoing scale
+  const aiScale = difficultyDamageScale(fixture.state, 3, 4);     // NPC-vs-NPC baseline (unscaled)
+  const playerHullLost = playerTarget.hullMax - playerTarget.hull;
+  const aiHullLost = aiTarget.hullMax - aiTarget.hull;
+  assert.ok(aiHullLost > 0, 'the AI-sourced burst must deal hull damage through the shared path');
+  assert.ok(Math.abs(playerHullLost * aiScale - aiHullLost * playerScale) < 1e-9,
+    'player- and AI-sourced burst share one ActionDef path; damage differs only by the player-involved difficulty scale');
+  // Difficulty scales the damage packet only, never the attacker's capacitor spend: both actors pay
+  // the identical action cost, so the shared path leaves their capacitors equal.
   assert.equal(fixture.state.entities.get(1).cap, fixture.state.entities.get(3).cap);
 
   const starts = fixture.state.combat.trace.events.filter((event) => event.kind === 'action.started' && event.actionId === 'action_burst');

@@ -62,7 +62,7 @@ export const WEAPONS = [
     dmg: 60, rof: 0, dps: 60, damageType: 'energy', energyCost: 14,
     projSpeed: Infinity, range: 520, tracking: 'hitscan',
     continuous: true, heatPerSec: 55, heatMax: 100, heatDissip: 22,
-    impulsePerHit: 10, tumbleTorque: 0.8, impulseProvenance: 'beam_pressure',
+    impulsePerHit: 10, tumbleTorque: 0.8, impulseProvenance: 'light_beam_pressure',
   },
   {
     id: 'unique_veil_cutter', baseId: 'wpn_beam_laser_m', name: 'Veil-Cutter', slotType: 'weapon', size: 'M', tier: 3, mass: 7, price: 0,
@@ -143,5 +143,58 @@ export const WEAPONS = [
     projSpeed: 380, range: 560, tracking: 'fixed', spreadDeg: 1.0,
     subsystemShare: 1.0, shieldBypass: 1.0,
     impulsePerHit: 14, tumbleTorque: 10, impulseProvenance: 'emp_attitude_spike',
+  },
+
+  // --- PHYSICS-FIRST FAMILY (SF-10 / STEP 9): three setup/payoff verbs on the PQ-009 impulse
+  // kernel. They read mechanically distinct in flight (see src/render/vfxProfiles.js) and are the
+  // light-tier rebalance lever: a light hull (Wasp mass 16, Hornet 24) is picked up and put into
+  // terrain, not ground down as an HP sponge, while a mass-anchored heavy (150+) shrugs the same
+  // shove. Impulse APPLICATION and the contact payoff are owned by the kernel + collisionConsequences
+  // + physics authority; these defs only DECLARE identity (impulsePerHit / tumbleTorque / stable
+  // provenance) per PQ-009. Each carries price>0 so it reaches the outfitting shop, and each has a
+  // distinct impulseProvenance so its receipt and its VFX identity never collapse onto another family.
+  {
+    // CONCUSSION CANNON — a heavy, slow, low-damage slug whose payload is MOMENTUM, not damage. A hit
+    // shoves the target along the slug line (impulsePerHit ÷ target mass): 400 ÷ 16 ≈ 25 wu/s on a
+    // Wasp clears the kernel tumbleDeltaV (18), so the ship is thrown and TUMBLES the instant it meets
+    // terrain — the wall impact is its own receipted terrain-damage event. 400 ÷ 150 ≈ 2.7 wu/s on a
+    // gunship is below staggerDeltaV (3), so heavies are unmoved. The kill comes from the environment,
+    // not the gun; this is deliberately NOT a DPS weapon (STEP 9 forbidden shortcut #1).
+    id: 'wpn_concussion_cannon_m', name: 'Concussion Cannon M', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 26000, requiresTech: 'tech_kinetic_drivers',
+    dmg: 12, rof: 1.0, dps: 12, damageType: 'kinetic', energyCost: 6,
+    projSpeed: 340, range: 560, tracking: 'fixed', spreadDeg: 1.2,
+    heatPerShot: 16, heatMax: 100, heatDissip: 26,
+    impulsePerHit: 400, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
+  },
+  {
+    // VECTOR MINE — deployable ordnance whose payload is a RADIAL IMPULSE, not a burn: zero hull
+    // damage (design Q9), its cost paid entirely in capacitor + heat at deploy. It lobs off the nose,
+    // arms after mineArmS, then any ship/drone that enters mineTriggerRadius — INCLUDING the owner —
+    // detonates it, shoving every body inside mineBlastRadius outward with a mass-scaled kick. Enemies
+    // scatter; a pilot who drops one and dives back through it gets blast-yourself mobility (STEP 9
+    // forbidden shortcut #3: a mine that does not move the player). Fired via the weapons DEPLOY verb,
+    // never as a projectile — impulsePerHit is the blast momentum the detonation imparts through the
+    // physics authority. dmg 0 is honest: the mine throws, it does not damage.
+    id: 'wpn_vector_mine_m', name: 'Vector Mine M', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 22000, requiresTech: 'tech_guided_ordnance',
+    dmg: 0, rof: 0.5, dps: 0, damageType: 'kinetic', energyCost: 22,
+    projSpeed: 90, range: 260, tracking: 'deploy',
+    heatPerShot: 34, heatMax: 100, heatDissip: 22,
+    deployKind: 'vector_mine', mineArmS: 1.4, mineTriggerRadius: 60, mineBlastRadius: 150, mineLifeS: 30, mineMaxActive: 3,
+    impulsePerHit: 620, tumbleTorque: 24, impulseProvenance: 'vector_mine_pulse',
+  },
+  {
+    // RCS DISRUPTOR — a subsystem-coupling spike that couples through shields like the EMP disruptor
+    // (subsystemShare/shieldBypass) and, for a bounded window (rcsDisruptS), suppresses the target's
+    // attitude control: it drifts, cannot hold a firing line, and slides into your tether arc. It
+    // REUSES the existing tumble-owner pattern — weapons runs last before physics, so it overwrites
+    // the AI's control command for the window and damps intent (no new status-effect framework) — and
+    // it is triggered off the PQ-009 provenance the hit leaves ('rcs_disruptor_spike'). Distinct from
+    // the concussion cannon: it does NOT throw the ship, it removes its steering. Low hull damage —
+    // this is a disable verb, not a killer.
+    id: 'wpn_rcs_disruptor_m', name: 'RCS Disruptor M', slotType: 'weapon', size: 'M', tier: 3, mass: 6, price: 34000, requiresTech: 'tech_plasma_dynamics',
+    dmg: 16, rof: 1.4, dps: 22.4, damageType: 'emp', energyCost: 10,
+    projSpeed: 400, range: 520, tracking: 'fixed', spreadDeg: 1.0,
+    subsystemShare: 0.85, shieldBypass: 1.0, rcsDisruptS: 1.6,
+    impulsePerHit: 10, tumbleTorque: 4, impulseProvenance: 'rcs_disruptor_spike',
   },
 ];
