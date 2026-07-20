@@ -94,21 +94,25 @@ export const ASTEROIDS = [
   {
     id: 'ast_common_rock', hp: [120, 520], yieldU: [8, 22], spawnWeight: 45, sizeRange: [6, 14], tierCap: 0,
     oreTable: { cmdty_silicate: 0.7, cmdty_ore_iron: 0.3 },
+    authoredPlaceId: 'place_asteroid_seamed',
     look: 'grey lumpy icosphere',
   },
   {
     id: 'ast_metallic', hp: [320, 900], yieldU: [14, 32], spawnWeight: 22, sizeRange: [7, 16], tierCap: 2,
     oreTable: { cmdty_ore_iron: 0.45, cmdty_ore_copper: 0.35, cmdty_ore_titanium: 0.20 },
+    authoredPlaceId: 'place_asteroid_rock_a',
     look: 'dark metallic specular veins',
   },
   {
     id: 'ast_icy', hp: [180, 640], yieldU: [12, 26], spawnWeight: 14, sizeRange: [8, 18], tierCap: 1,
     oreTable: { cmdty_ice_water: 0.75, cmdty_volatiles: 0.25 },
+    authoredPlaceId: 'place_asteroid_rock_b',
     look: 'translucent blue emissive rim',
   },
   {
     id: 'ast_crystalline', hp: [260, 720], yieldU: [9, 20], spawnWeight: 9, sizeRange: [5, 12], tierCap: 2,
     oreTable: { cmdty_crystal_silica: 0.7, cmdty_crystal_lumin: 0.3 },
+    authoredPlaceId: 'place_asteroid_rock_c',
     look: 'sharp emissive crystal cluster',
   },
   {

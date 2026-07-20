@@ -8,9 +8,28 @@ export const PRESENTATION_ADMISSION = Object.freeze({
   unavailable: 'unavailable',
 });
 
+/**
+ * Simulation asteroids may opt into an exact authored geology skin without changing their gameplay
+ * identity. Keep this contract deliberately narrow: a stray `placeId` on an asteroid must not turn
+ * every rock, POI, or claim body into an authored-place admission boundary.
+ */
+export function hasExplicitAuthoredGeologyPresentation(entity) {
+  if (!entity || entity.alive === false || entity.type !== 'asteroid') return false;
+  const data = entity.data || {};
+  const radius = Number(entity.radius);
+  const targetRadius = Number(data.placeTargetRadius);
+  return data.authoredGeologySkin === true
+    && typeof data.placeId === 'string'
+    && data.placeId.length > 0
+    && Number.isFinite(radius)
+    && radius > 0
+    && targetRadius === radius;
+}
+
 export function entityRequiresAuthoredPresentation(entity) {
   if (!entity || entity.alive === false) return false;
   if (entity.type === 'ship' || entity.type === 'station') return true;
+  if (hasExplicitAuthoredGeologyPresentation(entity)) return true;
   const data = entity.data || {};
   return entity.type === 'fx' && !!(
     data.placeId || data.landmarkGlb || data.archetypeGlb || data.claimSpecId || data.claimOwned

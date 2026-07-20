@@ -6,9 +6,16 @@ import {
   authoredBootstrapPreloadPlan,
   buildAuthoredPlaceProp,
   isInitialAuthoredCompositionEntity,
+  resolvePlaceFileForEntity,
+  upgradeAuthoredPlaceBoundaryForProbe,
   wrapShipWithAuthoredParts,
 } from '../src/render/partsLibrary.js';
 import { installVisualOverrides } from '../src/render/visualOverrides.js';
+import {
+  asteroidInstanceMembership,
+  createAsteroidInstancePool,
+  registerAsteroidBaseLeaf,
+} from '../src/render/asteroidInstancePool.js';
 
 function fallback(name) {
   const root = new THREE.Group();
@@ -154,7 +161,7 @@ test('authored world-place boundary does not publish the temporary box', () => {
     type: 'fx',
     alive: true,
     radius: 12,
-    data: { placeId: 'place_asteroid_rock_a' },
+    data: { placeId: 'place_nav_buoy' },
   }, { releaseMode: true });
   const temporary = boundary.children[0];
 
@@ -162,6 +169,346 @@ test('authored world-place boundary does not publish the temporary box', () => {
   assert.equal(temporary.visible, false);
   assert.equal(boundary.userData.authoredAssetState, 'awaiting-authored-admission');
   assert.equal(boundary.userData.authoredVisualRoot, 'none-pending-admission');
+});
+
+test('authored geology uses the place boundary only with an explicit radius-matched contract', () => {
+  const explicit = {
+    id: 20,
+    type: 'asteroid',
+    alive: true,
+    radius: 15,
+    collides: true,
+    data: {
+      typeId: 'ast_common_rock',
+      authoredGeologySkin: true,
+      placeId: 'place_asteroid_rock_a',
+      placeTargetRadius: 15,
+    },
+  };
+  const boundary = buildAuthoredPlaceProp(explicit, { releaseMode: true });
+
+  assert.ok(boundary);
+  assert.equal(resolvePlaceFileForEntity(explicit), 'places/place_asteroid_rock_a.glb');
+  assert.equal(boundary.userData.placeTargetRadius, explicit.radius);
+  assert.equal(boundary.userData.authoredGeologySkin, true);
+  assert.equal(boundary.userData.authoredAssetState, 'awaiting-authored-admission');
+  assert.equal(boundary.children[0].visible, false);
+
+  for (const data of [
+    { placeId: 'place_asteroid_rock_a', placeTargetRadius: 15 },
+    { authoredGeologySkin: true, placeId: 'place_asteroid_rock_a', placeTargetRadius: 14 },
+  ]) {
+    const generic = { ...explicit, data };
+    assert.equal(resolvePlaceFileForEntity(generic), null);
+    assert.equal(buildAuthoredPlaceProp(generic, { releaseMode: true }), null);
+  }
+});
+
+test('authored geology never leaks its hidden procedural body into the asteroid instance pool', () => {
+  const entity = {
+    id: 28,
+    type: 'asteroid',
+    alive: true,
+    radius: 14,
+    collides: true,
+    data: {
+      typeId: 'ast_common_rock',
+      authoredGeologySkin: true,
+      placeId: 'place_asteroid_seamed',
+      placeTargetRadius: 14,
+    },
+  };
+  const semanticFallback = fallback('ProceduralCommonRock');
+  const leaf = semanticFallback.children[0];
+  leaf.userData.asteroidInstanceTypeId = 'ast_common_rock';
+  leaf.userData.asteroidInstanceVariant = 0;
+  semanticFallback.userData.asteroidInstanceBody = leaf;
+  const boundary = buildAuthoredPlaceProp(entity, { releaseMode: true, fallbackRoot: semanticFallback });
+  const scene = new THREE.Scene();
+  const pool = createAsteroidInstancePool(scene);
+
+  assert.equal(semanticFallback.userData.asteroidInstanceBody, leaf,
+    'the hidden body remains available as a local terminal fallback');
+  assert.equal(boundary.userData.asteroidInstanceBody, undefined,
+    'the stable authored boundary must not advertise a poolable procedural leaf');
+  assert.equal(registerAsteroidBaseLeaf(pool, entity, boundary), false);
+  assert.equal(asteroidInstanceMembership(pool, entity.id).registered, false);
+  assert.equal(leaf.visible, true, 'pool rejection must not mutate the hidden fallback leaf itself');
+});
+
+test('authored geology composes its GLB envelope to the simulation asteroid radius', async () => {
+  const entity = {
+    id: 23,
+    type: 'asteroid',
+    alive: true,
+    radius: 15,
+    collides: true,
+    data: {
+      typeId: 'ast_common_rock',
+      authoredGeologySkin: true,
+      placeId: 'place_asteroid_rock_a',
+      placeTargetRadius: 15,
+    },
+  };
+  const boundary = buildAuthoredPlaceProp(entity, { releaseMode: true });
+  const fallbackRoot = boundary.children[0];
+  const scene = new THREE.Scene();
+  scene.add(boundary);
+  const record = {
+    url: 'assets/ships/release/parts/places/place_asteroid_rock_a.glb',
+    assetId: 'place_asteroid_rock_a',
+    slot: 'place',
+    bounds: { size: [10, 8, 6], center: [1, 0, -2] },
+    primitives: [{
+      key: 'rock:0',
+      name: 'Rock',
+      geometry: new THREE.BoxGeometry(10, 8, 6),
+      material: new THREE.MeshStandardMaterial(),
+      matrix: new THREE.Matrix4(),
+      tags: {},
+    }],
+    markers: [],
+  };
+
+  const swapped = await upgradeAuthoredPlaceBoundaryForProbe(
+    boundary,
+    fallbackRoot,
+    entity,
+    'places/place_asteroid_rock_a.glb',
+    {},
+    scene,
+    { releaseMode: true, loadAuthoredPart: async () => record },
+  );
+  const authoredRoot = boundary.children.find((child) => child.name === 'GLTFKit_place_asteroid_rock_a');
+
+  assert.equal(swapped, true);
+  assert.ok(authoredRoot);
+  assert.equal(entity.type, 'asteroid', 'presentation swap cannot rewrite simulation type');
+  assert.equal(entity.collides, true, 'presentation swap cannot rewrite collision truth');
+  assert.equal(authoredRoot.userData.placeTargetRadius, entity.radius);
+  assert.equal(authoredRoot.userData.authoredWorldScale, 3,
+    'a radius-15 asteroid uses diameter 30 over the authored 10-unit maximum envelope');
+  assert.deepEqual(authoredRoot.userData.visualBounds.size, [30, 24, 18]);
+});
+
+test('visual overrides route only explicit geology asteroids through the authored place builder', () => {
+  let authoredBuilds = 0;
+  let fallbackBuilds = 0;
+  const factory = {
+    build() {
+      fallbackBuilds++;
+      return fallback('ProceduralAsteroid');
+    },
+  };
+  installVisualOverrides(factory, {
+    releaseMode: true,
+    authoredPlaceBuilder() {
+      authoredBuilds++;
+      return fallback('AuthoredGeologyBoundary');
+    },
+  });
+
+  const explicit = factory.build({
+    id: 21, type: 'asteroid', alive: true, radius: 11,
+    data: {
+      typeId: 'ast_metallic',
+      authoredGeologySkin: true,
+      placeId: 'place_asteroid_rock_b',
+      placeTargetRadius: 11,
+    },
+  });
+  const generic = factory.build({
+    id: 22, type: 'asteroid', alive: true, radius: 11,
+    data: { typeId: 'ast_metallic', placeId: 'place_asteroid_rock_b', placeTargetRadius: 11 },
+  });
+
+  assert.equal(explicit.name, 'AuthoredGeologyBoundary');
+  assert.equal(generic.name, 'ProceduralAsteroid');
+  assert.equal(authoredBuilds, 1);
+  assert.equal(fallbackBuilds, 2,
+    'explicit geology eagerly constructs its matching procedural body but keeps it hidden unless admission fails');
+});
+
+test('authored geology settles on its same-semantic procedural body when loading is unavailable', async () => {
+  const entity = {
+    id: 24,
+    type: 'asteroid',
+    alive: true,
+    radius: 15,
+    collides: true,
+    data: {
+      typeId: 'ast_metallic',
+      authoredGeologySkin: true,
+      placeId: 'place_asteroid_rock_a',
+      placeTargetRadius: 15,
+    },
+  };
+  const semanticFallback = fallback('ProceduralMetallicAsteroid');
+  semanticFallback.userData.kind = 'asteroid';
+  const boundary = buildAuthoredPlaceProp(entity, { releaseMode: true, fallbackRoot: semanticFallback });
+  const scene = new THREE.Scene();
+  scene.add(boundary);
+
+  const swapped = await upgradeAuthoredPlaceBoundaryForProbe(
+    boundary,
+    semanticFallback,
+    entity,
+    'places/place_asteroid_rock_a.glb',
+    {},
+    scene,
+    { releaseMode: true, loadAuthoredPart: async () => null },
+  );
+
+  assert.equal(swapped, false);
+  assert.equal(boundary.children.includes(semanticFallback), true);
+  assert.equal(semanticFallback.visible, true);
+  assert.equal(boundary.userData.hull, semanticFallback);
+  assert.equal(boundary.userData.authoredAssetState, 'same-semantic-fallback');
+  assert.equal(boundary.userData.authoredVisualRoot, 'procedural-geology-fallback');
+  assert.equal(boundary.userData.authoredReadableFallbackRetained, true);
+  assert.equal(boundary.userData.renderContract.gracefulFallback, true);
+  assert.equal(entity.presentationAdmission, 'ready', 'the visible matching rock remains targetable');
+});
+
+test('authored geology returns to the matching procedural body when pipeline admission fails', async () => {
+  const entity = {
+    id: 25,
+    type: 'asteroid',
+    alive: true,
+    radius: 12,
+    collides: true,
+    data: {
+      typeId: 'ast_icy',
+      authoredGeologySkin: true,
+      placeId: 'place_asteroid_rock_b',
+      placeTargetRadius: 12,
+    },
+  };
+  const semanticFallback = fallback('ProceduralIceAsteroid');
+  semanticFallback.userData.kind = 'asteroid';
+  const boundary = buildAuthoredPlaceProp(entity, { releaseMode: true, fallbackRoot: semanticFallback });
+  const scene = new THREE.Scene();
+  scene.add(boundary);
+  const record = {
+    url: 'assets/ships/release/parts/places/place_asteroid_rock_b.glb',
+    assetId: 'place_asteroid_rock_b',
+    slot: 'place',
+    bounds: { size: [8, 8, 8], center: [0, 0, 0] },
+    primitives: [{
+      key: 'ice:0', name: 'Ice', geometry: new THREE.BoxGeometry(8, 8, 8),
+      material: new THREE.MeshStandardMaterial(), matrix: new THREE.Matrix4(), tags: {},
+    }],
+    markers: [],
+  };
+
+  const swapped = await upgradeAuthoredPlaceBoundaryForProbe(
+    boundary,
+    semanticFallback,
+    entity,
+    'places/place_asteroid_rock_b.glb',
+    {},
+    scene,
+    {
+      releaseMode: true,
+      loadAuthoredPart: async () => record,
+      prepareAuthoredPipelines: async () => { throw new Error('synthetic pipeline failure'); },
+    },
+  );
+
+  assert.equal(swapped, false);
+  assert.equal(semanticFallback.visible, true);
+  assert.equal(boundary.userData.hull, semanticFallback);
+  assert.equal(boundary.userData.authoredAssetState, 'same-semantic-fallback');
+  assert.equal(entity.presentationAdmission, 'ready');
+  assert.equal(boundary.children.some((child) => child.name === 'GLTFKit_place_asteroid_rock_b'), false);
+});
+
+test('authored place LODs remain under the stable boundary and switch by authored level', async () => {
+  const entity = {
+    id: 26,
+    type: 'asteroid',
+    alive: true,
+    radius: 10,
+    collides: true,
+    data: {
+      typeId: 'ast_crystalline',
+      authoredGeologySkin: true,
+      placeId: 'place_asteroid_rock_c',
+      placeTargetRadius: 10,
+    },
+  };
+  const boundary = buildAuthoredPlaceProp(entity, { releaseMode: true });
+  const fallbackRoot = boundary.children[0];
+  const scene = new THREE.Scene();
+  scene.add(boundary);
+  const material = new THREE.MeshStandardMaterial();
+  const record = {
+    url: 'assets/ships/release/parts/places/place_asteroid_rock_c.glb',
+    assetId: 'place_asteroid_rock_c',
+    slot: 'place',
+    bounds: { size: [10, 10, 10], center: [0, 0, 0] },
+    primitives: ['lod0', 'lod1', 'lod2'].map((lod, index) => ({
+      key: `${lod}:0`,
+      name: `${lod}_Rock`,
+      geometry: new THREE.BoxGeometry(10 - index * 2, 10 - index * 2, 10 - index * 2),
+      material,
+      matrix: new THREE.Matrix4(),
+      tags: { lod },
+    })),
+    markers: [],
+  };
+
+  const swapped = await upgradeAuthoredPlaceBoundaryForProbe(
+    boundary,
+    fallbackRoot,
+    entity,
+    'places/place_asteroid_rock_c.glb',
+    {},
+    scene,
+    { releaseMode: true, loadAuthoredPart: async () => record },
+  );
+  const authoredRoot = boundary.userData.hull;
+  const visibility = () => Object.fromEntries(['lod0', 'lod1', 'lod2'].map((lod) => {
+    let visible = false;
+    authoredRoot.traverse((object) => {
+      if (object.userData?.spacefaceTags?.lod === lod && object.visible) visible = true;
+    });
+    return [lod, visible];
+  }));
+
+  assert.equal(swapped, true);
+  assert.ok(boundary.userData.lod, 'the stable outer boundary owns screen-size LOD state');
+  assert.equal(typeof boundary.userData.updateLod, 'function');
+  assert.equal(typeof authoredRoot.userData.updateLod, 'function');
+  assert.deepEqual(visibility(), { lod0: true, lod1: false, lod2: false });
+  boundary.userData.updateLod('lod2');
+  assert.equal(boundary.userData.hull, authoredRoot, 'LOD changes never replace the entity root');
+  assert.deepEqual(visibility(), { lod0: false, lod1: false, lod2: true });
+  boundary.userData.updateLod('lod1');
+  assert.deepEqual(visibility(), { lod0: false, lod1: true, lod2: false });
+});
+
+test('a synchronous authored geology builder error keeps the procedural geology identity', () => {
+  const entity = {
+    id: 27, type: 'asteroid', alive: true, radius: 11, collides: true,
+    data: {
+      typeId: 'ast_metallic', authoredGeologySkin: true,
+      placeId: 'place_asteroid_rock_a', placeTargetRadius: 11,
+    },
+  };
+  const factory = { build() { return fallback('ProceduralMetallicAsteroid'); } };
+  installVisualOverrides(factory, {
+    releaseMode: true,
+    authoredPlaceBuilder() { throw new Error('synthetic synchronous geology failure'); },
+    onWarning() {},
+  });
+
+  const visual = factory.build(entity);
+  assert.equal(visual.name, 'ProceduralMetallicAsteroid');
+  assert.equal(visual.visible, true);
+  assert.equal(visual.userData.authoredAssetState, 'same-semantic-fallback');
+  assert.equal(visual.userData.renderContract.gracefulFallback, true);
+  assert.equal(entity.presentationAdmission, 'ready');
 });
 
 test('an authored visual builder failure never publishes a different procedural identity', () => {
@@ -182,7 +529,7 @@ test('an authored visual builder failure never publishes a different procedural 
     id: 3,
     type: 'fx',
     alive: true,
-    data: { placeId: 'place_asteroid_rock_a' },
+    data: { placeId: 'place_nav_buoy' },
   });
 
   assert.equal(fallbackBuilds, 0);

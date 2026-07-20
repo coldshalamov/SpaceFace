@@ -14,6 +14,11 @@ import { batchScenarioPropOpaqueMeshes } from './scenarioPropBatching.js';
 import { buildAuthoredPlaceProp, buildAuthoredStationArchetype, wrapShipWithAuthoredParts } from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
+import {
+  hasExplicitAuthoredGeologyPresentation,
+  PRESENTATION_ADMISSION,
+  setPresentationAdmission,
+} from '../core/presentationAdmission.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 
@@ -32,7 +37,9 @@ function requiresProductionWholeShip(entity) {
 }
 
 function isWorldPlaceProp(entity) {
-  if (!entity || entity.type !== 'fx' || !entity.data) return false;
+  if (!entity || !entity.data) return false;
+  if (hasExplicitAuthoredGeologyPresentation(entity)) return true;
+  if (entity.type !== 'fx') return false;
   return typeof entity.data.placeId === 'string' || typeof entity.data.landmarkGlb === 'string';
 }
 
@@ -154,11 +161,20 @@ export function installVisualOverrides(factory, options = {}) {
       // intentionally never shown.
       visual = directAuthoredAdmissionSubstrate(entity);
     } else if (isWorldPlaceProp(entity)) {
-      try { visual = authoredPlaceBuilder(entity, { releaseMode }); }
+      const geologyFallback = hasExplicitAuthoredGeologyPresentation(entity)
+        ? fallbackBuild(entity)
+        : null;
+      try { visual = authoredPlaceBuilder(entity, { releaseMode, fallbackRoot: geologyFallback }); }
       catch (error) {
-        reportVisualWarning(options, '[visualOverrides] authored place prop failed closed', error);
-        visual = unavailableVisual(entity, 'authored-place-build-failed', error);
+        if (geologyFallback) {
+          visual = settleSameSemanticGeologyBuildFallback(geologyFallback, entity, error);
+          reportVisualWarning(options, '[visualOverrides] authored geology boundary failed; retaining procedural asteroid', error);
+        } else {
+          reportVisualWarning(options, '[visualOverrides] authored place prop failed closed', error);
+          visual = unavailableVisual(entity, 'authored-place-build-failed', error);
+        }
       }
+      if (!visual && geologyFallback) visual = settleSameSemanticGeologyBuildFallback(geologyFallback, entity);
     } else if (hasStationArchetype(entity)) {
       try { visual = authoredStationBuilder(entity, { releaseMode }); }
       catch (error) {
@@ -232,4 +248,21 @@ export function installVisualOverrides(factory, options = {}) {
     value: true, enumerable: false, configurable: false,
   });
   return factory;
+}
+
+function settleSameSemanticGeologyBuildFallback(root, entity, error = null) {
+  root.visible = true;
+  root.userData = root.userData || {};
+  root.userData.authoredReadableFallbackLayer = true;
+  root.userData.authoredAssetState = 'same-semantic-fallback';
+  root.userData.authoredVisualRoot = 'procedural-geology-fallback';
+  root.userData.authoredReadableFallbackRetained = true;
+  root.userData.renderContract = {
+    ...(root.userData.renderContract || {}),
+    assetBoundary: 'same-semantic procedural geology fallback',
+    gracefulFallback: true,
+  };
+  if (error?.message) root.userData.authoredFallbackMessage = error.message;
+  setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
+  return root;
 }

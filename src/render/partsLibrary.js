@@ -15,7 +15,9 @@ import { getAssetResidency } from './assetResidency.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
 import { attachStationHlod } from './hlod.js';
+import { attachLodState } from './lod.js';
 import {
+  hasExplicitAuthoredGeologyPresentation,
   PRESENTATION_ADMISSION,
   setPresentationAdmission,
 } from '../core/presentationAdmission.js';
@@ -606,7 +608,9 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
 export function buildAuthoredPlaceProp(entity, options = {}) {
   const placeFile = placeFileForEntity(entity);
   if (!placeFile) return null;
-  const fallbackRoot = buildFallbackPlaceProp(entity, placeFile);
+  const fallbackRoot = options.fallbackRoot && options.fallbackRoot.isObject3D
+    ? options.fallbackRoot
+    : buildFallbackPlaceProp(entity, placeFile);
   return wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options);
 }
 
@@ -645,13 +649,14 @@ export async function upgradeAuthoredPlaceBoundaryForProbe(boundary, fallbackRoo
         },
       }
     : entity;
-  let active = fallbackRoot;
+  const publishActive = typeof boundary.userData.__setActiveVisualRoot === 'function'
+    ? boundary.userData.__setActiveVisualRoot
+    : (next) => { boundary.userData.hull = next; };
   return upgradePlaceBoundary(boundary, fallbackRoot, placementEntity, placeFile, renderer, scene, {
     ...options,
     admissionEntity: entity,
   }, (next) => {
-    active = next;
-    boundary.userData.hull = next;
+    publishActive(next);
   });
 }
 
@@ -792,7 +797,9 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
 }
 
 function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options = {}) {
-  if (!fallbackRoot || !fallbackRoot.isObject3D || !entity || entity.type !== 'fx' || !placeFile) return fallbackRoot;
+  const geologySkin = hasExplicitAuthoredGeologyPresentation(entity);
+  if (!fallbackRoot || !fallbackRoot.isObject3D || !entity
+      || (entity.type !== 'fx' && !geologySkin) || !placeFile) return fallbackRoot;
   const releaseMode = isReleaseAssetMode(options);
   setPresentationAdmission(entity, PRESENTATION_ADMISSION.pending);
 
@@ -801,8 +808,16 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   fallbackRoot.visible = false;
   boundary.add(fallbackRoot);
   Object.assign(boundary.userData, fallbackRoot.userData || {});
+  // The matching procedural geology body stays as a hidden, local emergency fallback. Never expose
+  // its common-rock leaf through the stable boundary: the renderer's asteroid InstancedMesh pool
+  // would otherwise submit that hidden leaf during admission and retain a detached ghost after the
+  // authored commit. One representative authored rock per field deliberately keeps this fallback
+  // local so the boundary has exactly one presentation authority at every lifecycle stage.
+  if (geologySkin) delete boundary.userData.asteroidInstanceBody;
   boundary.userData.kind = 'place';
   boundary.userData.placeId = entity.data && entity.data.placeId || placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
+  boundary.userData.placeTargetRadius = geologySkin ? entity.radius : null;
+  boundary.userData.authoredGeologySkin = geologySkin;
   boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
@@ -815,7 +830,20 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     gracefulFallback: false,
   };
 
+  attachLodState(boundary);
+  let activeRoot = fallbackRoot;
+  const setActiveVisualRoot = (next) => {
+    if (!next || !next.isObject3D) return;
+    activeRoot = next;
+    boundary.userData.hull = next;
+    const level = boundary.userData.lod && boundary.userData.lod.level || 'lod0';
+    if (typeof next.userData?.updateLod === 'function') next.userData.updateLod(level);
+  };
   boundary.userData.hull = fallbackRoot;
+  boundary.userData.__setActiveVisualRoot = setActiveVisualRoot;
+  boundary.userData.updateLod = (level) => {
+    if (typeof activeRoot?.userData?.updateLod === 'function') activeRoot.userData.updateLod(level);
+  };
   const trigger = firstRenderable(fallbackRoot);
   const startAuthoredUpgrade = (renderer, scene) => {
     if (!renderer || !scene || authoredAdmissionStarted(boundary.userData.authoredAssetState)) return;
@@ -827,9 +855,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
         releaseMode,
         loadAuthoredPart: options.loadAuthoredPart,
         ...residencyOptionsForBoundary(entity, boundary, renderer),
-      }, (next) => {
-        boundary.userData.hull = next;
-      }),
+      }, setActiveVisualRoot),
       renderer,
       options: { releaseMode, ...residencyOptionsForBoundary(entity, boundary, renderer) },
     });
@@ -856,7 +882,8 @@ function authoredAdmissionStarted(state) {
   return state === 'loading'
     || state === 'compiling-pipelines'
     || state === 'authored'
-    || state === 'authored-with-cleanup-error';
+    || state === 'authored-with-cleanup-error'
+    || state === 'same-semantic-fallback';
 }
 
 async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, options, setActive) {
@@ -864,40 +891,73 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   const loadPart = options && typeof options.loadAuthoredPart === 'function'
     ? options.loadAuthoredPart
     : loadAuthoredPart;
-  const record = await loadPart(`${partRoot}${placeFile}`, {
-    renderer,
-    slot: 'place',
-    optional: true,
-    residencyOwner: options.residencyOwner,
-    residencyRole: options.residencyRole,
-    sectorId: options.sectorId,
-    isResidencyOwnerActive: options.isResidencyOwnerActive,
-  });
+  let record = null;
+  try {
+    record = await loadPart(`${partRoot}${placeFile}`, {
+      renderer,
+      slot: 'place',
+      optional: true,
+      residencyOwner: options.residencyOwner,
+      residencyRole: options.residencyRole,
+      sectorId: options.sectorId,
+      isResidencyOwnerActive: options.isResidencyOwnerActive,
+    });
+  } catch (error) {
+    handoffBootstrapIfCovered(renderer);
+    if (!boundary.parent) {
+      releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-load-error');
+      boundary.userData.authoredAssetState = 'orphaned-before-swap';
+      return false;
+    }
+    return failAuthoredPlaceAdmission(
+      boundary, fallbackRoot, entity, renderer, options, setActive,
+      'place-load-threw', error,
+    );
+  }
   handoffBootstrapIfCovered(renderer);
   if (!record || !boundary.parent) {
     releaseBoundaryResidency(renderer, boundary, record ? 'place-orphaned-before-swap' : 'place-unavailable');
     boundary.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
     if (!record) {
-      boundary.userData.authoredVisualRoot = 'none-load-failed';
-      setPresentationAdmission(options.admissionEntity || entity, PRESENTATION_ADMISSION.unavailable);
+      return failAuthoredPlaceAdmission(
+        boundary, fallbackRoot, entity, renderer, options, setActive,
+        'place-load-unavailable', null, { residencyReleased: true },
+      );
     }
     return false;
   }
 
-  const authored = buildPlacePropRoot(entity, record, scene, boundary);
+  let authored = null;
+  try {
+    authored = buildPlacePropRoot(entity, record, scene, boundary);
+  } catch (error) {
+    return failAuthoredPlaceAdmission(
+      boundary, fallbackRoot, entity, renderer, options, setActive,
+      'place-build-threw', error,
+    );
+  }
   if (!authored || !boundary.parent) {
-    releaseBoundaryResidency(renderer, boundary, 'place-swap-not-committed');
-    if (boundary.parent) {
-      boundary.userData.authoredAssetState = 'unavailable';
-      boundary.userData.authoredVisualRoot = 'none-build-failed';
-      setPresentationAdmission(options.admissionEntity || entity, PRESENTATION_ADMISSION.unavailable);
+    if (!boundary.parent) {
+      releaseBoundaryResidency(renderer, boundary, 'place-swap-not-committed');
+      return false;
     }
-    return false;
+    return failAuthoredPlaceAdmission(
+      boundary, fallbackRoot, entity, renderer, options, setActive,
+      'place-build-unavailable', null,
+    );
   }
 
   boundary.userData.authoredAssetState = 'compiling-pipelines';
   const completeAdmission = async () => {
-    await prepareAuthoredVisualPipelines(authored.root, options);
+    try {
+      await prepareAuthoredVisualPipelines(authored.root, options);
+    } catch (error) {
+      try { disposeDetachedPlaceFallback(authored.root); } catch { /* best-effort detached cleanup */ }
+      return failAuthoredPlaceAdmission(
+        boundary, fallbackRoot, entity, renderer, options, setActive,
+        'place-pipeline-compile-failed', error,
+      );
+    }
     if (!boundary.parent) {
       releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-pipeline-compile');
       return false;
@@ -911,18 +971,47 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     );
   };
   if (options.overlapAuthoredPipelineCompile === true) {
-    const pending = completeAdmission().catch((error) => {
-      releaseBoundaryResidency(renderer, boundary, 'place-pipeline-compile-failed');
-      boundary.userData.authoredAssetState = 'unavailable';
-      boundary.userData.authoredVisualRoot = 'none-pipeline-failed';
-      setPresentationAdmission(options.admissionEntity || entity, PRESENTATION_ADMISSION.unavailable);
-      console.warn('[partsLibrary] authored place pipeline admission failed; no substitute visual published', error);
-      return false;
-    });
+    const pending = completeAdmission();
     boundary.userData.authoredPipelineReady = pending;
     return true;
   }
   return completeAdmission();
+}
+
+function failAuthoredPlaceAdmission(
+  boundary, fallbackRoot, entity, renderer, options, setActive, reason, error, flags = {},
+) {
+  if (!flags.residencyReleased) releaseBoundaryResidency(renderer, boundary, reason);
+  const admissionEntity = options.admissionEntity || entity;
+  if (boundary.parent && hasExplicitAuthoredGeologyPresentation(admissionEntity)) {
+    fallbackRoot.visible = true;
+    markReadableFallbackLayer(fallbackRoot);
+    fallbackRoot.userData.authoredAssetState = 'same-semantic-fallback';
+    fallbackRoot.userData.authoredVisualRoot = 'procedural-geology-fallback';
+    if (error?.message) fallbackRoot.userData.authoredFallbackReason = error.message;
+    setActive(fallbackRoot);
+    boundary.userData.authoredAssetState = 'same-semantic-fallback';
+    boundary.userData.authoredReadableFallbackRetained = true;
+    boundary.userData.authoredVisualRoot = 'procedural-geology-fallback';
+    boundary.userData.authoredFallbackReason = reason;
+    if (error?.message) boundary.userData.authoredFallbackMessage = error.message;
+    boundary.userData.renderContract = {
+      ...(fallbackRoot.userData.renderContract || boundary.userData.renderContract || {}),
+      assetBoundary: 'same-semantic procedural geology fallback',
+      gracefulFallback: true,
+    };
+    setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.ready);
+    if (error) console.warn('[partsLibrary] authored geology unavailable; retaining the matching procedural asteroid', error);
+    return false;
+  }
+
+  boundary.userData.authoredAssetState = 'unavailable';
+  boundary.userData.authoredVisualRoot = reason.includes('pipeline')
+    ? 'none-pipeline-failed'
+    : (reason.includes('build') ? 'none-build-failed' : 'none-load-failed');
+  setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.unavailable);
+  if (error) console.warn('[partsLibrary] authored place admission failed; no substitute visual published', error);
+  return false;
 }
 
 function commitAuthoredPlaceBoundary(boundary, fallbackRoot, authored, setActive, admissionEntity) {
@@ -957,6 +1046,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
   const isStation = entity && entity.type === 'station';
   root.userData.kind = isStation ? 'station' : 'place';
   root.userData.placeId = placeId;
+  root.userData.authoredGeologySkin = hasExplicitAuthoredGeologyPresentation(entity);
   root.userData.assetId = `GLTFKIT_${placeId}`;
   if (isStation && data.archetypeGlb) root.userData.archetypeGlb = data.archetypeGlb;
 
@@ -986,6 +1076,8 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
   canonicalizeMaplessHullMaterials(root, palette);
   normalizePlacePropBindings(bindings);
   centerAuthoredPlaceRoot(root, record, scale);
+  installAuthoredLod(root, bindings, null, authoredLevels(record), true);
+  root.userData.updateLod('lod0');
   root.userData.authoredSourceEnvelope = authoredEnvelope;
   root.userData.authoredWorldScale = scale;
   root.userData.placeTargetRadius = Number.isFinite(targetRadius) && targetRadius > 0 ? targetRadius : null;
@@ -995,7 +1087,9 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
     coordinateSystem: '+X forward, +Y up, +Z starboard; authored world scale',
     authoredParts: [record.url],
     authoredSlots: { place: [record.url] },
-    hookBinding: 'SOCKET_* markers remain available for debug/probes; world-place props are non-sim scenery',
+    hookBinding: hasExplicitAuthoredGeologyPresentation(entity)
+      ? 'SOCKET_* markers remain available; authored mesh is presentation over a simulation-owned asteroid'
+      : 'SOCKET_* markers remain available for debug/probes; world-place props are non-sim scenery',
   };
   return {
     root,
@@ -1104,6 +1198,7 @@ function fallbackPlaceColor(placeId, paletteClass) {
 
 function placeFileForEntity(entity) {
   const data = entity && entity.data || {};
+  if (entity && entity.type === 'asteroid' && !hasExplicitAuthoredGeologyPresentation(entity)) return null;
   const claimSpecializationFile = CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID[String(data.claimSpecId || '')];
   if (claimSpecializationFile) return claimSpecializationFile;
   if (data.claimOwned === true) return 'places/place_claim_outpost_base.glb';

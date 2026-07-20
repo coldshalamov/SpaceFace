@@ -9,6 +9,7 @@ import { SHIPS } from '../data/ships.js';
 import { DAMAGE_MODEL } from '../data/combatDefs.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer } from '../systems/scanner.js';
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
+import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -88,10 +89,17 @@ export function targetDisplayName(e) {
     if (e.data && e.data.isGate) return e.data.name || 'Jump Gate';
     return (e.data && (e.data.name || e.data.stationName || e.data.stationId)) || 'Station';
   }
-  if (e.type === 'asteroid') return 'Asteroid';
-  if (e.type === 'wreck') return 'Wreck';
+  if (e.type === 'asteroid' || e.type === 'wreck') return interactionDisplayName(e);
   if (e.type === 'drone') return (e.data && (e.data.callsign || e.data.name)) || 'Unidentified';
   return e.type || 'Contact';
+}
+
+export function targetInteractionClass(e) {
+  const interaction = interactionProfileForEntity(e);
+  if (interaction.kind === 'unstable_reactor_wreck') return 'Hazardous Salvage';
+  if (interaction.kind === 'wreck') return 'Salvage';
+  if (interaction.kind === 'asteroid') return 'Mineable Asteroid';
+  return '';
 }
 
 function entityClass(e) {
@@ -109,8 +117,8 @@ function entityClass(e) {
   if (e.type === 'station') {
     return e.data && e.data.isGate ? 'Gate' : 'Station';
   }
-  if (e.type === 'wreck') return 'Wreck';
-  if (e.type === 'asteroid') return 'Asteroid';
+  const interactionClass = targetInteractionClass(e);
+  if (interactionClass) return interactionClass;
   return e.type || '';
 }
 

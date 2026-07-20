@@ -13,6 +13,7 @@ import { isConfirmOpen } from './confirm.js';
 import { BINDINGS } from './bindings.js';
 import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
 import { MAP_FOCUS, openGalaxyMap, isMapScreenId } from './mapAuthority.js';
+import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
 
@@ -318,6 +319,30 @@ export function createUiInput(ctx, screenManager) {
       const t = state.entities.get(activeTether.targetId);
       if (t && t.type === 'asteroid' && t.alive) astId = t.id;
     }
+
+    // A live asteroid massline is the drill authority. Selection may change while latched, but it
+    // must not redirect B into a wreck-help toast and steal the established drill action.
+    const wreck = astId == null ? drillGuidanceWreck() : null;
+    if (wreck) {
+      const interaction = interactionProfileForEntity(wreck);
+      if (interaction.hazardous) {
+        bus.emit('toast', {
+          text: 'Hazardous reactor wreck — it can explode if its reactor timer expires. '
+            + `${BINDINGS.drill.label} drills asteroids; hold the mining control to salvage this wreck or tow it clear.`,
+          kind: 'warn',
+          ttl: 5,
+        });
+      } else {
+        bus.emit('toast', {
+          text: `${interactionDisplayName(wreck)} is salvage, not an asteroid. `
+            + `${BINDINGS.drill.label} drills asteroids; hold the mining control to salvage this wreck.`,
+          kind: 'info',
+          ttl: 4,
+        });
+      }
+      return;
+    }
+
     const tid = state.player.targetId;
     if (astId == null && tid != null) {
       const t = state.entities.get(tid);
@@ -365,6 +390,25 @@ export function createUiInput(ctx, screenManager) {
 
     // Trigger transition event which pulls ship in, zooms camera, fades to black
     bus.emit('ui:drillFadeStart', { asteroidId: astId, attachmentId: activeTether.id });
+  }
+
+  function drillGuidanceWreck() {
+    const tid = state.player.targetId;
+    if (tid != null) {
+      const selected = state.entities.get(tid);
+      if (selected && selected.alive) {
+        const interaction = interactionProfileForEntity(selected);
+        if (interaction.salvageable) return selected;
+        if (interaction.drillable) return null;
+      }
+    }
+    for (const attachment of Object.values(state.combat?.attachments?.byId || {})) {
+      if (!attachment || attachment.state !== 'active' || attachment.ownerId !== state.playerId
+        || !DRILL_MASSLINE_DEF_IDS.has(attachment.defId)) continue;
+      const attached = state.entities.get(attachment.targetId);
+      if (attached && attached.alive && interactionProfileForEntity(attached).salvageable) return attached;
+    }
+    return null;
   }
 
   function activeAsteroidDrillTether() {

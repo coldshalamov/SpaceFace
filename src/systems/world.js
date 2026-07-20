@@ -154,6 +154,11 @@ const DRESSING_RADIUS = Object.freeze({
   place_asteroid_rock_c: 10,
   place_asteroid_graffiti: 16,
 });
+function authoredGeologyPlaceForField(fieldDef) {
+  if (!fieldDef) return null;
+  const asteroidDef = AST_BY_ID.get(fieldDef.type);
+  return asteroidDef && asteroidDef.authoredPlaceId || null;
+}
 
 export const world = {
   name: 'world',
@@ -1102,8 +1107,16 @@ export const world = {
       const center = this._toGlobal(centerLocal, sector.id);
       const clusterR = fdef.clusterRadius || params.clusterRadius || 450;
       const astIds = [];
+      const authoredGeologyPlaceId = authoredGeologyPlaceForField(fdef);
       for (let i = 0; i < count; i++) {
-        const a = this._spawnAsteroid(fdef, params, center, clusterR, rng);
+        const a = this._spawnAsteroid(
+          fdef,
+          params,
+          center,
+          clusterR,
+          rng,
+          i === 0 ? authoredGeologyPlaceId : null,
+        );
         if (a) {
           this._stampHomeSector(a, sector.id);
           astIds.push(a.id);
@@ -1113,7 +1126,7 @@ export const world = {
     }
   },
 
-  _spawnAsteroid(fdef, params, center, clusterR, rng) {
+  _spawnAsteroid(fdef, params, center, clusterR, rng, authoredGeologyPlaceId = null) {
     const def = AST_BY_ID.get(fdef.type) || AST_BY_ID.get('ast_common_rock');
     // disc-uniform scatter inside the cluster (center is already galactic-global)
     const ang = rng() * Math.PI * 2;
@@ -1146,6 +1159,11 @@ export const world = {
           || null,
         size, pctEjected: 0, respawnSec: params.respawnSec || 120,
         fieldId: fdef.id,
+        ...(authoredGeologyPlaceId ? {
+          authoredGeologySkin: true,
+          placeId: authoredGeologyPlaceId,
+          placeTargetRadius: size,
+        } : {}),
       },
     });
     // Asteroid fields are always spawned for a concrete sector bag — recover id from field center bag via caller.
@@ -1302,22 +1320,21 @@ export const world = {
   _spawnBeltDressing(sector, active, rng, paletteClass) {
     const fields = active.fields || [];
     const stations = active.stations || [];
-    const rockIds = ['place_asteroid_rock_a', 'place_asteroid_rock_b', 'place_asteroid_rock_c'];
     for (let i = 0; i < Math.min(3, fields.length); i++) {
       const field = fields[i];
       if (!field || !field.center) continue;
       const ang = rng() * Math.PI * 2;
       const dist = 210 + rng() * 170;
-      this._spawnPlaceProp(active, sector, rockIds[i % rockIds.length], polarOffset(field.center, ang, dist), {
+      this._spawnPlaceProp(active, sector, 'place_nav_buoy', polarOffset(field.center, ang, dist), {
         paletteClass,
         rot: ang + Math.PI * 0.5,
-        name: 'Belt Rock',
+        name: 'Belt Survey Buoy',
         placeScale: 1,
       });
-      this._spawnPlaceProp(active, sector, i === 0 ? 'place_asteroid_seamed' : 'place_mining_drone', polarOffset(field.center, ang + 1.9, 120 + rng() * 130), {
+      this._spawnPlaceProp(active, sector, 'place_mining_drone', polarOffset(field.center, ang + 1.9, 120 + rng() * 130), {
         paletteClass,
         rot: ang,
-        name: i === 0 ? 'Seamed Rock' : 'Mining Drone',
+        name: 'Prospecting Drone',
         placeScale: 1,
       });
     }
@@ -1362,10 +1379,10 @@ export const world = {
     }
     if (fields[0] && fields[0].center) {
       const ang = rng() * Math.PI * 2;
-      this._spawnPlaceProp(active, sector, 'place_asteroid_graffiti', polarOffset(fields[0].center, ang, 250 + rng() * 120), {
+      this._spawnPlaceProp(active, sector, 'place_mining_drone', polarOffset(fields[0].center, ang, 250 + rng() * 120), {
         paletteClass,
         rot: ang,
-        name: 'Tagged Asteroid',
+        name: 'Fringe Prospecting Drone',
       });
     }
   },
@@ -1387,10 +1404,10 @@ export const world = {
       rot: base + 0.5,
       name: 'Drifting Debris',
     });
-    this._spawnPlaceProp(active, sector, 'place_asteroid_seamed', polarOffset(anchor, base + 3.0, 330 + rng() * 140), {
+    this._spawnPlaceProp(active, sector, 'place_mining_drone', polarOffset(anchor, base + 3.0, 330 + rng() * 140), {
       paletteClass,
       rot: base + Math.PI,
-      name: 'Seam Signal',
+      name: 'Anomaly Survey Drone',
     });
   },
 

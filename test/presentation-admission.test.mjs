@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   PRESENTATION_ADMISSION,
+  hasExplicitAuthoredGeologyPresentation,
   initializePresentationAdmission,
   presentationAllowsPlayerFacingAction,
   setPresentationAdmission,
@@ -26,4 +27,34 @@ test('procedural entities do not require authored admission', () => {
   const asteroid = initializePresentationAdmission({ type: 'asteroid', alive: true, data: {} });
   assert.equal(asteroid.presentationAdmission, undefined);
   assert.equal(presentationAllowsPlayerFacingAction(asteroid, { render: { scene: {} } }), true);
+});
+
+test('only an explicit correctly-scaled geology skin opts an asteroid into authored admission', () => {
+  const plainPlaceId = initializePresentationAdmission({
+    type: 'asteroid', alive: true, radius: 12,
+    data: { placeId: 'place_asteroid_rock_a', placeTargetRadius: 12 },
+  });
+  const wrongScale = initializePresentationAdmission({
+    type: 'asteroid', alive: true, radius: 12,
+    data: {
+      authoredGeologySkin: true,
+      placeId: 'place_asteroid_rock_a',
+      placeTargetRadius: 24,
+    },
+  });
+  const explicit = initializePresentationAdmission({
+    type: 'asteroid', alive: true, radius: 12,
+    data: {
+      authoredGeologySkin: true,
+      placeId: 'place_asteroid_rock_a',
+      placeTargetRadius: 12,
+    },
+  });
+
+  assert.equal(hasExplicitAuthoredGeologyPresentation(plainPlaceId), false);
+  assert.equal(hasExplicitAuthoredGeologyPresentation(wrongScale), false);
+  assert.equal(plainPlaceId.presentationAdmission, undefined);
+  assert.equal(wrongScale.presentationAdmission, undefined);
+  assert.equal(hasExplicitAuthoredGeologyPresentation(explicit), true);
+  assert.equal(explicit.presentationAdmission, PRESENTATION_ADMISSION.pending);
 });
