@@ -23,9 +23,9 @@ Dirty-path counts and ahead/behind counts are audit snapshots and must be refres
 
 | Worktree / branch | Audit snapshot | Product ruling | Physical cleanup condition |
 |---|---|---|---|
-| `SpaceFace` / `master` | Product merge `b235f062`; evidence hardening through `280cafb0`; Atlas decision `f3bf00f4`. | Product authority. Graphics and reviewed performance synthesis are promoted. | Never remove. |
+| `SpaceFace` / `master` | Product merge `b235f062`; evidence hardening through `280cafb0`; propulsion repair `59f91d19`; Atlas/journey through audited `4f7bc87c`. | Product authority. Graphics and reviewed performance synthesis are promoted. | Never remove. |
 | `SpaceFace-graphics-closeout` / `codex/graphics-closeout-20260719` | Physical worktree removed; clean tip `8e860439` is reachable from `master`. | No unique product work. | Complete. |
-| `SpaceFace-performance-closure` / `codex/performance-closure-20260719` | Base tip `99cad5b5` is integrated; evidence hardening is replayed. The physical lane remains active for live authored ship pooling. | Selective performance donor only until its new fleet evidence survives review. | Remove after the accepted repair is synthesized and final combined proof is recorded. |
+| `SpaceFace-performance-closure` / `codex/performance-closure-20260719` | Base tip `99cad5b5` is integrated; evidence hardening is replayed. Physical worktree removed at clean tip `9d626fd8`; branch retained. | Reject post-synthesis range `04805924..9d626fd8`. Primitive, merged, corrected exact-key, and BatchedMesh pooling candidates all lost to current ship-local batching on target Intel hardware; the final run measured 250.1/616.8/433.3 ms p95 for 10/25/50 ships and had correctness/PBR blockers. | Complete. Never replay the rejected range; retain branch/evidence for archaeology only. |
 | `SpaceFace-graphics-overhaul` / `codex/graphics-overhaul` | Audit: 96 master-only / 24 branch-only commits and about 244 dirty paths. | Retain. It contains substantial uncommitted Blender/source assets and cannot be reduced to a branch-only history yet. Never whole-merge. | Keep physical worktree until asset-by-asset source inventory and promote/reject receipts are complete. |
 | `SpaceFace-oc-helios-golden` / `opencode/helios-golden-station` | Physical worktree removed after a 101-behind / 0-unique / 2.53 GB audit. | Full replacement rejected. The useful builder, precursor receipt, editable blend, three-LOD source, and release asset are on `master`. | Complete. |
 | `SpaceFace-depth-actualization` / `grok/depth-player-route-actualization` | Physical worktree removed. Branch `bf1dfce2` and annotated archive tag remain; 17 raw artifacts are hash-archived externally. | Selective product donor only; the remaining black-box candidate is recorded below. | Complete; never whole-merge the branch. |
@@ -121,15 +121,22 @@ visual-family tests pass together; camera, AI-telegraph, and exact receipt check
 `check:sim:compare`, asset/live/visual-stability/flight checks, and one owned browser plus Electron/GPU
 acceptance route remain the final combined evidence. Old performance evidence alone is not final.
 
+The later `04805924..9d626fd8` experiment is not a continuation of that accepted synthesis. Its four
+pooling architectures were measured and rejected. In addition to the target-hardware frame regression,
+review found missed child-hull transform invalidation, a non-exact geometry collision signature,
+zero-reference geometry retained in partially occupied pages, and no proof that master PBR/appearance
+semantics survived. Current `master` intentionally keeps ship-local static batching.
+
 ## 7. Cleanup order
 
-1. Integrate only an independently reviewed live authored-instance-pool repair, then run the strict
-   three-profile/three-matrix combined acceptance contract and remove the performance worktree.
+1. Run the strict three-profile/three-matrix combined acceptance contract on one exact clean current
+   master revision. Do not replay the rejected authored-pooling range to pursue that evidence.
 2. Keep `SpaceFace-graphics-overhaul` until its uncommitted Blender/source asset inventory is fully
    classified. It is the only intentionally long-lived graphics donor in this ledger.
 
 Completed 2026-07-19: graphics-closeout, rejected Helios, four superseded orchestration satellites,
-the product-preserved Kimi donor, and the tagged/hash-archived Depth donor were removed through Git.
+the product-preserved Kimi donor, the tagged/hash-archived Depth donor, and the clean rejected
+performance experiment were removed through Git.
 
 Use `git worktree remove` only after verifying the resolved absolute target and clean/disposition state.
 Do not recursively delete computed paths, prune branches merely because a folder looks stale, or remove a

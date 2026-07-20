@@ -1,11 +1,12 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-19 after combined merge `b235f062`, evidence hardening through `280cafb0`, and
-the corrected Atlas journey decision `f3bf00f4`. Graphics, Atlas/map/travel, startup/loading, and the
-reviewed performance synthesis are on `master`. This board does **not** claim final
-browser/Electron/GPU frame-time acceptance: old matrices are diagnostic, and the first live
-authored-instance-pool candidate failed closed during its narrow fleet rerun. The primary checkout is
-clean; unread `design/program/_review/` residue was moved to
+**Snapshot:** 2026-07-19 after combined merge `b235f062`, evidence hardening through `280cafb0`,
+propulsion repair `59f91d19`, and Atlas/journey work through audited `4f7bc87c`. Graphics,
+Atlas/map/travel, startup/loading, and the reviewed performance synthesis are on `master`. This board
+does **not** claim final browser/Electron/GPU frame-time acceptance: old matrices are diagnostic, and
+all six post-synthesis scene-pool/BatchedMesh experiments were measured and rejected. The
+route-follower transaction is committed, and the only current primary-tree edits are this graphics
+checkpoint ledger update. Unread `design/program/_review/` residue was moved to
 `SpaceFace-archives/primary-review-quarantine-20260719` without being opened or imported.
 
 **Integrated checkpoint:** the earlier Atlas/map/travel, performance, and graphics synthesis remains
@@ -15,34 +16,41 @@ routing, rock preload, runtime visual-family identities, and sticky impulse-char
 (`5219491d`), the resumable long-term architecture (`98e1e429`, `1de8a861`), the Atlas/journey
 verification transaction (`b05d2cf9` through `6a4bebd7`), and the checkpoint gate wiring
 (`5863331c`). Merge `cbdf1589` promoted that graphics slice; `21d82428` repaired the current
-journey/velocity evidence surface, and `b235f062` integrated the reviewed performance synthesis.
+journey/velocity evidence surface, `b235f062` integrated the reviewed performance synthesis, and
+`59f91d19` repaired authored propulsion socket binding, compact feedback, hot-path allocation, and
+save/sector lifecycle behavior.
 
 **Acceptance boundary:** `npm run check:graphics:asset-receipts` passes on the promoted tree and pins
 the exact Helios, representative-rock, Wasp-candidate, and RCS artifacts. Focused runtime/admission,
 material, visual-family, and interaction tests passed before promotion. On the final combined tree,
 all 167 performance-modified tests and 49 graphics/PBR/VFX identity tests pass together with camera,
-AI-telegraph, and exact asset-receipt checks. That is integrated and focused-green implementation,
-not final visual acceptance: natural Helios/rock motion, hardware Electron parity, GPU-state capture,
-and broader fleet/station/rock/wreck PBR remain open. See
+AI-telegraph, and exact asset-receipt checks. The committed propulsion repair additionally passes
+15 mapping tests, 11 production-wiring checks, sign truth, save/restore lifecycle, thruster-pack,
+settings, and sleep checks. That is integrated and focused-green implementation, not final visual
+acceptance: exact-head compact/dense/accessibility propulsion capture, natural Helios/rock motion,
+hardware Electron parity, GPU-state capture, and broader fleet/station/rock/wreck PBR remain open. See
 [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md) and the long-term
 architecture in
 [`../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md`](../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md).
 
-**Current isolated lanes:** only `SpaceFace-graphics-overhaul` and the active
-`SpaceFace-performance-closure` repair remain registered beside `master`. The former retains the
-uncommitted Blender/source inventory. The latter is validating live scene-level authored ship
-instance pools after its first pipeline-admission attempt exposed and repaired a nested-subject bug.
+**Current isolated lanes:** only `SpaceFace-graphics-overhaul` remains registered beside `master`; it
+retains the uncommitted Blender/source inventory. The performance worktree was removed after its clean
+tip and rejection evidence were recorded. Primitive pools, composition-merged pools, corrected
+exact-key pools, and heterogeneous `THREE.BatchedMesh` pages all lost on target Intel hardware; the
+final candidate measured 250.1/616.8/433.3 ms p95 for 10/25/50 ships. None of
+`04805924..9d626fd8` belongs on `master`.
 Graphics-closeout, rejected Helios, Depth, Kimi, and orchestration satellite folders were removed only
 after their value was merged, committed on a donor branch, tagged/archived, or explicitly rejected.
 Decisions are recorded in [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md).
 
-**Immediate safe work:** accept or reject the repaired live authored-instance-pool vertical from its
-clean 10/25/50-ship rerun, synthesize it manually with the current semantic-PBR path, and rerun the
-strict final performance contract on one clean exact commit. Then capture natural Helios/rock motion
-and combat/destruction GPU evidence. The highest-return graphics continuation is natural-route Helios/rock
-parity, combat/destruction visual acceptance, localized authored space structure without
-screen-wide haze, and the next high-frequency PBR family. The Kimi/OpenCode Helios replacement is
-rejected, and its useful batching source was already preserved on `master`.
+**Immediate safe work:** commit this ledger transaction, then rerun the strict final performance
+contract on one clean exact commit with the measured ship-local batching winner. Capture
+exact-head propulsion settings/accessibility, natural Helios/rock motion, and combat/destruction GPU
+evidence. The highest-return graphics continuation is natural-route Helios/rock parity, fixing
+rock-shaped `fx` interaction identity, one combined admission/rebase/interpolation/LOD/HLOD/pool
+flicker-continuity packet, combat/destruction visual acceptance, localized authored space structure
+without screen-wide haze, and the next high-frequency PBR family. The Kimi/OpenCode Helios replacement
+is rejected, and its useful offline batching source was already preserved on `master`.
 
 ## Wave-01 integration record (all on `master`)
 
