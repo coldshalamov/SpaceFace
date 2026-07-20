@@ -151,31 +151,35 @@ test('authored ships instance merged composition batches instead of individual p
   assert.equal(typeof partsLibrary.runAuthoredStaticBatchPoolContractProbe, 'function');
   const result = partsLibrary.runAuthoredStaticBatchPoolContractProbe();
 
-  assert.equal(result.pools, 1, 'identical opaque compositions share one merged geometry pool');
-  assert.equal(result.chunks, 1, 'two matching compositions fit in one draw chunk');
+  assert.equal(result.pools, 1, 'identical opaque compositions share one exact-material pipeline');
+  assert.equal(result.chunks, 1, 'two matching compositions fit in one pipeline-major page');
   assert.equal(result.proxies, 2, 'each owner retains one transform and visibility proxy');
   assert.equal(result.localMeshes, 0, 'pooled opaque batches do not leave duplicate local draw meshes');
   assert.equal(result.pooledInstanceSlots, 2);
   assert.equal(result.submittedInstanceSlots, 2);
   assert.equal(result.poolGeometryIsDerived, true);
+  assert.equal(result.pageUsesBatchedMesh, true, 'production opaque pages use BatchedMesh multi-draw submission');
+  assert.equal(result.pagePerObjectFrustumCulled, true, 'each retained geometry handle stays independently culled');
+  assert.equal(result.pageSortsObjects, true, 'opaque page objects retain front-to-back sorting');
   assert.equal(result.pipelineSubjects, 1);
   assert.equal(result.pipelineUsesExactGeometry, true,
-    'pipeline admission compiles the retained merged geometry used by the live pool');
+    'pipeline admission compiles an exact-layout copy from the retained live page');
   assert.equal(result.pipelineUsesExactMaterial, true);
   assert.equal(result.afterFirstRelease.pooledInstanceSlots, 1);
   assert.equal(result.afterFirstRelease.submittedInstanceSlots, 1,
     'releasing one composition removes its slot without disturbing the shared batch');
   assert.equal(result.afterFinalRelease.pooledInstanceSlots, 0);
   assert.equal(result.finalPools, 0, 'the final owner retires the empty pool state');
-  assert.equal(result.finalPoolMeshes, 0, 'the final owner removes its empty InstancedMesh from the scene');
-  assert.equal(result.disposalsBeforeAdmissionClear, 0,
-    'an in-flight pipeline subject retains derived geometry after the final live owner leaves');
-  assert.equal(result.derivedGeometryDisposals, 1, 'the final owner releases the derived merged geometry');
+  assert.equal(result.finalPoolMeshes, 0, 'the final owner removes its empty BatchedMesh page from the scene');
+  assert.equal(result.disposalsBeforeAdmissionClear, 1,
+    'an in-flight admission owns its copy and does not pin an empty live page');
+  assert.equal(result.pageDisposals, 1, 'the final owner releases the combined page geometry');
+  assert.equal(result.admissionDisposals, 1, 'admission cleanup releases its temporary batch resources');
   assert.deepEqual(result.churn, {
     iterations: 6,
     peakPools: 1,
     peakPoolMeshes: 1,
-    derivedGeometryDisposals: 6,
+    pageDisposals: 6,
     finalPools: 0,
     finalPoolMeshes: 0,
   }, 'repeated composition churn leaves no pool state, scene nodes, or derived geometry resident');

@@ -75,6 +75,41 @@ test('scene metrics count actual visible instances, surfaces, semantic roles, an
   assert.deepEqual(result.memory, { geometries: 7, textures: 8, programs: 9, renderTargets: 5 });
 });
 
+test('scene metrics count BatchedMesh page occupancy rather than one wrapper mesh', () => {
+  const page = node({
+    isMesh: true,
+    isBatchedMesh: true,
+    maxInstanceCount: 128,
+    material: { name: 'Hull page', transparent: false, blending: 1 },
+    userData: {
+      spacefaceInstancePool: true,
+      spacefaceOpaqueBatchPage: true,
+      spacefaceBatchPageActiveInstances: 5,
+      spacefaceBatchPageVisibleInstances: 4,
+      spacefaceBatchPageGeometryCount: 3,
+    },
+  });
+  const scene = node({}, [page]);
+  const result = collectPerformanceSceneStructure({
+    state: { entityList: [], render: { scene } },
+    diagnostics: {},
+  });
+
+  assert.equal(result.batchedMeshes, 1);
+  assert.equal(result.instancedMeshes, 0);
+  assert.equal(result.visibleMeshes, 1);
+  assert.equal(result.visibleInstances, 4);
+  assert.equal(result.visibleNonPoolMeshes, 0);
+  assert.deepEqual({
+    chunks: result.authoredPools.totalChunks,
+    visible: result.authoredPools.visibleChunks,
+    instances: result.authoredPools.visibleInstances,
+    capacity: result.authoredPools.capacity,
+    pages: result.authoredPools.batchedPages,
+    geometries: result.authoredPools.geometrySlots,
+  }, { chunks: 1, visible: 1, instances: 4, capacity: 128, pages: 1, geometries: 3 });
+});
+
 test('pipeline readiness exposes queue, fallback, admission, residency, and recent resource truth', () => {
   const originalPerformance = globalThis.performance;
   Object.defineProperty(globalThis, 'performance', {

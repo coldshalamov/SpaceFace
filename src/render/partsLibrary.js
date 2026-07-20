@@ -12,6 +12,14 @@ import { WEAPONS } from '../data/weapons.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { isReleaseAssetMode } from './releaseMode.js';
+import {
+  allocateOpaqueBatchInstance,
+  createOpaqueBatchPipelineAdmission,
+  getOpaqueBatchWorldDiagnostics,
+  markOpaqueBatchOwnerDirty,
+  releaseOpaqueBatchOwner,
+  syncOpaqueBatchWorld,
+} from './batching/opaqueBatchWorld.js';
 import * as kit from './ships/shipKit.js';
 import { attachStationHlod } from './hlod.js';
 import {
@@ -119,12 +127,16 @@ export function invalidatePartsLibraryCaches(renderer) {
 
 export function syncAuthoredInstancePools(scene, opts = {}) {
   const state = scene && sceneStates.get(scene);
-  return state ? syncSceneState(state, opts) : null;
+  const legacy = state ? syncSceneState(state, opts) : null;
+  const pages = syncOpaqueBatchWorld(scene, opts);
+  return combineAuthoredPoolDiagnostics(legacy, pages) || getAuthoredInstancePoolDiagnostics(scene);
 }
 
 export function getAuthoredInstancePoolDiagnostics(scene) {
   const state = scene && sceneStates.get(scene);
-  if (!state) return {
+  const legacy = state ? { ...state.stats } : null;
+  const pages = getOpaqueBatchWorldDiagnostics(scene);
+  return combineAuthoredPoolDiagnostics(legacy, pages) || {
     pools: 0,
     chunks: 0,
     pooledInstanceSlots: 0,
@@ -141,7 +153,49 @@ export function getAuthoredInstancePoolDiagnostics(scene) {
     ownersVisited: 0,
     slotsVisited: 0,
   };
-  return { ...state.stats };
+}
+
+function combineAuthoredPoolDiagnostics(legacy, pages) {
+  const pageCount = Number(pages?.pages) || 0;
+  if (!legacy && pageCount === 0) return null;
+  const base = legacy || {
+    pools: 0,
+    chunks: 0,
+    pooledInstanceSlots: 0,
+    activeInstanceSlots: 0,
+    submittedInstanceSlots: 0,
+    visibleInstancePools: 0,
+    offscreenInstancePools: 0,
+    culledInstanceSlots: 0,
+    hiddenInstanceSlots: 0,
+    tinyPools: 0,
+    dirtyChunks: 0,
+    matrixUploads: 0,
+    matrixReuses: 0,
+    ownersVisited: 0,
+    slotsVisited: 0,
+  };
+  const pooledInstanceSlots = (base.pooledInstanceSlots || 0) + (pages?.activeInstanceSlots || 0);
+  const poolCount = (base.pools || 0) + (pages?.pipelines || 0);
+  return {
+    ...base,
+    pools: poolCount,
+    chunks: (base.chunks || 0) + pageCount,
+    pooledInstanceSlots,
+    activeInstanceSlots: (base.activeInstanceSlots || 0) + (pages?.activeInstanceSlots || 0),
+    submittedInstanceSlots: (base.submittedInstanceSlots || 0) + (pages?.submittedInstanceSlots || 0),
+    visibleInstancePools: (base.visibleInstancePools || 0) + (pages?.visiblePages || 0),
+    offscreenInstancePools: (base.offscreenInstancePools || 0) + (pages?.offscreenPages || 0),
+    avgPoolOccupancy: poolCount > 0 ? pooledInstanceSlots / poolCount : 0,
+    tinyPools: (base.tinyPools || 0) + (pages?.tinyPages || 0),
+    dirtyChunks: (base.dirtyChunks || 0) + (pages?.matrixDirtyPages || 0),
+    matrixUploads: (base.matrixUploads || 0) + (pages?.matrixUploads || 0),
+    matrixReuses: (base.matrixReuses || 0) + (pages?.matrixReuses || 0),
+    frameBounded: base.frameBounded === true || pages?.frameBounded === true,
+    ownersVisited: (base.ownersVisited || 0) + (pages?.ownersVisited || 0),
+    slotsVisited: (base.slotsVisited || 0) + (pages?.slotsVisited || 0),
+    opaqueBatchPages: pages || null,
+  };
 }
 
 export const PART_LIBRARY_CONTRACT = Object.freeze({
@@ -2405,7 +2459,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     authoredSlots: uniqueSlotMap(authoredSlots),
     proceduralFallbackParts: fallbackParts,
     instancing: options.useAuthoredInstancePools === true
-      ? 'compatible opaque parts merged per composition, then instanced across live-scene ships'
+      ? 'compatible opaque parts merged per composition, then retained in exact-material BatchedMesh pages'
       : 'opaque immutable primitives merged into ship-local static batches',
     hookBinding: 'HOOK_* / SOCKET_* / MOUNT_* / LOD* names bound to shipKit.finalizeShip + shipDamage',
     wholeShip,
@@ -3212,7 +3266,15 @@ function addStaticBatchMesh(
     proxy.visible = !tags.lod || tags.lod === 'lod0';
     proxy.userData = { ...userData, spacefaceInstanceProxy: true };
     parent.add(proxy);
-    allocateInstance(instancePool.scene, instancePool.owner, proxy, geometry, material, label || 'StaticBatch');
+    const allocation = allocateOpaqueBatchInstance(
+      instancePool.scene,
+      instancePool.owner,
+      proxy,
+      geometry,
+      material,
+      { geometryKey: poolGeometryKey || geometry.uuid, label: label || 'StaticBatch' },
+    );
+    registerOwnerRelease(instancePool.owner, allocation.release);
     registerBinding(proxy, tags, bindings);
     return proxy;
   }
@@ -3566,6 +3628,7 @@ function allocateInstance(scene, owner, proxy, geometry, material, label) {
 function markOwnerInstancesDirty(owner) {
   const ownerState = owner && instanceOwnerStates.get(owner);
   if (ownerState) ownerState.dirty = true;
+  markOpaqueBatchOwnerDirty(owner);
 }
 
 function retireInstancePool(state, pool) {
@@ -3602,7 +3665,7 @@ function createInstanceChunk(scene, pool, ordinal) {
  * Pipeline admission must cover USE_INSTANCING without moving the live pool meshes out of the scene.
  * These one-instance subjects share the exact geometry/material pairs but are never rendered.
  */
-function createOwnerInstancePipelineAdmission(scene, owner) {
+function createLegacyOwnerInstancePipelineAdmission(scene, owner) {
   const state = scene && sceneStates.get(scene);
   const ownerState = state && state.ownerSlots.get(owner);
   if (!ownerState || !ownerState.slots.size) return null;
@@ -3645,6 +3708,29 @@ function createOwnerInstancePipelineAdmission(scene, owner) {
     const pool = state.pools.get(key);
     if (pool) admission.userData.spacefaceAdmittedPools.set(key, pool);
   }
+  return admission;
+}
+
+function createOwnerInstancePipelineAdmission(scene, owner) {
+  const legacy = createLegacyOwnerInstancePipelineAdmission(scene, owner);
+  const opaquePages = createOpaqueBatchPipelineAdmission(scene, owner);
+  if (!legacy) return opaquePages;
+  if (!opaquePages) return legacy;
+
+  const admission = new THREE.Group();
+  admission.name = 'SF_AuthoredCombinedBatchPipelineAdmission';
+  admission.add(legacy, opaquePages);
+  const clear = admission.clear.bind(admission);
+  let released = false;
+  admission.clear = () => {
+    if (!released) {
+      released = true;
+      legacy.clear();
+      opaquePages.clear();
+    }
+    clear();
+    return admission;
+  };
   return admission;
 }
 
@@ -4048,9 +4134,11 @@ function registerOwnerRelease(owner, release) {
 
 function releaseOwnerInstances(owner) {
   const state = ownerReleaseState.get(owner);
-  if (!state) return;
-  for (const fn of [...state.releases]) fn();
-  state.releases.clear();
+  if (state) {
+    for (const fn of [...state.releases]) fn();
+    state.releases.clear();
+  }
+  releaseOpaqueBatchOwner(owner);
 }
 
 /**
@@ -4199,48 +4287,59 @@ export function runAuthoredStaticBatchPoolContractProbe() {
   collectorA.flush();
   collectorB.flush();
 
-  const state = sceneStates.get(scene);
-  const pools = state ? [...state.pools.values()] : [];
-  const pool = pools[0] || null;
-  const chunks = pool ? pool.chunks : [];
+  const pageMeshes = scene.children.filter((object) => object.userData?.spacefaceOpaqueBatchPage);
+  const pageMesh = pageMeshes[0] || null;
   const proxies = [...hullA.children, ...hullB.children]
     .filter((object) => object.userData && object.userData.spacefaceInstanceProxy);
   const localMeshes = [...hullA.children, ...hullB.children].filter((object) => object.isMesh);
   const pipelineAdmission = createOwnerInstancePipelineAdmission(scene, ownerA);
   const pipelineSubject = pipelineAdmission && pipelineAdmission.children[0];
   const active = { ...syncAuthoredInstancePools(scene) };
-  let derivedGeometryDisposals = 0;
-  if (pool && pool.geometry && typeof pool.geometry.dispose === 'function') {
-    const dispose = pool.geometry.dispose.bind(pool.geometry);
-    pool.geometry.dispose = () => {
-      derivedGeometryDisposals++;
+  let pageDisposals = 0;
+  let admissionDisposals = 0;
+  if (pageMesh && typeof pageMesh.dispose === 'function') {
+    const dispose = pageMesh.dispose.bind(pageMesh);
+    pageMesh.dispose = () => {
+      pageDisposals++;
+      dispose();
+    };
+  }
+  if (pipelineSubject && typeof pipelineSubject.dispose === 'function') {
+    const dispose = pipelineSubject.dispose.bind(pipelineSubject);
+    pipelineSubject.dispose = () => {
+      admissionDisposals++;
       dispose();
     };
   }
   const result = {
-    pools: pools.length,
-    chunks: chunks.length,
+    pools: active.pools,
+    chunks: active.chunks,
     proxies: proxies.length,
     localMeshes: localMeshes.length,
     pooledInstanceSlots: active.pooledInstanceSlots,
     submittedInstanceSlots: active.submittedInstanceSlots,
-    poolGeometryIsDerived: !!(pool && pool.geometry && pool.geometry.userData
-      && pool.geometry.userData.spacefaceDerivedStaticBatch),
+    poolGeometryIsDerived: !!pageMesh?.geometry?.userData?.spacefaceDerivedStaticBatch,
+    pageUsesBatchedMesh: pageMesh?.isBatchedMesh === true,
+    pagePerObjectFrustumCulled: pageMesh?.perObjectFrustumCulled === true,
+    pageSortsObjects: pageMesh?.sortObjects === true,
     pipelineSubjects: pipelineAdmission ? pipelineAdmission.children.length : 0,
-    pipelineUsesExactGeometry: !!(pipelineSubject && pool && pipelineSubject.geometry === pool.geometry),
+    pipelineUsesExactGeometry: !!(pipelineSubject && pageMesh
+      && pipelineSubject.userData?.spacefaceOpaqueBatchSourcePageKey
+        === pageMesh.userData?.spacefaceOpaqueBatchPageKey),
     pipelineUsesExactMaterial: !!(pipelineSubject && pipelineSubject.material === material),
   };
   scene.remove(ownerA);
   result.afterFirstRelease = { ...syncAuthoredInstancePools(scene) };
   scene.remove(ownerB);
   result.afterFinalRelease = { ...syncAuthoredInstancePools(scene) };
-  result.finalPools = state.pools.size;
+  result.finalPools = result.afterFinalRelease.pools;
   result.finalPoolMeshes = scene.children.filter((object) => object.userData?.spacefaceInstancePool).length;
-  result.disposalsBeforeAdmissionClear = derivedGeometryDisposals;
+  result.disposalsBeforeAdmissionClear = pageDisposals;
   if (pipelineAdmission) pipelineAdmission.clear();
-  result.derivedGeometryDisposals = derivedGeometryDisposals;
+  result.pageDisposals = pageDisposals;
+  result.admissionDisposals = admissionDisposals;
 
-  const churn = { iterations: 6, peakPools: 0, peakPoolMeshes: 0, derivedGeometryDisposals: 0 };
+  const churn = { iterations: 6, peakPools: 0, peakPoolMeshes: 0, pageDisposals: 0 };
   for (let index = 0; index < churn.iterations; index++) {
     const owner = new THREE.Group();
     const hull = new THREE.Group();
@@ -4252,21 +4351,21 @@ export function runAuthoredStaticBatchPoolContractProbe() {
     const collector = createStaticBatchCollector(hull, createBindings(), { scene, owner });
     collector.add({ record, primitive, partRoot: part, material });
     collector.flush();
-    const churnPool = [...state.pools.values()][0];
-    if (churnPool && churnPool.geometry && typeof churnPool.geometry.dispose === 'function') {
-      const dispose = churnPool.geometry.dispose.bind(churnPool.geometry);
-      churnPool.geometry.dispose = () => {
-        churn.derivedGeometryDisposals++;
+    const churnPage = scene.children.find((object) => object.userData?.spacefaceOpaqueBatchPage);
+    if (churnPage && typeof churnPage.dispose === 'function') {
+      const dispose = churnPage.dispose.bind(churnPage);
+      churnPage.dispose = () => {
+        churn.pageDisposals++;
         dispose();
       };
     }
-    syncAuthoredInstancePools(scene);
-    churn.peakPools = Math.max(churn.peakPools, state.pools.size);
+    const churnActive = syncAuthoredInstancePools(scene);
+    churn.peakPools = Math.max(churn.peakPools, churnActive.pools);
     churn.peakPoolMeshes = Math.max(churn.peakPoolMeshes,
       scene.children.filter((object) => object.userData?.spacefaceInstancePool).length);
     scene.remove(owner);
   }
-  churn.finalPools = state.pools.size;
+  churn.finalPools = getAuthoredInstancePoolDiagnostics(scene).pools;
   churn.finalPoolMeshes = scene.children.filter((object) => object.userData?.spacefaceInstancePool).length;
   result.churn = churn;
   sourceGeometry.dispose();

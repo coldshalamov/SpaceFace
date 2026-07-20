@@ -30,6 +30,7 @@ export function collectPerformanceSceneStructure({ state = globalThis.SF?.state,
     visibleMeshes: 0,
     visibleNonPoolMeshes: 0,
     instancedMeshes: 0,
+    batchedMeshes: 0,
     visibleInstances: 0,
     castShadowObjects: 0,
     visibleMeshByCategory,
@@ -61,6 +62,8 @@ export function collectPerformanceSceneStructure({ state = globalThis.SF?.state,
       capacity: 0,
       averageVisibleInstancesPerVisibleChunk: 0,
       lowOccupancyVisibleChunks: 0,
+      batchedPages: 0,
+      geometrySlots: 0,
       chunkCounts: [],
     },
     stationPlaceHlod: {
@@ -99,14 +102,25 @@ export function collectPerformanceSceneStructure({ state = globalThis.SF?.state,
         if (visible) stats.visibleMeshes++;
       }
       if (object.isInstancedMesh) stats.instancedMeshes++;
+      if (object.isBatchedMesh) stats.batchedMeshes++;
       if (object.castShadow) stats.castShadowObjects++;
-      const authoredPool = object.isInstancedMesh && object.userData?.spacefaceInstancePool;
+      const authoredPool = (object.isInstancedMesh || object.isBatchedMesh)
+        && object.userData?.spacefaceInstancePool;
       if (authoredPool) {
-        const count = Math.max(0, Number(object.count) || 0);
-        const capacity = Math.max(0, Number(object.instanceMatrix?.count) || 0);
+        const count = object.isBatchedMesh
+          ? Math.max(0, Number(object.userData?.spacefaceBatchPageVisibleInstances) || 0)
+          : Math.max(0, Number(object.count) || 0);
+        const capacity = object.isBatchedMesh
+          ? Math.max(0, Number(object.maxInstanceCount) || 0)
+          : Math.max(0, Number(object.instanceMatrix?.count) || 0);
         stats.authoredPools.totalChunks++;
         stats.authoredPools.capacity += capacity;
         stats.authoredPools.chunkCounts.push(count);
+        if (object.isBatchedMesh) {
+          stats.authoredPools.batchedPages++;
+          stats.authoredPools.geometrySlots += Math.max(0,
+            Number(object.userData?.spacefaceBatchPageGeometryCount) || 0);
+        }
         if (count > 0 && visible) {
           stats.authoredPools.visibleChunks++;
           stats.authoredPools.visibleInstances += count;
@@ -129,7 +143,9 @@ export function collectPerformanceSceneStructure({ state = globalThis.SF?.state,
       if (category === 'station') stats.stationPlaceHlod.stationVisibleMeshes++;
       if (category === 'place') stats.stationPlaceHlod.placeVisibleMeshes++;
 
-      const instanceCount = object.isInstancedMesh ? Math.max(0, Number(object.count) || 0) : 1;
+      const instanceCount = object.isBatchedMesh
+        ? Math.max(0, Number(object.userData?.spacefaceBatchPageVisibleInstances) || 0)
+        : (object.isInstancedMesh ? Math.max(0, Number(object.count) || 0) : 1);
       stats.visibleInstances += instanceCount;
       if (object.castShadow) stats.roles.shadowCaster++;
 
