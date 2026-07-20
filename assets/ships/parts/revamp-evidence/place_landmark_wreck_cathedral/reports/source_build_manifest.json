@@ -1,0 +1,163 @@
+{
+  "schema": "spaceface.wreckCathedralSourceBuild.v1",
+  "packet": "PQ-018",
+  "subslice": "source_asset",
+  "stateReached": "IMPLEMENTED",
+  "lifecycle": "SOURCE_GLB",
+  "terminal": false,
+  "runtimeWired": false,
+  "routeAccepted": false,
+  "assetId": "place_landmark_wreck_cathedral",
+  "baseCommit": "aec26203573e1d78a499ddbb3ce586420acd8c4f",
+  "blender": {
+    "version": "5.1.2",
+    "binary": "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe"
+  },
+  "deterministicBuildSeed": 18072026,
+  "script": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/author_wreck_cathedral.py",
+  "command": "\"C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe\" --background --python \"assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/author_wreck_cathedral.py\"",
+  "outputs": {
+    "blend": "assets/ships/parts/blender/place_landmark_wreck_cathedral.blend",
+    "glb": "assets/ships/parts/places/place_landmark_wreck_cathedral.glb"
+  },
+  "sourceHashes": {
+    "blend": "1bc08169c13b76c9caf2273c50d07be51a6ce84bacd8dca8831c4f9bec48ac13",
+    "glb": "f335935f9658bad0e721aceb5d66bb4c2f0457fe411442819b4a3455a00af704"
+  },
+  "lod": {
+    "lod0": {
+      "triangles": 91908,
+      "drawGroups": 8,
+      "objects": [
+        "LOD0_Hull",
+        "LOD0_ArmorScorched",
+        "LOD0_AccentConcordBlueBurned",
+        "LOD0_MechanicalExposed",
+        "LOD0_InteriorExposedAlloy",
+        "LOD0_ConduitCopper",
+        "LOD0_EmissiveColdEmergency",
+        "LOD0_EmissiveMarkerAmber"
+      ],
+      "bounds": {
+        "min": [
+          -309.4813,
+          -171.3587,
+          -115.6626
+        ],
+        "max": [
+          324.0211,
+          198.533,
+          166.9291
+        ],
+        "size": [
+          633.5024,
+          369.8917,
+          282.5917
+        ]
+      }
+    },
+    "lod1": {
+      "triangles": 34164,
+      "drawGroups": 8,
+      "objects": [
+        "LOD1_Hull",
+        "LOD1_ArmorScorched",
+        "LOD1_AccentConcordBlueBurned",
+        "LOD1_MechanicalExposed",
+        "LOD1_InteriorExposedAlloy",
+        "LOD1_ConduitCopper",
+        "LOD1_EmissiveColdEmergency",
+        "LOD1_EmissiveMarkerAmber"
+      ],
+      "bounds": {
+        "min": [
+          -309.4577,
+          -168.1374,
+          -111.9628
+        ],
+        "max": [
+          324.0436,
+          193.6835,
+          165.3456
+        ],
+        "size": [
+          633.5012,
+          361.821,
+          277.3084
+        ]
+      }
+    },
+    "lod2": {
+      "triangles": 8364,
+      "drawGroups": 8,
+      "objects": [
+        "LOD2_Hull",
+        "LOD2_ArmorScorched",
+        "LOD2_AccentConcordBlueBurned",
+        "LOD2_MechanicalExposed",
+        "LOD2_InteriorExposedAlloy",
+        "LOD2_ConduitCopper",
+        "LOD2_EmissiveColdEmergency",
+        "LOD2_EmissiveMarkerAmber"
+      ],
+      "bounds": {
+        "min": [
+          -309.4436,
+          -167.1235,
+          -111.4314
+        ],
+        "max": [
+          324.0654,
+          190.7414,
+          163.6681
+        ],
+        "size": [
+          633.509,
+          357.8649,
+          275.0994
+        ]
+      }
+    }
+  },
+  "flythroughEnvelopeM": {
+    "axis": "+X/-X",
+    "minimumClearWidth": 72.0,
+    "minimumClearHeight": 58.0,
+    "designedChannel": {
+      "y": [
+        -35.5,
+        35.5
+      ],
+      "z": [
+        -24.0,
+        34.0
+      ]
+    }
+  },
+  "flythroughClearanceProbe": {
+    "method": "75 deterministic BVH ray samples across a 64 m x 50 m inset of the 72 m x 58 m envelope",
+    "sampleCount": 75,
+    "hitCount": 0,
+    "pass": true,
+    "hits": []
+  },
+  "exporter": {
+    "path": "tools/blender/spaceface_export.py",
+    "diagnostics": []
+  },
+  "authorship": "project-original deterministic Blender construction; no external donor assets",
+  "constructionLogic": [
+    "keel, spine, frames, decks, armor and propulsion occupy coherent cruiser zones",
+    "catastrophic break behind bridge terminates decks and keels with directional torn structure",
+    "service machinery and conduit runs follow exposed interior deck and frame routes",
+    "partially burned blue Concord identification plates disappear near break and engine fire",
+    "one amber Marker remains visually and semantically unique"
+  ],
+  "knownDefects": [
+    "SOURCE_GLB only: release compression, manifest registration and runtime LOD policy are deferred",
+    "collision proxies and World Site component proxies are intentionally deferred to PQ-017/PQ-018 integration",
+    "no browser/Electron normal-route or measured zone-performance acceptance is claimed"
+  ],
+  "elapsedSeconds": 227.142,
+  "builtAt": "2026-07-20T09:50:45Z"
+}

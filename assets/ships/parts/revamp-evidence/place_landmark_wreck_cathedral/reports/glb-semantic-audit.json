@@ -1,0 +1,25 @@
+{
+  "schema": "spaceface.glbSemanticAudit.v1",
+  "assetId": "place_landmark_wreck_cathedral",
+  "glb": "assets/ships/parts/places/place_landmark_wreck_cathedral.glb",
+  "nodeCount": 40,
+  "meshCount": 24,
+  "materialCount": 8,
+  "textureCount": 26,
+  "requiredMarkers": [
+    "INTERACTION_HangarCavity",
+    "LOD0_ROOT",
+    "LOD1_ROOT",
+    "LOD2_ROOT",
+    "SALVAGE_ConduitBank",
+    "SALVAGE_EngineMachinery",
+    "SOCKET_Flythrough_Entry",
+    "SOCKET_Flythrough_Exit",
+    "SOCKET_TheMarker",
+    "ZONE_Bridge",
+    "ZONE_Propulsion"
+  ],
+  "missingMarkers": [],
+  "customPropertiesExported": true,
+  "pass": true
+}

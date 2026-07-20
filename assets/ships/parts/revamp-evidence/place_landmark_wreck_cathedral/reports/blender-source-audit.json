@@ -1,0 +1,24 @@
+{
+  "schema": "spaceface.blenderSourceAudit.v1",
+  "assetId": "place_landmark_wreck_cathedral",
+  "capturedAt": "2026-07-20T10:20:00Z",
+  "blenderVersion": "5.1.2",
+  "filepath": "assets/ships/parts/blender/place_landmark_wreck_cathedral.blend",
+  "saved": true,
+  "dirty": false,
+  "backupSidecars": [],
+  "missingExternalFiles": [],
+  "externalFilesChecked": 0,
+  "packedSourceImages": 26,
+  "datablocks": {
+    "collections": 1,
+    "images": 26,
+    "materials": 8,
+    "meshes": 24,
+    "objects": 40,
+    "scenes": 1
+  },
+  "scene": "Wreck Cathedral Source Asset",
+  "renderEngine": "BLENDER_EEVEE",
+  "inspection": "Live Blender MCP summary after final source save; externalFilesChecked is zero because all authored textures are packed datablocks."
+}
