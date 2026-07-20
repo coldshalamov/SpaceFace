@@ -275,6 +275,7 @@ export const routeFollower = {
       existing.engaged = true;
       existing.interruptReason = null;
       existing.armedLegIndex = null; // force a fresh arm for the leg we are resuming on
+      existing.handoffRequestedLegIndex = null; // ...and let it ask for its gate handoff again
       existing.status = ROUTE_EXECUTOR_STATUS.ACQUIRING;
       this._publish('resumed');
       return existing;
@@ -308,6 +309,7 @@ export const routeFollower = {
     executor.status = ROUTE_EXECUTOR_STATUS.INTERRUPTED;
     executor.interruptReason = String(reason || 'manual');
     executor.armedLegIndex = null;
+    executor.handoffRequestedLegIndex = null;
     executor.brakeMode = null;
     executor.handoffWU = null;
     this._releaseTravelDrive('interrupted');
@@ -519,6 +521,24 @@ export const routeFollower = {
     if (!executor || executor.engaged !== true) return;
     const status = payload && payload.status;
     if (status === 'arrived') {
+      // "Arrived" from the local autopilot means it reached the WAYPOINT it was armed with. For a
+      // sector-changing leg that waypoint is the GATE (see resolveLegTarget), not the destination —
+      // so treating it as leg completion declared the whole itinerary finished while the ship was
+      // still sitting in the origin sector, with zero jump receipts. Measured: executor
+      // status='arrived', executorClaimedArrived=true, ship in sector_helios_prime, jump receipts
+      // {chargeStart:0, start:0, arrive:0, sectorEnter:0}. That is precisely the fake-success this
+      // program exists to remove, and in its own centrepiece system.
+      //
+      // A sector-changing leg completes ONLY on a real `sector:enter` for its destination, which
+      // `_onSectorEnter` already handles. Reaching the gate is the cue to perform the handoff.
+      const legs = Array.isArray(executor.legs) ? executor.legs : [];
+      const leg = legs[executor.legIndex];
+      const currentSectorId = this.state && this.state.world && this.state.world.currentSectorId;
+      const needsSectorChange = !!(leg && leg.toSectorId && leg.toSectorId !== currentSectorId);
+      if (needsSectorChange) {
+        this._requestGateHandoff(executor, leg);
+        return;
+      }
       this._advanceLeg('autopilot-arrived');
       return;
     }
@@ -564,10 +584,30 @@ export const routeFollower = {
     }
     executor.legIndex += 1;
     executor.armedLegIndex = null;
+    executor.handoffRequestedLegIndex = null;
     executor.brakeMode = null;
     executor.handoffWU = null;
     this._setStatus(executor, ROUTE_EXECUTOR_STATUS.ACQUIRING);
     this._publish('leg-advanced', { reason });
+  },
+
+  /**
+   * The gate handoff. The ship has flown to the gate; ask the world to make the transition through
+   * the SAME public seam the chart's jump control uses (`world:requestJump` with `via:'gate'`), so
+   * this is the shipped path rather than a second implementation — the follower still sequences and
+   * delegates (ADR D6) and adds no traversal physics of its own.
+   *
+   * Edge-triggered per leg. `nav:autopilot` can report 'arrived' repeatedly while the ship loiters
+   * in the arrival radius, and re-requesting a jump every one of those ticks would fight the jump
+   * charge it just started. The latch clears on leg advance, on interrupt and on disengage, so a
+   * resumed or replanned leg can always ask again.
+   */
+  _requestGateHandoff(executor, leg) {
+    if (executor.handoffRequestedLegIndex === executor.legIndex) return;
+    executor.handoffRequestedLegIndex = executor.legIndex;
+    this._setStatus(executor, ROUTE_EXECUTOR_STATUS.TRANSITING);
+    this._emit('world:requestJump', { targetSectorId: leg.toSectorId, via: 'gate' });
+    this._publish('gate-handoff-requested', { toSectorId: leg.toSectorId });
   },
 
   _complete(reason = 'arrived') {
@@ -577,6 +617,7 @@ export const routeFollower = {
     executor.engaged = false;
     executor.status = ROUTE_EXECUTOR_STATUS.ARRIVED;
     executor.armedLegIndex = null;
+    executor.handoffRequestedLegIndex = null;
     executor.interruptReason = null;
     this._releaseTravelDrive('arrived');
     this._publish('arrived', { reason });

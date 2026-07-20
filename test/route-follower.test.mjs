@@ -202,26 +202,79 @@ test('leg endpoints resolve to canonical GLOBAL atlas positions, not sector-loca
 
 // ── leg advance ───────────────────────────────────────────────────────────────────────────────────
 
-test('arrival at a leg endpoint advances to the next leg', () => {
+// REWRITTEN 2026-07-19, because the previous version pinned a DEFECT.
+//
+// It asserted that the local autopilot reporting 'arrived' advances the leg, full stop. But for a
+// sector-changing leg the autopilot's waypoint is the GATE (resolveLegTarget prefers the gate node),
+// not the destination — so "the autopilot arrived" means "the ship reached the doorway", not "the
+// ship is there". Under the old rule a single-leg cross-sector route was declared COMPLETE while the
+// ship sat in the origin sector: the live journey measured executor status='arrived',
+// executorClaimedArrived=true, ship in sector_helios_prime, and jump receipts
+// {chargeStart:0, start:0, arrive:0, sectorEnter:0}. A route that never moved reported success.
+//
+// This test now models what actually has to happen, and is STRICTER than what it replaced: reaching
+// the gate must NOT advance, it must request the handoff, and only a real sector entry advances.
+// The module's own header always said so — "sector transitions -> the existing gate handoff, observed
+// via sector:enter" — so the old assertion contradicted the design it was testing.
+test('reaching the GATE requests the handoff; only a real sector entry advances the leg', () => {
   const route = routeFromChain(CHAIN);
   const h = makeHarness({ route, autoTravel: true });
   h.sys.engage({});
   h.sys.update(1 / 60, h.state);
   assert.equal(h.state.nav.executor.legIndex, 0);
   const firstTarget = { ...h.state.nav.autopilot.target };
+  const legOneDestination = h.state.nav.executor.legs[0].toSectorId;
+  h.bus.clear();
 
-  // The delegated autopilot reports arrival exactly as flightV3.stopAutopilot(…, 'arrived') does.
+  // The delegated autopilot reports arrival exactly as flightV3.stopAutopilot(…, 'arrived') does —
+  // i.e. the ship is at the gate. The world has NOT changed sector.
   h.state.nav.autopilot.active = false;
   h.state.nav.autopilot.status = 'arrived';
   h.bus.emit('nav:autopilot', h.state.nav.autopilot);
 
-  assert.equal(h.state.nav.executor.legIndex, 1, 'arrival advances the leg');
+  assert.equal(h.state.nav.executor.legIndex, 0,
+    'reaching the gate must NOT advance the leg — the ship has not changed sector yet');
+  const jumps = h.bus.of('world:requestJump');
+  assert.equal(jumps.length, 1, 'reaching the gate requests exactly one gate handoff');
+  assert.equal(jumps[0].payload.targetSectorId, legOneDestination, 'the handoff targets the leg destination');
+  assert.equal(jumps[0].payload.via, 'gate', 'the handoff goes through the shipped public gate seam');
+
+  // Repeated 'arrived' reports while loitering in the arrival radius must not spam the jump request,
+  // which would fight the charge it just started.
+  h.bus.emit('nav:autopilot', h.state.nav.autopilot);
+  assert.equal(h.bus.of('world:requestJump').length, 1,
+    'the handoff request is edge-triggered per leg, not re-sent every arrival report');
+
+  // Now the jump actually completes: the world changes sector and announces it.
+  h.state.world.currentSectorId = legOneDestination;
+  h.bus.emit('sector:enter', { sectorId: legOneDestination });
+
+  assert.equal(h.state.nav.executor.legIndex, 1, 'a real sector entry advances the leg');
   assert.equal(h.state.nav.executor.status, ROUTE_EXECUTOR_STATUS.ACQUIRING);
 
   // The next tick re-arms for the NEW leg (edge-triggered by the changed legIndex).
   h.sys.update(1 / 60, h.state);
   assert.equal(h.state.nav.autopilot.active, true, 'the next leg re-arms the autopilot');
   assert.notDeepEqual(h.state.nav.autopilot.target, firstTarget, 'a new leg targets a new endpoint');
+});
+
+test('an intra-sector leg still advances on autopilot arrival — the gate rule is not universal', () => {
+  const route = routeFromChain(CHAIN);
+  const h = makeHarness({ route, autoTravel: true });
+  h.sys.engage({});
+  h.sys.update(1 / 60, h.state);
+  h.bus.clear();
+
+  // Pretend the ship is ALREADY in the leg's destination sector, which is what a final approach
+  // within one sector looks like. Arrival is then genuine arrival, not a doorway.
+  h.state.world.currentSectorId = h.state.nav.executor.legs[0].toSectorId;
+  h.state.nav.autopilot.active = false;
+  h.state.nav.autopilot.status = 'arrived';
+  h.bus.emit('nav:autopilot', h.state.nav.autopilot);
+
+  assert.equal(h.state.nav.executor.legIndex, 1, 'arrival inside the destination sector advances');
+  assert.equal(h.bus.of('world:requestJump').length, 0,
+    'no gate handoff is requested for a leg that needs no sector change');
 });
 
 test('a gate handoff into the leg destination sector also advances the leg', () => {
