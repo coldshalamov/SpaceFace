@@ -485,7 +485,7 @@
       "id": "PQ-004",
       "priority": 4,
       "title": "Intent-aware acquisition and truthful pre-latch preview",
-      "state": "planned",
+      "state": "integrated",
       "canonical": [
         "T02",
         "T03",
@@ -513,7 +513,10 @@
         "clutter",
         "accessibility"
       ],
-      "brief": "Extend the existing scorer with stable candidate intent and a pre-latch cue that states what will attach and why, without cursor chasing or flicker."
+      "brief": "Extend the existing scorer with stable candidate intent and a pre-latch cue that states what will attach and why, without cursor chasing or flicker.",
+      "integratedCommit": "87f523a9",
+      "acceptanceRef": "03_LIVE_ACCEPTANCE_MATRIX.md#program-batch-pq-001pq-010",
+      "receipt": "preview===latch proven live (previewMatched:true); 29/29 suites; clutter >=19/20; target-scoring + auto-target green; a11y/WCAG green; sim gates hashEqual; ROUTE_ACCEPTED browser evidence"
     },
     {
       "id": "PQ-005",
