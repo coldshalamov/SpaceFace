@@ -79,6 +79,38 @@ const PREFERRED_BONUS = 0.15;
 const ALLY_FACTOR = 0.35;
 const OWNERSHIP_GATED = Object.freeze(new Set(['own', 'station']));
 
+// PQ-004 contextual profiles. Closeness, turn direction, and cursor precision are the three
+// strongest authored signals in every profile; the remaining axes explain *why this use* of the
+// Massline is likely without turning selection into one universal weighted soup.
+const PRECISE_CURSOR_THRESHOLD = 0.82;
+// A cursor paint is explicit only when it separates one candidate from its nearest overlap.
+// Otherwise the named context (hostile, route, tow, etc.) must break the ambiguity truthfully.
+const PRECISE_CURSOR_SEPARATION = 0.08;
+const MASSIVE_ANCHOR_MIN_MASS = 1800;
+const CONTEXT_PROFILES = Object.freeze({
+  'precision-pick': Object.freeze({
+    label: 'PICK',
+    weights: Object.freeze({ cursor: 0.34, proximity: 0.23, turn: 0.19, authority: 0.10, approach: 0.06, category: 0.04, base: 0.04 }),
+  }),
+  'massive-anchor-sling': Object.freeze({
+    label: 'ORBIT',
+    weights: Object.freeze({ turn: 0.30, proximity: 0.23, cursor: 0.19, mass: 0.12, approach: 0.06, category: 0.04, base: 0.03, authority: 0.03 }),
+  }),
+  'hostile-flyby': Object.freeze({
+    label: 'INTERCEPT',
+    weights: Object.freeze({ turn: 0.26, proximity: 0.23, cursor: 0.20, approach: 0.11, authority: 0.08, category: 0.07, base: 0.05 }),
+  }),
+  'tow/salvage': Object.freeze({
+    label: 'TOW',
+    weights: Object.freeze({ cursor: 0.31, proximity: 0.24, turn: 0.19, category: 0.10, authority: 0.08, approach: 0.05, base: 0.03 }),
+  }),
+  'route-anchor': Object.freeze({
+    label: 'ROUTE',
+    weights: Object.freeze({ turn: 0.26, proximity: 0.23, cursor: 0.20, authority: 0.14, approach: 0.07, mass: 0.05, category: 0.03, base: 0.02 }),
+  }),
+});
+const TOW_TYPES = Object.freeze(new Set(['wreck', 'payload', 'pickup']));
+
 /**
  * Score one candidate target as a massline (tether/slingshot) anchor.
  *
@@ -152,6 +184,13 @@ export function scoreMasslineTarget(player, target, opts = {}) {
     score = legacyWeighted + latchedBonus + preferredBonus;
   }
 
+  const context = normalizeContext(opts.context);
+  let contextReason = null;
+  if (context) {
+    contextReason = scoreContext(player, target, opts, context, intent, distance, reachLimit, score);
+    score = contextReason.score;
+  }
+
   const ownershipFactor = ownership === 'ally' ? ALLY_FACTOR : 1;
   score = clamp01(score * ownershipFactor);
 
@@ -159,8 +198,285 @@ export function scoreMasslineTarget(player, target, opts = {}) {
   if (intent.present) reasons.intent = intent.alignment;
   if (preferredBonus > 0) reasons.preferredBonus = preferredBonus;
   if (ownership) reasons.ownership = ownership;
+  if (contextReason) reasons.context = contextReason.reason;
 
   return { id, score, rating: ratingFor(score), reasons };
+}
+
+function scoreContext(player, target, opts, context, intent, distance, reachLimit, legacyScore) {
+  const profile = CONTEXT_PROFILES[context.id];
+  const surfaceDistance = Math.max(0, distance - nonNegativeFinite(target && target.radius, 0));
+  const axes = {
+    cursor: clamp01(finite(opts.cursorPrecision, 0)),
+    proximity: clamp01(1 - surfaceDistance / Math.max(1, reachLimit)),
+    turn: intent.present ? intent.alignment : 0.5,
+    approach: scoreApproach(player, target, distance),
+    mass: scoreAnchorMass(target),
+    category: contextCategoryMatch(context.id, target, opts),
+    authority: contextAuthorityMatch(context, target),
+    base: clamp01(legacyScore),
+  };
+  let score = 0;
+  const contributions = {};
+  for (const [axis, weight] of Object.entries(profile.weights)) {
+    const contribution = weight * clamp01(finite(axes[axis], 0));
+    contributions[axis] = contribution;
+    score += contribution;
+  }
+  const leadingSignals = Object.entries(profile.weights)
+    .sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : 1))
+    .slice(0, 3)
+    .map(([axis]) => axis);
+  return {
+    score: clamp01(score),
+    reason: {
+      id: context.id,
+      label: profile.label,
+      source: context.source,
+      axes,
+      contributions,
+      leadingSignals,
+      explicit: context.explicitId != null && target.id === context.explicitId,
+    },
+  };
+}
+
+function scoreApproach(player, target, distance) {
+  const px = finite(player && player.pos && player.pos.x, 0);
+  const pz = finite(player && player.pos && player.pos.z, 0);
+  const tx = finite(target && target.pos && target.pos.x, 0);
+  const tz = finite(target && target.pos && target.pos.z, 0);
+  const rvx = finite(target && target.vel && target.vel.x, 0)
+    - finite(player && player.vel && player.vel.x, 0);
+  const rvz = finite(target && target.vel && target.vel.z, 0)
+    - finite(player && player.vel && player.vel.z, 0);
+  const dx = tx - px;
+  const dz = tz - pz;
+  const closing = distance > 1e-6 ? -(dx * rvx + dz * rvz) / distance : 0;
+  const relSpeedSq = rvx * rvx + rvz * rvz;
+  const tca = relSpeedSq > 1e-6 ? -(dx * rvx + dz * rvz) / relSpeedSq : Infinity;
+  const closingScore = clamp01(closing / 120);
+  const timeScore = tca >= 0 && tca <= 4 ? 1 - tca / 4 : 0;
+  return clamp01(closingScore * 0.55 + timeScore * 0.45);
+}
+
+function scoreAnchorMass(target) {
+  const mass = positiveFinite(target && target.mass, 0);
+  if (!(mass > 0)) return 0.35;
+  if (mass >= MASSIVE_ANCHOR_MIN_MASS) return 1;
+  return clamp01(Math.sqrt(mass / MASSIVE_ANCHOR_MIN_MASS));
+}
+
+function contextCategoryMatch(contextId, target, opts) {
+  if (contextId === 'tow/salvage') return isTowCandidate(target) ? 1 : 0;
+  if (contextId === 'hostile-flyby') return opts.hostile ? 1 : 0;
+  if (contextId === 'massive-anchor-sling') return isMassiveAnchor(target) ? 1 : 0.15;
+  if (contextId === 'route-anchor') return target && target.type === 'asteroid' ? 1 : 0.6;
+  return 0.5;
+}
+
+function contextAuthorityMatch(context, target) {
+  if (!context || !target) return 0;
+  if (context.explicitId != null) return target.id === context.explicitId ? 1 : 0;
+  if (context.focusId != null) return target.id === context.focusId ? 1 : 0;
+  if (context.routeId != null) return target.id === context.routeId ? 1 : 0;
+  return 0;
+}
+
+function normalizeContext(value) {
+  const id = typeof value === 'string' ? value : value && value.id;
+  const profile = CONTEXT_PROFILES[id];
+  if (!profile) return null;
+  const source = value && typeof value === 'object' ? value.source : null;
+  return {
+    id,
+    label: profile.label,
+    source: typeof source === 'string' ? source : 'context',
+    explicitId: value && typeof value === 'object' ? value.explicitId : null,
+    focusId: value && typeof value === 'object' ? value.focusId : null,
+    routeId: value && typeof value === 'object' ? value.routeId : null,
+    forceId: value && typeof value === 'object' ? value.forceId : null,
+  };
+}
+
+function contextRecord(id, exactId, source) {
+  const profile = CONTEXT_PROFILES[id] || CONTEXT_PROFILES['precision-pick'];
+  return Object.freeze({
+    id,
+    label: profile.label,
+    source,
+    explicitId: source === 'cursor-paint' ? exactId : null,
+    focusId: source === 'flyby-focus' ? exactId : null,
+    routeId: source === 'route-anchor' ? exactId : null,
+    forceId: exactId,
+  });
+}
+
+function candidateById(candidates, id) {
+  if (id == null) return null;
+  return candidates.find((candidate) => candidate && candidate.id === id) || null;
+}
+
+function candidateIntentAlignment(player, target, intentDir) {
+  if (!player || !player.pos || !target || !target.pos) return 0.5;
+  const dx = finite(target.pos.x, 0) - finite(player.pos.x, 0);
+  const dz = finite(target.pos.z, 0) - finite(player.pos.z, 0);
+  const distance = Math.hypot(dx, dz);
+  if (!(distance > 1e-6)) return 0;
+  const intent = readIntentAlignment(intentDir, dx, dz, distance);
+  return intent.present ? intent.alignment : 0.5;
+}
+
+function isMassiveAnchor(target) {
+  if (!target) return false;
+  const anchorType = target.type === 'asteroid' || target.type === 'station'
+    || target.data?.masslineAnchor === true;
+  return anchorType && positiveFinite(target.mass, 0) >= MASSIVE_ANCHOR_MIN_MASS;
+}
+
+function isTowCandidate(target) {
+  if (!target) return false;
+  return TOW_TYPES.has(target.type)
+    || target.data?.towable === true
+    || target.data?.fractureChunk === true
+    || target.data?.bulkHaul === true;
+}
+
+function selectNow(record, time) {
+  return {
+    selected: record,
+    memory: {
+      selectedId: record && record.id,
+      selectedSince: time,
+      challengerId: null,
+      challengerSince: null,
+    },
+  };
+}
+
+/**
+ * Pure PQ-004 intent classifier. It names the selection grammar before ranking so callers and the
+ * HUD can explain the same decision. Focus is an exact lease; a genuinely precise cursor paint is
+ * next; route, turn-side anchor, hostile flyby, and tow context follow in that order.
+ */
+export function classifyMasslineIntent(player, candidates, opts = {}) {
+  const list = Array.isArray(candidates) ? candidates.filter(Boolean) : [];
+  const focus = candidateById(list, opts.focusId);
+  if (focus) return contextRecord('hostile-flyby', focus.id, 'flyby-focus');
+
+  const cursorPrecisionOf = typeof opts.cursorPrecisionOf === 'function'
+    ? opts.cursorPrecisionOf : () => 0;
+  let precise = null;
+  let preciseValue = -Infinity;
+  let runnerUpPrecision = -Infinity;
+  for (const candidate of list) {
+    const value = clamp01(finite(cursorPrecisionOf(candidate), 0));
+    if (value > preciseValue || (value === preciseValue && precise && compareId(candidate.id, precise.id) < 0)) {
+      runnerUpPrecision = preciseValue;
+      precise = candidate;
+      preciseValue = value;
+    } else if (value > runnerUpPrecision) {
+      runnerUpPrecision = value;
+    }
+  }
+  const isUnambiguousPaint = precise
+    && preciseValue >= PRECISE_CURSOR_THRESHOLD
+    && (runnerUpPrecision < 0 || preciseValue - runnerUpPrecision >= PRECISE_CURSOR_SEPARATION);
+  if (isUnambiguousPaint) {
+    const id = isTowCandidate(precise) ? 'tow/salvage' : 'precision-pick';
+    return contextRecord(id, precise.id, 'cursor-paint');
+  }
+
+  const route = candidateById(list, opts.routeId);
+  if (route) return contextRecord('route-anchor', route.id, 'route-anchor');
+
+  const turnIntent = finite(opts.turnIntent, 0);
+  if (Math.abs(turnIntent) >= 0.2) {
+    let bestAnchor = null;
+    let bestAlignment = -Infinity;
+    for (const candidate of list) {
+      if (!isMassiveAnchor(candidate)) continue;
+      const alignment = candidateIntentAlignment(player, candidate, opts.intentDir);
+      if (alignment > bestAlignment
+          || (alignment === bestAlignment && bestAnchor && compareId(candidate.id, bestAnchor.id) < 0)) {
+        bestAnchor = candidate;
+        bestAlignment = alignment;
+      }
+    }
+    if (bestAnchor && bestAlignment >= 0.62) {
+      return contextRecord('massive-anchor-sling', null, 'turn-side-anchor');
+    }
+  }
+
+  const isHostile = typeof opts.isHostile === 'function' ? opts.isHostile : () => false;
+  const hostile = list.find((candidate) => isHostile(candidate));
+  if (hostile) return contextRecord('hostile-flyby', null, 'closing-hostile');
+
+  const tow = list.find(isTowCandidate);
+  if (tow) return contextRecord('tow/salvage', null, 'towable-present');
+  return contextRecord('precision-pick', null, 'general-pick');
+}
+
+/**
+ * Pure Schmitt-style candidate memory. A challenger must beat the visible candidate by a margin
+ * for 200 ms. Exact leases, precise paint, invalidation, and deliberate reversal may force an
+ * immediate switch so hysteresis never feels like input lag.
+ */
+export function stabilizeMasslineSelection(ranked, previousMemory, now, opts = {}) {
+  const list = Array.isArray(ranked) ? ranked.filter(Boolean) : [];
+  if (!list.length) return { selected: null, memory: null };
+  const time = finite(now, 0);
+  const forceId = opts.forceId;
+  const forced = forceId != null ? list.find((record) => record.id === forceId) : null;
+  const eligible = list.filter((record) => record.score > 0);
+  const best = forced || eligible[0] || list[0];
+  const previous = previousMemory && previousMemory.selectedId != null
+    ? list.find((record) => record.id === previousMemory.selectedId)
+    : null;
+
+  if (!previous || previous.score <= 0 || opts.forceSwitch === true || forced) {
+    return selectNow(best, time);
+  }
+  if (best.id === previous.id) {
+    return {
+      selected: previous,
+      memory: {
+        selectedId: previous.id,
+        selectedSince: finite(previousMemory.selectedSince, time),
+        challengerId: null,
+        challengerSince: null,
+      },
+    };
+  }
+
+  const margin = nonNegativeFinite(opts.switchMargin, 0.08);
+  const holdS = nonNegativeFinite(opts.holdS, 0.2);
+  if (!(best.score >= previous.score + margin)) {
+    return {
+      selected: previous,
+      memory: {
+        selectedId: previous.id,
+        selectedSince: finite(previousMemory.selectedSince, time),
+        challengerId: null,
+        challengerSince: null,
+      },
+    };
+  }
+
+  const sameChallenger = previousMemory.challengerId === best.id;
+  const challengerSince = sameChallenger
+    ? finite(previousMemory.challengerSince, time)
+    : time;
+  if (time - challengerSince >= holdS) return selectNow(best, time);
+  return {
+    selected: previous,
+    memory: {
+      selectedId: previous.id,
+      selectedSince: finite(previousMemory.selectedSince, time),
+      challengerId: best.id,
+      challengerSince,
+    },
+  };
 }
 
 /**
@@ -195,6 +511,7 @@ export function rankMasslineTargets(player, candidates, opts = {}) {
   const isObstructedFn = typeof opts.isObstructed === 'function' ? opts.isObstructed : null;
   const ownershipOfFn = typeof opts.ownershipOf === 'function' ? opts.ownershipOf : null;
   const reachAllowanceOfFn = typeof opts.reachAllowanceOf === 'function' ? opts.reachAllowanceOf : null;
+  const cursorPrecisionOfFn = typeof opts.cursorPrecisionOf === 'function' ? opts.cursorPrecisionOf : null;
   const out = [];
   for (const c of candidates) {
     const subOpts = { ...opts };
@@ -209,6 +526,7 @@ export function rankMasslineTargets(player, candidates, opts = {}) {
       const a = reachAllowanceOfFn(c);
       if (Number.isFinite(a) && a >= 0) subOpts.reachAllowance = a;
     }
+    if (cursorPrecisionOfFn) subOpts.cursorPrecision = clamp01(finite(cursorPrecisionOfFn(c), 0));
     const rec = scoreMasslineTarget(player, c, subOpts);
     if (rec) out.push(rec);
   }

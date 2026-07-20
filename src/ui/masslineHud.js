@@ -28,6 +28,26 @@ const CSS = `
 #sf-ml2 { position:absolute; inset:0; pointer-events:none; z-index:6; }
 #sf-ml2 .ml2-mark { position:absolute; left:0; top:0; will-change:transform;
   transition:transform 60ms linear; }
+#sf-ml2 .ml2-preview-link { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+#sf-ml2 .ml2-preview-line { stroke:rgba(125,224,255,0.62); stroke-width:1.5; stroke-dasharray:4 6;
+  vector-effect:non-scaling-stroke; }
+#sf-ml2 .ml2-preview { position:absolute; left:0; top:0; min-width:94px; min-height:42px;
+  transform:translate3d(-9999px,-9999px,0); padding:7px 9px 6px 30px;
+  border:1px solid rgba(125,224,255,0.88); border-left-width:3px;
+  background:linear-gradient(90deg,rgba(4,14,24,0.82),rgba(4,14,24,0.36));
+  clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));
+  color:#e5f8ff; text-shadow:0 1px 2px #02060b; white-space:nowrap;
+  font:650 10px/1.28 system-ui,sans-serif; letter-spacing:0.075em;
+  animation:ml2preview 1.3s ease-in-out infinite; }
+#sf-ml2 .ml2-preview::before { content:''; position:absolute; left:9px; top:11px; width:11px; height:11px;
+  border:2px solid currentColor; transform:rotate(45deg); }
+#sf-ml2 .ml2-preview.ml2-preview-blocked,
+#sf-ml2 .ml2-preview.ml2-preview-protected,
+#sf-ml2 .ml2-preview.ml2-preview-out-of-range,
+#sf-ml2 .ml2-preview.ml2-preview-invalid { border-style:dashed; color:#ffd08a; }
+#sf-ml2 .ml2-preview.ml2-preview-offscreen { border-style:dashed; }
+#sf-ml2 .ml2-preview.ml2-preview-protected::before { border-radius:50%; transform:none; }
+@keyframes ml2preview { 0%,100% { opacity:0.78; } 50% { opacity:1; } }
 #sf-ml2 .ml2-throw { width:26px; height:26px; margin:-13px 0 0 -13px; }
 #sf-ml2 .ml2-throw .ml2-diamond { width:100%; height:100%; transform:rotate(45deg);
   border:2px solid var(--ml2-c,#5fd7ff); box-shadow:0 0 10px var(--ml2-c,#5fd7ff);
@@ -53,9 +73,15 @@ const CSS = `
 #sf-ml2 .ml2-pill.ml2-cloak.ml2-on { border-color:#9f8bff; color:#efeaff; }
 #sf-ml2.ml2-reduced-motion .ml2-mark { transition:none; }
 #sf-ml2.ml2-reduced-motion .ml2-throw.ml2-hot .ml2-diamond { animation:none; }
+#sf-ml2.ml2-reduced-motion .ml2-preview { animation:none; opacity:1; }
 @media (prefers-reduced-motion: reduce) {
   #sf-ml2 .ml2-mark { transition:none; }
   #sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { animation:none; }
+  #sf-ml2 .ml2-preview { animation:none; opacity:1; }
+}
+@media (forced-colors: active) {
+  #sf-ml2 .ml2-preview { color:CanvasText; background:Canvas; border-color:CanvasText; forced-color-adjust:auto; }
+  #sf-ml2 .ml2-preview-line { stroke:CanvasText; }
 }
 `;
 
@@ -91,10 +117,65 @@ export const masslineHud = {
       || !!(state.settings && state.settings.accessibility
         && state.settings.accessibility.motionPreference === 'reduce');
     dom.root.classList.toggle('ml2-reduced-motion', reducedMotion);
+    this._updateAcquisitionPreview(dom, state, player, w2s);
     this._updateThrowMark(dom, ml2.throw, state, w2s);
     this._updateSelfMark(dom, ml2.throw, state, w2s);
     this._updateCloakRing(dom, ml2.cloak, player, w2s);
     this._updateMeters(dom, ml2);
+  },
+
+  _updateAcquisitionPreview(dom, state, player, w2s) {
+    const receipt = state.masslineAcquisition;
+    const selected = receipt && receipt.selected;
+    const tethered = !!(state.player && state.player.tether && state.player.tether.active);
+    if (!selected || tethered) {
+      dom.previewEl.style.display = 'none';
+      dom.previewSvg.style.display = 'none';
+      return;
+    }
+    const target = state.entities && state.entities.get ? state.entities.get(selected.targetId) : null;
+    if (!target || !target.pos) {
+      dom.previewEl.style.display = 'none';
+      dom.previewSvg.style.display = 'none';
+      return;
+    }
+    const targetScreen = w2s({ x: target.pos.x, y: 0, z: target.pos.z });
+    const playerScreen = w2s({ x: player.pos.x, y: 0, z: player.pos.z });
+    if (!targetScreen || !playerScreen
+        || !Number.isFinite(targetScreen.x) || !Number.isFinite(targetScreen.y)
+        || !Number.isFinite(playerScreen.x) || !Number.isFinite(playerScreen.y)) {
+      dom.previewEl.style.display = 'none';
+      dom.previewSvg.style.display = 'none';
+      return;
+    }
+
+    const viewportWidth = viewportExtent('innerWidth', 'clientWidth', 1440);
+    const viewportHeight = viewportExtent('innerHeight', 'clientHeight', 900);
+    const offscreen = !targetScreen.onScreen;
+    const cueX = offscreen ? clampRange(targetScreen.x, 30, viewportWidth - 30) : targetScreen.x;
+    const cueY = offscreen ? clampRange(targetScreen.y, 30, viewportHeight - 30) : targetScreen.y;
+    const labelX = cueX > viewportWidth * 0.62 ? cueX - 154 : cueX + 18;
+    const labelY = clampRange(cueY - 22, 8, viewportHeight - 58);
+    const confidence = Math.round(clamp01(selected.confidence) * 100);
+    const status = previewStatusCopy(selected.status, selected.reason);
+    const intent = String(selected.intentLabel || selected.context || 'PICK').toUpperCase();
+    const label = String(selected.targetLabel || selected.targetType || 'Target');
+    dom.previewEl.style.display = 'block';
+    dom.previewEl.style.transform = `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`;
+    dom.previewEl.textContent = `${label} · ${intent} · ${confidence}% · ${status}`;
+    dom.previewEl.setAttribute('aria-label', `Massline ${intent} ${label}, ${confidence} percent, ${status.toLowerCase()}${offscreen ? ', offscreen' : ''}`);
+    dom.previewEl.setAttribute('data-receipt-id', String(receipt.id || ''));
+    dom.previewEl.setAttribute('data-target-id', String(selected.targetId));
+    dom.previewEl.classList.toggle('ml2-preview-offscreen', offscreen);
+    for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
+      dom.previewEl.classList.toggle(`ml2-preview-${name}`, selected.status === name);
+    }
+
+    dom.previewSvg.style.display = 'block';
+    dom.previewLine.setAttribute('x1', String(Math.round(playerScreen.x)));
+    dom.previewLine.setAttribute('y1', String(Math.round(playerScreen.y)));
+    dom.previewLine.setAttribute('x2', String(Math.round(cueX)));
+    dom.previewLine.setAttribute('y2', String(Math.round(cueY)));
   },
 
   _updateThrowMark(dom, throwState, state, w2s) {
@@ -172,6 +253,8 @@ export const masslineHud = {
     dom.throwEl.style.display = 'none';
     dom.selfEl.style.display = 'none';
     dom.ringSvg.style.display = 'none';
+    dom.previewEl.style.display = 'none';
+    dom.previewSvg.style.display = 'none';
     dom.btPill.style.display = 'none';
     dom.ckPill.style.display = 'none';
   },
@@ -188,6 +271,22 @@ export const masslineHud = {
     }
     const root = document.createElement('div');
     root.id = 'sf-ml2';
+
+    const previewSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    previewSvg.setAttribute('class', 'ml2-preview-link');
+    previewSvg.style.display = 'none';
+    const previewLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    previewLine.setAttribute('class', 'ml2-preview-line');
+    previewSvg.appendChild(previewLine);
+    root.appendChild(previewSvg);
+
+    const previewEl = document.createElement('div');
+    previewEl.className = 'ml2-preview';
+    previewEl.style.display = 'none';
+    previewEl.setAttribute('role', 'status');
+    previewEl.setAttribute('aria-live', 'polite');
+    previewEl.setAttribute('aria-atomic', 'true');
+    root.appendChild(previewEl);
 
     const throwEl = document.createElement('div');
     throwEl.className = 'ml2-mark ml2-throw';
@@ -237,7 +336,7 @@ export const masslineHud = {
 
     host.appendChild(root);
     this._dom = {
-      root, throwEl, selfEl, ringSvg, ringCircle,
+      root, previewEl, previewSvg, previewLine, throwEl, selfEl, ringSvg, ringCircle,
       btPill: bt.pill, btFill: bt.bar, ckPill: ck.pill, ckFill: ck.bar,
     };
     return this._dom;
@@ -251,6 +350,30 @@ function rampColor(errorRad, tolRad, hot) {
   const frac = clamp01(Math.abs(Number(errorRad) || Math.PI) / (tol * 6)); // 0 = nearly there
   const hue = 38 + (195 - 38) * frac;   // 38 amber .. 195 cyan
   return `hsl(${Math.round(hue)}, 95%, 62%)`;
+}
+
+function previewStatusCopy(status, reason) {
+  if (status === 'ready') return 'READY';
+  if (status === 'protected' || reason === 'protected') return 'PROTECTED';
+  if (status === 'blocked' || reason === 'blocked') return 'LINE BLOCKED';
+  if (status === 'out-of-range' || reason === 'out-of-range') return 'OUT OF RANGE';
+  if (status === 'cooldown' || reason === 'cooldown') return 'COOLDOWN';
+  if (reason === 'target-lost') return 'TARGET LOST';
+  if (reason === 'preview-stale') return 'REACQUIRE';
+  return 'UNAVAILABLE';
+}
+
+function viewportExtent(windowKey, documentKey, fallback) {
+  const fromWindow = typeof window !== 'undefined' ? Number(window[windowKey]) : 0;
+  if (fromWindow > 0) return fromWindow;
+  const fromDocument = typeof document !== 'undefined'
+    ? Number(document.documentElement && document.documentElement[documentKey])
+    : 0;
+  return fromDocument > 0 ? fromDocument : fallback;
+}
+
+function clampRange(value, min, max) {
+  return Math.max(min, Math.min(max, finite(value)));
 }
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }

@@ -22,8 +22,8 @@ const REEL_IN_PER_TICK = -46 * DT;
 await assertGameplaySlingshot();
 await assertCursorTetherTargeting();
 await assertNonCollidingPayloadAcquisitionWithActiveSpatialHash();
-await assertLockedHostileTetherTargeting();
-await assertNearestTetherMode();
+await assertWeaponLockDoesNotStealMasslinePaint();
+await assertIntentAwareAcquisitionSupersedesNearestFallback();
 await assertPickupMasslinePull();
 await assertInitialLatchReleaseDoesNotCut();
 await assertShortTapCutsAfterDelay();
@@ -230,7 +230,7 @@ async function assertNonCollidingPayloadAcquisitionWithActiveSpatialHash() {
     'active spatial hash must not hide an aimed non-colliding payload');
 }
 
-async function assertLockedHostileTetherTargeting() {
+async function assertWeaponLockDoesNotStealMasslinePaint() {
   const harness = createHarness();
   const { state, helpers, runtime, events } = harness;
 
@@ -265,12 +265,14 @@ async function assertLockedHostileTetherTargeting() {
   state.input.aimAngle = Math.atan2(nearbyRock.pos.z - player.pos.z, nearbyRock.pos.x - player.pos.x);
   fireTetherOnce(harness);
 
-  assert.equal(events.latched.length, 1, 'locked-hostile tether should latch exactly once');
-  assert.equal(events.latched[0].targetId, lockedHostile.id,
-    `locked-hostile tether should choose the selected enemy, not the nearer rock ${nearbyRock.id}`);
+  assert.equal(events.latched.length, 1, 'Massline cursor paint should latch exactly once');
+  assert.equal(events.latched[0].targetId, nearbyRock.id,
+    `weapon-selected hostile ${lockedHostile.id} must not steal a precise Massline paint`);
+  assert.equal(events.latched[0].previewMatched, true,
+    'the actual latch must consume the pre-latch receipt target');
 }
 
-async function assertNearestTetherMode() {
+async function assertIntentAwareAcquisitionSupersedesNearestFallback() {
   const defaultHarness = createHarness();
   const defaultState = defaultHarness.state;
   const defaultHelpers = defaultHarness.helpers;
@@ -297,7 +299,10 @@ async function assertNearestTetherMode() {
   defaultState.input.aimWorld = { x: 0, z: 180 };
   defaultState.input.aimAngle = Math.PI / 2;
   fireTetherOnce(defaultHarness);
-  assert.equal(defaultEvents.latched.length, 0, 'default tether should not grab a nearby object when the reticle/ray misses');
+  assert.equal(defaultEvents.latched.length, 1,
+    'ordinary Massline acquisition should use forward/proximity intent when a broad cursor misses');
+  assert.equal(defaultEvents.latched[0].previewMatched, true,
+    'intent-aware default latch must still consume its visible receipt');
 
   const nearestHarness = createHarness();
   const { state, helpers, runtime, events } = nearestHarness;
@@ -323,8 +328,8 @@ async function assertNearestTetherMode() {
   state.input.aimAngle = Math.PI / 2;
   state.input.tetherMode = 'nearest';
   fireTetherOnce(nearestHarness);
-  assert.equal(events.latched.length, 1, 'nearest tether mode should latch when default aim misses');
-  assert.equal(events.latched[0].targetId, nearestRock.id, 'nearest tether mode should choose the closest attachable object');
+  assert.equal(events.latched.length, 1, 'legacy nearest gesture remains a valid Massline press');
+  assert.equal(events.latched[0].targetId, nearestRock.id, 'single eligible anchor remains deterministic');
 }
 
 async function assertPickupMasslinePull() {

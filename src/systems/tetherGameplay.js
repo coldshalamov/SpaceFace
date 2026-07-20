@@ -3,11 +3,14 @@
 // service into player flight. SG-02 owns momentum exchange; this system only targets,
 // reels, cuts, and emits player-facing gameplay events.
 //
-// T04: latch eligibility/ranking consumes T03 rankMasslineTargets (ownership + latched axes).
-// isObstructed is intentionally NOT wired here — T03's contract is caller-resolved, and
-// terrain/LOS obstruction queries belong to T13. Leave that opt absent until T13 owns it.
-import { lockedHostileEntity } from '../combat/autoTargetMode.js';
-import { rankMasslineTargets } from '../combat/masslineTargetScoring.js';
+// T04/PQ-004: latch eligibility and the visible pre-latch receipt consume the existing T03 scorer.
+// Obstruction remains caller-resolved: a physics/terrain owner may provide isMasslineObstructed;
+// selection then fails closed and publishes the same blocked reason the latch will consume.
+import {
+  classifyMasslineIntent,
+  rankMasslineTargets,
+  stabilizeMasslineSelection,
+} from '../combat/masslineTargetScoring.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer } from './scanner.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -24,7 +27,11 @@ export const CURSOR_LATCH_GRACE = 36;
 export const CURSOR_LATCH_GRACE_MAX = 96;
 export const AIM_RAY_GRACE = 22;
 export const AIM_RAY_GRACE_MAX = 64;
-const MIN_AIM_RAY_LENGTH = 18;
+const ACQUISITION_REFRESH_S = 0.08;
+const ACQUISITION_VALID_S = 0.28;
+const INTENT_HISTORY_S = 0.28;
+const STRONG_TURN_THRESHOLD = 0.42;
+const PRECISE_CURSOR_RADIUS = 28;
 const SLINGSHOT_STATE_S = 1.0;
 const SLINGSHOT_SPEED_MULT = 1.4;
 // Presentation load (massline rung 04): phase floors so the cable reads "working" the moment the
@@ -54,6 +61,7 @@ export const tetherGameplay = {
   name: 'tetherGameplay',
 
   init(ctx) {
+    for (const unsubscribe of this._acquisitionUnsubs || []) unsubscribe();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
@@ -69,14 +77,19 @@ export const tetherGameplay = {
     this._reelStrength = 0;
     this._lastLineControlDenial = null;
     this._lastLatchDenial = null;
+    this._resetAcquisitionRuntime(this.state);
+    const resetAcquisition = () => this._resetAcquisitionRuntime(this.state);
+    this._acquisitionUnsubs = typeof this.bus?.on === 'function'
+      ? [this.bus.on('save:loaded', resetAcquisition), this.bus.on('game:started', resetAcquisition)]
+      : [];
     this._resetPhaseMirror();
   },
 
   update(dt, state) {
     this._tickSlingshotState(state, dt);
-    if (state.mode !== 'flight') { this._resetGestureState(); this._resetPhaseMirror(); this._mirror(state, null, 0); return; }
+    if (state.mode !== 'flight') { this._resetGestureState(); this._resetPhaseMirror(); this._mirror(state, null, 0); this._clearAcquisitionPreview(state); return; }
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
-    if (!player || !player.alive || (player.flags && player.flags.docked)) { this._resetGestureState(); this._resetPhaseMirror(); this._mirror(state, null, 0); return; }
+    if (!player || !player.alive || (player.flags && player.flags.docked)) { this._resetGestureState(); this._resetPhaseMirror(); this._mirror(state, null, 0); this._clearAcquisitionPreview(state); return; }
 
     const kernel = combatKernel(this);
     const attachments = kernel && kernel.attachments;
@@ -85,6 +98,7 @@ export const tetherGameplay = {
       if (state.input?.actions?.tetherFire) {
         this.bus.emit('tether:latchDenied', { reason: 'attachment_authority_unavailable' });
       }
+      this._clearAcquisitionPreview(state);
       return;
     }
 
@@ -151,6 +165,7 @@ export const tetherGameplay = {
     }
 
     if (this._active) {
+      this._clearAcquisitionPreview(state);
       // Liveness belt-and-braces on the gameplay side: if the target vanished this tick and the
       // service sweep hasn't caught it yet, force the cut ourselves rather than orbit a ghost.
       const target = state.entities.get(this._active.targetId);
@@ -193,21 +208,28 @@ export const tetherGameplay = {
     this._reelStrength = 0;
     this._resetPhaseMirror();
     this._mirror(state, null, 0);
-    if (!actions?.tetherFire) return;
+    const def = attachmentDef(kernel, TETHER_DEF_ID);
+    if (!actions?.tetherFire) {
+      if (def) this._refreshAcquisitionPreview(player, def, state, now, false);
+      else this._clearAcquisitionPreview(state);
+      return;
+    }
     // Readable failure reasons (T04): never fail latch silently.
     if (now < this._noRelatchUntil) {
       this.bus.emit('tether:latchDenied', { reason: 'cooldown' });
       return;
     }
-    const def = attachmentDef(kernel, TETHER_DEF_ID);
     if (!def) {
       // Attachment authority's established reason when the def is absent from the catalog.
       this.bus.emit('tether:latchDenied', { reason: 'unknown_attachment_def' });
       return;
     }
+    // Never replace a receipt on the press tick: the player must get exactly the candidate the HUD
+    // showed on the preceding render. The fallback preserves direct/headless callers that have not
+    // run an idle preview tick; normal play continuously owns a fresh receipt before input arrives.
+    if (!state.masslineAcquisition) this._refreshAcquisitionPreview(player, def, state, now, true);
     this._lastLatchDenial = null;
-    const nearestMode = state.input?.tetherMode === 'nearest' || softNearestPreferred(state, player);
-    const latch = this._acquireTarget(player, def, state, nearestMode);
+    const latch = this._consumeAcquisitionReceipt(player, def, state, now);
     const target = latch && latch.entity;
     if (!target) {
       const denial = this._lastLatchDenial || { reason: 'no-target' };
@@ -246,193 +268,120 @@ export const tetherGameplay = {
     this._lastStrainT = -Infinity;
     this._ignoreReleaseCutUntilReelIdle = true;
     this._latchGraceUntil = now + 0.55;
-    this.bus.emit('tether:latched', { targetId: target.id, type: TETHER_DEF_ID });
+    const selectionReceipt = state.masslineAcquisition;
+    this.bus.emit('tether:latched', {
+      targetId: target.id,
+      type: TETHER_DEF_ID,
+      selectionReceiptId: selectionReceipt && selectionReceipt.id,
+      context: selectionReceipt && selectionReceipt.selected && selectionReceipt.selected.context,
+      previewMatched: !!(selectionReceipt && selectionReceipt.selected
+        && selectionReceipt.selected.targetId === target.id),
+    });
     this.bus.emit('camera:shake', { amount: 0.06 });
   },
 
-  _acquireTarget(player, def, state, nearestMode = false) {
-    const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
-    // Flyby Focus is an exact-target lease, not a request for generic nearest-object assistance.
-    // Validate the leased entity at the moment F is consumed, then resolve it before every lower-
-    // authority selected-target/cursor/nearest path so dense rocks and traffic cannot steal it.
-    const focus = state.player?.flybyFocus;
-    if (focus?.active) {
-      const focusTarget = focus.targetId != null ? state.entities?.get(focus.targetId) : null;
-      // Combat can kill or deauthorize the leased target after flybyFocus updates but before this
-      // later system consumes F. The lease stays fail-closed for that tick; its owner clears it on
-      // the next update rather than allowing tether targeting to retarget or mutate Focus state.
-      if (!isAuthorizedFocusTarget(state, player, focusTarget)) {
-        this._lastLatchDenial = { reason: 'no-target' };
-        return null;
-      }
-      const focusDx = focusTarget.pos.x - player.pos.x;
-      const focusDz = focusTarget.pos.z - player.pos.z;
-      const focusDistance = Math.hypot(focusDx, focusDz);
-      if (focusDistance <= maxLength + (focusTarget.radius || 0)) {
-        return { entity: focusTarget, targetWorld: surfacePointToward(focusTarget, player.pos) };
-      }
-      // A valid Focus lease remains exclusive even before the target enters tether reach. Falling
-      // through here would turn the authored exact-target window into nearest-mode assistance and
-      // let nearby rocks or traffic steal the press.
-      this._lastLatchDenial = { reason: 'out-of-range', targetId: focusTarget.id };
-      return null;
+  _refreshAcquisitionPreview(player, def, state, now, force = false) {
+    const intent = rememberAcquisitionIntent(this, state, player, now);
+    if (!force && !intent.reversed && now - this._lastAcquisitionRefreshT < ACQUISITION_REFRESH_S) {
+      return state.masslineAcquisition || null;
+    }
+    this._lastAcquisitionRefreshT = now;
+    const snapshot = buildAcquisitionSnapshot(this, player, def, state, intent);
+    if (!snapshot.ranked.length) {
+      this._acquisitionMemory = null;
+      state.masslineAcquisition = emptyAcquisitionReceipt(this, state, now, snapshot.denial || 'no-target');
+      return state.masslineAcquisition;
     }
 
-    const aim = aimWorldFor(player, state, maxLength);
-    const candidates = queryNearbyEntities(
+    const stable = stabilizeMasslineSelection(
+      snapshot.ranked,
+      this._acquisitionMemory,
+      now,
+      {
+        forceId: snapshot.context.forceId,
+        forceSwitch: intent.reversed,
+      },
+    );
+    this._acquisitionMemory = stable.memory;
+    state.masslineAcquisition = buildAcquisitionReceipt(
+      this,
       state,
-      player.pos,
-      maxLength,
-      this._targetScratch,
-      state.entityList || [],
+      now,
+      snapshot,
+      stable.selected,
+      now < this._noRelatchUntil ? 'cooldown' : null,
     );
-    // This path runs only when the edge-triggered tether action is consumed, never per frame.
-    // Preserve the fast collidable hash while supplementing authored sensor payloads deterministically.
-    appendNonCollidingAttachableCandidates(
-      candidates,
-      state.entityList || [],
-      player,
-      maxLength,
-      this._nonCollidingTargetScratch,
-    );
+    return state.masslineAcquisition;
+  },
 
-    const aimDx = aim.x - player.pos.x;
-    const aimDz = aim.z - player.pos.z;
-    const aimLen = Math.hypot(aimDx, aimDz);
-    const ux = aimLen > 1e-6 ? aimDx / aimLen : Math.cos(state.input?.aimAngle || player.rot || 0);
-    const uz = aimLen > 1e-6 ? aimDz / aimLen : Math.sin(state.input?.aimAngle || player.rot || 0);
-    const rayLength = Math.max(MIN_AIM_RAY_LENGTH, Math.min(maxLength, aimLen || maxLength));
-
-    // Build the attachable pool, then let T03 rankMasslineTargets own eligibility + ranking.
-    // Cursor/ray still soft-filters the aim path so F does not steal distant off-reticle clutter;
-    // ownership/hostility/ally damping and preferred/locked ranking are the scorer's job.
-    const attachable = [];
-    const byId = new Map();
-    for (const entity of candidates) {
-      if (!isAttachable(entity, player.id)) continue;
-      const dxPlayer = entity.pos.x - player.pos.x;
-      const dzPlayer = entity.pos.z - player.pos.z;
-      const playerDistance = Math.hypot(dxPlayer, dzPlayer);
-      if (playerDistance > maxLength + (entity.radius || 0)) continue;
-      attachable.push(entity);
-      byId.set(entity.id, entity);
+  _consumeAcquisitionReceipt(player, def, state, now) {
+    const receipt = state.masslineAcquisition;
+    const selected = receipt && receipt.selected;
+    if (!selected) {
+      this._lastLatchDenial = { reason: receipt?.reason || 'no-target' };
+      return null;
     }
-
-    // Locked hostile remains an explicit preferred paint (same short-circuit authority as before,
-    // expressed as preferredId so the scorer still applies ownership gates).
-    const locked = lockedHostileEntity(state);
-    let preferredId = null;
-    if (locked && byId.has(locked.id) && isHostileToPlayer(locked, player.team, state)) {
-      preferredId = locked.id;
-    } else if (state.player?.targetId != null && byId.has(state.player.targetId)) {
-      preferredId = state.player.targetId;
+    if (!(receipt.validUntil >= now)) {
+      this._lastLatchDenial = { reason: 'preview-stale', targetId: selected.targetId };
+      invalidateAcquisitionReceipt(state, 'preview-stale');
+      return null;
     }
-
-    if (!attachable.length) {
-      this._lastLatchDenial = { reason: 'no-target' };
+    if (selected.status !== 'ready') {
+      this._lastLatchDenial = { reason: selected.reason || selected.status, targetId: selected.targetId };
       return null;
     }
 
-    const latchedId = state.player?.tether?.active ? state.player.tether.targetId : null;
-    // isObstructed intentionally omitted — terrain/LOS is T13 (see file header).
-    // Scorer owns eligibility (protected/out/ally damp) and massline ranking among peers.
-    const ranked = rankMasslineTargets(player, attachable, {
-      maxRange: maxLength,
-      intentDir: nearestMode ? undefined : { x: ux, z: uz },
-      preferredId,
-      isHostile: (t) => isHostileToPlayer(t, player.team, state),
-      isLatched: latchedId != null ? (t) => t.id === latchedId : null,
-      ownershipOf: (t) => resolveMasslineOwnership(t, player, state),
-      // Pre-T04 surface-reach: center may sit beyond maxLength when the hull surface is within.
-      reachAllowanceOf: (t) => Math.max(0, Number(t && t.radius) || 0),
+    const target = state.entities && state.entities.get ? state.entities.get(selected.targetId) : null;
+    const denial = validateAcquisitionTarget(this, player, target, def, state);
+    if (denial) {
+      this._lastLatchDenial = { reason: denial, targetId: selected.targetId };
+      invalidateAcquisitionReceipt(state, denial);
+      return null;
+    }
+    return { entity: target, targetWorld: surfacePointToward(target, player.pos) };
+  },
+
+  _clearAcquisitionPreview(state) {
+    if (state && state.masslineAcquisition) state.masslineAcquisition = null;
+    this._acquisitionMemory = null;
+    this._lastAcquisitionRefreshT = -Infinity;
+  },
+
+  _resetAcquisitionRuntime(state) {
+    if (state) state.masslineAcquisition = null;
+    this._acquisitionMemory = null;
+    this._acquisitionReceiptSeq = 0;
+    this._lastAcquisitionRefreshT = -Infinity;
+    this._recentIntent = { turn: 0, moveX: 0, moveZ: 0, at: -Infinity };
+    this._lastStrongTurn = { sign: 0, at: -Infinity };
+  },
+
+  // Compatibility/test entrypoint. The live update path consumes the continuously visible receipt;
+  // direct callers get the same contextual ranking in a one-shot receipt, never a weapon lock.
+  _acquireTarget(player, def, state) {
+    const now = Number.isFinite(state && state.simTime) ? state.simTime : finite(state && state.tick) / 60;
+    this._targetScratch = this._targetScratch || [];
+    this._nonCollidingTargetScratch = this._nonCollidingTargetScratch || [];
+    this._recentIntent = this._recentIntent || { turn: 0, moveX: 0, moveZ: 0, at: -Infinity };
+    this._lastStrongTurn = this._lastStrongTurn || { sign: 0, at: -Infinity };
+    const intent = rememberAcquisitionIntent(this, state, player, now);
+    const snapshot = buildAcquisitionSnapshot(this, player, def, state, intent);
+    if (!snapshot.ranked.length) {
+      this._lastLatchDenial = { reason: snapshot.denial || 'no-target' };
+      return null;
+    }
+    const stable = stabilizeMasslineSelection(snapshot.ranked, null, now, {
+      forceId: snapshot.context.forceId,
+      forceSwitch: true,
     });
-
-    const eligible = ranked.filter((rec) => rec && rec.score > 0);
-    if (!eligible.length) {
-      const protectedRec = ranked.find((rec) => rec && rec.rating === 'protected');
-      if (protectedRec) {
-        this._lastLatchDenial = { reason: 'protected', targetId: protectedRec.id };
-        return null;
-      }
-      const outRec = ranked.find((rec) => rec && rec.rating === 'out');
-      if (outRec) {
-        // Branch on scorer gate reason — 'out' also covers degenerate geometry (overlapping).
-        const gate = outRec.reasons && outRec.reasons.gate;
-        const reason = gate === 'degenerate distance' ? 'invalid-target' : 'out-of-range';
-        this._lastLatchDenial = { reason, targetId: outRec.id };
-        return null;
-      }
-      this._lastLatchDenial = { reason: 'no-target' };
+    const selected = stable.selected;
+    const target = selected && snapshot.byId.get(selected.id);
+    const denial = validateAcquisitionTarget(this, player, target, def, state);
+    if (denial) {
+      this._lastLatchDenial = { reason: denial, targetId: selected && selected.id };
       return null;
     }
-
-    // Locked hostile preferred paint: keep the pre-T04 exclusive lock when still eligible.
-    if (preferredId != null && locked && preferredId === locked.id) {
-      const lockRec = eligible.find((rec) => rec.id === preferredId);
-      if (lockRec) {
-        const lockEntity = byId.get(preferredId);
-        if (lockEntity) {
-          return { entity: lockEntity, targetWorld: surfacePointToward(lockEntity, player.pos) };
-        }
-      }
-    }
-
-    let bestEntity = null;
-    let bestTargetWorld = null;
-    if (nearestMode) {
-      let bestDist = Infinity;
-      let bestSortId = Infinity;
-      for (const rec of eligible) {
-        const entity = byId.get(rec.id) || (state.entities && state.entities.get ? state.entities.get(rec.id) : null);
-        if (!entity || !entity.pos) continue;
-        const dist = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
-        const sid = sortableId(entity.id);
-        if (dist < bestDist || (dist === bestDist && sid < bestSortId)) {
-          bestEntity = entity;
-          bestDist = dist;
-          bestSortId = sid;
-          bestTargetWorld = surfacePointToward(entity, player.pos);
-        }
-      }
-    } else {
-      // Reticle path: among scorer-eligible candidates, preserve cursor/ray ranking so an aimed
-      // ship is not stolen by a nearer rock that merely intersects the aim ray. Massline score
-      // breaks exact cursor ties (hostile ranks first among comparable reticle peers).
-      const masslineRank = new Map(eligible.map((rec, index) => [rec.id, index]));
-      let bestCursor = Infinity;
-      let bestMassline = Infinity;
-      let bestSortId = Infinity;
-      for (const rec of eligible) {
-        const entity = byId.get(rec.id) || (state.entities && state.entities.get ? state.entities.get(rec.id) : null);
-        if (!entity) continue;
-        const hit = cursorAimScore(entity, aim, player, ux, uz, rayLength, state);
-        if (!Number.isFinite(hit.score)) continue;
-        const mRank = masslineRank.has(rec.id) ? masslineRank.get(rec.id) : Infinity;
-        const sid = sortableId(entity.id);
-        const better = hit.score < bestCursor
-          || (hit.score === bestCursor && mRank < bestMassline)
-          || (hit.score === bestCursor && mRank === bestMassline && sid < bestSortId);
-        if (better) {
-          bestEntity = entity;
-          bestTargetWorld = hit.targetWorld;
-          bestCursor = hit.score;
-          bestMassline = mRank;
-          bestSortId = sid;
-        }
-      }
-      // No reticle/ray hit: fail closed (pre-T04 default path never latched off-reticle clutter).
-      // Nearest mode above still latches by distance; pure massline auto-pick is not the latch path.
-      if (!bestEntity) {
-        this._lastLatchDenial = { reason: 'no-target' };
-        return null;
-      }
-    }
-
-    if (!bestEntity) {
-      this._lastLatchDenial = { reason: 'no-target' };
-      return null;
-    }
-    return { entity: bestEntity, targetWorld: bestTargetWorld || surfacePointToward(bestEntity, player.pos) };
+    return { entity: target, targetWorld: surfacePointToward(target, player.pos) };
   },
 
   // Adopt a player-owned active tether we aren't tracking: after save-reload (this._active is
@@ -698,6 +647,287 @@ export const tetherGameplay = {
   },
 };
 
+function rememberAcquisitionIntent(host, state, player, now) {
+  const inp = state && state.input || {};
+  const turn = clamp(finite(inp.turnIntent), -1, 1);
+  const moveX = clamp(finite(inp.moveX), -1, 1);
+  const moveZ = clamp(finite(inp.moveZ), -1, 1);
+  const active = Math.abs(turn) > 0.06 || Math.abs(moveX) > 0.06 || Math.abs(moveZ) > 0.06;
+  if (active) {
+    host._recentIntent.turn = turn;
+    host._recentIntent.moveX = moveX;
+    host._recentIntent.moveZ = moveZ;
+    host._recentIntent.at = now;
+  }
+  const recent = active || now - host._recentIntent.at <= INTENT_HISTORY_S
+    ? host._recentIntent
+    : { turn: 0, moveX: 0, moveZ: 0, at: -Infinity };
+  const strongSign = Math.abs(turn) >= STRONG_TURN_THRESHOLD ? Math.sign(turn) : 0;
+  const reversed = strongSign !== 0
+    && host._lastStrongTurn.sign !== 0
+    && strongSign !== host._lastStrongTurn.sign
+    && now - host._lastStrongTurn.at <= INTENT_HISTORY_S;
+  if (strongSign !== 0) {
+    host._lastStrongTurn.sign = strongSign;
+    host._lastStrongTurn.at = now;
+  }
+  return {
+    turn: recent.turn,
+    moveX: recent.moveX,
+    moveZ: recent.moveZ,
+    dir: intentWorldDirection(player, recent),
+    reversed,
+  };
+}
+
+function intentWorldDirection(player, intent) {
+  const rot = finite(player && player.rot);
+  const fx = Math.cos(rot);
+  const fz = Math.sin(rot);
+  const rx = -fz;
+  const rz = fx;
+  const forward = Math.max(0.35, Math.max(0, finite(intent && intent.moveZ)));
+  const lateral = finite(intent && intent.moveX) + finite(intent && intent.turn) * 1.05;
+  const x = fx * forward + rx * lateral;
+  const z = fz * forward + rz * lateral;
+  const length = Math.hypot(x, z);
+  return length > 1e-6 ? { x: x / length, z: z / length } : { x: fx, z: fz };
+}
+
+function buildAcquisitionSnapshot(host, player, def, state, intent) {
+  const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
+  const focus = state.player && state.player.flybyFocus;
+  const focusTarget = focus && focus.active && focus.targetId != null && state.entities?.get
+    ? state.entities.get(focus.targetId)
+    : null;
+  if (focus && focus.active && !isAuthorizedFocusTarget(state, player, focusTarget)) {
+    return emptyAcquisitionSnapshot('no-target', intent);
+  }
+  const focusId = focusTarget ? focusTarget.id : null;
+  const routeId = masslineRouteTargetId(state);
+  const nearby = queryNearbyEntities(
+    state,
+    player.pos,
+    maxLength + CURSOR_LATCH_GRACE_MAX,
+    host._targetScratch || (host._targetScratch = []),
+    state.entityList || [],
+  );
+  const candidates = nearby === state.entityList ? [...nearby] : [...nearby];
+  appendNonCollidingAttachableCandidates(
+    candidates,
+    state.entityList || [],
+    player,
+    maxLength,
+    host._nonCollidingTargetScratch || (host._nonCollidingTargetScratch = []),
+  );
+  appendExactCandidate(candidates, focusTarget);
+  appendExactCandidate(candidates, routeId != null && state.entities?.get ? state.entities.get(routeId) : null);
+
+  const attachable = [];
+  const byId = new Map();
+  for (const entity of candidates) {
+    if (!isAttachable(entity, player.id) || byId.has(entity.id)) continue;
+    const distance = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
+    const exactAuthority = entity.id === focusId || entity.id === routeId;
+    if (!exactAuthority && distance > maxLength + Math.max(0, finite(entity.radius))) continue;
+    attachable.push(entity);
+    byId.set(entity.id, entity);
+  }
+  attachable.sort(compareEntityIds);
+  if (!attachable.length) return emptyAcquisitionSnapshot('no-target', intent);
+
+  const aim = aimWorldFor(player, state, maxLength);
+  const cursorActive = acquisitionCursorActive(state);
+  const cursorPrecisionOf = (entity) => cursorActive ? preciseCursorScore(entity, aim) : 0;
+  const hostileOf = (entity) => isHostileToPlayer(entity, player.team, state);
+  const context = classifyMasslineIntent(player, attachable, {
+    focusId,
+    routeId,
+    turnIntent: intent.turn,
+    moveZ: intent.moveZ,
+    intentDir: intent.dir,
+    cursorPrecisionOf,
+    isHostile: hostileOf,
+  });
+  const ranked = rankMasslineTargets(player, attachable, {
+    maxRange: maxLength,
+    context,
+    intentDir: intent.dir,
+    cursorPrecisionOf,
+    isHostile: hostileOf,
+    isObstructed: (entity) => masslineObstructed(host, state, player, entity),
+    ownershipOf: (entity) => resolveMasslineOwnership(entity, player, state),
+    reachAllowanceOf: (entity) => Math.max(0, Number(entity && entity.radius) || 0),
+  });
+  return { ranked, byId, context, intent, aim, maxLength, denial: null };
+}
+
+function emptyAcquisitionSnapshot(denial, intent) {
+  return {
+    ranked: [],
+    byId: new Map(),
+    context: { id: 'precision-pick', label: 'PICK', source: 'none', forceId: null },
+    intent,
+    aim: null,
+    maxLength: 390,
+    denial,
+  };
+}
+
+function buildAcquisitionReceipt(host, state, now, snapshot, selectedRecord, overrideReason = null) {
+  const selected = acquisitionReceiptEntry(snapshot, selectedRecord, overrideReason);
+  const alternatives = snapshot.ranked
+    .filter((record) => !selectedRecord || record.id !== selectedRecord.id)
+    .slice(0, 3)
+    .map((record) => acquisitionReceiptEntry(snapshot, record, null));
+  return {
+    schemaVersion: 1,
+    id: `massline-acquisition:${++host._acquisitionReceiptSeq}`,
+    publishedTick: Math.max(0, Math.trunc(finite(state && state.tick))),
+    publishedAt: now,
+    validUntil: now + ACQUISITION_VALID_S,
+    selected,
+    alternatives,
+    intent: {
+      turn: snapshot.intent.turn,
+      moveX: snapshot.intent.moveX,
+      moveZ: snapshot.intent.moveZ,
+      source: snapshot.context.source,
+    },
+    reason: selected ? selected.reason : 'no-target',
+  };
+}
+
+function emptyAcquisitionReceipt(host, state, now, reason) {
+  return {
+    schemaVersion: 1,
+    id: `massline-acquisition:${++host._acquisitionReceiptSeq}`,
+    publishedTick: Math.max(0, Math.trunc(finite(state && state.tick))),
+    publishedAt: now,
+    validUntil: now + ACQUISITION_VALID_S,
+    selected: null,
+    alternatives: [],
+    intent: null,
+    reason,
+  };
+}
+
+function acquisitionReceiptEntry(snapshot, record, overrideReason) {
+  if (!record) return null;
+  const target = snapshot.byId.get(record.id);
+  const contextReason = record.reasons && record.reasons.context;
+  const statusReason = overrideReason || reasonForScoringRecord(record);
+  const nextReady = snapshot.ranked.find((candidate) => candidate.id !== record.id && candidate.score > 0);
+  const gap = record.score > 0 ? record.score - finite(nextReady && nextReady.score) : 0;
+  const exact = snapshot.context.forceId != null && snapshot.context.forceId === record.id;
+  return {
+    targetId: record.id,
+    targetType: target && target.type || 'unknown',
+    targetLabel: masslineTargetLabel(target),
+    context: snapshot.context.id,
+    intentLabel: snapshot.context.label,
+    confidence: clamp01((exact ? 0.62 : 0.42) + record.score * 0.32 + Math.max(0, gap) * 0.7),
+    score: record.score,
+    rating: record.rating,
+    status: statusReason ? statusForReason(statusReason) : 'ready',
+    reason: statusReason,
+    reasons: record.reasons,
+  };
+}
+
+function reasonForScoringRecord(record) {
+  if (!record || record.score > 0) return null;
+  if (record.rating === 'protected') return 'protected';
+  if (record.rating === 'blocked') return 'blocked';
+  const gate = record.reasons && record.reasons.gate;
+  return gate === 'degenerate distance' ? 'invalid-target' : 'out-of-range';
+}
+
+function statusForReason(reason) {
+  if (reason === 'protected') return 'protected';
+  if (reason === 'blocked') return 'blocked';
+  if (reason === 'out-of-range') return 'out-of-range';
+  if (reason === 'cooldown') return 'cooldown';
+  return 'invalid';
+}
+
+function validateAcquisitionTarget(host, player, target, def, state) {
+  if (!isAttachable(target, player && player.id)) return 'target-lost';
+  const focus = state.player && state.player.flybyFocus;
+  if (focus && focus.active) {
+    if (!isAuthorizedFocusTarget(state, player, target) || target.id !== focus.targetId) return 'no-target';
+  }
+  const ownership = resolveMasslineOwnership(target, player, state);
+  if (ownership === 'own' || ownership === 'station') return 'protected';
+  const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
+  const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
+  if (distance > maxLength + Math.max(0, finite(target.radius))) return 'out-of-range';
+  if (masslineObstructed(host, state, player, target)) return 'blocked';
+  return null;
+}
+
+function invalidateAcquisitionReceipt(state, reason) {
+  const receipt = state && state.masslineAcquisition;
+  if (!receipt || !receipt.selected) return;
+  state.masslineAcquisition = {
+    ...receipt,
+    selected: {
+      ...receipt.selected,
+      status: statusForReason(reason),
+      reason,
+    },
+    reason,
+  };
+}
+
+function masslineObstructed(host, state, player, target) {
+  const check = host && host.helpers && host.helpers.isMasslineObstructed;
+  if (typeof check !== 'function') return false;
+  try {
+    return check({ state, player, target }) === true;
+  } catch (_) {
+    return true;
+  }
+}
+
+function acquisitionCursorActive(state) {
+  const pointer = state && state.input && state.input.pointerScreen;
+  const ndc = state && state.input && state.input.mouseNdc;
+  // Direct/headless harnesses and gamepad aim both publish aimWorld without reliable pointer
+  // provenance. Precision still requires the aim point to land inside a narrow surface envelope;
+  // a broad idle cursor elsewhere contributes zero and cannot beat steering intent.
+  return !!(pointer && pointer.active)
+    || Math.hypot(finite(ndc && ndc.x), finite(ndc && ndc.y)) > 0.08
+    || !!(state && state.input && state.input.aimWorld);
+}
+
+function preciseCursorScore(entity, aim) {
+  if (!entity || !entity.pos || !aim) return 0;
+  const miss = Math.max(0,
+    Math.hypot(aim.x - entity.pos.x, aim.z - entity.pos.z) - Math.max(0, finite(entity.radius)));
+  return clamp01(1 - miss / PRECISE_CURSOR_RADIUS);
+}
+
+function masslineRouteTargetId(state) {
+  const waypointId = state && state.nav && state.nav.waypoint && state.nav.waypoint.targetEntityId;
+  if (waypointId != null) return waypointId;
+  const autopilotId = state && state.nav && state.nav.autopilot && state.nav.autopilot.targetEntityId;
+  return autopilotId != null ? autopilotId : null;
+}
+
+function appendExactCandidate(candidates, entity) {
+  if (!entity || candidates.some((candidate) => candidate && candidate.id === entity.id)) return;
+  candidates.push(entity);
+}
+
+function masslineTargetLabel(target) {
+  const data = target && target.data;
+  const label = data && (data.displayName || data.name || data.label);
+  if (typeof label === 'string' && label.trim()) return label.trim();
+  const type = target && target.type || 'target';
+  return type === 'asteroid' ? 'Anchor' : type.charAt(0).toUpperCase() + type.slice(1);
+}
+
 /** Resolve context-aware world anchors once at latch time. Hostile ships retain the authored
  * nose-to-surface combat line. Towable dynamic bodies use COM-to-COM so neither endpoint gains
  * accidental steering torque; immovable asteroids/stations retain a readable surface endpoint. */
@@ -910,14 +1140,6 @@ export function latchGraceScale(state) {
   return 1;
 }
 
-function softNearestPreferred(state, player) {
-  if (!player || !player.pos) return false;
-  // Flyby Focus is the authored high-speed assist. Ordinary fast travel keeps cursor/ray scoring
-  // so nearby stations, rocks, and pickups cannot steal an aimed massline shot.
-  const focus = state && state.player && state.player.flybyFocus;
-  return !!(focus && focus.active);
-}
-
 export function cursorAimScore(entity, aim, player, ux, uz, rayLength, state = null) {
   const radius = Math.max(0, finite(entity && entity.radius));
   const dxAim = aim.x - entity.pos.x;
@@ -963,10 +1185,6 @@ function surfacePointToward(entity, worldPoint) {
     y: 0,
     z: entity.pos.z + dz / d * contactRadius,
   };
-}
-
-function sortableId(id) {
-  return Number.isFinite(id) ? id : String(id).charCodeAt(0);
 }
 
 function clamp(value, lo, hi) {
