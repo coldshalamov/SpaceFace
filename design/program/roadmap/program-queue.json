@@ -559,7 +559,7 @@
       "id": "PQ-006",
       "priority": 6,
       "title": "Release predictor, accessible window, and earned-speed presentation",
-      "state": "planned",
+      "state": "integrated",
       "canonical": [
         "T07",
         "T15"
@@ -589,13 +589,16 @@
         "reduced-motion",
         "reduced-flash"
       ],
-      "brief": "Characterize the existing throw solver first; add only missing cadence, validation, accessibility, and camera/speed-language behavior."
+      "brief": "Characterize the existing throw solver first; add only missing cadence, validation, accessibility, and camera/speed-language behavior.",
+      "integratedCommit": "0cd42f25",
+      "acceptanceRef": "03_LIVE_ACCEPTANCE_MATRIX.md#program-batch-pq-001pq-010",
+      "receipt": "15Hz deterministic shared release solution; predictor-vs-actual receipts pinned (12/12); GDD-compliant offscreen cues (ARIA/forced-colors/reduced-motion); profile persistence fixed; earned-speed via velocityLanguage+pushZoom with live +134.7wu/s -> 12.5% proof; m1 gate updated to truthful reel receipt; sim gates hashEqual; bounded T07/T15 contributions"
     },
     {
       "id": "PQ-007",
       "priority": 7,
       "title": "Pursuit-slot assist and control cleanup",
-      "state": "planned",
+      "state": "integrated",
       "canonical": [
         "T16",
         "PROPOSED-T19"
@@ -625,7 +628,10 @@
         "public-route",
         "manual-override"
       ],
-      "brief": "Audit the existing MMB autopursuit before adding a bounded player-selected pursuit slot; retire only behavior that fails the named control criterion."
+      "brief": "Audit the existing MMB autopursuit before adding a bounded player-selected pursuit slot; retire only behavior that fails the named control criterion.",
+      "integratedCommit": "1a54e56b",
+      "acceptanceRef": "03_LIVE_ACCEPTANCE_MATRIX.md#program-batch-pq-001pq-010",
+      "receipt": "MMB audit dispositions recorded (retained selection+GOTO; retired follower/path-draw/pointer-lock/overdrive/persistent auto-aim); bounded membrane controller, 1-tick override w/ releasedTick receipts; lab 12.567s hold zero-oscillation; 32/32 suites; flight:clean 10/10; sim gates hashEqual; browser+Electron routes; T16 contribution + T19, no terminal claim"
     },
     {
       "id": "PQ-008",

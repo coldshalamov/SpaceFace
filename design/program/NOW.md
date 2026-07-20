@@ -38,10 +38,13 @@ with the 47a golden pinned byte-stable.
 
 ## Next queue position
 
-**Integrated this session: PQ-001, PQ-002, PQ-003, PQ-004 (`87f523a9`), PQ-005 (`e05b31dd`),
-PQ-008, PQ-009, PQ-010 (`226b4e44`) — 8 of the batch's 10.** Remaining: `PQ-006` (release
-predictor; survey complete at `.tmp/orch/pq006-survey-last.md`) and `PQ-007` (pursuit slot); they
-share physics-authority + hud-styles so they serialize with each other.
+**THE BATCH IS COMPLETE: all 10 frozen outcomes (PQ-001..PQ-010) are `INTEGRATED` on `master`.**
+PQ-006 landed at `0cd42f25` (15 Hz deterministic release predictor + accessible window + earned
+speed) and PQ-007 at `1a54e56b` (bounded pursuit slot; flailing autopursuit surfaces retired by
+audit). The next unchecked queue items are `PQ-011` (Mass Seed anchor; dependsOn PQ-006 ✓) and
+`PQ-014` (NPC jobs; dependsOn PQ-001 ✓ — NOTE the out-of-band `sf-pq014` lane below before
+claiming), then `PQ-012` (needs PQ-009 ✓ + PQ-011). All batch leases are RELEASED; the git-index
+mutex is free.
 
 **Probe-margin debt (new):** `probe-ship-visual-stability` readiness deadline is margin-flaky on
 this machine — identical configs flip red/green under load (committed-HEAD worktree green;
