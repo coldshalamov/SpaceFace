@@ -110,6 +110,15 @@ validation_commands:
   - git diff --check
 
 validation_results:
+  source_build_exit_code: 0
+  evidence_render_exit_code: 0
+  spaceface_exporter_exit_code: 0
+  gltf_validator_exit_code: 0
+  ffprobe_exit_code: 0
+  python_syntax_exit_code: 0
+  helper_syntax_exit_code: 0
+  hash_verification_exit_code: 0
+  git_diff_check_exit_code: 0
   source_saved_clean: true
   source_missing_external_files: 0
   source_packed_images: 26
