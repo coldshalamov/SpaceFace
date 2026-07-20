@@ -334,6 +334,12 @@ export const settingsScreen = {
       g.flightBackend = 'v3';
       rowSelect('Difficulty', () => g.difficulty, [['casual', 'Casual'], ['standard', 'Standard'], ['veteran', 'Veteran'], ['ironman', 'Ironman']], (v) => this._set(ctx, 'gameplay', 'difficulty', v));
       rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
+      rowSelect('Massline orbit assist', () => g.orbitAssistStrength || 'standard', [
+        ['full', 'Full'],
+        ['standard', 'Standard'],
+        ['light', 'Light'],
+        ['off', 'Off'],
+      ], (v) => this._set(ctx, 'gameplay', 'orbitAssistStrength', v));
       if (massline2Flag('enabled')) {
         rowSelect('Massline release assist', () => g.masslineReleaseAssist || 'arm', [
           ['arm', 'Auto-release on solution (default)'],

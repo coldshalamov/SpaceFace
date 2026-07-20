@@ -14,6 +14,8 @@ import { queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthori
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import { computeFlightTelemetry, solveIntercept } from '../core/flight/flightTelemetry.js';
+import { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
+export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 
 // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
@@ -114,6 +116,8 @@ export const flightV3 = {
     this._prevBoost = false;
     this._suppressBoostUntilRelease = false;
     this._masslineSlingUntil = 0;
+    this._orbitAssistRuntime = { direction: 0 };
+    this._orbitAssistGraceActive = false;
     // Dash-earned momentum window (simTime seconds). Instance state, not sim state: it is derived
     // presentation-free input tagging, so it must not enter the save or the sim snapshot.
     this._dashEarnedUntil = 0;
@@ -136,9 +140,17 @@ export const flightV3 = {
     };
 
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('save:loaded', () => { this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'load'); });
-      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
+      this.bus.on('save:loaded', () => { this._masslineSlingUntil = 0; this._orbitAssistRuntime = { direction: 0 }; this._orbitAssistGraceActive = false; this._dashEarnedUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'load'); });
+      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._orbitAssistRuntime = { direction: 0 }; this._orbitAssistGraceActive = true; this._dashEarnedUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
       this.bus.on('tether:latched', () => this._setFlightMode('manual', 'tether'));
+      this.bus.on('tether:releaseRated', (payload = {}) => {
+        const configured = this.state && this.state.settings && this.state.settings.gameplay
+          && this.state.settings.gameplay.orbitAssistStrength || 'standard';
+        const successful = payload.classification === 'clean' || payload.classification === 'razor';
+        if (!this._orbitAssistGraceActive || configured !== 'standard' || !successful) return;
+        this._orbitAssistGraceActive = false;
+        this.bus.emit('toast', { text: 'Orbit assist · Standard', kind: 'info', ttl: 3 });
+      });
       this.bus.on('massline:selfSling', () => {
         if (!massline2Flag('throw')) return;
         const now = finite(this.state && this.state.simTime, 0);
@@ -245,6 +257,35 @@ export const flightV3 = {
     }
 
     const body = bodySnapshot(entity, profile);
+    let orbitAssist = null;
+    if (isPlayer) {
+      const tether = state.player && state.player.tether;
+      const actions = state.input && state.input.actions;
+      const anchor = tether && tether.targetId != null && state.entities
+        && typeof state.entities.get === 'function'
+        ? state.entities.get(tether.targetId)
+        : null;
+      orbitAssist = stepAnchorRelativeOrbitAssist({
+        dt,
+        host: body,
+        anchor,
+        tether,
+        intent: actions && actions.massline,
+        input,
+        profile,
+        runtime: this._orbitAssistRuntime,
+        strength: this._orbitAssistGraceActive
+          && (state.settings && state.settings.gameplay
+            && state.settings.gameplay.orbitAssistStrength || 'standard') === 'standard'
+          ? 'full'
+          : state.settings && state.settings.gameplay
+            && state.settings.gameplay.orbitAssistStrength,
+        throwArmed: !!(actions && actions.throwArm),
+        controlsBlocked: !playerFlightControlsActive(state, entity),
+      });
+      this._orbitAssistRuntime = orbitAssist.runtime;
+      if (orbitAssist.active) input = orbitAssist.input;
+    }
     const result = stepPropulsion({
       dt,
       body,
@@ -266,6 +307,9 @@ export const flightV3 = {
       maxSpeed: result.maxSpeed,
     });
     if (result.impulse) queuePhysicsImpulse(entity, result.impulse);
+    if (orbitAssist && orbitAssist.active && orbitAssist.impulse) {
+      queuePhysicsImpulse(entity, orbitAssist.impulse);
+    }
 
     entity.data = entity.data || {};
     assignPropulsionRuntime(entity, result.runtime, input.boost);
@@ -285,6 +329,9 @@ export const flightV3 = {
       frame.autopilot = autopilot && autopilot.active ? autopilot.telemetry : null;
       frame.tetherNoseAssist = !!input.tetherNoseAssist;
       frame.tetherNoseAssistTorque = tetherAssistTorque;
+      frame.orbitAssist = orbitAssist
+        ? { active: orbitAssist.active, ...orbitAssist.telemetry }
+        : { active: false, reason: 'unavailable' };
       emitThrustCue(this.bus, state, entity, input, result.telemetry);
     }
     emitPropulsionEvents(this.bus, entity, result.events);

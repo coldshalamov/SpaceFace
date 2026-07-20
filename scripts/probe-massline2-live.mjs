@@ -17,9 +17,14 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT_DIR = join(ROOT, '.devshots', 'spec2');
 const SCREENSHOT = join(OUT_DIR, 'massline2-live.png');
+const ORBIT_SCREENSHOT = join(OUT_DIR, 'massline-orbit-assist-live.png');
 const START_TIMEOUT_MS = 120_000;
 const WIDTH = 1440;
 const HEIGHT = 900;
+const ORBIT_ASSIST_ONLY = process.argv.includes('--orbit-assist-only');
+const REPORT_SCHEMA = ORBIT_ASSIST_ONLY
+  ? 'spaceface.masslineOrbitAssistLiveProbe.v1'
+  : 'spaceface.massline2LiveProbe.v1';
 
 const { chromium } = await loadPlaywright();
 let server = null;
@@ -34,7 +39,12 @@ try {
   browser = await chromium.launch({ headless: !process.argv.includes('--headed') });
   const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
   // This acceptance is intentionally strict: a warning is evidence of a dirty player route.
-  const pageIssues = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: false });
+  const pageIssues = collectPageIssues(page, {
+    includeWarnings: true,
+    // The focused route takes a screenshot, so Chrome may publish the same ReadPixels/unsupported
+    // extension diagnostics already classified by the clean-flight probe. App warnings stay fatal.
+    ignoreProbeWarnings: ORBIT_ASSIST_ONLY,
+  });
 
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
@@ -70,6 +80,52 @@ try {
   const physicsBefore = await physicsEvidence(page);
   assertRapierV3(physicsBefore);
 
+  if (ORBIT_ASSIST_ONLY) {
+    // PQ-005: arrange only the qualifying heavy anchor, then drive the shipped Space + arrow-key
+    // grammar. A pointer move during the held orbit proves trackpad weapon aim remains independent.
+    const orbitAssist = await exerciseOrbitAssist(page, fixture.anchorId);
+    assert.equal(orbitAssist.engaged.active, true, 'Space + forward + one lateral must engage orbit assist');
+    assert.equal(orbitAssist.engaged.targetId, fixture.anchorId, 'orbit assist must remain anchor-relative');
+    assert.match(orbitAssist.engaged.hudText, /ORBIT ASSIST/, 'the existing tether HUD must expose assist state');
+    assert.equal(orbitAssist.afterPointer.active, true, 'trackpad aim motion must not drop held orbit intent');
+    assert.equal(orbitAssist.afterPointer.direction, orbitAssist.engaged.direction,
+      'trackpad aim motion must not become the orbit controller');
+    assert.notEqual(orbitAssist.afterPointer.aimAngle, orbitAssist.engaged.aimAngle,
+      'the pointer still owns independent weapon aim while orbit assist is active');
+    assert.equal(orbitAssist.afterLateralRelease.active, false, 'lateral release must drop assist on the next fixed tick');
+    assert.equal(orbitAssist.afterLateralRelease.reason, 'no-lateral-intent');
+
+    const physicsAfter = await physicsEvidence(page);
+    assertRapierV3(physicsAfter);
+    const issues = pageIssues.issues;
+    const checks = {
+      normalRootRoute: new URL(page.url()).search === '',
+      allMasslineFlagsOn: Object.values(flagState).every(Boolean),
+      rapierDynamicV3: physicsAfter.backend === 'rapier-dynamic' && physicsAfter.rapierReady
+        && physicsAfter.sg02Ready && physicsAfter.flightIsV3,
+      orbitAssistViaPublicInput: orbitAssist.engaged.active && orbitAssist.engaged.targetId === fixture.anchorId
+        && /ORBIT ASSIST/.test(orbitAssist.engaged.hudText),
+      trackpadAimIndependent: orbitAssist.afterPointer.active
+        && orbitAssist.afterPointer.direction === orbitAssist.engaged.direction
+        && orbitAssist.afterPointer.aimAngle !== orbitAssist.engaged.aimAngle,
+      lateralReleaseOneTick: !orbitAssist.afterLateralRelease.active
+        && orbitAssist.afterLateralRelease.reason === 'no-lateral-intent',
+      noPageErrorsOrWarnings: issues.length === 0,
+    };
+    report = {
+      schema: REPORT_SCHEMA,
+      ok: Object.values(checks).every(Boolean),
+      route: server.baseUrl,
+      screenshot: ORBIT_SCREENSHOT,
+      checks,
+      flags: flagState,
+      physics: { before: physicsBefore, after: physicsAfter },
+      orbitAssist,
+      pageIssues: summarizeIssues(issues),
+    };
+    assert.deepEqual(issues, [], 'normal player route must produce no page errors or warnings');
+    assert.ok(report.ok, 'all live PQ-005 orbit-assist checks must pass');
+  } else {
   // Case A: the real F edge latches the selected hostile. Holding F after the latch grace reels
   // the live joint; LMB is routed through weapons and tether-lock fire control.
   await aimAt(page, fixture.hostileId);
@@ -226,9 +282,10 @@ try {
   };
   assert.deepEqual(issues, [], 'normal player route must produce no page errors or warnings');
   assert.ok(report.ok, 'all live MASSLINE browser checks must pass');
+  }
 } catch (error) {
   const message = String(error && error.stack || error && error.message || error);
-  report = report || { schema: 'spaceface.massline2LiveProbe.v1', ok: false, error: message };
+  report = report || { schema: REPORT_SCHEMA, ok: false, error: message };
   report.ok = false;
   report.error = message;
   process.exitCode = 1;
@@ -506,6 +563,75 @@ async function lootEvidence(page, fixture) {
       },
     };
   }, fixture);
+}
+
+async function exerciseOrbitAssist(page, anchorId) {
+  await page.evaluate((anchorId) => {
+    const state = window.SF.state;
+    const player = state.entities.get(state.playerId);
+    const anchor = state.entities.get(anchorId);
+    // A 90 m fixture is inside the production matrix and makes the heavy anchor the nearest
+    // public Ctrl+Space candidate without synthesizing a latch event or action packet.
+    player.pos.x = 0; player.pos.z = 0; player.vel.x = 0; player.vel.z = 0;
+    player.rot = 0; player.prevRot = 0; player.angVel = 0;
+    if (player.prevPos) { player.prevPos.x = 0; player.prevPos.z = 0; }
+    if (player.physicsBody) player.physicsBody.revision = (player.physicsBody.revision || 0) + 1;
+    anchor.pos.x = 90; anchor.pos.z = 0; anchor.vel.x = 0; anchor.vel.z = 0;
+    if (anchor.prevPos) { anchor.prevPos.x = 90; anchor.prevPos.z = 0; }
+    if (anchor.physicsBody) anchor.physicsBody.revision = (anchor.physicsBody.revision || 0) + 1;
+    state.player.targetId = anchorId;
+    state.settings.gameplay.orbitAssistStrength = 'standard';
+  }, anchorId);
+  await aimAt(page, anchorId);
+
+  await page.keyboard.down('ControlLeft');
+  await page.keyboard.down('Space');
+  await waitForProbeEvent(page, 'tether:latched', 8_000, { payloadField: 'targetId', payloadValue: anchorId });
+  await page.keyboard.up('ControlLeft');
+  await page.keyboard.down('ArrowUp');
+  await page.keyboard.down('ArrowRight');
+  await page.waitForFunction(() => {
+    const state = window.SF && window.SF.state;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    return !!(player && player._flightFrame && player._flightFrame.orbitAssist
+      && player._flightFrame.orbitAssist.active);
+  }, null, { timeout: 8_000 });
+
+  // Forward is acquisition/reel only; lateral holds the acquired orbit at the chosen line length.
+  await page.keyboard.up('ArrowUp');
+  await waitForSimTicks(page, 3);
+  const engaged = await orbitAssistEvidence(page);
+  await page.screenshot({ path: ORBIT_SCREENSHOT });
+
+  await page.mouse.move(WIDTH * 0.18, HEIGHT * 0.22);
+  await waitForSimTicks(page, 4);
+  const afterPointer = await orbitAssistEvidence(page);
+
+  await page.keyboard.up('ArrowRight');
+  await waitForSimTicks(page, 1);
+  const afterLateralRelease = await orbitAssistEvidence(page);
+  await page.keyboard.up('Space');
+  await waitForSimTicks(page, 2);
+
+  return { engaged, afterPointer, afterLateralRelease };
+}
+
+async function orbitAssistEvidence(page) {
+  return page.evaluate(() => {
+    const state = window.SF.state;
+    const player = state.entities.get(state.playerId);
+    const telemetry = player && player._flightFrame && player._flightFrame.orbitAssist || {};
+    const tetherHud = document.querySelector('#sf-tetherstat [data-k=tether]');
+    return {
+      active: !!telemetry.active,
+      reason: telemetry.reason || null,
+      direction: Number(telemetry.direction || 0),
+      selectedDirection: Number(telemetry.selectedDirection || 0),
+      targetId: state.player.tether && state.player.tether.targetId,
+      aimAngle: Number(state.input.aimAngle || 0),
+      hudText: tetherHud ? String(tetherHud.textContent || '').trim() : '',
+    };
+  });
 }
 
 async function cloakEvidence(page) {

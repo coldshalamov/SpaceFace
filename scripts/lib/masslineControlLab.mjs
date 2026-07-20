@@ -20,11 +20,12 @@
 //
 // Those queue functions ACCUMULATE (they push onto an array) rather than REPLACE — unlike
 // writePhysicsControl, which flightV3 uses to set force/torque and which a later writer would clobber.
-// So the controller adds a corrective impulse ON TOP of flightV3's control without ever overwriting
-// the production flight command. The baseline controller is a no-op (null command), so the baseline
-// matrix measures the CURRENT tether behavior verbatim. When the T05 radial-damping controller lands,
-// it drops in as a `controller` factory with zero lab changes. See findings in the packet receipt:
-// this impulse-accumulate-vs-control-replace choice is the load-bearing seam decision.
+// So a lab controller adds a corrective impulse ON TOP of flightV3's control without ever
+// overwriting the production flight command. The baseline controller is a no-op (null command), so
+// the baseline matrix measures the CURRENT tether behavior verbatim. PQ-005's production acceptance
+// mode keeps that lab controller disabled and instead publishes the real Massline input packet; its
+// correction can therefore originate only in Flight V3's shipped orbit-assist path. See findings in
+// the packet receipt: this impulse-accumulate-vs-control-replace choice is the load-bearing seam.
 //
 // DETERMINISM
 // Seed flows only through createGameState(seed) → state.rng. No wall-clock, no Math.random, no
@@ -294,6 +295,12 @@ export async function runScenario(options = {}) {
     data: { scenarioRole: 'lab_anchor' },
   });
 
+  // Seed entry velocity BEFORE Rapier body creation. Assigning entity.vel after prepareBackend only
+  // changed the mirror, not the authority-owned body, and made the historical speed axis vacuous.
+  const entryVel = rot(0, params.entrySpeed);
+  player.vel.x = entryVel.x;
+  player.vel.z = entryVel.z;
+
   const physicsSys = registry.get('physics');
   const ready = await physicsSys.prepareBackend(state, {});
   const sg02Ready = !!(state.physicsRuntime && state.physicsRuntime.diagnostics && state.physicsRuntime.diagnostics.sg02Ready);
@@ -329,13 +336,19 @@ export async function runScenario(options = {}) {
     controller,
     lastCommand: null,
   };
-
-  // Entry kinetic energy: an initial tangential velocity (rotated with the scenario). The assisted
-  // governor normalises free speed toward the craft's cap, so the swing is sustained by throttle;
-  // entrySpeed sets the swing's opening phase.
-  const entryVel = rot(0, params.entrySpeed);
-  player.vel.x = entryVel.x;
-  player.vel.z = entryVel.z;
+  if (params.productionOrbitAssist) {
+    state.settings.gameplay.orbitAssistStrength = 'standard';
+    state.player.tether = {
+      ...(state.player.tether || {}),
+      active: true,
+      targetId: anchor.id,
+      strain: 0.65,
+      load: 0.65,
+      attachmentId: created.attachment.id,
+      restLength: restLength0,
+      phase: 'loaded',
+    };
+  }
 
   state.input.actions = state.input.actions || {};
 
@@ -343,11 +356,30 @@ export async function runScenario(options = {}) {
   for (let tick = 0; tick < params.ticks; tick++) {
     const input = resolveInput(params, tick);
     state.input.moveX = finite(input.moveX, 0);
-    state.input.moveZ = finite(input.moveZ, 0);
+    state.input.moveZ = params.productionOrbitAssist ? 0 : finite(input.moveZ, 0);
     state.input.turnIntent = finite(input.turnIntent, 0);
     state.input.boost = !!input.boost;
     state.input.aimAngle = player.rot;
-    state.input.actions.reelDelta = finite(input.reelDelta, 0);
+    state.input.actions.reelDelta = params.productionOrbitAssist ? 0 : finite(input.reelDelta, 0);
+    if (params.productionOrbitAssist) {
+      // Match the public input grammar's brief forward-hold acquisition without spending the
+      // acceptance run reeling a 90 m line down to an unrelated overload case.
+      const acquiring = tick < 12;
+      state.input.actions.massline = {
+        phase: 'line-control',
+        latch: false,
+        cut: false,
+        lineControl: true,
+        lineLength: acquiring ? -1 : 0,
+        reelIn: acquiring ? 1 : 0,
+        payOut: 0,
+        orbitDirection: 1,
+        pump: false,
+        buffered: false,
+        source: 'lab-public-intent',
+      };
+      state.input.actions.throwArm = false;
+    }
 
     sim.step(SIM_DT);
 
@@ -367,6 +399,7 @@ export async function runScenario(options = {}) {
       command: state._lab.lastCommand,
       tetherActive: !!(state.player.tether && state.player.tether.active),
       mt,
+      orbitAssist: host && host._flightFrame && host._flightFrame.orbitAssist,
       attachmentActive: !!(att && att.state === 'active'),
     }));
   }
@@ -379,6 +412,7 @@ export async function runScenario(options = {}) {
     tetherBrokenCount,
     systems: registry.systems.map((sys) => sys.name),
     attachmentActiveAtEnd: !!(attFinal && attFinal.state === 'active'),
+    contactDistance: positive(player.radius, 0) + positive(anchor.radius, 0),
   };
   const traceHash = hashTrace(trace);
 
@@ -498,6 +532,10 @@ export function makeTraceSample(tick, obs, restLength, opts = {}) {
     cmdZ: round6(cmd ? cmd.z : 0),
     cmdRejected: !!(cmd && cmd.rejected),
     cmdClamped: !!(cmd && cmd.clamped),
+    orbitAssistActive: !!(opts.orbitAssist && opts.orbitAssist.active),
+    orbitAssistReason: opts.orbitAssist && opts.orbitAssist.reason || null,
+    orbitRadialAcceleration: round6(finite(opts.orbitAssist && opts.orbitAssist.radialAcceleration, 0)),
+    orbitSaturated: !!(opts.orbitAssist && opts.orbitAssist.saturated),
     attachmentActive: opts.attachmentActive !== false,
   };
 }
@@ -588,6 +626,101 @@ export async function acceptanceMatrix(options = {}) {
   };
 }
 
+/** PQ-005 production acceptance: 3 line lengths x 3 entry speeds x 3 qualifying anchor masses.
+ * Every cell runs ten fixed-step seconds with the lab controller disabled, so correction can only
+ * originate in the live Flight V3 orbit-assist path. */
+export async function orbitAssistAcceptanceMatrix(options = {}) {
+  const seed = Number.isFinite(options.seed) ? options.seed : DEFAULT_SEED;
+  const ticks = 600;
+  const lineLengths = options.lineLengths || [90, 120, 160];
+  const entrySpeeds = options.entrySpeeds || [0, 30, 60];
+  const anchorMasses = options.anchorMasses || [2500, 5000, 10000];
+  const rows = [];
+
+  for (const lineLength of lineLengths) {
+    for (const entrySpeed of entrySpeeds) {
+      for (const anchorMass of anchorMasses) {
+        const result = await runScenario({
+          seed,
+          ticks,
+          lineLength,
+          entrySpeed,
+          anchorMass,
+          productionOrbitAssist: true,
+          controller: BASELINE_CONTROLLER,
+          reelWindow: [],
+        });
+        const metrics = productionOrbitMetrics(result.trace, result.live.contactDistance);
+        rows.push({
+          id: `L${lineLength}-V${entrySpeed}-M${anchorMass}`,
+          params: sortedParams({ seed, ticks, lineLength, entrySpeed, anchorMass }),
+          metrics,
+          pass: metrics.pass,
+          live: result.live,
+        });
+      }
+    }
+  }
+  rows.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const passCount = rows.filter((row) => row.pass).length;
+  return {
+    schema: 'spaceface.masslineControlLab.orbitAssistMatrix.v1',
+    deterministic: true,
+    seed,
+    rows,
+    summary: { total: rows.length, pass: passCount, fail: rows.length - passCount },
+    digest: hashMatrix(rows),
+  };
+}
+
+function productionOrbitMetrics(trace, contactDistance) {
+  const tangentDominance = 0.6;
+  const settleWindowTicks = 12;
+  let tangentDominantTick = null;
+  let minDistance = Infinity;
+  let orbitAssistActiveTicks = 0;
+  let oscillations = 0;
+  let previousRadialSign = 0;
+
+  for (let i = 0; i < trace.length; i++) {
+    const sample = trace[i];
+    minDistance = Math.min(minDistance, sample.distance);
+    if (sample.orbitAssistActive) orbitAssistActiveTicks++;
+    const sign = sample.radialSpeed > 0.5 ? 1 : sample.radialSpeed < -0.5 ? -1 : 0;
+    if (sign !== 0) {
+      if (previousRadialSign !== 0 && sign !== previousRadialSign) oscillations++;
+      previousRadialSign = sign;
+    }
+    if (tangentDominantTick == null && i + settleWindowTicks <= trace.length) {
+      let stable = true;
+      for (let j = i; j < i + settleWindowTicks; j++) {
+        if (trace[j].tangentFraction < tangentDominance) { stable = false; break; }
+      }
+      if (stable) tangentDominantTick = sample.tick;
+    }
+  }
+
+  const anchorContact = minDistance <= contactDistance;
+  const sustained = trace.length === 600
+    && trace[trace.length - 1].attachmentActive
+    && orbitAssistActiveTicks >= 540;
+  const pass = tangentDominantTick != null
+    && tangentDominantTick <= 120
+    && !anchorContact
+    && sustained
+    && oscillations <= 12;
+  return {
+    tangentDominantTick,
+    minDistance: round6(minDistance),
+    contactDistance: round6(contactDistance),
+    anchorContact,
+    orbitAssistActiveTicks,
+    oscillations,
+    sustained,
+    pass,
+  };
+}
+
 /**
  * Grid-search sweep over controller gains × environment. Default controllerFactory is the reference
  * PD controller, so the gain axes actually bite (a real, non-flat matrix). Returns stable-ordered
@@ -664,7 +797,8 @@ function normalizeScenario(options) {
   const reelWindow = Array.isArray(options.reelWindow) ? options.reelWindow.slice(0, 2) : [60, 160];
   const frames = Array.isArray(options.frames) ? options.frames : null;
   const boost = !!options.boost;
-  return { seed, ticks, lineLength, anchorMass, entrySpeed, throttle, rotation, reelWindow, frames, boost };
+  const productionOrbitAssist = !!options.productionOrbitAssist;
+  return { seed, ticks, lineLength, anchorMass, entrySpeed, throttle, rotation, reelWindow, frames, boost, productionOrbitAssist };
 }
 
 function sortedParams(obj) {

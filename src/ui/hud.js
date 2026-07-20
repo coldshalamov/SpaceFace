@@ -3521,10 +3521,13 @@ export function createHud(ctx, alerts) {
         elTetherStat.style.display = active ? '' : 'none';
         if (active) {
           const strain = tether.strain || 0;
+          const orbitAssist = p && p._flightFrame && p._flightFrame.orbitAssist;
           const targetEnt = state.entities.get(tether.targetId);
           const targetName = (targetEnt && (targetEnt.name || (targetEnt.data && targetEnt.data.name))) || (targetEnt ? targetEnt.type : '');
-          const status = strain > 0.85 ? 'CRITICAL' : strain > 0.6 ? 'STRAINED' :
-            (tether.reeling ? 'REELING' : tether.payingOut ? 'PAYING OUT' : tether.lineControl ? 'LINE CONTROL' : 'LOCKED');
+          const assistActive = !!(orbitAssist && orbitAssist.active);
+          const status = assistActive
+            ? (strain > 0.85 ? 'CRITICAL · ORBIT ASSIST' : strain > 0.6 ? 'STRAINED · ORBIT ASSIST' : 'ORBIT ASSIST')
+            : (strain > 0.85 ? 'CRITICAL' : strain > 0.6 ? 'STRAINED' : tether.reeling ? 'REELING' : tether.payingOut ? 'PAYING OUT' : tether.lineControl ? 'LINE CONTROL' : 'LOCKED');
           const controls = buildTetherControlPrompt(tether);
           const nameBit = targetName ? ' · ' + String(targetName).toUpperCase() : '';
           setText(elTether, `${status}${nameBit}${controls ? ' · ' + controls : ''}`);
