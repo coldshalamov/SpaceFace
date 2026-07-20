@@ -37,6 +37,11 @@ import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 import { collectPageIssues } from './lib/browser-issues.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+// The pinned universe. Chosen empirically because its opening board offers a cross-sector cargo
+// contract the player can actually load and fly — which is what the journey exists to grade. Change
+// it only with a recorded reason: moving the seed silently re-rolls every step's subject matter and
+// makes historical scores incomparable.
+const JOURNEY_DEFAULT_SEED = 20260719;
 const VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 const OUT_ROOT = path.join(ROOT, '.devshots', 'journey-textile');
 const ACCEPTED = path.join(OUT_ROOT, 'latest');
@@ -98,7 +103,50 @@ try {
   assert(nav, 'navigation must return a response');
   assert.deepEqual(inspectCanonicalRootUrl(page.url(), rootUrl).failures, [], 'post-navigation left canonical root');
 
-  bootSnapshot = await bootToAuthoredFlight({ page, outputDir: STAGING, log });
+  // PIN THE UNIVERSE SEED. D11 requires this check to be "green on a clean checkout", and the
+  // mission board is drawn from `hash32(state.meta.seed, ...)` — so an unseeded run re-rolls the
+  // contract's commodity, quantity and destination on every boot and the score is NOISE. Measured:
+  // consecutive runs of the identical tree scored 5/11 and 3/11, because one drew an 8u fuel-cells
+  // haul that loaded and the other a 7u textile haul that did not. Worse than flaky, it makes
+  // debugging dishonest — a step that changes between runs cannot be attributed to a fix rather
+  // than to the dice.
+  //
+  // This is NOT injection, and the contract test still forbids that: the seed is typed into the
+  // PUBLIC `#sf-ng-seed` field on the New Game screen, exactly the affordance a player uses, at the
+  // `new-game-visible` milestone which fires BEFORE Launch. It is the same discipline as the 47a
+  // golden's `--seed 47`.
+  //
+  // Overridable so the journey can be fuzzed across universes rather than over-fitted to one:
+  //   SPACEFACE_JOURNEY_SEED=<n>  pins a different universe
+  //   SPACEFACE_JOURNEY_SEED=0    restores the old random behaviour
+  const rawSeed = process.env.SPACEFACE_JOURNEY_SEED;
+  const journeySeed = rawSeed === undefined ? JOURNEY_DEFAULT_SEED : Number.parseInt(rawSeed, 10);
+  const seedToApply = Number.isFinite(journeySeed) && journeySeed > 0 ? journeySeed : null;
+
+  bootSnapshot = await bootToAuthoredFlight({
+    page,
+    outputDir: STAGING,
+    log,
+    onMilestone: async (name) => {
+      if (name !== 'new-game-visible' || seedToApply == null) return;
+      const field = page.locator('#sf-ng-seed');
+      if (!(await field.count())) {
+        // Fail loud rather than silently running unseeded: a missing field means the affordance
+        // regressed, and a quietly-random journey is exactly what this pin exists to prevent.
+        throw new Error('universe seed field #sf-ng-seed is missing — the journey cannot be pinned, '
+          + 'and an unseeded run cannot be trusted to be reproducible');
+      }
+      await field.fill(String(seedToApply));
+      log(`[journey] universe seed pinned to ${seedToApply} via the public New Game field`);
+    },
+  });
+
+  const appliedSeed = await page.evaluate(() => window.SF?.state?.meta?.seed ?? null);
+  if (seedToApply != null) {
+    assert.equal(appliedSeed, seedToApply,
+      `the universe seed did not take: asked for ${seedToApply}, the run reports ${appliedSeed}`);
+  }
+  log(`[journey] universe seed in effect: ${appliedSeed}${seedToApply == null ? ' (unseeded by request)' : ''}`);
 
   journeyResult = await runTextileJourney({
     page,
