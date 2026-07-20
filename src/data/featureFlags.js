@@ -32,6 +32,11 @@ export const COMBAT_FLAGS = {
   // (new hull damage), so OFF in the node golden and ON in the browser. The whip FEEDBACK (cue) is
   // unconditional; only the damage half sits behind this flag — it's a tuning knob, not the feature.
   whipDamage: IS_BROWSER,
+  // Universal weapon impulse + collision consequences (PQ-009). Weapon packets always retain their
+  // authored identity, but applying their linear/angular impulse and the downstream contact payoff
+  // is OFF in node fixtures and ON in live browser play. The 47-A harness also pins this OFF
+  // explicitly so its firing tape remains on the frozen phase-0 movement contract.
+  weaponImpulseConsequences: IS_BROWSER,
 };
 
 /** Read a combat flag by name; unknown names read false. Pure. */
@@ -137,4 +142,3 @@ export const TRAVEL_FLAGS = {
 export function travelFlag(name) {
   return !!TRAVEL_FLAGS[name];
 }
-

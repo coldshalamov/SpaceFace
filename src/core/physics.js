@@ -4,6 +4,7 @@
 import { Masks } from './entity.js';
 import { createSg02DynamicBodyOwner } from './sg02DynamicBodyOwner.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
+import { combatFlag } from '../data/featureFlags.js';
 import {
   resolveBerthWorld,
   resolveCollisionProxyManifest,
@@ -243,6 +244,7 @@ export const physics = {
       const token = ++this._sg02Token;
       this._sg02Init = createSg02DynamicBodyOwner({
         mode: 'rapier-dynamic',
+        captureContactImpacts: combatFlag('weaponImpulseConsequences'),
         publishTelemetry: shouldPublishSg02Telemetry(state),
         frameOrigin: worldFrameOrigin(state),
         frameOriginSeq: worldFrameOriginSeq(state),
@@ -285,13 +287,14 @@ export const physics = {
     this._syncSg02DynamicAuthorityEntities(state);
     this._reconcileCombatPhysicsBeforeStep();
     const sdiag = this._sg02.step(dt);
+    const sg02ImpactCount = this._emitSg02ContactImpacts(state);
     this._diag.rapierReady = true;
     this._diag.sg02Ready = true;
     this._diag.bodies = sdiag.bodies;
     this._diag.colliders = Number.isFinite(sdiag.colliders) ? sdiag.colliders : sdiag.bodies;
     this._diag.ccdBodies = sdiag.ccdBodies || 0;
-    this._diag.rapierContacts = 0;
-    this._diag.rapierEvents = 0;
+    this._diag.rapierContacts = sg02ImpactCount;
+    this._diag.rapierEvents = sg02ImpactCount;
     this._diag.sg02Bodies = sdiag.bodies;
     this._diag.sg02DynamicBodies = sdiag.dynamicBodies || 0;
     this._diag.sg02Attachments = sdiag.attachments || 0;
@@ -299,6 +302,28 @@ export const physics = {
     this._diag.sg02SyncFullEntities = sdiag.syncFullEntities || 0;
     this._diag.sg02SyncStaticEntities = sdiag.syncStaticEntities || 0;
     this._diag.sg02SyncDynamicEntities = sdiag.syncDynamicEntities || 0;
+  },
+
+  _emitSg02ContactImpacts(state) {
+    if (!this._sg02 || typeof this._sg02.drainContactImpacts !== 'function') return 0;
+    const receipts = this._sg02.drainContactImpacts();
+    if (!Array.isArray(receipts) || !receipts.length) return 0;
+    let emitted = 0;
+    for (const receipt of receipts) {
+      const a = state.entities && state.entities.get ? state.entities.get(receipt.aId) : null;
+      const b = state.entities && state.entities.get ? state.entities.get(receipt.bId) : null;
+      if (!a || !b || a.alive === false || b.alive === false) continue;
+      const material = pairMaterialInto(this._pairMaterialScratch, a, b);
+      const dp = emitPhysicsImpact(this.bus, state, a, b, receipt.impulse, material, receipt.pos, {
+        backend: 'rapier-dynamic',
+        // Owner tick is lifetime-local and restarts whenever SG-02 is rebuilt. Consequence
+        // provenance/status expiry belongs to the canonical simulation tick.
+        tick: state.tick,
+        normal: receipt.normal,
+      });
+      if (dp > 0) emitted++;
+    }
+    return emitted;
   },
 
   _syncSg02FrameOrigin(state) {
@@ -817,6 +842,10 @@ function createDeferredSg02CombatPhysicsPort(host) {
       const runtime = owner();
       return runtime ? runtime.applyImpulse(input) : false;
     },
+    applyTorqueImpulse(input) {
+      const runtime = owner();
+      return runtime ? runtime.applyTorqueImpulse(input) : false;
+    },
     createAttachment(input) {
       const runtime = owner();
       return runtime ? runtime.createAttachment(input) : false;
@@ -997,7 +1026,7 @@ function impulse(a, b, nx, nz, material) {
   return Math.abs(j);
 }
 
-function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos) {
+function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options = {}) {
   if (!bus || typeof bus.emit !== 'function') return 0;
   const dp = Math.max(0, finiteOrZero(impulseMag) * Math.max(0, finiteOrZero(material && material.impactScale) || 1));
   if (!(dp > 0)) return 0;
@@ -1010,6 +1039,9 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos) {
     playerDeltaV = dp / Math.max(0.1, finiteOrZero(player && player.mass) || 1);
   }
   bus.emit('physics:impact', {
+    consequenceKernelVersion: 1,
+    backend: String(options.backend || 'custom'),
+    tick: Number.isFinite(options.tick) ? Math.max(0, Math.trunc(options.tick)) : Math.max(0, Math.trunc(state && state.tick || 0)),
     aId: a.id,
     bId: b.id,
     dp,
@@ -1018,8 +1050,16 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos) {
     playerInvolved,
     playerDeltaV,
     pos: { x: finiteOrZero(pos && pos.x), z: finiteOrZero(pos && pos.z) },
+    normal: normalizedPlanar(options.normal),
   });
   return dp;
+}
+
+function normalizedPlanar(value) {
+  const x = finiteOrZero(value && value.x);
+  const z = finiteOrZero(value && value.z);
+  const length = Math.hypot(x, z);
+  return length > 1e-9 ? { x: x / length, z: z / length } : { x: 0, z: 0 };
 }
 
 function finiteOrZero(value) {

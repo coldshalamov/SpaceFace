@@ -37,6 +37,7 @@ import {
 } from '../src/contracts/evidenceSchemas.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../src/systems/ships.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
+import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import {
   configure47aTacticalAI,
   makeEvidenceSpindleSpec,
@@ -52,6 +53,13 @@ const scenario = args[1] || '';
 if (command === 'help' || command === '--help' || command === '-h') usage(0);
 if (!['run', 'inspect', 'compare', 'trace', 'profile'].includes(command)) usage(1, `Unknown command: ${command}`);
 if (scenario !== '47a') usage(1, `Unknown scenario: ${scenario}`);
+
+// Scenario pins are explicit even when a Tier-B flag already defaults OFF under Node. This makes
+// 47-A's frozen phase-0 movement contract independent of how the harness is embedded or invoked.
+const SCENARIO_COMBAT_FLAG_PINS = Object.freeze({
+  '47a': Object.freeze({ weaponImpulseConsequences: false }),
+});
+Object.assign(COMBAT_FLAGS, SCENARIO_COMBAT_FLAG_PINS[scenario]);
 
 const inputPath = argValue('--inputs', 'test/47a.inputs.json');
 const tape = readJson(inputPath);

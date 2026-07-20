@@ -61,6 +61,10 @@ export const masslineImpactDamage = {
   },
 
   _onPhysicsImpact(payload) {
+    // PQ-009-marked contacts are resolved by collisionConsequences for every impulse source.
+    // Keeping the older Massline-only fallback for unmarked fixtures/compatibility avoids applying
+    // two terrain hits to the same tumbling hull on the shipped SG-02 route.
+    if (payload.consequenceKernelVersion === 1) return;
     if (!massline2Flag('impactDamage') || !massline2Flag('tumble')) return;
     const dp = Math.max(0, Number(payload.dp) || 0);
     if (dp < TUMBLE_IMPACT_MIN_DP) return;

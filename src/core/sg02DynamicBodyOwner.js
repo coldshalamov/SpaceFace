@@ -101,6 +101,7 @@ export function createSg02CombatPhysicsPort(owner) {
   }
   return Object.freeze({
     applyImpulse(input) { return owner.applyImpulse(input); },
+    applyTorqueImpulse(input) { return owner.applyTorqueImpulse(input); },
     createAttachment(input) { return owner.createAttachment(input); },
     setAttachmentReel(input) { return owner.setAttachmentReel(input); },
     cutAttachment(input) { return owner.cutAttachment(input); },
@@ -118,6 +119,11 @@ export class Sg02DynamicBodyOwner {
     this.records = new Map();
     this.dynamicRecords = new Set();
     this.attachments = new Map();
+    this.captureContactImpacts = options.captureContactImpacts !== false;
+    this._colliderOwners = new Map();
+    this._contactImpacts = [];
+    this._eventQueue = this.captureContactImpacts && typeof RAPIER.EventQueue === 'function'
+      ? new RAPIER.EventQueue(true) : null;
     this._liveEntityIds = new Set();
     this._liveStaticEntityIds = new Set();
     this._liveDynamicEntityIds = new Set();
@@ -282,13 +288,34 @@ export class Sg02DynamicBodyOwner {
     this.attachments.clear();
     for (const [id, rec] of this.records) this._removeRecord(id, rec);
     if (this.world && typeof this.world.free === 'function') this.world.free();
+    if (this._eventQueue && typeof this._eventQueue.free === 'function') this._eventQueue.free();
+    this._eventQueue = null;
+    this._colliderOwners.clear();
+    this._contactImpacts.length = 0;
   }
 
   applyImpulse(input = {}) {
     const rec = this.records.get(input.entityId);
-    if (!rec) return false;
-    rec.body.applyImpulse(planeForce(input.impulse), true);
+    if (!rec || !rec.spec.dynamic) return false;
+    const impulse = planeForce(input.impulse);
+    if (input.point && typeof rec.body.applyImpulseAtPoint === 'function') {
+      rec.body.applyImpulseAtPoint(impulse, this._globalPointToFrameLocal(input.point, rec.body.translation()), true);
+    } else {
+      rec.body.applyImpulse(impulse, true);
+    }
     return true;
+  }
+
+  applyTorqueImpulse(input = {}) {
+    const rec = this.records.get(input.entityId);
+    return applyYawTorqueImpulse(rec, input.impulse);
+  }
+
+  drainContactImpacts() {
+    if (!this._contactImpacts.length) return [];
+    const out = this._contactImpacts.slice();
+    this._contactImpacts.length = 0;
+    return out;
   }
 
   createAttachment(input = {}) {
@@ -433,7 +460,12 @@ export class Sg02DynamicBodyOwner {
     for (const rec of this.dynamicRecords) this._captureExpectedKinematics(rec);
 
     this.world.timestep = this.fixedDt;
-    this.world.step();
+    if (this._eventQueue) {
+      this.world.step(this._eventQueue);
+      this._captureContactImpacts();
+    } else {
+      this.world.step();
+    }
     this.tick++;
     // Give first (bounds solver contact spikes), tether clamp second (its speed limits stay
     // authoritative — the give must never re-inflate a velocity the tether clamp reduced).
@@ -560,12 +592,12 @@ export class Sg02DynamicBodyOwner {
     // a bounded static collider SET registered once at body creation — never per-frame rebuilds.
     const proxyManifest = spec.dynamic ? null : resolveCollisionProxyManifest(entity);
     const colliderDescs = proxyManifest
-      ? buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec)
-      : [buildBallColliderDesc(this.RAPIER, spec, material)];
+      ? buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec, this.captureContactImpacts)
+      : [buildBallColliderDesc(this.RAPIER, spec, material, this.captureContactImpacts)];
     const colliders = colliderDescs.map((colliderDesc) => this.world.createCollider(colliderDesc, body));
     const collider = colliders[0];
     const ccdEnabled = typeof body.isCcdEnabled === 'function' ? body.isCcdEnabled() : !!spec.ccd;
-    return {
+    const record = {
       entity,
       spec,
       revision: spec.revision,
@@ -599,6 +631,8 @@ export class Sg02DynamicBodyOwner {
         revision: spec.revision,
       },
     };
+    for (const ownedCollider of colliders) this._colliderOwners.set(ownedCollider.handle, { rec: record, collider: ownedCollider });
+    return record;
   }
 
   _removeRecord(id, rec) {
@@ -607,7 +641,10 @@ export class Sg02DynamicBodyOwner {
     }
     this.dynamicRecords.delete(rec);
     const colliders = Array.isArray(rec.colliders) && rec.colliders.length ? rec.colliders : [rec.collider];
-    for (const collider of colliders) this.world.removeCollider(collider, false);
+    for (const collider of colliders) {
+      this._colliderOwners.delete(collider.handle);
+      this.world.removeCollider(collider, false);
+    }
     this.world.removeRigidBody(rec.body);
     this.records.delete(id);
   }
@@ -632,6 +669,58 @@ export class Sg02DynamicBodyOwner {
     rec.entity = entity;
     this._maybeResyncBodyPose(rec, entity);
     return rec;
+  }
+
+  _captureContactImpacts() {
+    if (!this._eventQueue || typeof this._eventQueue.drainContactForceEvents !== 'function') return;
+    const merged = new Map();
+    this._eventQueue.drainContactForceEvents((event) => {
+      const ownedA = this._colliderOwners.get(event.collider1());
+      const ownedB = this._colliderOwners.get(event.collider2());
+      if (!ownedA || !ownedB || ownedA.rec === ownedB.rec) return;
+      const recA = ownedA.rec;
+      const recB = ownedB.rec;
+      const rawImpulse = Math.max(0, finite(event.totalForceMagnitude())) * this.fixedDt;
+      if (!(rawImpulse > 0)) return;
+      const dynamicCaps = [];
+      if (recA.spec.dynamic) dynamicCaps.push(recA.spec.mass * MAX_CONTACT_DV);
+      if (recB.spec.dynamic) dynamicCaps.push(recB.spec.mass * MAX_CONTACT_DV);
+      if (!dynamicCaps.length) return;
+      const boundedImpulse = Math.min(rawImpulse, Math.min(...dynamicCaps));
+      if (!(boundedImpulse > 0)) return;
+
+      const direction = event.maxForceDirection();
+      let px = (finite(recA.body.translation().x) + finite(recB.body.translation().x)) * 0.5;
+      let pz = (finite(recA.body.translation().z) + finite(recB.body.translation().z)) * 0.5;
+      if (typeof this.world.contactPair === 'function') {
+        this.world.contactPair(ownedA.collider, ownedB.collider, (manifold) => {
+          if (manifold.numSolverContacts() < 1) return;
+          const point = manifold.solverContactPoint(0);
+          px = finite(point && point.x, px);
+          pz = finite(point && point.z, pz);
+        });
+      }
+      const global = frameToGlobal({ x: px, z: pz }, this._frameOrigin, this._globalScratch);
+      const aFirst = compareIds(recA.entity.id, recB.entity.id) <= 0;
+      const a = aFirst ? recA : recB;
+      const b = aFirst ? recB : recA;
+      const key = `${String(a.entity.id)}\u0000${String(b.entity.id)}`;
+      const existing = merged.get(key);
+      const impulse = Math.min((existing && existing.impulse || 0) + boundedImpulse, Math.min(...dynamicCaps));
+      const normal = normalizePlanarDirection(direction);
+      const receipt = {
+        schemaVersion: 1,
+        tick: this.tick + 1,
+        aId: a.entity.id,
+        bId: b.entity.id,
+        impulse,
+        pos: { x: finite(global.x), z: finite(global.z) },
+        normal,
+      };
+      merged.set(key, receipt);
+    });
+    const receipts = [...merged.values()].sort((a, b) => compareIds(a.aId, b.aId) || compareIds(a.bId, b.bId));
+    this._contactImpacts.push(...receipts);
   }
 
   _maybeResyncBodyPose(rec, entity) {
@@ -730,7 +819,7 @@ export class Sg02DynamicBodyOwner {
       rec.body.applyImpulse(planeForce(impulse), true);
     }
     for (const impulse of command.torqueImpulses || []) {
-      rec.body.applyTorqueImpulse(yawTorque(impulse), true);
+      applyYawTorqueImpulse(rec, impulse);
     }
   }
 
@@ -1441,6 +1530,19 @@ function yawTorque(value) {
   return { x: 0, y: v.y, z: 0 };
 }
 
+function applyYawTorqueImpulse(rec, value) {
+  if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body || typeof rec.body.setAngvel !== 'function') return false;
+  const impulseY = finite(value && value.y);
+  if (impulseY === 0) return true;
+  const inertiaY = positive(rec.spec.inertiaY, 1);
+  const current = finite(rec.body.angvel && rec.body.angvel().y);
+  // Rapier's applyTorqueImpulse currently produces zero yaw on our Y-only rotation-constrained
+  // bodies. The owner is the sanctioned body writer, so apply the identical J = I*deltaOmega
+  // relation explicitly rather than leaking an entity.angVel fallback into gameplay systems.
+  rec.body.setAngvel({ x: 0, y: current + impulseY / inertiaY, z: 0 }, true);
+  return true;
+}
+
 function vector3(source) {
   return {
     x: finite(source && source.x),
@@ -1500,7 +1602,7 @@ function proxyIdForEntity(entity) {
   return manifest ? manifest.id : null;
 }
 
-function buildBallColliderDesc(R, spec, material) {
+function buildBallColliderDesc(R, spec, material, captureContactImpacts = true) {
   const colliderDesc = R.ColliderDesc.ball(spec.radius)
     .setDensity(0)
     .setFriction(material.friction)
@@ -1508,6 +1610,7 @@ function buildBallColliderDesc(R, spec, material) {
   if (material.ghost && typeof colliderDesc.setCollisionGroups === 'function') {
     colliderDesc.setCollisionGroups(0);   // member of nothing, filters nothing → zero contacts
   }
+  if (captureContactImpacts) configureContactEvents(R, colliderDesc, material);
   return colliderDesc;
 }
 
@@ -1515,7 +1618,7 @@ function buildBallColliderDesc(R, spec, material) {
 // normalized station-local units and become a bounded static collider set on the fixed body. The
 // body transform (station pos/rot) composes at the body level, so primitives stay entity-local.
 // This runs ONCE at record creation — never per frame.
-function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec) {
+function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec, captureContactImpacts = true) {
   const scale = proxyScaleFor(entity, manifest);
   const primitives = expandProxyPrimitives(manifest, { entity });
   const descs = [];
@@ -1548,11 +1651,30 @@ function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec) {
     }
     if (!desc) continue;
     desc.setDensity(0).setFriction(material.friction).setRestitution(material.restitution);
+    if (captureContactImpacts) configureContactEvents(R, desc, material);
     descs.push(desc);
   }
   // Fail-closed: a malformed manifest must not remove collision — fall back to the legacy ball.
-  if (!descs.length) return [buildBallColliderDesc(R, spec, material)];
+  if (!descs.length) return [buildBallColliderDesc(R, spec, material, captureContactImpacts)];
   return descs;
+}
+
+function configureContactEvents(R, colliderDesc, material) {
+  if (!colliderDesc || material.ghost) return colliderDesc;
+  if (typeof colliderDesc.setActiveEvents === 'function' && R.ActiveEvents) {
+    colliderDesc.setActiveEvents(R.ActiveEvents.CONTACT_FORCE_EVENTS);
+  }
+  if (typeof colliderDesc.setContactForceEventThreshold === 'function') {
+    colliderDesc.setContactForceEventThreshold(0);
+  }
+  return colliderDesc;
+}
+
+function normalizePlanarDirection(value) {
+  const x = finite(value && value.x);
+  const z = finite(value && value.z);
+  const length = Math.hypot(x, z);
+  return length > 1e-9 ? { x: x / length, z: z / length } : { x: 1, z: 0 };
 }
 
 // Quaternion rotating the Rapier capsule's local +Y axis onto a planar direction (ux, uz): a 90°

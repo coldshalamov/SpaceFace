@@ -10,6 +10,7 @@
 import { WEAPONS } from '../data/weapons.js';
 import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { resolveWeaponImpulseForHit } from '../combat/impulseKernel.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from './scanner.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
@@ -440,7 +441,7 @@ export const weapons = {
         from: { x: origin.x, z: origin.z }, to,
         dmgType: damageType,
         dpsThisTick: damage,
-        damagePacket: weaponDamagePacket(w, def, damage, damageType),
+        damagePacket: buildWeaponDamagePacket(w, def, damage, damageType),
       });
     }
     const beamKey = `${String(e.id)}:${Number.isFinite(w.slotIndex) ? w.slotIndex : 0}`;
@@ -633,7 +634,7 @@ export const weapons = {
     const data = {
       damage,
       damageType,
-      damagePacket: weaponDamagePacket(w, def, damage, damageType),
+      damagePacket: buildWeaponDamagePacket(w, def, damage, damageType),
       ownerId: e.id,
       weaponId: w.defId,
       kind: isMissile ? 'missile' : 'bullet',
@@ -890,8 +891,16 @@ function resetWeaponDiagnostics(diag) {
   diag.autoFireCandidates = 0;
 }
 
-function weaponDamagePacket(w, def, damage, damageType, pos = null) {
-  return scalarHitToDamagePacket({
+export function buildWeaponDamagePacket(w, def, damage, damageType, pos = null) {
+  const applicationEnabled = combatFlag('weaponImpulseConsequences');
+  const effective = {
+    dmg: w.dmg != null ? w.dmg : def.dmg,
+    impulsePerHit: w.impulsePerHit != null ? w.impulsePerHit : def.impulsePerHit,
+    tumbleTorque: w.tumbleTorque != null ? w.tumbleTorque : def.tumbleTorque,
+    impulseProvenance: w.impulseProvenance || def.impulseProvenance,
+  };
+  const impulseIdentity = applicationEnabled ? resolveWeaponImpulseForHit(effective, damage) : null;
+  const packet = scalarHitToDamagePacket({
     damage,
     damageType,
     pos,
@@ -900,9 +909,19 @@ function weaponDamagePacket(w, def, damage, damageType, pos = null) {
     // 0/null for normal hull weapons.
     subsystemShare: w.subsystemShare != null ? w.subsystemShare : def.subsystemShare,
     shieldBypass: w.shieldBypass != null ? w.shieldBypass : def.shieldBypass,
+    impulse: impulseIdentity ? { magnitude: impulseIdentity.magnitude } : null,
+    tumbleTorque: impulseIdentity ? impulseIdentity.tumbleTorque : 0,
     source: {
       kind: 'weapon',
       weaponId: w.defId || def.id || null,
+      impulseProvenance: impulseIdentity && impulseIdentity.provenance || null,
     },
   });
+  // Keep the flag-OFF projectile/save shape identical to the pre-PQ-009 packet. The impulse data is
+  // application state, so it must not hitch a ride in the frozen 47-A entity graph either.
+  if (!applicationEnabled) {
+    delete packet.tumbleTorque;
+    delete packet.source.impulseProvenance;
+  }
+  return packet;
 }

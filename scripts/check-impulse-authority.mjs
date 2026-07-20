@@ -11,11 +11,15 @@
 // still wrote vel directly, the "no direct mutation" case would see a vel change with a
 // non-mutating mock — that assertion failing is exactly the reintroduced violation.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { createBus } from '../src/core/eventBus.js';
 import { SIM_DT } from '../src/core/sim.js';
 import { impulseCharges } from '../src/systems/impulseCharges.js';
 import { IMPULSE_CHARGES } from '../src/data/impulseCharges.js';
+import { WEAPONS } from '../src/data/weapons.js';
+import { resolveCollisionConsequence } from '../src/combat/impulseKernel.js';
+import { auditPhysicsMembraneSources } from './lib/physicsMembraneAudit.mjs';
 
 const DEF = IMPULSE_CHARGES.charge_standard;
 const PLAYER_ID = 1;
@@ -28,8 +32,11 @@ assertNoDirectMutation();
 assertRejectedImpulseSkippedNotForced();
 assertMissingPortIsSafe();
 assertMagnitudeAndDirectionMatchBlastGeometry();
+assertUniversalWeaponIdentities();
+assertCollisionConsequenceContract();
+assertNewPathMembraneContract();
 
-console.log('Impulse authority checks OK');
+console.log('Universal impulse authority checks OK');
 
 // 1. A detonation near a ship routes exactly one applyImpulse through the port (correct entity,
 //    call shape, and magnitude = def.impulse × falloff), the port's own mutation is what moves the
@@ -133,6 +140,88 @@ function assertMagnitudeAndDirectionMatchBlastGeometry() {
   assert.ok(Math.abs(call.impulse.z + expected) < 1e-9,
     `-z victim must get -z impulse of ${expected}; got ${call.impulse.z}`);
   assert.ok(Math.abs(call.impulse.x) < 1e-9, 'a -z blast line must carry no x impulse');
+}
+
+// 6. PQ-009: every shipped weapon carries a stable authored identity; the starter exemption is a
+//    near-zero plink, never a missing value, and representative families remain mechanically apart.
+function assertUniversalWeaponIdentities() {
+  assert.ok(WEAPONS.length > 0, 'weapon catalog must not be empty');
+  for (const weapon of WEAPONS) {
+    assert.ok(Number.isFinite(weapon.impulsePerHit) && weapon.impulsePerHit > 0,
+      `${weapon.id}: positive impulsePerHit required`);
+    assert.ok(Number.isFinite(weapon.tumbleTorque) && weapon.tumbleTorque >= 0,
+      `${weapon.id}: finite tumbleTorque required`);
+    assert.match(String(weapon.impulseProvenance || ''), /^[a-z0-9_]+$/,
+      `${weapon.id}: stable impulseProvenance required`);
+  }
+  const byId = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
+  const starter = byId.get('wpn_pulse_laser_s');
+  assert.ok(starter && starter.impulsePerHit > 0 && starter.impulsePerHit <= 1,
+    'starter pulse must keep its near-zero impulse exemption');
+  const familyIds = [
+    'wpn_pulse_laser_s',
+    'wpn_autocannon_s',
+    'wpn_beam_laser_m',
+    'wpn_railgun_m',
+    'wpn_missile_rack_m',
+    'wpn_emp_disruptor_m',
+  ];
+  assert.equal(new Set(familyIds.map((id) => byId.get(id)?.impulseProvenance)).size, familyIds.length,
+    'representative weapon families may not collapse onto one impulse identity');
+}
+
+// 7. The pure consequence contract distinguishes terrain payoff from craft contact and remains
+//    bounded under extreme input. Runtime routing is covered by weapon-impulse-consequence.test.mjs.
+function assertCollisionConsequenceContract() {
+  const target = { id: 2, type: 'ship', mass: 20, radius: 6 };
+  const common = {
+    target,
+    exchangedMomentum: 800,
+    tick: 120,
+    pos: { x: 6, z: 0 },
+    normal: { x: -1, z: 0 },
+    provenance: { actorId: 1, weaponId: 'wpn_railgun_m', tag: 'railgun_penetrator', appliedTick: 118 },
+  };
+  const terrain = resolveCollisionConsequence({ ...common, other: { id: 3, type: 'asteroid' } });
+  const craft = resolveCollisionConsequence({ ...common, other: { id: 4, type: 'ship' } });
+  assert.equal(terrain.control, 'tumble');
+  assert.ok(terrain.impactDamage > 0 && terrain.debrisCount > 0,
+    'high-momentum terrain contact must produce bounded damage/debris payoff');
+  assert.equal(craft.impactDamage, 0, 'craft contact is physical control, not generic collision hull damage');
+}
+
+// 8. New weapon/impulse/consequence paths are gameplay requesters, never motion owners. The
+//    injected source is the kill switch: if this audit stops recognizing a direct write, the public
+//    check fails even when the current tree happens to be clean.
+function assertNewPathMembraneContract() {
+  const paths = [
+    '../src/combat/damage.js',
+    '../src/combat/impulseKernel.js',
+    '../src/systems/collisionConsequences.js',
+  ];
+  const entries = paths.map((path) => ({
+    path,
+    source: readFileSync(new URL(path, import.meta.url), 'utf8'),
+  }));
+  const weaponsPath = '../src/systems/weapons.js';
+  const weaponsSource = readFileSync(new URL(weaponsPath, import.meta.url), 'utf8');
+  const packetBuilderStart = weaponsSource.indexOf('export function buildWeaponDamagePacket');
+  assert.ok(packetBuilderStart >= 0, 'weapons impulse packet builder must remain reachable');
+  // The older homing-missile block has two named direct writes in the T2 debt list. Step 8 is
+  // forbidden from repairing them, so audit the newly introduced request path rather than hiding
+  // those violations behind a broad exemption.
+  entries.push({
+    path: `${weaponsPath}#buildWeaponDamagePacket`,
+    source: weaponsSource.slice(packetBuilderStart),
+  });
+  assert.deepEqual(auditPhysicsMembraneSources(entries), [],
+    'PQ-009 requester paths contain a direct velocity write');
+  const injected = auditPhysicsMembraneSources([{
+    path: '<injected-direct-write>',
+    source: 'function violate(target) { target.vel.x += 1; }',
+  }]);
+  assert.equal(injected.length, 1,
+    'membrane audit must fail closed on an injected direct velocity write');
 }
 
 // ---- harness: real impulseCharges.update; the mock port is the only allowed vel mutator ----

@@ -45,6 +45,7 @@ import { impulseCharges } from '../systems/impulseCharges.js';
 import { masslineThrow } from '../systems/masslineThrow.js';          // §3.3 throw/release assist + §4.1 self-sling
 import { bulletTime } from '../systems/bulletTime.js';                // §3.6 held time dilation via core/timeEffects
 import { tumbleStates } from '../systems/tumbleStates.js';            // §3.4 uncontrolled-spin states on whipped NPCs
+import { collisionConsequences } from '../systems/collisionConsequences.js'; // PQ-009: bounded contact momentum -> control/combat receipts
 import { masslineImpactDamage } from '../systems/masslineImpactDamage.js'; // §3.5 whip-recoil + tumble contact damage
 import { cloak } from '../systems/cloak.js';                          // §4.2 cloak module runtime + detection ring
 import { lootShards } from '../systems/lootShards.js';                // §4.3 kill shards over the shipped loot:drop seam
@@ -141,7 +142,7 @@ export function createRegistry(ctx) {
   const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, voiceArbiter, input, autoTargetAssist, flybyFocus, bulletTime, cloak, scanner, scanReveal, buildIdentity, lawSecurity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, dockingCorridor, physics, aiPorts, tumbleStates, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, mines, uniqueLootAbilities, combat, combatOutcome, aftermathWrecks, uniqueWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, economy,
+    core, voiceArbiter, input, autoTargetAssist, flybyFocus, bulletTime, cloak, scanner, scanReveal, buildIdentity, lawSecurity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, dockingCorridor, physics, aiPorts, tumbleStates, collisionConsequences, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, mines, uniqueLootAbilities, combat, combatOutcome, aftermathWrecks, uniqueWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, economy,
     automation, asteroidSites, asteroidFormations, wingmen, intervention, lossLedger, factionPresence, spawnBudget, world, regionalEcology, encounterDirector, routeFollower, travelLanes, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, stationContacts, stationContactLoadBoundary, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, careerOrigins, careerLadders, liveCareerLadderBranches, missions, careerContracts, economyContracts, postEndingReplay, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, bandRadio, v2FlavorRuntime, onboarding, masslineHud, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
@@ -239,7 +240,7 @@ export function createRegistry(ctx) {
   // which input.js already reads, and its own `state.travelLanes` readout. It is a strict no-op
   // unless `travelFlag('laneBoost')` is on AND a player exists, so it costs two reads otherwise.
   const UPDATE_ORDER = [
-    input, autoTargetAssist, flybyFocus, bulletTime, cloak, lawSecurity, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, factionPresence, aiSlot, barkDirector, aiEncounter, actions, beacons, travelLanes, flightSlot, cruise, aiPorts, tumbleStates, weapons, countermeasures, impulseCharges, mines, uniqueLootAbilities, dockingCorridor, physics, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, automation, asteroidSites, asteroidFormations, wingmen, crafting,
+    input, autoTargetAssist, flybyFocus, bulletTime, cloak, lawSecurity, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, factionPresence, aiSlot, barkDirector, aiEncounter, actions, beacons, travelLanes, flightSlot, cruise, aiPorts, tumbleStates, collisionConsequences, weapons, countermeasures, impulseCharges, mines, uniqueLootAbilities, dockingCorridor, physics, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, automation, asteroidSites, asteroidFormations, wingmen, crafting,
     economy, intervention, world, regionalEcology, encounterDirector, routeFollower, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, missions, careerOrigins, careerLadders, liveCareerLadderBranches, story, scenarioRuntime, heat, traffic, drill, claims, bandRadio, onboarding, masslineHud, voiceArbiter,
   ];
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether
@@ -257,9 +258,10 @@ export function createRegistry(ctx) {
   // • bulletTime + cloak run right after flybyFocus: bulletTime shares the time-effects authority
   //   with Focus (min-wins), and cloak must settle its detection radius BEFORE the AI slot builds
   //   sensor frames (aiPorts.entityContacts reads it).
-  // • tumbleStates runs after aiPorts and before weapons: its zero-control overwrite must be the
-  //   LAST writer on the physics command membrane, and its cleared fire intent must land before
-  //   weapons reads intents this tick.
+  // • tumbleStates runs after aiPorts and before weapons: its zero-control overwrite belongs in
+  //   the final-writer layer, and its cleared fire intent must land before weapons reads intents.
+  // • collisionConsequences shares that final-writer window: SG-02 contacts arrive after physics,
+  //   then its transient stagger/tumble command overwrites next tick's AI command before weapons.
   // • uniqueLootAbilities runs after impulseCharges and before physics: Choir-Bell and Tideline
   //   cross the physics-command membrane in time for this tick's solve, while its unique-only
   //   capacitor premium settles before combat's later regeneration pass.
