@@ -22,6 +22,7 @@
 //   gate tolls and never writes credits/cargo/rep directly. (Radiation hull drain is an
 //   environmental effect applied to the entity hull, which has no separate combat owner.)
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
+import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
@@ -1047,6 +1048,14 @@ export const world = {
       const size = st.size || 'M';
       const dockRadius = size === 'L' ? 90 : size === 'S' ? 60 : 72;
       const collisionRadius = size === 'L' ? 42 : size === 'S' ? 26 : 34;
+      // PQ-008 compound collision proxies: stations with an authored manifest declare it here.
+      // The corridor bearing faces the sector origin (the natural traffic approach), stamped in
+      // station-local degrees (station rot is 0); the manifest snaps it to an inter-spar lane.
+      const collisionProxyId = collisionProxyIdForStation(st.id);
+      const sectorOrigin = collisionProxyId ? this._sectorOrigin(sector.id) : null;
+      const corridorBearingDeg = sectorOrigin && Number.isFinite(sectorOrigin.x)
+        ? Math.atan2(sectorOrigin.z - pos.z, sectorOrigin.x - pos.x) * (180 / Math.PI)
+        : null;
       const ent = this.helpers.spawnEntity({
         type: 'station', factionId: st.factionId || sector.factionId, pos,
         radius: collisionRadius, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
@@ -1054,6 +1063,7 @@ export const world = {
           stationId: st.id, stationTypeId: st.type, dockRadius,
           placeScale: dockRadius / 14,
           collisionRadius,
+          ...(collisionProxyId ? { collisionProxy: collisionProxyId, corridorBearingDeg } : {}),
           services: st.services || [], factionId: st.factionId || sector.factionId,
           name: st.name, size,
           // Chart note travels onto the live entity: the star chart's station lookup prefers live

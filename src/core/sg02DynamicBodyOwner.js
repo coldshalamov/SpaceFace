@@ -10,6 +10,11 @@ import {
   resolvePhysicsBodySpec,
   writePhysicsTelemetry,
 } from './physicsAuthority.js';
+import {
+  expandProxyPrimitives,
+  proxyScaleFor,
+  resolveCollisionProxyManifest,
+} from '../data/collisionProxyManifests.js';
 import { frameToGlobal, globalToFrame } from './coordinates.js';
 
 export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
@@ -129,6 +134,7 @@ export class Sg02DynamicBodyOwner {
       tick: 0,
       fixedDt: this.fixedDt,
       bodies: 0,
+      colliders: 0,
       attachments: 0,
       dynamicBodies: 0,
       ccdBodies: 0,
@@ -255,10 +261,15 @@ export class Sg02DynamicBodyOwner {
     for (const rec of this.dynamicRecords) {
       if (rec.ccdEnabled) ccdBodies++;
     }
+    let colliders = 0;
+    for (const rec of this.records.values()) {
+      colliders += Array.isArray(rec.colliders) && rec.colliders.length ? rec.colliders.length : 1;
+    }
     const diag = this._diagnostics;
     diag.tick = this.tick;
     diag.fixedDt = this.fixedDt;
     diag.bodies = this.records.size;
+    diag.colliders = colliders;
     diag.attachments = this.attachments.size;
     diag.dynamicBodies = this.dynamicRecords.size;
     diag.ccdBodies = ccdBodies;
@@ -545,14 +556,14 @@ export class Sg02DynamicBodyOwner {
     }
 
     const body = this.world.createRigidBody(desc);
-    const colliderDesc = R.ColliderDesc.ball(spec.radius)
-      .setDensity(0)
-      .setFriction(material.friction)
-      .setRestitution(material.restitution);
-    if (material.ghost && typeof colliderDesc.setCollisionGroups === 'function') {
-      colliderDesc.setCollisionGroups(0);   // member of nothing, filters nothing → zero contacts
-    }
-    const collider = this.world.createCollider(colliderDesc, body);
+    // Compound planar collision proxies (PQ-008): entities declaring a collisionProxyManifest get
+    // a bounded static collider SET registered once at body creation — never per-frame rebuilds.
+    const proxyManifest = spec.dynamic ? null : resolveCollisionProxyManifest(entity);
+    const colliderDescs = proxyManifest
+      ? buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec)
+      : [buildBallColliderDesc(this.RAPIER, spec, material)];
+    const colliders = colliderDescs.map((colliderDesc) => this.world.createCollider(colliderDesc, body));
+    const collider = colliders[0];
     const ccdEnabled = typeof body.isCcdEnabled === 'function' ? body.isCcdEnabled() : !!spec.ccd;
     return {
       entity,
@@ -560,7 +571,9 @@ export class Sg02DynamicBodyOwner {
       revision: spec.revision,
       body,
       collider,
+      colliders,
       ccdEnabled,
+      proxyId: proxyManifest ? proxyManifest.id : null,
       appliedForce: zero3(),
       appliedTorque: zero3(),
       controlForce: zero3(),
@@ -593,15 +606,19 @@ export class Sg02DynamicBodyOwner {
       if (attachment.owner === rec || attachment.target === rec) this.cutAttachment({ attachmentId: attachment.id });
     }
     this.dynamicRecords.delete(rec);
-    this.world.removeCollider(rec.collider, false);
+    const colliders = Array.isArray(rec.colliders) && rec.colliders.length ? rec.colliders : [rec.collider];
+    for (const collider of colliders) this.world.removeCollider(collider, false);
     this.world.removeRigidBody(rec.body);
     this.records.delete(id);
   }
 
   _syncRecord(entity, spec) {
     const rec = this.records.get(entity.id);
-    if (!recordMatchesSpec(rec, spec)) {
-      if (rec && massPropertiesOnlyChanged(rec, spec) && this._updateMassPropertiesInPlace(rec, spec)) {
+    // Compound-proxy membership is part of the collider identity: a station gaining/losing its
+    // manifest (or switching manifests) rebuilds the static body, same as any other spec change.
+    const proxyId = spec.dynamic ? null : proxyIdForEntity(entity);
+    if (!recordMatchesSpec(rec, spec) || (rec && rec.proxyId !== proxyId)) {
+      if (rec && rec.proxyId === proxyId && massPropertiesOnlyChanged(rec, spec) && this._updateMassPropertiesInPlace(rec, spec)) {
         rec.entity = entity;
         this._maybeResyncBodyPose(rec, entity);
         return rec;
@@ -1476,6 +1493,73 @@ function recordMatchesSpec(rec, spec) {
     rec.spec.mass === spec.mass &&
     rec.spec.inertiaY === spec.inertiaY &&
     rec.spec.material === spec.material;   // material drives collider friction/restitution/groups
+}
+
+function proxyIdForEntity(entity) {
+  const manifest = resolveCollisionProxyManifest(entity);
+  return manifest ? manifest.id : null;
+}
+
+function buildBallColliderDesc(R, spec, material) {
+  const colliderDesc = R.ColliderDesc.ball(spec.radius)
+    .setDensity(0)
+    .setFriction(material.friction)
+    .setRestitution(material.restitution);
+  if (material.ghost && typeof colliderDesc.setCollisionGroups === 'function') {
+    colliderDesc.setCollisionGroups(0);   // member of nothing, filters nothing → zero contacts
+  }
+  return colliderDesc;
+}
+
+// Compound planar collision proxies (PQ-008 / SF-08 → F18). Manifest primitives are authored in
+// normalized station-local units and become a bounded static collider set on the fixed body. The
+// body transform (station pos/rot) composes at the body level, so primitives stay entity-local.
+// This runs ONCE at record creation — never per frame.
+function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec) {
+  const scale = proxyScaleFor(entity, manifest);
+  const primitives = expandProxyPrimitives(manifest, { entity });
+  const descs = [];
+  for (const primitive of primitives) {
+    let desc = null;
+    if (primitive.kind === 'circle') {
+      desc = R.ColliderDesc.ball(Math.max(0.01, primitive.r * scale))
+        .setTranslation(primitive.x * scale, 0, primitive.z * scale);
+    } else if (primitive.kind === 'capsule') {
+      const ax = primitive.ax * scale;
+      const az = primitive.az * scale;
+      const bx = primitive.bx * scale;
+      const bz = primitive.bz * scale;
+      const dx = bx - ax;
+      const dz = bz - az;
+      const len = Math.hypot(dx, dz);
+      const ux = len > 1e-9 ? dx / len : 1;
+      const uz = len > 1e-9 ? dz / len : 0;
+      desc = R.ColliderDesc.capsule(Math.max(0, len * 0.5), Math.max(0.01, primitive.r * scale))
+        .setTranslation((ax + bx) * 0.5, 0, (az + bz) * 0.5)
+        .setRotation(capsulePlanarQuat(ux, uz));
+    } else if (primitive.kind === 'obb') {
+      desc = R.ColliderDesc.cuboid(
+        Math.max(0.01, primitive.hx * scale),
+        Math.max(0.01, primitive.hx * scale),
+        Math.max(0.01, primitive.hz * scale),
+      )
+        .setTranslation(primitive.x * scale, 0, primitive.z * scale)
+        .setRotation(quatFromYaw(finite(primitive.angleDeg) * (Math.PI / 180)));
+    }
+    if (!desc) continue;
+    desc.setDensity(0).setFriction(material.friction).setRestitution(material.restitution);
+    descs.push(desc);
+  }
+  // Fail-closed: a malformed manifest must not remove collision — fall back to the legacy ball.
+  if (!descs.length) return [buildBallColliderDesc(R, spec, material)];
+  return descs;
+}
+
+// Quaternion rotating the Rapier capsule's local +Y axis onto a planar direction (ux, uz): a 90°
+// rotation about the perpendicular axis (uz, 0, -ux).
+function capsulePlanarQuat(ux, uz) {
+  const s = Math.SQRT1_2;
+  return { x: uz * s, y: 0, z: -ux * s, w: s };
 }
 
 function massPropertiesOnlyChanged(rec, spec) {

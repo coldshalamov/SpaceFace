@@ -4,6 +4,10 @@
 import { Masks } from './entity.js';
 import { createSg02DynamicBodyOwner } from './sg02DynamicBodyOwner.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
+import {
+  resolveBerthWorld,
+  resolveCollisionProxyManifest,
+} from '../data/collisionProxyManifests.js';
 
 const DEFAULT_MATERIAL = Object.freeze({
   push: 1,
@@ -284,7 +288,7 @@ export const physics = {
     this._diag.rapierReady = true;
     this._diag.sg02Ready = true;
     this._diag.bodies = sdiag.bodies;
-    this._diag.colliders = sdiag.bodies;
+    this._diag.colliders = Number.isFinite(sdiag.colliders) ? sdiag.colliders : sdiag.bodies;
     this._diag.ccdBodies = sdiag.ccdBodies || 0;
     this._diag.rapierContacts = 0;
     this._diag.rapierEvents = 0;
@@ -576,12 +580,16 @@ export const physics = {
 
     if (player && player.alive) {
       const stations = (state.entityIndex && state.entityIndex.stations) || state.entityList;
+      const playerSpeed = Math.hypot(
+        player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0,
+        player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0,
+      );
       for (const st of stations) {
         if (!st.alive || st.type !== 'station') continue;
         const data = st.data || {};
-        const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0)) * 1.5;
-        const d = Math.hypot(st.pos.x - player.pos.x, st.pos.z - player.pos.z);
         if (data.isGate) {
+          const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0)) * 1.5;
+          const d = Math.hypot(st.pos.x - player.pos.x, st.pos.z - player.pos.z);
           if (d <= range + 28 && d < nextGateDist) {
             nextGateDist = d;
             nextGate = st;
@@ -589,6 +597,21 @@ export const physics = {
           continue;
         }
         if (!data.stationId) continue;
+        // PQ-008 truthful exterior docking: stations declaring a collisionProxyManifest dock at
+        // their berth, not at a forgiving center radius. The berth gate requires proximity AND a
+        // slow approach; everything else about the dock:range seam is unchanged.
+        const manifest = resolveCollisionProxyManifest(st);
+        if (manifest && manifest.docking) {
+          const berth = resolveBerthWorld(st, manifest);
+          const dBerth = Math.hypot(berth.x - player.pos.x, berth.z - player.pos.z);
+          if (dBerth <= manifest.docking.berth.dockRadius && playerSpeed <= manifest.docking.berth.speedGate && dBerth < nextDist) {
+            nextDist = dBerth;
+            nextStationId = data.stationId;
+          }
+          continue;
+        }
+        const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0)) * 1.5;
+        const d = Math.hypot(st.pos.x - player.pos.x, st.pos.z - player.pos.z);
         if (d <= range && d < nextDist) {
           nextDist = d;
           nextStationId = data.stationId;

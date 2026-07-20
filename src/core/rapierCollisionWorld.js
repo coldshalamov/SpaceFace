@@ -2,9 +2,17 @@
 //
 // This adapter builds simple 2.5D sphere bodies for live collidable entities so Rapier can be
 // toggled on for contact/CCD experiments. It uses dynamic/fixed rigid bodies only; SG-02 production
-// authority is hosted by physics.js through sg02DynamicBodyOwner.
+// authority is hosted by physics.js through sg02DynamicBodyOwner. Entities declaring a
+// collisionProxyManifest (PQ-008) get the same bounded compound static collider set as the SG-02
+// authority so observer contact experiments see the truthful silhouette.
 
 export const PHYSICS_RUNTIME_SCHEMA_VERSION = 1;
+
+import {
+  expandProxyPrimitives,
+  proxyScaleFor,
+  resolveCollisionProxyManifest,
+} from '../data/collisionProxyManifests.js';
 
 const RAPIER_COMPAT_INIT_WARNING = 'using deprecated parameters for the initialization function';
 let rapierInitPromise = null;
@@ -39,7 +47,12 @@ export async function createRapierCollisionWorld() {
         rec = createRecord(e, dynamic, ccdEnabled);
         bodies.set(e.id, rec);
       } else if (Math.abs(rec.radius - e.radius) > 0.001) {
-        if (typeof rec.collider.setRadius === 'function') rec.collider.setRadius(e.radius);
+        if (Array.isArray(rec.colliders) && rec.colliders.length > 1) {
+          // Compound proxy records cannot retune a single radius — rebuild the static set.
+          removeRecord(rec);
+          rec = createRecord(e, dynamic, ccdEnabled);
+          bodies.set(e.id, rec);
+        } else if (typeof rec.collider.setRadius === 'function') rec.collider.setRadius(e.radius);
         else if (typeof rec.collider.setShape === 'function') rec.collider.setShape(new RAPIER.Ball(e.radius));
         rec.radius = e.radius;
         rec.queryShape = new RAPIER.Ball(e.radius);
@@ -74,9 +87,13 @@ export async function createRapierCollisionWorld() {
   }
 
   function diagnostics() {
+    let colliders = 0;
+    for (const rec of bodies.values()) {
+      colliders += Array.isArray(rec.colliders) && rec.colliders.length ? rec.colliders.length : 1;
+    }
     return {
       bodies: bodies.size,
-      colliders: bodies.size,
+      colliders,
       timestep: fixedDt,
       ccd: true,
       ccdBodies: countCcdBodies(),
@@ -105,19 +122,72 @@ export async function createRapierCollisionWorld() {
         .setLinvel(finite(e.vel && e.vel.x), 0, finite(e.vel && e.vel.z))
         .setAngvel({ x: 0, y: finite(e.angVel), z: 0 });
     }
-    const colliderDesc = RAPIER.ColliderDesc.ball(e.radius)
+    const body = world.createRigidBody(desc);
+    const proxyManifest = dynamic ? null : resolveCollisionProxyManifest(e);
+    const colliderDescs = proxyManifest
+      ? buildObserverProxyColliderDescs(e, proxyManifest)
+      : [buildObserverBallColliderDesc(e.radius)];
+    const colliders = colliderDescs.map((colliderDesc) => world.createCollider(colliderDesc, body));
+    const collider = colliders[0];
+    return { body, collider, colliders, radius: e.radius, queryShape: new RAPIER.Ball(e.radius), ccdEnabled, dynamic };
+  }
+
+  function buildObserverBallColliderDesc(radius) {
+    const colliderDesc = RAPIER.ColliderDesc.ball(radius)
       .setSensor(false)
       .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
     if (RAPIER.ActiveCollisionTypes && RAPIER.ActiveCollisionTypes.ALL != null) {
       colliderDesc.setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.ALL);
     }
-    const body = world.createRigidBody(desc);
-    const collider = world.createCollider(colliderDesc, body);
-    return { body, collider, radius: e.radius, queryShape: new RAPIER.Ball(e.radius), ccdEnabled, dynamic };
+    return colliderDesc;
+  }
+
+  // PQ-008 compound proxies for the observer backend: identical expansion/scale as the SG-02
+  // authority so contact experiments see the same silhouette the production authority registers.
+  function buildObserverProxyColliderDescs(entity, manifest) {
+    const scale = proxyScaleFor(entity, manifest);
+    const primitives = expandProxyPrimitives(manifest, { entity });
+    const descs = [];
+    for (const primitive of primitives) {
+      let desc = null;
+      if (primitive.kind === 'circle') {
+        desc = RAPIER.ColliderDesc.ball(Math.max(0.01, primitive.r * scale))
+          .setTranslation(primitive.x * scale, 0, primitive.z * scale);
+      } else if (primitive.kind === 'capsule') {
+        const ax = primitive.ax * scale;
+        const az = primitive.az * scale;
+        const dx = (primitive.bx - primitive.ax) * scale;
+        const dz = (primitive.bz - primitive.az) * scale;
+        const len = Math.hypot(dx, dz);
+        const ux = len > 1e-9 ? dx / len : 1;
+        const uz = len > 1e-9 ? dz / len : 0;
+        desc = RAPIER.ColliderDesc.capsule(Math.max(0, len * 0.5), Math.max(0.01, primitive.r * scale))
+          .setTranslation(ax + dx * 0.5, 0, az + dz * 0.5)
+          .setRotation({ x: uz * Math.SQRT1_2, y: 0, z: -ux * Math.SQRT1_2, w: Math.SQRT1_2 });
+      } else if (primitive.kind === 'obb') {
+        const angle = (Number.isFinite(primitive.angleDeg) ? primitive.angleDeg : 0) * (Math.PI / 180);
+        desc = RAPIER.ColliderDesc.cuboid(
+          Math.max(0.01, primitive.hx * scale),
+          Math.max(0.01, primitive.hx * scale),
+          Math.max(0.01, primitive.hz * scale),
+        )
+          .setTranslation(primitive.x * scale, 0, primitive.z * scale)
+          .setRotation({ x: 0, y: Math.sin(angle / 2), z: 0, w: Math.cos(angle / 2) });
+      }
+      if (!desc) continue;
+      desc.setSensor(false).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+      if (RAPIER.ActiveCollisionTypes && RAPIER.ActiveCollisionTypes.ALL != null) {
+        desc.setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.ALL);
+      }
+      descs.push(desc);
+    }
+    if (!descs.length) return [buildObserverBallColliderDesc(entity.radius)];
+    return descs;
   }
 
   function removeRecord(rec) {
-    world.removeCollider(rec.collider, false);
+    const colliders = Array.isArray(rec.colliders) && rec.colliders.length ? rec.colliders : [rec.collider];
+    for (const collider of colliders) world.removeCollider(collider, false);
     world.removeRigidBody(rec.body);
   }
 
@@ -134,6 +204,9 @@ export async function createRapierCollisionWorld() {
           const a = rec.collider.handle;
           const b = collider.handle;
           if (a === b) return true;
+          // Sibling colliders of one compound body permanently overlap by construction — they are
+          // not contacts. (Compare parent body handles, not collider handles.)
+          if (typeof collider.parent === 'function' && collider.parent() === rec.body) return true;
           pairs.add(a < b ? `${a}:${b}` : `${b}:${a}`);
           return true;
         },
