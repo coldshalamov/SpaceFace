@@ -5,6 +5,7 @@ import * as THREE from 'three';
 
 import * as partsLibrary from '../src/render/partsLibrary.js';
 import { getAssetResidency } from '../src/render/assetResidency.js';
+import { createPipelineAdmissionTracker } from '../src/render/pipelineReadiness.js';
 
 function residencyFixtureLoader(renderer, controls = {}) {
   const registry = getAssetResidency(renderer);
@@ -158,23 +159,36 @@ test('authored visual admission awaits the exact GPU pipeline compiler when avai
 
 test('pooled ship pipeline admission presents one valid object tree and cleans its probe', async () => {
   const root = new THREE.Group();
+  const ordinaryRoot = new THREE.Group();
   const admission = new THREE.Group();
   admission.add(new THREE.InstancedMesh(
     new THREE.BoxGeometry(1, 1, 1),
     new THREE.MeshStandardMaterial(),
     1,
   ));
-  const subjects = [];
-
-  await partsLibrary.prepareComposedShipPipelines({ root, pipelineAdmission: admission }, {
-    prepareAuthoredPipelines: async (subject) => {
-      subjects.push(subject);
-      assert.equal(subject, root);
+  const batches = [];
+  const tracker = createPipelineAdmissionTracker(async (subjects) => {
+    batches.push(subjects);
+    assert.ok(subjects.every((subject) => subject?.isObject3D === true),
+      'the real tracker batch must never contain a nested subject array');
+    if (subjects.includes(root)) {
       assert.equal(admission.parent, root, 'instancing probe is a temporary child during compile');
-    },
-  });
+    }
+    return { skipped: false };
+  }, { quietMs: 1, maxWaitMs: 5 });
 
-  assert.deepEqual(subjects, [root], 'pipeline tracker receives one Object3D rather than a nested array');
+  await Promise.all([
+    partsLibrary.prepareComposedShipPipelines({ root, pipelineAdmission: admission }, {
+      prepareAuthoredPipelines: (subject) => tracker.compile(subject),
+    }),
+    partsLibrary.prepareAuthoredVisualPipelines(ordinaryRoot, {
+      prepareAuthoredPipelines: (subject) => tracker.compile(subject),
+    }),
+  ]);
+
+  assert.equal(batches.length, 1, 'concurrent authored admissions coalesce through the real tracker');
+  assert.deepEqual(batches[0], [root, ordinaryRoot],
+    'pipeline tracker receives separate Object3D roots rather than a nested array');
   assert.equal(admission.parent, null);
   assert.equal(admission.children.length, 0, 'temporary instancing subjects are released after compile');
 });
