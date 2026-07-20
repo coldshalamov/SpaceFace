@@ -8,6 +8,7 @@ status, subsystem detail, and design technique belong in the linked owner docume
 | Task | Start here |
 |---|---|
 | What is active or occupied now? | `design/program/NOW.md` → `design/program/README.md` |
+| Choose work across several plans / "do the next N" | `design/program/PROGRAM_MAP.md` → `design/program/roadmap/program-queue.json` |
 | Claim a multi-week roadmap packet | `design/program/roadmap/README.md` → `design/program/roadmap/00_EXECUTION_PROTOCOL.md` |
 | Implement a feature/fix | Activated plan/spec → `docs/MODULE_MAP.md` → owning nested `AGENTS.md` |
 | Recurring bug | `docs/COMMON_BUGS.md` |

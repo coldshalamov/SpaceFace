@@ -19,24 +19,28 @@ not have to reconcile several conflicting handoffs before working.
 
 ## Read this set in order
 
-1. [`NOW.md`](./NOW.md) — volatile active leases, occupied paths, and packets ready to claim.
-2. [`roadmap/README.md`](./roadmap/README.md) — the 113-packet work order and dependency spine.
-3. [`roadmap/00_EXECUTION_PROTOCOL.md`](./roadmap/00_EXECUTION_PROTOCOL.md) — mandatory autonomous
+1. [`PROGRAM_MAP.md`](./PROGRAM_MAP.md) — front door for all plan families and the "next N" controller procedure.
+2. [`NOW.md`](./NOW.md) — volatile active leases, occupied paths, and packets ready to claim.
+3. [`roadmap/program-queue.json`](./roadmap/program-queue.json) — explicit cross-plan priority and
+   dependency overlay; its `PQ-*` handles do not replace stable packet IDs.
+4. [`roadmap/README.md`](./roadmap/README.md) — the 113-packet work order and dependency spine.
+5. [`roadmap/00_EXECUTION_PROTOCOL.md`](./roadmap/00_EXECUTION_PROTOCOL.md) — mandatory autonomous
    workflow, collision control, proof, receipts, and integration.
-4. [`01_VERIFIED_DONE.md`](./01_VERIFIED_DONE.md) — committed or freshly proved outcomes.
-5. [`02_REMAINING_WORK.md`](./02_REMAINING_WORK.md) — milestone-level Alpha/Depth remaining-work roll-up.
-6. [`03_LIVE_ACCEPTANCE_MATRIX.md`](./03_LIVE_ACCEPTANCE_MATRIX.md) — checks, public routes, evidence,
+6. [`01_VERIFIED_DONE.md`](./01_VERIFIED_DONE.md) — committed or freshly proved outcomes.
+7. [`02_REMAINING_WORK.md`](./02_REMAINING_WORK.md) — milestone-level Alpha/Depth remaining-work roll-up.
+8. [`03_LIVE_ACCEPTANCE_MATRIX.md`](./03_LIVE_ACCEPTANCE_MATRIX.md) — checks, public routes, evidence,
    and milestone-exit truth at its stated audit revision.
-7. [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md) and
+9. [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md) and
    [`05_RESUME_AND_FINAL_REVIEW.md`](./05_RESUME_AND_FINAL_REVIEW.md) — recoverability and review.
-8. [`06_RETAINED_FUTURE_BACKLOG.md`](./06_RETAINED_FUTURE_BACKLOG.md) — only valuable outcomes not yet
+10. [`06_RETAINED_FUTURE_BACKLOG.md`](./06_RETAINED_FUTURE_BACKLOG.md) — only valuable outcomes not yet
    mapped to an `F/G/T/A/W/R` packet.
-9. [`07_HISTORICAL_BUILDS.md`](./07_HISTORICAL_BUILDS.md) — finished handoffs and later verification.
-10. [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md) — promoted graphics
+11. [`07_HISTORICAL_BUILDS.md`](./07_HISTORICAL_BUILDS.md) — finished handoffs and later verification.
+12. [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md) — promoted graphics
     checkpoint truth, rejected evidence, remaining visual work, integration record, and donor
     worktree cleanup criteria.
 
-The roadmap owns **packet work order**, not completion truth. Files `01–05` own verified/remaining/
+The program map and queue own cross-plan **selection order**, and the roadmap owns stable packet
+identity; neither owns completion truth. Files `01–05` own verified/remaining/
 acceptance/integration truth at their stated evidence revision. `06` is not a competing queue: when an
 outcome maps to a roadmap packet, update the packet; when it does not, retain it in `06` until the lead
 assigns a packet ID and milestone roll-up. This split prevents two “next work” systems.

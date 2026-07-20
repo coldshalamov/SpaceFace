@@ -7,8 +7,10 @@ folder indexes.
 ## Status and authority rules
 
 1. `ARCHITECTURE.md` owns technical contracts; `design/GDD_2_0.md` owns game design.
-2. `design/program/**` is the **only cross-program status roll-up**. Within it, `program/roadmap/**`
-   owns packet work order while `program/01–05` own verified/remaining/acceptance/integration truth.
+2. [`program/PROGRAM_MAP.md`](./program/PROGRAM_MAP.md) is the cross-plan dispatch front door and
+   [`program/roadmap/program-queue.json`](./program/roadmap/program-queue.json) is its explicit priority
+   overlay. `program/roadmap/**` retains stable packet identity while `program/01–05` retain
+   verified/remaining/acceptance/integration truth.
 3. `design/vision/ALPHA_PROGRAM.md` and `design/depth-program/BUILD_PLAN.md` own scope/order for their
    programs. They do not override live implementation evidence.
 4. A task's activated spec owns detailed intent. Code, current checks, public routes, evidence, and
@@ -23,6 +25,7 @@ folder indexes.
 | Family | Canonical role | Current disposition | Status owner |
 |---|---|---|---|
 | [`program/`](./program/README.md) | Unified Alpha + Depth pickup, verified done, remaining work, acceptance, integration | **ACTIVE — sole global status** | Lead/status integrator only |
+| [`program/PROGRAM_MAP.md`](./program/PROGRAM_MAP.md) and [`program/roadmap/program-queue.json`](./program/roadmap/program-queue.json) | Cross-plan routing, explicit priority, dependencies, and safe dispatch grouping | **ACTIVE DISPATCH FRONT DOOR — no completion authority** | Lead may reorder with a documented rationale; proof still projects into `program/01–05` |
 | [`program/roadmap/`](./program/roadmap/README.md) | 113 stable execution packets, dependencies, agent workflow, and collision-safe work order | **ACTIVE WORK ORDER — no completion authority** | Lead activates leases in `program/NOW.md`; proof projects into `program/01–05` |
 | [`program/06_RETAINED_FUTURE_BACKLOG.md`](./program/06_RETAINED_FUTURE_BACKLOG.md) | Reservoir only for valuable outcomes not yet mapped to an active roadmap packet | **RETAINED — not a second queue** | Lead assigns a roadmap ID before execution and updates milestone roll-up |
 | [`program/07_HISTORICAL_BUILDS.md`](./program/07_HISTORICAL_BUILDS.md) | Finished handoffs, recent build provenance, and deferred verification | **HISTORY — verification queue only** | Lead reopens defects through stable roadmap IDs |

@@ -2,6 +2,10 @@
 
 **Status:** active execution decomposition, 2026-07-18.
 
+For work spanning several plan families, start at [`../PROGRAM_MAP.md`](../PROGRAM_MAP.md). Its
+[`program-queue.json`](./program-queue.json) supplies explicit cross-plan priority and dependencies;
+this roadmap remains the authority for stable `F/G/T/A/W/R` implementation identities.
+
 ## Goal
 
 Turn the existing broad but uneven game into a coherent commercial solo space game by proving truth and
