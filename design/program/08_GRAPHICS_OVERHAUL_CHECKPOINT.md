@@ -224,6 +224,18 @@ catalog entries merely to make that broad pre-existing count green.
   Claude's final spatial-truth data during promotion; do not delete fields or edit a golden to hide
   the mismatch.
 
+### New measured defect (2026-07-20, surfaced by the accepted continuity harness)
+
+- **`station-applied-lod-inert`** — the Helios authored root carries real lod0/lod1/lod2 tagged
+  topology (2 tagged drawables per bucket, live-verified), but LOD requests do not change the
+  visible set: the truthful applied-census receipt shows `visibleBuckets {lod0: 2}` under both the
+  probe's forced `lod2` request and the renderer's own steady-state selector (`lod1`). The station
+  renders LOD0 unconditionally — a real distance-rendering/performance defect in the station LOD
+  forwarding chain (suspect: the `attachStationHlod` wrapper / authored-upgrade `updateLod`
+  replacement ordering). Receipts persist in the m2 harness report; diagnosis script
+  `.tmp/orch/diag4-helios-lod.mjs`. Owned by the station/render lane; the m2 harness records it as a
+  named known defect and will flip to strict matching when the chain is repaired.
+
 ## 5. Remaining work, ordered by player-visible return
 
 1. **Close natural-route station/geology motion and identity.** Keep the accepted Helios iteration-2 surfaces,

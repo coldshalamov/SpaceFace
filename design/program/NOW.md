@@ -1,14 +1,49 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-20 at audited `master` HEAD `1074c078`. Graphics, Atlas/map/travel,
-startup/loading, reviewed performance synthesis, geology semantic truth, and the refreshed Electron
-RCS harness are integrated. Final browser/Electron/GPU frame-time acceptance remains open; all six
-post-synthesis scene-pool/BatchedMesh experiments remain rejected, while `1074c078` retains only a
-future controlled hybrid-batching research hypothesis. Primary-tree WIP consists of a frozen,
-unaccepted continuity harness plus separately owned `design/sequential-build-plan/**` artifacts; do
-not include either accidentally in the graphics-ledger commit. Unread `design/program/_review/`
-residue was moved to `SpaceFace-archives/primary-review-quarantine-20260719` without being opened or
-imported.
+**Snapshot:** 2026-07-20 at audited `master` HEAD `b28d183b` (+ this ledger transaction). The
+controller session integrated the first five outcomes of the canonical queue — PQ-001, PQ-002,
+PQ-003, PQ-008, PQ-009 — with lead-rerun proof at every commit. **All batch leases are RELEASED.**
+Full acceptance detail: `03_LIVE_ACCEPTANCE_MATRIX.md` "Program batch PQ-001..PQ-010".
+
+Headlines: `check:m2:seamless-world` is GREEN on browser AND Electron for the first time
+(`b28d183b`, receipt in `.devshots/m2-floating-origin/`); the recorded `check:save-schema`
+dirty-tree red is CLOSED; the precheck DOA is repaired; PQ-008's Helios docking corridor passes the
+full autopilot route; PQ-009's impulse kernel is live behind `COMBAT_FLAGS.weaponImpulseConsequences`
+with the 47a golden pinned byte-stable.
+
+## Integration record (all on `master`, this session)
+
+| Commit | What it is |
+|---|---|
+| `2bc3042f` | docs(plans) — sequential-build-plan synthesis + reviewer packet |
+| `6454038a` | docs(program) — PROGRAM_MAP + program-queue control surfaces |
+| `99661d51` | fix(checks) — precheck DOA repaired (check:ci delegation pinned via buildCommandMatrix) |
+| `aec26203` | feat(massline) — PQ-002 deterministic control laboratory + T05 seam |
+| `9bde1c8f` | feat(physics) — PQ-008 compound collision proxies + Helios docking corridor |
+| `77976fd3` | feat(massline) — PQ-003 input grammar, pay-out, buffered intent, Space migration |
+| `a47cfcbd` | feat(combat) — PQ-009 weapon impulse + collision-consequence kernel (T08 substrate) |
+| `47288394` | fix(docking) — capture assist covers the berthed phase (PQ-008 follow-up) |
+| `8ac9d32e` | docs(generated) — EVENT_ROUTING/SYSTEM_REGISTRY regenerated at HEAD |
+| `b28d183b` | feat(continuity) — PQ-001.b harness, live-green browser+Electron |
+
+## Current known reds — remeasure before acting
+
+| Check | State | Attribution |
+|---|---|---|
+| `check:perf` (strict) | RED, 3 named rows at exact-clean `b28d183b`, reproducible | (1) `spatialHash.queriesPerSecond.max` 62.9 vs 55 — no new query sites in the batch (verified); behavioral amplification or pre-batch; M6 attribution follow-up owed. (2) `raf.frame.p95.target` 16.8 vs 16.7 — the submit-noop floor IS 16.8 on this display; budget-vs-vsync-floor ruling needed. (3) worktree-clean evidence row — ledger-transaction artifact. |
+| `check:encounter-director` | RED, unchanged (`got 2` at `:171`) | The recorded W06 outcome; not touched by this batch. |
+| `check:combat` | RED, pre-existing | Equal-player/AI-damage assertion stale since the 2026-07-16/17 1.15× difficulty multiplier; predates the batch. |
+| `station-applied-lod-inert` | measured defect (not a check) | Truthful m2 receipts: Helios lod0/1/2 topology present, LOD requests never change the visible set. Graphics-lane repair; see `08_GRAPHICS_OVERHAUL_CHECKPOINT.md`. |
+| 47a expected-envelope diffs | recorded stale-envelope debt | 9 `expectedTraceCount` rows; compares exit 0/hashEqual; do not re-record from a lane. |
+
+## Next queue position
+
+`PQ-004` (acquisition preview; after PQ-003 ✓) and `PQ-005` (orbit assist; T05 seam + orbit intent
+both landed) are the next unblocked items; then `PQ-006` (after PQ-005), `PQ-007`, and `PQ-010`
+(after PQ-009 ✓; owns combat route acceptance + the T08 terminal claim). Observed out-of-band lane:
+a user-driven codex session produces PQ-018 Wreck Cathedral SOURCE assets in `C:\Users\93rob\sf-pq018`
+(branch `codex/pq018-wreck-cathedral-source-20260720`, master read-only, `needs_review`,
+non-terminal) — do not double-assign PQ-018 authoring.
 
 **Integrated checkpoint:** the earlier Atlas/map/travel, performance, and graphics synthesis remains
 reachable through `ee9e0ab3` and its context-recovery hardening `f0b3b154`. The later closeout adds

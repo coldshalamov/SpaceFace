@@ -12,6 +12,22 @@ audit. No milestone has a current clean-wave record either; clean-wave counts be
 requirement only if the controller explicitly adopts the draft production policy for a release run.
 M2’s architecture was previously marked complete, but its current combined browser/Electron check
 exited red during Electron launch and must be revalidated.
+**Update 2026-07-20:** the M2 combined check is revalidated GREEN — `check:m2:seamless-world` passes
+on browser AND Electron at `b28d183b` with the repaired fail-closed continuity contract (two-stage
+rebase membrane clean, settled Continue, identity continuity across streaming/reload). This
+revalidates the M2 architecture claim; it does not by itself exit M2's broader milestone row.
+
+## Program batch PQ-001..PQ-010 first wave (2026-07-20, `2bc3042f`..`b28d183b`)
+
+Queue outcomes PQ-001, PQ-002, PQ-003, PQ-008, and PQ-009 are `INTEGRATED` with lead-rerun proof:
+the deterministic massline control laboratory (`check:massline:lab`), the massline input grammar
+with pay-out and Space-primary migration (legacy profiles byte-identical), compound collision
+proxies with a truthful Helios docking corridor (`check:autopilot` green through it), the universal
+weapon-impulse/collision-consequence kernel (T08 substrate, 47a golden pinned byte-stable), and the
+live-green continuity harness. The recorded `check:save-schema` dirty-tree red and the precheck DOA
+are closed. Acceptance rows, named debts (strict-perf rows, `station-applied-lod-inert`,
+encounter-director, dated check:combat), and receipts: `03_LIVE_ACCEPTANCE_MATRIX.md` "Program
+batch PQ-001..PQ-010".
 
 ## Graphics checkpoint chain (2026-07-19) — graphics at `cbdf1589`, synthesis at `b235f062`, evidence hardening through `280cafb0`, propulsion repair at `59f91d19`
 

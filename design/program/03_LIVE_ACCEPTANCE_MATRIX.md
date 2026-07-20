@@ -55,6 +55,46 @@ means integrated with focused proof, awaiting the final independent review verdi
 | `G03` | captured+restored, `INTEGRATED` (pending R3) | `first-station` 11-milestone public route; restore + public re-dock proves all claims literally | `fb9a0c82` |
 | `G04` | `ROUTE_ACCEPTED` | autopilot fully green; sim compares ok; five public dock successes incl. **clean-checkout** run (96s, closest 154.166 WU, 1 KeyE hold) — attribution to committed code CLOSED | measurement only |
 
+## Program batch PQ-001..PQ-010 — controller session 2026-07-20 (commits on `master` through `b28d183b`)
+
+The first five outcomes of the canonical cross-plan queue (`roadmap/program-queue.json`), integrated
+serially with lead-verified proof at each commit. Worker receipts were candidates only; every gate
+below was rerun by the integrating controller.
+
+| Queue item | Canonical | Terminal state | Evidence at commit | Commits |
+|---|---|---|---|---|
+| `PQ-001` | `M2-REVALIDATE`, `M6-PERFORMANCE` (partial) | `INTEGRATED`; baseline recorded | Planning transaction separated (`2bc3042f`,`6454038a`); precheck DOA repaired (`99661d51`); continuity harness live-green on **browser + Electron** (`check:m2:seamless-world` PASS exit 0 at `b28d183b`, receipt in `.devshots/m2-floating-origin/`), unit suite 41/41; baseline at exact-clean `b28d183b`: launch-policy ✓, sim + v3 compares ✓, visual-stability ✓ (360 frames), save-schema ✓ (**recorded dirty-tree red CLOSED**), encounter-director ✗ (unchanged W06 debt), strict perf ✗ with three named rows (below) | `2bc3042f`,`6454038a`,`99661d51`,`b28d183b` |
+| `PQ-002` | `T01` reuse + `T05` seam | `FOCUSED_GREEN`+`INTEGRATED` | lab suite 5/5; deterministic matrix digest `e935…44e2` (cross-process hash-equal); 16-cell sweep; tuned-PD vs detuned vs NaN discrimination proven; both sim compares ok/hashEqual; `check:massline:lab` wired | `aec26203` |
+| `PQ-003` | `T04` + bounded T06/T07/T16 contributions | `FOCUSED_GREEN`+`INTEGRATED` | grammar+latch+travel 40/40; reelpump/release/target-scoring green; gamepad 22 assertions (yields to dock prompts); input-modalities/settings-profile/controls-discoverability green; save schema v11 regenerated from clean HEAD; legacy profiles byte-identical via version marker; both sim compares ok/hashEqual | `77976fd3` |
+| `PQ-008` | `G04`,`T13`,`F18` | `FOCUSED_GREEN`+`INTEGRATED`+route | proxy/docking suites 29/29 (31/31 after berthed-phase fix); `check:physics-authority` OK; sim compares ok/hashEqual with exact-HEAD isolation proof; **`check:autopilot` fully green through the new corridor geometry**; Helios manifest: silhouette bound 0.2191≤0.24, 23 proxies≤32, navigable gap 0.52 | `9bde1c8f`,`47288394` |
+| `PQ-009` | `T08` substrate | `FOCUSED_GREEN`+`INTEGRATED` | weapon-impulse suite 14/14 (flag-ON explicit); impulse:authority extended green; physics-authority green; adjacent suites 85/85; golden pin `COMBAT_FLAGS.weaponImpulseConsequences` OFF for 47a (goldens untouched, both compares exit 0 restored after a lead-caught golden move) | `a47cfcbd` |
+| generated docs | — | integrated | EVENT_ROUTING/SYSTEM_REGISTRY regenerated at HEAD (89 systems) | `8ac9d32e` |
+
+**M2 combined seamless-world is GREEN for the first time**: browser and Electron both pass the full
+natural-route continuity contract (initial admission → stable → LOD probes → two-stage rebase →
+interpolation → membrane → round-trip → save → reload → settled Continue). The old
+"Electron websocket reset" red is superseded.
+
+**Strict perf baseline at `b28d183b` (recorded, not hidden):**
+1. `spatialHash.queriesPerSecond.max` 62.9 vs 55 — reproducible across two runs; NO new query sites
+   exist in the batch's code (verified); suspected behavioral amplification via live impulse
+   consequences in crowded flight, or a pre-batch exceedance (no green record exists at this
+   budget). M6-PERFORMANCE debt with a bounded attribution follow-up.
+2. `raf.frame.p95.target` 16.8 vs 16.7 — the WebGL-submit-noop floor itself measures 16.8 on this
+   display (vsync quantization); the budget is unachievable on this mode. Needs a budget-vs-floor
+   reconciliation ruling, not a quality change.
+3. `evidence.worktree.cleanAndStable` — probe ran mid-ledger-transaction (dirty NOW.md); resolves at
+   this transaction's commit.
+
+**Named defect surfaced by the truthful harness (graphics-lane debt):** `station-applied-lod-inert` —
+Helios's authored root carries real lod0/1/2 tagged topology, but neither the probe's `lod2` request
+nor the renderer's own steady-state selector (`lod1`) changes the visible bucket set; the station
+renders LOD0 unconditionally. Receipts in the m2 report; diagnosis in `.tmp/orch/diag4-helios-lod.mjs`
+output (2026-07-20).
+
+**Pre-existing red re-attributed:** `check:combat` fails an equal-player/AI-damage assertion stale
+since the 2026-07-16/17 difficulty multiplier (1.15×) — predates this batch.
+
 **4 of the sprint's 23 packets reached a declared terminal state.** With `F01–F17` that is 21/113
 (18.58%) of the packet program — not the 40/113 the sprint scoped. No packet is claimed beyond its
 proved state, and no blocked packet was substituted with an easier one.
