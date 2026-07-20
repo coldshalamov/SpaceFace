@@ -484,3 +484,45 @@ Extend `scripts/lib/professionalTravelPublicRoute.mjs` into the full acceptance 
 `check:journey:textile` — it already emits an `autoTravel` receipt and is the closest living ancestor
 of the journey the product direction describes. **That check, green on a clean checkout, is the
 program's finish line.**
+
+> **Amendment (2026-07-19) — "textile mission" was an error in the source planning prompt, ruled by
+> the user.** It originated as an *illustrative example* in the planning material and was mistakenly
+> promoted into a literal acceptance criterion. **It does not imply that an authored textile mission
+> must exist**, and it is not a licence to write production mission content to satisfy a word.
+>
+> Verified before escalating: there is no authored textile mission anywhere in the tree. `textile`
+> appears only as a commodity (`cmdty_textiles`), a lane name ("Helios–Tethys Textile Run" in
+> `travelLaneRoutes.js`), a comment in `authoredPlaces.js`, and a test-fixture string. The only path
+> to a textile contract is the procedural board.
+>
+> **The corrected criterion, as ruled:**
+>
+> > *Use an existing representative mission or contract that requires the player to navigate beyond
+> > the immediate local area, ideally across sectors or through route infrastructure, and verify the
+> > complete map/navigation/travel journey.*
+>
+> The journey must grade: identifying the player's current location; identifying the tracked mission;
+> identifying the final destination; resolving the next physically reachable leg; plotting the route;
+> executing or following the route; handling interruption or manual disengagement; recovering the
+> route; arriving at the destination; and completing the required mission action.
+>
+> **Binding constraints that follow:**
+> - Use the most appropriate mission already available in the repository or in normal procedural
+>   gameplay. **Do not author new production mission content for the check.**
+> - **Document which mission was used** in the run evidence. The harness already does this — it names
+>   the contract, commodity and destination in the `accept-mission` step — and that reporting is now
+>   a *requirement*, not an apology for a substitution.
+> - Do not alter unrelated production content to match the mistaken word.
+>
+> **Determinism is what makes this criterion meetable.** A procedural contract is a legitimate choice
+> under the corrected wording, but only if the run is reproducible: the board is drawn from
+> `hash32(state.meta.seed, …)`, and before the New Game **universe seed** field existed
+> (`src/ui/screens/newGame.js`, `parseUniverseSeed`) the seed came from wall-clock time, so both the
+> commodity and the destination re-rolled every boot. That made the check flaky by construction and,
+> worse, made debugging dishonest — a step that changed between runs could not be attributed to a fix
+> rather than to the dice. Pin the seed, then measure.
+>
+> **The check id `check:journey:textile` is retained** deliberately, despite the name now being
+> historical: it is referenced from `package.json`, the `check:atlas` aggregate and the ledger, and
+> renaming it would churn those for no behavioural gain. This amendment is the authority on what it
+> actually means.
