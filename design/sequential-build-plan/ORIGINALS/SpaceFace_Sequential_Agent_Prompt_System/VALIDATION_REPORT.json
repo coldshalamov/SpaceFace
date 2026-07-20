@@ -1,0 +1,429 @@
+{
+  "schema_version": 1,
+  "package": "SpaceFace_Sequential_Agent_Prompt_System",
+  "validated_at_utc": "2026-07-19T22:42:56.139759+00:00",
+  "checks": [
+    {
+      "name": "prompt_count",
+      "ok": true,
+      "detail": "found 36"
+    },
+    {
+      "name": "unique_prompt_ids",
+      "ok": true,
+      "detail": "['SF-00', 'SF-01', 'SF-02', 'SF-03', 'SF-04', 'SF-05', 'SF-06', 'SF-07', 'SF-08', 'SF-09', 'SF-10', 'SF-11', 'SF-12', 'SF-13', 'SF-14', 'SF-15', 'SF-16', 'SF-17', 'SF-18', 'SF-19', 'SF-20', 'SF-21', 'SF-22', 'SF-23', 'SF-24', 'SF-25', 'SF-26', 'SF-27', 'SF-28', 'SF-29', 'SF-30', 'SF-31', 'SF-32', 'SF-33', 'SF-34', 'SF-35']"
+    },
+    {
+      "name": "sequential_ids",
+      "ok": true,
+      "detail": "ids=['SF-00', 'SF-01', 'SF-02', 'SF-03', 'SF-04', 'SF-05', 'SF-06', 'SF-07', 'SF-08', 'SF-09', 'SF-10', 'SF-11', 'SF-12', 'SF-13', 'SF-14', 'SF-15', 'SF-16', 'SF-17', 'SF-18', 'SF-19', 'SF-20', 'SF-21', 'SF-22', 'SF-23', 'SF-24', 'SF-25', 'SF-26', 'SF-27', 'SF-28', 'SF-29', 'SF-30', 'SF-31', 'SF-32', 'SF-33', 'SF-34', 'SF-35']"
+    },
+    {
+      "name": "dependency_integrity",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "machine_sequence_count",
+      "ok": true,
+      "detail": "36"
+    },
+    {
+      "name": "reference_source_map_exists",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "review_assets_exist",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "workflow_assets_exist",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "reference_paths_exist",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "manifest_exists",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "package_file_count_nonzero",
+      "ok": true,
+      "detail": "94 files"
+    },
+    {
+      "name": "no_validation_errors_pre_zip",
+      "ok": true,
+      "detail": "0 errors"
+    }
+  ],
+  "prompt_reports": [
+    {
+      "file": "SF-00_HARD_Live_Repository_Truth_Reconciliation_and_Sequence_Bootstrap.md",
+      "id": "SF-00",
+      "bytes": 25068,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-01_HARD_Integrated_Browser_Electron_Graphics_and_Performance_Baseline_Closure.md",
+      "id": "SF-01",
+      "bytes": 24517,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-02_MEDIUM_Deterministic_Physics_Control_Laboratory_and_Telemetry.md",
+      "id": "SF-02",
+      "bytes": 23956,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-03_HARD_Intent_Aware_Tether_Acquisition_and_Pre_Latch_Preview.md",
+      "id": "SF-03",
+      "bytes": 25146,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-04_HARD_Massline_Input_Grammar_Buffered_Intent_Reel_Pay_Out_and_Cut.md",
+      "id": "SF-04",
+      "bytes": 24335,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-05_HARD_Anchor_Relative_Orbit_Assist_Through_Bounded_Physics_Commands.md",
+      "id": "SF-05",
+      "bytes": 24528,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-06_HARD_Shared_Release_Predictor_Validated_Sling_Course_and_Speed_Language_Presentation.md",
+      "id": "SF-06",
+      "bytes": 24789,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-07_HARD_Replace_Flailing_Gesture_Flight_with_Target_Relative_Dogfight_Control.md",
+      "id": "SF-07",
+      "bytes": 24639,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-08_HARD_Compound_Planar_Collision_Proxies_and_Truthful_Exterior_Docking.md",
+      "id": "SF-08",
+      "bytes": 24879,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-09_HARD_Universal_Weapon_Impulse_and_Collision_Consequence_Kernel.md",
+      "id": "SF-09",
+      "bytes": 24416,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-10_HARD_Physics_Weapon_Vertical_Slice_Concussion_Cannon_RCS_Disruptor_and_Vector_Mine.md",
+      "id": "SF-10",
+      "bytes": 24136,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-11_MEDIUM_Deployable_Anchor_Mass_Seed.md",
+      "id": "SF-11",
+      "bytes": 23866,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-12_HARD_Continuous_Field_Kernel_Attractive_Well_Repulsor_and_Clearing_Cone.md",
+      "id": "SF-12",
+      "bytes": 24585,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-13_HARD_Mass_Coupling_Tactics_Inertial_Shunt_Gravity_Mark_and_Momentum_Sink.md",
+      "id": "SF-13",
+      "bytes": 23803,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-14_HARD_Planetary_Sling_Atmospheric_Skim_and_Enemy_Reentry_Vertical_Slice.md",
+      "id": "SF-14",
+      "bytes": 25081,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-15_HARD_Generic_NPC_Job_Controller_with_Miner_Hauler_and_Patrol_Loops.md",
+      "id": "SF-15",
+      "bytes": 24456,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-16_HARD_Surface_Launch_Cargo_Catcher_Heist_Patrol_and_Heat_Loop.md",
+      "id": "SF-16",
+      "bytes": 24404,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-17_HARD_Shared_Interaction_Descriptors_and_Component_Level_Targeting.md",
+      "id": "SF-17",
+      "bytes": 24297,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-18_HARD_Contextual_Industrial_Beam_Detachable_Payloads_and_Receivers.md",
+      "id": "SF-18",
+      "bytes": 24804,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-19_HARD_Persistent_Multi_Component_World_Site_and_Operation_Recipe_Kernel.md",
+      "id": "SF-19",
+      "bytes": 24369,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-20_HARD_Wreck_Cathedral_Monumental_Site_Vertical_Slice.md",
+      "id": "SF-20",
+      "bytes": 24888,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-21_HARD_Recompose_One_Sector_into_Activity_Pockets_and_Route_Topology.md",
+      "id": "SF-21",
+      "bytes": 24498,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-22_MEDIUM_Environmental_Machinery_Debris_Current_and_Timed_Access_Hazard.md",
+      "id": "SF-22",
+      "bytes": 23513,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-23_HARD_Asteroid_Formation_Exteriorization_and_Progressive_Survey.md",
+      "id": "SF-23",
+      "bytes": 24003,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-24_HARD_Asteroid_Ops_Heat_Signature_and_Operator_Diagnostic_Consequences.md",
+      "id": "SF-24",
+      "bytes": 24203,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-25_HARD_Transforming_Industrial_Claim_and_Visible_Outpost_Assembly.md",
+      "id": "SF-25",
+      "bytes": 24465,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-26_HARD_Manufactured_Physics_and_Travel_Infrastructure.md",
+      "id": "SF-26",
+      "bytes": 24344,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-27_HARD_Practical_Specialized_Masslines_Tractor_Frame_Coupler_and_Elastic_Whip.md",
+      "id": "SF-27",
+      "bytes": 24266,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-28_HARD_Advanced_Massline_Combat_Monofilament_Sweep_and_Transverse_Snare.md",
+      "id": "SF-28",
+      "bytes": 24084,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-29_HARD_Twin_Bridle_World_to_World_Tether.md",
+      "id": "SF-29",
+      "bytes": 24325,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-30_MEDIUM_Ship_s_Ledger_Nonblocking_Story_Fragments_and_Illustrated_Evidence_Pipeline.md",
+      "id": "SF-30",
+      "bytes": 24931,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-31_HARD_Visual_Family_Production_Pipeline_and_Representative_Ship_World_Families.md",
+      "id": "SF-31",
+      "bytes": 25125,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-32_HARD_Physics_HUD_VFX_Language_Camera_and_Accessibility_Consolidation.md",
+      "id": "SF-32",
+      "bytes": 24810,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-33_HARD_Gold_Corridor_Thirty_Ninety_Minute_Gameplay_Integration.md",
+      "id": "SF-33",
+      "bytes": 25087,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-34_HARD_Embodied_Story_Ownership_Endings_and_Post_Ending_Sandbox.md",
+      "id": "SF-34",
+      "bytes": 25051,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "SF-35_HARD_Final_Save_Performance_Platform_Accessibility_and_Release_Closeout.md",
+      "id": "SF-35",
+      "bytes": 25307,
+      "errors": [],
+      "warnings": []
+    }
+  ],
+  "errors": [],
+  "warnings": [],
+  "package_stats": {
+    "files_before_internal_validation": 94,
+    "bytes_before_internal_validation": 2129907,
+    "prompts": 36,
+    "prompt_bytes": 882974,
+    "approx_prompt_words": 110857,
+    "reference_files": 43,
+    "minimum_prompt_bytes": 23513,
+    "maximum_prompt_bytes": 25307
+  },
+  "package_hashes": {
+    "DEPENDENCY_GRAPH.md": "3095aa38708555bdd03d1d55215a67c6d61fbbbb631d9731a3e521956366d889",
+    "LIVE_REPO_SNAPSHOT.md": "e425653475bd60b4dc1202d4abb57ac88102aeb832441474f1f64aa006b38464",
+    "MANIFEST.md": "7a064c47428836674584a13f8544073abf122e967b2a6554bf7e993f62efaa14",
+    "MODEL_ROUTING_SUMMARY.md": "ca37f75a7931f14d9b763d430e228d6618f2f6607fe9e1765499cc72b4febe5a",
+    "README.md": "21dc270d936c3a4c42b6c99cdc7956a8e22d5c60286c797de005d1f534aea2fe",
+    "SEQUENCE_MATRIX.md": "cc279b2517828d8016e8146a1caacd7df61b9bcc991f19c738a5a2e696b726d9",
+    "SOURCE_MATERIAL_MAP.md": "e9039af2ac69385e8e8ea2f21ce2dec593b3da7ba38b86a9e01c8034f9e5bcf8",
+    "WORKFLOW_AND_REVIEW_PROTOCOL.md": "722b2b90f8d74b69533b5b692a4f43a0d71f61db1b2381a364dbd044aae79a10",
+    "machine/receipt.schema.json": "efccc03aff19bae64d0335c8f3001107547e35aa14fcb3385154440a2aa6c521",
+    "machine/sequence.json": "5ee766a19984a5440ae978c14408ba9007a77cd91da443cba983db771edeb342",
+    "plans/README.md": "ce01264fa2d7f6b3e81a40c9d1fd336664b3133d96b3cdab01c4ac396dd0e261",
+    "plans/SF-00_HARD_Live_Repository_Truth_Reconciliation_and_Sequence_Bootstrap.md": "16b608dad6d1d1f62dcda0d44fdf18dda4396a064150c7ab3389c8b687dec441",
+    "plans/SF-01_HARD_Integrated_Browser_Electron_Graphics_and_Performance_Baseline_Closure.md": "7094bd26fb4464338da41916978a74a279e6fca27176d24cd1b8f40544ce0798",
+    "plans/SF-02_MEDIUM_Deterministic_Physics_Control_Laboratory_and_Telemetry.md": "e75556883f196df03bc8122d047d1aaa668ad9dddfef82d34d8f10a947e779a9",
+    "plans/SF-03_HARD_Intent_Aware_Tether_Acquisition_and_Pre_Latch_Preview.md": "d9d320ff0828cf2f9468573997c22ee17f17ece0dcb983d16f572e48731c1238",
+    "plans/SF-04_HARD_Massline_Input_Grammar_Buffered_Intent_Reel_Pay_Out_and_Cut.md": "57cbce61693f5f7e601edba33d1472496f74cec57632255b26af48c348d21710",
+    "plans/SF-05_HARD_Anchor_Relative_Orbit_Assist_Through_Bounded_Physics_Commands.md": "f7a3361e1efc173e7941ac62997e611453058759a29855d2e13bf86962f58d04",
+    "plans/SF-06_HARD_Shared_Release_Predictor_Validated_Sling_Course_and_Speed_Language_Presentation.md": "c33ac4f3733a96b8b338f6fc729bada515a912db9e1b51145beefeaad8ae7b3c",
+    "plans/SF-07_HARD_Replace_Flailing_Gesture_Flight_with_Target_Relative_Dogfight_Control.md": "d851a8bfd0dfe61daa2872fd13fd87c4bdd758a8c29c6362b4c2951e5592205d",
+    "plans/SF-08_HARD_Compound_Planar_Collision_Proxies_and_Truthful_Exterior_Docking.md": "8b3fc8c496ebc23902a0ffd047fdefa4be538443c6472c2030a2804a6b4afd5d",
+    "plans/SF-09_HARD_Universal_Weapon_Impulse_and_Collision_Consequence_Kernel.md": "3d41b03281f828fea435749d4cacd471cabe5d315054938f15312427e0c6908c",
+    "plans/SF-10_HARD_Physics_Weapon_Vertical_Slice_Concussion_Cannon_RCS_Disruptor_and_Vector_Mine.md": "8138189b4d7c4e7157cff2df41b0c735f03e77797dd2e85926415ef6c761b409",
+    "plans/SF-11_MEDIUM_Deployable_Anchor_Mass_Seed.md": "248761623ebbbdcb0e0ef91471eba3c534217b1c9476d3b267a2a01beaadd1e8",
+    "plans/SF-12_HARD_Continuous_Field_Kernel_Attractive_Well_Repulsor_and_Clearing_Cone.md": "94a926bd6bdf163b218314ae234a473598c152538fd6746f7b69bd9f6262bba5",
+    "plans/SF-13_HARD_Mass_Coupling_Tactics_Inertial_Shunt_Gravity_Mark_and_Momentum_Sink.md": "bbefc7ce56ba6a1ce847079734c65b3c1acc1c04cef418d62836d67389fa7b1c",
+    "plans/SF-14_HARD_Planetary_Sling_Atmospheric_Skim_and_Enemy_Reentry_Vertical_Slice.md": "cdcf27b002aa6c13b8a25207bb1dfb64f4bb9317f53989c0ac81086d30614fbc",
+    "plans/SF-15_HARD_Generic_NPC_Job_Controller_with_Miner_Hauler_and_Patrol_Loops.md": "ce25b874fee87b60323e0da0d2a2a89d4262a1baf6c3eaf7ba7d65ccafec0189",
+    "plans/SF-16_HARD_Surface_Launch_Cargo_Catcher_Heist_Patrol_and_Heat_Loop.md": "1a34d1281b5465da1ca4100aac7ed9998175d10b413ce4bc10f06593eb5a61a1",
+    "plans/SF-17_HARD_Shared_Interaction_Descriptors_and_Component_Level_Targeting.md": "3b286d6aef91ad7eb02defb21c00541d24d774b3cad04f56a6bd62b95486528f",
+    "plans/SF-18_HARD_Contextual_Industrial_Beam_Detachable_Payloads_and_Receivers.md": "c5b8d98250f5ac63dd45d8c4ffdce3c639e159a85515eefb3eb026527cf0ffa0",
+    "plans/SF-19_HARD_Persistent_Multi_Component_World_Site_and_Operation_Recipe_Kernel.md": "341e485a3cf1db3f9f7850a8773e52c108f7f8d0280543b4d7b4d7f5d4266d9e",
+    "plans/SF-20_HARD_Wreck_Cathedral_Monumental_Site_Vertical_Slice.md": "b8a7ca608294dcb3243d1f4392b5b9dee712deb75e447eaf416479fca87f26d2",
+    "plans/SF-21_HARD_Recompose_One_Sector_into_Activity_Pockets_and_Route_Topology.md": "a0029ebc834a5ecdd185799ad722a0d2f9d0abf81661220a2312b729a46643ae",
+    "plans/SF-22_MEDIUM_Environmental_Machinery_Debris_Current_and_Timed_Access_Hazard.md": "6ea6f863c84cc9f6aee20ae8e9bf4be0cb08737eaf7d96b0ec5e1af823e08fda",
+    "plans/SF-23_HARD_Asteroid_Formation_Exteriorization_and_Progressive_Survey.md": "41cfa64d0344871cad86e7f75272291bef7be890992dbfe02cbcbee259adb52d",
+    "plans/SF-24_HARD_Asteroid_Ops_Heat_Signature_and_Operator_Diagnostic_Consequences.md": "b430d9554387709370be4999714ac2f16cbc4cdc9eee0c0ff63cee92a0eebdc4",
+    "plans/SF-25_HARD_Transforming_Industrial_Claim_and_Visible_Outpost_Assembly.md": "d56e99dbdf2711ba0f7a4c4adcb9464e9e146daaaa909e4993a27e16e459d403",
+    "plans/SF-26_HARD_Manufactured_Physics_and_Travel_Infrastructure.md": "6a962d0cb83cd8ef8c1023908eeda4e736b60f799ff8ce67df00e028a9c607e2",
+    "plans/SF-27_HARD_Practical_Specialized_Masslines_Tractor_Frame_Coupler_and_Elastic_Whip.md": "b4f288b9ae4ad114bddef1a10fade5fc313d680dc11b73d7b459bac9bfd9bf50",
+    "plans/SF-28_HARD_Advanced_Massline_Combat_Monofilament_Sweep_and_Transverse_Snare.md": "071cbac34967ccc4eed53acca660fc652838cd6a7cf3f0371422bb083d0e9cdc",
+    "plans/SF-29_HARD_Twin_Bridle_World_to_World_Tether.md": "2007d0c1f275155605229ec0a62f47b754d834a05b9706d517a6ae48d80d2a80",
+    "plans/SF-30_MEDIUM_Ship_s_Ledger_Nonblocking_Story_Fragments_and_Illustrated_Evidence_Pipeline.md": "b324e2965f4657e682035f31b7ccf2e853a38ec970fce5f09c66a8927d92feb4",
+    "plans/SF-31_HARD_Visual_Family_Production_Pipeline_and_Representative_Ship_World_Families.md": "f94f221239388f1ad2f93c5c1bd6f5d1665fbc0262095dbb945c954301a6e8ba",
+    "plans/SF-32_HARD_Physics_HUD_VFX_Language_Camera_and_Accessibility_Consolidation.md": "a7b371133c1f29a8428cb913093e5faf220cfc6ea2cc013bf97647aa4a646e4e",
+    "plans/SF-33_HARD_Gold_Corridor_Thirty_Ninety_Minute_Gameplay_Integration.md": "b7336ef735bd1fe54b259798d2b313ad0ac214cf69e76bb4fda4acdbcf5dbaff",
+    "plans/SF-34_HARD_Embodied_Story_Ownership_Endings_and_Post_Ending_Sandbox.md": "2e24acbe97271a26d252bba2011fac66593cf22f5ab8188f515dda0751cb443d",
+    "plans/SF-35_HARD_Final_Save_Performance_Platform_Accessibility_and_Release_Closeout.md": "90c00acf50e8b165a7e23102548b30e93d044c78835312a540e0ad38452071f8",
+    "receipts/README.md": "1d72351428b7f50329dd0998e846610e57bd608585348c945b5b1e954e09dfdb",
+    "reference/README.md": "01acbbeb0a9a2ea433537a1841bb83197825203ec67bb1abe41812e0151cf5a6",
+    "reference/SpaceFace_Dev_Plans.txt": "67da1936868032d313e380ad424e38c21cdcae63bd4b0380d08ddd93c67e258a",
+    "reference/spaceface_depth_playbook/00_NORTH_STAR_AND_DESIGN_CONSTRAINTS.md": "f4ded17ddba768ec852930a9e8622df4032115d5cfce9a7ae23ed8b713e27af9",
+    "reference/spaceface_depth_playbook/01_ENGINE_PRIMITIVES_AND_INTERACTION_GRAMMAR.md": "0b5131188372726298b86c17dc08b0b9509fd7da39077ff6c7bd64f45c7132c2",
+    "reference/spaceface_depth_playbook/02_MASSLINE_FLIGHT_AND_PHYSICS_COMBAT.md": "c718862ac707c16de2217e9fde14a0d057b6df75c39ab011f7d10e89f3957084",
+    "reference/spaceface_depth_playbook/03_LIVING_WORLD_SECTORS_PLANETS_AND_NPC_JOBS.md": "fa8857b01d75ef45edb58dfcedc4659f7c1eba974c37ecaa3cd497b848ac0c1c",
+    "reference/spaceface_depth_playbook/04_WRECK_CATHEDRAL_VERTICAL_SLICE.md": "b033bd46017c2fdc5e529ad8a74644b9823d3d815a135f1d48c544abaa6aa0ea",
+    "reference/spaceface_depth_playbook/05_AUTOMATION_PROGRESSION_AND_ENDGAME.md": "7e4c48fbf68f9186e58ba63e230fb6c6d8de7b1a5a162dbd2129b4ecf1dc672c",
+    "reference/spaceface_depth_playbook/06_STORY_LEDGER_AND_IMAGE_PIPELINE.md": "5aa7a5f44fbe8e826a253d0467b6998cb26de9ed3f9e29b01cd5ddebe18ab31a",
+    "reference/spaceface_depth_playbook/07_AGENT_EXECUTION_CONTRACT.md": "2148337139bc48e02fbd95b823bc8d706ce21dedca03ab86b5936f0916fd977c",
+    "reference/spaceface_depth_playbook/08_PRIORITIZED_ROADMAP_FOR_THREE_AGENTS.md": "ed8ee560da580410da3d1c964f620f5b8ec2ea9501c7be0ddd4bda700f144dd9",
+    "reference/spaceface_depth_playbook/09_PASTEABLE_FEATURE_BRIEFS.md": "48183601d0efcac74bdeb56df01025dc7b829b6fac3d6e7f0e07800e4fe423ea",
+    "reference/spaceface_depth_playbook/10_CURRENT_REPO_AUDIT_AND_GAP_MAP.md": "214a380eef35b8413905b944b354c2bb02e15870c3708bbd9ee059fb3e7464b0",
+    "reference/spaceface_depth_playbook/11_PROMPTING_GLOSSARY_AND_TECHNIQUE_LEXICON.md": "0619ea366e9b410cccdeab0871c40c7f580d6fd7b5c70cbdbda0ba4edfcd4bd3",
+    "reference/spaceface_depth_playbook/12_MASTER_AGENT_HANDOFF_TEMPLATE.md": "aa4bb03ae61ffe143718cda4fd07c923c8c5a30c593db534e5e262187769dd13",
+    "reference/spaceface_depth_playbook/MANIFEST.md": "4c10053727eb289e2fe86cb127f7a6bb6849056b1c82bd643408ef994302d0a5",
+    "reference/spaceface_depth_playbook/README.md": "0ee2c9d9eac466ac28f51c5928a2febf16a374a0af140579a5bc1cf982192f89",
+    "reference/spaceface_depth_playbook/SPACEFACE_DEPTH_PLAYBOOK_COMBINED.md": "057c5fd8575e0dac85888d3def156fb52443663eab5a9e7885226eaf290fda6a",
+    "reference/spaceface_gravity_massline_package/01_DESIGN_BIBLE_ASSISTED_RELATIONAL_PHYSICS.md": "3c659503cd2fabe1af57fcd01fb4472cb9f4fa89fa77047b8a4a195b1e019ac5",
+    "reference/spaceface_gravity_massline_package/02_CONTROL_TARGETING_ORBIT_AND_SLINGSHOT.md": "3980724b7e3cea2c2dbd8304a7bdf843789aaab7b15f7695f63bd2945dabad33",
+    "reference/spaceface_gravity_massline_package/03_GRAVITY_WEAPONS_AND_MASSLINE_VARIANTS.md": "d3a996c05f01aa3e693eeb93ebc220885752e958abc958cb9512277610695857",
+    "reference/spaceface_gravity_massline_package/04_PLANETARY_ACTIVITIES_HEISTS_AND_SECTOR_IDENTITY.md": "176411c9ef8ff4c702f92560f1ff8be817fb9d77b86762360d6f53e5c74b1290",
+    "reference/spaceface_gravity_massline_package/05_VFX_AND_PRESENTATION_TECHNICAL_DIRECTION.md": "4213f80b17106f01ac6f361d443ed4e8c606ea3fa72089c72228f85d956cd58e",
+    "reference/spaceface_gravity_massline_package/06_IMPLEMENTATION_ROADMAP_TESTING_AND_AGENT_LANES.md": "68fb9c1a96ee70ea831b4cfe578481d8b2be20af85067608bc1d2897f5817496",
+    "reference/spaceface_gravity_massline_package/07_PASTEABLE_AGENT_BRIEFS.md": "06dbda75876b5a0b517bbfbbd965105ee6534aeae72ed418467e35a1e4ab9a9c",
+    "reference/spaceface_gravity_massline_package/08_MASTER_IMPLEMENTATION_HANDOFF_TEMPLATE.md": "986eebe4a213f2aaa0f916585e7bbb9f3212511f2ddfab923ad9534bf3a40ea1",
+    "reference/spaceface_gravity_massline_package/README.md": "6125cade28a6bc08c2d28d2a865f9b1497b87323bc57583b99b25e3f3a87f6c9",
+    "reference/spaceface_gravity_massline_package/SPACEFACE_GRAVITY_MASSLINE_COMBINED.md": "4e4a7458b0996ef206eb2f876bc5079476d6cfd79b2f7e070beeedf9ffa1f958",
+    "reference/spaceface_universe_atlas_prompt_pack/00_COMMON_CONTEXT.md": "ac593495f25de87edbad04e7a7804c80c654f4d804807d8e20059e6219952f40",
+    "reference/spaceface_universe_atlas_prompt_pack/01_PROGRAM_LEAD.md": "72640cfd351fd3c1e844e8965096a2a9f230800f194bbef8d9be4e39f8393bad",
+    "reference/spaceface_universe_atlas_prompt_pack/02_EVIDENCE_BASELINE.md": "4176501ffbf298226e7788e1a25eae6ce47b18e73ee8f3a972245b57811c262d",
+    "reference/spaceface_universe_atlas_prompt_pack/03_PRODUCT_RESEARCH.md": "c888186205e050c8a7e551d58d3adf90ff1790dc21afdbd6fe39e5973bd47548",
+    "reference/spaceface_universe_atlas_prompt_pack/04_ATLAS_SPATIAL_TRUTH.md": "d656ae52d13a732a352039f1cf910d37e3bb19eb8ef2f82f573cf0faf13a6ded",
+    "reference/spaceface_universe_atlas_prompt_pack/05_MAP_EXPERIENCE.md": "368f53a1cc5b8d6b75379cfb8e2becab44dfef8f0f19ec4190c9848971eb7248",
+    "reference/spaceface_universe_atlas_prompt_pack/06_NAVIGATION_ROUTE_EXECUTOR.md": "8de1f21fd6cb01352075e1d0336b1cebda4eb96950b7d83d8514772213fb6170",
+    "reference/spaceface_universe_atlas_prompt_pack/07_PROPULSION_TRAVEL_BURN.md": "9f0adf08d56f394136200163faf8dbd444c05ee78933eb0e594855bb22591809",
+    "reference/spaceface_universe_atlas_prompt_pack/08_VFX_RCS_ENVIRONMENT.md": "8e8cec265dc39a6a0b701db7b7adefbb985f0bf716a3ae4a35ce792f9b94f640",
+    "reference/spaceface_universe_atlas_prompt_pack/09_PHYSICAL_LANES_TRAVEL_ECOLOGY.md": "6bc657a4b960ec54b1787c896332caed18bde22f3851916496d1eb6388ff95d0",
+    "reference/spaceface_universe_atlas_prompt_pack/10_CONTENT_PIPELINE_HOLOGRAPHS.md": "b35e716e7c8f325bc03c06c3114036e89d0dc50091f16d079706e5960eb044cb",
+    "reference/spaceface_universe_atlas_prompt_pack/11_INTEGRATION_EVALS.md": "4ff8cb5a78369abbb2b6753012e2db22c7d1c8f524a32ae6aebe5713d79174bc",
+    "reference/spaceface_universe_atlas_prompt_pack/12_CONTINUATION_PROMPT.md": "10727d9bca80df86b7e1fab6fe70e472fd3c027e75101367780af0c7b8ee5329",
+    "reference/spaceface_universe_atlas_prompt_pack/README.md": "7079f7e274155184f9c90896b09d02074371ea473b57f886b028afa3ec7be1a7",
+    "reference/spaceface_universe_atlas_prompt_pack/SPACEFACE_UNIVERSE_ATLAS_MASTER_PROMPT.md": "c41f2b8f406425abf3499e850cee8c7484b7331da56e1512b6610d8b6ec82068",
+    "review/README.md": "76c05de69769cdc7b8af045d7ead903d038f99dd1cb60d8debef5b2b2ec5877c",
+    "review/REVIEWER_PROMPT.md": "ceac65cd671e371188e00c02809d390464d6ac54288d86d5258fe57165b5ebb6",
+    "review/REVIEW_TEMPLATE.md": "be93cbbc9fc3a6fe5288ffea40f7da8589a9950e0588619558e51abf87f88a98"
+  }
+}

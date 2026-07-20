@@ -1,0 +1,673 @@
+{
+  "schema_version": 1,
+  "repository": "coldshalamov/SpaceFace",
+  "snapshot_date": "2026-07-19",
+  "snapshot_commit": "b235f062fdff7a9bce3be838be280d557250c199",
+  "policy": {
+    "stable_ids": true,
+    "live_repo_reaudit_required": true,
+    "already_satisfied_is_valid": true,
+    "global_status_lead_owned": true,
+    "prompt_moves_plans_to_review": true
+  },
+  "tasks": [
+    {
+      "id": "SF-00",
+      "sequence": 0,
+      "title": "Live Repository Truth Reconciliation and Sequence Bootstrap",
+      "filename": "SF-00_HARD_Live_Repository_Truth_Reconciliation_and_Sequence_Bootstrap.md",
+      "difficulty": "hard",
+      "discipline": "program",
+      "frontend_difficulty": "low",
+      "vision_requirement": "no",
+      "recommended_agent_profile": "Strong repository integrator / lead coding agent; no visual model required",
+      "depends_on": [],
+      "roadmap_alignment": "Program authority, all F/G/T/A/W/R families; does not claim feature completion",
+      "player_observable_checkpoint": "The repository, active plans, current checks, and this sequential queue agree on what is already real, what is merely present, what is currently blocked, and which prompt should run next.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-01",
+      "sequence": 1,
+      "title": "Integrated Browser/Electron, Graphics, and Performance Baseline Closure",
+      "filename": "SF-01_HARD_Integrated_Browser_Electron_Graphics_and_Performance_Baseline_Closure.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "medium",
+      "vision_requirement": "recommended",
+      "recommended_agent_profile": "Strong integration agent; vision-capable reviewer recommended for visual evidence",
+      "depends_on": [
+        "SF-00"
+      ],
+      "roadmap_alignment": "M0 evidence/baseline, M1 visual family, M2 revalidation, M6 performance/visual/release; R12\u2013R14",
+      "player_observable_checkpoint": "The latest integrated tree has a trustworthy browser/Electron baseline with current route identity, graphics/performance coexistence, clean teardown, and explicitly classified remaining failures.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-02",
+      "sequence": 2,
+      "title": "Deterministic Physics-Control Laboratory and Telemetry",
+      "filename": "SF-02_MEDIUM_Deterministic_Physics_Control_Laboratory_and_Telemetry.md",
+      "difficulty": "medium",
+      "discipline": "systems",
+      "frontend_difficulty": "low",
+      "vision_requirement": "no",
+      "recommended_agent_profile": "Backend/systems agent; Codex/GLM-class no-vision agent is suitable",
+      "depends_on": [
+        "SF-01"
+      ],
+      "roadmap_alignment": "T01\u2013T07 enabling evidence; M1 tether/camera; foundational test tooling",
+      "player_observable_checkpoint": "Developers can reproduce, tune, and compare tether acquisition, orbit, reel/pay-out, release, earned momentum, and controller behavior in a deterministic laboratory before risking the live world.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-03",
+      "sequence": 3,
+      "title": "Intent-Aware Tether Acquisition and Pre-Latch Preview",
+      "filename": "SF-03_HARD_Intent_Aware_Tether_Acquisition_and_Pre_Latch_Preview.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "medium",
+      "vision_requirement": "recommended",
+      "recommended_agent_profile": "Strong systems agent plus vision-capable UI review; no-vision agent can own kernel/runtime",
+      "depends_on": [
+        "SF-02"
+      ],
+      "roadmap_alignment": "T03/T04/T15/T16, M1 focus/targeting; prerequisite for all Massline routes",
+      "player_observable_checkpoint": "Before the player fires the Massline, the game visibly predicts the intended target using cursor precision, turn direction, proximity, approach geometry, target role, current focus/route, and stable hysteresis; the fired tether matches that preview.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-04",
+      "sequence": 4,
+      "title": "Massline Input Grammar, Buffered Intent, Reel, Pay-Out, and Cut",
+      "filename": "SF-04_HARD_Massline_Input_Grammar_Buffered_Intent_Reel_Pay_Out_and_Cut.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "medium",
+      "vision_requirement": "recommended",
+      "recommended_agent_profile": "Strong input/systems agent; frontend review recommended",
+      "depends_on": [
+        "SF-03"
+      ],
+      "roadmap_alignment": "T04/T06/T07/T16; R07; prerequisite for route slings and specialized heads",
+      "player_observable_checkpoint": "One rebindable thumb-friendly Massline action supports predictable latch, cut, line-control mode, reel-in, pay-out, orbit direction, and release without frame-perfect chords or key conflicts.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-05",
+      "sequence": 5,
+      "title": "Anchor-Relative Orbit Assist Through Bounded Physics Commands",
+      "filename": "SF-05_HARD_Anchor_Relative_Orbit_Assist_Through_Bounded_Physics_Commands.md",
+      "difficulty": "hard",
+      "discipline": "systems",
+      "frontend_difficulty": "low",
+      "vision_requirement": "optional",
+      "recommended_agent_profile": "Strong physics/control agent; no-vision agent is suitable if browser telemetry can be inspected",
+      "depends_on": [
+        "SF-04"
+      ],
+      "roadmap_alignment": "T05/T06; foundation for T07 and planetary sling routes",
+      "player_observable_checkpoint": "While tethered to a sufficiently massive anchor, deliberate thrust plus orbit-direction input produces a stable, dynamic swing that preserves player-generated tangential speed and line physics instead of collapsing inward, drifting away, or fighting the tether.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-06",
+      "sequence": 6,
+      "title": "Shared Release Predictor, Validated Sling Course, and Speed-Language Presentation",
+      "filename": "SF-06_HARD_Shared_Release_Predictor_Validated_Sling_Course_and_Speed_Language_Presentation.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong systems agent paired with a strong frontend/vision agent (Fable-class or equivalent)",
+      "depends_on": [
+        "SF-05"
+      ],
+      "roadmap_alignment": "T07/T15, G corridor travel feedback, camera/VFX foundations",
+      "player_observable_checkpoint": "The player can read a predicted sling exit, time a release through a robust green window, chain to a second anchor, and feel physics-earned speed through camera and VFX without losing control or readability.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-07",
+      "sequence": 7,
+      "title": "Replace Flailing Gesture Flight with Target-Relative Dogfight Control",
+      "filename": "SF-07_HARD_Replace_Flailing_Gesture_Flight_with_Target_Relative_Dogfight_Control.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "medium",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong control-systems agent with browser/vision capability",
+      "depends_on": [
+        "SF-06"
+      ],
+      "roadmap_alignment": "Experimental control mode; T16/R07; M1 focus/camera; may be rejected by evidence",
+      "player_observable_checkpoint": "The G/trackpad combat mode either becomes a stable target-relative control mode that separates weapon lock from flight intent, or is safely disabled/retired with evidence rather than remaining a flailing false promise.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-08",
+      "sequence": 8,
+      "title": "Compound Planar Collision Proxies and Truthful Exterior Docking",
+      "filename": "SF-08_HARD_Compound_Planar_Collision_Proxies_and_Truthful_Exterior_Docking.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong physics/geometry agent plus strong frontend/vision reviewer",
+      "depends_on": [
+        "SF-01",
+        "SF-02"
+      ],
+      "roadmap_alignment": "World-site foundation, T13, G04/G13, graphics interaction descriptors, M1/M4 visual truth",
+      "player_observable_checkpoint": "One authored station has collision and docking geometry that matches its visible top-down silhouette: solid regions are solid, deliberate channels are navigable, and the berth is approached through an exterior corridor rather than by entering decorative walls and bonking an unrelated core.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-09",
+      "sequence": 9,
+      "title": "Universal Weapon Impulse and Collision-Consequence Kernel",
+      "filename": "SF-09_HARD_Universal_Weapon_Impulse_and_Collision_Consequence_Kernel.md",
+      "difficulty": "hard",
+      "discipline": "systems",
+      "frontend_difficulty": "low",
+      "vision_requirement": "no",
+      "recommended_agent_profile": "Strong combat/physics backend agent; no-vision agent is suitable",
+      "depends_on": [
+        "SF-05",
+        "SF-08"
+      ],
+      "roadmap_alignment": "W03/W04/G10 foundations, T08, physics-combat substrate",
+      "player_observable_checkpoint": "Every kinetic/energy/explosive weapon family can express a bounded, data-driven physical impulse identity, and impacts with terrain/structures convert momentum into readable stagger, tumble, damage, and receipts through existing combat/physics owners.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-10",
+      "sequence": 10,
+      "title": "Physics-Weapon Vertical Slice: Concussion Cannon, RCS Disruptor, and Vector Mine",
+      "filename": "SF-10_HARD_Physics_Weapon_Vertical_Slice_Concussion_Cannon_RCS_Disruptor_and_Vector_Mine.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong combat systems agent paired with a vision-capable VFX/frontend agent",
+      "depends_on": [
+        "SF-09"
+      ],
+      "roadmap_alignment": "W03/W04/G10, physics combat progression, M4 weapon/impact family",
+      "player_observable_checkpoint": "The player can choose three visibly distinct setup/payoff tools: directional force, temporary control disruption, and area denial\u2014then combine them with Massline, terrain, and ordinary damage in a normal combat encounter.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-11",
+      "sequence": 11,
+      "title": "Deployable Anchor Mass Seed",
+      "filename": "SF-11_MEDIUM_Deployable_Anchor_Mass_Seed.md",
+      "difficulty": "medium",
+      "discipline": "fullstack",
+      "frontend_difficulty": "medium",
+      "vision_requirement": "recommended",
+      "recommended_agent_profile": "Backend/full-stack agent; vision review recommended for readability",
+      "depends_on": [
+        "SF-06",
+        "SF-10"
+      ],
+      "roadmap_alignment": "Physics traversal/combat progression; future specialized infrastructure",
+      "player_observable_checkpoint": "The player can launch a temporary frame-locked, high-effective-mass anchor into otherwise empty space, preview and tether to it, use it for a sling or combat reposition, and recover from its expiry without orphaned constraints.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-12",
+      "sequence": 12,
+      "title": "Continuous Field Kernel, Attractive Well, Repulsor, and Clearing Cone",
+      "filename": "SF-12_HARD_Continuous_Field_Kernel_Attractive_Well_Repulsor_and_Clearing_Cone.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong physics agent paired with strong VFX/frontend agent",
+      "depends_on": [
+        "SF-09",
+        "SF-11"
+      ],
+      "roadmap_alignment": "Gravity/mass expansion foundation; environmental machinery; physics combat",
+      "player_observable_checkpoint": "One deterministic finite-radius continuous-field primitive powers an attractive Mass Seed well, a repulsor seed/bomb, and a forward clearing cone, with shared prediction, selective coupling, readable force direction, and bounded performance.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-13",
+      "sequence": 13,
+      "title": "Mass-Coupling Tactics: Inertial Shunt, Gravity Mark, and Momentum Sink",
+      "filename": "SF-13_HARD_Mass_Coupling_Tactics_Inertial_Shunt_Gravity_Mark_and_Momentum_Sink.md",
+      "difficulty": "hard",
+      "discipline": "systems",
+      "frontend_difficulty": "medium",
+      "vision_requirement": "recommended",
+      "recommended_agent_profile": "Strong systems/combat agent; vision review recommended for statuses",
+      "depends_on": [
+        "SF-12"
+      ],
+      "roadmap_alignment": "Physics combat progression; setup/payoff grammar; later planetary capture",
+      "player_observable_checkpoint": "The player can alter how a target responds to impulse/fields, selectively increase field coupling, or remove velocity relative to an explicit frame\u2014creating setup tools rather than damage upgrades.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-14",
+      "sequence": 14,
+      "title": "Planetary Sling, Atmospheric Skim, and Enemy Reentry Vertical Slice",
+      "filename": "SF-14_HARD_Planetary_Sling_Atmospheric_Skim_and_Enemy_Reentry_Vertical_Slice.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Top-tier full-stack game agent plus strong frontend/vision capability",
+      "depends_on": [
+        "SF-06",
+        "SF-08",
+        "SF-12",
+        "SF-13"
+      ],
+      "roadmap_alignment": "Planet states W1/W2, world postcard, gravity course, combat/environment identity",
+      "player_observable_checkpoint": "One visually colossal planet supports a Massline/field-assisted sling route, an atmosphere-skimming resource activity, and a deliberate enemy reentry kill\u2014three mechanics sharing geometry, targeting, fields, prediction, and presentation.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-15",
+      "sequence": 15,
+      "title": "Generic NPC Job Controller with Miner, Hauler, and Patrol Loops",
+      "filename": "SF-15_HARD_Generic_NPC_Job_Controller_with_Miner_Hauler_and_Patrol_Loops.md",
+      "difficulty": "hard",
+      "discipline": "world",
+      "frontend_difficulty": "medium",
+      "vision_requirement": "recommended",
+      "recommended_agent_profile": "Strong backend/world-systems agent; vision review recommended for legibility",
+      "depends_on": [
+        "SF-01",
+        "SF-09"
+      ],
+      "roadmap_alignment": "M4 ecology/families, W06\u2013W10, living-world foundations",
+      "player_observable_checkpoint": "NPC purpose is visible in motion: miners work resource sites, haulers carry output along routes, and patrols traverse/check infrastructure, with combat interrupts, recovery, persistence, and absent-resolution consistency.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-16",
+      "sequence": 16,
+      "title": "Surface-Launch Cargo, Catcher, Heist, Patrol, and Heat Loop",
+      "filename": "SF-16_HARD_Surface_Launch_Cargo_Catcher_Heist_Patrol_and_Heat_Loop.md",
+      "difficulty": "hard",
+      "discipline": "world",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong world/full-stack agent plus vision-capable frontend/VFX agent",
+      "depends_on": [
+        "SF-14",
+        "SF-15"
+      ],
+      "roadmap_alignment": "GTA-in-space crime loop, planetary operations, W11/W16, sector postcard",
+      "player_observable_checkpoint": "A scheduled planetary mass driver launches a physical cargo capsule toward an orbital catcher; the player may escort it, intercept and steal it, or witness lawful traffic, triggering patrol pursuit, heat, escape, laundering/delivery, and persistent consequences.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-17",
+      "sequence": 17,
+      "title": "Shared Interaction Descriptors and Component-Level Targeting",
+      "filename": "SF-17_HARD_Shared_Interaction_Descriptors_and_Component_Level_Targeting.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong architecture/gameplay agent plus strong frontend/vision reviewer",
+      "depends_on": [
+        "SF-03",
+        "SF-08"
+      ],
+      "roadmap_alignment": "World-site/component foundation, T13, W15, graphics interaction truth",
+      "player_observable_checkpoint": "Visible structures expose component-level semantic targets whose selection, collision, scanner labels, allowed verbs, state, and presentation all resolve from one shared descriptor.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-18",
+      "sequence": 18,
+      "title": "Contextual Industrial Beam, Detachable Payloads, and Receivers",
+      "filename": "SF-18_HARD_Contextual_Industrial_Beam_Detachable_Payloads_and_Receivers.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong gameplay/full-stack agent plus vision-capable VFX/UI agent",
+      "depends_on": [
+        "SF-09",
+        "SF-17"
+      ],
+      "roadmap_alignment": "World-site interaction grammar, T12, W15, Asteroid Ops exteriorization",
+      "player_observable_checkpoint": "The existing RMB industrial/mining beam becomes a contextual tool that can mine, cut, stabilize, repair, or transfer at authored components, while at least one operation releases a real detachable payload that must be tethered or delivered to a receiver.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-19",
+      "sequence": 19,
+      "title": "Persistent Multi-Component World Site and Operation-Recipe Kernel",
+      "filename": "SF-19_HARD_Persistent_Multi_Component_World_Site_and_Operation_Recipe_Kernel.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "medium",
+      "vision_requirement": "recommended",
+      "recommended_agent_profile": "Strong architecture/full-stack game agent",
+      "depends_on": [
+        "SF-08",
+        "SF-17",
+        "SF-18"
+      ],
+      "roadmap_alignment": "World Site foundation; W07\u2013W17; Depth landmark substrate",
+      "player_observable_checkpoint": "The engine can instantiate one large site composed of stable components, recipes, dynamic payloads, receivers, persistent states, consequences, and visible before/after transformations without creating a bespoke monolith.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-20",
+      "sequence": 20,
+      "title": "Wreck Cathedral Monumental Site Vertical Slice",
+      "filename": "SF-20_HARD_Wreck_Cathedral_Monumental_Site_Vertical_Slice.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Top-tier full-stack game agent with strong asset/Three.js/vision capability",
+      "depends_on": [
+        "SF-19"
+      ],
+      "roadmap_alignment": "Depth H1a, W15 unique wreck route, R1/R2 wreck foundations",
+      "player_observable_checkpoint": "A 300\u2013600 world-unit wreck complex is a navigable, solid, multi-component place with scanning, cutting, stabilization/repair, Massline extraction, receiver delivery, short environmental story, unique reward, and a persistent stripped aftermath.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-21",
+      "sequence": 21,
+      "title": "Recompose One Sector into Activity Pockets and Route Topology",
+      "filename": "SF-21_HARD_Recompose_One_Sector_into_Activity_Pockets_and_Route_Topology.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong world designer/full-stack agent with vision and gameplay capture capability",
+      "depends_on": [
+        "SF-15",
+        "SF-16",
+        "SF-20"
+      ],
+      "roadmap_alignment": "W07\u2013W10 sector postcards, M4 ecology/families, Depth landmarks",
+      "player_observable_checkpoint": "One current sector stops being a central pile in empty space and becomes a memorable spatial composition of separated activity pockets connected by visible traffic, navigation, risk, and one monumental silhouette.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-22",
+      "sequence": 22,
+      "title": "Environmental Machinery, Debris Current, and Timed Access Hazard",
+      "filename": "SF-22_MEDIUM_Environmental_Machinery_Debris_Current_and_Timed_Access_Hazard.md",
+      "difficulty": "medium",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong gameplay agent with frontend/VFX vision capability",
+      "depends_on": [
+        "SF-12",
+        "SF-19",
+        "SF-21"
+      ],
+      "roadmap_alignment": "World hazards/landmarks, W10/W11, sector identity",
+      "player_observable_checkpoint": "The recomposed sector contains one environmental machine and one moving/timed hazard that change trajectories or access, create a physical puzzle, and reveal valuable content without reducing to damage circles.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-23",
+      "sequence": 23,
+      "title": "Asteroid Formation Exteriorization and Progressive Survey",
+      "filename": "SF-23_HARD_Asteroid_Formation_Exteriorization_and_Progressive_Survey.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong Asteroid Ops systems agent plus frontend/vision agent",
+      "depends_on": [
+        "SF-19",
+        "SF-21"
+      ],
+      "roadmap_alignment": "A03/A04/G08/W08; Asteroid Ops signature system",
+      "player_observable_checkpoint": "A current asteroid formation is spatially readable at navigation and operation distance, survey reveals structure and uncertainty progressively, and entry into operations is connected to real exterior geometry rather than a generic cluster/menu handoff.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-24",
+      "sequence": 24,
+      "title": "Asteroid Ops Heat, Signature, and Operator-Diagnostic Consequences",
+      "filename": "SF-24_HARD_Asteroid_Ops_Heat_Signature_and_Operator_Diagnostic_Consequences.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong simulation/economy agent plus strong UI/frontend agent",
+      "depends_on": [
+        "SF-23"
+      ],
+      "roadmap_alignment": "A07/A09/A11/A12; G08; M4 ecology",
+      "player_observable_checkpoint": "Heat, emissions/signature, contact, power, input, export, and logistics visibly constrain a live asteroid operation; the operator console diagnoses the real bottleneck and exterior space reacts with derating, faults, attention, traffic, and concealment choices.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-25",
+      "sequence": 25,
+      "title": "Transforming Industrial Claim and Visible Outpost Assembly",
+      "filename": "SF-25_HARD_Transforming_Industrial_Claim_and_Visible_Outpost_Assembly.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Top-tier full-stack/asset/frontend game agent",
+      "depends_on": [
+        "SF-19",
+        "SF-24"
+      ],
+      "roadmap_alignment": "A13\u2013A16/W17/M5 ownership; transforming industrial claim",
+      "player_observable_checkpoint": "One abandoned industrial claim begins cold and broken, is repaired and supplied through physical/site operations, then visibly grows into an operating depot/refinery with modules, storage, drones/traffic, output, failure/recovery, and strategic use.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-26",
+      "sequence": 26,
+      "title": "Manufactured Physics and Travel Infrastructure",
+      "filename": "SF-26_HARD_Manufactured_Physics_and_Travel_Infrastructure.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong systems/world agent plus frontend/vision agent",
+      "depends_on": [
+        "SF-06",
+        "SF-25"
+      ],
+      "roadmap_alignment": "Built gravity/travel, A15/W17, Atlas physical lanes, progression/endgame",
+      "player_observable_checkpoint": "Asteroid/claim production can manufacture and place one permanent physics/travel infrastructure type that changes a real route\u2014such as an artificial sling anchor or acceleration ring\u2014plus one support structure such as cargo catcher, beacon, or sensor relay.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-27",
+      "sequence": 27,
+      "title": "Practical Specialized Masslines: Tractor, Frame Coupler, and Elastic Whip",
+      "filename": "SF-27_HARD_Practical_Specialized_Masslines_Tractor_Frame_Coupler_and_Elastic_Whip.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "medium",
+      "vision_requirement": "recommended",
+      "recommended_agent_profile": "Strong physics/control agent; vision review recommended",
+      "depends_on": [
+        "SF-04",
+        "SF-05",
+        "SF-09",
+        "SF-16"
+      ],
+      "roadmap_alignment": "T11/T12 and specialized spool progression",
+      "player_observable_checkpoint": "Three researchable Massline heads share one input grammar but produce clearly different physical relationships: stable force-based towing, velocity matching/hitchhiking, and spring-energy storage/release.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-28",
+      "sequence": 28,
+      "title": "Advanced Massline Combat: Monofilament Sweep and Transverse Snare",
+      "filename": "SF-28_HARD_Advanced_Massline_Combat_Monofilament_Sweep_and_Transverse_Snare.md",
+      "difficulty": "hard",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong physics/combat agent plus strong VFX/vision agent",
+      "depends_on": [
+        "SF-09",
+        "SF-17",
+        "SF-27"
+      ],
+      "roadmap_alignment": "T08/T13/T14 advanced combat; specialized line progression",
+      "player_observable_checkpoint": "The line itself becomes an attack and area-control surface: high-tension sweep can cut light craft/components, while a deployed transverse snare catches crossing targets under explicit eligibility and counterplay.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-29",
+      "sequence": 29,
+      "title": "Twin Bridle World-to-World Tether",
+      "filename": "SF-29_HARD_Twin_Bridle_World_to_World_Tether.md",
+      "difficulty": "hard",
+      "discipline": "systems",
+      "frontend_difficulty": "medium",
+      "vision_requirement": "recommended",
+      "recommended_agent_profile": "Top-tier physics/interaction agent; no-vision implementation possible, vision review recommended",
+      "depends_on": [
+        "SF-17",
+        "SF-27",
+        "SF-28"
+      ],
+      "roadmap_alignment": "Advanced future Massline; body-to-body interaction; explicitly before any drag-net work",
+      "player_observable_checkpoint": "The player can select two eligible world bodies/components and create a tether between them\u2014without tethering the player\u2014causing controlled mutual constraints, rotation, separation, trap, or relocation with readable ownership and counterplay.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-30",
+      "sequence": 30,
+      "title": "Ship\u2019s Ledger, Nonblocking Story Fragments, and Illustrated Evidence Pipeline",
+      "filename": "SF-30_MEDIUM_Ship_s_Ledger_Nonblocking_Story_Fragments_and_Illustrated_Evidence_Pipeline.md",
+      "difficulty": "medium",
+      "discipline": "fullstack",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong narrative systems/frontend agent with image/visual review capability",
+      "depends_on": [
+        "SF-17",
+        "SF-20",
+        "SF-21"
+      ],
+      "roadmap_alignment": "A2 Ship\u2019s Ledger, V1/V2, W12\u2013W15, M5 story/coverage",
+      "player_observable_checkpoint": "Physical discoveries and operations produce concise in-flight fragments and persistent, illustrated ledger entries that can be read later without dialogue locks, while image generation follows a reproducible non-cartoon art direction and provenance pipeline.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-31",
+      "sequence": 31,
+      "title": "Visual-Family Production Pipeline and Representative Ship/World Families",
+      "filename": "SF-31_HARD_Visual_Family_Production_Pipeline_and_Representative_Ship_World_Families.md",
+      "difficulty": "hard",
+      "discipline": "frontend",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strongest available frontend/vision/3D asset agent (Fable-class or equivalent); backend-only agent must not sign acceptance",
+      "depends_on": [
+        "SF-01",
+        "SF-15",
+        "SF-21",
+        "SF-30"
+      ],
+      "roadmap_alignment": "M0 calibration/asset integrity, M1/M4 visual families, L1/PR1/PR2/S1\u2013S4/M5 coverage",
+      "player_observable_checkpoint": "The repository has a repeatable asset-family pipeline and a small accepted wave of visually and behaviorally distinct ship/world families, judged in the normal game camera with exact runtime identity, not by isolated renders or color swaps.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-32",
+      "sequence": 32,
+      "title": "Physics HUD, VFX Language, Camera, and Accessibility Consolidation",
+      "filename": "SF-32_HARD_Physics_HUD_VFX_Language_Camera_and_Accessibility_Consolidation.md",
+      "difficulty": "hard",
+      "discipline": "frontend",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong frontend/vision/game-feel agent with systems literacy",
+      "depends_on": [
+        "SF-06",
+        "SF-10",
+        "SF-12",
+        "SF-14",
+        "SF-27",
+        "SF-31"
+      ],
+      "roadmap_alignment": "T15/R01/R02/R08/R09, M1 camera/HUD/visual, release presentation",
+      "player_observable_checkpoint": "Massline, fields, physics weapons, planetary bands, speed, target intent, line load, release timing, status, and immediate action share one restrained, accessible visual language that remains legible at sparse and crowded loads.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-33",
+      "sequence": 33,
+      "title": "Gold-Corridor Thirty/Ninety-Minute Gameplay Integration",
+      "filename": "SF-33_HARD_Gold_Corridor_Thirty_Ninety_Minute_Gameplay_Integration.md",
+      "difficulty": "hard",
+      "discipline": "program",
+      "frontend_difficulty": "medium",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Top-tier integration/playtest agent with browser/Electron and vision capability",
+      "depends_on": [
+        "SF-07",
+        "SF-10",
+        "SF-15",
+        "SF-21",
+        "SF-23",
+        "SF-25",
+        "SF-30",
+        "SF-32"
+      ],
+      "roadmap_alignment": "G01\u2013G20, T18, A20, W07\u2013W18; first-hour acceptance",
+      "player_observable_checkpoint": "All three career starts can complete a coherent thirty-minute corridor and at least representative ninety-minute routes containing travel, trade, mining, Massline, physics combat, world activity, loss/recovery, first upgrade/infrastructure progress, story discovery, save/Continue, and readable presentation.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-34",
+      "sequence": 34,
+      "title": "Embodied Story, Ownership, Endings, and Post-Ending Sandbox",
+      "filename": "SF-34_HARD_Embodied_Story_Ownership_Endings_and_Post_Ending_Sandbox.md",
+      "difficulty": "hard",
+      "discipline": "world",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Strong narrative/world/full-stack agent with frontend/vision review",
+      "depends_on": [
+        "SF-25",
+        "SF-26",
+        "SF-30",
+        "SF-33"
+      ],
+      "roadmap_alignment": "W12\u2013W20, M5 story/ownership/coverage, role continuity",
+      "player_observable_checkpoint": "Story B0\u2013B7, faction thresholds, three outpost specializations, thirteen role progressions, five endings, and the post-ending sandbox are expressed through actors, places, physical actions, visible world consequences, ledger evidence, and recoverable saves\u2014not dialogue flags alone.",
+      "initial_status": "ready"
+    },
+    {
+      "id": "SF-35",
+      "sequence": 35,
+      "title": "Final Save, Performance, Platform, Accessibility, and Release Closeout",
+      "filename": "SF-35_HARD_Final_Save_Performance_Platform_Accessibility_and_Release_Closeout.md",
+      "difficulty": "hard",
+      "discipline": "program",
+      "frontend_difficulty": "hard",
+      "vision_requirement": "yes",
+      "recommended_agent_profile": "Top-tier release/integration agent with browser/Electron, profiling, accessibility, and vision capability",
+      "depends_on": [
+        "SF-33",
+        "SF-34"
+      ],
+      "roadmap_alignment": "R08\u2013R18, M0\u2013M6 exit evidence, release gate",
+      "player_observable_checkpoint": "One current revision is a reproducible release candidate: saves/migrations/recovery, browser/Electron/package parity, accessibility, visual identity, performance/memory, long soak, evidence, licensing, and honest store captures all bind to the same build with no unknown red.",
+      "initial_status": "ready"
+    }
+  ]
+}
