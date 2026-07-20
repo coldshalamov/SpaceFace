@@ -38,6 +38,9 @@ const AIM_BIAS = 0.02;
 const AIM_BIAS_MAX = 18;
 const SHAKE_POS_MAX = 1.55;
 const MOTION_REDUCE_SHAKE_SCALE = 0.25;
+export const MASSLINE_RELEASE_ZOOM_MIN = 0.06;
+export const MASSLINE_RELEASE_ZOOM_MAX = 0.14;
+export const MASSLINE_RELEASE_ZOOM_DURATION_S = 0.65;
 const TRAUMA_DECAY_PER_S = 1.8;
 const MAX_MOMENTUM_TRAUMA = 0.5;
 export const CAMERA_ZOOM_MIN = 45;
@@ -94,7 +97,49 @@ function dampSlewed(current, target, lerp, maxSpeed, dt) {
 }
 
 function isMotionReduced(state) {
-  return !!(state && state.settings && state.settings.video && state.settings.video.motionReduce);
+  return !!(state && state.settings && (
+    state.settings.video && state.settings.video.motionReduce
+    || state.settings.accessibility && state.settings.accessibility.motionPreference === 'reduce'
+  ));
+}
+
+export function resolveMasslineReleaseCameraCue(payload, motionReduced = false) {
+  const bonusDv = Math.max(0, finiteOr(payload && payload.bonusDv, 0));
+  const earned = !!(payload && payload.source === 'massline' && payload.physicsEarned && bonusDv > 0);
+  const strength = clamp01(bonusDv / 165);
+  return {
+    source: 'massline',
+    physicsEarned: earned,
+    zoomFactor: motionReduced || !earned
+      ? 0
+      : MASSLINE_RELEASE_ZOOM_MIN
+        + (MASSLINE_RELEASE_ZOOM_MAX - MASSLINE_RELEASE_ZOOM_MIN) * strength,
+    durationS: motionReduced ? 0 : MASSLINE_RELEASE_ZOOM_DURATION_S,
+  };
+}
+
+export function applyMasslineReleaseCameraCue(cameraController, state, payload = {}) {
+  const cue = resolveMasslineReleaseCameraCue(payload, isMotionReduced(state));
+  const receipt = {
+    schema: 'spaceface.masslineReleaseCameraCue.v1',
+    releaseId: payload.releaseId || null,
+    source: cue.source,
+    physicsEarned: cue.physicsEarned,
+    zoomFactor: cue.zoomFactor,
+    durationS: cue.durationS,
+    tick: Math.max(0, Math.trunc(finiteOr(state && state.tick, 0))),
+  };
+  if (cue.physicsEarned && cameraController && typeof cameraController.easeRecenter === 'function') {
+    cameraController.easeRecenter(0.4);
+  }
+  if (cue.zoomFactor > 0 && cameraController && typeof cameraController.pushZoom === 'function') {
+    cameraController.pushZoom(cue.zoomFactor, cue.durationS);
+  }
+  if (state) {
+    if (!state.render) state.render = {};
+    state.render.lastMasslineReleaseCue = receipt;
+  }
+  return receipt;
 }
 
 function isCruising(state) {

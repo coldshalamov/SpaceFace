@@ -18,18 +18,24 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT_DIR = join(ROOT, '.devshots', 'spec2');
 const SCREENSHOT = join(OUT_DIR, 'massline2-live.png');
 const ORBIT_SCREENSHOT = join(OUT_DIR, 'massline-orbit-assist-live.png');
+const RELEASE_SCREENSHOT = join(OUT_DIR, 'massline-release-window-live.png');
+const RELEASE_REDUCED_SCREENSHOT = join(OUT_DIR, 'massline-release-window-reduced-live.png');
 const START_TIMEOUT_MS = 120_000;
 const WIDTH = 1440;
 const HEIGHT = 900;
 const ORBIT_ASSIST_ONLY = process.argv.includes('--orbit-assist-only');
-const REPORT_SCHEMA = ORBIT_ASSIST_ONLY
-  ? 'spaceface.masslineOrbitAssistLiveProbe.v1'
-  : 'spaceface.massline2LiveProbe.v1';
+const RELEASE_ONLY = process.argv.includes('--release-only');
+const REPORT_SCHEMA = RELEASE_ONLY
+  ? 'spaceface.masslineReleaseLiveProbe.v1'
+  : ORBIT_ASSIST_ONLY
+    ? 'spaceface.masslineOrbitAssistLiveProbe.v1'
+    : 'spaceface.massline2LiveProbe.v1';
 
 const { chromium } = await loadPlaywright();
 let server = null;
 let browser = null;
 let report = null;
+let pageIssues = null;
 
 try {
   await mkdir(OUT_DIR, { recursive: true });
@@ -39,11 +45,11 @@ try {
   browser = await chromium.launch({ headless: !process.argv.includes('--headed') });
   const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
   // This acceptance is intentionally strict: a warning is evidence of a dirty player route.
-  const pageIssues = collectPageIssues(page, {
+  pageIssues = collectPageIssues(page, {
     includeWarnings: true,
     // The focused route takes a screenshot, so Chrome may publish the same ReadPixels/unsupported
     // extension diagnostics already classified by the clean-flight probe. App warnings stay fatal.
-    ignoreProbeWarnings: ORBIT_ASSIST_ONLY,
+    ignoreProbeWarnings: ORBIT_ASSIST_ONLY || RELEASE_ONLY,
   });
 
   await page.addInitScript(() => {
@@ -75,12 +81,62 @@ try {
   await page.evaluate(() => window.SF.bus.emit('ui:closeAll', {}));
   await waitForSimTicks(page, 8);
 
-  const fixture = await installFixture(page);
-  await waitForSimTicks(page, 18);
+  const fixture = await installFixture(page, RELEASE_ONLY);
+  await waitForSimTicks(page, RELEASE_ONLY ? 8 : 18);
   const physicsBefore = await physicsEvidence(page);
   assertRapierV3(physicsBefore);
 
-  if (ORBIT_ASSIST_ONLY) {
+  if (RELEASE_ONLY) {
+    const release = await exerciseReleasePredictor(page, fixture.anchorId, fixture.secondAnchorId);
+    assert.equal(release.cue.visible, true, 'the self-sling release cue must remain visible on the player route');
+    assert.match(release.cue.label, /^(ALIGN|RELEASE)$/,
+      'the release cue must name its state without relying on color or animation');
+    assert.match(release.cue.ariaLabel, /Massline self-sling waypoint release window/,
+      'the same cue must expose an accessible release-window announcement');
+    assert.equal(release.reduced.motionReduced, true, 'reduced motion must select the static cue path');
+    assert.equal(release.reduced.flashReduced, true, 'reduced flash must select the static cue path');
+    assert.equal(release.selfSling.source, 'massline', 'earned-speed provenance must name Massline');
+    assert.equal(release.selfSling.physicsEarned, true, 'the camera cue must be gated by physics-earned speed');
+    assert.ok(release.selfSling.bonusDv > 0, 'the real authority path must grant positive earned speed');
+    assert.equal(release.validation.releaseId, release.selfSling.releaseId,
+      'post-authority validation must settle the same release receipt');
+    assert.equal(release.camera.releaseId, release.selfSling.releaseId,
+      'the camera presentation receipt must consume the earned release event');
+
+    const physicsAfter = await physicsEvidence(page);
+    assertRapierV3(physicsAfter);
+    const issues = pageIssues.issues;
+    const checks = {
+      normalRootRoute: new URL(page.url()).search === '',
+      allMasslineFlagsOn: Object.values(flagState).every(Boolean),
+      rapierDynamicV3: physicsAfter.backend === 'rapier-dynamic' && physicsAfter.rapierReady
+        && physicsAfter.sg02Ready && physicsAfter.flightIsV3,
+      accessibleReleaseWindow: release.cue.visible && /^(ALIGN|RELEASE)$/.test(release.cue.label)
+        && /Massline self-sling waypoint release window/.test(release.cue.ariaLabel),
+      reducedMotionAndFlash: release.reduced.motionReduced && release.reduced.flashReduced
+        && release.reduced.animationName === 'none',
+      earnedSpeedReceipt: release.selfSling.source === 'massline' && release.selfSling.physicsEarned
+        && release.selfSling.bonusDv > 0 && release.validation.releaseId === release.selfSling.releaseId,
+      boundedCameraCue: release.camera.releaseId === release.selfSling.releaseId
+        && release.camera.zoomFactor >= 0.06 && release.camera.zoomFactor <= 0.14,
+      firstAnchorToSecondWaypoint: release.firstLatch.targetId === fixture.anchorId
+        && /waypoint/.test(release.cue.ariaLabel),
+      noPageErrorsOrWarnings: issues.length === 0,
+    };
+    report = {
+      schema: REPORT_SCHEMA,
+      ok: Object.values(checks).every(Boolean),
+      route: server.baseUrl,
+      screenshots: [RELEASE_SCREENSHOT, RELEASE_REDUCED_SCREENSHOT],
+      checks,
+      flags: flagState,
+      physics: { before: physicsBefore, after: physicsAfter },
+      release,
+      pageIssues: summarizeIssues(issues),
+    };
+    assert.deepEqual(issues, [], 'focused release route must produce no page errors or warnings');
+    assert.ok(report.ok, 'all live PQ-006 release checks must pass');
+  } else if (ORBIT_ASSIST_ONLY) {
     // PQ-005: arrange only the qualifying heavy anchor, then drive the shipped Space + arrow-key
     // grammar. A pointer move during the held orbit proves trackpad weapon aim remains independent.
     const orbitAssist = await exerciseOrbitAssist(page, fixture.anchorId);
@@ -285,7 +341,12 @@ try {
   }
 } catch (error) {
   const message = String(error && error.stack || error && error.message || error);
-  report = report || { schema: REPORT_SCHEMA, ok: false, error: message };
+  report = report || {
+    schema: REPORT_SCHEMA,
+    ok: false,
+    error: message,
+    pageIssues: pageIssues ? summarizeIssues(pageIssues.issues) : undefined,
+  };
   report.ok = false;
   report.error = message;
   process.exitCode = 1;
@@ -296,8 +357,8 @@ try {
 
 console.log(JSON.stringify(report, null, 2));
 
-async function installFixture(page) {
-  return page.evaluate(() => {
+async function installFixture(page, releaseOnly = false) {
+  return page.evaluate((releaseOnly) => {
     const sf = window.SF;
     const state = sf.state;
     const player = state.entities.get(state.playerId);
@@ -306,7 +367,7 @@ async function installFixture(page) {
     state.settings.gameplay.flightBackend = 'v3';
     state.settings.gameplay.controlScheme = 'pilot';
     state.settings.controls.flightMode = 'newtonian';
-    state.settings.gameplay.masslineReleaseAssist = 'off';
+    state.settings.gameplay.masslineReleaseAssist = releaseOnly ? 'arm' : 'off';
     state.physicsRuntime = state.physicsRuntime || {};
     state.physicsRuntime.publishSg02Snapshot = true;
     sf.eventTrace && sf.eventTrace.clear && sf.eventTrace.clear();
@@ -314,6 +375,7 @@ async function installFixture(page) {
     const names = [
       'tether:latched', 'tether:strain', 'tether:cut', 'tether:released', 'tether:broke', 'tether:releaseRated',
       'combat:fire', 'combat:damage', 'entity:killed', 'massline:throw', 'massline:selfSling',
+      'massline:releaseValidated',
       'loot:drop', 'pickup:collected', 'cloak:engaged', 'cloak:dropped', 'cargo:jettisoned',
     ];
     for (const type of names) {
@@ -359,6 +421,11 @@ async function installFixture(page) {
       radius: 36, mass: 9_000, hull: 9_000, hullMax: 9_000, collides: true,
       data: { typeId: 'ast_common_rock', probe: 'massline-live-anchor', terrainAnchor: true },
     });
+    const secondAnchor = releaseOnly ? sf.helpers.spawnEntity({
+      type: 'asteroid', pos: { x: 0, z: 330 }, vel: { x: 0, z: 0 },
+      radius: 34, mass: 7_500, hull: 7_500, hullMax: 7_500, collides: true,
+      data: { typeId: 'ast_common_rock', probe: 'massline-live-second-anchor', terrainAnchor: true },
+    }) : null;
     const outside = sf.helpers.spawnEntity({
       type: 'ship', factionId: 'faction_scn', team: 2,
       pos: { x: -520, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
@@ -372,7 +439,13 @@ async function installFixture(page) {
       data: { probe: 'massline-live-inside-observer', combat: {}, ai: { passive: true, lawful: true } },
     });
     state.player.targetId = hostile.id;
-    return { hostileId: hostile.id, anchorId: anchor.id, outsideObserverId: outside.id, insideObserverId: inside.id };
+    return {
+      hostileId: hostile.id,
+      anchorId: anchor.id,
+      secondAnchorId: secondAnchor ? secondAnchor.id : null,
+      outsideObserverId: outside.id,
+      insideObserverId: inside.id,
+    };
 
     function clone(value) {
       try { return JSON.parse(JSON.stringify(value)); } catch (_) { return { uncloneable: true }; }
@@ -385,6 +458,175 @@ async function installFixture(page) {
       if (entity.physicsBody) entity.physicsBody.revision = (entity.physicsBody.revision || 0) + 1;
       if (entity.data) entity.data.propulsionRuntime = null;
     }
+  }, releaseOnly);
+}
+
+async function exerciseReleasePredictor(page, anchorId, secondAnchorId) {
+  assert.ok(secondAnchorId, 'PQ-006 fixture requires a second physical anchor');
+
+  // First anchor: enter through the shipped terrain-latch grammar. The fixture then supplies only
+  // a deterministic tangential impulse through the live physics authority, never a velocity write.
+  await page.evaluate(({ anchorId, secondAnchorId }) => {
+    const state = window.SF.state;
+    const player = state.entities.get(state.playerId);
+    const anchor = state.entities.get(anchorId);
+    const second = state.entities.get(secondAnchorId);
+    if (!player || !anchor || !second) throw new Error('release anchors unavailable');
+    player.pos.x = 0; player.pos.z = 0; player.vel.x = 0; player.vel.z = 0;
+    if (player.prevPos) { player.prevPos.x = 0; player.prevPos.z = 0; }
+    if (player.physicsBody) player.physicsBody.revision = (player.physicsBody.revision || 0) + 1;
+    anchor.pos.x = 90; anchor.pos.z = 0; anchor.vel.x = 0; anchor.vel.z = 0;
+    if (anchor.prevPos) { anchor.prevPos.x = 90; anchor.prevPos.z = 0; }
+    if (anchor.physicsBody) anchor.physicsBody.revision = (anchor.physicsBody.revision || 0) + 1;
+    second.pos.x = 0; second.pos.z = 300; second.vel.x = 0; second.vel.z = 0;
+    if (second.prevPos) { second.prevPos.x = 0; second.prevPos.z = 300; }
+    if (second.physicsBody) second.physicsBody.revision = (second.physicsBody.revision || 0) + 1;
+    state.player.targetId = anchorId;
+  }, { anchorId, secondAnchorId });
+  await latchTerrainAnchor(page, anchorId);
+  await waitForSimTicks(page, 8);
+  const firstLatch = await tetherEvidence(page);
+  assert.equal(firstLatch.targetId, anchorId, 'the first public F edge must latch the heavy anchor');
+
+  const arranged = await page.evaluate((secondAnchorId) => {
+    const sf = window.SF;
+    const state = sf.state;
+    const player = state.entities.get(state.playerId);
+    const second = state.entities.get(secondAnchorId);
+    const physics = sf.helpers.combatPhysics;
+    if (!player || !second || !physics || typeof physics.applyImpulse !== 'function') {
+      throw new Error('release fixture requires player, second anchor, and physics authority');
+    }
+    state.player.targetId = null;
+    state.nav.waypoint = {
+      targetEntityId: second.id,
+      pos: { x: second.pos.x, z: second.pos.z },
+      arrivalRadius: second.radius,
+      label: 'PQ-006 second anchor',
+    };
+    state.settings.gameplay.masslineReleaseAssist = 'arm';
+    state.settings.video.motionReduce = false;
+    state.settings.accessibility.motionPreference = 'full';
+    state.settings.accessibility.flashReduce = false;
+    const mass = Math.max(1, Number(player.mass) || 1);
+    const accepted = !!physics.applyImpulse({
+      entityId: player.id,
+      impulse: { x: 0, z: 82 * mass },
+      point: null,
+      reason: 'massline_release_live_probe_spinup',
+      tick: state.tick,
+    });
+    return { accepted, tick: state.tick, playerId: player.id };
+  }, secondAnchorId);
+  assert.equal(arranged.accepted, true, 'release fixture impulse must enter the live physics queue');
+
+  await page.waitForFunction(() => {
+    const state = window.SF && window.SF.state;
+    const solution = state && state.massline2 && state.massline2.throw && state.massline2.throw.selfSolution;
+    const cue = document.querySelector('#sf-ml2 .ml2-self');
+    return !!(solution && solution.valid && solution.targetKind === 'waypoint'
+      && solution.anticipatedBonusDv > 0 && solution.sampleIntervalTicks === 4
+      && cue && getComputedStyle(cue).display !== 'none');
+  }, null, { timeout: 8_000 });
+  const cue = await releaseCueEvidence(page);
+  await page.screenshot({ path: RELEASE_SCREENSHOT });
+
+  await page.emulateMedia({ reducedMotion: 'reduce', forcedColors: 'active' });
+  await page.evaluate(() => {
+    const settings = window.SF.state.settings;
+    settings.accessibility.motionPreference = 'reduce';
+    settings.accessibility.flashReduce = true;
+  });
+  await page.waitForFunction(() => {
+    const root = document.getElementById('sf-ml2');
+    return !!(root && root.classList.contains('ml2-reduced-motion')
+      && root.classList.contains('ml2-reduced-flash'));
+  }, null, { timeout: 5_000 });
+  const reduced = await releaseCueEvidence(page);
+  await page.screenshot({ path: RELEASE_REDUCED_SCREENSHOT });
+  await page.emulateMedia({ reducedMotion: 'no-preference', forcedColors: 'none' });
+  await page.evaluate(() => {
+    const settings = window.SF.state.settings;
+    settings.video.motionReduce = false;
+    settings.accessibility.motionPreference = 'full';
+    settings.accessibility.flashReduce = false;
+  });
+
+  // A fresh F edge performs the real cut. Wait on event/authority conditions rather than a wall
+  // delay so this remains stable under slow CI frame pacing.
+  await waitForSimTicks(page, 42);
+  await page.keyboard.press('KeyF');
+  await waitForProbeEvent(page, 'massline:selfSling', 8_000);
+  await waitForProbeEvent(page, 'massline:releaseValidated', 8_000);
+  await waitForSimTicks(page, 3);
+  const settled = await page.evaluate(() => {
+    const events = window.__SF_MASSLINE_LIVE_EVENTS__ || [];
+    const latest = (type) => events.filter((event) => event.type === type).at(-1);
+    return {
+      selfSling: latest('massline:selfSling') && latest('massline:selfSling').payload,
+      validation: latest('massline:releaseValidated') && latest('massline:releaseValidated').payload,
+      camera: window.SF.state.render && window.SF.state.render.lastMasslineReleaseCue,
+    };
+  });
+  assert.ok(settled.selfSling && settled.validation && settled.camera,
+    'release event, post-authority validation, and camera receipt must all settle');
+
+  return {
+    arranged,
+    firstLatch,
+    cue,
+    reduced,
+    selfSling: settled.selfSling,
+    validation: settled.validation,
+    camera: settled.camera,
+  };
+}
+
+async function latchTerrainAnchor(page, anchorId) {
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await page.evaluate((anchorId) => {
+      window.SF.state.player.targetId = anchorId;
+    }, anchorId);
+    await aimAt(page, anchorId);
+    await page.keyboard.down('ControlLeft');
+    await page.keyboard.down('Space');
+    try {
+      await page.waitForFunction((anchorId) => {
+        const tether = window.SF && window.SF.state && window.SF.state.player.tether;
+        return !!(tether && tether.active && tether.targetId === anchorId);
+      }, anchorId, { timeout: 3_000 });
+      return;
+    } catch (error) {
+      lastError = error;
+    } finally {
+      await page.keyboard.up('Space');
+      await page.keyboard.up('ControlLeft');
+    }
+    await waitForSimTicks(page, 4);
+  }
+  const evidence = await tetherEvidence(page);
+  throw new Error(`terrain latch did not settle after three public-input attempts: ${JSON.stringify(evidence)}; ${lastError && lastError.message}`);
+}
+
+async function releaseCueEvidence(page) {
+  return page.evaluate(() => {
+    const root = document.getElementById('sf-ml2');
+    const cue = root && root.querySelector('.ml2-self');
+    const label = cue && cue.querySelector('.ml2-mark-label');
+    const style = cue ? getComputedStyle(cue) : null;
+    return {
+      visible: !!(cue && style && style.display !== 'none'),
+      label: label ? (label.textContent || '').trim() : '',
+      ariaLabel: cue ? cue.getAttribute('aria-label') || '' : '',
+      state: cue ? cue.getAttribute('data-window-state') || '' : '',
+      direction: cue ? cue.getAttribute('data-direction') || '' : '',
+      offscreen: !!(cue && cue.classList.contains('ml2-offscreen')),
+      motionReduced: !!(root && root.classList.contains('ml2-reduced-motion')),
+      flashReduced: !!(root && root.classList.contains('ml2-reduced-flash')),
+      animationName: style ? style.animationName : '',
+      forcedColors: matchMedia('(forced-colors: active)').matches,
+    };
   });
 }
 
@@ -716,7 +958,7 @@ async function exerciseJettison(page) {
   return { ...before, ...after };
 }
 
-async function aimAt(page, entityId) {
+async function aimAt(page, entityId, stabilizeTicks = 3) {
   const screen = await page.evaluate((entityId) => {
     const sf = window.SF;
     const entity = sf.state.entities.get(entityId);
@@ -727,7 +969,21 @@ async function aimAt(page, entityId) {
       : { x: innerWidth * 0.62, y: innerHeight * 0.5 };
   }, entityId);
   await page.mouse.move(Math.max(4, Math.min(WIDTH - 4, screen.x)), Math.max(4, Math.min(HEIGHT - 4, screen.y)));
-  await waitForSimTicks(page, 3);
+  if (stabilizeTicks <= 0) return;
+  try {
+    await waitForSimTicks(page, stabilizeTicks);
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => ({
+      tick: window.SF && window.SF.state && window.SF.state.tick,
+      mode: window.SF && window.SF.state && window.SF.state.mode,
+      timeScale: window.SF && window.SF.state && window.SF.state.timeScale,
+      uiModal: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.modal,
+      uiScreen: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.screen,
+      focused: document.hasFocus(),
+      hidden: document.hidden,
+    }));
+    throw new Error(`aim stabilization stalled: ${JSON.stringify(diagnostic)}; ${error.message}`);
+  }
 }
 
 async function waitForProbeEvent(page, type, timeoutMs, match = null) {
@@ -746,8 +1002,25 @@ async function probeEventCount(page, type) {
 
 async function waitForSimTicks(page, count) {
   const start = await page.evaluate(() => window.SF.state.tick);
-  await page.waitForFunction(({ start, count }) => window.SF && window.SF.state && window.SF.state.tick >= start + count,
-    { start, count }, { timeout: Math.max(5_000, count * 300) });
+  try {
+    await page.waitForFunction(({ start, count }) => window.SF && window.SF.state && window.SF.state.tick >= start + count,
+      { start, count }, { timeout: Math.max(5_000, count * 300) });
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => {
+      const state = window.SF && window.SF.state;
+      const player = state && state.entities && state.entities.get(state.playerId);
+      return {
+        tick: state && state.tick,
+        mode: state && state.mode,
+        timeScale: state && state.timeScale,
+        playerAlive: player && player.alive,
+        playerHull: player && player.hull,
+        ui: state && state.ui,
+      };
+    });
+    if (Number(diagnostic.tick) >= start + count) return;
+    throw new Error(`fixed ticks stalled from ${start}: ${JSON.stringify(diagnostic)}; ${error.message}`);
+  }
 }
 
 async function clickNamedButton(page, label) {

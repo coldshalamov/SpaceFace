@@ -45,8 +45,10 @@ const DEFAULT_PHYSICS_BACKEND = 'rapier-dynamic';
 const DEFAULT_AI_BACKEND = 'sg06-tactical';
 const DEFAULT_FLIGHT_BACKEND = 'v3';
 const DEFAULT_CONTROL_SCHEME = 'pilot';
+const DEFAULT_MASSLINE_RELEASE_ASSIST = 'arm';
 const VALID_FLIGHT_MODES = new Set(['assisted', 'drift', 'newtonian']);
 const VALID_CONTROL_SCHEMES = new Set(['pilot', 'helm-assist', 'classic']);
+const VALID_MASSLINE_RELEASE_ASSISTS = new Set(['arm', 'snap', 'off']);
 const DEFAULT_START_SECTOR = NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime';
 const TRANSIENT_ENTITY_SAVE_KEYS = new Set([
   'mesh',
@@ -3053,6 +3055,9 @@ function sanitizeRestoredSettings(settings) {
   if (!VALID_CONTROL_SCHEMES.has(s.gameplay.controlScheme)) {
     s.gameplay.controlScheme = DEFAULT_CONTROL_SCHEME;
   }
+  if (!VALID_MASSLINE_RELEASE_ASSISTS.has(s.gameplay.masslineReleaseAssist)) {
+    s.gameplay.masslineReleaseAssist = DEFAULT_MASSLINE_RELEASE_ASSIST;
+  }
 
   if (!s.controls || typeof s.controls !== 'object' || Array.isArray(s.controls)) s.controls = {};
   if (!VALID_FLIGHT_MODES.has(s.controls.flightMode)) {
@@ -3093,6 +3098,7 @@ function profileSettingsSnapshot(settings) {
       tutorialHints: s.gameplay && s.gameplay.tutorialHints,
       controlScheme: s.gameplay && s.gameplay.controlScheme,
       controlSchemeV2: s.gameplay && s.gameplay.controlSchemeV2,
+      masslineReleaseAssist: s.gameplay && s.gameplay.masslineReleaseAssist,
     },
   };
 }

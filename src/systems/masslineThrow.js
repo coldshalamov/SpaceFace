@@ -13,7 +13,7 @@
 // state.massline2.throw subtree (outside the sim-snapshot whitelist and the save schema) and cuts
 // the attachment through the same service tetherGameplay uses — never a direct vel write.
 import { massline2Flag } from '../data/featureFlags.js';
-import { solveThrowSolution, tetherPairKinematics } from '../combat/tetherFireControl.js';
+import { sampleThrowSolution, tetherPairKinematics } from '../combat/tetherFireControl.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
@@ -50,6 +50,9 @@ export const masslineThrow = {
     this._solutionWasOn = false;
     this._throwArmWasHeld = false;
     this._pendingSnap = null;
+    this._throwPrediction = {};
+    this._selfPrediction = {};
+    this._pendingReleaseValidation = null;
     // Swing cache: telemetry wipes on the cut tick (the mirror is already inactive when it runs),
     // so the release consumers read last tick's settled swing from here.
     this._swing = null;
@@ -66,8 +69,11 @@ export const masslineThrow = {
 
   update(dt, state) {
     const runtime = ensureThrowSubtree(state);
+    this._settleReleaseValidation(state, runtime);
     if (!massline2Flag('throw') || state.mode !== 'flight') {
       writeIdle(runtime);
+      this._throwPrediction = {};
+      this._selfPrediction = {};
       this._swing = null;
       this._throwArmWasHeld = false;
       this._pendingSnap = null;
@@ -78,6 +84,8 @@ export const masslineThrow = {
     const active = !!(player && player.alive && tether && tether.active && tether.targetId != null);
     if (!active) {
       writeIdle(runtime);
+      this._throwPrediction = {};
+      this._selfPrediction = {};
       this._swing = null;
       this._throwArmWasHeld = false;
       this._pendingSnap = null;
@@ -115,6 +123,7 @@ export const masslineThrow = {
       runtime.aimTargetId = null;
       runtime.aimSynthetic = false;
       runtime.solution = null;
+      this._throwPrediction = {};
       this._solutionWasOn = false;
       return;
     }
@@ -125,10 +134,15 @@ export const masslineThrow = {
     const aim = this._resolveThrowAim(state, player, payload);
     runtime.aimTargetId = aim.entity ? aim.entity.id : null;
     runtime.aimSynthetic = !aim.entity;
-    const solution = solveThrowSolution(
+    const solution = sampleThrowSolution(
+      this._throwPrediction,
       { pos: payload.pos, vel: payload.vel },
       aim.target,
-      { omega: kin.omega },
+      {
+        tick: state.tick,
+        omega: kin.omega,
+        identity: `${payload.id}:${aim.entity ? aim.entity.id : 'cursor'}`,
+      },
     );
     runtime.solution = mirrorSolution(runtime.solution, solution);
 
@@ -179,9 +193,11 @@ export const masslineThrow = {
     }
 
     const windowRad = Math.abs(kin.omega) * (SNAP_WINDOW_MS / 1000);
-    if (Math.abs(solution.errorRad) <= solution.tolRad + windowRad
-      && this._correctPayloadExit(state, payload, solution)) {
-      this._executeThrow(state, player, payload, aim, solution, 'snap-corrected');
+    const correction = Math.abs(solution.errorRad) <= solution.tolRad + windowRad
+      ? this._correctPayloadExit(state, payload, solution)
+      : null;
+    if (correction && correction.accepted) {
+      this._executeThrow(state, player, payload, aim, solution, 'snap-corrected', correction);
       return;
     }
     this._executeThrow(state, player, payload, aim, solution, 'snap-manual');
@@ -221,20 +237,50 @@ export const masslineThrow = {
   _selfSolution(state, player, payload, omega) {
     const aim = this._resolveSelfAim(state);
     if (!aim) return null;
-    const solution = solveThrowSolution(
-      { pos: player.pos, vel: player.vel },
+    const baseSpeed = Math.hypot(finite(player.vel && player.vel.x), finite(player.vel && player.vel.z));
+    const anticipatedBonusDv = selfSlingBonusDv(
+      payload && payload.mass,
+      player.mass,
+      this._swing && this._swing.tangentialSpeed,
+    );
+    const predictedSpeed = baseSpeed + anticipatedBonusDv;
+    const speedScale = baseSpeed > 1 ? predictedSpeed / baseSpeed : 1;
+    const solution = sampleThrowSolution(
+      this._selfPrediction,
+      {
+        pos: player.pos,
+        vel: {
+          x: finite(player.vel && player.vel.x) * speedScale,
+          z: finite(player.vel && player.vel.z) * speedScale,
+        },
+      },
       aim.target,
-      { omega },
+      {
+        tick: state.tick,
+        omega,
+        identity: `${player.id}:${aim.kind}:${aim.targetId == null ? 'point' : aim.targetId}`,
+      },
     );
     if (!solution.valid) return null;
     return {
       targetId: aim.targetId,
       targetKind: aim.kind,
+      valid: true,
       errorRad: solution.errorRad,
       tolRad: solution.tolRad,
       onSolution: solution.onSolution,
       timeToSolution: solution.timeToSolution,
       interceptAngle: solution.interceptAngle,
+      payloadSpeed: solution.payloadSpeed,
+      timeOfFlight: solution.timeOfFlight,
+      sampleTick: solution.sampleTick,
+      sampleAgeTicks: solution.sampleAgeTicks,
+      sampleIntervalTicks: solution.sampleIntervalTicks,
+      sampleSequence: solution.sampleSequence,
+      sampled: solution.sampled,
+      targetPos: { x: aim.target.pos.x, z: aim.target.pos.z },
+      predicted: solution.predicted ? { ...solution.predicted } : null,
+      anticipatedBonusDv,
     };
   },
 
@@ -276,26 +322,35 @@ export const masslineThrow = {
 
   _correctPayloadExit(state, payload, solution) {
     const physics = this.helpers && this.helpers.combatPhysics;
-    if (!physics || typeof physics.applyImpulse !== 'function' || !payload.vel) return false;
+    if (!physics || typeof physics.applyImpulse !== 'function' || !payload.vel) return null;
     const speed = Math.hypot(finite(payload.vel.x), finite(payload.vel.z));
-    if (!(speed > 1)) return false;
+    if (!(speed > 1)) return null;
     const mass = Math.max(0.1, finite(payload.mass, 1));
     const vx = Math.cos(solution.interceptAngle) * speed - payload.vel.x;
     const vz = Math.sin(solution.interceptAngle) * speed - payload.vel.z;
-    return !!physics.applyImpulse({
+    const impulse = { x: vx * mass, z: vz * mass };
+    const accepted = !!physics.applyImpulse({
       entityId: payload.id,
-      impulse: { x: vx * mass, z: vz * mass },
+      impulse,
       point: null,
       reason: 'massline_throw_snap',
       tick: state.tick,
     });
+    return {
+      entityId: payload.id,
+      reason: 'massline_throw_snap',
+      accepted,
+      impulse,
+      angularCorrectionRad: solution.errorRad,
+      tick: state.tick,
+    };
   },
 
   // Execute an armed throw: cut through the same attachment service tetherGameplay uses (its
   // reconcile pass emits the canonical tether:released/releaseRated next tick), then announce the
   // throw. masslineImpacts arms its sling tracker off the latch transition automatically, so the
   // shipped whip-impact/whip-damage chain composes with zero extra wiring.
-  _executeThrow(state, player, payload, aim, solution, mode) {
+  _executeThrow(state, player, payload, aim, solution, mode, correction = null) {
     const attachments = combatAttachments(this);
     const attachmentId = state.player.tether.attachmentId;
     if (!attachments || attachmentId == null) return false;
@@ -303,7 +358,11 @@ export const masslineThrow = {
     if (!result || !result.ok) return false;
 
     const runtime = ensureThrowSubtree(state);
+    const releaseId = `massline:throw:${state.tick}:${payload.id}`;
+    const prediction = predictionReceipt(solution);
+    const impulses = correction && correction.accepted ? [correction] : [];
     runtime.lastThrow = {
+      releaseId,
       payloadId: payload.id,
       aimTargetId: aim.entity ? aim.entity.id : null,
       aimSynthetic: !aim.entity,
@@ -312,10 +371,28 @@ export const masslineThrow = {
       mode,
       tick: state.tick,
       time: finite(state.simTime, state.tick / 60),
+      prediction,
+      correction,
+      impulses,
+      cut: {
+        accepted: true,
+        attachmentId,
+        reason: 'tether_cut',
+      },
     };
     runtime.armed = false;
     runtime.solution = null;
     this._pendingSnap = null;
+    this._pendingReleaseValidation = {
+      releaseId,
+      kind: 'throw',
+      entityId: payload.id,
+      source: 'massline',
+      releaseTick: state.tick,
+      prediction,
+      impulses,
+      releasePosition: { x: finite(payload.pos && payload.pos.x), z: finite(payload.pos && payload.pos.z) },
+    };
 
     this.bus.emit('massline:throw', { ...runtime.lastThrow });
     this.bus.emit('audio:cue', { id: 'massline.throw', position: { x: payload.pos.x, z: payload.pos.z } });
@@ -326,6 +403,51 @@ export const masslineThrow = {
       direction: Math.atan2(payload.vel.z, payload.vel.x),
     });
     return true;
+  },
+
+  _settleReleaseValidation(state, runtime) {
+    const pending = this._pendingReleaseValidation;
+    if (!pending || state.tick <= pending.releaseTick) return;
+    const entity = state.entities && state.entities.get ? state.entities.get(pending.entityId) : null;
+    if (!entity || !entity.vel) {
+      this._pendingReleaseValidation = null;
+      return;
+    }
+    const actualAngle = Math.atan2(finite(entity.vel.z), finite(entity.vel.x));
+    const predictedAngle = finite(pending.prediction && pending.prediction.interceptAngle, actualAngle);
+    const divergenceRad = angleDelta(predictedAngle, actualAngle);
+    const tolRad = Math.max(0, finite(pending.prediction && pending.prediction.tolRad, 0));
+    const receipt = {
+      schema: 'spaceface.masslineReleaseValidation.v1',
+      releaseId: pending.releaseId,
+      kind: pending.kind,
+      source: pending.source,
+      entityId: pending.entityId,
+      releaseTick: pending.releaseTick,
+      validatedTick: state.tick,
+      prediction: { ...pending.prediction },
+      actual: {
+        angle: actualAngle,
+        speed: Math.hypot(finite(entity.vel.x), finite(entity.vel.z)),
+        velocity: { x: finite(entity.vel.x), z: finite(entity.vel.z) },
+      },
+      trajectory: releaseTrajectoryReceipt(pending, entity.vel),
+      divergenceRad,
+      withinTolerance: Math.abs(divergenceRad) <= tolRad,
+      impulses: pending.impulses.map((entry) => ({
+        ...entry,
+        impulse: entry.impulse ? { ...entry.impulse } : null,
+      })),
+    };
+    runtime.lastReleaseValidation = receipt;
+    if (runtime.lastThrow && runtime.lastThrow.releaseId === receipt.releaseId) {
+      runtime.lastThrow.validation = receipt;
+    }
+    if (runtime.lastSelfSling && runtime.lastSelfSling.releaseId === receipt.releaseId) {
+      runtime.lastSelfSling.validation = receipt;
+    }
+    this._pendingReleaseValidation = null;
+    this.bus.emit('massline:releaseValidated', receipt);
   },
 
   // Manual F-cut released the PLAYER (case B). Two bounded assists, both flag-gated and both
@@ -349,6 +471,7 @@ export const masslineThrow = {
     const canImpulse = physics && typeof physics.applyImpulse === 'function';
     let exitAngle = Math.atan2(player.vel.z, player.vel.x);
     let corrected = false;
+    const impulses = [];
 
     // 1) Snap the exit onto the selected-target solution when the release landed in the window.
     const runtime = ensureThrowSubtree(state);
@@ -361,11 +484,20 @@ export const masslineThrow = {
         const target = Math.atan2(player.vel.z, player.vel.x) + err;
         const vx = Math.cos(target) * speed - player.vel.x;
         const vz = Math.sin(target) * speed - player.vel.z;
-        const accepted = physics.applyImpulse({
+        const impulse = { x: vx * swing.playerMass, z: vz * swing.playerMass };
+        const accepted = !!physics.applyImpulse({
           entityId: player.id,
-          impulse: { x: vx * swing.playerMass, z: vz * swing.playerMass },
+          impulse,
           point: null,
           reason: 'massline_selfsling_snap',
+          tick: state.tick,
+        });
+        impulses.push({
+          entityId: player.id,
+          reason: 'massline_selfsling_snap',
+          accepted,
+          impulse,
+          angularCorrectionRad: err,
           tick: state.tick,
         });
         if (accepted) { exitAngle = target; corrected = true; }
@@ -376,22 +508,42 @@ export const masslineThrow = {
     // from the live line), never from a parked tap-latch-tap.
     let bonusDv = 0;
     if (canImpulse && Math.abs(swing.tangentialSpeed) >= SLING_MIN_EXIT_SPEED) {
-      const decades = Math.log10(Math.max(1, swing.anchorMass / swing.playerMass));
-      const clamped = Math.min(SLING_BONUS_MAX_DECADES, Math.max(0, decades));
-      if (clamped > 0.15) {
-        bonusDv = clamped * SLING_BONUS_PER_DECADE;
-        physics.applyImpulse({
+      const proposedBonusDv = selfSlingBonusDv(
+        swing.anchorMass,
+        swing.playerMass,
+        swing.tangentialSpeed,
+      );
+      if (proposedBonusDv > 0) {
+        const impulse = {
+          x: Math.cos(exitAngle) * proposedBonusDv * swing.playerMass,
+          z: Math.sin(exitAngle) * proposedBonusDv * swing.playerMass,
+        };
+        const accepted = !!physics.applyImpulse({
           entityId: player.id,
-          impulse: { x: Math.cos(exitAngle) * bonusDv * swing.playerMass, z: Math.sin(exitAngle) * bonusDv * swing.playerMass },
+          impulse,
           point: null,
           reason: 'massline_sling_bonus',
           tick: state.tick,
         });
+        impulses.push({
+          entityId: player.id,
+          reason: 'massline_sling_bonus',
+          accepted,
+          impulse,
+          deltaSpeed: proposedBonusDv,
+          tick: state.tick,
+        });
+        if (accepted) bonusDv = proposedBonusDv;
       }
     }
 
     if (corrected || bonusDv > 0) {
-      this.bus.emit('massline:selfSling', {
+      const releaseId = `massline:self-sling:${state.tick}:${player.id}`;
+      const prediction = predictionReceipt(self || {});
+      const receipt = {
+        releaseId,
+        source: 'massline',
+        physicsEarned: bonusDv > 0,
         targetId: self ? self.targetId : null,
         anchorId: swing.anchorId,
         corrected,
@@ -399,7 +551,22 @@ export const masslineThrow = {
         exitAngle,
         exitSpeed: speed + bonusDv,
         tick: state.tick,
-      });
+        prediction,
+        impulses,
+        releasePosition: { x: finite(player.pos && player.pos.x), z: finite(player.pos && player.pos.z) },
+      };
+      runtime.lastSelfSling = receipt;
+      this._pendingReleaseValidation = {
+        releaseId,
+        kind: 'self-sling',
+        entityId: player.id,
+        source: 'massline',
+        releaseTick: state.tick,
+        prediction,
+        impulses,
+        releasePosition: { ...receipt.releasePosition },
+      };
+      this.bus.emit('massline:selfSling', receipt);
       this.bus.emit('audio:cue', { id: 'massline.sling', position: { x: player.pos.x, z: player.pos.z } });
     }
   },
@@ -423,7 +590,8 @@ function ensureThrowSubtree(state) {
   if (!root.throw) {
     root.throw = {
       armed: false, payloadId: null, aimTargetId: null, aimSynthetic: false,
-      solution: null, selfSolution: null, lastThrow: null,
+      solution: null, selfSolution: null, lastThrow: null, lastSelfSling: null,
+      lastReleaseValidation: null,
     };
   }
   return root.throw;
@@ -438,7 +606,73 @@ function mirrorSolution(existing, solution) {
   out.interceptAngle = solution.interceptAngle;
   out.payloadSpeed = solution.payloadSpeed;
   out.timeToSolution = solution.timeToSolution;
+  out.timeOfFlight = solution.timeOfFlight;
+  out.sampleTick = solution.sampleTick;
+  out.sampleAgeTicks = solution.sampleAgeTicks;
+  out.sampleIntervalTicks = solution.sampleIntervalTicks;
+  out.sampleSequence = solution.sampleSequence;
+  out.sampled = solution.sampled;
+  out.predicted = solution.predicted ? { ...solution.predicted } : null;
   return out;
+}
+
+function predictionReceipt(solution) {
+  return {
+    valid: !!solution.valid,
+    errorRad: finite(solution.errorRad, Math.PI),
+    tolRad: Math.max(0, finite(solution.tolRad, 0)),
+    onSolution: !!solution.onSolution,
+    interceptAngle: finite(solution.interceptAngle, 0),
+    payloadSpeed: Math.max(0, finite(solution.payloadSpeed, 0)),
+    timeToSolution: Number.isFinite(solution.timeToSolution) ? solution.timeToSolution : null,
+    timeOfFlight: Math.max(0, finite(solution.timeOfFlight, 0)),
+    sampleTick: Math.max(0, Math.trunc(finite(solution.sampleTick, 0))),
+    sampleAgeTicks: Math.max(0, Math.trunc(finite(solution.sampleAgeTicks, 0))),
+    sampleIntervalTicks: Math.max(1, Math.trunc(finite(solution.sampleIntervalTicks, 1))),
+    sampleSequence: Math.max(0, Math.trunc(finite(solution.sampleSequence, 0))),
+    predicted: solution.predicted ? {
+      x: finite(solution.predicted.x),
+      z: finite(solution.predicted.z),
+    } : null,
+  };
+}
+
+function selfSlingBonusDv(anchorMass, playerMass, tangentialSpeed) {
+  if (Math.abs(finite(tangentialSpeed)) < SLING_MIN_EXIT_SPEED) return 0;
+  const massRatio = Math.max(1, finite(anchorMass, 1) / Math.max(0.1, finite(playerMass, 1)));
+  const decades = Math.log10(massRatio);
+  const clamped = Math.min(SLING_BONUS_MAX_DECADES, Math.max(0, decades));
+  return clamped > 0.15 ? clamped * SLING_BONUS_PER_DECADE : 0;
+}
+
+function releaseTrajectoryReceipt(pending, actualVelocity) {
+  const prediction = pending.prediction || {};
+  const releasePosition = pending.releasePosition || { x: 0, z: 0 };
+  const timeOfFlight = Math.max(0, finite(prediction.timeOfFlight, 0));
+  const predictedPosition = prediction.predicted ? {
+    x: finite(prediction.predicted.x),
+    z: finite(prediction.predicted.z),
+  } : null;
+  const actualProjectedPosition = {
+    x: finite(releasePosition.x) + finite(actualVelocity && actualVelocity.x) * timeOfFlight,
+    z: finite(releasePosition.z) + finite(actualVelocity && actualVelocity.z) * timeOfFlight,
+  };
+  return {
+    timeOfFlight,
+    releasePosition: { x: finite(releasePosition.x), z: finite(releasePosition.z) },
+    predictedPosition,
+    actualProjectedPosition,
+    divergenceWU: predictedPosition
+      ? Math.hypot(
+        actualProjectedPosition.x - predictedPosition.x,
+        actualProjectedPosition.z - predictedPosition.z,
+      )
+      : null,
+  };
+}
+
+function angleDelta(a, b) {
+  return Math.atan2(Math.sin(a - b), Math.cos(a - b));
 }
 
 function writeIdle(runtime) {

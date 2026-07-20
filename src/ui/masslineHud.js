@@ -24,10 +24,15 @@ import { massline2Flag } from '../data/featureFlags.js';
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
 const MARK_PREDICTION_S = 1 / 120;
 
-const CSS = `
+export const MASSLINE_HUD_CSS = `
 #sf-ml2 { position:absolute; inset:0; pointer-events:none; z-index:6; }
 #sf-ml2 .ml2-mark { position:absolute; left:0; top:0; will-change:transform;
   transition:transform 60ms linear; }
+#sf-ml2 .ml2-mark.ml2-offscreen { filter:drop-shadow(0 0 7px rgba(2,6,11,0.92)); }
+#sf-ml2 .ml2-mark-label { position:absolute; left:50%; top:calc(100% + 7px); transform:translateX(-50%);
+  padding:2px 5px; border:1px solid currentColor; background:rgba(4,14,24,0.82); color:var(--ml2-c,#5fd7ff);
+  font:750 11px/1.2 system-ui,sans-serif; letter-spacing:0.08em; text-shadow:0 1px 2px #02060b;
+  white-space:nowrap; }
 #sf-ml2 .ml2-preview-link { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
 #sf-ml2 .ml2-preview-line { stroke:rgba(125,224,255,0.62); stroke-width:1.5; stroke-dasharray:4 6;
   vector-effect:non-scaling-stroke; }
@@ -52,11 +57,14 @@ const CSS = `
 #sf-ml2 .ml2-throw .ml2-diamond { width:100%; height:100%; transform:rotate(45deg);
   border:2px solid var(--ml2-c,#5fd7ff); box-shadow:0 0 10px var(--ml2-c,#5fd7ff);
   transition:border-color 80ms linear, box-shadow 80ms linear; }
+#sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { outline:2px solid var(--ml2-c,#5fd7ff); outline-offset:4px; }
 #sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { animation:ml2pulse 0.5s ease-in-out infinite; }
 @keyframes ml2pulse { 0%,100% { transform:rotate(45deg) scale(1); } 50% { transform:rotate(45deg) scale(1.3); } }
 #sf-ml2 .ml2-self { width:0; height:0; margin:-7px 0 0 -7px;
   border-left:7px solid transparent; border-right:7px solid transparent;
   border-bottom:12px solid var(--ml2-c,#5fd7ff); opacity:0.7; filter:drop-shadow(0 0 6px var(--ml2-c,#5fd7ff)); }
+#sf-ml2 .ml2-self .ml2-mark-label { top:17px; }
+#sf-ml2 .ml2-self.ml2-hot { outline:2px solid var(--ml2-c,#5fd7ff); outline-offset:5px; opacity:1; }
 #sf-ml2 svg.ml2-ring { position:absolute; left:0; top:0; overflow:visible; }
 #sf-ml2 .ml2-ring circle { fill:rgba(95,215,255,0.04); stroke:#5fd7ff; stroke-width:1.4;
   stroke-dasharray:10 7; opacity:0.55; }
@@ -74,6 +82,7 @@ const CSS = `
 #sf-ml2.ml2-reduced-motion .ml2-mark { transition:none; }
 #sf-ml2.ml2-reduced-motion .ml2-throw.ml2-hot .ml2-diamond { animation:none; }
 #sf-ml2.ml2-reduced-motion .ml2-preview { animation:none; opacity:1; }
+#sf-ml2.ml2-reduced-flash .ml2-throw.ml2-hot .ml2-diamond { animation:none; }
 @media (prefers-reduced-motion: reduce) {
   #sf-ml2 .ml2-mark { transition:none; }
   #sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { animation:none; }
@@ -82,8 +91,43 @@ const CSS = `
 @media (forced-colors: active) {
   #sf-ml2 .ml2-preview { color:CanvasText; background:Canvas; border-color:CanvasText; forced-color-adjust:auto; }
   #sf-ml2 .ml2-preview-line { stroke:CanvasText; }
+  #sf-ml2 .ml2-mark { color:CanvasText; forced-color-adjust:auto; filter:none; }
+  #sf-ml2 .ml2-throw .ml2-diamond { border-color:CanvasText; box-shadow:none; outline-color:CanvasText; }
+  #sf-ml2 .ml2-self { border-bottom-color:CanvasText; outline-color:CanvasText; }
+  #sf-ml2 .ml2-mark-label { color:CanvasText; background:Canvas; border-color:CanvasText; text-shadow:none; }
 }
 `;
+
+export function resolveReleaseCue(projection, options = {}) {
+  const rawX = projection && Number(projection.x);
+  const rawY = projection && Number(projection.y);
+  if (!Number.isFinite(rawX) || !Number.isFinite(rawY)) return { visible: false };
+  const viewportWidth = Math.max(60, Number(options.viewportWidth) || 1440);
+  const viewportHeight = Math.max(60, Number(options.viewportHeight) || 900);
+  const offscreen = projection.onScreen === false
+    || rawX < 0 || rawX > viewportWidth || rawY < 0 || rawY > viewportHeight;
+  const x = offscreen ? clampRange(rawX, 30, viewportWidth - 30) : rawX;
+  const y = offscreen ? clampRange(rawY, 30, viewportHeight - 30) : rawY;
+  const direction = offscreen
+    ? offscreenDirection(rawX - viewportWidth / 2, rawY - viewportHeight / 2)
+    : 'onscreen';
+  const onSolution = !!options.onSolution;
+  const kind = options.kind === 'self' ? 'self-sling' : 'throw';
+  const target = options.targetKind === 'waypoint' ? ' waypoint' : '';
+  const state = onSolution ? 'open' : 'aligning';
+  const label = onSolution ? 'RELEASE' : 'ALIGN';
+  const offscreenCopy = offscreen ? `, target offscreen ${direction}` : ', target onscreen';
+  return {
+    visible: true,
+    x,
+    y,
+    offscreen,
+    direction,
+    state,
+    label,
+    ariaLabel: `Massline ${kind}${target} release window ${state}${offscreenCopy}`,
+  };
+}
 
 export const masslineHud = {
   id: 'masslineHud',
@@ -117,6 +161,9 @@ export const masslineHud = {
       || !!(state.settings && state.settings.accessibility
         && state.settings.accessibility.motionPreference === 'reduce');
     dom.root.classList.toggle('ml2-reduced-motion', reducedMotion);
+    const reducedFlash = !!(state.settings && state.settings.accessibility
+      && state.settings.accessibility.flashReduce);
+    dom.root.classList.toggle('ml2-reduced-flash', reducedFlash);
     this._updateAcquisitionPreview(dom, state, player, w2s);
     this._updateThrowMark(dom, ml2.throw, state, w2s);
     this._updateSelfMark(dom, ml2.throw, state, w2s);
@@ -193,24 +240,44 @@ export const masslineHud = {
       ? aim.pos.z + finite(aim.vel && aim.vel.z) * MARK_PREDICTION_S
       : payload.pos.z + Math.sin(solution.interceptAngle) * 220;
     const proj = w2s({ x: px, y: 0, z: pz });
-    if (!proj || !proj.onScreen) { dom.throwEl.style.display = 'none'; return; }
+    const cue = resolveReleaseCue(proj, {
+      viewportWidth: viewportExtent('innerWidth', 'clientWidth', 1440),
+      viewportHeight: viewportExtent('innerHeight', 'clientHeight', 900),
+      kind: 'throw',
+      onSolution: solution.onSolution,
+      targetKind: aim ? 'entity' : 'point',
+    });
+    if (!cue.visible) { dom.throwEl.style.display = 'none'; return; }
     dom.throwEl.style.display = 'block';
-    dom.throwEl.style.transform = `translate3d(${proj.x}px, ${proj.y}px, 0)`;
+    dom.throwEl.style.transform = `translate3d(${cue.x}px, ${cue.y}px, 0)`;
     const hot = !!solution.onSolution;
     dom.throwEl.classList.toggle('ml2-hot', hot);
+    dom.throwEl.classList.toggle('ml2-offscreen', cue.offscreen);
     dom.throwEl.style.setProperty('--ml2-c', rampColor(solution.errorRad, solution.tolRad, hot));
+    applyCueState(dom.throwEl, dom.throwLabel, cue);
   },
 
   _updateSelfMark(dom, throwState, state, w2s) {
     const self = throwState && !throwState.armed ? throwState.selfSolution : null;
     if (!self) { dom.selfEl.style.display = 'none'; return; }
-    const target = state.entities.get(self.targetId);
-    if (!target || !target.pos) { dom.selfEl.style.display = 'none'; return; }
-    const proj = w2s({ x: target.pos.x, y: 0, z: target.pos.z });
-    if (!proj || !proj.onScreen) { dom.selfEl.style.display = 'none'; return; }
+    const target = self.targetId != null ? state.entities.get(self.targetId) : null;
+    const targetPos = target && target.pos ? target.pos : self.targetPos;
+    if (!targetPos) { dom.selfEl.style.display = 'none'; return; }
+    const proj = w2s({ x: targetPos.x, y: 0, z: targetPos.z });
+    const cue = resolveReleaseCue(proj, {
+      viewportWidth: viewportExtent('innerWidth', 'clientWidth', 1440),
+      viewportHeight: viewportExtent('innerHeight', 'clientHeight', 900),
+      kind: 'self',
+      onSolution: self.onSolution,
+      targetKind: self.targetKind,
+    });
+    if (!cue.visible) { dom.selfEl.style.display = 'none'; return; }
     dom.selfEl.style.display = 'block';
-    dom.selfEl.style.transform = `translate3d(${proj.x}px, ${proj.y - 26}px, 0)`;
+    dom.selfEl.style.transform = `translate3d(${cue.x}px, ${cue.y - 26}px, 0)`;
+    dom.selfEl.classList.toggle('ml2-hot', !!self.onSolution);
+    dom.selfEl.classList.toggle('ml2-offscreen', cue.offscreen);
     dom.selfEl.style.setProperty('--ml2-c', rampColor(self.errorRad, self.tolRad, self.onSolution));
+    applyCueState(dom.selfEl, dom.selfLabel, cue);
   },
 
   _updateCloakRing(dom, cloakState, player, w2s) {
@@ -266,7 +333,7 @@ export const masslineHud = {
     if (!document.getElementById('sf-ml2-css')) {
       const style = document.createElement('style');
       style.id = 'sf-ml2-css';
-      style.textContent = CSS;
+      style.textContent = MASSLINE_HUD_CSS;
       (document.head || host).appendChild(style);
     }
     const root = document.createElement('div');
@@ -294,11 +361,23 @@ export const masslineHud = {
     const diamond = document.createElement('div');
     diamond.className = 'ml2-diamond';
     throwEl.appendChild(diamond);
+    const throwLabel = document.createElement('span');
+    throwLabel.className = 'ml2-mark-label';
+    throwEl.appendChild(throwLabel);
+    throwEl.setAttribute('role', 'status');
+    throwEl.setAttribute('aria-live', 'polite');
+    throwEl.setAttribute('aria-atomic', 'true');
     root.appendChild(throwEl);
 
     const selfEl = document.createElement('div');
     selfEl.className = 'ml2-mark ml2-self';
     selfEl.style.display = 'none';
+    const selfLabel = document.createElement('span');
+    selfLabel.className = 'ml2-mark-label';
+    selfEl.appendChild(selfLabel);
+    selfEl.setAttribute('role', 'status');
+    selfEl.setAttribute('aria-live', 'polite');
+    selfEl.setAttribute('aria-atomic', 'true');
     root.appendChild(selfEl);
 
     const ringSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -336,7 +415,7 @@ export const masslineHud = {
 
     host.appendChild(root);
     this._dom = {
-      root, previewEl, previewSvg, previewLine, throwEl, selfEl, ringSvg, ringCircle,
+      root, previewEl, previewSvg, previewLine, throwEl, throwLabel, selfEl, selfLabel, ringSvg, ringCircle,
       btPill: bt.pill, btFill: bt.bar, ckPill: ck.pill, ckFill: ck.bar,
     };
     return this._dom;
@@ -374,6 +453,21 @@ function viewportExtent(windowKey, documentKey, fallback) {
 
 function clampRange(value, min, max) {
   return Math.max(min, Math.min(max, finite(value)));
+}
+
+function offscreenDirection(dx, dy) {
+  const ax = Math.abs(dx);
+  const ay = Math.abs(dy);
+  if (ay < ax * 0.4) return dx < 0 ? 'left' : 'right';
+  if (ax < ay * 0.4) return dy < 0 ? 'up' : 'down';
+  return `${dy < 0 ? 'upper' : 'lower'} ${dx < 0 ? 'left' : 'right'}`;
+}
+
+function applyCueState(element, label, cue) {
+  if (label && label.textContent !== cue.label) label.textContent = cue.label;
+  if (element.getAttribute('aria-label') !== cue.ariaLabel) element.setAttribute('aria-label', cue.ariaLabel);
+  element.setAttribute('data-window-state', cue.state);
+  element.setAttribute('data-direction', cue.direction);
 }
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }

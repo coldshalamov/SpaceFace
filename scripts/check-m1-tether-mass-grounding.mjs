@@ -133,7 +133,9 @@ assert.deepEqual(spoolStats(['mod_massline_spool_m', 'mod_winch_hd', 'mod_massli
     _active: { attachmentId: attachment.id },
     registry: { get() { return { kernel: { catalog: { attachments: new Map([[standard.id, standard]]) } } }; } },
   }, attachments, -999, 1);
-  assert.equal(reeled, true);
+  // _reelActive returns a truthful receipt since the PQ-003/PQ-006 pay-out work; success is the
+  // receipt's changed flag, same strength as the old boolean.
+  assert.equal(reeled && reeled.changed, true, 'live player reel applies and reports a changed receipt');
   assert(Math.abs(requestedDelta + standard.reelRate * 1.8) < 1e-9,
     'live player reel clamps from the immutable base rate times the effective max-folded rating');
 }

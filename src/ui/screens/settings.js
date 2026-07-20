@@ -346,7 +346,7 @@ export const settingsScreen = {
           ['snap', 'Snap window on manual release'],
           ['off', 'Off — raw physics'],
         ], (v) => this._set(ctx, 'gameplay', 'masslineReleaseAssist', v));
-        pane.appendChild(el('p', 'sf-muted', 'The diamond pulses white when the release window opens.'));
+        pane.appendChild(el('p', 'sf-muted', 'The release marker reads RELEASE when the timing window opens; motion and color are optional reinforcement.'));
       }
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));

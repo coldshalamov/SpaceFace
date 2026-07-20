@@ -2,7 +2,7 @@
 // lifecycle. Exposes worldToScreen / raycastToPlane via ctx.helpers and a renderFrame() the loop
 // calls each animation frame. Sim never touches this; it's all in renderFrame (ARCHITECTURE §1,§2.4).
 import * as THREE from 'three';
-import { createChaseCamera } from './camera.js';
+import { applyMasslineReleaseCameraCue, createChaseCamera } from './camera.js';
 import { createSpaceBackground } from './spaceBackground.js';
 import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
@@ -1223,6 +1223,7 @@ export const render = {
     bus.on('ship:boostStop', () => { if (cam.easeRecenter) cam.easeRecenter(0.4); if (cam.pushZoom) cam.pushZoom(-0.03, 0.4); });
     bus.on('tether:released', () => cam.easeRecenter && cam.easeRecenter(0.4));
     bus.on('tether:broken', () => cam.easeRecenter && cam.easeRecenter(0.4));
+    bus.on('massline:selfSling', (payload) => applyMasslineReleaseCameraCue(cam, state, payload));
     bus.on('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
     bus.on('game:started', () => cam.snapToPlayer && cam.snapToPlayer());
     bus.on('save:loaded', () => cam.snapToPlayer && cam.snapToPlayer());

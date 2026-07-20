@@ -18,6 +18,11 @@
 
 const TWO_PI = Math.PI * 2;
 
+// Four fixed ticks at 60 Hz = 15 Hz, inside SF-06's deterministic 10-20 Hz predictor budget.
+// The expensive intercept solve runs only on these sample ticks; fixed-tick consumers project the
+// cached angular error between samples so Arm/Snap and the HUD still see one coherent live stream.
+export const RELEASE_PREDICTOR_SAMPLE_TICKS = 4;
+
 // Solution-tolerance clamp (radians). Target-size honesty (§3.3): big targets are generous,
 // fighters stay a low-percentage play. assistForgiveness is the victim-radius multiplier dial.
 export const ASSIST_FORGIVENESS = 1.6;
@@ -196,7 +201,7 @@ export function solveThrowSolution(payload, aim, opts = {}) {
   const pp = (payload && payload.pos) || { x: 0, z: 0 };
   const speed = Math.hypot(finite(pv.x), finite(pv.z));
   if (!(speed > 1) || !aim || !aim.pos) {
-    return { valid: false, errorRad: Math.PI, tolRad: 0, onSolution: false, interceptAngle: 0, payloadSpeed: speed, timeToSolution: null, timeOfFlight: 0 };
+    return { valid: false, errorRad: Math.PI, tolRad: 0, onSolution: false, interceptAngle: 0, payloadSpeed: speed, timeToSolution: null, timeOfFlight: 0, predicted: null };
   }
 
   // Standard 2-pass intercept: the payload is the projectile, at its current speed.
@@ -235,5 +240,73 @@ export function solveThrowSolution(payload, aim, opts = {}) {
     payloadSpeed: speed,
     timeToSolution,
     timeOfFlight: t,
+    predicted: { x: pp.x + ix, z: pp.z + iz },
+  };
+}
+
+/**
+ * Deterministically sample and project the shared throw solution.
+ *
+ * `cache` is caller-owned mutable storage; no module-global state or wall time participates. A new
+ * solve occurs at 15 Hz by default, immediately after a tick rewind, or when `identity` changes.
+ * Every other fixed tick projects the sampled angular error with the live line omega. The returned
+ * record is newly allocated so receipts may retain it without later cache updates rewriting history.
+ */
+export function sampleThrowSolution(cache, payload, aim, opts = {}) {
+  const host = cache && typeof cache === 'object' ? cache : {};
+  const tick = Math.max(0, Math.trunc(finite(opts.tick, 0)));
+  const tickRate = Math.max(1, finite(opts.tickRate, 60));
+  const sampleIntervalTicks = Math.max(1, Math.trunc(finite(
+    opts.sampleIntervalTicks,
+    RELEASE_PREDICTOR_SAMPLE_TICKS,
+  )));
+  const identity = opts.identity == null ? '' : String(opts.identity);
+  const previousTick = Number.isFinite(host.sampleTick) ? host.sampleTick : -Infinity;
+  const needsSample = !host.sample
+    || host.identity !== identity
+    || tick < previousTick
+    || tick - previousTick >= sampleIntervalTicks;
+
+  if (needsSample) {
+    const solved = solveThrowSolution(payload, aim, opts);
+    host.sample = {
+      valid: solved.valid,
+      errorRad: solved.errorRad,
+      tolRad: solved.tolRad,
+      onSolution: solved.onSolution,
+      interceptAngle: solved.interceptAngle,
+      payloadSpeed: solved.payloadSpeed,
+      timeToSolution: solved.timeToSolution,
+      timeOfFlight: solved.timeOfFlight,
+      predicted: solved.predicted ? { ...solved.predicted } : null,
+    };
+    host.identity = identity;
+    host.sampleTick = tick;
+    host.sampleSequence = Math.max(0, Math.trunc(finite(host.sampleSequence, 0))) + 1;
+  }
+
+  const sample = host.sample;
+  const sampleAgeTicks = Math.max(0, tick - host.sampleTick);
+  const omega = finite(opts.omega, 0);
+  const projectedError = sample.valid
+    ? wrapPi(sample.errorRad - omega * (sampleAgeTicks / tickRate))
+    : sample.errorRad;
+  let timeToSolution = null;
+  if (sample.valid && Math.abs(omega) > 1e-3) {
+    let sweep = projectedError / omega;
+    if (sweep < 0) sweep += TWO_PI / Math.abs(omega);
+    timeToSolution = sweep;
+  }
+
+  return {
+    ...sample,
+    errorRad: projectedError,
+    onSolution: !!(sample.valid && Math.abs(projectedError) <= sample.tolRad),
+    timeToSolution,
+    sampleTick: host.sampleTick,
+    sampleAgeTicks,
+    sampleIntervalTicks,
+    sampleSequence: host.sampleSequence,
+    sampled: needsSample,
   };
 }
