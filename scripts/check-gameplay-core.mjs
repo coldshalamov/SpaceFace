@@ -43,7 +43,6 @@ import { DEFAULTS as INPUT_DEFAULTS, input as inputSystem } from '../src/systems
 import { autoTargetAssist } from '../src/systems/autoTargetAssist.js';
 import {
   toggleAutoTarget,
-  projectLockedReticle,
   createAutoTargetRuntime,
 } from '../src/combat/autoTargetMode.js';
 import { ships, buildSlotList, fittingsFromDefaultModules, getDerivedStats, makeShipEntitySpec, PLAYER_GIMBAL_ARC } from '../src/systems/ships.js';
@@ -578,132 +577,6 @@ function checkMiningBeamTargetUsesSpatialHashForCrowdedFields() {
     'crowded mining target acquisition should avoid scanning every mineable in the sector');
 }
 
-function checkWeaponAutoFireUsesSpatialShipCandidates() {
-  const state = createGameState(93);
-  state.entities.clear();
-  state.entityList.length = 0;
-  state.playerId = 1;
-  const player = {
-    id: 1,
-    type: 'ship',
-    alive: true,
-    collides: true,
-    radius: 8,
-    team: 0,
-    pos: { x: 0, z: 0 },
-    vel: { x: 0, z: 0 },
-    flags: {},
-    data: {
-      weapons: [{ defId: 'wpn_pulse_laser_s' }],
-      combat: {},
-    },
-  };
-  const nearHostile = {
-    id: 2,
-    type: 'ship',
-    alive: true,
-    collides: true,
-    radius: 8,
-    team: 1,
-    pos: { x: 280, z: 0 },
-    vel: { x: 0, z: 0 },
-    data: { ai: { fsm: 'attack' }, combat: { targetId: player.id } },
-  };
-  const shipsInIndex = [player, nearHostile];
-  for (let i = 0; i < 180; i++) {
-    shipsInIndex.push({
-      id: 10 + i,
-      type: 'ship',
-      alive: true,
-      collides: true,
-      radius: 8,
-      team: 1,
-      pos: { x: 5000 + i * 90, z: 0 },
-      vel: { x: 0, z: 0 },
-      data: { ai: { fsm: 'attack' }, combat: { targetId: player.id } },
-    });
-  }
-  for (const e of shipsInIndex) {
-    state.entities.set(e.id, e);
-    state.entityList.push(e);
-  }
-  state.entityIndex = {
-    __spacefaceEntityIndexV1: true,
-    ships: shipsInIndex,
-  };
-
-  weapons.init({
-    state,
-    bus: createBus(),
-    helpers: {
-      getEntity: (id) => state.entities.get(id) || null,
-      spawnEntity() { throw new Error('auto-fire target check should not spawn projectiles'); },
-      hash32,
-      mulberry32,
-    },
-  });
-  state.spatialHash.rebuild(state.entityList);
-  const picked = weapons._autoFireTarget(player, state);
-
-  assert.equal(picked, nearHostile, 'auto-fire should still choose the nearby aggressive hostile');
-  assert.equal(weapons._diag.autoFireSpatialQueries, 1, 'crowded auto-fire targeting should query nearby ships through the spatial hash');
-  assert(weapons._diag.autoFireCandidates < shipsInIndex.length,
-    'crowded auto-fire targeting should avoid scanning every ship in the sector');
-}
-
-function checkSelectedAutoFireRequiresHostileTarget() {
-  const state = createGameState(96);
-  state.mode = 'flight';
-  state.entities.clear();
-  state.entityList.length = 0;
-  state.playerId = 1;
-  state.player.heat = 0;
-  state.player.targetId = 2;
-  const player = {
-    id: 1,
-    type: 'ship',
-    alive: true,
-    collides: true,
-    radius: 8,
-    team: 0,
-    pos: { x: 0, z: 0 },
-    vel: { x: 0, z: 0 },
-    flags: {},
-    data: { weapons: [{ defId: 'wpn_pulse_laser_s' }], combat: {} },
-  };
-  const lawfulPatrol = {
-    id: 2,
-    type: 'ship',
-    alive: true,
-    collides: true,
-    radius: 8,
-    team: 1,
-    pos: { x: 220, z: 0 },
-    vel: { x: 0, z: 0 },
-    data: { ai: { lawful: true }, combat: {} },
-  };
-  state.entities.set(player.id, player);
-  state.entities.set(lawfulPatrol.id, lawfulPatrol);
-  state.entityList.push(player, lawfulPatrol);
-
-  weapons.init({
-    state,
-    bus: createBus(),
-    helpers: {
-      getEntity: (id) => state.entities.get(id) || null,
-      spawnEntity() { throw new Error('selected auto-fire target check should not spawn projectiles'); },
-      hash32,
-      mulberry32,
-    },
-  });
-
-  assert.equal(weapons._selectedAutoFireTarget(player, state), null,
-    'selected auto-fire must not shoot a clean lawful patrol just because teams differ');
-  state.player.heat = 0.2;
-  assert.equal(weapons._selectedAutoFireTarget(player, state), lawfulPatrol,
-    'selected auto-fire may engage the same patrol after canonical WANTED heat makes it hostile');
-}
-
 function checkPlayerGimbalBears360Degrees() {
   const state = createGameState(198);
   state.mode = 'flight';
@@ -771,7 +644,7 @@ function checkPlayerGimbalBears360Degrees() {
   console.log(`[PASS] 360-gimbal hardpointDir=${hardpointDir.toFixed(3)} shotDir=${shotDir.toFixed(3)} rearAim=${rearAim.toFixed(3)}`);
 }
 
-function checkAutoTargetAimsWithoutAutoFire() {
+function checkRetiredAutoTargetFlagCannotOwnAimOrTrigger() {
   const state = createGameState(199);
   state.mode = 'flight';
   state.playerId = 1;
@@ -837,16 +710,18 @@ function checkAutoTargetAimsWithoutAutoFire() {
     },
   });
   weapons.update(1 / 60, state);
-  assert.equal(spawned.length, 0, 'auto-target must not spawn projectiles without manual fire');
+  assert.equal(spawned.length, 0, 'the retired auto-target flag must never hold the trigger');
 
   state.input.fire = true;
   weapons.update(1 / 60, state);
-  assert.equal(spawned.length, 1, 'manual fire with auto-target should spawn a projectile');
+  assert.equal(spawned.length, 1, 'manual fire must still spawn a projectile');
   const shotDir = Math.atan2(spawned[0].vel.z, spawned[0].vel.x);
   const towardHostile = Math.atan2(hostile.pos.z - player.pos.z, hostile.pos.x - player.pos.x);
-  assert(Math.abs(wrapAngle(shotDir - towardHostile)) < 0.2,
-    'auto-target shot should head toward the locked hostile, not nose-only');
-  console.log(`[PASS] autoTarget-no-autofire spawned=${spawned.length} shotDir=${shotDir.toFixed(3)} towardHostile=${towardHostile.toFixed(3)}`);
+  assert(Math.abs(wrapAngle(shotDir - state.input.aimAngle)) < 0.2,
+    'manual fire must follow the independent weapon cursor even if an old input snapshot contains autoFire=true');
+  assert(Math.abs(wrapAngle(shotDir - towardHostile)) > 1,
+    'the retired flag must not silently restore persistent locked-target aim');
+  console.log(`[PASS] retired-autoTarget-inert spawned=${spawned.length} shotDir=${shotDir.toFixed(3)} cursor=${state.input.aimAngle.toFixed(3)}`);
 }
 
 function installBrowserStubs() {
@@ -891,21 +766,8 @@ function initShippedAutoTargetSystems(state, bus) {
     bus,
     helpers: { raycastToPlane: (ndc) => ({ x: ndc.x * 300, z: ndc.y * 300 }) },
   });
-  inputSys._screen = { x: 400, y: 300, active: true };
-  inputSys._ndc = { x: 0, y: 0 };
-  inputSys._autoTargetPointerMode = true;
-  const player = state.entities.get(state.playerId);
-  state.input.autoTargetPath = {
-    active: true,
-    drawing: false,
-    cursorX: 460,
-    cursorY: 220,
-    pointIndex: 1,
-    points: [
-      { x: player.pos.x, z: player.pos.z },
-      { x: player.pos.x + 180, z: player.pos.z + 240 },
-    ],
-  };
+  inputSys._screen = { x: 520, y: 200, active: true };
+  inputSys._ndc = { x: 0.3, y: 1 / 3 };
   inputSys._lastKbmMs = performance.now();
   inputSys._keys = Object.create(null);
   const assistSys = Object.create(autoTargetAssist);
@@ -916,50 +778,6 @@ function initShippedAutoTargetSystems(state, bus) {
 function runShippedAutoTargetTick(state, dt, ctx) {
   ctx.inputSys.update(dt, state);
   ctx.assistSys.update(dt, state);
-}
-
-function makeAutoTargetReticleState(seed, hostilePos = { x: 220, z: 0 }) {
-  const state = createGameState(seed);
-  state.playerId = 1;
-  state.player.targetId = 2;
-  state.input.autoFire = true;
-  const player = { id: 1, type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 }, rot: 0 };
-  const hostile = {
-    id: 2, type: 'ship', alive: true, team: 1, pos: hostilePos,
-    data: { ai: { fsm: 'attack' }, combat: { targetId: 1 } },
-  };
-  state.entities.set(1, player);
-  state.entities.set(2, hostile);
-  return state;
-}
-
-function checkProjectLockedReticleOffScreen() {
-  const viewport = { width: 800, height: 600 };
-
-  const centerBehind = makeAutoTargetReticleState(204);
-  const fallback = projectLockedReticle(centerBehind, () => ({
-    x: 400,
-    y: 300,
-    onScreen: false,
-  }), viewport);
-  assert(fallback && Number.isFinite(fallback.x) && Number.isFinite(fallback.y),
-    'projectLockedReticle must return coords when lock projects to viewport center but off-screen');
-  assert.equal(fallback.x, 400, 'off-screen center lock must use radial fallback (no positive edge hits)');
-  assert.equal(fallback.y, 300, 'off-screen center lock radial fallback must stay at viewport center');
-
-  const farCorner = makeAutoTargetReticleState(205, { x: 5000, z: 5000 });
-  const edgeClamp = projectLockedReticle(farCorner, () => ({
-    x: 2000,
-    y: 2000,
-    onScreen: false,
-  }), viewport);
-  assert(edgeClamp && Number.isFinite(edgeClamp.x) && Number.isFinite(edgeClamp.y),
-    'projectLockedReticle must edge-clamp far off-screen locks');
-  assert(edgeClamp.x >= 28 && edgeClamp.x <= 772 && edgeClamp.y >= 28 && edgeClamp.y <= 572,
-    'edge-clamped reticle must stay inside viewport margin');
-  assert(edgeClamp.x < 800 && edgeClamp.y < 600,
-    'edge-clamped reticle must not equal raw off-screen projection');
-  console.log(`[PASS] reticle-offscreen fallback=(${fallback.x},${fallback.y}) edge=(${edgeClamp.x.toFixed(1)},${edgeClamp.y.toFixed(1)})`);
 }
 
 function checkAutoTargetAssistReinitNoListenerLeak() {
@@ -994,7 +812,7 @@ function checkAutoTargetAssistReinitNoListenerLeak() {
   }
 }
 
-function checkAutoTargetInputSteersShipAndAimsHostile() {
+function checkPursuitSelectionPreservesCursorAndManualAxes() {
   const saved = installBrowserStubs();
   try {
     const state = createGameState(200);
@@ -1002,8 +820,6 @@ function checkAutoTargetInputSteersShipAndAimsHostile() {
     state.settings = { gameplay: { controlScheme: 'pilot' }, controls: { bindings: {} } };
     state.playerId = 1;
     state.player.targetId = 2;
-    state.input.autoFire = true;
-    state.input.turnIntent = 0.8;
     state.input.pointerScreen = { x: 520, y: 200, active: true };
     const player = {
       id: 1, type: 'ship', alive: true, team: 0,
@@ -1023,38 +839,29 @@ function checkAutoTargetInputSteersShipAndAimsHostile() {
     bus.on('*', () => {});
     const origEmit = bus.emit.bind(bus);
     bus.emit = (event, payload) => { emits.push({ event, payload }); return origEmit(event, payload); };
-    bus.on('ui:targetNearestHostileToPlayer', () => {});
-
     const ctx = initShippedAutoTargetSystems(state, bus);
+    assert.equal(toggleAutoTarget(state, bus, createAutoTargetRuntime()), true,
+      'G owner must select the current ship target');
     runShippedAutoTargetTick(state, 1 / 60, ctx);
 
     const hostileAim = Math.atan2(hostile.pos.z - player.pos.z, hostile.pos.x - player.pos.x);
-    const cursorAngle = Math.atan2(300, 0);
-    assert.equal(state.input.aimWorld.x, hostile.pos.x, 'shipped tick must set aimWorld.x to lock');
-    assert.equal(state.input.aimWorld.z, hostile.pos.z, 'shipped tick must set aimWorld.z to lock');
-    assert(Math.abs(wrapAngle(state.input.aimAngle - hostileAim)) < 0.02,
-      'auto-target aimAngle should track the locked hostile, not the cursor');
-    assert(Math.abs(wrapAngle(state.input.aimAngle - cursorAngle)) > 0.5,
-      'auto-target aimAngle must diverge from cursor bearing when hostile is elsewhere');
-    assert(state.input.autoTargetPath.active,
-      'auto-target should retain the drawn camera-projected world route');
-    assert(state.input.moveX > 0.01 && state.input.moveZ > 0.01,
-      'a top-right flick should request both +Z lateral and +X forward thrust while facing +X');
-    assert(state.input.turnIntent > 0.01,
-      'auto-target should turn the nose toward the requested world travel heading');
+    const cursorAngle = Math.atan2(100, 90);
+    assert.equal(state.input.aimWorld.x, 90, 'shipped tick must keep aimWorld.x on the cursor ray');
+    assert(Math.abs(state.input.aimWorld.z - 100) < 1e-9, 'shipped tick must keep aimWorld.z on the cursor ray');
+    assert(Math.abs(wrapAngle(state.input.aimAngle - cursorAngle)) < 0.02,
+      'pursuit assist must not take weapon aim from the cursor');
+    assert(Math.abs(wrapAngle(state.input.aimAngle - hostileAim)) > 0.5,
+      'locked target pursuit must not imply locked weapon aim');
+    assert.equal(state.input.moveX, 0, 'pursuit must not synthesize manual strafe axes');
+    assert.equal(state.input.moveZ, 0, 'pursuit must not synthesize manual throttle axes');
+    assert.equal(state.input.turnIntent, 0, 'pursuit must not synthesize yaw axes');
+    assert.equal(state.input.pursuitSlot.active, true);
     assert.equal(emits.filter((e) => e.event === 'ui:targetNearestHostileToCursor').length, 0,
-      'shipped auto-target tick must never emit cursor-nearest refresh');
+      'shipped pursuit tick must never emit cursor-nearest target acquisition');
+    assert.equal(emits.filter((e) => e.event === 'ui:targetNearestHostileToPlayer').length, 0,
+      'shipped pursuit tick must preserve the player-selected lock without quiet refresh');
 
-    state.input.turnIntent = 0.8;
-    runShippedAutoTargetTick(state, 1 / 60, ctx);
-    const routeTarget = state.input.autoTargetPath.points[state.input.autoTargetPath.pointIndex];
-    const routeLength = Math.hypot(routeTarget.x - player.pos.x, routeTarget.z - player.pos.z);
-    assert(Math.abs(state.input.moveZ - (routeTarget.x - player.pos.x) / routeLength) < 1e-9,
-      'world +X route component must decompose to forward thrust for a ship facing +X');
-    assert(Math.abs(state.input.moveX - (routeTarget.z - player.pos.z) / routeLength) < 1e-9,
-      'world +Z route component must decompose to lateral thrust for a ship facing +X');
-
-    console.log(`[PASS] shipped-auto-target-input aimAngle=${state.input.aimAngle.toFixed(3)} turnIntent=${state.input.turnIntent.toFixed(3)} move=(${state.input.moveX.toFixed(3)},${state.input.moveZ.toFixed(3)}) hostileAim=${hostileAim.toFixed(3)} routePoints=${state.input.autoTargetPath.points.length}`);
+    console.log(`[PASS] shipped-pursuit-input aimAngle=${state.input.aimAngle.toFixed(3)} cursor=${cursorAngle.toFixed(3)} target=${hostileAim.toFixed(3)} manualAxes=0`);
   } finally {
     restoreBrowserStubs(saved);
   }
@@ -1088,19 +895,9 @@ function checkTargetCycleHostilesOnly() {
   assert.equal(state.player.targetId, nearHostile.id,
     'nearest-hostile selection should pick the closest hostile to the player');
 
-  weapons.init({
-    state,
-    bus: createBus(),
-    helpers: { getEntity: (id) => state.entities.get(id) || null, spawnEntity: () => ({}), hash32, mulberry32 },
-  });
-  assert.equal(weapons._selectedAutoFireTarget(player, state), nearHostile,
-    'auto-target aim should follow the Tab-selected nearest hostile');
-
   cycleTarget(state, 1, null);
   assert.equal(state.player.targetId, farHostile.id,
     'Tab cycle should advance only among nearby hostiles');
-  assert.equal(weapons._selectedAutoFireTarget(player, state), farHostile,
-    'auto-target aim should follow the newly cycled hostile');
   assert.notEqual(state.player.targetId, trader.id,
     'Tab cycle must skip non-hostile contacts');
 
@@ -1111,9 +908,6 @@ function checkTargetCycleHostilesOnly() {
   state.entities.set(5, beyondWeaponHostile);
   state.entityList.push(beyondWeaponHostile);
   state.player.targetId = beyondWeaponHostile.id;
-  assert.equal(weapons._selectedAutoFireTarget(player, state), beyondWeaponHostile,
-    'Tab-selected hostile within scanner range must aim even beyond weapon range');
-
   targetNearestHostileToPlayer(state, null, { quiet: true });
   assert.equal(state.player.targetId, beyondWeaponHostile.id,
     'quiet refresh must preserve Tab-selected lock while it stays alive');
@@ -1128,40 +922,44 @@ function checkTargetCycleHostilesOnly() {
   console.log(`[PASS] target-cycle scannerRange=${SCANNER_CONTACT_RANGE} preservedTab=5 then refresh->${state.player.targetId}`);
 }
 
-function checkAutoTargetGToggleAlwaysFlips() {
+function checkPursuitGToggleSelectsCurrentLock() {
   const state = createGameState(203);
   state.playerId = 1;
-  state.input.autoFire = false;
+  state.player.targetId = 2;
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0 };
+  const target = { id: 2, type: 'ship', alive: true, pos: { x: 240, z: 0 }, vel: { x: 0, z: 0 }, rot: 0 };
+  state.entities.set(player.id, player);
+  state.entities.set(target.id, target);
   const bus = createBus();
   const toasts = [];
   bus.on('toast', (t) => toasts.push(t));
-  bus.on('ui:targetNearestHostileToPlayer', () => {});
 
   toggleAutoTarget(state, bus, createAutoTargetRuntime());
-  assert.equal(state.input.autoFire, true, 'toggleAutoTarget must enable auto-target');
-  assert(toasts.some((t) => /Auto-target ON.*swipe to steer/.test(t.text)),
-    'toggle must explain gesture steering without an autopursuit guard');
+  assert.equal(state.input.autoFire, false, 'the persisted legacy action must never enable weapon autoaim');
+  assert.equal(state.input.pursuitSlot.active, true, 'G must enable the pursuit slot');
+  assert.equal(state.input.pursuitSlot.targetId, target.id, 'G must use the existing player-selected lock');
+  assert(toasts.some((t) => /Pursuit assist ON.*movement keys release/.test(t.text)),
+    'toggle must explain slot adjustment and instant manual release');
   toggleAutoTarget(state, bus, createAutoTargetRuntime());
-  assert.equal(state.input.autoFire, false, 'second toggle must disable auto-target');
-  console.log('[PASS] g-toggle-always-flips without autopursuit guard');
+  assert.equal(state.input.pursuitSlot.active, false, 'second G press must disable pursuit');
+  console.log('[PASS] g-pursuit-toggle selects current lock and never owns weapon aim');
 }
 
-function checkAutoTargetRefreshPreservesTabLockViaInput() {
+function checkPursuitNeverRefreshesPlayerSelectedLock() {
   const saved = installBrowserStubs();
   try {
     const state = createGameState(202);
     state.mode = 'flight';
     state.settings = { gameplay: { controlScheme: 'pilot' }, controls: { bindings: {} } };
     state.playerId = 1;
-    state.input.autoFire = true;
     state.input.pointerScreen = { x: 400, y: 300, active: true };
     const player = { id: 1, type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 }, rot: 0, vel: { x: 0, z: 0 } };
     const nearHostile = {
-      id: 2, type: 'ship', alive: true, team: 1, pos: { x: 100, z: 0 },
+      id: 2, type: 'ship', alive: true, team: 1, pos: { x: 100, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
       data: { ai: { fsm: 'attack' }, combat: { targetId: 1 } },
     };
     const farHostile = {
-      id: 3, type: 'ship', alive: true, team: 1, pos: { x: 400, z: 0 },
+      id: 3, type: 'ship', alive: true, team: 1, pos: { x: 400, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
       data: { ai: { fsm: 'attack' }, combat: { targetId: 1 } },
     };
     state.entities.set(1, player);
@@ -1170,33 +968,30 @@ function checkAutoTargetRefreshPreservesTabLockViaInput() {
     state.entityList.push(player, nearHostile, farHostile);
 
     const bus = createBus();
-    const refreshCalls = [];
     const allEmits = [];
     const origEmit = bus.emit.bind(bus);
     bus.emit = (event, payload) => {
       allEmits.push({ event, payload });
       return origEmit(event, payload);
     };
-    bus.on('ui:targetNearestHostileToPlayer', (payload = {}) => {
-      refreshCalls.push(payload);
-      targetNearestHostileToPlayer(state, bus, { quiet: !!payload.quiet });
-    });
-
     state.player.targetId = nearHostile.id;
     cycleTarget(state, 1, null);
     assert.equal(state.player.targetId, farHostile.id, 'Tab should advance from nearest to farther hostile');
 
-    const ctx = initShippedAutoTargetSystems(state, bus, { x: 0, z: 300 });
-    ctx.assistSys._runtime.refreshT = 0;
+    const ctx = initShippedAutoTargetSystems(state, bus);
+    assert.equal(toggleAutoTarget(state, bus, ctx.assistSys._runtime), true);
     for (let i = 0; i < 5; i++) runShippedAutoTargetTick(state, 0.13, ctx);
     assert.equal(state.player.targetId, farHostile.id,
-      'shipped input+assist refresh ticks must not clobber Tab-selected targetId');
-    assert.equal(state.input.aimWorld.x, farHostile.pos.x, 'shipped refresh ticks must keep aimWorld on Tab lock');
+      'shipped pursuit ticks must not clobber the Tab-selected targetId');
+    assert.equal(state.input.pursuitSlot.targetId, farHostile.id,
+      'the selected slot must remain attached to the same player lock');
+    assert.equal(state.input.aimWorld.x, 90,
+      'weapon aim must remain on the independent cursor ray');
     assert.equal(emitsCount(allEmits, 'ui:targetNearestHostileToCursor'), 0,
-      'shipped refresh must never emit cursor-nearest hostile acquisition');
-    assert(refreshCalls.length >= 1, 'auto-target refresh timer should emit quiet hostile refresh events');
-    assert(refreshCalls.every((p) => p && p.quiet === true), 'refresh emissions must be quiet');
-    console.log(`[PASS] refresh-persists-tab targetId=${state.player.targetId} refreshCalls=${refreshCalls.length}`);
+      'pursuit must never emit cursor-nearest acquisition');
+    assert.equal(emitsCount(allEmits, 'ui:targetNearestHostileToPlayer'), 0,
+      'pursuit must never emit a quiet target refresh');
+    console.log(`[PASS] pursuit-preserves-tab targetId=${state.player.targetId} refreshCalls=0`);
   } finally {
     restoreBrowserStubs(saved);
   }
@@ -5734,8 +5529,6 @@ checkCoreBuildsRadarContactIndex();
 checkCoreSnapshotsOnlyMovableEntities();
 checkMiningPickupMagnetUsesSpatialHashForCrowdedScenes();
 checkMiningBeamTargetUsesSpatialHashForCrowdedFields();
-checkWeaponAutoFireUsesSpatialShipCandidates();
-checkSelectedAutoFireRequiresHostileTarget();
 checkNpcFireAtPlayerRequiresRadarVisibility();
 checkSharedSpatialQueryUsesActiveHashAndFallback();
 checkSpatialHashCachesStaticLayer();
@@ -6326,13 +6119,12 @@ function checkCleanSpawnAndDockedSafety() {
 }
 checkCleanSpawnAndDockedSafety();
 checkPlayerGimbalBears360Degrees();
-checkAutoTargetAimsWithoutAutoFire();
-checkProjectLockedReticleOffScreen();
+checkRetiredAutoTargetFlagCannotOwnAimOrTrigger();
 checkAutoTargetAssistReinitNoListenerLeak();
-checkAutoTargetInputSteersShipAndAimsHostile();
+checkPursuitSelectionPreservesCursorAndManualAxes();
 checkTargetCycleHostilesOnly();
-checkAutoTargetGToggleAlwaysFlips();
-checkAutoTargetRefreshPreservesTabLockViaInput();
+checkPursuitGToggleSelectsCurrentLock();
+checkPursuitNeverRefreshesPlayerSelectedLock();
 checkWeaponHeatHudSummary();
 
 console.log('Core gameplay checks OK');

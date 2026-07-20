@@ -46,20 +46,6 @@ function isAutoFireCode(state, code) {
   return !!code && binding(state, 'autoFire').includes(code);
 }
 
-function setPointerLock(enabled) {
-  if (typeof document === 'undefined') return;
-  const canvas = document.getElementById && document.getElementById('gl-canvas');
-  if (enabled) {
-    if (!canvas || document.pointerLockElement === canvas || typeof canvas.requestPointerLock !== 'function') return;
-    const request = canvas.requestPointerLock();
-    if (request && typeof request.catch === 'function') request.catch(() => {});
-    return;
-  }
-  if (canvas && document.pointerLockElement === canvas && typeof document.exitPointerLock === 'function') {
-    document.exitPointerLock();
-  }
-}
-
 export const autoTargetAssist = {
   name: 'autoTargetAssist',
 
@@ -69,23 +55,6 @@ export const autoTargetAssist = {
     this.bus = ctx.bus;
     this._gHeld = false;
     this._runtime = createAutoTargetRuntime();
-    this._pointerLockAcquired = false;
-
-    this._onPointerLockChange = () => {
-      if (typeof document === 'undefined') return;
-      const canvas = document.getElementById && document.getElementById('gl-canvas');
-      if (canvas && document.pointerLockElement === canvas) {
-        this._pointerLockAcquired = true;
-        return;
-      }
-      if (this._pointerLockAcquired && this.state && this.state.input && this.state.input.autoFire) {
-        this.reset({ toast: true });
-      }
-      this._pointerLockAcquired = false;
-    };
-    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
-      document.addEventListener('pointerlockchange', this._onPointerLockChange);
-    }
     this._unsubMode = this.bus && this.bus.on
       ? this.bus.on('mode:changed', ({ mode } = {}) => {
         if (mode !== 'flight') this.reset();
@@ -102,14 +71,7 @@ export const autoTargetAssist = {
       e.preventDefault();
       e.stopImmediatePropagation();
       if (!this._gHeld) {
-        const enabled = toggleAutoTarget(this.state, this.bus, this._runtime);
-        setPointerLock(enabled);
-        if (enabled && typeof document !== 'undefined') {
-          const canvas = document.getElementById && document.getElementById('gl-canvas');
-          this._pointerLockAcquired = !!(canvas && document.pointerLockElement === canvas);
-        } else if (!enabled) {
-          this._pointerLockAcquired = false;
-        }
+        toggleAutoTarget(this.state, this.bus, this._runtime);
         this._gHeld = true;
       }
     };
@@ -125,23 +87,30 @@ export const autoTargetAssist = {
 
   reset({ toast = false } = {}) {
     const inp = this.state && this.state.input;
-    const wasEnabled = !!(inp && inp.autoFire);
-    if (inp) inp.autoFire = false;
-    if (this._runtime) this._runtime.refreshT = 0;
+    const wasEnabled = !!(inp && inp.pursuitSlot && inp.pursuitSlot.active);
+    if (inp) {
+      inp.autoFire = false;
+      if (inp.pursuitSlot) {
+        inp.pursuitSlot = {
+          ...inp.pursuitSlot,
+          active: false,
+          reason: 'reset',
+          releasedTick: Number.isFinite(this.state && this.state.tick) ? this.state.tick : null,
+        };
+      }
+    }
+    if (this._runtime) {
+      this._runtime.lastActive = false;
+      this._runtime.lastReason = 'reset';
+    }
     this._gHeld = false;
-    setPointerLock(false);
-    this._pointerLockAcquired = false;
     if (toast && wasEnabled && this.bus) {
-      this.bus.emit('toast', { text: 'Auto-target OFF', kind: 'info', ttl: 2 });
+      this.bus.emit('toast', { text: 'Pursuit assist OFF', kind: 'info', ttl: 2 });
     }
   },
 
   destroy() {
     this.reset();
-    if (typeof document !== 'undefined' && typeof document.removeEventListener === 'function'
-      && this._onPointerLockChange) {
-      document.removeEventListener('pointerlockchange', this._onPointerLockChange);
-    }
     if (this._unsubMode) this._unsubMode();
     if (this._unsubDock) this._unsubDock();
     if (typeof removeEventListener === 'function') {
@@ -150,7 +119,6 @@ export const autoTargetAssist = {
     }
     this._onKeyDown = null;
     this._onKeyUp = null;
-    this._onPointerLockChange = null;
     this._unsubMode = null;
     this._unsubDock = null;
     this._gHeld = false;

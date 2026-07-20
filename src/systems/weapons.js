@@ -11,9 +11,8 @@ import { WEAPONS } from '../data/weapons.js';
 import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { resolveWeaponImpulseForHit, readRecentImpulseProvenance, recordImpulseProvenance } from '../combat/impulseKernel.js';
-import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { writePhysicsControl } from '../core/physicsAuthority.js';
-import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from './scanner.js';
+import { isHostileToPlayer } from './scanner.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import {
   aimTrueProjectileVelocity, solveTetherLeadSolution, solutionToleranceRad,
@@ -22,7 +21,6 @@ import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmiss
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
-const AUTO_FIRE_QUERY_RADIUS_PAD = 128;
 
 // SF-10 RCS disruptor. A hit leaves the PQ-009 provenance tag 'rcs_disruptor_spike'; weapons latches
 // a suppression window off it only while that tag is fresh (RCS_TRIGGER_MAXAGE_TICKS), so a later hit
@@ -84,8 +82,6 @@ export const weapons = {
     this._beamFiring = new Set();
     this._beamFiringPrev = new Set();
     this._beamActiveMeta = new Map();
-    this._autoFireScratch = [];
-    this._autoLeadVel = new Map();
     // SF-10 RCS-disruptor suppression windows, keyed by target entity. Transient (never serialized):
     // a WeakMap keyed on the live entity graph, so reloads bring fresh entities and an empty map.
     this._rcsDisrupt = new WeakMap();
@@ -121,32 +117,16 @@ export const weapons = {
       const cruise = state.player && state.player.cruise;
       const playerFireBlocked = cruise && (cruise.phase === 'charging' || cruise.phase === 'cruising');
 
-      // Manual fire (LMB/Space) only — auto-target supplies aim, never holds the trigger.
+      // Manual fire (LMB/Space) and the independent weapon cursor are the only default player
+      // trigger/aim inputs. PQ-007 retired G's persistent locked-target aim; an old snapshot with
+      // `input.autoFire=true` is deliberately inert here.
       // Cruise charge/cruise forces firing=false but still services the ship so beams release and
       // cooldowns/heat tick down (spec2/02 §1).
       let firing = false;
-      let autoTgt = null;
+      let forcedTarget = null;
       if (!playerFireBlocked) {
         firing = !!state.input.fire;
         if (state.input.actions?.tetherFire) firing = false;
-      }
-      if (state.input.autoFire) {
-        autoTgt = this._selectedAutoFireTarget(player, state) ?? this._autoFireTarget(player, state);
-      }
-      let aimTgt = autoTgt;
-      if (autoTgt) {
-        // Velocity smoothing for lead: raw per-tick vel from oscillating/tethered targets makes the
-        // 2-iter lead solver spray shots L/R. Blend gives "average flight direction" so bullets
-        // cluster where a human would hold lead. Purely for prediction; does not affect sim state.
-        const id = String(autoTgt.id);
-        const raw = autoTgt.vel || { x: 0, z: 0 };
-        if (!this._autoLeadVel) this._autoLeadVel = new Map();
-        let sv = this._autoLeadVel.get(id);
-        const a = 0.28;
-        if (!sv) sv = { x: raw.x, z: raw.z };
-        else sv = { x: sv.x * (1 - a) + raw.x * a, z: sv.z * (1 - a) + raw.z * a };
-        this._autoLeadVel.set(id, sv);
-        aimTgt = { pos: autoTgt.pos, vel: sv, radius: autoTgt.radius };
       }
       // Massline tether-lock fire control (§3.1, flag massline2.fireControl — OFF in the node
       // golden): a line on a hostile IS the firing solution. The constrained-motion solver owns
@@ -157,16 +137,13 @@ export const weapons = {
       if (massline2Flag('fireControl')) {
         tetherGate = this._tetherFireSolution(player, state);
         if (tetherGate) {
-          autoTgt = tetherGate.target;
-          aimTgt = null;
+          forcedTarget = tetherGate.target;
         }
       }
       const aimAngle = tetherGate
         ? tetherGate.angle
-        : (aimTgt
-          ? this._leadAngle(player, aimTgt, this._playerProjSpeed(player))
-          : (state.input.aimAngle || player.rot));
-      this._serviceShip(player, firing, /*isPlayer*/ true, dt, state, aimAngle, autoTgt, tetherGate);
+        : (state.input.aimAngle || player.rot);
+      this._serviceShip(player, firing, /*isPlayer*/ true, dt, state, aimAngle, forcedTarget, tetherGate);
     }
     const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
     for (const e of ships) {
@@ -380,7 +357,7 @@ export const weapons = {
     const taut = tether.phase === 'capture' || tether.phase === 'loaded' || tether.phase === 'overload';
     if (!taut) return null;
     const speed = Number.isFinite(projSpeed) && projSpeed > 0
-      ? projSpeed : this._playerProjSpeed(player);
+      ? projSpeed : this._playerProjectileSpeed(player);
     const sol = solveTetherLeadSolution(player, target, speed, { taut: true });
     const dist = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
     return {
@@ -394,8 +371,8 @@ export const weapons = {
   },
 
   // --- fire all weapons on a ship if it is firing this tick ---
-  // aimAngle: the world angle to gimbal/turret toward (player mouse aim, NPC lead, or auto-fire lead).
-  // forceTarget: an explicit target entity (auto-fire / missile-lock); null = use ship's selected target.
+  // aimAngle: the world angle to gimbal/turret toward (player mouse aim or NPC lead).
+  // forceTarget: an explicit target entity (Massline tether / missile-lock); null = selected target.
   // fireGate: massline tether-lock solution (player only, flag-gated) — fixed mounts withhold
   // off-solution rounds; turrets aim the constrained solution instead of the linear lead.
   _serviceShip(e, firing, isPlayer, dt, state, aimAngle, forceTarget, fireGate = null) {
@@ -565,16 +542,11 @@ export const weapons = {
       dir = Math.atan2(tgt.pos.z - e.pos.z, tgt.pos.x - e.pos.x);
     } else if (isTurret) {
       if (!tgt) return capLeft;
-      let tForLead = tgt;
-      if (forceTarget && forceTarget.id != null && String(forceTarget.id) === String(tgt.id) && this._autoLeadVel) {
-        const sv = this._autoLeadVel.get(String(tgt.id));
-        if (sv) tForLead = { pos: tgt.pos, vel: sv, radius: tgt.radius };
-      }
       // Tether-lock (massline2.fireControl): the constrained solution replaces the linear lead
       // when the turret is engaging the tethered hostile — one solver everywhere it matters.
       const aim = (mountGate && tgt && tgt.id != null && String(tgt.id) === String(mountGate.targetId))
         ? mountGate.angle
-        : this._leadAngle(e, tForLead, w.projSpeed != null ? w.projSpeed : def.projSpeed || 1);
+        : this._leadAngle(e, tgt, w.projSpeed != null ? w.projSpeed : def.projSpeed || 1);
       const arc = w.gimbalArc != null ? w.gimbalArc : (def.turretArcDeg ? def.turretArcDeg * RAD : Math.PI);
       // turret arc is measured about the hull centre; outside it the mount can't bear.
       if (Math.abs(wrapAngle(aim - e.rot)) > arc / 2) return capLeft;
@@ -597,14 +569,7 @@ export const weapons = {
       // Freelancer feel — front guns track the cursor up to a cone, then fire straight.
       let fixedAim = mountGate ? mountGate.angle : (aimAngle != null ? aimAngle : e.rot);
       if (!mountGate && forceTarget && forceTarget.pos) {
-        let targetForLead = forceTarget;
-        if (forceTarget.id != null && this._autoLeadVel) {
-          const smoothed = this._autoLeadVel.get(String(forceTarget.id));
-          if (smoothed) {
-            targetForLead = { pos: forceTarget.pos, vel: smoothed, radius: forceTarget.radius };
-          }
-        }
-        fixedAim = this._leadAngle(e, targetForLead, mountProjSpeed);
+        fixedAim = this._leadAngle(e, forceTarget, mountProjSpeed);
       }
       dir = this._hardpointDir(e, w, fixedAim, def.spreadDeg != null ? def.spreadDeg : 0);
     }
@@ -960,69 +925,9 @@ export const weapons = {
     return { x: px, z: pz };
   },
 
-  // Auto-fire target: the nearest ship that is ACTIVELY hostile toward the player — either on a
-  // hostile team and in an attack FSM state, or currently targeting/attacking the player. This
-  // implements "fire only at aggressive enemies while I fly" (Phase 2). Returns null if none.
-  _selectedAutoFireTarget(player, state) {
-    const id = state && state.player && state.player.targetId;
-    if (id == null) return null;
-    const e = state.entities && state.entities.get ? state.entities.get(id) : null;
-    if (!e || !e.alive || (e.type !== 'ship' && e.type !== 'drone') || e.id === player.id) return null;
-    if (!isHostileToPlayer(e, player.team, state)) return null;
-    const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-    const d2 = dx * dx + dz * dz;
-    const scanR = SCANNER_CONTACT_RANGE + (e.radius || 0);
-    if (d2 > scanR * scanR) return null;
-    return e;
-  },
-
-  _autoFireTarget(player, state) {
-    ensureWeaponRuntime(this);
-    let best = null, bestD2 = Infinity;
-    const px = player.pos.x, pz = player.pos.z;
-    const maxRange = playerAutoFireRange(this, player);
-    const ships = shipsNearPlayer(state, player, maxRange + AUTO_FIRE_QUERY_RADIUS_PAD, this._autoFireScratch);
-    if (ships === this._autoFireScratch) this._diag.autoFireSpatialQueries++;
-    this._diag.autoFireCandidates += ships.length;
-    for (const e of ships) {
-      if (e.type !== 'ship' || !e.alive || e.id === player.id) continue;
-      if (e.team === player.team) continue;              // friendly — never auto-target allies
-      if (!this._isAggressive(e, player, state)) continue;
-      const dx = e.pos.x - px, dz = e.pos.z - pz;
-      const d2 = dx * dx + dz * dz;
-      const inRange = maxRange <= 0 || d2 <= (maxRange + (e.radius || 0)) * (maxRange + (e.radius || 0));
-      if (!inRange) continue;
-      if (d2 < bestD2) { bestD2 = d2; best = e; }
-    }
-    return best;
-  },
-
-  // An NPC counts as aggressive if it has AI in an attacking state, OR it is the player's current
-  // selected/locked target, OR it recently damaged the player. Passive traders/patrols are skipped.
-  _isAggressive(e, player, state) {
-    if (!isHostileToPlayer(e, player.team, state)) return false;
-    const ai = e.data && e.data.ai;
-    if (ai) {
-      // Passive freighters (ambient traffic, V2 §28b) are NEVER auto-targeted — they're scenery +
-      // economy movers, not threats. Attacking one is a deliberate player choice (piracy -> heat),
-      // never an auto-fire accident.
-      if (ai.passive) return false;
-      const fsm = ai.fsm;
-      if (fsm === 'attack' || fsm === 'strafe' || fsm === 'pursue') return true;
-      // isHostileToPlayer already gates lawful patrols on canonical WANTED heat.
-      if (ai.lawful) return true;
-      // a fleeing trader isn't a threat, but if it's shooting back (cornered) we may engage it
-    }
-    const combat = e.data && e.data.combat;
-    if (combat && combat.targetId === player.id) return true;
-    // threat table: has this entity accrued threat from the player (i.e. it's been in a fight with us)?
-    const tbl = state.combat && state.combat.threatTables && state.combat.threatTables.get(e.id);
-    if (tbl && (tbl.get(player.id) || 0) > 0) return true;
-    return true;
-  },
-
-  // Representative projectile speed of the player's primary weapon, for auto-fire lead prediction.
-  _playerProjSpeed(player) {
+  // Representative projectile speed of the player's primary weapon. Massline tether fire control
+  // uses this when a caller does not provide an explicit speed for its constrained lead solution.
+  _playerProjectileSpeed(player) {
     const ws = player.data && player.data.weapons;
     if (ws) {
       for (const w of ws) {
@@ -1033,6 +938,7 @@ export const weapons = {
     }
     return 360;
   },
+
 };
 
 void DEG2;
@@ -1077,24 +983,6 @@ export function solveLeadAngle(shooter, tgt, projSpeed) {
   return Math.atan2(aimz, aimx);
 }
 
-function shipsNearPlayer(state, player, radius, out) {
-  return queryNearbyEntities(state, player.pos, radius, out,
-    (state.entityIndex && state.entityIndex.ships) || state.entityList);
-}
-
-function playerAutoFireRange(host, player) {
-  const ws = player && player.data && player.data.weapons;
-  if (!ws || !ws.length) return 0;
-  let range = 0;
-  const byId = host && host._byId;
-  for (const w of ws) {
-    const def = byId && byId.get ? byId.get(w.defId) : null;
-    const r = w.range != null ? w.range : (def && def.range);
-    if (Number.isFinite(r) && r > range) range = r;
-  }
-  return range;
-}
-
 function npcFireTargetVisibleOnPlayerRadar(e, state) {
   const combat = e && e.data && e.data.combat;
   if (!state || !combat || combat.targetId !== state.playerId) return true;
@@ -1108,7 +996,6 @@ function npcFireTargetVisibleOnPlayerRadar(e, state) {
 }
 
 function ensureWeaponRuntime(host) {
-  if (!host._autoFireScratch) host._autoFireScratch = [];
   if (!host._diag) {
     host._diag = {
       autoFireSpatialQueries: 0,

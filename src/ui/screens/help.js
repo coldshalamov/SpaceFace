@@ -80,7 +80,7 @@ const SECTIONS = [
     ['Lateral thruster (right)', 'strafeRight', 'Q / E'],
     ['Boost (hold) / Dash (tap)', 'boost', 'Shift'],
     ['Fire weapons', 'fire', 'LMB'],
-    ['Auto-target toggle', 'autoFire', 'G'],
+    ['Pursuit slot assist (toggle)', 'autoFire', 'G'],
     ['Countermeasure', 'countermeasure', 'X'],
     // The primary/alias pair remains live and rebindable. Directional line control is contextual.
     ['Massline tap: latch / cut', 'tether', 'Space / F'],

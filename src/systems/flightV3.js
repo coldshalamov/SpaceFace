@@ -13,9 +13,11 @@
 import { queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
-import { computeFlightTelemetry, solveIntercept } from '../core/flight/flightTelemetry.js';
+import { computeFlightTelemetry } from '../core/flight/flightTelemetry.js';
 import { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
+import { stepPursuitSlotAssist } from '../core/flight/pursuitSlotAssist.js';
+export { stepPursuitSlotAssist } from '../core/flight/pursuitSlotAssist.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 
 // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
@@ -39,19 +41,6 @@ export const FLIGHT_BANK_TUNING = Object.freeze({
 // stop-zip-stop twitch into inertial, machine-like motion — without touching any AI logic.
 // Turn stays sharp: NPC yaw already goes through the torque-limited yaw controller.
 const NPC_INPUT_SLEW = 2.6;      // per second, throttle and strafe
-const AUTOPURSUIT_TURN_SOFT_ANGLE = 0.48;
-const AUTOPURSUIT_FOLLOW_MIN = 180;
-const AUTOPURSUIT_FOLLOW_MAX = 320;
-const AUTOPURSUIT_FOLLOW_DIST = 250;
-// Falling far behind the tail slot latches auto-boost (hysteresis so it never flickers);
-// the kernel's governor lifts the assisted speed cap by boostSpeedMult while boost is held,
-// which is what lets pursuit actually run down a fleeing, boosting target.
-const AUTOPURSUIT_BOOST_ENGAGE = 520;
-const AUTOPURSUIT_BOOST_RELEASE = 400;
-const AUTOPURSUIT_CLOSE_GAIN = 0.82;
-const AUTOPURSUIT_MATCH_GAIN = 0.90;
-const AUTOPURSUIT_PROJECTILE_HINT = 360;
-const AUTOPURSUIT_MANUAL_STRAFE_BLEND = 0.65;
 const AUTOPILOT_TURN_SOFT_ANGLE = 0.62;
 const AUTOPILOT_ARRIVAL_RADIUS = 38;
 const AUTOPILOT_MAX_LOOKAHEAD = 760;
@@ -60,8 +49,6 @@ const AUTOPILOT_CAPTURE_SPEED_FRACTION = 0.72;
 const AUTOPILOT_CAPTURE_ALIGNMENT = 0.58;
 const TETHER_HELM_MAX_YAW_RATE_MULT = 1.14;
 const TETHER_HELM_STRAIN_MULT = 1.75;
-const AUTO_TARGET_HELM_MULT = 1.5;
-const AUTO_TARGET_PATH_OVERDRIVE_MULT = 1.6;
 const TETHER_HELM_PHASE_MULT = Object.freeze({
   capture: 4.2,
   loaded: 6.0,
@@ -219,44 +206,46 @@ export const flightV3 = {
     let input = normalizeCraftInput(entity, rawInput, runtime, state, isPlayer, dt);
     const helm = tetherHelmAuthority(state, isPlayer);
     const tetherProfile = helm.mult > 1 ? applyTetherHelmProfile(baseProfile, helm) : baseProfile;
-    let profile = isPlayer && state.input && state.input.autoFire
-      ? applyAutoTargetHelmProfile(tetherProfile)
-      : tetherProfile;
-    if (isPlayer && state.input && state.input.autoFire
-      && state.input.autoTargetPath && state.input.autoTargetPath.active) {
-      profile = applyAutoTargetPathProfile(profile);
-    }
-    let pursuit = null;
+    const profile = tetherProfile;
     let autopilot = null;
     if (isPlayer) {
       autopilot = resolveAutopilotInput(this, entity, rawInput, input, dt, state, profile);
       if (autopilot && autopilot.input) {
         input = autopilot.input;
-      } else {
-        pursuit = resolveAutopursuitInput(entity, input, dt, state, profile);
-        if (pursuit && pursuit.input) input = pursuit.input;
       }
-      if (!(autopilot && autopilot.active) && !(pursuit && pursuit.active)) {
+      if (!(autopilot && autopilot.active)) {
         input = applyTetherNoseAssist(entity, input, state);
-        if (state.flight) state.flight.pursuitBoostLatch = false;   // latch dies with the pursuit
       }
-      this._syncPlayerFlightMode(state, pursuit, autopilot);
+      this._syncPlayerFlightMode(state, autopilot);
     }
 
     // Player boost/dash subsystem (port of src/systems/flight.js:118-188). Runs before
     // stepPropulsion so the resource-gated boost state feeds the propulsion kernel's thrust
     // scaling, and so the dash impulse is queued through physics authority this tick.
-    // While the flight computer owns the boost key (pursuit auto-boost / autopilot cruise),
+    // While the flight computer owns the boost key (autopilot cruise),
     // tap-dash detection is suppressed: a machine "tapping" Shift must never fire a dash.
     let boosting = input.boost;
     if (isPlayer) {
-      const autoBoost = !!((pursuit && pursuit.active) || (autopilot && autopilot.active));
+      const autoBoost = !!(autopilot && autopilot.active);
       boosting = this._stepPlayerBoost(entity, input.boost, dt, state, { suppressDash: autoBoost });
       input.boost = boosting;
       applyMasslineFlightModifiers(input, state, this._masslineSlingUntil, this._dashEarnedUntil);
     }
 
     const body = bodySnapshot(entity, profile);
+    let pursuitSlot = null;
+    if (isPlayer) {
+      const actions = state.input && state.input.actions;
+      const target = resolvePursuitTarget(state);
+      pursuitSlot = stepPursuitSlotAssist({
+        dt,
+        host: body,
+        target,
+        slot: actions && actions.autopursuit ? state.input.pursuitSlot : null,
+        profile,
+        manualOverride: !!(autopilot && autopilot.active),
+      });
+    }
     let orbitAssist = null;
     if (isPlayer) {
       const tether = state.player && state.player.tether;
@@ -310,6 +299,9 @@ export const flightV3 = {
     if (orbitAssist && orbitAssist.active && orbitAssist.impulse) {
       queuePhysicsImpulse(entity, orbitAssist.impulse);
     }
+    if (pursuitSlot && pursuitSlot.active && pursuitSlot.impulse) {
+      queuePhysicsImpulse(entity, pursuitSlot.impulse);
+    }
 
     entity.data = entity.data || {};
     assignPropulsionRuntime(entity, result.runtime, input.boost);
@@ -325,7 +317,10 @@ export const flightV3 = {
       const frame = entity._flightFrame || (entity._flightFrame = {});
       frame.tetherHelmAuthority = helm.mult;
       frame.tetherHelmPhase = helm.phase;
-      frame.autopursuit = pursuit && pursuit.active ? pursuit.telemetry : null;
+      frame.autopursuit = null;
+      frame.pursuitSlot = pursuitSlot
+        ? { active: pursuitSlot.active, ...pursuitSlot.telemetry }
+        : { active: false, reason: 'unavailable' };
       frame.autopilot = autopilot && autopilot.active ? autopilot.telemetry : null;
       frame.tetherNoseAssist = !!input.tetherNoseAssist;
       frame.tetherNoseAssistTorque = tetherAssistTorque;
@@ -478,14 +473,10 @@ export const flightV3 = {
     }
   },
 
-  _syncPlayerFlightMode(state, pursuit, autopilot) {
+  _syncPlayerFlightMode(state, autopilot) {
     const cruise = state && state.player && state.player.cruise;
     if (cruise && (cruise.phase === 'charging' || cruise.phase === 'cruising')) {
       this._setFlightMode('cruise', cruise.phase);
-      return;
-    }
-    if (pursuit && pursuit.active) {
-      this._setFlightMode('autopursuit', 'held');
       return;
     }
     if (autopilot && autopilot.active) {
@@ -493,7 +484,7 @@ export const flightV3 = {
       return;
     }
     const current = state && state.flight && state.flight.mode;
-    this._setFlightMode('manual', current === 'autopursuit' || current === 'lane' ? 'released' : 'manual');
+    this._setFlightMode('manual', current === 'lane' ? 'released' : 'manual');
   },
 
   _setFlightMode(mode, reason = 'manual') {
@@ -949,67 +940,6 @@ function counterVelocityInput(entity) {
   };
 }
 
-function resolveAutopursuitInput(entity, input, dt, state, profile) {
-  if (!entity || !state || !state.input || !state.input.actions) return null;
-  if (!state.input.actions.autopursuit) return null;
-  const cruise = state.player && state.player.cruise;
-  if (cruise && (cruise.phase === 'charging' || cruise.phase === 'cruising')) return null;
-  const tether = state.player && state.player.tether;
-  if (tether && tether.active) return null;
-  const target = resolvePursuitTarget(state);
-  if (!target) return null;
-
-  const pos = entity.pos || { x: 0, z: 0 };
-  const vel = entity.vel || { x: 0, z: 0 };
-  const targetPos = target.pos || { x: 0, z: 0 };
-  const targetVel = target.vel || { x: 0, z: 0 };
-  const lead = solveIntercept(
-    pos,
-    vel,
-    targetPos,
-    targetVel,
-    positive(profile.projectileSpeedHint, AUTOPURSUIT_PROJECTILE_HINT),
-    8
-  );
-  const aim = lead && lead.aimPoint ? lead.aimPoint : targetPos;
-  const turnErr = wrapAngle(Math.atan2(finite(aim.z) - finite(pos.z), finite(aim.x) - finite(pos.x)) - finite(entity.rot));
-  const turn = clamp(turnErr / AUTOPURSUIT_TURN_SOFT_ANGLE, -1, 1);
-
-  const followPoint = pursuitFollowPoint(target);
-  const desiredVel = desiredPursuitVelocity(pos, vel, followPoint, targetVel, profile, dt);
-  const local = worldVelocityErrorToInput(entity, desiredVel, profile, input);
-
-  // Auto-boost latch: engage when the tail slot is running away, release once we are back in
-  // reach. The latch lives on state.flight (reset on pursuit end / load) and the distance
-  // hysteresis band guarantees multi-second hold periods, so it reads as a committed burn.
-  const followDistance = distance2(pos, targetPos);
-  const flight = state.flight || (state.flight = { mode: 'manual', previousMode: 'manual', modeReason: 'boot', modeChangedTick: 0 });
-  let boostLatch = !!flight.pursuitBoostLatch;
-  if (followDistance > AUTOPURSUIT_BOOST_ENGAGE) boostLatch = true;
-  else if (followDistance < AUTOPURSUIT_BOOST_RELEASE) boostLatch = false;
-  flight.pursuitBoostLatch = boostLatch;
-
-  return {
-    active: true,
-    input: {
-      ...input,
-      turn,
-      throttle: local.throttle,
-      strafe: clamp(local.strafe + finite(input.strafe) * AUTOPURSUIT_MANUAL_STRAFE_BLEND, -1, 1),
-      brake: local.brake,
-      boost: boostLatch,
-    },
-    telemetry: {
-      targetId: target.id,
-      followDistance,
-      turnError: turnErr,
-      desiredVelocity: desiredVel,
-      followPoint,
-      boosting: boostLatch,
-    },
-  };
-}
-
 function applyTetherNoseAssist(entity, input, state) {
   const tether = state && state.player && state.player.tether;
   if (!tether || !tether.active || tether.targetId == null) return input;
@@ -1045,61 +975,6 @@ function resolvePursuitTarget(state) {
   return target;
 }
 
-function pursuitFollowPoint(target) {
-  const pos = target.pos || { x: 0, z: 0 };
-  const vel = target.vel || { x: 0, z: 0 };
-  const speed = Math.hypot(finite(vel.x), finite(vel.z));
-  const forward = speed > 1
-    ? { x: finite(vel.x) / speed, z: finite(vel.z) / speed }
-    : { x: Math.cos(finite(target.rot)), z: Math.sin(finite(target.rot)) };
-  return {
-    x: finite(pos.x) - forward.x * AUTOPURSUIT_FOLLOW_DIST,
-    z: finite(pos.z) - forward.z * AUTOPURSUIT_FOLLOW_DIST,
-  };
-}
-
-function desiredPursuitVelocity(pos, vel, followPoint, targetVel, profile, dt) {
-  const dx = finite(followPoint.x) - finite(pos.x);
-  const dz = finite(followPoint.z) - finite(pos.z);
-  const dist = Math.hypot(dx, dz);
-  const close = dist > 1 ? { x: dx / dist, z: dz / dist } : { x: 0, z: 0 };
-  const bandError = dist < AUTOPURSUIT_FOLLOW_MIN
-    ? dist - AUTOPURSUIT_FOLLOW_MIN
-    : dist > AUTOPURSUIT_FOLLOW_MAX
-      ? dist - AUTOPURSUIT_FOLLOW_MAX
-      : 0;
-  const combatSpeed = positive(profile.combatSpeed, positive(profile.maxSpeed, 210));
-  const closeSpeed = clamp(Math.abs(bandError) * AUTOPURSUIT_CLOSE_GAIN, 0, combatSpeed);
-  const sign = bandError >= 0 ? 1 : -1;
-  return {
-    x: finite(targetVel.x) + close.x * closeSpeed * sign + (finite(targetVel.x) - finite(vel.x)) * 0.08,
-    z: finite(targetVel.z) + close.z * closeSpeed * sign + (finite(targetVel.z) - finite(vel.z)) * 0.08,
-  };
-}
-
-function worldVelocityErrorToInput(entity, desiredVel, profile, input) {
-  const vel = entity.vel || { x: 0, z: 0 };
-  const err = {
-    x: (finite(desiredVel.x) - finite(vel.x)) * AUTOPURSUIT_MATCH_GAIN,
-    z: (finite(desiredVel.z) - finite(vel.z)) * AUTOPURSUIT_MATCH_GAIN,
-  };
-  const rot = finite(entity.rot);
-  const fx = Math.cos(rot), fz = Math.sin(rot);
-  const rx = -fz, rz = fx;
-  const localForward = err.x * fx + err.z * fz;
-  const localStrafe = err.x * rx + err.z * rz;
-  const forwardLimit = localForward >= 0
-    ? positive(profile.mainAccel, 40)
-    : positive(profile.reverseAccel, positive(profile.mainAccel, 40) * 0.5);
-  const strafeLimit = positive(profile.strafeAccel, positive(profile.mainAccel, 40) * 0.45);
-  const throttle = clamp(localForward / Math.max(1, forwardLimit), -1, 1);
-  const strafe = clamp(localStrafe / Math.max(1, strafeLimit), -1, 1);
-  const closingFast = Math.hypot(finite(vel.x), finite(vel.z)) > positive(profile.combatSpeed, 210) * 1.2
-    && Math.abs(throttle) < 0.2
-    && (input && input.brake);
-  return { throttle, strafe, brake: closingFast };
-}
-
 function distance2(a, b) {
   return Math.hypot(finite(a && a.x) - finite(b && b.x), finite(a && a.z) - finite(b && b.z));
 }
@@ -1124,36 +999,6 @@ function applyTetherHelmProfile(profile, helm) {
       : profile.maxYawRate,
     yawAccel: Number.isFinite(profile.yawAccel) ? profile.yawAccel * mult : profile.yawAccel,
     yawBrake: Number.isFinite(profile.yawBrake) ? profile.yawBrake * (mult + 0.65) : profile.yawBrake,
-  };
-}
-
-export function applyAutoTargetHelmProfile(profile) {
-  return {
-    ...profile,
-    maxYawRate: Number.isFinite(profile.maxYawRate)
-      ? profile.maxYawRate * AUTO_TARGET_HELM_MULT
-      : profile.maxYawRate,
-    yawAccel: Number.isFinite(profile.yawAccel)
-      ? profile.yawAccel * AUTO_TARGET_HELM_MULT
-      : profile.yawAccel,
-    yawBrake: Number.isFinite(profile.yawBrake)
-      ? profile.yawBrake * AUTO_TARGET_HELM_MULT
-      : profile.yawBrake,
-  };
-}
-
-export function applyAutoTargetPathProfile(profile) {
-  const scale = (value) => Number.isFinite(value)
-    ? value * AUTO_TARGET_PATH_OVERDRIVE_MULT
-    : value;
-  return {
-    ...profile,
-    mainAccel: scale(profile.mainAccel),
-    strafeAccel: scale(profile.strafeAccel),
-    reverseAccel: scale(profile.reverseAccel),
-    maxSpeed: scale(profile.maxSpeed),
-    combatSpeed: scale(profile.combatSpeed),
-    precisionSpeed: scale(profile.precisionSpeed),
   };
 }
 
@@ -1259,7 +1104,7 @@ function flightCraftCandidates(state) {
   return (state && state.entityList) || [];
 }
 function normalizeFlightComputerMode(mode) {
-  return mode === 'autopursuit' || mode === 'cruise' || mode === 'lane' ? mode : 'manual';
+  return mode === 'cruise' || mode === 'lane' ? mode : 'manual';
 }
 function nowMs() { return typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now(); }
 function damp(cur, target, lambda, dt) { return cur + (target - cur) * (1 - Math.exp(-lambda * dt)); }

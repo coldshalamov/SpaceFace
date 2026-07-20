@@ -464,8 +464,19 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
 function resetCombatInputMode(state, registry) {
   if (!state || !state.input) return;
   state.input.autoFire = false;
+  if (state.input.pursuitSlot) {
+    state.input.pursuitSlot = {
+      ...state.input.pursuitSlot,
+      active: false,
+      reason: 'runtime-reset',
+      releasedTick: Number.isFinite(state.tick) ? state.tick : null,
+    };
+  }
   const assist = registry && typeof registry.get === 'function' ? registry.get('autoTargetAssist') : null;
-  if (assist && assist._runtime) assist._runtime.refreshT = 0;
+  if (assist && assist._runtime) {
+    assist._runtime.lastActive = false;
+    assist._runtime.lastReason = 'runtime-reset';
+  }
 }
 
 function enterLoadingMode(state, bus) {

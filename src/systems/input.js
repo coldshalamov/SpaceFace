@@ -2,7 +2,7 @@
 // state.input each tick. THREE control schemes, picked by settings.gameplay.controlScheme
 // ('pilot' default | 'helm-assist' | 'classic'):
 //
-//   PILOT (default) — KEYBOARD FLIES, MOUSE FIGHTS. Outside auto-target, the mouse never steers the nose: it aims
+//   PILOT (default) — KEYBOARD FLIES, MOUSE FIGHTS. The mouse never steers the nose: it aims
 //   weapons, picks targets and throws the Massline. W/↑ thrust, S/↓ brakes/reverses.
 //   A/D and ←/→ are CONTEXTUAL — one rule: while coasting they YAW the nose (line up a retro
 //   burn, whip the nose around mid-drift); while forward thrust is held they STRAFE, with a
@@ -21,13 +21,12 @@
 //   mouse aims weapons independently, LMB fires. The arrow cluster keeps the same flight split:
 //   bare ←/→ yaw, W/↑ + ←/→ strafe.
 //
-//   ALL schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · G auto-target
-//   toggle (owned by autoTargetAssist — guns track lock, captured motion draws the flight route) ·
+//   ALL schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · G pursuit assist
+//   toggle (owned by autoTargetAssist — pointer motion adjusts a persistent target-relative slot) ·
 //   Space/F Massline (tap latch/cut, hold line control) · Q charge throw (helm) · R detonate
 //   charges · C scanner pulse · V cruise.
-//   MMB TAP = pursuit/approach toggle: ship target → sustained autopursuit (tail + speed-match,
-//   fight with the mouse while the flight computer flies); station/other target → goto autopilot.
-//   Manual throttle/yaw/brake input breaks pursuit instantly — trick moves stay one key away.
+//   MMB TAP = pursuit/approach toggle: ship target → the same bounded pursuit slot; station/other
+//   target → goto autopilot. Any manual movement input releases pursuit within this input tick.
 //   New verbs land on state.input.actions.* as edge-triggered flags (the LOCKED input contract in
 //   BUILD_PLAN_2_0 §0) — consumer systems (tetherGameplay, impulseCharges, scanner, cruise) read
 //   them; input never calls those systems directly.
@@ -47,6 +46,7 @@
 import { createGamepad } from './gamepad.js';
 import { createTouch } from './touch.js';
 import { createMasslineInputGrammar } from './masslineInputGrammar.js';
+import { adjustPursuitSlot, createPursuitSlot } from '../core/flight/pursuitSlotAssist.js';
 import { wrapAngle } from '../core/rng.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 import { TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
@@ -59,12 +59,6 @@ const BRAKE_SOFT_SPEED = 24;   // wu/s — counter-thrust ramps down below this 
 const TETHER_ORBIT_SOFT_ANGLE = 0.46;  // latched/coasting: favor guns-in orbit over drift-facing
 const PILOT_CARVE_TURN = 0.35; // pilot scheme: fraction of yaw blended in while strafing under
                                // forward thrust — the ship banks and carves instead of crab-sliding
-const AUTO_TARGET_GESTURE_IDLE_MS = 110;
-const AUTO_TARGET_PATH_MIN_SCREEN_PX = 8;
-// Soft storage target. Never delete unflown intent merely to meet it; completed points can be
-// pruned once the follower has moved pointIndex beyond them.
-const AUTO_TARGET_PATH_SOFT_MAX_POINTS = 256;
-const AUTO_TARGET_PATH_EDGE_MARGIN = 24;
 
 // ---- Travel Burn latch (atlas D5 / W1-5) ------------------------------------------------------
 // The kernel is PURE and only ever shapes the governor cap; the state machine, its timers and its
@@ -227,7 +221,7 @@ const VERB_BINDINGS = {
   chargeDetonate: ['KeyR'],   // edge: detonate all armed impulse charges
   scanPulse:      ['KeyC'],   // edge: scanner pulse (8 s cd owned by scanner system)
   cruise:         ['KeyV'],   // edge: toggle cruise charge (cruise system owns state)
-  autopursuit:    [],         // level: hold MMB to tail the locked target; G is auto-target toggle.
+  autopursuit:    [],         // level mirror for the MMB/G-selected pursuit slot.
   deployBeacon:   ['KeyU'],   // edge: drop a claim beacon in open space (beacons system owns cost/cap).
                               //   The UI router owns U only when a claimable body is in range; in open
                               //   space it falls through to this flight verb (see check-claim-base-input).
@@ -414,144 +408,6 @@ function centeredPointer() {
   };
 }
 
-function neutralAutoTargetVector() {
-  return { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
-}
-
-function neutralAutoTargetPath() {
-  return {
-    active: false,
-    drawing: false,
-    cursorX: 0,
-    cursorY: 0,
-    pointIndex: 1,
-    points: [],
-  };
-}
-
-function resetAutoTargetPath(host, state = host && host.state) {
-  host._autoTargetGesture = {
-    cursorX: 0,
-    cursorY: 0,
-    lastSampleX: 0,
-    lastSampleY: 0,
-    lastMs: -Infinity,
-  };
-  if (state && state.input) state.input.autoTargetPath = neutralAutoTargetPath();
-}
-
-function worldScreenPoint(host, point) {
-  const project = host.helpers && host.helpers.worldToScreen;
-  if (point && typeof project === 'function') {
-    const screen = project({ x: point.x, y: 0, z: point.z });
-    if (screen && Number.isFinite(screen.x) && Number.isFinite(screen.y)) {
-      return { x: screen.x, y: screen.y };
-    }
-  }
-  return null;
-}
-
-function playerScreenOrigin(host, state, width, height) {
-  const player = state && state.entities && state.entities.get
-    ? state.entities.get(state.playerId)
-    : null;
-  const projected = worldScreenPoint(host, player && player.pos);
-  if (projected) return projected;
-  return { x: width * 0.5, y: height * 0.5 };
-}
-
-function screenPointToWorld(host, x, y, width, height) {
-  const raycast = host.helpers && host.helpers.raycastToPlane;
-  if (typeof raycast !== 'function') return null;
-  const point = raycast({
-    x: (x / Math.max(1, width)) * 2 - 1,
-    y: -(y / Math.max(1, height)) * 2 + 1,
-  });
-  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) return null;
-  return { x: point.x, z: point.z };
-}
-
-function recordAutoTargetPath(host, movementX, movementY, now) {
-  const state = host.state;
-  const inp = state && state.input;
-  if (!inp) return;
-  const { width, height } = viewportSize();
-  const gesture = host._autoTargetGesture || (host._autoTargetGesture = {
-    cursorX: 0,
-    cursorY: 0,
-    lastSampleX: 0,
-    lastSampleY: 0,
-    lastMs: -Infinity,
-  });
-  const elapsed = Number.isFinite(gesture.lastMs) ? now - gesture.lastMs : Infinity;
-  let route = inp.autoTargetPath;
-  if (!route || !route.active) {
-    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
-    const origin = playerScreenOrigin(host, state, width, height);
-    const start = player && player.pos
-      ? { x: player.pos.x, z: player.pos.z }
-      : screenPointToWorld(host, origin.x, origin.y, width, height);
-    route = inp.autoTargetPath = neutralAutoTargetPath();
-    route.active = !!start;
-    route.drawing = !!start;
-    route.points = start ? [start] : [];
-    route.pointIndex = 1;
-    gesture.cursorX = origin.x;
-    gesture.cursorY = origin.y;
-    gesture.lastSampleX = origin.x;
-    gesture.lastSampleY = origin.y;
-  } else if (elapsed > AUTO_TARGET_GESTURE_IDLE_MS) {
-    // Electron cannot report finger lift/re-contact, so an idle gap is a clutch, not a clear.
-    // Rebase the relative pen on the existing world endpoint and keep every earlier segment.
-    const endpoint = route.points.length ? route.points[route.points.length - 1] : null;
-    const origin = worldScreenPoint(host, endpoint)
-      || { x: route.cursorX, y: route.cursorY };
-    gesture.cursorX = Number.isFinite(origin.x) ? origin.x : width * 0.5;
-    gesture.cursorY = Number.isFinite(origin.y) ? origin.y : height * 0.5;
-    gesture.lastSampleX = gesture.cursorX;
-    gesture.lastSampleY = gesture.cursorY;
-  }
-
-  const marginX = Math.min(AUTO_TARGET_PATH_EDGE_MARGIN, width * 0.2);
-  const marginY = Math.min(AUTO_TARGET_PATH_EDGE_MARGIN, height * 0.2);
-  gesture.cursorX = Math.max(marginX, Math.min(width - marginX, gesture.cursorX + movementX));
-  gesture.cursorY = Math.max(marginY, Math.min(height - marginY, gesture.cursorY + movementY));
-  gesture.lastMs = now;
-  route.active = true;
-  route.drawing = true;
-  route.cursorX = gesture.cursorX;
-  route.cursorY = gesture.cursorY;
-
-  const sampleDistance = Math.hypot(
-    gesture.cursorX - gesture.lastSampleX,
-    gesture.cursorY - gesture.lastSampleY
-  );
-  if (sampleDistance >= AUTO_TARGET_PATH_MIN_SCREEN_PX || route.points.length < 2) {
-    const point = screenPointToWorld(host, gesture.cursorX, gesture.cursorY, width, height);
-    if (point) {
-      route.points.push(point);
-      if (route.points.length > AUTO_TARGET_PATH_SOFT_MAX_POINTS && route.pointIndex > 1) {
-        const excess = route.points.length - AUTO_TARGET_PATH_SOFT_MAX_POINTS;
-        const completed = Math.max(0, route.pointIndex - 1);
-        const pruneCount = Math.min(excess, completed);
-        route.points.splice(0, pruneCount);
-        route.pointIndex -= pruneCount;
-      }
-      gesture.lastSampleX = gesture.cursorX;
-      gesture.lastSampleY = gesture.cursorY;
-    }
-  }
-}
-
-function updateAutoTargetPathDrawing(host, now) {
-  const route = host.state && host.state.input && host.state.input.autoTargetPath;
-  const gesture = host._autoTargetGesture;
-  if (!route || !route.active || !route.drawing || !gesture) return;
-  if (!Number.isFinite(gesture.lastMs) || now - gesture.lastMs > AUTO_TARGET_GESTURE_IDLE_MS) {
-    route.drawing = false;
-  }
-}
-
 export const input = {
   name: 'input',
   init(ctx) {
@@ -560,10 +416,10 @@ export const input = {
     this.helpers = ctx.helpers;
     const keys = (this._keys = Object.create(null));
     this._ndc = { x: 0, y: 0 };
+    this._lastPursuitPointerDelta = null;
     const viewportW = typeof innerWidth === 'number' ? innerWidth : 0;
     const viewportH = typeof innerHeight === 'number' ? innerHeight : 0;
     this._screen = { x: Math.floor(viewportW * 0.5), y: Math.floor(viewportH * 0.5), active: false };
-    resetAutoTargetPath(this, this.state);
     this._m0 = false; this._m1 = false; this._m2 = false;
     this._masslineGrammar = createMasslineInputGrammar();
     this._lastKbmMs = performance.now();
@@ -600,37 +456,52 @@ export const input = {
     addEventListener('blur', () => {
       for (const k in keys) keys[k] = false;
       this._m0 = this._m1 = this._m2 = false;
+      this._lastPursuitPointerDelta = null;
+      const slot = this.state && this.state.input && this.state.input.pursuitSlot;
+      if (slot && slot.active) {
+        this.state.input.pursuitSlot = {
+          ...slot,
+          active: false,
+          reason: 'focus-lost',
+          releasedTick: this.state.tick,
+        };
+      }
       this._masslineGrammar.reset();
     });
     const pointerSurface = this._canvas || window;
     const handlePointerMove = (e) => {
       if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
       const geometry = centeredPointer();
-      const pointerLocked = typeof document !== 'undefined'
-        && this._canvas && document.pointerLockElement === this._canvas;
-      if (this.state && this.state.input && this.state.input.autoFire) {
-        // Chromium exposes an ordinary one-finger trackpad gesture as relative motion. Integrate
-        // those deltas into a screen-space pen that starts on the ship for each gesture, then store
-        // its camera-projected world points. The ship follows the resulting curve after finger lift.
-        if (pointerLocked && e.type === 'pointermove') return;
-        const now = performance.now();
-        const movementX = Number.isFinite(e.movementX) ? e.movementX : 0;
-        const movementY = Number.isFinite(e.movementY) ? e.movementY : 0;
-        // A click/tap used for firing is not a flight gesture.
-        if (movementX === 0 && movementY === 0) return;
-        recordAutoTargetPath(this, movementX, movementY, now);
-        this._screen.x = geometry.cx;
-        this._screen.y = geometry.cy;
-        this._screen.active = true;
-        this._ndc.x = 0;
-        this._ndc.y = 0;
-      } else {
-        this._screen.x = e.clientX;
-        this._screen.y = e.clientY;
-        this._screen.active = true;
-        this._ndc.x = (this._screen.x / geometry.width) * 2 - 1;
-        this._ndc.y = -(this._screen.y / geometry.height) * 2 + 1;
+      const inp = this.state && this.state.input;
+      const movementX = Number.isFinite(e.movementX) ? e.movementX : 0;
+      const movementY = Number.isFinite(e.movementY) ? e.movementY : 0;
+      // Primary-pointer movement also emits a compatibility mousemove with the same timestamp and
+      // coordinates. Keep both listeners for aim reachability and standalone mouse events, while
+      // suppressing only that paired duplicate from the pursuit station.
+      const lastPointerDelta = this._lastPursuitPointerDelta;
+      const duplicatePursuitPointerDelta = e.type === 'mousemove'
+        && !!lastPointerDelta
+        && e.timeStamp === lastPointerDelta.timeStamp
+        && movementX === lastPointerDelta.movementX
+        && movementY === lastPointerDelta.movementY;
+      if (e.type === 'pointermove') {
+        this._lastPursuitPointerDelta = {
+          timeStamp: e.timeStamp,
+          movementX,
+          movementY,
+        };
       }
+      if (!duplicatePursuitPointerDelta && inp && inp.pursuitSlot && inp.pursuitSlot.active
+        && (movementX !== 0 || movementY !== 0)) {
+        // The ordinary pointer remains weapon aim. Its relative deltas also nudge the selected
+        // target-frame station; no pointer lock, sampled world path, or persistent turn command.
+        inp.pursuitSlot = adjustPursuitSlot(inp.pursuitSlot, { movementX, movementY });
+      }
+      this._screen.x = e.clientX;
+      this._screen.y = e.clientY;
+      this._screen.active = true;
+      this._ndc.x = (this._screen.x / geometry.width) * 2 - 1;
+      this._ndc.y = -(this._screen.y / geometry.height) * 2 + 1;
       syncPointerScreen(this.state, this._screen.x, this._screen.y);
       this._lastKbmMs = performance.now();
     };
@@ -677,20 +548,7 @@ export const input = {
     if (tp) tp.tick(dt);
 
     const inp = state.input;
-    const autoTargetPointer = !!inp.autoFire;
-    if (autoTargetPointer !== !!this._autoTargetPointerMode) {
-      this._autoTargetPointerMode = autoTargetPointer;
-      const geometry = centeredPointer();
-      this._screen.x = geometry.cx;
-      this._screen.y = geometry.cy;
-      this._screen.active = autoTargetPointer;
-      this._ndc.x = 0;
-      this._ndc.y = 0;
-      resetAutoTargetPath(this, state);
-      syncPointerScreen(state, this._screen.x, this._screen.y);
-      inp.pointerScreen.active = autoTargetPointer;
-      inp.autoTargetVector = neutralAutoTargetVector();
-    }
+    inp.autoFire = false;
     // The LOCKED input contract (BUILD_PLAN_2_0 §0): consumer systems read these each tick.
     const acts = inp.actions || (inp.actions = {
       brake: false, cruise: false, tetherFire: false, tetherCut: false, reelDelta: 0,
@@ -710,11 +568,16 @@ export const input = {
         || !!(gp && gp.isConnected() && gp.actions.massline && gp.actions.massline.held);
       acts.massline = masslineGrammar.reset(masslineHeldThroughModal);
       inp.tetherMode = null;
-      resetAutoTargetPath(this, state);
-      inp.autoTargetVector = neutralAutoTargetVector();
+      if (inp.pursuitSlot && inp.pursuitSlot.active) {
+        inp.pursuitSlot = {
+          ...inp.pursuitSlot,
+          active: false,
+          reason: 'controls-blocked',
+          releasedTick: state.tick,
+        };
+      }
       this._m0 = false; this._m1 = false; this._m2 = false;
       this._prevM1 = false;
-      this._pursuitToggle = false;   // docking/menus always drop back to manual flight
       this._edgePrev = this._edgePrev || {};
       // Docking or opening a menu drops the travel drive, exactly like pursuit: you cannot be
       // hand-flying a burn from a station screen. Reset outright rather than into cooldown — the
@@ -859,7 +722,6 @@ export const input = {
       inp.aimWorld.z = p.pos.z + Math.sin(angle) * dist;
       inp.mouseNdc.x = ax;
       inp.mouseNdc.y = ay;
-      inp.autoTargetVector = neutralAutoTargetVector();
     } else {
       // Mouse aim is INDEPENDENT of the nose: weapons gimbal toward the cursor (Phase 2).
       const w = this.helpers.raycastToPlane ? this.helpers.raycastToPlane(this._ndc) : { x: 0, z: 0 };
@@ -870,18 +732,12 @@ export const input = {
       pointerScreen.x = this._screen.x;
       pointerScreen.y = this._screen.y;
       pointerScreen.active = this._screen.active;
-      inp.autoTargetVector = neutralAutoTargetVector();
-      if (inp.autoFire) updateAutoTargetPathDrawing(this, performance.now());
-      else resetAutoTargetPath(this, state);
     }
 
-    // --- Pursuit / approach toggle (MMB tap or bound key) -----------------------------------
-    // Ship target locked → sustained AUTOPURSUIT: flightV3 banks onto an intercept course and
-    // speed-matches a tailing slot; the pilot fights with the mouse while the flight computer
-    // flies. Station/wreck/asteroid target → GOTO autopilot via ui:setCourse (world.js owns nav
-    // state) — one verb: "take me to the thing I care about". Tap again to disengage.
-    // Manual throttle/yaw/brake breaks pursuit instantly (trick moves stay one key away).
-    // Q/E strafe deliberately does NOT break it — flightV3 blends it in as orbit adjustment.
+    // --- Pursuit-slot selection / approach toggle (MMB tap or bound key) ---------------------
+    // MMB and G select the same target-relative station. MMB keeps its non-ship GOTO behavior;
+    // the retired fixed-tail autopursuit/path follower has no fallback here. The slot may coexist
+    // with a Massline attachment, while any deliberate movement key releases it this tick.
     const pursuitKeyHeld = this._held(state, 'autopursuit');
     const pursuitPressed = (this._m1 && !this._prevM1) || (pursuitKeyHeld && !this._prevPursuitKey);
     this._prevM1 = this._m1;
@@ -894,27 +750,43 @@ export const input = {
     const lockIsShip = lockAlive && (lockEnt.type === 'ship' || lockEnt.type === 'drone');
     const cruiseState = state.player && state.player.cruise;
     const cruiseBusy = !!(cruiseState && (cruiseState.phase === 'charging' || cruiseState.phase === 'cruising'));
-    const tetherBusy = !!(state.player && state.player.tether && state.player.tether.active);
-
-    if (this._pursuitToggle) {
-      const manualBreak = Math.abs(inp.turnIntent) > 0.08 || Math.abs(inp.moveZ) > 0.08 || inp.brake;
-      if (manualBreak || !lockIsShip || cruiseBusy || tetherBusy) {
-        this._pursuitToggle = false;
+    const manualPursuitOverride = Math.abs(inp.turnIntent) > 0.08
+      || Math.abs(inp.moveZ) > 0.08
+      || Math.abs(inp.moveX) > 0.08
+      || inp.brake
+      || inp.boost;
+    let pursuitSlot = inp.pursuitSlot;
+    if (pursuitSlot && pursuitSlot.active) {
+      const targetLost = !lockIsShip || lockEnt.id !== pursuitSlot.targetId;
+      if (manualPursuitOverride || targetLost || cruiseBusy) {
+        const reason = manualPursuitOverride ? 'manual-override' : targetLost ? 'target-lost' : 'cruise';
+        pursuitSlot = inp.pursuitSlot = { ...pursuitSlot, active: false, reason, releasedTick: state.tick };
         this.bus.emit('toast', {
-          text: (!lockIsShip && !manualBreak) ? 'Pursuit target lost' : 'Pursuit disengaged',
+          text: targetLost && !manualPursuitOverride ? 'Pursuit target lost' : 'Pursuit assist released',
           kind: 'info',
           ttl: 2,
         });
       }
     }
 
-    if (pursuitPressed) {
-      if (this._pursuitToggle) {
-        this._pursuitToggle = false;
-        this.bus.emit('toast', { text: 'Pursuit disengaged', kind: 'info', ttl: 2 });
-      } else if (lockIsShip && !cruiseBusy && !tetherBusy) {
-        this._pursuitToggle = true;
-        this.bus.emit('toast', { text: 'Pursuit: ' + entityLabel(lockEnt), kind: 'good', ttl: 2 });
+    // Manual input wins even when MMB lands in the same fixed tick: do not briefly re-arm a slot
+    // after the release path above has already observed deliberate pilot authority.
+    if (pursuitPressed && !manualPursuitOverride) {
+      if (pursuitSlot && pursuitSlot.active) {
+        pursuitSlot = inp.pursuitSlot = {
+          ...pursuitSlot,
+          active: false,
+          reason: 'toggled-off',
+          releasedTick: state.tick,
+        };
+        this.bus.emit('toast', { text: 'Pursuit assist OFF', kind: 'info', ttl: 2 });
+      } else if (lockIsShip && !cruiseBusy) {
+        pursuitSlot = inp.pursuitSlot = createPursuitSlot({ host: p, target: lockEnt, source: 'mmb' });
+        this.bus.emit('toast', {
+          text: 'Pursuit assist: ' + entityLabel(lockEnt) + ' · movement keys release',
+          kind: 'good',
+          ttl: 3,
+        });
       } else if (lockAlive) {
         this.bus.emit('ui:setCourse', {
           pos: { x: lockEnt.pos.x, z: lockEnt.pos.z },
@@ -929,7 +801,7 @@ export const input = {
       }
     }
 
-    // Auto-target (G) is owned by autoTargetAssist — registry runs it immediately after input.
+    // G is owned by autoTargetAssist, which toggles this same slot immediately after input.
 
     // --- LOCKED input contract (BUILD_PLAN_2_0 §0): edge-triggered verb flags ---
     const edges = this._edgePrev || (this._edgePrev = {});
@@ -967,7 +839,7 @@ export const input = {
     acts.chargeDetonate = edge('chargeDetonate');
     acts.scanPulse = edge('scanPulse');
     acts.cruise = edge('cruise');
-    acts.autopursuit = !!this._pursuitToggle;
+    acts.autopursuit = !!(inp.pursuitSlot && inp.pursuitSlot.active);
     acts.deployBeacon = edge('deployBeacon');
     // Massline Wave M2 verbs. bulletTime is a LEVEL (hold-to-dilate; the system owns the meter and
     // may refuse when empty); cloakToggle is an edge; throwArm was resolved above where the mining

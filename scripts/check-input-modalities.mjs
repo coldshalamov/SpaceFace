@@ -107,38 +107,36 @@ assert.match(inputSrc, /syncPointerScreen\(this\.state, this\._screen\.x, this\.
   'pointer movement must publish the bounded software pointer instead of the escaping OS cursor');
 assert.match(stylesSrc, /body\.sf-flight-cursor[\s\S]*cursor:\s*none/,
   'flight cursor mode must hide the OS cursor so the software bullseye is the cursor');
-assert.match(inputSrc, /G auto-target/,
-  'input.js header must describe G as auto-target, not legacy auto-fire');
+assert.match(inputSrc, /G pursuit assist/,
+  'input.js header must describe G as pursuit-slot assist, not legacy auto-fire/auto-target');
 assert.match(inputSrc, /Space\/F Massline/,
   'input.js header must describe Space-primary Massline with the F alias');
 assert.match(inputSrc, /autopursuit:\s*\[\]/,
-  'G must remain auto-target-only; autopursuit is held by MMB so arrow pilots keep flight control');
+  'MMB remains the direct pursuit selector; G stays owned by the capture-phase assist shell');
 const autoTargetAssistSrc = read('src/systems/autoTargetAssist.js');
 const autoTargetModeSrc = read('src/combat/autoTargetMode.js');
 const registrySrc = read('src/core/registry.js');
 const mainSrc = read('src/main.js');
 assert.doesNotMatch(inputSrc, /ui:targetNearestHostileToPlayer/,
-  'lead-owned input.js must not own auto-target hostile acquisition');
-assert.match(autoTargetModeSrc, /ui:targetNearestHostileToPlayer/,
-  'autoTargetMode must request the hostile nearest the player');
-assert.match(autoTargetModeSrc, /quiet:\s*true/,
-  'autoTargetMode must keep quietly refreshing nearest-hostile lock while active');
-assert.match(autoTargetModeSrc, /autoTargetPath[\s\S]*route\.points[\s\S]*pointIndex[\s\S]*inp\.moveZ[\s\S]*inp\.moveX[\s\S]*desiredHeading/,
-  'auto-target must follow retained world-route points with translation plus nose acquisition');
-assert.match(autoTargetAssistSrc, /requestPointerLock/,
-  'auto-target must capture relative trackpad and mouse motion inside the game window');
-assert.match(inputSrc, /AUTO_TARGET_GESTURE_IDLE_MS/,
-  'captured relative motion must detect gesture pauses without needing unavailable finger-lift events');
-assert.match(inputSrc, /idle gap is a clutch, not a clear[\s\S]*route\.points/,
-  'trackpad re-contact must extend the retained route instead of erasing earlier curve segments');
-assert.match(inputSrc, /route\.drawing = false/,
-  'idle trackpad motion must end drawing while preserving route flight authority');
+  'input.js must not acquire or replace the player-selected combat lock');
+assert.doesNotMatch(autoTargetModeSrc, /ui:targetNearestHostileToPlayer|quiet:\s*true/,
+  'pursuit activation must never silently acquire or refresh a different target');
+assert.match(autoTargetModeSrc, /createPursuitSlot/,
+  'G must convert the current player lock into the shared target-relative pursuit slot');
+assert.match(inputSrc, /adjustPursuitSlot/,
+  'relative pointer motion must adjust the persistent target-relative bearing/range station');
+assert.doesNotMatch(autoTargetAssistSrc, /requestPointerLock|exitPointerLock|pointerlockchange/,
+  'pursuit assist must preserve the normal independent weapon cursor without pointer capture');
+assert.doesNotMatch(inputSrc, /AUTO_TARGET_GESTURE_IDLE_MS|autoTargetPath|route\.drawing/,
+  'the retired pointer path follower must not remain as a hidden control fallback');
 assert.doesNotMatch(inputSrc, /stickGeometry|autoTargetStick/,
-  'auto-target input must not reconstruct the rejected virtual joystick');
-assert.match(autoTargetModeSrc, /inp\.autoFire = !inp\.autoFire/,
-  'auto-target toggle must always flip auto-target without autopursuit guards');
+  'pursuit input must not reconstruct the rejected virtual joystick');
+assert.match(autoTargetModeSrc, /inp\.autoFire = false/,
+  'the old persistent weapon-autoaim flag must remain inert on the pursuit route');
+assert.match(inputSrc, /pursuitPressed && !manualPursuitOverride/,
+  'manual flight authority must win even when MMB is pressed in the same tick');
 assert.match(autoTargetAssistSrc, /toggleAutoTarget/,
-  'autoTargetAssist shell must delegate auto-target toggle to autoTargetMode');
+  'autoTargetAssist shell must delegate the G pursuit toggle to one mode owner');
 assert.doesNotMatch(autoTargetAssistSrc, /autopursuitHeld/,
   'autoTargetAssist auto-target toggle must not be gated on MMB/autopursuit state');
 assertEarlyTargetPipeline(registrySrc);
@@ -156,7 +154,7 @@ assert.match(autoTargetAssistSrc, /if \(this\._onKeyDown\) this\.destroy\(\)/,
 assert.match(mainSrc, /registry\.destroy\(\)/,
   'main.js must call registry.destroy on teardown so capture-phase auto-target listeners do not leak');
 assert.match(mainSrc, /resetCombatInputMode/,
-  'main.js must reset auto-target state on new game / loaded game entry');
+  'main.js must reset transient pursuit state on new game / loaded game entry');
 
 // 4. saveSystem normalizes both settings.controls objects (so a legacy/partial save can't crash).
 const saveSrc = read('src/save/saveSystem.js');
@@ -184,19 +182,23 @@ const screenManagerSrc = read('src/ui/screenManager.js');
 const localmapSrc = read('src/ui/screens/localmap.js');
 const galaxyMapSrc = read('src/ui/galaxyMap.js');
 assert.match(uiRootSrc, /function targetNearestHostileToPlayer/,
-  'UI root must implement player-nearest hostile selection for auto-target');
+  'UI root must retain explicit player-nearest hostile selection for Tab/UI commands');
 assert.match(uiRootSrc, /ui:targetNearestHostileToPlayer[\s\S]*quiet[\s\S]*targetNearestHostileToPlayer/,
-  'UI root must route quiet player-target refreshes without toast spam');
+  'UI root must retain the explicit quiet selection API for non-pursuit callers');
 assert.match(uiRootSrc, /isHostileToPlayer[\s\S]*bestD2/,
-  'auto-target must filter hostiles and rank by distance to the player');
+  'explicit target selection must filter hostiles and rank by distance to the player');
 assert.match(uiRootSrc, /cycleTarget[\s\S]*isHostileToPlayer/,
   'Tab target cycle must advance only among nearby hostile contacts');
 assert.match(uiRootSrc, /isScannerHostileLock[\s\S]*quiet\) return/,
-  'quiet auto-target refresh must keep a live Tab lock instead of re-picking nearest');
-assert.match(weaponsSrc, /SCANNER_CONTACT_RANGE/,
-  'auto-target selected lock must use scanner range, not weapon range only');
+  'a quiet explicit refresh must keep a live Tab lock instead of re-picking nearest');
+assert.doesNotMatch(weaponsSrc, /state\.input\.autoFire|_autoFireTarget|_selectedAutoFireTarget/,
+  'weapons must not retain a hidden persistent locked-target aim fallback');
 assert.match(uiRootSrc, /bus && !quiet/,
-  'quiet cursor-target refreshes must not emit target toasts every tick');
+  'quiet explicit target refreshes must not emit target toasts every tick');
+assert.match(helpSrc, /Pursuit slot assist \(toggle\)/,
+  'Help Controls must describe the G binding by its shipped pursuit behavior');
+assert.match(settingsSrc, /Toggle pursuit slot assist/,
+  'Settings must keep the persisted action id while presenting the truthful pursuit label');
 assert.match(settingsSrc, /Gamepad enabled/, 'Settings must expose a Gamepad enabled toggle');
 assert.match(settingsSrc, /Touch controls/, 'Settings must expose a Touch controls toggle');
 assert.match(settingsSrc, /s\.gameplay\.controlScheme \|\| 'pilot'/,

@@ -45,6 +45,10 @@ import { createSimulation, SIM_DT } from '../../src/core/sim.js';
 import { canonicalStringify } from '../../src/core/simSnapshot.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../../src/core/physicsAuthority.js';
 import { observeMasslineOrbit } from '../../src/combat/masslineOrbitTelemetry.js';
+import {
+  PURSUIT_SLOT_TUNING_V1,
+  stepPursuitSlotAssist,
+} from '../../src/core/flight/pursuitSlotAssist.js';
 import { actions } from '../../src/systems/actions.js';
 import { flightV3 } from '../../src/systems/flightV3.js';
 import { weapons } from '../../src/systems/weapons.js';
@@ -671,6 +675,217 @@ export async function orbitAssistAcceptanceMatrix(options = {}) {
     summary: { total: rows.length, pass: passCount, fail: rows.length - passCount },
     digest: hashMatrix(rows),
   };
+}
+
+/** PQ-007 production tuning matrix. The weaving target is analytical and the host integrates the
+ * exact additive impulse returned by the shipped pure controller at the fixed 60 Hz simulation
+ * cadence. This keeps the gain sweep deterministic and isolates controller quality from Rapier's
+ * low-bit rotation drift while exercising the same momentum command the live physics membrane sees. */
+export function pursuitSlotAcceptanceMatrix(options = {}) {
+  const settleTimes = options.settleTimes || [0.8, 1, 1.2];
+  const authorityFractions = options.authorityFractions || [0.42, 0.5];
+  const rows = [];
+  for (const settleTimeS of settleTimes) {
+    for (const maxAccelerationFraction of authorityFractions) {
+      const tuning = {
+        ...PURSUIT_SLOT_TUNING_V1,
+        settleTimeS,
+        maxAccelerationFraction,
+      };
+      const metrics = runPursuitSlotKillCriterion(tuning);
+      const selected = settleTimeS === PURSUIT_SLOT_TUNING_V1.settleTimeS
+        && maxAccelerationFraction === PURSUIT_SLOT_TUNING_V1.maxAccelerationFraction;
+      rows.push({
+        id: `Ts${settleTimeS.toFixed(1)}-A${maxAccelerationFraction.toFixed(2)}`,
+        params: sortedParams({ settleTimeS, maxAccelerationFraction }),
+        selected,
+        metrics,
+        pass: metrics.pass,
+      });
+    }
+  }
+  rows.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const passCount = rows.filter((row) => row.pass).length;
+  return {
+    schema: 'spaceface.masslineControlLab.pursuitSlotMatrix.v1',
+    deterministic: true,
+    target: 'weaving-target',
+    rows,
+    summary: { total: rows.length, pass: passCount, fail: rows.length - passCount },
+    digest: hashMatrix(rows),
+  };
+}
+
+function runPursuitSlotKillCriterion(tuning) {
+  const dt = SIM_DT;
+  const mass = 150;
+  const profile = { mainAccel: 84, strafeAccel: 46 };
+  const transitionTick = 120;
+  const ticks = 1020;
+  const initialSlot = { active: true, targetId: 2, bearing: Math.PI, range: 220, source: 'lab' };
+  // One decisive but bounded trackpad nudge: about 11.5 degrees around the target and +15 wu range.
+  // Larger repositioning remains expressible through successive nudges; the assist is not allowed
+  // to buy autopilot-class authority merely to teleport across half an orbit in 2.5 seconds.
+  const transitionSlot = { ...initialSlot, bearing: Math.PI - 0.2, range: 235 };
+  const target0 = pursuitLabTarget(0);
+  const desired0 = pursuitDesiredPoint(target0, initialSlot);
+  const host = { pos: { ...desired0 }, vel: pursuitDesiredVelocity(target0, initialSlot), mass };
+  let longestToleranceTicks = 0;
+  let toleranceTicks = 0;
+  let firstSettledTick = null;
+  let spinCount = 0;
+  let overshootCount = 0;
+  let previousVelocityHeading = Math.atan2(host.vel.z, host.vel.x);
+  let previousProjectionSign = 0;
+  let transitionAxis = null;
+
+  for (let tick = 0; tick < ticks; tick++) {
+    const target = pursuitLabTarget(tick * dt);
+    const slot = tick < transitionTick ? initialSlot : transitionSlot;
+    if (tick === transitionTick) {
+      const desired = pursuitDesiredPoint(target, slot);
+      const dx = desired.x - host.pos.x;
+      const dz = desired.z - host.pos.z;
+      const length = Math.hypot(dx, dz) || 1;
+      // Store the transition axis in the target frame. Projecting against a frozen world axis would
+      // misclassify the target's ordinary heading weave as controller overshoot.
+      const c = Math.cos(target.rot);
+      const s = Math.sin(target.rot);
+      transitionAxis = {
+        x: (dx * c + dz * s) / length,
+        z: (-dx * s + dz * c) / length,
+      };
+    }
+    const step = stepPursuitSlotAssist({ dt, host, target, slot, profile, tuning });
+    if (!step.active || !step.impulse) {
+      return {
+        settleTimeS: null,
+        holdWithinToleranceS: 0,
+        spinCount,
+        overshootCount,
+        manualOverrideTicks: null,
+        maxSlotError: 0,
+        pass: false,
+        reason: step.telemetry && step.telemetry.reason || 'inactive',
+      };
+    }
+    host.vel.x += step.impulse.x / mass;
+    host.vel.z += step.impulse.z / mass;
+    host.pos.x += host.vel.x * dt;
+    host.pos.z += host.vel.z * dt;
+
+    if (tick >= transitionTick) {
+      const within = step.telemetry.slotError <= tuning.slotTolerance
+        && step.telemetry.relativeSpeed <= tuning.velocityTolerance;
+      if (within) {
+        toleranceTicks++;
+        longestToleranceTicks = Math.max(longestToleranceTicks, toleranceTicks);
+        if (firstSettledTick == null && toleranceTicks >= 30) {
+          firstSettledTick = tick - 29;
+        }
+      } else {
+        toleranceTicks = 0;
+      }
+      if (transitionAxis) {
+        const desired = pursuitDesiredPoint(target, slot);
+        const c = Math.cos(target.rot);
+        const s = Math.sin(target.rot);
+        const axisX = transitionAxis.x * c - transitionAxis.z * s;
+        const axisZ = transitionAxis.x * s + transitionAxis.z * c;
+        const projection = (desired.x - host.pos.x) * axisX
+          + (desired.z - host.pos.z) * axisZ;
+        // Motion inside the production position deadband is intentional quiet hold, not an
+        // oscillation. Only a full deadband crossing counts as controller overshoot/flail.
+        const threshold = positive(tuning.positionDeadband, 12);
+        const sign = projection > threshold ? 1 : projection < -threshold ? -1 : 0;
+        if (sign !== 0) {
+          if (previousProjectionSign !== 0 && sign !== previousProjectionSign) overshootCount++;
+          previousProjectionSign = sign;
+        }
+      }
+      const speed = Math.hypot(host.vel.x, host.vel.z);
+      if (speed > 5) {
+        const heading = Math.atan2(host.vel.z, host.vel.x);
+        if (Math.abs(wrapLabAngle(heading - previousVelocityHeading)) > Math.PI * 0.55) spinCount++;
+        previousVelocityHeading = heading;
+      }
+    }
+  }
+
+  const target = pursuitLabTarget(ticks * dt);
+  const override = stepPursuitSlotAssist({
+    dt,
+    host,
+    target,
+    slot: transitionSlot,
+    profile,
+    tuning,
+    manualOverride: true,
+  });
+  const settleTimeS = firstSettledTick == null
+    ? null
+    : round6((firstSettledTick - transitionTick) * dt);
+  const holdWithinToleranceS = round6(longestToleranceTicks * dt);
+  const manualOverrideTicks = !override.active && override.impulse == null ? 1 : null;
+  const pass = settleTimeS != null
+    && settleTimeS <= 2.5
+    && holdWithinToleranceS >= 10
+    && spinCount === 0
+    && overshootCount === 0
+    && manualOverrideTicks === 1;
+  return {
+    settleTimeS,
+    holdWithinToleranceS,
+    spinCount,
+    overshootCount,
+    manualOverrideTicks,
+    pass,
+  };
+}
+
+function pursuitLabTarget(timeS) {
+  const x = 28 * timeS;
+  const z = 34 * Math.sin(timeS * 0.42);
+  const vx = 28;
+  const vz = 34 * 0.42 * Math.cos(timeS * 0.42);
+  const az = -34 * 0.42 * 0.42 * Math.sin(timeS * 0.42);
+  const rot = Math.atan2(vz, vx);
+  const angVel = (vx * az) / (vx * vx + vz * vz);
+  return {
+    id: 2,
+    alive: true,
+    pos: { x, z },
+    vel: { x: vx, z: vz },
+    // Nose follows the analytical velocity tangent, so the named weaving-target criterion tests
+    // the full target frame rather than only translating a fixed orientation.
+    rot,
+    angVel,
+  };
+}
+
+function pursuitDesiredPoint(target, slot) {
+  const bearing = target.rot + slot.bearing;
+  return {
+    x: target.pos.x + Math.cos(bearing) * slot.range,
+    z: target.pos.z + Math.sin(bearing) * slot.range,
+  };
+}
+
+function pursuitDesiredVelocity(target, slot) {
+  const bearing = target.rot + slot.bearing;
+  const offsetX = Math.cos(bearing) * slot.range;
+  const offsetZ = Math.sin(bearing) * slot.range;
+  return {
+    x: target.vel.x - target.angVel * offsetZ,
+    z: target.vel.z + target.angVel * offsetX,
+  };
+}
+
+function wrapLabAngle(value) {
+  let angle = finite(value) % (Math.PI * 2);
+  if (angle <= -Math.PI) angle += Math.PI * 2;
+  if (angle > Math.PI) angle -= Math.PI * 2;
+  return angle;
 }
 
 function productionOrbitMetrics(trace, contactDistance) {
