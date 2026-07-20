@@ -793,9 +793,25 @@ async function searchAndSelect(page, query, detailRe = /./) {
   const count = await items.count();
   let picked = false;
   for (let i = 0; i < count; i += 1) {
-    const text = (await items.nth(i).innerText()).trim();
+    const text = (await items.nth(i).innerText().catch(() => '')).trim();
+    if (!text) continue;
     if (text.toLowerCase().includes(query.toLowerCase().slice(0, 8)) || detailRe.test(text)) {
-      await items.nth(i).click({ timeout: 5_000 });
+      // STALENESS RACE. The result list re-renders while the chart filters, so the node read at
+      // `nth(i)` can detach between the innerText above and the click below — the click then times
+      // out against an element that no longer exists. Observed as intermittent step-1 failures in
+      // check:journey:textile ("locator.click: Timeout 5000ms exceeded"), which blocked every
+      // downstream step and made the score unreproducible even with the universe seed pinned.
+      //
+      // Re-resolve by the TEXT we matched rather than by index, and retry once. Index identity is
+      // exactly what a re-render invalidates; the visible name is what actually stayed stable.
+      const byText = page.locator('.gm-search-item', { hasText: text.split('\n')[0].trim() }).first();
+      try {
+        await byText.click({ timeout: 5_000 });
+      } catch (_) {
+        await page.waitForTimeout(250);
+        // Last resort: the positional handle, re-resolved fresh after the list settled.
+        await items.nth(i).click({ timeout: 5_000 });
+      }
       picked = true;
       break;
     }

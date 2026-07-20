@@ -1346,13 +1346,26 @@ async function sampleInstruments(page) {
     // genuinely wrong ETA still fails. Same principle as the D11 launch predicate and the
     // `.gm-inspector` selector: a grader that measures the wrong identity manufactures defects,
     // which is worse than missing them because it sends people to break working code.
-    const closingSpeed = distToNext != null && distToNext > 0 && player.vel && legTarget
-      ? (((Number(player.vel.x) || 0) * (legTarget.x - player.pos.x))
-        + ((Number(player.vel.z) || 0) * (legTarget.z - player.pos.z))) / distToNext
+    // ...and it must measure to the SAME TARGET the instrument is showing. The HUD readout is
+    // `objectiveTravelReadout(state, {pos: wp})` where `wp` is the TRACKED OBJECTIVE
+    // (`nav.waypoint.pos`, hud.js:3757) — which is not always the route executor's current leg. In
+    // a measured run the tracked objective was a Beacon while the executor flew to a gate, so the
+    // grader was comparing an ETA-to-the-gate against a displayed ETA-to-the-beacon and calling the
+    // difference a lie for the second time. Prefer the displayed target; fall back to the leg only
+    // when nothing is tracked.
+    const navState = state.nav || null;
+    const shownWp = navState && navState.waypoint && navState.waypoint.pos;
+    const shownTarget = (shownWp && Number.isFinite(shownWp.x) && Number.isFinite(shownWp.z))
+      ? shownWp : legTarget;
+    const distShown = shownTarget && player.pos
+      ? Math.hypot(shownTarget.x - player.pos.x, shownTarget.z - player.pos.z) : null;
+    const closingSpeed = distShown != null && distShown > 0 && player.vel && shownTarget
+      ? (((Number(player.vel.x) || 0) * (shownTarget.x - player.pos.x))
+        + ((Number(player.vel.z) || 0) * (shownTarget.z - player.pos.z))) / distShown
       : 0;
     // Mirror the instrument's own refusal threshold: below it the HUD shows no number, so there is
     // nothing to be truthful or untruthful about.
-    const actualEta = distToNext != null && closingSpeed > 5 ? distToNext / closingSpeed : null;
+    const actualEta = distShown != null && closingSpeed > 5 ? distShown / closingSpeed : null;
 
     const cmp = (displayed, actual, relTol, absTol) => {
       if (displayed == null || actual == null) {
