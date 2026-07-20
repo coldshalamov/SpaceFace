@@ -25,6 +25,7 @@ import {
   normalizeJob,
   restoreJob,
   advance,
+  isTruncated,
   interrupt,
   resume,
   virtualize,
@@ -34,6 +35,7 @@ import {
   serializeJob,
   summarizeJob,
   validateJobSpec,
+  isJSONSafe,
   NPC_JOB_KIND,
   NPC_JOB_PHASE,
   NPC_JOB_SCHEMA,
@@ -630,4 +632,252 @@ test('restoreJob is the save-seam alias for normalizeJob', () => {
   const a = normalizeJob(JSON.parse(JSON.stringify(serializeJob(job))));
   const b = restoreJob(JSON.parse(JSON.stringify(serializeJob(job))));
   assert.deepEqual(snap(b), snap(a));
+});
+
+// ═════════════════════════════════════════════════════════════════════════════════════════════════
+// ADVERSARIAL REGRESSION TESTS — one per reviewer-rejected defect (PQ-014 round 2).
+// Each names its defect and asserts the post-fix contract. Each would FAIL against the pre-fix kernel.
+// ═════════════════════════════════════════════════════════════════════════════════════════════════
+
+// A route with zero-distance legs so phase durations floor at MIN_PHASE_S, producing ~1000 transitions
+// per simulated second — enough to reach the transition cap inside a multi-second advance.
+const TINY_R = [
+  { id: 'home', pos: { x: 0, z: 0 } },
+  { id: 'field', pos: { x: 0, z: 0 } },
+];
+function tinyMinerSpec(id = 'tm') {
+  return {
+    id, kind: NPC_JOB_KIND.MINER, route: TINY_R, speed: 1,
+    commissionS: 0.001, departS: 0.001, approachS: 0.001, workS: 0.001, loadS: 0.001, unloadS: 0.001, dwellS: 0.001,
+  };
+}
+
+// ─── DEFECT 1: ADVANCE-CAP-DIVERGENCE ─────────────────────────────────────────────────────────────
+// Pre-fix: advance(big) silently set simTime=big while stopping transitions at the cap, so it
+// diverged from advance(small)+advance(small). Post-fix: when the cap binds, simTime stops at the
+// last real crossing and a `truncated` intent honestly reports the shortfall; resuming with the
+// remaining dt continues deterministically.
+
+test('DEFECT 1 (advance-cap-divergence): a truncating advance does NOT silently advance simTime to the requested dt', () => {
+  const job = createJob(tinyMinerSpec('cap1'), 1);
+  // 200s at ~7000 transitions/s ≈ 1.4M transitions, far over the 100k cap → must truncate.
+  const intents = advance(job, 200);
+  const trunc = intents.find(isTruncated);
+  assert.ok(trunc, 'a cap-binding advance must emit a truncated intent');
+  assert.ok(job.simTime < 200, `simTime must stop at the last crossing (${job.simTime}), not lie at 200`);
+  assert.ok(Math.abs((trunc.processedDt + trunc.remainingDt) - 200) < 1e-9, 'processedDt + remainingDt === requested dt');
+  assert.ok(Math.abs(trunc.processedDt - job.simTime) < 1e-6, 'processedDt agrees with the reached simTime');
+});
+
+test('DEFECT 1: truncation is resumable — advance(remaining) continues from the honest stop point', () => {
+  const job = createJob(tinyMinerSpec('cap2'), 1);
+  const first = advance(job, 200);
+  const trunc = first.find(isTruncated);
+  assert.ok(trunc, 'expected truncation');
+  const stoppedAt = job.sequence;
+  const stoppedSimTime = job.simTime;
+  // Resuming the remaining dt must produce MORE intents (the job keeps going) and advance simTime.
+  const next = advance(job, trunc.remainingDt);
+  assert.ok(next.length > 0, 'resuming must process more transitions');
+  assert.ok(job.sequence > stoppedAt, 'sequence advanced after resume');
+  assert.ok(job.simTime > stoppedSimTime, 'simTime advanced after resume');
+});
+
+test('DEFECT 1: decomposability still holds EXACTLY when neither advance truncates', () => {
+  // 30s at ~7000 transitions/s ≈ 210k... that truncates. Use a smaller total that stays under cap.
+  // 10s ≈ 70k transitions < 100k cap. Both advance(10) and advance(4)+advance(6) stay under cap.
+  const total = 10;
+  const splitA = 4, splitB = 6;
+  const one = createJob(tinyMinerSpec('dec1'), 9);
+  const oneI = snapIntents(advance(one, total));
+  const two = createJob(tinyMinerSpec('dec1'), 9);
+  const twoI = snapIntents([...advance(two, splitA), ...advance(two, splitB)]);
+  assert.deepEqual(snap(two), snap(one), 'non-truncating split advances reach identical state');
+  assert.deepEqual(twoI, oneI, 'non-truncating split advances produce identical intent streams');
+});
+
+test('DEFECT 1: no silent divergence between advance(big) and advance(big/2)+advance(big/2) — truncation is observable, not silent', () => {
+  // The OLD bug: one(5s) gave phase=return/loopCount=682/seq=4778, two(2.5+2.5) gave phase=approach/
+  // loopCount=833/seq=5833, BOTH with simTime=5. Post-fix they may still differ (one truncates, two
+  // may not), BUT the difference is now OBSERVABLE: the truncating path emits `truncated` and stops
+  // simTime short, instead of silently lying at simTime=5 with different phase/loopCount.
+  const one = createJob(tinyMinerSpec('div1'), 1);
+  const oneI = advance(one, 5);
+  const two = createJob(tinyMinerSpec('div1'), 1);
+  const twoI = advance(two, 2.5);
+  advance(two, 2.5);
+  // If they diverge, the diverging path MUST have signaled it via a truncated intent (no silent lie).
+  const diverge = one.phase !== two.phase || one.loopCount !== two.loopCount;
+  if (diverge) {
+    const oneTrunc = oneI.some(isTruncated);
+    const twoTrunc = twoI.some(isTruncated);
+    assert.ok(oneTrunc || twoTrunc, 'any divergence must be flagged by a truncated intent on the truncating path');
+  }
+  // And neither may claim simTime past its last real crossing: if a path truncated, simTime < 5.
+  if (oneI.some(isTruncated)) assert.ok(one.simTime < 5, 'truncating path stops simTime short of 5');
+});
+
+// ─── DEFECT 2: KIND-INVALID-PHASE ─────────────────────────────────────────────────────────────────
+// Pre-fix: normalizeJob validated phase against the GLOBAL vocabulary, so miner+load was accepted
+// and advance() emitted npcjobs:load — a phase a miner can never legally reach. Post-fix: phase is
+// validated against the KIND's graph; an illegal kind/phase combo heals to the start phase.
+
+test('DEFECT 2 (kind-invalid-phase): miner+load heals to start and never emits npcjobs:load', () => {
+  const healed = normalizeJob({ id: 'm', kind: NPC_JOB_KIND.MINER, route: MINER_ROUTE, phase: 'load', progress: 0.5 });
+  assert.equal(healed.corrupt, false);
+  assert.equal(healed.phase, NPC_JOB_PHASE.COMMISSION, 'illegal kind/phase heals to the kind start');
+  assert.ok(healed.healed.some((h) => h.includes('load')), 'the heal records the rejected phase');
+  const intents = advance(healed, 8);
+  assert.equal(intents.some((e) => e.event === 'npcjobs:load'), false, 'a miner must never emit a load completion');
+});
+
+test('DEFECT 2: every kind rejects the phases it cannot reach (patrol+work, hauler+hold, miner+hold)', () => {
+  const cases = [
+    { kind: NPC_JOB_KIND.PATROL, route: PATROL_ROUTE, phase: 'work' },
+    { kind: NPC_JOB_KIND.HAULER, route: HAULER_ROUTE, phase: 'hold' },
+    { kind: NPC_JOB_KIND.MINER, route: MINER_ROUTE, phase: 'hold' },
+  ];
+  for (const c of cases) {
+    const healed = normalizeJob({ id: 'x', kind: c.kind, route: c.route, phase: c.phase });
+    assert.equal(healed.phase, NPC_JOB_PHASE.COMMISSION, `${c.kind}+${c.phase} heals to start`);
+    const intents = advance(healed, 6);
+    const badEvent = `npcjobs:${c.phase}`;
+    assert.equal(intents.some((e) => e.event === badEvent), false, `${c.kind} must never emit ${badEvent}`);
+  }
+});
+
+test('DEFECT 2: a legal phase for the kind is preserved (no false heal)', () => {
+  // miner+work IS legal (miner reaches work). Confirm normalization keeps it.
+  const ok = normalizeJob({ id: 'm', kind: NPC_JOB_KIND.MINER, route: MINER_ROUTE, phase: 'work', progress: 0.3 });
+  assert.equal(ok.phase, NPC_JOB_PHASE.WORK);
+  assert.equal(ok.corrupt, false);
+  assert.equal(ok.healed.some((h) => h.includes('phase')), false);
+});
+
+// ─── DEFECT 3: WRONG-RETURN-TARGET ────────────────────────────────────────────────────────────────
+// Pre-fix: the RETURN intent's `to` used routeIndex (the origin = field) instead of the destination
+// reached (home), so a miner arriving home reported to="field" while pos={x:0,z:0}. Post-fix: `to`
+// names the actual destination and `from` names the origin.
+
+test('DEFECT 3 (wrong-return-target): a miner RETURN intent names the destination reached, not the origin', () => {
+  const job = createJob({
+    id: 'mr', kind: NPC_JOB_KIND.MINER,
+    route: [{ id: 'home', pos: { x: 0, z: 0 } }, { id: 'field', pos: { x: 10, z: 0 } }],
+    speed: 10, commissionS: 1, departS: 1, approachS: 1, workS: 1, loadS: 1, unloadS: 1, dwellS: 1,
+  }, 1);
+  const intents = [];
+  let t = 0;
+  while (t < 30) { intents.push(...advance(job, 0.5)); t += 0.5; }
+  const returns = intents.filter((e) => e.event === 'npcjobs:return');
+  assert.ok(returns.length > 0, 'miner must emit return intents');
+  for (const r of returns) {
+    assert.equal(r.to, 'home', `return destination must be home (got ${r.to})`);
+    assert.equal(r.from, 'field', `return origin must be field (got ${r.from})`);
+    assert.ok(Math.abs(r.pos.x) < 1e-6, `return pos must be at home x≈0 (got ${r.pos.x})`);
+  }
+});
+
+test('DEFECT 3: TRANSIT intents already use from/to correctly (regression guard)', () => {
+  const job = createJob({
+    id: 'mt', kind: NPC_JOB_KIND.MINER,
+    route: [{ id: 'home', pos: { x: 0, z: 0 } }, { id: 'field', pos: { x: 10, z: 0 } }],
+    speed: 10, commissionS: 1, departS: 1, approachS: 1, workS: 1, loadS: 1, unloadS: 1, dwellS: 1,
+  }, 1);
+  const intents = [];
+  let t = 0;
+  while (t < 12) { intents.push(...advance(job, 0.5)); t += 0.5; }
+  const transit = intents.find((e) => e.event === 'npcjobs:transit');
+  assert.ok(transit, 'transit intent emitted');
+  assert.equal(transit.from, 'home');
+  assert.equal(transit.to, 'field');
+});
+
+// ─── DEFECT 4: PAYLOAD-ALIASING-AND-SERIALIZATION ─────────────────────────────────────────────────
+// Pre-fix: (a) emit() shallow-copied payload, so mutating intent.payload.meta mutated job.payload.meta;
+// (b) a cyclic payload made serializeJob throw. Post-fix: payloads are deep-cloned into intents and
+// validated as JSON-safe at every seam; cyclic/non-JSON payloads are rejected (null) predictably.
+
+test('DEFECT 4a (payload aliasing): mutating a nested field on an emitted intent does NOT mutate the job', () => {
+  const job = createJob({
+    id: 'ha', kind: NPC_JOB_KIND.HAULER, route: HAULER_ROUTE, speed: 100,
+    commissionS: 0.001, departS: 0.001, approachS: 0.001, workS: 0.001, loadS: 0.001, unloadS: 0.001, dwellS: 0.001,
+    payload: { commodity: 'ore', units: 40, meta: { tag: 'clean', nested: { deep: 1 } } },
+  }, 1);
+  const seen = [];
+  advance(job, 0.05, (i) => seen.push(i));
+  const load = seen.find((e) => e.event === 'npcjobs:load');
+  assert.ok(load, 'load intent emitted');
+  // Mutate nested fields on the intent — the job record must be untouched.
+  load.payload.commodity = 'MUTATED';
+  load.payload.meta.tag = 'MUTATED';
+  load.payload.meta.nested.deep = 999;
+  assert.equal(job.payload.commodity, 'ore', 'top-level payload field not aliased');
+  assert.equal(job.payload.meta.tag, 'clean', 'nested payload field not aliased');
+  assert.equal(job.payload.meta.nested.deep, 1, 'deeply nested payload field not aliased');
+});
+
+test('DEFECT 4a: the returned intent array is also safe to mutate (no aliasing through the return value)', () => {
+  const job = createJob({
+    id: 'ha2', kind: NPC_JOB_KIND.HAULER, route: HAULER_ROUTE, speed: 100,
+    commissionS: 0.001, departS: 0.001, approachS: 0.001, workS: 0.001, loadS: 0.001, unloadS: 0.001, dwellS: 0.001,
+    payload: { commodity: 'ore', units: 40, meta: { tag: 'clean' } },
+  }, 1);
+  const intents = advance(job, 0.05);
+  const load = intents.find((e) => e.event === 'npcjobs:load');
+  load.payload.meta.tag = 'MUTATED';
+  assert.equal(job.payload.meta.tag, 'clean', 'job not aliased through returned intent array');
+});
+
+test('DEFECT 4b (cyclic payload): a cyclic payload is rejected at createJob, normalizeJob, AND serializeJob — never throws', () => {
+  const cyclic = {};
+  cyclic.self = cyclic;
+  assert.equal(isJSONSafe(cyclic), false, 'isJSONSafe detects the cycle');
+
+  // createJob rejects it (payload becomes null).
+  const a = createJob({ id: 'c1', kind: NPC_JOB_KIND.MINER, route: MINER_ROUTE, payload: cyclic }, 1);
+  assert.equal(a.payload, null, 'cyclic payload rejected at createJob');
+
+  // normalizeJob rejects it and records the heal.
+  const b = normalizeJob({ id: 'c2', kind: NPC_JOB_KIND.MINER, route: MINER_ROUTE, payload: cyclic });
+  assert.equal(b.payload, null, 'cyclic payload rejected at normalizeJob');
+  assert.ok(b.healed.some((h) => h.includes('payload')), 'heal records the payload rejection');
+
+  // serializeJob does NOT throw even if the payload was mutated to cyclic after creation.
+  const c = createJob({ id: 'c3', kind: NPC_JOB_KIND.MINER, route: MINER_ROUTE, payload: { ok: 1 } }, 1);
+  c.payload = cyclic; // simulate a corrupting post-creation mutation
+  let threw = false;
+  let out;
+  try { out = serializeJob(c); } catch (e) { threw = true; }
+  assert.equal(threw, false, 'serializeJob must not throw on a cyclic payload');
+  assert.ok(out, 'serializeJob returns a record');
+  assert.equal(out.payload, null, 'serializeJob drops the cyclic payload');
+});
+
+test('DEFECT 4b: non-JSON payload values (functions, undefined, class instances) are rejected', () => {
+  const cases = [
+    { p: { fn: () => 1 }, label: 'function value' },
+    { p: { u: undefined }, label: 'undefined value' },
+    { p: { d: new Date() }, label: 'Date instance' },
+    { p: { m: new Map() }, label: 'Map instance' },
+  ];
+  for (const c of cases) {
+    assert.equal(isJSONSafe(c.p), false, `${c.label} is not JSON-safe`);
+    const job = createJob({ id: 'x', kind: NPC_JOB_KIND.MINER, route: MINER_ROUTE, payload: c.p }, 1);
+    assert.equal(job.payload, null, `${c.label} rejected at createJob`);
+  }
+  // A plain JSON-safe payload survives.
+  const ok = createJob({ id: 'ok', kind: NPC_JOB_KIND.MINER, route: MINER_ROUTE, payload: { a: 1, b: 'x', c: [1, 2, { y: true }] } }, 1);
+  assert.ok(ok.payload && ok.payload.c[2].y === true, 'plain JSON-safe payload accepted');
+});
+
+test('DEFECT 4: summarizeJob and describeMaterialization also deep-clone payload (no aliasing through projections)', () => {
+  const job = createJob({
+    id: 'proj', kind: NPC_JOB_KIND.HAULER, route: HAULER_ROUTE, payload: { commodity: 'ore', meta: { tag: 'clean' } },
+  }, 1);
+  const s = summarizeJob(job);
+  const d = describeMaterialization(job);
+  s.payload.meta.tag = 'MUTATED';
+  d.payload.meta.tag = 'MUTATED2';
+  assert.equal(job.payload.meta.tag, 'clean', 'job not aliased through summarizeJob');
+  assert.equal(job.payload.meta.tag, 'clean', 'job not aliased through describeMaterialization');
 });

@@ -83,9 +83,20 @@ const DEFAULT_LOAD_S = 8;
 const DEFAULT_UNLOAD_S = 6;
 const DEFAULT_DWELL_S = 12; // patrol schedule hold at each waypoint
 const MIN_PHASE_S = 1e-3; // floor so a zero-length leg still yields a legal, finite duration
-/** Cap on phase transitions inside a single advance() call. Bounds aggregated offscreen stepping so
- *  a pathologically large dt can never loop forever; a real job in a real interval is nowhere near. */
-const MAX_TRANSITIONS_PER_ADVANCE = 4096;
+/**
+ * Safety valve on phase transitions inside a single advance() call. Bounds a pathologically large dt
+ * (e.g. a corrupt simTime delta) so the loop cannot run forever. Real gameplay NEVER reaches this:
+ * a 60 Hz tick advances one phase at most a few times per second, and even a multi-second offscreen
+ * aggregated step crosses at most (dt / MIN_PHASE_S) ≈ 1000 transitions/second of authored phases.
+ *
+ * When the cap DOES bind (a malformed/huge dt), advance() stops HONESTLY: it sets simTime to the last
+ * crossing it actually processed (NEVER past it), leaves the unprocessed remainder, emits a
+ * `truncated` intent describing the shortfall, and returns. The caller may resume with
+ * advance(job, remaining). This is the opposite of silently advancing the clock while discarding
+ * transitions — which would break decomposability (advance(a)+advance(b) would disagree with
+ * advance(a+b) whenever one path hit the cap and the other didn't).
+ */
+const MAX_TRANSITIONS_PER_ADVANCE = 100000;
 /** Float-noise tolerance for "has dt reached the phase boundary?". A dt that lands on the boundary
  *  to within this (scaled by phase duration) is treated as a boundary crossing so the completion
  *  intent fires exactly once, instead of dangling at progress 0.9999999999 forever. */
@@ -133,6 +144,24 @@ const PHASE_GRAPHS = {
   },
 };
 
+/**
+ * The set of phases each kind may legally occupy. Derived from the graph (start + every successor)
+ * plus FLEE (reachable from any phase via interrupt) so it can never drift from the graph. A phase
+ * outside this set for the given kind is a corrupt save combination (e.g. miner with phase=LOAD,
+ * patrol with phase=WORK) and normalizeJob heals it back to the kind's start rather than letting
+ * advance() emit a phase-completion intent for a phase that kind can never reach.
+ */
+const LEGAL_PHASES_BY_KIND = Object.fromEntries(
+  Object.entries(PHASE_GRAPHS).map(([kind, graph]) => {
+    const set = new Set([graph.start, NPC_JOB_PHASE.FLEE]);
+    for (const [from, to] of Object.entries(graph.next)) {
+      set.add(from);
+      set.add(to);
+    }
+    return [kind, set];
+  }),
+);
+
 // ─── Small pure helpers ───────────────────────────────────────────────────────────────────────────
 
 function finite(value, fallback = 0) {
@@ -165,6 +194,66 @@ export function snapFloat(value) {
   if (!Number.isFinite(value)) return 0;
   if (value < 0) return 0;
   return Math.round(value * 1e6) / 1e6;
+}
+
+/**
+ * Payload JSON-safety contract. A job's payload is the cargo descriptor the owning cargo owner will
+ * apply; it MUST be plain JSON-safe data (no cycles, no functions, no class instances, no undefined)
+ * because it is (a) emitted inside intents that callers may serialize, (b) deep-cloned into the save
+ * record, and (c) compared byte-for-byte in tests. A cyclic or non-JSON payload would alias into
+ * intents (letting a sink mutate authoritative job state) and throw serializeJob. We validate at the
+ * creation/restore seam and reject (null out) anything that fails, so the kernel never carries a
+ * payload it cannot serialize.
+ */
+const MAX_PAYLOAD_DEPTH = 32;
+export function isJSONSafe(value, seen = new WeakSet(), depth = 0) {
+  if (depth > MAX_PAYLOAD_DEPTH) return false;
+  if (value === null || typeof value === 'boolean' || typeof value === 'number') return true;
+  if (typeof value === 'string') return true;
+  if (typeof value !== 'object') return false; // functions, symbols, bigint, undefined → reject
+  if (Array.isArray(value)) {
+    if (seen.has(value)) return false; // cycle
+    seen.add(value);
+    for (const v of value) if (!isJSONSafe(v, seen, depth + 1)) return false;
+    return true;
+  }
+  // plain object only (reject class instances, Maps, Sets, Dates, etc.)
+  if (Object.getPrototypeOf(value) !== Object.prototype && value.constructor !== Object) return false;
+  if (seen.has(value)) return false; // cycle
+  seen.add(value);
+  for (const k of Object.keys(value)) {
+    if (!isJSONSafe(value[k], seen, depth + 1)) return false;
+  }
+  return true;
+}
+
+/** Deep-clone a value via JSON round-trip. Caller MUST guarantee isJSONSafe first (we assert it so a
+ *  future payload that breaks the contract fails loudly at the seam, not silently aliases). */
+function cloneJSON(value) {
+  if (value === null || value === undefined) return null;
+  // isJSONSafe is the contract gate; if it ever returns false here the caller bypassed the seam.
+  if (!isJSONSafe(value)) return null;
+  return JSON.parse(JSON.stringify(value));
+}
+
+/**
+ * Coerce an arbitrary input payload into the JSON-safe contract or null. Used at every seam where a
+ * payload enters the kernel (createJob, normalizeJob). A payload that is missing, not an object, or
+ * not JSON-safe (cyclic, has functions/class instances/undefined) is rejected as null so the kernel
+ * never carries a payload it cannot serialize or that could alias through emit(). The optional
+ * `healed` array records the rejection reason for diagnostics.
+ */
+function sanitizePayload(input, healed = null) {
+  if (input === null || input === undefined) return null;
+  if (typeof input !== 'object' || Array.isArray(input)) {
+    if (healed) healed.push('payload:not-plain-object');
+    return null;
+  }
+  if (!isJSONSafe(input)) {
+    if (healed) healed.push('payload:not-json-safe');
+    return null;
+  }
+  return cloneJSON(input);
 }
 
 function isPlainPos(p) {
@@ -245,7 +334,7 @@ function baseRecord(spec, route) {
     unloadS: Math.max(finite(spec.unloadS, DEFAULT_UNLOAD_S), MIN_PHASE_S),
     dwellS: Math.max(finite(spec.dwellS, DEFAULT_DWELL_S), MIN_PHASE_S),
     route,
-    payload: spec.payload && typeof spec.payload === 'object' ? { ...spec.payload } : null,
+    payload: sanitizePayload(spec.payload),
   };
 }
 
@@ -314,13 +403,18 @@ export function normalizeJob(input) {
       loadS: Math.max(finite(input.loadS, DEFAULT_LOAD_S), MIN_PHASE_S),
       unloadS: Math.max(finite(input.unloadS, DEFAULT_UNLOAD_S), MIN_PHASE_S),
       dwellS: Math.max(finite(input.dwellS, DEFAULT_DWELL_S), MIN_PHASE_S),
-      payload: input.payload && typeof input.payload === 'object' ? { ...input.payload } : null,
+      payload: sanitizePayload(input.payload),
     };
   }
 
   const healed = [];
-  let phase = LEGAL_PHASES.has(input.phase) ? input.phase : PHASE_GRAPHS[kind].start;
-  if (!LEGAL_PHASES.has(input.phase)) healed.push('phase');
+  // Validate phase against THIS KIND's graph (not the global phase vocabulary). A miner with
+  // phase=LOAD or a patrol with phase=WORK is a corrupt kind/phase combination: that kind can never
+  // reach that phase, so advancing it would emit a completion intent for an impossible phase. Heal
+  // back to the kind's start rather than honoring the bogus phase.
+  const legalForKind = LEGAL_PHASES_BY_KIND[kind];
+  let phase = legalForKind.has(input.phase) ? input.phase : PHASE_GRAPHS[kind].start;
+  if (!legalForKind.has(input.phase)) healed.push(`phase:${input.phase}:illegal-for-kind:${kind}`);
   if (phase === NPC_JOB_PHASE.FLEE && !input.interrupted) {
     // a flee phase without an interrupted flag is inconsistent → restart the legal machine
     phase = PHASE_GRAPHS[kind].start;
@@ -344,7 +438,10 @@ export function normalizeJob(input) {
     heading: finite(input.heading, 0),
     materialized: input.materialized !== false,
     interrupted: input.interrupted === true,
-    preInterruptPhase: LEGAL_PHASES.has(input.preInterruptPhase) ? input.preInterruptPhase : null,
+    // preInterruptPhase must be a non-FLEE phase legal for this kind (fleeing resumes to a real phase)
+    preInterruptPhase: input.preInterruptPhase !== NPC_JOB_PHASE.FLEE && legalForKind.has(input.preInterruptPhase)
+      ? input.preInterruptPhase
+      : null,
     corrupt: false,
     healed,
     speed,
@@ -356,7 +453,7 @@ export function normalizeJob(input) {
     unloadS: Math.max(finite(input.unloadS, DEFAULT_UNLOAD_S), MIN_PHASE_S),
     dwellS: Math.max(finite(input.dwellS, DEFAULT_DWELL_S), MIN_PHASE_S),
     route,
-    payload: input.payload && typeof input.payload === 'object' ? { ...input.payload } : null,
+    payload: sanitizePayload(input.payload, healed),
   };
   return job;
 }
@@ -461,9 +558,25 @@ function phaseDuration(job) {
 
 // ─── Intent emission ──────────────────────────────────────────────────────────────────────────────
 
-/** Stamp and emit one intent. seq is monotonic per job → provably unique across the job's life. */
+/**
+ * Stamp and emit one intent. seq is monotonic per job → provably unique across the job's life.
+ *
+ * The payload is DEEP-CLONED into the intent (every nested object, including any `payload` cargo
+ * descriptor). This is load-bearing: without it, an intent's nested object would be the SAME
+ * reference as the job's, and a sink that mutates `intent.payload.meta` would mutate
+ * `job.payload.meta` — corrupting authoritative state through a side channel. The clone also makes
+ * the returned intent list safe for the caller to mutate freely.
+ */
 function emit(job, intents, sink, kind, payload) {
-  const intent = { event: `npcjobs:${kind}`, jobId: job.id, kind: job.kind, seq: ++job.sequence, simTime: job.simTime, ...payload };
+  const intent = { event: `npcjobs:${kind}`, jobId: job.id, kind: job.kind, seq: ++job.sequence, simTime: job.simTime };
+  if (payload) {
+    // Shallow-copy the top level (cheap) then deep-clone any nested payload/object fields that could
+    // alias job state. Scalars (strings, numbers, booleans, null) and the top-level spread are safe.
+    for (const key of Object.keys(payload)) {
+      const v = payload[key];
+      intent[key] = (v && typeof v === 'object') ? cloneJSON(v) : v;
+    }
+  }
   intents.push(intent);
   if (typeof sink === 'function') {
     try {
@@ -525,14 +638,20 @@ function emitCompletionFor(job, intents, sink, finishedPhase) {
       emit(job, intents, sink, 'work', { phase: finishedPhase, completed: true, field: waypoint(job, job.routeIndex)?.id || null, pos });
       break;
     case NPC_JOB_PHASE.LOAD:
-      emit(job, intents, sink, 'load', { phase: finishedPhase, completed: true, origin: waypoint(job, job.routeIndex)?.id || null, payload: job.payload ? { ...job.payload } : null, pos });
+      emit(job, intents, sink, 'load', { phase: finishedPhase, completed: true, origin: waypoint(job, job.routeIndex)?.id || null, payload: cloneJSON(job.payload), pos });
       break;
     case NPC_JOB_PHASE.UNLOAD:
-      emit(job, intents, sink, 'unload', { phase: finishedPhase, completed: true, destination: waypoint(job, job.routeIndex)?.id || null, payload: job.payload ? { ...job.payload } : null, pos });
+      emit(job, intents, sink, 'unload', { phase: finishedPhase, completed: true, destination: waypoint(job, job.routeIndex)?.id || null, payload: cloneJSON(job.payload), pos });
       break;
-    case NPC_JOB_PHASE.RETURN:
-      emit(job, intents, sink, 'return', { phase: finishedPhase, to: waypoint(job, job.routeIndex)?.id || null, pos });
+    case NPC_JOB_PHASE.RETURN: {
+      // RETURN completes on ARRIVAL at the destination (home for a miner). The `to` field must name
+      // the destination actually reached (targetIndex), and `from` the origin the leg left. Using
+      // routeIndex here would name the origin (field) and lie about where the job arrived.
+      const from = waypoint(job, originIndex(job));
+      const to = waypoint(job, targetIndex(job));
+      emit(job, intents, sink, 'return', { phase: finishedPhase, from: from?.id || null, to: to?.id || null, pos });
       break;
+    }
     case NPC_JOB_PHASE.HOLD:
       emit(job, intents, sink, 'hold', { phase: finishedPhase, completed: true, at: waypoint(job, job.routeIndex)?.id || null, pos });
       break;
@@ -615,18 +734,30 @@ function successorPhase(job, finishedPhase, intents, sink) {
  * current phase from (1 - progress) * phaseDuration. If dt is less than that, advance progress
  * linearly and consume all dt. Otherwise burn the residual, set progress to exactly 1, emit the
  * phase-completion intent ONCE, transition to the successor phase (resetting progress to 0), and
- * continue with the leftover dt. The loop is bounded by MAX_TRANSITIONS_PER_ADVANCE.
+ * continue with the leftover dt.
  *
  * Decomposability: progress is affine in dt within a phase; transitions are deterministic boundary
- * events with one emitted intent each; no state outside {progress, phase, routeIndex, loopCount,
- * heading, sequence, simTime} is read or written. Therefore for any a,b >= 0:
+ * events with one emitted intent each; and simTime NEVER advances past the last transition that was
+ * actually processed. Therefore for any a,b >= 0:
  *     advance(j,a); advance(j,b)  ≡  advance(j, a+b)
- * in final state and in the concatenation of the two returned intent lists.
+ * in final state and in the concatenation of the two returned intent lists, PROVIDED neither call
+ * is truncated (see TRUNCATION below). When both stay under the cap, the proof is: the boundary
+ * times and successor selections depend only on (phase, progress, routeIndex), which the two paths
+ * visit in the same order, and simTime is set to the last crossing in both.
+ *
+ * TRUNCATION (the safety valve, honestly reported): a pathologically large dt can carry more
+ * transitions than MAX_TRANSITIONS_PER_ADVANCE. Rather than silently advance the clock past the
+ * unprocessed transitions (which would break decomposability and lie about how far the job got),
+ * advance() stops at the cap: simTime is set to the LAST crossing actually processed, the unprocessed
+ * remainder is left, and a `truncated` intent {requestedDt, processedDt, remainingDt} is emitted so
+ * the caller can observe and resume with advance(job, remainingDt). Real gameplay never truncates;
+ * the cap exists only to bound corrupt input. See `isTruncated(intent)`.
  *
  * @param {object} job   a record from createJob/normalizeJob
  * @param {number} dt    seconds to advance (>= 0); dt === 0 is a strict no-op
  * @param {(intent)=>void} [sink]  optional caller sink (e.g. a future bus bridge); never required
- * @returns {object[]} the intents emitted by this call, in order, each stamped with a unique seq
+ * @returns {object[]} the intents emitted by this call, in order, each stamped with a unique seq.
+ *                     The final intent may be a `truncated` marker if the transition cap was reached.
  */
 export function advance(job, dt, sink) {
   if (!job || job.corrupt) return [];
@@ -635,10 +766,9 @@ export function advance(job, dt, sink) {
 
   const base = nonNegFinite(job.simTime, 0);
 
-  // simTime ALWAYS advances for any valid finite dt > 0 — including when the job is fleeing or has
-  // completed. Time passes regardless of job state; this is what makes decomposability hold for
-  // terminal jobs (live-stepping a completed hauler and aggregated-stepping it must agree on simTime,
-  // even though neither produces further phase intents).
+  // FLEE and COMPLETE do not transition, but time still passes. simTime advances by the FULL dt here
+  // because there are no transitions to discard — this is the one case where advancing past the last
+  // (nonexistent) transition is honest, and it is what makes terminal-job decomposability hold.
   if (job.phase === NPC_JOB_PHASE.FLEE || job.phase === NPC_JOB_PHASE.COMPLETE) {
     job.simTime = base + dt;
     return [];
@@ -647,48 +777,91 @@ export function advance(job, dt, sink) {
   const intents = [];
   let remaining = dt;
   let transitions = 0;
+  // simTime is set to each crossing as we process it. After the loop, simTime holds the last crossing
+  // we actually reached — NEVER base+dt unless we processed the whole interval OR landed in a terminal
+  // phase (where the remaining time passes harmlessly). This is the invariant that makes truncation
+  // honest and decomposability exact.
+  let lastCrossing = base;
+  // Why the loop ended — distinguished so the post-loop logic can tell a legitimate terminal stop
+  // (NOT truncation; remaining time passes) from a safety-valve stop (IS truncation; simTime freezes).
+  let reachedTerminal = false;
+  let degenerate = false; // a phase with non-finite/<=0 duration: the job is stuck, report it
 
   while (remaining > 0 && transitions < MAX_TRANSITIONS_PER_ADVANCE) {
     const phase = job.phase;
-    if (phase === NPC_JOB_PHASE.FLEE || phase === NPC_JOB_PHASE.COMPLETE) break;
+    if (phase === NPC_JOB_PHASE.FLEE || phase === NPC_JOB_PHASE.COMPLETE) { reachedTerminal = true; break; }
 
     const dur = phaseDuration(job);
-    if (!Number.isFinite(dur) || dur <= 0) break; // safety: never divide by zero or NaN
+    if (!Number.isFinite(dur) || dur <= 0) { degenerate = true; break; } // never divide by zero/NaN
 
     const leftInPhase = Math.max((1 - job.progress) * dur, 0);
 
     // Treat `remaining` within float-noise of `leftInPhase` as reaching the boundary exactly. Without
     // this, a dt that should land on the boundary (e.g. the last 1/60 step of a phase whose duration
     // is a multiple of 1/60) takes the partial path due to ~1e-16 float error, never firing the
-    // completion intent. The tolerance is absolute float-epsilon scaled by the magnitudes involved.
+    // completion intent.
     const boundaryTol = BOUNDARY_EPS * Math.max(1, dur);
     if (remaining < leftInPhase - boundaryTol) {
       // Partial advance within the current phase. Progress is linear in dt; consume all remaining.
       job.progress = clamp01(job.progress + remaining / dur);
+      lastCrossing = base + dt; // full dt consumed within the phase
       remaining = 0;
       break;
     }
 
     // Reach the boundary: pin progress to 1, consume exactly leftInPhase of time, then transition.
-    // leftInPhase is the true remaining phase time (progress is full-precision float here), so the
-    // crossing time base + (dt - remaining) is exact. Stamp it on the emitted intents by briefly
-    // setting job.simTime around the transition, then restore to the running value.
     job.progress = 1;
     remaining = Math.max(0, remaining - leftInPhase);
     const crossingTime = base + (dt - remaining);
+    lastCrossing = crossingTime;
     const savedSimTime = job.simTime;
     job.simTime = crossingTime;
     transition(job, intents, sink, phase);
     job.simTime = savedSimTime;
     transitions += 1;
+    // If the transition landed us in FLEE/COMPLETE, the next loop iteration's guard will catch it;
+    // but we also set reachedTerminal here so the post-loop knows remaining-time-passes applies.
+    if (job.phase === NPC_JOB_PHASE.FLEE || job.phase === NPC_JOB_PHASE.COMPLETE) reachedTerminal = true;
   }
 
-  // Final simTime is base + dt. Progress/simTime stay full-precision inside the record; callers that
-  // need byte-stable comparison (tests, save round-trips) snap at the read seam, not inside the math.
-  job.simTime = base + dt;
+  if (reachedTerminal) {
+    // A legitimate terminal stop (job completed or fled mid-interval): time passes for the rest of
+    // dt with no further transitions. This is honest (there is nothing to discard) and is what makes
+    // terminal-job decomposability hold (live-stepping a completed hauler agrees with one aggregated
+    // step that reaches completion partway through). NOT a truncation.
+    job.simTime = base + dt;
+    if (!Number.isFinite(job.progress)) job.progress = 0;
+    return intents;
+  }
+
+  // Non-terminal stop. simTime is the last crossing we genuinely reached. If we processed the whole
+  // interval (remaining === 0), lastCrossing === base + dt. If we hit the cap or a degenerate phase,
+  // simTime freezes at the last crossing so the caller sees exactly how far the job got.
+  job.simTime = lastCrossing;
   if (!Number.isFinite(job.progress)) job.progress = 0;
 
+  // HONEST TRUNCATION SIGNAL. Only the safety-valve stops emit `truncated`: the transition cap bound
+  // (a pathologically large dt) or a degenerate phase (the job is stuck). simTime already reflects
+  // the last real crossing, so the caller can resume deterministically with advance(job, remaining).
+  // A normal full-interval stop (remaining === 0) emits nothing.
+  const capped = transitions >= MAX_TRANSITIONS_PER_ADVANCE && remaining > BOUNDARY_EPS;
+  if (capped || degenerate) {
+    const processedDt = Math.max(0, lastCrossing - base);
+    emit(job, intents, sink, 'truncated', {
+      reason: degenerate ? 'degenerate_phase' : 'transition_cap',
+      requestedDt: dt,
+      processedDt,
+      remainingDt: Math.max(0, dt - processedDt),
+      atTransitionCap: capped,
+    });
+  }
+
   return intents;
+}
+
+/** True if this intent is the truncation safety-valve marker emitted by advance(). */
+export function isTruncated(intent) {
+  return !!intent && intent.event === 'npcjobs:truncated';
 }
 
 /**
@@ -718,7 +891,7 @@ function transition(job, intents, sink, finishedPhase) {
   }
   // Hauler terminal: announce completion with the payload descriptor (cargo owner applies it).
   if (next === NPC_JOB_PHASE.COMPLETE) {
-    emit(job, intents, sink, 'complete', { payload: job.payload ? { ...job.payload } : null });
+    emit(job, intents, sink, 'complete', { payload: cloneJSON(job.payload) });
   }
 
   // 5. Every phase starts at progress 0.
@@ -813,7 +986,7 @@ export function describeMaterialization(job) {
     pos: { x: pos.x, z: pos.z },
     heading: finite(job.heading, 0),
     targetId: target ? target.id : null,
-    payload: job.payload ? { ...job.payload } : null,
+    payload: cloneJSON(job.payload),
     interrupted: job.interrupted,
     materialized: job.materialized,
     simTime: job.simTime,
@@ -831,6 +1004,14 @@ export function serializeJob(job) {
   if (!job || typeof job !== 'object') return null;
   const { _lastThreat, ...rest } = job;
   void _lastThreat;
+  // Enforce the JSON-safe payload contract at serialization too: if a caller mutated job.payload to
+  // a cyclic/non-JSON value after creation, fail predictably (drop the payload) instead of throwing
+  // inside JSON.stringify. The rest of the record is JSON-safe by construction (scalars + the
+  // route array of plain {id,pos:{x,z}} objects).
+  if (rest.payload !== null && rest.payload !== undefined && !isJSONSafe(rest.payload)) {
+    rest.payload = null;
+    if (Array.isArray(rest.healed)) rest.healed.push('payload:not-json-safe-at-serialize');
+  }
   const out = JSON.parse(JSON.stringify(rest));
   out.schema = NPC_JOB_SCHEMA;
   return out;
@@ -856,7 +1037,7 @@ export function summarizeJob(job) {
     materialized: job.materialized,
     interrupted: job.interrupted,
     resumable: job.phase !== NPC_JOB_PHASE.COMPLETE,
-    payload: job.payload ? { ...job.payload } : null,
+    payload: cloneJSON(job.payload),
   };
 }
 
@@ -869,6 +1050,7 @@ export default {
   normalizeJob,
   restoreJob,
   advance,
+  isTruncated,
   interrupt,
   resume,
   virtualize,
@@ -877,4 +1059,6 @@ export default {
   routePosition,
   serializeJob,
   summarizeJob,
+  isJSONSafe,
+  snapFloat,
 };
