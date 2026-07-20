@@ -14,14 +14,34 @@ import { createCombatKernel } from '../src/combat/kernel.js';
 import { addCargo, cargo } from '../src/systems/cargo.js';
 import { buildSlotList, fittingsFromDefaultModules, getDerivedStats, makeShipEntitySpec, ships } from '../src/systems/ships.js';
 import { tetherGameplay } from '../src/systems/tetherGameplay.js';
+import { buildCommandMatrix } from './check-ci-report.mjs';
 
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 assert.equal(packageJson.scripts['check:m1:tether-mass'], 'node scripts/check-m1-tether-mass-grounding.mjs',
   'the M1 tether-mass check has a stable npm alias');
-for (const aggregate of ['check', 'check:ci']) {
-  const lifecycle = packageJson.scripts[`pre${aggregate}`] || '';
-  const matches = `${lifecycle} ${packageJson.scripts[aggregate]}`.match(/npm run check:m1:tether-mass/g) || [];
-  assert.equal(matches.length, 1, `${aggregate} wires the M1 tether-mass gate exactly once`);
+
+// `check` aggregate: lifecycle (precheck) + body must wire the gate exactly once.
+{
+  const lifecycle = packageJson.scripts.precheck || '';
+  const matches = `${lifecycle} ${packageJson.scripts.check}`.match(/npm run check:m1:tether-mass/g) || [];
+  assert.equal(matches.length, 1, 'check wires the M1 tether-mass gate exactly once');
+}
+
+// `check:ci` delegates to the complete runner rather than inlining the gate.
+// Fail closed on both the delegation string and the expanded matrix the runner uses.
+assert.equal(packageJson.scripts['check:ci'], 'npm run check:ci:report',
+  'check:ci delegates to the ci-report aggregate');
+assert.equal(packageJson.scripts['check:ci:report'], 'node scripts/check-ci-report.mjs',
+  'check:ci:report runs the complete ci-report runner');
+{
+  // Mirror check-ci-report.mjs non-smoke matrix: precheck + check expanded once.
+  const completeCheckCommand = [packageJson.scripts?.precheck, packageJson.scripts?.check]
+    .filter(Boolean)
+    .join(' && ');
+  const matrix = buildCommandMatrix(completeCheckCommand, packageJson.scripts || {});
+  const tetherMassCommands = matrix.filter((entry) => entry.command === 'npm run check:m1:tether-mass');
+  assert.equal(tetherMassCommands.length, 1,
+    'check:ci complete matrix includes the M1 tether-mass gate exactly once');
 }
 
 const starterFittings = fittingsFromDefaultModules(NEW_GAME.shipId, NEW_GAME.fittedModules);
