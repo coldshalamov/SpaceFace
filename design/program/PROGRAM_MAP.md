@@ -1,9 +1,11 @@
 # SpaceFace Program Map
 
-**Purpose:** this is the front door for choosing and dispatching work across every current SpaceFace
-plan family. It is a routing map, not another design plan and not a second completion ledger.
+**Purpose:** expanded routing map for plan families and the "next N" controller procedure.  
+**Agent entry:** start at repo-root [`../../CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md)
+first — that file is the single program front door. This document remains the detailed family map
+inside `design/program/`; it is not a competing plan.
 
-If the user says **"do the next 10"**, the controller starts here, reads
+If the user says **"do the next 10"**, the controller starts at `CANONICAL_BUILD_MAP.md`, reads
 [`roadmap/program-queue.json`](./roadmap/program-queue.json), and follows the execution procedure below.
 The controller must not guess which recent plan the user meant.
 
@@ -123,7 +125,7 @@ acceptance remain exclusive resources.
 
 ## Pasteable controller prompt
 
-> Act as the SpaceFace program controller. Start at `design/program/PROGRAM_MAP.md`. Validate the live
+> Act as the SpaceFace program controller. Start at repo-root `CANONICAL_BUILD_MAP.md`. Validate the live
 > repository and current leases, then freeze the next 10 unchecked outcomes from
 > `design/program/roadmap/program-queue.json`, including prerequisites. Reconcile each against live code
 > and map it to stable roadmap packet IDs. Orchestrate bounded subagents in dependency waves with at most

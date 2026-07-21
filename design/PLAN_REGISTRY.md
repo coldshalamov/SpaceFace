@@ -7,9 +7,10 @@ folder indexes.
 ## Status and authority rules
 
 1. `ARCHITECTURE.md` owns technical contracts; `design/GDD_2_0.md` owns game design.
-2. [`program/PROGRAM_MAP.md`](./program/PROGRAM_MAP.md) is the cross-plan dispatch front door and
-   [`program/roadmap/program-queue.json`](./program/roadmap/program-queue.json) is its explicit priority
-   overlay. `program/roadmap/**` retains stable packet identity while `program/01–05` retain
+2. Repo-root [`../CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) is the **agent program front door**
+   (workflow + routing). [`program/PROGRAM_MAP.md`](./program/PROGRAM_MAP.md) is the expanded family map
+   and [`program/roadmap/program-queue.json`](./program/roadmap/program-queue.json) is the explicit
+   priority overlay. `program/roadmap/**` retains stable packet identity while `program/01–05` retain
    verified/remaining/acceptance/integration truth.
 3. `design/vision/ALPHA_PROGRAM.md` and `design/depth-program/BUILD_PLAN.md` own scope/order for their
    programs. They do not override live implementation evidence.

@@ -2,6 +2,11 @@
 
 **Status:** ACTIVE · execution reset 2026-07-18; acceptance rows retain their own audit dates
 
+**Agent entry for program work:** start at repo-root
+[`../../CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md). That map is the single front door for
+"next N", check-off, and plan routing. This folder remains the **live status and ledger set** the map
+points into. Do not invent a parallel status system.
+
 **Overall task:** turn SpaceFace into a professional-feeling solo space game with a polished first
 ninety minutes, a seamless persistent galaxy, deep readable world content, complete B0–B7 story and
 ownership progression, dramatically improved visual/audio presentation, and a stable browser and
@@ -19,7 +24,9 @@ not have to reconcile several conflicting handoffs before working.
 
 ## Read this set in order
 
-1. [`PROGRAM_MAP.md`](./PROGRAM_MAP.md) — front door for all plan families and the "next N" controller procedure.
+0. [`../../CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md) — **canonical agent front door**
+   (workflow, authority, plan directory, anti-nesting).
+1. [`PROGRAM_MAP.md`](./PROGRAM_MAP.md) — expanded plan-family routing and the "next N" controller notes.
 2. [`NOW.md`](./NOW.md) — volatile active leases, occupied paths, and packets ready to claim.
 3. [`roadmap/program-queue.json`](./roadmap/program-queue.json) — explicit cross-plan priority and
    dependency overlay; its `PQ-*` handles do not replace stable packet IDs.

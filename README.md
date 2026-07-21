@@ -92,11 +92,12 @@ status and pickup surface is [`design/program/README.md`](design/program/README.
 [`design/vision/ALPHA_PROGRAM.md`](design/vision/ALPHA_PROGRAM.md) owns Alpha scope/order, while the
 activated spec2/spec3/revamp/depth/graphics plan owns task detail.
 
-> **Agents and contributors:** read [`AGENTS.md`](AGENTS.md) first — it is the concise front door to the
-> repository (task routing, shared-tree safety, live implementations, policy classes, and verification).
+> **Agents and contributors:** read [`AGENTS.md`](AGENTS.md) for engineering invariants, and
+> [`CANONICAL_BUILD_MAP.md`](CANONICAL_BUILD_MAP.md) for program work / "what next" / multi-plan
+> dispatch (it routes into `design/program/` without replacing original plans).
 > `ARCHITECTURE.md` (repo root) is the technical contract; `design/GDD_2_0.md` is
-> the design authority. Start current work from
-> [`design/program/README.md`](design/program/README.md), then follow its link to the activated plan.
+> the design authority. Live status ledgers live under
+> [`design/program/README.md`](design/program/README.md).
 
 ### Dev helpers
 - `node scripts/check-data.mjs` — verify every data module's exports.
