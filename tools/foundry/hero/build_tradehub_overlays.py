@@ -28,6 +28,7 @@ if _HERE not in sys.path:
 import hero_common as hc  # noqa: E402
 
 import bpy  # noqa: E402
+import bmesh  # noqa: E402
 from mathutils import Vector  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(_HERE, "..", "..", ".."))
@@ -78,6 +79,79 @@ def _ellipse(frame, ax_frac, angle_deg):
     cx, cy, _cz = frame["center"]
     return (cx + frame["outerRX"] * ax_frac * math.cos(math.radians(angle_deg)),
             cy + frame["outerRY"] * ax_frac * math.sin(math.radians(angle_deg)))
+
+
+def _rot2(ang, lx, ly):
+    """Rotate a local horizontal offset (lx along axis, ly across) into world XY."""
+    c, s = math.cos(ang), math.sin(ang)
+    return (lx * c - ly * s, lx * s + ly * c)
+
+
+def _sheared_box(name, center, size, mat, rot_z=0.0, shear_a=0.0, shear_b=0.0, bevel=0.18):
+    """A box-derived container mass (metres) with TWO faces sheared by shear_a/shear_b
+    degrees so it reads as a racked salvage box, not an extruded capsule. Hard edges
+    (small 1-segment chamfer). Optional yaw about Z, then seated at center. Local frame
+    before yaw: +X = length, +Y = width, +Z = height. Deterministic (no RNG here)."""
+    sx, sy, sz = size
+    ka = math.tan(math.radians(shear_a))
+    kb = math.tan(math.radians(shear_b))
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1.0)
+    for v in bm.verts:
+        v.co.x *= sx
+        v.co.y *= sy
+        v.co.z *= sz
+    # Shear two faces: the top leans along +X (shear_a), one end skews along +Y (shear_b).
+    for v in bm.verts:
+        v.co.x += ka * v.co.z
+    for v in bm.verts:
+        v.co.y += kb * v.co.x
+    if bevel > 0:
+        bmesh.ops.bevel(bm, geom=bm.edges[:] + bm.verts[:], offset=bevel,
+                        segments=1, affect="EDGES", clamp_overlap=True)
+    if rot_z:
+        c, s = math.cos(rot_z), math.sin(rot_z)
+        for v in bm.verts:
+            x, y = v.co.x, v.co.y
+            v.co.x = x * c - y * s
+            v.co.y = x * s + y * c
+    for v in bm.verts:
+        v.co += Vector(center)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    obj = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(obj)
+    hc.assign_material(obj, mat)
+    return obj
+
+
+def _open_frame_pod(name, center, size, mat, ang, bar=0.5):
+    """An open-frame salvage pod: 4 longerons + 3 rib hoops showing the interior ribs
+    (a gutted container). Steel bars only, joined into one VAR_ object. Deterministic."""
+    cx, cy, cz = center
+    L, W, H = size
+    parts = []
+    # 4 longerons run the full length at the cross-section corners.
+    for sy in (-1, 1):
+        for sz in (-1, 1):
+            ox, oy = _rot2(ang, 0.0, sy * (W / 2))
+            parts.append(hc.beveled_box(
+                f"{name}_lon{'p' if sy > 0 else 'n'}{'p' if sz > 0 else 'n'}",
+                (cx + ox, cy + oy, cz + sz * (H / 2)), (L, bar, bar), mat, bevel=0.05, rot_z=ang))
+    # 3 rib hoops (interior ribs) at stations along the length.
+    for k, fx in enumerate((-0.34, 0.0, 0.34)):
+        ox, oy = _rot2(ang, fx * L, 0.0)
+        hcx, hcy = cx + ox, cy + oy
+        for sz in (-1, 1):  # top + bottom bars span the width
+            parts.append(hc.beveled_box(f"{name}_rib{k}{'t' if sz > 0 else 'b'}",
+                         (hcx, hcy, cz + sz * (H / 2)), (bar, W, bar), mat, bevel=0.05, rot_z=ang))
+        for sy in (-1, 1):  # left + right bars span the height
+            lx, ly = _rot2(ang, fx * L, sy * (W / 2))
+            parts.append(hc.beveled_box(f"{name}_rib{k}{'r' if sy > 0 else 'l'}",
+                         (cx + lx, cy + ly, cz), (bar, bar, H), mat, bevel=0.05, rot_z=ang))
+    return hc.join_objects(name, parts)
 
 
 def _scn_hub(frame, r, kit):
@@ -234,10 +308,11 @@ def _mts_hub(frame, r, kit):
 
 def _free_hub(frame, r, kit):
     """Free patchwork (station-scale): a scavenged, IRREGULAR, asymmetric accretion.
-    Big habitat pods (capsule bodies + domed end caps) clustered at random over the
-    roof and breaking the rim outline at unaligned points; junk truss splices bridge
-    them; mismatched panel skirts hang off two edges (-X and -Y) only, at mixed sizes
-    and cocked angles. Nothing is aligned (bible Free: history/junk is the identity).
+    Big habitat pods — box-derived container masses, sheared on two faces with steel
+    splice collars (one an open rib frame) — clustered at random over the roof and
+    breaking the rim outline at unaligned points; junk truss splices bridge them;
+    mismatched panel skirts hang off two edges (-X and -Y) only, at mixed sizes and
+    cocked angles. Nothing is aligned (bible Free: history/junk is the identity).
     The zoom_out read is the ragged asymmetric outline — pods past the rim + skirts."""
     tag = "FREE"
     steel = kit["KitMat_Steel"]
@@ -247,10 +322,12 @@ def _free_hub(frame, r, kit):
     roof = frame["topZ"]
     added = []
 
-    # --- 12 scavenged habitat pods: big capsules at random angle/radius/height.
-    # The first two are OVERSIZED outriggers cantilevered radially far past the rim
-    # (the asymmetric big-mass read); the rest cluster over the roof and break the
-    # rim at unaligned points. Enough push past the edge to ragged the outline.
+    # --- 12 scavenged habitat pods, each a BOX-DERIVED container mass (12-20 m) sheared
+    # 3-8 deg on two faces (racked salvage, not extruded comfort), wrapped by a 0.6 m
+    # steel splice collar where its truss lands. The first two are OVERSIZED outriggers
+    # cantilevered radially past the rim; ONE pod (i=5) is an OPEN FRAME showing interior
+    # ribs. Irregular cluster placement is preserved (bible Free: tape/filler/patch).
+    open_i = 5
     anchors = []
     for i in range(12):
         outrigger = i < 2
@@ -258,17 +335,22 @@ def _free_hub(frame, r, kit):
         frac = r.uniform(1.12, 1.28) if outrigger else r.uniform(0.60, 1.18)
         x, y = _ellipse(frame, frac, a)
         z = roof + r.uniform(-1.0, 7.0)
-        length = r.uniform(18.0, 24.0) if outrigger else r.uniform(11.0, 19.0)
+        length = r.uniform(18.0, 20.0) if outrigger else r.uniform(12.0, 18.0)
         rad = r.uniform(4.4, 6.0) if outrigger else r.uniform(3.2, 5.0)
+        w_, h_ = 2.0 * rad, 1.7 * rad
         # outriggers point radially outward; junk pods sit at unaligned angles.
         ang = math.radians(a) if outrigger else math.radians(r.uniform(0, 360))
-        dx, dy = math.cos(ang), math.sin(ang)
-        p0 = (x - dx * length / 2, y - dy * length / 2, z)
-        p1 = (x + dx * length / 2, y + dy * length / 2, z)
-        body = hc.tube(f"VAR_{tag}_pod{i:02d}_body", p0, p1, rad, steel, segments=10)
-        cap0 = hc.dome(f"VAR_{tag}_pod{i:02d}_c0", p0, rad, steel, height=rad * 0.8, subdiv=1)
-        cap1 = hc.dome(f"VAR_{tag}_pod{i:02d}_c1", p1, rad, steel, height=rad * 0.8, subdiv=1)
-        added.append(hc.join_objects(f"VAR_{tag}_pod{i:02d}", [body, cap0, cap1]))
+        # draw shear for every pod (keeps the RNG stream stable regardless of pod type)
+        sha = r.uniform(3.0, 8.0) * r.choice((-1.0, 1.0))
+        shb = r.uniform(3.0, 8.0) * r.choice((-1.0, 1.0))
+        if i == open_i:
+            added.append(_open_frame_pod(f"VAR_{tag}_pod{i:02d}", (x, y, z), (length, w_, h_), steel, ang))
+        else:
+            added.append(_sheared_box(f"VAR_{tag}_pod{i:02d}", (x, y, z), (length, w_, h_), steel,
+                         rot_z=ang, shear_a=sha, shear_b=shb, bevel=0.18))
+        # splice collar: a proud 0.6 m steel band wrapping the pod at the truss junction.
+        added.append(hc.beveled_box(f"VAR_{tag}_pod{i:02d}_collar", (x, y, z),
+                     (0.6, w_ + 0.7, h_ + 0.7), steel, bevel=0.05, rot_z=ang))
         anchors.append((x, y, z))
     # --- Junk truss splices bridging consecutive pods (whatever held). 2-3 m members.
     for i in range(len(anchors) - 1):

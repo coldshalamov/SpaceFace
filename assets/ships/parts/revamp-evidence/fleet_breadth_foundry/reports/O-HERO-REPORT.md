@@ -208,3 +208,42 @@ rejects gross authoring/origin errors.
 3. **KitMat_Emissive base albedo** is `hero_common`'s (0.02) not kitgen's (0.05); emission colour +
    strength are identical, and `hero_common` is the lane's established material shared with the accepted
    wasps, so it was reused rather than diverged (touching it would alter accepted wasp output).
+
+---
+
+# TASTE-FIX ROUND — Free habitat pods (K-TASTE-REVIEW item b.1, 2026-07-20)
+
+**Scope: ONLY the Free pod builder.** SCN and MTS overlays are byte-unchanged (SHA256 re-verified
+MATCH vs the manifest after rebuild); wasps untouched (`HERO_CHECK_OK`).
+
+**Review note:** the v2 Free pods were smooth capsules (tube body + domed caps) — they read
+"balloon-smooth … extruded comfort, not scavenged desperation." Bible §Free wants tape/filler +
+untrimmed patch.
+
+**Fix (in `build_tradehub_overlays.py`, Free pod loop + 3 new local helpers `_sheared_box`,
+`_open_frame_pod`, `_rot2`; added `import bmesh`):** each of the 12 pods is now a **box-derived
+container mass** (12–20 m) **sheared 3–8° on two faces** (racked salvage, not extrusion), wrapped by a
+**0.6 m KitMat_Steel splice collar** at the truss junction; **one pod (i=5) is an OPEN FRAME** — 4
+longerons + 3 rib hoops showing the interior ribs (a gutted container). Irregular cluster placement,
+outriggers, truss splices, and skirts are unchanged. Shear angles/signs are drawn from the seeded RNG
+(`random.Random(81033)`); shear draws happen for every pod so the stream stays stable regardless of pod
+type. Deterministic (rebuild → SHA256 MATCH).
+
+**LOOK (my own eyes, `--fast` matched-camera + a tight overlay-only close-up):** at **neutral_close**
+the pods now read as **angular, racked salvage boxes** with proud collar bands, and the open rib-frame
+pod is clearly visible among them — scavenged, not comfortable. At **zoom_out** the **rim-break is
+preserved**: the outline is still a ragged, lopsided junk accretion, distinct from the donor square and
+from SCN/MTS. **PASS.**
+
+| Command | Result |
+| --- | --- |
+| `blender -b -P build_tradehub_overlays.py` | Free tris **1752 → 3024** (≤12000); SCN/MTS **byte-unchanged** |
+| `node validate_foundry_glb.mjs <free> --out reports/hero --budget 12000` | **PASS**, 0 warnings |
+| `blender -b -P check_hero.py` | **HERO_CHECK_OK**, exit 0 (regenerated `hero_manifest.json`; 2-run determinism) |
+| rebuild + SHA256 vs manifest | **scn/mts/free MATCH** (Free byte-deterministic; SCN/MTS unchanged) |
+| `python render_hero_evidence.py` | regenerated `hub_before_after_free.png` (SCN/MTS boards unchanged) |
+
+Files changed this round: `tools/foundry/hero/build_tradehub_overlays.py` (Free pod builder + helpers +
+`import bmesh`), the `…_free_overlay_v01.glb`, `tradehub_overlays.json` + `hero_manifest.json`
+(regenerated), `…/renders/hero/hub_before_after_free.png`, and
+`…/reports/hero/var_station_trade_hub_free_overlay_v01.glb.report.json`.

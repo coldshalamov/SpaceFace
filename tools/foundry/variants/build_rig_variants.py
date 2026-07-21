@@ -26,6 +26,13 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 import variant_common as vc  # noqa: E402
 
+# Lane-D kitgen lives in a sibling dir; import its bracket_gusset family for the
+# spar-root reinforcement the taste review (K-TASTE-REVIEW b.3) asks for.
+_KITGEN_DIR = os.path.abspath(os.path.join(_HERE, "..", "kitgen"))
+if _KITGEN_DIR not in sys.path:
+    sys.path.insert(0, _KITGEN_DIR)
+import kitgen  # noqa: E402
+
 DONOR = vc.DONORS["ashline_rig"]
 OUT_DIR = vc.VARIANTS_DIR
 
@@ -34,9 +41,50 @@ TREATMENTS = {
     "corsair_blade": {"stem": "var_ashline_rig_corsair_blade_v01", "tag": "CORSAIR", "seed": 72202},
 }
 
+# Taste-fix round (K-TASTE-REVIEW b.3): reaver grapple spars and corsair blade
+# supports sat near the distance-vanishing threshold. Load-bearing spar/support
+# cross-sections are bumped to >=0.35 m and a kitgen ``bracket_gusset`` (V01
+# triangular plate) is seated at each spar root. Tip hardware stays thin so the
+# taper reads as intent.
+SPAR_ROOT_RADIUS_M = 0.20          # grapple-arm tube radius -> 0.40 m cross-section
+BLADE_ROOT_Y_M = 0.50              # blade root Y cross-section (was 0.40)
+BLADE_TAPER = 0.68                 # blade Y taper coeff (was 0.60); tip stays ~0.16 m
+
 
 def _raycast_surface(default_z):
     return vc.make_surface_fn(default_z)
+
+
+def _spar_root_gusset(tag, idx, root, d_xy, steel_mat, seed):
+    """Seat a kitgen bracket_gusset (V01 right-triangular plate) at a spar root.
+
+    The gusset is rebuilt at the origin by kitgen (transforms already applied),
+    then this helper re-roots its mesh as a vertical reinforcement plate whose
+    two legs run along the horizontal spar azimuth ``d_xy`` (unit, XY) and +Z,
+    with its right-angle corner at ``root`` = (rx, ry, rz). The gusset's own
+    thickness is centred on the spar's vertical plane so the bracket straddles
+    the spar centreline. Pure function of (tag, idx, root, d_xy, seed) -> the
+    VAR_-prefixed, KitMat_Steel-assigned object. No draw from the treatment RNG,
+    so existing geometry is left byte-identical.
+    """
+    g = kitgen.build("bracket_gusset", 1, seed)[0]
+    zs = [v.co.z for v in g.data.vertices]
+    zmid = (min(zs) + max(zs)) * 0.5
+    dx, dy = d_xy
+    rx, ry, rz = root
+    for v in g.data.vertices:
+        x = v.co.x
+        y = v.co.y
+        z = v.co.z - zmid
+        # Rotation: local +X -> d_xy (along spar), local +Y -> +Z (up),
+        # local +Z -> (dy, -dx, 0) (horizontal perpendicular). det == 1.
+        v.co.x = (x * dx + z * dy) + rx
+        v.co.y = (x * dy - z * dx) + ry
+        v.co.z = y + rz
+    g.name = f"VAR_{tag}_spar_gusset_{idx}"
+    g.data.name = f"VAR_{tag}_spar_gusset_{idx}_mesh"
+    vc.assign_material(g, steel_mat)
+    return g
 
 
 # ---------------------------------------------------------------------------
@@ -46,7 +94,7 @@ def _raycast_surface(default_z):
 # Z BUDGET: donor z=5.97, +25% = 7.46. Dorsal top z=3.87. Headroom to z=5.36
 #   is 1.49 m. Crane gantry height kept at 1.2 m; spars/prow plates kept low.
 # ---------------------------------------------------------------------------
-def _reavor(mn, mx, r, kit, surf):
+def _reavor(mn, mx, r, kit, surf, seed):
     tag = "REAVOR"
     cx = (mn.x + mx.x) / 2
     added = []
@@ -117,15 +165,17 @@ def _reavor(mn, mx, r, kit, surf):
         ("port",  cx + 2.5,  2.4, math.radians(35), 2.6),
         ("stbd",  cx - 3.0, -2.2, math.radians(-28), 2.4),
     ]
-    for nm, sx, sy, ang, slen in spar_specs:
+    for si, (nm, sx, sy, ang, slen) in enumerate(spar_specs):
         base_z_s = surf(sx, sy) + 0.30
         ex = sx + math.cos(ang) * slen
         ey = sy - math.sin(ang) * slen
         ez = base_z_s + 0.60  # rises only 0.60 m above the local surface
+        # Load-bearing grapple spar: cross-section bumped to >=0.35 m
+        # (radius 0.20 -> 0.40 m diameter) per K-TASTE-REVIEW b.3.
         added.append(vc.tube(f"VAR_{tag}_grapple_arm_{nm}",
                              (sx, sy, base_z_s), (ex, ey, ez),
-                             0.08, steel, segments=7))
-        # Claw at the tip — three short claw fingers
+                             SPAR_ROOT_RADIUS_M, steel, segments=7))
+        # Claw at the tip — three short claw fingers (TIP hardware, kept thin)
         for ci, ca in enumerate((math.radians(0), math.radians(50), math.radians(-50))):
             cx_tip = ex + math.cos(ang + ca) * 0.36
             cy_tip = ey - math.sin(ang + ca) * 0.36
@@ -133,6 +183,11 @@ def _reavor(mn, mx, r, kit, surf):
                                  (ex, ey, ez),
                                  (cx_tip, cy_tip, ez - 0.22),
                                  0.04, steel, segments=5))
+        # Gusset the spar root: kitgen bracket_gusset seated at the arm root,
+        # legs along the arm azimuth and +Z.
+        added.append(_spar_root_gusset(
+            tag, nm, (sx, sy, base_z_s),
+            (math.cos(ang), -math.sin(ang)), steel, seed + 1000 * (si + 1)))
 
     # 3) Drag-scarred prow plates — thick forward armor plates with visible
     #    scalloped drag damage on the leading edge (bible §Reach: burred torch
@@ -169,7 +224,7 @@ def _reavor(mn, mx, r, kit, surf):
 # CORSAIR — blade-raider: swept blade fairings, forward weapon collars, ram
 # lip. Same skeleton, different predator. (bible §Reach offensive)
 # ---------------------------------------------------------------------------
-def _corsair(mn, mx, r, kit, surf):
+def _corsair(mn, mx, r, kit, surf, seed):
     tag = "CORSAIR"
     cx = (mn.x + mx.x) / 2
     added = []
@@ -198,12 +253,15 @@ def _corsair(mn, mx, r, kit, surf):
         bm = bmesh.new()
         bmesh.ops.create_cube(bm, size=1.0)
         # Taper: tip (X+) is thinner in Y and shorter in Z than root (X-).
+        # Load-bearing root Y cross-section bumped to >=0.35 m (0.50 m) per
+        # K-TASTE-REVIEW b.3; taper steepened so the tip stays thin (~0.16 m)
+        # and the taper still reads as intent.
         for v in bm.verts:
             v.co.x *= blen
             taper_t = (v.co.x / blen) + 0.5  # 0 at root (X-), 1 at tip (X+)
-            y_scale = 1.0 - 0.6 * taper_t
+            y_scale = 1.0 - BLADE_TAPER * taper_t
             z_scale = 1.0 - 0.3 * taper_t
-            v.co.y *= 0.40 * y_scale
+            v.co.y *= BLADE_ROOT_Y_M * y_scale
             v.co.z *= bh * z_scale
         # Sweep about Y so positive sweep angle raises the tip (forward-up).
         cs, ss = math.cos(sweep), math.sin(sweep)
@@ -226,6 +284,11 @@ def _corsair(mn, mx, r, kit, surf):
                         affect="EDGES", clamp_overlap=True)
         obj = vc._finish(bm, f"VAR_{tag}_blade{i}", paint)
         added.append(obj)
+        # Gusset the blade root: kitgen bracket_gusset seated on the hull at
+        # the blade mount, legs along the blade yaw and +Z.
+        added.append(_spar_root_gusset(
+            tag, i, (bx, by, bz_base),
+            (math.cos(yaw), math.sin(yaw)), steel, seed + 1000 * (i + 1)))
 
     # 2) Forward weapon collars — heavy reinforced rings around the weapon
     #    mounts (bible §Reach: oversized weapon collars, recoil-braced). Two
@@ -270,8 +333,12 @@ def _corsair(mn, mx, r, kit, surf):
 
     # 4) Jittery emissive — kill-tally glow under the canopy (bible §Reach:
     #    weapon root glow, extra floods). Three small uneven lamps.
-    for i, (x, y) in enumerate([(cx + 4.5, 0.8), (cx - 1.0, -1.0), (cx + 1.5, -1.6)]):
-        z = surf(x, y) + 0.30 + r.uniform(-0.04, 0.08)
+    # Lamp xy must lie on the dorsal plateau: the rig hull is asymmetric and
+    # most negative-y / far-fore points miss the footprint (surf() falls back).
+    for i, (x, y) in enumerate([(cx + 2.5, 0.4), (cx - 1.2, 1.3), (cx + 0.8, 0.9)]):
+        # Seat the lamp base on the hull: half box height + a hair of bed,
+        # jitter only upward so contact is never broken.
+        z = surf(x, y) + 0.05 + 0.01 + r.uniform(0.0, 0.04)
         added.append(vc.beveled_box(f"VAR_{tag}_lamp{i}", (x, y, z),
                                     (0.45, 0.14, 0.10), emis, bevel=0.012,
                                     rot_z=math.radians(r.uniform(-20, 20))))
@@ -289,7 +356,7 @@ def build_treatment(name, hull_mn, hull_mx, seed, surface_fn=None):
     kit = vc.ensure_all_kitmats()
     r = vc.rng(seed)
     surf = surface_fn if surface_fn is not None else (lambda x, y: hull_mx.z * 0.78)
-    return _TREATMENTS[name](hull_mn, hull_mx, r, kit, surf)
+    return _TREATMENTS[name](hull_mn, hull_mx, r, kit, surf, seed)
 
 
 def build_variant(name, out_dir):
@@ -300,6 +367,11 @@ def build_variant(name, out_dir):
     donor_top = mx.z
     surf = _raycast_surface(donor_top * 0.78)
     added = build_treatment(name, mn, mx, TREATMENTS[name]["seed"], surface_fn=surf)
+    # kitgen's bracket_gusset calls ensure_materials(), which resets the four
+    # shared KitMat BSDFs to kitgen's spec (KitMat_Emissive base colour differs
+    # from variant_common's). Restore variant_common's canonical values so the
+    # only change vs HEAD is spar geometry + gussets, not material values.
+    vc.ensure_all_kitmats()
     out = os.path.join(out_dir, TREATMENTS[name]["stem"] + ".glb")
     vc.export_all_glb(out)
     tris = sum(vc.object_tris(o) for o in vc.all_meshes())

@@ -27,7 +27,7 @@
       "attachNotes": "Scavenged habitat pods bolted at random over the roof and rim; junk truss splices bridge them; mismatched panel skirts hang off the -X and -Y edges. Kit pass: pod collars, truss gussets, skirt rivet rows.",
       "donor": "assets/ships/parts/places/place_station_trade_hub.glb",
       "intendedFaction": "faction_free",
-      "tris": 1752
+      "tris": 3024
     },
     "var_station_trade_hub_mts_overlay_v01": {
       "anchorFrame": "donor-origin",

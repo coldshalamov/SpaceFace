@@ -730,75 +730,97 @@ def build_container_stack(variant: int, seed: int):
         parts.append(create_part(f"{prefix}_seals", bm_seals, "KitMat_Rubber"))
         
     elif variant == 2:
-        # Port mixed stack (sizes staggered, ratchet straps, one dented)
+        # Port mixed stack (sizes staggered, top container toppled 15 deg against stack with ratchet straps)
         bm_containers_p = bmesh.new()
         bm_containers_s = bmesh.new()
         bm_straps = bmesh.new()
         
-        # Container 1 (Large - Paint) at bottom left
+        # Container 1 (Large - Paint) at bottom left (ground level Z=0)
         bm_add_box(bm_containers_p, Vector((2.4, 5.4, 2.4)), center=Vector((-1.25, 0.1, 1.2)))
         
-        # Container 2 (Medium - Steel) at bottom right
+        # Container 2 (Medium - Steel) at bottom right (ground level Z=0)
         bm_add_box(bm_containers_s, Vector((1.8, 4.2, 1.8)), center=Vector((1.2, -0.3, 0.9)))
         
-        # Container 3 (Medium - Paint, dented and slightly tilted)
-        rot_mat = Euler((0.0, math.radians(3.5), math.radians(-2.0))).to_matrix().to_4x4()
-        mat_c3 = Matrix.Translation(Vector((-0.1, 0.0, 3.1))) @ rot_mat
+        # Container 3 (Medium - Paint, toppled 15 degrees against the stack)
+        # 15 degrees roll around Y axis tilting against Container 1
+        rot_mat = Euler((math.radians(15.0), math.radians(-4.0), math.radians(5.0))).to_matrix().to_4x4()
+        mat_c3 = Matrix.Translation(Vector((-0.15, 0.05, 3.15))) @ rot_mat
         bm_add_box(bm_containers_p, Vector((2.0, 4.6, 2.0)), matrix=mat_c3)
         
-        # Add a dent overplate (Steel) on the top container corner
+        # Dent overplate (Steel) on top container corner
         p_dent = mat_c3 @ Vector((1.0, 1.8, 0.8))
         mat_d = Matrix.Translation(p_dent) @ rot_mat @ Matrix.Rotation(math.radians(30.0), 4, 'X')
         bm_add_box(bm_containers_s, Vector((0.4, 0.6, 0.4)), matrix=mat_d)
         
-        # Ratchet straps running over the top container down to base (Rubber)
-        # Strap 1 (Front): from (-2.6, 1.5, 0) up over top and down
-        p1_l = Vector((-2.55, 1.5, 0))
-        p1_m1 = Vector((-2.25, 1.5, 2.4))
-        p1_m2 = Vector((-0.8, 1.45, 4.1))
-        p1_m3 = Vector((0.8, 1.35, 3.9))
-        p1_r = Vector((2.2, 1.2, 0.0))
+        # Ratchet straps running over toppled top container down to base (Rubber)
+        # Strap 1 (Front)
+        p1_l = Vector((-2.55, 1.4, 0.0))
+        p1_m1 = Vector((-2.3, 1.4, 2.2))
+        p1_m2 = mat_c3 @ Vector((-1.0, 1.3, 1.0))
+        p1_m3 = mat_c3 @ Vector((1.0, 1.3, 1.0))
+        p1_m4 = mat_c3 @ Vector((1.0, 1.3, -0.9))
+        p1_r = Vector((2.2, 1.1, 0.0))
         
-        bm_add_beam(bm_straps, p1_l, p1_m1, 0.02)
-        bm_add_beam(bm_straps, p1_m1, p1_m2, 0.02)
-        bm_add_beam(bm_straps, p1_m2, p1_m3, 0.02)
-        bm_add_beam(bm_straps, p1_m3, p1_r, 0.02)
+        bm_add_beam(bm_straps, p1_l, p1_m1, 0.025)
+        bm_add_beam(bm_straps, p1_m1, p1_m2, 0.025)
+        bm_add_beam(bm_straps, p1_m2, p1_m3, 0.025)
+        bm_add_beam(bm_straps, p1_m3, p1_m4, 0.025)
+        bm_add_beam(bm_straps, p1_m4, p1_r, 0.025)
+        
+        # Ratchet buckle hardware (Steel/Rubber)
+        bm_add_box(bm_straps, Vector((0.1, 0.12, 0.18)), center=p1_m1)
+        bm_add_box(bm_straps, Vector((0.1, 0.12, 0.18)), center=p1_m4)
         
         # Strap 2 (Aft)
-        p2_l = Vector((-2.55, -1.5, 0))
-        p2_m1 = Vector((-2.25, -1.5, 2.4))
-        p2_m2 = Vector((-0.8, -1.45, 4.1))
-        p2_m3 = Vector((0.8, -1.35, 3.9))
-        p2_r = Vector((2.2, -1.5, 0.0))
+        p2_l = Vector((-2.55, -1.4, 0.0))
+        p2_m1 = Vector((-2.3, -1.4, 2.2))
+        p2_m2 = mat_c3 @ Vector((-1.0, -1.3, 1.0))
+        p2_m3 = mat_c3 @ Vector((1.0, -1.3, 1.0))
+        p2_m4 = mat_c3 @ Vector((1.0, -1.3, -0.9))
+        p2_r = Vector((2.2, -1.4, 0.0))
         
-        bm_add_beam(bm_straps, p2_l, p2_m1, 0.02)
-        bm_add_beam(bm_straps, p2_m1, p2_m2, 0.02)
-        bm_add_beam(bm_straps, p2_m2, p2_m3, 0.02)
-        bm_add_beam(bm_straps, p2_m3, p2_r, 0.02)
+        bm_add_beam(bm_straps, p2_l, p2_m1, 0.025)
+        bm_add_beam(bm_straps, p2_m1, p2_m2, 0.025)
+        bm_add_beam(bm_straps, p2_m2, p2_m3, 0.025)
+        bm_add_beam(bm_straps, p2_m3, p2_m4, 0.025)
+        bm_add_beam(bm_straps, p2_m4, p2_r, 0.025)
+        
+        bm_add_box(bm_straps, Vector((0.1, 0.12, 0.18)), center=p2_m1)
+        bm_add_box(bm_straps, Vector((0.1, 0.12, 0.18)), center=p2_m4)
         
         parts.append(create_part(f"{prefix}_bodies_paint", bm_containers_p, "KitMat_Paint"))
         parts.append(create_part(f"{prefix}_bodies_steel", bm_containers_s, "KitMat_Steel"))
         parts.append(create_part(f"{prefix}_straps", bm_straps, "KitMat_Rubber"))
         
     elif variant == 3:
-        # Scavenge stack (cut-open container, spill frame, patch plates)
+        # Scavenge stack (cantilevered unit 35% past stack edge on skid plate)
         bm_bodies = bmesh.new()
         bm_collars = bmesh.new()
+        bm_patches = bmesh.new()
         
-        # Container 1 (Paint) at bottom: rotated 8 deg
+        # Container 1 (Paint) at bottom left: rotated 8 deg (ground level Z=0)
         rot_c1 = Matrix.Rotation(math.radians(8.0), 4, 'Z')
         mat_c1 = Matrix.Translation(Vector((-1.2, 0.0, 0.9))) @ rot_c1
         bm_add_box(bm_bodies, Vector((1.8, 4.2, 1.8)), matrix=mat_c1)
         
-        # Container 2 (Paint) at bottom right: rotated -12 deg
+        # Container 2 (Paint) at bottom right: rotated -12 deg (ground level Z=0)
         rot_c2 = Matrix.Rotation(math.radians(-12.0), 4, 'Z')
         mat_c2 = Matrix.Translation(Vector((1.2, 0.3, 0.9))) @ rot_c2
         bm_add_box(bm_bodies, Vector((1.8, 4.2, 1.8)), matrix=mat_c2)
         
-        # Container 3 (Steel - cut open, sitting on top, rotated 4 deg)
+        # Skid plate assembly underneath Container 3 (Steel)
+        # Heavy skid plate supporting the cantilever extending 35% past lower stack edge
         rot_c3 = Matrix.Rotation(math.radians(4.0), 4, 'Z')
-        mat_c3 = Matrix.Translation(Vector((0.0, 0.0, 2.7))) @ rot_c3
-        # Construct cut-open box: we add 5 faces of a box manually to represent the hollow interior
+        mat_skid = Matrix.Translation(Vector((1.15, 0.1, 1.74))) @ rot_c3
+        # Main skid plate deck
+        bm_add_box(bm_patches, Vector((1.9, 4.0, 0.12)), matrix=mat_skid)
+        # Skid channel runners under deck
+        bm_add_box(bm_patches, Vector((0.16, 4.2, 0.16)), matrix=mat_skid @ Matrix.Translation(Vector((-0.8, 0.0, -0.12))))
+        bm_add_box(bm_patches, Vector((0.16, 4.2, 0.16)), matrix=mat_skid @ Matrix.Translation(Vector((0.8, 0.0, -0.12))))
+        
+        # Container 3 (Steel - cut open, cantilevered 35% past edge on skid plate)
+        mat_c3 = Matrix.Translation(Vector((1.15, 0.1, 2.7))) @ rot_c3
+        # Construct cut-open box: 5 faces of a box manually to represent open interior
         w, l, h = 1.8, 4.2, 1.8
         hw, hl, hh = w*0.5, l*0.5, h*0.5
         
@@ -819,12 +841,11 @@ def build_container_stack(variant: int, seed: int):
         bm_collars.faces.new([verts_world[0], verts_world[3], verts_world[2], verts_world[1]]) # bottom floor
         bm_collars.normal_update()
         
-        # Inside cargo crates (Paint) visible from the open end
+        # Inside cargo crates (Paint) visible from open end
         mat_crate = mat_c3 @ Matrix.Translation(Vector((0.0, 0.8, -0.2)))
         bm_add_box(bm_bodies, Vector((1.2, 1.2, 1.0)), matrix=mat_crate)
         
-        # Scrap weld plates (Steel)
-        bm_patches = bmesh.new()
+        # Additional scrap weld patch plates (Steel)
         p_patch = mat_c1 @ Vector((0.92, -0.8, 0.2))
         mat_p = Matrix.Translation(p_patch) @ rot_c1 @ Matrix.Rotation(math.radians(15.0), 4, 'Y')
         bm_add_box(bm_patches, Vector((0.03, 0.8, 0.8)), matrix=mat_p)

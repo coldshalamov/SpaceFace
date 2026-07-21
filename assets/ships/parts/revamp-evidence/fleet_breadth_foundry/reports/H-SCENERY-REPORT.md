@@ -128,4 +128,38 @@ Following the round 2 feedback, a second repair pass was conducted on **July 20,
 - **Render Verdict:** Contact sheet views `neutral_close` and `zoom_out` were rendered and visually evaluated. 
   - **Verdict:** **PASSED**. At close distance, the X-bracing, double-box gussets, and thick pipes present an intricate, heavy-duty industrial aesthetic. At zoom-out distance (the critical player perspective), the gate reads exceptionally clearly as a massive, solid engineered ring structure, completely eliminating the previous "thin wireframe" look.
 
+## REPAIR PASS 3 (TASTE FIX ROUND)
+
+### Overview of Changes
+Following `reports/K-TASTE-REVIEW.md` item b.2 feedback regarding container stack silhouette similarity, a taste-fix pass was executed on **July 20, 2026** targeting `tools/foundry/scenerygen/scenerygen.py` to differentiate the three container stack variants by outline rather than surface details alone.
+
+### 1. scenery_container_stack_v01 (Corporate Locked Stack) — DISCIPLINED BASELINE
+- Maintained as the disciplined, aligned rectangular grid baseline (symmetric 2-on-bottom, 1-on-top-center stack with locking clamps and seal frames).
+
+### 2. scenery_container_stack_v02 (Port Mixed Stack) — TOPPLED 15° -> ACCEPTED
+- **Toppled Container:** Top container (`2.0m x 4.6m x 2.0m`) toppled 15.0° (`Euler((15.0°, -4.0°, 5.0°))`) against the stack, creating an angled top profile that breaks the rectangular bounding silhouette.
+- **Ratchet Strap Geometry:** Updated ratchet strap paths to wrap over the 15° tilted container top and anchor securely into the base container corners with added tensioner hardware blocks (`KitMat_Rubber` / `KitMat_Steel`).
+
+### 3. scenery_container_stack_v03 (Scavenge Stack) — CANTILEVER 35% ON SKID PLATE -> ACCEPTED
+- **Cantilever Overhang:** Top cut-open container (`1.8m x 4.2m x 1.8m`) cantilevered 35% (1.4 m overhang) past the lower stack edge (`center = Vector((1.15, 0.1, 2.7))`), creating a strong lateral asymmetry.
+- **Skid Plate Deck:** Built a heavy steel skid plate deck (`1.9m x 4.0m x 0.12m`) with dual channel runners underneath the cantilevered unit (`KitMat_Steel`) supporting the overhang.
+
+### Verification & Render Verdict
+- **Validation Suite:**
+  ```powershell
+  & "C:\Program Files\Blender Foundation\Blender 5.1\blender.exe" -b --factory-startup -P tools/foundry/scenerygen/check_scenery.py
+  ```
+  *Exit code:* 0 (`SCENERY_CHECK_OK` printed, all silhouette variety checks and manifest validations passed).
+- **Render Verification:**
+  ```powershell
+  python tools/foundry/render_contact_sheet.py --glb assets/ships/foundry/fleet_breadth_20260720/scenery/scenery_container_stack_v01.glb --glb assets/ships/foundry/fleet_breadth_20260720/scenery/scenery_container_stack_v02.glb --glb assets/ships/foundry/fleet_breadth_20260720/scenery/scenery_container_stack_v03.glb --out assets/ships/parts/revamp-evidence/fleet_breadth_foundry/renders/scenery --views neutral_close --fast
+  ```
+  *Exit code:* 0.
+- **Visual Inspection:** Inspected rendered `neutral_close` thumbnails for all three variants.
+  - **v01:** Disciplined, clean, symmetric rectangle.
+  - **v02:** Distinct 15° angled top slope with binding ratchet straps.
+  - **v03:** Asymmetric lateral overhang extending 35% past stack edge on steel skid plate.
+  - **Verdict:** **PASSED**. The three variants are clearly distinguishable at 64 px thumbnail size by outline alone.
+
+
 

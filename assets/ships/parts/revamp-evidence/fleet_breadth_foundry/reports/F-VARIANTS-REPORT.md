@@ -265,4 +265,99 @@ cleanly, `check_variants.py` exits 0 with `VARIANTS_CHECK_OK`,
 `variants_manifest.json` is complete (8 variants + determinism block, pass
 flag `true`), and this report exists. The lead's vision review may identify
 repairs; the build scripts are parameter-tweakable (every treatment function
-takes `(mn, mx, r, kit, surf)` and is a pure function of its seed).
+takes `(mn, mx, r, kit, surf, seed)` and is a pure function of its seed).
+
+---
+
+## PART 3 — Taste-fix round: rig-variant thin members (K-TASTE-REVIEW b.3)
+
+The lead's taste review (K-TASTE-REVIEW §b.3) flagged that both rig variants
+hang identity partly on thin spar members near the distance-vanishing
+threshold: reaver grapple spars and corsair blade supports. The fix is scoped
+to `tools/foundry/variants/build_rig_variants.py` only — thicken the
+load-bearing spar/support cross-sections to ≥0.35 m, seat a kitgen
+`bracket_gusset` at each spar root, and keep TIP hardware thin so the taper
+reads as intent. Silhouettes are otherwise unchanged (spar lengths, sweep,
+yaw, height, and every non-spar member are untouched). Span / cannon / wasp
+scripts were not modified.
+
+### Interpretation of "≥0.35 m cross-section"
+
+For a cylindrical spar the cross-section is its diameter; for the blade
+fairing (a tapered box) the cross-section is its Y thickness. "Load-bearing
+spar/support members" = the named thin members (reaver grapple arms, corsair
+blade root/body). TIP hardware = reaver claw fingers and blade tips.
+
+### Changes to `tools/foundry/variants/build_rig_variants.py`
+
+1. **Reaver grapple arms** (`_reavor`): tube radius `0.08 → 0.20`
+   (`SPAR_ROOT_RADIUS_M`), giving a **0.40 m** load-bearing cross-section
+   (was 0.16 m). The three claw fingers per arm stay at radius `0.04`
+   (TIP hardware — taper reads as intent).
+2. **Corsair blade supports** (`_corsair`): blade root Y thickness
+   `0.40 → 0.50` (`BLADE_ROOT_Y_M`) and Y taper `0.60 → 0.68`
+   (`BLADE_TAPER`). Root cross-section is now **0.50 m**; the tip stays at
+   ~0.16 m so the sweep still reads as a tapering fairing, not a uniform
+   bar. Blade length / height / sweep / yaw are unchanged.
+3. **Spar-root gussets** (new helper `_spar_root_gusset`): a kitgen
+   `bracket_gusset` V01 (right-triangular plate, `tools/foundry/kitgen/kitgen.py`)
+   is seated at each spar root as a vertical reinforcement whose legs run
+   along the spar azimuth and +Z, with its thickness centred on the spar's
+   vertical plane. The gusset is renamed `VAR_<tag>_spar_gusset_<id>` and
+   re-assigned `KitMat_Steel` so the check's naming/material rules hold.
+   - Reaver: 2 gussets (port + stbd grapple-arm roots).
+   - Corsair: 4 gussets (blade 0..3 roots).
+4. **Seed plumbing**: `build_treatment` now forwards `seed` into each
+   treatment; gusset seeds are derived as `seed + 1000*(idx+1)` so they are
+   deterministic and do **not** consume from the treatment RNG `r` (existing
+   geometry is left byte-identical).
+5. **Material-restore before export**: kitgen's `bracket_gusset` path calls
+   `ensure_materials()`, which resets the four shared `KitMat` BSDFs to
+   kitgen's spec (`KitMat_Emissive` base colour differs from
+   `variant_common`'s). `build_variant` re-runs `vc.ensure_all_kitmats()`
+   after the treatment so the exported GLB carries `variant_common`'s
+   canonical material values — the only change vs HEAD is spar geometry +
+   gussets, not material values.
+
+### Commands run (headless, exit 0)
+
+```
+blender -b --factory-startup -P tools/foundry/variants/check_variants.py
+  -> VARIANTS_CHECK_OK
+```
+Run four times across the iteration; `VARIANTS_CHECK_OK` every time.
+
+### Manifest delta (rig variants only)
+
+| variant | tris (was → now) | cap | added tris | Y growth | Z growth | added objs (was → now) | det verts |
+|---|---|---|---|---|---|---|---|
+| reaver_hook  | 11130 → 11406 | 14422 | +276 | 11.478 % (was 9.344) | 22.374 % | 27 → 29 | 613 |
+| corsair_blade | 11634 → 12174 | 14422 | +540 | 14.993 % (was 14.983) | 8.030 % | 19 → 23 | 992 |
+
+Both well inside the wholeship cap (donor+40 % = 14422) and the ±2 % X /
++25 % Y/Z preservation rules. New `VAR_*` objects: `VAR_REAVOR_spar_gusset_{port,stbd}`,
+`VAR_CORSAIR_spar_gusset_{0..3}`.
+
+### Determinism evidence
+
+The check's determinism gate rebuilds each variant's VAR_* additions twice
+(fresh donor import + raycast each time) and compares vertex hashes — green.
+Cross-process re-checks (separate `blender -b` invocations) return identical
+VAR_* vertex hashes for both rig variants (`2ca851a9…` reaver, `e83610b9…`
+corsair), confirming the gusset placement + thickening are a pure function of
+(treatment, seed, donor bbox). I cannot see renders; the lead reviews after.
+
+### Self-identified defect (pre-existing, out of Lane-F-rig scope)
+
+The full-GLB SHA-256 **drifts run-to-run** at the byte level for several
+variants even though their VAR_* vertex hashes are stable — e.g.
+`var_weapon_pulse_cannon_military_v01.glb` drifted across two consecutive
+`check_variants` runs though `build_cannon_variants.py` is unmodified vs HEAD.
+This is a pre-existing glTF-export serialization artifact in the shared
+pipeline (the gate correctly hashes VAR_* geometry, not full GLB bytes).
+Consequence: re-running the mandatory `check_variants.py` rebuilds all 8
+GLBs, and the non-rig GLBs' on-disk bytes / manifest SHAs can differ from
+HEAD by export drift even though their **code and geometry are unchanged**.
+The rig GLBs are the only variants with a real content change (spar geometry
++ gussets). Flagged for the shared-pipeline owner; not patched here because
+`variant_common.py` / `check_variants.py` are out of this task's scope.

@@ -136,11 +136,11 @@
       "family": "container_stack",
       "variant": 2,
       "seed": 12648430,
-      "tris": 208,
+      "tris": 296,
       "dims_m": [
-        4.78822,
+        4.79636,
         5.4,
-        4.17902
+        4.83434
       ],
       "materials": [
         "KitMat_Paint",
@@ -148,13 +148,13 @@
         "KitMat_Steel"
       ],
       "glb": "scenery_container_stack_v02.glb",
-      "sha256": "796c82b064f0d5ca95ee70696a9275834be79a2f209d40a104053f50bfe80b4f"
+      "sha256": "8807a04beb8b327df6cf1fbba88259054dbfa76e19f85bda501bc67005cc93aa"
     },
     {
       "family": "container_stack",
       "variant": 3,
       "seed": 12648430,
-      "tris": 58,
+      "tris": 94,
       "dims_m": [
         4.90045,
         4.74605,
@@ -165,7 +165,7 @@
         "KitMat_Steel"
       ],
       "glb": "scenery_container_stack_v03.glb",
-      "sha256": "a01f969e27c5e912cc3611deb14df261ddf20787c462b5cbb704da5aa46d61da"
+      "sha256": "4c6755d163c06d9cde23979222a7f1ce5d6c9ecb7864bccc95f0f023b427169b"
     },
     {
       "family": "gate_ring",

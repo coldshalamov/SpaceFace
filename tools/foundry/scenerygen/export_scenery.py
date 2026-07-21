@@ -94,7 +94,7 @@ def main():
     families = scenerygen.list_families()
     props_meta = []
     
-    affected = {("gate_ring", 2), ("claim_hopper", 1)}
+    affected = {("gate_ring", 2), ("claim_hopper", 1), ("container_stack", 2), ("container_stack", 3)}
     
     for family in families:
         variants_count = scenerygen.variant_count(family)

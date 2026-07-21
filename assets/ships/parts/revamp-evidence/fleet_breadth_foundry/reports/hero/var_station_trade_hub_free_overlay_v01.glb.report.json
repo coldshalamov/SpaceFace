@@ -1,19 +1,19 @@
 {
   "bbox": {
     "dims": [
-      127.2355,
-      25.3337,
-      136.5019
+      133.1466,
+      25.1569,
+      132.1893
     ],
     "max": [
-      59.4529,
-      40.5802,
-      77.5183
+      65.4314,
+      39.6919,
+      72.6036
     ],
     "min": [
-      -67.7825,
-      15.2465,
-      -58.9836
+      -67.7152,
+      14.535,
+      -59.5856
     ]
   },
   "drawGroups": {
@@ -23,7 +23,15 @@
         "primitives": 1
       },
       {
+        "name": "VAR_FREE_pod00_collar",
+        "primitives": 1
+      },
+      {
         "name": "VAR_FREE_pod01",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod01_collar",
         "primitives": 1
       },
       {
@@ -31,7 +39,15 @@
         "primitives": 1
       },
       {
+        "name": "VAR_FREE_pod02_collar",
+        "primitives": 1
+      },
+      {
         "name": "VAR_FREE_pod03",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod03_collar",
         "primitives": 1
       },
       {
@@ -39,7 +55,15 @@
         "primitives": 1
       },
       {
+        "name": "VAR_FREE_pod04_collar",
+        "primitives": 1
+      },
+      {
         "name": "VAR_FREE_pod05",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod05_collar",
         "primitives": 1
       },
       {
@@ -47,7 +71,15 @@
         "primitives": 1
       },
       {
+        "name": "VAR_FREE_pod06_collar",
+        "primitives": 1
+      },
+      {
         "name": "VAR_FREE_pod07",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod07_collar",
         "primitives": 1
       },
       {
@@ -55,7 +87,15 @@
         "primitives": 1
       },
       {
+        "name": "VAR_FREE_pod08_collar",
+        "primitives": 1
+      },
+      {
         "name": "VAR_FREE_pod09",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod09_collar",
         "primitives": 1
       },
       {
@@ -63,7 +103,15 @@
         "primitives": 1
       },
       {
+        "name": "VAR_FREE_pod10_collar",
+        "primitives": 1
+      },
+      {
         "name": "VAR_FREE_pod11",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod11_collar",
         "primitives": 1
       },
       {
@@ -127,7 +175,7 @@
         "primitives": 1
       },
       {
-        "name": "VAR_FREE_truss04",
+        "name": "VAR_FREE_truss05",
         "primitives": 1
       },
       {
@@ -139,6 +187,10 @@
         "primitives": 1
       },
       {
+        "name": "VAR_FREE_truss08",
+        "primitives": 1
+      },
+      {
         "name": "VAR_FREE_truss09",
         "primitives": 1
       },
@@ -147,12 +199,12 @@
         "primitives": 1
       }
     ],
-    "primitiveCount": 32
+    "primitiveCount": 45
   },
   "extensionsUsed": [],
   "file": "var_station_trade_hub_free_overlay_v01.glb",
   "geometry": {
-    "primitives": 32,
+    "primitives": 45,
     "tangentPrimitives": 0,
     "tangentsPresent": false,
     "uvSets": []
@@ -160,23 +212,35 @@
   "materials": {
     "count": 2,
     "usage": {
-      "KitMat_Paint": 7,
-      "KitMat_Steel": 25
+      "KitMat_Paint": 5,
+      "KitMat_Steel": 40
     }
   },
   "nodeNames": [
     "VAR_FREE_pod00",
+    "VAR_FREE_pod00_collar",
     "VAR_FREE_pod01",
+    "VAR_FREE_pod01_collar",
     "VAR_FREE_pod02",
+    "VAR_FREE_pod02_collar",
     "VAR_FREE_pod03",
+    "VAR_FREE_pod03_collar",
     "VAR_FREE_pod04",
+    "VAR_FREE_pod04_collar",
     "VAR_FREE_pod05",
+    "VAR_FREE_pod05_collar",
     "VAR_FREE_pod06",
+    "VAR_FREE_pod06_collar",
     "VAR_FREE_pod07",
+    "VAR_FREE_pod07_collar",
     "VAR_FREE_pod08",
+    "VAR_FREE_pod08_collar",
     "VAR_FREE_pod09",
+    "VAR_FREE_pod09_collar",
     "VAR_FREE_pod10",
+    "VAR_FREE_pod10_collar",
     "VAR_FREE_pod11",
+    "VAR_FREE_pod11_collar",
     "VAR_FREE_skirtX0",
     "VAR_FREE_skirtX1",
     "VAR_FREE_skirtX2",
@@ -192,19 +256,20 @@
     "VAR_FREE_truss01",
     "VAR_FREE_truss02",
     "VAR_FREE_truss03",
-    "VAR_FREE_truss04",
+    "VAR_FREE_truss05",
     "VAR_FREE_truss06",
     "VAR_FREE_truss07",
+    "VAR_FREE_truss08",
     "VAR_FREE_truss09",
     "VAR_FREE_truss10"
   ],
   "textures": [],
   "transforms": {
-    "nodeCount": 32,
+    "nodeCount": 45,
     "nonAppliedCount": 0,
     "nonAppliedNodes": []
   },
-  "tris": 1752,
+  "tris": 3024,
   "verdict": {
     "budget": 12000,
     "class": "variant",

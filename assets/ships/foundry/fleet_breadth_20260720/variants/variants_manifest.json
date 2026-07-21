@@ -1,12 +1,12 @@
 {
   "determinism": {
     "var_ashline_rig_corsair_blade_v01": {
-      "vertexCount": 716,
-      "vertexHash": "fe499ac3466343216a4a77786e7b9be354be7a508f085eb20f0a47f919f3e35b"
+      "vertexCount": 992,
+      "vertexHash": "f6b30d07cc850a592e1c516c9fab98d8f64a98c35266d3e10c8df5864415ea98"
     },
     "var_ashline_rig_reaver_hook_v01": {
-      "vertexCount": 471,
-      "vertexHash": "0289fc81e7115d5796e26cd753a2006aa9a3169b45561f39f9abfaa8efdcd5ca"
+      "vertexCount": 613,
+      "vertexHash": "2ca851a97564753cfddd68a7bc88e485a034a59231ef83d804304bc6430797b4"
     },
     "var_helios_span_dmc_orebox_v01": {
       "vertexCount": 2512,
@@ -386,7 +386,7 @@
       ],
       "preserved_empties": 10,
       "seed": 72103,
-      "sha256": "104da92e30d3e7b176d387d424060c44f671345efad00c8a400743c3987bc8b9",
+      "sha256": "9b9ed789935b5d171bda8b37ad99a3e3d0211375e592a0aa04af25e889e8fd9a",
       "stem": "var_helios_span_reach_scrap_v01",
       "treatment": "REACH",
       "tris_added": 2296,
@@ -412,7 +412,7 @@
       }
     },
     {
-      "added_object_count": 27,
+      "added_object_count": 29,
       "added_objects": [
         "VAR_REAVOR_crane_chain",
         "VAR_REAVOR_crane_jib",
@@ -440,7 +440,9 @@
         "VAR_REAVOR_prowscar_0_2",
         "VAR_REAVOR_prowscar_1_0",
         "VAR_REAVOR_prowscar_1_1",
-        "VAR_REAVOR_prowscar_1_2"
+        "VAR_REAVOR_prowscar_1_2",
+        "VAR_REAVOR_spar_gusset_port",
+        "VAR_REAVOR_spar_gusset_stbd"
       ],
       "bbox_dims_donor": [
         17.715,
@@ -449,7 +451,7 @@
       ],
       "bbox_dims_variant": [
         17.715,
-        5.4524,
+        5.5588,
         7.3057
       ],
       "donor": "assets/ships/parts/wholeships/ashline_rig.glb",
@@ -467,15 +469,15 @@
       ],
       "preserved_empties": 11,
       "seed": 72201,
-      "sha256": "1e477b25bb3fb2376cd654978686cedce342ae4d36dfcb3659fdce3472cee295",
+      "sha256": "b9dfbf24667b64a9cf46a352cd250e2bf8df083b5e6b6fb75d1146290f4c2a22",
       "stem": "var_ashline_rig_reaver_hook_v01",
       "treatment": "REAVOR",
-      "tris_added": 828,
+      "tris_added": 1104,
       "tris_cap": 14422,
       "tris_donor": 10302,
-      "tris_variant": 11130,
+      "tris_variant": 11406,
       "xlen_growth_pct": 0.0,
-      "ylen_growth_pct": 9.344,
+      "ylen_growth_pct": 11.478,
       "zlen_growth_pct": 22.374,
       "zone_coverage": {
         "aft": {
@@ -484,16 +486,16 @@
         },
         "fore": {
           "count": 12,
-          "fraction": 0.6005
+          "fraction": 0.5896
         },
         "mid": {
-          "count": 15,
-          "fraction": 0.3995
+          "count": 17,
+          "fraction": 0.4104
         }
       }
     },
     {
-      "added_object_count": 19,
+      "added_object_count": 23,
       "added_objects": [
         "VAR_CORSAIR_blade0",
         "VAR_CORSAIR_blade1",
@@ -506,6 +508,10 @@
         "VAR_CORSAIR_ramlip_main",
         "VAR_CORSAIR_ramscar_n",
         "VAR_CORSAIR_ramscar_p",
+        "VAR_CORSAIR_spar_gusset_0",
+        "VAR_CORSAIR_spar_gusset_1",
+        "VAR_CORSAIR_spar_gusset_2",
+        "VAR_CORSAIR_spar_gusset_3",
         "VAR_CORSAIR_wcollar_strut_n_0",
         "VAR_CORSAIR_wcollar_strut_n_1",
         "VAR_CORSAIR_wcollar_strut_n_2",
@@ -522,7 +528,7 @@
       ],
       "bbox_dims_variant": [
         17.8167,
-        5.7336,
+        5.734,
         6.4494
       ],
       "donor": "assets/ships/parts/wholeships/ashline_rig.glb",
@@ -540,15 +546,15 @@
       ],
       "preserved_empties": 11,
       "seed": 72202,
-      "sha256": "76857cd63c98e1bae325f6b8e8431a1d4a980a99f40faf6ad86fee8854b25b81",
+      "sha256": "a795045a0b307614bfdbea7d623c73dca71c596317902cefa744297123996dae",
       "stem": "var_ashline_rig_corsair_blade_v01",
       "treatment": "CORSAIR",
-      "tris_added": 1332,
+      "tris_added": 1872,
       "tris_cap": 14422,
       "tris_donor": 10302,
-      "tris_variant": 11634,
+      "tris_variant": 12174,
       "xlen_growth_pct": 0.574,
-      "ylen_growth_pct": 14.983,
+      "ylen_growth_pct": 14.993,
       "zlen_growth_pct": 8.03,
       "zone_coverage": {
         "aft": {
@@ -556,12 +562,12 @@
           "fraction": 0.0
         },
         "fore": {
-          "count": 15,
-          "fraction": 0.6772
+          "count": 16,
+          "fraction": 0.6738
         },
         "mid": {
-          "count": 4,
-          "fraction": 0.3228
+          "count": 7,
+          "fraction": 0.3262
         }
       }
     },
@@ -607,7 +613,7 @@
       ],
       "preserved_empties": 20,
       "seed": 72301,
-      "sha256": "65e17d3a2823f993866a23a57aa8971784282ed3ce0424cf363bfc9e3367a8c2",
+      "sha256": "9d252e1fde8f02d5a14e71226d18a749ce5d7745f155f47b5631e18f89d0a37e",
       "stem": "var_weapon_pulse_cannon_military_v01",
       "treatment": "SCN",
       "tris_added": 368,
@@ -749,7 +755,7 @@
       ],
       "preserved_empties": 20,
       "seed": 72303,
-      "sha256": "91cd24cd9a8ae9f1ec0c4e644b40d9e470e8603f955c1809294043829c226521",
+      "sha256": "ab94034b6097ea8a7db3f1d657cb2f115ac29fe4535720c6c2d8778c3fa7195f",
       "stem": "var_weapon_pulse_cannon_pirate_v01",
       "treatment": "REACH",
       "tris_added": 388,

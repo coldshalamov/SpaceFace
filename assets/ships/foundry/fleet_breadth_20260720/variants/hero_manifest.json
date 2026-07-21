@@ -1,8 +1,8 @@
 {
   "determinism": {
     "hub_free": {
-      "vertexCount": 988,
-      "vertexHash": "8f1c098c6b9711b4022de3bdc4549debbc55fdfd833750a87aea1ae4e5b88e60"
+      "vertexCount": 1632,
+      "vertexHash": "13289514e3f11ed6e41a2d726f1afa91ef98816cffc9d2cf14c7c0a8435827d8"
     },
     "hub_mts": {
       "vertexCount": 2632,
@@ -30,14 +30,14 @@
       "anchorFrame": "donor-origin",
       "attachNotes": "Scavenged habitat pods bolted at random over the roof and rim; junk truss splices bridge them; mismatched panel skirts hang off the -X and -Y edges. Kit pass: pod collars, truss gussets, skirt rivet rows.",
       "bbox_max": [
-        59.453,
-        58.984,
-        40.58
+        65.431,
+        59.586,
+        39.692
       ],
       "bbox_min": [
-        -67.783,
-        -77.518,
-        15.247
+        -67.715,
+        -72.604,
+        14.535
       ],
       "donor": "assets/ships/parts/places/place_station_trade_hub.glb",
       "intendedFaction": "faction_free",
@@ -47,17 +47,29 @@
       ],
       "objects": [
         "VAR_FREE_pod00",
+        "VAR_FREE_pod00_collar",
         "VAR_FREE_pod01",
+        "VAR_FREE_pod01_collar",
         "VAR_FREE_pod02",
+        "VAR_FREE_pod02_collar",
         "VAR_FREE_pod03",
+        "VAR_FREE_pod03_collar",
         "VAR_FREE_pod04",
+        "VAR_FREE_pod04_collar",
         "VAR_FREE_pod05",
+        "VAR_FREE_pod05_collar",
         "VAR_FREE_pod06",
+        "VAR_FREE_pod06_collar",
         "VAR_FREE_pod07",
+        "VAR_FREE_pod07_collar",
         "VAR_FREE_pod08",
+        "VAR_FREE_pod08_collar",
         "VAR_FREE_pod09",
+        "VAR_FREE_pod09_collar",
         "VAR_FREE_pod10",
+        "VAR_FREE_pod10_collar",
         "VAR_FREE_pod11",
+        "VAR_FREE_pod11_collar",
         "VAR_FREE_skirtX0",
         "VAR_FREE_skirtX1",
         "VAR_FREE_skirtX2",
@@ -73,16 +85,17 @@
         "VAR_FREE_truss01",
         "VAR_FREE_truss02",
         "VAR_FREE_truss03",
-        "VAR_FREE_truss04",
+        "VAR_FREE_truss05",
         "VAR_FREE_truss06",
         "VAR_FREE_truss07",
+        "VAR_FREE_truss08",
         "VAR_FREE_truss09",
         "VAR_FREE_truss10"
       ],
       "seed": 81033,
-      "sha256": "e8b23270f8f528e71278b5757b15241879534b56bc33ec4514feb65f139c7fbc",
+      "sha256": "bb260bce57769dc27797b4bde3e3bb1d424ce5a35feecbcce3b4838ea2ff0b45",
       "treatment": "FREE",
-      "tris": 1752,
+      "tris": 3024,
       "tris_cap": 12000
     },
     "mts": {

@@ -1,17 +1,17 @@
 {
   "center": [
     0.7334,
-    0.3089,
+    0.3087,
     1.1247
   ],
   "extents": [
     17.8167,
-    5.7221,
+    5.7226,
     6.4494
   ],
   "fov_deg": 50.0,
   "glb": "var_ashline_rig_corsair_blade_v01.glb",
-  "mesh_count": 29,
+  "mesh_count": 33,
   "resolution": 384,
   "samples": 24,
   "study_az_deg": 128.0,
@@ -19,11 +19,6 @@
   "tilt_deg": 60.0,
   "view_transform": "Filmic",
   "views": [
-    {
-      "ok": true,
-      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\variants\\var_ashline_rig_corsair_blade_v01\\game_cam.png",
-      "view": "game_cam"
-    },
     {
       "ok": true,
       "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\variants\\var_ashline_rig_corsair_blade_v01\\neutral_close.png",
