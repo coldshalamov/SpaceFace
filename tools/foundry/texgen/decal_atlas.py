@@ -207,34 +207,34 @@ def draw_text(draw, text, x_start, y_start, scale=0.4, spacing=4, stroke_width=8
 def pack_rects(rects, bin_width, gutter=8):
     # Sort rects by height descending, then by width descending, then by name for determinism
     sorted_rects = sorted(rects, key=lambda r: (-r[2], -r[1], r[0]))
-    
+
     packed = {}
     current_x = gutter
     current_y = gutter
     row_height = 0
-    
+
     for name, w, h in sorted_rects:
         if current_x + w + gutter > bin_width:
             current_x = gutter
             current_y += row_height + gutter
             row_height = 0
-        
+
         packed[name] = (current_x, current_y, w, h)
         current_x += w + gutter
         row_height = max(row_height, h)
-        
+
     return packed
 
 def generate_decal_atlas(output_dir, seed=42):
     rng = random.Random(seed)
-    
+
     # Define sizes of all decals
     decals_to_pack = []
-    
+
     # 36 alphanumeric characters
     for char in CHARACTER_PATHS.keys():
         decals_to_pack.append((f"char_{char}", 64, 96))
-        
+
     # Warnings group
     decals_to_pack.append(("warn_chevron_strip", 512, 64))
     decals_to_pack.append(("warn_stripe_block", 256, 256))
@@ -242,7 +242,7 @@ def generate_decal_atlas(output_dir, seed=42):
     decals_to_pack.append(("warn_intake_triangle", 128, 128))
     decals_to_pack.append(("warn_radiation_trefoil", 128, 128))
     decals_to_pack.append(("warn_high_voltage_bolt", 64, 128))
-    
+
     # Service group
     decals_to_pack.append(("serv_fuel_port_ring", 256, 256))
     decals_to_pack.append(("serv_umbilical_socket", 128, 128))
@@ -253,12 +253,12 @@ def generate_decal_atlas(output_dir, seed=42):
     decals_to_pack.append(("serv_lift_here_right", 64, 64))
     decals_to_pack.append(("serv_inspection_tag", 256, 128))
     decals_to_pack.append(("serv_panel_labelframe", 256, 128))
-    
+
     # Factions (8)
     factions = ["scn", "mts", "dmc", "reach", "quiet", "vael", "free", "choir"]
     for f in factions:
         decals_to_pack.append((f"fac_{f}", 128, 128))
-        
+
     # Wear group
     decals_to_pack.append(("wear_kill_tally", 128, 64))
     decals_to_pack.append(("wear_patch_outline", 128, 128))
@@ -267,14 +267,14 @@ def generate_decal_atlas(output_dir, seed=42):
     decals_to_pack.append(("wear_chips_stamp1", 128, 128))
     decals_to_pack.append(("wear_chips_stamp2", 128, 128))
     decals_to_pack.append(("wear_chips_stamp3", 128, 128))
-    
+
     # Perform packing
     packed = pack_rects(decals_to_pack, 2048, gutter=8)
-    
+
     # Create output image
     atlas_img = Image.new("RGBA", (2048, 2048), (255, 255, 255, 0))
     draw = ImageDraw.Draw(atlas_img)
-    
+
     # Render each item
     for name, (x, y, w, h) in packed.items():
         # Alphanumeric characters
@@ -283,7 +283,7 @@ def generate_decal_atlas(output_dir, seed=42):
             # Center the character (width 60, height 90) in 64x96 cell
             offset = (x + (64 - 60) // 2, y + (96 - 90) // 2)
             draw_stencil_glyph(draw, CHARACTER_PATHS[char], offset, stroke_width=8, scale=1.0)
-            
+
         elif name == "warn_chevron_strip":
             # Strip size 512x64. Chevrons pointing right.
             for cx in range(x + 32, x + 512, 64):
@@ -291,14 +291,14 @@ def generate_decal_atlas(output_dir, seed=42):
                     (cx - 20, y), (cx + 10, y), (cx + 42, y + 32),
                     (cx + 10, y + 64), (cx - 20, y + 64), (cx + 12, y + 32)
                 ], fill=(255, 255, 255, 255))
-                
+
         elif name == "warn_stripe_block":
             # 45 degree stripes in a 256x256 block.
             # Mask to local bounding box to ensure neat edges
             mask_img = Image.new("L", (2048, 2048), 0)
             mask_draw = ImageDraw.Draw(mask_img)
             mask_draw.rectangle([x, y, x + w - 1, y + h - 1], fill=255)
-            
+
             stripe_img = Image.new("RGBA", (2048, 2048), (255, 255, 255, 0))
             stripe_draw = ImageDraw.Draw(stripe_img)
             for i in range(-5, 10):
@@ -306,9 +306,9 @@ def generate_decal_atlas(output_dir, seed=42):
                 stripe_draw.polygon([
                     (xs, y), (xs + 32, y), (xs + 32 + 256, y + 256), (xs + 256, y + 256)
                 ], fill=(255, 255, 255, 255))
-            
+
             atlas_img.paste(stripe_img, mask=mask_img)
-            
+
         elif name == "warn_no_step_frame":
             # NO-STEP frame: 256x128. Corner brackets and text inside
             draw.line([(x + 15, y + 30), (x + 15, y + 15), (x + 30, y + 15)], fill=(255, 255, 255, 255), width=4)
@@ -316,19 +316,19 @@ def generate_decal_atlas(output_dir, seed=42):
             draw.line([(x + 15, y + 98), (x + 15, y + 113), (x + 30, y + 113)], fill=(255, 255, 255, 255), width=4)
             draw.line([(x + 241, y + 98), (x + 241, y + 113), (x + 226, y + 113)], fill=(255, 255, 255, 255), width=4)
             draw_text(draw, "NO STEP", x + 32, y + 46, scale=0.4, spacing=4, stroke_width=8)
-            
+
         elif name == "warn_intake_triangle":
             # Triangle pointing down in 128x128
             draw.polygon([(x + 10, y + 15), (x + 118, y + 15), (x + 64, y + 113)], outline=(255, 255, 255, 255), width=8)
             # Exclamation mark inside
             draw.line([(x + 64, y + 35), (x + 64, y + 75)], fill=(255, 255, 255, 255), width=8)
             draw.ellipse([(x + 64 - 4, y + 88 - 4), (x + 64 + 4, y + 88 + 4)], fill=(255, 255, 255, 255))
-            
+
         elif name == "warn_radiation_trefoil":
             # Radiation symbol in 128x128
             cx, cy = x + 64, y + 64
             draw.ellipse([(cx - 10, cy - 10), (cx + 10, cy + 10)], fill=(255, 255, 255, 255))
-            
+
             def draw_radiation_blade(draw_obj, center, r_inner, r_outer, start_angle, end_angle):
                 bx, by = center
                 pts = []
@@ -339,18 +339,18 @@ def generate_decal_atlas(output_dir, seed=42):
                     rad = math.radians(deg)
                     pts.append((bx + r_inner * math.cos(rad), by + r_inner * math.sin(rad)))
                 draw_obj.polygon(pts, fill=(255, 255, 255, 255))
-                
+
             draw_radiation_blade(draw, (cx, cy), 18, 48, 60, 120)
             draw_radiation_blade(draw, (cx, cy), 18, 48, 180, 240)
             draw_radiation_blade(draw, (cx, cy), 18, 48, 300, 360)
-            
+
         elif name == "warn_high_voltage_bolt":
             # Lightning bolt in 64x128
             draw.polygon([
                 (x + 36, y + 16), (x + 16, y + 68), (x + 32, y + 68),
                 (x + 24, y + 112), (x + 48, y + 56), (x + 32, y + 56)
             ], fill=(255, 255, 255, 255))
-            
+
         elif name == "serv_fuel_port_ring":
             # Fuel port ring label: 256x256
             cx, cy = x + 128, y + 128
@@ -362,7 +362,7 @@ def generate_decal_atlas(output_dir, seed=42):
             draw.line([(cx, cy - 80), (cx, cy - 95)], fill=(255, 255, 255, 255), width=4)
             # Text FUEL
             draw_text(draw, "FUEL", cx - 66, cy - 22, scale=0.5, spacing=4, stroke_width=8)
-            
+
         elif name == "serv_umbilical_socket":
             # 128x128. Chamfered outline and sockets inside
             draw.polygon([
@@ -378,7 +378,7 @@ def generate_decal_atlas(output_dir, seed=42):
             draw.ellipse([(cx + 12 - 4, cy + 8 - 4), (cx + 12 + 4, cy + 8 + 4)], fill=(255, 255, 255, 255))
             # Text UMB
             draw_text(draw, "UMB", x + 40, y + 98, scale=0.25, spacing=2, stroke_width=4)
-            
+
         elif name == "serv_tow_brackets":
             # Tow brackets: 128x128
             draw.line([(x + 16, y + 32), (x + 16, y + 16), (x + 32, y + 16)], fill=(255, 255, 255, 255), width=4)
@@ -389,31 +389,31 @@ def generate_decal_atlas(output_dir, seed=42):
             cx, cy = x + 64, y + 64
             draw.ellipse([(cx - 16, cy - 16), (cx + 16, cy + 16)], outline=(255, 255, 255, 255), width=4)
             draw_text(draw, "TOW", x + 40, y + 24, scale=0.25, spacing=2, stroke_width=4)
-            
+
         elif name == "serv_lift_here_up":
             # 64x64. Up arrow and LIFT
             draw.line([(x + 32, y + 48), (x + 32, y + 24)], fill=(255, 255, 255, 255), width=4)
             draw.line([(x + 20, y + 36), (x + 32, y + 20), (x + 44, y + 36)], fill=(255, 255, 255, 255), width=4)
             draw_text(draw, "LIFT", x + 8, y + 50, scale=0.2, spacing=2, stroke_width=4)
-            
+
         elif name == "serv_lift_here_down":
             # 64x64. Down arrow and LIFT
             draw.line([(x + 32, y + 16), (x + 32, y + 40)], fill=(255, 255, 255, 255), width=4)
             draw.line([(x + 20, y + 28), (x + 32, y + 44), (x + 44, y + 28)], fill=(255, 255, 255, 255), width=4)
             draw_text(draw, "LIFT", x + 8, y + 4, scale=0.2, spacing=2, stroke_width=4)
-            
+
         elif name == "serv_lift_here_left":
             # 64x64. Left arrow and LIFT
             draw.line([(x + 48, y + 32), (x + 24, y + 32)], fill=(255, 255, 255, 255), width=4)
             draw.line([(x + 36, y + 20), (x + 20, y + 32), (x + 36, y + 44)], fill=(255, 255, 255, 255), width=4)
             draw_text(draw, "LIFT", x + 8, y + 48, scale=0.2, spacing=2, stroke_width=4)
-            
+
         elif name == "serv_lift_here_right":
             # 64x64. Right arrow and LIFT
             draw.line([(x + 16, y + 32), (x + 40, y + 32)], fill=(255, 255, 255, 255), width=4)
             draw.line([(x + 28, y + 20), (x + 44, y + 32), (x + 28, y + 44)], fill=(255, 255, 255, 255), width=4)
             draw_text(draw, "LIFT", x + 8, y + 48, scale=0.2, spacing=2, stroke_width=4)
-            
+
         elif name == "serv_inspection_tag":
             # Tag: 256x128
             draw.rectangle([x + 10, y + 10, x + 246, y + 118], outline=(255, 255, 255, 255), width=4)
@@ -424,27 +424,27 @@ def generate_decal_atlas(output_dir, seed=42):
             draw.line([(x + 64, y + 100), (x + 230, y + 100)], fill=(255, 255, 255, 255), width=2)
             draw_text(draw, "DATE", x + 64, y + 60, scale=0.15, spacing=1, stroke_width=3)
             draw_text(draw, "SIGN", x + 64, y + 85, scale=0.15, spacing=1, stroke_width=3)
-            
+
         elif name == "serv_panel_labelframe":
             # Empty box with header band: 256x128
             draw.rectangle([x + 16, y + 16, x + 240, y + 112], outline=(255, 255, 255, 255), width=4)
             draw.line([(x + 16, y + 44), (x + 240, y + 44)], fill=(255, 255, 255, 255), width=4)
             draw_text(draw, "SEC ID", x + 24, y + 22, scale=0.2, spacing=2, stroke_width=4)
-            
+
         # Factions
         elif name == "fac_scn":
             # shield chevron over bar: 128x128
             draw.line([(x + 24, y + 32), (x + 64, y + 72), (x + 104, y + 32)], fill=(255, 255, 255, 255), width=8)
             draw.line([(x + 24, y + 48), (x + 64, y + 88), (x + 104, y + 48)], fill=(255, 255, 255, 255), width=8)
             draw.line([(x + 24, y + 104), (x + 104, y + 104)], fill=(255, 255, 255, 255), width=8)
-            
+
         elif name == "fac_mts":
             # three nested arcs (coin)
             cx, cy = x + 64, y + 64
             draw.arc([(cx-48, cy-48), (cx+48, cy+48)], 30, 330, fill=(255, 255, 255, 255), width=8)
             draw.arc([(cx-32, cy-32), (cx+32, cy+32)], 30, 330, fill=(255, 255, 255, 255), width=8)
             draw.arc([(cx-16, cy-16), (cx+16, cy+16)], 30, 330, fill=(255, 255, 255, 255), width=8)
-            
+
         elif name == "fac_dmc":
             # pick-and-gear hexagon
             draw.polygon([
@@ -453,19 +453,19 @@ def generate_decal_atlas(output_dir, seed=42):
             ], outline=(255, 255, 255, 255), width=6)
             draw.line([(x + 32, y + 44), (x + 64, y + 32), (x + 96, y + 44)], fill=(255, 255, 255, 255), width=8)
             draw.line([(x + 64, y + 32), (x + 64, y + 96)], fill=(255, 255, 255, 255), width=8)
-            
+
         elif name == "fac_reach":
             # jagged claw slash
             draw.line([(x + 24, y + 96), (x + 48, y + 64), (x + 40, y + 56), (x + 80, y + 24)], fill=(255, 255, 255, 255), width=6)
             draw.line([(x + 40, y + 104), (x + 64, y + 72), (x + 56, y + 64), (x + 96, y + 32)], fill=(255, 255, 255, 255), width=6)
             draw.line([(x + 56, y + 112), (x + 80, y + 80), (x + 72, y + 72), (x + 112, y + 40)], fill=(255, 255, 255, 255), width=6)
-            
+
         elif name == "fac_quiet":
             # broken circle (gap at top)
             cx, cy = x + 64, y + 64
             draw.arc([(cx-40, cy-40), (cx+40, cy+40)], 295, 245, fill=(255, 255, 255, 255), width=8)
             draw.ellipse([(cx - 8, cy - 8), (cx + 8, cy + 8)], fill=(255, 255, 255, 255))
-            
+
         elif name == "fac_vael":
             # three radiating curved spines
             for i in range(3):
@@ -476,12 +476,12 @@ def generate_decal_atlas(output_dir, seed=42):
                     dist = 15 + step * 12
                     pts.append((x + 64 + dist * math.cos(rad), y + 64 + dist * math.sin(rad)))
                 draw.line(pts, fill=(255, 255, 255, 255), width=8)
-                
+
         elif name == "fac_free":
             # open triangle with tail
             draw.line([(x + 24, y + 96), (x + 64, y + 24), (x + 104, y + 96)], fill=(255, 255, 255, 255), width=8)
             draw.line([(x + 64, y + 24), (x + 64, y + 112)], fill=(255, 255, 255, 255), width=8)
-            
+
         elif name == "fac_choir":
             # tall lancet arch with halo dot
             draw.line([
@@ -489,7 +489,7 @@ def generate_decal_atlas(output_dir, seed=42):
                 (x + 64, y + 24), (x + 88, y + 40), (x + 92, y + 56), (x + 92, y + 104)
             ], fill=(255, 255, 255, 255), width=8)
             draw.ellipse([(x + 64 - 6, y + 12 - 6), (x + 64 + 6, y + 12 + 6)], fill=(255, 255, 255, 255))
-            
+
         # Wear group
         elif name == "wear_kill_tally":
             # Tally marks: 4 vertical + 1 diagonal slash
@@ -498,7 +498,7 @@ def generate_decal_atlas(output_dir, seed=42):
             draw.line([(x + 64, y + 12), (x + 64, y + 52)], fill=(255, 255, 255, 255), width=6)
             draw.line([(x + 84, y + 12), (x + 84, y + 52)], fill=(255, 255, 255, 255), width=6)
             draw.line([(x + 16, y + 44), (x + 92, y + 20)], fill=(255, 255, 255, 255), width=6)
-            
+
         elif name == "wear_patch_outline":
             # Irregular pentagon outline with rivets
             pts = [(x + 24, y + 24), (x + 104, y + 16), (x + 112, y + 88), (x + 64, y + 112), (x + 16, y + 80)]
@@ -512,7 +512,7 @@ def generate_decal_atlas(output_dir, seed=42):
             ]
             for px, py in midpoints:
                 draw.ellipse([(px - 3, py - 3), (px + 3, py + 3)], fill=(255, 255, 255, 255))
-                
+
         elif name == "wear_weld_ring":
             # Bumpy hand-welded ring (radius ~80)
             cx, cy = x + 128, y + 128
@@ -522,7 +522,7 @@ def generate_decal_atlas(output_dir, seed=42):
                 r = 80 + 6 * math.sin(rad * 8) + 3 * math.sin(rad * 23) + rng.uniform(-2, 2)
                 pts.append((cx + r * math.cos(rad), cy + r * math.sin(rad)))
             draw.line(pts + [pts[0]], fill=(255, 255, 255, 255), width=10)
-            
+
         elif name == "wear_scorch_ring":
             # Scorch ring with soft alpha radial gradient
             scorch_img = Image.new("RGBA", (256, 256), (255, 255, 255, 0))
@@ -539,7 +539,7 @@ def generate_decal_atlas(output_dir, seed=42):
                     alpha = max(0, min(255, alpha))
                     pixels[sx, sy] = (255, 255, 255, alpha)
             atlas_img.paste(scorch_img, (x, y), mask=scorch_img)
-            
+
         elif name.startswith("wear_chips_stamp"):
             # Paint chips: irregular polygons near the center
             # Stamp 1: 3 large chips
@@ -547,7 +547,7 @@ def generate_decal_atlas(output_dir, seed=42):
             # Stamp 3: linear scrape of chips
             num_chips = 3 if "1" in name else (12 if "2" in name else 8)
             cx, cy = x + 64, y + 64
-            
+
             for _ in range(num_chips):
                 if "3" in name:
                     # Aligned along a diagonal scrape line
@@ -562,7 +562,7 @@ def generate_decal_atlas(output_dir, seed=42):
                     chx = cx + dist * math.cos(angle)
                     chy = cy + dist * math.sin(angle)
                     r = rng.uniform(8, 16) if "1" in name else rng.uniform(3, 7)
-                
+
                 num_verts = rng.randint(5, 8)
                 verts = []
                 for vi in range(num_verts):
@@ -573,12 +573,12 @@ def generate_decal_atlas(output_dir, seed=42):
 
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # Save PNG without timestamps/metadata deterministically
     png_path = os.path.join(output_dir, "decals_atlas.png")
     metadata = PngInfo()
     atlas_img.save(png_path, "PNG", pnginfo=metadata)
-    
+
     # Export JSON matching EXACTLY the format {name, x, y, w, h}
     # Wait, the prompt asks for decals_atlas.json documenting each decal
     json_path = os.path.join(output_dir, "decals_atlas.json")
@@ -587,7 +587,7 @@ def generate_decal_atlas(output_dir, seed=42):
     for name in sorted(packed.keys()):
         px, py, pw, ph = packed[name]
         json_data[name] = {"name": name, "x": px, "y": py, "w": pw, "h": ph}
-        
+
     with open(json_path, "w") as f:
         json.dump(json_data, f, indent=2, sort_keys=True)
 

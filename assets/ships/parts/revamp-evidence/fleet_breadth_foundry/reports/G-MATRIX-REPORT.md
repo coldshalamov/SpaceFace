@@ -1,9 +1,9 @@
 # Lane G — Fleet Composition Matrix Report
 
-**Lane:** G (matrix)  
-**Batch:** `fleet_breadth_20260720`  
-**Branch / worktree:** `codex/fleet-breadth-foundry-20260720` @ `C:\Users\93rob\sf-fleet-breadth`  
-**Schema:** `sf-foundry-composition/1`  
+**Lane:** G (matrix)
+**Batch:** `fleet_breadth_20260720`
+**Branch / worktree:** `codex/fleet-breadth-foundry-20260720` @ `C:\Users\93rob\sf-fleet-breadth`
+**Schema:** `sf-foundry-composition/1`
 **Live code modified:** none (read-only on `src/render/partsLibrary.js`, audit, foundry candidates)
 
 ---
@@ -60,11 +60,11 @@ No git write commands. No edits to live maps, release, or `parts_manifest.json`.
 
 **Roles covered**
 
-- Traffic: patrol, escort, hauler, courier, miner, express, smuggler, rescue, pirate  
-- Station security / lawful hostile: patrol_lawman, customs_cutter  
-- Hostile pool: reaver_pirate, corsair_raider, wasp_swarmer, bruiser_brawler, mine_layer_jackal, pd_screen_escort  
-- **Required gaps:** lancer_sniper, choir_zealot, quiet_ghost  
-- Landmark station: station_trade_hub (SCN/MTS/Free)  
+- Traffic: patrol, escort, hauler, courier, miner, express, smuggler, rescue, pirate
+- Station security / lawful hostile: patrol_lawman, customs_cutter
+- Hostile pool: reaver_pirate, corsair_raider, wasp_swarmer, bruiser_brawler, mine_layer_jackal, pd_screen_escort
+- **Required gaps:** lancer_sniper, choir_zealot, quiet_ghost
+- Landmark station: station_trade_hub (SCN/MTS/Free)
 - Cross-cutting modular gun: weapon_pulse_default (SCN/DMC/Reach)
 
 **Not invented as ready assets:** 14 entries in top-level `gaps[]` (cradle/lark faction bakes, DMC wasp, Vael organic kit, blackmarket overlays, dedicated lancer body, etc.). Cells that need those use **kit packs with arithmetic tris** from `kit_manifest.json` instead.
@@ -98,7 +98,7 @@ Example verified cell costs:
 | choir_zealot | kit pack sum | 3,998 |
 | trade hub MTS | hero hub overlay | 4,800 |
 
-**Textures:** 12 unique shared maps (atlas + trim×3 + masks×8).  
+**Textures:** 12 unique shared maps (atlas + trim×3 + masks×8).
 **Materials per cell:** 0 unique — shared `KitMat_*` + donor mats + tint.
 
 ---
@@ -113,11 +113,11 @@ Example verified cell costs:
 
 ## TOP 5 integration actions (still NOT done this batch)
 
-1. Faction-fork `ship_wasp` whole-ship for patrol/escort → SCN/MTS/Free vars  
-2. Faction-fork `WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler` → Span MTS/DMC/Reach vars  
-3. Trade-hub faction overlays on station place path  
-4. Split reaver/corsair maps + add lancer/choir/quiet hostile whole-map entries  
-5. Faction `weaponRecordFor` barrels + law interceptor kit on modular hornet  
+1. Faction-fork `ship_wasp` whole-ship for patrol/escort → SCN/MTS/Free vars
+2. Faction-fork `WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler` → Span MTS/DMC/Reach vars
+3. Trade-hub faction overlays on station place path
+4. Split reaver/corsair maps + add lancer/choir/quiet hostile whole-map entries
+5. Faction `weaponRecordFor` barrels + law interceptor kit on modular hornet
 
 Exact file+map text lives in JSON `top5IntegrationActions` and the MD section.
 
@@ -125,26 +125,26 @@ Exact file+map text lives in JSON `top5IntegrationActions` and the MD section.
 
 ## Self-identified defects / shortcuts
 
-1. **No baked cradle/lark/DMC-wasp variants** — matrix is honest via kit packs + `gaps[]`, but first-hour miner/courier breadth still depends on a kit-attach runtime that does not exist yet.  
-2. **Lancer/choir/quiet still propose wasp_production donor** — closes the *identity* gap with kit+profile+hostile map, not a full silhouette redesign (called out as preferred long-term unique donors in gaps).  
-3. **Vael has no ship cells** — correct for first-hour route; bible forbids rectangular kit on Vael without organic re-proportion.  
-4. **Express cell** notes live inconsistency (modular freighter vs Span hauler) and prefers future remap rather than inventing a fake express GLB.  
-5. **Station/scenery dressing** (lane beacons, buoys, gates) appear in gaps / shared resources, not as full faction×role ship cells — traffic/hostile scope prioritized per brief.  
-6. **Builder lives under evidence** (`tools_g_build_matrix.py`) rather than `tools/foundry/` — intentional so orchestrator can regenerate without touching protected tool trees; no live pipeline wiring.  
+1. **No baked cradle/lark/DMC-wasp variants** — matrix is honest via kit packs + `gaps[]`, but first-hour miner/courier breadth still depends on a kit-attach runtime that does not exist yet.
+2. **Lancer/choir/quiet still propose wasp_production donor** — closes the *identity* gap with kit+profile+hostile map, not a full silhouette redesign (called out as preferred long-term unique donors in gaps).
+3. **Vael has no ship cells** — correct for first-hour route; bible forbids rectangular kit on Vael without organic re-proportion.
+4. **Express cell** notes live inconsistency (modular freighter vs Span hauler) and prefers future remap rather than inventing a fake express GLB.
+5. **Station/scenery dressing** (lane beacons, buoys, gates) appear in gaps / shared resources, not as full faction×role ship cells — traffic/hostile scope prioritized per brief.
+6. **Builder lives under evidence** (`tools_g_build_matrix.py`) rather than `tools/foundry/` — intentional so orchestrator can regenerate without touching protected tool trees; no live pipeline wiring.
 7. **Wear sector modifiers** are documented as renormalize deltas, not a full runtime wear system design.
 
 ---
 
 ## Unfinished (out of lane scope)
 
-- Any write to `partsLibrary.js` / release / manifests (forbidden).  
-- Baking missing gap GLBs (other lanes or follow-on).  
-- Runtime kit-attach compositor.  
+- Any write to `partsLibrary.js` / release / manifests (forbidden).
+- Baking missing gap GLBs (other lanes or follow-on).
+- Runtime kit-attach compositor.
 - Player-route visual proof of integrated cells (integration batch).
 
 ---
 
 ## Honesty status
 
-**PASS** for Lane G documentation deliverables: machine matrix + human summary + arithmetic costs + gaps list + deterministic rebuild.  
+**PASS** for Lane G documentation deliverables: machine matrix + human summary + arithmetic costs + gaps list + deterministic rebuild.
 **Not claimed:** live game breadth improved (integration maps untouched by contract).

@@ -1,9 +1,9 @@
 # Lane A — LIVE REPETITION AUDIT — Report
 
-**Lane:** A (read-only audit)  
-**Worktree:** `C:\Users\93rob\sf-fleet-breadth`  
-**Branch / HEAD:** `codex/fleet-breadth-foundry-20260720` @ `c740ae01`  
-**Date:** 2026-07-20  
+**Lane:** A (read-only audit)
+**Worktree:** `C:\Users\93rob\sf-fleet-breadth`
+**Branch / HEAD:** `codex/fleet-breadth-foundry-20260720` @ `c740ae01`
+**Date:** 2026-07-20
 
 ## Deliverables
 

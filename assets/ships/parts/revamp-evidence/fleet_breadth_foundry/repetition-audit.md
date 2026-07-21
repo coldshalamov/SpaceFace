@@ -1,7 +1,7 @@
 # Fleet Breadth Foundry — Live Repetition Audit
 
-**Branch:** `codex/fleet-breadth-foundry-20260720` @ `c740ae01`  
-**Machine-readable twin:** `repetition-audit.json`  
+**Branch:** `codex/fleet-breadth-foundry-20260720` @ `c740ae01`
+**Machine-readable twin:** `repetition-audit.json`
 **Method:** runtime maps + spawn systems only (`partsLibrary.js`, `visualOverrides.js`, `world.js`, `traffic.js`, `combat.js`, sector anchors). Filenames and prose inventories are not usage proof.
 
 ---
@@ -103,11 +103,11 @@ Helios: 6–8 concurrent; high-sec mix suppresses smugglers/pirates and boosts p
 
 ### Field props (highest early instance rates)
 
-1. `place_lane_beacon` — core dressing  
-2. `place_gate_jump_ring` — every gate  
-3. `place_station_billboard` — core stations  
-4. `place_nav_buoy` + `place_mining_drone` — belt  
-5. `place_debris_chunk` / `place_dead_hulk` — POI + fringe  
+1. `place_lane_beacon` — core dressing
+2. `place_gate_jump_ring` — every gate
+3. `place_station_billboard` — core stations
+4. `place_nav_buoy` + `place_mining_drone` — belt
+5. `place_debris_chunk` / `place_dead_hulk` — POI + fringe
 
 ---
 
@@ -136,10 +136,10 @@ Evidence of distance failure already in code: vector-drive plume normalization (
 
 ## Downstream guidance
 
-1. Prefer **variant families on the top 10** over new random greeble packs.  
-2. Fix **hostile whole-ship coverage gaps** so enemy roles do not silently become production Wasps.  
-3. Wire **fin/engine/weapon** selection by role/faction where files already exist (e.g. radiator vs swept smuggler fins) — seed-only pools waste authored diversity.  
-4. Treat **trade hub + patrol Wasp + Helios Span + lane beacon** as the minimum “first hour no longer feels samey” set.  
+1. Prefer **variant families on the top 10** over new random greeble packs.
+2. Fix **hostile whole-ship coverage gaps** so enemy roles do not silently become production Wasps.
+3. Wire **fin/engine/weapon** selection by role/faction where files already exist (e.g. radiator vs swept smuggler fins) — seed-only pools waste authored diversity.
+4. Treat **trade hub + patrol Wasp + Helios Span + lane beacon** as the minimum “first hour no longer feels samey” set.
 5. Do **not** dilute the player Kestrel; traffic is already correctly diverted to Helios Lark.
 
 ---
