@@ -1,0 +1,385 @@
+{
+  "attachments": [
+    {
+      "kind": "MOUNT",
+      "name": "MOUNT_Child",
+      "parent": "engine_ion_twin",
+      "world_pos": [
+        -0.14,
+        0.0,
+        0.0
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    }
+  ],
+  "axis_convention": "+X=thrust/forward, +Y=beam, +Z=up(dorsal) (Blender Z-up post-import)",
+  "forward_axis": {
+    "convention": "+X=thrust/forward, +Y=beam, +Z=up(dorsal)",
+    "dims": [
+      3.02,
+      3.7352,
+      1.8926
+    ],
+    "longest_axis": "Y",
+    "note": "HEADS-UP: longest axis is Y, not X. Legitimate for laterally spread layouts (e.g. a twin/quad engine spans +Y); confirm thrust is still +X.",
+    "x_is_longest": false
+  },
+  "lod0_meshes": [
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD0_ENGINE_ION_TWIN_MAIN",
+      "parent": "engine_ion_twin",
+      "polys": 192,
+      "world_center": [
+        1.35,
+        0.0,
+        0.0
+      ],
+      "world_dims": [
+        2.9,
+        3.4,
+        0.65
+      ]
+    }
+  ],
+  "material_slots": [
+    "Material_Accent",
+    "Material_Hull",
+    "Material_Mechanical"
+  ],
+  "part_id": "engine_ion_twin",
+  "proxy_meshes": [],
+  "render_meshes": [
+    {
+      "material_slots": [
+        "Material_Accent"
+      ],
+      "name": "DET_cyan_nav_stripe",
+      "parent": null,
+      "polys": 108,
+      "world_center": [
+        1.1,
+        0.0,
+        0.55
+      ],
+      "world_dims": [
+        1.6,
+        0.03,
+        0.08
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "DET_dock_collar_scuff",
+      "parent": null,
+      "polys": 108,
+      "world_center": [
+        1.35,
+        0.0,
+        -1.05
+      ],
+      "world_dims": [
+        0.7,
+        0.7,
+        0.05
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Accent"
+      ],
+      "name": "DET_inspection_stencil",
+      "parent": null,
+      "polys": 108,
+      "world_center": [
+        0.45,
+        0.52,
+        0.35
+      ],
+      "world_dims": [
+        0.32,
+        0.02,
+        0.14
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Accent"
+      ],
+      "name": "DET_maintenance_tick",
+      "parent": null,
+      "polys": 108,
+      "world_center": [
+        1.8,
+        -0.38,
+        -0.25
+      ],
+      "world_dims": [
+        0.12,
+        0.02,
+        0.06
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "DET_panel_respray_edge",
+      "parent": null,
+      "polys": 108,
+      "world_center": [
+        0.15,
+        0.0,
+        0.15
+      ],
+      "world_dims": [
+        0.08,
+        1.4,
+        0.5
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "DET_sync_ring_bridge",
+      "parent": null,
+      "polys": 108,
+      "world_center": [
+        1.35,
+        0.0,
+        -0.82
+      ],
+      "world_dims": [
+        0.55,
+        0.12,
+        0.06
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "DET_torque_witness",
+      "parent": null,
+      "polys": 108,
+      "world_center": [
+        0.2,
+        0.42,
+        -0.72
+      ],
+      "world_dims": [
+        0.05,
+        0.05,
+        0.05
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "DET_torque_witness.001",
+      "parent": null,
+      "polys": 108,
+      "world_center": [
+        2.5,
+        -0.42,
+        -0.72
+      ],
+      "world_dims": [
+        0.05,
+        0.05,
+        0.05
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "HOOK_DRIVE_CORE_P",
+      "parent": "Twin_Nozzle_P",
+      "polys": 224,
+      "world_center": [
+        -0.03,
+        1.05,
+        0.0
+      ],
+      "world_dims": [
+        0.16,
+        0.7372,
+        0.7561
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "HOOK_DRIVE_CORE_S",
+      "parent": "Twin_Nozzle_S",
+      "polys": 224,
+      "world_center": [
+        -0.03,
+        -1.05,
+        0.0
+      ],
+      "world_dims": [
+        0.16,
+        0.7372,
+        0.7561
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "HOOK_DRIVE_FAN_P",
+      "parent": "Twin_Nozzle_P",
+      "polys": 608,
+      "world_center": [
+        0.16,
+        1.05,
+        0.0
+      ],
+      "world_dims": [
+        0.2689,
+        0.968,
+        0.9694
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "HOOK_DRIVE_FAN_S",
+      "parent": "Twin_Nozzle_S",
+      "polys": 608,
+      "world_center": [
+        0.16,
+        -1.05,
+        0.0
+      ],
+      "world_dims": [
+        0.2689,
+        0.968,
+        0.9694
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "HOOK_DRIVE_PLUME_P",
+      "parent": "Twin_Nozzle_P",
+      "polys": 192,
+      "world_center": [
+        -0.16,
+        1.05,
+        0.0
+      ],
+      "world_dims": [
+        0.12,
+        0.7933,
+        0.7933
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "HOOK_DRIVE_PLUME_S",
+      "parent": "Twin_Nozzle_S",
+      "polys": 192,
+      "world_center": [
+        -0.16,
+        -1.05,
+        0.0
+      ],
+      "world_dims": [
+        0.12,
+        0.7933,
+        0.7933
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD0_ENGINE_ION_TWIN_MAIN",
+      "parent": "engine_ion_twin",
+      "polys": 192,
+      "world_center": [
+        1.35,
+        0.0,
+        0.0
+      ],
+      "world_dims": [
+        2.9,
+        3.4,
+        0.65
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "Static_Hull_Merged",
+      "parent": "engine_ion_twin",
+      "polys": 832,
+      "world_center": [
+        1.25,
+        0.0,
+        0.0
+      ],
+      "world_dims": [
+        2.5,
+        3.7352,
+        1.6352
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "Static_Mechanical_Merged",
+      "parent": "engine_ion_twin",
+      "polys": 1728,
+      "world_center": [
+        0.02,
+        0.0,
+        0.0
+      ],
+      "world_dims": [
+        0.1559,
+        3.6116,
+        1.5349
+      ]
+    }
+  ],
+  "render_poly_total": 5664,
+  "root_node": "engine_ion_twin",
+  "world_bbox": {
+    "dims": [
+      3.02,
+      3.7352,
+      1.8926
+    ],
+    "max": [
+      2.8,
+      1.8676,
+      0.8176
+    ],
+    "min": [
+      -0.22,
+      -1.8676,
+      -1.075
+    ]
+  }
+}

@@ -1,0 +1,169 @@
+{
+  "bbox": {
+    "dims": [
+      10.449,
+      1.4161,
+      5.8845
+    ],
+    "max": [
+      5.299,
+      0.8911,
+      2.9423
+    ],
+    "min": [
+      -5.15,
+      -0.525,
+      -2.9423
+    ]
+  },
+  "drawGroups": {
+    "meshes": [
+      {
+        "name": "Cube",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.001",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.002",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.003",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.004",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.005",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.006",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.007",
+        "primitives": 1
+      },
+      {
+        "name": "LOD0_HULL_FIGHTER",
+        "primitives": 1
+      },
+      {
+        "name": "LOD0_HULL_FIGHTER.001",
+        "primitives": 1
+      },
+      {
+        "name": "LOD0_HULL_FIGHTER.002",
+        "primitives": 1
+      }
+    ],
+    "primitiveCount": 11
+  },
+  "extensionsUsed": [
+    "KHR_materials_clearcoat",
+    "KHR_texture_transform"
+  ],
+  "file": "hull_fighter.glb",
+  "geometry": {
+    "primitives": 11,
+    "tangentPrimitives": 11,
+    "tangentsPresent": true,
+    "uvSets": [
+      0
+    ]
+  },
+  "materials": {
+    "count": 3,
+    "usage": {
+      "Material_Accent": 2,
+      "Material_Hull": 5,
+      "Material_Mechanical": 4
+    }
+  },
+  "nodeNames": [
+    "HULL_FIGHTER_ROOT",
+    "LOD0_DET_bounty_weld",
+    "LOD0_DET_hardpoint_collar",
+    "LOD0_DET_heat_scorch",
+    "LOD0_DET_nav_stripe",
+    "LOD0_DET_patrol_stencil",
+    "LOD0_DET_reactor_vent",
+    "LOD0_DET_sensor_nose",
+    "LOD0_DET_wing_root_rib",
+    "LOD0_HULL_FIGHTER_MAIN",
+    "LOD1_HULL_FIGHTER_SILHOUETTE",
+    "LOD2_HULL_FIGHTER_SILHOUETTE",
+    "MOUNT_COCKPIT",
+    "MOUNT_ENGINE_L",
+    "MOUNT_ENGINE_R",
+    "MOUNT_FIN_L",
+    "MOUNT_FIN_R",
+    "SOCKET_Trail_Main",
+    "SOCKET_Weapon_Front"
+  ],
+  "textures": [
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hull_fighter_trim_sheet_1k",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture",
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hull_fighter_trim_sheet_1k_normal_role",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hull_fighter_wear_mask_1k",
+      "resolution": "1024x1024",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    }
+  ],
+  "transforms": {
+    "nodeCount": 19,
+    "nonAppliedCount": 15,
+    "nonAppliedNodes": [
+      "LOD0_DET_bounty_weld",
+      "LOD0_DET_hardpoint_collar",
+      "LOD0_DET_heat_scorch",
+      "LOD0_DET_nav_stripe",
+      "LOD0_DET_patrol_stencil",
+      "LOD0_DET_reactor_vent",
+      "LOD0_DET_sensor_nose",
+      "LOD0_DET_wing_root_rib",
+      "MOUNT_COCKPIT",
+      "MOUNT_ENGINE_L",
+      "MOUNT_ENGINE_R",
+      "MOUNT_FIN_L",
+      "MOUNT_FIN_R",
+      "SOCKET_Trail_Main",
+      "SOCKET_Weapon_Front"
+    ]
+  },
+  "tris": 4690,
+  "verdict": {
+    "budget": 8000,
+    "class": "variant",
+    "failures": [],
+    "pass": true,
+    "warnings": []
+  }
+}

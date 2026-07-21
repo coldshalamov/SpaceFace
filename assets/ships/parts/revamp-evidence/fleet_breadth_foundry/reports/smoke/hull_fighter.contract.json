@@ -1,0 +1,512 @@
+{
+  "attachments": [
+    {
+      "kind": "MOUNT",
+      "name": "MOUNT_COCKPIT",
+      "parent": "HULL_FIGHTER_ROOT",
+      "world_pos": [
+        1.632,
+        0.0,
+        0.55
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "MOUNT",
+      "name": "MOUNT_ENGINE_L",
+      "parent": "HULL_FIGHTER_ROOT",
+      "world_pos": [
+        -4.692,
+        1.02,
+        0.06
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "MOUNT",
+      "name": "MOUNT_ENGINE_R",
+      "parent": "HULL_FIGHTER_ROOT",
+      "world_pos": [
+        -4.692,
+        -1.02,
+        0.06
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "MOUNT",
+      "name": "MOUNT_FIN_L",
+      "parent": "HULL_FIGHTER_ROOT",
+      "world_pos": [
+        -0.816,
+        2.76,
+        0.04
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "MOUNT",
+      "name": "MOUNT_FIN_R",
+      "parent": "HULL_FIGHTER_ROOT",
+      "world_pos": [
+        -0.816,
+        -2.76,
+        0.04
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Trail_Main",
+      "parent": "HULL_FIGHTER_ROOT",
+      "world_pos": [
+        -5.304,
+        0.0,
+        0.04
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Weapon_Front",
+      "parent": "HULL_FIGHTER_ROOT",
+      "world_pos": [
+        5.304,
+        0.0,
+        0.1
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    }
+  ],
+  "axis_convention": "+X=thrust/forward, +Y=beam, +Z=up(dorsal) (Blender Z-up post-import)",
+  "forward_axis": {
+    "convention": "+X=thrust/forward, +Y=beam, +Z=up(dorsal)",
+    "dims": [
+      10.449,
+      5.8845,
+      1.3969
+    ],
+    "longest_axis": "X",
+    "note": "OK: +X is the longest axis (single-body length convention).",
+    "x_is_longest": true
+  },
+  "lod0_meshes": [
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_DET_bounty_weld",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        -1.2,
+        0.32,
+        -0.15
+      ],
+      "world_dims": [
+        0.7594,
+        0.05,
+        0.5496
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_DET_hardpoint_collar",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        -0.5,
+        -0.15,
+        0.55
+      ],
+      "world_dims": [
+        0.5,
+        0.12,
+        0.5
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD0_DET_heat_scorch",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        -2.0,
+        0.35,
+        0.2
+      ],
+      "world_dims": [
+        1.9429,
+        0.06,
+        1.2397
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Accent"
+      ],
+      "name": "LOD0_DET_nav_stripe",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        2.0,
+        0.42,
+        -0.1
+      ],
+      "world_dims": [
+        2.2083,
+        1.2249,
+        0.08
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Accent"
+      ],
+      "name": "LOD0_DET_patrol_stencil",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        1.5,
+        0.55,
+        0.35
+      ],
+      "world_dims": [
+        1.2,
+        0.04,
+        0.6
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_DET_reactor_vent",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        -3.5,
+        0.25,
+        0.0
+      ],
+      "world_dims": [
+        1.0076,
+        0.15,
+        0.7436
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_DET_sensor_nose",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        4.8,
+        0.1,
+        0.1
+      ],
+      "world_dims": [
+        0.3662,
+        0.25,
+        0.214
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD0_DET_wing_root_rib",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        0.5,
+        0.0,
+        -0.35
+      ],
+      "world_dims": [
+        2.1254,
+        0.7266,
+        0.35
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD0_HULL_FIGHTER_MAIN",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 2444,
+      "world_center": [
+        0.0745,
+        0.0,
+        0.276
+      ],
+      "world_dims": [
+        10.449,
+        5.8845,
+        1.1919
+      ]
+    }
+  ],
+  "material_slots": [
+    "Material_Accent",
+    "Material_Hull",
+    "Material_Mechanical"
+  ],
+  "part_id": "hull_fighter",
+  "proxy_meshes": [
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD1_HULL_FIGHTER_SILHOUETTE",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 1344,
+      "world_center": [
+        0.0745,
+        0.0,
+        0.276
+      ],
+      "world_dims": [
+        10.449,
+        5.8845,
+        1.1919
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD2_HULL_FIGHTER_SILHOUETTE",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 38,
+      "world_center": [
+        0.0724,
+        -0.0005,
+        0.2874
+      ],
+      "world_dims": [
+        10.4447,
+        5.858,
+        1.2075
+      ]
+    }
+  ],
+  "render_meshes": [
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_DET_bounty_weld",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        -1.2,
+        0.32,
+        -0.15
+      ],
+      "world_dims": [
+        0.7594,
+        0.05,
+        0.5496
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_DET_hardpoint_collar",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        -0.5,
+        -0.15,
+        0.55
+      ],
+      "world_dims": [
+        0.5,
+        0.12,
+        0.5
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD0_DET_heat_scorch",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        -2.0,
+        0.35,
+        0.2
+      ],
+      "world_dims": [
+        1.9429,
+        0.06,
+        1.2397
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Accent"
+      ],
+      "name": "LOD0_DET_nav_stripe",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        2.0,
+        0.42,
+        -0.1
+      ],
+      "world_dims": [
+        2.2083,
+        1.2249,
+        0.08
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Accent"
+      ],
+      "name": "LOD0_DET_patrol_stencil",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        1.5,
+        0.55,
+        0.35
+      ],
+      "world_dims": [
+        1.2,
+        0.04,
+        0.6
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_DET_reactor_vent",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        -3.5,
+        0.25,
+        0.0
+      ],
+      "world_dims": [
+        1.0076,
+        0.15,
+        0.7436
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_DET_sensor_nose",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        4.8,
+        0.1,
+        0.1
+      ],
+      "world_dims": [
+        0.3662,
+        0.25,
+        0.214
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD0_DET_wing_root_rib",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 108,
+      "world_center": [
+        0.5,
+        0.0,
+        -0.35
+      ],
+      "world_dims": [
+        2.1254,
+        0.7266,
+        0.35
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD0_HULL_FIGHTER_MAIN",
+      "parent": "HULL_FIGHTER_ROOT",
+      "polys": 2444,
+      "world_center": [
+        0.0745,
+        0.0,
+        0.276
+      ],
+      "world_dims": [
+        10.449,
+        5.8845,
+        1.1919
+      ]
+    }
+  ],
+  "render_poly_total": 3308,
+  "root_node": "HULL_FIGHTER_ROOT",
+  "world_bbox": {
+    "dims": [
+      10.449,
+      5.8845,
+      1.3969
+    ],
+    "max": [
+      5.299,
+      2.9423,
+      0.8719
+    ],
+    "min": [
+      -5.15,
+      -2.9423,
+      -0.525
+    ]
+  }
+}
