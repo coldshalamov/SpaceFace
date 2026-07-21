@@ -8,4 +8,5 @@
 // v9: all persisted spatial positions use galactic-global XZ (`global_v1`).
 // v10: first-dock Hauler/Hunter/Prospector origin progress persists under data.careerOrigins.
 // v11: durable world-entity records (convoys/NPCs/mission targets/wrecks) under world.records.
-export const CURRENT_VERSION = 11;
+// v12: PQ-014/SF-15/W06 live NPC job runtime persists under data.npcJobs (miner/hauler/patrol jobs).
+export const CURRENT_VERSION = 12;

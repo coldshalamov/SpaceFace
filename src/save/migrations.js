@@ -256,6 +256,23 @@ export const MIGRATIONS = [
     to: 11,
     fn: migrateV10ToV11,
   },
+  // v12: PQ-014/SF-15/W06 live NPC job runtime. Old saves have no data.npcJobs; seed an empty bag so
+  // npcJobsRuntime.deserialize overlays cleanly and Continue starts with zero jobs (fail closed).
+  // Pure + idempotent: re-running on an already-shaped bag preserves byId.
+  {
+    from: 11,
+    to: 12,
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      if (!data.npcJobs || typeof data.npcJobs !== 'object' || Array.isArray(data.npcJobs)) {
+        data.npcJobs = { byId: {} };
+        return;
+      }
+      if (!data.npcJobs.byId || typeof data.npcJobs.byId !== 'object' || Array.isArray(data.npcJobs.byId)) {
+        data.npcJobs.byId = {};
+      }
+    },
+  },
 ];
 
 /**
