@@ -867,7 +867,7 @@
       "id": "PQ-014",
       "priority": 14,
       "title": "Natural NPC miner, hauler, and patrol jobs",
-      "state": "planned",
+      "state": "focused_green",
       "canonical": [
         "W06"
       ],
@@ -894,13 +894,13 @@
         "save"
       ],
       "brief": "Give materialized NPCs physical jobs and virtualized NPCs statistical continuity through existing state owners.",
-      "partialIntegration": "2026-07-20 closeout: deterministic job-state KERNEL on master at d6d5278c+73159e05+fffe57db (src/systems/npcJobs.js, 48/48 focused suite, zero live importers, runtime-UNWIRED). Recovery tag archive/pq014-npc-job-kernel-20260720. NOT registered/wired/natural-occurrence-proven. Full PQ-014 still needs encounterDirector materialization, sectorSim virtualization, tacticalAI movement, save key, natural-occurrence census, held-out seeds, player-route acceptance. State stays 'planned'; receipt at design/program/roadmap/receipts/PQ-014-npc-job-kernel.yaml."
+      "partialIntegration": "2026-07-20 closeout: deterministic job-state KERNEL on master at d6d5278c+73159e05+fffe57db (48/48, runtime-UNWIRED). 2026-07-21 RUNTIME WIRING INTEGRATED at 1bc07b5e (state->focused_green): npcJobsRuntime adapter sole-writes state.npcJobs and drives the untouched kernel; traffic naturally assigns miner/hauler/patrol jobs and yields its stepper (one intent writer per hull); worldRecordId continuity across exit/virtual-advance/reentry; save v11->v12 with migration, schema v12/262; 61/61 focused incl. held-out-seed natural census + offscreen==onscreen convergence; sim compare ok/hashEqual (hash shift bisected to the hashed save-version integer only; no golden edited); encounter-director pre-existing red unchanged before/after. REMAINING for checkoff: browser player-route capture (script ready, browser-mutex-gated) + Electron smoke. Receipts: PQ-014-npc-job-kernel.yaml + PQ-014-npc-jobs-wiring-REPORT.md."
     },
     {
       "id": "PQ-015",
       "priority": 15,
       "title": "Shared interaction descriptors and component targeting",
-      "state": "planned",
+      "state": "integrated",
       "canonical": [
         "A12",
         "A15",
@@ -927,7 +927,11 @@
         "interaction-truth",
         "public-route"
       ],
-      "brief": "Create one descriptor contract consumed by targeting, scanning, mining, tethering, salvage, destruction, and presentation."
+      "brief": "Create one descriptor contract consumed by targeting, scanning, mining, tethering, salvage, destruction, and presentation.",
+      "integratedCommit": "ffc873a5,556b910f",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-015-descriptors-REPORT.md",
+      "receipt": "design/program/roadmap/receipts/PQ-015-descriptors-REPORT.md",
+      "integrationNote": "2026-07-21: one truthful catalog+query contract live behind five adapted type-gates (membership-only sourcing, byte-pinned reasons, characterization-proven); component sub-selection (subsystem focus-fire + salvage weak-point) transient + golden-inert; 30/30 focused, all owning gates green, save schema unchanged. Honest partials: route proof at live logic+DOM level (descriptor_equals_live_gates true across 5 classes) - rendered screenshot blocked by the headless-preview readiness gate; Electron smoke deferred to the next combined visual pass; ui:cycleComponent keyboard binding is a recorded input.js shared-change request (DOM chip is the route)."
     },
     {
       "id": "PQ-016",

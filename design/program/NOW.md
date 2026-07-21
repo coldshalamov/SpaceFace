@@ -142,13 +142,20 @@ INTEGRATED (checked off) at `8331c1ba,27bba37d,2d616dfa,3a812b90`.
   rows are the one shared file — additive-only, lead resolves at integration. Browser/GPU mutex:
   PQ-012 holds priority; PQ-015 waits on the browser-free flag (protocol in the briefs).
 
-**Wave 2 — after the corresponding Wave-1 mutex releases:**
+**Wave-1/2 integration record (2026-07-21, this controller session):**
 
-- **Full PQ-014 — natural NPC jobs integration.** Reuse the integrated deterministic kernel; wire
-  encounterDirector/sectorSim/tacticalAI/save and prove natural held-out-seed occurrence. Start only
-  after PQ-015 releases registry/save-adjacent paths.
-- **PQ-016 — contextual industrial beam, payloads, and receivers.** Start after PQ-015 and after
-  PQ-012 releases physics/renderer ownership.
+- **PQ-015 INTEGRATED** at `ffc873a5`+`556b910f` (queue state `integrated`; honest partials in the
+  queue note: logic+DOM route proof, screenshot/Electron deferred, cycleComponent binding is a
+  shared-change request).
+- **PQ-014 runtime wiring INTEGRATED** at `1bc07b5e` (queue state `focused_green`): kernel
+  untouched, traffic-natural jobs with stepper yield, worldRecordId continuity, save v12/262 with
+  migration, 61/61 focused; browser route capture pending the browser mutex.
+- **PQ-012** evidence phase in flight in `sf-w1-fields` (node-complete: 33 field tests + all
+  regression gates green at its base); lead rebase (registry/package.json vs PQ-014) at
+  integration.
+- **PQ-016** dispatches after PQ-012 integrates (Gemini 3.6 Flash lane per the updated fleet
+  directive, hard lead review). **PQ-013** dispatches after PQ-016 releases physics/renderer
+  (single Fable lane, brief staged).
 
 **Wave 3:** **PQ-013 — planetary sling/skim/harvest/reentry vertical** after PQ-012, serialized behind
 the broad physics/renderer/Atlas/save/browser mutexes. PQ-017 remains the next site substrate after
