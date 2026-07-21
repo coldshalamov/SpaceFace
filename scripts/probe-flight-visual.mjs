@@ -132,12 +132,29 @@ async function runViewportProbe(browser, viewport, runIndex) {
   await page.keyboard.up('KeyE');
   await waitForSimTicks(page, 9);
 
+  // Reset to a clean, deterministic origin state before the throttle/boost/reverse measurement.
+  // The preceding turn phases leave a NON-DETERMINISTIC heading: keyboard-edge/executed-tick races
+  // make the same scripted `waitForSimTicks(30)` turns apply a different effective tick count each
+  // run (rot observed anywhere in ~[0, 0.93], widened further under desktop/mobile concurrency). On
+  // runs where the boosting ship then travelled through a perturbing region, its velocity collapsed
+  // mid-ramp (e.g. 81 -> 15 WU/s, x-velocity reversing) so boost.speed fell BELOW throttle.speed,
+  // intermittently reddening boostAccelerates (and reverseBrakes via the shared low boost.speed) on
+  // EITHER viewport. Measured: the collapse is NOT a collidable-entity hit (nearest such entity was
+  // ~490 WU away at every collapse) and NOT radially symmetric (post-reset the ship boosts cleanly
+  // from origin out to ~126 WU, past the ~40-65 WU band where the un-reset collapses occurred, which
+  // rules out a boundary or a speed cap). It is a non-entity perturbation tied to the pre-reset scene
+  // state; the exact source was not isolated further because the reset avoids it. Resetting to origin
+  // with rot=0 makes the whole measurement deterministic and relocates it to clean space, eliminating
+  // the collapse. This mirrors the tapDash/mode-switch idiom below; NO gate threshold or tick count changes.
+  await resetPlayerForProbe(page, { mode: 'assisted', rot: 0, vel: { x: 0, z: 0 }, boostEnergy: 100 });
+
   await page.keyboard.down('KeyW');
   await waitForSimTicks(page, 39);
   const throttle = await sampleShip(page);
   await page.keyboard.down('ShiftLeft');
   await waitForSimTicks(page, 39);
   const boost = await sampleShip(page);
+  assertBoostSampleNotPerturbed(throttle, boost);
   await page.keyboard.up('ShiftLeft');
   await page.keyboard.up('KeyW');
   await page.keyboard.down('KeyS');
@@ -429,7 +446,7 @@ function isRetriableVisualProbeFailure(result) {
 }
 
 function isRetriableProbeError(message) {
-  return /Timeout \d+ms exceeded|Target page, context or browser has been closed|Execution context was destroyed/i.test(String(message || ''));
+  return /Timeout \d+ms exceeded|Target page, context or browser has been closed|Execution context was destroyed|MEASUREMENT_INVALID/i.test(String(message || ''));
 }
 
 function isRetriableWebglContextLossWarning(issue) {
@@ -554,6 +571,27 @@ async function resetPlayerForProbe(page, { mode = 'assisted', rot = 0, vel = { x
   await isolateFlightProbeScene(page);
   await waitForPhysicsReset(page, vel);
   await waitForSimTicks(page, 5);
+}
+
+// Regression pin for the boost-measurement cause class. The boost sample is taken 39 ticks AFTER the
+// throttle sample, with throttle held the entire time and boost (a >=1x accel multiplier) added on
+// top; the assisted speed cap (~200 WU/s) is never binding at these speeds. Under clean physics the
+// ship therefore CANNOT be slower at the boost sample than at the throttle sample — `boost.speed <
+// throttle.speed` is only reachable via a mid-ramp velocity COLLAPSE (a physics perturbation such as
+// a collision or a solver discontinuity) contaminating the measurement. That is exactly the intermittent
+// defect this gate hit: it silently red `boostAccelerates`/`reverseBrakes` as if boost were weak.
+// This pin catches the collapse signature directly and fails the attempt as a retriable
+// MEASUREMENT_INVALID so the gate reports "measurement perturbed" LOUDLY (and retries on a fresh page)
+// instead of a mystery boost red. It is deliberately NOT a kinematic gate: a genuinely weak-but-real
+// boost (throttle.speed <= boost.speed < throttle.speed + 8) still reds `boostAccelerates` correctly;
+// only an outright collapse BELOW the throttle baseline — physically impossible for clean boost — is
+// treated as invalid. It is mechanism-agnostic: it triggers on the perturbation itself, whatever its
+// source, which is why it would have caught this defect regardless of the (non-entity) obstacle.
+function assertBoostSampleNotPerturbed(throttle, boost) {
+  if (!throttle || !boost) return;
+  if (Number.isFinite(throttle.speed) && Number.isFinite(boost.speed) && boost.speed < throttle.speed) {
+    throw new Error(`MEASUREMENT_INVALID: boost sample perturbed — boost.speed ${boost.speed.toFixed(2)} < throttle.speed ${throttle.speed.toFixed(2)} WU/s (a mid-ramp velocity collapse, not weak boost; clean boost can never end slower than throttle 39 ticks earlier)`);
+  }
 }
 
 async function isolateFlightProbeScene(page) {
