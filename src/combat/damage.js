@@ -37,7 +37,10 @@ export function createDamageRouter(context, statusService, options = {}) {
     const rawTotal = sumChannels(packet.channels);
 
     if (!target || !target.alive) return rejected('target_missing', input, packet);
-    if (!packet.flags.allowAnyTarget && !['ship', 'station', 'drone', 'mine'].includes(target.type)) return rejected('target_not_damageable', input, packet);
+    // PQ-011: 'massSeed' joins the damageable deployed-device family (mine parity) — the anchor
+    // is shootable in every phase by ordinary hostile fire; own-team fire stays gated by the
+    // friendly-fire rule below, exactly like own mines.
+    if (!packet.flags.allowAnyTarget && !['ship', 'station', 'drone', 'mine', 'massSeed'].includes(target.type)) return rejected('target_not_damageable', input, packet);
     if (!packet.flags.ignoreInvulnerability && playerDockProtected(state, target)) return rejected('target_docked', input, packet);
     if (target.flags && target.flags.invuln && !packet.flags.ignoreInvulnerability) return rejected('target_invulnerable', input, packet);
     if (!packet.flags.ignoreFriendlyFire && attacker && attacker.id !== target.id && attacker.team != null && target.team != null && attacker.team === target.team) {

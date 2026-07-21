@@ -310,6 +310,11 @@ function appendEntityIndex(index, e) {
       // W03 physical mines: shootable (damageables) so clearing a wake is counterplay.
       index.damageables.push(e);
       break;
+    case 'massSeed':
+      // PQ-011 anchor seeds: damageable in every phase (counterplay — hostile fire and stray
+      // blasts can destroy the anchor; there is no protected window).
+      index.damageables.push(e);
+      break;
   }
   index.version++;
 }
@@ -407,6 +412,13 @@ function isMovableEntity(e) {
     case 'pickup':
     case 'payload':
     case 'fx':
+      return true;
+    // PQ-011: a Mass Seed's Rapier body stays FIXED (physicsStatics), but the entity itself moves
+    // kinematically during travel — and the spatial-hash STATIC layer caches positions by version,
+    // so classing it static would leave it bucketed at its spawn point and unacquirable at its lock
+    // point. Movable membership puts it in the incremental dynamic layer (rehash follows pos) and
+    // earns prevPos snapshots so renderer interpolation doesn't judder the travel animation.
+    case 'massSeed':
       return true;
     default:
       return false;

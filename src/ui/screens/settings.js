@@ -78,7 +78,7 @@ const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 // new-profile Massline primary and F remains its permanent alias.
 const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
   'brake', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut',
-  'bulletTime', 'cloak', 'travelBurn'];
+  'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed'];
 const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
@@ -101,6 +101,9 @@ const REBIND_LABELS = {
   cloak: 'Cloak toggle',
   // W1-5. A latch that is rebindable in data but has no row here is not rebindable to a player.
   travelBurn: 'Travel drive (burn latch)',
+  // PQ-011. Keyboard verb (same reachability posture as the impulse-charge verbs): no standard
+  // gamepad button remains unclaimed, so the pad row stays unbound rather than commandeered.
+  deployMassSeed: 'Anchor Mass Seed: deploy',
 };
 
 function controlSchemeFor(settings) {

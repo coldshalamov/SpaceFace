@@ -3065,6 +3065,137 @@ function buildImpulseCharge(e) {
   return g;
 }
 
+// PQ-011 / SF-11 deployable anchor Mass Seed (type 'massSeed'). A contained-mass/frame-lock
+// device — deliberately NOT a glowing orb: a dense faceted containment core carried by four
+// folding frame struts. The struts are the state readout: folded along the hull in flight,
+// extending outward as the frame lock spins up, fully deployed while the anchor is live, half
+// retracted inside the expiry warning, and folded shut as the seed collapses. Color is redundant
+// with silhouette; the expiry countdown lives in the HUD (non-color, non-motion primary).
+function buildMassSeed(e) {
+  const R = Math.max(0.8, Number(e && e.radius) || 1.6);
+  const g = new THREE.Group();
+  const frame = getMaterial('mseed:frame', () => new THREE.MeshStandardMaterial({
+    color: 0x2b3138, roughness: 0.48, metalness: 0.72,
+  }));
+  const coreMat = getMaterial('mseed:core', () => new THREE.MeshStandardMaterial({
+    color: 0x14181f, emissive: 0x0a1626, emissiveIntensity: 0.35, roughness: 0.3, metalness: 0.85,
+  }));
+  const ringMat = getMaterial('mseed:gyro', () => new THREE.MeshStandardMaterial({
+    color: 0x3d4a57, emissive: 0x1a2c40, emissiveIntensity: 0.5, roughness: 0.36, metalness: 0.7,
+  }));
+  const beaconDim = getMaterial('mseed:beacon:dim', () => new THREE.MeshStandardMaterial({
+    name: 'MassSeedBeaconDim',
+    color: 0x2a3438, emissive: 0x062026, emissiveIntensity: 0.25, roughness: 0.4, metalness: 0.3,
+  }));
+  const beaconActive = getMaterial('mseed:beacon:active', () => new THREE.MeshStandardMaterial({
+    name: 'MassSeedBeaconActive',
+    color: 0x9fe8ff, emissive: 0x2fc4ef, emissiveIntensity: 1.2, roughness: 0.3, metalness: 0.2,
+  }));
+  const beaconWarning = getMaterial('mseed:beacon:warning', () => new THREE.MeshStandardMaterial({
+    name: 'MassSeedBeaconWarning',
+    color: 0xffc35c, emissive: 0xef8a1e, emissiveIntensity: 1.35, roughness: 0.32, metalness: 0.18,
+  }));
+  const chevronMat = getMaterial('mseed:chevron', () => new THREE.MeshStandardMaterial({
+    name: 'MassSeedChevron',
+    color: 0x6fb7d8, emissive: 0x1f7ea8, emissiveIntensity: 0.8, roughness: 0.4, metalness: 0.25,
+  }));
+
+  const core = new THREE.Mesh(getGeometry('mseed:core', () => new THREE.OctahedronGeometry(0.42, 0)), coreMat);
+  core.name = 'MassSeedContainmentCore';
+  g.add(core);
+
+  const ring = new THREE.Mesh(
+    getGeometry('mseed:gyro-ring', () => new THREE.TorusGeometry(0.52, 0.045, 6, 18).rotateX(Math.PI / 2)),
+    ringMat,
+  );
+  ring.name = 'MassSeedFrameLockGyro';
+  g.add(ring);
+
+  const strutGeometry = getGeometry('mseed:strut', () => new THREE.BoxGeometry(0.46, 0.06, 0.12));
+  const pylonGeometry = getGeometry('mseed:pylon', () => new THREE.ConeGeometry(0.09, 0.3, 4));
+  const struts = [];
+  const pylons = [];
+  for (let i = 0; i < 4; i++) {
+    const angle = (i * Math.PI) / 2 + Math.PI / 4;
+    const strut = new THREE.Mesh(strutGeometry, frame);
+    strut.name = `MassSeedFrameStrut_${i + 1}`;
+    strut.userData.anchorAngle = angle;
+    g.add(strut);
+    struts.push(strut);
+    if (i < 3) {
+      const pylon = new THREE.Mesh(pylonGeometry, frame);
+      pylon.name = `MassSeedAnchorPylon_${i + 1}`;
+      pylon.userData.anchorAngle = (i * Math.PI * 2) / 3;
+      g.add(pylon);
+      pylons.push(pylon);
+    }
+  }
+
+  const beacon = new THREE.Mesh(getGeometry('mseed:beacon', () => new THREE.OctahedronGeometry(0.15, 0)), beaconDim);
+  beacon.name = 'MassSeedStatusBeacon';
+  beacon.position.y = 0.5;
+  g.add(beacon);
+
+  const chevronGeometry = getGeometry('mseed:chevron', () => new THREE.ConeGeometry(0.1, 0.26, 3).rotateZ(Math.PI / 2));
+  const chevrons = [];
+  for (const z of [-0.16, 0.16]) {
+    const chevron = new THREE.Mesh(chevronGeometry, chevronMat);
+    chevron.name = 'MassSeedTravelChevron';
+    chevron.position.set(-0.5, 0, z);
+    g.add(chevron);
+    chevrons.push(chevron);
+  }
+
+  g.scale.setScalar(R);
+  g.userData.kind = 'massSeed';
+  g.userData.interactionKind = 'anchor-seed';
+  g.userData.visualLanguage = 'frame-lock-containment-anchor';
+
+  // Phase-driven pose. Wall-clock eases are render-only (the sim contract allows cosmetic render
+  // time); all STATE comes from entity.data.massSeedState. No per-frame allocation.
+  let lastPhase = null;
+  let phaseWallT = 0;
+  const ease = (t) => { const u = t < 0 ? 0 : t > 1 ? 1 : t; return u * u * (3 - 2 * u); };
+  g.userData.updateRuntimeState = (entity, now) => {
+    const seedState = entity && entity.data && entity.data.massSeedState;
+    const phase = seedState && seedState.phase || 'travel';
+    if (phase !== lastPhase) {
+      lastPhase = phase;
+      phaseWallT = Number.isFinite(now) ? now : 0;
+    }
+    const t = Number.isFinite(now) ? Math.max(0, now - phaseWallT) : 1;
+    // Strut deployment target per phase: 0 folded (travel/collapse), 1 deployed (locked anchor),
+    // partial in the frame-lock spin-up and the expiry warning (an unmistakable silhouette delta).
+    let deployTarget = 0;
+    let beaconMat = beaconDim;
+    let gyroSpin = 0;
+    if (phase === 'locking') { deployTarget = 1; beaconMat = beaconDim; gyroSpin = 6; }
+    else if (phase === 'active') { deployTarget = 1; beaconMat = beaconActive; }
+    else if (phase === 'warning') { deployTarget = 0.82; beaconMat = beaconWarning; }
+    const deploy = phase === 'travel' || phase === 'collapsing' ? 0 : ease(t / 0.35) * deployTarget;
+    for (const strut of struts) {
+      const a = strut.userData.anchorAngle;
+      const radius = 0.34 + deploy * 0.44;
+      strut.position.set(Math.cos(a) * radius, 0, Math.sin(a) * radius);
+      strut.rotation.y = -a;
+      strut.scale.x = 0.72 + deploy * 0.62;
+    }
+    for (const pylon of pylons) {
+      const a = pylon.userData.anchorAngle;
+      pylon.position.set(Math.cos(a) * (0.5 + deploy * 0.2), -0.28 - deploy * 0.14, Math.sin(a) * (0.5 + deploy * 0.2));
+      pylon.scale.setScalar(Math.max(0.001, deploy));
+    }
+    ring.rotation.y = gyroSpin > 0 ? t * gyroSpin : 0;
+    ring.scale.setScalar(0.9 + deploy * 0.2);
+    beacon.material = beaconMat;
+    beacon.scale.setScalar(phase === 'warning' ? 1.25 : 1);
+    for (const chevron of chevrons) chevron.visible = phase === 'travel';
+    g.userData.visualPhase = phase;
+  };
+  g.userData.updateRuntimeState(e, 0);
+  return g;
+}
+
 function buildFallback(e) {
   const root = new THREE.Group();
   root.name = `VisualBuildFailed_${e && e.type || 'unknown'}`;
@@ -3149,6 +3280,7 @@ export function createVisualFactory() {
           case 'mine': return buildMine(e);
           case 'vectormine': return buildVectorMine(e);
           case 'charge': return buildImpulseCharge(e);
+          case 'massSeed': return buildMassSeed(e);
           case 'wreck': return buildWreck(e);
           case 'fx': return null; // fx entities are handled by the vfx particle system, not meshed
           default: return buildFallback(e);
