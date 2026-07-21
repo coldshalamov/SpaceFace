@@ -189,8 +189,9 @@ New system `src/systems/cloak.js`, flag `cloak`:
 
 ## 9. Loot & terrain (§4.3–4.4)
 
-- **Magnetism already ships** (`mining._updatePickups`: range 420, accel 520 — pickups
-  only, wrecks untouched). The actual gap: ship kills drop only a salvage WRECK (a chore
+- **Magnetism already ships** (`mining._updatePickups`: range 420, velocity-relative
+  100–280 wu/s approach with 900 wu/s² convergence authority — pickups only, wrecks untouched).
+  The actual gap: ship kills drop only a salvage WRECK (a chore
   mid-fight). New listener (flag `lootShards`): on hostile ship kill, emit the existing
   `loot:drop` seam with a small shard pool (1–3 items scaled by ship class) — they
   magnetize with zero new collection code. Bulk salvage wrecks unchanged.

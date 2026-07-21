@@ -126,7 +126,8 @@ Keep: beam tiers, heat, ore tables, pickups, deterministic yields. Replace the *
    2 s "vent bonus" (+25% extraction rate). Overheat still locks the beam. This converts "hold RMB"
    into pulse-timing — the NMS/DRG trick that makes mining hypnotic instead of numb.
 3. **Crack, don't pop.** At 0 hull the asteroid *fractures along its seams* into 2–3 chunks +
-   an ore burst that **auto-vacuums**: magnet range 250 → **420 wu**, accel 280 → **520**, and
+   an ore burst that **auto-vacuums**: magnet range 250 → **420 wu**, with velocity-relative
+   homing at **100–280 wu/s approach** and **900 wu/s² convergence authority**, and
    pickups within 60 wu of the beam line collect *directly to cargo* (`directToCargo` flag exists).
    **The ball-chase is dead.** If you can see it, you're already collecting it.
 4. **Rich cores.** 15% of asteroids reveal a core on fracture: hold-and-release a **charged drill

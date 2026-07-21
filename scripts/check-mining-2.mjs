@@ -197,7 +197,9 @@ function checkMasslineTargetOwnsMiningBeam() {
 function checkFractureAndVacuumCargo() {
   const { sim, state, player, miningSys } = boot(4404);
   assert.equal(MAGNET_RANGE, 420, 'Mining 2.0 magnet range should be 420 wu');
-  assert.equal(MAGNET_ACCEL, 520, 'Mining 2.0 magnet accel should be 520 wu/s^2');
+  // f277c5e7 replaced the old absolute pull with velocity-relative homing. This value is the
+  // controller's convergence authority, not the superseded raw acceleration target from C1.
+  assert.equal(MAGNET_ACCEL, 900, 'Mining 2.0 homing convergence authority should be 900 wu/s^2');
   const chunkEvents = [];
   sim.bus.on('asteroid:chunked', (p) => chunkEvents.push(p));
 
