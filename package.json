@@ -129,6 +129,7 @@
     "check:massline:whip-impact": "node scripts/check-massline-whip-impact.mjs",
     "check:massline:whip-feedback": "node scripts/check-massline-whip-feedback.mjs",
     "check:mass-seed": "node --test test/mass-seed.test.mjs test/mass-seed-adversarial.test.mjs test/mass-seed-findings.test.mjs test/mass-seed-forensic.test.mjs test/mass-seed-forensic-findings.test.mjs",
+    "check:fields": "node --test test/fields-kernel.test.mjs test/fields-integration.test.mjs test/fields-predictor.test.mjs",
     "check:impulse:authority": "node scripts/check-impulse-authority.mjs",
     "check:impulse:massline-combos": "node scripts/check-impulse-massline-combos.mjs",
     "check:sg02:dash-collision": "node scripts/check-sg02-dash-collision.mjs",

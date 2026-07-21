@@ -90,6 +90,10 @@ const SECTIONS = [
     // PQ-011: the anchor seed turns empty space into a swing anchor. Keyboard verb (rebindable);
     // no standard gamepad button remains unclaimed, matching the impulse-charge verbs' posture.
     ['Deploy anchor Mass Seed', 'deployMassSeed', '4 (toward aim; locks on arrival, then latch it)'],
+    // PQ-012 continuous field tools (rebindable keyboard verbs, same posture as the seed/charge verbs).
+    ['Deploy attractive Well', 'deployWell', '5 (at aim; pulls light bodies & shots — heavy ships shrug)'],
+    ['Deploy Repulsor', 'deployRepulsor', '6 (drops at ship; shoves bodies outward)'],
+    ['Toggle Clearing Cone', 'toggleClearingCone', '7 (forward gravitic snowplow; toggle on/off)'],
   ]],
   ['Interface (fixed keys)', [
     ['Aim weapons', null, 'Mouse'],

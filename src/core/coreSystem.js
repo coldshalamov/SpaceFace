@@ -315,6 +315,11 @@ function appendEntityIndex(index, e) {
       // blasts can destroy the anchor; there is no protected window).
       index.damageables.push(e);
       break;
+    case 'fieldEmitter':
+      // PQ-012 deployed Well/Repulsor devices: damageable so shooting one down unregisters its
+      // field the same tick (counterplay + destruction cleanup). The Cone has no emitter entity.
+      index.damageables.push(e);
+      break;
   }
   index.version++;
 }

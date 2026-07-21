@@ -78,7 +78,7 @@ const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 // new-profile Massline primary and F remains its permanent alias.
 const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
   'brake', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut',
-  'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed'];
+  'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone'];
 const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
@@ -104,6 +104,10 @@ const REBIND_LABELS = {
   // PQ-011. Keyboard verb (same reachability posture as the impulse-charge verbs): no standard
   // gamepad button remains unclaimed, so the pad row stays unbound rather than commandeered.
   deployMassSeed: 'Anchor Mass Seed: deploy',
+  // PQ-012 continuous field tools.
+  deployWell: 'Field: deploy attractive Well',
+  deployRepulsor: 'Field: deploy Repulsor',
+  toggleClearingCone: 'Field: toggle Clearing Cone',
 };
 
 function controlSchemeFor(settings) {

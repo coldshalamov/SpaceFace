@@ -45,6 +45,7 @@ import {
   assertProjectileTrailProfileContracts,
 } from './vfxProfiles.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
+import { fieldFalloff } from '../core/fields/fieldKernel.js'; // PQ-012: VFX density mirrors the kernel falloff (gauges must not lie)
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
 import { ContinuousPlumeSystem } from './thruster/systems/continuousPlume.js';
 import { RcsImpulseSystem } from './thruster/systems/rcsImpulse.js';
@@ -209,6 +210,12 @@ const VFX_RIBBON_TRAILS_HZ = 30;
 const VFX_ENERGY_PLUME_HZ = 30;
 const VFX_PROJECTILE_TRAILS_HZ = 45;
 const VFX_SEAM_DRAW_RANGE = 640;
+// PQ-012 continuous field flow (design/vfx/FIELD_TOOL_READABILITY_BIBLE.md §4/§10). Advected pooled
+// particles at the shipped energy-plume cadence; slept when no field is deployed. Pool share is a
+// small slice of PARTICLE_CAP (≤ ~10 per field per emission, ≤ FIELD_FLOW_MAX_FIELDS fields).
+const VFX_FIELD_FLOW_HZ = 30;
+const FIELD_FLOW_GOLDEN = 2.399963229728653; // golden angle — even, deterministic spawn distribution
+const FIELD_FLOW_MAX_FIELDS = 6;
 
 function emptyTrailBudgetDiag() {
   return {
@@ -251,6 +258,57 @@ function resetProjectileTrailDiag(diag) {
   return diag;
 }
 
+function fieldFrac(x) { return x - Math.floor(x); } // PQ-012 low-discrepancy spawn distribution (no RNG)
+
+function createCurvedVaneGeometry() {
+  const geom = new THREE.BufferGeometry();
+  const segments = 3;
+  const positions = [];
+  const normals = [];
+  const indices = [];
+
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const r = 0.18 + t * 0.82;
+    const angle = t * 0.65;
+    const cx = r * Math.cos(angle);
+    const cz = r * Math.sin(angle);
+
+    const nx = Math.cos(angle + Math.PI / 2);
+    const nz = Math.sin(angle + Math.PI / 2);
+
+    const w = 0.20 * (1.0 - 0.55 * t);
+    const h = 0.08 * (1.0 - 0.70 * t);
+
+    positions.push(cx - nx * w,  h, cz - nz * w);
+    positions.push(cx + nx * w,  h, cz + nz * w);
+    positions.push(cx + nx * w, -h, cz + nz * w);
+    positions.push(cx - nx * w, -h, cz - nz * w);
+
+    normals.push(-nx, 0.7, -nz,  nx, 0.7, nz,  nx, -0.7, nz,  -nx, -0.7, -nz);
+  }
+
+  for (let i = 0; i < segments; i++) {
+    const b = i * 4;
+    indices.push(b, b + 1, b + 5);
+    indices.push(b, b + 5, b + 4);
+    indices.push(b + 3, b + 7, b + 6);
+    indices.push(b + 3, b + 6, b + 2);
+    indices.push(b + 1, b + 2, b + 6);
+    indices.push(b + 1, b + 6, b + 5);
+    indices.push(b, b + 4, b + 7);
+    indices.push(b, b + 7, b + 3);
+  }
+  indices.push(0, 3, 2); indices.push(0, 2, 1);
+  const last = segments * 4;
+  indices.push(last, last + 1, last + 2); indices.push(last, last + 2, last + 3);
+
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geom.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geom.setIndex(indices);
+  return geom;
+}
+
 function emptyVfxSubsystemDiag() {
   return {
     trails: 0,
@@ -265,6 +323,7 @@ function emptyVfxSubsystemDiag() {
     particles: 0,
     sprites: 0,
     eventLights: 0,
+    fieldFlow: 0,       // PQ-012 continuous field flow particles emitted this frame (pool share)
   };
 }
 
@@ -504,6 +563,7 @@ export const vfx = {
     this._initArcPreview();
     this._initSeamMarkers();
     this._initCombatBeams();
+    this._initFieldGeometry();
     // ---- GPU point cloud ----
     const geo = new THREE.BufferGeometry();
     const positions = new Float32Array(cap * 3);
@@ -2157,6 +2217,19 @@ export const vfx = {
     }
     if (lane.includes('branch') || id.includes('branch')) {
       return presentationStyle('#fff8d8', '#f5d06f', SPR_RING, { radial: true, echoRing: true, lightPeak: 4.0, lightDistance: 180, speed0: 18, speedJitter: 32, life0: 0.5 });
+    }
+    // PQ-012 field deploy/collapse event beats (one-shot punch, NOT the continuous flow — that is
+    // the pooled advected particles in _updateFieldFlow). Distinct per kind; the boundary/direction
+    // read lives in the continuous flow, so these are brief state-change pulses only.
+    if (lane === 'field' || id.startsWith('field.')) {
+      if (id.startsWith('field.repulsor')) {
+        return presentationStyle('#fff2d0', '#ffb35c', SPR_FLASH, { radial: true, lightPeak: 2.6, lightDistance: 150, speed0: 62, speedJitter: 40, life0: 0.3, size0: 1.8, size1: 0.2, drag: 1.2 });
+      }
+      if (id.startsWith('field.cone')) {
+        return presentationStyle('#eaffff', '#39d0ff', SPR_FLASH, { spread: 0.4, lightPeak: 2.0, lightDistance: 130, speed0: 54, speedJitter: 30, life0: 0.28, size0: 1.5, size1: 0.15 });
+      }
+      // well — cool inward cyan sink pulse
+      return presentationStyle('#a6f0ff', '#39d0ff', SPR_FLASH, { radial: true, lightPeak: 2.8, lightDistance: 150, speed0: 40, speedJitter: 46, life0: 0.32, size0: 1.6, size1: 0.2, drag: 1.1 });
     }
     return presentationStyle('#ffffff', '#b060ff', SPR_RING, { radial: true, lightPeak: 3.2, lightDistance: 150, speed0: 18, speedJitter: 32 });
   },
@@ -4043,6 +4116,629 @@ export const vfx = {
   // -------------------------------------------------------------------------
   // Per-frame integration (called inside renderFrame; frameDt = wall-clock seconds)
   // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // PQ-012 continuous field flow (Well / Repulsor / Cone) — advected pooled particles.
+  // Reads state.fields.active (the fields system's published mirror). INSTANCED pooled particles
+  // only (reuses the shipped GPU point cloud); zero per-frame allocation; deterministic spawn
+  // distribution (low-discrepancy sequence, no Math.random per bible §9). The three flow
+  // signatures carry DIRECTION and BOUNDARY by construction (bible §4):
+  //   Well     — particles born at the rim flow INWARD and converge on a hot sink (cool→hot).
+  //   Repulsor — particles born at the core flow OUTWARD, decelerating into a pile at the rim (hot→cool).
+  //   Cone     — particles fill the wedge and flow downstream along dir (teal directed current).
+  // Reduced-motion drops flow speed (direction still drifts, no fast flashing); reduced-flash drops
+  // count + size (dimmer). Both preserve direction + boundary.
+  // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // PQ-012 frame-device geometry strand (FIELD_TOOL_READABILITY_BIBLE §4)
+  // Geometry carries primary read at 1x default camera; particles enrich.
+  // -------------------------------------------------------------------------
+  _initFieldGeometry() {
+    if (!this._scene || this._fieldGeomInitialized) return;
+    this._fieldGeomInitialized = true;
+
+    const frameMat = new THREE.MeshStandardMaterial({
+      color: 0x2b3138,
+      roughness: 0.48,
+      metalness: 0.72,
+      side: THREE.DoubleSide,
+    });
+
+    const crispPipMat = new THREE.MeshBasicMaterial({
+      color: 0x39d0ff,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+    });
+
+    const crispBermMat = new THREE.MeshStandardMaterial({
+      color: 0x2b3138,
+      roughness: 0.48,
+      metalness: 0.72,
+      side: THREE.DoubleSide,
+    });
+
+    const crispChevronMat = new THREE.MeshBasicMaterial({
+      color: 0x39d0ff,
+      transparent: true,
+      opacity: 1.0,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+    });
+
+    const crispBankMat = new THREE.MeshBasicMaterial({
+      color: 0x39d0ff,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+    });
+
+    const vaneGeo = createCurvedVaneGeometry();
+    const vaneCap = 48;
+    const vaneMesh = new THREE.InstancedMesh(vaneGeo, frameMat, vaneCap);
+    vaneMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    vaneMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(vaneCap * 3), 3);
+    vaneMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+    vaneMesh.frustumCulled = false;
+    vaneMesh.renderOrder = 9;
+    vaneMesh.count = 0;
+    this._scene.add(vaneMesh);
+
+    const pipGeo = new THREE.ConeGeometry(0.5, 1.4, 3);
+    pipGeo.rotateX(Math.PI / 2);
+    const pipCap = 96;
+    const pipMesh = new THREE.InstancedMesh(pipGeo, crispPipMat, pipCap);
+    pipMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    pipMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(pipCap * 3), 3);
+    pipMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+    pipMesh.frustumCulled = false;
+    pipMesh.renderOrder = 10;
+    pipMesh.count = 0;
+    this._scene.add(pipMesh);
+
+    const knotGeo = new THREE.OctahedronGeometry(0.5, 0);
+    const knotCap = 12;
+    const knotMesh = new THREE.InstancedMesh(knotGeo, frameMat, knotCap);
+    knotMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    knotMesh.frustumCulled = false;
+    knotMesh.renderOrder = 8;
+    knotMesh.count = 0;
+    this._scene.add(knotMesh);
+
+    const domeGeo = new THREE.IcosahedronGeometry(1.0, 1);
+    const domeCap = 12;
+    const domeMesh = new THREE.InstancedMesh(domeGeo, frameMat, domeCap);
+    domeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    domeMesh.frustumCulled = false;
+    domeMesh.renderOrder = 8;
+    domeMesh.count = 0;
+    this._scene.add(domeMesh);
+
+    const ribGeo = new THREE.BoxGeometry(0.35, 0.12, 1.0);
+    const ribCap = 64;
+    const ribMesh = new THREE.InstancedMesh(ribGeo, frameMat, ribCap);
+    ribMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    ribMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(ribCap * 3), 3);
+    ribMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+    ribMesh.frustumCulled = false;
+    ribMesh.renderOrder = 9;
+    ribMesh.count = 0;
+    this._scene.add(ribMesh);
+
+    const bermGeo = new THREE.DodecahedronGeometry(0.7, 0);
+    const bermCap = 96;
+    const bermMesh = new THREE.InstancedMesh(bermGeo, crispBermMat, bermCap);
+    bermMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    bermMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(bermCap * 3), 3);
+    bermMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+    bermMesh.frustumCulled = false;
+    bermMesh.renderOrder = 10;
+    bermMesh.count = 0;
+    this._scene.add(bermMesh);
+
+    const chevronGeo = new THREE.ConeGeometry(0.45, 0.95, 3);
+    chevronGeo.rotateZ(-Math.PI / 2);
+    const chevronCap = 96;
+    const chevronMesh = new THREE.InstancedMesh(chevronGeo, crispChevronMat, chevronCap);
+    chevronMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    chevronMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(chevronCap * 3), 3);
+    chevronMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+    chevronMesh.frustumCulled = false;
+    chevronMesh.renderOrder = 10;
+    chevronMesh.count = 0;
+    this._scene.add(chevronMesh);
+
+    const bankGeo = new THREE.BoxGeometry(0.18, 0.1, 1.0);
+    const bankCap = 24;
+    const bankMesh = new THREE.InstancedMesh(bankGeo, crispBankMat, bankCap);
+    bankMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    bankMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(bankCap * 3), 3);
+    bankMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+    bankMesh.frustumCulled = false;
+    bankMesh.renderOrder = 9;
+    bankMesh.count = 0;
+    this._scene.add(bankMesh);
+
+    const coreEnergyGeo = new THREE.OctahedronGeometry(1.0, 0);
+    const coreVols = [];
+    for (let i = 0; i < 6; i++) {
+      const vol = createEnergyVolume(coreEnergyGeo, {
+        name: `field-core-vol-${i}`,
+        colorA: '#39d0ff',
+        colorB: '#a6f0ff',
+        coreIntensity: 4.5,
+        haloIntensity: 1.5,
+        haloScale: 1.25,
+      });
+      vol.visible = false;
+      this._scene.add(vol);
+      coreVols.push(vol);
+    }
+
+    this._fieldGeom = {
+      vaneMesh,
+      pipMesh,
+      knotMesh,
+      domeMesh,
+      ribMesh,
+      bermMesh,
+      chevronMesh,
+      bankMesh,
+      coreVols,
+      deployStart: new Map(),
+    };
+
+    this._fieldMat4 = new THREE.Matrix4();
+    this._fieldQuat = new THREE.Quaternion();
+    this._fieldVec3 = new THREE.Vector3();
+    this._fieldScale = new THREE.Vector3();
+    this._fieldColor = new THREE.Color();
+  },
+
+  _updateFieldGeometry(dt) {
+    if (!this._scene) return;
+    if (!this._fieldGeomInitialized) this._initFieldGeometry();
+    const fg = this._fieldGeom;
+    if (!fg) return;
+
+    const active = this.state.fields && this.state.fields.active;
+    const settings = this.state && this.state.settings;
+    const v = settings && settings.video;
+    const a = settings && settings.accessibility;
+    const motionReduce = !!(v && v.motionReduce);
+    const flashReduce = !!((v && v.flashReduce) || (a && a.flashReduce));
+
+    const activeList = Array.isArray(active) ? active : [];
+    const now = (this.state && Number.isFinite(this.state.simTime)) ? this.state.simTime : this._t;
+
+    const activeIds = new Set();
+    for (const f of activeList) {
+      if (f && f.id) {
+        activeIds.add(f.id);
+        if (!fg.deployStart.has(f.id)) {
+          fg.deployStart.set(f.id, now);
+        }
+      }
+    }
+    for (const id of fg.deployStart.keys()) {
+      if (!activeIds.has(id)) fg.deployStart.delete(id);
+    }
+
+    let vaneCount = 0;
+    let pipCount = 0;
+    let knotCount = 0;
+    let domeCount = 0;
+    let ribCount = 0;
+    let bermCount = 0;
+    let chevronCount = 0;
+    let bankCount = 0;
+    let coreVolCount = 0;
+
+    const mat4 = this._fieldMat4;
+    const quat = this._fieldQuat;
+    const vec3 = this._fieldVec3;
+    const scale = this._fieldScale;
+    const col = this._fieldColor;
+
+    const numFields = Math.min(activeList.length, 6);
+
+    for (let fi = 0; fi < numFields; fi++) {
+      const field = activeList[fi];
+      if (!field || !field.center || !(field.radius > 0)) continue;
+
+      const cx = field.center.x;
+      const cz = field.center.z;
+      const R = field.radius;
+      const kind = field.kind;
+      const engaged = !!field.engaged;
+      const pal = field.palette || null;
+
+      const startTime = fg.deployStart.get(field.id) || now;
+      const elapsed = Math.max(0, now - startTime);
+      const easeVal = Math.min(1.0, elapsed / 0.35);
+      const deploy = easeVal * easeVal * (3.0 - 2.0 * easeVal);
+
+      const baseOpacity = engaged ? (flashReduce ? 0.75 : 0.95) : 0.35;
+
+      if (kind === 'well') {
+        const knotRadius = 1.6;
+        mat4.compose(
+          vec3.set(cx, 0, cz),
+          quat.setFromAxisAngle(vec3.set(0, 1, 0), motionReduce ? 0 : this._t * 0.8),
+          scale.setScalar(knotRadius)
+        );
+        fg.knotMesh.setMatrixAt(knotCount++, mat4);
+
+        if (coreVolCount < fg.coreVols.length) {
+          const vol = fg.coreVols[coreVolCount++];
+          vol.position.set(cx, 0, cz);
+          vol.scale.setScalar(1.5);
+          vol.visible = true;
+          updateEnergyMaterial(vol.userData.energyCore, {
+            time: this._t,
+            colorA: pal ? pal.filament : '#39d0ff',
+            colorB: pal ? pal.core : '#a6f0ff',
+            intensity: flashReduce ? 2.0 : (engaged ? 4.8 : 3.0),
+            opacity: baseOpacity,
+            pulse: engaged ? 0.2 : 0,
+          });
+          updateEnergyMaterial(vol.userData.energyHalo, {
+            time: this._t,
+            colorA: pal ? pal.filament : '#39d0ff',
+            colorB: pal ? pal.core : '#a6f0ff',
+            intensity: flashReduce ? 1.0 : 1.5,
+            opacity: baseOpacity * 0.4,
+          });
+        }
+
+        const numVanes = 6;
+        const vaneRadius = 4.2;
+        const vaneSpan = 2.8;
+        const vaneWidth = 0.8;
+        const swirlAngle = motionReduce ? 0 : -this._t * 1.5;
+
+        for (let i = 0; i < numVanes; i++) {
+          if (vaneCount >= 48) break;
+          const baseAngle = (i / numVanes) * Math.PI * 2 + swirlAngle;
+          const radOffset = vaneRadius * (0.3 + 0.7 * deploy);
+          const vx = cx + Math.cos(baseAngle) * radOffset;
+          const vz = cz + Math.sin(baseAngle) * radOffset;
+
+          quat.setFromAxisAngle(vec3.set(0, 1, 0), baseAngle);
+
+          mat4.compose(
+            vec3.set(vx, 0, vz),
+            quat,
+            scale.set(vaneSpan * (0.4 + 0.6 * deploy), 1.0, vaneWidth * (0.4 + 0.6 * deploy))
+          );
+          fg.vaneMesh.setMatrixAt(vaneCount, mat4);
+          col.set(pal ? pal.filament : '#39d0ff');
+          fg.vaneMesh.setColorAt(vaneCount, col);
+          vaneCount++;
+        }
+
+        const numPips = 12;
+        const pipSize = 2.0;
+        for (let i = 0; i < numPips; i++) {
+          if (pipCount >= 96) break;
+          const pipAngle = (i / numPips) * Math.PI * 2;
+          const px = cx + Math.cos(pipAngle) * R;
+          const pz = cz + Math.sin(pipAngle) * R;
+
+          const tangAngle = pipAngle + Math.PI / 2;
+          quat.setFromAxisAngle(vec3.set(0, 1, 0), tangAngle);
+
+          if (engaged && !motionReduce) {
+            const leanQuat = fg._scratchQuat || (fg._scratchQuat = new THREE.Quaternion());
+            leanQuat.setFromAxisAngle(vec3.set(1, 0, 0), -0.28);
+            quat.multiply(leanQuat);
+          }
+
+          mat4.compose(
+            vec3.set(px, 0, pz),
+            quat,
+            scale.setScalar(pipSize)
+          );
+          fg.pipMesh.setMatrixAt(pipCount, mat4);
+          col.set(pal ? pal.filament : '#39d0ff');
+          fg.pipMesh.setColorAt(pipCount, col);
+          pipCount++;
+        }
+      } else if (kind === 'repulsor') {
+        const domeRadius = 1.8;
+        mat4.compose(
+          vec3.set(cx, 0, cz),
+          quat.setFromAxisAngle(vec3.set(0, 1, 0), motionReduce ? 0 : this._t * 0.3),
+          scale.set(domeRadius, domeRadius * 0.5, domeRadius)
+        );
+        fg.domeMesh.setMatrixAt(domeCount++, mat4);
+
+        if (coreVolCount < fg.coreVols.length) {
+          const vol = fg.coreVols[coreVolCount++];
+          vol.position.set(cx, 0, cz);
+          vol.scale.setScalar(1.5);
+          vol.visible = true;
+          updateEnergyMaterial(vol.userData.energyCore, {
+            time: this._t,
+            colorA: pal ? pal.coreWarm : '#ffb35c',
+            colorB: pal ? pal.rib : '#ffc878',
+            intensity: flashReduce ? 2.0 : (engaged ? 4.5 : 2.8),
+            opacity: baseOpacity,
+            pulse: engaged ? 0.15 : 0,
+          });
+          updateEnergyMaterial(vol.userData.energyHalo, {
+            time: this._t,
+            colorA: pal ? pal.berm : '#39d0ff',
+            colorB: pal ? pal.coreWarm : '#ffb35c',
+            intensity: flashReduce ? 0.8 : 1.5,
+            opacity: baseOpacity * 0.35,
+          });
+        }
+
+        const numRibs = 8;
+        const ribMinR = 1.8;
+        const ribMaxR = 5.2;
+        const ribLen = ribMaxR - ribMinR;
+
+        for (let i = 0; i < numRibs; i++) {
+          if (ribCount >= 64) break;
+          const ribAngle = (i / numRibs) * Math.PI * 2;
+          const midR = (ribMinR + ribMaxR) * 0.5;
+          const rx = cx + Math.cos(ribAngle) * midR;
+          const rz = cz + Math.sin(ribAngle) * midR;
+
+          quat.setFromAxisAngle(vec3.set(0, 1, 0), ribAngle);
+          mat4.compose(
+            vec3.set(rx, 0, rz),
+            quat,
+            scale.set(0.4, 0.2, ribLen)
+          );
+          fg.ribMesh.setMatrixAt(ribCount, mat4);
+
+          const pulseT = motionReduce ? 0.5 : ((this._t * 3.0 + i * 0.25) % 1.0);
+          col.set(pal ? pal.rib : '#ffc878').lerp(new THREE.Color(pal ? pal.berm : '#39d0ff'), pulseT);
+          fg.ribMesh.setColorAt(ribCount, col);
+          ribCount++;
+        }
+
+        const numLobes = 14;
+        const lobeSize = 2.2;
+        for (let i = 0; i < numLobes; i++) {
+          if (bermCount >= 96) break;
+          const lobeAngle = (i / numLobes) * Math.PI * 2;
+          const rLobe = R * (0.96 + 0.08 * Math.sin(lobeAngle * 3.5 + (motionReduce ? 0 : this._t * 2.0)));
+          const bx = cx + Math.cos(lobeAngle) * rLobe;
+          const bz = cz + Math.sin(lobeAngle) * rLobe;
+
+          quat.setFromAxisAngle(vec3.set(0, 1, 0), lobeAngle + i);
+          mat4.compose(
+            vec3.set(bx, 0, bz),
+            quat,
+            scale.setScalar(lobeSize * (1.0 + 0.15 * Math.sin(i * 1.7)))
+          );
+          fg.bermMesh.setMatrixAt(bermCount, mat4);
+          col.set(pal ? pal.berm : '#39d0ff');
+          fg.bermMesh.setColorAt(bermCount, col);
+          bermCount++;
+        }
+      } else if (kind === 'cone') {
+        const dirx = field.dir ? field.dir.x : 1;
+        const dirz = field.dir ? field.dir.z : 0;
+        const mainAngle = Math.atan2(dirz, dirx);
+        const halfAngle = field.halfAngleRad || 0.5;
+
+        const px = -dirz;
+        const pz = dirx;
+
+        if (coreVolCount < fg.coreVols.length) {
+          const vol = fg.coreVols[coreVolCount++];
+          vol.position.set(cx, 0, cz);
+          vol.scale.setScalar(1.5);
+          vol.visible = true;
+          updateEnergyMaterial(vol.userData.energyCore, {
+            time: this._t,
+            colorA: pal ? pal.bank : '#39d0ff',
+            colorB: pal ? pal.pulse : '#a6f0ff',
+            intensity: flashReduce ? 2.0 : (engaged ? 4.5 : 2.8),
+            opacity: baseOpacity,
+          });
+          updateEnergyMaterial(vol.userData.energyHalo, {
+            time: this._t,
+            colorA: pal ? pal.bank : '#39d0ff',
+            colorB: pal ? pal.bank : '#39d0ff',
+            intensity: flashReduce ? 0.8 : 1.4,
+            opacity: baseOpacity * 0.35,
+          });
+        }
+
+        const corridorLen = R;
+        const numBankChevrons = 10;
+        const chevronSize = 2.6;
+
+        for (let side = -1; side <= 1; side += 2) {
+          for (let i = 0; i < numBankChevrons; i++) {
+            if (chevronCount >= 96) break;
+            const tDist = (i / (numBankChevrons - 1));
+            const d = corridorLen * (0.10 + 0.86 * tDist);
+            const wedgeWidth = 1.4 * d * Math.tan(halfAngle);
+
+            const bx = cx + dirx * d + px * (side * wedgeWidth * 0.5);
+            const bz = cz + dirz * d + pz * (side * wedgeWidth * 0.5);
+
+            quat.setFromAxisAngle(vec3.set(0, 1, 0), mainAngle);
+
+            const exitFade = tDist > 0.8 ? (1.0 - (tDist - 0.8) / 0.2) : 1.0;
+
+            mat4.compose(
+              vec3.set(bx, 0, bz),
+              quat,
+              scale.setScalar(chevronSize * exitFade)
+            );
+            fg.chevronMesh.setMatrixAt(chevronCount, mat4);
+
+            col.set(pal ? pal.chevron : '#39d0ff');
+            fg.chevronMesh.setColorAt(chevronCount, col);
+            chevronCount++;
+          }
+
+          const numRailSegs = 5;
+          for (let rIdx = 0; rIdx < numRailSegs; rIdx++) {
+            if (bankCount >= 24) break;
+            const tRail = (rIdx + 0.5) / numRailSegs;
+            const midD = corridorLen * (0.15 + 0.7 * tRail);
+            const midWidth = 1.4 * midD * Math.tan(halfAngle);
+            const rx = cx + dirx * midD + px * (side * midWidth * 0.5);
+            const rz = cz + dirz * midD + pz * (side * midWidth * 0.5);
+
+            const bankAngle = Math.atan2(dirz * corridorLen + pz * (side * midWidth * 0.5), dirx * corridorLen + px * (side * midWidth * 0.5));
+            quat.setFromAxisAngle(vec3.set(0, 1, 0), bankAngle);
+
+            mat4.compose(
+              vec3.set(rx, 0, rz),
+              quat,
+              scale.set(0.35, 0.12, 2.8)
+            );
+            fg.bankMesh.setMatrixAt(bankCount, mat4);
+            col.set(pal ? pal.bank : '#39d0ff');
+            fg.bankMesh.setColorAt(bankCount, col);
+            bankCount++;
+          }
+        }
+      }
+    }
+
+    for (let i = coreVolCount; i < fg.coreVols.length; i++) {
+      fg.coreVols[i].visible = false;
+    }
+
+    fg.vaneMesh.count = vaneCount;
+    fg.vaneMesh.instanceMatrix.needsUpdate = true;
+    if (fg.vaneMesh.instanceColor) fg.vaneMesh.instanceColor.needsUpdate = true;
+
+    fg.pipMesh.count = pipCount;
+    fg.pipMesh.instanceMatrix.needsUpdate = true;
+    if (fg.pipMesh.instanceColor) fg.pipMesh.instanceColor.needsUpdate = true;
+
+    fg.knotMesh.count = knotCount;
+    fg.knotMesh.instanceMatrix.needsUpdate = true;
+
+    fg.domeMesh.count = domeCount;
+    fg.domeMesh.instanceMatrix.needsUpdate = true;
+
+    fg.ribMesh.count = ribCount;
+    fg.ribMesh.instanceMatrix.needsUpdate = true;
+    if (fg.ribMesh.instanceColor) fg.ribMesh.instanceColor.needsUpdate = true;
+
+    fg.bermMesh.count = bermCount;
+    fg.bermMesh.instanceMatrix.needsUpdate = true;
+    if (fg.bermMesh.instanceColor) fg.bermMesh.instanceColor.needsUpdate = true;
+
+    fg.chevronMesh.count = chevronCount;
+    fg.chevronMesh.instanceMatrix.needsUpdate = true;
+    if (fg.chevronMesh.instanceColor) fg.chevronMesh.instanceColor.needsUpdate = true;
+
+    fg.bankMesh.count = bankCount;
+    fg.bankMesh.instanceMatrix.needsUpdate = true;
+    if (fg.bankMesh.instanceColor) fg.bankMesh.instanceColor.needsUpdate = true;
+  },
+
+  _fieldFlowRelevant() {
+    const f = this.state && this.state.fields;
+    return !!(f && Array.isArray(f.active) && f.active.length > 0);
+  },
+
+  _hexRgb(hex) {
+    if (!hex) return this._fieldFlowWhite || (this._fieldFlowWhite = { r: 1, g: 1, b: 1 });
+    let cache = this._hexRgbCache;
+    if (!cache) cache = this._hexRgbCache = new Map();
+    let c = cache.get(hex);
+    if (!c) { const col = new THREE.Color(hex); c = { r: col.r, g: col.g, b: col.b }; cache.set(hex, c); }
+    return c;
+  },
+
+  _updateFieldFlow() {
+    const active = this.state.fields.active;
+    if (!Array.isArray(active) || active.length === 0) return 0;
+    const settings = this.state && this.state.settings;
+    const v = settings && settings.video;
+    const a = settings && settings.accessibility;
+    const motionReduce = !!(v && v.motionReduce);
+    const flashReduce = !!((v && v.flashReduce) || (a && a.flashReduce));
+    let emitted = 0;
+    const n = Math.min(active.length, FIELD_FLOW_MAX_FIELDS);
+    for (let fi = 0; fi < n; fi++) emitted += this._emitFieldFlow(active[fi], fi, motionReduce, flashReduce);
+    this._fieldFlowSeq = ((this._fieldFlowSeq || 0) + 1) >>> 0;
+    return emitted;
+  },
+
+  _emitFieldFlow(field, fieldIndex, motionReduce, flashReduce) {
+    if (!field || !field.center || !(field.radius > 0)) return 0;
+    const R = field.radius;
+    const pal = field.palette || null;
+    let count = flashReduce ? 6 : 11;
+    if (!field.engaged) count = Math.max(3, count - 3); // dormant → sparse "parked machine" read
+    const sizeScale = flashReduce ? 0.62 : 1;
+    const speedScale = motionReduce ? 0.28 : 1;
+    // Velocity-aligned streak elongation. Under reduced-motion the flow is slow, so LONGER streaks
+    // keep DIRECTION readable in a still frame (bible §2/§11 "readable statically") — the dashes
+    // point the way the flow would move. Full-motion uses a subtler streak.
+    const stretch = motionReduce ? 1.7 : 0.7;
+    const seqBase = (this._fieldFlowSeq || 0) + fieldIndex * 101;
+    let emitted = 0;
+    for (let j = 0; j < count; j++) {
+      const t = seqBase + j;
+      const a01 = fieldFrac(t * 0.61803398875);
+      const r01 = fieldFrac(t * 0.75487766625 + 0.137);
+      if (this._emitFieldParticle(field, R, pal, a01, r01, sizeScale, speedScale, stretch)) emitted++;
+    }
+    return emitted;
+  },
+
+  _emitFieldParticle(field, R, pal, a01, r01, sizeScale, speedScale, stretch) {
+    const cx = field.center.x, cz = field.center.z;
+    if (field.kind === 'cone') {
+      const dirx = field.dir ? field.dir.x : 1, dirz = field.dir ? field.dir.z : 0;
+      const half = field.halfAngleRad || 0.5;
+      const d = R * (0.08 + 0.88 * r01);                    // distance from apex along the axis
+      const lateral = (a01 * 2 - 1) * d * Math.tan(half) * 0.92; // the widening wedge
+      const px = cx + dirx * d + (-dirz) * lateral;
+      const pz = cz + dirz * d + (dirx) * lateral;
+      const speed = (120 + 90 * fieldFalloff(field, d)) * speedScale;
+      const vx = dirx * speed, vz = dirz * speed;
+      const c0 = this._hexRgb(pal ? pal.bank : '#39d0ff');
+      const c1 = this._hexRgb(pal ? pal.chevron : '#39d0ff');
+      const life = Math.max(0.18, ((R - d) / Math.max(30, speed)) * 0.9);
+      this._spawnParticle(px, pz, vx, vz, life, 1.4 * sizeScale, 0.4 * sizeScale, c0, c1, 0.35, 0, 0, Math.atan2(vz, vx), stretch);
+      return true;
+    }
+    const ang = a01 * Math.PI * 2;
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    if (field.kind === 'repulsor') {
+      const rad = R * (0.10 + 0.14 * r01);                  // born near the core
+      const px = cx + ca * rad, pz = cz + sa * rad;
+      const speed = (185 + 55 * (1 - r01)) * speedScale;
+      const vx = ca * speed - sa * speed * 0.12, vz = sa * speed + ca * speed * 0.12; // outward + slight swirl
+      const c0 = this._hexRgb(pal ? pal.coreWarm : '#ffb35c');
+      const c1 = this._hexRgb(pal ? pal.berm : '#39d0ff');
+      this._spawnParticle(px, pz, vx, vz, 1.05, 1.4 * sizeScale, 0.4 * sizeScale, c0, c1, 1.15, 0, 0, Math.atan2(vz, vx), stretch);
+      return true;
+    }
+    // well — born rim-biased, flow inward + swirl, converge on the hot sink
+    const rad = R * (0.5 + 0.48 * r01);
+    const px = cx + ca * rad, pz = cz + sa * rad;
+    const speed = (150 + 120 * (1 - r01)) * speedScale;
+    const vx = -ca * speed + (-sa) * speed * 0.45, vz = -sa * speed + (ca) * speed * 0.45; // inward + tangential swirl
+    const c0 = this._hexRgb(pal ? pal.filament : '#39d0ff');
+    const c1 = this._hexRgb(pal ? pal.core : '#39d0ff');
+    const life = Math.max(0.2, (rad / Math.max(30, speed)) * 1.05);
+    this._spawnParticle(px, pz, vx, vz, life, 1.5 * sizeScale, 0.4 * sizeScale, c0, c1, 0.2, 0, 0, Math.atan2(vz, vx), stretch);
+    return true;
+  },
+
   update(frameDt) {
     if (!this._scene) {
       // render may have come up after vfx.init (defensive) — try once to attach pools
@@ -4125,6 +4821,15 @@ export const vfx = {
       this._seamMarkersWereRelevant = false;
       this._sleepSeamMarkers();
       sub.seamMarkers = 0;
+    }
+    // PQ-012 continuous field flow — cadence-gated pooled emission; slept when no field is deployed.
+    if (this._fieldFlowRelevant()) {
+      const flowStep = this._consumeCadence('_cadenceFieldFlow', dt, VFX_FIELD_FLOW_HZ);
+      sub.fieldFlow = flowStep > 0 ? this._updateFieldFlow() : (sub.fieldFlow || 0);
+      this._updateFieldGeometry(dt);
+    } else {
+      sub.fieldFlow = 0;
+      if (this._fieldGeomInitialized) this._updateFieldGeometry(dt);
     }
     sub.energy = this._updateEnergy(dt) ? 1 : 0;
     sub.explosions = this._explosions.update(dt, this._explosionEmitter) > 0 ? 1 : 0;

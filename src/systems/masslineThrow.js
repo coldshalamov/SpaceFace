@@ -14,6 +14,7 @@
 // the attachment through the same service tetherGameplay uses — never a direct vel write.
 import { massline2Flag } from '../data/featureFlags.js';
 import { sampleThrowSolution, tetherPairKinematics } from '../combat/tetherFireControl.js';
+import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
@@ -134,6 +135,10 @@ export const masslineThrow = {
     const aim = this._resolveThrowAim(state, player, payload);
     runtime.aimTargetId = aim.entity ? aim.entity.id : null;
     runtime.aimSynthetic = !aim.entity;
+    // Field-aware release (PQ-012): when continuous fields are active, inject a pure sampler so the
+    // predictor shows the BENT release path (a throw released inside a Well curves). Only built when
+    // a field snapshot exists — absent it, the predictor is byte-identical to the ballistic model.
+    const fieldSampler = this._buildFieldSampler(state, payload);
     const solution = sampleThrowSolution(
       this._throwPrediction,
       { pos: payload.pos, vel: payload.vel },
@@ -142,6 +147,7 @@ export const masslineThrow = {
         tick: state.tick,
         omega: kin.omega,
         identity: `${payload.id}:${aim.entity ? aim.entity.id : 'cursor'}`,
+        fieldSampler,
       },
     );
     runtime.solution = mirrorSolution(runtime.solution, solution);
@@ -201,6 +207,28 @@ export const masslineThrow = {
       return;
     }
     this._executeThrow(state, player, payload, aim, solution, 'snap-manual');
+  },
+
+  // Build a pure field-acceleration sampler for the release predictor, or null when no continuous
+  // field is active (so the predictor stays exactly ballistic). The closure reuses scratch objects
+  // — zero allocation per predictor step.
+  _buildFieldSampler(state, payload) {
+    const snapshot = state.fields && Array.isArray(state.fields.snapshot) ? state.fields.snapshot : null;
+    if (!snapshot || snapshot.length === 0) return null;
+    const targetId = state.player && state.player.targetId;
+    const profile = {
+      mass: Math.max(0.1, Number.isFinite(payload.physicsBody && payload.physicsBody.mass) ? payload.physicsBody.mass : (Number.isFinite(payload.mass) ? payload.mass : 1)),
+      type: payload.type,
+      team: payload.team,
+      id: payload.id,
+      marked: targetId != null && payload.id === targetId,
+    };
+    const simTime = state.simTime;
+    const pS = { x: 0, z: 0 }, vS = { x: 0, z: 0 }, out = { ax: 0, az: 0 };
+    return (px, pz, vx, vz) => {
+      pS.x = px; pS.z = pz; vS.x = vx; vS.z = vz;
+      return sampleFieldAcceleration(pS, vS, snapshot, simTime, profile, out);
+    };
   },
 
   _resolveThrowAim(state, player, payload) {

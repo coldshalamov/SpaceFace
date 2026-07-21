@@ -235,6 +235,12 @@ const VERB_BINDINGS = {
   // and rebindable like every other flight verb.
   // Edge: launch the seed toward the aim point (massSeed system owns lifecycle/cooldown/cap).
   deployMassSeed: ['Digit4'],
+  // PQ-012/SF-12 continuous field tools. Digit5-7 are free repo-wide (checked against both scheme
+  // tables and ui/bindings.js, same as Digit4), left-hand reachable off WASD, and rebindable like
+  // every flight verb. The fields system owns lifecycle/cooldown/cap for all three.
+  deployWell:         ['Digit5'], // edge: deploy an attractive Well at the aim point (PULL)
+  deployRepulsor:     ['Digit6'], // edge: drop a Repulsor at the ship (outward SHOVE)
+  toggleClearingCone: ['Digit7'], // edge: toggle the ship-attached forward Clearing Cone (snowplow)
   // Travel Burn latch (atlas D5, W1-5). Num Lock is the authored default: it is a genuine latch
   // key on a full keyboard, it is never used for anything else in this game, and it carries a
   // physical indicator light that matches "the drive is engaged". Many laptops have no Num Lock
@@ -560,6 +566,7 @@ export const input = {
       brake: false, cruise: false, tetherFire: false, tetherCut: false, reelDelta: 0,
       chargeThrow: false, chargeDetonate: false, scanPulse: false, autopursuit: false, deployBeacon: false,
       bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false, deployMassSeed: false,
+      deployWell: false, deployRepulsor: false, toggleClearingCone: false,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     if (state.mode !== 'flight' || state.ui.screenStack.length > 0 || modalInputActive()) {
@@ -571,6 +578,7 @@ export const input = {
       acts.deployBeacon = false;
       acts.bulletTime = false; acts.cloakToggle = false; acts.throwArm = false; acts.travelBurn = false;
       acts.deployMassSeed = false;
+      acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       const masslineHeldThroughModal = this._held(state, 'tether')
         || !!(gp && gp.isConnected() && gp.actions.massline && gp.actions.massline.held);
       acts.massline = masslineGrammar.reset(masslineHeldThroughModal);
@@ -850,6 +858,10 @@ export const input = {
     acts.deployBeacon = edge('deployBeacon');
     // PQ-011 anchor Mass Seed: ordinary edge verb (Digit4 default, rebindable like every flight verb).
     acts.deployMassSeed = edge('deployMassSeed');
+    // PQ-012 field tools: three ordinary edge verbs (Digit5-7 default, rebindable like every flight verb).
+    acts.deployWell = edge('deployWell');
+    acts.deployRepulsor = edge('deployRepulsor');
+    acts.toggleClearingCone = edge('toggleClearingCone');
     // Massline Wave M2 verbs. bulletTime is a LEVEL (hold-to-dilate; the system owns the meter and
     // may refuse when empty); cloakToggle is an edge; throwArm was resolved above where the mining
     // beam routing is decided (single owner for the RMB arbitration).

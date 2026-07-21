@@ -231,7 +231,7 @@ export function solveThrowSolution(payload, aim, opts = {}) {
     timeToSolution = sweep;
   }
 
-  return {
+  const ballistic = {
     valid: true,
     errorRad,
     tolRad,
@@ -241,6 +241,47 @@ export function solveThrowSolution(payload, aim, opts = {}) {
     timeToSolution,
     timeOfFlight: t,
     predicted: { x: pp.x + ix, z: pp.z + iz },
+    fieldAware: false,
+    projectedPath: null,
+    fieldDistortionRad: 0,
+  };
+
+  // Field-aware refinement (PQ-012 req 9). When the caller injects a pure field sampler
+  // `(px,pz,vx,vz) -> {ax,az}` (only present when continuous fields are actually active), the
+  // payload's release path is BENT: forward-integrate from its current state with the same
+  // semi-implicit Euler shape the sim uses, and let the bent path — not the straight ballistic
+  // line — decide the predicted landing and the on-solution gate. Absent a sampler this branch is
+  // skipped and the result is byte-identical to the pure ballistic model (existing throw tests).
+  if (typeof opts.fieldSampler !== 'function') return ballistic;
+  const dt = finite(opts.fieldDt, 1 / 60) > 0 ? finite(opts.fieldDt, 1 / 60) : 1 / 60;
+  const steps = Math.max(1, Math.min(600, Math.trunc(finite(opts.fieldSteps, Math.min(90, Math.ceil((t + 0.2) / dt))))));
+  let bx = pp.x, bz = pp.z, bvx = finite(pv.x), bvz = finite(pv.z);
+  const path = [{ x: bx, z: bz }];
+  let cDist = Infinity, cX = bx, cZ = bz, cT = 0;
+  for (let i = 1; i <= steps; i++) {
+    const acc = opts.fieldSampler(bx, bz, bvx, bvz);
+    bvx += finite(acc && acc.ax) * dt; bvz += finite(acc && acc.az) * dt;
+    bx += bvx * dt; bz += bvz * dt;
+    path.push({ x: bx, z: bz });
+    const tt = i * dt;
+    const aimX = aim.pos.x + rvx * tt, aimZ = aim.pos.z + rvz * tt;
+    const d = Math.hypot(bx - aimX, bz - aimZ);
+    if (d < cDist) { cDist = d; cX = bx; cZ = bz; cT = tt; }
+  }
+  const hitTol = Math.max(0.5, finite(aim.radius, 0.5)) * Math.max(0.1, finite(opts.forgiveness, ASSIST_FORGIVENESS));
+  // Distortion = angular gap between the straight ballistic aim and the bent closest approach, as
+  // seen from the payload — the truthful "field distortion" magnitude for the HUD indicator.
+  const ballAng = interceptAngle;
+  const bentAng = Math.atan2(cZ - pp.z, cX - pp.x);
+  return {
+    ...ballistic,
+    onSolution: cDist <= hitTol,
+    predicted: { x: cX, z: cZ },
+    fieldAware: true,
+    projectedPath: path,
+    fieldClosestDist: cDist,
+    fieldClosestTime: cT,
+    fieldDistortionRad: wrapPi(bentAng - ballAng),
   };
 }
 
@@ -279,6 +320,12 @@ export function sampleThrowSolution(cache, payload, aim, opts = {}) {
       timeToSolution: solved.timeToSolution,
       timeOfFlight: solved.timeOfFlight,
       predicted: solved.predicted ? { ...solved.predicted } : null,
+      // Field-aware carry-through (PQ-012). projectedPath is the bent release trajectory the HUD
+      // draws; fieldAware/onSolution/distortion travel with the cached sample between solves.
+      fieldAware: !!solved.fieldAware,
+      projectedPath: solved.projectedPath || null,
+      fieldClosestDist: finite(solved.fieldClosestDist, 0),
+      fieldDistortionRad: finite(solved.fieldDistortionRad, 0),
     };
     host.identity = identity;
     host.sampleTick = tick;
@@ -298,10 +345,16 @@ export function sampleThrowSolution(cache, payload, aim, opts = {}) {
     timeToSolution = sweep;
   }
 
+  // A field-aware sample's on-solution is decided by the BENT path's closest approach, not by the
+  // omega-projected heading error (which is a straight-line concept). Keep the freshly-solved gate
+  // for those; the ballistic path keeps its inter-sample omega projection exactly as before.
+  const onSolution = sample.fieldAware
+    ? !!(sample.valid && sample.onSolution)
+    : !!(sample.valid && Math.abs(projectedError) <= sample.tolRad);
   return {
     ...sample,
     errorRad: projectedError,
-    onSolution: !!(sample.valid && Math.abs(projectedError) <= sample.tolRad),
+    onSolution,
     timeToSolution,
     sampleTick: host.sampleTick,
     sampleAgeTicks,
