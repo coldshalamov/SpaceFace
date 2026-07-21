@@ -1,0 +1,778 @@
+{
+  "determinism": {
+    "var_ashline_rig_corsair_blade_v01": {
+      "vertexCount": 716,
+      "vertexHash": "fe499ac3466343216a4a77786e7b9be354be7a508f085eb20f0a47f919f3e35b"
+    },
+    "var_ashline_rig_reaver_hook_v01": {
+      "vertexCount": 471,
+      "vertexHash": "0289fc81e7115d5796e26cd753a2006aa9a3169b45561f39f9abfaa8efdcd5ca"
+    },
+    "var_helios_span_dmc_orebox_v01": {
+      "vertexCount": 2512,
+      "vertexHash": "6dac32eed16a5a0f698d03ddf103719bf48964dd1bc4368c8c54e2a5e2f97ebc"
+    },
+    "var_helios_span_mts_sealed_v01": {
+      "vertexCount": 1100,
+      "vertexHash": "622365e54e4714353fccdca495039230fc15c29cba3f3fe082f8db47123a7f9d"
+    },
+    "var_helios_span_reach_scrap_v01": {
+      "vertexCount": 1312,
+      "vertexHash": "c1b58e51a34cab337f7b113d2159b7457a91c009febbb7de244cf48afcca9e7f"
+    },
+    "var_weapon_pulse_cannon_industrial_v01": {
+      "vertexCount": 188,
+      "vertexHash": "12193bd17fd19bbad5d88e2a01af09d49b8e84b6361bfb4f25a6af194697253d"
+    },
+    "var_weapon_pulse_cannon_military_v01": {
+      "vertexCount": 216,
+      "vertexHash": "47c84bc14303788c9163f7228df28731c1f1f79a1b1ee06e4e98258413829d23"
+    },
+    "var_weapon_pulse_cannon_pirate_v01": {
+      "vertexCount": 227,
+      "vertexHash": "8c569ff4bdc687babd1643c6c939b9ac51f1c034986ede1d10847bb4e22c5ab1"
+    }
+  },
+  "lane": "F",
+  "pass": true,
+  "schema": "sf-foundry-variants-f/1",
+  "scope": "Lane F variants only (helios_span, ashline_rig, weapon_pulse_cannon). var_wasp_* and var_station_trade_hub_* belong to a different lane and are NOT touched.",
+  "variants": [
+    {
+      "added_object_count": 43,
+      "added_objects": [
+        "VAR_MTS_blister0",
+        "VAR_MTS_blister1",
+        "VAR_MTS_blister2",
+        "VAR_MTS_cabinstrip",
+        "VAR_MTS_clamshell_aft",
+        "VAR_MTS_clamshell_fore",
+        "VAR_MTS_clamshell_mid",
+        "VAR_MTS_goldzone",
+        "VAR_MTS_logo",
+        "VAR_MTS_parting_rail_n",
+        "VAR_MTS_parting_rail_p",
+        "VAR_MTS_seal_n_00",
+        "VAR_MTS_seal_n_01",
+        "VAR_MTS_seal_n_02",
+        "VAR_MTS_seal_n_03",
+        "VAR_MTS_seal_n_04",
+        "VAR_MTS_seal_n_05",
+        "VAR_MTS_seal_n_06",
+        "VAR_MTS_seal_n_07",
+        "VAR_MTS_seal_n_08",
+        "VAR_MTS_seal_n_09",
+        "VAR_MTS_seal_n_10",
+        "VAR_MTS_seal_n_11",
+        "VAR_MTS_seal_n_12",
+        "VAR_MTS_seal_n_13",
+        "VAR_MTS_seal_n_14",
+        "VAR_MTS_seal_n_15",
+        "VAR_MTS_seal_p_00",
+        "VAR_MTS_seal_p_01",
+        "VAR_MTS_seal_p_02",
+        "VAR_MTS_seal_p_03",
+        "VAR_MTS_seal_p_04",
+        "VAR_MTS_seal_p_05",
+        "VAR_MTS_seal_p_06",
+        "VAR_MTS_seal_p_07",
+        "VAR_MTS_seal_p_08",
+        "VAR_MTS_seal_p_09",
+        "VAR_MTS_seal_p_10",
+        "VAR_MTS_seal_p_11",
+        "VAR_MTS_seal_p_12",
+        "VAR_MTS_seal_p_13",
+        "VAR_MTS_seal_p_14",
+        "VAR_MTS_seal_p_15"
+      ],
+      "bbox_dims_donor": [
+        28.325,
+        8.7,
+        5.11
+      ],
+      "bbox_dims_variant": [
+        28.325,
+        8.7,
+        6.26
+      ],
+      "donor": "assets/ships/parts/wholeships/helios_span.glb",
+      "donor_id": "helios_span",
+      "glb_file": "var_helios_span_mts_sealed_v01.glb",
+      "materials_variant": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Steel",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "preserved_empties": 10,
+      "seed": 72101,
+      "sha256": "514b83104a9fbb9a10cbd0b58ead72fcab524d20e52de8c7419c6836daa09590",
+      "stem": "var_helios_span_mts_sealed_v01",
+      "treatment": "MTS",
+      "tris_added": 2028,
+      "tris_cap": 22912,
+      "tris_donor": 16366,
+      "tris_variant": 18394,
+      "xlen_growth_pct": 0.0,
+      "ylen_growth_pct": 0.0,
+      "zlen_growth_pct": 22.505,
+      "zone_coverage": {
+        "aft": {
+          "count": 3,
+          "fraction": 0.3255
+        },
+        "fore": {
+          "count": 5,
+          "fraction": 0.1581
+        },
+        "mid": {
+          "count": 35,
+          "fraction": 0.5164
+        }
+      }
+    },
+    {
+      "added_object_count": 88,
+      "added_objects": [
+        "VAR_DMC_doubler_port_aft_0",
+        "VAR_DMC_doubler_port_aft_1",
+        "VAR_DMC_doubler_port_aft_2",
+        "VAR_DMC_doubler_port_aft_3",
+        "VAR_DMC_doubler_port_fwd_0",
+        "VAR_DMC_doubler_port_fwd_1",
+        "VAR_DMC_doubler_port_fwd_2",
+        "VAR_DMC_doubler_port_fwd_3",
+        "VAR_DMC_doubler_stbd_aft_0",
+        "VAR_DMC_doubler_stbd_aft_1",
+        "VAR_DMC_doubler_stbd_aft_2",
+        "VAR_DMC_doubler_stbd_aft_3",
+        "VAR_DMC_doubler_stbd_fwd_0",
+        "VAR_DMC_doubler_stbd_fwd_1",
+        "VAR_DMC_doubler_stbd_fwd_2",
+        "VAR_DMC_doubler_stbd_fwd_3",
+        "VAR_DMC_lamp_head_0",
+        "VAR_DMC_lamp_head_1",
+        "VAR_DMC_lamp_stanchion_0",
+        "VAR_DMC_lamp_stanchion_1",
+        "VAR_DMC_orebox_port_aft",
+        "VAR_DMC_orebox_port_fwd",
+        "VAR_DMC_orebox_stbd_aft",
+        "VAR_DMC_orebox_stbd_fwd",
+        "VAR_DMC_piperun",
+        "VAR_DMC_rivet_port_aft_-1_00",
+        "VAR_DMC_rivet_port_aft_-1_01",
+        "VAR_DMC_rivet_port_aft_-1_02",
+        "VAR_DMC_rivet_port_aft_-1_03",
+        "VAR_DMC_rivet_port_aft_-1_04",
+        "VAR_DMC_rivet_port_aft_-1_05",
+        "VAR_DMC_rivet_port_aft_-1_06",
+        "VAR_DMC_rivet_port_aft_1_00",
+        "VAR_DMC_rivet_port_aft_1_01",
+        "VAR_DMC_rivet_port_aft_1_02",
+        "VAR_DMC_rivet_port_aft_1_03",
+        "VAR_DMC_rivet_port_aft_1_04",
+        "VAR_DMC_rivet_port_aft_1_05",
+        "VAR_DMC_rivet_port_aft_1_06",
+        "VAR_DMC_rivet_port_fwd_-1_00",
+        "VAR_DMC_rivet_port_fwd_-1_01",
+        "VAR_DMC_rivet_port_fwd_-1_02",
+        "VAR_DMC_rivet_port_fwd_-1_03",
+        "VAR_DMC_rivet_port_fwd_-1_04",
+        "VAR_DMC_rivet_port_fwd_-1_05",
+        "VAR_DMC_rivet_port_fwd_-1_06",
+        "VAR_DMC_rivet_port_fwd_1_00",
+        "VAR_DMC_rivet_port_fwd_1_01",
+        "VAR_DMC_rivet_port_fwd_1_02",
+        "VAR_DMC_rivet_port_fwd_1_03",
+        "VAR_DMC_rivet_port_fwd_1_04",
+        "VAR_DMC_rivet_port_fwd_1_05",
+        "VAR_DMC_rivet_port_fwd_1_06",
+        "VAR_DMC_rivet_stbd_aft_-1_00",
+        "VAR_DMC_rivet_stbd_aft_-1_01",
+        "VAR_DMC_rivet_stbd_aft_-1_02",
+        "VAR_DMC_rivet_stbd_aft_-1_03",
+        "VAR_DMC_rivet_stbd_aft_-1_04",
+        "VAR_DMC_rivet_stbd_aft_-1_05",
+        "VAR_DMC_rivet_stbd_aft_-1_06",
+        "VAR_DMC_rivet_stbd_aft_1_00",
+        "VAR_DMC_rivet_stbd_aft_1_01",
+        "VAR_DMC_rivet_stbd_aft_1_02",
+        "VAR_DMC_rivet_stbd_aft_1_03",
+        "VAR_DMC_rivet_stbd_aft_1_04",
+        "VAR_DMC_rivet_stbd_aft_1_05",
+        "VAR_DMC_rivet_stbd_aft_1_06",
+        "VAR_DMC_rivet_stbd_fwd_-1_00",
+        "VAR_DMC_rivet_stbd_fwd_-1_01",
+        "VAR_DMC_rivet_stbd_fwd_-1_02",
+        "VAR_DMC_rivet_stbd_fwd_-1_03",
+        "VAR_DMC_rivet_stbd_fwd_-1_04",
+        "VAR_DMC_rivet_stbd_fwd_-1_05",
+        "VAR_DMC_rivet_stbd_fwd_-1_06",
+        "VAR_DMC_rivet_stbd_fwd_1_00",
+        "VAR_DMC_rivet_stbd_fwd_1_01",
+        "VAR_DMC_rivet_stbd_fwd_1_02",
+        "VAR_DMC_rivet_stbd_fwd_1_03",
+        "VAR_DMC_rivet_stbd_fwd_1_04",
+        "VAR_DMC_rivet_stbd_fwd_1_05",
+        "VAR_DMC_rivet_stbd_fwd_1_06",
+        "VAR_DMC_saddleclamp_00",
+        "VAR_DMC_saddleclamp_01",
+        "VAR_DMC_saddleclamp_02",
+        "VAR_DMC_saddleclamp_03",
+        "VAR_DMC_saddleclamp_04",
+        "VAR_DMC_saddleclamp_05",
+        "VAR_DMC_saddleclamp_06"
+      ],
+      "bbox_dims_donor": [
+        28.325,
+        8.7,
+        5.11
+      ],
+      "bbox_dims_variant": [
+        28.325,
+        9.25,
+        5.8606
+      ],
+      "donor": "assets/ships/parts/wholeships/helios_span.glb",
+      "donor_id": "helios_span",
+      "glb_file": "var_helios_span_dmc_orebox_v01.glb",
+      "materials_variant": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "preserved_empties": 10,
+      "seed": 72102,
+      "sha256": "763fe5395ec9b026c22477fca967a46b2c2492aa63b67a8bfc79a5ca5f55447f",
+      "stem": "var_helios_span_dmc_orebox_v01",
+      "treatment": "DMC",
+      "tris_added": 4560,
+      "tris_cap": 22912,
+      "tris_donor": 16366,
+      "tris_variant": 20926,
+      "xlen_growth_pct": 0.0,
+      "ylen_growth_pct": 6.322,
+      "zlen_growth_pct": 14.689,
+      "zone_coverage": {
+        "aft": {
+          "count": 20,
+          "fraction": 0.0054
+        },
+        "fore": {
+          "count": 20,
+          "fraction": 0.0054
+        },
+        "mid": {
+          "count": 48,
+          "fraction": 0.9892
+        }
+      }
+    },
+    {
+      "added_object_count": 79,
+      "added_objects": [
+        "VAR_REACH_lamp0",
+        "VAR_REACH_lamp1",
+        "VAR_REACH_lamp2",
+        "VAR_REACH_muzzlecollar",
+        "VAR_REACH_plate0",
+        "VAR_REACH_plate1",
+        "VAR_REACH_plate2",
+        "VAR_REACH_plate3",
+        "VAR_REACH_plate4",
+        "VAR_REACH_plate5",
+        "VAR_REACH_plate6",
+        "VAR_REACH_standoff_0",
+        "VAR_REACH_standoff_1",
+        "VAR_REACH_standoff_2",
+        "VAR_REACH_standoff_3",
+        "VAR_REACH_standoff_4",
+        "VAR_REACH_standoff_5",
+        "VAR_REACH_standoff_6",
+        "VAR_REACH_standoff_7",
+        "VAR_REACH_standoff_foot_0",
+        "VAR_REACH_standoff_foot_1",
+        "VAR_REACH_standoff_foot_2",
+        "VAR_REACH_standoff_foot_3",
+        "VAR_REACH_standoff_foot_4",
+        "VAR_REACH_standoff_foot_5",
+        "VAR_REACH_standoff_foot_6",
+        "VAR_REACH_standoff_foot_7",
+        "VAR_REACH_weld_0_00",
+        "VAR_REACH_weld_0_01",
+        "VAR_REACH_weld_0_02",
+        "VAR_REACH_weld_0_03",
+        "VAR_REACH_weld_0_04",
+        "VAR_REACH_weld_0_05",
+        "VAR_REACH_weld_0_06",
+        "VAR_REACH_weld_0_07",
+        "VAR_REACH_weld_0_08",
+        "VAR_REACH_weld_0_09",
+        "VAR_REACH_weld_1_00",
+        "VAR_REACH_weld_1_01",
+        "VAR_REACH_weld_1_02",
+        "VAR_REACH_weld_1_03",
+        "VAR_REACH_weld_1_04",
+        "VAR_REACH_weld_1_05",
+        "VAR_REACH_weld_2_00",
+        "VAR_REACH_weld_2_01",
+        "VAR_REACH_weld_2_02",
+        "VAR_REACH_weld_2_03",
+        "VAR_REACH_weld_2_04",
+        "VAR_REACH_weld_2_05",
+        "VAR_REACH_weld_2_06",
+        "VAR_REACH_weld_2_07",
+        "VAR_REACH_weld_2_08",
+        "VAR_REACH_weld_2_09",
+        "VAR_REACH_weld_3_00",
+        "VAR_REACH_weld_3_01",
+        "VAR_REACH_weld_3_02",
+        "VAR_REACH_weld_3_03",
+        "VAR_REACH_weld_3_04",
+        "VAR_REACH_weld_3_05",
+        "VAR_REACH_weld_3_06",
+        "VAR_REACH_weld_3_07",
+        "VAR_REACH_weld_4_00",
+        "VAR_REACH_weld_4_01",
+        "VAR_REACH_weld_4_02",
+        "VAR_REACH_weld_4_03",
+        "VAR_REACH_weld_4_04",
+        "VAR_REACH_weld_4_05",
+        "VAR_REACH_weld_5_00",
+        "VAR_REACH_weld_5_01",
+        "VAR_REACH_weld_5_02",
+        "VAR_REACH_weld_5_03",
+        "VAR_REACH_weld_5_04",
+        "VAR_REACH_weld_5_05",
+        "VAR_REACH_weld_6_00",
+        "VAR_REACH_weld_6_01",
+        "VAR_REACH_weld_6_02",
+        "VAR_REACH_weld_6_03",
+        "VAR_REACH_weld_6_04",
+        "VAR_REACH_weld_6_05"
+      ],
+      "bbox_dims_donor": [
+        28.325,
+        8.7,
+        5.11
+      ],
+      "bbox_dims_variant": [
+        28.6625,
+        8.7,
+        5.5522
+      ],
+      "donor": "assets/ships/parts/wholeships/helios_span.glb",
+      "donor_id": "helios_span",
+      "glb_file": "var_helios_span_reach_scrap_v01.glb",
+      "materials_variant": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Steel",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "preserved_empties": 10,
+      "seed": 72103,
+      "sha256": "104da92e30d3e7b176d387d424060c44f671345efad00c8a400743c3987bc8b9",
+      "stem": "var_helios_span_reach_scrap_v01",
+      "treatment": "REACH",
+      "tris_added": 2296,
+      "tris_cap": 22912,
+      "tris_donor": 16366,
+      "tris_variant": 18662,
+      "xlen_growth_pct": 1.192,
+      "ylen_growth_pct": 0.0,
+      "zlen_growth_pct": 8.654,
+      "zone_coverage": {
+        "aft": {
+          "count": 30,
+          "fraction": 0.2759
+        },
+        "fore": {
+          "count": 14,
+          "fraction": 0.2466
+        },
+        "mid": {
+          "count": 33,
+          "fraction": 0.4775
+        }
+      }
+    },
+    {
+      "added_object_count": 27,
+      "added_objects": [
+        "VAR_REAVOR_crane_chain",
+        "VAR_REAVOR_crane_jib",
+        "VAR_REAVOR_crane_kicker",
+        "VAR_REAVOR_flood_0",
+        "VAR_REAVOR_flood_1",
+        "VAR_REAVOR_flood_2",
+        "VAR_REAVOR_gantry_header",
+        "VAR_REAVOR_gantry_leg_n",
+        "VAR_REAVOR_gantry_leg_p",
+        "VAR_REAVOR_grapple_arm_port",
+        "VAR_REAVOR_grapple_arm_stbd",
+        "VAR_REAVOR_grapple_claw_port_0",
+        "VAR_REAVOR_grapple_claw_port_1",
+        "VAR_REAVOR_grapple_claw_port_2",
+        "VAR_REAVOR_grapple_claw_stbd_0",
+        "VAR_REAVOR_grapple_claw_stbd_1",
+        "VAR_REAVOR_grapple_claw_stbd_2",
+        "VAR_REAVOR_hook_block",
+        "VAR_REAVOR_hook_ring",
+        "VAR_REAVOR_prowplate_0",
+        "VAR_REAVOR_prowplate_1",
+        "VAR_REAVOR_prowscar_0_0",
+        "VAR_REAVOR_prowscar_0_1",
+        "VAR_REAVOR_prowscar_0_2",
+        "VAR_REAVOR_prowscar_1_0",
+        "VAR_REAVOR_prowscar_1_1",
+        "VAR_REAVOR_prowscar_1_2"
+      ],
+      "bbox_dims_donor": [
+        17.715,
+        4.9864,
+        5.97
+      ],
+      "bbox_dims_variant": [
+        17.715,
+        5.4524,
+        7.3057
+      ],
+      "donor": "assets/ships/parts/wholeships/ashline_rig.glb",
+      "donor_id": "ashline_rig",
+      "glb_file": "var_ashline_rig_reaver_hook_v01.glb",
+      "materials_variant": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Steel",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "preserved_empties": 11,
+      "seed": 72201,
+      "sha256": "1e477b25bb3fb2376cd654978686cedce342ae4d36dfcb3659fdce3472cee295",
+      "stem": "var_ashline_rig_reaver_hook_v01",
+      "treatment": "REAVOR",
+      "tris_added": 828,
+      "tris_cap": 14422,
+      "tris_donor": 10302,
+      "tris_variant": 11130,
+      "xlen_growth_pct": 0.0,
+      "ylen_growth_pct": 9.344,
+      "zlen_growth_pct": 22.374,
+      "zone_coverage": {
+        "aft": {
+          "count": 0,
+          "fraction": 0.0
+        },
+        "fore": {
+          "count": 12,
+          "fraction": 0.6005
+        },
+        "mid": {
+          "count": 15,
+          "fraction": 0.3995
+        }
+      }
+    },
+    {
+      "added_object_count": 19,
+      "added_objects": [
+        "VAR_CORSAIR_blade0",
+        "VAR_CORSAIR_blade1",
+        "VAR_CORSAIR_blade2",
+        "VAR_CORSAIR_blade3",
+        "VAR_CORSAIR_lamp0",
+        "VAR_CORSAIR_lamp1",
+        "VAR_CORSAIR_lamp2",
+        "VAR_CORSAIR_ramlip_edge",
+        "VAR_CORSAIR_ramlip_main",
+        "VAR_CORSAIR_ramscar_n",
+        "VAR_CORSAIR_ramscar_p",
+        "VAR_CORSAIR_wcollar_strut_n_0",
+        "VAR_CORSAIR_wcollar_strut_n_1",
+        "VAR_CORSAIR_wcollar_strut_n_2",
+        "VAR_CORSAIR_wcollar_strut_p_0",
+        "VAR_CORSAIR_wcollar_strut_p_1",
+        "VAR_CORSAIR_wcollar_strut_p_2",
+        "VAR_CORSAIR_weaponcollar_n",
+        "VAR_CORSAIR_weaponcollar_p"
+      ],
+      "bbox_dims_donor": [
+        17.715,
+        4.9864,
+        5.97
+      ],
+      "bbox_dims_variant": [
+        17.8167,
+        5.7336,
+        6.4494
+      ],
+      "donor": "assets/ships/parts/wholeships/ashline_rig.glb",
+      "donor_id": "ashline_rig",
+      "glb_file": "var_ashline_rig_corsair_blade_v01.glb",
+      "materials_variant": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Steel",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "preserved_empties": 11,
+      "seed": 72202,
+      "sha256": "76857cd63c98e1bae325f6b8e8431a1d4a980a99f40faf6ad86fee8854b25b81",
+      "stem": "var_ashline_rig_corsair_blade_v01",
+      "treatment": "CORSAIR",
+      "tris_added": 1332,
+      "tris_cap": 14422,
+      "tris_donor": 10302,
+      "tris_variant": 11634,
+      "xlen_growth_pct": 0.574,
+      "ylen_growth_pct": 14.983,
+      "zlen_growth_pct": 8.03,
+      "zone_coverage": {
+        "aft": {
+          "count": 0,
+          "fraction": 0.0
+        },
+        "fore": {
+          "count": 15,
+          "fraction": 0.6772
+        },
+        "mid": {
+          "count": 4,
+          "fraction": 0.3228
+        }
+      }
+    },
+    {
+      "added_object_count": 15,
+      "added_objects": [
+        "VAR_SCN_fastener_n_00",
+        "VAR_SCN_fastener_n_01",
+        "VAR_SCN_fastener_n_02",
+        "VAR_SCN_fastener_n_03",
+        "VAR_SCN_fastener_n_04",
+        "VAR_SCN_fastener_p_00",
+        "VAR_SCN_fastener_p_01",
+        "VAR_SCN_fastener_p_02",
+        "VAR_SCN_fastener_p_03",
+        "VAR_SCN_fastener_p_04",
+        "VAR_SCN_frameline_long_n",
+        "VAR_SCN_frameline_long_p",
+        "VAR_SCN_muzzlecollar",
+        "VAR_SCN_shroud_main",
+        "VAR_SCN_twotone_band"
+      ],
+      "bbox_dims_donor": [
+        4.79,
+        1.0,
+        1.04
+      ],
+      "bbox_dims_variant": [
+        4.79,
+        1.0,
+        1.2375
+      ],
+      "donor": "assets/ships/parts/weapons/weapon_pulse_cannon.glb",
+      "donor_id": "weapon_pulse_cannon",
+      "glb_file": "var_weapon_pulse_cannon_military_v01.glb",
+      "materials_variant": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Steel",
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical"
+      ],
+      "preserved_empties": 20,
+      "seed": 72301,
+      "sha256": "65e17d3a2823f993866a23a57aa8971784282ed3ce0424cf363bfc9e3367a8c2",
+      "stem": "var_weapon_pulse_cannon_military_v01",
+      "treatment": "SCN",
+      "tris_added": 368,
+      "tris_cap": 2500,
+      "tris_donor": 1944,
+      "tris_variant": 2312,
+      "xlen_growth_pct": 0.0,
+      "ylen_growth_pct": 0.0,
+      "zlen_growth_pct": 18.99,
+      "zone_coverage": {
+        "aft": {
+          "count": 2,
+          "fraction": 0.0002
+        },
+        "fore": {
+          "count": 3,
+          "fraction": 0.0509
+        },
+        "mid": {
+          "count": 10,
+          "fraction": 0.9489
+        }
+      }
+    },
+    {
+      "added_object_count": 21,
+      "added_objects": [
+        "VAR_DMC_chevron_0",
+        "VAR_DMC_chevron_1",
+        "VAR_DMC_clampbase_0",
+        "VAR_DMC_clampbase_1",
+        "VAR_DMC_clampear_0_n",
+        "VAR_DMC_clampear_0_p",
+        "VAR_DMC_clampear_1_n",
+        "VAR_DMC_clampear_1_p",
+        "VAR_DMC_conduit",
+        "VAR_DMC_conduit_clamp_0",
+        "VAR_DMC_conduit_clamp_1",
+        "VAR_DMC_gusset_0_n",
+        "VAR_DMC_gusset_0_p",
+        "VAR_DMC_gusset_1_n",
+        "VAR_DMC_gusset_1_p",
+        "VAR_DMC_hazardband_base",
+        "VAR_DMC_rivet_0_n",
+        "VAR_DMC_rivet_0_p",
+        "VAR_DMC_rivet_1_n",
+        "VAR_DMC_rivet_1_p",
+        "VAR_DMC_worklamp"
+      ],
+      "bbox_dims_donor": [
+        4.79,
+        1.0,
+        1.04
+      ],
+      "bbox_dims_variant": [
+        4.79,
+        1.0,
+        1.196
+      ],
+      "donor": "assets/ships/parts/weapons/weapon_pulse_cannon.glb",
+      "donor_id": "weapon_pulse_cannon",
+      "glb_file": "var_weapon_pulse_cannon_industrial_v01.glb",
+      "materials_variant": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel",
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical"
+      ],
+      "preserved_empties": 20,
+      "seed": 72302,
+      "sha256": "be9d393152eeba931521b402ded817231e7ca92ae77cbacbc02be5f92fd9970b",
+      "stem": "var_weapon_pulse_cannon_industrial_v01",
+      "treatment": "DMC",
+      "tris_added": 292,
+      "tris_cap": 2500,
+      "tris_donor": 1944,
+      "tris_variant": 2236,
+      "xlen_growth_pct": 0.0,
+      "ylen_growth_pct": 0.0,
+      "zlen_growth_pct": 15.0,
+      "zone_coverage": {
+        "aft": {
+          "count": 12,
+          "fraction": 0.6917
+        },
+        "fore": {
+          "count": 0,
+          "fraction": 0.0
+        },
+        "mid": {
+          "count": 9,
+          "fraction": 0.3083
+        }
+      }
+    },
+    {
+      "added_object_count": 15,
+      "added_objects": [
+        "VAR_REACH_lamp",
+        "VAR_REACH_muzzlecollar",
+        "VAR_REACH_scrapplate_0",
+        "VAR_REACH_scrapplate_1",
+        "VAR_REACH_scrapplate_2",
+        "VAR_REACH_tapepatch",
+        "VAR_REACH_wcollar_strut_0",
+        "VAR_REACH_wcollar_strut_1",
+        "VAR_REACH_wcollar_strut_2",
+        "VAR_REACH_weld_0_0",
+        "VAR_REACH_weld_0_1",
+        "VAR_REACH_weld_0_2",
+        "VAR_REACH_weld_1_0",
+        "VAR_REACH_weld_1_1",
+        "VAR_REACH_weld_1_2"
+      ],
+      "bbox_dims_donor": [
+        4.79,
+        1.0,
+        1.04
+      ],
+      "bbox_dims_variant": [
+        4.79,
+        1.1334,
+        1.23
+      ],
+      "donor": "assets/ships/parts/weapons/weapon_pulse_cannon.glb",
+      "donor_id": "weapon_pulse_cannon",
+      "glb_file": "var_weapon_pulse_cannon_pirate_v01.glb",
+      "materials_variant": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel",
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical"
+      ],
+      "preserved_empties": 20,
+      "seed": 72303,
+      "sha256": "91cd24cd9a8ae9f1ec0c4e644b40d9e470e8603f955c1809294043829c226521",
+      "stem": "var_weapon_pulse_cannon_pirate_v01",
+      "treatment": "REACH",
+      "tris_added": 388,
+      "tris_cap": 2500,
+      "tris_donor": 1944,
+      "tris_variant": 2332,
+      "xlen_growth_pct": 0.0,
+      "ylen_growth_pct": 13.34,
+      "zlen_growth_pct": 18.269,
+      "zone_coverage": {
+        "aft": {
+          "count": 5,
+          "fraction": 0.3281
+        },
+        "fore": {
+          "count": 4,
+          "fraction": 0.1128
+        },
+        "mid": {
+          "count": 6,
+          "fraction": 0.5591
+        }
+      }
+    }
+  ]
+}

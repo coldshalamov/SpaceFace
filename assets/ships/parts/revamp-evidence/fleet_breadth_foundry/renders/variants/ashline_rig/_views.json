@@ -1,0 +1,33 @@
+{
+  "center": [
+    0.6825,
+    0.6825,
+    0.885
+  ],
+  "extents": [
+    17.715,
+    4.975,
+    5.97
+  ],
+  "fov_deg": 50.0,
+  "glb": "ashline_rig.glb",
+  "mesh_count": 10,
+  "resolution": 384,
+  "samples": 24,
+  "study_az_deg": 128.0,
+  "study_el_deg": 46.0,
+  "tilt_deg": 60.0,
+  "view_transform": "Filmic",
+  "views": [
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\variants\\ashline_rig\\game_cam.png",
+      "view": "game_cam"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\variants\\ashline_rig\\neutral_close.png",
+      "view": "neutral_close"
+    }
+  ]
+}

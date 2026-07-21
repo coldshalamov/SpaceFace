@@ -154,15 +154,15 @@
       "seed": 12648430,
       "tris": 324,
       "dims_m": [
-        0.130064,
-        0.090805,
-        0.1397
+        0.04191,
+        0.091742,
+        0.140637
       ],
       "materials": [
         "KitMat_Steel"
       ],
       "glb": "kit_bracket_gusset_v04.glb",
-      "sha256": "ff866f3196f604f3506bdce95702a99663039a52a71ef03ae538f99619bcaeae"
+      "sha256": "4dda11cdbcdc7deab253911b0db6cbb9f812660b484d38384d43301f4854a6fc"
     },
     {
       "family": "fastener_recessed",

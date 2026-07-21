@@ -1091,30 +1091,57 @@ def _bracket_cast_lug(size, r):
 
 
 def _bracket_angle_rib(size, r):
-    """Single angled rib brace — diagonal strut with end pads."""
+    """Single angled rib brace — diagonal strut physically CONNECTING two pads.
+
+    The strut endpoints embed into both pad volumes so the rod reads as seated
+    on/into the pads, forming one connected assembly rather than three
+    disconnected parts. Geometry is derived from the actual pad-to-pad vector
+    (not a fixed 45 deg Euler), so the strut lands inside both pads for any
+    ``size`` and the brace always touches what it braces.
+    """
     thick = max(0.014, size * 0.10)
     pad_size = size * 0.30
-    angle = math.radians(45)
     parts = []
-    # Bottom pad
+    # Bottom pad: horizontal plate on the XY floor, centred at origin.
     bm = bmesh.new()
     bm_add_box(bm, Vector((pad_size, pad_size, thick)),
                center=Vector((0.0, 0.0, thick * 0.5)))
     parts.append(new_object("KIT_BRACKET_GUSSET_pad_bot", bm))
-    # Top pad
+    # Top pad: vertical plate standing up at y = -size*0.5 (the "wall" the brace
+    # reaches), broad face pointing +Y toward the bottom pad.
+    top_y_center = -size * 0.5 + thick * 0.5
+    top_z_center = size - pad_size * 0.5
     bm = bmesh.new()
     bm_add_box(bm, Vector((pad_size, thick, pad_size)),
-               center=Vector((0.0, -size * 0.5 + thick * 0.5, size - pad_size * 0.5)))
+               center=Vector((0.0, top_y_center, top_z_center)))
     parts.append(new_object("KIT_BRACKET_GUSSET_pad_top", bm))
-    # Diagonal strut
-    strut_len = size * 1.25
+    # Strut: built as a Z-aligned box, then rotated so local +Z aligns with the
+    # pad-to-pad vector and translated to the strut midpoint. Each end is
+    # embedded by ``thick*0.5`` past the pad centre so the rod overlaps real
+    # pad volume on both ends (the pads are >=thick thick, so the embedded
+    # endpoint stays inside the pad, never poking out the far side).
+    p_bot = Vector((0.0, 0.0, thick * 0.5))
+    p_top = Vector((0.0, top_y_center, top_z_center))
+    direction = p_top - p_bot
+    dlen = direction.length
+    if dlen < 1e-6:
+        direction = Vector((0.0, 0.0, 1.0))
+        dlen = 1.0
+    direction_normalized = direction / dlen
+    embed = thick * 0.5
+    a = p_bot - direction_normalized * embed
+    b = p_top + direction_normalized * embed
+    strut_vec = b - a
+    strut_len = strut_vec.length
+    strut_center = (a + b) * 0.5
     bm = bmesh.new()
     bm_add_box(bm, Vector((thick, thick, strut_len)))
     strut = new_object("KIT_BRACKET_GUSSET_strut", bm)
-    # Position midpoint between pad centers and rotate 45° about Y
-    mid = Vector((0.0, -size * 0.25 + thick * 0.25, size * 0.5))
-    strut.location = mid
-    strut.rotation_euler = (0.0, angle, 0.0)
+    z_axis = Vector((0.0, 0.0, 1.0))
+    quat = z_axis.rotation_difference(strut_vec.normalized())
+    strut.rotation_mode = 'QUATERNION'
+    strut.rotation_quaternion = quat
+    strut.location = strut_center
     parts.append(strut)
     obj = finish_many(parts, "KIT_BRACKET_GUSSET_V04", mat="KitMat_Steel")
     return [obj]
