@@ -1,17 +1,15 @@
 # Graphics Overhaul Integration Checkpoint
 
-**Checkpoint date:** 2026-07-20 (refreshed by the closeout synthesis at `eb8ed839`)
+**Checkpoint date:** 2026-07-21 (fleet-foundry and PQ-011 synthesis)
 
 **Status:** GRAPHICS CLOSEOUT PROMOTED TO `master`; FOCUSED-GREEN CHECKPOINT, FINAL ACCEPTANCE PENDING;
 PQ-022 place_station_military SUBSLICE route-accepted; PQ-018 Wreck Cathedral SOURCE candidate
-preserved pending PQ-017.
+preserved pending PQ-017; fleet breadth foundry SOURCE package integrated but runtime-pending.
 
-**Current audited master revision:** `eb8ed839` (closeout synthesis). Adds the PQ-014 NPC-job kernel
-(`d6d5278c`..`fffe57db`), the PQ-018 Wreck Cathedral source candidate (`6df5a210`..`7330a85b`), the
-PQ-022 place_station_military remaster (`3ea2fe99`), and the untracked-graphics-batch
-classification (`a418c111`, `eb8ed839`). Earlier: combined synthesis `b235f062`; propulsion repair
-`59f91d19`; geology/interaction repair `e8838e2c`; Electron RCS evidence harness `3d2dc765`;
-hybrid-batching research disposition `1074c078`.
+**Current audited integration range:** closeout `eb8ed839`, fleet foundry `8d21b07e..0ae4cc6a`, and
+PQ-011 integration `8331c1ba`/`5fce58fb` plus save-schema portability repair `40ef53f5`. Earlier:
+combined synthesis `b235f062`; propulsion repair `59f91d19`; geology/interaction repair `e8838e2c`;
+Electron RCS evidence harness `3d2dc765`; hybrid-batching research disposition `1074c078`.
 
 **Earlier unified promotion:** `ee9e0ab3`, hardened through `f0b3b154`
 
@@ -75,6 +73,7 @@ residency, and frame-time evidence before promotion.
 | Presentation stability | Authored ships/stations no longer present blue-clay boxes before replacement. `5219491d` extends the fail-closed admission contract and authored bounds behavior beyond the starter; hidden off-camera assets may stream after flight handoff, but they publish no unrelated primitive identity. `e8838e2c` gives authored geology one stable presentation boundary, removes the hidden procedural `asteroidInstanceBody` from the global instance-pool path, and retains only a local same-semantic procedural asteroid when authored loading or compilation fails. | Focused admission tests and a fresh 360-frame visual-stability route pass. The broader continuity harness is frozen unaccepted after review found fail-open admission telemetry and a stale effective-LOD receipt; natural admission/rebase/interpolation/LOD/HLOD/pool/save/Continue/context continuity remains open until those P1 defects are repaired and both browser and Electron pass. |
 | Background | The accepted substrate restores black negative space and deterministic stars. Full-screen blue haze and rejected ribbon/card-like deep-field overlays are absent. Celestial layers remain behind gameplay. | This is a de-hazed foundation, not final authored deep space. Localized nebular/debris/tidal structure still needs an authored pass and matched browser/Electron review. |
 | PBR substrate | Semantic authored roles are bound during asset load. Incomplete assets receive bounded role-specific base-color, normal/bump, roughness, metallic, and AO fallback maps rather than a single shiny-plastic response. Kestrel, Helios, and the representative geology role have dedicated profiles. | A procedural fallback is compatibility coverage, not a substitute for asset-specific UVs, authored maps, bevels, material slots, and normal-route visual approval. |
+| Fleet breadth foundry | `8d21b07e..0ae4cc6a` adds reusable Blender hard-surface kits, faction surface languages, deterministic decals/trim/grime maps, 14 ship/station variants, 20 scenery props, structural validators, and game-camera review sheets. The controller reran generation/validation and retained the source package. Universal triangle ceilings were removed: complexity is evaluated by physical scale, screen contribution, LOD, draw/residency/frame evidence, and visual payoff. | **Source-complete, runtime-pending.** None of these candidates counts as live breadth until selected assets are adapted, registered, compressed, and accepted through matched normal-camera browser/Electron motion and performance review. Sparse variants and standalone-pretty candidates must still be rejected or repaired. |
 | Semantic palette routing | Blender/glTF materials can explicitly preserve native PBR color through `spacefacePaletteTint`; authored geology, warning paint, signals, glass, radiators, docking, service, ceramic, rubber, and repair roles no longer inherit an indiscriminate hull tint. Hull, accent, drive, and structural machinery remain palette-addressable. | Focused sharing/tint tests pass. Each newly authored family still needs a normal-route value and identity review. |
 | Helios | The existing three-LOD production geometry is retained and now carries deterministic, function-specific PBR maps for coated hull, armor, structural metal, machinery, radiators, docking contact, service paint, markings, and windows. Blanket palette tint, fake hull emissive, bulk clearcoat, and double-sided bulk materials are removed. Controlled post-public-launch browser/Electron frames prove the exact authored trade hub is visible and materially consistent on both routes. | Accepted as a surface-quality checkpoint in the controlled game camera. Natural approach/undock motion, transform continuity, mip-transition review, and measured station-specific performance remain open. The full OpenCode replacement is rejected; only its batching concept survives as an unimplemented experiment. |
 | Seamed/graffiti landmarks | The old two-material gray/cyan procedural GLBs have been replaced by Blender-authored V3 assets with three LODs, explicit geology/mechanical/warning identities, recessed fracture seats, non-emissive survey hardware/paint, and six complete PBR roles each. `e8838e2c` uses the seamed asset as a skin over a real common asteroid and replaces misleading rock-shaped belt/POI dressing one-for-one with survey buoys or mining drones. | The accepted close/default/far browser captures remain useful surface evidence, but predate the mineable semantic wiring. The new natural mineable route, Electron parity, and continuity still need proof. |

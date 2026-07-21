@@ -1,12 +1,25 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-20 at `master` HEAD `eb8ed839` (closeout synthesis). The earlier PQ-001..PQ-010
-batch (`2bc3042f`..`b28d183b`) is integrated and reconciled; this closeout adds the **PQ-014 NPC-job
-kernel** (focused-green, unwired), the **PQ-018 Wreck Cathedral source candidate** (preserved, NOT
-route-accepted), the **PQ-022 place_station_military subslice** (route-accepted on Helios + Tethys),
-the untracked-graphics-batch classification, and donor worktree cleanup. **All closeout leases are
-RELEASED.** Full acceptance detail: `03_LIVE_ACCEPTANCE_MATRIX.md` "Program batch PQ-001..PQ-010" and
-"PQ-014 / PQ-018 / PQ-022 closeout subslices (2026-07-20)".
+**Snapshot:** 2026-07-21 after PQ-011/foundry synthesis. `master` contains the reconciled
+PQ-001..PQ-010 batch, the focused-green but runtime-unwired PQ-014 kernel, the PQ-018 source
+candidate, the route-accepted military-station subslice, the source-complete/runtime-pending fleet
+breadth foundry, and the runtime-wired PQ-011 Mass Seed. PQ-011 is **FOCUSED_GREEN**, not yet
+route/visually accepted. No active feature lease is recorded here; the protected
+`SpaceFace-graphics-overhaul` donor remains a separate mixed-source audit problem.
+
+## 2026-07-21 PQ-011 and fleet-foundry checkpoint
+
+| Commit/range | What it is | Honest boundary |
+|---|---|---|
+| `8d21b07e`..`0ae4cc6a` | Fleet breadth foundry: 47 reusable hard-surface pieces, 14 ship/station variants, 20 scenery props, deterministic texture/material tooling, validation and game-camera evidence | Source-complete and structurally reviewed; **not wired into runtime manifests or default-route composition**. Fixed geometry ceilings were removed in favor of size/screen-space/LOD plus measured performance. |
+| `8331c1ba` | PQ-011 deployable Mass Seed runtime, input, physics/tether integration, HUD/visual, save-normalized cooldown, and 20-test adversarial suite | Runtime-wired and focused-green; ordinary traversal/combat browser+Electron routes, visual judgment, performance evidence, and adversarial review of the kinematic-deployment seam remain. |
+| `5fce58fb` | Hash-bound PQ-011 receipt | Records the excluded contaminated browser probe and does not claim route acceptance. |
+| `40ef53f5` | Save-schema checker newline portability repair | A clean Windows CRLF checkout now validates the same generated schema content instead of failing on EOL bytes. |
+
+Current combined-tree evidence: PQ-011 **20/20**, Massline aggregate **23/23**, save schema v11/261
+paths, controls discoverability, UI a11y, physics authority, launch policy, and deterministic
+uninterrupted/reload hash equality all pass. The 47a report still carries ten historical expected-
+envelope differences; no golden was rewritten.
 
 ## 2026-07-20 closeout synthesis (commits on `master`, `eb8ed839` at the documentation transaction)
 
@@ -32,8 +45,8 @@ after their accepted content was verified byte-identical on master and preserved
 `archive/pq022-military-station-remaster-20260720`. The donor branches are deleted. The
 `SpaceFace-graphics-overhaul` worktree is **retained** per `09_DONOR_VALUE_LEDGER.md` (mixed
 source/WIP; no whole-merge; Kimi station-UI candidates still missing but out of closeout scope).
-A foreign `sf-pq011` worktree appeared during closeout (PQ-011 Mass Seed); it is NOT in this
-closeout's scope and was left untouched.
+The later PQ-011 reconciliation integrates its two reviewed commits and retires that donor only
+after preserving the exact implementation tip as `archive/pq011-mass-seed-20260721`.
 
 **Untracked-batch cleanup:** 263 foreign untracked files classified and disposed. 17 durable canon/
 spec/tooling files committed (`a418c111`); 247 reproducible category 3+4+5 files removed after a
@@ -73,26 +86,31 @@ with the 47a golden pinned byte-stable.
 
 ## Next queue position
 
-**THE FIRST BATCH IS COMPLETE: all 10 frozen outcomes (PQ-001..PQ-010) are `INTEGRATED` on `master`,
-and the 2026-07-20 closeout added three partial subslices (PQ-014 kernel, PQ-018 source, PQ-022
-station). None of PQ-014, PQ-018, or PQ-022 is checked off as a queue outcome.**
+**PQ-001..PQ-010 are integrated. PQ-011 is runtime-integrated/focused-green and deliberately not
+checked off until its public-route and visual review closes. PQ-014, PQ-018, and PQ-022 retain their
+partial-subslice states.**
 
-**Wave A — potentially parallel with disjoint ownership (next safe dispatch):**
+**Gate 0 — review before dependent physics work:** adversarially review PQ-011 on the current master,
+repair any finding, run ordinary browser and Electron traversal/combat routes, judge default-camera
+readability, then promote to route/visual acceptance only if the evidence supports it.
 
-- **PQ-011 — Deployable Mass Seed anchor** (dependsOn PQ-006 ✓). A foreign `sf-pq011` worktree on
-  branch `codex/pq011-mass-seed-20260720` was observed during this closeout — reconcile its state
-  before claiming PQ-011.
-- **Full PQ-014 — natural NPC jobs integration** (dependsOn PQ-001 ✓). The deterministic kernel is
-  on master (`d6d5278c`/`73159e05`/`fffe57db`); remaining: encounterDirector materialization,
-  sectorSim virtualization, tacticalAI movement, save key, natural-occurrence census, held-out seeds.
-- **PQ-015 — shared interaction descriptors and component targeting** (dependsOn PQ-008 ✓).
+**Wave 1 — parallel only after exact write-set preflight:**
 
-**Wave B:**
+- **PQ-012 — continuous field kernel and first consumers** (PQ-009 ✓; PQ-011 review must pass).
+- **PQ-015 — shared interaction descriptors and component targeting** (PQ-008 ✓). Keep its
+  registry/HUD lease disjoint from PQ-012's physics/renderer lane.
 
-- **PQ-012** after PQ-011 (needs PQ-009 ✓ + PQ-011).
-- **PQ-016** after PQ-015.
-- **PQ-017** (Persistent multi-component World Site kernel) unblocks PQ-018 Wreck Cathedral and
-  PQ-021 Ship's Ledger; the PQ-018 source candidate waits on `master` for that site substrate.
+**Wave 2 — after the corresponding Wave-1 mutex releases:**
+
+- **Full PQ-014 — natural NPC jobs integration.** Reuse the integrated deterministic kernel; wire
+  encounterDirector/sectorSim/tacticalAI/save and prove natural held-out-seed occurrence. Start only
+  after PQ-015 releases registry/save-adjacent paths.
+- **PQ-016 — contextual industrial beam, payloads, and receivers.** Start after PQ-015 and after
+  PQ-012 releases physics/renderer ownership.
+
+**Wave 3:** **PQ-013 — planetary sling/skim/harvest/reentry vertical** after PQ-012, serialized behind
+the broad physics/renderer/Atlas/save/browser mutexes. PQ-017 remains the next site substrate after
+this batch; it unblocks the preserved PQ-018 Wreck Cathedral and PQ-021 Ship's Ledger.
 
 **Probe-margin debt (new):** `probe-ship-visual-stability` readiness deadline is margin-flaky on
 this machine — identical configs flip red/green under load (committed-HEAD worktree green;
@@ -104,9 +122,10 @@ masquerade as visual instability.
 **Observed out-of-band lanes (user-driven codex sessions in isolated worktrees — do NOT
 double-assign, do NOT touch their branches):** the three 2026-07-20 donor lanes (`sf-pq014`,
 `sf-pq018`, `sf-pq022`) were integrated into this closeout — their branches deleted and their
-history preserved by annotated recovery tags. A foreign `sf-pq011` lane (PQ-011 Mass Seed,
-`codex/pq011-mass-seed-20260720`) is observed; it is NOT in this closeout's scope and was left
-untouched. The earlier "foreign untracked asset/tool files in the PRIMARY tree" are now classified
+history preserved by annotated recovery tags. The `sf-pq011` lane (PQ-011 Mass Seed,
+`codex/pq011-mass-seed-20260720`) was reconciled into `8331c1ba`/`5fce58fb`; exact donor tip
+`02128344` is preserved as `archive/pq011-mass-seed-20260721` and the donor is retired. The earlier
+"foreign untracked asset/tool files in the PRIMARY tree" are now classified
 and disposed — see the 2026-07-20 closeout synthesis above and `DISPOSITION.md`.
 
 **Integrated checkpoint:** the earlier Atlas/map/travel, performance, and graphics synthesis remains

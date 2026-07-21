@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-20",
+  "updatedAt": "2026-07-21",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -756,7 +756,7 @@
       "id": "PQ-011",
       "priority": 11,
       "title": "Deployable Mass Seed anchor",
-      "state": "planned",
+      "state": "focused_green",
       "canonical": [
         "PROPOSED-T20"
       ],
@@ -781,7 +781,11 @@
         "save",
         "counterplay"
       ],
-      "brief": "Add a bounded physical anchor that extends Massline play into empty space with clear expiry and counterplay."
+      "brief": "Add a bounded physical anchor that extends Massline play into empty space with clear expiry and counterplay.",
+      "integratedCommit": "8331c1ba",
+      "acceptanceRef": "03_LIVE_ACCEPTANCE_MATRIX.md#pq-011-mass-seed-and-fleet-foundry-checkpoint-2026-07-21",
+      "receipt": "design/program/roadmap/receipts/PQ-011-mass-seed.yaml",
+      "partialIntegration": "2026-07-21: runtime implementation is on master at 8331c1ba with 20/20 Mass Seed tests, 23/23 Massline aggregate checks, physics/save/input/a11y/launch gates green, and deterministic reload hash equality. Public traversal+combat browser/Electron routes, default-camera visual review, measured performance, and adversarial review of the deterministic kinematic deployment seam remain. State is focused_green, not route_accepted or checked off."
     },
     {
       "id": "PQ-012",

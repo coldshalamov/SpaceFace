@@ -36,6 +36,23 @@ Program. Detailed behavior remains in the linked source plans; this file owns st
 | M6-VISUAL-DEFECTS | PARTIAL | Hitch plume glare and Helios opaque/unshaded bulk materials were repaired; `e8838e2c` places material-matched authored skins on real asteroids, replaces misleading dressing, removes the hidden instance-pool ghost path, and retains same-semantic fallbacks. A fresh hardware Electron propulsion route after `3d2dc765` proves four plume layers, two RCS jets, and zero reported frame allocations. Remaining visible-risk work is compact/reduced/dense/Spector propulsion evidence; natural Helios/rock motion and mip continuity; the broader admission/rebase/interpolation/LOD/HLOD/pool/Continue/context continuity packet; Electron/GPU combat/destruction acceptance; localized background structure; and fleet-wide asset-specific PBR. | Same-framing browser/Electron captures, independent visual acceptance, asset/live/visual/perf checks on the final combined tree. |
 | M6-RELEASE | PARTIAL | Real browser/Electron store capture, parity, localization, accessibility, corrupt-save/migration, resize/alt-tab, platform soak, visual/audio coverage. | Full release matrix and, if the draft production policy is adopted, five clean waves. |
 
+## Immediate program queue after the 2026-07-21 synthesis
+
+- **PQ-011 is runtime-integrated and FOCUSED_GREEN, not terminal.** Close ordinary browser/Electron
+  traversal and combat routes, default-camera visual review, measured performance, and the explicit
+  adversarial review of its deterministic kinematic deployment seam before promotion.
+- **PQ-012 and PQ-015 are the first potentially parallel implementation lanes** after that review,
+  provided their exact live write sets remain disjoint (physics/renderer versus registry/HUD).
+- **Full PQ-014 follows the PQ-015 registry release.** Reuse the existing deterministic job kernel;
+  do not replace it. Remaining work is live materialization, virtualization, AI movement, save,
+  natural-occurrence census, held-out seeds, and public-route proof.
+- **PQ-016 follows PQ-015 and the PQ-012 physics/renderer release.**
+- **PQ-013 is serialized last in this batch** because its planet vertical spans physics, renderer,
+  Atlas, save, and the browser/GPU route.
+- The fleet breadth foundry on master is reusable source infrastructure: 47 detail pieces, 14
+  variants, and 20 scenery props. It does not reduce M1-VISUAL-FAMILY debt until selected assets are
+  bound through manifests/runtime maps and survive normal-camera browser/Electron comparison.
+
 ### M1-ROUTE re-measurement (2026-07-18, at `2a355195`, dependencies verified present)
 
 The row above attributes the failure to autopilot and quotes a distance short of the dock. Neither
