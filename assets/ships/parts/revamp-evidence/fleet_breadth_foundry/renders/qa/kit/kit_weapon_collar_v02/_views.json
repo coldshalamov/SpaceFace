@@ -1,0 +1,38 @@
+{
+  "center": [
+    0.0,
+    0.0,
+    0.0225
+  ],
+  "extents": [
+    0.2808,
+    0.2689,
+    0.055
+  ],
+  "fov_deg": 50.0,
+  "glb": "kit_weapon_collar_v02.glb",
+  "mesh_count": 1,
+  "resolution": 384,
+  "samples": 24,
+  "study_az_deg": 128.0,
+  "study_el_deg": 46.0,
+  "tilt_deg": 60.0,
+  "view_transform": "Filmic",
+  "views": [
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\qa\\kit\\kit_weapon_collar_v02\\neutral_close.png",
+      "view": "neutral_close"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\qa\\kit\\kit_weapon_collar_v02\\wireframe.png",
+      "view": "wireframe"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\qa\\kit\\kit_weapon_collar_v02\\game_cam.png",
+      "view": "game_cam"
+    }
+  ]
+}

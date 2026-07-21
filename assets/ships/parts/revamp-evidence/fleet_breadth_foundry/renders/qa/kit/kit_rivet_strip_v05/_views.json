@@ -1,0 +1,38 @@
+{
+  "center": [
+    0.0,
+    0.0,
+    0.0182
+  ],
+  "extents": [
+    1.0526,
+    0.109,
+    0.0364
+  ],
+  "fov_deg": 50.0,
+  "glb": "kit_rivet_strip_v05.glb",
+  "mesh_count": 1,
+  "resolution": 384,
+  "samples": 24,
+  "study_az_deg": 128.0,
+  "study_el_deg": 46.0,
+  "tilt_deg": 60.0,
+  "view_transform": "Filmic",
+  "views": [
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\qa\\kit\\kit_rivet_strip_v05\\neutral_close.png",
+      "view": "neutral_close"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\qa\\kit\\kit_rivet_strip_v05\\wireframe.png",
+      "view": "wireframe"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\qa\\kit\\kit_rivet_strip_v05\\game_cam.png",
+      "view": "game_cam"
+    }
+  ]
+}
