@@ -1,7 +1,7 @@
 # Fleet Breadth Foundry — Contract & Harness Workflow
 
 The one-page contract every lane shares: where candidate assets live, how they are
-named, what budgets they must hit, and the exact commands to render + validate a
+named, how complexity is evaluated, and the exact commands to render + validate a
 candidate. The render/validation harness (Lane B) lives under `tools/foundry/`.
 
 ## Foundry paths (new files only — never touch `release/`, `parts_manifest.json`, `partsLibrary.js`, `visualFactory.js`, `registry.js`, `gameState.js`, `design/program/`)
@@ -24,16 +24,21 @@ candidate. The render/validation harness (Lane B) lives under `tools/foundry/`.
 
 `<NN>` is a zero-padded, monotonic version. Keep the donor id verbatim in variant names.
 
-## Budgets (triangle ceilings — enforced by `validate_foundry_glb.mjs --class`)
+## Geometry complexity policy
 
-| Class | Ceiling | For |
-| --- | --- | --- |
-| `kit` | 800 | a single kit-bash piece (bracket, greeble, plate) |
-| `variant` | 8000 | a full donor-derived faction variant part (**default**) |
-| `scenery` | 3000 | a scenery / set-dressing prop |
+The class names (`kit`, `variant`, `scenery`) organize reports; they do not impose
+triangle ceilings. A station, capital landmark, fighter, asteroid, and fastener do not
+share one useful geometry allowance.
 
-Override the numeric ceiling with `--budget <tris>`. Reference donors sit mid-`variant`
-(`hull_fighter` 4690 tris, `engine_ion_twin` 5664 tris).
+Author enough geometry to preserve silhouette, physical thickness, bevel response,
+construction depth, and material boundaries at the closest supported camera. Judge cost
+using the real asset scale, screen coverage, route frequency, LOD chain, draw/material
+structure, texture residency, culling, batching opportunity, and measured target-hardware
+performance. Do not decimate visible quality merely to satisfy a generic count.
+
+`--budget <tris>` remains an opt-in engineering assertion for a task that supplies a
+platform-specific, evidence-derived limit. It is never inferred from `--class` and is not
+an art-direction target.
 
 ## Axis + camera facts (extracted from `src/render/camera.js`)
 
@@ -61,7 +66,7 @@ python tools/foundry/render_contact_sheet.py \
 Produces `<label>_sheet.png` (labeled 5-wide composite) plus a `<stem>/` folder of the
 individual 512² view PNGs and a `_views.json` manifest. `--fast` = 24 samples / 384px.
 
-Validate against a budget (Node — exits non-zero on FAIL):
+Inspect and validate the GLB contract (Node — exits non-zero on structural FAIL):
 
 ```
 node tools/foundry/validate_foundry_glb.mjs <glb...> \
@@ -122,14 +127,15 @@ additionally strips Blender's volatile PNG metadata (Date/Time/RenderTime tEXt c
   proper neutral normal map reads correct lavender.
 - **Draco-compressed GLBs are unsupported** by the Node validator (no `draco3d` dep in the
   worktree; `meshoptimizer` is present). Foundry parts stay uncompressed or meshopt-packed.
-- `validate_foundry_glb.mjs` is the foundry *budget/contract* gate. For strict glTF *spec
+- `validate_foundry_glb.mjs` is the foundry *inspection/contract* gate. For strict glTF *spec
   validity*, also run the existing `tools/art/validate_gltf_assets.mjs` (Khronos validator).
 
 ## How a candidate maps into the real pipeline (REFERENCE ONLY — not executed this batch)
 
 1. **Author** the candidate under `assets/ships/foundry/fleet_breadth_20260720/…` and
    iterate with the harness above until the sheet reads at gameplay scale and the
-   validator PASSes its budget class.
+   validator passes its structural contract. Treat complexity metrics as telemetry until
+   the asset is measured on its intended player route.
 2. **Finalize** — `node tools/art/finalize_part.mjs …` bakes the contract (LOD0/MOUNT/
    SOCKET, texture roles, strict single-buffer GLB) into a canonical part.
 3. **Register** — the finalized part is added to `assets/ships/parts/parts_manifest.json`
