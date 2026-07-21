@@ -1,0 +1,371 @@
+{
+  "tool": "export_scenery.py",
+  "schema_version": 1,
+  "seed": 12648430,
+  "prop_count": 20,
+  "props": [
+    {
+      "family": "claim_battery_mast",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 1040,
+      "dims_m": [
+        0.915,
+        0.9,
+        8.0
+      ],
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_claim_battery_mast_v01.glb",
+      "sha256": "aa0587f9d09b692b75f6bcb1191d77491309e1b85c709f9a991440d91c9e5d8b"
+    },
+    {
+      "family": "claim_battery_mast",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 776,
+      "dims_m": [
+        1.69241,
+        0.9,
+        6.8
+      ],
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_claim_battery_mast_v02.glb",
+      "sha256": "bc9a228c8939f703a148024005900b7263554248384950a0a9d68a95cc159545"
+    },
+    {
+      "family": "claim_hopper",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 676,
+      "dims_m": [
+        4.15,
+        4.15,
+        4.575
+      ],
+      "materials": [
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_claim_hopper_v01.glb",
+      "sha256": "c783f1f94a556b1eabd413f2d56b3320d474e98ada682355cc048097381508ce"
+    },
+    {
+      "family": "claim_hopper",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 240,
+      "dims_m": [
+        4.16,
+        4.16,
+        4.69143
+      ],
+      "materials": [
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_claim_hopper_v02.glb",
+      "sha256": "a20ce95d2621aa09145950981077e1aeffff9bae7d6075414544269ec6ea0336"
+    },
+    {
+      "family": "claim_sensor_dish",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 650,
+      "dims_m": [
+        2.96764,
+        4.0,
+        5.73185
+      ],
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_claim_sensor_dish_v01.glb",
+      "sha256": "1171685aa1ae3993dbb9e20e7e783f6c64a39f4c388fcc89dceb25e781acd6fc"
+    },
+    {
+      "family": "claim_sensor_dish",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 202,
+      "dims_m": [
+        3.93923,
+        4.0,
+        4.0
+      ],
+      "materials": [
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_claim_sensor_dish_v02.glb",
+      "sha256": "aef3579a050a77f1307aacda412ddb8bf52dae6ffa9ec7e6235e9d8b6ceabbdb"
+    },
+    {
+      "family": "container_stack",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 252,
+      "dims_m": [
+        4.27,
+        4.91,
+        4.04
+      ],
+      "materials": [
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_container_stack_v01.glb",
+      "sha256": "3c09827d391ab6f813403d3a2abb49a4124ca830d78de70017bde34f235f7822"
+    },
+    {
+      "family": "container_stack",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 208,
+      "dims_m": [
+        4.78822,
+        5.4,
+        4.17902
+      ],
+      "materials": [
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_container_stack_v02.glb",
+      "sha256": "796c82b064f0d5ca95ee70696a9275834be79a2f209d40a104053f50bfe80b4f"
+    },
+    {
+      "family": "container_stack",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 58,
+      "dims_m": [
+        4.90045,
+        4.74605,
+        3.6
+      ],
+      "materials": [
+        "KitMat_Paint",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_container_stack_v03.glb",
+      "sha256": "a01f969e27c5e912cc3611deb14df261ddf20787c462b5cbb704da5aa46d61da"
+    },
+    {
+      "family": "gate_ring",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 720,
+      "dims_m": [
+        72.0,
+        72.0,
+        4.0
+      ],
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_gate_ring_v01.glb",
+      "sha256": "190274db0b723e60bc7ae5d4645bf110bf313c707a324865fd49fd7d7dfc6731"
+    },
+    {
+      "family": "gate_ring",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 4192,
+      "dims_m": [
+        83.92747,
+        83.92747,
+        4.87286
+      ],
+      "materials": [
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_gate_ring_v02.glb",
+      "sha256": "4b73cffd63198f71eb373d142a87ca0746dfc75b9ef8ddddf62e366cd9bcb95e"
+    },
+    {
+      "family": "gate_ring",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 2636,
+      "dims_m": [
+        63.0,
+        62.6074,
+        2.48383
+      ],
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_gate_ring_v03.glb",
+      "sha256": "c78047f245968459635f5e753bba056d92dafc45032c48e5469cfe127db73d6c"
+    },
+    {
+      "family": "lane_beacon",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 1048,
+      "dims_m": [
+        0.7,
+        0.7,
+        13.00431
+      ],
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_lane_beacon_v01.glb",
+      "sha256": "12d9742896e7afe9d2f3bf2a724d5f3b1c90256028275d8f8eda559b0d8c129d"
+    },
+    {
+      "family": "lane_beacon",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 264,
+      "dims_m": [
+        5.02904,
+        5.02594,
+        12.88533
+      ],
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_lane_beacon_v02.glb",
+      "sha256": "e0370618186453affdd07e211b249b692a84be13ccbe4061dca1c12134aa6454"
+    },
+    {
+      "family": "lane_beacon",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 392,
+      "dims_m": [
+        0.96,
+        0.98523,
+        11.0318
+      ],
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_lane_beacon_v03.glb",
+      "sha256": "2e749c8ff99322aa58befdd70d406fde297cc82239cec24e06bc2faf5e417c01"
+    },
+    {
+      "family": "nav_buoy",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 1112,
+      "dims_m": [
+        3.7,
+        3.6866,
+        4.912
+      ],
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_nav_buoy_v01.glb",
+      "sha256": "27eb8398bacdfbbbdf0973c2546915e31340740bbf4eec96920b8895dbe3c198"
+    },
+    {
+      "family": "nav_buoy",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 652,
+      "dims_m": [
+        2.78,
+        2.70179,
+        5.09888
+      ],
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_nav_buoy_v02.glb",
+      "sha256": "d43a204c8622574cd659763b98ba7c6638a18ed869b8f82f0f9beaca56b8c924"
+    },
+    {
+      "family": "wreck_fragment",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 184,
+      "dims_m": [
+        0.50651,
+        7.29977,
+        5.85673
+      ],
+      "materials": [
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_wreck_fragment_v01.glb",
+      "sha256": "0dd4dca1693c79c992e700f125b88ab8199ed4f93d45f776a0d6335e3d42759d"
+    },
+    {
+      "family": "wreck_fragment",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 276,
+      "dims_m": [
+        3.2,
+        4.8,
+        3.04338
+      ],
+      "materials": [
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_wreck_fragment_v02.glb",
+      "sha256": "a95324b9ca2df2812b9e1ff2234ec6ad1bcf323d4749bb3684ef5285da425570"
+    },
+    {
+      "family": "wreck_fragment",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 96,
+      "dims_m": [
+        6.12942,
+        5.1082,
+        4.13525
+      ],
+      "materials": [
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel"
+      ],
+      "glb": "scenery_wreck_fragment_v03.glb",
+      "sha256": "41b48572be9b9fa5e4b4f2dcf5ef98597f2afb47550e9158e8f124708710843f"
+    }
+  ]
+}
