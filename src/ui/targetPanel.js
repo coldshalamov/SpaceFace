@@ -10,6 +10,7 @@ import { DAMAGE_MODEL } from '../data/combatDefs.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer } from '../systems/scanner.js';
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
 import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
+import { listSelectableComponents } from '../systems/interactionDescriptors.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -186,7 +187,7 @@ export function targetIntelReadout(target, player, state, distance = Infinity) {
 }
 
 export function createTargetPanel(ctx) {
-  const { state } = ctx;
+  const { state, bus } = ctx;
   const el = document.createElement('div');
   el.className = 'sf-target sf-hudpanel';
   el.style.display = 'none';
@@ -220,6 +221,8 @@ export function createTargetPanel(ctx) {
       <span class="sf-target__tri-layer mono"></span>
     </div>
     <div class="sf-target__weak mono" style="display:none"></div>
+    <div class="sf-target__component mono" role="button" tabindex="0" aria-label="Cycle target component"
+      style="display:none;margin-top:3px;font-size:10px;letter-spacing:.05em;pointer-events:auto;cursor:pointer;padding:2px 6px;border:1px solid var(--console-edge,rgba(120,160,200,.35));border-radius:4px;color:var(--text-primary);"></div>
     <div class="sf-target__gimmick mono" style="display:none"></div>`;
 
   const elName = el.querySelector('.sf-target__name');
@@ -239,12 +242,25 @@ export function createTargetPanel(ctx) {
   const triFillX = triX.querySelector('.sf-tri__fill');
   const elTriLayer = el.querySelector('.sf-target__tri-layer');
   const elWeak = el.querySelector('.sf-target__weak');
+  const elComponent = el.querySelector('.sf-target__component');
   const elIdentity = el.querySelector('.sf-target__identity');
   const elIntent = el.querySelector('.sf-target__intent');
   const elRange = el.querySelector('.sf-target__range');
   let lastTriKey = null;
   let lastIdentityKey = null;
   let lastIntelKey = null;
+  let lastComponentKey = null;
+
+  // PQ-015: the component chip is the reachable (DOM) trigger for sub-selecting a target component.
+  // pointer-events:auto is set inline so the chip is clickable even inside a pointer-events:none HUD
+  // panel. A keyboard binding through input.js is a pending shared-change request (see REPORT).
+  elComponent.addEventListener('click', () => { if (bus) bus.emit('ui:cycleComponent', { dir: 1 }); });
+  elComponent.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      if (bus) bus.emit('ui:cycleComponent', { dir: ev.shiftKey ? -1 : 1 });
+    }
+  });
 
   let lastTargetId = null;
   let lastName = null;
@@ -362,6 +378,30 @@ export function createTargetPanel(ctx) {
       if (elWeak.style.display !== 'block') elWeak.style.display = 'block';
     } else if (elWeak.style.display !== 'none') {
       elWeak.style.display = 'none';
+    }
+
+    // PQ-015 component chip: the target's selectable components (combat subsystems / salvage weak-
+    // point) and the current sub-selection, from the shared descriptor. Clicking cycles it. Hidden
+    // for targets with no targetable components (e.g. bare asteroids).
+    const comps = listSelectableComponents(state, t);
+    if (comps.length) {
+      const sel = state.ui && state.ui.componentSelection;
+      const selHere = sel && sel.targetId === t.id ? sel : null;
+      const selLabel = selHere ? ((comps.find((c) => c.componentId === selHere.componentId) || {}).label || null) : null;
+      const compKey = `${tid}:${comps.length}:${selLabel || ''}`;
+      if (compKey !== lastComponentKey) {
+        lastComponentKey = compKey;
+        setText(elComponent, selLabel ? `◎ COMPONENT: ${selLabel}` : `◎ COMPONENT · ${comps.length} · click to target`);
+        const active = !!selLabel;
+        if (elComponent.style.borderColor !== (active ? 'var(--visor-amber)' : '')) {
+          elComponent.style.borderColor = active ? 'var(--visor-amber)' : '';
+          elComponent.style.color = active ? 'var(--visor-amber)' : 'var(--text-primary)';
+        }
+      }
+      if (elComponent.style.display !== 'block') elComponent.style.display = 'block';
+    } else if (elComponent.style.display !== 'none') {
+      elComponent.style.display = 'none';
+      lastComponentKey = null;
     }
 
     // Gimmick / readable quirk tag (bounty hunters + named lane freighters)

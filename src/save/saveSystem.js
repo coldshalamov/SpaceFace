@@ -178,6 +178,7 @@ export const save = {
       ['automation', () => this._callSerialize('automation') || this._serializeAutomation()],
       ['crafting', () => this._callSerialize('crafting') || this._serializeCrafting()],
       ['sectorSim', () => this._callSerialize('sectorSim') || {}],
+      ['npcJobs', () => this._callSerialize('npcJobsRuntime') || {}], // PQ-014 live NPC job bag (v12)
       ['claims', () => this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] })],
       ['sites', () => this._callSerialize('asteroidSites') || clonePlain(state.sites || {})],
       ['formations', () => this._callSerialize('asteroidFormations') || clonePlain(state.formations || {})],
@@ -219,6 +220,7 @@ export const save = {
     data.automation = this._callSerialize('automation') || this._serializeAutomation();
     data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
     data.sectorSim = this._callSerialize('sectorSim') || {};
+    data.npcJobs = this._callSerialize('npcJobsRuntime') || {}; // PQ-014 live NPC job bag (v12)
     data.claims = this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] });
     data.sites = this._callSerialize('asteroidSites') || clonePlain(state.sites || {});
     data.formations = this._callSerialize('asteroidFormations') || clonePlain(state.formations || {});
@@ -1985,6 +1987,10 @@ export const save = {
       // Offscreen sim state restores last (after world/factions/economy) so its drift overlay can
       // read the restored sector owners + faction power. runOfflineCatchup fires on save:loaded below.
       this._callDeserialize('sectorSim', data.sectorSim);
+      // PQ-014 live NPC jobs. All hulls were cleared above, so every restored job comes back VIRTUAL
+      // and re-links to its rematerialized hull by worldRecordId on the next sector enter. Absent in
+      // pre-v12 saves → migration seeds an empty bag → the runtime starts with no jobs.
+      this._callDeserialize('npcJobsRuntime', data.npcJobs);
       // Claimed bases (after world so sectorId/poiId resolve to real sectors/POIs).
       this._callDeserialize('claims', data.claims);
       this._callDeserialize('asteroidSites', data.sites);

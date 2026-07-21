@@ -297,8 +297,68 @@ export const traffic = {
       };
       if (def.express) this._stampExpressRoute(ent, rec, station, target, sectorId, already + i);
       this.state.traffic.freighters.push(rec);
+      // PQ-014: a miner/hauler/patrol hull naturally receives a deterministic NPC job here. The job
+      // (not this ad-hoc stepper) then flies it; the update() dispatch yields for any hull with a
+      // jobId. No-op when the runtime is absent (e.g. the sf-sim golden harness) or the route can't
+      // be built (no asteroid field / too few stations) — the hull keeps its ambient stepper.
+      this._maybeAssignJob(ent, role, station, target, stations, sectorId);
     }
     this._ensureNamedLaneContact(sectorId, sector, stations);
+  },
+
+  // PQ-014 — natural NPC job assignment. Civilian traffic IS the natural producer for the three
+  // job kinds: role 'miner' → miner job (home refinery ↔ asteroid field), 'hauler' → hauler job
+  // (origin → destination terminal run), 'patrol' → patrol job (cyclic beat around a station).
+  // Other roles keep their ambient stepper. Builds the route from the same in-sector stations /
+  // asteroids the ambient steppers already use, so no new spawn fountain and no new geometry authority.
+  _maybeAssignJob(ent, role, originStation, target, stations, sectorId) {
+    const assign = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
+    if (typeof assign !== 'function') return;                 // runtime not registered → strict no-op
+    if (!ent || !ent.data || !ent.data.worldRecordId) return; // no stable identity → not a durable job
+    const spec = this._buildJobSpec(role, ent, originStation, target, stations, sectorId);
+    if (spec) assign(ent, spec);
+  },
+
+  _buildJobSpec(role, ent, originStation, target, stations, sectorId) {
+    const home = originStation && originStation.pos ? originStation : (stations && stations[0]);
+    if (!home || !home.pos) return null;
+    if (role === 'miner') {
+      const rockId = this._pickAsteroid(this.state);
+      const rock = rockId != null && this.state.entities ? this.state.entities.get(rockId) : null;
+      if (!rock || !rock.pos) return null; // no field to work → keep the ambient miner stepper
+      return {
+        kind: 'miner', sectorId,
+        route: [
+          { id: 'home:' + stationIdentity(home), pos: { x: home.pos.x, z: home.pos.z }, label: 'Refinery' },
+          { id: 'field:' + rockId, pos: { x: rock.pos.x, z: rock.pos.z }, label: 'Belt' },
+        ],
+      };
+    }
+    if (role === 'hauler') {
+      const dest = (target && target.pos && target !== home) ? target : this._pickExpressDestination(stations, home);
+      if (!dest || !dest.pos) return null; // only one station → nowhere to haul to
+      return {
+        kind: 'hauler', sectorId,
+        route: [
+          { id: 'origin:' + stationIdentity(home), pos: { x: home.pos.x, z: home.pos.z }, label: 'Origin' },
+          { id: 'dest:' + stationIdentity(dest), pos: { x: dest.pos.x, z: dest.pos.z }, label: 'Destination' },
+        ],
+        payload: { commodity: 'cmdty_ore_iron', units: 40 },
+      };
+    }
+    if (role === 'patrol') {
+      const R = 200; const cx = home.pos.x; const cz = home.pos.z;
+      return {
+        kind: 'patrol', sectorId,
+        route: [
+          { id: 'beat0', pos: { x: cx + R, z: cz }, label: 'Beat 1' },
+          { id: 'beat1', pos: { x: cx, z: cz + R }, label: 'Beat 2' },
+          { id: 'beat2', pos: { x: cx - R, z: cz }, label: 'Beat 3' },
+          { id: 'beat3', pos: { x: cx, z: cz - R }, label: 'Beat 4' },
+        ],
+      };
+    }
+    return null;
   },
 
   /**
@@ -607,6 +667,9 @@ export const traffic = {
       const rec = list[i];
       const e = state.entities.get(rec.id);
       if (!e || !e.alive) { list.splice(i, 1); continue; }
+      // PQ-014: when this hull carries a live NPC job, npcJobsRuntime owns its steering. Traffic
+      // yields entirely (no setIntent) so there is exactly one intent writer per job hull per tick.
+      if (e.data && e.data.jobId) continue;
       const role = TRAFFIC_ROLES[rec.role] || TRAFFIC_ROLES.hauler;
 
       // Role-specific behavior dispatch (spec §12.1). Each role has a distinct, readable behavior.

@@ -5,6 +5,7 @@ import { appendCombatTrace } from './trace.js';
 import { difficultyDamageScale } from '../data/difficulty.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { recordImpulseProvenance } from './impulseKernel.js';
+import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 
 export function createDamageRouter(context, statusService, options = {}) {
   const { state, catalog, bus, helpers } = context;
@@ -40,7 +41,10 @@ export function createDamageRouter(context, statusService, options = {}) {
     // PQ-011: 'massSeed' joins the damageable deployed-device family (mine parity) — the anchor
     // is shootable in every phase by ordinary hostile fire; own-team fire stays gated by the
     // friendly-fire rule below, exactly like own mines.
-    if (!packet.flags.allowAnyTarget && !['ship', 'station', 'drone', 'mine', 'massSeed'].includes(target.type)) return rejected('target_not_damageable', input, packet);
+    // PQ-015: damageable type-membership from the shared catalog (identical to the former
+    // ship|station|drone|mine|massSeed literal). The allowAnyTarget bypass, dock/invuln/friendly-fire
+    // layers below, and the 'target_not_damageable' reason string are ALL UNCHANGED.
+    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type)) return rejected('target_not_damageable', input, packet);
     if (!packet.flags.ignoreInvulnerability && playerDockProtected(state, target)) return rejected('target_docked', input, packet);
     if (target.flags && target.flags.invuln && !packet.flags.ignoreInvulnerability) return rejected('target_invulnerable', input, packet);
     if (!packet.flags.ignoreFriendlyFire && attacker && attacker.id !== target.id && attacker.team != null && target.team != null && attacker.team === target.team) {
@@ -92,6 +96,13 @@ export function createDamageRouter(context, statusService, options = {}) {
       terminalRaw[channel] = Math.max(0, raw - consumedRaw) + penetratingRaw[channel];
     }
 
+    // PQ-015 component targeting: when the local player has sub-selected a serviceable combat
+    // subsystem on their CURRENT target, their weapon hits concentrate on it (focus fire) by seeding
+    // packet.hit.subsystemId, which selectHitSubsystem honors. Validated against the live runtime
+    // (must exist and not be destroyed). Guarded to player fire on the locked target only, and skips
+    // when a projectile already carries an explicit subsystemId — so NPC fire and the 47a golden
+    // (which never populates state.ui.componentSelection) are byte-identical / determinism-safe.
+    applySelectedComponentHit(state, input, target, runtime, packet);
     const subsystemId = selectHitSubsystem(target, runtime, catalog, packet.hit || {});
     const subsystemShare = subsystemId ? clamp01(packet.subsystemShare == null ? model.subsystemShare : packet.subsystemShare) : 0;
     const subsystemInput = scaleChannelsInto(terminalRaw, subsystemShare, model.channelOrder, ROUTE_SCRATCH[4]);
@@ -312,6 +323,22 @@ export function createDamageRouter(context, statusService, options = {}) {
   }
 
   return routeDamage;
+}
+
+// PQ-015: seed the selected combat subsystem as the hit target for player focus-fire. Pure guard,
+// no writes to sim state beyond the transient packet it was handed. See routeDamage call site.
+function applySelectedComponentHit(state, input, target, runtime, packet) {
+  const attackerId = input && input.attackerId;
+  if (attackerId == null || state == null || attackerId !== state.playerId) return;
+  const player = state.player;
+  if (!player || target.id !== player.targetId) return;
+  const sel = state.ui && state.ui.componentSelection;
+  if (!sel || sel.kind !== 'subsystem' || sel.targetId !== target.id || sel.componentId == null) return;
+  if (packet.hit && packet.hit.subsystemId != null) return; // never override an explicit projectile hit
+  const sub = runtime && runtime.subsystems ? runtime.subsystems[sel.componentId] : null;
+  if (!sub || sub.destroyed) return; // not serviceable → fall back to geometric selection (truthful)
+  if (!packet.hit) packet.hit = {};
+  packet.hit.subsystemId = sel.componentId;
 }
 
 export function normalizeDamagePacket(packet = {}, channelOrder = ['kinetic', 'thermal', 'ion', 'plasma', 'phase']) {

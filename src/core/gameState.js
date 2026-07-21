@@ -136,6 +136,12 @@ export function createGameState(seed) {
     // `sectors[id] = { drift:{security,enemyDensity}|null, lastEnterSimT, lastDay }` is the per-sector
     // drift overlay + away-clock; `meta` carries the seeded-RNG continuation seed + offline baseline.
     sectorSim: { sectors: {}, meta: { rngSeed: 0, lastTickSimT: 0, lastWallT: 0, lossLog: [] } },
+    // PQ-014/SF-15/W06 - live NPC job runtime. Owned SOLELY by systems/npcJobsRuntime.js, which
+    // drives the pure src/systems/npcJobs.js kernel. `byId[jobId] = { job, kind, sectorId,
+    // worldRecordId, entityId, lastAdvanceSimT }`: the kernel record plus the runtime-only sidecar
+    // meta the kernel does not carry (restoreJob reconstructs only kernel fields). Empty bag = no
+    // live jobs; the whole feature is a strict no-op when no producer has assigned one.
+    npcJobs: { byId: {} },
     interventions: [],
     interventionMeta: { rngSeed: 0 },
     drill: null,

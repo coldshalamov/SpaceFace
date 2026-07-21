@@ -33,6 +33,7 @@ import { BINDINGS } from './bindings.js';
 import { coreText } from './localizedCoreCopy.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
+import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
 import { confirm } from './confirm.js';
@@ -3047,7 +3048,7 @@ export function createHud(ctx, alerts) {
     const contacts = [];
     for (const e of state.entityList || []) {
       if (!e.alive || e === player) continue;
-      const isShip = e.type === 'ship' || e.type === 'drone';
+      const isShip = verbAcceptsType('target', e.type); // PQ-015: shared ship|drone membership
       const isWreck = isWreckLike(e);
       if (!isShip && !isWreck) continue;
 
