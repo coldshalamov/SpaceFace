@@ -21,6 +21,13 @@ paths, controls discoverability, UI a11y, physics authority, launch policy, and 
 uninterrupted/reload hash equality all pass. The 47a report still carries ten historical expected-
 envelope differences; no golden was rewritten.
 
+**Broad flight-gate red (must be diagnosed, not waived):** `npm run check:flight:clean` completed all
+five desktop/mobile runs, with all five desktop and four of five mobile runs green; mobile run 1
+failed `boostAccelerates`. A clean one-run repeat again left desktop green while mobile failed
+`boostAccelerates` and `reverseBrakes`. Both attempts retained Rapier/SG-02 readiness, nonblank canvas,
+and zero page/console failures. Gate 0 owns determining whether this is a mobile probe/input race or a
+runtime flight defect, pinning the cause, and repairing it before the next batch is promoted.
+
 ## 2026-07-20 closeout synthesis (commits on `master`, `eb8ed839` at the documentation transaction)
 
 | Commit | What it is |

@@ -119,6 +119,12 @@ Each row carries exactly the proof that landed and names what separates it from 
 The combined-tree 47a comparison still reports ten historical expected-envelope differences while
 exiting successfully with uninterrupted/reload hash equality. No expected/golden file was rewritten.
 
+`check:flight:clean` is currently **RED** on the combined checkpoint: all five desktop runs passed,
+but one of five mobile runs failed `boostAccelerates`; a clean one-run repeat again passed desktop and
+failed mobile `boostAccelerates` plus `reverseBrakes`. Rapier/SG-02 readiness, canvas output, and
+page/console checks remained green. This is an acceptance blocker pending a cause-pinned mobile
+probe/input-versus-runtime diagnosis; it is not evidence against or acceptance of PQ-011 by itself.
+
 **Worktree and untracked-batch cleanup evidence (same closeout):**
 
 - The three donor worktrees (`sf-pq014`, `sf-pq018`, `sf-pq022`) were removed only after their
