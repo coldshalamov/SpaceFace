@@ -1,0 +1,779 @@
+{
+  "tool": "check_kitgen.py",
+  "families_checked": [
+    "access_panel",
+    "armor_spacer",
+    "bracket_gusset",
+    "fastener_recessed",
+    "hatch_frame",
+    "heat_shield",
+    "pipe_clamp",
+    "plate_lip",
+    "rail_split",
+    "rivet_strip",
+    "sensor_housing",
+    "vent_grid",
+    "weapon_collar",
+    "weld_seam"
+  ],
+  "total_pieces": 47,
+  "tris_target": 400,
+  "tris_hard": 800,
+  "results": [
+    {
+      "family": "access_panel",
+      "variant": 1,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_ACCESS_PANEL_V01",
+          "verts": 280,
+          "tris": 492,
+          "polys": 198,
+          "hash": "fc42f8171bb298bc8faf5970a9ed5214a4ed4f0c08e752a55c69e216a4ecd4f4",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "access_panel",
+      "variant": 2,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_ACCESS_PANEL_V02",
+          "verts": 344,
+          "tris": 636,
+          "polys": 318,
+          "hash": "540e10069163de8f51863e37423cd9eb8b9860407370594ad3e2106958c8bef1",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "access_panel",
+      "variant": 3,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_ACCESS_PANEL_V03",
+          "verts": 386,
+          "tris": 736,
+          "polys": 366,
+          "hash": "40e4750eb76b44e41d26c22b746818f81a2c5a44ee7b8c9a0b3291e565f8e937",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "armor_spacer",
+      "variant": 1,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_ARMOR_SPACER_V01",
+          "verts": 176,
+          "tris": 324,
+          "polys": 126,
+          "hash": "2c6d1ddf4d6c0441e795e5b84c801b36ce725afc651e913c69c2d41170cc64ad",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "armor_spacer",
+      "variant": 2,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_ARMOR_SPACER_V02",
+          "verts": 140,
+          "tris": 248,
+          "polys": 110,
+          "hash": "51e9587cf19cf6fd5945ee7395b404f748c257b40e4c656c82e9fc68f55f741d",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "armor_spacer",
+      "variant": 3,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_ARMOR_SPACER_V03",
+          "verts": 296,
+          "tris": 548,
+          "polys": 242,
+          "hash": "4726c57e6026e8e393fb51cd8054f6597536c73c97b7a79c96a90e65823ddc54",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "bracket_gusset",
+      "variant": 1,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_BRACKET_GUSSET_V01",
+          "verts": 72,
+          "tris": 140,
+          "polys": 56,
+          "hash": "28a1a0978ada32b244a29fa95ba1171d2fc52a3088b5700ad4d17423247788db",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "bracket_gusset",
+      "variant": 2,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_BRACKET_GUSSET_V02",
+          "verts": 224,
+          "tris": 432,
+          "polys": 216,
+          "hash": "085a6badcb16a4657a65f78c5a4f0a284a3f8427db866f6e5043610d0727ab09",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "bracket_gusset",
+      "variant": 3,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_BRACKET_GUSSET_V03",
+          "verts": 136,
+          "tris": 312,
+          "polys": 88,
+          "hash": "2a27930a48edfec95c5c0bd3ae325502db22c29bd479d35dce1cfb4f57bef1ad",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "bracket_gusset",
+      "variant": 4,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_BRACKET_GUSSET_V04",
+          "verts": 168,
+          "tris": 324,
+          "polys": 162,
+          "hash": "97c1ac99813c8b357dc7f7af3d408e86f185b406645f5a1c90debb3610e852b1",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "fastener_recessed",
+      "variant": 1,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_FASTENER_RECESSED_V01",
+          "verts": 96,
+          "tris": 172,
+          "polys": 82,
+          "hash": "72f766855629d2b1599e00740962ff978cdf3d8b7c16c683b7635661a681d376",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "fastener_recessed",
+      "variant": 2,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_FASTENER_RECESSED_V02",
+          "verts": 128,
+          "tris": 236,
+          "polys": 98,
+          "hash": "b9bb7eadf60adbd2b7fe343696f4aa61b360b807428cb85c855eae0d7cd1dfb8",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "fastener_recessed",
+      "variant": 3,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_FASTENER_RECESSED_V03",
+          "verts": 204,
+          "tris": 388,
+          "polys": 190,
+          "hash": "d7f0cd5b8a4cde7299e30cb4bc224c92ef98fda11e05ba266ff70d4a5df1aabe",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "fastener_recessed",
+      "variant": 4,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_FASTENER_RECESSED_V04",
+          "verts": 136,
+          "tris": 244,
+          "polys": 106,
+          "hash": "d6a98cdb1d113a210787a3be1aba9be408eb4c9db217aa24268b6a7f10505c53",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "hatch_frame",
+      "variant": 1,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_HATCH_FRAME_V01",
+          "verts": 160,
+          "tris": 284,
+          "polys": 122,
+          "hash": "76957df098cefbb4ce0fde60b5c8ac4f41ed35bbf9d551c96954d1e8d2996959",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "hatch_frame",
+      "variant": 2,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_HATCH_FRAME_V02",
+          "verts": 360,
+          "tris": 684,
+          "polys": 318,
+          "hash": "54817973cb34438a258f3d3cd094de72d308b88c4027ae2ecb291095248b74bf",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "hatch_frame",
+      "variant": 3,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_HATCH_FRAME_V03",
+          "verts": 364,
+          "tris": 676,
+          "polys": 280,
+          "hash": "e5cbccd36502db3065410275c23bd752d4b748b5e09b4f099b273001a561afe8",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "heat_shield",
+      "variant": 1,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_HEAT_SHIELD_V01",
+          "verts": 316,
+          "tris": 588,
+          "polys": 300,
+          "hash": "8fa09c6c2c13b4bd6fd886f59c282d57e5d44a74b83898518a82af98c162303f",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "heat_shield",
+      "variant": 2,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_HEAT_SHIELD_V02",
+          "verts": 496,
+          "tris": 768,
+          "polys": 313,
+          "hash": "c4ade82c5f22a91c768b5f01c2d0604100fc1321b8ee2af260cb4190d62a6da8",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "heat_shield",
+      "variant": 3,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_HEAT_SHIELD_V03",
+          "verts": 128,
+          "tris": 216,
+          "polys": 108,
+          "hash": "06103b880f1f3c5f187a6ca57924801679917214b9e24ec5e73988f88750a325",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "pipe_clamp",
+      "variant": 1,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_PIPE_CLAMP_V01",
+          "verts": 258,
+          "tris": 484,
+          "polys": 214,
+          "hash": "6c14c07f99ac473803b056208cfb6300bddefcf073c9db4d56d660643522d237",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "pipe_clamp",
+      "variant": 2,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_PIPE_CLAMP_V02",
+          "verts": 172,
+          "tris": 324,
+          "polys": 144,
+          "hash": "7a586ed558c7909c2a4485fb98499ab9c3d6e4a972aa90a11856e7c947643260",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "pipe_clamp",
+      "variant": 3,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_PIPE_CLAMP_V03",
+          "verts": 225,
+          "tris": 424,
+          "polys": 196,
+          "hash": "0b2f72e2659e09ae7186933f5d76394145d25b65cf33f050b90fd05136003ba4",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "plate_lip",
+      "variant": 1,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_PLATE_LIP_V01",
+          "verts": 112,
+          "tris": 216,
+          "polys": 108,
+          "hash": "bd8edba2cc51cda0869e9ad5ed06fae4fea6bbb4971fd9105100d968db17b598",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "plate_lip",
+      "variant": 2,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_PLATE_LIP_V02",
+          "verts": 112,
+          "tris": 216,
+          "polys": 108,
+          "hash": "5ffa019c0d614e7f7cf4fe98a4ecf24f9acd628e4bb01794229f0a4370e8070f",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "plate_lip",
+      "variant": 3,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_PLATE_LIP_V03",
+          "verts": 328,
+          "tris": 612,
+          "polys": 258,
+          "hash": "ab196e541524f18d8492719e30096d571dc4a0dc7bfe6d8833eb06367548fe76",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "rail_split",
+      "variant": 1,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_RAIL_SPLIT_V01",
+          "verts": 168,
+          "tris": 324,
+          "polys": 162,
+          "hash": "05f4c8cd23c8ba066818cd3752d43319d380268e56ca80549bd7561d98dd0816",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "rail_split",
+      "variant": 2,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_RAIL_SPLIT_V02",
+          "verts": 168,
+          "tris": 324,
+          "polys": 162,
+          "hash": "be4f773d1ecfe0da327968c164573d8d1cb8daa36b2cf1bf8927c6f6b82a3ccd",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "rail_split",
+      "variant": 3,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_RAIL_SPLIT_V03",
+          "verts": 515,
+          "tris": 795,
+          "polys": 254,
+          "hash": "a42e8c1fa0b145c85ce7455443631b860039a3b24d8649315cfc9d2799ebf42a",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "rail_split",
+      "variant": 4,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_RAIL_SPLIT_V04",
+          "verts": 112,
+          "tris": 216,
+          "polys": 108,
+          "hash": "5f7df8756b020aeab85d3b64fb62e004a49dfcbd4c179a5a70a2ebaa62a8abcd",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "rivet_strip",
+      "variant": 1,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_RIVET_STRIP_V01",
+          "verts": 211,
+          "tris": 398,
+          "polys": 209,
+          "hash": "f9890523960857bfa2fff5d93f12e467550dd58c1c9a41a3d2378e9cd98457fa",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "rivet_strip",
+      "variant": 2,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_RIVET_STRIP_V02",
+          "verts": 236,
+          "tris": 428,
+          "polys": 164,
+          "hash": "0296ddc62e67d948cb4d6a51f8d5faf00406ea9e068872ebe0607d4d507408ed",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "rivet_strip",
+      "variant": 3,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_RIVET_STRIP_V03",
+          "verts": 306,
+          "tris": 568,
+          "polys": 304,
+          "hash": "44fba1648f6398c08c0335e556cfacfba611b5c7b2aaf0d7ae199f8d88305ce6",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "rivet_strip",
+      "variant": 4,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_RIVET_STRIP_V04",
+          "verts": 221,
+          "tris": 398,
+          "polys": 209,
+          "hash": "bb41e7ae2e6e65152015d8305a081efb4d776e9fc02c6d681f1c05e96f80db6d",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "rivet_strip",
+      "variant": 5,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_RIVET_STRIP_V05",
+          "verts": 206,
+          "tris": 384,
+          "polys": 204,
+          "hash": "79fa0849c6a785fb3074817ef3ff9d816784a53b820ff5094515d1fe8d5ec177",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "sensor_housing",
+      "variant": 1,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_SENSOR_HOUSING_V01",
+          "verts": 140,
+          "tris": 268,
+          "polys": 124,
+          "hash": "b99a24d51964eeda705cf68b9f7252fa46293983f85fb32430f7ac0e3e15709a",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "sensor_housing",
+      "variant": 2,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_SENSOR_HOUSING_V02",
+          "verts": 194,
+          "tris": 350,
+          "polys": 176,
+          "hash": "78329fd632b8b1a7abf1f0c423937dcd1dc12333aa2e5c4fb22b13c5bff19711",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "sensor_housing",
+      "variant": 3,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_SENSOR_HOUSING_V03",
+          "verts": 181,
+          "tris": 346,
+          "polys": 153,
+          "hash": "69d672260f655bb439f119f0aaf345d11db011787d44450555aa2975b5a590e3",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "vent_grid",
+      "variant": 1,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_VENT_GRID_V01",
+          "verts": 312,
+          "tris": 588,
+          "polys": 294,
+          "hash": "850203746d064eed2c050ef851f1358ca3a4081cb42e5686e82ed12a50c2d886",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "vent_grid",
+      "variant": 2,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_VENT_GRID_V02",
+          "verts": 449,
+          "tris": 725,
+          "polys": 246,
+          "hash": "d902e7547e0f4abeade211568c26ee013e65bf909322168eb14cfc42800798c1",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "vent_grid",
+      "variant": 3,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_VENT_GRID_V03",
+          "verts": 328,
+          "tris": 612,
+          "polys": 306,
+          "hash": "92db4ec52d5438aed4093ced82b2a0c29aef53e37690bc85502fc42da1bea6fb",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "weapon_collar",
+      "variant": 1,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_WEAPON_COLLAR_V01",
+          "verts": 396,
+          "tris": 744,
+          "polys": 294,
+          "hash": "9babfe987c2f8a42c631e522199886bfe8a4abbef635c5b898762aa77d341f71",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "weapon_collar",
+      "variant": 2,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_WEAPON_COLLAR_V02",
+          "verts": 404,
+          "tris": 784,
+          "polys": 342,
+          "hash": "b394073148f914452ebbc32402ee3ea1246087106e975c98eadf42ac8d341a17",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "weapon_collar",
+      "variant": 3,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_WEAPON_COLLAR_V03",
+          "verts": 372,
+          "tris": 696,
+          "polys": 310,
+          "hash": "0416574c64cdf82ae700d49f4197c4e426ad2ac7b02246ff4cc4a7089609698d",
+          "tris_target_ok": false
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "weld_seam",
+      "variant": 1,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_WELD_SEAM_V01",
+          "verts": 192,
+          "tris": 360,
+          "polys": 156,
+          "hash": "b36b5599aa6d5ce12a49906a72b9510729a4c247d757578beaedf6ef5449eec3",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "weld_seam",
+      "variant": 2,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_WELD_SEAM_V02",
+          "verts": 164,
+          "tris": 316,
+          "polys": 136,
+          "hash": "1444d41f495fcf95928d3043753b39c13cedac77980aef58f1192ea7d2d2c067",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    },
+    {
+      "family": "weld_seam",
+      "variant": 3,
+      "objects": 1,
+      "pieces": [
+        {
+          "name": "KIT_WELD_SEAM_V03",
+          "verts": 136,
+          "tris": 252,
+          "polys": 126,
+          "hash": "9a03f21c16c7b4db25c91dc9bbb9fd21d82bac0db2e0e6f237a4717b0756ad73",
+          "tris_target_ok": true
+        }
+      ],
+      "determinism": "OK"
+    }
+  ],
+  "manifest": {
+    "pieces": 47
+  }
+}

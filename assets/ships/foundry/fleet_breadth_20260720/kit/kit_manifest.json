@@ -1,0 +1,761 @@
+{
+  "tool": "export_kit.py",
+  "schema_version": 1,
+  "seed": 12648430,
+  "piece_count": 47,
+  "pieces": [
+    {
+      "family": "access_panel",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 492,
+      "dims_m": [
+        0.3245,
+        0.3245,
+        0.023
+      ],
+      "materials": [
+        "KitMat_Paint"
+      ],
+      "glb": "kit_access_panel_v01.glb",
+      "sha256": "00c831dfed9659d1b087a48e3d64fc5cb7e2d58c68cd452bee30628adb8358d5"
+    },
+    {
+      "family": "access_panel",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 636,
+      "dims_m": [
+        0.5404,
+        0.2873,
+        0.085402
+      ],
+      "materials": [
+        "KitMat_Paint"
+      ],
+      "glb": "kit_access_panel_v02.glb",
+      "sha256": "288b894aae20a0d08e658bd64b518a41f08645534b409ff69f0d936787cc1298"
+    },
+    {
+      "family": "access_panel",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 736,
+      "dims_m": [
+        0.3893,
+        0.3893,
+        0.031
+      ],
+      "materials": [
+        "KitMat_Paint"
+      ],
+      "glb": "kit_access_panel_v03.glb",
+      "sha256": "5c815f10023a355e162022b5291e78edefd4cf85ca37bf1e0d47e8e7c8145436"
+    },
+    {
+      "family": "armor_spacer",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 324,
+      "dims_m": [
+        0.3224,
+        0.06,
+        0.0538
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_armor_spacer_v01.glb",
+      "sha256": "b8516e4991ea7143ae078f2f5190d0a66d14a894f718dbe994227ff252f9ee9a"
+    },
+    {
+      "family": "armor_spacer",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 248,
+      "dims_m": [
+        0.2404,
+        0.06,
+        0.05635
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_armor_spacer_v02.glb",
+      "sha256": "faf15fb7ccb342a2318476f34cb8dd1da3dd6f8ddef73c6575250125e3087816"
+    },
+    {
+      "family": "armor_spacer",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 548,
+      "dims_m": [
+        0.3727,
+        0.068,
+        0.066
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_armor_spacer_v03.glb",
+      "sha256": "51c20cdaf85004811f3299eb76f2e3e8ed7264810e8571db2d617894cd96dd97"
+    },
+    {
+      "family": "bracket_gusset",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 140,
+      "dims_m": [
+        0.246283,
+        0.246283,
+        0.02494
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_bracket_gusset_v01.glb",
+      "sha256": "05ddabe8123f31b9b1c70479b6d8fded605109ec78fb6afdee1f97d256d1dd7d"
+    },
+    {
+      "family": "bracket_gusset",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 432,
+      "dims_m": [
+        0.156,
+        0.156,
+        0.1248
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_bracket_gusset_v02.glb",
+      "sha256": "32680a45b35f3b1ce919b39e01dd468f91d9c399f76cbc262a2c575badab0f0b"
+    },
+    {
+      "family": "bracket_gusset",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 312,
+      "dims_m": [
+        0.2218,
+        0.2218,
+        0.059886
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_bracket_gusset_v03.glb",
+      "sha256": "cd7aaa71800bb35c1e6a3dfef9840efc72700b1b1a6ac40f82506a8c51df60d0"
+    },
+    {
+      "family": "bracket_gusset",
+      "variant": 4,
+      "seed": 12648430,
+      "tris": 324,
+      "dims_m": [
+        0.130064,
+        0.090805,
+        0.1397
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_bracket_gusset_v04.glb",
+      "sha256": "ff866f3196f604f3506bdce95702a99663039a52a71ef03ae538f99619bcaeae"
+    },
+    {
+      "family": "fastener_recessed",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 172,
+      "dims_m": [
+        0.5153,
+        0.0655,
+        0.0319
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_fastener_recessed_v01.glb",
+      "sha256": "77568094882b501bc432bd7db8bf4be3d5f9334e91d474e59496f582dfb65785"
+    },
+    {
+      "family": "fastener_recessed",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 236,
+      "dims_m": [
+        0.5549,
+        0.0559,
+        0.0303
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_fastener_recessed_v02.glb",
+      "sha256": "115bfe6f154f6537eb7f47f125b4f390e9ea93a090b33385d8632c8e8bd6164d"
+    },
+    {
+      "family": "fastener_recessed",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 388,
+      "dims_m": [
+        0.4833,
+        0.0744,
+        0.025724
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_fastener_recessed_v03.glb",
+      "sha256": "1fa9cb5700b3304e0ec8cf047e0428167dcad6f717a5ea8dd7df111142d2fce4"
+    },
+    {
+      "family": "fastener_recessed",
+      "variant": 4,
+      "seed": 12648430,
+      "tris": 244,
+      "dims_m": [
+        0.691,
+        0.078,
+        0.0306
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_fastener_recessed_v04.glb",
+      "sha256": "1e275d70c3f3b19082d5a5c052db23a94c9c142031482c9b19cec9598d0e5523"
+    },
+    {
+      "family": "hatch_frame",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 284,
+      "dims_m": [
+        0.5124,
+        0.4239,
+        0.032
+      ],
+      "materials": [
+        "KitMat_Paint"
+      ],
+      "glb": "kit_hatch_frame_v01.glb",
+      "sha256": "5245debb611c0d94646e2f50746d2bc5789760054cbb9262e2c0812476e28316"
+    },
+    {
+      "family": "hatch_frame",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 684,
+      "dims_m": [
+        0.4835,
+        0.4835,
+        0.046
+      ],
+      "materials": [
+        "KitMat_Paint"
+      ],
+      "glb": "kit_hatch_frame_v02.glb",
+      "sha256": "3127154299b3358c3041704179775816e379f458e9c29d9cdb7fb7de2d3518e7"
+    },
+    {
+      "family": "hatch_frame",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 676,
+      "dims_m": [
+        0.7657,
+        0.315,
+        0.031511
+      ],
+      "materials": [
+        "KitMat_Paint"
+      ],
+      "glb": "kit_hatch_frame_v03.glb",
+      "sha256": "371a5eb8f7618ea68faa01aeec1e45ad6ab2c9e75ab9298613085024f620c872"
+    },
+    {
+      "family": "heat_shield",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 588,
+      "dims_m": [
+        0.5972,
+        0.3803,
+        0.022
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_heat_shield_v01.glb",
+      "sha256": "61e340beb3726a695e568a8e854d830e75c12b2966891a3baf3a8bef33918510"
+    },
+    {
+      "family": "heat_shield",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 768,
+      "dims_m": [
+        0.8018,
+        0.4368,
+        0.038
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_heat_shield_v02.glb",
+      "sha256": "a663a26f5ffb9fc6b0f3676328ce2edf86a33baf874c3135d5e1660a38fc619c"
+    },
+    {
+      "family": "heat_shield",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 216,
+      "dims_m": [
+        0.8102,
+        0.2624,
+        0.024
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_heat_shield_v03.glb",
+      "sha256": "a2566cec860a734f2094ed29d245f45c4affcb4f693482db597246d42e4408e0"
+    },
+    {
+      "family": "pipe_clamp",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 484,
+      "dims_m": [
+        0.3201,
+        0.1382,
+        0.28426
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_pipe_clamp_v01.glb",
+      "sha256": "b0e819c022bfaf9aa9d78ce93dbdfcaf7bc0f04239d505ef56e1a2a2419f8e61"
+    },
+    {
+      "family": "pipe_clamp",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 324,
+      "dims_m": [
+        0.2341,
+        0.06,
+        0.070088
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_pipe_clamp_v02.glb",
+      "sha256": "777e5a46b8105b8d2ae074ef9d69707d1c72364cac3023ffcb7ee3f7e2a3fe83"
+    },
+    {
+      "family": "pipe_clamp",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 424,
+      "dims_m": [
+        0.2455,
+        0.1238,
+        0.141574
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_pipe_clamp_v03.glb",
+      "sha256": "67c2995535a4ecc1e3133d5ae1a5dbfad9728ea581cb484dfed8bcf40ce69924"
+    },
+    {
+      "family": "plate_lip",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 216,
+      "dims_m": [
+        1.2216,
+        0.099975,
+        0.0341
+      ],
+      "materials": [
+        "KitMat_Paint"
+      ],
+      "glb": "kit_plate_lip_v01.glb",
+      "sha256": "a617c907918bfa9f4b988774f5e0f0fe804c820bd7eb4c8354f89524cc229391"
+    },
+    {
+      "family": "plate_lip",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 216,
+      "dims_m": [
+        0.7761,
+        0.1019,
+        0.0354
+      ],
+      "materials": [
+        "KitMat_Paint"
+      ],
+      "glb": "kit_plate_lip_v02.glb",
+      "sha256": "655e3c1fb631ea0cc008dc7694435523d4cce6f72478678df9c8cde633fbe21e"
+    },
+    {
+      "family": "plate_lip",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 612,
+      "dims_m": [
+        0.9968,
+        0.1253,
+        0.042
+      ],
+      "materials": [
+        "KitMat_Paint"
+      ],
+      "glb": "kit_plate_lip_v03.glb",
+      "sha256": "82259f7754502f36436e3a97b830b0af2c2978ae3e4087c5b5d4b65c8b915fdc"
+    },
+    {
+      "family": "rail_split",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 324,
+      "dims_m": [
+        1.7901,
+        0.1322,
+        0.11237
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_rail_split_v01.glb",
+      "sha256": "015926ab0bac77f1633d70ac4b87bd2a22634ee06ed6a638d9c2eb8c6a5c14bb"
+    },
+    {
+      "family": "rail_split",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 324,
+      "dims_m": [
+        1.2652,
+        0.1218,
+        0.10353
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_rail_split_v02.glb",
+      "sha256": "736a28ef29cbcad96c19515aeb16790d290e1d88d85fce17f3430468543a17ff"
+    },
+    {
+      "family": "rail_split",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 795,
+      "dims_m": [
+        2.0541,
+        0.1342,
+        0.12749
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_rail_split_v03.glb",
+      "sha256": "b4a4a46522afa482efc49bce48257fa581002c1e844b2a12cb8c2f30dbd079b9"
+    },
+    {
+      "family": "rail_split",
+      "variant": 4,
+      "seed": 12648430,
+      "tris": 216,
+      "dims_m": [
+        1.4282,
+        0.0934,
+        0.07939
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_rail_split_v04.glb",
+      "sha256": "4500a16ee614702d8e9a01b0b622778850a6bee805acca14277dbd5bd8ee12d9"
+    },
+    {
+      "family": "rivet_strip",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 398,
+      "dims_m": [
+        0.9923,
+        0.0596,
+        0.035015
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_rivet_strip_v01.glb",
+      "sha256": "cb79295e52799b53950bd546d689cd97d7763d165b5d7175519c4e2f0665500c"
+    },
+    {
+      "family": "rivet_strip",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 428,
+      "dims_m": [
+        0.8825,
+        0.0697,
+        0.025
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_rivet_strip_v02.glb",
+      "sha256": "49fd9eb984d9dd42201d802996acdecfbd8be090470d9cdaf21b757cd2329e3f"
+    },
+    {
+      "family": "rivet_strip",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 568,
+      "dims_m": [
+        1.034,
+        0.0862,
+        0.02865
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_rivet_strip_v03.glb",
+      "sha256": "c66eb6792f821c4681566337f67d1238669feaa8a483ae9e25916f97bde08ed9"
+    },
+    {
+      "family": "rivet_strip",
+      "variant": 4,
+      "seed": 12648430,
+      "tris": 398,
+      "dims_m": [
+        1.1481,
+        0.0678,
+        0.033548
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_rivet_strip_v04.glb",
+      "sha256": "464dcd7dcdbc4801e0a1e18f32337fde23da85c1f2e507cbf2725c54d7cd25c4"
+    },
+    {
+      "family": "rivet_strip",
+      "variant": 5,
+      "seed": 12648430,
+      "tris": 384,
+      "dims_m": [
+        1.0526,
+        0.109,
+        0.03638
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_rivet_strip_v05.glb",
+      "sha256": "487b42a865cb24e42a1b71c0951f84f5fa241c044cad3c07d10b27100e8e133c"
+    },
+    {
+      "family": "sensor_housing",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 268,
+      "dims_m": [
+        0.20964,
+        0.18672,
+        0.256434
+      ],
+      "materials": [
+        "KitMat_Paint"
+      ],
+      "glb": "kit_sensor_housing_v01.glb",
+      "sha256": "fad78b45a5fa7875a726a41b3e67f93018df27a946562100189fd6035440ebf4"
+    },
+    {
+      "family": "sensor_housing",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 350,
+      "dims_m": [
+        0.15688,
+        0.154497,
+        0.246755
+      ],
+      "materials": [
+        "KitMat_Paint"
+      ],
+      "glb": "kit_sensor_housing_v02.glb",
+      "sha256": "a93f22e17c4a75e21ebf41c162392916a52cc9f0c9c5b5b9279b20573405ced8"
+    },
+    {
+      "family": "sensor_housing",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 346,
+      "dims_m": [
+        0.24288,
+        0.24288,
+        0.05542
+      ],
+      "materials": [
+        "KitMat_Paint"
+      ],
+      "glb": "kit_sensor_housing_v03.glb",
+      "sha256": "b500136169d438c578fd7796d60ee7b6eef6cdd99e2e6c85a2ae51e8854f4aaf"
+    },
+    {
+      "family": "vent_grid",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 588,
+      "dims_m": [
+        0.5168,
+        0.2548,
+        0.091482
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_vent_grid_v01.glb",
+      "sha256": "c011f772598301be240c6b9020ab7719898d60be9445b167c4ea27a22304421d"
+    },
+    {
+      "family": "vent_grid",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 725,
+      "dims_m": [
+        0.3653,
+        0.1841,
+        0.024
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_vent_grid_v02.glb",
+      "sha256": "92a2900d24c7ab53b03f9f1ac5b95433ebd0610b544464eec24920eb721b8d29"
+    },
+    {
+      "family": "vent_grid",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 612,
+      "dims_m": [
+        0.5356,
+        0.249548,
+        0.022
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_vent_grid_v03.glb",
+      "sha256": "8b3351fbd0c9191221a26bb6d2a6c0fca600f8aa7dd3812cf32d11e850dc84ca"
+    },
+    {
+      "family": "weapon_collar",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 744,
+      "dims_m": [
+        0.389323,
+        0.383409,
+        0.032
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_weapon_collar_v01.glb",
+      "sha256": "d1e5e4f9400a6eac2245d52cd99cbf676682b3cd67be38ec8d951312bb78b7dd"
+    },
+    {
+      "family": "weapon_collar",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 784,
+      "dims_m": [
+        0.2808,
+        0.268925,
+        0.055
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_weapon_collar_v02.glb",
+      "sha256": "752c1d1dc8b619ad7d0480fb960ac7affa4bea80400a3d8602c498a4e754badd"
+    },
+    {
+      "family": "weapon_collar",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 696,
+      "dims_m": [
+        0.4316,
+        0.4166,
+        0.018
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_weapon_collar_v03.glb",
+      "sha256": "d93e34876cb4d59939a6c215c6f29bba8ad479512294af220d186a8ed0c10002"
+    },
+    {
+      "family": "weld_seam",
+      "variant": 1,
+      "seed": 12648430,
+      "tris": 360,
+      "dims_m": [
+        0.7933,
+        0.1003,
+        0.033788
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_weld_seam_v01.glb",
+      "sha256": "875c986ff474a0eda9ef0bc625c6ca872d9622060bd52a0618ac2b6ef8d4db6c"
+    },
+    {
+      "family": "weld_seam",
+      "variant": 2,
+      "seed": 12648430,
+      "tris": 316,
+      "dims_m": [
+        1.0426,
+        0.1059,
+        0.035174
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_weld_seam_v02.glb",
+      "sha256": "056550f5935369b94570d0b14c44401d2a48219f37b0849b1e517c9d9b769aa4"
+    },
+    {
+      "family": "weld_seam",
+      "variant": 3,
+      "seed": 12648430,
+      "tris": 252,
+      "dims_m": [
+        0.9871,
+        0.0901,
+        0.023
+      ],
+      "materials": [
+        "KitMat_Steel"
+      ],
+      "glb": "kit_weld_seam_v03.glb",
+      "sha256": "e3a9e270b4ffe5defa0507f5af5ba015d00620cf0efdd43cf6042983ae704163"
+    }
+  ],
+  "errors": []
+}

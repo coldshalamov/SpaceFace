@@ -1,0 +1,28 @@
+{
+  "center": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "extents": [
+    0.3201,
+    0.1382,
+    0.2843
+  ],
+  "fov_deg": 50.0,
+  "glb": "kit_pipe_clamp_v01.glb",
+  "mesh_count": 1,
+  "resolution": 384,
+  "samples": 24,
+  "study_az_deg": 128.0,
+  "study_el_deg": 46.0,
+  "tilt_deg": 60.0,
+  "view_transform": "Filmic",
+  "views": [
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\kit\\kit_pipe_clamp_v01\\neutral_close.png",
+      "view": "neutral_close"
+    }
+  ]
+}

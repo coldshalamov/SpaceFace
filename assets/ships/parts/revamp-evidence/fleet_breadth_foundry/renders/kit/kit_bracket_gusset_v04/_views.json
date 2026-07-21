@@ -1,0 +1,28 @@
+{
+  "center": [
+    0.0,
+    -0.0244,
+    0.0698
+  ],
+  "extents": [
+    0.1301,
+    0.0908,
+    0.1397
+  ],
+  "fov_deg": 50.0,
+  "glb": "kit_bracket_gusset_v04.glb",
+  "mesh_count": 1,
+  "resolution": 384,
+  "samples": 24,
+  "study_az_deg": 128.0,
+  "study_el_deg": 46.0,
+  "tilt_deg": 60.0,
+  "view_transform": "Filmic",
+  "views": [
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\kit\\kit_bracket_gusset_v04\\neutral_close.png",
+      "view": "neutral_close"
+    }
+  ]
+}
