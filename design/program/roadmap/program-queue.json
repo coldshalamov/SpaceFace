@@ -941,7 +941,7 @@
       "id": "PQ-016",
       "priority": 16,
       "title": "Contextual industrial beam, payloads, and receivers",
-      "state": "planned",
+      "state": "integrated",
       "canonical": [
         "A12"
       ],
@@ -968,7 +968,11 @@
         "public-route",
         "interaction-truth"
       ],
-      "brief": "Make the industrial beam cut, extract, repair, or transfer according to truthful target components and physical payloads."
+      "brief": "Make the industrial beam cut, extract, repair, or transfer according to truthful target components and physical payloads.",
+      "integratedCommit": "98a0326e",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-016-beam-REPORT.md",
+      "receipt": "design/program/roadmap/receipts/PQ-016-beam-REPORT.md",
+      "integrationNote": "2026-07-21 CHECKED OFF (Gemini 3.6 Flash lane + lead repair/review): pure resolver (descriptor+toolState->verb/denial, sentinel truth-table gate), cut->physical payload spawn with salvage pools, repair through combat.repair + economy:chargeCredits (lead repaired a direct-credits-write sole-writer violation), transfer through receiver-owned APIs with explicit denials, four distinct source postures lead-viewed. All adjacent suites green (interactions/fields/npc-jobs/mass-seed); sim ok/hashEqual; schema unchanged. gameplay-core red attributed PRE-EXISTING on clean master. Residuals: contact-point stills under-framed (combined visual session rider); no wingman receiver (repo-wide absent); manual mode override not shipped (auto-from-descriptor baseline)."
     },
     {
       "id": "PQ-017",
