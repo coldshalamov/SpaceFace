@@ -17,6 +17,8 @@ import { isConfirmOpen } from './confirm.js';
 import { controlPrompt } from './controlPrompts.js';
 import { setPromptScheme } from './controlPrompts.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
+import { verbAcceptsType, stableEntityKey } from '../data/interactionDescriptorCatalog.js';
+import { listSelectableComponents, nextComponentSelection } from '../systems/interactionDescriptors.js';
 import { createCinematicInputFence } from './cinematicInputFence.js';
 import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
 
@@ -583,6 +585,10 @@ export const ui = {
     this.bus.on('ui:replaceScreen', ({ id }) => { if (id) this.screenManager.replaceScreen(id); });
     this.bus.on('ui:closeAll', () => this.screenManager.closeAll());
     this.bus.on('ui:cycleTarget', ({ dir } = {}) => cycleTarget(this.state, dir || 1, this.bus));
+    // PQ-015 component sub-selection: cycle a component (subsystem / salvage weak-point) on the
+    // current target. Reachable via the target panel component chip (DOM); a keyboard binding is a
+    // pending input.js shared-change request (see REPORT). Selection is transient on state.ui.
+    this.bus.on('ui:cycleComponent', ({ dir } = {}) => cycleTargetComponent(this.state, dir || 1, this.bus));
     this.bus.on('ui:targetNearestHostileToPlayer', ({ quiet } = {}) => targetNearestHostileToPlayer(this.state, this.bus, { quiet }));
 
     // Dock transition overlay
@@ -962,7 +968,7 @@ function cycleTarget(state, dir, bus) {
   const contacts = [];
   for (const e of state.entityList) {
     if (e.alive === false || e === player) continue;
-    if (e.type !== 'ship' && e.type !== 'drone') continue;
+    if (!verbAcceptsType('target', e.type)) continue; // PQ-015: shared target membership (ship|drone)
     if (!isHostileToPlayer(e, player.team, state)) continue;
     const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
     const d = Math.hypot(dx, dz);
@@ -983,9 +989,47 @@ function cycleTarget(state, dir, bus) {
   if (bus) bus.emit('toast', { text: 'Target: ' + targetLabel(target), kind: 'info', ttl: 2 });
 }
 
+// PQ-015: sub-select one component (combat subsystem / salvage weak-point) on the current target and
+// publish it TRANSIENTLY on state.ui.componentSelection (never serialized — verified by
+// check:save-schema). The pure cycle/enumeration lives in interactionDescriptors; this handler owns
+// the state write, target-change rebind, and player feedback. A null/absent selection leaves every
+// verb resolving exactly as before, so this is inert until the player opts in.
+function cycleTargetComponent(state, dir, bus) {
+  const targetId = state.player && state.player.targetId;
+  const target = targetId != null && state.entities && state.entities.get ? state.entities.get(targetId) : null;
+  if (!target || target.alive === false) {
+    setComponentSelection(state, null, null);
+    if (bus) bus.emit('toast', { text: 'No target for component select', kind: 'info', ttl: 2 });
+    return;
+  }
+  const components = listSelectableComponents(state, target);
+  if (!components.length) {
+    setComponentSelection(state, null, null);
+    if (bus) bus.emit('toast', { text: targetLabel(target) + ': no targetable components', kind: 'info', ttl: 2 });
+    return;
+  }
+  const prior = state.ui && state.ui.componentSelection;
+  const currentId = prior && prior.targetId === target.id ? prior.componentId : null;
+  const next = nextComponentSelection(components, currentId, dir);
+  setComponentSelection(state, target, next);
+  const label = (components.find((c) => c.componentId === (next && next.componentId)) || {}).label || next.componentId;
+  if (bus) bus.emit('toast', { text: 'Component: ' + label, kind: 'info', ttl: 2 });
+}
+
+function setComponentSelection(state, target, next) {
+  if (!state.ui) state.ui = {};
+  state.ui.componentSelection = (target && next) ? {
+    targetId: target.id,
+    stableKey: stableEntityKey(target),
+    componentId: next.componentId,
+    kind: next.kind,
+    verb: next.verb,
+  } : null;
+}
+
 function isScannerHostileLock(player, state, entity) {
   if (!player || !entity || entity.alive === false || !entity.pos) return false;
-  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
+  if (!verbAcceptsType('target', entity.type)) return false; // PQ-015: shared target membership
   if (!isHostileToPlayer(entity, player.team, state)) return false;
   const dx = entity.pos.x - player.pos.x;
   const dz = entity.pos.z - player.pos.z;

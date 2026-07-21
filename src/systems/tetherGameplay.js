@@ -15,6 +15,7 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer } from './scanner.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { isMassSeedTetherEligible } from './massSeed.js';
+import { VERB_TYPE_MEMBERSHIP } from '../data/interactionDescriptorCatalog.js';
 
 const TETHER_DEF_ID = 'tether_standard';
 const STRAIN_EVENT_INTERVAL_S = 0.2;
@@ -45,7 +46,10 @@ const LOAD_BASE_BY_PHASE = Object.freeze({ slack: 0, capture: 0.35, loaded: 0.55
 // collected/despawned, so the old invisible-anchor failure mode stays closed.
 // PQ-011: 'massSeed' joins the set — the player's frame-locked anchor is a legal target ONLY
 // after frame lock (isAttachable gates on the entity's published eligibility flag).
-const ATTACHABLE_TYPES = new Set(['asteroid', 'wreck', 'ship', 'drone', 'station', 'payload', 'pickup', 'massSeed']);
+// PQ-015: type-membership now sourced from the shared interaction-descriptor catalog (identical
+// contents to the former literal; proven byte-for-byte by test/interaction-characterization). The
+// massSeed phase gate below and every downstream layer (ownership, range, obstruction) are UNCHANGED.
+const ATTACHABLE_TYPES = VERB_TYPE_MEMBERSHIP.tether;
 // Authored payloads and loose pickups are sensor bodies: they intentionally do not collide, so the
 // collidable-only spatial hash cannot be their sole acquisition source.
 const NON_COLLIDING_ACQUISITION_TYPES = new Set(['payload', 'pickup']);
@@ -1064,7 +1068,10 @@ function aimWorldFor(player, state, range) {
   };
 }
 
-function isAttachable(entity, playerId) {
+// Exported for PQ-015 characterization (captures the tether type-membership gate directly). The
+// body is unchanged from base at this step; the membership source is swapped to the shared catalog
+// in the PQ-015 adapter below, preserving byte-identical behavior.
+export function isAttachable(entity, playerId) {
   if (!entity || !entity.alive || !entity.pos || entity.id === playerId) return false;
   if (!ATTACHABLE_TYPES.has(entity.type)) return false;
   // A Mass Seed is ineligible before frame lock (travelling/locking/collapsing): it publishes

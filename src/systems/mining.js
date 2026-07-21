@@ -18,6 +18,7 @@ import { ORES, ASTEROIDS, BEAMS, deriveAsteroidSeams } from '../data/mining.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 
 export const MAGNET_RANGE = 420; // wu pull radius for Mining 2.0's stronger ore vacuum
 export const MAGNET_ACCEL = 900; // wu/s² authority toward the seek velocity (not absolute thrust)
@@ -157,7 +158,9 @@ export const mining = {
 
   _isValidMineableTarget(entity, ship, range) {
     if (!entity || !entity.alive) return false;
-    if (entity.type !== 'asteroid' && entity.type !== 'wreck') return false;
+    // PQ-015: beam type-membership from the shared catalog (identical to the former asteroid|wreck
+    // literal). The mined-out and range layers below are UNCHANGED.
+    if (!verbAcceptsType('mine', entity.type)) return false;
     if (entity.type === 'asteroid' && entity.data && entity.data.respawnAt != null) return false;
     const dx = entity.pos.x - ship.pos.x, dz = entity.pos.z - ship.pos.z;
     const dist = Math.hypot(dx, dz);
@@ -184,7 +187,7 @@ export const mining = {
     this._diag.targetCandidates = mineables.length;
     for (const e of mineables) {
       if (!e.alive) continue;
-      if (e.type !== 'asteroid' && e.type !== 'wreck') continue;
+      if (!verbAcceptsType('mine', e.type)) continue; // PQ-015: shared beam membership (asteroid|wreck)
       if (e.type === 'asteroid' && e.data && e.data.respawnAt != null) continue; // mined-out, awaiting respawn
       const dx = e.pos.x - ship.pos.x, dz = e.pos.z - ship.pos.z;
       const dist = Math.hypot(dx, dz);
