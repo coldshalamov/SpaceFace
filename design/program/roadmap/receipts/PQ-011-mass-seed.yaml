@@ -1,0 +1,119 @@
+# PQ-011 / SF-11 receipt — deployable Mass Seed anchor
+#
+# The implementation and this receipt are separate commits. Focused proof binds to the immutable
+# implementation commit below; the receipt does not attempt to contain its own commit hash.
+
+packet: PQ-011
+alias: SF-11
+agent: codex/pq011-mass-seed-20260720
+worktree: C:/Users/93rob/sf-pq011
+branch: codex/pq011-mass-seed-20260720
+master_base_commit: 422ec8895db1ed878d203e1eb5fe280052675bc8
+implementation_commit: 56f52ef6f2bab8e572b64c0f912d533f86bbd840
+state_reached: FOCUSED_GREEN
+terminal: false
+runtime_wired: true
+route_accepted: false
+visually_accepted: false
+queue_status_changed: false
+
+outcome: >
+  Digit4 launches one deterministic contained-mass device toward the aim point. It publishes a
+  truthful lock position, becomes tether-eligible only after frame lock, serves as a fixed Rapier
+  Massline anchor without solver-scale fake mass, warns and collapses on a bounded lifetime, can be
+  destroyed, and cuts every active tether through the attachment authority with an exact reason.
+
+paths_changed:
+  - SAVE_SCHEMA.md
+  - package.json
+  - src/combat/damage.js
+  - src/core/coreSystem.js
+  - src/core/gameState.js
+  - src/core/physics.js
+  - src/core/registry.js
+  - src/data/massSeed.js
+  - src/render/visualFactory.js
+  - src/systems/input.js
+  - src/systems/massSeed.js
+  - src/systems/tetherGameplay.js
+  - src/ui/controlPrompts.js
+  - src/ui/massSeedHud.js
+  - src/ui/screens/help.js
+  - src/ui/screens/settings.js
+  - test/mass-seed.test.mjs
+  - design/program/roadmap/receipts/PQ-011-mass-seed.yaml
+
+proof:
+  - command: npm run check:mass-seed
+    result: "exit 0; 20/20 pass"
+  - command: npm run check:massline
+    result: "exit 0; 23 child checks green"
+  - command: npm run check:physics-authority
+    result: "exit 0; physics authority membrane checks OK"
+  - command: npm run check:sg02:tether
+    result: "exit 0; SG-02 tether acceptance checks OK"
+  - command: npm run check:sg02:tether-break
+    result: "exit 0; Massline break telemetry checks OK"
+  - command: npm run check:sg02:save-reload
+    result: "exit 0; SG-02 save/reload checks OK"
+  - command: npm run check:save-schema
+    result: "exit 0; save schema version 11, 261 paths"
+  - command: npm run check:settings-profile
+    result: "exit 0; settings profile persistence OK"
+  - command: npm run check:controls-discoverability
+    result: "exit 0; controls discoverability OK"
+  - command: npm run check:cinematic-input-fence
+    result: "exit 0; cinematic input release fence PASS"
+  - command: npm run check:ui-a11y
+    result: "exit 0; 9 checks passed"
+  - command: npm run check:sim:compare
+    result: "exit 0; deterministic true, uninterrupted/reload hashEqual true, firstDivergentTick null"
+  - command: npm run report:physics-writers
+    result: "exit 0; diagnostic-only report, 140 candidates classified"
+  - command: git diff --cached --check
+    result: "exit 0 before implementation commit"
+
+public_route:
+  status: not-run
+  route: >
+    Ordinary flight in open space: aim, press Digit4, observe the published lock marker and frame
+    lock, deliberately latch the seed through ordinary Massline acquisition, orbit/release for a
+    useful direction change, repeat under hostile fire, then observe expiry/destruction cleanup.
+  artifacts: []
+
+visual_review:
+  required: true
+  status: pending
+  notes: >
+    Structural tests prove a phase-driven frame device rather than an orb and shared pooled
+    resources, but no current default-zoom browser/Electron capture has been independently judged.
+
+performance:
+  status: pending
+  metrics:
+    active_seed_cap: 1
+    retired_collapse_cap: 8
+    presentation_cues_per_normal_lifecycle: 2
+
+known_failures:
+  - >
+    The current 47a compare exits 0 and reload hashes match, but it retains the pre-existing expected
+    hash plus nine expected presentation-count diffs. No golden was rewritten.
+  - >
+    A prior orbit-assist browser probe in this donor worktree was contaminated by concurrent worker
+    edits and is excluded. No browser/Electron route claim is made from it.
+
+unproven_claims:
+  - Default-camera readability and visual quality of the Mass Seed mesh/HUD.
+  - Useful player-controlled sling direction change in a normal traversal route.
+  - Combat-opponent counterplay and cleanup presentation in a normal hostile encounter.
+  - Browser/Electron parity and the integrated-tree flight-clean result.
+  - >
+    Travel is a deterministic entity-space kinematic deployment while the physics owner synchronizes
+    the ghost/fixed authored body. It never touches Rapier directly, but the adversarial reviewer
+    should explicitly judge this seam against the packet's physics-authority intent.
+
+follow_ons:
+  - Lead integrates the implementation and receipt onto current master and reruns focused proof.
+  - Vision-capable reviewer performs the ordinary browser/Electron traversal and combat routes.
+  - PQ-012 may start only after PQ-011 review accepts or repairs the anchor/physics seam.
