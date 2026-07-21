@@ -1,0 +1,827 @@
+{
+  "attachments": [
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Camera_Focus",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "world_pos": [
+        0.15,
+        0.0,
+        0.35
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Cargo_Ventral",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "world_pos": [
+        0.55,
+        0.0,
+        -2.05
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Engine_Main",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "world_pos": [
+        -8.55,
+        -0.2,
+        0.0
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Mining_Front",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "world_pos": [
+        8.55,
+        1.9,
+        -0.75
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_RCS_Port",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "world_pos": [
+        1.35,
+        3.4,
+        0.25
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_RCS_Starboard",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "world_pos": [
+        1.35,
+        -2.7,
+        0.25
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Tether_Front",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "world_pos": [
+        8.7,
+        2.85,
+        -0.75
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Trail_Main",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "world_pos": [
+        -8.9,
+        -0.2,
+        0.0
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Utility_Dorsal",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "world_pos": [
+        -0.25,
+        0.0,
+        3.05
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Weapon_Front",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "world_pos": [
+        6.9,
+        -0.7,
+        0.45
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    }
+  ],
+  "axis_convention": "+X=thrust/forward, +Y=beam, +Z=up(dorsal) (Blender Z-up post-import)",
+  "forward_axis": {
+    "convention": "+X=thrust/forward, +Y=beam, +Z=up(dorsal)",
+    "dims": [
+      17.715,
+      4.975,
+      5.97
+    ],
+    "longest_axis": "X",
+    "note": "OK: +X is the longest axis (single-body length convention).",
+    "x_is_longest": true
+  },
+  "lod0_meshes": [
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_Gun_Assembly",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 52,
+      "world_center": [
+        5.75,
+        -0.9,
+        0.45
+      ],
+      "world_dims": [
+        1.4,
+        0.28,
+        0.273
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD0_HOOK_DRIVE_CORE",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 76,
+      "world_center": [
+        -7.8,
+        -0.2,
+        0.05
+      ],
+      "world_dims": [
+        0.75,
+        0.96,
+        0.96
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_HOOK_DRIVE_FAN",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 84,
+      "world_center": [
+        -7.35,
+        -0.2,
+        0.05
+      ],
+      "world_dims": [
+        0.18,
+        1.2,
+        1.1878
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Warm"
+      ],
+      "name": "LOD0_HOOK_TETHER_SPOOL",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 512,
+      "world_center": [
+        4.9225,
+        2.01,
+        0.2675
+      ],
+      "world_dims": [
+        9.105,
+        2.32,
+        2.6651
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD0_Merged_Material_Cyan",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 320,
+      "world_center": [
+        0.4,
+        -0.05,
+        2.4275
+      ],
+      "world_dims": [
+        4.6,
+        1.14,
+        2.885
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Glass"
+      ],
+      "name": "LOD0_Merged_Material_Glass",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 248,
+      "world_center": [
+        7.1388,
+        1.1912,
+        0.2587
+      ],
+      "world_dims": [
+        4.8025,
+        3.8575,
+        2.6575
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD0_Merged_Material_Hull",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 2288,
+      "world_center": [
+        -0.35,
+        0.825,
+        -0.2063
+      ],
+      "world_dims": [
+        11.15,
+        3.475,
+        2.9625
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_Merged_Material_Mechanical",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 2568,
+      "world_center": [
+        0.525,
+        0.64,
+        0.25
+      ],
+      "world_dims": [
+        16.8,
+        4.89,
+        4.7
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Warm"
+      ],
+      "name": "LOD0_Merged_Material_Warm",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 432,
+      "world_center": [
+        -1.08,
+        -1.0,
+        -1.9
+      ],
+      "world_dims": [
+        0.93,
+        0.02,
+        0.275
+      ]
+    }
+  ],
+  "material_slots": [
+    "Material_Cyan",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "part_id": "ashline_rig",
+  "proxy_meshes": [
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD1_Gun_Assembly",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 52,
+      "world_center": [
+        5.75,
+        -0.9,
+        0.45
+      ],
+      "world_dims": [
+        1.4,
+        0.28,
+        0.273
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD1_HOOK_DRIVE_CORE",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 76,
+      "world_center": [
+        -7.8,
+        -0.2,
+        0.05
+      ],
+      "world_dims": [
+        0.75,
+        0.96,
+        0.96
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD1_HOOK_DRIVE_FAN",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 84,
+      "world_center": [
+        -7.35,
+        -0.2,
+        0.05
+      ],
+      "world_dims": [
+        0.18,
+        1.2,
+        1.1878
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Warm"
+      ],
+      "name": "LOD1_HOOK_TETHER_SPOOL",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 214,
+      "world_center": [
+        4.9237,
+        2.0092,
+        0.2618
+      ],
+      "world_dims": [
+        9.1026,
+        2.3161,
+        2.6716
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD1_Merged_Material_Cyan",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 128,
+      "world_center": [
+        0.4,
+        -0.05,
+        2.4288
+      ],
+      "world_dims": [
+        4.6043,
+        1.1367,
+        2.8823
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Glass"
+      ],
+      "name": "LOD1_Merged_Material_Glass",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 104,
+      "world_center": [
+        7.1408,
+        1.193,
+        0.2567
+      ],
+      "world_dims": [
+        4.7984,
+        3.8539,
+        2.6534
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD1_Merged_Material_Hull",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 960,
+      "world_center": [
+        -0.3516,
+        0.8256,
+        -0.2054
+      ],
+      "world_dims": [
+        11.1469,
+        3.4711,
+        2.9556
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD1_Merged_Material_Mechanical",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 896,
+      "world_center": [
+        0.525,
+        0.6397,
+        0.2498
+      ],
+      "world_dims": [
+        16.8001,
+        4.8842,
+        4.6961
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD2_Gun_Assembly",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 52,
+      "world_center": [
+        5.75,
+        -0.9,
+        0.45
+      ],
+      "world_dims": [
+        1.4,
+        0.28,
+        0.273
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD2_HOOK_DRIVE_CORE",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 76,
+      "world_center": [
+        -7.8,
+        -0.2,
+        0.05
+      ],
+      "world_dims": [
+        0.75,
+        0.96,
+        0.96
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD2_HOOK_DRIVE_FAN",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 84,
+      "world_center": [
+        -7.35,
+        -0.2,
+        0.05
+      ],
+      "world_dims": [
+        0.18,
+        1.2,
+        1.1878
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Warm"
+      ],
+      "name": "LOD2_HOOK_TETHER_SPOOL",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 92,
+      "world_center": [
+        4.9262,
+        2.0177,
+        0.2587
+      ],
+      "world_dims": [
+        9.0975,
+        2.3276,
+        2.6655
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD2_Merged_Material_Cyan",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 54,
+      "world_center": [
+        0.4,
+        -0.0509,
+        2.4347
+      ],
+      "world_dims": [
+        4.6034,
+        1.1366,
+        2.8706
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Glass"
+      ],
+      "name": "LOD2_Merged_Material_Glass",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 44,
+      "world_center": [
+        7.1451,
+        1.1977,
+        0.2519
+      ],
+      "world_dims": [
+        4.7898,
+        3.8445,
+        2.6453
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD2_Merged_Material_Hull",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 410,
+      "world_center": [
+        -0.3482,
+        0.8243,
+        -0.2066
+      ],
+      "world_dims": [
+        11.1344,
+        3.4624,
+        2.9518
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD2_Merged_Material_Mechanical",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 384,
+      "world_center": [
+        0.5212,
+        0.6391,
+        0.2492
+      ],
+      "world_dims": [
+        16.7916,
+        4.8751,
+        4.6789
+      ]
+    }
+  ],
+  "render_meshes": [
+    {
+      "material_slots": [],
+      "name": "COLLISION_HULL",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 12,
+      "world_center": [
+        0.6824,
+        0.6824,
+        0.885
+      ],
+      "world_dims": [
+        8.1489,
+        2.2885,
+        2.7462
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_Gun_Assembly",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 52,
+      "world_center": [
+        5.75,
+        -0.9,
+        0.45
+      ],
+      "world_dims": [
+        1.4,
+        0.28,
+        0.273
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD0_HOOK_DRIVE_CORE",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 76,
+      "world_center": [
+        -7.8,
+        -0.2,
+        0.05
+      ],
+      "world_dims": [
+        0.75,
+        0.96,
+        0.96
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_HOOK_DRIVE_FAN",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 84,
+      "world_center": [
+        -7.35,
+        -0.2,
+        0.05
+      ],
+      "world_dims": [
+        0.18,
+        1.2,
+        1.1878
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Warm"
+      ],
+      "name": "LOD0_HOOK_TETHER_SPOOL",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 512,
+      "world_center": [
+        4.9225,
+        2.01,
+        0.2675
+      ],
+      "world_dims": [
+        9.105,
+        2.32,
+        2.6651
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD0_Merged_Material_Cyan",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 320,
+      "world_center": [
+        0.4,
+        -0.05,
+        2.4275
+      ],
+      "world_dims": [
+        4.6,
+        1.14,
+        2.885
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Glass"
+      ],
+      "name": "LOD0_Merged_Material_Glass",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 248,
+      "world_center": [
+        7.1388,
+        1.1912,
+        0.2587
+      ],
+      "world_dims": [
+        4.8025,
+        3.8575,
+        2.6575
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD0_Merged_Material_Hull",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 2288,
+      "world_center": [
+        -0.35,
+        0.825,
+        -0.2063
+      ],
+      "world_dims": [
+        11.15,
+        3.475,
+        2.9625
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_Merged_Material_Mechanical",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 2568,
+      "world_center": [
+        0.525,
+        0.64,
+        0.25
+      ],
+      "world_dims": [
+        16.8,
+        4.89,
+        4.7
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Warm"
+      ],
+      "name": "LOD0_Merged_Material_Warm",
+      "parent": "SF_M4_ASHLINE_RIG_ROOT",
+      "polys": 432,
+      "world_center": [
+        -1.08,
+        -1.0,
+        -1.9
+      ],
+      "world_dims": [
+        0.93,
+        0.02,
+        0.275
+      ]
+    }
+  ],
+  "render_poly_total": 6592,
+  "root_node": "SF_M4_ASHLINE_RIG_ROOT",
+  "world_bbox": {
+    "dims": [
+      17.715,
+      4.975,
+      5.97
+    ],
+    "max": [
+      9.54,
+      3.17,
+      3.87
+    ],
+    "min": [
+      -8.175,
+      -1.805,
+      -2.1
+    ]
+  }
+}

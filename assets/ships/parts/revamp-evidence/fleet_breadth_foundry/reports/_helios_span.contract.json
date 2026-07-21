@@ -1,0 +1,776 @@
+{
+  "attachments": [
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Camera_Focus",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "world_pos": [
+        0.0,
+        0.0,
+        0.5
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Cargo_Ventral",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "world_pos": [
+        0.0,
+        0.0,
+        -2.45
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Engine_Main",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "world_pos": [
+        -13.2,
+        0.0,
+        0.05
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Mining_Front",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "world_pos": [
+        11.6,
+        0.0,
+        -0.65
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_RCS_Port",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "world_pos": [
+        2.2,
+        3.9,
+        0.4
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_RCS_Starboard",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "world_pos": [
+        2.2,
+        -3.9,
+        0.4
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Trail_Main",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "world_pos": [
+        -13.6,
+        0.0,
+        0.05
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Utility_Dorsal",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "world_pos": [
+        -1.0,
+        0.0,
+        2.75
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Weapon_Front",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "world_pos": [
+        12.4,
+        0.0,
+        0.45
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    }
+  ],
+  "axis_convention": "+X=thrust/forward, +Y=beam, +Z=up(dorsal) (Blender Z-up post-import)",
+  "forward_axis": {
+    "convention": "+X=thrust/forward, +Y=beam, +Z=up(dorsal)",
+    "dims": [
+      28.325,
+      8.7,
+      5.11
+    ],
+    "longest_axis": "X",
+    "note": "OK: +X is the longest axis (single-body length convention).",
+    "x_is_longest": true
+  },
+  "lod0_meshes": [
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_Gun_Assembly",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 44,
+      "world_center": [
+        12.0,
+        0.0,
+        0.5
+      ],
+      "world_dims": [
+        1.4,
+        0.32,
+        0.32
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD0_HOOK_DRIVE_CORE",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 272,
+      "world_center": [
+        -13.9225,
+        0.0,
+        -0.231
+      ],
+      "world_dims": [
+        0.805,
+        5.78,
+        1.5075
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_HOOK_DRIVE_FAN",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 288,
+      "world_center": [
+        -13.43,
+        0.0,
+        -0.2066
+      ],
+      "world_dims": [
+        0.3,
+        5.98,
+        1.7533
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD0_Merged_Material_Cyan",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 348,
+      "world_center": [
+        0.75,
+        0.0,
+        2.24
+      ],
+      "world_dims": [
+        18.5,
+        5.2,
+        0.84
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Glass"
+      ],
+      "name": "LOD0_Merged_Material_Glass",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 188,
+      "world_center": [
+        12.0,
+        0.0,
+        1.8
+      ],
+      "world_dims": [
+        1.8,
+        1.35,
+        0.6
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD0_Merged_Material_Hull",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 4388,
+      "world_center": [
+        -0.05,
+        0.0,
+        0.555
+      ],
+      "world_dims": [
+        28.1,
+        8.2,
+        4.51
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_Merged_Material_Mechanical",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 4476,
+      "world_center": [
+        -3.05,
+        0.0,
+        0.2
+      ],
+      "world_dims": [
+        22.3,
+        8.7,
+        5.0
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Warm"
+      ],
+      "name": "LOD0_Merged_Material_Warm",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 672,
+      "world_center": [
+        -0.5,
+        0.0,
+        2.19
+      ],
+      "world_dims": [
+        14.0,
+        5.3,
+        0.86
+      ]
+    }
+  ],
+  "material_slots": [
+    "Material_Cyan",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "part_id": "helios_span",
+  "proxy_meshes": [
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD1_Gun_Assembly",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 12,
+      "world_center": [
+        12.0,
+        0.0081,
+        0.4854
+      ],
+      "world_dims": [
+        1.4,
+        0.2931,
+        0.2803
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD1_HOOK_DRIVE_CORE",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 84,
+      "world_center": [
+        -13.9225,
+        0.0055,
+        -0.2294
+      ],
+      "world_dims": [
+        0.805,
+        5.7618,
+        1.5404
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD1_HOOK_DRIVE_FAN",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 90,
+      "world_center": [
+        -13.43,
+        0.0,
+        -0.2043
+      ],
+      "world_dims": [
+        0.3,
+        6.034,
+        1.7385
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD1_Merged_Material_Cyan",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 146,
+      "world_center": [
+        0.7508,
+        0.0,
+        2.24
+      ],
+      "world_dims": [
+        18.4985,
+        5.2,
+        0.8347
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Glass"
+      ],
+      "name": "LOD1_Merged_Material_Glass",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 78,
+      "world_center": [
+        11.9998,
+        0.0,
+        1.8
+      ],
+      "world_dims": [
+        1.7949,
+        1.3453,
+        0.5944
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD1_Merged_Material_Hull",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 1842,
+      "world_center": [
+        -0.0497,
+        0.0,
+        0.5559
+      ],
+      "world_dims": [
+        28.0926,
+        8.192,
+        4.5038
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD1_Merged_Material_Mechanical",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 1698,
+      "world_center": [
+        -3.8261,
+        0.0,
+        0.1982
+      ],
+      "world_dims": [
+        20.7452,
+        8.6915,
+        4.9964
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Warm"
+      ],
+      "name": "LOD1_Merged_Material_Warm",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 10,
+      "world_center": [
+        -0.5,
+        0.0,
+        1.85
+      ],
+      "world_dims": [
+        14.0,
+        5.28,
+        0.18
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD2_Gun_Assembly",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 20,
+      "world_center": [
+        12.0,
+        0.0035,
+        0.5
+      ],
+      "world_dims": [
+        1.3762,
+        0.3482,
+        0.3473
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD2_HOOK_DRIVE_CORE",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 36,
+      "world_center": [
+        -13.9225,
+        -0.0529,
+        -0.2229
+      ],
+      "world_dims": [
+        0.805,
+        5.8093,
+        1.5273
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD2_HOOK_DRIVE_FAN",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 38,
+      "world_center": [
+        -13.4494,
+        0.0,
+        -0.2056
+      ],
+      "world_dims": [
+        0.2611,
+        6.0174,
+        1.7276
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD2_Merged_Material_Cyan",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 62,
+      "world_center": [
+        0.7487,
+        0.0,
+        2.2392
+      ],
+      "world_dims": [
+        18.4898,
+        5.2,
+        0.8303
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Glass"
+      ],
+      "name": "LOD2_Merged_Material_Glass",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 32,
+      "world_center": [
+        11.9983,
+        0.0,
+        1.8
+      ],
+      "world_dims": [
+        1.7862,
+        1.3398,
+        0.591
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD2_Merged_Material_Hull",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 788,
+      "world_center": [
+        -0.0494,
+        0.0,
+        0.5552
+      ],
+      "world_dims": [
+        28.084,
+        8.1828,
+        4.4933
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD2_Merged_Material_Mechanical",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 726,
+      "world_center": [
+        -3.8297,
+        0.0,
+        0.1993
+      ],
+      "world_dims": [
+        20.7372,
+        8.6868,
+        4.9787
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Warm"
+      ],
+      "name": "LOD2_Merged_Material_Warm",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 16,
+      "world_center": [
+        -0.5,
+        0.0,
+        1.85
+      ],
+      "world_dims": [
+        13.976,
+        5.2563,
+        0.0549
+      ]
+    }
+  ],
+  "render_meshes": [
+    {
+      "material_slots": [],
+      "name": "COLLISION_HULL",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 12,
+      "world_center": [
+        -0.1625,
+        0.0,
+        0.255
+      ],
+      "world_dims": [
+        26.059,
+        8.004,
+        4.7012
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_Gun_Assembly",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 44,
+      "world_center": [
+        12.0,
+        0.0,
+        0.5
+      ],
+      "world_dims": [
+        1.4,
+        0.32,
+        0.32
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD0_HOOK_DRIVE_CORE",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 272,
+      "world_center": [
+        -13.9225,
+        0.0,
+        -0.231
+      ],
+      "world_dims": [
+        0.805,
+        5.78,
+        1.5075
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_HOOK_DRIVE_FAN",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 288,
+      "world_center": [
+        -13.43,
+        0.0,
+        -0.2066
+      ],
+      "world_dims": [
+        0.3,
+        5.98,
+        1.7533
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Cyan"
+      ],
+      "name": "LOD0_Merged_Material_Cyan",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 348,
+      "world_center": [
+        0.75,
+        0.0,
+        2.24
+      ],
+      "world_dims": [
+        18.5,
+        5.2,
+        0.84
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Glass"
+      ],
+      "name": "LOD0_Merged_Material_Glass",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 188,
+      "world_center": [
+        12.0,
+        0.0,
+        1.8
+      ],
+      "world_dims": [
+        1.8,
+        1.35,
+        0.6
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "LOD0_Merged_Material_Hull",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 4388,
+      "world_center": [
+        -0.05,
+        0.0,
+        0.555
+      ],
+      "world_dims": [
+        28.1,
+        8.2,
+        4.51
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "LOD0_Merged_Material_Mechanical",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 4476,
+      "world_center": [
+        -3.05,
+        0.0,
+        0.2
+      ],
+      "world_dims": [
+        22.3,
+        8.7,
+        5.0
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Warm"
+      ],
+      "name": "LOD0_Merged_Material_Warm",
+      "parent": "SF_M4_HELIOS_SPAN_ROOT",
+      "polys": 672,
+      "world_center": [
+        -0.5,
+        0.0,
+        2.19
+      ],
+      "world_dims": [
+        14.0,
+        5.3,
+        0.86
+      ]
+    }
+  ],
+  "render_poly_total": 10688,
+  "root_node": "SF_M4_HELIOS_SPAN_ROOT",
+  "world_bbox": {
+    "dims": [
+      28.325,
+      8.7,
+      5.11
+    ],
+    "max": [
+      14.0,
+      4.35,
+      2.81
+    ],
+    "min": [
+      -14.325,
+      -4.35,
+      -2.3
+    ]
+  }
+}
