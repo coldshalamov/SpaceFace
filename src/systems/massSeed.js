@@ -404,26 +404,34 @@ export const massSeed = {
     this._cutSeedTethers(state, oldId, reason);
     const now = nowOf(state);
     const entity = state.entities && state.entities.get ? state.entities.get(oldId) : null;
-    if (entity && entity.alive !== false) {
-      const seedState = entity.data && entity.data.massSeedState;
-      if (seedState) {
-        seedState.phase = 'collapsing';
-        seedState.tetherEligible = false;
-      }
-      this._authorBodyMaterial(state, entity, TRAVEL_MATERIAL); // contacts off for the collapse beat
-      this.bus.emit('presentation:vfxCue', {
-        id: 'massSeed.collapse',
-        lane: 'utility',
-        particles: 24,
-        lights: 1,
-        magnitude: 0.9,
-        position: { x: entity.pos.x, z: entity.pos.z },
-        material: 'energy',
-        sourceId: oldId,
-        targetId: null,
-        flashReduced: true,
-      });
+    if (!entity || entity.alive === false) {
+      // Already dead (killed mid-collapse; possibly swept, so oldId may already sit on the entity
+      // id free-list). A dying entry would track a RECYCLABLE id, and _finishDying would kill
+      // whatever entity holds that id 0.45s from now — including the replacement this very deploy
+      // is about to spawn (the LIFO recycler hands it the same id). No live body, no beat:
+      // complete the retired seed's lifecycle synchronously instead.
+      this.bus.emit('massSeed:collapsing', { seedId: oldId, reason });
+      this.bus.emit('massSeed:collapsed', { seedId: oldId, reason });
+      return;
     }
+    const seedState = entity.data && entity.data.massSeedState;
+    if (seedState) {
+      seedState.phase = 'collapsing';
+      seedState.tetherEligible = false;
+    }
+    this._authorBodyMaterial(state, entity, TRAVEL_MATERIAL); // contacts off for the collapse beat
+    this.bus.emit('presentation:vfxCue', {
+      id: 'massSeed.collapse',
+      lane: 'utility',
+      particles: 24,
+      lights: 1,
+      magnitude: 0.9,
+      position: { x: entity.pos.x, z: entity.pos.z },
+      material: 'energy',
+      sourceId: oldId,
+      targetId: null,
+      flashReduced: true,
+    });
     this.bus.emit('massSeed:collapsing', { seedId: oldId, reason });
     if (!Array.isArray(ms.dying)) ms.dying = [];
     ms.dying.push({ id: oldId, despawnAt: now + MASS_SEED_DEF.collapseS, reason });
@@ -446,7 +454,13 @@ export const massSeed = {
       if (index >= 0) ms.dying.splice(index, 1);
     }
     const entity = state.entities && state.entities.get ? state.entities.get(entry.id) : null;
-    if (entity && entity.alive !== false) entity.alive = false;
+    // Recycled-id guard: by despawn time entry.id may have been swept and reissued to a DIFFERENT
+    // entity (LIFO free-list) — the tracked replacement seed or an unrelated spawn. Only the
+    // retired seed itself may be killed by its beat: it is always type 'massSeed' and never the
+    // currently tracked seed (a single live seed exists, so anything tracked is the newer one).
+    if (entity && entity.alive !== false && entity.type === 'massSeed' && entry.id !== ms.seedId) {
+      entity.alive = false;
+    }
     this.bus.emit('massSeed:collapsed', { seedId: entry.id, reason: entry.reason });
   },
 
