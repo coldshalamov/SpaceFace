@@ -23,10 +23,17 @@ if (MODE === 'write') {
   console.log(`Wrote ${fileURLToPath(SCHEMA_PATH)}`);
 } else if (MODE === 'check') {
   const existing = readFileSync(SCHEMA_PATH, 'utf8');
-  assert.equal(existing, markdown, 'SAVE_SCHEMA.md is stale; run node scripts/generate-save-schema.mjs --write');
+  // A clean Windows checkout may materialize this generated Markdown as CRLF while the generator
+  // deliberately emits repository-stable LF. Schema truth is textual content, not checkout EOL.
+  assert.equal(normalizeEol(existing), normalizeEol(markdown),
+    'SAVE_SCHEMA.md is stale; run node scripts/generate-save-schema.mjs --write');
   console.log(`SAVE_SCHEMA.md OK (version ${CURRENT_VERSION}, ${report.paths.length} paths)`);
 } else {
   process.stdout.write(markdown);
+}
+
+function normalizeEol(value) {
+  return String(value).replace(/\r\n?/g, '\n');
 }
 
 function buildSchemaReport() {
