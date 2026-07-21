@@ -3,8 +3,7 @@
 Builds 3 FULL variant GLBs from ``weapon_pulse_cannon.glb`` — the default
 modular gun (audit rank #10) that multiplies on every hardpoint. The cannon is
 a small weapon part (NOT a whole-ship): dims 4.79 m × 1.0 m × 1.04 m, 1944 tris.
-Weapons cap = 2500 tris (brief §Tri budget), so additions must stay inside
-556 tris of headroom.
+Geometry counts are reported by the validator; they are not an aesthetic cap.
 
   6. var_weapon_pulse_cannon_military_v01.glb   — SCN shroud: fitted armor
      shroud, recessed fastener rows, frame-line emissive (bible §SCN).
@@ -63,7 +62,7 @@ def _cannon_surface(surf, x, y, default_z=0.52):
 #
 # Z BUDGET: donor z=1.04, +25% growth = 1.30; dorsal top z=0.52; headroom to
 #   z=0.78 = 0.26 m. All additions kept flat (<=0.20 m tall).
-# TRIS BUDGET: donor 1944 tris, weapons cap 2500, additions <= 556 tris.
+# Geometry telemetry baseline: donor 1944 tris.
 # ---------------------------------------------------------------------------
 def _scn(mn, mx, r, kit, surf):
     tag = "SCN"

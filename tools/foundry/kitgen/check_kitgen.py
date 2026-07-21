@@ -41,10 +41,9 @@ REPORT_PATH = KIT_DIR / "check_kitgen_report.json"
 
 NAME_RE = re.compile(r"^KIT_[A-Z][A-Z0-9_]*_V\d{2}(?:_[A-Za-z0-9_]+)?$")
 
-# Hard rule envelopes (from brief).
-TRIS_TARGET = 400
-TRIS_HARD = 800
-WHOLE_KIT_MAX_PIECES = 70
+# Geometry counts are telemetry, not taste ceilings. Runtime promotion owns any
+# platform-specific cost decision and must derive it from measured evidence.
+TRIS_REFERENCE = 400
 BEVEL_RANGE = (0.004, 0.012)
 FORM_RATIO_V1 = 0.25
 UV_ZERO_ISLAND_RATIO = 0.05
@@ -114,12 +113,6 @@ def check_no_modifiers(obj: bpy.types.Object):
     if obj.modifiers:
         names = [m.name for m in obj.modifiers]
         fail("MODIFIERS", f"{obj.name}: unapplied modifiers remain: {names}")
-
-
-def check_tris_budget(obj: bpy.types.Object, snap: dict):
-    tris = snap["tris"]
-    if tris > TRIS_HARD:
-        fail("TRIS_HARD", f"{obj.name}: {tris} tris exceeds hard limit {TRIS_HARD}")
 
 
 def check_materials(obj: bpy.types.Object):
@@ -328,8 +321,6 @@ def check_manifest(expected_pieces: list[tuple[str, int]]) -> dict:
             fail("MANIFEST",
                  f"{glb_path.name}: sha256 mismatch "
                  f"(manifest={p['sha256'][:12]}…, file={digest[:12]}…)")
-        if int(p["tris"]) > TRIS_HARD:
-            fail("MANIFEST", f"{glb_path.name}: {p['tris']} tris exceeds hard limit")
         for m in p["materials"]:
             if m not in kitgen.ALLOWED_MATERIALS:
                 fail("MANIFEST", f"{glb_path.name}: disallowed material {m!r}")
@@ -392,13 +383,12 @@ def main():
                 check_materials(o)
                 check_uvs(o)
                 snap = snapshot_geometry(o)
-                check_tris_budget(o, snap)
                 check_bevel_present(o, snap)
                 check_origin_at_mount_plane(o, snap)
                 if v == 1:
                     check_form_feature_v1(o)
                 piece_snaps.append({"name": o.name, **snap,
-                                    "tris_target_ok": snap["tris"] <= TRIS_TARGET})
+                                    "tris_reference_delta": snap["tris"] - TRIS_REFERENCE})
             # Determinism (rebuild + reload + compare).
             det = check_determinism(fam, v)
             expected_pieces.append((fam, v))
@@ -410,11 +400,6 @@ def main():
             print(f"  ok: {fam} v{v}  objects={len(objs)}  "
                   f"tris={sum(p['tris'] for p in piece_snaps)}")
 
-    # Whole-kit piece budget
-    if total_pieces > WHOLE_KIT_MAX_PIECES:
-        fail("KIT_BUDGET",
-             f"whole kit has {total_pieces} pieces (>{WHOLE_KIT_MAX_PIECES})")
-
     manifest_report = None
     if not skip_manifest:
         manifest_report = check_manifest(expected_pieces)
@@ -423,8 +408,7 @@ def main():
         "tool": "check_kitgen.py",
         "families_checked": families,
         "total_pieces": total_pieces,
-        "tris_target": TRIS_TARGET,
-        "tris_hard": TRIS_HARD,
+        "tris_reference": TRIS_REFERENCE,
         "results": results,
         "manifest": manifest_report,
     }

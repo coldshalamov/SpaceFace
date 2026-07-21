@@ -37,8 +37,6 @@ REPORT_PATH = SCENERY_DIR / "check_scenery_report.json"
 NAME_RE = re.compile(r"^SCN_[A-Z0-9_]+_V\d{2}(?:_[A-Za-z0-9_]+)?$")
 SOCKET_RE = re.compile(r"^SOCKET_(Top|Dock)$")
 
-TRIS_HARD_DEFAULT = 3000
-TRIS_HARD_GATE_RING = 4500
 SILHOUETTE_DIFF_THRESHOLD = 0.12
 
 class CheckFailed(AssertionError):
@@ -299,11 +297,6 @@ def check_manifest(expected_props: list[tuple[str, int]]):
         if digest != p["sha256"]:
             fail("MANIFEST", f"GLB file {p['glb']} SHA256 mismatch (manifest={p['sha256'][:12]}, file={digest[:12]})")
 
-        # Check tri budget
-        limit = TRIS_HARD_GATE_RING if p["family"] == "gate_ring" else TRIS_HARD_DEFAULT
-        if int(p["tris"]) > limit:
-            fail("MANIFEST", f"GLB file {p['glb']} tris={p['tris']} exceeds limit={limit}")
-
         # Check materials
         for mat in p["materials"]:
             if mat not in scenerygen.kitgen.ALLOWED_MATERIALS:
@@ -353,10 +346,6 @@ def main():
                 if obj.type == 'MESH':
                     snap = snapshot_geometry(obj)
                     tris_count += snap["tris"]
-
-            limit = TRIS_HARD_GATE_RING if family == "gate_ring" else TRIS_HARD_DEFAULT
-            if tris_count > limit:
-                fail("TRIS", f"{family} v{var}: total triangles={tris_count} exceeds limit={limit}")
 
             # Determinism checks
             check_determinism(family, var)

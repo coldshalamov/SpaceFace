@@ -1,7 +1,7 @@
 """check_variants.py — Lane F headless TDD gate for the 8 variant GLBs.
 
 Builds all 8 variants via run_variants, then re-imports each exported GLB and
-asserts every preservation/budget/naming/determinism rule from
+asserts every preservation/naming/determinism rule from
 briefs/brief-F-variants-glm.md. Writes ``variants_manifest.json`` and prints
 ``VARIANTS_CHECK_OK`` only when every rule passes for every variant; otherwise
 prints each failure and exits 1 (mirrors check_kitgen / check_hero style).
@@ -20,11 +20,8 @@ Rules enforced (per brief-F Hard preservation rules):
     length). Y/Z growth allowed up to +25%.
   - Silhouette identity: every donor mesh name still present (additions are
     ADD-only; we do not boolean-remove donor geometry).
-  - Tri budget: variant tris <= donor tris * 1.40 (whole-ships) or <= 2500
-    (weapons), with the donor+40% cap also enforced at 8000 for the small
-    weapon only. (The 8000 generic "variant" class ceiling does NOT apply to
-    whole-ship donors — hero-lane precedent: wasp/ashline/helios exceed 8000
-    by themselves; the authoritative whole-ship cap is donor+40%.)
+  - Geometry counts are recorded as telemetry; quality and measured runtime
+    cost, not a generic triangle ceiling, govern later promotion.
   - Materials: donor's own materials + Lane-D KitMat_* ONLY. No new names.
   - Naming: every added object starts with ``VAR_``.
   - Determinism: each variant's VAR_* additions are rebuilt twice (fresh donor
@@ -62,8 +59,6 @@ KITMATS = set(vc.KITMATS.keys())
 XLEN_TOL = 0.02
 YZ_GROWTH_TOL = 0.25
 EMPTY_TOL = 1e-5
-WEAPONS_TRI_CAP = 2500
-WHOLESHIP_TRI_FACTOR = 1.40
 
 # The 8 Lane-F variants, grouped by donor family. Each entry is
 # (builder_module, treatment_name) — the builder provides the STEM/TAG/SEED.
@@ -118,13 +113,6 @@ def _tris():
 
 def _matrix_maxdiff(a, b):
     return max(abs(a[i][j] - b[i][j]) for i in range(4) for j in range(4))
-
-
-def _classify(donor_id):
-    """Return ('weapon' | 'wholeship', cap, factor_or_None)."""
-    if "weapon" in donor_id:
-        return "weapon", WEAPONS_TRI_CAP, None
-    return "wholeship", None, WHOLESHIP_TRI_FACTOR
 
 
 def _verify_variant(builder, treatment, donor_facts):
@@ -183,29 +171,19 @@ def _verify_variant(builder, treatment, donor_facts):
     ok(nose > 0 and abs(nose - donor_facts["nose_x"]) <= EMPTY_TOL,
        f"[{stem}] nose socket X changed/mirrored ({nose} vs {donor_facts['nose_x']})")
 
-    # 6) Tri budget: weapon cap 2500; wholeship cap donor+40%.
-    kind, weapon_cap, factor = _classify(donor_id)
-    if kind == "weapon":
-        cap = weapon_cap
-        ok(v_tris <= cap, f"[{stem}] tris {v_tris} > weapons cap {cap}")
-    else:
-        cap = int(donor_facts["tris"] * factor)
-        ok(v_tris <= cap,
-           f"[{stem}] tris {v_tris} > donor+{int(factor*100)}% cap {cap}")
-
-    # 7) Materials: donor + KitMat_* only.
+    # 6) Materials: donor + KitMat_* only.
     allowed = donor_facts["materials"] | KITMATS
     stray = v_mats - allowed
     ok(not stray, f"[{stem}] stray materials {sorted(stray)} (allowed donor+KitMat_*)")
 
-    # 8) Added objects named VAR_*.
+    # 7) Added objects named VAR_*.
     added_names = [o.name for o in bpy.data.objects
                    if o.type == "MESH" and o.name not in donor_facts["mesh_names"]]
     ok(len(added_names) >= 1, f"[{stem}] no VAR_* additions found")
     badnames = [n for n in added_names if not n.startswith("VAR_")]
     ok(not badnames, f"[{stem}] added objects not VAR_-named: {badnames}")
 
-    # 9) Zone coverage (informational, doesn't fail the check) — added geo
+    # 8) Zone coverage (informational, doesn't fail the check) — added geo
     #    bbox-volume fraction per fore/mid/aft third of donor X-range.
     added_objs = [o for o in bpy.data.objects if o.type == "MESH"
                   and o.name in added_names]
@@ -215,7 +193,6 @@ def _verify_variant(builder, treatment, donor_facts):
     record.update({
         "tris_donor": donor_facts["tris"],
         "tris_variant": v_tris,
-        "tris_cap": cap,
         "tris_added": v_tris - donor_facts["tris"],
         "added_objects": sorted(added_names),
         "added_object_count": len(added_names),

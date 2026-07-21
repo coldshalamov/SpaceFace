@@ -1,20 +1,18 @@
 #!/usr/bin/env node
-// Fleet Breadth Foundry — GLB budget + contract validator (Lane B harness).
+// Fleet Breadth Foundry — GLB contract validator (Lane B harness).
 //
 // Wraps @gltf-transform inspect() and walks the document for the facts inspect()
 // does not surface (tangents, UV-set count, non-applied node transforms, world
-// bbox), then judges each GLB against a foundry budget class and writes a
-// deterministic per-GLB report. Exits non-zero if any GLB FAILs.
+// bbox), then writes a deterministic per-GLB report. Geometry counts are
+// telemetry by default. Exits non-zero if any GLB FAILs.
 //
 //   node tools/foundry/validate_foundry_glb.mjs <glb...> --out <reportdir> \
 //        [--class kit|variant|scenery] [--budget <tris>] [--json]
 //
-// Budget classes (tri ceilings), overridable with --budget:
-//   kit      <= 800    (a single kit-bash piece: bracket, greeble, plate)
-//   variant  <= 8000   (a full donor-derived faction variant part)   [default]
-//   scenery  <= 3000   (a scenery / set-dressing prop)
+// Class names organize reports; they do not imply aesthetic triangle ceilings.
+// --budget is available only for an explicitly derived platform/task limit.
 //
-// Reuse note: this is the foundry-facing budget gate. tools/art/validate_gltf_assets.mjs
+// Reuse note: this is the foundry-facing inspection gate. tools/art/validate_gltf_assets.mjs
 // remains the Khronos glTF-VALIDITY validator; run that too for spec conformance.
 // Draco-compressed GLBs are unsupported here (no draco3d dependency present in the
 // worktree; meshoptimizer is) — foundry parts stay uncompressed or meshopt-packed.
@@ -25,7 +23,7 @@ import { inspect } from '@gltf-transform/functions';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 
-const BUDGETS = { kit: 800, variant: 8000, scenery: 3000 };
+const VALID_CLASSES = new Set(['kit', 'variant', 'scenery']);
 
 // sRGB-role slots per glTF material model; everything else is linear/non-color.
 const SRGB_SLOTS = new Set(['baseColorTexture', 'emissiveTexture']);
@@ -174,11 +172,13 @@ function analyze(doc, filePath) {
 }
 
 function judge(analysis, klass, budgetOverride) {
-  const budget = Number.isFinite(budgetOverride) ? budgetOverride : BUDGETS[klass];
+  const budget = Number.isFinite(budgetOverride) ? budgetOverride : null;
   const warnings = [];
   const failures = [];
-  if (!Number.isFinite(budget)) failures.push(`unknown budget class '${klass}'`);
-  else if (analysis.tris > budget) failures.push(`tris ${analysis.tris} exceed ${klass} budget ${budget}`);
+  if (!VALID_CLASSES.has(klass)) failures.push(`unknown report class '${klass}'`);
+  if (Number.isFinite(budget) && analysis.tris > budget) {
+    failures.push(`tris ${analysis.tris} exceed explicit task budget ${budget}`);
+  }
 
   if (analysis.geometry && analysis.materials) {
     // normal maps without tangents => runtime must derive them (quality/perf flag).

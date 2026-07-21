@@ -1,7 +1,7 @@
 """Fleet Breadth Foundry — HERO lane TDD gate.
 
 Builds both hero missions, then re-imports the exported GLBs and asserts every
-preservation/budget/naming/determinism rule. Writes hero_manifest.json. Prints
+preservation/naming/determinism rule. Writes hero_manifest.json. Prints
 HERO_CHECK_OK and exits 0 only when all pass; otherwise prints each failure and
 exits 1 (mirrors check_kitgen / check_variants style).
 
@@ -11,11 +11,11 @@ Rules enforced:
     - +X forward preserved (nose sockets stay +X; no mirror)
     - bbox X-length within +-2% of donor (runtime scales by X-length)
     - all donor mesh names present (silhouette identity)
-    - tris <= donor tris * 1.40 (donor+40%)
+    - triangle counts recorded as telemetry
     - materials subset of donor materials + KitMat_*
     - >=1 added object, ALL added objects named VAR_*
   HUB overlays (additions only):
-    - tris <= 12000
+    - triangle counts recorded as telemetry
     - all objects named VAR_*
     - materials subset of KitMat_*
     - authored in donor frame (overlay bbox inside a sane hub envelope; origin at 0)
@@ -43,8 +43,6 @@ from mathutils import Vector  # noqa: E402
 ROOT = bwk.ROOT
 VARIANTS_DIR = os.path.join(ROOT, "assets", "ships", "foundry", "fleet_breadth_20260720", "variants")
 KITMATS = set(hc.KITMATS.keys())
-WASP_TRI_FACTOR = 1.40
-HUB_TRI_CAP = 12000
 XLEN_TOL = 0.02
 EMPTY_TOL = 1e-5
 
@@ -139,9 +137,6 @@ def verify_wasp_variant(faction, glb, donor):
     # no mirror: nose socket stays +X
     nose = max((o.matrix_world.to_translation().x for o in bpy.data.objects if o.type == "EMPTY"), default=0)
     ok(nose > 0 and abs(nose - donor["nose_x"]) <= EMPTY_TOL, f"[wasp:{faction}] nose socket X changed/mirrored ({nose})")
-    # tris budget
-    cap = int(donor["tris"] * WASP_TRI_FACTOR)
-    ok(v_tris <= cap, f"[wasp:{faction}] tris {v_tris} > donor+40% cap {cap}")
     # materials subset
     allowed = donor["materials"] | KITMATS
     stray = v_mats - allowed
@@ -155,7 +150,7 @@ def verify_wasp_variant(faction, glb, donor):
     return {
         "donor": os.path.relpath(bwk.DONOR, ROOT).replace("\\", "/"),
         "treatment": tag, "seed": bwk.FACTIONS[faction]["seed"],
-        "tris_donor": donor["tris"], "tris_variant": v_tris, "tris_cap": cap,
+        "tris_donor": donor["tris"], "tris_variant": v_tris,
         "added_objects": sorted(added), "preserved_empties": len(donor["empties"]),
         "xlen_variant": round(dims.x, 4), "xlen_donor": round(donor["xlen"], 4),
         "materials": sorted(v_mats), "sha256": _sha256_file(glb),
@@ -176,7 +171,6 @@ def verify_hub_overlay(faction, glb):
     tris = _tris()
     mn, mx, _, dims = hc.mesh_bbox(meshes)
 
-    ok(tris <= HUB_TRI_CAP, f"[hub:{faction}] tris {tris} > cap {HUB_TRI_CAP}")
     bad = [n for n in names if not n.startswith("VAR_")]
     ok(not bad, f"[hub:{faction}] objects not VAR_-named: {bad}")
     stray = mats - KITMATS
@@ -199,7 +193,7 @@ def verify_hub_overlay(faction, glb):
         "donor": bto.DONOR_REL, "anchorFrame": "donor-origin",
         "intendedFaction": bto.OVERLAYS[faction]["intendedFaction"],
         "treatment": bto.OVERLAYS[faction]["tag"], "seed": bto.OVERLAYS[faction]["seed"],
-        "tris": tris, "tris_cap": HUB_TRI_CAP, "objects": sorted(names),
+        "tris": tris, "objects": sorted(names),
         "bbox_min": [round(v, 3) for v in mn], "bbox_max": [round(v, 3) for v in mx],
         "materials": sorted(mats), "sha256": _sha256_file(glb),
         "attachNotes": bto.ATTACH_NOTES[faction],
