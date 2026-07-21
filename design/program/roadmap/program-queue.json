@@ -867,7 +867,7 @@
       "id": "PQ-014",
       "priority": 14,
       "title": "Natural NPC miner, hauler, and patrol jobs",
-      "state": "focused_green",
+      "state": "integrated",
       "canonical": [
         "W06"
       ],
@@ -894,7 +894,7 @@
         "save"
       ],
       "brief": "Give materialized NPCs physical jobs and virtualized NPCs statistical continuity through existing state owners.",
-      "partialIntegration": "2026-07-20 closeout: deterministic job-state KERNEL on master at d6d5278c+73159e05+fffe57db (48/48, runtime-UNWIRED). 2026-07-21 RUNTIME WIRING INTEGRATED at 1bc07b5e (state->focused_green): npcJobsRuntime adapter sole-writes state.npcJobs and drives the untouched kernel; traffic naturally assigns miner/hauler/patrol jobs and yields its stepper (one intent writer per hull); worldRecordId continuity across exit/virtual-advance/reentry; save v11->v12 with migration, schema v12/262; 61/61 focused incl. held-out-seed natural census + offscreen==onscreen convergence; sim compare ok/hashEqual (hash shift bisected to the hashed save-version integer only; no golden edited); encounter-director pre-existing red unchanged before/after. REMAINING for checkoff: browser player-route capture (script ready, browser-mutex-gated) + Electron smoke. Receipts: PQ-014-npc-job-kernel.yaml + PQ-014-npc-jobs-wiring-REPORT.md."
+      "partialIntegration": "2026-07-20 closeout: deterministic job-state KERNEL on master at d6d5278c+73159e05+fffe57db (48/48, runtime-UNWIRED). 2026-07-21 RUNTIME WIRING INTEGRATED at 1bc07b5e (state->focused_green): npcJobsRuntime adapter sole-writes state.npcJobs and drives the untouched kernel; traffic naturally assigns miner/hauler/patrol jobs and yields its stepper (one intent writer per hull); worldRecordId continuity across exit/virtual-advance/reentry; save v11->v12 with migration, schema v12/262; 61/61 focused incl. held-out-seed natural census + offscreen==onscreen convergence; sim compare ok/hashEqual (hash shift bisected to the hashed save-version integer only; no golden edited); encounter-director pre-existing red unchanged before/after. ROUTE EVIDENCE 2026-07-21 (state->integrated, CHECKED OFF): full-game New Game route in sector_helios_prime produced 6 natural jobs from ambient traffic alone (miner 1 transit, patrol 2 hold, hauler 3 depart - no fixtures); save->Continue preserved all 6 job:wr_convoy_* ids with identical kind mix on the v12 envelope; zero page errors; captures + manifest in .devshots/pq014-npc-jobs/. Honest residuals: Electron smoke argued by route/renderer equivalence rather than separately run; the 47a authoritative-hash shift (save-version integer only) remains the lead-owned re-pin decision; encounter-director pre-existing red unchanged. Receipts: PQ-014-npc-job-kernel.yaml + PQ-014-npc-jobs-wiring-REPORT.md + PQ-014-route-evidence.md."
     },
     {
       "id": "PQ-015",
