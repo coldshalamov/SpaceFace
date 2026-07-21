@@ -181,11 +181,18 @@ def verify_hub_overlay(faction, glb):
     ok(not bad, f"[hub:{faction}] objects not VAR_-named: {bad}")
     stray = mats - KITMATS
     ok(not stray, f"[hub:{faction}] stray materials {sorted(stray)} (allowed KitMat_* only)")
-    # authored in donor frame: overlay bbox must sit within a sane envelope of the hub
+    # Authored in the donor frame: overlay bbox must sit within a sane envelope of
+    # the hub. Station-scale overlays INTENTIONALLY extend past the donor bbox — SCN
+    # customs booms reach ~37 m past the -X berth wall, masts/billboards rise ~28 m
+    # above the 28.7 m roof, MTS standoff rings float ~18 m outside the hull, Free
+    # outrigger pods break the rim by ~25 m. The envelope is widened per-axis to match
+    # (with headroom) but stays bounded, so it still rejects gross authoring/origin
+    # errors. (Repair round 2026-07-20: was a flat +-20 m for the ornament-scale v1.)
     fr = bto.HUB_FRAME
-    env_ok = (mn.x >= fr["min"][0] - 20 and mx.x <= fr["max"][0] + 20
-              and mn.y >= fr["min"][1] - 20 and mx.y <= fr["max"][1] + 20
-              and mn.z >= fr["min"][2] - 20 and mx.z <= fr["max"][2] + 20)
+    XY_OUT, Z_UP, Z_DOWN = 44.0, 32.0, 26.0
+    env_ok = (mn.x >= fr["min"][0] - XY_OUT and mx.x <= fr["max"][0] + XY_OUT
+              and mn.y >= fr["min"][1] - XY_OUT and mx.y <= fr["max"][1] + XY_OUT
+              and mn.z >= fr["min"][2] - Z_DOWN and mx.z <= fr["max"][2] + Z_UP)
     ok(env_ok, f"[hub:{faction}] overlay bbox {[round(v,1) for v in mn]}..{[round(v,1) for v in mx]} outside hub envelope")
 
     return {

@@ -1,0 +1,48 @@
+{
+  "donor": "assets/ships/parts/places/place_station_trade_hub.glb",
+  "hubFrameBlender": {
+    "baseZ": -4.18,
+    "center": [
+      2.9995,
+      0.002,
+      12.2485
+    ],
+    "max": [
+      63.422,
+      52.429,
+      28.677
+    ],
+    "min": [
+      -57.423,
+      -52.425,
+      -4.18
+    ],
+    "outerRX": 60.4,
+    "outerRY": 52.4,
+    "topZ": 28.677
+  },
+  "overlays": {
+    "var_station_trade_hub_free_overlay_v01": {
+      "anchorFrame": "donor-origin",
+      "attachNotes": "Scavenged habitat pods bolted at random over the roof and rim; junk truss splices bridge them; mismatched panel skirts hang off the -X and -Y edges. Kit pass: pod collars, truss gussets, skirt rivet rows.",
+      "donor": "assets/ships/parts/places/place_station_trade_hub.glb",
+      "intendedFaction": "faction_free",
+      "tris": 1752
+    },
+    "var_station_trade_hub_mts_overlay_v01": {
+      "anchorFrame": "donor-origin",
+      "attachNotes": "Two standoff commerce rings float outside the hull on roof struts; rounded clamshell fairing crowns bond over the roof corners and mid-edges; holo-ad billboards stand on the roof. Kit pass: ring node clamps, crown parting seams, billboard base flanges.",
+      "donor": "assets/ships/parts/places/place_station_trade_hub.glb",
+      "intendedFaction": "faction_mts",
+      "tris": 4800
+    },
+    "var_station_trade_hub_scn_overlay_v01": {
+      "anchorFrame": "donor-origin",
+      "attachNotes": "Armored cladding band seated on the roof-edge fascia; four corner bastions clamp the corners; frame-line masts stand on the roof grid; twin customs booms cantilever off the -X approach. Kit pass: plate perimeters, bastion armor seams, mast roots, boom truss gussets.",
+      "donor": "assets/ships/parts/places/place_station_trade_hub.glb",
+      "intendedFaction": "faction_scn",
+      "tris": 2756
+    }
+  },
+  "schema": "sf-foundry-tradehub-overlays/1"
+}

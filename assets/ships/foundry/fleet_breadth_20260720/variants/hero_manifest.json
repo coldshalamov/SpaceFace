@@ -1,0 +1,295 @@
+{
+  "determinism": {
+    "hub_free": {
+      "vertexCount": 988,
+      "vertexHash": "8f1c098c6b9711b4022de3bdc4549debbc55fdfd833750a87aea1ae4e5b88e60"
+    },
+    "hub_mts": {
+      "vertexCount": 2632,
+      "vertexHash": "283b3518b6a77244536063071cb139bef4bd8daf5cf5ebcbd44540b635329de4"
+    },
+    "hub_scn": {
+      "vertexCount": 1472,
+      "vertexHash": "5932079fdb9b020bdc13044b0bea112b18af972b62f83df390bb5bacb3fea58b"
+    },
+    "wasp_free": {
+      "vertexCount": 786,
+      "vertexHash": "8628370cbd71dec3c2539ed51568b61cce68b85f799205a7ee0b65e02a92b701"
+    },
+    "wasp_mts": {
+      "vertexCount": 742,
+      "vertexHash": "89cbb1c45a443c16c0a6bf7674c12bdfda313cfa43f5609a97a0367a39c069c8"
+    },
+    "wasp_scn": {
+      "vertexCount": 320,
+      "vertexHash": "0330b3332a09ac0efb05515237c5eb4556dc2f4302f634602403ce514f1c58f7"
+    }
+  },
+  "hub": {
+    "free": {
+      "anchorFrame": "donor-origin",
+      "attachNotes": "Scavenged habitat pods bolted at random over the roof and rim; junk truss splices bridge them; mismatched panel skirts hang off the -X and -Y edges. Kit pass: pod collars, truss gussets, skirt rivet rows.",
+      "bbox_max": [
+        59.453,
+        58.984,
+        40.58
+      ],
+      "bbox_min": [
+        -67.783,
+        -77.518,
+        15.247
+      ],
+      "donor": "assets/ships/parts/places/place_station_trade_hub.glb",
+      "intendedFaction": "faction_free",
+      "materials": [
+        "KitMat_Paint",
+        "KitMat_Steel"
+      ],
+      "objects": [
+        "VAR_FREE_pod00",
+        "VAR_FREE_pod01",
+        "VAR_FREE_pod02",
+        "VAR_FREE_pod03",
+        "VAR_FREE_pod04",
+        "VAR_FREE_pod05",
+        "VAR_FREE_pod06",
+        "VAR_FREE_pod07",
+        "VAR_FREE_pod08",
+        "VAR_FREE_pod09",
+        "VAR_FREE_pod10",
+        "VAR_FREE_pod11",
+        "VAR_FREE_skirtX0",
+        "VAR_FREE_skirtX1",
+        "VAR_FREE_skirtX2",
+        "VAR_FREE_skirtX3",
+        "VAR_FREE_skirtX4",
+        "VAR_FREE_skirtX5",
+        "VAR_FREE_skirtY0",
+        "VAR_FREE_skirtY1",
+        "VAR_FREE_skirtY2",
+        "VAR_FREE_skirtY3",
+        "VAR_FREE_skirtY4",
+        "VAR_FREE_truss00",
+        "VAR_FREE_truss01",
+        "VAR_FREE_truss02",
+        "VAR_FREE_truss03",
+        "VAR_FREE_truss04",
+        "VAR_FREE_truss06",
+        "VAR_FREE_truss07",
+        "VAR_FREE_truss09",
+        "VAR_FREE_truss10"
+      ],
+      "seed": 81033,
+      "sha256": "e8b23270f8f528e71278b5757b15241879534b56bc33ec4514feb65f139c7fbc",
+      "treatment": "FREE",
+      "tris": 1752,
+      "tris_cap": 12000
+    },
+    "mts": {
+      "anchorFrame": "donor-origin",
+      "attachNotes": "Two standoff commerce rings float outside the hull on roof struts; rounded clamshell fairing crowns bond over the roof corners and mid-edges; holo-ad billboards stand on the roof. Kit pass: ring node clamps, crown parting seams, billboard base flanges.",
+      "bbox_max": [
+        79.357,
+        66.222,
+        49.227
+      ],
+      "bbox_min": [
+        -73.358,
+        -66.218,
+        26.677
+      ],
+      "donor": "assets/ships/parts/places/place_station_trade_hub.glb",
+      "intendedFaction": "faction_mts",
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Steel"
+      ],
+      "objects": [
+        "VAR_MTS_adframe0",
+        "VAR_MTS_adframe1",
+        "VAR_MTS_adframe2",
+        "VAR_MTS_adframe3",
+        "VAR_MTS_adpanel0",
+        "VAR_MTS_adpanel1",
+        "VAR_MTS_adpanel2",
+        "VAR_MTS_adpanel3",
+        "VAR_MTS_crown0",
+        "VAR_MTS_crown1",
+        "VAR_MTS_crown2",
+        "VAR_MTS_crown3",
+        "VAR_MTS_crown4",
+        "VAR_MTS_crown5",
+        "VAR_MTS_ring_inner",
+        "VAR_MTS_ring_outer",
+        "VAR_MTS_struts"
+      ],
+      "seed": 81022,
+      "sha256": "1036927ef1c86b16b955e0b5134303f34688f4570a061d0decaca89346946ef0",
+      "treatment": "MTS",
+      "tris": 4800,
+      "tris_cap": 12000
+    },
+    "scn": {
+      "anchorFrame": "donor-origin",
+      "attachNotes": "Armored cladding band seated on the roof-edge fascia; four corner bastions clamp the corners; frame-line masts stand on the roof grid; twin customs booms cantilever off the -X approach. Kit pass: plate perimeters, bastion armor seams, mast roots, boom truss gussets.",
+      "bbox_max": [
+        76.4,
+        65.402,
+        56.177
+      ],
+      "bbox_min": [
+        -94.4,
+        -65.398,
+        11.231
+      ],
+      "donor": "assets/ships/parts/places/place_station_trade_hub.glb",
+      "intendedFaction": "faction_scn",
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Steel"
+      ],
+      "objects": [
+        "VAR_SCN_bastion_nn",
+        "VAR_SCN_bastion_np",
+        "VAR_SCN_bastion_pn",
+        "VAR_SCN_bastion_pp",
+        "VAR_SCN_boom_gate",
+        "VAR_SCN_boom_n",
+        "VAR_SCN_boom_p",
+        "VAR_SCN_cladding_band",
+        "VAR_SCN_mast00",
+        "VAR_SCN_mast01",
+        "VAR_SCN_mast02",
+        "VAR_SCN_mast10",
+        "VAR_SCN_mast11",
+        "VAR_SCN_mast12"
+      ],
+      "seed": 81011,
+      "sha256": "79922287782e6b29e12e07e358aabc0e612000a72d9dbb366ff46a9c1c3cad4a",
+      "treatment": "SCN",
+      "tris": 2756,
+      "tris_cap": 12000
+    }
+  },
+  "pass": true,
+  "schema": "sf-foundry-hero/1",
+  "wasp": {
+    "free": {
+      "added_objects": [
+        "VAR_FREE_clamp0",
+        "VAR_FREE_clamp1",
+        "VAR_FREE_clamp2",
+        "VAR_FREE_conduit",
+        "VAR_FREE_light0",
+        "VAR_FREE_light1",
+        "VAR_FREE_light2",
+        "VAR_FREE_patch",
+        "VAR_FREE_plate0",
+        "VAR_FREE_plate1",
+        "VAR_FREE_plate2",
+        "VAR_FREE_plate3",
+        "VAR_FREE_plate4",
+        "VAR_FREE_plate5",
+        "VAR_FREE_pod"
+      ],
+      "donor": "assets/ships/parts/wholeships/wasp_production_v1.glb",
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Rubber",
+        "KitMat_Steel",
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "preserved_empties": 12,
+      "rivet_pass_attachment_zones": "Hand rivets (0.15 m \u00b115%) around each bolt-on plate lip and the overplate patch; pipe-clamp saddles along the conduit run.",
+      "seed": 71033,
+      "sha256": "6af4ed7dcd0c07d979cb9f5473a38fdf1a49cc0569139ee40fbef66f3b3114b3",
+      "treatment": "FREE",
+      "tris_cap": 16136,
+      "tris_donor": 11526,
+      "tris_variant": 12994,
+      "xlen_donor": 22.0,
+      "xlen_variant": 22.0
+    },
+    "mts": {
+      "added_objects": [
+        "VAR_MTS_blister0",
+        "VAR_MTS_blister1",
+        "VAR_MTS_blister2",
+        "VAR_MTS_cabinstrip",
+        "VAR_MTS_clamshell_aft",
+        "VAR_MTS_clamshell_fore",
+        "VAR_MTS_clamshell_mid",
+        "VAR_MTS_goldzone",
+        "VAR_MTS_logo"
+      ],
+      "donor": "assets/ships/parts/wholeships/wasp_production_v1.glb",
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "KitMat_Steel",
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "preserved_empties": 12,
+      "rivet_pass_attachment_zones": "Hidden seal-heads only at clamshell parting lines; conformal sensor blister seams; NO exposed rivets (bible \u00a7MTS).",
+      "seed": 71022,
+      "sha256": "c3f28ab9d504d90471b85878766bec7b0e1864291ab2ccc8c0cc47ca21c8d016",
+      "treatment": "MTS",
+      "tris_cap": 16136,
+      "tris_donor": 11526,
+      "tris_variant": 12974,
+      "xlen_donor": 22.0,
+      "xlen_variant": 22.0
+    },
+    "scn": {
+      "added_objects": [
+        "VAR_SCN_band",
+        "VAR_SCN_frameline_cross0",
+        "VAR_SCN_frameline_cross1",
+        "VAR_SCN_frameline_long0",
+        "VAR_SCN_frameline_long1",
+        "VAR_SCN_plate_flank0",
+        "VAR_SCN_plate_flank1",
+        "VAR_SCN_plate_spine0",
+        "VAR_SCN_plate_spine1",
+        "VAR_SCN_plate_spine2"
+      ],
+      "donor": "assets/ships/parts/wholeships/wasp_production_v1.glb",
+      "materials": [
+        "KitMat_Emissive",
+        "KitMat_Paint",
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "preserved_empties": 12,
+      "rivet_pass_attachment_zones": "Recessed torx rows (0.18 m) along every plate split-line and the two-tone band edge; weapon collars at SOCKET_Weapon_Front.",
+      "seed": 71011,
+      "sha256": "d76de8d1638f2235b4a2cabe8943e5bd29558ef912565d91f9d268cd0a99a990",
+      "treatment": "SCN",
+      "tris_cap": 16136,
+      "tris_donor": 11526,
+      "tris_variant": 12126,
+      "xlen_donor": 22.0,
+      "xlen_variant": 22.0
+    }
+  }
+}

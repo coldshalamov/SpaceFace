@@ -1,0 +1,324 @@
+{
+  "bbox": {
+    "dims": [
+      22,
+      3.76,
+      16.1637
+    ],
+    "max": [
+      12,
+      2.38,
+      8.0818
+    ],
+    "min": [
+      -10,
+      -1.38,
+      -8.0818
+    ]
+  },
+  "drawGroups": {
+    "meshes": [
+      {
+        "name": "Cockpit_Canopy_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "COLLISION_HULL_MESH",
+        "primitives": 1
+      },
+      {
+        "name": "Cylinder.001",
+        "primitives": 1
+      },
+      {
+        "name": "Dorsal_Hull_Armor_Spine_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "Fuselage_Core_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "Nacelle_Strake_Port_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_band",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_frameline_cross0",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_frameline_cross1",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_frameline_long0",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_frameline_long1",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_plate_flank0",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_plate_flank1",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_plate_spine0",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_plate_spine1",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_plate_spine2",
+        "primitives": 1
+      },
+      {
+        "name": "Ventral_Keel_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Warning_Port_Mesh",
+        "primitives": 1
+      }
+    ],
+    "primitiveCount": 18
+  },
+  "extensionsUsed": [
+    "KHR_materials_clearcoat",
+    "KHR_materials_emissive_strength"
+  ],
+  "file": "var_wasp_scn_patrol_v01.glb",
+  "geometry": {
+    "primitives": 18,
+    "tangentPrimitives": 7,
+    "tangentsPresent": true,
+    "uvSets": [
+      0
+    ]
+  },
+  "materials": {
+    "count": 9,
+    "usage": {
+      "(none)": 1,
+      "KitMat_Emissive": 4,
+      "KitMat_Paint": 6,
+      "Material_Accent": 1,
+      "Material_Armor": 1,
+      "Material_Canopy": 1,
+      "Material_Hull": 1,
+      "Material_Mechanical": 1,
+      "Material_Thruster": 1,
+      "Material_Warning": 1
+    }
+  },
+  "nodeNames": [
+    "COLLISION_HULL",
+    "LOD0_Accent",
+    "LOD0_Canopy",
+    "LOD0_Hull",
+    "LOD0_Hull_Armor",
+    "LOD0_Mechanical",
+    "LOD0_Thruster",
+    "LOD0_Warning",
+    "SOCKET_Camera_Focus",
+    "SOCKET_Cargo_Ventral",
+    "SOCKET_Engine_Main",
+    "SOCKET_Mining_Front",
+    "SOCKET_RCS_Port",
+    "SOCKET_RCS_Starboard",
+    "SOCKET_Trail_Main",
+    "SOCKET_Trail_Port",
+    "SOCKET_Trail_Starboard",
+    "SOCKET_Utility_Dorsal",
+    "SOCKET_Weapon_Front",
+    "VAR_SCN_band",
+    "VAR_SCN_frameline_cross0",
+    "VAR_SCN_frameline_cross1",
+    "VAR_SCN_frameline_long0",
+    "VAR_SCN_frameline_long1",
+    "VAR_SCN_plate_flank0",
+    "VAR_SCN_plate_flank1",
+    "VAR_SCN_plate_spine0",
+    "VAR_SCN_plate_spine1",
+    "VAR_SCN_plate_spine2",
+    "WASP_PRODUCTION_V1_LOD0_ROOT"
+  ],
+  "textures": [
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "armor_dark_baseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "armor_dark_normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "armor_dark_orm",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "frontier_cyan_baseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "frontier_cyan_normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "frontier_cyan_orm",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hull_baseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hull_normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hull_orm",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "mechanical_baseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "mechanical_normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "mechanical_orm",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "warning_orange_baseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "warning_orange_normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "warning_orange_orm",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    }
+  ],
+  "transforms": {
+    "nodeCount": 30,
+    "nonAppliedCount": 12,
+    "nonAppliedNodes": [
+      "LOD0_Thruster",
+      "SOCKET_Camera_Focus",
+      "SOCKET_Cargo_Ventral",
+      "SOCKET_Engine_Main",
+      "SOCKET_Mining_Front",
+      "SOCKET_RCS_Port",
+      "SOCKET_RCS_Starboard",
+      "SOCKET_Trail_Main",
+      "SOCKET_Trail_Port",
+      "SOCKET_Trail_Starboard",
+      "SOCKET_Utility_Dorsal",
+      "SOCKET_Weapon_Front"
+    ]
+  },
+  "tris": 12126,
+  "verdict": {
+    "budget": 16136,
+    "class": "variant",
+    "failures": [],
+    "pass": true,
+    "warnings": []
+  }
+}

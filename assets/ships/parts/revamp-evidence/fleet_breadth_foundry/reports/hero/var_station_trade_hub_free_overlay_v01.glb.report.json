@@ -1,0 +1,215 @@
+{
+  "bbox": {
+    "dims": [
+      127.2355,
+      25.3337,
+      136.5019
+    ],
+    "max": [
+      59.4529,
+      40.5802,
+      77.5183
+    ],
+    "min": [
+      -67.7825,
+      15.2465,
+      -58.9836
+    ]
+  },
+  "drawGroups": {
+    "meshes": [
+      {
+        "name": "VAR_FREE_pod00",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod01",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod02",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod03",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod04",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod05",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod06",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod07",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod08",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod09",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod10",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_pod11",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_skirtX0",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_skirtX1",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_skirtX2",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_skirtX3",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_skirtX4",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_skirtX5",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_skirtY0",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_skirtY1",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_skirtY2",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_skirtY3",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_skirtY4",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_truss00",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_truss01",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_truss02",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_truss03",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_truss04",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_truss06",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_truss07",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_truss09",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_FREE_truss10",
+        "primitives": 1
+      }
+    ],
+    "primitiveCount": 32
+  },
+  "extensionsUsed": [],
+  "file": "var_station_trade_hub_free_overlay_v01.glb",
+  "geometry": {
+    "primitives": 32,
+    "tangentPrimitives": 0,
+    "tangentsPresent": false,
+    "uvSets": []
+  },
+  "materials": {
+    "count": 2,
+    "usage": {
+      "KitMat_Paint": 7,
+      "KitMat_Steel": 25
+    }
+  },
+  "nodeNames": [
+    "VAR_FREE_pod00",
+    "VAR_FREE_pod01",
+    "VAR_FREE_pod02",
+    "VAR_FREE_pod03",
+    "VAR_FREE_pod04",
+    "VAR_FREE_pod05",
+    "VAR_FREE_pod06",
+    "VAR_FREE_pod07",
+    "VAR_FREE_pod08",
+    "VAR_FREE_pod09",
+    "VAR_FREE_pod10",
+    "VAR_FREE_pod11",
+    "VAR_FREE_skirtX0",
+    "VAR_FREE_skirtX1",
+    "VAR_FREE_skirtX2",
+    "VAR_FREE_skirtX3",
+    "VAR_FREE_skirtX4",
+    "VAR_FREE_skirtX5",
+    "VAR_FREE_skirtY0",
+    "VAR_FREE_skirtY1",
+    "VAR_FREE_skirtY2",
+    "VAR_FREE_skirtY3",
+    "VAR_FREE_skirtY4",
+    "VAR_FREE_truss00",
+    "VAR_FREE_truss01",
+    "VAR_FREE_truss02",
+    "VAR_FREE_truss03",
+    "VAR_FREE_truss04",
+    "VAR_FREE_truss06",
+    "VAR_FREE_truss07",
+    "VAR_FREE_truss09",
+    "VAR_FREE_truss10"
+  ],
+  "textures": [],
+  "transforms": {
+    "nodeCount": 32,
+    "nonAppliedCount": 0,
+    "nonAppliedNodes": []
+  },
+  "tris": 1752,
+  "verdict": {
+    "budget": 12000,
+    "class": "variant",
+    "failures": [],
+    "pass": true,
+    "warnings": []
+  }
+}
