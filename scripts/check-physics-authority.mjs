@@ -14,6 +14,7 @@ import {
   readPhysicsTelemetry,
   resolvePhysicsBodySpec,
   setThrusterHealth,
+  shouldSyncPhysicsBodyEntity,
   writePhysicsControl,
   writePhysicsTelemetry,
 } from '../src/core/physicsAuthority.js';
@@ -115,6 +116,20 @@ assert.equal(consumePhysicsCommand(ship), null, 'clear should drop queued comman
 assert.equal(writePhysicsControl(null, {}), null, 'null entities should not create commands');
 assert.equal(queuePhysicsImpulse(null, {}), false, 'null entities should reject impulses');
 assert.equal(writePhysicsTelemetry(null, {}), null, 'null entities should not create telemetry');
+
+const visualTraffic = {
+  id: 91,
+  type: 'freighter',
+  alive: true,
+  radius: 12,
+  collides: false,
+  physicsBody: false,
+  data: { parentType: 'lane_traffic' },
+};
+assert.equal(shouldSyncPhysicsBodyEntity(visualTraffic), false,
+  'an explicit physicsBody:false sentinel should exclude scripted visuals from SG-02');
+assert.equal(shouldSyncPhysicsBodyEntity({ ...visualTraffic, physicsBody: undefined, type: 'beacon' }), true,
+  'collides:false alone must preserve the existing non-FX compatibility-body contract');
 
 console.log('Physics authority membrane checks OK');
 

@@ -463,6 +463,10 @@ export const travelLanes = {
         vel: { x: 0, z: 0 },
         radius: 12,
         mass: 1e5,
+        // These are closed-form route visuals, not solver-driven NPCs. A fixed body would remain at
+        // the spawn pose while this system advances the visual every tick, creating invisible walls.
+        collides: false,
+        physicsBody: false,
         hull: 60,
         hullMax: 60,
         data: {

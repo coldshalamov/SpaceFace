@@ -23,6 +23,7 @@ import { travelLanes, projectOntoLane, resolveLaneSegment, nextIntactBeacon } fr
 import { LANE_HELIOS_TETHYS, buildLaneGeometry, LANE_BEACON_SPACING_WU } from '../src/data/travelLaneRoutes.js';
 import { stepPropulsion, resolveTravelCeiling, TRAVEL_CEILING_ABSOLUTE_WU_S } from '../src/core/flight/propulsionKernel.js';
 import { resolvePropulsionProfile } from '../src/core/flight/propulsionCatalog.js';
+import { shouldSyncPhysicsBodyEntity } from '../src/core/physicsAuthority.js';
 import { TRAVEL_FLAGS } from '../src/data/featureFlags.js';
 import { sectorGlobalOrigin, sectorMembershipAtGlobal } from '../src/data/sectorCoordinates.js';
 
@@ -419,6 +420,10 @@ test('lane traffic uses the same route, at constant entity cost', () => {
     for (const t of traffic) {
       const ent = state.entities.get(t.id);
       assert.ok(projectOntoLane(GEOMETRY, ent.pos).offAxisWU < 1e-6, 'traffic drifted off the lane');
+      assert.equal(ent.collides, false, 'closed-form lane decoration must not advertise collision');
+      assert.equal(ent.physicsBody, false, 'closed-form lane decoration must opt out of SG-02 bodies');
+      assert.equal(shouldSyncPhysicsBodyEntity(ent), false,
+        'a scripted lane hauler must not leave a fixed collider behind its moving visual');
     }
 
     // Acceptance item 9 — performance under expected traffic density.

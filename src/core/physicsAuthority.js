@@ -92,6 +92,10 @@ export function readPhysicsTelemetry(entity) {
 
 export function shouldSyncPhysicsBodyEntity(entity) {
   if (!entity || typeof entity !== 'object' || entity.alive === false) return false;
+  // Explicit opt-out for scripted presentation entities whose pose is not owned by physics.
+  // `collides:false` alone remains insufficient because several gameplay compatibility bodies
+  // intentionally use it while still participating in the SG-02 body index.
+  if (entity.physicsBody === false) return false;
   const authored = authoredPhysicsBody(entity);
   if (entity.collides === false && !authored && entity.type === 'fx') return false;
   const radius = positive(authored && authored.radius, positive(entity.radius, 1));
