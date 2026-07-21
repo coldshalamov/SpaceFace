@@ -19,6 +19,10 @@ import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
+import { describeEntity } from './interactionDescriptors.js';
+import { resolveBeamVerb, spawnPayloadEntity, BEAM_CUE_IDS } from '../combat/industrialBeam.js';
+import { actionForWreck, poolForAction } from '../data/salvageActions.js';
+import { removeCargo, addCargo } from './cargo.js';
 
 export const MAGNET_RANGE = 420; // wu pull radius for Mining 2.0's stronger ore vacuum
 export const MAGNET_ACCEL = 900; // wu/s² authority toward the seek velocity (not absolute thrust)
@@ -131,18 +135,134 @@ export const mining = {
     const target = this._acquireTarget(player, beam.range, state);
     if (!target) { this._stopBeam(); return; }
 
-    // start edge (or re-lock onto a different rock)
-    if (!this._beaming || this._lockTargetId !== target.id) {
+    const desc = describeEntity(state, target);
+    const toolState = {
+      mode: (state.ui && state.ui.beamMode) || (state.player && state.player.beamMode) || 'auto',
+      selectedComponentId: (state.ui && state.ui.componentSelection && state.ui.componentSelection.componentId) || null,
+      credits: (state.player && state.player.credits) || 0,
+      cargo: (state.player && state.player.cargo && state.player.cargo.items) || {},
+      receiver: (state.input && state.input.receiver) || null,
+    };
+    const resolved = resolveBeamVerb(desc, toolState);
+
+    if (!this._beaming || this._lockTargetId !== target.id || this._activeVerb !== resolved.verb) {
       this._lockTargetId = target.id;
-      this.bus.emit('mining:start', { minerId: player.id, targetId: target.id, position: { x: target.pos.x, z: target.pos.z } });
+      this._activeVerb = resolved.verb;
+      this.bus.emit('mining:start', {
+        minerId: player.id,
+        targetId: target.id,
+        verb: resolved.verb,
+        position: { x: target.pos.x, z: target.pos.z }
+      });
     }
     this._beaming = true;
 
     this._activeBeamLine = beamLineFor(player, target);
+    if (this._activeBeamLine) this._activeBeamLine.verb = resolved.verb;
+
+    if (!resolved.ok) {
+      this.bus.emit('beam:denied', { minerId: player.id, targetId: target.id, verb: resolved.verb, reason: resolved.reason });
+      return;
+    }
 
     const dps = (beam.dps || 18) * (beam.directToCargo ? 1.08 : 1);
-    if (target.type === 'wreck') this._drainWreck(player, target, dps, dt);
-    else this.applyMining(target.id, dps, dt, player.id);
+    switch (resolved.verb) {
+      case 'extract':
+        if (target.type === 'wreck') this._drainWreck(player, target, dps, dt);
+        else this.applyMining(target.id, dps, dt, player.id);
+        break;
+
+      case 'cut':
+        this._applyCut(player, target, resolved, dps, dt);
+        break;
+
+      case 'repair':
+        this._applyRepair(player, target, resolved, dps, dt);
+        break;
+
+      case 'transfer':
+        this._applyTransfer(player, target, resolved, dps, dt);
+        break;
+
+      default:
+        this.applyMining(target.id, dps, dt, player.id);
+        break;
+    }
+  },
+
+  _applyCut(player, target, resolved, dps, dt) {
+    const d = target.data || (target.data = {});
+    d.cutProgress = (d.cutProgress || 0) + dps * dt;
+    const threshold = Number(d.cutThreshold) || 50;
+    if (d.cutProgress >= threshold) {
+      d.cutProgress = 0;
+      const action = actionForWreck(target);
+      const pool = action ? poolForAction(action) : { cmdty_scrap_metal: 4 };
+      const radius = Math.max(3, Math.round((target.radius || 10) * 0.35));
+      const payload = spawnPayloadEntity(this.state, {
+        pos: { x: target.pos.x + (this.state.rng ? (this.state.rng() - 0.5) * 6 : 0), z: target.pos.z + (this.state.rng ? (this.state.rng() - 0.5) * 6 : 0) },
+        radius,
+        mass: radius * 12,
+        ownerId: player.id,
+        factionId: player.factionId || 'player',
+        salvagePool: pool,
+        payloadType: action ? action.id : 'cut_panel'
+      });
+      this.bus.emit('salvage:cutComplete', { targetId: target.id, payloadId: payload.id });
+    }
+  },
+
+  _applyRepair(player, target, resolved, dps, dt) {
+    const heal = dps * dt * 2.0;
+    const costCr = Math.ceil(heal * 1.5);
+    // Credits have a SOLE writer (economy §0.6): charge through the sanctioned intent, never a
+    // direct state.player.credits write from this system.
+    if (costCr > 0) this.bus.emit('economy:chargeCredits', { amount: costCr, reason: 'beam:repair' });
+    if (resolved.componentId) {
+      const combat = this.registry && this.registry.get && this.registry.get('combat');
+      if (combat && typeof combat.repair === 'function') {
+        combat.repair(target.id, resolved.componentId, heal, 'beam_repair');
+      }
+    } else {
+      if (target.hull != null && target.hullMax != null) {
+        target.hull = Math.min(target.hullMax, target.hull + heal);
+      }
+      if (target.armorHp != null && target.armorMax != null) {
+        target.armorHp = Math.min(target.armorMax, target.armorHp + heal);
+      }
+    }
+    this.bus.emit('beam:repaired', { targetId: target.id, healAmount: heal });
+  },
+
+  _applyTransfer(player, target, resolved, dps, dt) {
+    const hints = resolved.receiverHints || {};
+    const qty = Math.max(1, Math.floor(dps * dt * 0.5));
+    if (hints.type === 'site_machine' && hints.siteId && hints.machineId) {
+      const sites = this.registry && this.registry.get && this.registry.get('asteroidSites');
+      const items = (this.state.player && this.state.player.cargo && this.state.player.cargo.items) || {};
+      const goodId = Object.keys(items)[0];
+      if (sites && typeof sites.transferGoods === 'function' && goodId) {
+        sites.transferGoods(hints.siteId, hints.machineId, goodId, qty, 'deposit');
+      }
+    } else if (hints.type === 'claim_store' && hints.bodyId) {
+      const claims = this.registry && this.registry.get && this.registry.get('claims');
+      const items = (this.state.player && this.state.player.cargo && this.state.player.cargo.items) || {};
+      const goodId = Object.keys(items)[0];
+      if (claims && typeof claims.deliverToClaim === 'function' && goodId) {
+        claims.deliverToClaim(hints.bodyId, goodId, qty);
+      }
+    } else if (target && target.data) {
+      const items = (this.state.player && this.state.player.cargo && this.state.player.cargo.items) || {};
+      const goodId = Object.keys(items)[0];
+      if (goodId) {
+        const removed = removeCargo(this.state, goodId, qty);
+        if (removed > 0) {
+          target.data.salvagePool = target.data.salvagePool || {};
+          target.data.salvagePool[goodId] = (target.data.salvagePool[goodId] || 0) + removed;
+        }
+      }
+    }
+    this.bus.emit('beam:transferred', { targetId: target.id });
   },
 
   _stopBeam() {

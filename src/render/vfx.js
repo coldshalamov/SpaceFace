@@ -2638,15 +2638,21 @@ export const vfx = {
     this._miningBeam.active = true;
     this._miningBeam.t = 0;
     this._miningBeam.targetId = (p && p.targetId) || null;
-    // Tint to the target asteroid's ore type if we can resolve it
+    this._miningBeam.verb = (p && p.verb) || 'extract';
     const target = p && p.targetId ? this._ent(p.targetId) : null;
-    if (target && target.data) {
-      const def = target.data.typeId;
-      const col = oreColor(def);
-      this._miningBeam.color = col;
-      this._miningBeam.mesh.material.color.set(col);
-      this._miningBeam.glow.material.color.set(col);
+    let col = '#60d0ff';
+    if (this._miningBeam.verb === 'cut') {
+      col = '#fffaf0';
+    } else if (this._miningBeam.verb === 'repair') {
+      col = '#ffc35c';
+    } else if (this._miningBeam.verb === 'transfer') {
+      col = '#39d0ff';
+    } else if (target && target.data) {
+      col = oreColor(target.data.typeId);
     }
+    this._miningBeam.color = col;
+    if (this._miningBeam.mesh && this._miningBeam.mesh.material) this._miningBeam.mesh.material.color.set(col);
+    if (this._miningBeam.glow && this._miningBeam.glow.material) this._miningBeam.glow.material.color.set(col);
   },
 
   _onMiningStop() {
@@ -2668,13 +2674,13 @@ export const vfx = {
     const target = beam.targetId ? this._ent(beam.targetId) : null;
     if (!target || !target.alive) { this._onMiningStop(); return; }
 
-    // Ship origin: use SOCKET_Trail_Main offset rotated to the ship's front (mining drill is forward)
-    // Geometry endpoints are computed in galactic-global space, then projected to frame-local for Three.
+    const verb = beam.verb || 'extract';
+    const reduced = this.state && this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+
     const cf = Math.cos(player.rot), sf = Math.sin(player.rot);
     const fwd = (player.radius || 6) * 0.7;
     const sxG = player.pos.x + cf * fwd, szG = player.pos.z + sf * fwd;
 
-    // Target contact point on the asteroid surface facing the ship
     const dx = sxG - target.pos.x, dz = szG - target.pos.z;
     const dist = Math.hypot(dx, dz) || 1;
     const r = target.radius || 6;
@@ -2684,13 +2690,28 @@ export const vfx = {
     const sx = sLocal.x, sz = sLocal.z;
     const tx = tLocal.x, tz = tLocal.z;
 
-    // Beam ribbon: perpendicular to the beam direction, thin strip
-    const nx = -(dz / dist), nz = (dx / dist); // perpendicular
-    const pulse = 1.0 + 0.3 * Math.sin(beam.t * 12); // rapid pulse
-    const w = 0.8 * pulse; // beam half-width
-    const gw = 2.5 * pulse; // glow half-width
+    const nx = -(dz / dist), nz = (dx / dist);
+    let pulse = 1.0;
+    let w = 0.8;
+    let gw = 2.5;
 
-    // Update core beam quad vertices
+    if (verb === 'cut') {
+      w = 0.4;
+      gw = 1.2;
+    } else if (verb === 'repair') {
+      w = 0.5;
+      gw = 1.5;
+      pulse = reduced ? 1.0 : (1.0 + 0.15 * Math.sin(beam.t * 8));
+    } else if (verb === 'transfer') {
+      w = 0.9;
+      gw = 2.2;
+      pulse = reduced ? 1.0 : (1.0 + 0.1 * Math.sin(beam.t * 6));
+    } else { // extract
+      pulse = reduced ? 1.0 : (1.0 + 0.3 * Math.sin(beam.t * 12));
+      w = 0.8 * pulse;
+      gw = 2.5 * pulse;
+    }
+
     const corePos = beam.mesh.geometry.attributes.position.array;
     corePos[0] = sx + nx * w; corePos[1] = 1.5; corePos[2] = sz + nz * w;
     corePos[3] = sx - nx * w; corePos[4] = 1.5; corePos[5] = sz - nz * w;
@@ -2698,9 +2719,8 @@ export const vfx = {
     corePos[9] = tx - nx * w; corePos[10] = 1.5; corePos[11] = tz - nz * w;
     beam.mesh.geometry.attributes.position.needsUpdate = true;
     beam.mesh.visible = true;
-    beam.mesh.material.opacity = 0.6 + 0.2 * Math.sin(beam.t * 8);
+    beam.mesh.material.opacity = verb === 'cut' ? 0.9 : (0.6 + 0.2 * Math.sin(beam.t * 8));
 
-    // Update glow quad (wider, dimmer)
     const glowPos = beam.glow.geometry.attributes.position.array;
     glowPos[0] = sx + nx * gw; glowPos[1] = 1.5; glowPos[2] = sz + nz * gw;
     glowPos[3] = sx - nx * gw; glowPos[4] = 1.5; glowPos[5] = sz - nz * gw;
@@ -2708,17 +2728,37 @@ export const vfx = {
     glowPos[9] = tx - nx * gw; glowPos[10] = 1.5; glowPos[11] = tz - nz * gw;
     beam.glow.geometry.attributes.position.needsUpdate = true;
     beam.glow.visible = true;
-    beam.glow.material.opacity = 0.15 + 0.1 * Math.sin(beam.t * 6);
+    beam.glow.material.opacity = verb === 'cut' ? 0.3 : (0.15 + 0.1 * Math.sin(beam.t * 6));
 
-    // Emit beam trail particles along the beam length for extra energy feel
-    // Spawn helpers expect galactic-global XZ.
-    if (Math.random() < 0.6) {
-      const frac = Math.random();
-      const px = sxG + (txG - sxG) * frac, pz = szG + (tzG - szG) * frac;
-      const drift = 3 + Math.random() * 5;
-      this._c0.set('#ffffff'); this._c1.set(beam.color);
-      this._spawnParticle(px, pz, (Math.random() - 0.5) * drift, (Math.random() - 0.5) * drift,
-        0.15 + Math.random() * 0.15, 1.0, 0.0, this._c0, this._c1, 4.0, 0, 0);
+    if (verb === 'cut') {
+      if (Math.random() < (reduced ? 0.3 : 0.7)) {
+        const spallAngle = Math.atan2(-dz, -dx) + (Math.random() - 0.5) * 0.6;
+        const spallSpeed = 10 + Math.random() * 15;
+        this._spawnProjectileTrailStreak(txG, 0.5, tzG, 0.6, 0.08, 0.6, 0.8, '#fffaf0',
+          Math.cos(spallAngle) * spallSpeed, Math.sin(spallAngle) * spallSpeed,
+          Math.cos(spallAngle), Math.sin(spallAngle));
+      }
+    } else if (verb === 'repair') {
+      if (Math.random() < (reduced ? 0.2 : 0.5)) {
+        const beadOffset = (Math.random() - 0.5) * (target.radius || 6) * 0.4;
+        const bx = txG + nx * beadOffset, bz = tzG + nz * beadOffset;
+        this._spawnSprite(SPR_FLASH, bx, 0.5, bz, 0.4, 0.5, 0.8, 0.8, 0, '#ffc35c', 0, 0, 0, 0);
+      }
+    } else if (verb === 'transfer') {
+      if (Math.random() < (reduced ? 0.3 : 0.6)) {
+        const frac = (beam.t * 2 + Math.random()) % 1.0;
+        const px = sxG + (txG - sxG) * frac, pz = szG + (tzG - szG) * frac;
+        this._spawnParticle(px, pz, nx * 2, nz * 2, 0.2, 0.8, 0.0, '#39d0ff', '#d7e6ff', 2.0, 0, 0);
+      }
+    } else { // extract
+      if (Math.random() < (reduced ? 0.3 : 0.6)) {
+        const frac = Math.random();
+        const px = sxG + (txG - sxG) * frac, pz = szG + (tzG - szG) * frac;
+        const drift = 3 + Math.random() * 5;
+        this._c0.set('#ffffff'); this._c1.set(beam.color);
+        this._spawnParticle(px, pz, (Math.random() - 0.5) * drift, (Math.random() - 0.5) * drift,
+          0.15 + Math.random() * 0.15, 1.0, 0.0, this._c0, this._c1, 4.0, 0, 0);
+      }
     }
   },
 

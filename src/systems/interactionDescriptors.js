@@ -124,6 +124,11 @@ export function describeEntity(state, entity) {
     wreckLike: isWreckLikeEntity(entity),
     capabilities: caps,
     components: listComponents(state, entity),
+    data: entity.data || {},
+    hull: entity.hull,
+    hullMax: entity.hullMax,
+    armorHp: entity.armorHp,
+    armorMax: entity.armorMax,
   };
 }
 
