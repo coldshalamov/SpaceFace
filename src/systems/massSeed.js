@@ -265,6 +265,15 @@ export const massSeed = {
     if (ms.phase === 'idle' || ms.seedId == null) return;
     const entity = state.entities && state.entities.get ? state.entities.get(ms.seedId) : null;
     if (!entity || entity.alive === false) {
+      // A collapse already in progress owns the lifecycle: _beginCollapse cut the tether and
+      // emitted massSeed:collapsing with the ORIGINAL reason. A kill landing inside the 0.45s
+      // beat (the seed stays damageable by design) merely finishes that collapse on schedule —
+      // it must not re-emit a destroyed/collapsing/collapsed trio with a flipped reason or
+      // restart the cooldown clock from the kill instant.
+      if (ms.phase === 'collapsing') {
+        if (nowOf(state) >= ms.collapseAt) this._finishCollapse(state, ms, entity);
+        return;
+      }
       // The entity left the world without a lifecycle clear: destroyed by weapons/blast (the
       // kernel kills on hull 0) or force-killed. Cut the tether with the exact destruction
       // reason before the attachment orphan sweep can rename it.
