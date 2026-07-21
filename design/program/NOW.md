@@ -1,11 +1,32 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-21 after PQ-011/foundry synthesis. `master` contains the reconciled
-PQ-001..PQ-010 batch, the focused-green but runtime-unwired PQ-014 kernel, the PQ-018 source
-candidate, the route-accepted military-station subslice, the source-complete/runtime-pending fleet
-breadth foundry, and the runtime-wired PQ-011 Mass Seed. PQ-011 is **FOCUSED_GREEN**, not yet
-route/visually accepted. No active feature lease is recorded here; the protected
-`SpaceFace-graphics-overhaul` donor remains a separate mixed-source audit problem.
+**Snapshot:** 2026-07-21 (late) after the Gate-0 adversarial closure. `master` contains the
+reconciled PQ-001..PQ-010 batch, the focused-green but runtime-unwired PQ-014 kernel, the PQ-018
+source candidate, the route-accepted military-station subslice, the source-complete/runtime-pending
+fleet breadth foundry, and **PQ-011 Mass Seed at ROUTE_ACCEPTED + INTEGRATED (checked off)** after
+the Gate-0 review cycle below. The protected `SpaceFace-graphics-overhaul` donor remains a separate
+mixed-source audit problem.
+
+## 2026-07-21 Gate-0 closure (PQ-011 adversarial review + flight-gate repair)
+
+| Commit | What it is |
+|---|---|
+| `958e15ab` | docs(vfx) — field/tool/planetary readability bible (Kimi-authored taste authority for PQ-012/013/016) |
+| `27bba37d` | fix(massSeed) — mid-collapse kill completes the collapse (physics-review FINDING-01); +20-test adversarial suite +findings regression pin; check:mass-seed → 41 tests |
+| `2d616dfa` | fix(flight-probe) — deterministic boost measurement + MEASUREMENT_INVALID collapse-detector pin; the recorded mobile red is CLOSED (cause: viewport-agnostic probe input-timing race + concurrency amplifier, NOT a mobile runtime defect) |
+| `3a812b90` | fix(massSeed) — dead-seed retirement never tracks a recyclable id (second-review FORENSIC-FINDING-02 id-aliasing); +8 forensic tests; check:mass-seed → 49 tests |
+
+**Review cycle:** hostile physics review (verdict HOLDS, kinematic seam SANCTIONED, mutant audit) →
+repairs → mutant rerun 7/7 caught → second independent forensic review (both repairs CONFIRMED,
+splits byte-identical, one new finding → repaired) → route/visual review ROUTE_ACCEPTED (browser
+beats 1-11 + Electron hardware-GPU parity through the real menu route; the review agent died on a
+session limit at beat 11 and the LEAD completed eyes-on judgment + beat 6/7 redo + Electron from its
+surviving disk state). Flight gate: lane 3× green + lead 2× consecutive exit-0 on integrated master.
+Named follow-ups (P2 offscreen lock cue, P2 HUD overlaps, P2 over-damped swing→massline tuning lane,
+natural-hostile-pressure evidence gap) live in the receipt's `gate0_closure` block. A REAL latent
+defect discovered en route — travel-lane freighters strand STATIC colliders at spawn (travelLanes
+direct pos writes + defaultDynamic omits 'freighter' + SG-02 static resync gate) — is filed as its
+own task, not PQ-011's.
 
 ## 2026-07-21 PQ-011 and fleet-foundry checkpoint
 
@@ -21,12 +42,15 @@ paths, controls discoverability, UI a11y, physics authority, launch policy, and 
 uninterrupted/reload hash equality all pass. The 47a report still carries ten historical expected-
 envelope differences; no golden was rewritten.
 
-**Broad flight-gate red (must be diagnosed, not waived):** `npm run check:flight:clean` completed all
-five desktop/mobile runs, with all five desktop and four of five mobile runs green; mobile run 1
-failed `boostAccelerates`. A clean one-run repeat again left desktop green while mobile failed
-`boostAccelerates` and `reverseBrakes`. Both attempts retained Rapier/SG-02 readiness, nonblank canvas,
-and zero page/console failures. Gate 0 owns determining whether this is a mobile probe/input race or a
-runtime flight defect, pinning the cause, and repairing it before the next batch is promoted.
+**Broad flight-gate red: CLOSED at `2d616dfa` (Gate-0).** Cause-pinned by measurement: a
+viewport-agnostic probe input-timing race (Playwright key edges unsynchronized to executed sim
+ticks → non-deterministic post-maneuver heading) amplified by desktop/mobile concurrency, steering
+some boost runs into a stranded static travel-lane freighter collider (that latent runtime defect
+is filed separately). Probe-only repair (reset-before-boost-block + fail-safe MEASUREMENT_INVALID
+pin; every threshold/tick count byte-identical). Proof: lane 3× full-gate green + lead 2×
+consecutive exit-0 on integrated master. The old "mobile runtime flight defect" hypothesis is
+falsified — no mobile failure was ever reproduced solo; the recorded red merely happened to hit
+the mobile viewport.
 
 ## 2026-07-20 closeout synthesis (commits on `master`, `eb8ed839` at the documentation transaction)
 
@@ -97,15 +121,26 @@ with the 47a golden pinned byte-stable.
 checked off until its public-route and visual review closes. PQ-014, PQ-018, and PQ-022 retain their
 partial-subslice states.**
 
-**Gate 0 — review before dependent physics work:** adversarially review PQ-011 on the current master,
-repair any finding, run ordinary browser and Electron traversal/combat routes, judge default-camera
-readability, then promote to route/visual acceptance only if the evidence supports it.
+**Gate 0 — CLOSED 2026-07-21 (see the closure section above).** PQ-011 is ROUTE_ACCEPTED +
+INTEGRATED (checked off) at `8331c1ba,27bba37d,2d616dfa,3a812b90`.
 
-**Wave 1 — parallel only after exact write-set preflight:**
+**Wave 1 — DISPATCHED (leases active):**
 
-- **PQ-012 — continuous field kernel and first consumers** (PQ-009 ✓; PQ-011 review must pass).
-- **PQ-015 — shared interaction descriptors and component targeting** (PQ-008 ✓). Keep its
-  registry/HUD lease disjoint from PQ-012's physics/renderer lane.
+- **PQ-012 — continuous field kernel and first consumers.** Worktree `C:\Users\93rob\sf-w1-fields`
+  (branch w1/pq012-fields-20260721). Owns: physics-authority (queuePhysicsImpulse pattern),
+  renderer (vfx.js style cases only), registry.js (fields slot), gameState.js (player defaults),
+  src/systems/input.js (+controlPrompts/help/settings binding), featureFlags.js, save-schema (if
+  player cooldown defaults land). Grounding: accepted grok write-set survey + the `958e15ab` bible.
+- **PQ-015 — shared interaction descriptors and component targeting.** Worktree
+  `C:\Users\93rob\sf-w1-descriptors` (branch w1/pq015-descriptors-20260721). Owns: the pure derived
+  descriptor module (ZERO new registry registration), entityInteractionProfiles, tetherGameplay,
+  masslineTargetScoring (inputs only), mining, salvageActions, scanner, hud/targetPanel/masslineHud,
+  damage/geometry, massSeed (minimal), asteroidSites (reasons), dockDeny, uiRoot (cycleTarget),
+  world (rebind seam), encounterDirector (spawn identity tags). FORBIDDEN: registry.js,
+  gameState.js, save files, input.js, physics*/sg02, render/**.
+  Write sets verified disjoint (both surveys' citations lead-spot-checked). package.json script
+  rows are the one shared file — additive-only, lead resolves at integration. Browser/GPU mutex:
+  PQ-012 holds priority; PQ-015 waits on the browser-free flag (protocol in the briefs).
 
 **Wave 2 — after the corresponding Wave-1 mutex releases:**
 

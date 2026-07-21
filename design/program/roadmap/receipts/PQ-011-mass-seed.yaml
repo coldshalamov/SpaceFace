@@ -10,12 +10,12 @@ worktree: C:/Users/93rob/sf-pq011
 branch: codex/pq011-mass-seed-20260720
 master_base_commit: 422ec8895db1ed878d203e1eb5fe280052675bc8
 implementation_commit: 56f52ef6f2bab8e572b64c0f912d533f86bbd840
-state_reached: FOCUSED_GREEN
-terminal: false
+state_reached: ROUTE_ACCEPTED + INTEGRATED (Gate-0 closure 2026-07-21; see gate0_closure below)
+terminal: true
 runtime_wired: true
-route_accepted: false
-visually_accepted: false
-queue_status_changed: false
+route_accepted: true
+visually_accepted: true
+queue_status_changed: true
 
 outcome: >
   Digit4 launches one deterministic contained-mass device toward the aim point. It publishes a
@@ -117,3 +117,28 @@ follow_ons:
   - Lead integrates the implementation and receipt onto current master and reruns focused proof.
   - Vision-capable reviewer performs the ordinary browser/Electron traversal and combat routes.
   - PQ-012 may start only after PQ-011 review accepts or repairs the anchor/physics seam.
+
+# ── Gate-0 closure (2026-07-21, controller session) ──────────────────────────────────────────
+gate0_closure:
+  master_range: "958e15ab..3a812b90 (repairs 27bba37d massSeed mid-collapse + 3a812b90 id-aliasing; 2d616dfa flight-probe; 958e15ab design bible)"
+  adversarial_physics_review:
+    verdict: "HOLDS; kinematic entity-space travel + authored ghost/fixed body seam SANCTIONED against physics-authority intent (evidence chain in sf-g0-phys REPORT §5)"
+    findings: "FINDING-01 P2 mid-collapse-kill double-emit (REPAIRED 27bba37d); FINDING-02 P2 DYING_CAP coverage (closed by ADV-D5)"
+    mutants: "7/7 caught post-repair at the 49-test gate (splits 47/2,48/1,44/5,40/9,47/2,48/1,43/6), byte-exact restore verified"
+  second_independent_review:
+    verdict: "both repairs CONFIRMED; mutant splits reproduced byte-identical; FORENSIC-FINDING-02 P2/P3 id-aliasing surfaced and REPAIRED (3a812b90); repair-set meets the bar"
+  flight_gate:
+    cause: "viewport-agnostic probe input-timing race (unsynchronized key edges -> random post-maneuver heading) + concurrency amplifier; steered runs into a stranded static travel-lane freighter collider (REAL latent runtime defect, filed separately as its own task; not PQ-011's seam)"
+    repair: "2d616dfa probe-only: reset-before-boost-block + MEASUREMENT_INVALID collapse-detector pin; thresholds byte-identical"
+    proof: "lane 3x full-gate green (30/30 attested under the accepted pin) + lead 2x consecutive exit-0 on integrated master"
+  route_visual_review:
+    status: "ROUTE_ACCEPTED (agent executed beats 1-5,7-11 with captures + machine truth, died on session limit; LEAD completed eyes-on judgment, beat 6 partial, real-path destruction redo, Electron parity incl. legacy-profile KeyF discrimination)"
+    evidence: ".devshots/pq011-mass-seed-route/ (local, gitignored) + scratchpad route-lane ROUTE_REVIEW.md + route-A/B/C+beat67+electron out.json"
+    highlights: "published lockPos exact to 1e-14; HUD pills truthful at every sampled beat; eligibility flips exactly at active; previewMatched latch browser+Electron; 148deg direction change; real-combat-path destruction with exact cleanup; expiry warning text-primary; reduced-motion/flash preserve information; save/Continue normalize-away clean; Electron hardware-GPU parity via real menu route"
+  named_followups:
+    - "P2-A: no offscreen lock-marker clamp during travel (fixed ~416 WU range is always off-frame at default zoom); reuse the PQ-006 offscreen-cue idiom"
+    - "P2-B: HUD overlaps (utility pill vs expanded tether panel; acquisition chip vs flight-control buttons)"
+    - "P2-C: over-damped swing (148deg turn but 123.5->18.7 WU/s) — massline orbit/reel tuning lane (PQ-005 behavior), not the seed"
+    - "EVIDENCE GAP: natural hostile-fire pressure beat not achieved on-route (injected minimal AI never fired); counterplay-by-destruction proven on-route via real combat path + sim-level in every phase; ride the next combat-lane route session"
+    - "Stranded freighter static collider: separate filed task (travelLanes direct pos writes + defaultDynamic omits freighter + SG-02 static resync gate)"
+  honest_boundaries: "No dedicated seed perf probe beyond bounded-resource tests (pooled cues, caps proven at suite level); strict check:perf retains its pre-existing named rows (spatialHash budget, vsync floor) unrelated to PQ-011."

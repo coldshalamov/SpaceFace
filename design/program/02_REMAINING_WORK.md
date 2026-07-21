@@ -36,13 +36,16 @@ Program. Detailed behavior remains in the linked source plans; this file owns st
 | M6-VISUAL-DEFECTS | PARTIAL | Hitch plume glare and Helios opaque/unshaded bulk materials were repaired; `e8838e2c` places material-matched authored skins on real asteroids, replaces misleading dressing, removes the hidden instance-pool ghost path, and retains same-semantic fallbacks. A fresh hardware Electron propulsion route after `3d2dc765` proves four plume layers, two RCS jets, and zero reported frame allocations. Remaining visible-risk work is compact/reduced/dense/Spector propulsion evidence; natural Helios/rock motion and mip continuity; the broader admission/rebase/interpolation/LOD/HLOD/pool/Continue/context continuity packet; Electron/GPU combat/destruction acceptance; localized background structure; and fleet-wide asset-specific PBR. | Same-framing browser/Electron captures, independent visual acceptance, asset/live/visual/perf checks on the final combined tree. |
 | M6-RELEASE | PARTIAL | Real browser/Electron store capture, parity, localization, accessibility, corrupt-save/migration, resize/alt-tab, platform soak, visual/audio coverage. | Full release matrix and, if the draft production policy is adopted, five clean waves. |
 
-## Immediate program queue after the 2026-07-21 synthesis
+## Immediate program queue after the 2026-07-21 Gate-0 closure
 
-- **PQ-011 is runtime-integrated and FOCUSED_GREEN, not terminal.** Close ordinary browser/Electron
-  traversal and combat routes, default-camera visual review, measured performance, and the explicit
-  adversarial review of its deterministic kinematic deployment seam before promotion.
-- **PQ-012 and PQ-015 are the first potentially parallel implementation lanes** after that review,
-  provided their exact live write sets remain disjoint (physics/renderer versus registry/HUD).
+- **PQ-011 is CHECKED OFF** (`ROUTE_ACCEPTED`+`INTEGRATED`, Gate-0 closure `958e15ab`..`3a812b90`).
+  Its named non-blocking follow-ups (P2 offscreen lock cue, P2 HUD overlaps, P2 over-damped swing
+  owned by the massline tuning lane, the natural-hostile-pressure evidence gap, and the
+  separately-filed stranded-freighter static-collider latent defect) live in the receipt's
+  `gate0_closure` block.
+- **PQ-012 and PQ-015 are DISPATCHED as the parallel Wave-1 lanes** (worktrees `sf-w1-fields` /
+  `sf-w1-descriptors`; write sets verified disjoint via lead-spot-checked read-only surveys;
+  browser mutex serialized by flag protocol; leases in `NOW.md`).
 - **Full PQ-014 follows the PQ-015 registry release.** Reuse the existing deterministic job kernel;
   do not replace it. Remaining work is live materialization, virtualization, AI movement, save,
   natural-occurrence census, held-out seeds, and public-route proof.

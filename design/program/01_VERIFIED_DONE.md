@@ -30,6 +30,20 @@ are closed. Acceptance rows, named debts (strict-perf rows, `station-applied-lod
 encounter-director, dated check:combat), and receipts: `03_LIVE_ACCEPTANCE_MATRIX.md` "Program
 batch PQ-001..PQ-010".
 
+## PQ-011 Gate-0 closure (2026-07-21, commits `958e15ab`..`3a812b90`)
+
+**PQ-011 (deployable Mass Seed anchor) is the eleventh queue outcome CHECKED OFF** — the first to
+pass a full adversarial gate: hostile physics review (seam SANCTIONED; two P2 findings repaired),
+second independent forensic review (repairs CONFIRMED, one further finding surfaced and repaired),
+mutant audit 7/7 caught at the extended 49-test `check:mass-seed`, the recorded flight-gate red
+cause-pinned and repaired probe-only (viewport-agnostic input-timing race — NOT a mobile runtime
+defect; lead 2× consecutive full-gate green), and ROUTE_ACCEPTED browser+Electron evidence
+(hardware-GPU parity through the real menu route). The Kimi-authored
+`design/vfx/FIELD_TOOL_READABILITY_BIBLE.md` (`958e15ab`) is integrated as the standing taste
+authority for PQ-012/013/016. Named non-blocking P2 follow-ups and the separately-filed
+stranded-freighter latent collider defect: receipt `gate0_closure` block +
+`03_LIVE_ACCEPTANCE_MATRIX.md`.
+
 ## 2026-07-20 closeout subslices (commits `d6d5278c`..`eb8ed839`)
 
 Three partial subslices integrated during the 2026-07-20 closeout. **None checks off its queue

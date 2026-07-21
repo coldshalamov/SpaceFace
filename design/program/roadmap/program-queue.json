@@ -756,7 +756,7 @@
       "id": "PQ-011",
       "priority": 11,
       "title": "Deployable Mass Seed anchor",
-      "state": "focused_green",
+      "state": "integrated",
       "canonical": [
         "PROPOSED-T20"
       ],
@@ -782,10 +782,10 @@
         "counterplay"
       ],
       "brief": "Add a bounded physical anchor that extends Massline play into empty space with clear expiry and counterplay.",
-      "integratedCommit": "8331c1ba",
+      "integratedCommit": "8331c1ba,27bba37d,2d616dfa,3a812b90",
       "acceptanceRef": "03_LIVE_ACCEPTANCE_MATRIX.md#pq-011-mass-seed-and-fleet-foundry-checkpoint-2026-07-21",
       "receipt": "design/program/roadmap/receipts/PQ-011-mass-seed.yaml",
-      "partialIntegration": "2026-07-21: runtime implementation is on master at 8331c1ba with 20/20 Mass Seed tests, 23/23 Massline aggregate checks, physics/save/input/a11y/launch gates green, and deterministic reload hash equality. Public traversal+combat browser/Electron routes, default-camera visual review, measured performance, and adversarial review of the deterministic kinematic deployment seam remain. State is focused_green, not route_accepted or checked off."
+      "gate0Closure": "2026-07-21: Gate-0 adversarial closure COMPLETE. Physics review HOLDS (seam sanctioned), two P2 findings repaired (27bba37d mid-collapse double-emit; 3a812b90 id-aliasing from the second independent review); mutants 7/7 caught at the 49-test gate; flight-gate red cause-pinned as a viewport-agnostic probe input-timing race and repaired probe-only (2d616dfa) with lead 2x consecutive full-gate green; ROUTE_ACCEPTED with browser beats 1-11 + Electron hardware-GPU parity via the real menu route (lead-completed after the review agent died on a session limit). Named P2 follow-ups + the stranded-freighter latent defect recorded in the receipt gate0_closure block."
     },
     {
       "id": "PQ-012",

@@ -112,18 +112,20 @@ Each row carries exactly the proof that landed and names what separates it from 
 
 | Outcome | Current state | Current evidence | What remains before terminal |
 |---|---|---|---|
-| `PQ-011 deployable Mass Seed` | Runtime `INTEGRATED` at `8331c1ba`; packet state `FOCUSED_GREEN`, **not route/visually accepted** | `check:mass-seed` **20/20**; Massline aggregate **23/23**; physics authority, SG-02 tether/break/save, save schema v11/261, settings, controls, input fence, UI a11y, launch policy all green; sim compare deterministic and reload `hashEqual`; one active anchor, bounded replacement/collapse, exact expiry/destruction cuts, old-save default and normalize-away policy proven | Independent adversarial review of the kinematic deployment seam; ordinary traversal and hostile-combat routes in browser and Electron; default-camera/readability review; useful direction-change proof; measured performance/accessibility evidence. Receipt: `design/program/roadmap/receipts/PQ-011-mass-seed.yaml`. |
+| `PQ-011 deployable Mass Seed` | **`ROUTE_ACCEPTED` + `INTEGRATED` (checked off) — Gate-0 closure 2026-07-21** at `8331c1ba`+`27bba37d`+`2d616dfa`+`3a812b90` | Adversarial physics review: HOLDS, kinematic seam SANCTIONED; two P2 findings repaired; second independent forensic review CONFIRMED both repairs + surfaced/closed an id-aliasing finding; mutants 7/7 caught at the extended **49-test** `check:mass-seed`; Massline aggregate 23/23, physics-authority, sim compare ok/deterministic/hashEqual all green at `3a812b90`. Route/visual: browser beats 1-11 (published lockPos exact to 1e-14; truthful pills at every beat; eligibility flip at active; previewMatched latch; 148° direction change; real-combat-path destruction with exact cleanup; text-primary expiry warning; reduced-motion/flash information-preserving; save/Continue normalize-away clean) + Electron hardware-GPU parity via the real menu route (incl. the legacy-profile KeyF binding discrimination). Evidence: `.devshots/pq011-mass-seed-route/` + route-lane machine-truth JSON + `ROUTE_REVIEW.md`. | Named non-blocking follow-ups in the receipt `gate0_closure` block: P2 offscreen lock cue, P2 HUD overlaps, P2 over-damped swing (massline tuning lane), natural-hostile-pressure evidence gap, and the separately-filed stranded-freighter latent collider defect. |
 | Fleet breadth foundry | Source-complete/runtime-pending range `8d21b07e..0ae4cc6a`; no PQ-022 terminal promotion | 47 reusable hard-surface kit pieces, 14 donor/Wasp/trade-hub variants, 20 scenery props, deterministic decals/trim/grime/material profiles, source scripts, structural validators, before/after/game-camera sheets, and hash-bound receipt. All 81 produced GLBs passed the structural validator in the controller rerun. Fixed geometry ceilings were removed; complexity is telemetry and any future constraint must follow physical size, screen contribution, LOD, residency/draw/frame evidence. | Select candidates asset-by-asset; adapt rather than blindly copy; bind manifests/runtime maps; validate KTX/PBR/LOD/collision; matched default-camera browser/Electron motion; reject sparse or repetitive candidates; measure performance. Source previews are not live game content. |
 | Save-schema portability | `INTEGRATED` repair `40ef53f5` | A clean Windows CRLF checkout now passes the same content check; schema drift still compares normalized full text and fails closed | No additional work for this slice. |
 
 The combined-tree 47a comparison still reports ten historical expected-envelope differences while
 exiting successfully with uninterrupted/reload hash equality. No expected/golden file was rewritten.
 
-`check:flight:clean` is currently **RED** on the combined checkpoint: all five desktop runs passed,
-but one of five mobile runs failed `boostAccelerates`; a clean one-run repeat again passed desktop and
-failed mobile `boostAccelerates` plus `reverseBrakes`. Rapier/SG-02 readiness, canvas output, and
-page/console checks remained green. This is an acceptance blocker pending a cause-pinned mobile
-probe/input-versus-runtime diagnosis; it is not evidence against or acceptance of PQ-011 by itself.
+`check:flight:clean` red: **CLOSED at `2d616dfa` (Gate-0, 2026-07-21).** Cause-pinned by
+measurement as a viewport-agnostic probe input-timing race (unsynchronized key edges → random
+post-maneuver heading; concurrency-amplified; some headings crossed a stranded static freighter
+collider — that latent runtime defect is filed separately). Probe-only repair with byte-identical
+thresholds + a fail-safe MEASUREMENT_INVALID collapse-detector pin. Proof: diagnosis lane 3×
+full-gate green; lead 2× consecutive exit-0 on integrated master. The "mobile runtime flight
+defect" hypothesis is falsified.
 
 **Worktree and untracked-batch cleanup evidence (same closeout):**
 
