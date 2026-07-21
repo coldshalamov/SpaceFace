@@ -54,6 +54,10 @@ function defaultPlayer() {
     // Contextual first-time hints (onboarding.js). Each flag starts false and flips to true once
     // the hint has been shown; persisted across saves so returning players aren't re-taught.
     hints: { firstFlight: false, firstCombat: false, firstShieldDrop: false, firstStation: false, firstGate: false, firstCargoFull: false },
+    // PQ-011 anchor Mass Seed: the deploy cooldown (simTime seconds). Persisted so save/Continue
+    // cannot launder it; the seed ENTITY itself is temporary and never serializes (normalize-away
+    // policy in src/systems/massSeed.js). Old saves merge over this default (0 = ready).
+    massSeed: { cooldownUntil: 0 },
   };
 }
 

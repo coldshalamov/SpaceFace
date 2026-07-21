@@ -14,6 +14,7 @@ import {
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer } from './scanner.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { isMassSeedTetherEligible } from './massSeed.js';
 
 const TETHER_DEF_ID = 'tether_standard';
 const STRAIN_EVENT_INTERVAL_S = 0.2;
@@ -42,7 +43,9 @@ const LOAD_STRAIN_GAIN = 2.5;
 const LOAD_BASE_BY_PHASE = Object.freeze({ slack: 0, capture: 0.35, loaded: 0.55, overload: 0.9 });
 // Pickups are valid massline targets now; attachment liveness sweeps cut the line if a pickup is
 // collected/despawned, so the old invisible-anchor failure mode stays closed.
-const ATTACHABLE_TYPES = new Set(['asteroid', 'wreck', 'ship', 'drone', 'station', 'payload', 'pickup']);
+// PQ-011: 'massSeed' joins the set — the player's frame-locked anchor is a legal target ONLY
+// after frame lock (isAttachable gates on the entity's published eligibility flag).
+const ATTACHABLE_TYPES = new Set(['asteroid', 'wreck', 'ship', 'drone', 'station', 'payload', 'pickup', 'massSeed']);
 // Authored payloads and loose pickups are sensor bodies: they intentionally do not collide, so the
 // collidable-only spatial hash cannot be their sole acquisition source.
 const NON_COLLIDING_ACQUISITION_TYPES = new Set(['payload', 'pickup']);
@@ -1063,7 +1066,11 @@ function aimWorldFor(player, state, range) {
 
 function isAttachable(entity, playerId) {
   if (!entity || !entity.alive || !entity.pos || entity.id === playerId) return false;
-  return ATTACHABLE_TYPES.has(entity.type);
+  if (!ATTACHABLE_TYPES.has(entity.type)) return false;
+  // A Mass Seed is ineligible before frame lock (travelling/locking/collapsing): it publishes
+  // its own eligibility so a premature latch can never attach to a still-moving deployable.
+  if (entity.type === 'massSeed') return isMassSeedTetherEligible(entity);
+  return true;
 }
 
 /**
@@ -1077,6 +1084,10 @@ function isAttachable(entity, playerId) {
 function resolveMasslineOwnership(entity, player, state) {
   if (!entity) return 'neutral';
   if (entity.type === 'station') return 'station';
+  // PQ-011: the player's own Mass Seed is the ONE own-deployable that must stay latch-eligible —
+  // anchoring to your seed is the feature's point. It scores as neutral (no own-protection gate,
+  // no ally damping); the phase gate in isAttachable still keeps it ineligible before lock.
+  if (entity.type === 'massSeed') return 'neutral';
 
   const playerId = player && player.id;
   const ownerId = entity.ownerId ?? entity.data?.ownerId ?? entity.data?.owner ?? null;

@@ -1,0 +1,198 @@
+// PQ-011 / SF-11 — Mass Seed HUD (DOM-guarded "own module" pattern, masslineHud sibling).
+//
+// Two pieces, both text/shape-first so state never depends on color or motion:
+//   1. A status pill: phase + exact seconds ("ANCHOR 24s", "COLLAPSE IN 5s", "SEED READY 7s").
+//      The expiry countdown is the PRIMARY timing channel — the world beacon/strobe is redundant.
+//   2. A world-anchored lock-point marker while the seed travels: a diamond + "LOCK" label at the
+//      published deterministic lockPos, so the player sees where the anchor WILL exist before it
+//      does. Hidden once the frame lock lands (the physical anchor + acquisition preview take over).
+//
+// Reads only: state.massSeed, state.player.massSeed, entities, helpers.worldToScreen.
+// Writes only: its own DOM subtree. No sim state. Fully guarded headless.
+
+const MASS_SEED_HUD_CSS = `
+.sf-mseed-pill {
+  position: absolute; left: 50%; bottom: 118px; transform: translateX(-50%);
+  display: none; align-items: center; gap: 8px; padding: 4px 12px;
+  font: 600 12px/1.2 "Segoe UI", system-ui, sans-serif; letter-spacing: 0.08em;
+  color: #cfe8ff; background: rgba(10, 18, 28, 0.72); border: 1px solid rgba(120, 190, 235, 0.4);
+  border-radius: 3px; pointer-events: none; white-space: nowrap;
+}
+.sf-mseed-pill .mseed-tag { font-weight: 700; }
+.sf-mseed-pill.mseed-warning { color: #ffd9a0; border-color: rgba(240, 170, 70, 0.65); }
+.sf-mseed-pill.mseed-cooldown { color: #9fb4c8; border-color: rgba(120, 140, 160, 0.35); }
+.sf-mseed-mark { position: absolute; display: none; pointer-events: none; }
+.sf-mseed-mark .mseed-diamond {
+  width: 12px; height: 12px; margin: -6px 0 0 -6px;
+  border: 2px solid rgba(140, 215, 250, 0.9); transform: rotate(45deg);
+  background: rgba(20, 40, 60, 0.35);
+}
+.sf-mseed-mark .mseed-mark-label {
+  position: absolute; left: 10px; top: -8px; font: 600 10px/1.1 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.1em; color: #bfe6ff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); white-space: nowrap;
+}
+.sf-mseed-root.mseed-reduced-motion .sf-mseed-mark .mseed-diamond { border-style: dashed; }
+`;
+
+function viewportExtent(primary, fallback, dflt) {
+  if (typeof window === 'undefined') return dflt;
+  const v = window[primary] || (document.documentElement && document.documentElement[fallback]) || dflt;
+  return Number.isFinite(v) ? v : dflt;
+}
+
+function clampRange(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+export const massSeedHud = {
+  id: 'massSeedHud',
+  name: 'massSeedHud',
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.helpers = ctx.helpers || {};
+    this._dom = null;
+    this._lastPillText = '';
+    this._lastPillClass = '';
+    this._markVisible = false;
+  },
+
+  destroy() {
+    if (this._dom && this._dom.root && this._dom.root.parentNode) {
+      this._dom.root.parentNode.removeChild(this._dom.root);
+    }
+    this._dom = null;
+  },
+
+  update(dt, state) {
+    if (typeof document === 'undefined') return;
+    const dom = this._ensureDom();
+    if (!dom) return;
+    if (state.mode !== 'flight' || (state.ui && state.ui.docked)) { this._hideAll(); return; }
+
+    const reducedMotion = !!(state.settings && state.settings.video && state.settings.video.motionReduce)
+      || !!(state.settings && state.settings.accessibility
+        && state.settings.accessibility.motionPreference === 'reduce');
+    if (dom.reducedMotion !== reducedMotion) {
+      dom.reducedMotion = reducedMotion;
+      dom.root.classList.toggle('mseed-reduced-motion', reducedMotion);
+    }
+
+    const ms = state.massSeed || null;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    this._updatePill(dom, state, ms, now);
+    this._updateLockMarker(dom, state, ms);
+  },
+
+  _updatePill(dom, state, ms, now) {
+    let text = '';
+    let cls = '';
+    if (ms && ms.phase && ms.phase !== 'idle' && ms.phase !== 'collapsing') {
+      if (ms.phase === 'travel') {
+        text = `SEED → LOCK ${Math.max(0, ms.lockAt - now).toFixed(1)}s`;
+      } else if (ms.phase === 'locking') {
+        text = 'SEED FRAME LOCK…';
+      } else if (ms.phase === 'active') {
+        text = `ANCHOR ${Math.max(0, Math.ceil(ms.expireAt - now))}s`;
+      } else if (ms.phase === 'warning') {
+        text = `ANCHOR COLLAPSE IN ${Math.max(0, Math.ceil(ms.expireAt - now))}s`;
+        cls = 'mseed-warning';
+      }
+    } else {
+      const ps = state.player && state.player.massSeed;
+      const cooldown = ps && Number.isFinite(ps.cooldownUntil) ? ps.cooldownUntil - now : 0;
+      if (cooldown > 0.05) {
+        text = `SEED READY IN ${Math.ceil(cooldown)}s`;
+        cls = 'mseed-cooldown';
+      }
+    }
+    if (!text) { dom.pill.style.display = 'none'; this._lastPillText = ''; return; }
+    if (text !== this._lastPillText) {
+      this._lastPillText = text;
+      dom.pillText.textContent = text;
+      dom.pill.setAttribute('aria-label', text);
+    }
+    if (cls !== this._lastPillClass) {
+      this._lastPillClass = cls;
+      dom.pill.classList.toggle('mseed-warning', cls === 'mseed-warning');
+      dom.pill.classList.toggle('mseed-cooldown', cls === 'mseed-cooldown');
+    }
+    dom.pill.style.display = 'flex';
+  },
+
+  _updateLockMarker(dom, state, ms) {
+    const travelling = !!(ms && (ms.phase === 'travel' || ms.phase === 'locking') && ms.lockPos);
+    if (!travelling) {
+      if (this._markVisible) { dom.mark.style.display = 'none'; this._markVisible = false; }
+      return;
+    }
+    const w2s = this.helpers && this.helpers.worldToScreen;
+    if (typeof w2s !== 'function') {
+      if (this._markVisible) { dom.mark.style.display = 'none'; this._markVisible = false; }
+      return;
+    }
+    const proj = w2s({ x: ms.lockPos.x, y: 0, z: ms.lockPos.z });
+    if (!proj || !Number.isFinite(proj.x) || !Number.isFinite(proj.y)) {
+      if (this._markVisible) { dom.mark.style.display = 'none'; this._markVisible = false; }
+      return;
+    }
+    const vw = viewportExtent('innerWidth', 'clientWidth', 1440);
+    const vh = viewportExtent('innerHeight', 'clientHeight', 900);
+    const x = clampRange(proj.x, 24, vw - 24);
+    const y = clampRange(proj.y, 24, vh - 24);
+    dom.mark.style.display = 'block';
+    dom.mark.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
+    const remaining = Math.max(0, ms.lockAt - (Number.isFinite(state.simTime) ? state.simTime : 0));
+    const label = ms.phase === 'locking' ? 'LOCKING' : `LOCK ${remaining.toFixed(1)}s`;
+    if (dom.markLabel.textContent !== label) dom.markLabel.textContent = label;
+    this._markVisible = true;
+  },
+
+  _hideAll() {
+    const dom = this._dom;
+    if (!dom) return;
+    dom.pill.style.display = 'none';
+    dom.mark.style.display = 'none';
+    this._lastPillText = '';
+    this._markVisible = false;
+  },
+
+  _ensureDom() {
+    if (this._dom && this._dom.root.isConnected !== false) return this._dom;
+    const host = document.getElementById('hud') || document.body;
+    if (!host) return null;
+    if (!document.getElementById('sf-mseed-css')) {
+      const style = document.createElement('style');
+      style.id = 'sf-mseed-css';
+      style.textContent = MASS_SEED_HUD_CSS;
+      (document.head || host).appendChild(style);
+    }
+    const root = document.createElement('div');
+    root.className = 'sf-mseed-root';
+
+    const pill = document.createElement('div');
+    pill.className = 'sf-mseed-pill';
+    pill.setAttribute('role', 'status');
+    pill.setAttribute('aria-live', 'polite');
+    pill.setAttribute('aria-atomic', 'true');
+    const pillText = document.createElement('span');
+    pillText.className = 'mseed-tag';
+    pill.appendChild(pillText);
+    root.appendChild(pill);
+
+    const mark = document.createElement('div');
+    mark.className = 'sf-mseed-mark';
+    mark.style.display = 'none';
+    const diamond = document.createElement('div');
+    diamond.className = 'mseed-diamond';
+    mark.appendChild(diamond);
+    const markLabel = document.createElement('span');
+    markLabel.className = 'mseed-mark-label';
+    mark.appendChild(markLabel);
+    root.appendChild(mark);
+
+    host.appendChild(root);
+    this._dom = { root, pill, pillText, mark, markLabel, reducedMotion: false };
+    return this._dom;
+  },
+};

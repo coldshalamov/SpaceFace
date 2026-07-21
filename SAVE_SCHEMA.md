@@ -242,6 +242,8 @@ Current save version: `11`
 | `$.player.insurance.lastStationId` | null | null |
 | `$.player.insurance.rate` | number | 0.6 |
 | `$.player.magnetRange` | number | 250 |
+| `$.player.massSeed` | object | {} |
+| `$.player.massSeed.cooldownUntil` | number | 0 |
 | `$.player.miningBeam` | object | {} |
 | `$.player.miningBeam.directToCargo` | boolean | true |
 | `$.player.miningBeam.dps` | number | 18 |
@@ -303,6 +305,8 @@ Current save version: `11`
 | `$.settings.gameplay.controlSchemeV2` | boolean | true |
 | `$.settings.gameplay.difficulty` | string | standard |
 | `$.settings.gameplay.flightBackend` | string | v3 |
+| `$.settings.gameplay.masslineReleaseAssist` | string | arm |
+| `$.settings.gameplay.orbitAssistStrength` | string | standard |
 | `$.settings.gameplay.physicsBackend` | string | rapier-dynamic |
 | `$.settings.gameplay.tutorialHints` | boolean | true |
 | `$.settings.keybinds` | object | {} |

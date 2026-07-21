@@ -87,6 +87,9 @@ const SECTIONS = [
     ['Massline line control', null, 'Hold + ↑/↓/←→: reel/pay out/orbit; Shift pump'],
     ['Massline dedicated reel in', 'reelIn', '—'],
     ['Massline dedicated pay out', 'reelOut', '—'],
+    // PQ-011: the anchor seed turns empty space into a swing anchor. Keyboard verb (rebindable);
+    // no standard gamepad button remains unclaimed, matching the impulse-charge verbs' posture.
+    ['Deploy anchor Mass Seed', 'deployMassSeed', '4 (toward aim; locks on arrival, then latch it)'],
   ]],
   ['Interface (fixed keys)', [
     ['Aim weapons', null, 'Mouse'],
@@ -114,6 +117,7 @@ const SECTIONS = [
     ['Boost', null, 'RB / R1'],
     ['Brake / reverse', null, 'LB / L1'],
     ['Massline', null, 'A / X: Massline (dock/accept when prompted)'],
+    ['Anchor Mass Seed', null, 'keyboard verb — rebind under Settings → Controls'],
     ['Countermeasure', null, 'R3'],
     ['Cycle target', null, 'X / □'],
     ['Open star-map', null, 'View / Select'],
