@@ -791,7 +791,7 @@
       "id": "PQ-012",
       "priority": 12,
       "title": "Continuous field kernel and first consumers",
-      "state": "planned",
+      "state": "integrated",
       "canonical": [
         "PROPOSED-T21"
       ],
@@ -819,7 +819,11 @@
         "public-route",
         "accessibility"
       ],
-      "brief": "Implement bounded attractive, repulsive, and clearing fields with physical ownership and readable VFX."
+      "brief": "Implement bounded attractive, repulsive, and clearing fields with physical ownership and readable VFX.",
+      "integratedCommit": "8e8faf33,755fc654",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-012-fields-REPORT.md",
+      "receipt": "design/program/roadmap/receipts/PQ-012-fields-REPORT.md",
+      "integrationNote": "2026-07-21 CHECKED OFF: deterministic finite-radius kernel (register/unregister, falloff, capped accel, coupling filters with heavy-shrug in the coupling term, pure predictor seam) + Well/Repulsor/Cone on Digit5/6/7 through ordinary input; additive queuePhysicsImpulse only, slot before physics; field-aware release predictor opt-in (bent path within 6wu, no-sampler byte-identical); fieldEmitter damageable counterplay; golden inert by three layers. Visuals: three Gemini repair rounds under lead eyes-on (round-1 whiteout REJECTED and repaired to device-scale frame geometry) + mechanical whiteout gate in the capture script + real-pointer aim fix; final evidence set lead-accepted. Combined-tree proof at 755fc654: fields 33/33, npc-jobs 61/61, interactions 30/30, mass-seed 49/49, sim ok/hashEqual, schema v12/262, SG-06 registry boots. Honest residuals: check:perf pre-existing named rows (fields dormant in probe); repulsor dome dark-subtle in stills; natural-play visual pass rides the next combat-lane session."
     },
     {
       "id": "PQ-013",
