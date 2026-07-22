@@ -1,6 +1,9 @@
 # Worktree and Integration Inventory
 
-**Current integration snapshot:** 2026-07-20 at `master` HEAD `eb8ed839` (closeout synthesis). The
+**Current integration snapshot:** 2026-07-21 at `master` HEAD `54548e09` (graphics/program closeout).
+`master` is the only registered worktree. The readable HUD (`ea698805`) and reviewed Helios civilian
+family (`54548e09`) are integrated; the former mixed graphics donor is tagged, hash-archived, and
+physically removed. The
 earlier combined merge `b235f062`, evidence hardening through `280cafb0`, propulsion repair
 `59f91d19`, geology truth `e8838e2c`, Electron RCS evidence repair `3d2dc765`, and the PQ-001..PQ-010
 batch (`2bc3042f`..`b28d183b`) are all ancestors. This closeout adds the PQ-014 NPC-job kernel, the
@@ -10,7 +13,17 @@ remain below as labeled history. Re-run the commands at the end before acting: d
 move after this document is written. Use [`NOW.md`](./NOW.md) for volatile ownership and
 [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md) for donor disposition.
 
-## Current integration checkpoint — 2026-07-20 (closeout)
+## Current integration checkpoint — 2026-07-21 (graphics/program closeout)
+
+- Primary branch: `master`; current HEAD `54548e09`; working tree clean at the recorded checkpoint.
+- PQ-001..PQ-016 are integrated. PQ-017 is the next canonical queue item.
+- HUD commit `ea698805` and Helios civilian promotion `54548e09` are on the public browser/Electron
+  route. Focused and route checks are listed in `08_GRAPHICS_OVERHAUL_CHECKPOINT.md`.
+- The `SpaceFace-graphics-overhaul` worktree and `codex/graphics-overhaul` branch are removed. Exact
+  committed tip `cab2d122` remains under `archive/graphics-overhaul-donor-20260721`; its complete dirty
+  payload remains in the external SHA-256 archive recorded in `09_DONOR_VALUE_LEDGER.md`.
+
+## Historical integration checkpoint — 2026-07-20
 
 - Primary branch: `master`; current HEAD `eb8ed839`. The full closeout commit chain
   (`d6d5278c`..`eb8ed839`) is on master: PQ-014 kernel + r2 fixes + receipt; PQ-018 source + 3
@@ -41,9 +54,7 @@ move after this document is written. Use [`NOW.md`](./NOW.md) for volatile owner
 
 | Worktree | Tip | Disposition |
 |---|---|---|
-| `SpaceFace` | `eb8ed839` | Product authority; full closeout synthesis on master (PQ-014 kernel, PQ-018 source, PQ-022 station subslice, untracked-batch cleanup). |
-| `SpaceFace-graphics-overhaul` | `cab2d122` | Retain per `09_DONOR_VALUE_LEDGER.md`; 223 dirty paths mix 180 assets, 15 src, 14 scripts, 10 test, 4 process. Asset-by-asset disposition incomplete; Kimi station-UI candidates missing but out of closeout scope. |
-| `sf-pq011` (foreign, observed) | `422ec889` (master tip) | PQ-011 Mass Seed lane (`codex/pq011-mass-seed-20260720`). NOT in 2026-07-20 closeout scope; left untouched. Reconcile before claiming PQ-011. |
+| `SpaceFace` | `54548e09` | Sole product authority and sole registered worktree; PQ-001..PQ-016, HUD checkpoint, and Helios civilian family integrated. |
 
 Removed during this closeout (history preserved by annotated recovery tags):
 
@@ -144,10 +155,9 @@ The bulk checkpoint already exists. These are audit units, not permission to rew
    investigated and rejected; strict headed acceptance remains separate evidence-gated work on
    current master. The tag preserves the rejected code while `1074c078` preserves the hybrid research
    hypothesis.
-6. **RESIDUAL-WIP** — physical donor cleanup is complete except the deliberately retained
-   Blender/source worktree. It is not clean or releasable: 80 release paths, 58 Kestrel
-   source/evidence paths, 42 parts/source paths, 39 unreviewed code/tool/test paths, and 25
-   contamination/process paths remain. Use `09_DONOR_VALUE_LEDGER.md` for recovery refs.
+6. **RESIDUAL-WIP** — physical Git worktree cleanup is complete. The rejected Ashline scratch and
+   former mixed graphics donor are preserved outside the live checkout by hash-bound archives; use
+   `09_DONOR_VALUE_LEDGER.md` for recovery refs rather than recreating a donor worktree blindly.
 
 ## Re-run inventory
 

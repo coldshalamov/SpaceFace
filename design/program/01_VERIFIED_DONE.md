@@ -41,6 +41,14 @@ descriptors), PQ-016 (contextual industrial beam). Per-packet commits, honest pe
 standing), and the named follow-up list: `NOW.md` batch-closure section. Eleven of the first
 sixteen queue outcomes are now terminal.
 
+## 2026-07-21 playable graphics checkpoint (`ea698805`, `54548e09`)
+
+| Outcome | Verified result | Honest boundary |
+|---|---|---|
+| Ship-condition HUD | `ea698805` is integrated. Fresh nominal and damaged active-flight captures show the ship schematic, shield ring, hull crop, HULL/SHD values, and warning state without the prior text-on-image overlap; `check:ui-a11y` passes. | This closes the condition-widget defect, not all M1-HUD density work. |
+| Helios civilian Lark/Cradle/Span | `54548e09` integrates editable Blender sources, three LODs, semantic PBR evidence, canonical source/release GLBs, manifest wiring, and deterministic rebuild tooling. Family/release/asset-live/reachability/status/visual-stability gates pass; a public Helios pocket capture passes in browser and Electron. | Accepted family vertical; further material polish and remaining fleets stay open. |
+| Donor collapse | Former `SpaceFace-graphics-overhaul` is hash-archived/tagged and physically removed after selective disposition; only `master` remains registered. | Rejected/unpromoted donor material is recoverable, not product code. |
+
 ## PQ-011 Gate-0 closure (2026-07-21, commits `958e15ab`..`3a812b90`)
 
 **PQ-011 (deployable Mass Seed anchor) is the eleventh queue outcome CHECKED OFF** — the first to

@@ -146,7 +146,17 @@ If `NOW.md` or worktrees show another controller owns the packets you want, **st
 
 ### 4.3 Dependency waves (current queue shape)
 
-Refresh from the live queue before acting. Structural intent:
+Refresh from the live queue before acting. Current structural intent after the 2026-07-21 closeout:
+
+| Wave | Packets | Notes |
+|---|---|---|
+| Integrated roots | **PQ-001…PQ-016** | Do not reopen; use receipts and named follow-ups |
+| Next | **PQ-017** site kernel | Unblocks preserved PQ-018 Cathedral and PQ-021 Ledger |
+| After PQ-017 | PQ-018 cathedral, then PQ-019–025 corridor | Extend existing partials; do not replace them |
+| Deferred | PQ-026–033 | After corridor acceptance unless the user overrides |
+
+The table immediately below is the historical pre-closeout wave shape retained for archaeology; it
+is not the current dispatch order.
 
 | Wave | Packets | Notes |
 |---|---|---|
@@ -157,7 +167,14 @@ Refresh from the live queue before acting. Structural intent:
 | Later | PQ-017 site kernel → PQ-018 cathedral → PQ-019–025 corridor | Partials may already exist — extend, do not replace |
 | Deferred | PQ-026–033 | After corridor acceptance unless user overrides |
 
-**Partial landings already on master (do not re-author from zero):**
+**Current partial landings already on master (do not re-author from zero):**
+
+- PQ-011 and PQ-014 are integrated; follow only their named receipt defects.
+- PQ-018 remains a PQ-017-dependent source candidate.
+- PQ-021 remains an unwired ledger UI.
+- PQ-022 has accepted station/fleet subslices but is not complete across all visual families.
+
+Historical pre-closeout partial table:
 
 | Item | Honest state | Extend by |
 |---|---|---|
@@ -216,16 +233,19 @@ Replace `N` with the user’s count. For a single packet, use the same rules wit
 
 | Bucket | PQ items (at snapshot) |
 |---|---|
-| Integrated | PQ-001 … PQ-010 |
-| Focused green (not checked off) | PQ-011 Mass Seed |
-| Planned active spine | PQ-012 … PQ-025 |
+| Integrated | PQ-001 … PQ-016 |
+| Next dependency root | PQ-017 World Site kernel |
+| Planned active spine | PQ-017 … PQ-025 |
 | Deferred post-corridor | PQ-026 … PQ-033 |
 
-**Typical concurrent reality at snapshot:**
+**Current checkout reality at the 2026-07-21 closeout:**
 
-- Primary `master` may be clean while Gate-0 / batch worktrees exist for PQ-011 review.  
-- Protected donor: `SpaceFace-graphics-overhaul` — **read-only** unless the user explicitly opens it; never merge whole-tree.  
-- Do not steal leases from a controller already recorded in `NOW.md` or clearly owning G0/`sf-*` worktrees for the same packets.
+- `master` is the only registered worktree. PQ-001…PQ-016 are integrated; PQ-017 is next.
+- The former `SpaceFace-graphics-overhaul` mixed donor was selectively dispositioned, hash-archived,
+  tagged at `archive/graphics-overhaul-donor-20260721`, and physically removed. Never recreate it as a
+  whole-merge source; consult `design/program/09_DONOR_VALUE_LEDGER.md` for recoverable value.
+- Do not steal leases from a controller recorded in `NOW.md`; always refresh live status because this
+  snapshot can age.
 
 **Known debt classes (remeasure; do not “fix” by deleting checks):**
 
@@ -340,7 +360,7 @@ Rules:
 
 - Read-only review may be wide; writers must preflight path lists.  
 - Serialize browser/Electron evidence and Blender authoring.  
-- Protected graphics donor worktree: no whole-merge, no clean/reset unless user orders disposal after tagging.  
+- Rejected graphics donor: use its recovery tag/archive only for selective archaeology; never whole-merge it.
 - Input system edits require focused rebind/sim validation and coordination.  
 - Station shell / non-diegetic HUD: do not replace known-good framing casually.
 

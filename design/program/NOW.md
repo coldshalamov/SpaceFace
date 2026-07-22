@@ -1,11 +1,32 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-21 (late) after the Gate-0 adversarial closure. `master` contains the
-reconciled PQ-001..PQ-010 batch, the focused-green but runtime-unwired PQ-014 kernel, the PQ-018
-source candidate, the route-accepted military-station subslice, the source-complete/runtime-pending
-fleet breadth foundry, and **PQ-011 Mass Seed at ROUTE_ACCEPTED + INTEGRATED (checked off)** after
-the Gate-0 review cycle below. The protected `SpaceFace-graphics-overhaul` donor remains a separate
-mixed-source audit problem.
+**Snapshot:** 2026-07-21 graphics/program closeout at `master` `54548e09`. PQ-001..PQ-016 are
+integrated; PQ-017 is the next canonical queue item. The readable ship-condition HUD is integrated at
+`ea698805`, and the reviewed Helios Lark/Cradle/Span production family is source-complete,
+release-built, runtime-wired, and integrated at `54548e09`. `master` is the only registered worktree.
+
+## 2026-07-21 graphics checkpoint and donor retirement
+
+- `ea698805` replaces the overlapping condition text with a non-diegetic ship schematic, shield ring,
+  hull crop, explicit HULL/SHD values, warning states, reduced-motion handling, and a readable
+  active-flight layout. Fresh nominal/damaged flight captures were reviewed; `check:ui-a11y` passes.
+- `54548e09` promotes the reviewed Helios civilian Lark/Cradle/Span Blender sources, generated PBR
+  evidence, canonical source GLBs, KTX2 release GLBs, manifest rows, and deterministic builder. The
+  natural Helios pocket capture passes in browser and Electron; asset-live, visual-stability,
+  release-asset, family, flight, sim, and launch gates pass.
+- Grok's Ashline polish is **not promoted**. It improves the older shapes but is weaker than the
+  existing unwired Ashline V2 foundation; it is preserved as a treatment/reference donor in the
+  external complete scratch archive rather than locking the runtime into a local maximum.
+- The mixed `SpaceFace-graphics-overhaul` donor was not whole-merged. Its tip `cab2d122` is retained by
+  tag `archive/graphics-overhaul-donor-20260721`; all 241 existing dirty/untracked files are preserved
+  in the SHA-256-bound external archive recorded in `09_DONOR_VALUE_LEDGER.md`. The physical worktree
+  and obsolete branch are removed.
+- No active path lease remains from this closeout. A separate user-owned Grok task may leave
+  `docs/worldbuilding/stylistic-influences/**` and `scripts/_tmp_source_*` untracked; those paths are
+  protected foreign WIP and are excluded from the checkpoint commits. Graphics are at a playable
+  checkpoint, not final completion: Ashline V2 runtime admission, broader asset-specific surfacing,
+  combat/destruction acceptance, localized deep-space structure, and final clean-tree performance
+  evidence remain.
 
 ## 2026-07-21 Gate-0 closure (PQ-011 adversarial review + flight-gate repair)
 
@@ -249,9 +270,8 @@ continuity, combat-family GPU evidence, and broader fleet/station/rock/wreck PBR
 architecture in
 [`../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md`](../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md).
 
-**Current isolated lanes:** only `SpaceFace-graphics-overhaul` remains registered beside `master`; it
-retains 244 dirty paths: 180 assets, 39 code/tool/test files, and 25 process/contamination files. It is
-not clean, fully classified, or releasable. The performance worktree was removed after its clean
+**Current isolated lanes:** none. `master` is the only registered worktree. The former
+`SpaceFace-graphics-overhaul` donor is archived/tagged and physically removed. The performance worktree was removed after its clean
 tip and rejection evidence were recorded. Measured primitive pools, composition-merged pools,
 corrected exact-key pools, and heterogeneous `THREE.BatchedMesh` pages all lost on target Intel hardware; the
 final candidate measured 250.1/616.8/433.3 ms p95 for 10/25/50 ships. None of

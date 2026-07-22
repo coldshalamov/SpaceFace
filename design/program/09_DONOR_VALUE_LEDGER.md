@@ -1,6 +1,6 @@
 # Donor Value and Cleanup Ledger
 
-**Audit date:** 2026-07-20
+**Audit date:** 2026-07-21 closeout
 
 **Authority boundary:** `master` is the product authority. This ledger records selective donor value
 and cleanup decisions; it does not make any donor branch current, accepted, or safe to merge whole.
@@ -23,10 +23,11 @@ Dirty-path counts and ahead/behind counts are audit snapshots and must be refres
 
 | Worktree / branch | Audit snapshot | Product ruling | Physical cleanup condition |
 |---|---|---|---|
-| `SpaceFace` / `master` | Product merge `b235f062`; evidence hardening through `280cafb0`; propulsion repair `59f91d19`; Atlas/journey through `4f7bc87c`; geology truth `e8838e2c`; Electron RCS evidence harness `3d2dc765`; hybrid-research disposition `1074c078`. | Product authority. Graphics and reviewed performance synthesis are promoted. | Never remove. |
+| `SpaceFace` / `master` | Product authority at `54548e09`; HUD `ea698805`; Helios civilian family `54548e09`; PQ-001..PQ-016 integrated. | Sole registered worktree and product authority. | Never remove. |
 | `SpaceFace-graphics-closeout` / `codex/graphics-closeout-20260719` | Physical worktree removed; clean tip `8e860439` is reachable from `master`. | No unique product work. | Complete. |
 | Rejected performance experiment / `archive/performance-pooling-experiment-20260720` | Base tip `99cad5b5` is integrated; evidence hardening is replayed. Physical worktree removed at clean tip `9d626fd8`; rejected implementation preserved by annotated tag and obsolete local branch retired. | Reject post-synthesis range `04805924..9d626fd8`. The measured primitive, merged, corrected exact-key, and BatchedMesh implementations all lost to current ship-local batching on target Intel hardware; the final run measured 250.1/616.8/433.3 ms p95 for 10/25/50 ships and had correctness/PBR blockers. This rejects those implementations, not every possible hybrid design. The bounded hybrid hypothesis is retained in `06_RETAINED_FUTURE_BACKLOG.md` at `1074c078`. | Complete. Never replay the rejected range; retain the tag/evidence for archaeology only. |
-| `SpaceFace-graphics-overhaul` / `codex/graphics-overhaul` | Tip `cab2d122`; 24 branch-only commits; **223 dirty paths** (refreshed 2026-07-20 closeout; was 244). Dirty inventory: 180 assets, 15 `src`, 14 `scripts`, 10 `test`, 1 `tools`, 1 `docs`, 2 `active_sessions` process files. Only eight dirty asset files match current master. | Retain. Accepted runtime value was manually synthesized into master; no remaining branch commit is approved for whole replay. The dirty tree mixes valuable Blender/PBR source, rebuilt release output, unreviewed code/tests, and obvious process contamination, so it cannot be checkpointed wholesale. The Kimi station-UI candidates (`src/ui/station/adBoard.js`, `stationIdentity.js`, `test/station-ad-board.test.mjs`, the `bar.js` wreck rumor) remain missing from master but porting them is out of the 2026-07-20 closeout scope (would require owning focused checks + a normal station-route capture per §5 below). | Not releasable. Keep the physical worktree until the three asset groups receive per-family provenance/promote/reject receipts and every non-asset path is classified or deliberately removed. Never whole-merge. |
+| Former `SpaceFace-graphics-overhaul` / `codex/graphics-overhaul` | Tip `cab2d122`; 241 existing dirty/untracked files plus 3 tracked deletions were inventoried. Complete payload archive: `SpaceFace-archives/graphics-overhaul-donor-20260721/dirty-files-complete.tar.gz`, SHA-256 `D3FC1FD5455DDD3EC575DC063000DEDEF9B959B770A3A3990F22F37EDA28BAA6`; recovery tag `archive/graphics-overhaul-donor-20260721`. | No whole replay. Accepted runtime concepts were already synthesized; the reviewed Helios civilian family was promoted separately at `54548e09`; mixed code/process residue was rejected. | Complete. Physical worktree and obsolete branch removed; use tag/archive only for selective archaeology. |
+| Grok family-depth scratch | Complete scratch repository archived at `SpaceFace-archives/grok-family-depth-20260721/scratch-repository-complete.tar.gz`, SHA-256 `F71C283EA5779C2AE053902E2A5C25BF0DDC47ED5517C3A6835412CEB781FA31`. | Helios civilian accepted and promoted at `54548e09`. Ashline runtime promotion rejected because it polishes the older silhouette family while the stronger Ashline V2 source foundation exists; retain only as treatment reference. | Not a registered worktree. Archive is the recovery authority. |
 | `SpaceFace-oc-helios-golden` / `opencode/helios-golden-station` | Physical worktree removed after a 101-behind / 0-unique / 2.53 GB audit. | Full replacement rejected. The useful builder, precursor receipt, editable blend, three-LOD source, and release asset are on `master`. | Complete. |
 | `SpaceFace-depth-actualization` / `grok/depth-player-route-actualization` | Physical worktree removed. Branch `bf1dfce2` and annotated archive tag remain; 17 raw artifacts are hash-archived externally. | Selective product donor only; the remaining black-box candidate is recorded below. | Complete; never whole-merge the branch. |
 | Four orchestration satellites | Physical worktrees removed after individual dirt/process audits. | Superseded station shell, incorrect Helix faction edit, old natural-route harness, and defective recovery variant rejected. Branch refs remain. | Complete. |
@@ -143,11 +144,8 @@ semantics survived. Current `master` intentionally keeps ship-local static batch
 
 1. Run the strict three-profile/three-matrix combined acceptance contract on one exact clean current
    master revision. Do not replay the rejected authored-pooling range to pursue that evidence.
-2. Keep `SpaceFace-graphics-overhaul` until its uncommitted Blender/source asset inventory is fully
-   classified. It is the only intentionally long-lived graphics donor in this ledger. Its exact
-   remaining categories are release GLBs, Kestrel source/evidence, parts/source assets, unreviewed
-   render/tool/test changes, and unrelated session/user-guide/cache contamination. Do not turn that
-   mixed state into one preservation commit merely to make the worktree look clean.
+2. The mixed graphics donor is retired. Do not recreate or whole-merge it. Recover only a named,
+   independently reviewed slice from the recorded tag/archive, then adapt it to current `master`.
 
 Completed 2026-07-19: graphics-closeout, rejected Helios, four superseded orchestration satellites,
 the product-preserved Kimi donor, the tagged/hash-archived Depth donor, and the clean rejected

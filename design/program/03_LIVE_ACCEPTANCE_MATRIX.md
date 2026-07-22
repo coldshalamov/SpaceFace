@@ -21,6 +21,14 @@ typed projectile/mine/impulse/wreck identities, and Atlas/journey verification g
 M1/M6 implementation truth but exits neither milestone; remaining visual/performance acceptance is
 recorded in [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md).
 
+## 2026-07-21 graphics closeout rows (`ea698805`, `54548e09`)
+
+| Outcome | Terminal state | Current evidence | Remaining boundary |
+|---|---|---|---|
+| Ship-condition HUD defect | `INTEGRATED` | Fresh nominal/damaged active-flight captures; schematic/ring/crop/value layout verified; `check:ui-a11y` green | Broader M1-HUD density remains partial |
+| Helios civilian Lark/Cradle/Span family | `INTEGRATED` + route evidence | Family gate 0 warnings; SG-04 release 81 assets; asset status/reachability/live green; 360-frame visual stability green; five-run flight gate green; public Helios pocket browser + Electron captures accepted | Remaining fleets and deeper material polish remain |
+| Graphics donor retirement | `COMPLETE` disposition | Former mixed donor tip tagged; 241-file payload hash-archived; branch/worktree removed; sole worktree is `master` | Recover only named slices for archaeology |
+
 ## Sprint 2 — Corridor Contract Wave packet rows
 
 | Packet | Terminal state | Evidence at commit | Commit | Blocking lease |
