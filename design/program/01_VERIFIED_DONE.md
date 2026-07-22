@@ -30,6 +30,17 @@ are closed. Acceptance rows, named debts (strict-perf rows, `station-applied-lod
 encounter-director, dated check:combat), and receipts: `03_LIVE_ACCEPTANCE_MATRIX.md` "Program
 batch PQ-001..PQ-010".
 
+## Program batch PQ-011..PQ-016 CLOSED (2026-07-21, final master `ce97d573`)
+
+All six queue outcomes of the batch are CHECKED OFF with lead-rerun proof, receipts, and
+lead-viewed route evidence: PQ-011 (Gate-0 adversarial cycle), PQ-012 (field kernel + three
+consumers), PQ-013 (planetary sling/skim/harvest/reentry vertical — the batch's broad serialized
+build, spike-gated), PQ-014 (natural NPC jobs, kernel untouched), PQ-015 (shared interaction
+descriptors), PQ-016 (contextual industrial beam). Per-packet commits, honest perf truth
+(spatialHash 75.29 vs 55 batch-attributed; sim.p95 4.2 vs 4.0 new marginal; vsync floor
+standing), and the named follow-up list: `NOW.md` batch-closure section. Eleven of the first
+sixteen queue outcomes are now terminal.
+
 ## PQ-011 Gate-0 closure (2026-07-21, commits `958e15ab`..`3a812b90`)
 
 **PQ-011 (deployable Mass Seed anchor) is the eleventh queue outcome CHECKED OFF** — the first to

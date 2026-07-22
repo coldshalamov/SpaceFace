@@ -829,7 +829,7 @@
       "id": "PQ-013",
       "priority": 13,
       "title": "Planetary sling, skim, harvest, and reentry vertical",
-      "state": "planned",
+      "state": "integrated",
       "canonical": [
         "W01",
         "W02"
@@ -865,7 +865,11 @@
         "save",
         "planet-route"
       ],
-      "brief": "Bind one Atlas planet identity to physics, visuals, atmosphere, sling, skim harvest, enemy reentry, recovery, and persistence."
+      "brief": "Bind one Atlas planet identity to physics, visuals, atmosphere, sling, skim harvest, enemy reentry, recovery, and persistence.",
+      "integratedCommit": "9462634f,ce97d573",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-013-planet-REPORT.md",
+      "receipt": "design/program/roadmap/receipts/PQ-013-planet-REPORT.md",
+      "integrationNote": "2026-07-21 CHECKED OFF (Fable lane, spike-gated): zone_tethys_anvil Q18 identity transaction (Atlas record + annular field-kernel influence + runtime in one registration; atlas-integrity PASS); sling 68-82deg measured with field-aware predictor; Digit8 skim harvest through cargo.addCargo; REAL archetype-AI pirate reentry through routeDamage(plasma, planet_reentry) with ordinary wreck; BURN NOW recovery, no teleport; save/Continue mid-vertical; no v13 bump; golden hashEqual, 47a triple-isolated. planet 11/11 + all six packet suites green on the final combined tree ce97d573 (incl. the user's out-of-band bdb51e74 lane-collider fix). 15-frame gated route capture lead-viewed + Electron smoke. Honest: skim/reentry p95 33ms on the loaded iGPU rig (named follow-up); deferred flourishes named in the receipt; spatialHash perf row attribution recorded in NOW.md."
     },
     {
       "id": "PQ-014",

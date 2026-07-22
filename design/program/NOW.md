@@ -142,6 +142,48 @@ INTEGRATED (checked off) at `8331c1ba,27bba37d,2d616dfa,3a812b90`.
   rows are the one shared file — additive-only, lead resolves at integration. Browser/GPU mutex:
   PQ-012 holds priority; PQ-015 waits on the browser-free flag (protocol in the briefs).
 
+## 2026-07-21 BATCH CLOSURE — PQ-011..PQ-016 ALL CHECKED OFF
+
+Final master: `ce97d573` (merge tip). The six-packet batch is complete; every packet integrated
+with lead-rerun proof, receipts in `roadmap/receipts/`, and evidence in `.devshots/pq01*-*/`.
+
+| Packet | Commits | Closed as |
+|---|---|---|
+| PQ-011 Mass Seed | `8331c1ba`+`27bba37d`+`2d616dfa`+`3a812b90` (+`958e15ab` bible, `f85d54c8` ledger) | Gate-0 full adversarial cycle; ROUTE_ACCEPTED |
+| PQ-015 descriptors | `ffc873a5`+`556b910f` | integrated; logic+DOM route proof |
+| PQ-014 NPC jobs | `1bc07b5e`+`ea9b39c4` | integrated; natural-occurrence route evidence |
+| PQ-012 fields | `8e8faf33`+`755fc654`+`a59c6532` | integrated; 3 Gemini visual rounds + mechanical white-out gate |
+| PQ-016 beam | `98a0326e`+`aa5c86ef` | integrated; Gemini lane + lead credits-sole-writer repair |
+| PQ-013 planet | `9462634f`+`ce97d573` | integrated; Fable lane, spike-gated, full vertical route |
+
+Out-of-band during the batch: the user's `bdb51e74` fix(physics) closed the stranded lane-traffic
+collider defect Gate-0 discovered (filed as a task chip, executed by the user). Foreign
+uncommitted HUD work (ship-condition panel redesign: `src/ui/hud.js`, `src/ui/uiRoot.js`) is LIVE
+on the primary tree — preserved untouched, excluded from every batch commit.
+
+**Perf truth at closure (crowded-flight contract, lead-measured at `ce97d573`):**
+`spatialHash.queriesPerSecond.max` **75.29 vs 55** — moved 62.9→~75 ACROSS THE BATCH (PQ-013
+exonerated by clean-base run; likeliest driver is PQ-014 traffic-job queries; attribution
+follow-up owed). `phase.sim.p95` **4.2 vs 4.0** — new marginal row, the four new systems'
+aggregate sim cost in crowded flight. `raf.frame.p95.target` 16.8 vs 16.7 — the standing
+vsync-floor ruling debt. `worktree.cleanAndStable` false — the foreign HUD dirt (transaction
+artifact). Skim/reentry scenes: median 60fps locked, p95 33ms on the loaded iGPU rig (named
+PQ-013 follow-up). None of these was hidden or waived; no golden was rewritten anywhere in the
+batch (the 47a hash shift at PQ-014 is the hashed save-version integer, bisected + recorded; the
+stale expected envelope remains the standing re-pin decision).
+
+**Named batch follow-ups (first items of the next hygiene pass):** spatialHash attribution +
+budget repair; sim.p95 marginal; PQ-011 P2s (offscreen lock cue, HUD overlaps, over-damped swing
+→ massline tuning); PQ-015 cycleComponent keyboard binding (input.js shared-change);
+combined-visual-session riders (PQ-012 repulsor-dome stills, PQ-016 contact-point framing,
+PQ-011 natural-hostile pressure); check:mining:2 stale 520-vs-900 expectation (task chip filed);
+encounter-director soak red (pre-existing, unchanged all batch); gameplay-core canonical-packet
+red (pre-existing, attributed).
+
+**Next canonical queue item: PQ-017 (persistent multi-component World Site kernel)** — its
+dependencies PQ-015 + PQ-016 are now both integrated; it unblocks the preserved PQ-018 Wreck
+Cathedral and PQ-021 Ship's Ledger.
+
 **Wave-1/2 integration record (2026-07-21, this controller session):**
 
 - **PQ-015 INTEGRATED** at `ffc873a5`+`556b910f` (queue state `integrated`; honest partials in the

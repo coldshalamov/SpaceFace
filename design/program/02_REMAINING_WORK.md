@@ -43,9 +43,11 @@ Program. Detailed behavior remains in the linked source plans; this file owns st
   owned by the massline tuning lane, the natural-hostile-pressure evidence gap, and the
   separately-filed stranded-freighter static-collider latent defect) live in the receipt's
   `gate0_closure` block.
-- **PQ-012 and PQ-015 are DISPATCHED as the parallel Wave-1 lanes** (worktrees `sf-w1-fields` /
-  `sf-w1-descriptors`; write sets verified disjoint via lead-spot-checked read-only surveys;
-  browser mutex serialized by flag protocol; leases in `NOW.md`).
+- **THE BATCH IS CLOSED: PQ-012, PQ-013, PQ-014, PQ-015, PQ-016 are ALL CHECKED OFF** at final
+  master `ce97d573` (see the NOW.md batch-closure table for commits, evidence, honest perf truth,
+  and the named follow-up list). **The next canonical queue item is PQ-017** (World Site kernel;
+  PQ-015+PQ-016 dependencies now satisfied; unblocks PQ-018 Wreck Cathedral + PQ-021 Ship's
+  Ledger).
 - **Full PQ-014 follows the PQ-015 registry release.** Reuse the existing deterministic job kernel;
   do not replace it. Remaining work is live materialization, virtualization, AI movement, save,
   natural-occurrence census, held-out seeds, and public-route proof.
