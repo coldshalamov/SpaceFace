@@ -2,11 +2,11 @@
   "gateOk": true,
   "gateErrors": [],
   "remaster": "GFX-LARK-REMASTER-001",
-  "totalTriangles": 15286,
-  "hullTriangles": 8914,
+  "totalTriangles": 15288,
+  "hullTriangles": 9310,
   "lodTriangles": {
     "lod0": 8572,
-    "lod1": 4586,
+    "lod1": 4588,
     "lod2": 2116
   },
   "drawEstimates": {
@@ -65,7 +65,7 @@
     "minRatio": 0.9200000190734874,
     "pass": true
   },
-  "sourceSha256": "CE07E9D06A0FAA0D7DE4D6FD012D7839CDE76D6C72F30A4ADED96831799871AE",
+  "sourceSha256": "5D6CAB01917B6CFBF9CA83C2F16F2227D722EDD4D0EB18B5E1AEE39908CE47CA",
   "outGlb": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-8066f05c8cef\\worktree-gfx-remaster\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_lark.glb",
   "outBlend": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-8066f05c8cef\\worktree-gfx-remaster\\assets\\ships\\m4_helios_civilian\\blender\\helios_lark_production.blend",
   "bakePaths": {

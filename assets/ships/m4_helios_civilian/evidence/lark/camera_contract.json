@@ -382,9 +382,9 @@
       "marginPct": -3.58,
       "projectedWidthPct": 91.47,
       "projectedHeightPct": 72.81,
-      "projectedWidthPx": 121,
+      "projectedWidthPx": 120,
       "projectedHeightPx": 64,
-      "projectedLongAxisPx": 121.0,
+      "projectedLongAxisPx": 120.0,
       "targetLongAxisPx": 120.0,
       "scalePxValid": true,
       "cameraLocation": [
@@ -393,11 +393,11 @@
         9.690619468688965
       ],
       "cameraDistance": 22.0171,
-      "measuredWidthPx": 121,
+      "measuredWidthPx": 120,
       "measuredHeightPx": 64,
-      "measuredLongAxisPx": 121,
+      "measuredLongAxisPx": 120,
       "measuredBoundsPx": [
-        35,
+        36,
         47,
         155,
         110

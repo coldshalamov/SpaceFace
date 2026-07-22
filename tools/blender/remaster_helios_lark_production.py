@@ -256,7 +256,10 @@ def mark_sharp_by_angle(obj: bpy.types.Object, angle_deg: float = 35.0) -> None:
 
 
 def unwrap_deliberate(obj: bpy.types.Object, strategy: str = "smart_reviewed") -> None:
-    """Deliberate UV: seam from sharp edges, unwrap, pack with padding. Not Smart Project alone."""
+    """Deliberate UV: seam from sharp edges, unwrap, pack with padding. Not Smart Project alone.
+
+    Fuselage loft uses follow-active-quads / cylinder projection to avoid lathe ring striping.
+    """
     if obj.type != "MESH":
         return
     F.ensure_object_mode()
@@ -266,20 +269,50 @@ def unwrap_deliberate(obj: bpy.types.Object, strategy: str = "smart_reviewed") -
     F.deselect_all()
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
+    is_fuselage = "fuselage" in obj.name.lower() or "hull_fuselage" in obj.name.lower()
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
-    # Clear old seams then mark from sharp / angle
     bpy.ops.mesh.mark_seam(clear=True)
     bpy.ops.mesh.select_all(action="DESELECT")
-    bpy.ops.mesh.edges_select_sharp(sharpness=math.radians(40.0))
-    bpy.ops.mesh.mark_seam(clear=False)
-    bpy.ops.mesh.select_all(action="SELECT")
-    if strategy == "cylinder":
+    if is_fuselage or strategy == "cylinder":
+        # Lengthwise belly seam: select edges near min runtime-Z (Blender after L())
+        bm = bmesh.from_edit_mesh(mesh)
+        bm.edges.ensure_lookup_table()
+        # Pick a longitudinal seam: edges with both verts near lowest Y in Blender (port/stbd depends on L)
+        # Runtime Z starboard → F.L maps z→y blender roughly; use min world Y as belly candidate
+        world = obj.matrix_world
+        ys = [(world @ v.co).y for v in bm.verts]
+        y_min = min(ys) if ys else 0.0
+        thr = y_min + 0.08
+        for e in bm.edges:
+            a = world @ e.verts[0].co
+            b = world @ e.verts[1].co
+            # belly strip + end caps for unwrap
+            if a.y <= thr and b.y <= thr:
+                e.select = True
+                e.seam = True
+        bmesh.update_edit_mesh(mesh)
+        bpy.ops.mesh.mark_seam(clear=False)
+        bpy.ops.mesh.select_all(action="SELECT")
         try:
-            bpy.ops.uv.cylinder_project(direction="VIEW_ON_EQUATOR", correct_aspect=True)
+            # Align view-independent: project from axis
+            bpy.ops.uv.cylinder_project(
+                direction="ALIGN_TO_OBJECT",
+                align="POLAR_ZX",
+                radius=1.0,
+                correct_aspect=True,
+                clip_to_bounds=False,
+                scale_to_bounds=True,
+            )
         except Exception:
-            bpy.ops.uv.unwrap(method="ANGLE_BASED", margin=0.02)
+            try:
+                bpy.ops.uv.unwrap(method="ANGLE_BASED", margin=0.02)
+            except Exception:
+                bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.02)
     else:
+        bpy.ops.mesh.edges_select_sharp(sharpness=math.radians(40.0))
+        bpy.ops.mesh.mark_seam(clear=False)
+        bpy.ops.mesh.select_all(action="SELECT")
         try:
             bpy.ops.uv.unwrap(method="ANGLE_BASED", margin=0.018)
         except Exception:
@@ -534,16 +567,21 @@ def build_lark_parts_production(
         bevel_weighted(canard, 0.03, 3, 28.0)
         mark_sharp_by_angle(canard, 30.0)
         parts.append(canard)
-        # RCS thruster block seated on canard mid-span (socket still at family RCS coords)
+        # RCS thruster block intersecting canard volume (rooted, not floating)
         rcs = F.make_box(
-            f"RCS_{side}", (0.55, 0.22, 0.48),
-            (1.1, 0.0, zsign * 2.55), mech, coll, detail=1,
+            f"RCS_{side}", (0.7, 0.26, 0.55),
+            (0.9, 0.0, zsign * 2.35), mech, coll, detail=1,
         )
         bevel_weighted(rcs, 0.012, 2, 40.0)
-        parts.append(rcs)
+        # Union into canard so no air gap
+        try:
+            boolean_union(canard, [rcs])
+        except Exception as exc:
+            F.log(f"WARN rcs union: {exc}")
+            parts.append(rcs)
         rcs_nozzle = F.make_cylinder(
-            f"RCS_Nozzle_{side}", 0.08, 0.2,
-            (1.1, 0.0, zsign * 2.85), mech, coll, vertices=12, detail=1,
+            f"RCS_Nozzle_{side}", 0.07, 0.18,
+            (0.9, 0.0, zsign * 2.7), mech, coll, vertices=12, detail=1,
         )
         parts.append(rcs_nozzle)
 

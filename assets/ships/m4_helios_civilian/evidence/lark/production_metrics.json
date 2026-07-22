@@ -13,12 +13,12 @@
   "sourceGlb": "assets/ships/m4_helios_civilian/source/wholeships/helios_lark.glb",
   "releaseCandidateGlb": "assets/ships/m4_helios_civilian/release_candidates/wholeships/helios_lark.glb",
   "blend": "assets/ships/m4_helios_civilian/blender/helios_lark_production.blend",
-  "sha256_source": "CE07E9D06A0FAA0D7DE4D6FD012D7839CDE76D6C72F30A4ADED96831799871AE",
+  "sha256_source": "5D6CAB01917B6CFBF9CA83C2F16F2227D722EDD4D0EB18B5E1AEE39908CE47CA",
   "report": {
     "file": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-8066f05c8cef\\worktree-gfx-remaster\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_lark.glb",
-    "bytes": 3175748,
-    "totalTriangles": 15286,
-    "hullTriangles": 8914,
+    "bytes": 3177636,
+    "totalTriangles": 15288,
+    "hullTriangles": 9310,
     "lodBreakdown": {
       "lod0": {
         "triangles": 8572,
@@ -47,11 +47,11 @@
           },
           {
             "name": "LOD0_Merged_Material_Hull",
-            "tris": 4872
+            "tris": 5088
           },
           {
             "name": "LOD0_Merged_Material_Mechanical",
-            "tris": 2504
+            "tris": 2288
           },
           {
             "name": "LOD0_Merged_Material_Warm",
@@ -60,7 +60,7 @@
         ]
       },
       "lod1": {
-        "triangles": 4586,
+        "triangles": 4588,
         "primitives": 8,
         "drawEstimate": 8,
         "nodes": [
@@ -86,11 +86,11 @@
           },
           {
             "name": "LOD1_Merged_Material_Hull",
-            "tris": 2678
+            "tris": 2798
           },
           {
             "name": "LOD1_Merged_Material_Mechanical",
-            "tris": 1314
+            "tris": 1196
           },
           {
             "name": "LOD1_Merged_Material_Warm",
@@ -125,11 +125,11 @@
           },
           {
             "name": "LOD2_Merged_Material_Hull",
-            "tris": 1364
+            "tris": 1424
           },
           {
             "name": "LOD2_Merged_Material_Mechanical",
-            "tris": 550
+            "tris": 490
           }
         ]
       }
@@ -174,8 +174,8 @@
       "packet": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001",
       "family": "helios_civilian",
       "role": "civilian_courier_scout",
-      "triangleCount": 15286,
-      "hullTriangleCount": 8914,
+      "triangleCount": 15288,
+      "hullTriangleCount": 9310,
       "deliverableRole": "candidate_multi_lod",
       "lods": [
         "lod0",
@@ -217,14 +217,14 @@
         "meshes": [
           {
             "name": "LOD0_Merged_Material_Hull",
-            "tris": 4872,
+            "tris": 5088,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD0_Merged_Material_Mechanical",
-            "tris": 2504,
+            "tris": 2288,
             "materials": [
               "Material_Mechanical"
             ]
@@ -279,18 +279,18 @@
         "lod": "lod1",
         "decimate_ratio": 0.55,
         "mesh_count": 8,
-        "triangles": 4586,
+        "triangles": 4588,
         "meshes": [
           {
             "name": "LOD1_Merged_Material_Hull",
-            "tris": 2678,
+            "tris": 2798,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD1_Merged_Material_Mechanical",
-            "tris": 1314,
+            "tris": 1196,
             "materials": [
               "Material_Mechanical"
             ]
@@ -349,14 +349,14 @@
         "meshes": [
           {
             "name": "LOD2_Merged_Material_Hull",
-            "tris": 1364,
+            "tris": 1424,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD2_Merged_Material_Mechanical",
-            "tris": 550,
+            "tris": 490,
             "materials": [
               "Material_Mechanical"
             ]
@@ -423,7 +423,7 @@
         6.624000072479248
       ]
     },
-    "sha256": "CE07E9D06A0FAA0D7DE4D6FD012D7839CDE76D6C72F30A4ADED96831799871AE",
+    "sha256": "5D6CAB01917B6CFBF9CA83C2F16F2227D722EDD4D0EB18B5E1AEE39908CE47CA",
     "collisionCoverage": {
       "axisRatios": [
         0.9200000190734874,
@@ -499,5 +499,5 @@
     "minRatio": 0.9200000190734874,
     "pass": true
   },
-  "builtAt": "2026-07-22T04:50:07Z"
+  "builtAt": "2026-07-22T05:03:57Z"
 }
