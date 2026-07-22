@@ -2,6 +2,12 @@
   "schema": "spaceface.m4HeliosCivilianFinalize.v1",
   "packet": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001",
   "family": "helios_civilian",
+  "isolation": {
+    "defaultPlayWired": false,
+    "partsManifestTouched": false,
+    "releasePartsTouched": false,
+    "k0AshlineUntouched": true
+  },
   "finalized": [
     {
       "id": "helios_lark",
@@ -9,17 +15,20 @@
       "assetId": "SF_WHOLESHIP_HELIOS_LARK",
       "source": "assets/ships/m4_helios_civilian/source/wholeships/helios_lark.glb",
       "candidate": "assets/ships/m4_helios_civilian/release_candidates/wholeships/helios_lark.glb",
-      "sourceBytes": 25286680,
-      "candidateBytes": 14140632,
-      "sourceSha256": "9090E7C21980D0D87D1DA422BDB940A7731CEB3B39F4648ADC0968DF931B708F",
-      "candidateSha256": "EA6B131C7E822FF727A27B15C8D707C9E8A0177198A7A9AAE52EDD050B2426DC",
+      "sourceBytes": 17445932,
+      "candidateBytes": 7777844,
+      "sourceSha256": "D1598E8745C1CE18F90EBBA69AB8FC8073A1DDAE05E84B7F4F143F8984048EBF",
+      "candidateSha256": "E6811B49E7284B11CE67A932C27B409EBC0BD3728458763F13159AECE0560FB3",
       "sourceTextureCount": 20,
       "releaseTextureCount": 20,
       "releaseImageCount": 15,
       "ktx2ImageCount": 15,
-      "meshoptBufferViewCount": 101,
+      "meshoptBufferViewCount": 93,
       "extensionsUsed": [
         "EXT_meshopt_compression",
+        "KHR_materials_emissive_strength",
+        "KHR_materials_ior",
+        "KHR_materials_transmission",
         "KHR_mesh_quantization",
         "KHR_texture_basisu"
       ],
@@ -93,12 +102,5 @@
       "meshopt": "EXT_meshopt_compression",
       "ktx2": "KHR_texture_basisu/KTX2"
     }
-  ],
-  "promotion": {
-    "canonicalSource": true,
-    "releasePublished": true,
-    "runtimeWired": true,
-    "releaseBuildPending": false,
-    "runtimeWiringPending": false
-  }
+  ]
 }
