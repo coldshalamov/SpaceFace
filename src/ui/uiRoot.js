@@ -1605,54 +1605,98 @@ function injectHudCss() {
     background:linear-gradient(90deg, var(--hud-line-strong), rgba(151,183,205,.06));
   }
   .sf-condition-head {
-    grid-column:1 / -1; min-height:19px; display:flex; align-items:center; justify-content:space-between;
+    grid-column:1 / -1; min-height:20px; display:flex; align-items:center; justify-content:space-between;
     font-family:var(--hud-display); font-size:10px; font-weight:700; letter-spacing:.14em;
-    color:var(--hud-copy);
+    color:var(--hud-copy); border-bottom:1px solid rgba(151,183,205,.12); padding-bottom:5px; margin-bottom:2px;
+  }
+  .sf-condition-title-group {
+    display:flex; align-items:center; gap:8px;
   }
   .sf-condition-state {
-    font-family:var(--hud-data); font-size:8px; font-weight:500; letter-spacing:.1em; color:var(--hud-cyan);
+    font-family:var(--hud-data); font-size:8px; font-weight:600; letter-spacing:.1em; color:var(--hud-cyan);
+    padding:1px 5px; background:rgba(0,230,255,.08); border-radius:2px; border:1px solid rgba(0,230,255,.2);
   }
-  .sf-condition-critical .sf-condition-state { color:var(--hud-danger); }
-  .sf-condition-shield-low .sf-condition-state { color:var(--hud-amber); }
+  .sf-condition-critical .sf-condition-state {
+    color:var(--hud-danger); background:rgba(238,108,117,.12); border-color:rgba(238,108,117,.3);
+  }
+  .sf-condition-shield-low .sf-condition-state {
+    color:var(--hud-amber); background:rgba(255,195,92,.12); border-color:rgba(255,195,92,.3);
+  }
+  .sf-condition-metrics {
+    display:flex; align-items:center; gap:9px; font-family:var(--hud-data); font-size:9px;
+  }
+  .sf-cond-stat {
+    color:var(--hud-muted); letter-spacing:.05em;
+  }
+  .sf-cond-stat strong {
+    color:var(--hud-paper); font-weight:700; margin-left:3px;
+  }
+  .sf-condition-critical .sf-cond-hull-val { color:var(--hud-danger); }
+  .sf-condition-shield-low .sf-cond-shd-val { color:var(--hud-amber); }
+
   .sf-schematic {
     grid-column:1; grid-row:2 / span 4; width:112px; height:112px; align-self:center; justify-self:center;
-    display:grid; place-items:center; isolation:isolate;
+    display:grid; place-items:center; isolation:isolate; position:relative;
   }
   .sf-schematic .sf-sch-ring { position:absolute; inset:3px; width:106px; height:106px; overflow:visible; z-index:1; }
-  .sf-schematic .sf-sch-track { fill:rgba(7,12,20,.22); stroke:rgba(137,170,192,.18); stroke-width:1.2; }
+  .sf-schematic .sf-sch-track { fill:rgba(7,12,20,.32); stroke:rgba(137,170,192,.2); stroke-width:1.6; }
   .sf-schematic .sf-sch-shield {
-    fill:none; stroke:var(--hud-cyan); stroke-width:2; stroke-linecap:butt; opacity:.9;
-    filter:drop-shadow(0 0 4px rgba(131,206,216,.35)); transition:stroke-dashoffset .15s linear;
+    fill:none; stroke:var(--hud-cyan); stroke-width:3; stroke-linecap:round; opacity:.92;
+    filter:drop-shadow(0 0 6px rgba(0,230,255,.55)); transition:stroke-dashoffset .15s linear, stroke .2s ease;
   }
-  .sf-schematic .sf-sch-ship {
-    width:80px; height:96px; object-fit:contain; z-index:2; opacity:1;
-    filter:drop-shadow(0 5px 5px rgba(0,0,0,.65)) saturate(.86) brightness(1.2) contrast(1.05);
-    transition:filter .22s ease, opacity .22s ease;
+  .sf-schematic.sf-sch-shield-low .sf-sch-shield {
+    stroke:var(--hud-amber); filter:drop-shadow(0 0 6px rgba(255,195,92,.65));
   }
-  .sf-schematic.sf-sch-critical .sf-sch-ship {
-    opacity:.76; filter:drop-shadow(0 0 7px rgba(238,108,117,.58)) saturate(.6) brightness(.96);
-    animation:sf-schpulse 1s ease-in-out infinite alternate;
+  .sf-sch-ship-wrap {
+    position:relative; width:80px; height:96px; z-index:2; display:flex; align-items:center; justify-content:center;
   }
-  .sf-schematic.sf-sch-hit .sf-sch-ship { animation:sf-schhit .34s ease-out; }
+  .sf-sch-ship {
+    width:80px; height:96px; object-fit:contain; pointer-events:none;
+  }
+  .sf-sch-ship--empty {
+    position:absolute; inset:0; z-index:1;
+    filter:grayscale(90%) brightness(0.22) contrast(1.1) opacity(0.5);
+    transition:filter .22s ease;
+  }
+  .sf-sch-ship-fill-crop {
+    position:absolute; left:0; right:0; bottom:0; top:auto;
+    height:var(--hull-pct, 100%);
+    overflow:hidden; z-index:2;
+    transition:height .15s ease-out;
+  }
+  .sf-sch-ship--fill {
+    position:absolute; left:0; bottom:0; width:80px; height:96px; max-width:none;
+    filter:drop-shadow(0 0 6px rgba(0, 230, 255, 0.45)) saturate(1.25) brightness(1.2);
+    transition:filter .22s ease;
+  }
+  .sf-sch-fill-line {
+    position:absolute; left:6%; right:6%; bottom:var(--hull-pct, 100%);
+    height:2px; background:var(--hud-cyan);
+    box-shadow:0 0 8px var(--hud-cyan), 0 0 2px #fff;
+    transform:translateY(50%); z-index:3;
+    transition:bottom .15s ease-out, background-color .22s ease, box-shadow .22s ease;
+    pointer-events:none;
+  }
+  .sf-schematic.sf-sch-critical .sf-sch-ship--fill {
+    filter:drop-shadow(0 0 10px rgba(238,108,117,.8)) saturate(1.6) brightness(1.1);
+    animation:sf-schpulse 0.8s ease-in-out infinite alternate;
+  }
+  .sf-schematic.sf-sch-critical .sf-sch-fill-line {
+    background:var(--hud-danger);
+    box-shadow:0 0 10px var(--hud-danger), 0 0 3px #fff;
+  }
+  .sf-schematic.sf-sch-warning .sf-sch-ship--fill {
+    filter:drop-shadow(0 0 8px rgba(255,195,92,.7)) saturate(1.4) brightness(1.15);
+  }
+  .sf-schematic.sf-sch-warning .sf-sch-fill-line {
+    background:var(--hud-amber);
+    box-shadow:0 0 8px var(--hud-amber), 0 0 2px #fff;
+  }
+  .sf-schematic.sf-sch-hit .sf-sch-ship-wrap { animation:sf-schhit .34s ease-out; }
   @keyframes sf-schhit {
     0% { filter:drop-shadow(0 0 11px rgba(255,255,255,.9)) brightness(1.65); }
     100% { filter:drop-shadow(0 5px 5px rgba(0,0,0,.65)) saturate(.86) brightness(1.2) contrast(1.05); }
   }
-  .sf-sch-hull {
-    left:7px; top:auto; bottom:5px; transform:none; z-index:3;
-    display:flex; flex-direction:column; align-items:flex-start; gap:0;
-    color:var(--hud-paper); text-shadow:0 1px 3px #000;
-  }
-  .sf-sch-hull strong { font-family:var(--hud-display); font-size:20px; line-height:1; font-weight:700; font-variant-numeric:tabular-nums; }
-  .sf-sch-hull span, .sf-sch-shield-readout span {
-    font-family:var(--hud-display); font-size:7px; font-weight:700; letter-spacing:.12em; color:var(--hud-muted);
-  }
-  .sf-sch-shield-readout {
-    position:absolute; right:5px; top:6px; z-index:3; display:flex; flex-direction:column; align-items:flex-end;
-    color:var(--hud-cyan); text-shadow:0 1px 3px #000;
-  }
-  .sf-sch-shield-readout strong { font-family:var(--hud-display); font-size:14px; font-weight:700; line-height:1.1; font-variant-numeric:tabular-nums; }
-  .sf-schematic.sf-sch-critical .sf-sch-hull strong { color:var(--hud-danger); }
   .sf-barrow {
     grid-column:2; width:100%; display:grid; grid-template-columns:42px minmax(70px, 1fr) 34px;
     align-items:center; gap:8px; min-height:20px;
@@ -1814,9 +1858,9 @@ function injectHudCss() {
     .sf-bars { width:290px; grid-template-columns:94px minmax(0, 1fr); padding:9px 10px 10px; }
     .sf-schematic { width:88px; height:88px; }
     .sf-schematic .sf-sch-ring { inset:0; width:88px; height:88px; }
-    .sf-schematic .sf-sch-ship { width:55px; height:68px; }
-    .sf-sch-hull { left:2px; bottom:1px; }
-    .sf-sch-shield-readout { right:1px; top:2px; }
+    .sf-sch-ship-wrap { width:55px; height:68px; }
+    .sf-sch-ship { width:55px; height:68px; }
+    .sf-sch-ship--fill { width:55px; height:68px; }
     .sf-rightdock { right:10px; bottom:88px; width:210px; }
     .sf-overview, .sf-target { width:210px; }
     .sf-overview-row__name { max-width:70px; }
@@ -1830,7 +1874,9 @@ function injectHudCss() {
     .sf-mission-tracker { max-width:none; }
   }
   @media (prefers-reduced-motion:reduce) {
-    .sf-schematic.sf-sch-critical .sf-sch-ship, .sf-schematic.sf-sch-hit .sf-sch-ship { animation:none; }
+    .sf-schematic.sf-sch-critical .sf-sch-ship--fill,
+    .sf-schematic.sf-sch-hit .sf-sch-ship-wrap { animation:none; }
+    .sf-sch-ship-fill-crop, .sf-sch-fill-line, .sf-sch-shield { transition:none; }
   }
 
   /* ===== dock transition overlay ===== */

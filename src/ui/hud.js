@@ -793,7 +793,15 @@ export function createHud(ctx, alerts) {
 
   const conditionHead = document.createElement('div');
   conditionHead.className = 'sf-condition-head';
-  conditionHead.innerHTML = '<span>SHIP CONDITION</span><span class="sf-condition-state">NOMINAL</span>';
+  conditionHead.innerHTML =
+    '<div class="sf-condition-title-group">' +
+      '<span>SHIP CONDITION</span>' +
+      '<span class="sf-condition-state">NOMINAL</span>' +
+    '</div>' +
+    '<div class="sf-condition-metrics mono">' +
+      '<span class="sf-cond-stat">HULL <strong class="sf-cond-hull-val">0</strong></span>' +
+      '<span class="sf-cond-stat">SHD <strong class="sf-cond-shd-val">0</strong></span>' +
+    '</div>';
   bars.appendChild(conditionHead);
 
   const schematic = document.createElement('div');
@@ -803,13 +811,17 @@ export function createHud(ctx, alerts) {
       '<circle class="sf-sch-track" cx="50" cy="50" r="46"/>' +
       '<circle class="sf-sch-shield" cx="50" cy="50" r="46" transform="rotate(-90 50 50)"/>' +
     '</svg>' +
-    '<img class="sf-sch-ship" src="./assets/ui/hud/ship-condition-scout.png" alt="" draggable="false">' +
-    '<div class="sf-sch-hull"><strong>0</strong><span>HULL</span></div>' +
-    '<div class="sf-sch-shield-readout"><span>SHD</span><strong>0</strong></div>';
+    '<div class="sf-sch-ship-wrap">' +
+      '<img class="sf-sch-ship sf-sch-ship--empty" src="./assets/ui/hud/ship-condition-scout.png" alt="" draggable="false">' +
+      '<div class="sf-sch-ship-fill-crop">' +
+        '<img class="sf-sch-ship sf-sch-ship--fill" src="./assets/ui/hud/ship-condition-scout.png" alt="" draggable="false">' +
+      '</div>' +
+      '<div class="sf-sch-fill-line"></div>' +
+    '</div>';
   bars.appendChild(schematic);
   const schShield = schematic.querySelector('.sf-sch-shield');
-  const schHull = schematic.querySelector('.sf-sch-hull strong');
-  const schShieldValue = schematic.querySelector('.sf-sch-shield-readout strong');
+  const schHullVal = conditionHead.querySelector('.sf-cond-hull-val');
+  const schShdVal = conditionHead.querySelector('.sf-cond-shd-val');
   const schState = conditionHead.querySelector('.sf-condition-state');
 
   // Thin micro-bars. Hull + shield are on the schematic; energy/boost/weapon-heat/fuel live here.
@@ -3419,9 +3431,15 @@ export function createHud(ctx, alerts) {
       const wpnHeat = weaponHeatSummary(p.data && p.data.weapons);
       const heatFrac = wpnHeat.frac;
 
-      // Ship schematic (hull tint + centered numeric; shield ring via stroke-dashoffset).
+      // Ship schematic (dual-color flask fill level + shield ring via stroke-dashoffset).
+      // Use a resolved percentage token rather than CSS multiplication. The latter is not
+      // consistently accepted by the Chromium versions used by browser and Electron builds,
+      // which can leave the damage fill stuck at its fallback height.
+      schematic.style.setProperty('--hull-pct', `${(hullFrac * 100).toFixed(1)}%`);
       setStyle(schShield, 'strokeDashoffset', (SHIELD_RING_LEN * (1 - shieldFrac)).toFixed(1));
       setClass(schematic, 'sf-sch-critical', hullFrac < 0.25);
+      setClass(schematic, 'sf-sch-warning', hullFrac >= 0.25 && hullFrac < 0.55);
+      setClass(schematic, 'sf-sch-shield-low', shieldFrac < 0.25);
       setClass(bars, 'sf-condition-critical', hullFrac < 0.25);
       setClass(bars, 'sf-condition-shield-low', shieldFrac < 0.25 && hullFrac >= 0.25);
 
@@ -3462,8 +3480,8 @@ export function createHud(ctx, alerts) {
       syncSafetyAlerts(p, hullFrac, shieldFrac);
 
       if (slow) {
-        setText(schHull, Math.max(0, Math.round(p.hull)) + '');
-        setText(schShieldValue, Math.max(0, Math.round(p.shield)) + '');
+        if (schHullVal) setText(schHullVal, Math.max(0, Math.round(p.hull)) + '');
+        if (schShdVal) setText(schShdVal, Math.max(0, Math.round(p.shield)) + '');
         setText(schState,
           hullFrac < 0.25 ? 'CRITICAL' :
           shieldFrac < 0.25 ? 'SHIELD LOW' :
