@@ -310,9 +310,16 @@ Replace `N` with the user’s count. For a single packet, use the same rules wit
 | Path | Use for |
 |---|---|
 | `design/graphics-sprints/README.md` | Graphics program entry |
+| `design/graphics-sprints/ASSET_PRODUCTION_LEDGER.md` | PQ-022/PQ-023 asset-family census, audit gaps, subordinate VA/VP packets and graphics controller prompt |
+| `design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md` | Minimum visual scrutiny, valid camera/evidence rules, narrative art brief and defect-driven iteration |
 | `LONG_TERM_GRAPHICS_OVERHAUL.md`, `TOP50_WONDER_BUILD_PLAN.md` | Priority and long-term visual bar |
 | `assets/QUEUE.md`, `needed-assets.md`, manifests | Asset coverage and admission |
 | `design/foundry/*` | Fleet foundry contracts (source vs runtime) |
+
+For graphics, the queue still decides **when** PQ-022/PQ-023 run. The production ledger decides
+**which exact asset or presentation family is next** and tracks craft evidence separately from
+technical lifecycle. It does not create another global status surface. The canonical G0–G7 craft
+standard is proposed in draft PR #89 and should live under `docs/visual-assets/` after reconciliation.
 
 ### 6.6 History / do not implement by default
 
@@ -360,6 +367,9 @@ Rules:
 
 - Read-only review may be wide; writers must preflight path lists.  
 - Serialize browser/Electron evidence and Blender authoring.  
+- An activated graphics batch may use one Blender/source owner, one disjoint non-Blender producer,
+  and one read-only/independent reviewer. Release builds, manifests, runtime promotion and GPU
+  acceptance remain serial.
 - Rejected graphics donor: use its recovery tag/archive only for selective archaeology; never whole-merge it.
 - Input system edits require focused rebind/sim validation and coordination.  
 - Station shell / non-diegetic HUD: do not replace known-good framing casually.

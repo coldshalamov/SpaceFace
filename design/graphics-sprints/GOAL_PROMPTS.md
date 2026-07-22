@@ -11,6 +11,10 @@ threads separate; update the coordination paths if the live ownership plan chang
 
 **Director:** replace `<SPRINT_BATCH>` and `<ASSET_IDS>` before paste.
 
+For every Tier A/B asset or VFX prompt below, append the mandatory worker clause from
+`VISUAL_ITERATION_PROTOCOL.md` and require that file in the worker's read list. A cropped/tiny/stale
+screenshot is `EVIDENCE_INVALID`, and the protocol's minimum review cycles do not grant acceptance.
+
 ---
 
 ## Master campaign (Top-50 wonder)

@@ -370,13 +370,14 @@ indie” are failures. Target enables Steam ~$30 store stills and Freelancer-suc
 2. design/graphics-sprints/README.md
 3. design/graphics-sprints/TOP50_WONDER_BUILD_PLAN.md (THIS plan — build order + gates)
 4. design/graphics-sprints/QUALITY_RITUAL.md
-5. design/graphics-sprints/00_ORCHESTRATION.md + BLENDER_EXCLUSIVE_LOCK.md
-6. .grok/skills/spaceface-blender-pipeline/SKILL.md
-7. .grok/skills/spaceface-blender-pipeline/references/professional-techniques.md
-8. assets/AGENTS.md (ship stack, blocked wholeships, registries)
-9. tools/blender/spaceface_export.py contract (do not relax)
-10. FULL_GRAPHICS_REVAMP_GOAL.md (coverage and outcome bar)
-11. design/revamp/BP-08_VISUAL_ASSET_SPEC.md §0 for station/landmark identity when relevant
+5. design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md
+6. design/graphics-sprints/00_ORCHESTRATION.md + BLENDER_EXCLUSIVE_LOCK.md
+7. .grok/skills/spaceface-blender-pipeline/SKILL.md
+8. .grok/skills/spaceface-blender-pipeline/references/professional-techniques.md
+9. assets/AGENTS.md (ship stack, blocked wholeships, registries)
+10. tools/blender/spaceface_export.py contract (do not relax)
+11. FULL_GRAPHICS_REVAMP_GOAL.md (coverage and outcome bar)
+12. design/revamp/BP-08_VISUAL_ASSET_SPEC.md §0 for station/landmark identity when relevant
 
 ## Your assignment this session
 Slice: <SLICE_LETTER>   (A | B | C | D | E)
@@ -390,8 +391,8 @@ non-overlapping work; recover stale residue safely rather than returning a repor
 ## Outcome discipline
 - Build toward the whole visible goal for the current pass, then critique the result honestly.
 - Use representative full-context and detail views; cropped detail views cannot replace a fully framed view.
-- Make the largest coherent improvement justified by current evidence. Do not manufacture process loops or
-  self-scores as proof of quality.
+- Make the largest coherent improvement justified by current evidence. Complete the protocol's minimum
+  valid review cycles, continue while blockers remain, and never treat counts or self-scores as proof.
 - Select techniques for the asset's actual role, construction, and story rather than applying a universal
   surface recipe.
 - Claim completion only when the applicable §5 asset/pack gate and slice evidence are met. If a

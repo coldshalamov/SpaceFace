@@ -13,8 +13,9 @@
 2. [`README.md`](README.md) for this folder's authority map and quality doctrine.
 3. **`TOP50_WONDER_BUILD_PLAN.md`** for priority/order and slice outcomes.
 4. `FULL_GRAPHICS_REVAMP_GOAL.md` for full authored-asset coverage and outcome bar.
-5. `design/revamp/BP-08_VISUAL_ASSET_SPEC.md` for missing-asset and silhouette intent.
-6. Live exporter/runtime contracts and current checks for technical truth.
+5. `VISUAL_ITERATION_PROTOCOL.md` for evidence validity, minimum scrutiny and defect escalation.
+6. `design/revamp/BP-08_VISUAL_ASSET_SPEC.md` for missing-asset and silhouette intent.
+7. Live exporter/runtime contracts and current checks for technical truth.
 
 `design/spec2/00_MASTER_TASTE.md` is historical taste context, not a visual-token authority. Apply its
 standing non-diegetic HUD restriction where relevant, but judge current work from player-facing evidence.
@@ -69,6 +70,8 @@ After a graphics handoff or before runtime wiring, **one integrator agent** runs
 ## Quality bar (all threads)
 
 - Use `QUALITY_RITUAL.md` to capture useful views, concrete critique, and before/after evidence.
+- Follow `VISUAL_ITERATION_PROTOCOL.md` for Tier A/B and VFX work. Its cycle floors prevent one-pass
+  exits but never grant acceptance; invalid framing counts as no evidence.
 - Iterate until the asset or presentation change survives independent visual review at the real game camera;
   iteration counts and self-scores are not acceptance criteria.
 - Run the checks that cover the touched contract. Repeating an unchanged check does not create more proof.
@@ -94,6 +97,7 @@ All goal prompts for Cursor/Grok threads: **`GOAL_PROMPTS.md`**
 
 - `README.md` — authority map and quality doctrine
 - `QUALITY_RITUAL.md` — evidence views and critique template
+- `VISUAL_ITERATION_PROTOCOL.md` — camera validity, scrutiny floors, narrative dossier, defect escalation
 - `BLENDER_EXCLUSIVE_LOCK.md` — single Blender agent protocol
 - `HANDOFF_TEMPLATE.md` — cross-thread handoff block
 - `INTEGRATION_GATE.md` — integrator checklist

@@ -21,6 +21,16 @@ authorize quality cuts, arbitrary asset budgets, or process metrics as substitut
    written critique, live-route proof, contract checks, and independent visual judgment matter; iteration
    counts and self-scores do not prove quality.
 6. [`00_ORCHESTRATION.md`](00_ORCHESTRATION.md) routes concurrent lanes and single-writer integration.
+7. [`ASSET_PRODUCTION_LEDGER.md`](ASSET_PRODUCTION_LEDGER.md) subdivides PQ-022/PQ-023 into stable,
+   manifest-covering asset and presentation packets. It is a subordinate execution ledger, not a
+   global queue or completion authority.
+8. [`VISUAL_ITERATION_PROTOCOL.md`](VISUAL_ITERATION_PROTOCOL.md) defines minimum scrutiny floors,
+   valid full-subject/game-camera evidence, story-grounded art briefs, defect escalation and
+   independent review. Counts create inspection pressure; they never grant acceptance.
+
+The researched G0–G7 Visual Asset Production Standard is currently proposed in draft PR #89 rather
+than on `master`. Until it is reconciled and installed at `docs/visual-assets/`, the production ledger
+records its essential craft states without pretending the missing 29-file research archive is local.
 
 `GOAL_FULL_PROFESSIONAL_GRAPHICS_REVAMP.md` is historical correction/evidence from the first revamp. It
 documents why geometry-only claims were rejected, but it is not an active acceptance contract or current
@@ -38,7 +48,8 @@ captures.
 - Use references and techniques as a vocabulary, not a universal recipe. Choose the methods that serve the
   asset's role and avoid samey procedural sci-fi surfaces.
 - A useful loop is inspect → render → critique → make the largest justified improvement → render again.
-  Repeat until the visible result and technical evidence are convincing. No fixed loop count is required.
+  Repeat until the visible result and technical evidence are convincing. The iteration protocol's floors
+  prevent one-pass exits; no fixed count grants acceptance or permits stopping with visible blockers.
 - Performance work removes invisible work and improves algorithms. It must not lower visible quality,
   disable authored assets, or impose fixed triangle/texture ceilings. Measured exceptions and asset-specific
   constraints belong in the live manifest/export contract with rationale.
@@ -59,3 +70,5 @@ captures.
 | `HANDOFF_TEMPLATE.md` | Machine-readable handoff facts |
 | `INTEGRATION_GATE.md` | Export/build/runtime integration checks |
 | `GOAL_PROMPTS.md` | Copyable lane prompts; subordinate to this README |
+| `ASSET_PRODUCTION_LEDGER.md` | Complete manifest-family routing, G0–G7 audit fields, VA/VP packets and controller prompt |
+| `VISUAL_ITERATION_PROTOCOL.md` | Non-gameable iteration, camera/framing validity, narrative dossier and stage defect checklists |
