@@ -10,9 +10,9 @@ manifests that bridge them to runtime. Exact machine records outrank prose inven
 - Read `assets/ships/parts/parts_manifest.json`, the generated release manifest, and the relevant maps
   in `src/render/partsLibrary.js`.
 - Source assets are authoring inputs; default runtime loads release assets.
-- For substantive visual authoring or remaster work, read `docs/visual-assets/README.md`,
-  `00_VISUAL_ASSET_CONSTITUTION.md`, the relevant craft documents, `07_ACCEPTANCE_GATES.md`, and
-  `08_AGENT_EXECUTION_PROTOCOL.md`.
+- For substantive visual authoring or remaster work, read `docs/visual-assets/README.md` and
+  `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`; use its craft principles, G0–G7 gates,
+  and execution protocol as the canonical definition of done.
 
 ## Current routing principle
 
@@ -45,8 +45,8 @@ candidate state.
   player-camera evidence.
 - Geometry, texture density, material count, and LOD are screen-space/profile decisions—not global
   quality ceilings. A historical count is a diagnostic only when tied to an exact scene and profile.
-- Use the G0–G7 records in `docs/visual-assets/07_ACCEPTANCE_GATES.md`. Tier A/B assets require an
-  independent G7 review against the exact candidate hash.
+- Use the G0–G7 records in `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`. Tier A/B assets
+  require an independent G7 review against the exact candidate hash.
 - Run asset status/reachability/live-load/visual-stability checks and inspect the normal game route.
 - Never edit generated release metadata by hand, weaken a check to ship a candidate, or wire an
   unaccepted candidate merely to make a check pass.

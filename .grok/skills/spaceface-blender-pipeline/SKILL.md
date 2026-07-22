@@ -22,21 +22,17 @@ counts, deficiency counts, triangle counts, and self-scores have no acceptance w
 
 ## Canonical craft and acceptance authority
 
-Read `docs/visual-assets/README.md` first for substantive authored-asset work. It routes to:
+Read `docs/visual-assets/README.md` and
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` first for substantive authored-asset work.
+The standard contains the state machine, tiers/severity, form/construction/UV/bake/material/LOD/VFX
+outcomes, G0–G7 gates, defect-driven technique selection, evidence rules, and agent execution loop.
 
-- `00_VISUAL_ASSET_CONSTITUTION.md` — states, tiers, severity, non-negotiables;
-- `01_REFERENCE_AND_DESIGN.md` — brief, references, silhouette, industrial story;
-- `02_HARD_SURFACE_MODELING.md` — form, intersections, edge language, topology;
-- `03_UV_BAKING_AND_TEXTURES.md` — UV, density, cage, tangent and maps;
-- `04_MATERIAL_REALISM.md` — physical surface stacks and causal wear;
-- `05_LOD_OPTIMIZATION_AND_WEBGL_BUDGETS.md` — screen-space LOD and measured whole cost;
-- `06_VFX_LIGHTING_AND_PRESENTATION.md` — effects and diagnostic presentation;
-- `07_ACCEPTANCE_GATES.md` — G0–G7 proof and definition of done;
-- `08_AGENT_EXECUTION_PROTOCOL.md` — defect-driven loop and completion law;
-- `10_TECHNIQUE_CATALOG.md` — defect-to-method lookup, never a quota.
+Use `docs/visual-assets/SPACEFACE_MIGRATION.md` for the repository audit and migration sequence,
+`docs/visual-assets/AGENT_PROMPTS.md` for reusable task prompts, and
+`docs/visual-assets/TEMPLATES.md` for brief/profile/review/acceptance record shapes.
 
 The current design/program plan owns scope and order. Exact manifests/runtime maps own identity and
-reachability. The visual-asset suite owns craft and acceptance semantics.
+reachability. The visual-asset standard owns craft and acceptance semantics.
 
 ## Read only what the task needs
 
@@ -79,8 +75,9 @@ assets require independent G7 review against the exact candidate hash.
 3. **Find the earliest failed gate.** Repair role/form before surfacing; production geometry before
    final UV/bakes; bake integrity before mesh-aware materials; material before LOD/performance;
    integration before acceptance.
-4. **Choose methods deliberately.** Use `docs/visual-assets/10_TECHNIQUE_CATALOG.md` as a menu. Select
-   only methods that repair an observed defect or provide required runtime behavior. Simpler methods
+4. **Choose methods deliberately.** Use the defect-driven technique section in
+   `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`. Select only methods that repair an
+   observed defect or provide required runtime behavior. Simpler methods
    are correct when they produce the stronger result; advanced methods are correct when their value
    survives export and is visible in context.
 5. **Author, export, compare.** Work in editable Blender source, export through the sanctioned path,
@@ -130,7 +127,8 @@ Do not present these as final work:
 
 ## Acceptance evidence
 
-Use the tier-appropriate packet in `docs/visual-assets/07_ACCEPTANCE_GATES.md`, including:
+Use the tier-appropriate G0–G7 packet in
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`, including:
 
 - exact source/export/release identity and exporter/validator result;
 - representative fully framed form, bake, material, and useful detail views;

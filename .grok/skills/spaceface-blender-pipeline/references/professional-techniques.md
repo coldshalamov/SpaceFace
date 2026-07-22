@@ -1,15 +1,11 @@
 # Professional Blender Techniques — Compatibility Route
 
-This path is retained because older SpaceFace prompts and skills may link to it. The canonical,
-maintained technique catalog is now:
+This path is retained because older SpaceFace prompts and skills may link to it. The canonical, maintained defect-driven technique catalog, workflow, state machine, and G0–G7
+acceptance rules are now in:
 
-- `docs/visual-assets/10_TECHNIQUE_CATALOG.md`
+- `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`
 
-The governing workflow and acceptance rules are:
-
-- `docs/visual-assets/00_VISUAL_ASSET_CONSTITUTION.md`
-- `docs/visual-assets/07_ACCEPTANCE_GATES.md`
-- `docs/visual-assets/08_AGENT_EXECUTION_PROTOCOL.md`
+Repository-specific migration notes and reusable prompts live beside it in `docs/visual-assets/`.
 
 ## Important correction
 
