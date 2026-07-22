@@ -87,7 +87,7 @@ the sim harness (`scripts/sf-sim.mjs --inputs`), not via keyboard.
 ### WS-C — Mining 2.0 (GDD §5)
 | # | Item | Owner | Status | Accept when |
 |---|---|---|---|---|
-| C1 | Seams (deterministic, 1–4/asteroid, 100%/35% yield split), vent-bonus rhythm band, fracture-into-chunks, vacuum buff (420 wu/520 accel/beam-line direct-to-cargo) | CODEX (wave 2) | **DONE** (`check:mining:2` green) | `check:sim` deterministic after 47-A re-record; play: zero manual ball-chasing; mining a field feels pulse-timed |
+| C1 | Seams (deterministic, 1–4/asteroid, 100%/35% yield split), vent-bonus rhythm band, fracture-into-chunks, vacuum buff (420 wu range/100–280 wu/s relative approach/900 wu/s² convergence authority/beam-line direct-to-cargo) | CODEX (wave 2) | **DONE** (`check:mining:2` green) | `check:sim` deterministic after 47-A re-record; play: zero manual ball-chasing; mining a field feels pulse-timed |
 | C2 | Rich cores + charged drill timing ring (3–8× rare) | Claude tune after C1 | **DONE** (`check-price-memory` covers rich-core payout/fizzle path) | Timing window hit-rate ~60% for a mid player |
 | C3 | Tether-haul chunks >20 u to refinery; bulk payout; refinery fee sink | CODEX (after CODEX-1) | **DONE** (`check-price-memory` covers bulk_haul formula + mission completion) | Contract type ships; hauling a chunk with tether physics feels weighty |
 
