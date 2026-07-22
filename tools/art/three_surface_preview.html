@@ -47,6 +47,19 @@ loader.load(query.get('asset'), (gltf) => {
     if (object.isMesh && /collision/i.test(name)) object.visible = false;
   });
   scene.add(root);
+  root.traverse((object) => {
+    if (!object.isMesh || !object.material) return;
+    const mats = Array.isArray(object.material) ? object.material : [object.material];
+    for (const mat of mats) {
+      if (mat.transparent || mat.opacity < 0.99 || mat.transmission > 0) {
+        mat.depthWrite = false;
+        mat.side = THREE.DoubleSide;
+        mat.needsUpdate = true;
+      }
+      // ensure AO map modulates if present
+      if (mat.aoMap && mat.aoMapIntensity !== undefined) mat.aoMapIntensity = 1.25;
+    }
+  });
   root.updateMatrixWorld(true);
   const box = new THREE.Box3();
   let meshes = 0;
@@ -84,3 +97,4 @@ function effectivelyVisible(object) {
   return true;
 }
 </script>
+
