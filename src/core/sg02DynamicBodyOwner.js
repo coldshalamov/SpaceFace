@@ -51,7 +51,9 @@ const TETHER_NOSE_SPEED_RATE = 4.8;
 const TETHER_NOSE_RATE_GAIN = 2.5;
 const TETHER_NOSE_SPEED_FOR_AUTHORITY = 120;
 const SPRING_TUNES = Object.freeze({
-  tether_standard: Object.freeze({ K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 1.44, reelSafeStretchRatio: 1.32 }),
+  // Fallback for direct physics callers. Keep in lockstep with tether_standard's player-facing
+  // baseline; attachment policy can then scale this envelope for upgraded spools.
+  tether_standard: Object.freeze({ K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 2.88, reelSafeStretchRatio: 2.64 }),
   attachment_massline: Object.freeze({ K: 170, zeta: 0.90, captureS: 0.30 }),
 });
 

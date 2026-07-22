@@ -228,13 +228,14 @@ export const ATTACHMENT_DEFS = Object.freeze([
     // mass 16 with thrust ~=361 wu/s^2 and maxSpeed ~=218 wu/s; Flight V3 boost cap is 2x maxSpeed.
     // SG-02 tension is now the radial spring force. The spring block below owns feel; this break
     // block owns only overload/cut thresholds and telemetry compatibility.
-    // Tune holds for the forward tether spool ([0.38, 0]): a mid-asteroid tangent slingshot at
-    // boost HOLDS; hard overloads (short-reeled line + full boost, fixed station anchor at speed)
-    // SNAP. Verified by check-tether-gameplay + check:sg02:tether-break together — if you move
-    // the socket further forward, re-run both before touching these numbers.
-    // CORE-COMBAT-LOOP: break budget was doubled vs pre-pass (420k → 840k), then +25% again for
-    // play feel (→ 1.05M / 19k / 15k) so standard capture holds while severe overload still snaps.
-    breakTension: 1050000,
+    // The starter line must make ordinary small-ship combat forgiving: aiming, firing, and flying
+    // are already the player's workload. A break is reserved for extreme towing and later-game
+    // maneuvers, where stronger spool hardware is a meaningful capability upgrade.
+    //
+    // Keep the physical thresholds AND the geometric stretch envelope in this same 2x durability
+    // pass. Raising only these break numbers would not solve fast-flight snaps because SG-02 turns
+    // an over-stretched line into threshold telemetry before the semantic break authority runs.
+    breakTension: 2100000,
     snapImpulseNoise: 0,
     // maxYank: the line snaps on a SHARP jerk (rate-of-change of radial relative speed), never on
     // steady pull. Calibrated against measured flight yanks: a plain reel-in to min length produces
@@ -243,11 +244,11 @@ export const ATTACHMENT_DEFS = Object.freeze([
     // flight (reel-in, slingshot, dogfight, orbit, throttle bumps) and only yields to genuine
     // violence — boost-into-line, hard ramming, dash impulse. The masslineController harden term
     // raises this budget further under sustained load (pull-behind-fleeing-target protection).
-    break: { maxTension: 1050000, maxImpulse: 19000, maxYank: 15000, graceTicks: 4, stiffness: 90, damping: 6 },
-    // The force budget was doubled previously, but the independent geometric edge stayed at 0.72x
-    // rest length and remained the real snap authority for short latches. Double that usable stretch
-    // envelope as well; the massline overload controller still cuts violent/extreme-mass loads.
-    spring: { K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 1.44, reelSafeStretchRatio: 1.32 },
+    break: { maxTension: 2100000, maxImpulse: 38000, maxYank: 30000, graceTicks: 4, stiffness: 90, damping: 6 },
+    // The starter's usable stretch now matches its doubled break budget. Later spool upgrades scale
+    // this physical envelope too, so they are for exceptional heavy/astronomical maneuvers rather
+    // than a tax on ordinary pirate-ship tethering.
+    spring: { K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 2.88, reelSafeStretchRatio: 2.64 },
     // overloadGraceS: mild overload hold window for capture rhythm; catastrophic ratio still snaps immediately.
     massline: { enabled: true, overloadGraceS: 1.1 },
     limits: { maxPerOwner: 1 },

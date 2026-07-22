@@ -7,19 +7,40 @@ import { SIM_DT } from '../core/sim.js';
 // +25% vs prior 140/90 — keep legacy 47-A massline break in lockstep with the player-facing buff.
 const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 175, maxImpulse: 112.5, graceTicks: 1 });
 
+/** Resolve the max-folded spool rating once so every physical and semantic strength boundary agrees. */
+function tetherSpoolMultiplier(owner) {
+  const raw = Number(owner && owner.data && owner.data.derived && owner.data.derived.tetherSpoolMult);
+  return Number.isFinite(raw) ? Math.max(1, Math.min(6, raw)) : 1;
+}
+
 /** Resolve player spool strength from immutable attachment data. Ratings are max-folded by ships;
- *  this layer scales only the standard tether's break policy and never mutates the catalog. */
+ *  this layer scales only the standard tether's semantic break policy and never mutates the catalog. */
 export function effectiveTetherBreak(def, owner) {
   const base = def && def.break ? def.break : null;
   if (!base) return null;
   if (!def || def.id !== 'tether_standard') return { ...base };
-  const raw = Number(owner && owner.data && owner.data.derived && owner.data.derived.tetherSpoolMult);
-  const mult = Number.isFinite(raw) ? Math.max(1, Math.min(6, raw)) : 1;
+  const mult = tetherSpoolMultiplier(owner);
   return {
     ...base,
     maxTension: Number.isFinite(base.maxTension) ? base.maxTension * mult : base.maxTension,
     maxImpulse: Number.isFinite(base.maxImpulse) ? base.maxImpulse * mult : base.maxImpulse,
     maxYank: Number.isFinite(base.maxYank) ? base.maxYank * mult : base.maxYank,
+  };
+}
+
+// SG-02's geometric stretch edge is a real break authority, not just presentation. Strength
+// upgrades therefore scale the elastic envelope alongside the telemetry thresholds; otherwise an
+// upgraded spool could still snap at the starter's physical limit before its added budget mattered.
+function effectiveTetherSpring(def, owner) {
+  const base = def && def.spring ? def.spring : {};
+  if (!def || def.id !== 'tether_standard') return { ...base };
+  const mult = tetherSpoolMultiplier(owner);
+  return {
+    ...base,
+    maxStretchRatio: Number.isFinite(base.maxStretchRatio) ? base.maxStretchRatio * mult : base.maxStretchRatio,
+    reelSafeStretchRatio: Number.isFinite(base.reelSafeStretchRatio)
+      ? base.reelSafeStretchRatio * mult
+      : base.reelSafeStretchRatio,
   };
 }
 
@@ -29,13 +50,14 @@ export function effectiveTetherBreak(def, owner) {
 export function effectiveTetherPolicy(def, owner) {
   const baseReelRate = Number.isFinite(def && def.reelRate) ? def.reelRate : 0;
   if (!def || def.id !== 'tether_standard') {
-    return { break: effectiveTetherBreak(def, owner), reelRate: baseReelRate };
+    return { break: effectiveTetherBreak(def, owner), reelRate: baseReelRate, spring: effectiveTetherSpring(def, owner) };
   }
   const rawReel = Number(owner && owner.data && owner.data.derived && owner.data.derived.tetherReelRateMult);
   const reelMult = Number.isFinite(rawReel) ? Math.max(1, rawReel) : 1;
   return {
     break: effectiveTetherBreak(def, owner),
     reelRate: baseReelRate * reelMult,
+    spring: effectiveTetherSpring(def, owner),
   };
 }
 
@@ -683,7 +705,7 @@ export function createAttachmentService(context) {
       const reelRevision = Math.max(0, Math.trunc(Number(attachment && attachment.reelRevision) || 0));
       if (reelRevision <= 0) return { mode: 'legacy_rope' };
     }
-    return { ...((def && def.spring) || {}) };
+    return { ...((policyForAttachment(def, owner, attachment).spring || (def && def.spring)) || {}) };
   }
 
   function breakForAttachment(def, owner, target, attachment = null) {

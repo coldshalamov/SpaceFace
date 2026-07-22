@@ -70,7 +70,7 @@ export const LAB_DEFAULTS = Object.freeze({
   ticks: 240,                    // 4 s at 60 Hz — long enough for the swing to develop and settle
   // Injection bounds (fail-closed clamp). maxImpulse mirrors tether_standard break.maxImpulse so a
   // controller can load the line meaningfully; a detuned controller destabilises INSIDE this bound.
-  maxImpulse: 19000,
+  maxImpulse: 38000,
   maxTorqueImpulse: 8000,
   // Radial-settle definition: |radialSpeed| at/under settleBandRadialSpeed for the rest of the run.
   settleBandRadialSpeed: 3,
@@ -80,11 +80,11 @@ export const LAB_DEFAULTS = Object.freeze({
   // Divergence detector: a stable swing keeps distance within divergenceFactor × the initial line.
   divergenceFactor: 6,
   // tether_standard break.maxTension — a semantic-tension proxy at/above this reads as a broken line.
-  breakTension: 1050000,
+  breakTension: 2100000,
   // observeMasslineOrbit spring model: mirrors tether_standard break.stiffness / break.maxTension so
   // the trace's `tension` is the same one-sided-spring read the live tether uses for strain.
   observeStiffness: 90,
-  observeBreakTension: 1050000,
+  observeBreakTension: 2100000,
 });
 
 // -------------------------------------------------------------------------------------------------

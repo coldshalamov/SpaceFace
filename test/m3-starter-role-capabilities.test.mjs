@@ -76,4 +76,6 @@ test('starter role copy advertises only capabilities exercised by live runtime c
     'live attachment service consumes the prospector line-strength benefit');
   assert.ok(prospectorPolicy.break.maxImpulse > basePolicy.break.maxImpulse,
     'live attachment service consumes the prospector impulse tolerance');
+  assert.ok(prospectorPolicy.spring.maxStretchRatio > basePolicy.spring.maxStretchRatio,
+    'live attachment service consumes the prospector physical stretch-envelope benefit');
 });

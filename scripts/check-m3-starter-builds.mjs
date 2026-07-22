@@ -198,6 +198,8 @@ assert.ok(prospectorTether.break.maxTension > baseTether.break.maxTension,
   'live attachment service consumes prospector line-strength benefit');
 assert.ok(prospectorTether.break.maxImpulse > baseTether.break.maxImpulse,
   'live attachment service consumes prospector impulse-tolerance benefit');
+assert.ok(prospectorTether.spring.maxStretchRatio > baseTether.spring.maxStretchRatio,
+  'live attachment service consumes prospector physical stretch-envelope benefit');
 pass('advertised capabilities reach real flight, physics, and Massline consumers');
 
 const jsonA = JSON.stringify(STARTER_BUILDS);

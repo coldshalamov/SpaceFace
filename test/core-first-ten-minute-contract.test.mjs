@@ -80,7 +80,7 @@ const STARTER_TETHER_ID = 'tether_standard';
 const SUSTAIN_SHOTS = 20;
 const SUSTAIN_S = 4;
 const CAPTURE_HOLD_S = 2.5;
-const TOLERANCE_MULT = 2.0;
+const TOLERANCE_MULT = 5.0;
 const HELIOS_STARTER_SAFE_RADIUS = HELIOS_STARTER_PROTECTION_RADIUS_WU;
 
 const failures = [];
@@ -488,8 +488,8 @@ await check('standard starter weapon sustains ≥20 shots in 4s continuous fire'
   );
 });
 
-// ─── 4. Starter tether: 2.5s capture hold with ~2× tolerance ──────────────────
-await check('standard starter tether survives 2.5s capture hold with ~2× load headroom', async () => {
+// ─── 4. Starter tether: 2.5s capture hold with generous normal-use tolerance ──────────────────
+await check('standard starter tether survives 2.5s capture hold with ~5× load headroom', async () => {
   const tetherDef = ATTACHMENT_DEFS.find((d) => d.id === STARTER_TETHER_ID);
   assert.ok(tetherDef, 'tether_standard def exists');
   const breakPolicy = effectiveTetherBreak(tetherDef, {
@@ -602,7 +602,7 @@ await check('standard starter tether survives 2.5s capture hold with ~2× load h
   assert.ok(state.player.tether && state.player.tether.active,
     'tether must remain active after capture hold');
 
-  // ~2× tolerance: peak load must stay ≤ half of break (strain 1.0 or maxTension).
+  // ~5× tolerance: a routine capture/hold must leave ordinary flight well below break.
   assert.ok(peakStrain <= 1 / TOLERANCE_MULT + 1e-6,
     `peak strain ${peakStrain.toFixed(3)} must leave ~${TOLERANCE_MULT}× headroom vs break (≤${(1 / TOLERANCE_MULT).toFixed(2)})`);
   if (peakTension > 0) {
@@ -610,9 +610,8 @@ await check('standard starter tether survives 2.5s capture hold with ~2× load h
       `peak tension ${peakTension} × ${TOLERANCE_MULT} must stay ≤ break maxTension ${breakPolicy.maxTension}`);
   }
 
-  // Catalog strength itself must be at least the historical base × ~2 headroom path for starter
-  // capture survival (relative to the pre-M1 420000-class base → 2× would be 840000; current is
-  // +30% only — this assertion is intentionally fail-closed until production raises strength).
+  // The catalog baseline must retain 5× the historical 420k starter threshold. This is a player
+  // workload contract, not a late-game-capability ceiling: spool upgrades scale from this floor.
   const HISTORICAL_BASE_TENSION = 420000;
   assert.ok(
     breakPolicy.maxTension + 1e-6 >= HISTORICAL_BASE_TENSION * TOLERANCE_MULT,

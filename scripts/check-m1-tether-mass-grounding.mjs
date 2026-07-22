@@ -60,28 +60,30 @@ const npc = getDerivedStats('ship_wasp', [], null);
 assert.equal(npc.cargoMass, 0, 'NPC derivation is isolated from player cargo');
 
 const standard = ATTACHMENT_DEFS.find((def) => def.id === 'tether_standard');
-// CORE-COMBAT-LOOP: doubled pre-pass strength, then the live feel pass raised that base by 25%.
-assert.equal(standard.breakTension, 1050000, 'standard compatibility threshold is 2.5× legacy base');
+// The normal-use floor is deliberately generous: combat tethering should not add a speed-management
+// tax. Stronger spools remain the later-game answer for deliberately extreme maneuvers.
+assert.equal(standard.breakTension, 2100000, 'standard compatibility threshold is 5× the legacy base');
 assert.deepEqual(
   { maxTension: standard.break.maxTension, maxImpulse: standard.break.maxImpulse, maxYank: standard.break.maxYank },
-  { maxTension: 1050000, maxImpulse: 19000, maxYank: 15000 },
-  'standard immutable base strength includes the live +25% feel pass',
+  { maxTension: 2100000, maxImpulse: 38000, maxYank: 30000 },
+  'standard immutable base strength doubles the prior player-facing feel pass',
 );
-assert.equal(standard.spring.maxStretchRatio, 1.44,
-  'standard tether doubles the real geometric stretch envelope, not only unreachable force numbers');
-assert.equal(standard.spring.reelSafeStretchRatio, 1.32,
+assert.equal(standard.spring.maxStretchRatio, 2.88,
+  'standard tether doubles the real geometric stretch envelope alongside the break budget');
+assert.equal(standard.spring.reelSafeStretchRatio, 2.64,
   'active reel remains inside the doubled geometric break edge');
 const immutableBaseSnapshot = JSON.stringify(standard.break);
+const immutableSpringSnapshot = JSON.stringify(standard.spring);
 const attachmentModule = await import('../src/combat/attachments.js');
 assert.equal(typeof attachmentModule.effectiveTetherBreak, 'function',
   'attachments exports one pure effective-strength resolver');
 assert.equal(typeof attachmentModule.effectiveTetherPolicy, 'function',
   'attachments exports one pure effective tether policy resolver');
 for (const [rating, expected] of [
-  [1, [1050000, 19000, 15000]],
-  [1.5, [1575000, 28500, 22500]],
-  [3, [3150000, 57000, 45000]],
-  [6, [6300000, 114000, 90000]],
+  [1, [2100000, 38000, 30000]],
+  [1.5, [3150000, 57000, 45000]],
+  [3, [6300000, 114000, 90000]],
+  [6, [12600000, 228000, 180000]],
 ]) {
   const owner = { data: { derived: { tetherSpoolMult: rating } } };
   const effective = attachmentModule.effectiveTetherBreak(standard, owner);
@@ -90,9 +92,17 @@ for (const [rating, expected] of [
     expected,
     `rating ${rating} scales standard strength from the immutable base`,
   );
+  const policy = attachmentModule.effectiveTetherPolicy(standard, owner);
+  assert.deepEqual(
+    [policy.spring.maxStretchRatio, policy.spring.reelSafeStretchRatio],
+    [2.88 * rating, 2.64 * rating],
+    `rating ${rating} scales the physical stretch envelope with the same spool strength`,
+  );
 }
 assert.equal(JSON.stringify(standard.break), immutableBaseSnapshot,
   'effective strength resolution never mutates the catalog base');
+assert.equal(JSON.stringify(standard.spring), immutableSpringSnapshot,
+  'effective strength resolution never mutates the catalog spring');
 
 const moduleById = new Map(MODULES.map((def) => [def.id, def]));
 assert.equal(moduleById.get('mod_winch_hd')?.mods?.tetherSpoolMult, 1.5);
@@ -142,7 +152,9 @@ assert.deepEqual(spoolStats(['mod_massline_spool_m', 'mod_winch_hd', 'mod_massli
 
 {
   const strainEvents = [];
-  const attachment = { id: 'att_spool_6', defId: standard.id, state: 'active', lastTension: 1050000 };
+  const attachment = {
+    id: 'att_spool_6', defId: standard.id, state: 'active', lastTension: standard.break.maxTension,
+  };
   const attachments = {
     get(id) { return id === attachment.id ? attachment : null; },
     breakPolicy(id) {
@@ -422,6 +434,11 @@ for (const seed of [47, 109]) {
       [attachment.tetherPolicy.break.maxTension, attachment.tetherPolicy.break.maxImpulse],
       [physicalAttachment.break.maxTension, physicalAttachment.break.maxImpulse],
       'semantic telemetry and the physical attachment share one frozen break threshold source',
+    );
+    assert.deepEqual(
+      [attachment.tetherPolicy.spring.maxStretchRatio, attachment.tetherPolicy.spring.reelSafeStretchRatio],
+      [physicalAttachment.spring.maxStretchRatio, physicalAttachment.spring.reelSafeStretchRatio],
+      'semantic spool policy and the physical attachment share one frozen geometric break envelope',
     );
     owner.data.derived.tetherSpoolMult = 6;
     assert.deepEqual(kernel.attachments.breakPolicy(attachment.id), attachment.tetherPolicy.break,
