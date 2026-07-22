@@ -30,7 +30,9 @@ const PLANET_TYPES_BY_TIER = {
   5: ['lava', 'scorched', 'dead'],
 };
 
-const PLANET_COLORS = {
+// PQ-013: exported so the real planet-site visual (planetSiteVisual.js) bakes from the SAME
+// palette this impostor shader paints with — near and far planets stay one species.
+export const PLANET_COLORS = {
   // Cyberpunk-noir retuned palettes. Habitable worlds lean slightly desaturated + keep neon city
   // lights (uCity) on their night side so they read as populated, contested worlds. Hostile worlds
   // (dead/scorched) push toward sickly, noir desaturation. Atmosphere rims shifted toward neon

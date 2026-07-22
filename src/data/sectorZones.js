@@ -34,6 +34,9 @@ export const ZONE_TYPES = {
   nebula_fog:         { label: 'Nebula Fog',         color: '#8A5FB0', threat: 1, hazard: true },
   ambush_lane:        { label: 'Ambush Lane',        color: '#FF4D5E', threat: 3 },
   anomaly_deep:       { label: 'Deep-Space Anomaly', color: '#C8B6FF', threat: 3 },
+  // PQ-013/SF-14: a colossal planetary body + its atmosphere corridor (The Anvil). hazard: the
+  // lower bands burn; threat 2 covers the storm band without painting the whole disc as a red zone.
+  planetary_mass:     { label: 'Planetary Mass',     color: '#69B7FF', threat: 2, hazard: true },
 };
 
 // Presence templates keep zone entries terse. Each names the squad flavour the planner spawns.

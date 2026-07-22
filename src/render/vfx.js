@@ -24,7 +24,7 @@
 //   Event→handler wiring: see _subscribe (L256). Full event routing map: docs/EVENT_ROUTING.md
 // ── end index ──
 import * as THREE from 'three';
-import { createEnergyVolume, createMasslineRibbonMaterial, updateEnergyMaterial } from './energy/energyMaterials.js';
+import { createEnergyVolume, createMasslineRibbonMaterial, createPlumeMaterial, createPlumeVolume, updateEnergyMaterial } from './energy/energyMaterials.js';
 import {
   buildParticleTrailMaterial,
   commitTrailStreakInstances,
@@ -4872,6 +4872,15 @@ export const vfx = {
       if (this._fieldGeomInitialized) this._updateFieldGeometry(dt);
     }
     sub.energy = this._updateEnergy(dt) ? 1 : 0;
+    // PQ-013 planetary skim — band scroll + reentry sheath pool; slept when no site is registered
+    // (dormant sectors cost one boolean read; the sheath slots exist only after first relevance).
+    if (this._planetSkimRelevant()) {
+      this._initPlanetSkim();
+      sub.planetSkim = this._updatePlanetSkim(dt) ? 1 : 0;
+    } else {
+      if (this._planetSkim) this._sleepPlanetSkim();
+      sub.planetSkim = 0;
+    }
     sub.explosions = this._explosions.update(dt, this._explosionEmitter) > 0 ? 1 : 0;
     if (this._combatBeams) {
       sub.combatBeams = this._combatBeams.update(
@@ -5084,6 +5093,129 @@ export const vfx = {
       this._energy.ribbon.visible = false;
     }
     return active;
+  },
+
+  // ── PQ-013 planetary skim presentation ─────────────────────────────────────────────────────
+  // Bands scroll on the planet entity's visual (userData.planetVisual.timeMats, cosmetic _t
+  // family); the Sheath is a bounded pool of 5 bow-shock slots (player + 4 tracked ships), each a
+  // thin ionization cone (skim read) + a two-layer plasma volume (commit/breakup read) — the
+  // spike-proven construction (scripts/spike-pq013-planetary-sheath.mjs, REPORT.md Phase 1).
+  // Accessibility: REDUCED_FLASH scales opacity ×0.3 / size ×0.68 and caps uBoost (no white-hot
+  // peak — bible §7.4 names exactly these profile constants); REDUCED_MOTION freezes the scroll
+  // clock (bands hold as a long-exposure static field) while pose/coverage stay truthful.
+  _planetSkimRelevant() {
+    const p = this.state && this.state.planet;
+    return !!(p && p.active);
+  },
+
+  _initPlanetSkim() {
+    if (!this._scene || this._planetSkim) return;
+    const pts = [];
+    const N = 14;
+    for (let i = 0; i <= N; i++) {
+      const t = i / N;
+      pts.push(new THREE.Vector2(0.22 + Math.pow(t, 0.72) * 3.1, -4 * t)); // apex x=0 → skirt x=-4
+    }
+    const geo = new THREE.LatheGeometry(pts, 40);
+    geo.rotateZ(-Math.PI / 2); // lathe axis +Y → +X (the plume shader's axis convention)
+    const slots = [];
+    for (let i = 0; i < 5; i++) {
+      const thin = new THREE.Mesh(geo, createPlumeMaterial({
+        name: `sf-planet-sheath-thin-${i}`, colorA: 0x39d0ff, colorB: 0x2a7fb8,
+        intensity: 2.6, opacity: 0.4, core: 0.5, boost: 0.1, swirl: 0.35, fork: 0.3,
+      }));
+      const plasma = createPlumeVolume(geo, {
+        name: `sf-planet-sheath-plasma-${i}`, colorA: 0xffb35c, colorB: 0xff5c5c,
+        // Route-gated tune: 3.4/0.7 tripped the 2% white-out gate at the commit framing by 0.14%;
+        // the amber->red ramp carries the read, the white-hot apex only needs a whisper.
+        coreIntensity: 3.0, haloIntensity: 1.5, coreOpacity: 0.62, haloOpacity: 0.26,
+        boost: 0.82, swirl: 0.5, fork: 0.6,
+      });
+      thin.visible = false;
+      plasma.visible = false;
+      thin.frustumCulled = false;
+      plasma.traverse((o) => { o.frustumCulled = false; });
+      this._scene.add(thin);
+      this._scene.add(plasma);
+      slots.push({ thin, plasma });
+    }
+    this._planetSkim = { geo, slots, t: 0, localScratch: { x: 0, z: 0 } };
+  },
+
+  _sleepPlanetSkim() {
+    const ps = this._planetSkim;
+    if (!ps) return;
+    for (const slot of ps.slots) { slot.thin.visible = false; slot.plasma.visible = false; }
+  },
+
+  _updatePlanetSkim(dt) {
+    const ps = this._planetSkim;
+    const state = this.state;
+    const p = state.planet;
+    if (!ps || !p || !p.active) return false;
+    const profile = resolveVfxAccessibilityProfile(state.settings);
+    const reducedMotion = profile.id === 'reduced-motion' || profile.id === 'reduced-motion-and-flash';
+    const reducedFlash = profile.flashOpacityScale < 1;
+    if (!reducedMotion) ps.t += dt; // cosmetic scroll clock only — gameplay state never reads it
+
+    // Band scroll on the planet entity's visual.
+    const planetEntity = state.entities && state.entities.get ? state.entities.get(p.entityId) : null;
+    const visual = planetEntity && planetEntity.mesh && planetEntity.mesh.userData
+      ? planetEntity.mesh.userData.planetVisual : null;
+    if (visual && Array.isArray(visual.timeMats)) {
+      for (const mat of visual.timeMats) updateEnergyMaterial(mat, { time: ps.t });
+    }
+
+    // Sheath slots: player first, then tracked ships (bounded by the pool).
+    let used = 0;
+    let anyVisible = false;
+    const assign = (e, rec) => {
+      if (used >= ps.slots.length || !e || e.alive === false || !rec) return;
+      const heat = rec.heat || 0;
+      const stage = rec.stage;
+      if (heat < 0.03 && !stage) return;
+      const slot = ps.slots[used++];
+      const hot = stage === 'commit' || stage === 'breakup' || stage === 'descent';
+      const mesh = hot ? slot.plasma : slot.thin;
+      const other = hot ? slot.thin : slot.plasma;
+      other.visible = false;
+      mesh.visible = true;
+      anyVisible = true;
+      const local = this._toLocalXZ(e.pos.x, e.pos.z, ps.localScratch);
+      const rot = e.rot || 0;
+      const cf = Math.cos(rot), sf = Math.sin(rot);
+      const nose = (e.radius || 8) * 0.9;
+      const k = Math.max(0.6, (e.radius || 8) / 10) * profile.flashSizeScale;
+      mesh.position.set(local.x + cf * nose, 0, local.z + sf * nose);
+      mesh.rotation.y = -rot;
+      if (hot) {
+        mesh.scale.set(3.6 * k, 2.0 * k, 2.0 * k);
+        const boost = Math.min(reducedFlash ? 0.6 : 1, 0.35 + heat * 0.5);
+        updateEnergyMaterial(mesh.userData.energyCore.material, { time: ps.t, boost, opacity: 0.62 * profile.flashOpacityScale });
+        updateEnergyMaterial(mesh.userData.energyHalo.material, { time: ps.t, boost, opacity: 0.26 * profile.flashOpacityScale });
+      } else {
+        mesh.scale.set(3.2 * k, 1.6 * k, 1.6 * k);
+        updateEnergyMaterial(mesh.material, {
+          time: ps.t,
+          boost: Math.min(reducedFlash ? 0.5 : 1, heat),
+          opacity: 0.4 * Math.min(1, 0.35 + heat * 2) * profile.flashOpacityScale,
+        });
+      }
+    };
+
+    const player = state.entities.get(state.playerId);
+    assign(player, p.player);
+    const ships = p.ships || {};
+    for (const id in ships) {
+      if (used >= ps.slots.length) break;
+      const e = state.entities.get(Number.isFinite(Number(id)) ? Number(id) : id);
+      assign(e, ships[id]);
+    }
+    for (let i = used; i < ps.slots.length; i++) {
+      ps.slots[i].thin.visible = false;
+      ps.slots[i].plasma.visible = false;
+    }
+    return anyVisible || !!visual;
   },
 
   _initEnergy() {

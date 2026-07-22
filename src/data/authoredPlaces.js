@@ -63,11 +63,44 @@ export const ZONE_TETHYS_DRIFTMARK = Object.freeze({
 });
 
 /**
+ * The Anvil — PQ-013 / SF-14 (STEP 12): THE colossal planet's canonical Atlas identity (Q18).
+ *
+ * This zone record IS the planet's identity: the save references it, navigation targets it, the
+ * map glyph derives from it, and the registration adapter (src/systems/planetRuntime.js) refuses
+ * to spawn a physics planet unless this record resolves — "no physics planet without an atlas
+ * record". The PHYSICAL constants (radii, bands, attraction, heat) live in src/data/planets.js
+ * keyed back to this id; the zone stays an ordinary zone in the ordinary schema.
+ *
+ *  * SECTOR. `sector_tethys_junction` (global origin 12288, 8192) — the same anti-Helios rule the
+ *    Driftmark example documents: a nonzero-origin sector makes frame bugs provably visible.
+ *      sector-local (2000, -2200)  ->  global (14288, 5992)
+ *  * PLACEMENT. South-east rim of the sector, clear of every authored zone (nearest is the
+ *    Meridian Exchange hub at ~2749 WU against a 2500 WU sum-of-radii). The 1000 WU disc marks
+ *    the world + its atmosphere corridor; the weak outer attraction extends beyond the marked
+ *    disc exactly as a mass should (fields are not map discs).
+ *  * NO `presence`. The planet spawns no squads; hostiles arrive by pursuit (the reentry
+ *    consequence is something the PLAYER causes by baiting, never an ambient spawn table).
+ *  * NO bespoke asset. Charts as a procedural disc; the in-world colossal body is built by the
+ *    registration adapter, not the chart pipeline.
+ */
+export const ZONE_TETHYS_ANVIL = Object.freeze({
+  id: 'zone_tethys_anvil',
+  name: 'The Anvil',
+  type: 'planetary_mass',
+  factionId: 'faction_mts',
+  reason: 'A colossal ocean world anchoring the Junction\'s southern approach. Skimmers work its '
+    + 'storm bands for gas; the unwary work themselves into its sky and do not come back out.',
+  center: Object.freeze({ x: 2000, z: -2200 }),
+  radius: 1000,
+  threat: 2,
+});
+
+/**
  * sectorId -> additional authored zone records, appended to the per-sector tables.
  * Keyed by sector so the merge stays a pure append and can never shadow an existing sector's list.
  */
 export const AUTHORED_PLACE_ZONES = Object.freeze({
-  sector_tethys_junction: Object.freeze([ZONE_TETHYS_DRIFTMARK]),
+  sector_tethys_junction: Object.freeze([ZONE_TETHYS_DRIFTMARK, ZONE_TETHYS_ANVIL]),
 });
 
 /**

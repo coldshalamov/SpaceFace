@@ -347,6 +347,32 @@ export const fields = {
     state.fields = defaultRuntime();
   },
 
+  // ── PQ-013 external authored profiles (the planet's attraction rides the SAME kernel) ─────────
+  //
+  // A long-lived, authored world profile (STEP 12: "the planet's attraction rides the SAME kernel
+  // as a large authored field profile — NO bespoke planet gravity path"). It shares register/
+  // unregister, falloff, the acceleration cap, the coupling shrug, the force membrane and the pure
+  // predictor seam with the player tools, but it is NOT a deploy: no emitter entity, no cooldown,
+  // no cap slot, no Intake-funnel VFX (tag 'external' filters it out of rt.active). _clearAll
+  // (sector transitions / load / new game) wipes it with everything else — the owning system
+  // (planetRuntime) re-registers on its next tick, which is exactly the transient-save contract.
+  registerExternal(spec) {
+    if (!this._kernel || !spec) return null;
+    return this._kernel.register({ ...spec, tag: 'external', durationS: Infinity });
+  },
+
+  unregisterExternal(id) {
+    return this._kernel ? this._kernel.unregister(id) : false;
+  },
+
+  updateExternal(id, patch) {
+    return this._kernel ? this._kernel.update(id, patch) : null;
+  },
+
+  hasExternal(id) {
+    return !!(this._kernel && this._kernel.has(id));
+  },
+
   // ── force application (the ONE kernel → membrane) ────────────────────────────────────────────
 
   _forceableBody(e) {
@@ -414,10 +440,16 @@ export const fields = {
     // update path). Bounded by FIELD_MAX_ACTIVE; VFX/HUD read this on the SAME tick it is written.
     const active = rt.active;
     const engaged = affected > 0;
+    let n = 0;
     for (let i = 0; i < fieldsList.length; i++) {
       const f = fieldsList[i];
-      let rec = active[i];
-      if (!rec) rec = active[i] = { center: { x: 0, z: 0 }, dir: { x: 1, z: 0 } };
+      // PQ-013: external authored profiles (the planet's attraction) stay in the SNAPSHOT (the
+      // predictor must see the bend) but out of the deploy-tool presentation records — the planet
+      // carries its own visual language (bands/sheath), never an Intake funnel or a HUD chip.
+      if (f.tag === 'external') continue;
+      let rec = active[n];
+      if (!rec) rec = active[n] = { center: { x: 0, z: 0 }, dir: { x: 1, z: 0 } };
+      n++;
       rec.id = f.id; rec.kind = f.kind;
       rec.center.x = f.center.x; rec.center.z = f.center.z;
       rec.dir.x = f.dir.x; rec.dir.z = f.dir.z;
@@ -428,7 +460,7 @@ export const fields = {
       // engagement tell — no affected body, no articulation, per bible §4).
       rec.engaged = engaged;
     }
-    active.length = fieldsList.length; // trim retired fields
+    active.length = n; // trim retired fields
     const tel = rt.telemetry;
     tel.fields = fieldsList.length; tel.queries = queries; tel.affected = affected; tel.appliedAccelSum = accelSum;
   },

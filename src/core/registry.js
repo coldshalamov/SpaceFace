@@ -41,8 +41,10 @@ import { masslineImpacts } from '../systems/masslineImpacts.js';
 import { impulseCharges } from '../systems/impulseCharges.js';
 import { massSeed } from '../systems/massSeed.js';               // PQ-011/SF-11 deployable anchor Mass Seed
 import { fields } from '../systems/fields.js';                   // PQ-012/SF-12 continuous field kernel (Well/Repulsor/Cone)
+import { planetRuntime } from '../systems/planetRuntime.js';     // PQ-013/SF-14 planetary site (sling/skim/harvest/reentry)
 import { massSeedHud } from '../ui/massSeedHud.js';              // PQ-011: seed status pill + lock-point marker (DOM-guarded)
 import { fieldHud } from '../ui/fieldHud.js';                    // PQ-012: field state/cooldown/denial chip (DOM-guarded)
+import { planetHud } from '../ui/planetHud.js';                  // PQ-013: band pill + heat readout (DOM-guarded)
 // Massline Physics Identity — Wave M2 (design/revamp/MASSLINE_PHYSICS_IDENTITY.md). All eight are
 // massline2Flag-gated (OFF headless) and are deliberately NOT in the sf-sim curated harness list,
 // so the 47-A golden never executes them. New runtime state lives under state.massline2.
@@ -147,8 +149,8 @@ export function createRegistry(ctx) {
   const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, voiceArbiter, input, autoTargetAssist, flybyFocus, bulletTime, cloak, scanner, scanReveal, buildIdentity, lawSecurity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, dockingCorridor, physics, aiPorts, tumbleStates, collisionConsequences, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, mines, massSeed, uniqueLootAbilities, fields, combat, combatOutcome, aftermathWrecks, uniqueWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, economy,
-    automation, asteroidSites, asteroidFormations, wingmen, intervention, lossLedger, factionPresence, spawnBudget, world, regionalEcology, encounterDirector, routeFollower, travelLanes, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, stationContacts, stationContactLoadBoundary, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, npcJobsRuntime, careerOrigins, careerLadders, liveCareerLadderBranches, missions, careerContracts, economyContracts, postEndingReplay, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, bandRadio, v2FlavorRuntime, onboarding, masslineHud, fieldHud, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
+    core, voiceArbiter, input, autoTargetAssist, flybyFocus, bulletTime, cloak, scanner, scanReveal, buildIdentity, lawSecurity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, dockingCorridor, physics, aiPorts, tumbleStates, collisionConsequences, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, mines, massSeed, uniqueLootAbilities, fields, planetRuntime, combat, combatOutcome, aftermathWrecks, uniqueWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, economy,
+    automation, asteroidSites, asteroidFormations, wingmen, intervention, lossLedger, factionPresence, spawnBudget, world, regionalEcology, encounterDirector, routeFollower, travelLanes, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, stationContacts, stationContactLoadBoundary, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, npcJobsRuntime, careerOrigins, careerLadders, liveCareerLadderBranches, missions, careerContracts, economyContracts, postEndingReplay, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, bandRadio, v2FlavorRuntime, onboarding, masslineHud, fieldHud, planetHud, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // scanReveal, buildIdentity, and pirateDisguise subscribe to scanner's scan:pulse seam. scanReveal
@@ -253,8 +255,8 @@ export function createRegistry(ctx) {
   // which input.js already reads, and its own `state.travelLanes` readout. It is a strict no-op
   // unless `travelFlag('laneBoost')` is on AND a player exists, so it costs two reads otherwise.
   const UPDATE_ORDER = [
-    input, autoTargetAssist, flybyFocus, bulletTime, cloak, lawSecurity, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, factionPresence, aiSlot, barkDirector, aiEncounter, actions, beacons, travelLanes, flightSlot, cruise, aiPorts, tumbleStates, collisionConsequences, weapons, countermeasures, impulseCharges, mines, massSeed, uniqueLootAbilities, dockingCorridor, fields, physics, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, automation, asteroidSites, asteroidFormations, wingmen, crafting,
-    economy, intervention, world, regionalEcology, encounterDirector, routeFollower, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, npcJobsRuntime, missions, careerOrigins, careerLadders, liveCareerLadderBranches, story, scenarioRuntime, heat, traffic, drill, claims, bandRadio, onboarding, masslineHud, massSeedHud, fieldHud, voiceArbiter,
+    input, autoTargetAssist, flybyFocus, bulletTime, cloak, lawSecurity, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, factionPresence, aiSlot, barkDirector, aiEncounter, actions, beacons, travelLanes, flightSlot, cruise, aiPorts, tumbleStates, collisionConsequences, weapons, countermeasures, impulseCharges, mines, massSeed, uniqueLootAbilities, dockingCorridor, fields, planetRuntime, physics, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, automation, asteroidSites, asteroidFormations, wingmen, crafting,
+    economy, intervention, world, regionalEcology, encounterDirector, routeFollower, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, npcJobsRuntime, missions, careerOrigins, careerLadders, liveCareerLadderBranches, story, scenarioRuntime, heat, traffic, drill, claims, bandRadio, onboarding, masslineHud, massSeedHud, fieldHud, planetHud, voiceArbiter,
   ];
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether
   // after combat/physics have settled. It is read-only telemetry — it writes only its own
@@ -305,6 +307,13 @@ export function createRegistry(ctx) {
   // Its math is pure (positions/authored strengths/state.simTime; no rng, no wall clock), it is
   // NOT in the sf-sim curated list, and it is gated OFF under node (FIELD_FLAGS Tier-B) — three
   // independent layers keep the 47-A golden byte-identical, and nothing auto-spawns a field.
+  // planetRuntime (PQ-013) sits between fields and physics: it re-binds the planet's annular
+  // attraction into the SAME field kernel (registered through fields.registerExternal, so fields'
+  // force pass applies it this tick), then queues its own bounded drag/recovery impulses on the
+  // physics-command membrane — one slot later and both would be a tick stale. Its writes are its
+  // own state.planet subtree, membrane impulses, and routed damage; golden safety is the fields
+  // recipe (PLANET_FLAGS Tier-B OFF under node + authored only in sector_tethys_junction which 47a
+  // never enters + absent from the sf-sim curated list).
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
   byName.set('ai', aiSlot);
   byName.set('flight', flightSlot);

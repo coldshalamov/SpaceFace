@@ -48,6 +48,15 @@ export function normalizeField(spec = {}) {
     radius: positive(spec.radius, 120),
     strength: Math.max(0, finite(spec.strength, 200)),
     falloff: positive(spec.falloff, 1.5),
+    // PQ-013: OPTIONAL annular profile (the planet's artistic-liberties attraction — STEP 12:
+    // "softened, bounded, annular"). innerRadius zeroes the field below it; innerSoft ramps 0->1
+    // across [innerRadius, innerRadius+innerSoft]. Defaults (0/0) leave every existing field's
+    // math bit-identical, and the pure predictor seam picks the shape up with no further wiring.
+    innerRadius: Math.max(0, finite(spec.innerRadius, 0)),
+    innerSoft: Math.max(0, finite(spec.innerSoft, 0)),
+    // PQ-013: presentation tag passthrough ('external' = authored world profile, not a player
+    // deploy — the fields system keeps it out of the deploy cap and the Intake-funnel VFX).
+    tag: typeof spec.tag === 'string' ? spec.tag : null,
     halfAngleRad: positive(spec.halfAngleRad, Math.PI * 0.25),
     edgeSoftRad: Math.max(0, finite(spec.edgeSoftRad, 0.12)),
     durationS: spec.durationS === Infinity ? Infinity : Math.max(0, finite(spec.durationS, 0)),
@@ -62,11 +71,20 @@ export function normalizeField(spec = {}) {
 // Radial falloff scalar in [0,1]: 1 at the center, 0 at (and beyond) the radius. The exponent
 // eases toward the edge so the outer band reads as the "commitment margin" (bible §4.4). This is
 // the single source of truth the VFX density curve must mirror (gauges must not lie).
+// PQ-013: an annular field (innerRadius > 0) additionally gates to 0 below innerRadius, ramping
+// 0->1 across innerSoft — the planet's bounded ring of attraction. Fields authored without an
+// innerRadius are untouched (gate degenerates to 1).
 export function fieldFalloff(field, r) {
   const R = field.radius;
   if (!(R > 0) || r >= R) return 0;
   const t = 1 - r / R; // 1 at center → 0 at edge
-  return Math.pow(clamp(t, 0, 1), field.falloff);
+  const outer = Math.pow(clamp(t, 0, 1), field.falloff);
+  const rIn = field.innerRadius;
+  if (!(rIn > 0)) return outer;
+  if (r <= rIn) return 0;
+  const soft = field.innerSoft;
+  const gate = soft > 0 ? clamp((r - rIn) / soft, 0, 1) : 1;
+  return outer * gate;
 }
 
 // Angular gate for the cone wedge: 1 on-axis, ramping to 0 across edgeSoftRad past the half-angle.

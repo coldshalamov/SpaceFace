@@ -27,6 +27,7 @@ import {
   surfaceResponse as geologySurfaceResponse,
 } from './objectSpaceGeology.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
+import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture, makeStarTexture,
   makeHullNormalMap, makeGreebleDetailTexture, makeDecalSheet,
@@ -3282,6 +3283,8 @@ export function createVisualFactory() {
           case 'charge': return buildImpulseCharge(e);
           case 'massSeed': return buildMassSeed(e);
           case 'wreck': return buildWreck(e);
+          // PQ-013: the colossal planet-site body (Q18 identity transaction spawns exactly one).
+          case 'planet': return buildPlanetSiteVisual(e);
           case 'fx': return null; // fx entities are handled by the vfx particle system, not meshed
           default: return buildFallback(e);
         }
