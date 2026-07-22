@@ -1,12 +1,12 @@
 {
   "gateOk": true,
   "gateErrors": [],
-  "totalTriangles": 15536,
-  "hullTriangles": 6858,
+  "totalTriangles": 32368,
+  "hullTriangles": 7920,
   "lodTriangles": {
-    "lod0": 9848,
-    "lod1": 3948,
-    "lod2": 1728
+    "lod0": 21016,
+    "lod1": 7912,
+    "lod2": 3428
   },
   "drawEstimates": {
     "lod0": 9,
@@ -35,36 +35,36 @@
   "uvPrimitiveCount": 28,
   "lod0AabbSize": [
     22.149999618530273,
-    8.53999948501587,
+    8.699999570846558,
     9.300000190734863
   ],
   "collisionBounds": {
     "min": [
       -10.189000129699707,
-      -3.9283995628356934,
+      -4.001999855041504,
       -4.278000354766846
     ],
     "max": [
       10.189000129699707,
-      3.9283995628356934,
+      4.001999855041504,
       4.278000354766846
     ],
     "size": [
       20.378000259399414,
-      7.856799125671387,
+      8.003999710083008,
       8.556000709533691
     ]
   },
   "collisionCoverage": {
     "axisRatios": [
       0.9200000275553758,
-      0.9199999530979817,
+      0.9200000120579517,
       0.920000057425549
     ],
-    "minRatio": 0.9199999530979817,
+    "minRatio": 0.9200000120579517,
     "pass": true
   },
-  "sourceSha256": "DE0179F1D9005FBCADCAD47FB8698B59795E3A13AB4C5C7D53CDB2FD88A44FFA",
-  "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_cradle.glb",
-  "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_civilian\\blender\\helios_cradle_production.blend"
+  "sourceSha256": "1950D51B50E88C9375886DB7FBCBC8D60C3A5D6D99482CC0B4FF3289818AFF72",
+  "outGlb": "C:\\Users\\93rob\\AppData\\Local\\Temp\\spaceface-grok-family-depth-20260721\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_cradle.glb",
+  "outBlend": "C:\\Users\\93rob\\AppData\\Local\\Temp\\spaceface-grok-family-depth-20260721\\assets\\ships\\m4_helios_civilian\\blender\\helios_cradle_production.blend"
 }

@@ -1,17 +1,17 @@
 {
   "gateOk": true,
   "gateErrors": [],
-  "totalTriangles": 14366,
-  "hullTriangles": 7332,
+  "totalTriangles": 32248,
+  "hullTriangles": 9368,
   "lodTriangles": {
-    "lod0": 9456,
-    "lod1": 3430,
-    "lod2": 1468
+    "lod0": 21444,
+    "lod1": 7556,
+    "lod2": 3236
   },
   "drawEstimates": {
     "lod0": 8,
-    "lod1": 7,
-    "lod2": 7
+    "lod1": 8,
+    "lod2": 8
   },
   "sockets": [
     "SOCKET_Camera_Focus",
@@ -31,40 +31,40 @@
     "Material_Hull",
     "Material_Warm"
   ],
-  "tangentPrimitiveCount": 23,
-  "uvPrimitiveCount": 23,
+  "tangentPrimitiveCount": 25,
+  "uvPrimitiveCount": 25,
   "lod0AabbSize": [
-    18.57499885559082,
+    18.22499942779541,
     3.34499990940094,
     7.399999618530273
   ],
   "collisionBounds": {
     "min": [
-      -8.544499397277832,
+      -8.383499145507812,
       -1.538699984550476,
       -3.4039998054504395
     ],
     "max": [
-      8.544499397277832,
+      8.383499145507812,
       1.538699984550476,
       3.4039998054504395
     ],
     "size": [
-      17.088998794555664,
+      16.766998291015625,
       3.077399969100952,
       6.807999610900879
     ]
   },
   "collisionCoverage": {
     "axisRatios": [
-      0.9199999917853082,
+      0.919999935113515,
       0.9200000156807441,
       0.9199999948450034
     ],
-    "minRatio": 0.9199999917853082,
+    "minRatio": 0.919999935113515,
     "pass": true
   },
-  "sourceSha256": "36638660245C73DEF1516F133BFE1FEE1F201D62F6E4FA83457DDE521B6BC7BC",
-  "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_lark.glb",
-  "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_civilian\\blender\\helios_lark_production.blend"
+  "sourceSha256": "8F615C3C5B9D01B40DBE1518E23888DDD803F74DFA1E0F687AB82E924E3EFA12",
+  "outGlb": "C:\\Users\\93rob\\AppData\\Local\\Temp\\spaceface-grok-family-depth-20260721\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_lark.glb",
+  "outBlend": "C:\\Users\\93rob\\AppData\\Local\\Temp\\spaceface-grok-family-depth-20260721\\assets\\ships\\m4_helios_civilian\\blender\\helios_lark_production.blend"
 }

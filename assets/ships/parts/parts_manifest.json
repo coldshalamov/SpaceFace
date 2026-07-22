@@ -4154,8 +4154,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_lark.glb",
-      "tris": 14366,
-      "bytes": 15689524,
+      "tris": 32248,
+      "bytes": 25286680,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4181,20 +4181,20 @@
       "mount": "origin",
       "bounds": {
         "dimensionsM": [
-          18.575,
+          18.225,
           3.345,
           7.4
         ]
       },
-      "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Lark, live Helios traffic role courier; explicit LOD0/1/2, 8/7/7 draws, semantic 1K PBR maps, damageable drive/gun roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
+      "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Lark, live Helios traffic role courier; explicit LOD0/1/2, 8/8/8 draws, semantic 1K PBR maps, damageable drive/gun roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
     },
     {
       "id": "wholeship_helios_cradle",
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_cradle.glb",
-      "tris": 15536,
-      "bytes": 15786608,
+      "tris": 32368,
+      "bytes": 25245508,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4222,7 +4222,7 @@
       "bounds": {
         "dimensionsM": [
           22.15,
-          8.54,
+          8.7,
           9.3
         ]
       },
@@ -4233,8 +4233,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_span.glb",
-      "tris": 16366,
-      "bytes": 15820244,
+      "tris": 45858,
+      "bytes": 26048088,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4260,9 +4260,9 @@
       "mount": "origin",
       "bounds": {
         "dimensionsM": [
-          28.325,
+          28.475,
           5.11,
-          8.7
+          8.92
         ]
       },
       "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Span, live Helios traffic role hauler; explicit LOD0/1/2, 8/8/8 draws, semantic 1K PBR maps, damageable drive/gun roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."

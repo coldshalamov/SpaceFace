@@ -13,15 +13,15 @@
   "sourceGlb": "assets/ships/m4_helios_civilian/source/wholeships/helios_cradle.glb",
   "releaseCandidateGlb": "assets/ships/m4_helios_civilian/release_candidates/wholeships/helios_cradle.glb",
   "blend": "assets/ships/m4_helios_civilian/blender/helios_cradle_production.blend",
-  "sha256_source": "DE0179F1D9005FBCADCAD47FB8698B59795E3A13AB4C5C7D53CDB2FD88A44FFA",
+  "sha256_source": "1950D51B50E88C9375886DB7FBCBC8D60C3A5D6D99482CC0B4FF3289818AFF72",
   "report": {
-    "file": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_cradle.glb",
-    "bytes": 854908,
-    "totalTriangles": 15536,
-    "hullTriangles": 6858,
+    "file": "C:\\Users\\93rob\\AppData\\Local\\Temp\\spaceface-grok-family-depth-20260721\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_cradle.glb",
+    "bytes": 3795496,
+    "totalTriangles": 32368,
+    "hullTriangles": 7920,
     "lodBreakdown": {
       "lod0": {
-        "triangles": 9848,
+        "triangles": 21016,
         "primitives": 9,
         "drawEstimate": 9,
         "nodes": [
@@ -39,7 +39,7 @@
           },
           {
             "name": "LOD0_Merged_Material_Cyan",
-            "tris": 308
+            "tris": 524
           },
           {
             "name": "LOD0_Merged_Material_Glass",
@@ -47,15 +47,15 @@
           },
           {
             "name": "LOD0_Merged_Material_Hull",
-            "tris": 4288
+            "tris": 4952
           },
           {
             "name": "LOD0_Merged_Material_Mechanical",
-            "tris": 4304
+            "tris": 13272
           },
           {
             "name": "LOD0_Merged_Material_Warm",
-            "tris": 324
+            "tris": 1644
           },
           {
             "name": "LOD0_Mining_Emitter",
@@ -64,7 +64,7 @@
         ]
       },
       "lod1": {
-        "triangles": 3948,
+        "triangles": 7912,
         "primitives": 9,
         "drawEstimate": 9,
         "nodes": [
@@ -82,7 +82,7 @@
           },
           {
             "name": "LOD1_Merged_Material_Cyan",
-            "tris": 128
+            "tris": 220
           },
           {
             "name": "LOD1_Merged_Material_Glass",
@@ -90,15 +90,15 @@
           },
           {
             "name": "LOD1_Merged_Material_Hull",
-            "tris": 1800
+            "tris": 2078
           },
           {
             "name": "LOD1_Merged_Material_Mechanical",
-            "tris": 1670
+            "tris": 5074
           },
           {
             "name": "LOD1_Merged_Material_Warm",
-            "tris": 136
+            "tris": 326
           },
           {
             "name": "LOD1_Mining_Emitter",
@@ -107,7 +107,7 @@
         ]
       },
       "lod2": {
-        "triangles": 1728,
+        "triangles": 3428,
         "primitives": 9,
         "drawEstimate": 9,
         "nodes": [
@@ -125,7 +125,7 @@
           },
           {
             "name": "LOD2_Merged_Material_Cyan",
-            "tris": 54
+            "tris": 94
           },
           {
             "name": "LOD2_Merged_Material_Glass",
@@ -133,15 +133,15 @@
           },
           {
             "name": "LOD2_Merged_Material_Hull",
-            "tris": 770
+            "tris": 890
           },
           {
             "name": "LOD2_Merged_Material_Mechanical",
-            "tris": 716
+            "tris": 2174
           },
           {
             "name": "LOD2_Merged_Material_Warm",
-            "tris": 58
+            "tris": 140
           },
           {
             "name": "LOD2_Mining_Emitter",
@@ -190,8 +190,8 @@
       "packet": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001",
       "family": "helios_civilian",
       "role": "civilian_miner_tug",
-      "triangleCount": 15536,
-      "hullTriangleCount": 6858,
+      "triangleCount": 32368,
+      "hullTriangleCount": 7920,
       "deliverableRole": "candidate_multi_lod",
       "lods": [
         "lod0",
@@ -203,23 +203,23 @@
       "exportBasis": "Y-up glTF",
       "lod0AabbSize": [
         22.149999618530273,
-        8.53999948501587,
+        8.699999570846558,
         9.300000190734863
       ],
       "collisionBounds": {
         "min": [
           -10.189000129699707,
-          -3.9283995628356934,
+          -4.001999855041504,
           -4.278000354766846
         ],
         "max": [
           10.189000129699707,
-          3.9283995628356934,
+          4.001999855041504,
           4.278000354766846
         ],
         "size": [
           20.378000259399414,
-          7.856799125671387,
+          8.003999710083008,
           8.556000709533691
         ]
       }
@@ -229,25 +229,32 @@
         "lod": "lod0",
         "decimate_ratio": 1.0,
         "mesh_count": 9,
-        "triangles": 9848,
+        "triangles": 21016,
         "meshes": [
           {
             "name": "LOD0_Merged_Material_Hull",
-            "tris": 4288,
+            "tris": 4952,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD0_Merged_Material_Mechanical",
-            "tris": 4304,
+            "tris": 13272,
             "materials": [
               "Material_Mechanical"
             ]
           },
           {
+            "name": "LOD0_Merged_Material_Cyan",
+            "tris": 524,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
             "name": "LOD0_Merged_Material_Warm",
-            "tris": 324,
+            "tris": 1644,
             "materials": [
               "Material_Warm"
             ]
@@ -257,13 +264,6 @@
             "tris": 240,
             "materials": [
               "Material_Glass"
-            ]
-          },
-          {
-            "name": "LOD0_Merged_Material_Cyan",
-            "tris": 308,
-            "materials": [
-              "Material_Cyan"
             ]
           },
           {
@@ -302,25 +302,32 @@
         "lod": "lod1",
         "decimate_ratio": 0.42,
         "mesh_count": 9,
-        "triangles": 3948,
+        "triangles": 7912,
         "meshes": [
           {
             "name": "LOD1_Merged_Material_Hull",
-            "tris": 1800,
+            "tris": 2078,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD1_Merged_Material_Mechanical",
-            "tris": 1670,
+            "tris": 5074,
             "materials": [
               "Material_Mechanical"
             ]
           },
           {
+            "name": "LOD1_Merged_Material_Cyan",
+            "tris": 220,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
             "name": "LOD1_Merged_Material_Warm",
-            "tris": 136,
+            "tris": 326,
             "materials": [
               "Material_Warm"
             ]
@@ -330,13 +337,6 @@
             "tris": 100,
             "materials": [
               "Material_Glass"
-            ]
-          },
-          {
-            "name": "LOD1_Merged_Material_Cyan",
-            "tris": 128,
-            "materials": [
-              "Material_Cyan"
             ]
           },
           {
@@ -371,7 +371,23 @@
         "removed_close_only": [
           "Panel_Line_00",
           "Panel_Line_01",
-          "Panel_Line_02"
+          "Panel_Line_02",
+          "Cradle_Hatch_P_Pin_0",
+          "Cradle_Hatch_P_Pin_1",
+          "Cradle_Hatch_P_Pin_2",
+          "Cradle_Hatch_P_Pin_3",
+          "Cradle_Bolt_P_0",
+          "Cradle_Bolt_P_1",
+          "Cradle_Bolt_P_2",
+          "Cradle_Bolt_P_3",
+          "Cradle_Hatch_S_Pin_0",
+          "Cradle_Hatch_S_Pin_1",
+          "Cradle_Hatch_S_Pin_2",
+          "Cradle_Hatch_S_Pin_3",
+          "Cradle_Bolt_S_0",
+          "Cradle_Bolt_S_1",
+          "Cradle_Bolt_S_2",
+          "Cradle_Bolt_S_3"
         ],
         "draw_estimate": 9
       },
@@ -379,25 +395,32 @@
         "lod": "lod2",
         "decimate_ratio": 0.18,
         "mesh_count": 9,
-        "triangles": 1728,
+        "triangles": 3428,
         "meshes": [
           {
             "name": "LOD2_Merged_Material_Hull",
-            "tris": 770,
+            "tris": 890,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD2_Merged_Material_Mechanical",
-            "tris": 716,
+            "tris": 2174,
             "materials": [
               "Material_Mechanical"
             ]
           },
           {
+            "name": "LOD2_Merged_Material_Cyan",
+            "tris": 94,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
             "name": "LOD2_Merged_Material_Warm",
-            "tris": 58,
+            "tris": 140,
             "materials": [
               "Material_Warm"
             ]
@@ -407,13 +430,6 @@
             "tris": 42,
             "materials": [
               "Material_Glass"
-            ]
-          },
-          {
-            "name": "LOD2_Merged_Material_Cyan",
-            "tris": 54,
-            "materials": [
-              "Material_Cyan"
             ]
           },
           {
@@ -448,52 +464,102 @@
         "removed_close_only": [
           "Panel_Line_00",
           "Panel_Line_01",
-          "Panel_Line_02"
+          "Panel_Line_02",
+          "Cradle_Hatch_P_Pin_0",
+          "Cradle_Hatch_P_Pin_1",
+          "Cradle_Hatch_P_Pin_2",
+          "Cradle_Hatch_P_Pin_3",
+          "Cradle_Bolt_P_0",
+          "Cradle_Bolt_P_1",
+          "Cradle_Bolt_P_2",
+          "Cradle_Bolt_P_3",
+          "Cradle_Hatch_S_Pin_0",
+          "Cradle_Hatch_S_Pin_1",
+          "Cradle_Hatch_S_Pin_2",
+          "Cradle_Hatch_S_Pin_3",
+          "Cradle_Bolt_S_0",
+          "Cradle_Bolt_S_1",
+          "Cradle_Bolt_S_2",
+          "Cradle_Bolt_S_3"
         ],
         "draw_estimate": 9
       }
     ],
     "lod0AabbSize": [
       22.149999618530273,
-      8.53999948501587,
+      8.699999570846558,
       9.300000190734863
     ],
     "collisionBounds": {
       "min": [
         -10.189000129699707,
-        -3.9283995628356934,
+        -4.001999855041504,
         -4.278000354766846
       ],
       "max": [
         10.189000129699707,
-        3.9283995628356934,
+        4.001999855041504,
         4.278000354766846
       ],
       "size": [
         20.378000259399414,
-        7.856799125671387,
+        8.003999710083008,
         8.556000709533691
       ]
     },
-    "sha256": "DE0179F1D9005FBCADCAD47FB8698B59795E3A13AB4C5C7D53CDB2FD88A44FFA",
+    "sha256": "1950D51B50E88C9375886DB7FBCBC8D60C3A5D6D99482CC0B4FF3289818AFF72",
     "collisionCoverage": {
       "axisRatios": [
         0.9200000275553758,
-        0.9199999530979817,
+        0.9200000120579517,
         0.920000057425549
       ],
-      "minRatio": 0.9199999530979817,
+      "minRatio": 0.9200000120579517,
       "pass": true
     }
   },
   "renders": [
     "assets/ships/m4_helios_civilian/evidence/cradle/renders/forward_34.png",
     "assets/ships/m4_helios_civilian/evidence/cradle/renders/rear_34.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/side_profile.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/underside.png",
     "assets/ships/m4_helios_civilian/evidence/cradle/renders/top_ortho.png",
     "assets/ships/m4_helios_civilian/evidence/cradle/renders/readability_close.png",
     "assets/ships/m4_helios_civilian/evidence/cradle/renders/readability_under45px.png",
     "assets/ships/m4_helios_civilian/evidence/cradle/renders/readability_120px.png",
     "assets/ships/m4_helios_civilian/evidence/cradle/renders/gamesky_forward_34.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/neutral_bright_forward_34.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/dark_space_keyrim_forward_34.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/desat_studio_forward_34.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/turntable/frame_00.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/turntable/frame_01.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/turntable/frame_02.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/turntable/frame_03.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/turntable/frame_04.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/turntable/frame_05.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/turntable/frame_06.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/turntable/frame_07.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/turntable/frame_08.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/turntable/frame_09.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/turntable/frame_10.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/turntable/frame_11.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/diag_basecolor.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/diag_roughness.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/diag_metallic.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/diag_emissive.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/diag_normal.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/diag_ao.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/diag_wireframe.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/flyby/frame_00.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/flyby/frame_01.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/flyby/frame_02.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/flyby/frame_03.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/flyby/frame_04.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/flyby/frame_05.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/flyby/frame_06.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/flyby/frame_07.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/flyby/frame_08.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/flyby/frame_09.png",
     "assets/ships/m4_helios_civilian/evidence/cradle/renders/lod_continuity_lod0.png",
     "assets/ships/m4_helios_civilian/evidence/cradle/renders/lod_continuity_lod1.png",
     "assets/ships/m4_helios_civilian/evidence/cradle/renders/lod_continuity_lod2.png"
@@ -501,11 +567,11 @@
   "collisionCoverage": {
     "axisRatios": [
       0.9200000275553758,
-      0.9199999530979817,
+      0.9200000120579517,
       0.920000057425549
     ],
-    "minRatio": 0.9199999530979817,
+    "minRatio": 0.9200000120579517,
     "pass": true
   },
-  "builtAt": "2026-07-12T10:39:33Z"
+  "builtAt": "2026-07-21T23:19:45Z"
 }

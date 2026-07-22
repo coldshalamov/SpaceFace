@@ -750,20 +750,6 @@
       "contractNodeCount": 18
     },
     {
-      "id": "place_station_military",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_station_military.glb",
-      "release": "assets/ships/release/parts/places/place_station_military.glb",
-      "sourceSha256": "488a25527423b31d82be604ca75d94bf29d63e8b3c885eeb7e9f124e66450093",
-      "releaseSha256": "fef73b0ea65cb3410a47e776c6a014eb69aceca2eab544ca1df77d009fca9117",
-      "sourceBytes": 7954940,
-      "releaseBytes": 7350000,
-      "textures": 15,
-      "ktx2Textures": 15,
-      "meshoptBufferViews": 65,
-      "contractNodeCount": 18
-    },
-    {
       "id": "place_station_blackmarket",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_station_blackmarket.glb",
@@ -930,48 +916,6 @@
       "ktx2Textures": 20,
       "meshoptBufferViews": 81,
       "contractNodeCount": 35
-    },
-    {
-      "id": "wholeship_helios_lark",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/helios_lark.glb",
-      "release": "assets/ships/release/parts/wholeships/helios_lark.glb",
-      "sourceSha256": "b1df050343951cf8c31b321d8e02f8d650a5ba1a6df62cccbee95573ae4af4bc",
-      "releaseSha256": "965e903a19e13484715d44b8980e7d5076099215cc4999e5492d0aa95849f970",
-      "sourceBytes": 15689524,
-      "releaseBytes": 7317816,
-      "textures": 20,
-      "ktx2Textures": 20,
-      "meshoptBufferViews": 93,
-      "contractNodeCount": 31
-    },
-    {
-      "id": "wholeship_helios_span",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/helios_span.glb",
-      "release": "assets/ships/release/parts/wholeships/helios_span.glb",
-      "sourceSha256": "fddb0077c753a8245e4960bbafb36ec6b39281bb2e832f2a6d4b8fdd9c34bcd1",
-      "releaseSha256": "1154c6b0697467d1928ad06e26e5aa42cd50df57329007319329b2c712a3a840",
-      "sourceBytes": 15820244,
-      "releaseBytes": 7341268,
-      "textures": 20,
-      "ktx2Textures": 20,
-      "meshoptBufferViews": 101,
-      "contractNodeCount": 33
-    },
-    {
-      "id": "wholeship_helios_cradle",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/helios_cradle.glb",
-      "release": "assets/ships/release/parts/wholeships/helios_cradle.glb",
-      "sourceSha256": "c8f58ae64ce9d4b2bc1a42e0acc41e21c455c691c2732377ba8f65be54b0414e",
-      "releaseSha256": "f7aedf23816454f47e5f57e07689a52cd8f2e7fa4ed3c5c49b5550467066e3bb",
-      "sourceBytes": 15786608,
-      "releaseBytes": 7372168,
-      "textures": 20,
-      "ktx2Textures": 20,
-      "meshoptBufferViews": 113,
-      "contractNodeCount": 36
     },
     {
       "id": "place_lane_beacon",
@@ -1154,6 +1098,62 @@
       "ktx2Textures": 30,
       "meshoptBufferViews": 263,
       "contractNodeCount": 31
+    },
+    {
+      "id": "wholeship_helios_lark",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/helios_lark.glb",
+      "release": "assets/ships/release/parts/wholeships/helios_lark.glb",
+      "sourceSha256": "9090e7c21980d0d87d1da422bdb940a7731ceb3b39f4648adc0968df931b708f",
+      "releaseSha256": "5dfb6c2a2baaa4c8e92758f4e969d262ee668cbf22e5de73020df659e782a473",
+      "sourceBytes": 25286680,
+      "releaseBytes": 14087972,
+      "textures": 20,
+      "ktx2Textures": 20,
+      "meshoptBufferViews": 101,
+      "contractNodeCount": 33
+    },
+    {
+      "id": "wholeship_helios_cradle",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/helios_cradle.glb",
+      "release": "assets/ships/release/parts/wholeships/helios_cradle.glb",
+      "sourceSha256": "1f10de2d7f2ae083fdac768c735f1e444616ccc59bb19088cc8418f63e88dd72",
+      "releaseSha256": "6f400dfd7caf7e18df1b0cb951e77ec2c8773a4cd8321243e4c259c840c778de",
+      "sourceBytes": 25245508,
+      "releaseBytes": 14123188,
+      "textures": 20,
+      "ktx2Textures": 20,
+      "meshoptBufferViews": 113,
+      "contractNodeCount": 36
+    },
+    {
+      "id": "wholeship_helios_span",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/helios_span.glb",
+      "release": "assets/ships/release/parts/wholeships/helios_span.glb",
+      "sourceSha256": "c4ceaa020861cdd1bc9f7e20172bbc6f00531290aa3753e4757dc6b89b47f2ab",
+      "releaseSha256": "5fb2a62c79d3bc07777c5bf5ff9d2e26554e2bf3bfca051ba470d28adb6ed1b5",
+      "sourceBytes": 26048088,
+      "releaseBytes": 14153500,
+      "textures": 20,
+      "ktx2Textures": 20,
+      "meshoptBufferViews": 101,
+      "contractNodeCount": 33
+    },
+    {
+      "id": "place_station_military",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_station_military.glb",
+      "release": "assets/ships/release/parts/places/place_station_military.glb",
+      "sourceSha256": "fe2676f628c8a7382e6827883128d63c53407c9a828493cac8ccb65a9ed2491e",
+      "releaseSha256": "a92f5c2b53262defcbfea27b22ec07ce8d7798f856dbd8e3fc9b12475ea67806",
+      "sourceBytes": 6761824,
+      "releaseBytes": 4232420,
+      "textures": 30,
+      "ktx2Textures": 30,
+      "meshoptBufferViews": 113,
+      "contractNodeCount": 33
     }
   ]
 }
