@@ -18,51 +18,100 @@ affected paths until its owner releases or hands them off.
 The target is professional game art that works in the actual SpaceFace camera and runtime. Quality is
 judged from form, role readability, material response, construction logic, motion where appropriate,
 coherence with adjacent assets, and current player-route evidence. Named Blender techniques, pass
-counts, deficiency counts, and self-scores have no acceptance weight.
+counts, deficiency counts, triangle counts, and self-scores have no acceptance weight by themselves.
+
+## Canonical craft and acceptance authority
+
+Read `docs/visual-assets/README.md` and
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` first for substantive authored-asset work.
+The standard contains the state machine, tiers/severity, form/construction/UV/bake/material/LOD/VFX
+outcomes, G0–G7 gates, defect-driven technique selection, evidence rules, and agent execution loop.
+
+Use `docs/visual-assets/SPACEFACE_MIGRATION.md` for the repository audit and migration sequence,
+`docs/visual-assets/AGENT_PROMPTS.md` for reusable task prompts, and
+`docs/visual-assets/TEMPLATES.md` for brief/profile/review/acceptance record shapes.
+
+The current design/program plan owns scope and order. Exact manifests/runtime maps own identity and
+reachability. The visual-asset standard owns craft and acceptance semantics.
 
 ## Read only what the task needs
 
-1. `assets/AGENTS.md` and the current asset-specific manifest/classification record.
-2. `tools/blender/spaceface_export.py` and the relevant release/check command.
-3. `design/spec3/SPEC3-F9-asset-pipeline.md` for the live asset contract.
-4. The task's concept, role, or faction references, if any.
-5. One focused pass skill below when it materially helps:
+1. Root and nearest `AGENTS.md`, including `assets/AGENTS.md` and `assets/ships/AGENTS.md`.
+2. Current asset-specific manifest/classification record and any live lock.
+3. `tools/blender/spaceface_export.py` and the relevant release/check command.
+4. `design/spec3/SPEC3-F9-asset-pipeline.md` for the live asset contract.
+5. The task's brief, concept, role, faction, and normal-route references.
+6. The constitution, acceptance gates, execution protocol, and only the craft documents relevant to
+   the earliest failed gate.
+7. A focused pass skill below when it materially helps:
    - `../spaceface-blender-blockout/SKILL.md` — form and construction;
    - `../spaceface-blender-hardsurface/SKILL.md` — materials and surface response;
    - `../spaceface-blender-surface-pass/SKILL.md` — articulation, sockets, and final life.
 
 Do not infer current routing or readiness from old queue prose. Verify the exact asset ID against the
-live manifest, runtime map, exporter, and normal-route capture.
+live manifest, runtime map, exporter, candidate hash, and fresh normal-route capture.
+
+## Production state law
+
+Use only these states:
+
+`blockout` → `design_candidate` → `production_model` → `bake_candidate` →
+`surfaced_candidate` → `integration_candidate` → `accepted`.
+
+`blocked` and `deprecated` are terminal classifications outside that progression. `done`, `finished`,
+`production-ready`, and `shippable` are reserved for `accepted`.
+
+A technical build/export check may prove `technicalContractOk`. It cannot set `accepted`. Tier A/B
+assets require independent G7 review against the exact candidate hash.
 
 ## Outcome-driven workflow
 
-1. **Inspect current truth.** Record source path, asset ID, collections, transforms, topology,
-   materials/maps, metadata, sockets, LODs, exporter result, and in-game presentation. Preserve a
-   useful before view.
-2. **Define the visible job.** State the asset's gameplay role, intended silhouette/identity, camera
-   distances, interaction needs, and the largest current defects.
-3. **Choose methods deliberately.** Use `references/professional-techniques.md` as a menu. Select only
-   techniques that repair an observed defect or provide required runtime behavior. Simpler methods
+1. **Inspect current truth.** Record source/release/runtime paths, exact IDs and hashes, collections,
+   transforms, topology, UVs, materials/maps, metadata, sockets, LODs, exporter result, active locks,
+   representative cost, and current in-game presentation. Preserve matched baseline views.
+2. **Create the brief.** State tier, gameplay role, intended silhouette/identity, supported camera and
+   projected-size envelope, interaction needs, family language, construction/material story, target
+   scene, exclusions, and provisional cost hypothesis.
+3. **Find the earliest failed gate.** Repair role/form before surfacing; production geometry before
+   final UV/bakes; bake integrity before mesh-aware materials; material before LOD/performance;
+   integration before acceptance.
+4. **Choose methods deliberately.** Use the defect-driven technique section in
+   `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`. Select only methods that repair an
+   observed defect or provide required runtime behavior. Simpler methods
    are correct when they produce the stronger result; advanced methods are correct when their value
    survives export and is visible in context.
-4. **Author and review.** Work in Blender, render fully framed neutral and lit views, and review at the
-   real game camera. Make the highest-impact repairs. Repeat only while evidence exposes material
-   defects; do not manufacture a quota of iterations or deficiencies.
-5. **Optimize without lowering quality.** Prefer shared materials, batching-friendly roles, sensible
-   topology, bakes, reuse, and appropriate LOD/HLOD. Profile actual memory/upload/frame impact. A
-   generic triangle or texture ceiling is not a substitute for measurement.
-6. **Validate and integrate.** Export through the sanctioned pipeline, run the asset-specific checks,
-   and prove the authored result is reachable on the normal player route. Complete the required
-   manifest/runtime wiring when the task owns it and no active writer holds that seam; otherwise make
-   an explicit handoff to the current owner.
+5. **Author, export, compare.** Work in editable Blender source, export through the sanctioned path,
+   render matched neutral/lit/adversarial views, run the actual player route, and keep/revise/revert
+   based on evidence.
+6. **Optimize without lowering the premise.** Prefer shared materials, instancing/batching, sensible
+   topology, bakes, reuse, compression, and authored LOD/HLOD. Profile actual draw, memory, upload,
+   transparency, scene, and frame impact. A generic triangle or texture ceiling is not measurement.
+7. **Validate and integrate.** Prove the exact reviewed release hash is reachable with no fallback in
+   required browser/Electron paths. Complete required wiring only when the task owns the seam.
+8. **Request independent review.** Assemble the G7 packet after G0–G6 pass. Continue on rejection at
+   the earliest implicated gate.
 
-## Technique menu
+The loop has no arbitrary technique, pass, or iteration count. Continue while an applicable gate
+fails or a P0/P1 defect remains. When work cannot proceed, record `blocked` with the exact dependency
+and smallest action needed.
+
+## Technique safeguards
 
 Depending on the asset, useful methods can include modifier/boolean workflows, sculpted or modeled
-high-poly sources, weighted normals, controlled bevels, UV/trim/decal workflows, baked normal/AO/ORM,
-layered materials, geometry nodes for genuine repeatable variation, texture painting, rigging,
-animation, sockets, shape keys, or image-assisted masks. None is mandatory merely to demonstrate tool
-use. See `references/professional-techniques.md` for tradeoffs and failure modes.
+high-poly sources, weighted normals, controlled bevels, direct game modeling, retopology,
+UV/trim/decal workflows, baked normal/AO/curvature/ID/ORM, layered materials, Geometry Nodes for
+genuine repeatable structure, texture painting, rigging, animation, sockets, shape keys, or
+image-assisted masks. None is mandatory merely to demonstrate tool use.
+
+Do not present these as final work:
+
+- primitive stacking with one uniform bevel language;
+- floating bars as a universal panel-cut substitute;
+- automatic UVs without stretch/density/padding review;
+- flat normal maps or generic tile noise as object-specific surfacing;
+- fixed-ratio decimation without authored transition review;
+- extra subdivision/triangles that do not improve silhouette, shading, deformation, or close form;
+- Blender-only beauty renders without exact runtime proof.
 
 ## Non-negotiable safeguards
 
@@ -78,12 +127,16 @@ use. See `references/professional-techniques.md` for tradeoffs and failure modes
 
 ## Acceptance evidence
 
-- exact source/candidate identity and exporter result;
-- representative fully framed form/material views, plus useful detail views;
+Use the tier-appropriate G0–G7 packet in
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`, including:
+
+- exact source/export/release identity and exporter/validator result;
+- representative fully framed form, bake, material, and useful detail views;
 - a current normal-route in-game view at the real gameplay camera;
 - relevant asset/reachability/visual-stability checks;
-- measured performance evidence when cost changed materially;
+- LOD transition evidence;
+- measured representative-scene performance when cost changed;
 - an independent review for consequential player-facing assets.
 
-A checklist or transcript cannot override a visibly weak, unreachable, invalid, or needlessly costly
-result.
+A checklist or transcript cannot override a visibly weak, unreachable, invalid, unreviewed, or
+needlessly costly result.

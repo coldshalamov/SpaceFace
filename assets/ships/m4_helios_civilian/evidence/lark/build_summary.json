@@ -1,17 +1,18 @@
 {
   "gateOk": true,
   "gateErrors": [],
-  "totalTriangles": 32248,
-  "hullTriangles": 9368,
+  "remaster": "GFX-LARK-REMASTER-001",
+  "totalTriangles": 15286,
+  "hullTriangles": 8914,
   "lodTriangles": {
-    "lod0": 21444,
-    "lod1": 7556,
-    "lod2": 3236
+    "lod0": 8572,
+    "lod1": 4586,
+    "lod2": 2116
   },
   "drawEstimates": {
     "lod0": 8,
     "lod1": 8,
-    "lod2": 8
+    "lod2": 7
   },
   "sockets": [
     "SOCKET_Camera_Focus",
@@ -31,40 +32,44 @@
     "Material_Hull",
     "Material_Warm"
   ],
-  "tangentPrimitiveCount": 25,
-  "uvPrimitiveCount": 25,
+  "tangentPrimitiveCount": 24,
+  "uvPrimitiveCount": 24,
   "lod0AabbSize": [
-    18.22499942779541,
-    3.34499990940094,
-    7.399999618530273
+    17.999999046325684,
+    2.7899999618530273,
+    7.199999809265137
   ],
   "collisionBounds": {
     "min": [
-      -8.383499145507812,
-      -1.538699984550476,
-      -3.4039998054504395
+      -8.279999732971191,
+      -1.283400058746338,
+      -3.312000036239624
     ],
     "max": [
-      8.383499145507812,
-      1.538699984550476,
-      3.4039998054504395
+      8.279999732971191,
+      1.283400058746338,
+      3.312000036239624
     ],
     "size": [
-      16.766998291015625,
-      3.077399969100952,
-      6.807999610900879
+      16.559999465942383,
+      2.566800117492676,
+      6.624000072479248
     ]
   },
   "collisionCoverage": {
     "axisRatios": [
-      0.919999935113515,
-      0.9200000156807441,
-      0.9199999948450034
+      0.9200000190734874,
+      0.920000054691001,
+      0.9200000344382401
     ],
-    "minRatio": 0.919999935113515,
+    "minRatio": 0.9200000190734874,
     "pass": true
   },
-  "sourceSha256": "8F615C3C5B9D01B40DBE1518E23888DDD803F74DFA1E0F687AB82E924E3EFA12",
-  "outGlb": "C:\\Users\\93rob\\AppData\\Local\\Temp\\spaceface-grok-family-depth-20260721\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_lark.glb",
-  "outBlend": "C:\\Users\\93rob\\AppData\\Local\\Temp\\spaceface-grok-family-depth-20260721\\assets\\ships\\m4_helios_civilian\\blender\\helios_lark_production.blend"
+  "sourceSha256": "CE07E9D06A0FAA0D7DE4D6FD012D7839CDE76D6C72F30A4ADED96831799871AE",
+  "outGlb": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-8066f05c8cef\\worktree-gfx-remaster\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_lark.glb",
+  "outBlend": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-8066f05c8cef\\worktree-gfx-remaster\\assets\\ships\\m4_helios_civilian\\blender\\helios_lark_production.blend",
+  "bakePaths": {
+    "normal": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-8066f05c8cef\\worktree-gfx-remaster\\assets\\ships\\m4_helios_civilian\\evidence\\lark\\bakes\\lark_hull_normal.png",
+    "ao": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-8066f05c8cef\\worktree-gfx-remaster\\assets\\ships\\m4_helios_civilian\\evidence\\lark\\bakes\\lark_hull_ao.png"
+  }
 }

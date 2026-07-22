@@ -1,8 +1,8 @@
 {
   "schema": "spaceface.m4HeliosCivilianShipMetrics.v1",
   "packet": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001",
+  "remaster": "GFX-LARK-REMASTER-001",
   "shipKey": "lark",
-  "repair": "M4-HELIOS-CIVILIAN-REPAIR-001",
   "spec": {
     "id": "helios_lark",
     "assetId": "SF_WHOLESHIP_HELIOS_LARK",
@@ -13,127 +13,123 @@
   "sourceGlb": "assets/ships/m4_helios_civilian/source/wholeships/helios_lark.glb",
   "releaseCandidateGlb": "assets/ships/m4_helios_civilian/release_candidates/wholeships/helios_lark.glb",
   "blend": "assets/ships/m4_helios_civilian/blender/helios_lark_production.blend",
-  "sha256_source": "8F615C3C5B9D01B40DBE1518E23888DDD803F74DFA1E0F687AB82E924E3EFA12",
+  "sha256_source": "CE07E9D06A0FAA0D7DE4D6FD012D7839CDE76D6C72F30A4ADED96831799871AE",
   "report": {
-    "file": "C:\\Users\\93rob\\AppData\\Local\\Temp\\spaceface-grok-family-depth-20260721\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_lark.glb",
-    "bytes": 3829320,
-    "totalTriangles": 32248,
-    "hullTriangles": 9368,
+    "file": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-8066f05c8cef\\worktree-gfx-remaster\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_lark.glb",
+    "bytes": 3175748,
+    "totalTriangles": 15286,
+    "hullTriangles": 8914,
     "lodBreakdown": {
       "lod0": {
-        "triangles": 21444,
+        "triangles": 8572,
         "primitives": 8,
         "drawEstimate": 8,
         "nodes": [
           {
             "name": "LOD0_Gun_Assembly",
-            "tris": 164
+            "tris": 60
           },
           {
             "name": "LOD0_HOOK_DRIVE_CORE",
-            "tris": 424
-          },
-          {
-            "name": "LOD0_HOOK_DRIVE_FAN",
             "tris": 152
           },
           {
+            "name": "LOD0_HOOK_DRIVE_FAN",
+            "tris": 168
+          },
+          {
             "name": "LOD0_Merged_Material_Cyan",
-            "tris": 908
+            "tris": 292
           },
           {
             "name": "LOD0_Merged_Material_Glass",
-            "tris": 484
+            "tris": 488
           },
           {
             "name": "LOD0_Merged_Material_Hull",
-            "tris": 5856
+            "tris": 4872
           },
           {
             "name": "LOD0_Merged_Material_Mechanical",
-            "tris": 11428
+            "tris": 2504
           },
           {
             "name": "LOD0_Merged_Material_Warm",
-            "tris": 2028
+            "tris": 36
           }
         ]
       },
       "lod1": {
-        "triangles": 7556,
+        "triangles": 4586,
         "primitives": 8,
         "drawEstimate": 8,
         "nodes": [
           {
             "name": "LOD1_Gun_Assembly",
-            "tris": 50
+            "tris": 24
           },
           {
             "name": "LOD1_HOOK_DRIVE_CORE",
-            "tris": 132
+            "tris": 62
           },
           {
             "name": "LOD1_HOOK_DRIVE_FAN",
-            "tris": 46
+            "tris": 68
           },
           {
             "name": "LOD1_Merged_Material_Cyan",
-            "tris": 380
+            "tris": 160
           },
           {
             "name": "LOD1_Merged_Material_Glass",
-            "tris": 202
+            "tris": 268
           },
           {
             "name": "LOD1_Merged_Material_Hull",
-            "tris": 2458
+            "tris": 2678
           },
           {
             "name": "LOD1_Merged_Material_Mechanical",
-            "tris": 4118
+            "tris": 1314
           },
           {
             "name": "LOD1_Merged_Material_Warm",
-            "tris": 170
+            "tris": 12
           }
         ]
       },
       "lod2": {
-        "triangles": 3236,
-        "primitives": 8,
-        "drawEstimate": 8,
+        "triangles": 2116,
+        "primitives": 7,
+        "drawEstimate": 7,
         "nodes": [
           {
             "name": "LOD2_Gun_Assembly",
-            "tris": 22
+            "tris": 12
           },
           {
             "name": "LOD2_HOOK_DRIVE_CORE",
-            "tris": 56
+            "tris": 30
           },
           {
             "name": "LOD2_HOOK_DRIVE_FAN",
-            "tris": 20
+            "tris": 34
           },
           {
             "name": "LOD2_Merged_Material_Cyan",
-            "tris": 162
+            "tris": 20
           },
           {
             "name": "LOD2_Merged_Material_Glass",
-            "tris": 86
+            "tris": 106
           },
           {
             "name": "LOD2_Merged_Material_Hull",
-            "tris": 1054
+            "tris": 1364
           },
           {
             "name": "LOD2_Merged_Material_Mechanical",
-            "tris": 1764
-          },
-          {
-            "name": "LOD2_Merged_Material_Warm",
-            "tris": 72
+            "tris": 550
           }
         ]
       }
@@ -156,9 +152,9 @@
       "Material_Hull",
       "Material_Warm"
     ],
-    "primitiveCount": 25,
-    "tangentPrimitiveCount": 25,
-    "uvPrimitiveCount": 25,
+    "primitiveCount": 24,
+    "tangentPrimitiveCount": 24,
+    "uvPrimitiveCount": 24,
     "spacefaceAsset": {
       "contractVersion": 1,
       "assetId": "SF_WHOLESHIP_HELIOS_LARK",
@@ -178,8 +174,8 @@
       "packet": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001",
       "family": "helios_civilian",
       "role": "civilian_courier_scout",
-      "triangleCount": 32248,
-      "hullTriangleCount": 9368,
+      "triangleCount": 15286,
+      "hullTriangleCount": 8914,
       "deliverableRole": "candidate_multi_lod",
       "lods": [
         "lod0",
@@ -190,25 +186,25 @@
       "blenderBasis": "Z-up",
       "exportBasis": "Y-up glTF",
       "lod0AabbSize": [
-        18.22499942779541,
-        3.34499990940094,
-        7.399999618530273
+        17.999999046325684,
+        2.7899999618530273,
+        7.199999809265137
       ],
       "collisionBounds": {
         "min": [
-          -8.383499145507812,
-          -1.538699984550476,
-          -3.4039998054504395
+          -8.279999732971191,
+          -1.283400058746338,
+          -3.312000036239624
         ],
         "max": [
-          8.383499145507812,
-          1.538699984550476,
-          3.4039998054504395
+          8.279999732971191,
+          1.283400058746338,
+          3.312000036239624
         ],
         "size": [
-          16.766998291015625,
-          3.077399969100952,
-          6.807999610900879
+          16.559999465942383,
+          2.566800117492676,
+          6.624000072479248
         ]
       }
     },
@@ -217,60 +213,60 @@
         "lod": "lod0",
         "decimate_ratio": 1.0,
         "mesh_count": 8,
-        "triangles": 21444,
+        "triangles": 8572,
         "meshes": [
           {
             "name": "LOD0_Merged_Material_Hull",
-            "tris": 5856,
+            "tris": 4872,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD0_Merged_Material_Mechanical",
-            "tris": 11428,
+            "tris": 2504,
             "materials": [
               "Material_Mechanical"
             ]
           },
           {
-            "name": "LOD0_Merged_Material_Cyan",
-            "tris": 908,
-            "materials": [
-              "Material_Cyan"
-            ]
-          },
-          {
             "name": "LOD0_Merged_Material_Glass",
-            "tris": 484,
+            "tris": 488,
             "materials": [
               "Material_Glass"
             ]
           },
           {
+            "name": "LOD0_Merged_Material_Cyan",
+            "tris": 292,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
             "name": "LOD0_Merged_Material_Warm",
-            "tris": 2028,
+            "tris": 36,
             "materials": [
               "Material_Warm"
             ]
           },
           {
             "name": "LOD0_HOOK_DRIVE_FAN",
-            "tris": 152,
+            "tris": 168,
             "materials": [
               "Material_Mechanical"
             ]
           },
           {
             "name": "LOD0_HOOK_DRIVE_CORE",
-            "tris": 424,
+            "tris": 152,
             "materials": [
               "Material_Cyan"
             ]
           },
           {
             "name": "LOD0_Gun_Assembly",
-            "tris": 164,
+            "tris": 60,
             "materials": [
               "Material_Mechanical"
             ]
@@ -281,230 +277,166 @@
       },
       {
         "lod": "lod1",
-        "decimate_ratio": 0.42,
+        "decimate_ratio": 0.55,
         "mesh_count": 8,
-        "triangles": 7556,
+        "triangles": 4586,
         "meshes": [
           {
             "name": "LOD1_Merged_Material_Hull",
-            "tris": 2458,
+            "tris": 2678,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD1_Merged_Material_Mechanical",
-            "tris": 4118,
+            "tris": 1314,
             "materials": [
               "Material_Mechanical"
             ]
           },
           {
-            "name": "LOD1_Merged_Material_Cyan",
-            "tris": 380,
-            "materials": [
-              "Material_Cyan"
-            ]
-          },
-          {
             "name": "LOD1_Merged_Material_Glass",
-            "tris": 202,
+            "tris": 268,
             "materials": [
               "Material_Glass"
             ]
           },
           {
+            "name": "LOD1_Merged_Material_Cyan",
+            "tris": 160,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
             "name": "LOD1_Merged_Material_Warm",
-            "tris": 170,
+            "tris": 12,
             "materials": [
               "Material_Warm"
             ]
           },
           {
             "name": "LOD1_HOOK_DRIVE_FAN",
-            "tris": 46,
+            "tris": 68,
             "materials": [
               "Material_Mechanical"
             ]
           },
           {
             "name": "LOD1_HOOK_DRIVE_CORE",
-            "tris": 132,
+            "tris": 62,
             "materials": [
               "Material_Cyan"
             ]
           },
           {
             "name": "LOD1_Gun_Assembly",
-            "tris": 50,
+            "tris": 24,
             "materials": [
               "Material_Mechanical"
             ]
           }
         ],
-        "removed_close_only": [
-          "Courier_Access_Plate_P",
-          "Courier_Access_Plate_S",
-          "Hazard_Chevron_00",
-          "Hazard_Chevron_01",
-          "Hazard_Chevron_02",
-          "Hazard_Chevron_03",
-          "Status_Marker_00",
-          "Panel_Line_00",
-          "Panel_Line_01",
-          "Panel_Line_02",
-          "Lark_Hatch_P_Pin_0",
-          "Lark_Hatch_P_Pin_1",
-          "Lark_Hatch_P_Pin_2",
-          "Lark_Hatch_P_Pin_3",
-          "Lark_Bolt_P_0",
-          "Lark_Bolt_P_1",
-          "Lark_Bolt_P_2",
-          "Lark_Bolt_P_3",
-          "Lark_Hatch_S_Pin_0",
-          "Lark_Hatch_S_Pin_1",
-          "Lark_Hatch_S_Pin_2",
-          "Lark_Hatch_S_Pin_3",
-          "Lark_Bolt_S_0",
-          "Lark_Bolt_S_1",
-          "Lark_Bolt_S_2",
-          "Lark_Bolt_S_3",
-          "Lark_Ventral_Hatch_Pin_0",
-          "Lark_Ventral_Hatch_Pin_1",
-          "Lark_Ventral_Hatch_Pin_2",
-          "Lark_Ventral_Hatch_Pin_3"
-        ],
+        "removed_close_only": [],
         "draw_estimate": 8
       },
       {
         "lod": "lod2",
-        "decimate_ratio": 0.18,
-        "mesh_count": 8,
-        "triangles": 3236,
+        "decimate_ratio": 0.28,
+        "mesh_count": 7,
+        "triangles": 2116,
         "meshes": [
           {
             "name": "LOD2_Merged_Material_Hull",
-            "tris": 1054,
+            "tris": 1364,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD2_Merged_Material_Mechanical",
-            "tris": 1764,
+            "tris": 550,
             "materials": [
               "Material_Mechanical"
             ]
           },
           {
-            "name": "LOD2_Merged_Material_Cyan",
-            "tris": 162,
-            "materials": [
-              "Material_Cyan"
-            ]
-          },
-          {
             "name": "LOD2_Merged_Material_Glass",
-            "tris": 86,
+            "tris": 106,
             "materials": [
               "Material_Glass"
             ]
           },
           {
-            "name": "LOD2_Merged_Material_Warm",
-            "tris": 72,
+            "name": "LOD2_Merged_Material_Cyan",
+            "tris": 20,
             "materials": [
-              "Material_Warm"
+              "Material_Cyan"
             ]
           },
           {
             "name": "LOD2_HOOK_DRIVE_FAN",
-            "tris": 20,
+            "tris": 34,
             "materials": [
               "Material_Mechanical"
             ]
           },
           {
             "name": "LOD2_HOOK_DRIVE_CORE",
-            "tris": 56,
+            "tris": 30,
             "materials": [
               "Material_Cyan"
             ]
           },
           {
             "name": "LOD2_Gun_Assembly",
-            "tris": 22,
+            "tris": 12,
             "materials": [
               "Material_Mechanical"
             ]
           }
         ],
-        "removed_close_only": [
-          "Courier_Access_Plate_P",
-          "Courier_Access_Plate_S",
-          "Hazard_Chevron_00",
-          "Hazard_Chevron_01",
-          "Hazard_Chevron_02",
-          "Hazard_Chevron_03",
-          "Status_Marker_00",
-          "Panel_Line_00",
-          "Panel_Line_01",
-          "Panel_Line_02",
-          "Lark_Hatch_P_Pin_0",
-          "Lark_Hatch_P_Pin_1",
-          "Lark_Hatch_P_Pin_2",
-          "Lark_Hatch_P_Pin_3",
-          "Lark_Bolt_P_0",
-          "Lark_Bolt_P_1",
-          "Lark_Bolt_P_2",
-          "Lark_Bolt_P_3",
-          "Lark_Hatch_S_Pin_0",
-          "Lark_Hatch_S_Pin_1",
-          "Lark_Hatch_S_Pin_2",
-          "Lark_Hatch_S_Pin_3",
-          "Lark_Bolt_S_0",
-          "Lark_Bolt_S_1",
-          "Lark_Bolt_S_2",
-          "Lark_Bolt_S_3",
-          "Lark_Ventral_Hatch_Pin_0",
-          "Lark_Ventral_Hatch_Pin_1",
-          "Lark_Ventral_Hatch_Pin_2",
-          "Lark_Ventral_Hatch_Pin_3"
-        ],
-        "draw_estimate": 8
+        "removed_close_only": [],
+        "draw_estimate": 7
       }
     ],
     "lod0AabbSize": [
-      18.22499942779541,
-      3.34499990940094,
-      7.399999618530273
+      17.999999046325684,
+      2.7899999618530273,
+      7.199999809265137
     ],
     "collisionBounds": {
       "min": [
-        -8.383499145507812,
-        -1.538699984550476,
-        -3.4039998054504395
+        -8.279999732971191,
+        -1.283400058746338,
+        -3.312000036239624
       ],
       "max": [
-        8.383499145507812,
-        1.538699984550476,
-        3.4039998054504395
+        8.279999732971191,
+        1.283400058746338,
+        3.312000036239624
       ],
       "size": [
-        16.766998291015625,
-        3.077399969100952,
-        6.807999610900879
+        16.559999465942383,
+        2.566800117492676,
+        6.624000072479248
       ]
     },
-    "sha256": "8F615C3C5B9D01B40DBE1518E23888DDD803F74DFA1E0F687AB82E924E3EFA12",
+    "sha256": "CE07E9D06A0FAA0D7DE4D6FD012D7839CDE76D6C72F30A4ADED96831799871AE",
     "collisionCoverage": {
       "axisRatios": [
-        0.919999935113515,
-        0.9200000156807441,
-        0.9199999948450034
+        0.9200000190734874,
+        0.920000054691001,
+        0.9200000344382401
       ],
-      "minRatio": 0.919999935113515,
+      "minRatio": 0.9200000190734874,
       "pass": true
+    },
+    "remaster": "GFX-LARK-REMASTER-001",
+    "bakePaths": {
+      "normal": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-8066f05c8cef\\worktree-gfx-remaster\\assets\\ships\\m4_helios_civilian\\evidence\\lark\\bakes\\lark_hull_normal.png",
+      "ao": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-8066f05c8cef\\worktree-gfx-remaster\\assets\\ships\\m4_helios_civilian\\evidence\\lark\\bakes\\lark_hull_ao.png"
     }
   },
   "renders": [
@@ -553,14 +485,19 @@
     "assets/ships/m4_helios_civilian/evidence/lark/renders/lod_continuity_lod1.png",
     "assets/ships/m4_helios_civilian/evidence/lark/renders/lod_continuity_lod2.png"
   ],
+  "clayRenders": [],
+  "bakePaths": {
+    "normal": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-8066f05c8cef\\worktree-gfx-remaster\\assets\\ships\\m4_helios_civilian\\evidence\\lark\\bakes\\lark_hull_normal.png",
+    "ao": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-8066f05c8cef\\worktree-gfx-remaster\\assets\\ships\\m4_helios_civilian\\evidence\\lark\\bakes\\lark_hull_ao.png"
+  },
   "collisionCoverage": {
     "axisRatios": [
-      0.919999935113515,
-      0.9200000156807441,
-      0.9199999948450034
+      0.9200000190734874,
+      0.920000054691001,
+      0.9200000344382401
     ],
-    "minRatio": 0.919999935113515,
+    "minRatio": 0.9200000190734874,
     "pass": true
   },
-  "builtAt": "2026-07-21T22:58:34Z"
+  "builtAt": "2026-07-22T04:50:07Z"
 }
