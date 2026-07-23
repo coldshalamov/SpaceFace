@@ -421,15 +421,16 @@ Before confirmatory data are collected, a content-hashed manifest freezes:
 
 No confirmatory result may be inspected before this manifest is sealed.
 
-### 10.4 Default fixed confirmatory design
+### 10.4 Default balanced-randomized confirmatory design
 
-**Proposal:** use twelve new fresh-process paired blocks with this exact predeclared order:
+**Proposal:** use twelve new fresh-process paired blocks. Before any confirmatory
+data are collected, uniformly sample one balanced six-`AB`/six-`BA` assignment
+from the complete set of `C(12, 6) = 924` balanced assignments. The sealed
+confirmatory manifest freezes the seed, generator and version, sampled assignment
+vector, assignment mechanism, test statistic, effect-null inversion procedure,
+invalid-block handling, and decision rule.
 
-```text
-AB, BA, BA, AB, BA, AB, AB, BA, AB, BA, BA, AB
-```
-
-This provides six `AB` and six `BA` blocks. For each block:
+For each block:
 
 ```text
 d_i = metric(B_i) - metric(A_i)
@@ -439,13 +440,18 @@ The primary estimand is the mean paired block effect in milliseconds for the pre
 
 - all twelve `d_i` values;
 - mean, median, minimum, and maximum block effect;
-- a two-sided exact paired sign-flip randomization p-value over all `2^12` sign assignments;
-- a 95% randomization interval obtained by inverting the same exact paired test;
+- a two-sided exact paired randomization p-value over all 924 balanced assignment
+  vectors under the frozen assignment mechanism;
+- a 95% randomization interval obtained by inverting that same exact balanced
+  randomization test;
 - control-before/control-after drift and invalidity reasons per block.
 
 No efficacy stop is allowed before twelve valid blocks. If the controller chooses group-sequential monitoring instead, the look schedule and alpha-spending function must be frozen before the first block; ordinary repeated `p < 0.05` peeking is forbidden.
 
-Exploratory blocks, rejected blocks, and confirmatory blocks are disjoint. A replacement block uses the next frozen order in the manifest; it is not selected after seeing an effect.
+Exploratory blocks, rejected blocks, and confirmatory blocks are disjoint. Invalid
+blocks remain retained and reported. A replacement block uses the next
+pre-generated balanced assignment from the sealed manifest's replacement vector;
+it is never selected after seeing an effect.
 
 ## 11. Exact future write-set proposal
 
