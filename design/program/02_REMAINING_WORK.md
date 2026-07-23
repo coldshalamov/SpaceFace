@@ -16,7 +16,7 @@ Program. Detailed behavior remains in the linked source plans; this file owns st
 | M1-ROUTE | PARTIAL — CLEAN BROWSER ROUTE ACCEPTED | G04 clean-checkout evidence proves the committed browser route docks Helios through ordinary input, and the later journey harness repairs stale selectors/pause behavior. Run the current uninjected journey in Electron and reconcile any remaining strict-harness disagreement. | Complete uninjected New Game→objective→map→flight→dock route in browser and Electron with current receipts. |
 | M1-FOCUS | PARTIAL | Five cluttered exact-target flybys with correct 50% timing, deterministic target ownership, and escape/counterplay. | Held-out public keyboard/gamepad routes and media. |
 | M1-CAMERA | PARTIAL | Capture and review current two-ship composition, ease, overflow, reduced-motion, and tether framing. | Fresh before/after media plus `check:camera`. |
-| M1-TETHER | PARTIAL | Prove standard +30% limits, operational mass, non-stacking spools, and starter survivability naturally. | `check:m1:tether-mass`, tether floor, sim compare, public benchmark. |
+| M1-TETHER | PARTIAL — NORMAL DURABILITY CLOSED | `2a9517d8` makes the starter/ordinary Massline nonbreaking under normal load with a 10x physical envelope, while preserving explicit manual/subsystem cuts and an authored extreme-load opt-in for future station/singularity-scale operations. Remaining M1 work is natural player-route feel/readability and later progression design, not maneuver-speed calibration. | SG-02/SG-06 resilience, `check:m1:tether-mass`, sim compare, and a future natural public benchmark. |
 | M1-DOCTRINES | PARTIAL | Prove three readable doctrines, player counterplay, and recovery in held-out public routes. | 23/23 remains green plus natural route evidence. |
 | M1-HUD | PARTIAL — CONDITION WIDGET REPAIRED | `ea698805` replaces the overlapping text/decorative icon with a readable ship schematic, shield ring, hull crop, explicit values, and warning states; fresh active-flight nominal/damaged captures and a11y proof pass. Continue removing repeated objective/action/threat instructions without removing the contact roster or protected station UI. | UI/a11y/perf checks and public screenshot review. |
 | M1-VISUAL-FAMILY | PARTIAL — PROMOTED CHECKPOINT | Kestrel, pooled thrusters/RCS, Helios surfaces, the `54548e09` Helios Lark/Cradle/Span family, seamed/graffiti landmarks, loading presentation, the de-hazed background substrate, common-rock maps, authored fail-closed admission, typed projectile/mine/impulse/wreck identities, geology truth `e8838e2c`, and the RCS evidence repair `3d2dc765` are wired on current `master`. Finish Ashline V2 runtime admission, compact/reduced-motion/dense/Spector propulsion proof, combat/destruction visual acceptance, natural-route rock parity, localized authored space structure, gate/hero assets, and the next high-frequency PBR families. | Normal public routes with authored assets, classification/provenance records, asset/live/visual/perf checks, and reviewed browser/Electron media. |
@@ -45,9 +45,10 @@ Program. Detailed behavior remains in the linked source plans; this file owns st
   `gate0_closure` block.
 - **THE BATCH IS CLOSED: PQ-012, PQ-013, PQ-014, PQ-015, PQ-016 are ALL CHECKED OFF** at final
   master `ce97d573` (see the NOW.md batch-closure table for commits, evidence, honest perf truth,
-  and the named follow-up list). **The next canonical queue item is PQ-017** (World Site kernel;
-  PQ-015+PQ-016 dependencies now satisfied; unblocks PQ-018 Wreck Cathedral + PQ-021 Ship's
-  Ledger).
+  and the named follow-up list). **PQ-017 is CHECKED OFF at `2a9517d8`; PQ-018 is the current
+  canonical queue item.** The preserved Wreck Cathedral source candidate is now unblocked for
+  manifest/release promotion, place registration, World Site wiring, save continuity, and public-route
+  acceptance. PQ-021's site-kernel dependency is also satisfied, but it remains later in queue order.
 - **Full PQ-014 follows the PQ-015 registry release.** Reuse the existing deterministic job kernel;
   do not replace it. Remaining work is live materialization, virtualization, AI movement, save,
   natural-occurrence census, held-out seeds, and public-route proof.
@@ -158,7 +159,7 @@ repository-state reconciliation, the roll-up remains **0 DONE, 16 IP-CP, 15 TODO
 | K1 five factions live | IP-CP | Revalidate live behavior/data; full repo gate and unassisted faction exposure review. |
 | PR1 props 1–8 | TODO | Author, optimize, wire, classify, and capture props 1–8. |
 | PR2 props 9–15 | TODO | Author, optimize, wire, classify, and capture props 9–15. |
-| H1a Wreck Cathedral | PARTIAL — SOURCE candidate on master | The 2026-07-20 closeout preserved the full SOURCE_GLB candidate at `6df5a210`..`7330a85b` (blend + 11.2 MB GLB + 26 PBR textures + 15 captures + turntable + 11 reports + reproducible authoring scripts; SHA-256 manifest; gltf-validator clean; PQ-017-dependent). Remaining: PQ-017 World Site kernel, then manifest/release promotion, place registration, Atlas integrity, interaction/history/salvage wiring, save continuity, browser/Electron route acceptance, measured performance. |
+| H1a Wreck Cathedral | PARTIAL — SOURCE candidate on master; PQ-017 dependency satisfied | The 2026-07-20 closeout preserved the full SOURCE_GLB candidate at `6df5a210`..`7330a85b` (blend + 11.2 MB GLB + 26 PBR textures + 15 captures + turntable + 11 reports + reproducible authoring scripts; SHA-256 manifest; gltf-validator clean). Next: manifest/release promotion, place registration, Atlas integrity, PQ-017 component/operation/history wiring, save continuity, browser/Electron route acceptance, and measured performance. |
 | H1b Obelisk + Shard Sphere | TODO | Author/place/wire both landmark identities and accept in play. |
 | H1c Candle Fleet + Quiessence | TODO | Author/place/wire both and connect Band/story producers. |
 | H1d Lung + Funnel | TODO | Author/place/wire both with distinct behavior and accepted captures. |

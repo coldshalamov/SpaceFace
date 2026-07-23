@@ -25,6 +25,7 @@
 6. [I changed a faction/rep number and combat didn't react](#6-i-changed-a-factionrep-number-and-combat-didnt-react)
 7. [My perf fix made the frame worse / browser diverged](#7-my-perf-fix-made-the-frame-worse--browser-diverged)
 8. [The sim/hash check broke after my change](#8-the-simhash-check-broke-after-my-change)
+9. [The Massline breaks during ordinary piloting](#9-the-massline-breaks-during-ordinary-piloting)
 
 ---
 
@@ -315,6 +316,35 @@ the performance truth.
 **Current known-stale goldens:** the 47a goldens are stale by design — sim state shape grew (scanner, discovery, tether runtime, mining seams) and Mining 2.0's fracture changed how the recorded tape plays out, tripping the "should exercise projectile collision" coverage precondition. Determinism itself held at every same-shape comparison (`hashEqual:true`, `firstDivergentTick:null`). The re-record is a deliberate named batch (see `design/BUILD_PLAN_2_0.md` "Golden/tape note"). The hashEqual:true comparison (same shape) is the pass bar while pending.
 
 **If your change is a legitimate sim-shape change:** describe in your PR how you preserved or will re-record goldens.
+
+---
+
+## 9. The Massline breaks during ordinary piloting
+
+**Symptom:** A healthy standard Massline snaps after thrust, boost, a slack catch, reel timing, a
+reversal, or an ordinary ship/asteroid maneuver. A check treats that snap as desirable.
+
+**This is a regression.** `tether_standard` is normal-play infrastructure, not a timing consumable.
+Its base physical envelope is 10× the earlier 1.05M / 19k / 15k tune, and ordinary endpoints do not
+enable automatic load breaks. Pilot cut, destroyed/disabled attachment ownership, target loss, and
+other intentional severing paths remain valid.
+
+The only reserved automatic overload seam is an explicitly authored future extreme-load endpoint
+with `data.masslineBreakPolicy === 'extreme_overload'` (for station-scale or singularity-scale work).
+Do not add that flag to ordinary ships, asteroids, payloads, or World Site recovery targets.
+
+**Owning path:**
+
+- `src/data/combatDefs.js` — `tether_standard` envelope and `automaticBreakPolicy`.
+- `src/combat/attachments.js` — endpoint opt-in, frozen policy, and old-save rebase.
+- `src/core/constraints/masslineController.js` — automatic-break authority and overload debt.
+- `scripts/check-sg02-tether-resilience.mjs` — production `action_attach` resilience plus the explicit
+  extreme-endpoint break leg.
+- `scripts/check-sg06-live-tether-resilience.mjs` — real slack-catch/dash acceptance.
+
+Run `npm run check:massline`, `npm run check:m1:tether-mass`,
+`npm run check:sg06:tether-resilience`, `npm run check:core:first-ten-minute`, and
+`npm run check:sim:compare`. Never restore a desired-break test for a normal standard line.
 
 ---
 

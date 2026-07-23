@@ -106,6 +106,13 @@ Add every new file to intent with `git add -N <file>` immediately.
 4. Normal browser/Electron route and current media for player-visible work.
 5. `git diff --check`, `git status --short`, and a complete review of the intended diff.
 
+An expensive route probe is acceptance evidence, not an iterative debugger. After its first new
+failure family, reduce the failure to a deterministic, seconds-scale regression that drives the real
+owning systems through fixed ticks and public control intent. Observe that regression fail and pass
+before another live attempt. Where a route is costly or historically flaky, enforce the boundary with
+a source-bound fast receipt and a stable failure fingerprint so an unchanged test suite cannot launch
+the same acceptance attempt again.
+
 Report exact commands, exit status, passed/failed counts, artifact paths, and current commit. A failed
 command stays in the receipt with its classification; it is never erased by a later green subset.
 

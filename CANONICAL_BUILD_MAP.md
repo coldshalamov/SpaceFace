@@ -150,9 +150,9 @@ Refresh from the live queue before acting. Current structural intent after the 2
 
 | Wave | Packets | Notes |
 |---|---|---|
-| Integrated roots | **PQ-001…PQ-016** | Do not reopen; use receipts and named follow-ups |
-| Next | **PQ-017** site kernel | Unblocks preserved PQ-018 Cathedral and PQ-021 Ledger |
-| After PQ-017 | PQ-018 cathedral, then PQ-019–025 corridor | Extend existing partials; do not replace them |
+| Integrated roots | **PQ-001…PQ-017** | Do not reopen; use receipts and named follow-ups |
+| Next | **PQ-018** Wreck Cathedral runtime promotion | Extend the preserved source candidate through the PQ-017 site substrate |
+| After PQ-018 | PQ-019–025 corridor | Extend existing partials; do not replace them |
 | Deferred | PQ-026–033 | After corridor acceptance unless the user overrides |
 
 The table immediately below is the historical pre-closeout wave shape retained for archaeology; it
@@ -170,7 +170,7 @@ is not the current dispatch order.
 **Current partial landings already on master (do not re-author from zero):**
 
 - PQ-011 and PQ-014 are integrated; follow only their named receipt defects.
-- PQ-018 remains a PQ-017-dependent source candidate.
+- PQ-018's source candidate is preserved and its PQ-017 runtime dependency is now satisfied.
 - PQ-021 remains an unwired ledger UI.
 - PQ-022 has accepted station/fleet subslices but is not complete across all visual families.
 
@@ -180,7 +180,7 @@ Historical pre-closeout partial table:
 |---|---|---|
 | PQ-011 | Runtime wired, `focused_green` | Route + visual + adversarial close |
 | PQ-014 | Job **kernel** unwired | encounterDirector / sectorSim / AI / save / natural occurrence |
-| PQ-018 | **Source** GLB candidate | Needs PQ-017; then place/wire/route |
+| PQ-018 | **Source** GLB candidate | PQ-017 satisfied; place/wire/save/route next |
 | PQ-021 | Ledger UI exists, **unwired** | After cathedral/site path |
 | PQ-022 | One station family route-accepted | Continue families via foundry/manifests |
 | Fleet foundry | Source-complete | Runtime admission / default-route binding |
@@ -229,18 +229,19 @@ Replace `N` with the user’s count. For a single packet, use the same rules wit
 
 ## 5. Live position snapshot (refresh before acting)
 
-**Snapshot date:** 2026-07-21. **Always re-read the queue and `NOW.md`.**
+**Snapshot date:** 2026-07-22. **Always re-read the queue and `NOW.md`.**
 
 | Bucket | PQ items (at snapshot) |
 |---|---|
-| Integrated | PQ-001 … PQ-016 |
-| Next dependency root | PQ-017 World Site kernel |
-| Planned active spine | PQ-017 … PQ-025 |
+| Integrated | PQ-001 … PQ-017 |
+| Next dependency root | PQ-018 Wreck Cathedral runtime promotion |
+| Planned active spine | PQ-018 … PQ-025 |
 | Deferred post-corridor | PQ-026 … PQ-033 |
 
 **Current checkout reality at the 2026-07-21 closeout:**
 
-- `master` is the only registered worktree. PQ-001…PQ-016 are integrated; PQ-017 is next.
+- PQ-017 is integrated at `2a9517d8`; PQ-018 is the next queue item. Re-check registered worktrees
+  and live leases before dispatch because protected foreign graphics work may still be active.
 - The former `SpaceFace-graphics-overhaul` mixed donor was selectively dispositioned, hash-archived,
   tagged at `archive/graphics-overhaul-donor-20260721`, and physically removed. Never recreate it as a
   whole-merge source; consult `design/program/09_DONOR_VALUE_LEDGER.md` for recoverable value.

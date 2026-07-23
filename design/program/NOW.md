@@ -1,9 +1,34 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-21 graphics/program closeout at `master` `54548e09`. PQ-001..PQ-016 are
-integrated; PQ-017 is the next canonical queue item. The readable ship-condition HUD is integrated at
-`ea698805`, and the reviewed Helios Lark/Cradle/Span production family is source-complete,
-release-built, runtime-wired, and integrated at `54548e09`. `master` is the only registered worktree.
+**Snapshot:** 2026-07-22 PQ-017 closeout at `master` `2a9517d8`. PQ-001..PQ-017 are integrated;
+PQ-018 Wreck Cathedral runtime promotion is the next canonical queue item. The protected foreign
+graphics and worldbuilding work listed below remains outside the PQ-017 commits.
+
+## 2026-07-22 live leases (refresh at `master` `7c873c63`)
+
+- **PQ-017 World Site kernel — `INTEGRATED` at `2a9517d8`; writer lease RELEASED.** The reusable
+  manifest/kernel/runtime, save ownership, operations, physical payload/receiver path, impact
+  recovery, presentation, map History, traffic, controls, route tooling, and normal-play Massline
+  durability contract are committed. Final focused proof: World Site/Massline **81/81**, public-route
+  contract **67/67**, closed-loop controls **23/23**, SG-02 and SG-06 resilience green, and 47-A sim
+  compare `ok:true`/deterministic/`hashEqual:true`. The headed route reached the authored site and
+  operations before the acceptance driver falsely charged its own sequential key-release latency to
+  the active key. Exact token-bound keydown-to-keyup accounting is now deterministic-tested; no
+  further expensive live rerun was used as a debugger. This is an integrated feature check-off, not a
+  claim that a new final Browser/Electron evidence directory was accepted. Receipt:
+  `design/program/roadmap/receipts/PQ-017-world-site-REPORT.md`.
+- **Helios Lark graphics remaster — OCCUPIED foreign isolated lane.** Live worktree
+  `C:\Users\93rob\AppData\Local\Temp\grok-goal-8066f05c8cef\worktree-gfx-remaster`, branch
+  `agent/gfx-production-remaster-lark`; its Blender/source/release/evidence/tooling paths and the
+  Blender/browser-GPU resources are protected until its owner hands them off. Do not double-assign
+  PQ-022 or merge that lane opportunistically. A second external graphics process has also written
+  primary-tree evidence under `Users93robAppDataLocalTempgrok-goal-5d58d165aa45implementer/**`;
+  preserve that untracked directory and exclude it from PQ-017 staging/cleanup.
+- **Worldbuilding influence corpus — protected foreign WIP in the primary tree.** Preserve
+  `docs/worldbuilding/README.md`, `docs/worldbuilding/CREATIVE-DIRECTION.md`,
+  `docs/worldbuilding/stylistic-influences/**`, the related
+  `scripts/_tmp_*.py` helpers, and `skills/creative-writing-1.0.0.tar.gz`; exclude them from PQ-017
+  staging, cleanup, and review.
 
 ## 2026-07-21 graphics checkpoint and donor retirement
 
@@ -78,7 +103,7 @@ the mobile viewport.
 | Commit | What it is |
 |---|---|
 | `d6d5278c` `73159e05` `fffe57db` | feat/fix/docs(npcJobs) — PQ-014 deterministic job-state kernel for miner/hauler/patrol (48/48 focused-green, runtime-unwired, zero live importers) |
-| `6df5a210` `a31554fa` `6b24baad` `7330a85b` | feat/docs(assets) — PQ-018 Wreck Cathedral SOURCE_GLB candidate (validated, PQ-017-dependent, NOT route-accepted) |
+| `6df5a210` `a31554fa` `6b24baad` `7330a85b` | feat/docs(assets) — PQ-018 Wreck Cathedral SOURCE_GLB candidate (validated, runtime promotion next, NOT route-accepted) |
 | `3ea2fe99` | feat(station) — PQ-022 place_station_military remaster into armored customs bastion (Helios+Tethys route-accepted) |
 | `a418c111` | docs/tools — preserve graphics-revamp canon, spec, tooling, PQ-022 capture tool (category 1+2 of untracked-batch classification) |
 | `eb8ed839` | docs(archive) — hash-bound recovery record for the 247 removed category 3+4+5 untracked files |
@@ -88,7 +113,7 @@ the mobile viewport.
 | Outcome | State | Evidence |
 |---|---|---|
 | PQ-014 (NPC jobs) | **INTEGRATED KERNEL, runtime-UNWIRED** (queue row stays `planned`) | `npcJobs.js` + 48/48 focused suite on master; zero live importers by grep; deterministic; not registered; natural-occurrence census + save/sectorSim/AI integration remain |
-| PQ-018 (Wreck Cathedral) | **SOURCE CANDIDATE PRESERVED, NOT route-accepted** (queue row stays `planned`) | Blend + 11.2 MB GLB + 26 PBR textures + 15 captures + turntable + reports on master; manifests unchanged; depends on PQ-017 Site kernel; not registered/placed/interactive |
+| PQ-018 (Wreck Cathedral) | **SOURCE CANDIDATE PRESERVED, NOT route-accepted** (queue row stays `planned`) | Blend + 11.2 MB GLB + 26 PBR textures + 15 captures + turntable + reports on master; PQ-017 dependency satisfied; not yet registered/placed/interactive |
 | PQ-022 (visual families) | **place_station_military SUBSLICE route-accepted** (queue row stays `planned`) | Manifest row preserved (same ID, sockets, +X forward, collision proxy, 3 LODs); 6 natural Helios/Tethys frames captured; grok vision ACCEPT; PQ-022 covers many families, one subslice only |
 
 **Worktree disposition:** the three donor worktrees (`sf-pq014`, `sf-pq018`, `sf-pq022`) are removed
@@ -201,9 +226,10 @@ PQ-011 natural-hostile pressure); check:mining:2 stale 520-vs-900 expectation (t
 encounter-director soak red (pre-existing, unchanged all batch); gameplay-core canonical-packet
 red (pre-existing, attributed).
 
-**Next canonical queue item: PQ-017 (persistent multi-component World Site kernel)** — its
-dependencies PQ-015 + PQ-016 are now both integrated; it unblocks the preserved PQ-018 Wreck
-Cathedral and PQ-021 Ship's Ledger.
+**Next canonical queue item: PQ-018 (Wreck Cathedral runtime promotion)** — its preserved source
+candidate can now use the integrated PQ-017 World Site substrate for registration, interaction,
+history/salvage, save continuity, and route acceptance. PQ-021 Ship's Ledger is likewise unblocked
+at the site-kernel dependency but remains later in queue order.
 
 **Wave-1/2 integration record (2026-07-21, this controller session):**
 
@@ -221,8 +247,8 @@ Cathedral and PQ-021 Ship's Ledger.
   (single Fable lane, brief staged).
 
 **Wave 3:** **PQ-013 — planetary sling/skim/harvest/reentry vertical** after PQ-012, serialized behind
-the broad physics/renderer/Atlas/save/browser mutexes. PQ-017 remains the next site substrate after
-this batch; it unblocks the preserved PQ-018 Wreck Cathedral and PQ-021 Ship's Ledger.
+the broad physics/renderer/Atlas/save/browser mutexes. PQ-017 is now integrated; PQ-018 is the next
+runtime-promotion packet and PQ-021 remains later in queue order.
 
 **Probe-margin debt (new):** `probe-ship-visual-stability` readiness deadline is margin-flaky on
 this machine — identical configs flip red/green under load (committed-HEAD worktree green;

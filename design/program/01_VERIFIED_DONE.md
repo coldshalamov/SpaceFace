@@ -41,6 +41,23 @@ descriptors), PQ-016 (contextual industrial beam). Per-packet commits, honest pe
 standing), and the named follow-up list: `NOW.md` batch-closure section. Eleven of the first
 sixteen queue outcomes are now terminal.
 
+## PQ-017 persistent World Site integrated (2026-07-22, `2a9517d8`)
+
+PQ-017 (`A15` / `SF-19`) is CHECKED OFF. The commit integrates the reusable manifest/kernel/runtime,
+sole-writer persistence through `asteroidSites`, bounded component operations and receipts, physical
+payload delivery, impact failure/recovery, exact asset/socket presentation, map History, traffic,
+public controls, and Browser/Electron route tooling. It also closes the ordinary Massline regression:
+the starter line has a 10x physical envelope and ordinary endpoints cannot automatically break it;
+only an explicitly authored extreme-load endpoint can opt into overload failure.
+
+Commit-bound focused proof is World Site/Massline **81/81**, public-route contract **67/67**,
+closed-loop control **23/23**, SG-02 and SG-06 Massline resilience green, and 47-A sim comparison
+`ok:true`, deterministic, and `hashEqual:true`. The last headed Browser exercise reached the authored
+site, operations, and Massline phase, but its acceptance driver measured sequential cleanup latency as
+active key-hold time. That validator defect is corrected with token-bound exact keydown/keyup receipts
+and deterministic proof. No final Browser/Electron artifact is claimed; see
+`roadmap/receipts/PQ-017-world-site-REPORT.md`. PQ-018 is now unblocked and next.
+
 ## 2026-07-21 playable graphics checkpoint (`ea698805`, `54548e09`)
 
 | Outcome | Verified result | Honest boundary |

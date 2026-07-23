@@ -17,6 +17,12 @@ harnesses. Find the public command in `package.json`, then inspect only its dire
   patch generated output as the source fix.
 - Prefer focused tests/probes before the full `npm run check` chain. Do not hide failures by changing
   expected goldens or default quality.
+- After an expensive Browser/Electron probe exposes a new failure family, do not launch that probe
+  again until the failure is reproduced by a deterministic, seconds-scale regression at the owning
+  simulation/control seam and that regression is observed failing then passing. Drive fixed ticks and
+  public input intent directly; do not use repeated wall-time probe runs as the debugger. The live
+  probe may require a current fast-gate receipt and should persist a stable failure fingerprint so
+  unchanged regressions cannot authorize another attempt.
 - Probes must clean up their own browser/server/process resources and write evidence only to the
   designated ignored artifact tree.
 

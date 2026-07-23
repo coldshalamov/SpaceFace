@@ -982,7 +982,7 @@
       "id": "PQ-017",
       "priority": 17,
       "title": "Persistent multi-component World Site kernel",
-      "state": "planned",
+      "state": "integrated",
       "canonical": [
         "A15"
       ],
@@ -1011,7 +1011,11 @@
         "public-route",
         "interaction-truth"
       ],
-      "brief": "Create reusable persistent sites with components, operations, damage, receipts, and recovery."
+      "brief": "Create reusable persistent sites with components, operations, damage, receipts, and recovery.",
+      "integratedCommit": "2a9517d8",
+      "acceptanceRef": "design/program/03_LIVE_ACCEPTANCE_MATRIX.md#pq-017-world-site-integration-2026-07-22-2a9517d8",
+      "receipt": "design/program/roadmap/receipts/PQ-017-world-site-REPORT.md",
+      "integrationNote": "2026-07-22 CHECKED OFF at 2a9517d8: reusable persistent World Site manifest/kernel/runtime, sole-writer save continuity, bounded operations/receipts, physical payload and receiver delivery, impact recovery, exact presentation bindings, map History, traffic, public controls, and route tooling. Normal standard Masslines now have a 10x physical envelope and cannot auto-break on ordinary endpoints; explicit extreme-load opt-in preserves future station/singularity progression. Final proof: World Site/Massline 81/81, public-route contract 67/67, closed-loop control 23/23, SG-02 and SG-06 resilience green, 47-A compare ok/deterministic/hashEqual, final independent review APPROVE. Headed Browser exercised the authored site, four operation phases, and Massline phase; no new final Browser/Electron artifact is claimed because the driver falsely charged sequential key-release cleanup latency to active input. Exact token-bound keydown-to-keyup accounting is deterministic-tested, and executable iteration guards prevent unchanged expensive reruns. PQ-018 is unblocked and next."
     },
     {
       "id": "PQ-018",
@@ -1051,7 +1055,7 @@
         "public-route"
       ],
       "brief": "Author, place, wire, and accept the Wreck Cathedral as a monumental site with recognizable components, salvage, history, and gameplay.",
-      "partialIntegration": "2026-07-20 closeout: full SOURCE_GLB candidate on master at 6df5a210+a31554fa+6b24baad+7330a85b (blend 9.6MB + GLB 11.2MB + 26 PBR textures + 15 captures + turntable + 11 reports + reproducible authoring scripts; SHA-256 manifest; gltf-validator clean). Recovery tag archive/pq018-wreck-cathedral-source-20260720. NOT registered/placed/interactive/saved/route-accepted; PQ-017-dependent. State stays 'planned'; handoff at design/graphics-sprints/handoffs/2026-07-20-B-pq018-wreck-cathedral-source.yaml."
+      "partialIntegration": "2026-07-20 closeout: full SOURCE_GLB candidate on master at 6df5a210+a31554fa+6b24baad+7330a85b (blend 9.6MB + GLB 11.2MB + 26 PBR textures + 15 captures + turntable + 11 reports + reproducible authoring scripts; SHA-256 manifest; gltf-validator clean). Recovery tag archive/pq018-wreck-cathedral-source-20260720. PQ-017 dependency is satisfied at 2a9517d8; runtime registration, placement, interaction, save, and route acceptance remain. State stays 'planned'; handoff at design/graphics-sprints/handoffs/2026-07-20-B-pq018-wreck-cathedral-source.yaml."
     },
     {
       "id": "PQ-019",
