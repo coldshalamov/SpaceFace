@@ -298,6 +298,10 @@ function mergeContacts(perceptions, freeze = Object.freeze, mergeScratch = null,
   merged.clear();
   for (const perception of perceptions) {
     for (const contact of perception.contacts) {
+      // Hazards remain in each member's perception for ManeuverPlanner obstacle avoidance. Squad
+      // command consumers only reason about ships, objectives, and tethers, so merging every
+      // asteroid/station/wreck across every member is redundant command work.
+      if (contact.kind === ContactKind.HAZARD) continue;
       const key = `${contact.kind}|${stableId(contact.id)}`;
       let record = merged.get(key);
       if (!record) {

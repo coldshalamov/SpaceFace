@@ -382,6 +382,77 @@ test('T04 §1: hostile ranks first among comparable candidates; ally damped but 
     assert.equal(h.events.latched.length, 1);
     assert.equal(h.events.latched[0].targetId, ally.id);
   }
+
+  // A deliberate scanner selection of a released World Site payload outranks stale navigation
+  // state, so the public Tab + Space delivery path does not need an internal entity-id fixture.
+  {
+    const payload = {
+      id: 23,
+      type: 'payload',
+      alive: true,
+      pos: { x: 145, z: 30 },
+      vel: { x: 0, z: 0 },
+      radius: 6,
+      mass: 180,
+      collides: false,
+      data: {
+        role: 'world_site_payload',
+        worldSiteTargetable: true,
+        worldRecordId: 'world_site_test/payload/coil',
+      },
+    };
+    const nearerRock = asteroid(24, { pos: { x: 70, z: 0 } });
+    const staleRoute = asteroid(25, { pos: { x: 90, z: 0 } });
+    const h = buildHarness([nearerRock, staleRoute, payload], {
+      targetId: payload.id,
+      aimWorld: { x: nearerRock.pos.x, z: nearerRock.pos.z },
+    });
+    h.state.nav = { waypoint: { targetEntityId: staleRoute.id } };
+    fireLatch(h);
+    assert.equal(h.events.denied.length, 0);
+    assert.equal(h.events.latched[0]?.targetId, payload.id);
+  }
+});
+
+test('released World Site payload selection replaces a stale acquisition receipt on the latch tick', () => {
+  const relayCore = asteroid(26, {
+    pos: { x: 100, z: 0 },
+    data: {
+      worldSiteId: 'world_site_test',
+      worldSiteComponentId: 'relay_core',
+      worldRecordId: 'world_site_test/component/relay_core',
+    },
+  });
+  const payload = {
+    id: 27,
+    type: 'payload',
+    alive: true,
+    pos: { x: 145, z: 30 },
+    vel: { x: 0, z: 0 },
+    radius: 6,
+    mass: 180,
+    collides: false,
+    data: {
+      role: 'world_site_payload',
+      worldSiteTargetable: true,
+      worldRecordId: 'world_site_test/payload/coil',
+    },
+  };
+  const h = buildHarness([relayCore, payload], {
+    aimWorld: { x: relayCore.pos.x, z: relayCore.pos.z },
+  });
+
+  h.system.update(DT, h.state);
+  assert.equal(h.state.masslineAcquisition?.selected?.targetId, relayCore.id,
+    'the pre-latch receipt must reproduce the stale Relay Core selection');
+
+  h.state.player.targetId = payload.id;
+  fireLatch(h);
+
+  assert.equal(h.events.denied.length, 0);
+  assert.equal(h.events.latched.length, 1);
+  assert.equal(h.events.latched[0]?.targetId, payload.id);
+  assert.equal(h.events.latched[0]?.previewMatched, true);
 });
 
 // ── §2 duplicate attach / F-toggle cut ─────────────────────────────────────────────────────────
@@ -691,8 +762,31 @@ test('PQ-003 normalized pay-out reaches attachment authority, respects max lengt
   assert.equal(h.events.lineControlDenied.at(-1)?.reason, 'maximum_length');
 });
 
-test('PQ-003 loaded reel-in fails closed with a named load-policy denial while pay-out remains available', () => {
+test('PQ-003 ordinary high-load reel-in remains available without a fictitious load-limit denial', () => {
   const h = buildHarness([asteroid(702, { pos: { x: 120, z: 0 } })], { aimWorld: { x: 120, z: 0 } });
+  fireLatch(h);
+  const attachment = h.attachments.get(h.system._active.attachmentId);
+  const breakPolicy = h.attachments.breakPolicy(attachment.id);
+  attachment.lastTension = breakPolicy.maxTension * 0.95;
+  const before = attachment.restLength;
+
+  h.state.input.actions = {
+    tetherFire: false, tetherCut: false, reelDelta: 0,
+    massline: { lineControl: true, lineLength: -1, payOut: 0, reelIn: 1, orbitDirection: 0, pump: false },
+  };
+  h.system.update(DT, h.state);
+  assert.ok(attachment.restLength < before,
+    'ordinary load telemetry cannot block the normal Massline winch');
+  assert.equal(h.events.lineControlDenied.length, 0);
+  assert.equal(h.events.toasts.length, 0);
+});
+
+test('PQ-003 explicit extreme-load endpoint denies dangerous reel-in while pay-out remains available', () => {
+  const extremeTarget = asteroid(704, {
+    pos: { x: 120, z: 0 },
+    data: { masslineBreakPolicy: 'extreme_overload' },
+  });
+  const h = buildHarness([extremeTarget], { aimWorld: { x: 120, z: 0 } });
   fireLatch(h);
   const attachment = h.attachments.get(h.system._active.attachmentId);
   const breakPolicy = h.attachments.breakPolicy(attachment.id);

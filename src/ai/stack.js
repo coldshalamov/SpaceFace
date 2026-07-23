@@ -274,6 +274,36 @@ export class TacticalAIStack {
     const liveEntities = this.liveEntityScratch;
     liveSquads.clear();
     liveEntities.clear();
+
+    // Production roster entries already carry exact signatures. When both membership maps still
+    // match, avoid re-registering every entity on every tactical decision. Validate duplicates and
+    // stale map entries before returning so the fast path preserves the full sync's fail-closed
+    // behavior for malformed or changed rosters.
+    let stable = roster[NORMALIZED_ROSTER_FLAG] === true
+      && roster.length === this.squadSignatures.size;
+    if (stable) {
+      rosterLoop: for (const squad of roster) {
+        const signature = squad && squad[ROSTER_SIGNATURE_FLAG];
+        if (liveSquads.has(squad.id)
+          || typeof signature !== 'string'
+          || this.squadSignatures.get(squad.id) !== signature) {
+          stable = false;
+          break;
+        }
+        liveSquads.add(squad.id);
+        for (const member of squad.members) {
+          if (liveEntities.has(member.id) || this.entitySquad.get(member.id) !== squad.id) {
+            stable = false;
+            break rosterLoop;
+          }
+          liveEntities.add(member.id);
+        }
+      }
+      if (stable && liveEntities.size === this.entitySquad.size) return;
+    }
+
+    liveSquads.clear();
+    liveEntities.clear();
     for (const squad of roster) {
       liveSquads.add(squad.id);
       const signature = rosterSignature(squad);

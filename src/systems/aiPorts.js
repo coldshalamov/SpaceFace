@@ -77,6 +77,7 @@ export const aiPorts = {
       events: EMPTY_ATTACHMENTS,
     };
     Object.defineProperty(this._liveSensorFrameScratch, NORMALIZED_SENSOR_FRAME_FLAG, { value: true });
+    this._liveSensorFramesScratch = new Map();
     this._pendingFlushScratch = [];
     this._rosterCandidateScratch = [];
     this._rosterSquadsScratch = new Map();
@@ -252,8 +253,19 @@ export const aiPorts = {
 
   _sensorFramesFor(entityIds, tick) {
     const ids = Array.isArray(entityIds) ? entityIds : [];
-    const frames = new Map();
+    const singleton = ids.length === 1;
+    const frames = singleton
+      ? (this._liveSensorFramesScratch || (this._liveSensorFramesScratch = new Map()))
+      : new Map();
+    frames.clear();
     if (!ids.length) return frames;
+    if (singleton) {
+      const id = ids[0];
+      const frame = this._sensorFrameFor(id, tick, { freezeResults: false });
+      frames.set(id, frame);
+      this._diag.sensorFrames++;
+      return frames;
+    }
     const state = this.state;
     const index = state && state.entityIndex;
     const dense = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables) &&

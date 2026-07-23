@@ -7,16 +7,18 @@ import { ATTACHMENT_DEFS } from '../src/data/combatDefs.js';
 
 const DT = 1 / 60;
 const HEADLESS_SKIP = new Set(['render', 'vfx', 'feel', 'audio', 'ui', 'save']);
-const MASSLINE_BREAK = ATTACHMENT_DEFS.find((def) => def.id === 'attachment_massline')?.break || {};
-const MASSLINE_MAX_TENSION = Number.isFinite(MASSLINE_BREAK.maxTension) ? MASSLINE_BREAK.maxTension : 140;
-const MASSLINE_CATASTROPHIC_RATIO = 1.75;
+const STANDARD_MASSLINE_DEF = ATTACHMENT_DEFS.find((def) => def.id === 'tether_standard');
+const PREVIOUS_STANDARD_BREAK = Object.freeze({ maxTension: 1_050_000, maxImpulse: 19_000, maxYank: 15_000 });
+assert(STANDARD_MASSLINE_DEF, 'tether_standard attachment definition must exist');
 
 const restoreGlobals = installHeadlessBrowserStubs();
 let harness = null;
 
 try {
   harness = await makeLiveRegistryHarness();
-  const { state, helpers, registry } = harness;
+  const { state, bus, helpers, registry } = harness;
+  const breakEvents = [];
+  bus.on('tether:broken', (payload) => breakEvents.push(payload));
 
   const player = helpers.spawnEntity(makeShipSpec({
     team: 0,
@@ -49,32 +51,32 @@ try {
 
   for (let i = 0; i < 2; i++) registry.step(DT);
 
-  const attachRequest = helpers.requestCombatAction({
-    actorId: player.id,
-    actionId: 'action_attach',
+  const attachRequest = registry.get('actions').kernel.attachments.create({
+    defId: STANDARD_MASSLINE_DEF.id,
+    ownerId: player.id,
     targetId: actor.id,
-    source: { kind: 'fixture', controllerId: 'sg06-live-tether-break' },
   });
-  assert.equal(attachRequest.ok, true, 'fixture should create Massline through the SG-03 action queue');
+  assert.equal(attachRequest.ok, true, 'fixture should create the live standard Massline through the SG-03 attachment service');
   for (let i = 0; i < 5; i++) registry.step(DT);
 
-  const attachmentId = activeAttachmentId(state);
-  assert(attachmentId, 'SG-03 action_attach should create an active Massline before SG-06 is enabled');
+  const attachmentId = attachRequest.attachment && attachRequest.attachment.id;
+  assert(attachmentId, 'standard Massline fixture should return an attachment id before SG-06 is enabled');
   const attachment = state.combat.attachments.byId[attachmentId];
+  assert.equal(attachment.defId, STANDARD_MASSLINE_DEF.id,
+    'SG-06 durability acceptance must exercise the player-facing tether_standard definition');
   assert.equal(attachment.ownerId, player.id, 'fixture Massline owner should be the hostile endpoint from the AI perspective');
   assert.equal(attachment.targetId, actor.id, 'AI actor should be tethered as the Massline target');
 
-  const legacyIntent = Object.freeze({ fire: false, sentinel: 'live-tether-break-must-not-touch-legacy-intent' });
+  const legacyIntent = Object.freeze({ fire: false, sentinel: 'live-tether-resilience-must-not-touch-legacy-intent' });
   actor.data.intent = legacyIntent;
   actor.data.ai = {
-    squadId: 'sg06_live_tether_break_wing',
+    squadId: 'sg06_live_tether_resilience_wing',
     doctrine: 'official',
     preferredRole: 'tug',
     capabilities: ['counter_tether_overload', 'drive', 'tether', 'weapon', 'sensor'],
   };
   state.spatialHash.rebuild(state.entityList);
 
-  let broken = null;
   let dash = null;
   for (let i = 0; i < 30; i++) {
     registry.step(DT);
@@ -87,71 +89,73 @@ try {
       event.source.controllerId === 'sg06') || null;
     if (dash) break;
   }
-  assert(dash, 'SG-06 should choose canonical action_dash to overload an attached Massline');
+  assert(dash, 'SG-06 should choose canonical action_dash to escape an attached Massline');
 
-  const beforeOverload = attachmentTelemetry(harness, attachmentId);
-  assert(beforeOverload, 'Massline should expose SG-02 telemetry before the overload fixture arms');
+  const beforeLoad = attachmentTelemetry(harness, attachmentId);
+  assert(beforeLoad, 'standard Massline should expose SG-02 telemetry before the slack-load fixture arms');
   actor.rot = Math.atan2(
-    beforeOverload.targetWorld.z - beforeOverload.sourceWorld.z,
-    beforeOverload.targetWorld.x - beforeOverload.sourceWorld.x,
+    beforeLoad.targetWorld.z - beforeLoad.sourceWorld.z,
+    beforeLoad.targetWorld.x - beforeLoad.sourceWorld.x,
   );
   actor.angVel = 0;
   assert.equal(state.combat.attachments.byId[attachmentId].state, 'active',
-    'Massline should remain active before the SG-06 dash-armed overload fixture');
-  assert(beforeOverload.tension <= MASSLINE_MAX_TENSION * MASSLINE_CATASTROPHIC_RATIO,
-    `Massline should stay below catastrophic break tension before the SG-06 dash-armed overload fixture; got ${beforeOverload.tension}`);
+    'standard Massline should remain active before the SG-06 dash-armed slack-load fixture');
 
-  const armedOverload = armDashOverloadFixture(harness, attachmentId);
-  // The +25% player-facing Massline durability pass intentionally moved the static short-reel
-  // preload below the break threshold. Keep the fixture physical: arm it in the high-load band,
-  // then let the already-started SG-06 dash and SG-02 impulses cross the real threshold below.
-  assert(armedOverload.tension > MASSLINE_MAX_TENSION * 0.8,
-    `SG-06 dash-armed overload fixture should preload the Massline near threshold; got ${armedOverload.tension}`);
+  const slackTelemetry = armDashSlackFixture(harness, attachmentId);
+  assert(slackTelemetry.restLength - slackTelemetry.distance >= 20,
+    `SG-06 fixture should begin with meaningful line slack; got ${JSON.stringify({
+      distance: slackTelemetry.distance,
+      restLength: slackTelemetry.restLength,
+    })}`);
 
+  let peakDistance = slackTelemetry.distance;
+  let peakTension = slackTelemetry.tension;
+  let peakImpulse = slackTelemetry.impulse;
   for (let i = 0; i < 60; i++) {
-    applyDashOverloadLoad(harness, attachmentId, actor.id);
+    applyDashSlackLoad(harness, attachmentId, actor.id);
     registry.step(DT);
     const current = state.combat.attachments.byId[attachmentId];
-    if (current && current.state === 'broken') {
-      broken = current;
-      break;
-    }
+    assert.equal(current && current.state, 'active',
+      `ordinary standard Massline must remain active for the full forced dash/slack-load interval (tick ${i + 1}/60)`);
+    const telemetry = attachmentTelemetry(harness, attachmentId);
+    assert(telemetry, `standard Massline should retain SG-02 telemetry during forced load tick ${i + 1}/60`);
+    peakDistance = Math.max(peakDistance, telemetry.distance);
+    peakTension = Math.max(peakTension, telemetry.tension);
+    peakImpulse = Math.max(peakImpulse, telemetry.impulse);
   }
 
-  const breakEvent = state.combat.trace.events.find((event) =>
+  const thresholdBreakTrace = state.combat.trace.events.filter((event) =>
     event.kind === 'attachment.broken' &&
+    event.attachmentId === attachmentId &&
+    event.reason === 'threshold');
+  const thresholdBreakEvents = breakEvents.filter((event) =>
+    event &&
     event.attachmentId === attachmentId &&
     event.reason === 'threshold');
   const portDiagnostics = helpers.inspectAIPorts();
   const trace = registry.get('tacticalAI').inspect({ entityId: actor.id, trace: { layer: 'behavior', limit: 64 } }).trace;
 
   const finalAttachment = state.combat.attachments.byId[attachmentId];
-  const finalTelemetry = finalAttachment && finalAttachment.state === 'active'
-    ? helpers.combatPhysics.getAttachmentTelemetry({
-      attachmentId,
-      physicsHandle: finalAttachment.physicsHandle,
-      tick: state.tick,
-    })
-    : null;
-  assert(broken, `SG-06 escape behavior should arm a Massline overload that breaks through SG-02 threshold telemetry: ${JSON.stringify({
-    actorPos: actor.pos,
-    actorVel: actor.vel,
-    dashTick: dash && dash.tick,
-    finalAttachmentState: finalAttachment && finalAttachment.state,
-    finalTension: finalAttachment && finalAttachment.lastTension,
-    finalTelemetry,
-    portDiagnostics,
-  })}`);
-  assert.equal(broken.breakReason, 'threshold', 'SG-06 dash-armed Massline break should preserve threshold reason');
-  assert(breakEvent, 'SG-06 dash-armed Massline break should emit the threshold break trace');
-  assert(breakEvent.tick >= dash.tick, 'threshold break should occur after the SG-06 dash starts');
-  assert(broken.lastTension > 0, `break should preserve positive final tension telemetry; got ${broken.lastTension}`);
-  assert(broken.lastImpulse > 0, 'break should preserve impulse telemetry');
-  assert.equal(harness.registry.get('physics')._sg02.diagnostics().attachments, 0,
-    'SG-06 dash-armed threshold break should remove the physical SG-02 rope');
+  const finalTelemetry = attachmentTelemetry(harness, attachmentId);
+  assert.equal(finalAttachment && finalAttachment.state, 'active',
+    'ordinary standard Massline should still be active after the complete SG-06 dash/slack-load interval');
+  assert(finalTelemetry, 'surviving standard Massline should retain live physical attachment telemetry');
+  assert(peakDistance > slackTelemetry.restLength,
+    `forced load must catch and extend the initially slack line so this durability proof is non-vacuous; got ${JSON.stringify({
+      peakDistance,
+      slackRestLength: slackTelemetry.restLength,
+      peakTension,
+      peakImpulse,
+    })}`);
+  assert(peakTension > 0, `forced slack catch should produce positive line tension; got ${peakTension}`);
+  assert(peakImpulse > 0, `forced slack catch should produce positive line impulse; got ${peakImpulse}`);
+  assert.equal(thresholdBreakTrace.length, 0, 'standard Massline must emit zero threshold-break trace entries');
+  assert.equal(thresholdBreakEvents.length, 0, 'standard Massline must emit zero threshold-break bus events');
+  assert.equal(harness.registry.get('physics')._sg02.diagnostics().attachments, 1,
+    'surviving standard Massline should preserve its physical SG-02 rope');
   assert.notEqual(actor.data.intent, legacyIntent, 'fire adapter should replace frozen legacy intent snapshots safely');
   assert.equal(legacyIntent.fire, false, 'frozen legacy intent fixture must remain untouched');
-  assert.equal(actor.data.intent.sentinel, 'live-tether-break-must-not-touch-legacy-intent',
+  assert.equal(actor.data.intent.sentinel, 'live-tether-resilience-must-not-touch-legacy-intent',
     'fire adapter should preserve non-firing intent fields');
   assert.equal(actor.data.intent.fire, false, 'SG-06 tether escape must not fire through visible weapon intent');
   assert(portDiagnostics.flushedManeuvers > 0, 'SG-06 tether escape should flush maneuver requests through production aiPorts');
@@ -161,13 +165,59 @@ try {
     entry.selected &&
     entry.selected.decision === 'start' &&
     entry.selected.actionId === 'action_dash'),
-    'SG-06 behavior trace should record starting the canonical dash overload action');
+    'SG-06 behavior trace should record starting the canonical dash escape action');
+
+  // Challenge the ordinary endpoint above the former physical envelope. This is intentionally
+  // more violent than the preceding real SG-06 dash/slack catch: it proves the semantic no-break
+  // policy under a non-vacuous load that the previous tune could actually have classified as a
+  // failure, while the normal maneuver above remains separately measured.
+  let challengePeakTension = peakTension;
+  let challengePeakImpulse = peakImpulse;
+  for (let i = 0; i < 90; i++) {
+    applyDashSlackLoad(harness, attachmentId, actor.id, 2_400);
+    registry.step(DT);
+    const current = state.combat.attachments.byId[attachmentId];
+    assert.equal(current && current.state, 'active',
+      `ordinary endpoint must survive the former-edge durability challenge (tick ${i + 1}/90)`);
+    const telemetry = attachmentTelemetry(harness, attachmentId);
+    assert(telemetry, 'former-edge durability challenge retains live SG-02 telemetry');
+    challengePeakTension = Math.max(challengePeakTension, telemetry.tension);
+    challengePeakImpulse = Math.max(challengePeakImpulse, telemetry.impulse);
+  }
+  assert(
+    challengePeakTension > PREVIOUS_STANDARD_BREAK.maxTension || challengePeakImpulse > PREVIOUS_STANDARD_BREAK.maxImpulse,
+    `live durability challenge must cross at least one former standard-Massline break edge; got ${JSON.stringify({
+      challengePeakTension,
+      challengePeakImpulse,
+      previous: PREVIOUS_STANDARD_BREAK,
+    })}`,
+  );
+
+  // Future station/singularity-class content must opt in explicitly. The same already-loaded line
+  // becomes failure-capable only after the endpoint declares that authored extreme-load contract.
+  actor.data.masslineBreakPolicy = 'extreme_overload';
+  let extremeBreak = null;
+  for (let i = 0; i < 180; i++) {
+    applyDashSlackLoad(harness, attachmentId, actor.id);
+    registry.step(DT);
+    const current = state.combat.attachments.byId[attachmentId];
+    if (current && current.state === 'broken') {
+      extremeBreak = current;
+      break;
+    }
+  }
+  assert(extremeBreak, 'an explicitly authored extreme-load endpoint retains the automatic overload-break seam');
+  assert.equal(extremeBreak.breakReason, 'threshold');
+  assert.equal(breakEvents.filter((event) => event?.attachmentId === attachmentId && event?.reason === 'threshold').length, 1,
+    'the explicit extreme-load transition emits one canonical threshold-break receipt');
+  assert.equal(harness.registry.get('physics')._sg02.diagnostics().attachments, 0,
+    'the explicit extreme-load break removes the physical SG-02 attachment');
 } finally {
   if (harness) harness.dispose();
   restoreGlobals();
 }
 
-console.log('SG-06 live tether-break checks OK');
+console.log('SG-06 live standard-Massline resilience checks OK');
 
 async function makeLiveRegistryHarness() {
   const state = createGameState(0x4706beef);
@@ -213,23 +263,24 @@ async function ensureSg02Ready(registry, state) {
     const diag = state.physicsRuntime && state.physicsRuntime.diagnostics;
     if (diag && diag.backend === 'rapier-dynamic' && diag.sg02Ready === true) return;
   }
-  assert.fail('SG-02 dynamic owner should initialize before live SG-06 tether-break fixture starts');
+  assert.fail('SG-02 dynamic owner should initialize before live SG-06 tether resilience fixture starts');
 }
 
-function armDashOverloadFixture(harness, attachmentId) {
+function armDashSlackFixture(harness, attachmentId) {
   const { registry, state } = harness;
   const attachment = state.combat.attachments.byId[attachmentId];
   const telemetry = attachmentTelemetry(harness, attachmentId);
-  assert(telemetry, 'Massline overload fixture should have SG-02 telemetry');
-  const restLength = 8;
+  assert(telemetry, 'Massline slack-load fixture should have SG-02 telemetry');
+  const restLength = Math.min(STANDARD_MASSLINE_DEF.maxLength, telemetry.distance + 60);
   const result = registry.get('actions').kernel.attachments.reel(
     attachmentId,
     restLength - attachment.restLength,
-    restLength,
+    STANDARD_MASSLINE_DEF.minLength,
   );
-  assert.equal(result.ok, true, 'Massline overload fixture should use the SG-03 attachment service');
+  assert.equal(result.ok, true, 'Massline slack-load fixture should use the SG-03 attachment service');
+  registry.step(DT);
   const after = attachmentTelemetry(harness, attachmentId);
-  assert(after, 'Massline overload fixture should preserve SG-02 telemetry after reeling');
+  assert(after, 'Massline slack-load fixture should preserve SG-02 telemetry after paying out line');
   return after;
 }
 
@@ -244,7 +295,7 @@ function attachmentTelemetry(harness, attachmentId) {
   });
 }
 
-function applyDashOverloadLoad(harness, attachmentId, entityId) {
+function applyDashSlackLoad(harness, attachmentId, entityId, loadImpulse = 240) {
   const { helpers, state } = harness;
   const attachment = state.combat.attachments.byId[attachmentId];
   if (!attachment || attachment.state !== 'active') return;
@@ -264,19 +315,12 @@ function applyDashOverloadLoad(harness, attachmentId, entityId) {
       z: telemetry.sourceWorld.z - telemetry.targetWorld.z,
     };
   const length = Math.hypot(towardEntity.x, towardEntity.z) || 1;
-  const impulse = 240;
   helpers.combatPhysics.applyImpulse({
     entityId,
-    impulse: { x: towardEntity.x / length * impulse, y: 0, z: towardEntity.z / length * impulse },
-    reason: 'sg06_dash_overload_fixture',
+    impulse: { x: towardEntity.x / length * loadImpulse, y: 0, z: towardEntity.z / length * loadImpulse },
+    reason: 'sg06_dash_slack_load_fixture',
     tick: state.tick,
   });
-}
-
-function activeAttachmentId(state) {
-  return Object.keys(state.combat.attachments.byId)
-    .sort()
-    .find((id) => state.combat.attachments.byId[id].state === 'active') || null;
 }
 
 function makeShipSpec({ team, x, rot = 0, factionId, role = 'ship' }) {

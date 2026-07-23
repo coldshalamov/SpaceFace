@@ -11,6 +11,8 @@ export const PHYSICS_TELEMETRY_SCHEMA_VERSION = 1;
 const COMMANDS = new WeakMap();
 const TELEMETRY = new WeakMap();
 const AUTHORITY_CACHE = new WeakMap();
+const NORMALIZED_BODY_CACHE = new WeakMap();
+const RESOLVED_BODY_CACHE = new WeakMap();
 
 const DEFAULT_THRUSTERS = Object.freeze([
   Object.freeze({ id: 'drive-port', forward: 1, reverse: 0.8, strafe: 0.45, yaw: 0.8 }),
@@ -61,6 +63,8 @@ export function clearPhysicsAuthority(entity) {
   COMMANDS.delete(entity);
   TELEMETRY.delete(entity);
   AUTHORITY_CACHE.delete(entity);
+  NORMALIZED_BODY_CACHE.delete(entity);
+  RESOLVED_BODY_CACHE.delete(entity);
 }
 
 /** Physics-only: publish measured post-solve state without polluting authoritative serialization. */
@@ -114,7 +118,9 @@ export function isDynamicPhysicsBodyEntity(entity) {
  */
 export function ensurePhysicsBodySpec(entity) {
   if (!entity || typeof entity !== 'object') return null;
-  const authored = authoredPhysicsBody(entity) || {};
+  const authoredBody = authoredPhysicsBody(entity);
+  if (authoredBody && NORMALIZED_BODY_CACHE.get(entity) === authoredBody) return authoredBody;
+  const authored = authoredBody || {};
   const radius = positive(authored.radius, positive(entity.radius, 1));
   const mass = positive(authored.mass, positive(entity.mass, defaultMass(entity)));
   const derivedModel = entity.data && entity.data.derived && entity.data.derived.flightModel;
@@ -140,6 +146,7 @@ export function ensurePhysicsBodySpec(entity) {
     revision: Math.max(0, Math.trunc(finite(authored.revision))),
   };
   entity.physicsBody = body;
+  NORMALIZED_BODY_CACHE.set(entity, body);
   return body;
 }
 
@@ -204,7 +211,10 @@ export function damageThruster(entity, thrusterId, damage) {
 export function resolvePhysicsBodySpec(entity) {
   const body = ensurePhysicsBodySpec(entity);
   if (!body) return null;
-  return {
+  const revision = Math.max(0, Math.trunc(finite(body.revision)));
+  const cached = RESOLVED_BODY_CACHE.get(entity);
+  if (cached && cached.body === body && cached.revision === revision) return cached.spec;
+  const spec = {
     schemaVersion: body.schemaVersion,
     mass: positive(body.mass, 1),
     inertiaY: positive(body.inertiaY, 1),
@@ -214,8 +224,10 @@ export function resolvePhysicsBodySpec(entity) {
     ccd: !!body.ccd,
     material: String(body.material || 'default'),
     attachmentPoints: normalizeAttachmentPoints(body.attachmentPoints),
-    revision: Math.max(0, Math.trunc(finite(body.revision))),
+    revision,
   };
+  RESOLVED_BODY_CACHE.set(entity, { body, revision, spec });
+  return spec;
 }
 
 function commandFor(entity) {

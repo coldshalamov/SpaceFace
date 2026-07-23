@@ -17,6 +17,7 @@ import { presentationOrchestrator } from '../src/systems/presentationOrchestrato
 import { presentationAdapters } from '../src/systems/presentationAdapters.js';
 import { masslineThreats } from '../src/systems/masslineThreats.js';
 import { PRESENTATION_RECIPES, validatePresentationRecipes } from '../src/presentation/cueRecipes.js';
+import { masslineTetherStatus } from '../src/ui/hud.js';
 
 // Sanity: the threat recipe exists and the whole recipe table still validates.
 const recipeReport = validatePresentationRecipes();
@@ -27,7 +28,9 @@ assertThreatEmitsPlayerFacingCue();
 assertSeverityScalesMagnitude();
 assertKindRidesTags();
 assertDedupeSuppressesRepeat();
-assertEndToEndFromRealObserver();
+assertOrdinaryLoadStaysInformational();
+assertExtremeLoadWarnsEndToEnd();
+assertHudCopyMatchesBreakAuthority();
 
 console.log('Massline threat feedback checks OK');
 
@@ -84,16 +87,52 @@ function assertDedupeSuppressesRepeat() {
     'the repeat must be reported as dedupe_window suppressed');
 }
 
-// 5. End-to-end: the REAL rung-09 observer detects a near-break from seeded tether state and its
-//    emit lands as a player-facing cue through the same bus — no mock between emit and consume.
-function assertEndToEndFromRealObserver() {
+// 5. End-to-end ordinary load: even extreme numeric strain stays informational when the canonical
+//    gameplay mirror says the active standard Massline cannot automatically break.
+function assertOrdinaryLoadStaysInformational() {
   const h = createHarness();
   const threats = Object.create(masslineThreats);
   threats.init({ state: h.state, bus: h.bus, helpers: {} });
 
   h.state.playerId = 1;
   h.state.player = {
-    tether: { active: true, targetId: 2, strain: 0.8, load: 1, restLength: 90, phase: 'overload' },
+    tether: {
+      active: true,
+      targetId: 2,
+      strain: 4,
+      load: 1,
+      restLength: 90,
+      phase: 'overload',
+      automaticBreakAllowed: false,
+    },
+    masslineTelemetry: { active: true, tangentialSpeed: 0 },
+  };
+  h.state.tick += 20;
+  threats.update(1 / 60, h.state);
+  h.bus.flush();
+
+  assert.equal(h.cues.length, 0, 'ordinary standard-Massline load must not produce a break-warning cue');
+  assert.equal(h.alerts.length, 0, 'ordinary standard-Massline load must not produce a HUD warning');
+}
+
+// 6. The REAL observer restores the warning for a future extreme-overload operation whose
+//    gameplay-owned tether mirror explicitly says automatic breakage is enabled.
+function assertExtremeLoadWarnsEndToEnd() {
+  const h = createHarness();
+  const threats = Object.create(masslineThreats);
+  threats.init({ state: h.state, bus: h.bus, helpers: {} });
+
+  h.state.playerId = 1;
+  h.state.player = {
+    tether: {
+      active: true,
+      targetId: 2,
+      strain: 0.8,
+      load: 1,
+      restLength: 90,
+      phase: 'overload',
+      automaticBreakAllowed: true,
+    },
     masslineTelemetry: { active: true, tangentialSpeed: 0 },
   };
   h.state.tick += 20;
@@ -104,6 +143,41 @@ function assertEndToEndFromRealObserver() {
   assert.equal(h.cues[0].id, 'massline.threat', 'end-to-end cue must be massline.threat');
   assert.ok(h.cues[0].tags.includes('line-near-break'), 'end-to-end cue must carry the detected kind');
   assert.equal(h.alerts.length, 1, 'end-to-end threat must reach the HUD as one alert');
+}
+
+// 7. Persistent tether status copy follows the same mirrored authority: ordinary high load is
+//    factual and calm; explicit extreme-overload operations recover warning language and color.
+function assertHudCopyMatchesBreakAuthority() {
+  const ordinary = masslineTetherStatus({
+    active: true,
+    phase: 'overload',
+    strain: 4,
+    automaticBreakAllowed: false,
+  }, true);
+  assert.equal(ordinary.text, 'HIGH LOAD · ORBIT ASSIST');
+  assert.equal(ordinary.warn, false);
+  assert.doesNotMatch(ordinary.text, /STRAINED|CRITICAL/,
+    'ordinary load copy must not imply impending failure');
+
+  const ordinaryReel = masslineTetherStatus({
+    active: true,
+    phase: 'overload',
+    strain: 4,
+    reeling: true,
+    automaticBreakAllowed: false,
+  });
+  assert.equal(ordinaryReel.text, 'REELING · HIGH LOAD',
+    'normal line-control activity and truthful load telemetry must remain visible together');
+  assert.equal(ordinaryReel.warn, false);
+
+  const extreme = masslineTetherStatus({
+    active: true,
+    phase: 'overload',
+    strain: 0.9,
+    automaticBreakAllowed: true,
+  });
+  assert.equal(extreme.text, 'CRITICAL');
+  assert.equal(extreme.warn, true);
 }
 
 // ---- harness (mirrors check-massline-release-feedback.mjs) ----

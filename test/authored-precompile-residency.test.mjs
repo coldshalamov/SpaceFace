@@ -4,11 +4,13 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import {
+  getPrecompileKeepAliveDiagnostics,
   invalidatePrecompileState,
   precompileGlobalPipelines,
   precompilePipelines,
 } from '../src/render/precompile.js';
 import { getAuthoredUpgradeQueueStats } from '../src/render/partsLibrary.js';
+import { createShipAuxPool } from '../src/render/renderer.js';
 
 test('deferred sector shader precompile admits one archetype per browser yield', async () => {
   const preparedSubjects = [];
@@ -53,11 +55,13 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   let exactTargetPrepareCalls = 0;
   let canopyVariants = [];
   let lateWorldOwners = [];
+  let retainedPipelineOwners = [];
   const renderer = {
     compileAsync: async () => { legacyCompileCalls++; },
     info: { programs: [] },
   };
   const scene = new THREE.Scene();
+  createShipAuxPool(scene);
   const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10000);
   const result = await precompileGlobalPipelines(renderer, scene, camera, {
     incremental: true,
@@ -69,9 +73,13 @@ test('synthetic shader precompile creates zero authored asset residency demand',
       assert.equal(subject.parent?.parent, scene);
       canopyVariants = [];
       lateWorldOwners = [];
+      retainedPipelineOwners = [];
       subject.traverse((object) => {
         if (object.name === 'SF_Precompile_L5b_Wormhole'
           || object.name === 'Spindle_Locked_Core_Glow') lateWorldOwners.push(object.name);
+        if (object.userData?.precompileRetainedPipeline) {
+          retainedPipelineOwners.push(object.userData.precompileRetainedPipeline);
+        }
         if (!object.userData?.precompileCanopyVariant) return;
         const material = object.material;
         canopyVariants.push({
@@ -97,6 +105,11 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   assert.equal(exactTargetPrepareCalls, 1);
   assert.equal(legacyCompileCalls, 0);
   assert.deepEqual(lateWorldOwners.sort(), ['SF_Precompile_L5b_Wormhole', 'Spindle_Locked_Core_Glow']);
+  assert.deepEqual(retainedPipelineOwners.sort(), ['hitch-main-plume', 'ship-shield-bubble']);
+  assert.deepEqual(
+    getPrecompileKeepAliveDiagnostics(renderer).retainedPipelines.sort(),
+    ['hitch-main-plume', 'ship-shield-bubble'],
+  );
   assert.deepEqual(canopyVariants, [
     {
       id: 'surface', map: false, normalMap: false, aoMap: false,

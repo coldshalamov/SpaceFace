@@ -30,12 +30,22 @@ export function createTacticalAISystem({
   actionPortFactory = createSG03ActionPort,
 } = {}) {
   const runtime = config.runtime && typeof config.runtime === 'object' ? config.runtime : {};
+  // The production stack replays its last physical maneuver on skipped decision ticks, while its
+  // per-member perception batches already spread work over three ticks. Running the full squad /
+  // doctrine / selector stack at 30 Hz therefore preserves 60 Hz thruster authority and halves the
+  // heaviest fixed-step decision cost. Injected-port fixtures retain their historical every-tick
+  // cadence unless they explicitly opt into another interval.
+  const productionPortDefaults = sensors == null && roster == null && maneuver == null;
   const defaultRuntime = ('memberBatchSize' in runtime || 'memberBatchTargetTicks' in runtime || 'memberBatchSpreadTicks' in runtime)
     ? {}
     : { memberBatchSize: 3, memberBatchSpreadTicks: 3 };
   const runtimeConfig = {
     ...config,
-    runtime: { ...defaultRuntime, ...runtime },
+    runtime: {
+      ...defaultRuntime,
+      decisionIntervalTicks: productionPortDefaults ? 2 : 1,
+      ...runtime,
+    },
     trace: config.trace === undefined ? defaultTraceConfig() : config.trace,
     freezeResults: config.freezeResults === undefined ? false : config.freezeResults,
   };
@@ -45,7 +55,7 @@ export function createTacticalAISystem({
   let lastDecisionTick = -Infinity;
   let lastOwnershipRefreshTick = -Infinity;
   let lastManeuverRequests = [];
-  const decisionIntervalTicks = runtimeDecisionInterval(config);
+  const decisionIntervalTicks = runtimeDecisionInterval(runtimeConfig);
 
   function ensureStack(state) {
     if (stack) return stack;
@@ -111,6 +121,7 @@ export function createTacticalAISystem({
       if (tick - lastDecisionTick < decisionIntervalTicks) {
         maintainFirstSessionAttackerOwnership(state);
         if (lastManeuverRequests.length) replayLastManeuvers(liveStack, tick);
+        revalidateCachedAIFiringIntents(liveStack, state);
         return;
       }
       const authored = typeof authoredEncounter === 'function'
@@ -166,7 +177,20 @@ export function createTacticalAISystem({
     },
 
     get stack() { return stack; },
+    get decisionIntervalTicks() { return decisionIntervalTicks; },
   };
+}
+
+/**
+ * Full tactical decisions may run below the 60 Hz fixed step, but weapon authorization may not.
+ * Re-apply only the final firing adapter on skipped decision ticks so live target, hostility, ROE,
+ * engagement, and friendly-fire state can revoke a cached fire request before weapons consumes it.
+ */
+export function revalidateCachedAIFiringIntents(liveStack, state) {
+  const decisions = liveStack && liveStack.lastResult && liveStack.lastResult.decisions;
+  if (!Array.isArray(decisions)) return 0;
+  for (const decision of decisions) applyAIFiringIntent(decision, state);
+  return decisions.length;
 }
 
 function runtimeDecisionInterval(config = {}) {

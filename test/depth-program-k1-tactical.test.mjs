@@ -21,6 +21,32 @@ const K1_FACTIONS = [
   'faction_verge_layers',
 ];
 
+test('faction behavior normalization reuses only immutable canonical inputs', () => {
+  const sampled = sampleFactionBehavior('faction_pitborn', 0x47a, 1)[0];
+  const frozenRaw = Object.freeze({
+    ...sampled,
+    firstFireAgainst: Object.freeze([...(sampled.firstFireAgainst || [])]),
+  });
+  const frozenNormalized = normalizeFactionBehaviorProfile(frozenRaw);
+  assert.equal(normalizeFactionBehaviorProfile(frozenRaw), frozenNormalized,
+    'a deeply immutable authored profile should reuse its normalized result');
+  assert.equal(normalizeFactionBehaviorProfile(frozenNormalized), frozenNormalized,
+    'an already-normalized profile should be identity-stable');
+
+  const mutable = {
+    ...sampled,
+    firstFireAgainst: [...(sampled.firstFireAgainst || [])],
+  };
+  const before = normalizeFactionBehaviorProfile(mutable);
+  mutable.preferredRange += 25;
+  mutable.firstFireAgainst.push('fixture_new_target');
+  const after = normalizeFactionBehaviorProfile(mutable);
+  assert.notEqual(after, before, 'mutable raw profiles must never be memoized');
+  assert.equal(after.preferredRange, mutable.preferredRange);
+  assert.deepEqual(after.firstFireAgainst, mutable.firstFireAgainst);
+  assert.equal(normalizeFactionBehaviorProfile(Object.freeze({ pursuitCommitment: 0.5 })), null);
+});
+
 test('all five K1 distributions expose deterministic, distinct live tactical fields', () => {
   const first = K1_FACTIONS.map((factionId) => sampleFactionBehavior(factionId, 0x47a, 4));
   const replay = K1_FACTIONS.map((factionId) => sampleFactionBehavior(factionId, 0x47a, 4));

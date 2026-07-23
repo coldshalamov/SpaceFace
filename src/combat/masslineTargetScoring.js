@@ -42,8 +42,8 @@
 
 // Defaults mirror the live tether def (src/data/combatDefs.js: tether_standard.maxLength = 390).
 const DEFAULT_MAX_RANGE = 390;
-// Range comfort band: ideal at 30-75% of max range. <15% = too close (no room to swing, snap risk);
-// >90% = edge of break. Below 15% and above 90% both penalize.
+// Range comfort band: ideal at 30-75% of max range. <15% has too little room to swing; >90% has
+// little steering/reel margin. Both extremes are less useful without implying the line will snap.
 const RANGE_IDEAL_LO = 0.30;
 const RANGE_IDEAL_HI = 0.75;
 const RANGE_FLOOR = 0.15;
@@ -364,6 +364,12 @@ export function classifyMasslineIntent(player, candidates, opts = {}) {
   const focus = candidateById(list, opts.focusId);
   if (focus) return contextRecord('hostile-flyby', focus.id, 'flyby-focus');
 
+  const selected = candidateById(list, opts.selectedId);
+  if (selected) {
+    const id = isTowCandidate(selected) ? 'tow/salvage' : 'precision-pick';
+    return contextRecord(id, selected.id, 'scanner-selection');
+  }
+
   const cursorPrecisionOf = typeof opts.cursorPrecisionOf === 'function'
     ? opts.cursorPrecisionOf : () => 0;
   let precise = null;
@@ -573,12 +579,12 @@ function scoreMass(target) {
   return clamp01(1.0 - 0.4 * (mass - MASS_IDEAL_HI) / MASS_IDEAL_HI);
 }
 
-// Range comfort: ideal mid-band, penalize at the extremes. Too close = snap risk; too far = edge of
-// break. Returns 0..1.
+// Range comfort: ideal mid-band, penalize at the extremes. Too close has no swing room; too far has
+// little steering/reel margin. Returns 0..1.
 function scoreRangeComfort(distance, maxRange) {
   const r = clamp01(distance / maxRange);
   if (r < RANGE_FLOOR) return 0.2;              // too close — no swing room
-  if (r > RANGE_CEIL) return 0.2;               // edge of break
+  if (r > RANGE_CEIL) return 0.2;               // low control margin
   if (r >= RANGE_IDEAL_LO && r <= RANGE_IDEAL_HI) return 1.0;
   if (r < RANGE_IDEAL_LO) return lerp(0.2, 1.0, (r - RANGE_FLOOR) / (RANGE_IDEAL_LO - RANGE_FLOOR));
   return lerp(1.0, 0.2, (r - RANGE_IDEAL_HI) / (RANGE_CEIL - RANGE_IDEAL_HI));

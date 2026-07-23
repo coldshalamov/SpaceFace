@@ -296,7 +296,7 @@ export const save = {
   },
 
   _serializeNav() {
-    return sanitizeNavState(this.state.nav);
+    return sanitizeNavState(navWithStableEntityIdentity(this.state));
   },
 
   /** Campaign-director durable subset. Never live encounters/squads/entity ids (§ownership). */
@@ -2858,8 +2858,10 @@ function sanitizeNavWaypoint(waypoint) {
     const value = navString(waypoint[field]);
     if (value) out[field] = value;
   }
-  const targetEntityId = navEntityId(waypoint.targetEntityId);
+  const targetEntityId = persistentNavEntityId(waypoint.targetEntityId);
   if (targetEntityId) out.targetEntityId = targetEntityId;
+  const targetWorldRecordId = navString(waypoint.targetWorldRecordId);
+  if (targetWorldRecordId) out.targetWorldRecordId = targetWorldRecordId;
   if (Number.isFinite(waypoint.storyBeat)) out.storyBeat = waypoint.storyBeat;
   if (waypoint.onboarding === true) out.onboarding = true;
   const pos = sanitizeNavPos(waypoint.pos);
@@ -2873,11 +2875,13 @@ function sanitizeNavAutopilot(autopilot) {
   const out = {
     active: !!target && source.active === true,
     target,
-    targetEntityId: navEntityId(source.targetEntityId),
+    targetEntityId: persistentNavEntityId(source.targetEntityId),
     label: navString(source.label) || '',
     status: navString(source.status) || (target ? 'armed' : 'idle'),
     arrivalRadius: Number.isFinite(source.arrivalRadius) ? Math.max(12, Math.min(500, source.arrivalRadius)) : 36,
   };
+  const targetWorldRecordId = navString(source.targetWorldRecordId);
+  if (targetWorldRecordId) out.targetWorldRecordId = targetWorldRecordId;
   return out;
 }
 
@@ -2895,6 +2899,25 @@ function navEntityId(value) {
   if (typeof value === 'string' && value) return value;
   if (Number.isFinite(value)) return String(value);
   return null;
+}
+
+function persistentNavEntityId(value) {
+  const id = navEntityId(value);
+  return id && !/^\d+$/.test(id) ? id : null;
+}
+
+function navWithStableEntityIdentity(state) {
+  const nav = clonePlain(state?.nav || {});
+  for (const target of [nav.waypoint, nav.autopilot]) {
+    if (!target || typeof target !== 'object') continue;
+    const runtimeId = navEntityId(target.targetEntityId);
+    if (!runtimeId) continue;
+    let entity = state?.entities?.get?.(target.targetEntityId) || null;
+    if (!entity && /^\d+$/.test(runtimeId)) entity = state?.entities?.get?.(Number(runtimeId)) || null;
+    const worldRecordId = navString(entity?.data?.worldRecordId);
+    if (worldRecordId) target.targetWorldRecordId = worldRecordId;
+  }
+  return nav;
 }
 
 function navObjectiveSummary(nav) {

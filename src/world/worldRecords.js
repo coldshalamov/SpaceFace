@@ -223,6 +223,8 @@ export function missionIdentityOf(entityOrData) {
 export function entityHasDurableMarkers(entity, playerId) {
   if (!entity) return false;
   if (entity.isPlayer || entity.id === playerId) return false;
+  const explicitOwner = entity.data && entity.data.persistenceOwner;
+  if (explicitOwner != null && explicitOwner !== 'worldRecords') return false;
   if (entity.type === 'station' && entity.data && entity.data.isGate) return false;
   if (entity.type === 'station' && entity.data && entity.data.stationId) return false;
   if (entity.type === 'asteroid') return false;
@@ -277,6 +279,8 @@ export function classifyEntityKind(entity) {
  */
 export function captureEntityRecord(entity, opts = {}) {
   if (!entity) return null;
+  if (entity.data && entity.data.persistenceOwner != null
+    && entity.data.persistenceOwner !== 'worldRecords') return null;
   const sectorId = opts.sectorId
     || entity.homeSectorId
     || (entity.data && (entity.data.homeSectorId || entity.data.sectorId))

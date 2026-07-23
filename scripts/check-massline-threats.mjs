@@ -6,8 +6,9 @@
 // state.player.masslineThreats (its OWN subtree — observer discipline).
 //
 // Contract (src/systems/masslineThreats.js, THREAT_* constants):
-//   - strain >= 0.75 (overload floor)      -> 'line-near-break', once per latch (first cross)
-//   - strain below the floor               -> no near-break emit
+//   - ordinary standard-Massline load      -> no break warning at any strain
+//   - explicitly breakable + strain >= .75 -> 'line-near-break', once per latch (first cross)
+//   - breakable + strain below the floor   -> no near-break emit
 //   - hostile closing while swinging       -> 'hostile-on-arc', once per hostile per latch;
 //     resolved via scanner.isHostileToPlayer (never factionId); requires a genuine swing
 //     (|tangentialSpeed| >= 25, the SNAP_CATCH_MIN_SPEED bar)
@@ -41,7 +42,9 @@ const ATT_ID = 'att_threat_1';
 const TETHER_DEF_ID = 'tether_standard';
 const BREAK_TENSION = 1000;
 
-assertNearBreakFiresOncePerLatch();
+assertOrdinaryLoadNeverWarns();
+assertExtremeNearBreakFiresOncePerLatch();
+assertReelLimitMatchesBreakAuthority();
 assertBelowFloorNeverFires();
 assertHostileOnArcFiresPerHostile();
 assertNoSwingNoHostileThreat();
@@ -53,10 +56,28 @@ assertObserverOnly();
 
 console.log('Massline threat checks OK');
 
-// strain 0.8 >= 0.75 (overload floor): exactly one 'line-near-break' per latch, mirrored in the
-// system's own subtree, payload === mirror record.
-function assertNearBreakFiresOncePerLatch() {
+// Ordinary starter-line strain is still mirrored as load telemetry, but cannot become a break
+// warning because the canonical attachment authority says this endpoint is not auto-breakable.
+function assertOrdinaryLoadNeverWarns() {
   const h = createHarness();
+  primeActiveTether(h, { restLength: 90, lastTension: 4 * BREAK_TENSION, pastCapture: true });
+
+  const events = captureThreatEvents(h);
+  stepTicks(h, 30);
+
+  assert.equal(h.state.player.tether.automaticBreakAllowed, false,
+    'ordinary tether_standard endpoint must mirror automatic break disabled');
+  assert.equal(events.filter((e) => e.kind === 'line-near-break').length, 0,
+    'ordinary load must remain telemetry and never claim the line is near breaking');
+  assert.ok(h.state.player.tether.strain >= 4,
+    'the no-warning assertion must exercise load far beyond the old warning threshold');
+}
+
+// An explicitly authored future extreme-overload endpoint restores the warning. At strain 0.8,
+// exactly one 'line-near-break' is mirrored in the system subtree and emitted per latch.
+function assertExtremeNearBreakFiresOncePerLatch() {
+  const h = createHarness();
+  enableExtremeBreak(h.target);
   primeActiveTether(h, { restLength: 90, lastTension: 0.8 * BREAK_TENSION, pastCapture: true });
 
   const events = captureThreatEvents(h);
@@ -69,6 +90,8 @@ function assertNearBreakFiresOncePerLatch() {
   assert.ok(p.severity >= 0.75 && p.severity <= 1, `near-break severity must be strain-scaled; got ${p.severity}`);
   const runtime = h.state.player.masslineThreats;
   assert.ok(runtime && runtime.active, 'threats subtree must be active during the latch');
+  assert.equal(h.state.player.tether.automaticBreakAllowed, true,
+    'explicit extreme_overload endpoint must mirror automatic break enabled');
   assert.deepEqual(runtime.latest, p, 'emitted payload must equal the mirrored latest record');
   assert.ok(runtime.threats.includes(p), 'mirrored threats log must include the record');
 
@@ -78,9 +101,51 @@ function assertNearBreakFiresOncePerLatch() {
     'near-break must not re-emit on the same latch');
 }
 
+// The input-side reel guard follows the same authority. Ordinary high load cannot fabricate a
+// blocked control, while an explicit extreme operation may retain the protective reel-in limit.
+function assertReelLimitMatchesBreakAuthority() {
+  const ordinary = createHarness();
+  primeActiveTether(ordinary, {
+    restLength: 90,
+    lastTension: 0.95 * BREAK_TENSION,
+    pastCapture: true,
+  });
+  const ordinaryResult = ordinary.tether._reelActive(
+    ordinary.attachments,
+    -1,
+    DT,
+    ordinary.state,
+    ordinary.player,
+    ordinary.target,
+  );
+  assert.equal(ordinaryResult.changed, true,
+    'ordinary standard Massline must accept reel-in above the nominal 90% rating');
+  assert.equal(ordinaryResult.reason, null);
+
+  const extreme = createHarness();
+  enableExtremeBreak(extreme.target);
+  primeActiveTether(extreme, {
+    restLength: 90,
+    lastTension: 0.95 * BREAK_TENSION,
+    pastCapture: true,
+  });
+  const extremeResult = extreme.tether._reelActive(
+    extreme.attachments,
+    -1,
+    DT,
+    extreme.state,
+    extreme.player,
+    extreme.target,
+  );
+  assert.equal(extremeResult.changed, false,
+    'explicit extreme-overload operation may protect its breakable line from further reel-in');
+  assert.equal(extremeResult.reason, 'load_limit');
+}
+
 // strain 0.6 < 0.75: the near-break read must not fire.
 function assertBelowFloorNeverFires() {
   const h = createHarness();
+  enableExtremeBreak(h.target);
   primeActiveTether(h, { restLength: 90, lastTension: 0.6 * BREAK_TENSION, pastCapture: true });
   const events = captureThreatEvents(h);
   stepTicks(h, 30);
@@ -183,6 +248,7 @@ function assertInactiveTetherEmitsNothing() {
 // A new latch (new targetId) re-arms the per-latch throttles: near-break fires again on latch 2.
 function assertLatchResetRearms() {
   const h = createHarness();
+  enableExtremeBreak(h.target);
   primeActiveTether(h, { restLength: 90, lastTension: 0.8 * BREAK_TENSION, pastCapture: true });
   const events = captureThreatEvents(h);
   stepTicks(h, 5);
@@ -190,6 +256,7 @@ function assertLatchResetRearms() {
 
   const ALT_ID = 6909;
   relatchNewTarget(h, ALT_ID, { restLength: 90, lastTension: 0.8 * BREAK_TENSION, pastCapture: true });
+  enableExtremeBreak(h.state.entities.get(ALT_ID));
   stepTicks(h, 5);
   const fired = events.filter((e) => e.kind === 'line-near-break');
   assert.equal(fired.length, 2, 'new latch must re-arm the near-break throttle');
@@ -243,7 +310,19 @@ function createHarness() {
   const attachments = makeFakeAttachments();
   const kernel = {
     attachments,
-    catalog: { attachments: new Map([[TETHER_DEF_ID, { maxLength: 390, reelRate: 60, minLength: 10, breakTension: BREAK_TENSION }]]) },
+    catalog: {
+      attachments: new Map([[
+        TETHER_DEF_ID,
+        {
+          id: TETHER_DEF_ID,
+          maxLength: 390,
+          reelRate: 60,
+          minLength: 10,
+          breakTension: BREAK_TENSION,
+          massline: { enabled: true, automaticBreakPolicy: 'extreme_load_only' },
+        },
+      ]]),
+    },
   };
   const registry = {
     get(name) {
@@ -294,6 +373,10 @@ function addRock(harness, id, pos) {
   return e;
 }
 
+function enableExtremeBreak(entity) {
+  entity.data = { ...(entity.data || {}), masslineBreakPolicy: 'extreme_overload' };
+}
+
 function makeFakeAttachments() {
   let att = null;
   return {
@@ -304,6 +387,11 @@ function makeFakeAttachments() {
       return { ok: true };
     },
     get(id) { return att && att.id === id ? att : null; },
+    reelPolicy(id) {
+      return att && att.id === id
+        ? { reelRate: 60, break: { maxTension: BREAK_TENSION } }
+        : null;
+    },
     reel(id, delta, min) {
       if (att && att.id === id) att.restLength = Math.max(min || 0, att.restLength + delta);
       return { ok: true, attachment: att };

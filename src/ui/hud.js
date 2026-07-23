@@ -402,6 +402,35 @@ export function contactRosterVisible({
   return eligibleContactCount > 0 || pinned || nearbyHostile || revealActive;
 }
 
+/**
+ * Resolve the truthful Massline status copy from the gameplay-owned tether mirror.
+ * Normal-load strain remains useful telemetry but is not a failure alarm. STRAINED/CRITICAL and
+ * warning color are reserved for explicitly breakable, extreme-overload operations.
+ */
+export function masslineTetherStatus(tether, orbitAssistActive = false) {
+  const strain = Number.isFinite(tether && tether.strain) ? Math.max(0, tether.strain) : 0;
+  const automaticBreakAllowed = tether && tether.automaticBreakAllowed === true;
+  const operation = tether && tether.reeling
+    ? 'REELING'
+    : tether && tether.payingOut
+      ? 'PAYING OUT'
+      : tether && tether.lineControl
+        ? 'LINE CONTROL'
+        : '';
+  let status;
+  if (automaticBreakAllowed && strain > 0.85) status = 'CRITICAL';
+  else if (automaticBreakAllowed && strain > 0.6) status = 'STRAINED';
+  else if (strain > 0.85 || tether && tether.phase === 'overload') {
+    status = operation ? `${operation} · HIGH LOAD` : 'HIGH LOAD';
+  } else if (strain > 0.6 || tether && tether.phase === 'loaded') {
+    status = operation ? `${operation} · LOADED` : 'LOADED';
+  } else status = operation || 'LOCKED';
+  return {
+    text: orbitAssistActive ? `${status} · ORBIT ASSIST` : status,
+    warn: automaticBreakAllowed && strain > 0.6,
+  };
+}
+
 /** Frame-rate-independent 5 Hz presentation clock for contact-roster DOM work. */
 export function createContactRosterClock() {
   return createHudClock(5, false);
@@ -3580,13 +3609,11 @@ export function createHud(ctx, alerts) {
           const targetEnt = state.entities.get(tether.targetId);
           const targetName = (targetEnt && (targetEnt.name || (targetEnt.data && targetEnt.data.name))) || (targetEnt ? targetEnt.type : '');
           const assistActive = !!(orbitAssist && orbitAssist.active);
-          const status = assistActive
-            ? (strain > 0.85 ? 'CRITICAL · ORBIT ASSIST' : strain > 0.6 ? 'STRAINED · ORBIT ASSIST' : 'ORBIT ASSIST')
-            : (strain > 0.85 ? 'CRITICAL' : strain > 0.6 ? 'STRAINED' : tether.reeling ? 'REELING' : tether.payingOut ? 'PAYING OUT' : tether.lineControl ? 'LINE CONTROL' : 'LOCKED');
+          const tetherStatus = masslineTetherStatus(tether, assistActive);
           const controls = buildTetherControlPrompt(tether);
           const nameBit = targetName ? ' · ' + String(targetName).toUpperCase() : '';
-          setText(elTether, `${status}${nameBit}${controls ? ' · ' + controls : ''}`);
-          setClass(elTether, 'sf-warn', strain > 0.6);
+          setText(elTether, `${tetherStatus.text}${nameBit}${controls ? ' · ' + controls : ''}`);
+          setClass(elTether, 'sf-warn', tetherStatus.warn);
         }
       }
       const selectedSlot = state.input && state.input.pursuitSlot;

@@ -28,6 +28,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { sectorGlobalOrigin } from '../src/data/sectorCoordinates.js';
+import { worldSiteManifestById } from '../src/data/worldSiteManifests.js';
+import {
+  applyWorldSiteFailure, applyWorldSiteOperation, createWorldSiteRecord,
+} from '../src/systems/worldSiteKernel.js';
 
 const HELIOS = 'sector_helios_prime';
 const TETHYS = 'sector_tethys_junction';
@@ -331,6 +335,28 @@ function makeState({
     world: { currentSectorId: sectorId, sectorId, sectors: {}, discovery: {} },
     ship: {}, cargo: {}, economy: {},
   };
+}
+
+function makeWorldSiteState() {
+  const state = makeState({ sectorId: HELIOS, playerPos: { x: 620, z: -510 } });
+  const manifest = worldSiteManifestById('world_site_helios_relay');
+  let record = createWorldSiteRecord(manifest, { tick: 0 });
+  record = applyWorldSiteOperation(manifest, record, {
+    operationId: 'repair_relay_core', requestStreamId: 'player-industrial-beam',
+    requestSequence: 1, amount: 40, tick: 1,
+  }).record;
+  record = applyWorldSiteOperation(manifest, record, {
+    operationId: 'recover_safety_coupler', requestStreamId: 'player-industrial-beam',
+    requestSequence: 2, amount: 24, tick: 2,
+  }).record;
+  record = applyWorldSiteFailure(manifest, record, {
+    componentId: 'safety_coupler', failureId: 'safety_coupler_impact', expectedCycle: 0, tick: 3,
+  }).record;
+  state.sites = {
+    worldOrder: [manifest.id],
+    worldById: { [manifest.id]: record },
+  };
+  return state;
 }
 
 function mountWith(state, { busEvents = [] } = {}) {
@@ -661,7 +687,7 @@ function mountWith(state, { busEvents = [] } = {}) {
 }
 
 // =============================================================================================
-// 9. AN UNAVAILABLE TAB EXPLAINS ITSELF RATHER THAN OPENING ONTO A BLANK
+// 9. HISTORY FAILS CLOSED WITHOUT A SITE, THEN EXPOSES AUTHORITATIVE SITE ACTIVITY
 // =============================================================================================
 {
   const state = makeState();
@@ -672,13 +698,13 @@ function mountWith(state, { busEvents = [] } = {}) {
       `tab ${id} must carry a reason in BOTH states`);
   }
   assert.equal(avail.history.available, false,
-    'History has no data source in this codebase and must not pretend otherwise');
+    'History must stay unavailable without a selected World Site ledger');
   assert.equal(avail.travel.available, false, 'with no route there is nothing to show under Travel');
 
   const { root } = mountWith(state);
   galaxyMapScreen._setTab('history');
   const panel = root.querySelector('#gm-tabpanel');
-  assert.match(panel.textContent, /not recorded|no per-place visit log/i,
+  assert.match(panel.textContent, /select a world site/i,
     'an empty tab must SAY why it is empty — a blank panel reads as broken and a filled one lies');
 
   // The tab must remain reachable so a screen-reader user can hear the reason.
@@ -688,7 +714,38 @@ function mountWith(state, { busEvents = [] } = {}) {
   assert.ok(historyTab.getAttribute('title'), 'the reason must travel on the control for pointer users');
   assert.notEqual(historyTab.disabled, true,
     'an aria-disabled tab must stay focusable, or the explanation is unreachable by keyboard');
-  ok('an unavailable tab is announced, focusable, and states its reason');
+  ok('without a World Site selection History is announced, focusable, and states its reason');
+}
+
+{
+  const state = makeWorldSiteState();
+  const { root } = mountWith(state);
+  galaxyMapScreen._setTab('discovery');
+  const siteButton = root.querySelector('[data-world-site-id="world_site_helios_relay"]');
+  assert.ok(siteButton, 'Discovery must expose an ordinary World Site selection row');
+  assert.equal(siteButton.tagName, 'BUTTON');
+  assert.match(siteButton.getAttribute('aria-label'), /inspect world site/i);
+  siteButton.focus();
+  assert.equal(document.activeElement, siteButton, 'World Site row must be keyboard focusable');
+  siteButton.dispatch('click');
+  assert.equal(galaxyMapScreen._selectedTarget.mapKind, 'world-site');
+
+  const selectedAvailability = resolveInspectorTabAvailability(state, galaxyMapScreen._selectedTarget);
+  assert.equal(selectedAvailability.history.available, true);
+  galaxyMapScreen._setTab('history');
+  const historyTab = root.querySelector('#gm-tab-history');
+  assert.equal(historyTab.getAttribute('aria-selected'), 'true');
+  assert.equal(historyTab.getAttribute('aria-disabled'), 'false');
+  const panel = root.querySelector('#gm-tabpanel');
+  assert.match(panel.textContent, /world site history/i);
+  assert.match(panel.textContent, /dark relay/i);
+  assert.match(panel.textContent, /completed/i);
+  assert.match(panel.textContent, /failures/i);
+  assert.match(panel.textContent, /safety coupler impact/i);
+  const list = panel.querySelector('.gm-history-list');
+  assert.ok(list && list.tagName === 'OL', 'recent activity must be a semantic ordered list');
+  assert.ok(list.querySelectorAll('li').length >= 1);
+  ok('selected World Site History exposes stage, counts, semantic activity, ARIA, and a keyboard-selectable Discovery row');
 }
 
 // =============================================================================================

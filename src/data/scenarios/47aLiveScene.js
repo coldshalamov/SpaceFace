@@ -46,6 +46,9 @@ export function makeEvidenceSpindleSpec({ pos, rot = 0 } = {}) {
       objectiveValue: 1,
       falseMassKg: 960,
       manifestMassKg: 480,
+      // The evidence spindle is the isolated exception: its authored false-mass anomaly preserves
+      // 47-A's overload telemetry without making ordinary action_attach targets breakable.
+      masslineBreakPolicy: 'extreme_overload',
       derived: { damageReductionMult: 1 },
       combatProfileId: 'combat_profile_tether_payload',
     },

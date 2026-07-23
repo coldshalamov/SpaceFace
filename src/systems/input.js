@@ -217,6 +217,7 @@ function stepTravelLatch(host, state, inp, dt) {
 
 // Verb keys shared by both schemes (GDD 2.0 physics verbs + sensors).
 const VERB_BINDINGS = {
+  siteBeam:       ['KeyB'],   // level: contextual beam for an explicitly selected World Site proxy
   tether:         ['Space', 'KeyF'], // PQ-003: Space primary, F retained as a permanent alias
   chargeDetonate: ['KeyR'],   // edge: detonate all armed impulse charges
   scanPulse:      ['KeyC'],   // edge: scanner pulse (8 s cd owned by scanner system)
@@ -264,7 +265,7 @@ const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
   strafeRight: ['KeyE'],
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     [],                 // LMB fires; Space is the new-profile Massline action
-  brake:    [],                 // classic derives brake from reverse-held (legacy feel)
+  brake:    ['Digit0'],         // dedicated zero-thrust brake; S/Down remains reverse + brake
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],    // deploy chaff/ECM (P1-7) — X by default, remappable
   chargeThrow: ['KeyY'],       // classic: Q/E are strafe and T is the tech-tree UI key, so throw lives on Y
@@ -284,7 +285,7 @@ const HELM_BINDINGS = {      // HELM ASSIST (default): mouse owns the nose
   strafeRight: ['KeyD', 'ArrowRight'],
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     [],                // LMB only
-  brake:    [],                // S/Down brakes; Space is Massline on new profiles
+  brake:    ['Digit0'],        // dedicated zero-thrust brake; S/Down remains reverse + brake
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],
   chargeThrow: ['KeyQ'],
@@ -302,7 +303,7 @@ const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fights
   strafeRight: ['KeyE'],
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     [],                      // LMB fires — the mouse is a weapon, not a rudder
-  brake:    [],                      // S/Down brakes; Space is Massline on new profiles
+  brake:    ['Digit0'],              // dedicated zero-thrust brake; S/Down remains reverse + brake
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],
   chargeThrow: ['KeyY'],             // Q/E are strafe here, so throw lives on Y (classic parity)
@@ -319,6 +320,35 @@ const SCHEME_BINDINGS = { pilot: PILOT_BINDINGS, classic: DEFAULT_BINDINGS, 'hel
 function activeScheme(state) {
   const s = state.settings && state.settings.gameplay && state.settings.gameplay.controlScheme;
   return SCHEME_BINDINGS[s] ? s : 'pilot';
+}
+
+/**
+ * Pure Pilot keyboard projection after rebind resolution.
+ *
+ * The live input tick and deterministic public-control harness share this one semantic owner:
+ * coasting A/D yaws, W+A/D strafes with a 0.35 carve, Q/E always strafes, and S is reverse/brake.
+ */
+export function projectPilotFlightControls({
+  forward = false,
+  reverse = false,
+  brakeHeld = false,
+  yawLeft = false,
+  yawRight = false,
+  strafeLeft = false,
+  strafeRight = false,
+  boost = false,
+} = {}, out = null) {
+  const side = (yawRight ? 1 : 0) - (yawLeft ? 1 : 0);
+  const explicit = (strafeRight ? 1 : 0) - (strafeLeft ? 1 : 0);
+  const carving = forward && !brakeHeld;
+  const projected = out && typeof out === 'object' ? out : {};
+  projected.moveX = carving ? Math.max(-1, Math.min(1, side + explicit)) : explicit;
+  projected.moveZ = (forward ? 1 : 0) - (reverse ? 1 : 0);
+  projected.turnIntent = carving ? side * PILOT_CARVE_TURN : side;
+  projected.lineOrbit = side;
+  projected.boost = boost === true;
+  projected.brake = reverse === true || brakeHeld === true;
+  return projected;
 }
 
 // Resolve the live binding for an action: player rebinds (settings) win, then the active scheme's
@@ -346,6 +376,7 @@ const KEY_CODE_FALLBACKS = {
   r: 'KeyR',
   v: 'KeyV',
   t: 'KeyT',
+  '0': 'Digit0',
   ' ': 'Space',
   space: 'Space',
   arrowup: 'ArrowUp',
@@ -381,6 +412,39 @@ function clearActionCodes(state, keys, action, exceptCode) {
   for (const code of binding(state, action)) {
     if (code !== exceptCode) keys[code] = false;
   }
+}
+
+/**
+ * Deterministic keyboard event transition shared by the DOM listener and fixed-tick harnesses.
+ * Opposing axes retain the established last-input-wins behavior. Dedicated actions such as
+ * brake do not need an impossible simultaneous-axis state.
+ */
+export function transitionFlightKeyState(
+  state,
+  currentKeys = {},
+  {
+    code = '',
+    pressed = false,
+    blocked = false,
+  } = {},
+) {
+  const nextKeys = Object.assign(Object.create(null), currentKeys);
+  if (typeof code !== 'string' || code.length === 0) return nextKeys;
+  if (blocked || pressed !== true) {
+    nextKeys[code] = false;
+    return nextKeys;
+  }
+  const action = actionForCode(state, code);
+  const opposingAction = action && OPPOSING_ACTIONS.get(action);
+  if (opposingAction) {
+    clearActionCodes(state, nextKeys, opposingAction, code);
+  }
+  nextKeys[code] = true;
+  return nextKeys;
+}
+
+function applyFlightKeyTransition(keys, nextKeys) {
+  for (const code of Object.keys(nextKeys)) keys[code] = nextKeys[code];
 }
 
 function isTextEntryTarget(target) {
@@ -455,19 +519,25 @@ export const input = {
     addEventListener('keydown', (e) => {
       const code = eventCode(e);
       if (!code) return;
-      if (modalInputActive() || isTextEntryTarget(e.target) || isUiCommandTarget(e.target)) {
-        keys[code] = false;
-        return;
-      }
-      const action = actionForCode(this.state, code);
-      const opposingAction = action && OPPOSING_ACTIONS.get(action);
-      if (opposingAction) clearActionCodes(this.state, keys, opposingAction, code);
-      keys[code] = true;
+      const blocked = modalInputActive()
+        || isTextEntryTarget(e.target)
+        || isUiCommandTarget(e.target);
+      applyFlightKeyTransition(keys, transitionFlightKeyState(this.state, keys, {
+        code,
+        pressed: true,
+        blocked,
+      }));
+      if (blocked) return;
       this._lastKbmMs = performance.now();
     });
     addEventListener('keyup', (e) => {
       const code = eventCode(e);
-      if (code) keys[code] = false;
+      if (code) {
+        applyFlightKeyTransition(keys, transitionFlightKeyState(this.state, keys, {
+          code,
+          pressed: false,
+        }));
+      }
     });
     addEventListener('blur', () => {
       for (const k in keys) keys[k] = false;
@@ -571,6 +641,7 @@ export const input = {
       chargeThrow: false, chargeDetonate: false, scanPulse: false, autopursuit: false, deployBeacon: false,
       bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false, deployMassSeed: false,
       deployWell: false, deployRepulsor: false, toggleClearingCone: false, toggleSkimCollector: false,
+      siteBeam: false, aimedMine: false,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     if (state.mode !== 'flight' || state.ui.screenStack.length > 0 || modalInputActive()) {
@@ -581,6 +652,7 @@ export const input = {
       acts.reelDelta = 0; acts.chargeThrow = false; acts.chargeDetonate = false; acts.scanPulse = false; acts.autopursuit = false;
       acts.deployBeacon = false;
       acts.bulletTime = false; acts.cloakToggle = false; acts.throwArm = false; acts.travelBurn = false;
+      acts.siteBeam = false; acts.aimedMine = false;
       acts.deployMassSeed = false;
       acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       acts.toggleSkimCollector = false;
@@ -615,24 +687,33 @@ export const input = {
     const up = this._held(state, 'forward');
     const down = this._held(state, 'reverse');
     const kbdBrakeHeld = this._held(state, 'brake');
+    const kbdBoostHeld = this._held(state, 'boost');
     let kbdTurn = 0;
     let kbdMoveX = 0;
     let kbdLineOrbit = 0;
+    let pilotProjection = null;
     if (pilot) {
       // PILOT: one rule. Coasting → side keys YAW the nose (line up retro burns, spin
       // mid-drift). Forward thrust held → side keys STRAFE, blended with a gentle carve yaw
-      // so W+D banks into a curve. Brake restores coasting yaw so W+Space+A/D spins fast.
+      // so W+D banks into a curve. Brake restores coasting yaw so Digit0+A/D spins fast.
       // Q/E strafe explicitly in every state.
-      const side = (this._held(state, 'yawRight') ? 1 : 0) - (this._held(state, 'yawLeft') ? 1 : 0);
-      kbdLineOrbit = side;
-      const explicit = (this._held(state, 'strafeRight') ? 1 : 0) - (this._held(state, 'strafeLeft') ? 1 : 0);
-      if (up && !kbdBrakeHeld) {
-        kbdMoveX = Math.max(-1, Math.min(1, side + explicit));
-        kbdTurn = side * PILOT_CARVE_TURN;
-      } else {
-        kbdTurn = side;
-        kbdMoveX = explicit;
-      }
+      const pilotProjectionInput = this._pilotProjectionInput
+        || (this._pilotProjectionInput = {});
+      pilotProjectionInput.forward = up;
+      pilotProjectionInput.reverse = down;
+      pilotProjectionInput.brakeHeld = kbdBrakeHeld;
+      pilotProjectionInput.yawLeft = this._held(state, 'yawLeft');
+      pilotProjectionInput.yawRight = this._held(state, 'yawRight');
+      pilotProjectionInput.strafeLeft = this._held(state, 'strafeLeft');
+      pilotProjectionInput.strafeRight = this._held(state, 'strafeRight');
+      pilotProjectionInput.boost = kbdBoostHeld;
+      pilotProjection = projectPilotFlightControls(
+        pilotProjectionInput,
+        this._pilotProjection || (this._pilotProjection = {}),
+      );
+      kbdLineOrbit = pilotProjection.lineOrbit;
+      kbdMoveX = pilotProjection.moveX;
+      kbdTurn = pilotProjection.turnIntent;
     } else {
       const arrowLeftHeld = !!this._keys.ArrowLeft;
       const arrowRightHeld = !!this._keys.ArrowRight;
@@ -657,8 +738,10 @@ export const input = {
       kbdLineOrbit = kbdTurn;
       kbdMoveX = (strafeRight ? 1 : 0) - (strafeLeft ? 1 : 0);
     }
-    const kbdMoveZ = (up ? 1 : 0) - (down ? 1 : 0);
-    const kbdBoost = this._held(state, 'boost');
+    const kbdMoveZ = pilotProjection
+      ? pilotProjection.moveZ
+      : (up ? 1 : 0) - (down ? 1 : 0);
+    const kbdBoost = pilotProjection ? pilotProjection.boost : kbdBoostHeld;
     const kbdFire = this._m0 || this._held(state, 'fire');
 
     // --- gamepad merge (left stick = yaw/throttle, right stick = aim, RT/LT/RB fire/mine/boost) ---
@@ -705,7 +788,7 @@ export const input = {
     inp.moveZ = kbdMoveZ || (gpBrake ? -1 : gpMoveZ) || tpMoveZ;
     inp.boost = kbdBoost || gpBoost || tpBoost;
     inp.brake = (helm || pilot)
-      ? (down || this._held(state, 'brake') || gpBrake)
+      ? ((pilotProjection ? pilotProjection.brake : (down || kbdBrakeHeld)) || gpBrake)
       : (down || gpBrake || gpMoveZ < -0.55 || tpMoveZ < -0.55);
     inp.fire = kbdFire || gpFire || tpFire;
     // Massline throw-arm (§3.3, flag massline2.throw): while latched to a throwable payload
@@ -713,9 +796,20 @@ export const input = {
     // masslineThrow owns the solution/auto-cut. While latched to a mineable asteroid or wreck,
     // RMB stays the mining beam so tether station-keeping works for extraction (the designed
     // dance partner; see mining.activeMineableTetherTarget). Unlatched play is unchanged.
-    const mineHeld = !!(this._m2 || gpMine || tpMine);
+    const selectedSite = selectedWorldSiteTarget(state);
+    const contextualSiteBeam = this._held(state, 'siteBeam') && !!selectedSite;
+    const gamepadSiteBeam = gpMine && !!selectedSite;
+    const siteBeamHeld = !!(contextualSiteBeam || gamepadSiteBeam);
+    const anyMineHeld = !!(this._m2 || gpMine || tpMine);
+    // RMB and touch Mine are cursor-aimed even when a World Site remains selected. Only the
+    // explicit B action and gamepad LT claim the selected-site lane; preserving this provenance
+    // prevents a stale site selection from stealing ordinary rock mining.
+    const aimedMineHeld = anyMineHeld && !siteBeamHeld;
+    const mineHeld = siteBeamHeld || aimedMineHeld;
+    acts.siteBeam = siteBeamHeld;
+    acts.aimedMine = aimedMineHeld;
     const tetherLatched = !!(state.player && state.player.tether && state.player.tether.active);
-    const throwArmHeld = massline2Flag('throw') && tetherLatched && mineHeld
+    const throwArmHeld = massline2Flag('throw') && tetherLatched && aimedMineHeld
       && isThrowArmPayload(state);
     inp.fireGroup = (mineHeld && !throwArmHeld) ? 2 : (inp.fire ? 1 : null);
 
@@ -933,6 +1027,16 @@ export const input = {
 
 function entityLabel(e) {
   return (e && (e.name || (e.data && e.data.name))) || (e && e.type) || 'target';
+}
+
+export function selectedWorldSiteTarget(state) {
+  const id = state && state.player && state.player.targetId;
+  const entity = id != null && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(id)
+    : null;
+  return entity && entity.alive !== false && entity.data && entity.data.worldSiteTargetable === true
+    ? entity
+    : null;
 }
 
 /**

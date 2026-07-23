@@ -73,6 +73,9 @@ const CONTACT_MATERIALS = Object.freeze({
   station:    Object.freeze({ friction: 0, restitution: 0.06, angularDamping: 0,    ghost: false }),
   debris:     Object.freeze({ friction: 0, restitution: 0.16, angularDamping: 0.06, ghost: false }),
   payload:    Object.freeze({ friction: 0, restitution: 0.10, angularDamping: 0.15, ghost: false }),
+  // Keeps a dynamic body available to the attachment authority while excluding the authored
+  // sensor payload from every solver/contact pair. World-site payloads spawn inside assemblies.
+  massline_sensor: Object.freeze({ friction: 0, restitution: 0, angularDamping: 0.15, ghost: true }),
   sensor:     Object.freeze({ friction: 0, restitution: 0.10, angularDamping: 0.10, ghost: false }),
   default:    Object.freeze({ friction: 0, restitution: 0.15, angularDamping: 0.05, ghost: false }),
 });

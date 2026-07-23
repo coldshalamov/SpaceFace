@@ -200,7 +200,12 @@ test('save/load preserves objective marker identity and active local autopilot',
   const serialized = saveInstance._serializeNav();
   saveInstance.state.nav = {};
   saveInstance._restoreNav(serialized);
-  assert.deepEqual(saveInstance.state.nav, original);
+  assert.deepEqual(saveInstance.state.nav, {
+    ...original,
+    autopilot: { ...original.autopilot, targetEntityId: null },
+  });
+  assert.deepEqual(saveInstance.state.nav.autopilot.target, original.autopilot.target,
+    'legacy numeric entity handles clear while the durable coordinate fallback survives');
 });
 
 test('gamepad map entry has a deterministic focused scale control', () => {

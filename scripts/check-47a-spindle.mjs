@@ -33,6 +33,8 @@ assert.equal(spec.mass, 960, 'spindle physical mass should be authored at 960');
 assert.equal(spec.data.falseMassKg, 960, 'spindle false mass should match physical mass');
 assert.equal(spec.data.manifestMassKg, 480, 'spindle manifest mass should preserve the discrepancy');
 assert(spec.data.falseMassKg > spec.data.manifestMassKg, 'spindle should read heavier than the manifest');
+assert.equal(spec.data.masslineBreakPolicy, 'extreme_overload',
+  'only the authored false-mass spindle opts 47-A into the extreme-load break seam');
 assert.equal(spec.physicsBody.dynamic, true, 'spindle should use a dynamic physics body');
 assert.equal(spec.physicsBody.ccd, true, 'spindle should enable CCD for Massline towing');
 assert.equal(spec.physicsBody.attachmentPoints.massline.x, 0, 'spindle should expose a Massline attachment point');

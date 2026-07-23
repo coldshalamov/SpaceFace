@@ -4,9 +4,15 @@
 
 const LIVE_FORMATIONS = new Set(['line', 'ring', 'wedge']);
 const COMBAT_DOCTRINES = new Set(['interceptor_flyby', 'tether_control_raider', 'ranged_disengager']);
+const NORMALIZED_PROFILES = new WeakSet();
+const FROZEN_INPUT_CACHE = new WeakMap();
 
 export function normalizeFactionBehaviorProfile(value) {
   if (!value || typeof value !== 'object') return null;
+  if (NORMALIZED_PROFILES.has(value)) return value;
+  const frozenInput = Object.isFrozen(value)
+    && (!Array.isArray(value.firstFireAgainst) || Object.isFrozen(value.firstFireAgainst));
+  if (frozenInput && FROZEN_INPUT_CACHE.has(value)) return FROZEN_INPUT_CACHE.get(value);
   const pursuitCommitment = Number(value.pursuitCommitment);
   const preferredRange = Number(value.preferredRange);
   const liveFormation = String(value.liveFormation || '');
@@ -27,7 +33,7 @@ export function normalizeFactionBehaviorProfile(value) {
   if (!Number.isFinite(stationDefenseAggression) || stationDefenseAggression < 0 || stationDefenseAggression > 1) return null;
   if (!Number.isFinite(disableChance) || disableChance < 0 || disableChance > 1) return null;
   if (typeof value.destroyTarget !== 'boolean') return null;
-  return Object.freeze({
+  const normalized = Object.freeze({
     pursuitCommitment,
     preferredRange,
     liveFormation,
@@ -42,6 +48,9 @@ export function normalizeFactionBehaviorProfile(value) {
     destroyTarget: value.destroyTarget,
     fixedRoute: value.fixedRoute === true,
   });
+  NORMALIZED_PROFILES.add(normalized);
+  if (frozenInput) FROZEN_INPUT_CACHE.set(value, normalized);
+  return normalized;
 }
 
 export function sameFactionBehaviorProfile(a, b) {

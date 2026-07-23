@@ -34,7 +34,7 @@ await assertSlowReverseIntoTetherLimitStaysStable();
 await assertReverseIntoDynamicPayloadMasslineStaysBounded();
 await assertTetherCutClampsReleaseSpin();
 assertNpmScript('check:sg02:tether');
-assertNpmScript('check:sg02:tether-break');
+assertNpmScript('check:sg02:tether-resilience');
 
 console.log('Tether gameplay checks OK');
 

@@ -62,6 +62,7 @@ const _shadowLocalXZ = { x: 0, z: 0 };
 const _w2sLocalXZ = { x: 0, z: 0 };
 const _rayGlobalXZ = { x: 0, z: 0 };
 const _socketGlobalXZ = { x: 0, z: 0 };
+const _worldSiteA11y = { reducedMotion: false, reducedFlash: false };
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const SECTOR_PALETTE_LERP_SECONDS = 1.5;
@@ -1650,6 +1651,9 @@ export const render = {
       && typeof this.state.perfRuntime.recordRenderWork === 'function');
     const started = useCpu && typeof performance !== 'undefined' ? performance.now() : 0;
     const now = typeof performance !== 'undefined' ? performance.now() * 0.001 : 0;
+    const settings = this.state.settings || {};
+    _worldSiteA11y.reducedMotion = !!(settings.video && settings.video.motionReduce);
+    _worldSiteA11y.reducedFlash = !!(settings.accessibility && settings.accessibility.flashReduce);
     const bounds = this._entityViewCullBounds();
     let totalMeshes = 0;
     let transformed = 0;
@@ -1719,6 +1723,9 @@ export const render = {
       // indicators). The closure swaps immutable cached materials only when state changes, so one
       // entity cannot leak its status into another and the steady-state render loop allocates nothing.
       if (m.userData.updateRuntimeState) m.userData.updateRuntimeState(e, now);
+      if (m.userData.updateWorldSitePresentation) {
+        m.userData.updateWorldSitePresentation(e, this.state.simTime, _worldSiteA11y);
+      }
       // Hero-asset damage states (spec §9.11): hero meshes carry an updateDamageState closure that
       // modulates light groups / armor / drive from the live hull fraction so damage reads without the
       // HUD bar. Cheap no-op for non-hero meshes (no closure). Called once per frame per entity.
@@ -2469,6 +2476,8 @@ function replaceSceneEnvMap(scene, previousEnvMap, nextEnvMap) {
 
 function disposeObject(obj) {
   obj.traverse((c) => {
+    const disposePresentation = c.userData && c.userData.disposeWorldSitePresentation;
+    if (typeof disposePresentation === 'function') disposePresentation();
     const releaseResidency = c.userData && c.userData.releaseAuthoredAssetResidency;
     if (typeof releaseResidency === 'function') releaseResidency('render-boundary-disposed');
     if (c.isBatchedMesh && typeof c.dispose === 'function') c.dispose();

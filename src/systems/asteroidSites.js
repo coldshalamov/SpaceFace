@@ -35,6 +35,17 @@ import {
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { presentationOwnerAdmissionForWorldRecord } from '../core/presentationAdmission.js';
+import { WORLD_SITE_MANIFESTS, worldSiteManifestById } from '../data/worldSiteManifests.js';
+import {
+  createWorldSiteRecord, normalizeWorldSiteRecord, applyWorldSiteOperation,
+  applyWorldSiteFailure, operationForWorldSiteComponent, projectWorldSite,
+} from './worldSiteKernel.js';
+import {
+  syncWorldSiteMaterialization, removeWorldSiteMaterialization, captureWorldSitePayloadState,
+} from './worldSiteRuntime.js';
+
+const WORLD_SITE_PAYLOAD_CAPTURE_TICKS = 15;
 
 const { COLS, ROWS } = DRILL_CONST;
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -48,12 +59,20 @@ function makeDefaultSites() {
     nextSiteNum: 1,
     order: [],
     byId: {},
+    worldOrder: [],
+    worldById: {},
     meta: { rngSeed: 0 },
   };
 }
 
 function makeLedgerEntry(t, kind, text) {
   return { t: Math.round((Number(t) || 0) * 10) / 10, kind, text };
+}
+
+function worldSiteFailureActorMatches(actorPolicy, entity, state) {
+  if (!entity || entity.alive === false) return false;
+  if (actorPolicy === 'player-contact') return entity.id === state.playerId;
+  return false;
 }
 
 export function makeSiteRecord({ id, asteroidId, sectorId, fieldId, createdT }) {
@@ -97,9 +116,14 @@ export const asteroidSites = {
     const state = this.state;
     if (!state.sites) state.sites = makeDefaultSites();
     this._normalize(state.sites);
+    this._ensureWorldSiteRecords();
 
     this._accum = 0;
     this._rt = new Map(); // siteId -> transient runtime caches (field, networks, geo, status)
+    this._worldSyncWanted = true;
+    this._worldRestoreActive = false;
+    this._worldAdmissionBySite = new Map();
+    this._worldPayloadCaptureTicks = new Map();
 
     // Subscriptions are idempotent per bus: a second init(ctx) against the SAME bus (a re-boot
     // path re-entering init) must not double every listener — doubled drill:break handlers would
@@ -139,20 +163,46 @@ export const asteroidSites = {
 
     // Anchored sites re-materialize their rock on every sector visit (self-healing in _repairTick,
     // this listener just makes it prompt). Unanchored sites die with their re-rolled rock.
-    this.bus.on('sector:enter', () => { this._repairSweepWanted = true; });
+    this.bus.on('sector:enter', ({ sectorId } = {}) => {
+      this._repairSweepWanted = true;
+      // Save restore clears the old entities, enters the saved sector, and only then calls this
+      // owner's deserialize. Never rematerialize the pre-load record in that ordering window.
+      if (!this._worldRestoreActive) this._syncWorldSites(sectorId);
+    });
+    this.bus.on('sector:exit', ({ sectorId } = {}) => this._unmaterializeWorldSector(sectorId));
+    this.bus.on('save:restoring', () => {
+      this._captureWorldSitePayloads(null, { force: true });
+      this._worldRestoreActive = true;
+      this._worldSyncWanted = true;
+      this._worldAdmissionBySite.clear();
+      this._worldPayloadCaptureTicks.clear();
+    });
     this.bus.on('save:loaded', () => {
+      this._worldRestoreActive = false;
+      this._worldAdmissionBySite.clear();
+      this._worldPayloadCaptureTicks.clear();
       this._rt.clear();
       this._repairSweepWanted = true;
+      this._worldSyncWanted = true;
+      this._syncWorldSites();
     });
+    this.bus.on('save:error', () => { this._worldRestoreActive = false; });
+    this.bus.on('physics:impact', (payload = {}) => this._onWorldSiteImpact(payload));
   },
 
   newGame() {
     this.state.sites = makeDefaultSites();
+    this._ensureWorldSiteRecords();
     this._rt = new Map();
     this._accum = 0;
+    this._worldSyncWanted = true;
+    this._worldRestoreActive = false;
+    this._worldAdmissionBySite = new Map();
+    this._worldPayloadCaptureTicks = new Map();
   },
 
   serialize() {
+    this._captureWorldSitePayloads(null, { force: true });
     const src = this.state.sites || makeDefaultSites();
     const byId = {};
     const order = [];
@@ -165,11 +215,22 @@ export const asteroidSites = {
       byId[id] = JSON.parse(JSON.stringify(site));
       order.push(id);
     }
+    const worldById = {};
+    const worldOrder = [];
+    for (const id of src.worldOrder || []) {
+      const manifest = worldSiteManifestById(id);
+      const record = src.worldById && src.worldById[id];
+      if (!manifest || !record || worldById[id]) continue;
+      worldById[id] = normalizeWorldSiteRecord(manifest, record);
+      worldOrder.push(id);
+    }
     return {
       schemaVersion: SITES_SCHEMA_VERSION,
       nextSiteNum: src.nextSiteNum,
       order,
       byId,
+      worldOrder,
+      worldById,
       meta: { rngSeed: src.meta && src.meta.rngSeed || 0 },
     };
   },
@@ -182,21 +243,32 @@ export const asteroidSites = {
       const order = Array.isArray(data.order) ? data.order : Object.keys(data.byId || {}).sort();
       for (const id of order) {
         const site = data.byId && data.byId[id];
-        if (!site || typeof site !== 'object') continue;
+        if (!site || typeof site !== 'object' || next.byId[id]) continue;
         next.byId[id] = JSON.parse(JSON.stringify(site));
         next.order.push(id);
+      }
+      for (const manifest of WORLD_SITE_MANIFESTS) {
+        const prior = data.worldById && data.worldById[manifest.id];
+        next.worldById[manifest.id] = normalizeWorldSiteRecord(manifest, prior);
+        next.worldOrder.push(manifest.id);
       }
     }
     this.state.sites = next;
     this._normalize(next);
+    this._ensureWorldSiteRecords();
     this._rt = new Map();
     this._repairSweepWanted = true;
+    this._worldSyncWanted = true;
+    this._worldAdmissionBySite = new Map();
+    this._worldPayloadCaptureTicks = new Map();
   },
 
   _normalize(sites) {
     if (!sites.byId) sites.byId = {};
     if (!Array.isArray(sites.order)) sites.order = Object.keys(sites.byId).sort();
     if (!sites.meta) sites.meta = { rngSeed: 0 };
+    if (!sites.worldById || typeof sites.worldById !== 'object' || Array.isArray(sites.worldById)) sites.worldById = {};
+    if (!Array.isArray(sites.worldOrder)) sites.worldOrder = [];
     for (const id of sites.order) {
       const site = sites.byId[id];
       if (!site) continue;
@@ -217,6 +289,218 @@ export const asteroidSites = {
         if (m.job === undefined) m.job = null;
       }
     }
+  },
+
+  _ensureWorldSiteRecords() {
+    const sites = this.state.sites;
+    if (!sites.worldById || typeof sites.worldById !== 'object' || Array.isArray(sites.worldById)) sites.worldById = {};
+    const nextOrder = [];
+    const nextById = {};
+    for (const manifest of WORLD_SITE_MANIFESTS) {
+      const prior = sites.worldById[manifest.id];
+      nextById[manifest.id] = prior
+        ? normalizeWorldSiteRecord(manifest, prior)
+        : createWorldSiteRecord(manifest, { tick: this.state.tick });
+      nextOrder.push(manifest.id);
+    }
+    sites.worldOrder = nextOrder;
+    sites.worldById = nextById;
+  },
+
+  _syncWorldSites(sectorId = null) {
+    const currentSectorId = sectorId || (this.state.world && this.state.world.currentSectorId) || null;
+    if (!currentSectorId) return;
+    this._captureWorldSitePayloads(currentSectorId);
+    this._worldSyncWanted = false;
+    const sites = this.state.sites;
+    for (const siteId of sites.worldOrder || []) {
+      const manifest = worldSiteManifestById(siteId);
+      const record = sites.worldById && sites.worldById[siteId];
+      if (!manifest || !record || record.sectorId !== currentSectorId) continue;
+      const result = syncWorldSiteMaterialization({
+        state: this.state, helpers: this.ctx && this.ctx.helpers, manifest, record,
+      });
+      this._worldAdmissionBySite.set(siteId, result.admissionState);
+    }
+  },
+
+  _unmaterializeWorldSector(sectorId) {
+    const sites = this.state.sites;
+    if (!sites) return;
+    this._captureWorldSitePayloads(sectorId, { force: true });
+    for (const siteId of sites.worldOrder || []) {
+      const record = sites.worldById && sites.worldById[siteId];
+      if (!record || record.sectorId !== sectorId) continue;
+      removeWorldSiteMaterialization({ state: this.state, helpers: this.ctx && this.ctx.helpers, siteId, sectorId });
+      this._worldAdmissionBySite.delete(siteId);
+    }
+  },
+
+  _pollWorldSiteAdmission() {
+    if (this._worldRestoreActive) return;
+    const currentSectorId = this.state.world && this.state.world.currentSectorId;
+    const sites = this.state.sites;
+    if (!currentSectorId || !sites || !sites.worldById) return;
+    for (const siteId of sites.worldOrder || []) {
+      const record = sites.worldById[siteId];
+      if (!record || record.sectorId !== currentSectorId) continue;
+      const admission = presentationOwnerAdmissionForWorldRecord(`${record.worldObjectId}/root`, this.state);
+      if (this._worldAdmissionBySite.get(siteId) === admission) continue;
+      this._syncWorldSites(currentSectorId);
+      return;
+    }
+  },
+
+  getWorldSite(siteId) {
+    return this.state.sites && this.state.sites.worldById && this.state.sites.worldById[siteId] || null;
+  },
+
+  worldSiteProjection(siteId) {
+    const record = this.getWorldSite(siteId);
+    const manifest = record && worldSiteManifestById(record.manifestId);
+    return record && manifest ? projectWorldSite(manifest, record) : null;
+  },
+
+  worldSiteTrafficHooks(sectorId) {
+    const sites = this.state.sites;
+    if (!sites || !sites.worldById) return Object.freeze([]);
+    const hooks = [];
+    for (const siteId of [...(sites.worldOrder || [])].sort()) {
+      const record = sites.worldById[siteId];
+      const manifest = record && worldSiteManifestById(record.manifestId);
+      if (!manifest || record.sectorId !== sectorId || !manifest.trafficHook) continue;
+      hooks.push(projectWorldSite(manifest, record).traffic);
+    }
+    return Object.freeze(hooks);
+  },
+
+  _captureWorldSitePayloads(sectorId = null, { force = false } = {}) {
+    const sites = this.state.sites;
+    if (!sites || !sites.worldById) return;
+    const tick = Math.max(0, Math.trunc(Number(this.state.tick) || 0));
+    const captureTicks = this._worldPayloadCaptureTicks || (this._worldPayloadCaptureTicks = new Map());
+    for (const siteId of sites.worldOrder || []) {
+      const manifest = worldSiteManifestById(siteId);
+      const record = sites.worldById[siteId];
+      if (!manifest || !record || sectorId && record.sectorId !== sectorId) continue;
+      const lastTick = captureTicks.get(siteId);
+      if (!force && lastTick != null && tick >= lastTick
+        && tick - lastTick < WORLD_SITE_PAYLOAD_CAPTURE_TICKS) continue;
+      const captured = captureWorldSitePayloadState({
+        state: this.state,
+        manifest,
+        record,
+        tick,
+        force,
+      });
+      captureTicks.set(siteId, tick);
+      if (captured.changed) sites.worldById[siteId] = captured.record;
+    }
+  },
+
+  _worldSiteDeliveryEvidence(manifest, operation) {
+    if (!operation.receiverId || !operation.payloadId) return null;
+    const payloadDef = manifest.payloads.find((payload) => payload.id === operation.payloadId);
+    const receiverDef = manifest.receivers.find((receiver) => receiver.id === operation.receiverId);
+    if (!payloadDef || !receiverDef) return null;
+    const payloadEntities = [];
+    const receiverEntities = [];
+    for (const entity of this.state.entities.values()) {
+      if (!entity || entity.alive === false || !entity.data || entity.data.worldSiteId !== manifest.id) continue;
+      if (entity.data.worldRecordId === payloadDef.worldObjectId
+        && entity.data.worldSitePayloadId === payloadDef.id) payloadEntities.push(entity);
+      if (entity.data.worldSiteComponentId === receiverDef.componentId
+        && entity.data.worldRecordId === `${manifest.worldObjectId}/component/${receiverDef.componentId}`) receiverEntities.push(entity);
+    }
+    if (payloadEntities.length !== 1 || receiverEntities.length !== 1) return null;
+    const payloadEntity = payloadEntities[0];
+    const receiverEntity = receiverEntities[0];
+    return {
+      payloadId: payloadDef.id,
+      payloadWorldObjectId: payloadDef.worldObjectId,
+      receiverId: receiverDef.id,
+      payloadPos: { x: payloadEntity.pos.x, z: payloadEntity.pos.z },
+      receiverPos: { x: receiverEntity.pos.x, z: receiverEntity.pos.z },
+    };
+  },
+
+  applyWorldSiteBeamOperation({ siteId, componentId, verb, amount, requestStreamId, requestSequence, tick } = {}) {
+    this._captureWorldSitePayloads();
+    const record = this.getWorldSite(siteId);
+    const manifest = record && worldSiteManifestById(record.manifestId);
+    if (!record || !manifest) return { ok: false, duplicate: false, reason: 'site-missing', moved: 0, intents: [] };
+    const operation = operationForWorldSiteComponent(manifest, record, componentId, verb)
+      || manifest.operations.find((candidate) => candidate.componentId === componentId
+        && candidate.verb === verb && record.completedOperations && record.completedOperations[candidate.id]);
+    if (!operation) return { ok: false, duplicate: false, reason: 'operation-unavailable', moved: 0, intents: [] };
+    const result = applyWorldSiteOperation(manifest, record, {
+      operationId: operation.id,
+      amount,
+      requestStreamId,
+      requestSequence,
+      tick: tick == null ? this.state.tick : tick,
+      delivery: this._worldSiteDeliveryEvidence(manifest, operation),
+    });
+    if (!result.ok || result.duplicate) {
+      return { ...result, moved: result.receipt && result.receipt.amountApplied || 0, operationId: operation.id };
+    }
+    this.state.sites.worldById[siteId] = result.record;
+    for (const intent of result.intents) this.bus.emit(intent.type, intent.payload);
+    this.bus.emit('worldSite:operationReceipt', {
+      siteId,
+      componentId,
+      operationId: operation.id,
+      receipt: result.receipt,
+      stageId: result.record.stageId,
+    });
+    if (result.materializationChanged
+      && this.state.world && this.state.world.currentSectorId === result.record.sectorId) this._syncWorldSites(result.record.sectorId);
+    return { ...result, moved: result.receipt && result.receipt.amountApplied || 0, operationId: operation.id };
+  },
+
+  _onWorldSiteImpact(payload = {}) {
+    const a = this.state.entities && this.state.entities.get(payload.aId);
+    const b = this.state.entities && this.state.entities.get(payload.bId);
+    const participants = [a, b];
+    let matched = null;
+    for (let index = 0; index < participants.length && !matched; index += 1) {
+      const componentEntity = participants[index];
+      if (!componentEntity || componentEntity.alive === false
+        || !componentEntity.data?.worldSiteId || !componentEntity.data?.worldSiteComponentId) continue;
+      const data = componentEntity.data;
+      const record = this.getWorldSite(data.worldSiteId);
+      const manifest = record && worldSiteManifestById(record.manifestId);
+      const live = record && record.components && record.components[data.worldSiteComponentId];
+      const otherEntity = participants[index === 0 ? 1 : 0];
+      if (!manifest || !live) continue;
+      const trigger = (manifest.failureTriggers || []).find((candidate) => candidate.event === 'physics:impact'
+        && candidate.componentId === data.worldSiteComponentId
+        && candidate.from.includes(live.status)
+        && Number(payload.dp) >= candidate.minDp
+        && worldSiteFailureActorMatches(candidate.actorPolicy, otherEntity, this.state));
+      if (trigger) matched = { record, manifest, live, trigger };
+    }
+    if (!matched) return null;
+    const { record, manifest, live, trigger } = matched;
+    const result = applyWorldSiteFailure(manifest, record, {
+      componentId: trigger.componentId,
+      failureId: trigger.id,
+      expectedCycle: live.cycle,
+      tick: payload.tick == null ? this.state.tick : payload.tick,
+    });
+    if (!result.ok || result.duplicate) return result;
+    this.state.sites.worldById[manifest.id] = result.record;
+    this.bus.emit('worldSite:failureReceipt', {
+      siteId: manifest.id,
+      componentId: trigger.componentId,
+      triggerId: trigger.id,
+      receipt: result.receipt,
+      stageId: result.record.stageId,
+    });
+    if (this.state.world && this.state.world.currentSectorId === result.record.sectorId) {
+      this._syncWorldSites(result.record.sectorId);
+    }
+    return result;
   },
 
   // ------------------------------------------------------------------ lookups
@@ -719,6 +1003,9 @@ export const asteroidSites = {
   // ------------------------------------------------------------------ sim tick
 
   update(dt, state) {
+    this._pollWorldSiteAdmission();
+    this._captureWorldSitePayloads();
+    if (this._worldSyncWanted) this._syncWorldSites();
     this._accum += dt;
     if (this._accum < SITE_BALANCE.tickS) return;
     const step = SITE_BALANCE.tickS;

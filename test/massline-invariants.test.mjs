@@ -160,7 +160,7 @@ const FIXTURE_CALIBRATION = Object.freeze({
     overloadGraceS: 0.22,
   }),
   tetherStandard: Object.freeze({
-    breakTension: 1_050_000,
+    breakTension: 10_500_000,
     captureS: 0.35,
     overloadGraceS: 1.1,
   }),
@@ -570,7 +570,7 @@ test('a band set with a calibration refuses a value from a different calibration
 test('the denominator collision is real: one tension, two calibrations, opposite bands', () => {
   const cals = MASSLINE_QUANTITY_SPACES.breakFraction01.calibrations;
   const placeholder = cals.t01Placeholder.denominator;   // 6000
-  const live = cals.tetherStandard.denominator;          // 1_050_000
+  const live = cals.tetherStandard.denominator;          // 10_500_000
 
   assert.ok(live / placeholder > 100, 'the two denominators must differ by orders of magnitude');
 
@@ -769,7 +769,7 @@ test('buildMasslineInvariants accepts a frozen local fixture and validates', () 
   assert.equal(doc.quantitySpaces.count.id, 'count');
   assert.equal(doc.quantitySpaces.distanceWu.id, 'distanceWu');
   // Fixture denominators flow into calibrations without live catalog lookup.
-  assert.equal(doc.quantitySpaces.breakFraction01.calibrations.tetherStandard.denominator, 1_050_000);
+  assert.equal(doc.quantitySpaces.breakFraction01.calibrations.tetherStandard.denominator, 10_500_000);
   assert.equal(doc.quantitySpaces.breakFraction01.calibrations.attachmentMassline.denominator, 10_250);
 });
 

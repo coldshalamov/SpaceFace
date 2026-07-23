@@ -60,13 +60,15 @@ const npc = getDerivedStats('ship_wasp', [], null);
 assert.equal(npc.cargoMass, 0, 'NPC derivation is isolated from player cargo');
 
 const standard = ATTACHMENT_DEFS.find((def) => def.id === 'tether_standard');
-// CORE-COMBAT-LOOP: doubled pre-pass strength, then the live feel pass raised that base by 25%.
-assert.equal(standard.breakTension, 1050000, 'standard compatibility threshold is 2.5× legacy base');
+// The normal-play envelope is exactly 10× the immediately preceding live tune.
+assert.equal(standard.breakTension, 10500000, 'standard compatibility threshold is 10× the prior live tune');
 assert.deepEqual(
   { maxTension: standard.break.maxTension, maxImpulse: standard.break.maxImpulse, maxYank: standard.break.maxYank },
-  { maxTension: 1050000, maxImpulse: 19000, maxYank: 15000 },
-  'standard immutable base strength includes the live +25% feel pass',
+  { maxTension: 10500000, maxImpulse: 190000, maxYank: 150000 },
+  'standard immutable base strength carries the 10× durability envelope',
 );
+assert.equal(standard.massline.automaticBreakPolicy, 'extreme_load_only',
+  'normal endpoints do not enable automatic standard-Massline breakage');
 assert.equal(standard.spring.maxStretchRatio, 1.44,
   'standard tether doubles the real geometric stretch envelope, not only unreachable force numbers');
 assert.equal(standard.spring.reelSafeStretchRatio, 1.32,
@@ -78,10 +80,10 @@ assert.equal(typeof attachmentModule.effectiveTetherBreak, 'function',
 assert.equal(typeof attachmentModule.effectiveTetherPolicy, 'function',
   'attachments exports one pure effective tether policy resolver');
 for (const [rating, expected] of [
-  [1, [1050000, 19000, 15000]],
-  [1.5, [1575000, 28500, 22500]],
-  [3, [3150000, 57000, 45000]],
-  [6, [6300000, 114000, 90000]],
+  [1, [10500000, 190000, 150000]],
+  [1.5, [15750000, 285000, 225000]],
+  [3, [31500000, 570000, 450000]],
+  [6, [63000000, 1140000, 900000]],
 ]) {
   const owner = { data: { derived: { tetherSpoolMult: rating } } };
   const effective = attachmentModule.effectiveTetherBreak(standard, owner);
@@ -93,6 +95,25 @@ for (const [rating, expected] of [
 }
 assert.equal(JSON.stringify(standard.break), immutableBaseSnapshot,
   'effective strength resolution never mutates the catalog base');
+assert.equal(attachmentModule.automaticMasslineBreakAllowed(
+  standard,
+  { data: { derived: { tetherSpoolMult: 1 } } },
+  { data: {} },
+), false, 'ordinary endpoints cannot auto-break the standard line');
+assert.equal(attachmentModule.automaticMasslineBreakAllowed(
+  standard,
+  { data: { derived: { tetherSpoolMult: 1 } } },
+  { data: { masslineBreakPolicy: 'extreme_overload' } },
+), true, 'future extreme-load endpoints must opt in explicitly');
+const rebasedRatingThree = attachmentModule.rebasePersistedTetherPolicy(standard, {
+  break: { maxTension: 3150000, maxImpulse: 57000, maxYank: 45000 },
+  reelRate: standard.reelRate,
+});
+assert.deepEqual(
+  [rebasedRatingThree.break.maxTension, rebasedRatingThree.break.maxImpulse, rebasedRatingThree.break.maxYank],
+  [31500000, 570000, 450000],
+  'Continue rebases a legacy snapshot while preserving its deployed spool rating',
+);
 
 const moduleById = new Map(MODULES.map((def) => [def.id, def]));
 assert.equal(moduleById.get('mod_winch_hd')?.mods?.tetherSpoolMult, 1.5);
@@ -142,7 +163,7 @@ assert.deepEqual(spoolStats(['mod_massline_spool_m', 'mod_winch_hd', 'mod_massli
 
 {
   const strainEvents = [];
-  const attachment = { id: 'att_spool_6', defId: standard.id, state: 'active', lastTension: 1050000 };
+  const attachment = { id: 'att_spool_6', defId: standard.id, state: 'active', lastTension: 10500000 };
   const attachments = {
     get(id) { return id === attachment.id ? attachment : null; },
     breakPolicy(id) {
@@ -238,7 +259,7 @@ assert.deepEqual(spoolStats(['mod_massline_spool_m', 'mod_winch_hd', 'mod_massli
       ownerId: owner.id, targetId: target.id,
       sourceWorld: { x: -8, y: 0, z: 0 }, targetWorld: { x: 8, y: 0, z: 0 },
       restLength: 16,
-      break: { maxTension: 1050000, maxImpulse: 19000, maxYank: 15000 },
+      break: { maxTension: 10500000, maxImpulse: 190000, maxYank: 150000 },
       spring: { mode: 'legacy_rope' },
       tick: 0,
     });
@@ -436,16 +457,15 @@ for (const seed of [47, 109]) {
       kernel.postPhysics(1 / 60);
     }
     const traces = state.combat.trace.events.filter((event) => event.kind === 'attachment.broken' && event.attachmentId === attachment.id);
-    assert.equal(attachment.state, 'broken', 'authored overload reaches canonical semantic attachment removal');
-    assert.equal(attachment.breakReason, 'threshold', 'canonical overload reports the authored threshold reason');
-    assert.equal(runtime.attachments.has(attachment.id), false, 'canonical overload removes the physical attachment');
-    assert.equal(breakReceipts.length, 1, 'canonical overload emits exactly one tether:broken receipt');
-    assert.equal(breakReceipts[0].attachmentId, attachment.id);
-    assert.deepEqual(breakOrder.map((event) => event.type), ['warning', 'broken'],
-      'an overload warning is emitted before the canonical break receipt');
-    assert.ok(breakOrder[1].tick - breakOrder[0].tick >= 15,
-      'the warning remains player-visible for at least 250 ms before catastrophic failure');
-    assert.equal(traces.length, 1, 'canonical overload appends exactly one deterministic break trace');
+    assert.equal(attachment.state, 'active',
+      'even an excessive thrust/reversal fixture cannot sever an ordinary standard Massline');
+    assert.equal(attachment.breakReason, null, 'normal load never fabricates a threshold break reason');
+    assert.equal(runtime.attachments.has(attachment.id), true, 'the physical SG-02 attachment remains live');
+    assert.equal(breakReceipts.length, 0, 'normal load emits no tether:broken receipt');
+    assert.deepEqual(breakOrder, [], 'normal load emits neither near-break warnings nor break receipts');
+    assert.equal(traces.length, 0, 'normal load appends no attachment.broken trace');
+    assert.equal(attachment.masslineRuntime?.integrity, 1, 'non-breaking load does not accumulate hidden integrity damage');
+    assert.equal(attachment.masslineRuntime?.overloadS, 0, 'non-breaking load does not accumulate phantom break debt');
   } finally {
     if (kernel) kernel.dispose();
     runtime.dispose();

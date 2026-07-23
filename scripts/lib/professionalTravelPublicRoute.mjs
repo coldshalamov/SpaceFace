@@ -890,11 +890,19 @@ export async function bootToAuthoredFlight({
   await milestone('observers-armed');
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
+    // The cinematic input fence deliberately ignores gestures delivered while the page is
+    // backgrounded. A headed automation window can lose focus to another local authoring tool
+    // between navigation and UI boot, so activate the page immediately before the public click.
+    // This remains ordinary player input; it does not bypass or mutate the cinematic state.
+    await page.bringToFront().catch(() => {});
+    await page.waitForFunction(() => document.hasFocus(), null, { timeout: 3_000 }).catch(() => {});
     const splash = page.locator('#cinematic-splash');
     if (await splash.isVisible().catch(() => false)) {
-      await page.keyboard.press('Space');
-      await splash.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
-      await milestone('intro-dismissed', { attempt });
+      await splash.click({ position: { x: 12, y: 12 }, timeout: 5_000 }).catch(() => {});
+      const dismissed = await splash.waitFor({ state: 'hidden', timeout: 5_000 })
+        .then(() => true)
+        .catch(() => false);
+      if (dismissed) await milestone('intro-dismissed', { attempt, input: 'pointer' });
     }
     const landed = await page.waitForFunction(() => {
       const visible = (el) => {

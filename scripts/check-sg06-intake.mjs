@@ -26,7 +26,7 @@ const REQUIRED_FULL_HANDOFF = Object.freeze([
   'scripts/check-sg06-encounter-owner.mjs',
   'scripts/check-sg06-registry-init.mjs',
   'scripts/check-sg06-live-registry.mjs',
-  'scripts/check-sg06-live-tether-break.mjs',
+  'scripts/check-sg06-live-tether-resilience.mjs',
   'src/systems/aiEncounter.js',
 ]);
 
@@ -65,10 +65,12 @@ assert(scripts['check:sg06:encounter-owner'] && scripts['check:sg06:encounter-ow
   'package.json must expose the SG-06 active encounter owner gate');
 assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:encounter-owner'),
   'package.json check:sg06 must run the SG-06 active encounter owner gate');
-assert(scripts['check:sg06:tether-break'] && scripts['check:sg06:tether-break'].includes('check-sg06-live-tether-break.mjs'),
-  'package.json must expose the SG-06 live tether-break gate');
-assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:tether-break'),
-  'package.json check:sg06 must run the SG-06 live tether-break gate');
+assert(scripts['check:sg06:tether-resilience'] && scripts['check:sg06:tether-resilience'].includes('check-sg06-live-tether-resilience.mjs'),
+  'package.json must expose the SG-06 live Massline-resilience gate');
+assert.equal(scripts['check:sg06:tether-break'], 'npm run check:sg06:tether-resilience',
+  'the legacy name remains a compatibility alias without preserving the obsolete desired-break contract');
+assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:tether-resilience'),
+  'package.json check:sg06 must run the live Massline-resilience gate');
 
 const hasProductionClaim = PRODUCTION_CLAIM_MARKERS.some(exists) || systemImportsSg06();
 

@@ -26,8 +26,8 @@ import { weapons } from '../src/systems/weapons.js';
 
 const DT = SIM_DT;
 const DIFFICULTIES = Object.freeze(['casual', 'standard', 'veteran', 'ironman']);
-// Pre-M1 / pre-core-loop catalog baseline (HEAD before the strength pass). Effective budget must
-// approximately double these numbers for the starter spool rating of 1.0.
+// Pre-M1 catalog baseline. The normal-play line now carries 25× this historical budget: ten times
+// the immediately preceding 1.05M / 19k / 15k tune.
 const LEGACY_TETHER_BREAK = Object.freeze({
   maxTension: 420000,
   maxImpulse: 7600,
@@ -142,7 +142,7 @@ function simulateStarterPulseSustain(difficulty) {
   };
 }
 
-// ── Tether: ~2× break budget, ≥2.5s standard capture hold, still snaps on severe overload ─────
+// ── Tether: 10× prior budget, ≥2.5s capture, no ordinary maneuver-induced break ───────────────
 
 async function assertTetherStrainBudgetAndCaptureHold() {
   const standard = ATTACHMENT_DEFS.find((d) => d.id === 'tether_standard');
@@ -153,11 +153,13 @@ async function assertTetherStrainBudgetAndCaptureHold() {
   const ratioY = standard.break.maxYank / LEGACY_TETHER_BREAK.maxYank;
   for (const [name, ratio] of [['tension', ratioT], ['impulse', ratioI], ['yank', ratioY]]) {
     assert.ok(
-      ratio >= 1.85 && ratio <= 2.25,
-      `tether ${name} break budget must approximately double legacy base (got ×${ratio.toFixed(3)})`,
+      ratio >= 24.9 && ratio <= 25.1,
+      `tether ${name} budget must be 25× the historical base / 10× the prior live tune (got ×${ratio.toFixed(3)})`,
     );
   }
   assert.equal(standard.breakTension, standard.break.maxTension, 'compatibility breakTension matches break.maxTension');
+  assert.equal(standard.massline?.automaticBreakPolicy, 'extreme_load_only',
+    'ordinary endpoints cannot opt the standard Massline into automatic load breakage');
 
   // Optional authored massline grace: when present, must be long enough for capture rhythm.
   const graceS = standard.massline && Number(standard.massline.overloadGraceS);
@@ -169,16 +171,14 @@ async function assertTetherStrainBudgetAndCaptureHold() {
   assert.equal(hold.latched, true, 'standard capture maneuver must latch');
   assert.ok(
     hold.holdS >= 2.5,
-    `standard capture must hold ≥2.5s before break; held ${hold.holdS.toFixed(3)}s (broke=${hold.broke})`,
+    `standard capture must remain attached for the full ≥2.5s observation; held ${hold.holdS.toFixed(3)}s (broke=${hold.broke})`,
   );
 
-  const severe = await measureSevereOverloadBreak();
-  assert.equal(severe.latched, true, 'severe overload fixture must latch first');
-  assert.equal(severe.broke, true, 'severe overload must still break the line');
-  assert.ok(
-    severe.breakS <= 2.0,
-    `severe overload should snap promptly (≤2.0s); took ${severe.breakS.toFixed(3)}s`,
-  );
+  const severe = await measureSevereNormalLoadDurability();
+  assert.equal(severe.latched, true, 'high-load durability fixture must latch first');
+  assert.equal(severe.broke, false, 'starter thrust, boost, reversal, and hard reel must not break the line');
+  assert.equal(severe.active, true, 'the standard Massline remains physically attached after the load sequence');
+  assert.ok(severe.survivedS >= 1.2, `high-load sequence must remain attached for its full window; got ${severe.survivedS.toFixed(3)}s`);
 }
 
 async function measureStandardCaptureHold() {
@@ -253,7 +253,7 @@ async function measureStandardCaptureHold() {
   };
 }
 
-async function measureSevereOverloadBreak() {
+async function measureSevereNormalLoadDurability() {
   const harness = createTetherHarness(0xc0b2);
   const { state, helpers, runtime, events } = harness;
   const fittings = fittingsFromDefaultModules(NEW_GAME.shipId, NEW_GAME.fittedModules);
@@ -284,7 +284,7 @@ async function measureSevereOverloadBreak() {
   state.input.actions.tetherFire = true;
   stepTether(harness);
   state.input.actions.tetherFire = false;
-  assert.ok(events.latched.length >= 1, 'severe fixture should latch the heavy anchor');
+  assert.ok(events.latched.length >= 1, 'high-load fixture should latch the heavy anchor');
 
   const latchT = state.simTime;
   for (let i = 0; i < Math.round(1.2 / DT); i++) {
@@ -301,36 +301,16 @@ async function measureSevereOverloadBreak() {
       }
     }
     stepTether(harness);
-    if (events.broke.length) break;
   }
 
-  // Production break path: attachment service cut under severe overload reason.
-  if (!events.broke.length) {
-    const kernel = runtime.actions.kernel || runtime.combat.kernel;
-    const atts = kernel && kernel.attachments;
-    const active = state.combat && state.combat.attachments && state.combat.attachments.byId;
-    const id = active && Object.keys(active).find((k) => active[k].state === 'active');
-    if (atts && id) {
-      const cut = typeof atts.cut === 'function'
-        ? atts.cut(id, player.id, 'threshold')
-        : null;
-      // Mirror gameplay broke event if the service cut the rope.
-      const still = active[id];
-      if (!still || still.state !== 'active') {
-        events.broke.push({ targetId: anchor.id, reason: 'threshold' });
-      } else if (typeof atts.break === 'function') {
-        atts.break(id, 'threshold', { tension: 2e6, impulse: 5e4 });
-        events.broke.push({ targetId: anchor.id, reason: 'threshold' });
-      }
-    }
-  }
-
-  const breakS = events.broke.length ? Math.max(0.01, state.simTime - latchT) : Infinity;
+  const survivedS = state.simTime - latchT;
+  const active = !!(state.player.tether && state.player.tether.active);
   disposeTether(harness);
   return {
     latched: events.latched.length > 0,
     broke: events.broke.length > 0,
-    breakS,
+    active,
+    survivedS,
   };
 }
 

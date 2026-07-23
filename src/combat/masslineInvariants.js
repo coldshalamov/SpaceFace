@@ -18,7 +18,7 @@
 //                    defaults lineStiffness 120 / breakTension 6000.
 //                    -> src/combat/masslineOrbitTelemetry.js
 //   tether.strain  = attachment.lastTension / breakTension, where the LIVE tether_standard
-//                    breakTension is 1_050_000.
+//                    physical envelope is 10_500_000 and ordinary endpoints cannot auto-break it.
 //                    -> src/systems/tetherGameplay.js
 //   tether.load    = presentation load with per-phase FLOORS (slack 0 / capture 0.35 / loaded 0.55
 //                    / overload 0.9). Not a physical ratio at all.
@@ -675,14 +675,16 @@ export function buildMasslineInvariants(cal) {
       quantitySpace: 'overloadRatio',
       bandSets: ['break.overload'],
       summary:
-        'The line ceasing to exist. Overload is the max of the tension, impulse, and yank ratios '
-        + 'against their budgets, so 1.0 is the budget edge by construction. A ratio above 1 '
-        + 'accumulates overload time and eats integrity; crossing the grace window, exhausting '
-        + 'integrity, or hitting the catastrophic ratio cuts the line. The sustained-load harden '
-        + 'term only ever RAISES the yank budget, so it can never introduce a break that would not '
-        + 'have happened at rest.',
+        'The failure-capable line ceasing to exist. Overload is the max of the tension, impulse, '
+        + 'and yank ratios against their budgets, so 1.0 is the budget edge by construction. When '
+        + 'automatic break is enabled, a ratio above 1 accumulates overload time and eats integrity; '
+        + 'crossing the grace window, exhausting integrity, or hitting the catastrophic ratio cuts '
+        + 'the line. The normal tether_standard policy disables this path for ordinary endpoints; '
+        + 'only an explicitly authored extreme_load endpoint enables it. Manual and subsystem cuts '
+        + 'remain separate. The sustained-load harden term only ever raises the yank budget.',
       sources: [
         { path: 'src/core/constraints/masslineController.js', symbol: 'stepMassline', derivation: 'imported' },
+        { path: 'src/combat/attachments.js', symbol: 'automaticMasslineBreakAllowed', derivation: 'imported' },
         { path: 'src/data/combatDefs.js', symbol: 'ATTACHMENT_DEFS[].break', derivation: 'imported' },
       ],
       tolerances: {
@@ -721,8 +723,9 @@ export function buildMasslineInvariants(cal) {
           space: 'breakFraction01',
           derivation: 'copied',
           source:
-            'src/systems/masslineThreats.js THREAT_NEAR_BREAK_STRAIN (module-private). Applied to '
-            + 'tether.strain, i.e. the tetherStandard calibration — see collisions.',
+            'src/systems/masslineThreats.js THREAT_NEAR_BREAK_STRAIN (module-private). Applied only '
+            + 'to failure-capable tether.strain; ordinary standard lines keep load telemetry but '
+            + 'cannot emit impending-break language.',
         },
       },
     },

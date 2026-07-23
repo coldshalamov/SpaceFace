@@ -1,8 +1,8 @@
 import { BINDINGS } from './bindings.js';
 
 const KBM_PROMPTS = Object.freeze({
-  flight: `W/Up thrust  •  S/Down brake  •  A D steer  •  Mouse aim  •  LMB fire  •  Space/F Massline  •  4 anchor seed  •  RMB mine  •  Shift boost  •  X countermeasure  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} star map  •  ${BINDINGS.missionLog.label} log  •  ${BINDINGS.codex.label} codex  •  ${BINDINGS.cargo.label} cargo  •  ${BINDINGS.comms.label} comms`,
-  mining: `RMB hold to mine  •  Release to cool  •  Fly through cargo drift  •  ${BINDINGS.drill.label} drill view  •  Tab next signal`,
+  flight: `W/Up thrust  •  0 brake  •  S/Down reverse+brake  •  A D steer  •  Mouse aim  •  LMB fire  •  Space/F Massline  •  4 anchor seed  •  RMB mine  •  B selected Site beam  •  Shift boost  •  X countermeasure  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} star map  •  ${BINDINGS.missionLog.label} log  •  ${BINDINGS.codex.label} codex  •  ${BINDINGS.cargo.label} cargo  •  ${BINDINGS.comms.label} comms`,
+  mining: `RMB hold to mine  •  B beam selected Site  •  Release to cool  •  Fly through cargo drift  •  ${BINDINGS.drill.label} drill view  •  Tab next signal`,
   combat: 'LMB fire  •  Space/F Massline  •  Mouse aim at target  •  Tab cycle hostiles  •  X countermeasure  •  G auto-target  •  Shift boost to dodge',
   station: `${BINDINGS.dock.label} dock  •  Hub: arrow keys change tabs  •  Enter/Space act  •  ${BINDINGS.dock.label}/Esc undock`,
   gate: `${BINDINGS.starmap.label} open Star Map  •  Select destination  •  Jump to travel between systems`,
@@ -16,7 +16,7 @@ const KBM_PROMPTS = Object.freeze({
 });
 
 const GAMEPAD_PROMPTS = Object.freeze({
-  flight: 'Left stick fly  •  Right stick aim  •  RT fire  •  LT mine  •  RB boost  •  LB brake  •  R3 countermeasure  •  A/Cross Massline (dock/accept when prompted)  •  X target  •  View star map  •  Y codex  •  Start → Pause → Mission Log',
+  flight: 'Left stick fly  •  Right stick aim  •  RT fire  •  LT mine / selected Site beam  •  RB boost  •  LB brake  •  R3 countermeasure  •  A/Cross Massline (dock/accept when prompted)  •  X target  •  View star map  •  Y codex  •  Start → Pause → Mission Log',
   mining: 'LT hold to mine  •  Release to cool  •  Fly through cargo drift  •  X next signal',
   combat: 'RT fire  •  Right stick aim at target  •  X cycle targets  •  R3 countermeasure  •  RB boost to dodge  •  Start pause',
   station: 'A dock  •  Hub: LB/RB tabs  •  D-pad/left stick focus  •  A act  •  B undock',
@@ -50,19 +50,19 @@ const TOUCH_PROMPTS = Object.freeze({
 // classic table. Keep verbs honest: don't promise mechanics that haven't shipped.
 // Space/F is the canonical new-profile pair; the HUD resolves custom labels at runtime.
 const KBM_HELM_OVERRIDES = Object.freeze({
-  flight: `Mouse steer+aim  •  W thrust  •  S/Down brake  •  A D strafe  •  LMB fire  •  RMB mine  •  Shift boost  •  Space/F Massline  •  4 anchor seed  •  MMB course/pursue  •  G auto-target  •  Tab target  •  ${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`,
-  combat: 'G auto-target (guns track lock)  •  MMB pursue locked ship  •  Space/F Massline  •  LMB fire  •  S/Down brake',
-  tutorialFlight: 'Follow the yellow nav arrow. Nose follows the mouse — W thrusts, S/Down brakes, Space/F controls the Massline.',
-  firstFlight: 'Nose follows the mouse. W thrusts. S/Down brakes.',
+  flight: `Mouse steer+aim  •  W thrust  •  0 brake  •  S/Down reverse+brake  •  A D strafe  •  LMB fire  •  RMB mine  •  Shift boost  •  Space/F Massline  •  4 anchor seed  •  MMB course/pursue  •  G auto-target  •  Tab target  •  ${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`,
+  combat: 'G auto-target (guns track lock)  •  MMB pursue locked ship  •  Space/F Massline  •  LMB fire  •  0 brake  •  S/Down reverse+brake',
+  tutorialFlight: 'Follow the yellow nav arrow. Nose follows the mouse — W thrusts, 0 brakes, S/Down reverses and brakes, Space/F controls the Massline.',
+  firstFlight: 'Nose follows the mouse. W thrusts. 0 brakes. S/Down reverses and brakes.',
   firstCombat: 'G toggles auto-target. Guns track lock.',
 });
 
 // PILOT (the default scheme) — keyboard flies, mouse fights. Same override-only policy as helm.
 const KBM_PILOT_OVERRIDES = Object.freeze({
-  flight: `W thrust  •  S/Down brake  •  A D turn  •  Mouse aim  •  LMB fire  •  MMB pursue/course  •  G auto-target  •  Space/F Massline  •  4 anchor seed  •  Shift boost  •  Tab target  •  ${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`,
+  flight: `W thrust  •  0 brake  •  S/Down reverse+brake  •  A D turn  •  Mouse aim  •  LMB fire  •  MMB pursue/course  •  G auto-target  •  Space/F Massline  •  4 anchor seed  •  Shift boost  •  Tab target  •  ${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`,
   combat: 'MMB pursue locked ship  •  G auto-target  •  Space/F Massline  •  LMB fire  •  flight keys break pursuit',
-  tutorialFlight: 'Follow the yellow nav arrow. W thrusts; S/Down brakes; A/D turns; mouse aims; Space/F controls the Massline.',
-  firstFlight: 'W thrusts. S/Down brakes. A D turn. Mouse aims.',
+  tutorialFlight: 'Follow the yellow nav arrow. W thrusts; 0 brakes; S/Down reverses and brakes; A/D turns; mouse aims; Space/F controls the Massline.',
+  firstFlight: 'W thrusts. 0 brakes. S/Down reverses and brakes. A D turn. Mouse aims.',
   firstCombat: 'G toggles auto-target. Guns track lock.',
 });
 

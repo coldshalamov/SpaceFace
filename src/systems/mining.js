@@ -18,6 +18,7 @@ import { ORES, ASTEROIDS, BEAMS, deriveAsteroidSeams } from '../data/mining.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { describeEntity } from './interactionDescriptors.js';
 import { resolveBeamVerb, spawnPayloadEntity, BEAM_CUE_IDS } from '../combat/industrialBeam.js';
@@ -136,6 +137,9 @@ export const mining = {
     if (!target) { this._stopBeam(); return; }
 
     const desc = describeEntity(state, target);
+    if (target.data && target.data.worldSiteId && target.data.worldSiteComponentId) {
+      return this._runWorldSiteBeam(player, target, desc, beam, dt, state);
+    }
     const toolState = {
       mode: (state.ui && state.ui.beamMode) || (state.player && state.player.beamMode) || 'auto',
       selectedComponentId: (state.ui && state.ui.componentSelection && state.ui.componentSelection.componentId) || null,
@@ -188,6 +192,76 @@ export const mining = {
         this.applyMining(target.id, dps, dt, player.id);
         break;
     }
+  },
+
+  _runWorldSiteBeam(player, target, descriptor, beam, dt, state) {
+    const data = target.data || {};
+    const componentId = data.worldSiteComponentId;
+    const component = descriptor && descriptor.components
+      && descriptor.components.find((candidate) => candidate.componentId === componentId);
+    const sites = this.registry && this.registry.get && this.registry.get('asteroidSites');
+    if (!presentationAllowsPlayerFacingAction(target, state)) {
+      this.bus.emit('beam:denied', {
+        minerId: player.id, targetId: target.id, verb: component && component.verb || 'extract',
+        reason: 'presentation-unavailable',
+      });
+      return { ok: false, duplicate: false, reason: 'presentation-unavailable', moved: 0 };
+    }
+    if (component && component.active === false) {
+      return { ok: false, duplicate: false, reason: component.inactiveReason || 'operation-unavailable', moved: 0 };
+    }
+    if (!component || !component.verb || !component.operationId
+      || !sites || typeof sites.applyWorldSiteBeamOperation !== 'function') {
+      this.bus.emit('beam:denied', {
+        minerId: player.id,
+        targetId: target.id,
+        verb: component && component.verb || 'extract',
+        reason: 'operation-unavailable',
+      });
+      return { ok: false, reason: 'operation-unavailable' };
+    }
+
+    const dps = (beam.dps || 18) * (beam.directToCargo ? 1.08 : 1);
+    const amount = component.verb === 'transfer' ? 1 : dps * dt;
+    const starting = !this._beaming || this._lockTargetId !== target.id || this._activeVerb !== component.verb;
+    const result = sites.applyWorldSiteBeamOperation({
+      siteId: data.worldSiteId,
+      componentId,
+      verb: component.verb,
+      amount,
+      requestStreamId: 'player-industrial-beam',
+      requestSequence: state.tick | 0,
+      tick: state.tick | 0,
+    });
+
+    this._lockTargetId = target.id;
+    this._activeVerb = component.verb;
+    this._beaming = true;
+    this._activeBeamLine = beamLineFor(player, target);
+    if (this._activeBeamLine) this._activeBeamLine.verb = component.verb;
+
+    // A replay is a complete no-op: asteroidSites returns the same record and no intents; the
+    // mining adapter likewise emits no synthetic success/start edge for the repeated receipt.
+    if (result.duplicate) return result;
+    if (!result.ok || !(result.moved > 0)) {
+      this.bus.emit('beam:denied', {
+        minerId: player.id,
+        targetId: target.id,
+        verb: component.verb,
+        reason: result.reason || 'operation-no-progress',
+      });
+      return result;
+    }
+
+    if (starting) {
+      this.bus.emit('mining:start', {
+        minerId: player.id,
+        targetId: target.id,
+        verb: component.verb,
+        position: { x: target.pos.x, z: target.pos.z },
+      });
+    }
+    return result;
   },
 
   _applyCut(player, target, resolved, dps, dt) {
@@ -276,11 +350,12 @@ export const mining = {
     this._lockTargetId = null;
   },
 
-  _isValidMineableTarget(entity, ship, range) {
+  _isValidMineableTarget(entity, ship, range, state = this.state) {
     if (!entity || !entity.alive) return false;
     // PQ-015: beam type-membership from the shared catalog (identical to the former asteroid|wreck
     // literal). The mined-out and range layers below are UNCHANGED.
     if (!verbAcceptsType('mine', entity.type)) return false;
+    if (!presentationAllowsPlayerFacingAction(entity, state)) return false;
     if (entity.type === 'asteroid' && entity.data && entity.data.respawnAt != null) return false;
     const dx = entity.pos.x - ship.pos.x, dz = entity.pos.z - ship.pos.z;
     const dist = Math.hypot(dx, dz);
@@ -295,9 +370,16 @@ export const mining = {
 
     if (this._beaming && this._lockTargetId != null) {
       const locked = state.entities.get(this._lockTargetId);
-      if (locked && this._isValidMineableTarget(locked, ship, range)) return locked;
+      if (locked && this._isValidMineableTarget(locked, ship, range, state)) return locked;
       return null;
     }
+
+    const selectedSiteIntent = state.input && state.input.actions && state.input.actions.siteBeam === true;
+    const selected = selectedSiteIntent && state.player && state.player.targetId != null
+      ? state.entities.get(state.player.targetId)
+      : null;
+    if (selected && selected.data && selected.data.worldSiteTargetable === true
+      && this._isValidMineableTarget(selected, ship, range, state)) return selected;
 
     const aim = state.input.aimAngle || 0;
     const ax = Math.cos(aim), az = Math.sin(aim);
@@ -308,6 +390,7 @@ export const mining = {
     for (const e of mineables) {
       if (!e.alive) continue;
       if (!verbAcceptsType('mine', e.type)) continue; // PQ-015: shared beam membership (asteroid|wreck)
+      if (!presentationAllowsPlayerFacingAction(e, state)) continue;
       if (e.type === 'asteroid' && e.data && e.data.respawnAt != null) continue; // mined-out, awaiting respawn
       const dx = e.pos.x - ship.pos.x, dz = e.pos.z - ship.pos.z;
       const dist = Math.hypot(dx, dz);

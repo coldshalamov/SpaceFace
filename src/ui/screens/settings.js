@@ -77,7 +77,7 @@ const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 // Flight actions the player may rebind. Mouse buttons stay out of the grid; Space is the
 // new-profile Massline primary and F remains its permanent alias.
 const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
-  'brake', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut',
+  'brake', 'siteBeam', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut',
   'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone'];
 const REBIND_LABELS = {
   forward: 'Throttle up',
@@ -89,7 +89,8 @@ const REBIND_LABELS = {
   boost: 'Boost / dash',
   // Keep the persisted action id for existing custom bindings; only its shipped meaning changed.
   autoFire: 'Toggle pursuit slot assist',
-  brake: 'Brake / reverse (S or Down)',
+  brake: 'Brake (0; S / Down also reverse)',
+  siteBeam: 'World Site beam (selected target)',
   tether: 'Massline: tap latch/cut; hold line control',
   chargeThrow: 'Impulse charge: throw',
   chargeDetonate: 'Impulse charge: detonate',

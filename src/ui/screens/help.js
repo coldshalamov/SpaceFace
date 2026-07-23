@@ -73,7 +73,8 @@ function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.
 const SECTIONS = [
   ['Flight', [
     ['Throttle forward', 'forward', '↑↓ / W S'],
-    ['Throttle reverse', 'reverse', '↑↓ / W S'],
+    ['Reverse + brake', 'reverse', '↓ / S'],
+    ['Dedicated brake', 'brake', '0'],
     ['Steer right (yaw + bank)', 'yawRight', '←→ / A D'],
     ['Steer left (yaw + bank)', 'yawLeft', '←→ / A D'],
     ['Lateral thruster (left)', 'strafeLeft', 'Q / E'],

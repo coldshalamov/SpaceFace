@@ -4,8 +4,15 @@ import { appendCombatTrace } from './trace.js';
 import { createMasslineRuntime, stepMassline } from '../core/constraints/masslineController.js';
 import { SIM_DT } from '../core/sim.js';
 
-// +25% vs prior 140/90 — keep legacy 47-A massline break in lockstep with the player-facing buff.
+// Production action_attach envelope. Its ordinary endpoints share the fail-closed durability
+// contract; only 47-A's explicitly marked false-mass spindle uses this legacy break envelope.
 const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 175, maxImpulse: 112.5, graceTicks: 1 });
+const STANDARD_TETHER_STRENGTH_REVISION = 2;
+const PREVIOUS_STANDARD_TETHER_BREAK = Object.freeze({
+  maxTension: 1_050_000,
+  maxImpulse: 19_000,
+  maxYank: 15_000,
+});
 
 /** Resolve player spool strength from immutable attachment data. Ratings are max-folded by ships;
  *  this layer scales only the standard tether's break policy and never mutates the catalog. */
@@ -36,22 +43,65 @@ export function effectiveTetherPolicy(def, owner) {
   return {
     break: effectiveTetherBreak(def, owner),
     reelRate: baseReelRate * reelMult,
+    strengthRevision: STANDARD_TETHER_STRENGTH_REVISION,
   };
 }
 
+/** Preserve a deployed line's snapshotted spool rating across Continue while rebasing saves made
+ * before the normal-play durability contract. This prevents an old 1.05M policy from surviving in
+ * a save as misleading strain telemetry, without letting a mid-deployment refit change its rating. */
+export function rebasePersistedTetherPolicy(def, policy) {
+  if (!def || def.id !== 'tether_standard' || !policy || typeof policy !== 'object') return policy;
+  if (Number(policy.strengthRevision) >= STANDARD_TETHER_STRENGTH_REVISION) return policy;
+  const savedBreak = policy.break && typeof policy.break === 'object' ? policy.break : {};
+  const ratios = [
+    Number(savedBreak.maxTension) / PREVIOUS_STANDARD_TETHER_BREAK.maxTension,
+    Number(savedBreak.maxImpulse) / PREVIOUS_STANDARD_TETHER_BREAK.maxImpulse,
+    Number(savedBreak.maxYank) / PREVIOUS_STANDARD_TETHER_BREAK.maxYank,
+  ].filter((value) => Number.isFinite(value) && value > 0);
+  const savedRating = Math.max(1, Math.min(6, ratios.length ? Math.max(...ratios) : 1));
+  return {
+    ...policy,
+    break: {
+      ...(def.break || {}),
+      ...savedBreak,
+      maxTension: Number(def.break && def.break.maxTension) * savedRating,
+      maxImpulse: Number(def.break && def.break.maxImpulse) * savedRating,
+      maxYank: Number(def.break && def.break.maxYank) * savedRating,
+    },
+    strengthRevision: STANDARD_TETHER_STRENGTH_REVISION,
+  };
+}
+
+/** Automatic load breakage is fail-closed for every controller-backed Massline. Ordinary ships,
+ * asteroids, payloads, and structures cannot turn a piloting mistake into a severed line. Both the
+ * definition and a future station/singularity-scale endpoint must opt in explicitly; manual pilot
+ * cut and subsystem-owned severing remain separate attachment-service paths. */
+export function automaticMasslineBreakAllowed(def, owner, target) {
+  if (entitySuppressesMasslineAutoBreak(owner) || entitySuppressesMasslineAutoBreak(target)) return false;
+  const massline = def && def.massline;
+  if (!massline || massline.enabled !== true) return true;
+  if (massline.automaticBreakPolicy === 'extreme_load_only') {
+    return entityEnablesExtremeMasslineBreak(owner) || entityEnablesExtremeMasslineBreak(target);
+  }
+  // A Massline definition must name an explicit supported failure policy. Omission is never
+  // permission to restore the old load-induced snap behavior.
+  return false;
+}
+
 // Builds the winch/heat/overload policy def that masslineController.stepMassline consumes. The
-// physical break thresholds come from the attachment def's `break` block (authored in combatDefs);
-// the winch/heat/reel policy comes from the generated DEFAULT_MASSLINE_DEF so the controller's
-// mass-ratio-driven behavior (heavy target stalls the winch, sustained overload breaks the line)
-// is the live contract, not an ad-hoc scripted tether.
-function masslineDefFor(def, tetherPolicy = null) {
+// physical envelope comes from the attachment def's `break` block (authored in combatDefs); the
+// winch/heat/reel policy comes from the generated DEFAULT_MASSLINE_DEF. Heavy targets still stall
+// the winch through mass-ratio physics. Automatic overload failure is enabled only by the explicit
+// endpoint policy passed below, never inferred from ordinary load.
+function masslineDefFor(def, tetherPolicy = null, automaticBreak = true) {
   const breakPolicy = tetherPolicy && tetherPolicy.break;
   const brk = breakPolicy || (def && def.break) || {};
   const reelRate = Number.isFinite(tetherPolicy && tetherPolicy.reelRate)
     ? tetherPolicy.reelRate
     : (Number.isFinite(def && def.reelRate) ? def.reelRate : null);
-  // Authored massline.overloadGraceS (combatDefs) widens the mild-overload hold window for capture
-  // rhythm without difficulty multipliers. Catastrophic ratio still snaps immediately.
+  // Authored massline.overloadGraceS controls failure-capable extreme operations. Ordinary standard
+  // lines pass automaticBreak=false and keep the controller's load/heat telemetry without cutting.
   const authoredGrace = def && def.massline && Number(def.massline.overloadGraceS);
   const overloadGraceS = Number.isFinite(authoredGrace) && authoredGrace > 0 ? authoredGrace : 0.22;
   const authoredCat = def && def.massline && Number(def.massline.catastrophicRatio);
@@ -66,6 +116,7 @@ function masslineDefFor(def, tetherPolicy = null) {
     maxYank: Number.isFinite(brk.maxYank) ? brk.maxYank : 420,
     overloadGraceS,
     catastrophicRatio,
+    automaticBreak: automaticBreak !== false,
   };
 }
 
@@ -440,7 +491,8 @@ export function createAttachmentService(context) {
       // Warning is an ordered, player-visible receipt, not post-break decoration. Detect it before
       // stepping the cut authority; the bounded warning lease below then keeps the line recoverable
       // for presentation and pilot counterplay before `tether:broken` may be emitted.
-      if (state.tick - attachment.createdTick >= grace && breakPolicy) {
+      const automaticBreak = automaticMasslineBreakAllowed(def, owner, target);
+      if (state.tick - attachment.createdTick >= grace && breakPolicy && automaticBreak) {
         const tensionRatio = breakPolicy.maxTension > 0 ? attachment.lastTension / breakPolicy.maxTension : 0;
         const impulseRatio = breakPolicy.maxImpulse > 0 ? attachment.lastImpulse / breakPolicy.maxImpulse : 0;
         // The controller's effective yank budget can only be wider than maxYank due to battle
@@ -481,7 +533,7 @@ export function createAttachmentService(context) {
       const masslinePolicy = def.massline && def.massline.enabled;
       if (masslinePolicy && state.tick - attachment.createdTick >= grace) {
         const activePolicy = policyForAttachment(def, owner, attachment);
-        const masslineDef = masslineDefFor(def, { ...activePolicy, break: breakPolicy });
+        const masslineDef = masslineDefFor(def, { ...activePolicy, break: breakPolicy }, automaticBreak);
         if (!attachment.masslineRuntime) {
           // Seed the winch from the ACTUAL attachment rest length, not the def's defaultLength,
           // so a neutral (no-reel) command holds the engagement distance rather than drifting the
@@ -541,17 +593,6 @@ export function createAttachmentService(context) {
             attachment.masslineRuntime = {
               ...ml.runtime,
               state: 'holding',
-              cutReason: null,
-            };
-            attachment.masslineTelemetry = { ...ml.telemetry, state: 'holding' };
-            continue;
-          }
-          if (masslineAutoBreakSuppressed(attachment)) {
-            const graceWindow = Math.max(0, Number(masslineDef.overloadGraceS) || 0);
-            attachment.masslineRuntime = {
-              ...ml.runtime,
-              state: 'holding',
-              overloadS: Math.min(ml.runtime.overloadS || 0, Math.max(0, graceWindow - SIM_DT * 1.5)),
               cutReason: null,
             };
             attachment.masslineTelemetry = { ...ml.telemetry, state: 'holding' };
@@ -667,11 +708,6 @@ export function createAttachmentService(context) {
     return state.entities && state.entities.get ? state.entities.get(id) || null : null;
   }
 
-  function masslineAutoBreakSuppressed(attachment) {
-    return entitySuppressesMasslineAutoBreak(entity(attachment && attachment.ownerId)) ||
-      entitySuppressesMasslineAutoBreak(entity(attachment && attachment.targetId));
-  }
-
   function masslineForceScale(attachment) {
     const ownerScale = entityMasslineForceScale(entity(attachment && attachment.ownerId));
     const targetScale = entityMasslineForceScale(entity(attachment && attachment.targetId));
@@ -696,7 +732,9 @@ export function createAttachmentService(context) {
 
   function policyForAttachment(def, owner, attachment = null) {
     if (attachment && attachment.tetherPolicy && typeof attachment.tetherPolicy === 'object') {
-      return attachment.tetherPolicy;
+      const rebased = rebasePersistedTetherPolicy(def, attachment.tetherPolicy);
+      if (rebased !== attachment.tetherPolicy) attachment.tetherPolicy = rebased;
+      return rebased;
     }
     const policy = effectiveTetherPolicy(def, owner);
     if (attachment) attachment.tetherPolicy = policy;
@@ -737,6 +775,11 @@ function finiteOrZero(value) {
 function entitySuppressesMasslineAutoBreak(value) {
   const data = value && value.data;
   return !!data && (data.masslineAutoBreak === false || data.masslineBreakPolicy === 'manual_cut_only');
+}
+
+function entityEnablesExtremeMasslineBreak(value) {
+  const data = value && value.data;
+  return !!data && (data.masslineExtremeLoad === true || data.masslineBreakPolicy === 'extreme_overload');
 }
 
 function entityMasslineForceScale(value) {

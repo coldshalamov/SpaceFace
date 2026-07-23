@@ -18,7 +18,7 @@ const CAREER_BUILD_COPY = Object.freeze({
     tradeoff: 'Uses the Hitch utility slot and gives up more speed and turn authority than either other role kit.',
   }),
   prospector: Object.freeze({
-    benefit: 'Stronger standard Massline break tolerance and faster reel rate through the live attachment service.',
+    benefit: 'Faster Massline reel rate now, with higher load capacity reserved for future extreme-scale operations.',
     tradeoff: 'Uses the Hitch utility slot and carries more mass and power draw than the route-runner fit.',
   }),
 });

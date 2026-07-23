@@ -35,6 +35,60 @@ test('actual SG06 sensor and roster ports allocate two light targets without a f
   }
 });
 
+test('squad command aggregation leaves member-only hazard perception untouched', () => {
+  const commander = new SquadCommander({ seed: 47, config: { minTacticTicks: 0 } });
+  commander.registerSquad({
+    id: 'hazard_boundary_wing',
+    doctrine: 'scavenger',
+    faction: 'fixture',
+    members: [{
+      id: 700,
+      preferredRole: 'leader',
+      capabilities: ['drive', 'sensor', 'weapon'],
+    }],
+  });
+
+  let commandPayloadReads = 0;
+  const memberHazard = {};
+  Object.defineProperties(memberHazard, {
+    id: { value: 9900, enumerable: true },
+    kind: { value: 'hazard', enumerable: true },
+    confidence: {
+      enumerable: true,
+      get() {
+        commandPayloadReads++;
+        return 1;
+      },
+    },
+  });
+  const perception = {
+    tick: 60,
+    self: {
+      id: 700,
+      team: 1,
+      pos: { x: 0, z: 0 },
+      vel: { x: 0, z: 0 },
+      rot: 0,
+      hullFraction: 1,
+      disabled: false,
+      tethered: false,
+      capabilities: ['drive', 'sensor', 'weapon'],
+      factionBehavior: null,
+    },
+    contacts: [memberHazard],
+    events: [],
+  };
+
+  const result = commander.update('hazard_boundary_wing', 60, new Map([[700, perception]]));
+
+  assert.equal(result.tactic, 'hold_formation',
+    'member-only obstacles must not alter the squad command picture');
+  assert.equal(commandPayloadReads, 0,
+    'squad aggregation must not materialize payload fields from member-only hazards');
+  assert.equal(perception.contacts[0], memberHazard,
+    'the member perception remains intact for ManeuverPlanner obstacle avoidance');
+});
+
 test('production firing adapter holds fire for an ally in the predicted lane and recovers cleanly', () => {
   const state = createGameState(91);
   state.tick = 90;
@@ -124,6 +178,7 @@ function firingDecision(entityId, targetId) {
         reason: 'combat_doctrine:interceptor_flyby:strike',
       },
     },
+    action: { actionId: 'action_burst' },
     combatDoctrine: { fireWindow: true },
   };
 }

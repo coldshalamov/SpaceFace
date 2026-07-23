@@ -118,7 +118,10 @@ async function precompileNow(
       addBeamWarmup(globalWarmup);
       canopyPipelineWarmup = addAuthoredCanopyPipelineWarmup(globalWarmup);
       addLateWorldPipelineWarmup(canopyPipelineWarmup);
-      globalWarmup.add(createVfxPrecompileSalvo());
+      const vfxWarmup = createVfxPrecompileSalvo();
+      globalWarmup.add(vfxWarmup);
+      retainVfxPipelineWarmups(vfxWarmup, canopyPipelineWarmup);
+      addShipAuxPipelineWarmup(scene, canopyPipelineWarmup);
       if (incremental) {
         globalWarmup.updateMatrixWorld(true);
         await options.preparePipelines(globalWarmup);
@@ -148,6 +151,7 @@ async function precompileNow(
       shipArchetypes: shipSpecs.length,
       globalPipelines: includeGlobalPipelines,
       retainedCanopyVariants: countCanopyVariants(canopyPipelineWarmup),
+      retainedPipelines: retainedPipelineIds(canopyPipelineWarmup),
       authoredUpgradeQueue: authoredQueue,
       programs: renderer.info && renderer.info.programs ? renderer.info.programs.length : 0,
     };
@@ -191,7 +195,7 @@ export function invalidatePrecompileState(renderer, options = {}) {
 
 export function getPrecompileKeepAliveDiagnostics(renderer) {
   const root = renderer && pipelineKeepAliveByRenderer.get(renderer);
-  if (!root) return { retainedCanopyVariants: 0, variants: [] };
+  if (!root) return { retainedCanopyVariants: 0, variants: [], retainedPipelines: [] };
   const variants = [];
   root.traverse((object) => {
     if (!object.userData || !object.userData.precompileCanopyVariant) return;
@@ -209,6 +213,7 @@ export function getPrecompileKeepAliveDiagnostics(renderer) {
   return {
     retainedCanopyVariants: variants.length,
     variants,
+    retainedPipelines: retainedPipelineIds(root),
   };
 }
 
@@ -473,10 +478,50 @@ function addLateWorldPipelineWarmup(root) {
   }
 }
 
+function retainVfxPipelineWarmups(vfxWarmup, retainedRoot) {
+  let plume = null;
+  vfxWarmup.traverse((object) => {
+    if (!plume && object.userData?.continuousPlume) plume = object;
+  });
+  if (!plume) return;
+  plume.userData.precompileRetainedPipeline = 'hitch-main-plume';
+  retainedRoot.add(plume);
+}
+
+function addShipAuxPipelineWarmup(scene, retainedRoot) {
+  let source = null;
+  scene.traverse((object) => {
+    if (!source && object.userData?.shipAuxPool === 'shieldBubble') source = object;
+  });
+  if (!source?.geometry || !source?.material) return;
+
+  const mesh = new THREE.InstancedMesh(source.geometry.clone(), source.material.clone(), 1);
+  mesh.name = 'SF_Precompile_ShipShieldBubble_Pool';
+  mesh.count = 1;
+  mesh.frustumCulled = false;
+  mesh.userData.precompileRetainedPipeline = 'ship-shield-bubble';
+  mesh.setMatrixAt(0, new THREE.Matrix4());
+  mesh.setColorAt(0, new THREE.Color(0x5fd0ff));
+  const flash = mesh.geometry.getAttribute('instanceFlash');
+  const base = mesh.geometry.getAttribute('instanceBase');
+  if (flash) flash.setX(0, 1);
+  if (base) base.setX(0, 0.15);
+  retainedRoot.add(mesh);
+}
+
 function countCanopyVariants(root) {
   let count = 0;
   if (root) root.traverse((object) => { if (object.userData?.precompileCanopyVariant) count++; });
   return count;
+}
+
+function retainedPipelineIds(root) {
+  const ids = [];
+  if (root) root.traverse((object) => {
+    const id = object.userData?.precompileRetainedPipeline;
+    if (id) ids.push(id);
+  });
+  return ids.sort();
 }
 
 function warmupTexture(rgba, colorSpace = THREE.NoColorSpace) {

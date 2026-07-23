@@ -17,6 +17,7 @@ import { isConfirmOpen } from './confirm.js';
 import { controlPrompt } from './controlPrompts.js';
 import { setPromptScheme } from './controlPrompts.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
+import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import { verbAcceptsType, stableEntityKey } from '../data/interactionDescriptorCatalog.js';
 import { listSelectableComponents, nextComponentSelection } from '../systems/interactionDescriptors.js';
 import { createCinematicInputFence } from './cinematicInputFence.js';
@@ -457,10 +458,10 @@ export const ui = {
         <div style="position:absolute;inset:0;background-image:url('assets/cinematics/C-INTRO-01.jpg');background-size:cover;background-position:center 34%;opacity:0.72;filter:contrast(1.08);"></div>
         <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,13,.5),rgba(5,7,13,0) 30%,rgba(5,7,13,0) 72%,rgba(5,7,13,1));"></div>
         <div style="position:relative;text-align:center;color:#d3e6ff;font-family:var(--mono,monospace);z-index:1;text-shadow:0 0 30px #39d0ff;">
-          <div style="font-size:13px;letter-spacing:8px;opacity:0.7;margin-bottom:10px;">A HARD SCI-FI SPACE ODYSSEY</div>
+          <div style="font-size:13px;letter-spacing:8px;opacity:0.7;margin-bottom:10px;">TESSERA / VHL-4471-T / OPERATOR: UNKNOWN</div>
           <div id="cinematic-title" style="font-size:clamp(48px,9vw,92px);line-height:1;letter-spacing:.12em;margin-bottom:14px;color:#39d0ff;font-weight:700;">SPACEFACE</div>
           <div id="cinematic-summary" style="margin:14px auto 26px;max-width:640px;opacity:0.85;font-size:15px;line-height:1.45;font-family:var(--font,sans-serif);letter-spacing:.02em;">
-            Follow the mass discrepancy. Outrun the auditors. Decide who owns the evidence.<br>
+            CONTRACT 47-A — OPEN / PAYMENT: PENDING.<br>
             Contract 47-A is open.
           </div>
           <div style="font-size:12px;opacity:0.6;margin-bottom:20px;letter-spacing:.08em;">↑↓ THROTTLE &nbsp;•&nbsp; ←→ STEER (BANKS) &nbsp;•&nbsp; MOUSE AIM &nbsp;•&nbsp; LMB FIRE &nbsp;•&nbsp; G AUTO-TARGET &nbsp;•&nbsp; TETHER &nbsp;•&nbsp; SHIFT BOOST/DASH</div>
@@ -968,8 +969,10 @@ function cycleTarget(state, dir, bus) {
   const contacts = [];
   for (const e of state.entityList) {
     if (e.alive === false || e === player) continue;
-    if (!verbAcceptsType('target', e.type)) continue; // PQ-015: shared target membership (ship|drone)
-    if (!isHostileToPlayer(e, player.team, state)) continue;
+    const explicitWorldSiteTarget = !!(e.data && e.data.worldSiteTargetable === true);
+    if (explicitWorldSiteTarget && !presentationAllowsPlayerFacingAction(e, state)) continue;
+    if (!explicitWorldSiteTarget && !verbAcceptsType('target', e.type)) continue; // PQ-015 membership + explicit site exception
+    if (!explicitWorldSiteTarget && !isHostileToPlayer(e, player.team, state)) continue;
     const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
     const d = Math.hypot(dx, dz);
     if (d > SCANNER_CONTACT_RANGE) continue;

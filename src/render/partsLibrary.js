@@ -16,6 +16,7 @@ import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
 import { attachStationHlod } from './hlod.js';
 import { attachLodState } from './lod.js';
+import { installWorldSitePresentation } from './worldSitePresentation.js';
 import {
   hasExplicitAuthoredGeologyPresentation,
   PRESENTATION_ADMISSION,
@@ -844,6 +845,10 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.updateLod = (level) => {
     if (typeof activeRoot?.userData?.updateLod === 'function') activeRoot.userData.updateLod(level);
   };
+  boundary.userData.updateWorldSitePresentation = (liveEntity, simTime, a11y) => {
+    const controller = activeRoot && activeRoot.userData && activeRoot.userData.worldSitePresentationController;
+    if (controller && typeof controller.update === 'function') controller.update(liveEntity, simTime, a11y);
+  };
   const trigger = firstRenderable(fallbackRoot);
   const startAuthoredUpgrade = (renderer, scene) => {
     if (!renderer || !scene || authoredAdmissionStarted(boundary.userData.authoredAssetState)) return;
@@ -1076,6 +1081,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
   canonicalizeMaplessHullMaterials(root, palette);
   normalizePlacePropBindings(bindings);
   centerAuthoredPlaceRoot(root, record, scale);
+  installWorldSitePresentation(root, entity);
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
   root.userData.authoredSourceEnvelope = authoredEnvelope;
@@ -4644,6 +4650,8 @@ function firstRenderable(root) {
 }
 
 function disposeDetachedObject(root) {
+  const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
+  if (typeof disposePresentation === 'function') disposePresentation();
   root.traverse((object) => {
     if (object.geometry && typeof object.geometry.dispose === 'function') object.geometry.dispose();
     const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
@@ -4652,6 +4660,8 @@ function disposeDetachedObject(root) {
 }
 
 function disposeDetachedPlaceFallback(root) {
+  const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
+  if (typeof disposePresentation === 'function') disposePresentation();
   const geometries = new Set();
   const materials = new Set();
   root.traverse((object) => {

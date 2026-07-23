@@ -8,9 +8,9 @@
 //
 // Threat kinds (thresholds derived from the massline feel constants in masslineTelemetry.js so the
 // reads stay consistent with the established feel):
-//   • 'line-near-break'  — strain crossed the overload floor (0.75, the same bar as
-//     REEL_PUMP_RISK_HIGH / the loaded→overload phase boundary): the line is approaching BREAK.
-//     Emitted at most once per latch, when it first crosses — not every tick.
+//   • 'line-near-break'  — only for an attachment whose canonical authority mirror says automatic
+//     break is enabled (for example a future `extreme_overload` endpoint), after strain crosses the
+//     overload floor. Ordinary standard-Massline load is telemetry, not a failure warning.
 //   • 'hostile-on-arc'   — a hostile (via scanner.isHostileToPlayer — NEVER factionId) is closing
 //     on the player while the player is genuinely swinging (|tangentialSpeed| >= 25, the
 //     SNAP_CATCH_MIN_SPEED "genuinely moving" bar). Emitted at most once per hostile per latch.
@@ -82,9 +82,13 @@ export const masslineThreats = {
 
     runtime.active = true;
 
-    // 1. line-near-break — strain crossed the overload floor. Once per latch, on first cross.
+    // 1. line-near-break — only a genuinely breakable attachment may turn load into a failure
+    // warning. The observer consumes tetherGameplay's authority mirror and does not reimplement
+    // endpoint/attachment policy.
     const strain = finite(tether.strain, 0);
-    if (!this._nearBreakFired && strain >= THREAT_NEAR_BREAK_STRAIN) {
+    if (tether.automaticBreakAllowed === true
+        && !this._nearBreakFired
+        && strain >= THREAT_NEAR_BREAK_STRAIN) {
       this._nearBreakFired = true;
       this._emitThreat(runtime, state, 'line-near-break', tether.targetId, clamp01(strain));
     }

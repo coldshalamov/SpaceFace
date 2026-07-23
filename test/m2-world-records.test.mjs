@@ -19,6 +19,8 @@ import {
   WORLD_RECORDS_SCHEMA_ID,
   createEmptyRecordsBag,
   deserializeRecordsBag,
+  entityHasDurableMarkers,
+  entityIsDurableCandidate,
   ensureWorldRecords,
   findLiveEntityForRecord,
   normalizeRecordsBag,
@@ -26,6 +28,7 @@ import {
   serializeRecordsBag,
   stableRecordId,
 } from '../src/world/worldRecords.js';
+import { asteroidSites } from '../src/systems/asteroidSites.js';
 
 const HELIOS = 'sector_helios_prime';
 const CERES = 'sector_ceres_belt';
@@ -96,6 +99,40 @@ test('stableRecordId is deterministic and independent of live entity ids', () =>
   assert.notEqual(a, c);
   assert.notEqual(a, d);
   assert.match(a, /^wr_npc_[0-9a-f]+$/);
+});
+
+test('an explicit foreign persistence owner fails closed before wreck/worldRecord markers', () => {
+  const siteProxy = {
+    id: 99,
+    type: 'wreck',
+    alive: true,
+    data: {
+      worldRecordId: 'world_site_helios_relay/component/relay_core',
+      persistenceOwner: 'asteroidSites',
+      wreckClass: 'world-site-proxy',
+    },
+  };
+  assert.equal(entityHasDurableMarkers(siteProxy, 1), false);
+  assert.equal(entityIsDurableCandidate(siteProxy, 1), false);
+  siteProxy.data.persistenceOwner = 'worldRecords';
+  assert.equal(entityHasDurableMarkers(siteProxy, 1), true);
+});
+
+test('world capture excludes every PQ-017 runtime entity while asteroidSites keeps one authority record', () => {
+  const { state, bus, helpers, world } = bootWorld(117);
+  const sites = Object.assign(Object.create(asteroidSites), {});
+  sites.init({ state, bus, helpers, registry: { get() { return null; } } });
+  world.enterSector(HELIOS);
+  const live = state.entityList.filter((entity) => entity && entity.alive && entity.data
+    && entity.data.worldSiteId === 'world_site_helios_relay');
+  assert.ok(live.length >= 7);
+  assert.ok(live.every((entity) => entity.data.persistenceOwner === 'asteroidSites'));
+
+  world._captureSectorDurableRecords(HELIOS, { reason: 'pq017-owner-proof' });
+  assert.equal(Object.keys(state.world.records.byId).some((id) => id.startsWith('world_site_helios_relay')), false);
+  const serialized = sites.serialize();
+  assert.deepEqual(serialized.worldOrder, ['world_site_helios_relay']);
+  assert.equal(Object.keys(serialized.worldById).length, 1);
 });
 
 test('normalizeRecordsBag fails closed on absent/corrupt and strips runtime fields', () => {

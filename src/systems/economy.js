@@ -508,10 +508,11 @@ export const economy = {
 
     // Authored regional production/consumption enters through the existing stock authority.
     // Recipe units are per simulated minute, so the identity pressure stays gentle and bounded.
-    this.applyRegionalSupply(tickDt);
+    const regionalPressureListings = this.applyRegionalSupply(tickDt, { deferDerivedRefresh: true });
 
     // 3) drift every station+commodity stock toward effectiveEq, recompute cached prices
     const markets = econ.markets;
+    const demandProjectionCache = new Map();
     for (const sid in markets) {
       const market = markets[sid];
       const info = stationInfo(state, sid);
@@ -520,9 +521,16 @@ export const economy = {
         const entry = market[cid];
         const def = commodityDef(state, cid);
         if (!def) continue;
-        this.refreshListingDemand(entry, def, sid);
+        this.refreshListingDemand(entry, def, sid, info, demandProjectionCache);
         // advance hidden formula regime (rare re-roll of equation family + coeffs)
         const cycle = getCycleCore(state, sid, cid, () => this._rng(), state.simTime);
+        // Regional stock pressure used to refresh this observation before the listing pass and then
+        // have its live quote immediately replaced below. Preserve that pre-drift chart observation
+        // exactly, but share the demand/cycle/price work already owned by this pass.
+        if (regionalPressureListings && regionalPressureListings.get(sid)?.has(cid)) {
+          this.recomputePrices(entry, def, frontier, cycle, state.simTime);
+          this.recordPriceHistory(entry, def, cycle, state.simTime, true);
+        }
         const nextCycle = maybeAdvanceRegime(cycle, () => this._rng(), state.simTime);
         if (nextCycle !== cycle) {
           state.economy.cycles[sid][cid] = nextCycle;
@@ -548,9 +556,11 @@ export const economy = {
     this.bus.emit('economy:tick', { t: state.simTime, ticksElapsed: clock.ticksElapsed });
   },
 
-  applyRegionalSupply(tickDt) {
+  applyRegionalSupply(tickDt, options = null) {
     const minuteShare = Math.max(0, Number(tickDt) || 0) / 60;
-    if (!(minuteShare > 0)) return;
+    if (!(minuteShare > 0)) return null;
+    const deferDerivedRefresh = options && options.deferDerivedRefresh === true;
+    const touchedListings = deferDerivedRefresh ? new Map() : null;
     for (const recipe of REGIONAL_PRESSURE_RECIPES) {
       if (!recipe.stationId || !(recipe.units > 0)) continue;
       this.applyStockPressure(
@@ -558,8 +568,10 @@ export const economy = {
         recipe.commodityId,
         recipe.role === 'consume' ? 'buy' : 'sell',
         recipe.units * minuteShare,
+        deferDerivedRefresh ? { deferDerivedRefresh: true, touchedListings } : null,
       );
     }
+    return touchedListings;
   },
 
   /**
@@ -649,14 +661,25 @@ export const economy = {
   },
 
   /** Rebuild one derived demand cache from factions + the averaged sector field. */
-  refreshListingDemand(entry, def, stationId) {
+  refreshListingDemand(entry, def, stationId, resolvedInfo = undefined, projectionCache = null) {
     if (!entry || !def) return false;
-    const info = stationInfo(this.state, stationId);
-    const result = effectiveDemandFor({
-      state: this.state,
-      sectorId: info && info.sectorId,
-      commodity: def,
-    });
+    const info = resolvedInfo === undefined ? stationInfo(this.state, stationId) : resolvedInfo;
+    const sectorId = info && info.sectorId;
+    let result;
+    if (projectionCache instanceof Map) {
+      let sectorCache = projectionCache.get(sectorId);
+      if (!sectorCache) {
+        sectorCache = new Map();
+        projectionCache.set(sectorId, sectorCache);
+      }
+      result = sectorCache.get(def.id);
+      if (!result) {
+        result = effectiveDemandFor({ state: this.state, sectorId, commodity: def });
+        sectorCache.set(def.id, result);
+      }
+    } else {
+      result = effectiveDemandFor({ state: this.state, sectorId, commodity: def });
+    }
     const nextMult = Number(result.multiplier) || 1;
     const nextDrivers = Array.isArray(result.drivers) ? result.drivers.map((driver) => ({ ...driver })) : [];
     const changed = Math.abs((Number(entry.demandMult) || 1) - nextMult) > 1e-9
@@ -1129,7 +1152,7 @@ export const economy = {
   },
 
   /** Move stock without crediting anyone (automation trade pressure). */
-  applyStockPressure(stationId, commodityId, side, qty) {
+  applyStockPressure(stationId, commodityId, side, qty, options = null) {
     const state = this.state;
     const market = state.economy.markets[stationId] || this.ensureMarket(stationId);
     const entry = market && market[commodityId];
@@ -1137,6 +1160,19 @@ export const economy = {
     if (!entry || !def || !(qty > 0)) return;
     if (side === 'buy') entry.stock = Math.max(1, entry.stock - qty);
     else entry.stock = entry.stock + qty;
+    if (options && options.deferDerivedRefresh === true) {
+      // Keep cycle creation and its RNG position identical to the immediate stock-pressure path.
+      getCycleCore(state, stationId, commodityId, () => this._rng(), state.simTime || 0);
+      if (options.touchedListings instanceof Map) {
+        let stationListings = options.touchedListings.get(stationId);
+        if (!stationListings) {
+          stationListings = new Set();
+          options.touchedListings.set(stationId, stationListings);
+        }
+        stationListings.add(commodityId);
+      }
+      return;
+    }
     this.recomputeLivePrices(entry, def, stationId, commodityId);
     this.recordLivePriceHistory(entry, def, stationId, commodityId);
   },

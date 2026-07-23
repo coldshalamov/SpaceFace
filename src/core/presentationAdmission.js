@@ -8,6 +8,14 @@ export const PRESENTATION_ADMISSION = Object.freeze({
   unavailable: 'unavailable',
 });
 
+export const PRESENTATION_OWNER_ADMISSION = Object.freeze({
+  headless: 'headless',
+  missing: 'missing',
+  pending: PRESENTATION_ADMISSION.pending,
+  ready: PRESENTATION_ADMISSION.ready,
+  unavailable: PRESENTATION_ADMISSION.unavailable,
+});
+
 /**
  * Simulation asteroids may opt into an exact authored geology skin without changing their gameplay
  * identity. Keep this contract deliberately narrow: a stray `placeId` on an asteroid must not turn
@@ -49,8 +57,50 @@ export function setPresentationAdmission(entity, state) {
   return true;
 }
 
+export function resolvePresentationAdmissionOwner(entity, state) {
+  if (!entity || entity.alive === false) return null;
+  const ownerWorldRecordId = entity.data && entity.data.presentationOwnerWorldRecordId;
+  if (!ownerWorldRecordId) return entity;
+  const entities = state && state.entities;
+  if (!entities || typeof entities.values !== 'function') return null;
+  for (const candidate of entities.values()) {
+    if (candidate && candidate.alive !== false && candidate.data
+      && candidate.data.worldRecordId === ownerWorldRecordId) return candidate;
+  }
+  return null;
+}
+
+/** Pure stable-world-identity lookup; browser callers fail closed, headless simulation does not. */
+export function presentationOwnerAdmissionForWorldRecord(ownerWorldRecordId, state) {
+  if (!state || !state.render || !state.render.scene) return PRESENTATION_OWNER_ADMISSION.headless;
+  if (!ownerWorldRecordId || !state.entities || typeof state.entities.values !== 'function') {
+    return PRESENTATION_OWNER_ADMISSION.missing;
+  }
+  for (const candidate of state.entities.values()) {
+    if (!candidate || candidate.alive === false || !candidate.data
+      || candidate.data.worldRecordId !== ownerWorldRecordId) continue;
+    const admission = candidate.presentationAdmission;
+    return admission === PRESENTATION_ADMISSION.ready
+      || admission === PRESENTATION_ADMISSION.unavailable
+      || admission === PRESENTATION_ADMISSION.pending
+      ? admission
+      : PRESENTATION_OWNER_ADMISSION.pending;
+  }
+  return PRESENTATION_OWNER_ADMISSION.missing;
+}
+
+export function presentationOwnerIsAdmitted(admission) {
+  return admission === PRESENTATION_OWNER_ADMISSION.headless
+    || admission === PRESENTATION_OWNER_ADMISSION.ready;
+}
+
 export function presentationAllowsPlayerFacingAction(entity, state) {
   if (!state || !state.render || !state.render.scene) return true;
-  if (!entityRequiresAuthoredPresentation(entity)) return true;
-  return entity.presentationAdmission === PRESENTATION_ADMISSION.ready;
+  const indirect = entity && entity.data && entity.data.presentationOwnerWorldRecordId;
+  if (!indirect && !entityRequiresAuthoredPresentation(entity)) return true;
+  if (indirect) {
+    return presentationOwnerIsAdmitted(presentationOwnerAdmissionForWorldRecord(indirect, state));
+  }
+  const owner = resolvePresentationAdmissionOwner(entity, state);
+  return !!owner && owner.presentationAdmission === PRESENTATION_ADMISSION.ready;
 }

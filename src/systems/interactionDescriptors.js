@@ -20,6 +20,9 @@ import { isMassSeedTetherEligible } from './massSeed.js';
 import { COMBAT_PROFILES, SUBSYSTEM_DEFS, DEFAULT_COMBAT_PROFILE_BY_TYPE } from '../data/combatDefs.js';
 import { actionForWreck } from '../data/salvageActions.js';
 import { dockDenyReason } from '../data/dockDeny.js';
+import { worldSiteManifestById } from '../data/worldSiteManifests.js';
+import { worldSiteOperationReadiness } from './worldSiteKernel.js';
+import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import {
   VERB_TYPE_MEMBERSHIP, verbAcceptsType, DENIAL,
   COMPONENT_KINDS, COMPONENT_KIND_VERB, stableEntityKey, capabilityFlagsForEntity,
@@ -62,6 +65,9 @@ export function listComponents(state, entity) {
   if (!entity) return [];
   const out = [];
   const key = stableEntityKey(entity);
+
+  const authoredSiteComponent = siteComponentForEntity(state, entity, key);
+  if (authoredSiteComponent) return [authoredSiteComponent];
 
   // Combat subsystems (ship / drone / station) — the DAMAGE-serviced components.
   const profile = profileForEntity(entity);
@@ -124,6 +130,8 @@ export function describeEntity(state, entity) {
     wreckLike: isWreckLikeEntity(entity),
     capabilities: caps,
     components: listComponents(state, entity),
+    presentationAllowed: presentationAllowsPlayerFacingAction(entity, state),
+    presentationOwnerWorldRecordId: entity.data && entity.data.presentationOwnerWorldRecordId || null,
     data: entity.data || {},
     hull: entity.hull,
     hullMax: entity.hullMax,
@@ -234,7 +242,9 @@ export function resolveComponentForVerb(state, entity, verb, selection) {
     if (comp.destroyed) return { ok: false, reason: DENIAL.COMPONENT_NOT_SERVICEABLE, detail: 'destroyed' };
     return { ok: true, subsystemId: comp.componentId, componentId: comp.componentId };
   }
-  return { ok: true, componentId: comp.componentId };
+  const resolved = { ok: true, componentId: comp.componentId };
+  if (comp.operationId) resolved.operationId = comp.operationId;
+  return resolved;
 }
 
 // ---- helpers ----------------------------------------------------------------------------------
@@ -244,6 +254,39 @@ function deny(reason, detail) { return detail != null ? { ok: false, reason, det
 function phaseOf(entity) {
   const s = entity && entity.data && entity.data.massSeedState;
   return s && s.phase != null ? s.phase : null;
+}
+
+function siteComponentForEntity(state, entity, stableKey) {
+  const data = entity && entity.data || {};
+  const siteId = data.worldSiteId;
+  const componentId = data.worldSiteComponentId;
+  if (!siteId || !componentId) return null;
+  const record = state && state.sites && state.sites.worldById && state.sites.worldById[siteId];
+  if (!record || record.worldObjectId !== siteId && record.manifestId !== siteId) return null;
+  const manifest = worldSiteManifestById(record.manifestId || siteId);
+  if (!manifest) return null;
+  const def = manifest.components.find((component) => component.id === componentId);
+  const live = record.components && record.components[componentId];
+  if (!def || !live) return null;
+  const readiness = worldSiteOperationReadiness(manifest, record, componentId);
+  const operation = readiness.operation;
+  const inactiveReason = operation ? null : readiness.reason;
+  return {
+    componentId,
+    kind: def.kind || COMPONENT_KINDS.MACHINE,
+    verb: operation && operation.verb || null,
+    operationId: operation && operation.id || null,
+    label: def.label || componentId,
+    key: `${stableKey}::${componentId}`,
+    status: live.status,
+    siteId,
+    payloadId: operation && operation.payloadId || null,
+    receiverId: operation && operation.receiverId || null,
+    active: !!operation,
+    inactiveReason,
+    presentationOwnerWorldRecordId: data.presentationOwnerWorldRecordId || `${manifest.worldObjectId}/root`,
+    live: true,
+  };
 }
 
 function playerTeamOf(state) {

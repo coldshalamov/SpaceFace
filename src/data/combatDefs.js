@@ -210,10 +210,11 @@ export const ATTACHMENT_DEFS = Object.freeze([
     // +25% break budget vs prior baseline (8200/165/420) — lines were snapping too readily in play.
     break: { maxTension: 10250, maxImpulse: 206.25, maxYank: 525, graceTicks: 4 },
     spring: { K: 170, zeta: 0.90, captureS: 0.30, maxStretchRatio: 0.72, reelSafeStretchRatio: 0.66 },
-    // Massline winch/heat/overload controller (spec §8). Opt-in: runs stepMassline per tick,
-    // smoothing the joint rest length and breaking on sustained overload / integrity failure.
-    // SG-02 owns momentum exchange via radial spring capture; this owns winch + break policy.
-    massline: { enabled: true },
+    // Production action_attach shares the normal-play durability contract: ordinary ship/objective
+    // endpoints may load, reel, and exchange momentum, but cannot auto-break the line. Authored
+    // extreme operations opt in on an endpoint exactly as tether_standard does. SG-02 remains the
+    // momentum owner; this block owns the winch and explicit failure policy.
+    massline: { enabled: true, automaticBreakPolicy: 'extreme_load_only' },
     limits: { maxPerOwner: 1 },
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
   },
@@ -224,32 +225,22 @@ export const ATTACHMENT_DEFS = Object.freeze([
     maxLength: 390,
     minLength: 18,
     reelRate: 69,
-    // Break tune derives from src/data/ships.js via getDerivedStats: the scout-class Wasp is
-    // mass 16 with thrust ~=361 wu/s^2 and maxSpeed ~=218 wu/s; Flight V3 boost cap is 2x maxSpeed.
-    // SG-02 tension is now the radial spring force. The spring block below owns feel; this break
-    // block owns only overload/cut thresholds and telemetry compatibility.
-    // Tune holds for the forward tether spool ([0.38, 0]): a mid-asteroid tangent slingshot at
-    // boost HOLDS; hard overloads (short-reeled line + full boost, fixed station anchor at speed)
-    // SNAP. Verified by check-tether-gameplay + check:sg02:tether-break together — if you move
-    // the socket further forward, re-run both before touching these numbers.
-    // CORE-COMBAT-LOOP: break budget was doubled vs pre-pass (420k → 840k), then +25% again for
-    // play feel (→ 1.05M / 19k / 15k) so standard capture holds while severe overload still snaps.
-    breakTension: 1050000,
+    // A healthy standard Massline is infrastructure, not a maneuver-timing consumable. Starter-ship
+    // thrust, ordinary boost, a slack catch, or a botched slingshot must not sever it. The physical
+    // envelope is ten times the previous 1.05M / 19k / 15k tune, and automatic overload breaks are
+    // disabled unless a future extreme-load endpoint (for example a station-scale or singularity
+    // operation) explicitly opts into that contract. Pilot cut and subsystem/destruction cuts are
+    // separate intentional severing paths and remain available.
+    breakTension: 10500000,
     snapImpulseNoise: 0,
-    // maxYank: the line snaps on a SHARP jerk (rate-of-change of radial relative speed), never on
-    // steady pull. Calibrated against measured flight yanks: a plain reel-in to min length produces
-    // yank ~2400, and a max-speed (218 wu/s) orbit at minLength(18) produces centripetal yank
-    // ~2600. So normal-acrobatics yank tops out ~3000; the raised budget sits well above normal
-    // flight (reel-in, slingshot, dogfight, orbit, throttle bumps) and only yields to genuine
-    // violence — boost-into-line, hard ramming, dash impulse. The masslineController harden term
-    // raises this budget further under sustained load (pull-behind-fleeing-target protection).
-    break: { maxTension: 1050000, maxImpulse: 19000, maxYank: 15000, graceTicks: 4, stiffness: 90, damping: 6 },
+    break: { maxTension: 10500000, maxImpulse: 190000, maxYank: 150000, graceTicks: 4, stiffness: 90, damping: 6 },
     // The force budget was doubled previously, but the independent geometric edge stayed at 0.72x
     // rest length and remained the real snap authority for short latches. Double that usable stretch
     // envelope as well; the massline overload controller still cuts violent/extreme-mass loads.
     spring: { K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 1.44, reelSafeStretchRatio: 1.32 },
-    // overloadGraceS: mild overload hold window for capture rhythm; catastrophic ratio still snaps immediately.
-    massline: { enabled: true, overloadGraceS: 1.1 },
+    // The break machinery remains available for explicitly authored future extreme-load endpoints.
+    // Normal entities do not opt in, so ordinary piloting cannot accidentally sever the line.
+    massline: { enabled: true, overloadGraceS: 1.1, automaticBreakPolicy: 'extreme_load_only' },
     limits: { maxPerOwner: 1 },
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
   },

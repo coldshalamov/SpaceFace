@@ -68,9 +68,9 @@ export const TETHER_DEF_ID = 'tether_standard';
 // own bounds and thresholds, characterised by the property tests, not gameplay constants.
 export const LAB_DEFAULTS = Object.freeze({
   ticks: 240,                    // 4 s at 60 Hz — long enough for the swing to develop and settle
-  // Injection bounds (fail-closed clamp). maxImpulse mirrors tether_standard break.maxImpulse so a
-  // controller can load the line meaningfully; a detuned controller destabilises INSIDE this bound.
-  maxImpulse: 19000,
+  // Injection bounds mirror the standard Massline's 10× physical envelope. The lab still reports
+  // divergence independently; ordinary control load is not classified as a snapped line.
+  maxImpulse: 190000,
   maxTorqueImpulse: 8000,
   // Radial-settle definition: |radialSpeed| at/under settleBandRadialSpeed for the rest of the run.
   settleBandRadialSpeed: 3,
@@ -79,12 +79,12 @@ export const LAB_DEFAULTS = Object.freeze({
   oscBudget: 40,
   // Divergence detector: a stable swing keeps distance within divergenceFactor × the initial line.
   divergenceFactor: 6,
-  // tether_standard break.maxTension — a semantic-tension proxy at/above this reads as a broken line.
-  breakTension: 1050000,
+  // tether_standard physical-envelope denominator for strain telemetry.
+  breakTension: 10500000,
   // observeMasslineOrbit spring model: mirrors tether_standard break.stiffness / break.maxTension so
   // the trace's `tension` is the same one-sided-spring read the live tether uses for strain.
   observeStiffness: 90,
-  observeBreakTension: 1050000,
+  observeBreakTension: 10500000,
 });
 
 // -------------------------------------------------------------------------------------------------
@@ -441,7 +441,7 @@ function disposeSim(sim, physicsSys) {
  * Derive acceptance metrics from a trace. Pure over the trace (reused by the observation-layer
  * rotational-symmetry test, which feeds it a synthetic trace with no rapier involved).
  *
- * pass = stable (not broken / not diverged) AND within the oscillation budget. Both criteria are
+ * pass = stable (attachment active and not diverged) AND within the oscillation budget. Both criteria are
  * independent discriminators: a detuned controller fails on divergence; a merely-jittery controller
  * fails on oscillations. Baseline current behavior passes.
  */
@@ -484,10 +484,13 @@ export function computeMetrics(trace, { restLength0 = 0, attachmentActiveAtEnd =
 
   const divergenceBound = Math.max(1, restLength0) * LAB_DEFAULTS.divergenceFactor;
   const diverged = maxDistance > divergenceBound;
-  const broke = !attachmentActiveAtEnd || maxTension >= LAB_DEFAULTS.breakTension || diverged;
+  // `broke` is a lifecycle fact, never inferred from a force sample. The normal standard Massline
+  // has no automatic load-break path; a high value remains useful telemetry but is not a severing
+  // receipt. Divergence stays an independent controller-instability failure.
+  const broke = !attachmentActiveAtEnd;
   const meanTangentFraction = n > 0 ? tangentSum / n : 0;
   const finalRadiusError = n > 0 ? trace[n - 1].radiusError : 0;
-  const pass = !broke && oscillations <= LAB_DEFAULTS.oscBudget;
+  const pass = !broke && !diverged && oscillations <= LAB_DEFAULTS.oscBudget;
 
   return {
     ticks: n,

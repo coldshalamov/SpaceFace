@@ -24,6 +24,7 @@ export const DEFAULT_MASSLINE_DEF = Object.freeze({
   maxYank: 525,
   overloadGraceS: 0.22,
   catastrophicRatio: 1.75,
+  automaticBreak: true,
   heatPerWork: 0.00012,
   idleHeatPerS: 0.08,
   coolingPerS: 4.0,
@@ -146,7 +147,7 @@ export function stepMassline(args = {}) {
   const yankRatio = yank / yankBudget;
 
   const overloadRatio = Math.max(tensionRatio, impulseRatio, yankRatio);
-  if (overloadRatio > 1) {
+  if (overloadRatio > 1 && def.automaticBreak !== false) {
     overloadS += dt;
     integrity -= Math.max(0, overloadRatio - 1) * def.integrityDamagePerOverloadS * dt;
   } else {
@@ -158,7 +159,7 @@ export function stepMassline(args = {}) {
   const yankDominant = yankRatio >= tensionRatio && yankRatio >= impulseRatio;
   const graceS = def.overloadGraceS * (yankDominant ? (1 + 2.8 * harden) : 1);
   const fatiguedBreak = overloadS >= graceS || integrity <= 0;
-  const shouldCut = catastrophic || fatiguedBreak;
+  const shouldCut = def.automaticBreak !== false && (catastrophic || fatiguedBreak);
   let state = 'holding';
   let cutReason = null;
   if (shouldCut) {

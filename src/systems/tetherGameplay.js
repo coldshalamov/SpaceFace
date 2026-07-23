@@ -11,6 +11,7 @@ import {
   rankMasslineTargets,
   stabilizeMasslineSelection,
 } from '../combat/masslineTargetScoring.js';
+import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer } from './scanner.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -37,9 +38,10 @@ const PRECISE_CURSOR_RADIUS = 28;
 const SLINGSHOT_STATE_S = 1.0;
 const SLINGSHOT_SPEED_MULT = 1.4;
 // Presentation load (massline rung 04): phase floors so the cable reads "working" the moment the
-// phase says so, even while the physical break ratio (strain) is still low. strain*2.5 lets real
-// tension overtake the floor well before break. tether.load is presentation-only — tether.strain
-// stays the untouched physical break ratio (near-break sparks, break threshold).
+// phase says so, even while the physical rating ratio (strain) is still low. strain*2.5 lets real
+// tension overtake the floor. tether.load is presentation-only — tether.strain stays the untouched
+// physical ratio, while tether.automaticBreakAllowed carries the attachment authority's canonical
+// answer about whether that ratio can actually culminate in automatic failure.
 const LOAD_STRAIN_GAIN = 2.5;
 const LOAD_BASE_BY_PHASE = Object.freeze({ slack: 0, capture: 0.35, loaded: 0.55, overload: 0.9 });
 // Pickups are valid massline targets now; attachment liveness sweeps cut the line if a pickup is
@@ -190,7 +192,7 @@ export const tetherGameplay = {
       }
       const reelResult = lineLengthCommand === 0
         ? NO_REEL_RESULT
-        : this._reelActive(attachments, lineLengthCommand, dt);
+        : this._reelActive(attachments, lineLengthCommand, dt, state, player, target);
       this._updateReelStrength(reelHeld, reelResult.changed, dt);
       if (lineLengthCommand !== 0 && !reelResult.changed && reelResult.reason) {
         this._emitLineControlDenied(state, reelResult.reason, lineLengthCommand, reelResult.attachment);
@@ -200,6 +202,9 @@ export const tetherGameplay = {
       this._emitStrain(attachments, state);
       const att = attachments.get(this._active.attachmentId);
       const phase = this._phaseFor(state, att, dt, this._lastStrainRatio || 0);
+      const attDef = attachmentDef(kernel, att && att.defId || this._active.type);
+      const automaticBreakAllowed = !!(att && attDef
+        && automaticMasslineBreakAllowed(attDef, player, target));
       this._mirror(
         state,
         this._active.targetId,
@@ -208,6 +213,7 @@ export const tetherGameplay = {
         phase,
         masslineCommand,
         lineLengthCommand,
+        automaticBreakAllowed,
       );
       return;
     }
@@ -231,10 +237,16 @@ export const tetherGameplay = {
       this.bus.emit('tether:latchDenied', { reason: 'unknown_attachment_def' });
       return;
     }
-    // Never replace a receipt on the press tick: the player must get exactly the candidate the HUD
-    // showed on the preceding render. The fallback preserves direct/headless callers that have not
-    // run an idle preview tick; normal play continuously owns a fresh receipt before input arrives.
-    if (!state.masslineAcquisition) this._refreshAcquisitionPreview(player, def, state, now, true);
+    // Normally the press consumes exactly the candidate the HUD showed on the preceding render.
+    // Scanner selection is a stronger, explicit player command: Tab and Space can arrive in the
+    // same fixed tick, before the periodic preview refresh replaces the previous component. Never
+    // let that stale receipt attach a different object than the selected released Site payload.
+    const selectedPayloadId = masslineSelectedPayloadTargetId(state);
+    const receiptTargetId = state.masslineAcquisition?.selected?.targetId;
+    if (!state.masslineAcquisition
+        || (selectedPayloadId != null && receiptTargetId !== selectedPayloadId)) {
+      this._refreshAcquisitionPreview(player, def, state, now, true);
+    }
     this._lastLatchDenial = null;
     const latch = this._consumeAcquisitionReceipt(player, def, state, now);
     const target = latch && latch.entity;
@@ -432,7 +444,7 @@ export const tetherGameplay = {
     this._resetPhaseMirror();
   },
 
-  _reelActive(attachments, reelDelta, dt) {
+  _reelActive(attachments, reelDelta, dt, state, player, target) {
     if (!this._active || !Number.isFinite(reelDelta) || reelDelta === 0) return { changed: false, reason: null, attachment: null };
     const attachment = attachments.get(this._active.attachmentId);
     if (!attachment || attachment.state !== 'active') return { changed: false, reason: 'attachment_missing', attachment };
@@ -449,12 +461,16 @@ export const tetherGameplay = {
     const maxLength = positive(def.maxLength, Infinity);
     const before = attachment.restLength || 0;
 
-    // Pulling a line that is already near its physical break ceiling is denied; paying out remains
-    // available so the player can unload it. The threshold comes from the attachment's snapshotted
-    // authority policy, not a parallel input-side constant.
+    // An explicitly breakable extreme-load operation protects its line by denying further reel-in
+    // near the physical ceiling; paying out remains available. An ordinary standard Massline does
+    // not auto-break, so its nominal rating must never create a fictitious reel-in failure.
     const breakPolicy = policy && policy.break;
     const maxTension = positive(breakPolicy && breakPolicy.maxTension, Infinity);
-    if (requested < 0 && Number.isFinite(maxTension) && finite(attachment.lastTension, 0) >= maxTension * 0.9) {
+    const automaticBreakAllowed = automaticMasslineBreakAllowed(def, player, target);
+    if (automaticBreakAllowed
+        && requested < 0
+        && Number.isFinite(maxTension)
+        && finite(attachment.lastTension, 0) >= maxTension * 0.9) {
       return { changed: false, reason: 'load_limit', attachment, before, after: before };
     }
 
@@ -632,7 +648,16 @@ export const tetherGameplay = {
   // Mirror the tether state onto state.player.tether for HUD/VFX consumers (single-owner rule:
   // they read, we write). null targetId = no tether. restLength lets the cable visual compute
   // real slack (restLength - distance) instead of guessing from strain.
-  _mirror(state, targetId, strain, restLength = 0, phase = 'slack', command = null, lineLengthCommand = 0) {
+  _mirror(
+    state,
+    targetId,
+    strain,
+    restLength = 0,
+    phase = 'slack',
+    command = null,
+    lineLengthCommand = 0,
+    automaticBreakAllowed = false,
+  ) {
     const player = state.player || (state.player = {});
     const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, load: 0, attachmentId: null, restLength: 0, phase: 'slack' });
     t.active = targetId != null;
@@ -649,6 +674,9 @@ export const tetherGameplay = {
     t.reeling = !!(t.active && lineLengthCommand < 0);
     t.payingOut = !!(t.active && lineLengthCommand > 0);
     t.reelStrength = t.active ? finite(this._reelStrength, 0) : 0;
+    // This is a mirror of the attachment authority's decision, not a second policy. Consumers must
+    // fail closed: an absent/false flag means load telemetry is informational, never a break alarm.
+    t.automaticBreakAllowed = !!(t.active && automaticBreakAllowed);
     t.slingshotT = Math.max(0, finite(t.slingshotT, 0));
     t.slingshot = t.slingshotT > 0;
   },
@@ -711,6 +739,7 @@ function buildAcquisitionSnapshot(host, player, def, state, intent) {
     return emptyAcquisitionSnapshot('no-target', intent);
   }
   const focusId = focusTarget ? focusTarget.id : null;
+  const selectedPayloadId = masslineSelectedPayloadTargetId(state);
   const routeId = masslineRouteTargetId(state);
   const nearby = queryNearbyEntities(
     state,
@@ -727,6 +756,8 @@ function buildAcquisitionSnapshot(host, player, def, state, intent) {
     maxLength,
     host._nonCollidingTargetScratch || (host._nonCollidingTargetScratch = []),
   );
+  appendExactCandidate(candidates, selectedPayloadId != null && state.entities?.get
+    ? state.entities.get(selectedPayloadId) : null);
   appendExactCandidate(candidates, focusTarget);
   appendExactCandidate(candidates, routeId != null && state.entities?.get ? state.entities.get(routeId) : null);
 
@@ -749,6 +780,7 @@ function buildAcquisitionSnapshot(host, player, def, state, intent) {
   const hostileOf = (entity) => isHostileToPlayer(entity, player.team, state);
   const context = classifyMasslineIntent(player, attachable, {
     focusId,
+    selectedId: selectedPayloadId,
     routeId,
     turnIntent: intent.turn,
     moveZ: intent.moveZ,
@@ -920,6 +952,20 @@ function masslineRouteTargetId(state) {
   if (waypointId != null) return waypointId;
   const autopilotId = state && state.nav && state.nav.autopilot && state.nav.autopilot.targetEntityId;
   return autopilotId != null ? autopilotId : null;
+}
+
+function masslineSelectedPayloadTargetId(state) {
+  const selectedId = state && state.player && state.player.targetId;
+  const selected = selectedId != null && state.entities?.get ? state.entities.get(selectedId) : null;
+  // A released World Site payload is explicitly exposed through the scanner target cycle. Honor
+  // that deliberate player selection ahead of an inactive/stale navigation receipt so Tab + Space
+  // is a complete public delivery interaction.
+  if (selected?.alive !== false
+      && selected?.data?.role === 'world_site_payload'
+      && selected.data.worldSiteTargetable === true) {
+    return selectedId;
+  }
+  return null;
 }
 
 function appendExactCandidate(candidates, entity) {

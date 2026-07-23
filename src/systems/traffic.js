@@ -186,6 +186,7 @@ export const traffic = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this._registry = ctx.registry || null;
     // live freighter records: id -> {targetId, waitT, nextTradeT, manifest, dockSeq}
     this._ensureState();
     this._active = []; // entity ids we spawned (for cleanup)
@@ -197,6 +198,16 @@ export const traffic = {
     this.bus.on('sector:exit', (p) => this._onSectorExit(p));
     // ECON-P2: freighter loss → owner-safe scarcity intents + named news (no wallet writes).
     this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
+    this.bus.on('save:loaded', () => this._applyWorldSiteTrafficHooks(
+      this.state.world && this.state.world.currentSectorId,
+    ));
+    this.bus.on('worldSite:operationReceipt', ({ siteId, receipt } = {}) => {
+      // Held tools publish progress every fixed tick. Traffic topology changes only on completion;
+      // projecting all sites and scanning freighters for every partial tick is pure hot-path waste.
+      if (receipt?.complete !== true) return;
+      const record = siteId && this.state.sites && this.state.sites.worldById && this.state.sites.worldById[siteId];
+      this._applyWorldSiteTrafficHooks(record && record.sectorId);
+    });
   },
 
   _onSectorExit(p) {
@@ -236,6 +247,7 @@ export const traffic = {
     const need = Math.max(0, count - already);
     if (need <= 0) {
       this._ensureNamedLaneContact(sectorId, sector, stations);
+      this._applyWorldSiteTrafficHooks(sectorId);
       return;
     }
 
@@ -297,6 +309,10 @@ export const traffic = {
       };
       if (def.express) this._stampExpressRoute(ent, rec, station, target, sectorId, already + i);
       this.state.traffic.freighters.push(rec);
+      // World Site service routes reserve one existing ambient slot before the general NPC job
+      // producer claims eligible haulers. Later spawns see the existing hook and remain available
+      // to their ordinary jobs, so this changes ownership for exactly one deterministic hull.
+      this._applyWorldSiteTrafficHooks(sectorId);
       // PQ-014: a miner/hauler/patrol hull naturally receives a deterministic NPC job here. The job
       // (not this ad-hoc stepper) then flies it; the update() dispatch yields for any hull with a
       // jobId. No-op when the runtime is absent (e.g. the sf-sim golden harness) or the route can't
@@ -304,6 +320,66 @@ export const traffic = {
       this._maybeAssignJob(ent, role, station, target, stations, sectorId);
     }
     this._ensureNamedLaneContact(sectorId, sector, stations);
+    this._applyWorldSiteTrafficHooks(sectorId);
+  },
+
+  _applyWorldSiteTrafficHooks(sectorId) {
+    if (!sectorId) return 0;
+    const owner = this._registry && this._registry.get && this._registry.get('asteroidSites');
+    if (!owner || typeof owner.worldSiteTrafficHooks !== 'function') return 0;
+    const hooks = owner.worldSiteTrafficHooks(sectorId);
+    if (!hooks.length) return 0;
+    this._ensureState();
+    let assigned = 0;
+    for (const hook of hooks) {
+      const rootWorldRecordId = `${hook.siteId}/root`;
+      const root = entityWithWorldRecord(this.state, rootWorldRecordId);
+      const station = this._sectorStations().find((candidate) => stationIdentity(candidate) === hook.stationId);
+      if (!root || !station) continue;
+      const existing = this.state.traffic.freighters.find((rec) => rec && rec.worldSiteRoute
+        && rec.worldSiteRoute.hookId === hook.id
+        && liveEntity(this.state, rec.id));
+      if (existing) continue;
+      const eligibleRoles = new Set(hook.eligibleRoles || []);
+      const available = this.state.traffic.freighters
+        .map((rec) => ({ rec, entity: liveEntity(this.state, rec && rec.id) }))
+        .filter(({ rec, entity }) => rec && entity
+          && !(entity.data && (entity.data.jobId || entity.data.worldSiteTrafficHookId)))
+        .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
+      // World-record rematerialization preserves the durable entity tag but rebuilds the transient
+      // traffic record. Rebind that same ambient slot before looking for a new one; otherwise the
+      // preserved tag excludes its owner from candidates and the authored route silently vanishes
+      // after a leave/return or Continue.
+      const marked = this.state.traffic.freighters
+        .map((rec) => ({ rec, entity: liveEntity(this.state, rec && rec.id) }))
+        .filter(({ rec, entity }) => rec && entity
+          && entity.data && entity.data.worldSiteTrafficHookId === hook.id
+          && (eligibleRoles.has(rec.role) || isWorldSiteTrafficFallbackRole(rec.role))
+          && !entity.data.jobId)
+        .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)))[0];
+      const preferred = available.find(({ rec }) => eligibleRoles.has(rec.role));
+      // Seeded ambient mixes can legitimately contain no authored preferred role (for example,
+      // a high-security pocket of escorts, patrols, a working miner, and an express liner). Keep
+      // the population cap honest: reserve one idle civilian hull already in the pocket rather
+      // than spawning a ninth ship or silently dropping the service. Combat-pattern roles remain
+      // unavailable so the fallback cannot steal a patrol, escort, or raider from its owner.
+      const fallback = available.find(({ rec }) => isWorldSiteTrafficFallbackRole(rec.role));
+      const chosen = marked || preferred || fallback;
+      if (!chosen) continue;
+      chosen.rec.worldSiteRoute = {
+        hookId: hook.id,
+        stationId: hook.stationId,
+        siteWorldRecordId: rootWorldRecordId,
+        endpoint: 'site',
+        label: hook.label,
+      };
+      chosen.rec.targetId = root.id;
+      const data = chosen.entity.data || (chosen.entity.data = {});
+      data.worldSiteTrafficHookId = hook.id;
+      data.trafficLabel = hook.label || data.trafficLabel;
+      assigned += 1;
+    }
+    return assigned;
   },
 
   // PQ-014 — natural NPC job assignment. Civilian traffic IS the natural producer for the three
@@ -315,6 +391,7 @@ export const traffic = {
     const assign = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
     if (typeof assign !== 'function') return;                 // runtime not registered → strict no-op
     if (!ent || !ent.data || !ent.data.worldRecordId) return; // no stable identity → not a durable job
+    if (ent.data.worldSiteTrafficHookId) return;               // World Site traffic owns this slot
     const spec = this._buildJobSpec(role, ent, originStation, target, stations, sectorId);
     if (spec) assign(ent, spec);
   },
@@ -663,14 +740,24 @@ export const traffic = {
     const stations = this._sectorStations();
     if (stations.length === 0) return;
 
+    let lostWorldSiteRoute = false;
     for (let i = list.length - 1; i >= 0; i--) {
       const rec = list[i];
       const e = state.entities.get(rec.id);
-      if (!e || !e.alive) { list.splice(i, 1); continue; }
+      if (!e || !e.alive) {
+        if (rec && rec.worldSiteRoute) lostWorldSiteRoute = true;
+        list.splice(i, 1);
+        continue;
+      }
       // PQ-014: when this hull carries a live NPC job, npcJobsRuntime owns its steering. Traffic
       // yields entirely (no setIntent) so there is exactly one intent writer per job hull per tick.
       if (e.data && e.data.jobId) continue;
       const role = TRAFFIC_ROLES[rec.role] || TRAFFIC_ROLES.hauler;
+
+      if (rec.worldSiteRoute) {
+        this._stepWorldSiteRoute(e, rec, stations, dt);
+        continue;
+      }
 
       // Role-specific behavior dispatch (spec §12.1). Each role has a distinct, readable behavior.
       if (role.orbits) { this._stepOrbit(e, rec, stations, dt); continue; }       // patrol
@@ -731,6 +818,36 @@ export const traffic = {
       // V3 reads this intent and applies real thrust. Traffic never writes velocity, so a latched
       // player receives only the Rapier constraint pull and whatever momentum the liner earns.
     }
+    if (lostWorldSiteRoute) {
+      this._applyWorldSiteTrafficHooks(state.world && state.world.currentSectorId);
+    }
+  },
+
+  _stepWorldSiteRoute(entity, rec, stations, dt) {
+    const route = rec.worldSiteRoute;
+    const site = entityWithWorldRecord(this.state, route.siteWorldRecordId);
+    const station = stations.find((candidate) => stationIdentity(candidate) === route.stationId);
+    const target = route.endpoint === 'station' ? station : site;
+    if (!target || !target.pos) {
+      setIntent(entity, 0, 0, false, false, null, entity.rot);
+      return;
+    }
+    rec.targetId = target.id;
+    if (rec.waitT > 0) {
+      rec.waitT = Math.max(0, rec.waitT - dt);
+      setIntent(entity, 0, 0, false, false, null, entity.rot);
+      return;
+    }
+    const dx = target.pos.x - entity.pos.x;
+    const dz = target.pos.z - entity.pos.z;
+    const aim = Math.atan2(dz, dx);
+    if (Math.hypot(dx, dz) < DOCK_RANGE) {
+      route.endpoint = route.endpoint === 'station' ? 'site' : 'station';
+      rec.waitT = 2.5;
+      setIntent(entity, 0, 0, false, false, null, aim);
+      return;
+    }
+    setIntent(entity, 0, 1, false, false, null, aim);
   },
 
   // ── Role behaviors (spec §12.1) ────────────────────────────────────────────────────────────
@@ -953,6 +1070,7 @@ export const traffic = {
     for (let i = 0; i < list.length; i++) {
       if (list[i] && list[i].id === p.id) { rec = list[i]; idx = i; break; }
     }
+    const lostWorldSiteRoute = !!(rec && rec.worldSiteRoute);
     const ent = this.state.entities && this.state.entities.get && this.state.entities.get(p.id);
     const role = (rec && rec.role)
       || (ent && ent.data && ent.data.trafficRole)
@@ -961,6 +1079,9 @@ export const traffic = {
     if (role && !FREIGHT_TRADING_ROLES.includes(role) && !(rec && rec.manifest && rec.manifest.totalQty)) {
       // Non-trading traffic (patrol/escort) — drop tracking only.
       if (idx >= 0) list.splice(idx, 1);
+      if (lostWorldSiteRoute) {
+        this._applyWorldSiteTrafficHooks(this.state.world && this.state.world.currentSectorId);
+      }
       return;
     }
 
@@ -1017,6 +1138,9 @@ export const traffic = {
     if (idx >= 0) list.splice(idx, 1);
     const activeIdx = this._active.indexOf(p.id);
     if (activeIdx >= 0) this._active.splice(activeIdx, 1);
+    if (lostWorldSiteRoute) {
+      this._applyWorldSiteTrafficHooks(this.state.world && this.state.world.currentSectorId);
+    }
   },
 
   _nearestStationId(pos) {
@@ -1087,6 +1211,28 @@ function stationIdentity(station) {
   const data = station.data || {};
   const id = data.stationId || data.id || station.id;
   return id == null ? null : String(id);
+}
+
+function entityWithWorldRecord(state, worldRecordId) {
+  if (!state || !state.entities || !worldRecordId) return null;
+  for (const entity of state.entities.values()) {
+    if (entity && entity.alive !== false && entity.data && entity.data.worldRecordId === worldRecordId) return entity;
+  }
+  return null;
+}
+
+function liveEntity(state, id) {
+  const entity = state && state.entities && state.entities.get && state.entities.get(id);
+  return entity && entity.alive !== false ? entity : null;
+}
+
+function stableTrafficKey(entity) {
+  return String(entity && entity.data && entity.data.worldRecordId || entity && entity.id || '');
+}
+
+function isWorldSiteTrafficFallbackRole(roleId) {
+  const role = TRAFFIC_ROLES[roleId];
+  return !!role && !role.orbits && !role.escorts && !role.flees;
 }
 
 function stationName(station, fallback) {

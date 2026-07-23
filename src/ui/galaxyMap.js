@@ -34,6 +34,7 @@ import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
+import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
 import { sectorSignalFor, forecastTransitFor } from '../systems/sectorSim.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
@@ -1449,6 +1450,9 @@ export function buildSystemModel(state, sectorId, options = {}) {
       });
     }
   }
+  for (const marker of worldSiteMapMarkers(state, sid)) {
+    if (!points.some((point) => point.id === marker.id)) points.push(marker);
+  }
 
   // "You are here" at system scale. The SYSTEM model shipped without a player field at all, so the
   // one question the map must always answer had no answer between LOCAL and GALAXY. You are also
@@ -2851,6 +2855,27 @@ const CSS = `
   border-color: var(--accent-3);
   box-shadow: inset 0 0 0 1px var(--accent-3);
 }
+#sf-galaxymap .gm-site-row {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 9px;
+  margin: 4px 0;
+  background: #0e1113;
+  color: var(--ink);
+  border: 1px solid var(--mf-line-1);
+  border-radius: 2px;
+  font: 500 11px var(--mf-ui);
+  text-align: left;
+  cursor: pointer;
+}
+#sf-galaxymap .gm-site-row:hover,
+#sf-galaxymap .gm-site-row[aria-pressed="true"] { border-color: var(--accent-3); background: #15191b; }
+#sf-galaxymap .gm-site-row:focus-visible { outline: 2px solid var(--accent-3); outline-offset: 1px; }
+#sf-galaxymap .gm-history-list { margin: 0; padding: 0 0 0 19px; color: var(--ink); }
+#sf-galaxymap .gm-history-list li { padding: 5px 0; border-bottom: 1px solid var(--mf-line-1); }
+#sf-galaxymap .gm-history-list li > span { display: block; }
 #sf-galaxymap .gm-tl-head {
   display: flex;
   justify-content: space-between;
@@ -3600,11 +3625,11 @@ export function resolveInspectorTabAvailability(state, target) {
   set('services', kind === 'station' || kind === 'sector',
     (kind === 'station' || kind === 'sector') ? 'Docking services' : 'Select a station or sector to list services');
   set('discovery', true, 'Survey confidence and charted status');
-  // HISTORY HAS NO SOURCE. There is no per-place visit/event log anywhere in state, and inventing
-  // one — or building a logging system to fill this tab — is exactly the "new data system to feed
-  // a panel" that D2/D9 reject. It ships unavailable and says so. Naming the gap is the honest
-  // move; a tab full of plausible-looking fabricated history is not.
-  set('history', false, 'Not recorded yet — the game keeps no per-place visit log');
+  const hasWorldSiteHistory = !!(target && target.mapKind === 'world-site'
+    && target.ledger && Array.isArray(target.ledger.recentReceipts));
+  set('history', hasWorldSiteHistory, hasWorldSiteHistory
+    ? 'Authoritative World Site activity'
+    : 'Select a World Site with an activity ledger');
   return Object.freeze(out);
 }
 
@@ -4193,6 +4218,12 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         entityId: p.entityId || null,
         targetSectorId: p.targetSectorId || null,
         factionId: p.factionId,
+        searchText: p.searchText,
+        mapKind: p.mapKind,
+        stageId: p.stageId,
+        stageLabel: p.stageLabel,
+        ledger: p.ledger,
+        history: p.history,
         detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}`,
       });
     }
@@ -4836,6 +4867,16 @@ export const galaxyMapScreen = {
     if (this._inspectorDetails && typeof this._inspectorDetails.addEventListener === 'function') {
       this._inspectorDetails.addEventListener('click', (ev) => {
         const target = ev && ev.target;
+        const siteRow = target && typeof target.closest === 'function'
+          ? target.closest('[data-world-site-id]') : null;
+        if (siteRow) {
+          const state = galaxyMapScreen._ctx && galaxyMapScreen._ctx.state;
+          const sectorId = siteRow.getAttribute('data-world-site-sector') || currentSectorId(state);
+          const siteId = siteRow.getAttribute('data-world-site-id');
+          const marker = worldSiteMapMarkers(state, sectorId).find((entry) => entry.id === siteId);
+          if (marker) galaxyMapScreen._selectSearchTarget(marker);
+          return;
+        }
         const row = target && typeof target.closest === 'function' ? target.closest('[data-gm-lane]') : null;
         if (!row) return;
         galaxyMapScreen._activateTradeLane(row.getAttribute('data-gm-lane'));
@@ -5918,6 +5959,7 @@ export const galaxyMapScreen = {
       case 'threat': return this._threatTabHtml(state);
       case 'services': return this._servicesTabHtml(state);
       case 'discovery': return this._discoveryTabHtml(state);
+      case 'history': return this._historyTabHtml();
       case 'overview':
       default:
         return this._overviewTabHtml(state, selectionHtml);
@@ -6113,6 +6155,14 @@ export const galaxyMapScreen = {
     const confidence = record ? mapConfidenceForSector(state, record) : null;
     const disc = discoveryForSector(state, sectorId);
     const pct = confidence && Number.isFinite(confidence.value) ? Math.round(confidence.value * 100) : null;
+    const siteButtons = worldSiteMapMarkers(state, sectorId).map((marker) => `
+      <button class="gm-site-row" type="button" data-world-site-id="${escapeMapHtml(marker.id)}"
+        data-world-site-sector="${escapeMapHtml(marker.sectorId)}"
+        aria-label="Inspect World Site ${escapeMapHtml(marker.name)}"
+        aria-pressed="${!!(t && t.id === marker.id)}">
+        <span>${escapeMapHtml(marker.name)}</span>
+        <span class="gm-ins-row-val">${escapeMapHtml(marker.stageLabel)}</span>
+      </button>`).join('');
     return `
       <div class="gm-ins-section">
         <div class="gm-ins-kind">Survey record</div>
@@ -6123,7 +6173,29 @@ export const galaxyMapScreen = {
       </div>
       <div class="gm-ins-section">
         <div class="gm-ins-note">Confidence decays with time since survey. Re-scan a sector to refresh what the chart is willing to assert about it.</div>
-      </div>`;
+      </div>
+      ${siteButtons ? `<div class="gm-ins-section"><div class="gm-ins-title">World Sites</div>${siteButtons}</div>` : ''}`;
+  },
+
+  _historyTabHtml() {
+    const target = this._selectedTarget;
+    const history = target && target.history;
+    const rows = history && Array.isArray(history.rows) ? history.rows : [];
+    const activity = rows.length
+      ? `<ol class="gm-history-list" aria-label="Recent World Site activity">${rows.map((row) => `
+          <li data-history-kind="${escapeMapHtml(row.kind)}">
+            <span>${escapeMapHtml(row.label)}</span>
+            <span class="gm-ins-row-val">${escapeMapHtml(row.detail)}</span>
+          </li>`).join('')}</ol>`
+      : '<div class="gm-ins-note">No activity receipts recorded yet.</div>';
+    return `<div class="gm-ins-section">
+        <div class="gm-ins-kind">World Site history</div>
+        <div class="gm-ins-target-name">${escapeMapHtml(target && target.name || 'World Site')}</div>
+        <div class="gm-ins-row"><span>Stage</span><span class="gm-ins-row-val">${escapeMapHtml(history && history.stageLabel || target && target.stageLabel || 'Unknown')}</span></div>
+        <div class="gm-ins-row"><span>Completed</span><span class="gm-ins-row-val">${Math.max(0, Number(history && history.completedCount) || 0)}</span></div>
+        <div class="gm-ins-row"><span>Failures</span><span class="gm-ins-row-val">${Math.max(0, Number(history && history.failureCount) || 0)}</span></div>
+      </div>
+      <div class="gm-ins-section"><div class="gm-ins-title">Recent activity</div>${activity}</div>`;
   },
 
   // ═══ SLICE C — place context actions ═══════════════════════════════════════════════════════
@@ -8045,6 +8117,8 @@ export const galaxyMapScreen = {
         sx: x, sy: y, radiusPx: 18, kind: p.kind, id: p.id, x: p.x, z: p.z,
         entityId: p.entityId, stationId: p.stationId, targetSectorId: p.targetSectorId,
         name: displayName, factionId: p.factionId,
+        mapKind: p.mapKind, stageId: p.stageId, stageLabel: p.stageLabel,
+        ledger: p.ledger, history: p.history, searchText: p.searchText,
         detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}`
       });
 

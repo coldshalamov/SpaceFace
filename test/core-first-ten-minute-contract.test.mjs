@@ -11,7 +11,8 @@
 //   2. Every first hostile that acquires/fires records motive, trigger, zone,
 //      approach telegraph, and a no-fire response window.
 //   3. Standard starter weapon sustains ≥20 shots across a 4s hold-fire window.
-//   4. Standard starter tether survives a 2.5s capture hold with ~2× load headroom.
+//   4. Standard starter tether survives ordinary maneuver load, carries 10× the prior physical
+//      envelope, and cannot auto-break without an explicit future extreme-load endpoint.
 //   5. High-speed flyby enters Focus and expands latch so tether is permitted.
 //   6. Primary objective exposes one action, destination, distance, and a
 //      distinctive mission-marker identity (HUD/radar path).
@@ -68,7 +69,7 @@ import {
 } from '../src/systems/ships.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
 import { buildOnboardingObjectiveWaypoint } from '../src/systems/onboarding.js';
-import { effectiveTetherBreak } from '../src/combat/attachments.js';
+import { automaticMasslineBreakAllowed, effectiveTetherBreak } from '../src/combat/attachments.js';
 import { resolveHudNavStation } from '../src/ui/hud.js';
 import { STORY_BEATS } from '../src/data/missions.js';
 
@@ -80,7 +81,8 @@ const STARTER_TETHER_ID = 'tether_standard';
 const SUSTAIN_SHOTS = 20;
 const SUSTAIN_S = 4;
 const CAPTURE_HOLD_S = 2.5;
-const TOLERANCE_MULT = 2.0;
+const NORMAL_LOAD_HEADROOM = 10;
+const PRIOR_LIVE_TENSION = 1_050_000;
 const HELIOS_STARTER_SAFE_RADIUS = HELIOS_STARTER_PROTECTION_RADIUS_WU;
 
 const failures = [];
@@ -488,14 +490,19 @@ await check('standard starter weapon sustains ≥20 shots in 4s continuous fire'
   );
 });
 
-// ─── 4. Starter tether: 2.5s capture hold with ~2× tolerance ──────────────────
-await check('standard starter tether survives 2.5s capture hold with ~2× load headroom', async () => {
+// ─── 4. Starter tether: normal-play durability ────────────────────────────────
+await check('standard starter tether survives normal load without an automatic break path', async () => {
   const tetherDef = ATTACHMENT_DEFS.find((d) => d.id === STARTER_TETHER_ID);
   assert.ok(tetherDef, 'tether_standard def exists');
   const breakPolicy = effectiveTetherBreak(tetherDef, {
     data: { derived: { tetherSpoolMult: 1 } },
   });
   assert.ok(breakPolicy && breakPolicy.maxTension > 0, 'effective break policy resolves');
+  assert.equal(automaticMasslineBreakAllowed(
+    tetherDef,
+    { data: { derived: { tetherSpoolMult: 1 } } },
+    { data: { typeId: 'ast_common_rock' } },
+  ), false, 'ordinary starter and asteroid endpoints cannot enable load-induced breakage');
 
   const state = createGameState(0x7e71);
   state.mode = 'flight';
@@ -602,21 +609,19 @@ await check('standard starter tether survives 2.5s capture hold with ~2× load h
   assert.ok(state.player.tether && state.player.tether.active,
     'tether must remain active after capture hold');
 
-  // ~2× tolerance: peak load must stay ≤ half of break (strain 1.0 or maxTension).
-  assert.ok(peakStrain <= 1 / TOLERANCE_MULT + 1e-6,
-    `peak strain ${peakStrain.toFixed(3)} must leave ~${TOLERANCE_MULT}× headroom vs break (≤${(1 / TOLERANCE_MULT).toFixed(2)})`);
+  // The 10× numeric envelope supplements the semantic no-auto-break contract and keeps normal
+  // strain telemetry quiet instead of presenting ordinary piloting as an impending failure.
+  assert.ok(peakStrain <= 1 / NORMAL_LOAD_HEADROOM + 1e-6,
+    `peak strain ${peakStrain.toFixed(3)} must leave ${NORMAL_LOAD_HEADROOM}× normal-load headroom (≤${(1 / NORMAL_LOAD_HEADROOM).toFixed(2)})`);
   if (peakTension > 0) {
-    assert.ok(peakTension * TOLERANCE_MULT <= breakPolicy.maxTension + 1e-6,
-      `peak tension ${peakTension} × ${TOLERANCE_MULT} must stay ≤ break maxTension ${breakPolicy.maxTension}`);
+    assert.ok(peakTension * NORMAL_LOAD_HEADROOM <= breakPolicy.maxTension + 1e-6,
+      `peak tension ${peakTension} × ${NORMAL_LOAD_HEADROOM} must stay ≤ physical envelope ${breakPolicy.maxTension}`);
   }
 
-  // Catalog strength itself must be at least the historical base × ~2 headroom path for starter
-  // capture survival (relative to the pre-M1 420000-class base → 2× would be 840000; current is
-  // +30% only — this assertion is intentionally fail-closed until production raises strength).
-  const HISTORICAL_BASE_TENSION = 420000;
-  assert.ok(
-    breakPolicy.maxTension + 1e-6 >= HISTORICAL_BASE_TENSION * TOLERANCE_MULT,
-    `tether_standard maxTension ${breakPolicy.maxTension} must be ≥ ~${TOLERANCE_MULT}× historical base ${HISTORICAL_BASE_TENSION} (=${HISTORICAL_BASE_TENSION * TOLERANCE_MULT}) for 2.5s capture margin`,
+  assert.equal(
+    breakPolicy.maxTension,
+    PRIOR_LIVE_TENSION * 10,
+    'rating-1 starter physical envelope is exactly 10× the previous live Massline tune',
   );
 });
 

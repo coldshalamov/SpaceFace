@@ -11,7 +11,7 @@
 
 import { isConfirmOpen } from './confirm.js';
 import { BINDINGS } from './bindings.js';
-import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
+import { DEFAULTS as INPUT_DEFAULTS, selectedWorldSiteTarget } from '../systems/input.js';
 import { MAP_FOCUS, openGalaxyMap, isMapScreenId } from './mapAuthority.js';
 import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 
@@ -244,6 +244,10 @@ export function createUiInput(ctx, screenManager) {
       }
       case BINDINGS.drill.key:
       case BINDINGS.drill.label:
+        // B is the rebindable contextual World Site beam while a site proxy is explicitly selected.
+        // Leave the event unconsumed for the simulation input owner; ordinary asteroid B retains
+        // the established drill-view behavior below.
+        if (selectedWorldSiteTarget(state)) return;
         // Drill lens (V2 §7 / cut-list #27): open the ant-farm mining screen on the targeted
         // asteroid (or the mining system's soft-locked one). Bails with a toast if no asteroid.
         ev.preventDefault();

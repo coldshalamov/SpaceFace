@@ -13,6 +13,28 @@ import { aiPorts } from '../src/systems/aiPorts.js';
 
 const DT = 1 / 60;
 
+class MutationCountingMap extends Map {
+  constructor(entries = []) {
+    super();
+    this.mutations = 0;
+    for (const [key, value] of entries) Map.prototype.set.call(this, key, value);
+  }
+
+  set(key, value) {
+    this.mutations++;
+    return super.set(key, value);
+  }
+
+  delete(key) {
+    this.mutations++;
+    return super.delete(key);
+  }
+
+  resetMutations() {
+    this.mutations = 0;
+  }
+}
+
 const harness = makeHarness({ backend: 'rapier-dynamic' });
 const { state, helpers } = harness;
 const player = helpers.spawnEntity(makeShipSpec({ team: 0, x: -220, factionId: 'faction_free' }));
@@ -70,6 +92,29 @@ assert.equal(livePlayerContactRepeat && livePlayerContactRepeat.tags, livePlayer
   'same-tick live sensor contacts should reuse cached tag arrays instead of rebuilding Sets per AI member');
 assert.equal(liveFrameBRepeat.self.subsystemFractions, liveSubsystemFractions,
   'same-tick live sensor self frames should reuse cached subsystem fraction views');
+const singletonFramesA = helpers.aiSensors.liveFramesFor([wingA.id], 7);
+const singletonFrameA = singletonFramesA.get(wingA.id);
+const singletonContactsA = singletonFrameA.contacts;
+const singletonPlayerX = singletonContactsA.find((contact) => contact.id === player.id)?.pos?.x;
+const singletonStateTick = state.tick;
+player.pos.x += 1;
+state.tick = 8;
+const singletonFramesB = helpers.aiSensors.liveFramesFor([wingA.id], 8);
+const singletonFrameB = singletonFramesB.get(wingA.id);
+assert.equal(singletonFramesB, singletonFramesA,
+  'one-member production batches should reuse their frames Map');
+assert.equal(singletonFrameB, singletonFrameA,
+  'one-member production batches should reuse the scalar live frame scratch');
+assert.equal(singletonFrameB.contacts, singletonContactsA,
+  'one-member production batches should reuse the scalar contacts scratch');
+assert.equal(singletonFrameB.contacts.find((contact) => contact.id === player.id)?.pos?.x,
+  singletonPlayerX + 1,
+  'reused one-member sensor frames must still refresh live contact positions');
+player.pos.x -= 1;
+const multiFrames = helpers.aiSensors.liveFramesFor([wingA.id, wingB.id], 8);
+assert.notEqual(multiFrames.get(wingA.id), multiFrames.get(wingB.id),
+  'real multi-member batches must retain distinct per-member frame objects');
+state.tick = singletonStateTick;
 const frozenAfterLive = helpers.aiSensors.frameFor(wingA.id, 7);
 assert(Object.isFrozen(frozenAfterLive), 'normal sensor frame should remain immutable after live scratch reuse');
 assert.notEqual(frozenAfterLive.contacts, liveContacts, 'immutable sensor frames must not expose live scratch arrays');
@@ -150,8 +195,13 @@ const stack = new TacticalAIStack({
   },
 });
 const rolesAt8 = roleMap(stack.update(8, authoredEnvelope()));
+const countedEntitySquads = new MutationCountingMap(stack.entitySquad);
+stack.entitySquad = countedEntitySquads;
+countedEntitySquads.resetMutations();
 const rolesAt9 = roleMap(stack.update(9, authoredEnvelope()));
 assert.deepEqual(rolesAt9, rolesAt8, 'stable production roster should preserve SG-06 roles across ticks');
+assert.equal(countedEntitySquads.mutations, 0,
+  'stable signed production rosters should not rewrite unchanged entity membership');
 assert(shadowManeuvers.length > 0, 'shadow SG-06 stack should emit maneuver requests through the port boundary');
 
 const wingC = helpers.spawnEntity(makeShipSpec({
@@ -164,6 +214,20 @@ harness.rebuildSpatialHash();
 const rosterC = helpers.aiRoster.listSquads(10);
 assert.notEqual(JSON.stringify(rosterC), JSON.stringify(rosterA), 'roster signature should change when tactical membership changes');
 assert(rosterC[0].members.some((member) => member.id === wingC.id), 'new tactical member should enter the roster');
+const mutationsBeforeWingC = countedEntitySquads.mutations;
+stack.update(10, authoredEnvelope());
+assert(countedEntitySquads.mutations > mutationsBeforeWingC,
+  'changed production membership must fall through to the full roster sync');
+assert.equal(stack.entitySquad.get(wingC.id), 'sg06_port_wing',
+  'the full roster sync must bind a newly joined tactical member');
+
+Map.prototype.set.call(stack.entitySquad, 999_991, 'stale_ghost_squad');
+countedEntitySquads.resetMutations();
+stack.update(11, authoredEnvelope());
+assert.equal(stack.entitySquad.has(999_991), false,
+  'a stale entity map entry must defeat the fast path and be forgotten');
+assert(countedEntitySquads.mutations > 0,
+  'stale membership cleanup must execute the full roster sync');
 
 assert.throws(() => {
   const duplicateStack = new TacticalAIStack({
