@@ -2,6 +2,12 @@
   "schema": "spaceface.labHashEntropyCoverage.v1",
   "recordedAt": "2026-07-24T04:40:00.000Z",
   "head": "8610102d89a4c122e088205eb46739590c6a477e",
+  "provenance": {
+    "head": "8610102d89a4c122e088205eb46739590c6a477e",
+    "lineNumberAuthority": "All src/** (and other) line numbers in this inventory refer to revision 8610102d (the recorded head), obtained via `git show 8610102d:<path>`. The working tree contains concurrent uncommitted changes to some of these files that are intentionally NOT reflected here.",
+    "workTreeOnlyCitations": [],
+    "note": "Dirty-tree line numbers (e.g. input.js performance.now at uncommitted lines 639+) must not be used; at 8610102d those calls are at 505, 531, 592, 611 and there is no auto-target path-drawing performance.now path."
+  },
   "observatorySemanticHash": {
     "file": "src/observability/sessionSamplers.js",
     "hashFn": "canonicalStateHash",
@@ -36,7 +42,49 @@
         "observatory", "observatoryHooks", "_observatory"
       ],
       "omitLine": 22,
-      "criticalGap": "rng is intentionally omitted — entropy stream is NOT in the semantic hash"
+      "criticalGap": "rng is intentionally omitted — entropy stream is NOT in the semantic hash",
+      "twoKindsOfOmission": {
+        "description": "Distinguish entity-level redaction from root keys that are never selected into the snapshot.",
+        "1_entityLevelRedaction": {
+          "set": "OMIT_CANONICAL_KEYS",
+          "line": 22,
+          "keys": [
+            "rng", "spatialHash", "mesh", "view", "obj", "prevPos", "prevRot", "render", "audio",
+            "observatory", "observatoryHooks", "_observatory"
+          ],
+          "meaning": "Keys may be present INSIDE walked roots (or entity whitelist objects) but are stripped during canonicalClone by key name. Genuine nested examples: state.world.rng and entity-level .rng fields — those sit under roots that canonicalStateSnapshot walks, so OMIT_CANONICAL_KEYS redacts them. Top-level state.rng is NOT this case (see category 2)."
+        },
+        "2_rootKeysNeverInCanonicalRootKeys": {
+          "meaning": "Structurally absent from the snapshot — never walked by canonicalStateSnapshot, not merely redacted. Top-level state.rng is a createGameState root field but is NOT in CANONICAL_ROOT_KEYS, so it never reaches canonicalClone and is never subject to OMIT_CANONICAL_KEYS redaction — it is simply never selected.",
+          "diffMethod": "createGameState() root keys (src/core/gameState.js:74+) minus CANONICAL_ROOT_KEYS (sessionSamplers.js:14-19); entities handled via entityList special path.",
+          "notableAbsentRoots": [
+            "input",
+            "settings",
+            "rng",
+            "camera",
+            "bounds",
+            "spatialHash",
+            "accumulator",
+            "entities",
+            "entityList",
+            "nextEntityId",
+            "freeIds",
+            "aiEncounter",
+            "npcJobs",
+            "ui",
+            "content",
+            "render",
+            "vfx",
+            "audioRuntime",
+            "perfRuntime",
+            "save"
+          ],
+          "notableAbsentRootsNotes": {
+            "rng": "Top-level state.rng (mulberry32 primary stream at gameState.js create). Structurally absent from canonical snapshot — not entity-level redaction. Nested .rng keys under walked roots (e.g. state.world.rng) are category-1 redactions instead."
+          },
+          "checkpointCritical": ["input", "settings"]
+        }
+      }
     },
     "validator": "src/contracts/observatorySchemas.js"
   },
@@ -97,7 +145,390 @@
     ],
     "continuationStateObservable": false,
     "continuationStateRestorable": false,
-    "continuationGap": "state.rng internal counter is not part of save/observatory snapshots; only state.meta.seed is stored. Restoring a save re-seeds from meta.seed via createGameState-like paths but cannot resume mid-stream mulberry32 position from state.rng alone. Per-object drawSeeded keys can be restorable if persisted on their owners."
+    "continuationGap": "state.rng internal counter is not part of save/observatory snapshots; only state.meta.seed is stored. Restoring a save re-seeds from meta.seed via createGameState-like paths but cannot resume mid-stream mulberry32 position from state.rng alone. Per-object drawSeeded keys can be restorable if persisted on their owners.",
+    "continuationGapBroaderThanStateRng": "The entropy continuation gap is BROADER than state.rng alone: it spans system-private mutable RNG streams inventoried under systemOwnedRngStreams. Directive §16 serializable-entropy migration must convert these unconverted paths for initial lab scenarios (Phase 1/2 concern)."
+  },
+  "systemOwnedRngStreams": {
+    "auditMethod": "git grep -n 'this\\._rng|resetRng|_initRng|\\.rng\\s*=' 8610102d -- src/systems src/combat; plus mulberry32/drawSeeded/makeStream sites",
+    "conclusion": "Entropy continuation gap is BROADER than state.rng. Multiple gameplay systems own private or system-local mutable RNG streams that are not part of state.rng. A checkpoint taken after such a system has consumed randomness, restored into a fresh simulation, can silently reset private streams and later diverge — unless that system uses a persisted drawSeeded rngSeed and a correct restore path.",
+    "phaseMigrationConcern": "Phase 1/2: migrate system-owned streams to serializable entropy (directive §16). These are the unconverted paths for initial lab scenarios.",
+    "streams": [
+      {
+        "system": "economy",
+        "file": "src/systems/economy.js",
+        "kind": "drawSeeded-on-state",
+        "initResetSite": { "fn": "resetRng", "line": 1564 },
+        "consumeSites": {
+          "pattern": "this._rng()",
+          "count": 15,
+          "representativeLines": [526, 534, 609, 650, 704, 739, 789, 790, 906, 1165, 1336, 1471, 1662]
+        },
+        "continuationState": {
+          "location": "state.economy.rngSeed",
+          "savedRestored": true,
+          "savePath": "serialize()/deserialize() include rngSeed (lines 1634, 1677-1678); _rng uses drawSeeded (1580)"
+        },
+        "inObservatoryCanonicalHash": {
+          "rootKeyInCanonical": true,
+          "rootKey": "economy",
+          "rngSeedNumberHashed": true,
+          "rngFunctionOmitted": true,
+          "note": "economy.rng function key is OMIT_CANONICAL_KEYS; economy.rngSeed uint32 is hashed if present"
+        }
+      },
+      {
+        "system": "automation",
+        "file": "src/systems/automation.js",
+        "kind": "drawSeeded-on-state",
+        "initResetSite": { "fn": "_initRng", "line": 2347 },
+        "consumeSites": {
+          "pattern": "this._rng()",
+          "count": 6,
+          "representativeLines": [1132, 1353, 2078, 2198, 2219]
+        },
+        "continuationState": {
+          "location": "state.automation.meta.rngSeed",
+          "savedRestored": true,
+          "savePath": "serialize includes rngSeed (2439); deserialize calls _initRng() at 2457 to rebuild from restored rngSeed — system-local restore, not centralized"
+        },
+        "inObservatoryCanonicalHash": {
+          "rootKeyInCanonical": true,
+          "rootKey": "automation",
+          "rngSeedNumberHashed": true,
+          "rngFunctionOmitted": true
+        }
+      },
+      {
+        "system": "weapons",
+        "file": "src/systems/weapons.js",
+        "kind": "private-mulberry32-instance",
+        "initResetSite": { "line": 79, "expression": "this._rng = this.helpers.mulberry32(this.helpers.hash32(seed, 'weapons'))" },
+        "consumeSites": {
+          "pattern": "this._rng()",
+          "count": 1,
+          "representativeLines": [890],
+          "role": "weapon spread (triangular)"
+        },
+        "continuationState": {
+          "location": "this._rng closed-over counter only",
+          "savedRestored": false,
+          "savePath": "none — re-seeded from meta.seed on init"
+        },
+        "inObservatoryCanonicalHash": {
+          "rootKeyInCanonical": false,
+          "rngSeedNumberHashed": false,
+          "note": "Private instance field; never on state"
+        }
+      },
+      {
+        "system": "traffic",
+        "file": "src/systems/traffic.js",
+        "kind": "drawSeeded-on-state",
+        "initResetSite": { "fn": "_resetRngForSector", "line": 1177 },
+        "consumeSites": {
+          "pattern": "this._rng()",
+          "count": 16,
+          "representativeLines": [256, 268, 270, 272, 273, 306, 482, 483, 509, 627, 655, 662, 799, 801, 915, 928],
+          "role": "traffic spawning, roles, trade timing"
+        },
+        "continuationState": {
+          "location": "state.traffic.rngSeed",
+          "savedRestored": false,
+          "savePath": "none — saveSystem.js has zero capture/restore entries for traffic (not in _saveCapturePlan / serializeData). drawSeeded mutates state.traffic.rngSeed live (1184), but a fresh load never restores it; sector enter re-seeds via _resetRngForSector (1179). Classification: consumed-but-not-restored."
+        },
+        "inObservatoryCanonicalHash": {
+          "rootKeyInCanonical": true,
+          "rootKey": "traffic",
+          "rngSeedNumberHashed": true,
+          "note": "rngSeed is hashed while present live; save restore does not rehydrate it — mid-stream position lost on load"
+        }
+      },
+      {
+        "system": "world",
+        "file": "src/systems/world.js",
+        "kind": "state-held-mulberry32-function",
+        "initResetSite": {
+          "lines": [582, 645, 653],
+          "expression": "state.world.rng = this.helpers.mulberry32(this.helpers.hash32(state.meta.seed, sectorId, epoch, ...))"
+        },
+        "consumeSites": {
+          "representativeLines": [583, 646, 654, 1946],
+          "role": "sector populate / dressing; fallback to state.rng at 1946"
+        },
+        "continuationState": {
+          "location": "state.world.rng (function)",
+          "savedRestored": false,
+          "savePath": "function not serializable; rebuilt from meta.seed + sectorId + epoch on populate"
+        },
+        "inObservatoryCanonicalHash": {
+          "rootKeyInCanonical": true,
+          "rootKey": "world",
+          "rngFunctionOmitted": true,
+          "note": "world IS in CANONICAL_ROOT_KEYS, but key name 'rng' is in OMIT_CANONICAL_KEYS so state.world.rng is redacted from the hash"
+        }
+      },
+      {
+        "system": "terrainAnchors",
+        "file": "src/systems/terrainAnchors.js",
+        "kind": "private-mulberry32-instance",
+        "initResetSite": { "line": 40, "expression": "this._rng = ctx.helpers.mulberry32(ctx.helpers.hash32(seed, 'terrainAnchors'))" },
+        "consumeSites": {
+          "pattern": "this._rng()",
+          "count": 4,
+          "representativeLines": [84, 85, 86, 95]
+        },
+        "continuationState": {
+          "location": "this._rng only",
+          "savedRestored": false,
+          "savePath": "none"
+        },
+        "inObservatoryCanonicalHash": {
+          "rngSeedNumberHashed": false,
+          "note": "Private stream; not on state"
+        }
+      },
+      {
+        "system": "lootShards",
+        "file": "src/systems/lootShards.js",
+        "kind": "private-mulberry32-instance",
+        "initResetSite": { "line": 29, "expression": "this._rng = ctx.helpers.mulberry32(ctx.helpers.hash32(seed, 'lootShards'))" },
+        "consumeSites": {
+          "pattern": "this._rng()",
+          "count": 2,
+          "representativeLines": [61, 63]
+        },
+        "continuationState": {
+          "location": "this._rng only",
+          "savedRestored": false,
+          "savePath": "none"
+        },
+        "inObservatoryCanonicalHash": {
+          "rngSeedNumberHashed": false
+        }
+      },
+      {
+        "system": "combat",
+        "file": "src/systems/combat.js",
+        "kind": "private-mulberry32-instance",
+        "initResetSite": { "line": 298, "expression": "this.rng = mulberry32(hash32(ctx.state.meta.seed, 'combat'))" },
+        "consumeSites": {
+          "representativeLines": [454, 621],
+          "role": "debris/scatter and rng handle export"
+        },
+        "continuationState": {
+          "location": "this.rng only",
+          "savedRestored": false,
+          "savePath": "rebuilt from meta.seed on init; mid-stream counter lost"
+        },
+        "inObservatoryCanonicalHash": {
+          "rootKeyInCanonical": true,
+          "rootKey": "combat",
+          "note": "state.combat tree is hashed; private this.rng is not on state"
+        }
+      },
+      {
+        "system": "sectorSim",
+        "file": "src/systems/sectorSim.js",
+        "kind": "unused-private-rng-plus-serialized-counter-stream",
+        "initResetSite": { "fn": "_initRng", "line": 174 },
+        "consumeSites": {
+          "pattern": "this._rng()",
+          "count": 0,
+          "representativeLines": [187, 189],
+          "status": "unused",
+          "role": "_rng() is defined (lines 187-189) but has NO call sites at 8610102d — definition/body are the only hits. Private this.rng mulberry32 position can never be lost across a checkpoint because it is never consumed."
+        },
+        "actualEntropyPath": {
+          "method": "_sectorStream(sectorId, counter)",
+          "definedAt": 182,
+          "consumeSite": { "line": 533, "expression": "ss.meta.transitCounter++; this._sectorStream(...)" },
+          "counterField": "state.sectorSim.meta.transitCounter",
+          "serialized": true,
+          "serializeLines": [632, 659, 689],
+          "note": "Runtime sector entropy is driven by serialized transitCounter + hash32-derived per-call streams, NOT by this._rng. That path IS restorable."
+        },
+        "continuationState": {
+          "location": "state.sectorSim.meta.transitCounter (live entropy); this.rng/_rng unused",
+          "savedRestored": true,
+          "savePath": "transitCounter is serialized/restored (659/689). Dead this._rng path needs no migration effort — do not treat sectorSim as consumed-and-noncontinuable.",
+          "migrationPriority": "none-for-private-rng — real continuation already via transitCounter"
+        },
+        "inObservatoryCanonicalHash": {
+          "rootKeyInCanonical": true,
+          "rootKey": "sectorSim",
+          "rngSeedNumberHashed": true,
+          "note": "meta.rngSeed/transitCounter live under sectorSim root; private this.rng unused and not on state"
+        }
+      },
+      {
+        "system": "claims",
+        "file": "src/systems/claims.js",
+        "kind": "drawSeeded-on-state",
+        "initResetSite": { "line": 1022, "expression": "claims.meta.rngSeed default" },
+        "consumeSites": {
+          "pattern": "this._rng()",
+          "count": 4,
+          "representativeLines": [559, 651, 658, 667]
+        },
+        "continuationState": {
+          "location": "state.claims.meta.rngSeed",
+          "savedRestored": true,
+          "savePath": "serialize copies claims.meta including rngSeed; _rng uses drawSeeded (1029)"
+        },
+        "inObservatoryCanonicalHash": {
+          "rootKeyInCanonical": true,
+          "rootKey": "claims",
+          "rngSeedNumberHashed": true
+        }
+      },
+      {
+        "system": "story",
+        "file": "src/systems/story.js",
+        "kind": "drawSeeded-on-state",
+        "initResetSite": { "lines": [1350, 1367], "expression": "s.rngSeed = hash32(meta.seed, 'story')" },
+        "consumeSites": {
+          "pattern": "this._rng()",
+          "count": 2,
+          "representativeLines": [385, 393]
+        },
+        "continuationState": {
+          "location": "state.story.rngSeed",
+          "savedRestored": true,
+          "savePath": "state.story round-trips via missions/story serialize; drawSeeded at 402"
+        },
+        "inObservatoryCanonicalHash": {
+          "rootKeyInCanonical": true,
+          "rootKey": "story",
+          "rngSeedNumberHashed": true
+        }
+      },
+      {
+        "system": "intervention",
+        "file": "src/systems/intervention.js",
+        "kind": "drawSeeded-on-state",
+        "initResetSite": { "lines": [32, 131], "expression": "state.interventionMeta = { rngSeed: hash32(...) }" },
+        "consumeSites": {
+          "pattern": "this._rng()",
+          "count": 3,
+          "representativeLines": [61, 62, 67]
+        },
+        "continuationState": {
+          "location": "state.interventionMeta.rngSeed",
+          "savedRestored": false,
+          "savePath": "none — saveSystem.js has zero capture/restore entries for interventionMeta (not in _saveCapturePlan / serializeData). drawSeeded advances the live seed, but a fresh load re-inits interventionMeta and does not restore mid-stream rngSeed. Classification: consumed-but-not-restored. (Note: restore clears state.interventions = [] but that is the event list, not interventionMeta.rngSeed.)"
+        },
+        "inObservatoryCanonicalHash": {
+          "rootKeyInCanonical": true,
+          "rootKey": "interventionMeta",
+          "rngSeedNumberHashed": true,
+          "note": "rngSeed hashed while present live; not rehydrated on save load"
+        }
+      },
+      {
+        "system": "missions",
+        "file": "src/systems/missions.js",
+        "kind": "counter-entropy-feeding-hash32",
+        "distinction": "Instance counter feeding hash32 to seed a local Mulberry32 per spawn — NOT a stored RNG function / closed-over stream position. Still a real divergence source if not migrated.",
+        "initResetSite": {
+          "lines": [444, 3963],
+          "expression": "this._spawnSeq = 0",
+          "note": "444 constructor/init comment: disambiguates re-spawns of the same mission target across visits; 3963 reset on reload/restart path"
+        },
+        "consumeSites": {
+          "line": 3208,
+          "expression": "const seed = helpers.hash32 ? helpers.hash32(this.state.meta.seed, m.id, this._spawnSeq++) : (this._spawnSeq++ + 1)",
+          "role": "seeds a local Mulberry32 stream per mission-target spawn; increments counter"
+        },
+        "continuationState": {
+          "location": "this._spawnSeq (system instance counter)",
+          "savedRestored": false,
+          "savePath": "none — missions.serialize()/deserialize() and saveSystem mission bag do not persist _spawnSeq. Effect: if a checkpoint follows mission-target generation and a later sector revisit respawns targets in a fresh simulation, the restored run restarts _spawnSeq at 0 and diverges."
+        },
+        "inObservatoryCanonicalHash": {
+          "rootKeyInCanonical": true,
+          "rootKey": "missions",
+          "rngSeedNumberHashed": false,
+          "note": "missions state bag is hashed; private this._spawnSeq is not on state"
+        }
+      },
+      {
+        "system": "uniqueWrecks",
+        "file": "src/systems/uniqueWrecks.js",
+        "kind": "ephemeral-local-mulberry32",
+        "initResetSite": { "line": 776, "expression": "const rng = mulberry32(hash32(own.programSeed, def.id, ...))" },
+        "consumeSites": {
+          "representativeLines": [776, 797],
+          "role": "per-encounter planEncounterShape; not a long-lived instance field"
+        },
+        "continuationState": {
+          "location": "local const only",
+          "savedRestored": false,
+          "savePath": "none — re-derived from programSeed + ids when encounter is planned"
+        },
+        "inObservatoryCanonicalHash": {
+          "rngSeedNumberHashed": false,
+          "note": "Ephemeral; not a system-held stream"
+        }
+      },
+      {
+        "system": "asteroidSites",
+        "file": "src/systems/asteroidSites.js",
+        "kind": "drawSeeded-on-state",
+        "initResetSite": { "line": 269, "expression": "sites.meta.rngSeed default" },
+        "consumeSites": {
+          "representativeLines": [1343],
+          "role": "drawSeeded(state.sites.meta, 'rngSeed', ...)"
+        },
+        "continuationState": {
+          "location": "state.sites.meta.rngSeed",
+          "savedRestored": true,
+          "savePath": "serialize/deserialize copy meta.rngSeed (234, 242)"
+        },
+        "inObservatoryCanonicalHash": {
+          "rootKeyInCanonical": false,
+          "note": "state.sites is not a CANONICAL_ROOT_KEYS entry — stream continuation seed is not in Observatory hash even if saved"
+        }
+      }
+    ],
+    "relatedEphemeralFactories": [
+      {
+        "file": "src/systems/ambushSignatures.js",
+        "line": 164,
+        "note": "local mulberry32(seed) for signature generation"
+      },
+      {
+        "file": "src/systems/contractClauses.js",
+        "line": 44,
+        "note": "local mulberry32(hash32(seed, offer.id, 'clause'))"
+      },
+      {
+        "file": "src/systems/asteroidFormationModel.js",
+        "line": 456,
+        "note": "makeStream(seed, label) per anchor — pure generation"
+      }
+    ],
+    "systemCountInventoried": 15,
+    "privateOrNonContinuableCount": 9,
+    "privateOrNonContinuable": [
+      "weapons", "terrainAnchors", "lootShards", "combat", "world", "uniqueWrecks",
+      "traffic", "intervention", "missions"
+    ],
+    "privateOrNonContinuableNotes": {
+      "removedFromCount": {
+        "sectorSim": "Reclassified: private _rng is defined but unused; live entropy via serialized transitCounter/_sectorStream is restorable. Kept in streams[] for completeness with unused flag."
+      },
+      "added": {
+        "missions": "this._spawnSeq counter-entropy feeding hash32 — not persisted; real post-checkpoint divergence source.",
+        "traffic": "state.traffic.rngSeed consumed via drawSeeded but saveSystem has no capture/restore path.",
+        "intervention": "state.interventionMeta.rngSeed consumed via drawSeeded but saveSystem has no capture/restore path."
+      }
+    },
+    "listedButNotNoncontinuable": [
+      {
+        "system": "sectorSim",
+        "reason": "unused this._rng; restorable transitCounter path owns real entropy"
+      }
+    ]
   },
   "seedPropagation": {
     "path": [
@@ -174,7 +605,7 @@
       },
       {
         "file": "src/systems/flightV3.js",
-        "line": 1118,
+        "line": 1109,
         "call": "performance.now / Date.now via nowMs()",
         "classification": "DIAGNOSTIC",
         "note": "only _diag.tickMs timing"
@@ -188,10 +619,10 @@
       },
       {
         "file": "src/systems/input.js",
-        "lines": [639, 665, 692, 706, 725, 972],
+        "lines": [505, 531, 592, 611],
         "call": "performance.now",
         "classification": "DIAGNOSTIC/presentation",
-        "note": "KBM activity timestamps + auto-target path drawing; not sim dt authority"
+        "note": "KBM activity timestamps only at 8610102d; not sim dt authority. (Dirty tree adds further performance.now sites for auto-target path drawing — workTreeOnly, not baseline.)"
       },
       {
         "file": "src/systems/gamepad.js",
@@ -201,7 +632,7 @@
       },
       {
         "file": "src/systems/sectorSim.js",
-        "lines": [567, 606, 631, 656],
+        "lines": [566, 606, 631, 656],
         "call": "Date.now",
         "classification": "GAMEPLAY-affecting (offline catch-up UX mapping)",
         "note": "lastWallT stamps offline absence → capped days; field kernel itself uses simTime. Absent from sf-sim curated list."
@@ -291,10 +722,42 @@
     "contrast": "masslineControlLab + pq017ClosedLoopControlHarness use tick-indexed createSimulation steps and transitionFlightKeyState — preferred pattern for Phase 3 lab."
   },
   "coverageVsDeterministicCheckpointTarget": {
-    "targetDescription": "Directive §14-class deterministic checkpoint: full restorable sim entropy + semantic state + input at tick N.",
+    "targetDescription": "Directive §14-class deterministic checkpoint: full restorable sim entropy + semantic state + input grammar state at tick N.",
+    "omissionKinds": {
+      "entityLevelRedaction": {
+        "set": "OMIT_CANONICAL_KEYS",
+        "keys": [
+          "rng", "spatialHash", "mesh", "view", "obj", "prevPos", "prevRot", "render", "audio",
+          "observatory", "observatoryHooks", "_observatory"
+        ],
+        "meaning": "Present on state/entities but stripped during canonicalization."
+      },
+      "rootKeysStructurallyAbsent": {
+        "meaning": "Never included in CANONICAL_ROOT_KEYS — not selected into canonicalStateSnapshot at all.",
+        "checkpointCritical": ["input", "settings"],
+        "alsoAbsent": [
+          "camera", "bounds", "accumulator", "aiEncounter", "npcJobs", "ui", "content",
+          "render", "vfx", "audioRuntime", "perfRuntime", "save", "spatialHash", "rng",
+          "entities", "entityList", "nextEntityId", "freeIds"
+        ]
+      }
+    },
+    "inputAndSettingsExclusion": {
+      "status": "GAP",
+      "fact": "Because input and settings are absent from CANONICAL_ROOT_KEYS, canonicalStateHash alone is INSUFFICIENT as a checkpoint-equality oracle for input-differing or settings-differing runs. Two runs that differ only in held/edge-triggered input at tick N (or in settings) produce identical canonicalStateHash values.",
+      "directiveSection14": "Future deterministic checkpoint must add an explicit input-grammar-state digest and a settings digest; sampleAppliedInput already clones state.input for Observatory cadence but that path is separate from canonicalStateHash.",
+      "relatedExistingSampler": {
+        "fn": "sampleAppliedInput",
+        "file": "src/observability/sessionSamplers.js",
+        "note": "Clones state.input for input cadence samples; not folded into canonicalStateHash"
+      }
+    },
     "gaps": [
       "state.rng continuation not in Observatory hash or save-visible stream counter",
-      "canonical hash omits rng by design (OMIT_CANONICAL_KEYS)",
+      "system-owned noncontinuable entropy (weapons, terrainAnchors, lootShards, combat, world.rng, uniqueWrecks, traffic.rngSeed, interventionMeta.rngSeed, missions._spawnSeq) lack centralized serializable continuation — gap BROADER than state.rng (see systemOwnedRngStreams). sectorSim private _rng is unused; its live path uses restorable transitCounter",
+      "canonical hash entity-level redaction omits nested rng keys by design (OMIT_CANONICAL_KEYS); top-level state.rng is separately structurally absent from CANONICAL_ROOT_KEYS",
+
+      "root keys input and settings are NEVER IN CANONICAL_ROOT_KEYS — canonicalStateHash insufficient as checkpoint-equality oracle for input/settings-differing runs; §14 needs explicit input-grammar-state + settings digests",
       "no unified runtime manifest of systems+flags+backends for a checkpoint",
       "blank New Game seed uses wall-clock/Math.random",
       "many live probes still wall-time rather than tick-indexed",

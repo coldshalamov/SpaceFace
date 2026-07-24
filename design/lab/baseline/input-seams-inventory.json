@@ -2,11 +2,16 @@
   "schema": "spaceface.labInputSeamsInventory.v1",
   "recordedAt": "2026-07-24T04:40:00.000Z",
   "head": "8610102d89a4c122e088205eb46739590c6a477e",
+  "provenance": {
+    "head": "8610102d89a4c122e088205eb46739590c6a477e",
+    "lineNumberAuthority": "All line numbers refer to revision 8610102d (recorded head) via `git show 8610102d:<path>`. Concurrent uncommitted working-tree edits to input.js and related files are intentionally NOT reflected.",
+    "workTreeOnlyCitations": []
+  },
   "summary": "Inventory of pure/deterministic input seams that Phase 2 can build on when separating hardware from semantics.",
   "primaryTransition": {
     "fn": "transitionFlightKeyState",
     "file": "src/systems/input.js",
-    "line": 423,
+    "line": 422,
     "signature": "transitionFlightKeyState(state, currentKeys = {}, { code, pressed, blocked } = {})",
     "purity": "deterministic pure transition over key-code map; no DOM, no wall clock",
     "behavior": [
@@ -19,7 +24,7 @@
     "consumers": [
       {
         "file": "src/systems/input.js",
-        "lines": [659, 670],
+        "lines": [525, 536],
         "role": "live DOM keyboard listeners via applyFlightKeyTransition"
       },
       {
@@ -80,8 +85,9 @@
       ],
       "wallClockUses": {
         "file": "src/systems/input.js",
-        "lines": [639, 665, 692, 706, 725, 972],
-        "classification": "presentation/modality timestamps — not flight axis authority"
+        "lines": [505, 531, 592, 611],
+        "classification": "presentation/modality timestamps — not flight axis authority",
+        "note": "At 8610102d only KBM activity performance.now sites; auto-target path-drawing wall-clock uses exist only in dirty working tree (not baseline)."
       }
     },
     "semanticsLayer": {
@@ -109,7 +115,7 @@
     {
       "name": "travelFlag gate on travel input shape",
       "file": "src/systems/input.js",
-      "line": 142,
+      "line": 141,
       "role": "env-tier travelBurn flag gates travel-drive fields"
     },
     {
@@ -125,11 +131,11 @@
   ],
   "factVerification": [
     {
-      "fact": "transitionFlightKeyState exported at input.js:423",
+      "fact": "transitionFlightKeyState exported at input.js:422",
       "status": "CONFIRMED"
     },
     {
-      "fact": "live consumers at 659,670; harness at pq017ClosedLoopControlHarness:323",
+      "fact": "live consumers at 525,536; harness at pq017ClosedLoopControlHarness:323",
       "status": "CONFIRMED"
     },
     {

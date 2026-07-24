@@ -3,6 +3,11 @@
   "recordedAt": "2026-07-24T04:40:00.000Z",
   "head": "8610102d89a4c122e088205eb46739590c6a477e",
   "branch": "master",
+  "provenance": {
+    "head": "8610102d89a4c122e088205eb46739590c6a477e",
+    "lineNumberAuthority": "All line numbers refer to revision 8610102d (recorded head) via `git show 8610102d:<path>`. Concurrent uncommitted working-tree edits are intentionally NOT reflected.",
+    "workTreeOnlyCitations": []
+  },
   "headlessHost": {
     "file": "src/core/sim.js",
     "createFn": "createSimulation",

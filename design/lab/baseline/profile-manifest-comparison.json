@@ -2,6 +2,11 @@
   "schema": "spaceface.labProfileManifestComparison.v1",
   "recordedAt": "2026-07-24T04:40:00.000Z",
   "head": "8610102d89a4c122e088205eb46739590c6a477e",
+  "provenance": {
+    "head": "8610102d89a4c122e088205eb46739590c6a477e",
+    "lineNumberAuthority": "All line numbers refer to revision 8610102d (recorded head) via `git show 8610102d:<path>`. Concurrent uncommitted working-tree edits are intentionally NOT reflected.",
+    "workTreeOnlyCitations": []
+  },
   "summary": "47-A golden determinism rests on three independent layers. Live browser play is a superset of systems and env-gated features. The only existing profile concept locks gameplay backends.",
   "threeLayer47aDeterminism": {
     "prominence": "KEY STRUCTURAL INSIGHT",
@@ -107,25 +112,25 @@
   "highImpactFlagReaders": [
     {
       "file": "src/systems/flightV3.js",
-      "line": 141,
+      "line": 142,
       "call": "massline2Flag('throw')",
       "role": "self-sling / throw-arm impulse tag"
     },
     {
       "file": "src/systems/flightV3.js",
-      "line": 146,
+      "line": 147,
       "call": "typeof window !== 'undefined'",
       "role": "DIAGNOSTIC — installs window.__SF_FLIGHT_V3__ debug snapshot only"
     },
     {
       "file": "src/systems/flightV3.js",
-      "line": 514,
-      "call": "massline2Flag('throw') / travelFlag('dashMomentum')",
+      "lines": [525, 526],
+      "call": "travelFlag('dashMomentum') / massline2Flag('throw')",
       "role": "physicsEarnedMomentum composition"
     },
     {
       "file": "src/systems/flightV3.js",
-      "line": 525,
+      "line": 537,
       "call": "massline2Flag('cloak')",
       "role": "coastAssistScale while cloaked"
     },
@@ -163,7 +168,7 @@
     },
     {
       "file": "src/systems/tetherGameplay.js",
-      "line": 1007,
+      "line": 990,
       "call": "massline2Flag('contextAttach')"
     },
     {
@@ -174,7 +179,7 @@
     },
     {
       "file": "src/systems/input.js",
-      "line": 142,
+      "line": 141,
       "call": "travelFlag('travelBurn')",
       "role": "travel-drive input shape gated"
     }

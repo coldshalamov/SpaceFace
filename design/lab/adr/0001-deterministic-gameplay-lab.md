@@ -4,6 +4,9 @@
 - **Date:** 2026-07-24
 - **Deciders:** Phase 0 lab characterization (implementer)
 - **Tags:** determinism, sim-host, validation, lab, profiles
+- **Provenance:** Baseline inventories under `design/lab/baseline/` cite line numbers at
+  revision `8610102d` (recorded head). Concurrent uncommitted working-tree edits are
+  intentionally not reflected.
 
 > Phase 0 only. This ADR records what exists and why a later manifest/profile/broker
 > architecture is motivated. It does **not** decide Phase 1–5 implementation detail.
