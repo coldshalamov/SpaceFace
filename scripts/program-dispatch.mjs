@@ -8,9 +8,9 @@ import { fileURLToPath } from 'node:url';
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIR, '..');
 const QUEUE_PATH = path.join(ROOT, 'design/program/roadmap/program-queue.json');
-const ACTIVE_DIR = path.join(ROOT, 'design/program/roadmap/active');
 const TERMINAL_DEPENDENCY_STATES = new Set(['integrated', 'historical']);
 const NON_DISPATCH_STATES = new Set(['integrated', 'historical', 'deferred']);
+const NON_DISPATCH_PACKET_LIFECYCLES = new Set(['blocked', 'deferred', 'historical', 'integrated']);
 
 function fail(message, code = 2) {
   console.error(`program-dispatch: ${message}`);
@@ -124,7 +124,7 @@ if (args.includes('--next') || args.length === 0) {
   const row = rows
     .filter((candidate) => packetPath(candidate.id))
     .filter((candidate) => !NON_DISPATCH_STATES.has(candidate.state))
-    .filter((candidate) => packetMetadata(packetPath(candidate.id)).lifecycle !== 'blocked')
+    .filter((candidate) => !NON_DISPATCH_PACKET_LIFECYCLES.has(packetMetadata(packetPath(candidate.id)).lifecycle))
     .filter((candidate) => (candidate.dependsOn || []).every((id) => TERMINAL_DEPENDENCY_STATES.has(byId.get(id)?.state)))
     .sort((a, b) => (a.priority ?? Number.MAX_SAFE_INTEGER) - (b.priority ?? Number.MAX_SAFE_INTEGER))[0];
   if (!row) fail('no dependency-ready active packet found', 1);
