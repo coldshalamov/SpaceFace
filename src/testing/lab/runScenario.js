@@ -118,6 +118,9 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       }
     }
 
+    // Consume lab.* parameter overlays against spawned entities (FIX 9).
+    applyLabParamOverlays(state, aliasMap, playerEntity, overlayCtx.params);
+
     // Prepare physics (Rapier)
     const physicsSys = runtime.getSystem('physics');
     if (physicsSys && typeof physicsSys.prepareBackend === 'function') {
@@ -176,7 +179,33 @@ export async function runLabScenario(scenarioDoc, options = {}) {
         };
       }
       attachmentIds.push(created.attachment.id);
-      restLength0 = finite(created.attachment.restLength, att.restLength);
+
+      // FIX 10: honor authored restLength (and lab.lineLength overlay) via reel after create.
+      const derivedRest = created.attachment.restLength;
+      const overlayLine = overlayCtx.params && overlayCtx.params.lineLength;
+      const requestedRest = Number.isFinite(att.restLength)
+        ? att.restLength
+        : (Number.isFinite(overlayLine) ? overlayLine : null);
+      restLength0 = derivedRest;
+      if (Number.isFinite(requestedRest) && requestedRest >= 0) {
+        const delta = requestedRest - derivedRest;
+        if (Math.abs(delta) > 1e-9) {
+          const reeled = kernel.attachments.reel(created.attachment.id, delta);
+          if (!reeled || !reeled.ok) {
+            runtime.dispose();
+            return {
+              schema: 'spaceface.labRunResult.v1',
+              ok: false,
+              exitClass: 3,
+              status: 'infra',
+              runId,
+              error: `attachment restLength reel failed (${reeled && reeled.reason})`,
+            };
+          }
+        }
+        restLength0 = created.attachment.restLength;
+      }
+
       if (owner && owner.isPlayer || ownerId === state.playerId) {
         state.player.tether = {
           ...(state.player.tether || {}),
@@ -196,6 +225,7 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       const hostId = state.playerId;
       const anchorId = aliasMap[(canonical.attachments[0] && canonical.attachments[0].targetAlias)] || null;
       state._lab = {
+        ...(state._lab || {}),
         hostId,
         anchorId,
         kernel,
@@ -204,6 +234,11 @@ export async function runLabScenario(scenarioDoc, options = {}) {
         controller,
         lastCommand: null,
       };
+      if (Number.isFinite(overlayCtx.params.maxImpulse)) {
+        state._lab.maxImpulse = overlayCtx.params.maxImpulse;
+      }
+    } else if (Number.isFinite(overlayCtx.params.maxImpulse)) {
+      state._lab = { ...(state._lab || {}), maxImpulse: overlayCtx.params.maxImpulse };
     }
 
     // Optional production orbit assist mode via world fixture / overlay
@@ -213,20 +248,26 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       }
     }
 
-    const inputDriver = createInputTapeDriver(canonical.inputTape);
+    // public-input must go through the real massline grammar (FIX 5) — no packet hardcoding.
+    const inputDriver = createInputTapeDriver(canonical.inputTape, {
+      masslineGrammar: options.masslineGrammar,
+      allowMasslinePacketOverride: canonical.evidenceClass !== 'public-input',
+    });
     const dt = canonical.dt || SIM_DT;
     const ticks = canonical.ticks | 0;
     const sampleEvery = (canonical.trace && canonical.trace.sampleEvery) || 1;
-    const trace = [];
+    // Display/export trace may sample; oracle always sees every tick (FIX 8).
+    const displayTrace = [];
+    const oracleTrace = [];
     const inputLog = [];
     const midCheckpoints = [];
     const checkpointTicks = new Set((canonical.checkpoints || []).map((c) => c.tick | 0));
 
     // Optional mid-run save/load
-    const saveLoadAt = options.saveLoadAt != null
-      ? options.saveLoadAt
-      : ((canonical.checkpoints || []).find((c) => c.kind === 'save-load') || {}).tick;
+    // suppressSaveLoad / saveLoadAt:null → genuine uninterrupted control arm (FIX 1).
+    const saveLoadAt = resolveSaveLoadAt(options, canonical);
     let saveLoadPerformed = false;
+    let saveLoadRestoreCount = 0;
 
     for (let tick = 0; tick < ticks; tick++) {
       const host = state.entities.get(state.playerId);
@@ -237,52 +278,52 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       });
       inputLog.push({ tick, ...applied, keys: applied.keys });
 
-      // Orbit-assist public intent path when fixture requests it and no lab controller
-      if (canonical.world.fixtureProfile === 'massline-orbit' && !controller) {
-        const acquiring = tick < 12;
-        state.input.actions.massline = {
-          phase: 'line-control',
-          latch: false,
-          cut: false,
-          lineControl: true,
-          lineLength: acquiring ? -1 : 0,
-          reelIn: acquiring ? 1 : 0,
-          payOut: 0,
-          orbitDirection: 1,
-          pump: false,
-          buffered: false,
-          source: 'lab-public-intent',
-        };
-        state.input.moveZ = 0;
-        state.input.actions.reelDelta = 0;
+      // FIX 7: dispatch frame commands once at their authored tick (not sticky last-wins).
+      if (applied.frameCommands && applied.frameCommands.length) {
+        const cmdResult = applyLabFrameCommands(runtime, state, applied.frameCommands, aliasMap);
+        if (!cmdResult.ok) {
+          runtime.dispose();
+          return {
+            schema: 'spaceface.labRunResult.v1',
+            ok: false,
+            exitClass: 4,
+            status: 'invalid-config',
+            runId,
+            error: cmdResult.reason || 'frame command rejected',
+          };
+        }
       }
 
       runtime.step(dt);
 
       if (Number.isInteger(saveLoadAt) && tick === saveLoadAt && !saveLoadPerformed) {
-        const ok = await performSaveLoad(runtime, state, options);
+        const loadResult = await performSaveLoad(runtime, state, options);
         saveLoadPerformed = true;
-        if (!ok) {
+        if (!loadResult.ok) {
           runtime.dispose();
           return {
             schema: 'spaceface.labRunResult.v1',
             ok: false,
-            exitClass: 3,
-            status: 'infra',
+            exitClass: loadResult.exitClass != null ? loadResult.exitClass : 4,
+            status: loadResult.status || 'unsupported',
             runId,
-            error: 'save/load continuation failed',
+            error: loadResult.reason || 'save/load continuation failed',
           };
         }
+        saveLoadRestoreCount += loadResult.restoreCount | 0;
       }
 
+      const sample = makeSample(tick, state, {
+        aliasMap,
+        kernel,
+        attachmentId: attachmentIds[0],
+        restLength0,
+        observerEnabled,
+      });
+      // FIX 8: every-tick oracle stream independent of sampleEvery.
+      oracleTrace.push(sample);
       if (tick % sampleEvery === 0 || tick === ticks - 1) {
-        trace.push(makeSample(tick, state, {
-          aliasMap,
-          kernel,
-          attachmentId: attachmentIds[0],
-          restLength0,
-          observerEnabled,
-        }));
+        displayTrace.push(sample);
       }
 
       if (checkpointTicks.has(tick)) {
@@ -306,8 +347,9 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       observerEnabled,
     };
 
+    // Oracles consume the full every-tick stream (invariants cannot miss inter-sample NaNs).
     const oracle = evaluateOracles({
-      trace,
+      trace: oracleTrace,
       metrics: canonical.metrics,
       assertions: canonical.assertions,
       ctx,
@@ -320,7 +362,7 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       finalCheckpoints.deterministicCovered = stripCheckpointDebug(finalCheckpoints.deterministicCovered);
     }
 
-    const traceHash = sha256(canonicalStringify(trace));
+    const traceHash = sha256(canonicalStringify(oracleTrace));
     const failure = oracle.ok
       ? null
       : failureFromOracleEval(oracle, {
@@ -331,7 +373,7 @@ export async function runLabScenario(scenarioDoc, options = {}) {
         profileId: runtime.config && runtime.config.profileId,
         scenarioDigest,
         inputDigest,
-        trace,
+        trace: oracleTrace,
         inputLog,
         state,
         aliasMap,
@@ -354,12 +396,14 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       inputDigest,
       overlay: overlayReproKey(canonical.parameterOverlay),
       overlayApplied: overlayResult.applied,
+      overlayParams: { ...overlayCtx.params },
       fingerprint: runtime.fingerprint,
       params: {
         restLength0,
         attachmentActiveAtEnd,
         saveLoadPerformed,
         saveLoadAt: saveLoadPerformed ? saveLoadAt : null,
+        saveLoadRestoreCount,
       },
       metrics: oracle.metrics,
       oracle: {
@@ -382,7 +426,7 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       },
     };
 
-    if (verbosity >= 3) result.trace = trace;
+    if (verbosity >= 3) result.trace = sampleEvery === 1 ? oracleTrace : displayTrace;
     if (verbosity >= 4) result.inputLog = inputLog;
 
     runtime.dispose();
@@ -411,39 +455,205 @@ export function validateLabScenario(doc, options = {}) {
   return validateSimScenario(doc, options);
 }
 
+/**
+ * Resolve mid-run save/load tick.
+ * - suppressSaveLoad / saveLoadAt === null → no restore (control arm)
+ * - integer saveLoadAt → that tick
+ * - else fall back to scenario save-load checkpoint tick
+ */
+export function resolveSaveLoadAt(options = {}, canonical = {}) {
+  if (options.suppressSaveLoad === true) return null;
+  if (options.saveLoadAt === null) return null;
+  if (Number.isInteger(options.saveLoadAt)) return options.saveLoadAt;
+  if (options.saveLoadAt != null && Number.isFinite(Number(options.saveLoadAt))) {
+    return Math.floor(Number(options.saveLoadAt));
+  }
+  const cp = (canonical.checkpoints || []).find((c) => c.kind === 'save-load');
+  return cp && Number.isInteger(cp.tick | 0) ? (cp.tick | 0) : null;
+}
+
+/**
+ * Real serialize → loadEnvelope round-trip only. Never claim success without a restore (FIX 3).
+ * @returns {{ ok: boolean, restoreCount?: number, exitClass?: number, status?: string, reason?: string }}
+ */
 async function performSaveLoad(runtime, state, options = {}) {
   const saveSys = runtime.getSystem('save');
   if (saveSys && typeof saveSys.serialize === 'function' && typeof saveSys.loadEnvelope === 'function') {
     try {
       const envelope = saveSys.serialize('lab-save-load');
       const ok = saveSys.loadEnvelope(envelope, 'lab-save-load');
-      if (!ok) return false;
+      if (!ok) {
+        return { ok: false, exitClass: 3, status: 'infra', reason: 'save loadEnvelope returned false' };
+      }
       state.settings.gameplay.flightBackend = 'v3';
       const physicsSys = runtime.getSystem('physics');
       if (physicsSys && typeof physicsSys.prepareBackend === 'function') {
         await physicsSys.prepareBackend(state, { reset: true });
       }
-      return true;
-    } catch {
-      return false;
+      return { ok: true, restoreCount: 1 };
+    } catch (err) {
+      return {
+        ok: false,
+        exitClass: 3,
+        status: 'infra',
+        reason: err && err.message ? err.message : 'save/load threw',
+      };
     }
   }
-  // Focused fixture without save system: checkpoint contract uses pose restore via entity snapshot.
-  // Record that we used the lab runtime checkpoint path.
-  if (options.allowRuntimeCheckpoint !== false) {
-    state._labRuntimeCheckpoint = {
-      tick: state.tick | 0,
-      simTime: state.simTime,
-      entities: (state.entityList || []).filter((e) => e.alive).map((e) => ({
-        id: e.id,
-        pos: e.pos ? { x: e.pos.x, z: e.pos.z } : null,
-        vel: e.vel ? { x: e.vel.x, z: e.vel.z } : null,
-        rot: e.rot,
-      })),
+  // No silent no-op / snapshot-only path. Bundles without save cannot claim save/load proof.
+  if (options.allowRuntimeCheckpoint === true) {
+    return {
+      ok: false,
+      exitClass: 4,
+      status: 'unsupported',
+      reason: 'runtime checkpoint is not a save/load proof; include the save system or omit save-load comparison',
     };
-    return true;
   }
-  return false;
+  return {
+    ok: false,
+    exitClass: 4,
+    status: 'unsupported',
+    reason: 'save/load requires the save system (serialize/loadEnvelope); no-op fallback removed',
+  };
+}
+
+/**
+ * Execute tape frame commands once (sf-sim applyTapeCommands pattern) (FIX 7).
+ */
+function applyLabFrameCommands(runtime, state, commands, aliasMap) {
+  if (!Array.isArray(commands) || commands.length === 0) return { ok: true };
+  const helpers = (runtime.getHelpers && runtime.getHelpers()) || {};
+
+  for (const command of commands) {
+    if (!command) continue;
+    if (command.kind === 'scenarioBranch') {
+      if (typeof helpers.applyScenarioBranch !== 'function') {
+        return {
+          ok: false,
+          reason: 'scenarioBranch command unsupported in this bundle (applyScenarioBranch helper unavailable)',
+        };
+      }
+      const result = helpers.applyScenarioBranch(command.branchId, {
+        source: command.source || 'lab-tape',
+      });
+      if (!result || !result.ok) {
+        return {
+          ok: false,
+          reason: `scenarioBranch rejected: ${command.branchId} (${result && result.reason || 'unknown'})`,
+        };
+      }
+      continue;
+    }
+    if (command.kind === 'combatAction') {
+      if (typeof helpers.requestCombatAction !== 'function') {
+        return {
+          ok: false,
+          reason: 'combatAction command unsupported in this bundle (requestCombatAction helper unavailable)',
+        };
+      }
+      const actor = resolveLabEntity(state, command.actor, aliasMap);
+      if (!actor) {
+        return { ok: false, reason: `combatAction actor did not resolve: ${command.actor}` };
+      }
+      const request = {
+        actorId: actor.id,
+        actionId: command.actionId,
+        source: { kind: command.source || 'player', controllerId: 'lab-tape' },
+      };
+      if (command.target != null) {
+        const target = resolveLabEntity(state, command.target, aliasMap);
+        if (!target) {
+          return { ok: false, reason: `combatAction target did not resolve: ${command.target}` };
+        }
+        request.targetId = target.id;
+      }
+      if (command.attachment != null) {
+        request.attachmentId = resolveLabAttachmentRef(state, command.attachment, actor.id);
+        if (request.attachmentId == null) {
+          return { ok: false, reason: `combatAction attachment did not resolve: ${command.attachment}` };
+        }
+      }
+      const result = helpers.requestCombatAction(request);
+      if (!result || !result.ok) {
+        return {
+          ok: false,
+          reason: `combatAction rejected: ${command.actionId} (${result && result.reason || 'unknown'})`,
+        };
+      }
+      continue;
+    }
+    return { ok: false, reason: `unsupported frame command kind: ${command.kind}` };
+  }
+  return { ok: true };
+}
+
+function resolveLabEntity(state, ref, aliasMap) {
+  if (ref == null) return state.entities.get(state.playerId) || null;
+  if (Number.isSafeInteger(ref)) return state.entities.get(ref) || null;
+  const id = String(ref);
+  if (id === 'player' || id === 'player_kestrel') return state.entities.get(state.playerId) || null;
+  if (aliasMap && aliasMap[id] != null) return state.entities.get(aliasMap[id]) || null;
+  return (state.entityList || []).find((entity) => {
+    const data = entity && entity.data || {};
+    return data.scenarioActorId === id || data.scenarioRole === id || data.scenarioAlias === id
+      || data.assetRef === id || data.defId === id;
+  }) || null;
+}
+
+function resolveLabAttachmentRef(state, ref, ownerId) {
+  const id = String(ref);
+  if (id !== 'latestOwned') return id;
+  const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId || {};
+  const latest = Object.values(attachments)
+    .filter((attachment) => attachment && attachment.state === 'active' && attachment.ownerId === ownerId)
+    .sort((a, b) => String(b.id).localeCompare(String(a.id)))[0];
+  return latest ? latest.id : null;
+}
+
+/**
+ * Apply lab.* overlay params that only make sense after entities exist (FIX 9).
+ */
+function applyLabParamOverlays(state, aliasMap, playerEntity, params = {}) {
+  if (!params || typeof params !== 'object') return;
+
+  if (Number.isFinite(params.entrySpeed) && playerEntity && playerEntity.vel) {
+    const sp = params.entrySpeed;
+    const vx = playerEntity.vel.x || 0;
+    const vz = playerEntity.vel.z || 0;
+    const mag = Math.hypot(vx, vz);
+    if (mag > 1e-9) {
+      playerEntity.vel.x = (vx / mag) * sp;
+      playerEntity.vel.z = (vz / mag) * sp;
+    } else {
+      const h = playerEntity.rot || 0;
+      playerEntity.vel.x = Math.cos(h) * sp;
+      playerEntity.vel.z = Math.sin(h) * sp;
+    }
+  }
+
+  if (Number.isFinite(params.anchorMass)) {
+    // Prefer attachment target alias "anchor", else first non-player entity.
+    let anchor = null;
+    if (aliasMap.anchor != null) anchor = state.entities.get(aliasMap.anchor);
+    if (!anchor) {
+      for (const [alias, id] of Object.entries(aliasMap)) {
+        if (alias === 'player') continue;
+        const e = state.entities.get(id);
+        if (e && e.id !== state.playerId) {
+          anchor = e;
+          break;
+        }
+      }
+    }
+    if (anchor) {
+      anchor.mass = params.anchorMass;
+      if (anchor.physicsBody) {
+        anchor.physicsBody.mass = params.anchorMass;
+        anchor.physicsBody.inertiaY = params.anchorMass * 8;
+        anchor.physicsBody.revision = (anchor.physicsBody.revision | 0) + 1;
+      }
+    }
+  }
 }
 
 function makeSample(tick, state, ctx) {
@@ -518,9 +728,14 @@ function finite(value, fallback) {
   return Number.isFinite(n) ? n : (fallback ?? 0);
 }
 
+/**
+ * Round finite numbers to 6 decimals. Preserve non-finite values so
+ * invariant.finiteState can detect NaN/Infinity (FIX 4). Never map NaN→0.
+ */
 function round6(n) {
+  if (n == null) return n;
   const x = Number(n);
-  if (!Number.isFinite(x)) return 0;
+  if (!Number.isFinite(x)) return x; // NaN / ±Infinity preserved
   return Math.round(x * 1e6) / 1e6;
 }
 

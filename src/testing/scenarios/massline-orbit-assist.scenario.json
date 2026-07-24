@@ -58,8 +58,13 @@
       "gameplay.orbitAssistStrength": "standard"
     }
   },
+  "inputEvents": [
+    { "tick": 0, "device": "keyboard", "code": "KeyF", "pressed": true, "sequence": 0 },
+    { "tick": 0, "device": "keyboard", "code": "KeyQ", "pressed": true, "sequence": 1 },
+    { "tick": 12, "device": "keyboard", "code": "KeyQ", "pressed": false, "sequence": 0 }
+  ],
   "frames": [
-    { "tick": 0, "input": { "moveX": 0, "moveZ": 0, "turnIntent": 0 } }
+    { "tick": 0, "input": { "moveX": 0, "moveZ": 0, "turnIntent": 1 } }
   ],
   "metrics": [
     { "name": "invariant.finiteState", "version": 1, "threshold": { "op": "==", "value": 1 } },
@@ -70,7 +75,7 @@
   "trace": { "signals": ["distance", "radiusError", "radialSpeed", "tension", "tangentFraction"], "sampleEvery": 1 },
   "fixtureExceptions": [
     "pre-existing attachment for orbit-assist measurement",
-    "focused system bundle; public-input evidence via massline input packet path"
+    "focused system bundle; public-input evidence via massline input grammar from raw KeyF/KeyQ events"
   ],
   "observer": { "enabled": false }
 }

@@ -334,6 +334,23 @@ export function validateSimScenario(doc, options = {}) {
     if (!Array.isArray(doc.assertions)) {
       issue('$.assertions', 'type', 'assertions must be an array');
     } else {
+      // Implemented assertion kinds only. Unimplemented temporal kinds are rejected
+      // so scenarios cannot certify untested behavior via silent pass (FIX 6).
+      const SUPPORTED_ASSERTION_KINDS = new Set([
+        'metric',
+        'quantitative',
+        'equivalence',
+        'settles',
+        'never',
+        'holds',
+        'eventByTick',
+        'temporal',
+      ]);
+      const UNIMPLEMENTED_ASSERTION_KINDS = new Set([
+        'precedes',
+        'eventInInterval',
+        'inputReleaseNextTick',
+      ]);
       doc.assertions.forEach((a, i) => {
         const p = `$.assertions[${i}]`;
         if (!a || typeof a !== 'object') {
@@ -343,6 +360,12 @@ export function validateSimScenario(doc, options = {}) {
         rejectUnknownKeys(a, ASSERTION_KEYS, p, issue);
         if (typeof a.kind !== 'string' || !a.kind) {
           issue(`${p}.kind`, 'required', 'assertion.kind is required');
+        } else if (UNIMPLEMENTED_ASSERTION_KINDS.has(a.kind)) {
+          issue(`${p}.kind`, 'unsupported-assertion',
+            `assertion kind "${a.kind}" is declared but not implemented — refuse silent pass`);
+        } else if (!SUPPORTED_ASSERTION_KINDS.has(a.kind)) {
+          issue(`${p}.kind`, 'unsupported-assertion',
+            `unknown assertion kind "${a.kind}"`);
         }
       });
     }

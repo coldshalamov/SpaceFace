@@ -11,17 +11,22 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
     ? options.saveLoadAt
     : Math.max(1, Math.floor(((scenarioDoc.ticks | 0) || 60) / 2));
 
+  // Control arm: explicit suppression — never restore, even if the scenario authors a
+  // save-load checkpoint. Without this, `saveLoadAt: undefined` falls back to the
+  // checkpoint tick and both arms perform the same restore (vacuous parity).
   const uninterrupted = await runLabScenario(scenarioDoc, {
     ...options,
     runId: options.runId ? `${options.runId}_unint` : undefined,
-    saveLoadAt: undefined,
+    suppressSaveLoad: true,
+    saveLoadAt: null,
   });
 
   const withSaveLoad = await runLabScenario(scenarioDoc, {
     ...options,
     runId: options.runId ? `${options.runId}_saveload` : undefined,
+    suppressSaveLoad: false,
     saveLoadAt,
-    allowRuntimeCheckpoint: true,
+    allowRuntimeCheckpoint: false,
   });
 
   if (uninterrupted.exitClass === 3 || withSaveLoad.exitClass === 3) {
@@ -39,9 +44,39 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
       schema: 'spaceface.labSaveLoadCompareResult.v1',
       ok: false,
       exitClass: 4,
-      status: 'invalid-config',
+      status: withSaveLoad.status === 'unsupported' || uninterrupted.status === 'unsupported'
+        ? 'unsupported'
+        : 'invalid-config',
       uninterrupted,
       withSaveLoad,
+    };
+  }
+
+  // Parity is only meaningful between two oracle-passing runs.
+  // Matching hashes of two failures is not a pass (e.g. impossible threshold both miss).
+  if (!uninterrupted.ok || !withSaveLoad.ok) {
+    const failedArms = [];
+    if (!uninterrupted.ok) failedArms.push('uninterrupted');
+    if (!withSaveLoad.ok) failedArms.push('withSaveLoad');
+    return {
+      schema: 'spaceface.labSaveLoadCompareResult.v1',
+      ok: false,
+      exitClass: 1,
+      status: 'arm-oracle-fail',
+      saveLoadAt,
+      failedArms,
+      armFailures: {
+        uninterrupted: armFailureSummary(uninterrupted),
+        withSaveLoad: armFailureSummary(withSaveLoad),
+      },
+      equivalence: {
+        'uninterrupted-eq-save-load': {
+          ok: false,
+          reason: `oracle failed on arm(s): ${failedArms.join(', ')}`,
+        },
+      },
+      uninterrupted: options.verbosity >= 2 ? uninterrupted : summarize(uninterrupted),
+      withSaveLoad: options.verbosity >= 2 ? withSaveLoad : summarize(withSaveLoad),
     };
   }
 
@@ -52,6 +87,7 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
   // require matching deterministic-covered hash; when full save path ran, compare semantic
   // entity poses at end if det-covered diverges (honest gap).
   const saveLoadPerformed = !!(withSaveLoad.params && withSaveLoad.params.saveLoadPerformed);
+  const controlRestores = (uninterrupted.params && uninterrupted.params.saveLoadRestoreCount) | 0;
   let match = h0 === h1;
   let contract = 'deterministic-covered';
 
@@ -81,6 +117,7 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
     status: match ? 'pass' : 'parity-fail',
     saveLoadAt,
     contract,
+    controlRestoreCount: controlRestores,
     uninterruptedHash: h0,
     saveLoadHash: h1,
     equivalence: {
@@ -101,6 +138,21 @@ function hashOf(result, kind) {
   if (!final) return null;
   const cp = kind === 'semantic' ? final.semantic : final.deterministicCovered;
   return cp && cp.hash;
+}
+
+function armFailureSummary(result) {
+  if (!result) return null;
+  return {
+    ok: result.ok,
+    exitClass: result.exitClass,
+    status: result.status,
+    oracle: result.oracle && {
+      ok: result.oracle.ok,
+      firstBadTick: result.oracle.firstBadTick,
+      failed: result.oracle.failed,
+    },
+    error: result.error || null,
+  };
 }
 
 function summarize(result) {

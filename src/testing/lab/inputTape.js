@@ -36,9 +36,11 @@ export function resolveFrameInput(frames, tick) {
 export function createInputTapeDriver(tape, options = {}) {
   const { events, frames } = normalizeTape(tape);
   let keys = Object.create(null);
-  const masslineGrammar = options.masslineGrammar !== false
-    ? createMasslineInputGrammar()
-    : null;
+  // Allow inject/spy grammar for tests; false disables; default creates production grammar.
+  const masslineGrammar = options.masslineGrammar === false
+    ? null
+    : (options.masslineGrammar || createMasslineInputGrammar());
+  const allowMasslinePacketOverride = options.allowMasslinePacketOverride !== false;
   let eventIndex = 0;
 
   // Pre-index events by tick for O(events) total over a run.
@@ -112,7 +114,8 @@ export function createInputTapeDriver(tape, options = {}) {
       state.input.actions = state.input.actions || {};
       state.input.actions.reelDelta = reelDelta;
 
-      // Massline grammar from real key holds (Space / KeyF) unless frame overrides the packet.
+      // Massline grammar from real key holds (Space / KeyF).
+      // public-input evidence class forbids hardcoded action packets (allowMasslinePacketOverride=false).
       if (masslineGrammar) {
         const tetherKey = !!(keys.KeyF || keys.Space);
         const held = frameInput.masslineHeld != null ? !!frameInput.masslineHeld : tetherKey;
@@ -128,14 +131,19 @@ export function createInputTapeDriver(tape, options = {}) {
           lineLength,
           orbitDirection,
         });
-        if (frameInput.massline && typeof frameInput.massline === 'object') {
+        if (allowMasslinePacketOverride && frameInput.massline && typeof frameInput.massline === 'object') {
           state.input.actions.massline = { ...packet, ...frameInput.massline };
         } else {
           state.input.actions.massline = { ...packet };
         }
-      } else if (frameInput.massline) {
+      } else if (allowMasslinePacketOverride && frameInput.massline) {
         state.input.actions.massline = { ...frameInput.massline };
       }
+
+      // Commands only fire at the frame's authored tick (not sticky last-wins).
+      const frameCommands = (frame && (frame.tick | 0) === (tick | 0) && Array.isArray(frame.commands))
+        ? frame.commands
+        : [];
 
       return {
         moveX,
@@ -146,7 +154,8 @@ export function createInputTapeDriver(tape, options = {}) {
         reelDelta,
         keys: { ...keys },
         massline: state.input.actions.massline || null,
-        frameCommands: (frame && frame.commands) || [],
+        frameCommands,
+        frameTick: frame ? (frame.tick | 0) : null,
       };
     },
     snapshotKeys() {

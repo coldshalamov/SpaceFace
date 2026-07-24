@@ -256,15 +256,17 @@ function evaluateTemporal(assertions, trace, ctx) {
       continue;
     }
 
-    // Unknown temporal kinds: soft-pass with note (schema still accepted)
+    // Unimplemented temporal kinds must FAIL — never soft-pass (FIX 6).
+    // precedes / eventInInterval / inputReleaseNextTick are also rejected at schema validation.
     results.push({
       family: 'temporal',
-      id: a.kind,
-      ok: true,
+      id: a.kind || 'unknown',
+      ok: false,
       expected: a,
-      actual: 'unhandled-temporal-kind-skipped',
-      signedDelta: 0,
-      firstBadTick: null,
+      actual: 'unsupported-temporal-kind',
+      signedDelta: 1,
+      firstBadTick: 0,
+      reason: `assertion kind "${a.kind}" is not implemented; refusing silent pass`,
     });
   }
   return results;
