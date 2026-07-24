@@ -3,7 +3,7 @@
 // PQ-017 keeps its public API via scripts/lib/pq017ProbeIterationGuard.mjs compatibility wrappers.
 
 import { randomBytes } from 'node:crypto';
-import { mkdir, open, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -49,6 +49,8 @@ const CLAIMS_DIR_NAME = 'broker-claims';
 const DEFAULT_FAST_GATE_TIMEOUT_MS = 180_000;
 /** Extra margin when reclaiming aged locks with inconclusive PID liveness. */
 const STALE_LOCK_MARGIN_MS = 60_000;
+/** Soft cap on persisted per-candidate launch count keys (merge, never replace wholesale). */
+const MAX_TRACKED_CANDIDATE_COUNTS = 64;
 
 // In-process counters (also persisted under artifact root when available).
 const globalLaunchCounts = {
@@ -206,20 +208,33 @@ export async function getCandidateLaunchCount(outputRoot, candidateDigest) {
 }
 
 /**
- * Persist candidate-keyed launch counts. Keys that no longer match the current
- * candidate digest are dropped so a new source set starts at zero.
+ * Persist candidate-keyed launch counts. Merge into the existing map so
+ * previously seen candidates retain their counts (A→B→A must not reset A).
+ * Soft-bounded: if the map exceeds MAX_TRACKED_CANDIDATE_COUNTS, drop the
+ * lexicographically earliest non-current keys.
  */
 export async function incrementCandidateLaunchCount(outputRoot, candidateDigest) {
   if (!candidateDigest) return 0;
   const previous = await readPersistedLaunchCounts(outputRoot);
   const prior = Number(previous.byCandidate[candidateDigest]) || 0;
+  const byCandidate = {
+    ...(previous.byCandidate ?? {}),
+    [candidateDigest]: prior + 1,
+  };
+  const keys = Object.keys(byCandidate);
+  if (keys.length > MAX_TRACKED_CANDIDATE_COUNTS) {
+    const excess = keys.length - MAX_TRACKED_CANDIDATE_COUNTS;
+    const droppable = keys
+      .filter((key) => key !== candidateDigest)
+      .sort();
+    for (let i = 0; i < excess && i < droppable.length; i += 1) {
+      delete byCandidate[droppable[i]];
+    }
+  }
   const next = {
     schema: 'spaceface.validation-launch-counts.v1',
     currentCandidateDigest: candidateDigest,
-    // Reset other candidate keys when the digest changes (new source).
-    byCandidate: {
-      [candidateDigest]: prior + 1,
-    },
+    byCandidate,
     updatedAt: new Date().toISOString(),
   };
   await writeJsonAtomically(path.join(outputRoot, LAUNCH_COUNTS_NAME), next);
@@ -255,6 +270,8 @@ function compactFailurePointer(failure, artifactPath = null) {
     routeFailure: failure.routeFailure,
     regressionDigest: failure.regressionDigest,
     routeDigest: failure.routeDigest,
+    // Full candidate identity — harness/scenario/manifest changes must not look "unchanged".
+    candidateDigest: failure.candidateDigest,
     failureFingerprint: failure.failureFingerprint ?? failure.fingerprint,
     family: failure.family,
     migratedFromHistoricalArtifact: failure.migratedFromHistoricalArtifact,
@@ -269,6 +286,10 @@ function normalizeManifest(manifest = {}) {
   if (!manifest?.id) {
     throw new Error('VALIDATION_MANIFEST_ID_REQUIRED');
   }
+  const timeoutMs = Number(manifest.timeoutMs) > 0 ? Number(manifest.timeoutMs) : 600_000;
+  const fastGateTimeoutMs = Number(manifest.fastGateTimeoutMs) > 0
+    ? Number(manifest.fastGateTimeoutMs)
+    : Math.min(timeoutMs, DEFAULT_FAST_GATE_TIMEOUT_MS);
   return {
     id: manifest.id,
     runtimeKind: manifest.runtimeKind ?? 'node',
@@ -281,7 +302,8 @@ function normalizeManifest(manifest = {}) {
     productionSourcePaths: Object.freeze([...(manifest.productionSourcePaths ?? [])]),
     harnessSourcePaths: Object.freeze([...(manifest.harnessSourcePaths ?? [])]),
     runtimeProfile: manifest.runtimeProfile ?? 'default',
-    timeoutMs: Number(manifest.timeoutMs) > 0 ? Number(manifest.timeoutMs) : 600_000,
+    timeoutMs,
+    fastGateTimeoutMs,
     maxLaunchesPerCandidate: Number(manifest.maxLaunchesPerCandidate) > 0
       ? Number(manifest.maxLaunchesPerCandidate)
       : 3,
@@ -387,7 +409,9 @@ export function createValidationBroker(rawManifest, options = {}) {
 }
 
 export async function computeGateDigestsFromManifest({ root, manifest: rawManifest }) {
-  const manifest = rawManifest.id ? rawManifest : normalizeManifest(rawManifest);
+  // Always normalize so digest fields (e.g. fastGateTimeoutMs defaults) are stable
+  // whether the caller passes a raw or already-normalized manifest.
+  const manifest = normalizeManifest(rawManifest);
   const [
     productionSources,
     regressionSources,
@@ -666,9 +690,106 @@ export async function claimFastGateReceipt({ outputRoot }) {
 }
 
 /**
+ * Read a run-lock JSON without hard-crashing on partial/corrupt writes.
+ * Returns { lock, corrupt, missing }.
+ */
+async function readRunLockSafely(lockPath) {
+  let raw;
+  try {
+    raw = await readFile(lockPath, 'utf8');
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return { lock: null, corrupt: false, missing: true };
+    }
+    throw error;
+  }
+  try {
+    const lock = JSON.parse(raw);
+    if (!lock || typeof lock !== 'object') {
+      return { lock: null, corrupt: true, missing: false };
+    }
+    return { lock, corrupt: false, missing: false };
+  } catch {
+    return { lock: null, corrupt: true, missing: false };
+  }
+}
+
+/**
+ * Atomically reclaim a lock via exclusive leadership + compare-and-delete.
+ *
+ * Windows concurrent rename(src, destA/destB) is NOT exclusive (multiple
+ * renames of the same source can all "succeed"), so we use a fixed-path
+ * O_EXCL leadership marker, re-read the lock under leadership, and only
+ * then delete if the token still matches the stale read.
+ */
+export async function atomicReclaimLockFile(lockPath, {
+  expectedLockToken = null,
+} = {}) {
+  const leadershipPath = `${lockPath}.reclaiming`;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let handle;
+    try {
+      handle = await open(leadershipPath, 'wx');
+    } catch (error) {
+      if (error?.code !== 'EEXIST') throw error;
+      // Another reclaimer holds the marker, or a dead reclaimer left it behind.
+      const leader = await readRunLockSafely(leadershipPath);
+      const leaderPid = Number(leader.lock?.pid);
+      if (Number.isFinite(leaderPid) && leaderPid > 0 && isPidAlive(leaderPid)) {
+        return { reclaimed: false, reason: 'reclaim-race-lost' };
+      }
+      // Dead/corrupt leadership marker — clear and retry once.
+      try {
+        await rm(leadershipPath, { force: true });
+      } catch {
+        return { reclaimed: false, reason: 'reclaim-race-lost' };
+      }
+      continue;
+    }
+
+    try {
+      await handle.writeFile(`${JSON.stringify({
+        pid: process.pid,
+        acquiredAt: new Date().toISOString(),
+        expectedLockToken,
+      })}\n`, 'utf8');
+    } finally {
+      await handle.close();
+    }
+
+    try {
+      // Re-read under exclusive leadership (compare before delete).
+      const { lock, corrupt, missing } = await readRunLockSafely(lockPath);
+      if (missing) {
+        return { reclaimed: false, reason: 'lock-missing' };
+      }
+      if (corrupt || !lock) {
+        await rm(lockPath, { force: true });
+        return { reclaimed: true, reason: 'corrupt-or-unreadable-lock' };
+      }
+      if (
+        expectedLockToken != null
+        && lock.lockToken
+        && lock.lockToken !== expectedLockToken
+      ) {
+        return { reclaimed: false, reason: 'token-mismatch' };
+      }
+      await rm(lockPath, { force: true });
+      return { reclaimed: true, reason: 'compare-and-delete' };
+    } finally {
+      await rm(leadershipPath, { force: true });
+    }
+  }
+
+  return { reclaimed: false, reason: 'reclaim-race-lost' };
+}
+
+/**
  * Try to reclaim a left-behind run lock when the owner PID is dead (or the lock
  * is older than max probe duration with an inconclusive PID). Never reclaim a
- * lock whose owner is demonstrably still running.
+ * lock whose owner is demonstrably still running. Reclamation is atomic
+ * (rename-claim); never unconditional rm of the live lock path.
  */
 export async function tryReclaimStaleRunLock({
   outputRoot,
@@ -676,27 +797,45 @@ export async function tryReclaimStaleRunLock({
   log = console.warn,
 } = {}) {
   const lockPath = path.join(outputRoot, FAST_RUN_LOCK_NAME);
-  const lock = await readJsonIfPresent(lockPath);
-  if (!lock) {
-    // Empty/corrupt race: remove if present so wx can proceed.
-    try {
-      await rm(lockPath, { force: true });
-      return { reclaimed: true, reason: 'missing-or-unreadable-lock' };
-    } catch {
-      return { reclaimed: false, reason: 'lock-remove-failed' };
+  const { lock, corrupt, missing } = await readRunLockSafely(lockPath);
+
+  if (missing) {
+    return { reclaimed: false, reason: 'lock-missing' };
+  }
+
+  // FIX13: partially-written / corrupt lock → treat as stale and reclaim atomically.
+  if (corrupt || !lock) {
+    const claimed = await atomicReclaimLockFile(lockPath);
+    if (claimed.reclaimed) {
+      log?.(
+        `[validationBroker] reclaimed corrupt/unreadable run lock at ${lockPath}`,
+      );
+      return { reclaimed: true, reason: 'corrupt-or-unreadable-lock' };
     }
+    return { reclaimed: false, reason: claimed.reason ?? 'lock-remove-failed' };
   }
 
   const ownerPid = Number.isFinite(Number(lock.pid))
     ? Number(lock.pid)
     : parsePidFromLockToken(lock.lockToken);
+  const expectedToken = lock.lockToken ?? null;
 
   if (ownerPid != null && isPidAlive(ownerPid)) {
     return { reclaimed: false, reason: 'owner-alive', ownerPid };
   }
 
   if (ownerPid != null && !isPidAlive(ownerPid)) {
-    await rm(lockPath, { force: true });
+    // FIX7: compare-and-delete via atomic rename; never unconditional rm.
+    const claimed = await atomicReclaimLockFile(lockPath, {
+      expectedLockToken: expectedToken,
+    });
+    if (!claimed.reclaimed) {
+      return {
+        reclaimed: false,
+        reason: claimed.reason ?? 'reclaim-race-lost',
+        ownerPid,
+      };
+    }
     log?.(
       `[validationBroker] reclaimed stale run lock (dead owner pid=${ownerPid}) at ${lockPath}`,
     );
@@ -707,7 +846,16 @@ export async function tryReclaimStaleRunLock({
   const acquiredAt = timestamp(lock.acquiredAt);
   const maxAgeMs = (Number(timeoutMs) > 0 ? Number(timeoutMs) : 600_000) + STALE_LOCK_MARGIN_MS;
   if (Number.isFinite(acquiredAt) && Date.now() - acquiredAt > maxAgeMs) {
-    await rm(lockPath, { force: true });
+    const claimed = await atomicReclaimLockFile(lockPath, {
+      expectedLockToken: expectedToken,
+    });
+    if (!claimed.reclaimed) {
+      return {
+        reclaimed: false,
+        reason: claimed.reason ?? 'reclaim-race-lost',
+        ownerPid,
+      };
+    }
     log?.(
       `[validationBroker] reclaimed aged run lock (inconclusive PID, age>${maxAgeMs}ms) at ${lockPath}`,
     );
@@ -856,7 +1004,7 @@ export async function readAcceptedEvidence({ outputRoot, runtimeKind }) {
 }
 
 export async function loadGateState({ root, outputRoot, manifest: rawManifest }) {
-  const manifest = rawManifest.id ? rawManifest : normalizeManifest(rawManifest);
+  const manifest = normalizeManifest(rawManifest);
   const [digests, latestFailure, receipt, cachedResult] = await Promise.all([
     computeGateDigestsFromManifest({ root, manifest }),
     readFailurePointer({ outputRoot }),
@@ -894,6 +1042,19 @@ export async function evaluateCachedResult({ root, outputRoot, manifest }) {
     return { blocked: false, status: STATUS.PASS, reason: 'failure-resolved-by-evidence', state };
   }
 
+  // FIX10: full candidate digest — harness/scenario/manifest-only changes must unlock.
+  if (
+    latestFailure.candidateDigest
+    && latestFailure.candidateDigest !== state.candidateDigest
+  ) {
+    return {
+      blocked: false,
+      status: STATUS.PASS,
+      reason: 'candidate-digest-changed',
+      state,
+    };
+  }
+
   const sameRoute = latestFailure.routeDigest === state.routeDigest
     || latestFailure.routeDigest === state.productionDigest;
   const sameRegression = latestFailure.regressionDigest === state.regressionDigest;
@@ -903,7 +1064,11 @@ export async function evaluateCachedResult({ root, outputRoot, manifest }) {
     && cached.failureFingerprint === latestFailure.failureFingerprint
     && cached.status === 'fail'
     && cached.routeDigest === state.routeDigest
-    && cached.regressionDigest === state.regressionDigest,
+    && cached.regressionDigest === state.regressionDigest
+    && (
+      !latestFailure.candidateDigest
+      || cached.candidateDigest === state.candidateDigest
+    ),
   );
 
   // Regression digest changed → allow fast gate / ack path (failure can be acknowledged).
@@ -953,7 +1118,7 @@ export async function assertProbeLaunch({
   explicitDiagnostic,
   brokerClaimToken = null,
 }) {
-  const manifest = rawManifest.id ? rawManifest : normalizeManifest(rawManifest);
+  const manifest = normalizeManifest(rawManifest);
 
   if (mode === 'diagnostic' && !explicitDiagnostic) {
     throwGateFailure('explicit-diagnostic-flag-required');
@@ -1082,7 +1247,7 @@ export async function issueBrokerClaim({
   expiresInMs = 30 * 60_000,
   digests = null,
 }) {
-  const manifest = rawManifest.id ? rawManifest : normalizeManifest(rawManifest);
+  const manifest = normalizeManifest(rawManifest);
   const claimsDir = path.join(outputRoot, CLAIMS_DIR_NAME);
   await mkdir(claimsDir, { recursive: true });
   const claimId = `${process.pid}-${randomBytes(12).toString('hex')}`;
@@ -1130,7 +1295,7 @@ export async function validateBrokerClaim({
   root = null,
   digests = null,
 }) {
-  const manifest = rawManifest?.id ? rawManifest : normalizeManifest(rawManifest ?? { id: 'unknown' });
+  const manifest = normalizeManifest(rawManifest ?? { id: 'unknown' });
   if (!tokenOrPath) {
     return { ok: false, reason: 'broker-claim-required' };
   }
@@ -1446,6 +1611,7 @@ async function authorizeAndMaybeRun({
       extraArgs,
       env,
       digests,
+      mode,
     });
 
     return {
@@ -1469,7 +1635,12 @@ async function runProbeProcess({
   extraArgs = [],
   env = null,
   digests: precomputedDigests = null,
+  mode = 'acceptance',
 }) {
+  const isDiagnostic = mode === 'diagnostic';
+  const digests = precomputedDigests
+    ?? await computeGateDigestsFromManifest({ root, manifest });
+
   const probeEnv = {
     ...(env ?? {}),
     SF_BROKER_CLAIM: claimPath ?? process.env.SF_BROKER_CLAIM ?? '',
@@ -1484,6 +1655,9 @@ async function runProbeProcess({
     serverOwned: true,
   };
 
+  // FIX9: reserve acceptance launch quota on successful spawn, before await exit.
+  // FIX11: diagnostic runs must not consume the acceptance launch budget.
+  let launchReserved = false;
   const result = await runWithTimeout({
     command: manifest.command,
     args: [...manifest.commandArgs, ...extraArgs],
@@ -1491,26 +1665,19 @@ async function runProbeProcess({
     timeoutMs: manifest.timeoutMs,
     env: probeEnv,
     ownership,
+    onSpawn: async () => {
+      if (isDiagnostic) return;
+      recordLaunch(manifest.id, manifest.runtimeKind);
+      await incrementCandidateLaunchCount(outputRoot, digests.candidateDigest);
+      launchReserved = true;
+    },
   });
 
-  const digests = precomputedDigests
-    ?? await computeGateDigestsFromManifest({ root, manifest });
+  // Spawn never started (infra before pid) → no reservation; leave counts alone.
+  void launchReserved;
 
-  // Count a launch only after a successful spawn (child started / finished with a code).
-  const spawned = Boolean(
-    result.pidRecord?.pid
-    || result.exitCode != null
-    || result.timedOut
-    || result.status === 'pass'
-    || result.status === 'fail'
-    || result.status === 'timeout',
-  );
-  if (spawned) {
-    recordLaunch(manifest.id, manifest.runtimeKind);
-    await incrementCandidateLaunchCount(outputRoot, digests.candidateDigest);
-  }
-
-  // FIX2: persist failed probe outcomes so the next identical run sees latestFailure.
+  // FIX2/FIX8: persist failed probe outcomes for acceptance only.
+  // Diagnostic failures must not promote into primaryAcceptance state.
   let failureFingerprint = null;
   let family = null;
   const failed = result.status !== 'pass';
@@ -1523,33 +1690,36 @@ async function runProbeProcess({
       result.exitCode != null ? `exitCode=${result.exitCode}` : null,
     ].filter(Boolean).join('\n').slice(0, 4000);
 
+    const primaryAcceptance = !isDiagnostic;
     const identity = manifest.normalizeFailure({
       runtimeKind: manifest.runtimeKind,
-      phase: 'acceptance-probe',
+      phase: isDiagnostic ? 'diagnostic-probe' : 'acceptance-probe',
       error: errorText || `probe-${result.status}`,
-      primaryAcceptance: true,
+      primaryAcceptance,
     });
     failureFingerprint = identity.fingerprint;
     family = identity.family;
 
-    await persistFailure({
-      outputRoot,
-      failure: {
-        schema: 'spaceface.validation-acceptance-failure.v1',
-        generatedAt: new Date().toISOString(),
-        pass: false,
-        primaryAcceptance: true,
-        runtimeKind: manifest.runtimeKind,
-        phase: 'acceptance-probe',
-        error: errorText || `probe-${result.status}`,
-        failureFingerprint,
-        family,
-        routeDigest: digests.routeDigest,
-        regressionDigest: digests.regressionDigest,
-        candidateDigest: digests.candidateDigest,
-        artifactKind: 'probe-run',
-      },
-    });
+    if (primaryAcceptance) {
+      await persistFailure({
+        outputRoot,
+        failure: {
+          schema: 'spaceface.validation-acceptance-failure.v1',
+          generatedAt: new Date().toISOString(),
+          pass: false,
+          primaryAcceptance: true,
+          runtimeKind: manifest.runtimeKind,
+          phase: 'acceptance-probe',
+          error: errorText || `probe-${result.status}`,
+          failureFingerprint,
+          family,
+          routeDigest: digests.routeDigest,
+          regressionDigest: digests.regressionDigest,
+          candidateDigest: digests.candidateDigest,
+          artifactKind: 'probe-run',
+        },
+      });
+    }
   }
 
   await recordRunResult({
@@ -1616,4 +1786,6 @@ export {
   digestSourcePaths,
   isResolvedByAcceptedEvidence,
   stableJson,
+  // Exported for unit tests / advanced reclaim callers
+  compactFailurePointer,
 };

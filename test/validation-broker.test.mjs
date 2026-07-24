@@ -11,12 +11,15 @@ import {
   FAST_RUN_LOCK_NAME,
   LAUNCH_COUNTS_NAME,
   acquireRunLock,
+  atomicReclaimLockFile,
   claimFastGateReceipt,
+  compactFailurePointer,
   createFastGateReceipt,
   createValidationBroker,
   evaluateAcceptanceGate,
   evaluateCachedResult,
   evaluateFastGate,
+  incrementCandidateLaunchCount,
   issueBrokerClaim,
   persistFailure,
   publishFastGateReceipt,
@@ -736,4 +739,337 @@ test('P2 FIX6: dead-owner run lock is reclaimed; live-owner lock stays held', as
   // Release via matching token from first reclaim, then clean up.
   const { releaseRunLock } = await import('../scripts/lib/validationBroker.mjs');
   await releaseRunLock({ outputRoot, lockToken: reclaimed.lockToken });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 1 FIX2 — second-order concurrency / digest correctness (P1 + P2)
+// ---------------------------------------------------------------------------
+
+test('P1 FIX7: concurrent dead-owner reclaim is atomic; successor lock is not deleted', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const { mkdir } = await import('node:fs/promises');
+  await mkdir(outputRoot, { recursive: true });
+
+  const deadPid = 2_147_000_001;
+  assert.equal(isPidAlive(deadPid), false);
+  const deadToken = `${deadPid}-shared-stale`;
+  const lockPath = path.join(outputRoot, FAST_RUN_LOCK_NAME);
+  await writeJsonAtomically(lockPath, {
+    schema: 'spaceface.validation-run-lock.v1',
+    acquiredAt: new Date().toISOString(),
+    lockToken: deadToken,
+    pid: deadPid,
+  });
+
+  // Two reclaimers race on the same stale lock; O_EXCL leadership ⇒ exactly one wins.
+  const [a, b] = await Promise.all([
+    tryReclaimStaleRunLock({ outputRoot, timeoutMs: 5_000, log: null }),
+    tryReclaimStaleRunLock({ outputRoot, timeoutMs: 5_000, log: null }),
+  ]);
+  const winners = [a, b].filter((r) => r.reclaimed);
+  const losers = [a, b].filter((r) => !r.reclaimed);
+  assert.equal(winners.length, 1, 'exactly one reclaimer must win the leadership race');
+  assert.equal(losers.length, 1);
+  assert.ok(
+    losers[0].reason === 'reclaim-race-lost' || losers[0].reason === 'lock-missing',
+    `loser reason should be race/missing, got ${losers[0].reason}`,
+  );
+
+  // Winner acquires a live successor lock.
+  const successor = await acquireRunLock({
+    outputRoot,
+    lockSchema: 'spaceface.validation-run-lock.v1',
+    timeoutMs: 5_000,
+  });
+  assert.ok(successor?.lockToken, 'successor lock must be acquirable after reclaim');
+  const successorRaw = await readFile(lockPath, 'utf8');
+  const successorLock = JSON.parse(successorRaw);
+  assert.equal(successorLock.lockToken, successor.lockToken);
+
+  // Stale second-hand reclaim against the OLD dead token must NOT delete the successor.
+  const staleAttempt = await atomicReclaimLockFile(lockPath, {
+    expectedLockToken: deadToken,
+  });
+  assert.equal(staleAttempt.reclaimed, false, 'token mismatch must refuse delete');
+  assert.equal(staleAttempt.reason, 'token-mismatch');
+  const stillThere = JSON.parse(await readFile(lockPath, 'utf8'));
+  assert.equal(
+    stillThere.lockToken,
+    successor.lockToken,
+    'successor live lock must survive stale reclaim attempt',
+  );
+
+  const { releaseRunLock } = await import('../scripts/lib/validationBroker.mjs');
+  await releaseRunLock({ outputRoot, lockToken: successor.lockToken });
+});
+
+test('P1 FIX8: diagnostic failure is non-promoting; acceptance is not blocked', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const broker = createValidationBroker(testManifest('out', {
+    id: 'diag-nonpromoting-probe',
+    commandArgs: ['-e', 'console.error("DIAG_FAIL"); process.exit(4)'],
+    fastGateCommands: [],
+    maxLaunchesPerCandidate: 5,
+  }), { root, outputRoot });
+
+  const diagnostic = await broker.authorizeAndMaybeRun({
+    mode: 'diagnostic',
+    explicitDiagnostic: true,
+    spawnProbe: true,
+  });
+  assert.equal(diagnostic.launched, true);
+  assert.ok(diagnostic.status === STATUS.FAIL || diagnostic.exitCode === 4);
+
+  // No primary acceptance failure pointer may be written.
+  let pointerExists = true;
+  try {
+    await readFile(path.join(outputRoot, FAILURE_POINTER_NAME), 'utf8');
+  } catch (error) {
+    if (error?.code === 'ENOENT') pointerExists = false;
+    else throw error;
+  }
+  assert.equal(pointerExists, false, 'diagnostic must not write primary acceptance failure');
+
+  // Acceptance run with a passing probe must not be blocked by the diagnostic.
+  const accepting = createValidationBroker(testManifest('out', {
+    id: 'diag-nonpromoting-probe',
+    commandArgs: ['-e', 'process.exit(0)'],
+    fastGateCommands: [],
+    maxLaunchesPerCandidate: 5,
+  }), { root, outputRoot });
+  const acceptance = await accepting.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: true,
+  });
+  assert.equal(acceptance.launched, true, 'acceptance must not be blocked by diagnostic failure');
+  assert.equal(acceptance.status, STATUS.PASS);
+  assert.notEqual(acceptance.status, STATUS.BLOCKED_REPEAT);
+});
+
+test('P1 FIX9: launch count is reserved on spawn before child completes', async (t) => {
+  resetLaunchCountsForTests();
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  // Long-running child so we can observe the count mid-flight.
+  // Peer must share the same commandArgs so candidateDigest matches.
+  const sharedManifest = testManifest('out', {
+    id: 'pre-spawn-reserve-probe',
+    commandArgs: ['-e', 'setTimeout(() => process.exit(0), 2500)'],
+    fastGateCommands: [],
+    maxLaunchesPerCandidate: 1,
+    timeoutMs: 15_000,
+  });
+  const broker = createValidationBroker(sharedManifest, { root, outputRoot });
+
+  const digestsPromise = broker.computeGateDigests();
+  const runPromise = broker.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: true,
+  });
+
+  const digests = await digestsPromise;
+  // Poll until launch count is reserved while the child is still running.
+  let reserved = 0;
+  const deadline = Date.now() + 2_000;
+  while (Date.now() < deadline) {
+    reserved = await getCandidateLaunchCount(outputRoot, digests.candidateDigest);
+    if (reserved >= 1) break;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  assert.equal(reserved, 1, 'launch count must be incremented before child exit');
+
+  const first = await runPromise;
+  assert.equal(first.launched, true);
+  assert.equal(first.status, STATUS.PASS);
+  assert.equal(await getCandidateLaunchCount(outputRoot, digests.candidateDigest), 1);
+
+  // Second broker with the same candidate must see the budget already consumed.
+  const peer = createValidationBroker(sharedManifest, { root, outputRoot });
+  const second = await peer.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: true,
+  });
+  assert.equal(second.launched, false);
+  assert.equal(second.reason, 'max-launches-per-candidate');
+});
+
+test('P1 FIX10: evaluateCachedResult uses full candidateDigest (harness change unlocks)', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const harnessRel = 'harness-only.js';
+  await writeFile(path.join(root, harnessRel), 'harness-A\n', 'utf8');
+
+  const manifestA = testManifest('out', {
+    id: 'candidate-digest-probe',
+    harnessSourcePaths: [harnessRel],
+    productionSourcePaths: [],
+    regressionSourcePaths: [],
+  });
+  const brokerA = createValidationBroker(manifestA, { root, outputRoot });
+  const digestsA = await brokerA.computeGateDigests();
+
+  await persistFailure({
+    outputRoot,
+    failure: primaryFailure({
+      routeDigest: digestsA.routeDigest,
+      regressionDigest: digestsA.regressionDigest,
+      candidateDigest: digestsA.candidateDigest,
+      failureFingerprint: 'fp-candidate-A',
+    }),
+  });
+
+  // Unchanged candidate → blocked_repeat.
+  const blocked = await evaluateCachedResult({
+    root,
+    outputRoot,
+    manifest: brokerA.manifest,
+  });
+  assert.equal(blocked.blocked, true);
+  assert.ok(
+    blocked.status === STATUS.BLOCKED_REPEAT || blocked.status === STATUS.CACHED_UNCHANGED,
+  );
+
+  // compactFailurePointer must retain candidateDigest.
+  const pointer = compactFailurePointer(primaryFailure({
+    candidateDigest: digestsA.candidateDigest,
+    routeDigest: digestsA.routeDigest,
+    regressionDigest: digestsA.regressionDigest,
+  }));
+  assert.equal(pointer.candidateDigest, digestsA.candidateDigest);
+
+  // Harness-only change → candidateDigest B, route/regression may stay identical.
+  await writeFile(path.join(root, harnessRel), 'harness-B-changed\n', 'utf8');
+  const brokerB = createValidationBroker(manifestA, { root, outputRoot });
+  const digestsB = await brokerB.computeGateDigests();
+  assert.notEqual(digestsB.candidateDigest, digestsA.candidateDigest);
+  assert.equal(digestsB.routeDigest, digestsA.routeDigest);
+  assert.equal(digestsB.regressionDigest, digestsA.regressionDigest);
+
+  const unlocked = await evaluateCachedResult({
+    root,
+    outputRoot,
+    manifest: brokerB.manifest,
+  });
+  assert.equal(unlocked.blocked, false, 'changed candidateDigest must not blocked_repeat');
+  assert.equal(unlocked.reason, 'candidate-digest-changed');
+});
+
+test('P2 FIX11: diagnostic run does not consume acceptance launch budget', async (t) => {
+  resetLaunchCountsForTests();
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const common = {
+    id: 'diag-quota-probe',
+    commandArgs: ['-e', 'process.exit(0)'],
+    fastGateCommands: [],
+    maxLaunchesPerCandidate: 1,
+  };
+
+  const diag = createValidationBroker(testManifest('out', common), { root, outputRoot });
+  const digests = await diag.computeGateDigests();
+  const diagnostic = await diag.authorizeAndMaybeRun({
+    mode: 'diagnostic',
+    explicitDiagnostic: true,
+    spawnProbe: true,
+  });
+  assert.equal(diagnostic.launched, true);
+  assert.equal(
+    await getCandidateLaunchCount(outputRoot, digests.candidateDigest),
+    0,
+    'diagnostic must not increment acceptance launch count',
+  );
+
+  const accept = createValidationBroker(testManifest('out', common), { root, outputRoot });
+  const first = await accept.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: true,
+  });
+  assert.equal(first.launched, true, 'acceptance budget must still be available after diagnostic');
+  assert.equal(first.status, STATUS.PASS);
+  assert.equal(await getCandidateLaunchCount(outputRoot, digests.candidateDigest), 1);
+});
+
+test('P2 FIX12: byCandidate counts are merged (A→B→A retains A)', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const { mkdir } = await import('node:fs/promises');
+  await mkdir(outputRoot, { recursive: true });
+
+  assert.equal(await incrementCandidateLaunchCount(outputRoot, 'digest-A'), 1);
+  assert.equal(await incrementCandidateLaunchCount(outputRoot, 'digest-B'), 1);
+  assert.equal(await incrementCandidateLaunchCount(outputRoot, 'digest-A'), 2);
+
+  const counts = JSON.parse(await readFile(path.join(outputRoot, LAUNCH_COUNTS_NAME), 'utf8'));
+  assert.equal(counts.byCandidate['digest-A'], 2);
+  assert.equal(counts.byCandidate['digest-B'], 1, 'prior candidate B must be retained');
+});
+
+test('P2 FIX13: corrupt partial lock is reclaimed without crash', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const { mkdir } = await import('node:fs/promises');
+  await mkdir(outputRoot, { recursive: true });
+  const lockPath = path.join(outputRoot, FAST_RUN_LOCK_NAME);
+  // Simulate open(wx) succeeded but JSON write never completed.
+  await writeFile(lockPath, '{ "schema": "partial", "lockToken":', 'utf8');
+
+  const reclaimed = await tryReclaimStaleRunLock({
+    outputRoot,
+    timeoutMs: 5_000,
+    log: null,
+  });
+  assert.equal(reclaimed.reclaimed, true);
+  assert.equal(reclaimed.reason, 'corrupt-or-unreadable-lock');
+
+  const acquired = await acquireRunLock({
+    outputRoot,
+    lockSchema: 'spaceface.validation-run-lock.v1',
+    timeoutMs: 5_000,
+  });
+  assert.ok(acquired?.lockToken, 'must acquire after corrupt-lock reclaim');
+  const { releaseRunLock } = await import('../scripts/lib/validationBroker.mjs');
+  await releaseRunLock({ outputRoot, lockToken: acquired.lockToken });
+});
+
+test('P2 FIX14: fastGateTimeoutMs is normalized and included in manifest digest', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const base = testManifest('out', {
+    id: 'fast-gate-timeout-probe',
+    timeoutMs: 600_000,
+    fastGateTimeoutMs: 12_345,
+  });
+  const broker = createValidationBroker(base, { root, outputRoot });
+  assert.equal(broker.manifest.fastGateTimeoutMs, 12_345);
+
+  const d1 = await broker.computeGateDigests();
+  const broker2 = createValidationBroker({
+    ...base,
+    fastGateTimeoutMs: 54_321,
+  }, { root, outputRoot });
+  assert.equal(broker2.manifest.fastGateTimeoutMs, 54_321);
+  const d2 = await broker2.computeGateDigests();
+  assert.notEqual(
+    d1.manifestDigest,
+    d2.manifestDigest,
+    'fastGateTimeoutMs change must alter manifestDigest',
+  );
+  assert.notEqual(
+    d1.candidateDigest,
+    d2.candidateDigest,
+    'fastGateTimeoutMs change must alter candidateDigest',
+  );
+
+  // Default when omitted: min(timeoutMs, 180_000)
+  const brokerDefault = createValidationBroker(testManifest('out', {
+    id: 'fast-gate-timeout-default',
+    timeoutMs: 600_000,
+  }), { root, outputRoot });
+  assert.equal(brokerDefault.manifest.fastGateTimeoutMs, 180_000);
 });

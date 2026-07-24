@@ -73,6 +73,8 @@ export async function runWithTimeout({
   env = null,
   ownership = null,
   stdio = null,
+  /** Called immediately after a successful spawn (pid known), before awaiting exit. */
+  onSpawn = null,
 } = {}) {
   if (!command) {
     return {
@@ -127,6 +129,31 @@ export async function runWithTimeout({
     startedAt: new Date(startedAt).toISOString(),
     platform: process.platform,
   };
+
+  // Reserve launch quota / notify ownership as soon as the child exists.
+  if (typeof onSpawn === 'function' && pidRecord.pid) {
+    try {
+      await onSpawn(pidRecord);
+    } catch (error) {
+      // onSpawn failure must not orphan the child — kill tree and surface infra_error.
+      try {
+        await killProcessTree(child.pid);
+      } catch {
+        // ignore cleanup errors
+      }
+      return {
+        exitCode: null,
+        signal: null,
+        timedOut: false,
+        durationMs: Date.now() - startedAt,
+        stdout: '',
+        stderr: error?.message || String(error),
+        pidRecord,
+        ownership: ownership ?? null,
+        status: 'infra_error',
+      };
+    }
+  }
 
   if (child.stdout) {
     child.stdout.on('data', (chunk) => { collectedStdout.push(Buffer.from(chunk)); });

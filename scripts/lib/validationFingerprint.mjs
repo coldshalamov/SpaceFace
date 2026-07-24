@@ -162,6 +162,7 @@ export function computeManifestDigest(manifest = {}) {
     harnessSourcePaths: manifest.harnessSourcePaths ?? [],
     runtimeProfile: manifest.runtimeProfile ?? null,
     timeoutMs: manifest.timeoutMs ?? null,
+    fastGateTimeoutMs: manifest.fastGateTimeoutMs ?? null,
     maxLaunchesPerCandidate: manifest.maxLaunchesPerCandidate ?? null,
     artifactRoot: manifest.artifactRoot ?? null,
     fixedSeed: manifest.fixedSeed ?? null,

@@ -84,3 +84,21 @@ test('killProcessTree is safe for already-dead pids', async () => {
   // On Windows taskkill may report not found; either way it must not throw.
   assert.equal(typeof killResult.ok, 'boolean');
 });
+
+test('runWithTimeout invokes onSpawn before child exit', async () => {
+  const events = [];
+  const result = await runWithTimeout({
+    command: process.execPath,
+    args: ['-e', 'setTimeout(() => process.exit(0), 200)'],
+    timeoutMs: 10_000,
+    onSpawn: async (pidRecord) => {
+      events.push({ phase: 'spawn', pid: pidRecord.pid, t: Date.now() });
+    },
+  });
+  events.push({ phase: 'done', status: result.status, t: Date.now() });
+  assert.equal(result.status, 'pass');
+  assert.equal(events[0].phase, 'spawn');
+  assert.ok(events[0].pid > 0);
+  assert.equal(events[1].phase, 'done');
+  assert.ok(events[0].t <= events[1].t);
+});
