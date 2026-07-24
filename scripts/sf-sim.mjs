@@ -37,13 +37,15 @@ import {
 } from '../src/contracts/evidenceSchemas.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../src/systems/ships.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
-import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
+import { COMBAT_FLAGS, applyFeatureConfigToMaps } from '../src/data/featureFlags.js';
 import {
   configure47aTacticalAI,
   makeEvidenceSpindleSpec,
   mark47aPlayerActor,
   spawn47aScenarioCast,
 } from '../src/data/scenarios/47aLiveScene.js';
+import { resolveRuntimeManifest } from '../src/runtime/resolveRuntimeManifest.js';
+import { LEGACY47A_FEATURES } from '../src/runtime/runtimeProfiles.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const args = process.argv.slice(2);
@@ -54,8 +56,12 @@ if (command === 'help' || command === '--help' || command === '-h') usage(0);
 if (!['run', 'inspect', 'compare', 'trace', 'profile'].includes(command)) usage(1, `Unknown command: ${command}`);
 if (scenario !== '47a') usage(1, `Unknown scenario: ${scenario}`);
 
-// Scenario pins are explicit even when a Tier-B flag already defaults OFF under Node. This makes
-// 47-A's frozen phase-0 movement contract independent of how the harness is embedded or invoked.
+// Phase 2: seed the legacy47a runtime profile feature config (explicit, not typeof window).
+// Process MAPS stay compatible with combatFlag/massline2Flag/travelFlag call sites.
+applyFeatureConfigToMaps(LEGACY47A_FEATURES);
+
+// Scenario pins remain explicit even when the profile already sets weaponImpulseConsequences OFF.
+// This makes 47-A's frozen phase-0 movement contract independent of harness embedding.
 const SCENARIO_COMBAT_FLAG_PINS = Object.freeze({
   '47a': Object.freeze({ weaponImpulseConsequences: false }),
 });
@@ -304,6 +310,20 @@ async function run47a({
         save,
       ]
     : [scenarioRuntime, presentationOrchestrator, presentationAdapters, actions, flightSlot, weapons, physics, combat, cargo, economy, missions, story, save];
+
+  // Honest evidence: curated explicit systems under the legacy47a profile — not production-manifest.
+  const runtimeManifest = resolveRuntimeManifest({
+    profileId: 'legacy47a',
+    explicitSystems: systems,
+    tacticalAI,
+    exclusions: [
+      'production-manifest-claim',
+      'full-production-system-set',
+      'massline-family',
+      'travel-family',
+    ],
+  });
+
   const sim = createSimulation({
     seed,
     helpers: {
@@ -312,12 +332,20 @@ async function run47a({
       scenarioContractHash: scenarioContract.sha256,
     },
     systems,
+    runtimeManifest,
+    runtimeConfig: {
+      profileId: 'legacy47a',
+      features: runtimeManifest.features,
+      evidenceClass: runtimeManifest.evidenceClass,
+      exclusions: runtimeManifest.exclusions,
+    },
   });
   const { state, bus, registry } = sim;
   state.settings.gameplay.physicsBackend = physicsBackend;
   state.settings.gameplay.aiBackend = tacticalAI ? 'sg06-tactical' : 'legacy';
   // Record the selected flight controller so diagnostics/registry selection stay consistent.
   state.settings.gameplay.flightBackend = flightSlot === flightV3 ? 'v3' : 'legacy';
+  state.settings.gameplay.runtimeProfile = 'legacy47a';
   const eventTrace = createDeterministicEventTrace(bus, state, {
     events: traceEvents || undefined,
     cap: traceLimit || undefined,

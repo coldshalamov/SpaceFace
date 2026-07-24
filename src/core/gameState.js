@@ -13,7 +13,20 @@ function defaultSettings() {
     keybinds: {},
     audio: { master: 0.55, sfx: 0.7, music: 0.32, muted: false },
     video: { renderScale: 0.85, bloom: true, bloomStrength: 0.35, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false },
-    gameplay: { autosaveIntervalS: 120, tutorialHints: true, difficulty: 'standard', physicsBackend: 'rapier-dynamic', aiBackend: 'sg06-tactical', flightBackend: 'v3', controlScheme: 'pilot', controlSchemeV2: true, orbitAssistStrength: 'standard', masslineReleaseAssist: 'arm' },
+    gameplay: {
+      autosaveIntervalS: 120,
+      tutorialHints: true,
+      difficulty: 'standard',
+      physicsBackend: 'rapier-dynamic',
+      aiBackend: 'sg06-tactical',
+      flightBackend: 'v3',
+      // Explicit runtime profile (Phase 2). Never inferred from host environment.
+      runtimeProfile: 'production',
+      controlScheme: 'pilot',
+      controlSchemeV2: true,
+      orbitAssistStrength: 'standard',
+      masslineReleaseAssist: 'arm',
+    },
     controls: {
       bindings: null,       // null = use input.js DEFAULT_BINDINGS; populated on first rebind
       masslineBindingProfile: 'space-v1', // new profiles: Space primary + persistent F alias

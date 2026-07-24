@@ -38,7 +38,21 @@ function forkSystem(definition) {
 /**
  * Build and initialize an isolated, deterministic simulation runtime.
  *
- * @param {{seed?:number,state?:object,bus?:object,helpers?:object,systems?:object[]}} options
+ * @param {{
+ *   seed?: number,
+ *   state?: object,
+ *   bus?: object,
+ *   helpers?: object,
+ *   systems?: object[],
+ *   runtimeManifest?: object,
+ *   runtimeConfig?: object,
+ * }} options
+ *
+ * Evidence classification:
+ * - When `options.systems` is supplied without a production profile resolve, the run is
+ *   `focused-explicit` and must not claim production-manifest evidence.
+ * - When `options.runtimeManifest` is attached (from resolveRuntimeManifest / createAuthoritativeRuntime),
+ *   its evidenceClass is preserved on the returned host.
  */
 export function createSimulation(options = {}) {
   const seed = ((Number(options.seed) >>> 0) || 1);
@@ -64,10 +78,44 @@ export function createSimulation(options = {}) {
   let initialized = false;
   let stepping = false;
 
+  const explicitSystemIds = Object.freeze(
+    (options.systems || []).map((s) => (s && s.name) || null).filter(Boolean),
+  );
+  const runtimeManifest = options.runtimeManifest || null;
+  const runtimeConfig = options.runtimeConfig || null;
+  const evidenceClassification = Object.freeze({
+    class: runtimeManifest && runtimeManifest.evidenceClass
+      ? runtimeManifest.evidenceClass
+      : (options.systems ? 'focused-explicit' : 'unspecified'),
+    systemIds: explicitSystemIds,
+    exclusions: Object.freeze([
+      ...((runtimeManifest && runtimeManifest.exclusions) || []),
+      ...(options.systems && !(runtimeManifest && runtimeManifest.evidenceClass === 'production-manifest')
+        ? ['production-manifest-claim']
+        : []),
+    ]),
+    note: options.systems && !(runtimeManifest && runtimeManifest.evidenceClass === 'production-manifest')
+      ? 'Focused explicit system list — may not claim production-manifest evidence'
+      : null,
+  });
+
+  if (runtimeConfig && state) {
+    state.runtime = Object.freeze({
+      profileId: runtimeConfig.profileId,
+      features: runtimeConfig.features,
+      evidenceClass: evidenceClassification.class,
+      exclusions: evidenceClassification.exclusions,
+      profileHash: runtimeManifest && runtimeManifest.profileHash,
+      manifestHash: runtimeManifest && runtimeManifest.manifestHash,
+    });
+  }
+
   const ctx = { state, bus, helpers, registry: null };
   const registry = {
     runtime: 'sim',
     systems: Object.freeze(instances.slice()),
+    runtimeManifest,
+    evidenceClassification,
     ctx,
     get(name) { return byName.get(name) || null; },
     init() {
@@ -99,6 +147,8 @@ export function createSimulation(options = {}) {
     bus,
     helpers,
     registry,
+    runtimeManifest,
+    evidenceClassification,
     step(dt = SIM_DT) { return registry.step(dt); },
     runTicks(count, dt = SIM_DT) {
       const ticks = positiveInt(count, -1);

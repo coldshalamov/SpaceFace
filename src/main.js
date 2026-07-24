@@ -93,6 +93,10 @@ async function boot() {
     // profile first so their boot resources match the player's settings on the very first frame.
     // This is read-only and therefore leaves the raw profile byte-identical.
     bootstrapProfileSettingsBeforeRegistry(state);
+    // Phase 2: seed gameplay feature MAPS from the explicit production runtime profile (not
+    // typeof window). createRegistry also re-applies from state.settings.gameplay.runtimeProfile.
+    if (!state.settings.gameplay) state.settings.gameplay = {};
+    if (!state.settings.gameplay.runtimeProfile) state.settings.gameplay.runtimeProfile = 'production';
     const timeEffects = createTimeEffects(state);
     const runTransitionGuard = createRunTransitionGuard();
     timeEffects.set('runtime:boot-menu', { scale: 0 });

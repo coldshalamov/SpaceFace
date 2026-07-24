@@ -141,17 +141,200 @@ import { audio } from '../audio/audioSystem.js';
 import { ui } from '../ui/uiRoot.js';
 import { save } from '../save/saveSystem.js';
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
+import { resolveRuntimeManifest } from '../runtime/resolveRuntimeManifest.js';
+import { DEFAULT_RUNTIME_PROFILE_ID } from '../runtime/runtimeProfiles.js';
+import { applyFeatureConfigToMaps } from '../data/featureFlags.js';
+import { bindRuntimeToState } from '../runtime/createAuthoritativeRuntime.js';
+
+/**
+ * Build the browser/registry system lookup table. Presentation platform systems live here;
+ * the authoritative init/update *order* comes from the runtime manifest (Phase 2).
+ *
+ * Manifest IDs match the historical SYSTEMS source identifiers. A few systems use a different
+ * runtime `.name` (e.g. v2FlavorRuntime → "v2Flavor"); both keys are registered.
+ */
+function buildRegistrySystemLookup(aiSlot, flightSlot) {
+  /** @type {Array<[string, object]>} */
+  const entries = [
+    ['core', core],
+    ['voiceArbiter', voiceArbiter],
+    ['input', input],
+    ['autoTargetAssist', autoTargetAssist],
+    ['flybyFocus', flybyFocus],
+    ['bulletTime', bulletTime],
+    ['cloak', cloak],
+    ['scanner', scanner],
+    ['scanReveal', scanReveal],
+    ['buildIdentity', buildIdentity],
+    ['lawSecurity', lawSecurity],
+    ['pirateDisguise', pirateDisguise],
+    ['pirateParley', pirateParley],
+    ['pirateDisengage', pirateDisengage],
+    ['aceMemory', aceMemory],
+    ['barkDirector', barkDirector],
+    ['dockingCorridor', dockingCorridor],
+    ['physics', physics],
+    ['aiPorts', aiPorts],
+    ['tumbleStates', tumbleStates],
+    ['collisionConsequences', collisionConsequences],
+    ['aiEncounter', aiEncounter],
+    ['actions', actions],
+    ['cruise', cruise],
+    ['weapons', weapons],
+    ['countermeasures', countermeasures],
+    ['impulseCharges', impulseCharges],
+    ['mines', mines],
+    ['massSeed', massSeed],
+    ['uniqueLootAbilities', uniqueLootAbilities],
+    ['fields', fields],
+    ['planetRuntime', planetRuntime],
+    ['combat', combat],
+    ['combatOutcome', combatOutcome],
+    ['aftermathWrecks', aftermathWrecks],
+    ['uniqueWrecks', uniqueWrecks],
+    ['wingMorale', wingMorale],
+    ['tetherGameplay', tetherGameplay],
+    ['surrenderRecovery', surrenderRecovery],
+    ['custodyConsequences', custodyConsequences],
+    ['masslineTelemetry', masslineTelemetry],
+    ['masslineThreats', masslineThreats],
+    ['masslineImpacts', masslineImpacts],
+    ['masslineThrow', masslineThrow],
+    ['masslineImpactDamage', masslineImpactDamage],
+    ['lootShards', lootShards],
+    ['terrainAnchors', terrainAnchors],
+    ['jettisonImpulse', jettisonImpulse],
+    ['mining', mining],
+    ['fieldDepletion', fieldDepletion],
+    ['cargo', cargo],
+    ['fragileCargo', fragileCargo],
+    ['economy', economy],
+    ['automation', automation],
+    ['asteroidSites', asteroidSites],
+    ['asteroidFormations', asteroidFormations],
+    ['wingmen', wingmen],
+    ['intervention', intervention],
+    ['lossLedger', lossLedger],
+    ['factionPresence', factionPresence],
+    ['spawnBudget', spawnBudget],
+    ['world', world],
+    ['regionalEcology', regionalEcology],
+    ['encounterDirector', encounterDirector],
+    ['routeFollower', routeFollower],
+    ['travelLanes', travelLanes],
+    ['livingPoiBehaviors', livingPoiBehaviors],
+    ['pirateRumor', pirateRumor],
+    ['ambushSignatures', ambushSignatures],
+    ['bountyHunt', bountyHunt],
+    ['stationSideEventDirector', stationSideEventDirector],
+    ['stationContacts', stationContacts],
+    ['stationContactLoadBoundary', stationContactLoadBoundary],
+    ['gateControlDirector', gateControlDirector],
+    ['salvage', salvage],
+    ['lossInvestigation', lossInvestigation],
+    ['salvageActions', salvageActions],
+    ['survivorPod', survivorPod],
+    ['recoveryEncounter', recoveryEncounter],
+    ['factions', factions],
+    ['sectorSim', sectorSim],
+    ['npcJobsRuntime', npcJobsRuntime],
+    ['careerOrigins', careerOrigins],
+    ['careerLadders', careerLadders],
+    ['liveCareerLadderBranches', liveCareerLadderBranches],
+    ['missions', missions],
+    ['careerContracts', careerContracts],
+    ['economyContracts', economyContracts],
+    ['postEndingReplay', postEndingReplay],
+    ['story', story],
+    ['scenarioRuntime', scenarioRuntime],
+    ['presentationOrchestrator', presentationOrchestrator],
+    ['presentationAdapters', presentationAdapters],
+    ['ships', ships],
+    ['crafting', crafting],
+    ['heat', heat],
+    ['traffic', traffic],
+    ['drill', drill],
+    ['claims', claims],
+    ['beacons', beacons],
+    ['bandRadio', bandRadio],
+    ['v2FlavorRuntime', v2FlavorRuntime],
+    ['onboarding', onboarding],
+    ['masslineHud', masslineHud],
+    ['massSeedHud', massSeedHud],
+    ['fieldHud', fieldHud],
+    ['planetHud', planetHud],
+    ['sectorPostcard', sectorPostcard],
+    ['dockDenyBanner', dockDenyBanner],
+    ['stationBroadcast', stationBroadcast],
+    ['hazardHints', hazardHints],
+    ['bulkHaulTag', bulkHaulTag],
+    ['dangerGradient', dangerGradient],
+    ['causeLedger', causeLedger],
+    ['customsPrompt', customsPrompt],
+    ['cargoConscience', cargoConscience],
+    ['securityReadoutSystem', securityReadoutSystem],
+    ['priceForecastSystem', priceForecastSystem],
+    ['contractClausesSystem', contractClausesSystem],
+    ['moralTrapSystem', moralTrapSystem],
+    ['render', render],
+    ['vfx', vfx],
+    ['feel', feel],
+    ['audio', audio],
+    ['ui', ui],
+    ['save', save],
+  ];
+  const lookup = new Map();
+  for (const [id, system] of entries) {
+    if (!system) continue;
+    lookup.set(id, system);
+    if (typeof system.name === 'string' && system.name) lookup.set(system.name, system);
+  }
+  // Slot aliases: manifest IDs aiSlot/flightSlot materialize to the selected backends.
+  lookup.set('aiSlot', aiSlot);
+  lookup.set('flightSlot', flightSlot);
+  lookup.set('ai', aiSlot);
+  lookup.set('flight', flightSlot);
+  if (aiSlot && aiSlot.name) lookup.set(aiSlot.name, aiSlot);
+  if (flightSlot && flightSlot.name) lookup.set(flightSlot.name, flightSlot);
+  return lookup;
+}
 
 export function createRegistry(ctx) {
   const aiSlot = selectAISystem(ctx);
   // Normal play is SG-06 tactical AI + Flight V3 on rapier-dynamic. Legacy/custom branches stay
   // available for explicit tool/test fixtures, not player-facing settings or save restore.
   const flightSlot = selectFlightSystem(ctx);
-  // init / registration order
-  const SYSTEMS = [
-    core, voiceArbiter, input, autoTargetAssist, flybyFocus, bulletTime, cloak, scanner, scanReveal, buildIdentity, lawSecurity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, dockingCorridor, physics, aiPorts, tumbleStates, collisionConsequences, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, mines, massSeed, uniqueLootAbilities, fields, planetRuntime, combat, combatOutcome, aftermathWrecks, uniqueWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, economy,
-    automation, asteroidSites, asteroidFormations, wingmen, intervention, lossLedger, factionPresence, spawnBudget, world, regionalEcology, encounterDirector, routeFollower, travelLanes, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, stationContacts, stationContactLoadBoundary, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, npcJobsRuntime, careerOrigins, careerLadders, liveCareerLadderBranches, missions, careerContracts, economyContracts, postEndingReplay, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, bandRadio, v2FlavorRuntime, onboarding, masslineHud, fieldHud, planetHud, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
-  ];
+
+  const gameplay = ctx && ctx.state && ctx.state.settings && ctx.state.settings.gameplay || {};
+  const profileId = gameplay.runtimeProfile || DEFAULT_RUNTIME_PROFILE_ID;
+  const systemLookup = buildRegistrySystemLookup(aiSlot, flightSlot);
+  const slots = { aiSlot, flightSlot };
+
+  // Authoritative init + update order from the single manifest (eliminates hard-coded duplication).
+  const resolved = resolveRuntimeManifest({
+    profileId,
+    systemLookup,
+    slots,
+    // Browser registry path includes presentation platform systems (render/vfx/feel/audio/ui).
+    nodeSafeOnly: false,
+  });
+
+  // Seed process flag MAPS from the resolved profile so combatFlag/massline2Flag/travelFlag
+  // match production browser defaults without typeof window. Instance binding is also stored.
+  if (ctx && ctx.applyRuntimeFeatures !== false) {
+    applyFeatureConfigToMaps(resolved.features);
+  }
+  if (ctx && ctx.state) {
+    bindRuntimeToState(ctx.state, {
+      profileId: resolved.profileId,
+      features: resolved.features,
+      evidenceClass: resolved.evidenceClass,
+      exclusions: resolved.exclusions,
+    }, resolved);
+  }
+
+  // init / registration order — materialised from PRODUCTION_INIT_ORDER (or profile set)
+  const SYSTEMS = resolved.authoritativeSystems.slice();
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // scanReveal, buildIdentity, and pirateDisguise subscribe to scanner's scan:pulse seam. scanReveal
   // writes ship contact metadata for UI readers; buildIdentity adds the BP-09.1 archetype badge to
@@ -254,10 +437,8 @@ export function createRegistry(ctx) {
   // ramp state of the input↔kernel round trip), one boolean at `state.player.travelDrive.disrupted`
   // which input.js already reads, and its own `state.travelLanes` readout. It is a strict no-op
   // unless `travelFlag('laneBoost')` is on AND a player exists, so it costs two reads otherwise.
-  const UPDATE_ORDER = [
-    input, autoTargetAssist, flybyFocus, bulletTime, cloak, lawSecurity, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, factionPresence, aiSlot, barkDirector, aiEncounter, actions, beacons, travelLanes, flightSlot, cruise, aiPorts, tumbleStates, collisionConsequences, weapons, countermeasures, impulseCharges, mines, massSeed, uniqueLootAbilities, dockingCorridor, fields, planetRuntime, physics, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, automation, asteroidSites, asteroidFormations, wingmen, crafting,
-    economy, intervention, world, regionalEcology, encounterDirector, routeFollower, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, npcJobsRuntime, missions, careerOrigins, careerLadders, liveCareerLadderBranches, story, scenarioRuntime, heat, traffic, drill, claims, bandRadio, onboarding, masslineHud, massSeedHud, fieldHud, planetHud, voiceArbiter,
-  ];
+  // UPDATE_ORDER is materialised from PRODUCTION_UPDATE_ORDER via the runtime manifest.
+  const UPDATE_ORDER = resolved.authoritativeUpdateOrder.slice();
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether
   // after combat/physics have settled. It is read-only telemetry — it writes only its own
   // state.player.masslineTelemetry subtree, never entities or SG-02 attachments, and emits only the
@@ -317,11 +498,15 @@ export function createRegistry(ctx) {
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
   byName.set('ai', aiSlot);
   byName.set('flight', flightSlot);
+  byName.set('aiSlot', aiSlot);
+  byName.set('flightSlot', flightSlot);
 
   return {
     systems: SYSTEMS,
     /** Sim step order (same object refs as SYSTEMS slots). Exposed for contract tests. */
     updateOrder: UPDATE_ORDER,
+    /** Structured Phase-2 runtime manifest resolve result (profile, hashes, orders, features). */
+    runtimeManifest: resolved,
     ctx,
     get(name) { return byName.get(name); },
     init() { for (const s of SYSTEMS) { if (s.init) s.init(ctx); } },
