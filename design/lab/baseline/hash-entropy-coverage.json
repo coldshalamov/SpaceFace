@@ -34,7 +34,7 @@
         "interventionMeta", "drill", "claims", "traffic", "jump"
       ],
       "canonicalRootKeysLine": "14-19",
-      "entities": "entityList mapped through canonicalEntity whitelist, sorted by id"
+      "entities": "snapshot field out.entities is derived from state.entityList only (mapped through canonicalEntity whitelist, sorted by id); state.entities Map is NOT a hash source"
     },
     "omits": {
       "omitCanonicalKeys": [
@@ -56,17 +56,33 @@
         },
         "2_rootKeysNeverInCanonicalRootKeys": {
           "meaning": "Structurally absent from the snapshot — never walked by canonicalStateSnapshot, not merely redacted. Top-level state.rng is a createGameState root field but is NOT in CANONICAL_ROOT_KEYS, so it never reaches canonicalClone and is never subject to OMIT_CANONICAL_KEYS redaction — it is simply never selected.",
-          "diffMethod": "createGameState() root keys (src/core/gameState.js:74+) minus CANONICAL_ROOT_KEYS (sessionSamplers.js:14-19); entities handled via entityList special path (NOT absent — see entityCoverage).",
+          "diffMethod": "createGameState() root keys (src/core/gameState.js:74+) minus CANONICAL_ROOT_KEYS (sessionSamplers.js:14-19); entityList hashed via special path (see entityCoverage); state.entities Map is NOT on that path.",
           "entityCoverage": {
-            "notStructurallyAbsent": true,
-            "mechanism": "canonicalStateSnapshot does NOT put entities through the CANONICAL_ROOT_KEYS loop; it maps state.entityList through canonicalEntity into out.entities (sessionSamplers.js:98-101), sorted by compareEntity. Canonical entity state IS covered by canonicalStateHash — the one non-CANONICAL_ROOT_KEYS hash path.",
-            "doNotListAsAbsent": ["entities", "entityList"],
-            "note": "Do not list entities/entityList under notableAbsentRoots: they are hashed via the special path, not omitted."
+            "arrayVsMap": {
+              "entityList": "ordered array of live entities (gameState.js create); THIS is what canonicalStateSnapshot hashes",
+              "entities": "runtime Map keyed by id for gameplay lookups (getEntity/player); NOT hashed by canonicalStateSnapshot"
+            },
+            "hashed": {
+              "stateField": "entityList",
+              "snapshotField": "out.entities",
+              "mechanism": "canonicalStateSnapshot does NOT walk CANONICAL_ROOT_KEYS for entity data; it maps state.entityList through canonicalEntity into out.entities (sessionSamplers.js:98-101), sorted by compareEntity. The snapshot key is named 'entities' but the SOURCE is state.entityList only.",
+              "doNotListAsAbsent": ["entityList"],
+              "note": "Do not list entityList under notableAbsentRoots: the array is hashed via this special path."
+            },
+            "notHashed": {
+              "stateField": "entities",
+              "type": "Map",
+              "classification": "runtime lookup index keyed by id; not walked, not mapped, not folded into canonicalStateHash",
+              "intendedRole": "reconstructible runtime index derived from entityList when core spawn/sweep keep them in sync",
+              "checkpointCaveat": "A matching canonicalStateHash does NOT prove state.entities Map parity with entityList. Stale Map entries (removed entity still in Map) or missing Map entries (entity in list but not Map) share a hash yet diverge on the next getEntity/player lookup. Do not assume Map parity from a matching hash.",
+              "listUnderNotableAbsentRoots": true
+            }
           },
           "notableAbsentRoots": [
             "input",
             "settings",
             "rng",
+            "entities",
             "camera",
             "bounds",
             "spatialHash",
@@ -85,6 +101,7 @@
           ],
           "notableAbsentRootsNotes": {
             "rng": "Top-level state.rng (mulberry32 primary stream at gameState.js create). Structurally absent from canonical snapshot — not entity-level redaction. Nested .rng keys under walked roots (e.g. state.world.rng) are category-1 redactions instead.",
+            "entities": "Top-level state.entities is a Map (id → entity) for runtime lookups. NOT hashed. Only state.entityList is hashed into snapshot field out.entities (sessionSamplers.js:98-101). Array-vs-Map: identical hash does not imply Map↔list parity; next getEntity can diverge if the index is out of sync.",
             "nextEntityId": "gameState.js:85 entity id allocator. Absent from CANONICAL_ROOT_KEYS. Two states with identical canonicalStateHash but different nextEntityId diverge on the next spawn.",
             "freeIds": "gameState.js:86 recycled id pool. Absent from CANONICAL_ROOT_KEYS. Same continuation-divergence class as nextEntityId.",
             "aiEncounter": "gameState.js:124 { schemaVersion, nextSeq, commands: [] } queued AI commands. Absent from CANONICAL_ROOT_KEYS. Identical hash with different queued commands diverges when commands drain.",
@@ -666,7 +683,7 @@
         "lines": [505, 531, 592, 611],
         "call": "performance.now",
         "classification": "DIAGNOSTIC/presentation",
-        "note": "KBM activity timestamps only at 8610102d; not sim dt authority. (Dirty tree adds further performance.now sites for auto-target path drawing — workTreeOnly, not baseline.)"
+        "note": "KBM activity timestamps only at 8610102d; not sim dt authority. Baseline inventory records only 8610102d sites."
       },
       {
         "file": "src/systems/gamepad.js",
@@ -777,7 +794,7 @@
         "meaning": "Present on state/entities but stripped during canonicalization."
       },
       "rootKeysStructurallyAbsent": {
-        "meaning": "Never included in CANONICAL_ROOT_KEYS — not selected into canonicalStateSnapshot via the root-keys loop. Entity data is NOT in this set: it is hashed via the entityList → canonicalEntity → out.entities special path (sessionSamplers.js:98-101).",
+        "meaning": "Never included in CANONICAL_ROOT_KEYS — not selected into canonicalStateSnapshot via the root-keys loop. state.entityList is NOT in this set (hashed via special path into out.entities). state.entities Map IS in this set — the Map is never hashed.",
         "checkpointCritical": [
           "input",
           "settings",
@@ -787,13 +804,13 @@
           "npcJobs"
         ],
         "alsoAbsent": [
-          "camera", "bounds", "accumulator", "aiEncounter", "npcJobs", "ui", "content",
+          "entities", "camera", "bounds", "accumulator", "aiEncounter", "npcJobs", "ui", "content",
           "render", "vfx", "audioRuntime", "perfRuntime", "save", "spatialHash", "rng",
           "nextEntityId", "freeIds"
         ],
         "notAbsentEntityPath": {
-          "doNotList": ["entities", "entityList"],
-          "note": "entities/entityList are covered by canonicalStateSnapshot special path, not structurally omitted from the hash."
+          "doNotList": ["entityList"],
+          "note": "Only state.entityList is covered by the canonicalStateSnapshot special path (→ out.entities). state.entities (Map) is structurally absent from the hash — see alsoAbsent and entityCoverage.notHashed. Do not treat Map and array as equivalent coverage."
         }
       }
     },
@@ -822,8 +839,8 @@
     "gaps": [
       "state.rng continuation not in Observatory hash or save-visible stream counter",
       "system-owned noncontinuable entropy (weapons, terrainAnchors, lootShards, combat, world.rng, traffic.rngSeed, interventionMeta.rngSeed, missions._spawnSeq) lack centralized serializable continuation — gap BROADER than state.rng (see systemOwnedRngStreams). sectorSim private _rng is unused; its live path uses restorable transitCounter. uniqueWrecks is ephemeral-reconstructible (local re-derived factory), not noncontinuable",
-      "canonical hash entity-level redaction omits nested rng keys by design (OMIT_CANONICAL_KEYS); top-level state.rng is separately structurally absent from CANONICAL_ROOT_KEYS; entity bodies ARE hashed via entityList special path",
-      "root keys input, settings, nextEntityId, freeIds, aiEncounter, and npcJobs are NEVER IN CANONICAL_ROOT_KEYS — canonicalStateHash insufficient as checkpoint-equality oracle for input/settings/allocator/command/job-differing runs; §14 needs explicit digests for these continuation-critical roots",
+      "canonical hash entity-level redaction omits nested rng keys by design (OMIT_CANONICAL_KEYS); top-level state.rng is separately structurally absent from CANONICAL_ROOT_KEYS; entity bodies ARE hashed via entityList special path only — state.entities Map is not hashed and Map↔list parity is not guaranteed by matching hash",
+      "root keys input, settings, entities (Map), nextEntityId, freeIds, aiEncounter, and npcJobs are NEVER IN CANONICAL_ROOT_KEYS — canonicalStateHash insufficient as checkpoint-equality oracle for input/settings/allocator/command/job-differing runs or Map-desynced entity indexes; §14 needs explicit digests for these continuation-critical roots",
       "no unified runtime manifest of systems+flags+backends for a checkpoint",
       "blank New Game seed uses wall-clock/Math.random",
       "many live probes still wall-time rather than tick-indexed",
