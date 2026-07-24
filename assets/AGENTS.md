@@ -8,6 +8,7 @@ maps, report commands, and current player-route captures are the status authorit
 | Work | Read |
 |---|---|
 | Ship, station, gate, place, Blender/export | `assets/ships/AGENTS.md` |
+| Craft / acceptance (G0–G7, states, evidence) | `docs/visual-assets/README.md` |
 | Station-bar portraits | `assets/portraits/AGENTS.md` |
 | Concept/reference art | `assets/concept/AGENTS.md` |
 | Visual program and priorities | `design/graphics-sprints/README.md` and `design/program/` |

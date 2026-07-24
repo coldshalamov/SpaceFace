@@ -11,26 +11,30 @@ authorize quality cuts, arbitrary asset budgets, or process metrics as substitut
 ## Authority and routing
 
 1. Root `AGENTS.md` owns repository safety, live-system routing, performance policy, and ownership.
-2. [`TOP50_WONDER_BUILD_PLAN.md`](TOP50_WONDER_BUILD_PLAN.md) owns **priority and build order**: what
+2. [`docs/visual-assets/`](../../docs/visual-assets/README.md) owns **craft and acceptance** for
+   authored 3D assets (states, G0–G7 gates, evidence shapes). A valid GLB is not accepted art.
+3. [`TOP50_WONDER_BUILD_PLAN.md`](TOP50_WONDER_BUILD_PLAN.md) owns **priority and build order**: what
    produces the largest visible improvement first.
-3. [`FULL_GRAPHICS_REVAMP_GOAL.md`](FULL_GRAPHICS_REVAMP_GOAL.md) owns **coverage and outcome bar**:
+4. [`FULL_GRAPHICS_REVAMP_GOAL.md`](FULL_GRAPHICS_REVAMP_GOAL.md) owns **coverage and outcome bar**:
    which authored surfaces must ultimately reach a professional, coherent result.
-4. [`design/revamp/BP-08_VISUAL_ASSET_SPEC.md`](../revamp/BP-08_VISUAL_ASSET_SPEC.md) supplies missing
+5. [`design/revamp/BP-08_VISUAL_ASSET_SPEC.md`](../revamp/BP-08_VISUAL_ASSET_SPEC.md) supplies missing
    asset inventory and faction/role silhouette intent.
-5. [`QUALITY_RITUAL.md`](QUALITY_RITUAL.md) is an **evidence template**, not a quota system. Screenshots,
+6. [`QUALITY_RITUAL.md`](QUALITY_RITUAL.md) is an **evidence template**, not a quota system. Screenshots,
    written critique, live-route proof, contract checks, and independent visual judgment matter; iteration
    counts and self-scores do not prove quality.
-6. [`00_ORCHESTRATION.md`](00_ORCHESTRATION.md) routes concurrent lanes and single-writer integration.
-7. [`ASSET_PRODUCTION_LEDGER.md`](ASSET_PRODUCTION_LEDGER.md) subdivides PQ-022/PQ-023 into stable,
+7. [`00_ORCHESTRATION.md`](00_ORCHESTRATION.md) routes concurrent lanes and single-writer integration.
+8. [`ASSET_PRODUCTION_LEDGER.md`](ASSET_PRODUCTION_LEDGER.md) subdivides PQ-022/PQ-023 into stable,
    manifest-covering asset and presentation packets. It is a subordinate execution ledger, not a
    global queue or completion authority.
-8. [`VISUAL_ITERATION_PROTOCOL.md`](VISUAL_ITERATION_PROTOCOL.md) defines minimum scrutiny floors,
+9. [`VISUAL_ITERATION_PROTOCOL.md`](VISUAL_ITERATION_PROTOCOL.md) defines minimum scrutiny floors,
    valid full-subject/game-camera evidence, story-grounded art briefs, defect escalation and
    independent review. Counts create inspection pressure; they never grant acceptance.
 
-The researched G0–G7 Visual Asset Production Standard is currently proposed in draft PR #89 rather
-than on `master`. Until it is reconciled and installed at `docs/visual-assets/`, the production ledger
-records its essential craft states without pretending the missing 29-file research archive is local.
+The canonical G0–G7 craft and acceptance contract lives at
+[`docs/visual-assets/`](../../docs/visual-assets/README.md)
+(`VISUAL_ASSET_PRODUCTION_STANDARD.md`). Install source was PR #89
+(`agent/visual-asset-production-standard` @ `09258529`). The production ledger tracks
+family packets and evidence against that standard; it does not replace it.
 
 `GOAL_FULL_PROFESSIONAL_GRAPHICS_REVAMP.md` is historical correction/evidence from the first revamp. It
 documents why geometry-only claims were rejected, but it is not an active acceptance contract or current
@@ -60,6 +64,7 @@ captures.
 
 | Document | Role |
 |---|---|
+| [`docs/visual-assets/`](../../docs/visual-assets/README.md) | **Canonical** craft states, G0–G7 gates, acceptance (not this folder) |
 | `TOP50_WONDER_BUILD_PLAN.md` | Ranked visual priority and slice exits |
 | `FULL_GRAPHICS_REVAMP_GOAL.md` | Full authored-asset coverage and professional outcome bar |
 | `CLI_ASSET_FOUNDRY_EXECUTION_PLAN.md` | Zero-cost CLI pipeline and six independently shippable checkpoints |

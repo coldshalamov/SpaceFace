@@ -21,20 +21,19 @@ Use this order inside an activated graphics lane:
 6. `FULL_GRAPHICS_REVAMP_GOAL.md` and `LONG_TERM_GRAPHICS_OVERHAUL.md` for outcome and architecture.
 7. Live manifests, runtime maps, checks, and current player-route evidence for technical truth.
 
-The researched Visual Asset Production Standard is not yet on `master`. Its durable condensed form
-is draft [PR #89](https://github.com/coldshalamov/SpaceFace/pull/89), exact reviewed branch tip
-`0925852922a4378f8cc618d1df25b9bc0423b1a4`. After reconciliation, its canonical local entry should
-be `docs/visual-assets/README.md` and its craft contract should be
-`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`.
+The canonical Visual Asset Production Standard is installed at:
 
-The reported 29-file research archive is **not in the repository or any inspected Git ref**. Its
-reported temporary path was `sandbox:/mnt/data/spaceface_visual_asset_production_standard.zip` and
-reported SHA-256 was `c6014d0980a2d4c07bb5491c1c21498d531f704fa398dbc352e633df4d417abf`.
-Reattach or regenerate it if the modular research/source notes are wanted; do not invent those files
-or create a second standards hierarchy.
+- entry: `docs/visual-assets/README.md`
+- craft contract: `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`
+- install source: [PR #89](https://github.com/coldshalamov/SpaceFace/pull/89) branch tip
+  `0925852922a4378f8cc618d1df25b9bc0423b1a4` (`agent/visual-asset-production-standard`)
 
-Until PR #89 lands, this ledger uses its essential production states and G0–G7 semantics. It does
-not import its text by copy, and it does not grant acceptance.
+This ledger is subordinate: it routes PQ-022/PQ-023 family packets and records craft evidence against
+that standard. It does not grant acceptance and must not invent a second standards hierarchy.
+
+The optional 29-file research archive that preceded the condensed standard is **not** in this
+repository. If recovered later, treat it as reference research only; the condensed `docs/visual-assets/`
+docs remain authority.
 
 ## 2. Two truths that must stay separate
 

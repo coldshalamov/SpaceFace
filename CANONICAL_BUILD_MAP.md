@@ -310,7 +310,8 @@ Replace `N` with the user’s count. For a single packet, use the same rules wit
 
 | Path | Use for |
 |---|---|
-| `design/graphics-sprints/README.md` | Graphics program entry |
+| `docs/visual-assets/README.md` | **Canonical** authored-asset craft + G0–G7 acceptance |
+| `design/graphics-sprints/README.md` | Graphics program entry (priority / orchestration) |
 | `design/graphics-sprints/ASSET_PRODUCTION_LEDGER.md` | PQ-022/PQ-023 asset-family census, audit gaps, subordinate VA/VP packets and graphics controller prompt |
 | `design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md` | Minimum visual scrutiny, valid camera/evidence rules, narrative art brief and defect-driven iteration |
 | `LONG_TERM_GRAPHICS_OVERHAUL.md`, `TOP50_WONDER_BUILD_PLAN.md` | Priority and long-term visual bar |
@@ -320,7 +321,8 @@ Replace `N` with the user’s count. For a single packet, use the same rules wit
 For graphics, the queue still decides **when** PQ-022/PQ-023 run. The production ledger decides
 **which exact asset or presentation family is next** and tracks craft evidence separately from
 technical lifecycle. It does not create another global status surface. The canonical G0–G7 craft
-standard is proposed in draft PR #89 and should live under `docs/visual-assets/` after reconciliation.
+and acceptance contract is installed at `docs/visual-assets/`
+(`VISUAL_ASSET_PRODUCTION_STANDARD.md`).
 
 ### 6.6 History / do not implement by default
 
