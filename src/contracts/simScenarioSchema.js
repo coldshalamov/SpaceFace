@@ -376,17 +376,10 @@ export function validateSimScenario(doc, options = {}) {
       issue('$.parameterOverlay', 'type', 'parameterOverlay must be an object');
     } else {
       rejectUnknownKeys(doc.parameterOverlay, OVERLAY_KEYS, '$.parameterOverlay', issue);
-      // FIX 16: lab.anchorMass semantic rule lives in the shared validator so
-      // `sf lab validate` and `sf lab run` agree (no false-positive preflight).
-      const values = doc.parameterOverlay.values;
-      if (values && typeof values === 'object' && !Array.isArray(values)
-          && values['lab.anchorMass'] != null
-          && !docHasResolvableAnchorMassTarget(doc)) {
-        issue(
-          '$.parameterOverlay.values["lab.anchorMass"]',
-          'anchor-mass-target',
-          'lab.anchorMass requires a resolvable target (attachment targetAlias or entity alias "anchor")',
-        );
+      // FIX 16 / FIX 17: anchorMass resolution is shared with validateCanonicalScenario
+      // so raw docs, compile, and precompiled-canonical run all reject orphans.
+      for (const extra of collectAnchorMassResolutionIssues(doc, options)) {
+        issues.push(extra);
       }
     }
   }
@@ -566,6 +559,20 @@ export function formatSimScenarioIssue(issue) {
   return `${loc}${issue.path}: [${issue.rule}] ${issue.message}`;
 }
 
+/**
+ * Semantic checks that apply to both raw documents and precompiled canonicals.
+ * FIX 17: runLabScenario's options.canonical path skips compileSimScenario (and thus
+ * validateSimScenario). Call this after canonical selection so orphan lab.anchorMass
+ * is rejected on both the raw-document and precompiled-canonical paths.
+ *
+ * @param {object} doc raw scenario or precompiled canonical
+ * @param {{ file?: string }} [options]
+ */
+export function validateCanonicalScenario(doc, options = {}) {
+  const issues = collectAnchorMassResolutionIssues(doc, options);
+  return result(issues.length === 0, issues);
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function result(ok, issues) {
@@ -579,9 +586,31 @@ function result(ok, issues) {
 }
 
 /**
+ * Collect orphan lab.anchorMass issues (empty when resolvable or not set).
+ * Shared by validateSimScenario and validateCanonicalScenario.
+ */
+function collectAnchorMassResolutionIssues(doc, options = {}) {
+  const issues = [];
+  if (!doc || typeof doc !== 'object') return issues;
+  const overlay = doc.parameterOverlay;
+  if (!overlay || typeof overlay !== 'object' || Array.isArray(overlay)) return issues;
+  const values = overlay.values;
+  if (!values || typeof values !== 'object' || Array.isArray(values)) return issues;
+  if (values['lab.anchorMass'] == null) return issues;
+  if (docHasResolvableAnchorMassTarget(doc)) return issues;
+  issues.push({
+    path: '$.parameterOverlay.values["lab.anchorMass"]',
+    rule: 'anchor-mass-target',
+    message: 'lab.anchorMass requires a resolvable target (attachment targetAlias or entity alias "anchor")',
+    file: options.file || null,
+  });
+  return issues;
+}
+
+/**
  * Structural check: can lab.anchorMass resolve a target from the scenario document?
  * Requires attachment.targetAlias present among entities, or an entity alias "anchor".
- * Shared by validate + run (via compileSimScenario → validateSimScenario).
+ * Shared by validate + run (via compileSimScenario → validateSimScenario / validateCanonicalScenario).
  */
 function docHasResolvableAnchorMassTarget(doc) {
   if (!doc || !Array.isArray(doc.entities)) return false;

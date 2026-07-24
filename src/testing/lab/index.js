@@ -1,6 +1,11 @@
 // Deterministic Gameplay Lab — public surface (Phase 3).
 
-export { validateSimScenario, compileSimScenario, SIM_SCENARIO_SCHEMA } from '../../contracts/simScenarioSchema.js';
+export {
+  validateSimScenario,
+  validateCanonicalScenario,
+  compileSimScenario,
+  SIM_SCENARIO_SCHEMA,
+} from '../../contracts/simScenarioSchema.js';
 export { runLabScenario, validateLabScenario, SIM_DT } from './runScenario.js';
 export { repeatScenario } from './repeat.js';
 export { replayScenario, replayFailure } from './replay.js';

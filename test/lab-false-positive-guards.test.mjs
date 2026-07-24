@@ -16,7 +16,11 @@ import {
 } from '../src/testing/lab/inputTape.js';
 import { createMasslineInputGrammar } from '../src/systems/masslineInputGrammar.js';
 import { FOCUSED_FLIGHT_SYSTEMS, FOCUSED_MASSLINE_SYSTEMS } from '../src/testing/lab/systemBundles.js';
-import { validateSimScenario } from '../src/contracts/simScenarioSchema.js';
+import {
+  validateSimScenario,
+  validateCanonicalScenario,
+  compileSimScenario,
+} from '../src/contracts/simScenarioSchema.js';
 import { sanitizeCommand } from '../scripts/lib/masslineControlLab.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -751,25 +755,171 @@ test('FIX16: sf lab validate exits non-zero for orphan lab.anchorMass', () => {
       ['scripts/sf.mjs', 'lab', 'validate', scenarioPath],
       { cwd: REPO_ROOT, encoding: 'utf8', timeout: 30_000 },
     );
+    // FIX 18: require a real CLI run with structured output — no vacuous pass on
+    // spawn failure, timeout, crash-before-JSON, or empty stdout.
+    assert.equal(child.error, undefined, `CLI spawn must succeed; error=${child.error}`);
+    assert.equal(
+      typeof child.status,
+      'number',
+      `CLI must exit with a status code (not killed/timeout); status=${child.status} signal=${child.signal}`,
+    );
     assert.notEqual(child.status, 0, `sf lab validate must exit non-zero; stdout=${child.stdout}`);
-    // Prefer structured exitClass when present (4 = invalid config).
+
     const lines = String(child.stdout || '').split(/\r?\n/).filter((l) => l.trim().startsWith('{'));
-    if (lines.length) {
-      const parsed = JSON.parse(lines[lines.length - 1]);
-      assert.equal(parsed.ok, false);
-      assert.ok(
-        parsed.exitClass === 4 || parsed.exitClass != null,
-        `expected non-pass exitClass, got ${JSON.stringify(parsed)}`,
-      );
-      assert.notEqual(parsed.exitClass, 0, 'exitClass must be non-zero');
-      const issues = (parsed.validation && parsed.validation.issues) || parsed.issues || [];
-      const issueText = JSON.stringify(issues);
-      assert.ok(
-        /anchorMass/i.test(issueText),
-        `CLI validation issues must mention anchorMass: ${issueText}`,
+    assert.ok(
+      lines.length > 0,
+      `CLI must emit parseable JSON on stdout; stdout=${child.stdout} stderr=${child.stderr}`,
+    );
+    let parsed;
+    try {
+      parsed = JSON.parse(lines[lines.length - 1]);
+    } catch (err) {
+      assert.fail(
+        `CLI stdout JSON parse failed: ${err && err.message}; raw=${lines[lines.length - 1]}`,
       );
     }
+    assert.equal(parsed.ok, false);
+    assert.ok(
+      parsed.exitClass === 4 || parsed.exitClass != null,
+      `expected non-pass exitClass, got ${JSON.stringify(parsed)}`,
+    );
+    assert.notEqual(parsed.exitClass, 0, 'exitClass must be non-zero');
+    const issues = (parsed.validation && parsed.validation.issues) || parsed.issues || [];
+    const issueText = JSON.stringify(issues);
+    assert.ok(
+      /anchorMass/i.test(issueText),
+      `CLI validation issues must mention anchorMass: ${issueText}`,
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// ── FIX 17: precompiled canonical path must reject orphan lab.anchorMass ─────
+
+/**
+ * Build a precompiled-shaped canonical that carries orphan lab.anchorMass
+ * (no attachment targetAlias, no entity alias "anchor"). Used to exercise
+ * options.canonical — the path that skips compileSimScenario.
+ */
+function orphanAnchorMassCanonical() {
+  return {
+    schema: 'spaceface.simScenarioCanonical.v1',
+    id: 'massline.anchor-mass-orphan-canonical',
+    version: 1,
+    evidenceClass: 'focused-fixture',
+    runtimeProfile: 'focused-lab',
+    seed: 47,
+    ticks: 4,
+    dt: 1 / 60,
+    world: {
+      fixtureProfile: 'massline',
+      sectorId: 'sector_helios_prime',
+      mode: 'flight',
+      physicsBackend: 'rapier-dynamic',
+      flightBackend: 'v3',
+      aiBackend: 'legacy',
+      credits: 5000,
+    },
+    entities: [
+      {
+        alias: 'player',
+        profile: 'ship.starter',
+        role: 'player',
+        team: 0,
+        isPlayer: true,
+        pos: { x: 0, y: 0, z: 0 },
+        vel: { x: 0, y: 0, z: 10 },
+        heading: 0,
+        angularVelocity: 0,
+        overrides: {},
+        loadout: null,
+        persistent: true,
+      },
+      {
+        alias: 'rock',
+        profile: 'asteroid.mid',
+        role: 'lab_filler',
+        team: 2,
+        isPlayer: false,
+        pos: { x: 50, y: 0, z: 0 },
+        vel: { x: 0, y: 0, z: 0 },
+        heading: 0,
+        angularVelocity: 0,
+        overrides: { mass: 200, radius: 3 },
+        loadout: null,
+        persistent: true,
+      },
+    ],
+    relations: [],
+    attachments: [],
+    inputTape: {
+      events: [],
+      frames: [{ tick: 0, input: { moveX: 0, moveZ: 0 }, commands: [] }],
+    },
+    policies: [],
+    checkpoints: [],
+    trace: { signals: ['default'], sampleEvery: 1 },
+    metrics: [
+      { name: 'invariant.finiteState', version: 1, params: {}, threshold: { op: '==', value: 1 } },
+    ],
+    assertions: [],
+    parameterOverlay: {
+      schema: 'spaceface.labParameterOverlay.v1',
+      version: 1,
+      values: { 'lab.anchorMass': 9000 },
+    },
+    systems: null,
+    observer: { enabled: false },
+    fixtureExceptions: [],
+    rendering: { detached: true },
+  };
+}
+
+test('FIX17: precompiled canonical with orphan lab.anchorMass is rejected via options.canonical', async () => {
+  const canonical = orphanAnchorMassCanonical();
+
+  // Shared validator must reject the precompiled shape directly.
+  const direct = validateCanonicalScenario(canonical);
+  assert.equal(direct.ok, false, 'validateCanonicalScenario must reject orphan anchorMass');
+  assertAnchorMassIssue(direct.issues, 'validateCanonicalScenario');
+
+  // Mutating a valid compile result must also be caught on the canonical path.
+  // (compile of a clean doc succeeds; inject orphan overlay after compile.)
+  const cleanDoc = orphanAnchorMassScenario();
+  delete cleanDoc.parameterOverlay;
+  const compiled = compileSimScenario(cleanDoc);
+  assert.equal(compiled.ok, true, 'clean doc without overlay must compile');
+  const mutated = {
+    ...compiled.canonical,
+    parameterOverlay: {
+      schema: 'spaceface.labParameterOverlay.v1',
+      version: 1,
+      values: { 'lab.anchorMass': 9000 },
+    },
+  };
+
+  const result = await runLabScenario(cleanDoc, {
+    verbosity: 1,
+    systems: [...FOCUSED_MASSLINE_SYSTEMS],
+    canonical: mutated,
+  });
+  assert.equal(result.ok, false, 'runLabScenario(options.canonical) must reject orphan lab.anchorMass');
+  assert.equal(result.exitClass, 4, 'canonical-path rejection must use invalid-config exit class');
+  assert.equal(result.status, 'invalid-config');
+  assert.ok(result.validation && result.validation.ok === false, 'must carry validation failure');
+  assertAnchorMassIssue((result.validation && result.validation.issues) || [], 'runLabScenario(options.canonical)');
+
+  // Direct hand-built canonical path (no compile involved).
+  const handBuilt = await runLabScenario({}, {
+    verbosity: 1,
+    systems: [...FOCUSED_MASSLINE_SYSTEMS],
+    canonical,
+  });
+  assert.equal(handBuilt.ok, false, 'hand-built orphan canonical must be rejected');
+  assert.equal(handBuilt.exitClass, 4);
+  assertAnchorMassIssue(
+    (handBuilt.validation && handBuilt.validation.issues) || [],
+    'hand-built options.canonical',
+  );
 });

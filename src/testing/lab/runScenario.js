@@ -6,7 +6,11 @@ import { createAuthoritativeRuntime } from '../../runtime/createAuthoritativeRun
 import { SIM_DT } from '../../core/sim.js';
 import { canonicalStringify } from '../../core/simSnapshot.js';
 import { observeMasslineOrbit } from '../../combat/masslineOrbitTelemetry.js';
-import { compileSimScenario, validateSimScenario } from '../../contracts/simScenarioSchema.js';
+import {
+  compileSimScenario,
+  validateSimScenario,
+  validateCanonicalScenario,
+} from '../../contracts/simScenarioSchema.js';
 import { buildEntitySpawnSpec } from './entityProfiles.js';
 import { createInputTapeDriver, hashInputTape } from './inputTape.js';
 import { buildCheckpoints, stripCheckpointDebug } from './checkpoint.js';
@@ -47,6 +51,22 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       };
     }
     canonical = compiled.canonical;
+  } else {
+    // FIX 17: options.canonical skips compileSimScenario/validateSimScenario.
+    // Re-run shared semantic checks so precompiled/mutated canonicals with
+    // orphan lab.anchorMass are rejected the same way as raw documents.
+    const canonicalValidation = validateCanonicalScenario(canonical, { file: options.file });
+    if (!canonicalValidation.ok) {
+      return {
+        schema: 'spaceface.labRunResult.v1',
+        ok: false,
+        exitClass: 4,
+        status: 'invalid-config',
+        runId,
+        validation: canonicalValidation,
+        failure: null,
+      };
+    }
   }
 
   if (canonical.parameterOverlay) {
