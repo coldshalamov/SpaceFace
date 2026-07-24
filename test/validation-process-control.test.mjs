@@ -125,15 +125,20 @@ test('P1 FIX15: fast-exit during slow onSpawn still resolves (no hang)', async (
   });
 
   // Hard guard so a hang fails the test instead of freezing the suite.
+  // FIX19: retain the timer handle and clear it once the race settles so a
+  // passing test does not pin the event loop for the full guardMs.
   let timedOutGuard = false;
+  let guardTimer = null;
   const guard = new Promise((resolve) => {
-    setTimeout(() => {
+    guardTimer = setTimeout(() => {
       timedOutGuard = true;
       resolve(null);
     }, guardMs);
   });
 
-  const result = await Promise.race([resultPromise, guard]);
+  const result = await Promise.race([resultPromise, guard]).finally(() => {
+    if (guardTimer) clearTimeout(guardTimer);
+  });
   const elapsed = Date.now() - started;
 
   assert.equal(timedOutGuard, false, `runWithTimeout hung beyond ${guardMs}ms (elapsed=${elapsed})`);
@@ -144,4 +149,53 @@ test('P1 FIX15: fast-exit during slow onSpawn still resolves (no hang)', async (
   assert.equal(result.exitCode, 0);
   assert.equal(result.timedOut, false);
   assert.ok(elapsed < guardMs, `must return promptly (elapsed=${elapsed}ms)`);
+});
+
+// P1 FIX18: timeout timer must be cancelled when the child exits during a slow
+// onSpawn. Otherwise timeoutMs elapses while onSpawn is still awaiting, fires
+// after exit, sets timedOut=true, and may killProcessTree a recycled PID.
+//
+// Windows note: node -e process.exit(0) often takes ~70–350ms after spawn returns
+// before the exit event, so timeoutMs must exceed that floor. The slow onSpawn
+// deliberately waits until the pid is dead, then waits past timeoutMs so an
+// uncleared timer would fire on an already-exited child.
+test('P1 FIX18: slow onSpawn past timeoutMs after child exit is not timedOut', async () => {
+  const timeoutMs = 400;
+  const exitedPid = { value: null };
+
+  const result = await runWithTimeout({
+    command: process.execPath,
+    args: ['-e', 'process.exit(0)'],
+    timeoutMs,
+    onSpawn: async (pidRecord) => {
+      const pid = pidRecord?.pid;
+      exitedPid.value = pid ?? null;
+      assert.ok(pid > 0);
+
+      // Wait until the OS reports the child as gone (exit lifecycle may lag).
+      const deadDeadline = Date.now() + 5_000;
+      while (Date.now() < deadDeadline) {
+        try {
+          process.kill(pid, 0);
+          await new Promise((r) => setTimeout(r, 15));
+        } catch {
+          break; // ESRCH / not found — process is dead
+        }
+      }
+
+      // Child is dead. Remain in onSpawn past the hard-timeout window so an
+      // armed timer would fire if settle did not clearTimeout(timer).
+      await new Promise((r) => setTimeout(r, timeoutMs + 100));
+    },
+  });
+
+  assert.equal(result.status, 'pass', 'real clean exit must not become timeout');
+  assert.equal(result.timedOut, false, 'must not false-positive timedOut after child exit');
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.signal, null);
+  assert.ok(exitedPid.value > 0);
+  // killProcessTree must not have been invoked for the timeout path.
+  assert.equal(result.pidRecord?.killResult ?? null, null,
+    'timeout kill must not run against an already-exited (possibly recycled) pid');
+  assert.equal(result.pidRecord?.timedOut, false);
 });

@@ -146,6 +146,10 @@ export async function runWithTimeout({
     const settle = (info) => {
       if (exitCaptured) return;
       exitCaptured = info;
+      // FIX18: cancel hard-timeout the moment lifecycle settles so a slow
+      // onSpawn cannot fire a false timeout (and kill a recycled PID) after
+      // the child has already exited. Idempotent if already cleared/fired.
+      if (timer) clearTimeout(timer);
       resolve(info);
     };
     child.once('error', (error) => {
@@ -187,6 +191,8 @@ export async function runWithTimeout({
   });
 
   timer = setTimeout(async () => {
+    // Child already exited while onSpawn was still running — do not false-timeout.
+    if (exitCaptured) return;
     timedOut = true;
     try {
       killResult = await killProcessTree(child.pid);
@@ -196,6 +202,8 @@ export async function runWithTimeout({
   }, hardTimeoutMs);
   // Do not keep the event loop alive solely for the timer once the child exits.
   timer.unref?.();
+  // If the child already settled before the timer was armed (sync exit), clear it.
+  if (exitCaptured && timer) clearTimeout(timer);
 
   // Reserve launch quota / notify ownership after listeners are safe.
   if (typeof onSpawn === 'function' && pidRecord.pid) {
