@@ -27,6 +27,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Program-control validation verifies integrated receipts against commits reachable from
+          # HEAD, so CI needs history rather than the action's default single-commit checkout.
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -39,6 +43,11 @@ jobs:
       # Install dev dependencies. npm ci is faster + deterministic on CI.
       - name: Install dependencies
         run: npm ci
+
+      - name: Validate program control plane
+        run: |
+          node scripts/check-program-docs.mjs
+          node --test test/program-control-tools.test.mjs
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4

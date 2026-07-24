@@ -1,3 +1,4 @@
+<!-- LIFETIME: STABLE -->
 # design/ agent orientation
 
 Do not read this directory wholesale. Start at `design/program/README.md` for current position and at
