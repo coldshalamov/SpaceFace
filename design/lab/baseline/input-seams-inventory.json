@@ -81,13 +81,19 @@
         "pointer NDC / screen coords",
         "gamepad axes with deadzone",
         "modal/text-entry blocking",
-        "performance.now timestamps for KBM activity / auto-target path drawing"
+        "performance.now timestamps for KBM activity"
       ],
       "wallClockUses": {
         "file": "src/systems/input.js",
         "lines": [505, 531, 592, 611],
         "classification": "presentation/modality timestamps — not flight axis authority",
         "note": "At 8610102d only KBM activity performance.now sites; auto-target path-drawing wall-clock uses exist only in dirty working tree (not baseline)."
+      },
+      "workTreeOnly": {
+        "note": "Not baseline (8610102d) data — Phase 2 consumers must not treat as recorded baseline.",
+        "citations": [
+          "auto-target path-drawing performance.now / wall-clock uses present only in dirty working-tree input.js (not at 8610102d)"
+        ]
       }
     },
     "semanticsLayer": {
