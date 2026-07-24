@@ -130,6 +130,19 @@ export function createAuthoritativeRuntime(options = {}) {
     // state/bus are safe to surface; unwrapped sim.step would bypass withFeatureMaps entirely.
     state: sim ? sim.state : options.state || null,
     bus: sim ? sim.bus : options.bus || null,
+    /** Controlled setup ports for the lab (no unwrapped step). */
+    spawn(spec) {
+      if (!sim) throw new Error('Authoritative runtime has no simulation host');
+      return sim.spawn(spec);
+    },
+    getSystem(name) {
+      if (!sim) return null;
+      return sim.registry.get(name);
+    },
+    getHelpers() {
+      if (!sim) return null;
+      return sim.helpers;
+    },
     step(dt) {
       if (!sim) throw new Error('Authoritative runtime has no simulation host');
       return withFeatureMaps(() => sim.step(dt));
@@ -139,6 +152,13 @@ export function createAuthoritativeRuntime(options = {}) {
       return withFeatureMaps(() => sim.runTicks(count, dt));
     },
     dispose() {
+      // sim.dispose only clears the bus — free the Rapier world to prevent WASM leaks.
+      if (sim && sim.registry) {
+        const physicsSys = sim.registry.get('physics');
+        if (physicsSys && typeof physicsSys._disableSg02DynamicAuthority === 'function') {
+          try { physicsSys._disableSg02DynamicAuthority(); } catch (_) { /* best-effort */ }
+        }
+      }
       if (sim && typeof sim.dispose === 'function') sim.dispose();
       // MAPS are restored after every step/init; nothing permanent to undo here.
     },

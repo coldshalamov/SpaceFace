@@ -1,0 +1,76 @@
+{
+  "schema": "spaceface.simScenario.v1",
+  "id": "massline.latch-reel",
+  "version": 1,
+  "title": "Massline latch + reel",
+  "description": "Real attachment + rest-length with public raw KeyF press/release through the input grammar.",
+  "evidenceClass": "focused-fixture",
+  "runtimeProfile": "focused-lab",
+  "seed": 47,
+  "ticks": 120,
+  "world": {
+    "fixtureProfile": "massline",
+    "sectorId": "sector_helios_prime",
+    "mode": "flight",
+    "physicsBackend": "rapier-dynamic",
+    "flightBackend": "v3",
+    "aiBackend": "legacy",
+    "credits": 5000
+  },
+  "entities": [
+    {
+      "alias": "player",
+      "profile": "ship.starter",
+      "role": "player",
+      "team": 0,
+      "factionId": "faction_free",
+      "isPlayer": true,
+      "pos": { "x": 0, "z": 0 },
+      "vel": { "x": 0, "z": 30 },
+      "heading": 1.5707963267948966,
+      "persistent": true
+    },
+    {
+      "alias": "anchor",
+      "profile": "asteroid.heavy",
+      "role": "lab_anchor",
+      "team": 2,
+      "pos": { "x": 120, "z": 0 },
+      "vel": { "x": 0, "z": 0 },
+      "overrides": { "mass": 400, "radius": 6 },
+      "persistent": true
+    }
+  ],
+  "attachments": [
+    {
+      "defId": "tether_standard",
+      "ownerAlias": "player",
+      "targetAlias": "anchor"
+    }
+  ],
+  "inputEvents": [
+    { "tick": 0, "device": "keyboard", "code": "KeyW", "pressed": true, "sequence": 0 },
+    { "tick": 10, "device": "keyboard", "code": "KeyF", "pressed": true, "sequence": 0 },
+    { "tick": 40, "device": "keyboard", "code": "KeyF", "pressed": false, "sequence": 0 },
+    { "tick": 50, "device": "keyboard", "code": "KeyW", "pressed": false, "sequence": 0 }
+  ],
+  "frames": [
+    { "tick": 0, "input": { "moveX": 0, "moveZ": 1, "turnIntent": 0, "reelDelta": 0 } },
+    { "tick": 60, "input": { "moveX": 0, "moveZ": 1, "turnIntent": 0, "reelDelta": -1 } },
+    { "tick": 100, "input": { "moveX": 0, "moveZ": 1, "turnIntent": 0, "reelDelta": 0 } }
+  ],
+  "policies": [
+    { "id": "massline.baseline", "version": 1 }
+  ],
+  "metrics": [
+    { "name": "invariant.finiteState", "version": 1, "threshold": { "op": "==", "value": 1 } },
+    { "name": "massline.diverged", "version": 1, "threshold": { "op": "==", "value": 0 } },
+    { "name": "massline.oscillations", "version": 1, "threshold": { "op": "<=", "value": 40 } }
+  ],
+  "trace": { "signals": ["distance", "radiusError", "radialSpeed", "tension"], "sampleEvery": 1 },
+  "fixtureExceptions": [
+    "pre-existing attachment created via combat kernel before first tick (evidenceClass focused-fixture)",
+    "focused massline system bundle — not production-manifest evidence"
+  ],
+  "observer": { "enabled": false }
+}

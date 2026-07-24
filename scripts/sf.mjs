@@ -19,6 +19,9 @@ if (command === 'help' || command === '--help' || command === '-h') usage(0);
 
 if (command === 'validate') {
   runValidate(args);
+} else if (command === 'lab') {
+  // Phase 3: deterministic gameplay lab (in-process; no spawn).
+  runLab(args);
 } else if (['run', 'inspect', 'compare', 'trace', 'profile'].includes(command)) {
   runSimCommand(command, command, args);
 } else if (command === 'replay') {
@@ -31,6 +34,20 @@ if (command === 'validate') {
   runSimCommand(command, 'compare', normalizeScenarioOrTapeArgs(args), { diffKind });
 } else {
   usage(1, `Unknown command: ${command}`);
+}
+
+async function runLab(labArgs) {
+  try {
+    const { runLabCommand } = await import('./sf-lab.mjs');
+    const code = await runLabCommand(labArgs);
+    // Prefer exitCode over process.exit so Rapier/libuv can finish close callbacks
+    // (process.exit mid-close triggers UV_HANDLE_CLOSING aborts on Windows).
+    process.exitCode = code == null ? 1 : code;
+  } catch (err) {
+    process.stderr.write((err && err.stack) || String(err));
+    process.stderr.write('\n');
+    process.exitCode = 3;
+  }
 }
 
 function runValidate(validateArgs) {
@@ -161,5 +178,6 @@ function usage(code, message) {
   process.stderr.write('  node scripts/sf.mjs run|inspect|compare|trace|profile 47a [...sf-sim args]\n');
   process.stderr.write('  node scripts/sf.mjs replay verify [47a|test/47a.inputs.json] [...sf-sim run args]\n');
   process.stderr.write('  node scripts/sf.mjs diff replay [47a|test/47a.inputs.json] [...sf-sim compare args]\n');
+  process.stderr.write('  node scripts/sf.mjs lab validate|run|repeat|compare|replay|trace <scenario> [...flags]\n');
   process.exit(code);
 }

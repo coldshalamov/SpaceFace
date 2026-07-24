@@ -1,0 +1,51 @@
+{
+  "schema": "spaceface.simScenario.v1",
+  "id": "flight.fixed-input.baseline",
+  "version": 1,
+  "title": "Flight fixed-input baseline",
+  "description": "Starter ship with exact throttle/yaw/strafe tape; finite-state + repeat invariants.",
+  "evidenceClass": "focused-fixture",
+  "runtimeProfile": "focused-lab",
+  "seed": 47,
+  "ticks": 90,
+  "world": {
+    "fixtureProfile": "empty-flight",
+    "sectorId": "sector_helios_prime",
+    "mode": "flight",
+    "physicsBackend": "rapier-dynamic",
+    "flightBackend": "v3",
+    "aiBackend": "legacy",
+    "credits": 5000
+  },
+  "entities": [
+    {
+      "alias": "player",
+      "profile": "ship.starter",
+      "role": "player",
+      "team": 0,
+      "factionId": "faction_free",
+      "isPlayer": true,
+      "pos": { "x": 0, "z": 0 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 1.5707963267948966,
+      "persistent": true
+    }
+  ],
+  "frames": [
+    { "tick": 0, "input": { "moveX": 0, "moveZ": 1, "turnIntent": 0, "boost": false } },
+    { "tick": 30, "input": { "moveX": 0.5, "moveZ": 1, "turnIntent": 0.5, "boost": false } },
+    { "tick": 60, "input": { "moveX": -0.5, "moveZ": 0.5, "turnIntent": -0.5, "boost": false } }
+  ],
+  "metrics": [
+    { "name": "invariant.finiteState", "version": 1, "threshold": { "op": "==", "value": 1 } },
+    { "name": "invariant.noNegativeResources", "version": 1, "threshold": { "op": "==", "value": 1 } }
+  ],
+  "assertions": [
+    { "kind": "equivalence", "equivalence": "run-eq-repeat" }
+  ],
+  "trace": { "signals": ["playerX", "playerZ", "playerVelX", "playerVelZ"], "sampleEvery": 1 },
+  "fixtureExceptions": [
+    "focused systems list (actions,flightV3,weapons,physics) — not production-manifest evidence"
+  ],
+  "observer": { "enabled": false }
+}
