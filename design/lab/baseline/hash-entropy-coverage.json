@@ -119,7 +119,7 @@
           "checkpointCriticalNotes": {
             "input": "Held/edge-triggered axes and actions — two runs that differ only in input at tick N produce identical canonicalStateHash.",
             "settings": "Controls/bindings and other settings — not in CANONICAL_ROOT_KEYS; settings-differing runs hash-collide.",
-            "entities": "state.entities Map is not hashed; a matching canonicalStateHash does not prove Map↔entityList parity — §14 needs a Map-parity or entityList-derived digest",
+            "entities": "state.entities Map is not hashed; canonicalStateHash digests entityList only (snapshot out.entities), so a matching hash does not prove Map↔entityList parity. A second entityList-derived digest cannot catch Map desync — that is already what canonicalStateHash computes. §14 needs Map inspection: direct Map↔entityList parity at checkpoint (every list entry in the Map with matching data and vice versa), deterministic Map reconstruction from entityList on restore then parity assert, or a digest over the Map's own keys/values — not over entityList",
             "nextEntityId": "Continuation-critical allocator root (gameState.js:85): not in CANONICAL_ROOT_KEYS; same hash does not guarantee next-spawn identity.",
             "freeIds": "Continuation-critical recycled-id pool (gameState.js:86): same class as nextEntityId.",
             "aiEncounter": "Continuation-critical queued AI command bag (gameState.js:124): same hash does not guarantee command-drain identity.",
