@@ -1,9 +1,9 @@
 # Worktree and Integration Inventory
 
-**Current integration snapshot:** 2026-07-23 at `master` HEAD `bf558142`. PQ-017 is integrated at
-`2a9517d8`, its closeout/docs transaction is `bf558142`, and PQ-018 is next. Four worktrees are
-registered: the dirty primary checkout, a clean protected Lark donor, a clean VP-220 candidate, and
-the clean `codex/integration-checkpoint-20260723` reconciliation checkout. The readable HUD
+**Current integration snapshot:** 2026-07-23 at clean `master` HEAD `dff6e4fc`. PQ-017 is integrated
+at `2a9517d8`, its closeout/docs transaction is `bf558142`, and PQ-018 is next. The primary checkout
+is the sole registered worktree. The reviewed planning portfolio is present on `master`; narrative,
+Lark, and VP-220 candidates are preserved by recovery refs and remain unintegrated. The readable HUD
 (`ea698805`) and reviewed Helios civilian family (`54548e09`) are integrated; the former mixed
 graphics donor is tagged, hash-archived, and physically removed. The
 earlier combined merge `b235f062`, evidence hardening through `280cafb0`, propulsion repair
@@ -19,10 +19,7 @@ move after this document is written. Use [`NOW.md`](./NOW.md) for volatile owner
 
 | Worktree | Branch/tip | Live disposition |
 |---|---|---|
-| `C:\Users\93rob\Documents\GitHub\SpaceFace` | `master` / `bf558142` | Product authority. Dirty with protected worldbuilding/story/runtime work and 592 untracked paths, including about 229 MB of generated `media/**`; do not use it as an integration checkout. |
-| `C:\Users\93rob\AppData\Local\Temp\grok-goal-8066f05c8cef\worktree-gfx-remaster` | `agent/gfx-production-remaster-lark` / `d538a583` | Clean, 16 commits ahead and three behind `master`; ownership not released; review and selectively port, never whole-merge or remove opportunistically. |
-| `C:\Users\93rob\sf-vp220` | `codex/vp220-propulsion-graphics` / `74775bf8` | Clean reviewed 23-path propulsion plus acceptance-harness checkpoint; 82/82 focused tests, five source/runtime checks, and all 27 self-test mutants pass. It is one candidate commit ahead and two `master` commits behind; headed visual acceptance is absent, so preserve for overlap review/rebase and real Browser/Electron proof. |
-| `C:\Users\93rob\sf-checkpoint-20260723` | `codex/integration-checkpoint-20260723` / based on `bf558142` | Isolated reconciliation checkout. Integrates only the reviewed asynchronous handoffs and this inventory transaction; it does not absorb foreign dirty work. |
+| `C:\Users\93rob\Documents\GitHub\SpaceFace` | `master` / `dff6e4fc` | Sole product authority and sole registered worktree. Clean and ready for the user's ordinary playtest. |
 
 The eight ChatGPT portfolio branches each contain one reviewed historical handoff (the performance
 branch contains a two-commit correction chain). Their content is preserved under
@@ -30,23 +27,23 @@ branch contains a two-commit correction chain). Their content is preserved under
 route acceptance. The separate async-canary branch remains a transport demonstration and is not
 needed for product planning.
 
-No `blender.exe`, Electron route, asset builder, Git lock, or release/export lock was active during
-the audit. Two Blender MCP server processes were connected, which is not itself a GPU/render lease.
-Recheck processes and locks before any headed acceptance or asset build.
+Recovery dispositions:
 
-### Cleanup gates
+- `codex/recovery-worldbuilding-20260723` preserves the 47-file narrative/worldbuilding candidate at
+  `9e4b7d7b`; it is not on `master`.
+- `recovery/lark-graphics-remaster-20260723` preserves the Lark candidate at `d538a583`; its branch
+  remains `agent/gfx-production-remaster-lark`.
+- `recovery/vp220-propulsion-20260723` preserves VP-220 at `74775bf8`; its branch remains
+  `codex/vp220-propulsion-graphics`.
+- `C:\Users\93rob\.codex\recovery\spaceface-primary-20260723` contains the 592-file untracked
+  media/research/tool archive (231,162,483 bytes).
+- The reconciliation branch was fast-forwarded to `master` and deleted. Its physical worktree and
+  both candidate worktrees were removed. An empty inaccessible temp leaf may be left by Windows
+  after Git unregisters a worktree; it contains no repository files and is not a Git worktree.
 
-1. Merge the isolated checkpoint only after link/diff validation.
-2. Keep Lark registered until its owner hands off and its 16-commit delta receives source, route,
-   visual, manifest, and overlap review.
-3. Keep VP-220 registered at recoverable commit `74775bf8` until its two-commit `master` overlap is
-   reviewed, it is rebased, and real headed Browser/Electron evidence passes. The clean checkpoint is
-   not visual acceptance or integration.
-4. Split the primary worldbuilding/source changes from generated media. Require provenance,
-   licensing, manifest, duplicate, and visual review before committing large media.
-5. Remove a worktree or branch only after its exact tip is integrated or preserved by a named
-   recovery ref/archive, its checkout is clean, and its review obligations are discharged. Never
-   delete the dirty primary tree or the still-unaccepted VP-220 and Lark lanes opportunistically.
+This recovery checkpoint deliberately stops short of an automated headed-validation campaign. The
+next acceptance step is a user playtest from clean `master`; failures found there should become
+bounded repair tasks rather than restarting a broad harness loop.
 
 ## Current integration checkpoint — 2026-07-21 (graphics/program closeout)
 

@@ -5,6 +5,17 @@ appears complete. [`NOW.md`](./NOW.md) and the active
 [`roadmap/`](./roadmap/README.md) own current work order; the Alpha/Depth pages below remain acceptance
 truth and milestone roll-ups.
 
+## Current recovery handoff — 2026-07-23
+
+Start from clean `master` `dff6e4fc` in the sole registered worktree. The immediate goal is to keep
+the game playable for the user's own test, not to open a broad automated validation campaign.
+
+1. Start the ordinary game route and let the user play.
+2. Convert any user-visible failure into one bounded repair with the narrowest relevant check.
+3. Keep `codex/recovery-worldbuilding-20260723`, the Lark recovery ref, and the VP-220 recovery ref
+   outside `master` until each candidate receives a separate product decision.
+4. Once the playable checkpoint is stable, resume the canonical queue at PQ-018.
+
 ## Resume: first fifteen minutes
 
 1. Read `AGENTS.md`, [`README.md`](./README.md), and [`NOW.md`](./NOW.md).
@@ -25,22 +36,13 @@ truth and milestone roll-ups.
 
 ## Current pickup order
 
-1. **Foundation checkpoint (`F01–F17`):** confirm `77a09790`, `32596ec7`, and the containing program
-   commit, preserve occupied work, and carry the stale sim envelopes as explicit verification debt rather
-   than redoing the sprint or editing goldens.
-2. **Four-lane start:** run `G01`, `T01`, `A01`, and `W01` in parallel under their exact path budgets.
-3. **Corridor spine:** build `G02–G07`; land Asteroid `A02–A05` before `G08` and Massline `T02–T04`
-   before the ninety-minute `G18` pilot.
-4. **Gold corridor:** close `G08–G20`, projecting each accepted outcome into the applicable Alpha M1/M3/M4
-   row rather than creating a second acceptance claim.
-5. **Signature and embodiment:** deepen `T05–T18`, `A06–A20`, and `W02–W20` along the packet dependencies,
-   keeping pure kernels parallel and shared runtime/UI wiring serialized.
-6. **UX/release (`R01–R18`):** close accessibility, performance, parity, platform, and store evidence only
-   after the routes they measure exist.
-
-This order can be parallelized where ownership is disjoint. It must not be reordered in a way that
-loses checkpoint or residual-WIP recoverability, conflates a bulk commit with acceptance, or claims a
-later release gate while an earlier player-visible P0/P1 remains red.
+1. **User playtest on clean `master`.** Do not interpose a multi-day validation loop.
+2. **Bounded repairs from observed failures.** Keep each repair small enough to return immediately to
+   a playable checkpoint.
+3. **PQ-018 Wreck Cathedral runtime promotion.** Use the integrated source candidate and reviewed
+   readiness handoff; do not confuse source-asset completion with runtime or route acceptance.
+4. **Later canonical queue work.** Continue from `CANONICAL_BUILD_MAP.md` and
+   `roadmap/program-queue.json` only after the game remains playable between slices.
 
 ## Per-item completion ritual
 

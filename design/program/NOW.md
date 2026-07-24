@@ -1,53 +1,36 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-23 checkpoint audit at `master` `bf558142` (`2a9517d8` implementation plus
-the PQ-017 closeout transaction). PQ-001..PQ-017 are integrated; PQ-018 Wreck Cathedral runtime
-promotion is the next canonical queue item. Reviewed asynchronous planning handoffs are preserved on
-`codex/integration-checkpoint-20260723`; the protected graphics, propulsion, worldbuilding, and media
-work listed below remains outside that checkpoint.
+**Snapshot:** 2026-07-23 recovery checkpoint at clean `master` `dff6e4fc`. PQ-001..PQ-017 are
+integrated; PQ-018 Wreck Cathedral runtime promotion remains the next canonical queue item. The
+reviewed asynchronous planning handoffs are now reference material on `master`. There is one
+registered Git worktree. Unaccepted graphics and narrative candidates remain recoverable by named
+branches/tags without occupying live worktrees.
 
-## 2026-07-23 live leases and candidates (refresh at `master` `bf558142`)
+## 2026-07-23 live leases and candidates (refresh at `master` `dff6e4fc`)
 
-- **PQ-017 World Site kernel — `INTEGRATED` at `2a9517d8`; writer lease RELEASED.** The reusable
-  manifest/kernel/runtime, save ownership, operations, physical payload/receiver path, impact
-  recovery, presentation, map History, traffic, controls, route tooling, and normal-play Massline
-  durability contract are committed. Final focused proof: World Site/Massline **81/81**, public-route
-  contract **67/67**, closed-loop controls **23/23**, SG-02 and SG-06 resilience green, and 47-A sim
-  compare `ok:true`/deterministic/`hashEqual:true`. The headed route reached the authored site and
-  operations before the acceptance driver falsely charged its own sequential key-release latency to
-  the active key. Exact token-bound keydown-to-keyup accounting is now deterministic-tested; no
-  further expensive live rerun was used as a debugger. This is an integrated feature check-off, not a
-  claim that a new final Browser/Electron evidence directory was accepted. Receipt:
+- **Playable checkpoint — READY FOR USER PLAYTEST.** The primary worktree is clean and is the sole
+  registered checkout. No automated Browser/Electron acceptance is claimed by this recovery
+  transaction; the next acceptance signal is the user's ordinary playtest.
+- **PQ-017 World Site kernel — `INTEGRATED` at `2a9517d8`; writer lease RELEASED.** Its closeout is
+  recorded at `bf558142`. Receipt:
   `design/program/roadmap/receipts/PQ-017-world-site-REPORT.md`.
-- **Helios Lark graphics remaster — OCCUPIED foreign isolated lane.** Live worktree
-  `C:\Users\93rob\AppData\Local\Temp\grok-goal-8066f05c8cef\worktree-gfx-remaster`, branch
-  `agent/gfx-production-remaster-lark`. The worktree is clean at `d538a583`, 16 commits ahead and
-  three behind current `master`; it contains later Lark source/release/evidence/tooling revisions.
-  No Blender or asset-build process was active at the audit, but ownership has not been handed off.
-  Do not double-assign PQ-022, remove the worktree, or whole-merge the branch. A second external
-  graphics process also wrote primary-tree evidence under
-  `Users93robAppDataLocalTempgrok-goal-5d58d165aa45implementer/**`; preserve it.
-- **VP-220 propulsion — clean protected isolated candidate.** Worktree `C:\Users\93rob\sf-vp220`,
-  branch `codex/vp220-propulsion-graphics`, is clean at `74775bf8` (merge base `8f1c630f`; one
-  candidate commit ahead and two `master` commits behind). The reviewed 23-path checkpoint includes
-  fleet propulsion runtime work plus a fail-closed Browser/Electron acceptance harness. Focused proof
-  is green: 82/82 tests, five source/runtime checks, and all 27 self-test mutants rejected; candidate
-  hash `363d8df746652c28ed8bd8551811cb1223141308e8c37eecd4e932a788b47a15`. It is not visually
-  accepted or integrated. Preserve the worktree until overlap review/rebase and the real headed
-  Browser/Electron evidence path are complete.
-- **Worldbuilding and media — protected foreign WIP in the primary tree.** Preserve
-  `docs/worldbuilding/README.md`, `docs/worldbuilding/CREATIVE-DIRECTION.md`,
-  `docs/worldbuilding/stylistic-influences/**`, the related
-  `scripts/_tmp_*.py` helpers, and `skills/creative-writing-1.0.0.tar.gz`. The same primary checkout
-  also contains an untracked `media/**` production tree: 90 anchors, 87 keyframes, 87 clips, recipes,
-  and a manifest (about 229 MB). Its recipes identify generated media but omit enough model/version/
-  seed and independent-approval detail that provenance and quality review remain required before any
-  intake. The total primary-tree status was 639 paths (47 tracked/intent changes plus 592 untracked)
-  at the audit. Do not stage, delete, move, or call this payload integrated.
-- **Asynchronous planning portfolio — preserved historical input.** Eight independently reviewed
-  handoffs now live under `docs/handoffs/chatgpt-portfolio-20260723/` on the checkpoint branch.
-  They do not change queue state. Re-audit the PQ-018 handoff against integrated PQ-017 when claiming
-  the packet; the later handoffs remain downstream references.
+- **Asynchronous planning portfolio — integrated as non-authoritative reference.** Eight reviewed
+  handoffs live under `docs/handoffs/chatgpt-portfolio-20260723/`. They do not change queue state,
+  wire runtime features, or prove route acceptance.
+- **Worldbuilding/narrative candidate — PRESERVED, NOT INTEGRATED.** The 47-file tracked slice is
+  committed at `9e4b7d7b` on `codex/recovery-worldbuilding-20260723`. It is intentionally separate
+  from `master` pending product review.
+- **Generated media/research/tool residue — ARCHIVED OUTSIDE GIT.** All 592 formerly untracked files
+  (231,162,483 bytes) were moved intact to
+  `C:\Users\93rob\.codex\recovery\spaceface-primary-20260723`. This includes `media/**`, the
+  stylistic-influences corpus, temporary research scripts, the creative-writing tarball, and three
+  renderer captures. Nothing from this archive is integrated or approved.
+- **Helios Lark graphics remaster — RECOVERABLE CANDIDATE, NO WORKTREE.** Branch
+  `agent/gfx-production-remaster-lark` and tag
+  `recovery/lark-graphics-remaster-20260723` both preserve exact tip `d538a583`. Do not whole-merge.
+- **VP-220 propulsion — RECOVERABLE CANDIDATE, NO WORKTREE.** Branch
+  `codex/vp220-propulsion-graphics` and tag `recovery/vp220-propulsion-20260723` both preserve exact
+  tip `74775bf8`. It remains unintegrated and has no current visual-acceptance claim.
 
 ## 2026-07-21 graphics checkpoint and donor retirement
 

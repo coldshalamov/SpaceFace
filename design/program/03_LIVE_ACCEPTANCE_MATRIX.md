@@ -4,6 +4,12 @@
 **Sprint 2 packet rows appended 2026-07-18** at commits `4f750412`, `cd784532`, `d5e0d6e7`; those rows
 carry their own evidence and do not promote any milestone row.
 
+**Recovery checkpoint 2026-07-23:** clean `master` `dff6e4fc` is the sole registered worktree and is
+ready for the user's ordinary playtest. This recovery transaction integrates reviewed planning
+handoffs as reference only; it adds no Browser/Electron, route, visual, performance, or packet
+acceptance claim. Narrative, Lark, and VP-220 candidates remain outside `master` on named recovery
+refs documented in [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md).
+
 **Integration checkpoint refreshed 2026-07-20:** graphics, the earlier performance checkpoint, and
 paused Atlas/map/travel work were promoted together at `ee9e0ab3`; context-recovery hardening is
 reachable through `f0b3b154`. Graphics closeout `cbdf1589` is now on `master`, including exact golden
