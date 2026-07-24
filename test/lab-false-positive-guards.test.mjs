@@ -440,9 +440,9 @@ test('FIX12: driver dispatches commands from every frame at the current tick', (
   assert.equal(atTick.moveX, 1);
 });
 
-// ── FIX 13: anchorMass targets attachment targetAlias ───────────────────────
+// ── FIX 13 / FIX 14: anchorMass + sample target = attachment targetAlias ────
 
-test('FIX13: lab.anchorMass applies to attachment targetAlias, not insertion-order decoy', async () => {
+test('FIX13/14: lab.anchorMass and makeSample use attachment targetAlias, not insertion-order decoy', async () => {
   const masses = Object.create(null);
   const capture = {
     name: 'labAnchorMassCapture',
@@ -456,6 +456,13 @@ test('FIX13: lab.anchorMass applies to attachment targetAlias, not insertion-ord
       }
     },
   };
+
+  const DECOY_X = -40;
+  const HEAVY_X = 120;
+  const PLAYER_X = 0;
+  // Authored separation to real tether target (heavy), not the decoy.
+  const expectedHeavyDistance = Math.abs(HEAVY_X - PLAYER_X);
+  const decoyDistance = Math.abs(DECOY_X - PLAYER_X);
 
   const result = await runLabScenario({
     schema: 'spaceface.simScenario.v1',
@@ -481,18 +488,19 @@ test('FIX13: lab.anchorMass applies to attachment targetAlias, not insertion-ord
         role: 'player',
         team: 0,
         isPlayer: true,
-        pos: { x: 0, z: 0 },
+        pos: { x: PLAYER_X, z: 0 },
         vel: { x: 0, z: 10 },
         heading: 0,
         persistent: true,
       },
       {
-        // Inserted before the real target — old heuristic would rewrite this mass.
+        // Inserted before the real target — old heuristic would rewrite this mass
+        // and makeSample would grade this decoy (distance ~40 vs real ~120).
         alias: 'decoy',
         profile: 'asteroid.mid',
         role: 'lab_decoy',
         team: 2,
-        pos: { x: -40, z: 0 },
+        pos: { x: DECOY_X, z: 0 },
         overrides: { mass: 111, radius: 3 },
         persistent: true,
       },
@@ -501,7 +509,7 @@ test('FIX13: lab.anchorMass applies to attachment targetAlias, not insertion-ord
         profile: 'asteroid.heavy',
         role: 'lab_anchor',
         team: 2,
-        pos: { x: 120, z: 0 },
+        pos: { x: HEAVY_X, z: 0 },
         overrides: { mass: 400, radius: 6 },
         persistent: true,
       },
@@ -522,7 +530,7 @@ test('FIX13: lab.anchorMass applies to attachment targetAlias, not insertion-ord
     ],
     observer: { enabled: false },
   }, {
-    verbosity: 1,
+    verbosity: 3, // need full trace for sample distance assertion
     systems: [...FOCUSED_MASSLINE_SYSTEMS, capture],
   });
 
@@ -531,4 +539,114 @@ test('FIX13: lab.anchorMass applies to attachment targetAlias, not insertion-ord
   assert.ok(result.overlayApplied && result.overlayApplied['lab.anchorMass'] === 9000);
   assert.equal(masses.heavy, 9000, `heavy (targetAlias) mass must be 9000, got ${masses.heavy}`);
   assert.equal(masses.decoy, 111, `decoy must keep authored mass 111, got ${masses.decoy}`);
+
+  // FIX 14: sample distance/restLength reflect the real tether target (heavy @ 120),
+  // not the decoy (@ 40) that precedes it in insertion order.
+  assert.ok(Array.isArray(result.trace) && result.trace.length > 0, 'verbosity 3 must yield samples');
+  const sample0 = result.trace[0];
+  assert.ok(Number.isFinite(sample0.distance), `sample.distance must be finite, got ${sample0.distance}`);
+  assert.ok(
+    Math.abs(sample0.distance - expectedHeavyDistance) < 5,
+    `sample.distance must track heavy (~${expectedHeavyDistance}), not decoy (~${decoyDistance}); got ${sample0.distance}`,
+  );
+  assert.ok(
+    Math.abs(sample0.distance - decoyDistance) > 10,
+    `sample.distance must NOT match decoy distance ${decoyDistance}; got ${sample0.distance}`,
+  );
+  assert.ok(Number.isFinite(sample0.restLength), 'restLength must be finite');
+  // Rest length is derived from host–target separation at create (heavy @ 120).
+  assert.ok(
+    Math.abs(sample0.restLength - expectedHeavyDistance) < 5,
+    `restLength must reflect heavy separation (~${expectedHeavyDistance}), got ${sample0.restLength}`,
+  );
+});
+
+// ── FIX 15: anchorMass without resolvable target is not "applied" ───────────
+
+test('FIX15: lab.anchorMass with no resolvable target is rejected (not silent applied)', async () => {
+  const result = await runLabScenario({
+    schema: 'spaceface.simScenario.v1',
+    id: 'massline.anchor-mass-no-target',
+    version: 1,
+    evidenceClass: 'focused-fixture',
+    runtimeProfile: 'focused-lab',
+    seed: 47,
+    ticks: 4,
+    world: {
+      fixtureProfile: 'massline',
+      sectorId: 'sector_helios_prime',
+      mode: 'flight',
+      physicsBackend: 'rapier-dynamic',
+      flightBackend: 'v3',
+      aiBackend: 'legacy',
+      credits: 5000,
+    },
+    entities: [
+      {
+        alias: 'player',
+        profile: 'ship.starter',
+        role: 'player',
+        team: 0,
+        isPlayer: true,
+        pos: { x: 0, z: 0 },
+        vel: { x: 0, z: 10 },
+        heading: 0,
+        persistent: true,
+      },
+      // No alias "anchor", no attachments — lab.anchorMass cannot resolve a target.
+      {
+        alias: 'rock',
+        profile: 'asteroid.mid',
+        role: 'lab_filler',
+        team: 2,
+        pos: { x: 50, z: 0 },
+        overrides: { mass: 200, radius: 3 },
+        persistent: true,
+      },
+    ],
+    // deliberately no attachments
+    parameterOverlay: {
+      schema: 'spaceface.labParameterOverlay.v1',
+      version: 1,
+      values: { 'lab.anchorMass': 9000 },
+    },
+    frames: [{ tick: 0, input: { moveX: 0, moveZ: 0 } }],
+    metrics: [
+      { name: 'invariant.finiteState', version: 1, threshold: { op: '==', value: 1 } },
+    ],
+    observer: { enabled: false },
+  }, {
+    verbosity: 1,
+    systems: [...FOCUSED_MASSLINE_SYSTEMS],
+  });
+
+  // Reject-at-validate path (exitClass 4) OR, if a run proceeds, overlay must not
+  // claim lab.anchorMass was applied.
+  if (result.exitClass === 4 || result.status === 'invalid-config') {
+    assert.equal(result.ok, false);
+    assert.ok(
+      result.validation && result.validation.ok === false,
+      'invalid-config must carry validation failure',
+    );
+    const issues = (result.validation && result.validation.issues) || [];
+    assert.ok(
+      issues.some((i) => String(i.path || '').includes('anchorMass') || String(i.message || '').includes('anchorMass')),
+      `expected anchorMass validation issue, got ${JSON.stringify(issues)}`,
+    );
+    // Must not report a successful apply for a rejected overlay.
+    assert.ok(
+      !result.overlayApplied || result.overlayApplied['lab.anchorMass'] == null,
+      'rejected scenario must not list lab.anchorMass under overlayApplied',
+    );
+  } else {
+    // Runtime report-unapplied path
+    assert.ok(
+      !result.overlayApplied || result.overlayApplied['lab.anchorMass'] == null,
+      `lab.anchorMass must not appear in overlayApplied when target missing; got ${JSON.stringify(result.overlayApplied)}`,
+    );
+    assert.ok(
+      result.overlayUnapplied && result.overlayUnapplied['lab.anchorMass'],
+      'expected overlayUnapplied["lab.anchorMass"] when run proceeds without target',
+    );
+  }
 });

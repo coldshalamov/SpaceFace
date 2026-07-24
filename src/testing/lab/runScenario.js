@@ -62,6 +62,27 @@ export async function runLabScenario(scenarioDoc, options = {}) {
         failure: null,
       };
     }
+    // FIX 15: lab.anchorMass without a resolvable target is invalid config — never run
+    // and report applied after a silent skip.
+    const anchorMassValue = canonical.parameterOverlay.values
+      && canonical.parameterOverlay.values['lab.anchorMass'];
+    if (anchorMassValue != null && !scenarioHasResolvableAnchorMassTarget(canonical)) {
+      return {
+        schema: 'spaceface.labRunResult.v1',
+        ok: false,
+        exitClass: 4,
+        status: 'invalid-config',
+        runId,
+        validation: {
+          ok: false,
+          issues: [{
+            path: '$.parameterOverlay.values["lab.anchorMass"]',
+            message: 'lab.anchorMass requires a resolvable target (attachment targetAlias or entity alias "anchor")',
+          }],
+        },
+        failure: null,
+      };
+    }
   }
 
   const scenarioDigest = sha256(canonicalStringify(canonical));
@@ -118,8 +139,21 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       }
     }
 
-    // Consume lab.* parameter overlays against spawned entities (FIX 9 / FIX 13).
-    applyLabParamOverlays(state, aliasMap, playerEntity, overlayCtx.params, canonical.attachments);
+    // Consume lab.* parameter overlays against spawned entities (FIX 9 / FIX 13 / FIX 15).
+    // Deferred lab.* paths only stay in overlayApplied when they actually mutate state.
+    const labOverlayStatus = applyLabParamOverlays(
+      state, aliasMap, playerEntity, overlayCtx.params, canonical.attachments,
+    );
+    const overlayApplied = { ...overlayResult.applied };
+    const overlayUnapplied = {};
+    for (const [path, reason] of Object.entries(labOverlayStatus.unapplied || {})) {
+      delete overlayApplied[path];
+      overlayUnapplied[path] = reason;
+    }
+
+    // Sample target must be the same entity anchorMass rewrote (FIX 14), not first non-player.
+    const sampleTargetEntity = resolveAnchorMassTarget(state, aliasMap, canonical.attachments);
+    const sampleTargetId = sampleTargetEntity ? sampleTargetEntity.id : null;
 
     // Prepare physics (Rapier)
     const physicsSys = runtime.getSystem('physics');
@@ -317,6 +351,7 @@ export async function runLabScenario(scenarioDoc, options = {}) {
         aliasMap,
         kernel,
         attachmentId: attachmentIds[0],
+        sampleTargetId,
         restLength0,
         observerEnabled,
       });
@@ -395,7 +430,8 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       scenarioDigest,
       inputDigest,
       overlay: overlayReproKey(canonical.parameterOverlay),
-      overlayApplied: overlayResult.applied,
+      overlayApplied,
+      overlayUnapplied: Object.keys(overlayUnapplied).length ? overlayUnapplied : undefined,
       overlayParams: { ...overlayCtx.params },
       fingerprint: runtime.fingerprint,
       params: {
@@ -614,9 +650,12 @@ function resolveLabAttachmentRef(state, ref, ownerId) {
  * Apply lab.* overlay params that only make sense after entities exist (FIX 9).
  * FIX 13: anchorMass resolves from the canonical attachment's targetAlias (tether target),
  * not entity insertion order.
+ * FIX 15: when anchorMass cannot resolve a target, report unapplied (never silent-skip as applied).
+ * @returns {{ unapplied: Record<string, string> }}
  */
 function applyLabParamOverlays(state, aliasMap, playerEntity, params = {}, attachments = []) {
-  if (!params || typeof params !== 'object') return;
+  const unapplied = {};
+  if (!params || typeof params !== 'object') return { unapplied };
 
   if (Number.isFinite(params.entrySpeed) && playerEntity && playerEntity.vel) {
     const sp = params.entrySpeed;
@@ -642,14 +681,19 @@ function applyLabParamOverlays(state, aliasMap, playerEntity, params = {}, attac
         target.physicsBody.inertiaY = params.anchorMass * 8;
         target.physicsBody.revision = (target.physicsBody.revision | 0) + 1;
       }
+    } else {
+      // Deferred apply failed — caller must not list this path under overlayApplied.
+      unapplied['lab.anchorMass'] = 'no-resolvable-target';
     }
   }
+
+  return { unapplied };
 }
 
 /**
- * Resolve the entity that lab.anchorMass should rewrite (FIX 13).
- * Prefer the first attachment's targetAlias (the real tether target); fall back to alias "anchor".
- * Never use insertion-order heuristics over unrelated non-player entities.
+ * Resolve the entity that lab.anchorMass should rewrite (FIX 13) and that makeSample
+ * should observe (FIX 14). Prefer the first attachment's targetAlias (the real tether
+ * target); fall back to alias "anchor". Never use insertion-order heuristics.
  */
 function resolveAnchorMassTarget(state, aliasMap, attachments = []) {
   const attList = Array.isArray(attachments) ? attachments : [];
@@ -665,6 +709,22 @@ function resolveAnchorMassTarget(state, aliasMap, attachments = []) {
     if (e) return e;
   }
   return null;
+}
+
+/**
+ * Structural check: can lab.anchorMass resolve a target from the scenario document?
+ * Requires attachment.targetAlias present among entities, or an entity alias "anchor".
+ */
+function scenarioHasResolvableAnchorMassTarget(canonical) {
+  if (!canonical || !Array.isArray(canonical.entities)) return false;
+  const aliases = new Set(canonical.entities.map((e) => e && e.alias).filter(Boolean));
+  const atts = Array.isArray(canonical.attachments) ? canonical.attachments : [];
+  for (const att of atts) {
+    if (att && typeof att.targetAlias === 'string' && att.targetAlias && aliases.has(att.targetAlias)) {
+      return true;
+    }
+  }
+  return aliases.has('anchor');
 }
 
 function makeSample(tick, state, ctx) {
@@ -685,14 +745,18 @@ function makeSample(tick, state, ctx) {
     // authoritative samples (acceptance: observer on/off → identical checkpoints/traces).
   };
 
-  if (ctx.attachmentId && ctx.kernel && ctx.aliasMap) {
+  if (ctx.attachmentId && ctx.kernel) {
     const att = ctx.kernel.attachments.get(ctx.attachmentId);
     const host = player;
-    const anchorAlias = Object.keys(ctx.aliasMap).find((a) => {
-      const id = ctx.aliasMap[a];
-      return id !== state.playerId;
-    });
-    const anchor = anchorAlias ? state.entities.get(ctx.aliasMap[anchorAlias]) : null;
+    // FIX 14: observe the resolved tether/anchorMass target, not first non-player alias.
+    // Prefer live attachment.targetId (authoritative); fall back to pre-resolved sampleTargetId.
+    let anchor = null;
+    if (att && att.targetId != null) {
+      anchor = state.entities.get(att.targetId) || null;
+    }
+    if (!anchor && ctx.sampleTargetId != null) {
+      anchor = state.entities.get(ctx.sampleTargetId) || null;
+    }
     const restLength = att && att.state === 'active'
       ? finite(att.restLength, ctx.restLength0)
       : ctx.restLength0;
