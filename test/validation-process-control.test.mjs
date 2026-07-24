@@ -163,9 +163,22 @@ test('P1 FIX15: fast-exit during slow onSpawn still resolves (no hang)', async (
 // proven purely from synthetic exit + injected clock. No real child, no
 // process.kill(pid, 0) polling, no wall-clock deadline. (Real-process happy
 // paths remain in the tests above for integration coverage.)
+//
+// FIX22: fake PID must be non-killable. If an assertion inside onSpawn throws,
+// runWithTimeout calls killProcessTree(child.pid). A positive synthetic PID
+// (e.g. 424242) could match a live host process. killProcessTree no-ops for
+// !Number.isFinite(pid) || pid <= 0 — use -1 (truthy so onSpawn still runs;
+// pid 0 would skip the onSpawn gate).
 test('P1 FIX18: slow onSpawn past timeoutMs after child exit is not timedOut', async () => {
   const timeoutMs = 400;
-  const fakePid = 424_242;
+  // FIX22: non-killable synthetic pid (see comment above).
+  const fakePid = -1;
+  {
+    const safety = await killProcessTree(fakePid);
+    assert.equal(safety.ok, false);
+    assert.equal(safety.reason, 'invalid-pid',
+      'fake PID must be ignored by killProcessTree (host-safety)');
+  }
   const exitedPid = { value: null };
   const scheduled = [];
   const setTimeoutFn = (fn, ms) => {
