@@ -1,7 +1,9 @@
 // PQ-005 / T05 anchor-relative orbit assist.
 //
-// This module is pure: it observes body snapshots and explicit Massline intent, then returns a
-// normal Flight V3 input plus an additive physics-authority impulse. It never writes position,
+// This module is pure: it observes two body snapshots plus explicit pilot intent, then returns a
+// normal Flight V3 input and an additive physics-authority impulse. The frame is always relative:
+// a light or similarly-massed target may move as the tether transmits force, but the requested ship
+// heading stays tangent to the live ship-to-target vector. It never writes either body's position,
 // velocity, rotation, angular velocity, or serialized state.
 
 export const ORBIT_ASSIST_TUNING_V1 = Object.freeze({
@@ -11,9 +13,9 @@ export const ORBIT_ASSIST_TUNING_V1 = Object.freeze({
   radialKp: 4,
   radialKd: 4,
   maxRadialAccelerationFraction: 0.2,
-  anchorMassRatioMin: 50,
   anchorRadiusMargin: 1.15,
   minIntent: 0.05,
+  flightIntentHoldS: 1,
   reversalSlewPerS: 2,
   tangentAlignTimeS: 0.55,
   strainThrottleStart: 0.72,
@@ -36,42 +38,79 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   const anchor = options.anchor;
   const tether = options.tether;
   const intent = options.intent;
+  const flightIntent = options.flightIntent;
   const dt = positive(options.dt, 0);
   const inactive = (reason) => ({
     active: false,
     input,
     impulse: null,
-    runtime: { direction: 0, engaged: false },
+    runtime: { direction: 0, engaged: false, intentSource: null, flightIntentHoldS: 0 },
     telemetry: inactiveTelemetry(strength, reason),
   });
-  const suspended = (reason, direction) => ({
+  const suspended = (reason, direction, intentSource, flightIntentHoldS) => ({
     active: false,
     input,
     impulse: null,
-    runtime: { direction, engaged: true },
-    telemetry: { ...inactiveTelemetry(strength, reason), direction },
+    runtime: { direction, engaged: true, intentSource, flightIntentHoldS },
+    telemetry: {
+      ...inactiveTelemetry(strength, reason),
+      direction,
+      intentSource,
+      engagementHoldS: flightIntentHoldS,
+    },
   });
 
   if (!(strengthScale > 0)) return inactive('assist-off');
   if (!(dt > 0) || !finiteBody(host) || !finiteBody(anchor) || anchor.alive === false) return inactive('invalid-body');
   if (!tether || tether.active !== true || tether.targetId == null) return inactive('not-tethered');
-  if (!intent || intent.lineControl !== true) return inactive('no-line-control');
-  const selectedDirection = Math.sign(finite(intent.orbitDirection));
+  const lineControl = !!(intent && intent.lineControl === true);
+  const intentSource = lineControl ? 'massline' : 'flight';
+  const selectedDirection = Math.sign(finite(lineControl
+    ? intent.orbitDirection
+    : flightIntent && flightIntent.lateral));
   if (selectedDirection === 0) return inactive('no-lateral-intent');
-  const forwardHeld = finite(intent.lineLength) < -ORBIT_ASSIST_TUNING_V1.minIntent;
-  const continuing = !!(options.runtime && options.runtime.engaged);
-  if (!forwardHeld && !continuing) return inactive('no-forward-intent');
+  const forwardHeld = lineControl
+    ? finite(intent.lineLength) < -ORBIT_ASSIST_TUNING_V1.minIntent
+    : finite(flightIntent && flightIntent.forward) > ORBIT_ASSIST_TUNING_V1.minIntent;
+  const continuing = !!(options.runtime && options.runtime.engaged
+    && options.runtime.intentSource === intentSource);
+  if (!forwardHeld && !(lineControl && continuing)) return inactive('no-forward-intent');
   if (input.brake || options.throwArmed || options.controlsBlocked) return inactive('manual-override');
+  const previousHoldS = options.runtime && options.runtime.intentSource === 'flight'
+    && Math.sign(finite(options.runtime.direction)) === selectedDirection
+    ? Math.max(0, finite(options.runtime.flightIntentHoldS))
+    : 0;
+  const flightIntentHoldS = intentSource === 'flight'
+    ? previousHoldS + dt
+    : 0;
+  if (intentSource === 'flight' && !continuing
+      && flightIntentHoldS < ORBIT_ASSIST_TUNING_V1.flightIntentHoldS) {
+    return {
+      active: false,
+      input,
+      impulse: null,
+      runtime: {
+        direction: selectedDirection,
+        engaged: false,
+        intentSource,
+        flightIntentHoldS,
+      },
+      telemetry: {
+        ...inactiveTelemetry(strength, 'engage-pending'),
+        direction: selectedDirection,
+        selectedDirection,
+        intentSource,
+        engagementHoldS: flightIntentHoldS,
+      },
+    };
+  }
   if (String(tether.phase || 'slack') === 'slack') {
     const heldDirection = clamp(finite(options.runtime && options.runtime.direction, selectedDirection), -1, 1);
-    return continuing ? suspended('line-slack', heldDirection) : inactive('line-slack');
+    return suspended('line-slack', heldDirection, intentSource, flightIntentHoldS);
   }
 
   const hostMass = positive(host.mass, positive(host.physicsBody && host.physicsBody.mass, 0));
-  const anchorMass = positive(anchor.mass, positive(anchor.physicsBody && anchor.physicsBody.mass, 0));
-  if (!(hostMass > 0) || anchorMass / hostMass < ORBIT_ASSIST_TUNING_V1.anchorMassRatioMin) {
-    return inactive('anchor-too-light');
-  }
+  if (!(hostMass > 0)) return inactive('invalid-host-mass');
 
   const rx = finite(host.pos.x) - finite(anchor.pos.x);
   const rz = finite(host.pos.z) - finite(anchor.pos.z);
@@ -136,12 +175,14 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
     active: true,
     input: { ...input, throttle, strafe: 0, turn, brake: false },
     impulse,
-    runtime: { direction, engaged: true },
+    runtime: { direction, engaged: true, intentSource, flightIntentHoldS },
     telemetry: {
       tuning: ORBIT_ASSIST_TUNING_V1.id,
       strength,
       direction,
       selectedDirection,
+      intentSource,
+      engagementHoldS: flightIntentHoldS,
       radius,
       restLength,
       lengthError,

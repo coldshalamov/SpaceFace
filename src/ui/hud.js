@@ -407,7 +407,7 @@ export function contactRosterVisible({
  * Normal-load strain remains useful telemetry but is not a failure alarm. STRAINED/CRITICAL and
  * warning color are reserved for explicitly breakable, extreme-overload operations.
  */
-export function masslineTetherStatus(tether, orbitAssistActive = false) {
+export function masslineTetherStatus(tether) {
   const strain = Number.isFinite(tether && tether.strain) ? Math.max(0, tether.strain) : 0;
   const automaticBreakAllowed = tether && tether.automaticBreakAllowed === true;
   const operation = tether && tether.reeling
@@ -426,7 +426,7 @@ export function masslineTetherStatus(tether, orbitAssistActive = false) {
     status = operation ? `${operation} · LOADED` : 'LOADED';
   } else status = operation || 'LOCKED';
   return {
-    text: orbitAssistActive ? `${status} · ORBIT ASSIST` : status,
+    text: status,
     warn: automaticBreakAllowed && strain > 0.6,
   };
 }
@@ -768,40 +768,12 @@ function injectTravelTapeStyle() {
   document.head.appendChild(s);
 }
 
-function injectPursuitSlotStyle() {
-  if (document.getElementById('sf-pursuit-slot-style')) return;
-  const s = document.createElement('style');
-  s.id = 'sf-pursuit-slot-style';
-  s.textContent = `
-  .sf-pursuit-slot { position:absolute; left:50%; top:68px; transform:translateX(-50%);
-    display:none; align-items:center; gap:7px; padding:4px 9px; pointer-events:none; z-index:24;
-    border:1px solid color-mix(in srgb, var(--visor-cyan,#7ee1ff) 48%, transparent);
-    background:rgba(4,10,18,.76); color:var(--text-primary,#eef8ff);
-    font-family:var(--mono,Consolas,monospace); font-size:10px; font-weight:700;
-    letter-spacing:.12em; text-transform:uppercase; text-shadow:none;
-    opacity:.86; transition:opacity .12s linear; }
-  .sf-pursuit-slot[data-holding="true"] { opacity:1; border-style:double; }
-  .sf-pursuit-slot__glyph { color:var(--visor-cyan,#7ee1ff); font-size:12px; }
-  @media (prefers-reduced-motion: reduce) {
-    .sf-pursuit-slot { transition: none; }
-  }
-  @media (forced-colors: active) {
-    .sf-pursuit-slot { forced-color-adjust:none; color:CanvasText; background:Canvas;
-      border:1px solid CanvasText; }
-    .sf-pursuit-slot[data-holding="true"] { border-style:double; }
-    .sf-pursuit-slot__glyph { color:CanvasText; }
-  }
-  `;
-  document.head.appendChild(s);
-}
-
 export function createHud(ctx, alerts) {
   const { state, helpers } = ctx;
   const root = document.getElementById('hud');
   root.innerHTML = '';
   root.dataset.objectiveHierarchy = 'one-objective-one-action-one-threat';
   injectTravelTapeStyle();
-  injectPursuitSlotStyle();
 
   // ---- bottom-left: ship schematic (hull + shield) + thin micro-bars (energy/heat/boost) ----
   // Bottom-left anchor (SPEC3-36 three-anchor law, design/revamp/HUD_THREE_ANCHOR.md): one flex
@@ -922,15 +894,6 @@ export function createHud(ctx, alerts) {
   }
   commandDeck.appendChild(actionBar);
   root.appendChild(commandDeck);
-  const pursuitSlotCue = document.createElement('div');
-  pursuitSlotCue.className = 'sf-pursuit-slot';
-  pursuitSlotCue.setAttribute('role', 'status');
-  pursuitSlotCue.setAttribute('aria-live', 'polite');
-  pursuitSlotCue.setAttribute('aria-hidden', 'true');
-  pursuitSlotCue.innerHTML = '<span class="sf-pursuit-slot__glyph" aria-hidden="true">◇</span>'
-    + '<span class="sf-pursuit-slot__text">PURSUIT ASSIST</span>';
-  root.appendChild(pursuitSlotCue);
-  const pursuitSlotText = pursuitSlotCue.querySelector('.sf-pursuit-slot__text');
   // Dock availability (physics emits dock:range as the player nears a station) → highlight the dock slot.
   let dockInRange = false;
   ctx.bus.on('dock:range', (p) => { dockInRange = !!(p && p.inRange); });
@@ -3605,39 +3568,22 @@ export function createHud(ctx, alerts) {
         elTetherStat.style.display = active ? '' : 'none';
         if (active) {
           const strain = tether.strain || 0;
-          const orbitAssist = p && p._flightFrame && p._flightFrame.orbitAssist;
           const targetEnt = state.entities.get(tether.targetId);
           const targetName = (targetEnt && (targetEnt.name || (targetEnt.data && targetEnt.data.name))) || (targetEnt ? targetEnt.type : '');
-          const assistActive = !!(orbitAssist && orbitAssist.active);
-          const tetherStatus = masslineTetherStatus(tether, assistActive);
+          const tetherStatus = masslineTetherStatus(tether);
           const controls = buildTetherControlPrompt(tether);
           const nameBit = targetName ? ' · ' + String(targetName).toUpperCase() : '';
           setText(elTether, `${tetherStatus.text}${nameBit}${controls ? ' · ' + controls : ''}`);
           setClass(elTether, 'sf-warn', tetherStatus.warn);
         }
       }
-      const selectedSlot = state.input && state.input.pursuitSlot;
-      const slotFrame = p && p._flightFrame && p._flightFrame.pursuitSlot;
-      const slotActive = !!(selectedSlot && selectedSlot.active && slotFrame && slotFrame.active);
-      setDisplay(pursuitSlotCue, slotActive, 'flex');
-      pursuitSlotCue.setAttribute('aria-hidden', slotActive ? 'false' : 'true');
-      if (slotActive) {
-        const holding = !!slotFrame.withinTolerance;
-        pursuitSlotCue.dataset.holding = holding ? 'true' : 'false';
-        const degrees = Math.round((selectedSlot.bearing || 0) * 180 / Math.PI);
-        const signedDegrees = degrees > 0 ? '+' + degrees : String(degrees);
-        setText(pursuitSlotText,
-          `PURSUIT ASSIST · ${holding ? 'HOLDING' : 'ACQUIRING'} · ${Math.round(selectedSlot.range || 0)} WU · ${signedDegrees}°`);
-      } else {
-        pursuitSlotCue.dataset.holding = 'false';
-      }
-      // Weapon status remains weapon-only; pursuit never claims or rewrites aim.
       const ws = p.data && p.data.weapons;
       const nGuns = ws ? ws.length : 0;
+      const auto = !!(state.input && state.input.autoFire);
       const primary = nGuns === 1 ? (ws[0].name || ws[0].defId || '1 gun') : (nGuns + ' guns');
-      setText(elWeapons, primary);
-      setClass(elWeapons, 'sf-warn', false);
-      if (elReticle) setClass(elReticle, 'autofire', false);
+      setText(elWeapons, primary + (auto ? ' · AUTO-TGT' : ''));
+      setClass(elWeapons, 'sf-warn', auto);
+      if (elReticle) setClass(elReticle, 'autofire', auto);
       // Reticle accuracy bloom: decay _recoilBloom toward 0 and scale the inner SVG. Sustained fire
       // expands the crosshair (1 -> 1.25); it contracts as you stop. Purely cosmetic readability.
       _recoilBloom = Math.max(0, _recoilBloom - frameDt * 2.2);

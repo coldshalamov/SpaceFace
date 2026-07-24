@@ -96,7 +96,12 @@ export function createMasslineInputGrammar() {
 
     if (held) {
       heldS += tickS;
-      if (attached && heldS >= MASSLINE_HOLD_S) enteredLineControl = true;
+      const hasLineIntent = Math.abs(lineLength) > DEADZONE
+        || Math.abs(orbit) > DEADZONE
+        || !!raw.pump
+        || Math.abs(rememberedLineLength) > DEADZONE
+        || Math.abs(rememberedOrbit) > DEADZONE;
+      if (attached && heldS >= MASSLINE_HOLD_S && hasLineIntent) enteredLineControl = true;
     }
 
     if (released) {

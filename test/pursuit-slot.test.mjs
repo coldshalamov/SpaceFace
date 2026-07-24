@@ -16,6 +16,7 @@ import {
   tickAutoTarget,
   toggleAutoTarget,
 } from '../src/combat/autoTargetMode.js';
+import * as flightV3 from '../src/systems/flightV3.js';
 
 test('PQ-007 exposes one pure target-relative pursuit-slot contract', () => {
   assert.equal(typeof pursuitSlot.createPursuitSlot, 'function');
@@ -167,10 +168,10 @@ test('the PQ-002 lab pins a deterministic weaving-target kill-criterion matrix',
   assert.equal(selected.metrics.manualOverrideTicks, 1);
 });
 
-test('G selects the locked target slot without pointer capture, target acquisition, or weapon aim writes', () => {
+test('G activates auto-target weapon lead and never creates a pursuit/orbit slot', () => {
   const state = createGameState(0x507007);
   const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0 };
-  const target = { id: 2, type: 'ship', alive: true, pos: { x: 220, z: 0 }, vel: { x: 10, z: 0 }, rot: 0 };
+  const target = { id: 2, type: 'ship', alive: true, pos: { x: 220, z: 0 }, vel: { x: 0, z: 30 }, rot: 0 };
   state.playerId = player.id;
   state.player.targetId = target.id;
   state.entities.set(player.id, player);
@@ -179,28 +180,22 @@ test('G selects the locked target slot without pointer capture, target acquisiti
   state.mode = 'flight';
   state.input.aimAngle = 0.73;
   state.input.aimWorld = { x: 42, z: -19 };
-  const beforeAim = { angle: state.input.aimAngle, world: { ...state.input.aimWorld } };
   const bus = createBus();
   let acquisitionRequests = 0;
   bus.on('ui:targetNearestHostileToPlayer', () => acquisitionRequests++);
 
-  const enabled = toggleAutoTarget(state, bus, createAutoTargetRuntime());
+  const runtime = createAutoTargetRuntime();
+  const enabled = toggleAutoTarget(state, bus, runtime);
   assert.equal(enabled, true);
-  assert.equal(state.input.pursuitSlot.active, true);
-  assert.equal(state.input.pursuitSlot.targetId, target.id);
-  assert.equal(state.input.autoFire, false, 'the retired G auto-fire/auto-aim flag must remain inert');
-  tickAutoTarget(state, 1 / 60, bus, createAutoTargetRuntime());
-  assert.deepEqual({ angle: state.input.aimAngle, world: state.input.aimWorld }, beforeAim,
-    'pursuit stations the ship but never rewrites the independent weapon cursor');
-  assert.equal(acquisitionRequests, 0, 'the player-selected lock must not be replaced silently');
-
-  target.alive = false;
-  tickAutoTarget(state, 1 / 60, bus, createAutoTargetRuntime());
-  assert.equal(state.input.pursuitSlot.active, false);
-  assert.equal(state.input.pursuitSlot.reason, 'target-lost');
+  assert.equal(state.input.pursuitSlot?.active || false, false);
+  assert.equal(state.input.autoFire, true);
+  assert.equal(acquisitionRequests, 1, 'enabling auto-target must acquire the nearest hostile');
+  tickAutoTarget(state, 1 / 60, bus, runtime);
+  assert(state.input.aimWorld.z > target.pos.z,
+    'auto-target must lead a moving enemy instead of aiming at its current position');
 });
 
-test('the shipped route retires world-path following and exposes bounded slot telemetry plus a non-color HUD cue', () => {
+test('the shipped route restores draw-to-fly auto-target while removing pursuit impulses and HUD', () => {
   const inputSource = readFileSync(new URL('../src/systems/input.js', import.meta.url), 'utf8');
   const flightSource = readFileSync(new URL('../src/systems/flightV3.js', import.meta.url), 'utf8');
   const weaponsSource = readFileSync(new URL('../src/systems/weapons.js', import.meta.url), 'utf8');
@@ -210,30 +205,61 @@ test('the shipped route retires world-path following and exposes bounded slot te
   const uiRootSource = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
   const hudSource = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
 
-  assert.match(inputSource, /adjustPursuitSlot/);
-  assert.match(inputSource, /const duplicatePursuitPointerDelta = e\.type === 'mousemove'/,
-    'either pointer event family may adjust the slot, but paired compatibility events must dedupe');
-  assert.match(inputSource, /if \(!duplicatePursuitPointerDelta && inp && inp\.pursuitSlot/,
-    'compatibility mousemove must not apply the same physical pointer delta a second time');
-  assert.match(inputSource, /if \(pursuitPressed && !manualPursuitOverride\)/,
-    'MMB must not re-arm the assist in the same tick that pilot movement releases it');
-  assert.match(inputSource, /active:\s*false, reason, releasedTick:\s*state\.tick/,
-    'manual override must publish its exact release tick for route evidence');
-  assert.match(inputSource, /addEventListener\('blur'[\s\S]*focus-lost[\s\S]*releasedTick/,
-    'window focus loss must fail closed instead of leaving an unattended slot active');
-  assert.doesNotMatch(inputSource, /recordAutoTargetPath|updateAutoTargetPathDrawing/);
-  assert.match(flightSource, /stepPursuitSlotAssist/);
-  assert.match(flightSource, /queuePhysicsImpulse\(entity, pursuitSlot\.impulse\)/);
+  assert.doesNotMatch(inputSource, /adjustPursuitSlot|pursuitPressed|createPursuitSlot/);
+  assert.match(inputSource, /recordAutoTargetPath|updateAutoTargetPathDrawing/);
+  assert.doesNotMatch(flightSource, /stepPursuitSlotAssist|pursuitSlot\.impulse/);
   assert.doesNotMatch(flightSource, /pursuitFollowPoint|AUTOPURSUIT_FOLLOW_DIST/);
-  assert.doesNotMatch(assistSource, /requestPointerLock|exitPointerLock|pointerlockchange/);
-  assert.doesNotMatch(modeSource, /inp\.aimAngle\s*=|inp\.aimWorld\.[xz]\s*=|followAutoTargetPath/);
+  assert.match(assistSource, /requestPointerLock|exitPointerLock|pointerlockchange/);
+  assert.match(modeSource, /inp\.aimAngle\s*=|inp\.aimWorld\.[xz]\s*=|followAutoTargetPath/);
   assert.doesNotMatch(weaponsSource, /if \(state\.input\.autoFire\)|_autoFireTarget|_selectedAutoFireTarget/,
-    'the retired persistent locked-target weapon aim must not survive as a hidden runtime fallback');
-  assert.match(mainSource, /pursuitSlot[\s\S]*active:\s*false[\s\S]*runtime-reset/,
-    'new/load transitions must not carry a transient pursuit station into the next run');
-  assert.doesNotMatch(uiRootSource, /auto-target-flight-path|sf-flight-path__route/);
-  assert.match(hudSource, /sf-pursuit-slot/);
-  assert.match(hudSource, /PURSUIT ASSIST|Pursuit assist/);
-  assert.match(hudSource, /prefers-reduced-motion|transition:\s*none/);
-  assert.match(hudSource, /forced-colors:\s*active/);
+    'weapon aim is owned by auto-target mode; weapons must not choose another target');
+  assert.match(uiRootSource, /auto-target-flight-path|sf-flight-path__route/);
+  assert.doesNotMatch(hudSource, /sf-pursuit-slot|PURSUIT ASSIST|Pursuit assist/);
+});
+
+test('auto-target restores responsive helm and path authority without pursuit impulses', () => {
+  assert.equal(typeof flightV3.applyAutoTargetHelmProfile, 'function');
+  assert.equal(typeof flightV3.applyAutoTargetPathProfile, 'function');
+
+  const base = {
+    maxYawRate: 2,
+    yawAccel: 4,
+    yawBrake: 6,
+    mainAccel: 10,
+    strafeAccel: 8,
+    reverseAccel: 5,
+    maxSpeed: 100,
+    combatSpeed: 80,
+    precisionSpeed: 40,
+  };
+  const helm = flightV3.applyAutoTargetHelmProfile(base);
+  assert.equal(helm.maxYawRate, 3);
+  assert.equal(helm.yawAccel, 6);
+  assert.equal(helm.yawBrake, 9);
+
+  const path = flightV3.applyAutoTargetPathProfile(helm);
+  assert.equal(path.mainAccel, 16);
+  assert.equal(path.strafeAccel, 12.8);
+  assert.equal(path.reverseAccel, 8);
+  assert.equal(path.maxSpeed, 160);
+  assert.equal(path.combatSpeed, 128);
+  assert.equal(path.precisionSpeed, 64);
+});
+
+test('auto-target acceptance tools exercise the shipped control instead of retired pursuit slots', () => {
+  const registryCheck = readFileSync(new URL('../scripts/check-auto-target-registry.mjs', import.meta.url), 'utf8');
+  const sourceCheck = readFileSync(new URL('../scripts/check-autopursuit.mjs', import.meta.url), 'utf8');
+  const steeringProbe = readFileSync(new URL('../scripts/probe-auto-target-steering.mjs', import.meta.url), 'utf8');
+
+  for (const [name, source] of [
+    ['registry check', registryCheck],
+    ['source check', sourceCheck],
+    ['steering probe', steeringProbe],
+  ]) {
+    assert.doesNotMatch(source,
+      /import .*pursuitSlotAssist|state\.input\.pursuitSlot|exercisePursuitSlot|queuePhysicsImpulse\(entity,\s*pursuitSlot/,
+      `${name} must not validate the retired pursuit/orbit implementation`);
+    assert.match(source, /autoFire|autoTargetPath/,
+      `${name} must exercise the current auto-target contract`);
+  }
 });

@@ -461,15 +461,12 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
 
   const hostile = await acquireAuthoredMissionHostile(page, authoredMission, 150_000);
   assert.equal(hostile.hostile, true, `public Tab must lock the warranted hostile: ${JSON.stringify(hostile)}`);
-  await page.mouse.move(Math.round(box.x + box.width * 0.55), Math.round(box.y + box.height * 0.48));
-  try {
-    await page.mouse.down({ button: 'middle' });
-    await page.waitForTimeout(250);
-  } finally {
-    await page.mouse.up({ button: 'middle' }).catch(() => {});
-  }
-  await page.waitForFunction(() => window.SF?.state?.input?.actions?.autopursuit === true
-    || window.SF?.state?.flight?.mode === 'autopursuit', null, { timeout: 10_000 });
+  await page.keyboard.press('KeyG');
+  await page.waitForFunction((targetId) => {
+    const state = window.SF?.state;
+    return state?.input?.autoFire === true
+      && String(state?.player?.targetId) === String(targetId);
+  }, authoredMission.targetId, { timeout: 10_000 });
 
   await page.waitForFunction(() => {
     if ((window.__M3_DAMAGE_OBSERVER__?.playerHits?.length || 0) <= 0) return false;

@@ -326,8 +326,17 @@ export const ui = {
     reticle.innerHTML = RETICLE_SVG;
     const hudRoot = document.getElementById('hud');
     hudRoot.appendChild(reticle);
+    const autoTargetFlightPath = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    autoTargetFlightPath.id = 'auto-target-flight-path';
+    autoTargetFlightPath.setAttribute('aria-hidden', 'true');
+    autoTargetFlightPath.innerHTML = '<polyline class="sf-flight-path__route" points=""></polyline><circle class="sf-flight-path__endpoint-ring" r="11"></circle><circle class="sf-flight-path__endpoint" r="3.5"></circle>';
+    hudRoot.appendChild(autoTargetFlightPath);
+    const autoTargetRouteLine = autoTargetFlightPath.querySelector('.sf-flight-path__route');
+    const autoTargetEndpointRing = autoTargetFlightPath.querySelector('.sf-flight-path__endpoint-ring');
+    const autoTargetEndpoint = autoTargetFlightPath.querySelector('.sf-flight-path__endpoint');
     let lastReticleX = NaN;
     let lastReticleY = NaN;
+    let lastFlightPathPoints = '';
 
     // Always-visible (when in flight) control hints. The default text below is the open-flight set;
     // the onboarding system's _updateControlBar() replaces it each frame with context-sensitive
@@ -371,12 +380,53 @@ export const ui = {
       const st = this.state;
       const pointer = st && st.input && st.input.pointerScreen;
       const active = !!(visible && pointer && pointer.active);
+      const autoTarget = !!(visible && st && st.input && st.input.autoFire);
+      const flightPath = st && st.input && st.input.autoTargetPath;
+      const pathActive = !!(autoTarget && flightPath && flightPath.active
+        && Array.isArray(flightPath.points) && flightPath.points.length >= 2);
       document.body.classList.toggle('sf-flight-cursor', active);
       const reticleEl = document.getElementById('aim-reticle') || reticle;
-      reticleEl.style.display = visible ? 'block' : 'none';
+      reticleEl.style.display = visible && !autoTarget ? 'block' : 'none';
+      autoTargetFlightPath.style.display = autoTarget ? 'block' : 'none';
+      autoTargetFlightPath.style.opacity = pathActive ? '1' : '0';
       if (!visible) return;
       const fallbackX = typeof innerWidth === 'number' ? innerWidth * 0.5 : 0;
       const fallbackY = typeof innerHeight === 'number' ? innerHeight * 0.5 : 0;
+      if (autoTarget) {
+        if (!pathActive || !this.helpers || typeof this.helpers.worldToScreen !== 'function') return;
+        const projectedPoints = [];
+        const player = st.entities && st.entities.get ? st.entities.get(st.playerId) : null;
+        if (player && player.pos) projectedPoints.push(player.pos);
+        const startIndex = Math.max(1, Number.isFinite(flightPath.pointIndex)
+          ? Math.floor(flightPath.pointIndex)
+          : 1);
+        for (let i = startIndex; i < flightPath.points.length; i++) {
+          projectedPoints.push(flightPath.points[i]);
+        }
+        const screenPoints = [];
+        for (const point of projectedPoints) {
+          const projected = this.helpers.worldToScreen({ x: point.x, y: 0, z: point.z });
+          if (projected && Number.isFinite(projected.x) && Number.isFinite(projected.y)) {
+            screenPoints.push(projected);
+          }
+        }
+        const pointsValue = screenPoints.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
+        if (pointsValue !== lastFlightPathPoints) {
+          autoTargetRouteLine.setAttribute('points', pointsValue);
+          lastFlightPathPoints = pointsValue;
+        }
+        const endpoint = screenPoints.length ? screenPoints[screenPoints.length - 1] : null;
+        if (endpoint) {
+          const x = endpoint.x.toFixed(1);
+          const y = endpoint.y.toFixed(1);
+          autoTargetEndpointRing.setAttribute('cx', x);
+          autoTargetEndpointRing.setAttribute('cy', y);
+          autoTargetEndpoint.setAttribute('cx', x);
+          autoTargetEndpoint.setAttribute('cy', y);
+        }
+        autoTargetFlightPath.classList.toggle('is-drawing', !!flightPath.drawing);
+        return;
+      }
       let x = active && Number.isFinite(pointer.x) ? pointer.x : fallbackX;
       let y = active && Number.isFinite(pointer.y) ? pointer.y : fallbackY;
       if (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1

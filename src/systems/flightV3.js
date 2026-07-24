@@ -16,8 +16,6 @@ import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsi
 import { computeFlightTelemetry } from '../core/flight/flightTelemetry.js';
 import { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
-import { stepPursuitSlotAssist } from '../core/flight/pursuitSlotAssist.js';
-export { stepPursuitSlotAssist } from '../core/flight/pursuitSlotAssist.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 
 // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
@@ -49,6 +47,8 @@ const AUTOPILOT_CAPTURE_SPEED_FRACTION = 0.72;
 const AUTOPILOT_CAPTURE_ALIGNMENT = 0.58;
 const TETHER_HELM_MAX_YAW_RATE_MULT = 1.14;
 const TETHER_HELM_STRAIN_MULT = 1.75;
+const AUTO_TARGET_HELM_MULT = 1.5;
+const AUTO_TARGET_PATH_OVERDRIVE_MULT = 1.6;
 const TETHER_HELM_PHASE_MULT = Object.freeze({
   capture: 4.2,
   loaded: 6.0,
@@ -136,7 +136,6 @@ export const flightV3 = {
         const successful = payload.classification === 'clean' || payload.classification === 'razor';
         if (!this._orbitAssistGraceActive || configured !== 'standard' || !successful) return;
         this._orbitAssistGraceActive = false;
-        this.bus.emit('toast', { text: 'Orbit assist · Standard', kind: 'info', ttl: 3 });
       });
       this.bus.on('massline:selfSling', () => {
         if (!massline2Flag('throw')) return;
@@ -206,7 +205,12 @@ export const flightV3 = {
     let input = normalizeCraftInput(entity, rawInput, runtime, state, isPlayer, dt);
     const helm = tetherHelmAuthority(state, isPlayer);
     const tetherProfile = helm.mult > 1 ? applyTetherHelmProfile(baseProfile, helm) : baseProfile;
-    const profile = tetherProfile;
+    let profile = isPlayer && state.input?.autoFire
+      ? applyAutoTargetHelmProfile(tetherProfile)
+      : tetherProfile;
+    if (isPlayer && state.input?.autoFire && state.input.autoTargetPath?.active) {
+      profile = applyAutoTargetPathProfile(profile);
+    }
     let autopilot = null;
     if (isPlayer) {
       autopilot = resolveAutopilotInput(this, entity, rawInput, input, dt, state, profile);
@@ -233,19 +237,6 @@ export const flightV3 = {
     }
 
     const body = bodySnapshot(entity, profile);
-    let pursuitSlot = null;
-    if (isPlayer) {
-      const actions = state.input && state.input.actions;
-      const target = resolvePursuitTarget(state);
-      pursuitSlot = stepPursuitSlotAssist({
-        dt,
-        host: body,
-        target,
-        slot: actions && actions.autopursuit ? state.input.pursuitSlot : null,
-        profile,
-        manualOverride: !!(autopilot && autopilot.active),
-      });
-    }
     let orbitAssist = null;
     if (isPlayer) {
       const tether = state.player && state.player.tether;
@@ -260,6 +251,10 @@ export const flightV3 = {
         anchor,
         tether,
         intent: actions && actions.massline,
+        flightIntent: {
+          forward: finite(rawInput && (rawInput.moveZ ?? rawInput.throttle)),
+          lateral: finite(rawInput && (rawInput.turnIntent ?? rawInput.turn)),
+        },
         input,
         profile,
         runtime: this._orbitAssistRuntime,
@@ -299,10 +294,6 @@ export const flightV3 = {
     if (orbitAssist && orbitAssist.active && orbitAssist.impulse) {
       queuePhysicsImpulse(entity, orbitAssist.impulse);
     }
-    if (pursuitSlot && pursuitSlot.active && pursuitSlot.impulse) {
-      queuePhysicsImpulse(entity, pursuitSlot.impulse);
-    }
-
     entity.data = entity.data || {};
     assignPropulsionRuntime(entity, result.runtime, input.boost);
     entity.flags = entity.flags || {};
@@ -318,9 +309,6 @@ export const flightV3 = {
       frame.tetherHelmAuthority = helm.mult;
       frame.tetherHelmPhase = helm.phase;
       frame.autopursuit = null;
-      frame.pursuitSlot = pursuitSlot
-        ? { active: pursuitSlot.active, ...pursuitSlot.telemetry }
-        : { active: false, reason: 'unavailable' };
       frame.autopilot = autopilot && autopilot.active ? autopilot.telemetry : null;
       frame.tetherNoseAssist = !!input.tetherNoseAssist;
       frame.tetherNoseAssistTorque = tetherAssistTorque;
@@ -966,15 +954,6 @@ function tetherNoseAssistTorque(body, input, profile) {
   return 0;
 }
 
-function resolvePursuitTarget(state) {
-  const player = state && state.player;
-  const id = player && player.targetId;
-  if (id == null || !state.entities || typeof state.entities.get !== 'function') return null;
-  const target = state.entities.get(id);
-  if (!target || target.alive === false || !target.pos) return null;
-  return target;
-}
-
 function distance2(a, b) {
   return Math.hypot(finite(a && a.x) - finite(b && b.x), finite(a && a.z) - finite(b && b.z));
 }
@@ -999,6 +978,36 @@ function applyTetherHelmProfile(profile, helm) {
       : profile.maxYawRate,
     yawAccel: Number.isFinite(profile.yawAccel) ? profile.yawAccel * mult : profile.yawAccel,
     yawBrake: Number.isFinite(profile.yawBrake) ? profile.yawBrake * (mult + 0.65) : profile.yawBrake,
+  };
+}
+
+export function applyAutoTargetHelmProfile(profile) {
+  return {
+    ...profile,
+    maxYawRate: Number.isFinite(profile.maxYawRate)
+      ? profile.maxYawRate * AUTO_TARGET_HELM_MULT
+      : profile.maxYawRate,
+    yawAccel: Number.isFinite(profile.yawAccel)
+      ? profile.yawAccel * AUTO_TARGET_HELM_MULT
+      : profile.yawAccel,
+    yawBrake: Number.isFinite(profile.yawBrake)
+      ? profile.yawBrake * AUTO_TARGET_HELM_MULT
+      : profile.yawBrake,
+  };
+}
+
+export function applyAutoTargetPathProfile(profile) {
+  const scale = (value) => Number.isFinite(value)
+    ? value * AUTO_TARGET_PATH_OVERDRIVE_MULT
+    : value;
+  return {
+    ...profile,
+    mainAccel: scale(profile.mainAccel),
+    strafeAccel: scale(profile.strafeAccel),
+    reverseAccel: scale(profile.reverseAccel),
+    maxSpeed: scale(profile.maxSpeed),
+    combatSpeed: scale(profile.combatSpeed),
+    precisionSpeed: scale(profile.precisionSpeed),
   };
 }
 

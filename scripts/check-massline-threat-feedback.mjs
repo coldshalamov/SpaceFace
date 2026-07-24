@@ -154,7 +154,9 @@ function assertHudCopyMatchesBreakAuthority() {
     strain: 4,
     automaticBreakAllowed: false,
   }, true);
-  assert.equal(ordinary.text, 'HIGH LOAD · ORBIT ASSIST');
+  assert.equal(ordinary.text, 'HIGH LOAD');
+  assert.doesNotMatch(ordinary.text, /ORBIT ASSIST/,
+    'internal orbit correction must not add another player-facing HUD announcement');
   assert.equal(ordinary.warn, false);
   assert.doesNotMatch(ordinary.text, /STRAINED|CRITICAL/,
     'ordinary load copy must not imply impending failure');

@@ -68,7 +68,7 @@ test('PQ-003 new profiles reserve Space for Massline, retain F as its alias, and
   }
 });
 
-test('PQ-003 old profiles migrate to F-primary without losing their active scheme Space behavior', () => {
+test('existing profiles migrate to the same Space/F Massline binding as new profiles', () => {
   const state = createGameState(47);
   const storage = {
     getItem(key) {
@@ -84,9 +84,9 @@ test('PQ-003 old profiles migrate to F-primary without losing their active schem
   };
 
   assert.equal(bootstrapProfileSettingsBeforeRegistry(state, storage), true);
-  assert.equal(state.settings.controls.masslineBindingProfile, 'legacy-f-v1');
-  assert.deepEqual(state.settings.controls.bindings.tether, ['KeyF']);
-  assert.deepEqual(state.settings.controls.bindings.brake, ['Space']);
+  assert.equal(state.settings.controls.masslineBindingProfile, 'space-v1');
+  assert.deepEqual(state.settings.controls.bindings.tether, ['Space', 'KeyF']);
+  assert.equal(state.settings.controls.bindings.brake?.includes('Space') || false, false);
 });
 
 test('PQ-003 Space press publishes an immediate normalized latch packet', () => {
@@ -120,11 +120,29 @@ test('PQ-003 quick attached tap cuts on release while a hold enters line control
   assert.equal(state.input.actions.massline.source, null, 'idle packets do not retain stale device provenance');
 
   host._keys.Space = true;
+  host._keys.KeyW = true;
   step(host, state, 14);
   assert.equal(state.input.actions.massline.lineControl, true);
   host._keys.Space = false;
+  host._keys.KeyW = false;
   step(host, state);
   assert.equal(state.input.actions.massline.cut, false, 'release after line control never cuts');
+});
+
+test('an attached Massline held without a line command still disconnects on release', () => {
+  const host = makeInput();
+  const state = makeState();
+  state.player.tether.active = true;
+  state.player.tether.targetId = 'rock';
+
+  host._keys.Space = true;
+  step(host, state, 30);
+  assert.equal(state.input.actions.massline.lineControl, false,
+    'holding the Massline key alone must not silently enter another control mode');
+  host._keys.Space = false;
+  step(host, state);
+  assert.equal(state.input.actions.massline.cut, true,
+    'release must remain a dependable disconnect when no reel/orbit command occurred');
 });
 
 test('PQ-003 200 ms history joins turn-before-press and press-before-turn into one line-control intent', () => {

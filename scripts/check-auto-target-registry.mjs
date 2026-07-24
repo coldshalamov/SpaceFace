@@ -1,4 +1,3 @@
-// Shipped-registry PQ-007 contract: G selection -> target-relative impulse -> manual release.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -7,7 +6,6 @@ import { fileURLToPath } from 'node:url';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRegistry } from '../src/core/registry.js';
-import { ensurePhysicsBodySpec } from '../src/core/physicsAuthority.js';
 import { autoTargetAssist } from '../src/systems/autoTargetAssist.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -18,73 +16,45 @@ const restoreGlobals = installHeadlessBrowserStubs();
 try {
   assertMainLifecycleWiring();
   const { state, registry, ctx, listeners } = makeRegistryHarness();
-  const player = makeMovableShip({
-    id: 1, team: 0, x: 0, z: 0,
-    data: { weapons: [], combat: {}, derived: { cap: 100, mass: 120 } },
-  });
-  const target = makeMovableShip({
-    id: 2, team: 1, x: 220, z: 0,
-    data: { ai: { fsm: 'attack' }, combat: { targetId: 1 }, derived: { mass: 120 } },
-    vel: { x: 0, z: 0 },
-  });
+  const player = makeShip({ id: 1, team: 0, x: 0, z: 0 });
+  const target = makeShip({ id: 2, team: 1, x: 220, z: 0, vel: { x: 0, z: 30 } });
   state.playerId = player.id;
   state.player.targetId = target.id;
   state.mode = 'flight';
   state.entities.set(player.id, player);
   state.entities.set(target.id, target);
   state.entityList.push(player, target);
-  ensurePhysicsBodySpec(player);
-  ensurePhysicsBodySpec(target);
 
-  const inputSys = registry.get('input');
   const assist = registry.get('autoTargetAssist');
-  assert(inputSys && assist, 'registry must expose the shipped input and G-assist systems');
-  inputSys._screen = { x: 520, y: 200, active: true };
-  inputSys._ndc = { x: 0.3, y: 1 / 3 };
-  inputSys._lastKbmMs = performance.now();
-  inputSys._keys = Object.create(null);
-  inputSys.helpers.raycastToPlane = (ndc) => ({ x: ndc.x * 300, z: ndc.y * 300 });
+  assert(assist, 'registry must expose the shipped G auto-target system');
+  let acquisitionRequests = 0;
+  busOn(ctx.bus, 'ui:targetNearestHostileToPlayer', () => acquisitionRequests++);
 
   assist._onKeyDown(keyEvent('KeyG'));
   assist._onKeyUp(keyEvent('KeyG'));
-  assert.equal(state.input.pursuitSlot.active, true, 'G must select the current ship lock');
-  assert.equal(state.input.pursuitSlot.source, 'g');
-  assert.equal(state.input.autoFire, false, 'G must not enable the retired persistent weapon autoaim');
+  assert.equal(state.input.autoFire, true, 'G must enable auto-target');
+  assert.equal(acquisitionRequests, 1, 'enabling auto-target must request the nearest hostile');
 
-  // Reposition the selected station to the target's port side. This is what relative pointer motion
-  // edits; writing the already-tested slot value directly keeps this registry proof about ordering
-  // and the real Flight V3 -> Rapier membrane.
-  state.input.pursuitSlot = {
-    ...state.input.pursuitSlot,
-    bearing: Math.PI / 2,
-    range: 220,
-    reason: 'registry-proof-adjustment',
+  assist.update(DT, state);
+  assert(state.input.aimWorld.z > target.pos.z,
+    'the registry-owned update must lead a moving target');
+
+  state.input.autoTargetPath = {
+    active: true,
+    drawing: false,
+    cursorX: 0,
+    cursorY: 0,
+    pointIndex: 1,
+    points: [{ x: 0, z: 0 }, { x: 0, z: 180 }],
   };
-  registry.step(DT);
-  assert.equal(state.input.actions.autopursuit, true,
-    'input must publish the selected slot before Flight V3 runs');
-  assert(player._flightFrame?.pursuitSlot?.active,
-    'Flight V3 must expose active pursuit telemetry on the shipped frame');
-  assert(player._flightFrame.pursuitSlot.saturated,
-    'the deliberately large station transition must visibly hit the bounded assist cap');
-  const cursorAim = Math.atan2(100, 90);
-  assert(Math.abs(state.input.aimAngle - cursorAim) < 0.02,
-    'weapon aim must remain on the independent software cursor');
+  assist.update(DT, state);
+  assert(Math.abs(state.input.moveX) + Math.abs(state.input.moveZ) + Math.abs(state.input.turnIntent) > 0,
+    'the registry-owned update must translate a drawn path into flight input');
+  console.log('[PASS] registry G toggle -> lead aim -> draw-to-fly command');
 
-  assert(player._flightFrame.pursuitSlot.maxAcceleration > 0,
-    'the shipped frame must expose the finite bounded acceleration cap');
-  assert(player._flightFrame.pursuitSlot.desiredPosition.x > player.pos.x
-    && player._flightFrame.pursuitSlot.desiredPosition.z > player.pos.z,
-  'the target-relative station must resolve into the adjusted world quadrant');
-
-  inputSys._keys.KeyW = true;
-  registry.step(DT);
-  assert.equal(state.input.pursuitSlot.active, false,
-    'manual movement must release pursuit in the same input tick');
-  assert.equal(state.input.pursuitSlot.reason, 'manual-override');
-  assert.equal(state.input.actions.autopursuit, false,
-    'Flight V3 must see no pursuit command on the release tick');
-  console.log(`[PASS] registry pursuit select->bounded hold->manual release cap=${player._flightFrame.pursuitSlot.maxAcceleration.toFixed(3)} overrideTicks=1`);
+  assist._onKeyDown(keyEvent('KeyG'));
+  assist._onKeyUp(keyEvent('KeyG'));
+  assert.equal(state.input.autoFire, false, 'a second G press must disable auto-target');
 
   assert(assist._onKeyDown && assist._onKeyUp, 'registry init must attach G handlers');
   const keydownBeforeDestroy = listeners.get('keydown')?.size || 0;
@@ -102,7 +72,11 @@ try {
   restoreGlobals();
 }
 
-console.log('Pursuit-slot registry checks OK');
+console.log('Auto-target registry checks OK');
+
+function busOn(bus, event, handler) {
+  bus.on(event, handler);
+}
 
 function keyEvent(code) {
   return {
@@ -114,17 +88,15 @@ function keyEvent(code) {
 }
 
 function assertMainLifecycleWiring() {
-  const mainSrc = readFileSync(join(ROOT, 'src/main.js'), 'utf8');
-  assert.match(mainSrc, /beforeunload[\s\S]*registry\.destroy\(\)/,
+  const mainSource = readFileSync(join(ROOT, 'src/main.js'), 'utf8');
+  assert.match(mainSource, /beforeunload[\s\S]*registry\.destroy\(\)/,
     'main.js must wire beforeunload -> registry.destroy');
-  assert.match(mainSrc, /resetCombatInputMode[\s\S]*pursuitSlot[\s\S]*runtime-reset/,
-    'main.js must clear transient pursuit state for new/load entry');
-  console.log('[PASS] main lifecycle resets pursuit and destroys listeners');
+  assert.match(mainSource, /resetCombatInputMode[\s\S]*autoFire\s*=\s*false/,
+    'main.js must clear auto-target on new/load entry');
+  console.log('[PASS] main lifecycle resets auto-target and destroys listeners');
 }
 
-function makeMovableShip({ id, team, x, z, data = {}, vel = null }) {
-  const pos = vec3(x, z);
-  const v = vel || { x: 0, z: 0 };
+function makeShip({ id, team, x, z, vel = { x: 0, z: 0 } }) {
   return {
     id,
     type: 'ship',
@@ -132,29 +104,18 @@ function makeMovableShip({ id, team, x, z, data = {}, vel = null }) {
     collides: true,
     team,
     radius: 8,
-    pos,
-    prevPos: vec3(x, z),
+    pos: { x, y: 0, z },
+    prevPos: { x, y: 0, z },
     rot: 0,
     prevRot: 0,
     bank: 0,
     prevBank: 0,
     pitch: 0,
     prevPitch: 0,
-    vel: { x: v.x || 0, z: v.z || 0 },
+    vel: { x: vel.x, z: vel.z },
     cap: 100,
-    data,
+    data: { weapons: [{ projSpeed: 360 }], combat: {}, derived: { cap: 100, mass: 120 } },
   };
-}
-
-function vec3(x, z) {
-  const v = { x, y: 0, z };
-  v.copy = (other) => {
-    v.x = other.x;
-    v.y = other.y ?? 0;
-    v.z = other.z;
-    return v;
-  };
-  return v;
 }
 
 function makeRegistryHarness() {
@@ -168,7 +129,7 @@ function makeRegistryHarness() {
     if (HEADLESS_SKIP.has(system.name)) continue;
     if (typeof system.init === 'function') system.init(ctx);
   }
-  return { state, bus, registry, ctx, listeners: globalThis.__sfListenerMap };
+  return { state, registry, ctx, listeners: globalThis.__sfListenerMap };
 }
 
 function installHeadlessBrowserStubs() {

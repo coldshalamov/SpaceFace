@@ -6,6 +6,7 @@ import * as flightV3Module from '../src/systems/flightV3.js';
 import * as masslineLab from '../scripts/lib/masslineControlLab.mjs';
 import { createGameState } from '../src/core/gameState.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
+import { masslineTetherStatus } from '../src/ui/hud.js';
 
 const DT = 1 / 60;
 
@@ -19,9 +20,17 @@ test('PQ-005 Gameplay settings exposes all four orbit-assist strengths', () => {
   assert.match(source, /rowSelect\('Massline orbit assist',[\s\S]*orbitAssistStrength[\s\S]*\['full', 'Full'\][\s\S]*\['standard', 'Standard'\][\s\S]*\['light', 'Light'\][\s\S]*\['off', 'Off'\][\s\S]*'orbitAssistStrength'/);
 });
 
-test('PQ-005 active orbit assistance is visible in the existing tether HUD status', () => {
+test('orbit correction stays invisible in the player-facing tether HUD', () => {
+  const status = masslineTetherStatus({
+    active: true,
+    phase: 'loaded',
+    strain: 0.7,
+    automaticBreakAllowed: false,
+  }, true);
+  assert.equal(status.text, 'LOADED');
   const source = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
-  assert.match(source, /_flightFrame[\s\S]*orbitAssist[\s\S]*orbitAssist\.active[\s\S]*'ORBIT ASSIST'/);
+  assert.doesNotMatch(source, /['"`]ORBIT ASSIST['"`]/,
+    'internal orbit telemetry must not become another HUD announcement');
 });
 
 test('PQ-005 Standard assist preserves tangent intent and caps anchor-relative radial damping', () => {
@@ -69,7 +78,7 @@ test('PQ-005 Standard assist preserves tangent intent and caps anchor-relative r
   assert.deepEqual(anchor, anchorBefore, 'the controller must not mutate the anchor');
 });
 
-test('PQ-005 Off is the untouched baseline and light towables never become anchors', () => {
+test('PQ-005 Off is untouched and any finite tether target can own the relative orbit frame', () => {
   const shared = {
     dt: DT,
     host: { pos: { x: 120, z: 0 }, vel: { x: 10, z: 30 }, rot: Math.PI / 2, mass: 20, radius: 10 },
@@ -88,7 +97,15 @@ test('PQ-005 Off is the untouched baseline and light towables never become ancho
   });
   const towable = flightV3Module.stepAnchorRelativeOrbitAssist({
     ...shared,
-    anchor: { ...heavyAnchor, mass: 999 },
+    anchor: { ...heavyAnchor, type: 'ship', mass: 20, vel: { x: -4, z: 3 } },
+    intent: null,
+    flightIntent: { forward: 1, lateral: 1 },
+    runtime: {
+      direction: 1,
+      engaged: false,
+      intentSource: 'flight',
+      flightIntentHoldS: 1 - DT,
+    },
     strength: 'full',
   });
 
@@ -96,9 +113,10 @@ test('PQ-005 Off is the untouched baseline and light towables never become ancho
   assert.equal(off.telemetry.reason, 'assist-off');
   assert.deepEqual(off.input, shared.input, 'Off must preserve the ordinary Flight V3 input byte-for-byte');
   assert.equal(off.impulse, null);
-  assert.equal(towable.active, false);
-  assert.equal(towable.telemetry.reason, 'anchor-too-light');
-  assert.equal(towable.impulse, null);
+  assert.equal(towable.active, true);
+  assert.equal(towable.telemetry.reason, 'engaged');
+  assert.equal(towable.telemetry.intentSource, 'flight');
+  assert.ok(towable.impulse, 'a moving ship target receives the same bounded relative-frame correction');
 });
 
 test('PQ-005 radial authority is acceleration-stable across fixed-step rates', () => {
@@ -361,7 +379,37 @@ test('PQ-005 Flight V3 wires explicit Massline intent through the additive physi
   assert.equal(player._flightFrame.orbitAssist.reason, 'engaged');
 });
 
-test('PQ-005 first-session Full grace steps down to Standard on a clean release', () => {
+test('ordinary forward plus turn engages against a ship without holding the Massline action', () => {
+  const { state, player, anchor, bus } = makeFlightHarness();
+  anchor.type = 'ship';
+  anchor.mass = player.mass;
+  state.input.moveZ = 1;
+  state.input.turnIntent = -1;
+  state.input.actions.massline = {
+    lineControl: false,
+    lineLength: 0,
+    orbitDirection: 0,
+  };
+
+  flightV3Module.flightV3.init({ state, bus });
+  let command = null;
+  for (let tick = 0; tick < 60; tick++) {
+    flightV3Module.flightV3.update(DT, state);
+    command = consumePhysicsCommand(player);
+    if (tick < 59) {
+      assert.equal(player._flightFrame.orbitAssist.active, false,
+        'ordinary steering remains fully manual until the one-second deliberate hold completes');
+      assert.equal(player._flightFrame.orbitAssist.reason, 'engage-pending');
+    }
+  }
+
+  assert.equal(player._flightFrame.orbitAssist.active, true);
+  assert.equal(player._flightFrame.orbitAssist.intentSource, 'flight');
+  assert.equal(player._flightFrame.orbitAssist.selectedDirection, -1);
+  assert.equal(command.impulses.length, 1);
+});
+
+test('PQ-005 first-session Full grace steps down silently on a clean release', () => {
   const { state, player, listeners, emitted, bus } = makeFlightHarness();
   flightV3Module.flightV3.init({ state, bus });
 
@@ -378,8 +426,8 @@ test('PQ-005 first-session Full grace steps down to Standard on a clean release'
   assert.equal(player._flightFrame.orbitAssist.strength, 'standard');
   assert.equal(
     emitted.filter((event) => event.type === 'toast' && /Orbit assist.*Standard/.test(event.payload.text)).length,
-    1,
-    'the grace step-down is one flight fragment, never a modal',
+    0,
+    'an internal assist-strength transition must not interrupt play with a toast',
   );
 });
 

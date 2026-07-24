@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import * as scoring from '../src/combat/masslineTargetScoring.js';
-import { tetherGameplay } from '../src/systems/tetherGameplay.js';
+import { isAttachable, tetherGameplay } from '../src/systems/tetherGameplay.js';
 import { createBus } from '../src/core/eventBus.js';
 import { masslineHud } from '../src/ui/masslineHud.js';
 import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
@@ -182,20 +182,12 @@ test('PQ-004 hysteresis holds a marginal challenger for 200 ms but obeys precise
   assert.equal(reversed.selected.id, 'a', 'deliberate reversal bypasses hysteresis');
 });
 
-test('PQ-004 runtime publishes one semantic receipt and the latch consumes that same target, independent of weapon selection', () => {
+test('a Massline press honors the player-selected physical target instead of a previous automatic receipt', () => {
   const h = createRuntimeHarness();
   h.system.update(1 / 60, h.state);
+  assert.equal(h.state.masslineAcquisition, null,
+    'idle flight must not publish an automatic cable-like Massline selection');
 
-  const receipt = h.state.masslineAcquisition;
-  assert.ok(receipt && receipt.selected, 'an unlatched flight tick must publish a pre-latch receipt');
-  assert.equal(receipt.selected.targetId, h.anchor.id,
-    'weapon-selected hostile must not steal the forward+right Massline preview');
-  assert.equal(receipt.selected.status, 'ready');
-  assert.ok(receipt.validUntil > h.state.simTime);
-  assert.ok(receipt.alternatives.some((entry) => entry.targetId === h.decoy.id));
-
-  // Weapon lock, precise cursor, and steering all change on the press tick. The previously rendered
-  // receipt remains authoritative; refreshing and substituting here would make the latch lie.
   h.state.player.targetId = h.decoy.id;
   h.state.input.aimWorld = { x: h.decoy.pos.x, z: h.decoy.pos.z };
   h.state.input.turnIntent = -1;
@@ -206,70 +198,70 @@ test('PQ-004 runtime publishes one semantic receipt and the latch consumes that 
   h.system.update(1 / 60, h.state);
 
   assert.equal(h.created.length, 1);
-  assert.equal(h.created[0].targetId, receipt.selected.targetId,
-    'the consumed tether press must use the visible receipt target');
+  assert.equal(h.created[0].targetId, h.decoy.id,
+    'the player-selected target must win at the moment of the Massline command');
   assert.equal(h.latched.length, 1);
-  assert.equal(h.latched[0].selectionReceiptId, receipt.id);
-  assert.equal(h.latched[0].previewMatched, true);
 });
 
-test('PQ-004 receipt fails closed when the previewed target dies, becomes obstructed/protected, or expires', () => {
-  const cases = [
-    {
-      name: 'target dies',
-      expected: 'target-lost',
-      mutate: (h) => { h.anchor.alive = false; },
-    },
-    {
-      name: 'line becomes obstructed',
-      expected: 'blocked',
-      options: { obstruction: () => true },
-    },
-    {
-      name: 'target becomes player-owned',
-      expected: 'protected',
-      mutate: (h) => { h.anchor.ownerId = h.state.playerId; },
-    },
-    {
-      name: 'receipt expires',
-      expected: 'preview-stale',
-      mutate: (h) => { h.state.simTime += 0.4; h.state.tick += 24; },
-    },
-  ];
-  for (const entry of cases) {
-    let obstructed = false;
-    const h = createRuntimeHarness({
-      helpers: entry.options?.obstruction
-        ? { isMasslineObstructed: () => obstructed }
-        : {},
-    });
-    h.system.update(1 / 60, h.state);
-    if (entry.options?.obstruction) obstructed = true;
-    entry.mutate?.(h);
+test('stations and planets are valid physical Massline anchors when deliberately selected', () => {
+  for (const type of ['station', 'planet']) {
+    const h = createRuntimeHarness();
+    h.anchor.type = type;
+    h.state.player.targetId = h.anchor.id;
+    h.state.input.aimWorld = { ...h.anchor.pos };
+    assert.equal(isAttachable(h.anchor, h.state.playerId), true, `${type} must be physically attachable`);
     h.state.input.actions.tetherFire = true;
     h.system.update(1 / 60, h.state);
-    assert.equal(h.created.length, 0, `${entry.name}: invalid target must not latch`);
-    assert.equal(h.denied.at(-1)?.reason, entry.expected, `${entry.name}: denial must explain the changed fact`);
-    assert.equal(h.state.masslineAcquisition?.selected?.reason, entry.expected,
-      `${entry.name}: the semantic receipt must carry the same denial`);
+    assert.equal(h.created.at(-1)?.targetId, h.anchor.id, `${type} selection must create the attachment`);
   }
 });
 
-test('PQ-004 acquisition receipt is transient across save-load and new-game boundaries', () => {
-  const h = createRuntimeHarness();
-  h.system.update(1 / 60, h.state);
-  assert.ok(h.state.masslineAcquisition?.selected);
-
-  h.bus.emit('save:loaded', {});
-  assert.equal(h.state.masslineAcquisition, null, 'a load boundary must discard the pre-load receipt');
-  h.system.update(1 / 60, h.state);
-  assert.ok(h.state.masslineAcquisition?.selected, 'the live world must publish a fresh post-load receipt');
-
-  h.bus.emit('game:started', {});
-  assert.equal(h.state.masslineAcquisition, null, 'a new run must not inherit the previous run selection');
+test('Massline attachment is based on physical presence, not an object-type whitelist', () => {
+  const physicalObject = target('physical-unknown', 'new_world_object_type', 90, 0, { mass: 900 });
+  assert.equal(isAttachable(physicalObject, 1), true,
+    'new physical world objects must not require a separate Massline eligibility-list edit');
 });
 
-test('PQ-004 HUD renders the receipt as a reduced-motion-safe, non-color target/intent/status cue', () => {
+test('a Massline press resolves current physical truth instead of consuming an idle receipt', () => {
+  const dead = createRuntimeHarness();
+  dead.state.player.targetId = dead.anchor.id;
+  dead.anchor.alive = false;
+  dead.state.input.actions.tetherFire = true;
+  dead.system.update(1 / 60, dead.state);
+  assert.equal(dead.created.at(-1)?.targetId, dead.decoy.id,
+    'a dead selected target falls back to a nearby physical object');
+
+  const blocked = createRuntimeHarness({ helpers: { isMasslineObstructed: () => true } });
+  blocked.state.player.targetId = blocked.anchor.id;
+  blocked.state.input.actions.tetherFire = true;
+  blocked.system.update(1 / 60, blocked.state);
+  assert.equal(blocked.created.length, 0);
+  assert.equal(blocked.denied.at(-1)?.reason, 'blocked');
+
+  const owned = createRuntimeHarness();
+  owned.anchor.ownerId = owned.state.playerId;
+  owned.state.player.targetId = owned.anchor.id;
+  owned.state.input.actions.tetherFire = true;
+  owned.system.update(1 / 60, owned.state);
+  assert.equal(owned.created.at(-1)?.targetId, owned.anchor.id,
+    'ownership is not a hidden Massline eligibility rule');
+});
+
+test('idle Massline acquisition state remains empty across save-load and new-game boundaries', () => {
+  const h = createRuntimeHarness();
+  h.system.update(1 / 60, h.state);
+  assert.equal(h.state.masslineAcquisition, null);
+
+  h.bus.emit('save:loaded', {});
+  assert.equal(h.state.masslineAcquisition, null);
+  h.system.update(1 / 60, h.state);
+  assert.equal(h.state.masslineAcquisition, null);
+
+  h.bus.emit('game:started', {});
+  assert.equal(h.state.masslineAcquisition, null);
+});
+
+test('an idle acquisition receipt never draws a cable-like line or target bracket', () => {
   const previousEnabled = MASSLINE2_FLAGS.enabled;
   const previousDocument = globalThis.document;
   const previousWindow = globalThis.window;
@@ -315,42 +307,10 @@ test('PQ-004 HUD renders the receipt as a reduced-motion-safe, non-color target/
     const preview = findByClass(root, 'ml2-preview');
     const line = findByClass(root, 'ml2-preview-line');
     assert.ok(preview, 'Massline HUD must mount its pre-latch bracket');
-    assert.equal(preview.style.display, 'block');
-    assert.match(preview.textContent, /Heavy Anchor/);
-    assert.match(preview.textContent, /ORBIT/);
-    assert.match(preview.textContent, /78%/);
-    assert.match(preview.textContent, /READY/);
-    assert.equal(preview.attributes.role, 'status');
-    assert.match(preview.attributes['aria-label'], /Massline ORBIT Heavy Anchor, 78 percent, ready/i);
-    assert.equal(preview.attributes['data-receipt-id'], 'massline-acquisition:7',
-      'the rendered cue must expose the exact semantic receipt it represents');
-    assert.equal(preview.attributes['data-target-id'], String(anchor.id));
-    assert.ok(line && line.attributes.x2, 'a visible line must connect the ship and predicted target');
+    assert.equal(preview.style.display, 'none');
+    assert.equal(line.parentNode.style.display, 'none',
+      'only the real rendered Massline cable may connect the player to an object');
     assert.equal(root.classList.contains('ml2-reduced-motion'), true);
-
-    state.masslineAcquisition.selected = {
-      ...state.masslineAcquisition.selected,
-      status: 'protected',
-      reason: 'protected',
-    };
-    hud.update(1 / 60, state);
-    assert.match(preview.textContent, /PROTECTED/);
-    assert.equal(preview.classList.contains('ml2-preview-protected'), true,
-      'blocked meaning must have a shape/style hook in addition to color and text');
-
-    state.masslineAcquisition.selected = {
-      ...state.masslineAcquisition.selected,
-      status: 'ready',
-      reason: null,
-    };
-    hud.helpers.worldToScreen = ({ x }) => x === p.pos.x
-      ? { x: 720, y: 450, onScreen: true }
-      : { x: 1900, y: -180, onScreen: false };
-    hud.update(1 / 60, state);
-    assert.equal(preview.style.display, 'block', 'offscreen acquisition must remain visible at the viewport edge');
-    assert.equal(preview.classList.contains('ml2-preview-offscreen'), true,
-      'offscreen meaning must have a non-color border/shape hook');
-    assert.match(preview.attributes['aria-label'], /offscreen/i);
     hud.destroy();
   } finally {
     MASSLINE2_FLAGS.enabled = previousEnabled;

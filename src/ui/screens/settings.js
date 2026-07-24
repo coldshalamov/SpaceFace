@@ -87,8 +87,7 @@ const REBIND_LABELS = {
   strafeLeft: 'Lateral thrust left',
   strafeRight: 'Lateral thrust right',
   boost: 'Boost / dash',
-  // Keep the persisted action id for existing custom bindings; only its shipped meaning changed.
-  autoFire: 'Toggle pursuit slot assist',
+  autoFire: 'Toggle auto-target / draw-to-fly',
   brake: 'Brake (0; S / Down also reverse)',
   siteBeam: 'World Site beam (selected target)',
   tether: 'Massline: tap latch/cut; hold line control',

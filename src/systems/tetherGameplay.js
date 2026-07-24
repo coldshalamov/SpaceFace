@@ -16,7 +16,6 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer } from './scanner.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { isMassSeedTetherEligible } from './massSeed.js';
-import { VERB_TYPE_MEMBERSHIP } from '../data/interactionDescriptorCatalog.js';
 
 const TETHER_DEF_ID = 'tether_standard';
 const STRAIN_EVENT_INTERVAL_S = 0.2;
@@ -44,17 +43,10 @@ const SLINGSHOT_SPEED_MULT = 1.4;
 // answer about whether that ratio can actually culminate in automatic failure.
 const LOAD_STRAIN_GAIN = 2.5;
 const LOAD_BASE_BY_PHASE = Object.freeze({ slack: 0, capture: 0.35, loaded: 0.55, overload: 0.9 });
-// Pickups are valid massline targets now; attachment liveness sweeps cut the line if a pickup is
-// collected/despawned, so the old invisible-anchor failure mode stays closed.
-// PQ-011: 'massSeed' joins the set — the player's frame-locked anchor is a legal target ONLY
-// after frame lock (isAttachable gates on the entity's published eligibility flag).
-// PQ-015: type-membership now sourced from the shared interaction-descriptor catalog (identical
-// contents to the former literal; proven byte-for-byte by test/interaction-characterization). The
-// massSeed phase gate below and every downstream layer (ownership, range, obstruction) are UNCHANGED.
-const ATTACHABLE_TYPES = VERB_TYPE_MEMBERSHIP.tether;
 // Authored payloads and loose pickups are sensor bodies: they intentionally do not collide, so the
 // collidable-only spatial hash cannot be their sole acquisition source.
 const NON_COLLIDING_ACQUISITION_TYPES = new Set(['payload', 'pickup']);
+const TRANSIENT_NON_TETHERABLE_TYPES = new Set(['projectile', 'fx']);
 const TOW_TARGET_COM_TYPES = new Set(['wreck', 'ship', 'drone', 'payload', 'pickup']);
 const LINE_CONTROL_DENIAL_COPY = Object.freeze({
   load_limit: 'line load too high',
@@ -223,8 +215,7 @@ export const tetherGameplay = {
     this._mirror(state, null, 0);
     const def = attachmentDef(kernel, TETHER_DEF_ID);
     if (!actions?.tetherFire) {
-      if (def) this._refreshAcquisitionPreview(player, def, state, now, false);
-      else this._clearAcquisitionPreview(state);
+      this._clearAcquisitionPreview(state);
       return;
     }
     // Readable failure reasons (T04): never fail latch silently.
@@ -237,18 +228,9 @@ export const tetherGameplay = {
       this.bus.emit('tether:latchDenied', { reason: 'unknown_attachment_def' });
       return;
     }
-    // Normally the press consumes exactly the candidate the HUD showed on the preceding render.
-    // Scanner selection is a stronger, explicit player command: Tab and Space can arrive in the
-    // same fixed tick, before the periodic preview refresh replaces the previous component. Never
-    // let that stale receipt attach a different object than the selected released Site payload.
-    const selectedPayloadId = masslineSelectedPayloadTargetId(state);
-    const receiptTargetId = state.masslineAcquisition?.selected?.targetId;
-    if (!state.masslineAcquisition
-        || (selectedPayloadId != null && receiptTargetId !== selectedPayloadId)) {
-      this._refreshAcquisitionPreview(player, def, state, now, true);
-    }
     this._lastLatchDenial = null;
-    const latch = this._consumeAcquisitionReceipt(player, def, state, now);
+    const latch = this._acquireCommandTarget(player, def, state);
+    this._clearAcquisitionPreview(state);
     const target = latch && latch.entity;
     if (!target) {
       const denial = this._lastLatchDenial || { reason: 'no-target' };
@@ -287,14 +269,12 @@ export const tetherGameplay = {
     this._lastStrainT = -Infinity;
     this._ignoreReleaseCutUntilReelIdle = true;
     this._latchGraceUntil = now + 0.55;
-    const selectionReceipt = state.masslineAcquisition;
     this.bus.emit('tether:latched', {
       targetId: target.id,
       type: TETHER_DEF_ID,
-      selectionReceiptId: selectionReceipt && selectionReceipt.id,
-      context: selectionReceipt && selectionReceipt.selected && selectionReceipt.selected.context,
-      previewMatched: !!(selectionReceipt && selectionReceipt.selected
-        && selectionReceipt.selected.targetId === target.id),
+      selectionReceiptId: null,
+      context: state.player?.targetId === target.id ? 'selected' : 'nearby',
+      previewMatched: false,
     });
     this.bus.emit('camera:shake', { amount: 0.06 });
   },
@@ -358,6 +338,49 @@ export const tetherGameplay = {
       return null;
     }
     return { entity: target, targetWorld: surfacePointToward(target, player.pos) };
+  },
+
+  _acquireCommandTarget(player, def, state) {
+    const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
+    const focus = state.player?.flybyFocus;
+    if (focus?.active && focus.targetId != null) {
+      const focusTarget = state.entities?.get ? state.entities.get(focus.targetId) : null;
+      if (!isAuthorizedFocusTarget(state, player, focusTarget)) {
+        this._lastLatchDenial = { reason: 'no-target', targetId: focus.targetId, maxLength };
+        return null;
+      }
+    }
+    const nearestOnly = state.input?.tetherMode === 'nearest';
+    const selectedId = state.player && state.player.targetId;
+    const selected = selectedId != null && state.entities?.get ? state.entities.get(selectedId) : null;
+    const selectedDenial = validateAcquisitionTarget(this, player, selected, def, state);
+    if (!nearestOnly && selected && !selectedDenial) {
+      return { entity: selected, targetWorld: surfacePointToward(selected, player.pos) };
+    }
+
+    const entities = state.entityList || (state.entities?.values ? Array.from(state.entities.values()) : []);
+    let nearest = null;
+    let nearestSurfaceDistance = Infinity;
+    for (const entity of entities) {
+      if (!isAttachable(entity, player.id)) continue;
+      if (validateAcquisitionTarget(this, player, entity, def, state)) continue;
+      const centerDistance = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
+      const surfaceDistance = Math.max(0, centerDistance - Math.max(0, finite(entity.radius)));
+      if (surfaceDistance < nearestSurfaceDistance
+          || (surfaceDistance === nearestSurfaceDistance && compareEntityIds(entity, nearest) < 0)) {
+        nearest = entity;
+        nearestSurfaceDistance = surfaceDistance;
+      }
+    }
+    if (!nearest) {
+      this._lastLatchDenial = {
+        reason: selectedDenial && selected ? selectedDenial : 'no-target',
+        targetId: selected && selected.id,
+        maxLength,
+      };
+      return null;
+    }
+    return { entity: nearest, targetWorld: surfacePointToward(nearest, player.pos) };
   },
 
   _clearAcquisitionPreview(state) {
@@ -892,12 +915,6 @@ function statusForReason(reason) {
 
 function validateAcquisitionTarget(host, player, target, def, state) {
   if (!isAttachable(target, player && player.id)) return 'target-lost';
-  const focus = state.player && state.player.flybyFocus;
-  if (focus && focus.active) {
-    if (!isAuthorizedFocusTarget(state, player, target) || target.id !== focus.targetId) return 'no-target';
-  }
-  const ownership = resolveMasslineOwnership(target, player, state);
-  if (ownership === 'own' || ownership === 'station') return 'protected';
   const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
   const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
   if (distance > maxLength + Math.max(0, finite(target.radius))) return 'out-of-range';
@@ -1114,12 +1131,15 @@ function aimWorldFor(player, state, range) {
   };
 }
 
-// Exported for PQ-015 characterization (captures the tether type-membership gate directly). The
-// body is unchanged from base at this step; the membership source is swapped to the shared catalog
-// in the PQ-015 adapter below, preserving byte-identical behavior.
+// Massline is a physical command, not a catalog verb. New world-object types do not need a
+// separate eligibility-list edit before a player can deliberately attach to them.
 export function isAttachable(entity, playerId) {
   if (!entity || !entity.alive || !entity.pos || entity.id === playerId) return false;
-  if (!ATTACHABLE_TYPES.has(entity.type)) return false;
+  if (!Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
+  if (entity.data?.masslineTetherable === false || entity.flags?.masslineTetherable === false) return false;
+  const explicitlyTetherable = entity.data?.masslineTetherable === true
+    || entity.flags?.masslineTetherable === true;
+  if (!explicitlyTetherable && TRANSIENT_NON_TETHERABLE_TYPES.has(entity.type)) return false;
   // A Mass Seed is ineligible before frame lock (travelling/locking/collapsing): it publishes
   // its own eligibility so a premature latch can never attach to a still-moving deployable.
   if (entity.type === 'massSeed') return isMassSeedTetherEligible(entity);

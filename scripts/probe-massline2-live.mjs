@@ -46,6 +46,8 @@ const brokerGate = await requireBrokerClaimOrDiagnostic({
   tokenOrPath: process.env.SF_BROKER_CLAIM ?? null,
   diagnostic: DIAGNOSTIC,
   explicitDiagnostic: DIAGNOSTIC,
+  // Bind claim authorization to current source digests (stale claim → reject).
+  root: ROOT,
 });
 if (!brokerGate.ok) {
   console.error(`[massline2-live] BROKER_CLAIM_REQUIRED: ${brokerGate.reason}`);
@@ -169,12 +171,19 @@ try {
     assert.deepEqual(issues, [], 'focused release route must produce no page errors or warnings');
     assert.ok(report.ok, 'all live PQ-006 release checks must pass');
   } else if (ORBIT_ASSIST_ONLY) {
-    // PQ-005: arrange only the qualifying heavy anchor, then drive the shipped Space + arrow-key
-    // grammar. A pointer move during the held orbit proves trackpad weapon aim remains independent.
-    const orbitAssist = await exerciseOrbitAssist(page, fixture.anchorId);
-    assert.equal(orbitAssist.engaged.active, true, 'Space + forward + one lateral must engage orbit assist');
-    assert.equal(orbitAssist.engaged.targetId, fixture.anchorId, 'orbit assist must remain anchor-relative');
-    assert.match(orbitAssist.engaged.hudText, /ORBIT ASSIST/, 'the existing tether HUD must expose assist state');
+    // Arrange a lighter moving ship, latch it through the public Space edge, then use ordinary
+    // forward + turn without holding Massline. The one-second dwell avoids stealing quick carves.
+    // Pointer motion proves weapon aim remains independent; the HUD must stay quiet.
+    const orbitAssist = await exerciseOrbitAssist(page, fixture.hostileId);
+    assert.equal(orbitAssist.pending.active, false, 'ordinary flight keeps authority during the deliberate hold');
+    assert.equal(orbitAssist.pending.reason, 'engage-pending');
+    assert.equal(orbitAssist.engaged.active, true, 'held forward + one turn direction must engage orbit correction');
+    assert.equal(orbitAssist.engaged.targetId, fixture.hostileId, 'orbit correction must remain target-relative');
+    assert.equal(orbitAssist.engaged.targetType, 'ship');
+    assert.ok(orbitAssist.engaged.targetMass < orbitAssist.engaged.playerMass,
+      'the live route must prove a lighter dynamic ship, not a fixed heavy anchor');
+    assert.doesNotMatch(orbitAssist.engaged.hudText, /ORBIT ASSIST/,
+      'the internal correction must not add another HUD announcement');
     assert.equal(orbitAssist.afterPointer.active, true, 'trackpad aim motion must not drop held orbit intent');
     assert.equal(orbitAssist.afterPointer.direction, orbitAssist.engaged.direction,
       'trackpad aim motion must not become the orbit controller');
@@ -191,8 +200,12 @@ try {
       allMasslineFlagsOn: Object.values(flagState).every(Boolean),
       rapierDynamicV3: physicsAfter.backend === 'rapier-dynamic' && physicsAfter.rapierReady
         && physicsAfter.sg02Ready && physicsAfter.flightIsV3,
-      orbitAssistViaPublicInput: orbitAssist.engaged.active && orbitAssist.engaged.targetId === fixture.anchorId
-        && /ORBIT ASSIST/.test(orbitAssist.engaged.hudText),
+      anyTargetDirectOrbitInput: orbitAssist.pending.reason === 'engage-pending'
+        && orbitAssist.engaged.active
+        && orbitAssist.engaged.targetId === fixture.hostileId
+        && orbitAssist.engaged.targetType === 'ship'
+        && orbitAssist.engaged.targetMass < orbitAssist.engaged.playerMass,
+      orbitHudSilent: !/ORBIT ASSIST/.test(orbitAssist.engaged.hudText),
       trackpadAimIndependent: orbitAssist.afterPointer.active
         && orbitAssist.afterPointer.direction === orbitAssist.engaged.direction
         && orbitAssist.afterPointer.aimAngle !== orbitAssist.engaged.aimAngle,
@@ -847,31 +860,37 @@ async function lootEvidence(page, fixture) {
   }, fixture);
 }
 
-async function exerciseOrbitAssist(page, anchorId) {
-  await page.evaluate((anchorId) => {
+async function exerciseOrbitAssist(page, targetId) {
+  await page.evaluate((targetId) => {
     const state = window.SF.state;
     const player = state.entities.get(state.playerId);
-    const anchor = state.entities.get(anchorId);
-    // A 90 m fixture is inside the production matrix and makes the heavy anchor the nearest
-    // public Ctrl+Space candidate without synthesizing a latch event or action packet.
+    const target = state.entities.get(targetId);
+    // A 90 m fixture keeps the line readable. The target is deliberately lighter than the player
+    // and remains a dynamic ship so this is a moving two-body swing, not a fixed-anchor shortcut.
     player.pos.x = 0; player.pos.z = 0; player.vel.x = 0; player.vel.z = 0;
     player.rot = 0; player.prevRot = 0; player.angVel = 0;
     if (player.prevPos) { player.prevPos.x = 0; player.prevPos.z = 0; }
     if (player.physicsBody) player.physicsBody.revision = (player.physicsBody.revision || 0) + 1;
-    anchor.pos.x = 90; anchor.pos.z = 0; anchor.vel.x = 0; anchor.vel.z = 0;
-    if (anchor.prevPos) { anchor.prevPos.x = 90; anchor.prevPos.z = 0; }
-    if (anchor.physicsBody) anchor.physicsBody.revision = (anchor.physicsBody.revision || 0) + 1;
-    state.player.targetId = anchorId;
+    target.pos.x = 90; target.pos.z = 0; target.vel.x = -2; target.vel.z = 3;
+    target.mass = Math.max(1, player.mass * 0.75);
+    target.data = target.data || {};
+    target.data.ai = { passive: true, lawful: false };
+    if (target.prevPos) { target.prevPos.x = 90; target.prevPos.z = 0; }
+    if (target.physicsBody) {
+      target.physicsBody.mass = target.mass;
+      target.physicsBody.revision = (target.physicsBody.revision || 0) + 1;
+    }
+    state.player.targetId = targetId;
     state.settings.gameplay.orbitAssistStrength = 'standard';
-  }, anchorId);
-  await aimAt(page, anchorId);
+  }, targetId);
+  await aimAt(page, targetId);
 
-  await page.keyboard.down('ControlLeft');
-  await page.keyboard.down('Space');
-  await waitForProbeEvent(page, 'tether:latched', 8_000, { payloadField: 'targetId', payloadValue: anchorId });
-  await page.keyboard.up('ControlLeft');
+  await page.keyboard.press('Space');
+  await waitForProbeEvent(page, 'tether:latched', 8_000, { payloadField: 'targetId', payloadValue: targetId });
   await page.keyboard.down('ArrowUp');
   await page.keyboard.down('ArrowRight');
+  await waitForSimTicks(page, 30);
+  const pending = await orbitAssistEvidence(page);
   await page.waitForFunction(() => {
     const state = window.SF && window.SF.state;
     const player = state && state.entities && state.entities.get(state.playerId);
@@ -879,9 +898,6 @@ async function exerciseOrbitAssist(page, anchorId) {
       && player._flightFrame.orbitAssist.active);
   }, null, { timeout: 8_000 });
 
-  // Forward is acquisition/reel only; lateral holds the acquired orbit at the chosen line length.
-  await page.keyboard.up('ArrowUp');
-  await waitForSimTicks(page, 3);
   const engaged = await orbitAssistEvidence(page);
   await page.screenshot({ path: ORBIT_SCREENSHOT });
 
@@ -892,10 +908,10 @@ async function exerciseOrbitAssist(page, anchorId) {
   await page.keyboard.up('ArrowRight');
   await waitForSimTicks(page, 1);
   const afterLateralRelease = await orbitAssistEvidence(page);
-  await page.keyboard.up('Space');
+  await page.keyboard.up('ArrowUp');
   await waitForSimTicks(page, 2);
 
-  return { engaged, afterPointer, afterLateralRelease };
+  return { pending, engaged, afterPointer, afterLateralRelease };
 }
 
 async function orbitAssistEvidence(page) {
@@ -903,6 +919,7 @@ async function orbitAssistEvidence(page) {
     const state = window.SF.state;
     const player = state.entities.get(state.playerId);
     const telemetry = player && player._flightFrame && player._flightFrame.orbitAssist || {};
+    const target = state.player.tether && state.entities.get(state.player.tether.targetId);
     const tetherHud = document.querySelector('#sf-tetherstat [data-k=tether]');
     return {
       active: !!telemetry.active,
@@ -910,6 +927,9 @@ async function orbitAssistEvidence(page) {
       direction: Number(telemetry.direction || 0),
       selectedDirection: Number(telemetry.selectedDirection || 0),
       targetId: state.player.tether && state.player.tether.targetId,
+      targetType: target && target.type || null,
+      targetMass: Number(target && target.mass || 0),
+      playerMass: Number(player && player.mass || 0),
       aimAngle: Number(state.input.aimAngle || 0),
       hudText: tetherHud ? String(tetherHud.textContent || '').trim() : '',
     };

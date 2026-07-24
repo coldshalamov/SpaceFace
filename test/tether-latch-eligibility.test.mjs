@@ -10,7 +10,7 @@ import { createAttachmentService } from '../src/combat/attachments.js';
 import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
 import { serializeCombatState, restoreCombatState } from '../src/combat/persistence.js';
 import { rankMasslineTargets } from '../src/combat/masslineTargetScoring.js';
-import { tetherGameplay } from '../src/systems/tetherGameplay.js';
+import { isAttachable, tetherGameplay } from '../src/systems/tetherGameplay.js';
 
 const DT = 1 / 60;
 const TETHER_DEF = { maxLength: 390, minLength: 18, reelRate: 69 };
@@ -258,7 +258,7 @@ function tapCut(h) {
 
 // ── §1 eligibility matrix ──────────────────────────────────────────────────────────────────────
 
-test('T04 §1: hostile ranks first among comparable candidates; ally damped but eligible; protected never latches', () => {
+test('T04 §1: scoring stays explainable while direct Massline attachment accepts physical objects', () => {
   // Pure scorer matrix (mirrors what tetherGameplay ownershipOf feeds).
   const p = { pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } };
   const h = { id: 'h', pos: { x: 200, z: 0 }, vel: { x: 0, z: 60 }, mass: 500, radius: 12 };
@@ -284,24 +284,22 @@ test('T04 §1: hostile ranks first among comparable candidates; ally damped but 
   assert.equal(ranked.find((r) => r.id === 'own').rating, 'protected');
   assert.equal(ranked.find((r) => r.id === 'st').rating, 'protected');
 
-  // Runtime: protected station alone → latchDenied protected, never create.
+  // Runtime attachment is physical, not ownership/category policy.
   {
     const stn = station(10, { pos: { x: 150, z: 0 } });
     const harness = buildHarness([stn], { aimWorld: { x: 150, z: 0 } });
     fireLatch(harness);
-    assert.equal(harness.events.latched.length, 0, 'station must not latch');
-    assert.equal(harness.events.denied.length, 1);
-    assert.equal(harness.events.denied[0].reason, 'protected');
-    assert.equal(harness.events.denied[0].targetId, stn.id);
+    assert.equal(harness.events.latched[0]?.targetId, stn.id, 'station must latch');
+    assert.equal(harness.events.denied.length, 0);
   }
 
-  // Runtime: own wingman alone → protected.
+  // The player can deliberately move even an owned/wingman physical body.
   {
     const wing = wingmanShip(11, { pos: { x: 140, z: 0 } });
     const harness = buildHarness([wing], { aimWorld: { x: 140, z: 0 } });
     fireLatch(harness);
-    assert.equal(harness.events.latched.length, 0);
-    assert.equal(harness.events.denied[0]?.reason, 'protected');
+    assert.equal(harness.events.latched[0]?.targetId, wing.id);
+    assert.equal(harness.events.denied.length, 0);
   }
 
   // Runtime: ally alone is eligible and latches.
@@ -314,15 +312,14 @@ test('T04 §1: hostile ranks first among comparable candidates; ally damped but 
     assert.equal(harness.events.latched[0].targetId, ally.id);
   }
 
-  // Runtime: exact cursor/geometry tie — ally holds the LOWER id so only scorer rank can pick
-  // the hostile (kills the "map every rank to 0" mutant that previously stayed green).
+  // Nearby fallback is deterministic: equal geometry resolves by entity id, not combat category.
   {
     const foe = hostileShip(1002, { pos: { x: 200, z: 0 }, vel: { x: 0, z: 60 } });
     const friend = allyShip(1001, { pos: { x: 200, z: 0 }, vel: { x: 0, z: 60 } });
     const harness = buildHarness([friend, foe], { aimWorld: { x: 200, z: 0 } });
     fireLatch(harness);
     assert.equal(harness.events.latched.length, 1);
-    assert.equal(harness.events.latched[0].targetId, foe.id, 'hostile ranks first among exact-tie peers');
+    assert.equal(harness.events.latched[0].targetId, friend.id, 'equal-distance peers resolve by stable id');
   }
 
   // Surface-reach contract (pre-T04): center <= maxLength + radius. maxLength=390, radius=20.
@@ -349,6 +346,7 @@ test('T04 §1: hostile ranks first among comparable candidates; ally damped but 
     const foeBeyond = hostileShip(17, { pos: { x: 410.001, z: 0 }, radius: 20, mass: 500 });
     const h = buildHarness([foeBeyond], {
       aimWorld: { x: 410.001, z: 0 },
+      targetId: foeBeyond.id,
       playerState: {
         flybyFocus: { active: true, targetId: foeBeyond.id, until: 99, latchScale: 1 },
       },
@@ -359,20 +357,20 @@ test('T04 §1: hostile ranks first among comparable candidates; ally damped but 
     assert.equal(h.events.denied[0]?.targetId, foeBeyond.id);
   }
 
-  // Nearest-mode matrix: station/own denied; ally-nearest succeeds.
+  // Nearest-mode remains the same physical fallback and does not add policy gates.
   {
     const stn = station(18, { pos: { x: 150, z: 0 } });
     const h = buildHarness([stn], { aimWorld: { x: 150, z: 0 }, tetherMode: 'nearest' });
     fireLatch(h);
-    assert.equal(h.events.latched.length, 0, 'nearest mode must not latch protected station');
-    assert.equal(h.events.denied[0]?.reason, 'protected');
+    assert.equal(h.events.latched[0]?.targetId, stn.id);
+    assert.equal(h.events.denied.length, 0);
   }
   {
     const wing = wingmanShip(19, { pos: { x: 140, z: 0 } });
     const h = buildHarness([wing], { aimWorld: { x: 140, z: 0 }, tetherMode: 'nearest' });
     fireLatch(h);
-    assert.equal(h.events.latched.length, 0, 'nearest mode must not latch own wingman');
-    assert.equal(h.events.denied[0]?.reason, 'protected');
+    assert.equal(h.events.latched[0]?.targetId, wing.id);
+    assert.equal(h.events.denied.length, 0);
   }
   {
     const ally = allyShip(22, { pos: { x: 160, z: 0 }, vel: { x: 0, z: 50 } });
@@ -414,7 +412,39 @@ test('T04 §1: hostile ranks first among comparable candidates; ally damped but 
   }
 });
 
-test('released World Site payload selection replaces a stale acquisition receipt on the latch tick', () => {
+test('transient projectiles and effects are not Massline targets unless explicitly opted in', () => {
+  const base = {
+    alive: true,
+    pos: { x: 40, z: 0 },
+  };
+  assert.equal(isAttachable({ ...base, id: 31, type: 'projectile' }, 1), false);
+  assert.equal(isAttachable({ ...base, id: 32, type: 'fx' }, 1), false);
+  assert.equal(isAttachable({
+    ...base,
+    id: 33,
+    type: 'projectile',
+    data: { masslineTetherable: true },
+  }, 1), true, 'an authored physical projectile may opt in explicitly');
+  assert.equal(isAttachable({ ...base, id: 34, type: 'unregistered-world-object' }, 1), true,
+    'durable world objects must not require a central eligibility-list edit');
+});
+
+test('Ctrl-nearest bypasses a farther selected target and attaches the nearest physical object', () => {
+  const selected = asteroid(41, { pos: { x: 280, z: 0 } });
+  const nearest = station(42, { pos: { x: 75, z: 0 }, radius: 10 });
+  const h = buildHarness([selected, nearest], {
+    targetId: selected.id,
+    tetherMode: 'nearest',
+    aimWorld: { x: selected.pos.x, z: selected.pos.z },
+  });
+
+  fireLatch(h);
+
+  assert.equal(h.events.denied.length, 0);
+  assert.equal(h.events.latched[0]?.targetId, nearest.id);
+});
+
+test('released World Site payload selection is resolved directly on the latch tick', () => {
   const relayCore = asteroid(26, {
     pos: { x: 100, z: 0 },
     data: {
@@ -443,8 +473,8 @@ test('released World Site payload selection replaces a stale acquisition receipt
   });
 
   h.system.update(DT, h.state);
-  assert.equal(h.state.masslineAcquisition?.selected?.targetId, relayCore.id,
-    'the pre-latch receipt must reproduce the stale Relay Core selection');
+  assert.equal(h.state.masslineAcquisition, null,
+    'idle flight must not create an automatic Massline receipt');
 
   h.state.player.targetId = payload.id;
   fireLatch(h);
@@ -452,7 +482,7 @@ test('released World Site payload selection replaces a stale acquisition receipt
   assert.equal(h.events.denied.length, 0);
   assert.equal(h.events.latched.length, 1);
   assert.equal(h.events.latched[0]?.targetId, payload.id);
-  assert.equal(h.events.latched[0]?.previewMatched, true);
+  assert.equal(h.events.latched[0]?.previewMatched, false);
 });
 
 // ── §2 duplicate attach / F-toggle cut ─────────────────────────────────────────────────────────
@@ -523,7 +553,7 @@ test('T04 §2: F while attached cuts (toggle); second create hits owner_attachme
 
 // ── §3 denial-reason events ────────────────────────────────────────────────────────────────────
 
-test('T04 §3: denial reasons for cooldown, no-target, protected, out-of-range, create passthrough', () => {
+test('T04 §3: denial reasons for cooldown, no-target, out-of-range, and create passthrough', () => {
   // cooldown
   {
     const rock = asteroid(30, { pos: { x: 100, z: 0 } });
@@ -541,13 +571,13 @@ test('T04 §3: denial reasons for cooldown, no-target, protected, out-of-range, 
     assert.equal(h.events.denied[0]?.reason, 'no-target');
   }
 
-  // protected (station)
+  // Ownership is not a denial: stations are physical anchors.
   {
     const stn = station(31, { pos: { x: 140, z: 0 } });
     const h = buildHarness([stn], { aimWorld: { x: 140, z: 0 } });
     fireLatch(h);
-    assert.equal(h.events.denied[0]?.reason, 'protected');
-    assert.equal(h.events.denied[0]?.targetId, stn.id);
+    assert.equal(h.events.denied.length, 0);
+    assert.equal(h.events.latched[0]?.targetId, stn.id);
   }
 
   // out-of-range via exclusive Focus lease beyond tether reach
@@ -555,6 +585,7 @@ test('T04 §3: denial reasons for cooldown, no-target, protected, out-of-range, 
     const foe = hostileShip(32, { pos: { x: 500, z: 0 } });
     const h = buildHarness([foe], {
       aimWorld: { x: 500, z: 0 },
+      targetId: foe.id,
       playerState: {
         flybyFocus: { active: true, targetId: foe.id, until: 99, latchScale: 2.4 },
       },
@@ -605,15 +636,13 @@ test('T04 §3: denial reasons for cooldown, no-target, protected, out-of-range, 
     assert.equal(h.events.denied[0]?.reason, 'unknown_attachment_def');
   }
 
-  // Degenerate geometry (overlapping target) maps to invalid-target, not out-of-range.
+  // Overlapping physical geometry remains a valid direct latch.
   {
     const rock = asteroid(36, { pos: { x: 0, z: 0 }, radius: 14 });
     const h = buildHarness([rock], { aimWorld: { x: 0, z: 0 } });
     fireLatch(h);
-    assert.equal(h.events.latched.length, 0);
-    assert.equal(h.events.denied[0]?.reason, 'invalid-target',
-      `degenerate distance must not report out-of-range (got ${h.events.denied[0]?.reason})`);
-    assert.equal(h.events.denied[0]?.targetId, rock.id);
+    assert.equal(h.events.denied.length, 0);
+    assert.equal(h.events.latched[0]?.targetId, rock.id);
   }
 });
 
@@ -730,7 +759,7 @@ test('T04 §5: two identical runs produce byte-equal observed event streams', ()
   const a = runOnce();
   const b = runOnce();
   assert.equal(a.stream, b.stream, 'byte-equal event streams');
-  assert.equal(a.latched[0].targetId, 50);
+  assert.equal(a.latched[0].targetId, 52);
   assert.equal(a.denied.length, 1);
   assert.equal(a.denied[0].reason, 'cooldown');
 });

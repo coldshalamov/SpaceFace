@@ -644,7 +644,7 @@ function checkPlayerGimbalBears360Degrees() {
   console.log(`[PASS] 360-gimbal hardpointDir=${hardpointDir.toFixed(3)} shotDir=${shotDir.toFixed(3)} rearAim=${rearAim.toFixed(3)}`);
 }
 
-function checkRetiredAutoTargetFlagCannotOwnAimOrTrigger() {
+function checkAutoTargetCannotOwnTrigger() {
   const state = createGameState(199);
   state.mode = 'flight';
   state.playerId = 1;
@@ -710,7 +710,7 @@ function checkRetiredAutoTargetFlagCannotOwnAimOrTrigger() {
     },
   });
   weapons.update(1 / 60, state);
-  assert.equal(spawned.length, 0, 'the retired auto-target flag must never hold the trigger');
+  assert.equal(spawned.length, 0, 'auto-target must never hold the trigger');
 
   state.input.fire = true;
   weapons.update(1 / 60, state);
@@ -718,10 +718,10 @@ function checkRetiredAutoTargetFlagCannotOwnAimOrTrigger() {
   const shotDir = Math.atan2(spawned[0].vel.z, spawned[0].vel.x);
   const towardHostile = Math.atan2(hostile.pos.z - player.pos.z, hostile.pos.x - player.pos.x);
   assert(Math.abs(wrapAngle(shotDir - state.input.aimAngle)) < 0.2,
-    'manual fire must follow the independent weapon cursor even if an old input snapshot contains autoFire=true');
+    'manual fire must follow the aim point published by the auto-target owner');
   assert(Math.abs(wrapAngle(shotDir - towardHostile)) > 1,
-    'the retired flag must not silently restore persistent locked-target aim');
-  console.log(`[PASS] retired-autoTarget-inert spawned=${spawned.length} shotDir=${shotDir.toFixed(3)} cursor=${state.input.aimAngle.toFixed(3)}`);
+    'weapons must not choose a hidden target independently of the published aim point');
+  console.log(`[PASS] autoTarget-trigger-independent spawned=${spawned.length} shotDir=${shotDir.toFixed(3)}`);
 }
 
 function installBrowserStubs() {
@@ -812,7 +812,7 @@ function checkAutoTargetAssistReinitNoListenerLeak() {
   }
 }
 
-function checkPursuitSelectionPreservesCursorAndManualAxes() {
+function checkAutoTargetPublishesLeadWithoutPursuit() {
   const saved = installBrowserStubs();
   try {
     const state = createGameState(200);
@@ -845,23 +845,19 @@ function checkPursuitSelectionPreservesCursorAndManualAxes() {
     runShippedAutoTargetTick(state, 1 / 60, ctx);
 
     const hostileAim = Math.atan2(hostile.pos.z - player.pos.z, hostile.pos.x - player.pos.x);
-    const cursorAngle = Math.atan2(100, 90);
-    assert.equal(state.input.aimWorld.x, 90, 'shipped tick must keep aimWorld.x on the cursor ray');
-    assert(Math.abs(state.input.aimWorld.z - 100) < 1e-9, 'shipped tick must keep aimWorld.z on the cursor ray');
-    assert(Math.abs(wrapAngle(state.input.aimAngle - cursorAngle)) < 0.02,
-      'pursuit assist must not take weapon aim from the cursor');
-    assert(Math.abs(wrapAngle(state.input.aimAngle - hostileAim)) > 0.5,
-      'locked target pursuit must not imply locked weapon aim');
-    assert.equal(state.input.moveX, 0, 'pursuit must not synthesize manual strafe axes');
-    assert.equal(state.input.moveZ, 0, 'pursuit must not synthesize manual throttle axes');
-    assert.equal(state.input.turnIntent, 0, 'pursuit must not synthesize yaw axes');
-    assert.equal(state.input.pursuitSlot.active, true);
+    assert(Math.abs(wrapAngle(state.input.aimAngle - hostileAim)) < 0.02,
+      'auto-target must publish weapon aim at the locked hostile lead point');
+    assert.equal(state.input.autoFire, true);
+    assert.equal(state.input.pursuitSlot?.active || false, false);
+    assert.equal(state.input.moveX, 0, 'auto-target without a drawn path must not synthesize strafe');
+    assert.equal(state.input.moveZ, 0, 'auto-target without a drawn path must not synthesize throttle');
+    assert.equal(state.input.turnIntent, 0, 'auto-target without a drawn path must not synthesize yaw');
     assert.equal(emits.filter((e) => e.event === 'ui:targetNearestHostileToCursor').length, 0,
-      'shipped pursuit tick must never emit cursor-nearest target acquisition');
-    assert.equal(emits.filter((e) => e.event === 'ui:targetNearestHostileToPlayer').length, 0,
-      'shipped pursuit tick must preserve the player-selected lock without quiet refresh');
+      'auto-target uses the player-nearest hostile contract, not cursor-nearest');
+    assert(emits.some((e) => e.event === 'ui:targetNearestHostileToPlayer'),
+      'enabling auto-target must request a hostile lock');
 
-    console.log(`[PASS] shipped-pursuit-input aimAngle=${state.input.aimAngle.toFixed(3)} cursor=${cursorAngle.toFixed(3)} target=${hostileAim.toFixed(3)} manualAxes=0`);
+    console.log(`[PASS] shipped-auto-target lead=${state.input.aimAngle.toFixed(3)} pursuit=false`);
   } finally {
     restoreBrowserStubs(saved);
   }
@@ -922,7 +918,7 @@ function checkTargetCycleHostilesOnly() {
   console.log(`[PASS] target-cycle scannerRange=${SCANNER_CONTACT_RANGE} preservedTab=5 then refresh->${state.player.targetId}`);
 }
 
-function checkPursuitGToggleSelectsCurrentLock() {
+function checkAutoTargetGToggle() {
   const state = createGameState(203);
   state.playerId = 1;
   state.player.targetId = 2;
@@ -935,17 +931,16 @@ function checkPursuitGToggleSelectsCurrentLock() {
   bus.on('toast', (t) => toasts.push(t));
 
   toggleAutoTarget(state, bus, createAutoTargetRuntime());
-  assert.equal(state.input.autoFire, false, 'the persisted legacy action must never enable weapon autoaim');
-  assert.equal(state.input.pursuitSlot.active, true, 'G must enable the pursuit slot');
-  assert.equal(state.input.pursuitSlot.targetId, target.id, 'G must use the existing player-selected lock');
-  assert(toasts.some((t) => /Pursuit assist ON.*movement keys release/.test(t.text)),
-    'toggle must explain slot adjustment and instant manual release');
+  assert.equal(state.input.autoFire, true, 'G must enable auto-target');
+  assert.equal(state.input.pursuitSlot?.active || false, false, 'G must not enable pursuit steering');
+  assert(toasts.some((t) => /Auto-target ON.*draw to fly/.test(t.text)),
+    'toggle must explain the draw-to-fly control');
   toggleAutoTarget(state, bus, createAutoTargetRuntime());
-  assert.equal(state.input.pursuitSlot.active, false, 'second G press must disable pursuit');
-  console.log('[PASS] g-pursuit-toggle selects current lock and never owns weapon aim');
+  assert.equal(state.input.autoFire, false, 'second G press must disable auto-target');
+  console.log('[PASS] g-auto-target-toggle restores draw-to-fly and never creates pursuit');
 }
 
-function checkPursuitNeverRefreshesPlayerSelectedLock() {
+function checkAutoTargetRefreshPreservesPlayerSelectedLock() {
   const saved = installBrowserStubs();
   try {
     const state = createGameState(202);
@@ -982,16 +977,15 @@ function checkPursuitNeverRefreshesPlayerSelectedLock() {
     assert.equal(toggleAutoTarget(state, bus, ctx.assistSys._runtime), true);
     for (let i = 0; i < 5; i++) runShippedAutoTargetTick(state, 0.13, ctx);
     assert.equal(state.player.targetId, farHostile.id,
-      'shipped pursuit ticks must not clobber the Tab-selected targetId');
-    assert.equal(state.input.pursuitSlot.targetId, farHostile.id,
-      'the selected slot must remain attached to the same player lock');
-    assert.equal(state.input.aimWorld.x, 90,
-      'weapon aim must remain on the independent cursor ray');
+      'quiet auto-target refreshes must preserve a live Tab-selected hostile');
+    assert.equal(state.input.pursuitSlot?.active || false, false);
+    assert.equal(state.input.aimWorld.x, farHostile.pos.x,
+      'weapon aim must follow the selected hostile lead point');
     assert.equal(emitsCount(allEmits, 'ui:targetNearestHostileToCursor'), 0,
-      'pursuit must never emit cursor-nearest acquisition');
-    assert.equal(emitsCount(allEmits, 'ui:targetNearestHostileToPlayer'), 0,
-      'pursuit must never emit a quiet target refresh');
-    console.log(`[PASS] pursuit-preserves-tab targetId=${state.player.targetId} refreshCalls=0`);
+      'auto-target must never emit cursor-nearest acquisition');
+    assert(emitsCount(allEmits, 'ui:targetNearestHostileToPlayer') > 0,
+      'auto-target must periodically request a quiet player-nearest refresh');
+    console.log(`[PASS] auto-target-preserves-tab targetId=${state.player.targetId}`);
   } finally {
     restoreBrowserStubs(saved);
   }
@@ -6119,12 +6113,12 @@ function checkCleanSpawnAndDockedSafety() {
 }
 checkCleanSpawnAndDockedSafety();
 checkPlayerGimbalBears360Degrees();
-checkRetiredAutoTargetFlagCannotOwnAimOrTrigger();
+checkAutoTargetCannotOwnTrigger();
 checkAutoTargetAssistReinitNoListenerLeak();
-checkPursuitSelectionPreservesCursorAndManualAxes();
+checkAutoTargetPublishesLeadWithoutPursuit();
 checkTargetCycleHostilesOnly();
-checkPursuitGToggleSelectsCurrentLock();
-checkPursuitNeverRefreshesPlayerSelectedLock();
+checkAutoTargetGToggle();
+checkAutoTargetRefreshPreservesPlayerSelectedLock();
 checkWeaponHeatHudSummary();
 
 console.log('Core gameplay checks OK');

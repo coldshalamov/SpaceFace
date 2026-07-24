@@ -164,7 +164,8 @@ export const masslineHud = {
     const reducedFlash = !!(state.settings && state.settings.accessibility
       && state.settings.accessibility.flashReduce);
     dom.root.classList.toggle('ml2-reduced-flash', reducedFlash);
-    this._updateAcquisitionPreview(dom, state, player, w2s);
+    dom.previewEl.style.display = 'none';
+    dom.previewSvg.style.display = 'none';
     this._updateThrowMark(dom, ml2.throw, state, w2s);
     this._updateSelfMark(dom, ml2.throw, state, w2s);
     this._updateCloakRing(dom, ml2.cloak, player, w2s);
