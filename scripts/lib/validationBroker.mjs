@@ -3,7 +3,7 @@
 // PQ-017 keeps its public API via scripts/lib/pq017ProbeIterationGuard.mjs compatibility wrappers.
 
 import { randomBytes } from 'node:crypto';
-import { mkdir, open, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -51,6 +51,12 @@ const DEFAULT_FAST_GATE_TIMEOUT_MS = 180_000;
 const STALE_LOCK_MARGIN_MS = 60_000;
 /** Soft cap on persisted per-candidate launch count keys (merge, never replace wholesale). */
 const MAX_TRACKED_CANDIDATE_COUNTS = 64;
+/**
+ * Grace window for an O_EXCL leadership marker that exists but has no complete PID yet.
+ * A concurrent reclaimer must NOT treat empty/incomplete markers as corrupt-and-deletable
+ * while the winner is still writing ownership (FIX16 init race).
+ */
+export const LEADERSHIP_INIT_GRACE_MS = 5_000;
 
 // In-process counters (also persisted under artifact root when available).
 const globalLaunchCounts = {
@@ -715,17 +721,39 @@ async function readRunLockSafely(lockPath) {
 }
 
 /**
+ * Age of a leadership marker in ms (mtime-based). Missing → +Infinity so a
+ * vanished marker is treated as reclaimable rather than mid-init.
+ */
+async function leadershipMarkerAgeMs(leadershipPath) {
+  try {
+    const st = await stat(leadershipPath);
+    const mtimeMs = Number(st.mtimeMs);
+    if (!Number.isFinite(mtimeMs)) return Number.POSITIVE_INFINITY;
+    return Math.max(0, Date.now() - mtimeMs);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return Number.POSITIVE_INFINITY;
+    throw error;
+  }
+}
+
+/**
  * Atomically reclaim a lock via exclusive leadership + compare-and-delete.
  *
  * Windows concurrent rename(src, destA/destB) is NOT exclusive (multiple
  * renames of the same source can all "succeed"), so we use a fixed-path
  * O_EXCL leadership marker, re-read the lock under leadership, and only
  * then delete if the token still matches the stale read.
+ *
+ * FIX16: empty/incomplete markers within LEADERSHIP_INIT_GRACE_MS are treated
+ * as in-flight init (back off), never corrupt-and-delete — the winner may be
+ * microseconds from writing PID after open('wx').
  */
 export async function atomicReclaimLockFile(lockPath, {
   expectedLockToken = null,
+  initGraceMs = LEADERSHIP_INIT_GRACE_MS,
 } = {}) {
   const leadershipPath = `${lockPath}.reclaiming`;
+  const graceMs = Math.max(0, Number(initGraceMs) || LEADERSHIP_INIT_GRACE_MS);
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     let handle;
@@ -733,13 +761,29 @@ export async function atomicReclaimLockFile(lockPath, {
       handle = await open(leadershipPath, 'wx');
     } catch (error) {
       if (error?.code !== 'EEXIST') throw error;
-      // Another reclaimer holds the marker, or a dead reclaimer left it behind.
+      // Another reclaimer holds the marker, or a dead/stale reclaimer left it.
       const leader = await readRunLockSafely(leadershipPath);
       const leaderPid = Number(leader.lock?.pid);
-      if (Number.isFinite(leaderPid) && leaderPid > 0 && isPidAlive(leaderPid)) {
+      const hasLiveOwner = Number.isFinite(leaderPid)
+        && leaderPid > 0
+        && isPidAlive(leaderPid);
+      if (hasLiveOwner) {
         return { reclaimed: false, reason: 'reclaim-race-lost' };
       }
-      // Dead/corrupt leadership marker — clear and retry once.
+
+      const ageMs = await leadershipMarkerAgeMs(leadershipPath);
+      const incomplete = leader.missing
+        || leader.corrupt
+        || !Number.isFinite(leaderPid)
+        || leaderPid <= 0;
+
+      // Mid-init: open('wx') created an empty file; owner has not written PID yet.
+      // Never delete a young incomplete marker — that would defeat O_EXCL.
+      if (incomplete && ageMs < graceMs) {
+        return { reclaimed: false, reason: 'reclaim-race-lost' };
+      }
+
+      // Dead owner (complete record) OR aged incomplete/corrupt — clear & retry.
       try {
         await rm(leadershipPath, { force: true });
       } catch {
@@ -749,11 +793,18 @@ export async function atomicReclaimLockFile(lockPath, {
     }
 
     try {
-      await handle.writeFile(`${JSON.stringify({
+      // Write ownership in the same open handle before any other op / close.
+      const payload = `${JSON.stringify({
         pid: process.pid,
         acquiredAt: new Date().toISOString(),
         expectedLockToken,
-      })}\n`, 'utf8');
+      })}\n`;
+      await handle.writeFile(payload, 'utf8');
+      try {
+        await handle.sync();
+      } catch {
+        // sync is best-effort (not all platforms/handles support it).
+      }
     } finally {
       await handle.close();
     }
@@ -1657,6 +1708,7 @@ async function runProbeProcess({
 
   // FIX9: reserve acceptance launch quota on successful spawn, before await exit.
   // FIX11: diagnostic runs must not consume the acceptance launch budget.
+  // FIX17: recordLaunch always fires (accounting); only quota is mode-gated.
   let launchReserved = false;
   const result = await runWithTimeout({
     command: manifest.command,
@@ -1666,9 +1718,10 @@ async function runProbeProcess({
     env: probeEnv,
     ownership,
     onSpawn: async () => {
-      if (isDiagnostic) return;
       recordLaunch(manifest.id, manifest.runtimeKind);
-      await incrementCandidateLaunchCount(outputRoot, digests.candidateDigest);
+      if (!isDiagnostic) {
+        await incrementCandidateLaunchCount(outputRoot, digests.candidateDigest);
+      }
       launchReserved = true;
     },
   });

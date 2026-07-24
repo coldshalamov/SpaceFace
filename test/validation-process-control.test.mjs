@@ -102,3 +102,46 @@ test('runWithTimeout invokes onSpawn before child exit', async () => {
   assert.equal(events[1].phase, 'done');
   assert.ok(events[0].t <= events[1].t);
 });
+
+// P1 FIX15: exit/timeout listeners must be attached before await onSpawn.
+// A near-instant child + slow onSpawn must NOT hang indefinitely.
+test('P1 FIX15: fast-exit during slow onSpawn still resolves (no hang)', async () => {
+  const guardMs = 3_000;
+  let onSpawnEntered = false;
+  let onSpawnFinished = false;
+  const started = Date.now();
+
+  const resultPromise = runWithTimeout({
+    command: process.execPath,
+    args: ['-e', 'process.exit(0)'],
+    timeoutMs: 10_000,
+    onSpawn: async (pidRecord) => {
+      onSpawnEntered = true;
+      assert.ok(pidRecord?.pid > 0);
+      // Delay long enough that the child exits while we are still in onSpawn.
+      await new Promise((r) => setTimeout(r, 80));
+      onSpawnFinished = true;
+    },
+  });
+
+  // Hard guard so a hang fails the test instead of freezing the suite.
+  let timedOutGuard = false;
+  const guard = new Promise((resolve) => {
+    setTimeout(() => {
+      timedOutGuard = true;
+      resolve(null);
+    }, guardMs);
+  });
+
+  const result = await Promise.race([resultPromise, guard]);
+  const elapsed = Date.now() - started;
+
+  assert.equal(timedOutGuard, false, `runWithTimeout hung beyond ${guardMs}ms (elapsed=${elapsed})`);
+  assert.ok(result, 'runWithTimeout must return a result');
+  assert.equal(onSpawnEntered, true);
+  assert.equal(onSpawnFinished, true);
+  assert.equal(result.status, 'pass');
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.timedOut, false);
+  assert.ok(elapsed < guardMs, `must return promptly (elapsed=${elapsed}ms)`);
+});

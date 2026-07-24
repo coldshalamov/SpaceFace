@@ -10,6 +10,7 @@ import {
   FAILURE_POINTER_NAME,
   FAST_RUN_LOCK_NAME,
   LAUNCH_COUNTS_NAME,
+  LEADERSHIP_INIT_GRACE_MS,
   acquireRunLock,
   atomicReclaimLockFile,
   claimFastGateReceipt,
@@ -1072,4 +1073,103 @@ test('P2 FIX14: fastGateTimeoutMs is normalized and included in manifest digest'
     timeoutMs: 600_000,
   }), { root, outputRoot });
   assert.equal(brokerDefault.manifest.fastGateTimeoutMs, 180_000);
+});
+
+// ---------------------------------------------------------------------------
+// Phase 1 FIX3 — third-pass concurrency / accounting (P1 + P2)
+// ---------------------------------------------------------------------------
+
+test('P1 FIX16: young empty leadership marker is backed off, not deleted', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const { mkdir, utimes } = await import('node:fs/promises');
+  await mkdir(outputRoot, { recursive: true });
+
+  const lockPath = path.join(outputRoot, FAST_RUN_LOCK_NAME);
+  const leadershipPath = `${lockPath}.reclaiming`;
+  const deadToken = '2147000002-init-grace';
+  await writeJsonAtomically(lockPath, {
+    schema: 'spaceface.validation-run-lock.v1',
+    acquiredAt: new Date().toISOString(),
+    lockToken: deadToken,
+    pid: 2_147_000_002,
+  });
+
+  // Simulate mid-init: O_EXCL open created the file; PID write has not completed.
+  await writeFile(leadershipPath, '', 'utf8');
+
+  const young = await atomicReclaimLockFile(lockPath, {
+    expectedLockToken: deadToken,
+  });
+  assert.equal(young.reclaimed, false, 'young empty marker must not be reclaimed');
+  assert.equal(young.reason, 'reclaim-race-lost');
+
+  // Marker must still exist (not deleted as "corrupt").
+  const stillEmpty = await readFile(leadershipPath, 'utf8');
+  assert.equal(stillEmpty, '');
+  // Live lock must also survive.
+  const lockStill = JSON.parse(await readFile(lockPath, 'utf8'));
+  assert.equal(lockStill.lockToken, deadToken);
+
+  // Age the incomplete marker past the grace window → reclaimable.
+  assert.ok(LEADERSHIP_INIT_GRACE_MS > 0);
+  const past = new Date(Date.now() - LEADERSHIP_INIT_GRACE_MS - 1_000);
+  await utimes(leadershipPath, past, past);
+
+  const aged = await atomicReclaimLockFile(lockPath, {
+    expectedLockToken: deadToken,
+  });
+  assert.equal(aged.reclaimed, true, 'aged empty marker must be reclaimable');
+  assert.ok(
+    aged.reason === 'compare-and-delete' || aged.reason === 'corrupt-or-unreadable-lock',
+    `unexpected aged reclaim reason: ${aged.reason}`,
+  );
+
+  // Leadership marker cleaned up after successful reclaim.
+  let leadershipGone = false;
+  try {
+    await readFile(leadershipPath, 'utf8');
+  } catch (error) {
+    if (error?.code === 'ENOENT') leadershipGone = true;
+    else throw error;
+  }
+  assert.equal(leadershipGone, true, 'leadership marker must be removed after reclaim');
+});
+
+test('P2 FIX17: diagnostic records launch accounting but not acceptance quota', async (t) => {
+  resetLaunchCountsForTests();
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const common = {
+    id: 'diag-accounting-probe',
+    commandArgs: ['-e', 'process.exit(0)'],
+    fastGateCommands: [],
+    maxLaunchesPerCandidate: 1,
+  };
+
+  const diag = createValidationBroker(testManifest('out', common), { root, outputRoot });
+  const digests = await diag.computeGateDigests();
+  const beforeQuota = await getCandidateLaunchCount(outputRoot, digests.candidateDigest);
+  assert.equal(beforeQuota, 0);
+
+  const diagnostic = await diag.authorizeAndMaybeRun({
+    mode: 'diagnostic',
+    explicitDiagnostic: true,
+    spawnProbe: true,
+  });
+  assert.equal(diagnostic.launched, true);
+  assert.equal(diagnostic.status, STATUS.PASS);
+
+  const counts = getLaunchCounts();
+  assert.ok(counts.global >= 1, 'diagnostic must call recordLaunch for accounting');
+  assert.equal(
+    counts.byProbe['diag-accounting-probe'] >= 1,
+    true,
+    'byProbe must reflect the diagnostic launch',
+  );
+  assert.equal(
+    await getCandidateLaunchCount(outputRoot, digests.candidateDigest),
+    0,
+    'diagnostic must not charge acceptance quota',
+  );
 });

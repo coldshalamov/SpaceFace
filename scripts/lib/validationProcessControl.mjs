@@ -130,31 +130,9 @@ export async function runWithTimeout({
     platform: process.platform,
   };
 
-  // Reserve launch quota / notify ownership as soon as the child exists.
-  if (typeof onSpawn === 'function' && pidRecord.pid) {
-    try {
-      await onSpawn(pidRecord);
-    } catch (error) {
-      // onSpawn failure must not orphan the child — kill tree and surface infra_error.
-      try {
-        await killProcessTree(child.pid);
-      } catch {
-        // ignore cleanup errors
-      }
-      return {
-        exitCode: null,
-        signal: null,
-        timedOut: false,
-        durationMs: Date.now() - startedAt,
-        stdout: '',
-        stderr: error?.message || String(error),
-        pidRecord,
-        ownership: ownership ?? null,
-        status: 'infra_error',
-      };
-    }
-  }
-
+  // FIX15: Attach lifecycle listeners + timeout BEFORE awaiting onSpawn.
+  // A fast-exiting child can emit exit during a slow onSpawn (quota reserve);
+  // if listeners are not yet attached, exitPromise never settles → hang.
   if (child.stdout) {
     child.stdout.on('data', (chunk) => { collectedStdout.push(Buffer.from(chunk)); });
   }
@@ -162,23 +140,50 @@ export async function runWithTimeout({
     child.stderr.on('data', (chunk) => { collectedStderr.push(Buffer.from(chunk)); });
   }
 
+  /** Captured exit info — settled even if onSpawn is still awaiting. */
+  let exitCaptured = null;
   const exitPromise = new Promise((resolve) => {
+    const settle = (info) => {
+      if (exitCaptured) return;
+      exitCaptured = info;
+      resolve(info);
+    };
     child.once('error', (error) => {
-      resolve({
+      settle({
         exitCode: null,
         signal: null,
         error: error?.message || String(error),
         infra: true,
       });
     });
+    // Prefer 'exit' for code/signal; also listen to 'close' so a missed exit
+    // still unblocks (stdio close after process death).
     child.once('exit', (code, signal) => {
-      resolve({
+      settle({
         exitCode: code,
         signal: signal ?? null,
         error: null,
         infra: false,
       });
     });
+    child.once('close', (code, signal) => {
+      settle({
+        exitCode: code,
+        signal: signal ?? null,
+        error: null,
+        infra: false,
+      });
+    });
+    // If the process already exited before listeners attached (sync exit),
+    // child.exitCode is set; resolve from that snapshot.
+    if (child.exitCode != null || child.signalCode != null) {
+      settle({
+        exitCode: child.exitCode,
+        signal: child.signalCode ?? null,
+        error: null,
+        infra: false,
+      });
+    }
   });
 
   timer = setTimeout(async () => {
@@ -192,7 +197,34 @@ export async function runWithTimeout({
   // Do not keep the event loop alive solely for the timer once the child exits.
   timer.unref?.();
 
-  const exit = await exitPromise;
+  // Reserve launch quota / notify ownership after listeners are safe.
+  if (typeof onSpawn === 'function' && pidRecord.pid) {
+    try {
+      await onSpawn(pidRecord);
+    } catch (error) {
+      // onSpawn failure must not orphan the child — kill tree and surface infra_error.
+      if (timer) clearTimeout(timer);
+      try {
+        await killProcessTree(child.pid);
+      } catch {
+        // ignore cleanup errors
+      }
+      return {
+        exitCode: null,
+        signal: null,
+        timedOut: false,
+        durationMs: Date.now() - startedAt,
+        stdout: Buffer.concat(collectedStdout).toString('utf8'),
+        stderr: (Buffer.concat(collectedStderr).toString('utf8')
+          + `\n${error?.message || String(error)}`).trim(),
+        pidRecord,
+        ownership: ownership ?? null,
+        status: 'infra_error',
+      };
+    }
+  }
+
+  const exit = exitCaptured ?? await exitPromise;
   if (timer) clearTimeout(timer);
 
   // If we timed out but the process is still around, ensure kill completed.
