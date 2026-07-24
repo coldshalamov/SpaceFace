@@ -12,10 +12,12 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
-import { loadPlaywright } from './lib/load-playwright.mjs';
+import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
+import { MASSLINE_LIVE_FIXED_SEED, createMasslineLiveManifest } from './validation-manifests/massline-live.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT_DIR = join(ROOT, '.devshots', 'spec2');
+const MASSLINE_ARTIFACT_ROOT = join(ROOT, '.devshots', 'massline-live');
 const SCREENSHOT = join(OUT_DIR, 'massline2-live.png');
 const ORBIT_SCREENSHOT = join(OUT_DIR, 'massline-orbit-assist-live.png');
 const RELEASE_SCREENSHOT = join(OUT_DIR, 'massline-release-window-live.png');
@@ -25,17 +27,41 @@ const WIDTH = 1440;
 const HEIGHT = 900;
 const ORBIT_ASSIST_ONLY = process.argv.includes('--orbit-assist-only');
 const RELEASE_ONLY = process.argv.includes('--release-only');
+const DIAGNOSTIC = process.argv.includes('--diagnostic');
 const REPORT_SCHEMA = RELEASE_ONLY
   ? 'spaceface.masslineReleaseLiveProbe.v1'
   : ORBIT_ASSIST_ONLY
     ? 'spaceface.masslineOrbitAssistLiveProbe.v1'
     : 'spaceface.massline2LiveProbe.v1';
+// Automated New Game must never fall through to wall-clock / Math.random seeding.
+const FIXED_SEED = Number(process.env.SF_PROBE_SEED) > 0
+  ? Number(process.env.SF_PROBE_SEED)
+  : MASSLINE_LIVE_FIXED_SEED;
 
+// Fail-closed direct execution: require a broker-issued one-use claim unless diagnostic.
+const masslineManifest = createMasslineLiveManifest();
+const brokerGate = await requireBrokerClaimOrDiagnostic({
+  outputRoot: MASSLINE_ARTIFACT_ROOT,
+  manifest: masslineManifest,
+  tokenOrPath: process.env.SF_BROKER_CLAIM ?? null,
+  diagnostic: DIAGNOSTIC,
+  explicitDiagnostic: DIAGNOSTIC,
+});
+if (!brokerGate.ok) {
+  console.error(`[massline2-live] BROKER_CLAIM_REQUIRED: ${brokerGate.reason}`);
+  console.error('[massline2-live] invoke via: npm run check:massline2:live  (validation broker)');
+  console.error('[massline2-live] or pass --diagnostic for non-promoting local inspection');
+  process.exit(2);
+}
+
+// Load Playwright only after broker authorization (no browser spawn without claim).
+const { loadPlaywright } = await import('./lib/load-playwright.mjs');
 const { chromium } = await loadPlaywright();
 let server = null;
 let browser = null;
 let report = null;
 let pageIssues = null;
+let recordedSeed = null;
 
 try {
   await mkdir(OUT_DIR, { recursive: true });
@@ -71,12 +97,16 @@ try {
     /new game/i.test((button.textContent || '').trim()) && !button.disabled), null, { timeout: 30_000 });
   await clickNamedButton(page, 'New Game');
   await page.waitForSelector('[data-screen="newGame"]', { timeout: 20_000 });
+  // Explicit deterministic seed (broker/manifest); never blank → Date.now ^ Math.random.
+  await page.fill('#sf-ng-seed', String(FIXED_SEED));
   await clickNamedButton(page, 'Launch');
   await page.waitForFunction(() => {
     const state = window.SF && window.SF.state;
     const player = state && state.entities && state.entities.get(state.playerId);
     return !!(state && state.mode === 'flight' && player && player.alive !== false && player.hull > 0);
   }, null, { timeout: START_TIMEOUT_MS });
+  recordedSeed = await page.evaluate(() => window.SF?.state?.meta?.seed ?? null);
+  assert.equal(recordedSeed, FIXED_SEED, 'live probe must record the fixed broker seed, not wall-clock seed');
   await dismissTutorial(page);
   await page.evaluate(() => window.SF.bus.emit('ui:closeAll', {}));
   await waitForSimTicks(page, 8);
@@ -128,6 +158,8 @@ try {
       ok: Object.values(checks).every(Boolean),
       route: server.baseUrl,
       screenshots: [RELEASE_SCREENSHOT, RELEASE_REDUCED_SCREENSHOT],
+      fixedSeed: FIXED_SEED,
+      recordedSeed,
       checks,
       flags: flagState,
       physics: { before: physicsBefore, after: physicsAfter },
@@ -173,6 +205,8 @@ try {
       ok: Object.values(checks).every(Boolean),
       route: server.baseUrl,
       screenshot: ORBIT_SCREENSHOT,
+      fixedSeed: FIXED_SEED,
+      recordedSeed,
       checks,
       flags: flagState,
       physics: { before: physicsBefore, after: physicsAfter },
@@ -325,6 +359,8 @@ try {
     ok: Object.values(checks).every(Boolean),
     route: server.baseUrl,
     screenshot: SCREENSHOT,
+    fixedSeed: FIXED_SEED,
+    recordedSeed,
     checks,
     flags: flagState,
     physics: { before: physicsBefore, after: physicsAfter },
@@ -345,10 +381,14 @@ try {
     schema: REPORT_SCHEMA,
     ok: false,
     error: message,
+    fixedSeed: FIXED_SEED,
+    recordedSeed,
     pageIssues: pageIssues ? summarizeIssues(pageIssues.issues) : undefined,
   };
   report.ok = false;
   report.error = message;
+  report.fixedSeed = FIXED_SEED;
+  if (recordedSeed != null) report.recordedSeed = recordedSeed;
   process.exitCode = 1;
 } finally {
   if (browser) await browser.close().catch(() => {});

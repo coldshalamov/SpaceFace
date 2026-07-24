@@ -1,0 +1,473 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+import {
+  STATUS,
+  claimFastGateReceipt,
+  createFastGateReceipt,
+  createValidationBroker,
+  evaluateAcceptanceGate,
+  evaluateCachedResult,
+  evaluateFastGate,
+  issueBrokerClaim,
+  persistFailure,
+  publishFastGateReceipt,
+  requireBrokerClaimOrDiagnostic,
+  resetLaunchCountsForTests,
+  validateBrokerClaim,
+  consumeBrokerClaim,
+  getLaunchCounts,
+} from '../scripts/lib/validationBroker.mjs';
+import {
+  computeSourceSetDigest,
+  deriveFailureIdentity,
+} from '../scripts/lib/validationFingerprint.mjs';
+import { MASSLINE_LIVE_FIXED_SEED } from '../scripts/validation-manifests/massline-live.mjs';
+
+const repoRoot = fileURLToPath(new URL('../', import.meta.url));
+
+function testManifest(outputRel, overrides = {}) {
+  return {
+    id: 'unit-test-probe',
+    runtimeKind: 'node',
+    command: process.execPath,
+    commandArgs: ['-e', 'process.exit(0)'],
+    mode: 'acceptance',
+    fastGateCommands: [],
+    scenarioPaths: [],
+    regressionSourcePaths: [],
+    productionSourcePaths: [],
+    harnessSourcePaths: [],
+    runtimeProfile: 'default',
+    timeoutMs: 5_000,
+    maxLaunchesPerCandidate: 2,
+    artifactRoot: outputRel,
+    fixedSeed: 42,
+    receiptSchema: 'spaceface.validation-fast-gate.v1',
+    requireFastReceipt: true,
+    requireBrokerClaim: false,
+    ...overrides,
+  };
+}
+
+async function tempRoot(t) {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'validation-broker-'));
+  t.after(async () => {
+    const { rm } = await import('node:fs/promises');
+    await rm(dir, { recursive: true, force: true });
+  });
+  return dir;
+}
+
+function primaryFailure(overrides = {}) {
+  return {
+    generatedAt: '2026-07-23T16:00:00.000Z',
+    runtimeKind: 'browser',
+    primaryAcceptance: true,
+    regressionDigest: 'regression-before',
+    routeDigest: 'route-before',
+    failureFingerprint: 'known-fingerprint',
+    pass: false,
+    error: 'TEST_FAILURE: controlled failure',
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// §3 acceptance items as discrete cases
+// ---------------------------------------------------------------------------
+
+test('§3.1 blocked_repeat: unchanged failure is blocked with no process launch', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const manifest = testManifest('out');
+  // Materialize matching digests by using empty source lists (stable empty digests).
+  const broker = createValidationBroker(manifest, { root, outputRoot });
+  const digests = await broker.computeGateDigests();
+
+  await persistFailure({
+    outputRoot,
+    failure: primaryFailure({
+      routeDigest: digests.routeDigest,
+      regressionDigest: digests.regressionDigest,
+      failureFingerprint: 'fp-unchanged',
+    }),
+  });
+  await broker.recordRunResult({
+    status: 'fail',
+    failureFingerprint: 'fp-unchanged',
+    routeDigest: digests.routeDigest,
+    regressionDigest: digests.regressionDigest,
+  });
+
+  const cached = await evaluateCachedResult({ root, outputRoot, manifest });
+  assert.equal(cached.blocked, true);
+  assert.ok(
+    cached.status === STATUS.BLOCKED_REPEAT || cached.status === STATUS.CACHED_UNCHANGED,
+    `expected blocked_repeat or cached_unchanged, got ${cached.status}`,
+  );
+  assert.equal(cached.launch, false);
+
+  const authorized = await broker.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: true,
+  });
+  assert.equal(authorized.launched, false);
+  assert.ok(
+    authorized.status === STATUS.BLOCKED_REPEAT
+      || authorized.status === STATUS.CACHED_UNCHANGED,
+  );
+});
+
+test('§3.2 one-use receipt cannot be reused', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const receipt = createFastGateReceipt({
+    routeDigest: 'route-a',
+    regressionDigest: 'reg-a',
+  });
+  await publishFastGateReceipt({ outputRoot, receipt });
+  const first = await claimFastGateReceipt({ outputRoot });
+  assert.ok(first?.claimToken);
+  assert.deepEqual(first.receipt.routeDigest, 'route-a');
+  const second = await claimFastGateReceipt({ outputRoot });
+  assert.equal(second, null, 'second claim of the same receipt must fail');
+});
+
+test('§3.3 stale receipt is rejected (source/regression digest mismatch)', async () => {
+  const result = evaluateAcceptanceGate({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    receipt: createFastGateReceipt({
+      routeDigest: 'old-route',
+      regressionDigest: 'old-reg',
+    }),
+    currentRouteDigest: 'new-route',
+    currentRegressionDigest: 'old-reg',
+  });
+  assert.equal(result.pass, false);
+  assert.equal(result.reason, 'fast-receipt-source-digest-stale');
+  assert.equal(result.status, STATUS.BLOCKED_STALE_CANDIDATE);
+});
+
+test('§3.4 source change invalidates receipt', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  // Manifest with a real production source file we can mutate in the temp root.
+  const srcRel = 'prod.js';
+  await writeFile(path.join(root, srcRel), 'v1\n', 'utf8');
+  const manifest = testManifest('out', {
+    productionSourcePaths: [srcRel],
+  });
+  const broker = createValidationBroker(manifest, { root, outputRoot });
+  const before = await broker.computeGateDigests();
+  const receipt = createFastGateReceipt({
+    routeDigest: before.routeDigest,
+    regressionDigest: before.regressionDigest,
+    candidateDigest: before.candidateDigest,
+  });
+  await publishFastGateReceipt({ outputRoot, receipt });
+
+  await writeFile(path.join(root, srcRel), 'v2-changed\n', 'utf8');
+  const after = await broker.computeGateDigests();
+  assert.notEqual(before.routeDigest, after.routeDigest, 'source change must change production digest');
+
+  const gate = evaluateAcceptanceGate({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    receipt,
+    currentRouteDigest: after.routeDigest,
+    currentRegressionDigest: after.regressionDigest,
+  });
+  assert.equal(gate.pass, false);
+  assert.equal(gate.reason, 'fast-receipt-source-digest-stale');
+});
+
+test('§3.5 regression change can acknowledge latest failure fingerprint', async () => {
+  const failure = primaryFailure({ failureFingerprint: 'ack-me' });
+  const blocked = evaluateFastGate({
+    latestFailure: failure,
+    currentRegressionDigest: 'regression-before',
+  });
+  assert.equal(blocked.pass, false);
+  assert.equal(blocked.status, STATUS.BLOCKED_UNRESOLVED_FAILURE);
+
+  const covered = evaluateFastGate({
+    latestFailure: failure,
+    currentRegressionDigest: 'regression-after',
+  });
+  assert.equal(covered.pass, true);
+  assert.equal(covered.acknowledgesFailureFingerprint, 'ack-me');
+  assert.equal(covered.reason, 'new-regression-covers-latest-failure');
+
+  const receipt = createFastGateReceipt({
+    generatedAt: '2026-07-23T17:00:00.000Z',
+    routeDigest: 'route-before',
+    regressionDigest: 'regression-after',
+    acknowledgesFailureFingerprint: 'ack-me',
+  });
+  const accept = evaluateAcceptanceGate({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    receipt,
+    latestFailure: failure,
+    currentRouteDigest: 'route-before',
+    currentRegressionDigest: 'regression-after',
+  });
+  assert.equal(accept.pass, true);
+  assert.equal(accept.resolvesFailure, true);
+});
+
+test('§3.6 concurrent run lock is exclusive', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const broker = createValidationBroker(testManifest('out'), { root, outputRoot });
+  const first = await broker.acquireRunLock();
+  assert.ok(first?.lockToken);
+  const second = await broker.acquireRunLock();
+  assert.equal(second, null, 'second concurrent lock must be blocked');
+  await broker.releaseRunLock(first.lockToken);
+  const third = await broker.acquireRunLock();
+  assert.ok(third?.lockToken, 'lock is available after release');
+  await broker.releaseRunLock(third.lockToken);
+});
+
+test('§3.7 direct raw acceptance fails closed without broker claim', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const manifest = testManifest('out', {
+    id: 'massline-live-like',
+    requireBrokerClaim: true,
+  });
+
+  const denied = await requireBrokerClaimOrDiagnostic({
+    outputRoot,
+    manifest,
+    tokenOrPath: null,
+    diagnostic: false,
+    explicitDiagnostic: false,
+  });
+  assert.equal(denied.ok, false);
+  assert.match(denied.reason, /broker-claim/);
+
+  // Diagnostic bypass is opt-in and non-promoting.
+  const diag = await requireBrokerClaimOrDiagnostic({
+    outputRoot,
+    manifest,
+    tokenOrPath: null,
+    diagnostic: true,
+    explicitDiagnostic: true,
+  });
+  assert.equal(diag.ok, true);
+  assert.equal(diag.primaryAcceptance, false);
+  assert.equal(diag.diagnostic, true);
+
+  // One-use claim authorizes once, then fails on reuse.
+  const issued = await issueBrokerClaim({ outputRoot, manifest });
+  const first = await validateBrokerClaim({
+    outputRoot,
+    manifest,
+    tokenOrPath: issued.claimPath,
+  });
+  assert.equal(first.ok, true);
+  await consumeBrokerClaim({ outputRoot, tokenOrPath: issued.claimPath });
+  const reused = await validateBrokerClaim({
+    outputRoot,
+    manifest,
+    tokenOrPath: issued.claimPath,
+  });
+  assert.equal(reused.ok, false);
+  assert.equal(reused.reason, 'broker-claim-already-consumed');
+});
+
+test('§3.8 timeout cleanup is covered by process-control suite (cross-ref)', async () => {
+  // Discrete pointer: full proof lives in test/validation-process-control.test.mjs
+  // so this suite stays free of long sleeps while still documenting the acceptance item.
+  const source = await readFile(
+    new URL('./validation-process-control.test.mjs', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /runWithTimeout kills a long-running child/);
+  assert.match(source, /timedOut/);
+  const ctrl = await import('../scripts/lib/validationProcessControl.mjs');
+  assert.equal(typeof ctrl.runWithTimeout, 'function');
+  assert.equal(typeof ctrl.killProcessTree, 'function');
+});
+
+test('§3.9 PQ-017 public exports remain broker-backed (compatibility surface)', async () => {
+  const guard = await import('../scripts/lib/pq017ProbeIterationGuard.mjs');
+  assert.equal(typeof guard.evaluatePq017FastGate, 'function');
+  assert.equal(typeof guard.createPq017FastGateReceipt, 'function');
+  assert.equal(typeof guard.assertPq017ProbeLaunch, 'function');
+  assert.equal(typeof guard.digestPq017Sources, 'function');
+  const digest = guard.digestPq017Sources({ a: '1', b: '2' });
+  assert.equal(digest, computeSourceSetDigest({ b: '2', a: '1' }));
+  const receipt = guard.createPq017FastGateReceipt({
+    routeDigest: 'r',
+    regressionDigest: 'g',
+  });
+  assert.equal(receipt.schema, 'spaceface.pq017-fast-gate.v1');
+});
+
+test('§3.10 Massline automation records a fixed seed (no wall-clock seed path)', async () => {
+  assert.equal(MASSLINE_LIVE_FIXED_SEED, 47017);
+  const probeSource = await readFile(
+    new URL('../scripts/probe-massline2-live.mjs', import.meta.url),
+    'utf8',
+  );
+  assert.match(probeSource, /MASSLINE_LIVE_FIXED_SEED/);
+  assert.match(probeSource, /#sf-ng-seed/);
+  assert.match(probeSource, /FIXED_SEED/);
+  assert.match(probeSource, /fixedSeed/);
+  assert.match(probeSource, /requireBrokerClaimOrDiagnostic/);
+  assert.doesNotMatch(
+    probeSource,
+    /fill\('#sf-ng-seed',\s*String\(Date\.now/,
+  );
+  // package script goes through the broker, not the raw probe.
+  const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.match(
+    packageJson.scripts['check:massline2:live'],
+    /validation-broker-cli\.mjs --manifest massline-live/,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Additional structural / status-code coverage
+// ---------------------------------------------------------------------------
+
+test('failure identity is stable across volatile samples', () => {
+  const base = {
+    runtimeKind: 'browser',
+    phase: 'massline-delivery',
+    error: 'NORMAL_ROUTE_BLOCKED: normal flight did not settle within 156118ms',
+    routeFailure: {
+      code: 'point-arrival-timeout',
+      waypointPhase: 'launch',
+      decision: { action: 'approach', reason: 'within-speed-envelope' },
+      routeSafety: { reason: null, constraintType: null },
+      tick: 100,
+      distance: 1.5,
+    },
+  };
+  const a = deriveFailureIdentity(base);
+  const b = deriveFailureIdentity({
+    ...base,
+    error: 'NORMAL_ROUTE_BLOCKED: normal flight did not settle within 999ms',
+    routeFailure: { ...base.routeFailure, tick: 9999, distance: 88 },
+  });
+  assert.equal(a.fingerprint, b.fingerprint);
+});
+
+test('candidate/build/scenario/input/profile/manifest digests are present on gate digests', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const broker = createValidationBroker(testManifest('out', {
+    scenarioPaths: [],
+    fixedSeed: 99,
+    runtimeProfile: 'lab-profile',
+  }), { root, outputRoot });
+  const digests = await broker.computeGateDigests();
+  for (const key of [
+    'routeDigest',
+    'regressionDigest',
+    'productionDigest',
+    'harnessDigest',
+    'scenarioDigest',
+    'inputDigest',
+    'profileDigest',
+    'manifestDigest',
+    'candidateDigest',
+    'buildDigest',
+  ]) {
+    assert.match(digests[key], /^[a-f0-9]{64}$/, key);
+  }
+});
+
+test('diagnostic mode is non-promoting and cannot erase unresolved primary failure', async () => {
+  const failure = primaryFailure();
+  const receipt = createFastGateReceipt({
+    generatedAt: '2026-07-23T17:00:00.000Z',
+    routeDigest: 'route-before',
+    regressionDigest: 'regression-before',
+    acknowledgesFailureFingerprint: failure.failureFingerprint,
+  });
+  const result = evaluateAcceptanceGate({
+    mode: 'diagnostic',
+    explicitDiagnostic: true,
+    receipt,
+    latestFailure: failure,
+    currentRouteDigest: 'route-before',
+    currentRegressionDigest: 'regression-before',
+  });
+  assert.equal(result.pass, true);
+  assert.equal(result.primaryAcceptance, false);
+  assert.equal(result.resolvesFailure, false);
+  assert.equal(result.reason, 'diagnostic-nonpromoting');
+});
+
+test('launch counts increment on assertProbeLaunch success path', async (t) => {
+  resetLaunchCountsForTests();
+  const root = repoRoot;
+  const outputRoot = await tempRoot(t);
+  // Use PQ-017 digests from the real repo so computeGateDigests works.
+  const { computePq017GateDigests, createPq017FastGateReceipt, publishPq017FastGateReceipt, assertPq017ProbeLaunch, completePq017ProbeClaim } =
+    await import('../scripts/lib/pq017ProbeIterationGuard.mjs');
+  const digests = await computePq017GateDigests({ root });
+  await publishPq017FastGateReceipt({
+    outputRoot,
+    receipt: createPq017FastGateReceipt(digests),
+  });
+  const launch = await assertPq017ProbeLaunch({
+    root,
+    outputRoot,
+    runtimeKind: 'browser',
+    mode: 'acceptance',
+    explicitAcceptance: true,
+  });
+  assert.ok(launch.claimToken);
+  await completePq017ProbeClaim({ outputRoot, claimToken: launch.claimToken });
+  // PQ-017 assert path does not go through recordLaunch in the compatibility façade;
+  // broker assertProbeLaunch does. Verify broker path:
+  resetLaunchCountsForTests();
+  const manifest = testManifest('broker-out', {
+    productionSourcePaths: [],
+    regressionSourcePaths: [],
+    requireBrokerClaim: false,
+  });
+  const brokerOut = await tempRoot(t);
+  const broker = createValidationBroker(manifest, { root: brokerOut, outputRoot: brokerOut });
+  const d = await broker.computeGateDigests();
+  await broker.publishFastGateReceipt(createFastGateReceipt({
+    routeDigest: d.routeDigest,
+    regressionDigest: d.regressionDigest,
+    candidateDigest: d.candidateDigest,
+    profileDigest: d.profileDigest,
+  }));
+  const bl = await broker.assertProbeLaunch({
+    runtimeKind: 'browser',
+    mode: 'acceptance',
+    explicitAcceptance: true,
+  });
+  assert.ok(bl.claimToken);
+  const counts = getLaunchCounts();
+  assert.equal(counts.global, 1);
+  assert.equal(counts.browser, 1);
+  assert.equal(counts.byProbe['unit-test-probe'], 1);
+  await broker.completeProbeClaim(bl.claimToken);
+});
+
+test('status codes include timeout/infra/profile/nondeterministic vocabulary', () => {
+  for (const key of [
+    'PASS', 'FAIL', 'BLOCKED_REPEAT', 'BLOCKED_MISSING_FAST_RECEIPT',
+    'BLOCKED_STALE_CANDIDATE', 'BLOCKED_UNRESOLVED_FAILURE', 'TIMEOUT',
+    'INFRA_ERROR', 'NONDETERMINISTIC', 'PROFILE_MISMATCH', 'CACHED_UNCHANGED',
+  ]) {
+    assert.equal(typeof STATUS[key], 'string');
+  }
+});
