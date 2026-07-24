@@ -26,10 +26,10 @@ game — then prove it in a 30-minute corridor.**
 | 3 | Acquisition + pre-latch preview | SF-03 → T02/03 Δ | Wrong-target tethers kill trust at the door |
 | 4 | **Orbit assist** | SF-05 → T05 | The user's single most-confirmed want (L421) — the swing works |
 | 5 | Release predictor + accessible window + speed language | SF-06 → T07+ | Turns the swing into the slingshot skill; camera sells earned speed |
-| 6 | Pursuit-slot assist (G-mode retirement) | SF-07 → T19 | Heals the chronic combat-control wound, with a kill criterion |
+| 6 | Preserve auto-target/draw-to-fly; pursuit proposal rejected | SF-07 tombstone | User-owned control contract; no target-relative station keeping or MMB pursuit |
 
 **Exit test (G1):** three line lengths, 10-second orbits, green-window release,
-two-anchor chain, pursuit-slot hold — captured on the normal route, on a trackpad.
+two-anchor chain, plus direct draw-to-fly with independent locked-target weapon lead — captured on the normal route, on a trackpad.
 
 ### ARC 2 — PHYSICAL COMBAT & THE PLANET (the UVP: "assisted relational physics")
 

@@ -7,7 +7,7 @@ discipline: "program"
 frontend_difficulty: "medium"
 vision_requirement: "yes"
 recommended_agent_profile: "Top-tier integration/playtest agent with browser/Electron and vision capability"
-depends_on: ["SF-07", "SF-10", "SF-15", "SF-21", "SF-23", "SF-25", "SF-30", "SF-32"]
+depends_on: ["SF-10", "SF-15", "SF-21", "SF-23", "SF-25", "SF-30", "SF-32"]
 roadmap_alignment: "G01\u2013G20, T18, A20, W07\u2013W18; first-hour acceptance"
 prompt_system_version: "1.0"
 terminal_gate: "ready-for-review with receipt; global completion remains lead-owned"
@@ -116,13 +116,12 @@ If the requested outcome is already genuinely satisfied in the current tree, do 
 
 <sequence_position>
   <prompt_id>SF-33</prompt_id>
-  <declared_dependencies>SF-07, SF-10, SF-15, SF-21, SF-23, SF-25, SF-30, SF-32</declared_dependencies>
+  <declared_dependencies>SF-10, SF-15, SF-21, SF-23, SF-25, SF-30, SF-32</declared_dependencies>
   <roadmap_alignment>G01–G20, T18, A20, W07–W18; first-hour acceptance</roadmap_alignment>
   <sequence_rule>This prompt is sequential, but the live repository may have advanced. Re-audit all prerequisites. Do not replay an obsolete task merely because its prompt number has arrived.</sequence_rule>
 </sequence_position>
 
 <dependency_gate>
-  <dependency>SF-07</dependency>
   <dependency>SF-10</dependency>
   <dependency>SF-15</dependency>
   <dependency>SF-21</dependency>
@@ -278,7 +277,6 @@ result_commit: <sha-or-uncommitted>
 worktree: <absolute path>
 state_reached: <ALREADY_SATISFIED|IMPLEMENTED|FOCUSED_GREEN|ROUTE_ACCEPTED|VISUALLY_ACCEPTED|BLOCKED>
 dependencies_seen:
-  - SF-07
   - SF-10
   - SF-15
   - SF-21

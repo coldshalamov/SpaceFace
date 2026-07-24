@@ -12,7 +12,7 @@ flowchart TD
     SF_04["SF-04: Massline Input Grammar, Buffered Intent, Reel, Pay-Out, and Cut"]
     SF_05["SF-05: Anchor-Relative Orbit Assist Through Bounded Physics Commands"]
     SF_06["SF-06: Shared Release Predictor, Validated Sling Course, and Speed-Language Presentation"]
-    SF_07["SF-07: Replace Flailing Gesture Flight with Target-Relative Dogfight Control"]
+    SF_07["SF-07: REJECTED - do not dispatch"]
   end
   subgraph P1_Physical_combat_and_gravity[P1 Physical combat and gravity]
     SF_08["SF-08: Compound Planar Collision Proxies and Truthful Exterior Docking"]
@@ -58,7 +58,6 @@ flowchart TD
   SF_03 --> SF_04
   SF_04 --> SF_05
   SF_05 --> SF_06
-  SF_06 --> SF_07
   SF_01 --> SF_08
   SF_02 --> SF_08
   SF_05 --> SF_09
@@ -121,7 +120,6 @@ flowchart TD
   SF_14 --> SF_32
   SF_27 --> SF_32
   SF_31 --> SF_32
-  SF_07 --> SF_33
   SF_10 --> SF_33
   SF_15 --> SF_33
   SF_21 --> SF_33

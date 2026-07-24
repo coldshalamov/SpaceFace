@@ -29,7 +29,7 @@ numbered specs. Written directly by the lead session (Fable 5).
 ## Research provenance (condensed into the specs; no separate research files)
 - Flight/momentum: Freelancer (cruise 300 u, 3 s charge, weapons-off; thruster +120 burst; engine-kill Z;
   reference constants mass 150 / drag-as-vmax / reverse 0.5× / bank 80°), Rebel Galaxy Outlaw
-  (hold-to-autopursuit; inertial-dampener slide; 2.5D plane rationale), Highfleet (velocity-lead enemy aim,
+  (inertial-dampener slide; 2.5D plane rationale; automatic pursuit explicitly excluded), Highfleet (velocity-lead enemy aim,
   burner ×3 breaks AI prediction, projectiles inherit ship momentum; G-cap = unfun, avoid), Elite (FA-off
   180° reverski in 2–3 s; assisted-by-default doctrine).
 - Outfitting: Endless Sky (nested outfit-space ⊃ weapon/engine capacity; accel=thrust/mass, turn=turn/mass,

@@ -25,7 +25,7 @@ currently times out; onboarding truth is static-only.
   screens, captions, and accessibility or multimodal equivalents may coexist when hierarchy and
   layout keep them intelligible. Systems that emit transient announcements register their class and
   dedupe key; bypassing that path is a lint failure.
-- **Teach-once ledger:** every verb (tether, vent stance, autopursuit, claim, siege repair…) has
+- **Teach-once ledger:** every verb (tether, vent stance, auto-target/draw-to-fly, claim, siege repair…) has
   one contextual hint, shown at first *opportunity*, never again after first *use*
   (`state.player.taught[verbId]`). No permanent tutorial furniture (constitution taste rule).
 - **First-15 extended, not rewritten:** the 6-beat opening (GDD §8.2) stays canonical. SPEC3 verbs
@@ -106,7 +106,7 @@ state surface area, so save integrity and evidence quality must evolve with it.
   a golden save through load→play 600 ticks→save→compare.
 - **Telemetry, aimed at design questions:** activate the dormant funnel with exactly the GDD §13
   metrics (first-kill <6 min median, first-trade <10 min, save-continue rate) + SPEC3 questions:
-  tether adoption % by hour-2, autopursuit usage, siege win rate by claim value, market-chart open
+  tether adoption % by hour-2, auto-target/draw-to-fly usage, siege win rate by claim value, market-chart open
   rate, spec-verb reach (did anyone find vein events?). Local-first: JSON ring in localStorage +
   export button — no network, no consent problem, but the data exists when a playtest happens.
 - **The truth-gate ritual:** the current acceptance matrix defines the checks and player routes for
@@ -233,7 +233,7 @@ Each wave ends at `check:ci` green + a playtest against GDD §13 metrics before 
 Threads within a wave are lane-parallel (constitution dispatch rules).
 
 ### 6. The bar (comparison targets, not content ceilings)
-- Flight/feel: **beats** Rebel Galaxy Outlaw's assist suite (their autopursuit + our tether ceiling).
+- Flight/feel: direct granular auto-target/draw-to-fly plus the tether ceiling, without automated pursuit.
 - Trading: **matches** Elite's market data honesty, **beats** it on legibility (charts + ticker
   + knowledge-honest advisor, no third-party tools needed).
 - Mining: **matches** DRG's rhythm satisfaction in a top-down frame (seams+vent+tracking+veins).

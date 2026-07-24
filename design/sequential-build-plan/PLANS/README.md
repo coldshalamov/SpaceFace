@@ -1,5 +1,10 @@
 # SpaceFace Sequential Agent Prompt System
 
+> **2026-07-24 user override:** SF-07 is rejected and must not be dispatched. Preserve G
+> auto-target/draw-to-fly. Never restore MMB pursuit selection, target-relative station keeping,
+> pursuit impulses/UI, or the reviewer-derived T19 proposal. The machine sequence and SF-07
+> tombstone carry the same prohibition.
+
 This package converts the supplied SpaceFace planning conversation and three design packages into **36 sequential, self-contained implementation prompts**. Each prompt is sized as one coherent engineering checkpoint: large enough to produce visible progress, bounded enough for one strong agent to audit, implement, verify, and hand to review.
 
 The sequence is not a blind waterfall. SpaceFace is a live repository. Prompt `SF-00` first reconciles current code, branches, plans, checks, routes, and evidence. Every later prompt repeats the live-repository rule and may conclude `ALREADY_SATISFIED`, `BLOCKED`, or `NEEDS_RESCOPE` rather than rebuilding obsolete work.

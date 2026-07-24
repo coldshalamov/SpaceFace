@@ -1,5 +1,11 @@
 # REVIEWER PREP PACKET — read this first
 
+> **SUPERSEDING USER DECISION — 2026-07-24:** Do not propose, prototype, or implement the SF-07/T19
+> pursuit-slot or autopursuit controller. Do not bind MMB to pursuit, station-keep relative to a
+> combat target, add pursuit impulses/UI/toasts, or retire G auto-target/draw-to-fly. Those reviewer
+> directions were unsolicited and are rejected. Any contrary text later in this packet is historical
+> input only.
+>
 > You are the **reviewer genius agent**. This packet was assembled to give you everything
 > you need to turn the SpaceFace sequential build plan into concrete, optimal, executable
 > build steps — with **minimal tool calls and searching**.

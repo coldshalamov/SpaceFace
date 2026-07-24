@@ -25,7 +25,7 @@
 | SF-04 | T04+T06+T07+T16 | FOLDED | PLANNED | Binding (corrected) |
 | SF-05 | T05 | FOLDED | PLANNED | Binding (corrected, tuned per Q21) |
 | SF-06 | T07 extension + D7 seam | FOLDED | PLANNED / D7 dirty | Binding (corrected) |
-| SF-07 | T19 (recommended) | NEW-ID | new | Binding (replaced: pursuit-slot) |
+| SF-07 | T16 correction | REJECTED-DIRECTION | shared-tree correction | Binding: preserve auto-target/draw-to-fly; never restore pursuit-slot |
 | SF-08 | F18 (recommended) | NEW-ID | new | Binding |
 | SF-09 | T08 prerequisite layer | FOLDED | T08 PLANNED | Binding |
 | SF-10 | combat-systems step | KEPT | new | Binding (+ enemy balance) |
@@ -101,9 +101,9 @@ WAVE 1 — THE TOY (massline control spine)
   3. SF-03  acquisition + pre-latch preview (T02/03 Δ)  deps: SF-04
   4. SF-05  orbit assist (T05)                          deps: SF-04, lab
   5. SF-06  release predictor + speed language (T07+)   deps: SF-05; D7 seam
-  6. SF-07  pursuit-slot assist (T19)                   deps: lab; kill criterion
+  6. SF-07  reject pursuit slot; preserve draw-to-fly   deps: user control contract
   GATE G1: Massline Proving Ground — 3 line lengths, 10 s stable orbit,
-           green-window release, two-anchor chain, pursuit-slot hold;
+           green-window release, two-anchor chain, direct draw-to-fly;
            browser player-route capture; sim compare green.
 
 WAVE 2 — PHYSICS COMBAT
@@ -167,9 +167,9 @@ Concretely, for every step below:
   LMB fires; RMB is the contextual tool; Space latches the *previewed* candidate.
 - **Tethered:** arrows + Space run the entire orbit/reel/pay-out/pump/cut grammar;
   the cursor is free to aim at *other* things (the next anchor, an enemy).
-- **Dogfighting:** pursuit-slot is *set* by a trackpad drag and persists; the ship
-  stations itself within bounds; any movement key instantly returns manual control;
-  the cursor never stops being the aim channel.
+- **Dogfighting:** G keeps locked-target weapon lead while relative, clutchable trackpad gestures
+  express a direct flight path through a separate channel. No target-relative station keeping, MMB
+  pursuit selection, pursuit impulse controller, or pursuit UI is permitted.
 - **Every assist shows its inferred action** (Law 8) and is bounded, overridable in
   one sim tick, and tuned in the deterministic lab before any player-route tuning.
 - Modifier chords that demand two hands doing two things at once (the D+F failure,
@@ -223,7 +223,7 @@ transaction; no `src/render/**` edits (graphics lane).
 
 ### STEP 1 (SF-02) — Deterministic physics-control laboratory
 
-**Problem.** Every control constant in the plan (orbit PD gains, pursuit-slot gains,
+**Problem.** Every retained control constant in the plan (orbit PD gains,
 predictor cadences) is currently "tune through playtesting" — which in practice means
 an agent guesses once and ships it.
 **Consequence.** The single biggest implementation risk in the whole program (flagged
@@ -429,45 +429,19 @@ route; camera evidence after D7 merge via `check:camera:velocity-language`.
 
 ---
 
-### STEP 6 (SF-07 → T19 recommended) — Pursuit-slot assist; retire the flailing G-mode
+### STEP 6 (SF-07 tombstone; T16 correction) — Preserve direct auto-target/draw-to-fly
 
-**Problem.** The G/trackpad dogfight mode is a chronic, user-documented failure
-(L431–437): fly-toward-cursor, the flailing arrow, the path-drawing that never
-landed. It remains a flailing false promise in the build.
-**Consequence.** Combat flight on a trackpad is either manual-and-hard or
-assisted-and-broken; the user himself is unsure the primitive can work (L593).
-**Why it's bad.** A broken assist is worse than none — it destroys trust in every
-other assist. And combat is half the corridor.
-**Proposed solution.** Replace G-mode with **Pursuit Assist**: a target-relative
-station-keeping controller where the trackpad sets a persistent bearing/range slot
-around a locked target and a bounded PD controller holds it — prototype-proven in
-the lab with a kill criterion (Q5), then wired. Retire the gesture-path follower.
-**Direction of how.** Slot: `p* = pTarget + range·[cos bearing, sin bearing]` in the
-target frame; trackpad drag adjusts (bearing, range) and the slot **persists** — no
-continuous path input, so the cursor is never stolen from aiming. Controller:
-bounded position PD toward `p*` with velocity feed-forward of the target's motion,
-authority capped (assist-class, not autopilot-class), deadband inside the slot,
-immediate disengage on any movement-key input (one tick). Not a mode: an assist
-layer with an explicit on-state cue, composable with tether (you can pursuit-slot a
-target while tethered elsewhere). Kill criterion in the lab: trackpad-sampled slot
-inputs on a weaving target → hold slot within tolerance 10 s, zero oscillation
-("no flail"), slot transition settle ≤ 2.5 s, manual override ≤ 1 tick. Two focused
-iterations (defined: implement → lab-trace → route-capture cycles) to pass; else
-retire G entirely and document the evidence (Q5 fallback).
-**What it looks like.** Lock a pirate, nudge the trackpad up-left: your ship sweeps
-into a high-front slot and holds it while you shoot with the cursor; arrow keys and
-it's yours again instantly. No arrow-HUD. No path drawing. No flail.
-**Forbidden shortcuts.** (1) Any control scheme that consumes the cursor for
-steering during combat. (2) Kinematic path playback. (3) Persistent auto-aim of
-weapons (the slot stations the *ship*; aiming stays the player's). (4) A mode that
-hides its active state. (5) Shipping the A/B instead of deciding (scope double).
-(6) Keeping the gesture follower as a hidden default-on fallback.
-**Acceptance evidence.** Lab kill-criterion trace; public combat route with pursuit
-assist (lock → slot → kill → disengage); override latency test; G-mode retirement
-diff (default-off + dead-path removal or documented archive).
-**Authority/lease.** Input semantics via T16 lease; Flight V3 command path; target
-lock from the T02/T03 scorer.
-**Model routing.** YES (control-systems + browser/vision).
+**User decision.** The derived Pursuit Assist proposal was unsolicited and is rejected. It must not
+return through this plan, a renamed packet, a receipt, or an archived source package.
+**Retained contract.** G enables locked-target weapon lead while relative, clutchable draw-to-fly
+gestures express direct ship intent through an independent channel. The player shapes the route; the
+computer does not choose or hold a bearing/range station around a target.
+**Prohibited.** MMB pursuit selection, target-relative station keeping, pursuit physics impulses,
+pursuit-specific HUD/settings/hints/toasts, retiring draw-to-fly, or automatic combat maneuvering.
+**Acceptance evidence.** Focused auto-target/input checks plus normal trackpad browser and Electron
+routes prove independent weapon lead, immediate granular path control, reversal after clutching, and
+the complete absence of the rejected pursuit contract.
+**Authority/lease.** T16 input semantics, Flight V3, and the current user-directed correction.
 
 ---
 
@@ -1048,7 +1022,7 @@ acceptance).
 ### STEP 22 (SF-32 → R-family + VFX-language packet) — Physics HUD, VFX language, camera, accessibility consolidation
 
 **Problem.** By this point the game has ~15 new visual signals (assist states,
-preview brackets, release windows, fields, statuses, bands, heat, pursuit slot) with
+preview brackets, release windows, fields, statuses, bands, and heat) with
 no unified language — the N64 complaint (L1680) fixed per-feature would still read
 as noise as a whole.
 **Consequence.** Crowded scenes become unreadable; a11y debt accumulates per feature;
@@ -1331,7 +1305,7 @@ completeness. **Authority.** W-family owner + save mutex. **Routing.** YES.
 | SF-00 | Step 0 + this REVIEW | The readiness mapping (Section A) |
 | SF-01 | Step 0 | Graphics/perf baseline evidence requirements |
 | Depth playbook 01 (foundations A–J) | Steps 7, 14, 15, 16 | The ten-foundation spine, data schemas |
-| Depth playbook 02 (massline/combat) | Steps 1–6, 8, 9 | Control contracts, pursuit-slot math, weapon catalog, arena grammar |
+| Depth playbook 02 (massline/combat) | Steps 1–6, 8, 9 | Control contracts excluding the rejected pursuit-slot math, weapon catalog, arena grammar |
 | Depth playbook 03 (living world) | Steps 13, 19 | Pockets, jobs, sector seeds (as future content) |
 | Depth playbook 04 (Wreck Cathedral) | Step 17 | Component roster, anti-placeholder list, task order |
 | Depth playbook 05 (automation/endgame) | Step 23 + Wave-2 | Verb-unlock ladder, exteriorization law |

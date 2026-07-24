@@ -169,10 +169,9 @@ hitch, redirect.
 10. **Tether cutter / line jammer** — attacks constraints not hull. *"Only add after
     massline play is reliable and readable."*
 
-**Target-relative trackpad dogfight (Part V — the G-mode replacement):** the
-**pursuit-slot controller**. `combatManeuver: {targetId, bearingRad, rangeWu,
-orbitRate, closingBias, active}`. Trackpad mapping: `dx → bearing`, `dy → range`.
-Desired slot `p* = target.pos + range × [cos(bearing), sin(bearing)]`.
+**Rejected source proposal (Part V):** the source package proposed a target-relative
+station-keeping controller. Explicit user direction on 2026-07-24 rejects that mechanic and forbids
+its implementation. Preserve G auto-target/draw-to-fly and independent weapon lead instead.
 
 **Gesture path flight for traversal (Part VI — alternative G-mode):** screen-space
 points → unproject → arc-length resample → Ramer-Douglas-Peucker simplify → optional
@@ -942,7 +941,7 @@ These nuances matter. A reviewer who picks one side loses information.
 | F3 | First physics-weapon set | depth 02 Part VII: **10** weapons | depth 08 Wave 4: **3** (concussion, vector mine, RCS disruptor) | Wave 4's 3 is the first prototype; 10 is the catalog. |
 | F4 | Sector examples | depth 03: 12 named seeds | depth 08 Wave 6: **Ceres Belt** + Abandoned Driller (neither in the 12) | Reviewer must decide which sector is canonical for Wave 6 / SF-21. |
 | F5 | "Radius-nine wreck" | depth 04 §3: "cannot be the hero object" | depth 10 §6: "small generic wreck entities" | Number is an internal default; reviewer should confirm current value. |
-| F6 | G/path mode | depth 02 §18: pursuit-slot controller (commits to one) | depth 10 §3: prototype BOTH, keep clearer | Slight tension — commit vs A/B. |
+| F6 | G/path mode | Source packages proposed target-relative station keeping | Later package proposed comparative prototypes | **Resolved by user:** reject both automatic-pursuit interpretations; preserve direct auto-target/draw-to-fly. |
 | F7 | Massline input key | gravity 02 §7: **Space** | gravity Brief 02 + 06: "rebindable/thumb-accessible" | Space is a recommendation, not locked. |
 | F8 | Tap-vs-hold threshold | gravity 02 §7.2: "threshold, forgiving, visually signaled" | gravity Brief 02: "Avoid delaying the initial latch while waiting to decide tap vs hold" | Reconcile: latch fires immediately, tap/hold disambiguated later. |
 | F9 | Predictor cadence | gravity 02 §11.4 Arm mode: "next valid solution frame" (reads 60 Hz) | gravity 06 §18: "10–20 Hz with interpolation" | Arm mode may need higher cadence; or "frame" means "sampled solution." |

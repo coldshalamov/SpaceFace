@@ -7,8 +7,8 @@ into the most memorable verb in the genre.
 Research anchors used throughout (verified numbers): Freelancer cruise **300 u/s, 3 s charge,
 weapons-off, disruptor counter**; thruster **+120 burst** on a **200-drain / regen pool**; engine-kill
 (Z) Newtonian coast; reference physics constants (mass 150, linear drag as the speed cap, reverse
-0.5× forward thrust, 80° bank limit). Rebel Galaxy Outlaw **hold-to-autopursuit** (auto-orient +
-speed-match a locked target; opt-in; kills overcorrection wobble) + **inertial-dampener slide**.
+0.5× forward thrust, 80° bank limit). Rebel Galaxy Outlaw's **inertial-dampener slide** is retained
+as a research comparison; its automatic target pursuit is explicitly excluded from SpaceFace.
 Highfleet: enemy fire **leads your current velocity vector**; afterburner (×3 thrust) breaks AI
 prediction; **projectiles inherit ship momentum**; hard G-force turn caps are "realistic but unfun" —
 never do that. Elite: FA-off 180° flip in **2–3 s** is the canonical expert move; every successful
@@ -16,15 +16,15 @@ game ships **assist-on by default, raw Newtonian opt-in**.
 
 ---
 
-## SPEC3-16 — Flight model: Helm Assist, Autopursuit, and the travel grammar
+## SPEC3-16 — Flight model: Helm Assist, direct auto-target control, and the travel grammar
 **One-line pitch:** finish GDD §4.1's helm-assist with the three missing pieces that make flight feel
-professional: leash steering done right, RGO-style autopursuit, and the cruise/disruptor travel triad.
+professional: leash steering done right, user-directed auto-target/draw-to-fly, and the cruise/disruptor travel triad.
 
 ### 1. Why / what's holding us back
 GDD §2 diagnosed "really hard to fly" as split attention (`src/systems/flight.js:169`). §4.1 already
 mandates mouse-nose helm assist + brake-to-stop. What §4.1 does NOT specify — and what separates
-"fine" from "professional" — is (a) the *leash model* for how the nose follows the mouse, (b) an
-anti-overcorrection aid for combat, (c) how the speed tiers interlock as one travel grammar with
+"fine" from "professional" — is (a) the *leash model* for how the nose follows direct input, (b) a
+clutchable trackpad flight path independent from locked-target weapon lead, and (c) how the speed tiers interlock as one travel grammar with
 counters. This spec locks all three.
 
 ### 2. The design
@@ -35,12 +35,12 @@ turning left forever. Big ships lag the cursor visibly — that IS the mass read
 - Feel targets (GDD §4.1 kept): response begins <50 ms; scout 90° in ≤0.45 s; hauler ~1.4 s.
 - Deadzone: 24 px around ship screen-pos where torque fades to 0 (prevents idle jitter).
 
-**2b. Autopursuit (the RGO steal — highest-leverage combat-feel feature).** With a target locked,
-**hold MMB (or F)** → flight computer auto-orients toward an *intercept point* on the target and
-speed-matches to hold 180–320 wu behind it. Release = instant manual control. Strafe keys still work
-while held (you orbit-adjust while it tails). Purpose: kills the overcorrection wobble that makes
-momentum dogfights frustrating; fights become cinematic pursuit curves. Strictly opt-in — no penalty
-for flying manual. Disabled during cruise; breaks on tether attach.
+**2b. Auto-target / draw-to-fly (user-owned control contract).** G may keep weapon lead on the
+locked hostile while relative trackpad motion records a clutchable world-space flight path for the
+ship. Weapon aim and flight intent are independent channels. Lifting and swiping again extends or
+reverses the route immediately. The computer follows the player's path; it never selects or holds a
+bearing/range station around the target. MMB pursuit selection, target-relative station keeping,
+pursuit impulses, and pursuit-specific HUD/toasts are explicitly prohibited.
 
 **2c. Inertial-dampener toggle ("drift", the expert layer).** Z toggles assist off (exists as
 `newtonian` in `flightDynamics.js`) — reframe it as the *slide*: keep your velocity vector, re-point
@@ -65,18 +65,17 @@ stats (SPEC3-23). Reverse thrust = 0.5× forward (universal constant that reads 
 front").
 
 ### 3. Architecture & wiring
-- `src/core/flight/flightDynamics.js`: add `steerToPoint(shipBody, worldPoint, dt, hullTurnStats)`
-  (leash torque) and `matchVelocity(shipBody, targetVel, gain, dt)` (autopursuit PID). Keep the three
-  assist levels; autopursuit is a *mode flag* on top of `assisted`, not a fourth level.
-- `src/systems/flight.js`: owns mode state (`state.flight.mode`: `manual|autopursuit|cruise|lane`),
+- `src/core/flight/` owns bounded interpretation of direct path intent. It must not add a target-relative
+  station-keeping or velocity-matching controller.
+- `src/systems/flightV3.js`: owns live flight authority and consumes the direct draw-to-fly path;
+  `state.flight.mode` remains `manual|cruise|lane`,
   emits `flight:modeChanged {from,to,reason}` on the bus. Cruise charge/drop already lives in
   `src/systems/cruise.js` (check-juice-contract covers charge/drop) — extend with the stumble window
   + `cruise:snared {sourceId}` event; do not duplicate its state.
-- Input: MMB/F hold routed through the existing input system; V replaces Tab for cruise per GDD §7.1.
+- Input: G toggles auto-target/draw-to-fly through the existing input system; V replaces Tab for cruise per GDD §7.1.
 - Determinism: all of this runs inside the fixed-step sim on state + inputs only — replay-safe by
   construction. New tunables live in `src/data/` (e.g. `flightTuning.js`), not inline constants.
-- Save/load: `state.flight.mode` must serialize; autopursuit drops to `manual` on load (never persist
-  a held-input mode).
+- Save/load: transient drawn-path/control state fails closed on load; no automatic pursuit mode exists.
 
 ### 4. Key code — the parts a smart implementer would botch
 ```js
@@ -94,15 +93,6 @@ export function steerToPoint(body, point, dt, hull) {
   applyYawTorqueTowardRate(body, targetRate, hull.turnAccel, dt);
 }
 
-// Autopursuit: chase an INTERCEPT point, not the target's position — position-chasing produces the
-// pursuit-lag orbit death-spiral every amateur implementation has.
-export function autopursuitStep(body, target, dt, tune) {
-  const lead = estimateIntercept(body, target, tune.projectileSpeedHint); // reuse gunnery lead solver
-  steerToPoint(body, lead, dt, tune.hull);
-  const followPoint = offsetBehind(target, tune.followDist);              // 180–320 wu
-  const desiredVel = velocityToward(body, followPoint, target.velocity, tune.closeGain);
-  matchVelocity(body, desiredVel, tune.matchGain, dt);                    // PID on Rapier impulses
-}
 ```
 ```js
 // cruise.js — the stumble. Dropping out of cruise must cost a beat of control; that beat is the
@@ -127,18 +117,18 @@ determinism/save, parity, and maintenance impact; keep development-only tooling 
 1. `steerToPoint` + deadzone + feel-target check `scripts/check-helm-leash.mjs` (asserts 90°-turn
    times per hull class from scripted inputs). Parallel-safe.
 2. Boost pool → data-driven (`flightTuning.js`), reverse 0.5×; extend `check-massline-feel.mjs`.
-3. Autopursuit mode + events + `scripts/check-autopursuit.mjs` (locked target, hold input, assert
-   stable follow distance ±15% over 600 ticks, release returns manual in 1 tick).
+3. Auto-target/draw-to-fly contract checks: locked-target weapon lead remains independent from
+   clutchable relative path steering; reversal is immediate; rejected pursuit state/impulses/UI stay absent.
 4. Cruise stumble + snare event + V-key rebind; extend `check-juice-contract`.
 5. Regression floor: `check:sim:compare` hashEqual, `check-tether-gameplay.mjs`.
 
 ### 8. Anti-patterns
-- P-control leash (reads as drone, not mass). Position-chasing pursuit (orbit death-spiral).
+- P-control leash (reads as drone, not mass). Any target-relative position/velocity pursuit controller.
 - Hard G-force turn caps (Highfleet's one documented mistake). Raw Newtonian as default (genre-proven unfun).
 - Auto-anything that can't be instantly overridden by touching a manual input.
 
 ### 9. Ambition ceiling
-Autopursuit camera handoff (SPEC3-18) + comms barks make every dogfight look like a trailer shot.
+Direct-path composition and restrained comms can make dogfights readable without automating the maneuver.
 Lane-riding with other traffic (SPEC3-29) makes highways feel like infrastructure, not teleports.
 
 ---
@@ -255,8 +245,8 @@ work is invisible: players judge mass by camera behavior more than by trajectori
   stepping (determinism!) — pause is *render-side interpolation hold*, never a sim stall.
 - **Speed read:** camera zoom eases out +12% at cruise, +6% at boost; near-mote parallax layer
   (GDD §9.1) stretches into streaks ∝ speed above 0.6× max; FOV stays fixed (top-down: zoom, not FOV).
-- **Autopursuit framing:** while autopursuit held, camera leads toward the midpoint of you+target
-  (30% bias), giving the "chase cam" read without leaving top-down.
+- **Direct-path framing:** while draw-to-fly is active, frame the player-authored route endpoint
+  without biasing the ship toward a target-relative chase position.
 - **Mass contrast:** freighter-vs-fighter collision → the *fighter's* camera gets the trauma. Trauma
   applied ∝ Δv of YOUR ship, so the truck barely notices the bicycle. This one rule sells mass.
 - `motionReduce` accessibility: shake ×0.3, hit-pause off, streaks halved (existing setting).
@@ -289,7 +279,7 @@ None / none. Near-mote streak layer is SPEC3-33's parallax stack; this spec only
 1. Trauma scalar + sources + `scripts/check-camera-trauma.mjs` (scripted impacts → assert trauma
    curve + decay; assert sim hash unchanged with juice on/off — the critical determinism proof).
 2. Hit-pause render-hold; assert tick count unaffected in the same check.
-3. Zoom/streak speed read; autopursuit framing bias.
+3. Zoom/streak speed read; direct-path composition.
 4. Extend `check:camera` composition suite.
 
 ### 8. Anti-patterns

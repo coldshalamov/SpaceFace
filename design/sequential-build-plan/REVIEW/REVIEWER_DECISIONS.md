@@ -50,9 +50,9 @@ an implementer re-derive a baseline the lead already maintains.
 
 Seven prompts have no existing home. Recommended assignments (lead owns the actual
 numbering; these are proposals): **SF-08 compound collision → new F-family packet
-(F18)** — it is a foundation primitive everything else stands on. **SF-07 pursuit-slot
-assist / G-mode retirement → new T-family packet (T19)** — it is combat flight control
-in the massline/control family. **SF-11 Mass Seed → T20**, **SF-12 continuous field
+(F18)** — it is a foundation primitive everything else stands on. **SF-07/T19 is
+rejected and receives no replacement ID** — the unsolicited pursuit-slot decision must
+not be re-admitted under another name. **SF-11 Mass Seed → T20**, **SF-12 continuous field
 kernel → T21**, **SF-13 mass-coupling statuses → T22** — the gravity-weapons trio is
 one family of physics tools that hangs off the impulse kernel; keeping them adjacent
 to the T-family (whose T08 whip they extend) minimizes cross-family dependencies.
@@ -87,31 +87,15 @@ arrives.
 
 ## B. Control & feel decisions
 
-### Q5 — G/trackpad dogfight replacement? → **Commit to the pursuit-slot controller, rebuilt as a bounded "Pursuit Assist" station-keeping layer; prototype it in the deterministic lab with a kill criterion; retire the current gesture-path G-mode. Do not A/B in production.**
+### Q5 — USER OVERRIDE 2026-07-24 → **Reject pursuit-slot/autopursuit; preserve G auto-target/draw-to-fly.**
 
-The user's uncertainty (L593) is real, so I do not paper over it — but the evidence
-strongly disambiguates. The G-mode's three failures share one root cause the design
-docs under-weight: **the trackpad is a single pointer, and every failed G-mode stole
-the cursor from aiming.** "Fly toward cursor" and "flailing arrow" both consumed the
-same hand the player aims with; path-drawing (L437) would do it again mid-fight. The
-pursuit-slot controller is the only proposal that *frees* the cursor: the player sets
-a desired bearing/range slot relative to a locked target (trackpad drag = offset,
-persistent until changed), and a bounded PD station-keeping controller drives toward
-that slot while weapons and tether keep aiming at the cursor independently. It is the
-same philosophy as orbit assist — shape input, don't script outcomes — and it
-composes with the massline instead of replacing it (you can pursuit-slot toward a
-target *while* tethered to something else). Crucially it is **not** a mode: it is an
-assist layer with explicit reference frames, bounded authority, and immediate manual
-override (any movement key input wins), which is exactly what the repo's input-assist
-invariant requires. The kill criterion, exercised in the deterministic lab before any
-player-route work: with trackpad-sampled slot inputs on a moving target, the ship must
-hold the slot within tolerance for 10 s without oscillation (no "flail"), must
-transition slots in ≤2.5 s settle, and any arrow-key input must disengage within one
-sim tick. If it fails after two focused iterations (defined in Q28/F-q11), G retires
-entirely and combat routes through assisted flight + the existing target scorer —
-that is the documented fallback, not a hedge. The command-curve pure-pursuit idea is
-deferred as a traversal toy, not built: drawing paths with the same trackpad used to
-aim repeats the original sin.
+The prior reviewer decision in this section was wrong. It converted uncertainty in an old transcript
+into authority for a feature the user never requested, then retired the control the user did request.
+That decision is revoked. G retains locked-target weapon lead and relative, clutchable draw-to-fly as
+independent channels. MMB pursuit selection, target-relative bearing/range station keeping, pursuit
+impulses, pursuit HUD/toasts, and any automatic combat maneuver controller are prohibited. Historical
+receipts prove only that the rejected experiment once existed; they cannot re-authorize it. Do not
+prototype, A/B, rename, or re-admit it.
 
 ### Q6 — Orbit assist default? → **Default `Standard`, with a first-session `Full` grace that steps down on first successful release.**
 
@@ -351,8 +335,8 @@ correction never exceeds `aRadialMax`. (3) **Grid-search** `Kr, Kd ∈ [0.5×, 2
 tangent-dominant velocity within 2 s of engagement, 10 s sustained orbit, no
 oscillation at 60 Hz sim. (4) Lock the winner, record the traces in the receipt, and
 expose the constants in one named config (`orbitAssist.tuning.v1`) so a later balance
-pass touches one file. The same method tunes pursuit-slot (Q5) and the tractor
-head (SF-27).
+pass touches one file. The same method may tune the tractor head (SF-27); it must not
+be used to resurrect the rejected pursuit controller.
 
 ### Q22 — Predictor cadence vs Arm-mode "frame"? → **"Frame" means "latest sampled solution." Predictor solves at 10–20 Hz; the Arm consumer evaluates every sim tick against the interpolated solution stream and cuts on the first tick inside the window. No 60 Hz re-solve.**
 
@@ -421,7 +405,7 @@ SF-09 bounded while making the membrane strictly *less* aspirational after it la
 ### Q27 — Minimum viable set for the bar? → **Three arcs: The Toy (controls+physics), The World (one sector, one wreck, jobs, one crime loop), The Proof (visual families + HUD/VFX + corridor). 22 of 36 prompts; the other 14 are Wave-2 or absorbed. See `CRITICAL_PATH.md`.**
 
 The fun bar is: massline feels like a toy (SF-02→03→04→05→06), combat is physical
-and twitchy (SF-09→10, enemy balance), the G-mode wound is healed (SF-07), the
+and twitchy (SF-09→10, enemy balance), direct auto-target/draw-to-fly remains trustworthy, the
 planet fantasy lands (SF-11→12→14), the world is alive and criminal (SF-15→16),
 there is one hero place worth flying to (SF-08→17→18→19→20), the story accumulates
 without walls (SF-30), it looks like a shipped game (SF-31→32), and the corridor

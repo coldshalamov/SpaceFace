@@ -30,7 +30,7 @@ A no-vision agent can own the kernel/runtime, but a vision-capable reviewer shou
 Assign these to a Fable-style vision/frontend lane or split them: systems agent owns deterministic kernel and interfaces; vision agent owns Three.js/UI/VFX/assets/camera and player-camera acceptance.
 
 - `SF-06` — **Shared Release Predictor, Validated Sling Course, and Speed-Language Presentation** (HARD, frontend HARD)
-- `SF-07` — **Replace Flailing Gesture Flight with Target-Relative Dogfight Control** (HARD, frontend MEDIUM)
+- `SF-07` — **REJECTED — do not route or dispatch**
 - `SF-08` — **Compound Planar Collision Proxies and Truthful Exterior Docking** (HARD, frontend HARD)
 - `SF-10` — **Physics-Weapon Vertical Slice: Concussion Cannon, RCS Disruptor, and Vector Mine** (HARD, frontend HARD)
 - `SF-12` — **Continuous Field Kernel, Attractive Well, Repulsor, and Clearing Cone** (HARD, frontend HARD)

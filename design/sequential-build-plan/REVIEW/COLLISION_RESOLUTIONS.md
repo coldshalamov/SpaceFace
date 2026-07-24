@@ -23,7 +23,7 @@
 | 7 | NPC jobs collide with sectorSim + W06 | **Ride, don't bypass.** SF-15 executes as W06's implementation: the job controller is a consumer/producer of `sectorSim.js` day-tick intents and `encounterDirector.js` spawn/materialization, never a parallel scheduler. All credits/rep/cargo via intents (Q23). Offscreen = statistical intents at virtualization boundaries. |
 | 8 | Heat single-writer | **Binding constraint on SF-16/SF-24.** Heist and ops-attention consequences emit `faction:*`/aggression events that `heat.js` consumes; nothing else writes `state.player.heat`. The briefs quote this as a forbidden shortcut with a contract test. |
 | 9 | Render/asset lease blocked | **Gate, don't force.** Any step touching `src/render/**`, asset manifests, or the admission pipeline first checks `08_GRAPHICS_OVERHAUL_CHECKPOINT.md` + `09_DONOR_VALUE_LEDGER.md` and the live dirty state. A03/A04 (SF-23) stay `BLOCKED_BY_LEASE` until the graphics lane frees the paths; the corrected sequence orders SF-23 *after* the graphics closeout lane lands. SF-31 coordinates all family assets through the checkpoint's admission gate. |
-| 10 | Input contract LOCKED | **Specify, never edit.** SF-04/07/17/27/28/29/32 consume existing `actions.*` fields; new semantics (Space-as-massline, line-control modifier, pursuit-slot axes) are specified as a change request through the T16 lead lease. No build step edits `src/systems/input.js`. |
+| 10 | Input contract LOCKED | **Specify, never edit.** SF-04/17/27/28/29/32 consume existing `actions.*` fields; new semantics (Space-as-massline and line-control modifier) are specified as a change request through the T16 lead lease. SF-07 is rejected: no pursuit-slot axes, MMB pursuit selection, or automatic station keeping. No build step edits `src/systems/input.js`. |
 | 11 | Save schema is an integration mutex | **Request, never stage.** SF-19 (site persistence — `$.sites` row already added `edca7c7e`), SF-30 (ledger pages), SF-25 (claim), SF-35 (release) submit save needs to the lead/integration owner as change requests with schema sketches, never direct adapter edits. |
 | 12 | Encounter director exists (1033 lines) but check is RED | **Treat as existing; treat the red as a W06 dependency.** SF-15's brief requires fixing/re-scoping `check:encounter-director` (the measured R1 cause: soak-harness sector-local coords vs global zone anchors + content-catalog selection) as part of W06, because the job controller materializes through that director. Not re-litigated, not ignored. |
 | 13 | Camera D7 packet is a dirty concurrent writer | **Coordinate, don't collide.** SF-06's camera speed-language and SF-32's camera work are sequenced *after* the D7 band-3 packet lands or is formally closed by the lead; they specify the *requirements* (velocity zoom-out "regardless," per L1656) against the merged result, not against the dirty tree. If D7 is still dirty when SF-06 is reached, SF-06 implements predictor + release UI and leaves camera hooks behind the documented seam. |
@@ -44,7 +44,7 @@
 | SF-04 input grammar | T04+T06+T07+T16 | **FOLDED → T04/T06/T07/T16** | Space binding + tap/hold + reel/pay-out via the T16 input lease (Q7). The ergonomic core of the whole plan. |
 | SF-05 orbit assist | T05 | **FOLDED → T05** | The user's #1 ask (L421). Pulled forward into the same wave as T04 (see sequence). Tuning per Q21. |
 | SF-06 release predictor / sling / speed language | T07 + atlas D7 (camera) | **FOLDED → T07 extension + D7 coordination** | Predictor + Arm/Snap + a11y release UI (Q8, Q22); camera hooks behind the D7 seam (FLAG 13). |
-| SF-07 G-mode replacement | none | **NEW-ID (recommend T19)** | Pursuit-slot assist, lab-prototyped with kill criterion; gesture-path G retired (Q5). |
+| SF-07 G-mode replacement | T16 control correction | **REJECTED; NO NEW ID** | Preserve G auto-target/draw-to-fly and independent weapon lead. Never add pursuit-slot/autopursuit behavior or retire the requested control (Q5 user override). |
 | SF-08 compound collision + docking | none (foundational gap) | **NEW-ID (recommend F18)** | The keystone primitive. Unblocks SF-17/18/19/20 and honest docking. |
 | SF-09 universal weapon impulse | T08 (as the whip's consumer) | **FOLDED → T08 prerequisite layer** | Kernel beneath T08; new-path membrane enforcement (Q26). |
 | SF-10 physics-weapon slice (3 weapons) | impulse-charge plumbing exists | **KEPT as its own step** under the combat systems seam | Concussion, vector mine, RCS disruptor + enemy light-tier balance (Q11). |
@@ -84,8 +84,8 @@
 - **Depth chunks absorbed (ID survives, SF brief binds):** H1a, A2, W1, W2, S1–S4.
 - **Atlas decisions honored as authority:** D1 (route spine), D2 (4096-WU lattice),
   D7 (camera, dirty-writer coordination).
-- **New IDs recommended (lead assigns):** F18 (compound collision), T19 (pursuit
-  assist / G retirement), T20 (Mass Seed), T21 (field kernel), T22 (mass coupling),
+- **New IDs recommended (lead assigns):** F18 (compound collision), T20 (Mass Seed),
+  T21 (field kernel), T22 (mass coupling),
   T23 (twin bridle), W21 (environmental machinery), + a dedicated R-family VFX-
   language packet (Q16).
 - **Retired as work-order, retained as brief library:** the SF-00…SF-35 sequence.

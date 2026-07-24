@@ -1,6 +1,8 @@
 {
   "schema_version": 1,
   "package": "SpaceFace_Sequential_Agent_Prompt_System",
+  "status": "historical-superseded",
+  "superseded_reason": "2026-07-24 user override rejects SF-07/T19 pursuit behavior; this report validates only the original generated package and cannot authorize dispatch or restoration.",
   "validated_at_utc": "2026-07-19T22:42:56.139759+00:00",
   "checks": [
     {

@@ -60,7 +60,7 @@ The reference files are included for design context and vocabulary. They are not
 | `SF-04` — Massline Input Grammar, Buffered Intent, Reel, Pay-Out, and Cut | `massline` |
 | `SF-05` — Anchor-Relative Orbit Assist Through Bounded Physics Commands | `massline` |
 | `SF-06` — Shared Release Predictor, Validated Sling Course, and Speed-Language Presentation | `massline`, `atlas`, `story_visual` |
-| `SF-07` — Replace Flailing Gesture Flight with Target-Relative Dogfight Control | `massline` |
+| `SF-07` — **REJECTED; user control tombstone only** | Historical massline sources have no implementation authority |
 | `SF-08` — Compound Planar Collision Proxies and Truthful Exterior Docking | `massline`, `world_sites` |
 | `SF-09` — Universal Weapon Impulse and Collision-Consequence Kernel | `massline`, `world_sites` |
 | `SF-10` — Physics-Weapon Vertical Slice: Concussion Cannon, RCS Disruptor, and Vector Mine | `massline`, `world_sites`, `story_visual` |

@@ -62,24 +62,13 @@ sub-decisions:
 
 ## B. Control & feel decisions (the user cares most about these — "optimal and fun")
 
-### Q5. Which G/trackpad dogfight replacement: target-relative slot OR command-curve pure-pursuit (or retire G entirely)?
-The G/trackpad mode is a chronic failure (user L431–437). The design package offers
-two alternatives (depth 02 Part V pursuit-slot controller; depth 02 Part VI / depth 10
-§3 command-curve pure-pursuit). The user is genuinely uncertain and flies a trackpad.
-- The pursuit-slot controller maps trackpad `dx→bearing, dy→range` — feels like
-  dogfighting relative to a locked target.
-- The command-curve (gesture path) lets the player draw a flight path — feels like
-  gesture flight for traversal.
-
-**SF-07's title says "Replace OR Retire."** Should you:
-- (a) commit to the pursuit-slot controller (depth 02's preference)?
-- (b) prototype both and A/B test (depth 10 §3's preference)?
-- (c) retire G entirely and route all combat through the existing assisted flight +
-  target-scoring (the simplest path)?
-
-**Recommend one.** The user's words (L593): *"I'm not sure that that primitive even
-allows what I'd need... I'm going to still keep trying to get it with the trackpad,
-but it's just in no way obvious."* — this is real uncertainty; do not paper over it.
+### Q5. RESOLVED BY USER — preserve G auto-target/draw-to-fly; reject pursuit-slot/autopursuit
+The reviewer must not reinterpret uncertainty in an old transcript as permission to replace the
+control. The user explicitly rejected the derived target-relative pursuit-slot implementation on
+2026-07-24. Preserve relative clutchable draw-to-fly as direct ship intent while locked-target weapon
+lead remains independent. Do not add MMB pursuit selection, automatic target-relative station
+keeping, pursuit impulses, pursuit HUD/toasts, or an alternate historical-plan route that can restore
+them. No A/B or prototype is authorized.
 
 ### Q6. Should orbit-assist be a default-on assist or an explicit toggle?
 SF-05 formalizes the user's orbit-assist idea (L421). Gravity package offers strength

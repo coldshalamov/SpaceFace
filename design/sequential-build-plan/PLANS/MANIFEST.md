@@ -1,5 +1,10 @@
 # Package Manifest
 
+> **Historical package binding only.** The 2026-07-19 hashes below describe the original generated
+> package and are intentionally not current execution authority. Explicit user direction on
+> 2026-07-24 rejects SF-07/T19 pursuit behavior; never use these hashes or the original package to
+> restore that prompt over the current rejection tombstone and machine-sequence status.
+
 - Package: `SpaceFace_Sequential_Agent_Prompt_System`
 - Repository target: `coldshalamov/SpaceFace`
 - Dated snapshot: `b235f062fdff7a9bce3be838be280d557250c199` (2026-07-19)

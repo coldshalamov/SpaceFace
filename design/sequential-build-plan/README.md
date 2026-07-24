@@ -8,6 +8,11 @@ folded-into-the-repo build steps with minimal tool calls.
 
 ## Status
 
+- **Control correction (2026-07-24): SF-07/T19 pursuit-slot work is REJECTED.** The reviewer-derived
+  target-relative station-keeping controller, MMB pursuit selection, pursuit impulses, and pursuit
+  HUD/toasts were never requested by the user and must never be implemented or restored. The
+  user-requested G auto-target/draw-to-fly route keeps weapon aim and direct granular flight intent
+  separate. `PLANS/plans/SF-07_*.md` is a rejection tombstone, not an executable prompt.
 - **Not yet reconciled with the live repo's three existing build programs.** The
   reviewer's first job is to decide fold / supersede / parallel. See
   `_PACKET/03_COLLISION_AND_FLAG_MAP.md`.
@@ -41,6 +46,9 @@ design/sequential-build-plan/
     ├── spaceface_universe_atlas_prompt_pack/ ← 14 atlas docs (+ MASTER_PROMPT)
     └── SpaceFace_Sequential_Agent_Prompt_System/ ← the full original prompt system
 ```
+
+`ORIGINALS/` remains byte-preserved provenance. Any pursuit-slot or autopursuit proposal inside it is
+superseded by the rejection above and has no design, dispatch, or implementation authority.
 
 ## How to use it
 

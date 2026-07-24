@@ -131,7 +131,7 @@
     {
       "id": "SF-07",
       "sequence": 7,
-      "title": "Replace Flailing Gesture Flight with Target-Relative Dogfight Control",
+      "title": "REJECTED - preserve auto-target and draw-to-fly",
       "filename": "SF-07_HARD_Replace_Flailing_Gesture_Flight_with_Target_Relative_Dogfight_Control.md",
       "difficulty": "hard",
       "discipline": "fullstack",
@@ -141,9 +141,9 @@
       "depends_on": [
         "SF-06"
       ],
-      "roadmap_alignment": "Experimental control mode; T16/R07; M1 focus/camera; may be rejected by evidence",
-      "player_observable_checkpoint": "The G/trackpad combat mode either becomes a stable target-relative control mode that separates weapon lock from flight intent, or is safely disabled/retired with evidence rather than remaining a flailing false promise.",
-      "initial_status": "ready"
+      "roadmap_alignment": "Rejected direction; no executable packet or replacement ID",
+      "player_observable_checkpoint": "Never implement MMB pursuit selection, target-relative station keeping, pursuit impulses/UI, or retirement of G auto-target/draw-to-fly.",
+      "initial_status": "rejected"
     },
     {
       "id": "SF-08",
@@ -618,7 +618,6 @@
       "vision_requirement": "yes",
       "recommended_agent_profile": "Top-tier integration/playtest agent with browser/Electron and vision capability",
       "depends_on": [
-        "SF-07",
         "SF-10",
         "SF-15",
         "SF-21",
