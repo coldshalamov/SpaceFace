@@ -376,6 +376,18 @@ export function validateSimScenario(doc, options = {}) {
       issue('$.parameterOverlay', 'type', 'parameterOverlay must be an object');
     } else {
       rejectUnknownKeys(doc.parameterOverlay, OVERLAY_KEYS, '$.parameterOverlay', issue);
+      // FIX 16: lab.anchorMass semantic rule lives in the shared validator so
+      // `sf lab validate` and `sf lab run` agree (no false-positive preflight).
+      const values = doc.parameterOverlay.values;
+      if (values && typeof values === 'object' && !Array.isArray(values)
+          && values['lab.anchorMass'] != null
+          && !docHasResolvableAnchorMassTarget(doc)) {
+        issue(
+          '$.parameterOverlay.values["lab.anchorMass"]',
+          'anchor-mass-target',
+          'lab.anchorMass requires a resolvable target (attachment targetAlias or entity alias "anchor")',
+        );
+      }
     }
   }
 
@@ -564,6 +576,23 @@ function result(ok, issues) {
     issueCount: issues.length,
     issues,
   };
+}
+
+/**
+ * Structural check: can lab.anchorMass resolve a target from the scenario document?
+ * Requires attachment.targetAlias present among entities, or an entity alias "anchor".
+ * Shared by validate + run (via compileSimScenario → validateSimScenario).
+ */
+function docHasResolvableAnchorMassTarget(doc) {
+  if (!doc || !Array.isArray(doc.entities)) return false;
+  const aliases = new Set(doc.entities.map((e) => e && e.alias).filter(Boolean));
+  const atts = Array.isArray(doc.attachments) ? doc.attachments : [];
+  for (const att of atts) {
+    if (att && typeof att.targetAlias === 'string' && att.targetAlias && aliases.has(att.targetAlias)) {
+      return true;
+    }
+  }
+  return aliases.has('anchor');
 }
 
 function rejectUnknownKeys(obj, allowed, path, issue) {

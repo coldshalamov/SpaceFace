@@ -62,27 +62,6 @@ export async function runLabScenario(scenarioDoc, options = {}) {
         failure: null,
       };
     }
-    // FIX 15: lab.anchorMass without a resolvable target is invalid config — never run
-    // and report applied after a silent skip.
-    const anchorMassValue = canonical.parameterOverlay.values
-      && canonical.parameterOverlay.values['lab.anchorMass'];
-    if (anchorMassValue != null && !scenarioHasResolvableAnchorMassTarget(canonical)) {
-      return {
-        schema: 'spaceface.labRunResult.v1',
-        ok: false,
-        exitClass: 4,
-        status: 'invalid-config',
-        runId,
-        validation: {
-          ok: false,
-          issues: [{
-            path: '$.parameterOverlay.values["lab.anchorMass"]',
-            message: 'lab.anchorMass requires a resolvable target (attachment targetAlias or entity alias "anchor")',
-          }],
-        },
-        failure: null,
-      };
-    }
   }
 
   const scenarioDigest = sha256(canonicalStringify(canonical));
@@ -709,22 +688,6 @@ function resolveAnchorMassTarget(state, aliasMap, attachments = []) {
     if (e) return e;
   }
   return null;
-}
-
-/**
- * Structural check: can lab.anchorMass resolve a target from the scenario document?
- * Requires attachment.targetAlias present among entities, or an entity alias "anchor".
- */
-function scenarioHasResolvableAnchorMassTarget(canonical) {
-  if (!canonical || !Array.isArray(canonical.entities)) return false;
-  const aliases = new Set(canonical.entities.map((e) => e && e.alias).filter(Boolean));
-  const atts = Array.isArray(canonical.attachments) ? canonical.attachments : [];
-  for (const att of atts) {
-    if (att && typeof att.targetAlias === 'string' && att.targetAlias && aliases.has(att.targetAlias)) {
-      return true;
-    }
-  }
-  return aliases.has('anchor');
 }
 
 function makeSample(tick, state, ctx) {

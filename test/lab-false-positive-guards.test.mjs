@@ -1,11 +1,13 @@
 // Phase 3 review: close false-positive evidence paths (P1 guards).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
-import { runLabScenario } from '../src/testing/lab/runScenario.js';
+import { runLabScenario, validateLabScenario } from '../src/testing/lab/runScenario.js';
 import { compareSaveLoad } from '../src/testing/lab/saveLoadCompare.js';
 import { evaluateOracles } from '../src/testing/lab/oracleEngine.js';
 import {
@@ -18,6 +20,7 @@ import { validateSimScenario } from '../src/contracts/simScenarioSchema.js';
 import { sanitizeCommand } from '../scripts/lib/masslineControlLab.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = join(ROOT, '..');
 const flightDoc = JSON.parse(readFileSync(
   join(ROOT, '../src/testing/scenarios/flight-fixed-input.scenario.json'),
   'utf8',
@@ -648,5 +651,125 @@ test('FIX15: lab.anchorMass with no resolvable target is rejected (not silent ap
       result.overlayUnapplied && result.overlayUnapplied['lab.anchorMass'],
       'expected overlayUnapplied["lab.anchorMass"] when run proceeds without target',
     );
+  }
+});
+
+// ── FIX 16: validate and run must agree on orphan lab.anchorMass ─────────────
+
+function orphanAnchorMassScenario() {
+  return {
+    schema: 'spaceface.simScenario.v1',
+    id: 'massline.anchor-mass-orphan-validate',
+    version: 1,
+    evidenceClass: 'focused-fixture',
+    runtimeProfile: 'focused-lab',
+    seed: 47,
+    ticks: 4,
+    world: {
+      fixtureProfile: 'massline',
+      sectorId: 'sector_helios_prime',
+      mode: 'flight',
+      physicsBackend: 'rapier-dynamic',
+      flightBackend: 'v3',
+      aiBackend: 'legacy',
+      credits: 5000,
+    },
+    entities: [
+      {
+        alias: 'player',
+        profile: 'ship.starter',
+        role: 'player',
+        team: 0,
+        isPlayer: true,
+        pos: { x: 0, z: 0 },
+        vel: { x: 0, z: 10 },
+        heading: 0,
+        persistent: true,
+      },
+      {
+        alias: 'rock',
+        profile: 'asteroid.mid',
+        role: 'lab_filler',
+        team: 2,
+        pos: { x: 50, z: 0 },
+        overrides: { mass: 200, radius: 3 },
+        persistent: true,
+      },
+    ],
+    // no attachments, no alias "anchor"
+    parameterOverlay: {
+      schema: 'spaceface.labParameterOverlay.v1',
+      version: 1,
+      values: { 'lab.anchorMass': 9000 },
+    },
+    frames: [{ tick: 0, input: { moveX: 0, moveZ: 0 } }],
+    metrics: [
+      { name: 'invariant.finiteState', version: 1, threshold: { op: '==', value: 1 } },
+    ],
+    observer: { enabled: false },
+  };
+}
+
+function assertAnchorMassIssue(issues, label) {
+  assert.ok(Array.isArray(issues) && issues.length > 0, `${label}: expected validation issues`);
+  assert.ok(
+    issues.some((i) => String(i.path || '').includes('anchorMass') || String(i.message || '').includes('anchorMass')),
+    `${label}: expected anchorMass issue, got ${JSON.stringify(issues)}`,
+  );
+}
+
+test('FIX16: validateLabScenario and runLabScenario both reject orphan lab.anchorMass', async () => {
+  const doc = orphanAnchorMassScenario();
+
+  const validation = validateLabScenario(doc);
+  assert.equal(validation.ok, false, 'validateLabScenario must fail for orphan lab.anchorMass');
+  assertAnchorMassIssue(validation.issues, 'validateLabScenario');
+
+  // Shared schema path must also reject (sf lab validate uses this).
+  const schemaValidation = validateSimScenario(doc);
+  assert.equal(schemaValidation.ok, false, 'validateSimScenario must fail for orphan lab.anchorMass');
+  assertAnchorMassIssue(schemaValidation.issues, 'validateSimScenario');
+
+  const result = await runLabScenario(doc, {
+    verbosity: 1,
+    systems: [...FOCUSED_MASSLINE_SYSTEMS],
+  });
+  assert.equal(result.ok, false, 'runLabScenario must reject orphan lab.anchorMass');
+  assert.equal(result.exitClass, 4, 'run must use invalid-config exit class');
+  assert.equal(result.status, 'invalid-config');
+  assert.ok(result.validation && result.validation.ok === false, 'run must carry validation failure');
+  assertAnchorMassIssue((result.validation && result.validation.issues) || [], 'runLabScenario');
+});
+
+test('FIX16: sf lab validate exits non-zero for orphan lab.anchorMass', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'sf-lab-fix16-'));
+  const scenarioPath = join(dir, 'orphan-anchor-mass.scenario.json');
+  try {
+    writeFileSync(scenarioPath, JSON.stringify(orphanAnchorMassScenario(), null, 2), 'utf8');
+    const child = spawnSync(
+      process.execPath,
+      ['scripts/sf.mjs', 'lab', 'validate', scenarioPath],
+      { cwd: REPO_ROOT, encoding: 'utf8', timeout: 30_000 },
+    );
+    assert.notEqual(child.status, 0, `sf lab validate must exit non-zero; stdout=${child.stdout}`);
+    // Prefer structured exitClass when present (4 = invalid config).
+    const lines = String(child.stdout || '').split(/\r?\n/).filter((l) => l.trim().startsWith('{'));
+    if (lines.length) {
+      const parsed = JSON.parse(lines[lines.length - 1]);
+      assert.equal(parsed.ok, false);
+      assert.ok(
+        parsed.exitClass === 4 || parsed.exitClass != null,
+        `expected non-pass exitClass, got ${JSON.stringify(parsed)}`,
+      );
+      assert.notEqual(parsed.exitClass, 0, 'exitClass must be non-zero');
+      const issues = (parsed.validation && parsed.validation.issues) || parsed.issues || [];
+      const issueText = JSON.stringify(issues);
+      assert.ok(
+        /anchorMass/i.test(issueText),
+        `CLI validation issues must mention anchorMass: ${issueText}`,
+      );
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
