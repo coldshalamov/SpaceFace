@@ -1,206 +1,223 @@
-# Execution Protocol — Autonomous Packet Workflow
+<!-- LIFETIME: STABLE -->
+# Execution protocol: bounded implementation and convergent proof
 
-## Goal
+This protocol applies to every autonomous implementation handoff. Its purpose is to produce a useful feature and a trustworthy terminal receipt without allowing planning, review, or live-probe activity to expand forever.
 
-Make every packet independently executable, collision-aware, evidence-bearing, and recoverable without
-turning agent commentary into status authority.
+## 1. Terminal outcomes
 
-## Assumptions and constraints
+Every run ends in exactly one disposition:
 
-- The primary worktree is shared and may contain work newer than `HEAD`.
-- Browser, Electron, simulation, render, and save claims are different proof classes.
-- A packet may be implemented while still lacking player-route or visual acceptance.
-- The lead owns global status, shared integration files, and packet promotion. Feature agents own their
-  bounded diff and evidence receipt.
-- An agent does not need an approval pause for an already `READY` packet. It must stop if evidence changes
-  the product decision, expands paths materially, or reveals an unidentified collision.
+| Outcome | Meaning | Required artifact |
+|---|---|---|
+| `PASS` | packet outcome implemented; required focused proof and declared route evidence pass at the exact revision | completed packet checklist + receipt |
+| `FAIL` | an in-scope product defect remains after the packet's repair/review budget | failing regression, failure class, owner, minimal next action |
+| `BLOCKED` | an entry condition, owner seam, lease, asset, environment, or dependency is absent | blocker evidence and requested upstream change |
+| `DEFERRED` | user/integrator deliberately stops or reschedules valid work | preserved branch/diff and explicit resume point |
 
-## Packet states
+“Still verifying,” “probably green,” “needs more review,” and “tests mostly pass” are not terminal states.
 
-| State | Meaning |
-|---|---|
-| `PLANNED` | Outcome is retained but dependencies or acceptance are incomplete. |
-| `READY` | Dependencies, path budget, and focused proof are explicit. |
-| `CLAIMED` | Lead recorded an agent, base commit, and non-overlapping path lease in `NOW.md`. |
-| `IMPLEMENTED` | Coherent code/content exists; no acceptance implied. |
-| `FOCUSED_GREEN` | Named narrow checks pass at the receipt commit. |
-| `ROUTE_ACCEPTED` | Normal public input and current player-facing evidence pass. |
-| `INTEGRATED` | Reviewed logical commit is on the active branch and program ledgers agree. |
-| `BLOCKED` | A named dependency or external condition prevents meaningful progress. |
-| `HISTORICAL` | Superseded build/plan retained for archaeology and later verification only. |
+## 2. Two state axes
 
-Do not abbreviate several states to “done.” A packet is complete for milestone accounting only when its
-declared terminal state and proof are both present.
+Lifecycle and acceptance are independent.
 
-## Required packet contract
+```text
+lifecycle: planned -> ready -> claimed -> implemented -> integrated
+            |          |          |
+          blocked    deferred   historical
 
-Every packet row or brief must provide:
-
-1. Stable ID and one player/system outcome.
-2. Dependencies by stable ID, including evidence dependencies.
-3. Path budget: expected owner files, new files, and mutex files it may only request.
-4. Research anchors: current entrypoints, owning `AGENTS.md`, and existing patterns/checks.
-5. Explicit non-goals and compatibility paths not to edit.
-6. Focused proof, broader risk-triggered proof, and public-route proof when player-visible.
-7. Receipt shape and terminal state.
-
-If any of those are absent, the packet is not `READY`.
-
-## Agent workflow
-
-### 1. Ground in the live tree
-
-Run:
-
-```powershell
-git log -1 --oneline
-git status --short
-git diff -- <each-expected-owner-file>
-git rev-list --left-right --count origin/master...HEAD
+acceptance: unproven -> focused_green -> route_accepted -> milestone_accepted
 ```
 
-Read root `AGENTS.md`, the nearest nested `AGENTS.md`, `NOW.md`, this protocol, the packet brief, and only
-the linked technical/design authority. Do not sweep archives, campaigns, screenshots, or all of
-`design/` for an ordinary packet.
+A feature agent may report `implemented/focused_green`; only the integrator promotes shared lifecycle/acceptance after exact-revision review. Integrated code may honestly remain `unproven` or `focused_green` on the route axis.
 
-### 2. Re-prove the problem before editing
+## 3. Packet entry gate
 
-- Run the narrow current check or inspect the public route that demonstrates the gap.
-- Separate `confirmed`, `inferred`, and `unknown` findings in working notes.
-- If the reported defect is already fixed, return evidence and propose reclassification; do not invent a
-  replacement feature inside the same lease.
+Do not implement until the selected active packet answers all of these with current evidence:
 
-### 3. Claim paths through the lead
+- What player-visible outcome is being built?
+- What ordinary route reaches it?
+- Which current modules own the state and mutations?
+- Which owner APIs/events already exist, and which new seams are explicitly required?
+- Are all dependencies integrated at the candidate base?
+- Are the named path/mutex owners free?
+- Is the write set bounded enough to review?
+- What deterministic focused test can fail before a live probe is needed?
+- What new entities, queries, allocations, DOM, materials, textures, save bytes, or draw work are expected?
+- What is explicitly not being built?
 
-Return `packet`, `base_commit`, `expected_paths`, `mutex_requests`, and `dependencies_seen`. The lead adds
-the claim to `NOW.md`. A branch name is not isolation; if a separate worktree is named, verify it with
-`git worktree list --porcelain` before relying on it.
+If any answer is unknown and material, classify the packet `BLOCKED` or perform a planning-only seam audit. Do not invent an owner contract while implementing a consumer.
 
-Agents never independently edit `NOW.md`, global status, `package.json`, registry/default state, shared
-input, save/load owners, shared CSS, or generated indexes during parallel work unless those exact paths
-are the recorded lease.
+## 4. Phase A — preflight and characterization
 
-### 4. Establish a red or characterization baseline
+1. Record exact branch, HEAD, dirty paths, worktrees, and active leases.
+2. Read the packet, the cited architecture/GDD sections, the queue row, and only the owner modules/checks it names.
+3. Confirm the live public route and current behavior. Old handoffs are hypotheses, not facts.
+4. Add or identify a seconds-scale characterization test at the owning seam.
+5. Reproduce the missing behavior or defect before the implementation change.
+6. Record an initial performance/cost baseline when the packet can affect a hot path or visible composition.
 
-- Defect/behavior change: add the smallest public-contract test and observe the expected failure.
-- Coverage-only packet: add deterministic characterization at the ownership seam and state that it was
-  green against existing behavior; do not pretend it exposed a defect.
-- Visual/feel packet: capture current player-route evidence and machine-readable metrics before changing
-  behavior. Source inspection alone is not a visual baseline.
+Characterization must observe public owner behavior. Source-string assertions are allowed only for a narrow structural invariant that cannot be exercised behaviorally and has an explicit failure history.
 
-Add every new file to intent with `git add -N <file>` immediately.
+## 5. Phase B — implementation
 
-### 5. Implement the smallest coherent outcome
+Implement the smallest coherent slice that satisfies the packet outcome.
 
-- Follow the live default route and single-writer contracts.
-- Use `state.rng`/serializable streams and `state.simTime` in simulation.
-- Keep compatibility implementations intact unless the packet explicitly owns them.
-- Avoid unrelated cleanup, generated-output edits, expected-golden rewrites, or quality reductions.
-- When a shared change is needed, return a concrete integration request instead of crossing the mutex.
+- Keep mutation in the existing owner or add one narrow owner-side seam.
+- Keep pure arbitration, normalization, or projection logic separate from side effects.
+- Use stable IDs, simulation ticks/time, deterministic ordering, and idempotent receipts.
+- Treat save/Continue and replay boundaries as part of the state machine, not postscript tests.
+- Reuse input, modal, renderer, asset, mission, economy, cargo, law, AI, and world routes rather than adding feature-specific duplicates.
+- Preserve exact authored visual identity; use appropriate LOD/HLOD, pooling, batching, culling, and bounded admission.
+- Add accessibility semantics at the same time as the visible cue.
+- Keep the packet's non-goals out of the diff.
 
-### 6. Verify in layers
+When an unforeseen shared edit is necessary, stop. Return a shared-change request containing the owner, required contract, why existing seams are insufficient, and the smallest proposed change.
 
-1. New/focused unit or contract test.
-2. Owning subsystem check.
-3. Determinism/save/launch/a11y/perf checks triggered by the changed seam.
-4. Normal browser/Electron route and current media for player-visible work.
-5. `git diff --check`, `git status --short`, and a complete review of the intended diff.
+## 6. Phase C — validation ladder
 
-An expensive route probe is acceptance evidence, not an iterative debugger. After its first new
-failure family, reduce the failure to a deterministic, seconds-scale regression that drives the real
-owning systems through fixed ticks and public control intent. Observe that regression fail and pass
-before another live attempt. Where a route is costly or historically flaky, enforce the boundary with
-a source-bound fast receipt and a stable failure fingerprint so an unchanged test suite cannot launch
-the same acceptance attempt again.
+Run gates in ascending cost. A higher layer never substitutes for a lower one.
 
-Report exact commands, exit status, passed/failed counts, artifact paths, and current commit. A failed
-command stays in the receipt with its classification; it is never erased by a later green subset.
+| Layer | Purpose | Examples | Rerun rule |
+|---|---|---|---|
+| L0 | syntax, schema, imports, data shape, changed-doc links | `node --check`, focused validators, `git diff --check` | rerun after relevant edits |
+| L1 | seconds-scale owner behavior | direct unit/contract/simulation tests | rerun until deterministic green |
+| L2 | ownership, determinism, save, adjacent systems | focused aggregate, compare/reload, owner invariants | rerun only after relevant source/test change |
+| L3 | ordinary player route and visual/accessibility judgment | broker-managed Browser/Electron route | one acceptance launch per candidate digest |
+| L4 | matched performance and release qualification | target/floor capture, soak, held-out matrix | only when entry profile and lower layers pass |
 
-### 7. Hand the logical slice to the commit owner
+The active packet lists the canonical commands. Do not treat `package.json` as a menu from which more checks always means more confidence.
 
-The Git index and commit operation are mutexes. In the shared primary worktree, feature agents do not
-stage content or commit: after the required intent-to-add marker for a new file, they return an
-uncommitted diff and receipt. Only the lead/integration owner holds the index mutex, confirms no other
-agent has staged work, stages explicit packet paths, inspects `git diff --cached --stat` and
-`git diff --cached`, and creates the atomic commit.
+### Fast-gate receipt
 
-An agent may stage and commit independently only in a verified isolated worktree whose path and branch
-the lead explicitly assigned. Branch names alone do not qualify. If a packet naturally splits into a
-contract/tool commit and a gameplay commit, the integration owner makes two commits whose messages
-explain the dependency.
+Before an expensive L3/L4 run, persist a receipt containing:
 
-### 8. Return the receipt
+- candidate source digest and exact commit/dirty-state fingerprint;
+- commands and results for the required L0–L2 gates;
+- deterministic seed/profile/route identity;
+- changed owner surfaces;
+- whether the run is diagnostic or acceptance;
+- the expected evidence and timeout/cleanup policy.
+
+A changed source digest invalidates the old claim. A documentation-only or evidence-only edit may reuse a source digest only when the broker manifest declares those paths non-production.
+
+## 7. Expensive-probe launch policy
+
+Default packet budget unless explicitly overridden:
 
 ```yaml
-packet: G01
-agent: <task-or-agent-id>
-base_commit: <sha>
-result_commit: <sha-or-uncommitted>
-state_reached: FOCUSED_GREEN
-paths_changed:
-  - path
-shared_change_requests: []
-proof:
-  - command: node --test test/example.test.mjs
-    result: 5/5 pass
-public_route:
-  status: not-run
-  artifacts: []
-known_failures: []
-follow_ons: []
+maxAcceptanceLaunchesPerCandidateDigest: 1
+maxUnchangedFailureRetries: 0
+maxIndependentReviewPasses: 2
+maxBroadGateEscalationsWithoutNewEvidence: 0
 ```
 
-The lead rechecks the diff, integrates it, updates detailed and global ledgers together, and releases the
-lease. Agent self-scores, prose confidence, and screenshots without route/build identity are not status.
+Use `scripts/validation-broker-cli.mjs` and a packet manifest for expensive Browser/Electron routes. Direct probe execution is diagnostic and cannot promote acceptance unless the packet explicitly documents why no broker is possible and the integrator records a one-use equivalent claim.
 
-## Collision and drift protocol
+After an expensive probe fails:
 
-### Path collision
+1. classify the failure;
+2. retain the failure fingerprint and artifacts;
+3. reproduce the product/harness defect at a seconds-scale owner seam;
+4. observe that regression fail;
+5. repair it and observe pass;
+6. obtain a new claim only after production source or the owning fast-gate evidence changes.
 
-Stop before editing when an expected file is dirty outside the recorded lease. Inspect its diff without
-changing it, report the path and likely owner, and continue only on independent files. Never use reset,
-restore, checkout, clean, or stash to manufacture a clean tree.
+If the fingerprint is unchanged, the broker must block the rerun. Repetition is not investigation.
 
-### Semantic collision
+### Failure classes
 
-Even separate files collide when they change the same contract. Treat these as mutex domains:
+| Class | Meaning | Disposition |
+|---|---|---|
+| `PRODUCT` | live game behavior violates the packet | focused failing regression, fix in owner, new source digest |
+| `HARNESS` | actor/observer/probe incorrectly drives or judges the route | repair harness; invalidate only affected evidence; new harness digest |
+| `ENVIRONMENT` | independently evidenced GPU/process/OS/port/profile failure | retain attempt; one replacement on a clean isolated environment |
+| `NONDETERMINISM` | equal candidate/seed/input can diverge | hard stop; reduce to deterministic regression before any route rerun |
+| `STALE_BASELINE` | expected data or prose no longer describes live code | update packet/check deliberately; never rewrite a golden blindly |
+| `OUT_OF_SCOPE` | valid defect outside the selected outcome/write budget | record follow-up; do not reopen current acceptance unless it invalidates the route |
+| `UNKNOWN` | evidence cannot support attribution | fail closed; collect one discriminating diagnostic, not another identical run |
 
-- physics body ownership and transform writes;
-- credit/reputation/cargo/derived-stat single writers;
-- input actions and rebind semantics;
-- save schema, migrations, normalization, and Continue;
-- registry/update order and default backend selection;
-- common UI tokens and screen lifecycle;
-- runtime asset manifests and release metadata.
+## 8. Independent review that terminates
 
-The lead sequences interface changes before dependent packets, then asks dependents to rebase their
-assumptions by re-reading the interface and rerunning focused proof.
+Review is adversarial but finite.
 
-### Status drift
+### Pass 1 — discovery
 
-Every receipt is bound to `result_commit`. Checks without a commit are local observations only. The lead
-must rerun at least the focused proof if intervening commits touch an owner, dependency, test harness, or
-shared runtime seam. Historical green results never automatically promote current work.
+One independent reviewer reads the packet, diff, focused evidence, and relevant owner contracts. Findings must include:
 
-## Parallel wave rules
+- severity: P0/P1/P2/P3;
+- exact path/symbol or observed route beat;
+- violated packet/architecture invariant;
+- reproduction or counterexample;
+- whether it is in scope, shared-owner, or follow-up.
 
-- Parallelize pure kernels, independent data/content, focused harnesses, and separate visual assets.
-- Serialize registry/default/save/package wiring through the integration owner.
-- Serialize all real staging and commits in the shared worktree through the integration owner; an
-  agent's `git add -N` marker is not authorization to populate the shared index.
-- Give each visible feature one route-evidence owner; several agents must not launch competing browser or
-  Electron probes against the same port/profile.
-- Land interface/contract commits before consumers. Consumer agents may research in parallel but must
-  implement against the landed interface.
-- End each lane with a recoverable commit and receipt before opening another broad wave.
+A preference without an invariant or observed player defect is advice, not a blocking finding.
 
-## Final review checklist
+### Repair
 
-- Outcome is reachable on the default route.
-- No compatibility path was mistaken for the live implementation.
-- Determinism and single-writer rules hold.
-- Save/reload behavior is explicit where state persists.
-- Accessibility and reduced-motion/flash behavior are preserved.
-- Visual/performance claims use current player-facing evidence.
-- The diff contains no foreign paths, fake fixtures, stale goldens, or report-only completion.
-- `NOW.md`, the packet brief, acceptance matrix, and historical ledger agree.
+Repair all validated P0/P1 findings and in-scope P2 findings. Shared-owner findings become explicit requests. P3 polish can land when cheap and coherent or be retained as a follow-up.
+
+### Pass 2 — causal re-review
+
+The reviewer verifies the repairs and checks for regressions caused by them. This pass does not restart a general audit. A newly discovered unrelated issue is recorded separately unless it invalidates the packet's core claim.
+
+After pass 2, the reviewer returns `APPROVE`, `REJECT`, or `BLOCKED` with exact reasons. Further review requires a material redesign, a new candidate after rejection, or explicit integrator direction.
+
+Do not ask successive agents to “find more issues” until one eventually invents a new local doctrine. Do not convert reviewer taste into automatic repository instructions.
+
+## 9. Player-route and fun review
+
+Automation proves contracts. Human/independent visual review decides whether the feature is readable, discoverable, coherent, and enjoyable.
+
+A route receipt identifies:
+
+- the ordinary entry path and controls used;
+- seed/save/ship/settings/runtime/profile;
+- required beats and observed owner receipts;
+- screenshots/video at normal camera and any detail view needed for diagnosis;
+- accessibility variants relevant to the feature;
+- exact Browser/Electron parity claim;
+- performance sample identity;
+- explicit visual/fun verdict and concrete defects.
+
+A technically loaded asset or green screenshot script is not visual acceptance. A human verdict cannot override deterministic, ownership, save, accessibility, or performance failures.
+
+For tuning-heavy physics, use a small predeclared matrix of candidate parameters and player outcomes. Keep seeds/routes fixed, record quantitative state and qualitative judgment, select once, then freeze the chosen values in focused tests. Do not tune by repeatedly editing and replaying an unrecorded route.
+
+## 10. Performance proof
+
+Before implementation, each packet declares expected growth and likely cost centers. At acceptance, compare the same route, settings, viewport, seed/save, and hardware profile before/after.
+
+Report at least the relevant subset of:
+
+- frame p50/p95/p99/max and hitch/missed-vsync/multi-step data;
+- sim/render/VFX/UI phase cost;
+- entities/colliders/spatial queries/candidates;
+- draw calls/triangles/material programs/textures/residency/admission time;
+- DOM nodes/listeners/observers/image requests for UI;
+- save payload and maximum synchronous blocking slice;
+- baseline/peak/end high-water values for long-lived resources.
+
+A performance failure is repaired structurally. Lowering default quality, omitting accepted imagery, reducing required feature breadth, or disabling authored effects is not closure.
+
+## 11. Checkoff and receipt
+
+The feature agent updates the active packet checklist and creates or updates its receipt. The receipt should be concise and machine-readable where practical:
+
+```yaml
+packet: PQ-XXX
+candidateCommit: <sha>
+lifecycleClaim: implemented
+acceptanceClaim: focused_green | route_accepted | unproven
+disposition: PASS | FAIL | BLOCKED | DEFERRED
+changedPaths: []
+focusedGates: []
+routeEvidence: []
+performanceEvidence: []
+review:
+  discovery: APPROVE | REJECT | BLOCKED
+  causalRereview: APPROVE | REJECT | NOT_REQUIRED
+residuals: []
+followUps: []
+```
+
+The integrator verifies the exact candidate and then updates queue/global status atomically. Never make a global completion claim from a worker report, old artifact, or different commit.

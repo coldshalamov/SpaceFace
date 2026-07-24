@@ -1,44 +1,28 @@
-# design/ agent orientation
+<!-- LIFETIME: STABLE -->
+# `design/` agent orientation
 
-Do not read this directory wholesale. Start at `design/program/README.md` for current position and at
-`design/PLAN_REGISTRY.md` to select the smallest relevant plan family.
+Do not read this tree wholesale. Enter through [`../CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md), select the queue row and one packet under [`program/roadmap/active/`](./program/roadmap/active/README.md), then read only the cited design sources.
 
 ## Authority
 
-1. Root `ARCHITECTURE.md` — technical contract.
-2. `GDD_2_0.md` — product pillars and intended experience.
-3. `program/` — verified status, admitted work, acceptance, integration, retained backlog.
-4. The specific activated plan/spec — task detail.
-5. Current code, checks, and player-route evidence — implementation truth.
+1. Current user direction.
+2. Live code, current checks, and player-route evidence.
+3. Root `ARCHITECTURE.md` for technical invariants.
+4. `GDD_2_0.md` for product pillars and intended experience.
+5. `program/` for admitted work and evidence state.
+6. The selected active packet and its cited source plan.
+7. Supporting or historical material.
 
-Archived documents, handoffs, reviews, worker packets, transcripts, and tool plans are history, not
-current authority. Superseded ADRs live under `_ARCHIVE/adr/`.
+`_ARCHIVE/`, old reviews, handoffs, transcripts, and production-controller snapshots are history unless a packet explicitly reactivates a narrow fact.
 
-## Plan families
+## What plans may prescribe
 
-- `spec2/` — polish/release intent and behavior references.
-- `spec3/` — expansion and ambition specs.
-- `vision/ALPHA_PROGRAM.md` — Alpha scope/order when activated through the program index.
-- `depth-program/`, `revamp/`, `graphics-sprints/`, `world-identity/` — focused plan families with
-  their own README/index.
-- `production/` — optional explicitly activated production-controller workflow, not the default way
-  to implement an ordinary feature.
+Plans should specify player outcomes, owner contracts, state transitions, physical semantics, accessibility, performance expectations, evidence, and stop conditions. They may suggest techniques, but they do not create universal palette rules, asset ceilings, implementation quotas, permanent ownership lanes, or aesthetic source scans.
 
-Both spec2 and spec3 may be active for different tasks. `spec2/00_MASTER_TASTE.md` is historical
-taste context: its non-diegetic HUD decision remains, while palette, glow, radius, surface, asset,
-and process recipes are non-binding.
+Preserve valuable future intent as retained backlog rather than smuggling it into the current packet. When live code has moved, update the packet's seam map instead of forcing an obsolete module name.
 
-## Rules
+## Maintenance
 
-- Read only the selected plan and the GDD/architecture sections it cites.
-- Preserve valuable future intent, but label it retained/partial instead of claiming it is admitted
-  or implemented.
-- Do not copy global status outside `design/program/`.
-- Plans specify outcomes and contracts, not universal visual recipes, asset ceilings, technique
-  quotas, iteration counts, or permanent ownership lanes.
-- Runtime/build dependencies and authored media are allowed under the repository-wide documented
-  quality, licensing, performance, determinism/save, and maintenance policy.
-- Acceptance comes from the relevant checks plus player-facing evidence where applicable; worker
-  reports, self-scores, and transcript claims are not proof.
+Global status belongs only in `program/`. Volatile leases belong only in `program/NOW.md`. Executable packet detail belongs in `program/roadmap/active/`. Historical outcomes belong in receipts/handoffs.
 
-For policy classification and conflict handling, see `docs/POLICY_MANIFEST.md`.
+Run `node scripts/check-program-docs.mjs` after changing program control surfaces.

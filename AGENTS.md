@@ -1,139 +1,57 @@
-# SpaceFace agent orientation
+<!-- LIFETIME: STABLE -->
+# SpaceFace agent instructions
 
-This is the repository engineering front door (invariants + routing). Keep it short: global
-invariants and routing belong here; volatile status, subsystem detail, and design technique belong
-in the linked owner documents.
+## Enter the repository
 
-**Program / "what next" / multi-plan work:** start at root
-[`CANONICAL_BUILD_MAP.md`](./CANONICAL_BUILD_MAP.md). It is the single program map and check-off
-workflow; it does not replace original plans.
+Start at [`CANONICAL_BUILD_MAP.md`](./CANONICAL_BUILD_MAP.md). Inspect the current branch, `git status --short`, and `git worktree list` before reading plans or touching files. Read [`design/program/NOW.md`](./design/program/NOW.md) for live leases, the selected queue row, and exactly one active packet. Use [`docs/MODULE_MAP.md`](./docs/MODULE_MAP.md) to locate owners; do not sweep the repository.
 
-## 1. Start by task
+Nested `AGENTS.md` files apply only at genuine ownership, technology, or risk boundaries. Historical handoffs, screenshots, transcripts, generated builds, scratch directories, and archived plans are not instructions.
 
-| Task | Start here |
-|---|---|
-| Program map, "next N", check-off, plan routing | **`CANONICAL_BUILD_MAP.md`** (then `design/program/NOW.md` + queue) |
-| What is active or occupied now? | `design/program/NOW.md` → `design/program/README.md` |
-| Choose work across several plans / "do the next N" | `CANONICAL_BUILD_MAP.md` → `design/program/roadmap/program-queue.json` |
-| Claim a multi-week roadmap packet | `design/program/roadmap/README.md` → `design/program/roadmap/00_EXECUTION_PROTOCOL.md` |
-| Implement a feature/fix | Activated plan/spec → `docs/MODULE_MAP.md` → owning nested `AGENTS.md` |
-| Recurring bug | `docs/COMMON_BUGS.md` |
-| Event or update-order trace | Generated `docs/EVENT_ROUTING.md` / `docs/SYSTEM_REGISTRY.md` |
-| Product or system design | `design/GDD_2_0.md` → relevant spec2/spec3 slice |
-| Ship, station, place, portrait | `assets/AGENTS.md`; ship pipeline at `assets/ships/AGENTS.md`; craft/acceptance at `docs/visual-assets/` |
-| Add a map-visible place (planet, station, route, region) | `src/data/PLACE_REGISTRATION.md` — **a new place is not done until `npm run check:atlas-integrity` is green** |
-| UI/HUD | `src/ui/AGENTS.md` and `styles/AGENTS.md` |
-| Render/performance | `src/render/AGENTS.md` and `design/PERF_BUDGET.md` |
-| Tests/checks/tooling | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` |
-| Search/archaeology | `docs/SEARCH_CONTEXT.md` |
+## Non-negotiable engine contracts
 
-Do not sweep `design/`, `.campaign/`, assets, transcripts, or screenshots for an ordinary code task.
+- Simulation truth advances on the fixed-step path. Use seeded RNG and simulation time; never let wall time, DOM order, callback order, or `Math.random()` decide gameplay state.
+- Preserve single-writer ownership. Economy, cargo, factions, heat, missions, physics, save, world, and other authorities mutate their own state through owner APIs/events.
+- Browser, Electron, tests, and probes use the same game route and the same owners. A harness may observe; it may not manufacture a gameplay transition to prove itself.
+- Save/Continue is part of every durable feature. Stable IDs and receipts survive reload; transient entity/DOM/render handles do not become save truth.
+- Renderer and UI consume gameplay truth. They do not own simulation state, hidden alternate ledgers, or special acceptance-only state.
+- Visible authored entities use resolve → prepare → admit. Do not publish a misleading placeholder that can target, collide, attack, or offer verbs before the requested identity is ready.
+- Keyboard is a baseline, not the whole accessibility story. Preserve focus, semantic names, non-color/non-audio critical cues, reduced-motion/flash behavior, text scaling, and existing applicable controller routes.
+- Performance work preserves authored quality. Remove invisible work, allocations, duplicate resources, over-frequency, and unbounded queries before reducing visible content.
 
-## 2. Architecture in one paragraph
+Read the relevant sections of [`ARCHITECTURE.md`](./ARCHITECTURE.md) for exact owner and loop contracts. Descriptive counts or tuning notes in prose must still be checked against current code.
 
-SpaceFace is a Three.js browser/Electron space game. A flat `GameState`, event bus, and registry of
-systems run in a 60 Hz fixed-timestep simulation decoupled from rendering. Sim code stays independent
-of Three.js, uses the XZ plane, and uses `state.rng`/`state.simTime` rather than ambient randomness or
-wall time. Browser and Electron launch the same game route. See `ARCHITECTURE.md` for the contract.
+## Implementation behavior
 
-## 3. Preserve the shared working tree
+Characterize the current seam before editing it. Prefer a pure contract and a narrow owner-side adapter over a new registered system. Reuse existing events, IDs, input routes, panels, projectors, asset loaders, save owners, and probes when they already express the required behavior.
 
-The working tree may contain valuable concurrent work that is newer than `HEAD`.
+Do not turn a local design opinion into an automatic guardrail. A repository-wide rule or check must protect a demonstrated invariant: determinism, ownership, save, security, accessibility, provenance, measured performance, or player behavior. Aesthetic direction belongs in the selected packet and is judged in game—not frozen through palette lists, CSS bans, technique quotas, arbitrary triangle ceilings, exact module counts, or source-string policing.
 
-- Inspect `git status --short` and `git diff -- <owner-file>` before diagnosing or editing.
-- Never run destructive tree-wide `reset`, `restore`, `checkout`, `clean`, or `stash` operations.
-- Preserve unrelated edits. Do not roll back a file merely because its diff is large.
-- Add new files to Git intent immediately with `git add -N <file>`.
-- Remain on the current branch unless the user explicitly requests branch/worktree management.
-- Commit only a reviewed logical slice when the user has authorized commits.
+When a necessary edit leaves the packet's write budget or crosses an occupied mutex, stop and return a shared-change request. Do not quietly widen the feature.
 
-## 4. Authority and current work
+## Verification
 
-When sources disagree: user direction → `ARCHITECTURE.md` → `design/GDD_2_0.md` →
-`design/program/` → the activated plan/spec → supporting references.
+Follow [`design/program/roadmap/00_EXECUTION_PROTOCOL.md`](./design/program/roadmap/00_EXECUTION_PROTOCOL.md).
 
-Live code, current checks, and player-route evidence determine whether descriptive claims are true.
-Read `docs/POLICY_MANIFEST.md` before treating prompts, archives, transcripts, tool memories, or
-campaign material as policy.
+Use the smallest relevant ladder:
 
-## 5. Live runtime selection
+1. syntax/static/data validation;
+2. seconds-scale focused tests at the owner seam;
+3. determinism, ownership, save, and adjacent integration checks;
+4. one broker-authorized Browser/Electron route when player-visible evidence is required;
+5. matched performance evidence for changed cost centers.
 
-Default play uses:
+Never rerun an unchanged expensive failure. Reproduce it in a deterministic focused regression, observe fail → fix → pass, then obtain a new broker claim. One independent discovery review plus one causal re-review is the normal closure; unrelated findings become follow-ups.
 
-| Slot | Live | Compatibility path |
-|---|---|---|
-| Flight | `src/systems/flightV3.js` + `src/core/flight/` | `flight.js` / `flightDynamics.js` |
-| AI | `src/systems/tacticalAI.js` + `src/ai/` + `aiPorts.js` | `ai.js` |
-| Physics | `rapier-dynamic` via physics authority | custom legacy backend |
+Do not weaken a correct check or rewrite a golden to accommodate a regression. Remove obsolete rules only when the intended behavior is covered directly.
 
-Compatibility files remain imported and tested; do not edit them for default gameplay fixes or delete
-them casually. Confirm selection in `src/core/registry.js` and defaults in `src/core/gameState.js`.
+## Documentation and handoff
 
-## 6. Hard engineering contracts
+Update the active packet checklist and return an exact-revision receipt with changed paths, checks, route evidence, performance evidence, and honest residuals. The integrator owns global queue/status transitions and generated indexes.
 
-- **One game path:** browser, Electron, probes, and packaged builds share gameplay, assets, settings,
-  and entrypoint. Launcher wrappers own shell concerns only.
-- **Determinism:** never edit `test/*.expected.json` merely to pass. Sim uses `state.rng` and
-  `state.simTime`; cosmetic render/VFX randomness is separate.
-- **Single writers:** economy→credits, factions→reputation/sector ownership, cargo→cargo,
-  ships→derived stats, heat→WANTED heat. Other systems emit intents/events.
-- **Input contract:** preserve raw axes and `state.input.actions` semantics. Editing
-  `src/systems/input.js` is allowed when the task owns input, but requires focused input/rebind/sim
-  validation and coordination with concurrent input work.
-- **Wired features:** player-facing work must be reachable on the default route. A local candidate,
-  report, or hidden flag is not completion.
-- **Assets:** exact manifests, release metadata, and runtime maps outrank prose inventories. Honor a
-  currently active lock/authoring signal, but historical lane documents are not permanent ownership.
-- **Performance:** optimize algorithms, allocation, batching, cadence, culling, residency, and frame
-  pacing. Do not pass gates by removing authored visuals or lowering default quality.
-- **Accessibility:** preserve input reachability, reduced-motion/flash behavior, legibility, and
-  contrast. Accessibility does not require a universal visual style.
-- **HUD:** keep the flight HUD non-diegetic; no cockpit/visor/helmet framing. Preserve useful roster,
-  radar, objective, station, navigation, and tactical information unless a tested replacement is
-  demonstrably clearer.
-- **Dependencies/media:** allowed when they materially improve quality and their license,
-  bundle/performance, determinism/save, and maintenance effects are understood.
+After control-document changes run:
 
-### Rules that do not belong here
+```bash
+node scripts/check-program-docs.mjs
+```
 
-Do not add global palette lists, blur/opacity recipes, triangle or texture ceilings, effect counts,
-iteration/deficiency quotas, mandatory techniques, self-score thresholds, fixed file ownership for
-inactive lanes, or report-only completion rituals. Checks should prove behavior, contracts,
-accessibility, determinism, reachability, or measured performance—not freeze an aesthetic recipe.
-
-## 7. Common-bug routing
-
-Use `docs/COMMON_BUGS.md` before broad grep for recurring failures such as fixes applied to legacy
-implementations, hostile spawn behavior, asset fallback, heat ambiguity, or launcher/performance drift.
-
-## 8. System update order
-
-`src/core/registry.js` is the source. Generated `docs/SYSTEM_REGISTRY.md` explains system and render
-order; do not copy the list into policy files.
-
-## 9. Verification router
-
-Run the narrow owning check first, then broaden in proportion to risk.
-
-| Changed seam | Minimum relevant proof |
-|---|---|
-| Sim/determinism | `npm run check:sim:compare` plus focused subsystem test |
-| Flight/render loop | `npm run check:flight:clean`, `npm run check:assets:live`, measured perf probe |
-| Asset/manifests/render wiring | asset reachability, live-load/status, visual stability, player-route capture |
-| UI/a11y | focused UI check, a11y/contrast, UI perf, representative screenshot |
-| Launcher/server | `npm run check:launch-policy` |
-| Broad shared integration | `npm run check` after focused checks pass |
-
-Visual acceptance requires current player-facing evidence. Green source-pattern checks alone do not
-prove visual quality or usability.
-
-## 10. Scoped instruction map
-
-Nested `AGENTS.md` files exist only at meaningful ownership/risk boundaries:
-
-`assets/` · `assets/ships/` · `design/` · `design/program/` · `docs/` · `scripts/` · `test/` ·
-`tools/` · `src/` · `src/core/` · `src/ai/` · `src/combat/` · `src/data/` · `src/render/` ·
-`src/systems/` · `src/ui/` · `styles/`
-
-Use the nearest applicable file and follow links for depth. Do not copy its content into another
-instruction layer.
+After event or registry changes run `npm run build:indexes` and inspect the generated diff. Preserve unrelated dirty work.
