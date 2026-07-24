@@ -82,6 +82,13 @@ export async function runWithTimeout({
    */
   setTimeoutFn = setTimeout,
   clearTimeoutFn = clearTimeout,
+  /**
+   * Test-only spawn factory (default: real child_process.spawn).
+   * FIX21: FIX18 regression injects an EventEmitter stand-in so exit/timer
+   * lifecycle is proven with zero real-process / wall-clock dependency.
+   * Signature: (command, args, options) => ChildProcess-like EventEmitter.
+   */
+  spawnFn = spawn,
 } = {}) {
   if (!command) {
     return {
@@ -107,7 +114,7 @@ export async function runWithTimeout({
   let killResult = null;
 
   try {
-    child = spawn(command, args, {
+    child = spawnFn(command, args, {
       cwd,
       env: env ? { ...process.env, ...env } : process.env,
       stdio: stdio ?? ['ignore', 'pipe', 'pipe'],

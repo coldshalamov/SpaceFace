@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
 import test from 'node:test';
 
 import {
@@ -155,15 +156,16 @@ test('P1 FIX15: fast-exit during slow onSpawn still resolves (no hang)', async (
 // onSpawn. Otherwise timeoutMs elapses while onSpawn is still awaiting, fires
 // after exit, sets timedOut=true, and may killProcessTree a recycled PID.
 //
-// FIX20: do not couple this assertion to wall-clock process startup. On loaded
-// Windows runners, `node -e process.exit(0)` often takes ~70–350ms (and under
-// CI load can exceed 400ms) after spawn returns before the exit event. A short
-// real timeoutMs left insufficient headroom and flaked under CI load. Inject a
-// capture-only setTimeout so "past timeoutMs" is simulated by invoking any
-// uncleared hard-timeout callback after confirmed child exit — independent of
-// startup latency.
+// FIX20: inject setTimeoutFn/clearTimeoutFn so "past timeoutMs" is simulated by
+// invoking uncleared hard-timeout callbacks — not by sleeping.
+//
+// FIX21: also inject spawnFn with an EventEmitter stand-in. The regression is
+// proven purely from synthetic exit + injected clock. No real child, no
+// process.kill(pid, 0) polling, no wall-clock deadline. (Real-process happy
+// paths remain in the tests above for integration coverage.)
 test('P1 FIX18: slow onSpawn past timeoutMs after child exit is not timedOut', async () => {
   const timeoutMs = 400;
+  const fakePid = 424_242;
   const exitedPid = { value: null };
   const scheduled = [];
   const setTimeoutFn = (fn, ms) => {
@@ -180,37 +182,48 @@ test('P1 FIX18: slow onSpawn past timeoutMs after child exit is not timedOut', a
     if (handle) handle.cleared = true;
   };
 
+  /** @type {EventEmitter & {
+   *   pid: number,
+   *   stdout: null,
+   *   stderr: null,
+   *   killed: boolean,
+   *   exitCode: number|null,
+   *   signalCode: string|null,
+   * }} */
+  let fakeChild = null;
+  const spawnFn = () => {
+    fakeChild = new EventEmitter();
+    fakeChild.pid = fakePid;
+    fakeChild.stdout = null;
+    fakeChild.stderr = null;
+    fakeChild.killed = false;
+    fakeChild.exitCode = null;
+    fakeChild.signalCode = null;
+    return fakeChild;
+  };
+
   const result = await runWithTimeout({
-    command: process.execPath,
+    command: 'fake-node',
     args: ['-e', 'process.exit(0)'],
     timeoutMs,
     setTimeoutFn,
     clearTimeoutFn,
+    spawnFn,
     onSpawn: async (pidRecord) => {
       const pid = pidRecord?.pid;
       exitedPid.value = pid ?? null;
-      assert.ok(pid > 0);
+      assert.equal(pid, fakePid);
+      assert.ok(fakeChild, 'spawnFn must have produced the stand-in child');
+      assert.ok(
+        scheduled.some((h) => !h.cleared),
+        'hard-timeout timer must be armed before synthetic exit',
+      );
 
-      // Wait until the OS reports the child as gone (exit lifecycle may lag).
-      // Startup latency is unbounded under CI load; this poll has a generous
-      // 5s ceiling and is independent of timeoutMs.
-      const deadDeadline = Date.now() + 5_000;
-      while (Date.now() < deadDeadline) {
-        try {
-          process.kill(pid, 0);
-          await new Promise((r) => setTimeout(r, 15));
-        } catch {
-          break; // ESRCH / not found — process is dead
-        }
-      }
-
-      // Poll until settle has clearTimeout'd the hard timer (exit event may
-      // lag slightly behind OS death). Without FIX18 this never clears during
-      // onSpawn and the assertion below fails after the deadline.
-      const clearDeadline = Date.now() + 5_000;
-      while (Date.now() < clearDeadline && scheduled.some((h) => !h.cleared)) {
-        await new Promise((r) => setImmediate(r));
-      }
+      // Synthetic lifecycle settle — synchronous with the injected emitter.
+      // FIX18 must clearTimeout the hard timer inside settle, before onSpawn
+      // returns, so a later "timeoutMs elapsed" simulation cannot fire.
+      fakeChild.exitCode = 0;
+      fakeChild.emit('exit', 0, null);
 
       // Snapshot before we simulate "timeoutMs elapsed" so the assertion is not
       // satisfied by the post-onSpawn clearTimeoutFn.
@@ -236,11 +249,11 @@ test('P1 FIX18: slow onSpawn past timeoutMs after child exit is not timedOut', a
     scheduled.some((h) => h.ms === timeoutMs || h.ms >= 1),
     'hard-timeout timer must have been armed',
   );
-  assert.equal(result.status, 'pass', 'real clean exit must not become timeout');
+  assert.equal(result.status, 'pass', 'clean exit must not become timeout');
   assert.equal(result.timedOut, false, 'must not false-positive timedOut after child exit');
   assert.equal(result.exitCode, 0);
   assert.equal(result.signal, null);
-  assert.ok(exitedPid.value > 0);
+  assert.equal(exitedPid.value, fakePid);
   // killProcessTree must not have been invoked for the timeout path.
   assert.equal(result.pidRecord?.killResult ?? null, null,
     'timeout kill must not run against an already-exited (possibly recycled) pid');
