@@ -308,7 +308,14 @@ export function createRegistry(ctx) {
   const gameplay = ctx && ctx.state && ctx.state.settings && ctx.state.settings.gameplay || {};
   const profileId = gameplay.runtimeProfile || DEFAULT_RUNTIME_PROFILE_ID;
   const systemLookup = buildRegistrySystemLookup(aiSlot, flightSlot);
-  const slots = { aiSlot, flightSlot };
+  // Pass backend labels explicitly — flight and flightV3 share system name 'flight', so the
+  // manifest hash must include the selected implementation identity, not only the slot name.
+  const slots = {
+    aiSlot,
+    flightSlot,
+    aiBackend: gameplay.aiBackend || (aiSlot && aiSlot.name === 'tacticalAI' ? 'sg06-tactical' : 'legacy'),
+    flightBackend: gameplay.flightBackend || 'legacy',
+  };
 
   // Authoritative init + update order from the single manifest (eliminates hard-coded duplication).
   const resolved = resolveRuntimeManifest({

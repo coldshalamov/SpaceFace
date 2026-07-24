@@ -20,6 +20,16 @@ import { createGameState } from '../src/core/gameState.js';
 import { SIM_DT } from '../src/core/sim.js';
 import { tetherGameplay, computeTetherLoad } from '../src/systems/tetherGameplay.js';
 import { masslineTelemetry } from '../src/systems/masslineTelemetry.js';
+import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
+
+// Harness order matches production: tetherGameplay then masslineTelemetry
+// (surrenderRecovery + custodyConsequences may sit between them).
+{
+  const tetherIdx = PRODUCTION_UPDATE_ORDER.indexOf('tetherGameplay');
+  const teleIdx = PRODUCTION_UPDATE_ORDER.indexOf('masslineTelemetry');
+  assert.ok(tetherIdx >= 0 && teleIdx > tetherIdx,
+    'masslineTelemetry must run after tetherGameplay in production UPDATE_ORDER');
+}
 
 const DT = SIM_DT;
 const TARGET_ID = 4242;
@@ -196,7 +206,7 @@ function primeActiveTether(harness, { restLength = 100, lastTension = 0, pastCap
 }
 
 // One sim step: tetherGameplay (mirrors tether.load) then masslineTelemetry (relays it) —
-// same relative order as UPDATE_ORDER in core/registry.js.
+// same relative order as PRODUCTION_UPDATE_ORDER in the authoritative runtime manifest.
 function stepOnce(harness) {
   const { state, tether, telemetry } = harness;
   state.tick += 1;

@@ -14,6 +14,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MODULES } from '../src/data/modules.js';
+import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -48,9 +49,18 @@ assert.match(cmSrc, /d\.targetId/, 'countermeasures must divert missiles (rewrit
 assert.match(cmSrc, /d\.turnRate/, 'countermeasures must jam guidance (write data.turnRate for ECM)');
 
 // 3. Registered in UPDATE_ORDER (after weapons, before combat — so diversion happens pre-resolve).
+// Order is owned by the authoritative runtime manifest (not a literal array in registry.js).
 const regSrc = read('src/core/registry.js');
 assert.match(regSrc, /import \{ countermeasures \}/, 'registry must import countermeasures');
-assert.match(regSrc, /weapons, countermeasures,/, 'countermeasures must appear after weapons in the system lists');
+assert.match(regSrc, /\['countermeasures',\s*countermeasures\]/,
+  'registry system lookup must register countermeasures for materialization');
+const weaponsIdx = PRODUCTION_UPDATE_ORDER.indexOf('weapons');
+const countermeasuresIdx = PRODUCTION_UPDATE_ORDER.indexOf('countermeasures');
+const combatIdx = PRODUCTION_UPDATE_ORDER.indexOf('combat');
+assert.ok(weaponsIdx >= 0, 'weapons must appear in production UPDATE_ORDER');
+assert.ok(countermeasuresIdx >= 0, 'countermeasures must appear in production UPDATE_ORDER');
+assert.ok(countermeasuresIdx > weaponsIdx, 'countermeasures must run after weapons');
+assert.ok(countermeasuresIdx < combatIdx, 'countermeasures must run before combat');
 
 // 4. input.js exposes the deploy keybind + sets the flag.
 const inputSrc = read('src/systems/input.js');

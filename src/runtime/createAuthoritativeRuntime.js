@@ -1,7 +1,17 @@
 // Builds an isolated authoritative runtime instance bound to a profile.
-// Feature config is instance-local and immutable after init. Process-global flag
-// MAPS may be seeded for call-site compatibility; each instance keeps its own
-// frozen config so two profiles in one process do not share feature state.
+//
+// Feature config is instance-local and immutable after init (`runtime.config.features` /
+// `state.runtime.features`). Process-global flag MAPS (`COMBAT_FLAGS` / `MASSLINE2_FLAGS` /
+// `TRAVEL_FLAGS`) are still what most call sites read via combatFlag/massline2Flag/travelFlag
+// without a runtime argument. To keep multi-profile lab hosts honest, this runtime uses
+// **restore-on-step** isolation:
+//
+//   - Before init and each step/runTicks, the instance's feature config is applied to the MAPS.
+//   - After that call returns, the previous MAP snapshot is restored.
+//
+// This makes sequential multi-profile replay safe in one process. It does **not** support two
+// runtimes stepping concurrently (overlapping awaits / worker-shared maps); serialize steps.
+// Long-term, call sites should take an explicit features/runtime argument (directive preferred).
 
 import { createSimulation } from '../core/sim.js';
 import {
@@ -21,11 +31,11 @@ import { freezeFeatureConfig, getRuntimeProfile } from './runtimeProfiles.js';
  * @param {object} [options.helpers]
  * @param {object[]} [options.systems] focused explicit systems (honest evidence)
  * @param {Map|object} [options.systemLookup] materialize full profile systems
- * @param {{ aiSlot?: object, flightSlot?: object }} [options.slots]
+ * @param {{ aiSlot?: object, flightSlot?: object, aiBackend?: string, flightBackend?: string }} [options.slots]
  * @param {boolean} [options.nodeSafeOnly]
  * @param {boolean} [options.tacticalAI]
- * @param {boolean} [options.seedProcessMaps] when true, seed module flag MAPS from profile
- * @param {boolean} [options.restoreProcessMapsOnDispose]
+ * @param {boolean} [options.seedProcessMaps] when true, bind MAPS for the duration of init/step only
+ * @param {boolean} [options.restoreProcessMapsOnDispose] retained for API compat; restore-on-step is the owner
  */
 export function createAuthoritativeRuntime(options = {}) {
   const profileId = options.profileId || (options.systems ? null : 'production');
@@ -48,36 +58,54 @@ export function createAuthoritativeRuntime(options = {}) {
     exclusions: resolved.exclusions,
   });
 
-  // Bind immutable instance config. Optionally seed process MAPS for systems that still
-  // read combatFlag/massline2Flag/travelFlag without a runtime argument.
-  let mapSnapshot = null;
-  if (options.seedProcessMaps !== false && !explicit) {
-    mapSnapshot = snapshotFeatureMaps();
+  // Bind process MAPS only for the duration of init/step when seeding is enabled.
+  // Default: seed for full profile runs; leave MAPS alone for focused empty/explicit lists
+  // unless the caller opts in.
+  const seedMaps = explicit
+    ? options.seedProcessMaps === true
+    : options.seedProcessMaps !== false;
+
+  function withFeatureMaps(fn) {
+    if (!seedMaps) return fn();
+    const previous = snapshotFeatureMaps();
     applyFeatureConfigToMaps(config.features);
-  } else if (explicit && options.seedProcessMaps === true) {
-    mapSnapshot = snapshotFeatureMaps();
-    applyFeatureConfigToMaps(config.features);
+    try {
+      return fn();
+    } finally {
+      restoreFeatureMaps(previous);
+    }
   }
 
   const profile = getRuntimeProfile(resolved.profileId);
   let sim = null;
 
   if (options.createSimulation !== false) {
-    let systemsForSim = explicit;
-    if (!systemsForSim && resolved.authoritativeSystems) {
+    let systemsForInit = explicit;
+    let systemsForUpdate = null;
+
+    if (!systemsForInit && resolved.authoritativeSystems) {
       // createSimulation always prepends core — strip it from the resolved init list.
-      systemsForSim = resolved.authoritativeSystems.filter((s) => s && s.name !== 'core');
+      systemsForInit = resolved.authoritativeSystems.filter((s) => s && s.name !== 'core');
     }
-    if (systemsForSim) {
-      sim = createSimulation({
+    // Production path: step UPDATE_ORDER, not the init/registration list.
+    // Focused explicit systems keep registration order (no separate update order).
+    if (!explicit && resolved.authoritativeUpdateOrder) {
+      systemsForUpdate = resolved.authoritativeUpdateOrder.slice();
+    }
+
+    if (systemsForInit || systemsForUpdate) {
+      sim = withFeatureMaps(() => createSimulation({
         seed: options.seed,
         state: options.state,
         bus: options.bus,
         helpers: options.helpers,
-        systems: systemsForSim,
+        // Init list: registration order (or explicit focused list).
+        systems: systemsForInit || systemsForUpdate,
+        // Step list: authoritative update order when materialised (production parity).
+        updateOrder: systemsForUpdate || undefined,
         runtimeManifest: resolved,
         runtimeConfig: config,
-      });
+      }));
       if (sim.state) {
         bindRuntimeToState(sim.state, config, resolved);
       }
@@ -93,23 +121,25 @@ export function createAuthoritativeRuntime(options = {}) {
       profileHash: resolved.profileHash,
       manifestHash: resolved.manifestHash,
     }),
+    /**
+     * Process-global MAP isolation mode for this host.
+     * `restore-on-step` = sequential stepping only; not safe for concurrent multi-runtime steps.
+     */
+    featureMapIsolation: seedMaps ? 'restore-on-step' : 'instance-config-only',
     sim,
     state: sim ? sim.state : options.state || null,
     bus: sim ? sim.bus : options.bus || null,
     step(dt) {
       if (!sim) throw new Error('Authoritative runtime has no simulation host');
-      return sim.step(dt);
+      return withFeatureMaps(() => sim.step(dt));
     },
     runTicks(count, dt) {
       if (!sim) throw new Error('Authoritative runtime has no simulation host');
-      return sim.runTicks(count, dt);
+      return withFeatureMaps(() => sim.runTicks(count, dt));
     },
     dispose() {
       if (sim && typeof sim.dispose === 'function') sim.dispose();
-      if (mapSnapshot && options.restoreProcessMapsOnDispose !== false) {
-        restoreFeatureMaps(mapSnapshot);
-        mapSnapshot = null;
-      }
+      // MAPS are restored after every step/init; nothing permanent to undo here.
     },
   });
 

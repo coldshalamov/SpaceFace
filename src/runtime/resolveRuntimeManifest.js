@@ -73,6 +73,10 @@ export function resolveRuntimeManifest(options = {}) {
     }
   }
 
+  // Slot identities affect material runtime behavior (AI/flight backends). Include them in
+  // the manifest hash so evidence/replay/cache consumers can distinguish different backends.
+  const selectedSlots = resolveSelectedSlots(options.slots);
+
   const profileHash = fingerprintPayload({
     schema: 'spaceface.runtimeProfile.v1',
     profileId: profile.id,
@@ -90,18 +94,13 @@ export function resolveRuntimeManifest(options = {}) {
     evidenceClass,
     nodeSafeOnly,
     tacticalAI,
+    selectedSlots: {
+      aiSlot: selectedSlots.aiSlot,
+      flightSlot: selectedSlots.flightSlot,
+      aiBackend: selectedSlots.aiBackend,
+      flightBackend: selectedSlots.flightBackend,
+    },
     manifest: getManifestIdentityPayload(),
-  });
-
-  const selectedSlots = Object.freeze({
-    aiSlot: options.slots && options.slots.aiSlot
-      ? (options.slots.aiSlot.name || 'aiSlot')
-      : 'aiSlot',
-    flightSlot: options.slots && options.slots.flightSlot
-      ? (options.slots.flightSlot.name || 'flightSlot')
-      : 'flightSlot',
-    aiBackend: null,
-    flightBackend: null,
   });
 
   const capabilities = Object.freeze(
@@ -149,6 +148,39 @@ export function resolveRuntimeManifest(options = {}) {
     // Convenience mirrors for tests/docs
     productionInitOrderReference: PRODUCTION_INIT_ORDER,
     productionUpdateOrderReference: PRODUCTION_UPDATE_ORDER,
+  });
+}
+
+/**
+ * Resolve selected AI/flight slot identities for hashing and inspection.
+ * Prefer explicit `aiBackend` / `flightBackend` labels (createRegistry passes these) because
+ * flight and flightV3 share the system name `'flight'`.
+ *
+ * @param {{ aiSlot?: object, flightSlot?: object, aiBackend?: string, flightBackend?: string }|null|undefined} slots
+ */
+function resolveSelectedSlots(slots) {
+  const s = slots || {};
+  const aiName = s.aiSlot && typeof s.aiSlot.name === 'string' ? s.aiSlot.name : null;
+  const flightName = s.flightSlot && typeof s.flightSlot.name === 'string' ? s.flightSlot.name : null;
+
+  let aiBackend = typeof s.aiBackend === 'string' && s.aiBackend ? s.aiBackend : null;
+  let flightBackend = typeof s.flightBackend === 'string' && s.flightBackend ? s.flightBackend : null;
+
+  if (!aiBackend && aiName) {
+    if (aiName === 'tacticalAI') aiBackend = 'sg06-tactical';
+    else if (aiName === 'ai') aiBackend = 'legacy';
+    else aiBackend = aiName;
+  }
+  if (!flightBackend && flightName) {
+    // Without an explicit label both V3 and legacy report name 'flight'.
+    flightBackend = flightName;
+  }
+
+  return Object.freeze({
+    aiSlot: aiName || 'aiSlot',
+    flightSlot: flightName || 'flightSlot',
+    aiBackend: aiBackend || 'unbound',
+    flightBackend: flightBackend || 'unbound',
   });
 }
 

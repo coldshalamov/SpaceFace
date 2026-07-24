@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -35,10 +36,20 @@ function installLoggedAsserts() {
 }
 installLoggedAsserts();
 
-function assertEarlyTargetPipeline(source) {
-  const match = source.match(/const UPDATE_ORDER\s*=\s*\[([\s\S]*?)\];/);
-  assert.ok(match, 'registry must declare UPDATE_ORDER');
-  const systems = match[1].split(',').map((name) => name.trim()).filter(Boolean);
+/**
+ * Assert early target-assist pipeline ordering.
+ * Accepts either the authoritative update-order ID array (preferred) or a synthetic
+ * `const UPDATE_ORDER = [...]` string used by the negative regression case.
+ */
+function assertEarlyTargetPipeline(orderOrSource) {
+  let systems;
+  if (Array.isArray(orderOrSource)) {
+    systems = orderOrSource.map((name) => String(name).trim()).filter(Boolean);
+  } else {
+    const match = String(orderOrSource).match(/const UPDATE_ORDER\s*=\s*\[([\s\S]*?)\];/);
+    assert.ok(match, 'registry must declare UPDATE_ORDER');
+    systems = match[1].split(',').map((name) => name.trim()).filter(Boolean);
+  }
   const inputIndex = systems.indexOf('input');
   const assistIndex = systems.indexOf('autoTargetAssist');
   const focusIndex = systems.indexOf('flybyFocus');
@@ -139,14 +150,17 @@ assert.match(autoTargetAssistSrc, /toggleAutoTarget/,
   'autoTargetAssist shell must delegate the G pursuit toggle to one mode owner');
 assert.doesNotMatch(autoTargetAssistSrc, /autopursuitHeld/,
   'autoTargetAssist auto-target toggle must not be gated on MMB/autopursuit state');
-assertEarlyTargetPipeline(registrySrc);
+// Authoritative update order comes from the runtime manifest (not a literal array in registry.js).
+assertEarlyTargetPipeline(PRODUCTION_UPDATE_ORDER);
 assert.throws(
   () => assertEarlyTargetPipeline('const UPDATE_ORDER = [input, scanner, autoTargetAssist, flybyFocus];'),
   /autoTargetAssist must resolve immediately after input/,
   'input modality gate must reject scanner running before autoTargetAssist',
 );
-assert.match(registrySrc, /input, autoTargetAssist/,
-  'registry SYSTEMS init must call autoTargetAssist.init for auto-target capture listeners');
+assert.match(registrySrc, /import \{ autoTargetAssist \}/,
+  'registry must import autoTargetAssist for auto-target capture listeners');
+assert.match(registrySrc, /\['autoTargetAssist',\s*autoTargetAssist\]/,
+  'registry system lookup must register autoTargetAssist for init materialization');
 assert.match(registrySrc, /destroy\(\)/,
   'registry must expose destroy() so capture-phase listeners do not stack on re-init');
 assert.match(autoTargetAssistSrc, /if \(this\._onKeyDown\) this\.destroy\(\)/,

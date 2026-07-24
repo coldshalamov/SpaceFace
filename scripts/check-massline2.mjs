@@ -39,6 +39,7 @@ import { cloakHidesPlayerFrom } from '../src/systems/aiPorts.js';
 import { ENCOUNTER_SCRIPTS, patrolCanInitiateScan } from '../src/systems/encounterScripts.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { createRegistry } from '../src/core/registry.js';
+import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import { createCombatKernel } from '../src/combat/kernel.js';
 import { mulberry32, hash32 } from '../src/core/rng.js';
 import {
@@ -166,6 +167,12 @@ section('registry order: cloak<aiSlot, aiPorts<tumbleStates<weapons, masslineImp
   const ctx = { state: makeState({ settings: { gameplay: {} } }), bus: makeBus(), helpers: {} };
   const registry = createRegistry(ctx);
   const names = registry.updateOrder.map((s) => s.name);
+  // Live registry order must match the authoritative production update-order IDs.
+  assert.deepEqual(
+    names.map((n) => (n === 'tacticalAI' || n === 'ai' ? 'aiSlot' : n === 'flight' ? 'flightSlot' : n)),
+    [...PRODUCTION_UPDATE_ORDER],
+    'createRegistry updateOrder must match PRODUCTION_UPDATE_ORDER (slot names normalized)',
+  );
   for (const required of ['masslineThrow', 'bulletTime', 'tumbleStates', 'masslineImpactDamage', 'cloak', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'masslineHud']) {
     assert.ok(names.includes(required), `${required} missing from UPDATE_ORDER`);
   }

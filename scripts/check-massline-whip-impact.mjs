@@ -34,6 +34,27 @@ import { tetherGameplay } from '../src/systems/tetherGameplay.js';
 import { masslineTelemetry } from '../src/systems/masslineTelemetry.js';
 import { masslineThreats } from '../src/systems/masslineThreats.js';
 import { masslineImpacts } from '../src/systems/masslineImpacts.js';
+import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
+
+// Harness chain order matches production UPDATE_ORDER (manifest-backed, not registry literals).
+// masslineTelemetry/Threats/Impacts are contiguous; tetherGameplay precedes them with
+// surrender/custody observers in between.
+{
+  const chain = ['masslineTelemetry', 'masslineThreats', 'masslineImpacts'];
+  for (let i = 1; i < chain.length; i++) {
+    const prev = PRODUCTION_UPDATE_ORDER.indexOf(chain[i - 1]);
+    const next = PRODUCTION_UPDATE_ORDER.indexOf(chain[i]);
+    assert.ok(prev >= 0 && next === prev + 1,
+      `${chain[i]} must run immediately after ${chain[i - 1]} in production UPDATE_ORDER`);
+  }
+  const tetherIdx = PRODUCTION_UPDATE_ORDER.indexOf('tetherGameplay');
+  const teleIdx = PRODUCTION_UPDATE_ORDER.indexOf('masslineTelemetry');
+  const physicsIdx = PRODUCTION_UPDATE_ORDER.indexOf('physics');
+  assert.ok(tetherIdx >= 0 && teleIdx > tetherIdx,
+    'masslineTelemetry must run after tetherGameplay');
+  assert.ok(physicsIdx >= 0 && physicsIdx < tetherIdx,
+    'physics must settle before the massline observer chain');
+}
 
 const DT = SIM_DT;
 const TARGET_ID = 5909;

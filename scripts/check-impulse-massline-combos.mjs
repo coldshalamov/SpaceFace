@@ -20,12 +20,21 @@ import { createBus } from '../src/core/eventBus.js';
 import { SIM_DT } from '../src/core/sim.js';
 import { impulseCharges } from '../src/systems/impulseCharges.js';
 import { IMPULSE_CHARGES, MASSLINE_COMBOS } from '../src/data/impulseCharges.js';
+import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 
 const DEF = IMPULSE_CHARGES.charge_standard;
 const PLAYER_ID = 1;
 const ANCHOR_ID = 40;
 const CHARGE_ID = 50;
 const BYSTANDER_ID = 60;
+
+// impulseCharges reads actions.tetherCut; tetherGameplay later in UPDATE_ORDER performs the cut.
+{
+  const impulseIdx = PRODUCTION_UPDATE_ORDER.indexOf('impulseCharges');
+  const tetherIdx = PRODUCTION_UPDATE_ORDER.indexOf('tetherGameplay');
+  assert.ok(impulseIdx >= 0 && tetherIdx > impulseIdx,
+    'impulseCharges must precede tetherGameplay in production UPDATE_ORDER (tailPop same-press contract)');
+}
 
 assertComboDefsExist();
 assertAnchorKickChannelsAlongTheLine();

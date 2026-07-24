@@ -44,9 +44,17 @@ function forkSystem(definition) {
  *   bus?: object,
  *   helpers?: object,
  *   systems?: object[],
+ *   updateOrder?: object[],
  *   runtimeManifest?: object,
  *   runtimeConfig?: object,
  * }} options
+ *
+ * Init vs step order:
+ * - `systems` is the registration/init list (plus core, always first).
+ * - `updateOrder`, when provided, is the per-tick step sequence (production UPDATE_ORDER).
+ *   When omitted, every non-core init system is stepped in registration order (focused labs).
+ * - Systems present only in `updateOrder` are forked for stepping but not auto-inited,
+ *   matching createRegistry (SYSTEMS init, UPDATE_ORDER step).
  *
  * Evidence classification:
  * - When `options.systems` is supplied without a production profile resolve, the run is
@@ -73,8 +81,27 @@ export function createSimulation(options = {}) {
   }
 
   const core = instances[0];
-  const updates = instances.slice(1);
   const byName = new Map(instances.map((system) => [system.name, system]));
+
+  // Optional production update order: step this sequence, not the init registration list.
+  let updates;
+  if (Array.isArray(options.updateOrder) && options.updateOrder.length > 0) {
+    updates = [];
+    for (const definition of options.updateOrder) {
+      const name = definition && definition.name;
+      if (!name) throw new TypeError('updateOrder entry requires a name');
+      let instance = byName.get(name);
+      if (!instance) {
+        // Update-only systems (e.g. some HUD surfaces): fork for step, do not init (browser parity).
+        instance = forkSystem(definition);
+        byName.set(name, instance);
+      }
+      updates.push(instance);
+    }
+  } else {
+    updates = instances.slice(1);
+  }
+
   let initialized = false;
   let stepping = false;
 

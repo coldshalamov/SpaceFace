@@ -97,6 +97,204 @@ test('two runtime instances with different profiles do not cross-contaminate ins
   }
 });
 
+test('feature MAP isolation: production step after legacy creation observes production flags (restore-on-step)', () => {
+  const snap = snapshotFeatureMaps();
+  try {
+    // Seed process MAPS so call sites that read combatFlag() without features see the bind.
+    const observed = { duringProdStep: null, afterProdStep: null, duringLegacyStep: null };
+
+    const flagProbe = (bucket) => ({
+      name: 'flagProbe',
+      update(_dt, state) {
+        // Process-global readers (no features arg) must see THIS runtime's profile during step.
+        state[bucket] = {
+          weaponImpulseConsequences: combatFlag('weaponImpulseConsequences'),
+          masslineEnabled: massline2Flag('enabled'),
+          travelBurn: travelFlag('travelBurn'),
+          missileV2: combatFlag('missileV2'),
+        };
+      },
+    });
+
+    const prod = createAuthoritativeRuntime({
+      profileId: 'production',
+      seed: 11,
+      systems: [flagProbe('_prodObs')],
+      seedProcessMaps: true,
+    });
+    const legacy = createAuthoritativeRuntime({
+      profileId: 'legacy47a',
+      seed: 22,
+      systems: [flagProbe('_legacyObs')],
+      seedProcessMaps: true,
+    });
+
+    // Creating legacy last would permanently overwrite MAPS under the old bug.
+    // After restore-on-step, stepping production must still see production flags.
+    assert.equal(prod.featureMapIsolation, 'restore-on-step');
+    assert.equal(legacy.featureMapIsolation, 'restore-on-step');
+
+    prod.step(1 / 60);
+    observed.duringProdStep = prod.state._prodObs;
+    observed.afterProdStep = {
+      weaponImpulseConsequences: combatFlag('weaponImpulseConsequences'),
+      masslineEnabled: massline2Flag('enabled'),
+    };
+
+    assert.deepEqual(observed.duringProdStep, {
+      weaponImpulseConsequences: true,
+      masslineEnabled: true,
+      travelBurn: true,
+      missileV2: true,
+    }, 'production step must bind production flags while systems run');
+
+    // After step, MAPS restore to pre-step snapshot (not permanently production).
+    // Do not require a specific residual value — only that the next runtime's step is correct.
+    legacy.step(1 / 60);
+    observed.duringLegacyStep = legacy.state._legacyObs;
+    assert.deepEqual(observed.duringLegacyStep, {
+      weaponImpulseConsequences: false,
+      masslineEnabled: false,
+      travelBurn: false,
+      missileV2: false,
+    }, 'legacy step after production must bind legacy flags while systems run');
+
+    // Instance configs remain frozen and uncontaminated throughout.
+    assert.equal(prod.config.features.massline2.enabled, true);
+    assert.equal(legacy.config.features.massline2.enabled, false);
+
+    prod.dispose();
+    legacy.dispose();
+  } finally {
+    restoreFeatureMaps(snap);
+  }
+});
+
+test('createAuthoritativeRuntime steps systems in authoritativeUpdateOrder, not init order', () => {
+  // Init order starts with voiceArbiter before input; update order starts with input.
+  // Capture the sequence of update() calls and compare to the resolved update-order IDs.
+  const stepOrder = [];
+  const makeSys = (name) => ({
+    name,
+    init() {},
+    update() { stepOrder.push(name); },
+  });
+
+  // Use a mini explicit list first? No — need materialised production update order.
+  // Build a lookup of stub systems for a small slice that still differs init vs update.
+  // Simpler: materialize full node-safe production via createAuthoritativeRuntime with systemLookup.
+  // That's heavy. Instead resolve IDs and pass stubs for every update-order id, plus a decoy
+  // that only appears in init order (would step first under the old bug).
+
+  const resolved = resolveRuntimeManifest({ profileId: 'production', nodeSafeOnly: true });
+  const updateIds = [...resolved.authoritativeUpdateOrderIds];
+  const initIds = [...resolved.authoritativeSystemIds].filter((id) => id !== 'core');
+
+  // Build stubs; slot IDs materialize to named stubs. Core is in the init list but
+  // createSimulation always prepends its own core definition — provide a placeholder for resolve.
+  const lookup = new Map();
+  lookup.set('core', makeSys('core'));
+  for (const id of new Set([...initIds, ...updateIds])) {
+    if (id === 'aiSlot' || id === 'flightSlot' || id === 'core') continue;
+    lookup.set(id, makeSys(id));
+  }
+  const aiStub = makeSys('ai');
+  const flightStub = makeSys('flight');
+  lookup.set('aiSlot', aiStub);
+  lookup.set('flightSlot', flightStub);
+  lookup.set('ai', aiStub);
+  lookup.set('flight', flightStub);
+
+  const runtime = createAuthoritativeRuntime({
+    profileId: 'production',
+    seed: 99,
+    systemLookup: lookup,
+    slots: {
+      aiSlot: aiStub,
+      flightSlot: flightStub,
+      aiBackend: 'legacy',
+      flightBackend: 'legacy',
+    },
+    nodeSafeOnly: true,
+    seedProcessMaps: false,
+  });
+
+  stepOrder.length = 0;
+  runtime.step(1 / 60);
+
+  // Map stepped system names back to manifest slot IDs for comparison.
+  const steppedAsIds = stepOrder.map((n) => {
+    if (n === 'ai' || n === 'tacticalAI') return 'aiSlot';
+    if (n === 'flight') return 'flightSlot';
+    return n;
+  });
+
+  assert.deepEqual(
+    steppedAsIds,
+    updateIds,
+    'runtime must step exactly authoritativeUpdateOrder (not init/registration order)',
+  );
+  // Guard against the old bug: init order starts with voiceArbiter, update with input.
+  assert.equal(updateIds[0], 'input');
+  assert.notEqual(initIds[0], 'input');
+  assert.equal(steppedAsIds[0], 'input', 'first stepped system must be input (update order)');
+  assert.ok(!stepOrder.includes('core'), 'core is not an update-order system');
+
+  runtime.dispose();
+});
+
+test('manifestHash includes selected flight/AI backends (different backends → different hash)', () => {
+  const base = {
+    profileId: 'production',
+    nodeSafeOnly: true,
+  };
+  const v3 = resolveRuntimeManifest({
+    ...base,
+    slots: {
+      aiSlot: { name: 'tacticalAI' },
+      flightSlot: { name: 'flight' },
+      aiBackend: 'sg06-tactical',
+      flightBackend: 'v3',
+    },
+  });
+  const legacyFlight = resolveRuntimeManifest({
+    ...base,
+    slots: {
+      aiSlot: { name: 'tacticalAI' },
+      flightSlot: { name: 'flight' },
+      aiBackend: 'sg06-tactical',
+      flightBackend: 'legacy',
+    },
+  });
+  const legacyAi = resolveRuntimeManifest({
+    ...base,
+    slots: {
+      aiSlot: { name: 'ai' },
+      flightSlot: { name: 'flight' },
+      aiBackend: 'legacy',
+      flightBackend: 'v3',
+    },
+  });
+
+  assert.equal(v3.selectedSlots.flightBackend, 'v3');
+  assert.equal(legacyFlight.selectedSlots.flightBackend, 'legacy');
+  assert.notEqual(v3.manifestHash, legacyFlight.manifestHash,
+    'flight backend alone must change manifestHash');
+  assert.notEqual(v3.manifestHash, legacyAi.manifestHash,
+    'AI backend alone must change manifestHash');
+  // Same backends → same hash
+  const v3Again = resolveRuntimeManifest({
+    ...base,
+    slots: {
+      aiSlot: { name: 'tacticalAI' },
+      flightSlot: { name: 'flight' },
+      aiBackend: 'sg06-tactical',
+      flightBackend: 'v3',
+    },
+  });
+  assert.equal(v3.manifestHash, v3Again.manifestHash);
+});
+
 test('profile resolution is immutable after init', () => {
   const resolved = resolveRuntimeManifest({ profileId: 'production' });
   assert.ok(Object.isFrozen(resolved));

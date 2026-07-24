@@ -12,6 +12,10 @@
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  PRODUCTION_INIT_ORDER,
+  PRODUCTION_UPDATE_ORDER,
+} from '../src/runtime/authoritativeSystemManifest.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
@@ -65,22 +69,11 @@ function shortRel(p) {
   return rel(p).replace(/^src\//, '');
 }
 
-// --- registry parsing (system list + update order) ---
+// --- registry order (authoritative runtime manifest — not a literal array in registry.js) ---
 function parseRegistry() {
-  const regPath = join(SRC, 'core', 'registry.js');
-  const src = readFileSync(regPath, 'utf8');
-  // Extract the SYSTEMS array literal and UPDATE_ORDER array literal.
-  const systemsMatch = src.match(/const SYSTEMS = \[([\s\S]*?)\];/);
-  const orderMatch = src.match(/const UPDATE_ORDER = \[([\s\S]*?)\];/);
-  const parseNames = (block) =>
-    (block || '')
-      .split(/[\s,]+/)
-      .map((s) => s.trim())
-      .filter((s) => s && !s.startsWith('//') && !s.startsWith('}'))
-      .filter((s) => /^[a-zA-Z]/.test(s));
   return {
-    initOrder: parseNames(systemsMatch ? systemsMatch[1] : ''),
-    updateOrder: parseNames(orderMatch ? orderMatch[1] : ''),
+    initOrder: [...PRODUCTION_INIT_ORDER],
+    updateOrder: [...PRODUCTION_UPDATE_ORDER],
   };
 }
 
@@ -153,7 +146,8 @@ sysLines.push('# System Registry — auto-generated');
 sysLines.push('');
 sysLines.push('> **Do not edit by hand.** Regenerate with `npm run build:indexes`. Derives the system list,');
 sysLines.push('> init/update order, and per-system event emissions/subscriptions by scanning `src/`. The');
-sysLines.push('> authoritative source is `src/core/registry.js`; this is a navigable projection of it.');
+sysLines.push('> authoritative order is `src/runtime/authoritativeSystemManifest.js` (materialized by');
+sysLines.push('> `src/core/registry.js`); this is a navigable projection of it.');
 sysLines.push('>');
 sysLines.push(`> Generated: ${now}. Live/legacy note: \`flight\` and \`ai\` slots are flag-selected`);
 sysLines.push("> (see root `AGENTS.md` §5). Defaults: `flightBackend:'v3'`, `aiBackend:'sg06-tactical'`,");

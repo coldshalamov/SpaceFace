@@ -22,6 +22,10 @@ import {
   isBulkHaulTagArmed,
   nearestRefineryRouteHint,
 } from '../src/ui/prompts/bulkHaulTag.js';
+import {
+  PRODUCTION_INIT_ORDER,
+  PRODUCTION_UPDATE_ORDER,
+} from '../src/runtime/authoritativeSystemManifest.js';
 
 function installWorld(state, currentSectorId = 'sector_ceres_belt') {
   state.world.currentSectorId = currentSectorId;
@@ -188,14 +192,20 @@ function assertSourceContracts() {
   const registrySource = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   const promptSource = readFileSync(new URL('../src/ui/prompts/bulkHaulTag.js', import.meta.url), 'utf8');
   const packageSource = readFileSync(new URL('../package.json', import.meta.url), 'utf8');
-
+  // Init/update membership is owned by the authoritative runtime manifest (not literal arrays).
   assert.match(packageSource, /"check:mining:bulk-guidance": "node scripts\/check-mining-bulk-guidance\.mjs"/,
     'package.json must expose the named T3-17 gate');
   assert.match(registrySource, /import \{ bulkHaulTag \} from '\.\.\/ui\/prompts\/bulkHaulTag\.js';/,
     'bulkHaulTag must be imported by the live registry');
-  assert.match(registrySource, /hazardHints,\s*bulkHaulTag,\s*dangerGradient/,
+  assert.match(registrySource, /\['bulkHaulTag',\s*bulkHaulTag\]/,
+    'bulkHaulTag must be registered in the registry system lookup for init materialization');
+  const bulkIdx = PRODUCTION_INIT_ORDER.indexOf('bulkHaulTag');
+  assert.ok(bulkIdx >= 0, 'bulkHaulTag must be in production init order');
+  assert.equal(PRODUCTION_INIT_ORDER[bulkIdx - 1], 'hazardHints',
     'bulkHaulTag must be a SYSTEMS-only additive registration near other prompt surfaces');
-  assert.doesNotMatch(registrySource, /UPDATE_ORDER = \[[^\]]*bulkHaulTag/s,
+  assert.equal(PRODUCTION_INIT_ORDER[bulkIdx + 1], 'dangerGradient',
+    'bulkHaulTag must sit between hazardHints and dangerGradient in init order');
+  assert.ok(!PRODUCTION_UPDATE_ORDER.includes('bulkHaulTag'),
     'bulkHaulTag must not enter the fixed-timestep update order');
   assert.doesNotMatch(promptSource, /Math\.random|Date\.now|setTimeout|setInterval/,
     'prompt surface must not use RNG, wall-clock time, or timers');
