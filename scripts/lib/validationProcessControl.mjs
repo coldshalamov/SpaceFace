@@ -75,6 +75,13 @@ export async function runWithTimeout({
   stdio = null,
   /** Called immediately after a successful spawn (pid known), before awaiting exit. */
   onSpawn = null,
+  /**
+   * Test-only timer hooks (default: real setTimeout/clearTimeout).
+   * Lets regression tests simulate "timeoutMs elapsed" without racing
+   * real process-startup latency under CI load (see FIX18/FIX20).
+   */
+  setTimeoutFn = setTimeout,
+  clearTimeoutFn = clearTimeout,
 } = {}) {
   if (!command) {
     return {
@@ -149,7 +156,7 @@ export async function runWithTimeout({
       // FIX18: cancel hard-timeout the moment lifecycle settles so a slow
       // onSpawn cannot fire a false timeout (and kill a recycled PID) after
       // the child has already exited. Idempotent if already cleared/fired.
-      if (timer) clearTimeout(timer);
+      if (timer) clearTimeoutFn(timer);
       resolve(info);
     };
     child.once('error', (error) => {
@@ -190,7 +197,7 @@ export async function runWithTimeout({
     }
   });
 
-  timer = setTimeout(async () => {
+  timer = setTimeoutFn(async () => {
     // Child already exited while onSpawn was still running — do not false-timeout.
     if (exitCaptured) return;
     timedOut = true;
@@ -203,7 +210,7 @@ export async function runWithTimeout({
   // Do not keep the event loop alive solely for the timer once the child exits.
   timer.unref?.();
   // If the child already settled before the timer was armed (sync exit), clear it.
-  if (exitCaptured && timer) clearTimeout(timer);
+  if (exitCaptured && timer) clearTimeoutFn(timer);
 
   // Reserve launch quota / notify ownership after listeners are safe.
   if (typeof onSpawn === 'function' && pidRecord.pid) {
@@ -211,7 +218,7 @@ export async function runWithTimeout({
       await onSpawn(pidRecord);
     } catch (error) {
       // onSpawn failure must not orphan the child — kill tree and surface infra_error.
-      if (timer) clearTimeout(timer);
+      if (timer) clearTimeoutFn(timer);
       try {
         await killProcessTree(child.pid);
       } catch {
@@ -233,7 +240,7 @@ export async function runWithTimeout({
   }
 
   const exit = exitCaptured ?? await exitPromise;
-  if (timer) clearTimeout(timer);
+  if (timer) clearTimeoutFn(timer);
 
   // If we timed out but the process is still around, ensure kill completed.
   if (timedOut && child.pid && !child.killed) {
