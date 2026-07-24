@@ -26,6 +26,10 @@ import {
 import { resolveRuntimeManifest } from '../src/runtime/resolveRuntimeManifest.js';
 import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
 import { fingerprintPayload } from '../src/runtime/runtimeFingerprint.js';
+import { createBus } from '../src/core/eventBus.js';
+import { createGameState } from '../src/core/gameState.js';
+import { createRegistry } from '../src/core/registry.js';
+import { createSimulation } from '../src/core/sim.js';
 
 test('production resolves identical feature values regardless of simulated host context', () => {
   const nodeLike = resolveRuntimeManifest({ profileId: 'production', nodeSafeOnly: true });
@@ -293,6 +297,103 @@ test('manifestHash includes selected flight/AI backends (different backends → 
     },
   });
   assert.equal(v3.manifestHash, v3Again.manifestHash);
+});
+
+test('authoritative runtime does not expose raw sim.step (isolation cannot be bypassed)', () => {
+  const snap = snapshotFeatureMaps();
+  try {
+    const runtime = createAuthoritativeRuntime({
+      profileId: 'production',
+      seed: 7,
+      systems: [{ name: 'probe', update() {} }],
+      seedProcessMaps: true,
+    });
+
+    // No path to unwrapped sim.step / sim.runTicks on the returned object.
+    assert.equal(runtime.sim, undefined, 'raw sim must not be exposed');
+    assert.equal(typeof runtime.sim?.step, 'undefined');
+    assert.equal(typeof runtime.sim?.runTicks, 'undefined');
+    // Wrapped entry points remain the only stepping API.
+    assert.equal(typeof runtime.step, 'function');
+    assert.equal(typeof runtime.runTicks, 'function');
+    assert.ok(runtime.state, 'state remains exposed');
+    assert.ok(runtime.bus, 'bus remains exposed');
+
+    // Own keys must not surface a raw sim host.
+    assert.ok(!Object.prototype.hasOwnProperty.call(runtime, 'sim'));
+    assert.ok(!('sim' in runtime));
+
+    runtime.dispose();
+  } finally {
+    restoreFeatureMaps(snap);
+  }
+});
+
+test('createRegistry slot identity reflects selected impl after physics fallback (not requested backend)', () => {
+  // Request V3 + tactical AI but non-Rapier physics → selectors fall back to legacy systems.
+  // Slot labels / manifestHash must record the SELECTED legacy identity, not the request.
+  const fallbackState = createGameState(101);
+  fallbackState.settings.gameplay.physicsBackend = 'custom';
+  fallbackState.settings.gameplay.flightBackend = 'v3';
+  fallbackState.settings.gameplay.aiBackend = 'sg06-tactical';
+  const fallbackRegistry = createRegistry({
+    state: fallbackState,
+    bus: createBus(),
+    helpers: {},
+    applyRuntimeFeatures: false,
+  });
+
+  const trueV3State = createGameState(102);
+  trueV3State.settings.gameplay.physicsBackend = 'rapier-dynamic';
+  trueV3State.settings.gameplay.flightBackend = 'v3';
+  trueV3State.settings.gameplay.aiBackend = 'sg06-tactical';
+  const trueV3Registry = createRegistry({
+    state: trueV3State,
+    bus: createBus(),
+    helpers: {},
+    applyRuntimeFeatures: false,
+  });
+
+  const fallbackSlots = fallbackRegistry.runtimeManifest.selectedSlots;
+  const trueV3Slots = trueV3Registry.runtimeManifest.selectedSlots;
+
+  assert.equal(fallbackSlots.flightBackend, 'legacy',
+    'non-Rapier + v3-requested must record legacy flight, not v3');
+  assert.equal(fallbackSlots.aiBackend, 'legacy',
+    'non-Rapier + tactical-requested must record legacy AI, not sg06-tactical');
+  assert.equal(trueV3Slots.flightBackend, 'v3');
+  assert.equal(trueV3Slots.aiBackend, 'sg06-tactical');
+
+  assert.notEqual(
+    fallbackRegistry.runtimeManifest.manifestHash,
+    trueV3Registry.runtimeManifest.manifestHash,
+    'legacy fallback must hash differently from true V3 / tactical selection',
+  );
+});
+
+test('explicit empty updateOrder steps zero systems; omitted steps all init systems', () => {
+  let updates = 0;
+  const sysA = { name: 'sysA', update() { updates += 1; } };
+  const sysB = { name: 'sysB', update() { updates += 1; } };
+
+  // Explicit []: init systems for handlers, but step nothing.
+  const zeroStep = createSimulation({
+    seed: 3,
+    systems: [sysA, sysB],
+    updateOrder: [],
+  });
+  updates = 0;
+  zeroStep.step(1 / 60);
+  assert.equal(updates, 0, 'updateOrder: [] must invoke zero system updates');
+
+  // Omitted updateOrder: default to all non-core init systems.
+  const allStep = createSimulation({
+    seed: 4,
+    systems: [sysA, sysB],
+  });
+  updates = 0;
+  allStep.step(1 / 60);
+  assert.equal(updates, 2, 'omitted updateOrder must step every registered non-core system');
 });
 
 test('profile resolution is immutable after init', () => {

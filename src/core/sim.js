@@ -51,8 +51,9 @@ function forkSystem(definition) {
  *
  * Init vs step order:
  * - `systems` is the registration/init list (plus core, always first).
- * - `updateOrder`, when provided, is the per-tick step sequence (production UPDATE_ORDER).
- *   When omitted, every non-core init system is stepped in registration order (focused labs).
+ * - `updateOrder`, when an array (including empty), is the per-tick step sequence.
+ *   An empty array means step zero systems (focused labs that only need init/event handlers).
+ *   When omitted/undefined, every non-core init system is stepped in registration order.
  * - Systems present only in `updateOrder` are forked for stepping but not auto-inited,
  *   matching createRegistry (SYSTEMS init, UPDATE_ORDER step).
  *
@@ -84,8 +85,10 @@ export function createSimulation(options = {}) {
   const byName = new Map(instances.map((system) => [system.name, system]));
 
   // Optional production update order: step this sequence, not the init registration list.
+  // Distinguish absent (default: all init systems) from explicit empty [] (step zero systems).
+  const hasExplicitUpdateOrder = Array.isArray(options.updateOrder);
   let updates;
-  if (Array.isArray(options.updateOrder) && options.updateOrder.length > 0) {
+  if (hasExplicitUpdateOrder) {
     updates = [];
     for (const definition of options.updateOrder) {
       const name = definition && definition.name;

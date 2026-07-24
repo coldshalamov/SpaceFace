@@ -126,7 +126,8 @@ export function createAuthoritativeRuntime(options = {}) {
      * `restore-on-step` = sequential stepping only; not safe for concurrent multi-runtime steps.
      */
     featureMapIsolation: seedMaps ? 'restore-on-step' : 'instance-config-only',
-    sim,
+    // Do NOT expose raw `sim` — callers must use step/runTicks so restore-on-step isolation runs.
+    // state/bus are safe to surface; unwrapped sim.step would bypass withFeatureMaps entirely.
     state: sim ? sim.state : options.state || null,
     bus: sim ? sim.bus : options.bus || null,
     step(dt) {
