@@ -170,7 +170,11 @@ export function createLabControllerSystem() {
         restLength,
         restLength0: lab.restLength0,
       });
-      const command = sanitizeCommand(raw);
+      // FIX 11: clamp bound comes from lab overlay when present, else LAB_DEFAULTS.
+      const command = sanitizeCommand(raw, {
+        maxImpulse: lab.maxImpulse,
+        maxTorqueImpulse: lab.maxTorqueImpulse,
+      });
       lab.lastCommand = command;
       if (!command || command.rejected) return;
       if (command.x !== 0 || command.z !== 0) {
@@ -186,8 +190,11 @@ export function createLabControllerSystem() {
 /**
  * Fail-closed + clamp a controller command. Non-finite anywhere → the whole command is dropped
  * (rejected:true, no injection); a finite command is clamped to the linear/angular bounds.
+ * @param {object|null|undefined} raw
+ * @param {{ maxImpulse?: number, maxTorqueImpulse?: number }} [bounds]
+ *   Optional overlay bounds (e.g. lab.maxImpulse). Falls back to LAB_DEFAULTS when absent/non-finite.
  */
-export function sanitizeCommand(raw) {
+export function sanitizeCommand(raw, bounds = {}) {
   if (raw == null) return null;
   // A missing axis is a legitimate 0 (inject nothing on that axis); a present-but-non-finite axis
   // fails the WHOLE command closed. Distinguishing the two keeps { x: 5 } valid and { x: NaN } rejected.
@@ -197,14 +204,20 @@ export function sanitizeCommand(raw) {
   if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(torque)) {
     return { x: 0, z: 0, torque: 0, clamped: false, rejected: true };
   }
+  const maxImpulse = Number.isFinite(bounds.maxImpulse)
+    ? bounds.maxImpulse
+    : LAB_DEFAULTS.maxImpulse;
+  const maxTorqueImpulse = Number.isFinite(bounds.maxTorqueImpulse)
+    ? bounds.maxTorqueImpulse
+    : LAB_DEFAULTS.maxTorqueImpulse;
   let clamped = false;
   const mag = Math.hypot(x, z);
-  if (mag > LAB_DEFAULTS.maxImpulse) {
-    const scale = LAB_DEFAULTS.maxImpulse / mag;
+  if (mag > maxImpulse) {
+    const scale = maxImpulse / mag;
     x *= scale; z *= scale; clamped = true;
   }
-  if (Math.abs(torque) > LAB_DEFAULTS.maxTorqueImpulse) {
-    torque = Math.sign(torque) * LAB_DEFAULTS.maxTorqueImpulse; clamped = true;
+  if (Math.abs(torque) > maxTorqueImpulse) {
+    torque = Math.sign(torque) * maxTorqueImpulse; clamped = true;
   }
   return { x, z, torque, clamped, rejected: false };
 }

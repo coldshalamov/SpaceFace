@@ -118,8 +118,8 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       }
     }
 
-    // Consume lab.* parameter overlays against spawned entities (FIX 9).
-    applyLabParamOverlays(state, aliasMap, playerEntity, overlayCtx.params);
+    // Consume lab.* parameter overlays against spawned entities (FIX 9 / FIX 13).
+    applyLabParamOverlays(state, aliasMap, playerEntity, overlayCtx.params, canonical.attachments);
 
     // Prepare physics (Rapier)
     const physicsSys = runtime.getSystem('physics');
@@ -612,8 +612,10 @@ function resolveLabAttachmentRef(state, ref, ownerId) {
 
 /**
  * Apply lab.* overlay params that only make sense after entities exist (FIX 9).
+ * FIX 13: anchorMass resolves from the canonical attachment's targetAlias (tether target),
+ * not entity insertion order.
  */
-function applyLabParamOverlays(state, aliasMap, playerEntity, params = {}) {
+function applyLabParamOverlays(state, aliasMap, playerEntity, params = {}, attachments = []) {
   if (!params || typeof params !== 'object') return;
 
   if (Number.isFinite(params.entrySpeed) && playerEntity && playerEntity.vel) {
@@ -632,28 +634,37 @@ function applyLabParamOverlays(state, aliasMap, playerEntity, params = {}) {
   }
 
   if (Number.isFinite(params.anchorMass)) {
-    // Prefer attachment target alias "anchor", else first non-player entity.
-    let anchor = null;
-    if (aliasMap.anchor != null) anchor = state.entities.get(aliasMap.anchor);
-    if (!anchor) {
-      for (const [alias, id] of Object.entries(aliasMap)) {
-        if (alias === 'player') continue;
-        const e = state.entities.get(id);
-        if (e && e.id !== state.playerId) {
-          anchor = e;
-          break;
-        }
-      }
-    }
-    if (anchor) {
-      anchor.mass = params.anchorMass;
-      if (anchor.physicsBody) {
-        anchor.physicsBody.mass = params.anchorMass;
-        anchor.physicsBody.inertiaY = params.anchorMass * 8;
-        anchor.physicsBody.revision = (anchor.physicsBody.revision | 0) + 1;
+    const target = resolveAnchorMassTarget(state, aliasMap, attachments);
+    if (target) {
+      target.mass = params.anchorMass;
+      if (target.physicsBody) {
+        target.physicsBody.mass = params.anchorMass;
+        target.physicsBody.inertiaY = params.anchorMass * 8;
+        target.physicsBody.revision = (target.physicsBody.revision | 0) + 1;
       }
     }
   }
+}
+
+/**
+ * Resolve the entity that lab.anchorMass should rewrite (FIX 13).
+ * Prefer the first attachment's targetAlias (the real tether target); fall back to alias "anchor".
+ * Never use insertion-order heuristics over unrelated non-player entities.
+ */
+function resolveAnchorMassTarget(state, aliasMap, attachments = []) {
+  const attList = Array.isArray(attachments) ? attachments : [];
+  for (const att of attList) {
+    const targetAlias = att && att.targetAlias;
+    if (typeof targetAlias === 'string' && targetAlias && aliasMap[targetAlias] != null) {
+      const e = state.entities.get(aliasMap[targetAlias]);
+      if (e) return e;
+    }
+  }
+  if (aliasMap.anchor != null) {
+    const e = state.entities.get(aliasMap.anchor);
+    if (e) return e;
+  }
+  return null;
 }
 
 function makeSample(tick, state, ctx) {

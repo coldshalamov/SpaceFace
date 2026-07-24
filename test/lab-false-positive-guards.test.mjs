@@ -8,10 +8,14 @@ import { fileURLToPath } from 'node:url';
 import { runLabScenario } from '../src/testing/lab/runScenario.js';
 import { compareSaveLoad } from '../src/testing/lab/saveLoadCompare.js';
 import { evaluateOracles } from '../src/testing/lab/oracleEngine.js';
-import { createInputTapeDriver } from '../src/testing/lab/inputTape.js';
+import {
+  createInputTapeDriver,
+  collectFrameCommandsAtTick,
+} from '../src/testing/lab/inputTape.js';
 import { createMasslineInputGrammar } from '../src/systems/masslineInputGrammar.js';
-import { FOCUSED_FLIGHT_SYSTEMS } from '../src/testing/lab/systemBundles.js';
+import { FOCUSED_FLIGHT_SYSTEMS, FOCUSED_MASSLINE_SYSTEMS } from '../src/testing/lab/systemBundles.js';
 import { validateSimScenario } from '../src/contracts/simScenarioSchema.js';
+import { sanitizeCommand } from '../scripts/lib/masslineControlLab.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const flightDoc = JSON.parse(readFileSync(
@@ -337,4 +341,194 @@ test('FIX10: authored attachment restLength is applied after create', async () =
     Math.abs(result.params.restLength0 - 90) < 1.0,
     `restLength0 should be ~90, got ${result.params.restLength0}`,
   );
+});
+
+// ── FIX 11: lab.maxImpulse overlay must clamp controller commands ───────────
+
+test('FIX11: sanitizeCommand honors overlay maxImpulse bound', () => {
+  const cmd = sanitizeCommand({ x: 100, z: 0 }, { maxImpulse: 1 });
+  assert.equal(cmd.rejected, false);
+  assert.equal(cmd.clamped, true);
+  assert.ok(Math.abs(cmd.x) <= 1 + 1e-9, `cmdX=${cmd.x} must be ≤ 1`);
+  assert.ok(Math.abs(Math.hypot(cmd.x, cmd.z) - 1) < 1e-6);
+  // Without overlay bound, default lab max is huge — 100 is unclamped.
+  const unclamped = sanitizeCommand({ x: 100, z: 0 });
+  assert.equal(unclamped.clamped, false);
+  assert.equal(unclamped.x, 100);
+});
+
+test('FIX11: lab.maxImpulse overlay clamps traced controller command', async () => {
+  const result = await runLabScenario({
+    ...orbitDoc,
+    id: 'massline.max-impulse-overlay',
+    ticks: 20,
+    // Avoid public-input grammar path constraints for this controller clamp probe.
+    evidenceClass: 'focused-fixture',
+    policies: [{ id: 'none', version: 1 }],
+    parameterOverlay: {
+      schema: 'spaceface.labParameterOverlay.v1',
+      version: 1,
+      values: { 'lab.maxImpulse': 1 },
+    },
+    metrics: [
+      { name: 'invariant.finiteState', version: 1, threshold: { op: '==', value: 1 } },
+    ],
+  }, {
+    verbosity: 3,
+    controller: () => ({ x: 100, z: 0 }),
+  });
+  assert.notEqual(result.exitClass, 3, result.error);
+  assert.notEqual(result.exitClass, 4, JSON.stringify(result.validation || result.error));
+  assert.ok(result.overlayApplied && result.overlayApplied['lab.maxImpulse'] === 1);
+  assert.ok(result.overlayParams && result.overlayParams.maxImpulse === 1);
+  assert.ok(Array.isArray(result.trace) && result.trace.length > 0, 'verbosity 3 must expose trace');
+  const withCmd = result.trace.filter((s) => s.cmdX != null || s.cmdClamped != null);
+  assert.ok(withCmd.length > 0, 'controller must leave lastCommand samples on the trace');
+  for (const s of withCmd) {
+    if (s.cmdRejected) continue;
+    assert.ok(Math.abs(s.cmdX) <= 1 + 1e-6, `traced cmdX=${s.cmdX} must be clamped to overlay maxImpulse=1`);
+    assert.equal(s.cmdClamped, true, `expected cmdClamped true at tick ${s.tick}`);
+  }
+});
+
+// ── FIX 12: same-tick frames must not drop earlier commands ─────────────────
+
+test('FIX12: collectFrameCommandsAtTick accumulates every same-tick frame', () => {
+  const frames = [
+    { tick: 5, commands: [{ kind: 'combatAction', actionId: 'first', actor: 'player' }] },
+    { tick: 5, commands: [{ kind: 'combatAction', actionId: 'second', actor: 'player' }] },
+    { tick: 6, commands: [{ kind: 'combatAction', actionId: 'later', actor: 'player' }] },
+  ];
+  const at5 = collectFrameCommandsAtTick(frames, 5);
+  assert.equal(at5.length, 2);
+  assert.equal(at5[0].actionId, 'first');
+  assert.equal(at5[1].actionId, 'second');
+  assert.equal(collectFrameCommandsAtTick(frames, 6).length, 1);
+  assert.equal(collectFrameCommandsAtTick(frames, 4).length, 0);
+});
+
+test('FIX12: driver dispatches commands from every frame at the current tick', () => {
+  const driver = createInputTapeDriver({
+    frames: [
+      {
+        tick: 5,
+        input: { moveX: 0, moveZ: 0 },
+        commands: [{ kind: 'combatAction', actionId: 'cmd-a', actor: 'player' }],
+      },
+      {
+        tick: 5,
+        input: { moveX: 1, moveZ: 0 },
+        commands: [{ kind: 'combatAction', actionId: 'cmd-b', actor: 'player' }],
+      },
+    ],
+  }, { masslineGrammar: false });
+
+  const state = {
+    input: { actions: {} },
+    entities: new Map(),
+    playerId: 1,
+  };
+  // Before tick 5: no commands.
+  const early = driver.apply(state, 4, 1 / 60, {});
+  assert.equal(early.frameCommands.length, 0);
+
+  const atTick = driver.apply(state, 5, 1 / 60, {});
+  assert.equal(atTick.frameCommands.length, 2, 'both same-tick frame commands must dispatch');
+  assert.equal(atTick.frameCommands[0].actionId, 'cmd-a');
+  assert.equal(atTick.frameCommands[1].actionId, 'cmd-b');
+  // Sticky input still last-wins.
+  assert.equal(atTick.moveX, 1);
+});
+
+// ── FIX 13: anchorMass targets attachment targetAlias ───────────────────────
+
+test('FIX13: lab.anchorMass applies to attachment targetAlias, not insertion-order decoy', async () => {
+  const masses = Object.create(null);
+  const capture = {
+    name: 'labAnchorMassCapture',
+    init(ctx) { this.state = ctx.state; this.captured = false; },
+    update() {
+      if (this.captured) return;
+      this.captured = true;
+      for (const entity of this.state.entities.values()) {
+        const alias = entity && entity.data && entity.data.scenarioAlias;
+        if (alias) masses[alias] = entity.mass;
+      }
+    },
+  };
+
+  const result = await runLabScenario({
+    schema: 'spaceface.simScenario.v1',
+    id: 'massline.anchor-mass-target-alias',
+    version: 1,
+    evidenceClass: 'focused-fixture',
+    runtimeProfile: 'focused-lab',
+    seed: 47,
+    ticks: 8,
+    world: {
+      fixtureProfile: 'massline',
+      sectorId: 'sector_helios_prime',
+      mode: 'flight',
+      physicsBackend: 'rapier-dynamic',
+      flightBackend: 'v3',
+      aiBackend: 'legacy',
+      credits: 5000,
+    },
+    entities: [
+      {
+        alias: 'player',
+        profile: 'ship.starter',
+        role: 'player',
+        team: 0,
+        isPlayer: true,
+        pos: { x: 0, z: 0 },
+        vel: { x: 0, z: 10 },
+        heading: 0,
+        persistent: true,
+      },
+      {
+        // Inserted before the real target — old heuristic would rewrite this mass.
+        alias: 'decoy',
+        profile: 'asteroid.mid',
+        role: 'lab_decoy',
+        team: 2,
+        pos: { x: -40, z: 0 },
+        overrides: { mass: 111, radius: 3 },
+        persistent: true,
+      },
+      {
+        alias: 'heavy',
+        profile: 'asteroid.heavy',
+        role: 'lab_anchor',
+        team: 2,
+        pos: { x: 120, z: 0 },
+        overrides: { mass: 400, radius: 6 },
+        persistent: true,
+      },
+    ],
+    attachments: [{
+      defId: 'tether_standard',
+      ownerAlias: 'player',
+      targetAlias: 'heavy',
+    }],
+    parameterOverlay: {
+      schema: 'spaceface.labParameterOverlay.v1',
+      version: 1,
+      values: { 'lab.anchorMass': 9000 },
+    },
+    frames: [{ tick: 0, input: { moveX: 0, moveZ: 0 } }],
+    metrics: [
+      { name: 'invariant.finiteState', version: 1, threshold: { op: '==', value: 1 } },
+    ],
+    observer: { enabled: false },
+  }, {
+    verbosity: 1,
+    systems: [...FOCUSED_MASSLINE_SYSTEMS, capture],
+  });
+
+  assert.notEqual(result.exitClass, 3, result.error);
+  assert.notEqual(result.exitClass, 4, JSON.stringify(result.validation || result.error));
+  assert.ok(result.overlayApplied && result.overlayApplied['lab.anchorMass'] === 9000);
+  assert.equal(masses.heavy, 9000, `heavy (targetAlias) mass must be 9000, got ${masses.heavy}`);
+  assert.equal(masses.decoy, 111, `decoy must keep authored mass 111, got ${masses.decoy}`);
 });

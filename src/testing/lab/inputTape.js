@@ -18,7 +18,8 @@ export function normalizeTape(tape = {}) {
 }
 
 /**
- * Last-frame-wins resolve (same contract as masslineControlLab.resolveInput / sf-sim normalizeTape).
+ * Last-frame-wins resolve for sticky input (same contract as masslineControlLab.resolveInput).
+ * Input axes use this; commands use collectFrameCommandsAtTick so same-tick frames are not dropped.
  */
 export function resolveFrameInput(frames, tick) {
   if (!Array.isArray(frames) || frames.length === 0) return null;
@@ -28,6 +29,25 @@ export function resolveFrameInput(frames, tick) {
     else break;
   }
   return current;
+}
+
+/**
+ * Collect commands from every frame authored at exactly `tick` (FIX 12).
+ * Frames are assumed sorted by tick (normalizeTape). Same-tick frames all contribute.
+ */
+export function collectFrameCommandsAtTick(frames, tick) {
+  if (!Array.isArray(frames) || frames.length === 0) return [];
+  const t = tick | 0;
+  const out = [];
+  for (const frame of frames) {
+    const ft = frame.tick | 0;
+    if (ft < t) continue;
+    if (ft > t) break;
+    if (Array.isArray(frame.commands) && frame.commands.length) {
+      out.push(...frame.commands);
+    }
+  }
+  return out;
 }
 
 /**
@@ -140,10 +160,10 @@ export function createInputTapeDriver(tape, options = {}) {
         state.input.actions.massline = { ...frameInput.massline };
       }
 
-      // Commands only fire at the frame's authored tick (not sticky last-wins).
-      const frameCommands = (frame && (frame.tick | 0) === (tick | 0) && Array.isArray(frame.commands))
-        ? frame.commands
-        : [];
+      // Commands fire at their authored tick (not sticky last-wins).
+      // FIX 12: when multiple frames share a tick (schema permits; sticky input last-wins),
+      // accumulate commands from EVERY frame at this tick — never silently drop earlier ones.
+      const frameCommands = collectFrameCommandsAtTick(frames, tick);
 
       return {
         moveX,
