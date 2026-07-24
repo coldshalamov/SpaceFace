@@ -2,7 +2,7 @@
 
 **Current integration snapshot:** 2026-07-23 at `master` HEAD `bf558142`. PQ-017 is integrated at
 `2a9517d8`, its closeout/docs transaction is `bf558142`, and PQ-018 is next. Four worktrees are
-registered: the dirty primary checkout, a clean protected Lark donor, a dirty VP-220 candidate, and
+registered: the dirty primary checkout, a clean protected Lark donor, a clean VP-220 candidate, and
 the clean `codex/integration-checkpoint-20260723` reconciliation checkout. The readable HUD
 (`ea698805`) and reviewed Helios civilian family (`54548e09`) are integrated; the former mixed
 graphics donor is tagged, hash-archived, and physically removed. The
@@ -21,7 +21,7 @@ move after this document is written. Use [`NOW.md`](./NOW.md) for volatile owner
 |---|---|---|
 | `C:\Users\93rob\Documents\GitHub\SpaceFace` | `master` / `bf558142` | Product authority. Dirty with protected worldbuilding/story/runtime work and 592 untracked paths, including about 229 MB of generated `media/**`; do not use it as an integration checkout. |
 | `C:\Users\93rob\AppData\Local\Temp\grok-goal-8066f05c8cef\worktree-gfx-remaster` | `agent/gfx-production-remaster-lark` / `d538a583` | Clean, 16 commits ahead and three behind `master`; ownership not released; review and selectively port, never whole-merge or remove opportunistically. |
-| `C:\Users\93rob\sf-vp220` | `codex/vp220-propulsion-graphics` / base `8f1c630f` | 23-path uncommitted propulsion plus acceptance-harness candidate; safe checks reported green, headed visual acceptance absent; preserve and review before checkpointing. |
+| `C:\Users\93rob\sf-vp220` | `codex/vp220-propulsion-graphics` / `74775bf8` | Clean reviewed 23-path propulsion plus acceptance-harness checkpoint; 82/82 focused tests, five source/runtime checks, and all 27 self-test mutants pass. It is one candidate commit ahead and two `master` commits behind; headed visual acceptance is absent, so preserve for overlap review/rebase and real Browser/Electron proof. |
 | `C:\Users\93rob\sf-checkpoint-20260723` | `codex/integration-checkpoint-20260723` / based on `bf558142` | Isolated reconciliation checkout. Integrates only the reviewed asynchronous handoffs and this inventory transaction; it does not absorb foreign dirty work. |
 
 The eight ChatGPT portfolio branches each contain one reviewed historical handoff (the performance
@@ -39,12 +39,14 @@ Recheck processes and locks before any headed acceptance or asset build.
 1. Merge the isolated checkpoint only after link/diff validation.
 2. Keep Lark registered until its owner hands off and its 16-commit delta receives source, route,
    visual, manifest, and overlap review.
-3. Make VP-220 recoverable on its own branch only after reviewing the entire dirty diff; visual
-   acceptance remains a separate later transition.
+3. Keep VP-220 registered at recoverable commit `74775bf8` until its two-commit `master` overlap is
+   reviewed, it is rebased, and real headed Browser/Electron evidence passes. The clean checkpoint is
+   not visual acceptance or integration.
 4. Split the primary worldbuilding/source changes from generated media. Require provenance,
    licensing, manifest, duplicate, and visual review before committing large media.
 5. Remove a worktree or branch only after its exact tip is integrated or preserved by a named
-   recovery ref/archive and its checkout is clean. Never delete the dirty primary or VP-220 trees.
+   recovery ref/archive, its checkout is clean, and its review obligations are discharged. Never
+   delete the dirty primary tree or the still-unaccepted VP-220 and Lark lanes opportunistically.
 
 ## Current integration checkpoint — 2026-07-21 (graphics/program closeout)
 

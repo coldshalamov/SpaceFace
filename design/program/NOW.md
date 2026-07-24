@@ -27,12 +27,14 @@ work listed below remains outside that checkpoint.
   Do not double-assign PQ-022, remove the worktree, or whole-merge the branch. A second external
   graphics process also wrote primary-tree evidence under
   `Users93robAppDataLocalTempgrok-goal-5d58d165aa45implementer/**`; preserve it.
-- **VP-220 propulsion — protected dirty isolated candidate.** Worktree `C:\Users\93rob\sf-vp220`,
-  branch `codex/vp220-propulsion-graphics`, remains at base `8f1c630f` with 23 dirty paths and no
-  staged content. The 8,517-line candidate includes fleet propulsion runtime work plus a completed
-  fail-closed Browser/Electron acceptance harness. It is not visually accepted or integrated; commit
-  a recoverable candidate only after full diff review, then rebase and run the real headed evidence
-  path before promotion.
+- **VP-220 propulsion — clean protected isolated candidate.** Worktree `C:\Users\93rob\sf-vp220`,
+  branch `codex/vp220-propulsion-graphics`, is clean at `74775bf8` (merge base `8f1c630f`; one
+  candidate commit ahead and two `master` commits behind). The reviewed 23-path checkpoint includes
+  fleet propulsion runtime work plus a fail-closed Browser/Electron acceptance harness. Focused proof
+  is green: 82/82 tests, five source/runtime checks, and all 27 self-test mutants rejected; candidate
+  hash `363d8df746652c28ed8bd8551811cb1223141308e8c37eecd4e932a788b47a15`. It is not visually
+  accepted or integrated. Preserve the worktree until overlap review/rebase and the real headed
+  Browser/Electron evidence path are complete.
 - **Worldbuilding and media — protected foreign WIP in the primary tree.** Preserve
   `docs/worldbuilding/README.md`, `docs/worldbuilding/CREATIVE-DIRECTION.md`,
   `docs/worldbuilding/stylistic-influences/**`, the related
