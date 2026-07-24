@@ -17,7 +17,15 @@ import {
   computeLayerRadiance,
   bindEnvelopeFromRecipe,
 } from '../materials/flowFlipbookMaterial.js';
+import {
+  createSegmentedPlumeGeometry,
+  resolveSegmentCount,
+  segmentedVertexCount,
+  segmentedIndexCount,
+} from '../geometry/segmentedPlumeGeometry.js';
 import { EventLightPool } from './eventLight.js';
+
+const RCS_QUALITY_TIERS = ['high', 'medium', 'low'];
 
 function hexToRgb(hex, out) {
   if (typeof hex === 'string' && hex.length >= 7) {
@@ -320,7 +328,47 @@ export class RcsImpulseSystem {
     this._a11y = opts.a11y || this.pool._emptyA11y;
     this._textures = opts.textures || {};
     this._disposed = false;
+    this._qualityTier = 'high';
     if (THREE) this._initThree(THREE, opts);
+  }
+
+  getActiveGeometryStats() {
+    if (!this.layerBatches || !this.layerBatches.length) {
+      return { segments: 0, vertexCount: 0, indexCount: 0, tier: this._qualityTier };
+    }
+    const geo = this.layerBatches[0].mesh && this.layerBatches[0].mesh.geometry;
+    const segments = geo?.userData?.plumeSegments
+      ?? resolveSegmentCount(this.recipe, this._qualityTier);
+    return {
+      segments,
+      vertexCount: geo?.userData?.plumeVertexCount ?? segmentedVertexCount(segments),
+      indexCount: geo?.userData?.plumeIndexCount ?? segmentedIndexCount(segments),
+      tier: this._qualityTier,
+    };
+  }
+
+  setQualityTier(tier) {
+    const t = tier === 'medium' || tier === 'low' ? tier : 'high';
+    if (t === this._qualityTier || !this.layerBatches) {
+      this._qualityTier = t;
+      return this._qualityTier;
+    }
+    this._qualityTier = t;
+    for (let i = 0; i < this.layerBatches.length; i++) {
+      const batch = this.layerBatches[i];
+      const tb = batch.tierBuffers && batch.tierBuffers[t];
+      if (!tb) continue;
+      batch.mesh.geometry = tb.geo;
+      batch.offset = tb.offset;
+      batch.axisScale = tb.axisScale;
+      batch.params = tb.params;
+      batch.dynamics = tb.dynamics;
+      batch.color = tb.color;
+      batch.attrs = tb.attrs;
+      batch.mesh.count = 0;
+      batch.writeCount = 0;
+    }
+    return this._qualityTier;
   }
 
   _initThree(THREE, opts) {
@@ -331,6 +379,10 @@ export class RcsImpulseSystem {
     this.layerBatches = [];
     const idn = this.recipe.identity.flowCharacter;
     const capacity = this.pool.maxImpulses;
+    const initialTier = opts.qualityTier === 'medium' || opts.qualityTier === 'low'
+      ? opts.qualityTier
+      : 'high';
+    this._qualityTier = initialTier;
 
     for (let li = 0; li < this.pool._layerCount; li++) {
       const role = this.pool._layerRole[li];
@@ -361,22 +413,34 @@ export class RcsImpulseSystem {
       }
       bindEnvelopeFromRecipe(mat, this.recipe);
 
-      const geo = new THREE.PlaneGeometry(1, 1, 1, 1);
-      geo.translate(0.5, 0, 0);
-      const offset = new Float32Array(capacity * 3);
-      const axisScale = new Float32Array(capacity * 4);
-      const params = new Float32Array(capacity * 4);
-      const color = new Float32Array(capacity * 3);
-      const instOffset = new THREE.InstancedBufferAttribute(offset, 3);
-      const instAxis = new THREE.InstancedBufferAttribute(axisScale, 4);
-      const instParams = new THREE.InstancedBufferAttribute(params, 4);
-      const instColor = new THREE.InstancedBufferAttribute(color, 3);
-      geo.setAttribute('instanceOffset', instOffset);
-      geo.setAttribute('instanceAxisScale', instAxis);
-      geo.setAttribute('instanceParams', instParams);
-      geo.setAttribute('instanceColor', instColor);
-
-      const mesh = new THREE.InstancedMesh(geo, mat, capacity);
+      const tierBuffers = Object.create(null);
+      for (let ti = 0; ti < RCS_QUALITY_TIERS.length; ti++) {
+        const tier = RCS_QUALITY_TIERS[ti];
+        const segs = resolveSegmentCount(this.recipe, tier);
+        const geo = createSegmentedPlumeGeometry(THREE, segs);
+        const offset = new Float32Array(capacity * 3);
+        const axisScale = new Float32Array(capacity * 4);
+        const params = new Float32Array(capacity * 4);
+        const dynamics = new Float32Array(capacity * 4);
+        const color = new Float32Array(capacity * 3);
+        const instOffset = new THREE.InstancedBufferAttribute(offset, 3);
+        const instAxis = new THREE.InstancedBufferAttribute(axisScale, 4);
+        const instParams = new THREE.InstancedBufferAttribute(params, 4);
+        const instDynamics = new THREE.InstancedBufferAttribute(dynamics, 4);
+        const instColor = new THREE.InstancedBufferAttribute(color, 3);
+        geo.setAttribute('instanceOffset', instOffset);
+        geo.setAttribute('instanceAxisScale', instAxis);
+        geo.setAttribute('instanceParams', instParams);
+        geo.setAttribute('instanceDynamics', instDynamics);
+        geo.setAttribute('instanceColor', instColor);
+        tierBuffers[tier] = {
+          geo, offset, axisScale, params, dynamics, color,
+          attrs: { instOffset, instAxis, instParams, instDynamics, instColor },
+          segments: segs,
+        };
+      }
+      const active = tierBuffers[initialTier];
+      const mesh = new THREE.InstancedMesh(active.geo, mat, capacity);
       mesh.count = 0;
       mesh.frustumCulled = false;
       mesh.name = `rcs-layer:${role}`;
@@ -399,11 +463,13 @@ export class RcsImpulseSystem {
         mesh,
         material: mat,
         baseIntensity,
-        offset,
-        axisScale,
-        params,
-        color,
-        attrs: { instOffset, instAxis, instParams, instColor },
+        offset: active.offset,
+        axisScale: active.axisScale,
+        params: active.params,
+        dynamics: active.dynamics,
+        color: active.color,
+        attrs: active.attrs,
+        tierBuffers,
         capacity,
         writeCount: 0,
         uScratch,
@@ -440,6 +506,7 @@ export class RcsImpulseSystem {
     if (this._disposed) return this.pool._result;
     this._time += dt || 0;
     const flags = a11y == null ? this._a11y : a11y;
+    if (flags.qualityTier) this.setQualityTier(flags.qualityTier);
     const result = this.pool.update(dt, flags);
 
     // Event lights: begin → write each impulse → finalize (counts always correct)
@@ -454,6 +521,9 @@ export class RcsImpulseSystem {
     this.eventLights.finalize();
 
     if (this.layerBatches && !this._disposed) {
+      const motionScale = this.recipe.accessibility?.reducedMotion?.flowSpeedScale ?? 0.08;
+      const baseFlow = this.recipe.identity.flowCharacter.baseFlow
+        * (flags.reducedMotion ? motionScale : 1);
       for (let b = 0; b < this.layerBatches.length; b++) this.layerBatches[b].writeCount = 0;
       for (let i = 0; i < result.activeSlotCount; i++) {
         const s = this.pool.slots[i];
@@ -473,7 +543,13 @@ export class RcsImpulseSystem {
         batch.params[a] = s.width;
         batch.params[a + 1] = s.envelope;
         batch.params[a + 2] = s.phase;
-        batch.params[a + 3] = 1.0; // intensity uniform-only
+        batch.params[a + 3] = 0; // boost not used for impulse jets
+        if (batch.dynamics) {
+          batch.dynamics[a] = baseFlow;
+          batch.dynamics[a + 1] = 0.5;
+          batch.dynamics[a + 2] = 0.9;
+          batch.dynamics[a + 3] = 1.0;
+        }
         batch.color[o] = s.color[0];
         batch.color[o + 1] = s.color[1];
         batch.color[o + 2] = s.color[2];
@@ -485,14 +561,13 @@ export class RcsImpulseSystem {
         batch.attrs.instOffset.needsUpdate = true;
         batch.attrs.instAxis.needsUpdate = true;
         batch.attrs.instParams.needsUpdate = true;
+        if (batch.attrs.instDynamics) batch.attrs.instDynamics.needsUpdate = true;
         batch.attrs.instColor.needsUpdate = true;
         batch.mesh.count = batch.writeCount;
         batch.mesh.visible = batch.writeCount > 0;
         const u = batch.uScratch;
         u.time = this._time;
-        const motionScale = this.recipe.accessibility?.reducedMotion?.flowSpeedScale ?? 0.08;
-        u.flowSpeed = this.recipe.identity.flowCharacter.baseFlow
-          * (flags.reducedMotion ? motionScale : 1);
+        u.flowSpeed = baseFlow;
         u.reducedMotion = !!flags.reducedMotion;
         u.reducedFlash = !!flags.reducedFlash;
         const reducedFlashGain = flags.reducedFlash
@@ -547,7 +622,14 @@ export class RcsImpulseSystem {
     if (this.layerBatches) {
       for (let i = 0; i < this.layerBatches.length; i++) {
         const b = this.layerBatches[i];
-        if (b.mesh?.geometry?.dispose) b.mesh.geometry.dispose();
+        if (b.tierBuffers) {
+          for (let ti = 0; ti < RCS_QUALITY_TIERS.length; ti++) {
+            const tb = b.tierBuffers[RCS_QUALITY_TIERS[ti]];
+            if (tb?.geo?.dispose) tb.geo.dispose();
+          }
+        } else if (b.mesh?.geometry?.dispose) {
+          b.mesh.geometry.dispose();
+        }
         if (b.material?.dispose) b.material.dispose();
         b.mesh = null;
         b.material = null;

@@ -64,8 +64,12 @@ test('live Kestrel seam suppresses the legacy bead trail and generic boost burst
   assert.match(vfxSource, /if \(this\._usesProductionThruster\(e\)\) return \{ particles: 0, streaks: 0 \}/);
   assert.match(vfxSource, /if \(this\._usesProductionThruster\(e\)\) return;/,
     'event-driven thrust/boost paths must not layer generic sprites over the production plume');
-  assert.match(vfxSource, /new ContinuousPlumeSystem\(/);
-  assert.match(vfxSource, /new RcsImpulseSystem\(/);
+  // Production owners: fleet constructs ContinuousPlumeSystem + RcsImpulseSystem per family.
+  assert.match(vfxSource, /FamilyProductionFleet/);
+  assert.match(vfxSource, /new FamilyProductionFleet\(/);
+  const fleetSource = readFileSync(new URL('../src/render/thruster/systems/familyFleet.js', import.meta.url), 'utf8');
+  assert.match(fleetSource, /new ContinuousPlumeSystem\(/);
+  assert.match(fleetSource, /new RcsImpulseSystem\(/);
 });
 
 test('live Kestrel plume remains visible when the legacy HDR-energy toggle is off', () => {
@@ -251,7 +255,9 @@ test('turbo changes plume length, axial structure, and shear without using opaci
   assert.equal(turboSheath.material.uniforms.uOpacity.value, cruiseSheath.material.uniforms.uOpacity.value,
     'cruise/turbo identity cannot be an opacity swap');
   assert.ok(turboSheath.material.uniforms.uBoostBlend.value > 0.95);
-  assert.match(FLOW_FLIPBOOK_FRAGMENT, /uBoostBlend \* 2\.4/,
+  // Per-instance dynBoost (from instanceDynamics / params.w) owns multi-entity continuum;
+  // uBoostBlend remains as a single-writer fallback uniform.
+  assert.match(FLOW_FLIPBOOK_FRAGMENT, /dynBoost \* 2\.4/,
     'turbo changes axial breakup frequency');
   assert.match(FLOW_FLIPBOOK_FRAGMENT, /float crossFilaments = 0\.56 \+ 0\.44/,
     'outer layers carry attached directional shear filaments');
@@ -353,11 +359,82 @@ test('normal-route acceptance rejects draw-count-only and legacy-profile false p
 
 test('legacy NPC engine fallback cannot emit moving particle beads', () => {
   const start = vfxSource.indexOf('  _emitEngineTrail(e, throttle, dt) {');
-  const end = vfxSource.indexOf('\n  update(frameDt)', start);
-  assert.ok(start >= 0 && end > start, 'engine fallback source boundary must remain inspectable');
+  assert.ok(start >= 0, 'engine fallback source boundary must remain inspectable');
+  // Bound the method body at its own closing — do not sweep forward to update()
+  // (that span includes unrelated combat/field spawn paths).
+  const close = vfxSource.indexOf('\n    return { particles: particlesSpawned, streaks: streaksSpawned };', start);
+  assert.ok(close > start, 'engine fallback must return bounded particle/streak counts');
+  const end = vfxSource.indexOf('\n  },', close);
+  assert.ok(end > close, 'engine fallback method end must remain inspectable');
   const fallback = vfxSource.slice(start, end);
   assert.doesNotMatch(fallback, /_spawnParticle\(/,
     'engine fallback must use attached pooled streak layers, never round moving particles');
+  assert.match(fallback, /_spawnTrailStreak\(/,
+    'fallback must emit the attached streak substrate');
   assert.match(fallback, /streaksSpawned = 1/,
     'fallback emits one alternating core-or-sheath layer per cadence to stay bounded');
+});
+
+test('low-tier ContinuousPlumeSystem is readable core+inner GPU feedback', () => {
+  const LOW = {
+    reducedMotion: false,
+    reducedFlash: false,
+    lowQuality: true,
+    qualityTier: 'low',
+  };
+  assert.deepEqual(KESTREL_MAIN_PLUME_RECIPE.accessibility.lowQuality.preferRoles, ['core', 'inner']);
+  assert.deepEqual(KESTREL_MAIN_PLUME_RECIPE.quality.low.layers, ['core', 'inner']);
+
+  const plume = new ContinuousPlumeSystem(THREE, KESTREL_MAIN_PLUME_RECIPE, {
+    distortionEnabled: false,
+    qualityTier: 'low',
+  });
+  const before = plume.pool._allocCount;
+  const result = plume.update(1 / 60, 1, [{ x: 0, y: 0, z: 0, ax: -1, ay: 0, az: 0 }], {
+    boost: 0.85,
+    a11y: LOW,
+  });
+  assert.equal(result.frameAllocations, 0, 'low-tier update allocates nothing');
+  assert.equal(plume.pool._allocCount, before, 'pool identity stable after update');
+  assert.equal(result.roleCount, 2, 'exactly two active roles');
+  assert.deepEqual(
+    result.roles.slice(0, result.roleCount),
+    ['core', 'inner'],
+    'compact roles must be core+inner (not core+sheath)',
+  );
+
+  const activeRoles = plume.pool.slots
+    .slice(0, plume.pool.activeCount)
+    .map((s) => s.layerRole)
+    .sort();
+  assert.deepEqual(activeRoles, ['core', 'inner'], 'pool slots must be exactly core+inner');
+
+  const core = plume.pool.slots.slice(0, plume.pool.activeCount).find((s) => s.layerRole === 'core');
+  const inner = plume.pool.slots.slice(0, plume.pool.activeCount).find((s) => s.layerRole === 'inner');
+  assert.ok(core && inner, 'core and inner slots present');
+  assert.ok(inner.length >= core.length * 2,
+    `inner length ${inner.length} must be ≥2× core ${core.length}`);
+  assert.ok(inner.intensity >= 4,
+    `inner intensity ${inner.intensity} must be ≥4 (readable stream, not dark sheath)`);
+  assert.ok(inner.opacity >= 0.5,
+    `inner opacity ${inner.opacity} must be ≥0.5`);
+
+  const coreBatch = plume.layerBatches.find((b) => b.role === 'core');
+  const innerBatch = plume.layerBatches.find((b) => b.role === 'inner');
+  assert.ok(coreBatch && innerBatch, 'GPU batches exist');
+  assert.equal(coreBatch.writeCount, 1, 'core batch writeCount');
+  assert.equal(innerBatch.writeCount, 1, 'inner batch writeCount');
+  assert.equal(coreBatch.mesh.count, 1, 'core mesh.count');
+  assert.equal(innerBatch.mesh.count, 1, 'inner mesh.count');
+  assert.equal(coreBatch.mesh.visible, true, 'core mesh visible');
+  assert.equal(innerBatch.mesh.visible, true, 'inner mesh visible');
+
+  for (const role of ['sheath', 'vapor', 'distortion']) {
+    const batch = plume.layerBatches.find((b) => b.role === role);
+    if (!batch) continue;
+    assert.equal(batch.writeCount, 0, `${role} must be inactive at low tier`);
+    assert.equal(batch.mesh.count, 0, `${role} mesh.count must be 0`);
+  }
+
+  plume.dispose();
 });

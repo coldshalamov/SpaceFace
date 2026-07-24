@@ -37,6 +37,8 @@ import { isHostileToPlayer } from '../systems/scanner.js';
 import {
   partIdFromSlotUrls,
   resolveEngineProfile,
+  resolveEngineProfileId,
+  getEngineProfileBase,
   resolveMuzzleProfile,
   resolveProjectileTrailProfile,
   resolveImpactPresentationProfile,
@@ -50,9 +52,19 @@ import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAc
 import { ContinuousPlumeSystem } from './thruster/systems/continuousPlume.js';
 import { RcsImpulseSystem } from './thruster/systems/rcsImpulse.js';
 import {
+  FamilyProductionFleet,
+  FLEET_MAX_SHIPS,
+  FLEET_SOCKETS_PER_SHIP,
+} from './thruster/systems/familyFleet.js';
+import {
   KESTREL_MAIN_PLUME_RECIPE,
   KESTREL_RCS_RECIPE,
 } from './thruster/recipes/kestrelRecipes.js';
+import {
+  resolveThrusterRecipes,
+  collectThrusterTextureIds,
+  listThrusterRecipePacks,
+} from './thruster/recipes/registry.js';
 import { PersistentCombatBeamPool } from './combat/persistentBeams.js';
 import {
   explosionPattern01,
@@ -145,7 +157,15 @@ function getThrusterTexture(id) {
 }
 
 function loadKestrelThrusterTextures() {
+  // Loads the full live propulsion-family texture set (shared deterministic pack).
+  // Name retained for existing thruster-pack checks that grep this symbol.
   const textures = Object.create(null);
+  const ids = collectThrusterTextureIds();
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (!textures[id]) textures[id] = getThrusterTexture(id);
+  }
+  // Ensure accepted Kestrel substrate textures remain present even if registry drifts.
   for (const recipe of [KESTREL_MAIN_PLUME_RECIPE, KESTREL_RCS_RECIPE]) {
     for (const layer of recipe.layers) {
       const id = layer.texture && layer.texture.id;
@@ -260,6 +280,14 @@ function resetProjectileTrailDiag(diag) {
 
 function fieldFrac(x) { return x - Math.floor(x); } // PQ-012 low-discrepancy spawn distribution (no RNG)
 
+/** Hex nibble from charCode (0-9/A-F/a-f). -1 if invalid. Module-scoped — no per-call alloc. */
+function hexNibbleFromCharCode(c) {
+  if (c >= 48 && c <= 57) return c - 48;
+  if (c >= 65 && c <= 70) return c - 55;
+  if (c >= 97 && c <= 102) return c - 87;
+  return -1;
+}
+
 function createCurvedVaneGeometry() {
   const geom = new THREE.BufferGeometry();
   const segments = 3;
@@ -350,8 +378,34 @@ export const vfx = {
     this._socketLocalForward = new THREE.Vector3();
     this._socketForwardQuat = new THREE.Quaternion();
     this._socketReferenceForward = new THREE.Vector3(-1, 0, 0);
-    this._driveScratch = { drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0 };
+    this._driveScratch = {
+      drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0,
+      cruise: 0, reverse: 0, retroOnly: false, brake: 0,
+    };
     this._mainDriveDemandScratch = { main: 0, reverse: 0, retroOnly: false };
+    this._productionDriveSignals = {
+      cruise: 0, reverse: 0, retroOnly: false, brake: 0, speedDrive: 0,
+    };
+    this._productionEngineProfileId = null;
+    this._productionOwnedIds = new Array(FLEET_MAX_SHIPS);
+    this._productionOwnedCount = 0;
+    // Eager trail culling scratch — first live frame must not allocate these.
+    this._trailContextScratch = {
+      playerId: null,
+      playerX: 0,
+      playerZ: 0,
+      playerTeam: null,
+      targetId: null,
+      radarRange: 4000,
+      cameraX: 0,
+      cameraZ: 0,
+      camera: null,
+      state: null,
+    };
+    this._trailScreenCheckScratch = { remaining: TRAIL_SCREEN_CHECK_MAX };
+    this._cFaction = new THREE.Color('#88aaff');
+    // Scratch for parsing faction thruster hex → RGB without per-frame Color alloc on set.
+    this._factionRgbScratch = { r: 0.533, g: 0.667, b: 1.0 };
     this._rcsPoseScratch = { x: 0, z: 0, rot: 0, radius: 6 };
     this._rcsDefaultScale = resolveActuatorScale(null);
     this._rcsScaleCache = new Map();
@@ -371,7 +425,15 @@ export const vfx = {
       lowQuality: false,
       qualityTier: 'high',
     };
-    this._productionThrusterOpts = { boost: 0, a11y: this._productionThrusterA11y };
+    this._productionThrusterOpts = {
+      boost: 0,
+      a11y: this._productionThrusterA11y,
+      cruise: 0,
+      reverse: 0,
+      retroOnly: false,
+      brake: 0,
+      speedDrive: 0,
+    };
     this._rcsOrigins = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
     this._rcsAxes = [[1, 0, 0], [-1, 0, 0], [1, 0, 0], [-1, 0, 0]];
     this._productionRcsFirings = [];
@@ -434,6 +496,7 @@ export const vfx = {
     this._c0 = new THREE.Color();
     this._c1 = new THREE.Color();
     this._ctmp = new THREE.Color();
+    this._cFaction = new THREE.Color('#88aaff');
 
     this._initPools();
     // Measurement-only VFX owner seam. It snapshots only roots this system owns;
@@ -1175,9 +1238,23 @@ export const vfx = {
       ? this.helpers.entityMeshMeta(entityId)
       : null;
   },
+  /**
+   * Pure profile id — no object allocation, no object-literal cache miss path.
+   * resolveEngineProfileId accepts null meta + defIdFallback without constructing wrappers.
+   */
+  _engineProfileIdFor(e) {
+    if (!e) return 'engine_ion_small';
+    const meta = this._entityMeshMeta(e.id);
+    const defId = e.data && typeof e.data.defId === 'string' ? e.data.defId : null;
+    return resolveEngineProfileId(meta || null, defId);
+  },
+
+  /**
+   * Frozen base engine profile — no faction tint object allocation on the hot path.
+   * Faction hue is applied at emit time via _engineColor when needed.
+   */
   _engineProfile(e) {
-    const meta = e ? this._entityMeshMeta(e.id) : null;
-    return resolveEngineProfile(meta, this._engineColor(e));
+    return getEngineProfileBase(this._engineProfileIdFor(e));
   },
   _muzzleProfile(p, owner) {
     const meta = p && p.ownerId != null ? this._entityMeshMeta(p.ownerId) : null;
@@ -3926,8 +4003,26 @@ export const vfx = {
     this._flashLight({ x: pos.x, z: pos.z }, col, 6.0, 4.5, 200);
   },
 
+  /**
+   * Production family plume owns the player always, plus NPCs sticky-bound from the
+   * last fleet endFrame (trails run before energy in the frame; sticky avoids dual draw).
+   */
   _usesProductionThruster(e) {
-    return !!(e && e.type === 'ship' && e.data && e.data.defId === 'ship_kestrel');
+    if (!e || e.type !== 'ship') return false;
+    if (e.id === this.state.playerId) return true;
+    const owned = this._productionOwnedIds;
+    const n = this._productionOwnedCount | 0;
+    if (!owned || !n) return false;
+    const id = e.id;
+    for (let i = 0; i < n; i++) {
+      if (owned[i] === id) return true;
+    }
+    return false;
+  },
+
+  /** @deprecated use _engineProfileIdFor — kept as alias for older call sites. */
+  _productionEngineProfileIdFor(e) {
+    return this._engineProfileIdFor(e);
   },
 
   _onThrust(p) {
@@ -4091,7 +4186,12 @@ export const vfx = {
     let particlesSpawned = 0;
     let streaksSpawned = 0;
     const prof = this._engineProfile(e);
-    const col0 = prof.coreColor || this._engineColor(e);
+    // Faction exhaust identity without allocating a blended profile object:
+    // lerp frozen base.coreColor toward faction thruster (matches prior blendHex 0.38).
+    const factionThruster = this._engineColor(e);
+    this._cFaction.set(prof.coreColor || '#88aaff');
+    if (factionThruster) this._cFaction.lerp(this._ctmp.set(factionThruster), 0.38);
+    const col0 = this._cFaction;
     const streakLenMul = prof.streakLenMul || 1;
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const boostBlend = e.flags && e.flags.boosting ? 1 : 0;
@@ -4134,7 +4234,8 @@ export const vfx = {
     // is deliberately shorter than an object-width traversal, and inherited ship velocity keeps
     // the layers attached instead of leaving detached cards in world space.
     const corePass = ((this._trailFrameIndex + (Number(e.id) || 0)) & 1) === 0;
-    this._c0.set(corePass ? '#ffffff' : col0);
+    if (corePass) this._c0.set('#ffffff');
+    else this._c0.copy(col0);
     if (glowT > 0) this._c0.lerp(this._ctmp.set('#ffffff'), glowT * (corePass ? 0.25 : 0.6));
     if (boostBlend > 0) this._c0.lerp(this._ctmp.set(prof.boostCore || '#a6d8ff'), corePass ? 0.35 : 0.62);
     if (cruiseBlend > 0) this._c0.lerp(this._ctmp.set(prof.cruiseCore || '#39d0ff'), corePass ? 0.28 : 0.58);
@@ -4993,24 +5094,16 @@ export const vfx = {
   _energyPlumeRelevant() {
     if (!this._productionThrusterEnabled()) return false;
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
-    if (!player || !player.alive || !this._usesProductionThruster(player)) return false;
+    // Alive player always owns a restrained idle nozzle signature (VP-220 idle is live).
+    if (player && player.alive && player.type === 'ship') return true;
     const energy = this._energy;
+    if (energy && energy.fleet && energy.fleet.activeShipCount > 0) return true;
     if (energy && (
       energy.plumeDrive > 0.02
       || energy.boostBlend > 0.02
       || (energy.rcsSystem && energy.rcsSystem.pool.activeImpulseCount > 0)
     )) return true;
-    const actuators = this._actuatorsFor(player);
-    if (actuators && (
-      Math.abs(actuators.lateral || 0) > 0.001
-      || Math.abs(actuators.yaw || 0) > 0.001
-      || (actuators.reverse || 0) > 0.001
-    )) return true;
-    const turn = this.state.input && Number.isFinite(this.state.input.turnIntent)
-      ? Math.abs(this.state.input.turnIntent)
-      : 0;
-    const driveInfo = this._engineDriveFor(player);
-    return driveInfo.drive > 0.03 || driveInfo.boost > 0 || turn > 0.2;
+    return false;
   },
 
   _energyMasslineRelevant() {
@@ -5221,19 +5314,16 @@ export const vfx = {
   _initEnergy() {
     if (!this._scene) return;
     const textures = loadKestrelThrusterTextures();
-    const plumeSystem = new ContinuousPlumeSystem(THREE, KESTREL_MAIN_PLUME_RECIPE, {
+    const fleet = new FamilyProductionFleet(THREE, {
       textures,
-      maxSockets: this._productionPlumeSockets.length,
-      distortionEnabled: false,
+      maxShips: FLEET_MAX_SHIPS,
+      socketsPerShip: FLEET_SOCKETS_PER_SHIP,
     });
-    const rcsSystem = new RcsImpulseSystem(THREE, KESTREL_RCS_RECIPE, {
-      textures,
-      maxImpulses: 12,
-    });
-    plumeSystem.group.visible = false;
-    rcsSystem.group.visible = false;
-    this._scene.add(plumeSystem.group);
-    this._scene.add(rcsSystem.group);
+    fleet.attachToScene(this._scene);
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    const profileId = this._engineProfileIdFor(player);
+    const pack = resolveThrusterRecipes(profileId);
+    this._productionEngineProfileId = pack.profileId;
 
     // Massline ribbon: a thin tube energy volume drawn between the player and a tethered target.
     // Reuses the energy shader (turbulent core + halo) rather than the dedicated ribbon shader so it
@@ -5249,27 +5339,43 @@ export const vfx = {
 
     ribbonCore.visible = false;
     this._scene.add(ribbonCore);
+    // Compatibility aliases: plumeSystem/rcsSystem point at the player's active family.
+    const playerPlume = fleet.familyPlume(profileId) || fleet.families[0].plume;
+    const playerRcs = fleet.playerRcsSystem() || fleet.families[0].rcs;
     this._energy = {
-      plumeSystem,
-      rcsSystem,
+      fleet,
+      plumeSystem: playerPlume,
+      rcsSystem: playerRcs,
+      thrusterTextures: textures,
+      engineProfileId: pack.profileId,
+      recipePack: pack,
       ribbon: ribbonCore,
       ribbonGeo,
       plumeDrive: 0,
       boostBlend: 0,
       rcsCooldown: 0,
+      fleetDiag: null,
     };
+  },
+
+  /**
+   * Fleet owns every live family at init — no per-frame rebind/dispose.
+   * Kept as a no-op alias so older call sites remain safe.
+   */
+  _ensureProductionThrusterFamily(profileId) {
+    const energy = this._energy;
+    if (!energy || !energy.fleet) return;
+    const id = profileId || 'engine_ion_small';
+    energy.engineProfileId = id;
+    energy.recipePack = resolveThrusterRecipes(id);
+    energy.plumeSystem = energy.fleet.familyPlume(id) || energy.plumeSystem;
+    energy.rcsSystem = energy.fleet.playerRcsSystem() || energy.rcsSystem;
+    this._productionEngineProfileId = id;
   },
 
   _updateEnergyPlume(dt) {
     const energy = this._energy;
-    const player = this.state.entities && this.state.entities.get(this.state.playerId);
-    if (!player || !player.alive || !this._usesProductionThruster(player)) {
-      this._hideEnergyPlumes(0);
-      energy.plumeDrive = 0;
-      energy.boostBlend = 0;
-      return;
-    }
-    const driveInfo = this._engineDriveFor(player);
+    if (!energy) return;
     const a11y = this._productionThrusterA11y;
     const video = this.state.settings && this.state.settings.video || {};
     const accessibility = this.state.settings && this.state.settings.accessibility || {};
@@ -5282,17 +5388,147 @@ export const vfx = {
       ? 'low'
       : (particleQuality === 'med' ? 'medium' : particleQuality);
 
-    const socketCount = this._writeProductionPlumeSockets(player);
-    const opts = this._productionThrusterOpts;
-    opts.boost = driveInfo.boost;
-    const result = energy.plumeSystem.update(
-      dt,
-      driveInfo.drive,
-      socketCount > 0 ? this._productionPlumeSocketView : null,
-      opts,
-    );
-    energy.plumeDrive = result.drive;
-    energy.boostBlend = result.boostBlend;
+    // Test/harness fallback: single plumeSystem mock without a fleet table.
+    if (!energy.fleet) {
+      const player = this.state.entities && this.state.entities.get(this.state.playerId);
+      if (!player || !player.alive) {
+        this._hideEnergyPlumes(0);
+        energy.plumeDrive = 0;
+        energy.boostBlend = 0;
+        return;
+      }
+      const driveInfo = this._engineDriveFor(player);
+      const socketCount = this._writeProductionPlumeSockets(player);
+      const opts = this._productionThrusterOpts;
+      opts.boost = driveInfo.boost;
+      opts.cruise = driveInfo.cruise;
+      opts.reverse = driveInfo.reverse;
+      opts.retroOnly = driveInfo.retroOnly;
+      opts.brake = driveInfo.brake;
+      opts.speedDrive = driveInfo.speedDrive;
+      opts.a11y = a11y;
+      if (energy.plumeSystem && typeof energy.plumeSystem.update === 'function') {
+        const result = energy.plumeSystem.update(
+          dt,
+          driveInfo.drive,
+          socketCount > 0 ? this._productionPlumeSocketView : null,
+          opts,
+        );
+        energy.plumeDrive = result.drive;
+        energy.boostBlend = result.boostBlend;
+        energy.driveMode = result.mode;
+      }
+      this._updateProductionRcs(player, dt, a11y);
+      return;
+    }
+
+    const fleet = energy.fleet;
+    fleet.beginFrame(a11y);
+
+    // Retention-safe two-phase (no per-frame arrays / closures):
+    // 1) retainShip every eligible survivor by entityId (player first)
+    // 2) beginAdmitPhase then admitShip newcomers into vacant/departed slots only
+    // Candidate order cannot steal warmed survivors.
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    const rgb = this._factionRgbScratch;
+
+    // Phase 1 — reclaim persistent slots only (no stale-slot reuse).
+    if (player && player.alive && player.type === 'ship') {
+      const profileId = this._engineProfileIdFor(player);
+      const ship = fleet.retainShip(player.id, profileId, true);
+      if (ship) {
+        const socketCount = this._writeProductionPlumeSockets(player);
+        fleet.setShipSockets(ship, this._productionPlumeSocketView, socketCount);
+        fleet.setShipDrive(ship, this._engineDriveFor(player));
+        this._factionThrusterRgbInto(player, rgb);
+        fleet.setShipFactionRgb(ship, rgb.r, rgb.g, rgb.b);
+        energy.engineProfileId = profileId;
+        energy.plumeSystem = fleet.familyPlume(profileId);
+        energy.rcsSystem = fleet.playerRcsSystem();
+      }
+    }
+
+    this._refreshTrailCandidates();
+    const list = this._trailCandidates;
+    const ctx = this._trailContext();
+    const screenChecks = this._trailScreenChecks();
+    // Phase 1 — only historical owners (hadEntity). Newcomers must not burn screen-check
+    // budget here: retainShip would return null anyway, but tier resolution is not free.
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || !e.alive || e.type !== 'ship') continue;
+      if (player && e.id === player.id) continue;
+      if (e.flags && e.flags.docked) continue;
+      if (!fleet.hadEntity(e.id)) continue;
+      const tier = this._resolveTrailTier(e, ctx, screenChecks);
+      if (tier === TRAIL_TIER.SKIP) continue;
+      if (tier === TRAIL_TIER.REDUCED && !this._trailCadenceAllows(e, tier)) continue;
+      const profileId = this._engineProfileIdFor(e);
+      const ship = fleet.retainShip(e.id, profileId, false);
+      if (!ship) continue;
+      const socketCount = this._writeProductionPlumeSockets(e);
+      fleet.setShipSockets(ship, this._productionPlumeSocketView, socketCount);
+      fleet.setShipDrive(ship, this._engineDriveFor(e));
+      this._factionThrusterRgbInto(e, rgb);
+      fleet.setShipFactionRgb(ship, rgb.r, rgb.g, rgb.b);
+    }
+
+    // Phase 2 — only true newcomers (!hadEntity) after every survivor had a retain chance.
+    // Each candidate is tier-resolved in exactly one phase (no double screen-check cost).
+    fleet.beginAdmitPhase();
+    if (player && player.alive && player.type === 'ship' && !fleet.hasEntity(player.id)) {
+      const profileId = this._engineProfileIdFor(player);
+      const ship = fleet.admitShip(player.id, profileId, true);
+      if (ship) {
+        const socketCount = this._writeProductionPlumeSockets(player);
+        fleet.setShipSockets(ship, this._productionPlumeSocketView, socketCount);
+        fleet.setShipDrive(ship, this._engineDriveFor(player));
+        this._factionThrusterRgbInto(player, rgb);
+        fleet.setShipFactionRgb(ship, rgb.r, rgb.g, rgb.b);
+        energy.engineProfileId = profileId;
+        energy.plumeSystem = fleet.familyPlume(profileId);
+        energy.rcsSystem = fleet.playerRcsSystem();
+      }
+    }
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || !e.alive || e.type !== 'ship') continue;
+      if (player && e.id === player.id) continue;
+      if (e.flags && e.flags.docked) continue;
+      if (fleet.hadEntity(e.id)) continue;
+      if (fleet.hasEntity(e.id)) continue;
+      const tier = this._resolveTrailTier(e, ctx, screenChecks);
+      if (tier === TRAIL_TIER.SKIP) continue;
+      if (tier === TRAIL_TIER.REDUCED && !this._trailCadenceAllows(e, tier)) continue;
+      const profileId = this._engineProfileIdFor(e);
+      // Always attempt admit when tier-eligible. At cap, admitShip returns null and
+      // increments saturated so overflow is truthful (legacy fallback, not silent drop).
+      const ship = fleet.admitShip(e.id, profileId, false);
+      if (!ship) continue;
+      const socketCount = this._writeProductionPlumeSockets(e);
+      fleet.setShipSockets(ship, this._productionPlumeSocketView, socketCount);
+      fleet.setShipDrive(ship, this._engineDriveFor(e));
+      this._factionThrusterRgbInto(e, rgb);
+      fleet.setShipFactionRgb(ship, rgb.r, rgb.g, rgb.b);
+    }
+
+    const diag = fleet.endFrame(dt);
+    energy.fleetDiag = diag;
+    // Sticky production ownership for the next trail pass (no alloc).
+    let owned = 0;
+    for (let i = 0; i < fleet.ships.length && owned < this._productionOwnedIds.length; i++) {
+      const s = fleet.ships[i];
+      if (!s.alive) continue;
+      this._productionOwnedIds[owned++] = s.entityId;
+    }
+    this._productionOwnedCount = owned;
+    energy.plumeDrive = diag && diag.shipsActive ? 1 : 0;
+    // Player drive snapshot for sleep/relevance heuristics.
+    if (player && player.alive) {
+      const pd = this._engineDriveFor(player);
+      energy.plumeDrive = Math.max(energy.plumeDrive, pd.drive);
+      energy.boostBlend = pd.boost;
+    }
     this._updateProductionRcs(player, dt, a11y);
   },
 
@@ -5333,7 +5569,11 @@ export const vfx = {
 
   _updateProductionRcs(player, dt, a11y) {
     const energy = this._energy;
-    if (!energy || !energy.rcsSystem) return;
+    if (!energy) return;
+    // Player RCS rides the active family system (signed telemetry is player-only).
+    const rcsSystem = (energy.fleet && energy.fleet.playerRcsSystem()) || energy.rcsSystem;
+    if (!rcsSystem) return;
+    energy.rcsSystem = rcsSystem;
     energy.rcsCooldown = Math.max(0, energy.rcsCooldown - dt);
     const actuators = this._actuatorsFor(player);
     if (actuators && energy.rcsCooldown <= 0) {
@@ -5393,11 +5633,16 @@ export const vfx = {
   _hideEnergyPlumes() {
     const energy = this._energy;
     if (!energy) return;
-    if (energy.plumeSystem) energy.plumeSystem.reset();
-    if (energy.rcsSystem) energy.rcsSystem.reset();
+    if (energy.fleet) energy.fleet.reset();
+    else {
+      if (energy.plumeSystem) energy.plumeSystem.reset();
+      if (energy.rcsSystem) energy.rcsSystem.reset();
+    }
     energy.plumeDrive = 0;
     energy.boostBlend = 0;
     energy.rcsCooldown = 0;
+    // Production plume is hidden — never leave sticky ownership suppressing fallback trails.
+    this._clearProductionOwnership();
   },
 
   _resetEnergyForBoundary() {
@@ -5450,16 +5695,21 @@ export const vfx = {
 
   _disposeEnergy() {
     if (!this._energy) return;
-    const plumeSystem = this._energy.plumeSystem;
-    const rcsSystem = this._energy.rcsSystem;
-    if (plumeSystem && plumeSystem.group && plumeSystem.group.parent) plumeSystem.group.parent.remove(plumeSystem.group);
-    if (rcsSystem && rcsSystem.group && rcsSystem.group.parent) rcsSystem.group.parent.remove(rcsSystem.group);
-    if (plumeSystem) plumeSystem.dispose();
-    if (rcsSystem) rcsSystem.dispose();
+    if (this._energy.fleet) {
+      this._energy.fleet.dispose();
+    } else {
+      const plumeSystem = this._energy.plumeSystem;
+      const rcsSystem = this._energy.rcsSystem;
+      if (plumeSystem && plumeSystem.group && plumeSystem.group.parent) plumeSystem.group.parent.remove(plumeSystem.group);
+      if (rcsSystem && rcsSystem.group && rcsSystem.group.parent) rcsSystem.group.parent.remove(rcsSystem.group);
+      if (plumeSystem) plumeSystem.dispose();
+      if (rcsSystem) rcsSystem.dispose();
+    }
     if (this._energy.ribbon && this._energy.ribbon.parent) this._energy.ribbon.parent.remove(this._energy.ribbon);
     disposeEnergyVolumeMaterials(this._energy.ribbon);
     if (this._energy.ribbonGeo) this._energy.ribbonGeo.dispose();
     this._energy = null;
+    this._clearProductionOwnership();
   },
 
   // ---------------------------------------------------------------------------------------------
@@ -5488,9 +5738,15 @@ export const vfx = {
   },
 
   _engineDriveFor(e, out = this._driveScratch) {
-    if (!out) out = this._driveScratch = { drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0 };
+    if (!out) {
+      out = this._driveScratch = {
+        drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0,
+        cruise: 0, reverse: 0, retroOnly: false, brake: 0,
+      };
+    }
     if (!e) {
       out.drive = 0; out.throttle = 0; out.speed = 0; out.speedDrive = 0; out.boost = 0;
+      out.cruise = 0; out.reverse = 0; out.retroOnly = false; out.brake = 0;
       return out;
     }
     const frame = e._flightFrame || {};
@@ -5510,12 +5766,15 @@ export const vfx = {
     // Physics beats keys. When the flight computer has published signed demand, the plume follows
     // the thrust the drive is ACTUALLY producing — which includes assist and autopilot thrust the
     // pilot never commanded, and excludes the key the pilot is holding while the governor ignores it.
+    const actuators = this._actuatorsFor(e);
     const md = mainDriveDemand(
-      this._actuatorsFor(e),
+      actuators,
       this._rcsScaleFor(frame),
       this._mainDriveDemandScratch,
     );
     if (md) throttle = md.main;
+    const reverse = md ? Math.max(0, md.reverse || 0) : Math.max(0, actuators && actuators.reverse || 0);
+    const retroOnly = !!(md && md.retroOnly);
     const cf = Math.cos(e.rot || 0);
     const sf = Math.sin(e.rot || 0);
     const forwardSpeed = Number.isFinite(frame.forwardSpeed) ? frame.forwardSpeed : (vx * cf + vz * sf);
@@ -5525,14 +5784,27 @@ export const vfx = {
     // lit while the bow jets fired, which read as accelerating into your own brake — the same class
     // of lie as firing the wrong RCS jet. Damped rather than hard-zeroed so a hard brake at speed
     // still shows a residual thermal glow instead of snapping to black.
-    if (md && md.retroOnly) { forwardDrive *= 0.18; speedDrive *= 0.18; }
+    if (retroOnly) { forwardDrive *= 0.18; speedDrive *= 0.18; }
     const boost = e.flags && e.flags.boosting ? 1 : 0;
+    const cruising = e.id === this.state.playerId
+      && this.state.player
+      && this.state.player.cruise
+      && this.state.player.cruise.phase === 'cruising';
+    const cruise = cruising ? 1 : 0;
+    // Brake continuum: residual forward heat while reverse/no throttle at speed.
+    let brake = 0;
+    if (retroOnly || reverse > 0.05) brake = Math.min(1, 0.35 + speedDrive * 0.65);
+    else if (throttle < 0.08 && speedDrive > 0.2) brake = Math.min(1, speedDrive * 0.55);
     const drive = Math.min(1.35, Math.max(throttle, forwardDrive * 0.85, speedDrive * 0.40) + boost * 0.45);
     out.drive = drive;
     out.throttle = throttle;
     out.speed = speed;
     out.speedDrive = speedDrive;
     out.boost = boost;
+    out.cruise = cruise;
+    out.reverse = reverse;
+    out.retroOnly = retroOnly;
+    out.brake = brake;
     return out;
   },
 
@@ -5637,26 +5909,71 @@ export const vfx = {
     return e ? e.pos : this._zeroPos;
   },
 
+  /**
+   * Persistent trail context — mutates preallocated scratch, never allocates.
+   */
   _trailContext() {
+    // Preallocated at VFX init — mutate in place, never allocate.
+    const ctx = this._trailContextScratch;
     const state = this.state;
     const player = state.entities.get(state.playerId);
     const playerPos = player && player.pos ? player.pos : this._zeroPos;
     const camera = state.render && state.render.camera;
     const camPos = camera && camera.position;
-    const playerTeam = player && player.team;
-    const targetId = state.player && state.player.targetId;
-    return {
-      playerId: state.playerId,
-      playerX: playerPos.x || 0,
-      playerZ: playerPos.z || 0,
-      playerTeam,
-      targetId,
-      radarRange: (state.ui && Number.isFinite(state.ui.radarRange)) ? state.ui.radarRange : 4000,
-      cameraX: camPos && Number.isFinite(camPos.x) ? camPos.x : playerPos.x || 0,
-      cameraZ: camPos && Number.isFinite(camPos.z) ? camPos.z : playerPos.z || 0,
-      camera,
-      state,
-    };
+    ctx.playerId = state.playerId;
+    ctx.playerX = playerPos.x || 0;
+    ctx.playerZ = playerPos.z || 0;
+    ctx.playerTeam = player && player.team;
+    ctx.targetId = state.player && state.player.targetId;
+    ctx.radarRange = (state.ui && Number.isFinite(state.ui.radarRange)) ? state.ui.radarRange : 4000;
+    ctx.cameraX = camPos && Number.isFinite(camPos.x) ? camPos.x : playerPos.x || 0;
+    ctx.cameraZ = camPos && Number.isFinite(camPos.z) ? camPos.z : playerPos.z || 0;
+    ctx.camera = camera;
+    ctx.state = state;
+    return ctx;
+  },
+
+  /** Persistent screen-check budget for trail/fleet culling — no per-call `{ remaining }`. */
+  _trailScreenChecks() {
+    this._trailScreenCheckScratch.remaining = TRAIL_SCREEN_CHECK_MAX;
+    return this._trailScreenCheckScratch;
+  },
+
+  /**
+   * Resolve faction thruster RGB into preallocated scratch (no Color/object/string alloc).
+   * Direct charCode nibble parse — no String.slice / substring on the hot path.
+   * @param {object} e entity
+   * @param {{r:number,g:number,b:number}} out
+   */
+  _factionThrusterRgbInto(e, out) {
+    const hex = this._engineColor(e) || '#88AAFF';
+    if (typeof hex === 'string' && hex.length >= 7 && hex.charCodeAt(0) === 35) {
+      const r0 = hexNibbleFromCharCode(hex.charCodeAt(1));
+      const r1 = hexNibbleFromCharCode(hex.charCodeAt(2));
+      const g0 = hexNibbleFromCharCode(hex.charCodeAt(3));
+      const g1 = hexNibbleFromCharCode(hex.charCodeAt(4));
+      const b0 = hexNibbleFromCharCode(hex.charCodeAt(5));
+      const b1 = hexNibbleFromCharCode(hex.charCodeAt(6));
+      if (r0 >= 0 && r1 >= 0 && g0 >= 0 && g1 >= 0 && b0 >= 0 && b1 >= 0) {
+        out.r = (r0 * 16 + r1) / 255;
+        out.g = (g0 * 16 + g1) / 255;
+        out.b = (b0 * 16 + b1) / 255;
+        return out;
+      }
+    }
+    out.r = 0.533;
+    out.g = 0.667;
+    out.b = 1.0;
+    return out;
+  },
+
+  /** Clear sticky production ownership so fallback trails are not suppressed after hide. */
+  _clearProductionOwnership() {
+    this._productionOwnedCount = 0;
+    const ids = this._productionOwnedIds;
+    if (ids) {
+      for (let i = 0; i < ids.length; i++) ids[i] = null;
+    }
   },
 
   _trailTierFor(e, ctx) {
@@ -5905,7 +6222,7 @@ export const vfx = {
     this._refreshTrailCandidates();
     const list = this._trailCandidates;
     const ctx = this._trailContext();
-    const screenChecks = { remaining: TRAIL_SCREEN_CHECK_MAX };
+    const screenChecks = this._trailScreenChecks();
     let reducedEmitted = 0;
     this._trailBudgetDiag.trailCandidates = list.length;
 
@@ -5967,7 +6284,7 @@ export const vfx = {
     if (ribbonStep <= 0) return false;
     const state = this.state;
     const ctx = this._trailContext();
-    const screenChecks = { remaining: TRAIL_SCREEN_CHECK_MAX };
+    const screenChecks = this._trailScreenChecks();
     let active = false;
     for (const e of this._ribbonCandidates) {
       if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
@@ -6511,24 +6828,31 @@ export function createVfxPrecompileSalvo() {
   });
   commitInstancedSpriteBuckets(spriteBatches);
 
-  // Warm the exact production Hitch shader/material path during startup. Without this staging
-  // draw the Kestrel suppresses its legacy trail immediately, then compiles five new plume layers
-  // on the first real burn. Besides the hitch, a failed/late compile can leave the player with no
-  // propulsion feedback at all. Keep this recipe-driven so startup and live draw states cannot
-  // silently drift apart.
+  // Warm the exact production thruster shader/material path during startup for every live
+  // engine family (VP-220). Without this staging draw the player ship suppresses its legacy
+  // trail immediately, then compiles plume layers on the first real burn — and a late compile
+  // can leave the pilot with no propulsion feedback. Recipe-driven so startup and live draw
+  // cannot silently drift apart.
   const thrusterTextures = loadKestrelThrusterTextures();
-  const plume = new ContinuousPlumeSystem(THREE, KESTREL_MAIN_PLUME_RECIPE, {
-    textures: thrusterTextures,
-    maxSockets: 1,
-    distortionEnabled: false,
-  });
-  plume.update(1 / 60, 1, [{ x: -18, y: 1, z: -12, ax: 1, ay: 0, az: 0 }], {
-    boost: 0.65,
-    a11y: { reducedMotion: false, reducedFlash: false, lowQuality: false, qualityTier: 'high' },
-  });
-  plume.group.name = 'SF_Precompile_Hitch_Main_Plume';
-  plume.group.userData.precompileStaging = true;
-  group.add(plume.group);
+  const packs = listThrusterRecipePacks();
+  for (let i = 0; i < packs.length; i++) {
+    const pack = packs[i];
+    const plume = new ContinuousPlumeSystem(THREE, pack.main, {
+      textures: thrusterTextures,
+      maxSockets: 1,
+      distortionEnabled: false,
+    });
+    plume.update(1 / 60, 1, [{ x: -18 + i * 2.5, y: 1, z: -12, ax: 1, ay: 0, az: 0 }], {
+      boost: i === 0 ? 0.65 : 0.2,
+      a11y: { reducedMotion: false, reducedFlash: false, lowQuality: false, qualityTier: 'high' },
+    });
+    plume.group.name = i === 0
+      ? 'SF_Precompile_Hitch_Main_Plume'
+      : `SF_Precompile_Family_${pack.profileId}`;
+    plume.group.userData.precompileStaging = true;
+    plume.group.userData.engineProfileId = pack.profileId;
+    group.add(plume.group);
+  }
 
   // Deliberately NO light here: precompile.js tops the scene up to the exact runtime event-light
   // pool count. An extra salvo light would warm shaders against count+1 — every warmed program

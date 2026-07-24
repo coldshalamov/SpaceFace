@@ -238,10 +238,75 @@ export function primaryEnginePartId(meta) {
   return 'engine_ion_small';
 }
 
+/**
+ * Pure engine-profile id — no object allocation. Prefer this on hot paths.
+ *
+ * Authority order (first hit wins):
+ *  1. Explicit authored engine slot on meta
+ *  2. Explicit meta.defId / meta.driveId drive tables
+ *  3. defIdFallback only when meta lacks authoritative engine data
+ *  4. Ship-def drive / role heuristics for known defIds
+ *  5. Default ion_small
+ *
+ * @param {object|null|undefined} meta mesh meta or null
+ * @param {string|null|undefined} [defIdFallback]
+ * @returns {string}
+ */
+export function resolveEngineProfileId(meta, defIdFallback = null) {
+  // 1. Authored engine slot always outranks hull/fallback defaults (including ion_small).
+  if (meta) {
+    const fromSlot = partIdFromSlotUrls(meta.slots, 'engine', 0);
+    if (fromSlot && ENGINE_PROFILES[fromSlot]) return fromSlot;
+  }
+  // 2. Explicit defId / driveId on meta.
+  if (meta && meta.defId && ENGINE_FILE_BY_DEF_ID[meta.defId]) {
+    return ENGINE_FILE_BY_DEF_ID[meta.defId];
+  }
+  if (meta && meta.driveId && ENGINE_FILE_BY_DRIVE_ID[meta.driveId]) {
+    return ENGINE_FILE_BY_DRIVE_ID[meta.driveId];
+  }
+  // 3. Caller fallback only when meta had no authoritative engine/def/drive data.
+  if (defIdFallback && ENGINE_FILE_BY_DEF_ID[defIdFallback]) {
+    return ENGINE_FILE_BY_DEF_ID[defIdFallback];
+  }
+  // 4. Role / drive heuristics from known ship defs (meta.defId or fallback).
+  const defId = (meta && meta.defId) || defIdFallback || null;
+  if (defId) {
+    const shipDef = SHIP_BY_ID.get(defId);
+    if (shipDef) {
+      if (shipDef.driveId && ENGINE_FILE_BY_DRIVE_ID[shipDef.driveId]) {
+        return ENGINE_FILE_BY_DRIVE_ID[shipDef.driveId];
+      }
+      const role = String(shipDef.role || '').toLowerCase();
+      if (role.includes('miner') || role.includes('freighter')) return 'engine_industrial';
+      if (role.includes('interceptor') || role.includes('fighter')) return 'engine_vector';
+      if (role.includes('capital') || role.includes('gunship') || role.includes('corvette')) {
+        return 'engine_plasma_ring';
+      }
+    }
+  }
+  // 5. Last resort default.
+  return 'engine_ion_small';
+}
+
+/**
+ * Frozen base profile by id — no allocation, no faction tint.
+ * @param {string|null|undefined} profileId
+ */
+export function getEngineProfileBase(profileId) {
+  if (profileId && ENGINE_PROFILES[profileId]) return ENGINE_PROFILES[profileId];
+  return DEFAULT_ENGINE;
+}
+
+/**
+ * Presentation profile. Without faction tint returns the frozen base (no alloc).
+ * Faction tint still allocates a small overlay object — avoid on dense hot paths;
+ * use getEngineProfileBase + resolveEngineProfileId instead.
+ */
 export function resolveEngineProfile(meta, factionThruster) {
-  const id = primaryEnginePartId(meta);
-  const base = ENGINE_PROFILES[id] || DEFAULT_ENGINE;
-  if (!factionThruster) return { ...base, id };
+  const id = resolveEngineProfileId(meta);
+  const base = getEngineProfileBase(id);
+  if (!factionThruster) return base;
   return {
     ...base,
     id,

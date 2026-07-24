@@ -9,6 +9,7 @@ import {
   sampleThrottleInto,
   integrateDriveState,
   compileDriveRates,
+  resolveDriveMode,
 } from './throttleResponse.js';
 import {
   compileAccessibilityTables,
@@ -24,9 +25,16 @@ import {
   bindEnvelopeFromRecipe,
 } from '../materials/flowFlipbookMaterial.js';
 import { resolveEnvelopeParams } from '../geometry/axialWidthEnvelope.js';
+import {
+  createSegmentedPlumeGeometry,
+  resolveSegmentCount,
+  segmentedVertexCount,
+  segmentedIndexCount,
+} from '../geometry/segmentedPlumeGeometry.js';
 import { EventLightPool } from './eventLight.js';
 
 const ROLE_ORDER = ['core', 'inner', 'sheath', 'vapor', 'distortion'];
+const QUALITY_TIERS = ['high', 'medium', 'low'];
 
 /**
  * Parse #RRGGBB into preallocated rgb array.
@@ -136,6 +144,13 @@ export class PlumeSlotPool {
         intensity: 1,
         opacity: 0.5,
         softEdge: 0.28,
+        // Per-instance continuum dynamics (uploaded as instanceDynamics / params.w)
+        flowSpeed: 1,
+        turbulence: 0.5,
+        coreSheath: 0.8,
+        dissipation: 1,
+        boostBlend: 0,
+        mode: 'idle',
       };
       this._allocCount += 1;
     }
@@ -150,13 +165,36 @@ export class PlumeSlotPool {
       dissipation: 0,
       flowSpeed: 0,
       effectiveDrive: 0,
+      mode: 'idle',
     };
+    this._throttleFlags = {
+      reducedMotion: false,
+      reducedFlash: false,
+      lowQuality: false,
+      qualityTier: 'high',
+      boostBlend: 0,
+      boost: 0,
+      cruise: 0,
+      reverse: 0,
+      retroOnly: false,
+      brake: 0,
+      speedDrive: 0,
+      drive: 0,
+      throttle: 0,
+      mode: null,
+    };
+    this._writeFlags = this._emptyA11y;
+    this._batchBoostMax = 0;
+    this._batchDriveMax = 0;
+    this._entityWrites = 0;
     this._fallbackSocket = { x: 0, y: 0, z: 0, ax: -1, ay: 0, az: 0 };
     this._result = {
       activeCount: 0,
       sample: this._scratchSample,
       drive: 0,
       boostBlend: 0,
+      mode: 'idle',
+      entityWrites: 0,
       frameAllocations: 0,
       roles: this._presentation.roles,
       roleCount: 0,
@@ -192,33 +230,91 @@ export class PlumeSlotPool {
     return -1;
   }
 
-  update(throttle, sockets, a11y, dt, boost) {
+  /**
+   * Begin a multi-entity batch write. Call writeEntity zero+ times, then endWrite.
+   * @param {object} a11y
+   */
+  beginWrite(a11y) {
     this.beginFrame();
-    const flags = a11y || this._emptyA11y;
-    integrateDriveState(this._driveState, throttle, boost || 0, dt || 0, this._driveRates);
-    sampleThrottleInto(this.recipe, this._driveState.plumeDrive, flags, this._scratchSample);
+    this._writeFlags = a11y || this._emptyA11y;
+    this._batchBoostMax = 0;
+    this._batchDriveMax = 0;
+    this._entityWrites = 0;
     resolveAccessibilityPresentationInto(
       this.recipe,
-      flags,
+      this._writeFlags,
       this._presentation,
       this._a11yTables,
     );
+  }
+
+  /**
+   * Append one entity's sockets into the shared pool. Mutates `driveState` in place.
+   * @param {number} throttle
+   * @param {Array|null} sockets
+   * @param {number} dt
+   * @param {number} boost
+   * @param {{ plumeDrive:number, boostBlend:number }} driveState
+   * @param {object|null} driveSignals
+   * @param {number} [socketBudget] remaining sockets allowed for this entity
+   */
+  writeEntity(throttle, sockets, dt, boost, driveState, driveSignals, socketBudget) {
+    const flags = this._writeFlags || this._emptyA11y;
+    const state = driveState || this._driveState;
+    const signals = driveSignals || null;
+    // Commanded forward authority (never smoothed residual). Prefer signals.throttle.
+    const commandThrottle = signals && signals.throttle != null
+      ? Math.max(0, signals.throttle)
+      : Math.max(0, throttle || 0);
+    const boostTarget = signals && signals.boost != null ? signals.boost : (boost || 0);
+    integrateDriveState(state, throttle || 0, boostTarget, dt || 0, this._driveRates);
+
+    // Fill persistent throttle scratch — resolveDriveMode/sampleThrottleInto read this object.
+    const tf = this._throttleFlags;
+    tf.reducedMotion = !!flags.reducedMotion;
+    tf.reducedFlash = !!flags.reducedFlash;
+    tf.lowQuality = !!flags.lowQuality;
+    tf.qualityTier = flags.qualityTier || 'high';
+    tf.boostBlend = state.boostBlend;
+    tf.boost = boostTarget;
+    tf.cruise = signals ? (signals.cruise || 0) : 0;
+    tf.reverse = signals ? (signals.reverse || 0) : 0;
+    tf.retroOnly = !!(signals && signals.retroOnly);
+    tf.brake = signals ? (signals.brake || 0) : 0;
+    tf.speedDrive = signals ? (signals.speedDrive || 0) : 0;
+    tf.drive = state.plumeDrive; // residual / smoothed energy
+    tf.throttle = commandThrottle; // commanded — brake mode key
+    tf.mode = signals && signals.mode ? signals.mode : null;
+    // No object literal: mode resolver reads the same scratch.
+    if (!tf.mode) tf.mode = resolveDriveMode(tf, this.recipe);
+    sampleThrottleInto(this.recipe, state.plumeDrive, tf, this._scratchSample);
+
+    if (state.boostBlend > this._batchBoostMax) this._batchBoostMax = state.boostBlend;
+    if (state.plumeDrive > this._batchDriveMax) this._batchDriveMax = state.plumeDrive;
 
     const sample = this._scratchSample;
     const geo = this.recipe.geometry;
-    // Turbo changes the pressure envelope by role. Keeping the white core compact while
-    // the inner flow/sheath/vapor expand makes boost legible at the game camera without
-    // turning the whole exhaust into one overexposed blob.
-    const boostBlend = this._driveState.boostBlend;
+    const boostBlend = state.boostBlend;
     const intensityScale = this._presentation.intensityScale;
-
     const socketList = sockets && sockets.length ? sockets : null;
+    const budget = Number.isFinite(socketBudget) ? socketBudget : this.maxSockets;
     const nSockets = socketList
-      ? Math.min(socketList.length, this.maxSockets)
-      : 1;
+      ? Math.min(socketList.length, budget, this.maxSockets)
+      : Math.min(1, budget);
 
+    // Per-entity dynamics captured once then written into every slot for this entity.
+    const dynFlow = sample.flowSpeed;
+    const dynTurb = sample.turbulence;
+    const dynCoreSheath = sample.coreSheathBalance;
+    const dynDiss = sample.dissipation;
+    const dynBoost = boostBlend;
+    const dynMode = sample.mode || tf.mode || 'accel';
+
+    let writtenSockets = 0;
     for (let s = 0; s < nSockets; s++) {
+      if (this.activeCount >= this.capacity) break;
       const sock = socketList ? socketList[s] : this._fallbackSocket;
+      let layerWrote = false;
       for (let r = 0; r < this._presentation.roleCount; r++) {
         const role = this._presentation.roles[r];
         const li = this._findLayerIndex(role);
@@ -238,9 +334,6 @@ export class PlumeSlotPool {
         const layering = this.recipe.identity?.layeringCharacter;
         const boostLength = layering?.boostLengthGain?.[role] ?? 0;
         const boostWidth = layering?.boostWidthGain?.[role] ?? 0;
-        // Reduced motion retains the engineered pressure zones while shortening and calming the
-        // downstream exhaust. The core is widened slightly so it cannot minify out at the real
-        // chase camera; broad layers contract instead of becoming a large static blue smudge.
         const motionProfile = this.recipe.accessibility?.reducedMotion;
         const reducedLength = flags.reducedMotion ? (motionProfile?.roleLengthScale?.[role] ?? 1) : 1;
         const reducedWidth = flags.reducedMotion ? (motionProfile?.roleWidthScale?.[role] ?? 1) : 1;
@@ -248,34 +341,72 @@ export class PlumeSlotPool {
           * (1 + boostBlend * boostLength) * reducedLength;
         slot.width = geo.baseWidth * sample.width * this._layerWidthScale[li]
           * (1 + boostBlend * boostWidth) * reducedWidth;
-        // A bounded boost contribution reaches the shader as a structural/turbulence cue. It is
-        // not an opacity proxy: the dedicated boost uniform alters axial frequency and shear.
         slot.throttle = sample.effectiveDrive + boostBlend * (layering?.boostStructuralDrive ?? 0);
         slot.intensity = this._layerIntensity[li] * intensityScale;
         slot.opacity = this._layerOpacity[li];
         slot.softEdge = this._layerSoftEdge[li] + this._presentation.softEdgeBoost;
-        slot.color[0] = this._layerColor[li * 3];
-        slot.color[1] = this._layerColor[li * 3 + 1];
-        slot.color[2] = this._layerColor[li * 3 + 2];
-
+        // Recipe RGB blended with precomputed faction thruster RGB (no object alloc).
+        // Core stays white-hot (light blend); sheath/vapor carry more faction identity.
+        const br = this._layerColor[li * 3];
+        const bg = this._layerColor[li * 3 + 1];
+        const bb = this._layerColor[li * 3 + 2];
+        const fr = signals && Number.isFinite(signals.factionR) ? signals.factionR : br;
+        const fg = signals && Number.isFinite(signals.factionG) ? signals.factionG : bg;
+        const fb = signals && Number.isFinite(signals.factionB) ? signals.factionB : bb;
+        let factionBlend = 0.28;
+        if (role === 'core') factionBlend = 0.12;
+        else if (role === 'inner') factionBlend = 0.28;
+        else if (role === 'sheath') factionBlend = 0.38;
+        else if (role === 'vapor') factionBlend = 0.32;
+        else factionBlend = 0.15;
+        const ib = 1 - factionBlend;
+        slot.color[0] = br * ib + fr * factionBlend;
+        slot.color[1] = bg * ib + fg * factionBlend;
+        slot.color[2] = bb * ib + fb * factionBlend;
+        // Per-instance continuum dynamics (not shared material uniforms).
+        slot.flowSpeed = dynFlow * (this._layerScroll[li] / 2.4);
+        slot.turbulence = dynTurb;
+        slot.coreSheath = dynCoreSheath;
+        slot.dissipation = dynDiss;
+        slot.boostBlend = dynBoost;
+        slot.mode = dynMode;
         const pack = LAYER_ROLE_PACK[role] ?? 0;
         if (pack >= 0 && pack < this._roleActive.length) this._roleActive[pack] += 1;
+        layerWrote = true;
       }
+      if (layerWrote) writtenSockets += 1;
     }
+    this._entityWrites += 1;
+    return writtenSockets;
+  }
 
+  endWrite() {
     for (let i = this.activeCount; i < this.capacity; i++) {
       this.slots[i].alive = false;
     }
-
+    // Mirror last entity sample for single-entity callers; batch max for fleet uniforms.
+    this._driveState.plumeDrive = this._batchDriveMax;
+    this._driveState.boostBlend = this._batchBoostMax;
     this._result.activeCount = this.activeCount;
     this._result.sample = this._scratchSample;
-    this._result.drive = this._driveState.plumeDrive;
-    this._result.boostBlend = this._driveState.boostBlend;
+    this._result.drive = this._batchDriveMax;
+    this._result.boostBlend = this._batchBoostMax;
+    this._result.mode = this._scratchSample.mode || 'idle';
+    this._result.entityWrites = this._entityWrites || 0;
     this._result.frameAllocations = this._frameAllocs;
     this._result.roles = this._presentation.roles;
     this._result.roleCount = this._presentation.roleCount;
     this._result.presentation = this._presentation;
     return this._result;
+  }
+
+  /**
+   * Single-entity convenience (preserves prior API). No allocation.
+   */
+  update(throttle, sockets, a11y, dt, boost, driveSignals) {
+    this.beginWrite(a11y);
+    this.writeEntity(throttle, sockets, dt, boost, this._driveState, driveSignals, this.maxSockets);
+    return this.endWrite();
   }
 
   resetDrive() {
@@ -309,15 +440,62 @@ export class ContinuousPlumeSystem {
     this._initGpu = false;
     this._disposed = false;
     this._nozzleScratch = { x: 0, y: 0, z: 0 };
-    // Persistent per-layer uniform write scratch (never reallocated on update)
     this._uniformScratch = null;
-    // Hot-path defaults: never allocate `{}` when opts omitted
     this._emptyOpts = Object.freeze({ boost: 0, a11y: null });
     this._optsScratch = { boost: 0, a11y: null };
+    this._qualityTier = 'high';
+    this._geoTemplates = null;
+    this._batching = false;
 
     if (THREE) {
       this._initThree(THREE, opts);
     }
+  }
+
+  /**
+   * Active segmented geometry vertex/index counts for tests.
+   */
+  getActiveGeometryStats() {
+    if (!this.layerBatches || !this.layerBatches.length) {
+      return { segments: 0, vertexCount: 0, indexCount: 0, tier: this._qualityTier };
+    }
+    const geo = this.layerBatches[0].mesh && this.layerBatches[0].mesh.geometry;
+    const segments = geo?.userData?.plumeSegments
+      ?? resolveSegmentCount(this.recipe, this._qualityTier);
+    return {
+      segments,
+      vertexCount: geo?.userData?.plumeVertexCount ?? segmentedVertexCount(segments),
+      indexCount: geo?.userData?.plumeIndexCount ?? segmentedIndexCount(segments),
+      tier: this._qualityTier,
+    };
+  }
+
+  /**
+   * Switch quality tier geometry without per-frame allocation.
+   * Uses prebuilt complete meshes — never a truncated partial plane.
+   */
+  setQualityTier(tier) {
+    const t = tier === 'medium' || tier === 'low' ? tier : 'high';
+    if (t === this._qualityTier || !this.layerBatches) {
+      this._qualityTier = t;
+      return this._qualityTier;
+    }
+    this._qualityTier = t;
+    for (let i = 0; i < this.layerBatches.length; i++) {
+      const batch = this.layerBatches[i];
+      const tb = batch.tierBuffers[t];
+      if (!tb) continue;
+      batch.mesh.geometry = tb.geo;
+      batch.offset = tb.offset;
+      batch.axisScale = tb.axisScale;
+      batch.params = tb.params;
+      batch.dynamics = tb.dynamics;
+      batch.color = tb.color;
+      batch.attrs = tb.attrs;
+      batch.mesh.count = 0;
+      batch.writeCount = 0;
+    }
+    return this._qualityTier;
   }
 
   _initThree(THREE, opts) {
@@ -330,15 +508,23 @@ export class ContinuousPlumeSystem {
     this.group.name = `plume-system:${this.recipe.id}`;
     this.group.userData.continuousPlume = true;
     this.group.userData.recipeId = this.recipe.id;
-    // Shared envelope contract resolved once from recipe
     this.envelopeParams = resolveEnvelopeParams(this.recipe);
     this.group.userData.axialEnvelope = this.envelopeParams;
     this.group.userData.usesSharedAxialEnvelope = true;
+    this.group.userData.segmentCounts = {
+      high: resolveSegmentCount(this.recipe, 'high'),
+      medium: resolveSegmentCount(this.recipe, 'medium'),
+      low: resolveSegmentCount(this.recipe, 'low'),
+    };
 
     const maxPerLayer = this.pool.maxSockets;
     this.layerBatches = [];
     this._uniformScratch = [];
     const idn = this.recipe.identity?.flowCharacter || {};
+    const initialTier = opts.qualityTier === 'medium' || opts.qualityTier === 'low'
+      ? opts.qualityTier
+      : 'high';
+    this._qualityTier = initialTier;
 
     for (let li = 0; li < this.pool._layerCount; li++) {
       const role = this.pool._layerRole[li];
@@ -375,32 +561,48 @@ export class ContinuousPlumeSystem {
         throw new TypeError('materialFactory returned a Promise — materials must be synchronous');
       }
 
-      // Bind shared axial envelope from recipe once at construction (no per-frame alloc)
       bindEnvelopeFromRecipe(mat, this.recipe);
 
-      const geo = new THREE.PlaneGeometry(1, 1, 1, 1);
-      geo.translate(0.5, 0, 0);
-
       const capacity = maxPerLayer;
-      const offset = new Float32Array(capacity * 3);
-      const axisScale = new Float32Array(capacity * 4);
-      const params = new Float32Array(capacity * 4);
-      const color = new Float32Array(capacity * 3);
-      const instOffset = new THREE.InstancedBufferAttribute(offset, 3);
-      const instAxis = new THREE.InstancedBufferAttribute(axisScale, 4);
-      const instParams = new THREE.InstancedBufferAttribute(params, 4);
-      const instColor = new THREE.InstancedBufferAttribute(color, 3);
-      geo.setAttribute('instanceOffset', instOffset);
-      geo.setAttribute('instanceAxisScale', instAxis);
-      geo.setAttribute('instanceParams', instParams);
-      geo.setAttribute('instanceColor', instColor);
+      const tierBuffers = Object.create(null);
+      for (let ti = 0; ti < QUALITY_TIERS.length; ti++) {
+        const tier = QUALITY_TIERS[ti];
+        const segs = resolveSegmentCount(this.recipe, tier);
+        const geo = createSegmentedPlumeGeometry(THREE, segs);
+        const offset = new Float32Array(capacity * 3);
+        const axisScale = new Float32Array(capacity * 4);
+        const params = new Float32Array(capacity * 4);
+        const dynamics = new Float32Array(capacity * 4);
+        const color = new Float32Array(capacity * 3);
+        const instOffset = new THREE.InstancedBufferAttribute(offset, 3);
+        const instAxis = new THREE.InstancedBufferAttribute(axisScale, 4);
+        const instParams = new THREE.InstancedBufferAttribute(params, 4);
+        const instDynamics = new THREE.InstancedBufferAttribute(dynamics, 4);
+        const instColor = new THREE.InstancedBufferAttribute(color, 3);
+        geo.setAttribute('instanceOffset', instOffset);
+        geo.setAttribute('instanceAxisScale', instAxis);
+        geo.setAttribute('instanceParams', instParams);
+        geo.setAttribute('instanceDynamics', instDynamics);
+        geo.setAttribute('instanceColor', instColor);
+        tierBuffers[tier] = {
+          geo,
+          offset,
+          axisScale,
+          params,
+          dynamics,
+          color,
+          attrs: { instOffset, instAxis, instParams, instDynamics, instColor },
+          segments: segs,
+        };
+      }
 
+      const active = tierBuffers[initialTier];
       let mesh;
       if (THREE.InstancedMesh) {
-        mesh = new THREE.InstancedMesh(geo, mat, capacity);
+        mesh = new THREE.InstancedMesh(active.geo, mat, capacity);
         mesh.count = 0;
       } else {
-        mesh = new THREE.Mesh(geo, mat);
+        mesh = new THREE.Mesh(active.geo, mat);
         mesh.count = 0;
       }
       mesh.frustumCulled = false;
@@ -409,7 +611,6 @@ export class ContinuousPlumeSystem {
       mesh.visible = this.pool._layerEnabled[li] === 1;
       this.group.add(mesh);
 
-      // Persistent uniform write record (mutated in place each frame)
       const uScratch = {
         time: 0,
         flowSpeed: 0,
@@ -439,11 +640,13 @@ export class ContinuousPlumeSystem {
         mesh,
         material: mat,
         baseIntensity,
-        offset,
-        axisScale,
-        params,
-        color,
-        attrs: { instOffset, instAxis, instParams, instColor },
+        offset: active.offset,
+        axisScale: active.axisScale,
+        params: active.params,
+        dynamics: active.dynamics,
+        color: active.color,
+        attrs: active.attrs,
+        tierBuffers,
         capacity,
         writeCount: 0,
         uScratch,
@@ -498,20 +701,67 @@ export class ContinuousPlumeSystem {
   }
 
   /**
+   * Begin multi-entity GPU batch (fleet path). Follow with writeEntity + endUpdate.
+   */
+  beginUpdate(a11y) {
+    if (this._disposed) return;
+    this._batching = true;
+    this._batchA11y = a11y == null ? this._a11y : a11y;
+    if (this._batchA11y.qualityTier) this.setQualityTier(this._batchA11y.qualityTier);
+    this.pool.beginWrite(this._batchA11y);
+  }
+
+  /**
    * @param {number} dt
    * @param {number} throttle
    * @param {Array|null} sockets
-   * @param {{boost?:number,a11y?:object}|null|undefined} opts - omit or null; never pass fresh {}
+   * @param {{boost?:number,cruise?:number,reverse?:number,retroOnly?:boolean,brake?:number,speedDrive?:number,mode?:string}|null} opts
+   * @param {{plumeDrive:number,boostBlend:number}} driveState
+   * @param {number} [socketBudget]
+   */
+  writeEntity(dt, throttle, sockets, opts, driveState, socketBudget) {
+    if (this._disposed || !this._batching) return 0;
+    const o = opts == null ? this._emptyOpts : opts;
+    return this.pool.writeEntity(
+      throttle,
+      sockets,
+      dt,
+      o.boost == null ? 0 : o.boost,
+      driveState,
+      o,
+      socketBudget,
+    );
+  }
+
+  endUpdate(dt) {
+    if (this._disposed) return this.pool._result;
+    this._time += dt || 0;
+    const a11y = this._batchA11y || this._a11y;
+    const result = this.pool.endWrite();
+    this._batching = false;
+    this._commitGpu(result, a11y, null);
+    return result;
+  }
+
+  /**
+   * @param {number} dt
+   * @param {number} throttle
+   * @param {Array|null} sockets
+   * @param {{boost?:number,a11y?:object,cruise?:number,reverse?:number,retroOnly?:boolean,brake?:number,speedDrive?:number,mode?:string}|null|undefined} opts
    */
   update(dt, throttle, sockets, opts) {
     if (this._disposed) return this.pool._result;
     this._time += dt || 0;
-    // No hot default object: omitted/null/undefined uses preallocated empty opts
     const o = opts == null ? this._emptyOpts : opts;
     const boost = o.boost == null ? 0 : o.boost;
     const a11y = o.a11y == null ? this._a11y : o.a11y;
-    const result = this.pool.update(throttle, sockets, a11y, dt, boost);
+    if (a11y.qualityTier) this.setQualityTier(a11y.qualityTier);
+    const result = this.pool.update(throttle, sockets, a11y, dt, boost, o);
+    this._commitGpu(result, a11y, sockets);
+    return result;
+  }
 
+  _commitGpu(result, a11y, sockets) {
     const sock0 = sockets && sockets.length ? sockets[0] : this.pool._fallbackSocket;
     this._nozzleScratch.x = sock0.x;
     this._nozzleScratch.y = sock0.y;
@@ -535,11 +785,11 @@ export class ContinuousPlumeSystem {
         if (!batch) continue;
         const w = batch.writeCount;
         if (w >= batch.capacity) continue;
-        const o = w * 3;
+        const oi = w * 3;
         const a = w * 4;
-        batch.offset[o] = s.offset[0];
-        batch.offset[o + 1] = s.offset[1];
-        batch.offset[o + 2] = s.offset[2];
+        batch.offset[oi] = s.offset[0];
+        batch.offset[oi + 1] = s.offset[1];
+        batch.offset[oi + 2] = s.offset[2];
         batch.axisScale[a] = s.axis[0];
         batch.axisScale[a + 1] = s.axis[1];
         batch.axisScale[a + 2] = s.axis[2];
@@ -547,10 +797,16 @@ export class ContinuousPlumeSystem {
         batch.params[a] = s.width;
         batch.params[a + 1] = s.throttle;
         batch.params[a + 2] = s.phase;
-        batch.params[a + 3] = 1.0; // intensity is uniform-only (no double multiply)
-        batch.color[o] = s.color[0];
-        batch.color[o + 1] = s.color[1];
-        batch.color[o + 2] = s.color[2];
+        batch.params[a + 3] = s.boostBlend != null ? s.boostBlend : 0;
+        if (batch.dynamics) {
+          batch.dynamics[a] = s.flowSpeed != null ? s.flowSpeed : 1;
+          batch.dynamics[a + 1] = s.turbulence != null ? s.turbulence : 0.5;
+          batch.dynamics[a + 2] = s.coreSheath != null ? s.coreSheath : 0.8;
+          batch.dynamics[a + 3] = s.dissipation != null ? s.dissipation : 1;
+        }
+        batch.color[oi] = s.color[0];
+        batch.color[oi + 1] = s.color[1];
+        batch.color[oi + 2] = s.color[2];
         batch.writeCount = w + 1;
       }
 
@@ -563,6 +819,7 @@ export class ContinuousPlumeSystem {
         batch.attrs.instOffset.needsUpdate = true;
         batch.attrs.instAxis.needsUpdate = true;
         batch.attrs.instParams.needsUpdate = true;
+        if (batch.attrs.instDynamics) batch.attrs.instDynamics.needsUpdate = true;
         batch.attrs.instColor.needsUpdate = true;
         if (batch.mesh.isInstancedMesh) batch.mesh.count = batch.writeCount;
         else batch.mesh.count = batch.writeCount;
@@ -570,8 +827,8 @@ export class ContinuousPlumeSystem {
 
         const li = batch.layerIndex;
         const u = batch.uScratch;
-        // Mutate persistent scratch — no object allocation
         u.time = this._time;
+        // Uniforms remain family-identity fallbacks; per-instance dynamics own continuum.
         u.flowSpeed = sample.flowSpeed * (this.pool._layerScroll[li] / 2.4);
         u.turbulence = sample.turbulence;
         u.coreSheath = sample.coreSheathBalance;
@@ -581,7 +838,6 @@ export class ContinuousPlumeSystem {
         u.fork = idn.fork;
         u.noiseScale = idn.noiseScale;
         u.softEdge = this.pool._layerSoftEdge[li] + softBoost;
-        // Intensity once: base * accessibility (fragment applies throttle response only).
         const reducedFlashGain = a11y.reducedFlash
           ? (this.recipe.accessibility?.reducedFlash?.roleIntensityGain?.[batch.role] ?? 1)
           : 1;
@@ -602,10 +858,10 @@ export class ContinuousPlumeSystem {
         u.distortEnabled = batch.role === 'distortion' && !a11y.reducedMotion;
         setMaterialUniforms(batch.material, u);
       }
-      this.group.visible = n > 0 && (result.drive > 0.01 || this.recipe.throttle.idle > 0);
+      // Idle floor keeps a restrained core/nozzle signature when recipe.throttle.idle > 0.
+      const idleFloor = this.recipe.throttle?.idle || 0;
+      this.group.visible = n > 0 && (result.drive > 0.01 || idleFloor > 0 || result.entityWrites > 0);
     }
-
-    return result;
   }
 
   /** Clear sim state; keep GPU resources. Idempotent. */
@@ -642,7 +898,14 @@ export class ContinuousPlumeSystem {
     if (this.layerBatches) {
       for (let i = 0; i < this.layerBatches.length; i++) {
         const b = this.layerBatches[i];
-        if (b.mesh?.geometry?.dispose) b.mesh.geometry.dispose();
+        if (b.tierBuffers) {
+          for (let ti = 0; ti < QUALITY_TIERS.length; ti++) {
+            const tb = b.tierBuffers[QUALITY_TIERS[ti]];
+            if (tb?.geo?.dispose) tb.geo.dispose();
+          }
+        } else if (b.mesh?.geometry?.dispose) {
+          b.mesh.geometry.dispose();
+        }
         if (b.material?.dispose) b.material.dispose();
         b.mesh = null;
         b.material = null;
