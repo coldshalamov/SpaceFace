@@ -1,0 +1,147 @@
+{
+  "schema": "spaceface.labInputSeamsInventory.v1",
+  "recordedAt": "2026-07-24T04:40:00.000Z",
+  "head": "8610102d89a4c122e088205eb46739590c6a477e",
+  "summary": "Inventory of pure/deterministic input seams that Phase 2 can build on when separating hardware from semantics.",
+  "primaryTransition": {
+    "fn": "transitionFlightKeyState",
+    "file": "src/systems/input.js",
+    "line": 423,
+    "signature": "transitionFlightKeyState(state, currentKeys = {}, { code, pressed, blocked } = {})",
+    "purity": "deterministic pure transition over key-code map; no DOM, no wall clock",
+    "behavior": [
+      "Clones currentKeys into null-prototype object",
+      "Empty code → returns clone unchanged",
+      "blocked or pressed!==true → forces code false",
+      "On press: resolves actionForCode; clears opposing action codes (last-input-wins axes)",
+      "Sets code true"
+    ],
+    "consumers": [
+      {
+        "file": "src/systems/input.js",
+        "lines": [659, 670],
+        "role": "live DOM keyboard listeners via applyFlightKeyTransition"
+      },
+      {
+        "file": "scripts/lib/pq017ClosedLoopControlHarness.mjs",
+        "line": 323,
+        "role": "tick/replay harness applies recorded key transitions without DOM"
+      },
+      {
+        "file": "test/pq017-closed-loop-control.test.mjs",
+        "role": "unit/contract tests of rebound and opposing-axis behavior"
+      }
+    ],
+    "phase2RenameHint": "inputSemantics.transitionKeyState / FlightKeyTransition"
+  },
+  "masslineInputGrammar": {
+    "file": "src/systems/masslineInputGrammar.js",
+    "exports": [
+      {
+        "name": "MASSLINE_HOLD_S",
+        "value": 0.16,
+        "line": 7
+      },
+      {
+        "name": "MASSLINE_INTENT_WINDOW_S",
+        "value": 0.22,
+        "line": 8
+      },
+      {
+        "name": "neutralMasslineCommand",
+        "line": 12
+      },
+      {
+        "name": "createMasslineInputGrammar",
+        "line": 27
+      }
+    ],
+    "timingAuthority": "fixed simulation dt only — browser wall time never decides tap/hold or intent memory",
+    "fileComment": "Raw device bindings stay in input.js. Kernel receives normalized thumb action + ship-local axes.",
+    "outputs": [
+      "phase", "latch", "cut", "lineControl", "lineLength", "reelIn", "payOut",
+      "orbitDirection", "pump", "buffered", "source"
+    ],
+    "notes": "Pure-ish stateful factory: closed-over timers advanced by dt. Deterministic given identical dt/raw sequence.",
+    "phase2RenameHint": "inputSemantics.masslineGrammar"
+  },
+  "hardwareVsSemanticsSplitToday": {
+    "hardwareLayer": {
+      "owners": [
+        "src/systems/input.js DOM keydown/keyup/pointer/gamepad sampling",
+        "src/systems/gamepad.js"
+      ],
+      "concerns": [
+        "KeyboardEvent.code",
+        "pointer NDC / screen coords",
+        "gamepad axes with deadzone",
+        "modal/text-entry blocking",
+        "performance.now timestamps for KBM activity / auto-target path drawing"
+      ],
+      "wallClockUses": {
+        "file": "src/systems/input.js",
+        "lines": [639, 665, 692, 706, 725, 972],
+        "classification": "presentation/modality timestamps — not flight axis authority"
+      }
+    },
+    "semanticsLayer": {
+      "owners": [
+        "transitionFlightKeyState (key map)",
+        "masslineInputGrammar.step(dt, raw)",
+        "state.input axes/actions published each tick"
+      ],
+      "concerns": [
+        "moveX/moveZ/turnIntent/boost/brake/fire",
+        "massline command packet",
+        "travelDrive block when travelFlag('travelBurn')",
+        "bindings remapping via state.settings.controls"
+      ]
+    },
+    "currentBoundaryQuality": "PARTIAL — pure transition + massline grammar exist, but input.js still co-owns DOM, modality timestamps, and action publish in one system. No separate input-semantics module boundary for all axes."
+  },
+  "relatedSeams": [
+    {
+      "name": "state.input shape",
+      "file": "src/core/gameState.js",
+      "line": 94,
+      "role": "default axes/actions object consumed by flight/weapons"
+    },
+    {
+      "name": "travelFlag gate on travel input shape",
+      "file": "src/systems/input.js",
+      "line": 142,
+      "role": "env-tier travelBurn flag gates travel-drive fields"
+    },
+    {
+      "name": "sf-sim input tape",
+      "file": "test/47a.inputs.json",
+      "role": "tick-indexed input for golden; bypasses DOM"
+    },
+    {
+      "name": "masslineControlLab lab controller",
+      "file": "scripts/lib/masslineControlLab.mjs",
+      "role": "lab-owned additive controller system injects intents — focused-lab, not production input path"
+    }
+  ],
+  "factVerification": [
+    {
+      "fact": "transitionFlightKeyState exported at input.js:423",
+      "status": "CONFIRMED"
+    },
+    {
+      "fact": "live consumers at 659,670; harness at pq017ClosedLoopControlHarness:323",
+      "status": "CONFIRMED"
+    },
+    {
+      "fact": "massline grammar advances only on sim dt",
+      "status": "CONFIRMED",
+      "evidence": "masslineInputGrammar.js header + step(dt, raw)"
+    }
+  ],
+  "phase2Implications": [
+    "Extract hardware adapters that only emit code/axis samples.",
+    "Route all harnesses through transitionFlightKeyState + grammar.step.",
+    "Replace wall-time probe holds with tick-indexed key transitions where validating gameplay.",
+    "Keep masslineControlLab controller flagged as lab-only additive semantics."
+  ]
+}

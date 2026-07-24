@@ -1,0 +1,207 @@
+{
+  "schema": "spaceface.labPq017GuardInventory.v1",
+  "recordedAt": "2026-07-24T04:40:00.000Z",
+  "head": "8610102d89a4c122e088205eb46739590c6a477e",
+  "primaryFile": "scripts/lib/pq017ProbeIterationGuard.mjs",
+  "purpose": "Inventory of PQ-017 validation/iteration guard components reusable for a generic Phase 1 broker. Phase 0 only — no extraction yet.",
+  "sourceListsAreTheManifest": {
+    "note": "ROUTE_SOURCES + REGRESSION_SOURCES are the digests' input set — the closest thing to a validation manifest today.",
+    "REGRESSION_SOURCES": {
+      "lines": "9-12",
+      "paths": [
+        "test/world-site-public-route-contract.test.mjs",
+        "test/pq017-closed-loop-control.test.mjs"
+      ]
+    },
+    "ROUTE_SOURCES": {
+      "lines": "13-51",
+      "count": 37,
+      "includes": [
+        "package.json",
+        "scripts/check-pq017-world-site-fast.mjs",
+        "scripts/lib/masslineControlLab.mjs",
+        "scripts/lib/pq017ClosedLoopControlHarness.mjs",
+        "scripts/lib/pq017PublicControlTrajectory.mjs",
+        "scripts/lib/pq017WorldSitePublicRoute.mjs",
+        "scripts/lib/pq017ProbeIterationGuard.mjs",
+        "src/core/sim.js",
+        "src/core/loop.js",
+        "src/systems/flightV3.js",
+        "src/systems/input.js",
+        "src/systems/tetherGameplay.js"
+      ]
+    },
+    "genericBrokerRename": "ValidationSourceManifest / routeSourceSet + regressionSourceSet"
+  },
+  "components": [
+    {
+      "name": "digestPq017Sources",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 150,
+      "behavior": "sha256 over stableJson of relativePath→sourceText map",
+      "genericBrokerRename": "computeSourceSetDigest"
+    },
+    {
+      "name": "derivePq017FailureIdentity",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 154,
+      "behavior": "Builds slugged identity fields → family path + sha256 fingerprint",
+      "genericBrokerRename": "deriveFailureIdentity / failureFingerprint"
+    },
+    {
+      "name": "evaluatePq017FastGate",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 192,
+      "behavior": "Pass if no unresolved primary failure, newer accepted evidence, or regression digest changed; else block requiring regression",
+      "genericBrokerRename": "evaluateFastGate"
+    },
+    {
+      "name": "createPq017FastGateReceipt",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 233,
+      "behavior": "Factory for spaceface.pq017-fast-gate.v1 receipt with route/regression digests + optional failure ack fingerprint",
+      "schema": "spaceface.pq017-fast-gate.v1",
+      "genericBrokerRename": "createFastGateReceipt"
+    },
+    {
+      "name": "evaluatePq017AcceptanceGate",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 248,
+      "behavior": "Requires explicit acceptance/diagnostic flags, current receipt matching digests, and failure-ack coverage when latest failure open",
+      "genericBrokerRename": "evaluateAcceptanceGate"
+    },
+    {
+      "name": "computePq017GateDigests",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 359,
+      "behavior": "Reads ROUTE_SOURCES + REGRESSION_SOURCES from disk; returns { routeDigest, regressionDigest }",
+      "genericBrokerRename": "computeGateDigestsFromManifest"
+    },
+    {
+      "name": "readPq017FailurePointer",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 370,
+      "behavior": "Reads latest-acceptance-failure.json from outputRoot",
+      "genericBrokerRename": "readLatestFailurePointer"
+    },
+    {
+      "name": "readPq017FastGateReceipt",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 374,
+      "behavior": "Reads fast-gate.json receipt",
+      "genericBrokerRename": "readFastGateReceipt"
+    },
+    {
+      "name": "claimPq017FastGateReceipt",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 378,
+      "behavior": "Atomic rename claim of fast-gate receipt for exclusive consumption",
+      "genericBrokerRename": "claimFastGateReceipt (atomic)"
+    },
+    {
+      "name": "acquirePq017FastRunLock",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 396,
+      "behavior": "wx-create fast-run.lock with pid token; null if already locked",
+      "genericBrokerRename": "acquireRunLock"
+    },
+    {
+      "name": "releasePq017FastRunLock",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 420,
+      "behavior": "Release lock when token matches",
+      "genericBrokerRename": "releaseRunLock"
+    },
+    {
+      "name": "publishPq017AcceptanceFailure",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 487,
+      "behavior": "Persists failure pointer + family fingerprint for later gates",
+      "genericBrokerRename": "publishAcceptanceFailure / persistFailure"
+    },
+    {
+      "name": "publishPq017FastGateReceipt",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 563,
+      "behavior": "Atomic write of fast-gate receipt JSON",
+      "genericBrokerRename": "publishFastGateReceipt"
+    },
+    {
+      "name": "loadPq017GateState",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 587,
+      "behavior": "Aggregates digests + latestFailure + receipt + accepted evidence timestamps",
+      "genericBrokerRename": "loadGateState"
+    },
+    {
+      "name": "assertPq017ProbeLaunch",
+      "file": "scripts/lib/pq017ProbeIterationGuard.mjs",
+      "line": 608,
+      "behavior": "Launch arbiter: mode flags, claim receipt, evaluate acceptance gate, mark claim inflight or throw",
+      "genericBrokerRename": "assertProbeLaunch / launchArbiter"
+    }
+  ],
+  "siblingConsumers": [
+    {
+      "file": "scripts/lib/pq017ClosedLoopControlHarness.mjs",
+      "role": "tick-indexed closed-loop control harness; imports transitionFlightKeyState for replays"
+    },
+    {
+      "file": "scripts/lib/pq017PublicControlTrajectory.mjs",
+      "role": "public control trajectory generator for PQ-017 routes"
+    },
+    {
+      "file": "scripts/lib/pq017WorldSitePublicRoute.mjs",
+      "role": "world-site public route runner"
+    },
+    {
+      "file": "scripts/check-pq017-world-site-fast.mjs",
+      "role": "fast-gate entry script (in ROUTE_SOURCES)"
+    }
+  ],
+  "persistedArtifacts": {
+    "failurePointerName": "latest-acceptance-failure.json",
+    "fastReceiptName": "fast-gate.json",
+    "fastRunLockName": "fast-run.lock",
+    "receiptSchema": "spaceface.pq017-fast-gate.v1",
+    "lockSchema": "spaceface.pq017-fast-run-lock.v1"
+  },
+  "phase1ExtractionNotes": [
+    "Generalize naming off PQ-017 while preserving receipt schema migration path.",
+    "Parameterize ROUTE_SOURCES/REGRESSION_SOURCES as injectable manifest lists.",
+    "Keep atomic claim/lock semantics — they are the non-repeat iteration control plane.",
+    "Do not couple broker extraction to browser/Electron launches in Phase 1 scaffolding."
+  ],
+  "factVerification": [
+    {
+      "fact": "evaluatePq017FastGate at ~192",
+      "status": "CONFIRMED",
+      "evidence": "line 192"
+    },
+    {
+      "fact": "evaluatePq017AcceptanceGate at ~248",
+      "status": "CONFIRMED",
+      "evidence": "line 248"
+    },
+    {
+      "fact": "derivePq017FailureIdentity at ~154",
+      "status": "CONFIRMED",
+      "evidence": "line 154"
+    },
+    {
+      "fact": "createPq017FastGateReceipt at ~233",
+      "status": "CONFIRMED",
+      "evidence": "line 233"
+    },
+    {
+      "fact": "computePq017GateDigests at ~359",
+      "status": "CONFIRMED",
+      "evidence": "line 359"
+    },
+    {
+      "fact": "assertPq017ProbeLaunch at ~608",
+      "status": "CONFIRMED",
+      "evidence": "line 608"
+    }
+  ]
+}

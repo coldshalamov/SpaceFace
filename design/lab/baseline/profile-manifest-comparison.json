@@ -1,0 +1,208 @@
+{
+  "schema": "spaceface.labProfileManifestComparison.v1",
+  "recordedAt": "2026-07-24T04:40:00.000Z",
+  "head": "8610102d89a4c122e088205eb46739590c6a477e",
+  "summary": "47-A golden determinism rests on three independent layers. Live browser play is a superset of systems and env-gated features. The only existing profile concept locks gameplay backends.",
+  "threeLayer47aDeterminism": {
+    "prominence": "KEY STRUCTURAL INSIGHT",
+    "layers": [
+      {
+        "id": 1,
+        "name": "curated-systems-list",
+        "file": "scripts/sf-sim.mjs",
+        "line": 306,
+        "behavior": "run47a systems array omits massline/travel/world/AI families; only 13 gameplay systems (+ core).",
+        "systems": [
+          "scenarioRuntime", "presentationOrchestrator", "presentationAdapters", "actions",
+          "flightSlot", "weapons", "physics", "combat", "cargo", "economy", "missions", "story", "save"
+        ]
+      },
+      {
+        "id": 2,
+        "name": "env-tier-feature-flags-off-under-node",
+        "file": "src/data/featureFlags.js",
+        "line": 15,
+        "behavior": "IS_BROWSER = typeof window !== 'undefined'. COMBAT_FLAGS / MASSLINE2_FLAGS / TRAVEL_FLAGS default most entries to IS_BROWSER (false under Node).",
+        "families": ["COMBAT_FLAGS", "MASSLINE2_FLAGS", "TRAVEL_FLAGS"]
+      },
+      {
+        "id": 3,
+        "name": "explicit-scenario-combat-pin",
+        "file": "scripts/sf-sim.mjs",
+        "lines": "59-62",
+        "behavior": "SCENARIO_COMBAT_FLAG_PINS['47a'] forces weaponImpulseConsequences:false even if a harness embeds browser defaults."
+      }
+    ],
+    "implication": "Any one layer can be incomplete alone; all three currently cooperate to freeze 47-A. Phase 2 must preserve golden hashes when migrating off env-selected gameplay."
+  },
+  "existingProfileConcept": {
+    "name": "graphics/settings profile bootstrap",
+    "file": "src/core/graphicsProfileBootstrap.js",
+    "storageKey": "sf.settings.profile.v1",
+    "whatItControls": "UI/video/controls settings merge from localStorage before createRegistry",
+    "whatItDoesNotControl": "physicsBackend, aiBackend, flightBackend",
+    "lockedGameplayKeys": ["physicsBackend", "aiBackend", "flightBackend"],
+    "lockedReason": "Runtime backend selection is a build contract, not a player-profile choice (mergeProfileSettings restores base createGameState defaults).",
+    "phase2Relevance": "Backend selection is NOT environment-derived today — it is a locked settings field. Env-selected gameplay audit must target featureFlags + curated system lists, not profile bootstrap."
+  },
+  "defaultGameplayBackends": {
+    "source": "src/core/gameState.js defaultSettings().gameplay",
+    "physicsBackend": "rapier-dynamic",
+    "aiBackend": "sg06-tactical",
+    "flightBackend": "v3",
+    "notes": "Live registry selectAISystem/selectFlightSystem switch on these settings keys."
+  },
+  "flagFamilies": {
+    "IS_BROWSER": {
+      "definition": "typeof window !== 'undefined'",
+      "file": "src/data/featureFlags.js",
+      "line": 15
+    },
+    "COMBAT_FLAGS": {
+      "file": "src/data/featureFlags.js",
+      "line": 17,
+      "reader": "combatFlag(name)",
+      "readerLine": 43,
+      "entries": {
+        "missileV2": { "defaultExpr": "IS_BROWSER", "node": false, "browser": true },
+        "weakPoints": { "defaultExpr": "IS_BROWSER", "node": false, "browser": true },
+        "momentumInherit": { "defaultExpr": "false", "node": false, "browser": false },
+        "whipDamage": { "defaultExpr": "IS_BROWSER", "node": false, "browser": true },
+        "weaponImpulseConsequences": {
+          "defaultExpr": "IS_BROWSER",
+          "node": false,
+          "browser": true,
+          "47aPin": false
+        }
+      }
+    },
+    "MASSLINE2_FLAGS": {
+      "file": "src/data/featureFlags.js",
+      "line": 52,
+      "reader": "massline2Flag(name) = enabled AND named",
+      "readerLine": 90,
+      "entriesDefaultingToIsBrowser": [
+        "enabled", "fireControl", "throw", "contextAttach", "bulletTime", "tumble",
+        "impactDamage", "cloak", "lootShards", "terrainAnchors", "jettisonImpulse",
+        "bombPropulsion", "hitchhiking"
+      ],
+      "nodeDefault": false,
+      "browserDefault": true
+    },
+    "TRAVEL_FLAGS": {
+      "file": "src/data/featureFlags.js",
+      "line": 105,
+      "reader": "travelFlag(name)",
+      "readerLine": 142,
+      "loadBearingOnBothGoldens": true,
+      "entries": {
+        "travelBurn": { "defaultExpr": "IS_BROWSER", "node": false, "browser": true },
+        "boostNeverBrakes": { "defaultExpr": "IS_BROWSER", "node": false, "browser": true },
+        "dashMomentum": { "defaultExpr": "IS_BROWSER", "node": false, "browser": true },
+        "laneBoost": { "defaultExpr": "IS_BROWSER", "node": false, "browser": true }
+      },
+      "notes": "stepPropulsion is on both legacy flight and flightV3 golden paths; ungated travel changes move frozen hashes."
+    }
+  },
+  "highImpactFlagReaders": [
+    {
+      "file": "src/systems/flightV3.js",
+      "line": 141,
+      "call": "massline2Flag('throw')",
+      "role": "self-sling / throw-arm impulse tag"
+    },
+    {
+      "file": "src/systems/flightV3.js",
+      "line": 146,
+      "call": "typeof window !== 'undefined'",
+      "role": "DIAGNOSTIC — installs window.__SF_FLIGHT_V3__ debug snapshot only"
+    },
+    {
+      "file": "src/systems/flightV3.js",
+      "line": 514,
+      "call": "massline2Flag('throw') / travelFlag('dashMomentum')",
+      "role": "physicsEarnedMomentum composition"
+    },
+    {
+      "file": "src/systems/flightV3.js",
+      "line": 525,
+      "call": "massline2Flag('cloak')",
+      "role": "coastAssistScale while cloaked"
+    },
+    {
+      "file": "src/systems/masslineThrow.js",
+      "line": 74,
+      "call": "massline2Flag('throw')",
+      "role": "whole throw system gated"
+    },
+    {
+      "file": "src/systems/bulletTime.js",
+      "line": 59,
+      "call": "massline2Flag('bulletTime')"
+    },
+    {
+      "file": "src/systems/cloak.js",
+      "line": 54,
+      "call": "massline2Flag('cloak')"
+    },
+    {
+      "file": "src/systems/aiPorts.js",
+      "line": 659,
+      "call": "massline2Flag('cloak')",
+      "role": "AI detection gate"
+    },
+    {
+      "file": "src/systems/masslineImpactDamage.js",
+      "lines": [52, 68],
+      "call": "massline2Flag('impactDamage') / massline2Flag('tumble')"
+    },
+    {
+      "file": "src/systems/impulseCharges.js",
+      "line": 99,
+      "call": "massline2Flag('bombPropulsion')"
+    },
+    {
+      "file": "src/systems/tetherGameplay.js",
+      "line": 1007,
+      "call": "massline2Flag('contextAttach')"
+    },
+    {
+      "file": "src/systems/flight.js",
+      "line": 84,
+      "call": "typeof window !== 'undefined'",
+      "role": "DIAGNOSTIC — legacy debug branch"
+    },
+    {
+      "file": "src/systems/input.js",
+      "line": 142,
+      "call": "travelFlag('travelBurn')",
+      "role": "travel-drive input shape gated"
+    }
+  ],
+  "nodeVsBrowserContrast": {
+    "headlessSfSim47a": {
+      "systems": "curated 13 + core",
+      "massline2": "OFF (no window)",
+      "travel": "OFF (no window)",
+      "combat.weaponImpulseConsequences": "OFF default + explicit pin",
+      "backends": "set by harness (physics rapier-dynamic; flight legacy or v3 via CLI)"
+    },
+    "liveBrowser": {
+      "systems": "full SYSTEMS/UPDATE_ORDER (~127 init / 96 step)",
+      "massline2": "ON (IS_BROWSER)",
+      "travel": "ON (IS_BROWSER)",
+      "combat most flags": "ON except momentumInherit=false",
+      "backends": "createGameState defaults locked against profile override"
+    }
+  },
+  "manifestGap": {
+    "today": "No single runtime manifest describes which systems + flags + backends a run uses.",
+    "closestExisting": [
+      "registry.js hard-coded arrays (browser)",
+      "sf-sim.mjs curated arrays (headless golden)",
+      "masslineControlLab.mjs focused array (lab)",
+      "pq017 ROUTE_SOURCES/REGRESSION_SOURCES (validation source digests, not sim systems)"
+    ],
+    "phase2Target": "One authoritative system/flag/backend selection path for production, golden, and lab profiles."
+  }
+}

@@ -1,0 +1,306 @@
+{
+  "schema": "spaceface.labHashEntropyCoverage.v1",
+  "recordedAt": "2026-07-24T04:40:00.000Z",
+  "head": "8610102d89a4c122e088205eb46739590c6a477e",
+  "observatorySemanticHash": {
+    "file": "src/observability/sessionSamplers.js",
+    "hashFn": "canonicalStateHash",
+    "hashFnLine": 105,
+    "snapshotFn": "canonicalStateSnapshot",
+    "snapshotFnLine": 92,
+    "stringifyFn": "stableObservatoryStringify",
+    "stringifyFnLine": 112,
+    "algorithm": "8-lane fold of fnv1a over stable JSON of canonical snapshot",
+    "algorithmDetail": "for lane 0..7: digest += fnv1a(`observatory:${lane}:${encoded}`)",
+    "cadence": {
+      "const": "OBSERVATORY_CADENCE",
+      "line": 7,
+      "hashEveryTicks": 60,
+      "inputEveryTicks": 1,
+      "stateEveryTicks": 3,
+      "assetEveryTicks": 6
+    },
+    "covers": {
+      "canonicalRootKeys": [
+        "meta", "mode", "timeScale", "tick", "simTime", "days", "playerId", "player", "flight",
+        "fuel", "nav", "world", "combat", "economy", "factions", "conflicts", "missions",
+        "careers", "scenario", "story", "crafting", "automation", "sectorSim", "interventions",
+        "interventionMeta", "drill", "claims", "traffic", "jump"
+      ],
+      "canonicalRootKeysLine": "14-19",
+      "entities": "entityList mapped through canonicalEntity whitelist, sorted by id"
+    },
+    "omits": {
+      "omitCanonicalKeys": [
+        "rng", "spatialHash", "mesh", "view", "obj", "prevPos", "prevRot", "render", "audio",
+        "observatory", "observatoryHooks", "_observatory"
+      ],
+      "omitLine": 22,
+      "criticalGap": "rng is intentionally omitted — entropy stream is NOT in the semantic hash"
+    },
+    "validator": "src/contracts/observatorySchemas.js"
+  },
+  "entropyPrimitives": {
+    "primary": {
+      "stateField": "state.rng",
+      "createdIn": "src/core/gameState.js:93",
+      "factory": "mulberry32(seed)",
+      "factoryFile": "src/core/rng.js",
+      "factoryLine": 5,
+      "serializable": false,
+      "reason": "Closed-over mutable uint32 counter inside mulberry32 closure; not exposed on state."
+    },
+    "serializableAdvance": {
+      "fn": "stepMulberry32(seed)",
+      "file": "src/core/rng.js",
+      "line": 16,
+      "returns": "{ seed, value }",
+      "notes": "Used for per-object streams, not for state.rng itself."
+    },
+    "drawSeeded": {
+      "fn": "drawSeeded(obj, key, fallbackSeed)",
+      "file": "src/core/rng.js",
+      "line": 27,
+      "notes": "Advances obj[key] uint32 seed in place."
+    },
+    "hash32": {
+      "fn": "hash32(...args)",
+      "file": "src/core/rng.js",
+      "line": 38,
+      "algorithm": "FNV-1a uint32 over joined string"
+    },
+    "makeStream": {
+      "fn": "makeStream(masterSeed, label)",
+      "file": "src/core/rng.js",
+      "line": 57,
+      "returns": "mulberry32(hash32(masterSeed, label))"
+    },
+    "perSystemFallbackCopies": [
+      {
+        "file": "src/data/asteroidMotion.js",
+        "line": 19,
+        "name": "fallbackMulberry32",
+        "role": "pure data motion profiles when core rng helper not injected"
+      },
+      {
+        "file": "src/data/mining.js",
+        "line": 18,
+        "name": "fallbackMulberry32",
+        "role": "asteroid seam derivation pure helper"
+      },
+      {
+        "file": "src/systems/salvage.js",
+        "line": 280,
+        "name": "fallbackMulberry32",
+        "role": "headless fallback if core helper not wired"
+      }
+    ],
+    "continuationStateObservable": false,
+    "continuationStateRestorable": false,
+    "continuationGap": "state.rng internal counter is not part of save/observatory snapshots; only state.meta.seed is stored. Restoring a save re-seeds from meta.seed via createGameState-like paths but cannot resume mid-stream mulberry32 position from state.rng alone. Per-object drawSeeded keys can be restorable if persisted on their owners."
+  },
+  "seedPropagation": {
+    "path": [
+      "UI newGame seed input (optional) → bus game:new",
+      "main.resetRunState(opts.seed?) → createGameState(seed)",
+      "state.meta.seed + state.rng = mulberry32(seed)"
+    ],
+    "blankSeedSite": {
+      "file": "src/main.js",
+      "line": 603,
+      "expression": "((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0) || 1",
+      "classification": "GAMEPLAY-affecting — New Game without explicit seed is non-deterministic at session start"
+    },
+    "sfSimSeed": {
+      "file": "scripts/sf-sim.mjs",
+      "source": "CLI --seed or tape.seed (default 47 for check scripts)"
+    }
+  },
+  "hashes47a": {
+    "legacy": {
+      "command": "npm run check:sim:compare",
+      "flightSystem": "legacy",
+      "seed": 47,
+      "ticks": 720,
+      "reloadAt": 600,
+      "liveSha256": "271605e7639ef3ec8519c42a9d8b227938fdac76aa72bd914a6c922f13588af1",
+      "expectedEnvelopePath": "test/47a.telemetry.expected.json",
+      "expectedAuthoritativeHash": "7f4ecb2d454de26248a263f3faa24cebcffd4640e7c0669ce5fb10be9eed4ea1",
+      "compareExit": 0,
+      "deterministicReload": true,
+      "hashEqualUninterruptedVsReload": true,
+      "envelopeHashMatch": false,
+      "notes": "Compare mode ok:true; envelope authoritativeHash is stale relative to live hash (pre-existing drift, not Phase 0 regression)."
+    },
+    "v3": {
+      "command": "npm run check:sim:v3:compare",
+      "flightSystem": "v3",
+      "seed": 47,
+      "ticks": 720,
+      "reloadAt": 600,
+      "liveSha256": "7d6dffeb11e8fb89596ed443450e889e13ad6cd86173aa4f78ed32c6a0e1ad8a",
+      "expectedEnvelopePath": "test/47a.telemetry.v3.expected.json",
+      "expectedAuthoritativeHash": "a6c96aad61fc4c185c070e0d9349e5d3e7a860cf47d86c0ffea190a20d9e0ff1",
+      "compareExit": 0,
+      "deterministicReload": true,
+      "hashEqualUninterruptedVsReload": true,
+      "envelopeHashMatch": false,
+      "notes": "Same class of pre-existing envelope drift as legacy; reload determinism holds."
+    },
+    "scenarioContractSha256": "de46094490bb9ca204ca99caed118187b7d132b66359b23514139668978d9f9d"
+  },
+  "wallClockAndRandomAudit": {
+    "scope": "src/systems, src/core, src/combat, src/data (game-affecting)",
+    "hits": [
+      {
+        "file": "src/main.js",
+        "line": 603,
+        "call": "Date.now + Math.random",
+        "classification": "GAMEPLAY-affecting",
+        "note": "blank New Game seed derivation"
+      },
+      {
+        "file": "src/core/loop.js",
+        "lines": [47, 82, 85],
+        "call": "performance.now / requestAnimationFrame",
+        "classification": "DIAGNOSTIC/presentation",
+        "note": "frame pacing only; sim uses fixed dt"
+      },
+      {
+        "file": "src/core/perfRuntime.js",
+        "lines": [4, 6],
+        "call": "performance.now / Date.now",
+        "classification": "DIAGNOSTIC"
+      },
+      {
+        "file": "src/systems/flightV3.js",
+        "line": 1118,
+        "call": "performance.now / Date.now via nowMs()",
+        "classification": "DIAGNOSTIC",
+        "note": "only _diag.tickMs timing"
+      },
+      {
+        "file": "src/systems/flight.js",
+        "line": 433,
+        "call": "performance.now / Date.now via nowMs()",
+        "classification": "DIAGNOSTIC",
+        "note": "only _diag.tickMs timing"
+      },
+      {
+        "file": "src/systems/input.js",
+        "lines": [639, 665, 692, 706, 725, 972],
+        "call": "performance.now",
+        "classification": "DIAGNOSTIC/presentation",
+        "note": "KBM activity timestamps + auto-target path drawing; not sim dt authority"
+      },
+      {
+        "file": "src/systems/gamepad.js",
+        "lines": [71, 72],
+        "call": "performance.now / Date.now",
+        "classification": "DIAGNOSTIC/presentation"
+      },
+      {
+        "file": "src/systems/sectorSim.js",
+        "lines": [567, 606, 631, 656],
+        "call": "Date.now",
+        "classification": "GAMEPLAY-affecting (offline catch-up UX mapping)",
+        "note": "lastWallT stamps offline absence → capped days; field kernel itself uses simTime. Absent from sf-sim curated list."
+      },
+      {
+        "file": "src/systems/automation.js",
+        "line": 2523,
+        "call": "Date.now",
+        "classification": "GAMEPLAY-affecting (injectable nowMs for offline/passive)",
+        "note": "opts.nowMs injectable; default Date.now. Not on 47a curated path."
+      },
+      {
+        "file": "src/systems/presentationAdapters.js",
+        "line": 256,
+        "call": "setTimeout",
+        "classification": "DIAGNOSTIC/presentation",
+        "note": "UI surface timing after undock"
+      },
+      {
+        "file": "src/core/physics.js",
+        "line": 1225,
+        "call": "performance.now / Date.now",
+        "classification": "DIAGNOSTIC",
+        "note": "timing helper"
+      }
+    ],
+    "mathRandomInAuthoritativeSim": {
+      "status": "no hits in systems/combat/core sim logic for gameplay rolls",
+      "allowedCosmetic": ["src/audio/*", "render/VFX paths"],
+      "contract": "src/core/rng.js documents sim never calls Math.random"
+    }
+  },
+  "expensiveProbesWallTimeGameplayHolds": {
+    "description": "Probes that express control/settle as real-time waits rather than tick-indexed input.",
+    "representative": [
+      {
+        "file": "scripts/probe-massline2-live.mjs",
+        "holds": ["waitForTimeout(650)", "waitForTimeout(320)", "waitForTimeout(1500)"],
+        "class": "GAMEPLAY-settle wall hold (massline interactions)"
+      },
+      {
+        "file": "scripts/probe-automation-outpost-live.mjs",
+        "holds": ["waitForTimeout(700/350/900/1500/600/500)", "setTimeout 1000/1200"],
+        "class": "GAMEPLAY-settle wall hold"
+      },
+      {
+        "file": "scripts/probe-game-experience.mjs",
+        "holds": ["many waitForTimeout sequences 250-1700ms"],
+        "class": "scripted play wall holds"
+      },
+      {
+        "file": "scripts/probe-dod-authored-assets.mjs",
+        "holds": ["sleep(400) New Game", "sleep(2500) scene build"],
+        "class": "boot/scene wall hold"
+      },
+      {
+        "file": "scripts/probe-dod-crowded-scene.mjs",
+        "holds": ["sleep(2000) populate", "sleep(2000) shader settle"],
+        "class": "scene settle wall hold"
+      },
+      {
+        "file": "scripts/probe-performance-profile.mjs",
+        "holds": ["sleep(WARMUP_MS)", "setTimeout sample windows"],
+        "class": "perf sample wall windows"
+      },
+      {
+        "file": "scripts/probe-context-loss-frame-pacing.mjs",
+        "holds": ["WARMUP_MS / WINDOW_MS setTimeout"],
+        "class": "perf/frame-pacing wall windows"
+      },
+      {
+        "file": "scripts/probe-pq013-planet-perf.mjs",
+        "holds": ["waitForTimeout(800/2500/800)"],
+        "class": "registration/bake settle wall hold"
+      },
+      {
+        "file": "scripts/probe-station-interaction-polish.mjs",
+        "holds": ["many short waitForTimeout UI settles"],
+        "class": "UI interaction wall holds"
+      },
+      {
+        "file": "scripts/probe-flight-visual.mjs",
+        "holds": ["waitForTimeout(500/250)", "sleep races"],
+        "class": "visual settle wall hold"
+      }
+    ],
+    "contrast": "masslineControlLab + pq017ClosedLoopControlHarness use tick-indexed createSimulation steps and transitionFlightKeyState — preferred pattern for Phase 3 lab."
+  },
+  "coverageVsDeterministicCheckpointTarget": {
+    "targetDescription": "Directive §14-class deterministic checkpoint: full restorable sim entropy + semantic state + input at tick N.",
+    "gaps": [
+      "state.rng continuation not in Observatory hash or save-visible stream counter",
+      "canonical hash omits rng by design (OMIT_CANONICAL_KEYS)",
+      "no unified runtime manifest of systems+flags+backends for a checkpoint",
+      "blank New Game seed uses wall-clock/Math.random",
+      "many live probes still wall-time rather than tick-indexed",
+      "47a envelope authoritativeHash fields stale vs live compare hashes (reload still deterministic)",
+      "headless vs browser system sets diverge without a profile abstraction",
+      "per-system fallback mulberry32 copies risk subtle drift if core rng evolves"
+    ]
+  }
+}

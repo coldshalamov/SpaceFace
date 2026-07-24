@@ -1,0 +1,256 @@
+{
+  "schema": "spaceface.labBaseline.v1",
+  "recordedAt": "2026-07-24T04:40:00.000Z",
+  "head": "8610102d89a4c122e088205eb46739590c6a477e",
+  "branch": "master",
+  "headlessHost": {
+    "file": "src/core/sim.js",
+    "createFn": "createSimulation",
+    "line": 43,
+    "acceptsSystemsList": true,
+    "signature": "{ seed?, state?, bus?, helpers?, systems? }",
+    "simDt": 0.016666666666666666,
+    "simDtSource": "export const SIM_DT = 1 / 60",
+    "simDtLine": 17,
+    "reentrancyGuarded": true,
+    "reentrancyLine": 81,
+    "alwaysPrependsCore": true,
+    "notes": "Forks each system definition into an isolated instance; rejects runtime:'render' systems."
+  },
+  "liveRegistry": {
+    "file": "src/core/registry.js",
+    "createFn": "createRegistry",
+    "line": 145,
+    "systemsArrayLine": 151,
+    "updateOrderLine": 257,
+    "systemCount": 127,
+    "updateOrderCount": 96,
+    "stepFnLine": 336,
+    "renderUpdateLine": 370,
+    "aiSlot": {
+      "fn": "selectAISystem",
+      "line": 439,
+      "reads": "state.settings.gameplay.aiBackend + physicsBackend",
+      "defaultLive": "sg06-tactical when physicsBackend === rapier-dynamic"
+    },
+    "flightSlot": {
+      "fn": "selectFlightSystem",
+      "line": 449,
+      "reads": "state.settings.gameplay.flightBackend + physicsBackend",
+      "defaultLive": "flightV3 when flightBackend === v3 && physicsBackend === rapier-dynamic"
+    },
+    "systemsInitOrder": [
+      "core", "voiceArbiter", "input", "autoTargetAssist", "flybyFocus", "bulletTime", "cloak",
+      "scanner", "scanReveal", "buildIdentity", "lawSecurity", "pirateDisguise", "pirateParley",
+      "pirateDisengage", "aceMemory", "barkDirector", "aiSlot", "dockingCorridor", "physics",
+      "aiPorts", "tumbleStates", "collisionConsequences", "aiEncounter", "actions", "flightSlot",
+      "cruise", "weapons", "countermeasures", "impulseCharges", "mines", "massSeed",
+      "uniqueLootAbilities", "fields", "planetRuntime", "combat", "combatOutcome", "aftermathWrecks",
+      "uniqueWrecks", "wingMorale", "tetherGameplay", "surrenderRecovery", "custodyConsequences",
+      "masslineTelemetry", "masslineThreats", "masslineImpacts", "masslineThrow",
+      "masslineImpactDamage", "lootShards", "terrainAnchors", "jettisonImpulse", "mining",
+      "fieldDepletion", "cargo", "fragileCargo", "economy", "automation", "asteroidSites",
+      "asteroidFormations", "wingmen", "intervention", "lossLedger", "factionPresence",
+      "spawnBudget", "world", "regionalEcology", "encounterDirector", "routeFollower",
+      "travelLanes", "livingPoiBehaviors", "pirateRumor", "ambushSignatures", "bountyHunt",
+      "stationSideEventDirector", "stationContacts", "stationContactLoadBoundary",
+      "gateControlDirector", "salvage", "lossInvestigation", "salvageActions", "survivorPod",
+      "recoveryEncounter", "factions", "sectorSim", "npcJobsRuntime", "careerOrigins",
+      "careerLadders", "liveCareerLadderBranches", "missions", "careerContracts",
+      "economyContracts", "postEndingReplay", "story", "scenarioRuntime",
+      "presentationOrchestrator", "presentationAdapters", "ships", "crafting", "heat", "traffic",
+      "drill", "claims", "beacons", "bandRadio", "v2FlavorRuntime", "onboarding", "masslineHud",
+      "fieldHud", "planetHud", "sectorPostcard", "dockDenyBanner", "stationBroadcast",
+      "hazardHints", "bulkHaulTag", "dangerGradient", "causeLedger", "customsPrompt",
+      "cargoConscience", "securityReadoutSystem", "priceForecastSystem", "contractClausesSystem",
+      "moralTrapSystem", "render", "vfx", "feel", "audio", "ui", "save"
+    ],
+    "updateOrder": [
+      "input", "autoTargetAssist", "flybyFocus", "bulletTime", "cloak", "lawSecurity", "scanner",
+      "scanReveal", "buildIdentity", "pirateDisguise", "pirateParley", "pirateDisengage",
+      "aceMemory", "factionPresence", "aiSlot", "barkDirector", "aiEncounter", "actions",
+      "beacons", "travelLanes", "flightSlot", "cruise", "aiPorts", "tumbleStates",
+      "collisionConsequences", "weapons", "countermeasures", "impulseCharges", "mines", "massSeed",
+      "uniqueLootAbilities", "dockingCorridor", "fields", "planetRuntime", "physics", "combat",
+      "combatOutcome", "aftermathWrecks", "wingMorale", "tetherGameplay", "surrenderRecovery",
+      "custodyConsequences", "masslineTelemetry", "masslineThreats", "masslineImpacts",
+      "masslineThrow", "masslineImpactDamage", "lootShards", "terrainAnchors", "jettisonImpulse",
+      "mining", "fieldDepletion", "cargo", "fragileCargo", "automation", "asteroidSites",
+      "asteroidFormations", "wingmen", "crafting", "economy", "intervention", "world",
+      "regionalEcology", "encounterDirector", "routeFollower", "livingPoiBehaviors", "pirateRumor",
+      "ambushSignatures", "bountyHunt", "stationSideEventDirector", "gateControlDirector",
+      "salvage", "lossInvestigation", "salvageActions", "survivorPod", "recoveryEncounter",
+      "factions", "sectorSim", "npcJobsRuntime", "missions", "careerOrigins", "careerLadders",
+      "liveCareerLadderBranches", "story", "scenarioRuntime", "heat", "traffic", "drill", "claims",
+      "bandRadio", "onboarding", "masslineHud", "massSeedHud", "fieldHud", "planetHud",
+      "voiceArbiter"
+    ],
+    "promptDrift": {
+      "promptClaimedSystemCount": "~150",
+      "actualSystemCount": 127,
+      "status": "DRIFTED",
+      "note": "Prompt estimate was approximate; live SYSTEMS array length is 127."
+    }
+  },
+  "browserLoop": {
+    "file": "src/core/loop.js",
+    "startLoopLine": 46,
+    "frameLine": 52,
+    "requestAnimationFrameLine": 85,
+    "advanceFixedTimestepLine": 10,
+    "fixedDt": 0.016666666666666666,
+    "maxCatchupSteps": 4,
+    "stallClampSeconds": 0.25,
+    "caller": "src/main.js (~line 180)",
+    "notes": "Wall clock only at frame seam for pacing; sim steps use fixed dt."
+  },
+  "curatedSystemSets": [
+    {
+      "name": "sf-sim.47a",
+      "file": "scripts/sf-sim.mjs",
+      "runFn": "run47a",
+      "line": 306,
+      "systemCount": 13,
+      "systems": [
+        "scenarioRuntime",
+        "presentationOrchestrator",
+        "presentationAdapters",
+        "actions",
+        "flightSlot",
+        "weapons",
+        "physics",
+        "combat",
+        "cargo",
+        "economy",
+        "missions",
+        "story",
+        "save"
+      ],
+      "plusCore": true,
+      "effectiveCountWithCore": 14,
+      "flightSlotResolution": {
+        "lines": "282-286",
+        "legacy": "flight",
+        "v3": "flightV3 when --flight-system v3 && physicsBackend rapier-dynamic"
+      },
+      "tacticalAIVariant": {
+        "line": 287,
+        "adds": ["createTacticalAISystem()", "aiEncounter", "aiPorts"],
+        "notes": "Optional tacticalAI path; default 47a compare does not enable it."
+      },
+      "scenarioCombatFlagPins": {
+        "lines": "59-62",
+        "pins": { "weaponImpulseConsequences": false }
+      },
+      "notes": "Omits massline/travel families and most world/AI systems. Core always prepended by createSimulation."
+    },
+    {
+      "name": "masslineControlLab",
+      "file": "scripts/lib/masslineControlLab.mjs",
+      "line": 245,
+      "systemCount": 8,
+      "systems": [
+        "actions",
+        "flightV3",
+        "createLabControllerSystem()",
+        "weapons",
+        "physics",
+        "combat",
+        "tetherGameplay",
+        "masslineTelemetry"
+      ],
+      "plusCore": true,
+      "forcedBackends": {
+        "physicsBackend": "rapier-dynamic",
+        "flightBackend": "v3",
+        "aiBackend": "legacy",
+        "lines": "251-253"
+      },
+      "notes": "FOCUSED-LAB behavior only — includes lab-owned additive controller (createLabControllerSystem). Not production proof. Always flightV3 + rapier-dynamic."
+    }
+  ],
+  "graphicsProfile": {
+    "file": "src/core/graphicsProfileBootstrap.js",
+    "profileSettingsKey": "sf.settings.profile.v1",
+    "lockedGameplayKeys": ["physicsBackend", "aiBackend", "flightBackend"],
+    "lockedKeysLines": "9-13",
+    "mergePreservesBaseGameplayBackends": true,
+    "caller": "src/main.js before createRegistry",
+    "notes": "Only existing profile concept. Backend selection is a locked settings field, not env-derived."
+  },
+  "seedPropagation": {
+    "uiNewGame": {
+      "file": "src/ui/screens/newGame.js",
+      "parseUniverseSeed": true,
+      "blankMeansOmitSeed": true,
+      "emit": "bus.emit('game:new', { name, shipId, difficulty, seed? })"
+    },
+    "resetRunState": {
+      "file": "src/main.js",
+      "line": 599,
+      "blankSeedDerivation": "((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0) || 1",
+      "blankSeedLine": 603,
+      "classification": "GAMEPLAY-affecting for New Game when seed field blank — wall-clock + Math.random"
+    },
+    "createGameState": {
+      "file": "src/core/gameState.js",
+      "line": 74,
+      "metaSeed": "state.meta.seed",
+      "rngLine": 93,
+      "rng": "mulberry32(seed)"
+    }
+  },
+  "duplicationProblem": "createSimulation (explicit systems arg) and createRegistry (hard-coded SYSTEMS/UPDATE_ORDER) are two parallel hand-copied system-collection sites",
+  "factVerification": [
+    {
+      "fact": "createSimulation accepts caller-supplied ordered systems list",
+      "status": "CONFIRMED",
+      "evidence": "src/core/sim.js:43-48"
+    },
+    {
+      "fact": "createRegistry SYSTEMS ~150",
+      "status": "DRIFTED",
+      "evidence": "actual systemCount=127 at registry.js:151-154"
+    },
+    {
+      "fact": "UPDATE_ORDER excludes render-phase systems",
+      "status": "CONFIRMED",
+      "evidence": "registry.js:257-260; render/vfx/feel/audio/ui driven via renderUpdate"
+    },
+    {
+      "fact": "sf-sim 47a curated list omits massline/travel",
+      "status": "CONFIRMED",
+      "evidence": "scripts/sf-sim.mjs:306"
+    },
+    {
+      "fact": "weaponImpulseConsequences pinned false for 47a",
+      "status": "CONFIRMED",
+      "evidence": "scripts/sf-sim.mjs:59-62"
+    },
+    {
+      "fact": "masslineControlLab uses 8 focused systems + lab controller",
+      "status": "CONFIRMED",
+      "evidence": "scripts/lib/masslineControlLab.mjs:245-248"
+    },
+    {
+      "fact": "feature flags default to IS_BROWSER",
+      "status": "CONFIRMED",
+      "evidence": "src/data/featureFlags.js:15"
+    },
+    {
+      "fact": "Observatory omits rng from semantic hash",
+      "status": "CONFIRMED",
+      "evidence": "src/observability/sessionSamplers.js:22"
+    },
+    {
+      "fact": "Gameplay backends locked against profile override",
+      "status": "CONFIRMED",
+      "evidence": "src/core/graphicsProfileBootstrap.js:9-13,48-58"
+    },
+    {
+      "fact": "Browser loop is rAF + fixed 60Hz + catch-up cap 4",
+      "status": "CONFIRMED",
+      "evidence": "src/core/loop.js:6-7,46-85"
+    }
+  ]
+}
