@@ -1,10 +1,12 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-22 PQ-017 closeout at `master` `2a9517d8`. PQ-001..PQ-017 are integrated;
-PQ-018 Wreck Cathedral runtime promotion is the next canonical queue item. The protected foreign
-graphics and worldbuilding work listed below remains outside the PQ-017 commits.
+**Snapshot:** 2026-07-23 checkpoint audit at `master` `bf558142` (`2a9517d8` implementation plus
+the PQ-017 closeout transaction). PQ-001..PQ-017 are integrated; PQ-018 Wreck Cathedral runtime
+promotion is the next canonical queue item. Reviewed asynchronous planning handoffs are preserved on
+`codex/integration-checkpoint-20260723`; the protected graphics, propulsion, worldbuilding, and media
+work listed below remains outside that checkpoint.
 
-## 2026-07-22 live leases (refresh at `master` `7c873c63`)
+## 2026-07-23 live leases and candidates (refresh at `master` `bf558142`)
 
 - **PQ-017 World Site kernel — `INTEGRATED` at `2a9517d8`; writer lease RELEASED.** The reusable
   manifest/kernel/runtime, save ownership, operations, physical payload/receiver path, impact
@@ -19,16 +21,31 @@ graphics and worldbuilding work listed below remains outside the PQ-017 commits.
   `design/program/roadmap/receipts/PQ-017-world-site-REPORT.md`.
 - **Helios Lark graphics remaster — OCCUPIED foreign isolated lane.** Live worktree
   `C:\Users\93rob\AppData\Local\Temp\grok-goal-8066f05c8cef\worktree-gfx-remaster`, branch
-  `agent/gfx-production-remaster-lark`; its Blender/source/release/evidence/tooling paths and the
-  Blender/browser-GPU resources are protected until its owner hands them off. Do not double-assign
-  PQ-022 or merge that lane opportunistically. A second external graphics process has also written
-  primary-tree evidence under `Users93robAppDataLocalTempgrok-goal-5d58d165aa45implementer/**`;
-  preserve that untracked directory and exclude it from PQ-017 staging/cleanup.
-- **Worldbuilding influence corpus — protected foreign WIP in the primary tree.** Preserve
+  `agent/gfx-production-remaster-lark`. The worktree is clean at `d538a583`, 16 commits ahead and
+  three behind current `master`; it contains later Lark source/release/evidence/tooling revisions.
+  No Blender or asset-build process was active at the audit, but ownership has not been handed off.
+  Do not double-assign PQ-022, remove the worktree, or whole-merge the branch. A second external
+  graphics process also wrote primary-tree evidence under
+  `Users93robAppDataLocalTempgrok-goal-5d58d165aa45implementer/**`; preserve it.
+- **VP-220 propulsion — protected dirty isolated candidate.** Worktree `C:\Users\93rob\sf-vp220`,
+  branch `codex/vp220-propulsion-graphics`, remains at base `8f1c630f` with 23 dirty paths and no
+  staged content. The 8,517-line candidate includes fleet propulsion runtime work plus a completed
+  fail-closed Browser/Electron acceptance harness. It is not visually accepted or integrated; commit
+  a recoverable candidate only after full diff review, then rebase and run the real headed evidence
+  path before promotion.
+- **Worldbuilding and media — protected foreign WIP in the primary tree.** Preserve
   `docs/worldbuilding/README.md`, `docs/worldbuilding/CREATIVE-DIRECTION.md`,
   `docs/worldbuilding/stylistic-influences/**`, the related
-  `scripts/_tmp_*.py` helpers, and `skills/creative-writing-1.0.0.tar.gz`; exclude them from PQ-017
-  staging, cleanup, and review.
+  `scripts/_tmp_*.py` helpers, and `skills/creative-writing-1.0.0.tar.gz`. The same primary checkout
+  also contains an untracked `media/**` production tree: 90 anchors, 87 keyframes, 87 clips, recipes,
+  and a manifest (about 229 MB). Its recipes identify generated media but omit enough model/version/
+  seed and independent-approval detail that provenance and quality review remain required before any
+  intake. The total primary-tree status was 639 paths (47 tracked/intent changes plus 592 untracked)
+  at the audit. Do not stage, delete, move, or call this payload integrated.
+- **Asynchronous planning portfolio — preserved historical input.** Eight independently reviewed
+  handoffs now live under `docs/handoffs/chatgpt-portfolio-20260723/` on the checkpoint branch.
+  They do not change queue state. Re-audit the PQ-018 handoff against integrated PQ-017 when claiming
+  the packet; the later handoffs remain downstream references.
 
 ## 2026-07-21 graphics checkpoint and donor retirement
 

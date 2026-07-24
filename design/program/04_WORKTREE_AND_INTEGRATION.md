@@ -1,9 +1,11 @@
 # Worktree and Integration Inventory
 
-**Current integration snapshot:** 2026-07-21 at `master` HEAD `54548e09` (graphics/program closeout).
-`master` is the only registered worktree. The readable HUD (`ea698805`) and reviewed Helios civilian
-family (`54548e09`) are integrated; the former mixed graphics donor is tagged, hash-archived, and
-physically removed. The
+**Current integration snapshot:** 2026-07-23 at `master` HEAD `bf558142`. PQ-017 is integrated at
+`2a9517d8`, its closeout/docs transaction is `bf558142`, and PQ-018 is next. Four worktrees are
+registered: the dirty primary checkout, a clean protected Lark donor, a dirty VP-220 candidate, and
+the clean `codex/integration-checkpoint-20260723` reconciliation checkout. The readable HUD
+(`ea698805`) and reviewed Helios civilian family (`54548e09`) are integrated; the former mixed
+graphics donor is tagged, hash-archived, and physically removed. The
 earlier combined merge `b235f062`, evidence hardening through `280cafb0`, propulsion repair
 `59f91d19`, geology truth `e8838e2c`, Electron RCS evidence repair `3d2dc765`, and the PQ-001..PQ-010
 batch (`2bc3042f`..`b28d183b`) are all ancestors. This closeout adds the PQ-014 NPC-job kernel, the
@@ -12,6 +14,37 @@ the untracked-batch classification, and donor worktree cleanup. The older July-1
 remain below as labeled history. Re-run the commands at the end before acting: donor worktrees can
 move after this document is written. Use [`NOW.md`](./NOW.md) for volatile ownership and
 [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md) for donor disposition.
+
+## Current integration checkpoint — 2026-07-23
+
+| Worktree | Branch/tip | Live disposition |
+|---|---|---|
+| `C:\Users\93rob\Documents\GitHub\SpaceFace` | `master` / `bf558142` | Product authority. Dirty with protected worldbuilding/story/runtime work and 592 untracked paths, including about 229 MB of generated `media/**`; do not use it as an integration checkout. |
+| `C:\Users\93rob\AppData\Local\Temp\grok-goal-8066f05c8cef\worktree-gfx-remaster` | `agent/gfx-production-remaster-lark` / `d538a583` | Clean, 16 commits ahead and three behind `master`; ownership not released; review and selectively port, never whole-merge or remove opportunistically. |
+| `C:\Users\93rob\sf-vp220` | `codex/vp220-propulsion-graphics` / base `8f1c630f` | 23-path uncommitted propulsion plus acceptance-harness candidate; safe checks reported green, headed visual acceptance absent; preserve and review before checkpointing. |
+| `C:\Users\93rob\sf-checkpoint-20260723` | `codex/integration-checkpoint-20260723` / based on `bf558142` | Isolated reconciliation checkout. Integrates only the reviewed asynchronous handoffs and this inventory transaction; it does not absorb foreign dirty work. |
+
+The eight ChatGPT portfolio branches each contain one reviewed historical handoff (the performance
+branch contains a two-commit correction chain). Their content is preserved under
+`docs/handoffs/chatgpt-portfolio-20260723/`; this is reference integration, not packet integration or
+route acceptance. The separate async-canary branch remains a transport demonstration and is not
+needed for product planning.
+
+No `blender.exe`, Electron route, asset builder, Git lock, or release/export lock was active during
+the audit. Two Blender MCP server processes were connected, which is not itself a GPU/render lease.
+Recheck processes and locks before any headed acceptance or asset build.
+
+### Cleanup gates
+
+1. Merge the isolated checkpoint only after link/diff validation.
+2. Keep Lark registered until its owner hands off and its 16-commit delta receives source, route,
+   visual, manifest, and overlap review.
+3. Make VP-220 recoverable on its own branch only after reviewing the entire dirty diff; visual
+   acceptance remains a separate later transition.
+4. Split the primary worldbuilding/source changes from generated media. Require provenance,
+   licensing, manifest, duplicate, and visual review before committing large media.
+5. Remove a worktree or branch only after its exact tip is integrated or preserved by a named
+   recovery ref/archive and its checkout is clean. Never delete the dirty primary or VP-220 trees.
 
 ## Current integration checkpoint — 2026-07-21 (graphics/program closeout)
 
