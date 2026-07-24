@@ -6,6 +6,13 @@
 **Rule:** this document separates accepted outcomes from implemented components. The whole Alpha and
 the whole Depth Program are not finished.
 
+**User correction 2026-07-24:** PQ-007's `1a54e56b` pursuit-slot implementation is no longer an
+accepted outcome. It introduced target-relative station keeping, MMB pursuit selection, pursuit
+impulses, and pursuit UI that the user did not request, while removing the requested G
+auto-target/draw-to-fly behavior. Its former acceptance row is revoked. The user-directed correction
+is reviewed, focused-green, and integrated at `4d00867e`; browser/Electron route acceptance remains
+open, so PQ-007 is not restored to the verified-done count.
+
 ## Milestone-exit truth
 
 No M0–M6 milestone currently has a fully current route-and-evidence exit that survives the fresh
@@ -38,8 +45,8 @@ consumers), PQ-013 (planetary sling/skim/harvest/reentry vertical — the batch'
 build, spike-gated), PQ-014 (natural NPC jobs, kernel untouched), PQ-015 (shared interaction
 descriptors), PQ-016 (contextual industrial beam). Per-packet commits, honest perf truth
 (spatialHash 75.29 vs 55 batch-attributed; sim.p95 4.2 vs 4.0 new marginal; vsync floor
-standing), and the named follow-up list: `NOW.md` batch-closure section. Eleven of the first
-sixteen queue outcomes are now terminal.
+standing), and the named follow-up list: `NOW.md` batch-closure section. Sixteen of the first
+seventeen queue outcomes remain terminal after the 2026-07-24 revocation of PQ-007.
 
 ## PQ-017 persistent World Site integrated (2026-07-22, `2a9517d8`)
 

@@ -1,16 +1,22 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-23 recovery checkpoint at clean `master` `dff6e4fc`. PQ-001..PQ-017 are
-integrated; PQ-018 Wreck Cathedral runtime promotion remains the next canonical queue item. The
-reviewed asynchronous planning handoffs are now reference material on `master`. There is one
-registered Git worktree. Unaccepted graphics and narrative candidates remain recoverable by named
-branches/tags without occupying live worktrees.
+**Snapshot:** 2026-07-24 after PQ-007's focused-green integration at `4d00867e`. The primary tree
+contains protected visual-asset WIP that must remain unstaged and undisturbed. A second registered
+worktree, `C:\Users\93rob\sf-perf01a`, contains independent background-lifecycle/performance changes.
+PQ-018 is the next feature packet; PQ-007's current browser/Electron route evidence remains open.
 
-## 2026-07-23 live leases and candidates (refresh at `master` `dff6e4fc`)
+## 2026-07-24 live leases and candidates (refresh before mutation)
 
-- **Playable checkpoint — READY FOR USER PLAYTEST.** The primary worktree is clean and is the sole
-  registered checkout. No automated Browser/Electron acceptance is claimed by this recovery
-  transaction; the next acceptance signal is the user's ordinary playtest.
+- **PQ-007 control correction — `FOCUSED_GREEN` + `INTEGRATED` at `4d00867e`.** The former
+  pursuit-slot acceptance is revoked by explicit user direction. The result restores G
+  auto-target/draw-to-fly and removes MMB pursuit selection, target-relative station keeping,
+  pursuit impulses, and pursuit HUD/toasts. Focused, Massline, input, UI, flight, and determinism
+  checks are green; current browser/Electron route evidence remains open. Historical SF-07/T19
+  prose cannot be used to reverse it.
+- **PERF-01A background lifecycle — OCCUPIED ISOLATED WORKTREE.** Worktree
+  `C:\Users\93rob\sf-perf01a`, branch `codex/perf-01a-background-lifecycle`, has changes in Electron
+  lifecycle, loop/main, launch policy, package wiring, and focused tests. Treat those paths and the
+  package/launch mutex as occupied until that lane reports disposition.
 - **PQ-017 World Site kernel — `INTEGRATED` at `2a9517d8`; writer lease RELEASED.** Its closeout is
   recorded at `bf558142`. Receipt:
   `design/program/roadmap/receipts/PQ-017-world-site-REPORT.md`.
@@ -165,7 +171,8 @@ with the 47a golden pinned byte-stable.
 
 ## Next queue position
 
-**PQ-001..PQ-010 are integrated. PQ-011 is runtime-integrated/focused-green and deliberately not
+**Historical 2026-07-20 snapshot, superseded by the 2026-07-24 header:** PQ-001..PQ-010 were then
+recorded integrated. PQ-007's acceptance is now revoked. PQ-011 was runtime-integrated/focused-green and deliberately not
 checked off until its public-route and visual review closes. PQ-014, PQ-018, and PQ-022 retain their
 partial-subslice states.**
 
@@ -298,7 +305,8 @@ continuity, combat-family GPU evidence, and broader fleet/station/rock/wreck PBR
 architecture in
 [`../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md`](../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md).
 
-**Current isolated lanes:** none. `master` is the only registered worktree. The former
+**At the 2026-07-21 checkpoint, isolated lanes were:** none. This statement is historical; the
+2026-07-24 header records the current worktrees. At that checkpoint, `master` was the only registered worktree. The former
 `SpaceFace-graphics-overhaul` donor is archived/tagged and physically removed. The performance worktree was removed after its clean
 tip and rejection evidence were recorded. Measured primitive pools, composition-merged pools,
 corrected exact-key pools, and heterogeneous `THREE.BatchedMesh` pages all lost on target Intel hardware; the

@@ -1,8 +1,10 @@
 # Worktree and Integration Inventory
 
-**Current integration snapshot:** 2026-07-23 at clean `master` HEAD `dff6e4fc`. PQ-017 is integrated
-at `2a9517d8`, its closeout/docs transaction is `bf558142`, and PQ-018 is next. The primary checkout
-is the sole registered worktree. The reviewed planning portfolio is present on `master`; narrative,
+**Current integration snapshot:** 2026-07-24 after PQ-007's focused-green integration at `4d00867e`.
+PQ-017 is integrated at `2a9517d8`. PQ-007's former pursuit-slot acceptance is revoked; its
+user-directed auto-target/draw-to-fly correction is commit-bound, with current browser/Electron
+route acceptance still open. A second registered worktree, `C:\Users\93rob\sf-perf01a`, contains independent occupied
+background-lifecycle/performance work. The reviewed planning portfolio is present on `master`; narrative,
 Lark, and VP-220 candidates are preserved by recovery refs and remain unintegrated. The readable HUD
 (`ea698805`) and reviewed Helios civilian family (`54548e09`) are integrated; the former mixed
 graphics donor is tagged, hash-archived, and physically removed. The
@@ -15,11 +17,12 @@ remain below as labeled history. Re-run the commands at the end before acting: d
 move after this document is written. Use [`NOW.md`](./NOW.md) for volatile ownership and
 [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md) for donor disposition.
 
-## Current integration checkpoint — 2026-07-23
+## Current integration checkpoint — 2026-07-24
 
 | Worktree | Branch/tip | Live disposition |
 |---|---|---|
-| `C:\Users\93rob\Documents\GitHub\SpaceFace` | `master` / `dff6e4fc` | Sole product authority and sole registered worktree. Clean and ready for the user's ordinary playtest. |
+| `C:\Users\93rob\Documents\GitHub\SpaceFace` | `master` / PQ-007 result `4d00867e` + protected visual-asset WIP | Product authority; control correction integrated. Preserve the active visual-asset lane and all unrelated dirty work. |
+| `C:\Users\93rob\sf-perf01a` | `codex/perf-01a-background-lifecycle` / `8610102d` + WIP | Occupied isolated performance/lifecycle lane; package/launch mutexes are not free. |
 
 The eight ChatGPT portfolio branches each contain one reviewed historical handoff (the performance
 branch contains a two-commit correction chain). Their content is preserved under

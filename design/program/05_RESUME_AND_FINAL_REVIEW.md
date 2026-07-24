@@ -5,16 +5,19 @@ appears complete. [`NOW.md`](./NOW.md) and the active
 [`roadmap/`](./roadmap/README.md) own current work order; the Alpha/Depth pages below remain acceptance
 truth and milestone roll-ups.
 
-## Current recovery handoff — 2026-07-23
+## Current recovery handoff — 2026-07-24
 
-Start from clean `master` `dff6e4fc` in the sole registered worktree. The immediate goal is to keep
-the game playable for the user's own test, not to open a broad automated validation campaign.
+Start after PQ-007's focused-green result `4d00867e`, preserving the active visual-asset WIP in the
+primary checkout. A second occupied worktree, `C:\Users\93rob\sf-perf01a`, owns
+background-lifecycle/performance paths. Do not assume a clean or sole checkout.
 
-1. Start the ordinary game route and let the user play.
-2. Convert any user-visible failure into one bounded repair with the narrowest relevant check.
+1. Capture current browser and Electron control-route evidence for PQ-007's integrated
+   auto-target/draw-to-fly correction. The rejected pursuit-slot implementation must never return.
+2. Convert any further user-visible failure into one bounded repair with the narrowest relevant check.
 3. Keep `codex/recovery-worldbuilding-20260723`, the Lark recovery ref, and the VP-220 recovery ref
    outside `master` until each candidate receives a separate product decision.
-4. Once the playable checkpoint is stable, resume the canonical queue at PQ-018.
+4. PQ-018 may resume without reopening PQ-007's implementation; route acceptance remains a bounded
+   evidence follow-up.
 
 ## Resume: first fifteen minutes
 
@@ -36,7 +39,9 @@ the game playable for the user's own test, not to open a broad automated validat
 
 ## Current pickup order
 
-1. **User playtest on clean `master`.** Do not interpose a multi-day validation loop.
+1. **PQ-007 route evidence.** On `4d00867e`, verify G auto-target/draw-to-fly and independent weapon
+   lead in browser and Electron; keep MMB pursuit, target-relative station keeping, pursuit impulses,
+   and pursuit UI absent.
 2. **Bounded repairs from observed failures.** Keep each repair small enough to return immediately to
    a playable checkpoint.
 3. **PQ-018 Wreck Cathedral runtime promotion.** Use the integrated source candidate and reviewed

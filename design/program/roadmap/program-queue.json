@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-21",
+  "updatedAt": "2026-07-24",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -434,7 +434,7 @@
         "determinism",
         "controller-sweep"
       ],
-      "brief": "Create the reusable deterministic controller sweep and telemetry laboratory before tuning orbit, pursuit, release, or gravity tools.",
+      "brief": "Create the reusable deterministic controller sweep and telemetry laboratory before tuning orbit, direct flight control, release, or gravity tools.",
       "integratedCommit": "aec26203",
       "acceptanceRef": "03_LIVE_ACCEPTANCE_MATRIX.md#program-batch-pq-001pq-010",
       "receipt": "lab 5/5, deterministic digest e935..44e2, sim gates hashEqual, check:massline:lab wired"
@@ -597,14 +597,13 @@
     {
       "id": "PQ-007",
       "priority": 7,
-      "title": "Pursuit-slot assist and control cleanup",
-      "state": "integrated",
+      "title": "Restore auto-target and direct draw-to-fly control",
+      "state": "focused_green",
       "canonical": [
-        "T16",
-        "PROPOSED-T19"
+        "T16"
       ],
       "aliases": [
-        "SF-07"
+        "SF-07-REJECTED"
       ],
       "dependsOn": [
         "PQ-002",
@@ -616,22 +615,22 @@
         "hud-styles"
       ],
       "sources": [
-        "design/spec3/SPEC3-F3-flight-physics-feel.md",
-        "design/sequential-build-plan/REVIEW/BUILD_PLAN_CORRECTED.md"
+        "design/GDD_2_0.md",
+        "design/program/02_REMAINING_WORK.md"
       ],
       "checks": [
         "npm run check:flight:clean",
         "npm run check:sim:compare"
       ],
       "evidence": [
-        "kill-criterion",
+        "direct-player-intent",
         "public-route",
-        "manual-override"
+        "browser",
+        "electron"
       ],
-      "brief": "Audit the existing MMB autopursuit before adding a bounded player-selected pursuit slot; retire only behavior that fails the named control criterion.",
-      "integratedCommit": "1a54e56b",
-      "acceptanceRef": "03_LIVE_ACCEPTANCE_MATRIX.md#program-batch-pq-001pq-010",
-      "receipt": "MMB audit dispositions recorded (retained selection+GOTO; retired follower/path-draw/pointer-lock/overdrive/persistent auto-aim); bounded membrane controller, 1-tick override w/ releasedTick receipts; lab 12.567s hold zero-oscillation; 32/32 suites; flight:clean 10/10; sim gates hashEqual; browser+Electron routes; T16 contribution + T19, no terminal claim"
+      "brief": "Preserve G as the user-requested auto-target/draw-to-fly control: relative clutchable path input steers the ship while weapon lead remains on the locked target. Remove the unsolicited pursuit-slot package completely: no MMB pursuit selection, target-relative station keeping, pursuit impulses, pursuit HUD/toasts, or historical-plan path that can restore them.",
+      "rejectedImplementation": "Commit 1a54e56b and the derived SF-07/T19 reviewer decision implemented an unsolicited pursuit-slot controller and retired the requested draw-to-fly route. The user explicitly rejected that direction on 2026-07-24; its former route acceptance is revoked and remains historical evidence only.",
+      "partialIntegration": "2026-07-24 result 4d00867e restores auto-target weapon lead plus clutchable draw-to-fly, removes pursuit selection/controller/impulses/HUD/toasts, and updates focused/live probes. Focused control 60/60, Massline aggregate 23/23, input modalities, UI/a11y/contrast/perf, flight checks, and both sim compares are green/deterministic. State is focused_green; current browser/Electron control-route evidence remains open before route acceptance."
     },
     {
       "id": "PQ-008",

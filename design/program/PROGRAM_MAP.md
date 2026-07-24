@@ -60,7 +60,7 @@ This is the coarse order. The queue records the exact cross-plan ordering and de
 1. **Restore one trustworthy integrated baseline.** Close continuity, loading, graphics wiring,
    browser/Electron parity, and measured performance blockers before widening the game.
 2. **Finish reusable control and physics roots.** Deterministic control lab, Massline input/acquisition,
-   orbit/release/pursuit assistance, collision truth, and impulse authority.
+   orbit/release assistance, direct auto-target/draw-to-fly control, collision truth, and impulse authority.
 3. **Prove physical combat and interaction verticals.** Weapon mechanics plus distinct VFX, component
    targeting, and contextual industrial tools.
 4. **Build one living corridor vertically.** Planet activity, NPC jobs, a persistent World Site, Wreck
@@ -113,7 +113,7 @@ flowchart TD
   P8 --> P9["PQ-009 impulse kernel"]
   P3 --> P4["PQ-004 acquisition preview"]
   P3 --> P5["PQ-005 orbit assist"]
-  P3 --> P7["PQ-007 pursuit assist"]
+  P3 --> P7["PQ-007 auto-target / draw-to-fly correction"]
   P5 --> P6["PQ-006 release and speed language"]
   P9 --> P10["PQ-010 physical weapons and combat VFX"]
 ```

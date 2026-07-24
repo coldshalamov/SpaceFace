@@ -150,8 +150,9 @@ Refresh from the live queue before acting. Current structural intent after the 2
 
 | Wave | Packets | Notes |
 |---|---|---|
-| Integrated roots | **PQ-001…PQ-017** | Do not reopen; use receipts and named follow-ups |
-| Next | **PQ-018** Wreck Cathedral runtime promotion | Extend the preserved source candidate through the PQ-017 site substrate |
+| Integrated roots | **PQ-001…PQ-006, PQ-008…PQ-017** | Do not reopen; use receipts and named follow-ups |
+| Focused-green correction | **PQ-007** restore auto-target / draw-to-fly | Integrated at `4d00867e`; the unsolicited pursuit-slot implementation remains rejected; current browser/Electron route acceptance is still open |
+| Next feature | **PQ-018** Wreck Cathedral runtime promotion | Extend the preserved source candidate through the PQ-017 site substrate without reopening the rejected pursuit direction |
 | After PQ-018 | PQ-019–025 corridor | Extend existing partials; do not replace them |
 | Deferred | PQ-026–033 | After corridor acceptance unless the user overrides |
 
@@ -170,6 +171,10 @@ is not the current dispatch order.
 **Current partial landings already on master (do not re-author from zero):**
 
 - PQ-011 and PQ-014 are integrated; follow only their named receipt defects.
+- PQ-007's former pursuit-slot implementation is explicitly rejected by the user. Commit `4d00867e`
+  correction restores G auto-target/draw-to-fly, independent weapon aim, and direct granular path
+  steering; it removes MMB pursuit selection, autonomous target-relative station keeping, pursuit
+  impulses, and pursuit HUD/toasts. Historical plans and receipts do not authorize those mechanics.
 - PQ-018's source candidate is preserved and its PQ-017 runtime dependency is now satisfied.
 - PQ-021 remains an unwired ledger UI.
 - PQ-022 has accepted station/fleet subslices but is not complete across all visual families.
@@ -229,18 +234,20 @@ Replace `N` with the user’s count. For a single packet, use the same rules wit
 
 ## 5. Live position snapshot (refresh before acting)
 
-**Snapshot date:** 2026-07-22. **Always re-read the queue and `NOW.md`.**
+**Snapshot date:** 2026-07-24. **Always re-read the queue and `NOW.md`.**
 
 | Bucket | PQ items (at snapshot) |
 |---|---|
-| Integrated | PQ-001 … PQ-017 |
-| Next dependency root | PQ-018 Wreck Cathedral runtime promotion |
+| Integrated | PQ-001 … PQ-006 and PQ-008 … PQ-017 |
+| Focused-green integrated correction; route acceptance open | PQ-007 auto-target / draw-to-fly restoration at `4d00867e`; pursuit slot rejected |
+| Next feature dependency root | PQ-018 Wreck Cathedral runtime promotion |
 | Planned active spine | PQ-018 … PQ-025 |
 | Deferred post-corridor | PQ-026 … PQ-033 |
 
 **Current checkout reality at the 2026-07-21 closeout:**
 
-- PQ-017 is integrated at `2a9517d8`; PQ-018 is the next queue item. Re-check registered worktrees
+- PQ-017 is integrated at `2a9517d8`; PQ-007's user-directed correction is commit-bound at
+  `4d00867e` with current browser/Electron route acceptance still open. Re-check registered worktrees
   and live leases before dispatch because protected foreign graphics work may still be active.
 - The former `SpaceFace-graphics-overhaul` mixed donor was selectively dispositioned, hash-archived,
   tagged at `archive/graphics-overhaul-donor-20260721`, and physically removed. Never recreate it as a
@@ -399,6 +406,9 @@ Match proof to risk. Minimums:
 - No fake planets/teleports/cutscene-only verticals for PQ-013-class work  
 - No generic RMB mining VFX for every industrial action (PQ-016-class)  
 - No checking off PQ-022 because one station family landed  
+- No target-relative pursuit slot, MMB pursuit selection, automatic station-keeping around a combat
+  target, pursuit impulse controller, or `PURSUIT ASSIST` HUD/toasts. Do not retire or replace the
+  user-requested G auto-target/draw-to-fly route from historical plan prose.
 - No lowering default quality to pass perf  
 - No silent golden re-records  
 

@@ -4,11 +4,12 @@
 **Sprint 2 packet rows appended 2026-07-18** at commits `4f750412`, `cd784532`, `d5e0d6e7`; those rows
 carry their own evidence and do not promote any milestone row.
 
-**Recovery checkpoint 2026-07-23:** clean `master` `dff6e4fc` is the sole registered worktree and is
-ready for the user's ordinary playtest. This recovery transaction integrates reviewed planning
-handoffs as reference only; it adds no Browser/Electron, route, visual, performance, or packet
-acceptance claim. Narrative, Lark, and VP-220 candidates remain outside `master` on named recovery
-refs documented in [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md).
+**Live status correction 2026-07-24:** PQ-007's user-directed control correction is focused-green
+and integrated on `master` at `4d00867e`; its former pursuit-slot acceptance remains revoked below.
+Current browser/Electron control-route acceptance is still open.
+`C:\Users\93rob\sf-perf01a` remains a second registered occupied worktree. The older clean
+`dff6e4fc` recovery checkpoint remains historical and adds no current route, visual, performance,
+or packet acceptance claim.
 
 **Integration checkpoint refreshed 2026-07-20:** graphics, the earlier performance checkpoint, and
 paused Atlas/map/travel work were promoted together at `ee9e0ab3`; context-recovery hardening is
@@ -92,7 +93,7 @@ below was rerun by the integrating controller.
 | `PQ-004` | `T02`/`T03` delta + `T15` | `FOCUSED_GREEN`+`INTEGRATED`+`ROUTE_ACCEPTED` | preview===latch proven on the live route (previewMatched:true, receipt/target ids match the rendered cue); focused suites 29/29; clutter threshold ≥19/20 across transformed scenes and 3 input modalities; target-scoring/auto-target gates green; reduced-motion/forced-colors/WCAG AA; both sim compares ok/hashEqual | `87f523a9` |
 | `PQ-010` | `G10`,`W03`,`T09` (+T08 route) | `FOCUSED_GREEN`+`INTEGRATED`; combat visual-family GPU acceptance remains graphics-lane | concussion/vector-mine/RCS-disruptor with distinct impulse identities + provenance; shop-reachable via tech gates; unconsumed collision receipts now drive impact VFX; sf10 7/7 + impulse 14/14; check:combat repaired (difficulty ratio encoded) + green; membrane/balance/data green; sim gates hashEqual; visual-stability acceptance attempt exit 0 — probe readiness deadline measured MARGIN-FLAKY on this machine (identical configs flip red/green under load; committed-HEAD worktree green; attribution matrix in NOW.md; probe-margin debt filed); `check:data-refs` dangling `beam_pressure` (PQ-009 latent) closed via `light_beam_pressure` | `226b4e44` |
 | `PQ-006` | `T07`+`T15` contributions | `FOCUSED_GREEN`+`INTEGRATED`+route | one 15 Hz deterministic release solution shared by Arm/Snap/HUD/telemetry (replaces 60 Hz solve); predictor-vs-actual error receipts pinned (12/12); GDD-ruled world-anchored offscreen ALIGN/RELEASE cues (ARIA, forced-colors, reduced-motion static distinction); masslineReleaseAssist persisted via profile whitelist; earned speed reuses velocityLanguage+pushZoom with live proof (+134.7 wu/s → 12.5% push, captures in `.devshots/spec2/`); `check:m1:tether-mass` updated to the truthful reel receipt; both sim compares ok/hashEqual | `0cd42f25` |
-| `PQ-007` | `T16` contribution + `PROPOSED-T19` | `FOCUSED_GREEN`+`INTEGRATED`+route | MMB audit dispositions: retained ship selection + non-ship GOTO; retired fixed-tail follower, path drawing, pointer lock, overdrive, persistent weapon auto-aim (pinned absent by test); bounded membrane pursuit controller (24-unit cap, NaN-fail-closed, additive), ONE-tick manual override with releasedTick receipts, focus-loss fails closed; lab 12.567s hold / zero oscillation; suites 32/32; `check:flight:clean` 10/10; both sim compares ok/hashEqual; browser+Electron routes | `1a54e56b` |
+| `PQ-007` | `T16` control correction; `PROPOSED-T19` rejected | **`FOCUSED_GREEN`+`INTEGRATED`; former pursuit acceptance revoked; route acceptance open** | `4d00867e` restores independent locked-target weapon lead plus clutchable relative draw-to-fly, ordinary-input Massline orbit correction, and removes pursuit selection/controller/impulses/HUD/toasts. Focused control tests 60/60; Massline aggregate 23/23; input modalities, UI/a11y/contrast/perf, flight checks, and both sim compares green/deterministic. `1a54e56b` and historical pursuit evidence cannot re-authorize the rejected mechanic. | Reaccept the route only after current browser and Electron control evidence passes on `4d00867e`. |
 | generated docs | — | integrated | EVENT_ROUTING/SYSTEM_REGISTRY regenerated at HEAD (89 systems) | `8ac9d32e` |
 
 **M2 combined seamless-world is GREEN for the first time**: browser and Electron both pass the full
