@@ -90,11 +90,30 @@ function checkStaticSleepGuards() {
   assert.equal(frame.miningBeam, 0, 'idle harness should not run mining beam updates');
   assert.equal(frame.tetherCable, 0, 'idle harness should not run tether cable updates');
   assert.equal(frame.seamMarkers, 0, 'idle harness should not run seam marker updates');
-  assert.equal(frame.energy, 0, 'idle harness should not run energy material updates');
+  // VP-220: production thrusters keep a restrained idle nozzle signature for the alive player.
+  // That is intentional and cadence-bounded — not a massline/energy-material leak.
+  // Legacy energy materials remain off (energyMaterials:false); massline stays dormant.
+  if (system._energy && system._energy.fleet) {
+    assert.equal(frame.energy, 1, 'production idle plume may keep the energy cadence slot awake');
+    const plume = system._energy.fleet.playerPlumeSystem();
+    assert.ok(plume && plume.group.visible, 'restrained idle nozzle must be live');
+    assert.ok(plume.pool.activeCount > 0, 'idle writes attached compact slots');
+    assert.equal(plume.pool.frameAllocations, 0, 'idle production must not allocate');
+  } else {
+    assert.equal(frame.energy, 0, 'without production fleet, energy materials stay asleep');
+  }
   assert.equal(frame.particles, 0, 'idle harness should not integrate particles');
   assert.equal(frame.sprites, 0, 'idle harness should not integrate sprites');
   assert.equal(frame.eventLights, 0, 'idle harness should not decay event lights');
-  assert.equal(optionalSubsystemSum(frame), 0, 'fully idle VFX frame should sleep all optional subsystems');
+  // Optional sum excludes production energy: mining/tether/seam/particles/sprites/lights only.
+  const optionalWithoutProductionEnergy = (frame.miningBeam || 0)
+    + (frame.tetherCable || 0)
+    + (frame.seamMarkers || 0)
+    + (frame.particles || 0)
+    + (frame.sprites || 0)
+    + (frame.eventLights || 0);
+  assert.equal(optionalWithoutProductionEnergy, 0,
+    'non-propulsion optional subsystems must sleep on a fully idle frame');
 }
 
 {

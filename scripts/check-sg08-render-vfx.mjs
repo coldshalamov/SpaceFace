@@ -90,10 +90,25 @@ function makeHarness(overrides = {}) {
   player.view = { root };
 
   system.update(1 / 60);
+  const fleet = system._energy && system._energy.fleet;
+  assert(fleet, 'production family fleet must own the live thruster path');
+  // Exact ownership: player always reserved; harness target may also join when near.
+  assert.ok(fleet.activeShipCount >= 1 && fleet.activeShipCount <= fleet.maxShips,
+    `fleet ownership must be bounded 1..${fleet.maxShips} (got ${fleet.activeShipCount})`);
+  const playerShip = fleet.findShip(player.id) || fleet.ships.find((s) => s.alive && s.isPlayer);
+  assert.ok(playerShip && playerShip.isPlayer, 'player must occupy a fleet slot');
+  assert.equal(playerShip.profileId, 'engine_ion_small');
+  const playerSocketCount = playerShip.socketCount;
+  assert.equal(playerSocketCount, 2, 'player must bind both authored trail sockets');
   const plumeSystem = system._energy && system._energy.plumeSystem;
   assert(plumeSystem && plumeSystem.group.visible, 'production plume should be visible under throttle');
-  assert.equal(plumeSystem.pool.activeCount, KESTREL_PLUME_LAYER_COUNT * 2,
-    'production plume should batch every active layer for both authored sockets');
+  // Exact dual-socket player contribution (layers × 2), regardless of additional co-family ships.
+  const playerLayerSlots = plumeSystem.pool.slots.slice(0, KESTREL_PLUME_LAYER_COUNT * 2);
+  assert.equal(playerLayerSlots.filter((s) => s.alive && s.socketIndex === 0).length, KESTREL_PLUME_LAYER_COUNT);
+  assert.equal(playerLayerSlots.filter((s) => s.alive && s.socketIndex === 1).length, KESTREL_PLUME_LAYER_COUNT);
+  assert.ok(plumeSystem.pool.activeCount >= KESTREL_PLUME_LAYER_COUNT * 2
+    && plumeSystem.pool.activeCount <= KESTREL_PLUME_LAYER_COUNT * playerSocketCount * fleet.activeShipCount,
+    `active slots bounded by layers×sockets×fleet ships (got ${plumeSystem.pool.activeCount})`);
   socket.updateWorldMatrix(true, false);
   const expected = new THREE.Vector3();
   const expectedQuat = new THREE.Quaternion();
@@ -116,6 +131,9 @@ function makeHarness(overrides = {}) {
   assertClose(port.offset[1], portExpected.y, 'port energy plume should share its socket y');
   assertClose(port.offset[2], portExpected.z, 'port energy plume should share its socket z');
   assert.equal(system._liveCount, 0, 'production Kestrel plume must not add bead particles');
+  // Segmented geometry must actually sample the axial envelope (not a flat card).
+  assert.ok(plumeSystem.getActiveGeometryStats().vertexCount > 4,
+    'production plume geometry must be multi-segment');
   assert.equal(system._liveTrailStreakCount, 0, 'production Kestrel plume must not add detached streak cards');
 }
 
@@ -209,12 +227,14 @@ function makeHarness(overrides = {}) {
   system._markEntityCacheDirty();
   system.update(1 / 60);
   const inspect = system.inspect();
-  assert.equal(inspect.trails.trailEmittersFull, 2, 'player and selected target should keep full trail quality');
+  // Player + near target ride production; far NPC is culled from trails.
   assert(inspect.trails.trailEmittersSkipped >= 1, 'far off-radar NPC should skip trail emission');
   assert.equal(inspect.trails.trailParticlesSpawned, 0,
     'engine trails must not reintroduce moving point-particle bead chains');
-  assert(inspect.trails.trailStreaksSpawned > 0,
-    'near actors should retain a bounded directional engine cue');
+  const fleet = system._energy && system._energy.fleet;
+  assert(fleet && fleet.activeShipCount >= 1, 'production fleet must reserve the player');
+  const plume = system._energy && system._energy.plumeSystem;
+  assert(plume && plume.group.visible, 'player production plume remains the primary engine cue');
 }
 
 {
@@ -224,6 +244,36 @@ function makeHarness(overrides = {}) {
   player.rot = 0;
   player.radius = 28;
   player.vel = { x: 50, z: 0 };
+  player.data = { defId: 'ship_kestrel' };
+  // Distinct near family + fleet fillers so streak substrate still binds for overflow ships.
+  const npc = {
+    id: 7,
+    type: 'ship',
+    alive: true,
+    pos: { x: 30, z: 0 },
+    vel: { x: 40, z: 0 },
+    rot: 0,
+    radius: 12,
+    data: { defId: 'ship_wasp' },
+    _flightFrame: { throttle: 1 },
+  };
+  state.entities.set(npc.id, npc);
+  state.entityList.push(npc);
+  for (let i = 0; i < 12; i++) {
+    const filler = {
+      id: 200 + i,
+      type: 'ship',
+      alive: true,
+      pos: { x: 15 + i * 4, z: 8 },
+      vel: { x: 20, z: 0 },
+      rot: 0,
+      radius: 10,
+      data: { defId: 'ship_mule' },
+      _flightFrame: { throttle: 1 },
+    };
+    state.entities.set(filler.id, filler);
+    state.entityList.push(filler);
+  }
   system._markEntityCacheDirty();
   for (let f = 0; f < 6; f++) system.update(1 / 60);
   assert.equal(system._particleMat.type, 'ShaderMaterial', 'trail particles must use ShaderMaterial');
@@ -231,18 +281,27 @@ function makeHarness(overrides = {}) {
     'particle fragment must procedurally sample trail streaks');
   assert(system._particleMat.uniforms.uTrailTime, 'particle shader must animate warp via uTrailTime');
   assert(system._trailStreakPool && system._trailStreakPool.capacity > 0, 'trail streak pool must be initialized');
+  const fleet = system._energy && system._energy.fleet;
+  assert(fleet, 'family production fleet required');
+  const ion = fleet.familyPlume('engine_ion_small');
+  const vector = fleet.familyPlume('engine_vector');
+  assert(ion && ion.group.visible && ion.pool.activeCount > 0,
+    'player production thruster must own the live engine cue');
+  assert(vector && vector.group.visible && vector.pool.activeCount > 0,
+    'near NPC vector family must be live simultaneously (stronger multi-ship assertion)');
+  assert.ok(ion.getActiveGeometryStats().vertexCount > 4, 'production geometry must be segmented');
   const streak = system._trailStreakPool.mesh.count > 0 ? system._trailStreakPool.mesh : null;
-  assert(streak, 'thrusting ship should show procedural streak mesh');
+  assert(streak, 'fleet overflow ships should show procedural streak mesh');
   assert(streak.isInstancedMesh, 'streak pool should submit one instanced draw');
   assert.equal(streak.material.type, 'ShaderMaterial', 'streak must be ShaderMaterial not SpriteMaterial');
   assert(streak.material.fragmentShader.includes('trailSampleProcedural'),
     'streak fragment must use live procedural sampler');
   assert(streak.material.uniforms.uTrailTime, 'streak must animate warp via uTrailTime');
   const inspect = system.inspect();
-  assert(inspect.trails.trailStreaksSpawned >= 1, 'thrusting ship should spawn a procedural streak layer');
+  assert(inspect.trails.trailStreaksSpawned >= 1, 'overflow ships should spawn a procedural streak layer');
   assert(system._liveTrailStreakCount > 0, 'dedicated streak pool should retain live meshes after thrust frames');
   assert.equal(inspect.trails.trailParticlesSpawned, 0,
-    'thrusting ship should not spawn axis-aligned point-particle beads');
+    'thrusting ships should not spawn axis-aligned point-particle beads');
   let ribbonProcedural = false;
   for (const [, trail] of system._ribbonTrails || []) {
     const mat = trail.getMaterial();
@@ -257,12 +316,16 @@ function makeHarness(overrides = {}) {
     particleTrailTime: !!system._particleMat.uniforms.uTrailTime,
     streakPoolCap: system._trailStreakPool.capacity,
     liveTrailStreakMeshes: system._liveTrailStreakCount,
+    productionPlume: true,
+    productionFamilies: [ion.group.visible, vector.group.visible],
+    engineProfileId: system._energy && system._energy.engineProfileId,
     streakShader: streak.material.type,
     streakProcedural: streak.material.fragmentShader.includes('trailSampleProcedural'),
     streakTrailTime: !!streak.material.uniforms.uTrailTime,
     ribbonProcedural,
     trailStreaksSpawned: inspect.trails.trailStreaksSpawned,
     trailParticlesSpawned: inspect.trails.trailParticlesSpawned,
+    segmentedVerts: ion.getActiveGeometryStats().vertexCount,
   }));
 }
 
