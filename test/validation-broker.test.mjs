@@ -7,6 +7,10 @@ import { fileURLToPath } from 'node:url';
 
 import {
   STATUS,
+  FAILURE_POINTER_NAME,
+  FAST_RUN_LOCK_NAME,
+  LAUNCH_COUNTS_NAME,
+  acquireRunLock,
   claimFastGateReceipt,
   createFastGateReceipt,
   createValidationBroker,
@@ -21,7 +25,11 @@ import {
   validateBrokerClaim,
   consumeBrokerClaim,
   getLaunchCounts,
+  getCandidateLaunchCount,
+  isPidAlive,
+  tryReclaimStaleRunLock,
 } from '../scripts/lib/validationBroker.mjs';
+import { writeJsonAtomically } from '../scripts/lib/validationAtomicWrite.mjs';
 import {
   computeSourceSetDigest,
   deriveFailureIdentity,
@@ -470,4 +478,262 @@ test('status codes include timeout/infra/profile/nondeterministic vocabulary', (
   ]) {
     assert.equal(typeof STATUS[key], 'string');
   }
+});
+
+// ---------------------------------------------------------------------------
+// Phase 1 adversarial-review failure modes (P1 + P2) — would have caught bugs
+// ---------------------------------------------------------------------------
+
+test('P1 FIX1: failing fastGateCommands block receipt mint; passing gates mint', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+
+  const failing = createValidationBroker(testManifest('out', {
+    id: 'fast-gate-fail-probe',
+    // Direct argv form avoids shell quoting differences across platforms.
+    fastGateCommands: [[process.execPath, '-e', 'process.exit(7)']],
+    commandArgs: ['-e', 'process.exit(0)'],
+    maxLaunchesPerCandidate: 3,
+  }), { root, outputRoot });
+
+  const blocked = await failing.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: true,
+  });
+  assert.equal(blocked.launched, false, 'must not launch when a fast gate fails');
+  assert.equal(blocked.reason, 'fast-gate-failed');
+  assert.ok(
+    blocked.status === STATUS.FAIL || blocked.status === 'fail',
+    `expected fail status, got ${blocked.status}`,
+  );
+  const receiptAfterFail = await failing.readFastGateReceipt();
+  assert.equal(
+    receiptAfterFail,
+    null,
+    'must NOT mint a fast-gate receipt when a declared fast gate fails',
+  );
+
+  const passingRoot = await tempRoot(t);
+  const passingOut = path.join(passingRoot, 'out');
+  const passing = createValidationBroker(testManifest('out', {
+    id: 'fast-gate-pass-probe',
+    fastGateCommands: [[process.execPath, '-e', 'process.exit(0)']],
+    commandArgs: ['-e', 'process.exit(0)'],
+  }), { root: passingRoot, outputRoot: passingOut });
+
+  const ok = await passing.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: false,
+  });
+  assert.equal(ok.status, STATUS.PASS);
+  assert.equal(ok.reason, 'claim-issued');
+  const receiptAfterPass = await passing.readFastGateReceipt();
+  assert.ok(receiptAfterPass?.routeDigest, 'passing fast gates must allow receipt mint');
+  assert.ok(ok.fastGateResults?.length >= 1);
+});
+
+test('P1 FIX2: probe nonzero exit persists latest-acceptance-failure; second run blocked_repeat', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const broker = createValidationBroker(testManifest('out', {
+    id: 'persist-failure-probe',
+    commandArgs: ['-e', 'console.error("CONTROLLED_PROBE_FAIL"); process.exit(3)'],
+    fastGateCommands: [],
+    maxLaunchesPerCandidate: 5,
+  }), { root, outputRoot });
+
+  const first = await broker.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: true,
+  });
+  assert.equal(first.launched, true);
+  assert.ok(first.status === STATUS.FAIL || first.exitCode === 3);
+
+  const pointerPath = path.join(outputRoot, FAILURE_POINTER_NAME);
+  const pointerRaw = await readFile(pointerPath, 'utf8');
+  const pointer = JSON.parse(pointerRaw);
+  assert.equal(pointer.primaryAcceptance, true);
+  assert.ok(pointer.failureFingerprint, 'failure pointer must include fingerprint');
+  assert.ok(pointer.routeDigest);
+  assert.ok(pointer.regressionDigest);
+
+  const second = await broker.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: true,
+  });
+  assert.equal(second.launched, false, 'identical failure must not re-launch');
+  assert.ok(
+    second.status === STATUS.BLOCKED_REPEAT || second.status === STATUS.CACHED_UNCHANGED,
+    `expected blocked_repeat/cached_unchanged, got ${second.status}`,
+  );
+  assert.equal(second.cached, true);
+});
+
+test('P1 FIX3: maxLaunchesPerCandidate is persisted and enforced across runs', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const srcRel = 'candidate-src.js';
+  await writeFile(path.join(root, srcRel), 'launch-limit-v1\n', 'utf8');
+
+  const broker = createValidationBroker(testManifest('out', {
+    id: 'launch-limit-probe',
+    productionSourcePaths: [srcRel],
+    commandArgs: ['-e', 'process.exit(0)'],
+    fastGateCommands: [],
+    maxLaunchesPerCandidate: 1,
+  }), { root, outputRoot });
+
+  const first = await broker.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: true,
+  });
+  assert.equal(first.launched, true);
+  assert.equal(first.status, STATUS.PASS);
+
+  const digests = await broker.computeGateDigests();
+  assert.equal(await getCandidateLaunchCount(outputRoot, digests.candidateDigest), 1);
+  const countsFile = JSON.parse(await readFile(path.join(outputRoot, LAUNCH_COUNTS_NAME), 'utf8'));
+  assert.equal(countsFile.byCandidate[digests.candidateDigest], 1);
+
+  const second = await broker.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: true,
+  });
+  assert.equal(second.launched, false, 'second launch of same candidate must be blocked');
+  assert.equal(second.reason, 'max-launches-per-candidate');
+  assert.equal(second.status, STATUS.BLOCKED_REPEAT);
+
+  // New source → new candidate digest → launches again.
+  await writeFile(path.join(root, srcRel), 'launch-limit-v2-changed\n', 'utf8');
+  const third = await broker.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: true,
+  });
+  assert.equal(third.launched, true, 'new candidate digest must reset launch allowance');
+  assert.equal(third.status, STATUS.PASS);
+});
+
+test('P2 FIX4: broker claim bound to candidate digests; source change rejects claim', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const srcRel = 'claim-bound.js';
+  await writeFile(path.join(root, srcRel), 'claim-v1\n', 'utf8');
+  const manifest = testManifest('out', {
+    id: 'claim-digest-probe',
+    productionSourcePaths: [srcRel],
+    requireBrokerClaim: true,
+  });
+  const broker = createValidationBroker(manifest, { root, outputRoot });
+  const before = await broker.computeGateDigests();
+  const receipt = createFastGateReceipt({
+    routeDigest: before.routeDigest,
+    regressionDigest: before.regressionDigest,
+    candidateDigest: before.candidateDigest,
+    productionDigest: before.productionDigest,
+  });
+  const issued = await issueBrokerClaim({
+    outputRoot,
+    manifest,
+    receipt,
+    digests: before,
+  });
+
+  const ok = await validateBrokerClaim({
+    outputRoot,
+    manifest,
+    tokenOrPath: issued.claimPath,
+    root,
+  });
+  assert.equal(ok.ok, true, 'fresh claim must validate against current digests');
+
+  await writeFile(path.join(root, srcRel), 'claim-v2-mutated\n', 'utf8');
+  const stale = await validateBrokerClaim({
+    outputRoot,
+    manifest,
+    tokenOrPath: issued.claimPath,
+    root,
+  });
+  assert.equal(stale.ok, false);
+  assert.equal(stale.reason, 'broker-claim-stale-digest');
+});
+
+test('P2 FIX5: second consumeBrokerClaim is rejected (atomic one-use)', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const manifest = testManifest('out', { id: 'atomic-claim-probe' });
+  const digests = await createValidationBroker(manifest, { root, outputRoot }).computeGateDigests();
+  const issued = await issueBrokerClaim({
+    outputRoot,
+    manifest,
+    digests,
+    receipt: createFastGateReceipt({
+      routeDigest: digests.routeDigest,
+      regressionDigest: digests.regressionDigest,
+      candidateDigest: digests.candidateDigest,
+    }),
+  });
+
+  const first = await consumeBrokerClaim({ outputRoot, tokenOrPath: issued.claimPath });
+  assert.equal(first, true);
+  const second = await consumeBrokerClaim({ outputRoot, tokenOrPath: issued.claimPath });
+  assert.equal(second, false, 'atomic sentinel must reject second consumer');
+
+  const validated = await validateBrokerClaim({
+    outputRoot,
+    manifest,
+    tokenOrPath: issued.claimPath,
+    root,
+  });
+  assert.equal(validated.ok, false);
+  assert.equal(validated.reason, 'broker-claim-already-consumed');
+});
+
+test('P2 FIX6: dead-owner run lock is reclaimed; live-owner lock stays held', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+
+  // Dead PID lock (use a PID that is almost certainly not alive).
+  const deadPid = 2_147_000_000;
+  assert.equal(isPidAlive(deadPid), false, 'fixture dead PID must not be alive');
+  await writeJsonAtomically(path.join(outputRoot, FAST_RUN_LOCK_NAME), {
+    schema: 'spaceface.validation-run-lock.v1',
+    acquiredAt: new Date().toISOString(),
+    lockToken: `${deadPid}-deadfixture`,
+    pid: deadPid,
+  });
+
+  const reclaimed = await acquireRunLock({
+    outputRoot,
+    lockSchema: 'spaceface.validation-run-lock.v1',
+    timeoutMs: 5_000,
+  });
+  assert.ok(reclaimed?.lockToken, 'dead-owner lock must be reclaimed');
+
+  // Live owner (this process) — second acquire must fail without reclaim.
+  const liveHeld = await acquireRunLock({
+    outputRoot,
+    lockSchema: 'spaceface.validation-run-lock.v1',
+    timeoutMs: 5_000,
+  });
+  assert.equal(liveHeld, null, 'live-owner lock must not be reclaimed');
+
+  // Explicit reclaim helper agrees the owner is alive.
+  const tryLive = await tryReclaimStaleRunLock({
+    outputRoot,
+    timeoutMs: 5_000,
+    log: null,
+  });
+  assert.equal(tryLive.reclaimed, false);
+  assert.equal(tryLive.reason, 'owner-alive');
+
+  // Release via matching token from first reclaim, then clean up.
+  const { releaseRunLock } = await import('../scripts/lib/validationBroker.mjs');
+  await releaseRunLock({ outputRoot, lockToken: reclaimed.lockToken });
 });

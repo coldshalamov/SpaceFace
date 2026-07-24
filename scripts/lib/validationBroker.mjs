@@ -45,6 +45,10 @@ const FAST_RUN_LOCK_NAME = 'fast-run.lock';
 const CACHED_RESULT_NAME = 'latest-run-result.json';
 const LAUNCH_COUNTS_NAME = 'launch-counts.json';
 const CLAIMS_DIR_NAME = 'broker-claims';
+/** Default upper bound for declared fast-gate commands (cheap Node checks). */
+const DEFAULT_FAST_GATE_TIMEOUT_MS = 180_000;
+/** Extra margin when reclaiming aged locks with inconclusive PID liveness. */
+const STALE_LOCK_MARGIN_MS = 60_000;
 
 // In-process counters (also persisted under artifact root when available).
 const globalLaunchCounts = {
@@ -73,6 +77,157 @@ export function resetLaunchCountsForTests() {
 function timestamp(value) {
   const parsed = Date.parse(value ?? '');
   return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+}
+
+/** True if a process with this PID is still running (EPERM ⇒ alive but unsignalable). */
+export function isPidAlive(pid) {
+  const n = Number(pid);
+  if (!Number.isFinite(n) || n <= 0) return false;
+  try {
+    process.kill(n, 0);
+    return true;
+  } catch (error) {
+    if (error?.code === 'EPERM') return true;
+    return false;
+  }
+}
+
+function parsePidFromLockToken(lockToken) {
+  const pid = Number(String(lockToken ?? '').split('-')[0]);
+  return Number.isFinite(pid) && pid > 0 ? pid : null;
+}
+
+/**
+ * Parse a fast-gate command entry into { command, args } for runWithTimeout.
+ * Strings run via the platform shell so npm scripts and flags work; arrays are direct argv.
+ */
+export function parseFastGateCommand(entry) {
+  if (Array.isArray(entry) && entry.length > 0) {
+    return { command: String(entry[0]), args: entry.slice(1).map(String) };
+  }
+  const line = String(entry ?? '').trim();
+  if (!line) {
+    return { command: '', args: [] };
+  }
+  if (process.platform === 'win32') {
+    return {
+      command: process.env.ComSpec || 'cmd.exe',
+      args: ['/d', '/s', '/c', line],
+    };
+  }
+  return { command: '/bin/sh', args: ['-c', line] };
+}
+
+function resolveFastGateTimeoutMs(manifest) {
+  if (Number(manifest.fastGateTimeoutMs) > 0) {
+    return Number(manifest.fastGateTimeoutMs);
+  }
+  const manifestTimeout = Number(manifest.timeoutMs) > 0
+    ? Number(manifest.timeoutMs)
+    : DEFAULT_FAST_GATE_TIMEOUT_MS;
+  return Math.min(manifestTimeout, DEFAULT_FAST_GATE_TIMEOUT_MS);
+}
+
+/**
+ * Execute every declared manifest.fastGateCommands entry. Fail-closed: any
+ * nonzero exit / timeout / infra_error blocks receipt minting.
+ */
+export async function runDeclaredFastGates({ root, manifest }) {
+  const commands = [...(manifest.fastGateCommands ?? [])];
+  if (commands.length === 0) {
+    return { pass: true, results: [], reason: 'no-fast-gate-commands' };
+  }
+  const timeoutMs = resolveFastGateTimeoutMs(manifest);
+  const results = [];
+  for (const entry of commands) {
+    const parsed = parseFastGateCommand(entry);
+    if (!parsed.command) {
+      return {
+        pass: false,
+        status: STATUS.FAIL,
+        reason: 'fast-gate-empty-command',
+        failedCommand: entry,
+        results,
+      };
+    }
+    const result = await runWithTimeout({
+      command: parsed.command,
+      args: parsed.args,
+      cwd: root,
+      timeoutMs,
+      ownership: {
+        probeId: manifest.id,
+        phase: 'fast-gate',
+        command: typeof entry === 'string' ? entry : JSON.stringify(entry),
+      },
+    });
+    results.push({
+      command: entry,
+      status: result.status,
+      exitCode: result.exitCode,
+      timedOut: result.timedOut,
+      durationMs: result.durationMs,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    });
+    if (result.status !== 'pass') {
+      return {
+        pass: false,
+        status: result.status === 'timeout' ? STATUS.TIMEOUT : STATUS.FAIL,
+        reason: 'fast-gate-failed',
+        failedCommand: entry,
+        results,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exitCode: result.exitCode,
+        timedOut: result.timedOut,
+      };
+    }
+  }
+  return { pass: true, results, reason: 'fast-gates-passed' };
+}
+
+async function readPersistedLaunchCounts(outputRoot) {
+  const data = await readJsonIfPresent(path.join(outputRoot, LAUNCH_COUNTS_NAME));
+  if (!data || typeof data !== 'object') {
+    return { schema: 'spaceface.validation-launch-counts.v1', byCandidate: {} };
+  }
+  return {
+    schema: data.schema ?? 'spaceface.validation-launch-counts.v1',
+    byCandidate: { ...(data.byCandidate ?? {}) },
+    currentCandidateDigest: data.currentCandidateDigest ?? null,
+  };
+}
+
+export async function getCandidateLaunchCount(outputRoot, candidateDigest) {
+  if (!candidateDigest) return 0;
+  const data = await readPersistedLaunchCounts(outputRoot);
+  return Number(data.byCandidate[candidateDigest]) || 0;
+}
+
+/**
+ * Persist candidate-keyed launch counts. Keys that no longer match the current
+ * candidate digest are dropped so a new source set starts at zero.
+ */
+export async function incrementCandidateLaunchCount(outputRoot, candidateDigest) {
+  if (!candidateDigest) return 0;
+  const previous = await readPersistedLaunchCounts(outputRoot);
+  const prior = Number(previous.byCandidate[candidateDigest]) || 0;
+  const next = {
+    schema: 'spaceface.validation-launch-counts.v1',
+    currentCandidateDigest: candidateDigest,
+    // Reset other candidate keys when the digest changes (new source).
+    byCandidate: {
+      [candidateDigest]: prior + 1,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+  await writeJsonAtomically(path.join(outputRoot, LAUNCH_COUNTS_NAME), next);
+  return next.byCandidate[candidateDigest];
+}
+
+function brokerClaimConsumedSentinelPath(claimPath) {
+  return `${claimPath}.consumed`;
 }
 
 function isResolvedByAcceptedEvidence({
@@ -170,7 +325,11 @@ export function createValidationBroker(rawManifest, options = {}) {
     }),
     loadGateState: () => loadGateState({ root, outputRoot, manifest }),
     claimFastGateReceipt: () => claimFastGateReceipt({ outputRoot }),
-    acquireRunLock: () => acquireRunLock({ outputRoot, lockSchema: manifest.lockSchema }),
+    acquireRunLock: () => acquireRunLock({
+      outputRoot,
+      lockSchema: manifest.lockSchema,
+      timeoutMs: manifest.timeoutMs,
+    }),
     releaseRunLock: (lockToken) => releaseRunLock({ outputRoot, lockToken }),
     persistFailure: (failure, artifactPath) => persistFailure({
       outputRoot,
@@ -194,10 +353,12 @@ export function createValidationBroker(rawManifest, options = {}) {
       manifest,
       ...fields,
     }),
-    validateBrokerClaim: (tokenOrPath) => validateBrokerClaim({
+    validateBrokerClaim: (tokenOrPath, fields = {}) => validateBrokerClaim({
       outputRoot,
       manifest,
+      root,
       tokenOrPath,
+      ...fields,
     }),
     consumeBrokerClaim: (tokenOrPath) => consumeBrokerClaim({
       outputRoot,
@@ -205,6 +366,11 @@ export function createValidationBroker(rawManifest, options = {}) {
     }),
     evaluateCachedResult: () => evaluateCachedResult({ root, outputRoot, manifest }),
     recordRunResult: (result) => recordRunResult({ outputRoot, result }),
+    runDeclaredFastGates: () => runDeclaredFastGates({ root, manifest }),
+    getCandidateLaunchCount: (candidateDigest) => getCandidateLaunchCount(
+      outputRoot,
+      candidateDigest,
+    ),
     authorizeAndMaybeRun: (fields) => authorizeAndMaybeRun({
       root,
       outputRoot,
@@ -499,28 +665,92 @@ export async function claimFastGateReceipt({ outputRoot }) {
   };
 }
 
-export async function acquireRunLock({ outputRoot, lockSchema = DEFAULT_LOCK_SCHEMA }) {
+/**
+ * Try to reclaim a left-behind run lock when the owner PID is dead (or the lock
+ * is older than max probe duration with an inconclusive PID). Never reclaim a
+ * lock whose owner is demonstrably still running.
+ */
+export async function tryReclaimStaleRunLock({
+  outputRoot,
+  timeoutMs = 600_000,
+  log = console.warn,
+} = {}) {
+  const lockPath = path.join(outputRoot, FAST_RUN_LOCK_NAME);
+  const lock = await readJsonIfPresent(lockPath);
+  if (!lock) {
+    // Empty/corrupt race: remove if present so wx can proceed.
+    try {
+      await rm(lockPath, { force: true });
+      return { reclaimed: true, reason: 'missing-or-unreadable-lock' };
+    } catch {
+      return { reclaimed: false, reason: 'lock-remove-failed' };
+    }
+  }
+
+  const ownerPid = Number.isFinite(Number(lock.pid))
+    ? Number(lock.pid)
+    : parsePidFromLockToken(lock.lockToken);
+
+  if (ownerPid != null && isPidAlive(ownerPid)) {
+    return { reclaimed: false, reason: 'owner-alive', ownerPid };
+  }
+
+  if (ownerPid != null && !isPidAlive(ownerPid)) {
+    await rm(lockPath, { force: true });
+    log?.(
+      `[validationBroker] reclaimed stale run lock (dead owner pid=${ownerPid}) at ${lockPath}`,
+    );
+    return { reclaimed: true, reason: 'owner-dead', ownerPid };
+  }
+
+  // Inconclusive PID: only reclaim if the lock is older than timeout + margin.
+  const acquiredAt = timestamp(lock.acquiredAt);
+  const maxAgeMs = (Number(timeoutMs) > 0 ? Number(timeoutMs) : 600_000) + STALE_LOCK_MARGIN_MS;
+  if (Number.isFinite(acquiredAt) && Date.now() - acquiredAt > maxAgeMs) {
+    await rm(lockPath, { force: true });
+    log?.(
+      `[validationBroker] reclaimed aged run lock (inconclusive PID, age>${maxAgeMs}ms) at ${lockPath}`,
+    );
+    return { reclaimed: true, reason: 'aged-inconclusive-pid', ownerPid };
+  }
+
+  return { reclaimed: false, reason: 'inconclusive-not-aged', ownerPid };
+}
+
+export async function acquireRunLock({
+  outputRoot,
+  lockSchema = DEFAULT_LOCK_SCHEMA,
+  timeoutMs = 600_000,
+} = {}) {
   await mkdir(outputRoot, { recursive: true });
   const lockPath = path.join(outputRoot, FAST_RUN_LOCK_NAME);
   const lockToken = `${process.pid}-${randomBytes(8).toString('hex')}`;
-  let handle;
-  try {
-    handle = await open(lockPath, 'wx');
-  } catch (error) {
-    if (error?.code === 'EEXIST') return null;
-    throw error;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let handle;
+    try {
+      handle = await open(lockPath, 'wx');
+    } catch (error) {
+      if (error?.code !== 'EEXIST') throw error;
+      // FIX6: recover verifiably stale locks (dead PID / aged inconclusive).
+      const reclaim = await tryReclaimStaleRunLock({ outputRoot, timeoutMs });
+      if (reclaim.reclaimed && attempt === 0) continue;
+      return null;
+    }
+    try {
+      await handle.writeFile(`${JSON.stringify({
+        schema: lockSchema,
+        acquiredAt: new Date().toISOString(),
+        lockToken,
+        pid: process.pid,
+      }, null, 2)}\n`, 'utf8');
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+    return { lockToken, pid: process.pid };
   }
-  try {
-    await handle.writeFile(`${JSON.stringify({
-      schema: lockSchema,
-      acquiredAt: new Date().toISOString(),
-      lockToken,
-    }, null, 2)}\n`, 'utf8');
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
-  return { lockToken };
+  return null;
 }
 
 export async function releaseRunLock({ outputRoot, lockToken }) {
@@ -753,6 +983,7 @@ export async function assertProbeLaunch({
     const claimCheck = await validateBrokerClaim({
       outputRoot,
       manifest,
+      root,
       tokenOrPath: brokerClaimToken ?? process.env.SF_BROKER_CLAIM ?? null,
     });
     if (!claimCheck.ok) {
@@ -761,7 +992,9 @@ export async function assertProbeLaunch({
         reason: claimCheck.reason || 'broker-claim-required',
         primaryAcceptance: false,
         resolvesFailure: false,
-        status: STATUS.BLOCKED_MISSING_FAST_RECEIPT,
+        status: claimCheck.reason === 'broker-claim-stale-digest'
+          ? STATUS.BLOCKED_STALE_CANDIDATE
+          : STATUS.BLOCKED_MISSING_FAST_RECEIPT,
       });
     }
   }
@@ -803,10 +1036,24 @@ export async function assertProbeLaunch({
     inflightSchema: manifest.inflightSchema,
   });
 
-  // Consume one-use broker claim after successful authorization.
+  // Consume one-use broker claim after successful authorization (atomic).
   if (manifest.requireBrokerClaim && mode === 'acceptance') {
     const token = brokerClaimToken ?? process.env.SF_BROKER_CLAIM ?? null;
-    if (token) await consumeBrokerClaim({ outputRoot, tokenOrPath: token });
+    if (token) {
+      const consumed = await consumeBrokerClaim({ outputRoot, tokenOrPath: token });
+      if (!consumed) {
+        if (claimed?.claimToken) {
+          await completeProbeClaim({ outputRoot, claimToken: claimed.claimToken });
+        }
+        throwGateFailure('broker-claim-already-consumed', {
+          pass: false,
+          reason: 'broker-claim-already-consumed',
+          primaryAcceptance: false,
+          resolvesFailure: false,
+          status: STATUS.BLOCKED_MISSING_FAST_RECEIPT,
+        });
+      }
+    }
   }
 
   recordLaunch(manifest.id, runtimeKind);
@@ -840,6 +1087,19 @@ export async function issueBrokerClaim({
   await mkdir(claimsDir, { recursive: true });
   const claimId = `${process.pid}-${randomBytes(12).toString('hex')}`;
   const claimPath = path.join(claimsDir, `${claimId}.json`);
+  const boundDigests = digests ?? (receipt
+    ? {
+      routeDigest: receipt.routeDigest ?? receipt.productionDigest ?? null,
+      productionDigest: receipt.productionDigest ?? receipt.routeDigest ?? null,
+      regressionDigest: receipt.regressionDigest ?? null,
+      candidateDigest: receipt.candidateDigest ?? null,
+      buildDigest: receipt.buildDigest ?? null,
+      scenarioDigest: receipt.scenarioDigest ?? null,
+      inputDigest: receipt.inputDigest ?? null,
+      profileDigest: receipt.profileDigest ?? null,
+      manifestDigest: receipt.manifestDigest ?? null,
+    }
+    : null);
   const claim = {
     schema: manifest.claimSchema,
     claimId,
@@ -853,10 +1113,11 @@ export async function issueBrokerClaim({
         routeDigest: receipt.routeDigest,
         regressionDigest: receipt.regressionDigest,
         candidateDigest: receipt.candidateDigest ?? null,
+        productionDigest: receipt.productionDigest ?? receipt.routeDigest ?? null,
         acknowledgesFailureFingerprint: receipt.acknowledgesFailureFingerprint ?? null,
       }
       : null,
-    digests,
+    digests: boundDigests,
   };
   await writeJsonAtomically(claimPath, claim);
   return { claimId, claimPath, claim };
@@ -866,6 +1127,8 @@ export async function validateBrokerClaim({
   outputRoot,
   manifest: rawManifest,
   tokenOrPath,
+  root = null,
+  digests = null,
 }) {
   const manifest = rawManifest?.id ? rawManifest : normalizeManifest(rawManifest ?? { id: 'unknown' });
   if (!tokenOrPath) {
@@ -883,24 +1146,87 @@ export async function validateBrokerClaim({
   if (claim.manifestId && claim.manifestId !== manifest.id) {
     return { ok: false, reason: 'broker-claim-manifest-mismatch' };
   }
-  if (claim.consumed) {
+  // Treat O_EXCL consumed sentinel as already-consumed even if JSON write lagged.
+  const sentinel = await readJsonIfPresent(brokerClaimConsumedSentinelPath(claimPath));
+  if (claim.consumed || sentinel) {
     return { ok: false, reason: 'broker-claim-already-consumed' };
   }
   if (timestamp(claim.expiresAt) < Date.now()) {
     return { ok: false, reason: 'broker-claim-expired' };
   }
+
+  // FIX4: bind claims to the current candidate/source digests.
+  let current = digests;
+  if (!current && root) {
+    current = await computeGateDigestsFromManifest({ root, manifest });
+  }
+  if (current) {
+    const claimCandidate = claim.digests?.candidateDigest
+      ?? claim.receipt?.candidateDigest
+      ?? null;
+    const claimRoute = claim.digests?.routeDigest
+      ?? claim.digests?.productionDigest
+      ?? claim.receipt?.routeDigest
+      ?? claim.receipt?.productionDigest
+      ?? null;
+    const claimRegression = claim.digests?.regressionDigest
+      ?? claim.receipt?.regressionDigest
+      ?? null;
+    if (claimCandidate && claimCandidate !== current.candidateDigest) {
+      return { ok: false, reason: 'broker-claim-stale-digest', claim, claimPath };
+    }
+    if (claimRoute && claimRoute !== current.routeDigest) {
+      return { ok: false, reason: 'broker-claim-stale-digest', claim, claimPath };
+    }
+    if (claimRegression && claimRegression !== current.regressionDigest) {
+      return { ok: false, reason: 'broker-claim-stale-digest', claim, claimPath };
+    }
+  }
+
   return { ok: true, claim, claimPath };
 }
 
+/**
+ * Atomically consume a one-use broker claim.
+ *
+ * Mechanism: exclusive create (`wx` / O_EXCL) of a sibling `.consumed` sentinel
+ * file. Only the caller that successfully creates the sentinel is authorized;
+ * concurrent consumers observe EEXIST and fail with already-consumed. The claim
+ * JSON is then marked consumed for durable inspection. This closes the TOCTOU
+ * window between validateBrokerClaim and consumeBrokerClaim.
+ */
 export async function consumeBrokerClaim({ outputRoot, tokenOrPath }) {
   const claimPath = resolveBrokerClaimPath(outputRoot, tokenOrPath);
   const claim = await readJsonIfPresent(claimPath);
   if (!claim) return false;
   if (claim.consumed) return false;
-  claim.consumed = true;
-  claim.consumedAt = new Date().toISOString();
-  await writeJsonAtomically(claimPath, claim);
-  return true;
+
+  const sentinelPath = brokerClaimConsumedSentinelPath(claimPath);
+  let handle;
+  try {
+    // Atomic authorization: exclusive create — only one process wins.
+    handle = await open(sentinelPath, 'wx');
+  } catch (error) {
+    if (error?.code === 'EEXIST') return false;
+    throw error;
+  }
+
+  try {
+    const consumedAt = new Date().toISOString();
+    await handle.writeFile(`${JSON.stringify({
+      schema: 'spaceface.validation-broker-claim-consumed.v1',
+      claimId: claim.claimId ?? null,
+      consumedAt,
+      pid: process.pid,
+    }, null, 2)}\n`, 'utf8');
+    await handle.sync();
+    claim.consumed = true;
+    claim.consumedAt = consumedAt;
+    await writeJsonAtomically(claimPath, claim);
+    return true;
+  } finally {
+    await handle.close();
+  }
 }
 
 function resolveBrokerClaimPath(outputRoot, tokenOrPath) {
@@ -926,6 +1252,8 @@ export async function requireBrokerClaimOrDiagnostic({
   tokenOrPath = process.env.SF_BROKER_CLAIM ?? null,
   diagnostic = process.argv.includes('--diagnostic'),
   explicitDiagnostic = process.argv.includes('--diagnostic'),
+  root = null,
+  digests = null,
 }) {
   if (diagnostic) {
     if (!explicitDiagnostic) {
@@ -948,16 +1276,29 @@ export async function requireBrokerClaimOrDiagnostic({
     outputRoot,
     manifest,
     tokenOrPath,
+    root,
+    digests,
   });
   if (!check.ok) {
     return {
       ok: false,
-      status: STATUS.BLOCKED_MISSING_FAST_RECEIPT,
+      status: check.reason === 'broker-claim-stale-digest'
+        ? STATUS.BLOCKED_STALE_CANDIDATE
+        : STATUS.BLOCKED_MISSING_FAST_RECEIPT,
       reason: check.reason,
       diagnostic: false,
     };
   }
-  await consumeBrokerClaim({ outputRoot, tokenOrPath });
+  // Atomic consume — concurrent second caller loses here even if both validated.
+  const consumed = await consumeBrokerClaim({ outputRoot, tokenOrPath });
+  if (!consumed) {
+    return {
+      ok: false,
+      status: STATUS.BLOCKED_MISSING_FAST_RECEIPT,
+      reason: 'broker-claim-already-consumed',
+      diagnostic: false,
+    };
+  }
   return {
     ok: true,
     status: STATUS.PASS,
@@ -979,7 +1320,11 @@ async function authorizeAndMaybeRun({
   extraArgs = [],
   env = null,
 }) {
-  const lock = await acquireRunLock({ outputRoot, lockSchema: manifest.lockSchema });
+  const lock = await acquireRunLock({
+    outputRoot,
+    lockSchema: manifest.lockSchema,
+    timeoutMs: manifest.timeoutMs,
+  });
   if (!lock) {
     return {
       status: STATUS.FAIL,
@@ -1001,9 +1346,43 @@ async function authorizeAndMaybeRun({
     }
 
     const digests = await computeGateDigestsFromManifest({ root, manifest });
+
+    // FIX3: enforce maxLaunchesPerCandidate before any expensive spawn.
+    if (spawnProbe && mode === 'acceptance') {
+      const priorLaunches = await getCandidateLaunchCount(
+        outputRoot,
+        digests.candidateDigest,
+      );
+      if (priorLaunches >= manifest.maxLaunchesPerCandidate) {
+        return {
+          status: STATUS.BLOCKED_REPEAT,
+          reason: 'max-launches-per-candidate',
+          launched: false,
+          candidateDigest: digests.candidateDigest,
+          launchCount: priorLaunches,
+          maxLaunchesPerCandidate: manifest.maxLaunchesPerCandidate,
+        };
+      }
+    }
+
+    // FIX1: run declared fast gates before minting a receipt.
+    const fastGates = await runDeclaredFastGates({ root, manifest });
+    if (!fastGates.pass) {
+      return {
+        status: fastGates.status ?? STATUS.FAIL,
+        reason: fastGates.reason ?? 'fast-gate-failed',
+        launched: false,
+        failedCommand: fastGates.failedCommand ?? null,
+        fastGateResults: fastGates.results,
+        stdout: fastGates.stdout,
+        stderr: fastGates.stderr,
+        exitCode: fastGates.exitCode,
+      };
+    }
+
     let receipt = await readFastGateReceipt({ outputRoot });
 
-    // Auto-mint a receipt when sources are clean and no unresolved failure blocks.
+    // Auto-mint a receipt only after ALL declared fast gates pass and failure gate is clean.
     const fastEval = evaluateFastGate({
       latestFailure: cached.state.latestFailure,
       acceptedRuntimeKind: cached.state.acceptedRuntimeKind,
@@ -1055,6 +1434,7 @@ async function authorizeAndMaybeRun({
         claim: issued,
         receipt,
         digests,
+        fastGateResults: fastGates.results,
       };
     }
 
@@ -1065,6 +1445,7 @@ async function authorizeAndMaybeRun({
       claimPath: issued.claimPath,
       extraArgs,
       env,
+      digests,
     });
 
     return {
@@ -1073,6 +1454,7 @@ async function authorizeAndMaybeRun({
       receipt,
       digests,
       launched: true,
+      fastGateResults: fastGates.results,
     };
   } finally {
     await releaseRunLock({ outputRoot, lockToken: lock.lockToken });
@@ -1086,6 +1468,7 @@ async function runProbeProcess({
   claimPath = null,
   extraArgs = [],
   env = null,
+  digests: precomputedDigests = null,
 }) {
   const probeEnv = {
     ...(env ?? {}),
@@ -1110,7 +1493,64 @@ async function runProbeProcess({
     ownership,
   });
 
-  recordLaunch(manifest.id, manifest.runtimeKind);
+  const digests = precomputedDigests
+    ?? await computeGateDigestsFromManifest({ root, manifest });
+
+  // Count a launch only after a successful spawn (child started / finished with a code).
+  const spawned = Boolean(
+    result.pidRecord?.pid
+    || result.exitCode != null
+    || result.timedOut
+    || result.status === 'pass'
+    || result.status === 'fail'
+    || result.status === 'timeout',
+  );
+  if (spawned) {
+    recordLaunch(manifest.id, manifest.runtimeKind);
+    await incrementCandidateLaunchCount(outputRoot, digests.candidateDigest);
+  }
+
+  // FIX2: persist failed probe outcomes so the next identical run sees latestFailure.
+  let failureFingerprint = null;
+  let family = null;
+  const failed = result.status !== 'pass';
+  if (failed) {
+    const errorText = [
+      result.stderr,
+      result.stdout,
+      result.timedOut ? `TIMEOUT after ${manifest.timeoutMs}ms` : null,
+      result.status === 'infra_error' ? 'infra_error' : null,
+      result.exitCode != null ? `exitCode=${result.exitCode}` : null,
+    ].filter(Boolean).join('\n').slice(0, 4000);
+
+    const identity = manifest.normalizeFailure({
+      runtimeKind: manifest.runtimeKind,
+      phase: 'acceptance-probe',
+      error: errorText || `probe-${result.status}`,
+      primaryAcceptance: true,
+    });
+    failureFingerprint = identity.fingerprint;
+    family = identity.family;
+
+    await persistFailure({
+      outputRoot,
+      failure: {
+        schema: 'spaceface.validation-acceptance-failure.v1',
+        generatedAt: new Date().toISOString(),
+        pass: false,
+        primaryAcceptance: true,
+        runtimeKind: manifest.runtimeKind,
+        phase: 'acceptance-probe',
+        error: errorText || `probe-${result.status}`,
+        failureFingerprint,
+        family,
+        routeDigest: digests.routeDigest,
+        regressionDigest: digests.regressionDigest,
+        candidateDigest: digests.candidateDigest,
+        artifactKind: 'probe-run',
+      },
+    });
+  }
 
   await recordRunResult({
     outputRoot,
@@ -1123,11 +1563,19 @@ async function runProbeProcess({
       pidRecord: result.pidRecord,
       ownership: result.ownership,
       fixedSeed: manifest.fixedSeed,
+      failureFingerprint,
+      family,
+      routeDigest: digests.routeDigest,
+      regressionDigest: digests.regressionDigest,
+      candidateDigest: digests.candidateDigest,
     },
   });
 
   return {
-    status: result.status,
+    status: result.status === 'pass' ? STATUS.PASS
+      : result.status === 'timeout' ? STATUS.TIMEOUT
+        : result.status === 'infra_error' ? STATUS.INFRA_ERROR
+          : STATUS.FAIL,
     exitCode: result.exitCode,
     signal: result.signal,
     timedOut: result.timedOut,
@@ -1137,6 +1585,9 @@ async function runProbeProcess({
     pidRecord: result.pidRecord,
     ownership: result.ownership,
     fixedSeed: manifest.fixedSeed,
+    failureFingerprint,
+    family,
+    digests,
   };
 }
 
@@ -1158,6 +1609,7 @@ export {
   FAILURE_POINTER_NAME,
   FAST_RECEIPT_NAME,
   FAST_RUN_LOCK_NAME,
+  LAUNCH_COUNTS_NAME,
   DEFAULT_RECEIPT_SCHEMA,
   deriveFailureIdentity,
   computeSourceSetDigest,
