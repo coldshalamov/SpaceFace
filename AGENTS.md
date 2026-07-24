@@ -1,3 +1,4 @@
+<!-- LIFETIME: STABLE -->
 # SpaceFace agent orientation
 
 This is the repository engineering front door (invariants + routing). Keep it short: global

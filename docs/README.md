@@ -1,43 +1,39 @@
+<!-- LIFETIME: STABLE -->
 # SpaceFace documentation
 
-This is the navigation front door for engineering and world-content documentation. It does not own
-product status. For the current whole-program position, start at
-[`design/program/README.md`](../design/program/README.md).
+This is the navigation front door for engineering and world-content documentation. It does not own product status.
 
 ## Start by task
 
 | Need | Read |
 |---|---|
-| What is done, open, or ready to resume? | [`design/program/README.md`](../design/program/README.md) and its verified-done, remaining-work, acceptance, and integration pages |
-| What future plans are retained but not yet scheduled? | [`design/program/06_RETAINED_FUTURE_BACKLOG.md`](../design/program/06_RETAINED_FUTURE_BACKLOG.md) and [`design/PLAN_REGISTRY.md`](../design/PLAN_REGISTRY.md) |
-| Technical invariants and ownership | [`ARCHITECTURE.md`](../ARCHITECTURE.md) |
+| Enter implementation | [`../CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) |
+| Technical invariants and ownership | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) |
+| Live leases and blockers | [`../design/program/NOW.md`](../design/program/NOW.md) |
+| Executable admitted packet | [`../design/program/roadmap/active/README.md`](../design/program/roadmap/active/README.md) |
+| Finite review/verification workflow | [`../design/program/roadmap/00_EXECUTION_PROTOCOL.md`](../design/program/roadmap/00_EXECUTION_PROTOCOL.md) |
 | Find the module that owns behavior | [`MODULE_MAP.md`](./MODULE_MAP.md) |
 | Diagnose a recurring failure | [`COMMON_BUGS.md`](./COMMON_BUGS.md) |
 | Trace an event end to end | [`EVENT_ROUTING.md`](./EVENT_ROUTING.md) (generated) |
-| Inspect registry and update order | [`SYSTEM_REGISTRY.md`](./SYSTEM_REGISTRY.md) (generated) |
+| Inspect registry/update order | [`SYSTEM_REGISTRY.md`](./SYSTEM_REGISTRY.md) (generated) |
+| Understand which files may direct an agent | [`POLICY_MANIFEST.md`](./POLICY_MANIFEST.md) |
+| Search without ingesting snapshots/transcripts | [`SEARCH_CONTEXT.md`](./SEARCH_CONTEXT.md) |
+| Evaluate third-party tools/assets | [`OPEN_SOURCE_INTAKE.md`](./OPEN_SOURCE_INTAKE.md) |
 | Work on the 47-A slice | [`Spec/47A_SLICE_CONTRACT.md`](./Spec/47A_SLICE_CONTRACT.md) |
-| Work on narrative or setting | [`worldbuilding/`](./worldbuilding/) and [`worldbuilding/sheets/README.md`](./worldbuilding/sheets/README.md) |
-| Review earlier integration evidence | [`handoffs/`](./handoffs/) (historical evidence, not current status) |
-| Decide whether a generated folder/file belongs in Git | [`ARTIFACT_RETENTION.md`](./ARTIFACT_RETENTION.md) |
-| Understand which files can direct an agent | [`POLICY_MANIFEST.md`](./POLICY_MANIFEST.md) |
-| Search without ingesting snapshots and transcripts | [`SEARCH_CONTEXT.md`](./SEARCH_CONTEXT.md) |
-| Continue a deferred repository/context cleanup | [`REPOSITORY_HYGIENE.md`](./REPOSITORY_HYGIENE.md) |
+| Retained future plans not yet scheduled | [`../design/program/06_RETAINED_FUTURE_BACKLOG.md`](../design/program/06_RETAINED_FUTURE_BACKLOG.md) and [`../design/PLAN_REGISTRY.md`](../design/PLAN_REGISTRY.md) |
+| Work on narrative/setting | [`worldbuilding/`](./worldbuilding/) and [`worldbuilding/sheets/README.md`](./worldbuilding/sheets/README.md) |
+| Review prior integration evidence | [`handoffs/`](./handoffs/) (historical, not status) |
+| Decide artifact retention | [`ARTIFACT_RETENTION.md`](./ARTIFACT_RETENTION.md) |
+| Resume deferred repository/context cleanup | [`REPOSITORY_HYGIENE.md`](./REPOSITORY_HYGIENE.md) |
 
 ## Documentation classes
 
-- **Authority:** repo-root `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, and the active
-  task spec. These define rules and intent.
-- **Current status:** `design/program/`. It is the only whole-program pickup/status surface; live
-  `check:*` output and player-facing evidence still outrank prose.
-- **Navigation/reference:** `MODULE_MAP.md` and `COMMON_BUGS.md`. Keep these aligned with live code.
-- **Generated indexes:** `EVENT_ROUTING.md` and `SYSTEM_REGISTRY.md`. Regenerate with
-  `npm run build:indexes`; never edit them by hand.
-- **Content source material:** `worldbuilding/`. Canonical prose, planning sheets, implementation,
-  and review history have different authority; use that folder's index before treating a draft as canon.
-- **Historical evidence:** `handoffs/`, review iterations, and old makeover/audit reports. They explain
-  earlier decisions but do not establish present completion.
+- **Authority:** root `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, and the selected active packet.
+- **Current status:** `design/program/`, with `NOW.md` limited to volatile leases and the queue/receipts owning durable facts.
+- **Navigation/reference:** `MODULE_MAP.md`, `COMMON_BUGS.md`, and `SEARCH_CONTEXT.md`.
+- **Generated indexes:** `EVENT_ROUTING.md` and `SYSTEM_REGISTRY.md`; regenerate with `npm run build:indexes`.
+- **Historical evidence:** handoffs, reviews, old audit reports, and captures. They explain; they do not dispatch.
 
 ## Maintenance
 
-Read [`docs/AGENTS.md`](./AGENTS.md) before changing this tree. Avoid dates, line numbers, file sizes,
-or pass-count literals when a durable path or command communicates the same fact.
+Read [`AGENTS.md`](./AGENTS.md) before changing this tree. Prefer durable paths/symbols over dates, line numbers, file sizes, or copied status. Run `node scripts/check-program-docs.mjs` after changing program-facing links or policy lifetimes.
