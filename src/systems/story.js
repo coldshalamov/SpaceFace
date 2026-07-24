@@ -1117,7 +1117,7 @@ export const story = {
       s.flags.hasLedger = true;
       this._markVergeEvidence('kurtzLedger', 'kurtz:takeLedger');
       this._fireComms({
-        id: 'kurtz_dialog_take', sender: 'THE KURTZ FIGURE', text: KURTZ.dialogue[1],
+        id: 'kurtz_dialog_take', sender: 'THE ASHFALL WITNESS', text: KURTZ.dialogue[1],
         category: 'story', ttl: 9, persist: false,
       });
       this.bus.emit('story:kurtzLedger', { rows: s.kurtzLedgerRows.slice() });
@@ -1130,7 +1130,7 @@ export const story = {
       const visited = (s.flags.kurtzVisits || 0);
       const line = visited === 0 ? KURTZ.dialogue[0] : (visited === 1 ? KURTZ.dialogue[2] : KURTZ.dialogue[3]);
       s.flags.kurtzVisits = visited + 1;
-      this._fireComms({ id: `kurtz_dialog_${visited}`, sender: 'THE KURTZ FIGURE', text: line, category: 'story', ttl: 9 });
+      this._fireComms({ id: `kurtz_dialog_${visited}`, sender: 'THE ASHFALL WITNESS', text: line, category: 'story', ttl: 9 });
       this.bus.emit('story:kurtzLedger', { rows: (s.kurtzLedgerRows || []).slice() });
     }
     this._maybeOfferEndgame();

@@ -17,7 +17,7 @@ LAST REGISTERED OWNER: VALE HOLDINGS LLC
 CARGO RECOVERED: ADMINISTRATIVE RECORDS — 3 YEARS / SEALED
 ```
 
-Vale Holdings LLC. The third Vale sighting (fourth, if the player counted). The mission brief didn't mention this. The after-action report doesn't mention it either. The player delivered those records without knowing what they were. The records are now in the manifest history of the player's ship. The player's ship is carrying administrative records — three years of them, sealed — that came from a vessel registered to a name that keeps appearing.
+Vale Holdings LLC. The fourth Vale sighting. The mission brief didn't mention this. The after-action report doesn't mention it either. The player delivered those records without knowing what they were. The records are now in the manifest history of the player's ship. The player's ship is carrying administrative records — three years of them, sealed — that came from a vessel registered to a name that keeps appearing.
 
 ## THE BLOCKED CHANNEL
 
@@ -41,9 +41,9 @@ This is the Quiet faction graffiti. The Quiet move messages and small contraband
 
 ## THE REUNION (B5's main event, optional, at Meridian)
 
-If the player goes to Meridian Exchange and looks for Callum — and the player will only do this if they've been reading the Thread-B leads, which most players haven't — Callum is not hiding. He's not a villain lurking in a back room. He's a broker with a booth at the exchange, trading in commodity futures, wearing clean clothes. He has a good reputation. He is polite. He does not recognize Wren immediately — it has been seven years and Wren spent four of them frozen.
+If the player goes to Meridian Exchange and looks for Callum — and the player will only do this if they've been reading the Thread-B leads, which most players haven't — Callum is not hiding. He's not a villain lurking in a back room. He's a broker with a booth at the exchange, trading in commodity futures, wearing clean clothes. He has a good reputation. He is polite. He does not recognize Wren immediately — it has been nine years and Wren spent four of them frozen.
 
-The reunion is not dramatic. The reunion is two people who never answer the question asked. They argue about *where* the question can be asked. Information changes hands while they argue about the venue.
+The reunion is two people who never answer the question asked. They argue about *where* the question can be asked. Information changes hands while they argue about the venue.
 
 ```
 Wren:    "Callum."
@@ -60,17 +60,17 @@ Wren:    "That's not the whole story. That's the part you're willing to tell whi
 Callum:  "That's the same thing, Wren."
 ```
 
-The betrayer is prosperous, polite, mildly inconvenienced. That's the version that hurts. The man who sold Wren out for a share and a fragment is sitting at a booth in clean clothes with a good reputation, and the inconvenience is Wren standing in front of him asking a question the exchange can hear.
+The betrayer is prosperous, polite, mildly inconvenienced.  The man who sold Wren out for a share and a fragment is sitting at a booth in clean clothes with a good reputation, and the inconvenience is Wren standing in front of him asking a question the exchange can hear.
 
 Callum gives Wren a data chip. Not out of guilt — because Wren at his booth is bad for business and a data chip is cheaper than a scene. The chip traces the buyer to a facility under REF 44-C's "EVIDENCE PROCESSING — LONG-TERM STORAGE." Callum thinks this resolves Wren's problem. It does not resolve Wren's problem. It gives Wren the next link in a chain Callum never understood.
 
 ## THE UNPUNISHED MAN
 
-Callum sold the first fragment. Callum disappeared. No punishment found him. The arrest that followed was Wren's, not Callum's — a Concord sweep team tripped Wren's biometrics on an unrelated bounty flag, and the vault job evidence was in his file before the sweep team finished processing him. Callum walked. Callum prospered. Callum is now a broker with a booth and clean clothes and a good reputation, and the worst consequence he suffered was the mild inconvenience of Wren appearing at his booth seven years later.
+Callum sold the first fragment. Callum disappeared. No punishment found him. The arrest that followed was Wren's, not Callum's — a Concord sweep team tripped Wren's biometrics on an unrelated bounty flag, and the vault job evidence was in his file before the sweep team finished processing him. Callum walked. Callum prospered. Callum is now a broker with a booth and clean clothes and a good reputation, and the worst consequence he suffered was the mild inconvenience of Wren appearing at his booth nine years later.
 
 This is the mirror to B2. At B2, the player killed a civilian and was punished with a cleared payment. At B5, the player meets the man who betrayed him and finds the betrayer unpunished and prospering. The system filed Callum's betrayal as a business decision. The system filed Wren's arrest as a flag in a sweep. The two filings are both correct. Neither is just. The system does not deal in justice. The system deals in filings.
 
-The player who understands this is the player who has begun to understand the game. The reconciliation is not coming. The betrayer stays prosperous. The data chip is the only thing that changes hands. The player leaves Meridian with a lead and no satisfaction. The game does not bring Callum back for closure. The absence of comeuppance is the point.
+The player who understands this is the player who has begun to understand the game. The reconciliation is not coming. The betrayer stays prosperous. The data chip is the only thing that changes hands. The player leaves Meridian with a lead and no satisfaction. The game does not bring Callum back for closure.
 
 ## THE ARGUMENT (both parties know it's a lie)
 
@@ -103,11 +103,11 @@ Wren takes the chip. Wren leaves. The booth is quiet. Callum goes back to future
 
 The data chip Callum gives Wren traces the buyer to a facility under REF 44-C's "EVIDENCE PROCESSING — LONG-TERM STORAGE." The civilian reading stops there: the buyer was an institution, the fragment went back into evidence, the chain of custody is a circle.
 
-The operation reading continues. The "man who paid well and didn't give a name" — Callum's buyer, fourteen years ago — was Brandt, operating through the Quiet. The first fragment was bought by the Quiet because Brandt needed the evidence out of Concord's hands and into the only channel Concord couldn't audit. Callum has been an unwitting node in the mole network for fourteen years. The civilian broker who moved the evidence without knowing what it was, was moving it for the adversary salon the whole time.
+The operation reading continues. The "man who paid well and didn't give a name" — Callum's buyer, nine years ago — was Brandt, operating through the Quiet. The first fragment was bought by the Quiet because Brandt needed the evidence out of Concord's hands and into the only channel Concord couldn't audit. the mole network has run fourteen years; Callum has been an unwitting node for nine. The civilian broker who moved the evidence without knowing what it was, was moving it for the adversary salon the whole time.
 
 The chip's trail leads to the same REF 44-C facility because the facility *is* the channel Aldiss uses. Aldiss's file-status leaks route through the facility's evidence-transfer logs — encoded in the ATMO TOKEN brokerage's transfer metadata. The chip is not just the next link in Wren's personal search. The chip is the thread the operation has been waiting for Wren to pull, because Wren pulling it in civilian cover is the move that exposes the channel without the operation having to expose itself.
 
-Callum does not know any of this. Callum sold a piece of weird metal for money fourteen years ago. Callum's data chip is cheaper than a scene. Callum thinks the chip resolves Wren's problem. The chip resolves the operation's problem. The two resolutions are filed under the same transaction. Callum is the Le Carré innocent — the civilian whose honest work is the adversary's channel, and who will never know, because the channel depends on the civilian not knowing.
+Callum does not know any of this. Callum sold a piece of weird metal for money nine years ago. Callum's data chip is cheaper than a scene. Callum thinks the chip resolves Wren's problem. The chip resolves the operation's problem. The two resolutions are filed under the same transaction. Callum is the Le Carré innocent — the civilian whose honest work is the adversary's channel, and who will never know, because the channel depends on the civilian not knowing.
 
 ---
 

@@ -27,7 +27,7 @@ The player can accept it or leave. The graffiti remains on the airlock for three
 On the fourth visit, lower and in a different hand: FORTY-SEVEN LEDGERS. ONE SHIP.
 On the sixth, scratched deep enough that paint doesn't catch it: THE HOLE HAD NO LOCKS ON THE INSIDE.
 
-The line about Helios — *HELIOS DIDN'T NEED IT. THEY TOOK IT ANYWAY* — does not appear in Chapter 01. That line is the punchline to a reveal the player cannot have earned on the first run. If it appears at all, it appears much later, in a hand that worked the Core maintenance depot, in a bay that smells faintly of machine oil. Most players never find it. The game does not point to it.
+The line about Helios — *HELIOS DIDN'T NEED IT. THEY TOOK IT ANYWAY.* — does not appear in Chapter 01. If it appears at all, it appears much later, in a hand that worked the Core maintenance depot, in a bay that smells faintly of machine oil.
 
 No other text appears. No other record exists.
 
@@ -45,10 +45,10 @@ No other text appears. No other record exists.
 
 > **Note:** this is the original first-run script. The expanded B0 chapter is `chapter-00-cold-start.md` (adds the pre-flight / pre-loaded-cargo / STABLE-LOAD-line-that-won't-clear material that dramatizes the `crime_before_the_criminal` theme). This file remains the canonical HUD-script version; the two files are complementary — chapter-00 is the prose-frame around the chapter-01 script.
 
-**Graffiti introduced:** `THEY KNEW THE MASS.` (first appearance); `THE COUNT NEVER ENDS.` (second visit); `FORTY-SEVEN LEDGERS. ONE SHIP.` (fourth visit); `THE HELIOS DIDN'T NEED IT` line reserved for later (per iteration-04 fix).
+**Graffiti introduced:** `THEY KNEW THE MASS.` (first appearance); `THE COUNT NEVER ENDS.` (second visit); `FORTY-SEVEN LEDGERS. ONE SHIP.` (fourth visit); `HELIOS DIDN'T NEED IT. THEY TOOK IT ANYWAY.` is reserved for later — it is the punchline to a reveal the player cannot have earned on the first run, and the game does not point to it.
 **Manifests introduced:** `SLOT01 TITANIUM ALLOY 12400KG` → `00000KG`
 **Comms introduced:** none (the run is silent)
-**Dosto beat:** `crime_before_the_criminal` → `guilt_as_physiology`. The first contract was filed before the player stepped into the cockpit. The STABLE LOAD line that won't clear is the body keeping the score before the body knows there's a score to keep.
+**Dosto beat:** `crime_before_the_criminal` → `guilt_as_physiology`. The first contract was filed before the player stepped into the cockpit. The STABLE LOAD line that won't clear persists the way the cargo persists — administratively.
 
 ---
 

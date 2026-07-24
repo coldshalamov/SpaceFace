@@ -50,7 +50,7 @@ The only line that ever resolved clean was "PAYMENT WITHHELD." That was the HUD'
 
 ---
 
-**The thesis:**
+**Phase 3 close:**
 
 The HUD doesn't tell you who you've become. It doesn't need to. It stopped needing to somewhere around Phase 2. By Phase 3, it is simply showing you the system's version of events, which is the only version that will survive you.
 
@@ -62,5 +62,5 @@ The graffiti is more accurate than the HUD. Always has been. The graffiti doesn'
 
 - Phase 1: introduce the cargo weight bug (Chapter 01 prototype) as the template. All Phase 1 lies read as lag or bad sensors.
 - Phase 2: manifest self-correction should fire when the player has completed B4 or crossed rep -100 with any law faction. No announcement. No notification. The player just starts noticing discrepancies if they're paying attention.
-- Phase 3: implement as a late-game flag set at B6. The "PENDING" contract is a permanent entry injected into the mission log at the same time the endgame choice is presented — it cannot be cleared, it cannot be settled.
+- Phase 3: implement as a late-game flag set at B6. The "PENDING" contract is a permanent entry injected into the mission log at the same time the endgame choice is presented — it cannot be cleared in endings A–D; Choice E settles it for 1,200 credits, which is worse.
 - The graffiti on the player's bulkhead ("THEY KNEW THE MASS") should re-appear at Phase 3 regardless of which painting-over cycles have occurred. This is the game's only callback to Chapter 01 that the player receives directly.

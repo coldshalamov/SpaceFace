@@ -83,7 +83,7 @@ export const FIGURES = {
   quinn:         { name: 'Quinn',       org: "Outpost 9 bar", role: 'barkeep (never not management)' },
   voss:          { name: 'Voss',        org: 'Drift Miners Collective', role: 'claim filer' },
   elroy:         { name: 'Elroy',       org: 'Pit Engineering, Maintenance Division', role: 'whistleblower (B2 target)' },
-  kurtz:         { name: '(unnamed)',   role: 'the Kurtz figure — derelict administrator, Ashfall Reach' },
+  kurtz:         { name: '(unnamed)',   role: 'the Ashfall Witness — derelict administrator, Ashfall Reach' },
   clerk_yune:    { name: 'Clerk Yune', org: 'The Quiet', role: 'sealed-evidence broker' },
   coldburn_rey:  { name: '“Coldburn” Rey', org: 'Free Frontier', role: 'independent hauler and named rival' },
   iren_suhl:     { name: 'Dr. Iren Suhl', org: 'Research Station Veil', role: 'xenolinguist' },
@@ -218,7 +218,7 @@ export const COMMS = {
       note: "The player's name has been removed from the registry. Not deleted — the field reads UNKNOWN. Removal date = the B5 cargo audit.",
       beat: 6, once: true, persist: true },
     { id: 'late_ashfall_signal', sender: 'ASHFALL REACH', text: 'SIGNAL DETECTED: LONG-FORM TRANSMISSION. SOURCE: DERELICT STATION. CONTENTS: ADMINISTRATIVE LOG — 11 YEARS. RECEIVING?',
-      note: "First contact with the Kurtz figure's station. Arrives as a comms popup, not a mission. Dismissable. Returns next cycle.",
+      note: "First contact with the Witness's station. Arrives as a comms popup, not a mission. Dismissable. Returns next cycle.",
       beat: 6, persist: true }, // persists across sessions until the player flies there
     { id: 'late_atmo_debt', sender: 'CONCORD ALA DIVISION', text: 'ATMO DEBT NOTICE: SECTOR 0 (THE PIT) / ACCUMULATED BALANCE: [FIGURE REDACTED] / STATUS: ADMINISTRATIVE CLOSURE PENDING / AUTHORIZED: D. VALE.',
       note: 'Internal administrative notice that should not appear to the player. Appears because they have secondary-log access. Balance = 14 years of deferred Silt maintenance = 12.4t of recycler catalyst grid relocated under code VALE-ALA-47A.',
@@ -231,7 +231,7 @@ export const COMMS = {
     // Audit II.4: the Vethari silence has a budget. A division exists because the secret exists.
     { id: 'late_xenolinguistics_line', sender: 'RESEARCH STATION VEIL — INTERNAL',
       text: 'DIVISION 6 BUDGET RENEWED. LINE ITEM: SIGNAL CONTAINMENT. DURATION: INDEFINITE. JUSTIFICATION: SEALED. AUTHORIZED: D. VALE / REF 44-C.',
-      note: 'Division 6 exists because the Vethari signal exists. Its budget renews every cycle under the same code that files everything else. The justification is sealed under REF 44-C — the same drawer. The player who has read the Kurtz ledger understands: someone is paying to keep the silence, and the payment is on the same ledger as the Pit’s air debt.',
+      note: 'Division 6 exists because the Vethari signal exists. Its budget renews every cycle under the same code that files everything else. The justification is sealed under REF 44-C — the same drawer. The player who has read the Witness ledger understands: someone is paying to keep the silence, and the payment is on the same ledger as the Pit’s air debt.',
       beat: 7, once: true },
   ],
 
@@ -273,7 +273,7 @@ export const GRAFFITI = {
   GANG_SHE_HELD:       'SHE HELD TOGETHER. WE DIDN\'T.',
   GANG_SEVEN_RUNS:     'SEVEN RUNS. ONE WE DON\'T TALK ABOUT.',
   GANG_QUIET_PAYS:     'THE QUIET PAYS WELL UNTIL IT DOESN\'T.',
-  GANG_COUNT_EXITS:    'COUNT YOUR EXITS BEFORE YOU COUNT YOUR CREDITS.',
+  GANG_COUNT_EXITS:    'BERTH 4. FIVE WENT OUT. THE FEES ARE STILL RUNNING.',
   GANG_STILL_FLYING:   'DEAD MEN\'S SHIP. STILL FLYING. MAKE SOMETHING OF IT.',
 
   // The recurring callback. Appears first at B0 home airlock; returns on the bulkhead at B3+.
@@ -291,9 +291,9 @@ export const GRAFFITI = {
   HELIOS_NOT_NEEDED:         "HELIOS DIDN'T NEED IT. THEY TOOK IT ANYWAY.", // B0 foreshadow — the wrong-grid reveal (paid off at Ashfall Reach)
 
   // Endgame graffiti (from ENDGAME-B7-REDESIGN).
-  CLEAN_UNIFORM_AIRLOCK:     'The signature is always the same. Only the paper changes.',
-  CLEAN_UNIFORM_BULKHEAD:    'They let you in. That means they need something from you.',
-  SILENCE_BULKHEAD:          "You're not a person anymore. You're a channel. That's fine. Channels last longer.",
+  CLEAN_UNIFORM_AIRLOCK:     'AUXILIARY COMMISSION: SIGNED D. VALE. PAPER: NEW. HAND: SAME.',
+  CLEAN_UNIFORM_BULKHEAD:    'CLEARANCE GRANTED. REQUISITION ATTACHED. CYCLE LOGGED.',
+  SILENCE_BULKHEAD:          "OPERATOR FIELD: CHANNEL. FREIGHT MOVED: DAILY.",
   SILENCE_OLD_BERTH:         'THEY NEVER SHOWED BUT THE CARGO MOVED.',
   SILENCE_BERTH_BELOW:       "DON'T ASK WHO SENT IT.",
   NEXT_RUN_HOME:             'YOU KNEW THE MASS AND YOU TOOK THE COIN.',
@@ -309,7 +309,7 @@ export const GRAFFITI = {
   ATMO_SHORT_HELD:           'THE PIT\u2019S AIR FELL. THE TOKEN ROSE. SAME DESK. BOTH BOOKS.',
   ALGO_RECOMMENDS_VALE_SIGNS:'THE ENGINE DID NOT NAME US. THE ENGINE DOES NOT NAME ANYONE.',
   ELROY_THIRD_TAG:           'THE THIRD TAG WAS THERE FOR HALF A SECOND. IT COUNTED.',
-  KESSLER_DAUGHTER_BERTH:    'KESSLER. SCALE 4. TYCHO. NINETEEN YEARS. ONE BERTH.',
+  KESSLER_DAUGHTER_BERTH:    'KESSLER. SCALE 4. TYCHO. TWENTY-TWO MONTHS. LOOK IT UP.',
   FILTER_RECALL_PENDING:     'R3-CARRIER WITHDRAWN YEAR 3. REPLACEMENT PENDING YEAR 17.',
   QUITE_COUNT_DOORS:         'FORTY-ONE HULLS. FORTY-ONE FILINGS. ZERO CARGO. COUNT DOORS.',
   REACH_WEIGH_SHORT:         'WEIGH-SLIP OPEN. FOUR HULLS. THREE FILLED. ONE SHORT TO THE LANE.',
@@ -334,7 +334,7 @@ export const BEAT_CONTENT = [
     graffiti: [
       { line: GRAFFITI.THEY_KNEW_THE_MASS, where: 'airlock' },
       // Foreshadow the wrong-grid reveal: a line the player cannot parse on first read.
-      // Paid off at Ashfall Reach when the Kurtz figure's ledger shows the grid was shelved uninstalled.
+      // Paid off at Ashfall Reach when the Witness's ledger shows the grid was shelved uninstalled.
       { line: GRAFFITI.HELIOS_NOT_NEEDED, where: 'airlock', delayS: 4 },
     ],
     comms: [], // 47-A authorisation line is ambient (Tycho relay) — player "almost certainly doesn't read it"
@@ -394,10 +394,10 @@ export const BEAT_CONTENT = [
   },
   { // B7 — THE DEEP REACH
     beat: 7, phase: 3,
-    hint: 'Deep Reach operation, then Ashfall desk. Ledger COUNTERPARTY: your prior transponder; Elroy DECEASED (B2). Five dispositions — not a title.',
+    hint: 'Deep Reach operation, then Ashfall desk. Ledger COUNTERPARTY: your prior transponder. Elroy: DECEASED.',
     graffiti: [
       { line: GRAFFITI.THEY_ALWAYS_KNEW, where: 'bulkhead' },
-      // The algorithm line lands here, beside the Kurtz ledger: the horror is that nothing was wrong.
+      // The algorithm line lands here, beside the Witness ledger: the horror is that nothing was wrong.
       { line: GRAFFITI.ALGO_RECOMMENDS_VALE_SIGNS, where: 'bulkhead', delayS: 4 },
     ],
     comms: ['late_atmo_debt', 'late_algo_recommend', 'late_xenolinguistics_line'],
@@ -460,8 +460,8 @@ export const ENDGAME_CHOICES = [
     promptText: 'DEPART ASHFALL REACH?',
     graffitiOnStay: GRAFFITI.THIS_ONE_STAYED,
     graffitiNeverReturn: GRAFFITI.NOT_COMING_BACK,
-    summary: 'Available only if you took the Kurtz figure\u2019s ledger and have not jettisoned it. Stay. Become the next Kurtz figure. Watch, record, stay.',
-    hiddenCost: 'Your ledger entry transitions COUNTERPARTY — ACTIVE → WITNESS — CURRENT. The patterns keep recurring. The Kurtz figure who was here eventually leaves — not by dying, just by not being there when you check next cycle.',
+    summary: 'Available only if you took the Witness\u2019s ledger and have not jettisoned it. Stay. Become the next Witness. Watch, record, stay.',
+    hiddenCost: 'Your ledger entry transitions COUNTERPARTY — ACTIVE → WITNESS — CURRENT. The patterns keep recurring. The Witness who was here eventually leaves — not by dying, just by not being there when you check next cycle.',
     requires: (s) => hasCargo(s, 'cmdty_personal_ledger'),
     kind: 'stay', // fires on depart-Ashfall prompt if player chooses to stay
   },
@@ -477,7 +477,7 @@ export const ENDGAME_CHOICES = [
   },
 ];
 
-// ── Kurtz figure (Ashfall Reach derelict station) ────────────────────────────────────────────
+// ── Witness (Ashfall Reach derelict station) ────────────────────────────────────────────
 export const KURTZ = {
   sectorId: 'sector_ashfall_reach',
   ledgerCargoId: 'cmdty_personal_ledger',
@@ -500,7 +500,7 @@ export const KURTZ = {
 export const PERSISTENT_CARGO = [
   { id: 'cmdty_47a_assay_sample', name: '47-A ASSAY SAMPLE', mass: 0.0031, note: 'SEALED EVIDENCE — CONTRACT 47-A. Deliver to Helios Station.' },
   { id: 'cmdty_unclassified_composite', name: 'UNCLASSIFIED COMPOSITE', mass: 0.0031, note: 'PERSONAL EFFECTS — 3.1 kg. The second fragment. In the manifest since first launch.' },
-  KURTZ.ledgerCargoId && { id: KURTZ.ledgerCargoId, name: KURTZ.ledgerName, mass: KURTZ.ledgerMass, note: 'The Kurtz figure\u2019s ledger. 0.4t. The mass never changes, even if jettisoned.' },
+  KURTZ.ledgerCargoId && { id: KURTZ.ledgerCargoId, name: KURTZ.ledgerName, mass: KURTZ.ledgerMass, note: 'The Witness\u2019s ledger. 0.4t. The mass never changes, even if jettisoned.' },
   KURTZ.coordsCargoId && { id: KURTZ.coordsCargoId, name: KURTZ.coordsName, mass: KURTZ.coordsMass, note: 'Coordinates in a format no database recognizes. 0.01t. Format: unknown.' },
 ].filter(Boolean);
 

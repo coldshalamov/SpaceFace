@@ -46,7 +46,7 @@ Narrative: The pirate's ship is tagged "UNKNOWN" before the kill. After the kill
 
 The target is not a pirate. The target is one Elroy, Maintenance Division, Pit Engineering. He filed a report six weeks before the player's first contract, noting that the primary atmospheric recycler catalyst grid had been decommissioned without authorization and the components were missing. The report was bounty-tagged by Rook as "PIRATE THREAT — SECTOR INTERFERENCE." The tag was double-billed (two clients, Rook's standard). The player took the job because it was on the board. Elroy was carrying the report. The graffiti says: THEY WERE CARRYING MEDICINE. What Elroy was carrying was the only evidence that the Pit's recyclers were being killed deliberately. The player is the reason the Pit's lower decks never found out what happened to the air.
 
-What the player learns: nothing, at B2. The civilian tag flickers for 0.5 seconds. The graffiti appears after. Most players don't connect it until B6 or the Ashfall Reach encounter. The Kurtz figure's ledger has Elroy's name under "COUNTERPARTY — DECEASED." The player's name is in the same ledger. The same column. A different row.
+What the player learns: nothing, at B2. The civilian tag flickers for 0.5 seconds. The graffiti appears after. Most players don't connect it until B6 or the Ashfall Reach encounter. the Witness's ledger has Elroy's name under "COUNTERPARTY — DECEASED." The player's name is in the same ledger. The same column. A different row.
 
 HUD behavior: Phase 1. The civilian tag appears for 0.5 seconds before the kill feed overwrites it. Intentional. The player may not catch it the first time.
 
@@ -60,7 +60,7 @@ Mechanic: purchase a tier-2 hull.
 
 Narrative: The shipyard at any tier-2 station has a ship with a specific name visible on the hull if the player looks: "VARIANCE ADJUSTMENT." This is Kessler's terminology. The ship is not important. The name is the tell. Someone who worked the scales named this ship before they sold it.
 
-Comms popup mid-beat: "Your recent work has been noted. The board will have something appropriate for your current capacity." No sender name. The header, if checked: Concord Relay 3, forwarded through four stations, one of which is Gate 3. *(Director Vale.)*
+Comms popup mid-beat: "Your recent work has been noted. The board will have something appropriate for your current capacity." No sender name. The header, if checked: Concord Relay 3, forwarded through four stations, one of which is Gate 3.
 
 Graffiti at shipyard: THE WELD KNOWS WHO CUT IT TWICE. *(This is Slate's line. The player is buying a ship here. The graffiti is a warning about who repaired it last.)*
 
@@ -128,13 +128,13 @@ Vale: the income clearing note. Fourth sighting. Also: the CONTRACT 47-A payment
 
 Mechanic: complete the Deep Reach physical operation, enter/dock Ashfall Reach (Kurtz desk + ledger), then make the endgame choice. Net-worth/rep gates eligibility; place is required.
 
-Narrative: The Kurtz figure's ledger. Director Vale as a line item under BENEFICIARY. Elroy under COUNTERPARTY — DECEASED (B2). The player's own callsign in the ledger, in the COUNTERPARTY column, filed six weeks before their first contract — under the transponder ID that the ship carried before they bought it. They are already in the record. They were in it before they arrived. Optional Thread B: NAVIGATIONAL DATA 0.01t (never decodes).
+Narrative: the Witness's ledger. Director Vale as a line item under BENEFICIARY. Elroy under COUNTERPARTY — DECEASED (B2). The player's own callsign in the ledger, in the COUNTERPARTY column, filed six weeks before their first contract — under the transponder ID that the ship carried before they bought it. They are already in the record. They were in it before they arrived. Optional Thread B: NAVIGATIONAL DATA 0.01t (never decodes).
 
 The five choices (Clean Uniform A, Same Silence B, Only Honest Option C, The Ledger Continues D, The Next Run E) are not a five-button menu. A/B are board contracts; C is jump-without-destination at Ashfall; D is stay-with-ledger; E appears only after declining A–D and returning to the station courier.
 
 Graffiti on the player's bulkhead (reappears, same hand): THEY KNEW THE MASS. THEY ALWAYS KNEW THE MASS.
 
-The Kurtz figure's last line: "The count never ends. You know that. That's why you're here."
+the Witness's last line: "The count never ends. You know that. That's why you're here."
 
 The comms when the player engages the jump drive from Ashfall Reach (regardless of destination): one last popup, no sender, no channel ID, just: "Good work. Keep it clean." *(Vale's only direct line. The one the player may have heard in B5 at the Trusted station. Repeated here at the end because the ending, regardless of which one the player chose, is the kind of work Vale calls good.)* 
 

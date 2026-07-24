@@ -12,7 +12,7 @@ Whenever weight appears in the text, it should also mean what was done to arrive
 
 "THEY KNEW THE MASS." — The mass of what? The cargo. The bodies. The distance between what was logged and what was true. All three, always.
 
-"THEY KNEW THE MASS. THEY ALWAYS KNEW THE MASS." — The endgame variant. First appearance is at Ashfall Reach, in the player's own hand, written during an oxygen-deprived micro-episode while docked at the Kurtz figure's station. The second line is the recognition of pre-existing complicity. The player didn't enter the system when they took B0. They were already in the ledger six weeks before B0, under the transponder ID the ship carried before they got it. The system knew the mass before the player did. The mass was always going to be 12.4t. Only the manifest was going to change.
+"THEY KNEW THE MASS. THEY ALWAYS KNEW THE MASS." — The endgame variant. First appearance is at Ashfall Reach, in the player's own hand, written during an oxygen-deprived micro-episode while docked at The Witness's station. The second line is the recognition of pre-existing complicity. The player didn't enter the system when they took B0. They were already in the ledger six weeks before B0, under the transponder ID the ship carried before they got it. The system knew the mass before the player did. The mass was always going to be 12.4t. Only the manifest was going to change.
 
 Recurring weight language: manifest weight, the scale, the thumb on the scale, yield, variance adjustment, moisture loss, cargo stable, mass 12.4t → mass 0kg. These are not synonyms. They are the same event described by different parties.
 
@@ -22,7 +22,7 @@ Recurring weight language: manifest weight, the scale, the thumb on the scale, y
 
 Graffiti is written in a specific hand. The hand is never identified. The same hand recurs across sectors, across years. The player's graffiti ("THEY KNEW THE MASS." in their own airlock) is written in their own hand while they slept.
 
-The identity of the hand is not the point. The point is that the system cannot stop the hand. Maintenance paints over it. The hand comes back. This is the only power that doesn't depreciate.
+Maintenance paints over it. The hand comes back. This is the only power that doesn't depreciate.
 
 Recurring hand language: "same hand," "same stencil font the station uses for intake numbers," "written while you slept," "no signature," "different hand (lower)," "maintenance covered it." Each of these is a plot point about who controls the record.
 
@@ -57,7 +57,7 @@ When the game shows a warm room, it's showing the player something they can't qu
 
 **AIRLOCK**
 
-Every significant transition happens at an airlock. The graffiti appears at the airlock. Payment is withheld at the airlock. The player starts the game by stepping through an airlock. The endgame option C (the only honest option) is about not coming back through an airlock.
+Every significant transition happens at an airlock. The graffiti appears at the airlock. Payment is withheld at the airlock. The player starts the game by stepping through an airlock. The endgame option C (the only honest option) is about coming back through the same airlock — the loop, not the exit.
 
 The airlock is the threshold. It is the only place in the game that is neither inside nor outside, neither here nor there. In the Pit, the airlock was where the count happened — every arrival, every departure, every shift change, heads counted against the last headcount. The practice continues on every station in the settled reaches. The numbers change. The counting doesn't.
 
@@ -89,7 +89,7 @@ The player's ship runs on recycled air from an original-equipment recycler that 
 
 The specific commodity — the resource everything is actually organized around — sectors don't pay for air directly. They pay off ATMO DEBT. When a sector consumes more atmospheric processing than it contributes to the shared grid (through ore production, freight throughput, or direct purchase), it accumulates ATMO DEBT in Vale's division ledger. ATMO DEBT determines your maintenance allocation score next cycle. If the debt climbs past a threshold, allocation drops. If allocation drops, the recyclers slip. If the recyclers slip, the debt climbs. The Pit crossed the threshold in year 3 of the ledger.
 
-The Quiet has a secondary business buying excess ATMO TOKENS (credits that reduce ATMO DEBT) from inner-sector stations that are running surplus and selling them at markup to outer-sector stations that are going underwater. The S6-S7 "secondary market in breathable air" IS the ATMO TOKEN market. This is not in any public document. It is in the Kurtz figure's ledger in a column titled "ATMO DEBT — COUNTERPARTY TRANSFERS." The Quiet's account number appears in that column every cycle. They are not a smuggling operation that also sells air. They are an ATMO TOKEN broker that also smuggles.
+The Quiet has a secondary business buying excess ATMO TOKENS (credits that reduce ATMO DEBT) from inner-sector stations that are running surplus and selling them at markup to outer-sector stations that are going underwater. The S6-S7 "secondary market in breathable air" IS the ATMO TOKEN market. This is not in any public document. It is in The Witness's ledger in a column titled "ATMO DEBT — COUNTERPARTY TRANSFERS." The Quiet's account number appears in that column every cycle. They are not a smuggling operation that also sells air. They are an ATMO TOKEN broker that also smuggles.
 
 The commodity the player has been moving all along was partly ore, partly ATMO TOKEN-equivalent freight — cargo whose throughput proved sector viability and kept the Pit's debt score from triggering reversion. Contract 47-A is not just a haul. It's a debt payment. The weight discrepancy is what Kessler and Drift skimmed off the debt service. That's why it was never resolved: Contract 47-A was never about the money. It was about the number in Vale's ledger.
 
@@ -106,7 +106,7 @@ Fourth: the graffiti — what survived the corrections.
 
 Whoever controls which record counts as "official" controls what happened. This is not a conspiracy. It is database architecture. The Concord log is the official record because Concord built the database. The graffiti is not a record; it's testimony. Testimony has no standing. The manifest is the official cargo description because the manifest is what the customs system reads; the seal codes are the official provenance because the seal code system is what Mira's employer controls write access to.
 
-The Kurtz figure's ledger is accurate. It is also inadmissible. Not because it's false — because it's not in the system. The ledger is handwritten on paper. The paper doesn't have a database entry. The entry doesn't exist. Events that don't have entries didn't happen.
+The Witness's ledger is accurate. It is also inadmissible. Not because it's false — because it's not in the system. The ledger is handwritten on paper. The paper doesn't have a database entry. The entry doesn't exist. Events that don't have entries didn't happen.
 
 Director Vale's power is not that Vale is corrupt. Vale's power is that Vale determines which log is the official one. The ore contract authorization under REF 44-C is official because Vale's division is the authority of record for mid-sector logistics. The atmospheric viability score is official because Vale's division administers the scoring framework. The reversion of uninhabitable sectors to Concord is official because Vale's division files the reversion. All of these facts are in the same database. The database is internally consistent. The database is, by definition, the truth.
 
@@ -114,7 +114,7 @@ Design application: any time there are two records that contradict each other, t
 
 Helios Prime runs on a star called Helios. The star is not referenced anywhere in the game text. This is intentional: the star predates everything, will outlast everything, and has nothing to say about what happens in its gravity well. The player starts the game orbiting something they never see.
 
-This is the structural element the journey enacts: the game begins in the light (Helios Prime, safe, high-security, warm) and moves toward darkness (Ashfall Reach, no infrastructure, radiation, the Kurtz figure). The light is behind you. The darkness is ahead. The star that powers everything is the thing you're moving away from.
+This is the structural element the journey enacts: the game begins in the light (Helios Prime, safe, high-security, warm) and moves toward darkness (Ashfall Reach, no infrastructure, radiation, The Witness). The light is behind you. The darkness is ahead. The star that powers everything is the thing you're moving away from.
 
 ---
 
@@ -126,13 +126,13 @@ The static is the interference pattern between what the HUD says and what actual
 
 The static is also what the game is: a space where two records — the official log and the graffiti — overlap without resolving. The truth is in the interference pattern, not in either source alone.
 
-Design application: every time the HUD and the graffiti contradict each other about the same event, the contradiction should be recorded. The player is building, over the course of the game, the same ledger the Kurtz figure at Ashfall Reach has been maintaining for eleven years. The difference is the player is moving. The Kurtz figure stopped.
+Design application: every time the HUD and the graffiti contradict each other about the same event, the contradiction should be recorded. The player is building, over the course of the game, the same ledger The Witness at Ashfall Reach has been maintaining for eleven years. The difference is the player is moving. The Witness stopped.
 
 ---
 
 **REF 44-C**
 
-The same reference number appears in four unconnected contexts: Hale uses REF 44-C to file the double customs fine (gate operations). Vale's contract authorizations cite REF 44-C (logistics oversight). The atmospheric maintenance advisory lists eligibility under REF 44-C (recycler allocation). The station records at the clearing station in B4 show the administrator as "V. Director, acting" under REF 44-C (sector governance).
+The same reference number appears in four unconnected contexts: Hale uses REG 44-C to file the double customs fine (gate operations). Vale's contract authorizations cite REF 44-C (logistics oversight). The atmospheric maintenance advisory lists eligibility under REF 44-C (recycler allocation). The station records at the clearing station in B4 show the administrator as "V. Director, acting" under REF 44-C (sector governance).
 
 REF 44-C is a regulatory code in the Concord administrative framework — one code governing four operations the drafters understood to be one operation. The game should never explain this. The player may eventually notice that the same number keeps appearing. They are correct that it isn't a coincidence.
 
@@ -144,7 +144,7 @@ Design application: wherever REF 44-C appears in-game, it should be typeset iden
 
 The kill feed increments by 1 for every event that crosses the board: +1 BOUNTY, +1 NEUTRAL, +1 UNKNOWN. The number is always 1. No event adds more than 1 to the total. The total is never shown. The player is always looking at this cycle's increment.
 
-At the end of Choice C (the only honest option), the kill feed prints one final line: +1 UNKNOWN. This is the player's own death. The system logged it. The system logged it as it logs everything: an increment of 1, no name attached, status unknown.
+At the end of Choice C (the only honest option), the kill feed prints one final line: +1 UNKNOWN. One entry. No name. The count continues. The system logged it the way it logs everything: an increment of 1, no name attached, status unknown.
 
 The +1 is also the graffiti's format: "THEY WERE CARRYING MEDICINE." One line. One fact. The graffiti never enumerates. Neither does the kill feed. The difference is the kill feed says +1. The graffiti says what that 1 was carrying.
 

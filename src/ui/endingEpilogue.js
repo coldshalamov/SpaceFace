@@ -13,7 +13,7 @@ const DEFER_MS = 240;
 const CONSEQUENCE_BY_ID = Object.freeze({
   A: 'Your record is expunged. Concord standing and patrol work now define your route.',
   B: 'Your public identity is gone. Quiet routing and uncredited freight define your route.',
-  C: 'The jump returned you to Ashfall. The unpaid circuit remains physically intact.',
+  C: 'Same bay. Same date. 47-A: OPEN / PAYMENT: PENDING.',
   D: 'You hold the ledger at Ashfall. Witness work now defines your route.',
   E: '47-A is closed. 47-B is pending, and paid contract work continues.',
   SANDBOX: 'No disposition was filed. The world and every unfinished obligation remain open.',

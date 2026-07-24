@@ -14,9 +14,7 @@ BOARD: PIRATE INTERDICTION — SECTOR INTERFERENCE. TARGET: UNKNOWN. STANDARD FE
 HUD: CONTRACT ACCEPTED. TARGET TAGGED HOSTILE.
 ```
 
-The target's tag is UNKNOWN. The HUD has tagged it HOSTILE on the basis of the contract posting. The contract posting was filed by a client the board does not name. The bounty is standard. The player accepts because the player is a courier and this is a courier's work — interdict the hostile, collect the bounty, clear the lane. The work is familiar. The work is the work.
-
-The player has done this before. The player will do this again. The body in the wreckage is a line item the system will process the same way it processes the cargo: weigh it, log it, file it, close it.
+The target's tag is UNKNOWN. The HUD has tagged it HOSTILE on the basis of the contract posting. The contract posting was filed by a client the board does not name. The bounty is standard. The player accepts because the player is a courier and this is a courier's work — interdict the hostile, collect the bounty, clear the lane. The player has done this before. The player will do this again. The body in the wreckage is a line item the system will process the same way it processes the cargo: weigh it, log it, file it, close it.
 
 ## THE INTERDICTION
 
@@ -64,15 +62,15 @@ The player has killed someone. The system logged the killing as a bounty collect
 
 The collapse that should come — the guilt, the confession, the psychological aftermath — does not come. The system withheld it. The system filed the killing as a transaction and closed the file. The player is innocent by every standard the system handed them: the contract said hostile, the HUD said hostile, the kill feed said bounty collected, the payment cleared. The player is innocent. The player killed a civilian. The two facts are filed under the same code.
 
-This is the wound the game will carry for the next thirty hours. Not the killing — the *absence*. The punishment that should have come was administratively withheld. The player who should have collapsed didn't, because the system told them they were good at their job and paid them for it. The player who keeps running contracts keeps being told they are good at their job. The air in the Pit keeps getting worse. The two facts are filed under the same code.
+The punishment that should have come was administratively withheld. The player who should have collapsed didn't, because the system told them they were good at their job and paid them for it. The player who keeps running contracts keeps being told they are good at their job. The air in the Pit keeps getting worse.
 
 ## WHO THE TARGET WAS (the player does not learn this yet)
 
-The target was not a pirate. The target was one Elroy, Maintenance Division, Pit Engineering. Six weeks before the player's first contract — before the player stepped into the cockpit, before the crate was loaded, before the transponder filed the cargo against the ship's prior identity — Elroy filed an administrative report noting that the primary atmospheric recycler catalyst grid had been decommissioned without authorization and the components had disappeared.
+The target was not a pirate. The target was one Elroy, Maintenance Division, Pit Engineering. Six weeks before the player's first contract — before the player stepped into the cockpit, before the crate was loaded, before the transponder filed the cargo against the ship's prior identity — Elroy filed an administrative report noting that the primary atmospheric recycler catalyst grid had been decommissioned without authorization and the components had disappeared. The report was true on the Pit's local records. The authorization existed one floor up, under REF 44-C, as `VALE-ALA-47A`, above his clearance. That one detail is what made the report mortal.
 
 The report was re-classified as SECTOR INTERFERENCE — PIRATE THREAT through Rook's booth at Cinder. The re-classification was a double-bill: two clients paid. One was Vale's intermediary. The player took the contract because it was on the board. The board said hostile. The HUD said hostile. The kill feed said bounty collected.
 
-What Elroy was carrying was the only evidence that the Pit's air was being killed deliberately. The player is the reason the Pit's lower decks never found out what happened to the air. The player does not know this. The player will not learn this until the Kurtz figure's ledger at B7, where Elroy's name appears under COUNTERPARTY — DECEASED (B2). The (B2) refers to the player's second contract. Not a sector designation.
+What Elroy was carrying was the only evidence that the Pit's air was being killed deliberately: recycler-catalyst reagents and inoculant stock consigned to the Pit's lower decks, misfiled as contraband by the same refile that killed him. The player is the reason the Pit's lower decks never found out what happened to the air. The player does not know this. The player will not learn this until the Witness's ledger at B7, where Elroy's name appears under COUNTERPARTY — DECEASED (B2).
 
 The player, at B2, knows only that they collected a bounty. The system is satisfied. The graffiti is the only voice that insists otherwise.
 
@@ -82,23 +80,23 @@ The bounty was filed clean. The board posted the tag. The HUD resolved HOSTILE. 
 
 The procedure has a provision for what the target is carrying. The provision is: do not check. The IFF resolves HOSTILE. The manifest is not the pilot's department. The cargo is not the pilot's department. What the target is carrying is, per the procedure, a field the pilot declines to read because reading it is not in the pilot's job. The pilot's job is the tag. The pilot completed the job. The pilot completed the job by following, exactly, a procedure whose authors understood that the only way to get a pilot to kill a man carrying evidence is to write the evidence out of the pilot's field of view.
 
-This is the competent-incompetence the whole sector runs on. Elroy filed a report. Rook re-tagged it. The board posted it. The HUD resolved it. The player killed it. The kill feed filed it. The payment cleared it. Six steps. Six steps, each one correct, each one the step the prior step authorized, and the man who noticed the air was being killed is dead because the procedure worked. Not because it failed. The procedure worked the way the procedure was written to work, and the way the procedure was written to work produces a dead witness every time someone files a report about the air. The procedure does not know Elroy's name. The procedure knows the tag. The tag said HOSTILE. The pilot said HOSTILE. The kill feed said BOUNTY COLLECTED. The procedure is satisfied. The procedure has been satisfied every time. The air keeps getting worse. The two facts are filed under the same code, and the code is the procedure, and the procedure is correct.
+This is the competent-incompetence the whole sector runs on. Elroy filed a report. Rook re-tagged it. The board posted it. The HUD resolved it. The player killed it. The kill feed filed it. The payment cleared it. Six steps. Six steps, each one correct, each one the step the prior step authorized, and the man who noticed the air was being killed is dead because the procedure worked. The procedure worked the way the procedure was written to work, and the way the procedure was written to work produces a dead witness every time someone files a report about the air. The procedure does not know Elroy's name. The procedure knows the tag. The tag said HOSTILE. The pilot said HOSTILE. The kill feed said BOUNTY COLLECTED. The procedure is satisfied. The procedure has been satisfied every time. The air keeps getting worse. The two facts are filed under the same code, and the code is the procedure, and the procedure is correct.
 
 ## WREN (the cornered register, if pressed)
 
 Wren does not speak at B2. Wren's working register is silence. The HUD updates; Wren does not comment. This is the same focus learned in the maintenance shaft on the Vethari ship, where sound meant detection and detection meant the shared field.
 
-If pressed — and nobody presses, because nobody knows to press — Wren's cornered register is the three words the protagonist file calls "armor, not truth":
+If pressed — and nobody presses, because nobody knows to press — Wren's cornered register is armor, not truth:
 
 ```
 COMMS [if Wren is queried about the kill]: "The job went sideways. These things happen."
 ```
 
-He would not say what he is thinking. What he is thinking, if the player could hear it, is the unfinished sentence the protagonist file reserves for the late game, after the full reveal:
+He would not say what he is thinking. What he is thinking, if the player could hear it, is the unfinished sentence reserved for the late game, after the full reveal:
 
 > *I was carrying it.*
 
-Three words. The sentence isn't finished. Doesn't need to be. The "it" is the killing and the cargo and the air and the fourteen years. The sentence doesn't name which. The system filed the killing under BOUNTY COLLECTED. Wren will, much later, file it under something else, in his own head, where no system reads.
+The sentence doesn't name which. The system filed the killing under BOUNTY COLLECTED. Wren will, much later, file it under something else, in his own head, where no system reads. The player's own flight recorder still holds the half-second CIVILIAN tag — the evidence the kill feed overwrote, carried forward in a black box nobody opens.
 
 ---
 
@@ -117,7 +115,7 @@ Three words. The sentence isn't finished. Doesn't need to be. The "it" is the ki
 **Graffiti introduced:** `THEY WERE CARRYING MEDICINE.` (the central Dosto-as-graffiti line — testimony the system tried to suppress)
 **Manifests introduced:** none (the kill is filed in the kill feed, not the manifest)
 **Comms introduced:** the IFF flicker (`CIVILIAN VESSEL — REGISTERED` → overwritten by `BOUNTY COLLECTED`); the post-kill Wren cornered line (conditional)
-**Dosto beat:** `crime_without_punishment_system_stolen`. The civilian tag flicker (0.5s) is the highest-leverage single UI moment in the game. The kill feed overwrite is the system stealing the punishment. The graffiti is the punishment returning as testimony. The player will not connect any of this until B6 or B7. Most players miss the flicker the first time.
+**Dosto beat:** `crime_without_punishment_system_stolen`. The civilian tag flicker (0.5s) is the system almost telling the truth. The kill feed overwrite is the system stealing the punishment. The graffiti is the punishment returning as testimony. The player will not connect any of this until B6 or B7. Most players miss the flicker the first time. A redacted REF 44-C extract of Elroy's report is findable later as an optional artifact — the player can hold the document they killed to suppress.
 
 ---
 
@@ -125,9 +123,9 @@ Three words. The sentence isn't finished. Doesn't need to be. The "it" is the ki
 
 The contract that posted Elroy as a PIRATE INTERDICTION — SECTOR INTERFERENCE was double-billed through Rook's booth. Two clients paid. The civilian reading identifies one client as Vale's intermediary (the office that wanted Elroy's report on the year-3 transfer buried). The civilian reading does not identify the second client.
 
-The second client is the operation. Elroy's report was a thread to the mole — Elroy had noticed the recycler decommissioning and was asking questions that intersected the same REF 44-C file the mole was paid to keep unresolved. Elroy alive was a competing thread. The operation did not commission the kill. The operation let the kill happen, because the contract that would kill Elroy was already on Rook's board for civilian reasons, and an operation that intervenes to save a witness is an operation that exposes itself. The cruelty is operational, not just systemic.
+The second client is the operation. Elroy's report was a thread to the mole — Elroy had noticed the recycler decommissioning and was asking questions that intersected the same REF 44-C file the mole was paid to keep unresolved. Elroy alive was a competing thread. The operation did not commission the kill. The operation let the kill happen, because the contract that would kill Elroy was already on Rook's board for civilian reasons, and an operation that intervenes to save a witness is an operation that exposes itself.
 
-The player who reaches B7 and reads the Kurtz figure's ledger finds a page dated six weeks before B0 (the same week the cargo was pre-loaded) noting that a Concord Intelligence authorization had flagged the Elroy contract as "DO NOT INTERDICT — LET FILE." The authorization's co-author field is redacted. The player has been the operation's instrument since before they fired.
+The player who reaches B7 and reads the Witness's ledger finds a page dated six weeks before B0 (the same week the cargo was pre-loaded) noting that a Concord Intelligence authorization had flagged the Elroy contract as "DO NOT INTERDICT — LET FILE." The authorization's co-author field is redacted. The player has been the operation's instrument since before they fired.
 
 This reading does not excuse the kill. The player still pulled the trigger. The civilian reading (a lawful bounty filed as collected) and the operation reading (a thread-closure the operation permitted) coexist. The system files both under the same code. The graffiti — *THEY WERE CARRYING MEDICINE* — is the testimony that refuses both filings and insists on the third: Elroy was a man, carrying evidence, killed by a courier who did not know what they killed. The operation knows. The operation filed its knowledge under REF 44-C and closed the file. The graffiti is still on the wall.
 

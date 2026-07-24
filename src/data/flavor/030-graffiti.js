@@ -31,7 +31,7 @@ export default defineFlavorPack({
     { id: 'test_03', set: 'testimony', text: 'THE ENGINE DID NOT NAME US. THE ENGINE DOES NOT NAME ANYONE.' },
     { id: 'test_04', set: 'testimony', text: 'ATMO TOKEN UP. PIT AIR DOWN. SAME DESK.' },
     { id: 'test_05', set: 'testimony', text: 'FORTY-ONE HULLS. FORTY-ONE FILINGS. ZERO CARGO.' },
-    { id: 'test_06', set: 'testimony', text: 'KESSLER. SCALE 4. TYCHO. NINETEEN YEARS.' },
+    { id: 'test_06', set: 'testimony', text: 'KESSLER. SCALE 4. TYCHO. TWENTY-TWO MONTHS. LOOK IT UP.' },
     // Elroy residue: the third tag the kill feed overwrote. Same-dock guarantee.
     { id: 'elroy_01', set: 'elroy_tag', text: 'THE TAG FLICKERED HALF A SECOND. IT COUNTED.' },
     { id: 'elroy_02', set: 'elroy_tag', text: 'THEY WERE CARRYING MEDICINE. THE FEED SAYS THREAT.' },

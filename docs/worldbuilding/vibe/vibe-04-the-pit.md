@@ -75,5 +75,3 @@ On the commodity board: ATMO CREDIT and ATMO DEBT should appear alongside ore an
 Every new location in SpaceFace should be readable against The Pit. Does it smell better or worse? Is the lighting brighter or dimmer? Is the temperature controlled or does it tell you something about the budget? These are not decorative details. They are the game's measurement system for how far up or down the hierarchy any space sits.
 
 The richest stations have warm air and full-spectrum lighting and food that tastes like food. The player should feel this as comfort and then recognize the comfort as information.
-
-The Pit was never a place you came from. It's the unit of measure you carry.

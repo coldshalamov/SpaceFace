@@ -25,13 +25,20 @@ Legend: ✅ sheet exists · ☐ sheet pending · ⬩ prose home exists (no sheet
 | `npc_rook` | Rook | ✅ `characters/rook.md` | `story/NPCs-CANONICAL.md#ROOK` | B2 |
 | `npc_vale` | Director Vale | ✅ `characters/vale.md` | `story/ANTAGONIST-THE-ADMINISTRATOR.md` | B1 (authorization line) |
 | `npc_callum` | Callum Oakes | ✅ `characters/callum.md` | `story/PROTAGONIST.md` + `story/STORY-STRUCTURE.md#B5` | B5 |
-| `npc_kurtz` | The Kurtz figure | ✅ `characters/kurtz.md` | `story/ENDGAME-B7-REDESIGN.md#the-kurtz-figure` | B7 |
+| `npc_kurtz` | The Witness (Ashfall) *(entity id historical; R6)* | ✅ `characters/kurtz.md` | `story/ENDGAME-B7-REDESIGN.md#the-kurtz-figure` | B7 |
 | `npc_elroy` | Elroy | ✅ `characters/elroy.md` | embedded: `story/STORY-SPINE-NARRATIVE-OVERLAY.md#B2` + `NPCs-CANONICAL.md#ROOK` | B2 |
 | `npc_lida` | Lida | ✅ `characters/lida.md` | embedded: `story/PROTAGONIST.md#what-happened-to-wren` | off-frame (B7 coordinates) |
 | `npc_old_crew` | Sable / Caro / Dak / Torren | ✅ `characters/old-crew.md` | `story/PROTAGONIST.md#the-twelve-years-after` | backstory only |
 | `npc_marsh` | Marsh (the handler / "selector") | ✅ `characters/marsh.md` | `LECARRE-LAYER.md` + `story/PROTAGONIST.md#six-months-ago` | B0 (absent), B3, B6, B7 |
 | `npc_brandt` | Brandt (Karla mirror, defected to Quiet) | ✅ `characters/brandt.md` | `LECARRE-LAYER.md` + `story/STORY-STRUCTURE.md#b5` | B5 (buyer trace), B7 |
 | `npc_aldiss` *(embedded)* | Aldiss (the mole, in Reading Room) | ⬩ in `groups/reading-room.md` | `LECARRE-LAYER.md` + ambient comms B1 | B1 (ambient), B7 (named) |
+| `npc_lien` | Lien (MTS declining-sectors desk) | ✅ `characters/lien.md` | `CREATIVE-DIRECTION.md` §4 + `CONTEMPORARY-HISTORY.md` §3 | B4 |
+| `npc_pell` | Pell (Special Custody) | ✅ `characters/pell.md` | `CREATIVE-DIRECTION.md` §4 + `CONTEMPORARY-HISTORY.md` §4 | B7 |
+| `npc_wex` | Wex (Helios Bay 7 depot) | ✅ `characters/wex.md` | `CREATIVE-DIRECTION.md` §12 + `THE-STORYLINE.md` (smell ticket) | B5 |
+| `npc_dree` | Inspector Sula Dree | ✅ `characters/dree.md` | `CREATIVE-DIRECTION.md` §12 + `THE-STORYLINE.md` B6 | B6 |
+| `npc_spence` | Spence (Outpost 9 silence) | ✅ `characters/spence.md` | `CREATIVE-DIRECTION.md` §4 + `CONTEMPORARY-HISTORY.md` §5 | B3 |
+| `npc_ivo` | Ivo (Pit maintenance, the hand) | ✅ `characters/ivo.md` | `CREATIVE-DIRECTION.md` §4 + `SIDE-STORIES.md` §2 | B0 |
+| `npc_sump` | Sump (Pit sweeper, the holy fool) | ✅ `characters/sump.md` | `CREATIVE-DIRECTION.md` §12 + `THE-STORYLINE.md` (prologue/epilogue) | B0 |
 
 ## Groups (`sheets/groups/`) — Le Carré layer
 
@@ -73,7 +80,9 @@ Legend: ✅ sheet exists · ☐ sheet pending · ⬩ prose home exists (no sheet
 |----|------|------|-------|---------------|
 | `ship_tessera` | Tessera | protagonist's ship (the body that keeps the score) | ✅ `ships/tessera.md` | every chapter |
 | `ship_iron_maw` | Iron Maw | dreadnought (the gate to Ashfall's inner sector) | ✅ `ships/iron-maw.md` | B6 (signal), B7 (gate) |
-| — (index) | signature ships index | recurring named vessels (Last Receipt, Honest Wage, Probable Cause, Conditional Release, Variance Adjustment) | ✅ `ships/signature-ships-index.md` | per captain |
+| — (index) | signature ships index | recurring named vessels (Last Receipt, Honest Wage, Probable Cause, Conditional Release, Variance Adjustment) | ✅ `ships/signature-ships-index.md` | per chapter |
+| `ship_variance_adjustment` | VARIANCE ADJUSTMENT | palimpsest hull (the structural foreshadow) | ✅ `ships/variance-adjustment.md` | B3 |
+| `ship_cpv_2214` | CPV-2214 "the Can" | Concord penal transport (Wren's prison, backstory) | ✅ `ships/cpv-2214.md` | backstory |
 
 ## Factions (`sheets/factions/`)
 
@@ -87,12 +96,11 @@ Legend: ✅ sheet exists · ☐ sheet pending · ⬩ prose home exists (no sheet
 | `faction_choir` | Ascendant Choir | Choir | ✅ `factions/choir.md` | `orgs/factions-CANONICAL.md#Ascendant Choir` |
 | `faction_helix` | Helix Directorate | Helix | ✅ `factions/helix.md` | `orgs/factions-CANONICAL.md#Helix Directorate` |
 | `faction_vael` | Vael Remnant | Vael | ✅ `factions/vael.md` | `orgs/factions-CANONICAL.md#Vael Remnant` |
+| `faction_free` | Free Frontier | Free Captains | ✅ `factions/free-frontier.md` | `CREATIVE-DIRECTION.md` R9 + `chapter-04-pick-a-side.md` |
 
-> Note: the corpus canon has **Helix Directorate** as the 8th faction. "Free
-> Frontier" / `faction_free` exists in `src/data/factions.js` as a playable
-> faction and as a comms sender (`FREE FRONTIER RELAY`) but has no canon
-> faction sheet. Live data now also exposes `faction_helix`, so the remaining
-> gap is Free Frontier's missing narrative treatment. Preserve it for an explicit canon decision.
+> **Free Frontier** now has canon (R9): the B4 "Free Captains" door is the Frontier's front — a
+> brokers' compact of independent captains, no customs arm, Quiet-vetted freight, Reach recruits
+> the bankrupt. Sheet: `factions/free-frontier.md`.
 
 ## Worlds / Sectors (`sheets/worlds/`)
 
@@ -109,6 +117,21 @@ Legend: ✅ sheet exists · ☐ sheet pending · ⬩ prose home exists (no sheet
 | `world_sker` | S6–S7 | Skerris Deep | ✅ `worlds/s67-sker.md` | `…/sector_sker_haven.md` | `story/SECTOR-GRADIENT.md#S6-S7` |
 | `world_veil` | S8 | Veil Expanse | ✅ `worlds/s8-veil.md` | `…/sector_veil_nebula.md` | `story/SECTOR-GRADIENT.md#S8` |
 | `world_ashfall` | S9 | Ashfall Reach | ✅ `worlds/s9-ashfall.md` | `…/sector_ashfall_reach.md` | `story/SECTOR-GRADIENT.md#S9` + `story/ENDGAME-B7-REDESIGN.md#the-kurtz-figure` |
+
+## Stations (`sheets/stations/`)
+
+| id | name | type | sheet | canon prose home | first chapter |
+|----|------|------|-------|------------------|---------------|
+| `station_outpost_9` | Outpost 9 | independent trade outpost (bar) | ✅ `stations/outpost-9.md` | `CREATIVE-DIRECTION.md` §4 + `SHOP-FLOOR-CAPERS.md` | B3 |
+| `station_gate_3` | Gate 3 | Concord customs checkpoint | ✅ `stations/gate-3.md` | `CREATIVE-DIRECTION.md` §4 + R2 | B3 |
+| `station_clearing` | The Clearing Station | neutral contracts hub (B4) | ✅ `stations/clearing-station.md` | `chapter-04-pick-a-side.md` | B4 |
+| `station_helios_bay_7` | Helios Bay 7 | industrial depot (smell ticket) | ✅ `stations/helios-bay-7.md` | `CREATIVE-DIRECTION.md` R12 | B5 |
+
+## Species (`sheets/species/`)
+
+| id | name | sheet | canon prose home | first chapter |
+|----|------|-------|------------------|---------------|
+| `species_vethari` | The Vethari | ✅ `species/vethari.md` | `CREATIVE-DIRECTION.md` rule 10 + `PROTAGONIST.md` + `VETHARI.md` | B0 (off-frame) |
 
 ## Commodities / Resources (`sheets/commodities/`)
 
@@ -152,14 +175,14 @@ Legend: ✅ sheet exists · ☐ sheet pending · ⬩ prose home exists (no sheet
 
 - **Phase 1 (this file + README):** ✅ schema declared
 - **Phase 2:** ✅ `DOSTOYEVSKY-LAYER.md` — six themes, element→entity map, two deepened figures
-- **Phase 3:** ✅ 17 character sheets
-- **Phase 4:** ✅ 8 faction + 11 world + 6 commodity sheets
+- **Phase 3:** ✅ 24 character sheets (17 original + 7 new: Lien, Pell, Wex, Dree, Spence, Ivo, Sump)
+- **Phase 4:** ✅ 9 faction + 11 world + 6 commodity + 4 station + 1 species sheets
 - **Phase 5:** ✅ 8 chapters + 8 chapter sheets + chapter-01 footer
 - **Phase 6:** ✅ diff-back, this index finalized, `review/iteration-05.md`
 
-**Current inventory: 67 entity sheets** (17 character + 8 faction + 11 world + 6 commodity +
-8 chapter + 2 group + 4 gang + 4 rival + 4 crew + 3 ship), plus the prose canon and review
-history. Inventory is not implementation status.
+**Current inventory: 82 entity sheets** (24 character + 9 faction + 11 world + 6 commodity +
+8 chapter + 2 group + 4 gang + 4 rival + 4 crew + 5 ship + 4 station + 1 species), plus the
+prose canon, production prompts, and review history. Inventory is not implementation status.
 
 ## How to use this index
 

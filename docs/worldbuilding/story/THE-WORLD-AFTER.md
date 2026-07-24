@@ -3,8 +3,7 @@
 > **Scope:** what each of the five endgame choices leaves behind in the sector. This
 > is the narrative bed for `postEndingReplayChains.js` — the world-state that
 > determines which post-ending chains unlock, who the actor is, and what the durable
-> premise of the continued game is. Bacigalupi register: the world is a balance
-> sheet, and every ending is a line item that compounds.
+> premise of the continued game is. The world is a balance> sheet, and every ending is a line item that compounds.
 >
 > **Discipline:** no closure. No catharsis. No "and then it was better." The five
 > endings are five relationships to a system that does not stop running because the
@@ -30,7 +29,7 @@ The post-ending game is the same game on a different row of the same ledger. The
 
 **What didn't change:** the Pit's air. The Slow Gray. The graffiti (the graffiti still knows — it just doesn't address the player by callsign anymore, because the player's callsign is now a title, and titles don't get graffiti; titles get memos). Contract 47-A is PENDING. The fragment is in the hold of a clean ship with a clean manifest, and the manifest does not list it, because personal effects are not listed on Concord manifests. It is still there.
 
-**The post-ending actor:** CONCORD ADMINISTRATION — the player is now the V. DIRECTOR, ACTING the player kept sighting. The durable premise: the player signs the orders that keep the system running, and every signature is correct, and every correct signature is a small death somewhere downstream, and the player knows, and the player signs, because that is the job the player chose. The humor is Bacigalupi: the dissonance between the clean desk and the chalk air is the joke, and the joke is not funny, and the player tells it every time they initial.
+**The post-ending actor:** CONCORD ADMINISTRATION — the player is now the V. DIRECTOR, ACTING the player kept sighting. The durable premise: the player signs the orders that keep the system running, and every signature is correct, and every correct signature is a small death somewhere downstream, and the player knows, and the player signs, because that is the job the player chose.
 
 **Post-ending chains:** ROUTINE CUSTOMS OPERATION (the seized cargo), SECTOR REVISION (the player's signature flips a sector's ownership — the player is now the hand on the lever Vale was), ADMINISTRATIVE CLOSURE (the Pit's ATMO DEBT — the player can close it or defer it; closing it costs a budget the player's division doesn't have; deferring it is what Vale did for fourteen years).
 
@@ -44,7 +43,7 @@ The post-ending game is the same game on a different row of the same ledger. The
 
 **What didn't change:** the Pit's air (the Quiet's ATMO TOKEN brokerage profits when sectors fail; the player is now a node in that brokerage; the player's income is a function of the Pit's suffocation, and the income is real, and the air is chalk, and the two facts are the player's balance sheet). Contract 47-A is PENDING. The fragment is in a ship that no longer appears in public records. The search for Lida continues in the margins of logistics operations the player coordinates for other pilots. The margins are wider now. The resources are greater. The question is the same.
 
-**The post-ending actor:** QUIET SYNDICATE — ROUTING OVERSIGHT. The durable premise: the player moves the things the system moves and cannot move officially. Every job is logistics. Every job is deniable. Every job makes the air worse somewhere, and the player's cut is the difference between what the cargo was worth and what it was filed as, and the difference is the player's income, and the income is real, and the air is chalk. The humor is le Carré: the muttering of a routing coordinator who knows the freight is narcotics and files it as HUMANITARIAN RELIEF and the filing is correct and the filing is the crime and the coordinator mutters about the handwriting, not the contents.
+**The post-ending actor:** QUIET SYNDICATE — ROUTING OVERSIGHT. The durable premise: the player moves the things the system moves and cannot move officially. Every job is logistics. Every job is deniable. Every job makes the air worse somewhere, and the player's cut is the difference between what the cargo was worth and what it was filed as, and the difference is the player's income, and the income is real, and the air is chalk.
 
 **Post-ending chains:** SHADOW MANIFEST ARBITRATION (route a cargo the official system cannot route), TOKEN LINE HOLDING (defend the brokerage position that profits from a sector's failure — the player is now the person defending the Pit's suffocation), COUNTERPARTY SILENCE (a pilot the player routes asks a question the player cannot answer without breaking cover; the answer is a fragment of the player's own history).
 
@@ -58,7 +57,7 @@ The post-ending game is the same game on a different row of the same ledger. The
 
 **What didn't change:** everything. The system does not grant exits. The loop is not a punishment — it is the system's resting state. The player who chose C chose the honest option: the admission that there is no outside to get to. The world after Choice C is the world before Choice C, plus the knowledge that the world before was already the world after.
 
-**The post-ending actor:** there is no new actor. The board posts the same contracts. The actor is the system. The durable premise: the player runs the same contracts, reads the same graffiti, makes the same choices, and the choices are different this time only in that the player knows they have been here before and will be here again and the knowing does not change the math. The humor is Hedberg: the escalator didn't break. It became stairs. Sorry for the convenience. The loop is the convenience. The player is sorry for it. The player takes the stairs.
+**The post-ending actor:** there is no new actor. The board posts the same contracts. The actor is the system. The durable premise: the player runs the same contracts, reads the same graffiti, makes the same choices, and the choices are different this time only in that the player knows they have been here before and will be here again and the knowing does not change the math.
 
 **Post-ending chains:** the standard sector loops, with the graffiti carrying faint additions — lines the player doesn't remember writing, in the player's own hand, from a run the player doesn't remember completing. The chains are the same chains. The chains know they are the same chains. The player does not.
 
@@ -66,15 +65,15 @@ The post-ending game is the same game on a different row of the same ledger. The
 
 ## CHOICE D — THE LEDGER CONTINUES: the world after the desk
 
-**The player stayed at Ashfall Reach.** The player took the Kurtz figure's ledger and chose to remain. The Kurtz figure, eventually, leaves — not by dying, just by not being there when the player checks next cycle. The player becomes the next Kurtz figure. The endgame loop is: watch, record, stay.
+**The player stayed at Ashfall Reach.** The player took the Witness's ledger and chose to remain. The Witness, eventually, leaves — not by dying, just by not being there when the player checks next cycle. The player becomes the next Witness. The endgame loop is: watch, record, stay.
 
 **What changed:** the player is at a desk. The desk smells like the Pit. The wall is covered in manifests. The player counts. The player has been counting. The player will count. The ledger entry transitions COUNTERPARTY — ACTIVE → WITNESS — CURRENT. The patterns keep recurring. The player records them. The player does not act on them. The player watches the cargo fraud and the moisture loss and the double-bills and the clearances and the ATMO DEBT and the Silt and the air, and the player writes it all down, in columns, by hand, and the handwriting is bad, and the columns are full, and the counting changes nothing.
 
 **What didn't change:** the Pit's air (the player is now the witness who counts it and does not publish, which is the wrong mercy — the Inquisitor's compassion-argument: the truth would require forty thousand people to do something about it, and doing something costs more than the truth is worth, so the truth goes into a ledger instead of into the air). Contract 47-A is PENDING (the player's own entry is in the ledger now, under WITNESS — CURRENT, filed before the player arrived). The fragment and the coordinates are in the ledger, filed alongside twenty years of cargo fraud, in the same columns, in the same handwriting.
 
-**The post-ending actor:** THE CURRENT DESK. The durable premise: the player watches the system and records it and the recording is the only honest thing in the sector and the recording changes nothing. The humor is the blackest in the game: the player who chose to know discovers that knowing was the one thing that changed nothing, and the player counts anyway, because the counting is the only dignity the desk allows, and the dignity is real, and the counting is futile, and the two facts are filed in the same column.
+**The post-ending actor:** THE CURRENT DESK. The durable premise: the player watches the system and records it and the recording is the only honest thing in the sector and the recording changes nothing. The player who chose to know discovers that knowing was the one thing that changed nothing, and the player counts anyway, because the counting is the only dignity the desk allows, and the dignity is real, and the counting is futile, and the two facts are filed in the same column.
 
-**Post-ending chains:** ASHFALL CAUSE PURSUIT (trace a single cargo fraud from dock to beneficiary — the player can now see the whole chain, and the seeing is the punishment, because the player cannot stop it and cannot unknow it), THE KURTZ CORRESPONDENCE (the operation's channel is still open; the player, as the new dead-drop, receives the metadata; the player can forward it, suppress it, or file it — every choice is the wrong mercy).
+**Post-ending chains:** ASHFALL CAUSE PURSUIT (trace a single cargo fraud from dock to beneficiary — the player can now see the whole chain, and the seeing is the punishment, because the player cannot stop it and cannot unknow it), THE DEAD-DROP CORRESPONDENCE (the operation's channel is still open; the player, as the new dead-drop, receives the metadata; the player can forward it, suppress it, or file it — every choice is the wrong mercy).
 
 ---
 
@@ -86,7 +85,7 @@ The post-ending game is the same game on a different row of the same ledger. The
 
 **What didn't change:** the system. Contract 47-B is pending. The next contract is on the board. The board does not wait. The board never waits. The player knows whose air is being cut off by the cargo. The player needs reactor fuel. The player clicks Accept. The mass will be different. The category will be the same.
 
-**The post-ending actor:** BROKER DESK 47-B. The durable premise: the player runs contracts. The contracts are the same contracts. The player is not trying to fix anything, not trying to escape, not trying to watch, not trying to become. The player is trying to pay for reactor fuel. This is the one ending that refuses to become any part of the system — and requires the player to keep working inside it anyway. The humor is Stanhope: the player who knows the argument is a lie and makes the argument anyway because the alternative is not making the argument, and not making the argument is not an option, because reactor fuel costs what it costs and the only way to pay is to run the contract and the contract is the lie and the player knows and the player runs it.
+**The post-ending actor:** BROKER DESK 47-B. The durable premise: the player runs contracts. The contracts are the same contracts. The player is not trying to fix anything, not trying to escape, not trying to watch, not trying to become. The player is trying to pay for reactor fuel. This is the one ending that refuses to become any part of the system — and requires the player to keep working inside it anyway.
 
 **Post-ending chains:** THE THREE-PORT RELIEF CIRCUIT (a standard haulage chain — three stations, relief supplies, the cargo is what it says it is for once, and the ordinariness is the strangest thing in the game), 47-B SETTLEMENT (the next contract's audit — the same weight variance, the same Kessler, the same Tycho, the same column, the same graffiti), THE COURIER'S RETURN (the courier who said the line appears again, at a different station, with a different contract, and the line is the same, and the player knows the courier is the system, and the system is a man with a chit and a stamp, and the stamp is the work, and the work is the lie, and the player takes the chit).
 
@@ -94,7 +93,7 @@ The post-ending game is the same game on a different row of the same ledger. The
 
 ## The through-line: the ledger carries forward
 
-All five endings leave the sector running. All five leave the Pit's air chalk. All five leave Contract 47-A's ghost in the system — CLOSED in E, PENDING in A/B/C/D, but present in all five, because the first contract is the system's first filing and the system does not delete filings. The graffiti knows. The graffiti always knew. The graffiti is the only narrator that does not change its story based on which column the player's callsign landed in, because the graffiti reads the mass, and the mass is the same mass, and the manifest is the only thing that changes, and the manifest is whatever the administrator signed off on, and the administrator is whoever sits at the desk, and the desk is the desk.
+All five endings leave the sector running. All five leave the Pit's air chalk. All five leave Contract 47-A's ghost in the system — CLOSED in E, PENDING in A/B/C/D, but present in all five, because the first contract is the system's first filing and the system does not delete filings. The graffiti knows. The graffiti always knew. The graffiti is the only narrator that does not change its story based on which column the player's callsign landed in, because the graffiti reads the mass, and the mass is the same mass, and the manifest is the only thing that changes, and the manifest is whatever the administrator signed off on, and the administrator is whoever sits at the desk.
 
 The post-ending game is the game. The choice was a filing. The filing is correct. The next cycle's ledger opens with the prior cycle's balance carried forward. The balance includes the air, and the chalk, and the 3.1 kg, and the 0.01t, and the 12.4 tonnes that left the Pit in year 3 and are gathering dust in a Helios bay. The balance is the same balance. The player is on a different row. The ledger is the same ledger. The ledger does not grant exits.
 

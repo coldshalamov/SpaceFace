@@ -15,7 +15,7 @@ The shipyard has a ship on the berth with a name visible on the hull, if the pla
 HULL REG: TESSERA-VARIANT / NAME: "VARIANCE ADJUSTMENT" / PRIOR OWNERS: 3
 ```
 
-Variance Adjustment. The name means nothing to the player. The name is Kessler's terminology — the variance adjustment is the line item Kessler files when the scale's thumb has done its work. Someone who worked the scales named this ship before they sold it. The ship has been through three owners. The transponder ID is a palimpsest. The ship remembers every body it used to carry.
+Variance Adjustment. The name means nothing to the player. The name is Kessler's terminology — the variance adjustment is the line item Kessler files when the scale's thumb has done its work. Someone who worked the scales named this ship before they sold it. The ship has been through three owners. The transponder ID is a palimpsest. A rechristening stub in the hull registry shows the ship was renamed after a variance Kessler couldn't file.
 
 The player does not buy this ship specifically — the player buys *a* tier-2 hull. But this ship is in the berth. This ship is the one the player walks past on the way to the purchase. The name is the tell, for the player who is already reading tells. The player is not yet reading tells. The player is buying a ship.
 
@@ -33,7 +33,7 @@ No sender name. The header, if the player opens it (most don't), shows the messa
 
 The civilian reading: the message is from Director Vale. The second Vale sighting (the first was the authorization line on Contract 47-A). The pattern — Concord Relay 3, four forwards, one of them Gate 3 — is parseable, if the player is keeping a file. The system called the work good.
 
-The operation reading: the message is from the Reading Room, forwarded *through* Vale's relay to look like Vale. "Your recent work has been noted" is the operation's first acknowledgment that the bait is working. *Noted* is the salon's word — the Reading Room does not say "good" or "bad"; the Reading Room says "noted," because noting is what the salon does, and the salon's notation is the operation's progress report. The popup the player reads as flattery is the handler reading the mole's response off the bait's hull.
+The operation reading: the message is from the Reading Room, forwarded *through* Vale's relay to look like Vale. "Your recent work has been noted" is the operation's first acknowledgment that the bait is working. *Noted* is the salon's word; the message is the handler's progress report, routed through Vale's relay to look like Vale.
 
 ## THE GRAFFITI
 
@@ -61,9 +61,9 @@ Slate is welding a patch on a hull two berths down while the player signs the pu
 
 "Variance Adjustment. Yeah. Kessler's word. He named it, I welded it, Rask bought it, Rask flew it into a cargo door at Tycho, Bima bought the wreck, I welded it again — second pass, narrower, same seam — and now it's yours. Congratulations. You're the fourth. The seam'll hold to the third pressure spike. It always holds to the third. The fourth is where it goes. Nobody's ever gotten to the fourth on a double-pass because nobody's ever pushed a second-pass hull that hard, but you look like you push things, so I'm telling you now: third spike, you're golden. Fourth spike, you come back, and I weld it again, second pass, narrower, and you pay me for the patch and the berth and I put it in the column and the column knows where every hull in this yard is going to fail and I've been building that column for twenty years and the column has never been wrong. The column's not a threat. The column's a retirement plan. Every hull I patch twice is a hull I know the failure point of. That's not sabotage. That's metallurgy. Metallurgy is patient. So am I."
 
-The player is buying a ship from a man who knows exactly when the ship will break and who is waiting, with the patience of a man who has nothing else, for the right break to pay for the berth he's been quoting other people for twenty years. The right ship has not come through. The list grows. The failure points accumulate. The player's new ship is one more row in a column whose author thinks he's the protagonist of his own salvage opera. Slate is wrong about what game he's in. Slate's column is a confession filed in weld-pass widths, and the retirement it's buying him does not exist, and the patience is real, and the torch keeps cutting the same seam twice, second pass narrower, the way it always has.
+The player is buying a ship from a man who knows exactly when the ship will break and who is waiting, with the patience of a man who has nothing else, for the right break to pay for the berth he's been quoting other people for twenty years. The right ship has not come through. The list grows. The failure points accumulate. The player's new ship is one more row in a column. Slate's column is a confession filed in weld-pass widths, and the retirement it's buying him does not exist, and the patience is real, and the torch keeps cutting the same seam twice, second pass narrower, the way it always has. One entry in the column is dated year 3. Same hand. Same seam.
 
-The double is the self the system has on file. The player is walking around in the same body the system is filing under a callsign. The two are not yet distinguishable. By B6 they will be the same. By B7 the player will meet the version of themselves the system has been filing since before they arrived.
+The double is the self the system has on file. The player is walking around in the same body the system is filing under a callsign. The two are not yet distinguishable.
 
 ---
 

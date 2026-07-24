@@ -38,6 +38,13 @@ roll-up.
 | `story/chapter-02-*` through `chapter-07-*` | **AUTHORED CANON INTENT** | B2-B7 chapter designs; runtime coverage must be checked separately. |
 | `story/chapter-05b-the-reunion.md` | **FUTURE OPTIONAL BRANCH** | Preserved authored expansion; not evidence that a B5b runtime route exists. |
 | `DOSTOYEVSKY-LAYER.md`, `LECARRE-LAYER.md`, `LITERARY-AUDIT.md` | **CRAFT SCAFFOLDING** | Writing constraints and audit context, not in-world prose. |
+| [`stylistic-influences/`](stylistic-influences/README.md) | **CRAFT SCAFFOLDING** | Goodreads/film Top 10 catalogs + agent audit protocol for influence-faithful rewrites. |
+| [`CREATIVE-DIRECTION.md`](CREATIVE-DIRECTION.md) | **SHOWRUNNER BIBLE** | Voice synthesis, character casting, binding canon rulings R1–R15, kill list, expansion program. Read before any narrative work. |
+| [`STORY-PIPELINE.md`](STORY-PIPELINE.md) | **PIPELINE** | Worldbuilding → history → storyline → missions → cutscenes/art → player-facing. |
+| [`story/CONTEMPORARY-HISTORY.md`](story/CONTEMPORARY-HISTORY.md) | **CANON PRESENT TENSE** | What the universe is doing this cycle (the missing layer between setting and plot). |
+| [`story/SIDE-STORIES.md`](story/SIDE-STORIES.md) | **CANON SIDE WEAVE** | Eight collision-engine threads + mission slate derived from the storyline. |
+| [`story/THE-STORYLINE.md`](story/THE-STORYLINE.md) | **CANON NOVEL** | The campaign as a novel — Thread A + Thread B + side-story interludes. Voice standard for all downstream prose. |
+| [`production/`](production/) | **PRODUCTION PROMPTS** | `CUTSCENE-SCRIPTS.md` (video-gen) + `ART-PROMPTS.md` (image-gen). |
 | `AGY-PROMPTS-FOR-USER.md` | **AUTHORING TOOL** | Prompt history/tooling, not canon. |
 | `review/` | **HISTORY** | Iteration receipts. Read only when tracing why canon changed. |
 

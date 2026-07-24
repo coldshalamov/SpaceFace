@@ -1,6 +1,6 @@
 **SPACEFACE — COMMS MICRO-POPUPS (CANONICAL EXAMPLES)**
 
-The comms channel is a constant low-grade migraine. These are the lines that scroll past. Most are noise. Some are traps. The best pilots learn to read them the way old sailors read clouds.
+The comms channel is a standing wash of noise. Most of it is noise. Some of it is addressed to you without your name on it.
 
 Popups appear during flight, during docking, during jump charging. They are not addressed to the player by name. They arrive on shared channels. They are not all for the player. The player is picking up other people's noise, which sometimes contains the only warning they'll get.
 
@@ -11,7 +11,7 @@ Popups appear during flight, during docking, during jump charging. They are not 
 MERIDIAN EXCHANGE — COMMODITY ALERT: ORE PRICES ADJUSTED. EFFECTIVE IMMEDIATELY.
 *(The adjustment is downward. The adjustment was made four cycles ago. The alert is for the old price.)*
 
-CONCORD GATE 3 — NOTICE: INSPECTION PROTOCOL UPDATED. REF 44-C. *(Ref 44-C is the regulation Hale uses to file the second fine.)*
+CONCORD GATE 3 — NOTICE: INSPECTION PROTOCOL UPDATED. REG 44-C. *(the customs regulation Hale uses to file the second fine)*
 
 OUTPOST 9 — BAR COMMS: QUINN'S PLACE UNDER NEW MANAGEMENT. SAME RATES. *(Quinn's rates have never changed. Quinn has never not been the management.)*
 
@@ -21,11 +21,11 @@ DRIFT MINERS COLLECTIVE — CLAIM FILING SUSPENDED: HOLLOW STATION. BACKLOG 22 C
 
 BOURSE FREIGHT — CARGO INSURANCE REMINDER: VERIFY SEAL CODES BEFORE TRANSIT. *(The seal code verification system logs to a database Mira has write access to.)*
 
-CONCORD LOGISTICS OVERSIGHT — SECTOR MAINTENANCE ADVISORY: ATMOSPHERIC RECYCLER SERVICE SCHEDULED. SECTORS NOT MEETING VIABILITY THRESHOLD INELIGIBLE. REVIEW REQUIREMENTS UNDER REF 44-C. *(REF 44-C — the same regulation code Hale uses for customs infractions and the same reference number on Vale's contract authorizations — is also the administrative framework for atmospheric viability scoring. The Pit's viability score fell below threshold in year 3. The Pit has not been on this advisory list since year 3.)*
+CONCORD LOGISTICS OVERSIGHT — SECTOR MAINTENANCE ADVISORY: ATMOSPHERIC RECYCLER SERVICE SCHEDULED. SECTORS NOT MEETING VIABILITY THRESHOLD INELIGIBLE. REVIEW REQUIREMENTS UNDER REF 44-C. *(REG 44-C — the customs regulation; REF 44-C is the case-file code on the same apparatus
 
 CONCORD ALA DIVISION — SILT ALLOCATION NOTICE: REFINED SLURRY DELIVERY SUSPENDED FOR SECTOR 0 PENDING ATMO DEBT REVIEW. APPEAL WINDOW: 12 CYCLES. *(The appeal window has been open and unfilled for 14 years. The Pit doesn't know it has one. The division doesn't advertise the window.)*
 
-SECTOR 6 TRADING POST — BREATHABLE AIR: PRESSURIZED CANISTERS, 150KG, ORIGIN UNSPECIFIED. PRICE ON REQUEST. *(The Quiet's booth. "Origin unspecified" is the tell. Refined Silt canisters from the core require a Concord Logistics License under REF 44-C. No license is listed. The price on request is always higher than the rate Vale's division charges for the same canister weight. The buyer is paying for anonymity, not the air.)*
+SECTOR 6 TRADING POST — BREATHABLE AIR: PRESSURIZED CANISTERS, 150KG, ORIGIN UNSPECIFIED. PRICE ON REQUEST. *(The Quiet's booth. "Origin unspecified" is the tell. Refined Silt canisters from the core require a Concord Logistics License under REG 44-C. No license is listed. The price on request is always higher than the rate Vale's division charges for the same canister weight. The buyer is paying for anonymity, not the air.)*
 
 ---
 
@@ -61,7 +61,7 @@ CONCORD REGISTRY — VESSEL STATUS UPDATE: [PLAYER SHIP ID] / STATUS: ACTIVE / O
 
 ASHFALL REACH — SIGNAL DETECTED: LONG-FORM TRANSMISSION. SOURCE: DERELICT STATION. CONTENTS: ADMINISTRATIVE LOG — 11 YEARS. RECEIVING? *(This is the first contact with the Kurtz figure's station. It arrives as a comms popup, not a mission. The player can dismiss it. It comes back next cycle. And the next.)*
 
-CONCORD ALA DIVISION — ATMO DEBT NOTICE: SECTOR 0 (THE PIT) / ACCUMULATED BALANCE: [FIGURE REDACTED] / STATUS: ADMINISTRATIVE CLOSURE PENDING / AUTHORIZED: D. VALE. *(This message should not appear to the player. It is an internal administrative notice. It appears because the player has access to the secondary log channel — the same channel the graffiti references in B6's "THEY KNEW THE MASS" appearance. The balance has been accumulating since year 3. It corresponds exactly to fourteen years of deferred Silt maintenance. The player does not know it corresponds to 12.4 tons of recycler catalyst grid relocated under code VALE-ALA-47A. The Kurtz figure's ledger does.)*
+CONCORD ALA DIVISION — ATMO DEBT NOTICE: SECTOR 0 (THE PIT) / ACCUMULATED BALANCE: [FIGURE REDACTED] / STATUS: ADMINISTRATIVE CLOSURE PENDING / AUTHORIZED: D. VALE. *(This message should not appear to the player. It is an internal administrative notice. It appears because the player has access to the secondary log channel — the same channel the graffiti references in B6's "THEY KNEW THE MASS" appearance. The balance has been accumulating since year 3. It corresponds exactly to fourteen years of deferred Silt maintenance. The player does not know it corresponds to 12.4 tonnes of recycler catalyst grid relocated under code VALE-ALA-47A. The Kurtz figure's ledger does.)*
 
 ---
 
