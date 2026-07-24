@@ -1,7 +1,7 @@
 <!-- LIFETIME: STABLE -->
 # `scripts/` agent notes
 
-This directory owns executable checks, probes, build/index generation, launch helpers, and simulation harnesses. Find the public command in `package.json`, then inspect only its direct script/imports.
+This directory owns executable checks, probes, build/index generation, launch helpers, simulation harnesses, and compact control-plane readers. Find the public command in `package.json` when one exists, then inspect only its direct script/imports. `program-dispatch.mjs` intentionally remains a direct command until the package/launch mutex is free.
 
 ## Rules
 
@@ -16,11 +16,13 @@ This directory owns executable checks, probes, build/index generation, launch he
 - Probes clean up browser/server/process resources and write evidence only to the designated ignored artifact tree.
 - Acceptance actors use public controls and visible semantics. Observers may collect approved owner evidence but may not mutate gameplay state or tell the actor hidden facts.
 - Performance probes bind candidate, route, runtime, hardware/profile, settings, viewport, seed/save, and raw trace identity. Never reuse a capture across acceptance cells.
+- `program-dispatch.mjs` is read-only, omits narrative queue fields, and labels its output as dependency-ready rather than claim-ready. Do not add mutation, leasing, or automatic promotion to it.
 
 See [`../design/program/roadmap/00_EXECUTION_PROTOCOL.md`](../design/program/roadmap/00_EXECUTION_PROTOCOL.md) for the finite state machine.
 
 ## Routing
 
+- Program orientation: `program-dispatch.mjs` for one compact queue/packet record.
 - Simulation: `sf-sim.mjs` and focused `check-*-sim`/compare scripts.
 - Browser/Electron proof: launcher/probe scripts plus the shared game server and validation broker.
 - Assets: reachability, status, live-load, release-build, residency, and visual-stability scripts.

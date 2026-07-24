@@ -7,8 +7,9 @@ This directory is the only whole-program status and acceptance surface. It separ
 
 | Need | Read |
 |---|---|
+| Compact dependency-ready candidate or one queue row | `node scripts/program-dispatch.mjs --next` or `--id PQ-XXX` |
 | Live worktrees, leases, protected paths, blockers | [`NOW.md`](./NOW.md) |
-| Stable packet IDs, dependencies, broad checks/evidence | [`roadmap/program-queue.json`](./roadmap/program-queue.json) |
+| Maintain stable packet IDs, dependencies, broad checks/evidence | [`roadmap/program-queue.json`](./roadmap/program-queue.json) |
 | Executable instructions for admitted packets | [`roadmap/active/README.md`](./roadmap/active/README.md) |
 | Finite implementation/review/verification protocol | [`roadmap/00_EXECUTION_PROTOCOL.md`](./roadmap/00_EXECUTION_PROTOCOL.md) |
 | Verified outcomes | [`01_VERIFIED_DONE.md`](./01_VERIFIED_DONE.md) |
@@ -27,10 +28,12 @@ Lifecycle and acceptance are tracked separately:
 
 Never infer one axis from the other. A source asset can be implemented but not runtime-wired. Integrated code can retain an open route or visual acceptance debt. A packet can be blocked even when substantial substrate already exists.
 
+The queue's current `state` field is a transitional legacy value and can contain acceptance-like labels. Use the active packet and exact-revision receipts for separate claims; the compact dispatch command labels the field accordingly and omits narrative payloads.
+
 ## Maintenance
 
 - `NOW.md` contains only volatile state and an expiry marker.
-- Queue rows stay compact; link receipts instead of embedding incident histories and test transcripts.
+- Queue rows stay compact over time; link receipts instead of embedding incident histories and test transcripts.
 - Active packets are the implementation handoff. Retire or replace them when the live seam changes materially.
 - Feature agents update packet checkboxes and receipts. The integrator updates global state.
 - Run `node scripts/check-program-docs.mjs` after changing these control surfaces.

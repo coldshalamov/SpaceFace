@@ -11,12 +11,12 @@ Before changing anything:
 2. Read root [`AGENTS.md`](./AGENTS.md).
 3. Read only the relevant sections of [`ARCHITECTURE.md`](./ARCHITECTURE.md) and [`design/GDD_2_0.md`](./design/GDD_2_0.md).
 4. Read the volatile lease board: [`design/program/NOW.md`](./design/program/NOW.md).
-5. Find the queue row in [`design/program/roadmap/program-queue.json`](./design/program/roadmap/program-queue.json).
-6. Open the packet in [`design/program/roadmap/active/`](./design/program/roadmap/active/README.md). If no active packet exists, create one from the template before implementation.
+5. Run `node scripts/program-dispatch.mjs --next` or `node scripts/program-dispatch.mjs --id PQ-XXX` to obtain one compact dispatch record. Open the raw [`program-queue.json`](./design/program/roadmap/program-queue.json) only when maintaining its index or diagnosing dependency/identity history.
+6. Open the returned packet in [`design/program/roadmap/active/`](./design/program/roadmap/active/README.md). If no active packet exists, create one from the template before implementation.
 7. Use [`docs/MODULE_MAP.md`](./docs/MODULE_MAP.md), then generated [`docs/SYSTEM_REGISTRY.md`](./docs/SYSTEM_REGISTRY.md) or [`docs/EVENT_ROUTING.md`](./docs/EVENT_ROUTING.md), to locate live owners. Search only those owners, their tests, and their checks.
 8. Follow [`design/program/roadmap/00_EXECUTION_PROTOCOL.md`](./design/program/roadmap/00_EXECUTION_PROTOCOL.md) through a terminal receipt.
 
-Do not begin from an old handoff, screenshot directory, review transcript, archived plan, or broad repository grep.
+Do not begin from an old handoff, screenshot directory, review transcript, archived plan, raw whole-queue dump, or broad repository grep.
 
 ## 2. Product north star
 
@@ -54,7 +54,7 @@ A lower source cannot impose a palette, layout recipe, asset ceiling, implementa
 | Surface | Lifetime | Owns | Must not own |
 |---|---|---|---|
 | [`NOW.md`](./design/program/NOW.md) | volatile | active worktrees, leases, mutexes, protected foreign work, immediate blockers | history, detailed plans, test transcripts |
-| [`program-queue.json`](./design/program/roadmap/program-queue.json) | durable machine index | stable packet IDs, dependencies, broad checks/evidence classes, coarse lifecycle | implementation prose, current leases, acceptance transcripts |
+| `scripts/program-dispatch.mjs` + [`program-queue.json`](./design/program/roadmap/program-queue.json) | compact read view + durable legacy index | selected packet identity, dependencies, mutexes, broad checks/evidence, coarse queue state | current leases, implementation prose, acceptance transcripts |
 | [`active/`](./design/program/roadmap/active/README.md) | active packet | executable outcome, live seams, phases, write budget, proof budget, stop conditions | global status, unrelated backlog, permanent architecture |
 | `receipts/` and acceptance pages | evidence | exact-revision proof and honest residuals | future requirements or dispatch state |
 | module/event/system maps | generated or maintained reference | low-context code navigation | product priority or completion claims |
@@ -66,9 +66,11 @@ Status is two-dimensional:
 
 These axes do not imply each other. Integrated code may still lack route acceptance; a source asset may be implemented but not runtime-wired; a focused-green packet is not automatically fun, readable, or complete.
 
+The existing queue's `state` field is transitional and can contain legacy acceptance labels. Treat it only as a coarse index value. The active packet and exact-revision receipts own the separate lifecycle and acceptance claims until the queue schema is migrated.
+
 ## 5. Selecting and shaping work
 
-Choose the first queue packet whose dependencies are integrated, whose required owner seams exist, and whose mutexes are free. Then reduce it to the smallest coherent player-visible slice that can reach a terminal receipt.
+Choose the first queue packet whose dependencies are integrated, whose required owner seams exist, and whose mutexes are free. Then reduce it to the smallest coherent player-visible slice that can reach a terminal receipt. The dispatch command can identify a dependency-ready candidate; it cannot see every live branch, lease, owner change, or packet entry blocker, so it never grants a claim by itself.
 
 An executable packet must name:
 
