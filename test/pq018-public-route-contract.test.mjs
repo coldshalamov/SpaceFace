@@ -48,6 +48,7 @@ test('broker manifest binds one serialized Browser/Electron campaign to the Cath
     '.devshots/pq018-wreck-cathedral/baseline/electron/evidence.json',
   ]);
   assert(manifest.regressionSourcePaths.includes('test/pq018-wreck-cathedral.test.mjs'));
+  assert(manifest.regressionSourcePaths.includes('test/middle-mouse-course.test.mjs'));
   assert(manifest.productionSourcePaths.includes(
     'assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb',
   ));

@@ -32,6 +32,7 @@ export function createPq018WreckCathedralManifest(overrides = {}) {
       '.devshots/pq018-wreck-cathedral/baseline/electron/evidence.json',
     ],
     regressionSourcePaths: [
+      'test/middle-mouse-course.test.mjs',
       'test/pq018-wreck-cathedral.test.mjs',
       'test/pq018-public-route-contract.test.mjs',
       'test/validation-broker.test.mjs',
@@ -83,6 +84,7 @@ export function createPq018WreckCathedralManifest(overrides = {}) {
       'src/systems/world.js',
       'src/systems/worldSiteKernel.js',
       'src/systems/worldSiteRuntime.js',
+      'src/ui/controlPrompts.js',
       'src/ui/galaxyMap.js',
     ],
     harnessSourcePaths: [
