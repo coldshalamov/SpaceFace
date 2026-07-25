@@ -462,7 +462,13 @@ async function navigateToCathedralThroughPublicMap(page, timeoutMs) {
   const map = page.locator('[data-screen="galaxyMap"]');
   await map.waitFor({ state: 'visible', timeout: 20_000 });
   await searchAndSelect(page, 'Wreck Cathedral', /world site|capital wreck|cathedral/i);
-  const waypoint = page.getByRole('button', { name: 'Set Waypoint', exact: true });
+  await page.locator('.gm-ins-target-name')
+    .filter({ hasText: /^Wreck Cathedral$/ })
+    .first()
+    .waitFor({ state: 'visible', timeout: 10_000 });
+  // World Sites deliberately project into the Atlas as ordinary POIs. Their public primary action
+  // is therefore "Track Target"; "Set Waypoint" belongs to stations and gates.
+  const waypoint = page.getByRole('button', { name: 'Track Target', exact: true });
   await waypoint.waitFor({ state: 'visible', timeout: 10_000 });
   await clickPersistentButton(page, waypoint);
   await page.waitForFunction(([target, within]) => {
@@ -472,7 +478,7 @@ async function navigateToCathedralThroughPublicMap(page, timeoutMs) {
     return Math.hypot(player.pos.x - target.x, player.pos.z - target.z) <= within;
   }, [PQ018_FIXED_GLOBAL_POS, 520], { timeout: timeoutMs });
   return {
-    input: 'Star Map search -> Wreck Cathedral -> Set Waypoint',
+    input: 'Star Map search -> Wreck Cathedral -> Track Target',
     target: { ...PQ018_FIXED_GLOBAL_POS },
   };
 }
