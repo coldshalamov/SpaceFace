@@ -1,14 +1,11 @@
 // Repeat: prove run==run (identical deterministic-covered + trace hashes).
 // G4: evaluate ALL equivalences the scenario declares — never silently pass unsupported ones.
-// O2: equivalence entries are sealed by this fixed parent executor only.
-// P1: sealer is imported from private _equivalenceSeal (not public barrel / authority).
+// O2/P1/Q1: sealing is module-private (WeakSet identity) — not an importable mint API.
+// Q3: every arm must pass its oracle before equivalence can be ok:true (parity of failures is not a pass).
 
 import { runLabScenarioInternal } from './runScenario.js';
-import { compareSaveLoad } from './saveLoadCompare.js';
-import {
-  sealEquivalenceResult,
-  EQUIVALENCE_EXECUTOR_SOURCES,
-} from './_equivalenceSeal.js';
+import { compareSaveLoad, isEquivalenceSealedBySaveLoad } from './saveLoadCompare.js';
+import { EQUIVALENCE_EXECUTOR_SOURCES } from './equivalenceSources.js';
 
 const RUN_EQ_NAMES = new Set(['run-eq-repeat', 'run-eq-run', 'repeat']);
 const SAVE_LOAD_EQ_NAMES = new Set([
@@ -16,6 +13,36 @@ const SAVE_LOAD_EQ_NAMES = new Set([
   'save-load',
   'uninterrupted-eq-saveload',
 ]);
+
+/** Module-private registry of objects sealed by this executor. Spread does not transfer membership. */
+const sealedByRepeat = new WeakSet();
+
+/**
+ * Seal a comparison payload under the repeat executor.
+ * Not exported — only this module can mint authority.
+ * @param {object} result
+ * @returns {object} frozen sealed result
+ */
+function sealEquivalenceResult(result) {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) {
+    throw new TypeError('sealEquivalenceResult requires a plain comparison object');
+  }
+  const sealed = Object.freeze({
+    ...result,
+    source: EQUIVALENCE_EXECUTOR_SOURCES.REPEAT,
+  });
+  sealedByRepeat.add(sealed);
+  return sealed;
+}
+
+/**
+ * Membership check for oracle authority. Not a mint API.
+ * @param {unknown} pre
+ * @returns {boolean}
+ */
+export function isEquivalenceSealedByRepeat(pre) {
+  return !!pre && typeof pre === 'object' && !Array.isArray(pre) && sealedByRepeat.has(pre);
+}
 
 /**
  * Collect unique equivalence names declared by the scenario (order preserved).
@@ -84,21 +111,23 @@ export async function repeatScenario(scenarioDoc, options = {}) {
       });
       const eq = saveLoad.equivalence && saveLoad.equivalence['uninterrupted-eq-save-load']
         ? saveLoad.equivalence['uninterrupted-eq-save-load']
-        : {
-          ok: !!saveLoad.ok,
-          reason: saveLoad.status || 'save-load-compare',
-        };
-      // Prefer already-sealed entry from compareSaveLoad; re-seal under repeat if needed.
-      equivalence[name] = eq && eq.source
-        ? eq
-        : sealEquivalenceResult({
-          ok: !!eq.ok,
-          expected: eq.expected ?? true,
-          actual: eq.actual ?? eq.ok,
-          contract: eq.contract || saveLoad.contract,
-          firstDivergentTick: eq.firstDivergentTick ?? saveLoad.firstDivergentTick ?? null,
-          reason: eq.reason || (eq.ok ? undefined : saveLoad.status),
-        }, EQUIVALENCE_EXECUTOR_SOURCES.REPEAT);
+        : null;
+      // Prefer already-sealed entry from compareSaveLoad (WeakSet identity).
+      // Re-seal under repeat only when the save-load parent did not produce a sealed object.
+      if (eq && isEquivalenceSealedBySaveLoad(eq)) {
+        equivalence[name] = eq;
+      } else if (eq && isEquivalenceSealedByRepeat(eq)) {
+        equivalence[name] = eq;
+      } else {
+        equivalence[name] = sealEquivalenceResult({
+          ok: !!(eq && eq.ok),
+          expected: eq?.expected ?? true,
+          actual: eq?.actual ?? eq?.ok ?? false,
+          contract: eq?.contract || saveLoad.contract,
+          firstDivergentTick: eq?.firstDivergentTick ?? saveLoad.firstDivergentTick ?? null,
+          reason: eq?.reason || (eq?.ok ? undefined : saveLoad.status),
+        });
+      }
       if (!primary) primary = saveLoad.uninterrupted || null;
       if (!saveLoad.ok) {
         allOk = false;
@@ -115,7 +144,7 @@ export async function repeatScenario(scenarioDoc, options = {}) {
       expected: true,
       actual: 'unsupported',
       reason: `repeatScenario cannot evaluate equivalence "${name}" — unsupported or missing handler`,
-    }, EQUIVALENCE_EXECUTOR_SOURCES.REPEAT);
+    });
     allOk = false;
     exitClass = Math.max(exitClass, 4);
     status = status === 'pass' ? 'incomplete' : status;
@@ -173,7 +202,6 @@ async function evaluateRunEqRepeat(scenarioDoc, options = {}) {
       semanticHash: null,
       equivalenceEntry: sealEquivalenceResult(
         { ok: false, expected: true, actual: false, reason: 'primary-run-failed' },
-        EQUIVALENCE_EXECUTOR_SOURCES.REPEAT,
       ),
     };
   }
@@ -204,15 +232,36 @@ async function evaluateRunEqRepeat(scenarioDoc, options = {}) {
     }
   }
 
-  const ok = allMatch && first.ok;
+  // Q3: every arm must individually pass its oracle. Matching hashes of two failures is not a pass.
+  const failedArms = [];
+  for (let i = 0; i < results.length; i++) {
+    if (!results[i] || results[i].ok !== true) failedArms.push(i);
+  }
+  const allArmsOk = failedArms.length === 0;
+  const ok = allMatch && allArmsOk;
+
+  let status;
+  let exitClass;
+  if (!allArmsOk) {
+    status = 'arm-oracle-fail';
+    exitClass = 1;
+  } else if (!allMatch) {
+    status = 'nondeterminism';
+    exitClass = 5;
+  } else {
+    status = 'pass';
+    exitClass = 0;
+  }
+
   return {
     ok,
-    exitClass: allMatch ? (first.ok ? 0 : 1) : 5,
-    status: allMatch ? (first.ok ? 'pass' : 'fail') : 'nondeterminism',
+    exitClass,
+    status,
     runs,
     primary: first,
     results,
     mismatches,
+    failedArms: allArmsOk ? undefined : failedArms,
     traceHash: first.traceHash,
     deterministicHash: first.checkpoints && first.checkpoints.final
       && first.checkpoints.final.deterministicCovered
@@ -220,9 +269,17 @@ async function evaluateRunEqRepeat(scenarioDoc, options = {}) {
     semanticHash: first.checkpoints && first.checkpoints.final
       && first.checkpoints.final.semantic
       && first.checkpoints.final.semantic.hash,
-    equivalenceEntry: sealEquivalenceResult(
-      { ok: allMatch, expected: true, actual: allMatch, runs, mismatches },
-      EQUIVALENCE_EXECUTOR_SOURCES.REPEAT,
-    ),
+    equivalenceEntry: sealEquivalenceResult({
+      ok,
+      expected: true,
+      actual: ok,
+      runs,
+      mismatches,
+      allArmsOk,
+      failedArms: allArmsOk ? undefined : failedArms,
+      reason: !allArmsOk
+        ? `oracle failed on arm(s): ${failedArms.join(', ')} — parity of failures is not a pass`
+        : (!allMatch ? 'nondeterminism' : undefined),
+    }),
   };
 }

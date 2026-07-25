@@ -1,13 +1,40 @@
 // Uninterrupted run vs mid-run save/load continuation — compare within declared checkpoint contract.
 // F1: equivalence requires every-tick trajectory identity (trace + mid checkpoints), not final hash alone.
 // O1/O2: child arms use runLabScenarioInternal; equivalence is sealed by this fixed parent executor.
-// P1: sealer is imported from private _equivalenceSeal (not public barrel / authority).
+// Q1/Q2: sealing is module-private WeakSet identity — not an importable Symbol mint API.
 
 import { runLabScenarioInternal } from './runScenario.js';
-import {
-  sealEquivalenceResult,
-  EQUIVALENCE_EXECUTOR_SOURCES,
-} from './_equivalenceSeal.js';
+import { EQUIVALENCE_EXECUTOR_SOURCES } from './equivalenceSources.js';
+
+/** Module-private registry of objects sealed by this executor. Spread does not transfer membership. */
+const sealedBySaveLoad = new WeakSet();
+
+/**
+ * Seal a comparison payload under the save-load executor.
+ * Not exported — only this module can mint authority.
+ * @param {object} result
+ * @returns {object} frozen sealed result
+ */
+function sealEquivalenceResult(result) {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) {
+    throw new TypeError('sealEquivalenceResult requires a plain comparison object');
+  }
+  const sealed = Object.freeze({
+    ...result,
+    source: EQUIVALENCE_EXECUTOR_SOURCES.SAVE_LOAD,
+  });
+  sealedBySaveLoad.add(sealed);
+  return sealed;
+}
+
+/**
+ * Membership check for oracle authority. Not a mint API.
+ * @param {unknown} pre
+ * @returns {boolean}
+ */
+export function isEquivalenceSealedBySaveLoad(pre) {
+  return !!pre && typeof pre === 'object' && !Array.isArray(pre) && sealedBySaveLoad.has(pre);
+}
 
 /**
  * @param {object} scenarioDoc
@@ -124,7 +151,7 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
           expected: true,
           actual: false,
           reason: `oracle failed on arm(s): ${failedArms.join(', ')}`,
-        }, EQUIVALENCE_EXECUTOR_SOURCES.SAVE_LOAD),
+        }),
       },
       uninterrupted: options.verbosity >= 2 ? uninterrupted : summarize(uninterrupted),
       withSaveLoad: options.verbosity >= 2 ? withSaveLoad : summarize(withSaveLoad),
@@ -233,7 +260,7 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
         contract,
         intermediateOk,
         firstDivergentTick: tickCompare.firstDivergentTick,
-      }, EQUIVALENCE_EXECUTOR_SOURCES.SAVE_LOAD),
+      }),
     },
     uninterrupted: options.verbosity >= 2 ? uninterrupted : summarize(uninterrupted),
     withSaveLoad: options.verbosity >= 2 ? withSaveLoad : summarize(withSaveLoad),

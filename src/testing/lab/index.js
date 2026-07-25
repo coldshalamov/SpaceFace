@@ -16,7 +16,8 @@ export { repeatScenario } from './repeat.js';
 export { replayScenario, replayFailure } from './replay.js';
 export { compareSaveLoad } from './saveLoadCompare.js';
 export {
-  // P1: sealEquivalenceResult is intentionally NOT exported (module-private / parent-only).
+  // Q1: sealEquivalenceResult is module-private inside parent executors (WeakSet identity).
+  // Not exported from barrel, authority, or any importable seal file.
   isAuthoritativeEquivalenceResult,
   isPromotableLabResult,
   EQUIVALENCE_EXECUTOR_SOURCES,
