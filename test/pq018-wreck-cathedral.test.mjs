@@ -26,6 +26,7 @@ import {
   validateWorldSiteManifest,
 } from '../src/systems/worldSiteKernel.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
+import { world } from '../src/systems/world.js';
 import {
   buildSystemModel,
   resolveCourseTarget,
@@ -263,8 +264,13 @@ test('Cathedral manifest pins one Ceres identity, exact coordinate frames, seven
   assert.deepEqual(globalToSectorLocalForSector(definition.placement.pos, SECTOR_ID), LOCAL_POS);
   assert.deepEqual(sectorLocalToGlobalForSector(LOCAL_POS, SECTOR_ID), GLOBAL_POS);
   assert.equal(definition.visualRoot.visualRadius, 360);
+  assert.deepEqual(
+    worldSiteAssetBinding('place_landmark_wreck_cathedral').visualCenterXZ,
+    { x: 16.00636548, z: -12.99468677 },
+  );
   assert.equal(definition.components.length, 7);
   assert.equal(definition.proxies.length, 7);
+  assert.equal(definition.collisionProxies.length, 7);
   assert.deepEqual(
     [...definition.proxies.map((proxy) => proxy.componentId)].sort(),
     [...definition.components.map((component) => component.id)].sort(),
@@ -275,8 +281,32 @@ test('Cathedral manifest pins one Ceres identity, exact coordinate frames, seven
   const ceres = SECTORS.find((sector) => sector.id === SECTOR_ID);
   const authoredPoi = ceres?.pois.find((poi) => poi.id === SITE_ID);
   assert.ok(authoredPoi, 'Ceres owns one stable Cathedral POI');
+  assert.equal(authoredPoi.type, 'wreck');
+  assert.equal(authoredPoi.runtimeOwner, 'asteroidSites');
   assert.deepEqual(authoredPoi.anchor, LOCAL_POS, 'system map reads the explicit local anchor');
   assert.deepEqual(authoredPoi.pos, LOCAL_POS, 'Atlas reads the same explicit local position');
+});
+
+test('the static Atlas POI delegates runtime materialization to the World Site owner', () => {
+  const definition = SECTORS.find((sector) => sector.id === SECTOR_ID);
+  const spawned = [];
+  const system = Object.create(world);
+  system.helpers = {
+    spawnEntity(spec) {
+      spawned.push(spec);
+      return { id: spawned.length, ...spec };
+    },
+  };
+  system._toGlobal = (point) => ({ ...point });
+  const active = { pois: [] };
+  const discovery = { pois: {} };
+  system._spawnPOIs(definition, active, discovery, () => 0.5);
+  assert.equal(
+    spawned.some((entity) => entity.data?.poiId === SITE_ID),
+    false,
+    'world must not create a second fx representation of the World Site POI',
+  );
+  assert.ok(discovery.pois[SITE_ID], 'the static Atlas row still owns discovery identity');
 });
 
 test('Cathedral has exactly one Atlas node and one normal system-map waypoint', () => {
@@ -320,7 +350,12 @@ test('Cathedral collision proxies leave the authored entry-to-exit cavity traver
   );
   assert.equal(plan.root.visualRadius, 360);
   assert.equal(plan.components.length, 7);
-  assert.equal(plan.entities.length, 8, 'root plus seven component proxies only before payload release');
+  assert.equal(plan.collisionProxies.length, 7);
+  assert.equal(
+    plan.entities.length,
+    15,
+    'root, seven interaction proxies, and seven invisible exterior collision proxies',
+  );
 
   const entry = socketWorldPosition(
     definition,
@@ -333,12 +368,29 @@ test('Cathedral collision proxies leave the authored entry-to-exit cavity traver
     'SOCKET_Flythrough_Exit',
   );
   assert.ok(Math.hypot(exit.x - entry.x, exit.z - entry.z) >= 500);
-  const solidProxies = plan.components.filter((candidate) => candidate.bodyType === 'solid');
-  assert.equal(solidProxies.length, 2, 'two admitted hull fixtures remain physical outside the cavity');
+  const solidProxies = plan.collisionProxies.filter((candidate) => candidate.bodyType === 'solid');
+  assert.equal(solidProxies.length, 7, 'the exterior silhouette uses a bounded seven-circle envelope');
   for (const proxy of solidProxies) {
+    for (const [segmentStart, segmentEnd] of [[entry, plan.root.pos], [plan.root.pos, exit]]) {
+      assert.ok(
+        pointToSegmentDistance(proxy.pos, segmentStart, segmentEnd) > proxy.radius + 8,
+        `${proxy.proxyId} exterior proxy blocks one authored fly-through half`,
+      );
+    }
+  }
+  for (const point of [
+    { x: GLOBAL_POS.x - 265, z: GLOBAL_POS.z - 150 },
+    { x: GLOBAL_POS.x - 88, z: GLOBAL_POS.z - 150 },
+    { x: GLOBAL_POS.x + 87, z: GLOBAL_POS.z - 150 },
+    { x: GLOBAL_POS.x + 264, z: GLOBAL_POS.z - 150 },
+    { x: GLOBAL_POS.x - 220, z: GLOBAL_POS.z + 105 },
+    { x: GLOBAL_POS.x, z: GLOBAL_POS.z + 105 },
+    { x: GLOBAL_POS.x + 220, z: GLOBAL_POS.z + 105 },
+  ]) {
     assert.ok(
-      pointToSegmentDistance(proxy.pos, entry, exit) > proxy.radius + 8,
-      `${proxy.componentId} solid proxy blocks the authored fly-through`,
+      solidProxies.some((proxy) => Math.hypot(point.x - proxy.pos.x, point.z - proxy.pos.z)
+        <= proxy.radius),
+      `visible exterior sample is not represented physically: ${JSON.stringify(point)}`,
     );
   }
 
@@ -352,11 +404,7 @@ test('Cathedral collision proxies leave the authored entry-to-exit cavity traver
   const impactHull = stabilizedPlan.components.find(
     (candidate) => candidate.componentId === 'cathedral_hull',
   );
-  assert.equal(impactHull.bodyType, 'solid', 'the authored impact owner becomes physical only after stabilization');
-  assert.ok(
-    pointToSegmentDistance(impactHull.pos, entry, exit) > impactHull.radius + 8,
-    'the stabilized impact owner must remain outside the cavity flight envelope',
-  );
+  assert.equal(impactHull.bodyType, 'sensor', 'interaction topology stays stable after stabilization');
 });
 
 test('the stabilized hull owns a reachable runtime impact and recovery path', () => {
@@ -371,22 +419,40 @@ test('the stabilized hull owns a reachable runtime impact and recovery path', ()
   state.sites.worldById[SITE_ID] = stabilized;
   bus.emit('sector:enter', { sectorId: SECTOR_ID });
 
+  const componentEntities = [...state.entities.values()].filter(
+    (entity) => entity.alive !== false && entity.data?.worldSiteComponentId,
+  );
+  assert.equal(componentEntities.length, 7);
+  assert.ok(
+    componentEntities.every((entity) => entity._noMesh === true),
+    'the authored root is the only visible Cathedral identity',
+  );
+  assert.ok(componentEntities.every((entity) => entity.collides === false));
+  assert.ok(componentEntities.every((entity) => entity.data?.worldSiteTargetable === true));
+
   const hull = [...state.entities.values()].find(
     (entity) => entity.alive !== false
       && entity.data?.worldRecordId === `${SITE_ID}/component/cathedral_hull`,
   );
   assert.ok(hull);
-  assert.equal(hull.collides, true);
-  assert.equal(hull.physicsBody?.dynamic, false);
+  assert.equal(hull.collides, false);
+  const collisionEntities = [...state.entities.values()].filter(
+    (entity) => entity.alive !== false && entity.data?.role === 'world_site_collision',
+  );
+  assert.equal(collisionEntities.length, 7);
+  assert.ok(collisionEntities.every((entity) => entity._noMesh === true));
+  assert.ok(collisionEntities.every((entity) => entity.collides === true));
+  assert.ok(collisionEntities.every((entity) => entity.data?.worldSiteTargetable === false));
 
   bus.emit('physics:impact', {
-    aId: hull.id,
+    aId: collisionEntities[0].id,
     bId: state.playerId,
     dp: 220,
     tick: 20,
   });
   const failed = state.sites.worldById[SITE_ID];
   assert.equal(failed.components.cathedral_hull.status, 'failed');
+  assert.equal(failed.stageId, 'dark');
   assert.equal(
     bus.events.filter((event) => event.name === 'worldSite:failureReceipt').length,
     1,
@@ -394,11 +460,11 @@ test('the stabilized hull owns a reachable runtime impact and recovery path', ()
   assert.equal(
     [...state.entities.values()].some(
       (entity) => entity.alive !== false
-        && entity.data?.worldRecordId === `${SITE_ID}/component/cathedral_hull`
+        && entity.data?.role === 'world_site_collision'
         && entity.collides,
     ),
-    false,
-    'failed hull rematerializes as a sensor so recovery remains reachable',
+    true,
+    'the stable exterior envelope remains physical while the interaction proxy stays reachable',
   );
 
   state.tick = 30;
@@ -415,6 +481,7 @@ test('the stabilized hull owns a reachable runtime impact and recovery path', ()
   assert.equal(recovered.ok, true);
   assert.equal(recovered.duplicate, false);
   assert.equal(state.sites.worldById[SITE_ID].components.cathedral_hull.status, 'stabilized');
+  assert.equal(state.sites.worldById[SITE_ID].stageId, 'stabilized');
 });
 
 test('proximity, catalog presence, fabrication, and out-of-order work cannot mint evidence', () => {
@@ -424,7 +491,9 @@ test('proximity, catalog presence, fabrication, and out-of-order work cannot min
   assert.deepEqual(initial.evidenceReceiptsByPageId, {});
 
   for (const pageId of WRECK_CATHEDRAL_EVIDENCE_PAGE_IDS) {
-    assert.ok(wreckCathedralEvidenceCatalogEntry(pageId));
+    const catalog = wreckCathedralEvidenceCatalogEntry(pageId);
+    assert.ok(catalog);
+    assert.notEqual(catalog.body, catalog.fragment, `${pageId} needs page copy beyond its flight fragment`);
   }
   assert.deepEqual(
     [...WRECK_CATHEDRAL_EVIDENCE_PAGE_IDS].sort(),
@@ -595,6 +664,7 @@ test('failure, recovery, replay, and save normalization preserve earned evidence
   assert.equal(failed.ok, true);
   assert.equal(failed.duplicate, false);
   assert.equal(failed.record.components.cathedral_hull.status, 'failed');
+  assert.equal(failed.record.stageId, 'dark');
   assert.equal(failed.record.evidenceRevision, 5);
   assert.deepEqual(failed.record.evidenceReceiptsByPageId, earnedEvidence);
 
@@ -618,6 +688,7 @@ test('failure, recovery, replay, and save normalization preserve earned evidence
   assert.equal(recovered.ok, true);
   assert.equal(recovered.duplicate, false);
   assert.equal(recovered.record.components.cathedral_hull.status, 'stabilized');
+  assert.equal(recovered.record.stageId, 'archived');
   assert.equal(recovered.record.evidenceRevision, 5);
   assert.deepEqual(recovered.record.evidenceReceiptsByPageId, earnedEvidence);
 
@@ -640,5 +711,33 @@ test('failure, recovery, replay, and save normalization preserve earned evidence
     repaired.evidenceReceiptsByPageId,
     earnedEvidence,
     'Continue reconstructs altered timestamps only from the exact operation completion',
+  );
+
+  const polluted = structuredClone(recovered.record);
+  Object.assign(polluted.evidenceReceiptsByPageId['wreck_cathedral.missing_convoy'], {
+    title: 'foreign saved copy',
+    body: 'must not survive normalization',
+    imageUrl: 'https://invalid.example/evidence.png',
+    media: { path: 'foreign.png' },
+  });
+  const stripped = normalizeWorldSiteRecord(definition, polluted);
+  assert.deepEqual(
+    Object.keys(stripped.evidenceReceiptsByPageId['wreck_cathedral.missing_convoy']).sort(),
+    [
+      'catalogRevision',
+      'componentId',
+      'earnedAtS',
+      'earnedTick',
+      'operationId',
+      'operationReceiptId',
+      'pageId',
+      'provenanceRef',
+      'receiptId',
+      'revision',
+      'siteRecordId',
+      'stateFrom',
+      'stateTo',
+    ].sort(),
+    'normalization must reconstruct the canonical causal row and strip all foreign presentation',
   );
 });

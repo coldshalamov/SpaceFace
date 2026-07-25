@@ -1,7 +1,10 @@
 // src/data/sectors.js – canonical 24-sector persistent galaxy graph.
 // Sector IDs use sector_ prefix; station IDs use station_ prefix; faction IDs use faction_ prefix.
 // Fixed geography (stations/gates/fields/POIs) merged from sectorAnchors.js — see design/world-identity/PIPELINE.md.
-import { applySectorAnchors } from './sectorAnchors.js';
+import {
+  applySectorAnchors,
+  CERES_WRECK_CATHEDRAL_LOCAL_POS,
+} from './sectorAnchors.js';
 import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegions/index.js';
 import { applyClaimableBodySites } from './claimableBodies.js';
 import { applyPlanetStateAssignments } from './planetStates.js';
@@ -94,8 +97,9 @@ const CORE_SECTORS = [
       { id: 'poi_driller', type: 'derelict', name: 'Abandoned Driller' },
       { id: 'poi_survey',  type: 'cache',    name: 'Survey Cache' },
       {
-        id: 'world_site_wreck_cathedral', type: 'world-site', name: 'Wreck Cathedral',
-        anchor: { x: 300, z: 2700 },
+        id: 'world_site_wreck_cathedral', type: 'wreck', name: 'Wreck Cathedral',
+        anchor: CERES_WRECK_CATHEDRAL_LOCAL_POS,
+        runtimeOwner: 'asteroidSites',
       },
     ],
   },

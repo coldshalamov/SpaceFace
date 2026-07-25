@@ -90,7 +90,7 @@ export const WORLD_SITE_ASSET_BINDINGS = Object.freeze({
     sourceBytes: 11155156,
     releaseBytes: 6160076,
     rootName: 'SF_PLACE_LANDMARK_WRECK_CATHEDRAL_ROOT',
-    visualCenterXZ: { x: 7.2699, z: 25.63325 },
+    visualCenterXZ: { x: 16.00636548, z: -12.99468677 },
     socketBindings: cathedralSockets,
   }),
 });

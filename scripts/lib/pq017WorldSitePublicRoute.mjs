@@ -10820,6 +10820,7 @@ async function flyToPoint(page, point, within, timeoutMs, {
 }
 
 async function towToPointUntilOperation(page, point, operationId, timeoutMs, {
+  siteId = PQ017_SITE_ID,
   payloadWorldRecordId = null,
   receiverWorldRecordId = null,
   settledRadius = 12,
@@ -10892,7 +10893,7 @@ async function towToPointUntilOperation(page, point, operationId, timeoutMs, {
           } : null,
         };
       }, {
-        siteId: PQ017_SITE_ID,
+        siteId,
         operation: operationId,
         payloadId: payloadWorldRecordId,
         receiverId: receiverWorldRecordId,
@@ -11145,7 +11146,14 @@ async function brakePlayerBelow(page, maxSpeed, attempts) {
   })}`);
 }
 
-async function ramWorldRecord(page, worldRecordId, timeoutMs, { attempt = 0 } = {}) {
+async function ramWorldRecord(page, worldRecordId, timeoutMs, {
+  attempt = 0,
+  siteId = PQ017_SITE_ID,
+  componentId = 'safety_coupler',
+  rootWorldRecordId = PQ017_ROOT_WORLD_ID,
+  standOff = 190,
+  expectedPreImpactStatus = 'operational',
+} = {}) {
   const target = await worldPosition(page, worldRecordId);
   const deadline = Date.now() + timeoutMs;
   // Pilot A/D is yaw only while W is released. Align first; holding thrust during a large turn
@@ -11173,9 +11181,10 @@ async function ramWorldRecord(page, worldRecordId, timeoutMs, { attempt = 0 } = 
   let impactCaptureActive = false;
   try {
     while (Date.now() < deadline) {
-      const stage = await page.evaluate((siteId) => window.SF?.state?.sites?.worldById?.[siteId]?.stageId,
-        PQ017_SITE_ID);
-      if (stage === 'damaged') return;
+      const status = await page.evaluate(({ ownerId, targetComponentId }) => (
+        window.SF?.state?.sites?.worldById?.[ownerId]?.components?.[targetComponentId]?.status
+      ), { ownerId: siteId, targetComponentId: componentId });
+      if (status === 'failed') return;
       const navigation = await page.evaluate((point) => {
         const state = window.SF?.state;
         const player = state?.entities?.get(state?.playerId);
@@ -11240,25 +11249,46 @@ async function ramWorldRecord(page, worldRecordId, timeoutMs, { attempt = 0 } = 
     // run-up. Recover exactly as a player would: back out through the same clear-corridor planner,
     // settle, then make one final bounded attempt. Neither retry moves state directly, and the
     // route still accepts only the authored physical-impact rollback receipt.
-    await positionPq017ImpactRunup(page, worldRecordId, 190,
-      Math.max(60_000, Math.trunc(timeoutMs) * 2));
-    const restaged = await page.evaluate((siteId) => ({
-      stageId: window.SF?.state?.sites?.worldById?.[siteId]?.stageId || null,
+    await positionPq017ImpactRunup(page, worldRecordId, standOff,
+      Math.max(60_000, Math.trunc(timeoutMs) * 2), {
+        rootWorldRecordId,
+        siteId,
+      });
+    const restaged = await page.evaluate(({ ownerId, targetComponentId }) => ({
+      stageId: window.SF?.state?.sites?.worldById?.[ownerId]?.stageId || null,
+      componentStatus: window.SF?.state?.sites?.worldById?.[ownerId]
+        ?.components?.[targetComponentId]?.status || null,
       failureCount: (window.__PQ017_ROUTE__?.events || []).filter((event) => (
-        event.name === 'worldSite:failureReceipt' && event.payload?.siteId === siteId
+        event.name === 'worldSite:failureReceipt' && event.payload?.siteId === ownerId
       )).length,
-    }), PQ017_SITE_ID);
-    const restageAudit = auditPq017ImpactRestage(restaged);
+    }), { ownerId: siteId, targetComponentId: componentId });
+    const restageAudit = siteId === PQ017_SITE_ID
+      ? auditPq017ImpactRestage(restaged)
+      : {
+        pass: restaged.componentStatus === expectedPreImpactStatus
+          && restaged.failureCount === 0,
+        ...restaged,
+      };
     if (!restageAudit.pass) {
       blocked(`ordinary impact retry staging changed the recovered site: ${JSON.stringify(restageAudit)}`);
     }
-    return ramWorldRecord(page, worldRecordId, timeoutMs, { attempt: attempt + 1 });
+    return ramWorldRecord(page, worldRecordId, timeoutMs, {
+      attempt: attempt + 1,
+      siteId,
+      componentId,
+      rootWorldRecordId,
+      standOff,
+      expectedPreImpactStatus,
+    });
   }
   blocked(`ordinary capped-speed impact run did not reach ${worldRecordId}: ${JSON.stringify(diagnostic)}`);
 }
 
-async function stageImpactRun(page, worldRecordId, standOff, timeoutMs) {
-  const componentId = String(worldRecordId || '').split('/component/')[1];
+async function stageImpactRun(page, worldRecordId, standOff, timeoutMs, {
+  siteId = PQ017_SITE_ID,
+  componentId = String(worldRecordId || '').split('/component/')[1],
+  rootWorldRecordId = PQ017_ROOT_WORLD_ID,
+} = {}) {
   if (!componentId) blocked(`impact staging requires a component identity: ${worldRecordId}`);
   // The preceding operation route has already proved the shipped target autopilot four times.
   // On a rematerialized, already-recovered site the component can sit behind a large collision
@@ -11269,14 +11299,17 @@ async function stageImpactRun(page, worldRecordId, standOff, timeoutMs) {
   // and is accepted only when the authored impact rollback receipt is observed.
   await cycleToComponent(page, componentId);
   await positionPq017ImpactRunup(page, worldRecordId, standOff,
-    Math.max(60_000, Math.trunc(timeoutMs) * 2));
+    Math.max(60_000, Math.trunc(timeoutMs) * 2), { rootWorldRecordId, siteId });
   // A small component collider cannot absorb much cross-track drift over the 190 wu run-up.
   // Settle almost completely before aligning so the capped-speed leg proves an intentional impact,
   // rather than depending on whichever residual vector the preceding return route left behind.
   await brakePlayerBelow(page, 2, 120);
 }
 
-async function positionPq017ImpactRunup(page, worldRecordId, standOff, timeoutMs) {
+async function positionPq017ImpactRunup(page, worldRecordId, standOff, timeoutMs, {
+  rootWorldRecordId = PQ017_ROOT_WORLD_ID,
+  siteId = PQ017_SITE_ID,
+} = {}) {
   const geometry = await page.evaluate(({ targetId, rootId, siteId }) => {
     const state = window.SF?.state;
     const player = state?.entities?.get?.(state?.playerId);
@@ -11291,9 +11324,13 @@ async function positionPq017ImpactRunup(page, worldRecordId, standOff, timeoutMs
     const obstacles = entities
       .filter((entity) => {
         const radius = Number(entity?.radius);
+        const sameSite = entity?.data?.worldSiteId === siteId;
+        const sameSiteCollision = sameSite
+          && entity?.data?.role === 'world_site_collision'
+          && entity?.collides !== false;
         if (entity === player || entity?.alive === false || !entity?.pos
           || !Number.isFinite(radius) || radius < 4
-          || entity?.data?.worldSiteId === siteId
+          || (sameSite && !sameSiteCollision)
           || entity?.type === 'fx' || entity?.type === 'projectile') return false;
         return Math.hypot(entity.pos.x - target.pos.x, entity.pos.z - target.pos.z) <= 1_400;
       })
@@ -11301,6 +11338,7 @@ async function positionPq017ImpactRunup(page, worldRecordId, standOff, timeoutMs
         entityId: entity.id ?? null,
         type: entity.type || entity.data?.kind || null,
         fieldId: entity.data?.fieldId || entity.data?.asteroidFieldId || null,
+        collides: entity.collides !== false,
         x: entity.pos.x,
         z: entity.pos.z,
         radius: Number(entity.radius),
@@ -11312,7 +11350,7 @@ async function positionPq017ImpactRunup(page, worldRecordId, standOff, timeoutMs
       root: { x: root.pos.x, z: root.pos.z },
       obstacles,
     };
-  }, { targetId: worldRecordId, rootId: PQ017_ROOT_WORLD_ID, siteId: PQ017_SITE_ID });
+  }, { targetId: worldRecordId, rootId: rootWorldRecordId, siteId });
   if (!geometry) blocked(`impact run-up lost player, target, or site root: ${worldRecordId}`);
   const plan = planPq017ImpactStaging(
     geometry.player, geometry.target, geometry.root, standOff,
@@ -11505,9 +11543,15 @@ export function repoRelative(root, absolutePath) {
 export const WORLD_SITE_PUBLIC_ROUTE_DRIVER = Object.freeze({
   travelThroughOrdinaryGate,
   cycleToComponent,
+  cycleToWorldRecord,
+  latchWorldRecord,
   worldPosition,
   settleAtWorldRecord,
   flyToPoint,
+  towToPointUntilOperation,
+  waitForFixedTicks,
+  stageImpactRun,
+  ramWorldRecord,
   releaseFlightKeys,
   startPerformanceWindow,
   finishPerformanceWindow,

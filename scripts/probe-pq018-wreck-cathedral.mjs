@@ -32,6 +32,7 @@ import {
   repoRelative,
   runPq018WreckCathedralPublicRoute,
 } from './lib/pq018WreckCathedralPublicRoute.mjs';
+import { evaluatePq018CoordinateReservation } from './lib/pq018CoordinateReservation.mjs';
 import {
   loadValidatedPq018Baseline,
   PQ018_CAMPAIGN_SCHEMA,
@@ -104,6 +105,8 @@ await mkdir(campaignStaging, { recursive: true });
 const validatedBaseline = BASELINE_ONLY
   ? null
   : await loadValidatedPq018Baseline({ outputRoot: OUTPUT_ROOT });
+const coordinateReservation = evaluatePq018CoordinateReservation();
+assert.equal(coordinateReservation.pass, true, 'PQ-018 coordinate reservation must pass');
 const cells = [];
 let primaryError = null;
 
@@ -179,6 +182,12 @@ if (primaryError) {
     seed: PQ018_FIXED_SEED,
     viewport: VIEWPORT,
     runtimeProfile: PQ018_RUNTIME_PROFILE,
+    coordinateReservation,
+    performanceComparisonScope: {
+      matched: 'sector entry, asset admission, and ordinary-control Ceres coordinate approach',
+      absoluteFloor: ['active operations', 'leave/return lifecycle', 'save/Continue recovery'],
+      limitation: 'baseline-only mode does not execute Cathedral-only interactions absent at the authorized base',
+    },
     runtimeKinds: cells.map((cell) => cell.runtimeKind),
     cells: cells.map((cell) => ({
       runtimeKind: cell.runtimeKind,
