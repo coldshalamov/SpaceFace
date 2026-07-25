@@ -1,15 +1,51 @@
 // Deterministic RNG + hashing + angle wrap. The simulation NEVER calls Math.random();
 // all sim randomness derives from these seeded streams (see ARCHITECTURE §0.5).
 
-/** mulberry32 PRNG factory → returns a function producing floats in [0,1). */
+/**
+ * mulberry32 PRNG factory → returns a function producing floats in [0,1).
+ * Continuation state is serializable via `rng.getState()` / `mulberry32FromContinuation`.
+ * H9: save/load must restore continuation, not only the initial seed.
+ */
 export function mulberry32(seed) {
-  let a = seed >>> 0;
-  return function () {
+  const seed0 = (seed >>> 0) || 1;
+  let a = seed0;
+  let draws = 0;
+  function next() {
+    draws += 1;
     a |= 0; a = (a + 0x6D2B79F5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+  }
+  next.getState = () => ({ seed0, state: a >>> 0, draws: draws | 0 });
+  return next;
+}
+
+/**
+ * Resume a mulberry32 stream from serialized continuation.
+ * Prefer internal `state` (post-draw a); else re-seed from seed0 and advance `draws`.
+ * @param {{ seed0?: number, state?: number, draws?: number }|null|undefined} cont
+ */
+export function mulberry32FromContinuation(cont) {
+  if (cont && Number.isFinite(cont.state)) {
+    const seed0 = (Number.isFinite(cont.seed0) ? cont.seed0 >>> 0 : cont.state >>> 0) || 1;
+    let a = cont.state >>> 0;
+    let draws = cont.draws | 0;
+    function next() {
+      draws += 1;
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    }
+    next.getState = () => ({ seed0, state: a >>> 0, draws: draws | 0 });
+    return next;
+  }
+  const seed0 = (cont && Number.isFinite(cont.seed0) ? cont.seed0 >>> 0 : 1) || 1;
+  const targetDraws = cont && Number.isFinite(cont.draws) ? (cont.draws | 0) : 0;
+  const rng = mulberry32(seed0);
+  for (let i = 0; i < targetDraws; i++) rng();
+  return rng;
 }
 
 /** Advance one serializable mulberry32 seed and return { seed, value }. */

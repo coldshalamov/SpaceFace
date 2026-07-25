@@ -14,6 +14,8 @@ export const PRODUCTION_FEATURES = Object.freeze({
     momentumInherit: false,
     whipDamage: true,
     weaponImpulseConsequences: true,
+    // Authoritative heat vent lockout — profile-driven, not typeof window (N1).
+    weaponHeatVent: true,
   }),
   massline2: Object.freeze({
     enabled: true,
@@ -49,6 +51,8 @@ export const LEGACY47A_FEATURES = Object.freeze({
     momentumInherit: false,
     whipDamage: false,
     weaponImpulseConsequences: false,
+    // Keep 47-A combat goldens byte-stable (vent lockout would alter fire cadence).
+    weaponHeatVent: false,
   }),
   massline2: Object.freeze({
     enabled: false,

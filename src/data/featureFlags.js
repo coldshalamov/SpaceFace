@@ -50,6 +50,9 @@ export const COMBAT_FLAGS = {
   whipDamage: _initial.combat.whipDamage,
   // Universal weapon impulse + collision consequences (PQ-009). 47-A pins this OFF.
   weaponImpulseConsequences: _initial.combat.weaponImpulseConsequences,
+  // Forced heat vent lockout + dump (authoritative combat). Production ON; legacy47a OFF.
+  // Never gated on typeof window — host-independent (N1).
+  weaponHeatVent: _initial.combat.weaponHeatVent,
 };
 
 /** Read a combat flag by name; unknown names read false. Pure over the MAP (or instance features). */

@@ -44,21 +44,37 @@ export function createAuthoritativeRuntime(options = {}) {
 
   // H4: Node production-fidelity path — materialize full node-safe manifest when no
   // explicit systems list and no caller-supplied lookup.
+  // Pass selected AI/flight slots into the resolver so selectedSlots match browser (not unbound).
   let systemLookup = options.systemLookup;
+  let slots = options.slots || null;
   if (!explicit && !systemLookup && options.nodeSafeOnly === true) {
+    // Production Node defaults: tactical AI + flight V3 (same as browser createRegistry).
+    const tacticalAI = options.tacticalAI !== false;
     systemLookup = getNodeSystemFactoryTable({
-      aiSlot: options.slots && options.slots.aiSlot,
-      flightSlot: options.slots && options.slots.flightSlot,
-      tacticalAI: options.tacticalAI,
+      aiSlot: slots && slots.aiSlot,
+      flightSlot: slots && slots.flightSlot,
+      tacticalAI,
     });
+    const aiSlot = (slots && slots.aiSlot) || systemLookup.get('aiSlot');
+    const flightSlot = (slots && slots.flightSlot) || systemLookup.get('flightSlot');
+    slots = {
+      aiSlot,
+      flightSlot,
+      aiBackend: (slots && slots.aiBackend)
+        || ((aiSlot && aiSlot.name === 'tacticalAI') ? 'sg06-tactical' : 'legacy'),
+      // Node factory defaults to flightV3; label matches createRegistry post-selection.
+      flightBackend: (slots && slots.flightBackend) || 'v3',
+    };
   }
 
   const resolved = resolveRuntimeManifest({
     profileId: profileId || 'production',
     systemLookup,
-    slots: options.slots,
+    slots,
     nodeSafeOnly: options.nodeSafeOnly,
-    tacticalAI: options.tacticalAI,
+    // Align tacticalAI flag with slot selection for production Node path.
+    tacticalAI: options.tacticalAI === true
+      || (options.nodeSafeOnly === true && options.tacticalAI !== false && !explicit),
     explicitSystems: explicit || undefined,
     exclusions: options.exclusions,
   });

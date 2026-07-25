@@ -555,8 +555,13 @@ function recordAutoTargetPath(host, movementX, movementY, now) {
     lastSampleX: 0,
     lastSampleY: 0,
     lastMs: -Infinity,
+    lastSimMs: -Infinity,
   });
-  const elapsed = Number.isFinite(gesture.lastMs) ? now - gesture.lastMs : Infinity;
+  // N2: gesture idle uses sim clock when available so path drawing is deterministic.
+  const simMs = simClockMs(state);
+  const elapsed = Number.isFinite(gesture.lastSimMs)
+    ? simMs - gesture.lastSimMs
+    : (Number.isFinite(gesture.lastMs) ? now - gesture.lastMs : Infinity);
   let route = inp.autoTargetPath;
   if (!route || !route.active) {
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
@@ -586,7 +591,9 @@ function recordAutoTargetPath(host, movementX, movementY, now) {
   const marginY = Math.min(AUTO_TARGET_PATH_EDGE_MARGIN, height * 0.2);
   gesture.cursorX = Math.max(marginX, Math.min(width - marginX, gesture.cursorX + movementX));
   gesture.cursorY = Math.max(marginY, Math.min(height - marginY, gesture.cursorY + movementY));
+  // Wall stamp: DOM device-priority only. Sim stamp: gameplay idle / path continuity (N2).
   gesture.lastMs = now;
+  gesture.lastSimMs = simMs;
   route.active = true;
   route.drawing = true;
   route.cursorX = gesture.cursorX;
@@ -617,9 +624,17 @@ function updateAutoTargetPathDrawing(host, now) {
   const route = host.state && host.state.input && host.state.input.autoTargetPath;
   const gesture = host._autoTargetGesture;
   if (!route || !route.active || !route.drawing || !gesture) return;
-  if (!Number.isFinite(gesture.lastMs) || now - gesture.lastMs > AUTO_TARGET_GESTURE_IDLE_MS) {
+  // Prefer sim-clock stamp when present (N2); fall back to wall stamp from DOM path samples.
+  const last = Number.isFinite(gesture.lastSimMs) ? gesture.lastSimMs : gesture.lastMs;
+  if (!Number.isFinite(last) || now - last > AUTO_TARGET_GESTURE_IDLE_MS) {
     route.drawing = false;
   }
+}
+
+/** Deterministic ms clock from simTime (gameplay paths). N2. */
+function simClockMs(state) {
+  const t = state && Number.isFinite(state.simTime) ? state.simTime : 0;
+  return t * 1000;
 }
 
 export const input = {
@@ -636,11 +651,9 @@ export const input = {
     resetAutoTargetPath(this, this.state);
     this._m0 = false; this._m1 = false; this._m2 = false;
     this._masslineGrammar = createMasslineInputGrammar();
-    // performance is available in Node 16+ and browsers; fall back for pure-sim hosts.
-    const nowMs = (typeof performance !== 'undefined' && typeof performance.now === 'function')
-      ? performance.now()
-      : 0;
-    this._lastKbmMs = nowMs;
+    // N2: boot stamp is diagnostic/device-arbitration only (not gameplay math). Start at 0 so
+    // boot does not depend on wall clock; DOM events stamp wall time for real-device priority.
+    this._lastKbmMs = 0;
     this._canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
 
     this.gamepad = createGamepad(ctx);
@@ -989,7 +1002,8 @@ export const input = {
       pointerScreen.y = this._screen.y;
       pointerScreen.active = this._screen.active;
       inp.autoTargetVector = neutralAutoTargetVector();
-      if (inp.autoFire) updateAutoTargetPathDrawing(this, performance.now());
+      // N2: flight-profile-affecting path drawing uses deterministic sim clock, not wall time.
+      if (inp.autoFire) updateAutoTargetPathDrawing(this, simClockMs(state));
       else resetAutoTargetPath(this, state);
     }
 

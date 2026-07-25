@@ -48,6 +48,8 @@ const TOP_KEYS = new Set([
   'systems',
   'observer',
   'notes',
+  // H12/H13: comparison policy is part of the validated canonical surface (hashed).
+  'saveLoadEquivalence',
 ]);
 
 const WORLD_KEYS = new Set([
@@ -97,6 +99,22 @@ const INPUT_EVENT_KEYS = new Set([
 ]);
 
 const FRAME_KEYS = new Set(['tick', 'input', 'commands']);
+/** Closed schema for nested frame.input — unknown keys rejected (H14). */
+const FRAME_INPUT_KEYS = new Set([
+  'moveX',
+  'moveZ',
+  'turnIntent',
+  'boost',
+  'fire',
+  'fireGroup',
+  'aimAngle',
+  'reelDelta',
+  'brake',
+  'masslineHeld',
+  'lineLength',
+  'orbitDirection',
+  'massline',
+]);
 const POLICY_KEYS = new Set(['id', 'version', 'params']);
 const CHECKPOINT_KEYS = new Set(['tick', 'kind', 'label']);
 const TRACE_KEYS = new Set(['signals', 'sampleEvery']);
@@ -323,10 +341,23 @@ export function validateSimScenario(doc, options = {}) {
         if (!Number.isInteger(frame.tick) || frame.tick < 0) {
           issue(`${p}.tick`, 'type', 'tick must be a non-negative integer');
         }
-        if (frame.input != null && (typeof frame.input !== 'object' || Array.isArray(frame.input))) {
-          issue(`${p}.input`, 'type', 'input must be an object');
+        if (frame.input != null) {
+          if (typeof frame.input !== 'object' || Array.isArray(frame.input)) {
+            issue(`${p}.input`, 'type', 'input must be an object');
+          } else {
+            // H14: closed schema — silent ignore of nested unknown keys is forbidden.
+            rejectUnknownKeys(frame.input, FRAME_INPUT_KEYS, `${p}.input`, issue);
+          }
         }
       });
+    }
+  }
+
+  if (doc.saveLoadEquivalence != null) {
+    const allowed = new Set(['deterministic-covered', 'trace-hash', 'semantic', 'any-weaker']);
+    if (typeof doc.saveLoadEquivalence !== 'string' || !allowed.has(doc.saveLoadEquivalence)) {
+      issue('$.saveLoadEquivalence', 'enum',
+        'saveLoadEquivalence must be deterministic-covered|trace-hash|semantic|any-weaker');
     }
   }
 
@@ -594,9 +625,23 @@ export function compileSimScenario(doc, options = {}) {
     observer: doc.observer ? { ...doc.observer } : { enabled: false },
     fixtureExceptions: Array.isArray(doc.fixtureExceptions) ? doc.fixtureExceptions.slice() : [],
     rendering: { detached: true },
+    // H12/H13: comparison-affecting policy is part of the hashed canonical artifact.
+    // Prefer top-level; lift from notes when only notes carries it (legacy authoring).
+    saveLoadEquivalence: resolveSaveLoadEquivalenceForCanonical(doc),
   };
 
   return { ok: true, validation, canonical };
+}
+
+function resolveSaveLoadEquivalenceForCanonical(doc) {
+  if (doc && typeof doc.saveLoadEquivalence === 'string' && doc.saveLoadEquivalence) {
+    return doc.saveLoadEquivalence;
+  }
+  if (doc && doc.notes && typeof doc.notes === 'object' && !Array.isArray(doc.notes)
+    && typeof doc.notes.saveLoadEquivalence === 'string' && doc.notes.saveLoadEquivalence) {
+    return doc.notes.saveLoadEquivalence;
+  }
+  return 'deterministic-covered';
 }
 
 export function formatSimScenarioIssue(issue) {

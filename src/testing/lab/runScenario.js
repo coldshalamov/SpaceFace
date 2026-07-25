@@ -179,9 +179,10 @@ export async function runLabScenario(scenarioDoc, options = {}) {
     }
 
     // Attachments (only when evidence class permits — validated in schema)
-    const actionsSys = runtime.getSystem('actions');
-    const kernel = actionsSys && actionsSys.kernel;
-    const attachmentIds = [];
+    // H10: these are re-bound after mid-run save/load runtime recreate — never leave as const.
+    let actionsSys = runtime.getSystem('actions');
+    let kernel = actionsSys && actionsSys.kernel;
+    let attachmentIds = [];
     let restLength0 = null;
     for (const att of canonical.attachments || []) {
       if (!kernel || !kernel.attachments) {
@@ -358,9 +359,27 @@ export async function runLabScenario(scenarioDoc, options = {}) {
           try { runtime.dispose(); } catch (_) { /* best-effort */ }
           runtime = loadResult.runtime;
           state = loadResult.state;
-          // Rebuild sticky input from tape history so keys match post-restore tick.
-          // Driver is tick-indexed; re-apply from 0..tick so held keys match pre-save.
-          inputDriver.resetFromTape?.(0, tick);
+          // H10: rebind ALL system-local observers to the recreated runtime.
+          // Pre-save kernel / attachment handles must not survive into the post-restore phase.
+          actionsSys = runtime.getSystem('actions');
+          kernel = actionsSys && actionsSys.kernel;
+          const tetherAttId = state.player && state.player.tether
+            ? state.player.tether.attachmentId
+            : null;
+          if (tetherAttId != null) {
+            attachmentIds = [tetherAttId];
+          } else if (state._lab && state._lab.attachmentId != null) {
+            attachmentIds = [state._lab.attachmentId];
+          } else {
+            attachmentIds = [];
+          }
+          if (state._lab) {
+            state._lab.kernel = kernel;
+            state._lab.attachmentId = attachmentIds[0] != null ? attachmentIds[0] : null;
+            state._lab.controller = controller;
+          }
+          // Rebuild sticky input from tape history with the NEW state (settings bindings).
+          inputDriver.resetFromTape?.(0, tick, state);
         }
       }
 
@@ -605,7 +624,10 @@ function resultMatchesAssertion(result, assertion) {
   if (kind === 'metric' || kind === 'quantitative') {
     if (!assertion.metric) return false;
     const metricKey = assertion.metric.includes('@') ? assertion.metric : `${assertion.metric}@1`;
+    // H11: only match assertion-sourced results, not declared metric emissions (same id, 2×).
+    if (result.source === 'metric') return false;
     return result.family === 'quantitative'
+      && (result.source === 'assertion' || result.source == null)
       && (result.id === metricKey
         || result.id === assertion.metric
         || (typeof result.id === 'string' && result.id.startsWith(assertion.metric)));

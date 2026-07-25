@@ -37,8 +37,10 @@ export function evaluateOracles({
 
   const all = [
     ...invariantResults,
+    // H11: declared metrics use source:'metric' so they do not collide with assertion consumption.
     ...metricResults.map((m) => ({
       family: 'quantitative',
+      source: 'metric',
       id: `${m.name}@${m.version}`,
       ok: m.ok,
       expected: m.threshold,
@@ -295,6 +297,7 @@ function evaluateQuantitativeAssertions(assertions, metricResults, trace, ctx) {
     if (!a.metric) {
       results.push({
         family: 'quantitative',
+        source: 'assertion',
         id: a.kind || 'metric',
         ok: false,
         expected: a,
@@ -310,6 +313,7 @@ function evaluateQuantitativeAssertions(assertions, metricResults, trace, ctx) {
     if (!m) {
       results.push({
         family: 'quantitative',
+        source: 'assertion',
         id: key,
         ok: false,
         expected: a,
@@ -324,6 +328,8 @@ function evaluateQuantitativeAssertions(assertions, metricResults, trace, ctx) {
     const cmp = compareThreshold(value, threshold);
     results.push({
       family: 'quantitative',
+      // H11: distinct source from declared metric results so consumption matches exactly once.
+      source: 'assertion',
       id: key,
       ok: cmp.ok,
       expected: threshold,

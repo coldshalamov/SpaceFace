@@ -54,12 +54,13 @@ const MISSILE_COAST_DRAG = 16;           // wu/s^2 gentle speed bleed after burn
 const WEAPON_RECHARGE_MULT = 1.15;
 const WEAPON_VENT_S = 2 / WEAPON_RECHARGE_MULT;
 const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
-// The forced vent is a live-play feel layer. It is gated to browser sessions (window present) so the
-// headless deterministic 47a replay — which records a specific combat encounter and would be
-// invalidated by the vent's firing lockout — stays byte-for-byte stable. This mirrors the existing
-// `typeof document` DOM-guards in input.js / flightV3.js: sim-authoritative math is identical in both
-// contexts. Player-facing presentation is browser-only, while live NPCs share the thermal lockout.
-const WEAPON_VENT_ENABLED = typeof window !== 'undefined';
+// Forced heat vent is AUTHORITATIVE combat behavior (lockout + heat dump). Gate on runtime features
+// / process combat flags — never `typeof window` (N1: Node/browser must not diverge by host).
+// legacy47a keeps weaponHeatVent false so 47-A goldens stay stable; production enables it.
+function isWeaponVentEnabled(state) {
+  const features = state && state.runtime && state.runtime.features;
+  return !!combatFlag('weaponHeatVent', features);
+}
 
 const DEG2 = WEAPONS; // keep import referenced even if tree-shaken oddly (no-op)
 
@@ -76,22 +77,7 @@ export const weapons = {
 
     // Own deterministic stream so firing never disturbs the core sim PRNG (§0.5).
     // H9: track seed0 + draw count on state so lab checkpoints cover this stream.
-    const seed = (this.state.meta && this.state.meta.seed) || 1;
-    const seed0 = this.helpers.hash32(seed, 'weapons') >>> 0;
-    const base = this.helpers.mulberry32(seed0);
-    let draws = 0;
-    this._rngSeed0 = seed0;
-    this._rng = () => {
-      draws += 1;
-      const v = base();
-      if (this.state) {
-        this.state.weaponsEntropy = { seed0, draws, stream: 'weapons' };
-      }
-      return v;
-    };
-    if (this.state) {
-      this.state.weaponsEntropy = { seed0, draws: 0, stream: 'weapons' };
-    }
+    this._bindWeaponsRng(null);
 
     // Track individual beam mounts so presentation can update one persistent beam per hardpoint.
     this._beamFiring = new Set();
@@ -205,11 +191,49 @@ export const weapons = {
     }
   },
 
+  /**
+   * H9: rebind weapons RNG from state.weaponsEntropy after save/load restore.
+   * Call after loadEnvelope has written weaponsEntropy onto state.
+   */
+  restoreEntropyFromState() {
+    const ent = this.state && this.state.weaponsEntropy;
+    if (!ent || !Number.isFinite(ent.seed0)) return;
+    this._bindWeaponsRng({ seed0: ent.seed0 >>> 0, draws: ent.draws | 0 });
+  },
+
+  _bindWeaponsRng(continuation) {
+    const seed = (this.state && this.state.meta && this.state.meta.seed) || 1;
+    const seed0 = continuation && Number.isFinite(continuation.seed0)
+      ? (continuation.seed0 >>> 0)
+      : (this.helpers.hash32(seed, 'weapons') >>> 0);
+    const targetDraws = continuation && Number.isFinite(continuation.draws)
+      ? (continuation.draws | 0)
+      : 0;
+    const base = this.helpers.mulberry32(seed0);
+    let draws = 0;
+    while (draws < targetDraws) {
+      base();
+      draws += 1;
+    }
+    this._rngSeed0 = seed0;
+    this._rng = () => {
+      draws += 1;
+      const v = base();
+      if (this.state) {
+        this.state.weaponsEntropy = { seed0, draws, stream: 'weapons' };
+      }
+      return v;
+    };
+    if (this.state) {
+      this.state.weaponsEntropy = { seed0, draws, stream: 'weapons' };
+    }
+  },
+
   // Forced heat vent: the instant any weapon pegs heatMax, lock every weapon out for
   // WEAPON_VENT_S seconds and dump heat fast so the guns visibly cool, then come back online. This
   // is the "2-second vent" rhythm beat. Live NPCs obey the same timer; player-only receipts drive HUD.
   _tickVent(e, dt, state) {
-    if (!WEAPON_VENT_ENABLED) return;
+    if (!isWeaponVentEnabled(state || this.state)) return;
     const ws = e.data && e.data.weapons;
     if (!ws || !ws.length) return;
     const data = e.data;
@@ -246,7 +270,7 @@ export const weapons = {
   },
 
   _beginVent(e, state, weapon = null) {
-    if (!WEAPON_VENT_ENABLED || !e) return false;
+    if (!isWeaponVentEnabled(state || this.state) || !e) return false;
     const now = state.simTime || 0;
     if (now < (e.data.weaponVentUntil || 0)) return false;
     const def = weapon && this._byId.get(weapon.defId) || {};

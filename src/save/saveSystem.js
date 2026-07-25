@@ -12,7 +12,7 @@
 import { fnv1a } from './checksum.js';
 import { MIGRATIONS, CURRENT_VERSION } from './migrations.js';
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
-import { mulberry32 } from '../core/rng.js';
+import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
@@ -239,7 +239,51 @@ export const save = {
     data.flight = this._serializeFlight();
     data.nav = this._serializeNav();
     data.settings = this._serializeSettings();
+    // H9: authoritative RNG continuation (seed + draw position). Restore must not reseed to zero.
+    data.entropy = this._serializeEntropy();
     return data;
+  },
+
+  /**
+   * Serialize lab-covered + core RNG continuation streams.
+   * Uncovered system streams remain omitted (honest: full multi-stream identity is not claimed).
+   */
+  _serializeEntropy() {
+    const state = this.state;
+    let core = null;
+    if (state && state.rng && typeof state.rng.getState === 'function') {
+      core = state.rng.getState();
+    } else if (state && state.meta) {
+      core = {
+        seed0: (state.meta.seed >>> 0) || 1,
+        state: null,
+        draws: state.meta.rngDraws | 0,
+      };
+    }
+    const weapons = state && state.weaponsEntropy
+      ? {
+        seed0: state.weaponsEntropy.seed0 >>> 0,
+        draws: state.weaponsEntropy.draws | 0,
+        stream: 'weapons',
+      }
+      : null;
+    const trafficRngSeed = state && state.traffic && Number.isFinite(state.traffic.rngSeed)
+      ? (state.traffic.rngSeed >>> 0)
+      : null;
+    return {
+      schema: 'spaceface.entropyContinuation.v1',
+      covered: ['core.seed+state+draws', 'weapons.seed0+draws', 'traffic.rngSeed'],
+      uncovered: [
+        'automation.meta.rngSeed',
+        'claims.meta.rngSeed',
+        'sectorSim.meta.rngSeed',
+        'interventionMeta.rngSeed',
+        'other-system-private-streams',
+      ],
+      core,
+      weapons,
+      trafficRngSeed,
+    };
   },
 
   /** Assemble the full versioned envelope around a serialized data payload. */
@@ -267,6 +311,49 @@ export const save = {
       createdAt: m.createdAt || '',
       lastSavedAt: new Date().toISOString(),
     };
+  },
+
+  /**
+   * H9: restore RNG continuation from envelope entropy block.
+   * Covered streams: core mulberry state, weapons seed0+draws, traffic.rngSeed.
+   * Uncovered streams are intentionally not restored (documented in entropy.uncovered).
+   */
+  _restoreEntropy(entropy) {
+    const state = this.state;
+    if (!state) return;
+    const seed0 = (state.meta && state.meta.seed >>> 0) || 1;
+    if (entropy && entropy.core) {
+      state.rng = mulberry32FromContinuation({
+        seed0: Number.isFinite(entropy.core.seed0) ? entropy.core.seed0 : seed0,
+        state: entropy.core.state,
+        draws: entropy.core.draws,
+      });
+      if (state.meta) {
+        const st = typeof state.rng.getState === 'function' ? state.rng.getState() : null;
+        state.meta.rngDraws = st ? (st.draws | 0) : (entropy.core.draws | 0);
+      }
+    } else {
+      // Pre-H9 saves: reseed from initial seed only (continuation not guaranteed).
+      state.rng = mulberry32(seed0);
+      if (state.meta) state.meta.rngDraws = 0;
+    }
+
+    if (entropy && entropy.weapons) {
+      state.weaponsEntropy = {
+        seed0: entropy.weapons.seed0 >>> 0,
+        draws: entropy.weapons.draws | 0,
+        stream: 'weapons',
+      };
+    }
+    if (entropy && Number.isFinite(entropy.trafficRngSeed) && state.traffic) {
+      state.traffic.rngSeed = entropy.trafficRngSeed >>> 0;
+    }
+
+    // Rebind weapons system private stream from restored entropy (init ran before load).
+    const weaponsSys = this.registry && this.registry.get && this.registry.get('weapons');
+    if (weaponsSys && typeof weaponsSys.restoreEntropyFromState === 'function') {
+      weaponsSys.restoreEntropyFromState();
+    }
   },
 
   // player meta record (core/ships/economy fields) — credits/cargo/combat config live here (§3.5).
@@ -2023,12 +2110,12 @@ export const save = {
       this._restoreSettings(data.settings);
       this._reconcileFlightReadyAfterLoad();
 
-      // 14. restore sim clock + rebuild the master RNG from the (unchanged) seed.
+      // 14. restore sim clock + rebuild master RNG from serialized CONTINUATION (H9), not seed alone.
       if (data.entities) {
         if (typeof data.entities.simTime === 'number') state.simTime = data.entities.simTime;
         if (typeof data.entities.tick === 'number') state.tick = data.entities.tick;
       }
-      state.rng = mulberry32((state.meta.seed >>> 0) || 1);
+      this._restoreEntropy(data.entropy);
 
       // 15. finalize.
       state.meta.version = CURRENT_VERSION;

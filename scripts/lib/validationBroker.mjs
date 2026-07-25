@@ -1317,43 +1317,95 @@ export async function issueBrokerClaim({
     }
     : null);
 
-  // H6: reserve launch quota atomically when a claim is ISSUED (not only on spawn).
-  // Acceptance claims consume one candidate slot even if never spawned.
+  // H6: reserve launch quota + create claim under the same exclusive candidate lock.
+  // Concurrent issuers must not both observe zero and both issue.
   const candidateDigest = boundDigests?.candidateDigest ?? receipt?.candidateDigest ?? null;
-  if (mode === 'acceptance' && candidateDigest && manifest.maxLaunchesPerCandidate > 0) {
-    const prior = await getCandidateLaunchCount(outputRoot, candidateDigest);
-    if (prior >= manifest.maxLaunchesPerCandidate) {
-      const error = new Error('VALIDATION_CLAIM_REFUSED: max-launches-per-candidate');
-      error.code = 'VALIDATION_CLAIM_REFUSED';
-      error.reason = 'max-launches-per-candidate';
-      error.launchCount = prior;
-      error.maxLaunchesPerCandidate = manifest.maxLaunchesPerCandidate;
-      throw error;
-    }
-    await incrementCandidateLaunchCount(outputRoot, candidateDigest);
-  }
+  const needsQuota = mode === 'acceptance'
+    && candidateDigest
+    && manifest.maxLaunchesPerCandidate > 0;
 
-  const claim = {
-    schema: manifest.claimSchema,
-    claimId,
-    manifestId: manifest.id,
-    mode,
-    issuedAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + expiresInMs).toISOString(),
-    consumed: false,
-    receipt: receipt
-      ? {
-        routeDigest: receipt.routeDigest,
-        regressionDigest: receipt.regressionDigest,
-        candidateDigest: receipt.candidateDigest ?? null,
-        productionDigest: receipt.productionDigest ?? receipt.routeDigest ?? null,
-        acknowledgesFailureFingerprint: receipt.acknowledgesFailureFingerprint ?? null,
+  const writeClaim = async () => {
+    if (needsQuota) {
+      const prior = await getCandidateLaunchCount(outputRoot, candidateDigest);
+      if (prior >= manifest.maxLaunchesPerCandidate) {
+        const error = new Error('VALIDATION_CLAIM_REFUSED: max-launches-per-candidate');
+        error.code = 'VALIDATION_CLAIM_REFUSED';
+        error.reason = 'max-launches-per-candidate';
+        error.launchCount = prior;
+        error.maxLaunchesPerCandidate = manifest.maxLaunchesPerCandidate;
+        throw error;
       }
-      : null,
-    digests: boundDigests,
+      await incrementCandidateLaunchCount(outputRoot, candidateDigest);
+    }
+
+    const claim = {
+      schema: manifest.claimSchema,
+      claimId,
+      manifestId: manifest.id,
+      mode,
+      issuedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + expiresInMs).toISOString(),
+      consumed: false,
+      receipt: receipt
+        ? {
+          routeDigest: receipt.routeDigest,
+          regressionDigest: receipt.regressionDigest,
+          candidateDigest: receipt.candidateDigest ?? null,
+          productionDigest: receipt.productionDigest ?? receipt.routeDigest ?? null,
+          acknowledgesFailureFingerprint: receipt.acknowledgesFailureFingerprint ?? null,
+        }
+        : null,
+      digests: boundDigests,
+    };
+    await writeJsonAtomically(claimPath, claim);
+    return { claimId, claimPath, claim };
   };
-  await writeJsonAtomically(claimPath, claim);
-  return { claimId, claimPath, claim };
+
+  if (needsQuota) {
+    return withCandidateQuotaLock(outputRoot, candidateDigest, writeClaim);
+  }
+  return writeClaim();
+}
+
+/**
+ * H6: exclusive per-candidate lock so quota check + increment + claim create are atomic.
+ * Uses O_EXCL lock file under the broker output root (same pattern as run-lock).
+ */
+export async function withCandidateQuotaLock(outputRoot, candidateDigest, fn) {
+  const safe = String(candidateDigest || 'none').replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 80);
+  const lockPath = path.join(outputRoot, `.quota-${safe}.lock`);
+  await mkdir(outputRoot, { recursive: true });
+  const deadline = Date.now() + 30_000;
+  let handle = null;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      handle = await open(lockPath, 'wx');
+      break;
+    } catch (error) {
+      if (error?.code !== 'EEXIST') throw error;
+      if (Date.now() > deadline) {
+        const err = new Error('VALIDATION_CLAIM_REFUSED: quota-lock-timeout');
+        err.code = 'VALIDATION_CLAIM_REFUSED';
+        err.reason = 'quota-lock-timeout';
+        throw err;
+      }
+      await new Promise((r) => setTimeout(r, 5 + Math.floor(Math.random() * 15)));
+    }
+  }
+  try {
+    await handle.writeFile(`${JSON.stringify({
+      schema: 'spaceface.validation-quota-lock.v1',
+      pid: process.pid,
+      candidateDigest,
+      acquiredAt: new Date().toISOString(),
+    })}\n`, 'utf8');
+    try { await handle.sync(); } catch { /* best-effort */ }
+    return await fn();
+  } finally {
+    try { await handle.close(); } catch { /* ignore */ }
+    try { await rm(lockPath, { force: true }); } catch { /* ignore */ }
+  }
 }
 
 export async function validateBrokerClaim({

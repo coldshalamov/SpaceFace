@@ -55,12 +55,18 @@ let routeResult = null;
 let cleanupReport = null;
 let primaryError = null;
 
+// H8: recognize --diagnostic (non-promoting) and --acceptance; default remains acceptance
+// when neither flag is present for backward compatibility with CI acceptance lanes.
+const explicitDiagnostic = process.argv.includes('--diagnostic');
+const explicitAcceptance = process.argv.includes('--acceptance');
+const probeMode = explicitDiagnostic ? 'diagnostic' : 'acceptance';
 const gateLaunch = await assertPq017ProbeLaunch({
   root: ROOT,
   outputRoot: OUTPUT_ROOT,
   runtimeKind: 'browser',
-  mode: 'acceptance',
-  explicitAcceptance: process.argv.includes('--acceptance'),
+  mode: probeMode,
+  explicitAcceptance,
+  explicitDiagnostic,
 });
 const { loadPlaywright } = await import('./lib/load-playwright.mjs');
 await mkdir(STAGING, { recursive: true });

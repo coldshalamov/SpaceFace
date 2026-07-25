@@ -77,19 +77,24 @@ export function createInputTapeDriver(tape, options = {}) {
      * H10: rebuild sticky key state by replaying tape events for ticks [fromTick, toTick]
      * (inclusive). Used after save/load runtime recreate so keys match pre-save holds without
      * surviving on the old driver instance.
+     * @param {number} fromTick
+     * @param {number} toTick
+     * @param {object} [state] recreated runtime state — required for binding resolution
      */
-    resetFromTape(fromTick, toTick) {
+    resetFromTape(fromTick, toTick, state = null) {
       keys = Object.create(null);
       if (masslineGrammar && typeof masslineGrammar.reset === 'function') {
         masslineGrammar.reset();
       }
       const start = fromTick | 0;
       const end = toTick | 0;
+      // H10: never pass null into transitionFlightKeyState — binding() reads state.settings.
+      const keyState = state || { settings: { controls: { bindings: null }, gameplay: {} } };
       for (let t = start; t <= end; t++) {
         const tickEvents = eventsByTick.get(t) || [];
         for (const ev of tickEvents) {
           if (ev.device === 'keyboard' || !ev.device) {
-            keys = transitionFlightKeyState(null, keys, {
+            keys = transitionFlightKeyState(keyState, keys, {
               code: ev.code || '',
               pressed: !!ev.pressed,
               blocked: false,
@@ -97,7 +102,7 @@ export function createInputTapeDriver(tape, options = {}) {
           }
           if (ev.keys && typeof ev.keys === 'object') {
             for (const [code, pressed] of Object.entries(ev.keys)) {
-              keys = transitionFlightKeyState(null, keys, {
+              keys = transitionFlightKeyState(keyState, keys, {
                 code,
                 pressed: !!pressed,
               });

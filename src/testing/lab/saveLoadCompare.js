@@ -134,6 +134,8 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
 /**
  * Default: deterministic-covered only. Scenario may set saveLoadEquivalence to
  * "semantic" | "trace-hash" | "any-weaker" to authorize softer contracts.
+ * H12/H13: policy is compiled into the canonical artifact and hashed; notes alone
+ * no longer hide comparison policy from digests (compile lifts notes → top-level).
  */
 function resolveSaveLoadEquivalence(scenarioDoc, options = {}) {
   if (options.saveLoadEquivalence) return options.saveLoadEquivalence;
@@ -144,6 +146,8 @@ function resolveSaveLoadEquivalence(scenarioDoc, options = {}) {
   }
   return 'deterministic-covered';
 }
+
+export { resolveSaveLoadEquivalence };
 
 function hashOf(result, kind) {
   const final = result && result.checkpoints && result.checkpoints.final;

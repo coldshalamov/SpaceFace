@@ -59,9 +59,21 @@ export const DETERMINISTIC_OMITTED = Object.freeze([
 
 /** Lab-covered entropy streams (honest subset of system-owned RNGs). */
 export const ENTROPY_COVERED_STREAMS = Object.freeze([
-  'core.seed',
+  'core.seed+state+draws',
   'weapons.seed0+draws',
   'traffic.rngSeed',
+]);
+
+/**
+ * Streams known to exist but NOT serialized/restored through save (H9 honesty).
+ * Save/load equivalence must not claim full RNG identity while these remain uncovered.
+ */
+export const ENTROPY_UNCOVERED_STREAMS = Object.freeze([
+  'automation.meta.rngSeed',
+  'claims.meta.rngSeed',
+  'sectorSim.meta.rngSeed',
+  'interventionMeta.rngSeed',
+  'other-system-private-streams',
 ]);
 
 /**
@@ -156,9 +168,17 @@ function buildEntropySurface(state) {
   const trafficSeed = state && state.traffic && Number.isFinite(state.traffic.rngSeed)
     ? (state.traffic.rngSeed >>> 0)
     : null;
+  const coreCont = state && state.rng && typeof state.rng.getState === 'function'
+    ? state.rng.getState()
+    : null;
   return {
     covered: ENTROPY_COVERED_STREAMS.slice(),
+    uncovered: ENTROPY_UNCOVERED_STREAMS.slice(),
     coreSeed: state && state.meta ? (state.meta.seed | 0) : 0,
+    // H9: continuation (not seed alone) is what save/load restores for covered streams.
+    core: coreCont
+      ? { seed0: coreCont.seed0 >>> 0, state: coreCont.state >>> 0, draws: coreCont.draws | 0 }
+      : null,
     weapons,
     trafficRngSeed: trafficSeed,
   };
