@@ -5,12 +5,16 @@
 import { createHash } from 'node:crypto';
 import { canonicalStringify } from '../../core/simSnapshot.js';
 import { compileSimScenario, validateCanonicalScenario } from '../../contracts/simScenarioSchema.js';
-import { runLabScenario } from './runScenario.js';
+import { runLabScenarioInternal } from './runScenario.js';
 import { hashInputTape } from './inputTape.js';
 import { compareCheckpoints } from './checkpointCompare.js';
 import { runChromiumLabScenario, repeatChromiumLabScenario } from './chromiumHost.js';
 import { hashDeterministicSurface } from './checkpoint.js';
 import { assertChromiumParitySupported } from './browserScenarioHost.js';
+import {
+  sealEquivalenceResult,
+  EQUIVALENCE_EXECUTOR_SOURCES,
+} from './equivalenceAuthority.js';
 
 /**
  * Compile scenario once, run Node + Chromium, compare deterministic-covered series.
@@ -80,11 +84,24 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
     ...canonical,
     checkpoints: checkpointTicks.map((tick) => ({ tick, kind: 'deterministic-covered' })),
   };
-  const runNodeArm = options.runNodeArm || runLabScenario;
-  const runChromiumArm = options.runChromiumArm || runChromiumLabScenario;
+  // O4: arms are FIXED internal executors — caller-supplied runNodeArm/runChromiumArm
+  // are deliberately ignored (and rejected if provided) so fabricated arms cannot certify.
+  if (options.runNodeArm != null || options.runChromiumArm != null) {
+    return {
+      schema: 'spaceface.labDifferentialReplay.v1',
+      ok: false,
+      exitClass: 4,
+      status: 'invalid-config',
+      certifying: false,
+      runId,
+      error: 'runDifferentialReplay does not accept caller-supplied arm callbacks — '
+        + 'Node arm is always runLabScenarioInternal; Chromium arm is always runChromiumLabScenario',
+    };
+  }
 
-  const nodeResult = await runNodeArm(scenarioDoc || canonical, {
-    ...options,
+  // O1/O4: Node arm is always the fixed internal (nonPromoting) lab runner.
+  const nodeResult = await runLabScenarioInternal(scenarioDoc || canonical, {
+    file: options.file,
     canonical: nodeCanonical,
     scenarioDigest,
     inputDigest,
@@ -93,6 +110,7 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
     // Multi-run equivalences (run-eq-repeat / save-load) are not owned by differential
     // replay — parent proves Node vs Chromium checkpoint identity instead.
     skipMultiRunEquivalence: true,
+    childArm: true,
   });
 
   if (nodeResult.exitClass === 3) {
@@ -125,8 +143,8 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
 
   const nodeSeries = extractNodeSeries(nodeResult);
 
-  // --- Chromium ---
-  const chromiumResult = await runChromiumArm(canonical, {
+  // --- Chromium (fixed internal host — never a caller callback) ---
+  const chromiumResult = await runChromiumLabScenario(canonical, {
     scenarioDigest,
     inputDigest,
     checkpointTicks,

@@ -1,6 +1,7 @@
 // Replay: reproduce a failure fingerprint from a prior lab run.
+// Uses internal non-certifying path (diagnostic / nonPromoting).
 
-import { runLabScenario } from './runScenario.js';
+import { runLabScenarioInternal } from './runScenario.js';
 
 /**
  * Re-run a scenario and check that the failure fingerprint matches (or that the run still fails
@@ -9,8 +10,10 @@ import { runLabScenario } from './runScenario.js';
  * @param {{ fingerprint?: string, expectedFailure?: object, verbosity?: number }} [options]
  */
 export async function replayScenario(scenarioDoc, options = {}) {
-  const result = await runLabScenario(scenarioDoc, {
-    ...options,
+  const result = await runLabScenarioInternal(scenarioDoc, {
+    file: options.file,
+    verbosity: options.verbosity,
+    observerEnabled: options.observerEnabled,
     runId: options.runId || `replay_${Date.now().toString(36)}`,
   });
 

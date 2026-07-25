@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 import { compareSaveLoad, compareTracesTickByTick } from '../src/testing/lab/saveLoadCompare.js';
 import { repeatScenario } from '../src/testing/lab/repeat.js';
-import { runLabScenario } from '../src/testing/lab/runScenario.js';
+import { runLabScenario, runLabScenarioInternal } from '../src/testing/lab/runScenario.js';
 import { evaluateOracles } from '../src/testing/lab/oracleEngine.js';
 import {
   validateSimScenario,
@@ -243,7 +243,7 @@ test('G6: precompiled canonical with frame.input.brake fails validation', async 
     v.issues.some((i) => i.rule === 'unimplemented-input-field' || /brake/.test(i.message)),
     JSON.stringify(v.issues),
   );
-  const run = await runLabScenario(flightDoc, { canonical, verbosity: 0 });
+  const run = await runLabScenarioInternal(flightDoc, { canonical, verbosity: 0 });
   assert.equal(run.ok, false);
   assert.equal(run.exitClass, 4);
 });

@@ -1,9 +1,24 @@
 // General oracle engine: every-tick invariants, temporal, quantitative metrics, equivalence.
 // Thresholds are scenario-authored — never computed from the candidate then certified against itself.
+// Equivalence proof is accepted ONLY from fixed parent executors (private seal) — never shape auth.
 
 import { evaluateMetrics, compareThreshold } from './metricRegistry.js';
+import { isAuthoritativeEquivalenceResult } from './equivalenceAuthority.js';
 // Side-effect: register massline + flight metrics.
 import '../metrics/masslineMetrics.js';
+
+/** Numeric fields the deterministic surface tracks — any non-finite value fails finite-state. */
+export const FINITE_STATE_FIELDS = Object.freeze([
+  'playerX', 'playerZ', 'playerVelX', 'playerVelZ', 'playerRot',
+  'hull', 'cap', 'credits',
+  'distance', 'restLength', 'radiusError', 'radialSpeed', 'tangentialSpeed',
+  'tangentFraction', 'tension', 'angularSpeed', 'mtStrain',
+  'cmdX', 'cmdZ',
+]);
+
+/** Resource fields that must be finite and non-negative when present. */
+export const RESOURCE_FIELDS = Object.freeze(['hull', 'cap', 'credits']);
+
 
 /**
  * Evaluate all oracle families for a completed run.
@@ -91,18 +106,20 @@ function isTemporal(kind) {
 function evaluateInvariants(trace, ctx) {
   const results = [];
 
-  // Finite state every tick
+  // Finite state every tick — cover ALL numeric authoritative fields the surface tracks.
+  // Evaluate against sample values as recorded (makeSample preserves non-finite; does not NaN→0).
   let finiteOk = true;
   let finiteBadTick = null;
+  let finiteBadField = null;
   for (const s of trace) {
-    const fields = [
-      s.playerX, s.playerZ, s.playerVelX, s.playerVelZ, s.playerRot,
-      s.distance, s.tension, s.radialSpeed,
-    ];
-    for (const v of fields) {
-      if (v != null && !Number.isFinite(v)) {
+    for (const key of FINITE_STATE_FIELDS) {
+      if (!Object.prototype.hasOwnProperty.call(s, key)) continue;
+      const v = s[key];
+      if (v == null) continue;
+      if (typeof v === 'number' && !Number.isFinite(v)) {
         finiteOk = false;
         finiteBadTick = s.tick;
+        finiteBadField = key;
         break;
       }
     }
@@ -116,17 +133,28 @@ function evaluateInvariants(trace, ctx) {
     actual: finiteOk,
     signedDelta: finiteOk ? 0 : 1,
     firstBadTick: finiteBadTick,
+    badField: finiteBadField,
   });
 
-  // No negative resources
+  // Resources: must be finite AND non-negative when present (NaN must fail, not pass).
   let resourceOk = true;
   let resourceBadTick = null;
+  let resourceBadField = null;
   for (const s of trace) {
-    if ((s.hull != null && s.hull < 0) || (s.cap != null && s.cap < 0) || (s.credits != null && s.credits < 0)) {
-      resourceOk = false;
-      resourceBadTick = s.tick;
-      break;
+    for (const key of RESOURCE_FIELDS) {
+      if (!Object.prototype.hasOwnProperty.call(s, key)) continue;
+      const v = s[key];
+      if (v == null) continue;
+      if (typeof v === 'number') {
+        if (!Number.isFinite(v) || v < 0) {
+          resourceOk = false;
+          resourceBadTick = s.tick;
+          resourceBadField = key;
+          break;
+        }
+      }
     }
+    if (!resourceOk) break;
   }
   results.push({
     family: 'invariant',
@@ -136,7 +164,9 @@ function evaluateInvariants(trace, ctx) {
     actual: resourceOk,
     signedDelta: resourceOk ? 0 : 1,
     firstBadTick: resourceBadTick,
+    badField: resourceBadField,
   });
+
 
   // Dead entity must not keep physics authority samples (when flagged)
   if (ctx.checkDeadPhysics !== false) {
@@ -576,29 +606,9 @@ function evaluateQuantitativeAssertions(assertions, metricResults, trace, ctx) {
 }
 
 /**
- * N2: only accept comparison-result objects from parent lab repeat/compare.
- * Caller-injected booleans and bare `{ ok: true }` are never valid proof.
+ * O2: accept equivalence results ONLY when sealed by a fixed parent executor.
+ * Shape-based authentication ({ ok, expected, actual }) is deliberately rejected.
  */
-function isEquivalenceComparisonResult(pre) {
-  if (!pre || typeof pre !== 'object' || Array.isArray(pre)) return false;
-  if (typeof pre.ok !== 'boolean') return false;
-  const hasActual = Object.prototype.hasOwnProperty.call(pre, 'actual');
-  const hasExpected = Object.prototype.hasOwnProperty.call(pre, 'expected');
-  const hasCompareMeta = pre.contract != null
-    || pre.runs != null
-    || pre.firstDivergentTick !== undefined
-    || pre.reason != null
-    || pre.mismatches != null
-    || pre.compared === true
-    || pre.incomplete === true;
-  if (pre.ok === true) {
-    // A green equivalence requires actual comparison payload, not a lone ok flag.
-    return hasActual && (hasExpected || hasCompareMeta);
-  }
-  // Failures may be reason-only (e.g. arm-oracle-fail / primary-run-failed).
-  return hasActual || hasExpected || hasCompareMeta;
-}
-
 function evaluateEquivalence(assertions, equivalence, options = {}) {
   const results = [];
   for (const a of assertions) {
@@ -616,12 +626,12 @@ function evaluateEquivalence(assertions, equivalence, options = {}) {
         actual: pre,
         signedDelta: 1,
         firstBadTick: null,
-        reason: 'caller-injected boolean equivalence is not valid proof — require comparison result object from lab repeat/compare',
+        reason: 'caller-injected boolean equivalence is not valid proof — require sealed result from fixed parent executor',
       });
       continue;
     }
     if (pre != null && typeof pre === 'object') {
-      if (!isEquivalenceComparisonResult(pre)) {
+      if (!isAuthoritativeEquivalenceResult(pre)) {
         results.push({
           family: 'equivalence',
           id: name,
@@ -629,10 +639,15 @@ function evaluateEquivalence(assertions, equivalence, options = {}) {
           incomplete: true,
           injected: true,
           expected: true,
-          actual: pre,
+          actual: {
+            ok: pre.ok,
+            expected: pre.expected,
+            actual: pre.actual,
+            source: pre.source ?? null,
+          },
           signedDelta: 1,
           firstBadTick: null,
-          reason: 'equivalence object is not a comparison result — require actual/expected (or compare meta) from lab repeat/compare',
+          reason: 'equivalence object lacks fixed-executor seal — shape-only {ok,expected,actual} is not proof',
         });
         continue;
       }
@@ -644,12 +659,14 @@ function evaluateEquivalence(assertions, equivalence, options = {}) {
         actual: pre.actual ?? pre.ok,
         signedDelta: pre.ok ? 0 : 1,
         firstBadTick: pre.firstBadTick ?? null,
+        executorSource: pre.source,
         detail: pre,
       });
       continue;
     }
-    // N3: compare/repeat arms — parent owns multi-run equivalence.
+    // O3/N3: compare/repeat child arms — parent owns multi-run equivalence.
     // Emit skipped marker that is NOT ok:true and NOT assertion-consumed.
+    // skipMultiRunEquivalence is only meaningful on the internal (nonPromoting) path.
     if (options.skipMultiRunEquivalence) {
       results.push({
         family: 'equivalence',
@@ -665,8 +682,7 @@ function evaluateEquivalence(assertions, equivalence, options = {}) {
       });
       continue;
     }
-    // F5: standalone `run` with declared equivalence and no compare result is incomplete.
-    // Do NOT mark deferred multi-run checks as consumed-and-passing.
+    // F5/O3: standalone certifying run with declared equivalence and no sealed result is incomplete.
     results.push({
       family: 'equivalence',
       id: name,
@@ -677,7 +693,7 @@ function evaluateEquivalence(assertions, equivalence, options = {}) {
       actual: 'deferred',
       signedDelta: 1,
       firstBadTick: null,
-      reason: 'equivalence-deferred-not-computed — use lab repeat/compare or supply equivalence results',
+      reason: 'equivalence-deferred-not-computed — use lab repeat/compare (fixed parent executors); caller injection is rejected',
     });
   }
   return results;

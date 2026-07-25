@@ -1,7 +1,12 @@
 // Uninterrupted run vs mid-run save/load continuation — compare within declared checkpoint contract.
 // F1: equivalence requires every-tick trajectory identity (trace + mid checkpoints), not final hash alone.
+// O1/O2: child arms use runLabScenarioInternal; equivalence is sealed by this fixed parent executor.
 
-import { runLabScenario } from './runScenario.js';
+import { runLabScenarioInternal } from './runScenario.js';
+import {
+  sealEquivalenceResult,
+  EQUIVALENCE_EXECUTOR_SOURCES,
+} from './equivalenceAuthority.js';
 
 /**
  * @param {object} scenarioDoc
@@ -46,24 +51,30 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
   // save-load checkpoint. Without this, `saveLoadAt: undefined` falls back to the
   // checkpoint tick and both arms perform the same restore (vacuous parity).
   // Retain traces so tick-by-tick divergence is always observable (F1).
-  // Multi-run equivalence is owned by this compare — arms skip deferred-eq incomplete.
-  const uninterrupted = await runLabScenario(scenarioDoc, {
-    ...options,
+  // O1/O3: multi-run equivalence is owned by this parent — arms are nonPromoting internals.
+  const uninterrupted = await runLabScenarioInternal(scenarioDoc, {
+    file: options.file,
+    verbosity: options.verbosity,
+    observerEnabled: options.observerEnabled,
     runId: options.runId ? `${options.runId}_unint` : undefined,
     suppressSaveLoad: true,
     saveLoadAt: null,
     retainOracleTrace: true,
     skipMultiRunEquivalence: true,
+    childArm: true,
   });
 
-  const withSaveLoad = await runLabScenario(scenarioDoc, {
-    ...options,
+  const withSaveLoad = await runLabScenarioInternal(scenarioDoc, {
+    file: options.file,
+    verbosity: options.verbosity,
+    observerEnabled: options.observerEnabled,
     runId: options.runId ? `${options.runId}_saveload` : undefined,
     suppressSaveLoad: false,
     saveLoadAt,
     allowRuntimeCheckpoint: false,
     retainOracleTrace: true,
     skipMultiRunEquivalence: true,
+    childArm: true,
   });
 
   if (uninterrupted.exitClass === 3 || withSaveLoad.exitClass === 3) {
@@ -107,10 +118,12 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
         withSaveLoad: armFailureSummary(withSaveLoad),
       },
       equivalence: {
-        'uninterrupted-eq-save-load': {
+        'uninterrupted-eq-save-load': sealEquivalenceResult({
           ok: false,
+          expected: true,
+          actual: false,
           reason: `oracle failed on arm(s): ${failedArms.join(', ')}`,
-        },
+        }, EQUIVALENCE_EXECUTOR_SOURCES.SAVE_LOAD),
       },
       uninterrupted: options.verbosity >= 2 ? uninterrupted : summarize(uninterrupted),
       withSaveLoad: options.verbosity >= 2 ? withSaveLoad : summarize(withSaveLoad),
@@ -196,6 +209,8 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
     ok: match,
     exitClass: match ? 0 : 5,
     status: match ? 'pass' : 'parity-fail',
+    certifying: true,
+    nonPromoting: false,
     saveLoadAt,
     contract,
     authorizedEquivalence: authorized,
@@ -210,14 +225,14 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
     firstDivergentField: tickCompare.firstDivergentField,
     midCheckpointMismatch: midCompare.ok ? null : midCompare,
     equivalence: {
-      'uninterrupted-eq-save-load': {
+      'uninterrupted-eq-save-load': sealEquivalenceResult({
         ok: match,
         expected: h0,
         actual: h1,
         contract,
         intermediateOk,
         firstDivergentTick: tickCompare.firstDivergentTick,
-      },
+      }, EQUIVALENCE_EXECUTOR_SOURCES.SAVE_LOAD),
     },
     uninterrupted: options.verbosity >= 2 ? uninterrupted : summarize(uninterrupted),
     withSaveLoad: options.verbosity >= 2 ? withSaveLoad : summarize(withSaveLoad),

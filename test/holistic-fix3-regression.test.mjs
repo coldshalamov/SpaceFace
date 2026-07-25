@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 import { compareSaveLoad, compareTracesTickByTick } from '../src/testing/lab/saveLoadCompare.js';
-import { runLabScenario } from '../src/testing/lab/runScenario.js';
+import { runLabScenario, runLabScenarioInternal } from '../src/testing/lab/runScenario.js';
 import { evaluateOracles } from '../src/testing/lab/oracleEngine.js';
 import {
   validateSimScenario,

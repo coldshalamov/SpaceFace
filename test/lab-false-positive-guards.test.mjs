@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
-import { runLabScenario, validateLabScenario } from '../src/testing/lab/runScenario.js';
+import { runLabScenario, runLabScenarioInternal, validateLabScenario } from '../src/testing/lab/runScenario.js';
 import { compareSaveLoad } from '../src/testing/lab/saveLoadCompare.js';
 import { evaluateOracles } from '../src/testing/lab/oracleEngine.js';
 import {
@@ -84,7 +84,7 @@ test('FIX4: runner samples preserve NaN so invariant catches poisoned pose', asy
     },
   };
   const ticks = 20;
-  const result = await runLabScenario({
+  const result = await runLabScenarioInternal({
     ...flightDoc,
     id: 'flight.nan-poison',
     ticks,
@@ -119,7 +119,7 @@ test('FIX5: public-input massline packet produced by grammar.step (spy)', async 
     get command() { return real.command; },
   };
 
-  const result = await runLabScenario(orbitDoc, {
+  const result = await runLabScenarioInternal(orbitDoc, {
     verbosity: 2,
     masslineGrammar: spyGrammar,
   });
@@ -127,7 +127,12 @@ test('FIX5: public-input massline packet produced by grammar.step (spy)', async 
   assert.notEqual(result.exitClass, 4, JSON.stringify(result.validation || result.error));
   assert.ok(stepCalls >= orbitDoc.ticks, `grammar.step must run every tick, got ${stepCalls}`);
   // Packet source must not be the old hardcoded lab-public-intent path.
-  assert.equal(result.evidenceClass, 'public-input');
+  // O1: internal path forces evidenceClass internal-test; derived class is executionEvidenceClass.
+  assert.equal(result.nonPromoting, true);
+  assert.equal(
+    result.executionEvidenceClass || result.evidenceClass,
+    'public-input',
+  );
 });
 
 test('FIX5: public-input driver does not accept hardcoded massline packet override', () => {
@@ -216,7 +221,7 @@ test('FIX2: both arms failing the same oracle → comparison fails (not vacuous 
 test('FIX3: save/load without save system is unsupported (no no-op success)', async () => {
   // flight-fixed-input has no save-load checkpoint and flight bundle has no save system.
   // Force a mid-run restore request via options.
-  const result = await runLabScenario(flightDoc, {
+  const result = await runLabScenarioInternal(flightDoc, {
     verbosity: 1,
     saveLoadAt: 20,
     allowRuntimeCheckpoint: false,
@@ -283,7 +288,7 @@ test('FIX8: invariants evaluate every tick independent of sampleEvery', async ()
     },
   };
   const ticks = 20;
-  const result = await runLabScenario({
+  const result = await runLabScenarioInternal({
     ...flightDoc,
     id: 'flight.sparse-sample-nan',
     ticks,
@@ -308,12 +313,12 @@ test('FIX9: lab.entrySpeed overlay changes player speed', async () => {
     frames: (doc.frames || []).filter((f) => Number.isInteger(f.tick) && f.tick < ticks),
     inputEvents: (doc.inputEvents || []).filter((e) => Number.isInteger(e.tick) && e.tick < ticks),
   });
-  const base = await runLabScenario({
+  const base = await runLabScenarioInternal({
     ...trimTape(flightDoc),
     id: 'flight.overlay-base',
     parameterOverlay: undefined,
   }, { verbosity: 1 });
-  const withSpeed = await runLabScenario({
+  const withSpeed = await runLabScenarioInternal({
     ...trimTape(flightDoc),
     id: 'flight.overlay-speed',
     parameterOverlay: {
@@ -356,7 +361,7 @@ test('FIX10: authored attachment restLength is applied after create', async () =
       restLength: 90,
     }],
   };
-  const result = await runLabScenario(withRest, { verbosity: 2 });
+  const result = await runLabScenarioInternal(withRest, { verbosity: 2 });
   assert.notEqual(result.exitClass, 3, result.error);
   assert.ok(Number.isFinite(result.params.restLength0));
   // Allow small physics acceptance tolerance
@@ -381,7 +386,7 @@ test('FIX11: sanitizeCommand honors overlay maxImpulse bound', () => {
 });
 
 test('FIX11: lab.maxImpulse overlay clamps traced controller command', async () => {
-  const result = await runLabScenario({
+  const result = await runLabScenarioInternal({
     ...orbitDoc,
     id: 'massline.max-impulse-overlay',
     ticks: 20,
@@ -490,7 +495,7 @@ test('FIX13/14: lab.anchorMass and makeSample use attachment targetAlias, not in
   const expectedHeavyDistance = Math.abs(HEAVY_X - PLAYER_X);
   const decoyDistance = Math.abs(DECOY_X - PLAYER_X);
 
-  const result = await runLabScenario({
+  const result = await runLabScenarioInternal({
     schema: 'spaceface.simScenario.v1',
     id: 'massline.anchor-mass-target-alias',
     version: 1,
@@ -593,7 +598,7 @@ test('FIX13/14: lab.anchorMass and makeSample use attachment targetAlias, not in
 // ── FIX 15: anchorMass without resolvable target is not "applied" ───────────
 
 test('FIX15: lab.anchorMass with no resolvable target is rejected (not silent applied)', async () => {
-  const result = await runLabScenario({
+  const result = await runLabScenarioInternal({
     schema: 'spaceface.simScenario.v1',
     id: 'massline.anchor-mass-no-target',
     version: 1,
@@ -762,7 +767,7 @@ test('FIX16: validateLabScenario and runLabScenario both reject orphan lab.ancho
   assert.equal(schemaValidation.ok, false, 'validateSimScenario must fail for orphan lab.anchorMass');
   assertAnchorMassIssue(schemaValidation.issues, 'validateSimScenario');
 
-  const result = await runLabScenario(doc, {
+  const result = await runLabScenarioInternal(doc, {
     verbosity: 1,
     systems: [...FOCUSED_MASSLINE_SYSTEMS],
   });
@@ -929,19 +934,19 @@ test('FIX17: precompiled canonical with orphan lab.anchorMass is rejected via op
     },
   };
 
-  const result = await runLabScenario(cleanDoc, {
+  const result = await runLabScenarioInternal(cleanDoc, {
     verbosity: 1,
     systems: [...FOCUSED_MASSLINE_SYSTEMS],
     canonical: mutated,
   });
-  assert.equal(result.ok, false, 'runLabScenario(options.canonical) must reject orphan lab.anchorMass');
+  assert.equal(result.ok, false, 'runLabScenarioInternal(options.canonical) must reject orphan lab.anchorMass');
   assert.equal(result.exitClass, 4, 'canonical-path rejection must use invalid-config exit class');
   assert.equal(result.status, 'invalid-config');
   assert.ok(result.validation && result.validation.ok === false, 'must carry validation failure');
-  assertAnchorMassIssue((result.validation && result.validation.issues) || [], 'runLabScenario(options.canonical)');
+  assertAnchorMassIssue((result.validation && result.validation.issues) || [], 'runLabScenarioInternal(options.canonical)');
 
   // Direct hand-built canonical path (no compile involved).
-  const handBuilt = await runLabScenario({}, {
+  const handBuilt = await runLabScenarioInternal({}, {
     verbosity: 1,
     systems: [...FOCUSED_MASSLINE_SYSTEMS],
     canonical,

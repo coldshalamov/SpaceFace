@@ -86,161 +86,55 @@ test('compareCheckpoints unit: hash-only series', () => {
   assert.equal(d.lastMatchingTick, 1);
 });
 
-test('FIX2: Node oracle fail + matching Chromium series → arm-oracle-fail (not exit 0)', async () => {
+test('O4/FIX2: caller-supplied arm callbacks are rejected (cannot forge parity)', async () => {
+  // Architectural FIX11: fabricated arms with matching series can no longer certify.
   const compiled = compileSimScenario(shortDoc);
   assert.equal(compiled.ok, true);
-  const series = [
-    { tick: 14, hash: 'same', surface: { tick: 14 } },
-    { tick: 29, hash: 'same2', surface: { tick: 29 } },
-    { tick: 44, hash: 'same3', surface: { tick: 44 } },
-  ];
   const result = await runDifferentialReplay(shortDoc, {
     canonical: compiled.canonical,
     verbosity: 1,
     checkpointEvery: 15,
-    // Inject arms: Node fails oracle; Chromium "matches" with identical series + oracle pass.
     runNodeArm: async () => ({
-      ok: false,
-      exitClass: 1,
-      status: 'fail',
-      scenarioDigest: null, // filled after pin — override below via same digests in result path
-      inputDigest: null,
-      fingerprint: null,
-      oracle: {
-        ok: false,
-        firstBadTick: 10,
-        failed: [{ id: 'flight.finalSpeed', ok: false }],
-      },
-      checkpoints: {
-        mid: series.map((p) => ({
-          tick: p.tick,
-          deterministicCovered: { hash: p.hash, surface: p.surface },
-        })),
-      },
+      ok: true,
+      exitClass: 0,
+      status: 'pass',
+      oracle: { ok: true, firstBadTick: null, failed: [] },
+      checkpoints: { mid: [] },
       ticks: 45,
     }),
-    runChromiumArm: async (_can, opts) => ({
+    runChromiumArm: async () => ({
       ok: true,
       status: 'pass',
-      scenarioDigest: opts.scenarioDigest,
-      inputDigest: opts.inputDigest,
-      series,
-      finalHash: series.at(-1).hash,
-      fingerprint: null,
+      series: [],
       browserLaunches: 0,
-      durationMs: 1,
-      // FIX 7: Chromium must expose an explicit oracle; host-only success is insufficient.
       oracle: { ok: true, firstBadTick: null, failed: [] },
     }),
   });
 
-  // Pin digests on node arm result aren't needed — gate is ok flags.
-  assert.equal(result.ok, false, 'failed Node oracle must not promote parity pass');
-  assert.equal(result.status, 'arm-oracle-fail');
-  assert.equal(result.exitClass, 1);
-  assert.ok(Array.isArray(result.failedArms) && result.failedArms.includes('node'));
+  assert.equal(result.ok, false, 'injected arms must not certify');
+  assert.equal(result.status, 'invalid-config');
+  assert.equal(result.exitClass, 4);
+  assert.match(String(result.error || ''), /arm callback|does not accept caller-supplied/i);
   assert.notEqual(result.exitClass, 0);
 });
 
-test('FIX7: Chromium host success without oracle → arm-oracle-fail (not exit 0)', async () => {
-  // Host execution success + matching checkpoints must NOT certify parity without
-  // an explicit Chromium oracle pass (same engine Node uses).
-  const compiled = compileSimScenario(shortDoc);
-  assert.equal(compiled.ok, true);
-  const series = [
-    { tick: 14, hash: 'same', surface: { tick: 14 } },
-    { tick: 29, hash: 'same2', surface: { tick: 29 } },
-    { tick: 44, hash: 'same3', surface: { tick: 44 } },
-  ];
+test('O4: runNodeArm alone is rejected', async () => {
   const result = await runDifferentialReplay(shortDoc, {
-    canonical: compiled.canonical,
-    verbosity: 1,
-    checkpointEvery: 15,
-    runNodeArm: async () => ({
-      ok: true,
-      exitClass: 0,
-      status: 'pass',
-      scenarioDigest: null,
-      inputDigest: null,
-      fingerprint: null,
-      oracle: { ok: true, firstBadTick: null, failed: [] },
-      checkpoints: {
-        mid: series.map((p) => ({
-          tick: p.tick,
-          deterministicCovered: { hash: p.hash, surface: p.surface },
-        })),
-      },
-      ticks: 45,
-    }),
-    // Legacy false-positive shape: host ok, matching series, NO oracle field.
-    runChromiumArm: async (_can, opts) => ({
-      ok: true,
-      status: 'pass',
-      scenarioDigest: opts.scenarioDigest,
-      inputDigest: opts.inputDigest,
-      series,
-      finalHash: series.at(-1).hash,
-      fingerprint: null,
-      browserLaunches: 0,
-      durationMs: 1,
-      // oracle intentionally omitted
-    }),
+    verbosity: 0,
+    runNodeArm: async () => ({ ok: true, exitClass: 0, status: 'pass' }),
   });
-
-  assert.equal(result.ok, false, 'missing Chromium oracle must not promote parity pass');
-  assert.equal(result.status, 'arm-oracle-fail');
-  assert.equal(result.exitClass, 1);
-  assert.ok(result.failedArms.includes('chromium'));
-  assert.match(String(result.compare?.firstDivergence?.reason || ''), /oracle missing|oracle failed/i);
+  assert.equal(result.ok, false);
+  assert.equal(result.exitClass, 4);
+  assert.equal(result.status, 'invalid-config');
 });
 
-test('FIX7: Chromium oracle fail + matching series → arm-oracle-fail (not exit 0)', async () => {
-  const compiled = compileSimScenario(shortDoc);
-  assert.equal(compiled.ok, true);
-  const series = [
-    { tick: 14, hash: 'same', surface: { tick: 14 } },
-    { tick: 29, hash: 'same2', surface: { tick: 29 } },
-    { tick: 44, hash: 'same3', surface: { tick: 44 } },
-  ];
+test('O4: runChromiumArm alone is rejected', async () => {
   const result = await runDifferentialReplay(shortDoc, {
-    canonical: compiled.canonical,
-    verbosity: 1,
-    checkpointEvery: 15,
-    runNodeArm: async () => ({
-      ok: true,
-      exitClass: 0,
-      status: 'pass',
-      oracle: { ok: true, firstBadTick: null, failed: [] },
-      checkpoints: {
-        mid: series.map((p) => ({
-          tick: p.tick,
-          deterministicCovered: { hash: p.hash, surface: p.surface },
-        })),
-      },
-      ticks: 45,
-    }),
-    runChromiumArm: async (_can, opts) => ({
-      ok: false,
-      status: 'fail',
-      scenarioDigest: opts.scenarioDigest,
-      inputDigest: opts.inputDigest,
-      series,
-      finalHash: series.at(-1).hash,
-      browserLaunches: 0,
-      durationMs: 1,
-      oracle: {
-        ok: false,
-        firstBadTick: 12,
-        failed: [{ id: 'invariant.finiteState@1', ok: false }],
-      },
-    }),
+    verbosity: 0,
+    runChromiumArm: async () => ({ ok: true, status: 'pass', browserLaunches: 0 }),
   });
-
   assert.equal(result.ok, false);
-  assert.equal(result.status, 'arm-oracle-fail');
-  assert.equal(result.exitClass, 1);
-  assert.ok(result.failedArms.includes('chromium'));
-  assert.equal(result.chromium.oracle?.ok, false);
+  assert.equal(result.exitClass, 4);
 });
 
 test('FIX3: massline/attachment scenarios are unsupported for Chromium parity', async () => {

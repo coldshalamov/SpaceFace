@@ -7,7 +7,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdir, rm } from 'node:fs/promises';
 
-import { runLabScenario, assertAssertionsConsumed } from '../src/testing/lab/runScenario.js';
+import { runLabScenario, runLabScenarioInternal, assertAssertionsConsumed } from '../src/testing/lab/runScenario.js';
 import { evaluateOracles } from '../src/testing/lab/oracleEngine.js';
 import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
 import { getNodeSystemFactoryTable } from '../src/runtime/nodeSystemFactoryTable.js';
@@ -53,7 +53,7 @@ test('H1: production-profile lab step seeds process MAPS (travelBurn + massline2
   };
 
   const { FOCUSED_FLIGHT_SYSTEMS } = await import('../src/testing/lab/systemBundles.js');
-  const result = await runLabScenario(flightDoc, {
+  const result = await runLabScenarioInternal(flightDoc, {
     systems: [...FOCUSED_FLIGHT_SYSTEMS, probe],
     verbosity: 1,
   });
@@ -72,10 +72,13 @@ test('H2: focused lab never returns production-fixture even when authored', asyn
     id: 'h2.production-claim',
     evidenceClass: 'production-fixture',
   };
-  const result = await runLabScenario(authored, { verbosity: 1 });
+  const result = await runLabScenarioInternal(authored, { verbosity: 1 });
   assert.notEqual(result.exitClass, 3, result.error);
-  assert.notEqual(result.evidenceClass, 'production-fixture');
-  assert.equal(result.evidenceClass, 'focused-fixture');
+  // O1: internal path forces evidenceClass internal-test; derived class lives in executionEvidenceClass.
+  assert.equal(result.nonPromoting, true);
+  assert.equal(result.evidenceClass, 'internal-test');
+  assert.notEqual(result.executionEvidenceClass, 'production-fixture');
+  assert.equal(result.executionEvidenceClass, 'focused-fixture');
   assert.equal(result.authoredEvidenceClass, 'production-fixture');
   assert.equal(result.evidenceDemoted, true);
 });
@@ -168,7 +171,7 @@ test('H11: never assertion is consumed exactly once when oracle emits never:sign
       { kind: 'never', signal: 'tetherActive' },
     ],
   };
-  const result = await runLabScenario(doc, { verbosity: 2 });
+  const result = await runLabScenarioInternal(doc, { verbosity: 2 });
   assert.notEqual(result.exitClass, 3, result.error);
   assert.equal(result.oracle?.assertionConsumption?.ok, true,
     JSON.stringify(result.oracle?.assertionConsumption));
@@ -475,7 +478,7 @@ test('H10: keyboard-tape mid-run save/load does not crash the lab runner', async
       { kind: 'equivalence', equivalence: 'uninterrupted-eq-save-load' },
     ],
   };
-  const result = await runLabScenario(doc, { verbosity: 1, saveLoadAt: 12 });
+  const result = await runLabScenarioInternal(doc, { verbosity: 1, saveLoadAt: 12 });
   assert.notEqual(result.exitClass, 3, result.error || 'infra crash');
   assert.equal(result.params && result.params.saveLoadPerformed, true);
   assert.ok((result.params && result.params.saveLoadRestoreCount) >= 1);

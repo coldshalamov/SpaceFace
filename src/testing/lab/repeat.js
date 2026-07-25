@@ -1,8 +1,13 @@
 // Repeat: prove run==run (identical deterministic-covered + trace hashes).
 // G4: evaluate ALL equivalences the scenario declares — never silently pass unsupported ones.
+// O2: equivalence entries are sealed by this fixed parent executor only.
 
-import { runLabScenario } from './runScenario.js';
+import { runLabScenarioInternal } from './runScenario.js';
 import { compareSaveLoad } from './saveLoadCompare.js';
+import {
+  sealEquivalenceResult,
+  EQUIVALENCE_EXECUTOR_SOURCES,
+} from './equivalenceAuthority.js';
 
 const RUN_EQ_NAMES = new Set(['run-eq-repeat', 'run-eq-run', 'repeat']);
 const SAVE_LOAD_EQ_NAMES = new Set([
@@ -82,14 +87,17 @@ export async function repeatScenario(scenarioDoc, options = {}) {
           ok: !!saveLoad.ok,
           reason: saveLoad.status || 'save-load-compare',
         };
-      equivalence[name] = {
-        ok: !!eq.ok,
-        expected: eq.expected ?? true,
-        actual: eq.actual ?? eq.ok,
-        contract: eq.contract || saveLoad.contract,
-        firstDivergentTick: eq.firstDivergentTick ?? saveLoad.firstDivergentTick ?? null,
-        reason: eq.reason || (eq.ok ? undefined : saveLoad.status),
-      };
+      // Prefer already-sealed entry from compareSaveLoad; re-seal under repeat if needed.
+      equivalence[name] = eq && eq.source
+        ? eq
+        : sealEquivalenceResult({
+          ok: !!eq.ok,
+          expected: eq.expected ?? true,
+          actual: eq.actual ?? eq.ok,
+          contract: eq.contract || saveLoad.contract,
+          firstDivergentTick: eq.firstDivergentTick ?? saveLoad.firstDivergentTick ?? null,
+          reason: eq.reason || (eq.ok ? undefined : saveLoad.status),
+        }, EQUIVALENCE_EXECUTOR_SOURCES.REPEAT);
       if (!primary) primary = saveLoad.uninterrupted || null;
       if (!saveLoad.ok) {
         allOk = false;
@@ -100,13 +108,13 @@ export async function repeatScenario(scenarioDoc, options = {}) {
     }
 
     // G4: unsupported declared equivalence is incomplete/fail — never silent pass.
-    equivalence[name] = {
+    equivalence[name] = sealEquivalenceResult({
       ok: false,
       incomplete: true,
       expected: true,
       actual: 'unsupported',
       reason: `repeatScenario cannot evaluate equivalence "${name}" — unsupported or missing handler`,
-    };
+    }, EQUIVALENCE_EXECUTOR_SOURCES.REPEAT);
     allOk = false;
     exitClass = Math.max(exitClass, 4);
     status = status === 'pass' ? 'incomplete' : status;
@@ -117,6 +125,8 @@ export async function repeatScenario(scenarioDoc, options = {}) {
     ok: allOk,
     exitClass: allOk ? 0 : (exitClass || 5),
     status: allOk ? 'pass' : status,
+    certifying: true,
+    nonPromoting: false,
     runs,
     declaredEquivalences: declared,
     traceHash,
@@ -133,12 +143,16 @@ async function evaluateRunEqRepeat(scenarioDoc, options = {}) {
   const runs = Number.isInteger(options.runs) && options.runs > 1 ? options.runs : 2;
   const results = [];
   for (let i = 0; i < runs; i++) {
-    // Multi-run equivalence is owned by this repeat — arms skip deferred-eq incomplete.
-    const r = await runLabScenario(scenarioDoc, {
-      ...options,
+    // O1/O3: child arms use internal non-certifying path; parent seals the equivalence.
+    // Strip any caller-injected systems/equivalence/controller from parent options for arms.
+    const r = await runLabScenarioInternal(scenarioDoc, {
+      file: options.file,
+      verbosity: options.verbosity,
+      observerEnabled: options.observerEnabled,
       runId: options.runId ? `${options.runId}_r${i}` : undefined,
-      equivalence: {},
+      // Parent-owned multi-run — arms defer equivalence consumption.
       skipMultiRunEquivalence: true,
+      childArm: true,
     });
     results.push(r);
   }
@@ -156,7 +170,10 @@ async function evaluateRunEqRepeat(scenarioDoc, options = {}) {
       traceHash: first?.traceHash ?? null,
       deterministicHash: null,
       semanticHash: null,
-      equivalenceEntry: { ok: false, reason: 'primary-run-failed' },
+      equivalenceEntry: sealEquivalenceResult(
+        { ok: false, expected: true, actual: false, reason: 'primary-run-failed' },
+        EQUIVALENCE_EXECUTOR_SOURCES.REPEAT,
+      ),
     };
   }
 
@@ -202,6 +219,9 @@ async function evaluateRunEqRepeat(scenarioDoc, options = {}) {
     semanticHash: first.checkpoints && first.checkpoints.final
       && first.checkpoints.final.semantic
       && first.checkpoints.final.semantic.hash,
-    equivalenceEntry: { ok: allMatch, expected: true, actual: allMatch },
+    equivalenceEntry: sealEquivalenceResult(
+      { ok: allMatch, expected: true, actual: allMatch, runs, mismatches },
+      EQUIVALENCE_EXECUTOR_SOURCES.REPEAT,
+    ),
   };
 }

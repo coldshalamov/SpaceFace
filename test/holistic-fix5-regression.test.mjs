@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { compareSaveLoad } from '../src/testing/lab/saveLoadCompare.js';
-import { runLabScenario } from '../src/testing/lab/runScenario.js';
+import { runLabScenario, runLabScenarioInternal } from '../src/testing/lab/runScenario.js';
 import { evaluateOracles } from '../src/testing/lab/oracleEngine.js';
 import {
   validateCanonicalScenario,
@@ -74,7 +74,7 @@ test('I1: saveLoadAt past last post-restore tick fails', async () => {
 });
 
 test('I1: runLabScenario with saveLoadAt:999 fails at validation', async () => {
-  const result = await runLabScenario(saveLoadDoc, {
+  const result = await runLabScenarioInternal(saveLoadDoc, {
     verbosity: 1,
     saveLoadAt: 999,
   });
@@ -105,7 +105,7 @@ test('I1: normal save/load reports performed + restoreCount=1', async () => {
     }
   }
   // Direct run arm check:
-  const arm = await runLabScenario(saveLoadDoc, {
+  const arm = await runLabScenarioInternal(saveLoadDoc, {
     verbosity: 1,
     saveLoadAt: 40,
   });
@@ -209,7 +209,7 @@ test('I4: massline latch-reel fails with empty input', async () => {
     inputEvents: [],
     frames: [],
   };
-  const result = await runLabScenario(empty, { verbosity: 1 });
+  const result = await runLabScenarioInternal(empty, { verbosity: 1 });
   assert.equal(result.ok, false, 'empty input must not pass latch/reel causal assertions');
   assert.ok(
     (result.oracle?.failed?.length || 0) > 0
@@ -226,12 +226,12 @@ test('I4: massline orbit-assist fails with empty input', async () => {
     inputEvents: [],
     frames: [],
   };
-  const result = await runLabScenario(empty, { verbosity: 1 });
+  const result = await runLabScenarioInternal(empty, { verbosity: 1 });
   assert.equal(result.ok, false, 'empty input must not pass orbit-assist causal assertions');
 });
 
 test('I4: massline latch-reel with full input still passes causal assertions', async () => {
-  const result = await runLabScenario(latchDoc, { verbosity: 1 });
+  const result = await runLabScenarioInternal(latchDoc, { verbosity: 1 });
   assert.notEqual(result.exitClass, 3, result.error);
   assert.equal(result.ok, true, JSON.stringify(result.oracle?.failed || result.error));
   assert.equal(result.params?.attachmentActiveAtEnd, true);

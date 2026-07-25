@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
-import { runLabScenario } from '../src/testing/lab/runScenario.js';
+import { runLabScenario, runLabScenarioInternal } from '../src/testing/lab/runScenario.js';
 import { repeatScenario } from '../src/testing/lab/repeat.js';
 import { replayFailure } from '../src/testing/lab/replay.js';
 
@@ -28,8 +28,8 @@ test('run==repeat: identical trace and deterministic-covered hashes', async () =
 });
 
 test('observer-on produces identical authoritative checkpoints as observer-off', async () => {
-  const off = await runLabScenario(flightDoc, { observerEnabled: false, verbosity: 1 });
-  const on = await runLabScenario(flightDoc, { observerEnabled: true, verbosity: 1 });
+  const off = await runLabScenarioInternal(flightDoc, { observerEnabled: false, verbosity: 1 });
+  const on = await runLabScenarioInternal(flightDoc, { observerEnabled: true, verbosity: 1 });
   assert.equal(off.exitClass === 3, false, off.error);
   assert.equal(on.exitClass === 3, false, on.error);
   assert.equal(
@@ -63,7 +63,7 @@ test('failed oracle reports firstBadTick + quantitative delta', async () => {
       },
     ],
   };
-  const result = await runLabScenario(failing, { verbosity: 2 });
+  const result = await runLabScenarioInternal(failing, { verbosity: 2 });
   assert.equal(result.ok, false);
   assert.equal(result.exitClass, 1);
   assert.ok(result.oracle);
@@ -93,7 +93,7 @@ test('replay reproduces the failure fingerprint', async () => {
       { name: 'flight.finalSpeed', version: 1, threshold: { op: '<=', value: -1 } },
     ],
   };
-  const first = await runLabScenario(failing, { verbosity: 1 });
+  const first = await runLabScenarioInternal(failing, { verbosity: 1 });
   assert.equal(first.ok, false);
   assert.ok(first.failure && first.failure.failureFingerprint);
 

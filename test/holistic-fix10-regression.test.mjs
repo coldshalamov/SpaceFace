@@ -137,12 +137,33 @@ test('N2: bare { ok: true } equivalence object fails (no comparison payload)', (
   assert.equal(eq.injected, true);
 });
 
-test('N2: comparison result object from parent may pass', () => {
+test('N2: shape-only comparison result is rejected (O2 seal required)', () => {
+  // FIX11 O2: { ok, expected, actual } without fixed-executor seal is not proof.
   const oracle = evaluateOracles({
     trace: [{ tick: 0, playerX: 0, playerZ: 0, playerVelX: 0, playerVelZ: 0 }],
     assertions: [{ kind: 'equivalence', equivalence: 'run-eq-repeat' }],
     equivalence: {
       'run-eq-repeat': { ok: true, expected: true, actual: true },
+    },
+  });
+  assert.equal(oracle.ok, false, 'unsealed shape-only equivalence must not pass');
+  const eq = oracle.results.find((r) => r.family === 'equivalence');
+  assert.equal(eq.ok, false);
+  assert.equal(eq.injected, true);
+});
+
+test('N2: sealed comparison result from fixed parent executor may pass', async () => {
+  const { sealEquivalenceResult, EQUIVALENCE_EXECUTOR_SOURCES } = await import(
+    '../src/testing/lab/equivalenceAuthority.js'
+  );
+  const oracle = evaluateOracles({
+    trace: [{ tick: 0, playerX: 0, playerZ: 0, playerVelX: 0, playerVelZ: 0 }],
+    assertions: [{ kind: 'equivalence', equivalence: 'run-eq-repeat' }],
+    equivalence: {
+      'run-eq-repeat': sealEquivalenceResult(
+        { ok: true, expected: true, actual: true },
+        EQUIVALENCE_EXECUTOR_SOURCES.REPEAT,
+      ),
     },
   });
   assert.equal(oracle.ok, true);

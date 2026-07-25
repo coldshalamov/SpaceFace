@@ -164,11 +164,17 @@ registerMetric('flight.finalSpeed', 1, {
 });
 
 registerMetric('invariant.finiteState', 1, {
-  description: '1 if every sampled pose/vel is finite',
+  description: '1 if every sampled numeric authoritative field is finite (pose, vel, hull, cap, credits, …)',
   compute(trace) {
+    const fields = [
+      'playerX', 'playerZ', 'playerVelX', 'playerVelZ', 'playerRot',
+      'hull', 'cap', 'credits',
+      'distance', 'restLength', 'tension', 'radialSpeed', 'tangentialSpeed',
+      'angularSpeed', 'mtStrain', 'cmdX', 'cmdZ',
+    ];
     for (const s of trace) {
-      for (const k of ['playerX', 'playerZ', 'playerVelX', 'playerVelZ', 'distance', 'tension']) {
-        if (s[k] != null && !Number.isFinite(s[k])) return 0;
+      for (const k of fields) {
+        if (s[k] != null && typeof s[k] === 'number' && !Number.isFinite(s[k])) return 0;
       }
     }
     return 1;
@@ -176,12 +182,13 @@ registerMetric('invariant.finiteState', 1, {
 });
 
 registerMetric('invariant.noNegativeResources', 1, {
-  description: '1 if hull/cap never negative when present',
+  description: '1 if hull/cap/credits are finite and non-negative when present',
   compute(trace) {
     for (const s of trace) {
-      if (s.hull != null && s.hull < 0) return 0;
-      if (s.cap != null && s.cap < 0) return 0;
-      if (s.credits != null && s.credits < 0) return 0;
+      for (const k of ['hull', 'cap', 'credits']) {
+        if (s[k] == null) continue;
+        if (typeof s[k] === 'number' && (!Number.isFinite(s[k]) || s[k] < 0)) return 0;
+      }
     }
     return 1;
   },

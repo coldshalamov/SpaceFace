@@ -32,13 +32,110 @@ const OBSERVE_STIFFNESS = 90;
 const OBSERVE_BREAK = 10500000;
 
 /**
- * Validate + compile + run a scenario document (or precompiled canonical).
+ * PUBLIC certifying entry point — accepts ONLY a scenario document.
+ * Callers literally cannot inject systems, equivalence, skip flags, controllers, or digests.
+ * Multi-run equivalences are incomplete here (use lab repeat / compare / differential parents).
+ *
  * @param {object} scenarioDoc
- * @param {object} [options]
+ * @returns {Promise<object>} certifying lab run result (never nonPromoting)
  */
-export async function runLabScenario(scenarioDoc, options = {}) {
+export async function runLabScenario(scenarioDoc) {
+  // O1: reject any second-argument DI — even ignored options would re-open shape confusion.
+  if (arguments.length > 1 && arguments[1] != null) {
+    return {
+      schema: 'spaceface.labRunResult.v1',
+      ok: false,
+      exitClass: 4,
+      status: 'invalid-config',
+      certifying: false,
+      nonPromoting: false,
+      error: 'runLabScenario accepts only (scenarioDoc) — options injection is forbidden; '
+        + 'use runLabScenarioInternal for non-certifying tests, or lab repeat/compare for multi-run proof',
+    };
+  }
+  // Fixed internal call: zero DI seams. Digests, systems, oracles, equivalence all internal.
+  const internal = await runLabScenarioInternal(scenarioDoc, {});
+  return promoteCertifyingResult(internal);
+}
+
+/**
+ * Promote an internal (zero-DI) arm result to a certifying public result.
+ * Does NOT promote when multi-run equivalence was deferred or the arm is incomplete/fail.
+ */
+function promoteCertifyingResult(internal) {
+  if (!internal || typeof internal !== 'object') {
+    return {
+      schema: 'spaceface.labRunResult.v1',
+      ok: false,
+      exitClass: 3,
+      status: 'infra',
+      certifying: false,
+      nonPromoting: false,
+      error: 'internal runner returned no result',
+    };
+  }
+  // Restore execution-derived evidence class (internal forces evidenceClass: internal-test).
+  const evidenceClass = internal.executionEvidenceClass
+    || (internal.evidenceClass !== 'internal-test' ? internal.evidenceClass : 'focused-fixture');
+  const { nonPromoting: _np, executionEvidenceClass: _eec, ...rest } = internal;
+  return {
+    ...rest,
+    evidenceClass,
+    nonPromoting: false,
+    certifying: true,
+    // Public path never evaluates multi-run eq; deferred remains incomplete (non-zero exit).
+  };
+}
+
+/**
+ * Stamp every internal-path result so it cannot be mistaken for certification.
+ */
+function markNonPromoting(result) {
+  if (!result || typeof result !== 'object') {
+    return {
+      schema: 'spaceface.labRunResult.v1',
+      ok: false,
+      exitClass: 3,
+      status: 'infra',
+      nonPromoting: true,
+      certifying: false,
+      evidenceClass: 'internal-test',
+      error: 'internal runner returned no result',
+    };
+  }
+  const executionEvidenceClass = result.executionEvidenceClass != null
+    ? result.executionEvidenceClass
+    : (result.evidenceClass != null && result.evidenceClass !== 'internal-test'
+      ? result.evidenceClass
+      : null);
+  return {
+    ...result,
+    nonPromoting: true,
+    certifying: false,
+    evidenceClass: 'internal-test',
+    executionEvidenceClass,
+  };
+}
+
+/**
+ * INTERNAL non-certifying runner — injectable seams for unit tests and parent child-arms.
+ * Results are always marked nonPromoting / evidenceClass "internal-test".
+ * Parent executors (repeat, save/load, differential) compose these arms; they never certify alone.
+ *
+ * @param {object} scenarioDoc
+ * @param {object} [options] DI seams (systems, equivalence, skipMultiRunEquivalence, controller, …)
+ */
+export async function runLabScenarioInternal(scenarioDoc, options = {}) {
+  return markNonPromoting(await runLabScenarioInternalBody(scenarioDoc, options));
+}
+
+async function runLabScenarioInternalBody(scenarioDoc, options = {}) {
   const runId = options.runId || `run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const verbosity = options.verbosity ?? 1;
+  // Child-arm marker: parent will evaluate multi-run equivalence (O3).
+  const childArm = options.skipMultiRunEquivalence === true
+    || options.childArm === true
+    || options.nonPromoting === true;
 
   let canonical = options.canonical || null;
   if (!canonical) {
@@ -588,6 +685,8 @@ export async function runLabScenario(scenarioDoc, options = {}) {
     const exitClass = oracleOk ? 0 : (onlyDeferred ? 4 : 1);
     const status = oracleOk ? 'pass' : (onlyDeferred ? 'incomplete' : 'fail');
 
+    // O1: body returns execution fields; markNonPromoting wraps with internal-test.
+    // Arm-level ok/exitClass remain functional for parent composition (hashes, oracle status).
     const result = {
       schema: 'spaceface.labRunResult.v1',
       ok: oracleOk,
@@ -598,9 +697,11 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       seed: canonical.seed,
       ticks,
       evidenceClass: evidence.evidenceClass,
+      executionEvidenceClass: evidence.evidenceClass,
       authoredEvidenceClass: evidence.authored,
       evidenceNote: evidence.note,
       evidenceDemoted: evidence.demoted,
+      childArm: childArm || undefined,
       rendering: { detached: true },
       observerEnabled,
       scenarioDigest,
@@ -664,6 +765,9 @@ export async function runLabScenario(scenarioDoc, options = {}) {
     };
   }
 }
+
+/** @deprecated Use runLabScenarioInternal — alias for call-site migration. */
+export const runLabScenarioInjectable = runLabScenarioInternal;
 
 /**
  * Validate only (no runtime).

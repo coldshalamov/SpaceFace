@@ -6,10 +6,21 @@ export {
   compileSimScenario,
   SIM_SCENARIO_SCHEMA,
 } from '../../contracts/simScenarioSchema.js';
-export { runLabScenario, validateLabScenario, SIM_DT } from './runScenario.js';
+export {
+  runLabScenario,
+  runLabScenarioInternal,
+  validateLabScenario,
+  SIM_DT,
+} from './runScenario.js';
 export { repeatScenario } from './repeat.js';
 export { replayScenario, replayFailure } from './replay.js';
 export { compareSaveLoad } from './saveLoadCompare.js';
+export {
+  sealEquivalenceResult,
+  isAuthoritativeEquivalenceResult,
+  isPromotableLabResult,
+  EQUIVALENCE_EXECUTOR_SOURCES,
+} from './equivalenceAuthority.js';
 export {
   buildCheckpoints,
   buildSemanticCheckpoint,

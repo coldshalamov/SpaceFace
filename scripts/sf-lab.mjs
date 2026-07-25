@@ -116,12 +116,32 @@ async function cmdRun(scenarioRef, flags, verbosity) {
     emit({ schema: 'spaceface.labCliResult.v1', ok: false, exitClass: EXIT.INVALID, error: loaded.error }, verbosity);
     return EXIT.INVALID;
   }
-  const result = await runLabScenario(loaded.doc, {
-    file: loaded.path,
-    verbosity,
-    observerEnabled: flags.observer === true || flags['observer-on'] === true,
-    saveLoadAt: flags['save-load-at'] != null ? Number(flags['save-load-at']) : undefined,
-  });
+  // O1: public certifying path accepts only the scenario document — no DI.
+  // CLI flags that mutate execution (observer, save-load-at) require lab subcommands
+  // that own those concerns (repeat/compare) or are diagnostic non-certifying paths.
+  if (flags.observer === true || flags['observer-on'] === true
+    || flags['save-load-at'] != null) {
+    // Diagnostic override path: internal non-certifying only (never promote).
+    const { runLabScenarioInternal } = await import('../src/testing/lab/runScenario.js');
+    const result = await runLabScenarioInternal(loaded.doc, {
+      file: loaded.path,
+      verbosity,
+      observerEnabled: flags.observer === true || flags['observer-on'] === true,
+      saveLoadAt: flags['save-load-at'] != null ? Number(flags['save-load-at']) : undefined,
+    });
+    emit({
+      schema: 'spaceface.labCliResult.v1',
+      ok: result.ok,
+      exitClass: result.exitClass,
+      command: 'run',
+      scenario: loaded.path,
+      nonPromoting: true,
+      note: 'flagged lab run uses internal non-certifying path (observer/save-load-at)',
+      result: slimResult(result, verbosity),
+    }, verbosity);
+    return result.exitClass === 0 ? 4 : result.exitClass; // never exit 0 from nonPromoting flags path
+  }
+  const result = await runLabScenario(loaded.doc);
   emit({
     schema: 'spaceface.labCliResult.v1',
     ok: result.ok,
