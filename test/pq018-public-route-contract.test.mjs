@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import * as THREE from 'three';
@@ -38,11 +39,7 @@ test('broker manifest binds one serialized Browser/Electron campaign to the Cath
   assert.equal(manifest.authorizedBaseCommit, PQ018_AUTHORIZED_BASE_SHA);
   assert.equal(manifest.runtimeProfile, '1440x900-dark-reduced-motion-reduced-flash');
   assert.equal(manifest.commandArgs[0], 'scripts/probe-pq018-wreck-cathedral.mjs');
-  assert.equal(
-    PQ018_AUTHORIZED_BASE_SHA,
-    '7a8a0c7892e6583f73b42c21c9452559542d3d48',
-    'matched evidence must use the exact current pre-PQ-018 parent',
-  );
+  assert.match(PQ018_AUTHORIZED_BASE_SHA, /^[0-9a-f]{40}$/);
   assert.deepEqual(manifest.scenarioPaths, [
     '.devshots/pq018-wreck-cathedral/baseline/aggregate.json',
     '.devshots/pq018-wreck-cathedral/baseline/browser/evidence.json',
@@ -79,6 +76,47 @@ test('broker manifest binds one serialized Browser/Electron campaign to the Cath
   assert(manifest.harnessSourcePaths.includes(
     'scripts/build-pq018-wreck-cathedral-release.mjs',
   ));
+});
+
+test('the authorized base is the actual pre-PQ-018 parent, not a stale pin', () => {
+  const git = (...args) => {
+    try {
+      return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' }).trim();
+    } catch {
+      return null;
+    }
+  };
+  if (git('rev-parse', '--is-inside-work-tree') !== 'true') return; // not a checkout; nothing to prove
+
+  const base = PQ018_AUTHORIZED_BASE_SHA;
+  assert.equal(git('cat-file', '-t', base), 'commit', 'authorized base must exist in this repository');
+  assert.equal(
+    git('merge-base', '--is-ancestor', base, 'HEAD') !== null,
+    true,
+    'authorized base must be an ancestor of the candidate',
+  );
+
+  // A pre-PQ-018 parent cannot already contain the Cathedral.
+  assert.equal(
+    git('ls-tree', '--name-only', base, '--', 'src/data/wreckCathedralEvidenceCatalog.js'),
+    '',
+    'authorized base must predate the Cathedral implementation',
+  );
+
+  // The staleness catch: every commit between the base and the candidate must be PQ-018 work. If the
+  // candidate was rebased onto newer upstream commits without re-pinning, those foreign commits show
+  // up here and the matched baseline would be captured against the wrong tree.
+  const owned = /pq-?018|wreck[_-]?cathedral|worldsite|world-site|world_site/i;
+  const commits = (git('rev-list', `${base}..HEAD`) || '').split('\n').filter(Boolean);
+  assert(commits.length > 0, 'candidate must contain PQ-018 commits above the authorized base');
+  for (const sha of commits) {
+    const touched = git('show', '--pretty=format:', '--name-only', sha) || '';
+    assert(
+      touched.split('\n').some((file) => owned.test(file)),
+      `commit ${sha.slice(0, 8)} between the authorized base and HEAD is not PQ-018 work — `
+        + 'the base pin is stale and matched evidence would use the wrong tree',
+    );
+  }
 });
 
 test('validation broker CLI exposes the packet manifest without a package.json mutation', async () => {

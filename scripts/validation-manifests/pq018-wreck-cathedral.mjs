@@ -4,7 +4,10 @@
 import path from 'node:path';
 
 export const PQ018_FIXED_SEED = 18018;
-export const PQ018_AUTHORIZED_BASE_SHA = '7a8a0c7892e6583f73b42c21c9452559542d3d48';
+// The exact pre-PQ-018 parent this candidate sits on. Matched baseline evidence is captured at this
+// tree, so it must be re-pinned to the current parent whenever the candidate is rebased — otherwise
+// the baseline is captured at a stale tree and the matched comparison is meaningless.
+export const PQ018_AUTHORIZED_BASE_SHA = '167f36901bb206860427354ca1ed5a8d855152e5';
 
 export function createPq018WreckCathedralManifest(overrides = {}) {
   return {
