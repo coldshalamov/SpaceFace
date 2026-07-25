@@ -103,20 +103,22 @@ test('the authorized base is the actual pre-PQ-018 parent, not a stale pin', () 
     'authorized base must predate the Cathedral implementation',
   );
 
-  // The staleness catch: every commit between the base and the candidate must be PQ-018 work. If the
-  // candidate was rebased onto newer upstream commits without re-pinning, those foreign commits show
-  // up here and the matched baseline would be captured against the wrong tree.
-  const owned = /pq-?018|wreck[_-]?cathedral|worldsite|world-site|world_site/i;
+  // The staleness catch. The authorized base must sit at the fork point, so nothing above it may
+  // already be on master. A pin left behind by a rebase leaves the upstream commits the candidate
+  // was rebased onto sitting inside base..HEAD, and the matched baseline would then be captured
+  // against a tree that is missing them. Testing membership of master is what makes this robust:
+  // PQ-018 commits legitimately touch owner modules and program docs with no packet marker in the
+  // path, so classifying by filename cannot distinguish them from upstream work.
   const commits = (git('rev-list', `${base}..HEAD`) || '').split('\n').filter(Boolean);
   assert(commits.length > 0, 'candidate must contain PQ-018 commits above the authorized base');
-  for (const sha of commits) {
-    const touched = git('show', '--pretty=format:', '--name-only', sha) || '';
-    assert(
-      touched.split('\n').some((file) => owned.test(file)),
-      `commit ${sha.slice(0, 8)} between the authorized base and HEAD is not PQ-018 work — `
-        + 'the base pin is stale and matched evidence would use the wrong tree',
-    );
-  }
+  if (git('rev-parse', '--verify', '--quiet', 'master') === null) return; // no local master to compare
+  const upstream = commits.filter((sha) => git('merge-base', '--is-ancestor', sha, 'master') !== null);
+  assert.deepEqual(
+    upstream.map((sha) => git('log', '--oneline', '-1', sha)),
+    [],
+    'commits above the authorized base are already on master — the base pin is stale and matched '
+      + 'evidence would be captured against a tree missing them',
+  );
 });
 
 test('validation broker CLI exposes the packet manifest without a package.json mutation', async () => {

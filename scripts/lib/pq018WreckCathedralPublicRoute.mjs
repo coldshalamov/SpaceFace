@@ -639,14 +639,20 @@ async function ensureHullStabilized(page, timeoutMs) {
 }
 
 async function completeOperation(page, operation, timeoutMs, { recovering = false } = {}) {
-  if (!recovering && operation.componentId !== 'cathedral_hull') {
-    await ensureHullStabilized(page, timeoutMs);
-  }
   const worldRecordId = `${PQ018_SITE_ID}/component/${operation.componentId}`;
   await cycleToComponent(page, operation.componentId);
   await settleAtWorldRecord(page, worldRecordId, 110, 5, timeoutMs, {
     useAutopilot: true,
   });
+  // The crossing itself is what rams the hull, so the recovery check belongs after the approach,
+  // not before it. Re-stabilizing flies to the hull and back, which can ram again, so the target is
+  // re-acquired afterwards and the whole thing is bounded.
+  if (!recovering && operation.componentId !== 'cathedral_hull') {
+    if (await ensureHullStabilized(page, timeoutMs)) {
+      await cycleToComponent(page, operation.componentId);
+      await settleAtWorldRecord(page, worldRecordId, 110, 5, timeoutMs, { useAutopilot: true });
+    }
+  }
   await page.keyboard.down('KeyB');
   try {
     await page.waitForFunction(([siteId, operationId]) => !!(
