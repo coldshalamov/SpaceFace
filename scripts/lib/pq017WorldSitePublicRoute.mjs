@@ -11498,3 +11498,17 @@ function blocked(reason) {
 export function repoRelative(root, absolutePath) {
   return path.relative(root, absolutePath).replace(/\\/g, '/');
 }
+
+// Shared ordinary-control driver surface for later World Site packets. These helpers retain the
+// battle-tested PQ-017 flight controller and chart semantics, but accept world/component identities
+// from the caller. Site-specific state assertions remain in each packet's route.
+export const WORLD_SITE_PUBLIC_ROUTE_DRIVER = Object.freeze({
+  travelThroughOrdinaryGate,
+  cycleToComponent,
+  worldPosition,
+  settleAtWorldRecord,
+  flyToPoint,
+  releaseFlightKeys,
+  startPerformanceWindow,
+  finishPerformanceWindow,
+});

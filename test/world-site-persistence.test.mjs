@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { asteroidSites } from '../src/systems/asteroidSites.js';
 import { save } from '../src/save/saveSystem.js';
+import { WORLD_SITE_MANIFESTS } from '../src/data/worldSiteManifests.js';
 import {
   initializePresentationAdmission,
   PRESENTATION_ADMISSION,
@@ -10,6 +11,7 @@ import {
 } from '../src/core/presentationAdmission.js';
 
 const SITE_ID = 'world_site_helios_relay';
+const WORLD_SITE_IDS = WORLD_SITE_MANIFESTS.map((manifest) => manifest.id).sort();
 
 function makeBus() {
   const handlers = new Map();
@@ -78,7 +80,7 @@ function byWorldRecord(state, worldRecordId) {
 
 test('natural producer is duplicate-safe and leave/return rematerializes stable identities once', () => {
   const h = makeHarness();
-  assert.deepEqual(h.state.sites.worldOrder, [SITE_ID]);
+  assert.deepEqual(h.state.sites.worldOrder, WORLD_SITE_IDS);
   assert.equal(h.state.sites.worldById[SITE_ID].stageId, 'damaged');
 
   h.bus.emit('sector:enter', { sectorId: 'sector_helios_prime' });
@@ -363,7 +365,7 @@ test('payload/remediation state round-trips exactly and malformed old world coll
       ghost_site: { manifestId: 'ghost_site', worldObjectId: 'ghost_site' },
     },
   });
-  assert.deepEqual(h.state.sites.worldOrder, [SITE_ID]);
+  assert.deepEqual(h.state.sites.worldOrder, WORLD_SITE_IDS);
   assert.equal(h.state.sites.worldById.ghost_site, undefined);
   assert.equal(h.state.sites.worldById[SITE_ID].components.relay_core.status, 'damaged');
 });

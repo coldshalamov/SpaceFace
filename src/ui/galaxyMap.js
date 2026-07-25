@@ -1451,7 +1451,15 @@ export function buildSystemModel(state, sectorId, options = {}) {
     }
   }
   for (const marker of worldSiteMapMarkers(state, sid)) {
-    if (!points.some((point) => point.id === marker.id)) points.push(marker);
+    const staticIndex = points.findIndex((point) => point.id === marker.id);
+    if (staticIndex < 0) {
+      points.push(marker);
+      continue;
+    }
+    // One authored place identity may be present in both the static Atlas catalog and the durable
+    // World Site projection. Keep one point, but merge the live stage/ledger/history contract into
+    // it; suppressing the dynamic duplicate must never suppress its authoritative activity.
+    points[staticIndex] = Object.freeze({ ...points[staticIndex], ...marker });
   }
 
   // "You are here" at system scale. The SYSTEM model shipped without a player field at all, so the
