@@ -276,6 +276,11 @@ export async function runPq018WreckCathedralPublicRoute({
 
     const beforeSettlement = await snapshot(page);
     await deliverCathedralBlackBox(page, routeTimeout(180_000));
+    // Hauling a 140 t box across the wreck can clip the hull. Only `dark` has no prerequisites, so a
+    // single bump retracts stabilize_cathedral_hull and drops the stage from `archived` straight
+    // back to `dark` even though every other operation is still complete. Finish the job -- repair
+    // the hull -- before asserting the site reached its archived state.
+    await ensureHullStabilized(page, routeTimeout(120_000));
     await waitForFixedTicks(page, 1);
     const settled = await snapshot(page);
     assertCathedralSettlement(beforeSettlement, settled);
