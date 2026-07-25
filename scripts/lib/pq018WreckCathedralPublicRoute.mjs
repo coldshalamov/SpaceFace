@@ -286,15 +286,9 @@ export async function runPq018WreckCathedralPublicRoute({
     assertCathedralSettlement(beforeSettlement, settled);
     mark('settle_cathedral_black_box');
 
-    // Hauling the black box across the wreck can ram the hull, so the deliberate impact run has to
-    // start from a known-stabilized hull -- otherwise the failure assertion sees a hull that was
-    // already broken by the tow and cannot tell the staged impact from the accidental one.
-    await ensureHullStabilized(page, routeTimeout(120_000));
-
-    // Both the delivery and that repair leave the ship inside the wreck's own clearance envelope.
-    // The run-up planner needs a collision-clear first segment, so back out along the outward radial
-    // past the site's outer radius before staging the ram.
-    await withdrawToClearApproach(page, routeTimeout(120_000));
+    // The deliberate impact must start from a stabilized hull and a collision-clear standoff,
+    // otherwise the failure assertion cannot tell the staged ram from an accidental clip.
+    await prepareStabilizedRunUp(page, routeTimeout(120_000));
 
     const preImpact = await snapshot(page);
     assert.equal(
@@ -651,11 +645,33 @@ async function withdrawToClearApproach(page, timeoutMs) {
     return { x: centre.x + (dx / length) * radius, z: centre.z + (dz / length) * radius };
   }, [PQ018_FIXED_GLOBAL_POS, PQ018_CLEAR_APPROACH_RADIUS]);
   assert(outward, 'withdrawal requires a live player position');
+  // Leave slowly. A brisk departure through the wreck's own proxies lands above the 220 dp failure
+  // threshold and breaks the hull on the way out, which is the very state the run-up needs intact.
   await flyToPoint(page, outward, 140, timeoutMs, {
-    maxApproachSpeed: 40,
-    maxSettledSpeed: 9,
+    maxApproachSpeed: 14,
+    maxSettledSpeed: 6,
   });
   return outward;
+}
+
+async function cathedralHullStatus(page) {
+  return page.evaluate((siteId) => (
+    window.SF?.state?.sites?.worldById?.[siteId]?.components?.cathedral_hull?.status ?? null
+  ), PQ018_SITE_ID);
+}
+
+// The run-up needs two things at once: a stabilized hull and a collision-clear standoff. Repairing
+// requires flying back in, and leaving can clip the hull again, so neither order alone is reliable.
+// Alternate them until both hold, bounded.
+async function prepareStabilizedRunUp(page, timeoutMs) {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    await ensureHullStabilized(page, timeoutMs);
+    await withdrawToClearApproach(page, timeoutMs);
+    if (await cathedralHullStatus(page) === 'stabilized') return attempt;
+  }
+  throw new Error(
+    'NORMAL_ROUTE_BLOCKED: could not reach a clear run-up standoff with the hull still stabilized',
+  );
 }
 
 async function approachCathedralCoordinate(page, timeoutMs) {
