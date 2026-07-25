@@ -14,6 +14,7 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MANIFEST_LOADERS = {
   'massline-live': () => import('./validation-manifests/massline-live.mjs'),
   'pq017-world-site': () => import('./validation-manifests/pq017-world-site.mjs'),
+  'lab-chromium-parity': () => import('./validation-manifests/lab-chromium-parity.mjs'),
 };
 
 function parseArgs(argv) {
@@ -51,6 +52,7 @@ Usage:
 Manifests:
   massline-live
   pq017-world-site
+  lab-chromium-parity
 
 Environment on spawned probes:
   SF_BROKER_CLAIM   one-use claim path
@@ -76,7 +78,10 @@ async function main({ manifestId, issueClaimOnly, diagnostic, extraArgs }) {
   }
 
   const mod = await loader();
-  const rawManifest = mod.default ?? mod.masslineLiveManifest ?? mod.pq017WorldSiteManifest;
+  const rawManifest = mod.default
+    ?? mod.masslineLiveManifest
+    ?? mod.pq017WorldSiteManifest
+    ?? mod.labChromiumParityManifest;
   if (!rawManifest) {
     console.error(`[validation-broker] manifest module did not export a manifest: ${manifestId}`);
     process.exitCode = 1;

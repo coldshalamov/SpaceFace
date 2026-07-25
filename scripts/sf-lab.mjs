@@ -12,6 +12,7 @@ import { runLabScenario } from '../src/testing/lab/runScenario.js';
 import { repeatScenario } from '../src/testing/lab/repeat.js';
 import { replayScenario } from '../src/testing/lab/replay.js';
 import { compareSaveLoad } from '../src/testing/lab/saveLoadCompare.js';
+import { runDifferentialReplay } from '../src/testing/lab/differentialReplay.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const SCENARIO_DIR = join(ROOT, 'src/testing/scenarios');
@@ -169,13 +170,48 @@ async function cmdCompare(scenarioRef, flags, verbosity) {
     emit({ schema: 'spaceface.labCliResult.v1', ok: false, exitClass: EXIT.INVALID, error: loaded.error }, verbosity);
     return EXIT.INVALID;
   }
+
+  // Phase 4: --runtimes node,chromium → differential replay (manual-step host, not broker acceptance).
+  const runtimesRaw = flags.runtimes != null ? String(flags.runtimes) : null;
+  if (runtimesRaw) {
+    const runtimes = runtimesRaw.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+    const wantsNode = runtimes.includes('node');
+    const wantsChromium = runtimes.includes('chromium') || runtimes.includes('browser');
+    if (!wantsNode || !wantsChromium) {
+      emit({
+        schema: 'spaceface.labCliResult.v1',
+        ok: false,
+        exitClass: EXIT.INVALID,
+        error: 'compare --runtimes currently supports node,chromium (both required)',
+      }, verbosity);
+      return EXIT.INVALID;
+    }
+    const result = await runDifferentialReplay(loaded.doc, {
+      file: loaded.path,
+      verbosity,
+      checkpointEvery: flags['checkpoint-every'] != null ? Number(flags['checkpoint-every']) : undefined,
+      timeoutMs: flags.timeout != null ? Number(flags.timeout) : 120_000,
+    });
+    emit({
+      schema: 'spaceface.labCliResult.v1',
+      ok: result.ok,
+      exitClass: result.exitClass,
+      command: 'compare',
+      kind: 'node-chromium',
+      scenario: loaded.path,
+      result,
+      browserLaunches: result.browserLaunches | 0,
+    }, verbosity);
+    return result.exitClass;
+  }
+
   const kind = flags.kind || 'save-load';
   if (kind !== 'save-load') {
     emit({
       schema: 'spaceface.labCliResult.v1',
       ok: false,
       exitClass: EXIT.INVALID,
-      error: `unsupported compare kind: ${kind} (supported: save-load)`,
+      error: `unsupported compare kind: ${kind} (supported: save-load; or --runtimes node,chromium)`,
     }, verbosity);
     return EXIT.INVALID;
   }
@@ -330,6 +366,7 @@ Usage:
   sf lab run <scenario> [--verbosity 0-4] [--observer-on] [--save-load-at N]
   sf lab repeat <scenario> [--runs N]
   sf lab compare <scenario> [--kind save-load] [--save-load-at N]
+  sf lab compare <scenario> --runtimes node,chromium [--checkpoint-every N]
   sf lab replay <scenario> [--fingerprint <hex>]
   sf lab trace <scenario>
 

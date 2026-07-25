@@ -200,6 +200,15 @@ async function boot() {
       // test/asset-npc-authored-binding.test.mjs). Publishing the real contract is what stops
       // that divergence recurring: harnesses consume this, they do not re-derive it.
       window.SF.authoredVisualReadiness = () => authoredVisualReadiness(state);
+      // Phase 4 test-only live-route stepping bridge. Dynamic import lives inside SF_DEBUG_ONLY so
+      // production dropLabels strips the call and the bridge module never enters build/web.
+      import('./testing/lab/liveRouteBridge.js').then((mod) => {
+        try {
+          window.SF.labBridge = mod.installLiveRouteBridge(window.SF);
+        } catch (err) {
+          console.error('[SpaceFace] labBridge install failed', err);
+        }
+      }).catch((err) => console.error('[SpaceFace] labBridge import failed', err));
       console.log('[SpaceFace] booted -> main menu. seed=%d', seed);
     }
 

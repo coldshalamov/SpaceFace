@@ -84,8 +84,10 @@ export async function runLabScenario(scenarioDoc, options = {}) {
     }
   }
 
-  const scenarioDigest = sha256(canonicalStringify(canonical));
-  const inputDigest = hashInputTape(canonical.inputTape);
+  // options.scenarioDigest lets callers inject collection-only mid-checkpoints without
+  // changing the shared compiled-artifact identity (Phase 4 Node/Chromium parity).
+  const scenarioDigest = options.scenarioDigest || sha256(canonicalStringify(canonical));
+  const inputDigest = options.inputDigest || hashInputTape(canonical.inputTape);
   const observerEnabled = !!(options.observerEnabled ?? (canonical.observer && canonical.observer.enabled));
 
   let runtime = null;

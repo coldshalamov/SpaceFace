@@ -1,4 +1,4 @@
-// Deterministic Gameplay Lab — public surface (Phase 3).
+// Deterministic Gameplay Lab — public surface (Phase 3 + Phase 4).
 
 export {
   validateSimScenario,
@@ -10,7 +10,26 @@ export { runLabScenario, validateLabScenario, SIM_DT } from './runScenario.js';
 export { repeatScenario } from './repeat.js';
 export { replayScenario, replayFailure } from './replay.js';
 export { compareSaveLoad } from './saveLoadCompare.js';
-export { buildCheckpoints, buildSemanticCheckpoint, buildDeterministicCoveredCheckpoint } from './checkpoint.js';
+export {
+  buildCheckpoints,
+  buildSemanticCheckpoint,
+  buildDeterministicCoveredCheckpoint,
+  hashDeterministicSurface,
+} from './checkpoint.js';
+export {
+  buildDeterministicSurface,
+  DETERMINISTIC_COVERED,
+  DETERMINISTIC_OMITTED,
+  CHECKPOINT_COVERAGE_VERSION,
+} from './deterministicSurface.js';
+export { compareCheckpoints, localizeFirstDivergingTick, classifyDivergence } from './checkpointCompare.js';
+export { runDifferentialReplay, runChromiumDeterminismCheck } from './differentialReplay.js';
+export { runChromiumLabScenario, repeatChromiumLabScenario } from './chromiumHost.js';
+export {
+  installLiveRouteBridge,
+  LIVE_ROUTE_BRIDGE_API,
+  LIVE_ROUTE_BRIDGE_FORBIDDEN,
+} from './liveRouteBridge.js';
 export { evaluateOracles } from './oracleEngine.js';
 export { buildLabFailure } from './failureArtifact.js';
 export { createInputTapeDriver, normalizeTape } from './inputTape.js';
