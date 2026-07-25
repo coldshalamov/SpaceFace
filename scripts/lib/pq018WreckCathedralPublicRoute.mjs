@@ -281,6 +281,11 @@ export async function runPq018WreckCathedralPublicRoute({
     assertCathedralSettlement(beforeSettlement, settled);
     mark('settle_cathedral_black_box');
 
+    // Delivering the black box leaves the ship parked against the service spine, inside the wreck's
+    // own clearance envelope. The run-up planner needs a collision-clear first segment, so back out
+    // along the outward radial past the site's outer radius before staging the ram.
+    await withdrawToClearApproach(page, routeTimeout(120_000));
+
     const preImpact = await snapshot(page);
     await stageImpactRun(
       page,
@@ -616,6 +621,26 @@ async function navigateToCathedralThroughPublicMap(page, timeoutMs) {
     input: 'Star Map search -> Wreck Cathedral -> Track Target',
     target: { ...PQ018_FIXED_GLOBAL_POS },
   };
+}
+
+const PQ018_CLEAR_APPROACH_RADIUS = 720; // outside the site's ~568 wu outer radius
+
+async function withdrawToClearApproach(page, timeoutMs) {
+  const outward = await page.evaluate(([centre, radius]) => {
+    const state = window.SF?.state;
+    const player = state?.playerId != null ? state.entities?.get?.(state.playerId) : null;
+    if (!player?.pos) return null;
+    const dx = player.pos.x - centre.x;
+    const dz = player.pos.z - centre.z;
+    const length = Math.hypot(dx, dz) || 1;
+    return { x: centre.x + (dx / length) * radius, z: centre.z + (dz / length) * radius };
+  }, [PQ018_FIXED_GLOBAL_POS, PQ018_CLEAR_APPROACH_RADIUS]);
+  assert(outward, 'withdrawal requires a live player position');
+  await flyToPoint(page, outward, 140, timeoutMs, {
+    maxApproachSpeed: 40,
+    maxSettledSpeed: 9,
+  });
+  return outward;
 }
 
 async function approachCathedralCoordinate(page, timeoutMs) {
