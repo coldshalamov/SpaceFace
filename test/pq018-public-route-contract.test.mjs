@@ -260,6 +260,11 @@ test('matched performance is fail-closed on frame and bounded renderer growth', 
   const inheritedRedBaseline = sample(50, { geometries: 100, textures: 20, programs: 8 }, {
     calls: 110, triangles: 120_000,
   }, 200);
+  assert.equal(
+    evaluatePq018MatchedPerformance(green, inheritedRedBaseline).pass,
+    true,
+    'an inherited red baseline remains comparison evidence but cannot veto a green candidate',
+  );
   const unchangedInheritedRed = structuredClone(inheritedRedBaseline);
   assert.equal(
     evaluatePq018MatchedPerformance(unchangedInheritedRed, inheritedRedBaseline).pass,

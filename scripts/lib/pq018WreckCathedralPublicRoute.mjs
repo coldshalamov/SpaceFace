@@ -451,7 +451,7 @@ export function evaluatePq018MatchedPerformance(candidate, baseline) {
   const baselineWindow = baseline?.performance?.ceresApproach;
   const candidateFrames = candidateWindow?.frameTimes;
   const baselineFrames = baselineWindow?.frameTimes;
-  const validateWindow = (name, window) => {
+  const validateWindow = (name, window, { requireFloor = true } = {}) => {
     const frames = window?.frameTimes;
     const distribution = frames?.distributionMs;
     if (!(frames?.samples >= 30)) failures.push(`${name} requires at least 30 bounded frame samples`);
@@ -460,7 +460,9 @@ export function evaluatePq018MatchedPerformance(candidate, baseline) {
         failures.push(`${name} requires a finite frameTimes.distributionMs.${percentile}`);
       }
     }
-    if (frames?.floorP95BudgetMet !== true) failures.push(`${name} exceeds its hard p95 frame floor`);
+    if (requireFloor && frames?.floorP95BudgetMet !== true) {
+      failures.push(`${name} exceeds its hard p95 frame floor`);
+    }
     if (!window?.threeWebgl?.memory || !window?.threeWebgl?.render) {
       failures.push(`${name} requires Three/WebGL memory and render counters`);
       return;
@@ -481,7 +483,9 @@ export function evaluatePq018MatchedPerformance(candidate, baseline) {
   validateWindow('candidate Ceres approach', candidateWindow);
   validateWindow('candidate active operation', candidate?.performance?.activeOperation);
   validateWindow('candidate leave/return', candidate?.performance?.leaveReturn);
-  validateWindow('baseline Ceres approach', baselineWindow);
+  // The immutable before-state may expose an inherited machine/profile miss. It remains comparison
+  // evidence, but only the candidate is eligible for promotion and therefore owns the hard floor.
+  validateWindow('baseline Ceres approach', baselineWindow, { requireFloor: false });
   if (!(candidateFrames?.samples >= 30) || !(baselineFrames?.samples >= 30)) {
     failures.push('matched Ceres windows require at least 30 bounded frame samples each');
   }
