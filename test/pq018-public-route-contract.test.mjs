@@ -10,6 +10,7 @@ import { resolveGalaxyMapPrimaryAction } from '../src/ui/galaxyMap.js';
 import {
   evaluatePq018MatchedPerformance,
   PQ018_FIXED_GLOBAL_POS,
+  PQ018_ROOT_WORLD_ID,
   PQ018_ROUTE_SCHEMA,
 } from '../scripts/lib/pq018WreckCathedralPublicRoute.mjs';
 import { WORLD_SITE_PUBLIC_ROUTE_DRIVER } from '../scripts/lib/pq017WorldSitePublicRoute.mjs';

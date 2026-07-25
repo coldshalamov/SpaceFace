@@ -795,7 +795,7 @@ async function waitForSiteCleanup(page, trackedEntityIds, timeoutMs) {
 }
 
 async function snapshot(page) {
-  return page.evaluate((siteId) => {
+  return page.evaluate(([siteId, rootWorldRecordId]) => {
     const state = window.SF?.state;
     const render = window.SF?.registry?.get?.('render');
     const meshes = render?._meshes;
@@ -804,7 +804,7 @@ async function snapshot(page) {
     const entities = [...(state?.entities?.values?.() || [])]
       .filter((entity) => entity?.alive !== false && entity?.data?.worldSiteId === siteId);
     const ids = entities.map((entity) => entity.data?.worldRecordId).filter(Boolean);
-    const root = entities.find((entity) => entity.data?.worldRecordId === siteId);
+    const root = entities.find((entity) => entity.data?.worldRecordId === rootWorldRecordId);
     return {
       tick: state?.tick ?? null,
       seed: state?.meta?.seed ?? null,
@@ -817,7 +817,9 @@ async function snapshot(page) {
       residency: {
         entityIds: entities.map((entity) => entity.id).sort((a, b) => Number(a) - Number(b)),
         siteEntityCount: entities.length,
-        rootCount: entities.filter((entity) => entity.data?.worldRecordId === siteId).length,
+        rootCount: entities.filter(
+          (entity) => entity.data?.worldRecordId === rootWorldRecordId,
+        ).length,
         inertCount: entities.filter((entity) => entity.data?.worldSiteComponentId
           && entity.data?.worldSitePresentationAdmitted !== true).length,
         duplicateWorldRecordIds: [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))],
@@ -835,7 +837,7 @@ async function snapshot(page) {
       },
       events: JSON.parse(JSON.stringify(window.__PQ017_ROUTE__?.events || [])),
     };
-  }, PQ018_SITE_ID);
+  }, [PQ018_SITE_ID, PQ018_ROOT_WORLD_ID]);
 }
 
 function assertCathedralSettlement(before, after) {
