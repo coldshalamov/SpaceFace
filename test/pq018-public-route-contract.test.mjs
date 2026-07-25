@@ -154,9 +154,32 @@ test('the Cathedral public-map action follows the ordinary World Site POI contra
   assert.equal(action.kind, 'waypoint');
   assert.equal(action.label, 'Track Target');
   assert.equal(action.coursePayload.autopilot, true);
+  assert.equal(
+    action.coursePayload.targetWorldRecordId,
+    undefined,
+    'static Atlas POIs arm a coordinate waypoint; stable runtime identity binds after materialization',
+  );
   assert.deepEqual(
     { x: action.coursePayload.pos.x, z: action.coursePayload.pos.z },
     manifest.placement.pos,
+  );
+});
+
+test('the map route observes the coordinate waypoint actually written by the world owner', async () => {
+  const route = await readFile(
+    new URL('../scripts/lib/pq018WreckCathedralPublicRoute.mjs', import.meta.url),
+    'utf8',
+  );
+  const navigation = route.match(
+    /async function navigateToCathedralThroughPublicMap[\s\S]*?\r?\n}\r?\n\r?\nasync function approachCathedralCoordinate/,
+  )?.[0] || '';
+  assert.match(navigation, /waypointState\?\.label === label/);
+  assert.match(navigation, /waypointState\?\.pos\?\.x/);
+  assert.match(navigation, /waypointState\?\.pos\?\.z/);
+  assert.doesNotMatch(
+    navigation,
+    /targetWorldRecordId/,
+    'the actor cannot wait for stable runtime identity before the site materializes',
   );
 });
 
