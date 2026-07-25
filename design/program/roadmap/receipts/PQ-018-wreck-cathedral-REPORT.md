@@ -55,7 +55,41 @@ Reproduced deterministically in the kernel before any fix: after applying the im
 Confirmed fixed live: `lastBeamDenial` moved from `null` to
 `{verb:"extract", reason:"dependency-incomplete", targetId:323, tick:20039}`.
 
-## The blocker — shared-change request
+## The payload-latch blocker — resolved in the harness, not a shared change
+
+**Correction to an earlier revision of this receipt**, which called this a shared-change request
+against `tetherGameplay`. That was wrong: it traced the dead publisher without tracing what replaced
+it.
+
+Commit `4d00867e` (2026-07-24, the PQ-007 draw-to-fly restore) replaced `_consumeAcquisitionReceipt`
+with `_acquireCommandTarget`, which resolves the latch target at press time and prefers
+`state.player.targetId` outright:
+
+```js
+if (!nearestOnly && selected && !selectedDenial) return { entity: selected, ... };
+```
+
+So the **game path is correct** — the selection wins, and the diagnostic confirmed the payload was
+correctly selected. Only the **route harness** was stale, still waiting on a pre-latch receipt the new
+design deliberately never publishes. Fixed by waiting on the truthful precondition for the current
+design (payload selected, alive, inside tether reach), with the latch still verified after the press
+against the attached tether's `worldRecordId`. `scripts/lib/pq017WorldSitePublicRoute.mjs` is inside
+this packet's write set as a narrow extension of the PQ-017 route owner.
+
+**This unblocks PQ-017's payload latch as well** — both routes share the helper. PQ-017 is `integrated`
+but its route has been unable to latch a payload since 2026-07-24.
+
+### Residual, referred: the Massline pre-latch HUD preview is dead
+
+`src/ui/masslineHud.js:176` (`_updateAcquisitionPreview`) still reads `state.masslineAcquisition`,
+which is now permanently null, so that preview never renders. `_refreshAcquisitionPreview`
+(`tetherGameplay.js:282`) is orphaned with no call sites. `test/massline-acquisition-preview.test.mjs`
+was updated by the same commit to assert the field **is** null, so the removal was deliberate and
+codified rather than accidental — but the HUD branch and the builder were left behind as dead code.
+Not restored here: reinstating the preview would contradict tests that currently assert its absence,
+and that is a PQ-007 decision, not a PQ-018 one.
+
+## Historical: the original blocker analysis
 
 After the hull-recovery fix the route advanced from four operations to **six**, through
 `cut_cargo_clamp_forensics` and `repair_marker_service_spine`, and then stopped at payload delivery:
