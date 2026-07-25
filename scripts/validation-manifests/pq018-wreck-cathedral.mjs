@@ -4,7 +4,7 @@
 import path from 'node:path';
 
 export const PQ018_FIXED_SEED = 18018;
-export const PQ018_AUTHORIZED_BASE_SHA = '557903d7340683ca9e1bbf3d4ad20b3a28569237';
+export const PQ018_AUTHORIZED_BASE_SHA = '7a8a0c7892e6583f73b42c21c9452559542d3d48';
 
 export function createPq018WreckCathedralManifest(overrides = {}) {
   return {
@@ -17,6 +17,7 @@ export function createPq018WreckCathedralManifest(overrides = {}) {
       'node --test test/pq018-wreck-cathedral.test.mjs test/pq018-public-route-contract.test.mjs',
       'node --test test/world-site-presentation.test.mjs test/world-site-render-admission.test.mjs',
       'node scripts/check-pq018-baseline.mjs',
+      'node scripts/check-pq018-coordinate-reservation.mjs --write',
       'node scripts/check-asset-reachability.mjs',
       'npm run check:assets:live',
       'npm run check:visual-stability',
@@ -33,11 +34,13 @@ export function createPq018WreckCathedralManifest(overrides = {}) {
     regressionSourcePaths: [
       'test/pq018-wreck-cathedral.test.mjs',
       'test/pq018-public-route-contract.test.mjs',
+      'test/validation-broker.test.mjs',
       'test/world-site-presentation.test.mjs',
       'test/world-site-render-admission.test.mjs',
     ],
     productionSourcePaths: [
       'assets/ships/parts/parts_manifest.json',
+      'assets/ships/parts/places/place_landmark_wreck_cathedral.glb',
       'assets/ships/release/release_manifest.json',
       'assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb',
       'assets/ships/release/media/wreck-cathedral/neutral_gameplay_distance.png',
@@ -47,11 +50,37 @@ export function createPq018WreckCathedralManifest(overrides = {}) {
       'assets/ships/release/media/wreck-cathedral/wireframe_flythrough.png',
       'src/data/flavor/080-landmark-lore.js',
       'src/data/sectorAnchors.js',
+      'src/data/sectorCoordinates.js',
       'src/data/sectors.js',
       'src/data/worldSiteAssetBindings.js',
       'src/data/worldSiteManifests.js',
       'src/data/wreckCathedralEvidenceCatalog.js',
+      'src/contracts/evidenceSchemas.js',
+      'src/combat/attachments.js',
+      'src/core/constraints/masslineController.js',
+      'src/core/flight/propulsionCatalog.js',
+      'src/core/flight/propulsionKernel.js',
+      'src/core/gameState.js',
+      'src/core/loop.js',
+      'src/core/physics.js',
+      'src/core/physicsAuthority.js',
+      'src/core/registry.js',
+      'src/core/sim.js',
+      'src/render/partsLibrary.js',
+      'src/render/renderer.js',
+      'src/render/worldSitePresentation.js',
+      'src/save/saveSystem.js',
+      'src/systems/actions.js',
       'src/systems/asteroidSites.js',
+      'src/systems/collisionConsequences.js',
+      'src/systems/economy.js',
+      'src/systems/factions.js',
+      'src/systems/flightV3.js',
+      'src/systems/input.js',
+      'src/systems/mining.js',
+      'src/systems/ships.js',
+      'src/systems/tetherGameplay.js',
+      'src/systems/world.js',
       'src/systems/worldSiteKernel.js',
       'src/systems/worldSiteRuntime.js',
       'src/ui/galaxyMap.js',
@@ -59,6 +88,7 @@ export function createPq018WreckCathedralManifest(overrides = {}) {
     harnessSourcePaths: [
       'scripts/build-pq018-wreck-cathedral-release.mjs',
       'scripts/check-pq018-baseline.mjs',
+      'scripts/check-pq018-coordinate-reservation.mjs',
       'scripts/lib/alphaLiveBaselineContracts.mjs',
       'scripts/lib/alphaLiveBaselineElectronContracts.mjs',
       'scripts/lib/browser-issues.mjs',
@@ -66,6 +96,7 @@ export function createPq018WreckCathedralManifest(overrides = {}) {
       'scripts/lib/gameServer.cjs',
       'scripts/lib/load-playwright.mjs',
       'scripts/lib/pq017WorldSitePublicRoute.mjs',
+      'scripts/lib/pq018CoordinateReservation.mjs',
       'scripts/lib/pq018WreckCathedralPublicRoute.mjs',
       'scripts/lib/professionalTravelPublicRoute.mjs',
       'scripts/lib/validationBroker.mjs',
@@ -87,6 +118,8 @@ export function createPq018WreckCathedralManifest(overrides = {}) {
     claimSchema: 'spaceface.validation-broker-claim.v1',
     requireFastReceipt: false,
     requireBrokerClaim: true,
+    bindGitRevision: true,
+    authorizedBaseCommit: PQ018_AUTHORIZED_BASE_SHA,
     cleanupPolicy: 'kill-tree',
     ...overrides,
   };

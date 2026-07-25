@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -36,6 +37,7 @@ import {
 import { writeJsonAtomically } from '../scripts/lib/validationAtomicWrite.mjs';
 import {
   computeSourceSetDigest,
+  digestSourcePaths,
   deriveFailureIdentity,
 } from '../scripts/lib/validationFingerprint.mjs';
 import { MASSLINE_LIVE_FIXED_SEED } from '../scripts/validation-manifests/massline-live.mjs';
@@ -198,6 +200,16 @@ test('§3.4 source change invalidates receipt', async (t) => {
   });
   assert.equal(gate.pass, false);
   assert.equal(gate.reason, 'fast-receipt-source-digest-stale');
+});
+
+test('§3.4b binary source digests distinguish invalid UTF-8 byte sequences', async (t) => {
+  const root = await tempRoot(t);
+  const asset = path.join(root, 'candidate.glb');
+  await writeFile(asset, Buffer.from([0x80]));
+  const first = await digestSourcePaths(root, ['candidate.glb']);
+  await writeFile(asset, Buffer.from([0x81]));
+  const second = await digestSourcePaths(root, ['candidate.glb']);
+  assert.notEqual(first, second, 'candidate identity must hash exact bytes rather than decoded text');
 });
 
 test('§3.5 regression change can acknowledge latest failure fingerprint', async () => {
@@ -658,6 +670,65 @@ test('P2 FIX4: broker claim bound to candidate digests; source change rejects cl
   assert.equal(ok.ok, true, 'fresh claim must validate against current digests');
 
   await writeFile(path.join(root, srcRel), 'claim-v2-mutated\n', 'utf8');
+  const stale = await validateBrokerClaim({
+    outputRoot,
+    manifest,
+    tokenOrPath: issued.claimPath,
+    root,
+  });
+  assert.equal(stale.ok, false);
+  assert.equal(stale.reason, 'broker-claim-stale-digest');
+});
+
+test('exact-revision claims reject dirty declared paths and become stale after another commit', async (t) => {
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  const srcRel = 'declared-owner.js';
+  await writeFile(path.join(root, srcRel), 'owner-v1\n', 'utf8');
+  execFileSync('git', ['init'], { cwd: root, stdio: 'ignore', windowsHide: true });
+  execFileSync('git', ['-c', 'user.name=SpaceFace Tests', '-c', 'user.email=tests@spaceface.invalid',
+    'add', srcRel], { cwd: root, stdio: 'ignore', windowsHide: true });
+  execFileSync('git', ['-c', 'user.name=SpaceFace Tests', '-c', 'user.email=tests@spaceface.invalid',
+    'commit', '-m', 'fixture one'], { cwd: root, stdio: 'ignore', windowsHide: true });
+  const manifest = testManifest('out', {
+    id: 'revision-bound-probe',
+    productionSourcePaths: [srcRel],
+    requireBrokerClaim: true,
+    bindGitRevision: true,
+  });
+  const broker = createValidationBroker(manifest, { root, outputRoot });
+  const before = await broker.computeGateDigests();
+  assert.match(before.gitCommit, /^[0-9a-f]{40}$/);
+  const issued = await issueBrokerClaim({
+    outputRoot,
+    manifest,
+    digests: before,
+    receipt: createFastGateReceipt({
+      routeDigest: before.routeDigest,
+      regressionDigest: before.regressionDigest,
+      candidateDigest: before.candidateDigest,
+    }),
+  });
+
+  await writeFile(path.join(root, srcRel), 'owner-dirty\n', 'utf8');
+  await assert.rejects(
+    broker.computeGateDigests(),
+    /VALIDATION_ACCEPTANCE_WORKTREE_DIRTY/,
+    'acceptance authorization must reject dirty declared owner paths',
+  );
+  await writeFile(path.join(root, srcRel), 'owner-v1\n', 'utf8');
+  await writeFile(path.join(root, 'unrelated.txt'), 'new revision\n', 'utf8');
+  execFileSync('git', ['add', 'unrelated.txt'], {
+    cwd: root,
+    stdio: 'ignore',
+    windowsHide: true,
+  });
+  execFileSync('git', ['-c', 'user.name=SpaceFace Tests', '-c', 'user.email=tests@spaceface.invalid',
+    'commit', '-m', 'fixture two'], { cwd: root, stdio: 'ignore', windowsHide: true });
+  const after = await broker.computeGateDigests();
+  assert.notEqual(after.gitCommit, before.gitCommit);
+  assert.equal(after.productionDigest, before.productionDigest);
+  assert.notEqual(after.candidateDigest, before.candidateDigest);
   const stale = await validateBrokerClaim({
     outputRoot,
     manifest,

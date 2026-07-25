@@ -237,7 +237,9 @@ test('PQ-017 browser and Electron wrappers share one fail-closed public player r
   assert.match(route, /readyOperationId/);
   assert.match(route, /allowedDistance/);
   assert.match(route, /safety_coupler_impact/);
-  const impactStage = route.match(/async function stageImpactRun[\s\S]*?\n}\n\nasync function stageAwayFromWorldRecord/)?.[0] || '';
+  const impactStage = route.match(
+    /async function stageImpactRun[\s\S]*?\r?\n}\r?\n\r?\nasync function stageAwayFromWorldRecord/,
+  )?.[0] || '';
   assert.match(impactStage, /cycleToComponent\(page, componentId\)/,
     'impact staging must select the public component target');
   assert.match(impactStage, /positionPq017ImpactRunup/,
@@ -251,8 +253,13 @@ test('PQ-017 browser and Electron wrappers share one fail-closed public player r
   assert.doesNotMatch(impactStage, /engageSelectedTargetAutopilot/,
     'impact staging must not ask obstacle avoidance to enter a collision island before backing out');
   const impactPosition = route.match(
-    /async function positionPq017ImpactRunup[\s\S]*?\n}\n\nasync function stageAwayFromWorldRecord/,
+    /async function positionPq017ImpactRunup[\s\S]*?\r?\n}\r?\n\r?\nasync function stageAwayFromWorldRecord/,
   )?.[0] || '';
+  assert.match(
+    impactPosition,
+    /role === 'world_site_collision'[\s\S]*entity\?\.collides !== false/,
+    'impact staging must route around the same World Site collision envelope',
+  );
   assert.doesNotMatch(impactPosition, /passThrough:/,
     'high-speed impact staging must settle every ring waypoint without a tow-only inertial proof');
   assert.match(impactPosition,
@@ -261,7 +268,9 @@ test('PQ-017 browser and Electron wrappers share one fail-closed public player r
   assert.match(route, /const beforeImpact = await snapshot\(page\);\s*await ramWorldRecord/,
     'impact audit baseline must be captured immediately before the deliberate physical ram');
   assert.match(route, /ordinary impact staging must not damage the recovered World Site/);
-  const impactRun = route.match(/async function ramWorldRecord[\s\S]*?\n}\n\nasync function stageImpactRun/)?.[0] || '';
+  const impactRun = route.match(
+    /async function ramWorldRecord[\s\S]*?\r?\n}\r?\n\r?\nasync function stageImpactRun/,
+  )?.[0] || '';
   assert.match(impactRun, /keyboard\.up\('ShiftLeft'\)/,
     'the impact loop must explicitly exclude the discrete dash impulse');
   assert.doesNotMatch(impactRun, /control\.boost\s*\?\s*'down'/,
@@ -668,7 +677,11 @@ test('PQ-017 browser and Electron wrappers share one fail-closed public player r
     'payload delivery must reject any collateral World Site rollback immediately');
   assert.match(route, /attempt < 2/,
     'a missed physical approach may restage only within a hard attempt cap');
-  assert.match(route, /ramWorldRecord\(page, worldRecordId, timeoutMs, \{ attempt: attempt \+ 1 \}\)/);
+  assert.match(
+    route,
+    /return ramWorldRecord\(page, worldRecordId, timeoutMs, \{[\s\S]*?attempt: attempt \+ 1,[\s\S]*?siteId,[\s\S]*?componentId,[\s\S]*?rootWorldRecordId,[\s\S]*?standOff,[\s\S]*?expectedPreImpactStatus,[\s\S]*?\}\)/,
+    'bounded impact retry must preserve the generalized site/component/root identity and status gate',
+  );
   assert.match(route, /planPq017ImpactStaging/,
     'impact staging must deterministically plan the root-outward collision radial');
   assert.match(route, /keyboard\[control\.reverse \? 'down' : 'up'\]\('KeyS'\)/);

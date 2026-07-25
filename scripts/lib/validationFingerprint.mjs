@@ -30,16 +30,22 @@ export function sha256Hex(text) {
   return createHash('sha256').update(String(text ?? ''), 'utf8').digest('hex');
 }
 
-/** SHA-256 over stableJson of a relativePath → sourceText map. */
+/** SHA-256 over stableJson of a relativePath → exact-byte descriptor map. */
 export function computeSourceSetDigest(sources = {}) {
   return createHash('sha256').update(stableJson(sources)).digest('hex');
 }
 
 export async function readSourceSet(root, relativePaths = []) {
-  const entries = await Promise.all(relativePaths.map(async (relativePath) => [
-    relativePath,
-    await readFile(path.join(root, relativePath), 'utf8'),
-  ]));
+  const entries = await Promise.all(relativePaths.map(async (relativePath) => {
+    const bytes = await readFile(path.join(root, relativePath));
+    return [
+      relativePath,
+      {
+        bytes: bytes.byteLength,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+      },
+    ];
+  }));
   return Object.fromEntries(entries);
 }
 
@@ -129,6 +135,7 @@ export function deriveFailureIdentity(report = {}) {
 export function computeCandidateDigest({
   candidateId = null,
   buildId = null,
+  gitCommit = null,
   productionDigest = null,
   harnessDigest = null,
   scenarioDigest = null,
@@ -139,6 +146,7 @@ export function computeCandidateDigest({
   return computeSourceSetDigest({
     candidateId,
     buildId,
+    gitCommit,
     productionDigest,
     harnessDigest,
     scenarioDigest,
@@ -167,6 +175,8 @@ export function computeManifestDigest(manifest = {}) {
     artifactRoot: manifest.artifactRoot ?? null,
     fixedSeed: manifest.fixedSeed ?? null,
     receiptSchema: manifest.receiptSchema ?? null,
+    bindGitRevision: manifest.bindGitRevision === true,
+    authorizedBaseCommit: manifest.authorizedBaseCommit ?? null,
   };
   return computeSourceSetDigest(normalized);
 }

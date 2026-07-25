@@ -15,7 +15,12 @@ import {
 } from '../scripts/lib/pq018WreckCathedralPublicRoute.mjs';
 import { WORLD_SITE_PUBLIC_ROUTE_DRIVER } from '../scripts/lib/pq017WorldSitePublicRoute.mjs';
 import {
+  evaluatePq018CoordinateReservation,
+  PQ018_COORDINATE_ENVELOPE_RADIUS_WU,
+} from '../scripts/lib/pq018CoordinateReservation.mjs';
+import {
   createPq018WreckCathedralManifest,
+  PQ018_AUTHORIZED_BASE_SHA,
   PQ018_FIXED_SEED,
 } from '../scripts/validation-manifests/pq018-wreck-cathedral.mjs';
 
@@ -29,8 +34,15 @@ test('broker manifest binds one serialized Browser/Electron campaign to the Cath
   assert.equal(manifest.maxLaunchesPerCandidate, 1);
   assert.equal(manifest.fixedSeed, PQ018_FIXED_SEED);
   assert.equal(manifest.requireBrokerClaim, true);
+  assert.equal(manifest.bindGitRevision, true);
+  assert.equal(manifest.authorizedBaseCommit, PQ018_AUTHORIZED_BASE_SHA);
   assert.equal(manifest.runtimeProfile, '1440x900-dark-reduced-motion-reduced-flash');
   assert.equal(manifest.commandArgs[0], 'scripts/probe-pq018-wreck-cathedral.mjs');
+  assert.equal(
+    PQ018_AUTHORIZED_BASE_SHA,
+    '7a8a0c7892e6583f73b42c21c9452559542d3d48',
+    'matched evidence must use the exact current pre-PQ-018 parent',
+  );
   assert.deepEqual(manifest.scenarioPaths, [
     '.devshots/pq018-wreck-cathedral/baseline/aggregate.json',
     '.devshots/pq018-wreck-cathedral/baseline/browser/evidence.json',
@@ -40,6 +52,26 @@ test('broker manifest binds one serialized Browser/Electron campaign to the Cath
   assert(manifest.productionSourcePaths.includes(
     'assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb',
   ));
+  assert(manifest.productionSourcePaths.includes(
+    'assets/ships/parts/places/place_landmark_wreck_cathedral.glb',
+  ));
+  assert(manifest.productionSourcePaths.includes('src/render/partsLibrary.js'));
+  for (const ownerPath of [
+    'src/core/physics.js',
+    'src/core/registry.js',
+    'src/save/saveSystem.js',
+    'src/systems/economy.js',
+    'src/systems/factions.js',
+    'src/systems/flightV3.js',
+    'src/systems/input.js',
+    'src/systems/mining.js',
+    'src/systems/tetherGameplay.js',
+  ]) {
+    assert(
+      manifest.productionSourcePaths.includes(ownerPath),
+      `exact-revision manifest omits route owner ${ownerPath}`,
+    );
+  }
   assert(manifest.harnessSourcePaths.includes(
     'scripts/lib/pq018WreckCathedralPublicRoute.mjs',
   ));
@@ -83,10 +115,23 @@ test('the public route observes state but does not inject gameplay events or wri
   assert.match(route, /passThrough:\s*\{/);
   assert.match(route, /page\.keyboard\.down\('KeyB'\)/);
   assert.match(route, /page\.keyboard\.press\('F5'\)/);
+  for (const operationId of [
+    'extract_bridge_navigation_record',
+    'extract_registry_scan',
+    'repair_emergency_relay_clock',
+    'cut_cargo_clamp_forensics',
+    'repair_marker_service_spine',
+    'settle_cathedral_black_box',
+  ]) {
+    assert.match(route, new RegExp(operationId), `live route omits ${operationId}`);
+  }
+  assert.match(route, /deliverCathedralBlackBox/);
+  assert.match(route, /cathedral-hull-failed-by-player-impact/);
+  assert.match(route, /cathedral-hull-recovered/);
   assert.match(
     route,
-    /flyToPoint\(page, PQ018_FIXED_GLOBAL_POS, 120, routeTimeout\(360_000\)\)/,
-    'the matched baseline leg retains the reproduced cold-flight time budget',
+    /approachCathedralCoordinate\(page, routeTimeout\(360_000\)\)/,
+    'baseline and candidate must share one ordinary-control approach helper',
   );
   assert.doesNotMatch(route, /SF\?*\.state\s*=|state\.[A-Za-z0-9_.]+\s*=|bus\.emit\(/);
   assert.doesNotMatch(route, /debug|teleport|setPosition|currentSectorId\s*=(?!=)/i);
@@ -122,6 +167,31 @@ test('the baseline route uses the same canonical Ceres global coordinate as the 
   assert.deepEqual(PQ018_FIXED_GLOBAL_POS, { x: -11988, z: 10892 });
 });
 
+test('the 620 WU Cathedral reservation clears Ceres bodies, fields, traffic, and lanes', () => {
+  const receipt = evaluatePq018CoordinateReservation();
+  assert.equal(PQ018_COORDINATE_ENVELOPE_RADIUS_WU, 620);
+  assert.equal(receipt.pass, true, receipt.failures.join('; '));
+  assert.deepEqual(receipt.local, { x: 300, z: 2700 });
+  assert.deepEqual(receipt.global, PQ018_FIXED_GLOBAL_POS);
+  assert(receipt.minimumClearance > 0);
+  for (const requiredKind of [
+    'station-safe-body',
+    'gate-safe-body',
+    'asteroid-field',
+    'hazard-body',
+    'canonical-place',
+    'current-traffic-lane',
+    'conservative-transit-lane',
+    'sector-boundary',
+  ]) {
+    assert(
+      receipt.constraints.some((constraint) => constraint.kind === requiredKind),
+      `coordinate reservation omits ${requiredKind}`,
+    );
+  }
+  assert.match(receipt.receiptDigest, /^[0-9a-f]{64}$/);
+});
+
 test('the route observes the materialized root record rather than the durable site record', async () => {
   const manifest = worldSiteManifestById(SITE_ID);
   assert.equal(PQ018_ROOT_WORLD_ID, `${manifest.worldObjectId}/root`);
@@ -135,18 +205,21 @@ test('the route observes the materialized root record rather than the durable si
 });
 
 test('matched performance is fail-closed on frame and bounded renderer growth', () => {
+  const frameWindow = (p95, memory, render, hitches = 2) => ({
+    frameTimes: {
+      samples: 80,
+      distributionMs: { p95, p99: p95 + 2, max: p95 + 4 },
+      hitchesOverThreshold: hitches,
+      floorP95BudgetMs: 34,
+      floorP95BudgetMet: p95 <= 34,
+    },
+    threeWebgl: { memory, render },
+  });
   const sample = (p95, memory, render, hitches = 2) => ({
     performance: {
-      ceresApproach: {
-        frameTimes: {
-          samples: 80,
-          distributionMs: { p95 },
-          hitchesOverThreshold: hitches,
-          floorP95BudgetMs: 34,
-          floorP95BudgetMet: p95 <= 34,
-        },
-        threeWebgl: { memory, render },
-      },
+      ceresApproach: frameWindow(p95, memory, render, hitches),
+      activeOperation: frameWindow(p95, memory, render, hitches),
+      leaveReturn: frameWindow(p95, memory, render, hitches),
     },
   });
   const baseline = sample(12, { geometries: 100, textures: 20, programs: 8 }, {
@@ -168,14 +241,30 @@ test('matched performance is fail-closed on frame and bounded renderer growth', 
   const fabricatedOldShape = structuredClone(green);
   fabricatedOldShape.performance.ceresApproach.frameTimes = { samples: 80, p95: 1 };
   assert.equal(evaluatePq018MatchedPerformance(fabricatedOldShape, baseline).pass, false);
+  const missingLifecycleWindow = structuredClone(green);
+  delete missingLifecycleWindow.performance.leaveReturn;
+  assert.equal(evaluatePq018MatchedPerformance(missingLifecycleWindow, baseline).pass, false);
+  const missingRendererCounters = structuredClone(green);
+  missingRendererCounters.performance.activeOperation.threeWebgl = { memory: {}, render: {} };
+  const missingRendererEvaluation = evaluatePq018MatchedPerformance(
+    missingRendererCounters,
+    baseline,
+  );
+  assert.equal(missingRendererEvaluation.pass, false);
+  assert(
+    missingRendererEvaluation.failures.some((failure) => (
+      failure.includes('Three/WebGL memory.geometries')
+    )),
+    'empty renderer objects must fail closed rather than producing NaN growth',
+  );
   const inheritedRedBaseline = sample(50, { geometries: 100, textures: 20, programs: 8 }, {
     calls: 110, triangles: 120_000,
   }, 200);
   const unchangedInheritedRed = structuredClone(inheritedRedBaseline);
   assert.equal(
     evaluatePq018MatchedPerformance(unchangedInheritedRed, inheritedRedBaseline).pass,
-    true,
-    'a packet may preserve an inherited red floor but may not regress it',
+    false,
+    'route acceptance cannot pass while the candidate remains over the hard frame floor',
   );
   assert.equal(
     evaluatePq018MatchedPerformance(unchangedInheritedRed, inheritedRedBaseline)
@@ -193,6 +282,9 @@ test('probe promotion is campaign-atomic and exact-digest-bound', async () => {
   assert.match(probe, /assert\(candidateDigest,/);
   assert.match(probe, /DIAGNOSTIC \? 'diagnostic' : 'accepted'/);
   assert.match(probe, /promote\(campaignStaging, modeRoot\)/);
+  assert.match(probe, /coordinateReservation/);
+  assert.match(probe, /performanceComparisonScope/);
+  assert.match(probe, /absoluteFloor:/);
   assert.doesNotMatch(probe, /promote\(staging, cellRoot\)/);
 });
 

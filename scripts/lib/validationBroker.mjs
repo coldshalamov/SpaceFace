@@ -3,6 +3,7 @@
 // PQ-017 keeps its public API via scripts/lib/pq017ProbeIterationGuard.mjs compatibility wrappers.
 
 import { randomBytes } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -327,7 +328,61 @@ function normalizeManifest(manifest = {}) {
     // When true, acceptance launches need an explicit broker claim token
     // (in addition to / instead of an on-disk fast-gate receipt claim).
     requireBrokerClaim: manifest.requireBrokerClaim === true,
+    // High-cost acceptance campaigns may bind every claim to the actual clean Git revision.
+    bindGitRevision: manifest.bindGitRevision === true,
+    authorizedBaseCommit: manifest.authorizedBaseCommit ?? null,
   };
+}
+
+function resolveGitRevisionBinding(root, manifest) {
+  if (!manifest.bindGitRevision) {
+    return { gitCommit: null, authorizedBaseCommit: manifest.authorizedBaseCommit ?? null };
+  }
+  let gitCommit;
+  try {
+    gitCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: root,
+      encoding: 'utf8',
+      windowsHide: true,
+    }).trim();
+  } catch (error) {
+    throw new Error(`VALIDATION_GIT_REVISION_UNAVAILABLE:${error?.message || error}`);
+  }
+  if (!/^[0-9a-f]{40}$/i.test(gitCommit)) {
+    throw new Error(`VALIDATION_GIT_REVISION_INVALID:${gitCommit || 'empty'}`);
+  }
+  if (manifest.authorizedBaseCommit) {
+    try {
+      execFileSync(
+        'git',
+        ['merge-base', '--is-ancestor', manifest.authorizedBaseCommit, gitCommit],
+        { cwd: root, stdio: 'ignore', windowsHide: true },
+      );
+    } catch {
+      throw new Error(
+        `VALIDATION_GIT_BASE_MISMATCH:${manifest.authorizedBaseCommit}:${gitCommit}`,
+      );
+    }
+  }
+  const acceptancePaths = [...new Set([
+    ...manifest.productionSourcePaths,
+    ...manifest.regressionSourcePaths,
+    ...manifest.harnessSourcePaths,
+  ])].sort();
+  let dirty = '';
+  try {
+    dirty = execFileSync(
+      'git',
+      ['status', '--porcelain=v1', '--untracked-files=all', '--', ...acceptancePaths],
+      { cwd: root, encoding: 'utf8', windowsHide: true },
+    ).trim();
+  } catch (error) {
+    throw new Error(`VALIDATION_GIT_CLEANLINESS_UNAVAILABLE:${error?.message || error}`);
+  }
+  if (dirty) {
+    throw new Error(`VALIDATION_ACCEPTANCE_WORKTREE_DIRTY:${dirty.split(/\r?\n/)[0]}`);
+  }
+  return { gitCommit, authorizedBaseCommit: manifest.authorizedBaseCommit ?? null };
 }
 
 export function createValidationBroker(rawManifest, options = {}) {
@@ -442,9 +497,11 @@ export async function computeGateDigestsFromManifest({ root, manifest: rawManife
     runtimeKind: manifest.runtimeKind,
   });
   const manifestDigest = computeManifestDigest(manifest);
+  const revision = resolveGitRevisionBinding(root, manifest);
   const candidateDigest = computeCandidateDigest({
     candidateId: manifest.id,
     buildId: process.env.SF_BUILD_ID ?? null,
+    gitCommit: revision.gitCommit,
     productionDigest,
     harnessDigest,
     scenarioDigest,
@@ -464,6 +521,8 @@ export async function computeGateDigestsFromManifest({ root, manifest: rawManife
     profileDigest,
     manifestDigest,
     candidateDigest,
+    gitCommit: revision.gitCommit,
+    authorizedBaseCommit: revision.authorizedBaseCommit,
     buildDigest: shaOfBuildEnv(),
   };
 }

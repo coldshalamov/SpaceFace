@@ -33,10 +33,15 @@ export function validateWorldSiteManifest(manifest) {
     && !(Number.isFinite(manifest.visualRoot.visualRadius) && manifest.visualRoot.visualRadius > 0)) {
     add('visual-radius-invalid', '$.visualRoot.visualRadius');
   }
+  if (manifest.visualRoot?.componentProxyPresentation != null
+    && manifest.visualRoot.componentProxyPresentation !== 'hidden') {
+    add('component-proxy-presentation-invalid', '$.visualRoot.componentProxyPresentation');
+  }
 
   const components = array(manifest.components);
   const operations = array(manifest.operations);
   const proxies = array(manifest.proxies);
+  const collisionProxies = array(manifest.collisionProxies);
   const payloads = array(manifest.payloads);
   const receivers = array(manifest.receivers);
   const stages = array(manifest.stages);
@@ -48,11 +53,19 @@ export function validateWorldSiteManifest(manifest) {
   if (operations.length < 1 || operations.length > WORLD_SITE_LIMITS.maxOperations) add('operation-limit', '$.operations');
   if (payloads.length > WORLD_SITE_LIMITS.maxPayloads) add('payload-limit', '$.payloads');
   if (receivers.length > WORLD_SITE_LIMITS.maxReceivers) add('receiver-limit', '$.receivers');
-  if (1 + proxies.length + payloads.length > WORLD_SITE_LIMITS.maxEntities) add('entity-limit', '$.proxies');
+  if (1 + proxies.length + collisionProxies.length + payloads.length > WORLD_SITE_LIMITS.maxEntities) {
+    add('entity-limit', '$.collisionProxies');
+  }
 
   const componentIds = collectIds(components, 'component', add);
   const operationIds = collectIds(operations, 'operation', add);
   const proxyIds = collectIds(proxies, 'proxy', add);
+  const collisionProxyIds = collectIds(
+    collisionProxies,
+    'collisionProxy',
+    add,
+    'collisionProxies',
+  );
   const payloadIds = collectIds(payloads, 'payload', add);
   const receiverIds = collectIds(receivers, 'receiver', add);
   const stageIds = collectIds(stages, 'stage', add);
@@ -60,6 +73,7 @@ export function validateWorldSiteManifest(manifest) {
   const requestStreamIds = collectIds(requestStreams, 'requestStream', add);
   collectIds(failureTriggers, 'failureTrigger', add);
   void proxyIds;
+  void collisionProxyIds;
   void stageIds;
   const evidencePageIds = new Set();
 
@@ -96,6 +110,18 @@ export function validateWorldSiteManifest(manifest) {
       }
     }
   }
+  for (let i = 0; i < collisionProxies.length; i += 1) {
+    const proxy = collisionProxies[i] || {};
+    if (!nonEmpty(proxy.anchorId)) {
+      add('collision-proxy-anchor-missing', `$.collisionProxies[${i}].anchorId`);
+    }
+    if (!validProxy(proxy) || proxy.bodyType !== 'solid' || proxy.bodyTypeByStatus != null) {
+      add('collision-proxy-incompatible', `$.collisionProxies[${i}]`);
+    }
+    if (proxy.failureComponentId != null && !componentIds.has(proxy.failureComponentId)) {
+      add('collision-proxy-failure-component-missing', `$.collisionProxies[${i}].failureComponentId`);
+    }
+  }
   const proxyBindings = new Set();
   for (const component of components) {
     const matches = proxies.filter((proxy) => proxy.componentId === component.id);
@@ -105,6 +131,14 @@ export function validateWorldSiteManifest(manifest) {
     const proxy = proxies[i];
     const binding = `${proxy.anchorId}|${finite(proxy.offset && proxy.offset.x)}|${finite(proxy.offset && proxy.offset.z)}`;
     if (proxyBindings.has(binding)) add('proxy-binding-duplicate', `$.proxies[${i}]`, binding);
+    proxyBindings.add(binding);
+  }
+  for (let i = 0; i < collisionProxies.length; i += 1) {
+    const proxy = collisionProxies[i];
+    const binding = `${proxy.anchorId}|${finite(proxy.offset && proxy.offset.x)}|${finite(proxy.offset && proxy.offset.z)}`;
+    if (proxyBindings.has(binding)) {
+      add('collision-proxy-binding-duplicate', `$.collisionProxies[${i}]`, binding);
+    }
     proxyBindings.add(binding);
   }
 
@@ -194,6 +228,11 @@ export function validateWorldSiteManifest(manifest) {
   for (let i = 0; i < proxies.length; i += 1) {
     if (stageBindings.some((binding) => !binding.sockets[proxies[i].anchorId])) {
       add('proxy-socket-binding-missing', `$.proxies[${i}].anchorId`);
+    }
+  }
+  for (let i = 0; i < collisionProxies.length; i += 1) {
+    if (stageBindings.some((binding) => !binding.sockets[collisionProxies[i].anchorId])) {
+      add('collision-proxy-socket-binding-missing', `$.collisionProxies[${i}].anchorId`);
     }
   }
   if (!stages.length) add('stage-limit', '$.stages');
@@ -377,11 +416,11 @@ export function normalizeWorldSiteRecord(manifest, value, opts = {}) {
     if (!operation.evidencePageId) continue;
     const completed = next.completedOperations[operation.id];
     if (!completed) continue;
-    const prior = value.evidenceReceiptsByPageId && value.evidenceReceiptsByPageId[operation.evidencePageId];
-    const evidence = validEvidenceReceipt(manifest, operation, completed, prior)
-      ? clonePlain(prior)
-      : evidenceReceiptForOperation(manifest, operation, completed);
-    next.evidenceReceiptsByPageId[operation.evidencePageId] = evidence;
+    next.evidenceReceiptsByPageId[operation.evidencePageId] = evidenceReceiptForOperation(
+      manifest,
+      operation,
+      completed,
+    );
   }
   next.evidenceRevision = Object.keys(next.evidenceReceiptsByPageId).length;
 
@@ -635,6 +674,23 @@ export function planWorldSiteMaterialization(manifest, record) {
       label: component.label,
     };
   });
+  const collisionProxies = array(manifest.collisionProxies).map((proxy) => {
+    const offset = rotatedOffset(socketLocalOffset(binding, proxy, stage.scale), manifest.placement.rot);
+    return {
+      worldRecordId: `${manifest.worldObjectId}/collision/${proxy.id}`,
+      type: 'wreck',
+      proxyId: proxy.id,
+      proxyRole: 'collision',
+      failureComponentId: proxy.failureComponentId || null,
+      pos: { x: origin.x + finite(offset.x), z: origin.z + finite(offset.z) },
+      radius: proxyRadius(proxy) * root.scale,
+      bodyType: 'solid',
+      shape: proxy.shape,
+      proxy: clonePlain(proxy),
+      status: 'solid',
+      label: `${manifest.name} collision envelope`,
+    };
+  });
   const payloads = manifest.payloads
     .filter((payload) => record.payloads[payload.id] && record.payloads[payload.id].status === 'released')
     .map((payload) => {
@@ -652,9 +708,17 @@ export function planWorldSiteMaterialization(manifest, record) {
         salvagePool: clonePlain(payload.salvagePool || {}),
       };
     });
-  const entities = [root, ...components, ...payloads];
+  const entities = [root, ...components, ...collisionProxies, ...payloads];
   if (entities.length > WORLD_SITE_LIMITS.maxEntities) throw new RangeError('World Site materialization exceeds entity limit');
-  return { siteId: manifest.id, stageId, root, components, payloads, entities };
+  return {
+    siteId: manifest.id,
+    stageId,
+    root,
+    components,
+    collisionProxies,
+    payloads,
+    entities,
+  };
 }
 
 export function worldSiteProxyBodyType(proxy, status) {
@@ -752,23 +816,6 @@ function evidenceReceiptForOperation(manifest, operation, completed) {
   };
 }
 
-function validEvidenceReceipt(manifest, operation, completed, receipt) {
-  return isPlainObject(receipt)
-    && receipt.receiptId === operation.evidencePageId
-    && receipt.pageId === operation.evidencePageId
-    && receipt.revision === operation.evidenceRevision
-    && receipt.earnedTick === finiteTick(completed.tick)
-    && receipt.earnedAtS === finiteNonNegative(completed.earnedAtS, finiteTick(completed.tick) / 60)
-    && receipt.siteRecordId === manifest.worldObjectId
-    && receipt.componentId === operation.componentId
-    && receipt.operationId === operation.id
-    && receipt.operationReceiptId === completed.receiptId
-    && array(operation.from).includes(receipt.stateFrom)
-    && receipt.stateTo === operation.to
-    && receipt.provenanceRef === operation.evidenceProvenanceRef
-    && receipt.catalogRevision === operation.evidenceCatalogRevision;
-}
-
 function evaluateStage(manifest, record) {
   let stageId = manifest.stages[0].id;
   for (const stage of manifest.stages) {
@@ -834,12 +881,12 @@ function hasDependencyCycle(graph) {
   return false;
 }
 
-function collectIds(entries, family, add) {
+function collectIds(entries, family, add, plural = `${family}s`) {
   const ids = new Set();
   for (let i = 0; i < entries.length; i += 1) {
     const id = entries[i] && entries[i].id;
-    if (!nonEmpty(id)) add(`${family}-id-missing`, `$.${family}s[${i}].id`);
-    else if (ids.has(id)) add(`${family}-id-duplicate`, `$.${family}s[${i}].id`, id);
+    if (!nonEmpty(id)) add(`${family}-id-missing`, `$.${plural}[${i}].id`);
+    else if (ids.has(id)) add(`${family}-id-duplicate`, `$.${plural}[${i}].id`, id);
     else ids.add(id);
   }
   return ids;
