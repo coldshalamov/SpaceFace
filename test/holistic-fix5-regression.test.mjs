@@ -269,17 +269,21 @@ test('I5: legacy47a runtime materializes legacy AI/flight (not tactical/V3)', ()
 
 test('I6: evidence without matching candidateDigest does not resolve failure', () => {
   // isResolvedByAcceptedEvidence is exported from validationBroker.
+  // K4: use near-now timestamps + claimId so digest binding is the variable under test.
+  const now = Date.now();
   const ok = isResolvedByAcceptedEvidence({
     latestFailure: {
       primaryAcceptance: true,
       runtimeKind: 'browser',
-      generatedAt: '2020-01-01T00:00:00.000Z',
+      generatedAt: new Date(now - 60_000).toISOString(),
     },
     acceptedRuntimeKind: 'browser',
-    acceptedGeneratedAt: '2030-01-01T00:00:00.000Z',
+    acceptedGeneratedAt: new Date(now).toISOString(),
+    now,
     acceptedEvidence: {
       pass: true,
       primaryAcceptance: true,
+      claimId: 'claim-i6-stale',
       digests: { candidateDigest: 'stale-other-candidate' },
     },
     candidateDigest: 'current-candidate',
@@ -290,13 +294,15 @@ test('I6: evidence without matching candidateDigest does not resolve failure', (
     latestFailure: {
       primaryAcceptance: true,
       runtimeKind: 'browser',
-      generatedAt: '2020-01-01T00:00:00.000Z',
+      generatedAt: new Date(now - 60_000).toISOString(),
     },
     acceptedRuntimeKind: 'browser',
-    acceptedGeneratedAt: '2030-01-01T00:00:00.000Z',
+    acceptedGeneratedAt: new Date(now).toISOString(),
+    now,
     acceptedEvidence: {
       pass: true,
       primaryAcceptance: true,
+      claimId: 'claim-i6-bound',
       digests: { candidateDigest: 'current-candidate' },
     },
     candidateDigest: 'current-candidate',

@@ -202,8 +202,52 @@ function isKnownOracleSignal(signal) {
 }
 
 /**
- * J4: require a finite own-property value on EVERY sample in the assertion interval.
- * Partially-sampled signals (present on tick 0, absent on tick 5) FAIL — not vacuous pass.
+ * Declared temporal interval, or null when the assertion covers the full trace span.
+ * @param {object | null} assertion
+ * @returns {{ fromTick?: number, toTick?: number } | null}
+ */
+function assertionInterval(assertion) {
+  if (!assertion) return null;
+  if (assertion.fromTick != null || assertion.toTick != null) {
+    return { fromTick: assertion.fromTick, toTick: assertion.toTick };
+  }
+  return null;
+}
+
+/**
+ * Samples whose tick falls inside the assertion interval (K2/J4).
+ * Outside-interval values are irrelevant for temporal evaluation.
+ * @param {object[]} trace
+ * @param {{ fromTick?: number, toTick?: number } | null} interval
+ * @returns {object[]}
+ */
+function samplesInInterval(trace, interval = null) {
+  if (!Array.isArray(trace) || !trace.length) return [];
+  const hasFrom = interval && Number.isFinite(interval.fromTick);
+  const hasTo = interval && Number.isFinite(interval.toTick);
+  const fromTick = hasFrom ? Number(interval.fromTick) : -Infinity;
+  const toTick = hasTo ? Number(interval.toTick) : Infinity;
+  const out = [];
+  for (const s of trace) {
+    if (!s || !Number.isFinite(s.tick)) continue;
+    if (s.tick < fromTick || s.tick > toTick) continue;
+    out.push(s);
+  }
+  return out;
+}
+
+/**
+ * K2/J4: require CONTIGUOUS integer-tick coverage for the signal.
+ *
+ * When `interval` declares fromTick/toTick, every integer tick in
+ * [fromTick, toTick] must carry a finite own-property value.
+ * When no interval is declared, the contiguous span is [minTick, maxTick]
+ * among finite-tick samples in the trace — sparse samples (0 and 5 alone)
+ * do NOT count as every-tick coverage.
+ *
+ * Cadence note: if a scenario samples every N ticks, it must not declare
+ * every-tick coverage over a dense [from,to] unless samples fill every tick.
+ * Sparse cadence is bounded by the sample stream; do not claim full coverage.
  *
  * @param {object[]} trace
  * @param {string} signal
@@ -216,24 +260,53 @@ export function signalCoveredEveryTick(trace, signal, interval = null) {
   }
   const hasFrom = interval && Number.isFinite(interval.fromTick);
   const hasTo = interval && Number.isFinite(interval.toTick);
-  const fromTick = hasFrom ? Number(interval.fromTick) : -Infinity;
-  const toTick = hasTo ? Number(interval.toTick) : Infinity;
-  const samples = [];
+  const filterFrom = hasFrom ? Number(interval.fromTick) : -Infinity;
+  const filterTo = hasTo ? Number(interval.toTick) : Infinity;
+
+  /** @type {Map<number, object>} */
+  const byTick = new Map();
   for (const s of trace) {
     if (!s || !Number.isFinite(s.tick)) continue;
-    if (s.tick < fromTick || s.tick > toTick) continue;
-    samples.push(s);
+    if (s.tick < filterFrom || s.tick > filterTo) continue;
+    // Integer tick key; last sample at a tick wins.
+    byTick.set(s.tick | 0, s);
   }
-  if (!samples.length) {
+
+  let fromTick;
+  let toTick;
+  if (hasFrom || hasTo) {
+    if (hasFrom && hasTo) {
+      fromTick = Number(interval.fromTick) | 0;
+      toTick = Number(interval.toTick) | 0;
+    } else if (byTick.size === 0) {
+      return { ok: false, partial: false, firstMissingTick: null, signal };
+    } else {
+      const keys = [...byTick.keys()];
+      fromTick = hasFrom ? (Number(interval.fromTick) | 0) : Math.min(...keys);
+      toTick = hasTo ? (Number(interval.toTick) | 0) : Math.max(...keys);
+    }
+  } else {
+    // No declared interval: contiguous span over the supplied sample ticks.
+    if (byTick.size === 0) {
+      return { ok: false, partial: false, firstMissingTick: null, signal };
+    }
+    const keys = [...byTick.keys()];
+    fromTick = Math.min(...keys);
+    toTick = Math.max(...keys);
+  }
+
+  if (!Number.isFinite(fromTick) || !Number.isFinite(toTick) || fromTick > toTick) {
     return { ok: false, partial: false, firstMissingTick: null, signal };
   }
+
   let anyPresent = false;
-  for (const s of samples) {
-    if (!Object.prototype.hasOwnProperty.call(s, signal)) {
+  for (let t = fromTick; t <= toTick; t++) {
+    const s = byTick.get(t);
+    if (!s || !Object.prototype.hasOwnProperty.call(s, signal)) {
       return {
         ok: false,
         partial: anyPresent,
-        firstMissingTick: s.tick | 0,
+        firstMissingTick: t,
         signal,
       };
     }
@@ -244,7 +317,7 @@ export function signalCoveredEveryTick(trace, signal, interval = null) {
       return {
         ok: false,
         partial: true,
-        firstMissingTick: s.tick | 0,
+        firstMissingTick: t,
         signal,
       };
     }
@@ -252,7 +325,7 @@ export function signalCoveredEveryTick(trace, signal, interval = null) {
       return {
         ok: false,
         partial: true,
-        firstMissingTick: s.tick | 0,
+        firstMissingTick: t,
         signal,
       };
     }
@@ -262,15 +335,16 @@ export function signalCoveredEveryTick(trace, signal, interval = null) {
 
 /** @deprecated use signalCoveredEveryTick — kept name for call-site clarity during I8→J4. */
 function signalWasSampled(trace, signal, assertion = null) {
-  const interval = assertion && (assertion.fromTick != null || assertion.toTick != null)
-    ? { fromTick: assertion.fromTick, toTick: assertion.toTick }
-    : null;
-  return signalCoveredEveryTick(trace, signal, interval);
+  return signalCoveredEveryTick(trace, signal, assertionInterval(assertion));
 }
 
 function evaluateTemporal(assertions, trace, ctx) {
   const results = [];
   for (const a of assertions) {
+    const interval = assertionInterval(a);
+    // K2: temporal evaluation uses ONLY samples inside the declared interval.
+    const scoped = samplesInInterval(trace, interval);
+
     if (a.kind === 'settles' || (a.kind === 'temporal' && a.signal === 'settles')) {
       const band = Number.isFinite(a.value) ? a.value : 3;
       const signal = a.signal && a.signal !== 'settles' ? a.signal : 'radialSpeed';
@@ -278,22 +352,22 @@ function evaluateTemporal(assertions, trace, ctx) {
         results.push(unknownSignalResult('settles', signal));
         continue;
       }
-      // I8/J4: settles requires the signal on every sample (missing ≠ 0).
+      // I8/J4: settles requires the signal on every tick in the interval (missing ≠ 0).
       const settleCoverage = signalWasSampled(trace, signal, a);
       if (!settleCoverage.ok) {
         results.push(unsampledSignalResult('settles', signal, settleCoverage));
         continue;
       }
       let lastUnsettled = -1;
-      for (let i = 0; i < trace.length; i++) {
-        const sample = trace[i];
+      for (let i = 0; i < scoped.length; i++) {
+        const sample = scoped[i];
         // J4: value is an own-property finite number (coverage already enforced).
         const raw = sample[signal];
         const mag = typeof raw === 'number' && Number.isFinite(raw) ? Math.abs(raw) : Infinity;
         if (mag > band) lastUnsettled = i;
       }
-      const settled = trace.length > 0 && lastUnsettled < trace.length - 1;
-      const settleTick = settled ? trace[lastUnsettled + 1].tick : null;
+      const settled = scoped.length > 0 && lastUnsettled < scoped.length - 1;
+      const settleTick = settled ? scoped[lastUnsettled + 1].tick : null;
       const byTick = a.byTick;
       const ok = settled && (byTick == null || settleTick <= byTick);
       results.push({
@@ -303,7 +377,7 @@ function evaluateTemporal(assertions, trace, ctx) {
         expected: byTick != null ? { byTick, band } : { settled: true, band },
         actual: { settleTick, settled },
         signedDelta: settleTick != null && byTick != null ? settleTick - byTick : (settled ? 0 : 1),
-        firstBadTick: ok ? null : (settleTick ?? (trace.length ? trace[trace.length - 1].tick : 0)),
+        firstBadTick: ok ? null : (settleTick ?? (scoped.length ? scoped[scoped.length - 1].tick : 0)),
       });
       continue;
     }
@@ -336,7 +410,7 @@ function evaluateTemporal(assertions, trace, ctx) {
         continue;
       }
       let bad = null;
-      for (const s of trace) {
+      for (const s of scoped) {
         if (truthySignal(s, signal, a)) {
           bad = s.tick;
           break;
@@ -360,7 +434,7 @@ function evaluateTemporal(assertions, trace, ctx) {
         results.push(unknownSignalResult('holds', signal));
         continue;
       }
-      // I8/J4: holds requires the signal on every sample in the interval.
+      // I8/J4: holds requires the signal on every tick in the interval.
       const holdsCoverage = signalWasSampled(trace, signal, a);
       if (!holdsCoverage.ok) {
         results.push(unsampledSignalResult('holds', signal, holdsCoverage));
@@ -368,11 +442,14 @@ function evaluateTemporal(assertions, trace, ctx) {
       }
       const need = a.holdsTicks | 0;
       let run = 0;
+      let maxRun = 0;
       let ok = false;
       let firstBad = null;
-      for (const s of trace) {
+      // K2: only consecutive truthy samples INSIDE the declared interval count.
+      for (const s of scoped) {
         if (truthySignal(s, signal, a)) {
           run++;
+          if (run > maxRun) maxRun = run;
           if (run >= need) {
             ok = true;
             break;
@@ -381,14 +458,14 @@ function evaluateTemporal(assertions, trace, ctx) {
           run = 0;
         }
       }
-      if (!ok && trace.length) firstBad = trace[trace.length - 1].tick;
+      if (!ok && scoped.length) firstBad = scoped[scoped.length - 1].tick;
       results.push({
         family: 'temporal',
         id: `holds:${signal}`,
         ok,
         expected: { holdsTicks: need },
-        actual: { maxRun: run },
-        signedDelta: ok ? 0 : need - run,
+        actual: { maxRun },
+        signedDelta: ok ? 0 : need - maxRun,
         firstBadTick: firstBad,
       });
       continue;
@@ -400,7 +477,7 @@ function evaluateTemporal(assertions, trace, ctx) {
         results.push(unknownSignalResult('eventByTick', signal));
         continue;
       }
-      // I8/J4: eventByTick requires the signal on every sample (partial coverage fails).
+      // I8/J4: eventByTick requires contiguous coverage in the interval.
       const eventCoverage = signalWasSampled(trace, signal, a);
       if (!eventCoverage.ok) {
         results.push(unsampledSignalResult('eventByTick', signal, eventCoverage));
@@ -408,7 +485,8 @@ function evaluateTemporal(assertions, trace, ctx) {
       }
       const byTick = a.byTick | 0;
       let foundTick = null;
-      for (const s of trace) {
+      // K2: only search for the event inside the declared interval.
+      for (const s of scoped) {
         if (truthySignal(s, signal, a)) {
           foundTick = s.tick;
           break;

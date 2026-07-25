@@ -265,22 +265,34 @@ const REQUIRED_IDENTITY_DIGEST_KEYS = Object.freeze([
 ]);
 
 /**
- * Transitive gameplay + lab sources always folded into candidate identity (J2).
- * Changes to runtime profiles, resolver, input grammar, feature flags, actions,
- * physics, flightV3, or the lab itself must invalidate stale evidence digests.
+ * Transitive gameplay + lab sources always folded into candidate identity (J2/K3).
+ * Changes to core sim, registry, gameState, save, runtime, physics, flight, or the
+ * lab itself must invalidate stale evidence digests. This list is the authoritative
+ * gameplay dependency closure for candidate identity (strict-read, not soft-skip).
  */
 export const CANDIDATE_TRANSITIVE_SOURCE_PATHS = Object.freeze([
+  // Core sim / state / loop / physics (K3 — previously omitted; digest must move)
+  'src/core/registry.js',
+  'src/core/gameState.js',
+  'src/core/sim.js',
+  'src/core/loop.js',
+  'src/core/physics.js',
+  'src/core/physicsAuthority.js',
+  'src/save/saveSystem.js',
+  // Runtime surface (all live runtime modules)
   'src/runtime/runtimeProfiles.js',
   'src/runtime/resolveRuntimeManifest.js',
   'src/runtime/authoritativeSystemManifest.js',
   'src/runtime/createAuthoritativeRuntime.js',
+  'src/runtime/nodeSystemFactoryTable.js',
+  'src/runtime/runtimeFingerprint.js',
+  // Gameplay systems commonly on the lab/acceptance path
   'src/systems/masslineInputGrammar.js',
   'src/systems/actions.js',
   'src/systems/flightV3.js',
   'src/systems/input.js',
   'src/data/featureFlags.js',
-  'src/core/physics.js',
-  'src/core/physicsAuthority.js',
+  // Contracts + lab harness
   'src/contracts/simScenarioSchema.js',
   'src/testing/lab/runScenario.js',
   'src/testing/lab/oracleEngine.js',
@@ -289,6 +301,9 @@ export const CANDIDATE_TRANSITIVE_SOURCE_PATHS = Object.freeze([
   'scripts/lib/validationBroker.mjs',
   'scripts/lib/validationFingerprint.mjs',
 ]);
+
+/** Accepted evidence must fall within this window of wall-clock now (K4). */
+export const EVIDENCE_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 function uniqueRelativePaths(...lists) {
   const out = [];
@@ -301,25 +316,6 @@ function uniqueRelativePaths(...lists) {
     }
   }
   return out;
-}
-
-/**
- * Read sources that exist under root; skip missing paths (fixture roots may be partial).
- * Declared manifest paths still use strict readSourceSet so typos fail hard.
- */
-async function readExistingSourceSet(root, relativePaths = []) {
-  const entries = await Promise.all(relativePaths.map(async (relativePath) => {
-    try {
-      const text = await readFile(path.join(root, relativePath), 'utf8');
-      return [relativePath, text];
-    } catch (err) {
-      if (err && (err.code === 'ENOENT' || err.code === 'ENOTDIR')) {
-        return null;
-      }
-      throw err;
-    }
-  }));
-  return Object.fromEntries(entries.filter(Boolean));
 }
 
 function extractEvidenceDigests(acceptedEvidence) {
@@ -356,10 +352,46 @@ function digestsBindToCurrent(evidenceDigests, current = {}) {
 }
 
 /**
- * I6/J2: accepted evidence resolves a failure only when it is bound to the *current*
- * candidate digests (and matching runtime). Stale / copied / future-dated evidence
- * that never tested this candidate must not clear an open failure.
- * Missing any declared digest field on the evidence is a reject (not optional).
+ * K4: evidence must bind a consumed claim or receipt identity — digests + timestamp alone
+ * are not enough to clear a failure (prevents copy-pasted digest bags).
+ * @param {object} acceptedEvidence
+ * @param {{ claimId?: string|null, receiptId?: string|null }} [expected]
+ */
+function claimOrReceiptBinds(acceptedEvidence, expected = {}) {
+  if (!acceptedEvidence || typeof acceptedEvidence !== 'object') return false;
+  const claimId = acceptedEvidence.claimId
+    ?? acceptedEvidence.consumedClaimId
+    ?? null;
+  const receiptId = acceptedEvidence.receiptId
+    ?? acceptedEvidence.receipt?.receiptId
+    ?? acceptedEvidence.receipt?.id
+    ?? null;
+  const receiptCandidate = acceptedEvidence.receipt?.candidateDigest
+    ?? acceptedEvidence.receipt?.digests?.candidateDigest
+    ?? null;
+
+  // At least one claim/receipt identity field must be present and non-empty.
+  const hasClaim = typeof claimId === 'string' && claimId.length > 0;
+  const hasReceiptId = typeof receiptId === 'string' && receiptId.length > 0;
+  const hasReceiptCandidate = typeof receiptCandidate === 'string' && receiptCandidate.length > 0;
+  if (!hasClaim && !hasReceiptId && !hasReceiptCandidate) return false;
+
+  // When the caller supplies an expected identity, it must match.
+  if (expected.claimId && (!hasClaim || claimId !== expected.claimId)) return false;
+  if (expected.receiptId && (!hasReceiptId || receiptId !== expected.receiptId)) return false;
+  return true;
+}
+
+/**
+ * I6/J2/K4: accepted evidence resolves a failure only when it is bound to the *current*
+ * candidate digests (and matching runtime), is not future/past beyond clock skew, and
+ * carries a claim/receipt identity. Stale / copied / future-dated evidence that never
+ * tested this candidate must not clear an open failure.
+ *
+ * @param {object} args
+ * @param {number} [args.now] wall-clock ms for skew check (injectable in tests)
+ * @param {string|null} [args.claimId] expected consumed claim id when known
+ * @param {string|null} [args.receiptId] expected receipt id when known
  */
 function isResolvedByAcceptedEvidence({
   latestFailure,
@@ -371,16 +403,33 @@ function isResolvedByAcceptedEvidence({
   regressionDigest = null,
   profileDigest = null,
   manifestDigest = null,
+  now = Date.now(),
+  claimId = null,
+  receiptId = null,
 }) {
   if (
     !latestFailure?.primaryAcceptance
     || acceptedRuntimeKind !== latestFailure.runtimeKind
-    || timestamp(acceptedGeneratedAt) <= timestamp(latestFailure.generatedAt)
   ) {
+    return false;
+  }
+  const acceptedTs = timestamp(acceptedGeneratedAt);
+  const failureTs = timestamp(latestFailure.generatedAt);
+  if (!Number.isFinite(acceptedTs) || acceptedTs <= failureTs) {
+    return false;
+  }
+  // K4: reject evidence timestamps outside ±EVIDENCE_CLOCK_SKEW_MS of current time.
+  // Future-dated (e.g. 2099) or long-stale stamps must not clear open failures.
+  const wall = Number.isFinite(now) ? now : Date.now();
+  if (Math.abs(acceptedTs - wall) > EVIDENCE_CLOCK_SKEW_MS) {
     return false;
   }
   // Without evidence digests we cannot prove candidate binding — fail closed.
   if (!acceptedEvidence || typeof acceptedEvidence !== 'object') {
+    return false;
+  }
+  // K4: require claim/receipt identity binding (not digests + timestamp alone).
+  if (!claimOrReceiptBinds(acceptedEvidence, { claimId, receiptId })) {
     return false;
   }
   const evidenceDigests = extractEvidenceDigests(acceptedEvidence);
@@ -548,10 +597,10 @@ export async function computeGateDigestsFromManifest({ root, manifest: rawManife
   // Always normalize so digest fields (e.g. fastGateTimeoutMs defaults) are stable
   // whether the caller passes a raw or already-normalized manifest.
   const manifest = normalizeManifest(rawManifest);
-  // J2: fold transitive gameplay + lab sources into production/harness digests so
-  // candidateDigest moves when profiles/resolver/grammar/flags/physics/lab change.
-  // Transitive paths are soft-merged (exist-only) so partial fixture roots used by
-  // unit tests still work; declared manifest paths remain strict.
+  // J2/K3: fold transitive gameplay + lab sources into production/harness digests so
+  // candidateDigest moves when core/registry/gameState/sim/save/runtime/lab change.
+  // K3: transitive paths are STRICT (readSourceSet) — soft-skip of missing core files
+  // would leave digests stale when those files change or are "absent" in a wrong root.
   const productionPaths = [...(manifest.productionSourcePaths || [])];
   const harnessPaths = [...(manifest.harnessSourcePaths || [])];
   const transitiveExtra = uniqueRelativePaths(
@@ -574,7 +623,7 @@ export async function computeGateDigestsFromManifest({ root, manifest: rawManife
     readSourceSet(root, manifest.regressionSourcePaths),
     readSourceSet(root, harnessPaths),
     readSourceSet(root, manifest.scenarioPaths),
-    readExistingSourceSet(root, transitiveExtra),
+    readSourceSet(root, transitiveExtra),
   ]);
   // Merge transitive into production identity (routeDigest / productionDigest).
   const productionDigest = computeSourceSetDigest({
@@ -644,6 +693,9 @@ export function evaluateFastGate({
   regressionDigest = null,
   profileDigest = null,
   manifestDigest = null,
+  now = Date.now(),
+  claimId = null,
+  receiptId = null,
 } = {}) {
   if (!latestFailure?.primaryAcceptance) {
     return {
@@ -664,6 +716,9 @@ export function evaluateFastGate({
     regressionDigest: regressionDigest ?? currentRegressionDigest,
     profileDigest,
     manifestDigest,
+    now,
+    claimId,
+    receiptId,
   })) {
     return {
       pass: true,

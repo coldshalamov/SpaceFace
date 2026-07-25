@@ -122,17 +122,20 @@ test('J1: honest loadEnvelope that restores player canary passes with restoreCou
 // ── J2: complete required digests + expanded sources ─────────────────────────
 
 test('J2: evidence missing routeDigest is rejected when routeDigest is declared', () => {
+  const now = Date.now();
   const ok = isResolvedByAcceptedEvidence({
     latestFailure: {
       primaryAcceptance: true,
       runtimeKind: 'browser',
-      generatedAt: '2020-01-01T00:00:00.000Z',
+      generatedAt: new Date(now - 60_000).toISOString(),
     },
     acceptedRuntimeKind: 'browser',
-    acceptedGeneratedAt: '2030-01-01T00:00:00.000Z',
+    acceptedGeneratedAt: new Date(now).toISOString(),
+    now,
     acceptedEvidence: {
       pass: true,
       primaryAcceptance: true,
+      claimId: 'claim-j2-missing-route',
       digests: {
         candidateDigest: 'cand-1',
         // routeDigest intentionally missing
@@ -154,17 +157,20 @@ test('J2: evidence with all declared digests matching may resolve', () => {
     profileDigest: 'prof-ok',
     manifestDigest: 'man-ok',
   };
+  const now = Date.now();
   const ok = isResolvedByAcceptedEvidence({
     latestFailure: {
       primaryAcceptance: true,
       runtimeKind: 'browser',
-      generatedAt: '2020-01-01T00:00:00.000Z',
+      generatedAt: new Date(now - 60_000).toISOString(),
     },
     acceptedRuntimeKind: 'browser',
-    acceptedGeneratedAt: '2030-01-01T00:00:00.000Z',
+    acceptedGeneratedAt: new Date(now).toISOString(),
+    now,
     acceptedEvidence: {
       pass: true,
       primaryAcceptance: true,
+      claimId: 'claim-j2-all-digests',
       digests: { ...digests },
     },
     ...digests,
@@ -180,6 +186,11 @@ test('J2: candidate transitive sources include runtime/lab/gameplay deps', () =>
   assert.ok(CANDIDATE_TRANSITIVE_SOURCE_PATHS.includes('src/systems/flightV3.js'));
   assert.ok(CANDIDATE_TRANSITIVE_SOURCE_PATHS.includes('src/testing/lab/runScenario.js'));
   assert.ok(CANDIDATE_TRANSITIVE_SOURCE_PATHS.includes('src/contracts/simScenarioSchema.js'));
+  // K3 core closure
+  assert.ok(CANDIDATE_TRANSITIVE_SOURCE_PATHS.includes('src/core/registry.js'));
+  assert.ok(CANDIDATE_TRANSITIVE_SOURCE_PATHS.includes('src/core/gameState.js'));
+  assert.ok(CANDIDATE_TRANSITIVE_SOURCE_PATHS.includes('src/core/sim.js'));
+  assert.ok(CANDIDATE_TRANSITIVE_SOURCE_PATHS.includes('src/save/saveSystem.js'));
 });
 
 test('J2: computeGateDigestsFromManifest folds transitive sources into candidate', async () => {
@@ -305,7 +316,8 @@ test('J4: settles with partial radialSpeed samples fails (missing ≠ 0)', () =>
   assert.ok(oracle.failed.some((f) => f.id === 'settles' || /radialSpeed|settles/.test(String(f.id))));
 });
 
-test('J4: signalCoveredEveryTick requires every sample in interval', () => {
+test('J4: signalCoveredEveryTick requires contiguous ticks (sparse samples fail)', () => {
+  // Present on sample 0, absent on sample 5 → partial.
   const partial = signalCoveredEveryTick(
     [
       { tick: 0, cmdRejected: false },
@@ -315,12 +327,26 @@ test('J4: signalCoveredEveryTick requires every sample in interval', () => {
   );
   assert.equal(partial.ok, false);
   assert.equal(partial.partial, true);
-  assert.equal(partial.firstMissingTick, 5);
+  // Contiguous coverage: first gap is tick 1 (not merely "absent on sample 5").
+  assert.equal(partial.firstMissingTick, 1);
 
-  const full = signalCoveredEveryTick(
+  // Sparse 0 + 5 with signal on both still fails contiguous ticks 1–4 (K2).
+  const sparse = signalCoveredEveryTick(
     [
       { tick: 0, cmdRejected: false },
       { tick: 5, cmdRejected: false },
+    ],
+    'cmdRejected',
+  );
+  assert.equal(sparse.ok, false);
+  assert.equal(sparse.firstMissingTick, 1);
+
+  // Contiguous integer ticks with the signal → ok.
+  const full = signalCoveredEveryTick(
+    [
+      { tick: 0, cmdRejected: false },
+      { tick: 1, cmdRejected: false },
+      { tick: 2, cmdRejected: false },
     ],
     'cmdRejected',
   );

@@ -58,6 +58,8 @@ const CANONICAL_EXTRA_TOP_KEYS = new Set([
   'rendering',
 ]);
 const CANONICAL_TOP_KEYS = new Set([...TOP_KEYS, ...CANONICAL_EXTRA_TOP_KEYS]);
+/** Closed keys on the runner-consumed inputTape object (K1/J3). */
+const INPUT_TAPE_KEYS = new Set(['events', 'frames']);
 
 const WORLD_KEYS = new Set([
   'fixtureProfile',
@@ -669,16 +671,35 @@ export function formatSimScenarioIssue(issue) {
 }
 
 /**
+ * Stable structural equality for duplicate raw vs compiled tape surfaces (K1).
+ */
+function deepEqualJson(a, b) {
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Project a compiled canonical into the raw-shaped fields validateSimScenario understands.
  * J3: canonical validation REUSES the raw field validators — no partial second schema.
+ * K1: when inputTape is a plain object, ALWAYS project its events/frames — the runner
+ * consumes that object. A valid raw inputEvents/frames must not mask an invalid tape.
  */
 function projectCanonicalToRawShape(doc) {
   const projected = { ...doc, schema: SIM_SCENARIO_SCHEMA };
   if (doc.inputTape && typeof doc.inputTape === 'object' && !Array.isArray(doc.inputTape)) {
-    if (!Array.isArray(projected.inputEvents) && Array.isArray(doc.inputTape.events)) {
+    // Consumed tape wins: validate exactly what the runner drives.
+    if (Array.isArray(doc.inputTape.events)) {
+      projected.inputEvents = doc.inputTape.events;
+    } else if (doc.inputTape.events != null) {
+      // Non-array events still need a value the raw validator will reject as type.
       projected.inputEvents = doc.inputTape.events;
     }
-    if (!Array.isArray(projected.frames) && Array.isArray(doc.inputTape.frames)) {
+    if (Array.isArray(doc.inputTape.frames)) {
+      projected.frames = doc.inputTape.frames;
+    } else if (doc.inputTape.frames != null) {
       projected.frames = doc.inputTape.frames;
     }
   }
@@ -692,6 +713,8 @@ function projectCanonicalToRawShape(doc) {
  * Full semantic + structural checks for precompiled canonicals.
  * J3: reuses validateSimScenario (unknown keys, NaN rejection, entity/world/assertion rules).
  * G6/FIX 17: options.canonical must not bypass the field checks a raw document gets.
+ * K1: inputTape is a closed object; its events/frames are validated exactly; duplicates
+ * of raw inputEvents/frames are rejected unless identical to the consumed tape.
  *
  * @param {object} doc precompiled canonical (or raw-shaped doc)
  * @param {{ file?: string }} [options]
@@ -716,22 +739,66 @@ export function validateCanonicalScenario(doc, options = {}) {
   // J3: closed top-level surface for canonical extras (inputTape/rendering allowed; unknown not).
   rejectUnknownKeys(doc, CANONICAL_TOP_KEYS, '$', issue);
 
+  // K1: inputTape — when present — MUST be a plain object (reject string/array/null).
+  // Validate the EXACT object the runner consumes; do not let raw fields mask it.
+  const hasInputTape = Object.prototype.hasOwnProperty.call(doc, 'inputTape');
+  if (hasInputTape) {
+    if (!doc.inputTape || typeof doc.inputTape !== 'object' || Array.isArray(doc.inputTape)) {
+      issue('$.inputTape', 'type',
+        'inputTape must be a plain object (closed tape consumed by the runner)');
+    } else {
+      rejectUnknownKeys(doc.inputTape, INPUT_TAPE_KEYS, '$.inputTape', issue);
+      if (doc.inputTape.events != null && !Array.isArray(doc.inputTape.events)) {
+        issue('$.inputTape.events', 'type', 'inputTape.events must be an array when present');
+      }
+      if (doc.inputTape.frames != null && !Array.isArray(doc.inputTape.frames)) {
+        issue('$.inputTape.frames', 'type', 'inputTape.frames must be an array when present');
+      }
+      // Duplicate raw + compiled surfaces: reject unless identical (no masking).
+      if (doc.inputEvents != null && doc.inputTape.events != null) {
+        if (
+          !Array.isArray(doc.inputEvents)
+          || !Array.isArray(doc.inputTape.events)
+          || !deepEqualJson(doc.inputEvents, doc.inputTape.events)
+        ) {
+          issue('$.inputTape.events', 'duplicate-input',
+            'inputEvents and inputTape.events both present but not identical — '
+            + 'raw must not mask an invalid compiled tape');
+        }
+      }
+      if (doc.frames != null && doc.inputTape.frames != null) {
+        if (
+          !Array.isArray(doc.frames)
+          || !Array.isArray(doc.inputTape.frames)
+          || !deepEqualJson(doc.frames, doc.inputTape.frames)
+        ) {
+          issue('$.inputTape.frames', 'duplicate-input',
+            'frames and inputTape.frames both present but not identical — '
+            + 'raw must not mask an invalid compiled tape');
+        }
+      }
+    }
+  }
+
   // Reuse the full raw validator on a projected raw-shaped document.
+  // Projection always uses the consumed inputTape when it is a plain object.
   const projected = projectCanonicalToRawShape(doc);
   const raw = validateSimScenario(projected, options);
   for (const rawIssue of raw.issues) {
     // Schema was rewritten to raw for reuse; keep our canonical-aware schema issue only.
     if (rawIssue.path === '$.schema') continue;
-    issues.push(rawIssue);
-  }
-
-  // inputTape-specific path labels when raw projected frames/events (optional clarity).
-  if (doc.inputTape && typeof doc.inputTape === 'object' && !Array.isArray(doc.inputTape)) {
-    if (doc.inputTape.events != null && !Array.isArray(doc.inputTape.events)) {
-      issue('$.inputTape.events', 'type', 'inputTape.events must be an array when present');
-    }
-    if (doc.inputTape.frames != null && !Array.isArray(doc.inputTape.frames)) {
-      issue('$.inputTape.frames', 'type', 'inputTape.frames must be an array when present');
+    // K1: when validating via inputTape projection, surface paths under $.inputTape.*.
+    if (hasInputTape && doc.inputTape && typeof doc.inputTape === 'object'
+      && !Array.isArray(doc.inputTape)) {
+      let p = rawIssue.path || '';
+      if (p.startsWith('$.inputEvents')) {
+        p = `$.inputTape.events${p.slice('$.inputEvents'.length)}`;
+      } else if (p.startsWith('$.frames')) {
+        p = `$.inputTape.frames${p.slice('$.frames'.length)}`;
+      }
+      issues.push({ ...rawIssue, path: p });
+    } else {
+      issues.push(rawIssue);
     }
   }
 

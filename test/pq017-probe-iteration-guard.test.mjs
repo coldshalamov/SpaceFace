@@ -128,11 +128,14 @@ test('PQ-017 fast gate refuses an unchanged regression after an unresolved accep
 
 test('PQ-017 accepted evidence resolves only its runtime primary failure', async () => {
   const { evaluatePq017FastGate } = await loadGuard();
-  // I6: resolution requires acceptedEvidence bound to current candidate digests.
+  // I6/K4: resolution requires digests + claim identity + near-now timestamp.
+  const now = Date.now();
+  const acceptedGeneratedAt = new Date(now).toISOString();
   const boundEvidence = {
     pass: true,
     primaryAcceptance: true,
     runtimeKind: 'electron',
+    claimId: 'claim-pq017-bound',
     digests: {
       candidateDigest: 'cand-1',
       routeDigest: 'route-before',
@@ -142,31 +145,34 @@ test('PQ-017 accepted evidence resolves only its runtime primary failure', async
   assert.equal(evaluatePq017FastGate({
     latestFailure: primaryFailure(),
     acceptedRuntimeKind: 'electron',
-    acceptedGeneratedAt: '2026-07-23T17:00:00.000Z',
+    acceptedGeneratedAt,
     acceptedEvidence: boundEvidence,
     candidateDigest: 'cand-1',
     routeDigest: 'route-before',
     currentRegressionDigest: 'regression-before',
+    now,
   }).pass, true);
 
   // Wrong runtime kind — does not resolve.
   assert.equal(evaluatePq017FastGate({
     latestFailure: primaryFailure(),
     acceptedRuntimeKind: 'browser',
-    acceptedGeneratedAt: '2026-07-23T17:00:00.000Z',
+    acceptedGeneratedAt,
     acceptedEvidence: { ...boundEvidence, runtimeKind: 'browser' },
     candidateDigest: 'cand-1',
     currentRegressionDigest: 'regression-before',
+    now,
   }).pass, false);
 
   // Matching runtime but wrong candidate digest — does not resolve (I6).
   assert.equal(evaluatePq017FastGate({
     latestFailure: primaryFailure(),
     acceptedRuntimeKind: 'electron',
-    acceptedGeneratedAt: '2026-07-23T17:00:00.000Z',
+    acceptedGeneratedAt,
     acceptedEvidence: boundEvidence,
     candidateDigest: 'other-candidate',
     currentRegressionDigest: 'regression-before',
+    now,
   }).pass, false);
 
   const diagnostic = evaluatePq017FastGate({
