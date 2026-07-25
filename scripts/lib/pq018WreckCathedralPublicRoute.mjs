@@ -741,7 +741,15 @@ async function deliverCathedralBlackBox(page, timeoutMs) {
     const dz = receiver.pos.z - payload.pos.z;
     const distance = Math.hypot(dx, dz);
     if (!(distance > 0)) return null;
-    const pullThrough = Math.max(50, Number(payload.radius) + Number(receiver.radius) + 32);
+    // The tow positions the ship, and the payload trails it by roughly the tether's rest length. A
+    // pull-through that ignores that leaves the cargo short of the receiver -- the ship reports
+    // "settled" while the payload is still a full line-length behind. Carry the rest length so the
+    // ship overshoots far enough for the payload itself to land on the receiver.
+    const restLength = Math.max(0, Number(tether.restLength) || 0);
+    const pullThrough = Math.max(
+      50,
+      restLength + Number(payload.radius) + Number(receiver.radius) + 8,
+    );
     return {
       target: {
         x: receiver.pos.x + (dx / distance) * pullThrough,
