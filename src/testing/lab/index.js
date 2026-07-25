@@ -31,6 +31,7 @@ export {
   BROWSER_FOCUSED_FLIGHT_SYSTEMS,
   BROWSER_PARITY_SYSTEM_NAMES,
   normalizeBrowserSystemNames,
+  normalizeBrowserSystemNamesPreserveOrder,
 } from './browserScenarioHost.js';
 export {
   installLiveRouteBridge,

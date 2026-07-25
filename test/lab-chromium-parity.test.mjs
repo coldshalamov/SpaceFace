@@ -256,7 +256,7 @@ test('FIX3: massline/attachment scenarios are unsupported for Chromium parity', 
   assert.match(String(result.error || ''), /Chromium parity|attachment|massline|unsupported/i);
 });
 
-test('FIX8: subset/reordered system lists that are not exact bundle are rejected', async () => {
+test('FIX8: subset system lists that are not exact bundle are rejected', async () => {
   const { assertChromiumParitySupported } = await import('../src/testing/lab/browserScenarioHost.js');
   const subset = assertChromiumParitySupported({
     world: { fixtureProfile: 'empty-flight' },
@@ -266,15 +266,7 @@ test('FIX8: subset/reordered system lists that are not exact bundle are rejected
   });
   assert.equal(subset.ok, false);
   assert.equal(subset.status, 'unsupported');
-  assert.match(subset.reason, /exact browser flight bundle|systems must be exact/i);
-
-  const reorderedExact = assertChromiumParitySupported({
-    world: { fixtureProfile: 'empty-flight' },
-    systems: ['physics', 'weapons', 'flight', 'actions', 'core'],
-    entities: [],
-    assertions: [],
-  });
-  assert.equal(reorderedExact.ok, true, 'full bundle in any order (with flight alias) is accepted');
+  assert.match(subset.reason, /exact (ordered )?browser flight bundle|systems must be exact/i);
 
   const withExtra = assertChromiumParitySupported({
     world: { fixtureProfile: 'empty-flight' },
@@ -285,11 +277,49 @@ test('FIX8: subset/reordered system lists that are not exact bundle are rejected
   assert.equal(withExtra.ok, false);
 });
 
-test('FIX9: parameterOverlay and tape commands are rejected for Chromium parity', async () => {
+test('FIX11: reordered/duplicate system bundles rejected; only exact ordered sequence accepted', async () => {
+  const { assertChromiumParitySupported } = await import('../src/testing/lab/browserScenarioHost.js');
+  const base = {
+    world: { fixtureProfile: 'empty-flight' },
+    entities: [],
+    assertions: [],
+  };
+
+  // Reordered full set (order-independent set would have accepted this) — must reject.
+  const reordered = assertChromiumParitySupported({
+    ...base,
+    systems: ['physics', 'weapons', 'flightV3', 'actions'],
+  });
+  assert.equal(reordered.ok, false, 'reordered bundle must be rejected');
+  assert.equal(reordered.status, 'unsupported');
+  assert.match(reordered.reason, /exact ordered browser flight bundle|systems must be exact/i);
+
+  // Duplicates after normalize (preserve order, no dedupe) — reject.
+  const duplicates = assertChromiumParitySupported({
+    ...base,
+    systems: ['actions', 'flightV3', 'weapons', 'physics', 'actions'],
+  });
+  assert.equal(duplicates.ok, false, 'duplicate systems must be rejected');
+
+  // Exact canonical order — accept (core dropped, flight→flightV3).
+  const exact = assertChromiumParitySupported({
+    ...base,
+    systems: ['actions', 'flight', 'weapons', 'physics', 'core'],
+  });
+  assert.equal(exact.ok, true, 'exact ordered bundle (with flight alias + core) must be accepted');
+
+  const exactV3 = assertChromiumParitySupported({
+    ...base,
+    systems: ['actions', 'flightV3', 'weapons', 'physics'],
+  });
+  assert.equal(exactV3.ok, true, 'exact ordered [actions,flightV3,weapons,physics] must be accepted');
+});
+
+test('FIX9: non-empty parameterOverlay values and tape commands are rejected for Chromium parity', async () => {
   const { assertChromiumParitySupported } = await import('../src/testing/lab/browserScenarioHost.js');
   const overlay = assertChromiumParitySupported({
     world: { fixtureProfile: 'empty-flight' },
-    parameterOverlay: { 'lab.entrySpeed': 40 },
+    parameterOverlay: { schema: 'spaceface.labParameterOverlay.v1', version: 1, values: { 'lab.entrySpeed': 40 } },
     entities: [],
     assertions: [],
   });
@@ -308,6 +338,45 @@ test('FIX9: parameterOverlay and tape commands are rejected for Chromium parity'
   });
   assert.equal(commands.ok, false);
   assert.match(commands.reason, /tape frame commands|commands/i);
+});
+
+test('FIX12: empty parameterOverlay values {} is allowed; non-empty rejected', async () => {
+  const { assertChromiumParitySupported } = await import('../src/testing/lab/browserScenarioHost.js');
+  const base = {
+    world: { fixtureProfile: 'empty-flight' },
+    entities: [],
+    assertions: [],
+  };
+
+  // Compiled empty overlay wrapper — no state-changing entries; Node applies nothing.
+  const emptyWrapper = assertChromiumParitySupported({
+    ...base,
+    parameterOverlay: {
+      schema: 'spaceface.labParameterOverlay.v1',
+      version: 1,
+      values: {},
+    },
+  });
+  assert.equal(emptyWrapper.ok, true, 'empty values:{} overlay must be supported (no-op)');
+
+  const emptyValuesOnly = assertChromiumParitySupported({
+    ...base,
+    parameterOverlay: { values: {} },
+  });
+  assert.equal(emptyValuesOnly.ok, true, 'values:{} alone must be supported');
+
+  const nonEmpty = assertChromiumParitySupported({
+    ...base,
+    parameterOverlay: {
+      schema: 'spaceface.labParameterOverlay.v1',
+      version: 1,
+      values: { 'lab.entrySpeed': 40 },
+    },
+  });
+  assert.equal(nonEmpty.ok, false, 'non-empty values must be rejected');
+  assert.equal(nonEmpty.status, 'unsupported');
+  assert.match(nonEmpty.reason, /parameterOverlay/i);
+  assert.match(nonEmpty.reason, /lab\.entrySpeed/);
 });
 
 test('FIX5: series length mismatch localizes after matching prefix', () => {

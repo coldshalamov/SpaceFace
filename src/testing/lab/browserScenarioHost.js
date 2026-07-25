@@ -25,8 +25,9 @@ export const BROWSER_FOCUSED_FLIGHT_SYSTEMS = Object.freeze([
 ]);
 
 /**
- * Exact system names Chromium parity V1 runs (order-independent set).
- * Explicit `canonical.systems` must match this set exactly after normalization.
+ * Exact ordered system names Chromium parity V1 runs.
+ * Explicit `canonical.systems` must match this sequence after normalization
+ * (drop `core`, map `flight` → `flightV3`). Reorders and duplicates are rejected.
  */
 export const BROWSER_PARITY_SYSTEM_NAMES = Object.freeze([
   'actions',
@@ -77,32 +78,37 @@ export function assertChromiumParitySupported(canonical) {
     };
   }
 
-  // FIX 8: require the EXACT normalized browser bundle (not a subset or reorder-as-different-runtime).
-  // Chromium always runs BROWSER_FOCUSED_FLIGHT_SYSTEMS; Node must not run a different list.
+  // FIX 8/11: require the EXACT ordered browser bundle (no sort). Chromium always runs
+  // BROWSER_FOCUSED_FLIGHT_SYSTEMS in registration order; a reordered Node list is a different runtime.
+  // Drop `core`, map `flight` → `flightV3`, then require sequence identity (duplicates fail length/order).
   if (Array.isArray(canonical.systems) && canonical.systems.length) {
-    const normalized = normalizeBrowserSystemNames(canonical.systems);
-    const expected = [...BROWSER_PARITY_SYSTEM_NAMES].sort();
-    const got = [...normalized].sort();
+    const got = normalizeBrowserSystemNamesPreserveOrder(canonical.systems);
+    const expected = BROWSER_PARITY_SYSTEM_NAMES;
     const exactMatch = got.length === expected.length
       && got.every((name, i) => name === expected[i]);
     if (!exactMatch) {
       return {
         ok: false,
         status: 'unsupported',
-        reason: `unsupported scenario for Chromium parity: systems must be exact browser flight bundle [${expected.join(', ')}] (got [${got.join(', ')}])`,
+        reason: `unsupported scenario for Chromium parity: systems must be exact ordered browser flight bundle [${expected.join(', ')}] (got [${got.join(', ')}])`,
       };
     }
   }
 
-  // FIX 9: Node applies parameterOverlay / tape commands; Chromium V1 does not — reject.
+  // FIX 9/12: Node applies parameterOverlay values; Chromium V1 does not.
+  // Empty wrapper { schema, version, values: {} } is a no-op on both arms — allow it.
+  // Only non-empty values are unsupported for Chromium parity.
   if (canonical.parameterOverlay && typeof canonical.parameterOverlay === 'object') {
-    const keys = Object.keys(canonical.parameterOverlay);
-    if (keys.length > 0) {
-      return {
-        ok: false,
-        status: 'unsupported',
-        reason: `unsupported scenario for Chromium parity: parameterOverlay not applied in Chromium host (${keys.join(', ')})`,
-      };
+    const values = canonical.parameterOverlay.values;
+    if (values && typeof values === 'object' && !Array.isArray(values)) {
+      const valueKeys = Object.keys(values);
+      if (valueKeys.length > 0) {
+        return {
+          ok: false,
+          status: 'unsupported',
+          reason: `unsupported scenario for Chromium parity: parameterOverlay not applied in Chromium host (${valueKeys.join(', ')})`,
+        };
+      }
     }
   }
   const tapeCommands = collectTapeCommands(canonical);
@@ -117,7 +123,21 @@ export function assertChromiumParitySupported(canonical) {
   return { ok: true };
 }
 
-/** Normalize named systems: drop `core`, map `flight` → `flightV3`, unique. */
+/**
+ * Normalize named systems preserving order (no unique/dedupe).
+ * Drop `core`, map `flight` → `flightV3`. Used for exact-order parity gates.
+ */
+export function normalizeBrowserSystemNamesPreserveOrder(names) {
+  const out = [];
+  for (const raw of names || []) {
+    if (raw === 'core') continue;
+    const name = raw === 'flight' ? 'flightV3' : raw;
+    out.push(name);
+  }
+  return out;
+}
+
+/** Normalize named systems: drop `core`, map `flight` → `flightV3`, unique (first occurrence order). */
 export function normalizeBrowserSystemNames(names) {
   const out = [];
   const seen = new Set();
