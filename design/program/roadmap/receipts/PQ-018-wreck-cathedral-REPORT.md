@@ -55,6 +55,39 @@ Reproduced deterministically in the kernel before any fix: after applying the im
 Confirmed fixed live: `lastBeamDenial` moved from `null` to
 `{verb:"extract", reason:"dependency-incomplete", targetId:323, tick:20039}`.
 
+## The blocker — shared-change request
+
+After the hull-recovery fix the route advanced from four operations to **six**, through
+`cut_cargo_clamp_forensics` and `repair_marker_service_spine`, and then stopped at payload delivery:
+
+```
+NORMAL_ROUTE_BLOCKED: Massline acquisition did not publish the selected World Site payload
+  expectedWorldRecordId: world_site_wreck_cathedral/payload/cathedral_black_box
+  selectedWorldRecordId: world_site_wreck_cathedral/payload/cathedral_black_box   <- correctly selected
+  acquisition: null
+```
+
+**`state.masslineAcquisition` can never be non-null in the current build.** The only function that
+creates the receipt, `_refreshAcquisitionPreview` (`src/systems/tetherGameplay.js:282`), has **no call
+sites anywhere** in `src/`, `test/`, or `scripts/` — verified repo-wide, including dynamic dispatch.
+Its two assignments (`:291`, `:305`) are unreachable. The remaining assignment,
+`invalidateAcquisitionReceipt` (`:928`), early-returns unless a receipt already exists, so it cannot
+publish one either. Everything else only ever nulls the field.
+
+Consequences beyond this packet:
+
+- Any route helper waiting on `masslineAcquisition` — including PQ-017's shared
+  `waitForMasslineAcquisitionWorldRecord` — cannot succeed.
+- If the acquisition preview drives a player-facing Massline targeting cue, players are not getting
+  it either.
+
+**This is why the packet is BLOCKED rather than merely incomplete.** Evidence page five,
+*What Was Carried*, depends on physically hauling the black box, which depends on Massline
+acquisition. Repairing that means rewiring an update path in `tetherGameplay` — a physics/input
+owner outside PQ-018's bounded write set, under the `physics-authority` mutex, with golden-telemetry
+exposure. Under the packet's stop conditions that is a shared-change request, not a PQ-018 edit, so
+it was deliberately not attempted here.
+
 ## What passed
 
 - PQ-018 + world-site + broker + middle-mouse focused suites: **143/144**
@@ -71,8 +104,10 @@ Confirmed fixed live: `lastBeamDenial` moved from `null` to
 Boot → reduced-flash enabled through the settings UI → seeded new game → Helios→Ceres through an
 ordinary gate → Star Map search → Track Target → approach → **Cathedral admitted (15 site entities)**
 → **authored cavity traversed under ordinary WASD flight, 582 WU through a 70-radius centre gate** →
-four operations completed with evidence receipts (`missing_convoy`, `capital_hull_located`,
-`clock_stopped_first`) → **stalls at `cut_cargo_clamp_forensics`**.
+**six operations completed** with their evidence receipts → **blocked at payload acquisition**.
+
+Four successive diagnostic runs, each advancing further: op 4 → op 4 (with the refusal named) → op 6
+→ op 6 + payload. No acceptance launch spent.
 
 ## What remains unproven
 
