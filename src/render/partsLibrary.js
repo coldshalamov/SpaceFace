@@ -10,6 +10,7 @@ import { FACTION_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
+import { WORLD_SITE_ASSET_BINDINGS } from '../data/worldSiteAssetBindings.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { isReleaseAssetMode } from './releaseMode.js';
@@ -70,7 +71,10 @@ const CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID = Object.freeze({
   spec_relay: 'places/place_claim_outpost_relay.glb',
   spec_bastion: 'places/place_claim_outpost_bastion.glb',
 });
-const PLACE_FILES = Object.freeze([
+const WORLD_SITE_PLACE_FILES = Object.freeze(Object.keys(WORLD_SITE_ASSET_BINDINGS)
+  .sort()
+  .map((placeId) => `places/${placeId}.glb`));
+const PLACE_FILES = Object.freeze([...new Set([
   'places/place_lane_beacon.glb',
   'places/place_nav_buoy.glb',
   'places/place_asteroid_seamed.glb',
@@ -84,9 +88,10 @@ const PLACE_FILES = Object.freeze([
   'places/place_asteroid_rock_c.glb',
   'places/place_asteroid_graffiti.glb',
   'places/place_claim_outpost_base.glb',
+  ...WORLD_SITE_PLACE_FILES,
   ...Object.values(CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID),
   ...STATION_ARCHETYPE_FILES,
-]);
+])]);
 const PLACE_FILE_BY_ID = Object.freeze(Object.fromEntries(PLACE_FILES.map((file) => [
   file.replace(/^places\//, '').replace(/\.glb$/, ''),
   file,
