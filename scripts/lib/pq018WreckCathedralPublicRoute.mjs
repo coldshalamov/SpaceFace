@@ -755,7 +755,9 @@ async function deliverCathedralBlackBox(page, timeoutMs) {
   await latchWorldRecord(page, PQ018_PAYLOAD_WORLD_ID);
   await cycleToComponent(page, 'marker_service_spine');
   await waitForFixedTicks(page, 1);
-  const geometry = await page.evaluate(({ payloadId, receiverId }) => {
+  const geometry = await towGeometry(page);
+async function towGeometry(page) {
+  return page.evaluate(({ payloadId, receiverId }) => {
     const state = window.SF?.state;
     const entities = [...(state?.entities?.values?.() || [])];
     const payload = entities.find((entity) => (
@@ -789,25 +791,51 @@ async function deliverCathedralBlackBox(page, timeoutMs) {
       payloadDistance: distance,
     };
   }, { payloadId: PQ018_PAYLOAD_WORLD_ID, receiverId: PQ018_RECEIVER_WORLD_ID });
+  }
+
   if (!geometry) throw new Error('NORMAL_ROUTE_BLOCKED: Cathedral payload latch geometry unavailable');
-  await page.keyboard.down('KeyB');
-  try {
-    await towToPointUntilOperation(
-      page,
-      geometry.target,
-      'settle_cathedral_black_box',
-      timeoutMs,
-      {
-        siteId: PQ018_SITE_ID,
-        payloadWorldRecordId: PQ018_PAYLOAD_WORLD_ID,
-        receiverWorldRecordId: PQ018_RECEIVER_WORLD_ID,
-        settledRadius: 12,
-        maxSettledSpeed: 4,
-        maxApproachSpeed: 8,
-      },
+
+  // A target fixed at latch time cannot steer a payload on a slack line: the box swings, the line
+  // goes slack (strain 0, load 0), and no force reaches the cargo while the ship sits on a stale
+  // aim point. Recompute the pull-through from the live payload/receiver geometry each pass and tow
+  // again, so the ship keeps repositioning to whichever side actually drags the box in.
+  const settled = async () => page.evaluate((siteId) => !!(
+    window.SF?.state?.sites?.worldById?.[siteId]?.completedOperations?.settle_cathedral_black_box
+  ), PQ018_SITE_ID);
+  let towTarget = geometry.target;
+  let lastObservation = null;
+  for (let pass = 1; pass <= 5 && !(await settled()); pass += 1) {
+    await page.keyboard.down('KeyB');
+    try {
+      await towToPointUntilOperation(
+        page,
+        towTarget,
+        'settle_cathedral_black_box',
+        Math.max(30_000, Math.trunc(timeoutMs / 4)),
+        {
+          siteId: PQ018_SITE_ID,
+          payloadWorldRecordId: PQ018_PAYLOAD_WORLD_ID,
+          receiverWorldRecordId: PQ018_RECEIVER_WORLD_ID,
+          settledRadius: 12,
+          maxSettledSpeed: 4,
+          maxApproachSpeed: 8,
+        },
+      );
+    } catch (error) {
+      lastObservation = error.message;
+    } finally {
+      await page.keyboard.up('KeyB');
+    }
+    if (await settled()) break;
+    const next = await towGeometry(page);
+    if (!next) break;
+    towTarget = next.target;
+  }
+  if (!(await settled())) {
+    throw new Error(
+      'NORMAL_ROUTE_BLOCKED: ordinary receiver tow could not settle the Cathedral black box across '
+      + `five recomputed passes: ${lastObservation}`,
     );
-  } finally {
-    await page.keyboard.up('KeyB');
   }
   await page.waitForFunction(() => !window.SF?.state?.player?.tether?.active,
     null, { timeout: 7_500 });
