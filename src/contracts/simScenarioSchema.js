@@ -93,10 +93,12 @@ const INPUT_EVENT_KEYS = new Set([
   'sequence',
   'keys',
   'pointer',
-  'buttons',
+  // G6: buttons intentionally NOT schema-allowed — driver never applies them.
   'gamepad',
   'touch',
 ]);
+/** Explicitly rejected inputEvents fields that validate-but-do-nothing (G6). */
+const INPUT_EVENT_REJECTED = new Set(['buttons']);
 
 const FRAME_KEYS = new Set(['tick', 'input', 'commands']);
 /**
@@ -272,6 +274,13 @@ export function validateSimScenario(doc, options = {}) {
           issue(p, 'type', 'input event must be an object');
           return;
         }
+        // G6: reject schema-allowed-but-ignored fields before generic unknown-key.
+        for (const key of Object.keys(ev)) {
+          if (INPUT_EVENT_REJECTED.has(key)) {
+            issue(`${p}.${key}`, 'unimplemented-input-field',
+              `inputEvents.${key} is not applied by the lab tape driver — use code/key maps`);
+          }
+        }
         rejectUnknownKeys(ev, INPUT_EVENT_KEYS, p, issue);
         if (!Number.isInteger(ev.tick) || ev.tick < 0) {
           issue(`${p}.tick`, 'type', 'tick must be a non-negative integer');
@@ -313,19 +322,11 @@ export function validateSimScenario(doc, options = {}) {
     }
   }
 
-  // H14/F8: trace.signals and temporal-assertion signals must name known sample fields.
-  // Unknown names would be silently ignored (vacuous temporal pass) — reject those.
-  const KNOWN_SAMPLE_SIGNALS = new Set([
-    'default', 'tick', 'playerX', 'playerZ', 'playerVelX', 'playerVelZ', 'playerRot',
-    'playerAlive', 'hull', 'cap', 'credits', 'tetherActive', 'distance', 'restLength',
-    'radiusError', 'radialSpeed', 'tangentialSpeed', 'tangentFraction', 'tension',
-    'angularSpeed', 'attachmentActive', 'loadBand', 'mtActive', 'mtPhase', 'mtStrain',
-    'orbitAssistActive', 'orbitAssistReason', 'diverged',
-    'cmdX', 'cmdZ', 'cmdRejected', 'cmdClamped',
-  ]);
+  // H14/F8/G8: trace.signals and temporal-assertion signals must name known sample fields.
+  // Vacuous names (default/diverged) are not valid unless declared as real sample fields.
   if (doc.trace && Array.isArray(doc.trace.signals)) {
     doc.trace.signals.forEach((sig, i) => {
-      if (typeof sig !== 'string' || !KNOWN_SAMPLE_SIGNALS.has(sig)) {
+      if (typeof sig !== 'string' || !ASSERTION_KNOWN_SIGNALS.has(sig)) {
         issue(`$.trace.signals[${i}]`, 'unsupported-field',
           `trace signal "${sig}" is not a known lab sample field`);
       }
@@ -532,10 +533,7 @@ export function compileSimScenario(doc, options = {}) {
         pressed: !!ev.pressed,
         sequence: Number.isInteger(ev.sequence) ? ev.sequence : i,
         keys: ev.keys || null,
-        pointer: ev.pointer || null,
-        buttons: ev.buttons || null,
-        gamepad: ev.gamepad || null,
-        touch: ev.touch || null,
+        // G6: buttons/pointer/gamepad/touch never compile into the tape (rejected at validate).
       }))
       .sort((a, b) => (a.tick - b.tick) || (a.sequence - b.sequence))
     : [];
@@ -610,7 +608,8 @@ export function compileSimScenario(doc, options = {}) {
       }))
       : [],
     trace: {
-      signals: (doc.trace && Array.isArray(doc.trace.signals)) ? doc.trace.signals.slice() : ['default'],
+      // G8: no vacuous default signal — empty means "all recorded sample fields".
+      signals: (doc.trace && Array.isArray(doc.trace.signals)) ? doc.trace.signals.slice() : [],
       sampleEvery: (doc.trace && Number.isInteger(doc.trace.sampleEvery) && doc.trace.sampleEvery > 0)
         ? doc.trace.sampleEvery
         : 1,
@@ -662,16 +661,105 @@ export function formatSimScenarioIssue(issue) {
 }
 
 /**
- * Semantic checks that apply to both raw documents and precompiled canonicals.
- * FIX 17: runLabScenario's options.canonical path skips compileSimScenario (and thus
- * validateSimScenario). Call this after canonical selection so orphan lab.anchorMass
- * is rejected on both the raw-document and precompiled-canonical paths.
+ * Full semantic + structural checks for precompiled canonicals.
+ * G6/FIX 17: options.canonical must not bypass the field checks a raw document gets
+ * (unimplemented frame.input, inputEvents.buttons, unknown signals, anchorMass, etc.).
  *
- * @param {object} doc raw scenario or precompiled canonical
+ * @param {object} doc precompiled canonical (or raw-shaped doc)
  * @param {{ file?: string }} [options]
  */
 export function validateCanonicalScenario(doc, options = {}) {
-  const issues = collectAnchorMassResolutionIssues(doc, options);
+  const issues = [];
+  const file = options.file || null;
+  function issue(path, rule, message) {
+    issues.push({ file, path, rule, message });
+  }
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc)) {
+    issue('$', 'type', 'canonical scenario must be a plain object');
+    return result(false, issues);
+  }
+
+  // Anchor mass (FIX 17)
+  for (const i of collectAnchorMassResolutionIssues(doc, options)) issues.push(i);
+
+  // Frames: raw `frames` or compiled `inputTape.frames`
+  const frames = Array.isArray(doc.frames)
+    ? doc.frames
+    : (doc.inputTape && Array.isArray(doc.inputTape.frames) ? doc.inputTape.frames : null);
+  if (frames) {
+    frames.forEach((frame, i) => {
+      const p = doc.frames ? `$.frames[${i}]` : `$.inputTape.frames[${i}]`;
+      if (!frame || typeof frame !== 'object') {
+        issue(p, 'type', 'frame must be an object');
+        return;
+      }
+      if (frame.input != null) {
+        if (typeof frame.input !== 'object' || Array.isArray(frame.input)) {
+          issue(`${p}.input`, 'type', 'input must be an object');
+        } else {
+          for (const key of Object.keys(frame.input)) {
+            if (FRAME_INPUT_REJECTED.has(key)) {
+              issue(`${p}.input.${key}`, 'unimplemented-input-field',
+                `frame.input.${key} is not applied by the lab tape driver — use raw events/grammar fields`);
+            }
+          }
+          rejectUnknownKeys(frame.input, FRAME_INPUT_KEYS, `${p}.input`, issue);
+        }
+      }
+    });
+  }
+
+  // Input events: raw `inputEvents` or compiled `inputTape.events`
+  const events = Array.isArray(doc.inputEvents)
+    ? doc.inputEvents
+    : (doc.inputTape && Array.isArray(doc.inputTape.events) ? doc.inputTape.events : null);
+  if (events) {
+    events.forEach((ev, i) => {
+      const p = doc.inputEvents ? `$.inputEvents[${i}]` : `$.inputTape.events[${i}]`;
+      if (!ev || typeof ev !== 'object') {
+        issue(p, 'type', 'input event must be an object');
+        return;
+      }
+      for (const key of Object.keys(ev)) {
+        if (INPUT_EVENT_REJECTED.has(key)) {
+          issue(`${p}.${key}`, 'unimplemented-input-field',
+            `inputEvents.${key} is not applied by the lab tape driver — use code/key maps`);
+        }
+      }
+      if (ev.device != null && ev.device !== 'keyboard') {
+        issue(`${p}.device`, 'unsupported-field',
+          `input device "${ev.device}" is not implemented (keyboard only in V1)`);
+      }
+      if (ev.pointer != null) {
+        issue(`${p}.pointer`, 'unsupported-field', 'pointer input events are not implemented in V1');
+      }
+      if (ev.gamepad != null) {
+        issue(`${p}.gamepad`, 'unsupported-field', 'gamepad input events are not implemented in V1');
+      }
+      if (ev.touch != null) {
+        issue(`${p}.touch`, 'unsupported-field', 'touch input events are not implemented in V1');
+      }
+    });
+  }
+
+  // Assertions / temporal signals (F8/G8)
+  if (Array.isArray(doc.assertions)) {
+    doc.assertions.forEach((a, i) => {
+      if (!a || typeof a !== 'object') return;
+      validateAssertionFields(a, `$.assertions[${i}]`, issue);
+    });
+  }
+
+  // Trace signals on canonical
+  if (doc.trace && Array.isArray(doc.trace.signals)) {
+    doc.trace.signals.forEach((sig, i) => {
+      if (typeof sig !== 'string' || !ASSERTION_KNOWN_SIGNALS.has(sig)) {
+        issue(`$.trace.signals[${i}]`, 'unsupported-field',
+          `trace signal "${sig}" is not a known lab sample field`);
+      }
+    });
+  }
+
   return result(issues.length === 0, issues);
 }
 
@@ -687,13 +775,17 @@ function result(ok, issues) {
   };
 }
 
-/** Known sample fields shared with trace.signals validation (F8). */
+/**
+ * Known sample fields shared with trace.signals validation (F8/G8).
+ * G8: `default` and `diverged` removed — they are not recorded sample fields and
+ * enabled vacuous temporal passes (`never default` → ok:true).
+ */
 const ASSERTION_KNOWN_SIGNALS = new Set([
-  'default', 'tick', 'playerX', 'playerZ', 'playerVelX', 'playerVelZ', 'playerRot',
+  'tick', 'playerX', 'playerZ', 'playerVelX', 'playerVelZ', 'playerRot',
   'playerAlive', 'hull', 'cap', 'credits', 'tetherActive', 'distance', 'restLength',
   'radiusError', 'radialSpeed', 'tangentialSpeed', 'tangentFraction', 'tension',
   'angularSpeed', 'attachmentActive', 'loadBand', 'mtActive', 'mtPhase', 'mtStrain',
-  'orbitAssistActive', 'orbitAssistReason', 'diverged',
+  'orbitAssistActive', 'orbitAssistReason',
   'cmdX', 'cmdZ', 'cmdRejected', 'cmdClamped', 'settles',
 ]);
 

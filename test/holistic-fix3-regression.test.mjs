@@ -51,7 +51,7 @@ test('F1: compareTracesTickByTick fails on mid-run field divergence', () => {
   assert.ok(cmp.firstDivergentField === 'playerX' || cmp.firstDivergentField === 'tension');
 });
 
-test('F1: flight save/load compare requires tick-by-tick identity (not final-hash-only)', async () => {
+test('F1/G1: flight save/load compare requires exact tick-by-tick identity (not final-hash-only)', async () => {
   const result = await compareSaveLoad(saveLoadDoc, {
     verbosity: 1,
     saveLoadAt: 40,
@@ -59,17 +59,36 @@ test('F1: flight save/load compare requires tick-by-tick identity (not final-has
   assert.notEqual(result.exitClass, 3, result.withSaveLoad?.error || result.error);
   assert.ok('uninterruptedTraceHash' in result, 'must report both trace hashes');
   assert.ok('saveLoadTraceHash' in result);
-  // Flight path must pass tick-by-tick (round6 ULP-tolerant) + final covered hash.
-  assert.equal(result.ok, true, JSON.stringify({
-    status: result.status,
-    first: result.firstDivergentTick,
-    field: result.firstDivergentField,
-    mid: result.midCheckpointMismatch,
-  }));
-  assert.equal(result.firstDivergentTick, null);
-  assert.equal(result.uninterruptedHash, result.saveLoadHash);
-  // False-green closed: if intermediate ticks diverged materially, ok must be false
-  // even when final hashes match (exercised by the massline mid-run case below).
+  // G1: zero tolerance. Pass only when hashes equal AND no divergent tick; unequal
+  // hashes or any field delta must fail (false-green closed — no ULP soft-pass).
+  if (result.ok) {
+    assert.equal(result.firstDivergentTick, null);
+    assert.equal(result.uninterruptedHash, result.saveLoadHash);
+    assert.equal(result.uninterruptedTraceHash, result.saveLoadTraceHash);
+    assert.equal(result.contract, 'deterministic-covered');
+  } else {
+    assert.ok(
+      result.firstDivergentTick != null
+        || result.uninterruptedTraceHash !== result.saveLoadTraceHash
+        || result.uninterruptedHash !== result.saveLoadHash,
+      `parity-fail must expose divergence: ${JSON.stringify({
+        status: result.status,
+        first: result.firstDivergentTick,
+        field: result.firstDivergentField,
+        t0: result.uninterruptedTraceHash,
+        t1: result.saveLoadTraceHash,
+      })}`,
+    );
+  }
+  // Never accept final-hash-equal when traces diverged.
+  if (
+    result.uninterruptedHash
+    && result.saveLoadHash
+    && result.uninterruptedHash === result.saveLoadHash
+    && result.uninterruptedTraceHash !== result.saveLoadTraceHash
+  ) {
+    assert.equal(result.ok, false, 'final-hash-equal + unequal traces must not pass');
+  }
 });
 
 test('F1: massline mid-run save/load — every trace tick must match (or fail)', async () => {

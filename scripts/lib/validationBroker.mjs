@@ -725,8 +725,16 @@ async function readRunLockSafely(lockPath) {
  * vanished marker is treated as reclaimable rather than mid-init.
  */
 async function leadershipMarkerAgeMs(leadershipPath) {
+  return lockFileAgeMs(leadershipPath);
+}
+
+/**
+ * mtime age of a lock/marker file. Missing → +Infinity (treat as reclaimable).
+ * Used by G5 quota-lock init grace and leadership-marker reclaim.
+ */
+async function lockFileAgeMs(filePath) {
   try {
-    const st = await stat(leadershipPath);
+    const st = await stat(filePath);
     const mtimeMs = Number(st.mtimeMs);
     if (!Number.isFinite(mtimeMs)) return Number.POSITIVE_INFINITY;
     return Math.max(0, Date.now() - mtimeMs);
@@ -1406,6 +1414,8 @@ export async function withCandidateQuotaLock(outputRoot, candidateDigest, fn) {
     }
   }
   try {
+    // G5: write ownership JSON + sync on the same O_EXCL handle before any other work
+    // so contenders never observe a durable empty file as "corrupt → reclaim".
     await handle.writeFile(`${JSON.stringify({
       schema: 'spaceface.validation-quota-lock.v1',
       pid: process.pid,
@@ -1428,6 +1438,7 @@ export async function withCandidateQuotaLock(outputRoot, candidateDigest, fn) {
 export async function tryReclaimStaleQuotaLock(lockPath, {
   timeoutMs = 30_000,
   log = console.warn,
+  initGraceMs = LEADERSHIP_INIT_GRACE_MS,
 } = {}) {
   const { lock, corrupt, missing } = await readRunLockSafely(lockPath);
 
@@ -1435,8 +1446,15 @@ export async function tryReclaimStaleQuotaLock(lockPath, {
     return { reclaimed: false, reason: 'lock-missing' };
   }
 
+  // G5: newborn empty quota lock (open('wx') before ownership JSON write) is in-flight init.
+  // Within LEADERSHIP_INIT_GRACE_MS → back off, never treat as corrupt-and-reclaim.
   if (corrupt || !lock) {
-    const claimed = await atomicReclaimLockFile(lockPath);
+    const ageMs = await lockFileAgeMs(lockPath);
+    const grace = Math.max(0, Number(initGraceMs) || LEADERSHIP_INIT_GRACE_MS);
+    if (Number.isFinite(ageMs) && ageMs < grace) {
+      return { reclaimed: false, reason: 'quota-lock-init-in-flight' };
+    }
+    const claimed = await atomicReclaimLockFile(lockPath, { initGraceMs: grace });
     if (claimed.reclaimed) {
       log?.(
         `[validationBroker] reclaimed corrupt/unreadable quota lock at ${lockPath}`,

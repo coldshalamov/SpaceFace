@@ -283,12 +283,15 @@ export async function runBrowserLabScenario(canonical, options = {}) {
     }
 
     // FIX 7: evaluate scenario assertions/metrics — host success alone is not oracle pass.
+    // G4/differential: multi-run equivalences are owned by parent compare/repeat/diff —
+    // skip deferred incomplete when parent will evaluate (or has already).
     const oracleEval = evaluateOracles({
       trace: oracleTrace,
       metrics: canonical.metrics || [],
       assertions: canonical.assertions || [],
       ctx: {},
       equivalence: options.equivalence || {},
+      skipMultiRunEquivalence: options.skipMultiRunEquivalence === true,
     });
     const oracle = {
       ok: oracleEval.ok,

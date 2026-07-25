@@ -436,7 +436,8 @@ export const automation = {
     });
     bus.on('game:started', () => {
       this._saveRestoring = false;
-      this.meta().lastTickTime = nowMs();
+      // G2: stamp sim-time baseline, never wall-clock.
+      this.meta().lastTickTime = simTimeMs(this.state);
     });
 
     // Hard sector exit: world despawns sector-scoped entities — release live drone hulls and drop
@@ -493,7 +494,8 @@ export const automation = {
     this._updateOutposts(dt, a);
     this._drainUpkeep(dt, a);
 
-    this.meta().lastTickTime = nowMs();
+    // G2: authoritative tick stamp is sim-time only (deterministic across run speeds).
+    this.meta().lastTickTime = simTimeMs(state);
     state.automationRuntime = state.automationRuntime || {};
     state.automationRuntime.diagnostics = this._diag;
   },
@@ -1851,14 +1853,21 @@ export const automation = {
   // OFFLINE / AWAY CATCH-UP (spec): one coarse pass over elapsed time, capped + offlineEff-scaled.
   // Deterministic cap accounting, idempotent re-entry, grant/charge intents only, owner-safe
   // pressure (no economy:applyTradePressure — markets stay economy-owned).
-  // opts.nowMs — injectable wall clock for tests (default Date.now).
+  // G2: offline catch-up is deterministic. Elapsed sources (first match):
+  //   1. opts.offlineElapsedSec — injected seconds
+  //   2. a.meta.pendingOfflineElapsedSec — serialized / host-pre-set
+  //   3. opts.nowMs + lastTickTime — test harness wall-window injection
+  //   4. wall-clock Date.now() ONLY when settings.gameplay.wallClockOfflineProgress === true
+  //   5. otherwise zero elapsed (sim-time stamp equality → no idle grant)
+  // opts.nowMs remains injectable for tests; production lab/deterministic runs leave wall-clock OFF.
   // ------------------------------------------------------------------------------------------
   runOfflineCatchup(opts = {}) {
     const a = this.state.automation;
     if (!a) return null;
     this.meta(); // ensure meta bag
     const bal = a.balance || AUTO_BALANCE;
-    const now = Number.isFinite(opts.nowMs) ? opts.nowMs : nowMs();
+    const resolvedNow = resolveAutomationOfflineNow(this.state, a, opts);
+    const now = resolvedNow.nowMs;
     const windowStart = (a.meta && a.meta.lastTickTime) || 0;
 
     // Bootstrap: no baseline yet — stamp now, no credits (fail closed).
@@ -2392,6 +2401,10 @@ export const automation = {
     if (a.meta.rngSeed == null) a.meta.rngSeed = 0;
     if (a.meta.lastOfflineWindowStart == null) a.meta.lastOfflineWindowStart = 0;
     if (a.meta.lastOfflineReceipt === undefined) a.meta.lastOfflineReceipt = null;
+    if (a.meta.pendingOfflineElapsedSec !== null && a.meta.pendingOfflineElapsedSec !== undefined
+      && !Number.isFinite(a.meta.pendingOfflineElapsedSec)) {
+      a.meta.pendingOfflineElapsedSec = null;
+    }
     if (!Number.isInteger(a.meta.wingCommandSeq) || a.meta.wingCommandSeq < 0) a.meta.wingCommandSeq = 0;
   },
 
@@ -2405,7 +2418,8 @@ export const automation = {
     this.state.automation = makeDefaultAutomation();
     this._normalizeAutomation(this.state.automation);
     this._initRng(true);
-    this.state.automation.meta.lastTickTime = nowMs();
+    // G2: sim-time baseline only.
+    this.state.automation.meta.lastTickTime = simTimeMs(this.state);
     this._nextId = 1;
     this._capBudget = 0;
     this._outpostRaidAccum = 0;
@@ -2414,8 +2428,9 @@ export const automation = {
 
   serialize() {
     const a = this.state.automation;
-    // strip transient rng fn; stamp lastTickTime so offline catch-up has a baseline.
-    a.meta.lastTickTime = nowMs();
+    // G2: stamp lastTickTime from sim-time (never Date.now). Wall-clock idle rewards
+    // require host-injected pendingOfflineElapsedSec or wallClockOfflineProgress + explicit now.
+    a.meta.lastTickTime = simTimeMs(this.state);
     // entityIds are live runtime ids (don't survive save/load or sector unload) → strip them; the
     // flying drones re-spawn from the group on the next in-sector tick.
     const drones = a.drones.map((g) => { const { entityIds, ...rest } = g; return rest; });
@@ -2440,6 +2455,10 @@ export const automation = {
         // Offline idempotency + last receipt (plain JSON — re-load must not double-grant).
         lastOfflineWindowStart: a.meta.lastOfflineWindowStart || 0,
         lastOfflineReceipt: a.meta.lastOfflineReceipt || null,
+        // Explicit offline elapsed (host may set before save:loaded); never derived from Date.now.
+        pendingOfflineElapsedSec: Number.isFinite(a.meta.pendingOfflineElapsedSec)
+          ? a.meta.pendingOfflineElapsedSec
+          : null,
         wingCommandSeq: a.meta.wingCommandSeq || 0,
       },
       nextId: this._nextId,
@@ -2514,13 +2533,64 @@ function makeDefaultAutomation() {
     accumulators: { creditBuffer: 0, upkeepDebt: 0 },
     meta: {
       lastTickTime: 0, totalPassiveEarnedLifetime: 0, lostAssetsLog: [], rngSeed: 0,
-      lastOfflineWindowStart: 0, lastOfflineReceipt: null,
+      lastOfflineWindowStart: 0, lastOfflineReceipt: null, pendingOfflineElapsedSec: null,
     },
   };
 }
 
-function nowMs() {
-  return (typeof Date !== 'undefined' && Date.now) ? Date.now() : 0;
+/**
+ * G2: sim-time in milliseconds (same unit as historical lastTickTime wall stamps).
+ * Used for authoritative tick/serialize baselines — never wall-clock.
+ */
+function simTimeMs(state) {
+  const t = state && Number.isFinite(state.simTime) ? state.simTime : 0;
+  return Math.max(0, t * 1000);
+}
+
+/**
+ * Resolve "now" for offline catch-up without uncontrolled Date.now() in deterministic runs.
+ * Wall-clock is gated: settings.gameplay.wallClockOfflineProgress === true (OFF by default
+ * in lab/deterministic hosts). Tests inject opts.nowMs; hosts may set pendingOfflineElapsedSec.
+ *
+ * When offlineElapsedSec / pendingOfflineElapsedSec is provided, synthesizes a nowMs that
+ * yields that elapsed against lastTickTime so resolveOfflineElapsed stays unit-compatible.
+ */
+function resolveAutomationOfflineNow(state, automation, opts = {}) {
+  const windowStart = (automation && automation.meta && automation.meta.lastTickTime) || 0;
+
+  // Explicit elapsed seconds (host/test) → synthesize now relative to baseline.
+  if (Number.isFinite(opts.offlineElapsedSec)) {
+    const elapsed = Math.max(0, opts.offlineElapsedSec);
+    return { nowMs: windowStart + elapsed * 1000, source: 'opts.offlineElapsedSec' };
+  }
+  const pending = automation && automation.meta && automation.meta.pendingOfflineElapsedSec;
+  if (Number.isFinite(pending)) {
+    // Consume pending so a second save:loaded cannot double-apply.
+    automation.meta.pendingOfflineElapsedSec = null;
+    return { nowMs: windowStart + Math.max(0, pending) * 1000, source: 'pendingOfflineElapsedSec' };
+  }
+  if (Number.isFinite(opts.nowMs)) {
+    return { nowMs: opts.nowMs, source: 'opts.nowMs' };
+  }
+  // Wall-clock idle rewards: opt-in only (production hosts may enable; lab leaves OFF).
+  if (wallClockOfflineProgressEnabled(state, opts)) {
+    const wall = (typeof Date !== 'undefined' && Date.now) ? Date.now() : 0;
+    return { nowMs: wall, source: 'wall-clock' };
+  }
+  // Deterministic default: "now" is current sim-time → near-zero elapsed after save/load.
+  return { nowMs: simTimeMs(state), source: 'simTime' };
+}
+
+/**
+ * Wall-clock offline progress is OFF unless explicitly enabled.
+ * Lab/deterministic runs must leave this false so two identical runs at different wall speeds
+ * produce identical authoritative/save state.
+ */
+function wallClockOfflineProgressEnabled(state, opts = {}) {
+  if (opts.wallClockOffline === true) return true;
+  if (opts.wallClockOffline === false) return false;
+  const gp = state && state.settings && state.settings.gameplay;
+  return !!(gp && gp.wallClockOfflineProgress === true);
 }
 
 function kindOf(list, a) {

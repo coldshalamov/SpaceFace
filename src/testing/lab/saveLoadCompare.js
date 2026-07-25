@@ -106,33 +106,24 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
     withSaveLoad.checkpoints && withSaveLoad.checkpoints.mid,
   );
 
-  // F1 gate: every-tick sample identity (with round6 ULP tolerance) + mid checkpoints.
-  // Raw traceHash is reported but not required when tick-by-tick already proved identity —
-  // round6 boundary noise can change the hash without a material field mismatch.
-  const intermediateOk = tickCompare.ok && midCompare.ok;
+  // G1: same-engine save/load requires EXACT identity — zero tolerance, unequal hashes fail.
+  // Trace hashes must match when both present; tick-by-tick uses Object.is / === only.
+  // Weaker contracts (trace-hash/semantic) are never accepted for save/load parity.
+  const tracesRetained = Array.isArray(uninterrupted.oracleTrace || uninterrupted.trace)
+    && Array.isArray(withSaveLoad.oracleTrace || withSaveLoad.trace);
+  const traceHashOk = t0 != null && t1 != null ? t0 === t1 : !tracesRetained;
+  const intermediateOk = tickCompare.ok && midCompare.ok && traceHashOk;
   let match = intermediateOk && h0 === h1;
   let contract = 'deterministic-covered';
 
-  if (intermediateOk && !match && authorized !== 'deterministic-covered') {
-    if (authorized === 'trace-hash' || authorized === 'semantic' || authorized === 'any-weaker') {
-      if ((authorized === 'trace-hash' || authorized === 'any-weaker') && (t0 === t1 || tickCompare.ok)) {
-        match = true;
-        contract = 'trace-hash';
-      } else if (authorized === 'semantic' || authorized === 'any-weaker') {
-        const s0 = hashOf(uninterrupted, 'semantic');
-        const s1 = hashOf(withSaveLoad, 'semantic');
-        if (s0 === s1) {
-          match = true;
-          contract = 'semantic';
-        }
-      }
-    }
-  }
-
   // If intermediate diverged, contract labels the failure surface.
   if (!intermediateOk) {
-    contract = !tickCompare.ok ? 'trace-tick-by-tick' : 'mid-checkpoint';
+    if (!tickCompare.ok) contract = 'trace-tick-by-tick';
+    else if (!midCompare.ok) contract = 'mid-checkpoint';
+    else if (!traceHashOk) contract = 'trace-hash-mismatch';
   }
+  // G1: authorized weaker equivalence does NOT soft-pass save/load. Same-engine is exact only.
+  void authorized;
 
   return {
     schema: 'spaceface.labSaveLoadCompareResult.v1',
@@ -172,8 +163,13 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
  */
 export function compareTracesTickByTick(a, b) {
   if (!Array.isArray(a) || !Array.isArray(b)) {
-    // Without retained traces, fall back to "unknown" — caller still checks traceHash.
-    return { ok: true, firstDivergentTick: null, firstDivergentField: null, reason: 'traces-not-retained' };
+    // G1: missing traces cannot prove exact identity — fail closed (caller still reports hashes).
+    return {
+      ok: false,
+      firstDivergentTick: null,
+      firstDivergentField: null,
+      reason: 'traces-not-retained',
+    };
   }
   const n = Math.max(a.length, b.length);
   for (let i = 0; i < n; i++) {
@@ -190,7 +186,7 @@ export function compareTracesTickByTick(a, b) {
     }
     const keys = new Set([...Object.keys(sa), ...Object.keys(sb)]);
     for (const key of keys) {
-      if (!valuesEqual(sa[key], sb[key])) {
+      if (!valuesEqualExact(sa[key], sb[key])) {
         return {
           ok: false,
           firstDivergentTick: sa.tick != null ? sa.tick : i,
@@ -236,28 +232,23 @@ function compareMidCheckpoints(a, b) {
   return { ok: true };
 }
 
-function valuesEqual(a, b) {
+/**
+ * G1: same-engine comparison uses exact identity only (Object.is / ===).
+ * No ULP tolerance — 1 ULP divergence is a real fail with first divergent field.
+ */
+function valuesEqualExact(a, b) {
   if (Object.is(a, b)) return true;
   if (typeof a === 'number' && typeof b === 'number') {
-    if (!Number.isFinite(a) && !Number.isFinite(b)) return Object.is(a, b);
-    if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
-    // Lab samples use round6; allow one ULP of quantization noise (1e-6) so physics
-    // soft-restore micro-drift does not false-fail. Real mid-run bugs (Codex massline
-    // 0.295 vs 0.291 / tension tens of units) remain hard failures.
-    const absTol = 1.5e-6;
-    const relTol = 1e-12;
-    const scale = Math.max(1, Math.abs(a), Math.abs(b));
-    return Math.abs(a - b) <= absTol + relTol * scale;
+    // NaN handling: Object.is(NaN, NaN) is true above; mixed finite/non-finite fails.
+    return false;
   }
   return a === b;
 }
 
 /**
- * Default: deterministic-covered only. Scenario may set saveLoadEquivalence to
- * "semantic" | "trace-hash" | "any-weaker" to authorize softer contracts.
- * H12/H13: policy is compiled into the canonical artifact and hashed; notes alone
- * no longer hide comparison policy from digests (compile lifts notes → top-level).
- * F1: softer contracts still require intermediate-tick identity.
+ * Default: deterministic-covered only (exact). saveLoadEquivalence is recorded for
+ * diagnostics/history but G1 forbids weaker same-engine contracts from greening parity.
+ * H12/H13: policy is still compiled into the canonical artifact and hashed.
  */
 function resolveSaveLoadEquivalence(scenarioDoc, options = {}) {
   if (options.saveLoadEquivalence) return options.saveLoadEquivalence;

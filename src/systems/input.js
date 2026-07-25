@@ -651,10 +651,13 @@ export const input = {
     resetAutoTargetPath(this, this.state);
     this._m0 = false; this._m1 = false; this._m2 = false;
     this._masslineGrammar = createMasslineInputGrammar();
-    // F4/N2: device arbitration uses tick-indexed activity, never performance.now()/Date.now().
-    // DOM events mark pending activity; update() stamps last-active-tick from state.tick.
+    // F4/G9: device arbitration uses deterministic (tick, sequence) activity stamps shared
+    // across keyboard/gamepad/touch — never performance.now()/Date.now(). Sequence reflects
+    // actual event order within a tick (not device-type priority).
     this._lastKbmTick = -1;
+    this._lastKbmSeq = -1;
     this._kbmActivityPending = false;
+    this._inputActivitySeq = 0;
     this._canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
 
     this.gamepad = createGamepad(ctx);
@@ -777,16 +780,29 @@ export const input = {
     return false;
   },
 
+  /**
+   * G9: bump the shared activity sequence and return the new stamp for this device event.
+   * Sequence is process-global on the input host so keyboard/gamepad/touch share order.
+   */
+  _bumpActivityStamp(state) {
+    const tick = state && Number.isFinite(state.tick) ? (state.tick | 0) : 0;
+    this._inputActivitySeq = (this._inputActivitySeq | 0) + 1;
+    if (state && state.input) state.input._activitySeq = this._inputActivitySeq;
+    return { tick, seq: this._inputActivitySeq };
+  },
+
   update(dt, state) {
-    // F4: stamp kbm activity with sim tick (device arbitration is gameplay-affecting).
+    // F4/G9: stamp kbm activity with (tick, sequence) when DOM events fired this interval.
     if (this._kbmActivityPending) {
-      this._lastKbmTick = state && Number.isFinite(state.tick) ? (state.tick | 0) : 0;
+      const stamp = this._bumpActivityStamp(state);
+      this._lastKbmTick = stamp.tick;
+      this._lastKbmSeq = stamp.seq;
       this._kbmActivityPending = false;
     }
     const gp = this.gamepad;
-    if (gp) gp.tick(dt, state);
+    if (gp) gp.tick(dt, state, this);
     const tp = this.touch;
-    if (tp) tp.tick(dt, state);
+    if (tp) tp.tick(dt, state, this);
 
     const inp = state.input;
     const autoTargetPointer = !!inp.autoFire;
@@ -942,11 +958,14 @@ export const input = {
       tpAimActive = Math.abs(tp.axes.rightX) > 0.001 || Math.abs(tp.axes.rightY) > 0.001;
     }
 
-    // F4: keyboard/mouse is authoritative when both are active (last-active *tick* wins for aim).
+    // F4/G9: last-active (tick, sequence) wins for aim — no device-type priority on ties.
     // Never compare performance.now()/Date.now() — wall-clock is non-deterministic.
     const gpTick = gp && Number.isFinite(gp.lastActiveTick) ? gp.lastActiveTick : -1;
+    const gpSeq = gp && Number.isFinite(gp.lastActiveSeq) ? gp.lastActiveSeq : -1;
     const tpTick = tp && Number.isFinite(tp.lastActiveTick) ? tp.lastActiveTick : -1;
-    const kbmRecent = this._lastKbmTick >= gpTick && this._lastKbmTick >= tpTick;
+    const tpSeq = tp && Number.isFinite(tp.lastActiveSeq) ? tp.lastActiveSeq : -1;
+    const kbmRecent = activityStampMoreRecent(this._lastKbmTick, this._lastKbmSeq, gpTick, gpSeq)
+      && activityStampMoreRecent(this._lastKbmTick, this._lastKbmSeq, tpTick, tpSeq);
 
     inp.turnIntent = kbdTurn || gpTurn || tpTurn;
     inp.moveX = kbdMoveX || tpMoveX;
@@ -1166,4 +1185,18 @@ function tetherFacingAngle(player, state, tether) {
   const target = state.entities && state.entities.get && state.entities.get(tether.targetId);
   if (!target || target.alive === false || !target.pos || !player.pos) return null;
   return Math.atan2(target.pos.z - player.pos.z, target.pos.x - player.pos.x);
+}
+
+/**
+ * G9: compare shared (tick, sequence) activity stamps.
+ * Higher tick wins; on equal tick, higher sequence wins (strict — no device-type priority).
+ * @returns {boolean} true when A is strictly more recent than B
+ */
+export function activityStampMoreRecent(tickA, seqA, tickB, seqB) {
+  const ta = Number.isFinite(tickA) ? tickA : -1;
+  const tb = Number.isFinite(tickB) ? tickB : -1;
+  if (ta !== tb) return ta > tb;
+  const sa = Number.isFinite(seqA) ? seqA : -1;
+  const sb = Number.isFinite(seqB) ? seqB : -1;
+  return sa > sb;
 }

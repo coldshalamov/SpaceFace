@@ -75,7 +75,8 @@ export function resolveRuntimeManifest(options = {}) {
 
   // Slot identities affect material runtime behavior (AI/flight backends). Include them in
   // the manifest hash so evidence/replay/cache consumers can distinguish different backends.
-  const selectedSlots = resolveSelectedSlots(options.slots);
+  // G7: explicit system lists bind slots from the actual system objects (not leave unbound).
+  const selectedSlots = resolveSelectedSlots(options.slots, explicitSystems);
 
   const profileHash = fingerprintPayload({
     schema: 'spaceface.runtimeProfile.v1',
@@ -156,15 +157,38 @@ export function resolveRuntimeManifest(options = {}) {
  * Prefer explicit `aiBackend` / `flightBackend` labels (createRegistry passes these) because
  * flight and flightV3 share the system name `'flight'`.
  *
+ * G7: when an explicit system list includes flightV3 / tacticalAI / legacy flight / ai,
+ * bind the corresponding slot from the system object so V3 vs legacy hash differently.
+ *
  * @param {{ aiSlot?: object, flightSlot?: object, aiBackend?: string, flightBackend?: string }|null|undefined} slots
+ * @param {object[]|null|undefined} explicitSystems
  */
-function resolveSelectedSlots(slots) {
+function resolveSelectedSlots(slots, explicitSystems = null) {
   const s = slots || {};
-  const aiName = s.aiSlot && typeof s.aiSlot.name === 'string' ? s.aiSlot.name : null;
-  const flightName = s.flightSlot && typeof s.flightSlot.name === 'string' ? s.flightSlot.name : null;
-
+  let aiSlot = s.aiSlot || null;
+  let flightSlot = s.flightSlot || null;
   let aiBackend = typeof s.aiBackend === 'string' && s.aiBackend ? s.aiBackend : null;
   let flightBackend = typeof s.flightBackend === 'string' && s.flightBackend ? s.flightBackend : null;
+
+  if (Array.isArray(explicitSystems)) {
+    for (const sys of explicitSystems) {
+      if (!sys || typeof sys !== 'object') continue;
+      const name = typeof sys.name === 'string' ? sys.name : '';
+      if (name === 'tacticalAI') {
+        aiSlot = sys;
+        if (!aiBackend) aiBackend = 'sg06-tactical';
+      } else if (name === 'ai') {
+        aiSlot = sys;
+        if (!aiBackend) aiBackend = 'legacy';
+      } else if (name === 'flight' || name === 'flightV3') {
+        flightSlot = sys;
+        if (!flightBackend) flightBackend = detectFlightBackend(sys, name);
+      }
+    }
+  }
+
+  const aiName = aiSlot && typeof aiSlot.name === 'string' ? aiSlot.name : null;
+  const flightName = flightSlot && typeof flightSlot.name === 'string' ? flightSlot.name : null;
 
   if (!aiBackend && aiName) {
     if (aiName === 'tacticalAI') aiBackend = 'sg06-tactical';
@@ -172,8 +196,7 @@ function resolveSelectedSlots(slots) {
     else aiBackend = aiName;
   }
   if (!flightBackend && flightName) {
-    // Without an explicit label both V3 and legacy report name 'flight'.
-    flightBackend = flightName;
+    flightBackend = flightName === 'flightV3' ? 'v3' : flightName;
   }
 
   return Object.freeze({
@@ -182,6 +205,20 @@ function resolveSelectedSlots(slots) {
     aiBackend: aiBackend || 'unbound',
     flightBackend: flightBackend || 'unbound',
   });
+}
+
+/**
+ * Distinguish flightV3 from legacy flight when both use system.name === 'flight'.
+ * Uses implementation-specific methods (no circular imports of the system modules).
+ */
+function detectFlightBackend(sys, name) {
+  if (name === 'flightV3') return 'v3';
+  // flightV3 owns _stepCraft; legacy flight owns applyPlayerIntent.
+  if (typeof sys._stepCraft === 'function') return 'v3';
+  if (typeof sys.applyPlayerIntent === 'function') return 'legacy';
+  // Cloned hosts may only expose update — prefer diag version when present.
+  if (sys._diag && sys._diag.version === 3) return 'v3';
+  return 'unbound-flight';
 }
 
 function normalizeLookup(systemLookup) {

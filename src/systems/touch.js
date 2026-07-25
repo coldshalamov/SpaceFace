@@ -43,8 +43,9 @@ export function createTouch(ctx) {
 
   const touch = {
     active: false,        // is the overlay shown + touch input enabled?
-    // F4: tick-indexed activity for authoritative device arbitration (not wall-ms).
+    // F4/G9: (tick, sequence) activity for authoritative device arbitration (not wall-ms).
     lastActiveTick: -1,
+    lastActiveSeq: -1,
     _activityPending: false,
     /** Diagnostic only — do not use for aim/helm selection. */
     lastActiveMs: 0,
@@ -236,11 +237,18 @@ export function createTouch(ctx) {
       });
     },
 
-    tick(_dt, tickState = null) {
+    tick(_dt, tickState = null, inputHost = null) {
       const live = tickState || state;
-      // F4: stamp pending activity with sim tick for device arbitration.
+      // F4/G9: stamp pending activity with (tick, sequence) for device arbitration.
       if (this._activityPending) {
-        this.lastActiveTick = live && Number.isFinite(live.tick) ? (live.tick | 0) : 0;
+        if (inputHost && typeof inputHost._bumpActivityStamp === 'function') {
+          const stamp = inputHost._bumpActivityStamp(live);
+          this.lastActiveTick = stamp.tick;
+          this.lastActiveSeq = stamp.seq;
+        } else {
+          this.lastActiveTick = live && Number.isFinite(live.tick) ? (live.tick | 0) : 0;
+          this.lastActiveSeq = (this.lastActiveSeq | 0) + 1;
+        }
         this._activityPending = false;
       }
       if (!this.active) return;

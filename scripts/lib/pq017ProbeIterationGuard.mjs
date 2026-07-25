@@ -489,56 +489,19 @@ export async function assertPq017ProbeLaunch({
   let claimToken = brokerClaimToken ?? process.env.SF_BROKER_CLAIM ?? null;
   let compatibilityMint = false;
 
+  // G3: acceptance MUST require an external broker-issued claim (caller or SF_BROKER_CLAIM).
+  // Never self-mint from an on-disk receipt — receipt presence is not claim authority.
   if (mode === 'acceptance' && !claimToken) {
-    // F3: may issue a claim only from an *existing* fast-gate receipt (real gates ran).
-    // Never synthesize createFastGateReceipt — that is not evidence gates passed.
-    const digests = await computeGateDigestsFromManifest({ root, manifest });
-    const prior = await getCandidateLaunchCount(outputRoot, digests.candidateDigest);
-    if (prior >= manifest.maxLaunchesPerCandidate) {
-      const error = new Error('PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED: max-launches-per-candidate');
-      error.code = 'PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED';
-      error.gateResult = {
-        pass: false,
-        reason: 'max-launches-per-candidate',
-        primaryAcceptance: false,
-        resolvesFailure: false,
-      };
-      throw error;
-    }
-    const cached = await evaluateCachedResult({ root, outputRoot, manifest });
-    if (cached.blocked) {
-      const error = new Error(`PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED: ${cached.reason}`);
-      error.code = 'PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED';
-      error.gateResult = {
-        pass: false,
-        reason: cached.reason,
-        primaryAcceptance: false,
-        resolvesFailure: false,
-        status: cached.status,
-      };
-      throw error;
-    }
-    const receipt = await readFastGateReceipt({ outputRoot });
-    if (!receipt) {
-      const error = new Error('PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED: broker-claim-required');
-      error.code = 'PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED';
-      error.gateResult = {
-        pass: false,
-        reason: 'broker-claim-required',
-        primaryAcceptance: false,
-        resolvesFailure: false,
-        detail: 'acceptance requires a broker-issued claim after real fast gates; PQ-017 must not self-mint an authorizing receipt',
-      };
-      throw error;
-    }
-    const issued = await issueBrokerClaim({
-      outputRoot,
-      manifest,
-      receipt,
-      mode: 'acceptance',
-      digests,
-    });
-    claimToken = issued.claimPath;
+    const error = new Error('PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED: broker-claim-required');
+    error.code = 'PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED';
+    error.gateResult = {
+      pass: false,
+      reason: 'broker-claim-required',
+      primaryAcceptance: false,
+      resolvesFailure: false,
+      detail: 'acceptance requires a caller-provided broker claim (or SF_BROKER_CLAIM); PQ-017 must not self-mint even when a fast-gate receipt exists',
+    };
+    throw error;
   }
 
   // F3: diagnostic-only compatibility mint — never primaryAcceptance, never synthesizes

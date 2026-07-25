@@ -102,13 +102,15 @@ export async function runChromiumLabScenario(canonical, options = {}) {
       const checkpointEvery = options.checkpointEvery;
       const checkpointTicks = options.checkpointTicks;
 
+      const skipMultiRunEquivalence = options.skipMultiRunEquivalence === true;
       const result = await page.evaluate(
-        async ({ canonical: can, scenarioDigest: sd, inputDigest: id, checkpointEvery: ce, checkpointTicks: ct }) => {
+        async ({ canonical: can, scenarioDigest: sd, inputDigest: id, checkpointEvery: ce, checkpointTicks: ct, skipMultiRunEquivalence: skipEq }) => {
           return window.__SF_BROWSER_LAB__.runBrowserLabScenario(can, {
             scenarioDigest: sd,
             inputDigest: id,
             checkpointEvery: ce,
             checkpointTicks: ct,
+            skipMultiRunEquivalence: skipEq,
           });
         },
         {
@@ -117,6 +119,7 @@ export async function runChromiumLabScenario(canonical, options = {}) {
           inputDigest,
           checkpointEvery,
           checkpointTicks,
+          skipMultiRunEquivalence,
         },
       );
 

@@ -859,7 +859,7 @@ function orphanAnchorMassCanonical() {
     },
     policies: [],
     checkpoints: [],
-    trace: { signals: ['default'], sampleEvery: 1 },
+    trace: { signals: ['playerX', 'playerZ'], sampleEvery: 1 },
     metrics: [
       { name: 'invariant.finiteState', version: 1, params: {}, threshold: { op: '==', value: 1 } },
     ],

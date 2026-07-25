@@ -99,8 +99,10 @@ export function createGamepad(ctx) {
   const gp = {
     connected: false,
     id: '',
-    // F4: tick-indexed activity for authoritative device arbitration (not wall-ms).
+    // F4/G9: (tick, sequence) activity for authoritative device arbitration (not wall-ms).
     lastActiveTick: -1,
+    lastActiveSeq: -1,
+    _wasActive: false,
     /** Diagnostic only — do not use for aim/helm selection. */
     lastActiveMs: 0,
 
@@ -129,7 +131,7 @@ export function createGamepad(ctx) {
       return this.actions[name] || { held: false, pressed: false, released: false, value: 0 };
     },
 
-    tick(/* dt */ _dt, tickState = null) {
+    tick(/* dt */ _dt, tickState = null, inputHost = null) {
       // Prefer live state passed from input.update so tick stamps stay authoritative.
       const live = tickState || state;
       const cfg =
@@ -162,7 +164,14 @@ export function createGamepad(ctx) {
       if (pad && !wasConnected) {
         this.connected = true;
         this.id = pad.id || 'gamepad';
-        this.lastActiveTick = live && Number.isFinite(live.tick) ? (live.tick | 0) : 0;
+        // G9: connection is a discrete activity event — bump shared sequence.
+        if (inputHost && typeof inputHost._bumpActivityStamp === 'function') {
+          const stamp = inputHost._bumpActivityStamp(live);
+          this.lastActiveTick = stamp.tick;
+          this.lastActiveSeq = stamp.seq;
+        } else {
+          this.lastActiveTick = live && Number.isFinite(live.tick) ? (live.tick | 0) : 0;
+        }
         this.lastActiveMs = nowMs(); // diagnostic only
         if (bus && bus.emit) bus.emit('gamepad:connected', { id: this.id });
       }
@@ -211,9 +220,32 @@ export function createGamepad(ctx) {
       this.actions = actions;
 
       if (activity) {
-        // F4: authoritative stamp is sim tick; wall ms is diagnostic only.
-        this.lastActiveTick = live && Number.isFinite(live.tick) ? (live.tick | 0) : 0;
-        this.lastActiveMs = nowMs();
+        // G9: update tick every held frame for cross-tick recency, but only bump the
+        // shared sequence on new activity edges (not continuous hold re-stamps).
+        const tick = live && Number.isFinite(live.tick) ? (live.tick | 0) : 0;
+        this.lastActiveTick = tick;
+        let edge = !this._wasActive;
+        if (!edge) {
+          for (const action in actions) {
+            if (actions[action] && actions[action].pressed) {
+              edge = true;
+              break;
+            }
+          }
+        }
+        if (edge) {
+          if (inputHost && typeof inputHost._bumpActivityStamp === 'function') {
+            const stamp = inputHost._bumpActivityStamp(live);
+            this.lastActiveTick = stamp.tick;
+            this.lastActiveSeq = stamp.seq;
+          } else {
+            this.lastActiveSeq = (this.lastActiveSeq | 0) + 1;
+          }
+        }
+        this._wasActive = true;
+        this.lastActiveMs = nowMs(); // diagnostic only
+      } else {
+        this._wasActive = false;
       }
     },
 

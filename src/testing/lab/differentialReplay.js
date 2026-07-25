@@ -90,6 +90,9 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
     inputDigest,
     verbosity: options.verbosity ?? 1,
     retainCheckpointSurfaces: true,
+    // Multi-run equivalences (run-eq-repeat / save-load) are not owned by differential
+    // replay — parent proves Node vs Chromium checkpoint identity instead.
+    skipMultiRunEquivalence: true,
   });
 
   if (nodeResult.exitClass === 3) {
@@ -132,6 +135,7 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
     headless: options.headless !== false,
     baseUrl: options.baseUrl,
     root: options.root,
+    skipMultiRunEquivalence: true,
   });
 
   // Host-level Chromium failures (no usable run / unsupported) — not oracle results.
@@ -192,6 +196,11 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
         classification: 'setup',
       },
       firstDivergenceReport: `arm-oracle-fail:${failedArms.join(',')}`,
+      // Artifact identity still reportable on arm-oracle-fail for diagnostics.
+      sameCompiledArtifact: nodeResult.scenarioDigest === scenarioDigest
+        && chromiumResult.scenarioDigest === scenarioDigest
+        && nodeResult.inputDigest === inputDigest
+        && chromiumResult.inputDigest === inputDigest,
       node: {
         series: nodeSeries.map(stripSurfaceUnlessVerbose(options.verbosity, true)),
         finalHash: nodeSeries.at(-1)?.hash || null,
@@ -234,18 +243,41 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
       && chromiumResult.inputDigest === inputDigest,
   };
 
+  // G7: gate overall success on runtime fingerprint / manifest identity match.
+  // Different slots or system bundles between Node and Chromium must FAIL, not soft-pass
+  // when checkpoints happen to match.
+  const fingerprintCompare = compareRuntimeFingerprints(
+    nodeResult.fingerprint,
+    chromiumResult.fingerprint,
+  );
+
   // H13: different compiled artifacts are a setup error, not parity.
   const bothArmsOk = !!(nodeResult.ok && chromiumResult.ok);
-  const ok = sameArtifact.match && bothArmsOk && compare.match;
+  const ok = sameArtifact.match && fingerprintCompare.match && bothArmsOk && compare.match;
   // On divergence, retain surfaces so the report can show field-level residual even at low verbosity.
   const keepSurfaces = !ok || (options.verbosity | 0) >= 3;
+  let status = 'pass';
+  let exitClass = 0;
+  if (!ok) {
+    if (!sameArtifact.match) {
+      status = 'artifact-mismatch';
+      exitClass = 4;
+    } else if (!fingerprintCompare.match) {
+      status = 'fingerprint-mismatch';
+      exitClass = 4;
+    } else if (!bothArmsOk) {
+      status = 'arm-fail';
+      exitClass = 5;
+    } else {
+      status = 'divergence';
+      exitClass = 5;
+    }
+  }
   return {
     schema: 'spaceface.labDifferentialReplay.v1',
     ok,
-    exitClass: ok ? 0 : (sameArtifact.match ? 5 : 4),
-    status: ok
-      ? 'pass'
-      : (!sameArtifact.match ? 'artifact-mismatch' : (!bothArmsOk ? 'arm-fail' : 'divergence')),
+    exitClass,
+    status,
     runId,
     scenarioId: canonical.id,
     seed: canonical.seed,
@@ -254,11 +286,13 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
     inputDigest,
     sameCompiledArtifact: sameArtifact.match,
     sameArtifact,
+    fingerprintMatch: fingerprintCompare.match,
+    fingerprintCompare,
     bothArmsOk,
     compare,
-    firstDivergenceReport: compare.match
-      ? 'match'
-      : formatFirstDivergence(compare),
+    firstDivergenceReport: !fingerprintCompare.match
+      ? `fingerprint-mismatch:${fingerprintCompare.reason || 'runtime-identity'}`
+      : (compare.match ? 'match' : formatFirstDivergence(compare)),
     node: {
       series: nodeSeries.map(stripSurfaceUnlessVerbose(options.verbosity, keepSurfaces)),
       finalHash: nodeSeries.at(-1)?.hash || null,
@@ -281,6 +315,54 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
       sameCoverage: compare.exactWithin?.sameCoverage !== false,
     },
   };
+}
+
+/**
+ * G7: Node vs Chromium must share the same runtime fingerprint (manifest identity).
+ * Missing fingerprints cannot prove identity → fail closed.
+ */
+export function compareRuntimeFingerprints(nodeFp, chromiumFp) {
+  if (!nodeFp || !chromiumFp) {
+    return {
+      match: false,
+      reason: 'fingerprint-missing',
+      node: nodeFp || null,
+      chromium: chromiumFp || null,
+    };
+  }
+  const nManifest = nodeFp.manifestHash ?? null;
+  const cManifest = chromiumFp.manifestHash ?? null;
+  if (nManifest == null || cManifest == null) {
+    return {
+      match: false,
+      reason: 'manifestHash-missing',
+      node: nodeFp,
+      chromium: chromiumFp,
+    };
+  }
+  if (nManifest !== cManifest) {
+    return {
+      match: false,
+      reason: 'manifestHash-mismatch',
+      node: nodeFp,
+      chromium: chromiumFp,
+      expected: nManifest,
+      actual: cManifest,
+    };
+  }
+  const nProfile = nodeFp.profileHash ?? null;
+  const cProfile = chromiumFp.profileHash ?? null;
+  if (nProfile != null && cProfile != null && nProfile !== cProfile) {
+    return {
+      match: false,
+      reason: 'profileHash-mismatch',
+      node: nodeFp,
+      chromium: chromiumFp,
+      expected: nProfile,
+      actual: cProfile,
+    };
+  }
+  return { match: true, reason: null, node: nodeFp, chromium: chromiumFp };
 }
 
 /**
@@ -326,6 +408,8 @@ export async function runChromiumDeterminismCheck(scenarioDoc, options = {}) {
     ...options,
     scenarioDigest,
     inputDigest,
+    // Determinism is series-hash identity; multi-run scenario equivalences are out of scope.
+    skipMultiRunEquivalence: true,
   });
 }
 

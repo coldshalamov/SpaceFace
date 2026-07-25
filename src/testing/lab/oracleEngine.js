@@ -446,20 +446,20 @@ function evaluateEquivalence(assertions, equivalence, options = {}) {
 
 /**
  * Known sample fields the runner records (see runScenario makeSample).
- * Unknown signals must not vacuous-pass temporal assertions (F8).
+ * Unknown signals must not vacuous-pass temporal assertions (F8/G8).
+ * G8: `default` / `diverged` are not valid unless present on the sample.
  */
 export const KNOWN_ORACLE_SIGNALS = Object.freeze(new Set([
-  'default', 'tick', 'playerX', 'playerZ', 'playerVelX', 'playerVelZ', 'playerRot',
+  'tick', 'playerX', 'playerZ', 'playerVelX', 'playerVelZ', 'playerRot',
   'playerAlive', 'hull', 'cap', 'credits', 'tetherActive', 'distance', 'restLength',
   'radiusError', 'radialSpeed', 'tangentialSpeed', 'tangentFraction', 'tension',
   'angularSpeed', 'attachmentActive', 'loadBand', 'mtActive', 'mtPhase', 'mtStrain',
-  'orbitAssistActive', 'orbitAssistReason', 'diverged',
+  'orbitAssistActive', 'orbitAssistReason',
   'cmdX', 'cmdZ', 'cmdRejected', 'cmdClamped',
 ]));
 
 function truthySignal(sample, signal, assertion) {
   if (!signal) return false;
-  if (signal === 'diverged') return !!sample.diverged;
   if (signal === 'attachmentActive') return sample.attachmentActive !== false && !!sample.attachmentActive;
   if (signal === 'tetherActive') return !!sample.tetherActive;
   if (Object.prototype.hasOwnProperty.call(sample, signal)) {
@@ -472,7 +472,7 @@ function truthySignal(sample, signal, assertion) {
     return !!v;
   }
   // Unknown field on sample → not truthy. Callers that need hard-fail on unknown
-  // signals should validate via schema (F8) before evaluation.
+  // signals should validate via schema (F8/G8) before evaluation.
   return false;
 }
 
