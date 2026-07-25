@@ -323,7 +323,13 @@ export const save = {
   },
 
   _serializeSettings() {
-    return clonePlain(this.state.settings);
+    // H15: runtimeProfile is a build-time/runtime selection, not save state.
+    // Exclude it so a legacy save cannot relabel a production runtime (or vice versa).
+    const settings = clonePlain(this.state.settings);
+    if (settings && settings.gameplay && Object.prototype.hasOwnProperty.call(settings.gameplay, 'runtimeProfile')) {
+      delete settings.gameplay.runtimeProfile;
+    }
+    return settings;
   },
 
   _readProfileSettings() {
@@ -3074,6 +3080,10 @@ function sanitizeRestoredSettings(settings) {
   s.gameplay.physicsBackend = DEFAULT_PHYSICS_BACKEND;
   s.gameplay.aiBackend = DEFAULT_AI_BACKEND;
   s.gameplay.flightBackend = DEFAULT_FLIGHT_BACKEND;
+  // H15: never restore runtimeProfile from save — it is selected by the runtime host.
+  if (Object.prototype.hasOwnProperty.call(s.gameplay, 'runtimeProfile')) {
+    delete s.gameplay.runtimeProfile;
+  }
   // One-time scheme migration: 'helm-assist' was the ambient default before the pilot scheme
   // shipped, so old saves carry it as a non-choice. Flip those to 'pilot' once; the flag makes
   // any explicit re-pick of helm-assist in Settings stick from then on.

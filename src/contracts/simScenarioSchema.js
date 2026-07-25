@@ -257,6 +257,20 @@ export function validateSimScenario(doc, options = {}) {
         if (ev.device != null && typeof ev.device !== 'string') {
           issue(`${p}.device`, 'type', 'device must be a string');
         }
+        // H14: only keyboard is driven today — reject ignored device classes.
+        if (ev.device != null && ev.device !== 'keyboard') {
+          issue(`${p}.device`, 'unsupported-field',
+            `input device "${ev.device}" is not implemented (keyboard only in V1)`);
+        }
+        if (ev.pointer != null) {
+          issue(`${p}.pointer`, 'unsupported-field', 'pointer input events are not implemented in V1');
+        }
+        if (ev.gamepad != null) {
+          issue(`${p}.gamepad`, 'unsupported-field', 'gamepad input events are not implemented in V1');
+        }
+        if (ev.touch != null) {
+          issue(`${p}.touch`, 'unsupported-field', 'touch input events are not implemented in V1');
+        }
         if (ev.code != null && typeof ev.code !== 'string') {
           issue(`${p}.code`, 'type', 'code must be a string');
         }
@@ -265,6 +279,34 @@ export function validateSimScenario(doc, options = {}) {
         }
       });
     }
+  }
+
+  // H14: relations compile but are never applied — reject if present and non-empty.
+  if (doc.relations != null) {
+    if (!Array.isArray(doc.relations)) {
+      issue('$.relations', 'type', 'relations must be an array');
+    } else if (doc.relations.length > 0) {
+      issue('$.relations', 'unsupported-field',
+        'relations are not applied by the lab runner in V1 — omit or leave empty');
+    }
+  }
+
+  // H14: trace.signals must name known sample fields (runner always records the full sample
+  // surface which is a superset; unknown names would be silently ignored — reject those).
+  if (doc.trace && Array.isArray(doc.trace.signals)) {
+    const KNOWN_SAMPLE_SIGNALS = new Set([
+      'default', 'tick', 'playerX', 'playerZ', 'playerVelX', 'playerVelZ', 'playerRot',
+      'playerAlive', 'hull', 'cap', 'credits', 'tetherActive', 'distance', 'restLength',
+      'radiusError', 'radialSpeed', 'tangentialSpeed', 'tangentFraction', 'tension',
+      'angularSpeed', 'attachmentActive', 'loadBand', 'mtActive', 'mtPhase', 'mtStrain',
+      'orbitAssistActive', 'orbitAssistReason',
+    ]);
+    doc.trace.signals.forEach((sig, i) => {
+      if (typeof sig !== 'string' || !KNOWN_SAMPLE_SIGNALS.has(sig)) {
+        issue(`$.trace.signals[${i}]`, 'unsupported-field',
+          `trace signal "${sig}" is not a known lab sample field`);
+      }
+    });
   }
 
   if (doc.frames != null) {
@@ -366,6 +408,9 @@ export function validateSimScenario(doc, options = {}) {
         } else if (!SUPPORTED_ASSERTION_KINDS.has(a.kind)) {
           issue(`${p}.kind`, 'unsupported-assertion',
             `unknown assertion kind "${a.kind}"`);
+        } else {
+          // H11: closed per-kind required fields — refuse schema-valid vacuous assertions.
+          validateAssertionFields(a, p, issue);
         }
       });
     }
@@ -583,6 +628,36 @@ function result(ok, issues) {
     issueCount: issues.length,
     issues,
   };
+}
+
+/** H11: per-kind required fields so assertions cannot pass vacuously. */
+function validateAssertionFields(a, p, issue) {
+  const kind = a.kind;
+  if (kind === 'metric' || kind === 'quantitative') {
+    if (typeof a.metric !== 'string' || !a.metric) {
+      issue(`${p}.metric`, 'required', `${kind} assertion requires metric`);
+    }
+    const hasThreshold = a.threshold != null
+      || a.op != null
+      || a.value != null
+      || a.expected != null;
+    if (!hasThreshold) {
+      issue(`${p}`, 'required', `${kind} assertion requires threshold/op/value/expected`);
+    }
+  } else if (kind === 'never') {
+    if (!a.signal && !a.never && !a.event) {
+      issue(`${p}.signal`, 'required', 'never assertion requires signal (or never/event)');
+    }
+  } else if (kind === 'holds' || kind === 'eventByTick' || kind === 'settles') {
+    if (kind !== 'settles' && !a.signal) {
+      issue(`${p}.signal`, 'required', `${kind} assertion requires signal`);
+    }
+  } else if (kind === 'equivalence') {
+    if (!a.equivalence && !a.expected && !a.signal) {
+      issue(`${p}.equivalence`, 'required',
+        'equivalence assertion requires equivalence/expected comparison target');
+    }
+  }
 }
 
 /**

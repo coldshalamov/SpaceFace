@@ -45,7 +45,9 @@ export const DETERMINISTIC_OMITTED = Object.freeze([
   'wallTimestamps',
   'presentationState',
   'unorderedMapIteration',
+  // H9: full multi-stream RNG is not covered; lab-included streams are under entropy.*
   'rng.fullStream',
+  'rng.streams.unlisted',
   'vfx',
   'audio',
   'perfCounters',
@@ -53,6 +55,13 @@ export const DETERMINISTIC_OMITTED = Object.freeze([
   'entityIndex',
   'bus.listeners',
   'rapier.internalContactCache',
+]);
+
+/** Lab-covered entropy streams (honest subset of system-owned RNGs). */
+export const ENTROPY_COVERED_STREAMS = Object.freeze([
+  'core.seed',
+  'weapons.seed0+draws',
+  'traffic.rngSeed',
 ]);
 
 /**
@@ -123,11 +132,35 @@ export function buildDeterministicSurface(state, meta = {}) {
       profileHash: state && state.runtime && state.runtime.profileHash,
       manifestHash: state && state.runtime && state.runtime.manifestHash,
     },
+    // H9: lab-included entropy streams (weapons + traffic). Other streams remain omitted.
+    entropy: buildEntropySurface(state),
     scenarioDigest: meta.scenarioDigest || null,
     inputDigest: meta.inputDigest || null,
     engine: {
       simDt: meta.dt || 1 / 60,
     },
+  };
+}
+
+/**
+ * Snapshot entropy state for systems the focused lab actually exercises.
+ * weaponsEntropy is written by weapons.js; traffic.rngSeed by traffic.js.
+ */
+function buildEntropySurface(state) {
+  const weapons = state && state.weaponsEntropy
+    ? {
+      seed0: state.weaponsEntropy.seed0 >>> 0,
+      draws: state.weaponsEntropy.draws | 0,
+    }
+    : null;
+  const trafficSeed = state && state.traffic && Number.isFinite(state.traffic.rngSeed)
+    ? (state.traffic.rngSeed >>> 0)
+    : null;
+  return {
+    covered: ENTROPY_COVERED_STREAMS.slice(),
+    coreSeed: state && state.meta ? (state.meta.seed | 0) : 0,
+    weapons,
+    trafficRngSeed: trafficSeed,
   };
 }
 

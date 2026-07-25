@@ -2,7 +2,7 @@
 // Uses createAuthoritativeRuntime; disposes bus + Rapier world; rendering detached by default.
 
 import { createHash } from 'node:crypto';
-import { createAuthoritativeRuntime } from '../../runtime/createAuthoritativeRuntime.js';
+import { createAuthoritativeRuntime, bindRuntimeToState } from '../../runtime/createAuthoritativeRuntime.js';
 import { SIM_DT } from '../../core/sim.js';
 import { canonicalStringify } from '../../core/simSnapshot.js';
 import { observeMasslineOrbit } from '../../combat/masslineOrbitTelemetry.js';
@@ -18,6 +18,7 @@ import { evaluateOracles } from './oracleEngine.js';
 import { failureFromOracleEval } from './failureArtifact.js';
 import { applyParameterOverlay, overlayReproKey, validateParameterOverlay } from './parameterOverlay.js';
 import { resolveSystemsForScenario } from './systemBundles.js';
+import { deriveEvidenceClass } from './evidenceClass.js';
 import { resolvePolicy } from '../policies/masslinePolicies.js';
 import '../metrics/masslineMetrics.js';
 
@@ -93,15 +94,18 @@ export async function runLabScenario(scenarioDoc, options = {}) {
   let runtime = null;
   try {
     const systems = options.systems || resolveSystemsForScenario(canonical);
+    const profileId = canonical.runtimeProfile === 'focused-lab'
+      ? 'production'
+      : (canonical.runtimeProfile || 'production');
     runtime = createAuthoritativeRuntime({
-      profileId: canonical.runtimeProfile === 'focused-lab' ? 'production' : (canonical.runtimeProfile || 'production'),
+      profileId,
       seed: canonical.seed,
       systems,
-      // Focused list: evidence is focused-fixture; seed maps only when opted in.
-      seedProcessMaps: options.seedProcessMaps === true,
+      // H1: default seed production MAPS for non-legacy profiles (explicit false opts out).
+      seedProcessMaps: options.seedProcessMaps,
     });
 
-    const state = runtime.state;
+    let state = runtime.state;
     state.mode = canonical.world.mode || 'flight';
     state.settings = state.settings || {};
     state.settings.gameplay = state.settings.gameplay || {};
@@ -332,7 +336,11 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       runtime.step(dt);
 
       if (Number.isInteger(saveLoadAt) && tick === saveLoadAt && !saveLoadPerformed) {
-        const loadResult = await performSaveLoad(runtime, state, options);
+        // H10: recreate runtime from envelope; drop system-local state outside the save surface.
+        const loadResult = await performSaveLoad(runtime, state, {
+          ...options,
+          systemsForRecreate: systems,
+        });
         saveLoadPerformed = true;
         if (!loadResult.ok) {
           runtime.dispose();
@@ -346,6 +354,14 @@ export async function runLabScenario(scenarioDoc, options = {}) {
           };
         }
         saveLoadRestoreCount += loadResult.restoreCount | 0;
+        if (loadResult.runtime && loadResult.runtime !== runtime) {
+          try { runtime.dispose(); } catch (_) { /* best-effort */ }
+          runtime = loadResult.runtime;
+          state = loadResult.state;
+          // Rebuild sticky input from tape history so keys match post-restore tick.
+          // Driver is tick-indexed; re-apply from 0..tick so held keys match pre-save.
+          inputDriver.resetFromTape?.(0, tick);
+        }
       }
 
       const sample = makeSample(tick, state, {
@@ -404,9 +420,43 @@ export async function runLabScenario(scenarioDoc, options = {}) {
     }
 
     const traceHash = sha256(canonicalStringify(oracleTrace));
-    const failure = oracle.ok
+
+    // H2: evidence class from execution reality, never author intent alone.
+    const systemNames = systems.map((s) => s.name);
+    const evidence = deriveEvidenceClass({
+      authored: canonical.evidenceClass,
+      manifestEvidenceClass: runtime.manifest && runtime.manifest.evidenceClass,
+      systemNames,
+      focusedSystems: true, // lab path always passes an explicit systems list
+      renderingDetached: true,
+      host: options.host || 'node',
+      exclusions: (runtime.manifest && runtime.manifest.exclusions) || [],
+    });
+
+    // H11: every declared assertion must produce exactly one oracle result.
+    const assertionConsumption = assertAssertionsConsumed(canonical.assertions, oracle.results);
+    const oracleOk = oracle.ok && assertionConsumption.ok;
+    const oracleFailed = [
+      ...(oracle.failed || []),
+      ...(!assertionConsumption.ok ? [{
+        family: 'assertion-consumption',
+        id: 'assertions-consumed-exactly-once',
+        ok: false,
+        expected: assertionConsumption.expected,
+        actual: assertionConsumption.actual,
+        reason: assertionConsumption.reason,
+        firstBadTick: 0,
+      }] : []),
+    ];
+    const oracleForFailure = {
+      ok: oracleOk,
+      failed: oracleFailed,
+      firstBadTick: oracle.firstBadTick,
+      results: [...(oracle.results || []), ...(!assertionConsumption.ok ? oracleFailed.slice(-1) : [])],
+    };
+    const failure = oracleOk
       ? null
-      : failureFromOracleEval(oracle, {
+      : failureFromOracleEval(oracleForFailure, {
         scenarioId: canonical.id,
         runId,
         seed: canonical.seed,
@@ -423,14 +473,17 @@ export async function runLabScenario(scenarioDoc, options = {}) {
 
     const result = {
       schema: 'spaceface.labRunResult.v1',
-      ok: oracle.ok,
-      exitClass: oracle.ok ? 0 : 1,
-      status: oracle.ok ? 'pass' : 'fail',
+      ok: oracleOk,
+      exitClass: oracleOk ? 0 : 1,
+      status: oracleOk ? 'pass' : 'fail',
       runId,
       scenarioId: canonical.id,
       seed: canonical.seed,
       ticks,
-      evidenceClass: canonical.evidenceClass,
+      evidenceClass: evidence.evidenceClass,
+      authoredEvidenceClass: evidence.authored,
+      evidenceNote: evidence.note,
+      evidenceDemoted: evidence.demoted,
       rendering: { detached: true },
       observerEnabled,
       scenarioDigest,
@@ -449,10 +502,11 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       },
       metrics: oracle.metrics,
       oracle: {
-        ok: oracle.ok,
+        ok: oracleOk,
         firstBadTick: oracle.firstBadTick,
-        failed: oracle.failed,
-        results: verbosity >= 2 ? oracle.results : oracle.failed,
+        failed: oracleFailed,
+        results: verbosity >= 2 ? oracleForFailure.results : oracleFailed,
+        assertionConsumption,
       },
       checkpoints: {
         final: finalCheckpoints,
@@ -461,7 +515,7 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       traceHash,
       failure,
       live: {
-        systems: systems.map((s) => s.name),
+        systems: systemNames,
         aliasMap: { ...aliasMap },
         attachmentIds,
         attachmentActiveAtEnd,
@@ -498,6 +552,76 @@ export function validateLabScenario(doc, options = {}) {
 }
 
 /**
+ * H11: every declared assertion must produce exactly one oracle family result.
+ * Metric assertions map by metric name; temporal/equivalence by kind/id.
+ */
+export function assertAssertionsConsumed(assertions, oracleResults) {
+  const declared = Array.isArray(assertions) ? assertions : [];
+  if (declared.length === 0) {
+    return { ok: true, expected: 0, actual: 0, reason: null, unconsumed: [] };
+  }
+  const results = Array.isArray(oracleResults) ? oracleResults : [];
+  const unconsumed = [];
+  const consumedIds = [];
+
+  for (let i = 0; i < declared.length; i++) {
+    const a = declared[i];
+    const matches = results.filter((r) => resultMatchesAssertion(r, a));
+    if (matches.length !== 1) {
+      unconsumed.push({
+        index: i,
+        kind: a && a.kind,
+        metric: a && a.metric,
+        matchCount: matches.length,
+      });
+    } else {
+      consumedIds.push(matches[0].id || a.kind || i);
+    }
+  }
+
+  if (unconsumed.length) {
+    return {
+      ok: false,
+      expected: declared.length,
+      actual: declared.length - unconsumed.length,
+      reason: `${unconsumed.length} assertion(s) not consumed exactly once`,
+      unconsumed,
+      consumedIds,
+    };
+  }
+  return {
+    ok: true,
+    expected: declared.length,
+    actual: declared.length,
+    reason: null,
+    unconsumed: [],
+    consumedIds,
+  };
+}
+
+function resultMatchesAssertion(result, assertion) {
+  if (!result || !assertion) return false;
+  const kind = assertion.kind;
+  if (kind === 'metric' || kind === 'quantitative') {
+    if (!assertion.metric) return false;
+    const metricKey = assertion.metric.includes('@') ? assertion.metric : `${assertion.metric}@1`;
+    return result.family === 'quantitative'
+      && (result.id === metricKey
+        || result.id === assertion.metric
+        || (typeof result.id === 'string' && result.id.startsWith(assertion.metric)));
+  }
+  if (kind === 'equivalence') {
+    const name = assertion.equivalence || assertion.expected || assertion.signal || 'run-eq-repeat';
+    return result.family === 'equivalence' && (result.id === name || result.id === assertion.equivalence);
+  }
+  if (kind === 'never' || kind === 'holds' || kind === 'settles' || kind === 'eventByTick' || kind === 'temporal') {
+    return result.family === 'temporal'
+      && (result.id === kind || result.id === assertion.signal || result.id === assertion.never);
+  }
+  return result.id === kind;
+}
+
+/**
  * Resolve mid-run save/load tick.
  * - suppressSaveLoad / saveLoadAt === null → no restore (control arm)
  * - integer saveLoadAt → that tick
@@ -516,23 +640,91 @@ export function resolveSaveLoadAt(options = {}, canonical = {}) {
 
 /**
  * Real serialize → loadEnvelope round-trip only. Never claim success without a restore (FIX 3).
- * @returns {{ ok: boolean, restoreCount?: number, exitClass?: number, status?: string, reason?: string }}
+ * H10: recreate the runtime from the envelope so system-local state cannot survive outside the
+ * save surface. Caller must swap runtime/state/input driver from the returned handles.
+ *
+ * @returns {{ ok: boolean, restoreCount?: number, runtime?: object, state?: object, exitClass?: number, status?: string, reason?: string, coverageGaps?: string[] }}
  */
 async function performSaveLoad(runtime, state, options = {}) {
   const saveSys = runtime.getSystem('save');
   if (saveSys && typeof saveSys.serialize === 'function' && typeof saveSys.loadEnvelope === 'function') {
     try {
       const envelope = saveSys.serialize('lab-save-load');
-      const ok = saveSys.loadEnvelope(envelope, 'lab-save-load');
+      const profileId = (runtime.config && runtime.config.profileId) || 'production';
+      const systems = options.systems || (runtime.liveSystems
+        ? runtime.liveSystems
+        : null);
+      // Prefer the same focused system list the arm started with.
+      const recreateSystems = Array.isArray(options.systemsForRecreate)
+        ? options.systemsForRecreate
+        : (Array.isArray(systems) ? systems : null);
+
+      if (!recreateSystems || !recreateSystems.length) {
+        // Fallback: in-place restore (documents coverage gap — system-local state may survive).
+        const ok = saveSys.loadEnvelope(envelope, 'lab-save-load');
+        if (!ok) {
+          return { ok: false, exitClass: 3, status: 'infra', reason: 'save loadEnvelope returned false' };
+        }
+        state.settings.gameplay.flightBackend = 'v3';
+        const physicsSys = runtime.getSystem('physics');
+        if (physicsSys && typeof physicsSys.prepareBackend === 'function') {
+          await physicsSys.prepareBackend(state, { reset: true });
+        }
+        return {
+          ok: true,
+          restoreCount: 1,
+          runtime,
+          state,
+          coverageGaps: ['runtime-not-recreated: missing systems list for H10 recreate path'],
+        };
+      }
+
+      const next = createAuthoritativeRuntime({
+        profileId,
+        seed: state.meta && state.meta.seed,
+        systems: recreateSystems,
+        seedProcessMaps: options.seedProcessMaps,
+      });
+      const nextSave = next.getSystem('save');
+      if (!nextSave || typeof nextSave.loadEnvelope !== 'function') {
+        next.dispose();
+        return {
+          ok: false,
+          exitClass: 4,
+          status: 'unsupported',
+          reason: 'recreated runtime missing save.loadEnvelope',
+        };
+      }
+      const ok = nextSave.loadEnvelope(envelope, 'lab-save-load');
       if (!ok) {
-        return { ok: false, exitClass: 3, status: 'infra', reason: 'save loadEnvelope returned false' };
+        next.dispose();
+        return { ok: false, exitClass: 3, status: 'infra', reason: 'save loadEnvelope returned false on recreated runtime' };
       }
-      state.settings.gameplay.flightBackend = 'v3';
-      const physicsSys = runtime.getSystem('physics');
+      // Preserve runtime profile binding after restore (H15 strips it from the envelope).
+      if (next.state && next.state.settings && next.state.settings.gameplay) {
+        next.state.settings.gameplay.flightBackend = 'v3';
+        next.state.settings.gameplay.runtimeProfile = profileId;
+      }
+      if (next.config) {
+        bindRuntimeToState(next.state, next.config, next.manifest);
+      }
+      const physicsSys = next.getSystem('physics');
       if (physicsSys && typeof physicsSys.prepareBackend === 'function') {
-        await physicsSys.prepareBackend(state, { reset: true });
+        await physicsSys.prepareBackend(next.state, { reset: true });
       }
-      return { ok: true, restoreCount: 1 };
+      return {
+        ok: true,
+        restoreCount: 1,
+        runtime: next,
+        state: next.state,
+        // Honest gaps: input tape keys + massline grammar re-init from empty; tape cursor is
+        // re-applied from tick index (driver is recreated by caller). System-private fields not
+        // in the save envelope do not survive — by design.
+        coverageGaps: [
+          'input-tape-keys-reset-on-recreate',
+          'system-private-nonserialized-state-dropped',
+        ],
+      };
     } catch (err) {
       return {
         ok: false,

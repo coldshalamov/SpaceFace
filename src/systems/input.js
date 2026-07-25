@@ -636,7 +636,11 @@ export const input = {
     resetAutoTargetPath(this, this.state);
     this._m0 = false; this._m1 = false; this._m2 = false;
     this._masslineGrammar = createMasslineInputGrammar();
-    this._lastKbmMs = performance.now();
+    // performance is available in Node 16+ and browsers; fall back for pure-sim hosts.
+    const nowMs = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? performance.now()
+      : 0;
+    this._lastKbmMs = nowMs;
     this._canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
 
     this.gamepad = createGamepad(ctx);
@@ -647,6 +651,22 @@ export const input = {
     this.touch = createTouch(ctx);
     ctx.touch = this.touch;
     this.touch.autoDetect();
+
+    // H3: DOM adapter is browser-only. Deterministic grammar/key state initializes without window.
+    // Node hosts (lab production-manifest path) keep pure reducer state; tape driver writes keys.
+    if (typeof window === 'undefined' || typeof addEventListener !== 'function') {
+      this._domAdapterAttached = false;
+      return;
+    }
+    this._domAdapterAttached = true;
+    this._attachDomInputAdapter(keys);
+  },
+
+  /**
+   * Browser-only: wire keyboard/pointer/gamepad listeners. Must not run under Node.
+   * @param {Record<string, boolean>} keys
+   */
+  _attachDomInputAdapter(keys) {
     // Re-evaluate on resize (phone rotate / tablet dock) unless the player set an explicit choice.
     addEventListener('resize', () => this.touch.autoDetect());
 

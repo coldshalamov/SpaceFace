@@ -82,30 +82,27 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
 
   const h0 = hashOf(uninterrupted, 'deterministicCovered');
   const h1 = hashOf(withSaveLoad, 'deterministicCovered');
-  // Full production save may not restore focused-fixture attachments bit-identically.
-  // Contract: compare within declared coverage — when saveLoad used runtime checkpoint only,
-  // require matching deterministic-covered hash; when full save path ran, compare semantic
-  // entity poses at end if det-covered diverges (honest gap).
-  const saveLoadPerformed = !!(withSaveLoad.params && withSaveLoad.params.saveLoadPerformed);
+  // H12: default contract is deterministic-covered. Weaker equivalence (trace/semantic)
+  // is accepted only when the scenario explicitly authorizes it.
+  const authorized = resolveSaveLoadEquivalence(scenarioDoc, options);
   const controlRestores = (uninterrupted.params && uninterrupted.params.saveLoadRestoreCount) | 0;
   let match = h0 === h1;
   let contract = 'deterministic-covered';
 
-  if (!match && saveLoadPerformed) {
-    // Soften: compare player pose/tick surface from live params + traceHash when both oracles pass
-    // and traces share final finite-state invariant.
-    const t0 = uninterrupted.traceHash;
-    const t1 = withSaveLoad.traceHash;
-    if (t0 === t1) {
-      match = true;
-      contract = 'trace-hash';
-    } else {
-      // Pose-window compare via checkpoints semantic when available
-      const s0 = hashOf(uninterrupted, 'semantic');
-      const s1 = hashOf(withSaveLoad, 'semantic');
-      if (s0 === s1) {
+  if (!match && authorized !== 'deterministic-covered') {
+    if (authorized === 'trace-hash' || authorized === 'semantic' || authorized === 'any-weaker') {
+      const t0 = uninterrupted.traceHash;
+      const t1 = withSaveLoad.traceHash;
+      if ((authorized === 'trace-hash' || authorized === 'any-weaker') && t0 === t1) {
         match = true;
-        contract = 'semantic';
+        contract = 'trace-hash';
+      } else if (authorized === 'semantic' || authorized === 'any-weaker') {
+        const s0 = hashOf(uninterrupted, 'semantic');
+        const s1 = hashOf(withSaveLoad, 'semantic');
+        if (s0 === s1) {
+          match = true;
+          contract = 'semantic';
+        }
       }
     }
   }
@@ -117,6 +114,7 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
     status: match ? 'pass' : 'parity-fail',
     saveLoadAt,
     contract,
+    authorizedEquivalence: authorized,
     controlRestoreCount: controlRestores,
     uninterruptedHash: h0,
     saveLoadHash: h1,
@@ -131,6 +129,20 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
     uninterrupted: options.verbosity >= 2 ? uninterrupted : summarize(uninterrupted),
     withSaveLoad: options.verbosity >= 2 ? withSaveLoad : summarize(withSaveLoad),
   };
+}
+
+/**
+ * Default: deterministic-covered only. Scenario may set saveLoadEquivalence to
+ * "semantic" | "trace-hash" | "any-weaker" to authorize softer contracts.
+ */
+function resolveSaveLoadEquivalence(scenarioDoc, options = {}) {
+  if (options.saveLoadEquivalence) return options.saveLoadEquivalence;
+  if (scenarioDoc && scenarioDoc.saveLoadEquivalence) return scenarioDoc.saveLoadEquivalence;
+  if (scenarioDoc && scenarioDoc.notes && typeof scenarioDoc.notes === 'object'
+    && scenarioDoc.notes.saveLoadEquivalence) {
+    return scenarioDoc.notes.saveLoadEquivalence;
+  }
+  return 'deterministic-covered';
 }
 
 function hashOf(result, kind) {

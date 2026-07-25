@@ -7,11 +7,16 @@ import { mkdir, open, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
+  assertProbeLaunch,
   computeGateDigestsFromManifest,
   createFastGateReceipt,
   evaluateAcceptanceGate,
+  evaluateCachedResult,
   evaluateFastGate,
+  getCandidateLaunchCount,
   isResolvedByAcceptedEvidence,
+  issueBrokerClaim,
+  readFastGateReceipt,
 } from './validationBroker.mjs';
 import {
   computeSourceSetDigest,
@@ -100,7 +105,8 @@ export function buildPq017ValidationManifest(overrides = {}) {
     inflightSchema: 'spaceface.pq017-probe-inflight.v1',
     claimSchema: 'spaceface.validation-broker-claim.v1',
     requireFastReceipt: true,
-    requireBrokerClaim: false,
+    // H5: PQ-017 acceptance uses the generic broker claim requirement.
+    requireBrokerClaim: true,
     normalizeFailure: deriveFailureIdentity,
     ...overrides,
   };
@@ -460,6 +466,14 @@ export async function loadPq017GateState({ root, outputRoot }) {
   };
 }
 
+/**
+ * H5: PQ-017 preflight delegates to the generic broker (evaluateCachedResult, launch quota,
+ * requireBrokerClaim). The PQ-017 receipt/inflight schema names stay for compatibility.
+ *
+ * When no SF_BROKER_CLAIM is present, issues a one-use claim (quota reserved at issue) so
+ * existing probe scripts that only call assertPq017ProbeLaunch keep working — but they now
+ * go through the same mechanical loop-breakers as assertProbeLaunch.
+ */
 export async function assertPq017ProbeLaunch({
   root,
   outputRoot,
@@ -467,53 +481,89 @@ export async function assertPq017ProbeLaunch({
   mode,
   explicitAcceptance,
   explicitDiagnostic,
+  brokerClaimToken = null,
 }) {
-  if (mode === 'diagnostic' && !explicitDiagnostic) {
-    throwGateFailure('explicit-diagnostic-flag-required');
+  const manifest = buildPq017ValidationManifest({ requireBrokerClaim: true });
+
+  // Compatibility: mint a claim when the probe has none (tests + legacy call sites).
+  // Quota is reserved at issue time (H6).
+  let claimToken = brokerClaimToken ?? process.env.SF_BROKER_CLAIM ?? null;
+  if (mode === 'acceptance' && !claimToken) {
+    const digests = await computeGateDigestsFromManifest({ root, manifest });
+    const prior = await getCandidateLaunchCount(outputRoot, digests.candidateDigest);
+    if (prior >= manifest.maxLaunchesPerCandidate) {
+      const error = new Error('PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED: max-launches-per-candidate');
+      error.code = 'PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED';
+      error.gateResult = {
+        pass: false,
+        reason: 'max-launches-per-candidate',
+        primaryAcceptance: false,
+        resolvesFailure: false,
+      };
+      throw error;
+    }
+    // blocked_repeat via generic cache before minting
+    const cached = await evaluateCachedResult({ root, outputRoot, manifest });
+    if (cached.blocked) {
+      const error = new Error(`PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED: ${cached.reason}`);
+      error.code = 'PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED';
+      error.gateResult = {
+        pass: false,
+        reason: cached.reason,
+        primaryAcceptance: false,
+        resolvesFailure: false,
+        status: cached.status,
+      };
+      throw error;
+    }
+    const receipt = await readFastGateReceipt({ outputRoot })
+      ?? createFastGateReceipt({
+        receiptSchema: manifest.receiptSchema,
+        routeDigest: digests.routeDigest,
+        regressionDigest: digests.regressionDigest,
+        productionDigest: digests.productionDigest,
+        candidateDigest: digests.candidateDigest,
+        buildDigest: digests.buildDigest,
+        scenarioDigest: digests.scenarioDigest,
+        inputDigest: digests.inputDigest,
+        profileDigest: digests.profileDigest,
+        manifestDigest: digests.manifestDigest,
+      });
+    const issued = await issueBrokerClaim({
+      outputRoot,
+      manifest,
+      receipt,
+      mode: 'acceptance',
+      digests,
+    });
+    claimToken = issued.claimPath;
   }
-  if (mode === 'acceptance' && !explicitAcceptance) {
-    throwGateFailure('explicit-acceptance-flag-required');
-  }
-  if (!['acceptance', 'diagnostic'].includes(mode)) {
-    throwGateFailure('unsupported-probe-mode');
-  }
-  const claimed = await claimPq017FastGateReceipt({ outputRoot });
-  let state;
-  let result;
+
   try {
-    state = await loadPq017GateState({ root, outputRoot });
-    const resolved = isResolvedByAcceptedEvidence(state);
-    result = evaluatePq017AcceptanceGate({
+    const result = await assertProbeLaunch({
+      root,
+      outputRoot,
+      manifest,
+      runtimeKind,
       mode,
       explicitAcceptance,
       explicitDiagnostic,
-      receipt: claimed?.receipt ?? null,
-      latestFailure: resolved ? null : state.latestFailure,
-      currentRouteDigest: state.routeDigest,
-      currentRegressionDigest: state.regressionDigest,
+      brokerClaimToken: claimToken,
     });
-    if (!result.pass) {
-      throwGateFailure(result.reason, result);
-    }
+    return {
+      ...result,
+      claimToken: result.claimToken,
+    };
   } catch (error) {
-    if (claimed?.claimToken) {
-      await completePq017ProbeClaim({ outputRoot, claimToken: claimed.claimToken });
+    // Preserve PQ-017 error code/message for existing probe scripts and tests.
+    if (error && error.code === 'VALIDATION_PREFLIGHT_BLOCKED') {
+      const wrapped = new Error(`PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED: ${error.gateResult?.reason || error.message}`);
+      wrapped.code = 'PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED';
+      wrapped.gateResult = error.gateResult;
+      throw wrapped;
     }
     throw error;
   }
-  await markPq017ProbeClaimInflight({
-    outputRoot,
-    claimToken: claimed.claimToken,
-    receipt: claimed.receipt,
-    runtimeKind,
-    mode,
-  });
-  return {
-    ...result,
-    ...state,
-    receipt: claimed.receipt,
-    claimToken: claimed.claimToken,
-  };
 }
 
 function throwGateFailure(reason, result = null) {

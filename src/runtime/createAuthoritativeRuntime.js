@@ -21,6 +21,7 @@ import {
 } from '../data/featureFlags.js';
 import { resolveRuntimeManifest } from './resolveRuntimeManifest.js';
 import { freezeFeatureConfig, getRuntimeProfile } from './runtimeProfiles.js';
+import { getNodeSystemFactoryTable } from './nodeSystemFactoryTable.js';
 
 /**
  * @param {object} options
@@ -41,9 +42,20 @@ export function createAuthoritativeRuntime(options = {}) {
   const profileId = options.profileId || (options.systems ? null : 'production');
   const explicit = Array.isArray(options.systems) ? options.systems : null;
 
+  // H4: Node production-fidelity path — materialize full node-safe manifest when no
+  // explicit systems list and no caller-supplied lookup.
+  let systemLookup = options.systemLookup;
+  if (!explicit && !systemLookup && options.nodeSafeOnly === true) {
+    systemLookup = getNodeSystemFactoryTable({
+      aiSlot: options.slots && options.slots.aiSlot,
+      flightSlot: options.slots && options.slots.flightSlot,
+      tacticalAI: options.tacticalAI,
+    });
+  }
+
   const resolved = resolveRuntimeManifest({
     profileId: profileId || 'production',
-    systemLookup: options.systemLookup,
+    systemLookup,
     slots: options.slots,
     nodeSafeOnly: options.nodeSafeOnly,
     tacticalAI: options.tacticalAI,
@@ -58,12 +70,13 @@ export function createAuthoritativeRuntime(options = {}) {
     exclusions: resolved.exclusions,
   });
 
-  // Bind process MAPS only for the duration of init/step when seeding is enabled.
-  // Default: seed for full profile runs; leave MAPS alone for focused empty/explicit lists
-  // unless the caller opts in.
-  const seedMaps = explicit
-    ? options.seedProcessMaps === true
-    : options.seedProcessMaps !== false;
+  // Bind process MAPS for the duration of init/step when seeding is enabled.
+  // H1: production (and any non-legacy47a) profiles seed by default — including focused
+  // system lists — so combatFlag/massline2Flag/travelFlag match runtime.config.features.
+  // legacy47a stays MAP-default (gated off) unless the caller opts in.
+  // Explicit seedProcessMaps:false always wins (test isolation / multi-runtime hosts).
+  const seedMaps = options.seedProcessMaps === true
+    || (options.seedProcessMaps !== false && resolved.profileId !== 'legacy47a');
 
   function withFeatureMaps(fn) {
     if (!seedMaps) return fn();

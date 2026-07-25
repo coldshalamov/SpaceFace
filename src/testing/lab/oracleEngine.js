@@ -183,7 +183,21 @@ function evaluateTemporal(assertions, trace, ctx) {
     }
 
     if (a.kind === 'never') {
-      const signal = a.signal;
+      const signal = a.signal || a.never || a.event;
+      // H11: never without a signal cannot pass vacuously.
+      if (!signal) {
+        results.push({
+          family: 'temporal',
+          id: 'never',
+          ok: false,
+          expected: { signal: true },
+          actual: null,
+          signedDelta: 1,
+          firstBadTick: 0,
+          reason: 'never assertion missing required signal/event field',
+        });
+        continue;
+      }
       let bad = null;
       for (const s of trace) {
         if (truthySignal(s, signal, a)) {
@@ -277,34 +291,46 @@ function evaluateQuantitativeAssertions(assertions, metricResults, trace, ctx) {
   const byName = new Map(metricResults.map((m) => [`${m.name}@${m.version}`, m]));
 
   for (const a of assertions) {
-    if (a.metric) {
-      const key = a.metric.includes('@') ? a.metric : `${a.metric}@1`;
-      const m = byName.get(key) || metricResults.find((x) => x.name === a.metric);
-      if (!m) {
-        results.push({
-          family: 'quantitative',
-          id: key,
-          ok: false,
-          expected: a,
-          actual: null,
-          signedDelta: null,
-          firstBadTick: 0,
-        });
-        continue;
-      }
-      const threshold = a.threshold || (a.op ? { op: a.op, value: a.value, epsilon: a.delta } : a.expected);
-      const value = extractNumeric(m.value, a);
-      const cmp = compareThreshold(value, threshold);
+    // H11: metric assertions without a metric name fail closed (never silently disappear).
+    if (!a.metric) {
+      results.push({
+        family: 'quantitative',
+        id: a.kind || 'metric',
+        ok: false,
+        expected: a,
+        actual: null,
+        signedDelta: null,
+        firstBadTick: 0,
+        reason: 'metric assertion missing required metric field',
+      });
+      continue;
+    }
+    const key = a.metric.includes('@') ? a.metric : `${a.metric}@1`;
+    const m = byName.get(key) || metricResults.find((x) => x.name === a.metric);
+    if (!m) {
       results.push({
         family: 'quantitative',
         id: key,
-        ok: cmp.ok,
-        expected: threshold,
-        actual: value,
-        signedDelta: cmp.delta,
-        firstBadTick: cmp.ok ? null : findMetricFirstBadTick(trace, { ...m, threshold }, ctx),
+        ok: false,
+        expected: a,
+        actual: null,
+        signedDelta: null,
+        firstBadTick: 0,
       });
+      continue;
     }
+    const threshold = a.threshold || (a.op ? { op: a.op, value: a.value, epsilon: a.delta } : a.expected);
+    const value = extractNumeric(m.value, a);
+    const cmp = compareThreshold(value, threshold);
+    results.push({
+      family: 'quantitative',
+      id: key,
+      ok: cmp.ok,
+      expected: threshold,
+      actual: value,
+      signedDelta: cmp.delta,
+      firstBadTick: cmp.ok ? null : findMetricFirstBadTick(trace, { ...m, threshold }, ctx),
+    });
   }
   return results;
 }

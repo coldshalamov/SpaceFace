@@ -234,14 +234,18 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
       && chromiumResult.inputDigest === inputDigest,
   };
 
-  const ok = compare.match;
+  // H13: different compiled artifacts are a setup error, not parity.
+  const bothArmsOk = !!(nodeResult.ok && chromiumResult.ok);
+  const ok = sameArtifact.match && bothArmsOk && compare.match;
   // On divergence, retain surfaces so the report can show field-level residual even at low verbosity.
   const keepSurfaces = !ok || (options.verbosity | 0) >= 3;
   return {
     schema: 'spaceface.labDifferentialReplay.v1',
     ok,
-    exitClass: ok ? 0 : 5,
-    status: ok ? 'pass' : 'divergence',
+    exitClass: ok ? 0 : (sameArtifact.match ? 5 : 4),
+    status: ok
+      ? 'pass'
+      : (!sameArtifact.match ? 'artifact-mismatch' : (!bothArmsOk ? 'arm-fail' : 'divergence')),
     runId,
     scenarioId: canonical.id,
     seed: canonical.seed,
@@ -250,6 +254,7 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
     inputDigest,
     sameCompiledArtifact: sameArtifact.match,
     sameArtifact,
+    bothArmsOk,
     compare,
     firstDivergenceReport: compare.match
       ? 'match'

@@ -1316,6 +1316,23 @@ export async function issueBrokerClaim({
       manifestDigest: receipt.manifestDigest ?? null,
     }
     : null);
+
+  // H6: reserve launch quota atomically when a claim is ISSUED (not only on spawn).
+  // Acceptance claims consume one candidate slot even if never spawned.
+  const candidateDigest = boundDigests?.candidateDigest ?? receipt?.candidateDigest ?? null;
+  if (mode === 'acceptance' && candidateDigest && manifest.maxLaunchesPerCandidate > 0) {
+    const prior = await getCandidateLaunchCount(outputRoot, candidateDigest);
+    if (prior >= manifest.maxLaunchesPerCandidate) {
+      const error = new Error('VALIDATION_CLAIM_REFUSED: max-launches-per-candidate');
+      error.code = 'VALIDATION_CLAIM_REFUSED';
+      error.reason = 'max-launches-per-candidate';
+      error.launchCount = prior;
+      error.maxLaunchesPerCandidate = manifest.maxLaunchesPerCandidate;
+      throw error;
+    }
+    await incrementCandidateLaunchCount(outputRoot, candidateDigest);
+  }
+
   const claim = {
     schema: manifest.claimSchema,
     claimId,
@@ -1362,9 +1379,17 @@ export async function validateBrokerClaim({
   if (claim.manifestId && claim.manifestId !== manifest.id) {
     return { ok: false, reason: 'broker-claim-manifest-mismatch' };
   }
-  // Treat O_EXCL consumed sentinel as already-consumed even if JSON write lagged.
+  // H7: reject claim paths outside the broker claims directory (copied claims).
+  if (!isCanonicalBrokerClaimPath(outputRoot, claimPath)) {
+    return { ok: false, reason: 'broker-claim-noncanonical-path' };
+  }
+  // H7: identity ledger + sibling sentinel + claim.consumed.
+  const claimId = claim.claimId || path.basename(claimPath, '.json');
+  const ledgerEntry = claimId
+    ? await readJsonIfPresent(path.join(outputRoot, CLAIMS_DIR_NAME, '.consumed', `${sanitizeClaimId(claimId)}.json`))
+    : null;
   const sentinel = await readJsonIfPresent(brokerClaimConsumedSentinelPath(claimPath));
-  if (claim.consumed || sentinel) {
+  if (claim.consumed || sentinel || ledgerEntry) {
     return { ok: false, reason: 'broker-claim-already-consumed' };
   }
   if (timestamp(claim.expiresAt) < Date.now()) {
@@ -1402,26 +1427,37 @@ export async function validateBrokerClaim({
   return { ok: true, claim, claimPath };
 }
 
+const CONSUMED_CLAIMS_LEDGER = 'consumed-claims.json';
+
 /**
  * Atomically consume a one-use broker claim.
  *
- * Mechanism: exclusive create (`wx` / O_EXCL) of a sibling `.consumed` sentinel
- * file. Only the caller that successfully creates the sentinel is authorized;
- * concurrent consumers observe EEXIST and fail with already-consumed. The claim
- * JSON is then marked consumed for durable inspection. This closes the TOCTOU
- * window between validateBrokerClaim and consumeBrokerClaim.
+ * H7: one-use is per claim identity (claimId) in a canonical ledger under the
+ * broker artifact root — not per pathname. Copying a claim file to another path
+ * cannot re-authorize consumption. Claims outside the broker claims directory
+ * are rejected.
+ *
+ * Mechanism: exclusive create of a ledger sentinel keyed by claimId, then mark
+ * the claim JSON consumed for durable inspection.
  */
 export async function consumeBrokerClaim({ outputRoot, tokenOrPath }) {
   const claimPath = resolveBrokerClaimPath(outputRoot, tokenOrPath);
+  // H7: only claims inside the broker claims directory are valid.
+  if (!isCanonicalBrokerClaimPath(outputRoot, claimPath)) {
+    return false;
+  }
   const claim = await readJsonIfPresent(claimPath);
   if (!claim) return false;
   if (claim.consumed) return false;
+  const claimId = claim.claimId || path.basename(claimPath, '.json');
+  if (!claimId) return false;
 
-  const sentinelPath = brokerClaimConsumedSentinelPath(claimPath);
+  // Identity ledger (not sibling-of-arbitrary-path).
+  const ledgerEntryPath = path.join(outputRoot, CLAIMS_DIR_NAME, '.consumed', `${sanitizeClaimId(claimId)}.json`);
+  await mkdir(path.dirname(ledgerEntryPath), { recursive: true });
   let handle;
   try {
-    // Atomic authorization: exclusive create — only one process wins.
-    handle = await open(sentinelPath, 'wx');
+    handle = await open(ledgerEntryPath, 'wx');
   } catch (error) {
     if (error?.code === 'EEXIST') return false;
     throw error;
@@ -1431,25 +1467,62 @@ export async function consumeBrokerClaim({ outputRoot, tokenOrPath }) {
     const consumedAt = new Date().toISOString();
     await handle.writeFile(`${JSON.stringify({
       schema: 'spaceface.validation-broker-claim-consumed.v1',
-      claimId: claim.claimId ?? null,
+      claimId,
+      claimPath,
       consumedAt,
       pid: process.pid,
     }, null, 2)}\n`, 'utf8');
     await handle.sync();
+    // Also update the durable index for inspection.
+    await appendConsumedClaimIndex(outputRoot, { claimId, claimPath, consumedAt });
     claim.consumed = true;
     claim.consumedAt = consumedAt;
     await writeJsonAtomically(claimPath, claim);
+    // Keep sibling sentinel for older tooling that still peeks at it.
+    try {
+      const sentinelPath = brokerClaimConsumedSentinelPath(claimPath);
+      await writeJsonAtomically(sentinelPath, {
+        schema: 'spaceface.validation-broker-claim-consumed.v1',
+        claimId,
+        consumedAt,
+      });
+    } catch (_) { /* best-effort compat */ }
     return true;
   } finally {
     await handle.close();
   }
 }
 
+function sanitizeClaimId(claimId) {
+  return String(claimId).replace(/[^a-zA-Z0-9._-]/g, '');
+}
+
+function isCanonicalBrokerClaimPath(outputRoot, claimPath) {
+  const claimsDir = path.resolve(outputRoot, CLAIMS_DIR_NAME);
+  const resolved = path.resolve(claimPath);
+  return resolved.startsWith(claimsDir + path.sep) || resolved.startsWith(claimsDir + '/');
+}
+
+async function appendConsumedClaimIndex(outputRoot, entry) {
+  const indexPath = path.join(outputRoot, CLAIMS_DIR_NAME, CONSUMED_CLAIMS_LEDGER);
+  const existing = (await readJsonIfPresent(indexPath)) || {
+    schema: 'spaceface.validation-broker-consumed-claims.v1',
+    byClaimId: {},
+  };
+  existing.byClaimId = existing.byClaimId || {};
+  existing.byClaimId[entry.claimId] = {
+    claimPath: entry.claimPath,
+    consumedAt: entry.consumedAt,
+  };
+  await writeJsonAtomically(indexPath, existing);
+}
+
 function resolveBrokerClaimPath(outputRoot, tokenOrPath) {
   if (typeof tokenOrPath !== 'string' || !tokenOrPath) {
     throw new Error('VALIDATION_INVALID_BROKER_CLAIM');
   }
-  // Absolute / relative path to claim file
+  // Absolute / relative path to claim file — still resolved, but consumption
+  // rejects paths outside the broker claims directory (H7).
   if (tokenOrPath.endsWith('.json') && (path.isAbsolute(tokenOrPath) || tokenOrPath.includes('/') || tokenOrPath.includes('\\'))) {
     return path.resolve(tokenOrPath);
   }
@@ -1706,9 +1779,11 @@ async function runProbeProcess({
     serverOwned: true,
   };
 
-  // FIX9: reserve acceptance launch quota on successful spawn, before await exit.
+  // H6: acceptance quota is reserved when a claim is ISSUED. Only reserve on spawn
+  // when there is no claim (legacy direct-spawn path without issue-claim).
   // FIX11: diagnostic runs must not consume the acceptance launch budget.
   // FIX17: recordLaunch always fires (accounting); only quota is mode-gated.
+  const quotaAlreadyReserved = !isDiagnostic && !!claimPath;
   let launchReserved = false;
   const result = await runWithTimeout({
     command: manifest.command,
@@ -1719,7 +1794,7 @@ async function runProbeProcess({
     ownership,
     onSpawn: async () => {
       recordLaunch(manifest.id, manifest.runtimeKind);
-      if (!isDiagnostic) {
+      if (!isDiagnostic && !quotaAlreadyReserved) {
         await incrementCandidateLaunchCount(outputRoot, digests.candidateDigest);
       }
       launchReserved = true;

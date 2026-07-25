@@ -75,8 +75,23 @@ export const weapons = {
     this._byId = new Map(WEAPONS.map((w) => [w.id, w]));
 
     // Own deterministic stream so firing never disturbs the core sim PRNG (§0.5).
+    // H9: track seed0 + draw count on state so lab checkpoints cover this stream.
     const seed = (this.state.meta && this.state.meta.seed) || 1;
-    this._rng = this.helpers.mulberry32(this.helpers.hash32(seed, 'weapons'));
+    const seed0 = this.helpers.hash32(seed, 'weapons') >>> 0;
+    const base = this.helpers.mulberry32(seed0);
+    let draws = 0;
+    this._rngSeed0 = seed0;
+    this._rng = () => {
+      draws += 1;
+      const v = base();
+      if (this.state) {
+        this.state.weaponsEntropy = { seed0, draws, stream: 'weapons' };
+      }
+      return v;
+    };
+    if (this.state) {
+      this.state.weaponsEntropy = { seed0, draws: 0, stream: 'weapons' };
+    }
 
     // Track individual beam mounts so presentation can update one persistent beam per hardpoint.
     this._beamFiring = new Set();

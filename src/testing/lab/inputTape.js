@@ -74,6 +74,41 @@ export function createInputTapeDriver(tape, options = {}) {
   return {
     keys,
     /**
+     * H10: rebuild sticky key state by replaying tape events for ticks [fromTick, toTick]
+     * (inclusive). Used after save/load runtime recreate so keys match pre-save holds without
+     * surviving on the old driver instance.
+     */
+    resetFromTape(fromTick, toTick) {
+      keys = Object.create(null);
+      if (masslineGrammar && typeof masslineGrammar.reset === 'function') {
+        masslineGrammar.reset();
+      }
+      const start = fromTick | 0;
+      const end = toTick | 0;
+      for (let t = start; t <= end; t++) {
+        const tickEvents = eventsByTick.get(t) || [];
+        for (const ev of tickEvents) {
+          if (ev.device === 'keyboard' || !ev.device) {
+            keys = transitionFlightKeyState(null, keys, {
+              code: ev.code || '',
+              pressed: !!ev.pressed,
+              blocked: false,
+            });
+          }
+          if (ev.keys && typeof ev.keys === 'object') {
+            for (const [code, pressed] of Object.entries(ev.keys)) {
+              keys = transitionFlightKeyState(null, keys, {
+                code,
+                pressed: !!pressed,
+              });
+            }
+          }
+        }
+      }
+      this.keys = keys;
+      return keys;
+    },
+    /**
      * Apply all raw events for `tick`, then merge frame input, write state.input.
      * @param {object} state
      * @param {number} tick

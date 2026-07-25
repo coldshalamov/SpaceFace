@@ -93,7 +93,10 @@ async function main({ manifestId, issueClaimOnly, diagnostic, extraArgs }) {
 
   if (diagnostic) {
     console.log('[validation-broker] diagnostic mode: non-promoting, claim optional for probe');
+    // H8: pass mode:'diagnostic' so runProbeProcess does not consume acceptance quota
+    // or persist diagnostic failures as primary acceptance failures.
     const run = await broker.runProbeProcess({
+      mode: 'diagnostic',
       extraArgs: ['--diagnostic', ...extraArgs],
       env: {
         SF_PROBE_SEED: rawManifest.fixedSeed != null ? String(rawManifest.fixedSeed) : '',

@@ -207,7 +207,8 @@ export async function runBrowserLabScenario(canonical, options = {}) {
       profileId: canonical.runtimeProfile === 'focused-lab' ? 'production' : (canonical.runtimeProfile || 'production'),
       seed: canonical.seed,
       systems,
-      seedProcessMaps: options.seedProcessMaps === true,
+      // H1: production-profile steps seed process MAPS by default.
+      seedProcessMaps: options.seedProcessMaps,
     });
 
     const state = runtime.state;
