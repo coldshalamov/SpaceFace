@@ -396,11 +396,12 @@ function claimOrReceiptBinds(acceptedEvidence, expected = {}) {
   if (expected.claimId && (!hasClaim || claimId !== expected.claimId)) return false;
   if (expected.receiptId && (!hasReceiptId || receiptId !== expected.receiptId)) return false;
 
-  // L2: claimId must resolve against the consumed-claim ledger — never self-asserted.
+  // L2: claimId must resolve against the consumed-claim ledger loaded by the caller
+  // (from broker-claims/.consumed/). NEVER trust a self-asserted bag on the evidence
+  // object — evidence may carry claimId for L7 inspection, but binding requires the
+  // canonical ledger entry supplied via expected.consumedClaim.
   if (hasClaim) {
-    const ledger = expected.consumedClaim
-      ?? acceptedEvidence.consumedClaim
-      ?? null;
+    const ledger = expected.consumedClaim ?? null;
     if (!ledger || typeof ledger !== 'object') return false;
     if (ledger.claimId !== claimId) return false;
 
@@ -482,13 +483,15 @@ function isResolvedByAcceptedEvidence({
   if (!acceptedEvidence || typeof acceptedEvidence !== 'object') {
     return false;
   }
-  // K4/L2: claim/receipt identity — claimId must match the consumed-claim ledger.
+  // K4/L2: claim/receipt identity — claimId must match the disk-backed ledger entry
+  // passed by the caller (loadGateState → readConsumedClaimLedgerEntry). Evidence
+  // may carry claim identity fields for L7, but they are not the ledger authority.
   if (!claimOrReceiptBinds(acceptedEvidence, {
     claimId,
     receiptId,
     candidateDigest,
     runtimeKind: acceptedRuntimeKind,
-    consumedClaim: consumedClaim ?? acceptedEvidence.consumedClaim ?? null,
+    consumedClaim: consumedClaim ?? null,
     now: wall,
   })) {
     return false;

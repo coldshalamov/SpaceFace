@@ -111,6 +111,40 @@ test('L2: invented claimId without ledger entry is rejected', () => {
   assert.equal(ok, false, 'invented claimId must not resolve');
 });
 
+test('L2: self-asserted evidence.consumedClaim without disk ledger is rejected', () => {
+  // Codex-class forge: evidence bag carries claimId + a matching consumedClaim object
+  // but the caller never loaded broker-claims/.consumed/ — must not resolve.
+  const now = Date.now();
+  const digests = { candidateDigest: 'cand-l2-forge' };
+  const ok = isResolvedByAcceptedEvidence({
+    latestFailure: {
+      primaryAcceptance: true,
+      runtimeKind: 'browser',
+      generatedAt: new Date(now - 60_000).toISOString(),
+    },
+    acceptedRuntimeKind: 'browser',
+    acceptedGeneratedAt: new Date(now).toISOString(),
+    now,
+    acceptedEvidence: {
+      pass: true,
+      primaryAcceptance: true,
+      claimId: 'forged-claim',
+      digests,
+      // Self-asserted bag — not the disk ledger authority.
+      consumedClaim: {
+        claimId: 'forged-claim',
+        candidateDigest: digests.candidateDigest,
+        runtimeKind: 'browser',
+        consumedAt: new Date(now).toISOString(),
+      },
+    },
+    ...digests,
+    // Explicitly no caller-supplied ledger entry (disk miss).
+    consumedClaim: null,
+  });
+  assert.equal(ok, false, 'evidence-embedded consumedClaim must not substitute for ledger');
+});
+
 test('L2: claimId present but ledger candidateDigest mismatch is rejected', () => {
   const now = Date.now();
   const digests = { candidateDigest: 'cand-l2-current' };
