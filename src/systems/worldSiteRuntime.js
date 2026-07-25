@@ -256,7 +256,7 @@ function entitySpec(entry, manifest, record, componentAdmitted) {
       type: 'fx',
       pos: { ...entry.pos },
       rot: entry.rot,
-      radius: 18,
+      radius: entry.visualRadius,
       mass: 0,
       collides: false,
       ttl: Infinity,
@@ -269,8 +269,8 @@ function entitySpec(entry, manifest, record, componentAdmitted) {
         worldSitePresentation: entry.presentation,
         name: entry.label,
         worldDressing: true,
-        visualRadius: 18,
-        placeRadius: 18,
+        visualRadius: entry.visualRadius,
+        placeRadius: entry.visualRadius,
       },
     };
   }
@@ -361,6 +361,9 @@ function updateExisting(entity, entry, manifest, record, componentAdmitted) {
     data.placeScale = entry.scale;
     data.worldSitePresentation = entry.presentation;
     data.name = entry.label;
+    entity.radius = entry.visualRadius;
+    data.visualRadius = entry.visualRadius;
+    data.placeRadius = entry.visualRadius;
   } else if (entry.type === 'wreck') {
     data.worldSiteComponentStatus = entry.status;
     data.name = entry.label;
@@ -387,7 +390,10 @@ function staticProxyNeedsReplacement(entity, wanted, componentAdmitted) {
 
 function rootNeedsReplacement(entity, wanted) {
   const data = entity.data || {};
-  return data.placeId !== wanted.placeId || data.placeScale !== wanted.scale || data.siteStage !== wanted.stageId;
+  return data.placeId !== wanted.placeId
+    || data.placeScale !== wanted.scale
+    || data.siteStage !== wanted.stageId
+    || data.visualRadius !== wanted.visualRadius;
 }
 
 function removeEntity(helpers, entity) {

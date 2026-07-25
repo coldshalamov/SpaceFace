@@ -439,6 +439,9 @@ export const asteroidSites = {
       requestStreamId,
       requestSequence,
       tick: tick == null ? this.state.tick : tick,
+      earnedAtS: Number.isFinite(this.state.simTime)
+        ? this.state.simTime
+        : Math.max(0, Number(tick == null ? this.state.tick : tick) || 0) / 60,
       delivery: this._worldSiteDeliveryEvidence(manifest, operation),
     });
     if (!result.ok || result.duplicate) {

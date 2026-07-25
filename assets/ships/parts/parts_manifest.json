@@ -4031,6 +4031,53 @@
       "note": "Defense Bastion Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 33212 tris / 5 draw groups."
     },
     {
+      "id": "place_landmark_wreck_cathedral",
+      "assetId": "SF_LANDMARK_PLACE_LANDMARK_WRECK_CATHEDRAL",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_landmark_wreck_cathedral.glb",
+      "budgetClass": "landmark",
+      "status": "integration_candidate",
+      "wiringStatus": "pq018_controller_candidate",
+      "tris": 91908,
+      "bytes": 11155156,
+      "textureSize": 512,
+      "hooks": [],
+      "sockets": [
+        "INTERACTION_HangarCavity",
+        "SALVAGE_ConduitBank",
+        "SALVAGE_EngineMachinery",
+        "SALVAGE_ServiceRack",
+        "SOCKET_Flythrough_Entry",
+        "SOCKET_Flythrough_Exit",
+        "SOCKET_TheMarker",
+        "ZONE_Bridge",
+        "ZONE_BrokenKeel",
+        "ZONE_Propulsion",
+        "ZONE_Service_Port",
+        "ZONE_Service_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -309.4813,
+          -171.3587,
+          -115.6626
+        ],
+        "max": [
+          324.0211,
+          198.533,
+          166.9291
+        ],
+        "dimensionsM": [
+          633.5024,
+          369.8917,
+          282.5917
+        ]
+      },
+      "note": "PQ-018 project-original Wreck Cathedral integration candidate. Controller source review accepted exact source SHA-256 f335935f9658bad0e721aceb5d66bb4c2f0457fe411442819b4a3455a00af704 for release promotion: broken capital-scale silhouette, authored three-step LOD family, distinct component markers, and a verified 72m x 58m fly-through cavity. Runtime route, residency, and performance acceptance remain required before status can become accepted."
+    },
+    {
       "id": "wholeship_ashline_dart",
       "category": "wholeships",
       "priority": "P1",
@@ -4362,7 +4409,8 @@
       "places/place_claim_outpost_base.glb",
       "places/place_claim_outpost_refinery.glb",
       "places/place_claim_outpost_relay.glb",
-      "places/place_claim_outpost_bastion.glb"
+      "places/place_claim_outpost_bastion.glb",
+      "places/place_landmark_wreck_cathedral.glb"
     ]
   }
 }

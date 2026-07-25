@@ -54,6 +54,7 @@ const CORE_SECTOR_ANCHORS = {
     pois: [
       { id: 'poi_driller', pos: { x: 240, z: -1180 }, landmarkGlb: 'place_dead_hulk', landmark: true },
       { id: 'poi_survey', pos: { x: -1240, z: -320 }, landmarkGlb: 'place_debris_chunk' },
+      { id: 'world_site_wreck_cathedral', pos: { x: 300, z: 2700 }, landmark: true },
     ],
   },
   sector_tethys_junction: {
