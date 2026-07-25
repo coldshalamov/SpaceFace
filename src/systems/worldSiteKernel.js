@@ -3,7 +3,7 @@
 
 import { validateWorldSiteAssetBinding, worldSiteAssetBinding } from '../data/worldSiteAssetBindings.js';
 
-export const WORLD_SITE_RECORD_SCHEMA_VERSION = 2;
+export const WORLD_SITE_RECORD_SCHEMA_VERSION = 3;
 
 export const WORLD_SITE_LIMITS = Object.freeze({
   maxComponents: 7,
@@ -29,6 +29,10 @@ export function validateWorldSiteManifest(manifest) {
     || manifest.placement.coordinateSpace !== 'global_v1') add('placement-invalid', '$.placement');
   if (!nonEmpty(manifest.visualRoot && manifest.visualRoot.placeId)) add('visual-binding-missing', '$.visualRoot.placeId');
   if (!nonEmpty(manifest.visualRoot && manifest.visualRoot.anchorId)) add('visual-anchor-missing', '$.visualRoot.anchorId');
+  if (manifest.visualRoot?.visualRadius != null
+    && !(Number.isFinite(manifest.visualRoot.visualRadius) && manifest.visualRoot.visualRadius > 0)) {
+    add('visual-radius-invalid', '$.visualRoot.visualRadius');
+  }
 
   const components = array(manifest.components);
   const operations = array(manifest.operations);
@@ -57,6 +61,7 @@ export function validateWorldSiteManifest(manifest) {
   collectIds(failureTriggers, 'failureTrigger', add);
   void proxyIds;
   void stageIds;
+  const evidencePageIds = new Set();
 
   for (let i = 0; i < components.length; i += 1) {
     if (!nonEmpty(components[i] && components[i].anchorId)) add('component-anchor-missing', `$.components[${i}].anchorId`);
@@ -119,6 +124,21 @@ export function validateWorldSiteManifest(manifest) {
     if (operation.receiverId && !receiverIds.has(operation.receiverId)) add('operation-receiver-missing', `$.operations[${i}].receiverId`);
     for (const consequenceId of array(operation.consequenceIds)) {
       if (!consequenceIds.has(consequenceId)) add('operation-consequence-missing', `$.operations[${i}].consequenceIds`, consequenceId);
+    }
+    if (operation.evidencePageId != null) {
+      if (!nonEmpty(operation.evidencePageId)) {
+        add('operation-evidence-page-invalid', `$.operations[${i}].evidencePageId`);
+      } else if (evidencePageIds.has(operation.evidencePageId)) {
+        add('operation-evidence-page-duplicate', `$.operations[${i}].evidencePageId`, operation.evidencePageId);
+      } else {
+        evidencePageIds.add(operation.evidencePageId);
+      }
+      if (!positiveInt(operation.evidenceRevision)) add('operation-evidence-revision-invalid', `$.operations[${i}].evidenceRevision`);
+      if (!positiveInt(operation.evidenceCatalogRevision)) add('operation-evidence-catalog-revision-invalid', `$.operations[${i}].evidenceCatalogRevision`);
+      if (!nonEmpty(operation.evidenceProvenanceRef)) add('operation-evidence-provenance-invalid', `$.operations[${i}].evidenceProvenanceRef`);
+    } else if (operation.evidenceRevision != null || operation.evidenceCatalogRevision != null
+      || operation.evidenceProvenanceRef != null) {
+      add('operation-evidence-page-missing', `$.operations[${i}]`);
     }
   }
   if (hasDependencyCycle(dependencyGraph)) add('operation-dependency-cycle', '$.operations');
@@ -217,6 +237,8 @@ export function createWorldSiteRecord(manifest, opts = {}) {
     receivers,
     completedOperations: {},
     completionCount: 0,
+    evidenceReceiptsByPageId: {},
+    evidenceRevision: 0,
     operationCursors: {},
     discoveries: manifest.discovery && manifest.discovery.initialDiscovered
       ? [{ id: 'natural_producer', tick }]
@@ -299,6 +321,9 @@ export function normalizeWorldSiteRecord(manifest, value, opts = {}) {
         cycle,
         requestStreamId: operation.requestStreamId,
         requestSequence: sequence,
+        earnedAtS: finiteNonNegative(completed.earnedAtS, finiteTick(completed.tick) / 60),
+        stateFrom: array(operation.from).includes(completed.stateFrom) ? completed.stateFrom : operation.from[0],
+        stateTo: operation.to,
       };
       component.status = operation.to;
       next.updatedTick = Math.max(next.updatedTick, finiteTick(completed.tick));
@@ -343,6 +368,22 @@ export function normalizeWorldSiteRecord(manifest, value, opts = {}) {
     next.receivers[def.id].status = 'settled';
     next.receivers[def.id].settledReceiptId = settlement.receiptId;
   }
+
+  // Evidence is durable, direct-keyed truth derived only from an authored operation completion.
+  // Invalid/fabricated rows fail closed; a valid completion can reconstruct a missing row during
+  // schema migration without relying on proximity, discovery, or a broad site-complete flag.
+  next.evidenceReceiptsByPageId = {};
+  for (const operation of manifest.operations) {
+    if (!operation.evidencePageId) continue;
+    const completed = next.completedOperations[operation.id];
+    if (!completed) continue;
+    const prior = value.evidenceReceiptsByPageId && value.evidenceReceiptsByPageId[operation.evidencePageId];
+    const evidence = validEvidenceReceipt(manifest, operation, completed, prior)
+      ? clonePlain(prior)
+      : evidenceReceiptForOperation(manifest, operation, completed);
+    next.evidenceReceiptsByPageId[operation.evidencePageId] = evidence;
+  }
+  next.evidenceRevision = Object.keys(next.evidenceReceiptsByPageId).length;
 
   next.discoveries = boundedPlainArray(value.discoveries, 16);
   next.failures = boundedPlainArray(value.failures, WORLD_SITE_LIMITS.maxFailures)
@@ -405,10 +446,13 @@ export function applyWorldSiteOperation(manifest, record, request = {}) {
   }
 
   const next = clonePlain(record);
+  if (!isPlainObject(next.evidenceReceiptsByPageId)) next.evidenceReceiptsByPageId = {};
+  next.evidenceRevision = boundedInt(next.evidenceRevision, 0, Number.MAX_SAFE_INTEGER, 0);
   next.operationCursors = normalizeOperationCursors(manifest, next.operationCursors, [], next.completedOperations);
   next.operationCursors[operation.id] = { requestStreamId, throughSequence: requestSequence };
   const receiptId = operationReceiptId(manifest.id, operation.id, requestStreamId, requestSequence);
   const component = next.components[operation.componentId];
+  const stateFrom = component.status;
   const before = Number(component.progress[operation.id]) || 0;
   const after = Math.min(operation.threshold, before + amount);
   component.progress[operation.id] = after;
@@ -423,6 +467,9 @@ export function applyWorldSiteOperation(manifest, record, request = {}) {
       receiptId, tick: finiteTick(request.tick), cycle: boundedInt(component.cycle, 0, Number.MAX_SAFE_INTEGER, 0),
       requestStreamId,
       requestSequence,
+      earnedAtS: finiteNonNegative(request.earnedAtS, finiteTick(request.tick) / 60),
+      stateFrom,
+      stateTo: operation.to,
     };
     next.completionCount = boundedInt(next.completionCount, 0, Number.MAX_SAFE_INTEGER - 1, 0) + 1;
     const payloadDef = operation.payloadId && manifest.payloads.find((candidate) => candidate.id === operation.payloadId);
@@ -442,6 +489,14 @@ export function applyWorldSiteOperation(manifest, record, request = {}) {
       next.payloads[operation.payloadId].settledReceiptId = receiptId;
       next.receivers[operation.receiverId].status = 'settled';
       next.receivers[operation.receiverId].settledReceiptId = receiptId;
+    }
+    if (operation.evidencePageId && !next.evidenceReceiptsByPageId[operation.evidencePageId]) {
+      next.evidenceReceiptsByPageId[operation.evidencePageId] = evidenceReceiptForOperation(
+        manifest,
+        operation,
+        next.completedOperations[operation.id],
+      );
+      next.evidenceRevision = boundedInt(next.evidenceRevision, 0, Number.MAX_SAFE_INTEGER - 1, 0) + 1;
     }
     intents = intentsForOperation(manifest, operation, receiptId);
   }
@@ -551,6 +606,9 @@ export function planWorldSiteMaterialization(manifest, record) {
     scale: Number(stage.scale) || Number(manifest.visualRoot.initialScale) || 1,
     label: stage.label || manifest.name,
     stageId,
+    visualRadius: Number(manifest.visualRoot.visualRadius) > 0
+      ? Number(manifest.visualRoot.visualRadius)
+      : 18,
     presentation: projectWorldSitePresentation(stage, record),
   };
   const components = manifest.components.map((component) => {
@@ -617,7 +675,7 @@ export function projectWorldSite(manifest, record) {
     label: plan.root.label,
     pos: { x: plan.root.pos.x, z: plan.root.pos.z },
     stageLabel: plan.root.label,
-    visual: { placeId: plan.root.placeId, scale: plan.root.scale },
+    visual: { placeId: plan.root.placeId, scale: plan.root.scale, radius: plan.root.visualRadius },
     map: { ...clonePlain(manifest.mapAnnotation || {}), stageId: plan.stageId, stageLabel: plan.root.label },
     ledger: {
       revision: record.revision,
@@ -639,6 +697,8 @@ export function projectWorldSite(manifest, record) {
     components: manifest.components.map((def) => ({ id: def.id, label: def.label, ...clonePlain(record.components[def.id]) })),
     payloads: clonePlain(record.payloads),
     receivers: clonePlain(record.receivers),
+    evidenceRevision: boundedInt(record.evidenceRevision, 0, Number.MAX_SAFE_INTEGER, 0),
+    evidenceReceiptsByPageId: clonePlain(record.evidenceReceiptsByPageId || {}),
     discoveries: clonePlain(record.discoveries),
     updatedTick: record.updatedTick,
   });
@@ -672,6 +732,41 @@ function intentsForOperation(manifest, operation, receiptId) {
     }
   }
   return out;
+}
+
+function evidenceReceiptForOperation(manifest, operation, completed) {
+  return {
+    receiptId: operation.evidencePageId,
+    pageId: operation.evidencePageId,
+    revision: operation.evidenceRevision,
+    earnedTick: finiteTick(completed.tick),
+    earnedAtS: finiteNonNegative(completed.earnedAtS, finiteTick(completed.tick) / 60),
+    siteRecordId: manifest.worldObjectId,
+    componentId: operation.componentId,
+    operationId: operation.id,
+    operationReceiptId: completed.receiptId,
+    stateFrom: array(operation.from).includes(completed.stateFrom) ? completed.stateFrom : operation.from[0],
+    stateTo: operation.to,
+    provenanceRef: operation.evidenceProvenanceRef,
+    catalogRevision: operation.evidenceCatalogRevision,
+  };
+}
+
+function validEvidenceReceipt(manifest, operation, completed, receipt) {
+  return isPlainObject(receipt)
+    && receipt.receiptId === operation.evidencePageId
+    && receipt.pageId === operation.evidencePageId
+    && receipt.revision === operation.evidenceRevision
+    && receipt.earnedTick === finiteTick(completed.tick)
+    && receipt.earnedAtS === finiteNonNegative(completed.earnedAtS, finiteTick(completed.tick) / 60)
+    && receipt.siteRecordId === manifest.worldObjectId
+    && receipt.componentId === operation.componentId
+    && receipt.operationId === operation.id
+    && receipt.operationReceiptId === completed.receiptId
+    && array(operation.from).includes(receipt.stateFrom)
+    && receipt.stateTo === operation.to
+    && receipt.provenanceRef === operation.evidenceProvenanceRef
+    && receipt.catalogRevision === operation.evidenceCatalogRevision;
 }
 
 function evaluateStage(manifest, record) {
@@ -993,6 +1088,9 @@ function finiteSequence(value) {
 }
 function positiveInt(value) { return Number.isInteger(value) && value > 0; }
 function finite(value, fallback = 0) { return Number.isFinite(value) ? value : fallback; }
+function finiteNonNegative(value, fallback = 0) {
+  return Number.isFinite(value) && value >= 0 ? value : Math.max(0, finite(fallback, 0));
+}
 function finiteTick(value) { return Math.max(0, Math.trunc(finite(Number(value), 0))); }
 function finitePoint(value) { return isPlainObject(value) && Number.isFinite(value.x) && Number.isFinite(value.z); }
 function isPlainObject(value) { return !!value && typeof value === 'object' && !Array.isArray(value) && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null); }

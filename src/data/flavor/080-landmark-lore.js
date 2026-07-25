@@ -11,7 +11,7 @@ export default defineFlavorPack({
   entries: [
     {
       id: 'wreck_cathedral', programSlot: 'C1', targetRef: 'landmark_c1_wreck_cathedral_concord_vigilant',
-      displayName: 'The Wreck Cathedral', location: { sectorId: 'sector_io_reach', zoneId: 'zone_io_derelict' },
+      displayName: 'The Wreck Cathedral', location: { sectorId: 'sector_ceres_belt', zoneId: 'world_site_wreck_cathedral' },
       identity: { vesselName: 'Concord Vigilant', disambiguatesFrom: 'wreck_isc_vigilant' },
       lines: [
         { id: 'c1_01', text: 'Concord Vigilant held the lane nine hours. Civilians jumped behind her.' },

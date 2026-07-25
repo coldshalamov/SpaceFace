@@ -15,6 +15,7 @@ const MANIFEST_LOADERS = {
   'massline-live': () => import('./validation-manifests/massline-live.mjs'),
   'pq017-world-site': () => import('./validation-manifests/pq017-world-site.mjs'),
   'lab-chromium-parity': () => import('./validation-manifests/lab-chromium-parity.mjs'),
+  'pq018-wreck-cathedral': () => import('./validation-manifests/pq018-wreck-cathedral.mjs'),
 };
 
 function parseArgs(argv) {
@@ -53,6 +54,7 @@ Manifests:
   massline-live
   pq017-world-site
   lab-chromium-parity
+  pq018-wreck-cathedral
 
 Environment on spawned probes:
   SF_BROKER_CLAIM   one-use claim path
@@ -81,15 +83,22 @@ async function main({ manifestId, issueClaimOnly, diagnostic, extraArgs }) {
   const rawManifest = mod.default
     ?? mod.masslineLiveManifest
     ?? mod.pq017WorldSiteManifest
-    ?? mod.labChromiumParityManifest;
+    ?? mod.labChromiumParityManifest
+    ?? mod.pq018WreckCathedralManifest;
   if (!rawManifest) {
     console.error(`[validation-broker] manifest module did not export a manifest: ${manifestId}`);
     process.exitCode = 1;
     return;
   }
 
-  const outputRoot = path.resolve(ROOT, rawManifest.artifactRoot);
-  const broker = createValidationBroker(rawManifest, { root: ROOT, outputRoot });
+  // A baseline bootstrap cannot include the not-yet-created baseline evidence in its own
+  // scenario digest. Every acceptance claim does include those exact bytes (the manifest default),
+  // so editing the baseline after claim issuance invalidates the claim.
+  const manifest = diagnostic && extraArgs.includes('--baseline-only')
+    ? { ...rawManifest, scenarioPaths: [] }
+    : rawManifest;
+  const outputRoot = path.resolve(ROOT, manifest.artifactRoot);
+  const broker = createValidationBroker(manifest, { root: ROOT, outputRoot });
 
   if (diagnostic) {
     console.log('[validation-broker] diagnostic mode: non-promoting, claim optional for probe');
@@ -99,7 +108,7 @@ async function main({ manifestId, issueClaimOnly, diagnostic, extraArgs }) {
       mode: 'diagnostic',
       extraArgs: ['--diagnostic', ...extraArgs],
       env: {
-        SF_PROBE_SEED: rawManifest.fixedSeed != null ? String(rawManifest.fixedSeed) : '',
+        SF_PROBE_SEED: manifest.fixedSeed != null ? String(manifest.fixedSeed) : '',
       },
     });
     printRun(run);

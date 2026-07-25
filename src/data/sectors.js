@@ -93,6 +93,10 @@ const CORE_SECTORS = [
     pois: [
       { id: 'poi_driller', type: 'derelict', name: 'Abandoned Driller' },
       { id: 'poi_survey',  type: 'cache',    name: 'Survey Cache' },
+      {
+        id: 'world_site_wreck_cathedral', type: 'world-site', name: 'Wreck Cathedral',
+        anchor: { x: 300, z: 2700 },
+      },
     ],
   },
   {

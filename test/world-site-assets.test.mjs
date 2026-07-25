@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { WORLD_SITE_ASSET_BINDINGS, validateWorldSiteAssetBinding } from '../src/data/worldSiteAssetBindings.js';
-import { worldSiteManifestById } from '../src/data/worldSiteManifests.js';
+import { WORLD_SITE_MANIFESTS, worldSiteManifestById } from '../src/data/worldSiteManifests.js';
 import {
   applyWorldSiteOperation,
   createWorldSiteRecord,
@@ -14,6 +14,70 @@ import {
 
 const JSON_CHUNK = 0x4e4f534a;
 const SITE_ID = 'world_site_helios_relay';
+const CATHEDRAL_PART_ID = 'place_landmark_wreck_cathedral';
+const CATHEDRAL_ASSET_ID = 'SF_LANDMARK_PLACE_LANDMARK_WRECK_CATHEDRAL';
+const CATHEDRAL_CONTRACT = Object.freeze({
+  source: Object.freeze({
+    path: 'assets/ships/parts/places/place_landmark_wreck_cathedral.glb',
+    sha256: 'f335935f9658bad0e721aceb5d66bb4c2f0457fe411442819b4a3455a00af704',
+    bytes: 11155156,
+  }),
+  release: Object.freeze({
+    path: 'assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb',
+    sha256: 'ca01a624d65fc43eab5d77528ab228195f813e59e7e84dff0a6e69c37757138c',
+    bytes: 6160076,
+  }),
+});
+const CATHEDRAL_SEMANTIC_NODES = Object.freeze({
+  INTERACTION_HangarCavity: Object.freeze({
+    role: 'future_world_site_cavity',
+    translation: Object.freeze([0, 5, 0]),
+  }),
+  SALVAGE_ConduitBank: Object.freeze({
+    role: 'future_salvage_node',
+    translation: Object.freeze([99.37923431396484, 24.087305068969727, -68.28560638427734]),
+  }),
+  SALVAGE_EngineMachinery: Object.freeze({
+    role: 'future_salvage_node',
+    translation: Object.freeze([-226.73182678222656, 12.388017654418945, 5.248732566833496]),
+  }),
+  SALVAGE_ServiceRack: Object.freeze({
+    role: 'future_salvage_node',
+    translation: Object.freeze([-125.59925842285156, -2.267620801925659, -50.781742095947266]),
+  }),
+  SOCKET_Flythrough_Entry: Object.freeze({
+    role: 'flythrough_entry',
+    translation: Object.freeze([-278.13482666015625, 0.10397624969482422, -31.204429626464844]),
+  }),
+  SOCKET_Flythrough_Exit: Object.freeze({
+    role: 'flythrough_exit',
+    translation: Object.freeze([303.7676086425781, 23.767391204833984, -45.19260787963867]),
+  }),
+  SOCKET_TheMarker: Object.freeze({
+    role: 'the_marker',
+    translation: Object.freeze([140.27813720703125, 141.1614532470703, -18.738412857055664]),
+  }),
+  ZONE_Bridge: Object.freeze({
+    role: 'bridge_zone',
+    translation: Object.freeze([187.67970275878906, 89.22998046875, -27.353229522705078]),
+  }),
+  ZONE_BrokenKeel: Object.freeze({
+    role: 'broken_keel_zone',
+    translation: Object.freeze([0, -58, 0]),
+  }),
+  ZONE_Propulsion: Object.freeze({
+    role: 'propulsion_zone',
+    translation: Object.freeze([-240.85142517089844, -1.089632511138916, -23.957263946533203]),
+  }),
+  ZONE_Service_Port: Object.freeze({
+    role: 'service_zone',
+    translation: Object.freeze([-124.28954315185547, 6.782212257385254, 48.83946228027344]),
+  }),
+  ZONE_Service_Starboard: Object.freeze({
+    role: 'service_zone',
+    translation: Object.freeze([110.7385025024414, 28.541553497314453, -73.49394989013672]),
+  }),
+});
 
 function parseGlb(path) {
   const bytes = readFileSync(path);
@@ -40,11 +104,36 @@ function nodeTransform(node = {}) {
   };
 }
 
+function assetMetadata(json = {}) {
+  const extras = json.asset?.extras || {};
+  return extras.spacefaceAsset && typeof extras.spacefaceAsset === 'object'
+    ? extras.spacefaceAsset
+    : extras;
+}
+
+function nodeSemanticRole(node = {}) {
+  return node.extras?.['spaceface.socketRole']
+    || node.extras?.spaceface?.semanticRole
+    || node.extras?.['spaceface.semanticRole']
+    || null;
+}
+
+test('every World Site manifest references an admitted immutable asset binding', () => {
+  for (const manifest of WORLD_SITE_MANIFESTS) {
+    const placeIds = new Set([
+      manifest.visualRoot?.placeId,
+      ...(manifest.stages || []).map((stage) => stage.placeId),
+    ].filter(Boolean));
+    assert.ok(placeIds.size > 0, `${manifest.id}: at least one visual place`);
+    for (const placeId of [...placeIds].sort()) {
+      assert.ok(WORLD_SITE_ASSET_BINDINGS[placeId], `${manifest.id}: ${placeId} asset binding`);
+    }
+  }
+});
+
 test('every World Site stage binding is exact in source, release, and release manifest', () => {
   const releaseManifest = JSON.parse(readFileSync('assets/ships/release/release_manifest.json', 'utf8'));
   const released = new Map(releaseManifest.assets.map((entry) => [entry.id, entry]));
-  const manifest = worldSiteManifestById(SITE_ID);
-  assert.deepEqual([...new Set(manifest.stages.map((stage) => stage.placeId))].sort(), Object.keys(WORLD_SITE_ASSET_BINDINGS).sort());
 
   for (const binding of Object.values(WORLD_SITE_ASSET_BINDINGS)) {
     const releaseEntry = released.get(binding.partId);
@@ -54,19 +143,82 @@ test('every World Site stage binding is exact in source, release, and release ma
       const { bytes, json } = parseGlb(contract.path);
       assert.equal(bytes.length, contract.bytes);
       assert.equal(createHash('sha256').update(bytes).digest('hex'), contract.sha256);
-      assert.equal(json.asset?.extras?.assetId, binding.assetId);
-      assert.equal(json.asset?.extras?.partId, binding.partId);
+      const metadata = assetMetadata(json);
+      assert.equal(metadata.assetId, binding.assetId);
+      assert.equal(metadata.partId, binding.partId);
+      if (binding.partId !== CATHEDRAL_PART_ID) {
+        assert.equal(json.asset?.extras?.assetId, binding.assetId, `${binding.partId}/${kind}: legacy assetId`);
+        assert.equal(json.asset?.extras?.partId, binding.partId, `${binding.partId}/${kind}: legacy partId`);
+      }
       assert.equal(releaseEntry[`${kind}Sha256`], contract.sha256);
       assert.equal(releaseEntry[`${kind}Bytes`], contract.bytes);
       const nodes = new Map(json.nodes.map((node) => [node.name, node]));
       for (const [name, socket] of Object.entries(binding.sockets)) {
         const node = nodes.get(name);
         assert.ok(node, `${binding.partId}/${kind}: ${name}`);
-        assert.equal(node.extras?.['spaceface.socketRole'], socket.role);
+        assert.equal(nodeSemanticRole(node), socket.role);
         assert.deepEqual(nodeTransform(node), socket.transform);
       }
     }
   }
+});
+
+test('Wreck Cathedral source and release preserve exact nested identity, semantics, and compression', () => {
+  const binding = WORLD_SITE_ASSET_BINDINGS[CATHEDRAL_PART_ID];
+  assert.ok(binding, 'Wreck Cathedral binding');
+  assert.equal(binding.assetId, CATHEDRAL_ASSET_ID);
+  assert.deepEqual(binding.source, CATHEDRAL_CONTRACT.source);
+  assert.deepEqual(binding.release, CATHEDRAL_CONTRACT.release);
+  assert.deepEqual(Object.keys(binding.sockets).sort(), Object.keys(CATHEDRAL_SEMANTIC_NODES).sort());
+  for (const [name, expected] of Object.entries(CATHEDRAL_SEMANTIC_NODES)) {
+    assert.equal(binding.sockets[name].role, expected.role, `binding: ${name} semantic role`);
+    assert.deepEqual(binding.sockets[name].transform, {
+      translation: expected.translation,
+      rotation: [0, 0, 0, 1],
+      scale: [1, 1, 1],
+    }, `binding: ${name} transform`);
+  }
+
+  const parsed = {};
+  for (const kind of ['source', 'release']) {
+    const contract = CATHEDRAL_CONTRACT[kind];
+    const asset = parseGlb(contract.path);
+    parsed[kind] = asset;
+    assert.equal(asset.bytes.length, contract.bytes);
+    assert.equal(createHash('sha256').update(asset.bytes).digest('hex'), contract.sha256);
+
+    const nested = asset.json.asset?.extras?.spacefaceAsset;
+    assert.ok(nested && typeof nested === 'object', `${kind}: nested spacefaceAsset metadata`);
+    assert.equal(nested.contractVersion, 1);
+    assert.equal(nested.assetId, CATHEDRAL_ASSET_ID);
+    assert.equal(nested.partId, CATHEDRAL_PART_ID);
+    assert.equal(nested.slot, 'place');
+    assert.equal(nested.forward, '+X');
+    assert.equal(nested.up, '+Y');
+    assert.equal(nested.starboard, '+Z');
+    assert.equal(nested.unit, 'metre');
+
+    const nodes = new Map(asset.json.nodes.map((node) => [node.name, node]));
+    for (const [name, expected] of Object.entries(CATHEDRAL_SEMANTIC_NODES)) {
+      const node = nodes.get(name);
+      assert.ok(node, `${kind}: ${name}`);
+      assert.equal(nodeSemanticRole(node), expected.role, `${kind}: ${name} semantic role`);
+      assert.deepEqual(nodeTransform(node), {
+        translation: expected.translation,
+        rotation: [0, 0, 0, 1],
+        scale: [1, 1, 1],
+      }, `${kind}: ${name} transform`);
+    }
+  }
+
+  const release = parsed.release.json;
+  assert.ok(release.extensionsUsed?.includes('KHR_texture_basisu'));
+  assert.ok(release.extensionsRequired?.includes('KHR_texture_basisu'));
+  assert.equal(release.textures?.length, 26);
+  assert.ok(release.textures.every((texture) => texture.extensions?.KHR_texture_basisu));
+  assert.ok(release.extensionsUsed?.includes('EXT_meshopt_compression'));
+  assert.ok(release.extensionsRequired?.includes('EXT_meshopt_compression'));
+  assert.ok(release.bufferViews?.some((view) => view.extensions?.EXT_meshopt_compression));
 });
 
 test('manifest rejects absent assets, sockets, bindings, and malformed transforms', () => {
