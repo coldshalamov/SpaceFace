@@ -81,3 +81,91 @@ test('compareCheckpoints unit: hash-only series', () => {
   assert.equal(d.firstDivergence.tick, 2);
   assert.equal(d.lastMatchingTick, 1);
 });
+
+test('FIX2: Node oracle fail + matching Chromium series → arm-oracle-fail (not exit 0)', async () => {
+  const compiled = compileSimScenario(shortDoc);
+  assert.equal(compiled.ok, true);
+  const series = [
+    { tick: 14, hash: 'same', surface: { tick: 14 } },
+    { tick: 29, hash: 'same2', surface: { tick: 29 } },
+    { tick: 44, hash: 'same3', surface: { tick: 44 } },
+  ];
+  const result = await runDifferentialReplay(shortDoc, {
+    canonical: compiled.canonical,
+    verbosity: 1,
+    checkpointEvery: 15,
+    // Inject arms: Node fails oracle; Chromium "matches" with identical series.
+    runNodeArm: async () => ({
+      ok: false,
+      exitClass: 1,
+      status: 'fail',
+      scenarioDigest: null, // filled after pin — override below via same digests in result path
+      inputDigest: null,
+      fingerprint: null,
+      oracle: {
+        ok: false,
+        firstBadTick: 10,
+        failed: [{ id: 'flight.finalSpeed', ok: false }],
+      },
+      checkpoints: {
+        mid: series.map((p) => ({
+          tick: p.tick,
+          deterministicCovered: { hash: p.hash, surface: p.surface },
+        })),
+      },
+      ticks: 45,
+    }),
+    runChromiumArm: async (_can, opts) => ({
+      ok: true,
+      status: 'pass',
+      scenarioDigest: opts.scenarioDigest,
+      inputDigest: opts.inputDigest,
+      series,
+      finalHash: series.at(-1).hash,
+      fingerprint: null,
+      browserLaunches: 0,
+      durationMs: 1,
+    }),
+  });
+
+  // Pin digests on node arm result aren't needed — gate is ok flags.
+  assert.equal(result.ok, false, 'failed Node oracle must not promote parity pass');
+  assert.equal(result.status, 'arm-oracle-fail');
+  assert.equal(result.exitClass, 1);
+  assert.ok(Array.isArray(result.failedArms) && result.failedArms.includes('node'));
+  assert.notEqual(result.exitClass, 0);
+});
+
+test('FIX3: massline/attachment scenarios are unsupported for Chromium parity', async () => {
+  const masslineDoc = JSON.parse(readFileSync(
+    join(ROOT, '../src/testing/scenarios/massline-latch-reel.scenario.json'),
+    'utf8',
+  ));
+  const compiled = compileSimScenario(masslineDoc);
+  assert.equal(compiled.ok, true);
+  const result = await runDifferentialReplay(masslineDoc, {
+    canonical: compiled.canonical,
+    verbosity: 1,
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 'unsupported');
+  assert.equal(result.exitClass, 4);
+  assert.match(String(result.error || ''), /Chromium parity|attachment|massline|unsupported/i);
+});
+
+test('FIX5: series length mismatch localizes after matching prefix', () => {
+  const node = [
+    { tick: 19, hash: 'a' },
+    { tick: 39, hash: 'b' },
+    { tick: 59, hash: 'c' },
+  ];
+  const chrome = [
+    { tick: 19, hash: 'a' },
+    { tick: 39, hash: 'b' },
+  ];
+  const r = compareCheckpoints(node, chrome);
+  assert.equal(r.match, false);
+  assert.equal(r.lastMatchingTick, 39);
+  assert.equal(r.firstDivergence.tick, 59);
+  assert.equal(r.firstDivergence.kind, 'series-length');
+});

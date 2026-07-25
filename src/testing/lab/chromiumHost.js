@@ -10,6 +10,7 @@ import { loadPlaywright } from '../../../scripts/lib/load-playwright.mjs';
 import { killProcessTree } from '../../../scripts/lib/validationProcessControl.mjs';
 import { hashDeterministicSurface } from './checkpoint.js';
 import { hashInputTape } from './inputTape.js';
+import { assertChromiumParitySupported } from './browserScenarioHost.js';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const HOST_PAGE = '/src/testing/lab/chromiumHostPage.html';
@@ -23,6 +24,21 @@ const DEFAULT_TIMEOUT_MS = 120_000;
  * @returns {Promise<object>}
  */
 export async function runChromiumLabScenario(canonical, options = {}) {
+  // Reject before launching a browser when the host cannot mirror the Node bundle.
+  if (options.skipSupportCheck !== true) {
+    const support = assertChromiumParitySupported(canonical);
+    if (!support.ok) {
+      return {
+        ok: false,
+        status: support.status,
+        error: support.reason,
+        chromiumSupport: support,
+        browserLaunches: 0,
+        durationMs: 0,
+      };
+    }
+  }
+
   const timeoutMs = Math.max(5_000, Number(options.timeoutMs) || DEFAULT_TIMEOUT_MS);
   const startedAt = Date.now();
   let server = null;

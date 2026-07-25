@@ -114,11 +114,55 @@ test('bridge API does not expose forbidden mutation surfaces', () => {
   assert.equal(Object.isFrozen(bridge), true);
   const pause = bridge.pauseAutomaticLoop();
   assert.equal(pause.ok, true);
+  // Pause must go through time-effects owner (single writer) — effective scale 0.
   assert.equal(fakeSf.state.timeScale, 0);
   const snap = bridge.snapshot();
   assert.equal(snap.ok, true);
   assert.equal(snap.paused, true);
+  const resume = bridge.resumeAutomaticLoop();
+  assert.equal(resume.ok, true);
+  assert.equal(fakeSf.state.timeScale, 1);
 });
+
+test('FIX1: bridge source does not assign state.timeScale directly', () => {
+  const bridgeSrc = readFileSync(join(ROOT, 'src/testing/lab/liveRouteBridge.js'), 'utf8');
+  assert.match(bridgeSrc, /createTimeEffects/);
+  assert.match(bridgeSrc, /LAB_LIVE_ROUTE_TIME_SOURCE|lab:live-route/);
+  assert.doesNotMatch(bridgeSrc, /\.timeScale\s*=/);
+});
+
+test('FIX6: loadCompiledScenario rejects non-player entities instead of silent skip', () => {
+  const fakeSf = {
+    state: {
+      timeScale: 1,
+      tick: 0,
+      simTime: 0,
+      mode: 'flight',
+      playerId: 1,
+      entities: new Map([[1, { id: 1, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, alive: true, hull: 100 }]]),
+      entityList: [{ id: 1, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, alive: true, hull: 100 }],
+      input: { keys: {}, moveX: 0, moveZ: 0, turnIntent: 0, boost: false },
+      player: {},
+      settings: { gameplay: {} },
+      meta: { seed: 1 },
+    },
+    registry: { step() {}, renderUpdate() {} },
+    helpers: {},
+  };
+  const bridge = installLiveRouteBridge(fakeSf);
+  const result = bridge.loadCompiledScenario({
+    id: 'massline.unsupported-on-live-route',
+    entities: [
+      { alias: 'player', isPlayer: true, pos: { x: 0, z: 0 } },
+      { alias: 'anchor', isPlayer: false, pos: { x: 120, z: 0 } },
+    ],
+    attachments: [{ defId: 'tether_standard', ownerAlias: 'player', targetAlias: 'anchor' }],
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 'unsupported');
+  assert.match(String(result.reason), /non-player|attachment/i);
+});
+
 
 test('optional: if build/web exists, bridge symbols are absent', () => {
   const webMain = join(ROOT, 'build/web/main.js');

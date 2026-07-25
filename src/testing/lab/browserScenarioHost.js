@@ -22,6 +22,62 @@ export const BROWSER_FOCUSED_FLIGHT_SYSTEMS = Object.freeze([
 ]);
 
 /**
+ * Chromium parity V1 supports the focused flight bundle only.
+ * Scenarios that require massline/attachments/save (or non-flight fixtures) must be
+ * rejected rather than silently compared under a different system set.
+ * @param {object} canonical
+ * @returns {{ ok: true } | { ok: false, status: string, reason: string }}
+ */
+export function assertChromiumParitySupported(canonical) {
+  if (!canonical || typeof canonical !== 'object') {
+    return { ok: false, status: 'unsupported', reason: 'canonical required' };
+  }
+  const fixture = canonical.world?.fixtureProfile;
+  if (fixture && fixture !== 'flight' && fixture !== 'empty-flight') {
+    return {
+      ok: false,
+      status: 'unsupported',
+      reason: `unsupported scenario for Chromium parity: fixtureProfile=${fixture} (V1 supports flight only)`,
+    };
+  }
+  const attachments = Array.isArray(canonical.attachments) ? canonical.attachments : [];
+  if (attachments.length > 0) {
+    return {
+      ok: false,
+      status: 'unsupported',
+      reason: 'unsupported scenario for Chromium parity: attachments require massline bundle (not mirrored in Chromium V1)',
+    };
+  }
+  const wantsSave = (canonical.assertions || []).some(
+    (a) => a.kind === 'equivalence' && (
+      a.equivalence === 'uninterrupted-eq-save-load'
+      || a.equivalence === 'save-load'
+      || a.expected === 'uninterrupted-eq-save-load'
+    ),
+  ) || (canonical.checkpoints || []).some((c) => c.kind === 'save-load');
+  if (wantsSave) {
+    return {
+      ok: false,
+      status: 'unsupported',
+      reason: 'unsupported scenario for Chromium parity: save/load not mirrored in Chromium V1 host',
+    };
+  }
+  // Named systems beyond the flight set are not mirrored.
+  if (Array.isArray(canonical.systems) && canonical.systems.length) {
+    const allowed = new Set(['core', 'actions', 'flightV3', 'flight', 'weapons', 'physics']);
+    const extra = canonical.systems.filter((n) => !allowed.has(n));
+    if (extra.length) {
+      return {
+        ok: false,
+        status: 'unsupported',
+        reason: `unsupported scenario for Chromium parity: systems [${extra.join(', ')}] not in browser flight bundle`,
+      };
+    }
+  }
+  return { ok: true };
+}
+
+/**
  * Run a compiled canonical scenario in the browser and return checkpoint surfaces.
  * @param {object} canonical
  * @param {object} [options]
@@ -30,6 +86,16 @@ export const BROWSER_FOCUSED_FLIGHT_SYSTEMS = Object.freeze([
 export async function runBrowserLabScenario(canonical, options = {}) {
   if (!canonical || typeof canonical !== 'object') {
     return { ok: false, status: 'invalid-config', error: 'canonical required' };
+  }
+
+  const support = assertChromiumParitySupported(canonical);
+  if (!support.ok) {
+    return {
+      ok: false,
+      status: support.status,
+      error: support.reason,
+      chromiumSupport: support,
+    };
   }
 
   const dt = canonical.dt || SIM_DT;
@@ -175,6 +241,7 @@ function defaultCheckpointTicks(ticks, every) {
 if (typeof window !== 'undefined') {
   window.__SF_BROWSER_LAB__ = {
     runBrowserLabScenario,
+    assertChromiumParitySupported,
     BROWSER_FOCUSED_FLIGHT_SYSTEMS,
   };
 }

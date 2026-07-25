@@ -26,9 +26,16 @@ export { compareCheckpoints, localizeFirstDivergingTick, classifyDivergence } fr
 export { runDifferentialReplay, runChromiumDeterminismCheck } from './differentialReplay.js';
 export { runChromiumLabScenario, repeatChromiumLabScenario } from './chromiumHost.js';
 export {
+  runBrowserLabScenario,
+  assertChromiumParitySupported,
+  BROWSER_FOCUSED_FLIGHT_SYSTEMS,
+} from './browserScenarioHost.js';
+export {
   installLiveRouteBridge,
+  assertLiveRouteScenarioSupported,
   LIVE_ROUTE_BRIDGE_API,
   LIVE_ROUTE_BRIDGE_FORBIDDEN,
+  LAB_LIVE_ROUTE_TIME_SOURCE,
 } from './liveRouteBridge.js';
 export { evaluateOracles } from './oracleEngine.js';
 export { buildLabFailure } from './failureArtifact.js';

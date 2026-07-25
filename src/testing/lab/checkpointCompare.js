@@ -42,29 +42,11 @@ export function compareCheckpoints(nodeSeries, chromiumSeries, options = {}) {
     };
   }
 
-  if (node.length !== chrome.length) {
-    exactWithin.sameCoverage = false;
-    return {
-      match: false,
-      firstDivergence: {
-        kind: 'series-length',
-        tick: Math.min(node[0]?.tick ?? 0, chrome[0]?.tick ?? 0),
-        nodeLength: node.length,
-        chromiumLength: chrome.length,
-        field: 'series.length',
-        nodeValue: node.length,
-        chromiumValue: chrome.length,
-        raw: { nodeLength: node.length, chromiumLength: chrome.length },
-      },
-      lastMatchingTick: null,
-      classification: 'setup',
-      seriesLength: { node: node.length, chromium: chrome.length },
-      exactWithin,
-    };
-  }
-
+  // Walk the common prefix first so a later length mismatch reports the correct
+  // missing/extra tick (and lastMatchingTick of agreeing points), not the first tick.
   let lastMatchingTick = null;
-  for (let i = 0; i < node.length; i++) {
+  const commonLen = Math.min(node.length, chrome.length);
+  for (let i = 0; i < commonLen; i++) {
     const a = node[i];
     const b = chrome[i];
     if ((a.tick | 0) !== (b.tick | 0)) {
@@ -131,6 +113,40 @@ export function compareCheckpoints(nodeSeries, chromiumSeries, options = {}) {
       },
       lastMatchingTick,
       classification,
+      seriesLength: { node: node.length, chromium: chrome.length },
+      exactWithin,
+    };
+  }
+
+  if (node.length !== chrome.length) {
+    exactWithin.sameCoverage = false;
+    const longer = node.length > chrome.length ? node : chrome;
+    const missingSide = node.length > chrome.length ? 'chromium' : 'node';
+    const extraSide = node.length > chrome.length ? 'node' : 'chromium';
+    const firstExtra = longer[commonLen];
+    const divergeTick = firstExtra?.tick ?? (lastMatchingTick != null ? lastMatchingTick + 1 : 0);
+    return {
+      match: false,
+      firstDivergence: {
+        kind: 'series-length',
+        tick: divergeTick | 0,
+        index: commonLen,
+        nodeLength: node.length,
+        chromiumLength: chrome.length,
+        field: 'series.length',
+        nodeValue: node.length,
+        chromiumValue: chrome.length,
+        missingSide,
+        extraSide,
+        raw: {
+          nodeLength: node.length,
+          chromiumLength: chrome.length,
+          lastMatchingTick,
+          firstExtraTick: firstExtra?.tick ?? null,
+        },
+      },
+      lastMatchingTick,
+      classification: 'setup',
       seriesLength: { node: node.length, chromium: chrome.length },
       exactWithin,
     };

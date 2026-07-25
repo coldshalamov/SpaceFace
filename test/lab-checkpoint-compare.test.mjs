@@ -69,3 +69,41 @@ test('localizeFirstDivergingTick binary-searches interval', () => {
   assert.equal(loc.lastMatchingTick, 12);
   assert.equal(loc.field, 'x');
 });
+
+test('FIX5: common prefix matches before series-length mismatch', () => {
+  // [19,39,59] vs [19,39] must NOT claim divergence at tick 19.
+  const node = [
+    { tick: 19, hash: 'a' },
+    { tick: 39, hash: 'b' },
+    { tick: 59, hash: 'c' },
+  ];
+  const chrome = [
+    { tick: 19, hash: 'a' },
+    { tick: 39, hash: 'b' },
+  ];
+  const r = compareCheckpoints(node, chrome);
+  assert.equal(r.match, false);
+  assert.equal(r.lastMatchingTick, 39, 'prefix ticks 19 and 39 matched');
+  assert.equal(r.firstDivergence.kind, 'series-length');
+  assert.equal(r.firstDivergence.tick, 59, 'divergence at the missing checkpoint tick');
+  assert.equal(r.firstDivergence.missingSide, 'chromium');
+  assert.equal(r.seriesLength.node, 3);
+  assert.equal(r.seriesLength.chromium, 2);
+});
+
+test('FIX5: shorter node series reports missing on node at correct tick', () => {
+  const node = [
+    { tick: 19, hash: 'a' },
+    { tick: 39, hash: 'b' },
+  ];
+  const chrome = [
+    { tick: 19, hash: 'a' },
+    { tick: 39, hash: 'b' },
+    { tick: 59, hash: 'c' },
+  ];
+  const r = compareCheckpoints(node, chrome);
+  assert.equal(r.match, false);
+  assert.equal(r.lastMatchingTick, 39);
+  assert.equal(r.firstDivergence.tick, 59);
+  assert.equal(r.firstDivergence.missingSide, 'node');
+});

@@ -10,6 +10,7 @@ import { hashInputTape } from './inputTape.js';
 import { compareCheckpoints } from './checkpointCompare.js';
 import { runChromiumLabScenario, repeatChromiumLabScenario } from './chromiumHost.js';
 import { hashDeterministicSurface } from './checkpoint.js';
+import { assertChromiumParitySupported } from './browserScenarioHost.js';
 
 /**
  * Compile scenario once, run Node + Chromium, compare deterministic-covered series.
@@ -48,6 +49,21 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
     }
   }
 
+  // FIX 3: reject scenarios the Chromium host cannot run with an equivalent bundle.
+  const chromeSupport = assertChromiumParitySupported(canonical);
+  if (!chromeSupport.ok) {
+    return {
+      schema: 'spaceface.labDifferentialReplay.v1',
+      ok: false,
+      exitClass: 4,
+      status: 'unsupported',
+      runId,
+      scenarioId: canonical.id,
+      error: chromeSupport.reason,
+      chromiumSupport: chromeSupport,
+    };
+  }
+
   if (!scenarioDigest) {
     scenarioDigest = sha256(canonicalStringify(canonical));
   }
@@ -59,19 +75,24 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
   // --- Node (lab runner) ---
   // Inject mid-run checkpoints for collection only; pin scenarioDigest to the original
   // compiled artifact so Node/Chromium share the same covered surface identity.
+  // retainCheckpointSurfaces: field-level divergence localization needs mid surfaces.
   const nodeCanonical = {
     ...canonical,
     checkpoints: checkpointTicks.map((tick) => ({ tick, kind: 'deterministic-covered' })),
   };
-  const nodeResult = await runLabScenario(scenarioDoc || canonical, {
+  const runNodeArm = options.runNodeArm || runLabScenario;
+  const runChromiumArm = options.runChromiumArm || runChromiumLabScenario;
+
+  const nodeResult = await runNodeArm(scenarioDoc || canonical, {
     ...options,
     canonical: nodeCanonical,
     scenarioDigest,
     inputDigest,
     verbosity: options.verbosity ?? 1,
+    retainCheckpointSurfaces: true,
   });
 
-  if (!nodeResult.ok && nodeResult.exitClass === 3) {
+  if (nodeResult.exitClass === 3) {
     return {
       schema: 'spaceface.labDifferentialReplay.v1',
       ok: false,
@@ -84,11 +105,25 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
       node: slimNode(nodeResult),
     };
   }
+  if (nodeResult.exitClass === 4) {
+    return {
+      schema: 'spaceface.labDifferentialReplay.v1',
+      ok: false,
+      exitClass: 4,
+      status: nodeResult.status || 'invalid-config',
+      runId,
+      scenarioDigest,
+      inputDigest,
+      error: nodeResult.error || 'node lab invalid-config',
+      node: slimNode(nodeResult),
+      validation: nodeResult.validation,
+    };
+  }
 
   const nodeSeries = extractNodeSeries(nodeResult);
 
   // --- Chromium ---
-  const chromiumResult = await runChromiumLabScenario(canonical, {
+  const chromiumResult = await runChromiumArm(canonical, {
     scenarioDigest,
     inputDigest,
     checkpointTicks,
@@ -100,10 +135,11 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
   });
 
   if (!chromiumResult.ok) {
+    const isUnsupported = chromiumResult.status === 'unsupported';
     return {
       schema: 'spaceface.labDifferentialReplay.v1',
       ok: false,
-      exitClass: 3,
+      exitClass: isUnsupported ? 4 : 3,
       status: chromiumResult.status || 'infra',
       runId,
       scenarioDigest,
@@ -112,6 +148,61 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
       browserLaunches: chromiumResult.browserLaunches | 0,
       node: { series: nodeSeries, finalHash: nodeSeries.at(-1)?.hash || null },
       chromium: slimChromium(chromiumResult),
+    };
+  }
+
+  // FIX 2: parity is only meaningful between two oracle-passing arms.
+  // Matching checkpoints of a failing Node oracle (or a Chromium failure) is not a pass.
+  if (!nodeResult.ok || !chromiumResult.ok) {
+    const failedArms = [];
+    if (!nodeResult.ok) failedArms.push('node');
+    if (!chromiumResult.ok) failedArms.push('chromium');
+    return {
+      schema: 'spaceface.labDifferentialReplay.v1',
+      ok: false,
+      exitClass: 1,
+      status: 'arm-oracle-fail',
+      runId,
+      scenarioId: canonical.id,
+      seed: canonical.seed,
+      ticks,
+      scenarioDigest,
+      inputDigest,
+      failedArms,
+      armFailures: {
+        node: armFailureSummary(nodeResult),
+        chromium: armFailureSummary(chromiumResult),
+      },
+      compare: {
+        match: false,
+        firstDivergence: {
+          kind: 'arm-oracle-fail',
+          field: 'oracle',
+          reason: `oracle failed on arm(s): ${failedArms.join(', ')}`,
+          failedArms,
+        },
+        lastMatchingTick: null,
+        classification: 'setup',
+      },
+      firstDivergenceReport: `arm-oracle-fail:${failedArms.join(',')}`,
+      node: {
+        series: nodeSeries.map(stripSurfaceUnlessVerbose(options.verbosity, true)),
+        finalHash: nodeSeries.at(-1)?.hash || null,
+        fingerprint: nodeResult.fingerprint || null,
+        exitClass: nodeResult.exitClass,
+        ok: nodeResult.ok,
+        oracle: nodeResult.oracle || null,
+      },
+      chromium: {
+        series: (chromiumResult.series || []).map(stripSurfaceUnlessVerbose(options.verbosity, true)),
+        finalHash: chromiumResult.finalHash,
+        fingerprint: chromiumResult.fingerprint || null,
+        browserLaunches: chromiumResult.browserLaunches | 0,
+        durationMs: chromiumResult.durationMs,
+        ok: chromiumResult.ok,
+      },
+      browserLaunches: chromiumResult.browserLaunches | 0,
+      exactWithin: { crossRuntime: false, sameCoverage: false },
     };
   }
 
@@ -136,6 +227,8 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
   };
 
   const ok = compare.match;
+  // On divergence, retain surfaces so the report can show field-level residual even at low verbosity.
+  const keepSurfaces = !ok || (options.verbosity | 0) >= 3;
   return {
     schema: 'spaceface.labDifferentialReplay.v1',
     ok,
@@ -154,17 +247,19 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
       ? 'match'
       : formatFirstDivergence(compare),
     node: {
-      series: nodeSeries.map(stripSurfaceUnlessVerbose(options.verbosity)),
+      series: nodeSeries.map(stripSurfaceUnlessVerbose(options.verbosity, keepSurfaces)),
       finalHash: nodeSeries.at(-1)?.hash || null,
       fingerprint: nodeResult.fingerprint || null,
       exitClass: nodeResult.exitClass,
+      ok: nodeResult.ok,
     },
     chromium: {
-      series: chromiumSeries.map(stripSurfaceUnlessVerbose(options.verbosity)),
+      series: chromiumSeries.map(stripSurfaceUnlessVerbose(options.verbosity, keepSurfaces)),
       finalHash: chromiumResult.finalHash,
       fingerprint: chromiumResult.fingerprint || null,
       browserLaunches: chromiumResult.browserLaunches | 0,
       durationMs: chromiumResult.durationMs,
+      ok: chromiumResult.ok,
     },
     browserLaunches: chromiumResult.browserLaunches | 0,
     exactWithin: {
@@ -245,6 +340,9 @@ function slimNode(r) {
     status: r.status,
     error: r.error,
     scenarioDigest: r.scenarioDigest,
+    oracle: r.oracle
+      ? { ok: r.oracle.ok, firstBadTick: r.oracle.firstBadTick, failed: r.oracle.failed }
+      : null,
   };
 }
 
@@ -257,8 +355,25 @@ function slimChromium(r) {
   };
 }
 
-function stripSurfaceUnlessVerbose(verbosity) {
-  const keep = (verbosity | 0) >= 3;
+function armFailureSummary(result) {
+  if (!result) return { ok: false, reason: 'missing-result' };
+  return {
+    ok: !!result.ok,
+    exitClass: result.exitClass,
+    status: result.status,
+    error: result.error || null,
+    oracle: result.oracle
+      ? { ok: result.oracle.ok, firstBadTick: result.oracle.firstBadTick, failed: result.oracle.failed }
+      : null,
+  };
+}
+
+/**
+ * @param {number} verbosity
+ * @param {boolean} [forceKeep] when true (divergence / oracle-fail path), retain surfaces for localization
+ */
+function stripSurfaceUnlessVerbose(verbosity, forceKeep = false) {
+  const keep = forceKeep || (verbosity | 0) >= 3;
   return (point) => {
     if (keep) return point;
     const { surface, ...rest } = point;

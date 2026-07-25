@@ -364,10 +364,15 @@ export async function runLabScenario(scenarioDoc, options = {}) {
 
       if (checkpointTicks.has(tick)) {
         const cps = buildCheckpoints(state, { scenarioDigest, inputDigest, dt, label: `tick-${tick}` });
+        // Retain surfaces when requested (Node/Chromium parity localization) or high verbosity.
+        // Unconditional strip defeated field-level divergence reports on hash mismatch.
+        const keepSurface = options.retainCheckpointSurfaces === true || verbosity >= 3;
         midCheckpoints.push({
           tick,
-          semantic: stripCheckpointDebug(cps.semantic),
-          deterministicCovered: stripCheckpointDebug(cps.deterministicCovered),
+          semantic: keepSurface ? cps.semantic : stripCheckpointDebug(cps.semantic),
+          deterministicCovered: keepSurface
+            ? cps.deterministicCovered
+            : stripCheckpointDebug(cps.deterministicCovered),
         });
       }
     }
@@ -393,7 +398,7 @@ export async function runLabScenario(scenarioDoc, options = {}) {
     });
 
     const finalCheckpoints = buildCheckpoints(state, { scenarioDigest, inputDigest, dt, label: 'final' });
-    if (verbosity < 3) {
+    if (verbosity < 3 && options.retainCheckpointSurfaces !== true) {
       finalCheckpoints.semantic = stripCheckpointDebug(finalCheckpoints.semantic);
       finalCheckpoints.deterministicCovered = stripCheckpointDebug(finalCheckpoints.deterministicCovered);
     }

@@ -12,9 +12,13 @@
 //   direct gameplay event synthesis, direct success-state mutation.
 
 import { SIM_DT } from '../../core/sim.js';
+import { createTimeEffects } from '../../core/timeEffects.js';
 import { buildDeterministicSurface } from './deterministicSurface.js';
 import { createInputTapeDriver } from './inputTape.js';
 import { transitionFlightKeyState } from '../../systems/input.js';
+
+/** Dedicated time-effects source for lab pause — never write timeScale directly. */
+export const LAB_LIVE_ROUTE_TIME_SOURCE = 'lab:live-route';
 
 export const LIVE_ROUTE_BRIDGE_API = Object.freeze([
   'pauseAutomaticLoop',
@@ -41,15 +45,56 @@ export const LIVE_ROUTE_BRIDGE_FORBIDDEN = Object.freeze([
 ]);
 
 /**
+ * Live-route bridge V1 supports player-only flight setups. Scenarios that author
+ * non-player entities or attachments require full spawn/attachment setup that this
+ * bridge does not perform — reject them rather than silently skipping.
+ * @param {object} canonical
+ * @returns {{ ok: true } | { ok: false, reason: string, status: string }}
+ */
+export function assertLiveRouteScenarioSupported(canonical) {
+  if (!canonical || typeof canonical !== 'object') {
+    return { ok: false, status: 'unsupported', reason: 'canonical-required' };
+  }
+  const entities = Array.isArray(canonical.entities) ? canonical.entities : [];
+  const nonPlayer = entities.filter((ent) => ent && !ent.isPlayer);
+  if (nonPlayer.length > 0) {
+    const aliases = nonPlayer.map((e) => e.alias || e.role || 'entity').slice(0, 8);
+    return {
+      ok: false,
+      status: 'unsupported',
+      reason: `live-route bridge does not spawn non-player entities (${aliases.join(', ')}); use Node lab runner`,
+    };
+  }
+  const attachments = Array.isArray(canonical.attachments) ? canonical.attachments : [];
+  if (attachments.length > 0) {
+    return {
+      ok: false,
+      status: 'unsupported',
+      reason: 'live-route bridge does not create attachments; use Node lab runner',
+    };
+  }
+  const relations = Array.isArray(canonical.relations) ? canonical.relations : [];
+  if (relations.length > 0) {
+    return {
+      ok: false,
+      status: 'unsupported',
+      reason: 'live-route bridge does not create relations; use Node lab runner',
+    };
+  }
+  return { ok: true };
+}
+
+/**
  * Install a frozen lab bridge onto the live SF debug handle.
- * @param {{ state: object, bus?: object, registry: object, helpers?: object }} sf
+ * @param {{ state: object, bus?: object, registry: object, helpers?: object, timeEffects?: object }} sf
  */
 export function installLiveRouteBridge(sf) {
   if (!sf || !sf.state || !sf.registry) {
     throw new Error('installLiveRouteBridge requires { state, registry }');
   }
 
-  let savedTimeScale = 1;
+  // Prefer the live SF timeEffects owner; fall back to the singleton for this state.
+  const timeEffects = sf.timeEffects || createTimeEffects(sf.state);
   let paused = false;
   let scenario = null; // { canonical, aliasMap, inputDriver, meta }
   let destroyed = false;
@@ -58,8 +103,8 @@ export function installLiveRouteBridge(sf) {
     pauseAutomaticLoop() {
       assertAlive();
       if (!paused) {
-        savedTimeScale = Number.isFinite(sf.state.timeScale) ? sf.state.timeScale : 1;
-        sf.state.timeScale = 0;
+        // Single-writer: only timeEffects mutates state.timeScale.
+        timeEffects.set(LAB_LIVE_ROUTE_TIME_SOURCE, { scale: 0 });
         paused = true;
       }
       return { ok: true, timeScale: sf.state.timeScale, paused: true };
@@ -67,8 +112,7 @@ export function installLiveRouteBridge(sf) {
 
     resumeAutomaticLoop() {
       assertAlive();
-      const restore = savedTimeScale > 0 ? savedTimeScale : 1;
-      sf.state.timeScale = restore;
+      timeEffects.clear(LAB_LIVE_ROUTE_TIME_SOURCE);
       paused = false;
       return { ok: true, timeScale: sf.state.timeScale, paused: false };
     },
@@ -82,6 +126,15 @@ export function installLiveRouteBridge(sf) {
       assertAlive();
       if (!canonical || typeof canonical !== 'object') {
         return { ok: false, reason: 'canonical-required' };
+      }
+      const support = assertLiveRouteScenarioSupported(canonical);
+      if (!support.ok) {
+        return {
+          ok: false,
+          status: support.status,
+          reason: support.reason,
+          scenarioId: canonical.id || null,
+        };
       }
       destroyScenarioInternal();
 
@@ -104,31 +157,30 @@ export function installLiveRouteBridge(sf) {
 
       // Seed is recorded for diagnostics only — do not reseed mid-run (entropy claim).
       const aliasMap = Object.create(null);
-      if (Array.isArray(canonical.entities) && typeof sf.helpers?.spawnEntity === 'function') {
-        for (const ent of canonical.entities) {
-          if (!ent || !ent.isPlayer) continue;
-          // Player already exists on live route; map alias only.
-          aliasMap[ent.alias || 'player'] = state.playerId;
-          const player = state.entities.get(state.playerId);
-          if (player && ent.pos) {
-            // Pose alignment for scenario start — not free teleport API (scenario load only).
-            player.pos.x = ent.pos.x || 0;
-            player.pos.z = ent.pos.z || 0;
-            if (player.prevPos) {
-              player.prevPos.x = player.pos.x;
-              player.prevPos.z = player.pos.z;
-            }
-            if (ent.vel) {
-              player.vel.x = ent.vel.x || 0;
-              player.vel.z = ent.vel.z || 0;
-            }
-            if (Number.isFinite(ent.heading)) {
-              player.rot = ent.heading;
-              player.prevRot = ent.heading;
-            }
-            if (player.physicsBody) {
-              player.physicsBody.revision = (player.physicsBody.revision | 0) + 1;
-            }
+      const entities = Array.isArray(canonical.entities) ? canonical.entities : [];
+      const playerEnt = entities.find((ent) => ent && ent.isPlayer) || null;
+      if (playerEnt) {
+        // Player already exists on live route; map alias only + pose alignment.
+        aliasMap[playerEnt.alias || 'player'] = state.playerId;
+        const player = state.entities.get(state.playerId);
+        if (player && playerEnt.pos) {
+          // Pose alignment for scenario start — not free teleport API (scenario load only).
+          player.pos.x = playerEnt.pos.x || 0;
+          player.pos.z = playerEnt.pos.z || 0;
+          if (player.prevPos) {
+            player.prevPos.x = player.pos.x;
+            player.prevPos.z = player.pos.z;
+          }
+          if (playerEnt.vel) {
+            player.vel.x = playerEnt.vel.x || 0;
+            player.vel.z = playerEnt.vel.z || 0;
+          }
+          if (Number.isFinite(playerEnt.heading)) {
+            player.rot = playerEnt.heading;
+            player.prevRot = playerEnt.heading;
+          }
+          if (player.physicsBody) {
+            player.physicsBody.revision = (player.physicsBody.revision | 0) + 1;
           }
         }
       } else {
