@@ -134,7 +134,10 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
     root: options.root,
   });
 
-  if (!chromiumResult.ok) {
+  // Host-level Chromium failures (no usable run / unsupported) — not oracle results.
+  // Oracle fail (status:'fail' with series+oracle) falls through to the both-arms gate.
+  const chromiumHostFailed = isChromiumHostFailure(chromiumResult);
+  if (chromiumHostFailed) {
     const isUnsupported = chromiumResult.status === 'unsupported';
     return {
       schema: 'spaceface.labDifferentialReplay.v1',
@@ -151,12 +154,14 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
     };
   }
 
-  // FIX 2: parity is only meaningful between two oracle-passing arms.
-  // Matching checkpoints of a failing Node oracle (or a Chromium failure) is not a pass.
-  if (!nodeResult.ok || !chromiumResult.ok) {
+  // FIX 2 + FIX 7: parity requires both arms' oracles to pass.
+  // Chromium must expose an explicit oracle result (host execution success alone is not enough).
+  const nodeOracleOk = !!nodeResult.ok;
+  const chromiumOracleOk = !!(chromiumResult.oracle && chromiumResult.oracle.ok);
+  if (!nodeOracleOk || !chromiumOracleOk) {
     const failedArms = [];
-    if (!nodeResult.ok) failedArms.push('node');
-    if (!chromiumResult.ok) failedArms.push('chromium');
+    if (!nodeOracleOk) failedArms.push('node');
+    if (!chromiumOracleOk) failedArms.push('chromium');
     return {
       schema: 'spaceface.labDifferentialReplay.v1',
       ok: false,
@@ -178,7 +183,9 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
         firstDivergence: {
           kind: 'arm-oracle-fail',
           field: 'oracle',
-          reason: `oracle failed on arm(s): ${failedArms.join(', ')}`,
+          reason: !chromiumResult.oracle
+            ? 'chromium oracle missing (host success is not oracle success)'
+            : `oracle failed on arm(s): ${failedArms.join(', ')}`,
           failedArms,
         },
         lastMatchingTick: null,
@@ -200,6 +207,7 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
         browserLaunches: chromiumResult.browserLaunches | 0,
         durationMs: chromiumResult.durationMs,
         ok: chromiumResult.ok,
+        oracle: chromiumResult.oracle || null,
       },
       browserLaunches: chromiumResult.browserLaunches | 0,
       exactWithin: { crossRuntime: false, sameCoverage: false },
@@ -260,6 +268,7 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
       browserLaunches: chromiumResult.browserLaunches | 0,
       durationMs: chromiumResult.durationMs,
       ok: chromiumResult.ok,
+      oracle: chromiumResult.oracle || null,
     },
     browserLaunches: chromiumResult.browserLaunches | 0,
     exactWithin: {
@@ -267,6 +276,31 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
       sameCoverage: compare.exactWithin?.sameCoverage !== false,
     },
   };
+}
+
+/**
+ * True when Chromium failed as a host (infra/unsupported/timeout), not as an oracle.
+ * Oracle-fail arms still carry series + oracle and must go through arm-oracle-fail.
+ */
+function isChromiumHostFailure(chromiumResult) {
+  if (!chromiumResult) return true;
+  const status = chromiumResult.status;
+  if (
+    status === 'unsupported'
+    || status === 'infra'
+    || status === 'infra_error'
+    || status === 'timeout'
+    || status === 'invalid-config'
+  ) {
+    return true;
+  }
+  // status:'fail' with an oracle object is an arm oracle result, not host failure.
+  if (status === 'fail' && chromiumResult.oracle) return false;
+  // Missing series after a "successful" host path is infra.
+  if (chromiumResult.ok === false && !chromiumResult.oracle && !Array.isArray(chromiumResult.series)) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -352,6 +386,9 @@ function slimChromium(r) {
     status: r.status,
     error: r.error,
     browserLaunches: r.browserLaunches,
+    oracle: r.oracle
+      ? { ok: r.oracle.ok, firstBadTick: r.oracle.firstBadTick, failed: r.oracle.failed }
+      : null,
   };
 }
 

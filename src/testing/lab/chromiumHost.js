@@ -120,18 +120,35 @@ export async function runChromiumLabScenario(canonical, options = {}) {
         },
       );
 
-      if (!result || !result.ok) {
+      if (!result) {
         return {
           ok: false,
-          status: result?.status || 'infra',
-          error: result?.error || 'chromium scenario failed',
-          stack: result?.stack,
+          status: 'infra',
+          error: 'chromium scenario returned no result',
+          browserLaunches: launchCount,
+          durationMs: Date.now() - startedAt,
+        };
+      }
+
+      // Host-level reject (unsupported/infra) — no comparable series/oracle.
+      if (
+        result.status === 'unsupported'
+        || result.status === 'infra'
+        || result.status === 'invalid-config'
+      ) {
+        return {
+          ok: false,
+          status: result.status,
+          error: result.error || 'chromium scenario failed',
+          stack: result.stack,
+          oracle: result.oracle || null,
           browserLaunches: launchCount,
           durationMs: Date.now() - startedAt,
         };
       }
 
       // Hash surfaces on Node with the same digest as buildDeterministicCoveredCheckpoint.
+      // Still hash when oracle fails so differentialReplay can report arm-oracle-fail with series.
       const series = (result.series || []).map((point) => ({
         tick: point.tick | 0,
         surface: point.surface,
@@ -141,9 +158,13 @@ export async function runChromiumLabScenario(canonical, options = {}) {
         ? hashDeterministicSurface(result.finalSurface)
         : (series.length ? series[series.length - 1].hash : null);
 
+      // FIX 7: ok mirrors Chromium oracle (evaluateOracles in browserScenarioHost), not host-only success.
+      const oracle = result.oracle || null;
+      const oracleOk = oracle ? !!oracle.ok : false;
+
       return {
-        ok: true,
-        status: 'pass',
+        ok: oracleOk,
+        status: oracleOk ? 'pass' : 'fail',
         schema: 'spaceface.labChromiumHostResult.v1',
         scenarioId: result.scenarioId,
         seed: result.seed,
@@ -155,9 +176,11 @@ export async function runChromiumLabScenario(canonical, options = {}) {
         series,
         finalHash,
         finalSurface: result.finalSurface,
+        oracle,
         exactWithin: { crossRuntime: false },
         browserLaunches: launchCount,
         durationMs: Date.now() - startedAt,
+        error: oracleOk ? undefined : (result.error || 'chromium oracle failed'),
       };
     })();
 

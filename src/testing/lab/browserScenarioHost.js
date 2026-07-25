@@ -12,6 +12,9 @@ import { physics } from '../../core/physics.js';
 import { buildEntitySpawnSpec } from './entityProfiles.js';
 import { createInputTapeDriver, hashInputTape } from './inputTape.js';
 import { buildDeterministicSurface } from './deterministicSurface.js';
+import { evaluateOracles } from './oracleEngine.js';
+// Side-effect: register flight + massline metrics used by evaluateOracles.
+import '../metrics/masslineMetrics.js';
 
 /** Focused flight systems only — no scripts/ node:crypto imports. */
 export const BROWSER_FOCUSED_FLIGHT_SYSTEMS = Object.freeze([
@@ -19,6 +22,17 @@ export const BROWSER_FOCUSED_FLIGHT_SYSTEMS = Object.freeze([
   flightV3,
   weapons,
   physics,
+]);
+
+/**
+ * Exact system names Chromium parity V1 runs (order-independent set).
+ * Explicit `canonical.systems` must match this set exactly after normalization.
+ */
+export const BROWSER_PARITY_SYSTEM_NAMES = Object.freeze([
+  'actions',
+  'flightV3',
+  'weapons',
+  'physics',
 ]);
 
 /**
@@ -62,19 +76,73 @@ export function assertChromiumParitySupported(canonical) {
       reason: 'unsupported scenario for Chromium parity: save/load not mirrored in Chromium V1 host',
     };
   }
-  // Named systems beyond the flight set are not mirrored.
+
+  // FIX 8: require the EXACT normalized browser bundle (not a subset or reorder-as-different-runtime).
+  // Chromium always runs BROWSER_FOCUSED_FLIGHT_SYSTEMS; Node must not run a different list.
   if (Array.isArray(canonical.systems) && canonical.systems.length) {
-    const allowed = new Set(['core', 'actions', 'flightV3', 'flight', 'weapons', 'physics']);
-    const extra = canonical.systems.filter((n) => !allowed.has(n));
-    if (extra.length) {
+    const normalized = normalizeBrowserSystemNames(canonical.systems);
+    const expected = [...BROWSER_PARITY_SYSTEM_NAMES].sort();
+    const got = [...normalized].sort();
+    const exactMatch = got.length === expected.length
+      && got.every((name, i) => name === expected[i]);
+    if (!exactMatch) {
       return {
         ok: false,
         status: 'unsupported',
-        reason: `unsupported scenario for Chromium parity: systems [${extra.join(', ')}] not in browser flight bundle`,
+        reason: `unsupported scenario for Chromium parity: systems must be exact browser flight bundle [${expected.join(', ')}] (got [${got.join(', ')}])`,
       };
     }
   }
+
+  // FIX 9: Node applies parameterOverlay / tape commands; Chromium V1 does not — reject.
+  if (canonical.parameterOverlay && typeof canonical.parameterOverlay === 'object') {
+    const keys = Object.keys(canonical.parameterOverlay);
+    if (keys.length > 0) {
+      return {
+        ok: false,
+        status: 'unsupported',
+        reason: `unsupported scenario for Chromium parity: parameterOverlay not applied in Chromium host (${keys.join(', ')})`,
+      };
+    }
+  }
+  const tapeCommands = collectTapeCommands(canonical);
+  if (tapeCommands.length > 0) {
+    return {
+      ok: false,
+      status: 'unsupported',
+      reason: 'unsupported scenario for Chromium parity: tape frame commands not applied in Chromium host',
+    };
+  }
+
   return { ok: true };
+}
+
+/** Normalize named systems: drop `core`, map `flight` → `flightV3`, unique. */
+export function normalizeBrowserSystemNames(names) {
+  const out = [];
+  const seen = new Set();
+  for (const raw of names || []) {
+    if (raw === 'core') continue;
+    const name = raw === 'flight' ? 'flightV3' : raw;
+    if (seen.has(name)) continue;
+    seen.add(name);
+    out.push(name);
+  }
+  return out;
+}
+
+function collectTapeCommands(canonical) {
+  const tape = canonical.inputTape || {};
+  const frames = Array.isArray(tape.frames)
+    ? tape.frames
+    : (Array.isArray(canonical.frames) ? canonical.frames : []);
+  const out = [];
+  for (const frame of frames) {
+    if (Array.isArray(frame?.commands) && frame.commands.length) {
+      out.push(...frame.commands);
+    }
+  }
+  return out;
 }
 
 /**
@@ -168,6 +236,7 @@ export async function runBrowserLabScenario(canonical, options = {}) {
     });
 
     const series = [];
+    const oracleTrace = [];
     const meta = { scenarioDigest, inputDigest, dt };
 
     for (let tick = 0; tick < ticks; tick++) {
@@ -179,6 +248,9 @@ export async function runBrowserLabScenario(canonical, options = {}) {
       });
       runtime.step(dt);
 
+      // FIX 7: every-tick oracle stream (same engine as Node arm).
+      oracleTrace.push(makeFlightOracleSample(tick, state));
+
       if (checkpointTicks.has(tick)) {
         const surface = buildDeterministicSurface(state, meta);
         series.push({
@@ -188,6 +260,20 @@ export async function runBrowserLabScenario(canonical, options = {}) {
         });
       }
     }
+
+    // FIX 7: evaluate scenario assertions/metrics — host success alone is not oracle pass.
+    const oracleEval = evaluateOracles({
+      trace: oracleTrace,
+      metrics: canonical.metrics || [],
+      assertions: canonical.assertions || [],
+      ctx: {},
+      equivalence: options.equivalence || {},
+    });
+    const oracle = {
+      ok: oracleEval.ok,
+      firstBadTick: oracleEval.firstBadTick,
+      failed: oracleEval.failed,
+    };
 
     const finalSurface = buildDeterministicSurface(state, meta);
     const fingerprint = runtime.fingerprint
@@ -201,8 +287,9 @@ export async function runBrowserLabScenario(canonical, options = {}) {
     runtime = null;
 
     return {
-      ok: true,
-      status: 'pass',
+      // ok tracks oracle (mirrors Node runLabScenario) — not merely "host did not throw".
+      ok: oracle.ok,
+      status: oracle.ok ? 'pass' : 'fail',
       schema: 'spaceface.labChromiumRun.v1',
       scenarioId: canonical.id,
       seed: canonical.seed,
@@ -213,6 +300,7 @@ export async function runBrowserLabScenario(canonical, options = {}) {
       rendering: { detached: true },
       series,
       finalSurface,
+      oracle,
       exactWithin: { crossRuntime: false },
     };
   } catch (err) {
@@ -237,11 +325,41 @@ function defaultCheckpointTicks(ticks, every) {
   return out;
 }
 
+/**
+ * Flight-focused oracle sample (mirrors runScenario makeSample player fields).
+ * No massline/attachment fields — those scenarios are rejected for Chromium V1.
+ * Preserve non-finite numbers so invariant.finiteState can detect NaN/Infinity.
+ */
+function makeFlightOracleSample(tick, state) {
+  const player = state.entities.get(state.playerId);
+  return {
+    tick: tick | 0,
+    playerX: round6Preserve(player && player.pos && player.pos.x),
+    playerZ: round6Preserve(player && player.pos && player.pos.z),
+    playerVelX: round6Preserve(player && player.vel && player.vel.x),
+    playerVelZ: round6Preserve(player && player.vel && player.vel.z),
+    playerRot: round6Preserve(player && player.rot),
+    playerAlive: !!(player && player.alive),
+    hull: round6Preserve(player && player.hull),
+    cap: round6Preserve(player && player.cap),
+    credits: round6Preserve(state.player && state.player.credits),
+    tetherActive: !!(state.player && state.player.tether && state.player.tether.active),
+  };
+}
+
+function round6Preserve(n) {
+  if (n == null) return n;
+  const num = Number(n);
+  if (!Number.isFinite(num)) return num;
+  return Math.round(num * 1e6) / 1e6;
+}
+
 // Expose for the host page.
 if (typeof window !== 'undefined') {
   window.__SF_BROWSER_LAB__ = {
     runBrowserLabScenario,
     assertChromiumParitySupported,
     BROWSER_FOCUSED_FLIGHT_SYSTEMS,
+    BROWSER_PARITY_SYSTEM_NAMES,
   };
 }

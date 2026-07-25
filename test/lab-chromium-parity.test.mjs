@@ -94,7 +94,7 @@ test('FIX2: Node oracle fail + matching Chromium series → arm-oracle-fail (not
     canonical: compiled.canonical,
     verbosity: 1,
     checkpointEvery: 15,
-    // Inject arms: Node fails oracle; Chromium "matches" with identical series.
+    // Inject arms: Node fails oracle; Chromium "matches" with identical series + oracle pass.
     runNodeArm: async () => ({
       ok: false,
       exitClass: 1,
@@ -125,6 +125,8 @@ test('FIX2: Node oracle fail + matching Chromium series → arm-oracle-fail (not
       fingerprint: null,
       browserLaunches: 0,
       durationMs: 1,
+      // FIX 7: Chromium must expose an explicit oracle; host-only success is insufficient.
+      oracle: { ok: true, firstBadTick: null, failed: [] },
     }),
   });
 
@@ -134,6 +136,107 @@ test('FIX2: Node oracle fail + matching Chromium series → arm-oracle-fail (not
   assert.equal(result.exitClass, 1);
   assert.ok(Array.isArray(result.failedArms) && result.failedArms.includes('node'));
   assert.notEqual(result.exitClass, 0);
+});
+
+test('FIX7: Chromium host success without oracle → arm-oracle-fail (not exit 0)', async () => {
+  // Host execution success + matching checkpoints must NOT certify parity without
+  // an explicit Chromium oracle pass (same engine Node uses).
+  const compiled = compileSimScenario(shortDoc);
+  assert.equal(compiled.ok, true);
+  const series = [
+    { tick: 14, hash: 'same', surface: { tick: 14 } },
+    { tick: 29, hash: 'same2', surface: { tick: 29 } },
+    { tick: 44, hash: 'same3', surface: { tick: 44 } },
+  ];
+  const result = await runDifferentialReplay(shortDoc, {
+    canonical: compiled.canonical,
+    verbosity: 1,
+    checkpointEvery: 15,
+    runNodeArm: async () => ({
+      ok: true,
+      exitClass: 0,
+      status: 'pass',
+      scenarioDigest: null,
+      inputDigest: null,
+      fingerprint: null,
+      oracle: { ok: true, firstBadTick: null, failed: [] },
+      checkpoints: {
+        mid: series.map((p) => ({
+          tick: p.tick,
+          deterministicCovered: { hash: p.hash, surface: p.surface },
+        })),
+      },
+      ticks: 45,
+    }),
+    // Legacy false-positive shape: host ok, matching series, NO oracle field.
+    runChromiumArm: async (_can, opts) => ({
+      ok: true,
+      status: 'pass',
+      scenarioDigest: opts.scenarioDigest,
+      inputDigest: opts.inputDigest,
+      series,
+      finalHash: series.at(-1).hash,
+      fingerprint: null,
+      browserLaunches: 0,
+      durationMs: 1,
+      // oracle intentionally omitted
+    }),
+  });
+
+  assert.equal(result.ok, false, 'missing Chromium oracle must not promote parity pass');
+  assert.equal(result.status, 'arm-oracle-fail');
+  assert.equal(result.exitClass, 1);
+  assert.ok(result.failedArms.includes('chromium'));
+  assert.match(String(result.compare?.firstDivergence?.reason || ''), /oracle missing|oracle failed/i);
+});
+
+test('FIX7: Chromium oracle fail + matching series → arm-oracle-fail (not exit 0)', async () => {
+  const compiled = compileSimScenario(shortDoc);
+  assert.equal(compiled.ok, true);
+  const series = [
+    { tick: 14, hash: 'same', surface: { tick: 14 } },
+    { tick: 29, hash: 'same2', surface: { tick: 29 } },
+    { tick: 44, hash: 'same3', surface: { tick: 44 } },
+  ];
+  const result = await runDifferentialReplay(shortDoc, {
+    canonical: compiled.canonical,
+    verbosity: 1,
+    checkpointEvery: 15,
+    runNodeArm: async () => ({
+      ok: true,
+      exitClass: 0,
+      status: 'pass',
+      oracle: { ok: true, firstBadTick: null, failed: [] },
+      checkpoints: {
+        mid: series.map((p) => ({
+          tick: p.tick,
+          deterministicCovered: { hash: p.hash, surface: p.surface },
+        })),
+      },
+      ticks: 45,
+    }),
+    runChromiumArm: async (_can, opts) => ({
+      ok: false,
+      status: 'fail',
+      scenarioDigest: opts.scenarioDigest,
+      inputDigest: opts.inputDigest,
+      series,
+      finalHash: series.at(-1).hash,
+      browserLaunches: 0,
+      durationMs: 1,
+      oracle: {
+        ok: false,
+        firstBadTick: 12,
+        failed: [{ id: 'invariant.finiteState@1', ok: false }],
+      },
+    }),
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 'arm-oracle-fail');
+  assert.equal(result.exitClass, 1);
+  assert.ok(result.failedArms.includes('chromium'));
+  assert.equal(result.chromium.oracle?.ok, false);
 });
 
 test('FIX3: massline/attachment scenarios are unsupported for Chromium parity', async () => {
@@ -153,6 +256,60 @@ test('FIX3: massline/attachment scenarios are unsupported for Chromium parity', 
   assert.match(String(result.error || ''), /Chromium parity|attachment|massline|unsupported/i);
 });
 
+test('FIX8: subset/reordered system lists that are not exact bundle are rejected', async () => {
+  const { assertChromiumParitySupported } = await import('../src/testing/lab/browserScenarioHost.js');
+  const subset = assertChromiumParitySupported({
+    world: { fixtureProfile: 'empty-flight' },
+    systems: ['core', 'actions'],
+    entities: [],
+    assertions: [],
+  });
+  assert.equal(subset.ok, false);
+  assert.equal(subset.status, 'unsupported');
+  assert.match(subset.reason, /exact browser flight bundle|systems must be exact/i);
+
+  const reorderedExact = assertChromiumParitySupported({
+    world: { fixtureProfile: 'empty-flight' },
+    systems: ['physics', 'weapons', 'flight', 'actions', 'core'],
+    entities: [],
+    assertions: [],
+  });
+  assert.equal(reorderedExact.ok, true, 'full bundle in any order (with flight alias) is accepted');
+
+  const withExtra = assertChromiumParitySupported({
+    world: { fixtureProfile: 'empty-flight' },
+    systems: ['actions', 'flightV3', 'weapons', 'physics', 'combat'],
+    entities: [],
+    assertions: [],
+  });
+  assert.equal(withExtra.ok, false);
+});
+
+test('FIX9: parameterOverlay and tape commands are rejected for Chromium parity', async () => {
+  const { assertChromiumParitySupported } = await import('../src/testing/lab/browserScenarioHost.js');
+  const overlay = assertChromiumParitySupported({
+    world: { fixtureProfile: 'empty-flight' },
+    parameterOverlay: { 'lab.entrySpeed': 40 },
+    entities: [],
+    assertions: [],
+  });
+  assert.equal(overlay.ok, false);
+  assert.match(overlay.reason, /parameterOverlay/i);
+
+  const commands = assertChromiumParitySupported({
+    world: { fixtureProfile: 'empty-flight' },
+    inputTape: {
+      frames: [
+        { tick: 0, input: { moveZ: 1 }, commands: [{ kind: 'combatAction', actor: 'player' }] },
+      ],
+    },
+    entities: [],
+    assertions: [],
+  });
+  assert.equal(commands.ok, false);
+  assert.match(commands.reason, /tape frame commands|commands/i);
+});
+
 test('FIX5: series length mismatch localizes after matching prefix', () => {
   const node = [
     { tick: 19, hash: 'a' },
@@ -168,4 +325,5 @@ test('FIX5: series length mismatch localizes after matching prefix', () => {
   assert.equal(r.lastMatchingTick, 39);
   assert.equal(r.firstDivergence.tick, 59);
   assert.equal(r.firstDivergence.kind, 'series-length');
+  assert.equal(r.exactWithin.sameCoverage, false);
 });

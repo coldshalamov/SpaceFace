@@ -107,3 +107,45 @@ test('FIX5: shorter node series reports missing on node at correct tick', () => 
   assert.equal(r.firstDivergence.tick, 59);
   assert.equal(r.firstDivergence.missingSide, 'node');
 });
+
+test('FIX10: length mismatch + common-prefix divergence → sameCoverage false', () => {
+  // Series lengths differ AND a shared-prefix checkpoint also diverges.
+  // Early return on prefix must still report sameCoverage:false (not contradictory true).
+  const node = [
+    { tick: 19, hash: 'a' },
+    { tick: 39, hash: 'DIFF' },
+    { tick: 59, hash: 'c' },
+  ];
+  const chrome = [
+    { tick: 19, hash: 'a' },
+    { tick: 39, hash: 'other' },
+  ];
+  const r = compareCheckpoints(node, chrome);
+  assert.equal(r.match, false);
+  assert.equal(r.seriesLength.node, 3);
+  assert.equal(r.seriesLength.chromium, 2);
+  assert.equal(r.firstDivergence.kind, 'checkpoint');
+  assert.equal(r.firstDivergence.tick, 39);
+  assert.equal(
+    r.exactWithin.sameCoverage,
+    false,
+    'length mismatch must set sameCoverage false even when prefix also diverges',
+  );
+  assert.equal(r.exactWithin.crossRuntime, false);
+});
+
+test('FIX10: pure length mismatch also has sameCoverage false', () => {
+  const node = [
+    { tick: 19, hash: 'a' },
+    { tick: 39, hash: 'b' },
+    { tick: 59, hash: 'c' },
+  ];
+  const chrome = [
+    { tick: 19, hash: 'a' },
+    { tick: 39, hash: 'b' },
+  ];
+  const r = compareCheckpoints(node, chrome);
+  assert.equal(r.match, false);
+  assert.equal(r.firstDivergence.kind, 'series-length');
+  assert.equal(r.exactWithin.sameCoverage, false);
+});

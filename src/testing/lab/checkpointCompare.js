@@ -26,9 +26,12 @@
 export function compareCheckpoints(nodeSeries, chromiumSeries, options = {}) {
   const node = Array.isArray(nodeSeries) ? nodeSeries : [];
   const chrome = Array.isArray(chromiumSeries) ? chromiumSeries : [];
+  // FIX 10: sameCoverage is derived from series length before any tick walk so a
+  // length mismatch reports sameCoverage:false even if a common-prefix checkpoint
+  // also diverges and returns early.
   const exactWithin = {
     crossRuntime: false,
-    sameCoverage: true,
+    sameCoverage: node.length === chrome.length,
   };
 
   if (node.length === 0 && chrome.length === 0) {
@@ -119,7 +122,7 @@ export function compareCheckpoints(nodeSeries, chromiumSeries, options = {}) {
   }
 
   if (node.length !== chrome.length) {
-    exactWithin.sameCoverage = false;
+    // sameCoverage already false from length init (FIX 10).
     const longer = node.length > chrome.length ? node : chrome;
     const missingSide = node.length > chrome.length ? 'chromium' : 'node';
     const extraSide = node.length > chrome.length ? 'node' : 'chromium';
