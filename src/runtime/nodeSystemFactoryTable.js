@@ -131,13 +131,16 @@ import { save } from '../save/saveSystem.js';
 
 /**
  * Build a Map of system id → factory object for Node production-fidelity runs.
- * @param {{ aiSlot?: object, flightSlot?: object, tacticalAI?: boolean }} [options]
+ * @param {{ aiSlot?: object, flightSlot?: object, tacticalAI?: boolean, flightBackend?: string }} [options]
  */
 export function getNodeSystemFactoryTable(options = {}) {
   const tacticalAI = options.tacticalAI !== false;
   const aiSlot = options.aiSlot
     || (tacticalAI ? createTacticalAISystem() : ai);
-  const flightSlot = options.flightSlot || flightV3;
+  // I5: honor flightBackend — legacy47a must materialize legacy flight, not flightV3.
+  const flightBackend = typeof options.flightBackend === 'string' ? options.flightBackend : 'v3';
+  const flightSlot = options.flightSlot
+    || (flightBackend === 'legacy' ? flight : flightV3);
 
   /** @type {Array<[string, object]>} */
   const entries = [

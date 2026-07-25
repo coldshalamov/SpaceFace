@@ -312,6 +312,26 @@ export async function runLabScenario(scenarioDoc, options = {}) {
     let saveLoadPerformed = false;
     let saveLoadRestoreCount = 0;
 
+    // I1: range-check saveLoadAt — need 0 <= saveLoadAt < ticks - 1 (post-restore tick required).
+    if (Number.isInteger(saveLoadAt)) {
+      if (ticks < 2 || saveLoadAt < 0 || saveLoadAt >= ticks - 1) {
+        runtime.dispose();
+        return {
+          schema: 'spaceface.labRunResult.v1',
+          ok: false,
+          exitClass: 4,
+          status: 'invalid-config',
+          runId,
+          error: `saveLoadAt out of range: need 0 <= saveLoadAt < ticks - 1 (got saveLoadAt=${saveLoadAt}, ticks=${ticks})`,
+          params: {
+            saveLoadPerformed: false,
+            saveLoadAt,
+            saveLoadRestoreCount: 0,
+          },
+        };
+      }
+    }
+
     for (let tick = 0; tick < ticks; tick++) {
       const host = state.entities.get(state.playerId);
       const tetherAttached = !!(state.player && state.player.tether && state.player.tether.active);
@@ -420,6 +440,27 @@ export async function runLabScenario(scenarioDoc, options = {}) {
           tetherAttached: tetherAfter,
           dt,
         });
+      }
+    }
+
+    // I1: if a mid-run save/load was requested, it must have performed exactly one restore.
+    if (Number.isInteger(saveLoadAt)) {
+      if (!saveLoadPerformed || saveLoadRestoreCount !== 1) {
+        runtime.dispose();
+        return {
+          schema: 'spaceface.labRunResult.v1',
+          ok: false,
+          exitClass: 4,
+          status: 'save-load-not-performed',
+          runId,
+          error: `save-load-not-performed: expected saveLoadPerformed=true and restoreCount=1 `
+            + `(performed=${saveLoadPerformed}, restoreCount=${saveLoadRestoreCount}, saveLoadAt=${saveLoadAt})`,
+          params: {
+            saveLoadPerformed,
+            saveLoadAt,
+            saveLoadRestoreCount,
+          },
+        };
       }
     }
 

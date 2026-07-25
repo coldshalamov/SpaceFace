@@ -679,6 +679,33 @@ export function validateCanonicalScenario(doc, options = {}) {
     return result(false, issues);
   }
 
+  // I7: full field validation matching raw documents (not just nested frames/events).
+  // Schema may be simScenarioCanonical when precompiled.
+  if (doc.schema !== SIM_SCENARIO_SCHEMA && doc.schema !== SIM_SCENARIO_CANONICAL_SCHEMA) {
+    issue('$.schema', 'schema',
+      `expected ${SIM_SCENARIO_SCHEMA} or ${SIM_SCENARIO_CANONICAL_SCHEMA}`);
+  }
+  if (typeof doc.id !== 'string' || !ID_PATTERN.test(doc.id)) {
+    issue('$.id', 'id', 'id must match [a-z][a-z0-9_.:-]*');
+  }
+  if (typeof doc.seed !== 'number' || !Number.isFinite(doc.seed)) {
+    issue('$.seed', 'type', 'seed must be a finite number');
+  }
+  // I7: ticks:0 produces no samples — temporal assertions cannot be consumed → reject.
+  if (!Number.isInteger(doc.ticks) || doc.ticks < 1) {
+    issue('$.ticks', 'type', 'ticks must be a positive integer');
+  }
+  if (doc.dt != null && (!(typeof doc.dt === 'number') || !(doc.dt > 0))) {
+    issue('$.dt', 'type', 'dt must be a positive number when present');
+  }
+  if (doc.evidenceClass != null
+    && (typeof doc.evidenceClass !== 'string' || !EVIDENCE_CLASSES.includes(doc.evidenceClass))) {
+    issue('$.evidenceClass', 'enum', `evidenceClass must be one of: ${EVIDENCE_CLASSES.join(', ')}`);
+  }
+  if (doc.runtimeProfile != null && typeof doc.runtimeProfile !== 'string') {
+    issue('$.runtimeProfile', 'type', 'runtimeProfile must be a string when present');
+  }
+
   // Anchor mass (FIX 17)
   for (const i of collectAnchorMassResolutionIssues(doc, options)) issues.push(i);
 

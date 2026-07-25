@@ -175,8 +175,36 @@ function unknownSignalResult(kind, signal) {
   };
 }
 
+/**
+ * I8: a temporal assertion on a signal that was NEVER present on any sample is
+ * vacuously true under `never` / falsy under `holds` — both are false positives.
+ * Require the signal to appear as an own-property on at least one sample.
+ */
+function unsampledSignalResult(kind, signal) {
+  return {
+    family: 'temporal',
+    id: signal ? `${kind}:${signal}` : kind,
+    ok: false,
+    expected: { signalSampled: true },
+    actual: { signal, sampled: false },
+    signedDelta: 1,
+    firstBadTick: 0,
+    reason: `temporal signal "${signal}" was never observed in any trace sample `
+      + `(vacuous ${kind} would be a false positive)`,
+  };
+}
+
 function isKnownOracleSignal(signal) {
   return typeof signal === 'string' && KNOWN_ORACLE_SIGNALS.has(signal);
+}
+
+/** True when at least one sample has the signal as an own property (including false/0). */
+function signalWasSampled(trace, signal) {
+  if (!signal || !Array.isArray(trace) || !trace.length) return false;
+  for (const s of trace) {
+    if (s && Object.prototype.hasOwnProperty.call(s, signal)) return true;
+  }
+  return false;
 }
 
 function evaluateTemporal(assertions, trace, ctx) {
@@ -187,6 +215,11 @@ function evaluateTemporal(assertions, trace, ctx) {
       const signal = a.signal && a.signal !== 'settles' ? a.signal : 'radialSpeed';
       if (!isKnownOracleSignal(signal)) {
         results.push(unknownSignalResult('settles', signal));
+        continue;
+      }
+      // I8: settles on an unsampled signal is vacuous.
+      if (!signalWasSampled(trace, signal)) {
+        results.push(unsampledSignalResult('settles', signal));
         continue;
       }
       let lastUnsettled = -1;
@@ -230,6 +263,11 @@ function evaluateTemporal(assertions, trace, ctx) {
         results.push(unknownSignalResult('never', signal));
         continue;
       }
+      // I8: never on a never-sampled signal is a vacuous false positive.
+      if (!signalWasSampled(trace, signal)) {
+        results.push(unsampledSignalResult('never', signal));
+        continue;
+      }
       let bad = null;
       for (const s of trace) {
         if (truthySignal(s, signal, a)) {
@@ -253,6 +291,11 @@ function evaluateTemporal(assertions, trace, ctx) {
       const signal = a.signal;
       if (!isKnownOracleSignal(signal)) {
         results.push(unknownSignalResult('holds', signal));
+        continue;
+      }
+      // I8: holds on unsampled signal cannot be proven.
+      if (!signalWasSampled(trace, signal)) {
+        results.push(unsampledSignalResult('holds', signal));
         continue;
       }
       const need = a.holdsTicks | 0;
@@ -287,6 +330,11 @@ function evaluateTemporal(assertions, trace, ctx) {
       const signal = a.signal;
       if (!isKnownOracleSignal(signal)) {
         results.push(unknownSignalResult('eventByTick', signal));
+        continue;
+      }
+      // I8: eventByTick on unsampled signal cannot be proven.
+      if (!signalWasSampled(trace, signal)) {
+        results.push(unsampledSignalResult('eventByTick', signal));
         continue;
       }
       const byTick = a.byTick | 0;

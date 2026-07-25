@@ -41,19 +41,27 @@ import { getNodeSystemFactoryTable } from './nodeSystemFactoryTable.js';
 export function createAuthoritativeRuntime(options = {}) {
   const profileId = options.profileId || (options.systems ? null : 'production');
   const explicit = Array.isArray(options.systems) ? options.systems : null;
+  const isLegacy47a = profileId === 'legacy47a';
 
   // H4: Node production-fidelity path — materialize full node-safe manifest when no
   // explicit systems list and no caller-supplied lookup.
   // Pass selected AI/flight slots into the resolver so selectedSlots match browser (not unbound).
+  // I5: legacy47a defaults to LEGACY AI + LEGACY flight (not tactical / flightV3).
   let systemLookup = options.systemLookup;
   let slots = options.slots || null;
   if (!explicit && !systemLookup && options.nodeSafeOnly === true) {
     // Production Node defaults: tactical AI + flight V3 (same as browser createRegistry).
-    const tacticalAI = options.tacticalAI !== false;
+    // legacy47a Node defaults: legacy AI + legacy flight (frozen 47-A / sf-sim).
+    const tacticalAI = isLegacy47a
+      ? options.tacticalAI === true
+      : options.tacticalAI !== false;
+    const flightBackend = (slots && slots.flightBackend)
+      || (isLegacy47a ? 'legacy' : 'v3');
     systemLookup = getNodeSystemFactoryTable({
       aiSlot: slots && slots.aiSlot,
       flightSlot: slots && slots.flightSlot,
       tacticalAI,
+      flightBackend,
     });
     const aiSlot = (slots && slots.aiSlot) || systemLookup.get('aiSlot');
     const flightSlot = (slots && slots.flightSlot) || systemLookup.get('flightSlot');
@@ -62,8 +70,15 @@ export function createAuthoritativeRuntime(options = {}) {
       flightSlot,
       aiBackend: (slots && slots.aiBackend)
         || ((aiSlot && aiSlot.name === 'tacticalAI') ? 'sg06-tactical' : 'legacy'),
-      // Node factory defaults to flightV3; label matches createRegistry post-selection.
-      flightBackend: (slots && slots.flightBackend) || 'v3',
+      flightBackend: (slots && slots.flightBackend)
+        || flightBackend,
+    };
+  } else if (!explicit && isLegacy47a && !slots) {
+    // Even without nodeSafeOnly materialization, report frozen 47-A backend selection.
+    slots = {
+      aiBackend: options.tacticalAI === true ? 'sg06-tactical' : 'legacy',
+      flightBackend: 'legacy',
+      ...(options.slots || {}),
     };
   }
 
@@ -72,9 +87,10 @@ export function createAuthoritativeRuntime(options = {}) {
     systemLookup,
     slots,
     nodeSafeOnly: options.nodeSafeOnly,
-    // Align tacticalAI flag with slot selection for production Node path.
+    // Align tacticalAI flag with slot selection.
+    // I5: legacy47a never defaults tactical AI on — only when caller opts in.
     tacticalAI: options.tacticalAI === true
-      || (options.nodeSafeOnly === true && options.tacticalAI !== false && !explicit),
+      || (!isLegacy47a && options.nodeSafeOnly === true && options.tacticalAI !== false && !explicit),
     explicitSystems: explicit || undefined,
     exclusions: options.exclusions,
   });
@@ -87,12 +103,10 @@ export function createAuthoritativeRuntime(options = {}) {
   });
 
   // Bind process MAPS for the duration of init/step when seeding is enabled.
-  // H1: production (and any non-legacy47a) profiles seed by default — including focused
-  // system lists — so combatFlag/massline2Flag/travelFlag match runtime.config.features.
-  // legacy47a stays MAP-default (gated off) unless the caller opts in.
-  // Explicit seedProcessMaps:false always wins (test isolation / multi-runtime hosts).
-  const seedMaps = options.seedProcessMaps === true
-    || (options.seedProcessMaps !== false && resolved.profileId !== 'legacy47a');
+  // I9: ALL profiles (including legacy47a) restore-on-step by default so a prior
+  // production seed cannot leak into legacy global-flag readers. Explicit
+  // seedProcessMaps:false always wins (test isolation / multi-runtime hosts).
+  const seedMaps = options.seedProcessMaps !== false;
 
   function withFeatureMaps(fn) {
     if (!seedMaps) return fn();

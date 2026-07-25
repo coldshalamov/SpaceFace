@@ -251,16 +251,75 @@ function brokerClaimConsumedSentinelPath(claimPath) {
   return `${claimPath}.consumed`;
 }
 
+/**
+ * I6: accepted evidence resolves a failure only when it is bound to the *current*
+ * candidate digests (and matching runtime). Stale / copied / future-dated evidence
+ * that never tested this candidate must not clear an open failure.
+ */
 function isResolvedByAcceptedEvidence({
   latestFailure,
   acceptedRuntimeKind,
   acceptedGeneratedAt,
+  acceptedEvidence = null,
+  candidateDigest = null,
+  routeDigest = null,
+  regressionDigest = null,
+  profileDigest = null,
+  manifestDigest = null,
 }) {
-  return Boolean(
-    latestFailure?.primaryAcceptance
-    && acceptedRuntimeKind === latestFailure.runtimeKind
-    && timestamp(acceptedGeneratedAt) > timestamp(latestFailure.generatedAt),
-  );
+  if (
+    !latestFailure?.primaryAcceptance
+    || acceptedRuntimeKind !== latestFailure.runtimeKind
+    || timestamp(acceptedGeneratedAt) <= timestamp(latestFailure.generatedAt)
+  ) {
+    return false;
+  }
+  // Without evidence digests we cannot prove candidate binding — fail closed.
+  if (!acceptedEvidence || typeof acceptedEvidence !== 'object') {
+    return false;
+  }
+  const evidenceDigests = acceptedEvidence.digests
+    || {
+      candidateDigest: acceptedEvidence.candidateDigest,
+      routeDigest: acceptedEvidence.routeDigest ?? acceptedEvidence.productionDigest,
+      regressionDigest: acceptedEvidence.regressionDigest,
+      profileDigest: acceptedEvidence.profileDigest,
+      manifestDigest: acceptedEvidence.manifestDigest,
+    };
+  // Require candidateDigest match when current state has one.
+  if (candidateDigest) {
+    const evidenceCandidate = evidenceDigests.candidateDigest ?? null;
+    if (!evidenceCandidate || evidenceCandidate !== candidateDigest) {
+      return false;
+    }
+  }
+  if (routeDigest) {
+    const evidenceRoute = evidenceDigests.routeDigest
+      ?? evidenceDigests.productionDigest
+      ?? null;
+    if (evidenceRoute && evidenceRoute !== routeDigest) {
+      return false;
+    }
+  }
+  if (regressionDigest) {
+    const evidenceRegression = evidenceDigests.regressionDigest ?? null;
+    if (evidenceRegression && evidenceRegression !== regressionDigest) {
+      return false;
+    }
+  }
+  if (profileDigest) {
+    const evidenceProfile = evidenceDigests.profileDigest ?? null;
+    if (evidenceProfile && evidenceProfile !== profileDigest) {
+      return false;
+    }
+  }
+  if (manifestDigest) {
+    const evidenceManifest = evidenceDigests.manifestDigest ?? null;
+    if (evidenceManifest && evidenceManifest !== manifestDigest) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function compactFailurePointer(failure, artifactPath = null) {
@@ -480,7 +539,13 @@ export function evaluateFastGate({
   latestFailure = null,
   acceptedRuntimeKind = null,
   acceptedGeneratedAt = null,
+  acceptedEvidence = null,
   currentRegressionDigest,
+  candidateDigest = null,
+  routeDigest = null,
+  regressionDigest = null,
+  profileDigest = null,
+  manifestDigest = null,
 } = {}) {
   if (!latestFailure?.primaryAcceptance) {
     return {
@@ -495,6 +560,12 @@ export function evaluateFastGate({
     latestFailure,
     acceptedRuntimeKind,
     acceptedGeneratedAt,
+    acceptedEvidence,
+    candidateDigest,
+    routeDigest,
+    regressionDigest: regressionDigest ?? currentRegressionDigest,
+    profileDigest,
+    manifestDigest,
   })) {
     return {
       pass: true,
@@ -1081,6 +1152,7 @@ export async function loadGateState({ root, outputRoot, manifest: rawManifest })
     latestFailure,
     receipt,
     cachedResult,
+    acceptedEvidence,
     acceptedRuntimeKind: acceptedEvidence?.runtimeKind ?? null,
     acceptedGeneratedAt: acceptedEvidence?.generatedAt ?? null,
   };
@@ -1203,12 +1275,16 @@ export async function assertProbeLaunch({
   }
 
   // Optional explicit one-use broker claim (direct-execution protection).
+  // I2: acceptance mode requires claim.mode === 'acceptance' (diagnostic claims rejected).
+  // I11: claim.runtimeKind must match the requested probe runtime when present.
   if (manifest.requireBrokerClaim && mode === 'acceptance') {
     const claimCheck = await validateBrokerClaim({
       outputRoot,
-      manifest,
+      manifest: { ...manifest, mode: 'acceptance', runtimeKind: runtimeKind || manifest.runtimeKind },
       root,
       tokenOrPath: brokerClaimToken ?? process.env.SF_BROKER_CLAIM ?? null,
+      requiredMode: 'acceptance',
+      requiredRuntimeKind: runtimeKind || manifest.runtimeKind || null,
     });
     if (!claimCheck.ok) {
       throwGateFailure(claimCheck.reason || 'broker-claim-required', {
@@ -1351,6 +1427,8 @@ export async function issueBrokerClaim({
       claimId,
       manifestId: manifest.id,
       mode,
+      // I11: bind claims to runtime kind so a browser claim cannot authorize electron.
+      runtimeKind: manifest.runtimeKind ?? null,
       issuedAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + expiresInMs).toISOString(),
       consumed: false,
@@ -1518,6 +1596,10 @@ export async function validateBrokerClaim({
   tokenOrPath,
   root = null,
   digests = null,
+  /** When set, claim.mode must match (I2: diagnostic claims cannot authorize acceptance). */
+  requiredMode = null,
+  /** When set, claim.runtimeKind must match (I11: browser claim ≠ electron). */
+  requiredRuntimeKind = null,
 }) {
   const manifest = normalizeManifest(rawManifest ?? { id: 'unknown' });
   if (!tokenOrPath) {
@@ -1550,6 +1632,47 @@ export async function validateBrokerClaim({
   }
   if (timestamp(claim.expiresAt) < Date.now()) {
     return { ok: false, reason: 'broker-claim-expired' };
+  }
+
+  // I2: acceptance authorization requires claim.mode === 'acceptance'.
+  // Diagnostic claims must never authorize primary acceptance (even with matching digests).
+  const expectedMode = requiredMode
+    ?? (manifest.mode === 'acceptance' || manifest.mode === 'diagnostic' ? manifest.mode : null);
+  if (expectedMode === 'acceptance') {
+    if (claim.mode !== 'acceptance') {
+      return {
+        ok: false,
+        reason: 'broker-claim-mode-mismatch',
+        claim,
+        claimPath,
+        detail: `acceptance requires claim.mode==='acceptance' (got ${claim.mode ?? 'undefined'})`,
+      };
+    }
+  } else if (expectedMode === 'diagnostic' && claim.mode && claim.mode !== 'diagnostic') {
+    return {
+      ok: false,
+      reason: 'broker-claim-mode-mismatch',
+      claim,
+      claimPath,
+      detail: `diagnostic path requires claim.mode==='diagnostic' (got ${claim.mode})`,
+    };
+  }
+
+  // I11: bind claim to requested runtime kind when known.
+  const expectedRuntimeKind = requiredRuntimeKind ?? manifest.runtimeKind ?? null;
+  if (
+    expectedRuntimeKind
+    && ['browser', 'electron'].includes(expectedRuntimeKind)
+    && claim.runtimeKind
+    && claim.runtimeKind !== expectedRuntimeKind
+  ) {
+    return {
+      ok: false,
+      reason: 'broker-claim-runtime-kind-mismatch',
+      claim,
+      claimPath,
+      detail: `claim.runtimeKind=${claim.runtimeKind} does not authorize ${expectedRuntimeKind}`,
+    };
   }
 
   // FIX4: bind claims to the current candidate/source digests.
@@ -1699,6 +1822,8 @@ export async function requireBrokerClaimOrDiagnostic({
   explicitDiagnostic = process.argv.includes('--diagnostic'),
   root = null,
   digests = null,
+  requiredMode = null,
+  requiredRuntimeKind = null,
 }) {
   if (diagnostic) {
     if (!explicitDiagnostic) {
@@ -1717,12 +1842,15 @@ export async function requireBrokerClaimOrDiagnostic({
       primaryAcceptance: false,
     };
   }
+  // I2: non-diagnostic path is acceptance authorization — claim.mode must be acceptance.
   const check = await validateBrokerClaim({
     outputRoot,
     manifest,
     tokenOrPath,
     root,
     digests,
+    requiredMode: requiredMode ?? 'acceptance',
+    requiredRuntimeKind: requiredRuntimeKind ?? manifest?.runtimeKind ?? null,
   });
   if (!check.ok) {
     return {
@@ -1832,7 +1960,13 @@ async function authorizeAndMaybeRun({
       latestFailure: cached.state.latestFailure,
       acceptedRuntimeKind: cached.state.acceptedRuntimeKind,
       acceptedGeneratedAt: cached.state.acceptedGeneratedAt,
+      acceptedEvidence: cached.state.acceptedEvidence,
       currentRegressionDigest: digests.regressionDigest,
+      candidateDigest: digests.candidateDigest,
+      routeDigest: digests.routeDigest,
+      regressionDigest: digests.regressionDigest,
+      profileDigest: digests.profileDigest,
+      manifestDigest: digests.manifestDigest,
     });
     if (!fastEval.pass && mode === 'acceptance') {
       return {

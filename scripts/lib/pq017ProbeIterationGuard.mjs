@@ -461,6 +461,8 @@ export async function loadPq017GateState({ root, outputRoot }) {
     ...digests,
     latestFailure,
     receipt,
+    // I6: surface full evidence so resolution can bind candidate/manifest digests.
+    acceptedEvidence,
     acceptedRuntimeKind: acceptedEvidence?.runtimeKind ?? null,
     acceptedGeneratedAt: acceptedEvidence?.generatedAt ?? null,
   };
@@ -474,8 +476,12 @@ export async function loadPq017GateState({ root, outputRoot }) {
  *
  * @returns {Promise<{ claimPath: string, claimId: string, claim: object, digests: object }>}
  */
-export async function issuePq017AcceptanceClaim({ root, outputRoot }) {
-  const manifest = buildPq017ValidationManifest({ requireBrokerClaim: true });
+export async function issuePq017AcceptanceClaim({ root, outputRoot, runtimeKind = 'browser' }) {
+  // I11: claims are runtime-kind-bound (browser claim must not authorize electron).
+  const manifest = buildPq017ValidationManifest({
+    requireBrokerClaim: true,
+    runtimeKind,
+  });
   const digests = await computeGateDigestsFromManifest({ root, manifest });
   const prior = await getCandidateLaunchCount(outputRoot, digests.candidateDigest);
   if (prior >= manifest.maxLaunchesPerCandidate) {
@@ -543,13 +549,17 @@ export async function assertPq017ProbeLaunch({
   brokerClaimToken = null,
 }) {
   const requireClaim = mode === 'acceptance';
-  const manifest = buildPq017ValidationManifest({ requireBrokerClaim: requireClaim });
+  // I11: bind manifest runtime kind to the requested probe runtime.
+  const manifest = buildPq017ValidationManifest({
+    requireBrokerClaim: requireClaim,
+    runtimeKind: runtimeKind || 'browser',
+  });
 
   let claimToken = brokerClaimToken ?? process.env.SF_BROKER_CLAIM ?? null;
   let compatibilityMint = false;
 
-  // G3: acceptance MUST require an external broker-issued claim (caller or SF_BROKER_CLAIM).
-  // Never self-mint from an on-disk receipt — receipt presence is not claim authority.
+  // G3/I3: acceptance MUST require an EXTERNAL broker-issued claim (SF_BROKER_CLAIM /
+  // brokerClaimToken). Probes must NEVER self-mint — not even via issuePq017AcceptanceClaim.
   if (mode === 'acceptance' && !claimToken) {
     const error = new Error('PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED: broker-claim-required');
     error.code = 'PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED';
@@ -558,7 +568,7 @@ export async function assertPq017ProbeLaunch({
       reason: 'broker-claim-required',
       primaryAcceptance: false,
       resolvesFailure: false,
-      detail: 'acceptance requires a caller-provided broker claim (or SF_BROKER_CLAIM); PQ-017 must not self-mint even when a fast-gate receipt exists',
+      detail: 'acceptance requires SF_BROKER_CLAIM / brokerClaimToken from an external process; probes must not self-mint',
     };
     throw error;
   }

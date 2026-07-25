@@ -81,7 +81,13 @@ async function runFastGate() {
           latestFailure: afterState.latestFailure,
           acceptedRuntimeKind: afterState.acceptedRuntimeKind,
           acceptedGeneratedAt: afterState.acceptedGeneratedAt,
+          acceptedEvidence: afterState.acceptedEvidence,
           currentRegressionDigest: afterState.regressionDigest,
+          candidateDigest: afterState.candidateDigest,
+          routeDigest: afterState.routeDigest,
+          regressionDigest: afterState.regressionDigest,
+          profileDigest: afterState.profileDigest,
+          manifestDigest: afterState.manifestDigest,
         });
         if (!result.pass) {
           console.error(

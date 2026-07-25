@@ -128,17 +128,44 @@ test('PQ-017 fast gate refuses an unchanged regression after an unresolved accep
 
 test('PQ-017 accepted evidence resolves only its runtime primary failure', async () => {
   const { evaluatePq017FastGate } = await loadGuard();
+  // I6: resolution requires acceptedEvidence bound to current candidate digests.
+  const boundEvidence = {
+    pass: true,
+    primaryAcceptance: true,
+    runtimeKind: 'electron',
+    digests: {
+      candidateDigest: 'cand-1',
+      routeDigest: 'route-before',
+      regressionDigest: 'regression-before',
+    },
+  };
   assert.equal(evaluatePq017FastGate({
     latestFailure: primaryFailure(),
     acceptedRuntimeKind: 'electron',
     acceptedGeneratedAt: '2026-07-23T17:00:00.000Z',
+    acceptedEvidence: boundEvidence,
+    candidateDigest: 'cand-1',
+    routeDigest: 'route-before',
     currentRegressionDigest: 'regression-before',
   }).pass, true);
 
+  // Wrong runtime kind — does not resolve.
   assert.equal(evaluatePq017FastGate({
     latestFailure: primaryFailure(),
     acceptedRuntimeKind: 'browser',
     acceptedGeneratedAt: '2026-07-23T17:00:00.000Z',
+    acceptedEvidence: { ...boundEvidence, runtimeKind: 'browser' },
+    candidateDigest: 'cand-1',
+    currentRegressionDigest: 'regression-before',
+  }).pass, false);
+
+  // Matching runtime but wrong candidate digest — does not resolve (I6).
+  assert.equal(evaluatePq017FastGate({
+    latestFailure: primaryFailure(),
+    acceptedRuntimeKind: 'electron',
+    acceptedGeneratedAt: '2026-07-23T17:00:00.000Z',
+    acceptedEvidence: boundEvidence,
+    candidateDigest: 'other-candidate',
     currentRegressionDigest: 'regression-before',
   }).pass, false);
 
@@ -465,10 +492,11 @@ test('PQ-017 package commands enforce the fast gate before explicit acceptance p
   const packageJson = JSON.parse(await readFile(new URL('package.json', repoRoot), 'utf8'));
   assert.equal(packageJson.scripts['check:pq017:world-site:fast'],
     'node scripts/check-pq017-world-site-fast.mjs');
+  // I3: acceptance goes through external authorize wrapper (issues claim), not direct probe.
   assert.equal(packageJson.scripts['check:pq017:world-site:browser'],
-    'npm run check:pq017:world-site:fast && node scripts/probe-pq017-world-site.mjs --acceptance');
+    'npm run check:pq017:world-site:fast && node scripts/pq017-authorize-probe.mjs --browser');
   assert.equal(packageJson.scripts['check:pq017:world-site:electron'],
-    'npm run check:pq017:world-site:fast && node scripts/probe-pq017-world-site-electron.mjs --acceptance');
+    'npm run check:pq017:world-site:fast && node scripts/pq017-authorize-probe.mjs --electron');
 });
 
 test('PQ-017 digests and fast execution cover direct controller and harness dependencies', async () => {
@@ -533,6 +561,13 @@ test('PQ-017 wrappers reject ungated acceptance before creating artifacts and fi
   assert.match(electronSource,
     /(?:mode|electronMode)\s*[:=]\s*runMode\.primaryAcceptance \? 'acceptance' : 'diagnostic'/);
   assert.match(electronSource, /explicitDiagnostic: process\.argv\.includes\('--diagnostic'\)/);
-  // G3: acceptance claims are caller-issued (probe), not self-minted inside assert.
-  assert.match(electronSource, /issuePq017AcceptanceClaim|SF_BROKER_CLAIM/);
+  // I3: probes must NOT self-mint — only consume SF_BROKER_CLAIM from an external issuer.
+  assert.match(electronSource, /SF_BROKER_CLAIM/);
+  assert.doesNotMatch(electronSource, /issuePq017AcceptanceClaim/);
+  const browserSource = await readFile(
+    new URL('scripts/probe-pq017-world-site.mjs', repoRoot),
+    'utf8',
+  );
+  assert.doesNotMatch(browserSource, /issuePq017AcceptanceClaim/);
+  assert.match(browserSource, /SF_BROKER_CLAIM/);
 });

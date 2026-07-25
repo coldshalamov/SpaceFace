@@ -60,13 +60,10 @@ let primaryError = null;
 const explicitDiagnostic = process.argv.includes('--diagnostic');
 const explicitAcceptance = process.argv.includes('--acceptance');
 const probeMode = explicitDiagnostic ? 'diagnostic' : 'acceptance';
-// G3: acceptance claim is caller-issued (probe / SF_BROKER_CLAIM), never self-minted in assert.
-let brokerClaimToken = process.env.SF_BROKER_CLAIM || null;
-if (probeMode === 'acceptance' && !brokerClaimToken) {
-  const { issuePq017AcceptanceClaim } = await import('./lib/pq017ProbeIterationGuard.mjs');
-  const issued = await issuePq017AcceptanceClaim({ root: ROOT, outputRoot: OUTPUT_ROOT });
-  brokerClaimToken = issued.claimPath;
-}
+// I3: acceptance requires an EXTERNAL claim (SF_BROKER_CLAIM). Probes must not self-mint.
+// Issue via validation-broker CLI / authorizeAndMaybeRun / pq017-authorize-probe from a
+// parent process that has verified fast gates — never from this entrypoint.
+const brokerClaimToken = process.env.SF_BROKER_CLAIM || null;
 const gateLaunch = await assertPq017ProbeLaunch({
   root: ROOT,
   outputRoot: OUTPUT_ROOT,
@@ -212,6 +209,20 @@ if (primaryError || routeResult?.pass !== true || cleanupReport?.pass !== true) 
     lifecycle: routeResult.lifecycle,
     finalSnapshot: routeResult.finalSnapshot,
     cleanup: cleanupReport,
+    // I6: bind evidence to the candidate digests that authorized this run.
+    digests: {
+      candidateDigest: gateLaunch.candidateDigest ?? null,
+      routeDigest: gateLaunch.routeDigest ?? gateLaunch.productionDigest ?? null,
+      regressionDigest: gateLaunch.regressionDigest ?? null,
+      profileDigest: gateLaunch.profileDigest ?? null,
+      manifestDigest: gateLaunch.manifestDigest ?? null,
+      productionDigest: gateLaunch.productionDigest ?? null,
+    },
+    candidateDigest: gateLaunch.candidateDigest ?? null,
+    routeDigest: gateLaunch.routeDigest ?? gateLaunch.productionDigest ?? null,
+    regressionDigest: gateLaunch.regressionDigest ?? null,
+    profileDigest: gateLaunch.profileDigest ?? null,
+    manifestDigest: gateLaunch.manifestDigest ?? null,
   };
   const evidenceName = primaryAcceptance ? 'evidence.json' : 'diagnostic-evidence.json';
   await writeFile(path.join(STAGING, evidenceName), `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');

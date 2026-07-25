@@ -3,7 +3,7 @@
   "id": "massline.latch-reel",
   "version": 1,
   "title": "Massline latch + reel",
-  "description": "Real attachment + rest-length with public raw KeyF press/release through the input grammar.",
+  "description": "Pre-seeded attachment fixture + public KeyF hold + KeyQ reel through the massline grammar; proves attachment stays latched and rest-length decreases under reel input.",
   "evidenceClass": "focused-fixture",
   "runtimeProfile": "focused-lab",
   "seed": 47,
@@ -51,13 +51,13 @@
   "inputEvents": [
     { "tick": 0, "device": "keyboard", "code": "KeyW", "pressed": true, "sequence": 0 },
     { "tick": 10, "device": "keyboard", "code": "KeyF", "pressed": true, "sequence": 0 },
-    { "tick": 40, "device": "keyboard", "code": "KeyF", "pressed": false, "sequence": 0 },
-    { "tick": 50, "device": "keyboard", "code": "KeyW", "pressed": false, "sequence": 0 }
+    { "tick": 60, "device": "keyboard", "code": "KeyQ", "pressed": true, "sequence": 0 },
+    { "tick": 100, "device": "keyboard", "code": "KeyQ", "pressed": false, "sequence": 0 },
+    { "tick": 105, "device": "keyboard", "code": "KeyF", "pressed": false, "sequence": 0 },
+    { "tick": 110, "device": "keyboard", "code": "KeyW", "pressed": false, "sequence": 0 }
   ],
   "frames": [
-    { "tick": 0, "input": { "moveX": 0, "moveZ": 1, "turnIntent": 0, "reelDelta": 0 } },
-    { "tick": 60, "input": { "moveX": 0, "moveZ": 1, "turnIntent": 0, "reelDelta": -1 } },
-    { "tick": 100, "input": { "moveX": 0, "moveZ": 1, "turnIntent": 0, "reelDelta": 0 } }
+    { "tick": 0, "input": { "moveX": 0, "moveZ": 1, "turnIntent": 0 } }
   ],
   "policies": [
     { "id": "massline.baseline", "version": 1 }
@@ -65,11 +65,21 @@
   "metrics": [
     { "name": "invariant.finiteState", "version": 1, "threshold": { "op": "==", "value": 1 } },
     { "name": "massline.diverged", "version": 1, "threshold": { "op": "==", "value": 0 } },
-    { "name": "massline.oscillations", "version": 1, "threshold": { "op": "<=", "value": 40 } }
+    { "name": "massline.oscillations", "version": 1, "threshold": { "op": "<=", "value": 40 } },
+    {
+      "name": "trace.min",
+      "version": 1,
+      "params": { "signal": "restLength" },
+      "threshold": { "op": "<=", "value": 100 }
+    }
   ],
-  "trace": { "signals": ["distance", "radiusError", "radialSpeed", "tension"], "sampleEvery": 1 },
+  "assertions": [
+    { "kind": "eventByTick", "signal": "attachmentActive", "byTick": 10 },
+    { "kind": "holds", "signal": "attachmentActive", "holdsTicks": 80 }
+  ],
+  "trace": { "signals": ["distance", "radiusError", "radialSpeed", "tension", "restLength", "attachmentActive"], "sampleEvery": 1 },
   "fixtureExceptions": [
-    "pre-existing attachment created via combat kernel before first tick (evidenceClass focused-fixture)",
+    "FIXTURE: attachment pre-created via combat kernel before first tick — focused lab cannot acquire a distant target from raw KeyF alone; scenario proves HOLD+REEL causality (KeyF hold required for grammar line-control, KeyQ reels rest-length down), not cold acquisition",
     "focused massline system bundle — not production-manifest evidence"
   ],
   "observer": { "enabled": false }

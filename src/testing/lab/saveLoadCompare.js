@@ -8,9 +8,39 @@ import { runLabScenario } from './runScenario.js';
  * @param {{ saveLoadAt?: number, verbosity?: number }} [options]
  */
 export async function compareSaveLoad(scenarioDoc, options = {}) {
+  const ticks = (scenarioDoc && scenarioDoc.ticks) | 0;
   const saveLoadAt = Number.isInteger(options.saveLoadAt)
     ? options.saveLoadAt
-    : Math.max(1, Math.floor(((scenarioDoc.ticks | 0) || 60) / 2));
+    : Math.max(0, Math.min(
+      Math.max(1, Math.floor((ticks || 60) / 2)) - 1,
+      Math.max(0, (ticks || 60) - 2),
+    ));
+
+  // I1: range-check before any run — need at least one post-restore tick.
+  // Valid: 0 <= saveLoadAt < ticks - 1 (ticks must be >= 2).
+  if (!Number.isInteger(ticks) || ticks < 2) {
+    return {
+      schema: 'spaceface.labSaveLoadCompareResult.v1',
+      ok: false,
+      exitClass: 4,
+      status: 'invalid-config',
+      reason: 'save-load-ticks-too-short',
+      saveLoadAt,
+      detail: 'save/load compare requires ticks >= 2 so a post-restore tick exists',
+    };
+  }
+  if (!Number.isInteger(saveLoadAt) || saveLoadAt < 0 || saveLoadAt >= ticks - 1) {
+    return {
+      schema: 'spaceface.labSaveLoadCompareResult.v1',
+      ok: false,
+      exitClass: 4,
+      status: 'invalid-config',
+      reason: 'saveLoadAt-out-of-range',
+      saveLoadAt,
+      ticks,
+      detail: `saveLoadAt must satisfy 0 <= saveLoadAt < ticks - 1 (got ${saveLoadAt}, ticks=${ticks})`,
+    };
+  }
 
   // Control arm: explicit suppression — never restore, even if the scenario authors a
   // save-load checkpoint. Without this, `saveLoadAt: undefined` falls back to the
@@ -87,6 +117,43 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
     };
   }
 
+  // I1: refuse to certify save/load unless the comparison arm actually restored once
+  // and the control arm restored zero times. Out-of-range or missed ticks cannot green.
+  const controlRestores = (uninterrupted.params && uninterrupted.params.saveLoadRestoreCount) | 0;
+  const controlPerformed = !!(uninterrupted.params && uninterrupted.params.saveLoadPerformed);
+  const armPerformed = !!(withSaveLoad.params && withSaveLoad.params.saveLoadPerformed);
+  const armRestores = (withSaveLoad.params && withSaveLoad.params.saveLoadRestoreCount) | 0;
+  if (controlPerformed || controlRestores !== 0) {
+    return {
+      schema: 'spaceface.labSaveLoadCompareResult.v1',
+      ok: false,
+      exitClass: 4,
+      status: 'invalid-config',
+      reason: 'control-arm-restored',
+      saveLoadAt,
+      controlRestoreCount: controlRestores,
+      detail: 'uninterrupted control arm must perform zero save/load restores',
+      uninterrupted: options.verbosity >= 2 ? uninterrupted : summarize(uninterrupted),
+      withSaveLoad: options.verbosity >= 2 ? withSaveLoad : summarize(withSaveLoad),
+    };
+  }
+  if (!armPerformed || armRestores !== 1) {
+    return {
+      schema: 'spaceface.labSaveLoadCompareResult.v1',
+      ok: false,
+      exitClass: 4,
+      status: 'save-load-not-performed',
+      reason: 'save-load-not-performed',
+      saveLoadAt,
+      saveLoadPerformed: armPerformed,
+      saveLoadRestoreCount: armRestores,
+      controlRestoreCount: controlRestores,
+      detail: 'save/load arm must perform exactly one restore (saveLoadPerformed===true, restoreCount===1)',
+      uninterrupted: options.verbosity >= 2 ? uninterrupted : summarize(uninterrupted),
+      withSaveLoad: options.verbosity >= 2 ? withSaveLoad : summarize(withSaveLoad),
+    };
+  }
+
   const h0 = hashOf(uninterrupted, 'deterministicCovered');
   const h1 = hashOf(withSaveLoad, 'deterministicCovered');
   const t0 = uninterrupted.traceHash;
@@ -95,7 +162,6 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
   // is accepted only when the scenario explicitly authorizes it — but NEVER when intermediate
   // ticks diverged (F1). Final-hash-equal with unequal traces is a false-green and must fail.
   const authorized = resolveSaveLoadEquivalence(scenarioDoc, options);
-  const controlRestores = (uninterrupted.params && uninterrupted.params.saveLoadRestoreCount) | 0;
 
   const tickCompare = compareTracesTickByTick(
     uninterrupted.oracleTrace || uninterrupted.trace,
@@ -134,6 +200,8 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
     contract,
     authorizedEquivalence: authorized,
     controlRestoreCount: controlRestores,
+    saveLoadPerformed: armPerformed,
+    saveLoadRestoreCount: armRestores,
     uninterruptedHash: h0,
     saveLoadHash: h1,
     uninterruptedTraceHash: t0,

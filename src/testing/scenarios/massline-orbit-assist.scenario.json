@@ -3,7 +3,7 @@
   "id": "massline.orbit-assist",
   "version": 1,
   "title": "Massline orbit assist (public raw controls)",
-  "description": "Public raw controls through grammar; NO lab-owned controller; quantitative radius/radial/tension metrics.",
+  "description": "Public raw controls through grammar; NO lab-owned controller; proves orbit-assist engages under KeyF+KeyQ/turn input and attachment remains active.",
   "evidenceClass": "public-input",
   "runtimeProfile": "focused-lab",
   "seed": 47,
@@ -72,9 +72,13 @@
     { "name": "massline.diverged", "version": 1, "threshold": { "op": "==", "value": 0 } },
     { "name": "massline.oscillations", "version": 1, "threshold": { "op": "<=", "value": 40 } }
   ],
-  "trace": { "signals": ["distance", "radiusError", "radialSpeed", "tension", "tangentFraction"], "sampleEvery": 1 },
+  "assertions": [
+    { "kind": "eventByTick", "signal": "orbitAssistActive", "byTick": 30 },
+    { "kind": "holds", "signal": "attachmentActive", "holdsTicks": 20 }
+  ],
+  "trace": { "signals": ["distance", "radiusError", "radialSpeed", "tension", "tangentFraction", "orbitAssistActive", "attachmentActive"], "sampleEvery": 1 },
   "fixtureExceptions": [
-    "pre-existing attachment for orbit-assist measurement",
+    "FIXTURE: pre-existing attachment for orbit-assist measurement (focused lab cannot cold-acquire); scenario proves orbitAssistActive engages under public turn/KeyF control input — empty input must fail",
     "focused system bundle; public-input evidence via massline input grammar from raw KeyF/KeyQ events"
   ],
   "observer": { "enabled": false }

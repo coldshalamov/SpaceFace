@@ -68,14 +68,9 @@ let routeProcessHealth = null;
 let cleanupReport = null;
 let primaryError = null;
 
-// G3: acceptance claim is caller-issued (probe / SF_BROKER_CLAIM), never self-minted in assert.
+// I3: acceptance requires an EXTERNAL claim (SF_BROKER_CLAIM). Probes must not self-mint.
 const electronMode = runMode.primaryAcceptance ? 'acceptance' : 'diagnostic';
-let electronClaimToken = process.env.SF_BROKER_CLAIM || null;
-if (electronMode === 'acceptance' && !electronClaimToken) {
-  const { issuePq017AcceptanceClaim } = await import('./lib/pq017ProbeIterationGuard.mjs');
-  const issued = await issuePq017AcceptanceClaim({ root: ROOT, outputRoot: OUTPUT_ROOT });
-  electronClaimToken = issued.claimPath;
-}
+const electronClaimToken = process.env.SF_BROKER_CLAIM || null;
 const gateLaunch = await assertPq017ProbeLaunch({
   root: ROOT,
   outputRoot: OUTPUT_ROOT,
@@ -229,6 +224,20 @@ if (primaryError || routeResult?.pass !== true || cleanupReport?.pass !== true) 
     lifecycle: routeResult.lifecycle,
     finalSnapshot: routeResult.finalSnapshot,
     cleanup: cleanupReport,
+    // I6: bind evidence to the candidate digests that authorized this run.
+    digests: {
+      candidateDigest: gateLaunch.candidateDigest ?? null,
+      routeDigest: gateLaunch.routeDigest ?? gateLaunch.productionDigest ?? null,
+      regressionDigest: gateLaunch.regressionDigest ?? null,
+      profileDigest: gateLaunch.profileDigest ?? null,
+      manifestDigest: gateLaunch.manifestDigest ?? null,
+      productionDigest: gateLaunch.productionDigest ?? null,
+    },
+    candidateDigest: gateLaunch.candidateDigest ?? null,
+    routeDigest: gateLaunch.routeDigest ?? gateLaunch.productionDigest ?? null,
+    regressionDigest: gateLaunch.regressionDigest ?? null,
+    profileDigest: gateLaunch.profileDigest ?? null,
+    manifestDigest: gateLaunch.manifestDigest ?? null,
   };
   const evidenceName = runMode.primaryAcceptance ? 'evidence.json' : 'diagnostic-evidence.json';
   await writeFile(path.join(STAGING, evidenceName), `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');

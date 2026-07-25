@@ -350,9 +350,19 @@ export function compareRuntimeFingerprints(nodeFp, chromiumFp) {
       actual: cManifest,
     };
   }
+  // I10: BOTH manifestHash and profileHash must be present and matching.
+  // Missing profileHash must fail closed (same as missing manifestHash).
   const nProfile = nodeFp.profileHash ?? null;
   const cProfile = chromiumFp.profileHash ?? null;
-  if (nProfile != null && cProfile != null && nProfile !== cProfile) {
+  if (nProfile == null || cProfile == null) {
+    return {
+      match: false,
+      reason: 'profileHash-missing',
+      node: nodeFp,
+      chromium: chromiumFp,
+    };
+  }
+  if (nProfile !== cProfile) {
     return {
       match: false,
       reason: 'profileHash-mismatch',
