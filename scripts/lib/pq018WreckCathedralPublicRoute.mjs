@@ -636,6 +636,33 @@ async function completeOperation(page, operation, timeoutMs) {
     await page.waitForFunction(([siteId, operationId]) => !!(
       window.SF?.state?.sites?.worldById?.[siteId]?.completedOperations?.[operationId]
     ), [PQ018_SITE_ID, operation.operationId], { timeout: Math.max(20_000, timeoutMs / 3) });
+  } catch (error) {
+    // An operation that never completes is almost always a refused verb, not a slow one. Attach the
+    // refusal so the failure receipt names the cause instead of only the timeout.
+    const denial = await page.evaluate(() => window.__PQ017_ROUTE__?.lastDenial ?? null).catch(() => null);
+    const observed = await page.evaluate(([siteId, componentId]) => {
+      const state = window.SF?.state;
+      const record = state?.sites?.worldById?.[siteId];
+      const entity = [...(state?.entities?.values?.() || [])].find((candidate) => (
+        candidate?.alive !== false && candidate?.data?.worldSiteComponentId === componentId
+      ));
+      return {
+        componentStatus: record?.components?.[componentId]?.status ?? null,
+        completed: Object.keys(record?.completedOperations || {}),
+        targetEntity: entity
+          ? {
+            targetable: entity.data?.worldSiteTargetable ?? null,
+            presentationAdmitted: entity.data?.worldSitePresentationAdmitted ?? null,
+            selected: state?.player?.selectedTargetId === entity.id,
+          }
+          : null,
+      };
+    }, [PQ018_SITE_ID, operation.componentId]).catch(() => null);
+    error.message = `${error.message}\n  operation=${operation.operationId}`
+      + ` component=${operation.componentId}`
+      + `\n  lastBeamDenial=${JSON.stringify(denial)}`
+      + `\n  observed=${JSON.stringify(observed)}`;
+    throw error;
   } finally {
     await page.keyboard.up('KeyB');
   }
@@ -712,6 +739,18 @@ async function installObservers(page) {
       unsubscribers: [],
     };
     window.__PQ017_ROUTE__ = sink;
+    // Beam denials fire every frame while a verb is refused, so they are folded into a bounded
+    // last-denial slot rather than the event journal. Without this, an operation that never
+    // progresses times out with no reason attached and cannot be diagnosed from the receipt.
+    sink.lastDenial = null;
+    sink.unsubscribers.push(window.SF.bus.on('beam:denied', (payload) => {
+      sink.lastDenial = {
+        verb: payload?.verb ?? null,
+        reason: payload?.reason ?? null,
+        targetId: payload?.targetId ?? null,
+        tick: window.SF?.state?.tick ?? null,
+      };
+    }));
     for (const name of [
       'worldSite:operationReceipt',
       'worldSite:failureReceipt',
