@@ -428,19 +428,28 @@ test('launch counts increment on assertProbeLaunch success path', async (t) => {
   const root = repoRoot;
   const outputRoot = await tempRoot(t);
   // Use PQ-017 digests from the real repo so computeGateDigests works.
-  const { computePq017GateDigests, createPq017FastGateReceipt, publishPq017FastGateReceipt, assertPq017ProbeLaunch, completePq017ProbeClaim } =
-    await import('../scripts/lib/pq017ProbeIterationGuard.mjs');
+  const {
+    computePq017GateDigests,
+    createPq017FastGateReceipt,
+    publishPq017FastGateReceipt,
+    assertPq017ProbeLaunch,
+    completePq017ProbeClaim,
+    issuePq017AcceptanceClaim,
+  } = await import('../scripts/lib/pq017ProbeIterationGuard.mjs');
   const digests = await computePq017GateDigests({ root });
   await publishPq017FastGateReceipt({
     outputRoot,
     receipt: createPq017FastGateReceipt(digests),
   });
+  // G3: caller issues claim; assert never self-mints acceptance claims.
+  const issued = await issuePq017AcceptanceClaim({ root, outputRoot });
   const launch = await assertPq017ProbeLaunch({
     root,
     outputRoot,
     runtimeKind: 'browser',
     mode: 'acceptance',
     explicitAcceptance: true,
+    brokerClaimToken: issued.claimPath,
   });
   assert.ok(launch.claimToken);
   await completePq017ProbeClaim({ outputRoot, claimToken: launch.claimToken });

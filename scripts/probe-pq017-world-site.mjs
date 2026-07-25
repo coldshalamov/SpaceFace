@@ -60,6 +60,13 @@ let primaryError = null;
 const explicitDiagnostic = process.argv.includes('--diagnostic');
 const explicitAcceptance = process.argv.includes('--acceptance');
 const probeMode = explicitDiagnostic ? 'diagnostic' : 'acceptance';
+// G3: acceptance claim is caller-issued (probe / SF_BROKER_CLAIM), never self-minted in assert.
+let brokerClaimToken = process.env.SF_BROKER_CLAIM || null;
+if (probeMode === 'acceptance' && !brokerClaimToken) {
+  const { issuePq017AcceptanceClaim } = await import('./lib/pq017ProbeIterationGuard.mjs');
+  const issued = await issuePq017AcceptanceClaim({ root: ROOT, outputRoot: OUTPUT_ROOT });
+  brokerClaimToken = issued.claimPath;
+}
 const gateLaunch = await assertPq017ProbeLaunch({
   root: ROOT,
   outputRoot: OUTPUT_ROOT,
@@ -67,6 +74,7 @@ const gateLaunch = await assertPq017ProbeLaunch({
   mode: probeMode,
   explicitAcceptance,
   explicitDiagnostic,
+  brokerClaimToken,
 });
 const { loadPlaywright } = await import('./lib/load-playwright.mjs');
 await mkdir(STAGING, { recursive: true });

@@ -68,13 +68,22 @@ let routeProcessHealth = null;
 let cleanupReport = null;
 let primaryError = null;
 
+// G3: acceptance claim is caller-issued (probe / SF_BROKER_CLAIM), never self-minted in assert.
+const electronMode = runMode.primaryAcceptance ? 'acceptance' : 'diagnostic';
+let electronClaimToken = process.env.SF_BROKER_CLAIM || null;
+if (electronMode === 'acceptance' && !electronClaimToken) {
+  const { issuePq017AcceptanceClaim } = await import('./lib/pq017ProbeIterationGuard.mjs');
+  const issued = await issuePq017AcceptanceClaim({ root: ROOT, outputRoot: OUTPUT_ROOT });
+  electronClaimToken = issued.claimPath;
+}
 const gateLaunch = await assertPq017ProbeLaunch({
   root: ROOT,
   outputRoot: OUTPUT_ROOT,
   runtimeKind: 'electron',
-  mode: runMode.primaryAcceptance ? 'acceptance' : 'diagnostic',
+  mode: electronMode,
   explicitAcceptance: process.argv.includes('--acceptance'),
   explicitDiagnostic: process.argv.includes('--diagnostic'),
+  brokerClaimToken: electronClaimToken,
 });
 const { loadPlaywright } = await import('./lib/load-playwright.mjs');
 await mkdir(STAGING, { recursive: true });

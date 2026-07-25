@@ -467,12 +467,71 @@ export async function loadPq017GateState({ root, outputRoot }) {
 }
 
 /**
- * H5/F3: PQ-017 preflight delegates to the generic broker (evaluateCachedResult, launch quota,
+ * G3: Caller-side acceptance claim issuer (NOT inside assertPq017ProbeLaunch).
+ * After real fast gates publish a receipt, callers (probes, tests, CLI) must issue a claim
+ * here and pass `brokerClaimToken` / `SF_BROKER_CLAIM` into assert. The assert path never
+ * self-mints acceptance claims from a receipt alone.
+ *
+ * @returns {Promise<{ claimPath: string, claimId: string, claim: object, digests: object }>}
+ */
+export async function issuePq017AcceptanceClaim({ root, outputRoot }) {
+  const manifest = buildPq017ValidationManifest({ requireBrokerClaim: true });
+  const digests = await computeGateDigestsFromManifest({ root, manifest });
+  const prior = await getCandidateLaunchCount(outputRoot, digests.candidateDigest);
+  if (prior >= manifest.maxLaunchesPerCandidate) {
+    const error = new Error('PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED: max-launches-per-candidate');
+    error.code = 'PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED';
+    error.gateResult = {
+      pass: false,
+      reason: 'max-launches-per-candidate',
+      primaryAcceptance: false,
+      resolvesFailure: false,
+    };
+    throw error;
+  }
+  const cached = await evaluateCachedResult({ root, outputRoot, manifest });
+  if (cached.blocked) {
+    const error = new Error(`PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED: ${cached.reason}`);
+    error.code = 'PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED';
+    error.gateResult = {
+      pass: false,
+      reason: cached.reason,
+      primaryAcceptance: false,
+      resolvesFailure: false,
+      status: cached.status,
+    };
+    throw error;
+  }
+  const receipt = await readFastGateReceipt({ outputRoot });
+  if (!receipt) {
+    const error = new Error('PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED: broker-claim-required');
+    error.code = 'PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED';
+    error.gateResult = {
+      pass: false,
+      reason: 'broker-claim-required',
+      primaryAcceptance: false,
+      resolvesFailure: false,
+      detail: 'issuePq017AcceptanceClaim requires an on-disk fast-gate receipt from real gates',
+    };
+    throw error;
+  }
+  const issued = await issueBrokerClaim({
+    outputRoot,
+    manifest,
+    receipt,
+    mode: 'acceptance',
+    digests,
+  });
+  return { ...issued, digests };
+}
+
+/**
+ * H5/F3/G3: PQ-017 preflight delegates to the generic broker (evaluateCachedResult, launch quota,
  * requireBrokerClaim). The PQ-017 receipt/inflight schema names stay for compatibility.
  *
- * F3: Compatibility self-mint is DIAGNOSTIC-ONLY and never authorizes acceptance.
- * Acceptance requires a broker-issued claim (or SF_BROKER_CLAIM) minted after real fast
- * gates pass — never a synthesized receipt created here.
+ * G3: Acceptance NEVER self-mints. Callers must provide brokerClaimToken / SF_BROKER_CLAIM
+ * (e.g. after issuePq017AcceptanceClaim or validation-broker CLI --issue-claim-only).
+ * Self-mint remains DIAGNOSTIC-ONLY and never authorizes acceptance.
  */
 export async function assertPq017ProbeLaunch({
   root,

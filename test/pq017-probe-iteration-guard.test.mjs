@@ -380,6 +380,7 @@ test('PQ-017 successful preflight persists an owned live claim until durable set
     createPq017FastGateReceipt,
     publishPq017FastGateReceipt,
     readPq017ProbeInflight,
+    issuePq017AcceptanceClaim,
   } = await loadGuard();
   const root = fileURLToPath(repoRoot);
   const outputRoot = await mkdtemp(path.join(os.tmpdir(), 'pq017-preflight-'));
@@ -392,12 +393,15 @@ test('PQ-017 successful preflight persists an owned live claim until durable set
     outputRoot,
     receipt: createPq017FastGateReceipt(digests),
   });
+  // G3: acceptance claim is issued by the caller, not self-minted inside assert.
+  const issued = await issuePq017AcceptanceClaim({ root, outputRoot });
   const launch = await assertPq017ProbeLaunch({
     root,
     outputRoot,
     runtimeKind: 'browser',
     mode: 'acceptance',
     explicitAcceptance: true,
+    brokerClaimToken: issued.claimPath,
   });
   const inflight = await readPq017ProbeInflight({ outputRoot });
   assert.equal(inflight.length, 1);
@@ -525,7 +529,10 @@ test('PQ-017 wrappers reject ungated acceptance before creating artifacts and fi
     new URL('scripts/probe-pq017-world-site-electron.mjs', repoRoot),
     'utf8',
   );
+  // G3: mode may be bound via electronMode; still derived from primaryAcceptance.
   assert.match(electronSource,
-    /mode: runMode\.primaryAcceptance \? 'acceptance' : 'diagnostic'/);
+    /(?:mode|electronMode)\s*[:=]\s*runMode\.primaryAcceptance \? 'acceptance' : 'diagnostic'/);
   assert.match(electronSource, /explicitDiagnostic: process\.argv\.includes\('--diagnostic'\)/);
+  // G3: acceptance claims are caller-issued (probe), not self-minted inside assert.
+  assert.match(electronSource, /issuePq017AcceptanceClaim|SF_BROKER_CLAIM/);
 });
