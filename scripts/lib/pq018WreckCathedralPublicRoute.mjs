@@ -10,6 +10,7 @@ import {
   TRAVEL_PUBLIC_HELPERS,
 } from './professionalTravelPublicRoute.mjs';
 import {
+  planPq017ReceiverServiceTarget,
   WORLD_SITE_PUBLIC_ROUTE_DRIVER,
 } from './pq017WorldSitePublicRoute.mjs';
 import { worldSiteAssetBinding } from '../../src/data/worldSiteAssetBindings.js';
@@ -756,6 +757,48 @@ async function deliverCathedralBlackBox(page, timeoutMs) {
   await cycleToComponent(page, 'marker_service_spine');
   await waitForFixedTicks(page, 1);
   const geometry = await towGeometry(page);
+// PQ-017 already owns a receiver-service planner that models slack take-up: it stages the ship out
+// past the receiver until the line goes taut, then pulls through. It has unit coverage but no live
+// caller, so every payload tow has been falling back to `fixed-service-target` -- fly at a fixed
+// point, which cannot tension a slack line and leaves the cargo behind. Feed it live geometry.
+async function buildCathedralServicePlan(page) {
+  const live = await page.evaluate(({ payloadId, receiverId, rootId }) => {
+    const state = window.SF?.state;
+    const entities = [...(state?.entities?.values?.() || [])];
+    const byRecord = (id) => entities.find((entity) => (
+      entity?.alive !== false && entity?.data?.worldRecordId === id
+    ));
+    const payload = byRecord(payloadId);
+    const receiver = byRecord(receiverId);
+    const root = byRecord(rootId);
+    const player = state?.playerId != null ? state.entities?.get?.(state.playerId) : null;
+    const tether = state?.player?.tether;
+    if (!payload?.pos || !receiver?.pos || !root?.pos || !player?.pos || !tether?.active) return null;
+    const obstacles = entities
+      .filter((entity) => entity?.alive !== false
+        && entity?.pos
+        && entity?.collides !== false
+        && entity?.data?.worldSiteId != null)
+      .map((entity) => ({ x: entity.pos.x, z: entity.pos.z, radius: Number(entity.radius) || 0 }));
+    return {
+      playerPosition: { x: player.pos.x, z: player.pos.z },
+      receiverPosition: { x: receiver.pos.x, z: receiver.pos.z },
+      rootPosition: { x: root.pos.x, z: root.pos.z },
+      tetherRestLength: Number(tether.restLength) || 0,
+      payloadRadius: Number(payload.radius) || 0,
+      receiverRadius: Number(receiver.radius) || 0,
+      playerRadius: Number(player.radius) || 0,
+      obstacles,
+    };
+  }, {
+    payloadId: PQ018_PAYLOAD_WORLD_ID,
+    receiverId: PQ018_RECEIVER_WORLD_ID,
+    rootId: PQ018_ROOT_WORLD_ID,
+  });
+  if (!live) return null;
+  return planPq017ReceiverServiceTarget(live);
+}
+
 async function towGeometry(page) {
   return page.evaluate(({ payloadId, receiverId }) => {
     const state = window.SF?.state;
@@ -805,11 +848,12 @@ async function towGeometry(page) {
   let towTarget = geometry.target;
   let lastObservation = null;
   for (let pass = 1; pass <= 5 && !(await settled()); pass += 1) {
+    const servicePlan = await buildCathedralServicePlan(page);
     await page.keyboard.down('KeyB');
     try {
       await towToPointUntilOperation(
         page,
-        towTarget,
+        servicePlan?.safe === true ? servicePlan.target : towTarget,
         'settle_cathedral_black_box',
         Math.max(30_000, Math.trunc(timeoutMs / 4)),
         {
@@ -819,10 +863,11 @@ async function towGeometry(page) {
           settledRadius: 12,
           maxSettledSpeed: 4,
           maxApproachSpeed: 8,
+          servicePlan: servicePlan?.safe === true ? servicePlan : null,
         },
       );
     } catch (error) {
-      lastObservation = error.message;
+      lastObservation = `pass ${pass} (plan ${servicePlan?.safe === true ? 'engaged' : servicePlan?.reason || 'absent'}): ${error.message}`;
     } finally {
       await page.keyboard.up('KeyB');
     }
