@@ -397,6 +397,7 @@ async function runBrowserLabScenarioInternalBody(canonical, options = {}) {
       ctx: {},
       equivalence: options.equivalence || {},
       skipMultiRunEquivalence: options.skipMultiRunEquivalence === true,
+      scenarioDigest,
     });
     // M4: same assertion-consumption guard as Node runLabScenario.
     // N3: parent-owned multi-run equivalences are not required on child arms.

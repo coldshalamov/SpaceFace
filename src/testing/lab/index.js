@@ -16,10 +16,11 @@ export { repeatScenario } from './repeat.js';
 export { replayScenario, replayFailure } from './replay.js';
 export { compareSaveLoad } from './saveLoadCompare.js';
 export {
-  // Q1: sealEquivalenceResult is module-private inside parent executors (WeakSet identity).
-  // Not exported from barrel, authority, or any importable seal file.
+  // Q1/R1: sealEquivalenceResult is module-private inside parent executors
+  // (WeakMap identity bound to claim+scenario+executor). Not exported as a mint API.
   isAuthoritativeEquivalenceResult,
   isPromotableLabResult,
+  getEquivalenceSealBinding,
   EQUIVALENCE_EXECUTOR_SOURCES,
 } from './equivalenceAuthority.js';
 export {

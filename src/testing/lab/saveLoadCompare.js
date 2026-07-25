@@ -1,39 +1,73 @@
 // Uninterrupted run vs mid-run save/load continuation — compare within declared checkpoint contract.
 // F1: equivalence requires every-tick trajectory identity (trace + mid checkpoints), not final hash alone.
 // O1/O2: child arms use runLabScenarioInternal; equivalence is sealed by this fixed parent executor.
-// Q1/Q2: sealing is module-private WeakSet identity — not an importable Symbol mint API.
+// R2: this parent OWNS only uninterrupted-eq-save-load (and aliases). Foreign claims → incomplete.
+// Q1/Q2/R1: sealing is module-private WeakMap identity bound to
+// {scenarioDigest, equivalenceId, executor} — not a bearer token or mint API.
 
 import { runLabScenarioInternal } from './runScenario.js';
 import { EQUIVALENCE_EXECUTOR_SOURCES } from './equivalenceSources.js';
+import {
+  SAVE_LOAD_OWNED_EQUIVALENCES,
+  collectDeclaredEquivalences,
+  foreignEquivalencesFor,
+} from './equivalenceOwnership.js';
 
-/** Module-private registry of objects sealed by this executor. Spread does not transfer membership. */
-const sealedBySaveLoad = new WeakSet();
+const CANONICAL_SAVE_LOAD_EQ = 'uninterrupted-eq-save-load';
+
+/** Module-private registry: sealed object → binding context. Spread does not transfer membership. */
+const sealedBySaveLoad = new WeakMap();
 
 /**
- * Seal a comparison payload under the save-load executor.
+ * Seal a comparison payload under the save-load executor with claim+scenario binding.
  * Not exported — only this module can mint authority.
  * @param {object} result
+ * @param {{ scenarioDigest?: string|null, equivalenceId: string }} binding
  * @returns {object} frozen sealed result
  */
-function sealEquivalenceResult(result) {
+function sealEquivalenceResult(result, binding) {
   if (!result || typeof result !== 'object' || Array.isArray(result)) {
     throw new TypeError('sealEquivalenceResult requires a plain comparison object');
+  }
+  if (!binding || typeof binding.equivalenceId !== 'string' || !binding.equivalenceId) {
+    throw new TypeError('sealEquivalenceResult requires binding.equivalenceId');
   }
   const sealed = Object.freeze({
     ...result,
     source: EQUIVALENCE_EXECUTOR_SOURCES.SAVE_LOAD,
   });
-  sealedBySaveLoad.add(sealed);
+  sealedBySaveLoad.set(sealed, Object.freeze({
+    scenarioDigest: binding.scenarioDigest ?? null,
+    equivalenceId: binding.equivalenceId,
+    executor: EQUIVALENCE_EXECUTOR_SOURCES.SAVE_LOAD,
+  }));
   return sealed;
 }
 
 /**
- * Membership check for oracle authority. Not a mint API.
+ * Membership / binding check for oracle authority. Not a mint API.
  * @param {unknown} pre
+ * @param {{ scenarioDigest?: string|null, equivalenceId?: string, executor?: string }|null} [expected]
  * @returns {boolean}
  */
-export function isEquivalenceSealedBySaveLoad(pre) {
-  return !!pre && typeof pre === 'object' && !Array.isArray(pre) && sealedBySaveLoad.has(pre);
+export function isEquivalenceSealedBySaveLoad(pre, expected = null) {
+  if (!pre || typeof pre !== 'object' || Array.isArray(pre)) return false;
+  if (!sealedBySaveLoad.has(pre)) return false;
+  if (!expected) return true;
+  const b = sealedBySaveLoad.get(pre);
+  if (expected.equivalenceId != null && b.equivalenceId !== expected.equivalenceId) return false;
+  if (expected.executor != null && b.executor !== expected.executor) return false;
+  if (expected.scenarioDigest != null && b.scenarioDigest !== expected.scenarioDigest) return false;
+  return true;
+}
+
+/**
+ * @param {unknown} pre
+ * @returns {{ scenarioDigest: string|null, equivalenceId: string, executor: string }|null}
+ */
+export function getSaveLoadSealBinding(pre) {
+  if (!pre || typeof pre !== 'object' || Array.isArray(pre)) return null;
+  return sealedBySaveLoad.get(pre) || null;
 }
 
 /**
@@ -48,6 +82,26 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
       Math.max(1, Math.floor((ticks || 60) / 2)) - 1,
       Math.max(0, (ticks || 60) - 2),
     ));
+
+  // R2: enumerate declared equivalences — foreign claims cannot be certified by save/load.
+  // No default: CLI compare certifies only the owned claim without inventing declarations.
+  const declared = collectDeclaredEquivalences(scenarioDoc);
+  const foreign = foreignEquivalencesFor('save-load', declared);
+  if (foreign.length > 0) {
+    return {
+      schema: 'spaceface.labSaveLoadCompareResult.v1',
+      ok: false,
+      exitClass: 4,
+      status: 'incomplete',
+      reason: 'unsupported equivalence for this executor',
+      detail: `compareSaveLoad does not own: ${foreign.join(', ')} — use the owning parent executor`,
+      saveLoadAt,
+      declaredEquivalences: declared,
+      foreignEquivalences: foreign,
+      certifying: false,
+      nonPromoting: true,
+    };
+  }
 
   // I1: range-check before any run — need at least one post-restore tick.
   // Valid: 0 <= saveLoadAt < ticks - 1 (ticks must be >= 2).
@@ -105,12 +159,18 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
     childArm: true,
   });
 
+  const scenarioDigest = uninterrupted.scenarioDigest
+    || withSaveLoad.scenarioDigest
+    || null;
+  const sealBind = { scenarioDigest, equivalenceId: CANONICAL_SAVE_LOAD_EQ };
+
   if (uninterrupted.exitClass === 3 || withSaveLoad.exitClass === 3) {
     return {
       schema: 'spaceface.labSaveLoadCompareResult.v1',
       ok: false,
       exitClass: 3,
       status: 'infra',
+      scenarioDigest,
       uninterrupted,
       withSaveLoad,
     };
@@ -123,6 +183,7 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
       status: withSaveLoad.status === 'unsupported' || uninterrupted.status === 'unsupported'
         ? 'unsupported'
         : 'invalid-config',
+      scenarioDigest,
       uninterrupted,
       withSaveLoad,
     };
@@ -139,19 +200,23 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
       ok: false,
       exitClass: 1,
       status: 'arm-oracle-fail',
+      certifying: true,
+      nonPromoting: false,
       saveLoadAt,
+      scenarioDigest,
+      declaredEquivalences: declared,
       failedArms,
       armFailures: {
         uninterrupted: armFailureSummary(uninterrupted),
         withSaveLoad: armFailureSummary(withSaveLoad),
       },
       equivalence: {
-        'uninterrupted-eq-save-load': sealEquivalenceResult({
+        [CANONICAL_SAVE_LOAD_EQ]: sealEquivalenceResult({
           ok: false,
           expected: true,
           actual: false,
           reason: `oracle failed on arm(s): ${failedArms.join(', ')}`,
-        }),
+        }, sealBind),
       },
       uninterrupted: options.verbosity >= 2 ? uninterrupted : summarize(uninterrupted),
       withSaveLoad: options.verbosity >= 2 ? withSaveLoad : summarize(withSaveLoad),
@@ -172,6 +237,7 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
       status: 'invalid-config',
       reason: 'control-arm-restored',
       saveLoadAt,
+      scenarioDigest,
       controlRestoreCount: controlRestores,
       detail: 'uninterrupted control arm must perform zero save/load restores',
       uninterrupted: options.verbosity >= 2 ? uninterrupted : summarize(uninterrupted),
@@ -186,6 +252,7 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
       status: 'save-load-not-performed',
       reason: 'save-load-not-performed',
       saveLoadAt,
+      scenarioDigest,
       saveLoadPerformed: armPerformed,
       saveLoadRestoreCount: armRestores,
       controlRestoreCount: controlRestores,
@@ -232,6 +299,33 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
   // G1: authorized weaker equivalence does NOT soft-pass save/load. Same-engine is exact only.
   void authorized;
 
+  // When aliases were declared, seal under each owned declared name with matching binding.
+  const ownedNames = declared.length
+    ? declared.filter((n) => SAVE_LOAD_OWNED_EQUIVALENCES.has(n))
+    : [CANONICAL_SAVE_LOAD_EQ];
+  const equivalence = {};
+  for (const name of ownedNames) {
+    equivalence[name] = sealEquivalenceResult({
+      ok: match,
+      expected: h0,
+      actual: h1,
+      contract,
+      intermediateOk,
+      firstDivergentTick: tickCompare.firstDivergentTick,
+    }, { scenarioDigest, equivalenceId: name });
+  }
+  // Always expose canonical key for CLI/consumers that look it up by fixed name.
+  if (!equivalence[CANONICAL_SAVE_LOAD_EQ]) {
+    equivalence[CANONICAL_SAVE_LOAD_EQ] = sealEquivalenceResult({
+      ok: match,
+      expected: h0,
+      actual: h1,
+      contract,
+      intermediateOk,
+      firstDivergentTick: tickCompare.firstDivergentTick,
+    }, sealBind);
+  }
+
   return {
     schema: 'spaceface.labSaveLoadCompareResult.v1',
     ok: match,
@@ -240,6 +334,8 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
     certifying: true,
     nonPromoting: false,
     saveLoadAt,
+    scenarioDigest,
+    declaredEquivalences: declared,
     contract,
     authorizedEquivalence: authorized,
     controlRestoreCount: controlRestores,
@@ -252,16 +348,7 @@ export async function compareSaveLoad(scenarioDoc, options = {}) {
     firstDivergentTick: tickCompare.firstDivergentTick,
     firstDivergentField: tickCompare.firstDivergentField,
     midCheckpointMismatch: midCompare.ok ? null : midCompare,
-    equivalence: {
-      'uninterrupted-eq-save-load': sealEquivalenceResult({
-        ok: match,
-        expected: h0,
-        actual: h1,
-        contract,
-        intermediateOk,
-        firstDivergentTick: tickCompare.firstDivergentTick,
-      }),
-    },
+    equivalence,
     uninterrupted: options.verbosity >= 2 ? uninterrupted : summarize(uninterrupted),
     withSaveLoad: options.verbosity >= 2 ? withSaveLoad : summarize(withSaveLoad),
   };

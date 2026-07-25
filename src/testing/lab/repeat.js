@@ -1,78 +1,85 @@
 // Repeat: prove run==run (identical deterministic-covered + trace hashes).
 // G4: evaluate ALL equivalences the scenario declares — never silently pass unsupported ones.
-// O2/P1/Q1: sealing is module-private (WeakSet identity) — not an importable mint API.
+// R2: this parent OWNS only run-eq-repeat (and aliases). Foreign claims → incomplete.
+// O2/P1/Q1/R1: sealing is module-private WeakMap identity bound to
+// {scenarioDigest, equivalenceId, executor} — not a bearer token or mint API.
 // Q3: every arm must pass its oracle before equivalence can be ok:true (parity of failures is not a pass).
 
 import { runLabScenarioInternal } from './runScenario.js';
-import { compareSaveLoad, isEquivalenceSealedBySaveLoad } from './saveLoadCompare.js';
 import { EQUIVALENCE_EXECUTOR_SOURCES } from './equivalenceSources.js';
+import {
+  REPEAT_OWNED_EQUIVALENCES,
+  collectDeclaredEquivalences,
+  foreignEquivalencesFor,
+} from './equivalenceOwnership.js';
 
-const RUN_EQ_NAMES = new Set(['run-eq-repeat', 'run-eq-run', 'repeat']);
-const SAVE_LOAD_EQ_NAMES = new Set([
-  'uninterrupted-eq-save-load',
-  'save-load',
-  'uninterrupted-eq-saveload',
-]);
-
-/** Module-private registry of objects sealed by this executor. Spread does not transfer membership. */
-const sealedByRepeat = new WeakSet();
+/** Module-private registry: sealed object → binding context. Spread does not transfer membership. */
+const sealedByRepeat = new WeakMap();
 
 /**
- * Seal a comparison payload under the repeat executor.
+ * Seal a comparison payload under the repeat executor with claim+scenario binding.
  * Not exported — only this module can mint authority.
  * @param {object} result
+ * @param {{ scenarioDigest?: string|null, equivalenceId: string }} binding
  * @returns {object} frozen sealed result
  */
-function sealEquivalenceResult(result) {
+function sealEquivalenceResult(result, binding) {
   if (!result || typeof result !== 'object' || Array.isArray(result)) {
     throw new TypeError('sealEquivalenceResult requires a plain comparison object');
+  }
+  if (!binding || typeof binding.equivalenceId !== 'string' || !binding.equivalenceId) {
+    throw new TypeError('sealEquivalenceResult requires binding.equivalenceId');
   }
   const sealed = Object.freeze({
     ...result,
     source: EQUIVALENCE_EXECUTOR_SOURCES.REPEAT,
   });
-  sealedByRepeat.add(sealed);
+  sealedByRepeat.set(sealed, Object.freeze({
+    scenarioDigest: binding.scenarioDigest ?? null,
+    equivalenceId: binding.equivalenceId,
+    executor: EQUIVALENCE_EXECUTOR_SOURCES.REPEAT,
+  }));
   return sealed;
 }
 
 /**
- * Membership check for oracle authority. Not a mint API.
+ * Membership / binding check for oracle authority. Not a mint API.
  * @param {unknown} pre
+ * @param {{ scenarioDigest?: string|null, equivalenceId?: string, executor?: string }|null} [expected]
  * @returns {boolean}
  */
-export function isEquivalenceSealedByRepeat(pre) {
-  return !!pre && typeof pre === 'object' && !Array.isArray(pre) && sealedByRepeat.has(pre);
+export function isEquivalenceSealedByRepeat(pre, expected = null) {
+  if (!pre || typeof pre !== 'object' || Array.isArray(pre)) return false;
+  if (!sealedByRepeat.has(pre)) return false;
+  if (!expected) return true;
+  const b = sealedByRepeat.get(pre);
+  if (expected.equivalenceId != null && b.equivalenceId !== expected.equivalenceId) return false;
+  if (expected.executor != null && b.executor !== expected.executor) return false;
+  if (expected.scenarioDigest != null && b.scenarioDigest !== expected.scenarioDigest) return false;
+  return true;
 }
 
 /**
- * Collect unique equivalence names declared by the scenario (order preserved).
- * When none are declared, default to run-eq-repeat for CLI `lab repeat` convenience.
- * @param {object} scenarioDoc
- * @returns {string[]}
+ * @param {unknown} pre
+ * @returns {{ scenarioDigest: string|null, equivalenceId: string, executor: string }|null}
  */
-export function collectDeclaredEquivalences(scenarioDoc) {
-  const out = [];
-  const seen = new Set();
-  const assertions = Array.isArray(scenarioDoc?.assertions) ? scenarioDoc.assertions : [];
-  for (const a of assertions) {
-    if (!a || (a.kind !== 'equivalence' && !a.equivalence)) continue;
-    const name = a.equivalence || a.expected || a.signal || 'run-eq-repeat';
-    if (seen.has(name)) continue;
-    seen.add(name);
-    out.push(name);
-  }
-  if (out.length === 0) out.push('run-eq-repeat');
-  return out;
+export function getRepeatSealBinding(pre) {
+  if (!pre || typeof pre !== 'object' || Array.isArray(pre)) return null;
+  return sealedByRepeat.get(pre) || null;
 }
+
+export { collectDeclaredEquivalences, REPEAT_OWNED_EQUIVALENCES };
 
 /**
  * Run the same scenario twice and compare authoritative checkpoints.
- * Also dispatches other declared equivalences (e.g. save/load) so they cannot silent-pass.
+ * Only certifies run-eq-repeat (and aliases). Foreign declared claims → incomplete.
  * @param {object} scenarioDoc
  * @param {object} [options]
  */
 export async function repeatScenario(scenarioDoc, options = {}) {
-  const declared = collectDeclaredEquivalences(scenarioDoc);
+  // CLI convenience: when no equivalence is declared, default to the owned claim.
+  const declared = collectDeclaredEquivalences(scenarioDoc, { defaultIfEmpty: 'run-eq-repeat' });
+  const foreign = foreignEquivalencesFor('repeat', declared);
   const equivalence = {};
   let allOk = true;
   let exitClass = 0;
@@ -84,70 +91,60 @@ export async function repeatScenario(scenarioDoc, options = {}) {
   let traceHash = null;
   let deterministicHash = null;
   let semanticHash = null;
+  let scenarioDigest = null;
 
-  for (const name of declared) {
-    if (RUN_EQ_NAMES.has(name)) {
-      const repeat = await evaluateRunEqRepeat(scenarioDoc, options);
-      equivalence[name] = repeat.equivalenceEntry;
-      primary = repeat.primary;
-      results = repeat.results;
-      mismatches = repeat.mismatches;
-      runs = repeat.runs;
-      traceHash = repeat.traceHash;
-      deterministicHash = repeat.deterministicHash;
-      semanticHash = repeat.semanticHash;
-      if (!repeat.ok) {
-        allOk = false;
-        exitClass = Math.max(exitClass, repeat.exitClass || 5);
-        status = repeat.status || 'nondeterminism';
-      }
-      continue;
-    }
-
-    if (SAVE_LOAD_EQ_NAMES.has(name)) {
-      const saveLoad = await compareSaveLoad(scenarioDoc, {
-        ...options,
-        runId: options.runId ? `${options.runId}_saveload` : undefined,
-      });
-      const eq = saveLoad.equivalence && saveLoad.equivalence['uninterrupted-eq-save-load']
-        ? saveLoad.equivalence['uninterrupted-eq-save-load']
-        : null;
-      // Prefer already-sealed entry from compareSaveLoad (WeakSet identity).
-      // Re-seal under repeat only when the save-load parent did not produce a sealed object.
-      if (eq && isEquivalenceSealedBySaveLoad(eq)) {
-        equivalence[name] = eq;
-      } else if (eq && isEquivalenceSealedByRepeat(eq)) {
-        equivalence[name] = eq;
-      } else {
-        equivalence[name] = sealEquivalenceResult({
-          ok: !!(eq && eq.ok),
-          expected: eq?.expected ?? true,
-          actual: eq?.actual ?? eq?.ok ?? false,
-          contract: eq?.contract || saveLoad.contract,
-          firstDivergentTick: eq?.firstDivergentTick ?? saveLoad.firstDivergentTick ?? null,
-          reason: eq?.reason || (eq?.ok ? undefined : saveLoad.status),
-        });
-      }
-      if (!primary) primary = saveLoad.uninterrupted || null;
-      if (!saveLoad.ok) {
-        allOk = false;
-        exitClass = Math.max(exitClass, saveLoad.exitClass || 5);
-        status = status === 'pass' ? (saveLoad.status || 'parity-fail') : status;
-      }
-      continue;
-    }
-
-    // G4: unsupported declared equivalence is incomplete/fail — never silent pass.
+  // R2: foreign claims cannot be certified by this executor — incomplete, do not run them as owned.
+  for (const name of foreign) {
     equivalence[name] = sealEquivalenceResult({
       ok: false,
       incomplete: true,
       expected: true,
       actual: 'unsupported',
-      reason: `repeatScenario cannot evaluate equivalence "${name}" — unsupported or missing handler`,
+      reason: `unsupported equivalence for this executor — repeatScenario does not own "${name}"`,
+    }, {
+      scenarioDigest: null,
+      equivalenceId: name,
     });
     allOk = false;
     exitClass = Math.max(exitClass, 4);
-    status = status === 'pass' ? 'incomplete' : status;
+    status = 'incomplete';
+  }
+
+  // If ANY foreign claim was declared, do not certify owned claims either — whole parent is incomplete.
+  // Still evaluate owned claims for diagnostics when mixed, but refuse green certifying pass.
+  const owned = declared.filter((n) => REPEAT_OWNED_EQUIVALENCES.has(n));
+
+  for (const name of owned) {
+    const repeat = await evaluateRunEqRepeat(scenarioDoc, options, { equivalenceId: name });
+    equivalence[name] = repeat.equivalenceEntry;
+    primary = repeat.primary;
+    results = repeat.results;
+    mismatches = repeat.mismatches;
+    runs = repeat.runs;
+    traceHash = repeat.traceHash;
+    deterministicHash = repeat.deterministicHash;
+    semanticHash = repeat.semanticHash;
+    scenarioDigest = repeat.scenarioDigest ?? scenarioDigest;
+    if (!repeat.ok) {
+      allOk = false;
+      exitClass = Math.max(exitClass, repeat.exitClass || 5);
+      if (status === 'pass') status = repeat.status || 'nondeterminism';
+    }
+  }
+
+  // Declared nothing owned and no default path hit (shouldn't happen with defaultIfEmpty) —
+  // still refuse green if foreign-only.
+  if (owned.length === 0 && foreign.length > 0) {
+    allOk = false;
+    exitClass = Math.max(exitClass, 4);
+    status = 'incomplete';
+  }
+
+  // Mixed foreign + owned: never certify.
+  if (foreign.length > 0) {
+    allOk = false;
+    exitClass = Math.max(exitClass, 4);
+    status = 'incomplete';
   }
 
   return {
@@ -155,10 +152,12 @@ export async function repeatScenario(scenarioDoc, options = {}) {
     ok: allOk,
     exitClass: allOk ? 0 : (exitClass || 5),
     status: allOk ? 'pass' : status,
-    certifying: true,
+    certifying: foreign.length === 0,
     nonPromoting: false,
     runs,
     declaredEquivalences: declared,
+    foreignEquivalences: foreign.length ? foreign : undefined,
+    scenarioDigest,
     traceHash,
     deterministicHash,
     semanticHash,
@@ -169,7 +168,8 @@ export async function repeatScenario(scenarioDoc, options = {}) {
   };
 }
 
-async function evaluateRunEqRepeat(scenarioDoc, options = {}) {
+async function evaluateRunEqRepeat(scenarioDoc, options = {}, binding = {}) {
+  const equivalenceId = binding.equivalenceId || 'run-eq-repeat';
   const runs = Number.isInteger(options.runs) && options.runs > 1 ? options.runs : 2;
   const results = [];
   for (let i = 0; i < runs; i++) {
@@ -180,7 +180,7 @@ async function evaluateRunEqRepeat(scenarioDoc, options = {}) {
       verbosity: options.verbosity,
       observerEnabled: options.observerEnabled,
       runId: options.runId ? `${options.runId}_r${i}` : undefined,
-      // Parent-owned multi-run — arms defer equivalence consumption.
+      // Parent-owned multi-run — arms defer equivalence consumption for owned claims only.
       skipMultiRunEquivalence: true,
       childArm: true,
     });
@@ -188,6 +188,9 @@ async function evaluateRunEqRepeat(scenarioDoc, options = {}) {
   }
 
   const first = results[0];
+  const scenarioDigest = first?.scenarioDigest ?? null;
+  const sealBind = { scenarioDigest, equivalenceId };
+
   if (!first || first.exitClass === 4 || first.exitClass === 3) {
     return {
       ok: false,
@@ -197,11 +200,13 @@ async function evaluateRunEqRepeat(scenarioDoc, options = {}) {
       primary: first,
       results,
       mismatches: [],
+      scenarioDigest,
       traceHash: first?.traceHash ?? null,
       deterministicHash: null,
       semanticHash: null,
       equivalenceEntry: sealEquivalenceResult(
         { ok: false, expected: true, actual: false, reason: 'primary-run-failed' },
+        sealBind,
       ),
     };
   }
@@ -262,6 +267,7 @@ async function evaluateRunEqRepeat(scenarioDoc, options = {}) {
     results,
     mismatches,
     failedArms: allArmsOk ? undefined : failedArms,
+    scenarioDigest,
     traceHash: first.traceHash,
     deterministicHash: first.checkpoints && first.checkpoints.final
       && first.checkpoints.final.deterministicCovered
@@ -280,6 +286,6 @@ async function evaluateRunEqRepeat(scenarioDoc, options = {}) {
       reason: !allArmsOk
         ? `oracle failed on arm(s): ${failedArms.join(', ')} — parity of failures is not a pass`
         : (!allMatch ? 'nondeterminism' : undefined),
-    }),
+    }, sealBind),
   };
 }

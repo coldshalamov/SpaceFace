@@ -11,6 +11,11 @@ import { compareCheckpoints } from './checkpointCompare.js';
 import { runChromiumLabScenarioInternal, repeatChromiumLabScenario } from './chromiumHost.js';
 import { hashDeterministicSurface } from './checkpoint.js';
 import { assertChromiumParitySupported } from './browserScenarioHost.js';
+import {
+  collectDeclaredEquivalences,
+  foreignEquivalencesFor,
+  DIFFERENTIAL_OWNED_EQUIVALENCES,
+} from './equivalenceOwnership.js';
 
 /**
  * Compile scenario once, run Node + Chromium, compare deterministic-covered series.
@@ -64,6 +69,43 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
     };
   }
 
+  // O4: arms are FIXED internal executors — caller-supplied runNodeArm/runChromiumArm
+  // are deliberately ignored (and rejected if provided) so fabricated arms cannot certify.
+  // Checked before ownership so config injection fails closed with invalid-config.
+  if (options.runNodeArm != null || options.runChromiumArm != null) {
+    return {
+      schema: 'spaceface.labDifferentialReplay.v1',
+      ok: false,
+      exitClass: 4,
+      status: 'invalid-config',
+      certifying: false,
+      runId,
+      error: 'runDifferentialReplay does not accept caller-supplied arm callbacks — '
+        + 'Node arm is always runLabScenarioInternal; Chromium arm is always runChromiumLabScenarioInternal',
+    };
+  }
+
+  // R2: this parent owns only node-eq-chromium / browser-parity (and aliases).
+  // Foreign declared claims (e.g. run-eq-repeat) → incomplete, never certify them.
+  const declaredEq = collectDeclaredEquivalences(scenarioDoc || canonical);
+  const foreignEq = foreignEquivalencesFor('differential', declaredEq);
+  if (foreignEq.length > 0) {
+    return {
+      schema: 'spaceface.labDifferentialReplay.v1',
+      ok: false,
+      exitClass: 4,
+      status: 'incomplete',
+      reason: 'unsupported equivalence for this executor',
+      detail: `runDifferentialReplay does not own: ${foreignEq.join(', ')} — use the owning parent executor`,
+      runId,
+      scenarioId: canonical.id,
+      declaredEquivalences: declaredEq,
+      foreignEquivalences: foreignEq,
+      ownedEquivalences: [...DIFFERENTIAL_OWNED_EQUIVALENCES],
+      certifying: false,
+    };
+  }
+
   if (!scenarioDigest) {
     scenarioDigest = sha256(canonicalStringify(canonical));
   }
@@ -80,20 +122,6 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
     ...canonical,
     checkpoints: checkpointTicks.map((tick) => ({ tick, kind: 'deterministic-covered' })),
   };
-  // O4: arms are FIXED internal executors — caller-supplied runNodeArm/runChromiumArm
-  // are deliberately ignored (and rejected if provided) so fabricated arms cannot certify.
-  if (options.runNodeArm != null || options.runChromiumArm != null) {
-    return {
-      schema: 'spaceface.labDifferentialReplay.v1',
-      ok: false,
-      exitClass: 4,
-      status: 'invalid-config',
-      certifying: false,
-      runId,
-      error: 'runDifferentialReplay does not accept caller-supplied arm callbacks — '
-        + 'Node arm is always runLabScenarioInternal; Chromium arm is always runChromiumLabScenarioInternal',
-    };
-  }
 
   // O1/O4: Node arm is always the fixed internal (nonPromoting) lab runner.
   const nodeResult = await runLabScenarioInternal(scenarioDoc || canonical, {

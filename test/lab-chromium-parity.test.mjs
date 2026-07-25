@@ -18,6 +18,9 @@ const flightDoc = JSON.parse(readFileSync(
 
 // Keep ticks modest for CI wall time; same artifact contract as full scenario.
 // N1: frames must fall in [0, ticks-1] — drop tape rows the shortened run never executes.
+// R2: differential does not own run-eq-repeat — replace foreign equivalences with a
+// metric assertion (and optional owned node-eq-chromium). Empty assertions fail schema
+// (no-causal-oracle); foreign claims return incomplete without launching.
 const SHORT_TICKS = 45;
 const shortDoc = {
   ...flightDoc,
@@ -25,6 +28,9 @@ const shortDoc = {
   ticks: SHORT_TICKS,
   frames: (flightDoc.frames || []).filter((f) => Number.isInteger(f.tick) && f.tick < SHORT_TICKS),
   inputEvents: (flightDoc.inputEvents || []).filter((e) => Number.isInteger(e.tick) && e.tick < SHORT_TICKS),
+  assertions: [
+    { kind: 'metric', metric: 'invariant.finiteState', op: '==', value: 1 },
+  ],
 };
 
 test('same compiled scenario artifact is consumed by Node and Chromium paths', async () => {

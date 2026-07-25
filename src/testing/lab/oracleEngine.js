@@ -3,7 +3,11 @@
 // Equivalence proof is accepted ONLY from fixed parent executors (private seal) — never shape auth.
 
 import { evaluateMetrics, compareThreshold } from './metricRegistry.js';
-import { isAuthoritativeEquivalenceResult } from './equivalenceAuthority.js';
+import {
+  isAuthoritativeEquivalenceResult,
+  getEquivalenceSealBinding,
+  expectedSealContextForClaim,
+} from './equivalenceAuthority.js';
 // Side-effect: register massline + flight metrics.
 import '../metrics/masslineMetrics.js';
 
@@ -38,6 +42,8 @@ export function evaluateOracles({
   // When true (compare/repeat arms), multi-run equivalence is evaluated by the parent
   // command — emit skipped markers so consumption works without false-green deferred pass.
   skipMultiRunEquivalence = false,
+  // R1: scenario digest for seal claim-binding checks (must match seal WeakMap entry).
+  scenarioDigest = null,
 } = {}) {
   const metricResults = evaluateMetrics(metrics, trace, ctx);
   const invariantResults = evaluateInvariants(trace, ctx);
@@ -51,7 +57,7 @@ export function evaluateOracles({
   const equivalenceResults = evaluateEquivalence(
     assertions.filter((a) => a.kind === 'equivalence' || a.equivalence),
     equivalence,
-    { skipMultiRunEquivalence },
+    { skipMultiRunEquivalence, scenarioDigest },
   );
 
   const all = [
@@ -606,11 +612,13 @@ function evaluateQuantitativeAssertions(assertions, metricResults, trace, ctx) {
 }
 
 /**
- * O2: accept equivalence results ONLY when sealed by a fixed parent executor.
+ * O2/R1: accept equivalence results ONLY when sealed by a fixed parent executor
+ * AND bound to this claim + scenario (+ executor type). Bearer seals are rejected.
  * Shape-based authentication ({ ok, expected, actual }) is deliberately rejected.
  */
 function evaluateEquivalence(assertions, equivalence, options = {}) {
   const results = [];
+  const scenarioDigest = options.scenarioDigest ?? null;
   for (const a of assertions) {
     const name = a.equivalence || a.expected || a.signal || 'run-eq-repeat';
     const pre = equivalence[name];
@@ -631,6 +639,7 @@ function evaluateEquivalence(assertions, equivalence, options = {}) {
       continue;
     }
     if (pre != null && typeof pre === 'object') {
+      // Membership first (unforgeable identity).
       if (!isAuthoritativeEquivalenceResult(pre)) {
         results.push({
           family: 'equivalence',
@@ -651,6 +660,48 @@ function evaluateEquivalence(assertions, equivalence, options = {}) {
         });
         continue;
       }
+      // R1: seal must be bound to this claim (and scenario when digests are present).
+      const expected = expectedSealContextForClaim(name, { scenarioDigest });
+      // Always require equivalenceId match; require scenarioDigest when either side has one;
+      // require executor match when the claim has a known owner.
+      const binding = getEquivalenceSealBinding(pre);
+      const claimMismatch = !binding || binding.equivalenceId !== name;
+      // Digest check is required only when the evaluator supplies a scenarioDigest
+      // (standalone oracle probes may omit it; claim id binding still applies).
+      const digestMismatch = scenarioDigest != null
+        && binding
+        && binding.scenarioDigest !== scenarioDigest;
+      const executorExpected = expected.executor;
+      const executorMismatch = executorExpected != null
+        && binding
+        && binding.executor !== executorExpected;
+      if (claimMismatch || digestMismatch || executorMismatch) {
+        results.push({
+          family: 'equivalence',
+          id: name,
+          ok: false,
+          incomplete: true,
+          injected: true,
+          boundMismatch: true,
+          expected: true,
+          actual: {
+            ok: pre.ok,
+            sealEquivalenceId: binding?.equivalenceId ?? null,
+            sealScenarioDigest: binding?.scenarioDigest ?? null,
+            sealExecutor: binding?.executor ?? null,
+            evaluatedEquivalenceId: name,
+            evaluatedScenarioDigest: scenarioDigest,
+          },
+          signedDelta: 1,
+          firstBadTick: null,
+          reason: claimMismatch
+            ? `seal bound to equivalence "${binding?.equivalenceId ?? '?'}" cannot authorize "${name}"`
+            : (digestMismatch
+              ? 'seal bound to a different scenarioDigest'
+              : 'seal executor does not match expected owner for this claim'),
+        });
+        continue;
+      }
       results.push({
         family: 'equivalence',
         id: name,
@@ -660,6 +711,7 @@ function evaluateEquivalence(assertions, equivalence, options = {}) {
         signedDelta: pre.ok ? 0 : 1,
         firstBadTick: pre.firstBadTick ?? null,
         executorSource: pre.source,
+        sealBinding: binding,
         detail: pre,
       });
       continue;

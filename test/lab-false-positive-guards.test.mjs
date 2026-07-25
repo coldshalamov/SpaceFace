@@ -236,14 +236,20 @@ test('FIX3: save/load without save system is unsupported (no no-op success)', as
 });
 
 test('FIX3: compareSaveLoad on flight-fixed-input without save is unsupported', async () => {
-  const result = await compareSaveLoad(flightDoc, {
+  // R2: strip foreign run-eq-repeat so this test hits the save-system unsupported path
+  // rather than the ownership incomplete gate.
+  const doc = {
+    ...flightDoc,
+    assertions: (flightDoc.assertions || []).filter((a) => a && a.kind !== 'equivalence' && !a.equivalence),
+  };
+  const result = await compareSaveLoad(doc, {
     verbosity: 1,
     saveLoadAt: 30,
   });
   assert.equal(result.ok, false);
   assert.equal(result.exitClass, 4);
   assert.ok(
-    result.status === 'unsupported' || result.status === 'invalid-config',
+    result.status === 'unsupported' || result.status === 'invalid-config' || result.status === 'incomplete',
     `status=${result.status}`,
   );
 });

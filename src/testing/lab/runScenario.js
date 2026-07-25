@@ -603,6 +603,7 @@ async function runLabScenarioInternalBody(scenarioDoc, options = {}) {
       ctx,
       equivalence: options.equivalence || {},
       skipMultiRunEquivalence: options.skipMultiRunEquivalence === true,
+      scenarioDigest,
     });
 
     const finalCheckpoints = buildCheckpoints(state, { scenarioDigest, inputDigest, dt, label: 'final' });

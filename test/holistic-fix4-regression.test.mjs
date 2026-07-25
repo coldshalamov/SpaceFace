@@ -138,6 +138,7 @@ test('G3: PQ-017 acceptance with on-disk receipt but no external claim still fai
 // ── G4: repeat evaluates all declared equivalences ───────────────────────────
 
 test('G4: repeat with save-load equivalence does not silently pass without save/load', async () => {
+  // R2: repeat does not own save-load — foreign claim must be incomplete, never silent-pass.
   const ticks = 30;
   const doc = {
     ...flightDoc,
@@ -150,20 +151,19 @@ test('G4: repeat with save-load equivalence does not silently pass without save/
     ],
   };
   const result = await repeatScenario(doc, { verbosity: 1, saveLoadAt: 10 });
+  assert.equal(result.ok, false, 'repeat must not certify foreign save-load claim');
+  assert.equal(result.status, 'incomplete');
   assert.ok(result.equivalence, 'must report equivalence map');
   assert.ok(
     result.equivalence['uninterrupted-eq-save-load'],
-    'declared save-load equivalence must be evaluated',
+    'declared save-load equivalence must be reported (incomplete)',
   );
   const eq = result.equivalence['uninterrupted-eq-save-load'];
+  assert.equal(eq.ok, false);
+  assert.ok(eq.incomplete || /unsupported/i.test(String(eq.reason || '')));
   // Must not be a silent skipped/pass-without-work marker.
   assert.notEqual(eq.actual, 'evaluated-by-parent');
   assert.notEqual(eq.actual, 'deferred');
-  // Either honestly performed (ok true/false with contract) or incomplete — never vacuous.
-  assert.ok(
-    eq.contract != null || eq.reason != null || typeof eq.ok === 'boolean',
-    JSON.stringify(eq),
-  );
 });
 
 test('G4: unsupported declared equivalence fails (not silent pass)', async () => {
