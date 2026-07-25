@@ -13,6 +13,8 @@ import { buildEntitySpawnSpec } from './entityProfiles.js';
 import { createInputTapeDriver, hashInputTape } from './inputTape.js';
 import { buildDeterministicSurface } from './deterministicSurface.js';
 import { evaluateOracles } from './oracleEngine.js';
+import { assertAssertionsConsumed } from './assertionConsumption.js';
+import { validateCanonicalScenario } from '../../contracts/simScenarioSchema.js';
 // Side-effect: register flight + massline metrics used by evaluateOracles.
 import '../metrics/masslineMetrics.js';
 
@@ -176,6 +178,17 @@ export async function runBrowserLabScenario(canonical, options = {}) {
     return { ok: false, status: 'invalid-config', error: 'canonical required' };
   }
 
+  // M4: same schema validation surface as Node — no certification without validateCanonicalScenario.
+  const canonicalValidation = validateCanonicalScenario(canonical, { file: options.file });
+  if (!canonicalValidation.ok) {
+    return {
+      ok: false,
+      status: 'invalid-config',
+      error: 'canonical scenario failed schema validation',
+      validation: canonicalValidation,
+    };
+  }
+
   const support = assertChromiumParitySupported(canonical);
   if (!support.ok) {
     return {
@@ -302,10 +315,37 @@ export async function runBrowserLabScenario(canonical, options = {}) {
       equivalence: options.equivalence || {},
       skipMultiRunEquivalence: options.skipMultiRunEquivalence === true,
     });
+    // M4: same assertion-consumption guard as Node runLabScenario.
+    const assertionConsumption = assertAssertionsConsumed(
+      canonical.assertions,
+      oracleEval.results,
+      { metrics: canonical.metrics },
+    );
+    const deferredEq = (oracleEval.results || []).filter(
+      (r) => r.family === 'equivalence' && r.deferred,
+    );
+    const hasDeferred = deferredEq.length > 0;
+    const oracleOk = oracleEval.ok && assertionConsumption.ok && !hasDeferred;
+    const oracleFailed = [
+      ...(oracleEval.failed || []),
+      ...(!assertionConsumption.ok ? [{
+        family: 'assertion-consumption',
+        id: 'assertions-consumed-exactly-once',
+        ok: false,
+        expected: assertionConsumption.expected,
+        actual: assertionConsumption.actual,
+        reason: assertionConsumption.reason,
+        firstBadTick: 0,
+      }] : []),
+    ];
     const oracle = {
-      ok: oracleEval.ok,
+      ok: oracleOk,
       firstBadTick: oracleEval.firstBadTick,
-      failed: oracleEval.failed,
+      failed: oracleFailed,
+      results: [
+        ...(oracleEval.results || []),
+        ...(!assertionConsumption.ok ? oracleFailed.slice(-1) : []),
+      ],
     };
 
     const finalSurface = buildDeterministicSurface(state, meta);

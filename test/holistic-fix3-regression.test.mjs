@@ -98,7 +98,9 @@ test('F1: massline mid-run save/load — every trace tick must match (or fail)',
     id: 'massline.save-load.tick-by-tick',
     ticks: 70,
     checkpoints: [{ tick: 20, kind: 'save-load', label: 'mid-run' }],
-    assertions: [],
+    assertions: [
+      { kind: 'equivalence', equivalence: 'uninterrupted-eq-save-load' },
+    ],
     metrics: [
       { name: 'invariant.finiteState', version: 1, threshold: { op: '==', value: 1 } },
     ],

@@ -356,12 +356,13 @@ function digestsBindToCurrent(evidenceDigests, current = {}) {
 }
 
 /**
- * K4/L2: evidence must bind a consumed claim or receipt identity — digests + timestamp alone
- * are not enough to clear a failure (prevents copy-pasted digest bags).
+ * K4/L2/M1: evidence must bind a consumed claim against the disk ledger — digests,
+ * timestamps, and embedded receipts alone are not enough to clear a failure.
  *
- * L2: a nonempty claimId string is NOT enough. When claimId is present, the
- * canonical consumed-claim ledger entry must be supplied and must match
- * claimId, candidate digest, runtime kind, and consumption-time window.
+ * M1: a nonempty claimId is mandatory. When claimId is present, the canonical
+ * consumed-claim ledger entry must be supplied and must match claimId, candidate
+ * digest, runtime kind, and consumption-time window. Receipt-only evidence
+ * (receiptId / receipt.candidateDigest without claimId+ledger) NEVER resolves.
  *
  * @param {object} acceptedEvidence
  * @param {{
@@ -382,64 +383,57 @@ function claimOrReceiptBinds(acceptedEvidence, expected = {}) {
     ?? acceptedEvidence.receipt?.receiptId
     ?? acceptedEvidence.receipt?.id
     ?? null;
-  const receiptCandidate = acceptedEvidence.receipt?.candidateDigest
-    ?? acceptedEvidence.receipt?.digests?.candidateDigest
-    ?? null;
 
-  // At least one claim/receipt identity field must be present and non-empty.
+  // M1: claimId is mandatory — receipt-only identity never resolves a failure.
   const hasClaim = typeof claimId === 'string' && claimId.length > 0;
-  const hasReceiptId = typeof receiptId === 'string' && receiptId.length > 0;
-  const hasReceiptCandidate = typeof receiptCandidate === 'string' && receiptCandidate.length > 0;
-  if (!hasClaim && !hasReceiptId && !hasReceiptCandidate) return false;
+  if (!hasClaim) return false;
 
   // When the caller supplies an expected identity, it must match.
-  if (expected.claimId && (!hasClaim || claimId !== expected.claimId)) return false;
-  if (expected.receiptId && (!hasReceiptId || receiptId !== expected.receiptId)) return false;
+  if (expected.claimId && claimId !== expected.claimId) return false;
+  if (expected.receiptId) {
+    const hasReceiptId = typeof receiptId === 'string' && receiptId.length > 0;
+    if (!hasReceiptId || receiptId !== expected.receiptId) return false;
+  }
 
-  // L2: claimId must resolve against the consumed-claim ledger loaded by the caller
+  // L2/M1: claimId must resolve against the consumed-claim ledger loaded by the caller
   // (from broker-claims/.consumed/). NEVER trust a self-asserted bag on the evidence
   // object — evidence may carry claimId for L7 inspection, but binding requires the
   // canonical ledger entry supplied via expected.consumedClaim.
-  if (hasClaim) {
-    const ledger = expected.consumedClaim ?? null;
-    if (!ledger || typeof ledger !== 'object') return false;
-    if (ledger.claimId !== claimId) return false;
+  const ledger = expected.consumedClaim ?? null;
+  if (!ledger || typeof ledger !== 'object') return false;
+  if (ledger.claimId !== claimId) return false;
 
-    const ledgerCandidate = ledger.candidateDigest
-      ?? ledger.digests?.candidateDigest
-      ?? null;
-    const currentCandidate = expected.candidateDigest
-      ?? acceptedEvidence.digests?.candidateDigest
-      ?? acceptedEvidence.candidateDigest
-      ?? null;
-    if (currentCandidate && ledgerCandidate !== currentCandidate) return false;
-    // When current candidate is known, ledger must present a matching digest (missing ≠ pass).
-    if (currentCandidate && !ledgerCandidate) return false;
+  const ledgerCandidate = ledger.candidateDigest
+    ?? ledger.digests?.candidateDigest
+    ?? null;
+  const currentCandidate = expected.candidateDigest
+    ?? acceptedEvidence.digests?.candidateDigest
+    ?? acceptedEvidence.candidateDigest
+    ?? null;
+  if (currentCandidate && ledgerCandidate !== currentCandidate) return false;
+  // When current candidate is known, ledger must present a matching digest (missing ≠ pass).
+  if (currentCandidate && !ledgerCandidate) return false;
 
-    const ledgerRuntime = ledger.runtimeKind ?? null;
-    const expectedRuntime = expected.runtimeKind
-      ?? acceptedEvidence.runtimeKind
-      ?? null;
-    if (expectedRuntime && ledgerRuntime !== expectedRuntime) return false;
-    if (expectedRuntime && (ledgerRuntime == null || ledgerRuntime === '')) return false;
+  const ledgerRuntime = ledger.runtimeKind ?? null;
+  const expectedRuntime = expected.runtimeKind
+    ?? acceptedEvidence.runtimeKind
+    ?? null;
+  if (expectedRuntime && ledgerRuntime !== expectedRuntime) return false;
+  if (expectedRuntime && (ledgerRuntime == null || ledgerRuntime === '')) return false;
 
-    const consumedAt = timestamp(ledger.consumedAt);
-    const wall = Number.isFinite(expected.now) ? expected.now : Date.now();
-    if (!Number.isFinite(consumedAt) || Math.abs(consumedAt - wall) > EVIDENCE_CLOCK_SKEW_MS) {
-      return false;
-    }
-    return true;
+  const consumedAt = timestamp(ledger.consumedAt);
+  const wall = Number.isFinite(expected.now) ? expected.now : Date.now();
+  if (!Number.isFinite(consumedAt) || Math.abs(consumedAt - wall) > EVIDENCE_CLOCK_SKEW_MS) {
+    return false;
   }
-
-  // Receipt-only path (no claimId): still requires a non-empty receipt identity field.
-  return hasReceiptId || hasReceiptCandidate;
+  return true;
 }
 
 /**
- * I6/J2/K4/L2: accepted evidence resolves a failure only when it is bound to the *current*
+ * I6/J2/K4/L2/M1: accepted evidence resolves a failure only when it is bound to the *current*
  * candidate digests (and matching runtime), is not future/past beyond clock skew, and
- * carries a claim/receipt identity verified against the consumed-claim ledger when a
- * claimId is present. Stale / invented / future-dated evidence must not clear failures.
+ * carries a claimId verified against the consumed-claim disk ledger. Receipt-only
+ * identity is never authority. Stale / invented / future-dated evidence must not clear failures.
  *
  * @param {object} args
  * @param {number} [args.now] wall-clock ms for skew check (injectable in tests)
@@ -2294,6 +2288,7 @@ async function authorizeAndMaybeRun({
     let receipt = await readFastGateReceipt({ outputRoot });
 
     // Auto-mint a receipt only after ALL declared fast gates pass and failure gate is clean.
+    // M1: thread disk-ledger consumedClaim — receipt-only evidence must not resolve.
     const fastEval = evaluateFastGate({
       latestFailure: cached.state.latestFailure,
       acceptedRuntimeKind: cached.state.acceptedRuntimeKind,
@@ -2305,6 +2300,11 @@ async function authorizeAndMaybeRun({
       regressionDigest: digests.regressionDigest,
       profileDigest: digests.profileDigest,
       manifestDigest: digests.manifestDigest,
+      consumedClaim: cached.state.consumedClaim ?? null,
+      claimId: cached.state.consumedClaim?.claimId
+        ?? cached.state.acceptedEvidence?.claimId
+        ?? cached.state.acceptedEvidence?.consumedClaimId
+        ?? null,
     });
     if (!fastEval.pass && mode === 'acceptance') {
       return {

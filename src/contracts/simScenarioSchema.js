@@ -440,6 +440,15 @@ export function validateSimScenario(doc, options = {}) {
         if (typeof m.name !== 'string' || !METRIC_NAME_PATTERN.test(m.name)) {
           issue(`${p}.name`, 'id', 'metric name must be a stable registered name');
         }
+        // M3: every declared metric MUST have a recognized threshold form.
+        // Measurement without a pass/fail contract must not certify.
+        if (m.threshold == null) {
+          issue(`${p}.threshold`, 'required',
+            'metric requires a threshold — measurement alone does not certify');
+        } else if (!isValidMetricThreshold(m.threshold)) {
+          issue(`${p}.threshold`, 'threshold-form',
+            'metric threshold is malformed or unknown — refuse vacuous pass');
+        }
       });
     }
   }
@@ -488,16 +497,17 @@ export function validateSimScenario(doc, options = {}) {
     }
   }
 
-  // L5: at least one causal oracle (assertion or metric) must be declared.
+  // M3/L5: at least one ASSERTION is required to certify.
+  // Metrics measure; assertions bind measurements (or temporal/equivalence contracts) to pass/fail.
   // Automatic finite/resource invariants alone must not certify a feature scenario.
   const assertionCount = Array.isArray(doc.assertions) ? doc.assertions.length : 0;
-  const metricCount = Array.isArray(doc.metrics) ? doc.metrics.length : 0;
-  if (assertionCount === 0 && metricCount === 0) {
+  if (assertionCount === 0) {
     issue('$.assertions', 'no-causal-oracle',
-      'no causal oracle declared — require at least one assertion or metric beyond automatic invariants');
+      'no assertion declared — metrics measure but do not certify; require at least one assertion');
   }
 
-  // L5: public-input requires a nonempty consumed tape (events or frames).
+  // L5/M2: public-input requires a nonempty consumed tape (events or frames).
+  // For raw docs, inputEvents/frames compile into the runner-consumed tape.
   if (doc.evidenceClass === 'public-input') {
     const eventCount = Array.isArray(doc.inputEvents) ? doc.inputEvents.length : 0;
     const frameCount = Array.isArray(doc.frames) ? doc.frames.length : 0;
@@ -721,23 +731,23 @@ function deepEqualJson(a, b) {
 /**
  * Project a compiled canonical into the raw-shaped fields validateSimScenario understands.
  * J3: canonical validation REUSES the raw field validators — no partial second schema.
- * K1: when inputTape is a plain object, ALWAYS project its events/frames — the runner
- * consumes that object. A valid raw inputEvents/frames must not mask an invalid tape.
+ * K1/M2: when inputTape is a plain object, ALWAYS project its events/frames — the runner
+ * consumes that object. A valid raw inputEvents/frames must not mask an empty/invalid tape.
  */
 function projectCanonicalToRawShape(doc) {
   const projected = { ...doc, schema: SIM_SCENARIO_SCHEMA };
   if (doc.inputTape && typeof doc.inputTape === 'object' && !Array.isArray(doc.inputTape)) {
-    // Consumed tape wins: validate exactly what the runner drives.
-    if (Array.isArray(doc.inputTape.events)) {
-      projected.inputEvents = doc.inputTape.events;
-    } else if (doc.inputTape.events != null) {
-      // Non-array events still need a value the raw validator will reject as type.
-      projected.inputEvents = doc.inputTape.events;
+    // M2: consumed tape always wins, including empty arrays. Missing tape fields project
+    // as empty so raw inputEvents/frames cannot mask an empty consumed tape.
+    if (doc.inputTape.events != null && !Array.isArray(doc.inputTape.events)) {
+      projected.inputEvents = doc.inputTape.events; // raw validator rejects non-array type
+    } else {
+      projected.inputEvents = Array.isArray(doc.inputTape.events) ? doc.inputTape.events : [];
     }
-    if (Array.isArray(doc.inputTape.frames)) {
+    if (doc.inputTape.frames != null && !Array.isArray(doc.inputTape.frames)) {
       projected.frames = doc.inputTape.frames;
-    } else if (doc.inputTape.frames != null) {
-      projected.frames = doc.inputTape.frames;
+    } else {
+      projected.frames = Array.isArray(doc.inputTape.frames) ? doc.inputTape.frames : [];
     }
   }
   // Strip canonical-only keys so raw TOP_KEYS unknown-key checks stay closed.
@@ -793,15 +803,15 @@ export function validateCanonicalScenario(doc, options = {}) {
     if (doc.inputTape.frames != null && !Array.isArray(doc.inputTape.frames)) {
       issue('$.inputTape.frames', 'type', 'inputTape.frames must be an array when present');
     }
-    // L5: public-input canonicals require nonempty consumed tape contents.
+    // M2/L5: public-input requires nonempty CONSUMED tape (canonical.inputTape only).
+    // Raw inputEvents/frames are compilation inputs, not consumed authority — they must
+    // not mask an empty inputTape that the runner actually steps.
     if (doc.evidenceClass === 'public-input') {
       const tapeEvents = Array.isArray(doc.inputTape.events) ? doc.inputTape.events.length : 0;
       const tapeFrames = Array.isArray(doc.inputTape.frames) ? doc.inputTape.frames.length : 0;
-      const rawEvents = Array.isArray(doc.inputEvents) ? doc.inputEvents.length : 0;
-      const rawFrames = Array.isArray(doc.frames) ? doc.frames.length : 0;
-      if (tapeEvents + tapeFrames + rawEvents + rawFrames === 0) {
+      if (tapeEvents === 0 && tapeFrames === 0) {
         issue('$.inputTape', 'public-input-tape',
-          'public-input scenarios require a nonempty consumed tape');
+          'public-input scenarios require a nonempty consumed tape (inputTape.events or inputTape.frames)');
       }
     }
     // Duplicate raw + compiled surfaces: reject unless identical (no masking).
@@ -934,6 +944,43 @@ function validateFrameInputValueTypes(input, p, issue) {
       }
     }
   }
+}
+
+/**
+ * M3: recognized metric threshold forms only. Unknown/malformed shapes must not
+ * fall through to a vacuous pass at evaluation.
+ * @param {*} threshold
+ * @returns {boolean}
+ */
+function isValidMetricThreshold(threshold) {
+  if (threshold == null) return false;
+  if (typeof threshold === 'number') return Number.isFinite(threshold);
+  if (typeof threshold !== 'object' || Array.isArray(threshold)) return false;
+  if (threshold.op === '<=' || threshold.op === '>=' || threshold.op === '<' || threshold.op === '>') {
+    return Number.isFinite(threshold.value);
+  }
+  if (threshold.op === '==' || threshold.op === 'eq') {
+    return Number.isFinite(threshold.value)
+      && (threshold.epsilon == null || Number.isFinite(threshold.epsilon));
+  }
+  if (threshold.op === 'range') {
+    return Number.isFinite(threshold.min) && Number.isFinite(threshold.max);
+  }
+  if (threshold.op != null) return false; // unknown op
+  // Shorthand forms without op.
+  if (threshold.max != null && threshold.min == null && threshold.value == null) {
+    return Number.isFinite(threshold.max);
+  }
+  if (threshold.min != null && threshold.max == null && threshold.value == null) {
+    return Number.isFinite(threshold.min);
+  }
+  if (threshold.min != null && threshold.max != null) {
+    return Number.isFinite(threshold.min) && Number.isFinite(threshold.max);
+  }
+  if (threshold.value != null && threshold.min == null && threshold.max == null) {
+    return Number.isFinite(threshold.value);
+  }
+  return false;
 }
 
 /** H11: per-kind required fields so assertions cannot pass vacuously. */

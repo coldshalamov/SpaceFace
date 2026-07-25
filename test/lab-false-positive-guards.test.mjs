@@ -380,6 +380,9 @@ test('FIX11: lab.maxImpulse overlay clamps traced controller command', async () 
     metrics: [
       { name: 'invariant.finiteState', version: 1, threshold: { op: '==', value: 1 } },
     ],
+    assertions: [
+      { kind: 'metric', metric: 'invariant.finiteState', op: '==', value: 1 },
+    ],
   }, {
     verbosity: 3,
     controller: () => ({ x: 100, z: 0 }),
@@ -535,6 +538,9 @@ test('FIX13/14: lab.anchorMass and makeSample use attachment targetAlias, not in
     metrics: [
       { name: 'invariant.finiteState', version: 1, threshold: { op: '==', value: 1 } },
     ],
+    assertions: [
+      { kind: 'metric', metric: 'invariant.finiteState', op: '==', value: 1 },
+    ],
     observer: { enabled: false },
   }, {
     verbosity: 3, // need full trace for sample distance assertion
@@ -620,6 +626,9 @@ test('FIX15: lab.anchorMass with no resolvable target is rejected (not silent ap
     frames: [{ tick: 0, input: { moveX: 0, moveZ: 0 } }],
     metrics: [
       { name: 'invariant.finiteState', version: 1, threshold: { op: '==', value: 1 } },
+    ],
+    assertions: [
+      { kind: 'metric', metric: 'invariant.finiteState', op: '==', value: 1 },
     ],
     observer: { enabled: false },
   }, {
@@ -709,6 +718,9 @@ function orphanAnchorMassScenario() {
     frames: [{ tick: 0, input: { moveX: 0, moveZ: 0 } }],
     metrics: [
       { name: 'invariant.finiteState', version: 1, threshold: { op: '==', value: 1 } },
+    ],
+    assertions: [
+      { kind: 'metric', metric: 'invariant.finiteState', op: '==', value: 1 },
     ],
     observer: { enabled: false },
   };
@@ -863,7 +875,9 @@ function orphanAnchorMassCanonical() {
     metrics: [
       { name: 'invariant.finiteState', version: 1, params: {}, threshold: { op: '==', value: 1 } },
     ],
-    assertions: [],
+    assertions: [
+      { kind: 'metric', metric: 'invariant.finiteState', op: '==', value: 1 },
+    ],
     parameterOverlay: {
       schema: 'spaceface.labParameterOverlay.v1',
       version: 1,

@@ -468,7 +468,9 @@ test('H10: keyboard-tape mid-run save/load does not crash the lab runner', async
     metrics: [
       { name: 'invariant.finiteState', version: 1, threshold: { op: '==', value: 1 } },
     ],
-    assertions: [],
+    assertions: [
+      { kind: 'equivalence', equivalence: 'uninterrupted-eq-save-load' },
+    ],
   };
   const result = await runLabScenario(doc, { verbosity: 1, saveLoadAt: 12 });
   assert.notEqual(result.exitClass, 3, result.error || 'infra crash');

@@ -54,30 +54,31 @@ export async function digestSourcePaths(root, relativePaths = []) {
 }
 
 /**
- * L1: enumerate every authoritative gameplay/runtime `.js` under `src/`.
- * Prefer `git ls-files` (tracked tree); fall back to a recursive directory walk.
+ * L1/M5: enumerate every authoritative gameplay/runtime `.js` under `src/`.
+ * Union git-tracked paths with a recursive on-disk walk so untracked .js files
+ * under src/ still enter the candidate digest (git-only enumeration missed them).
  * @param {string} root repo root
  * @returns {Promise<string[]>} posix-relative paths sorted stably
  */
 export async function listSrcJsSourcePaths(root) {
+  const tracked = new Set();
   try {
     const { stdout } = await execFileAsync(
       'git',
       ['ls-files', '-z', '--', 'src'],
       { cwd: root, maxBuffer: 64 * 1024 * 1024, windowsHide: true },
     );
-    const files = String(stdout || '')
-      .split('\0')
-      .filter(Boolean)
-      .map((p) => p.replace(/\\/g, '/'))
-      .filter((p) => p.startsWith('src/') && p.endsWith('.js'));
-    if (files.length > 0) {
-      return [...new Set(files)].sort();
+    for (const p of String(stdout || '').split('\0')) {
+      if (!p) continue;
+      const norm = p.replace(/\\/g, '/');
+      if (norm.startsWith('src/') && norm.endsWith('.js')) tracked.add(norm);
     }
   } catch {
-    // fall through to walk
+    // git unavailable — disk walk alone is still authoritative
   }
-  return walkJsRelativePaths(root, 'src');
+  const onDisk = await walkJsRelativePaths(root, 'src');
+  // M5: always union tracked ∪ disk so untracked sources affect digests.
+  return [...new Set([...tracked, ...onDisk])].sort();
 }
 
 async function walkJsRelativePaths(root, relDir) {

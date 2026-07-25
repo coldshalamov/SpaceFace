@@ -16,6 +16,7 @@ import {
   getCandidateLaunchCount,
   isResolvedByAcceptedEvidence,
   issueBrokerClaim,
+  readConsumedClaimLedgerEntry,
   readFastGateReceipt,
 } from './validationBroker.mjs';
 import {
@@ -470,6 +471,13 @@ export async function loadPq017GateState({ root, outputRoot }) {
       runtimeKind: latestFailure.runtimeKind,
     })
     : null;
+  // M1: load consumed-claim disk ledger — PQ façade must not resolve receipt-only evidence.
+  const claimIdForLedger = acceptedEvidence?.claimId
+    ?? acceptedEvidence?.consumedClaimId
+    ?? null;
+  const consumedClaim = claimIdForLedger
+    ? await readConsumedClaimLedgerEntry(outputRoot, claimIdForLedger)
+    : null;
   return {
     ...digests,
     latestFailure,
@@ -478,6 +486,7 @@ export async function loadPq017GateState({ root, outputRoot }) {
     acceptedEvidence,
     acceptedRuntimeKind: acceptedEvidence?.runtimeKind ?? null,
     acceptedGeneratedAt: acceptedEvidence?.generatedAt ?? null,
+    consumedClaim,
   };
 }
 

@@ -316,7 +316,7 @@ test('L5: zero assertions and zero metrics fails validation', () => {
   const v = validateSimScenario(doc);
   assert.equal(v.ok, false);
   assert.ok(
-    v.issues.some((i) => /no causal oracle/i.test(i.message)),
+    v.issues.some((i) => /no assertion declared|no causal oracle/i.test(i.message)),
     JSON.stringify(v.issues),
   );
 });
@@ -324,14 +324,16 @@ test('L5: zero assertions and zero metrics fails validation', () => {
 test('L5: assertAssertionsConsumed rejects empty list without metrics', () => {
   const result = assertAssertionsConsumed([], []);
   assert.equal(result.ok, false);
-  assert.match(String(result.reason), /no causal oracle/i);
+  assert.match(String(result.reason), /no assertion declared|no causal oracle/i);
 });
 
-test('L5: assertAssertionsConsumed allows empty assertions when metrics present', () => {
+// M3 supersedes L5 metrics-alone waiver: metrics measure, assertions certify.
+test('L5/M3: assertAssertionsConsumed rejects empty assertions even when metrics present', () => {
   const result = assertAssertionsConsumed([], [], {
-    metrics: [{ name: 'invariant.finiteState', version: 1 }],
+    metrics: [{ name: 'invariant.finiteState', version: 1, threshold: { op: '==', value: 1 } }],
   });
-  assert.equal(result.ok, true);
+  assert.equal(result.ok, false);
+  assert.match(String(result.reason), /no assertion declared|certify/i);
 });
 
 test('L5: public-input with empty tape fails validation', () => {
