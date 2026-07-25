@@ -625,7 +625,23 @@ async function approachCathedralCoordinate(page, timeoutMs) {
   });
 }
 
-async function completeOperation(page, operation, timeoutMs) {
+// Approaching a component can ram the hull hard enough to trip cathedral_hull_impact, which retracts
+// stabilize_cathedral_hull and leaves every dependent operation unavailable. A player would see the
+// hull break and re-stabilize before carrying on; the route does the same rather than beaming an
+// inert target until it times out.
+async function ensureHullStabilized(page, timeoutMs) {
+  const failed = await page.evaluate((siteId) => (
+    window.SF?.state?.sites?.worldById?.[siteId]?.components?.cathedral_hull?.status === 'failed'
+  ), PQ018_SITE_ID);
+  if (!failed) return false;
+  await completeOperation(page, REPRESENTATIVE_OPERATIONS[0], timeoutMs, { recovering: true });
+  return true;
+}
+
+async function completeOperation(page, operation, timeoutMs, { recovering = false } = {}) {
+  if (!recovering && operation.componentId !== 'cathedral_hull') {
+    await ensureHullStabilized(page, timeoutMs);
+  }
   const worldRecordId = `${PQ018_SITE_ID}/component/${operation.componentId}`;
   await cycleToComponent(page, operation.componentId);
   await settleAtWorldRecord(page, worldRecordId, 110, 5, timeoutMs, {

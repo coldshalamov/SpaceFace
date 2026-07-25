@@ -208,7 +208,14 @@ export const mining = {
       return { ok: false, duplicate: false, reason: 'presentation-unavailable', moved: 0 };
     }
     if (component && component.active === false) {
-      return { ok: false, duplicate: false, reason: component.inactiveReason || 'operation-unavailable', moved: 0 };
+      // Every other refusal here announces itself. This one did not, so a component whose
+      // prerequisite was retracted — a stabilized hull re-failed by impact, say — swallowed the
+      // beam silently: no denial, no cue, nothing to distinguish it from a slow operation.
+      const reason = component.inactiveReason || 'operation-unavailable';
+      this.bus.emit('beam:denied', {
+        minerId: player.id, targetId: target.id, verb: component.verb || 'extract', reason,
+      });
+      return { ok: false, duplicate: false, reason, moved: 0 };
     }
     if (!component || !component.verb || !component.operationId
       || !sites || typeof sites.applyWorldSiteBeamOperation !== 'function') {
