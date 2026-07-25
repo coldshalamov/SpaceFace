@@ -615,8 +615,16 @@ function resultMatchesAssertion(result, assertion) {
     return result.family === 'equivalence' && (result.id === name || result.id === assertion.equivalence);
   }
   if (kind === 'never' || kind === 'holds' || kind === 'settles' || kind === 'eventByTick' || kind === 'temporal') {
-    return result.family === 'temporal'
-      && (result.id === kind || result.id === assertion.signal || result.id === assertion.never);
+    // Oracle emits ids like `never:${signal}`, `holds:${signal}`, `eventByTick:${signal}`,
+    // or bare `settles` (see oracleEngine evaluateTemporal).
+    if (result.family !== 'temporal') return false;
+    const signal = assertion.signal || assertion.never || assertion.event;
+    if (result.id === kind) return true;
+    if (signal && result.id === signal) return true;
+    if (signal && result.id === `${kind}:${signal}`) return true;
+    if (kind === 'never' && signal && result.id === `never:${signal}`) return true;
+    if (kind === 'temporal' && assertion.signal === 'settles' && result.id === 'settles') return true;
+    return false;
   }
   return result.id === kind;
 }

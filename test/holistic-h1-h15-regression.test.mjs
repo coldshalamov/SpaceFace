@@ -110,7 +110,29 @@ test('H4: getNodeSystemFactoryTable materializes node-safe production set', () =
   assert.equal(table.has('ui'), false);
 });
 
-// ── H11 schema ───────────────────────────────────────────────────────────────
+// ── H11 schema + consumption ─────────────────────────────────────────────────
+
+test('H11: never assertion is consumed exactly once when oracle emits never:signal', async () => {
+  // Signal that never fires on a clean flight run → never passes, consumption must match.
+  const doc = {
+    ...flightDoc,
+    id: 'h11.never-consumed',
+    ticks: 20,
+    assertions: [
+      { kind: 'never', signal: 'playerAliveFalse' },
+    ],
+  };
+  // Inject a synthetic signal name that is never truthy on samples (undefined field).
+  const result = await runLabScenario(doc, { verbosity: 2 });
+  assert.notEqual(result.exitClass, 3, result.error);
+  assert.equal(result.oracle?.assertionConsumption?.ok, true,
+    JSON.stringify(result.oracle?.assertionConsumption));
+  // Must not fail solely due to consumption mismatch when temporal oracle passed.
+  const consumptionFail = (result.oracle?.failed || []).find(
+    (f) => f.id === 'assertions-consumed-exactly-once',
+  );
+  assert.equal(consumptionFail, undefined, 'never assertion must be consumed');
+});
 
 test('H11: metric assertion without metric is rejected at validation', () => {
   const doc = {
