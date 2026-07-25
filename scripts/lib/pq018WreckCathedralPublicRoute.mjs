@@ -281,12 +281,22 @@ export async function runPq018WreckCathedralPublicRoute({
     assertCathedralSettlement(beforeSettlement, settled);
     mark('settle_cathedral_black_box');
 
-    // Delivering the black box leaves the ship parked against the service spine, inside the wreck's
-    // own clearance envelope. The run-up planner needs a collision-clear first segment, so back out
-    // along the outward radial past the site's outer radius before staging the ram.
+    // Hauling the black box across the wreck can ram the hull, so the deliberate impact run has to
+    // start from a known-stabilized hull -- otherwise the failure assertion sees a hull that was
+    // already broken by the tow and cannot tell the staged impact from the accidental one.
+    await ensureHullStabilized(page, routeTimeout(120_000));
+
+    // Both the delivery and that repair leave the ship inside the wreck's own clearance envelope.
+    // The run-up planner needs a collision-clear first segment, so back out along the outward radial
+    // past the site's outer radius before staging the ram.
     await withdrawToClearApproach(page, routeTimeout(120_000));
 
     const preImpact = await snapshot(page);
+    assert.equal(
+      preImpact.site?.components?.cathedral_hull?.status,
+      'stabilized',
+      'the staged impact must start from a stabilized hull',
+    );
     await stageImpactRun(
       page,
       PQ018_IMPACT_WORLD_ID,
