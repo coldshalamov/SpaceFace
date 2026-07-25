@@ -7564,21 +7564,33 @@ async function latchWorldRecord(page, worldRecordId) {
   blocked(`Massline did not latch the selected World Site payload ${worldRecordId}`);
 }
 
+// Massline acquisition no longer publishes a pre-latch receipt. Commit 4d00867e replaced
+// _consumeAcquisitionReceipt with _acquireCommandTarget, which resolves the target at press time and
+// prefers state.player.targetId outright. state.masslineAcquisition is never populated now, so the
+// old precondition could never be satisfied. The truthful precondition for the current design is
+// that the payload is the selected target and is inside tether reach; the latch itself is still
+// verified after the press, against the attached tether's worldRecordId.
 async function waitForMasslineAcquisitionWorldRecord(page, worldRecordId) {
   try {
     await page.waitForFunction((id) => {
       const state = window.SF?.state;
+      const player = state?.playerId != null ? state.entities?.get?.(state.playerId) : null;
       const selectedEntity = state?.player?.targetId != null
         ? state.entities?.get?.(state.player.targetId)
         : null;
-      const acquisition = state?.masslineAcquisition?.selected;
-      return selectedEntity?.data?.worldRecordId === id
-        && acquisition?.targetId === selectedEntity.id
-        && acquisition?.status === 'ready';
+      if (!player?.pos || !selectedEntity?.pos) return false;
+      if (selectedEntity.data?.worldRecordId !== id) return false;
+      if (selectedEntity.alive === false) return false;
+      const surfaceDistance = Math.hypot(
+        selectedEntity.pos.x - player.pos.x,
+        selectedEntity.pos.z - player.pos.z,
+      ) - Math.max(0, Number(selectedEntity.radius) || 0);
+      return surfaceDistance <= 390; // tether def maxLength default
     }, worldRecordId, { timeout: 5_000 });
   } catch (_) {
     const diagnostic = await page.evaluate((id) => {
       const state = window.SF?.state;
+      const player = state?.playerId != null ? state.entities?.get?.(state.playerId) : null;
       const selectedEntity = state?.player?.targetId != null
         ? state.entities?.get?.(state.player.targetId)
         : null;
@@ -7586,10 +7598,16 @@ async function waitForMasslineAcquisitionWorldRecord(page, worldRecordId) {
         expectedWorldRecordId: id,
         selectedEntityId: selectedEntity?.id ?? null,
         selectedWorldRecordId: selectedEntity?.data?.worldRecordId || null,
-        acquisition: state?.masslineAcquisition || null,
+        alive: selectedEntity?.alive ?? null,
+        surfaceDistance: player?.pos && selectedEntity?.pos
+          ? Math.hypot(
+            selectedEntity.pos.x - player.pos.x,
+            selectedEntity.pos.z - player.pos.z,
+          ) - Math.max(0, Number(selectedEntity.radius) || 0)
+          : null,
       };
     }, worldRecordId);
-    blocked(`Massline acquisition did not publish the selected World Site payload: ${JSON.stringify(diagnostic)}`);
+    blocked(`Massline could not reach the selected World Site payload: ${JSON.stringify(diagnostic)}`);
   }
 }
 
