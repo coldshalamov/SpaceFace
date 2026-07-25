@@ -98,25 +98,34 @@ test('replay reproduces the failure fingerprint', async () => {
   assert.equal(replayed.actualFingerprint, first.failure.failureFingerprint);
 });
 
-test('sf lab run flight-fixed-input exits successfully', () => {
+test('sf lab run flight-fixed-input is incomplete (deferred run-eq-repeat; use lab repeat)', () => {
+  // F5: standalone run must not exit 0 when multi-run equivalence is declared but not computed.
   const child = spawnSync(
     process.execPath,
     [join(ROOT, '../scripts/sf.mjs'), 'lab', 'run', 'flight-fixed-input', '--verbosity', '1'],
     { cwd: join(ROOT, '..'), encoding: 'utf8', timeout: 120_000 },
   );
   assert.equal(child.error, undefined, String(child.error));
-  // Parse stdout even if the process hits a Windows post-exit handle race (UV_HANDLE_CLOSING).
   const stdout = child.stdout || '';
   assert.ok(stdout.includes('spaceface.labCliResult.v1'), `no lab result in stdout: ${stdout.slice(0, 500)}`);
   const parsed = JSON.parse(stdout.split('\n').filter((l) => l.trim().startsWith('{')).pop());
-  assert.equal(parsed.ok, true, JSON.stringify(parsed.result && parsed.result.oracle));
+  assert.equal(parsed.ok, false, 'deferred equivalence must not pass standalone run');
   assert.equal(parsed.command, 'run');
+  assert.ok(parsed.exitClass === 4 || parsed.exitClass === 1, `exitClass=${parsed.exitClass}`);
+  assert.notEqual(child.status, 0);
+});
+
+test('sf lab repeat flight-fixed-input exits successfully', () => {
+  const child = spawnSync(
+    process.execPath,
+    [join(ROOT, '../scripts/sf.mjs'), 'lab', 'repeat', 'flight-fixed-input', '--verbosity', '1'],
+    { cwd: join(ROOT, '..'), encoding: 'utf8', timeout: 180_000 },
+  );
+  assert.equal(child.error, undefined, String(child.error));
+  const stdout = child.stdout || '';
+  assert.ok(stdout.includes('spaceface.labCliResult.v1'), `no lab result in stdout: ${stdout.slice(0, 500)}`);
+  const parsed = JSON.parse(stdout.split('\n').filter((l) => l.trim().startsWith('{')).pop());
+  assert.equal(parsed.ok, true, JSON.stringify(parsed.result && parsed.result.equivalence));
+  assert.equal(parsed.command, 'repeat');
   assert.equal(parsed.exitClass, 0);
-  // Prefer clean exit; accept known Windows libuv close race after successful result.
-  if (child.status !== 0) {
-    assert.ok(
-      /UV_HANDLE_CLOSING|STATUS_STACK_BUFFER|3221226505/.test(String(child.stderr) + String(child.status)),
-      `unexpected failure status=${child.status} stderr=${child.stderr}`,
-    );
-  }
 });

@@ -651,9 +651,10 @@ export const input = {
     resetAutoTargetPath(this, this.state);
     this._m0 = false; this._m1 = false; this._m2 = false;
     this._masslineGrammar = createMasslineInputGrammar();
-    // N2: boot stamp is diagnostic/device-arbitration only (not gameplay math). Start at 0 so
-    // boot does not depend on wall clock; DOM events stamp wall time for real-device priority.
-    this._lastKbmMs = 0;
+    // F4/N2: device arbitration uses tick-indexed activity, never performance.now()/Date.now().
+    // DOM events mark pending activity; update() stamps last-active-tick from state.tick.
+    this._lastKbmTick = -1;
+    this._kbmActivityPending = false;
     this._canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
 
     this.gamepad = createGamepad(ctx);
@@ -695,7 +696,8 @@ export const input = {
         blocked,
       }));
       if (blocked) return;
-      this._lastKbmMs = performance.now();
+      // F4: mark activity; tick stamp applied in update() from state.tick.
+      this._kbmActivityPending = true;
     });
     addEventListener('keyup', (e) => {
       const code = eventCode(e);
@@ -722,7 +724,8 @@ export const input = {
         const movementX = Number.isFinite(e.movementX) ? e.movementX : 0;
         const movementY = Number.isFinite(e.movementY) ? e.movementY : 0;
         if (movementX === 0 && movementY === 0) return;
-        recordAutoTargetPath(this, movementX, movementY, performance.now());
+        // F4/N2: path recording uses sim clock, not wall time.
+        recordAutoTargetPath(this, movementX, movementY, simClockMs(this.state));
         this._screen.x = geometry.cx;
         this._screen.y = geometry.cy;
         this._screen.active = true;
@@ -736,7 +739,7 @@ export const input = {
         this._ndc.y = -(this._screen.y / geometry.height) * 2 + 1;
       }
       syncPointerScreen(this.state, this._screen.x, this._screen.y);
-      this._lastKbmMs = performance.now();
+      this._kbmActivityPending = true;
     };
     // Capture pointer truth before overlays can consume the event. Electron focus/activation can
     // otherwise leave the software cursor at its fallback center until a later unhandled move.
@@ -755,7 +758,7 @@ export const input = {
       if (e.button === 0) this._m0 = true;
       if (e.button === 1) this._m1 = true;
       if (e.button === 2) this._m2 = true;
-      this._lastKbmMs = performance.now();
+      this._kbmActivityPending = true;
     });
     addEventListener('mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 1) this._m1 = false; if (e.button === 2) this._m2 = false; });
     pointerSurface.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -775,10 +778,15 @@ export const input = {
   },
 
   update(dt, state) {
+    // F4: stamp kbm activity with sim tick (device arbitration is gameplay-affecting).
+    if (this._kbmActivityPending) {
+      this._lastKbmTick = state && Number.isFinite(state.tick) ? (state.tick | 0) : 0;
+      this._kbmActivityPending = false;
+    }
     const gp = this.gamepad;
-    if (gp) gp.tick(dt);
+    if (gp) gp.tick(dt, state);
     const tp = this.touch;
-    if (tp) tp.tick(dt);
+    if (tp) tp.tick(dt, state);
 
     const inp = state.input;
     const autoTargetPointer = !!inp.autoFire;
@@ -934,8 +942,11 @@ export const input = {
       tpAimActive = Math.abs(tp.axes.rightX) > 0.001 || Math.abs(tp.axes.rightY) > 0.001;
     }
 
-    // Keyboard/mouse is authoritative when both are active (whichever moved last wins for aim).
-    const kbmRecent = this._lastKbmMs >= (gp ? gp.lastActiveMs : 0) && this._lastKbmMs >= (tp ? tp.lastActiveMs : 0);
+    // F4: keyboard/mouse is authoritative when both are active (last-active *tick* wins for aim).
+    // Never compare performance.now()/Date.now() — wall-clock is non-deterministic.
+    const gpTick = gp && Number.isFinite(gp.lastActiveTick) ? gp.lastActiveTick : -1;
+    const tpTick = tp && Number.isFinite(tp.lastActiveTick) ? tp.lastActiveTick : -1;
+    const kbmRecent = this._lastKbmTick >= gpTick && this._lastKbmTick >= tpTick;
 
     inp.turnIntent = kbdTurn || gpTurn || tpTurn;
     inp.moveX = kbdMoveX || tpMoveX;

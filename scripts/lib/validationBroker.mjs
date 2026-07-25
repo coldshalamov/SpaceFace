@@ -1368,8 +1368,10 @@ export async function issueBrokerClaim({
 }
 
 /**
- * H6: exclusive per-candidate lock so quota check + increment + claim create are atomic.
+ * H6/F7: exclusive per-candidate lock so quota check + increment + claim create are atomic.
  * Uses O_EXCL lock file under the broker output root (same pattern as run-lock).
+ * F7: reuses the run-lock PID/age stale-lock protocol — a killed claim issuer must not
+ * permanently block the candidate.
  */
 export async function withCandidateQuotaLock(outputRoot, candidateDigest, fn) {
   const safe = String(candidateDigest || 'none').replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 80);
@@ -1377,13 +1379,23 @@ export async function withCandidateQuotaLock(outputRoot, candidateDigest, fn) {
   await mkdir(outputRoot, { recursive: true });
   const deadline = Date.now() + 30_000;
   let handle = null;
+  let reclaimAttempts = 0;
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
       handle = await open(lockPath, 'wx');
       break;
     } catch (error) {
-      if (error?.code !== 'EEXIST') throw error;
+      // Windows may surface EPERM while a live owner holds the lock open (not only EEXIST).
+      const contended = error?.code === 'EEXIST' || error?.code === 'EPERM' || error?.code === 'EACCES';
+      if (!contended) throw error;
+      // F7: try stale reclaim (dead PID / aged inconclusive) before waiting out the deadline.
+      // Never reclaim when owner is alive — that path returns without deleting.
+      if (error?.code === 'EEXIST' && reclaimAttempts < 3) {
+        reclaimAttempts += 1;
+        const reclaim = await tryReclaimStaleQuotaLock(lockPath, { timeoutMs: 30_000 });
+        if (reclaim.reclaimed) continue;
+      }
       if (Date.now() > deadline) {
         const err = new Error('VALIDATION_CLAIM_REFUSED: quota-lock-timeout');
         err.code = 'VALIDATION_CLAIM_REFUSED';
@@ -1399,6 +1411,7 @@ export async function withCandidateQuotaLock(outputRoot, candidateDigest, fn) {
       pid: process.pid,
       candidateDigest,
       acquiredAt: new Date().toISOString(),
+      lockToken: `${process.pid}-${randomBytes(8).toString('hex')}`,
     })}\n`, 'utf8');
     try { await handle.sync(); } catch { /* best-effort */ }
     return await fn();
@@ -1406,6 +1419,79 @@ export async function withCandidateQuotaLock(outputRoot, candidateDigest, fn) {
     try { await handle.close(); } catch { /* ignore */ }
     try { await rm(lockPath, { force: true }); } catch { /* ignore */ }
   }
+}
+
+/**
+ * F7: reclaim a left-behind quota lock when the owner PID is dead or the lock is aged
+ * with an inconclusive PID. Mirrors tryReclaimStaleRunLock protocol.
+ */
+export async function tryReclaimStaleQuotaLock(lockPath, {
+  timeoutMs = 30_000,
+  log = console.warn,
+} = {}) {
+  const { lock, corrupt, missing } = await readRunLockSafely(lockPath);
+
+  if (missing) {
+    return { reclaimed: false, reason: 'lock-missing' };
+  }
+
+  if (corrupt || !lock) {
+    const claimed = await atomicReclaimLockFile(lockPath);
+    if (claimed.reclaimed) {
+      log?.(
+        `[validationBroker] reclaimed corrupt/unreadable quota lock at ${lockPath}`,
+      );
+      return { reclaimed: true, reason: 'corrupt-or-unreadable-lock' };
+    }
+    return { reclaimed: false, reason: claimed.reason ?? 'lock-remove-failed' };
+  }
+
+  const ownerPid = Number.isFinite(Number(lock.pid))
+    ? Number(lock.pid)
+    : parsePidFromLockToken(lock.lockToken);
+  const expectedToken = lock.lockToken ?? null;
+
+  if (ownerPid != null && isPidAlive(ownerPid)) {
+    return { reclaimed: false, reason: 'owner-alive', ownerPid };
+  }
+
+  if (ownerPid != null && !isPidAlive(ownerPid)) {
+    const claimed = await atomicReclaimLockFile(lockPath, {
+      expectedLockToken: expectedToken,
+    });
+    if (!claimed.reclaimed) {
+      return {
+        reclaimed: false,
+        reason: claimed.reason ?? 'reclaim-race-lost',
+        ownerPid,
+      };
+    }
+    log?.(
+      `[validationBroker] reclaimed stale quota lock (dead owner pid=${ownerPid}) at ${lockPath}`,
+    );
+    return { reclaimed: true, reason: 'owner-dead', ownerPid };
+  }
+
+  const acquiredAt = timestamp(lock.acquiredAt);
+  const maxAgeMs = (Number(timeoutMs) > 0 ? Number(timeoutMs) : 30_000) + STALE_LOCK_MARGIN_MS;
+  if (Number.isFinite(acquiredAt) && Date.now() - acquiredAt > maxAgeMs) {
+    const claimed = await atomicReclaimLockFile(lockPath, {
+      expectedLockToken: expectedToken,
+    });
+    if (!claimed.reclaimed) {
+      return {
+        reclaimed: false,
+        reason: claimed.reason ?? 'reclaim-race-lost',
+        ownerPid,
+      };
+    }
+    log?.(
+      `[validationBroker] reclaimed aged quota lock (inconclusive PID, age>${maxAgeMs}ms) at ${lockPath}`,
+    );
+    return { reclaimed: true, reason: 'aged-inconclusive-pid', ownerPid };
+  }
+
+  return { reclaimed: false, reason: 'inconclusive-not-aged', ownerPid };
 }
 
 export async function validateBrokerClaim({

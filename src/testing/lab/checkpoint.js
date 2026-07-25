@@ -1,6 +1,13 @@
 // Semantic + deterministic-covered checkpoints (§14).
-// KEEP canonicalStateHash (semantic). ADD deterministic-covered alongside (never claim "exact"
-// until coverage is sufficient).
+// KEEP canonicalStateHash (semantic). ADD deterministic-covered alongside.
+//
+// F10 COVERAGE BOUND (honest contract — do NOT promote to "exact"):
+// - deterministic-covered uses round6 quantization and maps non-finite → 0 in the surface builder.
+// - Full multi-stream RNG / system-private state is OMITTED (see DETERMINISTIC_OMITTED).
+// - Two different IEEE-754 states can therefore share a deterministic-covered hash.
+// - The determinism GATE uses deterministic-covered as a *coverage-bounded* identity check,
+//   never as bit-exact reproducibility. Evidence must never label this hashKind as "exact".
+// - exactWithin.crossRuntime remains false; sameCoverage is the strongest claim allowed.
 
 import { createHash } from 'node:crypto';
 import { canonicalStringify } from '../../core/simSnapshot.js';

@@ -11,10 +11,12 @@ export async function repeatScenario(scenarioDoc, options = {}) {
   const runs = Number.isInteger(options.runs) && options.runs > 1 ? options.runs : 2;
   const results = [];
   for (let i = 0; i < runs; i++) {
+    // Multi-run equivalence is owned by this repeat — arms skip deferred-eq incomplete.
     const r = await runLabScenario(scenarioDoc, {
       ...options,
       runId: options.runId ? `${options.runId}_r${i}` : undefined,
       equivalence: {},
+      skipMultiRunEquivalence: true,
     });
     results.push(r);
   }

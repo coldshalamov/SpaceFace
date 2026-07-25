@@ -289,9 +289,12 @@ export async function runLabScenario(scenarioDoc, options = {}) {
     }
 
     // public-input must go through the real massline grammar (FIX 5) — no packet hardcoding.
+    // F9: massline action-packet injection is forbidden unless an explicit test option opts in.
     const inputDriver = createInputTapeDriver(canonical.inputTape, {
       masslineGrammar: options.masslineGrammar,
-      allowMasslinePacketOverride: canonical.evidenceClass !== 'public-input',
+      allowMasslinePacketOverride: options.allowMasslinePacketOverride === true
+        ? true
+        : false,
     });
     const dt = canonical.dt || SIM_DT;
     const ticks = canonical.ticks | 0;
@@ -336,53 +339,8 @@ export async function runLabScenario(scenarioDoc, options = {}) {
 
       runtime.step(dt);
 
-      if (Number.isInteger(saveLoadAt) && tick === saveLoadAt && !saveLoadPerformed) {
-        // H10: recreate runtime from envelope; drop system-local state outside the save surface.
-        const loadResult = await performSaveLoad(runtime, state, {
-          ...options,
-          systemsForRecreate: systems,
-        });
-        saveLoadPerformed = true;
-        if (!loadResult.ok) {
-          runtime.dispose();
-          return {
-            schema: 'spaceface.labRunResult.v1',
-            ok: false,
-            exitClass: loadResult.exitClass != null ? loadResult.exitClass : 4,
-            status: loadResult.status || 'unsupported',
-            runId,
-            error: loadResult.reason || 'save/load continuation failed',
-          };
-        }
-        saveLoadRestoreCount += loadResult.restoreCount | 0;
-        if (loadResult.runtime && loadResult.runtime !== runtime) {
-          try { runtime.dispose(); } catch (_) { /* best-effort */ }
-          runtime = loadResult.runtime;
-          state = loadResult.state;
-          // H10: rebind ALL system-local observers to the recreated runtime.
-          // Pre-save kernel / attachment handles must not survive into the post-restore phase.
-          actionsSys = runtime.getSystem('actions');
-          kernel = actionsSys && actionsSys.kernel;
-          const tetherAttId = state.player && state.player.tether
-            ? state.player.tether.attachmentId
-            : null;
-          if (tetherAttId != null) {
-            attachmentIds = [tetherAttId];
-          } else if (state._lab && state._lab.attachmentId != null) {
-            attachmentIds = [state._lab.attachmentId];
-          } else {
-            attachmentIds = [];
-          }
-          if (state._lab) {
-            state._lab.kernel = kernel;
-            state._lab.attachmentId = attachmentIds[0] != null ? attachmentIds[0] : null;
-            state._lab.controller = controller;
-          }
-          // Rebuild sticky input from tape history with the NEW state (settings bindings).
-          inputDriver.resetFromTape?.(0, tick, state);
-        }
-      }
-
+      // F1: sample + mid-checkpoint BEFORE save/load so the save-tick observation matches the
+      // uninterrupted arm by construction. Post-restore fidelity is proven on subsequent ticks.
       const sample = makeSample(tick, state, {
         aliasMap,
         kernel,
@@ -410,6 +368,59 @@ export async function runLabScenario(scenarioDoc, options = {}) {
             : stripCheckpointDebug(cps.deterministicCovered),
         });
       }
+
+      if (Number.isInteger(saveLoadAt) && tick === saveLoadAt && !saveLoadPerformed) {
+        // Player-route save/load: in-place loadEnvelope by default (see performSaveLoad).
+        const loadResult = await performSaveLoad(runtime, state, {
+          ...options,
+          systemsForRecreate: systems,
+        });
+        saveLoadPerformed = true;
+        if (!loadResult.ok) {
+          runtime.dispose();
+          return {
+            schema: 'spaceface.labRunResult.v1',
+            ok: false,
+            exitClass: loadResult.exitClass != null ? loadResult.exitClass : 4,
+            status: loadResult.status || 'unsupported',
+            runId,
+            error: loadResult.reason || 'save/load continuation failed',
+          };
+        }
+        saveLoadRestoreCount += loadResult.restoreCount | 0;
+        if (loadResult.runtime && loadResult.runtime !== runtime) {
+          try { runtime.dispose(); } catch (_) { /* best-effort */ }
+          runtime = loadResult.runtime;
+          state = loadResult.state;
+          // H10: rebind ALL system-local observers to the recreated runtime.
+          actionsSys = runtime.getSystem('actions');
+          kernel = actionsSys && actionsSys.kernel;
+          const tetherAttId = state.player && state.player.tether
+            ? state.player.tether.attachmentId
+            : null;
+          if (tetherAttId != null) {
+            attachmentIds = [tetherAttId];
+          } else if (state._lab && state._lab.attachmentId != null) {
+            attachmentIds = [state._lab.attachmentId];
+          } else {
+            attachmentIds = [];
+          }
+          if (state._lab) {
+            state._lab.kernel = kernel;
+            state._lab.attachmentId = attachmentIds[0] != null ? attachmentIds[0] : null;
+            state._lab.controller = controller;
+          }
+        }
+        // F1: rebuild keys + massline grammar through this tick and rewrite sticky axes.
+        // Do NOT call apply() again — that would double-step the massline grammar for this tick.
+        const hostAfter = state.entities.get(state.playerId);
+        const tetherAfter = !!(state.player && state.player.tether && state.player.tether.active);
+        inputDriver.resetFromTape?.(0, tick, state, {
+          playerEntity: hostAfter,
+          tetherAttached: tetherAfter,
+          dt,
+        });
+      }
     }
 
     const attFinal = attachmentIds[0] && kernel && kernel.attachments
@@ -424,12 +435,14 @@ export async function runLabScenario(scenarioDoc, options = {}) {
     };
 
     // Oracles consume the full every-tick stream (invariants cannot miss inter-sample NaNs).
+    // skipMultiRunEquivalence: compare/repeat arms — parent evaluates multi-run equivalence.
     const oracle = evaluateOracles({
       trace: oracleTrace,
       metrics: canonical.metrics,
       assertions: canonical.assertions,
       ctx,
       equivalence: options.equivalence || {},
+      skipMultiRunEquivalence: options.skipMultiRunEquivalence === true,
     });
 
     const finalCheckpoints = buildCheckpoints(state, { scenarioDigest, inputDigest, dt, label: 'final' });
@@ -454,7 +467,11 @@ export async function runLabScenario(scenarioDoc, options = {}) {
 
     // H11: every declared assertion must produce exactly one oracle result.
     const assertionConsumption = assertAssertionsConsumed(canonical.assertions, oracle.results);
-    const oracleOk = oracle.ok && assertionConsumption.ok;
+    // F5: deferred equivalence is incomplete/unsupported — not a green pass.
+    // evaluateEquivalence already emits deferred with ok:false so they appear in oracle.failed.
+    const deferredEq = (oracle.results || []).filter((r) => r.family === 'equivalence' && r.deferred);
+    const hasDeferred = deferredEq.length > 0;
+    const oracleOk = oracle.ok && assertionConsumption.ok && !hasDeferred;
     const oracleFailed = [
       ...(oracle.failed || []),
       ...(!assertionConsumption.ok ? [{
@@ -490,11 +507,20 @@ export async function runLabScenario(scenarioDoc, options = {}) {
         verbosity,
       });
 
+    // Deferred-only failures use exitClass 4 (incomplete/unsupported) so CI does not
+    // treat them as deterministic gameplay fails (exit 1) or green (0).
+    const onlyDeferred = hasDeferred
+      && assertionConsumption.ok
+      && (oracle.failed || []).length > 0
+      && (oracle.failed || []).every((f) => f.deferred);
+    const exitClass = oracleOk ? 0 : (onlyDeferred ? 4 : 1);
+    const status = oracleOk ? 'pass' : (onlyDeferred ? 'incomplete' : 'fail');
+
     const result = {
       schema: 'spaceface.labRunResult.v1',
       ok: oracleOk,
-      exitClass: oracleOk ? 0 : 1,
-      status: oracleOk ? 'pass' : 'fail',
+      exitClass,
+      status,
       runId,
       scenarioId: canonical.id,
       seed: canonical.seed,
@@ -541,7 +567,11 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       },
     };
 
-    if (verbosity >= 3) result.trace = sampleEvery === 1 ? oracleTrace : displayTrace;
+    // F1: save/load compare retains the full every-tick oracle stream for tick-by-tick parity.
+    if (options.retainOracleTrace === true || verbosity >= 3) {
+      result.oracleTrace = oracleTrace;
+      result.trace = sampleEvery === 1 ? oracleTrace : displayTrace;
+    }
     if (verbosity >= 4) result.inputLog = inputLog;
 
     runtime.dispose();
@@ -684,28 +714,39 @@ async function performSaveLoad(runtime, state, options = {}) {
       const systems = options.systems || (runtime.liveSystems
         ? runtime.liveSystems
         : null);
-      // Prefer the same focused system list the arm started with.
       const recreateSystems = Array.isArray(options.systemsForRecreate)
         ? options.systemsForRecreate
         : (Array.isArray(systems) ? systems : null);
 
-      if (!recreateSystems || !recreateSystems.length) {
-        // Fallback: in-place restore (documents coverage gap — system-local state may survive).
+      // F1: production save/load is in-place loadEnvelope on the live runtime. Full runtime
+      // recreate drops system-private continuity (flight frame, Rapier body identity) and was
+      // the source of mid-run divergence that reconverged to a false-green final hash.
+      // Default = in-place (player-route fidelity). Opt into recreate with recreateRuntimeOnSaveLoad.
+      const wantRecreate = options.recreateRuntimeOnSaveLoad === true
+        && recreateSystems
+        && recreateSystems.length > 0;
+
+      if (!wantRecreate) {
         const ok = saveSys.loadEnvelope(envelope, 'lab-save-load');
         if (!ok) {
           return { ok: false, exitClass: 3, status: 'infra', reason: 'save loadEnvelope returned false' };
         }
-        state.settings.gameplay.flightBackend = 'v3';
+        if (state.settings && state.settings.gameplay) {
+          state.settings.gameplay.flightBackend = 'v3';
+        }
+        // Soft prepare: re-bind without destroying restored body state.
         const physicsSys = runtime.getSystem('physics');
         if (physicsSys && typeof physicsSys.prepareBackend === 'function') {
-          await physicsSys.prepareBackend(state, { reset: true });
+          await physicsSys.prepareBackend(state, { reset: false });
         }
         return {
           ok: true,
           restoreCount: 1,
           runtime,
           state,
-          coverageGaps: ['runtime-not-recreated: missing systems list for H10 recreate path'],
+          coverageGaps: options.recreateRuntimeOnSaveLoad === true
+            ? ['runtime-not-recreated: missing systems list for recreate path']
+            : ['in-place-restore: player-route loadEnvelope fidelity'],
         };
       }
 
@@ -740,16 +781,13 @@ async function performSaveLoad(runtime, state, options = {}) {
       }
       const physicsSys = next.getSystem('physics');
       if (physicsSys && typeof physicsSys.prepareBackend === 'function') {
-        await physicsSys.prepareBackend(next.state, { reset: true });
+        await physicsSys.prepareBackend(next.state, { reset: false });
       }
       return {
         ok: true,
         restoreCount: 1,
         runtime: next,
         state: next.state,
-        // Honest gaps: input tape keys + massline grammar re-init from empty; tape cursor is
-        // re-applied from tick index (driver is recreated by caller). System-private fields not
-        // in the save envelope do not survive — by design.
         coverageGaps: [
           'input-tape-keys-reset-on-recreate',
           'system-private-nonserialized-state-dropped',

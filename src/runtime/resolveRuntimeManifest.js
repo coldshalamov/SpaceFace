@@ -214,15 +214,33 @@ function materializeOrder(ids, lookup, slots, kind) {
 }
 
 /**
- * Compare two resolve results for authoritative identity (IDs + order + features).
+ * Compare two resolve results for authoritative identity (IDs + order + features + slots).
  * Used by parity tests (Node vs browser-path materialization).
+ * F11: selectedSlots (and manifestHash when present) are required — otherwise tactical/legacy
+ * or flight-backend drift can be certified as identical.
  */
 export function authoritativeIdentityEqual(a, b) {
   if (!a || !b) return false;
   if (a.profileId !== b.profileId) return false;
   if (!arrayEqual(a.authoritativeSystemIds, b.authoritativeSystemIds)) return false;
   if (!arrayEqual(a.authoritativeUpdateOrderIds, b.authoritativeUpdateOrderIds)) return false;
-  return JSON.stringify(a.features) === JSON.stringify(b.features);
+  if (JSON.stringify(a.features) !== JSON.stringify(b.features)) return false;
+  // F11: compare selectedSlots explicitly (manifest hash includes them when present).
+  if (JSON.stringify(normalizeSlots(a.selectedSlots)) !== JSON.stringify(normalizeSlots(b.selectedSlots))) {
+    return false;
+  }
+  if (a.manifestHash && b.manifestHash && a.manifestHash !== b.manifestHash) return false;
+  return true;
+}
+
+function normalizeSlots(slots) {
+  if (!slots || typeof slots !== 'object') return {};
+  return {
+    aiSlot: slots.aiSlot ?? null,
+    flightSlot: slots.flightSlot ?? null,
+    aiBackend: slots.aiBackend ?? null,
+    flightBackend: slots.flightBackend ?? null,
+  };
 }
 
 function arrayEqual(a, b) {

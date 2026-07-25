@@ -146,13 +146,17 @@ try {
   }
 }
 
+// F6: propagate gateLaunch.primaryAcceptance — diagnostic runs must not publish primary
+// acceptance failures or rotate the accepted directory.
+const primaryAcceptance = gateLaunch.primaryAcceptance === true;
+
 if (primaryError || routeResult?.pass !== true || cleanupReport?.pass !== true) {
   const failure = {
     schema: PQ017_ROUTE_SCHEMA,
     generatedAt: new Date().toISOString(),
     pass: false,
     runtimeKind: 'browser',
-    primaryAcceptance: true,
+    primaryAcceptance,
     regressionDigest: gateLaunch.regressionDigest,
     routeDigest: gateLaunch.routeDigest,
     error: primaryError?.message || 'route or cleanup did not pass',
@@ -171,6 +175,7 @@ if (primaryError || routeResult?.pass !== true || cleanupReport?.pass !== true) 
   });
   const failureReportPath = path.join(STAGING, 'failure-report.json');
   await writeFile(failureReportPath, `${JSON.stringify(failure, null, 2)}\n`, 'utf8');
+  // publishPq017AcceptanceFailure no-ops when primaryAcceptance is false.
   await publishPq017AcceptanceFailure({
     outputRoot: OUTPUT_ROOT,
     failure,
@@ -190,7 +195,7 @@ if (primaryError || routeResult?.pass !== true || cleanupReport?.pass !== true) 
     generatedAt: new Date().toISOString(),
     pass: true,
     runtimeKind: 'browser',
-    primaryAcceptance: true,
+    primaryAcceptance,
     inputSource: routeResult.inputSource,
     injectedGameState: routeResult.injectedGameState,
     checks: routeResult.steps,
@@ -200,26 +205,37 @@ if (primaryError || routeResult?.pass !== true || cleanupReport?.pass !== true) 
     finalSnapshot: routeResult.finalSnapshot,
     cleanup: cleanupReport,
   };
-  await writeFile(path.join(STAGING, 'evidence.json'), `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
+  const evidenceName = primaryAcceptance ? 'evidence.json' : 'diagnostic-evidence.json';
+  await writeFile(path.join(STAGING, evidenceName), `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
   await writeFile(path.join(STAGING, 'run.log'), `${LOG.join('\n')}\n`, 'utf8');
-  if (existsSync(ACCEPTED)) {
-    await rename(ACCEPTED, path.join(OUTPUT_ROOT, `browser-history-${Date.now()}`));
+  if (primaryAcceptance) {
+    if (existsSync(ACCEPTED)) {
+      await rename(ACCEPTED, path.join(OUTPUT_ROOT, `browser-history-${Date.now()}`));
+    }
+    await rename(STAGING, ACCEPTED);
+    await completePq017ProbeClaim({
+      outputRoot: OUTPUT_ROOT,
+      claimToken: gateLaunch.claimToken,
+    });
+    const historyRetention = await prunePq017EvidenceHistory({
+      outputRoot: OUTPUT_ROOT,
+      runtimeKind: 'browser',
+      retain: PQ017_HISTORY_RETENTION,
+    });
+    if (historyRetention.pruned.length) {
+      console.log(`[pq017-browser] pruned history: ${historyRetention.pruned.join(', ')}`);
+    }
+    console.log('[pq017-browser] PASS');
+    console.log(`[pq017-browser] evidence: ${repoRelative(ROOT, path.join(ACCEPTED, 'evidence.json'))}`);
+  } else {
+    // Diagnostic success: keep staging; do not rotate accepted.
+    await completePq017ProbeClaim({
+      outputRoot: OUTPUT_ROOT,
+      claimToken: gateLaunch.claimToken,
+    });
+    console.log('[pq017-browser] PASS (diagnostic — non-promoting)');
+    console.log(`[pq017-browser] diagnostic evidence: ${repoRelative(ROOT, path.join(STAGING, evidenceName))}`);
   }
-  await rename(STAGING, ACCEPTED);
-  await completePq017ProbeClaim({
-    outputRoot: OUTPUT_ROOT,
-    claimToken: gateLaunch.claimToken,
-  });
-  const historyRetention = await prunePq017EvidenceHistory({
-    outputRoot: OUTPUT_ROOT,
-    runtimeKind: 'browser',
-    retain: PQ017_HISTORY_RETENTION,
-  });
-  if (historyRetention.pruned.length) {
-    console.log(`[pq017-browser] pruned history: ${historyRetention.pruned.join(', ')}`);
-  }
-  console.log('[pq017-browser] PASS');
-  console.log(`[pq017-browser] evidence: ${repoRelative(ROOT, path.join(ACCEPTED, 'evidence.json'))}`);
 }
 
 function findSystemBrowser() {

@@ -20,6 +20,9 @@ export function evaluateOracles({
   assertions = [],
   ctx = {},
   equivalence = {},
+  // When true (compare/repeat arms), multi-run equivalence is evaluated by the parent
+  // command — emit skipped markers so consumption works without false-green deferred pass.
+  skipMultiRunEquivalence = false,
 } = {}) {
   const metricResults = evaluateMetrics(metrics, trace, ctx);
   const invariantResults = evaluateInvariants(trace, ctx);
@@ -33,6 +36,7 @@ export function evaluateOracles({
   const equivalenceResults = evaluateEquivalence(
     assertions.filter((a) => a.kind === 'equivalence' || a.equivalence),
     equivalence,
+    { skipMultiRunEquivalence },
   );
 
   const all = [
@@ -158,12 +162,33 @@ function evaluateInvariants(trace, ctx) {
   return results;
 }
 
+function unknownSignalResult(kind, signal) {
+  return {
+    family: 'temporal',
+    id: signal ? `${kind}:${signal}` : kind,
+    ok: false,
+    expected: { knownSignal: true },
+    actual: { signal, known: false },
+    signedDelta: 1,
+    firstBadTick: 0,
+    reason: `unknown temporal signal "${signal}" — must name a sampled field`,
+  };
+}
+
+function isKnownOracleSignal(signal) {
+  return typeof signal === 'string' && KNOWN_ORACLE_SIGNALS.has(signal);
+}
+
 function evaluateTemporal(assertions, trace, ctx) {
   const results = [];
   for (const a of assertions) {
     if (a.kind === 'settles' || (a.kind === 'temporal' && a.signal === 'settles')) {
       const band = Number.isFinite(a.value) ? a.value : 3;
       const signal = a.signal && a.signal !== 'settles' ? a.signal : 'radialSpeed';
+      if (!isKnownOracleSignal(signal)) {
+        results.push(unknownSignalResult('settles', signal));
+        continue;
+      }
       let lastUnsettled = -1;
       for (let i = 0; i < trace.length; i++) {
         if (Math.abs(trace[i][signal] || 0) > band) lastUnsettled = i;
@@ -200,6 +225,11 @@ function evaluateTemporal(assertions, trace, ctx) {
         });
         continue;
       }
+      // F8: unknown signals fail (not vacuous pass via truthySignal → false).
+      if (!isKnownOracleSignal(signal)) {
+        results.push(unknownSignalResult('never', signal));
+        continue;
+      }
       let bad = null;
       for (const s of trace) {
         if (truthySignal(s, signal, a)) {
@@ -221,6 +251,10 @@ function evaluateTemporal(assertions, trace, ctx) {
 
     if (a.kind === 'holds') {
       const signal = a.signal;
+      if (!isKnownOracleSignal(signal)) {
+        results.push(unknownSignalResult('holds', signal));
+        continue;
+      }
       const need = a.holdsTicks | 0;
       let run = 0;
       let ok = false;
@@ -251,6 +285,10 @@ function evaluateTemporal(assertions, trace, ctx) {
 
     if (a.kind === 'eventByTick') {
       const signal = a.signal;
+      if (!isKnownOracleSignal(signal)) {
+        results.push(unknownSignalResult('eventByTick', signal));
+        continue;
+      }
       const byTick = a.byTick | 0;
       let foundTick = null;
       for (const s of trace) {
@@ -341,7 +379,7 @@ function evaluateQuantitativeAssertions(assertions, metricResults, trace, ctx) {
   return results;
 }
 
-function evaluateEquivalence(assertions, equivalence) {
+function evaluateEquivalence(assertions, equivalence, options = {}) {
   const results = [];
   for (const a of assertions) {
     const name = a.equivalence || a.expected || a.signal || 'run-eq-repeat';
@@ -371,21 +409,53 @@ function evaluateEquivalence(assertions, equivalence) {
       });
       continue;
     }
-    // Declared equivalence without a compare result is deferred to lab repeat/compare/replay.
-    // A single `run` must not fail solely because the multi-run check was not executed.
+    // Compare/repeat arms: parent command owns multi-run equivalence. Emit a skipped
+    // marker so assertion consumption succeeds without treating deferred as a green pass.
+    if (options.skipMultiRunEquivalence) {
+      results.push({
+        family: 'equivalence',
+        id: name,
+        ok: true,
+        skipped: true,
+        multiRunArm: true,
+        expected: true,
+        actual: 'evaluated-by-parent',
+        signedDelta: 0,
+        firstBadTick: null,
+        reason: 'multi-run equivalence deferred to parent compare/repeat command',
+      });
+      continue;
+    }
+    // F5: standalone `run` with declared equivalence and no compare result is incomplete.
+    // Do NOT mark deferred multi-run checks as consumed-and-passing.
     results.push({
       family: 'equivalence',
       id: name,
-      ok: true,
+      ok: false,
       deferred: true,
+      incomplete: true,
       expected: true,
       actual: 'deferred',
-      signedDelta: 0,
+      signedDelta: 1,
       firstBadTick: null,
+      reason: 'equivalence-deferred-not-computed — use lab repeat/compare or supply equivalence results',
     });
   }
   return results;
 }
+
+/**
+ * Known sample fields the runner records (see runScenario makeSample).
+ * Unknown signals must not vacuous-pass temporal assertions (F8).
+ */
+export const KNOWN_ORACLE_SIGNALS = Object.freeze(new Set([
+  'default', 'tick', 'playerX', 'playerZ', 'playerVelX', 'playerVelZ', 'playerRot',
+  'playerAlive', 'hull', 'cap', 'credits', 'tetherActive', 'distance', 'restLength',
+  'radiusError', 'radialSpeed', 'tangentialSpeed', 'tangentFraction', 'tension',
+  'angularSpeed', 'attachmentActive', 'loadBand', 'mtActive', 'mtPhase', 'mtStrain',
+  'orbitAssistActive', 'orbitAssistReason', 'diverged',
+  'cmdX', 'cmdZ', 'cmdRejected', 'cmdClamped',
+]));
 
 function truthySignal(sample, signal, assertion) {
   if (!signal) return false;
@@ -401,6 +471,8 @@ function truthySignal(sample, signal, assertion) {
     }
     return !!v;
   }
+  // Unknown field on sample → not truthy. Callers that need hard-fail on unknown
+  // signals should validate via schema (F8) before evaluation.
   return false;
 }
 

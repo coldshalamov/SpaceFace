@@ -34,7 +34,11 @@ export const DETERMINISTIC_COVERED = Object.freeze([
   'engine.simDt',
 ]);
 
-/** Explicit omissions — do not call this hash "exact". */
+/**
+ * Explicit omissions — do not call this hash "exact" (F10).
+ * deterministic-covered is coverage-bounded: round6 + non-finite→0 + omitted private state
+ * means hash equality is not IEEE-754 / full-RNG identity.
+ */
 export const DETERMINISTIC_OMITTED = Object.freeze([
   'objectIdentity',
   'memoryAddresses',
@@ -48,6 +52,10 @@ export const DETERMINISTIC_OMITTED = Object.freeze([
   // H9: full multi-stream RNG is not covered; lab-included streams are under entropy.*
   'rng.fullStream',
   'rng.streams.unlisted',
+  // F10: full private/system state and exact IEEE-754 payloads are not in the covered surface.
+  'ieee754.exactFloats',
+  'nonFinite.explicitEncoding',
+  'systemPrivateState',
   'vfx',
   'audio',
   'perfCounters',
@@ -184,6 +192,10 @@ function buildEntropySurface(state) {
   };
 }
 
+/**
+ * Semantic/display quantization for the covered surface (stable labels only).
+ * F10: non-finite → 0 is intentional coverage loss — do not treat as exact encoding.
+ */
 export function round6(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return 0;

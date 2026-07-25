@@ -93,6 +93,8 @@ export const sectorSim = {
     this.bus.on('day:tick', (p) => this._guard('day:tick', () => this._onDayTick(p)));
     this.bus.on('sector:exit', (p) => this._guard('sector:exit', () => this._onSectorExit(p)));
     this.bus.on('sector:enter', (p) => this._guard('sector:enter', () => this._onSectorEnter(p)));
+    // F2: offline catch-up must not advance from wall-clock. save:loaded only runs
+    // catch-up when an explicit offline elapsed was injected into meta (sim-authored).
     this.bus.on('save:loaded', () => this._guard('save:loaded', () => this.runOfflineCatchup()));
     this.bus.on('game:started', () => this._guard('game:started', () => this._seedCurrentSector()));
 
@@ -149,7 +151,12 @@ export const sectorSim = {
     const m = ss.meta;
     if (!Number.isFinite(m.rngSeed)) m.rngSeed = 0;
     if (!Number.isFinite(m.lastTickSimT)) m.lastTickSimT = 0;
+    // F2: lastWallT is legacy/non-authoritative; keep zeroed for save compat only.
     if (!Number.isFinite(m.lastWallT)) m.lastWallT = 0;
+    if (!Number.isFinite(m.lastCatchupSimT)) m.lastCatchupSimT = 0;
+    if (m.pendingOfflineElapsedSec !== null && !Number.isFinite(m.pendingOfflineElapsedSec)) {
+      m.pendingOfflineElapsedSec = null;
+    }
     if (!Array.isArray(m.lossLog)) m.lossLog = [];
     if (!Number.isFinite(m.nextImpulseSeq)) m.nextImpulseSeq = 1;
     if (!Number.isFinite(m.transitCounter)) m.transitCounter = 0;
@@ -561,9 +568,11 @@ export const sectorSim = {
     if (!id) return;
     const continuous = !!(p && (p.continuous || p.noTeleport));
     this._sectorRec(id).lastEnterSimT = this.state.simTime || 0;
-    // Continuous free-flight handoffs must not stamp wall-clock (that would skew offline catch-up
-    // and encourage double application on the next membership edge). Hard exits may.
-    if (!continuous) this._ensureState().meta.lastWallT = Date.now();
+    // F2: do not stamp wall-clock into authoritative meta. Offline catch-up uses
+    // explicit pendingOfflineElapsedSec / serialized simTime only.
+    if (!continuous) {
+      this._ensureState().meta.lastExitSimT = this.state.simTime || 0;
+    }
   },
 
   _onSectorEnter(p) {
@@ -598,16 +607,29 @@ export const sectorSim = {
     if (id) this._sectorRec(id).lastEnterSimT = this.state.simTime || 0;
   },
 
-  runOfflineCatchup() {
+  /**
+   * Advance the sector field after a load only from *explicit* offline elapsed input.
+   * F2: never call Date.now() / performance.now() — wall-clock must not drive authoritative sim.
+   *
+   * Sources (first match wins):
+   *   1. opts.offlineElapsedSec — injected by host/test
+   *   2. ss.meta.pendingOfflineElapsedSec — serialized or pre-set before save:loaded
+   *   3. otherwise zero (no catch-up) — deterministic default for identical seed/input loads
+   *
+   * @param {{ offlineElapsedSec?: number }} [opts]
+   */
+  runOfflineCatchup(opts = {}) {
     const ss = this._ensureState();
-    // Wall-clock is UX-only for mapping absence → capped days. The field kernel itself (dangerModel
-    // + embodiment projection) never reads wall-clock; replay modes should call _advanceModel with
-    // explicit simTime-derived days instead.
-    const now = Date.now();
-    const last = ss.meta.lastWallT || 0;
-    if (!last) { ss.meta.lastWallT = now; return; }
-    const elapsed = clamp((now - last) / 1000, 0, OFFLINE_CAP_SEC);
-    ss.meta.lastWallT = now;
+    let elapsed = 0;
+    if (Number.isFinite(opts.offlineElapsedSec)) {
+      elapsed = clamp(opts.offlineElapsedSec, 0, OFFLINE_CAP_SEC);
+    } else if (Number.isFinite(ss.meta.pendingOfflineElapsedSec)) {
+      elapsed = clamp(ss.meta.pendingOfflineElapsedSec, 0, OFFLINE_CAP_SEC);
+    }
+    // Consume pending so a second save:loaded cannot double-apply.
+    ss.meta.pendingOfflineElapsedSec = null;
+    // Bookkeeping only — never used to derive elapsed.
+    ss.meta.lastCatchupSimT = this.state.simTime || 0;
     if (elapsed < DAY_SECONDS) return;
     const days = clamp(Math.max(1, Math.floor((elapsed * OFFLINE_EFF) / DAY_SECONDS)), 1, OFFLINE_CAP_DAYS);
     const result = this._advanceModel(days, 'offline');
@@ -628,7 +650,9 @@ export const sectorSim = {
       field: null,
       embodiment: { epochKey: -1, appliedIds: [], lastDigest: 0, lastSubsetDigest: 0, lastEmitSimT: 0 },
       meta: {
-        rngSeed: 0, lastTickSimT: this.state.simTime || 0, lastWallT: Date.now(), lossLog: [],
+        // F2: no wall-clock stamps in authoritative meta.
+        rngSeed: 0, lastTickSimT: this.state.simTime || 0, lastCatchupSimT: 0,
+        pendingOfflineElapsedSec: null, lossLog: [],
         nextImpulseSeq: 1, transitCounter: 0, marketAccumulatorDays: 0,
         riskAccumulatorDays: 0, modelVersion: SECTOR_FIELD_VERSION, lastIntel: {},
       },
@@ -653,7 +677,13 @@ export const sectorSim = {
       meta: {
         rngSeed: ss.meta.rngSeed || 0,
         lastTickSimT: ss.meta.lastTickSimT || 0,
-        lastWallT: Date.now(),
+        // F2: serialize simTime bookkeeping only — never Date.now() wall stamps.
+        lastCatchupSimT: ss.meta.lastCatchupSimT || 0,
+        lastExitSimT: ss.meta.lastExitSimT || 0,
+        // Explicit offline elapsed may be authored into the save; wall-derived elapsed is forbidden.
+        pendingOfflineElapsedSec: Number.isFinite(ss.meta.pendingOfflineElapsedSec)
+          ? ss.meta.pendingOfflineElapsedSec
+          : null,
         lossLog: clonePlain((ss.meta.lossLog || []).slice(-50)),
         nextImpulseSeq: ss.meta.nextImpulseSeq || 1,
         transitCounter: ss.meta.transitCounter || 0,
@@ -683,7 +713,12 @@ export const sectorSim = {
     ss.meta = {
       rngSeed: m.rngSeed || 0,
       lastTickSimT: m.lastTickSimT || 0,
-      lastWallT: m.lastWallT || 0,
+      // F2: ignore legacy lastWallT for authoritative catch-up (wall-clock is non-authoritative).
+      lastCatchupSimT: m.lastCatchupSimT || 0,
+      lastExitSimT: m.lastExitSimT || 0,
+      pendingOfflineElapsedSec: Number.isFinite(m.pendingOfflineElapsedSec)
+        ? m.pendingOfflineElapsedSec
+        : null,
       lossLog: m.lossLog || [],
       nextImpulseSeq: m.nextImpulseSeq || 1,
       transitCounter: m.transitCounter || 0,

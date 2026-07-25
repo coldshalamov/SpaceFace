@@ -67,6 +67,7 @@ const ACTION_MAP = {
 
 const DEFAULT_DEADZONE = 0.12;
 
+/** Diagnostic wall stamp only — never used for aim/helm arbitration (F4). */
 function nowMs() {
   if (typeof performance !== 'undefined' && performance.now) return performance.now();
   return Date.now();
@@ -98,6 +99,9 @@ export function createGamepad(ctx) {
   const gp = {
     connected: false,
     id: '',
+    // F4: tick-indexed activity for authoritative device arbitration (not wall-ms).
+    lastActiveTick: -1,
+    /** Diagnostic only — do not use for aim/helm selection. */
     lastActiveMs: 0,
 
     axes: {
@@ -125,9 +129,11 @@ export function createGamepad(ctx) {
       return this.actions[name] || { held: false, pressed: false, released: false, value: 0 };
     },
 
-    tick(/* dt */) {
+    tick(/* dt */ _dt, tickState = null) {
+      // Prefer live state passed from input.update so tick stamps stay authoritative.
+      const live = tickState || state;
       const cfg =
-        (state && state.settings && state.settings.controls && state.settings.controls.gamepad) ||
+        (live && live.settings && live.settings.controls && live.settings.controls.gamepad) ||
         {};
       const enabled = cfg.enabled !== false;
       const dz = typeof cfg.deadzone === 'number' ? cfg.deadzone : DEFAULT_DEADZONE;
@@ -156,7 +162,8 @@ export function createGamepad(ctx) {
       if (pad && !wasConnected) {
         this.connected = true;
         this.id = pad.id || 'gamepad';
-        this.lastActiveMs = nowMs();
+        this.lastActiveTick = live && Number.isFinite(live.tick) ? (live.tick | 0) : 0;
+        this.lastActiveMs = nowMs(); // diagnostic only
         if (bus && bus.emit) bus.emit('gamepad:connected', { id: this.id });
       }
       if (!pad) {
@@ -203,7 +210,11 @@ export function createGamepad(ctx) {
       }
       this.actions = actions;
 
-      if (activity) this.lastActiveMs = nowMs();
+      if (activity) {
+        // F4: authoritative stamp is sim tick; wall ms is diagnostic only.
+        this.lastActiveTick = live && Number.isFinite(live.tick) ? (live.tick | 0) : 0;
+        this.lastActiveMs = nowMs();
+      }
     },
 
     _resetState() {

@@ -155,16 +155,16 @@ test('H4: Node createAuthoritativeRuntime records sg06-tactical/v3 selected slot
 // ── H11 schema + consumption ─────────────────────────────────────────────────
 
 test('H11: never assertion is consumed exactly once when oracle emits never:signal', async () => {
-  // Signal that never fires on a clean flight run → never passes, consumption must match.
+  // F8: use a real sampled signal. On empty-flight (no tether) tetherActive stays false → never passes.
+  // Drop run-eq-repeat so a single-arm run is not incomplete solely for deferred equivalence.
   const doc = {
     ...flightDoc,
     id: 'h11.never-consumed',
     ticks: 20,
     assertions: [
-      { kind: 'never', signal: 'playerAliveFalse' },
+      { kind: 'never', signal: 'tetherActive' },
     ],
   };
-  // Inject a synthetic signal name that is never truthy on samples (undefined field).
   const result = await runLabScenario(doc, { verbosity: 2 });
   assert.notEqual(result.exitClass, 3, result.error);
   assert.equal(result.oracle?.assertionConsumption?.ok, true,
@@ -174,6 +174,10 @@ test('H11: never assertion is consumed exactly once when oracle emits never:sign
     (f) => f.id === 'assertions-consumed-exactly-once',
   );
   assert.equal(consumptionFail, undefined, 'never assertion must be consumed');
+  assert.ok(
+    (result.oracle?.results || []).some((r) => r.id === 'never:tetherActive' && r.ok === true),
+    'never:tetherActive must pass on untethered flight',
+  );
 });
 
 test('H11: metric assertion without metric is rejected at validation', () => {

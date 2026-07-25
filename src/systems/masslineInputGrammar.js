@@ -131,7 +131,12 @@ export function createMasslineInputGrammar() {
     return command;
   }
 
-  return Object.freeze({ step, reset, command });
+  /** Read-only copy of the last step packet (no state change). Used after tape rebuild. */
+  function snapshot() {
+    return { ...command };
+  }
+
+  return Object.freeze({ step, reset, snapshot, command });
 }
 
 function axis(value) {

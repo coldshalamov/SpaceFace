@@ -99,22 +99,26 @@ const INPUT_EVENT_KEYS = new Set([
 ]);
 
 const FRAME_KEYS = new Set(['tick', 'input', 'commands']);
-/** Closed schema for nested frame.input — unknown keys rejected (H14). */
+/**
+ * Closed schema for nested frame.input — unknown keys rejected (H14).
+ * F9: fireGroup/brake/massline are NOT implemented by the tape driver (or inject action
+ * packets that bypass the grammar) — reject them at validation. Use raw key events +
+ * masslineHeld/lineLength/orbitDirection which flow through the real grammar.
+ */
 const FRAME_INPUT_KEYS = new Set([
   'moveX',
   'moveZ',
   'turnIntent',
   'boost',
   'fire',
-  'fireGroup',
   'aimAngle',
   'reelDelta',
-  'brake',
   'masslineHeld',
   'lineLength',
   'orbitDirection',
-  'massline',
 ]);
+/** Explicitly rejected unimplemented frame.input fields (F9) — clearer than unknown-key. */
+const FRAME_INPUT_REJECTED = new Set(['fireGroup', 'brake', 'massline']);
 const POLICY_KEYS = new Set(['id', 'version', 'params']);
 const CHECKPOINT_KEYS = new Set(['tick', 'kind', 'label']);
 const TRACE_KEYS = new Set(['signals', 'sampleEvery']);
@@ -309,16 +313,17 @@ export function validateSimScenario(doc, options = {}) {
     }
   }
 
-  // H14: trace.signals must name known sample fields (runner always records the full sample
-  // surface which is a superset; unknown names would be silently ignored — reject those).
+  // H14/F8: trace.signals and temporal-assertion signals must name known sample fields.
+  // Unknown names would be silently ignored (vacuous temporal pass) — reject those.
+  const KNOWN_SAMPLE_SIGNALS = new Set([
+    'default', 'tick', 'playerX', 'playerZ', 'playerVelX', 'playerVelZ', 'playerRot',
+    'playerAlive', 'hull', 'cap', 'credits', 'tetherActive', 'distance', 'restLength',
+    'radiusError', 'radialSpeed', 'tangentialSpeed', 'tangentFraction', 'tension',
+    'angularSpeed', 'attachmentActive', 'loadBand', 'mtActive', 'mtPhase', 'mtStrain',
+    'orbitAssistActive', 'orbitAssistReason', 'diverged',
+    'cmdX', 'cmdZ', 'cmdRejected', 'cmdClamped',
+  ]);
   if (doc.trace && Array.isArray(doc.trace.signals)) {
-    const KNOWN_SAMPLE_SIGNALS = new Set([
-      'default', 'tick', 'playerX', 'playerZ', 'playerVelX', 'playerVelZ', 'playerRot',
-      'playerAlive', 'hull', 'cap', 'credits', 'tetherActive', 'distance', 'restLength',
-      'radiusError', 'radialSpeed', 'tangentialSpeed', 'tangentFraction', 'tension',
-      'angularSpeed', 'attachmentActive', 'loadBand', 'mtActive', 'mtPhase', 'mtStrain',
-      'orbitAssistActive', 'orbitAssistReason',
-    ]);
     doc.trace.signals.forEach((sig, i) => {
       if (typeof sig !== 'string' || !KNOWN_SAMPLE_SIGNALS.has(sig)) {
         issue(`$.trace.signals[${i}]`, 'unsupported-field',
@@ -345,6 +350,13 @@ export function validateSimScenario(doc, options = {}) {
           if (typeof frame.input !== 'object' || Array.isArray(frame.input)) {
             issue(`${p}.input`, 'type', 'input must be an object');
           } else {
+            // F9: reject unimplemented fields with an explicit rule before generic unknown-key.
+            for (const key of Object.keys(frame.input)) {
+              if (FRAME_INPUT_REJECTED.has(key)) {
+                issue(`${p}.input.${key}`, 'unimplemented-input-field',
+                  `frame.input.${key} is not applied by the lab tape driver — use raw events/grammar fields`);
+              }
+            }
             // H14: closed schema — silent ignore of nested unknown keys is forbidden.
             rejectUnknownKeys(frame.input, FRAME_INPUT_KEYS, `${p}.input`, issue);
           }
@@ -675,6 +687,16 @@ function result(ok, issues) {
   };
 }
 
+/** Known sample fields shared with trace.signals validation (F8). */
+const ASSERTION_KNOWN_SIGNALS = new Set([
+  'default', 'tick', 'playerX', 'playerZ', 'playerVelX', 'playerVelZ', 'playerRot',
+  'playerAlive', 'hull', 'cap', 'credits', 'tetherActive', 'distance', 'restLength',
+  'radiusError', 'radialSpeed', 'tangentialSpeed', 'tangentFraction', 'tension',
+  'angularSpeed', 'attachmentActive', 'loadBand', 'mtActive', 'mtPhase', 'mtStrain',
+  'orbitAssistActive', 'orbitAssistReason', 'diverged',
+  'cmdX', 'cmdZ', 'cmdRejected', 'cmdClamped', 'settles',
+]);
+
 /** H11: per-kind required fields so assertions cannot pass vacuously. */
 function validateAssertionFields(a, p, issue) {
   const kind = a.kind;
@@ -692,10 +714,27 @@ function validateAssertionFields(a, p, issue) {
   } else if (kind === 'never') {
     if (!a.signal && !a.never && !a.event) {
       issue(`${p}.signal`, 'required', 'never assertion requires signal (or never/event)');
+    } else {
+      const signal = a.signal || a.never || a.event;
+      // F8: unknown temporal signals fail validation (not vacuous pass at evaluation).
+      if (typeof signal === 'string' && !ASSERTION_KNOWN_SIGNALS.has(signal)) {
+        issue(`${p}.signal`, 'unknown-signal',
+          `temporal signal "${signal}" is not a known lab sample field`);
+      }
     }
   } else if (kind === 'holds' || kind === 'eventByTick' || kind === 'settles') {
     if (kind !== 'settles' && !a.signal) {
       issue(`${p}.signal`, 'required', `${kind} assertion requires signal`);
+    } else if (a.signal && kind !== 'settles') {
+      if (typeof a.signal === 'string' && !ASSERTION_KNOWN_SIGNALS.has(a.signal)) {
+        issue(`${p}.signal`, 'unknown-signal',
+          `temporal signal "${a.signal}" is not a known lab sample field`);
+      }
+    } else if (kind === 'settles' && a.signal && a.signal !== 'settles') {
+      if (typeof a.signal === 'string' && !ASSERTION_KNOWN_SIGNALS.has(a.signal)) {
+        issue(`${p}.signal`, 'unknown-signal',
+          `temporal signal "${a.signal}" is not a known lab sample field`);
+      }
     }
   } else if (kind === 'equivalence') {
     if (!a.equivalence && !a.expected && !a.signal) {

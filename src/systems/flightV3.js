@@ -127,7 +127,17 @@ export const flightV3 = {
     };
 
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('save:loaded', () => { this._masslineSlingUntil = 0; this._orbitAssistRuntime = { direction: 0 }; this._orbitAssistGraceActive = false; this._dashEarnedUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'load'); });
+      // F1: do not zero _orbitAssistRuntime on load — tethered orbit continuity is gameplay-
+      // affecting and must match the uninterrupted trajectory. Sling/dash windows stay ephemeral.
+      // Boost is still cancelled (UX safety). Grace is not re-granted after load.
+      this.bus.on('save:loaded', () => {
+        this._masslineSlingUntil = 0;
+        this._orbitAssistGraceActive = false;
+        this._dashEarnedUntil = 0;
+        this._sanitizeAllRuntime();
+        this._cancelPlayerBoostOnRestore();
+        this._setFlightMode('manual', 'load');
+      });
       this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._orbitAssistRuntime = { direction: 0 }; this._orbitAssistGraceActive = true; this._dashEarnedUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
       this.bus.on('tether:latched', () => this._setFlightMode('manual', 'tether'));
       this.bus.on('tether:releaseRated', (payload = {}) => {

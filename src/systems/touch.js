@@ -26,6 +26,7 @@ const OVERLAY_ID = 'sf-touch-overlay';
 // still force-enable in Settings.
 const AUTO_MIN_PX = 480;
 
+/** Diagnostic wall stamp only — never used for aim/helm arbitration (F4). */
 function nowMs() {
   if (typeof performance !== 'undefined' && performance.now) return performance.now();
   return Date.now();
@@ -42,6 +43,10 @@ export function createTouch(ctx) {
 
   const touch = {
     active: false,        // is the overlay shown + touch input enabled?
+    // F4: tick-indexed activity for authoritative device arbitration (not wall-ms).
+    lastActiveTick: -1,
+    _activityPending: false,
+    /** Diagnostic only — do not use for aim/helm selection. */
     lastActiveMs: 0,
     axes: { leftX: 0, leftY: 0, rightX: 0, rightY: 0 },
     actions: {
@@ -164,13 +169,18 @@ export function createTouch(ctx) {
           const r = el.getBoundingClientRect();
           this._sticks[t.identifier] = { side, ox: r.left + r.width / 2, oy: r.top + r.height / 2, r: r.width / 2 };
           this._moveKnob(knob, t, this._sticks[t.identifier]);
-          this.lastActiveMs = nowMs();
+          this._activityPending = true;
+          this.lastActiveMs = nowMs(); // diagnostic only
         }, { passive: false });
         el.addEventListener('touchmove', (e) => {
           e.preventDefault();
           for (const t of e.changedTouches) {
             const st = this._sticks[t.identifier];
-            if (st) { this._moveKnob(knob, t, st); this.lastActiveMs = nowMs(); }
+            if (st) {
+              this._moveKnob(knob, t, st);
+              this._activityPending = true;
+              this.lastActiveMs = nowMs(); // diagnostic only
+            }
           }
         }, { passive: false });
         const end = (e) => {
@@ -215,7 +225,8 @@ export function createTouch(ctx) {
           b.classList.add('held');
           this._btnHeld[act] = true;
           this._btnPulse[act] = true;
-          this.lastActiveMs = nowMs();
+          this._activityPending = true;
+          this.lastActiveMs = nowMs(); // diagnostic only
           if (isMenuAction(act) && bus && bus.emit) bus.emit('touch:uiAction', { action: act });
         };
         const up = (e) => { e.preventDefault(); b.classList.remove('held'); this._btnHeld[act] = false; };
@@ -225,7 +236,13 @@ export function createTouch(ctx) {
       });
     },
 
-    tick() {
+    tick(_dt, tickState = null) {
+      const live = tickState || state;
+      // F4: stamp pending activity with sim tick for device arbitration.
+      if (this._activityPending) {
+        this.lastActiveTick = live && Number.isFinite(live.tick) ? (live.tick | 0) : 0;
+        this._activityPending = false;
+      }
       if (!this.active) return;
       // Translate button-held flags into action state (pressed/released edges computed in input.js
       // merge; here we only reflect current held state, matching gamepad.js's approach).

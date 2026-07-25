@@ -467,12 +467,12 @@ export async function loadPq017GateState({ root, outputRoot }) {
 }
 
 /**
- * H5: PQ-017 preflight delegates to the generic broker (evaluateCachedResult, launch quota,
+ * H5/F3: PQ-017 preflight delegates to the generic broker (evaluateCachedResult, launch quota,
  * requireBrokerClaim). The PQ-017 receipt/inflight schema names stay for compatibility.
  *
- * When no SF_BROKER_CLAIM is present, issues a one-use claim (quota reserved at issue) so
- * existing probe scripts that only call assertPq017ProbeLaunch keep working — but they now
- * go through the same mechanical loop-breakers as assertProbeLaunch.
+ * F3: Compatibility self-mint is DIAGNOSTIC-ONLY and never authorizes acceptance.
+ * Acceptance requires a broker-issued claim (or SF_BROKER_CLAIM) minted after real fast
+ * gates pass — never a synthesized receipt created here.
  */
 export async function assertPq017ProbeLaunch({
   root,
@@ -483,12 +483,15 @@ export async function assertPq017ProbeLaunch({
   explicitDiagnostic,
   brokerClaimToken = null,
 }) {
-  const manifest = buildPq017ValidationManifest({ requireBrokerClaim: true });
+  const requireClaim = mode === 'acceptance';
+  const manifest = buildPq017ValidationManifest({ requireBrokerClaim: requireClaim });
 
-  // Compatibility: mint a claim when the probe has none (tests + legacy call sites).
-  // Quota is reserved at issue time (H6).
   let claimToken = brokerClaimToken ?? process.env.SF_BROKER_CLAIM ?? null;
+  let compatibilityMint = false;
+
   if (mode === 'acceptance' && !claimToken) {
+    // F3: may issue a claim only from an *existing* fast-gate receipt (real gates ran).
+    // Never synthesize createFastGateReceipt — that is not evidence gates passed.
     const digests = await computeGateDigestsFromManifest({ root, manifest });
     const prior = await getCandidateLaunchCount(outputRoot, digests.candidateDigest);
     if (prior >= manifest.maxLaunchesPerCandidate) {
@@ -502,7 +505,6 @@ export async function assertPq017ProbeLaunch({
       };
       throw error;
     }
-    // blocked_repeat via generic cache before minting
     const cached = await evaluateCachedResult({ root, outputRoot, manifest });
     if (cached.blocked) {
       const error = new Error(`PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED: ${cached.reason}`);
@@ -516,6 +518,33 @@ export async function assertPq017ProbeLaunch({
       };
       throw error;
     }
+    const receipt = await readFastGateReceipt({ outputRoot });
+    if (!receipt) {
+      const error = new Error('PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED: broker-claim-required');
+      error.code = 'PQ017_ACCEPTANCE_PREFLIGHT_BLOCKED';
+      error.gateResult = {
+        pass: false,
+        reason: 'broker-claim-required',
+        primaryAcceptance: false,
+        resolvesFailure: false,
+        detail: 'acceptance requires a broker-issued claim after real fast gates; PQ-017 must not self-mint an authorizing receipt',
+      };
+      throw error;
+    }
+    const issued = await issueBrokerClaim({
+      outputRoot,
+      manifest,
+      receipt,
+      mode: 'acceptance',
+      digests,
+    });
+    claimToken = issued.claimPath;
+  }
+
+  // F3: diagnostic-only compatibility mint — never primaryAcceptance, never synthesizes
+  // a receipt that could authorize acceptance lanes.
+  if (mode === 'diagnostic' && !claimToken) {
+    const digests = await computeGateDigestsFromManifest({ root, manifest });
     const receipt = await readFastGateReceipt({ outputRoot })
       ?? createFastGateReceipt({
         receiptSchema: manifest.receiptSchema,
@@ -528,15 +557,19 @@ export async function assertPq017ProbeLaunch({
         inputDigest: digests.inputDigest,
         profileDigest: digests.profileDigest,
         manifestDigest: digests.manifestDigest,
+        // Marker so consumers can see this was not a real fast-gate publish.
+        diagnosticOnly: true,
+        compatibilityMint: true,
       });
     const issued = await issueBrokerClaim({
       outputRoot,
       manifest,
       receipt,
-      mode: 'acceptance',
+      mode: 'diagnostic',
       digests,
     });
     claimToken = issued.claimPath;
+    compatibilityMint = true;
   }
 
   try {
@@ -553,6 +586,9 @@ export async function assertPq017ProbeLaunch({
     return {
       ...result,
       claimToken: result.claimToken,
+      // F3/F6: surface promotion authority from mode — diagnostic never primary.
+      primaryAcceptance: mode === 'acceptance' && result.primaryAcceptance === true && !compatibilityMint,
+      compatibilityMint,
     };
   } catch (error) {
     // Preserve PQ-017 error code/message for existing probe scripts and tests.

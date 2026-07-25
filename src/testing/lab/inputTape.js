@@ -60,7 +60,9 @@ export function createInputTapeDriver(tape, options = {}) {
   const masslineGrammar = options.masslineGrammar === false
     ? null
     : (options.masslineGrammar || createMasslineInputGrammar());
-  const allowMasslinePacketOverride = options.allowMasslinePacketOverride !== false;
+  // F9: action-packet injection via frame.input.massline is OFF by default.
+  // Only explicit opt-in (tests that intentionally probe override) may merge packets.
+  const allowMasslinePacketOverride = options.allowMasslinePacketOverride === true;
   let eventIndex = 0;
 
   // Pre-index events by tick for O(events) total over a run.
@@ -74,14 +76,19 @@ export function createInputTapeDriver(tape, options = {}) {
   return {
     keys,
     /**
-     * H10: rebuild sticky key state by replaying tape events for ticks [fromTick, toTick]
-     * (inclusive). Used after save/load runtime recreate so keys match pre-save holds without
-     * surviving on the old driver instance.
+     * H10/F1: rebuild sticky keys + massline grammar by replaying tape for ticks
+     * [fromTick, toTick] (inclusive). Used after save/load so private grammar/key state
+     * matches the uninterrupted arm without surviving on a discarded driver instance.
+     *
+     * Also rewrites state.input sticky axes from the last-wins frame at toTick (if state
+     * provided) WITHOUT double-stepping grammar beyond toTick.
+     *
      * @param {number} fromTick
      * @param {number} toTick
-     * @param {object} [state] recreated runtime state — required for binding resolution
+     * @param {object} [state] runtime state — required for binding resolution + input writeback
+     * @param {{ playerEntity?: object, tetherAttached?: boolean, dt?: number }} [ctx]
      */
-    resetFromTape(fromTick, toTick, state = null) {
+    resetFromTape(fromTick, toTick, state = null, ctx = {}) {
       keys = Object.create(null);
       if (masslineGrammar && typeof masslineGrammar.reset === 'function') {
         masslineGrammar.reset();
@@ -90,6 +97,7 @@ export function createInputTapeDriver(tape, options = {}) {
       const end = toTick | 0;
       // H10: never pass null into transitionFlightKeyState — binding() reads state.settings.
       const keyState = state || { settings: { controls: { bindings: null }, gameplay: {} } };
+      const dt = Number.isFinite(ctx.dt) ? ctx.dt : (1 / 60);
       for (let t = start; t <= end; t++) {
         const tickEvents = eventsByTick.get(t) || [];
         for (const ev of tickEvents) {
@@ -109,8 +117,77 @@ export function createInputTapeDriver(tape, options = {}) {
             }
           }
         }
+        // F1: step massline grammar once per tick so private continuity matches the live arm.
+        // Must use the same held/attached/lineLength inputs as apply() for that tick.
+        if (masslineGrammar) {
+          const frame = resolveFrameInput(frames, t);
+          const frameInput = (frame && frame.input) || {};
+          const derived = deriveAxesFromKeys(keys);
+          const tetherKey = !!(keys.KeyF || keys.Space);
+          const held = frameInput.masslineHeld != null ? !!frameInput.masslineHeld : tetherKey;
+          // Post-load state carries the restored tether; for pre-existing attachments this is
+          // the correct attached flag for the whole run. When ctx.tetherAttached is provided
+          // (caller knows live attachment), prefer it.
+          const attachedNow = ctx.tetherAttached != null
+            ? !!ctx.tetherAttached
+            : !!(state && state.player && state.player.tether && state.player.tether.active);
+          const reelDelta = finite(frameInput.reelDelta, derived.reelDelta);
+          const lineLength = finite(
+            frameInput.lineLength,
+            (keys.KeyE ? 1 : 0) - (keys.KeyQ ? 1 : 0) || reelDelta,
+          );
+          const turnIntent = finite(frameInput.turnIntent, derived.turnIntent);
+          const orbitDirection = finite(frameInput.orbitDirection, turnIntent);
+          masslineGrammar.step(dt, {
+            held,
+            attached: attachedNow,
+            lineLength,
+            orbitDirection,
+          });
+        }
       }
       this.keys = keys;
+
+      // Write sticky frame axes onto state.input (no second grammar.step).
+      if (state) {
+        const frame = resolveFrameInput(frames, end);
+        const frameInput = (frame && frame.input) || {};
+        const derived = deriveAxesFromKeys(keys);
+        const moveX = finite(frameInput.moveX, derived.moveX);
+        const moveZ = finite(frameInput.moveZ, derived.moveZ);
+        const turnIntent = finite(frameInput.turnIntent, derived.turnIntent);
+        const boost = frameInput.boost != null ? !!frameInput.boost : derived.boost;
+        const fire = frameInput.fire != null ? !!frameInput.fire : !!keys.KeyJ;
+        const aimAngle = finite(
+          frameInput.aimAngle,
+          ctx.playerEntity ? ctx.playerEntity.rot : (state.entities?.get?.(state.playerId)?.rot || 0),
+        );
+        const reelDelta = finite(frameInput.reelDelta, derived.reelDelta);
+        state.input = state.input || {};
+        state.input.moveX = moveX;
+        state.input.moveZ = moveZ;
+        state.input.turnIntent = turnIntent;
+        state.input.boost = boost;
+        state.input.fire = fire;
+        state.input.aimAngle = aimAngle;
+        state.input.keys = { ...keys };
+        const origin = (ctx.playerEntity && ctx.playerEntity.pos)
+          || (state.entities?.get?.(state.playerId)?.pos)
+          || { x: 0, z: 0 };
+        state.input.aimWorld = {
+          x: origin.x + Math.cos(aimAngle) * 1000,
+          z: origin.z + Math.sin(aimAngle) * 1000,
+        };
+        state.input.actions = state.input.actions || {};
+        state.input.actions.reelDelta = reelDelta;
+        if (masslineGrammar) {
+          // Grammar already stepped through end; publish current packet without stepping again.
+          const packet = typeof masslineGrammar.snapshot === 'function'
+            ? masslineGrammar.snapshot()
+            : (state.input.actions.massline || null);
+          if (packet) state.input.actions.massline = { ...packet };
+        }
+      }
       return keys;
     },
     /**
