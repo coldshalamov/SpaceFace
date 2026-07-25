@@ -310,6 +310,10 @@ export function validateSimScenario(doc, options = {}) {
         rejectUnknownKeys(ev, INPUT_EVENT_KEYS, p, issue);
         if (!Number.isInteger(ev.tick) || ev.tick < 0) {
           issue(`${p}.tick`, 'type', 'tick must be a non-negative integer');
+        } else if (Number.isInteger(doc.ticks) && doc.ticks >= 1 && ev.tick >= doc.ticks) {
+          // N1: events outside the executed range [0, ticks-1] are never consumed.
+          issue(`${p}.tick`, 'tick-out-of-range',
+            `input event tick ${ev.tick} is outside executed range [0, ${doc.ticks - 1}]`);
         }
         if (ev.device != null && typeof ev.device !== 'string') {
           issue(`${p}.device`, 'type', 'device must be a string');
@@ -372,6 +376,10 @@ export function validateSimScenario(doc, options = {}) {
         rejectUnknownKeys(frame, FRAME_KEYS, p, issue);
         if (!Number.isInteger(frame.tick) || frame.tick < 0) {
           issue(`${p}.tick`, 'type', 'tick must be a non-negative integer');
+        } else if (Number.isInteger(doc.ticks) && doc.ticks >= 1 && frame.tick >= doc.ticks) {
+          // N1: frames outside the executed range [0, ticks-1] are never consumed.
+          issue(`${p}.tick`, 'tick-out-of-range',
+            `frame tick ${frame.tick} is outside executed range [0, ${doc.ticks - 1}]`);
         }
         if (frame.input != null) {
           if (typeof frame.input !== 'object' || Array.isArray(frame.input)) {
@@ -508,12 +516,24 @@ export function validateSimScenario(doc, options = {}) {
 
   // L5/M2: public-input requires a nonempty consumed tape (events or frames).
   // For raw docs, inputEvents/frames compile into the runner-consumed tape.
+  // N1: nonempty is not enough — at least one event/frame must fall in [0, ticks-1]
+  // (the range the runner actually executes). Out-of-range-only tapes never drive input.
   if (doc.evidenceClass === 'public-input') {
-    const eventCount = Array.isArray(doc.inputEvents) ? doc.inputEvents.length : 0;
-    const frameCount = Array.isArray(doc.frames) ? doc.frames.length : 0;
+    const events = Array.isArray(doc.inputEvents) ? doc.inputEvents : [];
+    const frames = Array.isArray(doc.frames) ? doc.frames : [];
+    const eventCount = events.length;
+    const frameCount = frames.length;
     if (eventCount === 0 && frameCount === 0) {
       issue('$.inputEvents', 'public-input-tape',
         'public-input scenarios require a nonempty consumed tape (inputEvents or frames)');
+    } else if (Number.isInteger(doc.ticks) && doc.ticks >= 1) {
+      const inRange = (tick) => Number.isInteger(tick) && tick >= 0 && tick < doc.ticks;
+      const hasInRange = events.some((ev) => ev && inRange(ev.tick))
+        || frames.some((fr) => fr && inRange(fr.tick));
+      if (!hasInRange) {
+        issue('$.inputEvents', 'no-input-within-tick-range',
+          `no input within tick range [0, ${doc.ticks - 1}] — all events/frames are outside the executed run`);
+      }
     }
   }
 
@@ -806,12 +826,21 @@ export function validateCanonicalScenario(doc, options = {}) {
     // M2/L5: public-input requires nonempty CONSUMED tape (canonical.inputTape only).
     // Raw inputEvents/frames are compilation inputs, not consumed authority — they must
     // not mask an empty inputTape that the runner actually steps.
+    // N1: also require at least one consumed event/frame tick in [0, ticks-1].
     if (doc.evidenceClass === 'public-input') {
-      const tapeEvents = Array.isArray(doc.inputTape.events) ? doc.inputTape.events.length : 0;
-      const tapeFrames = Array.isArray(doc.inputTape.frames) ? doc.inputTape.frames.length : 0;
-      if (tapeEvents === 0 && tapeFrames === 0) {
+      const tapeEvents = Array.isArray(doc.inputTape.events) ? doc.inputTape.events : [];
+      const tapeFrames = Array.isArray(doc.inputTape.frames) ? doc.inputTape.frames : [];
+      if (tapeEvents.length === 0 && tapeFrames.length === 0) {
         issue('$.inputTape', 'public-input-tape',
           'public-input scenarios require a nonempty consumed tape (inputTape.events or inputTape.frames)');
+      } else if (Number.isInteger(doc.ticks) && doc.ticks >= 1) {
+        const inRange = (tick) => Number.isInteger(tick) && tick >= 0 && tick < doc.ticks;
+        const hasInRange = tapeEvents.some((ev) => ev && inRange(ev.tick))
+          || tapeFrames.some((fr) => fr && inRange(fr.tick));
+        if (!hasInRange) {
+          issue('$.inputTape', 'no-input-within-tick-range',
+            `no input within tick range [0, ${doc.ticks - 1}] — all tape events/frames are outside the executed run`);
+        }
       }
     }
     // Duplicate raw + compiled surfaces: reject unless identical (no masking).

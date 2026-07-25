@@ -316,10 +316,14 @@ export async function runBrowserLabScenario(canonical, options = {}) {
       skipMultiRunEquivalence: options.skipMultiRunEquivalence === true,
     });
     // M4: same assertion-consumption guard as Node runLabScenario.
+    // N3: parent-owned multi-run equivalences are not required on child arms.
     const assertionConsumption = assertAssertionsConsumed(
       canonical.assertions,
       oracleEval.results,
-      { metrics: canonical.metrics },
+      {
+        metrics: canonical.metrics,
+        skipMultiRunEquivalence: options.skipMultiRunEquivalence === true,
+      },
     );
     const deferredEq = (oracleEval.results || []).filter(
       (r) => r.family === 'equivalence' && r.deferred,

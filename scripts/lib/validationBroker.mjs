@@ -421,6 +421,10 @@ function claimOrReceiptBinds(acceptedEvidence, expected = {}) {
   if (expectedRuntime && ledgerRuntime !== expectedRuntime) return false;
   if (expectedRuntime && (ledgerRuntime == null || ledgerRuntime === '')) return false;
 
+  // N4: only acceptance-mode claims may resolve acceptance failures.
+  // Diagnostic (or missing) mode on the ledger never clears a primary failure.
+  if (ledger.mode !== 'acceptance') return false;
+
   const consumedAt = timestamp(ledger.consumedAt);
   const wall = Number.isFinite(expected.now) ? expected.now : Date.now();
   if (!Number.isFinite(consumedAt) || Math.abs(consumedAt - wall) > EVIDENCE_CLOCK_SKEW_MS) {
@@ -475,6 +479,12 @@ function isResolvedByAcceptedEvidence({
   }
   // Without evidence digests we cannot prove candidate binding — fail closed.
   if (!acceptedEvidence || typeof acceptedEvidence !== 'object') {
+    return false;
+  }
+  // N4: a consumed claim alone does not resolve a failure — the probe must have passed.
+  // (readAcceptedEvidence already filters pass+primaryAcceptance from disk; enforce here
+  // so direct callers cannot clear failures with fail-mode evidence + a consumed claim.)
+  if (acceptedEvidence.pass !== true) {
     return false;
   }
   // K4/L2: claim/receipt identity — claimId must match the disk-backed ledger entry
@@ -2096,6 +2106,8 @@ export async function consumeBrokerClaim({ outputRoot, tokenOrPath }) {
       candidateDigest,
       runtimeKind,
       digests,
+      // N4: mode is part of the ledger identity used by evidence resolution.
+      mode: claim.mode ?? null,
     };
   } finally {
     await handle.close();

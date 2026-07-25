@@ -57,7 +57,8 @@ export function evaluateOracles({
     ...equivalenceResults,
   ];
 
-  const failed = all.filter((r) => r.ok === false);
+  // N3: skipped multi-run-arm markers are not failures and not green passes.
+  const failed = all.filter((r) => r.ok === false && !r.skipped);
   let firstBadTick = null;
   for (const f of failed) {
     if (Number.isInteger(f.firstBadTick)) {
@@ -574,16 +575,71 @@ function evaluateQuantitativeAssertions(assertions, metricResults, trace, ctx) {
   return results;
 }
 
+/**
+ * N2: only accept comparison-result objects from parent lab repeat/compare.
+ * Caller-injected booleans and bare `{ ok: true }` are never valid proof.
+ */
+function isEquivalenceComparisonResult(pre) {
+  if (!pre || typeof pre !== 'object' || Array.isArray(pre)) return false;
+  if (typeof pre.ok !== 'boolean') return false;
+  const hasActual = Object.prototype.hasOwnProperty.call(pre, 'actual');
+  const hasExpected = Object.prototype.hasOwnProperty.call(pre, 'expected');
+  const hasCompareMeta = pre.contract != null
+    || pre.runs != null
+    || pre.firstDivergentTick !== undefined
+    || pre.reason != null
+    || pre.mismatches != null
+    || pre.compared === true
+    || pre.incomplete === true;
+  if (pre.ok === true) {
+    // A green equivalence requires actual comparison payload, not a lone ok flag.
+    return hasActual && (hasExpected || hasCompareMeta);
+  }
+  // Failures may be reason-only (e.g. arm-oracle-fail / primary-run-failed).
+  return hasActual || hasExpected || hasCompareMeta;
+}
+
 function evaluateEquivalence(assertions, equivalence, options = {}) {
   const results = [];
   for (const a of assertions) {
     const name = a.equivalence || a.expected || a.signal || 'run-eq-repeat';
     const pre = equivalence[name];
-    if (pre && typeof pre === 'object') {
+    // N2: boolean injection is never valid proof (even `true`).
+    if (pre === true || pre === false) {
       results.push({
         family: 'equivalence',
         id: name,
-        ok: !!pre.ok,
+        ok: false,
+        incomplete: true,
+        injected: true,
+        expected: true,
+        actual: pre,
+        signedDelta: 1,
+        firstBadTick: null,
+        reason: 'caller-injected boolean equivalence is not valid proof — require comparison result object from lab repeat/compare',
+      });
+      continue;
+    }
+    if (pre != null && typeof pre === 'object') {
+      if (!isEquivalenceComparisonResult(pre)) {
+        results.push({
+          family: 'equivalence',
+          id: name,
+          ok: false,
+          incomplete: true,
+          injected: true,
+          expected: true,
+          actual: pre,
+          signedDelta: 1,
+          firstBadTick: null,
+          reason: 'equivalence object is not a comparison result — require actual/expected (or compare meta) from lab repeat/compare',
+        });
+        continue;
+      }
+      results.push({
+        family: 'equivalence',
+        id: name,
+        ok: pre.ok === true,
         expected: pre.expected ?? true,
         actual: pre.actual ?? pre.ok,
         signedDelta: pre.ok ? 0 : 1,
@@ -592,25 +648,13 @@ function evaluateEquivalence(assertions, equivalence, options = {}) {
       });
       continue;
     }
-    if (pre === true || pre === false) {
-      results.push({
-        family: 'equivalence',
-        id: name,
-        ok: pre === true,
-        expected: true,
-        actual: pre === true,
-        signedDelta: pre === true ? 0 : 1,
-        firstBadTick: null,
-      });
-      continue;
-    }
-    // Compare/repeat arms: parent command owns multi-run equivalence. Emit a skipped
-    // marker so assertion consumption succeeds without treating deferred as a green pass.
+    // N3: compare/repeat arms — parent owns multi-run equivalence.
+    // Emit skipped marker that is NOT ok:true and NOT assertion-consumed.
     if (options.skipMultiRunEquivalence) {
       results.push({
         family: 'equivalence',
         id: name,
-        ok: true,
+        ok: false,
         skipped: true,
         multiRunArm: true,
         expected: true,

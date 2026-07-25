@@ -179,6 +179,7 @@ test('J2: evidence with all declared digests matching may resolve', () => {
       claimId: 'claim-j2-all-digests',
       candidateDigest: digests.candidateDigest,
       runtimeKind: 'browser',
+      mode: 'acceptance',
       consumedAt: new Date(now).toISOString(),
     },
   });

@@ -1,11 +1,12 @@
 // Pure assertion-consumption guard (Node + browser safe — no node: imports).
 // H11/M3/M4: every declared assertion must produce exactly one oracle family result.
 // Metrics measure; assertions bind pass/fail contracts.
+// N3: skipped multi-run-arm equivalences are NOT consumed — parent owns evaluation.
 
 /**
  * @param {object[]} assertions
  * @param {object[]} oracleResults
- * @param {{ metrics?: object[] }} [options]
+ * @param {{ metrics?: object[], skipMultiRunEquivalence?: boolean }} [options]
  * @returns {{
  *   ok: boolean,
  *   expected: number,
@@ -13,6 +14,7 @@
  *   reason: string|null,
  *   unconsumed: object[],
  *   consumedIds: (string|number)[],
+ *   skippedEquivalences: string[],
  * }}
  */
 export function assertAssertionsConsumed(assertions, oracleResults, options = {}) {
@@ -27,15 +29,26 @@ export function assertAssertionsConsumed(assertions, oracleResults, options = {}
       reason: 'no assertion declared — metrics measure but do not certify',
       unconsumed: [],
       consumedIds: [],
+      skippedEquivalences: [],
     };
   }
-  void options; // metrics no longer waive the assertion requirement
+  const skipEq = options.skipMultiRunEquivalence === true;
   const results = Array.isArray(oracleResults) ? oracleResults : [];
   const unconsumed = [];
   const consumedIds = [];
+  const skippedEquivalences = [];
+  let requiredCount = 0;
 
   for (let i = 0; i < declared.length; i++) {
     const a = declared[i];
+    // N3: parent-owned multi-run equivalences are not required on child arms.
+    // They must not count as consumed-and-passing when only a skipped marker exists.
+    if (skipEq && isEquivalenceAssertion(a)) {
+      const name = (a && (a.equivalence || a.expected || a.signal)) || 'run-eq-repeat';
+      skippedEquivalences.push(name);
+      continue;
+    }
+    requiredCount += 1;
     const matches = results.filter((r) => resultMatchesAssertion(r, a));
     if (matches.length !== 1) {
       unconsumed.push({
@@ -49,28 +62,54 @@ export function assertAssertionsConsumed(assertions, oracleResults, options = {}
     }
   }
 
+  // When every assertion is a parent-owned skipped equivalence, still require that
+  // *some* certifying surface exists for standalone certification — but child arms
+  // with skipMultiRunEquivalence may have only equivalences (e.g. flight-fixed-input).
+  // Parent owns the pass/fail; arm local ok is about non-eq oracles / invariants.
+  if (requiredCount === 0 && skipEq && skippedEquivalences.length > 0) {
+    return {
+      ok: true,
+      expected: 0,
+      actual: 0,
+      reason: null,
+      unconsumed: [],
+      consumedIds: [],
+      skippedEquivalences,
+      parentOwnedOnly: true,
+    };
+  }
+
   if (unconsumed.length) {
     return {
       ok: false,
-      expected: declared.length,
-      actual: declared.length - unconsumed.length,
+      expected: requiredCount,
+      actual: requiredCount - unconsumed.length,
       reason: `${unconsumed.length} assertion(s) not consumed exactly once`,
       unconsumed,
       consumedIds,
+      skippedEquivalences,
     };
   }
   return {
     ok: true,
-    expected: declared.length,
-    actual: declared.length,
+    expected: requiredCount,
+    actual: requiredCount,
     reason: null,
     unconsumed: [],
     consumedIds,
+    skippedEquivalences,
   };
+}
+
+function isEquivalenceAssertion(assertion) {
+  if (!assertion) return false;
+  return assertion.kind === 'equivalence' || !!assertion.equivalence;
 }
 
 function resultMatchesAssertion(result, assertion) {
   if (!result || !assertion) return false;
+  // N3: skipped markers never count as consuming an assertion.
+  if (result.skipped === true) return false;
   const kind = assertion.kind;
   if (kind === 'metric' || kind === 'quantitative') {
     if (!assertion.metric) return false;
@@ -85,6 +124,8 @@ function resultMatchesAssertion(result, assertion) {
   }
   if (kind === 'equivalence') {
     const name = assertion.equivalence || assertion.expected || assertion.signal || 'run-eq-repeat';
+    // Deferred / incomplete / injected results match for consumption bookkeeping
+    // but only when not skipped (skipped handled above).
     return result.family === 'equivalence' && (result.id === name || result.id === assertion.equivalence);
   }
   if (kind === 'never' || kind === 'holds' || kind === 'settles' || kind === 'eventByTick' || kind === 'temporal') {

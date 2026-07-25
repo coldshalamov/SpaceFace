@@ -157,10 +157,13 @@ test('H4: Node createAuthoritativeRuntime records sg06-tactical/v3 selected slot
 test('H11: never assertion is consumed exactly once when oracle emits never:signal', async () => {
   // F8: use a real sampled signal. On empty-flight (no tether) tetherActive stays false → never passes.
   // Drop run-eq-repeat so a single-arm run is not incomplete solely for deferred equivalence.
+  const ticks = 20;
   const doc = {
     ...flightDoc,
     id: 'h11.never-consumed',
-    ticks: 20,
+    ticks,
+    frames: (flightDoc.frames || []).filter((f) => Number.isInteger(f.tick) && f.tick < ticks),
+    inputEvents: (flightDoc.inputEvents || []).filter((e) => Number.isInteger(e.tick) && e.tick < ticks),
     assertions: [
       { kind: 'never', signal: 'tetherActive' },
     ],

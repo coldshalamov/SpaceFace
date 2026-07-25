@@ -138,10 +138,13 @@ test('G3: PQ-017 acceptance with on-disk receipt but no external claim still fai
 // ── G4: repeat evaluates all declared equivalences ───────────────────────────
 
 test('G4: repeat with save-load equivalence does not silently pass without save/load', async () => {
+  const ticks = 30;
   const doc = {
     ...flightDoc,
     id: 'g4.repeat.save-load-eq',
-    ticks: 30,
+    ticks,
+    frames: (flightDoc.frames || []).filter((f) => Number.isInteger(f.tick) && f.tick < ticks),
+    inputEvents: (flightDoc.inputEvents || []).filter((e) => Number.isInteger(e.tick) && e.tick < ticks),
     assertions: [
       { kind: 'equivalence', equivalence: 'uninterrupted-eq-save-load' },
     ],
@@ -164,10 +167,13 @@ test('G4: repeat with save-load equivalence does not silently pass without save/
 });
 
 test('G4: unsupported declared equivalence fails (not silent pass)', async () => {
+  const ticks = 10;
   const doc = {
     ...flightDoc,
     id: 'g4.repeat.unsupported-eq',
-    ticks: 10,
+    ticks,
+    frames: (flightDoc.frames || []).filter((f) => Number.isInteger(f.tick) && f.tick < ticks),
+    inputEvents: (flightDoc.inputEvents || []).filter((e) => Number.isInteger(e.tick) && e.tick < ticks),
     assertions: [
       { kind: 'equivalence', equivalence: 'node-eq-chromium-totally-made-up' },
     ],

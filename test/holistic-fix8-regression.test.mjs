@@ -226,6 +226,7 @@ test('L2: ledger-verified claimId with matching digests may resolve', () => {
       claimId: 'claim-l2-ok',
       candidateDigest: digests.candidateDigest,
       runtimeKind: 'browser',
+      mode: 'acceptance',
       consumedAt: new Date(now).toISOString(),
     },
   });

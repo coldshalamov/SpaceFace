@@ -83,10 +83,13 @@ test('FIX4: runner samples preserve NaN so invariant catches poisoned pose', asy
       }
     },
   };
+  const ticks = 20;
   const result = await runLabScenario({
     ...flightDoc,
     id: 'flight.nan-poison',
-    ticks: 20,
+    ticks,
+    frames: (flightDoc.frames || []).filter((f) => Number.isInteger(f.tick) && f.tick < ticks),
+    inputEvents: (flightDoc.inputEvents || []).filter((e) => Number.isInteger(e.tick) && e.tick < ticks),
   }, {
     verbosity: 2,
     systems: [...FOCUSED_FLIGHT_SYSTEMS, poison],
@@ -279,10 +282,13 @@ test('FIX8: invariants evaluate every tick independent of sampleEvery', async ()
       }
     },
   };
+  const ticks = 20;
   const result = await runLabScenario({
     ...flightDoc,
     id: 'flight.sparse-sample-nan',
-    ticks: 20,
+    ticks,
+    frames: (flightDoc.frames || []).filter((f) => Number.isInteger(f.tick) && f.tick < ticks),
+    inputEvents: (flightDoc.inputEvents || []).filter((e) => Number.isInteger(e.tick) && e.tick < ticks),
     trace: { signals: ['playerX', 'playerZ'], sampleEvery: 5 },
   }, {
     verbosity: 2,
@@ -294,16 +300,22 @@ test('FIX8: invariants evaluate every tick independent of sampleEvery', async ()
 // ── FIX 9: overlay params consumed ──────────────────────────────────────────
 
 test('FIX9: lab.entrySpeed overlay changes player speed', async () => {
+  const ticks = 5;
+  const trimTape = (doc) => ({
+    ...doc,
+    ticks,
+    // N1: shortened run must not carry out-of-range frames.
+    frames: (doc.frames || []).filter((f) => Number.isInteger(f.tick) && f.tick < ticks),
+    inputEvents: (doc.inputEvents || []).filter((e) => Number.isInteger(e.tick) && e.tick < ticks),
+  });
   const base = await runLabScenario({
-    ...flightDoc,
+    ...trimTape(flightDoc),
     id: 'flight.overlay-base',
-    ticks: 5,
     parameterOverlay: undefined,
   }, { verbosity: 1 });
   const withSpeed = await runLabScenario({
-    ...flightDoc,
+    ...trimTape(flightDoc),
     id: 'flight.overlay-speed',
-    ticks: 5,
     parameterOverlay: {
       schema: 'spaceface.labParameterOverlay.v1',
       version: 1,
@@ -329,10 +341,14 @@ test('FIX10: authored attachment restLength is applied after create', async () =
     'utf8',
   ));
   // Distance player(0,0)→anchor(120,0) ≈ 120; request shorter rest.
+  const ticks = 10;
   const withRest = {
     ...latch,
     id: 'massline.rest-length-authored',
-    ticks: 10,
+    ticks,
+    // N1: drop input events the shortened run never executes.
+    frames: (latch.frames || []).filter((f) => Number.isInteger(f.tick) && f.tick < ticks),
+    inputEvents: (latch.inputEvents || []).filter((e) => Number.isInteger(e.tick) && e.tick < ticks),
     attachments: [{
       defId: 'tether_standard',
       ownerAlias: 'player',

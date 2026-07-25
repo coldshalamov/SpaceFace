@@ -146,6 +146,7 @@ test('PQ-017 accepted evidence resolves only its runtime primary failure', async
     claimId: 'claim-pq017-bound',
     candidateDigest: 'cand-1',
     runtimeKind: 'electron',
+    mode: 'acceptance',
     consumedAt: acceptedGeneratedAt,
   };
   assert.equal(evaluatePq017FastGate({

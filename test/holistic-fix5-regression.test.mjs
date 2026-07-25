@@ -311,6 +311,7 @@ test('I6: evidence without matching candidateDigest does not resolve failure', (
       claimId: 'claim-i6-bound',
       candidateDigest: 'current-candidate',
       runtimeKind: 'browser',
+      mode: 'acceptance',
       consumedAt: new Date(now).toISOString(),
     },
   });

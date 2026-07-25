@@ -353,6 +353,7 @@ test('K4: near-now evidence with claimId and matching digests may resolve', () =
       claimId: 'claim-k4-ok',
       candidateDigest: digests.candidateDigest,
       runtimeKind: 'browser',
+      mode: 'acceptance',
       consumedAt: new Date(now).toISOString(),
     },
   });

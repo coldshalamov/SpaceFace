@@ -533,7 +533,11 @@ export async function runLabScenario(scenarioDoc, options = {}) {
     const assertionConsumption = assertAssertionsConsumed(
       canonical.assertions,
       oracle.results,
-      { metrics: canonical.metrics },
+      {
+        metrics: canonical.metrics,
+        // N3: parent-owned multi-run equivalences are not required on child arms.
+        skipMultiRunEquivalence: options.skipMultiRunEquivalence === true,
+      },
     );
     // F5: deferred equivalence is incomplete/unsupported — not a green pass.
     // evaluateEquivalence already emits deferred with ok:false so they appear in oracle.failed.

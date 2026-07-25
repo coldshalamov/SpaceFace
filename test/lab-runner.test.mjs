@@ -81,10 +81,14 @@ test('failed oracle reports firstBadTick + quantitative delta', async () => {
 });
 
 test('replay reproduces the failure fingerprint', async () => {
+  const ticks = 30;
   const failing = {
     ...flightDoc,
     id: 'flight.replay-fail',
-    ticks: 30,
+    ticks,
+    // N1: drop frames the shortened run never executes.
+    frames: (flightDoc.frames || []).filter((f) => Number.isInteger(f.tick) && f.tick < ticks),
+    inputEvents: (flightDoc.inputEvents || []).filter((e) => Number.isInteger(e.tick) && e.tick < ticks),
     metrics: [
       { name: 'flight.finalSpeed', version: 1, threshold: { op: '<=', value: -1 } },
     ],

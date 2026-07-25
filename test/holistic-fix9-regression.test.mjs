@@ -108,6 +108,7 @@ test('M1: claimId + matching disk ledger may still resolve', () => {
       claimId: 'claim-m1-ok',
       candidateDigest: digests.candidateDigest,
       runtimeKind: 'browser',
+      mode: 'acceptance',
       consumedAt: new Date(now).toISOString(),
     },
   });

@@ -17,10 +17,14 @@ const flightDoc = JSON.parse(readFileSync(
 ));
 
 // Keep ticks modest for CI wall time; same artifact contract as full scenario.
+// N1: frames must fall in [0, ticks-1] — drop tape rows the shortened run never executes.
+const SHORT_TICKS = 45;
 const shortDoc = {
   ...flightDoc,
   id: 'flight.fixed-input.parity-short',
-  ticks: 45,
+  ticks: SHORT_TICKS,
+  frames: (flightDoc.frames || []).filter((f) => Number.isInteger(f.tick) && f.tick < SHORT_TICKS),
+  inputEvents: (flightDoc.inputEvents || []).filter((e) => Number.isInteger(e.tick) && e.tick < SHORT_TICKS),
 };
 
 test('same compiled scenario artifact is consumed by Node and Chromium paths', async () => {

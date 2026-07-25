@@ -40,11 +40,15 @@ if (!brokerGate.ok) {
 mkdirSync(ARTIFACT_ROOT, { recursive: true });
 
 const doc = JSON.parse(readFileSync(SCENARIO_PATH, 'utf8'));
+// N1: acceptance ticks must keep at least one in-range tape row; drop frames ≥ ticks.
+const ACCEPTANCE_TICKS = 60;
 const shortDoc = {
   ...doc,
   id: 'flight.fixed-input.acceptance',
-  ticks: 60,
+  ticks: ACCEPTANCE_TICKS,
   seed: LAB_CHROMIUM_PARITY_FIXED_SEED,
+  frames: (doc.frames || []).filter((f) => Number.isInteger(f?.tick) && f.tick < ACCEPTANCE_TICKS),
+  inputEvents: (doc.inputEvents || []).filter((e) => Number.isInteger(e?.tick) && e.tick < ACCEPTANCE_TICKS),
 };
 
 const compiled = compileSimScenario(shortDoc, { file: SCENARIO_PATH });
