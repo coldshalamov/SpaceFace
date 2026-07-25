@@ -372,9 +372,18 @@ async function readProjectedPlume(targetPage) {
   return targetPage.evaluate(({ width, height }) => {
     const sf = window.SF;
     const camera = sf?.state?.render?.camera;
-    const energy = sf?.registry?.get?.('vfx')?._energy;
+    const vfxSystem = sf?.registry?.get?.('vfx');
+    const energy = vfxSystem?._energy;
     const plume = energy?.plumeSystem;
     const rcsSystem = energy?.rcsSystem;
+    // Which reaction jets the flight computer actually commanded this frame, and the signed yaw
+    // demand that justified them. The gate needs the SIDE, not a jet count: with one authored
+    // lateral nozzle per side, a maneuver whose bow and stern demands share a sign legitimately
+    // draws a single jet, so counting instances tests impulse timing rather than correctness.
+    const commandedFirings = (vfxSystem?._productionRcsFirings || [])
+      .filter((entry) => entry && entry.intensity > 0.001)
+      .map((entry) => ({ role: entry.role, station: entry.station, intensity: entry.intensity }));
+    const actuators = sf?.state?.flightRuntime?.telemetry?.actuators || null;
     const activeBatches = plume?.layerBatches?.filter((entry) => entry.role !== 'distortion' && entry.mesh?.count > 0) || [];
     if (!camera || !activeBatches.length || !plume?.group?.visible) {
       return { visible: false, role: null, lengthPx: 0, layers: [] };
@@ -446,6 +455,9 @@ async function readProjectedPlume(targetPage) {
         role: rcsBatch?.role || null,
         drawCount: rcsBatch?.mesh?.count || 0,
         instances: rcsInstances,
+        firings: commandedFirings,
+        commandedYaw: actuators && Number.isFinite(actuators.yaw) ? actuators.yaw : null,
+        commandedLateral: actuators && Number.isFinite(actuators.lateral) ? actuators.lateral : null,
       },
     };
   }, { width: WIDTH, height: HEIGHT });
@@ -644,11 +656,28 @@ function summarizeVisualEvidence(frames) {
   const rcsLengths = hardTurn?.projectedPlume?.rcs?.instances?.map((entry) => entry.lengthPx) || [];
   const rcsCyanPixels = (hardTurn?.rcsPixelEvidence || [])
     .reduce((sum, entry) => sum + (entry.cyanPixels || 0), 0);
-  if (!hardTurn?.projectedPlume?.rcs?.visible || rcsLengths.length < 2 || Math.max(0, ...rcsLengths) < 8) {
-    failures.push(`hard turn with RCS: projected jets missing or too small (${rcsLengths.join(', ')}px)`);
+  if (!hardTurn?.projectedPlume?.rcs?.visible || rcsLengths.length < 1 || Math.max(0, ...rcsLengths) < 8) {
+    failures.push(`hard turn with RCS: projected jets missing or too small (${rcsLengths.join(', ') || 'none'}px)`);
   }
   if (rcsCyanPixels < 6) {
     failures.push(`hard turn with RCS: only ${rcsCyanPixels} cyan jet pixels`);
+  }
+  // Turning to starboard under thrust, the assist's lateral demand exceeds the hull's strafe
+  // authority, so bow and stern lateral demands share a sign and both resolve to the SAME authored
+  // nozzle — which the renderer correctly draws once. Requiring two projected instances therefore
+  // measured whether a stale impulse from an earlier fire happened to still be alive, not whether
+  // the jets were right. What must never regress is the SIDE: yaw > 0 swings the nose to starboard,
+  // so the bow is pushed to starboard and its nozzle is on the PORT hull, exhausting to port.
+  // Inverting that is the "firing the wrong RCS jet" lie the resolver is built to prevent.
+  const rcsFirings = hardTurn?.projectedPlume?.rcs?.firings || [];
+  const commandedYaw = hardTurn?.projectedPlume?.rcs?.commandedYaw;
+  const bowJet = rcsFirings.find((entry) => entry.station === 'bow');
+  if (Number.isFinite(commandedYaw) && commandedYaw > 0) {
+    if (!bowJet) {
+      failures.push(`hard turn with RCS: yaw ${commandedYaw.toFixed(3)} commanded but no bow jet fired`);
+    } else if (bowJet.role !== 'rcs-port') {
+      failures.push(`hard turn with RCS: starboard yaw must fire the PORT bow nozzle, got ${bowJet.role}`);
+    }
   }
   return { ok: failures.length === 0, failures };
 }

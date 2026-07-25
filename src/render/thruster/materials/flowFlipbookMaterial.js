@@ -162,7 +162,10 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
   float valueNoise(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
+    // Quintic fade (C2-continuous) instead of the cubic smoothstep. Continuous second
+    // derivatives remove the faint lattice creasing that made advected noise read as a
+    // shimmering grid rather than a body of moving liquid.
+    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
     float a = hash21(i);
     float b = hash21(i + vec2(1.0, 0.0));
     float c = hash21(i + vec2(0.0, 1.0));
@@ -170,13 +173,18 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
   }
 
-  vec2 flipbookUv(vec2 uv, float time) {
-    float frames = max(1.0, uFlipbookCols * uFlipbookRows);
-    float frame = floor(mod(time * uFlipbookFps + vPhase * frames, frames));
+  /** UV for one explicit flipbook cell -- lets the caller blend adjacent frames. */
+  vec2 flipbookCellUv(vec2 uv, float frame) {
     float col = mod(frame, uFlipbookCols);
     float row = floor(frame / uFlipbookCols);
     vec2 cell = vec2(1.0 / uFlipbookCols, 1.0 / uFlipbookRows);
     return vec2(uv.x * cell.x + col * cell.x, uv.y * cell.y + (uFlipbookRows - 1.0 - row) * cell.y);
+  }
+
+  vec2 flipbookUv(vec2 uv, float time) {
+    float frames = max(1.0, uFlipbookCols * uFlipbookRows);
+    float frame = floor(mod(time * uFlipbookFps + vPhase * frames, frames));
+    return flipbookCellUv(uv, frame);
   }
 
   void main() {
@@ -198,22 +206,44 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     float sheathRole = 1.0 - smoothstep(0.25, 0.75, abs(uLayerRole - 2.0));
     float vaporRole = 1.0 - smoothstep(0.25, 0.75, abs(uLayerRole - 3.0));
 
+    // -- Liquid advection ---------------------------------------------------------------------
+    // A large-scale, slow domain warp displaces the sampling domain before any detail is read.
+    // It is deliberately low-frequency and axially biased, so features stretch downstream and
+    // meander as a body instead of twinkling in place. Domain warping -- not more noise octaves --
+    // is what separates a flowing fluid from a scrolling noise card. The core warps least so the
+    // brightest, most gameplay-legible part of the exhaust stays coherent and readable.
+    vec2 warpP = vec2(vAlong * 1.75 - flowTime * 0.30, vSide * 1.05 + vPhase * 4.1);
+    float warpA = valueNoise(warpP) - 0.5;
+    float warpB = valueNoise(warpP * 1.93 + vec2(3.7, -2.4)) - 0.5;
+    float warpGain = mix(0.30, 1.0, roleSpread) * mix(1.0, 0.42, uReducedMotion)
+      * (0.6 + clamp(uTurbulence, 0.0, 1.6) * 0.45);
+    vec2 warp = vec2(warpA * 0.34 + warpB * 0.14, warpB * 0.26 + warpA * 0.10) * warpGain;
+
     float swirl = uSwirl * (0.35 + vThrottle * 0.9);
     vec2 flowUv = vec2(
-      fract(vUv.x * (1.2 + uNoiseScale * 0.35) - flowTime * (0.55 + vThrottle * 0.7) + vPhase),
-      vUv.y + sin(vUv.x * 9.0 + flowTime * 1.7) * swirl * 0.04
+      fract(vUv.x * (1.2 + uNoiseScale * 0.35) - flowTime * (0.55 + vThrottle * 0.7) + vPhase
+        + warp.x * 0.22),
+      vUv.y + sin(vUv.x * 5.5 + flowTime * 1.15) * swirl * 0.05 + warp.y * 0.10
     );
-    float n1 = valueNoise(flowUv * (3.2 + uNoiseScale) * uNoiseScale + vec2(0.0, flowTime * 0.4));
-    float n2 = valueNoise(flowUv * 7.1 + vec2(flowTime * -0.55, vPhase));
+    // Anisotropic sampling: the field is stretched along the flow axis and compressed across it,
+    // so turbulence resolves into elongated liquid striations rather than isotropic granular
+    // speckle. The lowered frequencies are the coherence lever -- the previous rates dissolved
+    // into uniform haze at the gameplay camera instead of reading as moving structure.
+    float n1 = valueNoise(flowUv * vec2(1.45 + uNoiseScale * 0.55, 3.1 + uNoiseScale * 1.35) * uNoiseScale
+      + vec2(0.0, flowTime * 0.28));
+    float n2 = valueNoise(flowUv * vec2(2.2, 4.6) + vec2(flowTime * -0.28, vPhase));
     // One axial field drives attached width changes and torn edges. It is continuous in time and
     // throttle, and its non-zero floor prevents the segmented bead/disc vocabulary from returning.
     float nAxial = valueNoise(vec2(
-      vAlong * (4.4 + uNoiseScale * 1.25 + uBoostBlend * 2.4)
-        - flowTime * (0.24 + vThrottle * 0.36 + uBoostBlend * 0.18),
+      vAlong * (2.9 + uNoiseScale * 0.85 + uBoostBlend * 2.4)
+        - flowTime * (0.24 + vThrottle * 0.36 + uBoostBlend * 0.18)
+        + warp.x * 0.55,
       vPhase * 13.1 + 2.7
     ));
 
-    float axialPower = mix(0.48, 0.86, roleSpread);
+    // Slower axial falloff carries luminous material further downstream, so the exhaust reads as
+    // a long drawn-out stream rather than a bright root with haze behind it.
+    float axialPower = mix(0.42, 0.72, roleSpread);
     float axial = pow(1.0 - clamp(vAlong, 0.0, 1.0), axialPower);
     // Functional zoning: a compact pressure core at the nozzle, a directional inner stream,
     // a turbulent middle sheath, then a localized dissipating vapor tail. The layers overlap
@@ -244,7 +274,9 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     float centerDrift = broadRole * (n2 - 0.5) * (0.13 + 0.12 * breakupDrive);
     centerDrift += uImpulseJet * downstream * (nAxial - 0.5) * 0.42;
     float shapedSide = (vSide - centerDrift) / max(localWidth, 0.62);
-    float sideSharpness = mix(5.8 + uCoreSheath * 0.8, 1.45 + uCoreSheath * 0.35, roleSpread);
+    // Core keeps its tight, bright cross-section; broad roles get a creamier falloff so the
+    // layers blend into one continuous body instead of stacking as separate visible shells.
+    float sideSharpness = mix(5.8 + uCoreSheath * 0.8, 1.15 + uCoreSheath * 0.3, roleSpread);
     sideSharpness = mix(sideSharpness, sideSharpness * 1.32, uImpulseJet * coreRole);
     float sideFall = exp(-shapedSide * shapedSide * sideSharpness);
     // The outer plasma sheath wraps the inner stream instead of filling the same centerline.
@@ -252,7 +284,7 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     // four same-shaped cards with different colors.
     float sideAbs = abs(shapedSide);
     float sheathRim = exp(-pow((sideAbs - 0.44) * 2.75, 2.0)) * 0.64 + sideFall * 0.42;
-    float vaporWisp = sideFall * (0.72 + 0.28 * sin(vAlong * 17.0 + shapedSide * 4.0 + nAxial * 3.0));
+    float vaporWisp = sideFall * (0.78 + 0.22 * sin(vAlong * 7.5 + shapedSide * 2.4 + nAxial * 3.0));
     float sheathWrap = mix(sideFall, sheathRim, mix(0.22, 0.46, breakupDrive));
     float crossShape = mix(sideFall, sheathWrap, sheathRole * mix(0.72, 0.38, uImpulseJet));
     crossShape = mix(crossShape, vaporWisp, vaporRole * mix(0.38, 0.68, uImpulseJet));
@@ -270,14 +302,17 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     // attached and continuous, so this cannot become a row of cards, beads, or detached sprites.
     // Turbo increases filament count and axial shear; reduced motion retains the structure but
     // calms its travel. This is the structural cruise/turbo distinction, independent of opacity.
-    float filamentPhase = shapedSide * (8.0 + breakupDrive * 3.5 + uBoostBlend * 2.5)
-      + nAxial * 2.2 - flowTime * (0.42 + uBoostBlend * 0.34);
+    // Fewer, broader filaments travelling further per cycle. The structure and its throttle/turbo
+    // response are unchanged; only the spatial rate drops, which is what turns a fine granular
+    // shimmer into visible sheets of moving liquid at the real chase-camera distance.
+    float filamentPhase = shapedSide * (5.0 + breakupDrive * 2.2 + uBoostBlend * 1.6)
+      + nAxial * 1.6 - flowTime * (0.42 + uBoostBlend * 0.34);
     float crossFilaments = 0.56 + 0.44 * (0.5 + 0.5 * sin(filamentPhase));
     float axialShear = 0.68 + 0.32 * smoothstep(0.18, 0.84, valueNoise(vec2(
-      vAlong * (9.0 + breakupDrive * 5.0) - flowTime * (0.5 + uBoostBlend * 0.45),
+      vAlong * (5.2 + breakupDrive * 2.8) - flowTime * (0.5 + uBoostBlend * 0.45),
       shapedSide * 1.7 + vPhase * 7.0
     )));
-    float filamentDepth = broadRole * mix(0.42, 0.74, breakupDrive) * mix(1.0, 0.62, uReducedMotion);
+    float filamentDepth = broadRole * mix(0.30, 0.56, breakupDrive) * mix(1.0, 0.62, uReducedMotion);
     stream *= mix(1.0, crossFilaments * axialShear, filamentDepth);
 
     // Three unequal, nozzle-connected axial tongues replace the circular distal puff. Their
@@ -299,25 +334,48 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     float turb = mix(0.62, 1.0, n1 * 0.65 + n2 * 0.35);
     turb = mix(1.0, turb, clamp(uTurbulence, 0.0, 1.6));
     // Broad layers get coherent scalloping instead of inheriting the inner texture's narrow wisp.
-    float scallop = 0.84 + 0.16 * sin(vAlong * 25.0 + n1 * 4.0 + vSide * 3.5);
+    float scallop = 0.90 + 0.10 * sin(vAlong * 10.5 + n1 * 3.2 + vSide * 2.2);
     turb *= mix(1.0, scallop, clamp(sheathRole * 0.75 + vaporRole, 0.0, 1.0));
     // Coherent pressure cells modulate a continuous inner filament. The high floor prevents the
     // detached-ball/bead read while adding an engine-specific rhythm that survives minification.
-    float pressureCells = 0.82 + 0.18 * sin(vAlong * 20.0 - flowTime * 1.35 + n1 * 1.2);
+    float pressureCells = 0.88 + 0.12 * sin(vAlong * 8.5 - flowTime * 1.05 + n1 * 1.2);
     pressureCells = mix(pressureCells, 0.91, uReducedMotion);
     stream *= mix(1.0, pressureCells, innerRole * 0.72);
 
-    float tip = smoothstep(0.55, 1.0, vAlong);
-    stream *= 1.0 - tip * uFork * (0.35 + n2 * 0.65);
+    float tip = smoothstep(0.62, 1.0, vAlong);
+    stream *= 1.0 - tip * uFork * (0.30 + n2 * 0.55);
 
-    float dissipate = 1.0 - smoothstep(0.45, 0.98, vAlong / max(0.25, uDissipation));
-    stream *= mix(0.55, 1.0, dissipate);
+    // A later, gentler dissipation ramp keeps the tail alive further downstream so the exhaust
+    // trails off as flowing material rather than being cut short by a falloff wall.
+    float dissipate = 1.0 - smoothstep(0.52, 1.06, vAlong / max(0.25, uDissipation));
+    stream *= mix(0.62, 1.0, dissipate);
 
-    vec2 sampleUv = flowUv;
+    // Advanced texture advection. Both paths take two taps and cross-fade, which removes the two
+    // discontinuities that previously broke the illusion of continuous flow:
+    //  * Scrolled masks are sampled at u and u+0.5 and blended by |2u-1|. The source masks fade to
+    //    zero at u=0 and u=1, so the old single fract() tap swept a dark seam through the plume
+    //    once per cycle. The tap nearest a seam always carries zero weight, so the seam is gone and
+    //    the pattern stops visibly repeating.
+    //  * The flipbook blends adjacent cells instead of hard-cutting, removing the 18 fps cell
+    //    stutter that read as chatter rather than moving liquid.
+    vec4 tex;
     if (uUseFlipbook > 0.5) {
-      sampleUv = flipbookUv(vec2(vUv.x, vUv.y), mix(uTime, uTime * 0.15, uReducedMotion));
+      float frames = max(1.0, uFlipbookCols * uFlipbookRows);
+      float fbPos = mix(uTime, uTime * 0.15, uReducedMotion) * uFlipbookFps + vPhase * frames;
+      float fbCell = floor(fbPos);
+      float fbMix = smoothstep(0.0, 1.0, fract(fbPos));
+      tex = mix(
+        texture2D(uMap, flipbookCellUv(vUv, mod(fbCell, frames))),
+        texture2D(uMap, flipbookCellUv(vUv, mod(fbCell + 1.0, frames))),
+        fbMix
+      );
+    } else {
+      tex = mix(
+        texture2D(uMap, flowUv),
+        texture2D(uMap, vec2(fract(flowUv.x + 0.5), flowUv.y)),
+        abs(flowUv.x * 2.0 - 1.0)
+      );
     }
-    vec4 tex = texture2D(uMap, sampleUv);
     float texBody = max(tex.a, max(tex.r, max(tex.g, tex.b)));
     // Textures add internal motion; they do not define the full silhouette. This static analytic
     // floor keeps reduced-motion and minified gameplay views readable without card rectangles.

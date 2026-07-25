@@ -118,6 +118,14 @@ export class PlumeSlotPool {
       this._allocCount += 1;
     }
 
+    // One advection phase per socket, shared by every layer drawn at that nozzle. The shader's
+    // warp/noise fields are all keyed off phase, so giving each role its own value made the core,
+    // inner, sheath, and vapor churn independently — four separate plumes stacked on one axis.
+    // Sharing it per socket is what lets the layers resolve as a single coherent body of liquid,
+    // while distinct sockets keep their own field so twin nozzles do not mirror each other.
+    this._socketPhase = new Float32Array(this.maxSockets);
+    for (let s = 0; s < this.maxSockets; s++) this._socketPhase[s] = (s * 0.37) % 1;
+
     /** @type {object[]} */
     this.slots = new Array(this.capacity);
     for (let i = 0; i < this.capacity; i++) {
@@ -229,6 +237,7 @@ export class PlumeSlotPool {
         slot.socketIndex = s;
         slot.layerIndex = li;
         slot.layerRole = role;
+        slot.phase = this._socketPhase[s];
         slot.offset[0] = sock.x;
         slot.offset[1] = sock.y;
         slot.offset[2] = sock.z;

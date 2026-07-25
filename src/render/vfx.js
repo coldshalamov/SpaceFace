@@ -204,15 +204,16 @@ const DOCTRINE_TELL_MIN_LIFE = 0.5;
 const DOCTRINE_TELL_PULSE = 0.11;
 const DOCTRINE_TELL_OFFSCREEN_R = 58;
 
-// Optional subsystem cadence (Hz) — full-rate when active, slept when inactive.
+// Optional subsystem cadence (Hz) — runs at the stated Hz when active, slept when inactive.
+// The player Hitch continuous plume is intentionally NOT cadence-gated: it is ship-attached
+// nozzle geometry, and lagging pose updates at high speed creates a ghosted double thruster.
 const VFX_SEAM_MARKERS_HZ = 20;
 const VFX_RIBBON_TRAILS_HZ = 30;
-const VFX_ENERGY_PLUME_HZ = 30;
 const VFX_PROJECTILE_TRAILS_HZ = 45;
 const VFX_SEAM_DRAW_RANGE = 640;
 // PQ-012 continuous field flow (design/vfx/FIELD_TOOL_READABILITY_BIBLE.md §4/§10). Advected pooled
-// particles at the shipped energy-plume cadence; slept when no field is deployed. Pool share is a
-// small slice of PARTICLE_CAP (≤ ~10 per field per emission, ≤ FIELD_FLOW_MAX_FIELDS fields).
+// particles at 30 Hz; slept when no field is deployed. Pool share is a small slice of PARTICLE_CAP
+// (≤ ~10 per field per emission, ≤ FIELD_FLOW_MAX_FIELDS fields).
 const VFX_FIELD_FLOW_HZ = 30;
 const FIELD_FLOW_GOLDEN = 2.399963229728653; // golden angle — even, deterministic spawn distribution
 const FIELD_FLOW_MAX_FIELDS = 6;
@@ -405,7 +406,6 @@ export const vfx = {
     this._vfxSubsystemLast = emptyVfxSubsystemDiag();
     this._cadenceSeam = 0;
     this._cadenceRibbon = 0;
-    this._cadenceEnergyPlume = 0;
     this._cadenceProjectileTrail = 0;
     this._projectileCandidates = [];
     this._projectileCacheDirty = true;
@@ -5070,20 +5070,14 @@ export const vfx = {
     if (!this._energy) return false;
     let active = false;
     if (plumeRelevant) {
-      const plumeWake = !this._energyPlumeWasRelevant;
+      // Full display-rate pose/drive sample. Cadence here used to leave the jet one frame
+      // behind the hull at high speed (~8u lag at SPD 255 / 30 Hz), which read as a doubled,
+      // flickering thruster. The continuous plume is a few instanced cards — cheap enough.
       this._energyPlumeWasRelevant = true;
-      let plumeStep = this._consumeCadence('_cadenceEnergyPlume', dt, VFX_ENERGY_PLUME_HZ);
-      if (plumeWake) {
-        this._cadenceEnergyPlume = 0;
-        plumeStep = Math.max(plumeStep, dt);
-      }
-      if (plumeStep > 0) {
-        this._updateEnergyPlume(plumeStep);
-        active = true;
-      }
+      this._updateEnergyPlume(dt);
+      active = true;
     } else {
       this._energyPlumeWasRelevant = false;
-      this._cadenceEnergyPlume = 0;
       this._hideEnergyPlumes(0);
     }
     if (masslineRelevant) {

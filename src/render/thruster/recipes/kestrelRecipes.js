@@ -11,10 +11,10 @@ export const KESTREL_MAIN_PLUME_RECIPE = deepFreeze({
   "kind": "continuous_plume",
   "engineFamily": "hitch_ion_kestrel",
   "displayName": "Hitch/Kestrel main thruster plume",
-  "notes": "Continuous throttle-responsive ion stream. Identity from flow/geometry/layering, not tint alone. Live seam: engine_ion_small profile fields.",
+  "notes": "Continuous throttle-responsive ion stream. Identity from flow/geometry/layering, not tint alone. Live seam: engine_ion_small profile fields. Length distribution is deliberately weighted toward a long coherent core so the exhaust reads as drawn-out flowing liquid rather than a hot root inside a haze.",
   "geometry": {
     "axis": "socketForward",
-    "baseLength": 11.5,
+    "baseLength": 13.0,
     "baseWidth": 3.1,
     "segmentCount": 8,
     "aspect": "stream",
@@ -35,8 +35,8 @@ export const KESTREL_MAIN_PLUME_RECIPE = deepFreeze({
       "intensity": 6.35,
       "opacity": 0.72,
       "colorHex": "#f5fbff",
-      "widthScale": 0.46,
-      "lengthScale": 0.32,
+      "widthScale": 0.52,
+      "lengthScale": 0.44,
       "scrollSpeed": 2.8
     },
     {
@@ -56,7 +56,7 @@ export const KESTREL_MAIN_PLUME_RECIPE = deepFreeze({
       "opacity": 0.52,
       "colorHex": "#3eb8ee",
       "widthScale": 0.9,
-      "lengthScale": 0.82,
+      "lengthScale": 1.06,
       "scrollSpeed": 2.2
     },
     {
@@ -73,7 +73,7 @@ export const KESTREL_MAIN_PLUME_RECIPE = deepFreeze({
       "opacity": 0.31,
       "colorHex": "#3d51c4",
       "widthScale": 1.76,
-      "lengthScale": 1.14,
+      "lengthScale": 1.34,
       "scrollSpeed": 1.4
     },
     {
@@ -87,10 +87,10 @@ export const KESTREL_MAIN_PLUME_RECIPE = deepFreeze({
       "blend": "alpha",
       "softEdge": 0.44,
       "intensity": 0.88,
-      "opacity": 0.32,
+      "opacity": 0.28,
       "colorHex": "#29486f",
       "widthScale": 2.18,
-      "lengthScale": 1.52,
+      "lengthScale": 1.70,
       "scrollSpeed": 0.85
     },
     {
@@ -113,11 +113,11 @@ export const KESTREL_MAIN_PLUME_RECIPE = deepFreeze({
   ],
   "throttle": {
     "idle": 0.06,
-    "length": { "at0": 0.28, "at1": 1.0, "exp": 0.85 },
+    "length": { "at0": 0.34, "at1": 1.0, "exp": 0.85 },
     "width": { "at0": 0.42, "at1": 1.15, "exp": 0.9 },
     "turbulence": { "at0": 0.25, "at1": 1.15, "exp": 1.1 },
     "coreSheathBalance": { "at0": 0.55, "at1": 1.25, "exp": 0.75 },
-    "dissipation": { "at0": 0.4, "at1": 1.2, "exp": 1.0 },
+    "dissipation": { "at0": 0.4, "at1": 1.45, "exp": 1.0 },
     "flowSpeed": { "at0": 0.45, "at1": 1.35, "exp": 0.8 }
   },
   "timing": {

@@ -111,6 +111,67 @@ test('live Kestrel plume remains visible when the legacy HDR-energy toggle is of
   system._disposeEnergy();
 });
 
+test('production thruster pose tracks the nozzle every display frame at high speed', () => {
+  // Regression: a 30 Hz cadence left the continuous plume one frame behind the hull at high
+  // speed, which read as a doubled/flickering thruster. Pose must advance every update().
+  assert.doesNotMatch(vfxSource, /VFX_ENERGY_PLUME_HZ/,
+    'production plume must not be cadence-gated behind a reduced-Hz constant');
+  assert.doesNotMatch(vfxSource, /_cadenceEnergyPlume/,
+    'production plume must not use the optional subsystem cadence accumulator');
+
+  const scene = new THREE.Scene();
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: 0, z: 0 },
+    vel: { x: 255, z: 0 },
+    rot: 0,
+    radius: 4,
+    maxSpeed: 120,
+    data: { defId: 'ship_kestrel' },
+    flags: {},
+  };
+  const state = {
+    playerId: 1,
+    player: {},
+    entities: new Map([[1, player]]),
+    entityList: [player],
+    input: { moveZ: 1, turnIntent: 0 },
+    settings: {
+      video: {
+        particleQuality: 'high',
+        engineTrails: true,
+        energyMaterials: false,
+        motionReduce: false,
+        bloom: false,
+      },
+      accessibility: { flashReduce: false },
+    },
+    render: { scene },
+  };
+  const system = Object.create(vfx);
+  system.init({ state, bus: createBus(), helpers: {} });
+
+  const dt = 1 / 60;
+  const nozzleX = [];
+  for (let i = 0; i < 4; i++) {
+    player.pos.x = i * 255 * dt;
+    assert.equal(system._updateEnergy(dt), true, `frame ${i} must keep the production plume active`);
+    const batch = system._energy.plumeSystem.layerBatches.find((entry) => entry.writeCount > 0);
+    assert.ok(batch, `frame ${i} must write at least one plume instance`);
+    nozzleX.push(batch.offset[0]);
+  }
+
+  for (let i = 1; i < nozzleX.length; i++) {
+    const step = nozzleX[i] - nozzleX[i - 1];
+    assert.ok(step > 255 * dt * 0.85,
+      `nozzle pose must advance ~full frame distance at SPD 255 (step=${step.toFixed(3)} on frame ${i})`);
+  }
+
+  system._disposeEnergy();
+});
+
 test('startup VFX precompile salvo contains the production plume shader family', () => {
   const salvo = createVfxPrecompileSalvo();
   const plumeRoles = [];
@@ -353,9 +414,12 @@ test('normal-route acceptance rejects draw-count-only and legacy-profile false p
 
 test('legacy NPC engine fallback cannot emit moving particle beads', () => {
   const start = vfxSource.indexOf('  _emitEngineTrail(e, throttle, dt) {');
-  const end = vfxSource.indexOf('\n  update(frameDt)', start);
-  assert.ok(start >= 0 && end > start, 'engine fallback source boundary must remain inspectable');
-  const fallback = vfxSource.slice(start, end);
+  assert.ok(start >= 0, 'engine fallback source boundary must remain inspectable');
+  // Slice only this function — later field/damage systems also call _spawnParticle.
+  const after = vfxSource.slice(start);
+  const close = after.match(/streaksSpawned = 1;\r?\n\s*return \{ particles: particlesSpawned, streaks: streaksSpawned \};\r?\n\s*\},/);
+  assert.ok(close, 'engine fallback end boundary must remain inspectable');
+  const fallback = after.slice(0, close.index + close[0].length);
   assert.doesNotMatch(fallback, /_spawnParticle\(/,
     'engine fallback must use attached pooled streak layers, never round moving particles');
   assert.match(fallback, /streaksSpawned = 1/,
