@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { worldSiteManifestById } from '../src/data/worldSiteManifests.js';
 import { createWorldSiteRecord, planWorldSiteMaterialization } from '../src/systems/worldSiteKernel.js';
 import { installWorldSitePresentation } from '../src/render/worldSitePresentation.js';
+import { resolveGalaxyMapPrimaryAction } from '../src/ui/galaxyMap.js';
 import {
   evaluatePq018MatchedPerformance,
   PQ018_FIXED_GLOBAL_POS,
@@ -76,7 +77,7 @@ test('the public route observes state but does not inject gameplay events or wri
   );
   assert.match(route, new RegExp(PQ018_ROUTE_SCHEMA.replaceAll('.', '\\.')));
   assert.match(route, /page\.keyboard\.press\('KeyN'\)|searchAndSelect\(page, 'Wreck Cathedral'/);
-  assert.match(route, /Set Waypoint/);
+  assert.match(route, /name: 'Track Target', exact: true/);
   assert.match(route, /reduced-flash-enabled-through-settings/);
   assert.match(route, /passThrough:\s*\{/);
   assert.match(route, /page\.keyboard\.down\('KeyB'\)/);
@@ -89,6 +90,29 @@ test('the public route observes state but does not inject gameplay events or wri
   assert.doesNotMatch(route, /SF\?*\.state\s*=|state\.[A-Za-z0-9_.]+\s*=|bus\.emit\(/);
   assert.doesNotMatch(route, /debug|teleport|setPosition|currentSectorId\s*=(?!=)/i);
   assert.doesNotMatch(route, /worldPosition\(page,\s*PQ018_ROOT_WORLD_ID/);
+});
+
+test('the Cathedral public-map action follows the ordinary World Site POI contract', async () => {
+  const manifest = worldSiteManifestById(SITE_ID);
+  const target = {
+    id: SITE_ID,
+    kind: 'poi',
+    mapKind: 'world-site',
+    name: manifest.name,
+    sectorId: manifest.sectorId,
+    x: manifest.placement.pos.x,
+    z: manifest.placement.pos.z,
+  };
+  const action = resolveGalaxyMapPrimaryAction({
+    world: { currentSectorId: manifest.sectorId },
+  }, target);
+  assert.equal(action.kind, 'waypoint');
+  assert.equal(action.label, 'Track Target');
+  assert.equal(action.coursePayload.autopilot, true);
+  assert.deepEqual(
+    { x: action.coursePayload.pos.x, z: action.coursePayload.pos.z },
+    manifest.placement.pos,
+  );
 });
 
 test('the baseline route uses the same canonical Ceres global coordinate as the live site', () => {
