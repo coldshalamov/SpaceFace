@@ -1,13 +1,14 @@
 // Repeat: prove run==run (identical deterministic-covered + trace hashes).
 // G4: evaluate ALL equivalences the scenario declares — never silently pass unsupported ones.
 // O2: equivalence entries are sealed by this fixed parent executor only.
+// P1: sealer is imported from private _equivalenceSeal (not public barrel / authority).
 
 import { runLabScenarioInternal } from './runScenario.js';
 import { compareSaveLoad } from './saveLoadCompare.js';
 import {
   sealEquivalenceResult,
   EQUIVALENCE_EXECUTOR_SOURCES,
-} from './equivalenceAuthority.js';
+} from './_equivalenceSeal.js';
 
 const RUN_EQ_NAMES = new Set(['run-eq-repeat', 'run-eq-run', 'repeat']);
 const SAVE_LOAD_EQ_NAMES = new Set([

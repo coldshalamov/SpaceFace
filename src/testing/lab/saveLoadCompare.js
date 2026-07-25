@@ -1,12 +1,13 @@
 // Uninterrupted run vs mid-run save/load continuation — compare within declared checkpoint contract.
 // F1: equivalence requires every-tick trajectory identity (trace + mid checkpoints), not final hash alone.
 // O1/O2: child arms use runLabScenarioInternal; equivalence is sealed by this fixed parent executor.
+// P1: sealer is imported from private _equivalenceSeal (not public barrel / authority).
 
 import { runLabScenarioInternal } from './runScenario.js';
 import {
   sealEquivalenceResult,
   EQUIVALENCE_EXECUTOR_SOURCES,
-} from './equivalenceAuthority.js';
+} from './_equivalenceSeal.js';
 
 /**
  * @param {object} scenarioDoc

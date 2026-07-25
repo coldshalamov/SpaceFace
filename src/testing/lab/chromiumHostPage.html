@@ -21,9 +21,13 @@
   <p id="status">lab-chromium-host ready</p>
   <!-- No main.js / render loop — authoritative runtime only via browserScenarioHost. -->
   <script type="module">
-    import { runBrowserLabScenario } from '/src/testing/lab/browserScenarioHost.js';
+    import {
+      runBrowserLabScenario,
+      runBrowserLabScenarioInternal,
+    } from '/src/testing/lab/browserScenarioHost.js';
     window.__SF_BROWSER_LAB__ = {
       runBrowserLabScenario,
+      runBrowserLabScenarioInternal,
       ready: true,
     };
     document.getElementById('status').textContent = 'lab-chromium-host modules loaded';

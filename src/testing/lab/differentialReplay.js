@@ -8,13 +8,9 @@ import { compileSimScenario, validateCanonicalScenario } from '../../contracts/s
 import { runLabScenarioInternal } from './runScenario.js';
 import { hashInputTape } from './inputTape.js';
 import { compareCheckpoints } from './checkpointCompare.js';
-import { runChromiumLabScenario, repeatChromiumLabScenario } from './chromiumHost.js';
+import { runChromiumLabScenarioInternal, repeatChromiumLabScenario } from './chromiumHost.js';
 import { hashDeterministicSurface } from './checkpoint.js';
 import { assertChromiumParitySupported } from './browserScenarioHost.js';
-import {
-  sealEquivalenceResult,
-  EQUIVALENCE_EXECUTOR_SOURCES,
-} from './equivalenceAuthority.js';
 
 /**
  * Compile scenario once, run Node + Chromium, compare deterministic-covered series.
@@ -95,7 +91,7 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
       certifying: false,
       runId,
       error: 'runDifferentialReplay does not accept caller-supplied arm callbacks — '
-        + 'Node arm is always runLabScenarioInternal; Chromium arm is always runChromiumLabScenario',
+        + 'Node arm is always runLabScenarioInternal; Chromium arm is always runChromiumLabScenarioInternal',
     };
   }
 
@@ -144,7 +140,8 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
   const nodeSeries = extractNodeSeries(nodeResult);
 
   // --- Chromium (fixed internal host — never a caller callback) ---
-  const chromiumResult = await runChromiumLabScenario(canonical, {
+  // P2: use internal non-certifying Chromium runner (same split as Node runLabScenarioInternal).
+  const chromiumResult = await runChromiumLabScenarioInternal(canonical, {
     scenarioDigest,
     inputDigest,
     checkpointTicks,

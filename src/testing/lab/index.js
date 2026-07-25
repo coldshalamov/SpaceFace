@@ -16,7 +16,7 @@ export { repeatScenario } from './repeat.js';
 export { replayScenario, replayFailure } from './replay.js';
 export { compareSaveLoad } from './saveLoadCompare.js';
 export {
-  sealEquivalenceResult,
+  // P1: sealEquivalenceResult is intentionally NOT exported (module-private / parent-only).
   isAuthoritativeEquivalenceResult,
   isPromotableLabResult,
   EQUIVALENCE_EXECUTOR_SOURCES,
@@ -35,9 +35,14 @@ export {
 } from './deterministicSurface.js';
 export { compareCheckpoints, localizeFirstDivergingTick, classifyDivergence } from './checkpointCompare.js';
 export { runDifferentialReplay, runChromiumDeterminismCheck } from './differentialReplay.js';
-export { runChromiumLabScenario, repeatChromiumLabScenario } from './chromiumHost.js';
+export {
+  runChromiumLabScenario,
+  runChromiumLabScenarioInternal,
+  repeatChromiumLabScenario,
+} from './chromiumHost.js';
 export {
   runBrowserLabScenario,
+  runBrowserLabScenarioInternal,
   assertChromiumParitySupported,
   BROWSER_FOCUSED_FLIGHT_SYSTEMS,
   BROWSER_PARITY_SYSTEM_NAMES,

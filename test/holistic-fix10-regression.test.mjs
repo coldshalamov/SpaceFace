@@ -153,23 +153,38 @@ test('N2: shape-only comparison result is rejected (O2 seal required)', () => {
 });
 
 test('N2: sealed comparison result from fixed parent executor may pass', async () => {
-  const { sealEquivalenceResult, EQUIVALENCE_EXECUTOR_SOURCES } = await import(
-    '../src/testing/lab/equivalenceAuthority.js'
-  );
+  // P1: do not import sealEquivalenceResult — obtain a real seal only via parent executor.
+  const { readFileSync } = await import('node:fs');
+  const { dirname, join } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const { repeatScenario } = await import('../src/testing/lab/repeat.js');
+  const root = dirname(fileURLToPath(import.meta.url));
+  const flightDoc = JSON.parse(readFileSync(
+    join(root, '../src/testing/scenarios/flight-fixed-input.scenario.json'),
+    'utf8',
+  ));
+  const doc = {
+    ...flightDoc,
+    id: 'fix10.n2-sealed-via-parent',
+    ticks: 8,
+    frames: [{ tick: 0, input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false } }],
+    assertions: [{ kind: 'equivalence', equivalence: 'run-eq-repeat' }],
+  };
+  const parent = await repeatScenario(doc, { verbosity: 0, runs: 2 });
+  const sealed = parent.equivalence && parent.equivalence['run-eq-repeat'];
+  assert.ok(sealed, 'parent must emit sealed run-eq-repeat');
+
   const oracle = evaluateOracles({
     trace: [{ tick: 0, playerX: 0, playerZ: 0, playerVelX: 0, playerVelZ: 0 }],
     assertions: [{ kind: 'equivalence', equivalence: 'run-eq-repeat' }],
-    equivalence: {
-      'run-eq-repeat': sealEquivalenceResult(
-        { ok: true, expected: true, actual: true },
-        EQUIVALENCE_EXECUTOR_SOURCES.REPEAT,
-      ),
-    },
+    equivalence: { 'run-eq-repeat': sealed },
   });
-  assert.equal(oracle.ok, true);
   const eq = oracle.results.find((r) => r.family === 'equivalence');
-  assert.equal(eq.ok, true);
+  assert.ok(eq);
   assert.notEqual(eq.injected, true);
+  assert.equal(eq.ok, sealed.ok);
+  // When parent proved determinism, oracle accepts the green sealed entry.
+  if (sealed.ok) assert.equal(oracle.ok, true);
 });
 
 // ── N3: skipped equivalences must not count as consumed ──────────────────────

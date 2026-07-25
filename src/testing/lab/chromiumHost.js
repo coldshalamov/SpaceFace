@@ -1,5 +1,6 @@
 // Node-side Playwright driver for the Chromium authoritative-runtime host (Phase 4 §15).
 // Manual-step parity surface — not a broker acceptance. Hard timeout + descendant cleanup.
+// P2: public runChromiumLabScenario(canonical) is zero-DI; injectable options are internal-only.
 
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
@@ -18,12 +19,87 @@ const HOST_PAGE = '/src/testing/lab/chromiumHostPage.html';
 const DEFAULT_TIMEOUT_MS = 120_000;
 
 /**
- * Run a compiled canonical scenario inside Chromium via Playwright.
+ * PUBLIC certifying Chromium path — accepts ONLY a compiled canonical.
+ * No systems / equivalence / skipMultiRunEquivalence injection.
+ *
+ * @param {object} canonical
+ * @returns {Promise<object>}
+ */
+export async function runChromiumLabScenario(canonical) {
+  // P2: reject any second-argument DI.
+  if (arguments.length > 1 && arguments[1] != null) {
+    return {
+      ok: false,
+      status: 'invalid-config',
+      certifying: false,
+      nonPromoting: false,
+      error: 'runChromiumLabScenario accepts only (canonical) — options injection is forbidden; '
+        + 'use runChromiumLabScenarioInternal for non-certifying tests or parent child-arms',
+      browserLaunches: 0,
+      durationMs: 0,
+    };
+  }
+  const internal = await runChromiumLabScenarioInternal(canonical, {});
+  return promoteChromiumCertifyingResult(internal);
+}
+
+function promoteChromiumCertifyingResult(internal) {
+  if (!internal || typeof internal !== 'object') {
+    return {
+      ok: false,
+      status: 'infra',
+      certifying: false,
+      nonPromoting: false,
+      error: 'internal chromium runner returned no result',
+      browserLaunches: 0,
+      durationMs: 0,
+    };
+  }
+  const { nonPromoting: _np, ...rest } = internal;
+  return {
+    ...rest,
+    nonPromoting: false,
+    certifying: true,
+  };
+}
+
+function markChromiumNonPromoting(result) {
+  if (!result || typeof result !== 'object') {
+    return {
+      ok: false,
+      status: 'infra',
+      nonPromoting: true,
+      certifying: false,
+      error: 'internal chromium runner returned no result',
+      browserLaunches: 0,
+      durationMs: 0,
+    };
+  }
+  return {
+    ...result,
+    nonPromoting: true,
+    certifying: false,
+  };
+}
+
+/**
+ * INTERNAL non-certifying Chromium runner — operational + test seams.
+ * Always nonPromoting. Parent differential arms and tests use this path.
+ *
  * @param {object} canonical
  * @param {object} [options]
  * @returns {Promise<object>}
  */
-export async function runChromiumLabScenario(canonical, options = {}) {
+export async function runChromiumLabScenarioInternal(canonical, options = {}) {
+  return markChromiumNonPromoting(await runChromiumLabScenarioInternalBody(canonical, options));
+}
+
+/**
+ * @param {object} canonical
+ * @param {object} [options]
+ * @returns {Promise<object>}
+ */
+async function runChromiumLabScenarioInternalBody(canonical, options = {}) {
   // Reject before launching a browser when the host cannot mirror the Node bundle.
   if (options.skipSupportCheck !== true) {
     const support = assertChromiumParitySupported(canonical);
@@ -92,7 +168,9 @@ export async function runChromiumLabScenario(canonical, options = {}) {
       const url = new URL(HOST_PAGE, server.baseUrl).href;
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: Math.min(30_000, timeoutMs) });
       await page.waitForFunction(
-        () => !!(window.__SF_BROWSER_LAB__ && window.__SF_BROWSER_LAB__.ready && window.__SF_BROWSER_LAB__.runBrowserLabScenario),
+        () => !!(window.__SF_BROWSER_LAB__ && window.__SF_BROWSER_LAB__.ready
+          && (window.__SF_BROWSER_LAB__.runBrowserLabScenarioInternal
+            || window.__SF_BROWSER_LAB__.runBrowserLabScenario)),
         null,
         { timeout: Math.min(30_000, timeoutMs) },
       );
@@ -102,16 +180,35 @@ export async function runChromiumLabScenario(canonical, options = {}) {
       const checkpointEvery = options.checkpointEvery;
       const checkpointTicks = options.checkpointTicks;
 
+      // Internal host path: call browser internal runner (never public zero-DI entry with DI).
       const skipMultiRunEquivalence = options.skipMultiRunEquivalence === true;
       const result = await page.evaluate(
-        async ({ canonical: can, scenarioDigest: sd, inputDigest: id, checkpointEvery: ce, checkpointTicks: ct, skipMultiRunEquivalence: skipEq }) => {
-          return window.__SF_BROWSER_LAB__.runBrowserLabScenario(can, {
-            scenarioDigest: sd,
-            inputDigest: id,
-            checkpointEvery: ce,
-            checkpointTicks: ct,
-            skipMultiRunEquivalence: skipEq,
-          });
+        async ({
+          canonical: can,
+          scenarioDigest: sd,
+          inputDigest: id,
+          checkpointEvery: ce,
+          checkpointTicks: ct,
+          skipMultiRunEquivalence: skipEq,
+          equivalence: eq,
+          systems: sys,
+        }) => {
+          const host = window.__SF_BROWSER_LAB__;
+          const runInternal = host.runBrowserLabScenarioInternal || host.runBrowserLabScenario;
+          // Prefer internal API; fall back only if host page is older (still non-certifying arm).
+          if (host.runBrowserLabScenarioInternal) {
+            return runInternal(can, {
+              scenarioDigest: sd,
+              inputDigest: id,
+              checkpointEvery: ce,
+              checkpointTicks: ct,
+              skipMultiRunEquivalence: skipEq,
+              equivalence: eq,
+              systems: sys,
+            });
+          }
+          // Legacy host: public entry rejects options — call with zero DI only.
+          return host.runBrowserLabScenario(can);
         },
         {
           canonical,
@@ -120,6 +217,9 @@ export async function runChromiumLabScenario(canonical, options = {}) {
           checkpointEvery,
           checkpointTicks,
           skipMultiRunEquivalence,
+          // Only internal chromium path may forward these (still nonPromoting overall).
+          equivalence: options.equivalence,
+          systems: options.systems,
         },
       );
 
@@ -206,12 +306,13 @@ export async function runChromiumLabScenario(canonical, options = {}) {
 
 /**
  * Run the same Chromium scenario twice and compare series hashes (within-runtime determinism).
+ * Uses the internal non-certifying path (parent-style check, not a public certifying entry).
  */
 export async function repeatChromiumLabScenario(canonical, options = {}) {
-  const a = await runChromiumLabScenario(canonical, options);
-  if (!a.ok) return { ok: false, status: a.status, error: a.error, runs: [a] };
-  const b = await runChromiumLabScenario(canonical, options);
-  if (!b.ok) return { ok: false, status: b.status, error: b.error, runs: [a, b] };
+  const a = await runChromiumLabScenarioInternal(canonical, options);
+  if (!a.ok) return { ok: false, status: a.status, error: a.error, runs: [a], nonPromoting: true };
+  const b = await runChromiumLabScenarioInternal(canonical, options);
+  if (!b.ok) return { ok: false, status: b.status, error: b.error, runs: [a, b], nonPromoting: true };
 
   const len = Math.min(a.series.length, b.series.length);
   let match = a.series.length === b.series.length;
@@ -231,6 +332,8 @@ export async function repeatChromiumLabScenario(canonical, options = {}) {
     browserLaunches: (a.browserLaunches | 0) + (b.browserLaunches | 0),
     finalHash: a.finalHash,
     runs: 2,
+    nonPromoting: true,
+    certifying: false,
   };
 }
 

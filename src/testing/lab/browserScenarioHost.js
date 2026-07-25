@@ -168,12 +168,93 @@ function collectTapeCommands(canonical) {
 }
 
 /**
- * Run a compiled canonical scenario in the browser and return checkpoint surfaces.
+ * PUBLIC certifying browser path — accepts ONLY a compiled canonical.
+ * Callers cannot inject systems, equivalence, or skipMultiRunEquivalence.
+ * Internally resolves focused flight systems and evaluates oracles with zero DI.
+ *
+ * @param {object} canonical
+ * @returns {Promise<object>}
+ */
+export async function runBrowserLabScenario(canonical) {
+  // P2: reject any second-argument DI — same contract as Node runLabScenario.
+  if (arguments.length > 1 && arguments[1] != null) {
+    return {
+      ok: false,
+      status: 'invalid-config',
+      certifying: false,
+      nonPromoting: false,
+      focusedSystems: true,
+      error: 'runBrowserLabScenario accepts only (canonical) — options injection is forbidden; '
+        + 'use runBrowserLabScenarioInternal for non-certifying tests',
+    };
+  }
+  const internal = await runBrowserLabScenarioInternal(canonical, {});
+  return promoteBrowserCertifyingResult(internal);
+}
+
+/**
+ * Promote a zero-DI internal browser result to a certifying public result.
+ */
+function promoteBrowserCertifyingResult(internal) {
+  if (!internal || typeof internal !== 'object') {
+    return {
+      ok: false,
+      status: 'infra',
+      certifying: false,
+      nonPromoting: false,
+      focusedSystems: true,
+      error: 'internal browser runner returned no result',
+    };
+  }
+  const { nonPromoting: _np, ...rest } = internal;
+  return {
+    ...rest,
+    nonPromoting: false,
+    certifying: true,
+    focusedSystems: true,
+  };
+}
+
+/**
+ * Stamp every internal-path browser result so it cannot be mistaken for certification.
+ */
+function markBrowserNonPromoting(result) {
+  if (!result || typeof result !== 'object') {
+    return {
+      ok: false,
+      status: 'infra',
+      nonPromoting: true,
+      certifying: false,
+      focusedSystems: true,
+      error: 'internal browser runner returned no result',
+    };
+  }
+  return {
+    ...result,
+    nonPromoting: true,
+    certifying: false,
+    focusedSystems: true,
+  };
+}
+
+/**
+ * INTERNAL non-certifying browser runner — injectable seams for unit tests and parent child-arms.
+ * Always marked nonPromoting. Test seams (mock systems, equivalence, skip flags) go here.
+ *
  * @param {object} canonical
  * @param {object} [options]
  * @returns {Promise<object>}
  */
-export async function runBrowserLabScenario(canonical, options = {}) {
+export async function runBrowserLabScenarioInternal(canonical, options = {}) {
+  return markBrowserNonPromoting(await runBrowserLabScenarioInternalBody(canonical, options));
+}
+
+/**
+ * @param {object} canonical
+ * @param {object} [options]
+ * @returns {Promise<object>}
+ */
+async function runBrowserLabScenarioInternalBody(canonical, options = {}) {
   if (!canonical || typeof canonical !== 'object') {
     return { ok: false, status: 'invalid-config', error: 'canonical required' };
   }
@@ -212,6 +293,7 @@ export async function runBrowserLabScenario(canonical, options = {}) {
 
   const scenarioDigest = options.scenarioDigest || null;
   const inputDigest = options.inputDigest || hashInputTape(canonical.inputTape);
+  // P2 public path always uses fixed focused systems; internal may inject for tests.
   const systems = options.systems || [...BROWSER_FOCUSED_FLIGHT_SYSTEMS];
 
   let runtime = null;
@@ -307,6 +389,7 @@ export async function runBrowserLabScenario(canonical, options = {}) {
     // FIX 7: evaluate scenario assertions/metrics — host success alone is not oracle pass.
     // G4/differential: multi-run equivalences are owned by parent compare/repeat/diff —
     // skip deferred incomplete when parent will evaluate (or has already).
+    // P2: only internal path may accept caller equivalence / skip flags.
     const oracleEval = evaluateOracles({
       trace: oracleTrace,
       metrics: canonical.metrics || [],
@@ -379,6 +462,7 @@ export async function runBrowserLabScenario(canonical, options = {}) {
       finalSurface,
       oracle,
       exactWithin: { crossRuntime: false },
+      focusedSystems: true,
     };
   } catch (err) {
     if (runtime) {
@@ -389,6 +473,7 @@ export async function runBrowserLabScenario(canonical, options = {}) {
       status: 'infra',
       error: err && err.message ? err.message : String(err),
       stack: err && err.stack ? String(err.stack).slice(0, 2000) : undefined,
+      focusedSystems: true,
     };
   }
 }
@@ -431,10 +516,11 @@ function round6Preserve(n) {
   return Math.round(num * 1e6) / 1e6;
 }
 
-// Expose for the host page.
+// Expose for the host page. Public zero-DI entry + internal for parent/host drivers.
 if (typeof window !== 'undefined') {
   window.__SF_BROWSER_LAB__ = {
     runBrowserLabScenario,
+    runBrowserLabScenarioInternal,
     assertChromiumParitySupported,
     BROWSER_FOCUSED_FLIGHT_SYSTEMS,
     BROWSER_PARITY_SYSTEM_NAMES,

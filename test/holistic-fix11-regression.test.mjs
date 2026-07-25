@@ -12,12 +12,11 @@ import {
 } from '../src/testing/lab/runScenario.js';
 import { evaluateOracles } from '../src/testing/lab/oracleEngine.js';
 import {
-  sealEquivalenceResult,
   isAuthoritativeEquivalenceResult,
   isPromotableLabResult,
-  EQUIVALENCE_EXECUTOR_SOURCES,
 } from '../src/testing/lab/equivalenceAuthority.js';
 import { runDifferentialReplay } from '../src/testing/lab/differentialReplay.js';
+import { repeatScenario } from '../src/testing/lab/repeat.js';
 import { FOCUSED_FLIGHT_SYSTEMS } from '../src/testing/lab/systemBundles.js';
 import { compileSimScenario } from '../src/contracts/simScenarioSchema.js';
 
@@ -95,22 +94,33 @@ test('O2: forged {ok:true, expected, actual} equivalence is rejected', () => {
   assert.match(String(eq.reason || ''), /seal|shape/i);
 });
 
-test('O2: sealed result from fixed executor is accepted', () => {
-  const sealed = sealEquivalenceResult(
-    { ok: true, expected: true, actual: true },
-    EQUIVALENCE_EXECUTOR_SOURCES.REPEAT,
-  );
-  assert.equal(isAuthoritativeEquivalenceResult(sealed), true);
-  // Forging source string without private seal fails.
+test('O2: sealed result from fixed parent executor is accepted (via repeatScenario)', async () => {
+  // P1: sealEquivalenceResult is not a public import — prove seal only via parent executor.
   const fakeSource = { ok: true, expected: true, actual: true, source: 'repeat-executor' };
   assert.equal(isAuthoritativeEquivalenceResult(fakeSource), false);
+
+  const doc = {
+    ...flightDoc,
+    id: 'fix11.o2-sealed-via-parent',
+    ticks: 8,
+    frames: [{ tick: 0, input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false } }],
+    assertions: [{ kind: 'equivalence', equivalence: 'run-eq-repeat' }],
+  };
+  const parent = await repeatScenario(doc, { verbosity: 0, runs: 2 });
+  const sealed = parent.equivalence && parent.equivalence['run-eq-repeat'];
+  assert.ok(sealed, 'parent must emit run-eq-repeat equivalence entry');
+  assert.equal(isAuthoritativeEquivalenceResult(sealed), true, 'parent entry must carry private seal');
 
   const oracle = evaluateOracles({
     trace: [{ tick: 0, playerX: 0, playerZ: 0, playerVelX: 0, playerVelZ: 0, hull: 100 }],
     assertions: [{ kind: 'equivalence', equivalence: 'run-eq-repeat' }],
     equivalence: { 'run-eq-repeat': sealed },
   });
-  assert.equal(oracle.ok, true);
+  // Oracle accepts the sealed parent entry regardless of parent.ok (nondeterminism is separate).
+  const eq = oracle.results.find((r) => r.family === 'equivalence');
+  assert.ok(eq);
+  assert.notEqual(eq.injected, true);
+  assert.equal(eq.ok, sealed.ok);
 });
 
 // ── O3: skipMultiRun only in child arms; standalone incomplete ───────────────
