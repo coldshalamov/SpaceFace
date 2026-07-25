@@ -19,9 +19,10 @@ export const PRESENTATION_PLATFORM_IDS = Object.freeze([
 const PRESENTATION_SET = new Set(PRESENTATION_PLATFORM_IDS);
 
 /**
- * Production init order — matches createRegistry SYSTEMS (127 entries) at the Phase 2
+ * Production init order — matches createRegistry SYSTEMS (128 entries) at the Phase 2
  * baseline. Includes presentation platform IDs so the browser path can materialize an
  * identical full list; Node consumers filter with isNodeSafeSystemId.
+ * Invariant: every PRODUCTION_UPDATE_ORDER id must also appear here (update ⊆ init).
  */
 export const PRODUCTION_INIT_ORDER = Object.freeze([
   'core', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
@@ -44,7 +45,8 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
   'drill', 'claims', 'beacons', 'bandRadio', 'v2FlavorRuntime', 'onboarding', 'masslineHud',
-  'fieldHud', 'planetHud', 'sectorPostcard', 'dockDenyBanner', 'stationBroadcast',
+  // J6: massSeedHud is in UPDATE_ORDER (DOM-guarded HUD) — must also init so helpers bind.
+  'massSeedHud', 'fieldHud', 'planetHud', 'sectorPostcard', 'dockDenyBanner', 'stationBroadcast',
   'hazardHints', 'bulkHaulTag', 'dangerGradient', 'causeLedger', 'customsPrompt',
   'cargoConscience', 'securityReadoutSystem', 'priceForecastSystem', 'contractClausesSystem',
   'moralTrapSystem', 'render', 'vfx', 'feel', 'audio', 'ui', 'save',

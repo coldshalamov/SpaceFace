@@ -176,21 +176,24 @@ function unknownSignalResult(kind, signal) {
 }
 
 /**
- * I8: a temporal assertion on a signal that was NEVER present on any sample is
- * vacuously true under `never` / falsy under `holds` — both are false positives.
- * Require the signal to appear as an own-property on at least one sample.
+ * I8/J4: a temporal assertion without full interval coverage is a false positive.
+ * "Sampled once" is not enough — every sample in the assertion interval must carry
+ * a finite own-property value for the signal.
  */
-function unsampledSignalResult(kind, signal) {
+function unsampledSignalResult(kind, signal, detail = null) {
   return {
     family: 'temporal',
     id: signal ? `${kind}:${signal}` : kind,
     ok: false,
-    expected: { signalSampled: true },
-    actual: { signal, sampled: false },
+    expected: { signalCoveredEveryTick: true },
+    actual: detail || { signal, sampled: false },
     signedDelta: 1,
-    firstBadTick: 0,
-    reason: `temporal signal "${signal}" was never observed in any trace sample `
-      + `(vacuous ${kind} would be a false positive)`,
+    firstBadTick: detail && Number.isInteger(detail.firstMissingTick) ? detail.firstMissingTick : 0,
+    reason: detail && detail.partial
+      ? `temporal signal "${signal}" has insufficient coverage `
+        + `(absent or non-finite on tick ${detail.firstMissingTick}; vacuous ${kind} refused)`
+      : `temporal signal "${signal}" was never observed in any trace sample `
+        + `(vacuous ${kind} would be a false positive)`,
   };
 }
 
@@ -198,13 +201,71 @@ function isKnownOracleSignal(signal) {
   return typeof signal === 'string' && KNOWN_ORACLE_SIGNALS.has(signal);
 }
 
-/** True when at least one sample has the signal as an own property (including false/0). */
-function signalWasSampled(trace, signal) {
-  if (!signal || !Array.isArray(trace) || !trace.length) return false;
-  for (const s of trace) {
-    if (s && Object.prototype.hasOwnProperty.call(s, signal)) return true;
+/**
+ * J4: require a finite own-property value on EVERY sample in the assertion interval.
+ * Partially-sampled signals (present on tick 0, absent on tick 5) FAIL — not vacuous pass.
+ *
+ * @param {object[]} trace
+ * @param {string} signal
+ * @param {{ fromTick?: number, toTick?: number } | null} [interval]
+ * @returns {{ ok: true } | { ok: false, partial: boolean, firstMissingTick: number|null, signal: string }}
+ */
+export function signalCoveredEveryTick(trace, signal, interval = null) {
+  if (!signal || !Array.isArray(trace) || !trace.length) {
+    return { ok: false, partial: false, firstMissingTick: null, signal };
   }
-  return false;
+  const hasFrom = interval && Number.isFinite(interval.fromTick);
+  const hasTo = interval && Number.isFinite(interval.toTick);
+  const fromTick = hasFrom ? Number(interval.fromTick) : -Infinity;
+  const toTick = hasTo ? Number(interval.toTick) : Infinity;
+  const samples = [];
+  for (const s of trace) {
+    if (!s || !Number.isFinite(s.tick)) continue;
+    if (s.tick < fromTick || s.tick > toTick) continue;
+    samples.push(s);
+  }
+  if (!samples.length) {
+    return { ok: false, partial: false, firstMissingTick: null, signal };
+  }
+  let anyPresent = false;
+  for (const s of samples) {
+    if (!Object.prototype.hasOwnProperty.call(s, signal)) {
+      return {
+        ok: false,
+        partial: anyPresent,
+        firstMissingTick: s.tick | 0,
+        signal,
+      };
+    }
+    anyPresent = true;
+    const v = s[signal];
+    // Finite number required for numeric; booleans/strings allowed when own-property present.
+    if (typeof v === 'number' && !Number.isFinite(v)) {
+      return {
+        ok: false,
+        partial: true,
+        firstMissingTick: s.tick | 0,
+        signal,
+      };
+    }
+    if (v === undefined) {
+      return {
+        ok: false,
+        partial: true,
+        firstMissingTick: s.tick | 0,
+        signal,
+      };
+    }
+  }
+  return { ok: true };
+}
+
+/** @deprecated use signalCoveredEveryTick — kept name for call-site clarity during I8→J4. */
+function signalWasSampled(trace, signal, assertion = null) {
+  const interval = assertion && (assertion.fromTick != null || assertion.toTick != null)
+    ? { fromTick: assertion.fromTick, toTick: assertion.toTick }
+    : null;
+  return signalCoveredEveryTick(trace, signal, interval);
 }
 
 function evaluateTemporal(assertions, trace, ctx) {
@@ -217,14 +278,19 @@ function evaluateTemporal(assertions, trace, ctx) {
         results.push(unknownSignalResult('settles', signal));
         continue;
       }
-      // I8: settles on an unsampled signal is vacuous.
-      if (!signalWasSampled(trace, signal)) {
-        results.push(unsampledSignalResult('settles', signal));
+      // I8/J4: settles requires the signal on every sample (missing ≠ 0).
+      const settleCoverage = signalWasSampled(trace, signal, a);
+      if (!settleCoverage.ok) {
+        results.push(unsampledSignalResult('settles', signal, settleCoverage));
         continue;
       }
       let lastUnsettled = -1;
       for (let i = 0; i < trace.length; i++) {
-        if (Math.abs(trace[i][signal] || 0) > band) lastUnsettled = i;
+        const sample = trace[i];
+        // J4: value is an own-property finite number (coverage already enforced).
+        const raw = sample[signal];
+        const mag = typeof raw === 'number' && Number.isFinite(raw) ? Math.abs(raw) : Infinity;
+        if (mag > band) lastUnsettled = i;
       }
       const settled = trace.length > 0 && lastUnsettled < trace.length - 1;
       const settleTick = settled ? trace[lastUnsettled + 1].tick : null;
@@ -263,9 +329,10 @@ function evaluateTemporal(assertions, trace, ctx) {
         results.push(unknownSignalResult('never', signal));
         continue;
       }
-      // I8: never on a never-sampled signal is a vacuous false positive.
-      if (!signalWasSampled(trace, signal)) {
-        results.push(unsampledSignalResult('never', signal));
+      // I8/J4: never requires full interval coverage (partial sample ≠ "never observed").
+      const neverCoverage = signalWasSampled(trace, signal, a);
+      if (!neverCoverage.ok) {
+        results.push(unsampledSignalResult('never', signal, neverCoverage));
         continue;
       }
       let bad = null;
@@ -293,9 +360,10 @@ function evaluateTemporal(assertions, trace, ctx) {
         results.push(unknownSignalResult('holds', signal));
         continue;
       }
-      // I8: holds on unsampled signal cannot be proven.
-      if (!signalWasSampled(trace, signal)) {
-        results.push(unsampledSignalResult('holds', signal));
+      // I8/J4: holds requires the signal on every sample in the interval.
+      const holdsCoverage = signalWasSampled(trace, signal, a);
+      if (!holdsCoverage.ok) {
+        results.push(unsampledSignalResult('holds', signal, holdsCoverage));
         continue;
       }
       const need = a.holdsTicks | 0;
@@ -332,9 +400,10 @@ function evaluateTemporal(assertions, trace, ctx) {
         results.push(unknownSignalResult('eventByTick', signal));
         continue;
       }
-      // I8: eventByTick on unsampled signal cannot be proven.
-      if (!signalWasSampled(trace, signal)) {
-        results.push(unsampledSignalResult('eventByTick', signal));
+      // I8/J4: eventByTick requires the signal on every sample (partial coverage fails).
+      const eventCoverage = signalWasSampled(trace, signal, a);
+      if (!eventCoverage.ok) {
+        results.push(unsampledSignalResult('eventByTick', signal, eventCoverage));
         continue;
       }
       const byTick = a.byTick | 0;

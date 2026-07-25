@@ -23,13 +23,22 @@ import { combat } from '../src/systems/combat.js';
 import { weapons } from '../src/systems/weapons.js';
 
 test('production init + update order lengths match the live browser baseline', () => {
-  assert.equal(PRODUCTION_INIT_ORDER.length, 127);
+  assert.equal(PRODUCTION_INIT_ORDER.length, 128);
   assert.equal(PRODUCTION_UPDATE_ORDER.length, 96);
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
   assert.ok(PRODUCTION_INIT_ORDER.includes('render'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('save'));
+  assert.ok(PRODUCTION_INIT_ORDER.includes('massSeedHud'));
   assert.ok(!PRODUCTION_UPDATE_ORDER.includes('render'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('flightSlot'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.includes('massSeedHud'));
+});
+
+// J6: every system in update order must also be initialized (update ⊆ init).
+test('J6: production update order is a subset of init order', () => {
+  const initSet = new Set(PRODUCTION_INIT_ORDER);
+  const missing = PRODUCTION_UPDATE_ORDER.filter((id) => !initSet.has(id));
+  assert.deepEqual(missing, [], `update systems missing from init: ${missing.join(', ')}`);
 });
 
 test('createRegistry materializes the production manifest system IDs and order', () => {
@@ -116,7 +125,7 @@ test('browser production system set is unchanged vs production manifest constant
   const registry = createRegistry({ state, bus: createBus(), helpers: {} });
 
   // Full init list length and terminal platform systems preserved.
-  assert.equal(registry.systems.length, 127);
+  assert.equal(registry.systems.length, 128);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

@@ -52,6 +52,13 @@ const TOP_KEYS = new Set([
   'saveLoadEquivalence',
 ]);
 
+/** Canonical compile output may add these top-level keys (J3: still closed). */
+const CANONICAL_EXTRA_TOP_KEYS = new Set([
+  'inputTape',
+  'rendering',
+]);
+const CANONICAL_TOP_KEYS = new Set([...TOP_KEYS, ...CANONICAL_EXTRA_TOP_KEYS]);
+
 const WORLD_KEYS = new Set([
   'fixtureProfile',
   'sectorId',
@@ -224,11 +231,12 @@ export function validateSimScenario(doc, options = {}) {
         }
         if (ent.pos != null) validateVec(ent.pos, `${p}.pos`, issue);
         if (ent.vel != null) validateVec(ent.vel, `${p}.vel`, issue);
-        if (ent.heading != null && typeof ent.heading !== 'number') {
-          issue(`${p}.heading`, 'type', 'heading must be a number');
+        if (ent.heading != null && (typeof ent.heading !== 'number' || !Number.isFinite(ent.heading))) {
+          issue(`${p}.heading`, 'type', 'heading must be a finite number');
         }
-        if (ent.angularVelocity != null && typeof ent.angularVelocity !== 'number') {
-          issue(`${p}.angularVelocity`, 'type', 'angularVelocity must be a number');
+        if (ent.angularVelocity != null
+          && (typeof ent.angularVelocity !== 'number' || !Number.isFinite(ent.angularVelocity))) {
+          issue(`${p}.angularVelocity`, 'type', 'angularVelocity must be a finite number');
         }
         if (ent.overrides != null && (typeof ent.overrides !== 'object' || Array.isArray(ent.overrides))) {
           issue(`${p}.overrides`, 'type', 'overrides must be an object');
@@ -661,9 +669,29 @@ export function formatSimScenarioIssue(issue) {
 }
 
 /**
+ * Project a compiled canonical into the raw-shaped fields validateSimScenario understands.
+ * J3: canonical validation REUSES the raw field validators — no partial second schema.
+ */
+function projectCanonicalToRawShape(doc) {
+  const projected = { ...doc, schema: SIM_SCENARIO_SCHEMA };
+  if (doc.inputTape && typeof doc.inputTape === 'object' && !Array.isArray(doc.inputTape)) {
+    if (!Array.isArray(projected.inputEvents) && Array.isArray(doc.inputTape.events)) {
+      projected.inputEvents = doc.inputTape.events;
+    }
+    if (!Array.isArray(projected.frames) && Array.isArray(doc.inputTape.frames)) {
+      projected.frames = doc.inputTape.frames;
+    }
+  }
+  // Strip canonical-only keys so raw TOP_KEYS unknown-key checks stay closed.
+  delete projected.inputTape;
+  delete projected.rendering;
+  return projected;
+}
+
+/**
  * Full semantic + structural checks for precompiled canonicals.
- * G6/FIX 17: options.canonical must not bypass the field checks a raw document gets
- * (unimplemented frame.input, inputEvents.buttons, unknown signals, anchorMass, etc.).
+ * J3: reuses validateSimScenario (unknown keys, NaN rejection, entity/world/assertion rules).
+ * G6/FIX 17: options.canonical must not bypass the field checks a raw document gets.
  *
  * @param {object} doc precompiled canonical (or raw-shaped doc)
  * @param {{ file?: string }} [options]
@@ -679,112 +707,32 @@ export function validateCanonicalScenario(doc, options = {}) {
     return result(false, issues);
   }
 
-  // I7: full field validation matching raw documents (not just nested frames/events).
-  // Schema may be simScenarioCanonical when precompiled.
+  // Schema may be raw or precompiled-canonical.
   if (doc.schema !== SIM_SCENARIO_SCHEMA && doc.schema !== SIM_SCENARIO_CANONICAL_SCHEMA) {
     issue('$.schema', 'schema',
       `expected ${SIM_SCENARIO_SCHEMA} or ${SIM_SCENARIO_CANONICAL_SCHEMA}`);
   }
-  if (typeof doc.id !== 'string' || !ID_PATTERN.test(doc.id)) {
-    issue('$.id', 'id', 'id must match [a-z][a-z0-9_.:-]*');
-  }
-  if (typeof doc.seed !== 'number' || !Number.isFinite(doc.seed)) {
-    issue('$.seed', 'type', 'seed must be a finite number');
-  }
-  // I7: ticks:0 produces no samples — temporal assertions cannot be consumed → reject.
-  if (!Number.isInteger(doc.ticks) || doc.ticks < 1) {
-    issue('$.ticks', 'type', 'ticks must be a positive integer');
-  }
-  if (doc.dt != null && (!(typeof doc.dt === 'number') || !(doc.dt > 0))) {
-    issue('$.dt', 'type', 'dt must be a positive number when present');
-  }
-  if (doc.evidenceClass != null
-    && (typeof doc.evidenceClass !== 'string' || !EVIDENCE_CLASSES.includes(doc.evidenceClass))) {
-    issue('$.evidenceClass', 'enum', `evidenceClass must be one of: ${EVIDENCE_CLASSES.join(', ')}`);
-  }
-  if (doc.runtimeProfile != null && typeof doc.runtimeProfile !== 'string') {
-    issue('$.runtimeProfile', 'type', 'runtimeProfile must be a string when present');
+
+  // J3: closed top-level surface for canonical extras (inputTape/rendering allowed; unknown not).
+  rejectUnknownKeys(doc, CANONICAL_TOP_KEYS, '$', issue);
+
+  // Reuse the full raw validator on a projected raw-shaped document.
+  const projected = projectCanonicalToRawShape(doc);
+  const raw = validateSimScenario(projected, options);
+  for (const rawIssue of raw.issues) {
+    // Schema was rewritten to raw for reuse; keep our canonical-aware schema issue only.
+    if (rawIssue.path === '$.schema') continue;
+    issues.push(rawIssue);
   }
 
-  // Anchor mass (FIX 17)
-  for (const i of collectAnchorMassResolutionIssues(doc, options)) issues.push(i);
-
-  // Frames: raw `frames` or compiled `inputTape.frames`
-  const frames = Array.isArray(doc.frames)
-    ? doc.frames
-    : (doc.inputTape && Array.isArray(doc.inputTape.frames) ? doc.inputTape.frames : null);
-  if (frames) {
-    frames.forEach((frame, i) => {
-      const p = doc.frames ? `$.frames[${i}]` : `$.inputTape.frames[${i}]`;
-      if (!frame || typeof frame !== 'object') {
-        issue(p, 'type', 'frame must be an object');
-        return;
-      }
-      if (frame.input != null) {
-        if (typeof frame.input !== 'object' || Array.isArray(frame.input)) {
-          issue(`${p}.input`, 'type', 'input must be an object');
-        } else {
-          for (const key of Object.keys(frame.input)) {
-            if (FRAME_INPUT_REJECTED.has(key)) {
-              issue(`${p}.input.${key}`, 'unimplemented-input-field',
-                `frame.input.${key} is not applied by the lab tape driver — use raw events/grammar fields`);
-            }
-          }
-          rejectUnknownKeys(frame.input, FRAME_INPUT_KEYS, `${p}.input`, issue);
-        }
-      }
-    });
-  }
-
-  // Input events: raw `inputEvents` or compiled `inputTape.events`
-  const events = Array.isArray(doc.inputEvents)
-    ? doc.inputEvents
-    : (doc.inputTape && Array.isArray(doc.inputTape.events) ? doc.inputTape.events : null);
-  if (events) {
-    events.forEach((ev, i) => {
-      const p = doc.inputEvents ? `$.inputEvents[${i}]` : `$.inputTape.events[${i}]`;
-      if (!ev || typeof ev !== 'object') {
-        issue(p, 'type', 'input event must be an object');
-        return;
-      }
-      for (const key of Object.keys(ev)) {
-        if (INPUT_EVENT_REJECTED.has(key)) {
-          issue(`${p}.${key}`, 'unimplemented-input-field',
-            `inputEvents.${key} is not applied by the lab tape driver — use code/key maps`);
-        }
-      }
-      if (ev.device != null && ev.device !== 'keyboard') {
-        issue(`${p}.device`, 'unsupported-field',
-          `input device "${ev.device}" is not implemented (keyboard only in V1)`);
-      }
-      if (ev.pointer != null) {
-        issue(`${p}.pointer`, 'unsupported-field', 'pointer input events are not implemented in V1');
-      }
-      if (ev.gamepad != null) {
-        issue(`${p}.gamepad`, 'unsupported-field', 'gamepad input events are not implemented in V1');
-      }
-      if (ev.touch != null) {
-        issue(`${p}.touch`, 'unsupported-field', 'touch input events are not implemented in V1');
-      }
-    });
-  }
-
-  // Assertions / temporal signals (F8/G8)
-  if (Array.isArray(doc.assertions)) {
-    doc.assertions.forEach((a, i) => {
-      if (!a || typeof a !== 'object') return;
-      validateAssertionFields(a, `$.assertions[${i}]`, issue);
-    });
-  }
-
-  // Trace signals on canonical
-  if (doc.trace && Array.isArray(doc.trace.signals)) {
-    doc.trace.signals.forEach((sig, i) => {
-      if (typeof sig !== 'string' || !ASSERTION_KNOWN_SIGNALS.has(sig)) {
-        issue(`$.trace.signals[${i}]`, 'unsupported-field',
-          `trace signal "${sig}" is not a known lab sample field`);
-      }
-    });
+  // inputTape-specific path labels when raw projected frames/events (optional clarity).
+  if (doc.inputTape && typeof doc.inputTape === 'object' && !Array.isArray(doc.inputTape)) {
+    if (doc.inputTape.events != null && !Array.isArray(doc.inputTape.events)) {
+      issue('$.inputTape.events', 'type', 'inputTape.events must be an array when present');
+    }
+    if (doc.inputTape.frames != null && !Array.isArray(doc.inputTape.frames)) {
+      issue('$.inputTape.frames', 'type', 'inputTape.frames must be an array when present');
+    }
   }
 
   return result(issues.length === 0, issues);
@@ -946,8 +894,9 @@ function validateVec(v, path, issue) {
   }
   rejectUnknownKeys(v, POS_KEYS, path, issue);
   for (const k of ['x', 'y', 'z']) {
-    if (v[k] != null && typeof v[k] !== 'number') {
-      issue(`${path}.${k}`, 'type', `${k} must be a number`);
+    if (v[k] != null && (typeof v[k] !== 'number' || !Number.isFinite(v[k]))) {
+      // J3: NaN/Infinity are typeof 'number' but must not pass as positions/velocities.
+      issue(`${path}.${k}`, 'type', `${k} must be a finite number`);
     }
   }
 }

@@ -739,18 +739,70 @@ export function resolveSaveLoadAt(options = {}, canonical = {}) {
   return cp && Number.isInteger(cp.tick | 0) ? (cp.tick | 0) : null;
 }
 
+/** J1: canary field on player — serialized via save player blob, not a gameplay writer. */
+export const LAB_SAVE_LOAD_CANARY_KEY = '__labSaveLoadCanary';
+
+/**
+ * J1: inject a canary into live player state before serialize, poison it after serialize,
+ * then verify loadEnvelope actually restored the pre-save canary value.
+ * An adversarial loadEnvelope that only returns true leaves the poison and fails.
+ *
+ * @returns {{ ok: true, canaryValue: string } | { ok: false, reason: string, expected?: string, actual?: unknown }}
+ */
+export function injectSaveLoadCanary(state) {
+  if (!state || !state.player || typeof state.player !== 'object') {
+    return { ok: false, reason: 'save-load-canary-unavailable: missing state.player' };
+  }
+  const seed = state.meta && state.meta.seed != null ? state.meta.seed : 0;
+  const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const canaryValue = `sf-canary:${seed}:${simTime}`;
+  state.player[LAB_SAVE_LOAD_CANARY_KEY] = canaryValue;
+  return { ok: true, canaryValue };
+}
+
+export function poisonSaveLoadCanary(state) {
+  if (state && state.player && typeof state.player === 'object') {
+    state.player[LAB_SAVE_LOAD_CANARY_KEY] = '__lab_canary_poison_no_restore__';
+  }
+}
+
+export function verifySaveLoadCanary(state, canaryValue) {
+  const actual = state && state.player ? state.player[LAB_SAVE_LOAD_CANARY_KEY] : undefined;
+  if (actual !== canaryValue) {
+    return {
+      ok: false,
+      reason: 'save-load-canary-mismatch: loadEnvelope did not restore serialized state',
+      expected: canaryValue,
+      actual,
+    };
+  }
+  // Drop the lab-only field so it does not leak into subsequent sim ticks.
+  if (state && state.player && Object.prototype.hasOwnProperty.call(state.player, LAB_SAVE_LOAD_CANARY_KEY)) {
+    delete state.player[LAB_SAVE_LOAD_CANARY_KEY];
+  }
+  return { ok: true };
+}
+
 /**
  * Real serialize → loadEnvelope round-trip only. Never claim success without a restore (FIX 3).
+ * J1: restoreCount is only awarded when a pre-save canary is observed restored after load —
+ * loadEnvelope returning true is not sufficient.
  * H10: recreate the runtime from the envelope so system-local state cannot survive outside the
  * save surface. Caller must swap runtime/state/input driver from the returned handles.
  *
  * @returns {{ ok: boolean, restoreCount?: number, runtime?: object, state?: object, exitClass?: number, status?: string, reason?: string, coverageGaps?: string[] }}
  */
-async function performSaveLoad(runtime, state, options = {}) {
+export async function performSaveLoad(runtime, state, options = {}) {
   const saveSys = runtime.getSystem('save');
   if (saveSys && typeof saveSys.serialize === 'function' && typeof saveSys.loadEnvelope === 'function') {
     try {
+      const canary = injectSaveLoadCanary(state);
+      if (!canary.ok) {
+        return { ok: false, exitClass: 3, status: 'infra', reason: canary.reason };
+      }
       const envelope = saveSys.serialize('lab-save-load');
+      // Poison live state after capture so a no-op loadEnvelope cannot pass.
+      poisonSaveLoadCanary(state);
       const profileId = (runtime.config && runtime.config.profileId) || 'production';
       const systems = options.systems || (runtime.liveSystems
         ? runtime.liveSystems
@@ -771,6 +823,16 @@ async function performSaveLoad(runtime, state, options = {}) {
         const ok = saveSys.loadEnvelope(envelope, 'lab-save-load');
         if (!ok) {
           return { ok: false, exitClass: 3, status: 'infra', reason: 'save loadEnvelope returned false' };
+        }
+        const canaryCheck = verifySaveLoadCanary(state, canary.canaryValue);
+        if (!canaryCheck.ok) {
+          return {
+            ok: false,
+            exitClass: 3,
+            status: 'infra',
+            reason: canaryCheck.reason,
+            restoreCount: 0,
+          };
         }
         if (state.settings && state.settings.gameplay) {
           state.settings.gameplay.flightBackend = 'v3';
@@ -811,6 +873,17 @@ async function performSaveLoad(runtime, state, options = {}) {
       if (!ok) {
         next.dispose();
         return { ok: false, exitClass: 3, status: 'infra', reason: 'save loadEnvelope returned false on recreated runtime' };
+      }
+      const canaryCheck = verifySaveLoadCanary(next.state, canary.canaryValue);
+      if (!canaryCheck.ok) {
+        next.dispose();
+        return {
+          ok: false,
+          exitClass: 3,
+          status: 'infra',
+          reason: canaryCheck.reason,
+          restoreCount: 0,
+        };
       }
       // Preserve runtime profile binding after restore (H15 strips it from the envelope).
       if (next.state && next.state.settings && next.state.settings.gameplay) {

@@ -252,9 +252,114 @@ function brokerClaimConsumedSentinelPath(claimPath) {
 }
 
 /**
- * I6: accepted evidence resolves a failure only when it is bound to the *current*
+ * Digest fields that bind evidence / claims to a candidate identity (J2/J5).
+ * When the current gate state declares a field, evidence/claims MUST present it
+ * and EQUAL it — optional-when-present is a false-green.
+ */
+const REQUIRED_IDENTITY_DIGEST_KEYS = Object.freeze([
+  'candidateDigest',
+  'routeDigest',
+  'regressionDigest',
+  'profileDigest',
+  'manifestDigest',
+]);
+
+/**
+ * Transitive gameplay + lab sources always folded into candidate identity (J2).
+ * Changes to runtime profiles, resolver, input grammar, feature flags, actions,
+ * physics, flightV3, or the lab itself must invalidate stale evidence digests.
+ */
+export const CANDIDATE_TRANSITIVE_SOURCE_PATHS = Object.freeze([
+  'src/runtime/runtimeProfiles.js',
+  'src/runtime/resolveRuntimeManifest.js',
+  'src/runtime/authoritativeSystemManifest.js',
+  'src/runtime/createAuthoritativeRuntime.js',
+  'src/systems/masslineInputGrammar.js',
+  'src/systems/actions.js',
+  'src/systems/flightV3.js',
+  'src/systems/input.js',
+  'src/data/featureFlags.js',
+  'src/core/physics.js',
+  'src/core/physicsAuthority.js',
+  'src/contracts/simScenarioSchema.js',
+  'src/testing/lab/runScenario.js',
+  'src/testing/lab/oracleEngine.js',
+  'src/testing/lab/saveLoadCompare.js',
+  'src/testing/lab/index.js',
+  'scripts/lib/validationBroker.mjs',
+  'scripts/lib/validationFingerprint.mjs',
+]);
+
+function uniqueRelativePaths(...lists) {
+  const out = [];
+  const seen = new Set();
+  for (const list of lists) {
+    for (const p of list || []) {
+      if (typeof p !== 'string' || !p || seen.has(p)) continue;
+      seen.add(p);
+      out.push(p);
+    }
+  }
+  return out;
+}
+
+/**
+ * Read sources that exist under root; skip missing paths (fixture roots may be partial).
+ * Declared manifest paths still use strict readSourceSet so typos fail hard.
+ */
+async function readExistingSourceSet(root, relativePaths = []) {
+  const entries = await Promise.all(relativePaths.map(async (relativePath) => {
+    try {
+      const text = await readFile(path.join(root, relativePath), 'utf8');
+      return [relativePath, text];
+    } catch (err) {
+      if (err && (err.code === 'ENOENT' || err.code === 'ENOTDIR')) {
+        return null;
+      }
+      throw err;
+    }
+  }));
+  return Object.fromEntries(entries.filter(Boolean));
+}
+
+function extractEvidenceDigests(acceptedEvidence) {
+  if (!acceptedEvidence || typeof acceptedEvidence !== 'object') return null;
+  return acceptedEvidence.digests
+    || {
+      candidateDigest: acceptedEvidence.candidateDigest,
+      routeDigest: acceptedEvidence.routeDigest ?? acceptedEvidence.productionDigest,
+      productionDigest: acceptedEvidence.productionDigest ?? acceptedEvidence.routeDigest,
+      regressionDigest: acceptedEvidence.regressionDigest,
+      profileDigest: acceptedEvidence.profileDigest,
+      manifestDigest: acceptedEvidence.manifestDigest,
+    };
+}
+
+/**
+ * J2: when a declared digest is provided by current state, evidence must present
+ * the same field and equal it. Missing field → reject (not optional-when-present).
+ */
+function digestsBindToCurrent(evidenceDigests, current = {}) {
+  if (!evidenceDigests || typeof evidenceDigests !== 'object') return false;
+  for (const key of REQUIRED_IDENTITY_DIGEST_KEYS) {
+    const expected = current[key] ?? null;
+    if (!expected) continue;
+    let actual = evidenceDigests[key] ?? null;
+    if (key === 'routeDigest' && !actual) {
+      actual = evidenceDigests.productionDigest ?? null;
+    }
+    if (!actual || actual !== expected) return false;
+  }
+  // candidateDigest is always required on accepted evidence once any identity is checked.
+  if (!evidenceDigests.candidateDigest) return false;
+  return true;
+}
+
+/**
+ * I6/J2: accepted evidence resolves a failure only when it is bound to the *current*
  * candidate digests (and matching runtime). Stale / copied / future-dated evidence
  * that never tested this candidate must not clear an open failure.
+ * Missing any declared digest field on the evidence is a reject (not optional).
  */
 function isResolvedByAcceptedEvidence({
   latestFailure,
@@ -278,48 +383,14 @@ function isResolvedByAcceptedEvidence({
   if (!acceptedEvidence || typeof acceptedEvidence !== 'object') {
     return false;
   }
-  const evidenceDigests = acceptedEvidence.digests
-    || {
-      candidateDigest: acceptedEvidence.candidateDigest,
-      routeDigest: acceptedEvidence.routeDigest ?? acceptedEvidence.productionDigest,
-      regressionDigest: acceptedEvidence.regressionDigest,
-      profileDigest: acceptedEvidence.profileDigest,
-      manifestDigest: acceptedEvidence.manifestDigest,
-    };
-  // Require candidateDigest match when current state has one.
-  if (candidateDigest) {
-    const evidenceCandidate = evidenceDigests.candidateDigest ?? null;
-    if (!evidenceCandidate || evidenceCandidate !== candidateDigest) {
-      return false;
-    }
-  }
-  if (routeDigest) {
-    const evidenceRoute = evidenceDigests.routeDigest
-      ?? evidenceDigests.productionDigest
-      ?? null;
-    if (evidenceRoute && evidenceRoute !== routeDigest) {
-      return false;
-    }
-  }
-  if (regressionDigest) {
-    const evidenceRegression = evidenceDigests.regressionDigest ?? null;
-    if (evidenceRegression && evidenceRegression !== regressionDigest) {
-      return false;
-    }
-  }
-  if (profileDigest) {
-    const evidenceProfile = evidenceDigests.profileDigest ?? null;
-    if (evidenceProfile && evidenceProfile !== profileDigest) {
-      return false;
-    }
-  }
-  if (manifestDigest) {
-    const evidenceManifest = evidenceDigests.manifestDigest ?? null;
-    if (evidenceManifest && evidenceManifest !== manifestDigest) {
-      return false;
-    }
-  }
-  return true;
+  const evidenceDigests = extractEvidenceDigests(acceptedEvidence);
+  return digestsBindToCurrent(evidenceDigests, {
+    candidateDigest,
+    routeDigest,
+    regressionDigest,
+    profileDigest,
+    manifestDigest,
+  });
 }
 
 function compactFailurePointer(failure, artifactPath = null) {
@@ -477,20 +548,47 @@ export async function computeGateDigestsFromManifest({ root, manifest: rawManife
   // Always normalize so digest fields (e.g. fastGateTimeoutMs defaults) are stable
   // whether the caller passes a raw or already-normalized manifest.
   const manifest = normalizeManifest(rawManifest);
+  // J2: fold transitive gameplay + lab sources into production/harness digests so
+  // candidateDigest moves when profiles/resolver/grammar/flags/physics/lab change.
+  // Transitive paths are soft-merged (exist-only) so partial fixture roots used by
+  // unit tests still work; declared manifest paths remain strict.
+  const productionPaths = [...(manifest.productionSourcePaths || [])];
+  const harnessPaths = [...(manifest.harnessSourcePaths || [])];
+  const transitiveExtra = uniqueRelativePaths(
+    CANDIDATE_TRANSITIVE_SOURCE_PATHS,
+    [
+      'src/testing/lab/runScenario.js',
+      'src/testing/lab/oracleEngine.js',
+      'src/testing/lab/saveLoadCompare.js',
+      'src/contracts/simScenarioSchema.js',
+    ],
+  ).filter((p) => !productionPaths.includes(p) && !harnessPaths.includes(p));
   const [
     productionSources,
     regressionSources,
     harnessSources,
     scenarioSources,
+    transitiveSources,
   ] = await Promise.all([
-    readSourceSet(root, manifest.productionSourcePaths),
+    readSourceSet(root, productionPaths),
     readSourceSet(root, manifest.regressionSourcePaths),
-    readSourceSet(root, manifest.harnessSourcePaths),
+    readSourceSet(root, harnessPaths),
     readSourceSet(root, manifest.scenarioPaths),
+    readExistingSourceSet(root, transitiveExtra),
   ]);
-  const productionDigest = computeSourceSetDigest(productionSources);
+  // Merge transitive into production identity (routeDigest / productionDigest).
+  const productionDigest = computeSourceSetDigest({
+    ...transitiveSources,
+    ...productionSources,
+  });
   const regressionDigest = computeSourceSetDigest(regressionSources);
-  const harnessDigest = computeSourceSetDigest(harnessSources);
+  const harnessDigest = computeSourceSetDigest({
+    ...Object.fromEntries(
+      Object.entries(transitiveSources).filter(([p]) => p.startsWith('src/testing/lab/')
+        || p === 'src/contracts/simScenarioSchema.js'),
+    ),
+    ...harnessSources,
+  });
   const scenarioDigest = computeSourceSetDigest(scenarioSources);
   const inputDigest = computeSourceSetDigest({
     fixedSeed: manifest.fixedSeed,
@@ -1658,12 +1756,21 @@ export async function validateBrokerClaim({
     };
   }
 
-  // I11: bind claim to requested runtime kind when known.
+  // J5: runtimeKind is REQUIRED on every claim — absent field must not authorize.
+  if (claim.runtimeKind == null || claim.runtimeKind === '') {
+    return {
+      ok: false,
+      reason: 'broker-claim-missing-runtime-kind',
+      claim,
+      claimPath,
+      detail: 'claim.runtimeKind is required (pre-J5 claims without it are rejected)',
+    };
+  }
+
+  // I11/J5: bind claim to requested runtime kind (always, not only when claim field truthy).
   const expectedRuntimeKind = requiredRuntimeKind ?? manifest.runtimeKind ?? null;
   if (
     expectedRuntimeKind
-    && ['browser', 'electron'].includes(expectedRuntimeKind)
-    && claim.runtimeKind
     && claim.runtimeKind !== expectedRuntimeKind
   ) {
     return {
@@ -1675,31 +1782,48 @@ export async function validateBrokerClaim({
     };
   }
 
-  // FIX4: bind claims to the current candidate/source digests.
+  // FIX4/J2/J5: bind claims to the current candidate/source digests.
+  // Every declared digest field must be PRESENT and EQUAL — missing → reject.
   let current = digests;
   if (!current && root) {
     current = await computeGateDigestsFromManifest({ root, manifest });
   }
   if (current) {
-    const claimCandidate = claim.digests?.candidateDigest
-      ?? claim.receipt?.candidateDigest
-      ?? null;
-    const claimRoute = claim.digests?.routeDigest
-      ?? claim.digests?.productionDigest
-      ?? claim.receipt?.routeDigest
-      ?? claim.receipt?.productionDigest
-      ?? null;
-    const claimRegression = claim.digests?.regressionDigest
-      ?? claim.receipt?.regressionDigest
-      ?? null;
-    if (claimCandidate && claimCandidate !== current.candidateDigest) {
-      return { ok: false, reason: 'broker-claim-stale-digest', claim, claimPath };
-    }
-    if (claimRoute && claimRoute !== current.routeDigest) {
-      return { ok: false, reason: 'broker-claim-stale-digest', claim, claimPath };
-    }
-    if (claimRegression && claimRegression !== current.regressionDigest) {
-      return { ok: false, reason: 'broker-claim-stale-digest', claim, claimPath };
+    const claimDigests = {
+      candidateDigest: claim.digests?.candidateDigest
+        ?? claim.receipt?.candidateDigest
+        ?? null,
+      routeDigest: claim.digests?.routeDigest
+        ?? claim.digests?.productionDigest
+        ?? claim.receipt?.routeDigest
+        ?? claim.receipt?.productionDigest
+        ?? null,
+      regressionDigest: claim.digests?.regressionDigest
+        ?? claim.receipt?.regressionDigest
+        ?? null,
+      profileDigest: claim.digests?.profileDigest
+        ?? claim.receipt?.profileDigest
+        ?? null,
+      manifestDigest: claim.digests?.manifestDigest
+        ?? claim.receipt?.manifestDigest
+        ?? null,
+    };
+    for (const key of REQUIRED_IDENTITY_DIGEST_KEYS) {
+      const expected = current[key] ?? null;
+      if (!expected) continue;
+      const actual = claimDigests[key];
+      if (!actual) {
+        return {
+          ok: false,
+          reason: 'broker-claim-missing-digest',
+          claim,
+          claimPath,
+          detail: `claim is missing required digest field ${key}`,
+        };
+      }
+      if (actual !== expected) {
+        return { ok: false, reason: 'broker-claim-stale-digest', claim, claimPath, detail: key };
+      }
     }
   }
 
