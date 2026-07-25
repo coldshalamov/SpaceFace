@@ -1,3 +1,6 @@
+// TEMPORARY PR-only release transport trigger. Removed before the final PQ-018 candidate commit.
+import '../../scripts/check-pq018-release-transport.mjs';
+
 // PQ-017 immutable asset/socket snapshot. These values are verified against both canonical source
 // and release GLBs by test/world-site-assets.test.mjs; simulation never parses renderer assets.
 
