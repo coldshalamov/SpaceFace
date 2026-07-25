@@ -604,9 +604,14 @@ async function navigateToCathedralThroughPublicMap(page, timeoutMs) {
   const waypoint = page.getByRole('button', { name: 'Track Target', exact: true });
   await waypoint.waitFor({ state: 'visible', timeout: 10_000 });
   await clickPersistentButton(page, waypoint);
-  await page.waitForFunction((worldRecordId) => (
-    window.SF?.state?.nav?.waypoint?.targetWorldRecordId === worldRecordId
-  ), PQ018_ROOT_WORLD_ID, { timeout: Math.min(timeoutMs, 20_000) });
+  await page.waitForFunction(([x, z, label]) => {
+    const waypointState = window.SF?.state?.nav?.waypoint;
+    return waypointState?.label === label
+      && Math.abs(Number(waypointState?.pos?.x) - x) <= 0.001
+      && Math.abs(Number(waypointState?.pos?.z) - z) <= 0.001;
+  }, [PQ018_FIXED_GLOBAL_POS.x, PQ018_FIXED_GLOBAL_POS.z, 'Wreck Cathedral'], {
+    timeout: Math.min(timeoutMs, 20_000),
+  });
   return {
     input: 'Star Map search -> Wreck Cathedral -> Track Target',
     target: { ...PQ018_FIXED_GLOBAL_POS },
