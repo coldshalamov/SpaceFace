@@ -21,8 +21,9 @@
 //   mouse aims weapons independently, LMB fires. The arrow cluster keeps the same flight split:
 //   bare ←/→ yaw, W/↑ + ←/→ strafe.
 //
-//   ALL schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · G auto-target
-//   toggle (owned by autoTargetAssist — guns lead the lock and trackpad motion draws a flight route) ·
+//   ALL schemes: RMB mining beam (group 2) · MMB course to a selected non-ship object ·
+//   Shift boost/dash · X countermeasure · G auto-target toggle (owned by autoTargetAssist — guns
+//   lead the lock and trackpad motion draws a flight route) ·
 //   Space/F Massline (tap latch/cut, hold line control) · Q charge throw (helm) · R detonate
 //   charges · C scanner pulse · V cruise.
 //   New verbs land on state.input.actions.* as edge-triggered flags (the LOCKED input contract in
@@ -650,6 +651,7 @@ export const input = {
     this._screen = { x: Math.floor(viewportW * 0.5), y: Math.floor(viewportH * 0.5), active: false };
     resetAutoTargetPath(this, this.state);
     this._m0 = false; this._m1 = false; this._m2 = false;
+    this._prevM1 = false;
     this._masslineGrammar = createMasslineInputGrammar();
     // N2: boot stamp is diagnostic/device-arbitration only (not gameplay math). Start at 0 so
     // boot does not depend on wall clock; DOM events stamp wall time for real-device priority.
@@ -1007,8 +1009,16 @@ export const input = {
       else resetAutoTargetPath(this, state);
     }
 
-    // Middle-click has no hidden flight authority. G auto-target is owned by autoTargetAssist.
+    // MMB retains the pre-pursuit selected-object GOTO seam. It may arm a normal local course for
+    // a non-ship target (live identity only for stationary contracts), but it never selects or
+    // steers a ship pursuit slot. G auto-target and draw-to-fly remain owned independently by
+    // autoTargetAssist.
+    const middleMousePressed = this._m1 && !this._prevM1;
     this._prevM1 = this._m1;
+    if (middleMousePressed) {
+      const course = resolveMiddleMouseCourseIntent(state);
+      if (course) this.bus.emit('ui:setCourse', course);
+    }
 
     // --- LOCKED input contract (BUILD_PLAN_2_0 §0): edge-triggered verb flags ---
     const edges = this._edgePrev || (this._edgePrev = {});
@@ -1120,6 +1130,44 @@ export const input = {
 
 function entityLabel(e) {
   return (e && (e.name || (e.data && e.data.name))) || (e && e.type) || 'target';
+}
+
+/**
+ * Resolve the ordinary MMB "go to selected object" action without reviving the rejected
+ * target-relative pursuit controller. Ship/drone locks belong to G auto-target and manual flight;
+ * this function only emits an intent for the world/navigation owner to consume.
+ */
+export function resolveMiddleMouseCourseIntent(state) {
+  const targetId = state && state.player ? state.player.targetId : null;
+  const target = targetId != null && state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(targetId)
+    : null;
+  if (!target || target.alive === false || !target.pos) return null;
+  if (target.type === 'ship' || target.type === 'drone') return null;
+  if (!Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) return null;
+  const radius = Number.isFinite(target.radius) ? Math.max(0, target.radius) : 0;
+  const label = entityLabel(target);
+  const course = {
+    pos: { x: target.pos.x, z: target.pos.z },
+    label,
+    reason: `Course to ${label}`,
+    waypointKind: 'local',
+    arrivalRadius: Math.max(36, radius + 30),
+    autopilot: true,
+  };
+  // A live entity id makes flightV3 follow the target's current position every tick. Retain that
+  // identity only for contracts that are stationary by construction. Other non-ship objects still
+  // receive a useful coordinate snapshot, but a freighter/payload/pickup can never become disguised
+  // pursuit just because its runtime type is not literally "ship".
+  const stableIdentity = (
+    target.type === 'wreck' && typeof target.data?.worldSiteComponentId === 'string'
+  )
+    || target.type === 'station'
+    || target.type === 'gate'
+    || target.type === 'planet'
+    || target.type === 'moon';
+  if (stableIdentity) course.targetEntityId = target.id;
+  return course;
 }
 
 export function selectedWorldSiteTarget(state) {
