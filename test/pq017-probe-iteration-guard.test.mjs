@@ -128,7 +128,7 @@ test('PQ-017 fast gate refuses an unchanged regression after an unresolved accep
 
 test('PQ-017 accepted evidence resolves only its runtime primary failure', async () => {
   const { evaluatePq017FastGate } = await loadGuard();
-  // I6/K4: resolution requires digests + claim identity + near-now timestamp.
+  // I6/K4/L2: resolution requires digests + ledger-verified claim + near-now timestamp.
   const now = Date.now();
   const acceptedGeneratedAt = new Date(now).toISOString();
   const boundEvidence = {
@@ -142,6 +142,12 @@ test('PQ-017 accepted evidence resolves only its runtime primary failure', async
       regressionDigest: 'regression-before',
     },
   };
+  const consumedClaim = {
+    claimId: 'claim-pq017-bound',
+    candidateDigest: 'cand-1',
+    runtimeKind: 'electron',
+    consumedAt: acceptedGeneratedAt,
+  };
   assert.equal(evaluatePq017FastGate({
     latestFailure: primaryFailure(),
     acceptedRuntimeKind: 'electron',
@@ -151,6 +157,7 @@ test('PQ-017 accepted evidence resolves only its runtime primary failure', async
     routeDigest: 'route-before',
     currentRegressionDigest: 'regression-before',
     now,
+    consumedClaim,
   }).pass, true);
 
   // Wrong runtime kind — does not resolve.
@@ -162,6 +169,7 @@ test('PQ-017 accepted evidence resolves only its runtime primary failure', async
     candidateDigest: 'cand-1',
     currentRegressionDigest: 'regression-before',
     now,
+    consumedClaim: { ...consumedClaim, runtimeKind: 'browser' },
   }).pass, false);
 
   // Matching runtime but wrong candidate digest — does not resolve (I6).
@@ -173,6 +181,7 @@ test('PQ-017 accepted evidence resolves only its runtime primary failure', async
     candidateDigest: 'other-candidate',
     currentRegressionDigest: 'regression-before',
     now,
+    consumedClaim,
   }).pass, false);
 
   const diagnostic = evaluatePq017FastGate({

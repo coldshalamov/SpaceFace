@@ -288,8 +288,27 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       }
     }
 
+    // L3: runner consumes canonical.inputTape exclusively (validated required above).
     // public-input must go through the real massline grammar (FIX 5) — no packet hardcoding.
     // F9: massline action-packet injection is forbidden unless an explicit test option opts in.
+    if (!canonical.inputTape || typeof canonical.inputTape !== 'object') {
+      return {
+        schema: 'spaceface.labRunResult.v1',
+        ok: false,
+        exitClass: 4,
+        status: 'invalid-config',
+        runId,
+        validation: {
+          ok: false,
+          issues: [{
+            path: '$.inputTape',
+            rule: 'required',
+            message: 'inputTape is required — runner does not fall back to raw fields',
+          }],
+        },
+        failure: null,
+      };
+    }
     const inputDriver = createInputTapeDriver(canonical.inputTape, {
       masslineGrammar: options.masslineGrammar,
       allowMasslinePacketOverride: options.allowMasslinePacketOverride === true
@@ -506,8 +525,13 @@ export async function runLabScenario(scenarioDoc, options = {}) {
       exclusions: (runtime.manifest && runtime.manifest.exclusions) || [],
     });
 
-    // H11: every declared assertion must produce exactly one oracle result.
-    const assertionConsumption = assertAssertionsConsumed(canonical.assertions, oracle.results);
+    // H11/L5: every declared assertion must produce exactly one oracle result;
+    // zero assertions+metrics is not a green certification.
+    const assertionConsumption = assertAssertionsConsumed(
+      canonical.assertions,
+      oracle.results,
+      { metrics: canonical.metrics },
+    );
     // F5: deferred equivalence is incomplete/unsupported — not a green pass.
     // evaluateEquivalence already emits deferred with ok:false so they appear in oracle.failed.
     const deferredEq = (oracle.results || []).filter((r) => r.family === 'equivalence' && r.deferred);
@@ -645,10 +669,23 @@ export function validateLabScenario(doc, options = {}) {
  * H11: every declared assertion must produce exactly one oracle family result.
  * Metric assertions map by metric name; temporal/equivalence by kind/id.
  */
-export function assertAssertionsConsumed(assertions, oracleResults) {
+export function assertAssertionsConsumed(assertions, oracleResults, options = {}) {
   const declared = Array.isArray(assertions) ? assertions : [];
+  const metricCount = Array.isArray(options.metrics) ? options.metrics.length : 0;
+  // L5: empty assertion list is only OK when metrics provide a causal oracle.
+  // Automatic finite/resource invariants alone must not certify a feature.
   if (declared.length === 0) {
-    return { ok: true, expected: 0, actual: 0, reason: null, unconsumed: [] };
+    if (metricCount === 0) {
+      return {
+        ok: false,
+        expected: 1,
+        actual: 0,
+        reason: 'no causal oracle declared',
+        unconsumed: [],
+        consumedIds: [],
+      };
+    }
+    return { ok: true, expected: 0, actual: 0, reason: null, unconsumed: [], consumedIds: [] };
   }
   const results = Array.isArray(oracleResults) ? oracleResults : [];
   const unconsumed = [];

@@ -306,6 +306,13 @@ test('I6: evidence without matching candidateDigest does not resolve failure', (
       digests: { candidateDigest: 'current-candidate' },
     },
     candidateDigest: 'current-candidate',
+    // L2: claimId must bind to the consumed-claim ledger, not a self-asserted string.
+    consumedClaim: {
+      claimId: 'claim-i6-bound',
+      candidateDigest: 'current-candidate',
+      runtimeKind: 'browser',
+      consumedAt: new Date(now).toISOString(),
+    },
   });
   assert.equal(bound, true, 'matching candidate digest may resolve');
 });

@@ -128,6 +128,22 @@ const FRAME_INPUT_KEYS = new Set([
   'lineLength',
   'orbitDirection',
 ]);
+/** L6: numeric frame.input fields must be finite numbers (not strings). */
+const FRAME_INPUT_NUMBER_KEYS = new Set([
+  'moveX',
+  'moveZ',
+  'turnIntent',
+  'aimAngle',
+  'reelDelta',
+  'lineLength',
+  'orbitDirection',
+]);
+/** L6: boolean frame.input fields must be actual booleans (not truthy strings). */
+const FRAME_INPUT_BOOLEAN_KEYS = new Set([
+  'boost',
+  'fire',
+  'masslineHeld',
+]);
 /** Explicitly rejected unimplemented frame.input fields (F9) — clearer than unknown-key. */
 const FRAME_INPUT_REJECTED = new Set(['fireGroup', 'brake', 'massline']);
 const POLICY_KEYS = new Set(['id', 'version', 'params']);
@@ -370,6 +386,8 @@ export function validateSimScenario(doc, options = {}) {
             }
             // H14: closed schema — silent ignore of nested unknown keys is forbidden.
             rejectUnknownKeys(frame.input, FRAME_INPUT_KEYS, `${p}.input`, issue);
+            // L6: type-check nested frame.input values (no truthy-string booleans / numeric strings).
+            validateFrameInputValueTypes(frame.input, `${p}.input`, issue);
           }
         }
       });
@@ -467,6 +485,25 @@ export function validateSimScenario(doc, options = {}) {
           validateAssertionFields(a, p, issue);
         }
       });
+    }
+  }
+
+  // L5: at least one causal oracle (assertion or metric) must be declared.
+  // Automatic finite/resource invariants alone must not certify a feature scenario.
+  const assertionCount = Array.isArray(doc.assertions) ? doc.assertions.length : 0;
+  const metricCount = Array.isArray(doc.metrics) ? doc.metrics.length : 0;
+  if (assertionCount === 0 && metricCount === 0) {
+    issue('$.assertions', 'no-causal-oracle',
+      'no causal oracle declared — require at least one assertion or metric beyond automatic invariants');
+  }
+
+  // L5: public-input requires a nonempty consumed tape (events or frames).
+  if (doc.evidenceClass === 'public-input') {
+    const eventCount = Array.isArray(doc.inputEvents) ? doc.inputEvents.length : 0;
+    const frameCount = Array.isArray(doc.frames) ? doc.frames.length : 0;
+    if (eventCount === 0 && frameCount === 0) {
+      issue('$.inputEvents', 'public-input-tape',
+        'public-input scenarios require a nonempty consumed tape (inputEvents or frames)');
     }
   }
 
@@ -739,43 +776,55 @@ export function validateCanonicalScenario(doc, options = {}) {
   // J3: closed top-level surface for canonical extras (inputTape/rendering allowed; unknown not).
   rejectUnknownKeys(doc, CANONICAL_TOP_KEYS, '$', issue);
 
-  // K1: inputTape — when present — MUST be a plain object (reject string/array/null).
+  // L3/K1: inputTape is REQUIRED on every canonical (even empty {events:[],frames:[]}).
   // Validate the EXACT object the runner consumes; do not let raw fields mask it.
   const hasInputTape = Object.prototype.hasOwnProperty.call(doc, 'inputTape');
-  if (hasInputTape) {
-    if (!doc.inputTape || typeof doc.inputTape !== 'object' || Array.isArray(doc.inputTape)) {
-      issue('$.inputTape', 'type',
-        'inputTape must be a plain object (closed tape consumed by the runner)');
-    } else {
-      rejectUnknownKeys(doc.inputTape, INPUT_TAPE_KEYS, '$.inputTape', issue);
-      if (doc.inputTape.events != null && !Array.isArray(doc.inputTape.events)) {
-        issue('$.inputTape.events', 'type', 'inputTape.events must be an array when present');
+  if (!hasInputTape) {
+    issue('$.inputTape', 'required',
+      'inputTape is required on every canonical (use empty {events:[],frames:[]} when none)');
+  } else if (!doc.inputTape || typeof doc.inputTape !== 'object' || Array.isArray(doc.inputTape)) {
+    issue('$.inputTape', 'type',
+      'inputTape must be a plain object (closed tape consumed by the runner)');
+  } else {
+    rejectUnknownKeys(doc.inputTape, INPUT_TAPE_KEYS, '$.inputTape', issue);
+    if (doc.inputTape.events != null && !Array.isArray(doc.inputTape.events)) {
+      issue('$.inputTape.events', 'type', 'inputTape.events must be an array when present');
+    }
+    if (doc.inputTape.frames != null && !Array.isArray(doc.inputTape.frames)) {
+      issue('$.inputTape.frames', 'type', 'inputTape.frames must be an array when present');
+    }
+    // L5: public-input canonicals require nonempty consumed tape contents.
+    if (doc.evidenceClass === 'public-input') {
+      const tapeEvents = Array.isArray(doc.inputTape.events) ? doc.inputTape.events.length : 0;
+      const tapeFrames = Array.isArray(doc.inputTape.frames) ? doc.inputTape.frames.length : 0;
+      const rawEvents = Array.isArray(doc.inputEvents) ? doc.inputEvents.length : 0;
+      const rawFrames = Array.isArray(doc.frames) ? doc.frames.length : 0;
+      if (tapeEvents + tapeFrames + rawEvents + rawFrames === 0) {
+        issue('$.inputTape', 'public-input-tape',
+          'public-input scenarios require a nonempty consumed tape');
       }
-      if (doc.inputTape.frames != null && !Array.isArray(doc.inputTape.frames)) {
-        issue('$.inputTape.frames', 'type', 'inputTape.frames must be an array when present');
+    }
+    // Duplicate raw + compiled surfaces: reject unless identical (no masking).
+    if (doc.inputEvents != null && doc.inputTape.events != null) {
+      if (
+        !Array.isArray(doc.inputEvents)
+        || !Array.isArray(doc.inputTape.events)
+        || !deepEqualJson(doc.inputEvents, doc.inputTape.events)
+      ) {
+        issue('$.inputTape.events', 'duplicate-input',
+          'inputEvents and inputTape.events both present but not identical — '
+          + 'raw must not mask an invalid compiled tape');
       }
-      // Duplicate raw + compiled surfaces: reject unless identical (no masking).
-      if (doc.inputEvents != null && doc.inputTape.events != null) {
-        if (
-          !Array.isArray(doc.inputEvents)
-          || !Array.isArray(doc.inputTape.events)
-          || !deepEqualJson(doc.inputEvents, doc.inputTape.events)
-        ) {
-          issue('$.inputTape.events', 'duplicate-input',
-            'inputEvents and inputTape.events both present but not identical — '
-            + 'raw must not mask an invalid compiled tape');
-        }
-      }
-      if (doc.frames != null && doc.inputTape.frames != null) {
-        if (
-          !Array.isArray(doc.frames)
-          || !Array.isArray(doc.inputTape.frames)
-          || !deepEqualJson(doc.frames, doc.inputTape.frames)
-        ) {
-          issue('$.inputTape.frames', 'duplicate-input',
-            'frames and inputTape.frames both present but not identical — '
-            + 'raw must not mask an invalid compiled tape');
-        }
+    }
+    if (doc.frames != null && doc.inputTape.frames != null) {
+      if (
+        !Array.isArray(doc.frames)
+        || !Array.isArray(doc.inputTape.frames)
+        || !deepEqualJson(doc.frames, doc.inputTape.frames)
+      ) {
+        issue('$.inputTape.frames', 'duplicate-input',
+          'frames and inputTape.frames both present but not identical — '
+          + 'raw must not mask an invalid compiled tape');
       }
     }
   }
@@ -831,9 +880,67 @@ const ASSERTION_KNOWN_SIGNALS = new Set([
   'cmdX', 'cmdZ', 'cmdRejected', 'cmdClamped', 'settles',
 ]);
 
+/**
+ * L4: temporal bound fields must be finite integers (not strings / floats / NaN).
+ * String bounds like "10" must fail validation so Number.isFinite coercion cannot
+ * restore full-trace evaluation.
+ */
+function isFiniteInteger(value) {
+  return typeof value === 'number' && Number.isInteger(value) && Number.isFinite(value);
+}
+
+function validateTemporalBoundFields(a, p, issue) {
+  for (const key of ['fromTick', 'toTick', 'byTick', 'holdsTicks']) {
+    if (a[key] == null) continue;
+    if (!isFiniteInteger(a[key])) {
+      issue(`${p}.${key}`, 'type',
+        `${key} must be a finite integer (string/float/NaN bounds are rejected)`);
+    }
+  }
+  if (isFiniteInteger(a.fromTick) && isFiniteInteger(a.toTick) && a.fromTick > a.toTick) {
+    issue(`${p}.fromTick`, 'range', 'fromTick must be <= toTick');
+  }
+  if (a.holdsTicks != null && isFiniteInteger(a.holdsTicks) && a.holdsTicks < 1) {
+    issue(`${p}.holdsTicks`, 'range', 'holdsTicks must be a positive integer');
+  }
+  if (a.byTick != null && isFiniteInteger(a.byTick) && a.byTick < 0) {
+    issue(`${p}.byTick`, 'range', 'byTick must be a non-negative integer');
+  }
+  if (a.fromTick != null && isFiniteInteger(a.fromTick) && a.fromTick < 0) {
+    issue(`${p}.fromTick`, 'range', 'fromTick must be a non-negative integer');
+  }
+  if (a.toTick != null && isFiniteInteger(a.toTick) && a.toTick < 0) {
+    issue(`${p}.toTick`, 'range', 'toTick must be a non-negative integer');
+  }
+}
+
+/**
+ * L6: nested frame.input values — finite numbers for axes; real booleans for flags.
+ */
+function validateFrameInputValueTypes(input, p, issue) {
+  if (!input || typeof input !== 'object') return;
+  for (const key of Object.keys(input)) {
+    const value = input[key];
+    if (value == null) continue;
+    if (FRAME_INPUT_NUMBER_KEYS.has(key)) {
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        issue(`${p}.${key}`, 'type',
+          `frame.input.${key} must be a finite number (got ${typeof value})`);
+      }
+    } else if (FRAME_INPUT_BOOLEAN_KEYS.has(key)) {
+      if (typeof value !== 'boolean') {
+        issue(`${p}.${key}`, 'type',
+          `frame.input.${key} must be a boolean (got ${typeof value})`);
+      }
+    }
+  }
+}
+
 /** H11: per-kind required fields so assertions cannot pass vacuously. */
 function validateAssertionFields(a, p, issue) {
   const kind = a.kind;
+  // L4: type-check temporal bounds on every assertion that may carry them.
+  validateTemporalBoundFields(a, p, issue);
   if (kind === 'metric' || kind === 'quantitative') {
     if (typeof a.metric !== 'string' || !a.metric) {
       issue(`${p}.metric`, 'required', `${kind} assertion requires metric`);

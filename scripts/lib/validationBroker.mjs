@@ -16,6 +16,7 @@ import {
   computeSourceSetDigest,
   deriveFailureIdentity,
   digestSourcePaths,
+  listSrcJsSourcePaths,
   readSourceSet,
   stableJson,
 } from './validationFingerprint.mjs';
@@ -265,13 +266,12 @@ const REQUIRED_IDENTITY_DIGEST_KEYS = Object.freeze([
 ]);
 
 /**
- * Transitive gameplay + lab sources always folded into candidate identity (J2/K3).
- * Changes to core sim, registry, gameState, save, runtime, physics, flight, or the
- * lab itself must invalidate stale evidence digests. This list is the authoritative
- * gameplay dependency closure for candidate identity (strict-read, not soft-skip).
+ * L1: candidate identity no longer uses a hand-maintained path list. Digests fold
+ * the complete src tree (all .js under src/) via {@link listSrcJsSourcePaths}.
+ * This frozen subset remains exported only as a regression anchor (must stay
+ * covered by the full-tree enumeration — not as the digest authority).
  */
 export const CANDIDATE_TRANSITIVE_SOURCE_PATHS = Object.freeze([
-  // Core sim / state / loop / physics (K3 — previously omitted; digest must move)
   'src/core/registry.js',
   'src/core/gameState.js',
   'src/core/sim.js',
@@ -279,31 +279,35 @@ export const CANDIDATE_TRANSITIVE_SOURCE_PATHS = Object.freeze([
   'src/core/physics.js',
   'src/core/physicsAuthority.js',
   'src/save/saveSystem.js',
-  // Runtime surface (all live runtime modules)
   'src/runtime/runtimeProfiles.js',
   'src/runtime/resolveRuntimeManifest.js',
   'src/runtime/authoritativeSystemManifest.js',
   'src/runtime/createAuthoritativeRuntime.js',
   'src/runtime/nodeSystemFactoryTable.js',
   'src/runtime/runtimeFingerprint.js',
-  // Gameplay systems commonly on the lab/acceptance path
   'src/systems/masslineInputGrammar.js',
   'src/systems/actions.js',
   'src/systems/flightV3.js',
   'src/systems/input.js',
+  'src/systems/weapons.js',
   'src/data/featureFlags.js',
-  // Contracts + lab harness
   'src/contracts/simScenarioSchema.js',
   'src/testing/lab/runScenario.js',
   'src/testing/lab/oracleEngine.js',
   'src/testing/lab/saveLoadCompare.js',
+  'src/testing/lab/inputTape.js',
+  'src/testing/lab/systemBundles.js',
+  'src/testing/lab/entityProfiles.js',
   'src/testing/lab/index.js',
   'scripts/lib/validationBroker.mjs',
   'scripts/lib/validationFingerprint.mjs',
 ]);
 
-/** Accepted evidence must fall within this window of wall-clock now (K4). */
+/** Accepted evidence / claim consumption must fall within this window of wall-clock now (K4/L2). */
 export const EVIDENCE_CLOCK_SKEW_MS = 5 * 60 * 1000;
+
+/** How candidate authoritative sources are enumerated (L1 report). */
+export const CANDIDATE_SOURCE_DIGEST_MODE = 'all-src-js';
 
 function uniqueRelativePaths(...lists) {
   const out = [];
@@ -352,10 +356,22 @@ function digestsBindToCurrent(evidenceDigests, current = {}) {
 }
 
 /**
- * K4: evidence must bind a consumed claim or receipt identity — digests + timestamp alone
+ * K4/L2: evidence must bind a consumed claim or receipt identity — digests + timestamp alone
  * are not enough to clear a failure (prevents copy-pasted digest bags).
+ *
+ * L2: a nonempty claimId string is NOT enough. When claimId is present, the
+ * canonical consumed-claim ledger entry must be supplied and must match
+ * claimId, candidate digest, runtime kind, and consumption-time window.
+ *
  * @param {object} acceptedEvidence
- * @param {{ claimId?: string|null, receiptId?: string|null }} [expected]
+ * @param {{
+ *   claimId?: string|null,
+ *   receiptId?: string|null,
+ *   candidateDigest?: string|null,
+ *   runtimeKind?: string|null,
+ *   consumedClaim?: object|null,
+ *   now?: number,
+ * }} [expected]
  */
 function claimOrReceiptBinds(acceptedEvidence, expected = {}) {
   if (!acceptedEvidence || typeof acceptedEvidence !== 'object') return false;
@@ -379,19 +395,56 @@ function claimOrReceiptBinds(acceptedEvidence, expected = {}) {
   // When the caller supplies an expected identity, it must match.
   if (expected.claimId && (!hasClaim || claimId !== expected.claimId)) return false;
   if (expected.receiptId && (!hasReceiptId || receiptId !== expected.receiptId)) return false;
-  return true;
+
+  // L2: claimId must resolve against the consumed-claim ledger — never self-asserted.
+  if (hasClaim) {
+    const ledger = expected.consumedClaim
+      ?? acceptedEvidence.consumedClaim
+      ?? null;
+    if (!ledger || typeof ledger !== 'object') return false;
+    if (ledger.claimId !== claimId) return false;
+
+    const ledgerCandidate = ledger.candidateDigest
+      ?? ledger.digests?.candidateDigest
+      ?? null;
+    const currentCandidate = expected.candidateDigest
+      ?? acceptedEvidence.digests?.candidateDigest
+      ?? acceptedEvidence.candidateDigest
+      ?? null;
+    if (currentCandidate && ledgerCandidate !== currentCandidate) return false;
+    // When current candidate is known, ledger must present a matching digest (missing ≠ pass).
+    if (currentCandidate && !ledgerCandidate) return false;
+
+    const ledgerRuntime = ledger.runtimeKind ?? null;
+    const expectedRuntime = expected.runtimeKind
+      ?? acceptedEvidence.runtimeKind
+      ?? null;
+    if (expectedRuntime && ledgerRuntime !== expectedRuntime) return false;
+    if (expectedRuntime && (ledgerRuntime == null || ledgerRuntime === '')) return false;
+
+    const consumedAt = timestamp(ledger.consumedAt);
+    const wall = Number.isFinite(expected.now) ? expected.now : Date.now();
+    if (!Number.isFinite(consumedAt) || Math.abs(consumedAt - wall) > EVIDENCE_CLOCK_SKEW_MS) {
+      return false;
+    }
+    return true;
+  }
+
+  // Receipt-only path (no claimId): still requires a non-empty receipt identity field.
+  return hasReceiptId || hasReceiptCandidate;
 }
 
 /**
- * I6/J2/K4: accepted evidence resolves a failure only when it is bound to the *current*
+ * I6/J2/K4/L2: accepted evidence resolves a failure only when it is bound to the *current*
  * candidate digests (and matching runtime), is not future/past beyond clock skew, and
- * carries a claim/receipt identity. Stale / copied / future-dated evidence that never
- * tested this candidate must not clear an open failure.
+ * carries a claim/receipt identity verified against the consumed-claim ledger when a
+ * claimId is present. Stale / invented / future-dated evidence must not clear failures.
  *
  * @param {object} args
  * @param {number} [args.now] wall-clock ms for skew check (injectable in tests)
  * @param {string|null} [args.claimId] expected consumed claim id when known
  * @param {string|null} [args.receiptId] expected receipt id when known
+ * @param {object|null} [args.consumedClaim] ledger entry for the evidence claimId
  */
 function isResolvedByAcceptedEvidence({
   latestFailure,
@@ -406,6 +459,7 @@ function isResolvedByAcceptedEvidence({
   now = Date.now(),
   claimId = null,
   receiptId = null,
+  consumedClaim = null,
 }) {
   if (
     !latestFailure?.primaryAcceptance
@@ -428,8 +482,15 @@ function isResolvedByAcceptedEvidence({
   if (!acceptedEvidence || typeof acceptedEvidence !== 'object') {
     return false;
   }
-  // K4: require claim/receipt identity binding (not digests + timestamp alone).
-  if (!claimOrReceiptBinds(acceptedEvidence, { claimId, receiptId })) {
+  // K4/L2: claim/receipt identity — claimId must match the consumed-claim ledger.
+  if (!claimOrReceiptBinds(acceptedEvidence, {
+    claimId,
+    receiptId,
+    candidateDigest,
+    runtimeKind: acceptedRuntimeKind,
+    consumedClaim: consumedClaim ?? acceptedEvidence.consumedClaim ?? null,
+    now: wall,
+  })) {
     return false;
   }
   const evidenceDigests = extractEvidenceDigests(acceptedEvidence);
@@ -597,45 +658,52 @@ export async function computeGateDigestsFromManifest({ root, manifest: rawManife
   // Always normalize so digest fields (e.g. fastGateTimeoutMs defaults) are stable
   // whether the caller passes a raw or already-normalized manifest.
   const manifest = normalizeManifest(rawManifest);
-  // J2/K3: fold transitive gameplay + lab sources into production/harness digests so
-  // candidateDigest moves when core/registry/gameState/sim/save/runtime/lab change.
-  // K3: transitive paths are STRICT (readSourceSet) — soft-skip of missing core files
-  // would leave digests stale when those files change or are "absent" in a wrong root.
+  // L1: fold the COMPLETE src/ .js tree into production/candidate identity so ANY
+  // source change (weapons, entityProfiles, factory table imports, metrics, …)
+  // invalidates stale claims/evidence. No hand-maintained import closure.
   const productionPaths = [...(manifest.productionSourcePaths || [])];
   const harnessPaths = [...(manifest.harnessSourcePaths || [])];
-  const transitiveExtra = uniqueRelativePaths(
-    CANDIDATE_TRANSITIVE_SOURCE_PATHS,
-    [
-      'src/testing/lab/runScenario.js',
-      'src/testing/lab/oracleEngine.js',
-      'src/testing/lab/saveLoadCompare.js',
-      'src/contracts/simScenarioSchema.js',
-    ],
-  ).filter((p) => !productionPaths.includes(p) && !harnessPaths.includes(p));
+  // Certification-boundary scripts outside src/ still affect evidence rules when present
+  // under root (real repo). Temp fixture roots omit them — do not hard-fail digests.
+  const brokerBoundaryCandidates = [
+    'scripts/lib/validationBroker.mjs',
+    'scripts/lib/validationFingerprint.mjs',
+  ].filter((p) => !productionPaths.includes(p) && !harnessPaths.includes(p));
+  const srcJsPaths = await listSrcJsSourcePaths(root);
+  const srcJsExtra = srcJsPaths.filter(
+    (p) => !productionPaths.includes(p) && !harnessPaths.includes(p),
+  );
+  const brokerBoundaryPaths = await filterExistingRelativePaths(root, brokerBoundaryCandidates);
+  // Full-tree enumeration is existence-scoped to this root (git ls-files ∩ on-disk).
+  const existingSrcExtra = await filterExistingRelativePaths(root, srcJsExtra);
   const [
     productionSources,
     regressionSources,
     harnessSources,
     scenarioSources,
-    transitiveSources,
+    srcSources,
+    brokerSources,
   ] = await Promise.all([
     readSourceSet(root, productionPaths),
     readSourceSet(root, manifest.regressionSourcePaths),
     readSourceSet(root, harnessPaths),
     readSourceSet(root, manifest.scenarioPaths),
-    readSourceSet(root, transitiveExtra),
+    readSourceSet(root, existingSrcExtra),
+    readSourceSet(root, brokerBoundaryPaths),
   ]);
-  // Merge transitive into production identity (routeDigest / productionDigest).
+  // Merge full src tree + broker boundary into production identity.
   const productionDigest = computeSourceSetDigest({
-    ...transitiveSources,
+    ...srcSources,
+    ...brokerSources,
     ...productionSources,
   });
   const regressionDigest = computeSourceSetDigest(regressionSources);
   const harnessDigest = computeSourceSetDigest({
     ...Object.fromEntries(
-      Object.entries(transitiveSources).filter(([p]) => p.startsWith('src/testing/lab/')
-        || p === 'src/contracts/simScenarioSchema.js'),
+      Object.entries(srcSources).filter(([p]) => p.startsWith('src/testing/lab/')
+        || p.startsWith('src/contracts/')),
     ),
+    ...brokerSources,
     ...harnessSources,
   });
   const scenarioDigest = computeSourceSetDigest(scenarioSources);
@@ -671,7 +739,24 @@ export async function computeGateDigestsFromManifest({ root, manifest: rawManife
     manifestDigest,
     candidateDigest,
     buildDigest: shaOfBuildEnv(),
+    candidateSourceDigestMode: CANDIDATE_SOURCE_DIGEST_MODE,
+    candidateSourcePathCount: existingSrcExtra.length + brokerBoundaryPaths.length
+      + productionPaths.length,
   };
+}
+
+/** Keep only relative paths that exist under root (for fixture roots / optional boundary). */
+async function filterExistingRelativePaths(root, relativePaths = []) {
+  const { access } = await import('node:fs/promises');
+  const flags = await Promise.all(relativePaths.map(async (relativePath) => {
+    try {
+      await access(path.join(root, relativePath));
+      return relativePath;
+    } catch {
+      return null;
+    }
+  }));
+  return flags.filter(Boolean);
 }
 
 function shaOfBuildEnv() {
@@ -696,6 +781,7 @@ export function evaluateFastGate({
   now = Date.now(),
   claimId = null,
   receiptId = null,
+  consumedClaim = null,
 } = {}) {
   if (!latestFailure?.primaryAcceptance) {
     return {
@@ -719,6 +805,7 @@ export function evaluateFastGate({
     now,
     claimId,
     receiptId,
+    consumedClaim,
   })) {
     return {
       pass: true,
@@ -1300,6 +1387,13 @@ export async function loadGateState({ root, outputRoot, manifest: rawManifest })
       runtimeKind: latestFailure.runtimeKind,
     })
     : null;
+  // L2: load consumed-claim ledger entry for the evidence claimId (if any).
+  const claimIdForLedger = acceptedEvidence?.claimId
+    ?? acceptedEvidence?.consumedClaimId
+    ?? null;
+  const consumedClaim = claimIdForLedger
+    ? await readConsumedClaimLedgerEntry(outputRoot, claimIdForLedger)
+    : null;
   return {
     ...digests,
     latestFailure,
@@ -1308,7 +1402,23 @@ export async function loadGateState({ root, outputRoot, manifest: rawManifest })
     acceptedEvidence,
     acceptedRuntimeKind: acceptedEvidence?.runtimeKind ?? null,
     acceptedGeneratedAt: acceptedEvidence?.generatedAt ?? null,
+    consumedClaim,
   };
+}
+
+/**
+ * L2: read a single identity-ledger entry under broker-claims/.consumed/.
+ * @param {string} outputRoot
+ * @param {string} claimId
+ * @returns {Promise<object|null>}
+ */
+export async function readConsumedClaimLedgerEntry(outputRoot, claimId) {
+  if (!claimId) return null;
+  const safe = sanitizeClaimId(claimId);
+  if (!safe) return null;
+  return readJsonIfPresent(
+    path.join(outputRoot, CLAIMS_DIR_NAME, '.consumed', `${safe}.json`),
+  );
 }
 
 /**
@@ -1490,6 +1600,8 @@ export async function assertProbeLaunch({
   });
 
   // Consume one-use broker claim after successful authorization (atomic).
+  // L7: capture claim identity so probes can write it into evidence.json.
+  let consumedClaimIdentity = null;
   if (manifest.requireBrokerClaim && mode === 'acceptance') {
     const token = brokerClaimToken ?? process.env.SF_BROKER_CLAIM ?? null;
     if (token) {
@@ -1506,6 +1618,7 @@ export async function assertProbeLaunch({
           status: STATUS.BLOCKED_MISSING_FAST_RECEIPT,
         });
       }
+      consumedClaimIdentity = typeof consumed === 'object' ? consumed : null;
     }
   }
 
@@ -1516,6 +1629,9 @@ export async function assertProbeLaunch({
     ...state,
     receipt: claimed.receipt,
     claimToken: claimed.claimToken,
+    // L7: probe evidence must carry the consumed claim identity.
+    consumedClaim: consumedClaimIdentity,
+    claimId: consumedClaimIdentity?.claimId ?? null,
     status: result.status ?? STATUS.PASS,
   };
 }
@@ -1895,8 +2011,20 @@ const CONSUMED_CLAIMS_LEDGER = 'consumed-claims.json';
  * cannot re-authorize consumption. Claims outside the broker claims directory
  * are rejected.
  *
+ * L2/L7: ledger entry records claimId + candidateDigest + runtimeKind so evidence
+ * resolution can verify binding without trusting a self-asserted claimId string.
+ *
  * Mechanism: exclusive create of a ledger sentinel keyed by claimId, then mark
  * the claim JSON consumed for durable inspection.
+ *
+ * @returns {Promise<false | {
+ *   claimId: string,
+ *   claimPath: string,
+ *   consumedAt: string,
+ *   candidateDigest: string|null,
+ *   runtimeKind: string|null,
+ *   digests: object|null,
+ * }>}
  */
 export async function consumeBrokerClaim({ outputRoot, tokenOrPath }) {
   const claimPath = resolveBrokerClaimPath(outputRoot, tokenOrPath);
@@ -1909,6 +2037,12 @@ export async function consumeBrokerClaim({ outputRoot, tokenOrPath }) {
   if (claim.consumed) return false;
   const claimId = claim.claimId || path.basename(claimPath, '.json');
   if (!claimId) return false;
+
+  const candidateDigest = claim.digests?.candidateDigest
+    ?? claim.receipt?.candidateDigest
+    ?? null;
+  const runtimeKind = claim.runtimeKind ?? null;
+  const digests = claim.digests ?? null;
 
   // Identity ledger (not sibling-of-arbitrary-path).
   const ledgerEntryPath = path.join(outputRoot, CLAIMS_DIR_NAME, '.consumed', `${sanitizeClaimId(claimId)}.json`);
@@ -1923,16 +2057,27 @@ export async function consumeBrokerClaim({ outputRoot, tokenOrPath }) {
 
   try {
     const consumedAt = new Date().toISOString();
-    await handle.writeFile(`${JSON.stringify({
+    const ledgerEntry = {
       schema: 'spaceface.validation-broker-claim-consumed.v1',
       claimId,
       claimPath,
       consumedAt,
       pid: process.pid,
-    }, null, 2)}\n`, 'utf8');
+      candidateDigest,
+      runtimeKind,
+      digests,
+      mode: claim.mode ?? null,
+    };
+    await handle.writeFile(`${JSON.stringify(ledgerEntry, null, 2)}\n`, 'utf8');
     await handle.sync();
     // Also update the durable index for inspection.
-    await appendConsumedClaimIndex(outputRoot, { claimId, claimPath, consumedAt });
+    await appendConsumedClaimIndex(outputRoot, {
+      claimId,
+      claimPath,
+      consumedAt,
+      candidateDigest,
+      runtimeKind,
+    });
     claim.consumed = true;
     claim.consumedAt = consumedAt;
     await writeJsonAtomically(claimPath, claim);
@@ -1943,9 +2088,18 @@ export async function consumeBrokerClaim({ outputRoot, tokenOrPath }) {
         schema: 'spaceface.validation-broker-claim-consumed.v1',
         claimId,
         consumedAt,
+        candidateDigest,
+        runtimeKind,
       });
     } catch (_) { /* best-effort compat */ }
-    return true;
+    return {
+      claimId,
+      claimPath,
+      consumedAt,
+      candidateDigest,
+      runtimeKind,
+      digests,
+    };
   } finally {
     await handle.close();
   }
@@ -1971,6 +2125,8 @@ async function appendConsumedClaimIndex(outputRoot, entry) {
   existing.byClaimId[entry.claimId] = {
     claimPath: entry.claimPath,
     consumedAt: entry.consumedAt,
+    candidateDigest: entry.candidateDigest ?? null,
+    runtimeKind: entry.runtimeKind ?? null,
   };
   await writeJsonAtomically(indexPath, existing);
 }
@@ -2381,6 +2537,8 @@ export {
   deriveFailureIdentity,
   computeSourceSetDigest,
   digestSourcePaths,
+  listSrcJsSourcePaths,
+  readSourceSet,
   isResolvedByAcceptedEvidence,
   stableJson,
   // Exported for unit tests / advanced reclaim callers

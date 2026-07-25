@@ -187,10 +187,11 @@ export function installLiveRouteBridge(sf) {
         aliasMap.player = state.playerId;
       }
 
-      const inputDriver = createInputTapeDriver(canonical.inputTape || {
-        events: canonical.events || [],
-        frames: canonical.frames || [],
-      });
+      // L3: consume canonical.inputTape exclusively — no raw-field fallback.
+      if (!canonical.inputTape || typeof canonical.inputTape !== 'object') {
+        throw new Error('liveRouteBridge: canonical.inputTape is required');
+      }
+      const inputDriver = createInputTapeDriver(canonical.inputTape);
 
       scenario = {
         canonical,

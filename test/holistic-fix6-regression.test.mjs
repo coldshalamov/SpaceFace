@@ -174,6 +174,13 @@ test('J2: evidence with all declared digests matching may resolve', () => {
       digests: { ...digests },
     },
     ...digests,
+    // L2: ledger entry required for claimId binding.
+    consumedClaim: {
+      claimId: 'claim-j2-all-digests',
+      candidateDigest: digests.candidateDigest,
+      runtimeKind: 'browser',
+      consumedAt: new Date(now).toISOString(),
+    },
   });
   assert.equal(ok, true);
 });

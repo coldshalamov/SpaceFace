@@ -224,6 +224,21 @@ if (primaryError || routeResult?.pass !== true || cleanupReport?.pass !== true) 
     lifecycle: routeResult.lifecycle,
     finalSnapshot: routeResult.finalSnapshot,
     cleanup: cleanupReport,
+    // L7: claim identity from the consumed broker claim (required for K4/L2 binding).
+    claimId: gateLaunch.claimId
+      ?? gateLaunch.consumedClaim?.claimId
+      ?? null,
+    consumedClaimId: gateLaunch.claimId
+      ?? gateLaunch.consumedClaim?.claimId
+      ?? null,
+    consumedClaim: gateLaunch.consumedClaim
+      ? {
+        claimId: gateLaunch.consumedClaim.claimId,
+        candidateDigest: gateLaunch.consumedClaim.candidateDigest ?? null,
+        runtimeKind: gateLaunch.consumedClaim.runtimeKind ?? 'electron',
+        consumedAt: gateLaunch.consumedClaim.consumedAt ?? null,
+      }
+      : null,
     // I6: bind evidence to the candidate digests that authorized this run.
     digests: {
       candidateDigest: gateLaunch.candidateDigest ?? null,

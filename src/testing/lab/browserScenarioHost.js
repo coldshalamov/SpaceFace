@@ -152,10 +152,10 @@ export function normalizeBrowserSystemNames(names) {
 }
 
 function collectTapeCommands(canonical) {
-  const tape = canonical.inputTape || {};
-  const frames = Array.isArray(tape.frames)
-    ? tape.frames
-    : (Array.isArray(canonical.frames) ? canonical.frames : []);
+  // L3: consume inputTape exclusively — no raw frames fallback when tape is absent.
+  const tape = canonical.inputTape;
+  if (!tape || typeof tape !== 'object') return [];
+  const frames = Array.isArray(tape.frames) ? tape.frames : [];
   const out = [];
   for (const frame of frames) {
     if (Array.isArray(frame?.commands) && frame.commands.length) {
@@ -252,6 +252,15 @@ export async function runBrowserLabScenario(canonical, options = {}) {
       }
     }
 
+    // L3: consume canonical.inputTape exclusively.
+    if (!canonical.inputTape || typeof canonical.inputTape !== 'object') {
+      runtime.dispose();
+      return {
+        ok: false,
+        status: 'invalid-config',
+        error: 'canonical.inputTape is required — runner does not fall back to raw fields',
+      };
+    }
     const inputDriver = createInputTapeDriver(canonical.inputTape, {
       allowMasslinePacketOverride: canonical.evidenceClass !== 'public-input',
     });

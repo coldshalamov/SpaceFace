@@ -348,6 +348,13 @@ test('K4: near-now evidence with claimId and matching digests may resolve', () =
       digests,
     },
     ...digests,
+    // L2: ledger-backed claim identity (not self-asserted claimId alone).
+    consumedClaim: {
+      claimId: 'claim-k4-ok',
+      candidateDigest: digests.candidateDigest,
+      runtimeKind: 'browser',
+      consumedAt: new Date(now).toISOString(),
+    },
   });
   assert.equal(ok, true);
 });

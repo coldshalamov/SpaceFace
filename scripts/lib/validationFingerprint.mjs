@@ -2,8 +2,12 @@
 // Extracted from PQ-017 iteration guard (Phase 1). Pure / filesystem-read only.
 
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
 
 export function stableJson(value) {
   if (Array.isArray(value)) {
@@ -47,6 +51,56 @@ export async function digestSourcePaths(root, relativePaths = []) {
   if (!relativePaths.length) return computeSourceSetDigest({});
   const sources = await readSourceSet(root, relativePaths);
   return computeSourceSetDigest(sources);
+}
+
+/**
+ * L1: enumerate every authoritative gameplay/runtime `.js` under `src/`.
+ * Prefer `git ls-files` (tracked tree); fall back to a recursive directory walk.
+ * @param {string} root repo root
+ * @returns {Promise<string[]>} posix-relative paths sorted stably
+ */
+export async function listSrcJsSourcePaths(root) {
+  try {
+    const { stdout } = await execFileAsync(
+      'git',
+      ['ls-files', '-z', '--', 'src'],
+      { cwd: root, maxBuffer: 64 * 1024 * 1024, windowsHide: true },
+    );
+    const files = String(stdout || '')
+      .split('\0')
+      .filter(Boolean)
+      .map((p) => p.replace(/\\/g, '/'))
+      .filter((p) => p.startsWith('src/') && p.endsWith('.js'));
+    if (files.length > 0) {
+      return [...new Set(files)].sort();
+    }
+  } catch {
+    // fall through to walk
+  }
+  return walkJsRelativePaths(root, 'src');
+}
+
+async function walkJsRelativePaths(root, relDir) {
+  const out = [];
+  async function walk(rel) {
+    const abs = path.join(root, rel);
+    let entries;
+    try {
+      entries = await readdir(abs, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const ent of entries) {
+      const childRel = path.posix.join(rel.replace(/\\/g, '/'), ent.name);
+      if (ent.isDirectory()) {
+        await walk(childRel);
+      } else if (ent.isFile() && ent.name.endsWith('.js')) {
+        out.push(childRel);
+      }
+    }
+  }
+  await walk(relDir);
+  return out.sort();
 }
 
 function parseRouteFailureFromError(error) {

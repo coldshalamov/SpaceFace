@@ -694,7 +694,9 @@ test('P2 FIX5: second consumeBrokerClaim is rejected (atomic one-use)', async (t
   });
 
   const first = await consumeBrokerClaim({ outputRoot, tokenOrPath: issued.claimPath });
-  assert.equal(first, true);
+  // L2/L7: consume returns claim identity object (truthy), not bare true.
+  assert.ok(first);
+  assert.equal(first.claimId, issued.claimId);
   const second = await consumeBrokerClaim({ outputRoot, tokenOrPath: issued.claimPath });
   assert.equal(second, false, 'atomic sentinel must reject second consumer');
 

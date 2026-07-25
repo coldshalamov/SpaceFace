@@ -349,7 +349,10 @@ test('H7: copied claim is rejected as already-consumed by identity', async () =>
       receipt: { routeDigest: 'r', regressionDigest: 'g', candidateDigest: digests.candidateDigest },
     });
     const ok1 = await consumeBrokerClaim({ outputRoot, tokenOrPath: issued.claimPath });
-    assert.equal(ok1, true);
+    // L2/L7: consume returns identity object (truthy) rather than bare true.
+    assert.ok(ok1);
+    assert.equal(ok1.claimId, issued.claimId);
+    assert.equal(ok1.candidateDigest, digests.candidateDigest);
 
     // Copy to another path outside claims dir
     const copyDir = join(outputRoot, 'copied');
