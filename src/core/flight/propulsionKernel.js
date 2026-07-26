@@ -737,8 +737,27 @@ function manualThrustLocal(input, limits, localVelocity, profile) {
   let strafe = input.strafe;
 
   if (input.brake) {
-    if (Math.abs(throttle) > deadInput && throttle * finite(localVelocity.forward, 0) < -releaseSpeed) throttle = 0;
-    if (Math.abs(strafe) > deadInput && strafe * finite(localVelocity.lateral, 0) < -releaseSpeed) strafe = 0;
+    // A brake is a brake: while it is held, manual translation contributes NOTHING. The assist is
+    // already a full-authority velocity null on both axes (fraction = 1 in
+    // reactionAssistAcceleration), so any surviving manual term can only fight it.
+    //
+    // This used to suppress manual thrust only when it OPPOSED travel by more than releaseSpeed
+    // (`throttle * forwardVelocity < -releaseSpeed`), which left a hole around and below zero. The
+    // input owner couples the two — src/systems/input.js:351 sets `brake = reverse || brakeHeld`, so
+    // holding S asserts throttle -1 AND brake together — and the result was that the brake assist
+    // (gain 1/pilotBrakeHorizonS = 1/0.72) and the reverse thruster (reverseAccel 30) balanced each
+    // other at a steady -21.6 WU/s. Holding S from cruise therefore decelerated, overshot through
+    // zero, and settled flying BACKWARDS at 21.6 WU/s forever; holding S from rest accelerated
+    // backwards to the same figure. Both measured on the starter hull.
+    //
+    // Assisted reverse flight is not a verb this kernel supports — applySpeedGovernor returns early
+    // unless `throttle > deadInput`, so reverse is entirely ungoverned, and in a model with no
+    // vacuum drag (invariant 1) an unopposed reverse command would accelerate without bound. The
+    // -21.6 equilibrium was not reverse flight; it was two controllers deadlocking. Turning the ship
+    // is how you go somewhere else.
+    if (Math.abs(throttle) > deadInput) throttle = 0;
+    if (Math.abs(strafe) > deadInput) strafe = 0;
+    void releaseSpeed;
   }
 
   return {

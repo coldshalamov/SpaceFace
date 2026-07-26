@@ -404,7 +404,7 @@
     "check:career-profile": "node scripts/check-career-profile.mjs",
     "check:base-build-guidance": "node scripts/check-base-build-guidance.mjs",
     "check:claims-guidance": "node scripts/check-claims-guidance.mjs",
-    "check:flight:v3": "node test/flightV3.spec.mjs",
+    "check:flight:v3": "node test/flightV3.spec.mjs && node scripts/check-brake-convergence.mjs",
     "check:actuator-telemetry": "node --test test/flight-actuator-telemetry.test.mjs",
     "check:rcs-jets": "node --test test/rcs-jet-mapping.test.mjs && node scripts/check-rcs-jet-wiring.mjs",
     "check:rcs-sign-truth": "node scripts/check-rcs-sign-ground-truth.mjs",
@@ -470,7 +470,8 @@
     "check:professional-travel:public-route:browser": "npm run check:professional-travel:public-route:contracts && node scripts/check-professional-travel-public-route-browser.mjs",
     "check:professional-travel:public-route:electron": "npm run check:professional-travel:public-route:contracts && node scripts/check-professional-travel-public-route-electron.mjs",
     "check:professional-travel:public-route": "npm run check:professional-travel:public-route:browser && npm run check:professional-travel:public-route:electron",
-    "check:camera-shake-scope": "node scripts/check-camera-shake-scope.mjs"
+    "check:camera-shake-scope": "node scripts/check-camera-shake-scope.mjs",
+    "check:brake-convergence": "node scripts/check-brake-convergence.mjs"
   },
   "private": true,
   "devDependencies": {
