@@ -750,12 +750,8 @@ async function safeComponentApproachPoint(page, componentId) {
           - (Number(solid.radius) || 0);
         if (gap < clearance) clearance = gap;
       }
-      // Nearest clear point, not the clearest. Maximising clearance pushes the ship to the far end
-      // of beam reach, where the arrival tolerance can tip it out of range entirely and the beam
-      // silently never connects.
-      if (clearance > 40) {
+      if (clearance > 40 && (!best || clearance > best.clearance)) {
         best = { point, clearance, distance };
-        break;
       }
     }
     return best;
@@ -768,9 +764,7 @@ async function safeComponentApproachPoint(page, componentId) {
 async function approachComponentSafely(page, componentId, worldRecordId, timeoutMs) {
   const plan = await safeComponentApproachPoint(page, componentId);
   if (plan?.point) {
-    // Tight arrival: the computed point is chosen to sit inside beam reach, so a loose tolerance
-    // can put the ship outside it again.
-    await flyToPoint(page, plan.point, 22, timeoutMs, {
+    await flyToPoint(page, plan.point, 45, timeoutMs, {
       maxApproachSpeed: 26,
       maxSettledSpeed: 6,
     });
