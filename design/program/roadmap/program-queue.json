@@ -1138,7 +1138,8 @@
       "id": "PQ-021",
       "priority": 21,
       "title": "Wire the existing Ship's Ledger",
-      "state": "blocked",
+      "state": "focused_green",
+      "partialIntegration": "2026-07-26 leaf PQ-021.ledger-wiring integrated at b266515a (candidate eebd91a9). Phases 0-3 only. The pre-existing projector and panel (zero production importers) are now reachable from a station destination and a Codex Ledger tab, surfacing the five Wreck Cathedral evidence pages from PQ-018. Direct property lookup over the frozen five-element page-id list, no scan; same-revision conflict OMITS the page with a diagnostic rather than picking a winner; projector stays pure/read-only with no new save key. Codex subscriptions unchanged at 3; TABS 6->7; station destinations 6->7. Controller repairs: replaced a VACUOUS aria-labelledby assertion (reduced to assert.notEqual(null, ...) and passed unconditionally) with a real per-host subtree-resolution check, proven non-vacuous by mutation; and dropped the ignored nextCtx parameter from the station adapter's refresh. Gates: 81/81 focused, check:depth-program:a2 + check:station-shell + check:station-tabs exit 0, check:sim:compare hashEqual true with ZERO trace-counter movement (full JSON byte-identical to baseline). State is focused_green, NOT integrated-and-accepted: Phase 4 is entirely open (no natural earning through the physical route, no Browser/Electron parity, no media-at-crop check, no legibility review), and PQ-021's route harness and broker manifest were not built. Receipt receipts/PQ-021-ledger-wiring-REPORT.md. Flagged: src/ui/station/icons.js gains one glyph (additive, safe fallback, one-line revert).",
       "canonical": [
         "Depth-A2",
         "R06"
