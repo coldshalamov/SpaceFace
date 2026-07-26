@@ -224,7 +224,7 @@ test('fleet saturates at fixed cap without unbounded growth', () => {
   fleet.dispose();
 });
 
-test('route-level idle plume is visible, attached, compact, non-allocating', () => {
+test('route-level idle sleeps production energy; thrust wakes it non-allocating', () => {
   const player = {
     id: 1,
     type: 'ship',
@@ -240,32 +240,42 @@ test('route-level idle plume is visible, attached, compact, non-allocating', () 
   player._flightFrame = { throttle: 0 };
   system.state.input = { moveZ: 0, turnIntent: 0 };
 
-  assert.equal(system._energyPlumeRelevant(), true, 'idle player must keep production relevant');
+  // PQ-023 §4.1: when no ship is thrusting the energy subsystem must do zero work.
+  // A merely alive player does not keep production awake.
+  assert.equal(system._energyPlumeRelevant(), false, 'idle player must let production sleep');
+  for (let f = 0; f < 8; f++) system.update(1 / 60);
+  const idleFrame = system.inspect().subsystems.lastFrame;
+  assert.equal(idleFrame.energy, 0, 'idle frame must not run energy updates');
+
+  // Thrust wakes the fleet: plume attaches at the nozzle, bounded and non-allocating.
+  player._flightFrame = { throttle: 1 };
+  assert.equal(system._energyPlumeRelevant(), true, 'thrusting player must wake production');
   for (let f = 0; f < 8; f++) system.update(1 / 60);
 
   const energy = system._energy;
-  assert.ok(energy && energy.fleet, 'fleet must be initialized for idle');
+  assert.ok(energy && energy.fleet, 'fleet must be initialized on wake');
   const plume = energy.fleet.familyPlume('engine_ion_small') || energy.plumeSystem;
-  assert.ok(plume.group.visible, 'idle nozzle/core signature must be drawn');
-  assert.ok(plume.pool.activeCount > 0, 'idle must write attached layer slots');
+  assert.ok(plume.group.visible, 'thrusting plume must be drawn');
+  assert.ok(plume.pool.activeCount > 0, 'thrust must write attached layer slots');
 
   const core = plume.pool.slots.slice(0, plume.pool.activeCount).find((s) => s.layerRole === 'core');
-  assert.ok(core, 'idle core layer required');
-  // Compact idle: length well below full-throttle stream.
-  const full = new ContinuousPlumeSystem(THREE, KESTREL_MAIN_PLUME_RECIPE, { distortionEnabled: false });
-  full.update(1, 1, [{ x: 0, y: 0, z: 0, ax: -1, ay: 0, az: 0 }], { boost: 0, a11y: A11Y });
-  const fullCore = full.pool.slots.slice(0, full.pool.activeCount).find((s) => s.layerRole === 'core');
-  assert.ok(core.length < fullCore.length * 0.75, 'idle core must be compact vs full throttle');
+  assert.ok(core, 'core layer required under thrust');
   // Attached at nozzle origin (fallback socket near hull rear is finite and local).
   assert.ok(Number.isFinite(core.offset[0]) && Number.isFinite(core.offset[2]));
 
-  // No animated unbounded tail growth while parked — activeCount stable across frames.
+  // No unbounded tail growth at steady thrust — activeCount stable across frames.
   const c0 = plume.pool.activeCount;
   for (let f = 0; f < 30; f++) system.update(1 / 60);
-  assert.equal(plume.pool.activeCount, c0, 'idle must not accumulate slots/tail over time');
+  assert.equal(plume.pool.activeCount, c0, 'steady thrust must not accumulate slots/tail over time');
   assert.equal(plume.pool.frameAllocations, 0);
 
-  full.dispose();
+  // Back to idle: production sleeps again instead of pinning the subsystem awake.
+  player._flightFrame = { throttle: 0 };
+  for (let f = 0; f < 4; f++) system.update(1 / 60);
+  const sleepFrame = system.inspect().subsystems.lastFrame;
+  assert.equal(sleepFrame.energy, 0, 'returned-to-idle frame must sleep again');
+  assert.equal(plume.group.visible, false, 'slept plume must be hidden');
+
   system._disposeEnergy();
 });
 

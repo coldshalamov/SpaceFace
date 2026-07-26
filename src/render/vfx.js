@@ -5093,16 +5093,42 @@ export const vfx = {
 
   _energyPlumeRelevant() {
     if (!this._productionThrusterEnabled()) return false;
-    const player = this.state.entities && this.state.entities.get(this.state.playerId);
-    // Alive player always owns a restrained idle nozzle signature (VP-220 idle is live).
-    if (player && player.alive && player.type === 'ship') return true;
     const energy = this._energy;
-    if (energy && energy.fleet && energy.fleet.activeShipCount > 0) return true;
     if (energy && (
       energy.plumeDrive > 0.02
       || energy.boostBlend > 0.02
       || (energy.rcsSystem && energy.rcsSystem.pool.activeImpulseCount > 0)
     )) return true;
+    // Activity-gated, never "alive ship = awake": the idle-sleep invariant requires the energy
+    // subsystem to do zero work when no ship is thrusting (master semantics, fleet-extended).
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (player && player.alive && player.type === 'ship' && this._usesProductionThruster(player)) {
+      const actuators = this._actuatorsFor(player);
+      if (actuators && (
+        Math.abs(actuators.lateral || 0) > 0.001
+        || Math.abs(actuators.yaw || 0) > 0.001
+        || (actuators.reverse || 0) > 0.001
+      )) return true;
+      const turn = this.state.input && Number.isFinite(this.state.input.turnIntent)
+        ? Math.abs(this.state.input.turnIntent)
+        : 0;
+      const driveInfo = this._engineDriveFor(player);
+      if (driveInfo.drive > 0.03 || driveInfo.boost > 0 || turn > 0.2) return true;
+    }
+    // NPC fleet wake: any tracked candidate under thrust keeps production awake. The candidate
+    // list is already refreshed by _emitTrails earlier in the frame, so this adds no spatial
+    // pass and no allocation; idle ships (drive ~0, no boost) do not wake the subsystem.
+    const list = this._trailCandidates;
+    if (list) {
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e || !e.alive || e.type !== 'ship') continue;
+        if (player && e.id === player.id) continue;
+        if (e.flags && e.flags.docked) continue;
+        const d = this._engineDriveFor(e);
+        if (d.drive > 0.03 || d.boost > 0) return true;
+      }
+    }
     return false;
   },
 
@@ -5516,7 +5542,9 @@ export const vfx = {
       this._productionOwnedIds[owned++] = s.entityId;
     }
     this._productionOwnedCount = owned;
-    energy.plumeDrive = diag && diag.shipsActive ? 1 : 0;
+    // Awake signal is thrust, not admission: a parked nearby ship must not pin the energy
+    // subsystem awake (idle-sleep invariant).
+    energy.plumeDrive = diag && (diag.shipsActive - (diag.idleShips || 0)) > 0 ? 1 : 0;
     // Player drive snapshot for sleep/relevance heuristics.
     if (player && player.alive) {
       const pd = this._engineDriveFor(player);

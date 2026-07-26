@@ -437,6 +437,7 @@
     "check:kestrel:normal-routes": "node scripts/check-kestrel-normal-routes.mjs",
     "check:kestrel:electron-route": "node scripts/check-kestrel-electron-route.mjs",
     "check:thruster:electron-route": "node scripts/check-thruster-electron-route.mjs",
+    "check:thruster:propulsion-family": "node --test test/vp220-p1-fleet-idle-segments.test.mjs test/vp220-p2-hotpath-brake-dynamics.test.mjs test/vp220-p3-acceptance-lifecycle.test.mjs test/vp220-propulsion-family.test.mjs",
     "test:commodity-flavor": "node test/commodity-flavor.test.mjs",
     "check:m1:tether-mass": "node scripts/check-m1-tether-mass-grounding.mjs",
     "check:demo-opening": "npm run check:launch-policy && node --test test/demo-opening-runtime-contract.test.mjs && node scripts/check-m3-player-facing-public-route.mjs --demo-opening",

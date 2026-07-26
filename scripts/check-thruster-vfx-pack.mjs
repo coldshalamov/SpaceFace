@@ -45,7 +45,7 @@ const cycles = [
   { id: 11, name: 'family recipe resolver', re: /resolveThrusterRecipes/, hay: combined },
   { id: 12, name: 'multi-ship family fleet', re: /FamilyProductionFleet/, hay: src },
   { id: 13, name: 'continuum cruise/reverse signals', re: /setShipDrive\(ship, driveInfo\)|opts\.cruise = driveInfo\.cruise/, hay: src },
-  { id: 14, name: 'live idle relevance', re: /Alive player always owns a restrained idle/, hay: src },
+  { id: 14, name: 'activity-gated idle sleep', re: /Activity-gated, never "alive ship = awake"/, hay: src },
   { id: 15, name: 'pure profile id hot path', re: /resolveEngineProfileId/, hay: src },
 ];
 
