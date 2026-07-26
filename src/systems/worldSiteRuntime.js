@@ -256,7 +256,7 @@ function entitySpec(entry, manifest, record, componentAdmitted) {
       type: 'fx',
       pos: { ...entry.pos },
       rot: entry.rot,
-      radius: 18,
+      radius: entry.visualRadius,
       mass: 0,
       collides: false,
       ttl: Infinity,
@@ -269,8 +269,8 @@ function entitySpec(entry, manifest, record, componentAdmitted) {
         worldSitePresentation: entry.presentation,
         name: entry.label,
         worldDressing: true,
-        visualRadius: 18,
-        placeRadius: 18,
+        visualRadius: entry.visualRadius,
+        placeRadius: entry.visualRadius,
       },
     };
   }
@@ -313,9 +313,12 @@ function entitySpec(entry, manifest, record, componentAdmitted) {
       },
     };
   }
+  const collisionOnly = entry.proxyRole === 'collision';
+  const hideComponentProxy = manifest.visualRoot?.componentProxyPresentation === 'hidden';
   const solid = componentAdmitted && entry.bodyType === 'solid';
   return {
     type: 'wreck',
+    _noMesh: collisionOnly || hideComponentProxy,
     pos: { ...entry.pos },
     vel: { x: 0, z: 0 },
     radius: entry.radius,
@@ -333,15 +336,20 @@ function entitySpec(entry, manifest, record, componentAdmitted) {
     } : false,
     data: {
       ...commonData,
-      role: 'world_site_component',
-      kind: 'world_site_component',
+      role: collisionOnly ? 'world_site_collision' : 'world_site_component',
+      kind: collisionOnly ? 'world_site_collision' : 'world_site_component',
       name: entry.label,
-      worldSiteComponentId: entry.componentId,
-      worldSiteComponentStatus: entry.status,
+      ...(collisionOnly ? {
+        worldSiteCollisionProxyId: entry.proxyId,
+        worldSiteImpactComponentId: entry.failureComponentId || null,
+      } : {
+        worldSiteComponentId: entry.componentId,
+        worldSiteComponentStatus: entry.status,
+      }),
       worldSiteProxy: { ...entry.proxy },
       worldSitePresentationAdmitted: componentAdmitted,
-      worldSiteTargetable: componentAdmitted,
-      operationOwner: 'asteroidSites',
+      worldSiteTargetable: collisionOnly ? false : componentAdmitted,
+      ...(collisionOnly ? {} : { operationOwner: 'asteroidSites' }),
     },
   };
 }
@@ -361,12 +369,17 @@ function updateExisting(entity, entry, manifest, record, componentAdmitted) {
     data.placeScale = entry.scale;
     data.worldSitePresentation = entry.presentation;
     data.name = entry.label;
+    entity.radius = entry.visualRadius;
+    data.visualRadius = entry.visualRadius;
+    data.placeRadius = entry.visualRadius;
   } else if (entry.type === 'wreck') {
-    data.worldSiteComponentStatus = entry.status;
+    const collisionOnly = entry.proxyRole === 'collision';
+    if (!collisionOnly) data.worldSiteComponentStatus = entry.status;
     data.name = entry.label;
     data.worldSiteProxy = { ...entry.proxy };
     data.worldSitePresentationAdmitted = componentAdmitted;
-    data.worldSiteTargetable = componentAdmitted;
+    data.worldSiteTargetable = collisionOnly ? false : componentAdmitted;
+    entity._noMesh = collisionOnly || manifest.visualRoot?.componentProxyPresentation === 'hidden';
     // Pose, radius, collision shape, and body definition are immutable for a live static body.
     // staticProxyNeedsReplacement has already retired any proxy whose authored physics changed.
   } else if (entry.type === 'payload') {
@@ -387,7 +400,10 @@ function staticProxyNeedsReplacement(entity, wanted, componentAdmitted) {
 
 function rootNeedsReplacement(entity, wanted) {
   const data = entity.data || {};
-  return data.placeId !== wanted.placeId || data.placeScale !== wanted.scale || data.siteStage !== wanted.stageId;
+  return data.placeId !== wanted.placeId
+    || data.placeScale !== wanted.scale
+    || data.siteStage !== wanted.stageId
+    || data.visualRadius !== wanted.visualRadius;
 }
 
 function removeEntity(helpers, entity) {

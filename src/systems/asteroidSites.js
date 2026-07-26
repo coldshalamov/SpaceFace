@@ -439,6 +439,9 @@ export const asteroidSites = {
       requestStreamId,
       requestSequence,
       tick: tick == null ? this.state.tick : tick,
+      earnedAtS: Number.isFinite(this.state.simTime)
+        ? this.state.simTime
+        : Math.max(0, Number(tick == null ? this.state.tick : tick) || 0) / 60,
       delivery: this._worldSiteDeliveryEvidence(manifest, operation),
     });
     if (!result.ok || result.duplicate) {
@@ -465,16 +468,18 @@ export const asteroidSites = {
     let matched = null;
     for (let index = 0; index < participants.length && !matched; index += 1) {
       const componentEntity = participants[index];
+      const impactComponentId = componentEntity?.data?.worldSiteComponentId
+        || componentEntity?.data?.worldSiteImpactComponentId;
       if (!componentEntity || componentEntity.alive === false
-        || !componentEntity.data?.worldSiteId || !componentEntity.data?.worldSiteComponentId) continue;
+        || !componentEntity.data?.worldSiteId || !impactComponentId) continue;
       const data = componentEntity.data;
       const record = this.getWorldSite(data.worldSiteId);
       const manifest = record && worldSiteManifestById(record.manifestId);
-      const live = record && record.components && record.components[data.worldSiteComponentId];
+      const live = record && record.components && record.components[impactComponentId];
       const otherEntity = participants[index === 0 ? 1 : 0];
       if (!manifest || !live) continue;
       const trigger = (manifest.failureTriggers || []).find((candidate) => candidate.event === 'physics:impact'
-        && candidate.componentId === data.worldSiteComponentId
+        && candidate.componentId === impactComponentId
         && candidate.from.includes(live.status)
         && Number(payload.dp) >= candidate.minDp
         && worldSiteFailureActorMatches(candidate.actorPolicy, otherEntity, this.state));

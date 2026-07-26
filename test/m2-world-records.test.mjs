@@ -14,6 +14,7 @@ import {
 } from '../src/data/sectorCoordinates.js';
 import { CURRENT_VERSION } from '../src/data/saveVersion.js';
 import { MIGRATIONS } from '../src/save/migrations.js';
+import { WORLD_SITE_MANIFESTS } from '../src/data/worldSiteManifests.js';
 import {
   RECORD_KIND,
   WORLD_RECORDS_SCHEMA_ID,
@@ -131,8 +132,11 @@ test('world capture excludes every PQ-017 runtime entity while asteroidSites kee
   world._captureSectorDurableRecords(HELIOS, { reason: 'pq017-owner-proof' });
   assert.equal(Object.keys(state.world.records.byId).some((id) => id.startsWith('world_site_helios_relay')), false);
   const serialized = sites.serialize();
-  assert.deepEqual(serialized.worldOrder, ['world_site_helios_relay']);
-  assert.equal(Object.keys(serialized.worldById).length, 1);
+  // Every authored World Site serializes exactly once, in manifest order, with no duplicates and
+  // no extra records. Derived from the manifest list so a new authored site cannot silently pass.
+  assert.deepEqual(serialized.worldOrder, WORLD_SITE_MANIFESTS.map((manifest) => manifest.id));
+  assert.equal(Object.keys(serialized.worldById).length, WORLD_SITE_MANIFESTS.length);
+  assert.ok(serialized.worldOrder.includes('world_site_helios_relay'));
 });
 
 test('normalizeRecordsBag fails closed on absent/corrupt and strips runtime fields', () => {
