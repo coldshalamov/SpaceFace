@@ -218,6 +218,12 @@ export const presentationOrchestrator = {
         material: cueId.includes('.comms.') ? 'comms' : 'scenario',
         sequence: payload.beatId || null,
         tags: ['beat', payload.beatId].filter(Boolean),
+        // A story beat is addressed TO THE PLAYER by definition — a comms hail or an objective split
+        // is not a thing that happens at a location. These cues do carry a targetId (the actor the
+        // beat is about), so leaving relevance to be inferred would run the distance falloff in
+        // cueSchema.js:118-121 and silently drop the narrative off the HUD whenever the actor
+        // happened to be far away. State it instead of inferring it.
+        playerRelevance: 1,
       });
     }
   },
@@ -1120,6 +1126,8 @@ export const presentationOrchestrator = {
       material: 'branch',
       sequence: payload.branchId || null,
       tags: ['branch', payload.branchId].filter(Boolean),
+      // Narrative, addressed to the player — same reasoning as _onScenarioBeat above.
+      playerRelevance: 1,
     });
   },
 
@@ -1131,6 +1139,10 @@ export const presentationOrchestrator = {
     const raw = {
       ...(payload || {}),
       id: cueId,
+      // An emitter that KNOWS a cue is addressed to the player states it here; everything else
+      // leaves it undefined and lets cueSchema.inferRelevance derive it from target/source identity
+      // and distance. That inference is right for entity events and wrong for narrative.
+      playerRelevance: options.playerRelevance ?? payload.playerRelevance ?? undefined,
       sourceId: options.sourceId ?? payload.sourceId ?? payload.attackerId ?? payload.ownerId ?? null,
       targetId: options.targetId ?? payload.targetId ?? payload.combatantId ?? null,
       subsystemId: options.subsystemId ?? payload.subsystemId ?? null,

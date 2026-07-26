@@ -329,6 +329,15 @@ export const masslineHud = {
 
   _ensureDom() {
     if (this._dom && this._dom.root.isConnected !== false) return this._dom;
+    // Capability check, not an existence check. update() already bails when `document` is absent
+    // entirely, but headless checks legitimately install a PARTIAL document stub, and this is the
+    // only one of the four deployable HUDs that needs SVG. Testing `typeof document === 'undefined'`
+    // let a stub with createElement but no createElementNS through, and the throw took the whole
+    // registry step down with it (scripts/check-depth-program-k1-behavior.mjs installs exactly such
+    // a stub, which is why that check could not run at all).
+    if (typeof document === 'undefined'
+      || typeof document.createElement !== 'function'
+      || typeof document.createElementNS !== 'function') return null;
     const host = document.getElementById('hud') || document.body;
     if (!host) return null;
     if (!document.getElementById('sf-ml2-css')) {
