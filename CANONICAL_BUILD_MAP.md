@@ -109,9 +109,16 @@ For visual work, do not instruct agents to make less. Require the exact authored
 
 ## 7. Verification that converges
 
-The finite review and validation state machine lives in [`00_EXECUTION_PROTOCOL.md`](./design/program/roadmap/00_EXECUTION_PROTOCOL.md). Its essential rules are:
+Choose the proof layer through [`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md). The
+finite review and validation state machine lives in
+[`00_EXECUTION_PROTOCOL.md`](./design/program/roadmap/00_EXECUTION_PROTOCOL.md). Its essential rules
+are:
 
 - focused deterministic checks precede broad or live probes;
+- every packet names its lab scenario and executor before L3, or records why the claim is not
+  representable headlessly and what smallest lab/schema gap prevents it;
+- a broker manifest uses `requiresScenario` when an eligible lab scenario already exists, binding
+  that scenario's fresh pass to the current candidate before a Browser/Electron claim is minted;
 - each predeclared acceptance cell receives at most one attempt per candidate digest, while a campaign
   claim may contain several distinct cells;
 - a product, harness, or nondeterminism failure must be reduced to a seconds-scale regression before
@@ -122,7 +129,12 @@ The finite review and validation state machine lives in [`00_EXECUTION_PROTOCOL.
 - unrelated new ideas become follow-ups, not reasons to reopen the packet indefinitely;
 - every execution ends `PASS`, `FAIL`, `BLOCKED`, or `DEFERRED` with an exact-revision receipt.
 
-The repository already contains a validation broker. New expensive routes should add a manifest and use it instead of inventing another retry loop.
+Certification remains fail-fast. A diagnostic route may collect several independent recoverable
+failures in one run, but it must abort when boot, navigation, or observation authority is lost and
+its aggregate report cannot promote acceptance.
+
+The repository already contains a validation broker. New expensive routes should add a manifest and
+use it instead of inventing another retry loop.
 
 ## 8. Performance is part of design
 

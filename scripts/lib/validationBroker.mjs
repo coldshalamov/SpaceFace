@@ -127,6 +127,29 @@ export function parseFastGateCommand(entry) {
   return { command: '/bin/sh', args: ['-c', line] };
 }
 
+function normalizeRequiredScenario(contract) {
+  if (contract == null || contract === false) return null;
+  if (typeof contract !== 'object' || Array.isArray(contract)) {
+    throw new Error('VALIDATION_REQUIRED_SCENARIO_CONTRACT_REQUIRED');
+  }
+  const scenarioPath = String(contract.path ?? '').trim();
+  if (!scenarioPath) {
+    throw new Error('VALIDATION_REQUIRED_SCENARIO_PATH_REQUIRED');
+  }
+  const command = contract.command;
+  const commandIsString = typeof command === 'string' && command.trim().length > 0;
+  const commandIsArgv = Array.isArray(command) && command.length > 0;
+  if (!commandIsString && !commandIsArgv) {
+    throw new Error('VALIDATION_REQUIRED_SCENARIO_COMMAND_REQUIRED');
+  }
+  return Object.freeze({
+    path: scenarioPath,
+    command: commandIsArgv
+      ? Object.freeze(command.map(String))
+      : command.trim(),
+  });
+}
+
 function resolveFastGateTimeoutMs(manifest) {
   if (Number(manifest.fastGateTimeoutMs) > 0) {
     return Number(manifest.fastGateTimeoutMs);
@@ -539,6 +562,18 @@ function normalizeManifest(manifest = {}) {
   if (!manifest?.id) {
     throw new Error('VALIDATION_MANIFEST_ID_REQUIRED');
   }
+  const requiresScenario = normalizeRequiredScenario(manifest.requiresScenario);
+  const fastGateCommands = [...(manifest.fastGateCommands ?? [])];
+  const scenarioPaths = [...(manifest.scenarioPaths ?? [])];
+  if (requiresScenario) {
+    const requiredCommandKey = JSON.stringify(requiresScenario.command);
+    if (!fastGateCommands.some((entry) => JSON.stringify(entry) === requiredCommandKey)) {
+      fastGateCommands.unshift(requiresScenario.command);
+    }
+    if (!scenarioPaths.includes(requiresScenario.path)) {
+      scenarioPaths.push(requiresScenario.path);
+    }
+  }
   const timeoutMs = Number(manifest.timeoutMs) > 0 ? Number(manifest.timeoutMs) : 600_000;
   const fastGateTimeoutMs = Number(manifest.fastGateTimeoutMs) > 0
     ? Number(manifest.fastGateTimeoutMs)
@@ -549,8 +584,9 @@ function normalizeManifest(manifest = {}) {
     command: manifest.command ?? process.execPath,
     commandArgs: Object.freeze([...(manifest.commandArgs ?? [])]),
     mode: manifest.mode ?? 'acceptance',
-    fastGateCommands: Object.freeze([...(manifest.fastGateCommands ?? [])]),
-    scenarioPaths: Object.freeze([...(manifest.scenarioPaths ?? [])]),
+    requiresScenario,
+    fastGateCommands: Object.freeze(fastGateCommands),
+    scenarioPaths: Object.freeze(scenarioPaths),
     regressionSourcePaths: Object.freeze([...(manifest.regressionSourcePaths ?? [])]),
     productionSourcePaths: Object.freeze([...(manifest.productionSourcePaths ?? [])]),
     harnessSourcePaths: Object.freeze([...(manifest.harnessSourcePaths ?? [])]),

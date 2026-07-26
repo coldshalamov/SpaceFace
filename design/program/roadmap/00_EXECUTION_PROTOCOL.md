@@ -87,6 +87,16 @@ Run gates in ascending cost. A higher layer never substitutes for a lower one.
 
 The active packet lists the canonical commands. Do not treat `package.json` as a menu from which more checks always means more confidence.
 
+Before L3, the packet names a lab scenario and its owning executor, or records the exact claim that
+cannot be represented headlessly and the smallest missing scenario/schema seam. When an eligible
+scenario exists, the broker manifest declares `requiresScenario`; the broker executes it freshly and
+binds its pass to the current candidate digest before issuing the live claim.
+
+Fail-fast remains correct for certifying gates. A diagnostic driver may collect multiple independent
+recoverable assertion failures in one expensive run, with phase/expected/actual detail, but it must
+abort when boot, route reachability, actor authority, or observer integrity is lost. Aggregated
+diagnostics are non-promoting and do not relax the one-attempt acceptance budget.
+
 ### Fast-gate receipt
 
 Before an expensive L3/L4 run, persist a receipt containing:

@@ -3,6 +3,8 @@
 Tests cover deterministic simulation, focused contracts, save compatibility, launch/UI behavior, and
 regression fixtures.
 
+- Choose the proof layer through `docs/VALIDATION_WORKFLOW.md`; lab implementation tests also follow
+  `src/testing/lab/AGENTS.md`.
 - Run the narrow test file first with `node --test <file>`; broaden only after it passes.
 - Never edit `*.expected.json` merely to make a changed simulation pass. A deliberate re-record needs
   an explicit gameplay reason and review of the semantic delta.

@@ -25,24 +25,23 @@ export function readProfileSettings(storage = globalThis.localStorage) {
   }
 }
 
-/** Pin pre-PQ-003 profiles to their current active-scheme behavior before merging them over the
- * new Space-primary defaults. Existing custom bindings win; only absent actions are filled. */
+/** Keep the shipped Massline command stable across fresh and already-migrated profiles. */
 export function migrateLegacyMasslineBindingProfile(settings) {
   if (!isPlainObject(settings)) return settings;
   if (!isPlainObject(settings.controls)) settings.controls = {};
   const controls = settings.controls;
-  if (controls.masslineBindingProfile === MASSLINE_BINDING_PROFILE_SPACE
-      || controls.masslineBindingProfile === MASSLINE_BINDING_PROFILE_LEGACY) {
+  if (controls.masslineBindingProfile === MASSLINE_BINDING_PROFILE_SPACE) {
     return settings;
   }
 
   const bindings = isPlainObject(controls.bindings) ? controls.bindings : {};
-  if (!Object.prototype.hasOwnProperty.call(bindings, 'tether')) bindings.tether = ['KeyF'];
-  const scheme = isPlainObject(settings.gameplay) ? settings.gameplay.controlScheme : 'pilot';
-  const spaceAction = scheme === 'classic' ? 'fire' : 'brake';
-  if (!Object.prototype.hasOwnProperty.call(bindings, spaceAction)) bindings[spaceAction] = ['Space'];
+  bindings.tether = ['Space', 'KeyF'];
+  for (const action of Object.keys(bindings)) {
+    if (action === 'tether' || !Array.isArray(bindings[action])) continue;
+    bindings[action] = bindings[action].filter((code) => code !== 'Space');
+  }
   controls.bindings = bindings;
-  controls.masslineBindingProfile = MASSLINE_BINDING_PROFILE_LEGACY;
+  controls.masslineBindingProfile = MASSLINE_BINDING_PROFILE_SPACE;
   return settings;
 }
 

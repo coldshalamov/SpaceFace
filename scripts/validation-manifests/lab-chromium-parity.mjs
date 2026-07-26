@@ -13,6 +13,10 @@ export function createLabChromiumParityManifest(overrides = {}) {
     command: process.execPath,
     commandArgs: ['scripts/probe-lab-chromium-acceptance.mjs'],
     mode: 'acceptance',
+    requiresScenario: {
+      path: 'src/testing/scenarios/flight-fixed-input.scenario.json',
+      command: 'node scripts/sf-lab.mjs repeat src/testing/scenarios/flight-fixed-input.scenario.json --runs 3',
+    },
     fastGateCommands: [
       'node --test test/lab-checkpoint.test.mjs test/lab-checkpoint-compare.test.mjs test/lab-bridge-absence.test.mjs',
     ],

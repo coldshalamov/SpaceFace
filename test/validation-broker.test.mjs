@@ -38,7 +38,13 @@ import {
   computeSourceSetDigest,
   deriveFailureIdentity,
 } from '../scripts/lib/validationFingerprint.mjs';
-import { MASSLINE_LIVE_FIXED_SEED } from '../scripts/validation-manifests/massline-live.mjs';
+import {
+  MASSLINE_LIVE_FIXED_SEED,
+  createMasslineLiveManifest,
+} from '../scripts/validation-manifests/massline-live.mjs';
+import {
+  createLabChromiumParityManifest,
+} from '../scripts/validation-manifests/lab-chromium-parity.mjs';
 
 const repoRoot = fileURLToPath(new URL('../', import.meta.url));
 
@@ -349,6 +355,21 @@ test('§3.10 Massline automation records a fixed seed (no wall-clock seed path)'
   );
 });
 
+test('eligible Browser manifests require a candidate-bound lab scenario', () => {
+  for (const rawManifest of [
+    createMasslineLiveManifest(),
+    createLabChromiumParityManifest(),
+  ]) {
+    const broker = createValidationBroker(rawManifest, { root: repoRoot });
+    assert.ok(broker.manifest.requiresScenario?.path);
+    assert.ok(broker.manifest.scenarioPaths.includes(broker.manifest.requiresScenario.path));
+    assert.deepEqual(
+      broker.manifest.fastGateCommands[0],
+      broker.manifest.requiresScenario.command,
+    );
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Additional structural / status-code coverage
 // ---------------------------------------------------------------------------
@@ -545,6 +566,73 @@ test('P1 FIX1: failing fastGateCommands block receipt mint; passing gates mint',
   const receiptAfterPass = await passing.readFastGateReceipt();
   assert.ok(receiptAfterPass?.routeDigest, 'passing fast gates must allow receipt mint');
   assert.ok(ok.fastGateResults?.length >= 1);
+});
+
+test('requiresScenario binds a named scenario and blocks claim mint when its executor fails', async (t) => {
+  assert.throws(
+    () => createValidationBroker(testManifest('out', { requiresScenario: true })),
+    /VALIDATION_REQUIRED_SCENARIO_CONTRACT_REQUIRED/,
+  );
+  assert.throws(
+    () => createValidationBroker(testManifest('out', {
+      requiresScenario: { path: 'required.scenario.json' },
+    })),
+    /VALIDATION_REQUIRED_SCENARIO_COMMAND_REQUIRED/,
+  );
+
+  const failingRoot = await tempRoot(t);
+  await writeFile(path.join(failingRoot, 'required.scenario.json'), '{}\n', 'utf8');
+  const failingOutput = path.join(failingRoot, 'out');
+  const failing = createValidationBroker(testManifest('out', {
+    id: 'required-scenario-fail-probe',
+    fastGateCommands: [],
+    scenarioPaths: [],
+    requiresScenario: {
+      path: 'required.scenario.json',
+      command: [process.execPath, '-e', 'process.exit(7)'],
+    },
+  }), { root: failingRoot, outputRoot: failingOutput });
+
+  assert.deepEqual(failing.manifest.scenarioPaths, ['required.scenario.json']);
+  assert.deepEqual(
+    failing.manifest.fastGateCommands[0],
+    [process.execPath, '-e', 'process.exit(7)'],
+  );
+  const blocked = await failing.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: false,
+  });
+  assert.equal(blocked.launched, false);
+  assert.equal(blocked.reason, 'fast-gate-failed');
+  assert.equal(await failing.readFastGateReceipt(), null);
+
+  const passingRoot = await tempRoot(t);
+  await writeFile(path.join(passingRoot, 'required.scenario.json'), '{}\n', 'utf8');
+  const passingOutput = path.join(passingRoot, 'out');
+  const passing = createValidationBroker(testManifest('out', {
+    id: 'required-scenario-pass-probe',
+    fastGateCommands: [],
+    scenarioPaths: [],
+    requiresScenario: {
+      path: 'required.scenario.json',
+      command: [process.execPath, '-e', 'process.exit(0)'],
+    },
+  }), { root: passingRoot, outputRoot: passingOutput });
+  const issued = await passing.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: false,
+  });
+  assert.equal(issued.status, STATUS.PASS);
+  assert.equal(issued.reason, 'claim-issued');
+  assert.equal(issued.fastGateResults.length, 1);
+  assert.ok(issued.receipt?.scenarioDigest);
+  assert.equal(issued.receipt.scenarioDigest, issued.digests.scenarioDigest);
+  await writeFile(path.join(passingRoot, 'required.scenario.json'), '{"changed":true}\n', 'utf8');
+  const changedDigests = await passing.computeGateDigests();
+  assert.notEqual(changedDigests.scenarioDigest, issued.digests.scenarioDigest);
+  assert.notEqual(changedDigests.candidateDigest, issued.digests.candidateDigest);
 });
 
 test('P1 FIX2: probe nonzero exit persists latest-acceptance-failure; second run blocked_repeat', async (t) => {
@@ -865,11 +953,12 @@ test('P1 FIX9: launch count is reserved on spawn before child completes', async 
   resetLaunchCountsForTests();
   const root = await tempRoot(t);
   const outputRoot = path.join(root, 'out');
-  // Long-running child so we can observe the count mid-flight.
+  // Long-running child so we can observe the count mid-flight even when the
+  // full-tree candidate digest is slow under concurrent local agent load.
   // Peer must share the same commandArgs so candidateDigest matches.
   const sharedManifest = testManifest('out', {
     id: 'pre-spawn-reserve-probe',
-    commandArgs: ['-e', 'setTimeout(() => process.exit(0), 2500)'],
+    commandArgs: ['-e', 'setTimeout(() => process.exit(0), 5000)'],
     fastGateCommands: [],
     maxLaunchesPerCandidate: 1,
     timeoutMs: 15_000,
@@ -882,17 +971,22 @@ test('P1 FIX9: launch count is reserved on spawn before child completes', async 
     explicitAcceptance: true,
     spawnProbe: true,
   });
+  let runSettled = false;
+  runPromise.finally(() => {
+    runSettled = true;
+  });
 
   const digests = await digestsPromise;
   // Poll until launch count is reserved while the child is still running.
   let reserved = 0;
-  const deadline = Date.now() + 2_000;
-  while (Date.now() < deadline) {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline && !runSettled) {
     reserved = await getCandidateLaunchCount(outputRoot, digests.candidateDigest);
     if (reserved >= 1) break;
     await new Promise((r) => setTimeout(r, 50));
   }
   assert.equal(reserved, 1, 'launch count must be incremented before child exit');
+  assert.equal(runSettled, false, 'reservation must be observable while the child is running');
 
   const first = await runPromise;
   assert.equal(first.launched, true);

@@ -210,6 +210,7 @@ export function computeManifestDigest(manifest = {}) {
     command: manifest.command ?? null,
     commandArgs: manifest.commandArgs ?? [],
     mode: manifest.mode ?? null,
+    requiresScenario: manifest.requiresScenario ?? null,
     fastGateCommands: manifest.fastGateCommands ?? [],
     scenarioPaths: manifest.scenarioPaths ?? [],
     regressionSourcePaths: manifest.regressionSourcePaths ?? [],

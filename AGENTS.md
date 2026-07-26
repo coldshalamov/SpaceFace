@@ -5,6 +5,9 @@ This is the repository engineering front door (invariants + routing). Keep it sh
 invariants and routing belong here; volatile status, subsystem detail, and design technique belong
 in the linked owner documents.
 
+After context compaction, route again from this file and live state; do not trust remembered status,
+leases, selected packets, or validation results.
+
 **Program / "what next" / multi-plan work:** start at root
 [`CANONICAL_BUILD_MAP.md`](./CANONICAL_BUILD_MAP.md). It is the single program map and check-off
 workflow; it does not replace original plans.
@@ -25,6 +28,7 @@ workflow; it does not replace original plans.
 | Add a map-visible place (planet, station, route, region) | `src/data/PLACE_REGISTRATION.md` — **a new place is not done until `npm run check:atlas-integrity` is green** |
 | UI/HUD | `src/ui/AGENTS.md` and `styles/AGENTS.md` |
 | Render/performance | `src/render/AGENTS.md` and `design/PERF_BUDGET.md` |
+| Feature validation, deterministic lab, Browser/Electron acceptance | `docs/VALIDATION_WORKFLOW.md` → `src/testing/lab/AGENTS.md` when changing the lab |
 | Tests/checks/tooling | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` |
 | Search/archaeology | `docs/SEARCH_CONTEXT.md` |
 
@@ -46,6 +50,8 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
 - Preserve unrelated edits. Do not roll back a file merely because its diff is large.
 - Add new files to Git intent immediately with `git add -N <file>`.
 - Remain on the current branch unless the user explicitly requests branch/worktree management.
+- Push only the owned branch by explicit name; never use `git push --all`, `--mirror`, or publish
+  unrelated refs.
 - Commit only a reviewed logical slice when the user has authorized commits.
 
 ## 4. Authority and current work
@@ -114,19 +120,11 @@ order; do not copy the list into policy files.
 
 ## 9. Verification router
 
-Run the narrow owning check first, then broaden in proportion to risk.
-
-| Changed seam | Minimum relevant proof |
-|---|---|
-| Sim/determinism | `npm run check:sim:compare` plus focused subsystem test |
-| Flight/render loop | `npm run check:flight:clean`, `npm run check:assets:live`, measured perf probe |
-| Asset/manifests/render wiring | asset reachability, live-load/status, visual stability, player-route capture |
-| UI/a11y | focused UI check, a11y/contrast, UI perf, representative screenshot |
-| Launcher/server | `npm run check:launch-policy` |
-| Broad shared integration | `npm run check` after focused checks pass |
-
-Visual acceptance requires current player-facing evidence. Green source-pattern checks alone do not
-prove visual quality or usability.
+Use [`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md). Run the narrow owner proof first;
+use the deterministic lab for eligible gameplay claims; reach Browser/Electron acceptance only
+through the packet's broker manifest after lower layers pass. An unchanged expensive failure must
+be reduced to a focused regression before another acceptance claim. Visual, accessibility, and
+performance acceptance still require current player-facing evidence.
 
 ## 10. Scoped instruction map
 
@@ -134,7 +132,7 @@ Nested `AGENTS.md` files exist only at meaningful ownership/risk boundaries:
 
 `assets/` · `assets/ships/` · `design/` · `design/program/` · `docs/` · `scripts/` · `test/` ·
 `tools/` · `src/` · `src/core/` · `src/ai/` · `src/combat/` · `src/data/` · `src/render/` ·
-`src/systems/` · `src/ui/` · `styles/`
+`src/systems/` · `src/testing/lab/` · `src/ui/` · `styles/`
 
 Use the nearest applicable file and follow links for depth. Do not copy its content into another
 instruction layer.

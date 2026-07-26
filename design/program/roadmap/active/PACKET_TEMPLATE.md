@@ -78,12 +78,26 @@ Never use default quality reduction as the mitigation.
 L0: []
 L1: []
 L2: []
+labScenario:
+  path: <src/testing/scenarios/... or null>
+  executor: <run|repeat|compare|null>
+  requiredForL3: true
+  exception: <null or the exact unrepresentable claim/schema gap>
+soak:
+  required: false
+  invariants: []
+browserOnlyClaims: []
 L3BrokerManifest: <name or required new manifest>
 acceptanceAttemptsPerCellPerCandidateDigest: 1
 reviewClosure: discovery -> repair -> causal re-review when repairs affect the claim
 ```
 
-Name exact commands. After an L3 failure, require a focused fail→fix→pass regression before another candidate claim.
+Name exact commands. If an eligible lab scenario exists, the broker manifest must declare
+`requiresScenario`; a manually reported prior green is insufficient. For physics-heavy work, decide
+whether a seeded soak is required and name invariant-level failures rather than only one scripted
+outcome. Keep claims that genuinely require rendering, public input, accessibility, or visual
+judgment in `browserOnlyClaims`. After an L3 failure, require a focused fail→fix→pass regression
+before another candidate claim.
 
 ## Review questions
 

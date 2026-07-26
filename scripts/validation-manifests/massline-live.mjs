@@ -13,10 +13,16 @@ export function createMasslineLiveManifest(overrides = {}) {
     command: process.execPath,
     commandArgs: ['scripts/probe-massline2-live.mjs'],
     mode: 'acceptance',
+    requiresScenario: {
+      path: 'src/testing/scenarios/massline-latch-reel.scenario.json',
+      command: 'node scripts/sf-lab.mjs run src/testing/scenarios/massline-latch-reel.scenario.json',
+    },
     fastGateCommands: [
       'node --test test/massline-input-grammar.test.mjs',
     ],
-    scenarioPaths: [],
+    scenarioPaths: [
+      'src/testing/scenarios/massline-latch-reel.scenario.json',
+    ],
     regressionSourcePaths: [
       'test/massline-input-grammar.test.mjs',
       'test/massline-orbit-assist.test.mjs',

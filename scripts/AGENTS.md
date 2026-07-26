@@ -3,6 +3,10 @@
 
 This directory owns executable checks, probes, build/index generation, launch helpers, simulation harnesses, and compact control-plane readers. Find the public command in `package.json` when one exists, then inspect only its direct script/imports. `program-dispatch.mjs` intentionally remains a direct command until the package/launch mutex is free.
 
+Feature-proof selection and evidence classes live in
+[`../docs/VALIDATION_WORKFLOW.md`](../docs/VALIDATION_WORKFLOW.md); this file owns script-side
+implementation hazards.
+
 ## Rules
 
 - A check proves a durable behavior or contract. Do not enforce aesthetic taste through string allowlists, exact effect/module counts, CSS-property bans, palettes, or arbitrary geometry ceilings.

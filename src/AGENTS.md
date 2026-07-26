@@ -10,6 +10,8 @@ instructions. Do not infer the live backend from imports; root §5 and `core/reg
 - `ai/` and `combat/` — shared tactical/combat libraries used by registered systems.
 - `data/` — stable IDs and data-driven definitions.
 - `render/` — Three.js presentation and runtime asset integration; never owns sim results.
+- `testing/lab/` — deterministic gameplay scenarios, evidence classes, equivalence, and focused
+  Chromium parity; read its `AGENTS.md` and `docs/VALIDATION_WORKFLOW.md`.
 - `ui/` — DOM presentation and input intents. UI may update explicitly UI/input-owned selection state
   such as `state.player.targetId`; it must not mutate gameplay-owned outcomes.
 - `save/`, `audio/`, `presentation/`, `story/`, `world/` — use `docs/MODULE_MAP.md`.
