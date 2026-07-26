@@ -731,16 +731,10 @@ async function safeComponentApproachPoint(page, componentId) {
       entity?.alive !== false && entity?.data?.worldRecordId === `${siteId}/root`
     ));
     if (!component?.pos || !root?.pos) return null;
-    // Only the authored collision proxies are real obstacles. Filtering on `collides !== false`
-    // also swept in the site root, whose 360 wu visual radius made clearance negative everywhere and
-    // silently collapsed this back to the ring settle -- the very fallback it exists to avoid. This
-    // set now matches the offline geometry the approach model was verified against.
     const solids = entities.filter((entity) => (
-      entity?.alive !== false && entity?.pos
-      && typeof entity?.data?.worldRecordId === 'string'
-      && entity.data.worldRecordId.startsWith(`${siteId}/collision/`)
+      entity?.alive !== false && entity?.pos && entity?.collides !== false
+      && entity?.data?.worldSiteId === siteId
     ));
-    if (!solids.length) return null;
     const dx = component.pos.x - root.pos.x;
     const dz = component.pos.z - root.pos.z;
     const length = Math.hypot(dx, dz) || 1;
