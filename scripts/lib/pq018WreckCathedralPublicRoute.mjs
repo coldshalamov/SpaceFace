@@ -932,7 +932,11 @@ async function installObservers(page) {
       sink.unsubscribers.push(window.SF.bus.on(name, (payload) => {
         if (payload?.siteId && payload.siteId !== siteId) return;
         sink.events.push({ name, payload });
-        if (sink.events.length > 128) sink.events.splice(0, sink.events.length - 128);
+        // Bounded, but wide enough to outlive a whole phase. At 128 the repeated approach, tow and
+        // withdrawal passes emit enough physics:impact traffic to evict earlier one-shot receipts --
+        // economy:grantCredits was rung out of the window before the settlement assertion read it,
+        // so a grant that genuinely happened looked like it never fired.
+        if (sink.events.length > 768) sink.events.splice(0, sink.events.length - 768);
         if (name === 'save:completed') sink.saved = true;
       }));
     }
