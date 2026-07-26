@@ -84,6 +84,10 @@ const PLACE_FILES = Object.freeze([
   'places/place_asteroid_rock_c.glb',
   'places/place_asteroid_graffiti.glb',
   'places/place_claim_outpost_base.glb',
+  // PQ-018 admission: the Wreck Cathedral hero landmark resolves through the same authored-place
+  // path as every other place. Its World Site manifest, Ceres placement, and route acceptance are
+  // separate PQ-018 phases; registration here only makes the release artifact resolvable.
+  'places/place_landmark_wreck_cathedral.glb',
   ...Object.values(CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID),
   ...STATION_ARCHETYPE_FILES,
 ]);

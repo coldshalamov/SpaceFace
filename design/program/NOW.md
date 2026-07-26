@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-07-25
-baseCommit: 5e3feb919b2fd3c98df9457e8ccc72637cefa085
+baseCommit: 106629c43e7d58839084cd8b2d1372d875c92880
 expiresAfterCommits: 25
 expiresAfterDays: 7
 ```
@@ -14,7 +14,8 @@ Refresh this board before mutation. It records live collision risk, not history 
 
 | Domain | Owner/ref | Protected paths or mutex | Disposition |
 |---|---|---|---|
-| Primary checkout visual production | user-directed Grok asset run | `assets/ships/parts/**`, `assets/ships/release/parts/**`, `src/core/graphicsProfileBootstrap.js`, `src/render/**`, graphics-focused tests, generated texture/export candidates, and Blender logs | The only active writer. Preserve every unstaged path; do not stage, move, commit, clean, or overwrite this lane until its owner finishes. |
+| Primary checkout visual production | user-directed Grok asset run | `assets/ships/parts/**` sources it authored, `src/core/graphicsProfileBootstrap.js`, generated texture/export candidates, and Blender logs | Lane checkpointed at `ede16953`/`329acfe8`/`106629c4`; no unstaged paths remain. It still owns re-authoring the five place sources it replaced. Do not overwrite its Blender sources. |
+| `place_debris_chunk`, `place_dead_hulk`, `place_asteroid_rock_a/b/c`, `place_dock_interior` | visual production lane | Those source GLBs, their release artifacts, and their `parts_manifest.json` rows | **Broken on the default route.** `ede16953` replaced the sources without extras/textures or a release rebuild; `place_debris_chunk` now fails the authored-part contract and stalls playable flight, so `check:visual-stability` and `check:art` are red repository-wide. Needs Blender re-authoring, not a release rebuild. |
 | Committed candidate refs | named local/remote branches and registered worktrees | Their branch tips and worktree metadata | These are not active writers. Preserve the refs as reviewable candidates; do not merge or rebase them merely for a checkpoint. |
 
 ## Current program facts needed for dispatch
@@ -23,7 +24,7 @@ Refresh this board before mutation. It records live collision risk, not history 
 |---|---|---|
 | PQ-007 | Focused-green correction integrated; current Browser/Electron route acceptance remains open | Do not restore the rejected pursuit-slot mechanics from historical prose. Treat route evidence as a separate acceptance task. |
 | PQ-017 | World Site kernel integrated; writer lease released | PQ-018 may consume the integrated manifest/kernel/runtime contract after re-reading current symbols. |
-| PQ-018 | Next unintegrated feature root; preserved source asset exists but release/runtime/route work remains | Use `roadmap/active/PQ-018.md`; do not rebuild the source from zero or claim the source candidate as runtime completion. |
+| PQ-018 | Leaf `PQ-018.asset-admission` is implemented/focused_green: the Cathedral is release-built, manifest-registered, and loads live through the ordinary place path. Site wiring, Ceres placement, evidence receipts, and route acceptance remain. | Use `roadmap/active/PQ-018.md` from Phase 2. The source hash is frozen at `f335935f…`; do not rebuild it from zero. Phase 2 must reconcile `worldSiteAssetBindings.js` (binds `spaceface.socketRole`) with this asset's `spaceface.semanticRole` markers, and generalise the binding-key assertion in `test/world-site-assets.test.mjs` before a second site lands. |
 | PQ-019–PQ-025 | Planned corridor | Use their active packets and entry gates. Do not dispatch an umbrella row when a prerequisite leaf packet is required. |
 
 ## Preserved candidates, not active authority
