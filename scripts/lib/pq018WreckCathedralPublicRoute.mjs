@@ -647,6 +647,11 @@ async function navigateToCathedralThroughPublicMap(page, timeoutMs) {
 }
 
 const PQ018_CLEAR_APPROACH_RADIUS = 720; // outside the site's ~568 wu outer radius
+// One constant for every component approach. The starting beam reaches 240 wu, so 195 loses no
+// capability while keeping the ship clear of the wreck's solid proxies. Naming it stops the value
+// drifting apart between the first approach and the post-repair re-approach, which is exactly the
+// bug that kept the hull breaking: the retry still dived back to 110.
+const PQ018_COMPONENT_STANDOFF = 195;
 
 async function withdrawToClearApproach(page, timeoutMs) {
   const outward = await page.evaluate(([centre, radius]) => {
@@ -760,16 +765,26 @@ async function completeOperation(page, operation, timeoutMs, { recovering = fals
   // Stand off at 195 rather than 110. The starting beam reaches 240 wu (industrial 420), so closing
   // to 110 buys no capability and drives the ship deep among the wreck's solid proxies, where the
   // approach itself trips cathedral_hull_impact -- the collateral failure the packet forbids.
-  await settleAtWorldRecord(page, worldRecordId, 195, 5, timeoutMs, {
+  await settleAtWorldRecord(page, worldRecordId, PQ018_COMPONENT_STANDOFF, 5, timeoutMs, {
     useAutopilot: true,
   });
-  // The crossing itself is what rams the hull, so the recovery check belongs after the approach,
-  // not before it. Re-stabilizing flies to the hull and back, which can ram again, so the target is
-  // re-acquired afterwards and the whole thing is bounded.
+  // The crossing is what rams the hull, so the check belongs after the approach -- and repairing
+  // flies to the hull and back, which can ram again. One repair does not converge; alternate
+  // position/check/repair until the ship is on station with the hull intact.
   if (!recovering && operation.componentId !== 'cathedral_hull') {
-    if (await ensureHullStabilized(page, timeoutMs)) {
+    for (let attempt = 1; await cathedralHullStatus(page) !== 'stabilized'; attempt += 1) {
+      if (attempt > 3) {
+        throw new Error(
+          'NORMAL_ROUTE_BLOCKED: could not reach '
+          + `${operation.componentId} with the hull intact after three approaches`,
+        );
+      }
+      await completeOperation(page, REPRESENTATIVE_OPERATIONS[0], timeoutMs, { recovering: true });
+      await arcAroundSiteTo(page, operation.componentId, timeoutMs);
       await cycleToComponent(page, operation.componentId);
-      await settleAtWorldRecord(page, worldRecordId, 110, 5, timeoutMs, { useAutopilot: true });
+      await settleAtWorldRecord(page, worldRecordId, PQ018_COMPONENT_STANDOFF, 5, timeoutMs, {
+        useAutopilot: true,
+      });
     }
   }
   await page.keyboard.down('KeyB');
