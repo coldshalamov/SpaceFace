@@ -389,7 +389,14 @@ export async function runPq018WreckCathedralPublicRoute({
     });
     assert.equal(returned.toSectorId, PQ018_CERES_SECTOR_ID);
     await navigateToCathedralThroughPublicMap(page, routeTimeout(360_000));
-    await approachCathedralCoordinate(page, routeTimeout(360_000));
+    // The first approach could close to 120 wu harmlessly because the hull starts `failed` -- a clip
+    // changed nothing. By now the hull is stabilized, so the identical manoeuvre would fail it and
+    // rewrite the very record this leg exists to prove unchanged. Rematerialization only needs the
+    // site admitted and resident, which happens well outside the collision proxies.
+    await approachCathedralCoordinate(page, routeTimeout(360_000), {
+      arrivalRadius: 330,
+      maxApproachSpeed: 18,
+    });
     await waitForWorldRecord(page, PQ018_ROOT_WORLD_ID, routeTimeout(60_000));
     await waitForAdmittedRoot(page, routeTimeout(90_000));
     await waitForSiteRenderResidency(page, routeTimeout(90_000));
@@ -680,9 +687,12 @@ async function prepareStabilizedRunUp(page, timeoutMs) {
   );
 }
 
-async function approachCathedralCoordinate(page, timeoutMs) {
-  return flyToPoint(page, PQ018_FIXED_GLOBAL_POS, 120, timeoutMs, {
-    maxApproachSpeed: 32,
+async function approachCathedralCoordinate(page, timeoutMs, {
+  arrivalRadius = 120,
+  maxApproachSpeed = 32,
+} = {}) {
+  return flyToPoint(page, PQ018_FIXED_GLOBAL_POS, arrivalRadius, timeoutMs, {
+    maxApproachSpeed,
     maxSettledSpeed: 7,
   });
 }
