@@ -668,6 +668,48 @@ async function withdrawToClearApproach(page, timeoutMs) {
   return outward;
 }
 
+// Components 1-4 sit to starboard and the rest to port, so moving between sides drives a straight
+// line through the middle of the wreck and clips the proxies no matter how far out the ship stops.
+// Arc around the outside instead, as a pilot would, and only when the crossing is actually wide.
+async function arcAroundSiteTo(page, componentId, timeoutMs) {
+  const centre = PQ018_FIXED_GLOBAL_POS;
+  const live = await page.evaluate((compId) => {
+    const state = window.SF?.state;
+    const component = [...(state?.entities?.values?.() || [])].find((entity) => (
+      entity?.alive !== false && entity?.data?.worldSiteComponentId === compId
+    ));
+    const player = state?.playerId != null ? state.entities?.get?.(state.playerId) : null;
+    if (!component?.pos || !player?.pos) return null;
+    return {
+      component: { x: component.pos.x, z: component.pos.z },
+      player: { x: player.pos.x, z: player.pos.z },
+    };
+  }, componentId);
+  if (!live) return false;
+
+  const angleOf = (point) => Math.atan2(point.z - centre.z, point.x - centre.x);
+  const start = angleOf(live.player);
+  let delta = angleOf(live.component) - start;
+  while (delta > Math.PI) delta -= 2 * Math.PI;
+  while (delta < -Math.PI) delta += 2 * Math.PI;
+  if (Math.abs(delta) < 0.9) return false; // same side; a direct approach stays clear
+
+  const radius = PQ018_CLEAR_APPROACH_RADIUS;
+  const ring = (angle) => ({
+    x: centre.x + Math.cos(angle) * radius,
+    z: centre.z + Math.sin(angle) * radius,
+  });
+  const hops = Math.max(2, Math.ceil(Math.abs(delta) / (Math.PI / 3)));
+  await flyToPoint(page, ring(start), 150, timeoutMs, { maxApproachSpeed: 32, maxSettledSpeed: 10 });
+  for (let hop = 1; hop <= hops; hop += 1) {
+    await flyToPoint(page, ring(start + delta * (hop / hops)), 150, timeoutMs, {
+      maxApproachSpeed: 32,
+      maxSettledSpeed: 10,
+    });
+  }
+  return true;
+}
+
 async function cathedralHullStatus(page) {
   return page.evaluate((siteId) => (
     window.SF?.state?.sites?.worldById?.[siteId]?.components?.cathedral_hull?.status ?? null
@@ -713,6 +755,7 @@ async function ensureHullStabilized(page, timeoutMs) {
 
 async function completeOperation(page, operation, timeoutMs, { recovering = false } = {}) {
   const worldRecordId = `${PQ018_SITE_ID}/component/${operation.componentId}`;
+  await arcAroundSiteTo(page, operation.componentId, timeoutMs);
   await cycleToComponent(page, operation.componentId);
   // Stand off at 195 rather than 110. The starting beam reaches 240 wu (industrial 420), so closing
   // to 110 buys no capability and drives the ship deep among the wreck's solid proxies, where the
