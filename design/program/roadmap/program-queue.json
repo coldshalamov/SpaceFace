@@ -1219,7 +1219,8 @@
       "id": "PQ-023",
       "priority": 23,
       "title": "Unified propulsion, weapon VFX, HUD, camera, and accessibility language",
-      "state": "blocked",
+      "state": "planned",
+      "partialIntegration": "2026-07-26 leaf PQ-023.propulsion-vp220-port integrated at cdcbac32 (candidate 2feedc58), cherry-picked from the stale codex/vp220-propulsion-graphics checkpoint 74775bf8 (1 ahead / 73 behind). Extends ContinuousPlumeSystem into a bounded per-engine-family fleet so NPC ships get production propulsion presentation; adds segmented plume geometry, per-instance shader dynamics, RCS impulse and throttle response. Both cherry-pick conflicts resolved MASTER-SIDE, preserving all 16 plume-coherence constants from 8d55015d. The branch's relaxation of the idle-sleep perf invariant was REFUSED: check-vfx-frame-sleep.mjs is byte-identical to master and the fleet genuinely sleeps (wake signal is thrust, not admission). Accepted trade: no always-on idle nozzle glow, matching master's current behaviour. Gates on master: 137/137 thruster/vfx/vp220, check:presentation exit 0, check:sim:compare hashEqual true, check:visual-stability exit 0. Receipt receipts/PQ-023-propulsion-family-REPORT.md. This closes ONE of seven cue families; PQ-023 remains an umbrella and is NOT complete. No Browser/Electron visual acceptance and no matched performance capture exist, so acceptance stays focused_green. Also flagged for user review: low-tier compact silhouette changed from core+sheath to core+inner.",
       "canonical": [
         "G19",
         "R01",
