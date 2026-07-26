@@ -715,67 +715,6 @@ async function arcAroundSiteTo(page, componentId, timeoutMs) {
   return true;
 }
 
-// A fixed standoff radius cannot work: autopilot may settle anywhere on that ring, and for
-// port-side components much of the ring lies inside the wreck's own proxies -- which is why 110 and
-// 195 both broke the hull. Compute an explicit point on the component's outward radial instead, far
-// enough out to clear every solid proxy and still inside beam reach. This is the general shape the
-// pipeline handoff calls for: a computed approach point, not a magic radius.
-async function safeComponentApproachPoint(page, componentId) {
-  return page.evaluate(([siteId, compId, beamRange]) => {
-    const state = window.SF?.state;
-    const entities = [...(state?.entities?.values?.() || [])];
-    const component = entities.find((entity) => (
-      entity?.alive !== false && entity?.data?.worldSiteComponentId === compId
-    ));
-    const root = entities.find((entity) => (
-      entity?.alive !== false && entity?.data?.worldRecordId === `${siteId}/root`
-    ));
-    if (!component?.pos || !root?.pos) return null;
-    const solids = entities.filter((entity) => (
-      entity?.alive !== false && entity?.pos && entity?.collides !== false
-      && entity?.data?.worldSiteId === siteId
-    ));
-    const dx = component.pos.x - root.pos.x;
-    const dz = component.pos.z - root.pos.z;
-    const length = Math.hypot(dx, dz) || 1;
-    const ux = dx / length;
-    const uz = dz / length;
-    const reach = beamRange + (Number(component.radius) || 0) - 20; // keep margin inside beam range
-    let best = null;
-    for (let distance = length + 60; distance <= length + reach; distance += 10) {
-      const point = { x: root.pos.x + ux * distance, z: root.pos.z + uz * distance };
-      let clearance = Infinity;
-      for (const solid of solids) {
-        const gap = Math.hypot(point.x - solid.pos.x, point.z - solid.pos.z)
-          - (Number(solid.radius) || 0);
-        if (gap < clearance) clearance = gap;
-      }
-      if (clearance > 40 && (!best || clearance > best.clearance)) {
-        best = { point, clearance, distance };
-      }
-    }
-    return best;
-  }, [PQ018_SITE_ID, componentId, 240]);
-}
-
-// Fly to the computed point when one exists, and fall back to the ring settle only when the geometry
-// admits no clear radial -- so a component that genuinely cannot be worked without contact still
-// reports through the ordinary path rather than silently skipping.
-async function approachComponentSafely(page, componentId, worldRecordId, timeoutMs) {
-  const plan = await safeComponentApproachPoint(page, componentId);
-  if (plan?.point) {
-    await flyToPoint(page, plan.point, 45, timeoutMs, {
-      maxApproachSpeed: 26,
-      maxSettledSpeed: 6,
-    });
-    return plan;
-  }
-  await settleAtWorldRecord(page, worldRecordId, PQ018_COMPONENT_STANDOFF, 5, timeoutMs, {
-    useAutopilot: true,
-  });
-  return null;
-}
-
 async function cathedralHullStatus(page) {
   return page.evaluate((siteId) => (
     window.SF?.state?.sites?.worldById?.[siteId]?.components?.cathedral_hull?.status ?? null
@@ -826,7 +765,9 @@ async function completeOperation(page, operation, timeoutMs, { recovering = fals
   // Stand off at 195 rather than 110. The starting beam reaches 240 wu (industrial 420), so closing
   // to 110 buys no capability and drives the ship deep among the wreck's solid proxies, where the
   // approach itself trips cathedral_hull_impact -- the collateral failure the packet forbids.
-  await approachComponentSafely(page, operation.componentId, worldRecordId, timeoutMs);
+  await settleAtWorldRecord(page, worldRecordId, PQ018_COMPONENT_STANDOFF, 5, timeoutMs, {
+    useAutopilot: true,
+  });
   // The crossing is what rams the hull, so the check belongs after the approach -- and repairing
   // flies to the hull and back, which can ram again. One repair does not converge; alternate
   // position/check/repair until the ship is on station with the hull intact.
@@ -841,7 +782,9 @@ async function completeOperation(page, operation, timeoutMs, { recovering = fals
       await completeOperation(page, REPRESENTATIVE_OPERATIONS[0], timeoutMs, { recovering: true });
       await arcAroundSiteTo(page, operation.componentId, timeoutMs);
       await cycleToComponent(page, operation.componentId);
-      await approachComponentSafely(page, operation.componentId, worldRecordId, timeoutMs);
+      await settleAtWorldRecord(page, worldRecordId, PQ018_COMPONENT_STANDOFF, 5, timeoutMs, {
+        useAutopilot: true,
+      });
     }
   }
   await page.keyboard.down('KeyB');
