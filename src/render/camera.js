@@ -37,6 +37,10 @@ const LOOKAHEAD_SPEED_SCALE = 0.35; // velocity bias multiplier
 const AIM_BIAS = 0.02;
 const AIM_BIAS_MAX = 18;
 const SHAKE_POS_MAX = 1.55;
+// Shake noise resample interval. Fixed so the shake's frequency content is the same on a 30 Hz and a
+// 144 Hz display; only the amplitude envelope follows trauma decay. 32 Hz reads as a hard rattle
+// without aliasing into a visible strobe at the low end.
+const SHAKE_NOISE_STEP_S = 1 / 32;
 const MOTION_REDUCE_SHAKE_SCALE = 0.25;
 export const MASSLINE_RELEASE_ZOOM_MIN = 0.06;
 export const MASSLINE_RELEASE_ZOOM_MAX = 0.14;
@@ -389,6 +393,11 @@ export function createChaseCamera(state) {
   // of clobbering c.zoom the way the old uiRoot hard-set did.
   let _pushZoom = 0;          // current multiplicative offset added to the zoom factor (0 = none)
   let _pushZoomDecay = 0;     // per-second decay rate (derived from duration at push time)
+  let _pushZoomPeak = 0;      // rise target while easing in; 0 once the peak has been reached
+  let _pushZoomRise = 0;      // per-second rise rate (derived from duration at push time)
+  // Shake noise is resampled at a fixed rate so shake FREQUENCY does not track display refresh.
+  let _shakeNoiseT = 0;
+  const _shakeNoise = [0, 0, 0, 0];   // posX, posZ, roll, pitch — held between resample steps
   // FR-5: transient recenter after boost-release / tether-slingshot. While active, the lookahead +
   // aim + composition bias is scaled down so the frame glides to player-centered instead of the
   // sudden velocity change snapping the lookahead. Decays over its window with an ease-out.
@@ -476,8 +485,14 @@ export function createChaseCamera(state) {
     pushZoom(factor, durationS) {
       const f = Number.isFinite(factor) ? factor : 0;
       const d = Math.max(0.05, durationS || 0.5);
-      _pushZoom = f;
-      // ease in over ~half the duration, out over the other half → symmetric decay rate
+      // Ease IN to the peak rather than jumping to it. The docstring above has always promised
+      // "eases in then back out", but this used to be `_pushZoom = f` — a single-frame step. The
+      // biggest caller is uiRoot.js's dock fly-in at pushZoom(-0.45, 1.2), so the camera snapped 45%
+      // tighter in one frame and then eased out, which read as a cut rather than a move. The rise is
+      // deliberately ~3x the decay rate so the peak still lands early in the window and the overall
+      // envelope keeps its old shape; only the discontinuity is gone.
+      _pushZoomPeak = f;
+      _pushZoomRise = 12.0 / d;
       _pushZoomDecay = 4.0 / d;
     },
     killCam() {
@@ -631,10 +646,22 @@ export function createChaseCamera(state) {
       // scripted push-zoom (dock fly-in / jump / kill-cam): multiplies the view while active, then
       // decays. Negative factors push IN (tighter). Applied to targetZoom so it eases through the
       // same _dynamicZoom damping as everything else.
-      if (Math.abs(_pushZoom) > 0.0001) {
+      // damp() rather than Euler (`x += -x * rate * dt`) in both phases: killCam() pushes with a
+      // 0.25 s duration, so _pushZoomDecay is 16/s, and against follow()'s 1/15 s frameDt clamp the
+      // Euler step factor reached 1.067 — past 1, which flips the sign. Because the factor is applied
+      // as `targetZoom *= (1 + _pushZoom)`, a sign flip pulls the camera through the ship. damp() is
+      // exp(-rate*dt) and cannot overshoot at any dt.
+      if (Math.abs(_pushZoom) > 0.0001 || Math.abs(_pushZoomPeak) > 0.0001) {
         if (!directorOwnsComposition) targetZoom *= (1 + _pushZoom);
-        _pushZoom += -_pushZoom * _pushZoomDecay * frameDt;
-        if (Math.abs(_pushZoom) < 0.0001) _pushZoom = 0;
+        if (Math.abs(_pushZoomPeak) > 0.0001) {
+          _pushZoom = damp(_pushZoom, _pushZoomPeak, _pushZoomRise, frameDt);
+          // Hand off to the decay phase once the rise has essentially arrived, so a push always
+          // returns to 0 even if the peak is never reached exactly.
+          if (Math.abs(_pushZoomPeak - _pushZoom) <= Math.abs(_pushZoomPeak) * 0.06) _pushZoomPeak = 0;
+        } else {
+          _pushZoom = damp(_pushZoom, 0, _pushZoomDecay, frameDt);
+          if (Math.abs(_pushZoom) < 0.0001) _pushZoom = 0;
+        }
       }
       _dynamicZoom = directorOwnsComposition
         ? _directorFrame.zoom
@@ -675,17 +702,35 @@ export function createChaseCamera(state) {
         const vl = readVelocityLanguage(state);
         const bandShake = vl && vl.drive && Number.isFinite(vl.drive.shakeScale) ? vl.drive.shakeScale : 1;
         const shakeScale = motionScale * bandShake;
+        // Resample the shake noise on a FIXED-RATE accumulator, not once per rendered frame. The
+        // amplitude was already frame-rate independent (trauma decays against frameDt above), but the
+        // *frequency* was the display refresh rate: the same trauma read as a fast buzz at 144 Hz and
+        // a slow wobble at 30 Hz, so shake felt like a different effect on different monitors. Held
+        // between steps, so the four channels stay mutually coherent the way the note below requires.
+        _shakeNoiseT += frameDt;
+        while (_shakeNoiseT >= SHAKE_NOISE_STEP_S) {
+          _shakeNoiseT -= SHAKE_NOISE_STEP_S;
+          _shakeNoise[0] = Math.random() * 2 - 1;
+          _shakeNoise[1] = Math.random() * 2 - 1;
+          _shakeNoise[2] = Math.random() * 2 - 1;
+          _shakeNoise[3] = Math.random() * 2 - 1;
+        }
         c.shakeOffset.set(
-          (Math.random() * 2 - 1) * SHAKE_POS_MAX * shakeScale * t2,
+          _shakeNoise[0] * SHAKE_POS_MAX * shakeScale * t2,
           0,
-          (Math.random() * 2 - 1) * SHAKE_POS_MAX * shakeScale * t2,
+          _shakeNoise[1] * SHAKE_POS_MAX * shakeScale * t2,
         );
-        // GR-6: angular shake — roll + pitch jitter, trauma²-scaled. Sampled once per frame from
-        // trauma so it stays coherent with the translational shake rather than vibrating independently.
-        shakeRoll = (Math.random() * 2 - 1) * SHAKE_ROT_ROLL * shakeScale * t2;
-        shakePitch = (Math.random() * 2 - 1) * SHAKE_ROT_PITCH * shakeScale * t2;
+        // GR-6: angular shake — roll + pitch jitter, trauma²-scaled. Sampled together with the
+        // translational channels so it stays coherent rather than vibrating independently.
+        shakeRoll = _shakeNoise[2] * SHAKE_ROT_ROLL * shakeScale * t2;
+        shakePitch = _shakeNoise[3] * SHAKE_ROT_PITCH * shakeScale * t2;
       } else {
         c.shakeOffset.set(0, 0, 0);
+        // Arm the resampler so the FIRST shaking frame displaces immediately. Without this the
+        // fixed-rate accumulator can swallow up to one step (31 ms) before the first sample lands,
+        // which both softens the impact the shake is reacting to and leaves shakeOffset at zero on
+        // the frame trauma arrives.
+        _shakeNoiseT = SHAKE_NOISE_STEP_S;
       }
       cam.position.set(c.focus.x + offset.x + c.shakeOffset.x, offset.y, c.focus.z + offset.z + c.shakeOffset.z);
       cam.lookAt(c.focus.x, 0, c.focus.z);

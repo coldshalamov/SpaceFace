@@ -550,9 +550,16 @@ export const feel = {
       };
     }
     // Distribute across the screen so the first frame isn't empty.
+    // `spawnU` mirrors `uv` here for the same reason it does in the recycle branch above: `travelled`
+    // is measured as |uv - spawnU|, so two independent draws start a brand-new streak mid-fade. With
+    // both ends of the span in play the expected offset is ~0.53 * span, well past the 0.12 * span
+    // fade-in ramp, so the streak popped in at full brightness (and a minority drew past the
+    // 1.10 * span extinction point and were born invisible). The pool grows with speed
+    // (`drive.count`), so this branch runs on every acceleration — not just the first frame.
+    const uv = (Math.random() - 0.5) * span * 1.6;
     return {
-      uv: (Math.random() - 0.5) * span * 1.6,
-      spawnU: (Math.random() - 0.5) * span * 1.6,
+      uv,
+      spawnU: uv,
       p: (Math.random() - 0.5) * Math.max(w, h) * 1.1,
       v: 0.65 + Math.random() * 0.85,
       len: 0.10 + Math.random() * 0.18,
@@ -831,8 +838,12 @@ export const feel = {
     // Sign-symmetric exponential decay toward 0: a punch can be positive (kick out — impacts,
     // recoil, warp-out) or negative (dip in — warp arrival deceleration). The decay rate is the same
     // either way; we snap to 0 once within epsilon so the camera settles exactly on the settings FOV.
+    // damp() rather than Euler (`x += -x * rate * dt`): frame() receives the loop's frameDt
+    // unclamped, and loop.js only caps it at 0.25 s, so a hitch made the Euler step factor
+    // FOV_DECAY * dt = 1.625 — past 1, which flips the sign. A kick-out became a dip-in after any
+    // stall. damp() is exp(-rate*dt) and cannot overshoot at any dt.
     if (Math.abs(this._fovPunch) > 0.001) {
-      this._fovPunch += -this._fovPunch * FOV_DECAY * frameDt;
+      this._fovPunch = damp(this._fovPunch, 0, FOV_DECAY, frameDt);
       if (Math.abs(this._fovPunch) < 0.001) this._fovPunch = 0;
     }
     const cam = this.state.render && this.state.render.camera;
