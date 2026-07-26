@@ -89,7 +89,7 @@
     "check:mining:bulk-guidance": "node scripts/check-mining-bulk-guidance.mjs",
     "check:presentation": "npm run check:vfx:trail-instancing && node scripts/check-presentation-cues.mjs && node scripts/check-sg08-golden-trace.mjs && node scripts/check-sg08-mix-profile.mjs && node scripts/check-sg08-render-vfx.mjs",
     "check:vfx:trail-instancing": "node test/trail-streak-instancing.test.mjs && node scripts/check-trail-streak-instancing-webgl.mjs",
-    "check:camera": "node scripts/check-camera-composition.mjs && node scripts/check-camera-director.mjs && node scripts/check-camera-velocity-language.mjs && node --test test/camera-focus-separation.test.mjs",
+    "check:camera": "node scripts/check-camera-composition.mjs && node scripts/check-camera-director.mjs && node scripts/check-camera-velocity-language.mjs && node scripts/check-camera-shake-scope.mjs && node --test test/camera-focus-separation.test.mjs",
     "check:camera:director": "node scripts/check-camera-director.mjs",
     "check:camera:velocity-language": "node scripts/check-camera-velocity-language.mjs",
     "check:sg05": "node scripts/check-sg05-scenario.mjs && node scripts/check-sg05-runtime.mjs && node scripts/check-sg05-branch-policies.mjs && node scripts/check-sg05-ui-lifecycle.mjs",
@@ -469,7 +469,8 @@
     "check:professional-travel:public-route:contracts": "node --test test/professional-travel-public-route-contract.test.mjs test/galaxy-map-gate-jump-seam.test.mjs",
     "check:professional-travel:public-route:browser": "npm run check:professional-travel:public-route:contracts && node scripts/check-professional-travel-public-route-browser.mjs",
     "check:professional-travel:public-route:electron": "npm run check:professional-travel:public-route:contracts && node scripts/check-professional-travel-public-route-electron.mjs",
-    "check:professional-travel:public-route": "npm run check:professional-travel:public-route:browser && npm run check:professional-travel:public-route:electron"
+    "check:professional-travel:public-route": "npm run check:professional-travel:public-route:browser && npm run check:professional-travel:public-route:electron",
+    "check:camera-shake-scope": "node scripts/check-camera-shake-scope.mjs"
   },
   "private": true,
   "devDependencies": {

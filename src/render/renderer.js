@@ -2,7 +2,7 @@
 // lifecycle. Exposes worldToScreen / raycastToPlane via ctx.helpers and a renderFrame() the loop
 // calls each animation frame. Sim never touches this; it's all in renderFrame (ARCHITECTURE §1,§2.4).
 import * as THREE from 'three';
-import { applyMasslineReleaseCameraCue, createChaseCamera } from './camera.js';
+import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuation } from './camera.js';
 import { createSpaceBackground } from './spaceBackground.js';
 import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
@@ -1217,7 +1217,20 @@ export const render = {
     // shipyard hull switch or fitted weapon never shows. Mirrors the spawn path: dispose old,
     // build new, re-seat from the entity's live transform.
     bus.on('ship:appearanceChanged', ({ id }) => render.rebuildShipMesh(id));
-    bus.on('camera:shake', ({ amount }) => cam.addTrauma(amount || 0.3));
+    // One chokepoint for all 13 camera:shake emitters. A payload carrying `position` is describing a
+    // WORLD event and gets a distance falloff against the player; a payload without one is already
+    // player-scoped by construction (player hit / death / respawn, drill, tether, presentation cues)
+    // and passes through unchanged. Attenuating here rather than at each emitter means the twelve
+    // sites nobody has audited are covered too.
+    bus.on('camera:shake', (payload) => {
+      const amount = (payload && payload.amount) || 0.3;
+      const at = payload && payload.position;
+      if (!at || !Number.isFinite(at.x) || !Number.isFinite(at.z)) { cam.addTrauma(amount); return; }
+      const p = state.entities.get(state.playerId);
+      if (!p || !p.pos) { cam.addTrauma(amount); return; }
+      const scaled = amount * shakeDistanceAttenuation(Math.hypot(at.x - p.pos.x, at.z - p.pos.z));
+      if (scaled > 0.001) cam.addTrauma(scaled);
+    });
     bus.on('camera:kill', () => cam.killCam && cam.killCam());
     // FR-5: ease the frame back to center after a boost-release or a tether slingshot exit/overload
     // (cruise-drop settle stays owned by spec2/02 §1). Boost-release also gets a gentle zoom tighten.

@@ -438,7 +438,11 @@ export const combat = {
       factionId: t.factionId, factionLawful, bountyCr: d.bountyCr || 0,
       lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type,
     });
-    bus.emit('camera:shake', { amount: 0.5 });
+    // World event, not a player event: this fires for EVERY entity killed, so with no position it hit
+    // the player's camera at full 0.5 trauma for a kill anywhere in the sector — three times the
+    // amplitude of the destruction-VFX shake. The neighbouring emitters in this file are all
+    // player-scoped by construction (player hit, player death, respawn) and correctly send none.
+    bus.emit('camera:shake', { amount: 0.5, position: { x: t.pos.x, z: t.pos.z } });
     const bounty = Math.max(0, Math.round(d.bountyCr || 0));
     if (bounty > 0 && killedByPlayer && !missionOwnsReward) {
       bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });

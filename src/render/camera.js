@@ -72,6 +72,32 @@ export const CAMERA_TRAUMA_TUNING = Object.freeze({
   }),
 });
 
+/**
+ * Distance falloff for a camera shake raised by a WORLD event (a ship dying somewhere) rather than
+ * by something happening to the player.
+ *
+ * `camera:shake` has 13 emitters and the consumer used to read only `{ amount }`, so a shake was a
+ * scalar with no notion of where it came from — an NPC exploding at the far edge of the sector hit
+ * the player's camera exactly as hard as one exploding on their nose. Emitters that are already
+ * player-scoped by construction (player hit, player death, respawn, drill, tether) send no position
+ * and are passed through untouched; emitters describing a world event send one and get attenuated.
+ *
+ * Shape: full strength inside FULL_RADIUS, a 1/d rolloff beyond it, and a linear taper so the
+ * contribution reaches exactly zero at CUTOFF_RADIUS instead of trailing off asymptotically. Trauma
+ * is squared when it becomes shake amplitude, so mid-range values damp hard already.
+ */
+export const SHAKE_FULL_RADIUS_WU = 90;
+export const SHAKE_CUTOFF_RADIUS_WU = 1200;
+
+export function shakeDistanceAttenuation(distanceWu) {
+  const d = Number.isFinite(distanceWu) ? Math.max(0, distanceWu) : 0;
+  if (d <= SHAKE_FULL_RADIUS_WU) return 1;
+  if (d >= SHAKE_CUTOFF_RADIUS_WU) return 0;
+  const rolloff = SHAKE_FULL_RADIUS_WU / d;
+  const taper = 1 - (d - SHAKE_FULL_RADIUS_WU) / (SHAKE_CUTOFF_RADIUS_WU - SHAKE_FULL_RADIUS_WU);
+  return Math.max(0, Math.min(1, rolloff * taper));
+}
+
 export function traumaFromMomentumExchange(dp) {
   const value = Number.isFinite(dp) ? Math.max(0, dp) : 0;
   return Math.min(MAX_MOMENTUM_TRAUMA, value / 8000);
