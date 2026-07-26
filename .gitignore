@@ -32,6 +32,7 @@ dist/
 
 # Reproducible Blender/export intermediates and pre-promotion backups
 *.blend1
-**/_export_tmp.glb
+**/*_export_tmp.glb
+tools/art/blender/batch_*.log
 **/__pycache__/
 /assets/ships/m4_helios_hub/evidence/pre_promote_backups/
