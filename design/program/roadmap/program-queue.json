@@ -1023,7 +1023,7 @@
       "id": "PQ-018",
       "priority": 18,
       "title": "Wreck Cathedral hero site",
-      "state": "planned",
+      "state": "focused_green",
       "canonical": [
         "W15",
         "Depth-H1a"
@@ -1057,7 +1057,7 @@
         "public-route"
       ],
       "brief": "Author, place, wire, and accept the Wreck Cathedral as a monumental site with recognizable components, salvage, history, and gameplay.",
-      "partialIntegration": "2026-07-20 closeout: full SOURCE_GLB candidate on master at 6df5a210+a31554fa+6b24baad+7330a85b (blend 9.6MB + GLB 11.2MB + 26 PBR textures + 15 captures + turntable + 11 reports + reproducible authoring scripts; SHA-256 manifest; gltf-validator clean). Recovery tag archive/pq018-wreck-cathedral-source-20260720. PQ-017 dependency is satisfied at 2a9517d8; runtime registration, placement, interaction, save, and route acceptance remain. State stays 'planned'; handoff at design/graphics-sprints/handoffs/2026-07-20-B-pq018-wreck-cathedral-source.yaml."
+      "partialIntegration": "2026-07-20 closeout: full SOURCE_GLB candidate on master at 6df5a210+a31554fa+6b24baad+7330a85b (blend 9.6MB + GLB 11.2MB + 26 PBR textures + 15 captures + turntable + 11 reports + reproducible authoring scripts; SHA-256 manifest; gltf-validator clean). Recovery tag archive/pq018-wreck-cathedral-source-20260720. PQ-017 dependency is satisfied at 2a9517d8; runtime registration, placement, interaction, save, and route acceptance remain. Handoff at design/graphics-sprints/handoffs/2026-07-20-B-pq018-wreck-cathedral-source.yaml. || 2026-07-26 leaf PQ-018.asset-admission integrated at 8e257745 (release build + manifest/runtime registration; receipt receipts/PQ-018-asset-admission-REPORT.md). || 2026-07-26 leaf PQ-018.world-site integrated at aef540d3 (candidate 09417e98, ported selectively from 136cba98): Ceres placement at local (300,2700)/global (-11988,10892) with 76.632 WU clearance, 7 components, 7 operations, physical black-box payload, and five direct-keyed evidence pages rebuilt from completedOperations so a fabricated save cannot mint one. Gates: 90/90 focused, coordinate reservation PASS, check:sim:compare hashEqual true, atlas-integrity + asset-reachability PASS. Receipt receipts/PQ-018-world-site-REPORT.md. State is 'focused_green', NOT integrated: Phase 4 Browser/Electron route acceptance, game-camera visual review, and matched performance remain unproven, and the independent art verdict on the source is still outstanding."
     },
     {
       "id": "PQ-019",
