@@ -10,7 +10,7 @@
     "electron": "electron .",
     "dist": "npm run build:bundle && electron-builder",
     "sf": "node scripts/sf.mjs",
-    "check:contracts": "node scripts/sf.mjs validate test/47a.inputs.json test/47a.telemetry.expected.json src/data/scenarios/47a.scenario.json",
+    "check:contracts": "node scripts/sf.mjs validate test/47a.inputs.json test/47a.telemetry.expected.json src/data/scenarios/47a.scenario.json && node scripts/check-src-reachability.mjs",
     "check:alpha:evidence": "node scripts/check-alpha-evidence.mjs",
     "check:alpha:evidence:contract": "node scripts/check-alpha-evidence.mjs --self-test",
     "check:time-effects": "node test/time-effects.test.mjs",
@@ -474,7 +474,8 @@
     "check:brake-convergence": "node scripts/check-brake-convergence.mjs",
     "check:dock-key-exclusivity": "node scripts/check-dock-key-exclusivity.mjs",
     "check:all": "node scripts/check-ci-report.mjs",
-    "check:all:smoke": "node scripts/check-ci-report.mjs --smoke"
+    "check:all:smoke": "node scripts/check-ci-report.mjs --smoke",
+    "check:src-reachability": "node scripts/check-src-reachability.mjs"
   },
   "private": true,
   "devDependencies": {

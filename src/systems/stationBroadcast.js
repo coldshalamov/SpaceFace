@@ -24,9 +24,15 @@
 //   * Rate cap ≤1 line / CADENCE_S (~20 s), timed on state.simTime.
 //   * No station within NEAR_RANGE → strict no-op. state.mode !== 'flight' → strict no-op.
 //
-// rng (packet contract): Math.random is allowed ONLY for cosmetic line variety and ONLY inside a
-// `typeof window` guard — headless callers (the check) always get lines[0], and no broadcast ever
-// affects sim state.
+// rng (packet contract): line variety is drawn from a DERIVED seeded stream —
+// hash32(runSeed, stationId, cadenceBucket) — never Math.random, and never from the shared
+// state.rng() stream. The earlier contract allowed Math.random inside a `typeof window` guard so that
+// headless callers always read lines[0]; the acceptance check drives _tick() directly, so that guard
+// was load-bearing for the check while leaving the BROWSER unreproducible — two captures of the same
+// seed at the same station could speak different lines, which is the one property visual and route
+// evidence depends on. The derived stream is reproducible for both callers. hash32 rather than
+// state.rng() specifically because drawing from the shared stream would advance it and move the
+// replay hash for a cosmetic voice line. No broadcast writes sim state.
 //
 // Visual tic handoff: the cosmetic VFX tic (vent flare / dish sweep) belongs to the render layer,
 // and src/render/** + vfx.js are graphics/perf-lane-owned (AGENTS §10; release.__building/ active).
@@ -35,6 +41,8 @@
 // render lane subscribes and draws the tic; until then the line alone carries the read.
 //
 // noTouch honored: world.js / voiceArbiter.js / combat.js / render root are never edited.
+
+import { hash32 } from '../core/rng.js';
 
 /** Explicit numeric priority for ambient lines — strictly below every CHANNEL_PRIORITY default. */
 export const AMBIENT_PRIORITY = 1;
@@ -186,8 +194,23 @@ export const stationBroadcast = {
     const def = STATION_BROADCASTS[data.stationTypeId];
     if (!def || !def.lines.length) return;
 
-    // Cosmetic line variety only — Math.random stays inside the window guard (headless → lines[0]).
-    const roll = typeof window !== 'undefined' ? Math.random() : 0;
+    // Line variety comes from a DERIVED seeded stream rather than Math.random behind a
+    // `typeof window` guard. To be precise about the severity: the evaluation timer is already
+    // window-gated (see header), so headless harnesses never reach this line and no golden was ever
+    // at risk. What the old form did cost is reproducibility of the thing that DOES run it — the
+    // browser. Two captures of the same seed at the same station could speak different lines, which
+    // is the one property visual/route evidence depends on. It was also the only real Math.random
+    // left in a src/systems sim path; every other hit in that sweep is a comment asserting there
+    // isn't one.
+    //
+    // Deliberately hash32 rather than state.rng(): drawing from the shared stream would ADVANCE it,
+    // shifting every later consumer that tick and moving the replay hash for a cosmetic voice line.
+    // Keying on the run seed, the station and a cadence bucket keeps the choice stable for a given
+    // broadcast, varied across stations and over time, and invisible to the shared stream — the same
+    // idiom src/systems/missions.js uses for board offers.
+    const seedBase = (state.meta && state.meta.seed) || 0;
+    const bucket = Math.floor(now / Math.max(1, CADENCE_S));
+    const roll = (hash32(seedBase, String(data.stationId || station.id || 'station'), bucket) >>> 0) / 4294967296;
     const text = def.lines[Math.min(def.lines.length - 1, Math.floor(roll * def.lines.length))];
 
     const helpers = (this._ctx && this._ctx.helpers) || {};
