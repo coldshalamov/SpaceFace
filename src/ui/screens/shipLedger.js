@@ -1,6 +1,10 @@
-// A2 dock-screen surface for the Ship's Ledger. It mounts as a sibling panel (the station hub
-// integration seam can register it without changing this module) and renders exactly one bounded
-// archive page at a time. Source state is never written; only this panel's local page cursor moves.
+// A2 dock-screen surface for the Ship's Ledger. It mounts as a sibling panel (the station app and
+// the Codex "Ledger" tab both mount this same factory) and renders exactly one bounded archive page
+// at a time. Source state is never written; only this panel's local page cursor moves.
+//
+// Host-safe: every DOM id is derived from `hostId`, so the same factory can mount in two hosts
+// (station + codex) at once without colliding fixed IDs. Evidence rows open a single detail subtree
+// with one visible image and an explicit, accessible failure state when media is not admitted.
 
 import {
   buildShipLedger,
@@ -23,19 +27,36 @@ function makeButton(label, action) {
   return button;
 }
 
-export function createShipLedgerPanel(ctx) {
+function headingTag(level) {
+  const n = Math.min(6, Math.max(1, Math.floor(Number(level)) || 2));
+  return `h${n}`;
+}
+
+function removeAttr(node, name) {
+  if (node && typeof node.removeAttribute === 'function') node.removeAttribute(name);
+}
+
+export function createShipLedgerPanel(ctx, options = {}) {
+  const rawHost = options.hostId != null ? String(options.hostId).trim() : '';
+  const hostId = rawHost || 'ledger';
+  const hostOptions = options.hostOptions && typeof options.hostOptions === 'object' ? options.hostOptions : {};
+  const hTag = headingTag(options.headingLevel);
+  const idp = (suffix) => `st-ledger-${hostId}-${suffix}`;
+  const titleId = idp('title');
+  const detailTitleId = idp('detail-title');
+
   const root = document.createElement('section');
   root.className = 'st-panel st-ledger';
-  root.setAttribute('aria-labelledby', 'st-ledger-title');
+  root.setAttribute('aria-labelledby', titleId);
 
-  const heading = document.createElement('h2');
-  heading.id = 'st-ledger-title';
+  const heading = document.createElement(hTag);
+  heading.id = titleId;
   heading.className = 'st-sub-h';
-  heading.textContent = "The Ship's Ledger";
+  heading.textContent = hostOptions.title || "The Ship's Ledger";
 
   const intro = document.createElement('p');
   intro.className = 'st-ledger-intro';
-  intro.textContent = 'The Tessera keeps what the manifests leave out.';
+  intro.textContent = hostOptions.intro || 'The Tessera keeps what the manifests leave out.';
 
   const status = document.createElement('p');
   status.className = 'st-ledger-status mono';
@@ -62,10 +83,47 @@ export function createShipLedgerPanel(ctx) {
   const older = makeButton('Older entries', 'older');
   nav.append(newer, pageReadout, older);
 
-  root.append(heading, intro, status, list, empty, nav);
+  // One evidence detail subtree with one visible image. Hidden unless an evidence row is open.
+  const detail = document.createElement('section');
+  detail.className = 'st-ledger-detail';
+  detail.setAttribute('aria-labelledby', detailTitleId);
+  detail.hidden = true;
+
+  const back = document.createElement('button');
+  back.type = 'button';
+  back.className = 'st-btn st-ledger-back';
+  back.setAttribute('data-ledger-back', '1');
+  back.textContent = 'Back to entries';
+
+  const detailHeading = document.createElement('h3');
+  detailHeading.id = detailTitleId;
+  detailHeading.className = 'st-sub-h st-ledger-detail-title';
+
+  const detailFragment = document.createElement('p');
+  detailFragment.className = 'st-ledger-detail-fragment';
+
+  const detailBody = document.createElement('p');
+  detailBody.className = 'st-ledger-detail-body';
+
+  const figure = document.createElement('figure');
+  figure.className = 'st-ledger-figure';
+  const image = document.createElement('img');
+  image.className = 'st-ledger-figure-img';
+  if ('loading' in image) image.loading = 'lazy';
+  const caption = document.createElement('figcaption');
+  caption.className = 'st-ledger-figure-caption';
+  figure.append(image, caption);
+
+  const provenance = document.createElement('p');
+  provenance.className = 'st-ledger-provenance mono';
+
+  detail.append(back, detailHeading, detailFragment, detailBody, figure, provenance);
+
+  root.append(heading, intro, status, list, empty, nav, detail);
 
   let page = 0;
   let lastModel = null;
+  let openerEl = null;
 
   function renderEntry(entry) {
     const item = document.createElement('li');
@@ -97,6 +155,16 @@ export function createShipLedgerPanel(ctx) {
       annotation.textContent = entry.annotation;
       article.appendChild(annotation);
     }
+    // Evidence rows carry an immutable evidencePage detail; the button opens the single detail view.
+    if (entry.evidencePage) {
+      const evidenceBtn = document.createElement('button');
+      evidenceBtn.type = 'button';
+      evidenceBtn.className = 'st-ledger-evidence-btn';
+      evidenceBtn.setAttribute('data-ledger-evidence', entry.evidencePage.pageId);
+      evidenceBtn.setAttribute('aria-label', `Open evidence: ${entry.evidencePage.title}`);
+      evidenceBtn.textContent = `Evidence — ${entry.evidencePage.title}`;
+      article.appendChild(evidenceBtn);
+    }
     item.appendChild(article);
     return item;
   }
@@ -124,6 +192,66 @@ export function createShipLedgerPanel(ctx) {
     return model;
   }
 
+  function clearDetailImage() {
+    // Release the source and detach handlers so no hidden request can fire and no handler can run
+    // after the detail is collapsed or the host is torn down.
+    removeAttr(image, 'src');
+    image.onload = null;
+    image.onerror = null;
+    removeAttr(image, 'alt');
+  }
+
+  function closeDetail(restoreFocus) {
+    if (detail.hidden) return;
+    clearDetailImage();
+    detailHeading.textContent = '';
+    detailFragment.textContent = '';
+    detailBody.textContent = '';
+    caption.textContent = '';
+    provenance.textContent = '';
+    figure.setAttribute('data-ledger-figure-state', 'idle');
+    detail.hidden = true;
+    list.hidden = !!(lastModel && lastModel.total === 0);
+    nav.hidden = !!(lastModel && lastModel.pageCount <= 1);
+    empty.hidden = !!(lastModel && lastModel.total !== 0);
+    const target = restoreFocus ? (openerEl || newer) : null;
+    openerEl = null;
+    if (target && typeof target.focus === 'function') target.focus();
+  }
+
+  function openEvidence(pageId, originEl) {
+    const model = lastModel;
+    if (!model) return;
+    const entry = model.entries.find((candidate) => candidate.evidencePage
+      && candidate.evidencePage.pageId === pageId);
+    if (!entry) return;
+    const ev = entry.evidencePage;
+    openerEl = originEl || null;
+    clearDetailImage(); // drop any prior request before arming the next
+    detailHeading.textContent = ev.title;
+    detailFragment.textContent = ev.fragment;
+    detailBody.textContent = ev.body;
+    caption.textContent = (ev.media && ev.media.caption) || '';
+    provenance.textContent = ev.provenanceRef ? `Provenance: ${ev.provenanceRef}` : '';
+    figure.setAttribute('data-ledger-figure-state', 'admitted');
+    image.setAttribute('alt', (ev.media && ev.media.alt) || ev.title || '');
+    // Failure is an explicit, accessible state — never a silent substitute image.
+    image.onerror = () => {
+      removeAttr(image, 'src');
+      image.setAttribute('alt', 'Evidence media not admitted or unavailable.');
+      caption.textContent = 'Evidence media not admitted or unavailable.';
+      figure.setAttribute('data-ledger-figure-state', 'failed');
+    };
+    image.onload = () => { figure.setAttribute('data-ledger-figure-state', 'admitted'); };
+    if (ev.media && ev.media.path) image.setAttribute('src', ev.media.path);
+    // Hide the bounded list + archive nav while reading one evidence page.
+    detail.hidden = false;
+    list.hidden = true;
+    nav.hidden = true;
+    empty.hidden = true;
+    if (typeof back.focus === 'function') back.focus();
+  }
+
   function onNavClick(event) {
     const button = event.target && event.target.closest && event.target.closest('[data-ledger-page]');
     if (!button || button.disabled || !lastModel) return;
@@ -134,14 +262,42 @@ export function createShipLedgerPanel(ctx) {
     if (ctx && ctx.bus && ctx.bus.emit) ctx.bus.emit('audio:cue', { id: 'ui_click' });
   }
 
+  function onListClick(event) {
+    const btn = event.target && event.target.closest && event.target.closest('[data-ledger-evidence]');
+    if (!btn) return;
+    openEvidence(btn.getAttribute('data-ledger-evidence'), btn);
+    if (ctx && ctx.bus && ctx.bus.emit) ctx.bus.emit('audio:cue', { id: 'ui_click' });
+  }
+
+  function onDetailClick(event) {
+    const btn = event.target && event.target.closest && event.target.closest('[data-ledger-back]');
+    if (!btn) return;
+    closeDetail(true);
+    if (ctx && ctx.bus && ctx.bus.emit) ctx.bus.emit('audio:cue', { id: 'ui_click' });
+  }
+
   nav.addEventListener('click', onNavClick);
+  list.addEventListener('click', onListClick);
+  detail.addEventListener('click', onDetailClick);
 
   return {
     el: root,
     get model() { return lastModel; },
     onShow() { refresh(page); },
     refresh,
-    destroy() { nav.removeEventListener('click', onNavClick); },
+    openEvidence,
+    closeDetail,
+    onHide() {
+      // No hidden refresh: collapse any open evidence detail and release the image request, but do
+      // NOT rebuild the list while the host is hidden.
+      closeDetail(false);
+    },
+    destroy() {
+      nav.removeEventListener('click', onNavClick);
+      list.removeEventListener('click', onListClick);
+      detail.removeEventListener('click', onDetailClick);
+      clearDetailImage();
+    },
   };
 }
 

@@ -14,6 +14,10 @@ import {
   SHIP_LEDGER_TEMPLATES,
   VOLS_LEDGER_ANNOTATIONS,
 } from '../data/shipLedgerTemplates.js';
+import {
+  WRECK_CATHEDRAL_EVIDENCE_PAGE_IDS,
+  wreckCathedralEvidenceCatalogEntry,
+} from '../data/wreckCathedralEvidenceCatalog.js';
 
 export const SHIP_LEDGER_SCHEMA_VERSION = 1;
 export const SHIP_LEDGER_PAGE_SIZE = 12;
@@ -22,6 +26,11 @@ export const SHIP_LEDGER_MAX_ENTRIES = 240;
 export const SHIP_LEDGER_MAX_SOURCE_RECORDS = 512;
 export const SHIP_LEDGER_CYCLE_SECONDS = 600;
 export const VOLS_ANNOTATION_BEAT_GATE = 3;
+// The Cathedral evidence projection reads one durable site record by stable id and the immutable
+// presentation catalog. It writes neither — the World Site owner remains the sole writer of the
+// receipt map and the catalog owner remains the sole writer of presentation copy/media.
+export const SHIP_LEDGER_EVIDENCE_SITE_ID = 'world_site_wreck_cathedral';
+export const SHIP_LEDGER_EVIDENCE_MAX_REVISIONS = 4;
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((entry) => [entry.id, entry]));
 const SHIP_BY_ID = new Map(SHIPS.map((entry) => [entry.id, entry]));
@@ -49,6 +58,15 @@ const PREVIOUS_CREW_ENCOUNTERS = new Set([
 
 function finite(value, fallback = 0) {
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
+}
+
+function finiteInt(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) && Number.isInteger(n) && n >= 0 ? n : fallback;
+}
+
+function isRecord(value) {
+  return value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function boundedInt(value, min, max, fallback = min) {
@@ -127,6 +145,107 @@ function templateFor(seed, type, sourceId) {
 
 function volsAnnotationFor(seed, sourceId) {
   return VOLS_LEDGER_ANNOTATIONS[hash32(seed, 'vols-ledger-hand', sourceId) % VOLS_LEDGER_ANNOTATIONS.length];
+}
+
+// ---- Wreck Cathedral evidence collector (pure, read-only) ----
+//
+// The live receipt source is a direct-keyed map (at most one receipt per pageId) rebuilt by the
+// World Site kernel on every normalize. The revision selector below is therefore defensive: it
+// accepts a bounded list of candidates, validates each, and selects the highest valid revision
+// independent of array order. A conflict (same top revision, differing payloads) is NEVER resolved
+// by last-write, array order, display text, wall time, or host — the page is omitted instead.
+
+function evidenceCandidateKey(receipt) {
+  // Canonical, host-independent identity for byte-equivalence comparison.
+  return JSON.stringify({
+    receiptId: text(receipt.receiptId, ''),
+    pageId: text(receipt.pageId, ''),
+    revision: finiteInt(receipt.revision),
+    earnedTick: finiteInt(receipt.earnedTick),
+    earnedAtS: finite(receipt.earnedAtS, 0),
+    siteRecordId: text(receipt.siteRecordId, ''),
+    componentId: text(receipt.componentId, ''),
+    operationId: text(receipt.operationId, ''),
+    operationReceiptId: text(receipt.operationReceiptId, ''),
+    stateFrom: text(receipt.stateFrom, ''),
+    stateTo: text(receipt.stateTo, ''),
+    provenanceRef: text(receipt.provenanceRef, ''),
+    catalogRevision: finiteInt(receipt.catalogRevision),
+  });
+}
+
+function validEvidenceCandidate(receipt) {
+  if (!isRecord(receipt)) return null;
+  if (!Number.isFinite(Number(receipt.revision)) || Number(receipt.revision) < 0) return null;
+  if (!Number.isFinite(Number(receipt.earnedTick)) || Number(receipt.earnedTick) < 0) return null;
+  if (!Number.isFinite(Number(receipt.earnedAtS)) || Number(receipt.earnedAtS) < 0) return null;
+  if (!text(receipt.provenanceRef, '')) return null;
+  if (!Number.isFinite(Number(receipt.catalogRevision)) || Number(receipt.catalogRevision) < 0) return null;
+  return receipt;
+}
+
+/**
+ * Bounded revision selector for one evidence page. Accepts up to
+ * SHIP_LEDGER_EVIDENCE_MAX_REVISIONS candidate receipts, validates each, and selects the highest
+ * valid revision independent of array order. Byte-equivalent winners collapse to one; same-revision
+ * winners that differ are a conflict (no winner, diagnostic emitted).
+ * @returns {{ winner: object|null, conflict: boolean, diagnostic: object|null }}
+ */
+export function selectEvidenceWinner(candidates) {
+  const input = Array.isArray(candidates) ? candidates.slice(0, SHIP_LEDGER_EVIDENCE_MAX_REVISIONS) : [];
+  const valid = [];
+  for (const candidate of input) {
+    const receipt = validEvidenceCandidate(candidate);
+    if (receipt) valid.push(receipt);
+  }
+  if (!valid.length) return { winner: null, conflict: false, diagnostic: null };
+  // Highest valid revision, independent of arrival/array order.
+  let top = valid[0];
+  for (const receipt of valid) if (finiteInt(receipt.revision) > finiteInt(top.revision)) top = receipt;
+  const topRevision = finiteInt(top.revision);
+  const winners = valid.filter((receipt) => finiteInt(receipt.revision) === topRevision);
+  // Collapse byte-equivalent duplicate winners to one.
+  const firstKey = evidenceCandidateKey(winners[0]);
+  const allEquivalent = winners.every((receipt) => evidenceCandidateKey(receipt) === firstKey);
+  if (!allEquivalent) {
+    return {
+      winner: null,
+      conflict: true,
+      diagnostic: {
+        pageId: text(top.pageId, ''),
+        revision: topRevision,
+        candidateCount: winners.length,
+        reason: 'same-revision-conflict',
+      },
+    };
+  }
+  return { winner: winners[0], conflict: false, diagnostic: null };
+}
+
+/**
+ * Direct-keyed collector over the Cathedral evidence receipts. Reads one site record by stable id
+ * and the immutable catalog; writes neither. Returns validated winners plus conflict diagnostics.
+ * Identity is pageId only — a higher accepted revision updates the same row.
+ */
+export function collectWreckCathedralEvidence(state) {
+  const sites = state && state.sites;
+  const worldById = sites && isRecord(sites.worldById) ? sites.worldById : null;
+  const site = worldById && isRecord(worldById[SHIP_LEDGER_EVIDENCE_SITE_ID])
+    ? worldById[SHIP_LEDGER_EVIDENCE_SITE_ID] : null;
+  const map = site && isRecord(site.evidenceReceiptsByPageId) ? site.evidenceReceiptsByPageId : {};
+  const winners = [];
+  const conflicts = [];
+  for (const pageId of WRECK_CATHEDRAL_EVIDENCE_PAGE_IDS) {
+    const receipt = map[pageId];                 // direct property lookup, no scan
+    const candidates = receipt ? [receipt] : []; // at most one per page (defensive)
+    const result = selectEvidenceWinner(candidates);
+    if (result.conflict) { conflicts.push(result.diagnostic); continue; }
+    if (!result.winner) continue;
+    const catalog = wreckCathedralEvidenceCatalogEntry(pageId, finiteInt(result.winner.catalogRevision));
+    if (!catalog) continue;                       // catalog revision mismatch → not presentable
+    winners.push({ pageId, receipt: result.winner, catalog });
+  }
+  return { winners, conflicts };
 }
 
 export function volsLedgerGateOpen(state) {
@@ -348,8 +467,45 @@ function collectCandidates(state) {
     });
   }
 
+  // Five physically earned Cathedral evidence pages, projected as witness-type rows carrying an
+  // immutable evidencePage detail. Identity is pageId only; a higher accepted revision updates the
+  // same row. The collector reads the durable receipt map and the catalog; it writes neither.
+  const evidence = collectWreckCathedralEvidence(state);
+  for (const item of evidence.winners) {
+    const at = Math.max(0, finite(item.receipt.earnedAtS, 0));
+    const pageId = item.pageId;
+    candidates.push({
+      id: `ledger_evidence_${pageId}`,
+      schemaVersion: SHIP_LEDGER_SCHEMA_VERSION,
+      type: 'witness',
+      sourceId: pageId,
+      sourceKind: 'worldSite.evidence',
+      at,
+      cycle: cycleOf(at),
+      cycleLabel: formatLedgerCycle(at),
+      templateId: `evidence.${pageId}`,
+      text: item.catalog.title,
+      hand: 'captain',
+      annotationId: null,
+      annotation: null,
+      evidencePage: {
+        pageId,
+        revision: item.catalog.revision,
+        title: item.catalog.title,
+        fragment: item.catalog.fragment,
+        body: item.catalog.body,
+        provenanceRef: item.catalog.provenanceRef,
+        mapRef: item.catalog.mapRef,
+        media: item.catalog.media,
+        earnedTick: finiteInt(item.receipt.earnedTick),
+        earnedAtS: at,
+      },
+    });
+    observed++;
+  }
+
   candidates.sort((a, b) => b.at - a.at || b.cycle - a.cycle || a.id.localeCompare(b.id));
-  return { candidates, observed, gateOpen };
+  return { candidates, observed, gateOpen, evidenceConflicts: evidence.conflicts };
 }
 
 function quoteCandidates(entries, enabled) {
@@ -371,7 +527,7 @@ function quoteCandidates(entries, enabled) {
  */
 export function buildShipLedger(state, options = {}) {
   const pageSize = boundedInt(options.pageSize, 1, SHIP_LEDGER_MAX_PAGE_SIZE, SHIP_LEDGER_PAGE_SIZE);
-  const { candidates, observed, gateOpen } = collectCandidates(state || {});
+  const { candidates, observed, gateOpen, evidenceConflicts } = collectCandidates(state || {});
   const bounded = candidates.slice(0, SHIP_LEDGER_MAX_ENTRIES);
   const pageCount = Math.max(1, Math.ceil(bounded.length / pageSize));
   const page = boundedInt(options.page, 0, pageCount - 1, 0);
@@ -392,6 +548,7 @@ export function buildShipLedger(state, options = {}) {
     hasOlder: page + 1 < pageCount,
     volsAnnotationOpen: gateOpen,
     entries: bounded.slice(start, start + pageSize),
+    evidenceConflicts,
     endgameQuotes: quoteCandidates(bounded, endgameOpen),
   });
 }

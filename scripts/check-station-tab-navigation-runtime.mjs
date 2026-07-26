@@ -5,11 +5,12 @@
 // dock:docked event path used by flight, then drives the Command Dock with pointer + keyboard.
 // QA probe only: it does not change routes, assets, render settings, or gameplay defaults.
 //
-// DESIGN TRUTH (src/ui/station/): one Command Dock is the whole navigation — six destinations
-// (Market, Shipworks, Industry, Contracts, Factions, Bar) plus dock actions (Repair, Refuel,
-// Resupply, Undock). There is no tab rail, no Hold tab (the hold is a manifest popover on the
-// Hold readout), and no Services tab (repair/refuel/resupply are dock actions with live costs).
-// Departure readiness rides on the Undock tile; launching while not ready opens a Departure Check.
+// DESIGN TRUTH (src/ui/station/): one Command Dock is the whole navigation — seven destinations
+// (Market, Shipworks, Industry, Contracts/Missions, Factions, Bar, Ledger) plus dock actions
+// (Repair, Refuel, Resupply, Undock). There is no tab rail, no Hold tab (the hold is a manifest
+// popover on the Hold readout), and no Services tab (repair/refuel/resupply are dock actions with
+// live costs). Departure readiness rides on the Undock tile; launching while not ready opens a
+// Departure Check.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
@@ -21,7 +22,7 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
 const DOCK_TIMEOUT_MS = 15000;
-const DESTINATIONS = ['market', 'shipworks', 'industry', 'contracts', 'factions', 'bar'];
+const DESTINATIONS = ['market', 'shipworks', 'industry', 'contracts', 'factions', 'bar', 'ledger'];
 const DOCK_ACTIONS = ['repair', 'refuel', 'resupply', 'undock'];
 const { chromium } = await loadPlaywright();
 
@@ -221,7 +222,7 @@ try {
 
   // ---- keyboard: roving tabindex + arrows/Home/End, Enter/Space activate ----
   await focusNav(page, 'market');
-  await pressAndExpectNav(page, 'End', 'bar');
+  await pressAndExpectNav(page, 'End', 'ledger');
   await pressAndExpectNav(page, 'Home', 'market');
   await pressAndExpectNav(page, 'ArrowRight', 'shipworks');
   await pressAndExpectNav(page, 'ArrowRight', 'industry');
@@ -306,7 +307,7 @@ try {
   await page.waitForFunction(() => window.SF.state.ui.docked === false, null, { timeout: 6000 });
 
   assert.deepEqual(issues.errorIssues(), [], 'station dock probe should not record page errors');
-  console.log('Station command dock OK: New Game -> dock -> 6 destinations (pointer + keyboard) -> first-dock handoff -> Departure Check -> undock');
+  console.log('Station command dock OK: New Game -> dock -> 7 destinations (pointer + keyboard) -> first-dock handoff -> Departure Check -> undock');
   console.log('Dock target:', dockTarget.stationId);
 } catch (err) {
   if (typeof issues !== 'undefined' && issues) console.error('Captured page issues during run:', issues.issues);

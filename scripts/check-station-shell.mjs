@@ -37,8 +37,8 @@ assert.match(contract, /Select an object[\s\S]*preview real[\s\S]*commit/i, 'con
 assert.match(contract, /superseded/i, 'contract explicitly retires the legacy Station OS layout authority');
 assert.match(contract, /must not freeze a[\s\S]*palette/i, 'contract forbids aesthetic source checks');
 
-// Live command model: six destinations, immediate services, task-carrying handoff and keyboard tabs.
-for (const id of ['market', 'shipworks', 'industry', 'contracts', 'factions', 'bar']) {
+// Live command model: seven destinations, immediate services, task-carrying handoff and keyboard tabs.
+for (const id of ['market', 'shipworks', 'industry', 'contracts', 'factions', 'bar', 'ledger']) {
   assert.match(app, new RegExp(`id:\\s*['"]${id}['"]`), `station exposes ${id}`);
 }
 for (const id of ['repair', 'refuel', 'resupply', 'undock']) {

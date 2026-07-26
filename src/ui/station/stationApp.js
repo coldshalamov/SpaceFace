@@ -15,6 +15,7 @@ import { createContractsScreen } from './screens/contracts.js';
 import { createShipworksScreen } from './screens/shipworks.js';
 import { createIndustryScreen } from './screens/industry.js';
 import { createBarScreen } from './screens/bar.js';
+import { createLedgerScreen } from './screens/ledger.js';
 import { icon } from './icons.js';
 import { SECTORS } from '../../data/sectors.js';
 import { FACTION_META } from '../../data/factions.js';
@@ -68,6 +69,7 @@ const DESTINATIONS = [
   { id: 'contracts', label: 'Missions', icon: 'contracts', tagline: 'Jobs · turn-ins · station leads', create: createContractsScreen },
   { id: 'factions', label: 'Factions', icon: 'factions', tagline: 'Standing & relations', create: createFactionsScreen },
   { id: 'bar', label: 'Bar', icon: 'bar', tagline: 'Rumors · contacts · leads', create: createBarScreen },
+  { id: 'ledger', label: 'Ledger', icon: 'ledger', tagline: "The Tessera's record · evidence", create: createLedgerScreen },
 ];
 
 const ACTIONS = [
@@ -500,6 +502,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     contracts: ['Missions board', 'Accept jobs, track routes, and settle objectives that complete at this berth. Highlighted rows need your attention first.'],
     factions: ['Authority network', 'Select a faction to expose its standing thresholds, relationships, recent change and immediate unlocks.'],
     bar: ['Station contacts', 'Contacts turn rumors and local knowledge into actionable leads, survey data and missions.'],
+    ledger: ["Ship's Ledger", 'The Tessera keeps what the manifests leave out. Physically recovered evidence pages open to their forensic detail.'],
   };
   helpEl.addEventListener('click', () => {
     const help = HELP[activeId] || ['Station operation', 'Select an operation from the command dock.'];

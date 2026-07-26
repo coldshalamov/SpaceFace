@@ -9,6 +9,7 @@
 // state.story + the pure-data narrative tables; never mutates sim state.
 
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, KURTZ, PERSISTENT_CARGO } from '../../data/narrative.js';
+import { createShipLedgerPanel } from './shipLedger.js';
 
 const STYLE_ID = 'sf-codex-style';
 
@@ -108,7 +109,7 @@ function shell(rootEl, title, extraClass) {
   return { panel: rootEl, body };
 }
 
-const TABS = ['Story', 'Comms', 'Graffiti', 'Figures', 'Ship', 'Archive'];
+const TABS = ['Story', 'Comms', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
 
 // Signal Archive — the four authored intro cinematics, exposed as recovered transmission stills the
 // player can replay. Posters (C-INTRO-0N.jpg) are clean full-bleed frames; clips are the 6s mp4s.
@@ -315,22 +316,41 @@ export const codexScreen = {
     this._visible = true;
     // Honor a deep-link request (main menu "Signal Archive" opens straight to that tab).
     if (_requestedTab) { this._activeTab = _requestedTab; _requestedTab = null; if (this._body) this._render(ctx); }
+    // The Ledger panel owns local page-cursor/evidence-detail state; an explicit show may refresh it.
+    if (this._activeTab === 'Ledger' && this._ledgerPanel) { try { this._ledgerPanel.onShow(); } catch (_) {} }
   },
-  onHide() { this._visible = false; },
+  onHide() {
+    this._visible = false;
+    // Release the ledger's image request when the codex hides; no rebuild happens here.
+    if (this._ledgerPanel) { try { this._ledgerPanel.onHide(); } catch (_) {} }
+  },
 
   _render(ctx) {
     if (!this._body) return;
+    // The Ledger tab owns its own page cursor and evidence-detail subtree. An unrelated refresh
+    // (story/comms/graffiti event) must not tear that local state down: if the Ledger panel is
+    // already mounted in the body, only refresh tab-button active styling and return.
+    if (this._activeTab === 'Ledger' && this._ledgerPanel && this._ledgerPanel.el
+        && this._ledgerPanel.el.parentNode === this._body) {
+      for (const t of TABS) if (this._tabBtns[t]) this._tabBtns[t].classList.toggle('active', t === this._activeTab);
+      return;
+    }
+    // Leaving the Ledger tab: destroy its panel so no listener or image lingers off-tab.
+    if (this._activeTab !== 'Ledger' && this._ledgerPanel) {
+      try { this._ledgerPanel.destroy(); } catch (_) {}
+      this._ledgerPanel = null;
+    }
     this._body.innerHTML = '';
     for (const t of TABS) {
       if (this._tabBtns[t]) this._tabBtns[t].classList.toggle('active', t === this._activeTab);
     }
-    // The Archive tab is media, not searchable narrative — hide the search + unlock-status chrome.
-    const isArchive = this._activeTab === 'Archive';
+    // Archive + Ledger are media/panel surfaces, not searchable narrative — hide the chrome.
+    const isChromeLess = this._activeTab === 'Archive' || this._activeTab === 'Ledger';
     if (this._search) {
-      this._search.style.display = isArchive ? 'none' : '';
-      if (!isArchive && this._search.value !== this._query) this._search.value = this._query;
+      this._search.style.display = isChromeLess ? 'none' : '';
+      if (!isChromeLess && this._search.value !== this._query) this._search.value = this._query;
     }
-    if (!isArchive) this._renderStatus(ctx);
+    if (!isChromeLess) this._renderStatus(ctx);
     switch (this._activeTab) {
       case 'Story':    this._renderStory(ctx); break;
       case 'Comms':    this._renderComms(ctx); break;
@@ -338,8 +358,9 @@ export const codexScreen = {
       case 'Figures':  this._renderFigures(ctx); break;
       case 'Ship':     this._renderShip(ctx); break;
       case 'Archive':  this._renderArchive(ctx); break;
+      case 'Ledger':   this._renderLedger(ctx); break;
     }
-    if (!isArchive) this._applySearchFilter();
+    if (!isChromeLess) this._applySearchFilter();
   },
 
   // Signal Archive — a grid of poster cards; clicking one plays its 6s clip through the UI system's
@@ -375,6 +396,17 @@ export const codexScreen = {
     if (typeof window !== 'undefined' && typeof window.playSpaceFaceCinematic === 'function') {
       window.playSpaceFaceCinematic(video, title);
     }
+  },
+
+  // Ledger — the Ship's Ledger panel (the SAME factory the station mounts). No codex subscription
+  // is added for it: the panel owns no subscriptions, and the skip-rerender guard in _render keeps
+  // unrelated story/comms/graffiti refreshes from rebuilding it while it is the active tab.
+  _renderLedger(ctx) {
+    if (!this._ledgerPanel) {
+      this._ledgerPanel = createShipLedgerPanel(ctx || this._ctx, { hostId: 'codex', headingLevel: 2 });
+    }
+    this._body.appendChild(this._ledgerPanel.el);
+    this._ledgerPanel.onShow();
   },
 
   _renderStatus(ctx) {
