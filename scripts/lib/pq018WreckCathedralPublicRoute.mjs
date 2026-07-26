@@ -714,7 +714,10 @@ async function ensureHullStabilized(page, timeoutMs) {
 async function completeOperation(page, operation, timeoutMs, { recovering = false } = {}) {
   const worldRecordId = `${PQ018_SITE_ID}/component/${operation.componentId}`;
   await cycleToComponent(page, operation.componentId);
-  await settleAtWorldRecord(page, worldRecordId, 110, 5, timeoutMs, {
+  // Stand off at 195 rather than 110. The starting beam reaches 240 wu (industrial 420), so closing
+  // to 110 buys no capability and drives the ship deep among the wreck's solid proxies, where the
+  // approach itself trips cathedral_hull_impact -- the collateral failure the packet forbids.
+  await settleAtWorldRecord(page, worldRecordId, 195, 5, timeoutMs, {
     useAutopilot: true,
   });
   // The crossing itself is what rams the hull, so the recovery check belongs after the approach,
