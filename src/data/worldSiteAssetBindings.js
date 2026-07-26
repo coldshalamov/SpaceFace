@@ -21,7 +21,33 @@ function sockets(emissiveZ) {
   });
 }
 
-function binding({ partId, assetId, sourceSha256, releaseSha256, sourceBytes, releaseBytes, rootName, visualCenterXZ, emissiveZ }) {
+const cathedralSockets = Object.freeze({
+  INTERACTION_HangarCavity: socket('future_world_site_cavity', [0, 5, 0]),
+  SALVAGE_ConduitBank: socket('future_salvage_node', [99.37923431396484, 24.087305068969727, -68.28560638427734]),
+  SALVAGE_EngineMachinery: socket('future_salvage_node', [-226.73182678222656, 12.388017654418945, 5.248732566833496]),
+  SALVAGE_ServiceRack: socket('future_salvage_node', [-125.59925842285156, -2.267620801925659, -50.781742095947266]),
+  SOCKET_Flythrough_Entry: socket('flythrough_entry', [-278.13482666015625, 0.10397624969482422, -31.204429626464844]),
+  SOCKET_Flythrough_Exit: socket('flythrough_exit', [303.7676086425781, 23.767391204833984, -45.19260787963867]),
+  SOCKET_TheMarker: socket('the_marker', [140.27813720703125, 141.1614532470703, -18.738412857055664]),
+  ZONE_Bridge: socket('bridge_zone', [187.67970275878906, 89.22998046875, -27.353229522705078]),
+  ZONE_BrokenKeel: socket('broken_keel_zone', [0, -58, 0]),
+  ZONE_Propulsion: socket('propulsion_zone', [-240.85142517089844, -1.089632511138916, -23.957263946533203]),
+  ZONE_Service_Port: socket('service_zone', [-124.28954315185547, 6.782212257385254, 48.83946228027344]),
+  ZONE_Service_Starboard: socket('service_zone', [110.7385025024414, 28.541553497314453, -73.49394989013672]),
+});
+
+function binding({
+  partId,
+  assetId,
+  sourceSha256,
+  releaseSha256,
+  sourceBytes,
+  releaseBytes,
+  rootName,
+  visualCenterXZ,
+  emissiveZ,
+  socketBindings = null,
+}) {
   return Object.freeze({
     contractVersion: 1,
     partId,
@@ -30,7 +56,7 @@ function binding({ partId, assetId, sourceSha256, releaseSha256, sourceBytes, re
     release: Object.freeze({ path: `assets/ships/release/parts/places/${partId}.glb`, sha256: releaseSha256, bytes: releaseBytes }),
     root: Object.freeze({ name: rootName, transform: tf() }),
     visualCenterXZ: Object.freeze(visualCenterXZ),
-    sockets: sockets(emissiveZ),
+    sockets: socketBindings || sockets(emissiveZ),
   });
 }
 
@@ -55,6 +81,17 @@ export const WORLD_SITE_ASSET_BINDINGS = Object.freeze({
     releaseSha256: 'dc07ebef0ea61a45e778ecbb8a9ac4dfda4e71e4970433337e0ead084fffdcc2',
     sourceBytes: 13230948, releaseBytes: 8303864,
     rootName: 'SF_PLACE_CLAIM_OUTPOST_RELAY_ROOT', visualCenterXZ: { x: 3.3318, z: 0 }, emissiveZ: -24.472501754760742,
+  }),
+  place_landmark_wreck_cathedral: binding({
+    partId: 'place_landmark_wreck_cathedral',
+    assetId: 'SF_LANDMARK_PLACE_LANDMARK_WRECK_CATHEDRAL',
+    sourceSha256: 'f335935f9658bad0e721aceb5d66bb4c2f0457fe411442819b4a3455a00af704',
+    releaseSha256: 'dc5510f88b128d9a40e427700fe4b0b212987db152f60757ef5035bda270a49a',
+    sourceBytes: 11155156,
+    releaseBytes: 6160084,
+    rootName: 'SF_PLACE_LANDMARK_WRECK_CATHEDRAL_ROOT',
+    visualCenterXZ: { x: 16.00636548, z: -12.99468677 },
+    socketBindings: cathedralSockets,
   }),
 });
 

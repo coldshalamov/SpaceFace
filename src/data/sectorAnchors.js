@@ -6,6 +6,8 @@ import { FRONTIER_ANCHORS, FRONTIER_CORE_GATE_PATCHES } from './frontierRegions/
 
 const GATE_R = 0.82;
 
+export const CERES_WRECK_CATHEDRAL_LOCAL_POS = Object.freeze({ x: 300, z: 2700 });
+
 function bearingGate(sector, neighbor) {
   const wr = sector.worldRadius || 4000;
   const dx = (neighbor.position.x - sector.position.x);
@@ -54,6 +56,7 @@ const CORE_SECTOR_ANCHORS = {
     pois: [
       { id: 'poi_driller', pos: { x: 240, z: -1180 }, landmarkGlb: 'place_dead_hulk', landmark: true },
       { id: 'poi_survey', pos: { x: -1240, z: -320 }, landmarkGlb: 'place_debris_chunk' },
+      { id: 'world_site_wreck_cathedral', pos: CERES_WRECK_CATHEDRAL_LOCAL_POS, landmark: true },
     ],
   },
   sector_tethys_junction: {

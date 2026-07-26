@@ -1253,6 +1253,9 @@ export const world = {
         : { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
       const pos = this._toGlobal(local, sector.id);
       if (!disc.pois[poi.id]) disc.pois[poi.id] = { discovered: false, identified: false };
+      // Static Atlas rows may delegate their physical representation to a durable runtime owner.
+      // Keep the discovery identity here, but never create a second marker entity beside that owner.
+      if (poi.runtimeOwner === 'asteroidSites') continue;
       const placeId = poi.landmarkGlb
         ? String(poi.landmarkGlb).replace(/^places\//, '').replace(/\.glb$/, '')
         : null;

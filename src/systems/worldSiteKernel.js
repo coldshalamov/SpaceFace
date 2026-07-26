@@ -3,7 +3,7 @@
 
 import { validateWorldSiteAssetBinding, worldSiteAssetBinding } from '../data/worldSiteAssetBindings.js';
 
-export const WORLD_SITE_RECORD_SCHEMA_VERSION = 2;
+export const WORLD_SITE_RECORD_SCHEMA_VERSION = 3;
 
 export const WORLD_SITE_LIMITS = Object.freeze({
   maxComponents: 7,
@@ -29,10 +29,19 @@ export function validateWorldSiteManifest(manifest) {
     || manifest.placement.coordinateSpace !== 'global_v1') add('placement-invalid', '$.placement');
   if (!nonEmpty(manifest.visualRoot && manifest.visualRoot.placeId)) add('visual-binding-missing', '$.visualRoot.placeId');
   if (!nonEmpty(manifest.visualRoot && manifest.visualRoot.anchorId)) add('visual-anchor-missing', '$.visualRoot.anchorId');
+  if (manifest.visualRoot?.visualRadius != null
+    && !(Number.isFinite(manifest.visualRoot.visualRadius) && manifest.visualRoot.visualRadius > 0)) {
+    add('visual-radius-invalid', '$.visualRoot.visualRadius');
+  }
+  if (manifest.visualRoot?.componentProxyPresentation != null
+    && manifest.visualRoot.componentProxyPresentation !== 'hidden') {
+    add('component-proxy-presentation-invalid', '$.visualRoot.componentProxyPresentation');
+  }
 
   const components = array(manifest.components);
   const operations = array(manifest.operations);
   const proxies = array(manifest.proxies);
+  const collisionProxies = array(manifest.collisionProxies);
   const payloads = array(manifest.payloads);
   const receivers = array(manifest.receivers);
   const stages = array(manifest.stages);
@@ -44,11 +53,19 @@ export function validateWorldSiteManifest(manifest) {
   if (operations.length < 1 || operations.length > WORLD_SITE_LIMITS.maxOperations) add('operation-limit', '$.operations');
   if (payloads.length > WORLD_SITE_LIMITS.maxPayloads) add('payload-limit', '$.payloads');
   if (receivers.length > WORLD_SITE_LIMITS.maxReceivers) add('receiver-limit', '$.receivers');
-  if (1 + proxies.length + payloads.length > WORLD_SITE_LIMITS.maxEntities) add('entity-limit', '$.proxies');
+  if (1 + proxies.length + collisionProxies.length + payloads.length > WORLD_SITE_LIMITS.maxEntities) {
+    add('entity-limit', '$.collisionProxies');
+  }
 
   const componentIds = collectIds(components, 'component', add);
   const operationIds = collectIds(operations, 'operation', add);
   const proxyIds = collectIds(proxies, 'proxy', add);
+  const collisionProxyIds = collectIds(
+    collisionProxies,
+    'collisionProxy',
+    add,
+    'collisionProxies',
+  );
   const payloadIds = collectIds(payloads, 'payload', add);
   const receiverIds = collectIds(receivers, 'receiver', add);
   const stageIds = collectIds(stages, 'stage', add);
@@ -56,7 +73,9 @@ export function validateWorldSiteManifest(manifest) {
   const requestStreamIds = collectIds(requestStreams, 'requestStream', add);
   collectIds(failureTriggers, 'failureTrigger', add);
   void proxyIds;
+  void collisionProxyIds;
   void stageIds;
+  const evidencePageIds = new Set();
 
   for (let i = 0; i < components.length; i += 1) {
     if (!nonEmpty(components[i] && components[i].anchorId)) add('component-anchor-missing', `$.components[${i}].anchorId`);
@@ -91,6 +110,18 @@ export function validateWorldSiteManifest(manifest) {
       }
     }
   }
+  for (let i = 0; i < collisionProxies.length; i += 1) {
+    const proxy = collisionProxies[i] || {};
+    if (!nonEmpty(proxy.anchorId)) {
+      add('collision-proxy-anchor-missing', `$.collisionProxies[${i}].anchorId`);
+    }
+    if (!validProxy(proxy) || proxy.bodyType !== 'solid' || proxy.bodyTypeByStatus != null) {
+      add('collision-proxy-incompatible', `$.collisionProxies[${i}]`);
+    }
+    if (proxy.failureComponentId != null && !componentIds.has(proxy.failureComponentId)) {
+      add('collision-proxy-failure-component-missing', `$.collisionProxies[${i}].failureComponentId`);
+    }
+  }
   const proxyBindings = new Set();
   for (const component of components) {
     const matches = proxies.filter((proxy) => proxy.componentId === component.id);
@@ -100,6 +131,14 @@ export function validateWorldSiteManifest(manifest) {
     const proxy = proxies[i];
     const binding = `${proxy.anchorId}|${finite(proxy.offset && proxy.offset.x)}|${finite(proxy.offset && proxy.offset.z)}`;
     if (proxyBindings.has(binding)) add('proxy-binding-duplicate', `$.proxies[${i}]`, binding);
+    proxyBindings.add(binding);
+  }
+  for (let i = 0; i < collisionProxies.length; i += 1) {
+    const proxy = collisionProxies[i];
+    const binding = `${proxy.anchorId}|${finite(proxy.offset && proxy.offset.x)}|${finite(proxy.offset && proxy.offset.z)}`;
+    if (proxyBindings.has(binding)) {
+      add('collision-proxy-binding-duplicate', `$.collisionProxies[${i}]`, binding);
+    }
     proxyBindings.add(binding);
   }
 
@@ -119,6 +158,21 @@ export function validateWorldSiteManifest(manifest) {
     if (operation.receiverId && !receiverIds.has(operation.receiverId)) add('operation-receiver-missing', `$.operations[${i}].receiverId`);
     for (const consequenceId of array(operation.consequenceIds)) {
       if (!consequenceIds.has(consequenceId)) add('operation-consequence-missing', `$.operations[${i}].consequenceIds`, consequenceId);
+    }
+    if (operation.evidencePageId != null) {
+      if (!nonEmpty(operation.evidencePageId)) {
+        add('operation-evidence-page-invalid', `$.operations[${i}].evidencePageId`);
+      } else if (evidencePageIds.has(operation.evidencePageId)) {
+        add('operation-evidence-page-duplicate', `$.operations[${i}].evidencePageId`, operation.evidencePageId);
+      } else {
+        evidencePageIds.add(operation.evidencePageId);
+      }
+      if (!positiveInt(operation.evidenceRevision)) add('operation-evidence-revision-invalid', `$.operations[${i}].evidenceRevision`);
+      if (!positiveInt(operation.evidenceCatalogRevision)) add('operation-evidence-catalog-revision-invalid', `$.operations[${i}].evidenceCatalogRevision`);
+      if (!nonEmpty(operation.evidenceProvenanceRef)) add('operation-evidence-provenance-invalid', `$.operations[${i}].evidenceProvenanceRef`);
+    } else if (operation.evidenceRevision != null || operation.evidenceCatalogRevision != null
+      || operation.evidenceProvenanceRef != null) {
+      add('operation-evidence-page-missing', `$.operations[${i}]`);
     }
   }
   if (hasDependencyCycle(dependencyGraph)) add('operation-dependency-cycle', '$.operations');
@@ -176,6 +230,11 @@ export function validateWorldSiteManifest(manifest) {
       add('proxy-socket-binding-missing', `$.proxies[${i}].anchorId`);
     }
   }
+  for (let i = 0; i < collisionProxies.length; i += 1) {
+    if (stageBindings.some((binding) => !binding.sockets[collisionProxies[i].anchorId])) {
+      add('collision-proxy-socket-binding-missing', `$.collisionProxies[${i}].anchorId`);
+    }
+  }
   if (!stages.length) add('stage-limit', '$.stages');
 
   if (!hasDependencyCycle(dependencyGraph)) {
@@ -217,6 +276,8 @@ export function createWorldSiteRecord(manifest, opts = {}) {
     receivers,
     completedOperations: {},
     completionCount: 0,
+    evidenceReceiptsByPageId: {},
+    evidenceRevision: 0,
     operationCursors: {},
     discoveries: manifest.discovery && manifest.discovery.initialDiscovered
       ? [{ id: 'natural_producer', tick }]
@@ -299,6 +360,9 @@ export function normalizeWorldSiteRecord(manifest, value, opts = {}) {
         cycle,
         requestStreamId: operation.requestStreamId,
         requestSequence: sequence,
+        earnedAtS: finiteNonNegative(completed.earnedAtS, finiteTick(completed.tick) / 60),
+        stateFrom: array(operation.from).includes(completed.stateFrom) ? completed.stateFrom : operation.from[0],
+        stateTo: operation.to,
       };
       component.status = operation.to;
       next.updatedTick = Math.max(next.updatedTick, finiteTick(completed.tick));
@@ -343,6 +407,22 @@ export function normalizeWorldSiteRecord(manifest, value, opts = {}) {
     next.receivers[def.id].status = 'settled';
     next.receivers[def.id].settledReceiptId = settlement.receiptId;
   }
+
+  // Evidence is durable, direct-keyed truth derived only from an authored operation completion.
+  // Invalid/fabricated rows fail closed; a valid completion can reconstruct a missing row during
+  // schema migration without relying on proximity, discovery, or a broad site-complete flag.
+  next.evidenceReceiptsByPageId = {};
+  for (const operation of manifest.operations) {
+    if (!operation.evidencePageId) continue;
+    const completed = next.completedOperations[operation.id];
+    if (!completed) continue;
+    next.evidenceReceiptsByPageId[operation.evidencePageId] = evidenceReceiptForOperation(
+      manifest,
+      operation,
+      completed,
+    );
+  }
+  next.evidenceRevision = Object.keys(next.evidenceReceiptsByPageId).length;
 
   next.discoveries = boundedPlainArray(value.discoveries, 16);
   next.failures = boundedPlainArray(value.failures, WORLD_SITE_LIMITS.maxFailures)
@@ -405,10 +485,13 @@ export function applyWorldSiteOperation(manifest, record, request = {}) {
   }
 
   const next = clonePlain(record);
+  if (!isPlainObject(next.evidenceReceiptsByPageId)) next.evidenceReceiptsByPageId = {};
+  next.evidenceRevision = boundedInt(next.evidenceRevision, 0, Number.MAX_SAFE_INTEGER, 0);
   next.operationCursors = normalizeOperationCursors(manifest, next.operationCursors, [], next.completedOperations);
   next.operationCursors[operation.id] = { requestStreamId, throughSequence: requestSequence };
   const receiptId = operationReceiptId(manifest.id, operation.id, requestStreamId, requestSequence);
   const component = next.components[operation.componentId];
+  const stateFrom = component.status;
   const before = Number(component.progress[operation.id]) || 0;
   const after = Math.min(operation.threshold, before + amount);
   component.progress[operation.id] = after;
@@ -423,6 +506,9 @@ export function applyWorldSiteOperation(manifest, record, request = {}) {
       receiptId, tick: finiteTick(request.tick), cycle: boundedInt(component.cycle, 0, Number.MAX_SAFE_INTEGER, 0),
       requestStreamId,
       requestSequence,
+      earnedAtS: finiteNonNegative(request.earnedAtS, finiteTick(request.tick) / 60),
+      stateFrom,
+      stateTo: operation.to,
     };
     next.completionCount = boundedInt(next.completionCount, 0, Number.MAX_SAFE_INTEGER - 1, 0) + 1;
     const payloadDef = operation.payloadId && manifest.payloads.find((candidate) => candidate.id === operation.payloadId);
@@ -442,6 +528,14 @@ export function applyWorldSiteOperation(manifest, record, request = {}) {
       next.payloads[operation.payloadId].settledReceiptId = receiptId;
       next.receivers[operation.receiverId].status = 'settled';
       next.receivers[operation.receiverId].settledReceiptId = receiptId;
+    }
+    if (operation.evidencePageId && !next.evidenceReceiptsByPageId[operation.evidencePageId]) {
+      next.evidenceReceiptsByPageId[operation.evidencePageId] = evidenceReceiptForOperation(
+        manifest,
+        operation,
+        next.completedOperations[operation.id],
+      );
+      next.evidenceRevision = boundedInt(next.evidenceRevision, 0, Number.MAX_SAFE_INTEGER - 1, 0) + 1;
     }
     intents = intentsForOperation(manifest, operation, receiptId);
   }
@@ -551,6 +645,9 @@ export function planWorldSiteMaterialization(manifest, record) {
     scale: Number(stage.scale) || Number(manifest.visualRoot.initialScale) || 1,
     label: stage.label || manifest.name,
     stageId,
+    visualRadius: Number(manifest.visualRoot.visualRadius) > 0
+      ? Number(manifest.visualRoot.visualRadius)
+      : 18,
     presentation: projectWorldSitePresentation(stage, record),
   };
   const components = manifest.components.map((component) => {
@@ -577,6 +674,23 @@ export function planWorldSiteMaterialization(manifest, record) {
       label: component.label,
     };
   });
+  const collisionProxies = array(manifest.collisionProxies).map((proxy) => {
+    const offset = rotatedOffset(socketLocalOffset(binding, proxy, stage.scale), manifest.placement.rot);
+    return {
+      worldRecordId: `${manifest.worldObjectId}/collision/${proxy.id}`,
+      type: 'wreck',
+      proxyId: proxy.id,
+      proxyRole: 'collision',
+      failureComponentId: proxy.failureComponentId || null,
+      pos: { x: origin.x + finite(offset.x), z: origin.z + finite(offset.z) },
+      radius: proxyRadius(proxy) * root.scale,
+      bodyType: 'solid',
+      shape: proxy.shape,
+      proxy: clonePlain(proxy),
+      status: 'solid',
+      label: `${manifest.name} collision envelope`,
+    };
+  });
   const payloads = manifest.payloads
     .filter((payload) => record.payloads[payload.id] && record.payloads[payload.id].status === 'released')
     .map((payload) => {
@@ -594,9 +708,17 @@ export function planWorldSiteMaterialization(manifest, record) {
         salvagePool: clonePlain(payload.salvagePool || {}),
       };
     });
-  const entities = [root, ...components, ...payloads];
+  const entities = [root, ...components, ...collisionProxies, ...payloads];
   if (entities.length > WORLD_SITE_LIMITS.maxEntities) throw new RangeError('World Site materialization exceeds entity limit');
-  return { siteId: manifest.id, stageId, root, components, payloads, entities };
+  return {
+    siteId: manifest.id,
+    stageId,
+    root,
+    components,
+    collisionProxies,
+    payloads,
+    entities,
+  };
 }
 
 export function worldSiteProxyBodyType(proxy, status) {
@@ -617,7 +739,7 @@ export function projectWorldSite(manifest, record) {
     label: plan.root.label,
     pos: { x: plan.root.pos.x, z: plan.root.pos.z },
     stageLabel: plan.root.label,
-    visual: { placeId: plan.root.placeId, scale: plan.root.scale },
+    visual: { placeId: plan.root.placeId, scale: plan.root.scale, radius: plan.root.visualRadius },
     map: { ...clonePlain(manifest.mapAnnotation || {}), stageId: plan.stageId, stageLabel: plan.root.label },
     ledger: {
       revision: record.revision,
@@ -639,6 +761,8 @@ export function projectWorldSite(manifest, record) {
     components: manifest.components.map((def) => ({ id: def.id, label: def.label, ...clonePlain(record.components[def.id]) })),
     payloads: clonePlain(record.payloads),
     receivers: clonePlain(record.receivers),
+    evidenceRevision: boundedInt(record.evidenceRevision, 0, Number.MAX_SAFE_INTEGER, 0),
+    evidenceReceiptsByPageId: clonePlain(record.evidenceReceiptsByPageId || {}),
     discoveries: clonePlain(record.discoveries),
     updatedTick: record.updatedTick,
   });
@@ -672,6 +796,24 @@ function intentsForOperation(manifest, operation, receiptId) {
     }
   }
   return out;
+}
+
+function evidenceReceiptForOperation(manifest, operation, completed) {
+  return {
+    receiptId: operation.evidencePageId,
+    pageId: operation.evidencePageId,
+    revision: operation.evidenceRevision,
+    earnedTick: finiteTick(completed.tick),
+    earnedAtS: finiteNonNegative(completed.earnedAtS, finiteTick(completed.tick) / 60),
+    siteRecordId: manifest.worldObjectId,
+    componentId: operation.componentId,
+    operationId: operation.id,
+    operationReceiptId: completed.receiptId,
+    stateFrom: array(operation.from).includes(completed.stateFrom) ? completed.stateFrom : operation.from[0],
+    stateTo: operation.to,
+    provenanceRef: operation.evidenceProvenanceRef,
+    catalogRevision: operation.evidenceCatalogRevision,
+  };
 }
 
 function evaluateStage(manifest, record) {
@@ -739,12 +881,12 @@ function hasDependencyCycle(graph) {
   return false;
 }
 
-function collectIds(entries, family, add) {
+function collectIds(entries, family, add, plural = `${family}s`) {
   const ids = new Set();
   for (let i = 0; i < entries.length; i += 1) {
     const id = entries[i] && entries[i].id;
-    if (!nonEmpty(id)) add(`${family}-id-missing`, `$.${family}s[${i}].id`);
-    else if (ids.has(id)) add(`${family}-id-duplicate`, `$.${family}s[${i}].id`, id);
+    if (!nonEmpty(id)) add(`${family}-id-missing`, `$.${plural}[${i}].id`);
+    else if (ids.has(id)) add(`${family}-id-duplicate`, `$.${plural}[${i}].id`, id);
     else ids.add(id);
   }
   return ids;
@@ -993,6 +1135,9 @@ function finiteSequence(value) {
 }
 function positiveInt(value) { return Number.isInteger(value) && value > 0; }
 function finite(value, fallback = 0) { return Number.isFinite(value) ? value : fallback; }
+function finiteNonNegative(value, fallback = 0) {
+  return Number.isFinite(value) && value >= 0 ? value : Math.max(0, finite(fallback, 0));
+}
 function finiteTick(value) { return Math.max(0, Math.trunc(finite(Number(value), 0))); }
 function finitePoint(value) { return isPlainObject(value) && Number.isFinite(value.x) && Number.isFinite(value.z); }
 function isPlainObject(value) { return !!value && typeof value === 'object' && !Array.isArray(value) && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null); }

@@ -1,7 +1,14 @@
 // PQ-017 — versioned data grammar for persistent multi-component World Sites.
 // Runtime mutation stays in asteroidSites/worldSiteKernel; this file is inert content truth.
 
-export const WORLD_SITE_MANIFEST_VERSION = 3;
+import { CERES_WRECK_CATHEDRAL_LOCAL_POS } from './sectorAnchors.js';
+import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
+
+export const WORLD_SITE_MANIFEST_VERSION = 4;
+
+const CERES_WRECK_CATHEDRAL_GLOBAL_POS = Object.freeze(
+  sectorLocalToGlobalForSector(CERES_WRECK_CATHEDRAL_LOCAL_POS, 'sector_ceres_belt'),
+);
 
 function stagePresentation(color, intensity, pulseRate, rotationRate) {
   return Object.freeze({
@@ -24,6 +31,32 @@ function stagePresentation(color, intensity, pulseRate, rotationRate) {
     animations: Object.freeze([
       Object.freeze({ id: 'status_pulse', kind: 'pulse', targetId: 'relay_status', rate: pulseRate, amplitude: 0.18 }),
       Object.freeze({ id: 'ring_rotate', kind: 'rotate', targetId: 'service_ring', rate: rotationRate, amplitude: 1 }),
+    ]),
+  });
+}
+
+function cathedralStagePresentation(color, intensity, pulseRate, rotationRate) {
+  return Object.freeze({
+    schemaVersion: 1,
+    fixtures: Object.freeze([
+      Object.freeze({
+        id: 'marker_status', kind: 'status-light', socketId: 'SOCKET_TheMarker',
+        componentId: 'registry_scan_array', color, intensity, radius: 5.5, opacity: 0.92,
+      }),
+      Object.freeze({
+        id: 'bridge_trace', kind: 'ring', socketId: 'ZONE_Bridge',
+        componentId: 'bridge_navigation_record', color, intensity: intensity * 0.62,
+        radius: 12, tube: 0.8, opacity: 0.5,
+      }),
+      Object.freeze({
+        id: 'receiver_trace', kind: 'bar', socketId: 'ZONE_Service_Starboard',
+        componentId: 'marker_service_spine', color, intensity: intensity * 0.72,
+        size: Object.freeze([7.5, 0.8, 0.8]), opacity: 0.64,
+      }),
+    ]),
+    animations: Object.freeze([
+      Object.freeze({ id: 'marker_pulse', kind: 'pulse', targetId: 'marker_status', rate: pulseRate, amplitude: 0.2 }),
+      Object.freeze({ id: 'bridge_rotate', kind: 'rotate', targetId: 'bridge_trace', rate: rotationRate, amplitude: 1 }),
     ]),
   });
 }
@@ -137,6 +170,154 @@ export const WORLD_SITE_MANIFESTS = Object.freeze([
     }),
     producer: Object.freeze({ kind: 'authored_static', cadence: 'sector_enter', sectorId: 'sector_helios_prime' }),
     debug: Object.freeze({ packet: 'PQ-017', fixture: 'helios_recovery_relay', routeNote: 'Helios default flight route' }),
+  }),
+  Object.freeze({
+    schemaVersion: WORLD_SITE_MANIFEST_VERSION,
+    id: 'world_site_wreck_cathedral',
+    worldObjectId: 'world_site_wreck_cathedral',
+    name: 'Wreck Cathedral',
+    sectorId: 'sector_ceres_belt',
+    placement: Object.freeze({
+      coordinateSpace: 'global_v1',
+      pos: CERES_WRECK_CATHEDRAL_GLOBAL_POS,
+      rot: 0,
+    }),
+    visualRoot: Object.freeze({
+      placeId: 'place_landmark_wreck_cathedral',
+      anchorId: 'INTERACTION_HangarCavity',
+      initialScale: 1,
+      visualRadius: 360,
+      componentProxyPresentation: 'hidden',
+    }),
+    requestStreams: Object.freeze([
+      Object.freeze({ id: 'player-industrial-beam', owner: 'mining', sequenceSource: 'state.tick' }),
+    ]),
+    proxies: Object.freeze([
+      Object.freeze({
+        id: 'proxy_cathedral_hull', componentId: 'cathedral_hull',
+        anchorId: 'ZONE_Service_Starboard', shape: 'circle', bodyType: 'sensor',
+        radius: 24, offset: Object.freeze({ x: 0, z: -30 }),
+      }),
+      Object.freeze({ id: 'proxy_bridge_navigation_record', componentId: 'bridge_navigation_record', anchorId: 'ZONE_Bridge', shape: 'circle', bodyType: 'sensor', radius: 20, offset: Object.freeze({ x: 0, z: 0 }) }),
+      Object.freeze({ id: 'proxy_registry_scan_array', componentId: 'registry_scan_array', anchorId: 'SOCKET_TheMarker', shape: 'circle', bodyType: 'sensor', radius: 18, offset: Object.freeze({ x: 0, z: 0 }) }),
+      Object.freeze({ id: 'proxy_emergency_relay_clock', componentId: 'emergency_relay_clock', anchorId: 'SALVAGE_ConduitBank', shape: 'circle', bodyType: 'sensor', radius: 16, offset: Object.freeze({ x: 0, z: 0 }) }),
+      Object.freeze({ id: 'proxy_cargo_clamp_forensics', componentId: 'cargo_clamp_forensics', anchorId: 'SALVAGE_ServiceRack', shape: 'circle', bodyType: 'sensor', radius: 18, offset: Object.freeze({ x: 0, z: 0 }) }),
+      Object.freeze({ id: 'proxy_cathedral_black_box', componentId: 'cathedral_black_box_or_device', anchorId: 'ZONE_Service_Port', shape: 'circle', bodyType: 'sensor', radius: 12, offset: Object.freeze({ x: 0, z: 0 }) }),
+      Object.freeze({ id: 'proxy_marker_service_spine', componentId: 'marker_service_spine', anchorId: 'ZONE_Service_Starboard', shape: 'circle', bodyType: 'sensor', radius: 22, offset: Object.freeze({ x: 0, z: 0 }) }),
+    ]),
+    collisionProxies: Object.freeze([
+      Object.freeze({ id: 'upper_port_outer', anchorId: 'INTERACTION_HangarCavity', shape: 'circle', bodyType: 'solid', failureComponentId: 'cathedral_hull', radius: 68, offset: Object.freeze({ x: -248.99363452, z: -162.99468677 }) }),
+      Object.freeze({ id: 'upper_port_inner', anchorId: 'INTERACTION_HangarCavity', shape: 'circle', bodyType: 'solid', failureComponentId: 'cathedral_hull', radius: 68, offset: Object.freeze({ x: -71.99363452, z: -162.99468677 }) }),
+      Object.freeze({ id: 'upper_starboard_inner', anchorId: 'INTERACTION_HangarCavity', shape: 'circle', bodyType: 'solid', failureComponentId: 'cathedral_hull', radius: 68, offset: Object.freeze({ x: 103.00636548, z: -162.99468677 }) }),
+      Object.freeze({ id: 'upper_starboard_outer', anchorId: 'INTERACTION_HangarCavity', shape: 'circle', bodyType: 'solid', failureComponentId: 'cathedral_hull', radius: 68, offset: Object.freeze({ x: 280.00636548, z: -162.99468677 }) }),
+      Object.freeze({ id: 'lower_port', anchorId: 'INTERACTION_HangarCavity', shape: 'circle', bodyType: 'solid', failureComponentId: 'cathedral_hull', radius: 76, offset: Object.freeze({ x: -203.99363452, z: 92.00531323 }) }),
+      Object.freeze({ id: 'lower_center', anchorId: 'INTERACTION_HangarCavity', shape: 'circle', bodyType: 'solid', failureComponentId: 'cathedral_hull', radius: 76, offset: Object.freeze({ x: 16.00636548, z: 92.00531323 }) }),
+      Object.freeze({ id: 'lower_starboard', anchorId: 'INTERACTION_HangarCavity', shape: 'circle', bodyType: 'solid', failureComponentId: 'cathedral_hull', radius: 76, offset: Object.freeze({ x: 236.00636548, z: 92.00531323 }) }),
+    ]),
+    components: Object.freeze([
+      Object.freeze({ id: 'cathedral_hull', label: 'CATHEDRAL HULL', kind: 'machine', anchorId: 'INTERACTION_HangarCavity', initialStatus: 'failed' }),
+      Object.freeze({ id: 'bridge_navigation_record', label: 'BRIDGE NAVIGATION RECORD', kind: 'archive', anchorId: 'ZONE_Bridge', initialStatus: 'sealed' }),
+      Object.freeze({ id: 'registry_scan_array', label: 'REGISTRY SCAN ARRAY', kind: 'archive', anchorId: 'SOCKET_TheMarker', initialStatus: 'offline' }),
+      Object.freeze({ id: 'emergency_relay_clock', label: 'EMERGENCY RELAY CLOCK', kind: 'machine', anchorId: 'SALVAGE_ConduitBank', initialStatus: 'damaged' }),
+      Object.freeze({ id: 'cargo_clamp_forensics', label: 'CARGO CLAMP FORENSICS', kind: 'weakpoint', anchorId: 'SALVAGE_ServiceRack', initialStatus: 'attached' }),
+      Object.freeze({ id: 'cathedral_black_box_or_device', label: 'CATHEDRAL BLACK BOX', kind: 'payload_mount', anchorId: 'ZONE_Service_Port', initialStatus: 'sealed' }),
+      Object.freeze({ id: 'marker_service_spine', label: 'MARKER SERVICE SPINE', kind: 'receiver', anchorId: 'ZONE_Service_Starboard', initialStatus: 'offline' }),
+    ]),
+    operations: Object.freeze([
+      Object.freeze({ id: 'stabilize_cathedral_hull', componentId: 'cathedral_hull', verb: 'repair', requestStreamId: 'player-industrial-beam', threshold: 48, from: Object.freeze(['failed']), to: 'stabilized', dependsOn: Object.freeze([]), consequenceIds: Object.freeze([]) }),
+      Object.freeze({
+        id: 'extract_bridge_navigation_record', componentId: 'bridge_navigation_record', verb: 'extract',
+        requestStreamId: 'player-industrial-beam', threshold: 24, from: Object.freeze(['sealed']), to: 'recovered',
+        dependsOn: Object.freeze(['stabilize_cathedral_hull']), consequenceIds: Object.freeze([]),
+        evidencePageId: 'wreck_cathedral.missing_convoy', evidenceRevision: 1, evidenceCatalogRevision: 1,
+        evidenceProvenanceRef: 'wreck_cathedral/c1_01',
+      }),
+      Object.freeze({
+        id: 'extract_registry_scan', componentId: 'registry_scan_array', verb: 'extract',
+        requestStreamId: 'player-industrial-beam', threshold: 20, from: Object.freeze(['offline']), to: 'matched',
+        dependsOn: Object.freeze(['stabilize_cathedral_hull']), consequenceIds: Object.freeze([]),
+        evidencePageId: 'wreck_cathedral.capital_hull_located', evidenceRevision: 1, evidenceCatalogRevision: 1,
+        evidenceProvenanceRef: 'wreck_cathedral/c1_02',
+      }),
+      Object.freeze({
+        id: 'repair_emergency_relay_clock', componentId: 'emergency_relay_clock', verb: 'repair',
+        requestStreamId: 'player-industrial-beam', threshold: 28, from: Object.freeze(['damaged']), to: 'synchronized',
+        dependsOn: Object.freeze(['stabilize_cathedral_hull']), consequenceIds: Object.freeze([]),
+        evidencePageId: 'wreck_cathedral.clock_stopped_first', evidenceRevision: 1, evidenceCatalogRevision: 1,
+        evidenceProvenanceRef: 'wreck_cathedral/c1_03',
+      }),
+      Object.freeze({
+        id: 'cut_cargo_clamp_forensics', componentId: 'cargo_clamp_forensics', verb: 'cut',
+        requestStreamId: 'player-industrial-beam', threshold: 36, from: Object.freeze(['attached']), to: 'released',
+        dependsOn: Object.freeze(['stabilize_cathedral_hull', 'repair_emergency_relay_clock']),
+        payloadId: 'cathedral_black_box', consequenceIds: Object.freeze([]),
+        evidencePageId: 'wreck_cathedral.released_from_inside', evidenceRevision: 1, evidenceCatalogRevision: 1,
+        evidenceProvenanceRef: 'wreck_cathedral/c1_04',
+      }),
+      Object.freeze({ id: 'repair_marker_service_spine', componentId: 'marker_service_spine', verb: 'repair', requestStreamId: 'player-industrial-beam', threshold: 30, from: Object.freeze(['offline']), to: 'ready', dependsOn: Object.freeze(['stabilize_cathedral_hull']), consequenceIds: Object.freeze([]) }),
+      Object.freeze({
+        id: 'settle_cathedral_black_box', componentId: 'marker_service_spine', verb: 'transfer',
+        requestStreamId: 'player-industrial-beam', threshold: 1, from: Object.freeze(['ready']), to: 'settled',
+        dependsOn: Object.freeze(['cut_cargo_clamp_forensics', 'repair_marker_service_spine']),
+        payloadId: 'cathedral_black_box', receiverId: 'cathedral_archive_receiver',
+        consequenceIds: Object.freeze(['cathedral_archive_settled']),
+        evidencePageId: 'wreck_cathedral.what_was_carried', evidenceRevision: 1, evidenceCatalogRevision: 1,
+        evidenceProvenanceRef: 'wreck_cathedral/c1_05',
+      }),
+    ]),
+    failureTriggers: Object.freeze([
+      Object.freeze({
+        id: 'cathedral_hull_impact', event: 'physics:impact', actorPolicy: 'player-contact',
+        componentId: 'cathedral_hull', minDp: 220, from: Object.freeze(['stabilized']),
+        recoveryOperationId: 'stabilize_cathedral_hull',
+      }),
+    ]),
+    payloads: Object.freeze([
+      Object.freeze({
+        id: 'cathedral_black_box',
+        worldObjectId: 'world_site_wreck_cathedral/payload/cathedral_black_box',
+        label: 'Cathedral Black Box',
+        componentId: 'cathedral_black_box_or_device',
+        releaseOperationId: 'cut_cargo_clamp_forensics',
+        radius: 4,
+        mass: 140,
+        salvagePool: Object.freeze({ cmdty_salvage_electronics: 2, cmdty_classified_salvage: 1 }),
+      }),
+    ]),
+    receivers: Object.freeze([
+      Object.freeze({
+        id: 'cathedral_archive_receiver',
+        componentId: 'marker_service_spine',
+        acceptsPayloadIds: Object.freeze(['cathedral_black_box']),
+        settlementOperationId: 'settle_cathedral_black_box',
+      }),
+    ]),
+    stages: Object.freeze([
+      Object.freeze({ id: 'dark', placeId: 'place_landmark_wreck_cathedral', scale: 1, label: 'WRECK CATHEDRAL', requires: Object.freeze([]), presentation: cathedralStagePresentation(0x6594a6, 0.78, 0.55, 0.08) }),
+      Object.freeze({ id: 'stabilized', placeId: 'place_landmark_wreck_cathedral', scale: 1, label: 'WRECK CATHEDRAL — STABILIZED', requires: Object.freeze(['stabilize_cathedral_hull']), presentation: cathedralStagePresentation(0x72c9d4, 0.92, 0.7, 0.12) }),
+      Object.freeze({ id: 'opened', placeId: 'place_landmark_wreck_cathedral', scale: 1, label: 'WRECK CATHEDRAL — RECORDS OPEN', requires: Object.freeze(['stabilize_cathedral_hull', 'extract_bridge_navigation_record', 'extract_registry_scan', 'repair_emergency_relay_clock', 'cut_cargo_clamp_forensics']), presentation: cathedralStagePresentation(0xe8b96b, 1.08, 0.85, 0.18) }),
+      Object.freeze({ id: 'archived', placeId: 'place_landmark_wreck_cathedral', scale: 1, label: 'WRECK CATHEDRAL — ARCHIVE LINKED', requires: Object.freeze(['stabilize_cathedral_hull', 'extract_bridge_navigation_record', 'extract_registry_scan', 'repair_emergency_relay_clock', 'cut_cargo_clamp_forensics', 'repair_marker_service_spine', 'settle_cathedral_black_box']), presentation: cathedralStagePresentation(0x7ddf9f, 1.2, 0.65, 0.24) }),
+    ]),
+    consequences: Object.freeze([
+      Object.freeze({ id: 'cathedral_archive_settled', intents: Object.freeze([
+        { domain: 'economy', type: 'economy:grantCredits', payload: Object.freeze({ amount: 650, reason: 'wreck_cathedral_archive' }) },
+        { domain: 'faction', type: 'faction:repDelta', payload: Object.freeze({ factionId: 'faction_archive', delta: 1, reason: 'wreck_cathedral_archive' }) },
+      ]) }),
+    ]),
+    persistence: Object.freeze({ collection: 'state.sites.worldById', serializer: 'asteroidSites', recordSchemaVersion: 3 }),
+    discovery: Object.freeze({ naturalProducer: 'asteroidSites', visibleOnDefaultRoute: true, revealRadius: 1300, initialDiscovered: true }),
+    mapAnnotation: Object.freeze({
+      kind: 'world-site', poiType: 'capital-wreck', label: 'Wreck Cathedral',
+      searchText: 'Wreck Cathedral Ceres capital wreck Concord Vigilant archive black box',
+    }),
+    producer: Object.freeze({ kind: 'authored_static', cadence: 'sector_enter', sectorId: 'sector_ceres_belt' }),
+    debug: Object.freeze({
+      packet: 'PQ-018',
+      fixture: 'wreck_cathedral',
+      routeNote: 'Ceres local reservation (300, 2700)',
+      sectorLocalPlacement: CERES_WRECK_CATHEDRAL_LOCAL_POS,
+      reservationEnvelope: 620,
+    }),
   }),
 ]);
 
