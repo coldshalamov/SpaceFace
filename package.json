@@ -357,7 +357,7 @@
     "check:station-tabs": "node scripts/check-station-tab-navigation-runtime.mjs",
     "check:station-missions-layout": "node scripts/check-station-missions-layout.mjs",
     "check:station-ui-stability": "node scripts/check-station-ui-temporal-stability.mjs",
-    "check:station-interact-undock": "node scripts/check-station-interact-undock.mjs",
+    "check:station-interact-undock": "node scripts/check-station-interact-undock.mjs && node scripts/check-dock-key-exclusivity.mjs",
     "check:faction-standings": "node scripts/check-faction-standings-guidance.mjs",
     "check:mission-standing-ladder": "node scripts/check-mission-standing-ladder.mjs",
     "check:manufacture-guidance": "node scripts/check-manufacture-guidance.mjs",
@@ -471,7 +471,8 @@
     "check:professional-travel:public-route:electron": "npm run check:professional-travel:public-route:contracts && node scripts/check-professional-travel-public-route-electron.mjs",
     "check:professional-travel:public-route": "npm run check:professional-travel:public-route:browser && npm run check:professional-travel:public-route:electron",
     "check:camera-shake-scope": "node scripts/check-camera-shake-scope.mjs",
-    "check:brake-convergence": "node scripts/check-brake-convergence.mjs"
+    "check:brake-convergence": "node scripts/check-brake-convergence.mjs",
+    "check:dock-key-exclusivity": "node scripts/check-dock-key-exclusivity.mjs"
   },
   "private": true,
   "devDependencies": {

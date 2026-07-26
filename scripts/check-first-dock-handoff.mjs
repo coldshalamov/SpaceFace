@@ -95,7 +95,16 @@ assert.equal(pkg.scripts['check:first-dock-handoff'], 'node scripts/check-first-
   'package.json must expose the first dock handoff guard');
 assert.ok(pkg.scripts.check.includes('npm run check:first-dock-handoff'),
   'npm run check must include the first dock handoff guard');
-assert.ok(pkg.scripts['check:ci'].includes('npm run check:first-dock-handoff'),
-  'npm run check:ci must include the first dock handoff guard');
+// CI membership, stated as intent rather than as a literal chain string. `check:ci` used to be its
+// own explicit `&&` chain; it now delegates to `check:ci:report`, which expands the `check` chain into
+// individual commands and runs them all. So this guard is still in CI — transitively, via the `check`
+// membership asserted immediately above — but the old substring test could not see that and had been
+// failing ever since the delegation landed.
+const ciScript = pkg.scripts['check:ci'] || '';
+assert.ok(
+  ciScript.includes('npm run check:first-dock-handoff')
+  || (ciScript.includes('check:ci:report') && pkg.scripts.check.includes('npm run check:first-dock-handoff')),
+  'npm run check:ci must include the first dock handoff guard, directly or through the check:ci:report runner',
+);
 
 console.log('First dock handoff OK - station rail links Market→Selling, Missions, and Departure Check with current left-rail onboarding copy.');
