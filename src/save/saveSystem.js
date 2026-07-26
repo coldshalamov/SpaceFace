@@ -2303,6 +2303,15 @@ export const save = {
     // Deep-merge so new nested defaults absent from an old save survive (forward-compat).
     const saveSettings = migrateLegacyMasslineBindingProfile(clonePlain(d));
     let restored = sanitizeRestoredSettings(mergePlain(this.state.settings, saveSettings));
+    // A binding map is an atomic player choice, and that rule has to apply to the SAVE as well as to
+    // the profile below — it was only applied to the profile. mergePlain() is a deep merge, so a
+    // restore used to union the incoming map over whatever bindings were already live in
+    // state.settings. Loading slot A (with a rebound `forward`) and then slot B (which never rebound
+    // anything) left B running A's key. Take the save's map wholesale when it carries one.
+    if (saveSettings && saveSettings.controls
+      && Object.prototype.hasOwnProperty.call(saveSettings.controls, 'bindings')) {
+      restored.controls.bindings = normalizeControlBindings(saveSettings.controls.bindings);
+    }
     const profile = migrateLegacyMasslineBindingProfile(this._readProfileSettings());
     if (profile) {
       restored = sanitizeRestoredSettings(mergePlain(restored, profile));
