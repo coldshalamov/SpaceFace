@@ -393,10 +393,11 @@ export async function runPq018WreckCathedralPublicRoute({
     // changed nothing. By now the hull is stabilized, so the identical manoeuvre would fail it and
     // rewrite the very record this leg exists to prove unchanged. Rematerialization only needs the
     // site admitted and resident, which happens well outside the collision proxies.
-    await approachCathedralCoordinate(page, routeTimeout(360_000), {
-      arrivalRadius: 330,
-      maxApproachSpeed: 18,
-    });
+    // 440 clears the outermost collision proxy, which reaches ~392 wu from the site centre
+    // (upper_starboard_outer at 324 wu plus its 68 wu radius). Keep the cruise speed: the return leg
+    // is a ~3.4k wu transit and halving it overruns the travel budget without making the standoff
+    // any safer, since the ship never closes on the proxies at all.
+    await approachCathedralCoordinate(page, routeTimeout(360_000), { arrivalRadius: 440 });
     await waitForWorldRecord(page, PQ018_ROOT_WORLD_ID, routeTimeout(60_000));
     await waitForAdmittedRoot(page, routeTimeout(90_000));
     await waitForSiteRenderResidency(page, routeTimeout(90_000));
