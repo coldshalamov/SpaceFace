@@ -4031,6 +4031,41 @@
       "note": "Defense Bastion Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 33212 tris / 5 draw groups."
     },
     {
+      "id": "place_landmark_wreck_cathedral",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_landmark_wreck_cathedral.glb",
+      "budgetClass": "landmark",
+      "textureSize": 512,
+      "mount": "origin",
+      "tris": 134436,
+      "bytes": 11155156,
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Flythrough_Entry",
+        "SOCKET_Flythrough_Exit",
+        "SOCKET_TheMarker"
+      ],
+      "bounds": {
+        "min": [
+          -288.6276,
+          -91.3317,
+          -139.2015
+        ],
+        "max": [
+          320.6404,
+          148.2666,
+          113.2121
+        ],
+        "dimensionsM": [
+          609.268,
+          239.5983,
+          252.4135
+        ]
+      },
+      "note": "PQ-018 Wreck Cathedral hero landmark; project-original deterministic Blender build (source sha256 f335935f…, frozen at admission). Explicit LOD0/1/2 roots at 91908/34164/8364 tris and 8 draw groups each; 8 semantic materials, 26 authored 512/256px PBR maps. Semantic markers SOCKET_Flythrough_Entry/Exit, SOCKET_TheMarker, ZONE_*, SALVAGE_*, INTERACTION_HangarCavity carry spaceface.semanticRole and are preserved through release. Declares a 72m x 58m clear +X/-X fly-through envelope; this row admits the asset only — World Site wiring, Ceres placement, and route acceptance remain PQ-018 Phase 2-4."
+    },
+    {
       "id": "wholeship_ashline_dart",
       "category": "wholeships",
       "priority": "P1",
@@ -4362,7 +4397,8 @@
       "places/place_claim_outpost_base.glb",
       "places/place_claim_outpost_refinery.glb",
       "places/place_claim_outpost_relay.glb",
-      "places/place_claim_outpost_bastion.glb"
+      "places/place_claim_outpost_bastion.glb",
+      "places/place_landmark_wreck_cathedral.glb"
     ]
   }
 }

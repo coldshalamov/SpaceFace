@@ -1379,25 +1379,40 @@ function samePackedOrmSampling(ao, rough, metal) {
     && sameTextureSampling(rough, metal);
 }
 
-function validateNodeTransform(node, matrix, errors) {
+export const AUTHORED_TRANSFORM_SKEW_EPSILON = 1e-5;
+
+// Classify one node transform as `scale`, `mirrored`, `shear`, or null (conformant).
+//
+// Shear is detected by comparing the matrix against its decompose -> recompose round trip. Those
+// elements carry the node's scale, so a fixed element epsilon is really an angular tolerance divided
+// by that scale. Release quantization folds a dequantization scale into node TRS — the Wreck
+// Cathedral's largest draw group lands at ~265x — and at that size float32 quaternion round-off
+// alone exceeds a 1e-5 element epsilon on a perfectly orthogonal basis. Scaling the tolerance keeps
+// one angular sensitivity at every node size; the historical absolute epsilon remains the floor, so
+// no unit-scale node becomes more permissive than before.
+export function authoredTransformIssue(matrix) {
   matrix.decompose(_transformPosition, _transformQuaternion, _transformScale);
   const scale = [_transformScale.x, _transformScale.y, _transformScale.z];
-  if (!scale.every(Number.isFinite) || scale.some((value) => Math.abs(value) < 1e-6)) {
-    errors.push(`${label(node)} has a zero or non-finite transform scale`);
-    return;
-  }
-  if (scale.some((value) => value < 0) || matrix.determinant() <= 0) {
-    errors.push(`${label(node)} uses mirrored/negative scale; apply transforms and export real mirrored topology so instancing preserves winding`);
-    return;
-  }
+  if (!scale.every(Number.isFinite) || scale.some((value) => Math.abs(value) < 1e-6)) return 'scale';
+  if (scale.some((value) => value < 0) || matrix.determinant() <= 0) return 'mirrored';
   _recomposed.compose(_transformPosition, _transformQuaternion, _transformScale);
+  const tolerance = AUTHORED_TRANSFORM_SKEW_EPSILON * Math.max(1, ...scale.map(Math.abs));
   const a = matrix.elements;
   const b = _recomposed.elements;
   for (let i = 0; i < 16; i++) {
-    if (Math.abs(a[i] - b[i]) > 1e-5) {
-      errors.push(`${label(node)} contains shear; apply parent transforms before export so hook and mount TRS remain exact`);
-      break;
-    }
+    if (Math.abs(a[i] - b[i]) > tolerance) return 'shear';
+  }
+  return null;
+}
+
+function validateNodeTransform(node, matrix, errors) {
+  const issue = authoredTransformIssue(matrix);
+  if (issue === 'scale') {
+    errors.push(`${label(node)} has a zero or non-finite transform scale`);
+  } else if (issue === 'mirrored') {
+    errors.push(`${label(node)} uses mirrored/negative scale; apply transforms and export real mirrored topology so instancing preserves winding`);
+  } else if (issue === 'shear') {
+    errors.push(`${label(node)} contains shear; apply parent transforms before export so hook and mount TRS remain exact`);
   }
 }
 
