@@ -740,9 +740,15 @@ async function safeComponentApproachPoint(page, componentId) {
     const length = Math.hypot(dx, dz) || 1;
     const ux = dx / length;
     const uz = dz / length;
-    const reach = beamRange + (Number(component.radius) || 0) - 20; // keep margin inside beam range
+    // Maximise clearance *within* a beam-range margin. Two earlier formulations failed offline
+    // analysis: "first point past a fixed clearance" left cathedral_hull, emergency_relay_clock and
+    // marker_service_spine with no admissible point at all -- a deadlock, since repairing the hull
+    // then required flying somewhere that broke it -- and "maximum clearance anywhere in reach"
+    // parked the ship at the edge of the beam. Holding 60 wu of range in reserve makes all six
+    // beamed components admissible.
+    const reach = beamRange - 60;
     let best = null;
-    for (let distance = length + 60; distance <= length + reach; distance += 10) {
+    for (let distance = length + 50; distance <= length + reach; distance += 5) {
       const point = { x: root.pos.x + ux * distance, z: root.pos.z + uz * distance };
       let clearance = Infinity;
       for (const solid of solids) {
@@ -750,15 +756,9 @@ async function safeComponentApproachPoint(page, componentId) {
           - (Number(solid.radius) || 0);
         if (gap < clearance) clearance = gap;
       }
-      // Nearest clear point, not the clearest. Maximising clearance pushes the ship to the far end
-      // of beam reach, where the arrival tolerance can tip it out of range entirely and the beam
-      // silently never connects.
-      if (clearance > 40) {
-        best = { point, clearance, distance };
-        break;
-      }
+      if (!best || clearance > best.clearance) best = { point, clearance, distance };
     }
-    return best;
+    return best && best.clearance > 12 ? best : null;
   }, [PQ018_SITE_ID, componentId, 240]);
 }
 
