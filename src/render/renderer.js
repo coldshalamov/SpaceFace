@@ -2,7 +2,7 @@
 // lifecycle. Exposes worldToScreen / raycastToPlane via ctx.helpers and a renderFrame() the loop
 // calls each animation frame. Sim never touches this; it's all in renderFrame (ARCHITECTURE §1,§2.4).
 import * as THREE from 'three';
-import { applyMasslineReleaseCameraCue, createChaseCamera } from './camera.js';
+import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuation } from './camera.js';
 import { createSpaceBackground } from './spaceBackground.js';
 import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
@@ -680,6 +680,26 @@ export const render = {
     const query = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
     const devShot = !!(query && query.get('dev') === 'shipshot');
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: devShot });
+    // ACES on the renderer covers the DIRECT-to-canvas draws; bloom.js's composite covers the bloom
+    // path. Both are needed and they do not overlap, which is the fix for a real divergence:
+    //
+    // bloom.js moved ACES into its composite shader, and its own COLOR-MANAGEMENT INVARIANT (bloom.js
+    // ~line 27) predicted exactly what would go wrong — "if you later set renderer.toneMapping,
+    // three renders to render targets with NoToneMapping regardless, so rtScene would be un-tonemapped
+    // while the bloom-off path tonemaps — they'd diverge. At that point tone-mapping must move INTO
+    // this composite shader." The ACES move happened and the fast path was never revisited, so it
+    // diverged the OTHER way: bloom-ON got ACES from the composite while the bloom-OFF fast path
+    // (a plain renderer.render straight to screen) got none. Toggling bloom therefore changed the whole
+    // image's highlight rolloff and contrast, not just the glow — and bloom-off is selected
+    // AUTOMATICALLY on software GL, i.e. on the weakest hardware, where it is least likely to be
+    // noticed as a bug and most likely to be blamed on the hardware. A later comment in the same file
+    // claims the composite keeps the two paths "in sync"; it does not.
+    //
+    // This costs no extra pass. three applies renderer.toneMapping only when the draw target is the
+    // canvas (render targets are compiled with NoToneMapping), so rtScene stays linear HDR for the
+    // composite to tone-map itself, and raw ShaderMaterial shaders never get three's tonemapping chunk
+    // injected — so the composite is untouched and is NOT double-mapped.
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.setClearColor(0x060912, 1);
     const drawSize = applyRendererSize(renderer, state);
 
@@ -1217,7 +1237,20 @@ export const render = {
     // shipyard hull switch or fitted weapon never shows. Mirrors the spawn path: dispose old,
     // build new, re-seat from the entity's live transform.
     bus.on('ship:appearanceChanged', ({ id }) => render.rebuildShipMesh(id));
-    bus.on('camera:shake', ({ amount }) => cam.addTrauma(amount || 0.3));
+    // One chokepoint for all 13 camera:shake emitters. A payload carrying `position` is describing a
+    // WORLD event and gets a distance falloff against the player; a payload without one is already
+    // player-scoped by construction (player hit / death / respawn, drill, tether, presentation cues)
+    // and passes through unchanged. Attenuating here rather than at each emitter means the twelve
+    // sites nobody has audited are covered too.
+    bus.on('camera:shake', (payload) => {
+      const amount = (payload && payload.amount) || 0.3;
+      const at = payload && payload.position;
+      if (!at || !Number.isFinite(at.x) || !Number.isFinite(at.z)) { cam.addTrauma(amount); return; }
+      const p = state.entities.get(state.playerId);
+      if (!p || !p.pos) { cam.addTrauma(amount); return; }
+      const scaled = amount * shakeDistanceAttenuation(Math.hypot(at.x - p.pos.x, at.z - p.pos.z));
+      if (scaled > 0.001) cam.addTrauma(scaled);
+    });
     bus.on('camera:kill', () => cam.killCam && cam.killCam());
     // FR-5: ease the frame back to center after a boost-release or a tether slingshot exit/overload
     // (cruise-drop settle stays owned by spec2/02 §1). Boost-release also gets a gentle zoom tighten.
@@ -2332,7 +2365,14 @@ export const render = {
         enabled: true,
         ao: v.ao !== false,
         bloom: true,
-        renderScale: Math.min(1, Math.max(0.5, v.renderScale || 0.7)),
+        // Same normalization as applyRendererSize (one field, one contract). This used to read
+        // `Math.min(1, Math.max(0.5, v.renderScale || 0.7))`, which disagreed with the main path in
+        // two ways: `|| 0.7` made an ABSENT value 0.7 here while the main path defaults to 1 — a
+        // silent 30% resolution difference between the two pipelines — and `|| ` also rewrote a
+        // legitimate 0. The min(1) ceiling is kept and is render-graph-specific: supersampling a
+        // multi-render-target graph above 1 is a different cost class from supersampling the direct
+        // path, so the graph declines it rather than inheriting the slider's 2x ceiling.
+        renderScale: Math.min(1, finiteInRange(v.renderScale, 0.5, 2, 1)),
         bloomStrength: v.bloomStrength != null ? v.bloomStrength : 0.35,
         bloomThreshold: v.bloomThreshold != null ? v.bloomThreshold : 1.0,
       });

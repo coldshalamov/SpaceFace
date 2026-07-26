@@ -313,6 +313,17 @@ function appendScenarioSection(lines, condensed, full, qualityPreserving) {
       lines.push(`| ${sys.name} | ${fmt(sys.p95)} | ${fmt(sys.avg)} | ${fmt(sys.max)} |`);
     }
     lines.push('');
+  } else {
+    // Say so out loud. Omitting the section silently is how a profiler hides its own blind spot: the
+    // reports read as complete while carrying no attribution at all, so "the sim phase is over budget"
+    // arrived with no way to name which of ~130 systems was responsible.
+    lines.push('### Top systems by p95 (ms)');
+    lines.push('');
+    lines.push('**No attribution in this artifact.** Per-system CPU timing is opt-in '
+      + '(`perfRuntime.setSystemTimingEnabled`) and was not enabled for this run, so the sim phase '
+      + 'total cannot be broken down. Re-run the profiler rather than reading the phase totals as '
+      + 'attribution.');
+    lines.push('');
   }
 
   const variants = full?.diagnosticVariants || [];

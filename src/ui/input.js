@@ -233,7 +233,21 @@ export function createUiInput(ctx, screenManager) {
       case BINDINGS.dock.key:
       case BINDINGS.dock.label:
       case 'Enter':
-        if (dockInRange) { ev.preventDefault(); doDock(); }
+        if (dockInRange) {
+          ev.preventDefault();
+          // preventDefault() is NOT suppression in this codebase: the window-level flight adapter
+          // (src/systems/input.js) never inspects defaultPrevented — its only gates are
+          // modalInputActive / text-entry / ui-command targets. So the dock key also reached the
+          // flight verbs, and since `strafeRight` is KeyE in both the pilot (default) and classic
+          // schemes, pressing E to dock ALSO strafed the ship right, exactly while the player was
+          // trying to hold a docking line. stopPropagation() from this document-level listener is
+          // what actually keeps the window-level one from seeing it — the same idiom claimBase uses
+          // a few cases above. No stuck-key risk: the flight adapter never sets KeyE down, so there
+          // is nothing for keyup to clear, and out of dock range this case falls through untouched
+          // so ordinary strafing is unaffected.
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          doDock();
+        }
         return;
       case 'F7': {
         // Collision / socket / landing-contact debug overlay toggle (graphics spec §12.5).

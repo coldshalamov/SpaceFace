@@ -4,6 +4,16 @@
 
 export const PRESENTATION_ADAPTERS_SCHEMA_VERSION = 1;
 
+/**
+ * Minimum `playerRelevance` (cueSchema.js:109-122) for a cue to reach the three PLAYER-scoped
+ * lanes — HUD alert, accessibility caption, and camera trauma. Read off that function's own table:
+ * 1 = the player is the cue's target, 0.88 = the player is its source, and everything below is a
+ * pure distance falloff topping out at 0.72 for "within 80 units". 0.8 therefore means "the player
+ * is a participant" while excluding "this happened near the player". The vfx and audio lanes are
+ * world-scoped and deliberately not gated by this. See _applyCue.
+ */
+export const PLAYER_LANE_RELEVANCE_FLOOR = 0.8;
+
 export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'travel.cruise.charging': 'presentation.travel.cruise_charge',
   'travel.cruise.engaged': 'presentation.travel.lane_lock',
@@ -304,15 +314,35 @@ export const presentationAdapters = {
 
   _applyCue(cue) {
     const outputs = {};
-    const camera = this._applyCamera(cue);
+    // Lane audience split (GDD 2.0 pillar 3, "one primary transient voice at a time").
+    //
+    // Three of these five lanes are statements ABOUT THE PLAYER'S SHIP: a HUD banner, its
+    // accessibility caption, and a kick to the player's camera. The other two describe the WORLD.
+    // Until now all five fired for any entity, so an NPC's shield breaking anywhere in the sector
+    // raised a red "SHIELDS COLLAPSED" banner, spoke it, and shook the player's camera while the
+    // player sat at full hull — which teaches players to ignore the highest-severity channel the
+    // HUD has, and that costs every legitimate warning behind it.
+    //
+    // No new schema field is needed: cueSchema.js:181 already computes playerRelevance for every
+    // cue (1 = player is the target, 0.88 = player is the source, then a distance falloff of
+    // 0.72/0.52/0.28/0.08), and it has been arriving here unread apart from one caption-assertiveness
+    // test. The 0.8 floor is read straight off that table: it admits "the player is a participant"
+    // and excludes "this happened somewhere near the player", which is exactly the line a red banner
+    // should sit on. 0.72 would readmit every nearby NPC brawl.
+    //
+    // vfx and audio stay WORLD-scoped on purpose. An NPC's shield popping should spark at the NPC —
+    // that is pillar 2, "read the battlefield at a glance" — and the audio lane is already
+    // spatialized and voice-budgeted, so gating it would deaden the world rather than declutter it.
+    const playerScoped = finite(cue && cue.playerRelevance, 1) >= PLAYER_LANE_RELEVANCE_FLOOR;
+    const camera = playerScoped ? this._applyCamera(cue) : null;
     if (camera) outputs.camera = camera;
     const vfx = this._applyVfx(cue);
     if (vfx) outputs.vfx = vfx;
     const audio = this._applyAudio(cue);
     if (audio) outputs.audio = audio;
-    const ui = this._applyUi(cue);
+    const ui = playerScoped ? this._applyUi(cue) : null;
     if (ui) outputs.ui = ui;
-    const accessibility = this._applyAccessibility(cue);
+    const accessibility = playerScoped ? this._applyAccessibility(cue) : null;
     if (accessibility) outputs.accessibility = accessibility;
 
     const applied = {

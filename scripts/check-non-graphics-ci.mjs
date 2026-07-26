@@ -13,7 +13,13 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const args = new Set(process.argv.slice(2));
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 const scripts = pkg.scripts || {};
-const sourceName = scripts['check:ci'] ? 'check:ci' : 'check';
+// `check:ci` used to be its own explicit `&&` chain. It now delegates to `check:ci:report`, the runner
+// that expands `check` into individual commands — so it holds a single `npm run` and no longer contains
+// any graphics segment to strip, and preferring it made this script throw
+// ("did not include a removable graphics-owned segment"). Derive from whichever entry is actually a
+// chain: a delegation has nothing to filter, and `check` is the real source of truth either way.
+const isChain = (cmd) => typeof cmd === 'string' && cmd.split(/\s+&&\s+/).filter(Boolean).length > 1;
+const sourceName = isChain(scripts['check:ci']) ? 'check:ci' : 'check';
 const source = scripts[sourceName];
 
 if (!source) {

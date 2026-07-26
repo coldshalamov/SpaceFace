@@ -2985,6 +2985,16 @@ function checkCombatPrefersAuthoredProjectilePacket() {
     tick: 12,
     simTime: 0.2,
     meta: { seed: 123 },
+    // Difficulty-neutral ON PURPOSE. This fixture's attacker IS the player (id 1 === playerId 1),
+    // so routeDamage applies difficultyDamageScale's player-OUTGOING multiplier before it sums
+    // rawTotal (src/combat/damage.js:28 then :38). difficultyProfile() defaults to 'standard' when
+    // settings are absent, which is 1.15x — so without this the packet's authored 10 arrives as
+    // 11.5 and the channel splits as 8.28/3.22. That is correct combat behavior, not a regression,
+    // but it is not what THIS check is about: it asserts the canonical packet wins over the legacy
+    // scalar `damage: 999`. Pinning 'veteran' (1.0/1.0) isolates the precedence question from the
+    // difficulty knob. The multiplier itself is covered by
+    // checkDifficultyScalesPlayerOutgoingDamage below.
+    settings: { gameplay: { difficulty: 'veteran' } },
     entities: new Map(),
     entityList: [],
     combat: { beams: [], threatTables: new Map() },
@@ -3049,6 +3059,62 @@ function checkCombatPrefersAuthoredProjectilePacket() {
   assert(events.some((e) => e.event === 'combat:damage' && e.payload.origin.kind === 'weapon'), 'combat damage event should expose weapon-origin metadata');
 
   combat.kernel = null;
+}
+
+// Companion to the check above. The run-difficulty multiplier reaches into routeDamage and scales a
+// packet's channels BEFORE rawTotal is summed, which silently changed what the packet-precedence
+// check was measuring when it landed — and nothing gated it, so the drift only surfaced as a
+// mystery `11.5 !== 10`. This pins the three cases the scale function distinguishes so the coupling
+// is explicit and a future difficulty retune fails here, where the message says "difficulty",
+// instead of over in a packet test.
+function checkDifficultyScalesPlayerOutgoingDamage() {
+  const routedTotalFor = (difficulty, attackerId) => {
+    const state = {
+      playerId: 1,
+      tick: 12,
+      simTime: 0.2,
+      meta: { seed: 123 },
+      settings: { gameplay: { difficulty } },
+      entities: new Map(),
+      entityList: [],
+      combat: { beams: [], threatTables: new Map() },
+    };
+    const attacker = { id: attackerId, type: 'ship', team: 0, alive: true, flags: {}, pos: { x: 0, z: 0 }, data: {} };
+    const target = {
+      id: 2, type: 'ship', team: 1, alive: true, flags: {},
+      pos: { x: 40, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 8, mass: 10,
+      hull: 150, hullMax: 150, shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0, armorFlat: 0,
+      data: { combatProfileId: 'combat_profile_standard_ship', derived: { damageReductionMult: 1 } },
+    };
+    for (const entity of [attacker, target]) { state.entities.set(entity.id, entity); state.entityList.push(entity); }
+    combat.state = state;
+    combat.bus = { emit() {} };
+    combat.helpers = {};
+    combat.registry = { get() { return null; } };
+    combat.kernel = null;
+    combat.onHit({
+      targetId: target.id,
+      ownerId: attacker.id,
+      damage: 999,
+      damageType: 'kinetic',
+      pos: { x: 40, z: 0 },
+      damagePacket: scalarHitToDamagePacket({ damage: 10, damageType: 'energy', penetration: 0.25 }),
+      weaponId: 'wpn_difficulty_fixture',
+    });
+    const routed = state.combat.trace.events.find((event) => event.kind === 'damage.routed');
+    combat.kernel = null;
+    return routed.rawTotal;
+  };
+
+  // Player is the attacker: outgoing multiplier applies.
+  assert(Math.abs(routedTotalFor('standard', 1) - 11.5) < 1e-9,
+    `standard difficulty should scale player-outgoing damage 1.15x (got ${routedTotalFor('standard', 1)})`);
+  // Veteran is the 1.0/1.0 profile: authored packet total passes through untouched.
+  assert(Math.abs(routedTotalFor('veteran', 1) - 10) < 1e-9,
+    `veteran difficulty should leave the authored packet total untouched (got ${routedTotalFor('veteran', 1)})`);
+  // NPC-on-NPC: ambient brawls stay on the authored baseline at every difficulty (difficulty.js:44-49).
+  assert(Math.abs(routedTotalFor('standard', 9) - 10) < 1e-9,
+    `NPC-on-NPC damage must ignore run difficulty (got ${routedTotalFor('standard', 9)})`);
 }
 
 function checkBeamDamageUsesSpatialCandidatesForCrowdedScenes() {
@@ -4324,7 +4390,22 @@ function checkSettingsRestoreSanitizesFlightOptions() {
   assert.equal(state.settings.gameplay.aiBackend, 'sg06-tactical', 'missing saved AI backend should stay canonical');
   assert.equal(state.settings.gameplay.flightBackend, 'v3', 'missing saved flight backend should stay canonical');
   assert.equal(state.settings.controls.flightMode, 'newtonian', 'valid saved flight mode should restore');
-  assert.equal(state.settings.controls.bindings, null, 'null bindings should keep default binding semantics');
+  // A save carrying `bindings: null` must land on DEFAULT binding semantics — which is a statement
+  // about what the keys RESOLVE to, not about the literal being null. The Space-primary Massline
+  // migration (PQ-003) deliberately materializes `tether: ['Space','KeyF']` for exactly the profiles
+  // that predate it, so the post-restore map is legitimately non-null. What must NOT survive is any
+  // rebind from a PREVIOUS restore: binding maps are atomic per save slot, so the earlier
+  // `forward: KeyI` / `reverse: KeyK` in this same fixture have to be gone. That is the real
+  // contract, and asserting the null literal was hiding a cross-slot binding leak in _restoreSettings.
+  const restoredBindings = state.settings.controls.bindings;
+  assert.equal(restoredBindings === null || typeof restoredBindings === 'object', true, 'bindings must be null or a map');
+  if (restoredBindings) {
+    assert.equal(restoredBindings.forward, undefined, 'a save with null bindings must not inherit a previous restore\'s forward rebind');
+    assert.equal(restoredBindings.reverse, undefined, 'a save with null bindings must not inherit a previous restore\'s reverse rebind');
+    for (const action of Object.keys(restoredBindings)) {
+      assert.equal(action === 'tether', true, `only the PQ-003 tether migration may materialize a key here (saw '${action}')`);
+    }
+  }
 
   save._restoreSettings({
     gameplay: { physicsBackend: 'rapier-dynamic', aiBackend: 'sg06-tactical', flightBackend: 'v3' },
@@ -5551,6 +5632,7 @@ checkSaveLoadDefersFlightWhenAuthoredVisualGateExists();
 checkLoadRejectsUnrepairablePlayerEntityBeforeRestore();
 checkCombatRewardsAndLootKinds();
 checkCombatPrefersAuthoredProjectilePacket();
+checkDifficultyScalesPlayerOutgoingDamage();
 checkBeamDamageUsesSpatialCandidatesForCrowdedScenes();
 checkHeatUsesTargetFactionContext();
 checkWantedHeatUsesVisibleSearchZoneDecay();

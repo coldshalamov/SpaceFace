@@ -254,7 +254,7 @@ renderFrame(alpha, frameDt):
   render.syncEntityViews(alpha)     // for each entity: renderPos=lerp(prevPos,pos,alpha); renderRot=prevRot+wrap(rot-prevRot)*alpha; write to entity.view.root
   vfx.update(frameDt)               // integrate particles, engine trails, beams, shake decay
   camera.follow(frameDt)            // damped follow + look-ahead + shake offset (CAM_LERP)
-  starfield.recenter(camera)        // parallax wrap
+  spaceBackground.update(camera)    // parallax wrap + per-sector nebula (NOT starfield.js — that module is unwired)
   render.draw()                     // scene → rtScene → bloom passes → screen
   ui.hud.update(frameDt)            // 60Hz cheap path: bar scaleX, numerics @10Hz, radar @20Hz, worldToScreen markers
 ```
@@ -863,7 +863,8 @@ HUD (`#hud`) is visible **iff** `screenStack.length === 0 && ui.docked === false
 | `src/render/bloom.js` | single-pass bloom (bright-extract → blur → composite), RT management, resize | `Bloom` | three |
 | `src/render/visualFactory.js` | memoized geometry/material/texture caches; ship/asteroid/station/pickup builders | `VisualFactory` | three, BufferGeometryUtils, canvasTextures |
 | `src/render/canvasTextures.js` | runtime canvas textures (noise/gradient/greeble/star/fbm cloud) | texture builders | — |
-| `src/render/starfield.js` | 3-layer parallax Points + nebula sprites, recenter/wrap, warp stretch | `Starfield` | three |
+| `src/render/spaceBackground.js` | **live** background: per-sector procedural nebula, parallax layers, velocity smear, wormhole mesh | `createSpaceBackground` | three |
+| `src/render/starfield.js` | **NOT WIRED** — `createStarfield` has no importers. An earlier 4-layer parallax Points + procedural-nebula + distant-planet implementation, superseded by `spaceBackground.js`. Retained deliberately (harvest candidate, see `06_RETAINED_FUTURE_BACKLOG.md`); do not read it as the live draw path. | `createStarfield` (unused) | three |
 | `src/render/vfx.js` | pooled particle system (Points+sprites), explosions/sparks/trails/shield ripple/warp, shake emit | `vfx` system | three, eventBus |
 | `src/render/feel.js` | hit-stop/FOV/vignette response; owns only the `feel:hit-stop` time-effects request | `feel` system | timeEffects, eventBus |
 | `src/render/shaders.js` | GLSL strings: particle, shield fresnel, star, bloom passes, nebula | shader sources | — |

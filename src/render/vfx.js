@@ -2543,7 +2543,10 @@ export const vfx = {
         '#ffe3a0', '#65301d', 1.35);
       this._flashLight({ x, z }, '#ff7a30', (entry.classId === 'capital' ? 8 : 4.2) * scale, 5.5, 180 + r * 7);
       const shake = entry.classId === 'capital' ? 0.62 : (entry.classId === 'small' ? 0.16 : 0.34);
-      this.bus.emit('camera:shake', { amount: reduced ? shake * 0.55 : shake });
+      // A ship blowing up is a WORLD event: send where it happened so the consumer can fall it off
+      // with distance. Untagged, this kicked the player's camera identically whether the wreck was on
+      // their nose or across the sector — measured as six unearned kicks in ~30 s of tutorial flight.
+      this.bus.emit('camera:shake', { amount: reduced ? shake * 0.55 : shake, position: { x, z } });
       return;
     }
 

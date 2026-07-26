@@ -197,7 +197,12 @@ assert.equal(captionRecords.at(-1).assertive, true, 'player-relevant shield coll
 
 runtimeState.tick += 2;
 runtimeState.simTime += 0.033333;
-bus.emit('combat:subsystemDisabled', { targetId: 3, subsystemId: 'subsystem_drive', cueId: 'combat.subsystem.drive.disabled' });
+// The real emitter always attributes the hit — src/combat/subsystems.js:73 sends `attackerId` from
+// runtime.transitionAttackerId — so the realistic case for a HUD readout is "the PLAYER disabled that
+// ship's drive", which is the payoff of a deliberate disabling shot. Omitting the attacker here made
+// this fixture an unattributed disable on a distant NPC, which is precisely the case that must NOT
+// raise a player-facing banner. Both cases are now covered: this one, and the negative below.
+bus.emit('combat:subsystemDisabled', { attackerId: 1, targetId: 3, subsystemId: 'subsystem_drive', cueId: 'combat.subsystem.drive.disabled' });
 bus.flush();
 assert.equal(cueRecords.at(-1).id, 'subsystem.disabled', 'subsystem disable event should route to SG-08');
 assert.equal(cueRecords.at(-1).subsystemId, 'subsystem_drive', 'subsystem cue should preserve subsystem id');
@@ -216,6 +221,31 @@ const subsystemRecipeIds = [
 assert.equal(new Set(subsystemRecipeIds).size, 3, 'drive, sensor, and weapon failures need distinct signatures');
 for (const recipeId of subsystemRecipeIds) assert(AUDIO_RECIPE_BY_ID[recipeId], `${recipeId} must be authored`);
 
+// --- lane audience split (GDD 2.0 pillar 3) ---------------------------------------------------
+// An entity-scoped combat event that the player neither caused nor suffered must not reach the
+// PLAYER-scoped lanes. Before this was enforced, any NPC's shield breaking anywhere in the sector
+// raised a red "SHIELDS COLLAPSED" banner, spoke the caption, and kicked the player's camera — which
+// trains players to ignore the HUD's highest-severity channel. The world-scoped lanes still fire, so
+// the event stays visible and audible where it actually happened.
+runtimeState.tick += 60;
+runtimeState.simTime += 1;
+const uiBefore = alertRecords.length;
+const captionBefore = captionRecords.length;
+const cameraBefore = cameraRecords.length;
+const vfxBefore = vfxRecords.length;
+const audioBefore = audioRecords.length;
+// NPC 3 breaks NPC 2's shield. Player is 1 and is neither attacker nor target.
+bus.emit('combat:damage', { attackerId: 3, targetId: 2, brokeShield: true, applied: 22, type: 'thermal' });
+bus.flush();
+assert.equal(cueRecords.at(-1).id, 'shield.collapse', 'an NPC-on-NPC shield break still produces the cue');
+assert(cueRecords.at(-1).playerRelevance < 0.8,
+  `NPC-on-NPC shield break should score below the player-lane floor (got ${cueRecords.at(-1).playerRelevance})`);
+assert.equal(alertRecords.length, uiBefore, 'NPC-on-NPC shield break must not raise a player HUD alert');
+assert.equal(captionRecords.length, captionBefore, 'NPC-on-NPC shield break must not speak a player caption');
+assert.equal(cameraRecords.length, cameraBefore, 'NPC-on-NPC shield break must not shake the player camera');
+assert(vfxRecords.length > vfxBefore, 'the world-scoped VFX lane must still fire at the NPC');
+assert(audioRecords.length > audioBefore, 'the world-scoped audio lane must still fire at the NPC');
+
 runtimeState.tick += 20;
 runtimeState.simTime += 0.333333;
 runtimeState.settings.video.motionReduce = true;
@@ -230,10 +260,13 @@ assert.equal(vfxRecords.at(-1).lights, 0, 'reduced flashing should suppress even
 assert.equal(captionRecords.at(-1).flashReduced, true, 'caption evidence should record flash reduction');
 
 const inspect = presentationOrchestrator.inspect();
-assert.equal(inspect.emitted, 5, 'orchestrator inspect should count emitted cues');
+// 6, not 5: the NPC-on-NPC shield break added above is emitted by the orchestrator like any other
+// cue. The audience split lives in the ADAPTER, so a world-scoped cue is still emitted and still
+// applied — it simply reaches fewer lanes. That is why `applied` below tracks `emitted`.
+assert.equal(inspect.emitted, 6, 'orchestrator inspect should count emitted cues');
 assert.equal(inspect.suppressed, 1, 'orchestrator inspect should count suppressed cues');
 const adapterInspect = presentationAdapters.inspect();
-assert.equal(adapterInspect.applied, 5, 'adapter inspect should count applied cues');
+assert.equal(adapterInspect.applied, 6, 'adapter inspect should count applied cues');
 assert.deepEqual(adapterInspect.lastApplied.outputLanes,
   ['accessibility', 'audio', 'camera', 'ui', 'vfx'],
   'adapter inspect should summarize all output lanes');

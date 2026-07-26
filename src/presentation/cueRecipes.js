@@ -269,7 +269,12 @@ export const PRESENTATION_RECIPES = Object.freeze({
   }),
   'shield.collapse': recipe({
     importance: 0.84,
-    dedupeWindowTicks: 8,
+    // 8 ticks (133 ms) was sized for a cue that fired for EVERY combatant, where a short window was
+    // the only thing keeping a squad fight from producing a continuous alarm — it permitted 7.5
+    // banners a second. Now that the player-scoped lanes are gated on playerRelevance
+    // (presentationAdapters._applyCue) this cue describes the player's own shields, and a player
+    // cannot plausibly lose them more than about once a second.
+    dedupeWindowTicks: 45,
     material: 'shield',
     lanes: {
       camera: 'camera.threat_composition',
@@ -283,7 +288,10 @@ export const PRESENTATION_RECIPES = Object.freeze({
   }),
   'subsystem.disabled': recipe({
     importance: 0.86,
-    dedupeWindowTicks: 4,
+    // Same reasoning as shield.collapse above. 4 ticks (67 ms) was an anti-flood window for an
+    // all-combatants cue; per-player this is a distinct event per subsystem, so half a second is
+    // ample and keeps two different subsystems failing together legible as two events.
+    dedupeWindowTicks: 30,
     material: 'subsystem',
     lanes: {
       camera: 'camera.subsystem_focus',
