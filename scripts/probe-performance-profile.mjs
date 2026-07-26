@@ -1423,16 +1423,32 @@ async function resetRuntimeDiagnostics(cdp) {
     const gpuTimers = render && render.gpuTimers || null;
     const gpuTimersEnabled = !!(gpuTimers && typeof gpuTimers.setEnabled === 'function' && gpuTimers.setEnabled(true));
     if (gpuTimers && typeof gpuTimers.reset === 'function') gpuTimers.reset();
+    // Per-system and per-render-work CPU rings. These are opt-in (src/core/perfRuntime.js defaults
+    // both off, and src/core/registry.js takes a fast path that skips the clocks entirely when they
+    // are), and this probe enabled the GPU timers directly above while leaving the CPU ones off, so
+    // every report it has ever written carried an empty topSystems array. The result was a profiler
+    // that could say the sim phase exceeded its budget across a ~130-system update order without
+    // being able to name a single system. Enabled AFTER reset() so the flags survive it.
+    const runtimePerf = perf || (sf && sf.state && sf.state.perfRuntime) || null;
+    const systemTimingEnabled = !!(runtimePerf && typeof runtimePerf.setSystemTimingEnabled === 'function'
+      && runtimePerf.setSystemTimingEnabled(true));
+    const renderWorkEnabled = !!(runtimePerf && typeof runtimePerf.setRenderWorkEnabled === 'function'
+      && runtimePerf.setRenderWorkEnabled(true));
     resolve({
       diagnostics: !!(diag && typeof diag.reset === 'function'),
       perfRuntime: !!(perf && typeof perf.reset === 'function'),
       postTelemetry: !!(render && typeof render.resetPostTelemetrySample === 'function'),
       gpuTimers: gpuTimersEnabled,
+      systemTiming: systemTimingEnabled,
+      renderWork: renderWorkEnabled,
     });
   }))`);
   assert.ok(reset.diagnostics, 'renderer diagnostics reset must be available');
   assert.ok(reset.perfRuntime, 'perf runtime reset must be available');
   assert.ok(reset.postTelemetry, 'post render-target sample counter reset must be available');
+  // Fail loudly rather than silently producing another attribution-free report.
+  assert.ok(reset.systemTiming, 'per-system CPU timing must be enabled or the report cannot attribute sim cost');
+  assert.ok(reset.renderWork, 'per-render-work CPU timing must be enabled or the report cannot attribute draw cost');
   await sleep(300);
 }
 

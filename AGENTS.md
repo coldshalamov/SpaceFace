@@ -126,6 +126,14 @@ through the packet's broker manifest after lower layers pass. An unchanged expen
 be reduced to a focused regression before another acceptance claim. Visual, accessibility, and
 performance acceptance still require current player-facing evidence.
 
+**When you need the broad sweep, run `npm run check:all`, not `npm run check`.** `check` is a ~97-link
+`&&` chain, so it reports the FIRST failure and silently skips everything downstream of it — a
+single stale assertion can hide twenty gates, including every sim-determinism and flight check.
+`check:all` runs the same matrix to completion, continues past failures, and writes
+`scratch/check-ci-report/<run>/` with `report.md` (failure-first summary), `report.json`, and a
+per-command log. `npm run check:all:smoke` is the 8-command fast tier. A green `check` tail is not
+coverage when `check` aborted early — read the report, not the exit code.
+
 ## 10. Scoped instruction map
 
 Nested `AGENTS.md` files exist only at meaningful ownership/risk boundaries:

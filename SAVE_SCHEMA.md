@@ -41,6 +41,7 @@ Current save version: `12`
 - `flight`
 - `nav`
 - `settings`
+- `entropy`
 
 ## Migration Chain
 
@@ -156,6 +157,18 @@ Current save version: `12`
 | `$.entities.player.vel.z` | number | 0 |
 | `$.entities.simTime` | number | 0 |
 | `$.entities.tick` | number | 0 |
+| `$.entropy` | object | {} |
+| `$.entropy.core` | object | {} |
+| `$.entropy.core.draws` | number | 0 |
+| `$.entropy.core.seed0` | number | 47 |
+| `$.entropy.core.state` | number | 47 |
+| `$.entropy.covered` | array | length 3 |
+| `$.entropy.covered[]` | string | core.seed+state+draws |
+| `$.entropy.schema` | string | spaceface.entropyContinuation.v1 |
+| `$.entropy.trafficRngSeed` | null | null |
+| `$.entropy.uncovered` | array | length 5 |
+| `$.entropy.uncovered[]` | string | automation.meta.rngSeed |
+| `$.entropy.weapons` | null | null |
 | `$.factionPresence` | object | {} |
 | `$.factions` | object | {} |
 | `$.fieldDepletion` | object | {} |

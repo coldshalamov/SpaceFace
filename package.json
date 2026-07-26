@@ -472,7 +472,9 @@
     "check:professional-travel:public-route": "npm run check:professional-travel:public-route:browser && npm run check:professional-travel:public-route:electron",
     "check:camera-shake-scope": "node scripts/check-camera-shake-scope.mjs",
     "check:brake-convergence": "node scripts/check-brake-convergence.mjs",
-    "check:dock-key-exclusivity": "node scripts/check-dock-key-exclusivity.mjs"
+    "check:dock-key-exclusivity": "node scripts/check-dock-key-exclusivity.mjs",
+    "check:all": "node scripts/check-ci-report.mjs",
+    "check:all:smoke": "node scripts/check-ci-report.mjs --smoke"
   },
   "private": true,
   "devDependencies": {

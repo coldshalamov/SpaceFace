@@ -212,7 +212,28 @@ assert.ok(noopIdx < bloomIdx, 'variants should be sorted by largest improvement 
 const deltaLine = md.split('\n').find((line) => line.includes('webgl-submit-noop-diagnostic'));
 assert.ok(deltaLine && deltaLine.includes('+16.6'), `expected +16.6 ms delta, got: ${deltaLine}`);
 
+// The fixture above supplies a populated `perf.topSystems`, which is right for exercising the
+// formatter but means this check passed for as long as every REAL artifact carried `topSystems: []`
+// — the profiler was not enabling the opt-in CPU rings, so it reported "the sim phase exceeded its
+// budget" across ~130 systems with no way to name one, and the summary omitted the section silently.
+// Cover the empty branch too, so a report with no attribution has to say so.
+const mdNoAttribution = formatPerformanceProfileMarkdown({
+  ...FAKE_REPORT,
+  scenarios: (FAKE_REPORT.scenarios || []).map((scenario) => ({
+    ...scenario,
+    perf: { ...(scenario.perf || {}), topSystems: [] },
+  })),
+  perf: { ...(FAKE_REPORT.perf || {}), topSystems: [] },
+});
+assert.ok(mdNoAttribution.includes('Top systems by p95'),
+  'the attribution section must still be rendered when there is no attribution');
+assert.ok(/No attribution in this artifact/i.test(mdNoAttribution),
+  'an artifact with no per-system timing must say so explicitly instead of quietly dropping the table');
+assert.ok(/setSystemTimingEnabled/.test(mdNoAttribution),
+  'the notice should name the opt-in that was missed so the reader knows how to get attribution');
+
 console.log('ok    performanceProfileMarkdownPath');
 console.log('ok    formatPerformanceProfileMarkdown sections');
 console.log('ok    diagnostic variant delta ordering');
+console.log('ok    missing per-system attribution is reported, not hidden');
 console.log('PASS  check:perf-summary');

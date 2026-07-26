@@ -55,8 +55,57 @@ async function runCli() {
     results,
   });
 
-  console.log(JSON.stringify(report, null, 2));
+  // Persist the report next to the per-command logs and emit a markdown sibling, so a run leaves a
+  // durable artifact instead of only a 2 MB blob on stdout.
+  await mkdir(artifactRoot, { recursive: true }).catch(() => {});
+  await writeFile(`${artifactRoot}/report.json`, JSON.stringify(report, null, 2)).catch(() => {});
+  await writeFile(`${artifactRoot}/report.md`, formatCiReportMarkdown(report)).catch(() => {});
+
+  if (process.argv.includes('--json')) console.log(JSON.stringify(report, null, 2));
+  else console.log(formatCiReportMarkdown(report));
+  console.log(`\n[check-ci-report] artifacts: ${artifactRoot}/  (report.json, report.md, per-command .log)`);
   process.exitCode = report.ok ? 0 : 1;
+}
+
+/**
+ * Compact, failure-first summary. The whole point of running every command instead of stopping at the
+ * first `&&` failure is to learn the SET of things that are broken — which only helps if that set is
+ * legible without grepping a giant JSON blob.
+ */
+export function formatCiReportMarkdown(report) {
+  const results = Array.isArray(report && report.results) ? report.results : [];
+  const failed = results.filter((r) => r && !r.ok);
+  const lines = [];
+  lines.push('# SpaceFace check report');
+  lines.push('');
+  lines.push(`- Started: ${report.startedAt || '?'}`);
+  lines.push(`- Finished: ${report.finishedAt || '?'}`);
+  lines.push(`- Matrix: \`${report.matrixSource || '?'}\``);
+  lines.push(`- Commands: **${results.length}** — passed **${results.length - failed.length}**, failed **${failed.length}**`);
+  lines.push(`- Result: **${report.ok ? 'PASS' : 'FAIL'}**`);
+  lines.push('');
+  if (failed.length) {
+    lines.push('## Failures');
+    lines.push('');
+    lines.push('| # | id | exit | command |');
+    lines.push('| ---: | --- | ---: | --- |');
+    failed.forEach((r, i) => {
+      lines.push(`| ${i + 1} | \`${r.id || '?'}\` | ${r.code ?? '?'} | \`${String(r.command || '').replace(/\|/g, '\\|')}\` |`);
+    });
+    lines.push('');
+    for (const r of failed) {
+      lines.push(`### \`${r.id || '?'}\``);
+      lines.push('');
+      lines.push('```');
+      lines.push(String(r.tail || r.stderr || r.stdout || '(no output captured)').trim() || '(no output captured)');
+      lines.push('```');
+      lines.push('');
+    }
+  } else {
+    lines.push('All commands passed.');
+    lines.push('');
+  }
+  return lines.join('\n');
 }
 
 export function buildCommandMatrix(checkCommand = '', scripts = {}) {
@@ -248,12 +297,21 @@ function classifyBaseFailure({ id, command, code, signal, timedOut, stdout, stde
   if (signal) {
     return diagnostic('child_signal', 'high', `child exited by signal ${signal}`, { signal });
   }
+  // Deliberately AHEAD of the code === 0 check below, and pinned by
+  // test/check-ci-report.test.mjs:40 ("treats a code-zero compare with expected-envelope diffs as
+  // non-passing verification debt"). `sf-sim compare` exits 0 when the two runs agree with EACH OTHER
+  // — determinism holds — even when both disagree with the expected envelope. That is real
+  // verification debt and the exit code cannot see it, so this classifier is intentionally stricter
+  // than the process status. Do not "fix" this by letting a zero exit short-circuit it.
   if (isStaleGolden(structured, text)) {
     return diagnostic(
       'stale_golden',
       'high',
-      matchingEvidence(text, /stale|golden|baseline|snapshot|re-?record/i)
-      || 'candidate runs agree, but the expected envelope contains differences',
+      // Prefer a diff the envelope comparison actually reported. The generic pattern also matches the
+      // bare word "baseline", which appears in compare's ordinary success output, so quoting the first
+      // match could surface `"baseline": {` as the whole explanation and read like a false positive.
+      matchingEvidence(text, /expectedTraceCount|expectedMetric|drifted|stale|re-?record/i)
+      || 'candidate runs agree with each other, but the expected envelope contains differences',
     );
   }
   if (code === 0) {
