@@ -87,7 +87,7 @@
     "check:critical-signature-captions": "node scripts/check-critical-signature-captions.mjs",
     "check:mining:2": "node scripts/check-mining-2.mjs",
     "check:mining:bulk-guidance": "node scripts/check-mining-bulk-guidance.mjs",
-    "check:presentation": "npm run check:vfx:trail-instancing && node scripts/check-presentation-cues.mjs && node scripts/check-sg08-golden-trace.mjs && node scripts/check-sg08-mix-profile.mjs && node scripts/check-sg08-render-vfx.mjs",
+    "check:presentation": "npm run check:vfx:trail-instancing && node scripts/check-presentation-cues.mjs && node scripts/check-sg08-golden-trace.mjs && node scripts/check-sg08-mix-profile.mjs && node scripts/check-sg08-render-vfx.mjs && npm run check:thruster:propulsion-family",
     "check:vfx:trail-instancing": "node test/trail-streak-instancing.test.mjs && node scripts/check-trail-streak-instancing-webgl.mjs",
     "check:camera": "node scripts/check-camera-composition.mjs && node scripts/check-camera-director.mjs && node scripts/check-camera-velocity-language.mjs && node --test test/camera-focus-separation.test.mjs",
     "check:camera:director": "node scripts/check-camera-director.mjs",
