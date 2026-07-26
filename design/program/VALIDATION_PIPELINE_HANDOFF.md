@@ -211,6 +211,25 @@ Observed problems, all real, all today:
 
 ---
 
+### 4.8 The fast tier must share the runtime's model — learned the hard way
+
+After writing §4 I tried to fix the component-approach problem by computing a clear approach point
+offline first. The offline analysis was correct and took ten seconds where four browser runs had
+produced three wrong hypotheses. Then the implementation still failed, twice.
+
+Cause: the offline model treated only the seven authored `collisionProxies` as obstacles; the runtime
+filtered on `collides !== false`, which also swept in the site root and its 360 wu visual radius. The
+planner therefore found no admissible point, returned null, and silently fell back to the very ring
+settle it existed to replace.
+
+**A fast tier that re-derives geometry is worse than no fast tier**, because it produces confident
+wrong answers. The scenario/lab layer must import the *same* obstacle set, radii, and ranges the
+runtime uses — not a reimplementation. Any place the two can drift is a bug factory, and it will
+present as "verified offline, fails live", which is the most expensive failure shape there is.
+
+Corollary for §4.4: the scenario schema should reference authored data by id (`collisionProxies`,
+`BEAMS[].range`) rather than embedding numbers.
+
 ## 5. Documentation changes
 
 1. **`src/testing/lab/AGENTS.md`** (new) — when to use `sf lab run` / `repeat` / `compare` / `soak` vs
