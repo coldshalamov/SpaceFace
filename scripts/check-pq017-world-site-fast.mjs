@@ -22,6 +22,9 @@ const TESTS = Object.freeze([
   'test/world-site-public-route-contract.test.mjs',
   'test/pq017-closed-loop-control.test.mjs',
   'test/pq017-probe-iteration-guard.test.mjs',
+  // Boot safety: createWorldSiteRecord throws on an unreachable operation and runs during init, so
+  // an authored manifest that violates reachability breaks the game at startup rather than degrading.
+  'test/world-site-operation-reachability.test.mjs',
 ]);
 
 const fastRunLock = await acquirePq017FastRunLock({ outputRoot: OUTPUT_ROOT });

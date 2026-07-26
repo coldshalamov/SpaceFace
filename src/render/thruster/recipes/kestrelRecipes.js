@@ -156,7 +156,7 @@ export const KESTREL_MAIN_PLUME_RECIPE = deepFreeze({
       "preserveSilhouette": true,
       "preserveFeedback": true,
       "maxLayers": 2,
-      "preferRoles": ["core", "sheath"]
+      "preferRoles": ["core", "inner"]
     }
   },
   "quality": {
@@ -170,7 +170,7 @@ export const KESTREL_MAIN_PLUME_RECIPE = deepFreeze({
     },
     "low": {
       "segments": 3,
-      "layers": ["core", "sheath"]
+      "layers": ["core", "inner"]
     }
   },
   "identity": {
