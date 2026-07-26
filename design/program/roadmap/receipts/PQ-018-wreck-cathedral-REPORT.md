@@ -122,6 +122,31 @@ owner outside PQ-018's bounded write set, under the `physics-authority` mutex, w
 exposure. Under the packet's stop conditions that is a shared-change request, not a PQ-018 edit, so
 it was deliberately not attempted here.
 
+## Route defects found and fixed (16)
+
+Nineteen diagnostic runs. Each surfaced a real blocker; none were cosmetic. Two were product bugs,
+the rest were route/harness defects that had never been exercised because the route had never been
+run to completion.
+
+| # | Defect | Class |
+|---|---|---|
+| 1 | Rebase silently reverted `a149f475`'s `snapshot()` hardening | rebase |
+| 2 | `PQ018_AUTHORIZED_BASE_SHA` stale; its guard compared the constant to itself | evidence integrity |
+| 3 | A refused operation reported only a timeout, never the refusal | diagnosability |
+| 4 | **Dependency-blocked beam refusals were silent** — no `beam:denied`, no cue | **product** |
+| 5 | Route could not recover a hull its own approach had broken | route |
+| 6 | Payload latch waited on a receipt PQ-007 stopped publishing (also blocked PQ-017) | stale contract |
+| 7 | Impact run-up staged from inside the wreck's clearance envelope | route |
+| 8 | Tow pull-through ignored tether rest length — ship arrived, cargo did not | route |
+| 9 | Staged impact began from an already-broken hull | route |
+| 10 | Withdrawal at speed 40 broke the hull it was preparing to test | route |
+| 11 | Fixed tow target cannot steer a payload on a slack line | control |
+| 12 | **`planPq017ReceiverServiceTarget` had ten unit tests and zero callers** | **dead wiring** |
+| 13 | Departure clipped the wreck, mutating the record leave/return proves unchanged | route |
+| 14 | Bounded event journal evicted `economy:grantCredits` before it was read | false negative |
+| 15 | Return approach fatal only after recovery (hull starts `failed`, so early clips were no-ops) | state asymmetry |
+| 16 | Cross-wreck transits pathed through the structure rather than around it | route |
+
 ## What passed
 
 - PQ-018 + world-site + broker + middle-mouse focused suites: **143/144**
@@ -155,6 +180,30 @@ Four successive diagnostic runs, each advancing further: op 4 → op 4 (with the
 - **Independent visual review** at close/default/far/motion/LOD/damage/recovery: not performed.
 - **Accessibility semantics** for target/availability/denial/progress/damage/receipt/recovery beyond
   the denial fix: not audited.
+
+## Design findings (not defects, but they shape the experience)
+
+- **A single clip erases all visible progress.** `dark` is the only stage with no prerequisites, so
+  any hull impact retracts `stabilize_cathedral_hull` and drops the site from `archived` straight to
+  `dark` while every other operation stays complete. Nothing is lost — re-stabilizing restores it —
+  but the presentation implies catastrophe. Consider a stage floor, or a distinct "damaged" dressing
+  that preserves earned progression.
+- **All seven operations are mechanically identical.** They share `player-industrial-beam` and differ
+  only by threshold (48/24/20/28/36/30/1). The verbs vary the fiction and presentation; the player's
+  physical action is "hold the beam on the thing" seven times. This is the largest fun-risk in the
+  packet and the strongest improvement candidate.
+- **The physical haul is where the design earns its keep, and where it is most fragile.** Six of the
+  sixteen defects cluster around recovering and delivering the black box. That is the Massline doing
+  real physics rather than a scripted pickup — the distinctive value — but the margins are thin.
+
+## Environmental constraint on live evidence
+
+Acceptance probes contend for the GPU with Grok's headless Blender renders in the primary checkout.
+Run 18 starved to ~9 sim ticks/second (tick 3300 in 360 s, against 20k-56k in healthy runs) and timed
+out on an approach that had succeeded many times. The probe already carries every Chrome
+anti-throttling flag, so this is host contention, not configuration. Codex independently declined to
+launch probes for the same reason. **Route acceptance needs a quiet machine**, or the timing evidence
+is not trustworthy.
 
 ## Findings referred to the integrator
 
