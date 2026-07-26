@@ -404,19 +404,25 @@ const COMPOSITE_FRAG = /* glsl */`
     // Optional legacy color grade. Default uGrade is zero; sector identity belongs to world lighting
     // and authored surfaces, not a tint over every pixel. The optional path remains multiplicative so
     // true black stays black instead of becoming a full-screen cyan veil.
-    vec3 graded = c;
-    {
+    // Guarded like uGrain below. Both of these blocks used to run unconditionally for every pixel of
+    // every frame and then be multiplied away by a zero uniform — a full luminance-weighted channel
+    // balance plus a saturation lift, and a second dot product for the vignette, all discarded. They
+    // are NOT dead code and must not be deleted: src/render/post/spaceRenderGraph.js passes
+    // grade 0.62 / vignette 0.18 in the alternate render-graph pipeline (off by default), so removing
+    // them would silently strip authored look from that path. Guarding keeps both consumers correct
+    // and skips the work on the default route, where the uniforms are zero.
+    if (uGrade > 0.001) {
       float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
       vec3 shadowBalance = vec3(0.88, 0.98, 1.10);
       vec3 highlightBalance = vec3(1.10, 1.00, 0.88);
-      graded = c * mix(shadowBalance, highlightBalance, smoothstep(0.10, 0.60, luma));
+      vec3 graded = c * mix(shadowBalance, highlightBalance, smoothstep(0.10, 0.60, luma));
       float gradedLuma = dot(graded, vec3(0.2126, 0.7152, 0.0722));
       graded = max(mix(vec3(gradedLuma), graded, 1.15), vec3(0.0));
+      c = mix(c, graded, uGrade);
     }
-    c = mix(c, graded, uGrade);
 
     // Optional vignette. Default uVignette is zero.
-    {
+    if (uVignette > 0.001) {
       vec2 d = vUv - vec2(0.5);
       float dist = dot(d, d) * 2.2;            // 0 center → ~1.1 corners
       float vig = smoothstep(0.85, 0.25, dist); // keep center bright, fall off at edges
