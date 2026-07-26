@@ -12,7 +12,6 @@
     "src/ui/"
   ],
   "knownOrphans": {
-    "src/systems/shipLedger.js": "Depth A2 (Ship Ledger) backend. 02_REMAINING_WORK A2: verify player reachability without redesigning the protected station UI.",
     "src/systems/signatureAdapters.js": "Adapter layer for the unwired site signature model; blocked on the same wiring.",
     "src/systems/siteSignatureModel.js": "Asteroid-site signature model. Same shape as siteThermalModel.js — kernel plus tests, no runtime consumer.",
     "src/systems/siteThermalModel.js": "Asteroid-site thermal model. Pure kernel with tests and no runtime consumer; asteroidSites.js does not import it. Bind it to the site runtime or fold it into that system.",
@@ -20,8 +19,7 @@
     "src/ui/dockArrival.js": "Dock-arrival presentation helper with no importer; the arrival beat is currently owned by uiRoot/stationHub.",
     "src/ui/panels/handlingProfile.js": "BP-09 fitting readout, same wiring gap as moduleRisk.js.",
     "src/ui/panels/massDelta.js": "BP-09 fitting readout, same wiring gap as moduleRisk.js.",
-    "src/ui/panels/moduleRisk.js": "BP-09.1 module-drawback glyphs. A readout helper for the fitting screens that no fitting screen imports; depends on S3-F5 truthful previews landing first.",
-    "src/ui/screens/shipLedger.js": "Depth A2 (Ship Ledger) screen, paired with src/systems/shipLedger.js. Unreachable until A2 wires a route into the station shell."
+    "src/ui/panels/moduleRisk.js": "BP-09.1 module-drawback glyphs. A readout helper for the fitting screens that no fitting screen imports; depends on S3-F5 truthful previews landing first."
   },
   "recordedAt": "2026-07-26"
 }
