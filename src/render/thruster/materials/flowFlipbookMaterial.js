@@ -33,7 +33,8 @@ export function computeLayerRadiance(baseIntensity, intensityScale, throttle, _r
 export const FLOW_FLIPBOOK_VERTEX = /* glsl */`
   attribute vec3 instanceOffset;
   attribute vec4 instanceAxisScale; // xyz axis in LOCAL parent space, w = length
-  attribute vec4 instanceParams;    // x=width, y=throttleOrEnvelope, z=phase, w=unused(1)
+  attribute vec4 instanceParams;    // x=width, y=throttleOrEnvelope, z=phase, w=boostBlend
+  attribute vec4 instanceDynamics;  // x=flowSpeed, y=turbulence, z=coreSheath, w=dissipation
   attribute vec3 instanceColor;
 
   varying vec2 vUv;
@@ -42,6 +43,11 @@ export const FLOW_FLIPBOOK_VERTEX = /* glsl */`
   varying float vThrottle;
   varying float vPhase;
   varying vec3 vColor;
+  varying float vFlowSpeed;
+  varying float vTurbulence;
+  varying float vCoreSheath;
+  varying float vDissipation;
+  varying float vBoostBlend;
 
   uniform float uTime;
   uniform float uReducedMotion;
@@ -64,6 +70,12 @@ ${AXIAL_WIDTH_ENVELOPE_GLSL}
     vThrottle = instanceParams.y;
     vPhase = instanceParams.z;
     vColor = instanceColor;
+    // Per-instance continuum dynamics (fleet multi-entity safe).
+    vFlowSpeed = instanceDynamics.x;
+    vTurbulence = instanceDynamics.y;
+    vCoreSheath = instanceDynamics.z;
+    vDissipation = instanceDynamics.w;
+    vBoostBlend = instanceParams.w;
 
     // --- WORLD-SPACE billboard (one space only) ---
     vec3 worldNozzle = (modelMatrix * vec4(instanceOffset, 1.0)).xyz;
@@ -129,6 +141,11 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
   varying float vThrottle;
   varying float vPhase;
   varying vec3 vColor;
+  varying float vFlowSpeed;
+  varying float vTurbulence;
+  varying float vCoreSheath;
+  varying float vDissipation;
+  varying float vBoostBlend;
 
   uniform float uTime;
   uniform float uFlowSpeed;
@@ -188,9 +205,16 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
   }
 
   void main() {
-    // Continuous-plume flow speed is already accessibility-scaled on the CPU. RCS writes the
-    // same one-time scale into uFlowSpeed. Do not square the reduction here into a frozen card.
-    float flowTime = uTime * uFlowSpeed;
+    // Per-instance continuum dynamics (fleet multi-entity). CPU always writes instanceDynamics;
+    // uniforms remain family identity / precompile defaults only.
+    float dynFlow = vFlowSpeed;
+    float dynTurb = vTurbulence;
+    float dynCore = vCoreSheath;
+    float dynDiss = vDissipation;
+    float dynBoost = vBoostBlend;
+    // Continuous-plume flow speed is already accessibility-scaled on the CPU. Do not square
+    // reduced-motion here into a frozen card.
+    float flowTime = uTime * dynFlow;
     float soft = max(uSoftEdge, 0.04);
     float edgeX = smoothstep(0.0, soft, vUv.x) * (1.0 - smoothstep(1.0 - soft * 1.15, 1.0, vUv.x));
     float edgeY = 1.0 - smoothstep(1.0 - soft, 1.0, abs(vSide));
@@ -216,7 +240,7 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     float warpA = valueNoise(warpP) - 0.5;
     float warpB = valueNoise(warpP * 1.93 + vec2(3.7, -2.4)) - 0.5;
     float warpGain = mix(0.30, 1.0, roleSpread) * mix(1.0, 0.42, uReducedMotion)
-      * (0.6 + clamp(uTurbulence, 0.0, 1.6) * 0.45);
+      * (0.6 + clamp(dynTurb, 0.0, 1.6) * 0.45);
     vec2 warp = vec2(warpA * 0.34 + warpB * 0.14, warpB * 0.26 + warpA * 0.10) * warpGain;
 
     float swirl = uSwirl * (0.35 + vThrottle * 0.9);
@@ -235,8 +259,8 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     // One axial field drives attached width changes and torn edges. It is continuous in time and
     // throttle, and its non-zero floor prevents the segmented bead/disc vocabulary from returning.
     float nAxial = valueNoise(vec2(
-      vAlong * (2.9 + uNoiseScale * 0.85 + uBoostBlend * 2.4)
-        - flowTime * (0.24 + vThrottle * 0.36 + uBoostBlend * 0.18)
+      vAlong * (2.9 + uNoiseScale * 0.85 + dynBoost * 2.4)
+        - flowTime * (0.24 + vThrottle * 0.36 + dynBoost * 0.18)
         + warp.x * 0.55,
       vPhase * 13.1 + 2.7
     ));
@@ -266,7 +290,7 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
       + sheathRole * sheathWindow + vaporRole * vaporWindow;
     roleWindow += (1.0 - clamp(coreRole + innerRole + sheathRole + vaporRole, 0.0, 1.0));
     axial *= roleWindow;
-    float breakupDrive = clamp(0.24 + vThrottle * 0.66 + uBoostBlend * 0.34, 0.0, 1.0);
+    float breakupDrive = clamp(0.24 + vThrottle * 0.66 + dynBoost * 0.34, 0.0, 1.0);
     float breakupMotion = mix(1.0, 0.38, uReducedMotion);
     float broadRole = clamp(sheathRole + vaporRole, 0.0, 1.0);
     float localWidth = 1.0 + broadRole * breakupDrive * breakupMotion * ((nAxial - 0.5) * 0.72);
@@ -276,7 +300,7 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     float shapedSide = (vSide - centerDrift) / max(localWidth, 0.62);
     // Core keeps its tight, bright cross-section; broad roles get a creamier falloff so the
     // layers blend into one continuous body instead of stacking as separate visible shells.
-    float sideSharpness = mix(5.8 + uCoreSheath * 0.8, 1.15 + uCoreSheath * 0.3, roleSpread);
+    float sideSharpness = mix(5.8 + dynCore * 0.8, 1.15 + dynCore * 0.3, roleSpread);
     sideSharpness = mix(sideSharpness, sideSharpness * 1.32, uImpulseJet * coreRole);
     float sideFall = exp(-shapedSide * shapedSide * sideSharpness);
     // The outer plasma sheath wraps the inner stream instead of filling the same centerline.
@@ -305,11 +329,11 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     // Fewer, broader filaments travelling further per cycle. The structure and its throttle/turbo
     // response are unchanged; only the spatial rate drops, which is what turns a fine granular
     // shimmer into visible sheets of moving liquid at the real chase-camera distance.
-    float filamentPhase = shapedSide * (5.0 + breakupDrive * 2.2 + uBoostBlend * 1.6)
-      + nAxial * 1.6 - flowTime * (0.42 + uBoostBlend * 0.34);
+    float filamentPhase = shapedSide * (5.0 + breakupDrive * 2.2 + dynBoost * 1.6)
+      + nAxial * 1.6 - flowTime * (0.42 + dynBoost * 0.34);
     float crossFilaments = 0.56 + 0.44 * (0.5 + 0.5 * sin(filamentPhase));
     float axialShear = 0.68 + 0.32 * smoothstep(0.18, 0.84, valueNoise(vec2(
-      vAlong * (5.2 + breakupDrive * 2.8) - flowTime * (0.5 + uBoostBlend * 0.45),
+      vAlong * (5.2 + breakupDrive * 2.8) - flowTime * (0.5 + dynBoost * 0.45),
       shapedSide * 1.7 + vPhase * 7.0
     )));
     float filamentDepth = broadRole * mix(0.30, 0.56, breakupDrive) * mix(1.0, 0.62, uReducedMotion);
@@ -319,11 +343,11 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     // staggered falloffs create 2-4 readable shear notches after minification while the rootBridge
     // keeps the exhaust one attached silhouette. A nonzero analytic floor prevents bead gaps.
     float tongueCenter = exp(-pow(shapedSide * 2.05, 2.0))
-      * (1.0 - smoothstep(0.74 + uBoostBlend * 0.08, 0.98, vAlong));
+      * (1.0 - smoothstep(0.74 + dynBoost * 0.08, 0.98, vAlong));
     float tongueUpper = exp(-pow((shapedSide - 0.46) * 4.2, 2.0))
-      * (1.0 - smoothstep(0.52 + breakupDrive * 0.08, 0.78 + uBoostBlend * 0.08, vAlong));
+      * (1.0 - smoothstep(0.52 + breakupDrive * 0.08, 0.78 + dynBoost * 0.08, vAlong));
     float tongueLower = exp(-pow((shapedSide + 0.42) * 3.8, 2.0))
-      * (1.0 - smoothstep(0.6 + breakupDrive * 0.06, 0.86 + uBoostBlend * 0.1, vAlong));
+      * (1.0 - smoothstep(0.6 + breakupDrive * 0.06, 0.86 + dynBoost * 0.1, vAlong));
     float tongueMask = max(tongueCenter, max(tongueUpper * 0.9, tongueLower * 0.84));
     float rootBridge = (1.0 - smoothstep(0.12, 0.38, vAlong)) * sideFall;
     float attachedTongues = max(tongueMask, rootBridge);
@@ -332,7 +356,7 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     stream *= mix(1.0, 0.18 + 0.82 * attachedTongues, distalZone);
 
     float turb = mix(0.62, 1.0, n1 * 0.65 + n2 * 0.35);
-    turb = mix(1.0, turb, clamp(uTurbulence, 0.0, 1.6));
+    turb = mix(1.0, turb, clamp(dynTurb, 0.0, 1.6));
     // Broad layers get coherent scalloping instead of inheriting the inner texture's narrow wisp.
     float scallop = 0.90 + 0.10 * sin(vAlong * 10.5 + n1 * 3.2 + vSide * 2.2);
     turb *= mix(1.0, scallop, clamp(sheathRole * 0.75 + vaporRole, 0.0, 1.0));
@@ -347,7 +371,7 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
 
     // A later, gentler dissipation ramp keeps the tail alive further downstream so the exhaust
     // trails off as flowing material rather than being cut short by a falloff wall.
-    float dissipate = 1.0 - smoothstep(0.52, 1.06, vAlong / max(0.25, uDissipation));
+    float dissipate = 1.0 - smoothstep(0.52, 1.06, vAlong / max(0.25, dynDiss));
     stream *= mix(0.62, 1.0, dissipate);
 
     // Advanced texture advection. Both paths take two taps and cross-fade, which removes the two

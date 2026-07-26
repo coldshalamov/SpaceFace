@@ -381,8 +381,8 @@ pass('assist and counter-torque RCS remain visible without corresponding input k
   assert.equal(capturedA11y.lowQuality, true);
   assert.equal(capturedA11y.qualityTier, 'low');
   const presentation = resolveAccessibilityPresentation(KESTREL_MAIN_PLUME_RECIPE, capturedA11y);
-  assert.deepEqual(presentation.roles, ['core', 'sheath'],
-    'compact preference must retain a directional two-layer propulsion silhouette');
+  assert.deepEqual(presentation.roles, ['core', 'inner'],
+    'compact preference must retain a bright directional two-layer silhouette');
   pass('disabling extended trails preserves compact main-drive and RCS readability');
 }
 
