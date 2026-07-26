@@ -367,6 +367,11 @@ export async function runPq018WreckCathedralPublicRoute({
 
     phase = 'ordinary-leave-return';
     const beforeLeave = continued.residency;
+    // Departing from beside the wreck can clip it, and a departure impact writes a failure receipt
+    // and drops the stage -- so the returned record would no longer match the pre-save record and
+    // the leave/return comparison would fail for a reason that has nothing to do with persistence.
+    // Back out gently first, exactly as a player leaving the site would.
+    await withdrawToClearApproach(page, routeTimeout(120_000));
     await startPerformanceWindow(page, 'ordinary-leave-return');
     const away = await travelThroughOrdinaryGate(page, {
       fromSectorId: PQ018_CERES_SECTOR_ID,
