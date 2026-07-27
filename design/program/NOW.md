@@ -2,8 +2,8 @@
 # NOW — active work and path leases
 
 ```yaml
-refreshed: 2026-07-26
-baseCommit: 7f7d030b41140f14a522f43b977f839069cc4a55
+refreshed: 2026-07-27
+baseCommit: 40ab3b22a49ddaeafc4c064acdf093a22836199b
 expiresAfterCommits: 25
 expiresAfterDays: 7
 ```
@@ -14,7 +14,8 @@ Refresh this board before mutation. It records live collision risk, not history 
 
 | Domain | Owner/ref | Protected paths or mutex | Disposition |
 |---|---|---|---|
-| Primary checkout visual production | user-directed asset/remaster lane; owner release not recorded | dirty `AGENTS.md`, `CANONICAL_BUILD_MAP.md`, `assets/ships/parts/places/place_debris_chunk.glb`, `place_dead_hulk.glb`, `place_dock_interior.glb`, and `REMASTER_HANDOFF_dock_hulk_debris.md`; related authored/release manifests remain protected | **PROTECTED FOREIGN WORK — do not stage, stash, revert, rebuild, clean, or integrate through the primary checkout.** No `blender.exe` process was observed at the 2026-07-26 refresh, but process absence does not release ownership. The `blender` and `asset-manifest` mutexes remain HELD until the owner/integrator records release. |
+| Primary checkout asset/remaster production | user-directed visual lane; owner release not recorded | dirty `AGENTS.md`, `CANONICAL_BUILD_MAP.md`, `assets/ships/parts/places/place_debris_chunk.glb`, `place_dead_hulk.glb`, `place_dock_interior.glb`, and `REMASTER_HANDOFF_dock_hulk_debris.md`; related authored/release manifests remain protected | **PROTECTED FOREIGN WORK — do not stage, stash, revert, rebuild, clean, or integrate through the primary checkout.** Process absence does not release ownership. The `blender` and `asset-manifest` mutexes remain HELD until the owner/integrator records release. |
+| Primary checkout HUD/menu frontend | concurrent frontend lane, active in the dirty primary checkout | `index.html`, `src/main.js`, `src/ui/screens/mainMenu.js`, `src/ui/screens/newGame.js`, `src/ui/uiRoot.js`, `styles/intro.css`, `styles/menu.css`, and `styles/ui.css` | **ACTIVE FOREIGN WRITER — preserve exactly.** Do not stage, overwrite, format, reset, or use the primary checkout for integration. Performance admission touches no frontend path; any later packet must re-read current HUD/menu owners and acquire their mutexes before overlap. |
 | `place_debris_chunk`, `place_dead_hulk`, `place_dock_interior` | visual production lane (in progress) | Those source GLBs | Re-export underway; as of the last sample the new sources still carry 0 images / 0 textures / no UV0 / empty `asset.extras`, so the release pair remains stale. 3 of 6 touched. |
 | `place_asteroid_rock_a/b/c` | visual production lane (not yet started) | Those source GLBs, release artifacts, `parts_manifest.json` rows | Untouched since 2026-07-11. Still awaiting re-authoring. |
 | Committed candidate refs | named local/remote branches and registered worktrees | Their branch tips and worktree metadata | These are not active writers. Preserve the refs as reviewable candidates; do not merge or rebase them merely for a checkpoint. **Both leading PQ-018 branches would revert all six place GLBs and delete the authoring textures retained at `329acfe8` — never merge them wholesale.** |
@@ -22,7 +23,7 @@ Refresh this board before mutation. It records live collision risk, not history 
 | `sf-perf-admission-20260726` | lead integrator admission draft | `design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md`, `design/PLAN_REGISTRY.md`, `design/program/PROGRAM_MAP.md`, `design/program/NOW.md`, `design/program/roadmap/program-queue.json`, `design/program/roadmap/active/README.md`, and `PQ-034.md` through `PQ-042.md` | **ACTIVE CONTROL-PLANE DRAFT.** No implementation path or performance mutex is claimed by admission. Integrate only a reviewed path-limited control-plane diff; do not include primary assets/policy edits. |
 | `sf-perf-modernization-20260726` | unaccepted foundation candidate | PERF-00 pure harness files plus PERF-03/PERF-05/PERF-06 candidate paths | **PROTECTED READ/REVIEW INPUT — no packet authority.** Never merge or commit wholesale. Selectively port only after the owning packet is admitted and claimed. |
 | `sf-perf01a` / `codex/perf-01a-background-lifecycle` | protected lifecycle candidate | `electron/main.cjs`, candidate preload, `package.json`, lifecycle checks, `src/core/loop.js`, `src/main.js`, lifecycle tests | **PROTECTED DIRTY CANDIDATE — do not duplicate, merge, rebase, clean, or remove.** PERF-01/PQ-035 must review and selectively port after PQ-034; known teardown/input-owner gaps remain unaccepted. |
-| Performance packet leases | none during admission | `performance-evidence`, `validation-broker`, `browser-gpu`, `lifecycle`, `electron-shell`, `package`, `loop`, `registry`, `input`, `renderer`, `vfx`, `npc-jobs`, `spatial-query` | PQ-034 is admitted `ready` but remains `unclaimed`; PQ-035–PQ-042 remain planned; PQ-043/PQ-044 remain deferred. Dependency-ready is not claim-ready. |
+| Performance packet leases | none during admission | `performance-evidence`, `validation-broker`, `browser-gpu`, `lifecycle`, `electron-shell`, `package`, `loop`, `registry`, `input`, `renderer`, `vfx`, `npc-jobs`, `spatial-query` | On exact integration, PQ-034 enters `ready` but remains `unclaimed`; PQ-035–PQ-042 remain planned; PQ-043/PQ-044 remain deferred. Dependency-ready is not claim-ready. |
 | `sf-ctl-a` / `sf-ctl-b` / `sf-ctl-c` / `sf-ctl-d` worktrees | controller run 2026-07-26 — **leases released** | — | All four lanes are merged and released. The worktrees are intentionally **left in place**: each holds a `node_modules` **Windows junction** to the primary checkout, and `git worktree remove` would follow the junction and destroy the primary's dependencies. Remove the junction first if these are ever cleaned up. `sf-ctl-a` holds a preserved, deliberately unintegrated PQ-018 candidate. |
 
 ## Current program facts needed for dispatch
