@@ -26,7 +26,28 @@
 //   breachOn(payload, ctx) — PURE predicate: does this payload breach the clause? `ctx` carries the
 //              mission instance (params/type) for context. Returns boolean.
 
+// GENERALISED (grammar §9.9.1): the same allowlist discipline now covers N physics conditions over
+// the events that actually fire. The five fine-print clauses below are unchanged and keep their own
+// narrow allowlist; src/data/missionConditions.js carries the physical terms and its own event set.
+// Both catalogs ride in ONE `mission.clauses` array and settle through ONE settlement function.
+import {
+  MISSION_CONDITION_EVENTS,
+  isMissionConditionRow,
+  missionConditionById,
+} from './missionConditions.js';
+
 export const OBSERVED_CLAUSE_EVENTS = Object.freeze(['entity:killed', 'player:scannedByPatrol']);
+
+/** Every event either catalog can be observed on. The contractClauses system subscribes to this. */
+export const OBSERVED_CONTRACT_TERM_EVENTS = Object.freeze([...new Set([
+  ...OBSERVED_CLAUSE_EVENTS,
+  ...MISSION_CONDITION_EVENTS,
+])]);
+
+/** Resolve a `mission.clauses` row to its canonical catalog record (clause OR physics condition). */
+export function contractTermById(id) {
+  return CONTRACT_CLAUSES[id] || missionConditionById(id) || undefined;
+}
 
 export const CONTRACT_CLAUSES = Object.freeze({
   // No kills during the contract — keyed off entity:killed (player kills; missions._onKill).
@@ -124,12 +145,20 @@ export function settleContractClauses(mission) {
     ? mission._clauseState : {};
   const honored = [];
   const breached = [];
+  const unmet = [];
   let rewardMult = 1;
   for (const term of terms) {
-    const canonical = term && clauseById(term.id);
+    const canonical = term && contractTermById(term.id);
     if (!canonical) continue;
-    if (clauseState[canonical.id] && clauseState[canonical.id].breached) {
+    const runtime = clauseState[canonical.id];
+    if (runtime && runtime.breached) {
       breached.push(canonical.id);
+      continue;
+    }
+    // A `require` condition pays only when it was actually satisfied. It is not a breach — the
+    // player simply did not earn the premium — so it gets its own bucket in the receipt.
+    if (canonical.kind === 'require' && !(runtime && runtime.satisfied)) {
+      unmet.push(canonical.id);
       continue;
     }
     // The catalog, not mutable save/offer metadata, is the payout authority.
@@ -145,7 +174,30 @@ export function settleContractClauses(mission) {
     rewardCr: Math.max(0, Math.round(baseRewardCr * rewardMult)),
     honored: Object.freeze(honored.map((row) => Object.freeze(row))),
     breached: Object.freeze(breached),
+    unmet: Object.freeze(unmet),
   });
+}
+
+/**
+ * Physics conditions of kind `require` that are still unsatisfied on this mission. Missions gates
+ * turn-in on this being empty, so "deliver it — and come alongside under control" is a DIFFERENT
+ * mission from "deliver it", not the same mission with a bonus stapled on.
+ * PURE over the instance; returns the canonical catalog records so callers get the player-facing text.
+ */
+export function unsatisfiedRequiredConditions(mission) {
+  const terms = Array.isArray(mission && mission.clauses) ? mission.clauses : [];
+  const runtimeState = mission && mission._clauseState && typeof mission._clauseState === 'object'
+    ? mission._clauseState : {};
+  const out = [];
+  for (const term of terms) {
+    if (!isMissionConditionRow(term)) continue;
+    const canonical = missionConditionById(term.conditionId);
+    if (!canonical || canonical.kind !== 'require' || canonical.blocking !== true) continue;
+    const runtime = runtimeState[canonical.id];
+    if (runtime && runtime.satisfied) continue;
+    out.push(canonical);
+  }
+  return out;
 }
 
 /** All clause ids (for seeded attachment selection). */

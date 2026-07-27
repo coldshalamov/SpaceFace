@@ -252,7 +252,12 @@ export function createMarketScreen(ctx) {
       );
     }).join('');
     const signature = JSON.stringify({
-      selectedId, marketFilter, marketQuery, cargoOnly,
+      // `tracked_` belongs in the no-churn signature because it is RENDERED into every row (the
+      // is-tracked class and the ◆ "Tracked contract cargo" flag). Without it, accepting or
+      // switching a contract while the list was already cached left the flag stale — the instrument
+      // panel below re-renders unconditionally and showed the "buy it here for your job" callout,
+      // while the row it points at carried no mark at all. Caught by check:mission-handoff.
+      selectedId, marketFilter, marketQuery, cargoOnly, tracked: tracked_,
       rows: visible.map((r) => [r.id, unitBuy(r.entry, r.def), heldQty(state, r.id), r.entry && r.entry.demandMult,
         JSON.stringify(r.entry && r.entry.demandDrivers || []),
         priceHistory(r.entry, r.def).at(-1)]),
