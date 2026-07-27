@@ -88,9 +88,21 @@ const PRECISE_CURSOR_THRESHOLD = 0.82;
 const PRECISE_CURSOR_SEPARATION = 0.08;
 const MASSIVE_ANCHOR_MIN_MASS = 1800;
 const CONTEXT_PROFILES = Object.freeze({
+  // 'precision-pick' is the FALLBACK profile — no focus lease, no unambiguous paint, no route, no
+  // strong turn, no hostile, no towable. That is ordinary straight-line flight, i.e. the commonest
+  // acquisition context in the game, and it used to be the only profile with no mass axis at all.
+  // With cursor contributing 0 (nothing painted) and category pinned at 0.5 for every candidate
+  // here, proximity was the only live discriminator and the nearest pebble won against the freighter
+  // you were flying at: measured 0.4646 (12-mass pebble at 70wu) vs 0.3426 (4200-mass hull at
+  // 300wu), and axes.mass was computed at 1.0 for the hull and then multiplied by zero. mass 0.12
+  // matches the sibling 'massive-anchor-sling' weight (route-anchor carries 0.05), and its cost is
+  // taken mostly out of proximity — which stays ABOVE mass, so closeness is still the stronger
+  // authored signal, just no longer the only one. category/base give up 0.02 each: category is a
+  // constant 0.5 for every candidate in this profile (contextCategoryMatch's default arm) and so
+  // discriminates nothing, and base re-reads the legacy blend that already fed this score.
   'precision-pick': Object.freeze({
     label: 'PICK',
-    weights: Object.freeze({ cursor: 0.34, proximity: 0.23, turn: 0.19, authority: 0.10, approach: 0.06, category: 0.04, base: 0.04 }),
+    weights: Object.freeze({ cursor: 0.34, proximity: 0.15, turn: 0.19, mass: 0.12, authority: 0.10, approach: 0.06, category: 0.02, base: 0.02 }),
   }),
   'massive-anchor-sling': Object.freeze({
     label: 'ORBIT',
