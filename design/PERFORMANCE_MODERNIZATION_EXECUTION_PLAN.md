@@ -74,6 +74,20 @@ changing gameplay.
 
 > “Do not gain performance by reducing content, population, effects, draw distance, render quality, or default visual quality.”
 
+### 2.1 Synchronized product baseline
+
+The performance program is applied to the current integrated game, not to an older isolated checkout.
+The baseline now includes the intro/menu redesign from `6271ca29`, the compact flight-HUD treatment from
+`dcbe4a20`, and the Massline/gameplay fixes already integrated on `master`; equivalence must preserve
+both the player-facing design and the newer gameplay semantics. A performance packet may refactor how
+those surfaces are produced, but it may not restore the prior UI, drop information, or replace the
+current visual language merely because an older candidate was easier to optimize.
+
+The dock/hulk/debris source remaster checkpoint at `427d9897` is also preserved as authored work. It is
+explicitly a source-only, partial-form checkpoint: the release pair remains unpromoted until the visual
+and release gates pass. Performance work must neither revert those sources nor promote them by bypassing
+asset acceptance. Source preservation and runtime promotion remain separate decisions.
+
 ## 3. What is proved today, and what is not
 
 ### 3.1 Current evidence
