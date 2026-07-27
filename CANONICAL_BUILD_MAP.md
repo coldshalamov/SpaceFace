@@ -18,7 +18,15 @@ Before changing anything:
 7. Use [`docs/MODULE_MAP.md`](./docs/MODULE_MAP.md), then generated [`docs/SYSTEM_REGISTRY.md`](./docs/SYSTEM_REGISTRY.md) or [`docs/EVENT_ROUTING.md`](./docs/EVENT_ROUTING.md), to locate live owners. Search only those owners, their tests, and their checks.
 8. Follow [`design/program/roadmap/00_EXECUTION_PROTOCOL.md`](./design/program/roadmap/00_EXECUTION_PROTOCOL.md) through a terminal receipt.
 
-Do not begin from an old handoff, screenshot directory, review transcript, archived plan, raw whole-queue dump, or broad repository grep.
+**Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of
+`place_dock_interior`, `place_dead_hulk`, and/or `place_debris_chunk` (Blender/EEVEE form work, not a
+queue packet), start at
+[`assets/ships/parts/places/REMASTER_HANDOFF_dock_hulk_debris.md`](./assets/ships/parts/places/REMASTER_HANDOFF_dock_hulk_debris.md)
+before touching those GLBs. That handoff owns live residuals, bans, KEEP/RESTORE rules, and player-route
+meaning (dock = shipyard UI backdrop; hulk/debris = freeflight landmarks). For ordinary admitted
+roadmap work, still use `program-dispatch` above—do not substitute this handoff for a PQ packet.
+
+Do not begin from an old handoff, screenshot directory, review transcript, archived plan, raw whole-queue dump, or broad repository grep—**except** the place remaster handoff linked above when that is the explicit task.
 
 ## 2. Product north star
 
