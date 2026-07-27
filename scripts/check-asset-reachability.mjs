@@ -12,11 +12,24 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  CANONICAL_PORTRAITS,
+  PORTRAIT_ASSET_ROOT,
+  ROLE_PORTRAITS,
+} from '../src/data/portraits.js';
+import { WRECK_CATHEDRAL_EVIDENCE_CATALOG } from '../src/data/wreckCathedralEvidenceCatalog.js';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 // Asset roots copied into build/web by build-bundle.mjs AND globbed into the electron package by
 // package.json build.files. A referenced asset outside these roots 404s in the shipped game.
-const BUNDLED_ROOTS = ['assets/cinematics', 'assets/ui', 'assets/ships', 'assets/portraits'];
+const BUNDLED_ROOTS = [
+  'assets/cinematics',
+  'assets/ui',
+  'assets/ships',
+  'assets/portraits',
+  'assets/fx/thruster',
+];
 
 // Authoring/reference-only assets: AI-generated LABELLED contact-sheet bibles (baked caption text,
 // and in the pilot sheet's case the forbidden helmet/visor motif). They must stay OUT of the runtime
@@ -76,17 +89,45 @@ function stripComments(src) {
 
 // Collect live-referenced assets: path -> [referencing files].
 const referenced = new Map();
+const addReference = (asset, source) => {
+  const rel = String(asset).replace(/^\.\//, '').replace(/\\/g, '/');
+  if (!referenced.has(rel)) referenced.set(rel, []);
+  if (!referenced.get(rel).includes(source)) referenced.get(rel).push(source);
+};
 for (const dir of SCAN_DIRS) {
   for (const file of walk(join(ROOT, dir))) {
     if (!SCAN_EXT.test(file)) continue;
     const code = stripComments(readFileSync(file, 'utf8'));
     for (const match of code.match(ASSET_RE) || []) {
-      const rel = match.replace(/^\.\//, '');
       const relFile = file.slice(ROOT.length + 1).replace(/\\/g, '/');
-      if (!referenced.has(rel)) referenced.set(rel, []);
-      if (!referenced.get(rel).includes(relFile)) referenced.get(rel).push(relFile);
+      addReference(match, relFile);
     }
   }
+}
+
+const thrusterManifestPath = 'assets/fx/thruster/manifest.json';
+const thrusterManifest = JSON.parse(readFileSync(join(ROOT, thrusterManifestPath), 'utf8'));
+const dynamicRegistries = Object.freeze({
+  portraits: Object.freeze(
+    [...Object.values(CANONICAL_PORTRAITS), ...Object.values(ROLE_PORTRAITS)]
+      .map((file) => `${PORTRAIT_ASSET_ROOT}${file}`),
+  ),
+  wreckCathedralEvidence: Object.freeze(
+    Object.values(WRECK_CATHEDRAL_EVIDENCE_CATALOG).map((entry) => entry.media.path),
+  ),
+  thrusterTextures: Object.freeze(
+    (thrusterManifest.textures || []).map((entry) => entry.path),
+  ),
+});
+
+for (const asset of dynamicRegistries.portraits) {
+  addReference(asset, 'src/data/portraits.js#registry');
+}
+for (const asset of dynamicRegistries.wreckCathedralEvidence) {
+  addReference(asset, 'src/data/wreckCathedralEvidenceCatalog.js#registry');
+}
+for (const asset of dynamicRegistries.thrusterTextures) {
+  addReference(asset, thrusterManifestPath);
 }
 
 const issues = [];
@@ -135,11 +176,23 @@ for (const root of BUNDLED_ROOTS) {
   }
 }
 
-if (issues.length) {
+const bundledRefs = [...referenced.keys()].filter(underBundledRoot).length;
+const report = {
+  pass: issues.length === 0,
+  issues,
+  referencedAssetCount: referenced.size,
+  bundledReferenceCount: bundledRefs,
+  referenceOnlyCount: Object.keys(REFERENCE_ONLY).length,
+  dynamicRegistries,
+};
+
+if (process.argv.includes('--json')) {
+  console.log(JSON.stringify(report, null, 2));
+} else if (issues.length) {
   console.error('asset reachability FAILED:\n' + issues.map((i) => '  - ' + i).join('\n'));
-  process.exit(1);
+} else {
+  console.log(`asset reachability OK — ${referenced.size} referenced runtime assets exist and are bundled (${bundledRefs} under bundled roots); ` +
+    `${Object.keys(REFERENCE_ONLY).length} authoring-only reference sheets held out of the runtime.`);
 }
 
-const bundledRefs = [...referenced.keys()].filter(underBundledRoot).length;
-console.log(`asset reachability OK — ${referenced.size} referenced runtime assets exist and are bundled (${bundledRefs} under bundled roots); ` +
-  `${Object.keys(REFERENCE_ONLY).length} authoring-only reference sheets held out of the runtime.`);
+if (issues.length) process.exit(1);

@@ -7,8 +7,22 @@ import { test } from 'node:test';
 import {
   createReleaseBuildReceipt,
   RELEASE_BUILD_RECEIPT,
+  RELEASE_COPY_MAPPINGS,
   validateReleaseBuildReceipt,
 } from '../scripts/lib/releasePackaging.mjs';
+
+test('release copy map includes only the live thruster texture runtime subtree', () => {
+  assert.ok(
+    RELEASE_COPY_MAPPINGS.some(({ source, destination }) =>
+      source === 'assets/fx/thruster' && destination === 'assets/fx/thruster'),
+    'the dynamically loaded thruster masks and their manifest must ship in web and Electron releases',
+  );
+  assert.equal(
+    RELEASE_COPY_MAPPINGS.some(({ source }) => source === 'assets/fx'),
+    false,
+    'authoring-only FX contact sheets must remain outside the retail bundle',
+  );
+});
 
 test('release receipt is deterministic and fails closed on omission or retail-only artifacts', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'spaceface-release-package-'));

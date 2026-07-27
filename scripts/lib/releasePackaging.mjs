@@ -13,6 +13,9 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
   // previous exports do not belong in the retail package and are not runtime fallbacks.
   Object.freeze({ source: 'assets/ships/release', destination: 'assets/ships/release' }),
   Object.freeze({ source: 'assets/portraits', destination: 'assets/portraits' }),
+  // Runtime plume/RCS masks are loaded through template paths in vfx.js. Copy only this manifest-
+  // governed subtree; the labelled FX reference sheets in assets/fx/ remain authoring-only.
+  Object.freeze({ source: 'assets/fx/thruster', destination: 'assets/fx/thruster' }),
   Object.freeze({ source: 'src/data/scenarios', destination: 'data/scenarios' }),
   Object.freeze({ source: 'vendor/addons/libs', destination: 'vendor/addons/libs' }),
 ]);
