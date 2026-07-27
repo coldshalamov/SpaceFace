@@ -72,6 +72,8 @@ batching, query strategy, upload granularity, or backend. It may not obtain a pa
 content, reducing default quality, lowering population, hiding effects, narrowing draw distance, or
 changing gameplay.
 
+> “Do not gain performance by reducing content, population, effects, draw distance, render quality, or default visual quality.”
+
 ## 3. What is proved today, and what is not
 
 ### 3.1 Current evidence

@@ -73,6 +73,8 @@ Declare expected maximum growth in entities, colliders, queries/candidates, allo
 
 Never use default quality reduction as the mitigation.
 
+> “Do not gain performance by reducing content, population, effects, draw distance, render quality, or default visual quality.”
+
 ## Verification budget
 
 ```yaml
