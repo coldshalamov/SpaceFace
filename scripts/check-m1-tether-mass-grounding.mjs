@@ -15,6 +15,7 @@ import { addCargo, cargo } from '../src/systems/cargo.js';
 import { buildSlotList, fittingsFromDefaultModules, getDerivedStats, makeShipEntitySpec, ships } from '../src/systems/ships.js';
 import { tetherGameplay } from '../src/systems/tetherGameplay.js';
 import { buildCommandMatrix } from './check-ci-report.mjs';
+import { ciMatrixSourceCommand } from './lib/ciGateGraph.mjs';
 
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 assert.equal(packageJson.scripts['check:m1:tether-mass'], 'node scripts/check-m1-tether-mass-grounding.mjs',
@@ -34,10 +35,9 @@ assert.equal(packageJson.scripts['check:ci'], 'npm run check:ci:report',
 assert.equal(packageJson.scripts['check:ci:report'], 'node scripts/check-ci-report.mjs',
   'check:ci:report runs the complete ci-report runner');
 {
-  // Mirror check-ci-report.mjs non-smoke matrix: precheck + check expanded once.
-  const completeCheckCommand = [packageJson.scripts?.precheck, packageJson.scripts?.check]
-    .filter(Boolean)
-    .join(' && ');
+  // Use check-ci-report.mjs's own matrix source rather than restating it, so this gate cannot drift
+  // out of agreement with the runner it is asserting about.
+  const completeCheckCommand = ciMatrixSourceCommand(packageJson.scripts || {});
   const matrix = buildCommandMatrix(completeCheckCommand, packageJson.scripts || {});
   const tetherMassCommands = matrix.filter((entry) => entry.command === 'npm run check:m1:tether-mass');
   assert.equal(tetherMassCommands.length, 1,

@@ -22,36 +22,21 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  CI_MATRIX_ROOT_SCRIPTS,
+  collectReachable,
+  directNpmDependencies,
+} from './lib/ciGateGraph.mjs';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-// Must mirror check-ci-report.mjs's `[scripts.precheck, scripts.check]` matrix source.
-const ROOTS = ['precheck', 'check'];
+// The walker and the matrix-source list both live in scripts/lib/ciGateGraph.mjs now — one
+// definition of "reachable from the CI roots", shared with check-ci-report.mjs and with the gates
+// that assert a specific check is wired in. Do not re-copy either here.
+const ROOTS = CI_MATRIX_ROOT_SCRIPTS;
 const BASELINE_PATH = resolve(ROOT, 'test/gate-reachability.baseline.json');
 
-export function collectReachable(scripts, roots = ROOTS) {
-  const seen = new Set();
-  const walk = (name) => {
-    if (seen.has(name)) return;
-    seen.add(name);
-    const body = scripts[name];
-    if (typeof body !== 'string') return;
-    for (const segment of body.split(/\s*&&\s*/)) {
-      const match = segment.trim().match(/^npm\s+run\s+([\w:@.-]+)/);
-      if (match) walk(match[1]);
-    }
-  };
-  for (const root of roots) walk(root);
-  return new Set([...seen].filter((name) => name.startsWith('check:')));
-}
-
-export function directNpmDependencies(body) {
-  if (typeof body !== 'string') return [];
-  const names = [];
-  for (const segment of body.split(/\s*&&\s*/)) {
-    const match = segment.trim().match(/^npm\s+run\s+([\w:@.-]+)/);
-    if (match) names.push(match[1]);
-  }
-  return names;
-}
+// Re-exported for existing importers (test/gate-reachability-contract.test.mjs).
+export { collectReachable, directNpmDependencies };
 
 export function auditReachability(scripts, baseline) {
   const declared = Object.keys(scripts).filter((name) => name.startsWith('check:'));

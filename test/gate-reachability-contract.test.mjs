@@ -12,6 +12,11 @@ import {
   collectReachable,
   directNpmDependencies,
 } from '../scripts/check-gate-reachability.mjs';
+import {
+  countGateInvocations,
+  resolveAggregateCommand,
+  resolveAggregateSource,
+} from '../scripts/lib/ciGateGraph.mjs';
 
 const BASE = {
   precheck: 'npm run check:alpha',
@@ -94,6 +99,71 @@ test('the live package.json and baseline pass the audit', () => {
   const baseline = JSON.parse(readFileSync(new URL('./gate-reachability.baseline.json', import.meta.url), 'utf8'));
   const report = auditReachability(scripts, baseline);
   assert.equal(report.ok, true, report.failures.join('\n'));
+});
+
+// The `check:ci` delegation is the thing that broke four gates at once: they each counted `npm run`
+// strings inside `scripts['check:ci']`, which is a single `npm run check:ci:report` and therefore
+// contains none of the links CI actually executes. scripts/lib/ciGateGraph.mjs is now the one place
+// that resolves it, so its failure modes are exercised here rather than trusted.
+const DELEGATING = {
+  check: 'npm run check:alpha && npm run check:beta',
+  'check:ci': 'npm run check:ci:report',
+  'check:ci:report': 'node scripts/check-ci-report.mjs',
+  'check:alpha': 'node scripts/alpha.mjs',
+  'check:beta': 'npm run check:gamma',
+  'check:gamma': 'node scripts/gamma.mjs',
+};
+
+test('check:ci resolves through the ci-report runner to the real check chain', () => {
+  assert.equal(resolveAggregateCommand(DELEGATING, 'check:ci'), DELEGATING.check);
+  assert.equal(resolveAggregateSource(DELEGATING, 'check:ci').name, 'check');
+  assert.equal(resolveAggregateCommand(DELEGATING, 'check'), DELEGATING.check);
+});
+
+test('the delegating and direct aggregates agree on transitive gate counts', () => {
+  for (const gate of ['check:alpha', 'check:beta', 'check:gamma']) {
+    assert.equal(countGateInvocations(DELEGATING, 'check:ci', gate), 1, gate);
+    assert.equal(countGateInvocations(DELEGATING, 'check', gate), 1, gate);
+  }
+  assert.equal(countGateInvocations(DELEGATING, 'check:ci', 'check:absent'), 0);
+});
+
+test('a gate wired twice is counted twice, so "exactly once" can still fail', () => {
+  const doubled = { ...DELEGATING, check: 'npm run check:alpha && npm run check:beta && npm run check:gamma' };
+  assert.equal(countGateInvocations(doubled, 'check:ci', 'check:gamma'), 2);
+});
+
+test('dropping a gate from check makes it unreachable from check:ci too', () => {
+  const dropped = { ...DELEGATING, check: 'npm run check:alpha' };
+  assert.equal(countGateInvocations(dropped, 'check:ci', 'check:gamma'), 0);
+  assert.ok(!collectReachable(dropped, ['check:ci']).has('check:gamma'));
+});
+
+test('a --smoke runner is NOT the package matrix and does not resolve to check', () => {
+  const smoke = { ...DELEGATING, 'check:ci:report': 'node scripts/check-ci-report.mjs --smoke' };
+  assert.equal(resolveAggregateSource(smoke, 'check:ci').name, 'check:ci:report');
+  assert.equal(countGateInvocations(smoke, 'check:ci', 'check:gamma'), 0);
+});
+
+test('resolution throws on a delegation cycle instead of hanging', () => {
+  const cyclic = { check: 'npm run check:ci', 'check:ci': 'npm run check' };
+  assert.throws(() => resolveAggregateCommand(cyclic, 'check:ci'), /delegation cycle/);
+});
+
+test('resolution throws when the root is not a declared script', () => {
+  assert.throws(() => resolveAggregateCommand(DELEGATING, 'check:nope'), /does not declare a runnable script/);
+});
+
+test('the live check and check:ci aggregates run the same gates', () => {
+  const scripts = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
+  assert.equal(resolveAggregateCommand(scripts, 'check:ci'), resolveAggregateCommand(scripts, 'check'));
+  for (const gate of collectReachable(scripts)) {
+    assert.equal(
+      countGateInvocations(scripts, 'check:ci', gate),
+      countGateInvocations(scripts, 'check', gate),
+      `${gate} must be executed the same number of times by check and check:ci`,
+    );
+  }
 });
 
 test('the atlas program suite is pinned and reachable, not merely green', () => {

@@ -7,6 +7,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { createScreenManager } from '../src/ui/screenManager.js';
 import { save as saveDefinition } from '../src/save/saveSystem.js';
 import { feel as feelDefinition } from '../src/render/feel.js';
+import { resolveAggregateCommand } from '../scripts/lib/ciGateGraph.mjs';
 
 const timeEffectsModule = await import('../src/core/timeEffects.js').catch(() => null);
 const runTransitionModule = await import('../src/core/runTransitionGuard.js').catch(() => null);
@@ -890,7 +891,11 @@ function testWriterAndRuntimeContracts(auditWriters, formatFindings) {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   for (const broadGate of ['check', 'check:ci']) {
-    const command = packageJson.scripts[broadGate];
+    // `check:ci` is `npm run check:ci:report` -> `node scripts/check-ci-report.mjs`, which expands
+    // the package matrix. Its literal body contains no gate links at all, so this used to count 0
+    // and fail. Resolve the delegation first; the ordering assertion below then still applies to the
+    // real chain, which is the thing that decides what CI runs and in what order.
+    const command = resolveAggregateCommand(packageJson.scripts, broadGate);
     const matches = command.match(/npm run check:time-effects/g) || [];
     assert.equal(matches.length, 1, `${broadGate} must execute check:time-effects exactly once`);
     assert.match(command, /npm run check:launch-policy && npm run check:time-effects/,

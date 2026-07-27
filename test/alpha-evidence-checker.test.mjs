@@ -6,6 +6,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  resolveAggregateCommand,
+  splitCommandChain,
+} from '../scripts/lib/ciGateGraph.mjs';
+import {
   scanEvidenceTree,
 } from '../scripts/lib/alphaEvidenceChecker.mjs';
 import {
@@ -218,7 +222,10 @@ async function runRepositoryWiringAssertions() {
     'the clean-CI contract command runs the rejection matrix',
   );
   for (const aggregate of ['check', 'check:ci']) {
-    const commands = pkg.scripts[aggregate].split(' && ');
+    // `check:ci` delegates (`npm run check:ci:report` -> `node scripts/check-ci-report.mjs`), so its
+    // own body lists none of the links it runs. Resolve the delegation to the chain the ci-report
+    // runner expands; both assertions below then read the commands CI genuinely executes.
+    const commands = splitCommandChain(resolveAggregateCommand(pkg.scripts, aggregate));
     assert.ok(
       commands.includes('npm run check:alpha:evidence:contract'),
       `${aggregate} must include the clean-CI evidence contract gate`,

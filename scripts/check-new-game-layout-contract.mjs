@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { countGateInvocations } from './lib/ciGateGraph.mjs';
+
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 const scripts = pkg.scripts || {};
@@ -15,8 +17,12 @@ assert.equal(scripts['check:new-game-layout'], 'node scripts/check-new-game-layo
 assert.match(scripts['check:new-game-layout:ci'] || '', /check-new-game-layout\.mjs --headless/,
   'CI New Game layout check must run the same real geometry probe headlessly');
 
+// Both aggregates must run the headless geometry probe exactly once. `check:ci` is a one-line
+// delegation to the ci-report runner, so counting `npm run` strings inside its body sees nothing;
+// countGateInvocations resolves that delegation to the matrix the runner actually expands. Exactly
+// once in each — not "at least once", because a duplicated probe is wasted browser time in CI.
 for (const rootScript of ['check', 'check:ci']) {
-  assert.equal(countTransitiveRuns(rootScript, 'check:new-game-layout:ci'), 1,
+  assert.equal(countGateInvocations(scripts, rootScript, 'check:new-game-layout:ci'), 1,
     `${rootScript} must reach the headless New Game geometry gate exactly once`);
 }
 
@@ -38,14 +44,3 @@ for (const artifact of [
 }
 
 console.log('PASS New Game layout contract - headed evidence, headless CI, and immutable RED artifacts.');
-
-function countTransitiveRuns(scriptName, target, stack = []) {
-  if (scriptName === target) return 1;
-  assert(!stack.includes(scriptName), `npm script cycle: ${[...stack, scriptName].join(' -> ')}`);
-  const command = String(scripts[scriptName] || '');
-  let total = 0;
-  for (const match of command.matchAll(/\bnpm run ([a-zA-Z0-9:_-]+)/g)) {
-    total += countTransitiveRuns(match[1], target, [...stack, scriptName]);
-  }
-  return total;
-}

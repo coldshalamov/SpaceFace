@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
+import { resolveAggregateCommand } from '../scripts/lib/ciGateGraph.mjs';
+
 const packageUrl = new URL('../package.json', import.meta.url);
 const runnerUrl = new URL('../scripts/check-asset-pipeline-contract.mjs', import.meta.url);
 const pkg = JSON.parse(await readFile(packageUrl, 'utf8'));
@@ -23,16 +25,22 @@ assert.equal(countCommand(pkg.scripts['check:art'], authoredPlaceRunner), 0,
   'check:art invokes the named authored-place gate rather than duplicating its runner');
 assert.equal(countCommand(pkg.scripts['check:art'], 'node scripts/check-exporter.mjs'), 0,
   'check:art does not duplicate check-exporter outside the asset-pipeline gate');
+// `check:ci` is not a chain — it is `npm run check:ci:report`, which runs the ci-report runner, which
+// expands the package matrix. Reading `pkg.scripts['check:ci']` therefore sees a single delegation
+// and none of the links it actually executes, which is why counting inside it always returned 0.
+// resolveAggregateCommand walks that delegation to the chain the aggregate really runs, so every
+// assertion below keeps its exact original meaning and is now measured against the real command.
 for (const aggregate of ['check', 'check:ci']) {
-  assert.equal(countCommand(pkg.scripts[aggregate], 'npm run check:art'), 1,
+  const aggregateChain = resolveAggregateCommand(pkg.scripts, aggregate);
+  assert.equal(countCommand(aggregateChain, 'npm run check:art'), 1,
     `${aggregate} reaches the asset-pipeline contract through check:art exactly once`);
-  assert.equal(countCommand(pkg.scripts[aggregate], aggregateCommand), 0,
+  assert.equal(countCommand(aggregateChain, aggregateCommand), 0,
     `${aggregate} must not duplicate the asset-pipeline gate outside check:art`);
-  assert.equal(countCommand(pkg.scripts[aggregate], gateCommand), 0,
+  assert.equal(countCommand(aggregateChain, gateCommand), 0,
     `${aggregate} must not invoke the asset-pipeline runner directly`);
-  assert.equal(countCommand(pkg.scripts[aggregate], authoredPlaceCommand), 0,
+  assert.equal(countCommand(aggregateChain, authoredPlaceCommand), 0,
     `${aggregate} must reach authored-place runtime coverage only through check:art`);
-  assert.equal(countCommand(pkg.scripts[aggregate], authoredPlaceRunner), 0,
+  assert.equal(countCommand(aggregateChain, authoredPlaceRunner), 0,
     `${aggregate} must not invoke the authored-place runtime runner directly`);
 }
 for (const [scriptName, command] of Object.entries(pkg.scripts)) {

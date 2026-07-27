@@ -4,6 +4,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { ciMatrixSourceCommand } from './lib/ciGateGraph.mjs';
+
 const DEFAULT_TIMEOUT_MS = 180000;
 const LONG_TIMEOUT_MS = 420000;
 const TAIL_LIMIT = 1600;
@@ -27,14 +29,11 @@ async function runCli() {
   const failFast = process.argv.includes('--fail-fast');
   const smoke = process.argv.includes('--smoke');
   const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
-  // `precheck` was an npm LIFECYCLE hook: npm ran it automatically before `check`, which meant a red
-  // link in it aborted `npm run check` before link 1 while looking like an ordinary check failure.
-  // It was deleted on 2026-07-27 and its three gates are now the first three links of `check`. The
-  // lookup stays here on purpose: it costs nothing, and it keeps this matrix honest if anyone ever
-  // reintroduces a pre/post lifecycle script instead of putting the link where people can see it.
-  const completeCheckCommand = [packageJson.scripts?.precheck, packageJson.scripts?.check]
-    .filter(Boolean)
-    .join(' && ');
+  // The matrix source is `CI_MATRIX_ROOT_SCRIPTS` in scripts/lib/ciGateGraph.mjs — one declaration,
+  // shared with check-gate-reachability.mjs and with every gate that asserts "check:ci runs me".
+  // Those gates resolve `check:ci` -> `check:ci:report` -> this runner -> this same list, so if the
+  // list changes they follow it instead of silently reporting zero.
+  const completeCheckCommand = ciMatrixSourceCommand(packageJson.scripts || {});
   const commands = smoke
     ? SMOKE_COMMANDS
     : buildCommandMatrix(completeCheckCommand, packageJson.scripts || {});
