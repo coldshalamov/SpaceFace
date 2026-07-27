@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="./styles/ui.css" />
   <link rel="stylesheet" href="./styles/fonts.css" />
   <link rel="stylesheet" href="./styles/menu.css" />
+  <link rel="stylesheet" href="./styles/intro.css" />
   <link rel="stylesheet" href="./styles/asteroid-ops.css" />
   <link rel="stylesheet" href="styles/accessibility.css">
   <script type="importmap">
@@ -37,10 +38,12 @@
     <div id="alerts"></div>
     <div id="boot-overlay" role="status" aria-live="polite" aria-busy="true">
       <div class="boot-inner">
+        <span class="boot-registry" aria-hidden="true">VHL-4471-T · Tessera — cold restart</span>
         <span class="boot-title">SPACEFACE</span>
         <span class="boot-sub" data-loading-label>Initializing systems…</span>
         <span class="boot-detail" data-loading-detail>Preparing the command deck</span>
         <span class="boot-progress" aria-hidden="true"><span data-loading-progress></span></span>
+        <span class="boot-cursor" aria-hidden="true"></span>
       </div>
     </div>
   </div>

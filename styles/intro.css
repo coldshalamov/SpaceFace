@@ -1,0 +1,358 @@
+/* ============================================================================
+   SpaceFace · INTRO SEQUENCE — boot console → cinematic title.
+
+   Concept: the Tessera wakes after 14 months impounded. The boot is a cold-start
+   console on pure black (no artwork — the ship has no optics yet). The title is
+   "optics online": the gate-ring still bleeds in from black and drifts like a
+   slow approach, with an editorial film-title lockup — off-white Saira caps, one
+   hairline rule, letterspaced mono telemetry, and a single signal cyan used only
+   for live marks. No glow-heavy gamer chrome, no boxes.
+
+   Behavior hooks other code depends on (do not rename):
+     #boot-overlay (+ .hidden), [data-loading-label], [data-loading-detail],
+     [data-loading-progress], .boot-error
+     #cinematic-splash, #cinematic-title, #cinematic-summary, #cinematic-signal
+   ============================================================================ */
+
+/* ---- 1. Boot console ---------------------------------------------------------
+   Cold-start POST. Black field, small registry line, restrained wordmark, one
+   hairline of progress with a bright tip, and a blinking block cursor. */
+
+#boot-overlay {
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #04060a;
+  transition: opacity .8s ease;
+}
+#boot-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+.boot-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: min(76vw, 400px);
+  font-family: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+}
+.boot-registry {
+  margin-bottom: 20px;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: .34em;
+  text-indent: .34em; /* optically re-centers tracked type */
+  text-transform: uppercase;
+  color: #54646f;
+}
+.boot-title {
+  margin-bottom: 30px;
+  font-family: "Saira SemiCondensed", "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 30px;
+  letter-spacing: .4em;
+  text-indent: .4em;
+  color: #e9eff4;
+  text-shadow: none;
+}
+.boot-sub {
+  font-size: 11px;
+  letter-spacing: .22em;
+  text-indent: .22em;
+  text-transform: uppercase;
+  color: #a9b8c4;
+  text-shadow: none;
+}
+.boot-detail {
+  min-height: 1.5em;
+  margin-top: 9px;
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: .1em;
+  color: #687885;
+  text-align: center;
+  text-shadow: none;
+}
+.boot-progress {
+  position: relative;
+  display: block;
+  width: min(72vw, 320px);
+  height: 1px;
+  margin-top: 26px;
+  background: rgba(148, 178, 205, .18);
+}
+.boot-progress > span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  width: 0;
+  height: 100%;
+  background: #4ec3e6;
+  box-shadow: 0 0 8px rgba(78, 195, 230, .5);
+  transition: width .25s ease-out;
+}
+.boot-progress > span::after { /* bright leading tip */
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  background: #c4efff;
+  box-shadow: 0 0 10px rgba(140, 220, 250, .85);
+}
+.boot-cursor {
+  margin-top: 18px;
+  width: 7px;
+  height: 13px;
+  background: rgba(78, 195, 230, .8);
+  animation: sf-intro-blink 1.15s steps(2, end) infinite;
+}
+@keyframes sf-intro-blink { 50% { opacity: .12; } }
+
+.boot-error {
+  max-width: 70ch;
+  font-family: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #e0665f;
+  white-space: pre-wrap;
+  text-align: left;
+  text-shadow: none;
+}
+
+/* ---- 2. Cinematic title ------------------------------------------------------
+   "Optics online." The still fades up from black and keeps a very slow approach
+   drift; the lockup choreographs in after it. All motion is transform/opacity
+   only, and every layer starts invisible so nothing ever snaps. */
+
+#cinematic-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #04060a;
+  overflow: hidden;
+  pointer-events: auto;
+  opacity: 1;
+  transition: opacity .65s ease;
+}
+#cinematic-splash.is-closing { opacity: 0; pointer-events: none; }
+
+.cine-bg {
+  position: absolute;
+  inset: -3%; /* bleed so the drift never exposes an edge */
+  background-image: url('../assets/cinematics/C-INTRO-01.jpg');
+  background-size: cover;
+  background-position: center 34%;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation:
+    cine-bg-in 1.7s ease-out .1s forwards,
+    cine-drift 68s ease-in-out 1.9s infinite alternate;
+}
+@keyframes cine-bg-in { to { opacity: .94; } }
+@keyframes cine-drift {
+  from { transform: scale(1.02) translate3d(0, 0, 0); }
+  to   { transform: scale(1.09) translate3d(-.7%, .8%, 0); }
+}
+
+.cine-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg,
+      rgba(4, 6, 10, .58) 0%,
+      rgba(4, 6, 10, .10) 26%,
+      rgba(4, 6, 10, .04) 52%,
+      rgba(4, 6, 10, .46) 80%,
+      rgba(4, 6, 10, .86) 100%);
+  pointer-events: none;
+}
+
+/* Fine film grain — static (no repaint cost), just enough to kill banding. */
+.cine-grain {
+  position: absolute;
+  inset: 0;
+  opacity: .05;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* Top-left registry tag — balances the signal card bottom-right. */
+.cine-tag {
+  position: absolute;
+  top: clamp(16px, 3vw, 36px);
+  left: clamp(18px, 3.4vw, 44px);
+  z-index: 1;
+  font: 500 9px/1.6 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: #61737f;
+  opacity: 0;
+  animation: cine-rise .7s ease-out 2.4s forwards;
+}
+
+.cine-lockup {
+  position: relative;
+  z-index: 1;
+  max-width: 92vw;
+  padding: 0 24px;
+  text-align: center;
+}
+.cine-eyebrow {
+  font: 500 10px/1.7 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  letter-spacing: .44em;
+  text-indent: .44em;
+  text-transform: uppercase;
+  color: #a7bac7;
+  text-shadow: 0 1px 10px rgba(3, 6, 11, .8);
+  opacity: 0;
+  animation: cine-rise .7s ease-out .6s forwards;
+}
+.cine-title {
+  margin: 16px 0 0;
+  font-family: "Saira SemiCondensed", "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: clamp(52px, 9.5vw, 96px);
+  line-height: 1.04;
+  letter-spacing: .3em;
+  text-indent: .3em;
+  color: #edf3f7;
+  text-shadow: 0 2px 26px rgba(3, 6, 11, .7);
+  opacity: 0;
+  animation: cine-title-in 1.15s cubic-bezier(.2, .7, .2, 1) .85s forwards;
+}
+@keyframes cine-title-in {
+  from { opacity: 0; letter-spacing: .4em; transform: translateY(12px); }
+  to   { opacity: 1; letter-spacing: .3em; transform: translateY(0); }
+}
+.cine-rule {
+  width: min(46vw, 340px);
+  height: 1px;
+  margin: 24px auto 0;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(94, 205, 235, .7) 28%,
+    rgba(94, 205, 235, .7) 72%,
+    transparent);
+  transform: scaleX(0);
+  animation: cine-rule-in .85s cubic-bezier(.2, .8, .2, 1) 1.55s forwards;
+}
+@keyframes cine-rule-in { to { transform: scaleX(1); } }
+.cine-contract {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  margin-top: 18px;
+  font: 500 11px/1.7 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  letter-spacing: .3em;
+  text-indent: .3em;
+  text-transform: uppercase;
+  color: #b8c7d2;
+  opacity: 0;
+  animation: cine-rise .7s ease-out 1.85s forwards;
+}
+.cine-contract::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  background: #4ec3e6;
+  box-shadow: 0 0 9px rgba(78, 195, 230, .8);
+  animation: sf-intro-blink 1.5s steps(2, end) infinite;
+}
+.cine-begin {
+  margin-top: clamp(38px, 7vh, 64px);
+  font: 500 10px/1 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  letter-spacing: .42em;
+  text-indent: .42em;
+  text-transform: uppercase;
+  color: #8296a4;
+  opacity: 0;
+  animation:
+    cine-rise .8s ease-out 2.35s forwards,
+    cine-begin-pulse 2.9s ease-in-out 3.3s infinite;
+}
+@keyframes cine-begin-pulse { 0%, 100% { opacity: .42; } 50% { opacity: .95; } }
+
+@keyframes cine-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Inbound-signal readout — a quiet corner annotation, not a glowing card. */
+.cine-signal {
+  position: absolute;
+  right: clamp(18px, 3.4vw, 44px);
+  bottom: clamp(18px, 3.4vw, 40px);
+  z-index: 1;
+  padding: 12px 18px 13px 16px;
+  border-left: 1px solid rgba(94, 205, 235, .5);
+  background: linear-gradient(90deg, rgba(4, 8, 13, .68), rgba(4, 8, 13, .26) 82%, transparent);
+  font-family: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  text-align: left;
+  opacity: 0;
+  animation: cine-rise .7s ease-out 2.6s forwards;
+}
+.cine-signal__k {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: #74879a;
+}
+.cine-signal__k::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  background: #4ec3e6;
+  box-shadow: 0 0 8px rgba(78, 195, 230, .8);
+  animation: sf-intro-blink 1.5s steps(2, end) infinite;
+}
+.cine-signal__t {
+  margin-top: 7px;
+  font-size: 14px;
+  letter-spacing: .24em;
+  color: #dce8ef;
+}
+.cine-signal__s {
+  margin-top: 6px;
+  font-size: 9px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: #61737f;
+}
+
+/* ---- 3. Reduced motion ---------------------------------------------------------
+   The global a11y layer already compresses durations to ~0ms, which lands these
+   fill-forwards reveals on their end state. These rules make the resting state
+   explicit so nothing depends on animation timing, and stills the drift/blink. */
+
+@media (prefers-reduced-motion: reduce) {
+  #boot-overlay, .boot-progress > span, #cinematic-splash { transition: none; }
+  .boot-cursor,
+  .cine-contract::before,
+  .cine-signal__k::before { animation: none; }
+  .cine-bg { animation: none; opacity: .94; transform: none; }
+  .cine-tag, .cine-eyebrow, .cine-title, .cine-rule,
+  .cine-contract, .cine-begin, .cine-signal { animation: none; opacity: 1; transform: none; }
+}
+html.sf-reduce-motion .boot-cursor,
+html.sf-reduce-motion .cine-contract::before,
+html.sf-reduce-motion .cine-signal__k::before { animation: none !important; }
+html.sf-reduce-motion .cine-bg { animation: none !important; opacity: .94; transform: none; }
+html.sf-reduce-motion .cine-tag,
+html.sf-reduce-motion .cine-eyebrow,
+html.sf-reduce-motion .cine-title,
+html.sf-reduce-motion .cine-rule,
+html.sf-reduce-motion .cine-contract,
+html.sf-reduce-motion .cine-begin,
+html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !important; transform: none !important; }

@@ -50,15 +50,17 @@ function injectStyle() {
   // save-summary readout, title lockup) lives in styles/menu.css — previously a copy of that
   // whole block was pasted here and into every other menu screen.
   s.textContent = `
-  /* First-show stagger-in (spec2/03 §3): menu items fade up 90ms apart, first show only. */
-  .sf-menu.sf-stagger .sf-col > button { opacity:0; transform:translateY(6px);
-    animation:sf-stagger-in .25s ease-out forwards; }
+  /* First-show stagger-in (spec2/03 §3): ledger rows slide in from the left 90ms
+     apart, first show only. Reduced-motion users get the global ~0ms compression,
+     which lands these fill-forwards rows on their visible end state. */
+  .sf-menu.sf-stagger .sf-col > button { opacity:0; transform:translateX(-10px);
+    animation:sf-stagger-in .3s cubic-bezier(.2,.8,.2,1) forwards; }
   .sf-menu.sf-stagger .sf-col > button:nth-child(1) { animation-delay:0ms; }
   .sf-menu.sf-stagger .sf-col > button:nth-child(2) { animation-delay:90ms; }
   .sf-menu.sf-stagger .sf-col > button:nth-child(3) { animation-delay:180ms; }
   .sf-menu.sf-stagger .sf-col > button:nth-child(4) { animation-delay:270ms; }
   .sf-menu.sf-stagger .sf-col > button:nth-child(5) { animation-delay:360ms; }
-  @keyframes sf-stagger-in { to { opacity:1; transform:translateY(0); } }
+  @keyframes sf-stagger-in { to { opacity:1; transform:translateX(0); } }
   /* CONTINUE fade-to-game + location label (spec2/03 §3). The veil mounts on #ui-root, outside
      the .sf-menu token scope, so it carries its own fascia-matched type/color. */
   .sf-continue-fade { position:fixed; inset:0; z-index:1900; background:#000; opacity:0;
@@ -66,7 +68,8 @@ function injectStyle() {
     justify-content:flex-start; padding:0 0 36px 36px; }
   .sf-continue-fade.open { opacity:1; }
   .sf-continue-fade__loc { font-family:"IBM Plex Mono","Consolas",ui-monospace,monospace;
-    letter-spacing:.22em; font-size:13px; color:#b3afa2; text-transform:uppercase; }
+    letter-spacing:.26em; font-size:12px; color:#93a6b3; text-transform:uppercase;
+    border-left:1px solid rgba(78,195,230,.55); padding-left:12px; }
   `;
   document.head.appendChild(s);
 }
@@ -201,7 +204,7 @@ export const mainMenuScreen = {
   mount(rootEl, ctx) {
     injectStyle();
     rootEl.innerHTML = '';
-    rootEl.classList.add('panel', 'sf-menu', 'sf-menu-narrow');
+    rootEl.classList.add('panel', 'sf-menu', 'sf-menu-narrow', 'sf-menu--bare');
     // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
     rootEl.dataset.stamp = 'PUBLIC TERMINAL / SPACEFACE';
 

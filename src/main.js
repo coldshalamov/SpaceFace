@@ -668,9 +668,11 @@ function hideBootOverlay() {
   const o = document.getElementById('boot-overlay');
   if (!o) return;
   o.classList.add('hidden');
+  // Matches the .8s fade in styles/intro.css so the console settles out fully
+  // before the node leaves the compositor.
   setTimeout(() => {
     if (o.classList.contains('hidden')) o.style.display = 'none';
-  }, 600);
+  }, 850);
 }
 function showBootError(err) {
   const o = document.getElementById('boot-overlay');

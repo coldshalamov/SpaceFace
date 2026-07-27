@@ -90,23 +90,9 @@ button:hover { border-color: var(--accent); color: #fff; }
 button:disabled { opacity: .4; cursor: default; }
 .mono { font-family: var(--mono); }
 
-/* boot overlay */
-#boot-overlay { inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 38%, #0a1426, #03050a); transition: opacity .5s ease; }
-#boot-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-.boot-inner { font-family: var(--mono); display: flex; flex-direction: column; align-items: center; gap: 12px; min-width: min(76vw, 380px); }
-.boot-title { letter-spacing: .42em; font-size: 34px; color: var(--accent); text-shadow: 0 0 26px var(--accent); }
-.boot-sub { font-size: 11px; letter-spacing: .22em; color: var(--ink-dim); text-shadow: none; }
-.boot-detail { min-height: 1.4em; font-size: 10px; line-height: 1.4; letter-spacing: .08em; color: rgba(216, 229, 241, .72); text-align: center; text-shadow: none; }
-.boot-progress { position: relative; display: block; width: min(72vw, 340px); height: 3px; overflow: hidden; border-radius: 99px; background: rgba(123, 158, 182, .2); box-shadow: inset 0 0 0 1px rgba(123, 158, 182, .12); }
-.boot-progress > span { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4aa5b7, var(--accent)); box-shadow: 0 0 12px rgba(57, 208, 255, .42); transition: width .22s ease-out; }
-.boot-progress::after { content: ''; position: absolute; inset: 0 auto 0 -32%; width: 28%; background: linear-gradient(90deg, transparent, rgba(210,248,255,.8), transparent); transform: translateX(0); animation: sf-loading-sweep 1.35s linear infinite; will-change: transform; }
-@keyframes sf-loading-sweep { to { transform: translateX(470%); } }
-.boot-error { color: var(--danger); font-family: var(--mono); font-size: 13px; max-width: 70ch; white-space: pre-wrap; letter-spacing: normal; text-shadow: none; text-align: left; }
-
-@media (prefers-reduced-motion: reduce) {
-  #boot-overlay, .boot-progress > span { transition: none; }
-  .boot-progress::after { animation: none; display: none; }
-}
+/* boot overlay — the intro console styling lives in styles/intro.css (boot + title
+   share one sheet). Kept here only: nothing. Hooks other code depends on:
+   #boot-overlay(.hidden), [data-loading-label/detail/progress]. */
 
 /* ==================== PROFESSIONAL POLISH (post asset integration) ==================== */
 /* Use generated assets (menu_background, pilot portrait, icons_atlas, reticle, bible colors) for beauty and "SpaceFace" identity.
@@ -123,8 +109,12 @@ button:disabled { opacity: .4; cursor: default; }
 #screens::before {
   content: '';
   position: absolute; inset: 0;
-  /* Darkening vignette so menu panels stay readable over the cinematic backdrop. */
-  background: linear-gradient(180deg, rgba(5,7,13,0.85) 0%, rgba(5,7,13,0.5) 14%, rgba(5,7,13,0.35) 55%, rgba(5,7,13,0.8) 90%, rgba(5,7,13,1) 100%);
+  /* Readability scrim over the cinematic backdrop: left-weighted so the title menu's
+     bare ledger column stays legible, plus a gentle vertical vignette for centered
+     plates. The ring art stays visible on the right. */
+  background:
+    linear-gradient(90deg, rgba(4,7,11,.74) 0%, rgba(4,7,11,.38) 32%, rgba(4,7,11,.10) 56%, rgba(4,7,11,.26) 100%),
+    linear-gradient(180deg, rgba(4,7,11,.5) 0%, rgba(4,7,11,.14) 30%, rgba(4,7,11,.28) 78%, rgba(4,7,11,.68) 100%);
   pointer-events: none;
 }
 
@@ -277,13 +267,6 @@ button:active { transform: translateY(1px); }
   color: var(--accent);
 }
 #screens .subtle { color: var(--ink-dim); font-size: 0.82em; }
-
-/* Make the boot feel like part of the cinematic world */
-#boot-overlay {
-  background: radial-gradient(circle at 50% 38%, #0a1426, #03050a), url('../assets/cinematics/C-INTRO-01.jpg');
-  background-size: cover;
-  background-blend-mode: multiply;
-}
 
 /* ============================================================================================
    PHASE 5 — DESIGN SYSTEM

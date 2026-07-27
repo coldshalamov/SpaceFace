@@ -458,9 +458,10 @@ export const ui = {
     // initial
     setTimeout(refreshFlightUI, 50);
 
-    // === Cinematic intro splash using generated assets (C-INTRO still + menu bg + pilot + reticle) ===
-    // Professional first impression + teaches controls immediately. Click/any key to proceed to menu.
-    // Only shows on first load per session (pro polish — doesn't annoy returning players).
+    // === Cinematic title splash (styles/intro.css owns look + reveal choreography) ===
+    // Full-bleed C-INTRO still with a slow approach drift, film-title lockup, and the
+    // Contract 47-A signal readout. Click/any key to proceed to menu. First load per
+    // session only, so returning players land straight on the menu.
     const CINEMATIC_SEEN_KEY = 'sf.cinematicSeen';
     this._cinematicActive = false;
     this._pendingMainMenu = false;
@@ -503,24 +504,26 @@ export const ui = {
       cinematic.setAttribute('aria-modal', 'true');
       cinematic.setAttribute('aria-labelledby', 'cinematic-title');
       cinematic.setAttribute('aria-describedby', 'cinematic-summary');
-      cinematic.style.cssText = 'position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:#05070d;overflow:hidden;pointer-events:auto;';
+      // Styling + reveal choreography live in styles/intro.css. Every layer starts
+      // invisible and animates in, so the boot console crossfades into "optics
+      // online" instead of snapping. IDs are behavior hooks — other scripts and
+      // the a11y wiring key off #cinematic-title / #cinematic-summary / #cinematic-signal.
       cinematic.innerHTML = `
-        <div style="position:absolute;inset:0;background-image:url('assets/cinematics/C-INTRO-01.jpg');background-size:cover;background-position:center 34%;opacity:0.72;filter:contrast(1.08);"></div>
-        <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,13,.5),rgba(5,7,13,0) 30%,rgba(5,7,13,0) 72%,rgba(5,7,13,1));"></div>
-        <div style="position:relative;text-align:center;color:#d3e6ff;font-family:var(--mono,monospace);z-index:1;text-shadow:0 0 30px #39d0ff;">
-          <div style="font-size:13px;letter-spacing:8px;opacity:0.7;margin-bottom:10px;">TESSERA / VHL-4471-T / OPERATOR: UNKNOWN</div>
-          <div id="cinematic-title" style="font-size:clamp(48px,9vw,92px);line-height:1;letter-spacing:.12em;margin-bottom:14px;color:#39d0ff;font-weight:700;">SPACEFACE</div>
-          <div id="cinematic-summary" style="margin:14px auto 26px;max-width:640px;opacity:0.85;font-size:15px;line-height:1.45;font-family:var(--font,sans-serif);letter-spacing:.02em;">
-            CONTRACT 47-A — OPEN / PAYMENT: PENDING.<br>
-            Contract 47-A is open.
-          </div>
-          <div style="font-size:12px;opacity:0.6;margin-bottom:20px;letter-spacing:.08em;">↑↓ THROTTLE &nbsp;•&nbsp; ←→ STEER (BANKS) &nbsp;•&nbsp; MOUSE AIM &nbsp;•&nbsp; LMB FIRE &nbsp;•&nbsp; G AUTO-TARGET &nbsp;•&nbsp; TETHER &nbsp;•&nbsp; SHIFT BOOST/DASH</div>
-          <div style="font-size:11px;letter-spacing:4px;opacity:0.5;">CLICK OR PRESS ANY KEY TO BEGIN</div>
+        <div class="cine-bg"></div>
+        <div class="cine-scrim"></div>
+        <div class="cine-grain"></div>
+        <div class="cine-tag">VHL-4471-T · Tessera — salvage registry</div>
+        <div class="cine-lockup">
+          <div class="cine-eyebrow">Tessera · VHL-4471-T · Operator: Unknown</div>
+          <div class="cine-title" id="cinematic-title">SPACEFACE</div>
+          <div class="cine-rule"></div>
+          <div class="cine-contract" id="cinematic-summary">Contract 47-A — Open / Payment Pending</div>
+          <div class="cine-begin">Click or press any key to begin</div>
         </div>
-        <div id="cinematic-signal" style="position:absolute;bottom:26px;right:26px;padding:11px 16px;border:1px solid rgba(57,208,255,.45);border-left:3px solid #39d0ff;border-radius:6px;background:rgba(5,9,18,.72);box-shadow:0 0 22px rgba(57,208,255,.20);font-family:var(--mono,monospace);text-align:left;">
-          <div style="font-size:10px;letter-spacing:.24em;color:#8fa3c0;margin-bottom:4px;">INBOUND SIGNAL</div>
-          <div style="font-size:15px;letter-spacing:.16em;color:#39d0ff;">CONTRACT 47-A</div>
-          <div style="font-size:10px;letter-spacing:.14em;color:#6b7d99;margin-top:5px;">REACH CORRIDOR — CHANNEL OPEN</div>
+        <div class="cine-signal" id="cinematic-signal">
+          <div class="cine-signal__k">Inbound signal</div>
+          <div class="cine-signal__t">CONTRACT 47-A</div>
+          <div class="cine-signal__s">Reach corridor — channel open</div>
         </div>
       `;
       document.getElementById('ui-root').appendChild(cinematic);
@@ -536,12 +539,11 @@ export const ui = {
         this._cinematicInputFence = null;
         cinematic.removeEventListener('click', requestPointerDismissal);
         if (autoDismissTimer) clearTimeout(autoDismissTimer);
-        cinematic.style.transition = 'opacity .45s ease';
-        cinematic.style.opacity = '0';
+        cinematic.classList.add('is-closing'); // intro.css: .65s opacity settle
         fadeRemovalTimer = setTimeout(() => {
           if (cinematic.parentNode) cinematic.parentNode.removeChild(cinematic);
           if (this._cinematicTeardown === teardownCinematic) this._cinematicTeardown = null;
-        }, 500);
+        }, 700);
         try { sessionStorage.setItem(CINEMATIC_SEEN_KEY, '1'); } catch (e) {}
         showMainMenuWhenReady();
       };
