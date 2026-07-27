@@ -23,12 +23,32 @@ PQ-023 presentation leaf packets may run between these only when renderer/HUD/GP
 
 PQ-019 through PQ-024 integrated
   └─> PQ-025 held-out Gold Corridor qualification
+
+PQ-034 PERF-00 equivalence and attribution harness
+  ├─> PQ-035 PERF-01 lifecycle correctness
+  │     ├─> PQ-036 PERF-02 scheduler/presentation seam
+  │     │     └─> PQ-038 PERF-04 dense PresentationWorld
+  │     └─> PQ-041 PERF-07 supported Electron runtime
+  ├─> PQ-037 PERF-03 offline render compiler
+  ├─> PQ-039 PERF-05 deterministic hot-query service
+  └─> PQ-040 PERF-06 dirty-range GPU uploads
+
+PQ-034 through PQ-041 accepted
+  └─> PQ-042 PERF-08 evidence-selected GPU correction
+        ├─> PQ-043 PERF-09 simulation Worker (deferred unless triggered)
+        └─> PQ-044 PERF-10 WebGPU/TSL slice (deferred unless triggered)
 ```
 
-PQ-018 is the current dependency root. PQ-019A can begin only after the integrator resolves the
-parent's canonical identity collision and advances `activeSlice: PQ-019A`; B and C remain blocked on
-their preceding leaf receipts. PQ-022 and PQ-023 are non-dispatchable portfolio containers until the
-integrator admits an exact leaf with one owner/write surface and one acceptance route.
+PQ-018 remains the dependency root for the Gold Corridor line. PQ-019A can begin only after the
+integrator resolves the parent's canonical identity collision and advances `activeSlice: PQ-019A`; B
+and C remain blocked on their preceding leaf receipts. PQ-022 and PQ-023 are non-dispatchable
+portfolio containers until the integrator admits an exact leaf with one owner/write surface and one
+acceptance route.
+
+PQ-034 is the independent root of the admitted performance-modernization program. Admission leaves it
+`ready` and `unclaimed`; dependency readiness does not grant leases. PQ-035 through PQ-042 remain
+planned until their preceding receipts and exact owner/mutex gates are satisfied. PQ-043 and PQ-044
+remain deferred and intentionally have no active packet until their evidence triggers are proved.
 
 ## Packet index
 
@@ -42,6 +62,18 @@ integrator admits an exact leaf with one owner/write surface and one acceptance 
 | [`PQ-023.md`](./PQ-023.md) | implement physics-readable presentation as separate cue-family leaves | current owner events and shared presentation lease |
 | [`PQ-024.md`](./PQ-024.md) | one transient survey target, Core commitment, real-output producing receipt, one exterior consequence | PQ-017 seam rebound; one accepted exterior visual |
 | [`PQ-025.md`](./PQ-025.md) | observational held-out qualification, not a feature branch | PQ-019–024 exact integrated receipts and frozen owner evidence map |
+| [`PQ-034.md`](./PQ-034.md) | establish separate equivalence, measurement-validity, and improvement authority | clean claimed worktree; performance-evidence/broker/GPU leases |
+| [`PQ-035.md`](./PQ-035.md) | review and selectively port the protected lifecycle candidate | PQ-034 integrated; lifecycle/electron/package leases |
+| [`PQ-036.md`](./PQ-036.md) | extract main-thread simulation and presentation ownership plus journals | PQ-034 and PQ-035 integrated; loop/input/registry leases |
+| [`PQ-037.md`](./PQ-037.md) | compile deterministic render packages outside gameplay | PQ-034 integrated; fixture lane first, asset locks gate production pilots |
+| [`PQ-038.md`](./PQ-038.md) | migrate rendering to a dense generation-safe presentation mirror | PQ-034 and PQ-036 integrated; renderer/VFX leases |
+| [`PQ-039.md`](./PQ-039.md) | replace the measured NPC-jobs hostile full scan with one deterministic batch | PQ-034 integrated; NPC-jobs/spatial-query leases |
+| [`PQ-040.md`](./PQ-040.md) | upload only changed GPU attribute/matrix component ranges | PQ-034 integrated; exact renderer/VFX pool lease |
+| [`PQ-041.md`](./PQ-041.md) | move Electron through compatibility checkpoints to a supported runtime | PQ-034 and PQ-035 integrated; package/electron-shell leases |
+| [`PQ-042.md`](./PQ-042.md) | select one GPU correction—or no GPU change—from valid pass evidence | PQ-034–041 accepted; clean trace selects A/B/C/D |
+
+PQ-043 and PQ-044 are admitted queue identities but remain deferred and packet-less until their
+conditional triggers are proved.
 
 ## How to use a packet
 

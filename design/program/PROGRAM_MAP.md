@@ -24,6 +24,7 @@ This is a plan-family catalog, not a current dispatch list. Current leases live 
 | `design/world-identity/` | sector/place identity and world-content pipeline | Atlas/world owners and current manifests remain technical truth |
 | `design/vision/` | long-horizon product direction | not automatic implementation authority |
 | `design/production/` | optional production-controller workflow | applies only when explicitly activated |
+| `design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md` plus its constellation appendix | performance modernization source plan and option/research context | executable only through PQ-034–PQ-044; queue/packet/lease evidence owns live state |
 | `design/_ARCHIVE/` and review history | archaeology | never current dispatch authority |
 
 ## How a plan becomes executable

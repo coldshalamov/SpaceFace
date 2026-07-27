@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-24",
+  "updatedAt": "2026-07-27",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -65,7 +65,18 @@
         "PQ-030",
         "PQ-031",
         "PQ-032",
-        "PQ-033"
+        "PQ-033",
+        "PQ-034",
+        "PQ-035",
+        "PQ-036",
+        "PQ-037",
+        "PQ-038",
+        "PQ-039",
+        "PQ-040",
+        "PQ-041",
+        "PQ-042",
+        "PQ-043",
+        "PQ-044"
       ]
     },
     {
@@ -335,6 +346,27 @@
         "PQ-001",
         "PQ-022",
         "PQ-033"
+      ]
+    },
+    {
+      "id": "performance-modernization",
+      "paths": [
+        "design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md",
+        "design/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md"
+      ],
+      "disposition": "admitted-core-program-and-evidence-selected-continuations",
+      "tasks": [
+        "PQ-034",
+        "PQ-035",
+        "PQ-036",
+        "PQ-037",
+        "PQ-038",
+        "PQ-039",
+        "PQ-040",
+        "PQ-041",
+        "PQ-042",
+        "PQ-043",
+        "PQ-044"
       ]
     },
     {
@@ -1672,6 +1704,421 @@
         "store-media"
       ],
       "brief": "Run the final release matrix only after feature churn ends; repair measured blockers without hiding them or lowering authored quality."
+    },
+    {
+      "id": "PQ-034",
+      "priority": 34,
+      "title": "PERF-00 Equivalence and attribution harness",
+      "state": "ready",
+      "canonical": [
+        "PERF-00"
+      ],
+      "aliases": [],
+      "dependsOn": [],
+      "mutexes": [
+        "performance-evidence",
+        "validation-broker",
+        "browser-gpu"
+      ],
+      "sources": [
+        "design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md",
+        "design/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md"
+      ],
+      "checks": [
+        "npm run check:sim:compare",
+        "node scripts/validation-broker-cli.mjs --manifest performance-closure-browser",
+        "node scripts/validation-broker-cli.mjs --manifest performance-closure-electron"
+      ],
+      "evidence": [
+        "equivalence",
+        "attribution",
+        "browser",
+        "electron",
+        "performance"
+      ],
+      "brief": "Build the versioned matched baseline/candidate harness that separately decides semantic equivalence, capture validity, and measured improvement before later modernization packets may close."
+    },
+    {
+      "id": "PQ-035",
+      "priority": 35,
+      "title": "PERF-01 Foreground/background lifecycle correctness",
+      "state": "planned",
+      "canonical": [
+        "PERF-01"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-034"
+      ],
+      "mutexes": [
+        "lifecycle",
+        "package",
+        "electron-shell"
+      ],
+      "sources": [
+        "design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md",
+        "design/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md"
+      ],
+      "checks": [
+        "npm run check:launch-policy",
+        "npm run check:electron:new-game",
+        "npm run check:time-effects"
+      ],
+      "evidence": [
+        "browser",
+        "electron",
+        "lifecycle",
+        "resume",
+        "performance"
+      ],
+      "brief": "Review and selectively port the protected sf-perf01a lifecycle candidate so hidden, minimized, suspended, and restoring states stop invisible work without foreground digest or resume-cadence changes."
+    },
+    {
+      "id": "PQ-036",
+      "priority": 36,
+      "title": "PERF-02 Simulation/presentation scheduler seam",
+      "state": "planned",
+      "canonical": [
+        "PERF-02"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-034",
+        "PQ-035"
+      ],
+      "mutexes": [
+        "loop",
+        "input",
+        "registry"
+      ],
+      "sources": [
+        "design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md"
+      ],
+      "checks": [
+        "npm run check:time-effects",
+        "npm run check:sim:compare",
+        "npm run check:perf"
+      ],
+      "evidence": [
+        "determinism",
+        "scheduler-attribution",
+        "input",
+        "lifecycle"
+      ],
+      "brief": "Extract main-thread SimulationRunner and PresentationRunner ownership plus completed-tick journals while preserving fixed-tick, input, event-order, and interpolation semantics."
+    },
+    {
+      "id": "PQ-037",
+      "priority": 37,
+      "title": "PERF-03 Offline semantic render compiler",
+      "state": "planned",
+      "canonical": [
+        "PERF-03"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-034"
+      ],
+      "mutexes": [
+        "asset-manifest",
+        "blender",
+        "renderer"
+      ],
+      "sources": [
+        "design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md",
+        "design/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md"
+      ],
+      "checks": [
+        "npm run check:asset-pipeline-contract",
+        "npm run check:runtime-assets",
+        "npm run check:asset-reachability"
+      ],
+      "evidence": [
+        "reproducibility",
+        "asset-semantics",
+        "admission",
+        "visual-review",
+        "performance"
+      ],
+      "brief": "Create deterministic versioned render packages and a bounded loader so clone, transform, merge, normalization, and de-index work leave gameplay, while current Blender/place/release-manifest writers remain protected."
+    },
+    {
+      "id": "PQ-038",
+      "priority": 38,
+      "title": "PERF-04 Dense PresentationWorld",
+      "state": "planned",
+      "canonical": [
+        "PERF-04"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-034",
+        "PQ-036"
+      ],
+      "mutexes": [
+        "renderer",
+        "browser-gpu",
+        "registry"
+      ],
+      "sources": [
+        "design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md",
+        "design/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md"
+      ],
+      "checks": [
+        "npm run check:render-hotpath",
+        "npm run check:sim:compare",
+        "npm run check:perf"
+      ],
+      "evidence": [
+        "presentation-parity",
+        "entity-scale",
+        "culling",
+        "lifecycle",
+        "performance"
+      ],
+      "brief": "Build a disposable generation-safe dense presentation mirror in shadow mode, then make transform, visibility, LOD, pool publication, and diagnostics scale with changed and visible handles."
+    },
+    {
+      "id": "PQ-039",
+      "priority": 39,
+      "title": "PERF-05 Deterministic hot-query service",
+      "state": "planned",
+      "canonical": [
+        "PERF-05"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-034"
+      ],
+      "mutexes": [
+        "spatial-query",
+        "npc-jobs"
+      ],
+      "sources": [
+        "design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md"
+      ],
+      "checks": [
+        "npm run check:npc-jobs",
+        "npm run check:spatial-hash",
+        "npm run check:sim:compare"
+      ],
+      "evidence": [
+        "determinism",
+        "query-scale",
+        "npc-jobs",
+        "performance"
+      ],
+      "brief": "Replace the proven per-job hostile entity-list scan with one owner-facing batched spatial query that preserves distance and stable-ID tie order and reports candidate growth."
+    },
+    {
+      "id": "PQ-040",
+      "priority": 40,
+      "title": "PERF-06 Dirty-range GPU uploads",
+      "state": "planned",
+      "canonical": [
+        "PERF-06"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-034"
+      ],
+      "mutexes": [
+        "renderer",
+        "vfx",
+        "browser-gpu",
+        "performance-evidence",
+        "validation-broker"
+      ],
+      "sources": [
+        "design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md",
+        "design/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md"
+      ],
+      "checks": [
+        "npm run check:vfx:trail-instancing",
+        "npm run check:render-hotpath",
+        "npm run check:sim:compare",
+        "node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-browser",
+        "node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-electron"
+      ],
+      "evidence": [
+        "upload-bytes",
+        "gpu-buffer-lifecycle",
+        "dense-combat",
+        "performance"
+      ],
+      "brief": "Apply non-allocating dirty spans and Three.js update ranges to unleased dynamic pools, retaining exact instance identity, ordering, lifecycle, capacity, and output."
+    },
+    {
+      "id": "PQ-041",
+      "priority": 41,
+      "title": "PERF-07 Electron modernization",
+      "state": "planned",
+      "canonical": [
+        "PERF-07"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-034",
+        "PQ-035"
+      ],
+      "mutexes": [
+        "package",
+        "electron-shell",
+        "lifecycle",
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "sources": [
+        "design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md",
+        "design/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md"
+      ],
+      "checks": [
+        "npm run check:launch-policy",
+        "npm run check:m6:packaging",
+        "node scripts/check-electron-platform-contracts.mjs",
+        "npm run build:bundle",
+        "npx electron-builder --dir --publish never",
+        "node scripts/validation-broker-cli.mjs --manifest performance-electron-modernization-browser",
+        "node scripts/validation-broker-cli.mjs --manifest performance-electron-modernization-electron",
+        "npm run check:m6:platform"
+      ],
+      "evidence": [
+        "electron",
+        "packaged",
+        "browser-parity",
+        "gpu-identity",
+        "performance"
+      ],
+      "brief": "Move Electron through bounded compatibility checkpoints to a supported line while preserving the canonical route, security boundaries, saves, lifecycle, input, packaging, hardware acceleration, and measured parity."
+    },
+    {
+      "id": "PQ-042",
+      "priority": 42,
+      "title": "PERF-08 Evidence-selected GPU pipeline correction",
+      "state": "planned",
+      "canonical": [
+        "PERF-08"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-034",
+        "PQ-035",
+        "PQ-036",
+        "PQ-037",
+        "PQ-038",
+        "PQ-039",
+        "PQ-040",
+        "PQ-041"
+      ],
+      "mutexes": [
+        "renderer",
+        "browser-gpu",
+        "performance-evidence",
+        "validation-broker"
+      ],
+      "sources": [
+        "design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md",
+        "design/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md"
+      ],
+      "checks": [
+        "npm run check:shader-compile",
+        "npm run check:render-hotpath",
+        "npm run check:visual-stability",
+        "npm run check:sim:compare",
+        "node scripts/validation-broker-cli.mjs --manifest performance-gpu-pipeline-browser",
+        "node scripts/validation-broker-cli.mjs --manifest performance-gpu-pipeline-electron",
+        "node scripts/check-performance-gpu-pipeline.mjs"
+      ],
+      "evidence": [
+        "gpu-pass-attribution",
+        "visual-equivalence",
+        "browser",
+        "electron",
+        "performance"
+      ],
+      "brief": "Use valid post-modernization pass-level evidence to select pixel/overdraw, material/order, post-pass, or no-GPU-change closure; never choose a branch from the contaminated July trace."
+    },
+    {
+      "id": "PQ-043",
+      "priority": 43,
+      "title": "PERF-09 Conditional simulation Worker",
+      "state": "deferred",
+      "canonical": [
+        "PERF-09"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-034",
+        "PQ-035",
+        "PQ-036",
+        "PQ-037",
+        "PQ-038",
+        "PQ-039",
+        "PQ-040",
+        "PQ-041",
+        "PQ-042"
+      ],
+      "mutexes": [
+        "loop",
+        "registry",
+        "save-schema",
+        "input"
+      ],
+      "sources": [
+        "design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md",
+        "design/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md"
+      ],
+      "checks": [
+        "npm run check:sim:compare",
+        "npm run check:perf"
+      ],
+      "evidence": [
+        "conditional-trigger",
+        "determinism",
+        "worker-restart",
+        "simulation-cadence"
+      ],
+      "brief": "Remain deferred unless evidence proves presentation blocking still delays otherwise healthy simulation after PERF-08 and the scheduler seam cannot solve it on one thread."
+    },
+    {
+      "id": "PQ-044",
+      "priority": 44,
+      "title": "PERF-10 Conditional WebGPU/TSL vertical slice",
+      "state": "deferred",
+      "canonical": [
+        "PERF-10"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-034",
+        "PQ-037",
+        "PQ-038",
+        "PQ-041",
+        "PQ-042"
+      ],
+      "mutexes": [
+        "renderer",
+        "browser-gpu",
+        "package"
+      ],
+      "sources": [
+        "design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md",
+        "design/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md"
+      ],
+      "checks": [
+        "npm run check:gpu-path",
+        "npm run check:shader-compile",
+        "npm run check:visual-stability",
+        "npm run check:m6:packaging"
+      ],
+      "evidence": [
+        "conditional-trigger",
+        "webgpu",
+        "webgl-fallback",
+        "visual-equivalence",
+        "electron"
+      ],
+      "brief": "Remain deferred until the compiler, PresentationWorld, supported Electron runtime, and GPU correction establish a representative limiting route worth testing through one rollback-safe WebGPU/TSL slice."
     }
   ]
 }
