@@ -1,7 +1,9 @@
 // NPC portrait asset registry — station bar / contact view-panels.
-// Canonical story contacts get unique art; procedural bar NPCs fall back to role archetypes.
-// Assets live under assets/portraits/ (bundled with release). Procedural canvas avatars remain
-// the runtime fallback when a file is missing or still loading.
+// Every authored recurring contact owns a stable image. Procedural station locals deliberately use
+// their deterministic canvas identity until they receive an authored station roster; one role photo
+// must never impersonate dozens of differently named people.
+// Assets live under assets/portraits/ (bundled with release). Procedural canvas avatars remain the
+// runtime fallback when a file is absent, missing, or still loading.
 
 export const PORTRAIT_ASSET_ROOT = 'assets/portraits/';
 
@@ -18,26 +20,35 @@ export const CANONICAL_PORTRAITS = Object.freeze({
 });
 
 /** @type {Readonly<Record<string, string>>} */
-export const ROLE_PORTRAITS = Object.freeze({
-  barkeep: 'portrait_role_barkeep.jpg',
-  merchant: 'portrait_role_merchant.jpg',
-  pilot: 'portrait_role_pilot.jpg',
-  smuggler: 'portrait_role_smuggler.jpg',
-  engineer: 'portrait_role_engineer.jpg',
-  bounty_hunter: 'portrait_role_bounty_hunter.jpg',
-  miner: 'portrait_role_miner.jpg',
+export const NAMED_CONTACT_PORTRAITS = Object.freeze({
+  contact_yune: 'portrait_yune.jpg',
+  contact_coldburn_rey: 'portrait_coldburn_rey.jpg',
+  contact_iren_suhl: 'portrait_iren_suhl.jpg',
+  contact_orrin: 'portrait_orrin.jpg',
+  contact_sker_vane: 'portrait_sker_vane.jpg',
+  contact_dustwife_senna: 'portrait_dustwife_senna.jpg',
+  contact_latch_child: 'portrait_latch_child.jpg',
+  contact_question: 'portrait_question.jpg',
+  contact_filecleaver_dorin: 'portrait_filecleaver_dorin.jpg',
+  contact_lira_vonn: 'portrait_lira_vonn.jpg',
+  contact_tinker_zell: 'portrait_tinker_zell.jpg',
+  contact_mara_children: 'portrait_mara_children.jpg',
+  contact_wraith_kell: 'portrait_wraith_kell.jpg',
+  contact_halev_doss: 'portrait_halev_doss.jpg',
+  contact_maera_vols: 'portrait_maera_vols.jpg',
 });
 
 /**
  * Resolve the portrait image URL for a bar/contact record.
- * @param {{ canonicalKey?: string, role?: string } | null | undefined} contact
+ * @param {{ canonicalKey?: string } | null | undefined} contact
  * @returns {string | null}
  */
 export function portraitAssetForContact(contact) {
   if (!contact) return null;
-  const canonical = contact.canonicalKey && CANONICAL_PORTRAITS[contact.canonicalKey];
-  if (canonical) return PORTRAIT_ASSET_ROOT + canonical;
-  const role = contact.role && ROLE_PORTRAITS[contact.role];
-  if (role) return PORTRAIT_ASSET_ROOT + role;
+  const portrait = contact.canonicalKey && (
+    CANONICAL_PORTRAITS[contact.canonicalKey]
+    || NAMED_CONTACT_PORTRAITS[contact.canonicalKey]
+  );
+  if (portrait) return PORTRAIT_ASSET_ROOT + portrait;
   return null;
 }

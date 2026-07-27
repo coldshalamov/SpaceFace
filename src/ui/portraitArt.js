@@ -1,4 +1,4 @@
-// Contact portrait mounting — authored PNG headshots with procedural canvas fallback.
+// Contact portrait mounting — authored contact images with procedural canvas fallback.
 import { FACTION_META } from '../data/factions.js';
 import { portraitAssetForContact } from '../data/portraits.js';
 

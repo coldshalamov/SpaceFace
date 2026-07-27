@@ -28,7 +28,7 @@ test('asset reachability reports every dynamic runtime media registry', () => {
 
   const report = JSON.parse(result.stdout);
   assert.equal(report.pass, true, JSON.stringify(report.issues));
-  assert.equal(report.dynamicRegistries.portraits.length, 15);
+  assert.equal(report.dynamicRegistries.portraits.length, 23);
   assert.equal(report.dynamicRegistries.wreckCathedralEvidence.length, 5);
   assert.equal(report.dynamicRegistries.thrusterTextures.length, 9);
   assert.ok(
@@ -36,6 +36,9 @@ test('asset reachability reports every dynamic runtime media registry', () => {
   );
   assert.ok(
     report.dynamicRegistries.portraits.includes('assets/portraits/portrait_kessler.jpg'),
+  );
+  assert.ok(
+    report.dynamicRegistries.portraits.includes('assets/portraits/portrait_mara_children.jpg'),
   );
   assert.ok(
     report.dynamicRegistries.wreckCathedralEvidence.includes(

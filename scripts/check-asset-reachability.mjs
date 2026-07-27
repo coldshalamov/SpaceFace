@@ -14,8 +14,8 @@ import { fileURLToPath } from 'node:url';
 
 import {
   CANONICAL_PORTRAITS,
+  NAMED_CONTACT_PORTRAITS,
   PORTRAIT_ASSET_ROOT,
-  ROLE_PORTRAITS,
 } from '../src/data/portraits.js';
 import { WRECK_CATHEDRAL_EVIDENCE_CATALOG } from '../src/data/wreckCathedralEvidenceCatalog.js';
 
@@ -109,7 +109,7 @@ const thrusterManifestPath = 'assets/fx/thruster/manifest.json';
 const thrusterManifest = JSON.parse(readFileSync(join(ROOT, thrusterManifestPath), 'utf8'));
 const dynamicRegistries = Object.freeze({
   portraits: Object.freeze(
-    [...Object.values(CANONICAL_PORTRAITS), ...Object.values(ROLE_PORTRAITS)]
+    [...Object.values(CANONICAL_PORTRAITS), ...Object.values(NAMED_CONTACT_PORTRAITS)]
       .map((file) => `${PORTRAIT_ASSET_ROOT}${file}`),
   ),
   wreckCathedralEvidence: Object.freeze(
