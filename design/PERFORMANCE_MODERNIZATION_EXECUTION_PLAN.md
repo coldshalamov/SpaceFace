@@ -774,8 +774,10 @@ This packet is required, but its implementation branch is selected by valid pass
 PERF-07. The July 25 contended trace is not enough to choose. Before either selecting capture begins,
 the active packet must freeze and independently review the selecting render path, exact diagnostic
 cells, scalar metric formulas, within-block and cross-block estimators, deterministic bootstrap,
-numeric thresholds, sample floors, runtime manifests, and fail-closed selector. Changing any of those
-values invalidates the selecting evidence and requires recapture.
+numeric thresholds, sample floors, runtime manifests, and fail-closed selector. Before a valid D result
+is consumed, changing any of those values invalidates the selecting evidence and requires recapture.
+After a valid D result is consumed, the packet-terminal rule forbids replacement capture and routes any
+later defect to separately admitted work.
 
 The admitted contract disables the overlapping render-graph path for selecting cells and asserts the
 live bloom or straight path. Physical default-bloom timing consists only of `bloomScene`,
@@ -788,6 +790,11 @@ overlap/disjoint/drop/reset/context-loss/nested/overflow states, and bounded pen
 Browser and Electron compute A/B/C raw facts independently, apply the frozen disjoint dominance/exclusion
 equations, and must produce the same single final branch. Zero final results, an impossible multiple
 result, invalid scalar or confidence boundary, missing data, or runtime disagreement returns `BLOCKED`.
+For B, aggregate eligibility is domain-conditioned before tie-breaking: `sceneGpuMs` uses the frozen
+`totalGpuMs` floor, while `rendererCpuMs` uses the frozen `rendererCpuMs` floor. D0/D1 use callback-start
+interval p95, never callback execution duration; owner work from callback `k` may explain only the interval
+ending at callback `k+1` through immutable causal IDs. D1 owner IDs are predeclared, exclusive,
+non-overlapping, present in the statistic keys, and exactly one must pass per late route.
 
 ### Diagnostic matrix
 
@@ -796,13 +803,20 @@ result, invalid scalar or confidence boundary, missing data, or runtime disagree
 | scene GPU time has the packet's minimum output-pixel elasticity, the `1.00 → 0.80 → 0.60` cells are directionally monotone, and draw/triangle/state counts stay fixed | fragment shading, transparency, lighting, or overdraw | PERF-08A pixel/overdraw correction when B and C raw facts are false |
 | named structural growth, same-metric structure effect, absolute structure-minus-pixel effect, and the packet's zero-safe cross-multiplied relative margin all pass | submission/pipeline fragmentation | PERF-08B material and ordering correction when C is false |
 | physical post share, post/display-interval cost, fleet-size equivalence, copy-cost-adjusted bypass reduction, scene equivalence, and omitted-group agreement all meet PQ-042's scalar bounds | full-screen pass cost | PERF-08C post-pass fusion/reuse |
-| A/B/C raw facts are false and GPU p95/p99 remain below the packet's display-interval health ceilings; callback timing is either healthy everywhere (D0) or every late route/runtime has a stable origin-linked non-GPU owner while non-late peers remain healthy (D1) | not a GPU problem | PERF-08D evidence-only closure; no follow-up for D0, bounded CPU/scheduler-owner routing for D1 |
+| A/B/C raw facts are false and GPU p95/p99 remain below the packet's display-interval health ceilings; no route meets both callback-interval-late tests (D0), or each late route/runtime has exactly one frozen prior-callback origin-linked exclusive non-GPU/non-renderer owner while non-late peers remain healthy (D1) | not a GPU problem | PERF-08D evidence-only closure; no follow-up for D0, machine-resolved separately admitted owner routing for D1, and no corrective product/runtime mutation inside PQ-042 |
 
 Raw facts may overlap, but final corrective ownership is literal and disjoint: C owns `C_raw`; B owns
 `B_raw && !C_raw`; A owns `A_raw && !B_raw && !C_raw`; D owns the healthy case only when all three
 corrective raw facts are false. The literal thresholds, statistics, exclusions, and D0/D1 cross-runtime
 disposition are executable authority in `design/program/roadmap/active/PQ-042.md`; they may not be
-invented or tuned after capture.
+invented or tuned after capture. D0 and D1 permit no corrective product/runtime mutation inside PQ-042.
+D1 records each uniquely passing non-GPU/non-renderer owner in a machine-readable mapping to a separately
+admitted follow-up rather than fixing it in this packet. The first valid consumed D result is packet-terminal:
+no later PQ-042 revision, source/build/harness/manifest/selector change, producer launch, claim, or promoting
+capture may replace it. Before capture, Phase 0 freezes the selecting source/contract digests plus one exact
+reviewed diagnostic-removal patch and its predicted terminal digest. D closes only with diagnostics retained
+at the selecting digest or after byte-for-byte application of that pre-hashed removal; every other delta is
+`BLOCKED` and separately admitted.
 
 ### PERF-08A — Pixel/overdraw correction
 
@@ -836,13 +850,13 @@ invented or tuned after capture.
 
 ### Completion proof
 
-- the frozen graph-disabled selector reports all raw facts, applies the literal exclusions, and yields exactly one matching Browser/Electron final branch from consumed broker claims; a selected B metric and CPU/GPU aggregate domain also match across runtimes;
+- the frozen graph-disabled selector reports all raw facts, applies the literal exclusions, and yields exactly one matching Browser/Electron final branch from consumed broker claims; a selected B metric and CPU/GPU aggregate domain also match across runtimes after the metric-specific aggregate floor is applied;
 - the selected diagnosis reproduces across matched runs without post-capture exclusions, undefined qualitative rulings, or threshold changes;
 - unchanged scene complexity or pixel coverage behaves according to the predicted scalar causal model;
 - semantic and image/temporal equivalence pass at default scale, population, post, and quality;
 - for A/B/C, the exact predeclared logical scope has complete non-overlapping pre/post owner-query lineage, its duration falls by at least 10% with six positive blocks and a paired lower bound above zero, and its selected aggregate domain improves by at least 1% under the same direction/confidence rules;
-- every non-selected aggregate domain and unselected physical owner remains inside its frozen regression margin, so individually small regressions cannot sum to a whole-domain slowdown, and no unresolved dominant owner remains. The original pathology predicate may disappear after a successful correction and is rerun for reporting rather than required to stay true;
-- for D0, GPU and callback timing remain healthy everywhere and no owner/follow-up is invented; for D1, GPU remains healthy, every late route/runtime's origin-linked non-GPU owner meets the frozen late-frame/excess equations and is routed, every non-late peer is recorded healthy, and neither subcase makes a branch-specific corrective renderer/post/material change beyond retaining or removing the frozen disabled diagnostic diff;
+- every non-selected aggregate domain and unselected physical owner remains inside its frozen regression margin, so individually small regressions cannot sum to a whole-domain slowdown, and no unresolved dominant owner remains in the frozen selected aggregate domain (`totalGpuMs` for a GPU scope or `rendererCpuMs` for a CPU/submission scope). The original pathology predicate may disappear after a successful correction and is rerun for reporting rather than required to stay true; a different actionable post-fix A/B/C branch is mapped to a separately admitted digest-bound follow-up rather than implemented in the same packet;
+- for D0, GPU timing remains healthy and no route meets both callback-interval-late tests; for D1, GPU remains healthy, every late route/runtime uses the frozen prior-callback causal join and exactly one exclusive origin-linked non-GPU/non-renderer owner meets the frozen late-interval/excess equations, resolves to a separately admitted follow-up, and every non-late peer is recorded healthy. Neither subcase makes any corrective product/runtime mutation inside PQ-042. Terminal identity must equal the selecting digest or the predicted digest after the exact pre-hashed diagnostic-removal transform, with no second producer launch or promoting claim;
 - no quality switch or diagnostic perturbation is used as the accepted route.
 
 ## 16. PERF-09 — Conditional simulation Worker
@@ -1017,7 +1031,7 @@ packet's exact-revision receipt. Only mark a packet complete when its completion
 | PERF-05 | PQ-039 | deterministic target parity, candidate-visit scale curve |
 | PERF-06 | PQ-040 | dirty-range correctness, upload-byte and combat comparison |
 | PERF-07 | PQ-041 | compatibility audit, packaged acceptance, runtime comparison |
-| PERF-08 | PQ-042 | branch-selection trace, GPU pass/state comparison or no-change closure |
+| PERF-08 | PQ-042 | branch-selection trace, GPU pass/state comparison or digest-bound no-change closure, plus machine-readable mappings for every required follow-up |
 | PERF-09 | PQ-043 | causal trigger evidence, Worker receipt, or explicit not-needed closure |
 | PERF-10 | PQ-044 | trigger evidence and WebGL2/WebGPU parity/performance comparison |
 
@@ -1032,7 +1046,7 @@ The core program succeeds when:
 - the proven NPC-jobs full scan is gone;
 - dynamic pool uploads follow changed active ranges;
 - the desktop runtime is on a supported Electron line;
-- clean evidence identifies and corrects any remaining dominant GPU owner;
+- clean evidence identifies and corrects any remaining dominant owner in the frozen selected aggregate domain (`totalGpuMs` for GPU work or `rendererCpuMs` for CPU/submission work), and every D1 or different post-fix branch follow-up has an accepted terminal receipt;
 - the five-times-population route remains smooth relative to the old current-population route;
 - admission and transition stalls formerly measured in seconds are removed;
 - all claims are backed by matched, valid, machine-readable evidence.
