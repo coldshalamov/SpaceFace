@@ -197,6 +197,42 @@ const ENERGY_PLUME_NOZZLE_CLEARANCE = 1.15;
 const ENERGY_PLUME_WIDTH_CLEARANCE = 1.05;
 const TETHER_MARKER_SURFACE_EPS = 0.12;
 
+// ---- HDR energy radiance vs. the bloom setting (see _bloomRadianceScale) ----
+// Bloom is a SPILL control, not an on/off switch for the energy layer. These four constants define
+// how far a bloom setting moves emitted radiance:
+//   OFF     — bloom disabled: energy volumes still radiate, they just stop bleeding into neighbours.
+//   FLOOR   — the value at bloomStrength 0 with bloom enabled.
+//   SPAN    — how much radiance one full reference-strength step buys.
+//   CEILING — the top of the ramp, so a maxed slider is loud but still bounded.
+const BLOOM_REFERENCE_STRENGTH = 0.35;  // bloom.js DEFAULT_BLOOM_STRENGTH
+const BLOOM_OFF_RADIANCE = 0.9;
+const BLOOM_RADIANCE_FLOOR = 0.62;
+const BLOOM_RADIANCE_SPAN = 0.78;
+const BLOOM_RADIANCE_CEILING = 2.4;
+
+// ---- Massline presentation (grammar §9.2 / §9.2.1) ----
+// The rope is the signature verb and is meant to be the brightest object on screen.
+// NOTE ON THE COLOUR RAMP: the red end is RARE BY DESIGN. The line is deliberately near-unbreakable
+// (combatDefs tether_standard.breakTension, automaticBreakPolicy 'extreme_load_only') and a break is
+// an ENGINEERED event, not an ambient one. These constants read strain/load telemetry; none of them
+// touches a break threshold, and nothing here is tuned to make the red end easier to reach.
+const TETHER_RELEASE_FADE_RATE = 3.5;   // /s — clean release fades out quickly
+const TETHER_SNAP_FADE_RATE = 2.6;      // /s — a break holds long enough to show its recoil
+const TETHER_SNAP_WHIP_S = 0.30;        // seconds of violent recoil after a break
+const TETHER_LOAD_SHIVER_WU = 0.52;     // peak lateral shiver at full presentation load (~10 px)
+// Where the load ramp switches from "working" to "fighting". tether.load is a phase-floored
+// presentation signal (tetherGameplay LOAD_BASE_BY_PHASE): slack 0 / capture 0.35 / loaded 0.55 /
+// overload 0.9. Measured with scripts/probe-tether-visual-drive.mjs (640-mass rock, full main
+// thrust opposing the line, 240 ticks): load peaks at 0.55 and phase never leaves loaded. So a gate
+// at 0.5 engages on a real hard pull, and everything above 0.72 stays out of ordinary play — which
+// is the point. See the note at the strain read in _updateTetherCable.
+const TETHER_TAUT_LOAD = 0.5;
+const TETHER_OVERLOAD_LOAD = 0.88;
+const TETHER_SPARK_LOAD = 0.72;
+// The capture floor. Load below this is "the line just caught"; the visible-strain reads measure
+// how far PAST it the line is, so a merely-captured line is quiet and a worked one is not.
+const TETHER_CAPTURE_FLOOR = 0.35;
+
 // Engine-trail relevance gating (quality-preserving: far/offscreen NPCs emit less; player/target stay full).
 const TRAIL_TIER = Object.freeze({ FULL: 'full', NORMAL: 'normal', REDUCED: 'reduced', SKIP: 'skip' });
 const TRAIL_NORMAL_PLAYER_DIST = 2200;
@@ -228,6 +264,14 @@ const DOCTRINE_TELL_OFFSCREEN_R = 58;
 // The player Hitch continuous plume is intentionally NOT cadence-gated: it is ship-attached
 // nozzle geometry, and lagging pose updates at high speed creates a ghosted double thruster.
 const VFX_SEAM_MARKERS_HZ = 20;
+// Loot magnet comet trails. The magnet itself is real physics (src/systems/mining.js: range 420,
+// accel 900 wu/s², velocity-inheriting homing) and it already works — but a drop flying home looked
+// like a small drifting rock, so the single most repeated reward in the game read as nothing. This
+// draws it as light. Cadence-gated and fully asleep when nothing is homing.
+const VFX_LOOT_MAGNET_HZ = 24;
+const LOOT_MAGNET_DRAW_RANGE = 460;      // wu; slightly beyond MAGNET_RANGE so entry is not a pop
+const LOOT_MAGNET_MIN_SPEED = 26;        // wu/s; below this a drop is drifting, not being pulled
+const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed drops
 const VFX_RIBBON_TRAILS_HZ = 30;
 const VFX_PROJECTILE_TRAILS_HZ = 45;
 const VFX_SEAM_DRAW_RANGE = 640;
@@ -353,6 +397,7 @@ function emptyVfxSubsystemDiag() {
     sprites: 0,
     eventLights: 0,
     fieldFlow: 0,       // PQ-012 continuous field flow particles emitted this frame (pool share)
+    lootMagnet: 0,      // magnet-pulled drops drawn as incoming light this frame
   };
 }
 
@@ -388,6 +433,8 @@ export const vfx = {
       cruise: 0, reverse: 0, retroOnly: false, brake: 0, speedDrive: 0,
     };
     this._productionEngineProfileId = null;
+    // Sized to the fleet's sanity ceiling, not its initial allocation — the fleet ship
+    // table grows on demand, and this scratch must be able to name every owned ship.
     this._productionOwnedIds = new Array(FLEET_MAX_SHIPS);
     this._productionOwnedCount = 0;
     // Eager trail culling scratch — first live frame must not allocate these.
@@ -469,6 +516,8 @@ export const vfx = {
     this._cadenceSeam = 0;
     this._cadenceRibbon = 0;
     this._cadenceProjectileTrail = 0;
+    this._cadenceLootMagnet = 0;
+    this._lootMagnetLive = 0;
     this._projectileCandidates = [];
     this._projectileCacheDirty = true;
     this._projectileListRef = null;
@@ -601,6 +650,12 @@ export const vfx = {
       projectileTrails: this._projectileTrailDiag ? { ...this._projectileTrailDiag } : emptyProjectileTrailDiag(),
       subsystems: {
         lastFrame: this._vfxSubsystemLast ? { ...this._vfxSubsystemLast } : emptyVfxSubsystemDiag(),
+      },
+      // Declared share, per PERF_BUDGET doctrine: how many drops the magnet presentation is
+      // currently trailing, against its own cap.
+      lootMagnet: {
+        trailed: this._lootMagnetLive || 0,
+        cap: LOOT_MAGNET_MAX_TRAILED,
       },
     };
   },
@@ -2407,7 +2462,25 @@ export const vfx = {
           1.18 + Math.abs(centered) * 0.14,
           dirAngle + explosionPatternSigned(entry.serial, phase, k, 3) * 0.34);
       }
-      this._flashLight({ x, z }, '#fff0c0', (entry.classId === 'capital' ? 8 : 4.5) * scale, 11, 120 + r * 5);
+      // Kills spray LIGHT (grammar §9.2). The combustion structure above is deliberately irregular
+      // and deliberately not a radial flower — that discipline is about SILHOUETTE and it stays.
+      // What was missing is energy: every card above sits between 0.32 and 0.68 opacity on a mid
+      // orange, so nothing in a ship's death ever crossed 1.0 in linear HDR and nothing ever fed
+      // the bloom bright pass. A destruction read as a cluster of dull orange blobs.
+      //
+      // These two additions are small, short and near-white. They are the hot core the phase always
+      // implied, and because they are compact they add heat without adding coverage.
+      const ignitionCore = r * 0.06 * scale;
+      this._spawnSprite(SPR_FLASH, x, 0.30, z,
+        entry.classId === 'capital' ? 0.13 : 0.09,
+        ignitionCore, ignitionCore * 2.6,
+        reduced ? 0.72 : 1.0, 0.0, '#ffffff',
+        entry.dirX * 2, entry.dirZ * 2);
+      this._spawnSprite(SPR_RING, x, 0.28, z,
+        entry.classId === 'capital' ? 0.30 : 0.20,
+        r * 0.05 * scale, r * (entry.classId === 'capital' ? 0.55 : 0.40) * scale,
+        reduced ? 0.30 : 0.52, 0.0, '#fff0c0', 0, 0);
+      this._flashLight({ x, z }, '#fff0c0', (entry.classId === 'capital' ? 12 : 7.5) * scale, 11, 120 + r * 5);
       return;
     }
 
@@ -2541,7 +2614,27 @@ export const vfx = {
         Math.round((entry.classId === 'capital' ? 10 : 6) * burst * scale * (reduced ? 0.62 : 1)),
         entry.classId === 'capital' ? 0.72 : 0.52, 0.36 * scale,
         '#ffe3a0', '#65301d', 1.35);
-      this._flashLight({ x, z }, '#ff7a30', (entry.classId === 'capital' ? 8 : 4.2) * scale, 5.5, 180 + r * 7);
+      // Rupture heat. Two compact white cores offset along the tear axis (never centred, so they
+      // cannot rebuild the radial flower the phase is written to avoid) plus one bright shock ring.
+      // Same reasoning as ignition: brightness carries the energy, the combustion cards carry the
+      // shape, and neither job is done by making the orange cards bigger.
+      for (const side of [-1, 1]) {
+        const coreAlong = r * scale * 0.09 * side;
+        const coreAcross = r * scale * 0.05 * side;
+        this._spawnSprite(SPR_FLASH,
+          x + entry.dirX * coreAlong + tangentX * coreAcross, 0.30,
+          z + entry.dirZ * coreAlong + tangentZ * coreAcross,
+          entry.classId === 'capital' ? 0.20 : 0.13,
+          r * scale * 0.07, r * scale * 0.19,
+          reduced ? 0.62 : (side < 0 ? 1.0 : 0.78), 0.0, side < 0 ? '#ffffff' : '#fff3d0',
+          entry.dirX * (5 + 3 * side) * scale, entry.dirZ * (5 + 3 * side) * scale,
+          1.6 + 0.5 * side, dirAngle + side * 0.22);
+      }
+      this._spawnSprite(SPR_RING, x, 0.26, z,
+        entry.classId === 'capital' ? 0.46 : 0.32,
+        r * scale * 0.10, r * scale * (entry.classId === 'capital' ? 0.95 : 0.72),
+        reduced ? 0.26 : 0.46, 0.0, '#ffb060', 0, 0);
+      this._flashLight({ x, z }, '#ffa050', (entry.classId === 'capital' ? 13 : 8.0) * scale, 5.5, 180 + r * 7);
       const shake = entry.classId === 'capital' ? 0.62 : (entry.classId === 'small' ? 0.16 : 0.34);
       // A ship blowing up is a WORLD event: send where it happened so the consumer can fall it off
       // with distance. Untagged, this kicked the player's camera identically whether the wreck was on
@@ -2845,8 +2938,9 @@ export const vfx = {
   // -------------------------------------------------------------------------
   // Tether cable (GDD §4.3): the player-facing read of the massline. A segmented additive ribbon
   // between the ship's NOSE and the latched target: bows with slack, straightens and heats
-  // cyan→amber→red with tether.load (the presentation signal — sim writes, we read); physical
-  // tether.strain keeps the near-break reads (sag, overload flicker, sparks). Runs a decaying
+  // cyan→amber→red with tether.load / tether.phase (the presentation signals — sim writes, we
+  // read). Physical tether.strain is an UPPER path only, never the sole key: see the long note at
+  // the strain read in _updateTetherCable for why (it is ~1e-4 in real play). Runs a decaying
   // traveling wave for the first beat after latch (the "whip"). Cut = quick fade;
   // break = spark burst at both ends (tether:broke). Pure cosmetics — never touches sim state.
   // -------------------------------------------------------------------------
@@ -2874,12 +2968,16 @@ export const vfx = {
     geo.setAttribute('aAlong', alongAttr);
     geo.setAttribute('aSide', sideAttr);
 
+    // Core draw: the white-hot filament. `sheath: 0` selects the tight cross-section that saturates
+    // to white and runs far above 1.0 in linear HDR, which is what clips through ACES and feeds the
+    // bloom bright pass. Grammar §9.2 — the taut Massline is meant to be the brightest thing here.
     const mat = createMasslineRibbonMaterial({
       name: 'sf-tether-core',
       color: 0x39d0ff,
       intensity: 6.2,
       opacity: 0.78,
       pulseSpeed: 3.1,
+      sheath: 0,
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.frustumCulled = false;
@@ -2892,12 +2990,16 @@ export const vfx = {
     const glowSide = new Float32Array((SEG + 1) * 2);
     glowGeo.setAttribute('aAlong', new THREE.BufferAttribute(glowAlong, 1));
     glowGeo.setAttribute('aSide', new THREE.BufferAttribute(glowSide, 1));
+    // Halo draw: the wide saturated sheath around the core. `sheath: 1` keeps the tension colour
+    // instead of washing to white, so the cable reads as a coloured volume with a white centre
+    // rather than as one flat tinted stripe.
     const glowMat = createMasslineRibbonMaterial({
       name: 'sf-tether-halo',
       color: 0x39d0ff,
       intensity: 2.8,
       opacity: 0.2,
       pulseSpeed: 2.4,
+      sheath: 1,
     });
     const glow = new THREE.Mesh(glowGeo, glowMat);
     glow.frustumCulled = false;
@@ -2929,7 +3031,12 @@ export const vfx = {
     band.visible = false;
     this._scene.add(band);
 
-    const anchorGeo = new THREE.RingGeometry(0.72, 1.0, 32);
+    // The hitch ring used to be 28% of its own radius thick, which at anchor scale drew a ~20px
+    // solid donut of flat additive colour — it read as a HUD element pasted into the world rather
+    // than as the point where a rope is biting into a rock. Thin it to a bright band and let
+    // targetHalo (below) supply the soft outer falloff, so ring + halo together give the same
+    // hot-core / saturated-surround structure as the rope itself.
+    const anchorGeo = new THREE.RingGeometry(0.87, 1.0, 48);
     anchorGeo.rotateX(-Math.PI / 2);
     const anchorMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color('#39d0ff'),
@@ -2944,10 +3051,21 @@ export const vfx = {
     anchor.visible = false;
     this._scene.add(anchor);
 
-    const anchorCoreGeo = new THREE.CircleGeometry(0.42, 24);
+    // The hitch core: a genuine soft hot point, not a flat disc. A CircleGeometry fans from a single
+    // centre vertex, so painting the centre white and the rim black and blending additively gives a
+    // real radial falloff for the cost of one vertex-colour attribute — the same white-core /
+    // coloured-surround structure the rope has, at the point where the force is applied.
+    const anchorCoreGeo = new THREE.CircleGeometry(0.42, 32);
     anchorCoreGeo.rotateX(-Math.PI / 2);
+    {
+      const vertCount = anchorCoreGeo.attributes.position.count;
+      const falloff = new Float32Array(vertCount * 3);
+      falloff[0] = 1; falloff[1] = 1; falloff[2] = 1;   // fan centre
+      anchorCoreGeo.setAttribute('color', new THREE.BufferAttribute(falloff, 3));
+    }
     const anchorCoreMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color('#a6f0ff'),
+      vertexColors: true,
       transparent: true, opacity: 0.74,
       depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
       forceSinglePass: true,
@@ -2979,7 +3097,9 @@ export const vfx = {
       along, side, glowAlong, glowSide,
       wasActive: false,
       latchAge: 999,      // seconds since latch (drives the whip wave)
+      snapAge: 999,       // seconds since break (drives the violent recoil whip)
       fade: 0,            // 0..1 visibility envelope (release = fade out, latch = snap in)
+      fadeRate: TETHER_RELEASE_FADE_RATE,
       lastTargetId: null,
       bowSide: 1,
       strainSmooth: 0,
@@ -3096,10 +3216,18 @@ export const vfx = {
     const target = active ? this._ent(tether.targetId) : null;
     const live = active && target && target.alive;
 
-    if (live && !cable.wasActive) { cable.latchAge = 0; cable.fade = 1; cable.lastTargetId = tether.targetId; }
+    if (live && !cable.wasActive) {
+      cable.latchAge = 0; cable.snapAge = 999; cable.fade = 1;
+      cable.fadeRate = TETHER_RELEASE_FADE_RATE;
+      cable.lastTargetId = tether.targetId;
+    }
     cable.wasActive = live;
     cable.latchAge += dt;
-    cable.fade = live ? 1 : Math.max(0, cable.fade - dt * 3.5);   // quick fade on release
+    cable.snapAge += dt;
+    // Release fades quickly; a BREAK holds the line on screen for its recoil (see _onTetherSnap),
+    // because a cable that simply disappears at the instant of the most violent event in the game
+    // is the single biggest missed beat in the whole massline presentation.
+    cable.fade = live ? 1 : Math.max(0, cable.fade - dt * (cable.fadeRate || TETHER_RELEASE_FADE_RATE));
     if (cable.fade <= 0 || !player) {
       if (cable.mesh.visible) setTetherCableVisible(cable, false);
       return;
@@ -3139,11 +3267,25 @@ export const vfx = {
     // Slack bow from REAL slack (restLength - distance): a line reeled longer than the gap hangs
     // lazy; a stretched line snaps straight. The bow lags the swing — it flips away from the
     // player's tangential velocity so the cable trails like a real line under centripetal motion.
+    // WHY NOTHING HERE KEYS OFF tether.strain ALONE.
+    //
+    // tether.strain is the honest physical ratio lastTension / breakTension, and breakTension is
+    // 10500000 (src/data/combatDefs.js tether_standard) because the Massline is deliberately
+    // near-unbreakable. Measured with scripts/probe-tether-visual-drive.mjs — 640-mass asteroid
+    // latched, full main thrust opposing the line for 240 ticks, line HELD — strain peaked at
+    // 1.0e-4. Every threshold this file used to key on strain (taut > 0.7, overload > 0.95,
+    // sparks > 0.55, the shiver amplitude) was therefore unreachable dead code: the rope always
+    // rendered at its slack core width no matter how hard you pulled.
+    //
+    // The fix is NOT to renormalize strain — the enormous breakTension is a hand-tuned protected
+    // value and making the rope look about to snap during ordinary play re-introduces exactly the
+    // feeling that tuning removed. Instead the visible reads key off tether.load / tether.phase,
+    // which are presentation-oriented and actually vary in play (same probe: load 0 → 0.55, phase
+    // slack → capture → loaded). strainSmooth is kept and used as an UPPER path only: if physical
+    // strain ever does climb — an engineered extreme-load event — it overtakes the presentation
+    // read rather than being ignored. It never lowers it.
     const strain = Math.max(0, Math.min(1.5, (tether && tether.strain) || 0));
     cable.strainSmooth += (strain - cable.strainSmooth) * Math.min(1, dt * 8);
-    // Presentation load (rung 04): ordinary glow/color/band reads key off tether.load so a loaded
-    // line glows even at low physical strain. strainSmooth stays the physical read — sag geometry,
-    // overload flicker, and near-break sparks below.
     const loadRaw = tether && Number.isFinite(tether.load)
       ? Math.max(0, Math.min(1, tether.load))
       : Math.min(1, strain);   // saves from before tether.load existed: degrade to the strain read
@@ -3152,46 +3294,100 @@ export const vfx = {
     const slack = Math.max(0, rest - chord);
     const tangential = player.vel ? (player.vel.x * px + player.vel.z * pz) : 0;
     if (Math.abs(tangential) > 4) cable.bowSide = tangential > 0 ? -1 : 1;
-    const slackBow = Math.min(slack * 0.42, 24) * Math.max(0.15, 1 - cable.strainSmooth) * cable.bowSide;
+    // The bow flattens as the line works. Keyed off the smoothed load, not strainSmooth: against a
+    // 10.5M breakTension the old term was a constant 1.0 and the bow never straightened.
+    const slackBow = Math.min(slack * 0.42, 24)
+      * Math.max(0.15, 1 - Math.min(1, Math.max(cable.loadSmooth, cable.strainSmooth)))
+      * cable.bowSide;
 
-    // Whip wave: decaying traveling sine for ~0.55 s after latch (Top-50 rank-2: stronger read).
-    const whipT = cable.latchAge;
-    const whipEnv = Math.max(0, 1 - whipT / 0.55);
-    const whipAmp = whipEnv * whipEnv * Math.min(chord * 0.28, 26);
+    // Whip waves. Two envelopes, because a latch and a break are not the same event:
+    //   LATCH — a decaying traveling sine for ~0.55 s: the line settling onto its anchor.
+    //   SNAP  — a much harder, faster, shorter recoil (~0.30 s) at roughly double the amplitude and
+    //           frequency, forced white-hot through uWhip. This is the violent whip the design asks
+    //           for; the line used to just vanish on break.
+    const latchEnv = Math.max(0, 1 - cable.latchAge / 0.55);
+    const snapEnv = Math.max(0, 1 - cable.snapAge / TETHER_SNAP_WHIP_S);
+    const snapping = snapEnv > 0;
+    const whipT = snapping ? cable.snapAge : cable.latchAge;
+    const whipEnv = snapping ? snapEnv * snapEnv : latchEnv * latchEnv;
+    const whipFreq = snapping ? 46 : 26;
+    const whipHarmonic = snapping ? 5 : 3;
+    const whipAmp = whipEnv * Math.min(chord * (snapping ? 0.52 : 0.28), snapping ? 52 : 26);
 
     // Load color: cool cyan → amber → hot red with presentation load (rung 04) — a loaded line
-    // reads loaded even at low strain. Winch-active reel ramps a separate HDR glow read; the
-    // overload flicker + near-break sparks still key off physical strain.
-    const s = Math.min(1, cable.strainSmooth);
-    const l = Math.min(1, cable.loadSmooth);
+    // reads loaded even at low strain. Winch-active reel ramps a separate HDR glow read.
+    // `l` is the working read: presentation load, with physical strain able to overtake it.
+    const l = Math.min(1, Math.max(cable.loadSmooth, cable.strainSmooth));
     const reelTarget = tether && tether.reeling ? Math.max(0, Math.min(1, tether.reelStrength || 0)) : 0;
     cable.reelGlow += (reelTarget - cable.reelGlow) * (1 - Math.exp(-(reelTarget > cable.reelGlow ? 11 : 6) * Math.max(0, dt || 0)));
     if (l < 0.55) this._ctmp.lerpColors(this._tetherColorCool, this._tetherColorWarm, l / 0.55);
     else this._ctmp.lerpColors(this._tetherColorWarm, this._tetherColorHot, (l - 0.55) / 0.45);
-    if (cable.reelGlow > 0.01) this._ctmp.lerp(this._tetherColorWhite, cable.reelGlow * 0.42);
-    const taut = cable.strainSmooth > 0.7;
-    const overload = s > 0.95;
+    // Winching lifts the line's heat, but it must not erase the tension colour: with the shader's
+    // own reel term this used to triple-count and a fully-winched cable read as a plain white
+    // noodle, losing the one channel that tells you how hard it is pulling.
+    if (cable.reelGlow > 0.01) this._ctmp.lerp(this._tetherColorWhite, cable.reelGlow * 0.20);
+    // A parting line is white-hot regardless of what load it was carrying a frame ago: the physical
+    // load telemetry is already gone by the time the break event lands.
+    if (snapEnv > 0) this._ctmp.lerp(this._tetherColorWhite, Math.min(1, snapEnv * 0.95));
+    // Taut / overload, re-keyed. `phase === 'loaded'` is the sim's own statement that the line is
+    // past capture and pulling, so it engages the instant the state does; the smoothed load gate is
+    // the continuous fallback (and the only path when a save predates tether.phase). Overload keeps
+    // its physical escape hatch — if strain ever really does approach the envelope, it still fires.
+    const phase = tether && tether.phase;
+    const taut = phase === 'loaded' || phase === 'overload' || cable.loadSmooth > TETHER_TAUT_LOAD;
+    const overload = phase === 'overload' || l > TETHER_OVERLOAD_LOAD || cable.strainSmooth > 0.95;
+    // Visible-strain read: how far PAST the capture floor the line is working. Feeds the shader's
+    // uStrain brightness chatter and the hitch tremble, so a line that has merely caught stays
+    // quiet while a line being fought is unmistakable. Deliberately below `l` so the shader's
+    // "hot-looking vs genuinely strained" split survives instead of collapsing onto one number.
+    // (The geometry shiver keys off `l` directly — it needs the larger amplitude to read at all.)
+    const s = Math.max(0, Math.min(1, (l - TETHER_CAPTURE_FLOOR) / (1 - TETHER_CAPTURE_FLOOR)));
+    // Bloom is a spill control, not a switch: the cable still radiates with bloom disabled, and a
+    // player who raises the slider gets a genuinely hotter rope (see _bloomRadianceScale).
+    const radiance = this._bloomRadianceScale();
+    // The core carries HEAT and the halo carries COLOUR. The core intensity is deliberately high
+    // enough that the filament clips through ACES — that white centre against the coloured falloff
+    // is the whole "liquid neon" read (grammar §9.2) and is what the old flat 4.8-7.4 could not do.
     const ribbonFrame = {
       time: visualTime,
       color: this._ctmp,
       tension: l,
+      // uStrain in the ribbon shader. Fed the past-capture working read, not tether.strain: the
+      // physical ratio is ~1e-4 against a 10.5M breakTension, so uStrain*uStrain was always 0 and
+      // the shader's brightness chatter never ran. (energyMaterials.js still documents this uniform
+      // as "physical strain" — that comment needs the same correction; it is not this file.)
+      strain: s,
+      whip: whipEnv,
       overload,
       reel: cable.reelGlow,
       pulseSpeed: 2.8 + l * 1.4 + cable.reelGlow * 4.8,
-      intensity: 4.8 + l * 2.6 + cable.reelGlow * 4.2 + whipEnv * 0.8,
-      opacity: (taut ? 0.68 : 0.58) * cable.fade,
+      // Core: the filament cross-section (pow 9-18) concentrates almost all of this into the middle
+      // ~15% of the ribbon, so a number this size buys a two-to-four pixel white line, not a slab.
+      intensity: (2.2 + l * 1.7 + cable.reelGlow * 1.5 + whipEnv * 2.1) * radiance,
+      opacity: (taut ? 0.74 : 0.62) * cable.fade,
     };
     updateEnergyMaterial(cable.mesh.material, ribbonFrame);
     updateEnergyMaterial(cable.glow.material, {
       ...ribbonFrame,
-      intensity: ribbonFrame.intensity * 0.42,
-      opacity: (0.14 + 0.12 * l + cable.reelGlow * 0.28 + whipEnv * 0.05) * cable.fade,
+      // Halo: wide and coloured. Its centre needs to clear the bright-pass threshold so the rope
+      // gets a real bloom skirt, but only its centre — push this higher and the sheath saturates
+      // across its whole width and the cable stops being a cable and becomes a plume.
+      intensity: (1.5 + l * 1.5 + cable.reelGlow * 1.2 + whipEnv * 1.7) * radiance,
+      opacity: (0.24 + 0.20 * l + cable.reelGlow * 0.20 + whipEnv * 0.16) * cable.fade,
     });
     cable.band.material.color.copy(this._ctmp);
-    cable.band.material.opacity = (0.12 + 0.22 * l + cable.reelGlow * 0.18 + (tether && tether.phase === 'capture' ? 0.08 : 0)) * cable.fade;
+    cable.band.material.opacity = Math.min(0.9,
+      (0.20 + 0.42 * l + cable.reelGlow * 0.22 + whipEnv * 0.2
+        + (tether && tether.phase === 'capture' ? 0.08 : 0)) * cable.fade);
 
-    const w = (taut ? 0.24 : 0.34);   // taut line reads thinner + hotter
-    const gw = 0.75 + 0.65 * l + whipEnv * 0.25 + cable.reelGlow * 0.42;
+    // Widths, in world units, at roughly 18.7 screen px per wu at the default game camera (fov 50,
+    // zoom 72, 60-degree elevation). Read these as pixels:
+    //   core  ~0.26-0.36 wu half-width  ->  10-13 px of ribbon carrying a 3-4 px white filament
+    //   halo  ~0.62-1.20 wu half-width  ->  23-45 px of coloured sheath
+    // The taut line still reads thinner than the slack one — that intent is good and kept — and
+    // load swells both slightly so a heavy pull is legible in silhouette alone.
+    const w = (taut ? 0.26 : 0.34) + l * 0.08 + whipEnv * 0.08;
+    const gw = 0.62 + 0.55 * l + whipEnv * 0.45 + cable.reelGlow * 0.30;
     const SEG = cable.SEG;
     const corePos = cable.mesh.geometry.attributes.position.array;
     const glowPos = cable.glow.geometry.attributes.position.array;
@@ -3199,11 +3395,24 @@ export const vfx = {
     const side = cable.side;
     const glowAlong = cable.glowAlong;
     const glowSide = cable.glowSide;
+    // Visible strain, in geometry rather than in colour: a loaded line shivers. The amplitude is
+    // quadratic in LOAD (see the strain note above — physical strain is ~1e-4 in real play, so the
+    // old s*s term was a hard zero and this whole effect never ran). Quadratic keeps the intent: a
+    // just-captured line barely trembles (~1 px), a worked line clearly does (~3 px), and a line at
+    // the edge of its envelope is unmistakably fighting (~8 px). Purely cosmetic — VFX is exempt
+    // from the determinism rule and this never touches sim state.
+    // Two components at different spatial frequencies. A single per-segment term aliased into a
+    // sawtooth at 40 segments and read as jagged lightning rather than a cable under load.
+    const shiverAmp = l * l * TETHER_LOAD_SHIVER_WU * Math.min(1, chord / 40);
+    const shiverPhase = visualTime * 41;
+    const shiverPhaseFast = visualTime * 97;
     for (let i = 0; i <= SEG; i++) {
       const t = i / SEG;
       const arc = Math.sin(Math.PI * t);
-      const wave = whipAmp * Math.sin(Math.PI * 3 * t - whipT * 26) * arc;
-      const off = slackBow * arc + wave;
+      const wave = whipAmp * Math.sin(Math.PI * whipHarmonic * t - whipT * whipFreq) * arc;
+      const shiver = shiverAmp * arc
+        * (Math.sin(shiverPhase + t * 21.7) * 0.72 + Math.sin(shiverPhaseFast + t * 47.3) * 0.28);
+      const off = slackBow * arc + wave + shiver;
       const cx = ax + dx * t + px * off;
       const cz = az + dz * t + pz * off;
       const o = i * 6;
@@ -3226,13 +3435,18 @@ export const vfx = {
     const bandPos = cable.band.geometry.attributes.position.array;
     const ux = dx / chord;
     const uz = dz / chord;
-    const bandHalfLen = Math.min(1.25, Math.max(0.45, chord / (SEG * 3.2)));
-    const bandHalfWidth = w * 1.9 + 0.18 + l * 0.18;
+    // Strain ladder. These used to be short wide rectangles wider than the rope itself, which read
+    // as loose rungs floating alongside the cable rather than as load banding running through it.
+    // Now they hug the core (only slightly proud of it) and lengthen as the line loads.
+    const bandHalfLen = Math.min(1.9, Math.max(0.5, chord / (SEG * 3.2))) * (1 + l * 0.55);
+    const bandHalfWidth = w * 1.22 + 0.10 + l * 0.14;
     for (let i = 0; i < cable.BANDS; i++) {
       const t = (i + 1) / (cable.BANDS + 1);
       const arc = Math.sin(Math.PI * t);
-      const wave = whipAmp * Math.sin(Math.PI * 3 * t - whipT * 26) * arc;
-      const off = slackBow * arc + wave;
+      const wave = whipAmp * Math.sin(Math.PI * whipHarmonic * t - whipT * whipFreq) * arc;
+      const shiver = shiverAmp * arc
+        * (Math.sin(shiverPhase + t * 21.7) * 0.72 + Math.sin(shiverPhaseFast + t * 47.3) * 0.28);
+      const off = slackBow * arc + wave + shiver;
       const cx = ax + dx * t + px * off;
       const cz = az + dz * t + pz * off;
       const o = i * 12;
@@ -3247,15 +3461,27 @@ export const vfx = {
     const anchorScale = isLargeAnchor
       ? Math.max(6.5, Math.min(28, tr * 0.24))
       : Math.max(3.8, Math.min(18, tr * 0.16));
-    cable.anchor.scale.setScalar(anchorScale);
-    cable.anchor.rotation.y = visualTime * 1.8;
+    // The hitch breathes with load and shivers with strain, so the point where the force is actually
+    // applied is the second-loudest thing after the rope itself. The ring used to sit at a fixed
+    // radius on a fixed opacity, which read as a flat HUD donut pasted onto the world.
+    const hitchBreath = 1 + l * 0.16 + Math.sin(visualTime * (6 + l * 9)) * (0.03 + s * 0.09);
+    cable.anchor.scale.setScalar(anchorScale * hitchBreath);
+    cable.anchor.rotation.y = visualTime * (1.8 + l * 2.6 + cable.reelGlow * 4.0);
     cable.anchor.material.color.copy(this._ctmp);
-    cable.anchor.material.opacity = (0.36 + 0.24 * l + whipEnv * 0.2 + cable.reelGlow * 0.34) * cable.fade;
+    cable.anchor.material.opacity = Math.min(1,
+      (0.52 + 0.40 * l + whipEnv * 0.32 + cable.reelGlow * 0.34) * cable.fade);
     cable.anchorCore.position.set(mx, 1.64, mz);
-    cable.anchorCore.scale.setScalar(Math.max(1.8, anchorScale * 0.42));
-    cable.anchorCore.rotation.y = -visualTime * 2.4;
-    cable.anchorCore.material.color.copy(this._ctmp);
-    cable.anchorCore.material.opacity = (0.48 + 0.28 * l + whipEnv * 0.2 + cable.reelGlow * 0.42) * cable.fade;
+    // The hitch core is the white-hot point of contact — it stays near-white while the ring keeps
+    // the tension colour, mirroring the core/halo split on the rope itself.
+    cable.anchorCore.scale.setScalar(Math.max(1.4, anchorScale * (0.44 + l * 0.16)) * hitchBreath);
+    cable.anchorCore.rotation.y = -visualTime * (2.4 + l * 3.2);
+    cable.anchorCore.material.color.copy(this._ctmp).lerp(this._tetherColorWhite, 0.45 + l * 0.35 + whipEnv * 0.2);
+    cable.anchorCore.material.opacity = Math.min(1,
+      (0.72 + 0.28 * l + whipEnv * 0.28 + cable.reelGlow * 0.42) * cable.fade);
+    // Body outline for large anchors only — "this whole thing is what you have hold of". A small
+    // rock does not need it: the hitch ring plus its gradient core already reads, and drawing a
+    // second big ring around an ordinary asteroid put a flat disc over the play area for no
+    // information gain.
     cable.targetHaloActive = isLargeAnchor;
     if (cable.targetHalo) {
       const haloLocal = this._toLocalXZ(anchorEnt.pos.x, anchorEnt.pos.z, this._entityLocalXZ);
@@ -3263,18 +3489,34 @@ export const vfx = {
       cable.targetHalo.scale.setScalar(Math.max(anchorScale * 1.6, tr * 1.08));
       cable.targetHalo.rotation.y = visualTime * 0.65;
       cable.targetHalo.material.color.copy(this._ctmp);
-      cable.targetHalo.material.opacity = isLargeAnchor ? (0.12 + 0.11 * l + whipEnv * 0.08) * cable.fade : 0;
+      cable.targetHalo.material.opacity = isLargeAnchor
+        ? (0.20 + 0.20 * l + whipEnv * 0.12) * cable.fade
+        : 0;
     }
     setTetherCableVisible(cable, true);
 
-    // Near-break shiver: sparks crawl the line when the strain is critical.
+    // Sparks crawling the line — the about-to-part read, and the RAREST thing this effect does.
+    //
+    // This gate used to read `s > 0.55` against physical strain. It was harmless only because
+    // strain is ~1e-4 in real play, and it was a live trap: the moment anyone renormalized strain
+    // the rope would have sparked permanently. It now keys off the same load read as everything
+    // else, at TETHER_SPARK_LOAD (0.72) — above the 0.55 'loaded' floor that a hard pull reaches,
+    // so ordinary play NEVER sparks (measured: 0 spark ticks in 240 ticks of full opposing thrust
+    // on a 640-mass rock), and only an overload phase or a genuinely large strain gets here.
+    // A break is an engineered event; its telegraph has to be too.
     // Spawn expects galactic-global XZ.
-    if (s > 0.85 && Math.random() < 0.5) {
-      const frac = Math.random();
-      this._c0.set('#ffffff'); this._c1.copy(this._tetherColorHot);
-      this._spawnParticle(axG + dx * frac, azG + dz * frac,
-        px * (Math.random() - 0.5) * 14, pz * (Math.random() - 0.5) * 14,
-        0.12 + Math.random() * 0.1, 1.0, 0.0, this._c0, this._c1, 3.2, 0, 0);
+    if (l > TETHER_SPARK_LOAD) {
+      const heat = (l - TETHER_SPARK_LOAD) / (1 - TETHER_SPARK_LOAD);
+      const sparkChance = heat * 0.9 * (this._burst || 1);
+      const sparks = Math.random() < sparkChance ? (overload ? 2 : 1) : 0;
+      for (let k = 0; k < sparks; k++) {
+        const frac = Math.random();
+        this._c0.set('#ffffff'); this._c1.copy(this._tetherColorHot);
+        const lateral = (Math.random() - 0.5) * (14 + heat * 26);
+        this._spawnParticle(axG + dx * frac, azG + dz * frac,
+          px * lateral, pz * lateral,
+          0.12 + Math.random() * 0.14, 1.0 + heat * 0.8, 0.0, this._c0, this._c1, 3.2, 1.4, 0);
+      }
     }
   },
 
@@ -3360,22 +3602,69 @@ export const vfx = {
     this._emitJuiceCue('presentation.tether.break', p, 1.5);
     const cable = this._tetherCable;
     if (!cable || !this._scene) return;
-    cable.fade = 0; cable.wasActive = false;
-    setTetherCableVisible(cable, false);
+    // Do NOT hide the cable. A break is the most violent thing the massline ever does and it used
+    // to be the only event in the game with no line on screen at all: the ribbon was hidden on the
+    // same frame the sparks appeared. Hold it, whip it, and let it burn out.
+    //
+    // This is presentation only. The line is deliberately near-unbreakable and a break is an
+    // ENGINEERED event (bomb-web hub, cutting charge), never an ambient one — nothing here changes
+    // when a break happens, only what it looks like when one does.
+    cable.snapAge = 0;
+    cable.latchAge = 999;
+    cable.fadeRate = TETHER_SNAP_FADE_RATE;
+    cable.wasActive = false;
+    if (p && p.targetId != null) cable.lastTargetId = p.targetId;
+    if (cable.fade < 1) cable.fade = 1;
+
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
     const target = p && p.targetId != null ? this._ent(p.targetId) : null;
+
+    // Trailing streak: the recoiling line reads as light dragged through space. Anisotropic sprites
+    // stretched ALONG the broken chord (the instanced pool already carries aspect + roll), laid down
+    // from each end toward the middle so both halves visibly snap back.
+    if (player && player.pos && target && target.pos) {
+      const dx = target.pos.x - player.pos.x;
+      const dz = target.pos.z - player.pos.z;
+      const chord = Math.hypot(dx, dz) || 1;
+      const ux = dx / chord, uz = dz / chord;
+      const roll = Math.atan2(uz, ux);
+      const px = -uz, pz = ux;
+      const lash = Math.max(4, Math.round(9 * (this._burst || 1)));
+      for (let k = 0; k < lash; k++) {
+        const f = (k + 0.5) / lash;
+        // Recoil is fastest at the ends and slowest mid-span, like a real parting cable.
+        const endBias = Math.abs(f - 0.5) * 2;
+        const recoil = (28 + 120 * endBias) * (f < 0.5 ? -1 : 1);
+        const lateral = (Math.random() - 0.5) * 46;
+        this._spawnSprite(
+          SPR_FLASH,
+          player.pos.x + dx * f, 1.5, player.pos.z + dz * f,
+          0.16 + Math.random() * 0.14,
+          Math.min(14, chord * 0.16), 1.2,
+          0.95, 0.0,
+          k % 3 === 0 ? '#ffffff' : '#ffb35c',
+          ux * recoil + px * lateral, uz * recoil + pz * lateral,
+          3.5, roll,
+        );
+      }
+    }
+
     this._c0.set('#ffffff'); this._c1.set('#ff5c5c');
     for (const ent of [player, target]) {
       if (!ent || !ent.pos) continue;
-      const n = Math.max(14, Math.round(22 * (this._burst || 1)));
+      const n = Math.max(20, Math.round(34 * (this._burst || 1)));
       for (let k = 0; k < n; k++) {
         const a = Math.random() * Math.PI * 2;
-        const v = 28 + Math.random() * 70;
+        const v = 34 + Math.random() * 110;
+        // Spark trails inherit their own direction so they streak instead of dotting.
         this._spawnParticle(ent.pos.x, ent.pos.z, Math.cos(a) * v, Math.sin(a) * v,
-          0.22 + Math.random() * 0.28, 1.15, 0.0, this._c0, this._c1, 4.2, 0, 0);
+          0.24 + Math.random() * 0.34, 1.5, 0.0, this._c0, this._c1, 4.2, 0, 0, a, 0.85);
       }
-      this._spawnSprite(SPR_FLASH, ent.pos.x, 0, ent.pos.z, 0.08, 3.4, 6.5, 0.95, 0.0, '#ff8a6a', 0, 0);
-      this._flashLight({ x: ent.pos.x, z: ent.pos.z }, '#ff5c5c', 3.6, 14, 160);
+      this._spawnSprite(SPR_FLASH, ent.pos.x, 0, ent.pos.z, 0.10, 4.6, 9.5, 1.0, 0.0, '#fff2e2', 0, 0);
+      // The recoil ring is a shock, not a smoke cloud: fast, thin and hot. At 16 wu it swallowed the
+      // whole ship in a flat orange donut for a third of a second.
+      this._spawnSprite(SPR_RING, ent.pos.x, 0.9, ent.pos.z, 0.26, 1.4, 8.5, 0.55, 0.0, '#ffc9a0', 0, 0);
+      this._flashLight({ x: ent.pos.x, z: ent.pos.z }, '#ffb0a0', 5.4, 12, 200);
     }
   },
 
@@ -4160,23 +4449,56 @@ export const vfx = {
     if (e.id === this.state.playerId) this.helpers.camera && this.helpers.camera.addTrauma(0.28);
   },
 
+  // Collection. The moment a drop lands is the payoff for the whole mining/flyby loop and it used
+  // to be a 12-particle puff. Now it reads as light ARRIVING: a stretched streak laid along the
+  // last leg of the drop's path into the hull, a hot pop at the intake, and a short spray that
+  // implodes rather than scattering — so the eye is pulled to the ship, which is where the number
+  // the player actually cares about is counting up.
   _onPickup(p) {
     if (!this._scene || !p.pos) return;
     const col = p.kind === 'credits' ? '#ffcc44' : oreColor(p.commodityId);
-    // Satisfying absorption burst — particles implode toward the player, then flash
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
-    this._spawnSprite(SPR_FLASH, p.pos.x, 0, p.pos.z, 0.25, 2.5, 5.0, 0.8, 0.0, col, 0, 0);
+    this._spawnSprite(SPR_FLASH, p.pos.x, 1.2, p.pos.z, 0.22, 3.0, 5.6, 0.9, 0.0, col, 0, 0);
     this._c0.set('#ffffff'); this._c1.set(col);
-    for (let k = 0; k < 12; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 12 + Math.random() * 18;
-      this._spawnParticle(p.pos.x, p.pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-        0.3 + Math.random() * 0.15, 1.8, 0.0, this._c0, this._c1, 3.0, 2, 6 + Math.random() * 10);
-    }
-    // Flash at the player position too (cargo received confirmation)
-    if (player) {
-      this._spawnSprite(SPR_FLASH, player.pos.x, 0, player.pos.z, 0.15, 2.0, 4.0, 0.5, 0.0, col, 0, 0);
-      this._flashLight({ x: player.pos.x, z: player.pos.z }, col, 2.0, 6.0, 80);
+
+    if (player && player.pos) {
+      const dx = player.pos.x - p.pos.x, dz = player.pos.z - p.pos.z;
+      const dist = Math.hypot(dx, dz) || 1;
+      const ux = dx / dist, uz = dz / dist;
+      const roll = Math.atan2(uz, ux);
+      const leg = Math.min(dist, 22);
+
+      // The arrival streak: three overlapping stretched sprites along the final approach, brightest
+      // nearest the hull, so the light visibly resolves INTO the ship rather than fading in place.
+      for (let k = 0; k < 3; k++) {
+        const f = (k + 1) / 4;
+        this._spawnSprite(SPR_FLASH,
+          player.pos.x - ux * leg * f, 1.3, player.pos.z - uz * leg * f,
+          0.16 + k * 0.04, leg * (0.34 + 0.12 * k), 0.4,
+          0.75 - k * 0.16, 0.0, k === 0 ? '#ffffff' : col,
+          ux * 90, uz * 90, 3.4, roll);
+      }
+      // Imploding spray: particles converge on the intake instead of scattering away from it.
+      for (let k = 0; k < 14; k++) {
+        const a = Math.random() * Math.PI * 2;
+        const r = 6 + Math.random() * 12;
+        const sx = player.pos.x + Math.cos(a) * r;
+        const sz = player.pos.z + Math.sin(a) * r;
+        const pull = 42 + Math.random() * 46;
+        this._spawnParticle(sx, sz, -Math.cos(a) * pull, -Math.sin(a) * pull,
+          0.20 + Math.random() * 0.12, 1.5, 0.0, this._c0, this._c1, 1.2, 1.6, 0,
+          a + Math.PI, 0.8);
+      }
+      this._spawnSprite(SPR_FLASH, player.pos.x, 1.4, player.pos.z, 0.14, 2.6, 5.2, 0.9, 0.0, '#ffffff', 0, 0);
+      this._spawnSprite(SPR_RING, player.pos.x, 1.0, player.pos.z, 0.26, 1.2, 6.5, 0.5, 0.0, col, 0, 0);
+      this._flashLight({ x: player.pos.x, z: player.pos.z }, col, 3.4, 7.0, 110);
+    } else {
+      for (let k = 0; k < 12; k++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 12 + Math.random() * 18;
+        this._spawnParticle(p.pos.x, p.pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
+          0.3 + Math.random() * 0.15, 1.8, 0.0, this._c0, this._c1, 3.0, 2, 6 + Math.random() * 10);
+      }
     }
   },
 
@@ -4966,6 +5288,14 @@ export const vfx = {
       this._sleepSeamMarkers();
       sub.seamMarkers = 0;
     }
+    // Loot magnet — drops being vacuumed in read as light flying at you.
+    if (this._lootMagnetRelevant()) {
+      const lootStep = this._consumeCadence('_cadenceLootMagnet', dt, VFX_LOOT_MAGNET_HZ);
+      sub.lootMagnet = lootStep > 0 ? this._updateLootMagnet(lootStep) : (sub.lootMagnet || 0);
+    } else {
+      this._lootMagnetLive = 0;
+      sub.lootMagnet = 0;
+    }
     // PQ-012 continuous field flow — cadence-gated pooled emission; slept when no field is deployed.
     if (this._fieldFlowRelevant()) {
       const flowStep = this._consumeCadence('_cadenceFieldFlow', dt, VFX_FIELD_FLOW_HZ);
@@ -5014,6 +5344,90 @@ export const vfx = {
     }
     sub.eventLights = this._decayEventLights(dt) ? 1 : 0;
     this._publishVfxSubsystemDiag();
+  },
+
+  // -------------------------------------------------------------------------
+  // Loot magnet presentation.
+  //
+  // The pull itself is real and already tuned (src/systems/mining.js — 420 wu range, 900 wu/s²,
+  // velocity-inheriting so a combat flyby sweeps drops up). What was missing is that it LOOKED like
+  // nothing: a drop being vacuumed in at 280 wu/s rendered as a small tumbling rock, so the most
+  // frequently repeated reward in the game had no reward read at all.
+  //
+  // Here each homing drop gets a stretched additive comet trail oriented along its own velocity
+  // (the instanced sprite pool already carries aspect + roll) plus a bright head, tinted by the ore
+  // it carries. Cost is bounded three ways: a cadence gate, a hard cap on trailed drops, and a
+  // whole-subsystem sleep when nothing is homing.
+  // -------------------------------------------------------------------------
+  _lootMagnetRelevant() {
+    const state = this.state;
+    if (!state) return false;
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+    if (!player || !player.alive || !player.pos) return false;
+    const list = state.entityList;
+    if (!list || !list.length) return false;
+    const r2 = LOOT_MAGNET_DRAW_RANGE * LOOT_MAGNET_DRAW_RANGE;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || !e.alive || e.type !== 'pickup' || !e.pos) continue;
+      const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
+      if (dx * dx + dz * dz > r2) continue;
+      const vx = (e.vel && e.vel.x) || 0, vz = (e.vel && e.vel.z) || 0;
+      if (vx * vx + vz * vz >= LOOT_MAGNET_MIN_SPEED * LOOT_MAGNET_MIN_SPEED) return true;
+    }
+    return false;
+  },
+
+  _updateLootMagnet(step) {
+    const state = this.state;
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+    if (!player || !player.pos) { this._lootMagnetLive = 0; return 0; }
+    const list = state.entityList || [];
+    const r2 = LOOT_MAGNET_DRAW_RANGE * LOOT_MAGNET_DRAW_RANGE;
+    const burst = this._burst || 1;
+    let drawn = 0;
+    for (let i = 0; i < list.length && drawn < LOOT_MAGNET_MAX_TRAILED; i++) {
+      const e = list[i];
+      if (!e || !e.alive || e.type !== 'pickup' || !e.pos) continue;
+      const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
+      const dist2 = dx * dx + dz * dz;
+      if (dist2 > r2) continue;
+      const vx = (e.vel && e.vel.x) || 0, vz = (e.vel && e.vel.z) || 0;
+      const speed = Math.hypot(vx, vz);
+      if (speed < LOOT_MAGNET_MIN_SPEED) continue;
+      drawn++;
+
+      const data = e.data || {};
+      const col = data.kind === 'credits' ? '#ffcc44' : oreColor(data.commodityId);
+      // Closing hard reads hotter and longer: the trail is a speed gauge you never have to read.
+      const rush = Math.min(1, speed / 260);
+      const roll = Math.atan2(vz, vx);
+      const stretch = 1.5 + rush * 2.0;
+
+      // Head: a small white-cored spark riding the drop itself.
+      this._spawnSprite(SPR_FLASH, e.pos.x, 1.2, e.pos.z,
+        0.16 + rush * 0.10, 1.5 + rush * 1.3, 0.5,
+        0.55 + rush * 0.35, 0.0, '#ffffff', vx * 0.35, vz * 0.35,
+        Math.min(3.5, stretch), roll);
+      // Tail: a coloured streak laid down behind it, drifting slower so it reads as a wake.
+      this._spawnSprite(SPR_FLASH, e.pos.x - vx * step * 1.4, 1.1, e.pos.z - vz * step * 1.4,
+        0.24 + rush * 0.16, 1.1 + rush * 1.9, 0.35,
+        0.30 + rush * 0.28, 0.0, col, vx * 0.18, vz * 0.18,
+        Math.min(3.5, stretch * 1.25), roll);
+      // A couple of trailing embers so the wake has grain rather than being one clean smear.
+      if (burst > 0.7) {
+        this._c0.set('#ffffff'); this._c1.set(col);
+        const jitter = (Math.random() - 0.5) * 8;
+        this._spawnParticle(
+          e.pos.x - vx * step, e.pos.z - vz * step,
+          vx * 0.22 - vz * 0.02 + jitter, vz * 0.22 + vx * 0.02 + jitter,
+          0.22 + Math.random() * 0.16, 0.9 + rush * 0.7, 0.0,
+          this._c0, this._c1, 2.4, 1.1, 0, roll, 0.7 + rush * 0.5,
+        );
+      }
+    }
+    this._lootMagnetLive = drawn;
+    return drawn > 0 ? 1 : 0;
   },
 
   _consumeCadence(field, dt, hz) {
@@ -5085,13 +5499,32 @@ export const vfx = {
     return !video || video.engineTrails !== false;
   },
 
+  // Radiance multiplier for HDR energy volumes (grammar §9.2, build plan §2.5 item 3).
+  //
+  // This scales EMITTED RADIANCE, not visibility. Two defects were fixed here on 2026-07-27:
+  //
+  //  * It returned 0 when bloom was off, which killed ALL energy radiance. That is wrong by
+  //    construction: an energy volume is additive with toneMapped:false, so it is a light source in
+  //    its own right. Turning bloom off should stop it SPILLING into its surroundings, not delete
+  //    it. Bloom-off is selected automatically on software GL, so the weakest hardware was the
+  //    hardware that lost the energy layer entirely.
+  //  * It clamped to `strength / 0.35` in [0,1], so every bloom setting at or above the 0.35
+  //    default produced an identical result and the slider bought nothing above default. The
+  //    massline is supposed to be the brightest object on screen; a ceiling at the default value is
+  //    exactly the mildness this pass exists to remove.
+  //
+  // The reference point stays 0.35 (bloom.js DEFAULT_BLOOM_STRENGTH) so the default look is a
+  // deliberate, named value rather than an emergent one.
   _bloomRadianceScale() {
     const video = this.state.settings && this.state.settings.video;
-    if (!video || video.bloom === false) return 0;
-    let strength = typeof video.bloomStrength === 'number' ? video.bloomStrength : 0.35;
-    if (strength > 1) strength *= 0.5;
+    let strength = video && Number.isFinite(video.bloomStrength)
+      ? video.bloomStrength
+      : BLOOM_REFERENCE_STRENGTH;
+    if (strength > 1) strength *= 0.5;   // legacy 0..2 sliders fold onto 0..1
     strength = Math.max(0, Math.min(1, strength));
-    return Math.max(0, Math.min(1, strength / 0.35));
+    if (video && video.bloom === false) return BLOOM_OFF_RADIANCE;
+    const scaled = BLOOM_RADIANCE_FLOOR + (strength / BLOOM_REFERENCE_STRENGTH) * BLOOM_RADIANCE_SPAN;
+    return Math.max(BLOOM_OFF_RADIANCE, Math.min(BLOOM_RADIANCE_CEILING, scaled));
   },
 
   _energyPlumeRelevant() {
@@ -5713,7 +6146,10 @@ export const vfx = {
     const halo = ribbon.userData.energyHalo;
     const intensity = 2.2 + tension * 2.4 + (overload ? 1.8 : 0);
     const radianceScale = this._bloomRadianceScale();
-    const opacityScale = Math.sqrt(radianceScale);
+    // Radiance is free to run above 1 (that is what makes a core clip to white); COVERAGE is not —
+    // an alpha above ~0.8 on an additive volume stops reading as a volume and starts reading as a
+    // painted decal. Clamp the two independently.
+    const opacityScale = Math.min(1.35, Math.sqrt(radianceScale));
     if (core) updateEnergyMaterial(core.material, { time: this._t, intensity: intensity * radianceScale, opacity: 0.42 * opacityScale, pulse: 1.0 + tension * 0.9 });
     if (halo) updateEnergyMaterial(halo.material, { time: this._t, intensity: intensity * 0.35 * radianceScale, opacity: 0.11 * opacityScale, pulse: 1.0 + tension * 0.6 });
   },

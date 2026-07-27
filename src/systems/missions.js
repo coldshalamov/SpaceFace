@@ -8,6 +8,18 @@
 //   3. An 8-beat STORY FSM         — first-X triggers (first mine/trade/kill/dock/buy ship/…) that
 //      advance state.story.beatIndex and toast the player a direction.
 //
+// HOW A MISSION CAN EXPRESS SUCCESS (grammar §9.9). For a long time there were exactly two ways:
+// `objectiveProgress >= objectiveTarget` incremented by one of six bus handlers, or "docked at the
+// destination" (_onDockedObjectives, boolean-at-dest). update() evaluated nothing per frame but the
+// deadline. There is now a third: PHYSICS CONDITIONS (src/data/missionConditions.js) — contract terms
+// written in the game's own physical vocabulary, carried in the same `mission.clauses` array as the
+// fine-print clauses. Event terms are scored by the one generic observer in contractClauses.js;
+// per-tick terms are scored HERE by _evaluateMissionConditions, the per-frame predicate slot. A
+// `forbid` term voids the contract or forfeits its premium; a blocking `require` term refuses the
+// turn-in until it is satisfied. Terms are told to the player on the board (dossier tag + brief), at
+// accept (the transaction toast), in flight (an alert the moment the watched state goes bad) and on
+// breach. A condition-free mission behaves EXACTLY as before — no state, no events, no writes.
+//
 // It NEVER owns the wallet, cargo, or reputation (§0.6). It detects progress from events other
 // systems emit and pays out by emitting intents:
 //   economy:grantCredits / economy:chargeCredits  (economy is the sole credits writer)
@@ -37,7 +49,18 @@ import {
   STORY_BRANCH_INTRO_TAG,
   SET_PIECE_MISSIONS,
 } from '../data/missions.js';
-import { settleContractClauses } from '../data/contractClauses.js';
+import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
+// Physics-aware contract terms (grammar §9.9.1). The catalog is data; the event half is observed by
+// the ONE generic observer in contractClauses.js; the per-tick half is the predicate slot in update().
+import {
+  TICK_CONDITION_IDS,
+  isMissionConditionRow,
+  missionConditionById,
+  tallyMissionCondition,
+  conditionRemaining,
+} from '../data/missionConditions.js';
+import { attachConditions } from './contractClauses.js';
+import { isFragileCommodity } from './fragileCargo.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
@@ -118,6 +141,11 @@ const BULK_HAUL_TYPE = 'bulk_haul';
 const BULK_HAUL_MIN_MASS_U = 25;
 const BULK_HAUL_PAY_MULT = 0.8;
 const BULK_HAUL_FEE = 0.06;
+// A tick condition may only re-warn this often. The warning is the grace window made visible, not a
+// nag: crossing the speed ceiling repeatedly in a dogfight must not bury the rest of the alert lane.
+const CONDITION_WARN_COOLDOWN_S = 8;
+const CONDITION_BRIEF_MAX = 150;
+const TICK_CONDITION_ID_SET = new Set(TICK_CONDITION_IDS);
 const MISSION_HOSTILE_SPAWN_MIN_WU = 1700;
 const MISSION_HOSTILE_SPAWN_MAX_WU = 2600;
 const MISSION_HOSTILE_SPAWN_ATTEMPTS = 24;
@@ -507,6 +535,9 @@ export const missions = {
     // Contract clauses are observers only. Their single breach intent returns here so the canonical
     // mission failure path owns collateral, reputation, cleanup, receipts, and SP1 recovery offers.
     bus.on('contract:clauseBroken', (p) => this._onContractClauseBroken(p));
+    // A blocking physics term latched: any contract whose objective was already met but was held
+    // back on that term settles now, without needing a second dock or a second kill.
+    bus.on('mission:conditionSatisfied', (p) => this._onConditionSatisfied(p));
     // The Long Read is a chained-offer adapter over the live unique-wreck D-loop. These events are
     // evidence of actual rumor, scan, complication, salvage, and decision state—not proxy counters.
     bus.on('uniqueWreck:rumorRecorded', (p) => this._onLongReadRumorRecorded(p));
@@ -545,6 +576,12 @@ export const missions = {
         this._armAcceptedCombatTargets(m, state);
       }
     }
+    // ── PER-TICK PREDICATE SLOT (grammar §9.9.1) ──────────────────────────────────────────────
+    // Until this line existed, update() evaluated NOTHING per frame except the deadline, which is
+    // why a mission could only ever say "counter >= N" or "docked at station X". This is the hook
+    // that lets a contract term be a physical state — speed held, line under tension, alongside the
+    // berth — instead of an event count.
+    this._evaluateMissionConditions(dt, state);
     // Story credit/net-worth gates are checked opportunistically (cheap, no per-frame DOM).
     this._checkStoryGates();
     this._navRefreshT = (this._navRefreshT || 0) + (dt || 0);
@@ -552,6 +589,177 @@ export const missions = {
       this._navRefreshT = 0;
       this._refreshNavigation();
     }
+  },
+
+  // =========================================================================================
+  // PHYSICS CONDITIONS — the per-tick predicate half of the condition language.
+  // The event half lives in the one generic observer (src/systems/contractClauses.js); both count
+  // through the same shared tally so they cannot drift.
+  // =========================================================================================
+
+  /** Cheapest possible early-out: no active mission carries a tick term ⇒ zero work, zero writes. */
+  _anyTickCondition(active) {
+    for (const m of active) {
+      if (!m || m.status !== 'active' || !Array.isArray(m.clauses)) continue;
+      for (const row of m.clauses) {
+        if (isMissionConditionRow(row) && TICK_CONDITION_ID_SET.has(row.conditionId)) return true;
+      }
+    }
+    return false;
+  },
+
+  /** Live physical facts a tick predicate may read. Built once per frame, only when needed. */
+  _conditionTickContext(state) {
+    const player = state.entities && state.playerId != null ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos) return null;
+    const vx = (player.vel && player.vel.x) || 0;
+    const vz = (player.vel && player.vel.z) || 0;
+    return {
+      playerId: state.playerId,
+      player,
+      speed: Math.hypot(vx, vz),
+      tether: (state.player && state.player.tether) || null,
+      simTime: state.simTime || 0,
+      state,
+      mission: null,
+      destPos: null,
+    };
+  },
+
+  /**
+   * World position of a mission's destination berth, or null when the berth is not spawned in the
+   * player's current sector. Deliberately live-entity only: a berth predicate that resolved against
+   * an authored anchor in another sector's local coordinate frame would silently compare distances
+   * across two different origins.
+   */
+  _missionBerthPos(m) {
+    if (!m || !m.destStationId) return null;
+    const live = this._liveStation(m.destStationId);
+    return live && live.pos ? live.pos : null;
+  },
+
+  _evaluateMissionConditions(dt, state) {
+    const active = state.missions.active;
+    if (!active.length || !this._anyTickCondition(active)) return;
+    let ctx = null;
+    for (const m of active) {
+      if (!m || m.status !== 'active' || !Array.isArray(m.clauses) || !m.clauses.length) continue;
+      for (const row of m.clauses) {
+        if (!isMissionConditionRow(row)) continue;
+        const def = missionConditionById(row.conditionId);
+        if (!def || typeof def.tickSample !== 'function') continue;
+        const runtime = m._clauseState && m._clauseState[def.id];
+        if (runtime && (runtime.breached || runtime.satisfied)) continue;
+        if (!ctx) {
+          ctx = this._conditionTickContext(state);
+          if (!ctx) return;
+        }
+        ctx.mission = m;
+        ctx.destPos = this._missionBerthPos(m);
+        let holds = false;
+        try { holds = !!def.tickSample(ctx); } catch (_) { holds = false; }
+        this._advanceTickCondition(m, def, holds, dt, state);
+      }
+    }
+  },
+
+  /**
+   * Distance-and-hold, straight out of encounterScripts (`:38-40`, `:291-297`): the watched state has
+   * to hold CONTINUOUSLY for `holdS` before it scores. That window is the fairness contract — the
+   * player is warned the instant the state goes bad and only pays holdS later, so a trackpad
+   * overshoot or a moment of slack while reeling can never void a run.
+   */
+  _advanceTickCondition(m, def, holds, dt, state) {
+    const clauseState = m._clauseState || (m._clauseState = {});
+    const runtime = clauseState[def.id] || (clauseState[def.id] = { count: 0 });
+    if (!holds) { runtime.holdT = 0; return; }
+    runtime.holdT = (runtime.holdT || 0) + (dt || 0);
+    const now = state.simTime || 0;
+    if (def.warnText && (runtime.warnAt == null || now - runtime.warnAt >= CONDITION_WARN_COOLDOWN_S)) {
+      runtime.warnAt = now;
+      // Told up front on the board, told again the moment it starts going wrong. This alert is the
+      // grace window made visible; the breach line below only lands if the player ignores it.
+      this.bus.emit('alert', { key: `mission-term-${def.id}`, sev: 'warn', text: def.warnText, ttl: 2.2 });
+    }
+    if (runtime.holdT < (Number(def.holdS) || 0)) return;
+    runtime.holdT = 0;
+    const outcome = tallyMissionCondition(m, def, now);
+    if (outcome === 'ignored') return;
+    if (outcome === 'progress') {
+      this.bus.emit('mission:conditionProgress', {
+        missionId: m.id, conditionId: def.id, kind: def.kind, label: def.label,
+        count: runtime.count || 0, target: Math.max(1, Math.round(Number(def.count) || 1)),
+      });
+      this.bus.emit('mission:updated', { missionId: m.id });
+      return;
+    }
+    if (outcome === 'satisfied') {
+      this.bus.emit('mission:conditionSatisfied', {
+        missionId: m.id, conditionId: def.id, label: def.label, blocking: def.blocking === true,
+      });
+      this.bus.emit('toast', { text: def.satisfiedText || `${def.label}: done.`, kind: 'success', ttl: 3 });
+      this.bus.emit('mission:updated', { missionId: m.id });
+      return;
+    }
+    // Breached. 'fail' routes through the same one-penalty intent the shipped clause path uses so
+    // collateral, rep, cleanup and receipts stay owned by _failMission; 'forfeit' keeps the contract.
+    this.bus.emit('mission:conditionBroken', {
+      missionId: m.id, conditionId: def.id, event: null,
+      label: def.label, onBreach: def.onBreach || 'fail',
+    });
+    const line = def.breachText || `Contract term broken: ${def.label}.`;
+    if (def.onBreach === 'fail') {
+      const index = this.state.missions.active.indexOf(m);
+      this.bus.emit('toast', { text: line, kind: 'error', ttl: 4 });
+      this._failMission(m, index, `condition_broken:${def.id}`);
+      return;
+    }
+    this._sayConditionLine(line);
+    this.bus.emit('mission:updated', { missionId: m.id });
+  },
+
+  /** One comms line through the shipped voice arbiter, toast fallback (never both). */
+  _sayConditionLine(text) {
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function'
+      && voice.say({ channel: 'comms', text, kind: 'clauseBreach' })) return;
+    this.bus.emit('toast', { text, kind: 'warn', ttl: 4 });
+  },
+
+  /** Physics terms carried by a mission instance, as canonical catalog records. */
+  _missionConditions(m) {
+    if (!m || !Array.isArray(m.clauses)) return [];
+    return m.clauses.filter(isMissionConditionRow)
+      .map((row) => missionConditionById(row.conditionId))
+      .filter(Boolean);
+  },
+
+  /**
+   * Blocking `require` terms this mission has not satisfied. A turn-in is refused while this is
+   * non-empty, and the player is told exactly which term and what to do about it. That refusal is
+   * what makes "deliver it, and come alongside under control" a different mission from "deliver it"
+   * — not the same mission with a bonus stapled on.
+   */
+  _blockedByConditions(m) {
+    const pending = unsatisfiedRequiredConditions(m);
+    if (!pending.length) return null;
+    const first = pending[0];
+    return {
+      condition: first,
+      text: first.pendingText || `${first.label}: not satisfied yet.`,
+    };
+  },
+
+  /** True when a turn-in was refused (and the reason spoken). */
+  _refuseTurnInIfBlocked(m) {
+    const blocked = this._blockedByConditions(m);
+    if (!blocked) return false;
+    this.bus.emit('toast', { text: blocked.text, kind: 'warn', ttl: 4 });
+    this.bus.emit('mission:conditionPending', {
+      missionId: m.id, conditionId: blocked.condition.id, label: blocked.condition.label,
+      remaining: conditionRemaining(m, blocked.condition),
+    });
+    return true;
   },
 
   // =========================================================================================
@@ -929,7 +1137,7 @@ export const missions = {
     // ── collateral (anti accept-then-dump on bulk_trade / smuggling) ──
     const collateral_cr = def.collateral ? round((cfg.collateralPct || 0.25) * reward_cr) : 0;
     const id = `mo_${info.id}_${epoch}_${idx}`;
-    return {
+    const offer = {
       id, type: typeId, stationId: info.id, factionId: info.factionId,
       reward_cr, time_limit_s, collateral_cr, riskTier,
       destStationId, destSectorId, distance,
@@ -939,6 +1147,42 @@ export const missions = {
       expiresAtEpoch: epoch + 1,
       storyTag: null,
     };
+    // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
+    // above is untouched: a condition-free offer is byte-identical to the shipped one.
+    return this._withConditions(offer, epoch);
+  },
+
+  /**
+   * Attach 0..2 physics conditions and fold their prose into the offer's one-line brief.
+   * Seeded from (world seed, offer id) so a board reproduces exactly across save/load, and a no-draw
+   * returns the offer object unchanged.
+   *
+   * LEGIBILITY: the terms ride in `offer.clauses`, which the station Contracts dossier already
+   * renders as labelled tags with the prose as the tooltip, and the brief line the mission log and
+   * star chart already print gains the short form. The player is told the rule BEFORE accepting,
+   * again in the accept toast, and again the moment it trips.
+   */
+  _withConditions(offer, epoch) {
+    if (!offer) return offer;
+    const seed = (this.helpers && this.helpers.hash32)
+      ? this.helpers.hash32(this.state.meta.seed, 'conditions', epoch)
+      : (((this.state.meta.seed || 0) ^ 0x5bf03635) >>> 0);
+    const withTerms = attachConditions(offer, seed, { isFragile: isFragileCommodity });
+    if (withTerms === offer) return offer;
+    const terms = (withTerms.clauses || []).filter(isMissionConditionRow)
+      .map((row) => missionConditionById(row.conditionId))
+      .filter(Boolean);
+    if (!terms.length) return withTerms;
+    const suffix = terms.map((c) => c.brief).filter(Boolean).join(' ');
+    if (suffix) {
+      const base = String(withTerms.brief || '').trim();
+      const line = base ? `${base} ${suffix}` : suffix;
+      // The chart inspector prints this as leg prose; the shipped generator clamps its half to 90,
+      // so the combined line stays inside two short lines rather than reflowing the panel.
+      withTerms.brief = line.length <= CONDITION_BRIEF_MAX ? line
+        : `${line.slice(0, CONDITION_BRIEF_MAX - 3).trimEnd()}...`;
+    }
+    return withTerms;
   },
 
   _rollBulkHaulOffer(info, rng, epoch, idx) {
@@ -955,7 +1199,7 @@ export const missions = {
     const riskTier = clamp(sectorRisk, 1, 3);
     const taskTime = massU * 2.5;
     const time_limit_s = round((distance / (MISSION_TUNING.cruiseSpeedRef || 140) + taskTime) * (MISSION_TUNING.slackDefault || 2.2));
-    return {
+    return this._withConditions({
       id: `mo_${info.id}_${epoch}_${idx}`,
       type: BULK_HAUL_TYPE,
       stationId: info.id,
@@ -973,7 +1217,7 @@ export const missions = {
       expiresAtEpoch: epoch + 1,
       storyTag: null,
       hotTip: false,
-    };
+    }, epoch);
   },
 
   _rollStoryBranchIntroOffer(info, rng, epoch) {
@@ -1263,7 +1507,14 @@ export const missions = {
       ...setPieceEventFields(inst),
     });
     this.bus.emit('mission:updated', { missionId: inst.id });
-    this.bus.emit('toast', { text: `Mission accepted: ${inst.title}`, kind: 'success', ttl: 3 });
+    // The physics terms ride in the SAME accept toast rather than a second one — the voice arbiter
+    // already owns the objective line and the transaction lane owns this one. A player who skipped
+    // the dossier tags still cannot start a term-carrying run without having been told the terms.
+    const termLines = this._missionConditions(inst).map((c) => c.brief).filter(Boolean);
+    const acceptText = termLines.length
+      ? `Mission accepted: ${inst.title} — Terms: ${termLines.join(' ')}`
+      : `Mission accepted: ${inst.title}`;
+    this.bus.emit('toast', { text: acceptText, kind: 'success', ttl: termLines.length ? 5 : 3 });
     // GF-4: a gold echo-ring + light flash at the player so accepting a contract has a visible beat
     // (the audio stinger fires from audioSystem's mission:accepted subscription). 'objective' lane
     // resolves to a warm gold radial ring in vfx._presentationStyle.
@@ -2429,6 +2680,19 @@ export const missions = {
     }
   },
 
+  _onConditionSatisfied(payload) {
+    const missionId = payload && payload.missionId;
+    if (!missionId || payload.blocking !== true) return false;
+    const index = this.state.missions.active.findIndex((m) => (
+      m && m.id === missionId && m.status === 'active' && m._settlePending === true
+    ));
+    if (index < 0) return false;
+    const mission = this.state.missions.active[index];
+    if (this._blockedByConditions(mission)) return false;
+    this._completeMission(mission, index);
+    return true;
+  },
+
   _onContractClauseBroken(payload) {
     const missionId = payload && payload.missionId;
     const clauseId = payload && payload.clauseId;
@@ -2606,6 +2870,10 @@ export const missions = {
         continue;
       }
       if (m.destStationId !== stationId) continue;
+
+      // A blocking physics term is checked BEFORE any cargo is consumed, so a refused turn-in costs
+      // the player nothing but a second approach.
+      if (this._refuseTurnInIfBlocked(m)) continue;
 
       if (t === 'escort') {
         // Player reached the destination — complete only if the escortee survived AND arrived too.
@@ -2794,6 +3062,11 @@ export const missions = {
   _completeMission(m, index) {
     const state = this.state;
     if (m.status !== 'active') return;
+    // Single choke point for blocking physics terms. The objective may be met, but the contract is
+    // not settled until its physical terms are — and the player is told which one and why. The
+    // mission stays active and re-settles the moment the term latches (see _onConditionSatisfied).
+    if (this._refuseTurnInIfBlocked(m)) { m._settlePending = true; return; }
+    if (m._settlePending) delete m._settlePending;
     const setPieceTransition = this._compileSetPieceTransition(m, 'completed');
     const clauseSettlement = settleContractClauses(m);
     const settledRewardCr = clauseSettlement.rewardCr;
@@ -2880,6 +3153,11 @@ export const missions = {
       repDelta: m.factionId ? specRep : 0,
       researchPoints,
       setPieceReceipt: setPieceTransition && setPieceTransition.receipt || null,
+      // Absent entirely on a term-free contract, so the shipped receipt shape is unchanged.
+      ...(clauseSettlement.honored.length
+        ? { termsHonored: clauseSettlement.honored.map((row) => row.id) } : {}),
+      ...(clauseSettlement.breached.length ? { termsBroken: [...clauseSettlement.breached] } : {}),
+      ...(clauseSettlement.unmet.length ? { termsUnmet: [...clauseSettlement.unmet] } : {}),
     });
 
     this._emitMissionDebrief(m, 'completed', null, { rewardCr: displayRewardCr });

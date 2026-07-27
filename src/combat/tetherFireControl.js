@@ -18,6 +18,18 @@
 
 const TWO_PI = Math.PI * 2;
 
+// Below this angular rate the circle is indistinguishable from a line within projectile flight
+// times, so the linear model is used instead. Shared by the solver and by the geometry gate below
+// so "the solver took the constrained branch" and "the caller believes this is an orbit" can never
+// disagree.
+export const ORBIT_OMEGA_MIN = 0.02;
+
+// How much radial motion an "orbit" may carry, as a multiple of its own tangential speed. 1.0 means
+// the relative velocity must lie within 45 degrees of tangential. Above that the pair is closing or
+// separating faster than it is sweeping — a hard reel-in or a straight tow — and the circle model
+// stops being the better prediction.
+export const ORBIT_RADIAL_RATIO_MAX = 1.0;
+
 // Four fixed ticks at 60 Hz = 15 Hz, inside SF-06's deterministic 10-20 Hz predictor budget.
 // The expensive intercept solve runs only on these sample ticks; fixed-tick consumers project the
 // cached angular error between samples so Arm/Snap and the HUD still see one coherent live stream.
@@ -92,13 +104,79 @@ export function tetherPairKinematics(a, b) {
 }
 
 /**
+ * THE target-reconciliation rule, in one place so no two consumers can hold different versions of
+ * it. `state.player.targetId` (the player's selection, which also aims throws) and
+ * `state.player.tether.targetId` (what the line is on) are different questions; this decides when
+ * the second one claims the guns.
+ *
+ * A line on a hostile SHIP/DRONE owns the guns for as long as it is attached. Asteroids and
+ * friendlies deliberately do not — while you are swinging a rock you must still be able to shoot
+ * whatever you are swinging it at. Tension phase is not consulted: a slack line is still a line.
+ *
+ * Pure. The caller resolves the entity and its hostility (scanner owns that, per AGENTS §6) and
+ * passes the answer in.
+ *
+ * @param {object} tether  - state.player.tether mirror
+ * @param {object} target  - the entity `tether.targetId` resolves to
+ * @param {boolean} hostile - scanner.isHostileToPlayer(target, ...)
+ */
+export function masslineOwnsGuns(tether, target, hostile) {
+  if (!tether || !tether.active || tether.targetId == null) return false;
+  if (!hostile) return false;
+  if (!target || target.alive === false || !target.pos) return false;
+  if (target.id !== tether.targetId) return false;
+  return target.type === 'ship' || target.type === 'drone';
+}
+
+/**
+ * Is `b` travelling on an ARC about `a` right now?
+ *
+ * This is the honest gate for the constrained solver. The old caller gated on the rope's TENSION
+ * PHASE, which is wrong in the one case the solver exists for: a tight orbit sits INSIDE rest
+ * length, so it reports `slack`, so the constrained solve was skipped exactly when it was needed and
+ * a linear lead was fired at a body on a circle. The miss was systematic and always to the outside.
+ *
+ * What actually makes the path circular is that the separation is BOUNDED by a line while the
+ * relative motion is tangential — and that is just as true a hand's width inside rest length as it
+ * is at full stretch. So measure the geometry:
+ *   - the pair must be sweeping fast enough for the arc to bend inside a projectile's flight
+ *     (|omega| > ORBIT_OMEGA_MIN), and
+ *   - the motion must be dominantly tangential rather than radial, i.e. it is going AROUND rather
+ *     than straight in or straight out.
+ *
+ * Pure: reads positions/velocities/masses only. Caller owns the "is there a line at all" question.
+ *
+ * @returns {{constrained:boolean, omega:number, distance:number, radialRate:number,
+ *            tangentialSpeed:number, sweeping:boolean}}
+ */
+export function orbitalConstraintState(a, b) {
+  const kin = tetherPairKinematics(a, b);
+  const distance = kin.distance;
+  const sweeping = Math.abs(kin.omega) > ORBIT_OMEGA_MIN;
+  if (!(distance > 1e-6)) {
+    return { constrained: false, omega: kin.omega, distance, radialRate: 0, tangentialSpeed: 0, sweeping: false };
+  }
+  const ax = finite(a && a.pos && a.pos.x), az = finite(a && a.pos && a.pos.z);
+  const bx = finite(b && b.pos && b.pos.x), bz = finite(b && b.pos && b.pos.z);
+  const avx = finite(a && a.vel && a.vel.x), avz = finite(a && a.vel && a.vel.z);
+  const bvx = finite(b && b.vel && b.vel.x), bvz = finite(b && b.vel && b.vel.z);
+  const rx = (bx - ax) / distance, rz = (bz - az) / distance;
+  const radialRate = (bvx - avx) * rx + (bvz - avz) * rz;
+  const tangentialSpeed = Math.abs(kin.omega) * distance;
+  const constrained = sweeping
+    && Math.abs(radialRate) <= ORBIT_RADIAL_RATIO_MAX * tangentialSpeed;
+  return { constrained, omega: kin.omega, distance, radialRate, tangentialSpeed, sweeping };
+}
+
+/**
  * Constrained-motion lead solve (§3.1): world-space angle to aim so a projectile at `projSpeed`
  * intercepts a TETHERED target. While the line is meaningfully rotating the target's future
  * position is extrapolated on the rotating COM frame; a slack/static line degrades to the
  * standard linear solve. Returns { angle, time, predicted:{x,z}, constrained }.
  *
- * `taut` should be passed from the mirrored tether phase (loaded/overload). When false we still
- * solve, but with pure linear extrapolation — the caller does not need to branch.
+ * `opts.taut` is the caller's verdict that the pair is CONSTRAINED — use orbitalConstraintState()
+ * for that, not the rope's tension phase (see its header for why phase is the wrong question). When
+ * false we still solve, but with pure linear extrapolation, so the caller does not need to branch.
  */
 export function solveTetherLeadSolution(shooter, target, projSpeed, opts = {}) {
   const sp = (shooter && shooter.pos) || { x: 0, z: 0 };
@@ -111,7 +189,7 @@ export function solveTetherLeadSolution(shooter, target, projSpeed, opts = {}) {
   const kin = tetherPairKinematics(shooter, target);
   // Below this angular rate the circle is indistinguishable from a line within projectile flight
   // times; use the linear model (identical to weapons.solveLeadAngle).
-  const constrained = taut && Math.abs(kin.omega) > 0.02;
+  const constrained = taut && Math.abs(kin.omega) > ORBIT_OMEGA_MIN;
 
   let t = 0;
   let px = tp.x - sp.x, pz = tp.z - sp.z;

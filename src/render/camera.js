@@ -232,6 +232,32 @@ export function resolveSpeedZoomFactor(speed, maxSpeed) {
   return SPEED_ZOOM_MIN + (SPEED_ZOOM_MAX - SPEED_ZOOM_MIN) * speedRatio;
 }
 
+// Entity types that can be battlefield threat context. Flyby Focus leases ships AND drones
+// (src/systems/flybyFocus.js:81 `isHostileShip`), so a ship-only filter here made a leased drone
+// invisible to threat composition — no bias, no zoom floor, not even counted as a nearby enemy.
+// Hostility is still decided by isHostileToPlayer; this only widens which shapes are asked.
+function isComposableThreatType(entity) {
+  return entity.type === 'ship' || entity.type === 'drone';
+}
+
+// A live Flyby Focus lease names the contact the GAME has decided the player is dealing with right
+// now: it slows time to 50%, reassigns state.player.targetId, and opens the latch window. But the
+// lease is granted on pass GEOMETRY (proximity + closing speed, flybyFocus.js:173-213), not on the
+// leased ship having targeted the player, so a genuine high-speed pass by a hostile whose combat
+// target is someone else read as ambient traffic here and could leave the frame for the whole
+// three-second window.
+//
+// This does NOT give focus camera authority — that takeover (FOCUS_PAIR) was removed deliberately
+// and stays removed. The lease only promotes an already-hostile contact from ambient to active
+// attacker inside the composition the chase camera already runs: the same damped, slew-limited bias
+// and the same safe-rect clamp every other attacker gets. Focus still never moves the camera; what
+// it points at just stops falling off the edge of the screen.
+function readFlybyLeaseTargetId(state) {
+  const focus = state && state.player && state.player.flybyFocus;
+  if (!focus || focus.active !== true || focus.targetId == null) return null;
+  return focus.targetId;
+}
+
 export function resolveChaseComposition(state, player, focus, view = {}) {
   let fx = focus && Number.isFinite(focus.x) ? focus.x : (player && player.pos ? player.pos.x : 0);
   let fz = focus && Number.isFinite(focus.z) ? focus.z : (player && player.pos ? player.pos.z : 0);
@@ -246,16 +272,19 @@ export function resolveChaseComposition(state, player, focus, view = {}) {
     return { x: fx, z: fz, nearbyEnemies, hasThreatFocus: false, hasTetherFocus: false, zoomBias, minZoom: 0 };
   }
 
+  const leasedTargetId = readFlybyLeaseTargetId(state);
+
   // Combat composes player + nearest threat instead of only following the player.
   for (const e of state.entities.values()) {
     if (e === player) continue;
-    if (e.type !== 'ship' || e.alive === false || e.hull <= 0 || !e.pos) continue;
+    if (!isComposableThreatType(e) || e.alive === false || e.hull <= 0 || !e.pos) continue;
     if (!isHostileToPlayer(e, player.team, state)) continue;
     const dx = e.pos.x - player.pos.x;
     const dz = e.pos.z - player.pos.z;
     const d2 = dx * dx + dz * dz;
     const combat = e.data && e.data.combat;
-    const attacksPlayer = !!(combat && (combat.targetId === player.id || combat.lockTarget === player.id));
+    const attacksPlayer = !!(combat && (combat.targetId === player.id || combat.lockTarget === player.id))
+      || (leasedTargetId != null && e.id === leasedTargetId);
     if (attacksPlayer && d2 < activeAttackerD2) {
       activeAttacker = e;
       activeAttackerD2 = d2;

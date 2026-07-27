@@ -1,7 +1,19 @@
 // src/data/mining.js – consolidated mining data.
-// Exports: ORES (18 items), ASTEROIDS (6 types), BEAMS (4 tiers),
+// Exports: ORES (27 items), ASTEROIDS (6 types), BEAMS (4 tiers),
 //          RECIPES (4 refine/craft chains), FIELDS (4 tier params).
-// Ore IDs use cmdty_ prefix per ARCHITECTURE §0.4. Pure data, no imports.
+// Ore IDs use cmdty_ prefix per ARCHITECTURE §0.4.
+//
+// SINGLE SOURCE OF PRICE/MASS/VOLUME/NAME: every ORES row is an EXTRACTION-facing view over the
+// canonical commodity record in commodities.js. It carries only the fields the extraction layer
+// owns — `category` (ore chain stage), `tier` (tierCap roll gating) and `tags` (seam/scan flavour).
+// `name`, `baseValue`, `mass` and `vol` are merged in from COMMODITIES below, exactly the way
+// commodities.js merges COMMODITY_FLAVOR and COMMODITY_MORAL_TAGS onto itself.
+//
+// This used to be a hand-maintained duplicate and it had drifted badly: iron read 12 cr here and
+// 28 cr in the market, `cmdty_refined_metals` was called "Iron Ingot" here and "Refined Metals"
+// there, and the codex ore table (src/ui/screens/help.js) renders THIS table — so the help screen
+// told new players prices the game does not honour. See PHYSICAL_PLAY_GRAMMAR §9.5.5.
+import { COMMODITIES } from './commodities.js';
 
 const TAU = Math.PI * 2;
 
@@ -53,40 +65,54 @@ export function deriveAsteroidSeams(seed, asteroidId, radius, opts = {}) {
 
 export const ORES = [
   // --- RAW extraction outputs ---
-  { id: 'cmdty_silicate',            name: 'Silicate Rock',         category: 'raw',       mass: 0.6, vol: 1.0, baseValue: 4,   tier: 0, tags: ['common'] },
-  { id: 'cmdty_ore_iron',            name: 'Iron Ore',              category: 'raw',       mass: 0.8, vol: 1.0, baseValue: 12,  tier: 0, tags: ['metal'] },
-  { id: 'cmdty_ore_copper',          name: 'Copper Ore',            category: 'raw',       mass: 0.9, vol: 1.0, baseValue: 18,  tier: 1, tags: ['metal'] },
-  { id: 'cmdty_ore_titanium',        name: 'Titanium Ore',          category: 'raw',       mass: 0.7, vol: 1.0, baseValue: 34,  tier: 2, tags: ['metal'] },
-  { id: 'cmdty_ice_water',           name: 'Water Ice',             category: 'raw',       mass: 0.5, vol: 1.4, baseValue: 6,   tier: 0, tags: ['ice','bulky'] },
-  { id: 'cmdty_volatiles',           name: 'Volatile Ice',          category: 'raw',       mass: 0.5, vol: 1.4, baseValue: 16,  tier: 1, tags: ['ice','bulky'] },
-  { id: 'cmdty_gas_hydrogen',        name: 'Hydrogen Gas',          category: 'raw',       mass: 0.1, vol: 2.5, baseValue: 9,   tier: 0, tags: ['gas','bulky'] },
-  { id: 'cmdty_gas_helium3',         name: 'Helium-3',              category: 'raw',       mass: 0.1, vol: 2.5, baseValue: 40,  tier: 2, tags: ['gas','bulky'] },
-  { id: 'cmdty_crystal_silica',      name: 'Silica Crystal',        category: 'raw',       mass: 1.1, vol: 1.0, baseValue: 30,  tier: 1, tags: ['crystal'] },
-  { id: 'cmdty_crystal_lumin',       name: 'Phosphor Crystal',      category: 'raw',       mass: 1.0, vol: 1.0, baseValue: 70,  tier: 2, tags: ['crystal','glow'] },
-  { id: 'cmdty_ore_platinoid',       name: 'Platinoid Ore',         category: 'raw',       mass: 1.4, vol: 1.0, baseValue: 110, tier: 3, tags: ['metal','rare'] },
-  { id: 'cmdty_exotic_xenium',       name: 'Xenium',                category: 'raw',       mass: 1.2, vol: 1.0, baseValue: 260, tier: 4, tags: ['exotic','rare'] },
-  { id: 'cmdty_ore_bronzium',        name: 'Nickel Ore',            category: 'raw',       mass: 0.9, vol: 1.0, baseValue: 60,  tier: 1, tags: ['metal'] },
-  { id: 'cmdty_ore_silverium',       name: 'Silver Ore',            category: 'raw',       mass: 0.7, vol: 1.0, baseValue: 100, tier: 2, tags: ['metal'] },
-  { id: 'cmdty_ore_goldium',         name: 'Gold Ore',              category: 'raw',       mass: 1.1, vol: 1.0, baseValue: 250, tier: 2, tags: ['metal'] },
-  { id: 'cmdty_ore_platinium',       name: 'Platinum Ore',          category: 'raw',       mass: 1.4, vol: 1.0, baseValue: 750, tier: 3, tags: ['metal','rare'] },
-  { id: 'cmdty_ore_einsteinium',     name: 'Stellarite Ore',        category: 'raw',       mass: 1.5, vol: 1.0, baseValue: 2000, tier: 3, tags: ['metal','rare'] },
-  { id: 'cmdty_gem_emerald',         name: 'Raw Emerald',           category: 'raw',       mass: 0.8, vol: 0.8, baseValue: 5000, tier: 3, tags: ['crystal','rare'] },
-  { id: 'cmdty_gem_ruby',            name: 'Raw Ruby',              category: 'raw',       mass: 0.8, vol: 0.8, baseValue: 20000, tier: 4, tags: ['crystal','rare'] },
-  { id: 'cmdty_gem_diamond',         name: 'Raw Diamond',           category: 'raw',       mass: 0.8, vol: 0.8, baseValue: 100000, tier: 4, tags: ['crystal','rare'] },
-  { id: 'cmdty_exotic_amazonite',    name: 'Prism Shard',           category: 'raw',       mass: 0.8, vol: 0.8, baseValue: 500000, tier: 4, tags: ['exotic','rare'] },
+  { id: 'cmdty_silicate',            category: 'raw',       tier: 0, tags: ['common'] },
+  { id: 'cmdty_ore_iron',            category: 'raw',       tier: 0, tags: ['metal'] },
+  { id: 'cmdty_ore_copper',          category: 'raw',       tier: 1, tags: ['metal'] },
+  { id: 'cmdty_ore_titanium',        category: 'raw',       tier: 2, tags: ['metal'] },
+  { id: 'cmdty_ice_water',           category: 'raw',       tier: 0, tags: ['ice','bulky'] },
+  { id: 'cmdty_volatiles',           category: 'raw',       tier: 1, tags: ['ice','bulky'] },
+  { id: 'cmdty_gas_hydrogen',        category: 'raw',       tier: 0, tags: ['gas','bulky'] },
+  { id: 'cmdty_gas_helium3',         category: 'raw',       tier: 2, tags: ['gas','bulky'] },
+  { id: 'cmdty_crystal_silica',      category: 'raw',       tier: 1, tags: ['crystal'] },
+  { id: 'cmdty_crystal_lumin',       category: 'raw',       tier: 2, tags: ['crystal','glow'] },
+  { id: 'cmdty_ore_platinoid',       category: 'raw',       tier: 3, tags: ['metal','rare'] },
+  { id: 'cmdty_exotic_xenium',       category: 'raw',       tier: 4, tags: ['exotic','rare'] },
+  { id: 'cmdty_ore_bronzium',        category: 'raw',       tier: 1, tags: ['metal'] },
+  { id: 'cmdty_ore_silverium',       category: 'raw',       tier: 2, tags: ['metal'] },
+  { id: 'cmdty_ore_goldium',         category: 'raw',       tier: 2, tags: ['metal'] },
+  { id: 'cmdty_ore_platinium',       category: 'raw',       tier: 3, tags: ['metal','rare'] },
+  { id: 'cmdty_ore_einsteinium',     category: 'raw',       tier: 3, tags: ['metal','rare'] },
+  { id: 'cmdty_gem_emerald',         category: 'raw',       tier: 3, tags: ['crystal','rare'] },
+  { id: 'cmdty_gem_ruby',            category: 'raw',       tier: 4, tags: ['crystal','rare'] },
+  { id: 'cmdty_gem_diamond',         category: 'raw',       tier: 4, tags: ['crystal','rare'] },
+  { id: 'cmdty_exotic_amazonite',    category: 'raw',       tier: 4, tags: ['exotic','rare'] },
 
   // --- Refined outputs (volume-compressed) ---
-  { id: 'cmdty_refined_metals',      name: 'Iron Ingot',            category: 'refined',   mass: 0.7, vol: 0.5, baseValue: 40,  tier: 1, tags: ['metal','refined'] },
-  { id: 'cmdty_alloys',              name: 'Titanium Alloy',        category: 'refined',   mass: 0.6, vol: 0.5, baseValue: 120, tier: 2, tags: ['metal','refined'] },
+  { id: 'cmdty_refined_metals',      category: 'refined',   tier: 1, tags: ['metal','refined'] },
+  { id: 'cmdty_alloys',              category: 'refined',   tier: 2, tags: ['metal','refined'] },
 
   // --- Crafted ship components ---
-  { id: 'cmdty_comp_hullplate',      name: 'Hull Plate',            category: 'component', mass: 1.0, vol: 0.6, baseValue: 220, tier: 2, tags: ['component'] },
-  { id: 'cmdty_comp_circuitry',      name: 'Circuitry',             category: 'component', mass: 0.3, vol: 0.4, baseValue: 300, tier: 3, tags: ['component'] },
+  { id: 'cmdty_comp_hullplate',      category: 'component', tier: 2, tags: ['component'] },
+  { id: 'cmdty_comp_circuitry',      category: 'component', tier: 3, tags: ['component'] },
 
   // --- Salvage (from wrecks) ---
-  { id: 'cmdty_scrap_metal',         name: 'Scrap Metal',           category: 'salvage',   mass: 0.9, vol: 1.0, baseValue: 8,   tier: 0, tags: ['salvage'] },
-  { id: 'cmdty_salvage_electronics', name: 'Salvage Electronics',   category: 'salvage',   mass: 0.4, vol: 0.6, baseValue: 55,  tier: 1, tags: ['salvage'] },
+  { id: 'cmdty_scrap_metal',         category: 'salvage',   tier: 0, tags: ['salvage'] },
+  { id: 'cmdty_salvage_electronics', category: 'salvage',   tier: 1, tags: ['salvage'] },
 ];
+
+// Merge the canonical trade record onto each ore row at module load. Deliberately NOT a spread of
+// the whole commodity: extraction only needs the four fields it used to duplicate, and pulling in
+// `producedBy`/`elasticity`/`legality` would make ORES a second market table by accident.
+// An id absent from COMMODITIES would be a data bug, so it is left with no price rather than a
+// silently invented one — check-data-refs.mjs already fails on an unresolvable cmdty_ id.
+for (const ore of ORES) {
+  const cmdty = COMMODITIES.find((c) => c.id === ore.id);
+  if (!cmdty) continue;
+  ore.name = cmdty.name;
+  ore.baseValue = cmdty.basePrice;
+  ore.mass = cmdty.massPerU;
+  ore.vol = cmdty.volPerU;
+}
 
 // 6 asteroid types. hp[small,large] = ore-HP endpoints; yieldU[small,large] = units released.
 // oreTable weights use cmdty_ ore IDs; tierCap gates eligibility.
@@ -128,11 +154,18 @@ export const ASTEROIDS = [
 ];
 
 // 4 mining beam tiers. dps = ore-HP/s per ARCHITECTURE §0.10 (beam_mk1 = 18).
+//
+// heatMax/heatRate/coolRate drive the pulse-timing rhythm in systems/mining.js: heat climbs while
+// the beam bites, the amber vent band opens near the top, releasing inside it pays a real ore
+// bonus, and letting the gauge peg locks the beam out while the radiators dump (slowly — see
+// BEAM_OVERHEAT_COOL_MULT). Numbers are seconds-scale on purpose: mk1 runs ~4.5 s cold-to-peg and
+// dumps in ~1.8 s, so the loop is a beat rather than a wait. Higher tiers hold more heat and vent
+// faster, which is what a beam upgrade should FEEL like on top of raw dps.
 export const BEAMS = [
-  { id: 'beam_mk1',        dps: 18, range: 240, energyDraw: 4,  tier: 1 },
-  { id: 'beam_mk2',        dps: 30, range: 300, energyDraw: 8,  tier: 2 },
-  { id: 'beam_mk3',        dps: 48, range: 360, energyDraw: 16, tier: 3 },
-  { id: 'beam_industrial', dps: 70, range: 420, energyDraw: 20, tier: 4 },
+  { id: 'beam_mk1',        dps: 18, range: 240, energyDraw: 4,  tier: 1, heatMax: 100, heatRate: 22, coolRate: 55 },
+  { id: 'beam_mk2',        dps: 30, range: 300, energyDraw: 8,  tier: 2, heatMax: 110, heatRate: 22, coolRate: 60 },
+  { id: 'beam_mk3',        dps: 48, range: 360, energyDraw: 16, tier: 3, heatMax: 120, heatRate: 21, coolRate: 66 },
+  { id: 'beam_industrial', dps: 70, range: 420, energyDraw: 20, tier: 4, heatMax: 140, heatRate: 20, coolRate: 74 },
 ];
 
 // Refining and crafting chains (run at stations with matching service tier).

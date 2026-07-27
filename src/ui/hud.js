@@ -402,13 +402,46 @@ export function contactRosterVisible({
   return eligibleContactCount > 0 || pinned || nearbyHostile || revealActive;
 }
 
+// Ordinary-load HUD gates, kept in lockstep with src/render/vfx.js:229-230
+// (TETHER_TAUT_LOAD / TETHER_OVERLOAD_LOAD) so the cable and the status line never disagree about
+// whether the Massline is working. These key off tether.load, NOT tether.strain — see the note on
+// masslineTetherStatus below.
+const TETHER_STATUS_LOADED_LOAD = 0.5;
+const TETHER_STATUS_HIGH_LOAD = 0.88;
+
 /**
  * Resolve the truthful Massline status copy from the gameplay-owned tether mirror.
  * Normal-load strain remains useful telemetry but is not a failure alarm. STRAINED/CRITICAL and
  * warning color are reserved for explicitly breakable, extreme-overload operations.
+ *
+ * WHY THE ORDINARY BRANCHES DO NOT KEY OFF tether.strain ALONE.
+ *
+ * tether.strain is the honest physical ratio lastTension / breakTension, and for tether_standard
+ * breakTension is 10500000 (src/data/combatDefs.js:234) because the Massline is deliberately
+ * near-unbreakable. Measured with scripts/probe-tether-visual-drive.mjs (640-mass asteroid latched,
+ * full main thrust opposing the line for 240 ticks, line HELD) strain peaks at ~1e-4. So the two
+ * ordinary branches below used to read `strain > 0.85` / `strain > 0.6` and those halves were
+ * unreachable dead code — the status line was saved only by its phase fallback, and any operation
+ * that produced load without the sim naming a phase read as a bare LOCKED.
+ *
+ * The fix is NOT to rescale strain (the envelope is a protected hand-tuned value, build plan §3.5
+ * row 2). It is to key onto tether.load / tether.phase, the presentation-oriented signals that
+ * actually vary in play (same probe: load 0 → 0.55, phase slack → capture → loaded). This mirrors
+ * what src/render/vfx.js:3337-3338 already does for the cable.
+ *
+ * strain survives in two places, both legitimate:
+ *   - the automaticBreakAllowed branches, the engineered extreme-load endpoint where the physical
+ *     ratio genuinely can approach the envelope and CRITICAL/STRAINED is a real alarm;
+ *   - as an UPPER escape hatch on the ordinary branches, so that if physical strain ever does climb
+ *     it still overtakes the presentation read rather than being ignored.
  */
 export function masslineTetherStatus(tether) {
   const strain = Number.isFinite(tether && tether.strain) ? Math.max(0, tether.strain) : 0;
+  // Saves written before tether.load existed degrade to the strain read rather than reporting 0.
+  const load = Number.isFinite(tether && tether.load)
+    ? Math.max(0, Math.min(1, tether.load))
+    : Math.min(1, strain);
+  const phase = (tether && tether.phase) || 'slack';
   const automaticBreakAllowed = tether && tether.automaticBreakAllowed === true;
   const operation = tether && tether.reeling
     ? 'REELING'
@@ -420,9 +453,9 @@ export function masslineTetherStatus(tether) {
   let status;
   if (automaticBreakAllowed && strain > 0.85) status = 'CRITICAL';
   else if (automaticBreakAllowed && strain > 0.6) status = 'STRAINED';
-  else if (strain > 0.85 || tether && tether.phase === 'overload') {
+  else if (phase === 'overload' || load > TETHER_STATUS_HIGH_LOAD || strain > 0.85) {
     status = operation ? `${operation} · HIGH LOAD` : 'HIGH LOAD';
-  } else if (strain > 0.6 || tether && tether.phase === 'loaded') {
+  } else if (phase === 'loaded' || load > TETHER_STATUS_LOADED_LOAD || strain > 0.6) {
     status = operation ? `${operation} · LOADED` : 'LOADED';
   } else status = operation || 'LOCKED';
   return {

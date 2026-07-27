@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { vfx } from '../src/render/vfx.js';
 import { KESTREL_MAIN_PLUME_RECIPE } from '../src/render/thruster/recipes/kestrelRecipes.js';
+import { FLEET_MAX_SHIPS } from '../src/render/thruster/systems/familyFleet.js';
 
 const KESTREL_PLUME_LAYER_COUNT = KESTREL_MAIN_PLUME_RECIPE.layers.filter((layer) => layer.enabled !== false).length;
 
@@ -259,7 +260,11 @@ function makeHarness(overrides = {}) {
   };
   state.entities.set(npc.id, npc);
   state.entityList.push(npc);
-  for (let i = 0; i < 12; i++) {
+  // Fillers must actually exceed the fleet's sanity ceiling for overflow to exist. The
+  // count is derived, not hard-coded, so raising the ceiling does not silently turn this
+  // into a check that no longer exercises the legacy substrate (which is what a literal
+  // 12 did once the fleet became a growable pool).
+  for (let i = 0; i < FLEET_MAX_SHIPS + 2; i++) {
     const filler = {
       id: 200 + i,
       type: 'ship',

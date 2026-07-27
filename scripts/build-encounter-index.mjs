@@ -12,14 +12,25 @@ const args = new Set(process.argv.slice(2));
 const files = authoredFiles();
 const rendered = renderIndex(files);
 if (args.has('--check')) {
+  // The generated index is always written with LF. A Windows checkout with `core.autocrlf=true`
+  // hands this freshness check a CRLF copy of byte-identical content, which used to fail as
+  // "Encounter import graph is stale" on a tree with no drift at all (observed 2026-07-27: 93 CRLF
+  // pairs, 93 extra bytes, otherwise character-for-character equal). `.gitattributes` pins the
+  // checkout to LF; this normalisation makes the comparison correct even where that pin has not
+  // been applied yet or a tool rewrote the file. Only line endings are normalised, so real
+  // import-graph drift — an added, removed, or reordered module — still fails.
   const current = existsSync(INDEX) ? readFileSync(INDEX, 'utf8') : '';
-  if (current !== rendered) {
+  if (normalizeEol(current) !== normalizeEol(rendered)) {
     throw new Error('Encounter import graph is stale. Run: node scripts/build-encounter-index.mjs');
   }
   console.log(`Encounter index fresh: ${files.length} authored modules.`);
 } else {
   if (!existsSync(INDEX) || readFileSync(INDEX, 'utf8') !== rendered) writeFileSync(INDEX, rendered, 'utf8');
   console.log(`Encounter index generated: ${files.length} authored modules.`);
+}
+
+function normalizeEol(text) {
+  return text.replace(/\r\n/g, '\n');
 }
 
 function authoredFiles() {

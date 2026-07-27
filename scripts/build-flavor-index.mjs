@@ -12,14 +12,28 @@ const args = new Set(process.argv.slice(2));
 const files = authoredFiles();
 const rendered = renderIndex(files);
 if (args.has('--check')) {
+  // Same defect that broke scripts/build-encounter-index.mjs --check (see its matching comment and
+  // `.gitattributes`). The index is always written with LF; a Windows checkout with
+  // `core.autocrlf=true` hands this freshness check a CRLF copy of byte-identical content and it
+  // fails as a stale import graph. Measured on master 2026-07-27: the worktree copy was 1821 bytes
+  // with 29 CRLF pairs against 1792 bytes of freshly rendered LF content — a delta of exactly the
+  // 29 CR characters, character-for-character equal otherwise. `.gitattributes` pins
+  // `*.generated.js` to `eol=lf` so the checkout matches what this script writes on every platform;
+  // normalising here as well keeps the comparison correct on a tree that predates that pin or was
+  // rewritten by a tool. Only line endings are normalised, so real drift — an added, removed or
+  // reordered flavor module — still fails.
   const current = existsSync(INDEX) ? readFileSync(INDEX, 'utf8') : '';
-  if (current !== rendered) {
+  if (normalizeEol(current) !== normalizeEol(rendered)) {
     throw new Error('Flavor import graph is stale. Run: node scripts/build-flavor-index.mjs');
   }
   console.log(`Flavor index fresh: ${files.length} authored modules.`);
 } else {
   if (!existsSync(INDEX) || readFileSync(INDEX, 'utf8') !== rendered) writeFileSync(INDEX, rendered, 'utf8');
   console.log(`Flavor index generated: ${files.length} authored modules.`);
+}
+
+function normalizeEol(text) {
+  return text.replace(/\r\n/g, '\n');
 }
 
 function authoredFiles() {

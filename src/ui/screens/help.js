@@ -387,7 +387,11 @@ export const helpScreen = {
   },
 
   _renderOres() {
-    // Raw extraction ores only (category 'raw')
+    // Raw extraction ores only (category 'raw').
+    // `o.baseValue` is now merged straight from COMMODITIES[].basePrice at module load
+    // (src/data/mining.js), so this table quotes the same equilibrium price the market does. It used
+    // to read a hand-maintained duplicate that had drifted — iron read 12 cr here and 28 cr at every
+    // trade terminal in the game — which meant the codex actively taught new players wrong prices.
     const q = (this._q || '').trim().toLowerCase();
     const rawOres = ORES
       .filter((o) => o.category === 'raw')

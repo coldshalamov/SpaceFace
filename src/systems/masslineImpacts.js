@@ -167,6 +167,18 @@ export const masslineImpacts = {
     const record = {
       targetId: mass.id,               // the whipped mass — same field name as snapCatch/reelPump
       victimId: victim.id,
+      // Neither end of this event is the player: the cue targets the struck body and sources the
+      // whipped mass, so cueSchema.inferRelevance has nothing to key on and falls through to its
+      // distance table (0.72/0.52/0.28) — below presentationAdapters' PLAYER_LANE_RELEVANCE_FLOOR
+      // of 0.8. The result was that the payoff moment of the whole swing produced sparks and a
+      // crack but never a HUD readout, a caption, or a camera kick, and got quieter the further
+      // out the player worked. Every record here describes the player's OWN whip (the observer
+      // tracks only their tether target and its sling), so state it: 0.88 is inferRelevance's own
+      // value for "the player is the source", the same value rateRelease uses for the same reason.
+      // Deliberately not 1.0 — that is the "addressed TO the player" tier and it would also cross
+      // the 0.9 assertive-caption bar in _applyAccessibility, turning an info-tier reward into a
+      // screen-reader interrupt that pre-empts real warnings.
+      playerRelevance: 0.88,
       relSpeed,
       massSpeed,
       mass: massKg,

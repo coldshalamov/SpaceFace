@@ -1098,7 +1098,13 @@ Live problems identified during design and not yet mapped to packets:
   `src/combat/tetherFireControl.js` — written for precisely this case — is bypassed and a linear lead
   is used against a body on an arc; (c) one lead solution is computed from the *first* weapon's
   projectile speed and applied to the whole battery (`src/combat/autoTargetMode.js:57-63`). Also
-  `pickMasslineAutoTarget` (`autoTargetMode.js:265-304`) is dead code.
+  `pickMasslineAutoTarget` (formerly `autoTargetMode.js:265-304`) **was deleted** on 2026-07-27 —
+  it was exported, massline-aware and never called by anything but its own check script. Scored
+  latch acquisition (`src/combat/masslineTargetScoring.js` driven through
+  `tetherGameplay._refreshAcquisitionPreview` / `_consumeAcquisitionReceipt`) is now the live
+  acquisition path; there is no second massline-aware picker to reconcile it with. Do not
+  reintroduce one. `scripts/check-massline-auto-target.mjs` was rewritten against the surviving
+  behaviour and records the removal in its header.
 - **Spinning exists twice.** `src/systems/tumbleStates.js:141-143` writes an ad-hoc
   `entity.data.tumble` *and* schedules `status_tumbling` (`combatDefs.js:118-126`), with a manual
   resync hack at `tumbleStates.js:177-181` and three external readers of the ad-hoc form. Pick one

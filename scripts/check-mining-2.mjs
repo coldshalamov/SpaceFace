@@ -8,11 +8,18 @@ import { fileURLToPath } from 'node:url';
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { cargo } from '../src/systems/cargo.js';
 import {
+  BEAM_OVERHEAT_RESET,
+  BEAM_VENT_BAND_LO,
+  BULK_HAUL_MIN_U,
   MAGNET_ACCEL,
   MAGNET_RANGE,
+  SEAM_SPEED_OFF,
   SEAM_YIELD_OFF,
+  bulkHaulPayoutForChunk,
   mining,
 } from '../src/systems/mining.js';
+import { ASTEROIDS, ORES } from '../src/data/mining.js';
+import { COMMODITIES } from '../src/data/commodities.js';
 import { world } from '../src/systems/world.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -112,9 +119,13 @@ function findOffSeamContactAngle(ast) {
   throw new Error('could not find off-seam contact angle');
 }
 
+// Seams pay ORE, not just time. The constant has always been NAMED a yield fraction; it used to be
+// applied to extraction speed, which cancelled out of the per-rock total and made aim cost nothing
+// the player could observe (PHYSICAL_PLAY_GRAMMAR §9.5.3). Both halves are asserted behaviourally:
+// the rock breaks slightly slower off-seam, and — the part that matters — the SAME rock pays a
+// fraction of the ore when you spray it.
 function checkSeamYield() {
   const { sim, state, player, miningSys } = boot(2202);
-  assert.equal(SEAM_YIELD_OFF, 0.35, 'off-seam yield multiplier should match the WS-C1 contract');
   const seamEvents = [];
   sim.bus.on('mining:seamHit', (p) => seamEvents.push(p));
   const ast = spawnAsteroid(sim, { radius: 20, hp: 100, yieldU: 20 });
@@ -123,18 +134,39 @@ function checkSeamYield() {
 
   const seamPoint = seamWorldPoint(ast, seams[0]);
   const seamAngle = Math.atan2(seamPoint.z - ast.pos.z, seamPoint.x - ast.pos.x);
+  const offSeamAngle = findOffSeamContactAngle(ast);
+
   setPlayerForContact(state, player, ast, seamAngle);
   miningSys.applyMining(ast.id, 20, 1, player.id);
   const onSeamLoss = 100 - ast.data.oreHP;
   assert(seamEvents.some((e) => e.asteroidId === ast.id), 'on-seam mining should emit mining:seamHit');
 
   resetAsteroid(ast, 100);
-  setPlayerForContact(state, player, ast, findOffSeamContactAngle(ast));
+  setPlayerForContact(state, player, ast, offSeamAngle);
   miningSys.applyMining(ast.id, 20, 1, player.id);
   const offSeamLoss = 100 - ast.data.oreHP;
   assert(onSeamLoss > offSeamLoss, `seam loss ${onSeamLoss} should exceed off-seam loss ${offSeamLoss}`);
-  assert(Math.abs(offSeamLoss - onSeamLoss * SEAM_YIELD_OFF) < 0.001,
-    'off-seam extraction should be 35% of on-seam extraction');
+  assert(Math.abs(offSeamLoss - onSeamLoss * SEAM_SPEED_OFF) < 0.001,
+    `off-seam extraction speed should be ${SEAM_SPEED_OFF} of on-seam (got ${offSeamLoss / onSeamLoss})`);
+
+  // Burn one identical rock entirely on-seam and one entirely off-seam, counting the ore each pays.
+  const oreFromFullBurn = (angle) => {
+    resetAsteroid(ast, 100);
+    setPlayerForContact(state, player, ast, angle);
+    let total = 0;
+    const off = sim.bus.on('mining:yield', (p) => { total += p.qty || 0; });
+    for (let i = 0; i < 400 && ast.data.oreHP > 0; i++) miningSys.applyMining(ast.id, 20, 0.05, player.id);
+    if (typeof off === 'function') off();
+    return total;
+  };
+  const onSeamOre = oreFromFullBurn(seamAngle);
+  const offSeamOre = oreFromFullBurn(offSeamAngle);
+  assert.equal(onSeamOre, 20, `a rock burned wholly on-seam pays its full yieldU (got ${onSeamOre})`);
+  assert(offSeamOre < onSeamOre,
+    `spraying the same rock must cost ore, not only time (${offSeamOre} vs ${onSeamOre})`);
+  const ratio = offSeamOre / onSeamOre;
+  assert(Math.abs(ratio - SEAM_YIELD_OFF) <= 0.06,
+    `off-seam yield should land near SEAM_YIELD_OFF=${SEAM_YIELD_OFF} (got ${ratio.toFixed(3)})`);
 }
 
 function checkWorldSpawnSeams() {
@@ -150,21 +182,122 @@ function checkWorldSpawnSeams() {
     'world asteroid spawn should attach 1-4 deterministic seams');
 }
 
-function checkMiningHasNoHeatLockout() {
+// ── the heat/vent rhythm ──────────────────────────────────────────────────────────────────────
+// This used to be a check that the rhythm STAYED deleted (_beamRuntime unconditionally deleted
+// heat/heatRate/coolRate/overheated/heatMax every tick) while cueRecipes still declared
+// mining.heat.overheated / mining.vent.ready and audioSystem still shipped sfx_vent_chime.
+// PHYSICAL_PLAY_GRAMMAR §9.5.2 amputation 1 is the design authority: heat rises with sustained
+// beam, releasing in the amber band pays real ore, overheat locks. These assertions drive the live
+// system through sim.step and assert the OUTCOME, so retuning the constants cannot fail them —
+// only removing the mechanic can.
+
+function mineForTicks(sim, state, ticks, holdFire) {
+  for (let i = 0; i < ticks; i++) {
+    state.input.fireGroup = holdFire(i) ? 2 : null;
+    sim.step(SIM_DT);
+  }
+}
+
+function checkBeamHeatLocksOutAndRecovers() {
   const { sim, state, player } = boot(3303);
-  const overheatEvents = [];
-  const ventEvents = [];
-  sim.bus.on('beam:overheated', () => overheatEvents.push(state.simTime));
-  sim.bus.on('mining:ventBonus', () => ventEvents.push(state.simTime));
-  const ast = spawnAsteroid(sim, { radius: 20, hp: 800, yieldU: 20 });
+  const overheats = [];
+  const cooled = [];
+  const ventReady = [];
+  sim.bus.on('mining:overheated', (p) => overheats.push(p));
+  sim.bus.on('mining:beamCooled', (p) => cooled.push(p));
+  sim.bus.on('mining:ventReady', (p) => ventReady.push(p));
+  const ast = spawnAsteroid(sim, { radius: 20, hp: 100000, yieldU: 20000 });
   setPlayerForContact(state, player, ast, Math.PI);
+
+  const beam = state.player.miningBeam;
+  let ticks = 0;
+  while (!beam.overheated && ticks < 1200) { mineForTicks(sim, state, 1, () => true); ticks++; }
+  assert(Number.isFinite(beam.heat), 'the beam runtime must carry heat again');
+  assert.equal(beam.overheated, true, 'holding the beam to the peg must lock it out');
+  assert.equal(overheats.length, 1, 'the lockout announces itself exactly once per peg');
+  assert.equal(ventReady.length >= 1, true, 'the amber vent band must announce itself before the peg');
+  assert(ventReady[0].pct >= BEAM_VENT_BAND_LO - 1e-6, 'ventReady fires at the band edge, not before');
+  assert(ticks * SIM_DT > 1.5 && ticks * SIM_DT < 12,
+    `cold-to-peg must be a seconds-scale beat, not a wait (${(ticks * SIM_DT).toFixed(2)}s)`);
+
+  // While locked, the rock takes no further damage no matter how hard the trigger is held.
+  const lockedAt = state.entities.get(ast.id).data.oreHP;
   state.input.fireGroup = 2;
-  for (let i = 0; i < 900; i++) sim.step(SIM_DT);
-  assert.equal(overheatEvents.length, 0, 'mining beam should never emit overheat lockout events');
-  assert.equal(ventEvents.length, 0, 'mining beam should not emit removed vent bonus events');
-  assert.equal(state.player.miningBeam.heat, undefined, 'mining beam runtime should not track heat');
-  assert.equal(state.player.miningBeam.overheated, undefined, 'mining beam runtime should not latch overheat');
-  assert(ast.data.oreHP < ast.data.oreHPMax, 'sustained mining should keep damaging the asteroid');
+  sim.step(SIM_DT);
+  assert.equal(state.entities.get(ast.id).data.oreHP, lockedAt,
+    'an overheated beam must not extract — the lockout has to cost something');
+
+  // Release and let the radiators catch up; the beam comes back on its own.
+  mineForTicks(sim, state, 600, () => false);
+  assert.equal(cooled.length >= 1, true, 'the beam must unlock once heat falls back');
+  assert.equal(beam.overheated, false, 'overheat clears after cooling');
+  assert(beam.heat / beam.heatMax <= BEAM_OVERHEAT_RESET + 1e-6, 'unlock happens at the reset band');
+  const before = state.entities.get(ast.id).data.oreHP;
+  mineForTicks(sim, state, 20, () => true);
+  assert(state.entities.get(ast.id).data.oreHP < before, 'a cooled beam mines again');
+}
+
+function checkVentBonusPaysRealOre() {
+  const { sim, state, player } = boot(3304);
+  state.player.cargo.capVolume = 100000;
+  const bonuses = [];
+  sim.bus.on('mining:ventBonus', (p) => bonuses.push(p));
+  const ast = spawnAsteroid(sim, { radius: 20, hp: 100000, yieldU: 20000 });
+  setPlayerForContact(state, player, ast, Math.PI);
+
+  const beam = state.player.miningBeam;
+  // Hold until the gauge is deep in the amber band, then let go — that is the whole verb.
+  let held = 0;
+  while ((beam.heat || 0) / (beam.heatMax || 100) < 0.95 && held < 2000) {
+    state.input.fireGroup = 2;
+    sim.step(SIM_DT);
+    held++;
+  }
+  const heldOre = state.player.cargo.usedVolume;
+  state.input.fireGroup = null;
+  sim.step(SIM_DT);
+
+  assert.equal(bonuses.length, 1, 'releasing inside the amber band pays exactly one vent bonus');
+  assert(bonuses[0].qty > 0, 'the vent bonus is real ore, not a zero-value receipt');
+  assert(state.player.cargo.usedVolume > heldOre, 'the vent bonus reaches the hold');
+
+  // Releasing while cold pays nothing — the bonus is for timing, not for tapping the button.
+  bonuses.length = 0;
+  mineForTicks(sim, state, 400, () => false); // fully cool
+  mineForTicks(sim, state, 6, () => true);
+  state.input.fireGroup = null;
+  sim.step(SIM_DT);
+  assert.equal(bonuses.length, 0, 'a cold release must not pay a vent bonus');
+}
+
+function checkPulsingOutEarnsPegging() {
+  // The design claim under test: pulse-timing is worth learning. Two runs of identical length on
+  // identical rocks — one venting inside the amber band, one holding the trigger down forever.
+  const run = (seed, strategy) => {
+    const { sim, state, player } = boot(seed);
+    state.player.cargo.capVolume = 100000;
+    const ast = spawnAsteroid(sim, { radius: 20, hp: 100000, yieldU: 20000 });
+    setPlayerForContact(state, player, ast, Math.PI);
+    const beam = state.player.miningBeam;
+    let ore = 0;
+    sim.bus.on('mining:yield', (p) => { ore += p.qty || 0; });
+    for (let i = 0; i < 3000; i++) {
+      const pct = (beam.heat || 0) / (beam.heatMax || 100);
+      state.input.fireGroup = strategy(pct, beam) ? 2 : null;
+      sim.step(SIM_DT);
+    }
+    return ore;
+  };
+  // Vent at ~93% of the gauge, resume once the radiators have caught up.
+  let venting = false;
+  const pulsed = run(4501, (pct, beam) => {
+    if (pct >= 0.93) venting = true;
+    if (venting && pct <= 0.25) venting = false;
+    return !venting && !beam.overheated;
+  });
+  const pegged = run(4501, () => true);
+  assert(pulsed > pegged * 1.2,
+    `pulse-timing must clearly out-earn holding the button (${pulsed} vs ${pegged})`);
 }
 
 function checkMasslineTargetOwnsMiningBeam() {
@@ -270,12 +403,94 @@ function checkBeamTargetSticksUntilRelease() {
 function checkMiningNoiseCrossing() {
   const { sim, state } = boot(5505);
   const dangerEvents = [];
+  const impulses = [];
   sim.bus.on('danger:miningNoise', (p) => dangerEvents.push(p));
+  sim.bus.on('sectorsim:impulse', (p) => impulses.push(p));
+  state.world.currentSectorId = 'sector_ceres_belt';
   state.player.miningNoise = 69;
   sim.registry.get('mining')._updateMiningNoise(true, 0.25, state);
   sim.registry.get('mining')._updateMiningNoise(true, 0.25, state);
   assert.equal(dangerEvents.length, 1, 'mining noise should emit once when crossing above 70');
   assert(dangerEvents[0].level > 70, 'danger:miningNoise should include the crossed level');
+
+  // The meter has to DO something. sectorSim folds this impulse into the sector's danger node, which
+  // lowers effective regional security, which encounterDirector reads into combat pressure. Without
+  // it the game tells the player loud mining is dangerous and then makes it free (grammar §9.5.2).
+  assert.equal(impulses.length, 1, 'crossing the attention threshold must raise sector danger');
+  assert.equal(impulses[0].kind, 'mining_noise', 'the impulse names its cause for the ledger');
+  assert.equal(impulses[0].sectorId, 'sector_ceres_belt', 'danger lands in the sector being mined');
+  assert(impulses[0].danger > 0, 'loud mining raises danger, it does not lower it');
+
+  // Re-crossing immediately must not let one session flood the field.
+  state.player.miningNoise = 69;
+  sim.registry.get('mining')._updateMiningNoise(true, 0.5, state);
+  assert.equal(dangerEvents.length, 2, 'the meter still reports every crossing');
+  assert.equal(impulses.length, 1, 'the field impulse is rate-limited');
+}
+
+// ── the bulk tether-haul loop-lock ────────────────────────────────────────────────────────────
+// `BULK_HAUL_MIN_U = 20` against a best-possible chunk of ~8u meant bulkHaulPayoutForChunk, the
+// refinery dock handler and the whole src/ui/prompts/bulkHaulTag.js system were code that had never
+// executed once (grammar §9.5.2 amputation 2). A big rock must now leave behind a fragment the hold
+// cannot swallow, so the reason you own a rope is that some ore is too big to scoop.
+function checkFractureLeavesAHaulableCore() {
+  const { sim, state, player, miningSys } = boot(8801);
+  const chunked = [];
+  const tetherPrompts = [];
+  sim.bus.on('asteroid:chunked', (p) => chunked.push(p));
+  sim.bus.on('mining:bulkRequiresTether', (p) => tetherPrompts.push(p));
+
+  const biggest = Math.max(...ASTEROIDS.map((a) => a.yieldU[1]));
+  const parent = spawnAsteroid(sim, { radius: 22, hp: 4, yieldU: biggest, pos: { x: 160, z: 0 } });
+  parent.data.typeId = 'ast_metallic';
+  state.player.miningBeam.dps = 4000;
+  state.player.miningBeam.range = 340;
+  setPlayerForContact(state, player, parent, Math.PI);
+  state.input.fireGroup = 2;
+  sim.step(SIM_DT);
+  state.input.fireGroup = null;
+
+  const cores = state.entityList.filter((e) => e.type === 'asteroid' && e.data && e.data.bulkCore);
+  assert.equal(cores.length, 1, 'the largest authored rock must leave exactly one core chunk');
+  const core = cores[0];
+  assert(core.data.bulkMassU > BULK_HAUL_MIN_U,
+    `the core chunk must exceed the haul threshold (${core.data.bulkMassU} vs ${BULK_HAUL_MIN_U})`);
+  assert(core.radius > parent.radius * 0.5, 'the core chunk reads as oversized next to its siblings');
+  assert(core.mass < parent.mass,
+    'a core chunk is never heavier than the parent the player could already tether');
+  assert(chunked.some((c) => c.chunkId === core.id && c.bulkCore === true),
+    'asteroid:chunked names the core chunk so downstream consumers can see it');
+
+  // It cannot be beamed into loose ore. The only way to monetize it is the rope.
+  const released = miningSys.applyMining(core.id, 500, 1, player.id);
+  assert.equal(released, 0, 'the core chunk refuses the mining beam');
+  assert(tetherPrompts.length >= 1, 'refusing the beam tells the player to tether it');
+  const payout = bulkHaulPayoutForChunk(core);
+  assert(payout.credits > 0, 'the refinery payout path pays real credits');
+  assert.equal(payout.massU, core.data.bulkMassU, 'the payout is priced on the mass you dragged');
+
+  // A small rock must NOT produce one — bulk haul is an event, not a tax on every asteroid.
+  const small = spawnAsteroid(sim, { radius: 8, hp: 4, yieldU: 8, pos: { x: -160, z: 0 } });
+  miningSys.applyMining(small.id, 500, 1, player.id);
+  const smallCores = state.entityList.filter(
+    (e) => e.type === 'asteroid' && e.data && e.data.bulkCore && e.id !== core.id,
+  );
+  assert.equal(smallCores.length, 0, 'small rocks must not spawn haulable cores');
+}
+
+// ── the codex tells the truth ─────────────────────────────────────────────────────────────────
+// ORES used to duplicate COMMODITIES at different numbers (iron: 12 here, 28 there) and the codex
+// ore table renders ORES, so the game actively told new players wrong prices (grammar §9.5.5).
+function checkOreTableIsSingleSourced() {
+  const byId = new Map(COMMODITIES.map((c) => [c.id, c]));
+  for (const ore of ORES) {
+    const cmdty = byId.get(ore.id);
+    assert(cmdty, `ORES row ${ore.id} must resolve to a canonical commodity`);
+    assert.equal(ore.baseValue, cmdty.basePrice, `${ore.id} price must match the market`);
+    assert.equal(ore.name, cmdty.name, `${ore.id} name must match the market`);
+    assert.equal(ore.mass, cmdty.massPerU, `${ore.id} mass must match the market`);
+    assert.equal(ore.vol, cmdty.volPerU, `${ore.id} volume must match the market`);
+  }
 }
 
 function checkYieldFloatingTextNamesCommodity() {
@@ -291,11 +506,15 @@ function checkYieldFloatingTextNamesCommodity() {
 
 checkWorldSpawnSeams();
 checkSeamYield();
-checkMiningHasNoHeatLockout();
+checkBeamHeatLocksOutAndRecovers();
+checkVentBonusPaysRealOre();
+checkPulsingOutEarnsPegging();
 checkMasslineTargetOwnsMiningBeam();
 checkBeamTargetSticksUntilRelease();
 checkFractureAndVacuumCargo();
+checkFractureLeavesAHaulableCore();
 checkMiningNoiseCrossing();
+checkOreTableIsSingleSourced();
 checkYieldFloatingTextNamesCommodity();
 
 console.log('Mining 2.0 core checks OK');

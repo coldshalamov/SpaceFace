@@ -464,6 +464,11 @@ function classifyDrivers(n, trend, rank, oldDominant, impulseKind) {
   else if (impulseKind === 'infrastructure_loss' || impulseKind === 'base_destroyed') {
     danger = 'infrastructure_disruption'; pricePressure = 'infrastructure_disruption'; influence = 'combat_attrition';
   } else if (impulseKind === 'interdiction') danger = 'interdiction_wave';
+  // A loud extraction run is an interdiction draw, not a new kind of cause: hunters answer the beam
+  // the same way they answer a lane sweep. Reusing the enumerated tag keeps the ledger honest about
+  // WHY danger moved without inventing a phrase the bank cannot explain (causePhrases.js is pinned
+  // to this function's literal tag set by scripts/check-cause-ledger.mjs).
+  else if (impulseKind === 'mining_noise') danger = 'interdiction_wave';
   else if (impulseKind === 'transit_incident') danger = 'transit_incident';
   return { danger, pricePressure, influence };
 }

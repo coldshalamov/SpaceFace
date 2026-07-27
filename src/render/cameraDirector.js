@@ -33,8 +33,10 @@ export const CAMERA_DIRECTOR_PREDICT_MIN_REL_SPEED = 72;
 // M2: focus outputs are frame-local; entity.pos is read as galactic-global and projected here.
 //
 // CAMERA-FOCUS-SEPARATION: ordinary mining/asteroid/non-hostile tether never enters combat pair
-// modes (TETHER_PAIR / FOCUS_PAIR). Only hostile ship/drone massline and Flyby Focus do. Ordinary
-// tether stays FOLLOW so chase composition can apply modest bias + threat-aware zoom-out.
+// modes (TETHER_PAIR / FOCUS_PAIR). Hostile ship/drone massline owns TETHER_PAIR; FOCUS_PAIR is now
+// reserved for the explicitly flagged onboarding trainer pair (see step()). Everything else,
+// including a hostile Flyby Focus lease, stays FOLLOW so chase composition can apply its damped
+// bias + threat-aware zoom-out instead of a discrete mode switch.
 
 export const CameraDirectorMode = Object.freeze({
   FOLLOW: 'FOLLOW',
@@ -442,27 +444,49 @@ export function createCameraDirector() {
       let trainingFocusPair = false;
       let gateApproach = null;
 
-      // Combat Focus is authoritative when active. Ordinary (asteroid/non-hostile) tether never
-      // steals combat pair ownership — leave FOLLOW so chase composition stays modest + threat-aware.
-      // Hostile ship/drone massline may own TETHER_PAIR after Focus latches onto the same contact.
+      // A HOSTILE Flyby Focus lease no longer takes the camera.
+      //
+      // It used to: any active lease switched the director into FOCUS_PAIR for its authored three
+      // seconds. That meant an involuntary lateral pan to the pair midpoint — up to ~140 wu at the
+      // 280 wu acquisition envelope, covered in the 0.35 s ease, so ~400 wu/s of camera motion the
+      // player did not ask for — followed by a continuously sliding midpoint and a zoom that
+      // shrinks as the pass converges and grows as it separates, then the whole thing unwinds on
+      // release. Twice per flyby, on top of 50% slow time, on a 60-degree top-down camera whose
+      // entire value is that the geometry holds still enough to read.
+      //
+      // Nothing is lost by dropping it, because the ordinary chase camera already does the same job
+      // better: resolveChaseComposition (src/render/camera.js:235) biases focus toward an active
+      // attacker — at exactly the pair midpoint, d * 0.5, when that attacker is targeting the
+      // player — and publishes a minZoom computed from the live fov/aspect/tilt that GUARANTEES
+      // both ships stay inside the frame. It does that continuously and damped, instead of by
+      // switching modes. Combat massline still owns TETHER_PAIR below: that is a state the player
+      // chose and holds, not a three-second lurch he did not ask for.
+      //
+      // The one surviving pair-camera Focus is the authored onboarding trainer, gated on two
+      // explicit data flags. It is a slow, once-per-game, deliberately composed shot against a
+      // friendly drone — and the chase composition above cannot substitute for it, because that
+      // path only composes hostiles.
+      let focusHoldsAuthority = false;
       if (focus && focus.active) {
-        targetId = focus.targetId;
-        target = entityFor(state, targetId);
-        const trainingFocus = isExplicitTrainingFocusTarget(player, target);
-        if (target && (isCombatPairTetherTarget(state, player, target) || trainingFocus)) {
+        const focusTarget = entityFor(state, focus.targetId);
+        const trainingFocus = isExplicitTrainingFocusTarget(player, focusTarget);
+        // A hostile lease no longer takes the camera, but it still OUTRANKS the scenic gate
+        // cinematic below. Bullet time plus a contact closing on the player must never be replaced
+        // by a gate approach shot; suppressing GATE_APPROACH leaves FOLLOW, whose chase composition
+        // is threat-aware. Fails closed on a stale or corrupt lease, exactly as the pair branch does.
+        focusHoldsAuthority = trainingFocus
+          || (!!focusTarget && isCombatPairTetherTarget(state, player, focusTarget));
+        // Fails closed on a stale or corrupt lease: an unflagged ally, civilian, mining clutter or
+        // clean lawful traffic never gets one pair-camera takeover frame while the sim catches up.
+        if (trainingFocus) {
+          targetId = focus.targetId;
+          target = focusTarget;
           requestedMode = CameraDirectorMode.FOCUS_PAIR;
-          trainingFocusPair = trainingFocus;
+          trainingFocusPair = true;
           // The deterministic onboarding pass can separate farther than a combat Focus before its
-          // three-second lesson ends. Preserve the public 10% margin contract while keeping this
-          // authored training shot inside the 58-180 band; hostile Focus retains the tighter
-          // 15-20% cinematic margin and its independent engine-ceiling escape hatch.
-          pairSafeNdc = trainingFocus ? CAMERA_DIRECTOR_SAFE_NDC : CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
-        } else {
-          // Presentation fails closed if a stale/corrupt Focus lease points at mining clutter,
-          // civilians, allies, or clean lawful traffic. The sim clears the lease on its next tick;
-          // the render path must not expose even one pair-camera takeover frame in the meantime.
-          targetId = null;
-          target = null;
+          // three-second lesson ends; the public 10% margin contract keeps that authored training
+          // shot inside the 58-180 band.
+          pairSafeNdc = CAMERA_DIRECTOR_SAFE_NDC;
         }
       }
       if (requestedMode === CameraDirectorMode.FOLLOW && tether && tether.active) {
@@ -483,13 +507,15 @@ export function createCameraDirector() {
         && isCombatPairTetherTarget(state, player, target)
       ) {
         // Same-target Focus→tether handoff: combat massline takes pair ownership without a jump.
+        // Only reachable for a training-flagged target that is ALSO live-hostile — rare, but a
+        // scripted lesson may stage one, and the handoff must not jump the camera when it does.
         requestedMode = CameraDirectorMode.TETHER_PAIR;
         pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
       }
 
       // Gate approach is lower authority than Flyby Focus and combat tether. It is available only
       // while the flight computer owns a concrete gate entity; manual flight remains pure FOLLOW.
-      if (requestedMode === CameraDirectorMode.FOLLOW) {
+      if (requestedMode === CameraDirectorMode.FOLLOW && !focusHoldsAuthority) {
         const activeGateId = output.mode === CameraDirectorMode.GATE_APPROACH ? output.targetId : null;
         gateApproach = resolveGateApproachTarget(state, player, activeGateId);
         if (gateApproach) {

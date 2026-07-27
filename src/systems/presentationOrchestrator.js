@@ -34,6 +34,25 @@ const DEFAULT_LANE_BUDGETS_PER_TICK = Object.freeze({
 // bounded by the active dedupe windows without adding per-frame work.
 const DEDUPE_SWEEP_INTERVAL_TICKS = 60;
 
+// Massline cues whose OBSERVER, by construction, only ever describes the player's own line.
+// masslineThreats and masslineImpacts both read nothing but `state.player.tether`, so every record
+// they produce is a statement about the player's own swing. But cueSchema.inferRelevance can only
+// key on entity identity, and for these two the identities are the THREATENING body and the STRUCK
+// body — neither is the player. Relevance therefore fell through to the distance table (measured:
+// 0.52 at 100wu, 0.28 past 250wu), landing below presentationAdapters' PLAYER_LANE_RELEVANCE_FLOOR
+// of 0.8, and the HUD alert, the accessibility caption and the camera kick were all dropped — the
+// signature verb got quieter the further out the player worked.
+//
+// This is a FLOOR, not an override, and the distinction is load-bearing. 0.88 is inferRelevance's
+// "the player is the source" tier; 1.0 is its "addressed TO the player" tier, and
+// presentationAdapters._applyAccessibility turns >= 0.9 into an ASSERTIVE screen-reader interrupt.
+// Declaring a flat 1 here would clobber masslineImpacts' deliberately-chosen 0.88 and promote a
+// payoff cue over real warnings (see masslineImpacts.js:178-180); declaring a flat 0.88 would
+// demote the genuine "the slung mass hit ME" case, which inference correctly rates 1. Raising only
+// what falls below keeps both ends honest — and means the next cue added to these two observers is
+// player-visible by default, without its author having to remember why.
+const MASSLINE_OBSERVER_PLAYER_RELEVANCE_FLOOR = 0.88;
+
 export const presentationOrchestrator = {
   name: 'presentationOrchestrator',
 
@@ -87,6 +106,7 @@ export const presentationOrchestrator = {
         material: 'massline',
         magnitude: Math.max(1, finiteScore(payload && payload.severity) * 100),
         tags: ['threat', payload && payload.kind].filter(Boolean),
+        playerRelevanceFloor: MASSLINE_OBSERVER_PLAYER_RELEVANCE_FLOOR,
       })),
       // Rung 14 — whip-impact feedback, the consume half of masslineImpacts' rung-13 emit. The
       // struck body is the cue target (that's where the crack lands); the whipped mass rides as
@@ -99,6 +119,7 @@ export const presentationOrchestrator = {
         material: 'massline',
         magnitude: Math.max(1, finiteScore(payload && payload.severity) * 100),
         tags: ['whip', payload && payload.rating, payload && payload.slung ? 'slung' : 'latched'].filter(Boolean),
+        playerRelevanceFloor: MASSLINE_OBSERVER_PLAYER_RELEVANCE_FLOOR,
       })),
       // Prompt 03 — release-rated feedback. Classification tiers map to escalating cues; "messy"
       // intentionally has no recipe, so _emitCue suppresses it (missing_recipe) and no
@@ -134,6 +155,12 @@ export const presentationOrchestrator = {
       this.bus.on('mining:stop', (payload) => this._onMiningStop(payload || {})),
       this.bus.on('mining:tick', (payload) => this._onMiningTick(payload || {})),
       this.bus.on('mining:seamHit', (payload) => this._onMiningSeamReward(payload || {})),
+      // The heat/vent rhythm's presentation half. cueRecipes has declared mining.vent.ready and
+      // mining.heat.overheated, and audioSystem has shipped sfx_vent_chime, since before the rhythm
+      // was restored — but nothing in src/ subscribed to either event, so both recipes and the
+      // sample were unreachable. These two edges are the rhythm's only continuous readout.
+      this.bus.on('mining:ventReady', (payload) => this._onMiningHeatEdge('mining.vent.ready', 'mining:ventReady', payload || {})),
+      this.bus.on('mining:overheated', (payload) => this._onMiningHeatEdge('mining.heat.overheated', 'mining:overheated', payload || {})),
       this.bus.on('mining:yield', (payload) => this._onMiningYield(payload || {})),
       this.bus.on('asteroid:chunked', (payload) => this._onMiningFracture(payload || {})),
       this.bus.on('mining:richCoreExposed', (payload) => this._onMiningRichCore('mining.rich_core.exposed', 'mining:richCoreExposed', payload || {})),
@@ -923,6 +950,30 @@ export const presentationOrchestrator = {
     });
   },
 
+  // Rising edge into the amber vent band, and the overheat peg. mining.js owns the gauge, the HUD
+  // words and the ore consequence; this owns the semantic audio + drill-UI voice for both edges.
+  //
+  // Because the adapters' semantic route resolves mining.vent.ready -> presentation.mining.vent_ready
+  // -> sfx_vent_chime and mining.heat.overheated -> presentation.mining.heat_warning ->
+  // sfx_mining_heat_warning, these cues play exactly the two samples mining.js used to emit as raw
+  // audio:cue itself. Those raw emits are removed in the same change; keeping both would play each
+  // sound twice. The HUD `alert` emits in mining.js STAY — neither cue id has a UI_CUES or CAPTIONS
+  // entry in presentationAdapters, so the cue lanes here are audio+vfx only and would otherwise
+  // leave the rhythm with no words at all.
+  _onMiningHeatEdge(cueId, sourceEvent, payload) {
+    const cycle = this._miningCycle;
+    // Overheat carries no pct (it is the peg by definition); vent-ready carries where in the band
+    // the crossing happened, so adapters can scale the chime with how hot the pulse ran.
+    const pct = Number.isFinite(payload.pct) ? payload.pct : 1;
+    this._emitCue(cueId, payload, {
+      sourceEvent,
+      sourceId: payload.minerId ?? (cycle && cycle.sourceId) ?? this.state.playerId,
+      targetId: (cycle && cycle.targetId) ?? null,
+      magnitude: Math.max(1, pct * 100),
+      tags: [payload.band, cueId.split('.').at(-1)].filter(Boolean),
+    });
+  },
+
   _onMiningBulkRequiresTether(payload) {
     this._emitCue('mining.chunk.tether_required', payload, {
       sourceEvent: 'mining:bulkRequiresTether',
@@ -1154,6 +1205,14 @@ export const presentationOrchestrator = {
       payload: payload || {},
     };
     const event = normalizePresentationEvent(raw, this.state, (this.state && this.state.simTime || 0) * 1000);
+    // Applied AFTER normalization so it composes with, rather than pre-empts, inferRelevance: a
+    // subscription that declares a floor guarantees its cue family clears the player-lane gate
+    // without ever lowering a relevance the emitter stated or the identity inference earned.
+    // See MASSLINE_OBSERVER_PLAYER_RELEVANCE_FLOOR. The `!(x >= floor)` form also catches NaN.
+    const relevanceFloor = Number(options.playerRelevanceFloor);
+    if (Number.isFinite(relevanceFloor) && !(event.playerRelevance >= relevanceFloor)) {
+      event.playerRelevance = Math.min(1, Math.max(0, relevanceFloor));
+    }
     event.recipeVersion = recipe.version;
     event.sourceEvent = options.sourceEvent || null;
     event.lanes = { ...recipe.lanes };

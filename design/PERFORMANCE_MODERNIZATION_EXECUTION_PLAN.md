@@ -2,10 +2,10 @@
 
 # SpaceFace 2026 performance modernization execution plan
 
-Status: **proposed program plan; not yet admitted as an active implementation packet**
+Status: **admitted source plan for PQ-034 through PQ-044; live lifecycle, leases, acceptance, and receipts remain in `design/program/`**
 
-Authority: user direction → `ARCHITECTURE.md` → this plan once admitted → packet-specific
-implementation notes.
+Authority: user direction → `ARCHITECTURE.md` → `design/program/` queue and active packet → this
+selected source plan → packet-specific implementation notes.
 
 Research appendix: [`PERFORMANCE_OPTIMIZATION_CONSTELLATION.md`](./PERFORMANCE_OPTIMIZATION_CONSTELLATION.md)
 contains the broader option set, rejected alternatives, OSS survey, and large-port possibilities.
@@ -71,6 +71,8 @@ Performance work may change internal representation, scheduling, compilation loc
 batching, query strategy, upload granularity, or backend. It may not obtain a pass by deleting authored
 content, reducing default quality, lowering population, hiding effects, narrowing draw distance, or
 changing gameplay.
+
+> “Do not gain performance by reducing content, population, effects, draw distance, render quality, or default visual quality.”
 
 ## 3. What is proved today, and what is not
 
@@ -170,6 +172,8 @@ begin on unleased pools before PERF-04 and then adopt `PresentationWorld` handle
 after PERF-07 so it measures the runtime intended to ship.
 
 ## 6. Common acceptance system
+
+Before the first edit in every claimed packet, persist the exact candidate's `npm run check:baseline` link matrix in addition to the packet's L0–L2 entry gates. Rerun the same fast baseline at exit and require its green set to be a superset of the entry green set. A red entry check is repaired or carries an integrator-issued `INHERITED_RED` token under `design/program/roadmap/00_EXECUTION_PROTOCOL.md`; a worker may never classify a red check as `OUT_OF_SCOPE`.
 
 ### 6.1 Deterministic simulation oracle
 
@@ -650,22 +654,62 @@ That can copy excess JS memory, issue excess driver traffic, and create avoidabl
 
 ### Implementation
 
-1. Add `src/render/dynamicBufferRanges.js` with a small non-allocating dirty-span accumulator.
-2. Each pool records the lowest/highest modified element for each attribute during the frame.
-3. At commit, call `addUpdateRange(componentStart, componentCount)` and set `needsUpdate`.
-4. Clear committed ranges before accumulating the next frame.
-5. Set `DynamicDrawUsage` or `StreamDrawUsage` before first upload according to actual buffer lifetime;
-   usage is not changed after upload.
-6. Set active instance/draw counts independently from allocated capacity.
-7. Record logical bytes changed, requested upload bytes, ranges, capacity, and reallocations.
-8. Use ping-pong/orphaning only if GPU/CPU traces still show synchronization after range uploads.
+1. Add `src/render/dynamicBufferRanges.js` with a small non-allocating owner-side pending-span
+   accumulator. Logical writes only union component indices; they never publish Three.js range metadata.
+2. Publish before Three.js first processes an owner's attributes. Three.js 0.184.0 invokes
+   `WebGLObjects.update()` during `projectObject`, before `Object3D.onBeforeRender`, so object hooks are
+   forbidden. `src/render/renderer.js#drawPreparedFrame` arms one exact `Scene.onBeforeRender` wrapper around
+   the selected renderGraph/bloom/straight path, invokes the prior scene callback first with its original
+   receiver/arguments, rejects re-entry or hook replacement before traversal, and restores the prior hook
+   in `finally` on success, no-render, or throw.
+3. Register the initial combat-sprite and trail-streak owners before scene attachment or renderer traversal,
+   and require exclusive tracked attributes. After the prior scene callback, processing eligibility requires
+   attachment below the rendered scene, visible ancestors/mesh, matching layers, no auto-updating LOD
+   ancestor, and `frustumCulled === false`. Ordinary draw eligibility additionally requires the initial
+   pool's single material to be visible and active count to be positive. Cullable/shared/material-array/LOD
+   cases remain blocked until a later revision proves their exact public traversal predicate.
+4. An ineligible scene invocation does not consume an owner's epoch opportunity. Resolve current attributes
+   and publish exactly once at the first invocation where a force-full generation is processing-eligible or
+   an ordinary pending span is draw-eligible. Rebuild only that owner's range metadata, append one
+   `addUpdateRange()` record per changed attribute, set `needsUpdate` once, and move the pending union into
+   an immutable published snapshot.
+5. At registration, require Three.js's default no-op `onUploadCallback`; any non-default callback blocks
+   migration. Install the adapter's sole acknowledgement callback, verify its identity before publication,
+   and require an exact current attribute/version snapshot at callback entry. An unsolicited callback fails.
+   Ordinary `bufferSubData` has cleared its public list; initial `bufferData` removes only the snapshot's
+   exact stale record. Revision 7 does not chain arbitrary upload callbacks.
+6. Hold a coordinator-wide upload-callback guard and, after publication, an owner-specific armed-epoch guard.
+   Every selected owner writer checks both before touching a tracked typed array or replacing an attribute.
+   Callback-time or same-epoch post-publication writes, callback replacement, and direct version/range
+   mutation fail closed without changing matrix/color/opacity/sibling bytes. Later support requires
+   preallocated staging or a pool-wide completion barrier.
+7. Registration/creation, growth/replacement before publication, and context restoration mark the final
+   current attribute force-full. Because `WebGLObjects.update()` precedes material visibility checks and
+   ignores zero instance count, force-full publication occurs on the first processing-eligible traversal
+   even when no primitive draws; ordinary spans wait for draw eligibility. Interrupted/context-loss
+   publication without callback is a terminal `superseded-reset`; carry the initialized union to the
+   replacement attribute and report both records.
+8. Set `DynamicDrawUsage` or `StreamDrawUsage` before first upload according to actual buffer lifetime;
+   usage is not changed after upload. Set active instance/draw counts independently from capacity. Record
+   logical/requested bytes, pending/published/acknowledged/superseded generations, force-full reason, range
+   identity, capacity, reallocations, eligibility skips, scene-hook/epoch/callback violations, and cumulative
+   range-record allocations.
+9. Cap the initial combat-plus-trail-streak stage at 23 Three.js records per ordinary draw-eligible or
+   force-full processing-eligible transfer and 1,380 records/second at 60 uploads/second, with zero on
+   initialized unchanged, skipped, or processing-ineligible frames. Prove the ceiling under the live high-
+   fanout-and-grow route: begin one slot below capacity, perform 18 capital-debris spawn commits plus one
+   trail integration commit, replace/grow before the same draw, and still allocate only three final trail
+   records—not 57 or six—at one-times and five-times population. Later stages require their own scaled
+   allocation/GC ceilings before admission.
+10. Use ping-pong/orphaning only if GPU/CPU traces still show synchronization after range uploads.
 
 ### Migration order
 
 1. `src/render/combat/instancedSpritePool.js`;
 2. `src/render/engineTrailSurfaces.js`;
-3. ship auxiliary/authored-instance matrices in `src/render/partsLibrary.js`;
-4. high-churn pools in `src/render/vfx.js` after the active VFX ownership lane clears.
+3. authored-instance matrices in `src/render/partsLibrary.js`;
+4. ship-auxiliary matrices in `src/render/renderer.js`;
+5. high-churn pools in `src/render/vfx.js` after the active VFX ownership lane clears.
 
 Do not alter leased VFX files merely to complete this packet.
 
@@ -673,8 +717,13 @@ Do not alter leased VFX files merely to complete this packet.
 
 - output, instance identity, lifetime, ordering, and capacity behavior match;
 - randomized sparse/dense dirty patterns upload the correct components;
-- buffers never display stale data after wrap, grow, shrink, spawn, or destroy;
-- telemetry shows upload bytes following the dirty active span rather than allocated capacity;
+- after initialization, a skipped/material-hidden/zero-count render followed by a disjoint write publishes nothing until the next ordinary-draw-eligible armed scene traversal, then uploads the complete union on that first draw, including `ZERO_MATRIX` release and immediate slot reuse;
+- registration/create/grow/restore force-full attributes publish before their first processing-eligible `bufferData` even at hidden material or zero count, and no upload callback occurs without its exact immutable snapshot;
+- prior scene-hook receiver/order/restoration, first-qualifying multi-render publication, static LOD eligibility, and scene-hook ownership are proved; hook re-entry/replacement and same-epoch post-publication writes fail before stale traversal or mutation;
+- callback-time owner writes, callback identity replacement, and direct callback version/range mutation fail before tracked typed-array mutation or publication; captured sibling-attribute transfers remain one coherent generation, and Three.js never caches an unuploaded version;
+- buffers never display stale or cross-generation data after wrap, grow, shrink, spawn, destroy, interrupted-render supersession, or context restoration;
+- telemetry shows upload bytes and force-full reasons following the union published by the armed `Scene.onBeforeRender` coordinator before `WebGLObjects.update`, rather than allocated capacity;
+- cumulative range-record and GC ceilings hold at one-times and five-times population, including exactly three final trail records across the 18-spawn-plus-one-integration-plus-grow pre-draw fanout;
 - matched combat captures demonstrate a repeatable CPU/driver gain or the abstraction is removed.
 
 ## 14. PERF-07 — Electron modernization
@@ -722,16 +771,52 @@ sandbox/preload boundaries, crash recovery, and power-monitor events.
 ## 15. PERF-08 — GPU pipeline correction selected by clean evidence
 
 This packet is required, but its implementation branch is selected by valid pass-level evidence after
-PERF-07. The July 25 contended trace is not enough to choose.
+PERF-07. The July 25 contended trace is not enough to choose. Before either selecting capture begins,
+the active packet must freeze and independently review the selecting render path, exact diagnostic
+cells, scalar metric formulas, within-block and cross-block estimators, deterministic bootstrap,
+numeric thresholds, sample floors, runtime manifests, and fail-closed selector. Before a valid D result
+is consumed, changing any of those values invalidates the selecting evidence and requires recapture.
+After a valid D result is consumed, the packet-terminal rule forbids replacement capture and routes any
+later defect to separately admitted work.
+
+The admitted contract disables the overlapping render-graph path for selecting cells and asserts the
+live bloom or straight path. Physical default-bloom timing consists only of `bloomScene`,
+`bloomDownsample`, and the fused `bloomComposite`; the diagnostic bypass consists of `bloomScene` plus
+`bloomBypassCopy`. It uses seven paired counterbalanced blocks per runtime, Type-7 within-block
+statistics, paired block-level transforms, literal statistic keys, deterministic FNV-1a/xorshift32
+bootstrap streams with a zero-state remap, at least 120 sampled rendered frames per cell, at least 700
+completed origin-linked queries per required physical pass/cell, zero promoted
+overlap/disjoint/drop/reset/context-loss/nested/overflow states, and bounded pending-query drain.
+Browser and Electron compute A/B/C raw facts independently, apply the frozen disjoint dominance/exclusion
+equations, and must produce the same single final branch. Zero final results, an impossible multiple
+result, invalid scalar or confidence boundary, missing data, or runtime disagreement returns `BLOCKED`.
+For B, aggregate eligibility is domain-conditioned before tie-breaking: `sceneGpuMs` uses the frozen
+`totalGpuMs` floor, while `rendererCpuMs` uses the frozen `rendererCpuMs` floor. D0/D1 use callback-start
+interval p95, never callback execution duration; owner work from callback `k` may explain only the interval
+ending at callback `k+1` through immutable causal IDs. D1 owner IDs are predeclared, exclusive,
+non-overlapping, present in the statistic keys, and exactly one must pass per late route.
 
 ### Diagnostic matrix
 
 | Clean result | Root interpretation | Implemented branch |
 |---|---|---|
-| scene GPU time scales strongly with output pixels while draw/triangle counts remain low | fragment shading, transparency, lighting, or overdraw | PERF-08A pixel/overdraw correction |
-| scene CPU/GPU time scales with draw calls/program switches more than pixels | submission/pipeline fragmentation | PERF-08B material and ordering correction |
-| post GPU time dominates independent of scene complexity | full-screen pass cost | PERF-08C post-pass fusion/reuse |
-| GPU time is healthy but frame callback remains late | not a GPU problem | close PERF-08 with evidence and select CPU/scheduler owner |
+| scene GPU time has the packet's minimum output-pixel elasticity, the `1.00 → 0.80 → 0.60` cells are directionally monotone, and draw/triangle/state counts stay fixed | fragment shading, transparency, lighting, or overdraw | PERF-08A pixel/overdraw correction when B and C raw facts are false |
+| named structural growth, same-metric structure effect, absolute structure-minus-pixel effect, and the packet's zero-safe cross-multiplied relative margin all pass | submission/pipeline fragmentation | PERF-08B material and ordering correction when C is false |
+| physical post share, post/display-interval cost, fleet-size equivalence, copy-cost-adjusted bypass reduction, scene equivalence, and omitted-group agreement all meet PQ-042's scalar bounds | full-screen pass cost | PERF-08C post-pass fusion/reuse |
+| A/B/C raw facts are false and GPU p95/p99 remain below the packet's display-interval health ceilings; no route meets both callback-interval-late tests (D0), or each late route/runtime has exactly one frozen prior-callback origin-linked exclusive non-GPU/non-renderer owner while non-late peers remain healthy (D1) | not a GPU problem | PERF-08D evidence-only closure; no follow-up for D0, machine-resolved separately admitted owner routing for D1, and no corrective product/runtime mutation inside PQ-042 |
+
+Raw facts may overlap, but final corrective ownership is literal and disjoint: C owns `C_raw`; B owns
+`B_raw && !C_raw`; A owns `A_raw && !B_raw && !C_raw`; D owns the healthy case only when all three
+corrective raw facts are false. The literal thresholds, statistics, exclusions, and D0/D1 cross-runtime
+disposition are executable authority in `design/program/roadmap/active/PQ-042.md`; they may not be
+invented or tuned after capture. D0 and D1 permit no corrective product/runtime mutation inside PQ-042.
+D1 records each uniquely passing non-GPU/non-renderer owner in a machine-readable mapping to a separately
+admitted follow-up rather than fixing it in this packet. The first valid consumed D result is packet-terminal:
+no later PQ-042 revision, source/build/harness/manifest/selector change, producer launch, claim, or promoting
+capture may replace it. Before capture, Phase 0 freezes the selecting source/contract digests plus one exact
+reviewed diagnostic-removal patch and its predicted terminal digest. D closes only with diagnostics retained
+at the selecting digest or after byte-for-byte application of that pre-hashed removal; every other delta is
+`BLOCKED` and separately admitted.
 
 ### PERF-08A — Pixel/overdraw correction
 
@@ -757,7 +842,7 @@ PERF-07. The July 25 contended trace is not enough to choose.
 
 ### PERF-08C — Post-pass correction
 
-1. Measure scene, downsample levels, bloom combine, tone/color/grain/vignette, and final copy.
+1. Measure the physical `bloomScene`, `bloomDownsample`, fused `bloomComposite`, and diagnostic `bloomBypassCopy` groups; do not invent separate upsample, grade, vignette, grain, or final-copy owners.
 2. Fold compatible full-screen math into the existing final composite.
 3. Reuse the existing bloom pyramid for effects needing the same resolutions.
 4. Remove only provably redundant render-target transitions or passes.
@@ -765,11 +850,14 @@ PERF-07. The July 25 contended trace is not enough to choose.
 
 ### Completion proof
 
-- the selected diagnosis reproduces across matched runs;
-- unchanged scene complexity or pixel coverage behaves according to the predicted causal model;
-- semantic and image/temporal equivalence pass;
-- GPU timestamps demonstrate that the selected pass/state cost fell;
-- no quality switch is used as the accepted route.
+- the frozen graph-disabled selector reports all raw facts, applies the literal exclusions, and yields exactly one matching Browser/Electron final branch from consumed broker claims; a selected B metric and CPU/GPU aggregate domain also match across runtimes after the metric-specific aggregate floor is applied;
+- the selected diagnosis reproduces across matched runs without post-capture exclusions, undefined qualitative rulings, or threshold changes;
+- unchanged scene complexity or pixel coverage behaves according to the predicted scalar causal model;
+- semantic and image/temporal equivalence pass at default scale, population, post, and quality;
+- for A/B/C, the exact predeclared logical scope has complete non-overlapping pre/post owner-query lineage, its duration falls by at least 10% with six positive blocks and a paired lower bound above zero, and its selected aggregate domain improves by at least 1% under the same direction/confidence rules;
+- every non-selected aggregate domain and unselected physical owner remains inside its frozen regression margin, so individually small regressions cannot sum to a whole-domain slowdown, and no unresolved dominant owner remains in the frozen selected aggregate domain (`totalGpuMs` for a GPU scope or `rendererCpuMs` for a CPU/submission scope). The original pathology predicate may disappear after a successful correction and is rerun for reporting rather than required to stay true; a different actionable post-fix A/B/C branch is mapped to a separately admitted digest-bound follow-up rather than implemented in the same packet;
+- for D0, GPU timing remains healthy and no route meets both callback-interval-late tests; for D1, GPU remains healthy, every late route/runtime uses the frozen prior-callback causal join and exactly one exclusive origin-linked non-GPU/non-renderer owner meets the frozen late-interval/excess equations, resolves to a separately admitted follow-up, and every non-late peer is recorded healthy. Neither subcase makes any corrective product/runtime mutation inside PQ-042. Terminal identity must equal the selecting digest or the predicted digest after the exact pre-hashed diagnostic-removal transform, with no second producer launch or promoting claim;
+- no quality switch or diagnostic perturbation is used as the accepted route.
 
 ## 16. PERF-09 — Conditional simulation Worker
 
@@ -862,8 +950,9 @@ start dates:
 - PERF-07: package/Electron/launcher owner;
 - PERF-08 onward: begin after the earlier evidence and ownership gates.
 
-Every implementation packet must be admitted through `CANONICAL_BUILD_MAP.md` and the live program
-queue. This plan does not seize files merely by naming them.
+The selected work is admitted as PQ-034 through PQ-044 in the live program queue. Each packet still
+requires its own dependency, owner, lease, and evidence entry gates. This plan does not seize files
+merely by naming them.
 
 ## 19. What should not be done first
 
@@ -925,23 +1014,26 @@ Primary references:
 - <https://www.electronjs.org/docs/latest/api/power-monitor/>
 - <https://www.electronjs.org/docs/latest/api/web-contents/>
 
-## 22. Program log
+## 22. Program routing and records
 
-Only mark a packet complete when its completion proof is attached.
+Live state is intentionally not copied into this stable plan. Read
+[`program/roadmap/program-queue.json`](./program/roadmap/program-queue.json), exactly one selected file
+under [`program/roadmap/active/`](./program/roadmap/active/README.md), the current lease board, and the
+packet's exact-revision receipt. Only mark a packet complete when its completion proof is attached.
 
-| Packet | State | Required record |
+| Source packet | Queue identity | Required terminal record |
 |---|---|---|
-| PERF-00 | proposed | baseline/candidate harness, validity and equivalence reports |
-| PERF-01 | active elsewhere; unaccepted | lifecycle diff, focused checks, foreground parity, resume trace |
-| PERF-02 | proposed | runner/journal contracts, tick parity, causal callback trace |
-| PERF-03 | proposed | compiler reproducibility, asset parity matrix, cold/warm admission trace |
-| PERF-04 | proposed | shadow-parity report, scale curve, allocation/traversal trace |
-| PERF-05 | proposed | deterministic target parity, candidate-visit scale curve |
-| PERF-06 | proposed | dirty-range correctness, upload-byte and combat comparison |
-| PERF-07 | proposed | compatibility audit, packaged acceptance, runtime comparison |
-| PERF-08 | blocked on clean evidence and PERF-07 | branch-selection trace, GPU pass/state comparison |
-| PERF-09 | conditional | causal trigger evidence or explicit “not needed” closure |
-| PERF-10 | conditional | WebGL2/WebGPU parity and performance comparison |
+| PERF-00 | PQ-034 | baseline/candidate harness, validity and equivalence reports |
+| PERF-01 | PQ-035 | lifecycle diff, focused checks, foreground parity, resume trace |
+| PERF-02 | PQ-036 | runner/journal contracts, tick parity, causal callback trace |
+| PERF-03 | PQ-037 | compiler reproducibility, asset parity matrix, cold/warm admission trace |
+| PERF-04 | PQ-038 | shadow-parity report, scale curve, allocation/traversal trace |
+| PERF-05 | PQ-039 | deterministic target parity, candidate-visit scale curve |
+| PERF-06 | PQ-040 | dirty-range correctness, upload-byte and combat comparison |
+| PERF-07 | PQ-041 | compatibility audit, packaged acceptance, runtime comparison |
+| PERF-08 | PQ-042 | branch-selection trace, GPU pass/state comparison or digest-bound no-change closure, plus machine-readable mappings for every required follow-up |
+| PERF-09 | PQ-043 | causal trigger evidence, Worker receipt, or explicit not-needed closure |
+| PERF-10 | PQ-044 | trigger evidence and WebGL2/WebGPU parity/performance comparison |
 
 ## 23. Definition of program success
 
@@ -954,7 +1046,7 @@ The core program succeeds when:
 - the proven NPC-jobs full scan is gone;
 - dynamic pool uploads follow changed active ranges;
 - the desktop runtime is on a supported Electron line;
-- clean evidence identifies and corrects any remaining dominant GPU owner;
+- clean evidence identifies and corrects any remaining dominant owner in the frozen selected aggregate domain (`totalGpuMs` for GPU work or `rendererCpuMs` for CPU/submission work), and every D1 or different post-fix branch follow-up has an accepted terminal receipt;
 - the five-times-population route remains smooth relative to the old current-population route;
 - admission and transition stalls formerly measured in seconds are removed;
 - all claims are backed by matched, valid, machine-readable evidence.

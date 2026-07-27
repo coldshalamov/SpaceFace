@@ -17,6 +17,7 @@ import { vfx } from '../src/render/vfx.js';
 import {
   FamilyProductionFleet,
   FLEET_MAX_SHIPS,
+  FLEET_INITIAL_SHIPS,
 } from '../src/render/thruster/systems/familyFleet.js';
 import { LIVE_ENGINE_PROFILE_IDS } from '../src/render/thruster/recipes/registry.js';
 import { createHash } from 'node:crypto';
@@ -344,10 +345,16 @@ test('600-frame dense multi-family sweep stays within caps and zero frame alloc'
   system._resolveTrailTier = () => 'full';
   system._trailCadenceAllows = () => true;
 
-  let maxFleetAlloc = 0;
   let maxPlumeAlloc = 0;
   let maxShips = 0;
   let maxSaturated = 0;
+  // The fleet ship table is a growable pool, so "zero allocation" is a statement about
+  // the steady state, not about frame 0. Split the two: a frame that migrated capacity
+  // may allocate; every other frame may not. That still catches a regression that
+  // churns records per frame, and it no longer forbids the pool from sizing itself.
+  let steadyStateAlloc = 0;
+  let growthFrames = 0;
+  let seenGrowths = 0;
 
   for (let f = 0; f < 600; f++) {
     // Rotate throttle/boost to exercise continuum without alloc.
@@ -361,7 +368,14 @@ test('600-frame dense multi-family sweep stays within caps and zero frame alloc'
     system.update(1 / 60);
     const energy = system._energy;
     if (!energy || !energy.fleet) continue;
-    maxFleetAlloc = Math.max(maxFleetAlloc, energy.fleet.frameAllocations || 0);
+    const growths = energy.fleet.capacityGrowths || 0;
+    const frameAlloc = energy.fleet.frameAllocations || 0;
+    if (growths !== seenGrowths) {
+      growthFrames += 1;
+      seenGrowths = growths;
+    } else {
+      steadyStateAlloc = Math.max(steadyStateAlloc, frameAlloc);
+    }
     maxShips = Math.max(maxShips, energy.fleet.activeShipCount || 0);
     maxSaturated = Math.max(maxSaturated, energy.fleet.saturated || 0);
     if (energy.plumeSystem?.pool) {
@@ -372,14 +386,33 @@ test('600-frame dense multi-family sweep stays within caps and zero frame alloc'
     }
   }
 
-  assert.equal(maxFleetAlloc, 0, `fleet frame alloc must stay 0 over 600 frames, got ${maxFleetAlloc}`);
+  assert.equal(
+    steadyStateAlloc, 0,
+    `fleet must allocate nothing on a frame that did not migrate capacity, got ${steadyStateAlloc}`,
+  );
+  // Doubling from FLEET_INITIAL_SHIPS to the ceiling is log2-bounded, and six families can
+  // each migrate their plume once per step. Anything beyond a handful means churn.
+  assert.ok(growthFrames > 0, 'fixture must exceed the initial allocation and exercise growth');
+  assert.ok(
+    growthFrames <= 12,
+    `capacity migrations must be rare and amortized over 600 frames, got ${growthFrames}`,
+  );
   assert.equal(maxPlumeAlloc, 0, `plume frame alloc must stay 0 over 600 frames, got ${maxPlumeAlloc}`);
-  assert.ok(maxShips <= FLEET_MAX_SHIPS, `ships ${maxShips} must not exceed cap ${FLEET_MAX_SHIPS}`);
+  assert.ok(maxShips <= FLEET_MAX_SHIPS, `ships ${maxShips} must not exceed ceiling ${FLEET_MAX_SHIPS}`);
   assert.ok(maxShips > 0, 'dense sweep must keep production ships active');
-  // 12 candidates vs cap 10 → saturated counter must report overflow (not silent drop).
-  assert.ok(entities.length > FLEET_MAX_SHIPS + 1, 'fixture must exceed fleet cap');
-  assert.ok(maxSaturated > 0, `overflow candidates must report saturation when over cap (got ${maxSaturated})`);
-  assert.equal(maxShips, FLEET_MAX_SHIPS, 'dense sweep should fill production cap');
+  // The invariant the old `saturated > 0` assertion was really protecting is that nothing
+  // is dropped SILENTLY. Below the ceiling the pool grows, so nothing is dropped at all:
+  // every eligible candidate must own a production slot and saturation must stay 0.
+  assert.ok(entities.length > FLEET_INITIAL_SHIPS, 'fixture must exceed the initial allocation');
+  assert.ok(entities.length <= FLEET_MAX_SHIPS, 'fixture must stay under the sanity ceiling');
+  assert.equal(
+    maxSaturated, 0,
+    `no candidate under the ceiling may be refused a slot (got ${maxSaturated} saturated)`,
+  );
+  assert.equal(
+    maxShips, entities.length,
+    'dense sweep should give every eligible candidate a production plume',
+  );
 
   // Player production path never suppressed by overflow.
   assert.equal(system._usesProductionThruster(entities[0]), true);
@@ -405,9 +438,10 @@ test('missing profile and over-cap candidates fall back without suppressing owne
     fleet.setShipSockets(s, sockets, 1);
     fleet.setShipDrive(s, { drive: 1, throttle: 1, boost: 0 });
   }
-  // Overflow candidate.
-  const overflow = fleet.admitShip(999, 'engine_vector', false);
-  assert.equal(overflow, null, 'overflow must not admit past cap');
+  // Overflow candidate. Ids must sit above the ceiling so they cannot collide with the
+  // 1..FLEET_MAX_SHIPS fill above (they did once the ceiling passed 999's neighbours).
+  const overflow = fleet.admitShip(90001, 'engine_vector', false);
+  assert.equal(overflow, null, 'overflow must not admit past the ceiling');
   assert.ok(fleet.saturated >= 1, 'overflow increments saturated counter');
 
   // Unknown profile resolves to ion_small fallback family (not null/suppress).
@@ -417,7 +451,7 @@ test('missing profile and over-cap candidates fall back without suppressing owne
     fleet.retainShip(id, LIVE_ENGINE_PROFILE_IDS[(id - 1) % LIVE_ENGINE_PROFILE_IDS.length], id === 1);
   }
   fleet.beginAdmitPhase();
-  const fallbackShip = fleet.admitShip(42, 'engine_does_not_exist_zzz', false);
+  const fallbackShip = fleet.admitShip(90042, 'engine_does_not_exist_zzz', false);
   assert.ok(fallbackShip, 'missing profile must still admit via ion_small fallback');
   assert.equal(fallbackShip.profileId, 'engine_ion_small');
 

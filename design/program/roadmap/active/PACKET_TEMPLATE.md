@@ -20,6 +20,7 @@ One paragraph describing the player-visible result and the ordinary route that p
 - [ ] Current owner modules/events/APIs re-read and recorded below.
 - [ ] Required leases/mutexes free.
 - [ ] Existing behavior characterized by a seconds-scale test.
+- [ ] `npm run check:baseline` entry receipt persisted at the exact candidate base before the first edit; any entry red is repaired or carries an integrator-issued `INHERITED_RED` token.
 - [ ] Baseline route/performance evidence captured when relevant.
 
 ## Live seams
@@ -72,6 +73,8 @@ Declare expected maximum growth in entities, colliders, queries/candidates, allo
 
 Never use default quality reduction as the mitigation.
 
+> “Do not gain performance by reducing content, population, effects, draw distance, render quality, or default visual quality.”
+
 ## Verification budget
 
 ```yaml
@@ -87,17 +90,21 @@ soak:
   required: false
   invariants: []
 browserOnlyClaims: []
-L3BrokerManifest: <name or required new manifest>
+L3BrokerManifest: <single manifest name or null>
+L3BrokerManifests: []
 acceptanceAttemptsPerCellPerCandidateDigest: 1
 reviewClosure: discovery -> repair -> causal re-review when repairs affect the claim
 ```
 
-Name exact commands. If an eligible lab scenario exists, the broker manifest must declare
-`requiresScenario`; a manually reported prior green is insufficient. For physics-heavy work, decide
-whether a seeded soak is required and name invariant-level failures rather than only one scripted
-outcome. Keep claims that genuinely require rendering, public input, accessibility, or visual
-judgment in `browserOnlyClaims`. After an L3 failure, require a focused fail→fix→pass regression
-before another candidate claim.
+Name exact commands. In addition to L0–L2, run `npm run check:baseline` before the first edit and at exit, persist both link matrices, and require the exit green set to be a superset of the entry green set under `00_EXECUTION_PROTOCOL.md`. Use exactly one broker field: `L3BrokerManifest` for one acceptance manifest,
+or `L3BrokerManifests` for a required multi-runtime/compound set; leave the unused field null/empty.
+Each manifest still owns one scalar runtime kind. A paired set must share an explicit source/scenario
+identity while retaining distinct runtime-bound broker candidate and raw-trace digests. If an eligible
+lab scenario exists, every applicable broker manifest must declare `requiresScenario`; a manually
+reported prior green is insufficient. For physics-heavy work, decide whether a seeded soak is required
+and name invariant-level failures rather than only one scripted outcome. Keep claims that genuinely
+require rendering, public input, accessibility, or visual judgment in `browserOnlyClaims`. After an L3
+failure, require a focused fail→fix→pass regression before another candidate claim.
 
 ## Review questions
 
@@ -112,6 +119,7 @@ List missing owner seams, semantic collisions, lease conflicts, unbounded work, 
 - [ ] All entry conditions recorded.
 - [ ] Diff stays inside approved write budget.
 - [ ] L0–L2 receipt green at exact candidate.
+- [ ] Exit `npm run check:baseline` receipt is a superset of the entry green set; no red check is classified `OUT_OF_SCOPE`.
 - [ ] Independent discovery review complete.
 - [ ] Validated findings repaired.
 - [ ] Causal re-review terminal.

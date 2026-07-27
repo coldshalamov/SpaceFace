@@ -68,7 +68,7 @@
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "a6c96aad61fc4c185c070e0d9349e5d3e7a860cf47d86c0ffea190a20d9e0ff1",
+    "authoritativeHash": "7d6dffeb11e8fb89596ed443450e889e13ad6cd86173aa4f78ed32c6a0e1ad8a",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -87,6 +87,18 @@
     "The current V3 Massline path attaches at tick 4 and breaks at tick 173 before the first projectile hit; the envelope records both tether events.",
     "The Massline attach expectation proves the first SG-03 combatAction command reaches SG-02 dynamic tether physics within 60 seconds under V3.",
     "2026-07-14 deliberate re-record: starter pulse-laser fire-rate update and corrected V3 aim tape yield 17 fire / 8 hit / 8 damage; tutorial-owned opening removes duplicate graffiti/comms.",
+    "2026-07-27 deliberate re-record over 850c80f3..7f7d030b (333 commits). The prior authoritativeHash was a6c96aad61fc4c185c070e0d9349e5d3e7a860cf47d86c0ffea190a20d9e0ff1.",
+    "Every phase0ObservedTraceCount is UNCHANGED. Under V3 the drift is snapshot state only: no event-level behaviour moved at all across those 333 commits.",
+    "Evidence method: the tree at 850c80f3 was exported with git archive and re-run under --flight-system v3, and it reproduces that prior hash exactly. Full 720-tick snapshots from both trees were then diffed field by field.",
+    "21059 leaf fields moved, the same set as the legacy envelope's. 21033 are $.economy: the market price-cycle generator was replaced by a regime model. None of that is physics.",
+    "The rest: $.meta.version 11->12; new $.input.autoTargetPath and autoTargetVector; new entity data field appearance; new entity data field masslineBreakPolicy 'extreme_overload' (the protected near-unbreakable Massline landing).",
+    "And: the re-authored 47-A mass-variance contract copy and params, the starting cmdty_unclassified_composite sample, and one enemy's shield 106.747 -> 100.159.",
+    "That shield delta traces to commit f277c5e7 (Build Sprint 1, 2026-07-16), src/data/combatDefs.js DAMAGE_MODEL.subsystemShare 0.75 -> 0.35, an authored balance change.",
+    "ZERO fields under any entity pos / vel / rot / angVel / prevPos changed after 720 ticks. The V3 propulsion kernel's motion output is bit-identical to the 2026-07-14 record.",
+    "If a future re-record of this file cannot state that last sentence with evidence, it is not a re-record, it is a bug. Diff the snapshots before you edit the hash.",
+    "Warning: check:sim:v3:compare stayed green across all 333 commits of this drift. scripts/sf-sim.mjs:716 tolerates expectedHash diffs whenever the two runs agree. Only check:sim:v3 gates this file.",
+    "Before re-recording, run `node scripts/sim-golden-diff.mjs --flight-system v3`. It reproduces the investigation above in about 30 seconds and prints IDENTICAL / CONTENT_ONLY / MOTION_CHANGED. MOTION_CHANGED means stop.",
+    "Known open at the time of this record: an in-flight lane adds `state.player.gunTargetId` (src/systems/weapons.js:182-188), which moves this hash by exactly one field with zero motion change. Whoever lands that work re-records with the procedure above.",
     "Repeat-20, reload@600, and uninterrupted-vs-reload comparison were deterministic."
   ]
 }

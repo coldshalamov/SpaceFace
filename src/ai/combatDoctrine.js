@@ -37,6 +37,10 @@ const RANGED_REPOSITION_TICKS = 45;
 const RANGED_FIRE_TICKS = 18;
 const RANGED_RESET_TICKS = 18;
 const RUN_EGRESS_DISTANCE = 960;
+// A contact already on the end of a line is anchored, slowed, and predictable. That reads as a free
+// kill, so it should DRAW the swarm rather than repel it. See targetScore() for why this replaced a
+// flat -100 veto and how the magnitude is derived.
+const TETHERED_PREY_BONUS = 8;
 
 export function normalizeCombatDoctrineId(value, fallback = null) {
   const id = String(value || '');
@@ -232,7 +236,15 @@ function updateTetherRaider(record, tick, entityId, perception, self, target, di
   if (record.phase === 'flank' && distance <= 140) enter(record, 'spool_cue', tick, 'attach_spool');
   else if (record.phase === 'spool_cue' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'attach_window', tick, null);
   else if (record.phase === 'attach_window' && tether) enter(record, 'control', tick, null);
-  else if (record.phase === 'attach_window' && target.tethered) beginEgress(record, 'escape', tick, self, target, 'target_contested');
+  // "Contested" means another ship's control line is already ON this hull, so my attach would be a
+  // second lasso on the same body. It does NOT mean the target is holding a line of its own. The
+  // previous test was `target.tethered`, which is true whenever the contact is EITHER end of any
+  // attachment — so the raider aborted its attach run and fled 700 wu every time the player's
+  // Massline touched a rock. Same conflation as the score veto in targetScore(); this is the half
+  // that fired unconditionally, and it is why enemies scattered the instant the player tethered.
+  else if (record.phase === 'attach_window' && contestedByForeignLine(perception, entityId, target.id)) {
+    beginEgress(record, 'escape', tick, self, target, 'target_contested');
+  }
   else if (record.phase === 'attach_window' && age >= TETHER_ATTACH_TICKS) beginEgress(record, 'escape', tick, self, target, 'attach_failed');
   else if (record.phase === 'control' && !tether) beginEgress(record, 'escape', tick, self, target, 'line_lost');
   else if (record.phase === 'control' && hasTag(tether, 'slack')) beginEgress(record, 'escape', tick, self, target, 'slack_line');
@@ -403,8 +415,26 @@ function targetScore(doctrineId, contact) {
     return threat * 5 + bandScore(contact.mobilityBand, ['low', 'medium', 'high']) * 2;
   }
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
-    if (contact.tethered) return -100;
-    return threat + bandScore(contact.operationalMassBand, ['light', 'medium', 'heavy', 'capital']) * 2 +
+    // WAS: `if (contact.tethered) return -100;` — a flat veto, no comment, introduced by c875aa40
+    // ("fix(combat): make the opening fair and controllable"), a 37-file 5138-line commit with an
+    // EMPTY BODY and no cited failure. It is not an opening-fairness tweak that leaked; it shipped
+    // with the doctrine file itself.
+    //
+    // Why it had to go: `contact.tethered` is true for any entity that is EITHER end of an active
+    // attachment (src/systems/aiPorts.js:446-447 indexes by ownerId AND targetId). The player is
+    // therefore "tethered" the moment his own Massline touches anything at all — a rock, a chunk,
+    // a wingman. So the veto made a raider drop the player as a doctrine target for using the
+    // game's signature verb, and the AI layer already disagreed with itself about it:
+    // src/ai/squad.js:346 and :459 give a tethered contact a POSITIVE bonus.
+    //
+    // Sizing. The same fact already costs a lined contact the full six points of
+    // `tetherabilityBand: 'poor'` (aiPorts.js:984) — the honest "a line is in the way, this is
+    // harder for ME to attach" signal, which stays. The bonus has to clear that cost before it can
+    // express anything, so +8 nets exactly one band-step (+2) of preference over the same contact
+    // free. That is a nudge, not a hijack: a heavy, rich, easily-lassoed hull still outranks a
+    // lined empty scout, and a raider never abandons a good target to chase a bad tethered one.
+    return threat + (contact.tethered ? TETHERED_PREY_BONUS : 0) +
+      bandScore(contact.operationalMassBand, ['light', 'medium', 'heavy', 'capital']) * 2 +
       bandScore(contact.cargoBand, ['empty', 'light', 'valuable', 'rich']) * 2 +
       bandScore(contact.tetherabilityBand, ['poor', 'fair', 'good', 'excellent']) * 2;
   }
@@ -481,6 +511,21 @@ function egressPoint(self, target, side) {
     x: sx + dx * RUN_EGRESS_DISTANCE - dz * lateral * 80,
     z: sz + dz * RUN_EGRESS_DISTANCE + dx * lateral * 80,
   });
+}
+
+/**
+ * True when a control line owned by somebody OTHER than this raider is already attached to the
+ * body it is about to lasso. Reads the same TETHER contact stream `ownedTether` uses
+ * (src/systems/aiPorts.js:748-778 publishes `ownerId` and `targetId` on every visible attachment),
+ * so a foreign line is seen exactly when its midpoint is in sensor range or the raider is an
+ * endpoint. Deliberately narrow: the player owning a line to something else is not contention.
+ */
+function contestedByForeignLine(perception, entityId, targetId) {
+  if (!perception || !Array.isArray(perception.contacts) || targetId == null) return false;
+  return perception.contacts.some((contact) => contact
+    && contact.kind === ContactKind.TETHER
+    && contact.targetId === targetId
+    && contact.ownerId !== entityId);
 }
 
 function ownedTether(perception, entityId, targetId) {
