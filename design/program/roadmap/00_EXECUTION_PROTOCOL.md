@@ -55,10 +55,10 @@ If any answer is unknown and material, classify the packet `BLOCKED` or perform 
    the fast-gate receipt. This is what makes a red check attributable at exit; without it, every red
    is unattributable and §7's `INHERITED_RED` disposition cannot be claimed honestly.
 3. Read the packet, the cited architecture/GDD sections, the queue row, and only the owner modules/checks it names.
-3. Confirm the live public route and current behavior. Old handoffs are hypotheses, not facts.
-4. Add or identify a seconds-scale characterization test at the owning seam.
-5. Reproduce the missing behavior or defect before the implementation change.
-6. Record an initial performance/cost baseline when the packet can affect a hot path or visible composition.
+4. Confirm the live public route and current behavior. Old handoffs are hypotheses, not facts.
+5. Add or identify a seconds-scale characterization test at the owning seam.
+6. Reproduce the missing behavior or defect before the implementation change.
+7. Record an initial performance/cost baseline when the packet can affect a hot path or visible composition.
 
 Characterization must observe public owner behavior. Source-string assertions are allowed only for a narrow structural invariant that cannot be exercised behaviorally and has an explicit failure history.
 

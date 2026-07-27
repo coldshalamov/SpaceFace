@@ -36,8 +36,17 @@ if (writeMode) {
   } catch {
     fail('generated en-US catalog is missing; run --write');
   }
+  // Third instance of the line-ending defect that broke scripts/build-encounter-index.mjs and
+  // scripts/build-flavor-index.mjs (see their matching comments and `.gitattributes`). The catalog
+  // is always written with LF; a Windows checkout with `core.autocrlf=true` hands this check a CRLF
+  // copy and byte-identical content fails as stale. Measured on master 2026-07-27: the worktree
+  // copy carried 8620 CRLF pairs against 0 in the rendered text. `.gitattributes` pins
+  // `*.generated.js` to `eol=lf` so the checkout matches what this script writes on every platform;
+  // normalising here as well keeps the comparison correct on a tree that predates that pin.
+  // Only line endings are normalised — real catalog drift (a changed key, message, or source
+  // anchor) still fails, which is exactly what it is doing on master today.
   const existing = await readFile(CATALOG_PATH, 'utf8');
-  if (existing !== rendered) fail('generated en-US catalog is stale; run --write');
+  if (normalizeEol(existing) !== normalizeEol(rendered)) fail('generated en-US catalog is stale; run --write');
 }
 
 console.log(JSON.stringify({
@@ -47,6 +56,10 @@ console.log(JSON.stringify({
   digest: first.digest,
   ...first.stats,
 }, null, 2));
+
+function normalizeEol(text) {
+  return text.replace(/\r\n/g, '\n');
+}
 
 async function readJson(file, label) {
   try {

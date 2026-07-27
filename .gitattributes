@@ -1,0 +1,18 @@
+# Line-ending policy.
+#
+# Only the generated import graphs are pinned here. Everything else keeps whatever the checkout
+# already does, so adding this file cannot renormalise the tree under a concurrent lane.
+#
+# Why the pin: `scripts/build-encounter-index.mjs`, `scripts/build-flavor-index.mjs` and the
+# localization catalog generator all write their output with LF and then compare the file back
+# byte-wise in `--check` mode. On a Windows clone with `core.autocrlf=true` the working-tree copy is
+# checked out as CRLF, so a byte-identical file fails the freshness check as a stale import graph.
+# Observed 2026-07-27 on master: `src/data/encounters/index.generated.js` differed from freshly
+# generated content by exactly 93 bytes — the 93 CR characters — and matched exactly once line
+# endings were normalised. `npm run check` died there (check:depth-program:contracts).
+#
+# `eol=lf` makes the checkout match what the generators write on every platform, so the byte-wise
+# freshness comparison means what it says. The generators' `--check` paths additionally normalise
+# line endings, so a tree that predates this file (or a tool that rewrote a copy with CRLF) still
+# passes; this attribute stops the mismatch happening in the first place.
+*.generated.js text eol=lf
