@@ -42,27 +42,44 @@ Every change must serve at least one. When in doubt, cut.
 
 ## 4. Flight & the physics verbs
 
-### 4.1 Control scheme — "Helm Assist" (new default)
+### 4.1 Control scheme — "Pilot" (shipped default)
+
+> **This section was rewritten 2026-07-27 to describe the code.** It previously proposed Helm Assist
+> as the new default with Space on brake-to-stop. Neither shipped that way: the build chose *Pilot*
+> — keyboard flies, mouse fights — and Space became the Massline. Helm Assist still exists as a
+> selectable scheme. Authority for every binding below is `src/systems/input.js:220-316`; the
+> default scheme is `src/core/gameState.js:25`.
 
 The 1.x scheme (↑↓ throttle, ←→ bank-steer, mouse aims weapons separately) demands split attention
-and is the #1 cause of "hard to fly." Replace the *default* with the modern top-down standard:
+and was the #1 cause of "hard to fly." Three schemes ship, selectable in Settings
+(`src/systems/input.js:316`). The default is **`pilot`**:
 
-- **Ship nose follows the mouse cursor** (rate-limited by ship turn stats — big ships lag the cursor;
-  that's the feel of mass, keep it).
-- **W / S** = forward / reverse thrust. **A / D** = lateral strafe thrusters.
-- **Shift** = boost (hold) / dash (tap) — unchanged, it's already good.
-- **Space** = **brake-to-stop** (flight computer counter-thrusts to kill velocity). Every arcade-space
-  game that feels good has this. Currently missing.
-- Weapons converge on the cursor. Gimballed weapons track within their arc; fixed weapons shoot
-  along the nose. (Existing gimbal support in `resolveEnemyWeapon` covers this.)
+- **The keyboard flies the ship and the mouse is a weapon, not a rudder.** The nose does *not*
+  follow the cursor in this scheme.
+- **W / ↑** = forward thrust, **S / ↓** = reverse (and reverse brakes).
+- **A / D** and **← / →** are contextual: they *yaw* while coasting, and *strafe with a 0.35 carve*
+  while forward thrust is held (`projectPilotFlightControls`, `src/systems/input.js:332`).
+- **Q / E** = explicit strafe in every state — the pursuit orbit-adjust.
+- **Shift** = boost (hold) / dash (tap).
+- **0 (Digit0)** = dedicated zero-thrust brake. Space is **not** brake; Space is the Massline (§4.3).
+- **LMB** fires. Weapons gimbal toward the cursor independently of the nose; the player gets a 360°
+  gimbal arc while NPCs get 22°.
+- **G** = auto-fire. **X** = countermeasure. **Y** = throw an impulse charge.
 
-The legacy scheme remains selectable in Settings ("Classic Throttle"). The three flight-assist levels
-(`assisted` / `drift` / `newtonian` in `flightDynamics.js`) stay; **Z** toggles assist off in-flight
-for drift turns — assist-off + tether is the skill ceiling (§4.3).
+**Classic** (`classic`) keeps Q/E strafe with A/D yaw and is the 1.x parity scheme. **Helm Assist**
+(`helm-assist`) is the mouse-nose scheme the original draft of this section proposed: yaw keys are
+retired, A/D become strafe, the nose follows the cursor, and throw moves to Q.
 
-**Feel targets** (tune in flight lab, verify by hand): cursor→nose response begins < 50 ms;
-scout-class ships reach 90°of turn in < 0.45 s; hauler-class in ~1.4 s; full stop from cruise
-via Space in < 2.5 s with visible counter-thrust VFX.
+The three flight-assist levels (`assisted` / `drift` / `newtonian`, `src/core/flightDynamics.js:10`)
+stay, but they are a **Settings dropdown — "Flight model"** (`src/ui/screens/settings.js:344`), not
+an in-flight toggle. There is no Z hotkey for it; Z is fleet command (`src/ui/bindings.js:31`).
+Assist-off plus tether is still the skill ceiling (§4.3).
+
+**Feel targets** (tune in flight lab, verify by hand): scout-class ships reach 90° of turn in
+< 0.45 s; hauler-class in ~1.4 s; full stop from cruise on the 0 brake in < 2.5 s with visible
+counter-thrust VFX. **Protected:** the ship deliberately turns *better* while coasting
+(`COAST_HELM_YAW_MULT = 1.2`, `src/core/flight/propulsionKernel.js:32`). That is hand-tuned. Do not
+"fix" it.
 
 ### 4.2 Speed tiers (Freelancer's travel grammar)
 
@@ -70,37 +87,58 @@ via Space in < 2.5 s with visible counter-thrust VFX.
 |---|---|---|---|
 | Combat thrust | default | precise, full agility | weapons free |
 | Boost / dash | Shift | punchy, energy-limited | existing system, keep |
-| **Cruise** | Tab (charge 3 s) | 4× speed, agility crushed, weapons offline | drops instantly on damage or mass-lock near large objects — this *is* the pirate-ambush mechanic |
+| **Cruise** | **V** (charge) | 4× speed, agility crushed, weapons offline | drops instantly on damage or mass-lock near large objects — this *is* the pirate-ambush mechanic |
 | Lanes & gates | existing | fastest, on rails | existing jump/gate flow, keep |
 
 Cruise replaces nothing — it fills the dead-time gap between local flight and gates that currently
 makes systems feel large-but-empty. Interdiction events (§6.4) hook here.
 
-### 4.3 The tether (wire the dormant system — flagship feature)
+### 4.3 The Massline (the signature verb)
 
-`src/combat/attachments.js` + `masslineController.js` already implement rope/winch constraints on
-Rapier joints with tension telemetry and break thresholds. Wire them into play:
+> **Bindings rewritten 2026-07-27 to describe the code.** The previous text specified RMB/G to fire,
+> scroll to winch, and G-again/X to cut. None of those are the tether: RMB is the mining beam, G is
+> auto-fire, X is countermeasure, and nothing in the game is bound to the scroll wheel. Authority:
+> `src/systems/input.js:222` and `src/systems/masslineInputGrammar.js`.
 
-- **Hold RMB** (when mining beam not active) or **G**: fire tether at reticle target within 260 wu.
-  Attaches to asteroids, wrecks, cargo pods, stations (anchor points), and ships.
-- **Scroll while tethered** = winch in/out (`reel()` exists). **G again / X** = cut.
+`src/combat/attachments.js` + `masslineController.js` implement rope/winch constraints on Rapier
+joints with tension telemetry and break thresholds. The whole verb is one thumb key:
+
+- **Space** (alias **F**) fires the Massline at the acquisition target, up to **390 wu**
+  (`tether_standard.maxLength`, `src/data/combatDefs.js:225`). Attaches to asteroids, wrecks, cargo
+  pods, stations (anchor points), and ships. **Ctrl + Space** forces nearest-target mode.
+- The same key is tap/hold, resolved deterministically on sim ticks, never wall time
+  (`src/systems/masslineInputGrammar.js`, `MASSLINE_HOLD_S = 0.16`):
+  - **tap while unattached** → latch;
+  - **tap while attached** (press and release with no line intent) → **cut**;
+  - **hold ≥ 0.16 s with line intent** → *line control*: W/S pay out and reel in, A/D orbit,
+    **Shift** pumps. Intent is remembered for 0.22 s, so pressing the axis a beat early still lands.
+- **The line is deliberately near-unbreakable.** `breakTension = 10500000`,
+  `automaticBreakPolicy: 'extreme_load_only'`, fail-closed gate at `src/combat/attachments.js:80-90`.
+  It used to snap constantly and that was miserable. Ordinary thrust, boost, slack catch, and
+  botched slingshots **cannot** break it, and a break deals no damage of its own. A snapping line is
+  an *engineered* event (bomb-web hub, cutting charge), never an ambient one. Do not design around
+  ambient breakage — that is a fixed bug, not a mechanic.
 - **Slingshot:** tether to a massive body, burn perpendicular, cut at the tangent — conservation of
   momentum does the rest. Rapier joint physics already produces this for free; our job is *feedback*:
-  taut-line hum rising with tension, cable brightens toward break threshold, release *whipcrack* cue.
+  taut-line hum rising with tension, cable brightens toward its load ceiling, release *whipcrack* cue.
 - **Combat uses:** yank light ships (mass ratio < 0.6) out of formation; anchor to a heavy hull and
   orbit-strafe it; tether a mine/charge cluster and *sling* it.
 - **Industry uses:** haul ore chunks (§5), tow wrecks to salvage yards (new contract type), rescue
   drifting ships (mission flavor that already exists in the bar-rumor system).
 - **Counterplay:** enemy tether-cutters exist in `check:47a:counterplay` scripts — surface them.
 
-Tether telegraphy: line renders as a bright energy filament with sag/tension animation; break
-threshold shown as color shift (cyan → amber → red). No numbers needed.
+Massline telegraphy: the line renders as a bright energy filament with sag/tension animation, and
+its *load* reads as a colour shift (cyan → amber → red). No numbers needed. Read that gradient as
+"how hard is this line working", not "how close is it to snapping" — see the near-unbreakable rule
+above. A taut Massline should be the brightest thing on screen.
 
 ### 4.4 Impulse charges ("blast plates")
 
-New secondary equipment: **sticky impulse bombs**. LMB-alt lobs a charge that adheres to hulls,
-asteroids, or *your own rear plate*; **F** detonates all armed charges — each applies a radial
-impulse (Rapier `applyImpulse`), damage secondary.
+Secondary equipment: **sticky impulse bombs**. **Y** (Q in Helm Assist) lobs a charge that adheres
+to hulls, asteroids, or *your own rear plate*; **R** detonates all armed charges — each applies a
+radial impulse (Rapier `applyImpulse`), damage secondary. (Corrected 2026-07-27: this section used
+to say LMB-alt and **F**; F is a permanent alias for the Massline. Authority
+`src/systems/input.js:223, :272, :310, :292`.)
 
 - Stick 2 to your own tail-plate = improvised second dash while boost is drained (Highfleet-style
   desperation move, and the user's explicit ask).

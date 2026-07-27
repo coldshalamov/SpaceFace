@@ -27,6 +27,11 @@ async function runCli() {
   const failFast = process.argv.includes('--fail-fast');
   const smoke = process.argv.includes('--smoke');
   const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  // `precheck` was an npm LIFECYCLE hook: npm ran it automatically before `check`, which meant a red
+  // link in it aborted `npm run check` before link 1 while looking like an ordinary check failure.
+  // It was deleted on 2026-07-27 and its three gates are now the first three links of `check`. The
+  // lookup stays here on purpose: it costs nothing, and it keeps this matrix honest if anyone ever
+  // reintroduces a pre/post lifecycle script instead of putting the link where people can see it.
   const completeCheckCommand = [packageJson.scripts?.precheck, packageJson.scripts?.check]
     .filter(Boolean)
     .join(' && ');
@@ -51,7 +56,9 @@ async function runCli() {
     finishedAt: new Date().toISOString(),
     failFast,
     artifactRoot,
-    matrixSource: smoke ? 'smoke' : 'package:scripts.precheck+check',
+    // Identifier, not prose — downstream tooling groups on this. `precheck` is still read above as a
+    // tripwire, but it no longer exists, so the honest name for the matrix source is just `check`.
+    matrixSource: smoke ? 'smoke' : 'package:scripts.check',
     results,
   });
 
