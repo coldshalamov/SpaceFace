@@ -253,8 +253,14 @@ const miningSource = readFileSync(resolve(ROOT, 'src/systems/mining.js'), 'utf8'
 const drillSource = readFileSync(resolve(ROOT, 'src/systems/drill.js'), 'utf8');
 const vfxSource = readFileSync(resolve(ROOT, 'src/render/vfx.js'), 'utf8');
 const audioSource = readFileSync(resolve(ROOT, 'src/audio/audioSystem.js'), 'utf8');
-assert(miningSource.includes('delete beam.heat;') && miningSource.includes('delete beam.overheated;'),
-  'flight mining must retain its shipped no-heat-lockout contract');
+// REMOVED: `assert(miningSource.includes('delete beam.heat;') && miningSource.includes('delete
+// beam.overheated;'), 'flight mining must retain its shipped no-heat-lockout contract')`.
+// That was a source-string scan freezing the DELETION of the flight beam's heat/vent rhythm into CI,
+// while cueRecipes.js still declared mining.heat.overheated / mining.vent.ready and audioSystem.js
+// still shipped sfx_vent_chime. PHYSICAL_PLAY_GRAMMAR §9.5.2 amputation 1 reverses that decision.
+// It is not replaced by an inverted string scan: the rhythm is a behaviour, and it is driven through
+// the live sim and asserted on outcomes in scripts/check-mining-2.mjs
+// (checkBeamHeatLocksOutAndRecovers / checkVentBonusPaysRealOre / checkPulsingOutEarnsPegging).
 assert(drillSource.includes('Drill cooling down — release the bore.') && drillSource.includes('d.overheated && d.drillTemp <= 10'),
   'heat warning must consume the registered drill authority and cooling threshold');
 assert(vfxSource.includes("add('presentation:cue', (p) => this._onDirectMiningPresentationCue(p))"));

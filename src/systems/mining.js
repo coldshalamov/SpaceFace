@@ -37,18 +37,64 @@ export const RICH_CORE_WINDOW_HI = 0.22;
 export const BULK_HAUL_MIN_U = 20;
 export const BULK_HAUL_PAY_MULT = 0.8;
 export const BULK_HAUL_REFINERY_FEE = 0.06;
+// Fracture: the largest fragment is the CORE CHUNK — the piece that is visibly too big to scoop and
+// therefore has to be dragged home on the Massline (GDD §5.5's loop-lock; grammar §9.5.2 amputation
+// 2). Before this existed, chunk yield was `parentYield * ratio(0.35-0.5) / count(2-3)`, capped at
+// about 8u against a 20u threshold — so `bulkHaulPayoutForChunk`, `_onDocked` and the whole
+// `src/ui/prompts/bulkHaulTag.js` system were unreachable code that had never run once.
+// The core chunk is bonus ore (the parent has already paid out its full `yieldU` as loose ore before
+// it fractures), so raising it adds income to the tether path rather than moving income onto it.
+export const BULK_CORE_YIELD_FRAC = 0.85;  // of parent yieldU; >= 25u parent makes a haulable core
+export const BULK_CORE_RADIUS_FRAC = 0.58; // parent radii — reads as oversized next to its siblings
+export const BULK_CORE_MASS_FRAC = 0.6;    // parent mass; strictly lighter than the rock you just
+                                           // tethered, so this cannot load a line harder than the
+                                           // parent already could (Massline stays unbreakable).
 const PICKUP_RADIUS = 2.2;      // wu collectible radius
 const PICKUP_COLLECT_PAD = 14;  // ship-radius pad for scoop contact (generous so flybys don't miss)
 const PICKUP_TTL = 90;          // s before an uncollected pickup despawns
 const SALVAGE_TIME_DEFAULT = 6; // s to fully drain a wreck if combat didn't set one
 const MINEABLE_QUERY_RADIUS_PAD = 64;
 const SEAM_HIT_RADIUS = 14;
+// SEAM_YIELD_OFF is a YIELD fraction, as its name has always claimed. Off-seam beam time delivers
+// 35% of the ore per point of rock removed, so spraying a rock destroys it for a third of its ore.
+// It used to be applied to extraction SPEED instead, which left total yield per rock identical and
+// made aim cost nothing but patience — a penalty the player cannot see and therefore cannot learn
+// from (grammar §9.5.3). Speed keeps a much gentler penalty so the beam still visibly bites harder
+// on a seam; the money is in the yield term.
 export const SEAM_YIELD_OFF = 0.35;
+export const SEAM_SPEED_OFF = 0.7;
 const SEAM_HIT_EVENT_INTERVAL = 0.5;
 const BEAM_PICKUP_DIRECT_RADIUS = 60;
 const MINING_NOISE_GAIN_PER_S = 8;
 const MINING_NOISE_DECAY_PER_S = 3;
 const MINING_NOISE_DANGER = 70;
+// Loud mining is supposed to attract interdiction (grammar §9.5.2 amputation 3). The attention meter
+// accumulated and emitted `danger:miningNoise` to nobody, so "greed gets loud" was a UI label
+// describing a mechanic that did not exist (src/ui/panels/moduleRisk.js:76 still says it does).
+// dangerModel.js is a pure kernel with no bus, so the wiring goes through the impulse seam its
+// runtime adapter already owns: sectorSim.js:103 subscribes to `sectorsim:impulse`.
+const MINING_NOISE_DANGER_IMPULSE = 0.05;   // sector-field danger added per threshold crossing
+const MINING_NOISE_IMPULSE_COOLDOWN_S = 45; // one crossing may pay once per this window
+
+// --- beam heat / vent rhythm ------------------------------------------------
+// Fallbacks for a beam runtime whose tierId is missing from the BEAMS table.
+const BEAM_HEAT_MAX = 100;
+const BEAM_HEAT_RATE = 22;
+const BEAM_COOL_RATE = 55;
+// The amber band: from here to the peg, releasing pays a vent bonus that scales with how deep into
+// the band you went. Wide on purpose (38% of the gauge, ~1.7 s on mk1) — this is a rhythm, not a
+// reaction test, and the player is also flying and aiming.
+export const BEAM_VENT_BAND_LO = 0.62;
+// Fraction of the pulse's own ore paid as the vent bonus at the very top of the band.
+export const BEAM_VENT_BONUS_MAX = 0.75;
+// Pegging the gauge locks the beam until heat falls back to this fraction, and the radiators dump
+// slower once saturated — that multiplier is the whole cost of overheating, on top of forfeiting
+// the pulse's stored vent bonus.
+export const BEAM_OVERHEAT_RESET = 0.15;
+export const BEAM_OVERHEAT_COOL_MULT = 0.6;
+// Heat telemetry is a continuous signal on a 50 Hz bus; quantize it so HUD/audio consumers get a
+// readable stream instead of one event per tick.
+const BEAM_HEAT_EMIT_STEP = 0.02;
 
 const ORE_BY_ID = new Map(ORES.map((o) => [o.id, o]));
 const AST_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
@@ -79,6 +125,14 @@ export const mining = {
     this._beaming = false;     // was the player beam active last tick (start/stop edges)
     this._lockTargetId = null; // currently soft-locked asteroid/wreck id
     this._activeBeamLine = null;
+    // Vent rhythm bookkeeping. `_pulseOre` is the ore (fractional units) this beam-on window has
+    // already delivered; venting inside the amber band cashes a fraction of it as a bonus burst.
+    this._pulseOre = 0;
+    this._pulseTargetId = null;
+    this._pulseCommodityId = null;
+    this._heatEmitPct = -1;
+    this._noiseImpulseAt = -Infinity;
+    this._ventTaught = false;
 
     const bus = this.bus;
     // Combat spawns a wreck on ship death so the player can salvage it.
@@ -89,7 +143,7 @@ export const mining = {
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
     bus.on('dock:docked', (p) => this._onDocked(p));
     // Fresh sector → drop the stale beam lock (world regenerates the field).
-    bus.on('sector:enter', () => { this._lockTargetId = null; this._stopBeam(); });
+    bus.on('sector:enter', () => { this._lockTargetId = null; this._stopBeam(); this._resetBeamHeat(); });
   },
 
   // ---- main per-tick update -------------------------------------------------
@@ -99,13 +153,18 @@ export const mining = {
     const firing = !!player && player.alive && !player.flags.docked
       && state.mode === 'flight' && state.input.fireGroup === 2;
 
+    let beam = null;
     if (player) {
-      const beam = this._beamRuntime(player);
-      if (firing && beam) this._runPlayerBeam(player, beam, dt, state);
-      else {
-        this._stopBeam();
-      }
+      beam = this._beamRuntime(player);
+      // An overheated beam is locked out until the radiators catch up. Routing through _stopBeam
+      // (rather than a silent skip) means the release edge fires: the beam visibly cuts out, the
+      // target lock drops, and the vent evaluation runs and reports the forfeited bonus.
+      if (firing && beam && !beam.overheated) this._runPlayerBeam(player, beam, dt, state);
+      else this._stopBeam();
     }
+    // Heat runs after the beam so the vent evaluated on a release edge reads the heat the player
+    // actually let go at, and so cooling keeps ticking on every frame the beam is off.
+    this._updateBeamHeat(beam, this._beaming, dt, state);
     this._updateRichCoreCharge(firing, dt, state);
     this._updateMiningNoise(this._beaming, dt, state);
 
@@ -122,13 +181,14 @@ export const mining = {
     if (tier) {
       if (!beam.dps) beam.dps = tier.dps;
       if (!beam.range) beam.range = tier.range;
+      // Heat is beam-tier state, not a per-save authored value: default it from the table but let an
+      // outfitting/module pass override it by writing the field first.
+      if (!(beam.heatMax > 0)) beam.heatMax = tier.heatMax || BEAM_HEAT_MAX;
+      if (!(beam.heatRate > 0)) beam.heatRate = tier.heatRate || BEAM_HEAT_RATE;
+      if (!(beam.coolRate > 0)) beam.coolRate = tier.coolRate || BEAM_COOL_RATE;
     }
-    delete beam.heat;
-    delete beam.heatRate;
-    delete beam.coolRate;
-    delete beam.overheated;
-    delete beam._heat;
-    delete beam.heatMax;
+    if (!Number.isFinite(beam.heat)) beam.heat = 0;
+    if (typeof beam.overheated !== 'boolean') beam.overheated = false;
     return beam;
   },
 
@@ -346,8 +406,123 @@ export const mining = {
     }
     this._beaming = false;
     this._activeBeamLine = null;
+    // Cash the vent BEFORE the stop receipt: the presentation orchestrator clears its mining cycle
+    // on `mining:stop`, so a bonus emitted after it would arrive with no target to anchor to.
+    this._resolveVent();
     this.bus.emit('mining:stop', { minerId: this.state.playerId, targetId: this._lockTargetId, position: null });
     this._lockTargetId = null;
+  },
+
+  // ---- heat / vent rhythm ---------------------------------------------------
+  // The pulse-timing half of mining (grammar §9.5.1/§9.5.2). Heat climbs while the beam works, the
+  // amber band opens near the top, and letting go inside it cashes part of the pulse as bonus ore.
+  // Hold past the peg and the beam locks out, the radiators dump slowly, and the bonus is gone.
+  // Perfect pulsing beats the old hold-forever rate; pegging the gauge every cycle is well below it.
+  _updateBeamHeat(beam, working, dt, state) {
+    if (!beam) return;
+    const heatMax = beam.heatMax > 0 ? beam.heatMax : BEAM_HEAT_MAX;
+    const prev = Number.isFinite(beam.heat) ? beam.heat : 0;
+    const wasOverheated = !!beam.overheated;
+    let heat;
+    if (working && !wasOverheated) {
+      heat = Math.min(heatMax, prev + (beam.heatRate > 0 ? beam.heatRate : BEAM_HEAT_RATE) * dt);
+    } else {
+      const cool = (beam.coolRate > 0 ? beam.coolRate : BEAM_COOL_RATE)
+        * (wasOverheated ? BEAM_OVERHEAT_COOL_MULT : 1);
+      heat = Math.max(0, prev - cool * dt);
+    }
+    beam.heat = heat;
+    const pct = heatMax > 0 ? heat / heatMax : 0;
+    const prevPct = heatMax > 0 ? prev / heatMax : 0;
+
+    if (!wasOverheated && prevPct < BEAM_VENT_BAND_LO && pct >= BEAM_VENT_BAND_LO) {
+      this.bus.emit('mining:ventReady', {
+        minerId: state.playerId, heat, heatMax, pct, bandLo: BEAM_VENT_BAND_LO,
+      });
+      this.bus.emit('audio:cue', { id: 'sfx_vent_chime', gain: 0.55 });
+      // The chime is the permanent signal. Spell it out in words until the player has actually
+      // cashed a vent once — a rhythm nobody has been told about is just a beam that stops working.
+      // Self-terminating on purpose: no counter to tune, no toast after you have learned the verb.
+      if (!this._ventTaught) {
+        this.bus.emit('alert', { key: 'mining-vent', sev: 'info', text: 'VENT READY — RELEASE BEAM', ttl: 1.6 });
+      }
+    }
+
+    if (!wasOverheated && heat >= heatMax) {
+      beam.overheated = true;
+      const forfeited = this._pulseOre;
+      this._pulseOre = 0; // pegging the gauge forfeits the stored bonus — that IS the mistake
+      this.bus.emit('mining:overheated', { minerId: state.playerId, heatMax, forfeitedOreU: forfeited });
+      this.bus.emit('audio:cue', { id: 'sfx_mining_heat_warning', gain: 0.85, importance: 0.8 });
+      this.bus.emit('alert', { key: 'mining-heat', sev: 'warn', text: 'BEAM OVERHEATED — VENTING', ttl: 2.4 });
+    } else if (wasOverheated && pct <= BEAM_OVERHEAT_RESET) {
+      beam.overheated = false;
+      this.bus.emit('mining:beamCooled', { minerId: state.playerId, heat, heatMax, pct });
+    }
+
+    const quantized = Math.round(pct / BEAM_HEAT_EMIT_STEP) * BEAM_HEAT_EMIT_STEP;
+    if (quantized !== this._heatEmitPct) {
+      this._heatEmitPct = quantized;
+      this.bus.emit('mining:heatChanged', {
+        minerId: state.playerId,
+        heat,
+        heatMax,
+        pct,
+        band: beam.overheated ? 'overheated' : pct >= BEAM_VENT_BAND_LO ? 'vent' : pct > 0 ? 'warm' : 'cold',
+        overheated: !!beam.overheated,
+      });
+    }
+  },
+
+  // Falling edge of the beam. Pays the vent bonus as real ore through the normal release path so it
+  // lands in the hold, floats "+N <Ore>" like every other yield, and is worth exactly what the ore
+  // is worth — no separate currency, no invisible stat.
+  _resolveVent() {
+    const pulseOre = this._pulseOre;
+    const targetId = this._pulseTargetId;
+    const commodityId = this._pulseCommodityId;
+    this._pulseOre = 0;
+    this._pulseTargetId = null;
+    this._pulseCommodityId = null;
+    const player = this.state.entities.get(this.state.playerId);
+    const beam = player ? this._beamRuntime(player) : null;
+    if (!beam || beam.overheated) return null;
+    const heatMax = beam.heatMax > 0 ? beam.heatMax : BEAM_HEAT_MAX;
+    const pct = heatMax > 0 ? (Number.isFinite(beam.heat) ? beam.heat : 0) / heatMax : 0;
+    if (pct < BEAM_VENT_BAND_LO) return null;
+    const depth = Math.min(1, (pct - BEAM_VENT_BAND_LO) / Math.max(1e-6, 1 - BEAM_VENT_BAND_LO));
+    const bonusU = Math.floor(pulseOre * BEAM_VENT_BONUS_MAX * depth);
+    if (!(bonusU > 0)) return null;
+    this._ventTaught = true;
+    const rock = targetId != null ? this.state.entities.get(targetId) : null;
+    const pos = rock && rock.pos ? { x: rock.pos.x, z: rock.pos.z } : (player.pos ? { x: player.pos.x, z: player.pos.z } : null);
+    const id = commodityId || 'cmdty_silicate';
+    this.bus.emit('mining:yield', { commodityId: id, qty: bonusU, pos, minerId: player.id, ventBonus: true });
+    const accepted = this._giveCargo(id, bonusU, player.id);
+    if (accepted <= 0) this.bus.emit('cargo:full', { commodityId: id });
+    this.bus.emit('mining:ventBonus', {
+      minerId: player.id,
+      asteroidId: targetId,
+      commodityId: id,
+      qty: bonusU,
+      pulseOreU: pulseOre,
+      heatPct: pct,
+      depth,
+    });
+    this.bus.emit('audio:cue', { id: 'sfx_mining_seam_reward', gain: 0.7 });
+    return { qty: bonusU, commodityId: id, depth };
+  },
+
+  _resetBeamHeat() {
+    const player = this.state.entities.get(this.state.playerId);
+    const beam = player ? this._beamRuntime(player) : null;
+    this._pulseOre = 0;
+    this._pulseTargetId = null;
+    this._pulseCommodityId = null;
+    this._heatEmitPct = -1;
+    if (!beam) return;
+    beam.heat = 0;
+    beam.overheated = false;
   },
 
   _isValidMineableTarget(entity, ship, range, state = this.state) {
@@ -446,7 +621,7 @@ export const mining = {
     if (seam.onSeam) this._emitSeamHit(ast, d, state);
 
     const before = d.oreHP;
-    d.oreHP = Math.max(0, d.oreHP - dps * seam.mult * dt);
+    d.oreHP = Math.max(0, d.oreHP - dps * seam.speedMult * dt);
     ast.hull = d.oreHP; // keep the hull alias in sync
     const lost = before - d.oreHP;
     if (lost <= 0) return 0;
@@ -455,20 +630,31 @@ export const mining = {
       contactPos: contact,
       oreType: this._dominantOre(def),
       seamHit: seam.onSeam,
-      yieldMult: seam.mult,
+      yieldMult: seam.yieldMult,
     });
 
     // Continuous ore delivery (Mining 2.0 feel fix — see design/WORLD_OVERHAUL_2_1.md §Mining).
     // Convert the ore-HP shaved THIS tick straight into fractional ore units and release whole
     // units as they accrue, so gain trickles in lockstep with beam damage. Previously ore only
     // ejected when cumulative loss crossed 25% thresholds (EJECT_STEP), so the player saw long
-    // silent beams punctuated by lump "dumps". Total yield is unchanged: Σ(per-tick loss) == hpMax,
-    // so Σ(release) == hpMax * (yieldTotal / hpMax) == yieldTotal. Seam hits raise `lost` (via
-    // seam.mult), so mining a seam simply delivers the same total ore faster.
+    // silent beams punctuated by lump "dumps".
+    //
+    // `d.yieldU` is the rock's MAXIMUM, not a guarantee: Σ(per-tick loss) == hpMax, so a rock burned
+    // entirely on-seam pays its full yieldU, and every off-seam tick pays SEAM_YIELD_OFF of what
+    // that material was worth. Aim is therefore worth ore. (It used to be worth only time — the
+    // multiplier was applied to extraction speed, which cancelled out of the total.)
     const pctNow = 1 - d.oreHP / hpMax;
     const destroyed = d.oreHP <= 0;
     const yieldPerHp = hpMax > 0 ? yieldTotal / hpMax : 0;
-    d._oreCarry += lost * yieldPerHp;
+    const delivered = lost * yieldPerHp * seam.yieldMult;
+    d._oreCarry += delivered;
+    // Vent bookkeeping: how much ore this beam-on window has produced so far, and from what. Only
+    // the player runs the vent rhythm — mining drones reuse applyMining and must not bank a bonus.
+    if (minerId === state.playerId) {
+      this._pulseOre += delivered;
+      this._pulseTargetId = ast.id;
+      this._pulseCommodityId = d.commodityId || this._dominantOre(def);
+    }
     d.pctEjected = destroyed ? 1 : pctNow; // kept in sync for telemetry/readers
     d.miningWear = destroyed ? 1 : pctNow; // render hint: 0 = pristine, 1 = spent (progressive shrink/darken)
     let releaseUnits = Math.floor(d._oreCarry + 1e-9);
@@ -722,13 +908,21 @@ export const mining = {
     const count = 2 + Math.floor(rng() * 2);
     const parentSeams = Array.isArray(ast.data.seams) ? ast.data.seams : [];
     const seamCount = Math.max(1, parentSeams.length - 1);
+    // Chunk 0 is the CORE CHUNK when the parent was big enough to leave one behind. It carries a
+    // yield the hold cannot swallow, which is the only thing that makes the tether-haul path — and
+    // its already-built prompt, payout and refinery dock handler — reachable at all.
+    const coreYield = Math.round(parentYield * BULK_CORE_YIELD_FRAC);
+    const hasCore = coreYield > BULK_HAUL_MIN_U;
     for (let i = 0; i < count; i++) {
-      const ratio = 0.35 + rng() * 0.15;
+      const isCore = hasCore && i === 0;
+      const ratio = isCore ? BULK_CORE_RADIUS_FRAC : 0.35 + rng() * 0.15;
       const radius = parentRadius * ratio;
       const ang = (Math.PI * 2 * i) / count + rng() * 0.6;
       const dist = parentRadius * 0.45 + radius + 4;
-      const oreHP = Math.max(4, Math.round(parentHp * ratio / count));
-      const yieldU = Math.max(1, Math.round(parentYield * ratio / count));
+      const oreHP = isCore
+        ? Math.max(4, Math.round(parentHp * BULK_CORE_YIELD_FRAC))
+        : Math.max(4, Math.round(parentHp * ratio / count));
+      const yieldU = isCore ? coreYield : Math.max(1, Math.round(parentYield * ratio / count));
       const chunk = this.helpers.spawnEntity({
         type: 'asteroid',
         pos: {
@@ -736,8 +930,13 @@ export const mining = {
           z: ast.pos.z + Math.sin(ang) * dist,
         },
         radius,
-        mass: Math.max(40, (ast.mass || 200) * ratio / count),
-        angVel: (rng() - 0.5) * 0.45,
+        // A core chunk is deliberately heavy — the sluggish tow IS the mechanic — but it is capped
+        // strictly below the parent the player was already able to tether, so this cannot put a load
+        // on the Massline that the parent could not. Lines still do not snap under haul.
+        mass: isCore
+          ? Math.max(40, (ast.mass || 200) * BULK_CORE_MASS_FRAC)
+          : Math.max(40, (ast.mass || 200) * ratio / count),
+        angVel: (rng() - 0.5) * (isCore ? 0.18 : 0.45),
         hull: oreHP,
         hullMax: oreHP,
         collides: true,
@@ -756,6 +955,7 @@ export const mining = {
           respawnSec: ast.data.respawnSec,
           fieldId: ast.data.fieldId,
           isChunk: true,
+          bulkCore: isCore,
         },
       });
       chunk.data.seams = inheritChunkSeams(parentSeams, seamCount, radius, i);
@@ -767,6 +967,9 @@ export const mining = {
         parentId: ast.id,
         chunkId: chunk.id,
         minerId: miner ? miner.id : null,
+        massU: yieldU,
+        bulkCore: isCore,
+        commodityId: chunk.data.commodityId,
       });
     }
   },
@@ -950,8 +1153,31 @@ export const mining = {
     const after = clamp(before + delta, 0, 100);
     state.player.miningNoise = after;
     if (before <= MINING_NOISE_DANGER && after > MINING_NOISE_DANGER) {
-      this.bus.emit('danger:miningNoise', { level: after });
+      this.bus.emit('danger:miningNoise', { level: after, threshold: MINING_NOISE_DANGER });
+      this._raiseMiningNoiseDanger(after, state);
     }
+  },
+
+  // The attention meter's consequence. `danger:miningNoise` had no subscriber anywhere in src/, so
+  // the game told the player (src/ui/panels/moduleRisk.js:76) that sustained beam use is dangerous
+  // and then made it free. dangerModel.js is a pure kernel, so this goes through the impulse seam
+  // its runtime adapter already owns — sectorSim.js subscribes to `sectorsim:impulse` and folds the
+  // delta into the sector's danger node. Rising danger lowers effective regional security, which
+  // encounterDirector reads straight into its combat-pressure accrual: loud mining brings hunters.
+  //
+  // Rate-limited because the meter can re-cross the threshold every few seconds of beam time and an
+  // unbounded drip would let one mining session dominate a sector's whole field history.
+  _raiseMiningNoiseDanger(level, state) {
+    const now = Number(state.simTime) || 0;
+    if (now - this._noiseImpulseAt < MINING_NOISE_IMPULSE_COOLDOWN_S) return;
+    this._noiseImpulseAt = now;
+    const sectorId = state.world && state.world.currentSectorId;
+    if (!sectorId) return;
+    this.bus.emit('sectorsim:impulse', {
+      kind: 'mining_noise',
+      sectorId,
+      danger: MINING_NOISE_DANGER_IMPULSE,
+    });
   },
 
   _ensureAsteroidSeams(ast) {
@@ -974,17 +1200,21 @@ export const mining = {
     return hit || this._surfacePoint(ast, miner);
   },
 
+  // Aim is a bet, not decoration: `yieldMult` is what the rock PAYS for the material you remove,
+  // `speedMult` is only how fast the beam chews. Off-seam therefore burns a rock down at nearly full
+  // speed for a third of its ore — a loss the player can see in the float text, which is the point.
   _seamYield(ast, contact) {
     const seams = this._ensureAsteroidSeams(ast);
-    if (!seams.length || !contact) return { onSeam: false, mult: SEAM_YIELD_OFF };
+    const off = { onSeam: false, yieldMult: SEAM_YIELD_OFF, speedMult: SEAM_SPEED_OFF };
+    if (!seams.length || !contact) return off;
     const hitR2 = SEAM_HIT_RADIUS * SEAM_HIT_RADIUS;
     for (const seam of seams) {
       const p = seamWorldPoint(ast, seam);
       const dx = contact.x - p.x;
       const dz = contact.z - p.z;
-      if (dx * dx + dz * dz <= hitR2) return { onSeam: true, mult: 1 };
+      if (dx * dx + dz * dz <= hitR2) return { onSeam: true, yieldMult: 1, speedMult: 1 };
     }
-    return { onSeam: false, mult: SEAM_YIELD_OFF };
+    return off;
   },
 
   _emitSeamHit(ast, data, state) {
