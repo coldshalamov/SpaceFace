@@ -9,8 +9,8 @@ Every run ends in exactly one disposition:
 
 | Outcome | Meaning | Required artifact |
 |---|---|---|
-| `PASS` | packet outcome implemented; required focused proof and declared route evidence pass at the exact revision | completed packet checklist + receipt |
-| `FAIL` | an in-scope product defect remains after the packet's repair/review budget | failing regression, failure class, owner, minimal next action |
+| `PASS` | packet outcome implemented; required focused proof and declared route evidence pass at the exact revision; **and the exit check set is a superset of the entry baseline's green set** | completed packet checklist + receipt |
+| `FAIL` | an in-scope product defect remains after the packet's repair/review budget, **or a check green at the entry baseline is red at exit** | failing regression, failure class, owner, minimal next action |
 | `BLOCKED` | an entry condition, owner seam, lease, asset, environment, or dependency is absent | blocker evidence and requested upstream change |
 | `DEFERRED` | user/integrator deliberately stops or reschedules valid work | preserved branch/diff and explicit resume point |
 
@@ -50,7 +50,11 @@ If any answer is unknown and material, classify the packet `BLOCKED` or perform 
 ## 4. Phase A — preflight and characterization
 
 1. Record exact branch, HEAD, dirty paths, worktrees, and active leases.
-2. Read the packet, the cited architecture/GDD sections, the queue row, and only the owner modules/checks it names.
+2. **Record the entry baseline.** Run the packet's declared L0–L2 commands plus the repository fast
+   baseline gate at the candidate base, before any edit, and persist the pass/fail result alongside
+   the fast-gate receipt. This is what makes a red check attributable at exit; without it, every red
+   is unattributable and §7's `INHERITED_RED` disposition cannot be claimed honestly.
+3. Read the packet, the cited architecture/GDD sections, the queue row, and only the owner modules/checks it names.
 3. Confirm the live public route and current behavior. Old handoffs are hypotheses, not facts.
 4. Add or identify a seconds-scale characterization test at the owning seam.
 5. Reproduce the missing behavior or defect before the implementation change.
@@ -148,8 +152,26 @@ an identical rerun. Repetition is not investigation.
 | `ENVIRONMENT` | independently evidenced GPU/process/OS/port/profile failure | retain attempt; one replacement on a clean isolated environment |
 | `NONDETERMINISM` | equal candidate/seed/input can diverge | hard stop; reduce to deterministic regression before any route rerun |
 | `STALE_BASELINE` | expected data or prose no longer describes live code | update packet/check deliberately; never rewrite a golden blindly |
-| `OUT_OF_SCOPE` | valid defect outside the selected outcome/write budget | record follow-up; do not reopen current acceptance unless it invalidates the route |
+| `OUT_OF_SCOPE` | valid defect outside the selected outcome/write budget, **and not a red check** | record follow-up; do not reopen current acceptance unless it invalidates the route |
+| `INHERITED_RED` | a declared check was already red at the recorded entry baseline | repair it, or obtain an integrator-signed inheritance token naming the owner and the reason. Never a self-issued follow-up |
 | `UNKNOWN` | evidence cannot support attribution | fail closed; collect one discriminating diagnostic, not another identical run |
+
+### Red checks are never out of scope
+
+A failing check is a defect in the repository, not a note about it. Whether the test or the code is
+wrong is the agent's call to make and justify — but leaving it red is not an outcome.
+
+- A check **green at the recorded entry baseline and red at exit** is `PRODUCT`, regardless of whether
+  the cause lies inside the packet's write budget. The packet made it red; the packet owns it.
+- A check **red at the entry baseline** is `INHERITED_RED`. Repair it in the same run when the repair
+  is bounded, or return `BLOCKED` with the integrator's inheritance token. "Preexisting, therefore not
+  mine" is not a disposition.
+- `OUT_OF_SCOPE` covers observed defects with no failing check behind them. It does not cover a red
+  check.
+
+This rule exists because scope was previously defined only against the packet outcome, which made
+inheriting a red tree the protocol-compliant ending. The game is expected to be working and robust at
+every checkpoint, so the check set is a floor that runs may raise and may not lower.
 
 ## 8. Independent review that terminates
 

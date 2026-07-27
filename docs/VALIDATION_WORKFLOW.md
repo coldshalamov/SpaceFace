@@ -205,8 +205,12 @@ Classify the evidence before another launch:
 | `ENVIRONMENT` | prove the environment fault independently; use one clean replacement environment |
 | `NONDETERMINISM` | hard stop; reduce to deterministic evidence before another route run |
 | `STALE_BASELINE` | deliberately update the contract; never rewrite a golden blindly |
-| `OUT_OF_SCOPE` | record a follow-up unless it invalidates the selected route |
+| `OUT_OF_SCOPE` | record a follow-up unless it invalidates the selected route. **Does not apply to a red check** — see below |
+| `INHERITED_RED` | see [`00_EXECUTION_PROTOCOL.md` §7](../design/program/roadmap/00_EXECUTION_PROTOCOL.md) |
 | `UNKNOWN` | fail closed and collect one discriminating diagnostic |
+
+`00_EXECUTION_PROTOCOL.md` §7 owns the full disposition rules, including the requirement that a red
+check is repaired rather than inherited. Follow that file when this table is less specific.
 
 An unchanged cell and failure fingerprint cannot authorize another identical attempt. Repetition is
 not investigation.
