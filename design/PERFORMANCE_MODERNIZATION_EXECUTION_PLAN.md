@@ -656,34 +656,52 @@ That can copy excess JS memory, issue excess driver traffic, and create avoidabl
 
 1. Add `src/render/dynamicBufferRanges.js` with a small non-allocating owner-side pending-span
    accumulator. Logical writes only union component indices; they never publish Three.js range metadata.
-2. Chain the selected object's actual-draw pre-upload hook, normally `onBeforeRender`. Invoke any prior
-   owner hook first, resolve the final current attribute after all writes/growth/replacement settle, then
-   publish the complete pending union once with one `addUpdateRange()` call and one `needsUpdate`
-   increment. A skipped/hidden/culled frame publishes nothing and retains the pending union.
-3. After publication, keep the uploaded snapshot immutable. Writes made before its callback—including
-   reentrant owner writes from the chained upload callback—enter a separate unpublished next-generation
-   span and are not folded into the transfer already in progress.
-4. Chain `onUploadCallback` with a reentrancy-safe acknowledgement. At callback entry verify the exact
-   attribute/version, remove only the initial-`bufferData` snapshot's exact stale record when required,
-   acknowledge/detach the uploaded snapshot before invoking the prior callback, and defer callback-time
-   owner writes until a later pre-upload hook after `WebGLAttributes.update()` returns. Existing callbacks
-   may not directly mutate the tracked attribute's version/range metadata; detect that condition and fail
-   the migration rather than letting Three.js cache an unuploaded callback-created version.
-5. Creation, growth/reallocation before publication, and context restoration publish one full initialized
-   range on the final current attribute. An interrupted/context-loss publication without callback is an
-   explicit terminal `superseded-reset`, not an acknowledgement or ordinary-budget success; carry the
-   initialized union to the replacement attribute and report both records.
-6. Set `DynamicDrawUsage` or `StreamDrawUsage` before first upload according to actual buffer lifetime;
-   usage is not changed after upload. Set active instance/draw counts independently from capacity.
-7. Record logical bytes, requested bytes, pending/published/acknowledged/superseded generations, range
-   identity, capacity, reallocations, callback-guard violations, and cumulative range-record allocations.
-8. Cap the initial combat-plus-trail-streak stage at 23 Three.js records per ordinary actual upload and
-   1,380 records/second at 60 uploads/second, with zero on unchanged/skipped frames. Prove the ceiling
-   under the live high-fanout-and-grow route: begin one slot below capacity, perform 18 capital-debris
-   spawn commits plus one trail integration commit, replace/grow before the same draw, and still allocate
-   only three final trail records—not 57 or six—at one-times and five-times population. Later stages
-   require their own population-scaled allocation/GC ceilings before admission.
-9. Use ping-pong/orphaning only if GPU/CPU traces still show synchronization after range uploads.
+2. Publish before Three.js first processes an owner's attributes. Three.js 0.184.0 invokes
+   `WebGLObjects.update()` during `projectObject`, before `Object3D.onBeforeRender`, so object hooks are
+   forbidden. `src/render/renderer.js#drawPreparedFrame` arms one exact `Scene.onBeforeRender` wrapper around
+   the selected renderGraph/bloom/straight path, invokes the prior scene callback first with its original
+   receiver/arguments, rejects re-entry or hook replacement before traversal, and restores the prior hook
+   in `finally` on success, no-render, or throw.
+3. Register the initial combat-sprite and trail-streak owners before scene attachment or renderer traversal,
+   and require exclusive tracked attributes. After the prior scene callback, processing eligibility requires
+   attachment below the rendered scene, visible ancestors/mesh, matching layers, no auto-updating LOD
+   ancestor, and `frustumCulled === false`. Ordinary draw eligibility additionally requires the initial
+   pool's single material to be visible and active count to be positive. Cullable/shared/material-array/LOD
+   cases remain blocked until a later revision proves their exact public traversal predicate.
+4. An ineligible scene invocation does not consume an owner's epoch opportunity. Resolve current attributes
+   and publish exactly once at the first invocation where a force-full generation is processing-eligible or
+   an ordinary pending span is draw-eligible. Rebuild only that owner's range metadata, append one
+   `addUpdateRange()` record per changed attribute, set `needsUpdate` once, and move the pending union into
+   an immutable published snapshot.
+5. At registration, require Three.js's default no-op `onUploadCallback`; any non-default callback blocks
+   migration. Install the adapter's sole acknowledgement callback, verify its identity before publication,
+   and require an exact current attribute/version snapshot at callback entry. An unsolicited callback fails.
+   Ordinary `bufferSubData` has cleared its public list; initial `bufferData` removes only the snapshot's
+   exact stale record. Revision 7 does not chain arbitrary upload callbacks.
+6. Hold a coordinator-wide upload-callback guard and, after publication, an owner-specific armed-epoch guard.
+   Every selected owner writer checks both before touching a tracked typed array or replacing an attribute.
+   Callback-time or same-epoch post-publication writes, callback replacement, and direct version/range
+   mutation fail closed without changing matrix/color/opacity/sibling bytes. Later support requires
+   preallocated staging or a pool-wide completion barrier.
+7. Registration/creation, growth/replacement before publication, and context restoration mark the final
+   current attribute force-full. Because `WebGLObjects.update()` precedes material visibility checks and
+   ignores zero instance count, force-full publication occurs on the first processing-eligible traversal
+   even when no primitive draws; ordinary spans wait for draw eligibility. Interrupted/context-loss
+   publication without callback is a terminal `superseded-reset`; carry the initialized union to the
+   replacement attribute and report both records.
+8. Set `DynamicDrawUsage` or `StreamDrawUsage` before first upload according to actual buffer lifetime;
+   usage is not changed after upload. Set active instance/draw counts independently from capacity. Record
+   logical/requested bytes, pending/published/acknowledged/superseded generations, force-full reason, range
+   identity, capacity, reallocations, eligibility skips, scene-hook/epoch/callback violations, and cumulative
+   range-record allocations.
+9. Cap the initial combat-plus-trail-streak stage at 23 Three.js records per ordinary draw-eligible or
+   force-full processing-eligible transfer and 1,380 records/second at 60 uploads/second, with zero on
+   initialized unchanged, skipped, or processing-ineligible frames. Prove the ceiling under the live high-
+   fanout-and-grow route: begin one slot below capacity, perform 18 capital-debris spawn commits plus one
+   trail integration commit, replace/grow before the same draw, and still allocate only three final trail
+   records—not 57 or six—at one-times and five-times population. Later stages require their own scaled
+   allocation/GC ceilings before admission.
+10. Use ping-pong/orphaning only if GPU/CPU traces still show synchronization after range uploads.
 
 ### Migration order
 
@@ -699,10 +717,12 @@ Do not alter leased VFX files merely to complete this packet.
 
 - output, instance identity, lifetime, ordering, and capacity behavior match;
 - randomized sparse/dense dirty patterns upload the correct components;
-- a skipped/hidden render followed by a disjoint write publishes nothing until the next actual draw, then uploads the complete union, including `ZERO_MATRIX` release and immediate slot reuse;
-- callback-time owner writes remain in a separate next generation, direct callback version/range mutation fails closed, and Three.js never caches an unuploaded version;
-- buffers never display stale data after wrap, grow, shrink, spawn, destroy, interrupted-render supersession, or context restoration;
-- telemetry shows upload bytes following the pending union published at the actual pre-upload hook rather than allocated capacity;
+- after initialization, a skipped/material-hidden/zero-count render followed by a disjoint write publishes nothing until the next ordinary-draw-eligible armed scene traversal, then uploads the complete union on that first draw, including `ZERO_MATRIX` release and immediate slot reuse;
+- registration/create/grow/restore force-full attributes publish before their first processing-eligible `bufferData` even at hidden material or zero count, and no upload callback occurs without its exact immutable snapshot;
+- prior scene-hook receiver/order/restoration, first-qualifying multi-render publication, static LOD eligibility, and scene-hook ownership are proved; hook re-entry/replacement and same-epoch post-publication writes fail before stale traversal or mutation;
+- callback-time owner writes, callback identity replacement, and direct callback version/range mutation fail before tracked typed-array mutation or publication; captured sibling-attribute transfers remain one coherent generation, and Three.js never caches an unuploaded version;
+- buffers never display stale or cross-generation data after wrap, grow, shrink, spawn, destroy, interrupted-render supersession, or context restoration;
+- telemetry shows upload bytes and force-full reasons following the union published by the armed `Scene.onBeforeRender` coordinator before `WebGLObjects.update`, rather than allocated capacity;
 - cumulative range-record and GC ceilings hold at one-times and five-times population, including exactly three final trail records across the 18-spawn-plus-one-integration-plus-grow pre-draw fanout;
 - matched combat captures demonstrate a repeatable CPU/driver gain or the abstraction is removed.
 
