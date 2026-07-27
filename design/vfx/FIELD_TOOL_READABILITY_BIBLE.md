@@ -1,5 +1,64 @@
 # FIELD / INDUSTRIAL-TOOL / PLANETARY READABILITY BIBLE
 
+> ## ⚠ PARTIAL WITHDRAWAL — 2026-07-27
+>
+> **Six prescriptions in this document are WITHDRAWN.** The ruling is
+> `design/PHYSICAL_PLAY_GRAMMAR.md` §9.2.1, recorded in `design/PHYSICAL_PLAY_BUILD_PLAN.md` §2.5
+> item 6. This file is kept, not deleted, because its reasoning is worth reading and most of it
+> still governs.
+>
+> **The ruling, in one line: SHAPE AND MOTION CARRY IDENTITY; COLOUR AND BRIGHTNESS CARRY ENERGY.**
+>
+> **Why.** This document protects readability by making *desaturation* the carrier of identity —
+> §0 law 5 ("heat lives on the amber end"), law 6 ("the boundary never blooms"), §2 rule 1 (the
+> 2 px floor), §3's palette allowlist, §10's ≤6-draws ceiling, §11's ten-step Fail→stop ritual.
+> Every one of those forces an instrument to be *dim*, and together they are why every effect in
+> the game was mild. This file also states at `:17` that its evidence base is code read while
+> writing it — **not play evidence** — and its own law 9 forbids arbitrary prose caps while it
+> then spends a thousand lines writing them. It contradicts the product north star at
+> `CANONICAL_BUILD_MAP.md:33`, which requires treating ambitious graphics as part of the feature
+> rather than a luxury to suppress.
+>
+> **Withdrawn (do not cite these as blocking):**
+>
+> | Withdrawn | Where |
+> |---|---|
+> | "The boundary never blooms" / glow belongs only to cores and events | §0 law 6 |
+> | The non-additive mandate (field arcs must be normal-composited, thin, desaturated) | §0 law 6, §3 |
+> | The palette allowlist / "anchors from §3.2 only" | §3, §11 step 9 |
+> | The 2-pixel floor as a *ceiling* on how loud a feature may be | §2 rule 1 |
+> | The ≤6-draws-per-field ceiling | §10, §11 step 8 |
+> | The ten-step Fail→stop review ritual as a gate | §11 |
+>
+> **Retained, and still binding:**
+>
+> - **The readability goal.** Top-down legibility is the game's superpower and nothing may cost it.
+> - **The grey-read test, redefined.** Identity must still survive desaturation — but *silhouette*
+>   is now what carries it, not dimness. Well = rings contracting, Repulsor = rings expanding,
+>   Clearing Cone = directional wedge, Mass Seed = pulsing point, Skim Collector = sweeping band.
+>   An effect that fails grey-read now fails because its **shape** is generic, which is a better
+>   and more actionable note than "too saturated."
+> - **§0 laws 1, 2, 3, 4, 7, 8** — machine-not-orb, state=pose/event=pulse, judged at 1×, boundary
+>   drawn by behaviour, direction is a property of form, accessibility preserves information.
+> - **§2 rules 2-4** and **§9 determinism** and the *measured* half of §10 (budgets are telemetry).
+>
+> **On occlusion: use judgement, not a rule.** If a lot is happening, effects may briefly obscure a
+> ship and that is fine — it is what a big moment looks like. Avoid only the ridiculous case: a
+> *persistent* effect hiding gameplay you need to react to, for long enough that you lose because
+> you could not see. `src/render/energy/energyMaterials.js` already does depth-aware soft
+> intersection and that is usually enough. **Do not write a deterministic occlusion test.** This
+> project has already been through one full cycle of a reasonable worry becoming a hard rule that
+> made every effect bland. Do not start a second.
+>
+> **What actually shipped against this ruling (2026-07-27, lane 6):** the Massline ribbon shader was
+> split into a white-hot filament and a saturated sheath (`energyMaterials.js` `RIBBON_FRAGMENT`,
+> `uSheath`), `vfx.js _bloomRadianceScale` stopped clamping energy radiance to
+> `strength/0.35 ∈ [0,1]` and stopped returning 0 with bloom off, ship destruction gained compact
+> near-white cores, magnet-pulled loot gained comet trails, and the thruster plume's white-hot
+> throat was widened from `pow(1-a, 7.0)` to `pow(1-a, 4.6)`. Measured at the real game camera
+> (fov 50, zoom 72, 60° elevation, 1440×900): near-white pixels contributed by a taut Massline went
+> from ~118 to ~1400.
+
 **Status:** taste constitution for PQ-012 (continuous field kernel), PQ-016 (contextual industrial
 beam, payloads, receivers), PQ-013 (planetary sling/skim/harvest/reentry). Authored 2026-07-21.
 **Consumers:** the implementers of those three packets, their reviewers, and any future field-effect
@@ -40,9 +99,12 @@ verification column names the file; do not extend a prescription without opening
    already locked in `src/render/vfx.js` (tether load ramp `#39d0ff → #ffb35c → #ff5c5c`, doctrine
    tells, ore tints) and the sector lighting (`src/data/sectors.js` key/rim/fill palettes) — not a
    new hue system (see §3).
-6. **The boundary never blooms.** Bloom smears (`src/render/bloom.js`: threshold 1.0, multi-scale
-   pyramid halo). Anything the player must read as a crisp line — rims, banks, kerfs, seams — is
-   authored below bloom threshold or in non-blooming materials. Glow belongs to cores and events.
+6. ~~**The boundary never blooms.**~~ **WITHDRAWN 2026-07-27 (grammar §9.2.1).** Bloom smears
+   (`src/render/bloom.js`: threshold 1.0, multi-scale pyramid halo) — that observation is still
+   true, and it is still worth authoring a line you must read *precisely* below threshold. What is
+   withdrawn is the blanket ban and the non-additive mandate that travelled with it. Glow does not
+   belong only to cores and events; a taut Massline should be the brightest object on the screen,
+   and its boundary is the thing that is bright. Use judgement per feature.
 7. **Direction is a property of form.** Inward vs outward vs through-flow are distinguished by
    silhouette (concave funnel vs convex dome vs banked corridor), by flow origin and
    acceleration structure, and by taper direction — with hue as a third redundant channel. Two of
@@ -126,10 +188,14 @@ downstream of everything (`src/render/bloom.js`).
 
 **The five mechanical rules:**
 
-1. **The 2-pixel floor.** No feature that carries primary gameplay meaning may be smaller than
-   ~2 px at the framing of record (≈0.3–0.5 wu at zoom 72 — the same ≥0.3 m mip-survival rule
-   the faction bible uses). Filament bundles, vanes, banks, and berms are sized to this floor;
-   single streaks never carry meaning alone.
+1. **The 2-pixel floor.** *(Kept as a FLOOR. Its use as a ceiling is **WITHDRAWN 2026-07-27** —
+   nothing in this document licenses sizing a hero effect down to it.)* No feature that carries
+   primary gameplay meaning may be smaller than ~2 px at the framing of record (≈0.3–0.5 wu at
+   zoom 72 — the same ≥0.3 m mip-survival rule the faction bible uses). Filament bundles, vanes,
+   banks, and berms are sized at least to this floor; single streaks never carry meaning alone.
+   Note the measured scale at the framing of record is **≈14.7 px per wu horizontally and ≈11.8 px
+   per wu vertically** at 1440×900 (probed 2026-07-27), so 2 px is ≈0.15 wu — considerably smaller
+   than this rule's own parenthetical assumed.
 2. **Motion before glow, silhouette before hue, pose before both.** At 1× the player reads:
    what moved, in which direction, and what shape it made — color is the third channel. This is
    the D7 velocity-language doctrine (`design/program/atlas/01_DECISIONS.md` D7: "measurement,
@@ -180,7 +246,13 @@ desaturated browns near mid-luma) flips meaning between sectors and is rejected.
 
 ### 3.2 The locked anchors
 
-These are the only anchors this bible uses. All are already shipped tokens; the hex is the
+> **THE ALLOWLIST IS WITHDRAWN — 2026-07-27 (grammar §9.2.1).** These remain a good, coherent
+> default set and a new effect should have a reason to leave them. They are **no longer a closed
+> list**, and "not in §3.2" is not a valid rejection. Colour and additive brightness now carry
+> *how much energy is present*, which means an instrument at full load is allowed to leave the
+> palette on its way to white. Identity is carried by silhouette (§3.4, redefined).
+
+These are the anchors this bible starts from. All are already shipped tokens; the hex is the
 canonical reference, and the "axis" column names where the optional grade and sector lighting
 push it.
 
@@ -222,9 +294,17 @@ transfer contexts tint from this map only — a commodity the map can't name ren
 
 ### 3.4 The Grey-read test (per effect, mechanical)
 
-Port of the faction bible's Grey-read doctrine: for each effect, state what survives full
-desaturation. If the identity collapses without hue, the design is defective. Each item below
-carries a **Grey-read:** line; a reviewer applies it by viewing capture (b) from §2's protocol.
+**RETAINED, REDEFINED 2026-07-27 (grammar §9.2.1).** Port of the faction bible's Grey-read
+doctrine: for each effect, state what survives full desaturation. If the identity collapses without
+hue, the design is defective. Each item below carries a **Grey-read:** line; a reviewer applies it
+by viewing capture (b) from §2's protocol.
+
+What changed is the *carrier*. This test used to be satisfied by keeping effects desaturated, which
+is why every instrument was dim. Identity is now carried by **silhouette and motion** — Well = rings
+contracting, Repulsor = rings expanding, Clearing Cone = directional wedge, Mass Seed = pulsing
+point, Skim Collector = sweeping band, Massline = a line between two bodies that sags when slack and
+shivers when loaded. An effect that fails grey-read now fails because its **shape** is generic, and
+the fix is to change its shape, never to turn its brightness down.
 
 ---
 
@@ -984,9 +1064,15 @@ Budgets here are **telemetry-derived or shipped constants**, per law 9 and PERF_
   `_syncParticleQuality` patterns; `persistentBeams.js`: "Slots are rewritten in place; no
   objects or typed arrays are allocated by update()").
 - **Instancing.** Vanes/ribs/chevrons/berm lobes/pips/stitch beads: `InstancedMesh` or the
-  shipped instanced streak/sprite pools. Per-field draw calls budget: ≤6 (frame, filaments,
+  shipped instanced streak/sprite pools. ~~Per-field draw calls budget: ≤6 (frame, filaments,
   boundary, core volume ×2, event flash reuse) — the tether cable ships 6 roots
-  (mesh/glow/band/anchor/anchorCore/targetHalo) and is the structural ceiling precedent.
+  (mesh/glow/band/anchor/anchorCore/targetHalo) and is the structural ceiling precedent.~~
+  **WITHDRAWN 2026-07-27 (grammar §9.2.1).** Six was never measured; it was the tether cable's
+  root count observed once and then written down as a ceiling. Six cheap draws and six expensive
+  ones are not the same budget, and the real constraint is the measured one immediately below
+  (VFX's 2.5 ms of the 16.7 ms frame, gated by `scripts/check-vfx-frame-sleep.mjs`, which as of
+  2026-07-27 asserts a measured idle ceiling instead of an exact-zero count). Budget draws against
+  frame time, not against a number from prose.
 - **Cadence gating.** Subsystem Hz pattern from `vfx.js`: seam markers 20 Hz, ribbon trails
   30 Hz, energy plume 30 Hz, projectile trails 45 Hz, plus relevance sleep ("slept when
   inactive"). Field/beam/skim subsystems adopt: boundary articulation 20 Hz, filaments
@@ -1021,6 +1107,12 @@ Budgets here are **telemetry-derived or shipped constants**, per law 9 and PERF_
 ---
 
 ## 11. Global review checklist (apply mechanically, in order)
+
+> **WITHDRAWN AS A GATE — 2026-07-27 (grammar §9.2.1).** This list is retained as a *review aid*.
+> It is no longer a ten-step Fail→stop ritual, and steps **5** (boundary never blooms), **8** (≤6
+> draws per field) and **9** (palette anchors from §3.2 only) are withdrawn outright — see the
+> banner at the top of this file. Steps 1-4, 6, 7 and the *measured* half of 8 still describe good
+> practice and are worth walking. Do not cite any step here to block work.
 
 1. Name it in one noun phrase from a 1× capture (§2 rule 4). Fail → stop.
 2. Grey-read: identity survives desaturation (each §'s Grey-read line). Fail → stop.

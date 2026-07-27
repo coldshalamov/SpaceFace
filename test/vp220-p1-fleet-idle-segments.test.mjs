@@ -14,6 +14,7 @@ import {
 import {
   FamilyProductionFleet,
   FLEET_MAX_SHIPS,
+  FLEET_INITIAL_SHIPS,
 } from '../src/render/thruster/systems/familyFleet.js';
 import {
   resolveSegmentCount,
@@ -209,8 +210,10 @@ test('family fleet batches two distinct live families simultaneously then sleeps
   assert.equal(fleet._disposed, true);
 });
 
-test('fleet saturates at fixed cap without unbounded growth', () => {
+test('fleet grows past its initial allocation, then saturates at the sanity ceiling', () => {
   const fleet = new FamilyProductionFleet(THREE, { textures: {} });
+  assert.equal(fleet.shipCapacity, FLEET_INITIAL_SHIPS, 'initial allocation is not the ceiling');
+  assert.ok(FLEET_MAX_SHIPS > FLEET_INITIAL_SHIPS, 'ceiling must leave room to grow');
   fleet.beginFrame(A11Y);
   fleet.beginAdmitPhase();
   let got = 0;
@@ -218,9 +221,50 @@ test('fleet saturates at fixed cap without unbounded growth', () => {
     const s = fleet.acquireShip(100 + i, i % 2 ? 'engine_vector' : 'engine_industrial', i === 0);
     if (s) got += 1;
   }
-  assert.equal(got, FLEET_MAX_SHIPS);
-  assert.ok(fleet.saturated >= 5);
+  assert.equal(got, FLEET_MAX_SHIPS, 'every candidate up to the ceiling is served');
+  assert.ok(fleet.saturated >= 5, 'candidates past the ceiling are reported, not dropped silently');
+  assert.equal(fleet.shipCapacity, FLEET_MAX_SHIPS, 'capacity stops at the ceiling');
   fleet.endFrame(1 / 60);
+  fleet.dispose();
+});
+
+// This is the regression for the actual defect: with a fixed ten-slot table, ship eleven
+// silently lost its thruster VFX — no error, no warning, no saturation counter. It is
+// asserted end to end (slot granted AND sockets reaching the family's GPU batch), because
+// growing the ship table alone would have moved the same silent drop into the plume pool.
+test('the eleventh ship in one family gets a real plume, not a silent drop', () => {
+  const SHIPS = FLEET_INITIAL_SHIPS + 1;
+  const fleet = new FamilyProductionFleet(THREE, { textures: {} });
+  const sockets = [
+    { x: -1, y: 0, z: 0, ax: -1, ay: 0, az: 0 },
+    { x: 1, y: 0, z: 0, ax: -1, ay: 0, az: 0 },
+  ];
+  fleet.beginFrame(A11Y);
+  fleet.beginAdmitPhase();
+  for (let i = 0; i < SHIPS; i++) {
+    // Same family for every ship — the worst case for per-family socket capacity.
+    const s = fleet.acquireShip(500 + i, 'engine_vector', i === 0);
+    assert.ok(s, `ship ${i + 1} of ${SHIPS} must own a fleet slot`);
+    fleet.setShipSockets(s, sockets, 2);
+    fleet.setShipDrive(s, { drive: 1, throttle: 1, boost: 0 });
+  }
+  const diag = fleet.endFrame(1 / 60);
+
+  assert.equal(fleet.saturated, 0, 'no ship under the ceiling may be refused');
+  assert.equal(diag.shipsActive, SHIPS);
+  assert.equal(
+    diag.socketsWritten, SHIPS * 2,
+    `every nozzle must reach the batch (got ${diag.socketsWritten} of ${SHIPS * 2})`,
+  );
+
+  const plume = fleet.familyPlume('engine_vector');
+  assert.ok(plume.pool.maxSockets >= SHIPS * 2, 'family plume capacity grew with the fleet');
+  assert.ok(
+    plume.pool.activeCount > 0 && plume.pool.activeCount < plume.pool.capacity,
+    'plume pool must not be writing at its capacity break',
+  );
+  assert.ok(fleet.hasEntity(500 + SHIPS - 1), 'eleventh ship is production-owned');
+
   fleet.dispose();
 });
 

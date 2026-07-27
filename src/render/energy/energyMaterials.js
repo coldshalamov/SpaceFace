@@ -141,6 +141,22 @@ const RIBBON_VERTEX = /* glsl */`
   }
 `;
 
+// Massline ribbon — the signature verb, and per grammar §9.2 it is supposed to be the brightest
+// object on the screen.
+//
+// The model is WHITE-HOT CORE against a SATURATED HALO. This is the one thing the neon direction
+// actually asks for and it is the thing the previous shader could not do: it had a single
+// cross-section term (`center`) that drove colour, radiance AND alpha together, so the total
+// additive contribution fell off as center-squared and the whole cable collapsed into a thin,
+// evenly-tinted filament that never crossed the bloom bright-pass threshold anywhere. It read as a
+// painted line, not as a cable full of energy.
+//
+// Now the cross-section is split in two and the caller picks which one this draw is:
+//   uSheath = 0  → a tight filament. Saturates toward white, runs hot enough to clip, feeds bloom.
+//   uSheath = 1  → a wide sheath. Keeps the authored tension colour, moderate radiance, gives the
+//                  cable visible body and a coloured falloff around the white core.
+// Identity still survives desaturation, because the cable's identity is its SHAPE (a line between
+// two bodies, sagging when slack, straight and shivering when loaded) — grammar §9.2.1.
 const RIBBON_FRAGMENT = /* glsl */`
   precision highp float;
   varying float vAlong;
@@ -154,20 +170,61 @@ const RIBBON_FRAGMENT = /* glsl */`
   uniform float uTension;
   uniform float uOverload;
   uniform float uReel;
+  uniform float uSheath;   // 0 = white-hot filament draw, 1 = wide saturated halo draw
+  uniform float uStrain;   // physical strain 0..1 — drives the visible shiver, not the colour ramp
+  uniform float uWhip;     // 0..1 snap/latch recoil envelope
 
   float hash(float n) { return fract(sin(n) * 43758.5453123); }
 
   void main() {
-    float center = pow(max(0.0, 1.0 - abs(vSide)), mix(2.2, 5.5, clamp(uTension, 0.0, 1.0)));
-    float pulse = smoothstep(0.15, 0.0, abs(fract(vAlong * 6.0 - uTime * uPulseSpeed) - 0.5));
-    float winchPulse = smoothstep(0.12, 0.0, abs(fract(vAlong * 10.0 - uTime * (uPulseSpeed * 1.35 + uReel * 4.0)) - 0.5));
-    float chatter = hash(floor(vAlong * 80.0 + uTime * 20.0)) * uOverload;
-    vec3 hot = mix(uColor, vec3(1.0, 0.34, 0.12), uOverload);
-    vec3 reelHot = mix(hot, vec3(0.82, 0.98, 1.0), uReel * 0.55);
-    float radiance = uIntensity * (0.45 + center * 1.4 + pulse * 1.8 + winchPulse * uReel * 2.6 + chatter * 1.2);
-    float alpha = uOpacity * center * (0.5 + 0.5 * pulse + uReel * 0.22);
+    float t = clamp(uTension, 0.0, 1.0);
+    float s = clamp(abs(vSide), 0.0, 1.0);
+
+    // Two cross-sections. The filament tightens as the line loads (a taut cable reads thinner and
+    // hotter); the sheath stays broad so the coloured falloff never disappears.
+    float coreShape = pow(max(0.0, 1.0 - s), mix(9.0, 18.0, t));
+    float sheathShape = pow(max(0.0, 1.0 - s), mix(1.35, 2.1, t));
+    float shape = mix(coreShape, sheathShape, uSheath);
+
+    // Strain waves travelling toward the anchor. Wider and softer than the old razor band so they
+    // read as load moving through the line rather than as marching dashes.
+    float pulse = smoothstep(0.34, 0.02, abs(fract(vAlong * 6.0 - uTime * uPulseSpeed) - 0.5));
+    float winch = smoothstep(0.20, 0.0, abs(fract(vAlong * 10.0 - uTime * (uPulseSpeed * 1.35 + uReel * 4.0)) - 0.5));
+
+    // Visible strain: high-frequency brightness chatter along the line under real physical load,
+    // plus a harder flicker once the controller reports overload. This keys off uStrain (physics),
+    // never off uTension (presentation load), so a hot-looking line and a genuinely strained one
+    // are distinguishable.
+    float grain = hash(floor(vAlong * 96.0 + floor(uTime * 34.0) * 7.13));
+    float shiver = grain * (uStrain * uStrain * 0.9 + uOverload * 1.1);
+
+    // Colour: the authored tension colour lives in the sheath; the filament saturates to white.
+    vec3 sheathColor = mix(uColor, vec3(1.0, 0.30, 0.10), uOverload * 0.8);
+    sheathColor = mix(sheathColor, vec3(0.74, 0.95, 1.0), uReel * 0.26);
+    float whiteMix = (1.0 - uSheath) * clamp(
+      coreShape * (0.55 + 0.45 * t) + pulse * 0.30 + winch * uReel * 0.45 + uWhip * 0.6,
+      0.0, 1.0);
+    vec3 col = mix(sheathColor, vec3(1.0), whiteMix);
+
+    // Radiance is deliberately allowed far above 1.0 — that is what clips the core to white through
+    // ACES while the halo keeps its colour, which is the whole liquid-neon read.
+    float radiance = uIntensity * (
+        0.30
+      + sheathShape * mix(0.55, 1.15, uSheath)
+      + coreShape * (1.0 - uSheath) * (2.4 + 3.6 * t)
+      + pulse * (1.2 + 1.1 * t)
+      + winch * uReel * 1.6
+      + shiver * 1.7
+      + uWhip * (2.2 + 3.0 * (1.0 - uSheath))
+    );
+
+    // Coverage is a separate, bounded quantity. Decoupling it from radiance is what stops the cable
+    // pinching into a hairline the moment it gets bright.
+    float alpha = uOpacity * clamp(shape * 0.92 + coreShape * (1.0 - uSheath) * 0.5, 0.0, 1.0)
+      * (0.62 + 0.38 * pulse + uReel * 0.18 + uWhip * 0.25);
+
     if (alpha < 0.002) discard;
-    gl_FragColor = vec4(reelHot * radiance, alpha);
+    gl_FragColor = vec4(col * radiance, alpha);
   }
 `;
 
@@ -301,11 +358,19 @@ const PLUME_FRAGMENT = /* glsl */`
     vec3 col = mix(uColorB, uColorA, smoothstep(0.12, 0.62, heat));
     vec3 hot = vec3(0.82, 0.94, 1.0);
     col = mix(col, hot, smoothstep(0.72, 1.15, heat));
-    col += hot * pow(1.0 - a, 7.0) * (0.5 + uBoost * 0.9);           // tight white-hot mouth
+    // White-hot mouth. pow 7 confined this to a few pixels right at the nozzle lip, so the throat
+    // of the engine — the hottest part of a real flame and the thing that should clip — was
+    // effectively invisible at the top-down game camera. pow 4.6 lets the throat itself burn white
+    // while the tail keeps its authored colour.
+    col += hot * pow(1.0 - a, 4.6) * (0.82 + uBoost * 1.45);
     col += vec3(0.55, 0.35, 0.95) * tongue * uBoost * 0.7;           // violet tip flare under boost
 
     float pulse = 1.0 + sin(uTime * 7.0 + a * 12.0) * 0.05 * uPulse;
-    float radiance = uIntensity * pulse * (0.28 + density * 1.9 + heat * 0.28);
+    // Grammar §9.2: brightness carries energy. This used to top out just under the point where a
+    // thruster clips, so the mildest object in a game about force was the engine. The extra term is
+    // gated on uBoost so a cruising ship still reads calm and only real acceleration burns white —
+    // the plume becomes a throttle gauge instead of a constant blue smudge.
+    float radiance = uIntensity * pulse * (0.28 + density * 2.15 + heat * 0.42 + uBoost * density * 0.85);
     float alpha = density * uOpacity;
 
     if (uDepthEnabled > 0.5) {
@@ -475,6 +540,9 @@ export function createMasslineRibbonMaterial(options = {}) {
       uTension: { value: 0 },
       uOverload: { value: 0 },
       uReel: { value: 0 },
+      uSheath: { value: finite(options.sheath, 0) },
+      uStrain: { value: 0 },
+      uWhip: { value: 0 },
     },
     vertexShader: RIBBON_VERTEX,
     fragmentShader: RIBBON_FRAGMENT,
@@ -513,6 +581,9 @@ export function updateEnergyMaterial(material, frame = {}) {
   if (u.uTension && Number.isFinite(frame.tension)) u.uTension.value = THREE.MathUtils.clamp(frame.tension, 0, 1.5);
   if (u.uOverload) u.uOverload.value = frame.overload ? 1 : 0;
   if (u.uReel && Number.isFinite(frame.reel)) u.uReel.value = THREE.MathUtils.clamp(frame.reel, 0, 1);
+  if (u.uStrain && Number.isFinite(frame.strain)) u.uStrain.value = THREE.MathUtils.clamp(frame.strain, 0, 1);
+  if (u.uWhip && Number.isFinite(frame.whip)) u.uWhip.value = THREE.MathUtils.clamp(frame.whip, 0, 1);
+  if (u.uSheath && Number.isFinite(frame.sheath)) u.uSheath.value = THREE.MathUtils.clamp(frame.sheath, 0, 1);
   if (u.uPulseSpeed && Number.isFinite(frame.pulseSpeed)) u.uPulseSpeed.value = frame.pulseSpeed;
   if (u.uColor && frame.color != null) u.uColor.value.set(frame.color);
 }
