@@ -52,7 +52,10 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
 - Remain on the current branch unless the user explicitly requests branch/worktree management.
 - Push only the owned branch by explicit name; never use `git push --all`, `--mirror`, or publish
   unrelated refs.
-- Commit only a reviewed logical slice when the user has authorized commits.
+- Commit finished pieces as you go: when a logical slice is complete, reviewed, and
+  verified, stage only its owned files and make a focused atomic commit, then push the
+  current branch by explicit name. Do not wait for blanket user authorization; do not
+  batch unrelated work or unrelated files into the commit.
 
 ## 4. Authority and current work
 
