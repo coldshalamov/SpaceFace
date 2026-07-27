@@ -319,17 +319,17 @@ export function resolveObjectiveHudLayout(width, height) {
   const w = Math.max(320, Number(width) || 1280);
   const h = Math.max(240, Number(height) || 720);
   const compact = w <= 760 || h <= 620;
-  const edge = compact ? 8 : 22;
-  const bottom = compact ? 96 : 22;
-  const objectiveWidth = Math.min(compact ? 300 : 320, w - edge * 2);
-  const objectiveHeight = compact ? 68 : 82;
-  const vitalsWidth = compact ? 152 : 244;
-  const vitalsHeight = compact ? 124 : 184;
-  const stackGap = compact ? 8 : 12;
-  const rightWidth = compact ? 150 : 220;
-  const rightHeight = compact ? 320 : 430;
-  const actionWidth = Math.min(420, w - edge * 2);
-  const actionHeight = compact ? 64 : 78;
+  const edge = compact ? 8 : 12;
+  const bottom = compact ? 96 : 12;
+  const objectiveWidth = Math.min(compact ? 300 : 272, w - edge * 2);
+  const objectiveHeight = compact ? 68 : 84;
+  const vitalsWidth = compact ? 152 : 272;
+  const vitalsHeight = compact ? 124 : 170;
+  const stackGap = 8;
+  const rightWidth = compact ? 150 : 232;
+  const rightHeight = compact ? 320 : 472;
+  const actionWidth = Math.min(compact ? 420 : 520, w - edge * 2);
+  const actionHeight = compact ? 64 : 76;
   return {
     viewport: { x: 0, y: 0, width: w, height: h },
     objective: {
@@ -339,7 +339,7 @@ export function resolveObjectiveHudLayout(width, height) {
       height: objectiveHeight,
     },
     vitals: { x: edge, y: h - bottom - vitalsHeight, width: vitalsWidth, height: vitalsHeight },
-    action: { x: (w - actionWidth) / 2, y: h - (compact ? 72 : 100), width: actionWidth, height: actionHeight },
+    action: { x: (w - actionWidth) / 2, y: h - (compact ? 72 : 88), width: actionWidth, height: actionHeight },
     rightDock: {
       x: w - edge - rightWidth,
       y: Math.max(edge, h - bottom - rightHeight),
