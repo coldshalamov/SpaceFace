@@ -2,16 +2,30 @@
 //
 // Focus owns one target for a deterministic three-sim-second window, requests 50% slow-time through
 // the shared time-effects authority, and reasserts state.player.targetId before tether gameplay runs.
-// The 280 wu acquisition envelope gives a fast threat enough lead time to be read and latched. The
-// camera director may use its existing legal zoom-330 ceiling to keep that early pair in frame. Once
+// The 280 wu acquisition envelope gives a fast threat enough lead time to be read and latched. Once
 // acquired, the lease is temporal and survives the target flying beyond that start range.
 // Deterministic: only state.simTime, entity kinematics, and stable ids; no RNG or wall clock.
+//
+// Focus is a GAMEPLAY lease, not a camera event. A hostile lease no longer switches the camera
+// director into FOCUS_PAIR (see src/render/cameraDirector.js): that produced an involuntary lateral
+// pan to the pair midpoint and back, plus a zoom pump, twice per flyby, on top of bullet time.
+// The chase camera's own damped composition already frames player + attacker continuously.
 import { createTimeEffects } from '../core/timeEffects.js';
 import { isHostileToPlayer } from './scanner.js';
 
 const FOCUS_DURATION_S = 3.0;
 const FOCUS_SCALE = 0.5;
+// Two cooldowns, because they answer two different questions.
+//   COOLDOWN_S is the global anti-spam floor: however many hostiles are on the field, the game may
+//     not open a new bullet-time window more often than this.
+//   TARGET_COOLDOWN_S is per-target and is the one that fixes the knife fight. With only the global
+//     scalar, the SAME ship could re-open a 3 s window every 4 s — a circling duel spent three
+//     quarters of its life in slow motion. Measured from acquisition, so it contains the 3 s window
+//     plus ~11 s of true cooldown: roughly one to two complete doctrine attack cycles
+//     (src/ai/combatDoctrine.js ingress→strike→extend→reform), i.e. the same ship gets at most one
+//     focus per pass sequence while a genuinely NEW threat is still gated only by the 4 s floor.
 const COOLDOWN_S = 4.0;
+const TARGET_COOLDOWN_S = 14.0;
 const MIN_REL_SPEED = 96;
 const MIN_CLOSING_SPEED = 25;
 const MAX_ACQUIRE_RANGE = 280;
@@ -22,11 +36,6 @@ const MAX_HOLD_RANGE = 720;
 const MAX_TIME_TO_CLOSEST_S = 2.5;
 const MAX_SURFACE_MISS = 96;
 const LATCH_SCALE = 2.6;
-const CAMERA_ENGINE_MAX_ZOOM = 330;
-const CAMERA_FOCUS_SAFE_NDC = 0.65;
-const CAMERA_FOV_DEG = 50;
-const CAMERA_ASPECT = 16 / 9;
-const CAMERA_TILT_DEG = 60;
 const TIME_EFFECT_SOURCE = 'flyby-focus';
 const FOCUS_REQUEST = Object.freeze({ scale: FOCUS_SCALE });
 
@@ -74,6 +83,15 @@ function isHostileShip(state, ent, player) {
   return isHostileToPlayer(ent, player.team, state);
 }
 
+// The whole point of the lease is that the player can latch the thing it names. tetherGameplay's
+// isAuthorizedFocusTarget additionally requires isAttachable, and a target that opts out of the
+// Massline (`masslineTetherable === false`) fails it — which blanks the ENTIRE acquisition receipt
+// to 'no-target' for the three seconds the lease is held (buildAcquisitionSnapshot, tetherGameplay
+// .js:784-786). Refuse to lease it here instead, so the preview never goes dark.
+function masslineRefusesTarget(ent) {
+  return ent?.data?.masslineTetherable === false || ent?.flags?.masslineTetherable === false;
+}
+
 function isTrainingFocusTarget(ent, player) {
   if (!ent || !ent.alive || !ent.pos || ent.id === player.id) return false;
   if (ent.type !== 'ship' && ent.type !== 'drone') return false;
@@ -81,6 +99,7 @@ function isTrainingFocusTarget(ent, player) {
 }
 
 function isFocusEligibleShip(state, ent, player) {
+  if (masslineRefusesTarget(ent)) return false;
   return isTrainingFocusTarget(ent, player) || isHostileShip(state, ent, player);
 }
 
@@ -101,29 +120,15 @@ function compareStableId(a, b) {
   return ak < bk ? -1 : 1;
 }
 
-// Conservative copy of the director's fixed default pair-fit geometry. Keeping this pure and in
-// the sim avoids a forbidden render import while ensuring Focus never leases a pair the camera
-// cannot show. The 280-unit maximum remains available along screen-friendly azimuths; steep vertical
-// approaches arm closer, where the tilted camera can preserve the authored 17.5% context margin.
-function focusPairFitsCamera(player, target) {
-  const focusX = (player.pos.x + target.pos.x) * 0.5;
-  const focusZ = (player.pos.z + target.pos.z) * 0.5;
-  const tanHalf = Math.tan(CAMERA_FOV_DEG * Math.PI / 360);
-  const tilt = CAMERA_TILT_DEG * Math.PI / 180;
-  let requiredZoom = 0;
-  for (const item of [player, target]) {
-    const radius = Math.max(0, finite(item.radius, 4));
-    const dx = Math.abs(item.pos.x - focusX);
-    const dz = Math.abs(item.pos.z - focusZ);
-    const depthInset = Math.cos(tilt) * dz + radius;
-    requiredZoom = Math.max(
-      requiredZoom,
-      depthInset + (dx + radius) / (tanHalf * CAMERA_ASPECT * CAMERA_FOCUS_SAFE_NDC),
-      depthInset + (Math.sin(tilt) * dz + radius) / (tanHalf * CAMERA_FOCUS_SAFE_NDC),
-    );
-  }
-  return requiredZoom <= CAMERA_ENGINE_MAX_ZOOM;
-}
+// RETIRED (Lane 4): `focusPairFitsCamera`. It re-implemented the camera director's pair-fit
+// geometry — hardcoding fov 50, aspect 16/9, tilt 60 — and refused an ACQUISITION whose pair the
+// camera could not have framed. That made a gameplay lease conditional on a render heuristic, and
+// it was wrong on any aspect ratio but 16/9. It went out together with the FOCUS_PAIR camera
+// takeover it existed to protect: the camera no longer reframes for a hostile lease, so there is no
+// pair to fit. What remains is the kinematic envelope, which is the honest definition of a flyby:
+// within 280 wu, relative speed >= 96, closing >= 25, closest approach within 2.5 s and 96 wu.
+// Its one behavioural consequence is that a steep screen-vertical pass now arms at its true range
+// instead of waiting for the tilted camera's compressed depth axis to allow it.
 
 function beatsBest(
   direct, timeToClosestS, closestSurfaceMiss, armed, mass, relativeSpeed, distance, id,
@@ -141,9 +146,16 @@ function beatsBest(
   return compareStableId(id, bestId) < 0;
 }
 
-/** Pure helper: choose the imminent hostile pass with stable, order-independent tie-breaks. */
-export function pickFlybyTarget(state, player, list) {
+/**
+ * Pure helper: choose the imminent hostile pass with stable, order-independent tie-breaks.
+ *
+ * @param {(id:*) => boolean} [isCoolingDown] optional per-target cooldown predicate. A ship that
+ *   recently held a lease is skipped as a CANDIDATE rather than aborting the whole acquisition, so
+ *   a second, genuinely new attacker on the same pass can still open a window.
+ */
+export function pickFlybyTarget(state, player, list, isCoolingDown = null) {
   if (!player || !player.pos) return null;
+  const cooling = typeof isCoolingDown === 'function' ? isCoolingDown : null;
   const px = player.pos.x;
   const pz = player.pos.z;
   const pvx = finite(player.vel && player.vel.x);
@@ -160,11 +172,11 @@ export function pickFlybyTarget(state, player, list) {
   let bestMass = -Infinity;
   for (const ent of list || []) {
     if (!isFocusEligibleShip(state, ent, player)) continue;
+    if (cooling && cooling(ent.id)) continue;
     const dx = ent.pos.x - px;
     const dz = ent.pos.z - pz;
     const distance = Math.hypot(dx, dz);
     if (distance > MAX_ACQUIRE_RANGE || distance < 12) continue;
-    if (!focusPairFitsCamera(player, ent)) continue;
     const evx = finite(ent.vel && ent.vel.x);
     const evz = finite(ent.vel && ent.vel.z);
     const rvx = evx - pvx;
@@ -238,6 +250,15 @@ export const flybyFocus = {
     this.bus = ctx.bus;
     this.timeEffects = ctx.timeEffects || createTimeEffects(this.state);
     this._unsubs = [];
+    // Per-target cooldown expiries, keyed by stable entity id. Deliberately NOT on
+    // state.player.flybyFocus: that object is persisted, and every event that would restore or
+    // replace a save (`save:loaded`, `game:started`, death, dock) already clears the cooldown
+    // through _finish(resetCooldown). Persisting it would add a save-schema path whose only legal
+    // loaded value is "empty". Determinism is unaffected — the map is keyed by stable ids, driven
+    // by state.simTime, and rebuilt from empty on every init, which is where replays begin.
+    this._targetCooldowns = new Map();
+    this._cooldownNow = 0;
+    this._isTargetCoolingDown = (id) => this._cooldownNow < (this._targetCooldowns.get(id) || 0);
     ensureFocus(this.state);
     const resetOn = (event, reason) => {
       if (!this.bus || typeof this.bus.on !== 'function') return;
@@ -277,7 +298,13 @@ export const flybyFocus = {
     focus.startedAt = 0;
     focus.until = 0;
     focus.targetId = null;
-    if (resetCooldown) focus.cooldownUntil = 0;
+    if (resetCooldown) {
+      focus.cooldownUntil = 0;
+      // A normal expiry (resetCooldown === false) must NOT forgive the ship that just held the
+      // lease — that is the whole point of the per-target cooldown. Only a load / new game /
+      // death / dock / re-init clears it, matching what the global scalar already did.
+      if (this._targetCooldowns) this._targetCooldowns.clear();
+    }
     if (resetZoom) focus.zoom = 0;
     if (clearPlayerTarget && st.player && st.player.targetId === targetId) st.player.targetId = null;
     if (this.timeEffects) this.timeEffects.clear(TIME_EFFECT_SOURCE);
@@ -287,6 +314,17 @@ export const flybyFocus = {
         endedAt: Number.isFinite(st.simTime) ? st.simTime : 0,
         reason,
       });
+    }
+  },
+
+  // Bounded memory: entries are only ever added on acquisition (at most one per COOLDOWN_S) and
+  // every entry is dropped once it expires. Map iteration is insertion-ordered, so the sweep is
+  // deterministic.
+  _expireTargetCooldowns(now) {
+    const cooldowns = this._targetCooldowns;
+    if (!cooldowns || !cooldowns.size) return;
+    for (const [id, until] of cooldowns) {
+      if (!(until > now)) cooldowns.delete(id);
     }
   },
 
@@ -333,7 +371,9 @@ export const flybyFocus = {
     const list = st.entityList || (st.entities && typeof st.entities.values === 'function'
       ? [...st.entities.values()]
       : []);
-    const pick = pickFlybyTarget(st, player, list);
+    this._expireTargetCooldowns(now);
+    this._cooldownNow = now;
+    const pick = pickFlybyTarget(st, player, list, this._isTargetCoolingDown);
     if (!pick) return;
 
     focus.active = true;
@@ -341,6 +381,7 @@ export const flybyFocus = {
     focus.startedAt = now;
     focus.until = now + FOCUS_DURATION_S;
     focus.cooldownUntil = now + COOLDOWN_S;
+    if (this._targetCooldowns) this._targetCooldowns.set(pick.id, now + TARGET_COOLDOWN_S);
     focus.targetId = pick.id;
     focus.zoom = 0.35;
     st.player.targetId = pick.id;

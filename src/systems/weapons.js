@@ -15,7 +15,8 @@ import { writePhysicsControl } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import {
-  aimTrueProjectileVelocity, solveTetherLeadSolution, solutionToleranceRad,
+  aimTrueProjectileVelocity, solveTetherLeadSolution, solutionToleranceRad, orbitalConstraintState,
+  masslineOwnsGuns,
 } from '../combat/tetherFireControl.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 
@@ -63,6 +64,20 @@ function isWeaponVentEnabled(state) {
 }
 
 const DEG2 = WEAPONS; // keep import referenced even if tree-shaken oddly (no-op)
+
+// The hostile ship/drone the player's Massline currently owns the guns for, or null. One rule,
+// shared with combat/autoTargetMode via masslineOwnsGuns, so the fire path, the missile lock and the
+// reticle lead cannot end up pointing at three different ships. Module-level (not a method) so the
+// solution helpers stay callable against a minimal { helpers } host.
+function masslineGunTarget(helpers, player, state) {
+  const tether = state.player && state.player.tether;
+  if (!tether || tether.targetId == null || !helpers) return null;
+  const target = helpers.getEntity(tether.targetId);
+  if (!target) return null;
+  return masslineOwnsGuns(tether, target, isHostileToPlayer(target, player.team, state))
+    ? target
+    : null;
+}
 
 export const weapons = {
   name: 'weapons',
@@ -141,10 +156,36 @@ export const weapons = {
           forcedTarget = tetherGate.target;
         }
       }
+      // MIXED BATTERY (auto-aim path). state.input.aimAngle can carry exactly one lead solution and
+      // it is the PRIMARY mount's — so pulse/autocannon/railgun all gimbaled to the pulse's 320
+      // intercept and two thirds of the battery knowingly fired short. Handing the auto-target down
+      // as the forced target makes each mount re-solve at its own projectile speed
+      // (_serviceProjectileWeapon below), and lets hitscan beams drop the lead entirely.
+      // `input.autoAim` is written ONLY by combat/autoTargetMode.tickAutoTarget, so a cursor aim the
+      // player set by hand is never re-led behind their back.
+      if (!forcedTarget) {
+        const autoAim = state.input && state.input.autoAim;
+        if (autoAim && autoAim.targetId != null) {
+          const autoTarget = this.helpers.getEntity(autoAim.targetId);
+          if (autoTarget && autoTarget.alive && autoTarget.pos) forcedTarget = autoTarget;
+        }
+      }
       const aimAngle = tetherGate
         ? tetherGate.angle
         : (state.input.aimAngle || player.rot);
+      // Transient mirror of WHAT THE GUNS ARE ACTUALLY SHOOTING AT, written by the system that owns
+      // firing (single-owner rule: HUD reads, we write). It differs from state.player.targetId
+      // exactly when the Massline has claimed the guns, which is precisely the case a target panel
+      // must not describe wrongly. Never serialized — recomputed every tick, and written only under
+      // the same flag as the rule it reports, so the key never appears in the 47-A snapshot hash.
+      if (massline2Flag('fireControl')) {
+        state.player.gunTargetId = forcedTarget && forcedTarget.id != null
+          ? forcedTarget.id
+          : (state.player.targetId != null ? state.player.targetId : null);
+      }
       this._serviceShip(player, firing, /*isPlayer*/ true, dt, state, aimAngle, forcedTarget, tetherGate);
+    } else if (state.player && state.player.gunTargetId != null) {
+      state.player.gunTargetId = null;
     }
     const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
     for (const e of ships) {
@@ -386,18 +427,23 @@ export const weapons = {
   // { target, targetId, angle, tolRad, constrained } when the player's tether is on a live
   // hostile ship/drone, else null. Pure read — never writes state.player.targetId, so Tab
   // selection stays free for throw aiming while the guns own the tethered hostile.
+  //
+  // GATE: geometry, not rope tension. This used to require phase ∈ {capture, loaded, overload} and
+  // bail otherwise — but a TIGHT ORBIT sits inside rest length, so it reports `slack`, so the
+  // circular solver written for exactly that case was switched off precisely when the player was
+  // performing the signature Massline move. A linear lead against a body on an arc misses
+  // systematically, always to the outside. orbitalConstraintState() asks the real question (is it
+  // going AROUND me, fast enough for the arc to bend inside a bullet's flight?), and a negative
+  // answer now yields a LINEAR solution rather than null — so a straight tow still keeps the guns
+  // on the hostile you are holding instead of handing them back to whatever ship is nearest.
   _tetherFireSolution(player, state, projSpeed = null) {
-    const tether = state.player && state.player.tether;
-    if (!tether || !tether.active || tether.targetId == null) return null;
-    const target = this.helpers.getEntity(tether.targetId);
-    if (!target || !target.alive || !target.pos) return null;
-    if (target.type !== 'ship' && target.type !== 'drone') return null;
-    if (!isHostileToPlayer(target, player.team, state)) return null;
-    const taut = tether.phase === 'capture' || tether.phase === 'loaded' || tether.phase === 'overload';
-    if (!taut) return null;
+    const target = masslineGunTarget(this.helpers, player, state);
+    if (!target) return null;
+    const tetherPhase = (state.player && state.player.tether && state.player.tether.phase) || 'slack';
+    const orbit = orbitalConstraintState(player, target);
     const speed = Number.isFinite(projSpeed) && projSpeed > 0
       ? projSpeed : this._playerProjectileSpeed(player);
-    const sol = solveTetherLeadSolution(player, target, speed, { taut: true });
+    const sol = solveTetherLeadSolution(player, target, speed, { taut: orbit.constrained });
     const dist = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
     return {
       target,
@@ -405,7 +451,9 @@ export const weapons = {
       angle: sol.angle,
       tolRad: solutionToleranceRad(target.radius, dist),
       constrained: sol.constrained,
-      taut: true,
+      omega: orbit.omega,
+      // Reported for receipts only — nothing branches on the rope's tension phase any more.
+      taut: tetherPhase === 'capture' || tetherPhase === 'loaded' || tetherPhase === 'overload',
     };
   },
 
@@ -557,7 +605,12 @@ export const weapons = {
     // round is knowingly released on the wrong intercept.
     let mountGate = null;
     if (fireGate && fireGate.target) {
-      mountGate = solveTetherLeadSolution(e, fireGate.target, mountProjSpeed, { taut: true });
+      // Carry the ship-level geometry verdict, not a hard-coded `true`. Hard-coding it made every
+      // mount solve a circle even on frames where the ship-level gate had already decided the pair
+      // was NOT arcing (a straight tow), so the withhold gate and the round it released disagreed.
+      mountGate = solveTetherLeadSolution(e, fireGate.target, mountProjSpeed, {
+        taut: !!fireGate.constrained,
+      });
       mountGate.targetId = fireGate.targetId;
       mountGate.tolRad = fireGate.tolRad;
     }
@@ -906,11 +959,21 @@ export const weapons = {
 
   // --- helpers ---
 
-  // Current target for a ship: explicit combat.targetId, else player's selected target.
+  // Current target for a ship: explicit combat.targetId, else the player's gun target.
+  //
+  // For the player the gun target is NOT simply state.player.targetId — a line on a hostile claims
+  // the guns (masslineOwnsGuns). Resolving it here is what keeps the missile LOCK (_tickLock) on the
+  // same ship the missile will actually launch at: the launch path uses `forceTarget` — the tethered
+  // hostile — while the lock used to build on the selection, so the player locked one ship and fired
+  // at another. state.player.targetId itself is left alone; it is the player's selection and it also
+  // aims Massline throws.
   _resolveTarget(e) {
     const combat = e.data && e.data.combat;
     let id = combat && combat.targetId != null ? combat.targetId : null;
-    if (id == null && e.id === this.state.playerId) id = this.state.player.targetId;
+    if (id == null && e.id === this.state.playerId) {
+      const tethered = massline2Flag('fireControl') ? masslineGunTarget(this.helpers, e, this.state) : null;
+      id = tethered ? tethered.id : this.state.player.targetId;
+    }
     if (id == null) return null;
     const t = this.helpers.getEntity(id);
     return t && t.alive ? t : null;

@@ -1,6 +1,20 @@
 // Target panel (ARCHITECTURE §5, spec "Target panel") — the selected-target readout above
 // the radar. Populated from state.player.targetId → entity lookup. Shows name, faction tag,
-// three segmented bars, distance (wu) and closing speed. Hidden when targetId is null/dead.
+// three segmented bars, distance (wu) and closing speed. Hidden when there is neither a live
+// selection nor a live engaged contact.
+//
+// TWO TARGETS, ONE PANEL — read before "simplifying" the subject resolution below.
+//
+// state.player.targetId is the SELECTION: what Tab locked, what the radar highlights, and what
+// aims a Massline throw. state.player.gunTargetId is the ENGAGED contact: a transient per-tick
+// mirror written by src/systems/weapons.js:181-188 of what the guns are actually shooting at.
+// They differ exactly when the Massline has claimed fire control — you Tab-lock ship A, latch
+// hostile B, and the battery gimbals onto B while the panel used to keep naming A. That silent
+// divergence is the defect this panel now reports. The two are NOT conflated: the selection stays
+// the panel's subject, and the engaged contact gets its own row.
+//
+// gunTargetId is written only under massline2Flag('fireControl') and is never serialized, so every
+// read here treats an absent key as "no divergence" rather than as an error.
 //
 // Cheap per-frame path: bar widths via transform:scaleX, text via textContent. No DOM churn.
 
@@ -155,6 +169,44 @@ export function targetRangeBand(distance, player) {
   return 'DISTANT';
 }
 
+/**
+ * THE READER for state.player.gunTargetId (written by src/systems/weapons.js:181-188).
+ *
+ * Resolves which contact the panel takes as its subject and whether the guns have diverged from
+ * the selection. Pure and DOM-free so the divergence rule is checkable headlessly; createTargetPanel
+ * below is its only production consumer.
+ *
+ * Returns:
+ *   subjectId / subject   — what the panel describes. The SELECTION (targetId) wins whenever it is
+ *                           alive, because targetId is also what aims a Massline throw and the two
+ *                           must not be conflated. The engaged contact is the subject only when
+ *                           there is no live selection, so the guns are never firing at a ship with
+ *                           no readout anywhere.
+ *   engaged               — the diverged gun target, or null when the guns agree with the selection
+ *                           (the ordinary case, which must not print a second name for one ship).
+ *   subjectIsEngaged      — true when the subject IS the gun target and there is no selection.
+ *   text                  — the row copy, or '' when there is nothing to report.
+ */
+export function engagedContactReadout(state) {
+  const player = (state && state.player) || null;
+  const entities = (state && state.entities) || null;
+  if (!player || !entities) return { subjectId: null, subject: null, engaged: null, subjectIsEngaged: false, text: '' };
+  const selId = player.targetId != null ? player.targetId : null;
+  const selection = selId != null ? entities.get(selId) : null;
+  const liveSelection = selection && selection.alive ? selection : null;
+  // An absent gunTargetId (flag off, or no player firing this tick) is "no divergence", never an error.
+  const gunId = player.gunTargetId != null ? player.gunTargetId : null;
+  const engagedCandidate = gunId != null && gunId !== selId ? entities.get(gunId) : null;
+  const engaged = engagedCandidate && engagedCandidate.alive ? engagedCandidate : null;
+  const subjectIsEngaged = !liveSelection && !!engaged;
+  const subject = liveSelection || (subjectIsEngaged ? engaged : null);
+  const subjectId = subjectIsEngaged ? gunId : selId;
+  let text = '';
+  if (subjectIsEngaged) text = '⌖ GUNS ENGAGED · NO SELECTION';
+  else if (engaged && liveSelection) text = `⌖ GUNS ▸ ${targetDisplayName(engaged)}`;
+  return { subjectId, subject, engaged, subjectIsEngaged, text };
+}
+
 export function targetIntelReadout(target, player, state, distance = Infinity) {
   if (!target) return null;
   const data = target.data || {};
@@ -206,6 +258,8 @@ export function createTargetPanel(ctx) {
       <div class="sf-bar sf-bar--segmented sf-bar--armor" title="Armor"><div class="sf-bar__fill"></div></div>
       <div class="sf-bar sf-bar--segmented sf-bar--hull" title="Hull"><div class="sf-bar__fill"></div></div>
     </div>
+    <div class="sf-target__engaged mono" role="status" aria-live="polite" aria-atomic="true"
+      style="display:none;margin-top:2px;font-size:10px;line-height:1.3;letter-spacing:.05em;color:var(--visor-amber);"></div>
     <div class="sf-target__identity mono" style="display:none"></div>
     <div class="sf-target__intent mono" style="display:none;margin-top:3px;font-size:10px;line-height:1.3;letter-spacing:.04em;color:var(--text-primary);"></div>
     <div class="sf-target__meta">
@@ -246,6 +300,8 @@ export function createTargetPanel(ctx) {
   const elIdentity = el.querySelector('.sf-target__identity');
   const elIntent = el.querySelector('.sf-target__intent');
   const elRange = el.querySelector('.sf-target__range');
+  const elEngaged = el.querySelector('.sf-target__engaged');
+  let lastEngagedKey = null;
   let lastTriKey = null;
   let lastIdentityKey = null;
   let lastIntelKey = null;
@@ -280,14 +336,24 @@ export function createTargetPanel(ctx) {
 
   function update(options = {}) {
     tickN++;
-    const tid = state.player.targetId;
-    const t = tid != null ? state.entities.get(tid) : null;
+    const gunRead = engagedContactReadout(state);
+    const t = gunRead.subject;
+    const tid = gunRead.subjectId;
     if (!t || !t.alive) {
       if (el.style.display !== 'none') el.style.display = 'none';
       lastTargetId = null;
+      lastEngagedKey = null;
       return;
     }
     if (el.style.display === 'none') el.style.display = 'block';
+
+    // The divergence row: the one thing the panel could not previously say.
+    if (gunRead.text !== lastEngagedKey) {
+      lastEngagedKey = gunRead.text;
+      setText(elEngaged, gunRead.text);
+      const show = gunRead.text ? 'block' : 'none';
+      if (elEngaged.style.display !== show) elEngaged.style.display = show;
+    }
 
     const nextName = targetDisplayName(t);
     const nextClass = entityClass(t);
@@ -451,6 +517,7 @@ export function createTargetPanel(ctx) {
     lastTargetId = null;
     lastTriKey = null;
     lastIntelKey = null;
+    lastEngagedKey = null;
     tickN = 5;
   }
 

@@ -182,11 +182,21 @@ test('PQ-004 hysteresis holds a marginal challenger for 200 ms but obeys precise
   assert.equal(reversed.selected.id, 'a', 'deliberate reversal bypasses hysteresis');
 });
 
-test('a Massline press honors the player-selected physical target instead of a previous automatic receipt', () => {
+test('a Massline press honors the player-selected physical target instead of a stale receipt', () => {
   const h = createRuntimeHarness();
   h.system.update(1 / 60, h.state);
-  assert.equal(h.state.masslineAcquisition, null,
-    'idle flight must not publish an automatic cable-like Massline selection');
+  // Idle flight now publishes a live acquisition receipt every tick — that is the headline of this
+  // chunk ("you can see what the Massline will grab before you press, and it updates as you move").
+  // The old assertion demanded the receipt stay null, which held only while
+  // _refreshAcquisitionPreview had no callers. The claim this test is named for survives unchanged
+  // and is checked below: a press must honour the target the player has actually selected, not
+  // whatever an earlier tick happened to be previewing.
+  assert.ok(h.state.masslineAcquisition, 'idle flight must publish a live acquisition receipt');
+  assert.equal(h.latched.length, 0, 'publishing a preview must not latch anything');
+  assert.equal(h.created.length, 0, 'publishing a preview must not create an attachment');
+  const idleSelection = h.state.masslineAcquisition.selected?.targetId;
+  assert.equal(idleSelection, h.anchor.id,
+    'with forward+right steering the idle preview leans on the heavy anchor');
 
   h.state.player.targetId = h.decoy.id;
   h.state.input.aimWorld = { x: h.decoy.pos.x, z: h.decoy.pos.z };
@@ -247,21 +257,53 @@ test('a Massline press resolves current physical truth instead of consuming an i
     'ownership is not a hidden Massline eligibility rule');
 });
 
-test('idle Massline acquisition state remains empty across save-load and new-game boundaries', () => {
+// The receipt is a per-tick read of live physical truth, so no receipt may ever SURVIVE a
+// save-load or new-game boundary — a preview restored from before the boundary would highlight a
+// body that may no longer exist, and the press consumes exactly what the preview published.
+// (The old shape of this test asserted the receipt was permanently null, which was true only while
+// nothing published one; the boundary invariant it was named for is unchanged and is what is
+// asserted here.)
+test('no Massline acquisition receipt survives a save-load or new-game boundary', () => {
   const h = createRuntimeHarness();
   h.system.update(1 / 60, h.state);
-  assert.equal(h.state.masslineAcquisition, null);
+  const before = h.state.masslineAcquisition;
+  assert.ok(before, 'a live receipt exists before the boundary');
 
   h.bus.emit('save:loaded', {});
-  assert.equal(h.state.masslineAcquisition, null);
+  assert.equal(h.state.masslineAcquisition, null, 'save-load must drop the pre-boundary receipt');
+
+  h.state.tick += 30;
+  h.state.simTime += 0.5;
   h.system.update(1 / 60, h.state);
-  assert.equal(h.state.masslineAcquisition, null);
+  const after = h.state.masslineAcquisition;
+  assert.ok(after, 'the preview resumes from live state after the boundary');
+  // Deliberately NOT asserting the id differs: _resetAcquisitionRuntime rewinds the receipt
+  // sequence to 0 so a reloaded run mints the same ids as the run it reloaded, which is what keeps
+  // save/reload determinism (check:sim:compare) intact. Freshness is proved by the clock instead —
+  // the resumed receipt is stamped with the CURRENT tick, so it is a new read of live physical
+  // truth rather than the pre-boundary record handed back.
+  assert.equal(after.publishedTick, h.state.tick,
+    'the resumed receipt is stamped with the current tick, not the pre-boundary one');
+  assert.notEqual(after.publishedTick, before.publishedTick,
+    'and that tick has moved on from the receipt taken before the boundary');
 
   h.bus.emit('game:started', {});
-  assert.equal(h.state.masslineAcquisition, null);
+  assert.equal(h.state.masslineAcquisition, null, 'new game must drop the receipt too');
 });
 
-test('an idle acquisition receipt never draws a cable-like line or target bracket', () => {
+// Two claims live in this test and only one of them was ever an invariant.
+//
+// The invariant: the pre-latch preview must NEVER draw a player-to-target link line. A dashed line
+// from the ship to a candidate reads as a second cable and claims an attachment that does not
+// exist; only the real rendered Massline may connect the player to an object. That still holds —
+// the link <svg> is mounted and permanently hidden.
+//
+// The other claim — that the bracket itself is hidden — was the bug. masslineHud hid the preview
+// unconditionally, so the receipt had no visual at all, which is a state with no visual and
+// therefore (grammar rule 2) a state that does not exist. Showing a world-anchored MARK on the
+// candidate plus a caption beside it is the intended change; it needs no connector precisely
+// because the mark sits on the target.
+test('the acquisition preview marks the candidate itself and never draws a cable-like line', () => {
   const previousEnabled = MASSLINE2_FLAGS.enabled;
   const previousDocument = globalThis.document;
   const previousWindow = globalThis.window;
@@ -305,11 +347,21 @@ test('an idle acquisition receipt never draws a cable-like line or target bracke
 
     const root = document.getElementById('sf-ml2');
     const preview = findByClass(root, 'ml2-preview');
+    const mark = findByClass(root, 'ml2-preview-mark');
     const line = findByClass(root, 'ml2-preview-line');
-    assert.ok(preview, 'Massline HUD must mount its pre-latch bracket');
-    assert.equal(preview.style.display, 'none');
+    assert.ok(preview, 'Massline HUD must mount its pre-latch caption');
+    assert.ok(mark, 'Massline HUD must mount its world-anchored acquisition mark');
+
+    assert.equal(mark.style.display, 'block',
+      'the mark must be drawn ON the candidate the Massline will grab');
+    assert.equal(preview.style.display, 'block',
+      'the caption naming the candidate must be visible before the press');
+    assert.match(preview.textContent, /Heavy Anchor/,
+      'the caption must name the candidate the receipt selected');
+
     assert.equal(line.parentNode.style.display, 'none',
       'only the real rendered Massline cable may connect the player to an object');
+
     assert.equal(root.classList.contains('ml2-reduced-motion'), true);
     hud.destroy();
   } finally {
@@ -320,6 +372,216 @@ test('an idle acquisition receipt never draws a cable-like line or target bracke
     else globalThis.window = previousWindow;
   }
 });
+
+// ── W2-A regressions ───────────────────────────────────────────────────────────────────────────
+//
+// Three verified defects, each reproduced here as the behaviour rather than as a source scan.
+
+// FINDING 1. 'precision-pick' is the FALLBACK profile — straight-line flight, nothing painted, no
+// hostile — and it was the only one of the six with no mass axis at all. The scorer computed
+// axes.mass and multiplied it by zero, leaving proximity as the sole live discriminator, so the
+// nearest pebble beat the freighter you were flying at. That is the bug the whole chunk is named
+// for; this is the case a player actually hits.
+test('flying at a heavy hull past a pebble grabs the hull, not the pebble', () => {
+  const p = {
+    id: 'player', type: 'ship', alive: true, team: 0,
+    pos: { x: 0, z: 0 }, vel: { x: 110, z: 0 }, rot: 0, radius: 8, mass: 220,
+  };
+  const intentDir = { x: 1, z: 0 };                 // nose-forward, no turn, no strafe
+  const hull = target('freighter', 'ship', 300, 0, { mass: 4200, radius: 32, vx: 12 });
+  const pebble = target('pebble', 'asteroid', 70, 18, { mass: 12, radius: 3 });
+  const candidates = [hull, pebble];
+  const opts = {
+    turnIntent: 0, moveZ: 1, intentDir,
+    cursorPrecisionOf: () => 0,
+    isHostile: () => false,
+  };
+  const context = scoring.classifyMasslineIntent(p, candidates, opts);
+  assert.equal(context.id, 'precision-pick',
+    'ordinary straight-line flight with nothing painted is the fallback profile');
+
+  const ranked = scoring.rankMasslineTargets(p, candidates, {
+    maxRange: 390, context, intentDir,
+    cursorPrecisionOf: () => 0,
+    isHostile: () => false,
+    ownershipOf: () => 'neutral',
+    reachAllowanceOf: (candidate) => candidate.radius || 0,
+  });
+  assert.equal(ranked[0].id, hull.id,
+    'the 4200-mass hull you are flying at must outrank a 12-mass pebble four times closer');
+  const contributions = ranked[0].reasons.context.contributions;
+  assert.ok(contributions.mass > 0,
+    'the fallback profile must actually spend weight on mass — a zero-weighted axis is dead code');
+
+  // Proximity is still the stronger authored signal; mass breaks the tie it could not break before.
+  // A near body that is a genuinely useful anchor (>= the MASS_IDEAL_LO comfort floor) still wins.
+  const realAnchor = target('near-anchor', 'asteroid', 70, 18, { mass: 400, radius: 9 });
+  const nearWins = scoring.rankMasslineTargets(p, [hull, realAnchor], {
+    maxRange: 390,
+    context: scoring.classifyMasslineIntent(p, [hull, realAnchor], opts),
+    intentDir,
+    cursorPrecisionOf: () => 0,
+    isHostile: () => false,
+    ownershipOf: () => 'neutral',
+    reachAllowanceOf: (candidate) => candidate.radius || 0,
+  });
+  assert.equal(nearWins[0].id, realAnchor.id,
+    'mass must break the pebble tie without making every close, useful anchor lose to distant bulk');
+});
+
+// FINDING 2. The press tick used to force a receipt rebuild before consuming it
+// (_refreshAcquisitionPreview skips its throttle on force AND on intent.reversed, and a reversal
+// sets forceSwitch:true, which bypasses hysteresis entirely). So the ordinary "swing the other way
+// and grab" latched a body that had never been drawn, and previewMatched could not report it
+// because it compared the rebuild against itself. Measured before the fix: rendered target 3,
+// latched target 2, previewMatched reported true.
+test('a press latches the candidate the previous frame published, even when the turn reverses', () => {
+  const h = createSteppedHarness();
+  for (let i = 0; i < 40; i++) stepRuntime(h, (state) => { state.input.turnIntent = 1; state.input.moveZ = 1; });
+  const rendered = h.state.masslineAcquisition?.selected?.targetId;
+  assert.equal(rendered, h.right.id, 'sustained right turn must settle the preview on the right anchor');
+
+  stepRuntime(h, (state) => {
+    state.input.turnIntent = -1;                    // deliberate reversal on the very press tick
+    state.input.actions.tetherFire = true;
+  });
+  assert.equal(h.created.length, 1, 'the press must latch');
+  assert.equal(h.created[0].targetId, rendered,
+    'the latch must consume the candidate the HUD rendered, not one rebuilt on the press tick');
+  assert.equal(h.latched[0]?.previewMatched, true);
+});
+
+// …and previewMatched must be a real signal, not a tautology. When the published receipt cannot be
+// consumed — it outlived ACQUISITION_VALID_S and the body it named has since left latch range — the
+// rebuild is unavoidable and the flag must SAY the player got something they were not shown.
+test('previewMatched reports false when the latch could not consume the published candidate', () => {
+  const h = createSteppedHarness();
+  for (let i = 0; i < 30; i++) stepRuntime(h, (state) => { state.input.turnIntent = 1; state.input.moveZ = 1; });
+  const rendered = h.state.masslineAcquisition?.selected?.targetId;
+  assert.equal(rendered, h.right.id);
+
+  h.state.tick += 60;
+  h.state.simTime += 1.0;                           // receipt outlives ACQUISITION_VALID_S
+  h.right.pos.x = 900;                              // and the drawn candidate leaves latch range
+  h.right.pos.z = 0;
+  stepRuntime(h, (state) => { state.input.actions.tetherFire = true; });
+
+  assert.equal(h.created.length, 1);
+  assert.equal(h.created[0].targetId, h.left.id, 'the rebuild must fall back to the reachable anchor');
+  assert.equal(h.latched[0]?.previewMatched, false,
+    'a latch on a body the player was never shown must report the mismatch, not assert parity');
+});
+
+// FINDING 3. masslineTargetScoring forbids weapon-aim coupling BY CONTRACT, but
+// combat/autoTargetMode.tickAutoTarget overwrites state.input.aimWorld with the gun lead point
+// while auto-target is held, and acquisitionCursorActive treated any aimWorld as a player cursor.
+// With 0.34 on the cursor axis that let the guns pick the Massline's anchor outright.
+test('a held auto-target lead point does not steer Massline acquisition', () => {
+  const steering = createSteppedHarness();
+  stepRuntime(steering, (state) => { state.input.turnIntent = 1; });
+  const baseline = steering.state.masslineAcquisition?.selected;
+  assert.equal(baseline?.targetId, steering.right.id, 'steering intent selects the turn-side anchor');
+
+  // Auto-target held on the OTHER anchor: aimWorld is the gun solution and input.autoAim is the
+  // provenance marker tickAutoTarget stamps for exactly that write.
+  const gunned = createSteppedHarness();
+  stepRuntime(gunned, (state) => {
+    state.input.turnIntent = 1;
+    state.input.autoFire = true;
+    state.input.autoAim = { targetId: gunned.left.id, leadSpeed: 420 };
+    state.input.aimWorld = { x: gunned.left.pos.x, z: gunned.left.pos.z };
+  });
+  const gunnedSelection = gunned.state.masslineAcquisition?.selected;
+  assert.equal(gunnedSelection?.targetId, steering.right.id,
+    'a weapon lead point must not move the Massline candidate onto the gun target');
+  assert.equal(gunnedSelection?.reasons?.context?.axes?.cursor, 0,
+    'a synthesised gun solution must contribute nothing to the cursor axis');
+  assert.equal(gunnedSelection?.context, baseline?.context,
+    'and it must not even change which contextual profile is selected');
+
+  // Provenance, not a blanket cursor mute: the SAME aim point with no autoAim marker is a genuine
+  // player paint and must still win, or this gate would have deleted cursor targeting outright.
+  const painted = createSteppedHarness();
+  stepRuntime(painted, (state) => {
+    state.input.turnIntent = 1;
+    state.input.aimWorld = { x: painted.left.pos.x, z: painted.left.pos.z };
+  });
+  assert.equal(painted.state.masslineAcquisition?.selected?.targetId, painted.left.id,
+    'a real cursor paint on the same point must still take the candidate');
+});
+
+// Two symmetric heavy anchors, one on each turn side, so steering intent alone decides the pick.
+// Unlike createRuntimeHarness this advances tick and simTime per update, because the press/preview
+// coupling is a statement about consecutive FRAMES.
+function createSteppedHarness() {
+  const p = player();
+  p.vel = { x: 0, z: 0 };
+  const left = target(2, 'asteroid', 120, -150, { mass: 5200, radius: 30 });
+  const right = target(3, 'asteroid', 120, 150, { mass: 5200, radius: 30 });
+  const entities = new Map([[p.id, p], [left.id, left], [right.id, right]]);
+  const state = {
+    mode: 'flight',
+    tick: 0,
+    simTime: 0,
+    playerId: p.id,
+    player: {
+      targetId: null,
+      tether: { active: false, targetId: null },
+      flybyFocus: { active: false, targetId: null },
+    },
+    entities,
+    entityList: [...entities.values()],
+    spatialHash: null,
+    nav: { route: null, waypoint: null, autopilot: { targetEntityId: null } },
+    input: {
+      turnIntent: 0,
+      moveX: 0,
+      moveZ: 1,
+      aimWorld: { x: 0, z: 0 },
+      aimAngle: 0,
+      mouseNdc: { x: 0, y: 0 },
+      pointerScreen: { x: 0, y: 0, active: false },
+      autoAim: null,
+      actions: { tetherFire: false, tetherCut: false, reelDelta: 0, massline: null },
+    },
+  };
+  const created = [];
+  let active = null;
+  const attachments = {
+    listForEntity: () => [],
+    get: (id) => (active && active.id === id ? active : null),
+    create: (request) => {
+      created.push(structuredClone(request));
+      active = { id: 'att-stepped', targetId: request.targetId, state: 'active', restLength: 180 };
+      return { ok: true, attachment: active };
+    },
+    cut: () => ({ ok: true }),
+  };
+  const kernel = {
+    attachments,
+    catalog: { attachments: new Map([['tether_standard', { id: 'tether_standard', maxLength: 390 }]]) },
+  };
+  const bus = createBus();
+  const latched = [];
+  const denied = [];
+  bus.on('tether:latched', (payload) => latched.push(structuredClone(payload)));
+  bus.on('tether:latchDenied', (payload) => denied.push(structuredClone(payload)));
+  const system = Object.assign({}, tetherGameplay);
+  system.init({
+    state,
+    bus,
+    helpers: {},
+    registry: { get: (name) => (name === 'actions' || name === 'combat' ? { kernel } : null) },
+  });
+  return { state, system, left, right, created, latched, denied, bus };
+}
+
+function stepRuntime(h, mutate) {
+  if (mutate) mutate(h.state);
+  h.system.update(1 / 60, h.state);
+  h.state.tick += 1;
+  h.state.simTime += 1 / 60;
+}
 
 function createRuntimeHarness(options = {}) {
   const p = player();

@@ -42,7 +42,7 @@ export const VERB_OWNERS = Object.freeze({
 // TYPE MEMBERSHIP — the single truth each live gate consults IN PLACE OF its literal type array.
 // Each set is transcribed byte-for-byte from the gate it replaces (verified at base f85d54c8):
 //   target   uiRoot.js:965          e.type !== 'ship' && e.type !== 'drone'
-//   tether   tetherGameplay.js:48   ATTACHABLE_TYPES
+//   tether   — NOT an allowlist any more; see VERB_TYPE_DENYLIST below
 //   mine     mining.js:160,187      type === 'asteroid' || type === 'wreck'
 //   damage   damage.js:43           ['ship','station','drone','mine','massSeed']
 //   salvage  scanner isWreckLike + salvageActions actionForWreck (wreck family)
@@ -53,7 +53,6 @@ export const VERB_OWNERS = Object.freeze({
 // ---------------------------------------------------------------------------------------------
 export const VERB_TYPE_MEMBERSHIP = Object.freeze({
   target: Object.freeze(new Set(['ship', 'drone'])),
-  tether: Object.freeze(new Set(['asteroid', 'wreck', 'ship', 'drone', 'station', 'payload', 'pickup', 'massSeed'])),
   mine: Object.freeze(new Set(['asteroid', 'wreck'])),
   damage: Object.freeze(new Set(['ship', 'station', 'drone', 'mine', 'massSeed'])),
   salvage: Object.freeze(new Set(['wreck'])),
@@ -61,8 +60,37 @@ export const VERB_TYPE_MEMBERSHIP = Object.freeze({
   contact: Object.freeze(new Set(['ship', 'drone', 'wreck'])),
 });
 
-/** True iff `type` is in the verb's type-membership set. Bare-type check only (no state, no data). */
+// ---------------------------------------------------------------------------------------------
+// DENYLIST VERBS. A verb listed here is open to every entity type EXCEPT the named ones; it has no
+// entry in VERB_TYPE_MEMBERSHIP, because an allowlist cannot express "everything the world grows".
+//
+// `tether` is the only such verb. Commit 4d00867e ("feat(controls): restore direct flight intent")
+// inverted the Massline gate on purpose: `src/systems/tetherGameplay.js:1191-1204` now denies only
+// TRANSIENT_NON_TETHERABLE_TYPES = {projectile, fx} (plus the massSeed frame-lock phase check and
+// the data/flag `masslineTetherable` opt-in/opt-out, which are downstream conditions, not
+// membership) under the header "Massline is a physical command, not a catalog verb. New
+// world-object types do not need a separate eligibility-list edit before a player can deliberately
+// attach to them."
+//
+// This column was left behind as the pre-4d00867e transcription and went stale: it omitted 'mine',
+// so interactionEligibility answered WRONG_TYPE for a body the live latch attaches happily — a mine
+// is damageable AND tetherable ("shoot it, or pick it up and throw it"), and the HUD showed no
+// tether affordance for it. Adding 'mine' to the old set would have closed today's red and left the
+// same trap armed for the next world noun, so the column is expressed the way the gate is instead.
+// VERB_OWNERS.tether already names that gate as the owner of this verb; the catalog follows it.
+// ---------------------------------------------------------------------------------------------
+export const VERB_TYPE_DENYLIST = Object.freeze({
+  tether: Object.freeze(new Set(['projectile', 'fx'])),
+});
+
+/**
+ * True iff `type` is eligible for `verb` by bare type (no state, no data).
+ * Denylist verbs accept anything not named; allowlist verbs accept only what is named. A verb in
+ * neither table accepts nothing, which is the same answer an unknown verb got before.
+ */
 export function verbAcceptsType(verb, type) {
+  const denied = VERB_TYPE_DENYLIST[verb];
+  if (denied) return !denied.has(type);
   const set = VERB_TYPE_MEMBERSHIP[verb];
   return !!(set && set.has(type));
 }
@@ -165,6 +193,7 @@ export default {
   INTERACTION_VERBS,
   VERB_OWNERS,
   VERB_TYPE_MEMBERSHIP,
+  VERB_TYPE_DENYLIST,
   verbAcceptsType,
   PINNED_REASONS,
   DENIAL,

@@ -219,7 +219,19 @@ const BLOOM_RADIANCE_CEILING = 2.4;
 const TETHER_RELEASE_FADE_RATE = 3.5;   // /s — clean release fades out quickly
 const TETHER_SNAP_FADE_RATE = 2.6;      // /s — a break holds long enough to show its recoil
 const TETHER_SNAP_WHIP_S = 0.30;        // seconds of violent recoil after a break
-const TETHER_STRAIN_SHIVER_WU = 0.52;   // peak lateral shiver at full physical strain (~10 px)
+const TETHER_LOAD_SHIVER_WU = 0.52;     // peak lateral shiver at full presentation load (~10 px)
+// Where the load ramp switches from "working" to "fighting". tether.load is a phase-floored
+// presentation signal (tetherGameplay LOAD_BASE_BY_PHASE): slack 0 / capture 0.35 / loaded 0.55 /
+// overload 0.9. Measured with scripts/probe-tether-visual-drive.mjs (640-mass rock, full main
+// thrust opposing the line, 240 ticks): load peaks at 0.55 and phase never leaves loaded. So a gate
+// at 0.5 engages on a real hard pull, and everything above 0.72 stays out of ordinary play — which
+// is the point. See the note at the strain read in _updateTetherCable.
+const TETHER_TAUT_LOAD = 0.5;
+const TETHER_OVERLOAD_LOAD = 0.88;
+const TETHER_SPARK_LOAD = 0.72;
+// The capture floor. Load below this is "the line just caught"; the visible-strain reads measure
+// how far PAST it the line is, so a merely-captured line is quiet and a worked one is not.
+const TETHER_CAPTURE_FLOOR = 0.35;
 
 // Engine-trail relevance gating (quality-preserving: far/offscreen NPCs emit less; player/target stay full).
 const TRAIL_TIER = Object.freeze({ FULL: 'full', NORMAL: 'normal', REDUCED: 'reduced', SKIP: 'skip' });
@@ -2926,8 +2938,9 @@ export const vfx = {
   // -------------------------------------------------------------------------
   // Tether cable (GDD §4.3): the player-facing read of the massline. A segmented additive ribbon
   // between the ship's NOSE and the latched target: bows with slack, straightens and heats
-  // cyan→amber→red with tether.load (the presentation signal — sim writes, we read); physical
-  // tether.strain keeps the near-break reads (sag, overload flicker, sparks). Runs a decaying
+  // cyan→amber→red with tether.load / tether.phase (the presentation signals — sim writes, we
+  // read). Physical tether.strain is an UPPER path only, never the sole key: see the long note at
+  // the strain read in _updateTetherCable for why (it is ~1e-4 in real play). Runs a decaying
   // traveling wave for the first beat after latch (the "whip"). Cut = quick fade;
   // break = spark burst at both ends (tether:broke). Pure cosmetics — never touches sim state.
   // -------------------------------------------------------------------------
@@ -3254,11 +3267,25 @@ export const vfx = {
     // Slack bow from REAL slack (restLength - distance): a line reeled longer than the gap hangs
     // lazy; a stretched line snaps straight. The bow lags the swing — it flips away from the
     // player's tangential velocity so the cable trails like a real line under centripetal motion.
+    // WHY NOTHING HERE KEYS OFF tether.strain ALONE.
+    //
+    // tether.strain is the honest physical ratio lastTension / breakTension, and breakTension is
+    // 10500000 (src/data/combatDefs.js tether_standard) because the Massline is deliberately
+    // near-unbreakable. Measured with scripts/probe-tether-visual-drive.mjs — 640-mass asteroid
+    // latched, full main thrust opposing the line for 240 ticks, line HELD — strain peaked at
+    // 1.0e-4. Every threshold this file used to key on strain (taut > 0.7, overload > 0.95,
+    // sparks > 0.55, the shiver amplitude) was therefore unreachable dead code: the rope always
+    // rendered at its slack core width no matter how hard you pulled.
+    //
+    // The fix is NOT to renormalize strain — the enormous breakTension is a hand-tuned protected
+    // value and making the rope look about to snap during ordinary play re-introduces exactly the
+    // feeling that tuning removed. Instead the visible reads key off tether.load / tether.phase,
+    // which are presentation-oriented and actually vary in play (same probe: load 0 → 0.55, phase
+    // slack → capture → loaded). strainSmooth is kept and used as an UPPER path only: if physical
+    // strain ever does climb — an engineered extreme-load event — it overtakes the presentation
+    // read rather than being ignored. It never lowers it.
     const strain = Math.max(0, Math.min(1.5, (tether && tether.strain) || 0));
     cable.strainSmooth += (strain - cable.strainSmooth) * Math.min(1, dt * 8);
-    // Presentation load (rung 04): ordinary glow/color/band reads key off tether.load so a loaded
-    // line glows even at low physical strain. strainSmooth stays the physical read — sag geometry,
-    // overload flicker, and near-break sparks below.
     const loadRaw = tether && Number.isFinite(tether.load)
       ? Math.max(0, Math.min(1, tether.load))
       : Math.min(1, strain);   // saves from before tether.load existed: degrade to the strain read
@@ -3267,7 +3294,11 @@ export const vfx = {
     const slack = Math.max(0, rest - chord);
     const tangential = player.vel ? (player.vel.x * px + player.vel.z * pz) : 0;
     if (Math.abs(tangential) > 4) cable.bowSide = tangential > 0 ? -1 : 1;
-    const slackBow = Math.min(slack * 0.42, 24) * Math.max(0.15, 1 - cable.strainSmooth) * cable.bowSide;
+    // The bow flattens as the line works. Keyed off the smoothed load, not strainSmooth: against a
+    // 10.5M breakTension the old term was a constant 1.0 and the bow never straightened.
+    const slackBow = Math.min(slack * 0.42, 24)
+      * Math.max(0.15, 1 - Math.min(1, Math.max(cable.loadSmooth, cable.strainSmooth)))
+      * cable.bowSide;
 
     // Whip waves. Two envelopes, because a latch and a break are not the same event:
     //   LATCH — a decaying traveling sine for ~0.55 s: the line settling onto its anchor.
@@ -3284,10 +3315,9 @@ export const vfx = {
     const whipAmp = whipEnv * Math.min(chord * (snapping ? 0.52 : 0.28), snapping ? 52 : 26);
 
     // Load color: cool cyan → amber → hot red with presentation load (rung 04) — a loaded line
-    // reads loaded even at low strain. Winch-active reel ramps a separate HDR glow read; the
-    // overload flicker + near-break sparks still key off physical strain.
-    const s = Math.min(1, cable.strainSmooth);
-    const l = Math.min(1, cable.loadSmooth);
+    // reads loaded even at low strain. Winch-active reel ramps a separate HDR glow read.
+    // `l` is the working read: presentation load, with physical strain able to overtake it.
+    const l = Math.min(1, Math.max(cable.loadSmooth, cable.strainSmooth));
     const reelTarget = tether && tether.reeling ? Math.max(0, Math.min(1, tether.reelStrength || 0)) : 0;
     cable.reelGlow += (reelTarget - cable.reelGlow) * (1 - Math.exp(-(reelTarget > cable.reelGlow ? 11 : 6) * Math.max(0, dt || 0)));
     if (l < 0.55) this._ctmp.lerpColors(this._tetherColorCool, this._tetherColorWarm, l / 0.55);
@@ -3299,8 +3329,19 @@ export const vfx = {
     // A parting line is white-hot regardless of what load it was carrying a frame ago: the physical
     // load telemetry is already gone by the time the break event lands.
     if (snapEnv > 0) this._ctmp.lerp(this._tetherColorWhite, Math.min(1, snapEnv * 0.95));
-    const taut = cable.strainSmooth > 0.7;
-    const overload = s > 0.95;
+    // Taut / overload, re-keyed. `phase === 'loaded'` is the sim's own statement that the line is
+    // past capture and pulling, so it engages the instant the state does; the smoothed load gate is
+    // the continuous fallback (and the only path when a save predates tether.phase). Overload keeps
+    // its physical escape hatch — if strain ever really does approach the envelope, it still fires.
+    const phase = tether && tether.phase;
+    const taut = phase === 'loaded' || phase === 'overload' || cable.loadSmooth > TETHER_TAUT_LOAD;
+    const overload = phase === 'overload' || l > TETHER_OVERLOAD_LOAD || cable.strainSmooth > 0.95;
+    // Visible-strain read: how far PAST the capture floor the line is working. Feeds the shader's
+    // uStrain brightness chatter and the hitch tremble, so a line that has merely caught stays
+    // quiet while a line being fought is unmistakable. Deliberately below `l` so the shader's
+    // "hot-looking vs genuinely strained" split survives instead of collapsing onto one number.
+    // (The geometry shiver keys off `l` directly — it needs the larger amplitude to read at all.)
+    const s = Math.max(0, Math.min(1, (l - TETHER_CAPTURE_FLOOR) / (1 - TETHER_CAPTURE_FLOOR)));
     // Bloom is a spill control, not a switch: the cable still radiates with bloom disabled, and a
     // player who raises the slider gets a genuinely hotter rope (see _bloomRadianceScale).
     const radiance = this._bloomRadianceScale();
@@ -3311,6 +3352,10 @@ export const vfx = {
       time: visualTime,
       color: this._ctmp,
       tension: l,
+      // uStrain in the ribbon shader. Fed the past-capture working read, not tether.strain: the
+      // physical ratio is ~1e-4 against a 10.5M breakTension, so uStrain*uStrain was always 0 and
+      // the shader's brightness chatter never ran. (energyMaterials.js still documents this uniform
+      // as "physical strain" — that comment needs the same correction; it is not this file.)
       strain: s,
       whip: whipEnv,
       overload,
@@ -3351,12 +3396,14 @@ export const vfx = {
     const glowAlong = cable.glowAlong;
     const glowSide = cable.glowSide;
     // Visible strain, in geometry rather than in colour: a loaded line shivers. The amplitude is
-    // quadratic in physical strain so an ordinary working load barely trembles and a line at the
-    // edge of its envelope is unmistakably fighting. Purely cosmetic — VFX is exempt from the
-    // determinism rule and this never touches sim state.
+    // quadratic in LOAD (see the strain note above — physical strain is ~1e-4 in real play, so the
+    // old s*s term was a hard zero and this whole effect never ran). Quadratic keeps the intent: a
+    // just-captured line barely trembles (~1 px), a worked line clearly does (~3 px), and a line at
+    // the edge of its envelope is unmistakably fighting (~8 px). Purely cosmetic — VFX is exempt
+    // from the determinism rule and this never touches sim state.
     // Two components at different spatial frequencies. A single per-segment term aliased into a
     // sawtooth at 40 segments and read as jagged lightning rather than a cable under load.
-    const shiverAmp = s * s * TETHER_STRAIN_SHIVER_WU * Math.min(1, chord / 40);
+    const shiverAmp = l * l * TETHER_LOAD_SHIVER_WU * Math.min(1, chord / 40);
     const shiverPhase = visualTime * 41;
     const shiverPhaseFast = visualTime * 97;
     for (let i = 0; i <= SEG; i++) {
@@ -3417,7 +3464,7 @@ export const vfx = {
     // The hitch breathes with load and shivers with strain, so the point where the force is actually
     // applied is the second-loudest thing after the rope itself. The ring used to sit at a fixed
     // radius on a fixed opacity, which read as a flat HUD donut pasted onto the world.
-    const hitchBreath = 1 + l * 0.16 + Math.sin(visualTime * (6 + l * 9)) * (0.03 + s * s * 0.09);
+    const hitchBreath = 1 + l * 0.16 + Math.sin(visualTime * (6 + l * 9)) * (0.03 + s * 0.09);
     cable.anchor.scale.setScalar(anchorScale * hitchBreath);
     cable.anchor.rotation.y = visualTime * (1.8 + l * 2.6 + cable.reelGlow * 4.0);
     cable.anchor.material.color.copy(this._ctmp);
@@ -3448,21 +3495,27 @@ export const vfx = {
     }
     setTetherCableVisible(cable, true);
 
-    // Strain sparks crawling the line. These key off PHYSICAL strain, never presentation load, and
-    // they start earlier and denser than before so the last third of the envelope has a visible
-    // ramp instead of a single threshold at 0.85. The red/spark end of the ramp is still rare by
-    // design — the line is near-unbreakable and nothing here moves that.
+    // Sparks crawling the line — the about-to-part read, and the RAREST thing this effect does.
+    //
+    // This gate used to read `s > 0.55` against physical strain. It was harmless only because
+    // strain is ~1e-4 in real play, and it was a live trap: the moment anyone renormalized strain
+    // the rope would have sparked permanently. It now keys off the same load read as everything
+    // else, at TETHER_SPARK_LOAD (0.72) — above the 0.55 'loaded' floor that a hard pull reaches,
+    // so ordinary play NEVER sparks (measured: 0 spark ticks in 240 ticks of full opposing thrust
+    // on a 640-mass rock), and only an overload phase or a genuinely large strain gets here.
+    // A break is an engineered event; its telegraph has to be too.
     // Spawn expects galactic-global XZ.
-    if (s > 0.55) {
-      const sparkChance = (s - 0.55) * 2.2 * (this._burst || 1);
-      const sparks = Math.random() < sparkChance ? (s > 0.9 ? 2 : 1) : 0;
+    if (l > TETHER_SPARK_LOAD) {
+      const heat = (l - TETHER_SPARK_LOAD) / (1 - TETHER_SPARK_LOAD);
+      const sparkChance = heat * 0.9 * (this._burst || 1);
+      const sparks = Math.random() < sparkChance ? (overload ? 2 : 1) : 0;
       for (let k = 0; k < sparks; k++) {
         const frac = Math.random();
         this._c0.set('#ffffff'); this._c1.copy(this._tetherColorHot);
-        const lateral = (Math.random() - 0.5) * (14 + s * 26);
+        const lateral = (Math.random() - 0.5) * (14 + heat * 26);
         this._spawnParticle(axG + dx * frac, azG + dz * frac,
           px * lateral, pz * lateral,
-          0.12 + Math.random() * 0.14, 1.0 + s * 0.8, 0.0, this._c0, this._c1, 3.2, 1.4, 0);
+          0.12 + Math.random() * 0.14, 1.0 + heat * 0.8, 0.0, this._c0, this._c1, 3.2, 1.4, 0);
       }
     }
   },

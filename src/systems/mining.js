@@ -439,7 +439,11 @@ export const mining = {
       this.bus.emit('mining:ventReady', {
         minerId: state.playerId, heat, heatMax, pct, bandLo: BEAM_VENT_BAND_LO,
       });
-      this.bus.emit('audio:cue', { id: 'sfx_vent_chime', gain: 0.55 });
+      // The chime itself now arrives via presentationOrchestrator's mining.vent.ready subscription
+      // (-> presentation.mining.vent_ready -> sfx_vent_chime), which is the same sample this line
+      // used to play directly. Measured: emitting both plays the chime twice on every crossing.
+      // The alert below is NOT redundant — mining.vent.ready has no UI_CUES or CAPTIONS entry in
+      // presentationAdapters, so the cue carries audio and vfx only.
       // The chime is the permanent signal. Spell it out in words until the player has actually
       // cashed a vent once — a rhythm nobody has been told about is just a beam that stops working.
       // Self-terminating on purpose: no counter to tune, no toast after you have learned the verb.
@@ -453,7 +457,10 @@ export const mining = {
       const forfeited = this._pulseOre;
       this._pulseOre = 0; // pegging the gauge forfeits the stored bonus — that IS the mistake
       this.bus.emit('mining:overheated', { minerId: state.playerId, heatMax, forfeitedOreU: forfeited });
-      this.bus.emit('audio:cue', { id: 'sfx_mining_heat_warning', gain: 0.85, importance: 0.8 });
+      // Same as the vent chime above: the warning sample now arrives through the orchestrator's
+      // mining.heat.overheated subscription (-> presentation.mining.heat_warning ->
+      // sfx_mining_heat_warning). Lane 5's handoff only named the vent chime, but this emit is the
+      // identical defect and was measured doubling the same way once the cue was wired.
       this.bus.emit('alert', { key: 'mining-heat', sev: 'warn', text: 'BEAM OVERHEATED — VENTING', ttl: 2.4 });
     } else if (wasOverheated && pct <= BEAM_OVERHEAT_RESET) {
       beam.overheated = false;

@@ -312,14 +312,30 @@ test('T04 §1: scoring stays explainable while direct Massline attachment accept
     assert.equal(harness.events.latched[0].targetId, ally.id);
   }
 
-  // Nearby fallback is deterministic: equal geometry resolves by entity id, not combat category.
+  // Peers at IDENTICAL geometry are separated by score, and the result is deterministic.
+  //
+  // This block used to assert the ally (lower entity id) won, "by stable id, not combat category".
+  // That was only ever true because the live latch never consulted the scorer — it was
+  // nearest-body-by-distance and fell back to id order on an exact tie. The scored acquisition path
+  // is now wired through (_refreshAcquisitionPreview -> _consumeAcquisitionReceipt), and it ranks a
+  // hostile above a comparable ally by design: that is the same ruling this very test pins on the
+  // pure scorer 40 lines above (`hostile outranks comparable ally/neutral`). Two identical peers
+  // differing only in hostility must therefore resolve by hostility, not by which one was spawned
+  // first. Determinism — the property the old wording was actually protecting — is asserted
+  // directly instead of being inferred from id ordering.
   {
-    const foe = hostileShip(1002, { pos: { x: 200, z: 0 }, vel: { x: 0, z: 60 } });
-    const friend = allyShip(1001, { pos: { x: 200, z: 0 }, vel: { x: 0, z: 60 } });
-    const harness = buildHarness([friend, foe], { aimWorld: { x: 200, z: 0 } });
-    fireLatch(harness);
-    assert.equal(harness.events.latched.length, 1);
-    assert.equal(harness.events.latched[0].targetId, friend.id, 'equal-distance peers resolve by stable id');
+    const runOnce = () => {
+      const foe = hostileShip(1002, { pos: { x: 200, z: 0 }, vel: { x: 0, z: 60 } });
+      const friend = allyShip(1001, { pos: { x: 200, z: 0 }, vel: { x: 0, z: 60 } });
+      const harness = buildHarness([friend, foe], { aimWorld: { x: 200, z: 0 } });
+      fireLatch(harness);
+      return harness.events.latched;
+    };
+    const first = runOnce();
+    assert.equal(first.length, 1);
+    assert.equal(first[0].targetId, 1002,
+      'peers identical in position, velocity, mass and radius resolve by score, and the hostile wins');
+    assert.deepEqual(runOnce(), first, 'the tie-break is deterministic across identical runs');
   }
 
   // Surface-reach contract (pre-T04): center <= maxLength + radius. maxLength=390, radius=20.
@@ -473,16 +489,52 @@ test('released World Site payload selection is resolved directly on the latch ti
   });
 
   h.system.update(DT, h.state);
-  assert.equal(h.state.masslineAcquisition, null,
-    'idle flight must not create an automatic Massline receipt');
+  // Idle flight now PUBLISHES a live acquisition receipt every tick and latches nothing. That
+  // inversion is the point of the change: "you can see what the Massline will grab before you
+  // press, and it updates as you move" (chunk definition-of-done #1). The old assertion here
+  // demanded state.masslineAcquisition stay null, which was only true while
+  // _refreshAcquisitionPreview had zero callers. What still must hold — and is what this test was
+  // really guarding — is that publishing a preview is not an attachment.
+  assert.ok(h.state.masslineAcquisition,
+    'idle flight must publish a live acquisition receipt');
+  assert.equal(h.events.latched.length, 0, 'a published preview must never latch on its own');
+  assert.equal(h.state.player.tether.active, false, 'a published preview must not open a line');
 
+  // W2-A: this is now a real FRAME SEQUENCE, not two updates inside one sim tick, because the
+  // press no longer rebuilds the receipt before consuming it (tetherGameplay.js — the press-tick
+  // rebuild is what let a latch disagree with the highlight the player had already been shown).
+  // Selecting the payload and pressing must therefore be at least two frames, which is exactly
+  // what Tab-then-Space is: frame N publishes the payload as the candidate, the HUD draws it,
+  // frame N+1 presses and consumes that record. Collapsing them into one update tested a
+  // press-tick re-resolution that production can no longer perform.
+  // The publish cadence is ACQUISITION_REFRESH_S (0.08s), so the candidate re-resolves within ~5
+  // frames of the scanner selection, not on the very next one. That bounded lag is the whole
+  // staleness cost of consuming the published record instead of rebuilding at the press.
   h.state.player.targetId = payload.id;
+  h.state.tick += 6;
+  h.state.simTime += DT * 6;
+  h.system.update(DT, h.state);
+  assert.equal(h.state.masslineAcquisition?.selected?.targetId, payload.id,
+    'the frame after the scanner selection must publish the payload as the candidate');
+  assert.equal(h.events.latched.length, 0, 'publishing the payload candidate must not latch it');
+
+  h.state.tick += 1;
+  h.state.simTime += DT;
   fireLatch(h);
 
   assert.equal(h.events.denied.length, 0);
   assert.equal(h.events.latched.length, 1);
   assert.equal(h.events.latched[0]?.targetId, payload.id);
-  assert.equal(h.events.latched[0]?.previewMatched, false);
+  // previewMatched was hardcoded false while the latch and the preview were separate algorithms.
+  // Now the press CONSUMES the receipt the HUD last rendered, so the flag reports the truth: it is
+  // true exactly when the latched body is the one the player was shown. A highlight that could
+  // disagree with the latch is the failure this field exists to make visible — and it is a real
+  // signal now, not a tautology: the comparison is against the candidate published BEFORE this
+  // tick, so a press that re-resolves onto a different body reports false.
+  assert.equal(h.state.masslineAcquisition?.selected?.targetId, payload.id,
+    'the receipt in force at the press must have selected the player-chosen payload');
+  assert.equal(h.events.latched[0]?.previewMatched, true,
+    'previewMatched must report that the latch consumed the rendered candidate');
 });
 
 // ── §2 duplicate attach / F-toggle cut ─────────────────────────────────────────────────────────
@@ -759,7 +811,13 @@ test('T04 §5: two identical runs produce byte-equal observed event streams', ()
   const a = runOnce();
   const b = runOnce();
   assert.equal(a.stream, b.stream, 'byte-equal event streams');
-  assert.equal(a.latched[0].targetId, 52);
+  // The aim is (190,0) — exactly the hostile ship. Under the old nearest-body-by-distance latch the
+  // station at 180.07 wu won purely on being 10 wu closer, which is the headline defect this chunk
+  // exists to fix: what the Massline grabs is now what the player meant, not what happened to be
+  // nearest. The scored path picks the hostile the player is aiming at and swinging past. This
+  // test's own subject — that two identical runs produce byte-equal streams — is asserted above and
+  // still holds; only the expected pick moved.
+  assert.equal(a.latched[0].targetId, 50, 'the scored latch takes the aimed-at hostile, not the marginally nearer station');
   assert.equal(a.denied.length, 1);
   assert.equal(a.denied[0].reason, 'cooldown');
 });

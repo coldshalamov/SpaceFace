@@ -39,7 +39,7 @@ Do not read the whole `design/` tree. It's ~60 documents and most are historical
 
 ## The five lanes
 
-Lanes 2–8 are independent and can run concurrently. Lane 1 was blocking for *verification* and **landed on 2026-07-27** — the proof system now tells the truth, and `npm run check:baseline` (14.7s) is the before-and-after gate every other lane should be running. Record your entry baseline with it before you edit anything. **Nothing here may touch `src/systems/input.js` concurrently — serialize any input edits through one agent.** Lanes 6 and 7 both touch `src/render/vfx.js`; serialize those two or split them by function. Lane 8 and Lane 5 both touch mining events; Lane 8 only *subscribes*, so it should land after Lane 5's emitters are stable.
+Lanes 2–8 are independent and can run concurrently. Lane 1 was blocking for *verification* and **landed on 2026-07-27** — the proof system now tells the truth, and `npm run check:baseline` is the before-and-after gate every other lane should be running. **It costs ~56s, not the 14.7s this file used to claim** — see the corrected Lane 1 bullet below, and measure it on a quiet machine. Record your entry baseline with it before you edit anything. **Nothing here may touch `src/systems/input.js` concurrently — serialize any input edits through one agent.** Lanes 6 and 7 both touch `src/render/vfx.js`; serialize those two or split them by function. Lane 8 and Lane 5 both touch mining events; Lane 8 only *subscribes*, so it should land after Lane 5's emitters are stable.
 
 ---
 
@@ -50,9 +50,34 @@ which is a fair summary of the problem. Corrected record, with what was actually
 
 - `npm run check` was a `&&` chain that reported the first failure and skipped the rest — **but it never reached link 1.** `package.json` defined a `precheck` npm **lifecycle** script (`check:m1:tether-mass && check:sim:v3 && check:sim:v3:compare`); npm runs lifecycle hooks automatically, `check:sim:v3` was red, and the chain exited 1 having executed **zero** of its 97 links, for 333 commits, while looking like an ordinary check failure. Not eighteen gates unreachable: **all of them**. ✅ **Fixed** — the hook is deleted and its three gates are the first links of `check` itself. If you ever add a `pre*`/`post*` script here, you are re-creating that bug.
 - `check:save-schema` was **green**, not red — but it genuinely was not in the chain, existing only in the hardcoded smoke list at `scripts/check-ci-report.mjs:11-20`. ✅ **Added** to `check`, as its first link.
-- Both 47-A golden hashes had drifted, deterministically. ✅ **Re-recorded with evidence, not reflexively.** The `850c80f3` tree was exported with `git archive` (no checkout — other lanes were live in the tree) and re-run; it reproduces both prior hashes exactly. Full 720-tick snapshots from both trees were diffed field by field: 21060 fields moved, 21033 of them the new `$.economy` market-regime model, and **zero** entity pos/vel/rot/angVel fields changed on either controller. The physics contract is bit-identical. The nine trace-count changes are one new `shield.collapse` cue caused by `f277c5e7` setting `DAMAGE_MODEL.subsystemShare 0.75 → 0.35`. The rationale is written into the `notes` of both expected files.
+- Both 47-A golden hashes had drifted, deterministically. ✅ **Re-recorded with evidence, not reflexively.** The `850c80f3` tree was exported with `git archive` (no checkout — other lanes were live in the tree) and re-run; it reproduces both prior hashes exactly. Full 720-tick snapshots from both trees were diffed field by field: 21060 fields moved, 21033 of them the new `$.economy` market-regime model, and **zero** entity pos/vel/rot/angVel fields changed on either controller. The physics contract is bit-identical **over this tape** — which, see DoD item 9 below, exercises throttle/strafe/yaw/boost/fire and one scripted attach, and does *not* exercise coast-helm, braking, or scored latch acquisition. Do not promote this to "flight is unchanged." The nine trace-count changes are one new `shield.collapse` cue caused by `f277c5e7` setting `DAMAGE_MODEL.subsystemShare 0.75 → 0.35`. The rationale is written into the `notes` of both expected files.
 - **`check:sim:compare` was green the entire time and could not have been anything else.** `scripts/sf-sim.mjs:716` explicitly tolerates `expectedHash` and `expectedTraceCount` diffs whenever the two runs agree with each other. It is a determinism check, not a correctness check. Only `check:sim` / `check:sim:v3` gate the goldens. **Still open** — `sf-sim.mjs` was outside this lane's ownership.
-- There was no fast gate. ✅ **`check:baseline` exists** — nine links, bounded parallel pool, runs every link even after one fails, per-link timings, exits red on any failure or on blowing its own 90s budget. **Measured 14.7s wall**, 8/9 green. Excludes `check:flight:clean` (~6 min). Routed in the `AGENTS.md` verification router.
+- There was no fast gate. ✅ **`check:baseline` exists** — nine links, bounded parallel pool, runs every link even after one fails, per-link timings, exits red on any failure or on blowing its own 90s budget. Excludes `check:flight:clean` (~6 min). Routed in the `AGENTS.md` verification router.
+  - ⚠️ **CORRECTED 2026-07-27: it is not a 14.7s gate. Measured ~56s wall, 9/9 green, inside the
+    90s budget.** The 14.7s figure was only ever reachable because `check:massline` aborted on its
+    first red child; that aggregate now runs all 23 and it is the critical path — it alone is ~56s,
+    i.e. the whole gate. Per-link, measured at `40ab3b22` + Lanes 2/3/4/8, pool of 4, quiet machine:
+
+    | link | ms | |
+    |---|---|---|
+    | `ui-screen-imports` | 2360 | PASS |
+    | `save-schema` | 1163 | PASS |
+    | `flight-v3` | 1178 | PASS |
+    | `m1-tether-mass` | 1455 | PASS |
+    | `sim-compare` | 5009 | PASS |
+    | `sim-v3-compare` | 6869 | PASS |
+    | `sim` | 28094 | PASS |
+    | `sim-v3` | 28226 | PASS |
+    | `massline` | 56529 | PASS |
+
+    **9/9 green, 56529ms wall (repeat: 55462ms), budget 90000ms.**
+
+    **Measure this on a quiet machine.** The first reading taken this session was 128743ms and
+    8/9 — nearly all of it contention from the concurrent repair wave, plus a then-red aggregate.
+    Same tree, same command, 2.3x the wall clock. If you record a baseline number while other lanes
+    are running you will record noise; the two settled readings above agree to within 2%. And if it
+    does exceed 90s, do not quietly raise the number: make a link faster or drop one, as the runner
+    itself says.
 - `design/program/NOW.md:35` did **not** claim `check:sim:compare` was green — line 35 is a PQ-021 status row. ✅ Truthful rows recorded there instead.
 - `design/GDD_2_0.md` §4.1 said Helm Assist is the default and Space is brake-to-stop. Both false: `src/core/gameState.js:25` is `pilot`, `src/systems/input.js:222` is `tether: ['Space','KeyF']`, `:269` is brake on `Digit0`. §4.3's tether bindings (RMB/G, scroll-to-winch, X to cut) matched nothing. ✅ **Both rewritten** against `src/systems/input.js:220-316`, plus two more falsehoods found in the same pass: §4.2 said cruise engages on Tab (it is **V**) and §4.4 said **F** detonates impulse charges (it is **R**; F is a permanent Massline alias). This is the top of the authority stack — every wrong line propagates to every future agent.
 - **New finding, unowned:** `check:massline` runs 23 children fail-fast, so it names only the first red one. It had **three** (`release-feedback`, `threat-feedback`, `whip-feedback`). If an aggregate names one failure, that is a lower bound, not a count.
@@ -87,7 +112,7 @@ Orbiting a tethered enemy — the signature Massline move — doesn't reliably l
 2. **The constrained solver switches off exactly when you orbit tight.** `src/systems/weapons.js:399` requires `taut`, but a tight orbit is *inside* rest length and therefore `slack` (`src/systems/tetherGameplay.js:582-591`). So `src/combat/tetherFireControl.js` — the circular-motion solver written for precisely this case, see its header at `:8-17` — is bypassed, and a linear lead is used against a body on an arc. Systematic miss, always to the outside.
 3. **One lead solution for the whole battery.** `src/combat/autoTargetMode.js:57-63` takes the *first* weapon's projectile speed and applies it to every mount. A mixed battery (pulse 320 / autocannon 420 / railgun 700) fires all mounts on the 320 solution. `weapons.js:606-610` only re-solves per mount when a gate exists.
 
-Also: `pickMasslineAutoTarget` (`autoTargetMode.js:265-304`) is exported, massline-aware, and **never called**. Decide whether it's the answer or delete it — don't leave it.
+Also: `pickMasslineAutoTarget` (`autoTargetMode.js:265-304`) is exported, massline-aware, and **never called**. Decide whether it's the answer or delete it — don't leave it. ✅ **RESOLVED 2026-07-27: deleted.** Scored latch acquisition (`masslineTargetScoring.js` via `tetherGameplay._refreshAcquisitionPreview` → `_consumeAcquisitionReceipt`) is the live path and there is no second massline-aware picker. `REVAMP_MASTER.md` rung 08, which recorded this as DONE and described its behaviour, is corrected.
 
 Context: the player gets a 360° gimbal arc (`src/systems/ships.js:61, :388`) while NPCs get 22°, so auto-target never needs to turn the nose.
 
@@ -204,6 +229,51 @@ Play the game and confirm all of these by hand, then write one receipt:
 7. **Killing something sprays light that flies into you and counts up.**
 8. **At least one mission in the game asks you to use the Massline and judges you on how you did it.**
 9. **Flight feels exactly as it did before you started.** Boost still stacks over distance, coasting still turns better, lines still don't snap, enemies still move like they have mass. If any of that changed, you broke something protected — say so.
-10. **`check:baseline` is green.** It exists and runs in 14.7s (budget 90s), and `npm run check` starts at all now that the invisible `precheck` lifecycle hook is gone — but `check:baseline` is red until `check:massline` is, so this line is a real gate on Lanes 2–8, not a formality. `NOW.md` and GDD §4.1/§4.2/§4.3/§4.4 now tell the truth; the withdrawn bible rules are marked withdrawn; `FLEET_MAX_SHIPS` is a pool.
+
+   ⚠️ **DO NOT ACCEPT `check:sim` / `check:sim:v3` AS THE EVIDENCE FOR THIS LINE.** The 47-A replay
+   is eight input frames (`test/47a.inputs.json`, 1981 bytes) and it does not press most of what
+   this item is about. What it *does* exercise, per-tick — `moveZ` is throttle and `moveX` is
+   strafe (`flightV3.js:591-592`), and `sf-sim.mjs:583` **defaults `turnIntent` to `moveX`**, so the
+   tape does command yaw even though the string `turn` never appears in it:
+
+   | ticks | throttle | turn | boost | fire | coast-helm gate |
+   |---|---|---|---|---|---|
+   | 0–59 | 1.0 | 0 | — | — | closed |
+   | 60–119 | 1.0 | 0.25 | — | — | closed |
+   | 120–179 | 1.0 | 0 | **yes** | — | closed |
+   | 180–239 | 0.5 | −0.25 | — | grp 1 | closed |
+   | 240–359 | 0.25 | 0 | — | grp 2 | closed |
+   | 360+ | 0 | 0 | — | — | **open, but turn is 0** |
+
+   So, verified against the tape and `propulsionKernel.js:686-691` (gate: `|throttle| > 0.025` or
+   boost ⇒ multiplier 1):
+
+   - **`COAST_HELM_YAW_MULT` cannot move these hashes.** Every tick with a non-zero turn has
+     throttle ≥ 0.25, so the gate is shut; the only ticks where the gate opens command turn exactly
+     0, so the multiplier scales zero. Changing 1.2 to anything would not shift a single field.
+   - **Braking is never exercised.** `brake` / `fullStop` / `flipBurn` are absent and throttle is
+     never negative, so the `throttle < -0.55` player-brake rule never fires either.
+   - **Latch *acquisition* is never exercised.** The one Massline event is a `combatAction`
+     `action_attach` at tick 2 naming `evidence_spindle_47a` directly, so the scored acquisition
+     path this whole chunk rewrote is bypassed entirely. No reel, pay-out, cut, release rating,
+     whip or snap anywhere in the tape.
+   - **`check:sim` does not even load the protected envelope.** Outside `flightBackend: 'v3'` the
+     47-A spindle takes `LEGACY_47A_MASSLINE_BREAK` (`maxTension` **175**, `attachments.js:9, :802-806`),
+     not `tether_standard`'s 10,500,000. Only `check:sim:v3` attaches against the real envelope.
+
+   The earlier phrasing of this — "the tape contains zero occurrences of throttle, turn, strafe,
+   brake or tether, so the replay never presses the flight controls" — is **wrong**, and wrong in
+   the dangerous direction: it is a true statement about *literal strings* used to support a false
+   statement about *behaviour*. The tape presses throttle, strafe, yaw, boost and both fire groups.
+   Grep the key names, not the concept names.
+
+   **The real evidence for this item** is therefore: (a) the protected files byte-unchanged —
+   `propulsionKernel.js`, `combatDefs.js`, `attachments.js`, `masslineController.js`,
+   `sg02DynamicBodyOwner.js`, `propulsionCatalog.js`, `masslineImpactDamage.js`, `flightV3.js`,
+   checked with `git diff --quiet HEAD -- <path>`; (b) `check:flight:v3` (15 brake-convergence
+   cases) and `check:flight:clean` for the flight envelope; (c) the `check:massline:*` children for
+   the line. `check:sim` / `check:sim:v3` are determinism-and-drift gates over one narrow tape and
+   are a *floor*, not a flight-behaviour proof.
+10. **`check:baseline` is green.** ✅ **Met 2026-07-27: 9/9 green, ~56s against a 90s budget** (per-link table in the corrected Lane 1 bullet above; not the 14.7s this file used to claim). `npm run check` starts at all now that the invisible `precheck` lifecycle hook is gone, and `check:massline`'s last two red children (`threat-feedback`, `whip-feedback`) are green, which is what unblocked this line. `NOW.md` and GDD §4.1/§4.2/§4.3/§4.4 now tell the truth; the withdrawn bible rules are marked withdrawn; `FLEET_MAX_SHIPS` is a pool.
 
 Capture frames at the real game camera for #1–#4, #6, and #7. The whole point of this chunk is that the game's signature verb goes from unreliable to *good* and from mild to *loud*, and both of those are things you can see.

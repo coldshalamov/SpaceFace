@@ -214,11 +214,53 @@ export const tetherGameplay = {
     this._resetPhaseMirror();
     this._mirror(state, null, 0);
     const def = attachmentDef(kernel, TETHER_DEF_ID);
-    if (!actions?.tetherFire) {
+    const wantsLatch = !!(actions && actions.tetherFire);
+    // Ctrl-nearest (src/systems/input.js:1074) is an explicit manual override of the scored pick:
+    // "not that one — the one I am closest to". It bypasses the receipt entirely, so it must not
+    // publish or consume one either.
+    const nearestOnly = state.input?.tetherMode === 'nearest';
+    // PHYSICAL_PLAY_GRAMMAR §7.1: the candidate is published EVERY tick, pressed or not — "you can
+    // see what the Massline will grab before you press, and it updates as you move". The press then
+    // consumes exactly the receipt the HUD last rendered, which is the only reason the highlight
+    // cannot lie: preview and latch read the same record.
+    //
+    // "LAST RENDERED" IS LITERAL, AND THE PRESS TICK MUST NOT REBUILD IT.
+    // masslineHud sits at index 91 of PRODUCTION_UPDATE_ORDER and this system at 39, so the receipt
+    // standing here at the top of tick N is the record that was on screen at the end of tick N-1 —
+    // the one the player was looking at when they pressed. Forcing a refresh on the press tick (the
+    // old `force = wantsLatch`) rebuilt it first: _refreshAcquisitionPreview skips its 0.08s
+    // throttle on force AND on intent.reversed, and a reversal also sets forceSwitch:true, which
+    // bypasses the Schmitt hysteresis outright (masslineTargetScoring.js stabilizeMasslineSelection).
+    // So the ordinary "swing the other way and grab" latched a body that had never been drawn, and
+    // previewMatched could not report it because it compared the rebuild against itself.
+    //
+    // The press therefore consumes the STANDING receipt. It is rebuilt only when there is nothing
+    // on screen to contradict: no receipt at all (cold press — first flight tick, or the tick after
+    // a save/new-game reset), a receipt this system did not publish on the immediately preceding
+    // tick (so no frame rendered it), or one that has outlived ACQUISITION_VALID_S. The staleness
+    // this buys is one frame, and it is paid for below: _consumeAcquisitionReceipt re-checks
+    // validUntil and then re-runs validateAcquisitionTarget, so a previewed body that died, left
+    // range, or became obstructed between publish and press DENIES instead of latching.
+    const tickNow = Math.trunc(finite(state.tick));
+    const publishedReceipt = nearestOnly ? null : (state.masslineAcquisition || null);
+    const publishedTargetId = publishedReceipt && publishedReceipt.selected
+      ? publishedReceipt.selected.targetId
+      : null;
+    const standingWasRendered = !!publishedReceipt
+      && this._lastPreviewTick === tickNow - 1
+      && publishedReceipt.validUntil >= now;
+    if (!def || nearestOnly) {
       this._clearAcquisitionPreview(state);
-      return;
+    } else {
+      if (!wantsLatch || !standingWasRendered) {
+        this._refreshAcquisitionPreview(player, def, state, now, !standingWasRendered);
+      }
+      // Whatever stands now is what masslineHud renders at the end of THIS tick, refreshed or not.
+      this._lastPreviewTick = tickNow;
     }
-    // Readable failure reasons (T04): never fail latch silently.
+    if (!wantsLatch) return;
+    // Readable failure reasons (T04): never fail latch silently. The ORDER below is load-bearing —
+    // cooldown outranks a missing def (pinned by T04 §3 in test/tether-latch-eligibility.test.mjs).
     if (now < this._noRelatchUntil) {
       this.bus.emit('tether:latchDenied', { reason: 'cooldown' });
       return;
@@ -229,8 +271,9 @@ export const tetherGameplay = {
       return;
     }
     this._lastLatchDenial = null;
-    const latch = this._acquireCommandTarget(player, def, state);
-    this._clearAcquisitionPreview(state);
+    const latch = nearestOnly
+      ? this._acquireCommandTarget(player, def, state)
+      : this._consumeAcquisitionReceipt(player, def, state, now);
     const target = latch && latch.entity;
     if (!target) {
       const denial = this._lastLatchDenial || { reason: 'no-target' };
@@ -269,14 +312,32 @@ export const tetherGameplay = {
     this._lastStrainT = -Infinity;
     this._ignoreReleaseCutUntilReelIdle = true;
     this._latchGraceUntil = now + 0.55;
+    // Truthfulness receipt: the latch reports WHICH rendered candidate it consumed, so a mismatch
+    // between what the player saw and what they got is observable rather than a bug report.
+    const selectionReceipt = nearestOnly ? null : state.masslineAcquisition;
+    const selectedEntry = selectionReceipt && selectionReceipt.selected;
     this.bus.emit('tether:latched', {
       targetId: target.id,
       type: TETHER_DEF_ID,
-      selectionReceiptId: null,
-      context: state.player?.targetId === target.id ? 'selected' : 'nearby',
-      previewMatched: false,
+      selectionReceiptId: (selectionReceipt && selectionReceipt.id) || null,
+      context: (selectedEntry && selectedEntry.context)
+        || (state.player?.targetId === target.id ? 'selected' : 'nearby'),
+      // TRUTHFUL BY CONSTRUCTION. publishedTargetId was read at the TOP of this tick, before the
+      // refresh decision above, so it is the candidate the previous frame actually drew — not the
+      // receipt this tick built compared against itself, which is what made the old expression
+      // structurally incapable of ever reporting false. If a press-tick rebuild is ever
+      // reintroduced, this goes false and check-tether-gameplay.mjs / tether-latch-eligibility
+      // catch it. A cold or expired receipt has no published candidate to contradict (nothing was
+      // on screen), and reports the record it built and consumed in the same tick.
+      previewMatched: !!(selectedEntry && selectedEntry.targetId === target.id)
+        && (publishedTargetId == null || publishedTargetId === target.id),
     });
     this.bus.emit('camera:shake', { amount: 0.06 });
+    // The consumed receipt deliberately SURVIVES this tick. state.player.tether was mirrored
+    // inactive earlier in this same tick, so neither the cable nor a stale preview is drawn yet —
+    // the latch completes visually on the next frame, where the _active branch above clears the
+    // receipt. Keeping it here is what lets a reader (and the live truthfulness probes) compare the
+    // rendered candidate against the attachment that was actually created.
   },
 
   _refreshAcquisitionPreview(player, def, state, now, force = false) {
@@ -340,6 +401,9 @@ export const tetherGameplay = {
     return { entity: target, targetWorld: surfacePointToward(target, player.pos) };
   },
 
+  // Ctrl-nearest ONLY (state.input.tetherMode === 'nearest'). The default press consumes the scored
+  // receipt via _consumeAcquisitionReceipt; this is the deliberate manual escape hatch, so it stays
+  // pure geometry with no scoring, no intent, and no hysteresis.
   _acquireCommandTarget(player, def, state) {
     const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
     const focus = state.player?.flybyFocus;
@@ -387,6 +451,8 @@ export const tetherGameplay = {
     if (state && state.masslineAcquisition) state.masslineAcquisition = null;
     this._acquisitionMemory = null;
     this._lastAcquisitionRefreshT = -Infinity;
+    // Nothing stands, so nothing was rendered: the next press is a cold press and must rebuild.
+    this._lastPreviewTick = null;
   },
 
   _resetAcquisitionRuntime(state) {
@@ -394,6 +460,7 @@ export const tetherGameplay = {
     this._acquisitionMemory = null;
     this._acquisitionReceiptSeq = 0;
     this._lastAcquisitionRefreshT = -Infinity;
+    this._lastPreviewTick = null;
     this._recentIntent = { turn: 0, moveX: 0, moveZ: 0, at: -Infinity };
     this._lastStrongTurn = { sign: 0, at: -Infinity };
   },
@@ -564,6 +631,20 @@ export const tetherGameplay = {
       0,
     );
     if (!(threshold > 0)) return;
+    // SCALE WARNING — read before "fixing" this ratio.
+    //
+    // strain is normalized against the attachment's break rating, and for tether_standard that
+    // rating is breakTension = 10500000 (src/data/combatDefs.js) because the Massline is
+    // deliberately near-unbreakable. The consequence is that strain is a very small number in
+    // ordinary play: measured with scripts/probe-tether-visual-drive.mjs (640-mass asteroid
+    // latched, full main thrust opposing the line for 240 ticks, line HELD) it peaked at ~1e-4,
+    // roughly four orders of magnitude below any 0..1 threshold you would naively key off it.
+    // That is CORRECT — it is an honest physical ratio against an enormous envelope, not a bug.
+    //
+    // So: do not rescale it to make a visual or a HUD bar move. Presentation consumers use
+    // tether.load / tether.phase (see computeTetherLoad below), which are built for that job.
+    // If this scale is ever changed, every threshold keyed to strain must be revisited in the same
+    // pass — at minimum src/render/vfx.js _updateTetherCable and src/ui/hud.js:423-425.
     const ratio = Math.max(0, finite(attachment.lastTension) / threshold);
     this._lastStrainT = now;
     this._lastStrainRatio = ratio;
@@ -818,7 +899,7 @@ function buildAcquisitionSnapshot(host, player, def, state, intent) {
     cursorPrecisionOf,
     isHostile: hostileOf,
     isObstructed: (entity) => masslineObstructed(host, state, player, entity),
-    ownershipOf: (entity) => resolveMasslineOwnership(entity, player, state),
+    ownershipOf: (entity) => masslineScoringOwnership(entity, player, state),
     reachAllowanceOf: (entity) => Math.max(0, Number(entity && entity.radius) || 0),
   });
   return { ranked, byId, context, intent, aim, maxLength, denial: null };
@@ -902,7 +983,14 @@ function reasonForScoringRecord(record) {
   if (record.rating === 'protected') return 'protected';
   if (record.rating === 'blocked') return 'blocked';
   const gate = record.reasons && record.reasons.gate;
-  return gate === 'degenerate distance' ? 'invalid-target' : 'out-of-range';
+  // 'degenerate distance' means the body is co-located with the ship to within 1e-6, so the pure
+  // scorer cannot compute a bearing and declines to rank it. That is a numerical limit, not a
+  // gameplay one — a body you are physically overlapping is the least ambiguous grab there is, and
+  // validateAcquisitionTarget (the physical eligibility authority) accepts it. Report READY and let
+  // the latch's own revalidation be the judge, rather than inventing an 'invalid-target' denial the
+  // player cannot act on.
+  if (gate === 'degenerate distance') return null;
+  return 'out-of-range';
 }
 
 function statusForReason(reason) {
@@ -946,7 +1034,27 @@ function masslineObstructed(host, state, player, target) {
   }
 }
 
+// A GUN SOLUTION IS NOT A CURSOR. masslineTargetScoring.js:39-41 forbids weapon-aim coupling BY
+// CONTRACT — cursor proximity is opt-in player intent, never reticle state — and the precision-pick
+// profile puts 0.34 on the cursor axis, enough to decide the pick on its own.
+//
+// combat/autoTargetMode.tickAutoTarget OVERWRITES state.input.aimWorld with the weapon lead point
+// for the whole time auto-target is held (autoTargetMode.js:146-149), and stamps state.input.autoAim
+// as the provenance marker for exactly that write — the same marker weapons.js:167 already reads to
+// re-solve per mount, and which is cleared the moment auto-target stops driving the aim. Without
+// this gate, holding auto-target silently steered Massline acquisition onto whatever the guns had
+// locked: measured on a two-anchor scene, steering intent selected the turn-side rock under
+// 'massive-anchor-sling' with cursor 0.000, and holding auto-target on the OTHER rock flipped the
+// context to 'precision-pick' with cursor 1.000 and moved the selection onto the gun target.
+// Fail closed: while the aim point belongs to the guns, the cursor axis contributes nothing at all
+// and steering intent decides, which is the contract's own answer.
+function weaponSynthesisedAim(state) {
+  const marker = state && state.input && state.input.autoAim;
+  return !!(marker && typeof marker === 'object' && marker.targetId != null);
+}
+
 function acquisitionCursorActive(state) {
+  if (weaponSynthesisedAim(state)) return false;
   const pointer = state && state.input && state.input.pointerScreen;
   const ndc = state && state.input && state.input.mouseNdc;
   // Direct/headless harnesses and gamepad aim both publish aimWorld without reliable pointer
@@ -1061,11 +1169,23 @@ export function computeTetherLoad(phase, strain) {
 // means by "use the current state.player.masslineTelemetry if available." If telemetry is absent
 // (no system ran, fresh state, etc.) we still emit a release rating with classification "messy"
 // and zeroed numeric fields, per spec.
+//
+// sourceId — WHY IT IS HERE, do not drop it. A release rating is a judgement of the PLAYER'S
+// technique; the tethered body is the cue's target, but the player is its source. The presentation
+// pipeline reads that: presentationOrchestrator._emitCue falls back to payload.sourceId, and
+// cueSchema.inferRelevance returns 0.88 for "the player is the source". Without it the cue has no
+// identity at all and falls through to the DISTANCE table (0.72/0.52/0.28/0.08), which lands under
+// presentationAdapters.PLAYER_LANE_RELEVANCE_FLOOR (0.8) — so the HUD toast AND the accessibility
+// caption for every clean release were silently dropped at every distance. That is the bug
+// scripts/check-massline-release-feedback.mjs caught: the "no double-toast" assertion was counting
+// ZERO. Grammar rule 2: if the player cannot see it, it does not exist.
 export function rateRelease(state, targetId) {
   const telemetry = state && state.player && state.player.masslineTelemetry;
+  const sourceId = state && state.playerId != null ? state.playerId : null;
   if (!telemetry) {
     return {
       targetId,
+      sourceId,
       classification: 'messy',
       releaseScore: 0,
       radialSpeed: 0,
@@ -1097,6 +1217,7 @@ export function rateRelease(state, targetId) {
 
   return {
     targetId,
+    sourceId,
     classification,
     releaseScore,
     radialSpeed: finite(telemetry.radialSpeed, 0),
@@ -1178,6 +1299,26 @@ function resolveMasslineOwnership(entity, player, state) {
   }
 
   return 'neutral';
+}
+
+/**
+ * Ownership as the SCORER may use it — a ranking signal only, never an eligibility gate.
+ *
+ * masslineTargetScoring gates 'own' and 'station' to rating 'protected' ("you cannot throw what you
+ * are"). That gate is a real part of the pure scorer's contract and stays intact there, but it is
+ * not the rule this game runs on: commit 4d00867e made Massline attachment purely physical ("a
+ * physical command, not a catalog verb"), and the shipped behaviour is that you CAN deliberately
+ * haul your own wingman, anchor to your own deployable, or swing off a station — anchoring to a big
+ * immovable body is core play, not an error. Feeding those two values through would silently delete
+ * that affordance the moment the scorer went live.
+ *
+ * So: eligibility stays where it belongs (isAttachable + range + obstruction, resolved by
+ * validateAcquisitionTarget), and the scorer sees only the ranking half — an ally is still damped
+ * below a comparable hostile, a hostile still gets its bonus.
+ */
+function masslineScoringOwnership(entity, player, state) {
+  const ownership = resolveMasslineOwnership(entity, player, state);
+  return ownership === 'own' || ownership === 'station' ? 'neutral' : ownership;
 }
 
 function appendNonCollidingAttachableCandidates(candidates, entities, player, maxLength, scratch) {

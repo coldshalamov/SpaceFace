@@ -1,3 +1,17 @@
+// CAMERA-FOCUS-SEPARATION (Lane 4, 2026-07-27): a hostile Flyby Focus lease no longer takes the
+// camera. It used to switch the director into FOCUS_PAIR for its authored three seconds, which was
+// the nausea source and fought the 60-degree top-down readability the camera exists for.
+//
+// Every assertion in this file that used to read `mode === FOCUS_PAIR` under a hostile lease has
+// been re-expressed, not weakened:
+//   * the pair-composition geometry (ease, fit search, threat context, prediction, overflow
+//     reporting, frame-rate invariance, recovery) is identical code and is now driven through
+//     TETHER_PAIR, which is the pair mode a hostile contact can still legitimately reach;
+//   * the removed behaviour is encoded positively below as "a live hostile lease leaves the
+//     director output bit-identical to no lease at all", with a combat-tether positive control so
+//     the new assertions cannot pass by inspecting an inert fixture;
+//   * FOCUS_PAIR survives only for the explicitly flagged onboarding trainer, and that is asserted
+//     in both directions.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -113,28 +127,28 @@ assert.equal(CAMERA_DIRECTOR_EASE_S, 0.35, 'composition ease is locked to 0.35 s
 const player = entity(1, 0, 0, 7, { team: 0 });
 const exact = entity(9, 150, 0, 8, { team: 1 });
 const nearer = entity(2, 25, 0, 6, { team: 1 });
-const focusState = stateFor(player, [nearer, exact], {
+const pairState = stateFor(player, [nearer, exact], {
   targetId: exact.id,
-  focusActive: true,
-  focusTargetId: exact.id,
+  tetherActive: true,
+  tetherTargetId: exact.id,
 });
 const director = createCameraDirector();
-const first = director.step(1 / 60, focusState, player, view());
-assert.equal(first.mode, CameraDirectorMode.FOCUS_PAIR, 'active Focus enters exact two-ship composition');
-assert.equal(first.targetId, exact.id, 'authoritative Focus target beats a nearer hostile');
-assert.equal(first.overflow, false, '150-unit acquisition boundary fits inside the zoom ceiling');
+const first = director.step(1 / 60, pairState, player, view());
+assert.equal(first.mode, CameraDirectorMode.TETHER_PAIR, 'combat massline enters exact two-ship composition');
+assert.equal(first.targetId, exact.id, 'the attached hostile beats a nearer hostile for pair authority');
+assert.equal(first.overflow, false, '150-unit pair fits inside the zoom ceiling');
 assert.ok(first.zoom > 72 && first.zoom < first.requiredZoom,
-  'first Focus frame advances one authored ease step instead of snapping to the final fit');
+  'first pair frame advances one authored ease step instead of snapping to the final fit');
 assert.ok(first.zoom >= CAMERA_DIRECTOR_MIN_ZOOM && first.zoom <= 330,
-  'lateral pair stays inside legal chase zoom (preferred band may yield to Focus context margin)');
+  'lateral pair stays inside legal chase zoom (preferred band may yield to the pair context margin)');
 assert.equal(first.preferredBandExceeded, first.zoom > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9,
   'preferred-band flag matches actual zoom vs 180');
 
-const settledFocus = runFor(director, CAMERA_DIRECTOR_EASE_S, 1 / 60, focusState, player);
+const settledPair = runFor(director, CAMERA_DIRECTOR_EASE_S, 1 / 60, pairState, player);
 for (const item of [player, exact]) {
-  const bounds = projectedBounds(item, settledFocus);
-  assert.ok(bounds.x <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9, `${item.id} horizontal bounds remain in the Focus safe frame`);
-  assert.ok(bounds.y <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9, `${item.id} vertical bounds remain in the Focus safe frame`);
+  const bounds = projectedBounds(item, settledPair);
+  assert.ok(bounds.x <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9, `${item.id} horizontal bounds remain in the pair safe frame`);
+  assert.ok(bounds.y <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9, `${item.id} vertical bounds remain in the pair safe frame`);
 }
 
 for (let i = 0; i < 16; i++) {
@@ -142,8 +156,8 @@ for (let i = 0; i < 16; i++) {
   const sweepTarget = entity(200 + i, Math.cos(angle) * 150, Math.sin(angle) * 150, 8);
   const sweepState = stateFor(player, [sweepTarget], {
     targetId: sweepTarget.id,
-    focusActive: true,
-    focusTargetId: sweepTarget.id,
+    tetherActive: true,
+    tetherTargetId: sweepTarget.id,
   });
   const sweepFrame = runFor(createCameraDirector(), CAMERA_DIRECTOR_EASE_S, 1 / 60, sweepState, player, view());
   assert.equal(sweepFrame.overflow, sweepFrame.requiredZoom > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9,
@@ -153,33 +167,33 @@ for (let i = 0; i < 16; i++) {
   for (const item of [player, sweepTarget]) {
     const bounds = projectedBounds(item, sweepFrame);
     assert.ok(bounds.x <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9,
-      `azimuth ${i} entity ${item.id} horizontal bounds remain in the Focus safe frame`);
+      `azimuth ${i} entity ${item.id} horizontal bounds remain in the pair safe frame`);
     assert.ok(bounds.y <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9,
-      `azimuth ${i} entity ${item.id} vertical bounds remain in the Focus safe frame`);
+      `azimuth ${i} entity ${item.id} vertical bounds remain in the pair safe frame`);
   }
   assert.equal(sweepFrame.preferredBandExceeded, sweepFrame.zoom > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9,
     `azimuth ${i} truthfully reports preferred-band use`);
 }
 
-const sameFrame = director.step(1 / 60, focusState, player, view());
+const sameFrame = director.step(1 / 60, pairState, player, view());
 assert.equal(sameFrame, first, 'render hot path reuses one output object');
 
-const stateBefore = JSON.stringify(focusState.player);
-director.step(1 / 60, focusState, player, view());
-assert.equal(JSON.stringify(focusState.player), stateBefore, 'director never writes gameplay or sim state');
+const stateBefore = JSON.stringify(pairState.player);
+director.step(1 / 60, pairState, player, view());
+assert.equal(JSON.stringify(pairState.player), stateBefore, 'director never writes gameplay or sim state');
 
 const fine = createCameraDirector();
 const coarse = createCameraDirector();
-const fineFrame = runFor(fine, 0.2, 1 / 60, focusState, player);
-const coarseFrame = runFor(coarse, 0.2, 0.05, focusState, player);
+const fineFrame = runFor(fine, 0.2, 1 / 60, pairState, player);
+const coarseFrame = runFor(coarse, 0.2, 0.05, pairState, player);
 assert.ok(Math.abs(fineFrame.focusX - coarseFrame.focusX) < 1e-9, 'focus ease is frame-rate independent');
 assert.ok(Math.abs(fineFrame.focusZ - coarseFrame.focusZ) < 1e-9, 'focus Z ease is frame-rate independent');
 assert.ok(Math.abs(fineFrame.zoom - coarseFrame.zoom) < 1e-9, 'fit-preserving zoom ease is frame-rate independent');
 
 const reduced = createCameraDirector();
 const standard = createCameraDirector();
-const reducedFrame = runFor(reduced, 0.2, 1 / 60, focusState, player, view());
-const standardFrame = runFor(standard, 0.2, 1 / 60, focusState, player, view());
+const reducedFrame = runFor(reduced, 0.2, 1 / 60, pairState, player, view());
+const standardFrame = runFor(standard, 0.2, 1 / 60, pairState, player, view());
 assert.deepEqual(
   { x: reducedFrame.focusX, z: reducedFrame.focusZ, zoom: reducedFrame.zoom, overflow: reducedFrame.overflow },
   { x: standardFrame.focusX, z: standardFrame.focusZ, zoom: standardFrame.zoom, overflow: standardFrame.overflow },
@@ -193,14 +207,14 @@ const crossingPlayer = entity(601, 0, 0, 7, { team: 0, vel: { x: 100, z: 0 } });
 const crossingTarget = entity(602, 120, 0, 8, { team: 1, vel: { x: 0, z: 120 } });
 const crossingState = stateFor(crossingPlayer, [crossingTarget], {
   targetId: crossingTarget.id,
-  focusActive: true,
-  focusTargetId: crossingTarget.id,
+  tetherActive: true,
+  tetherTargetId: crossingTarget.id,
 });
 createTimeEffects(crossingState);
 const crossingFrame = runFor(createCameraDirector(), CAMERA_DIRECTOR_EASE_S, 1 / 60,
   crossingState, crossingPlayer);
-assert.equal(crossingFrame.mode, CameraDirectorMode.FOCUS_PAIR);
-assert.ok(crossingFrame.predictiveHorizonS > 0, 'Focus exposes a positive predictive horizon');
+assert.equal(crossingFrame.mode, CameraDirectorMode.TETHER_PAIR);
+assert.ok(crossingFrame.predictiveHorizonS > 0, 'pair framing exposes a positive predictive horizon');
 assert.ok(crossingFrame.predictiveLeadZ > 10,
   `crossing target leads composition into its path (leadZ=${crossingFrame.predictiveLeadZ})`);
 for (const item of [crossingPlayer, crossingTarget]) {
@@ -223,8 +237,8 @@ assert.ok(predictedBounds.y <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9,
 
 const bulletCrossingState = stateFor(crossingPlayer, [crossingTarget], {
   targetId: crossingTarget.id,
-  focusActive: true,
-  focusTargetId: crossingTarget.id,
+  tetherActive: true,
+  tetherTargetId: crossingTarget.id,
 });
 createTimeEffects(bulletCrossingState).set('camera-director-check:bullet-time', { scale: 0.35 });
 const bulletCrossingFrame = runFor(createCameraDirector(), CAMERA_DIRECTOR_EASE_S, 1 / 60,
@@ -241,44 +255,96 @@ const refreshFrames = [60, 144, 240].map((hz) => runFor(
 ));
 for (const frame of refreshFrames.slice(1)) {
   assert.ok(Math.abs(frame.focusX - refreshFrames[0].focusX) < 1e-9,
-    'predictive Focus X is invariant at 60/144/240 Hz');
+    'predictive pair X is invariant at 60/144/240 Hz');
   assert.ok(Math.abs(frame.focusZ - refreshFrames[0].focusZ) < 1e-9,
-    'predictive Focus Z is invariant at 60/144/240 Hz');
+    'predictive pair Z is invariant at 60/144/240 Hz');
   assert.ok(Math.abs(frame.zoom - refreshFrames[0].zoom) < 1e-9,
-    'predictive Focus zoom is invariant at 60/144/240 Hz');
+    'predictive pair zoom is invariant at 60/144/240 Hz');
 }
 
-const tetherState = stateFor(player, [nearer, exact], {
+// ---------------------------------------------------------------------------
+// CAMERA-FOCUS-SEPARATION: a hostile Flyby Focus lease is a gameplay lease, not a camera event.
+// This replaces the five FOCUS_PAIR-under-hostile-lease assertions that used to live here. It is
+// strictly stronger than a mode check: the whole director output must be bit-identical to the same
+// frame with no lease at all, and a combat-tether control proves the fixture is not simply inert.
+// ---------------------------------------------------------------------------
+const leaseView = view({ followX: 5, followZ: 3, followZoom: 70 });
+const leaseOnlyState = stateFor(player, [nearer, exact], {
+  targetId: exact.id,
+  focusActive: true,
+  focusTargetId: exact.id,
+});
+const noLeaseState = stateFor(player, [nearer, exact], { targetId: exact.id });
+const leaseOnly = createCameraDirector();
+const noLease = createCameraDirector();
+leaseOnly.syncFollow(5, 3, 70);
+noLease.syncFollow(5, 3, 70);
+const leaseFrame = runFor(leaseOnly, 0.5, 1 / 60, leaseOnlyState, player, leaseView);
+const noLeaseFrame = runFor(noLease, 0.5, 1 / 60, noLeaseState, player, leaseView);
+assert.equal(leaseFrame.mode, CameraDirectorMode.FOLLOW, 'a live hostile Focus lease does not enter a pair mode');
+assert.equal(leaseFrame.targetId, null, 'a live hostile Focus lease claims no camera pair target');
+assert.equal(leaseFrame.focusX, 5, 'a live hostile Focus lease does not pan the camera off the follow point');
+assert.equal(leaseFrame.focusZ, 3, 'a live hostile Focus lease does not pan the camera laterally');
+assert.equal(leaseFrame.zoom, 70, 'a live hostile Focus lease does not pump the zoom');
+assert.deepEqual({ ...leaseFrame }, { ...noLeaseFrame },
+  'the whole director output under a hostile Focus lease is identical to no lease at all');
+
+const leaseTetherState = stateFor(player, [nearer, exact], {
   targetId: exact.id,
   focusActive: true,
   focusTargetId: exact.id,
   tetherActive: true,
   tetherTargetId: exact.id,
 });
-const handoffDirector = createCameraDirector();
-const focusControl = createCameraDirector();
-runFor(handoffDirector, 0.2, 1 / 60, focusState, player);
-runFor(focusControl, 0.2, 1 / 60, focusState, player);
-const afterHandoff = handoffDirector.step(1 / 60, tetherState, player, view());
-const withoutHandoff = focusControl.step(1 / 60, focusState, player, view());
-assert.equal(afterHandoff.mode, CameraDirectorMode.TETHER_PAIR, 'active tether takes pair ownership after Focus latch');
-assert.equal(afterHandoff.targetId, exact.id, 'tether pair keeps the attached entity authoritative');
-assert.ok(Math.abs(afterHandoff.focusX - withoutHandoff.focusX) < 1e-9, 'same-target Focus-to-tether handoff has no focus discontinuity');
-assert.ok(Math.abs(afterHandoff.focusZ - withoutHandoff.focusZ) < 1e-9, 'same-target handoff has no lateral discontinuity');
-assert.ok(Math.abs(afterHandoff.zoom - withoutHandoff.zoom) < 1e-9, 'same-target handoff has no zoom discontinuity');
+const tetherOnlyState = stateFor(player, [nearer, exact], {
+  targetId: exact.id,
+  tetherActive: true,
+  tetherTargetId: exact.id,
+});
+const leaseTether = createCameraDirector();
+const tetherOnly = createCameraDirector();
+leaseTether.syncFollow(5, 3, 70);
+tetherOnly.syncFollow(5, 3, 70);
+const leaseTetherFrame = runFor(leaseTether, 0.5, 1 / 60, leaseTetherState, player, leaseView);
+const tetherOnlyFrame = runFor(tetherOnly, 0.5, 1 / 60, tetherOnlyState, player, leaseView);
+// Positive control: pair framing really does move this camera, so the FOLLOW assertions above are
+// not passing because the geometry happens to sit on the follow point.
+assert.equal(tetherOnlyFrame.mode, CameraDirectorMode.TETHER_PAIR,
+  'control: the same hostile under a combat massline still owns the camera');
+assert.ok(tetherOnlyFrame.focusX > 60,
+  `control: pair framing moves focus to the pair midpoint (${tetherOnlyFrame.focusX})`);
+assert.ok(tetherOnlyFrame.zoom > 70, 'control: pair framing widens well past the ordinary follow zoom');
+assert.deepEqual({ ...leaseTetherFrame }, { ...tetherOnlyFrame },
+  'a massline latch made during a live Focus lease composes exactly as it does without one');
+
+// FOCUS_PAIR survives for exactly one thing: the explicitly flagged onboarding trainer pair.
+const trainer = entity(15, 140, 12, 8, {
+  type: 'drone',
+  team: 0,
+  data: { onboardingTraining: true, trainingFocusEligible: true, ai: { passive: true } },
+});
+const trainerState = stateFor(player, [trainer], {
+  targetId: trainer.id,
+  focusActive: true,
+  focusTargetId: trainer.id,
+});
+const trainerFrame = runFor(createCameraDirector(), 0.5, 1 / 60, trainerState, player, leaseView);
+assert.equal(trainerFrame.mode, CameraDirectorMode.FOCUS_PAIR,
+  'the two explicit onboarding flags still authorize the authored trainer pair shot');
+assert.equal(trainerFrame.targetId, trainer.id, 'the authored trainer shot keeps its exact pair target');
 
 exact.alive = false;
-const recover = handoffDirector.step(1 / 60, tetherState, player, view({ followX: 12, followZ: -4, followZoom: 68 }));
+const recover = tetherOnly.step(1 / 60, tetherOnlyState, player, view({ followX: 12, followZ: -4, followZoom: 68 }));
 assert.equal(recover.mode, CameraDirectorMode.RECOVER, 'invalid tether target enters recovery instead of retaining stale geometry');
-const recovered = runFor(handoffDirector, 0.5, 1 / 60, tetherState, player, view({ followX: 12, followZ: -4, followZoom: 68 }));
+const recovered = runFor(tetherOnly, 0.5, 1 / 60, tetherOnlyState, player, view({ followX: 12, followZ: -4, followZoom: 68 }));
 assert.equal(recovered.mode, CameraDirectorMode.FOLLOW, 'recovery returns to normal follow after its ease');
 
 const recoverPlayer = entity(301, 0, 0, 7, { team: 0 });
 const recoverTarget = entity(302, 150, 0, 8);
 const recoverState = stateFor(recoverPlayer, [recoverTarget], {
   targetId: recoverTarget.id,
-  focusActive: true,
-  focusTargetId: recoverTarget.id,
+  tetherActive: true,
+  tetherTargetId: recoverTarget.id,
 });
 const recoverFine = createCameraDirector();
 const recoverCoarse = createCameraDirector();
@@ -305,11 +371,11 @@ assert.equal(afterHighRecovery.zoom, highRecovered.zoom, 'FOLLOW has no post-rec
 const impossible = entity(99, 900, 0, 20);
 const impossibleState = stateFor(player, [impossible], {
   targetId: impossible.id,
-  focusActive: true,
-  focusTargetId: impossible.id,
+  tetherActive: true,
+  tetherTargetId: impossible.id,
 });
 const overflow = runFor(createCameraDirector(), CAMERA_DIRECTOR_EASE_S, 1 / 60, impossibleState, player, view());
-assert.equal(overflow.mode, CameraDirectorMode.FOCUS_PAIR, 'valid distant target still produces pair intent');
+assert.equal(overflow.mode, CameraDirectorMode.TETHER_PAIR, 'valid distant target still produces pair intent');
 assert.equal(overflow.zoom, 330, 'impossible geometry clamps to the legal chase zoom ceiling');
 assert.equal(overflow.overflow, true, 'impossible geometry is reported instead of silently claiming fit');
 assert.ok(overflow.requiredZoom > 330, 'overflow exposes the zoom actually required to fit');
@@ -324,8 +390,8 @@ function chaseState(reducedMotion) {
   const chaseExact = entity(109, 150, 0, 8, { team: 1, vel: { x: -100, z: 0 } });
   const state = stateFor(chasePlayer, [chaseNearer, chaseExact], {
     targetId: chaseExact.id,
-    focusActive: true,
-    focusTargetId: chaseExact.id,
+    tetherActive: true,
+    tetherTargetId: chaseExact.id,
   });
   state.settings = { video: { fov: FOV, motionReduce: reducedMotion } };
   state.camera = { zoom: 72, tilt: TILT, lookAhead: 18, lerp: 6, trauma: 0 };
@@ -364,9 +430,9 @@ assert.equal(typeof standardCamera.composition, 'function', 'live chase camera e
 assert.equal(typeof reducedCamera.composition, 'function', 'reduced-motion chase camera exposes the same director seam');
 const standardComposition = standardCamera.composition();
 const reducedComposition = reducedCamera.composition();
-assert.equal(standardComposition.mode, CameraDirectorMode.FOCUS_PAIR, 'live chase camera installs the Focus pair director');
-assert.equal(standardComposition.targetId, liveStandard.exact.id, 'live chase camera frames the exact Focus target');
-assert.equal(standardComposition.overflow, false, 'live 150-unit Focus pair fits without overflow');
+assert.equal(standardComposition.mode, CameraDirectorMode.TETHER_PAIR, 'live chase camera installs the combat pair director');
+assert.equal(standardComposition.targetId, liveStandard.exact.id, 'live chase camera frames the exact attached hostile');
+assert.equal(standardComposition.overflow, false, 'live 150-unit combat pair fits without overflow');
 assert.deepEqual(
   {
     x: standardComposition.focusX,
@@ -380,7 +446,7 @@ assert.deepEqual(
     zoom: reducedComposition.zoom,
     targetId: reducedComposition.targetId,
   },
-  'live reduced-motion camera preserves the same Focus composition geometry',
+  'live reduced-motion camera preserves the same pair composition geometry',
 );
 
 const transitionLive = transitioningChaseState(false);
@@ -396,8 +462,8 @@ const beforePair = {
     transitionCamera.obj.position.z - transitionLive.state.camera.focus.z,
   ),
 };
-transitionLive.state.player.flybyFocus.active = true;
-transitionLive.state.player.flybyFocus.targetId = transitionLive.exact.id;
+transitionLive.state.player.tether.active = true;
+transitionLive.state.player.tether.targetId = transitionLive.exact.id;
 transitionCamera.follow(1 / 60);
 const enteredPair = transitionCamera.composition();
 const firstEaseT = (1 / 60) / CAMERA_DIRECTOR_EASE_S;
@@ -416,13 +482,13 @@ const predictedFrame = predictedPair.step(1 / 60, transitionLive.state, transiti
   aspect: ASPECT,
   tiltDeg: TILT,
 });
-assert.equal(enteredPair.mode, CameraDirectorMode.FOCUS_PAIR, 'live FOLLOW enters pair mode');
+assert.equal(enteredPair.mode, CameraDirectorMode.TETHER_PAIR, 'live FOLLOW enters pair mode');
 assert.ok(Math.abs(enteredPair.focusX - expectedFirstX) < 1e-9,
   'FOLLOW-to-pair transition seeds from the actually applied damped focus');
 assert.ok(Math.abs(enteredPair.focusX - predictedFrame.focusX) < 1e-6,
   'live first pair focus matches director prediction from applied pose');
 assert.ok(Math.abs(enteredPair.zoom - predictedFrame.zoom) < 1e-3,
-  'FOLLOW-to-pair zoom eases from the applied pose toward Focus context fit');
+  'FOLLOW-to-pair zoom eases from the applied pose toward the pair context fit');
 assert.ok(enteredPair.requiredZoom >= CAMERA_DIRECTOR_MIN_ZOOM,
   'first pair frame reports a legal required zoom');
 assert.ok(Math.abs(enteredPair.zoom - beforePair.zoom) <= Math.abs(beforePair.zoom - enteredPair.requiredZoom) * firstEase + 0.5,

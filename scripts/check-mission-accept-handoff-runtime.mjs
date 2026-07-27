@@ -91,15 +91,26 @@ try {
 
   await domClick(page, '[data-screen="station"] .sx-ct-row[data-mid="handoff_probe_bulk_trade"]');
   await page.waitForTimeout(150);
-  // "Accept & Track" is the ghost button in the dossier footer.
-  const clickedTrack = await page.evaluate(() => {
-    const btn = document.querySelector('[data-screen="station"] .sx-dossier [data-track="handoff_probe_bulk_trade"]')
-      || document.querySelector('[data-screen="station"] [data-track="handoff_probe_bulk_trade"]');
-    if (!btn) return false;
+  // STALE-BASELINE REPAIR (2026-07-27). This probe used to look for a separate `[data-track]` ghost
+  // button in the dossier footer. The object-centric station redesign (f22c193e, shipped 88f558da)
+  // merged accept and track into ONE commit control — the dossier footer now renders
+  // `[data-accept]` labelled "Accept + Bind Route", and missions.acceptMission auto-tracks the new
+  // instance before it emits mission:accepted. So the probe was asserting a control the game
+  // deliberately no longer has, while the LOOP it exists to protect — accept seeds an active AND
+  // tracked mission — was working the whole time. The selector is corrected; every downstream
+  // assertion below is unchanged, and the disabled-state check is new so a readiness-gated dossier
+  // reports "blocked" rather than silently clicking nothing.
+  const commit = await page.evaluate(() => {
+    const btn = document.querySelector('[data-screen="station"] .sx-dossier [data-accept="handoff_probe_bulk_trade"]')
+      || document.querySelector('[data-screen="station"] [data-accept="handoff_probe_bulk_trade"]');
+    if (!btn) return { found: false };
+    if (btn.disabled) return { found: true, disabled: true, label: (btn.textContent || '').trim() };
     btn.click();
-    return true;
+    return { found: true, disabled: false };
   });
-  assert.equal(clickedTrack, true, 'Contracts dossier should expose an "Accept & Track" control for the offer');
+  assert.equal(commit.found, true, 'Contracts dossier should expose an accept-and-bind control for the offer');
+  assert.equal(commit.disabled, false,
+    'the seeded offer should be route-clear, not readiness-blocked: ' + JSON.stringify(commit));
 
   // Accept + Track continuity: the seeded mission becomes active AND tracked (nav waypoint plotting
   // is owned by the sim and covered by check:market-nav; here we assert the UI-driven continuity).

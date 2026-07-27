@@ -30,6 +30,7 @@ assert(recipeReport.ok, `presentation recipes must validate: ${recipeReport.issu
 assert.ok(PRESENTATION_RECIPES['tether.whip_impact'], 'recipe tether.whip_impact must exist');
 
 assertWhipEmitsPlayerFacingCue();
+assertFamilyFloorRaisesWithoutClobbering();
 assertSeverityScalesMagnitude();
 assertRatingAndSlingRideTags();
 assertDedupeSuppressesRepeat();
@@ -54,6 +55,44 @@ function assertWhipEmitsPlayerFacingCue() {
   assert.equal(h.audioCues.length, 1, 'whip must emit an audio crack');
   assert.equal(h.vfxCues.length, 1, 'whip must emit a vfx cue');
   assert.equal(h.captions.length, 1, 'whip must emit an accessibility caption');
+}
+
+// 1b. The orchestrator declares a player-relevance FLOOR on this cue family. Both halves of that
+//     word are asserted here, because the obvious "just declare 1" fix breaks the second one:
+//       - it RAISES a bare payload (neither entity id is the player -> inferRelevance gives 0.52,
+//         below presentationAdapters' PLAYER_LANE_RELEVANCE_FLOOR of 0.8) so the payoff moment of
+//         the whole swing still reaches the HUD, the caption and the camera; and
+//       - it never LOWERS a relevance the emitter or identity inference already earned, so the
+//         genuine "the slung mass hit ME" case keeps its 1.0 and its assertive caption.
+function assertFamilyFloorRaisesWithoutClobbering() {
+  // Raises: bare payload, no playerRelevance stated, no player entity at either end.
+  const bare = createFeedbackHarness();
+  bare.state.tick += 20;
+  bare.bus.emit('tether:whipImpact', {
+    targetId: 2, victimId: 3, relSpeed: 60, massSpeed: 60, mass: 640,
+    momentum: 640 * 60, slung: false, severity: 0.7, rating: 'solid',
+  });
+  bare.bus.flush();
+  assert.equal(bare.cues.length, 1, 'a bare whip payload must still produce one presentation:cue');
+  assert.ok(bare.cues[0].playerRelevance >= 0.8,
+    `massline impacts must clear the player-lane floor; got ${bare.cues[0].playerRelevance}`);
+  assert.equal(bare.alerts.length, 1, 'a bare whip payload must still reach the HUD');
+  assert.equal(bare.captions[0].assertive, false,
+    'the floor must not promote a payoff cue past the 0.9 assertive bar');
+
+  // Does not clobber: the player is the struck body, which inferRelevance rates 1.0.
+  const struck = createFeedbackHarness();
+  struck.state.tick += 20;
+  struck.bus.emit('tether:whipImpact', {
+    targetId: 2, victimId: struck.state.playerId, relSpeed: 60, massSpeed: 60, mass: 640,
+    momentum: 640 * 60, slung: false, severity: 0.7, rating: 'solid',
+  });
+  struck.bus.flush();
+  assert.equal(struck.cues.length, 1, 'a whip that hits the player must produce one presentation:cue');
+  assert.equal(struck.cues[0].playerRelevance, 1,
+    'being hit is addressed TO the player; the floor must not lower it to 0.88');
+  assert.equal(struck.captions[0].assertive, true,
+    'a mass slung into the player is the one whip case that should interrupt');
 }
 
 // 2. Severity drives the cue magnitude: a crushing whip reads stronger than a glancing one.
@@ -221,6 +260,14 @@ function whipPayload(harness, overrides) {
     mass: 640,
     momentum: 640 * 60,
     slung: false,
+    // Mirrors masslineImpacts._emitWhipImpact exactly. Neither end of this event is the player —
+    // the cue targets the struck body and sources the whipped mass — so cueSchema.inferRelevance
+    // has nothing to key on and falls to the distance table's 0.52, below presentationAdapters'
+    // PLAYER_LANE_RELEVANCE_FLOOR of 0.8. The observer states 0.88 ("the player is the source")
+    // because every impact it reports is the player's own whip. Deliberately not 1.0: that crosses
+    // the 0.9 assertive bar in _applyAccessibility and would make a payoff cue interrupt real
+    // warnings. Omitting it here left the harness asserting against a payload production never sends.
+    playerRelevance: 0.88,
     severity: 0.7,
     rating: 'solid',
     tick: harness.state.tick,

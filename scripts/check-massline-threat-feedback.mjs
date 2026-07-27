@@ -25,6 +25,7 @@ assert(recipeReport.ok, `presentation recipes must validate: ${recipeReport.issu
 assert.ok(PRESENTATION_RECIPES['massline.threat'], 'recipe massline.threat must exist');
 
 assertThreatEmitsPlayerFacingCue();
+assertFamilyFloorKeepsBarePayloadPlayerFacing();
 assertSeverityScalesMagnitude();
 assertKindRidesTags();
 assertDedupeSuppressesRepeat();
@@ -49,6 +50,32 @@ function assertThreatEmitsPlayerFacingCue() {
   assert.equal(h.audioCues.length, 1, 'threat must emit an audio sting');
   assert.equal(h.vfxCues.length, 1, 'threat must emit a vfx cue');
   assert.equal(h.captions.length, 1, 'threat must emit an accessibility caption');
+}
+
+// 1b. The orchestrator declares a player-relevance FLOOR on this cue family, so a threat still
+//     reaches the player even from an emitter that never states its relevance and whose entity ids
+//     give cueSchema.inferRelevance nothing to key on. This is the trap that silently emptied the
+//     Massline's player-facing lanes once already: relevance fell to the distance table and got
+//     quieter the further out the player worked. Asserted as behaviour, not as source text.
+//
+//     It must be a FLOOR and not a promotion to 1.0 — 0.9 is the assertive bar in
+//     presentationAdapters._applyAccessibility, and a threat that pre-empts the screen reader is a
+//     different (and worse) bug than one nobody hears.
+function assertFamilyFloorKeepsBarePayloadPlayerFacing() {
+  const h = createHarness();
+  h.state.tick += 20;
+  // Deliberately bare: no sourceId, no playerRelevance. Entity 2 sits 100wu away, which without the
+  // floor infers 0.52 — below presentationAdapters' PLAYER_LANE_RELEVANCE_FLOOR of 0.8.
+  h.bus.emit('massline:threat', { kind: 'line-near-break', targetId: 2, severity: 0.8 });
+  h.bus.flush();
+
+  assert.equal(h.cues.length, 1, 'a bare threat payload must still produce one presentation:cue');
+  assert.ok(h.cues[0].playerRelevance >= 0.8,
+    `massline threats must clear the player-lane floor; got ${h.cues[0].playerRelevance}`);
+  assert.equal(h.alerts.length, 1, 'a bare threat payload must still reach the HUD');
+  assert.equal(h.captions.length, 1, 'a bare threat payload must still reach the caption lane');
+  assert.equal(h.captions[0].assertive, false,
+    'the floor must not promote a threat past the 0.9 assertive bar');
 }
 
 // 2. Severity drives the cue magnitude (adapters scale from it): hot threat > mild threat.
@@ -79,7 +106,9 @@ function assertDedupeSuppressesRepeat() {
   const h = createHarness();
   emitThreat(h, { kind: 'line-near-break', targetId: 2, severity: 0.8 });
   h.state.tick += 2; // inside dedupeWindowTicks (12)
-  h.bus.emit('massline:threat', { kind: 'line-near-break', targetId: 2, severity: 0.8 });
+  // Raw re-emit, but still shaped like a real masslineThreats record (see emitThreat): the dedupe
+  // identity must be the thing suppressing this, not a relevance drop.
+  h.bus.emit('massline:threat', { kind: 'line-near-break', targetId: 2, sourceId: h.state.playerId, severity: 0.8 });
   h.bus.flush();
 
   assert.equal(h.cues.length, 1, 'repeat threat inside the dedupe window must not double-cue');
@@ -224,6 +253,12 @@ function emitThreat(harness, overrides) {
   const payload = {
     kind: 'line-near-break',
     targetId: 2,
+    // Mirrors masslineThreats._emitThreat exactly. `targetId` names the THREATENING body, so the
+    // player is the cue's SOURCE — that is what lifts relevance to 0.88 and clears
+    // presentationAdapters' PLAYER_LANE_RELEVANCE_FLOOR of 0.8. Omitting it here (as this harness
+    // once did) drops relevance to the distance table's 0.52 and silently removes the HUD alert and
+    // the caption, so the harness was asserting against a payload production never sends.
+    sourceId: harness.state.playerId,
     severity: 0.8,
     tick: harness.state.tick,
     time: harness.state.tick / 60,

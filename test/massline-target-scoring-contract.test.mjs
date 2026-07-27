@@ -252,16 +252,45 @@ test('T03 §8: module source is clock-free, RNG-free, DOM-free, NUL-free', () =>
 
 // ── §9 consumer discipline ─────────────────────────────────────────────────────────────────────
 
+// The module specifier as it appears inside an import/export-from/dynamic-import/require. Matching
+// the SPECIFIER (a quoted string in a module-resolution position) rather than the bare filename is
+// the whole point: this assertion is about the module GRAPH, not about who is allowed to say the
+// word. See the note on the test below.
+const SCORING_SPECIFIER = String.raw`['"][^'"]*masslineTargetScoring(?:\.js)?['"]`;
+const IMPORT_FORMS = [
+  // `import ... from '<spec>'` and `export ... from '<spec>'` (incl. multi-line binding lists).
+  new RegExp(String.raw`\bfrom\s*${SCORING_SPECIFIER}`),
+  // Bare side-effect import: `import '<spec>'`.
+  new RegExp(String.raw`\bimport\s*${SCORING_SPECIFIER}`),
+  // Dynamic import and CJS require.
+  new RegExp(String.raw`\bimport\s*\(\s*${SCORING_SPECIFIER}`),
+  new RegExp(String.raw`\brequire\s*\(\s*${SCORING_SPECIFIER}`),
+];
+
 test('T03 §9: only the sanctioned consumers import this module', () => {
-  // autoTargetMode (rung 08) and the rung-07 check script are the sanctioned importers. A new
-  // importer appearing is a wiring decision for T04+, not an accident this suite lets pass.
+  // The rung-07 check script and the T04 tether latch are the sanctioned importers. A new importer
+  // appearing is a wiring decision for T04+, not an accident this suite lets pass.
   const allowed = new Set([
-    'src/combat/autoTargetMode.js',
     'scripts/check-massline-target-scoring.mjs',
     // T04 (w2/t04-latch-eligibility): the tether latch is the first sanctioned runtime consumer
     // of the T03 axes — eligibility + ranking with readable denial reasons.
     'src/systems/tetherGameplay.js',
   ]);
+  // src/combat/autoTargetMode.js was sanctioned for rung 08's pickMasslineAutoTarget(). That picker
+  // wrote the GUN variable (state.player.targetId) from a LATCH decision, was never called from
+  // src/, and has been deleted; scored acquisition is owned by the tether itself. Its entry is
+  // REMOVED rather than left as a dormant permission, because the gunnery module is the one file
+  // whose re-coupling this module's header (masslineTargetScoring.js:39-41) forbids by name:
+  // "a locked gun must never steer massline target choice".
+  //
+  // DETECTOR, and why it is not a substring scan. This assertion used to fire on any file whose
+  // text contained the string "masslineTargetScoring", which made it red on two comments that only
+  // CITE the module as documentation — src/data/massSeed.js:48 ("… masslineTargetScoring.js,
+  // MASSIVE_ANCHOR_MIN_MASS = 1800") and src/systems/massSeed.js:215 ("Massline scoring contract
+  // seam (…)"). Neither imports anything; both are exactly the kind of cross-reference that makes
+  // this contract legible, and the suite was punishing them. It matches import/export-from/dynamic
+  // import/require specifiers now, which is what "imports this module" means. The allowlist and the
+  // failure it produces for a real new importer are unchanged.
   const found = [];
   const walk = (dir) => {
     for (const name of readdirSync(dir)) {
@@ -269,8 +298,9 @@ test('T03 §9: only the sanctioned consumers import this module', () => {
       const st = statSync(p);
       if (st.isDirectory()) { if (!/node_modules|\.git/.test(p)) walk(p); continue; }
       if (!/\.(js|mjs)$/.test(name)) continue;
+      if (p.endsWith('masslineTargetScoring.js')) continue;
       const text = readFileSync(p, 'utf8');
-      if (text.includes('masslineTargetScoring') && !p.endsWith('masslineTargetScoring.js')) {
+      if (IMPORT_FORMS.some((re) => re.test(text))) {
         found.push(relative(root, p).replace(/\\/g, '/'));
       }
     }
@@ -281,6 +311,15 @@ test('T03 §9: only the sanctioned consumers import this module', () => {
   for (const f of found) {
     assert.ok(allowed.has(f), `unsanctioned importer: ${f}`);
   }
+  // Non-vacuity: the detector must still SEE the sanctioned importers. A regex that matched nothing
+  // would pass this test forever.
+  assert.ok(found.includes('src/systems/tetherGameplay.js'),
+    'detector must find the live latch importer');
+  assert.ok(found.includes('scripts/check-massline-target-scoring.mjs'),
+    'detector must find the rung-07 check script');
+  // And it must not be reading prose: both massSeed files cite the module by path in a comment.
+  assert.ok(!found.includes('src/data/massSeed.js') && !found.includes('src/systems/massSeed.js'),
+    'a comment citing the module by path is not an import');
 });
 
 // ── §10 paint beats latch alone (round-3 gap: §3 only ever tested them combined) ───────────────

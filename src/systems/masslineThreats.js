@@ -142,7 +142,22 @@ export const masslineThreats = {
     const tick = Number.isFinite(state.tick) ? state.tick : null;
     const time = Number.isFinite(state.simTime) ? state.simTime
       : (tick != null ? tick / 60 : null);
-    const record = { kind, targetId: targetId != null ? targetId : null, severity, tick, time };
+    // `targetId` names the THREATENING body (the hostile, the obstacle, the anchor under load), so
+    // it is the wrong end of the relationship for cueSchema.inferRelevance, which reads targetId as
+    // "the entity this is happening TO". Every record this observer produces is a statement about
+    // the player's own swing — it reads nothing but state.player.tether — so the player is the
+    // cue's source, and saying so is what keeps the threat above presentationAdapters'
+    // PLAYER_LANE_RELEVANCE_FLOOR (0.8; source => 0.88). Without it the relevance fell to the
+    // distance table (0.72/0.52/0.28) and the HUD warn, the accessibility caption and the camera
+    // kick were all dropped: a threat the player is never told about is not a threat.
+    const record = {
+      kind,
+      targetId: targetId != null ? targetId : null,
+      sourceId: state.playerId != null ? state.playerId : null,
+      severity,
+      tick,
+      time,
+    };
     runtime.threats.push(record);
     if (runtime.threats.length > THREAT_LOG_CAP) runtime.threats.shift();
     runtime.latest = record;

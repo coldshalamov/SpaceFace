@@ -1089,6 +1089,28 @@ function isScannerHostileLock(player, state, entity) {
   return (dx * dx + dz * dz) <= SCANNER_CONTACT_RANGE * SCANNER_CONTACT_RANGE;
 }
 
+// The hostile the Massline is physically holding, if it is a legal scanner lock. Whenever this
+// function is the one CHOOSING (rather than preserving a pick the player made), the ship on the end
+// of your own line beats the ship that merely happens to be nearest — that near-miss is what had you
+// orbiting your catch while the target panel and the lead pip described a third ship.
+function tetheredHostileLock(player, state) {
+  const tether = state.player && state.player.tether;
+  if (!tether || !tether.active || tether.targetId == null) return null;
+  const target = state.entities.get(tether.targetId);
+  if (!isScannerHostileLock(player, state, target)) return null;
+  return target;
+}
+
+// A live selection that the nearest-hostile scan could not have produced by itself: a freighter, a
+// station, a rock — something the player clicked in the contact overview (`src/ui/hud.js:3180`)
+// rather than something auto-target acquired for them. Hostiles are deliberately NOT covered here:
+// a hostile lock that has died or left scanner range must still be replaced, and re-acquiring it is
+// the entire job of the quiet refresh.
+function isDeliberateNonHostilePick(player, state, entity) {
+  if (!player || !entity || entity.alive === false || !entity.pos) return false;
+  return !isHostileToPlayer(entity, player.team, state);
+}
+
 function targetNearestHostileToPlayer(state, bus, options = {}) {
   const player = state.entities.get(state.playerId);
   if (!player) return;
@@ -1098,9 +1120,27 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
     const cur = state.entities.get(curId);
     if (isScannerHostileLock(player, state, cur)) {
       if (quiet) return;
+    } else if (quiet && isDeliberateNonHostilePick(player, state, cur)) {
+      // THE THROW DESTINATION. `state.player.targetId` is not only the gun lock — it is the aim
+      // point masslineThrow reads (`src/systems/masslineThrow.js:251-257`), and that resolver
+      // refuses the body already on the line, so re-pointing the selection at the payload silently
+      // downgrades the throw to a synthetic radius-2 cursor point. Grabbing a rock and picking the
+      // freighter you mean to hit is a signature verb; a 0.12s housekeeping refresh must not spend
+      // it. Gun/tether reconciliation is unaffected — `resolvePlayerGunTarget()` derives the gun
+      // target from the tether without this variable.
+      return;
     }
   } else if (quiet) {
     // No lock yet — quiet refresh may acquire the nearest hostile.
+  }
+  // Past the quiet early-out, so a Tab/radar pick is never stomped by the 0.12s refresh.
+  const tethered = tetheredHostileLock(player, state);
+  if (tethered) {
+    state.player.targetId = tethered.id;
+    if (bus && !quiet) {
+      bus.emit('toast', { text: 'Target: ' + targetLabel(tethered) + ' (on the line)', kind: 'info', ttl: 2 });
+    }
+    return;
   }
   let best = null;
   let bestD2 = Infinity;
