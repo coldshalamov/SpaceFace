@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-07-27
-baseCommit: 40ab3b22a49ddaeafc4c064acdf093a22836199b
+baseCommit: cf1bc14561e8359139399fe214ae78ebe85e319e
 expiresAfterCommits: 25
 expiresAfterDays: 7
 ```
@@ -20,7 +20,7 @@ Refresh this board before mutation. It records live collision risk, not history 
 | `place_asteroid_rock_a/b/c` | visual production lane (not yet started) | Those source GLBs, release artifacts, `parts_manifest.json` rows | Untouched since 2026-07-11. Still awaiting re-authoring. |
 | Committed candidate refs | named local/remote branches and registered worktrees | Their branch tips and worktree metadata | These are not active writers. Preserve the refs as reviewable candidates; do not merge or rebase them merely for a checkpoint. **Both leading PQ-018 branches would revert all six place GLBs and delete the authoring textures retained at `329acfe8` — never merge them wholesale.** |
 | Performance plan sources | committed at `7f7d030b` | `design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md`, `design/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md` | Source plan/research are preserved. Live execution authority is the PQ-034–PQ-044 queue/packet set; source-plan presence does not grant a lease. |
-| `sf-perf-admission-20260726` | lead integrator admission draft | `design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md`, `design/PLAN_REGISTRY.md`, `design/program/PROGRAM_MAP.md`, `design/program/NOW.md`, `design/program/roadmap/program-queue.json`, `design/program/roadmap/active/README.md`, and `PQ-034.md` through `PQ-042.md` | **ACTIVE CONTROL-PLANE DRAFT.** No implementation path or performance mutex is claimed by admission. Integrate only a reviewed path-limited control-plane diff; do not include primary assets/policy edits. |
+| `sf-perf-admission-20260726` | lead integrator admission draft | `design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md`, `design/PLAN_REGISTRY.md`, `design/program/PROGRAM_MAP.md`, `design/program/NOW.md`, `design/program/roadmap/program-queue.json`, `design/program/roadmap/active/README.md`, `design/program/roadmap/active/PACKET_TEMPLATE.md`, and `PQ-034.md` through `PQ-042.md` | **ACTIVE CONTROL-PLANE DRAFT.** No implementation path or performance mutex is claimed by admission. Integrate only a reviewed path-limited control-plane diff; do not include primary assets/policy edits. |
 | `sf-perf-modernization-20260726` | unaccepted foundation candidate | PERF-00 pure harness files plus PERF-03/PERF-05/PERF-06 candidate paths | **PROTECTED READ/REVIEW INPUT — no packet authority.** Never merge or commit wholesale. Selectively port only after the owning packet is admitted and claimed. |
 | `sf-perf01a` / `codex/perf-01a-background-lifecycle` | protected lifecycle candidate | `electron/main.cjs`, candidate preload, `package.json`, lifecycle checks, `src/core/loop.js`, `src/main.js`, lifecycle tests | **PROTECTED DIRTY CANDIDATE — do not duplicate, merge, rebase, clean, or remove.** PERF-01/PQ-035 must review and selectively port after PQ-034; known teardown/input-owner gaps remain unaccepted. |
 | Performance packet leases | none during admission | `performance-evidence`, `validation-broker`, `browser-gpu`, `lifecycle`, `electron-shell`, `package`, `loop`, `registry`, `input`, `renderer`, `vfx`, `npc-jobs`, `spatial-query` | On exact integration, PQ-034 enters `ready` but remains `unclaimed`; PQ-035–PQ-042 remain planned; PQ-043/PQ-044 remain deferred. Dependency-ready is not claim-ready. |
