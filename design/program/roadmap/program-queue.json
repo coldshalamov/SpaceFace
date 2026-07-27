@@ -1709,7 +1709,7 @@
       "id": "PQ-034",
       "priority": 34,
       "title": "PERF-00 Equivalence and attribution harness",
-      "state": "ready",
+      "state": "claimed",
       "canonical": [
         "PERF-00"
       ],
