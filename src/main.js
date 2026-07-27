@@ -128,13 +128,17 @@ async function boot() {
       return true;
     };
     helpers.beginLoadedGameTransition = () => {
+      // Reserve the load token BEFORE any reentrant lifecycle event. bus.emit is synchronous, so a
+      // listener on game:loadingProgress that starts a new-game transition would otherwise take the
+      // generation first and the save restore would proceed under a token it no longer owns.
+      const token = runTransitionGuard.begin('load');
       bus.emit('game:loadingProgress', {
         id: 'restoring-save',
         progress: 0.05,
         label: 'Restoring flight state',
         detail: 'Rebuilding the saved sector and critical visuals',
       });
-      return runTransitionGuard.begin('load');
+      return token;
     };
     helpers.finalizeLoadedGame = (payload) => finalizeLoadedGame(
       state, bus, registry, runTransitionGuard, payload || {},

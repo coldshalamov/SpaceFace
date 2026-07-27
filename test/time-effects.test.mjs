@@ -917,8 +917,42 @@ function testWriterAndRuntimeContracts(auditWriters, formatFindings) {
   assert.match(main, /createRunTransitionGuard/);
   assert.match(main, /const runTransitionGuard = createRunTransitionGuard\(\);/,
     'boot must create one transition generation owner');
-  assert.match(main, /beginLoadedGameTransition\s*=\s*\(\)\s*=>\s*runTransitionGuard\.begin\('load'\)/,
-    'save restore must reserve its load token before reentrant lifecycle events');
+  // ORDERING, NOT SHAPE. This used to pin the concise-arrow body
+  // `() => runTransitionGuard.begin('load')`, which made the assertion pass only for one spelling
+  // while saying nothing about the guarantee in its own message -- and it went red the moment the
+  // body legitimately grew, rather than when the invariant broke. What matters is that the load
+  // token is reserved before ANY reentrant lifecycle event: bus.emit is synchronous, so a listener
+  // that starts a new-game transition during the emit takes the generation first and the save
+  // restore then proceeds under a token it no longer owns.
+  {
+    const at = main.indexOf('beginLoadedGameTransition');
+    assert.ok(at !== -1, 'boot must define beginLoadedGameTransition');
+    const brace = main.indexOf('{', at);
+    const semi = main.indexOf(';', at);
+    let body;
+    if (brace !== -1 && (semi === -1 || brace < semi)) {
+      let depth = 0;
+      let end = brace;
+      for (; end < main.length; end += 1) {
+        if (main[end] === '{') depth += 1;
+        else if (main[end] === '}') { depth -= 1; if (depth === 0) break; }
+      }
+      body = main.slice(brace, end + 1);
+    } else {
+      body = main.slice(at, semi === -1 ? main.length : semi + 1);
+    }
+    // Scan CODE, not prose. A comment in this body explains the ordering and necessarily names
+    // bus.emit, so an un-stripped scan reads the explanation as the violation. That is not
+    // hypothetical: it happened on the first attempt at this very assertion.
+    const code = body
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+    const reserve = code.indexOf("runTransitionGuard.begin('load')");
+    assert.ok(reserve !== -1, 'save restore must reserve a load token');
+    const emit = code.indexOf('bus.emit');
+    assert.ok(emit === -1 || reserve < emit,
+      'save restore must reserve its load token before reentrant lifecycle events');
+  }
   assert.match(
     main,
     /bus\.on\('game:new',[\s\S]*const startNewGameTransition\s*=\s*\(\)\s*=>\s*\{[\s\S]*runTransitionGuard\.begin\('new-game'\)[\s\S]*startNewGame\([\s\S]*registry\.get\('save'\)[\s\S]*deferRunTransition\(startNewGameTransition\)[\s\S]*startNewGameTransition\(\)/,
