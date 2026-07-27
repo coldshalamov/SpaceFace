@@ -171,7 +171,13 @@ const RIBBON_FRAGMENT = /* glsl */`
   uniform float uOverload;
   uniform float uReel;
   uniform float uSheath;   // 0 = white-hot filament draw, 1 = wide saturated halo draw
-  uniform float uStrain;   // physical strain 0..1 — drives the visible shiver, not the colour ramp
+  // NOT the physical strain ratio. src/render/vfx.js:3344 feeds this the PAST-CAPTURE WORKING READ,
+  // clamp((load - 0.35) / (1 - 0.35), 0, 1) — how far the line is working beyond the capture floor.
+  // It used to be fed tether.strain (lastTension / breakTension), which is ~1e-4 in ordinary play
+  // against a 10,500,000 breakTension, so uStrain*uStrain below was always 0 and this chatter never
+  // ran at all. Do not "restore" the physical feed and do not rescale strain upstream — the huge
+  // envelope is a protected hand-tuned value (build plan §3.5 row 2).
+  uniform float uStrain;   // 0..1 past-capture working read — drives the visible shiver, not the colour ramp
   uniform float uWhip;     // 0..1 snap/latch recoil envelope
 
   float hash(float n) { return fract(sin(n) * 43758.5453123); }
@@ -191,10 +197,14 @@ const RIBBON_FRAGMENT = /* glsl */`
     float pulse = smoothstep(0.34, 0.02, abs(fract(vAlong * 6.0 - uTime * uPulseSpeed) - 0.5));
     float winch = smoothstep(0.20, 0.0, abs(fract(vAlong * 10.0 - uTime * (uPulseSpeed * 1.35 + uReel * 4.0)) - 0.5));
 
-    // Visible strain: high-frequency brightness chatter along the line under real physical load,
-    // plus a harder flicker once the controller reports overload. This keys off uStrain (physics),
-    // never off uTension (presentation load), so a hot-looking line and a genuinely strained one
-    // are distinguishable.
+    // Visible strain: high-frequency brightness chatter along the line as it works, plus a harder
+    // flicker once the controller reports overload.
+    //
+    // uStrain and uTension are BOTH derived from tether.load; neither is the physical ratio. The
+    // split that keeps "hot-looking" and "genuinely being fought" distinguishable is that uStrain
+    // is the past-capture remainder and therefore sits strictly below uTension: a line that has
+    // merely caught (load 0.35) reads uTension 0.35 but uStrain 0, so it colours up without
+    // chattering, while a line being fought drives both. Squaring uStrain widens that gap further.
     float grain = hash(floor(vAlong * 96.0 + floor(uTime * 34.0) * 7.13));
     float shiver = grain * (uStrain * uStrain * 0.9 + uOverload * 1.1);
 
@@ -578,6 +588,9 @@ export function updateEnergyMaterial(material, frame = {}) {
   if (u.uResolution && frame.width > 0 && frame.height > 0) u.uResolution.value.set(frame.width, frame.height);
   if (u.uCameraNear && Number.isFinite(frame.cameraNear)) u.uCameraNear.value = frame.cameraNear;
   if (u.uCameraFar && Number.isFinite(frame.cameraFar)) u.uCameraFar.value = frame.cameraFar;
+  // frame.tension is tether.load (presentation, phase-floored) and frame.strain is the past-capture
+  // remainder derived from it — see the uStrain note in RIBBON_FRAGMENT above and vfx.js:3344.
+  // Neither is tether.strain, the physical lastTension/breakTension ratio.
   if (u.uTension && Number.isFinite(frame.tension)) u.uTension.value = THREE.MathUtils.clamp(frame.tension, 0, 1.5);
   if (u.uOverload) u.uOverload.value = frame.overload ? 1 : 0;
   if (u.uReel && Number.isFinite(frame.reel)) u.uReel.value = THREE.MathUtils.clamp(frame.reel, 0, 1);
