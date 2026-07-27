@@ -1,0 +1,413 @@
+{
+  "shipKey": "lark",
+  "lookAt": [
+    0.5999999046325684,
+    0.0,
+    0.20500004291534424
+  ],
+  "assetBoundsWorld": {
+    "min": [
+      -8.399999618530273,
+      -3.5999999046325684,
+      -1.1899999380111694
+    ],
+    "max": [
+      9.59999942779541,
+      3.5999999046325684,
+      1.600000023841858
+    ]
+  },
+  "resolution": [
+    1920,
+    1080
+  ],
+  "engine": "BLENDER_EEVEE",
+  "views": {
+    "forward_34": {
+      "view": "forward_34",
+      "cameraLocation": [
+        30.105175018310547,
+        -23.182640075683594,
+        18.118858337402344
+      ],
+      "lookAt": [
+        0.5999999046325684,
+        0.0,
+        0.20500004291534424
+      ],
+      "lensMm": 45,
+      "cameraType": "PERSP",
+      "orthoScale": null,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "marginTargetPct": [
+        8,
+        15
+      ],
+      "framingValid": true,
+      "reason": "ok",
+      "ndcMin": [
+        0.2845,
+        0.2096
+      ],
+      "ndcMax": [
+        0.7585,
+        0.8694
+      ],
+      "marginPct": 13.06,
+      "projectedWidthPct": 47.4,
+      "projectedHeightPct": 65.98,
+      "assetBoundsWorld": {
+        "min": [
+          -8.4,
+          -3.6,
+          -1.19
+        ],
+        "max": [
+          9.6,
+          3.6,
+          1.6
+        ]
+      }
+    },
+    "rear_34": {
+      "view": "rear_34",
+      "cameraLocation": [
+        -30.147113800048828,
+        22.265151977539062,
+        17.168926239013672
+      ],
+      "lookAt": [
+        0.5999999046325684,
+        0.0,
+        0.20500004291534424
+      ],
+      "lensMm": 45,
+      "cameraType": "PERSP",
+      "orthoScale": null,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "marginTargetPct": [
+        8,
+        15
+      ],
+      "framingValid": true,
+      "reason": "ok",
+      "ndcMin": [
+        0.2479,
+        0.1236
+      ],
+      "ndcMax": [
+        0.7063,
+        0.7913
+      ],
+      "marginPct": 12.36,
+      "projectedWidthPct": 45.85,
+      "projectedHeightPct": 66.77,
+      "assetBoundsWorld": {
+        "min": [
+          -8.4,
+          -3.6,
+          -1.19
+        ],
+        "max": [
+          9.6,
+          3.6,
+          1.6
+        ]
+      }
+    },
+    "side_profile": {
+      "view": "side_profile",
+      "cameraLocation": [
+        3.410429000854492,
+        -41.219627380371094,
+        4.889048099517822
+      ],
+      "lookAt": [
+        0.5999999046325684,
+        0.0,
+        0.20500004291534424
+      ],
+      "lensMm": 45,
+      "cameraType": "PERSP",
+      "orthoScale": null,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "marginTargetPct": [
+        8,
+        15
+      ],
+      "framingValid": true,
+      "reason": "ok",
+      "ndcMin": [
+        0.1986,
+        0.3656
+      ],
+      "ndcMax": [
+        0.7942,
+        0.6174
+      ],
+      "marginPct": 19.86,
+      "projectedWidthPct": 59.56,
+      "projectedHeightPct": 25.18,
+      "assetBoundsWorld": {
+        "min": [
+          -8.4,
+          -3.6,
+          -1.19
+        ],
+        "max": [
+          9.6,
+          3.6,
+          1.6
+        ]
+      }
+    },
+    "underside": {
+      "view": "underside",
+      "cameraLocation": [
+        2.0399999618530273,
+        -0.35999998450279236,
+        -44.79499816894531
+      ],
+      "lookAt": [
+        0.5999999046325684,
+        0.0,
+        0.20500004291534424
+      ],
+      "lensMm": 32,
+      "cameraType": "ORTHO",
+      "orthoScale": 31.5,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "marginTargetPct": [
+        8,
+        15
+      ],
+      "framingValid": true,
+      "reason": "ok",
+      "ndcMin": [
+        0.1929,
+        0.0811
+      ],
+      "ndcMax": [
+        0.8071,
+        0.9189
+      ],
+      "marginPct": 8.11,
+      "projectedWidthPct": 61.43,
+      "projectedHeightPct": 83.77,
+      "assetBoundsWorld": {
+        "min": [
+          -8.4,
+          -3.6,
+          -1.19
+        ],
+        "max": [
+          9.6,
+          3.6,
+          1.6
+        ]
+      }
+    },
+    "top_ortho": {
+      "view": "top_ortho",
+      "cameraLocation": [
+        0.5999999046325684,
+        0.0,
+        41.785003662109375
+      ],
+      "lookAt": [
+        0.5999999046325684,
+        0.0,
+        0.20500004291534424
+      ],
+      "lensMm": 40,
+      "cameraType": "ORTHO",
+      "orthoScale": 22.5,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "marginTargetPct": [
+        8,
+        15
+      ],
+      "framingValid": true,
+      "reason": "ok",
+      "ndcMin": [
+        0.1,
+        0.2156
+      ],
+      "ndcMax": [
+        0.9,
+        0.7844
+      ],
+      "marginPct": 10.0,
+      "projectedWidthPct": 80.0,
+      "projectedHeightPct": 56.89,
+      "assetBoundsWorld": {
+        "min": [
+          -8.4,
+          -3.6,
+          -1.19
+        ],
+        "max": [
+          9.6,
+          3.6,
+          1.6
+        ]
+      }
+    },
+    "readability_close": {
+      "view": "readability_close",
+      "cameraLocation": [
+        30.329561233520508,
+        -23.12299156188965,
+        17.822519302368164
+      ],
+      "lookAt": [
+        0.5999999046325684,
+        0.0,
+        0.20500004291534424
+      ],
+      "lensMm": 45,
+      "cameraType": "PERSP",
+      "orthoScale": null,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "marginTargetPct": [
+        8,
+        15
+      ],
+      "framingValid": true,
+      "reason": "ok",
+      "ndcMin": [
+        0.2861,
+        0.2088
+      ],
+      "ndcMax": [
+        0.7574,
+        0.8713
+      ],
+      "marginPct": 12.87,
+      "projectedWidthPct": 47.13,
+      "projectedHeightPct": 66.25,
+      "assetBoundsWorld": {
+        "min": [
+          -8.4,
+          -3.6,
+          -1.19
+        ],
+        "max": [
+          9.6,
+          3.6,
+          1.6
+        ]
+      }
+    },
+    "readability_under45px": {
+      "view": "readability_under45px",
+      "resolution": [
+        64,
+        64
+      ],
+      "framingValid": true,
+      "reason": "margin_0.002",
+      "ndcMin": [
+        0.1405,
+        0.2321
+      ],
+      "ndcMax": [
+        0.998,
+        0.9128
+      ],
+      "marginPct": 0.2,
+      "projectedWidthPct": 85.75,
+      "projectedHeightPct": 68.07,
+      "projectedWidthPx": 44,
+      "projectedHeightPx": 24,
+      "projectedLongAxisPx": 44.0,
+      "targetLongAxisPx": 45.0,
+      "scalePxValid": true,
+      "cameraLocation": [
+        17.20738410949707,
+        -13.048660278320312,
+        10.288055419921875
+      ],
+      "cameraDistance": 23.4039,
+      "measuredWidthPx": 44,
+      "measuredHeightPx": 24,
+      "measuredLongAxisPx": 44,
+      "measuredBoundsPx": [
+        16,
+        19,
+        59,
+        42
+      ],
+      "bgRgb": [
+        0.277,
+        0.285,
+        0.298
+      ],
+      "measurementMethod": "image_silhouette_nonbg"
+    },
+    "readability_120px": {
+      "view": "readability_120px",
+      "resolution": [
+        160,
+        160
+      ],
+      "framingValid": true,
+      "reason": "cropped",
+      "ndcMin": [
+        0.1212,
+        0.2183
+      ],
+      "ndcMax": [
+        1.0358,
+        0.9464
+      ],
+      "marginPct": -3.58,
+      "projectedWidthPct": 91.47,
+      "projectedHeightPct": 72.81,
+      "projectedWidthPx": 120,
+      "projectedHeightPx": 64,
+      "projectedLongAxisPx": 120.0,
+      "targetLongAxisPx": 120.0,
+      "scalePxValid": true,
+      "cameraLocation": [
+        16.223371505737305,
+        -12.275506973266602,
+        9.690619468688965
+      ],
+      "cameraDistance": 22.0171,
+      "measuredWidthPx": 120,
+      "measuredHeightPx": 64,
+      "measuredLongAxisPx": 120,
+      "measuredBoundsPx": [
+        36,
+        47,
+        155,
+        110
+      ],
+      "bgRgb": [
+        0.275,
+        0.283,
+        0.298
+      ],
+      "measurementMethod": "image_silhouette_nonbg"
+    }
+  }
+}
