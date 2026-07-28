@@ -17,6 +17,68 @@ import {
 const HEIST_FACILITIES_SCHEMA_VERSION = 1;
 const MAX_CANDIDATE_RECEIPTS = 32;
 
+// ── Player-visible launch schedule cue (PQ-019A) ────────────────────────────────────────────────
+//
+// A pending schedule was previously invisible to the player: the owner produced deterministic
+// receipts, but nothing announced the launch window on the flight route. These T-minus moments are
+// the cue.
+//
+// Contract:
+//   * BOUNDED MOMENTS, NOT PER-FRAME. The publisher fires only on the tick where the sim clock
+//     CROSSES an authored threshold, so a 30 s window speaks at most four times (30/15/5 + away).
+//   * STATELESS AND DETERMINISTIC. `crossedLaunchCueTMinus` is a pure function of
+//     (launchAtSimT, previous simTime, current simTime); the previous clock is reconstructed from
+//     the frame's own `dt`. There is no cursor to persist, so the cue adds NO save key and cannot
+//     desynchronize from the schedule it describes. Re-entering the sector cannot re-fire a
+//     threshold that is already in the past, and entering mid-window speaks only the thresholds
+//     still ahead — by construction, not by bookkeeping.
+//   * ONE VOICE. Every line is enqueued under the single stable id below, on the `objective`
+//     channel (priority 60; danger 110 stays reserved for life-critical alerts). VoiceQueue
+//     coalesces same-id entries in place, so the whole countdown occupies at most one floor slot
+//     and can never stack a second pill against itself.
+//   * SIM-INERT. The publisher writes no sim state and spawns nothing. It reaches the player only
+//     through the established `ctx.helpers.voice.say` seam, which is DOM-free — alerts.js owns the
+//     floor pill and is already window-guarded. Where voiceArbiter is not registered (headless
+//     harnesses, deterministic sim) `helpers.voice` is undefined and the call is a strict no-op.
+//     This is deliberately NOT gated on `typeof window`: per the weapons.js N1 note, host-divergent
+//     behavior is the bug that gate creates, and it would also blind the focused tests.
+//   * NON-COLOR SEMANTICS. Each line states the facility and the remaining time in words. No cue
+//     depends on hue, and none introduces motion beyond the existing floor presentation.
+export const PQ019_LAUNCH_CUE_TMINUS_S = Object.freeze([30, 15, 5]);
+export const PQ019_LAUNCH_CUE_VOICE_ID = 'pq019a:launch-schedule';
+export const PQ019_LAUNCH_CUE_CHANNEL = 'objective';
+const LAUNCH_CUE_TTL_S = 4;
+
+/**
+ * Largest-information cue threshold crossed in the half-open interval (prevSimT, simT].
+ *
+ * Pure and total. Returns the SMALLEST crossed threshold when a single long frame steps over
+ * several at once, because the reading closest to launch is the truthful one to show. Returns null
+ * when the clock did not advance across any authored moment.
+ */
+export function crossedLaunchCueTMinus(launchAtSimT, prevSimT, simT) {
+  if (![launchAtSimT, prevSimT, simT].every(Number.isFinite)) return null;
+  if (!(simT > prevSimT)) return null;
+  let crossed = null;
+  for (const tMinus of PQ019_LAUNCH_CUE_TMINUS_S) {
+    const at = launchAtSimT - tMinus;
+    if (at > prevSimT && at <= simT && (crossed === null || tMinus < crossed)) {
+      crossed = tMinus;
+    }
+  }
+  return crossed;
+}
+
+/** Player-facing line for a T-minus moment. Text carries the whole meaning. */
+export function launchCueTextForTMinus(tMinus) {
+  return `${PQ019_FACILITIES.heist_launcher.name}: cargo launch in ${tMinus}s`;
+}
+
+/** Player-facing line for the moment the capsule is physically away. */
+export function launchCueAwayText() {
+  return `Cargo capsule away — outbound to ${PQ019_FACILITIES.lawful_catcher.name}`;
+}
+
 function makeState() {
   return {
     schemaVersion: HEIST_FACILITIES_SCHEMA_VERSION,
@@ -114,13 +176,64 @@ export const heistFacilities = {
     }
   },
 
-  update(_dt, state) {
+  update(dt, state) {
     const owned = state.heistFacilities;
     const schedule = owned?.schedule;
     if (!schedule || schedule.status !== 'scheduled') return;
     if (state.world?.currentSectorId !== PQ019_HEIST_SECTOR_ID) return;
+    // Announce before launching: a countdown that speaks only after the capsule is away is not a cue.
+    this._publishLaunchCue(schedule, state, dt);
     if (state.simTime + 1e-9 < schedule.launchAtSimT) return;
     this._launchScheduledCapsule(schedule);
+  },
+
+  /**
+   * Speak the authored T-minus moment, if this frame crossed one. Pure decision, seam-only effect.
+   * Returns the emitted cue receipt or null.
+   */
+  _publishLaunchCue(schedule, state, dt) {
+    const step = Number(dt);
+    if (!Number.isFinite(step) || step <= 0) return null;
+    const simT = Number(state.simTime);
+    const tMinus = crossedLaunchCueTMinus(schedule.launchAtSimT, simT - step, simT);
+    if (tMinus === null) return null;
+    return this._sayLaunchCue({
+      scheduleId: schedule.scheduleId,
+      moment: `t_minus_${tMinus}`,
+      tMinusS: tMinus,
+      text: launchCueTextForTMinus(tMinus),
+    });
+  },
+
+  /**
+   * Single exit for every player-visible schedule line.
+   *
+   * Emits an owner receipt (observable headlessly, presenter-free) and routes the spoken copy
+   * through the one-voice seam under one stable id. No DOM, no sim write.
+   */
+  _sayLaunchCue({ scheduleId, moment, tMinusS, text }) {
+    const receipt = Object.freeze({
+      cueId: `pq019a:cue:${scheduleId}:${moment}`,
+      scheduleId,
+      moment,
+      tMinusS,
+      text,
+      voiceId: PQ019_LAUNCH_CUE_VOICE_ID,
+      channel: PQ019_LAUNCH_CUE_CHANNEL,
+      source: 'heistFacilities',
+    });
+    const say = this.helpers?.voice?.say;
+    if (typeof say === 'function') {
+      say({
+        channel: PQ019_LAUNCH_CUE_CHANNEL,
+        id: PQ019_LAUNCH_CUE_VOICE_ID,
+        text,
+        kind: 'info',
+        ttl: LAUNCH_CUE_TTL_S,
+      });
+    }
+    this.bus.emit('heist:launchCue', receipt);
+    return receipt;
   },
 
   materializeForSector(sectorId) {
@@ -379,6 +492,15 @@ export const heistFacilities = {
       launchedAtTick: schedule.launchedAtTick,
       source: 'heistFacilities',
     }));
+    // Closes the countdown on the same stable voice id, so the last thing the player heard about
+    // this schedule is that the capsule is real and where it is headed. The rebind path above
+    // returns before this point: recovering a still-live capsule is not a fresh launch.
+    this._sayLaunchCue({
+      scheduleId: schedule.scheduleId,
+      moment: 'away',
+      tMinusS: 0,
+      text: launchCueAwayText(),
+    });
     return capsule;
   },
 
