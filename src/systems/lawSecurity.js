@@ -491,6 +491,138 @@ export const lawSecurity = {
     this._emit('law:incidentReceipt', row);
   },
 
+  // ── PQ-019B: witness-validated incident intake ────────────────────────────────────────────────
+  //
+  // The `law:reportIncident`-class owner entry. A non-law owner (the heist mission) can report that
+  // a crime happened; only THIS system decides whether the law recognizes it.
+  //
+  // Deliberately a SEPARATE entry point from `_openIncident`, for two reasons that are properties of
+  // the live code rather than preferences:
+  //
+  //   1. `_openIncident` keys on a LIVE ENTITY ID (`${stationId}:${attacker.id}`). Entity ids are not
+  //      stable across save/load, so it cannot answer "is this the same incident I already logged?"
+  //      A reported incident is keyed by a caller-supplied stable `reportId` instead.
+  //   2. `_openIncident` leads to `_dispatchIncident` -> `_respondersFor`, which SPAWNS
+  //      `patrol_lawman` hulls when `reserveAllowed`. The packet forbids inventing a responder:
+  //      "No available patrol is a valid, visible outcome recorded by law; it is not permission to
+  //      spawn a fake job-origin responder." This path never calls `_respondersFor`, so that rule is
+  //      structural here, not a policy someone must remember.
+  //
+  // It only OBSERVES and RECORDS. It never steers, authorizes, or spawns anyone: enlisting a real
+  // patrol is the NPC-job control lease's job, using the responder ids reported here.
+  reportIncident(request = {}) {
+    const state = this.state;
+    const reportId = cleanLawId(request.reportId);
+    const kind = cleanLawId(request.kind);
+    const offenderStableId = cleanLawId(request.offenderStableId);
+    const payloadStableId = cleanLawId(request.payloadStableId);
+    const causalTick = Number.isInteger(request.causalTick) && request.causalTick >= 0
+      ? request.causalTick
+      : null;
+    const pos = finiteLawPoint(request.pos);
+    if (!state || !reportId || !kind || !offenderStableId || !payloadStableId
+      || causalTick === null || !pos) {
+      return this._denyIncidentReport('invalid_report', { reportId, kind, causalTick });
+    }
+
+    // Idempotency key. A duplicate report returns the SAME receipt without re-querying the world,
+    // so a retry after a dropped callback cannot double-log a crime. The lookup deliberately does
+    // NOT create the ledger: a denied report must leave no trace in owned state.
+    const existing = readReportedIncident(state, reportId);
+    if (existing) {
+      this._emit('law:reportIncidentReceipt', existing);
+      return existing;
+    }
+
+    // Jurisdiction: the live authority owner decides, from the incident position.
+    const jurisdiction = protectedStationAt(state, { pos });
+    if (!jurisdiction) {
+      return this._denyIncidentReport('no_jurisdiction', { reportId, kind, causalTick });
+    }
+
+    // Witnesses: a crime nobody can see is not a crime the law will act on.
+    const witnesses = lawWitnessesNear(state, {
+      pos,
+      offenderEntityId: request.offenderEntityId,
+      radius: LAW_INCIDENT_WITNESS_RADIUS,
+    });
+    if (witnesses.length === 0) {
+      return this._denyIncidentReport('no_witness', { reportId, kind, causalTick });
+    }
+
+    // Responders are RANKED FROM WHAT ALREADY EXISTS. `rankLawfulResponders` is a pure filter over
+    // the live entity list; it cannot create a hull. An empty result is a first-class recorded
+    // outcome, not a reason to manufacture a patrol.
+    const policy = authorityResponsePolicy(effectiveLawSecurity(state));
+    const responders = rankLawfulResponders(state.entityList || [], pos, {
+      aggressorId: request.offenderEntityId,
+      cap: policy.responderCap,
+      radius: jurisdiction.radius + LAW_INCIDENT_RESPONDER_MARGIN,
+    });
+
+    const receipt = Object.freeze({
+      accepted: true,
+      incidentReceiptId: `law:incident:${hash32(
+        reportId, kind, offenderStableId, payloadStableId, causalTick,
+      ).toString(36)}`,
+      reportId,
+      kind,
+      offenderStableId,
+      offenderEntityId: request.offenderEntityId == null ? null : request.offenderEntityId,
+      payloadStableId,
+      causalTick,
+      stationId: jurisdiction.stationId,
+      factionId: jurisdiction.factionId,
+      jurisdictionRadius: jurisdiction.radius,
+      witnessCount: witnesses.length,
+      witnessStableIds: Object.freeze(witnesses.map((w) => w.stableId)),
+      responderAvailability: responders.length > 0 ? 'available' : 'none_in_range',
+      responderEntityIds: Object.freeze(responders.map((r) => r.id)),
+      responderCap: policy.responderCap,
+      // The single fact the heat owner is allowed to act on. False can never be produced by an
+      // accepted receipt: an unwitnessed or unpoliced report is denied above, never downgraded.
+      validatedWitnessedTheft: true,
+      source: 'lawSecurity',
+    });
+
+    storeReportedIncident(state, receipt);
+
+    // Visible in the law owner's own receipt ledger, including the "nobody is coming" case — which
+    // the player must be able to observe as an outcome rather than as silence.
+    this._recordReceipt({
+      incidentId: receipt.incidentReceiptId,
+      cause: kind,
+      outcome: responders.length > 0 ? 'reported_incident_logged' : 'dispatch_unavailable',
+      attackerId: request.offenderEntityId == null ? null : request.offenderEntityId,
+      targetId: null,
+      stationId: jurisdiction.stationId,
+      text: responders.length > 0
+        ? `THEFT REPORTED — ${witnesses.length} witness${witnesses.length === 1 ? '' : 'es'}; ${responders.length} unit${responders.length === 1 ? '' : 's'} in range.`
+        : `THEFT REPORTED — ${witnesses.length} witness${witnesses.length === 1 ? '' : 'es'}; no patrol in range.`,
+    });
+    this._emit('law:reportIncidentReceipt', receipt);
+    return receipt;
+  },
+
+  /**
+   * An explicit refusal. Denials are deliberately NOT cached: a denial describes the world at one
+   * tick, and caching "no patrol could see you" would freeze a momentary absence into a permanent
+   * licence. Only accepted receipts are idempotent.
+   */
+  _denyIncidentReport(reason, { reportId, kind, causalTick }) {
+    const denial = Object.freeze({
+      accepted: false,
+      reason,
+      reportId: reportId || null,
+      kind: kind || null,
+      causalTick: causalTick === undefined ? null : causalTick,
+      validatedWitnessedTheft: false,
+      source: 'lawSecurity',
+    });
+    this._emit('law:reportIncidentReceipt', denial);
+    return denial;
+  },
+
   _say(channel, text, id, factionId) {
     // The sector-law presenter owns the single visible authority surface from the public lifecycle
     // and receipt events emitted immediately after these calls. Keep the authored line available to
@@ -670,6 +802,107 @@ function publicIncident(incident) {
     security: incident.security,
     resolvedAt: incident.resolvedAt || null,
   };
+}
+
+// ── PQ-019B incident-intake support ───────────────────────────────────────────────────────────────
+
+/**
+ * Bounded witness query radius. Only ever evaluated at a reported theft transition, never per frame.
+ *
+ * DELIBERATELY SMALLER than `LAWFUL_STATION_PROTECTION_MIN` (600 WU, engagementAuthority.js). A
+ * lawful station is itself a lawful witness, so if this radius were the larger of the two then every
+ * position inside a jurisdiction would automatically be inside witness range and the witness gate
+ * could never fire — a guard that cannot deny is not a guard. Being inside a legal ring and being
+ * SEEN are separate facts, and the packet requires the second one to be checkable.
+ */
+export const LAW_INCIDENT_WITNESS_RADIUS = 450;
+/** How far past the jurisdiction ring an already-existing lawful unit still counts as in range. */
+export const LAW_INCIDENT_RESPONDER_MARGIN = 1000;
+/** Hard cap on witnesses carried in a receipt. The query is bounded work, not an all-pairs scan. */
+export const LAW_INCIDENT_WITNESS_CAP = 8;
+const REPORTED_INCIDENT_CAP = 16;
+
+/**
+ * The reported-incident ledger, created ONLY on first actual use.
+ *
+ * Lazy on purpose. `check:sim:compare` replays the golden run through a save/restore boundary, and a
+ * key that materializes in `init`/`newGame`/`ensureState` would exist on one leg of that comparison
+ * and not the other. No heist is scheduled in the golden scenario, so this object is never built
+ * there and the seam is provably inert.
+ *
+ * NOTE (live-symbol delta): `state.lawSecurity` is NOT in the save owner's capture plan, so this
+ * ledger is session-scoped. Cross-reload idempotence does not depend on it: `incidentReceiptId` is a
+ * content hash of stable inputs, so the same report reproduces the same id after a load, and the
+ * arbiter's durable effect journal is what stops an effect from being applied twice.
+ */
+function readReportedIncident(state, reportId) {
+  const own = state && state.lawSecurity;
+  const ledger = own && own.reportedIncidents;
+  return ledger && typeof ledger === 'object' && !Array.isArray(ledger)
+    ? ledger[reportId] || null
+    : null;
+}
+
+function storeReportedIncident(state, receipt) {
+  const own = ensureState(state);
+  if (!own.reportedIncidents || typeof own.reportedIncidents !== 'object'
+    || Array.isArray(own.reportedIncidents)) {
+    own.reportedIncidents = {};
+  }
+  own.reportedIncidents[receipt.reportId] = receipt;
+  const keys = Object.keys(own.reportedIncidents);
+  while (keys.length > REPORTED_INCIDENT_CAP) delete own.reportedIncidents[keys.shift()];
+  return receipt;
+}
+
+function cleanLawId(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && trimmed.length <= 200 && !trimmed.includes('|') ? trimmed : null;
+}
+
+function finiteLawPoint(pos) {
+  return pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+    ? { x: pos.x, z: pos.z }
+    : null;
+}
+
+/**
+ * Who could see this. There is NO witness owner in the live codebase — jurisdiction
+ * (`protectedStationAt`) and responder ranking (`rankLawfulResponders`) exist, witnesses do not — so
+ * this predicate is introduced here rather than reused, and is kept deliberately narrow:
+ *
+ *   * a lawful unit (`isLawful`: `ai.lawful === true`, or a lawful-faction station), or
+ *   * an entity an owner has explicitly marked `data.lawWitness === true`.
+ *
+ * The marker exists so a facility or authored actor can be a witness without this file learning what
+ * a heist is. Sorted by distance then stable id, capped — deterministic and bounded.
+ */
+export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius = LAW_INCIDENT_WITNESS_RADIUS } = {}) {
+  const anchor = finiteLawPoint(pos);
+  if (!state || !anchor) return [];
+  const limitSq = Math.max(0, Number(radius) || 0) ** 2;
+  const out = [];
+  for (const entity of state.entityList || []) {
+    if (!entity || entity.alive === false || !entity.pos) continue;
+    if (offenderEntityId != null && entity.id === offenderEntityId) continue;
+    if (entity.id === state.playerId) continue; // the thief is not a witness against themselves
+    if (!isLawful(entity) && entity.data?.lawWitness !== true) continue;
+    const d2 = distance2(entity.pos, anchor);
+    if (d2 > limitSq) continue;
+    out.push({
+      stableId: String(entity.data?.worldRecordId
+        || entity.data?.stationId
+        || entity.data?.heistFacilityId
+        || `entity:${entity.id}`),
+      entityId: entity.id,
+      distanceSq: d2,
+      lawful: isLawful(entity),
+    });
+  }
+  return out
+    .sort((a, b) => a.distanceSq - b.distanceSq || a.stableId.localeCompare(b.stableId))
+    .slice(0, LAW_INCIDENT_WITNESS_CAP);
 }
 
 export default lawSecurity;
