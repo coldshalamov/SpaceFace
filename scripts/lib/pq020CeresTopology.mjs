@@ -693,10 +693,33 @@ function validateContinuationProofs(snapshot, failures) {
       const jobCount = Object.values(row.withMetadata?.jobKinds || {})
         .reduce((sum, count) => sum + count, 0);
       if (!(jobCount > 0)) failures.push(`naturalJobs:${row.seed}:no-natural-job`);
-      exact(failures, `naturalJobs:${row.seed}:injection`, row.withMetadata?.jobInjectionCalls, 0);
-      // The industrial metadata must move the owner's weights on every seed, in the right direction.
-      if (!(row.minerWeightDelta > 0)) failures.push(`naturalJobs:${row.seed}:miner-weight-delta`);
-      if (!(row.haulerWeightDelta > 0)) failures.push(`naturalJobs:${row.seed}:hauler-weight-delta`);
+      // THE REAL A/B GATE: what the producer was actually handed on `sector:enter`. The weight
+      // deltas are NOT gated — the harness re-derives both arms' weights from the same records, so
+      // gating them would only assert that a pure function is pure. This gates an observation.
+      exact(
+        failures,
+        `naturalJobs:${row.seed}:observedIndustriesMining`,
+        row.withMetadata?.observedIndustriesMining,
+        true,
+      );
+      exact(
+        failures,
+        `naturalJobs:${row.seed}:observedIndustriesRefinery`,
+        row.withMetadata?.observedIndustriesRefinery,
+        true,
+      );
+      exact(
+        failures,
+        `naturalJobs:${row.seed}:counterfactualIndustriesMining`,
+        row.withoutMetadata?.observedIndustriesMining,
+        false,
+      );
+      exact(
+        failures,
+        `naturalJobs:${row.seed}:counterfactualIndustriesRefinery`,
+        row.withoutMetadata?.observedIndustriesRefinery,
+        false,
+      );
     }
     if ((jobs.aggregateJobKinds?.miner || 0) <= 0) failures.push('naturalJobs:no-natural-miner');
     if ((jobs.aggregateJobKinds?.hauler || 0) <= 0) failures.push('naturalJobs:no-natural-hauler');
@@ -764,6 +787,10 @@ function validateContinuationProofs(snapshot, failures) {
     }
     if (idempotence.topologyStableAcrossReentryAndContinue !== true) {
       failures.push('reentryIdempotence:topology-drift');
+    }
+    // The projection row must keep saying it is invariance-by-construction, not a survived-save claim.
+    if (idempotence.offscreenProjectionPersistence?.claimed !== false) {
+      failures.push('reentryIdempotence:projection-persistence-overclaim');
     }
     exact(failures, 'reentryIdempotence.beaconEntities', idempotence.afterContinue?.beaconEntities, 1);
   }

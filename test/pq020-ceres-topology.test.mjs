@@ -278,4 +278,26 @@ test('PQ-020 validator fails closed on continuation-proof drift', async () => {
   const unstableProjection = structuredClone(snapshot);
   unstableProjection.offscreenProjection.allStable = false;
   assert.equal(validatePq020CeresTopologySnapshot(unstableProjection).pass, false);
+
+  // If the counterfactual arm stopped actually reaching the producer, the A/B would be theatre —
+  // the arms would be identical and the census would still look green. That must fail.
+  const brokenAb = structuredClone(snapshot);
+  brokenAb.naturalJobs.perSeed[0].withoutMetadata.observedIndustriesMining = true;
+  const brokenAbReceipt = validatePq020CeresTopologySnapshot(brokenAb);
+  assert.equal(brokenAbReceipt.pass, false);
+  assert.ok(brokenAbReceipt.failures.some(
+    (failure) => failure.includes('counterfactualIndustriesMining'),
+  ));
+
+  // Likewise if the WITH arm's metadata never reached the producer.
+  const unseenMetadata = structuredClone(snapshot);
+  unseenMetadata.naturalJobs.perSeed[0].withMetadata.observedIndustriesMining = false;
+  assert.equal(validatePq020CeresTopologySnapshot(unseenMetadata).pass, false);
+
+  // Re-labelling the recomputed projection as a survived-save claim must fail.
+  const projectionOverclaim = structuredClone(snapshot);
+  projectionOverclaim.reentryIdempotence.offscreenProjectionPersistence.claimed = true;
+  const projectionReceipt = validatePq020CeresTopologySnapshot(projectionOverclaim);
+  assert.equal(projectionReceipt.pass, false);
+  assert.ok(projectionReceipt.failures.includes('reentryIdempotence:projection-persistence-overclaim'));
 });

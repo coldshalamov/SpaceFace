@@ -118,7 +118,7 @@ function ceresWithoutIndustries() {
  */
 export function runCeresJobCensus(seed, { industries = true } = {}) {
   const sim = createSimulation({ seed, systems: [npcJobsRuntime, traffic, world] });
-  const { state } = sim;
+  const { state, bus } = sim;
   try {
     state.mode = 'flight';
     if (!industries) state.world.sectors[PQ020_SECTOR_ID] = ceresWithoutIndustries();
@@ -137,6 +137,21 @@ export function runCeresJobCensus(seed, { industries = true } = {}) {
       data: { pq020CensusPlayer: true },
     });
     state.playerId = player.id;
+
+    // OBSERVE what the producer was actually handed. This is the row that proves the A/B arms
+    // reached traffic at all: `world.enterSector` resolves the sector record (preferring the
+    // state.world.sectors overlay) and emits it on `sector:enter`, which is the exact payload
+    // traffic.js reads to build its role mix. Re-deriving the weights ourselves would prove only
+    // that a pure function is pure; this reads the producer's real input.
+    let observedIndustriesMining = null;
+    let observedIndustriesRefinery = null;
+    let observedSectorEnterEvents = 0;
+    bus.on('sector:enter', (payload) => {
+      if (payload?.sectorId !== PQ020_SECTOR_ID) return;
+      observedSectorEnterEvents += 1;
+      observedIndustriesMining = payload?.sector?.industries?.mining === true;
+      observedIndustriesRefinery = payload?.sector?.industries?.refinery === true;
+    });
 
     sim.registry.get('world').enterSector(PQ020_SECTOR_ID, {
       continuous: true,
@@ -193,7 +208,14 @@ export function runCeresJobCensus(seed, { industries = true } = {}) {
     return {
       seed,
       industries,
-      // The mix the LIVE sim actually used (stateful call), not the stateless convenience value.
+      // What the PRODUCER received — a real observation of the live `sector:enter` payload.
+      observedSectorEnterEvents,
+      observedIndustriesMining,
+      observedIndustriesRefinery,
+      // Owner-function characterization, NOT independent evidence: this re-derives the weights from
+      // the same record, using the stateful call the live sim uses (so it includes
+      // regionalTrafficRoleWeights rather than the stateless convenience value). Useful to read;
+      // never gated as proof, because a pure function agreeing with itself proves nothing.
       roleWeights: roundWeights(trafficRoleMixForSector(
         industries ? ceresSector() : state.world.sectors[PQ020_SECTOR_ID],
         state,
@@ -206,7 +228,6 @@ export function runCeresJobCensus(seed, { industries = true } = {}) {
       jobKindsAfterSettle: sortCounts(jobKindsAfterSettle),
       jobPhasesAfterSettle: sortCounts(phases),
       nearestHostileToJobHullWu: nearestHostileWu == null ? null : round(nearestHostileWu),
-      jobInjectionCalls: 0, // structural: this fixture has no createJob/assign call site at all.
     };
   } finally {
     sim.dispose();
@@ -661,6 +682,15 @@ export function buildReentryIdempotenceReport() {
         && afterSecondEnter.beaconEntities === 1
         && afterThirdEnter.beaconEntities === 1,
       topologyStableAcrossReentryAndContinue: identical,
+      offscreenProjectionPersistence: {
+        claimed: false,
+        invariance: 'by-construction',
+        reason:
+          'projectSectorEmbodiment is a pure function of authored sector data + seed + epoch; no '
+          + 'projection state is serialized in this system subset (sectorSim absent), so there is '
+          + 'nothing for save to round-trip. The recomputed digest is an authored-data drift canary.',
+        owner: 'npm run check:m2:sector-embodiment',
+      },
     };
   } finally {
     sim.dispose();
@@ -683,6 +713,13 @@ function staticContentSnapshot(state) {
   }
   const zones = zonesForSector(PQ020_SECTOR_ID);
   const model = buildSystemModel(state, PQ020_SECTOR_ID);
+  // NOTE ON WHAT THIS DIGEST IS. Every input below is authored data or a fixed constant — none of it
+  // is read from `state`. So this value is invariant across enter/save/Continue BY CONSTRUCTION, and
+  // recomputing it here is a drift canary on the authored record, NOT evidence that a persisted
+  // projection audit survived a save. No projection state is serialized in this harness's system
+  // subset (`world`, `asteroidSites`, `save` — `sectorSim` is absent), so there is nothing for save
+  // to round-trip. A persisted-projection claim belongs to the sectorSim/embodiment owner
+  // (`npm run check:m2:sector-embodiment`), not here.
   const projection = projectSectorEmbodiment({
     sectorId: PQ020_SECTOR_ID,
     sector: ceresSector(),
@@ -700,7 +737,8 @@ function staticContentSnapshot(state) {
     zoneIds: zones.map((zone) => zone.id).sort(),
     mapPointIds: model.points.map((point) => String(point.id)).sort(),
     mapZoneIds: model.zones.map((zone) => zone.id).sort(),
-    offscreenProjectionDigest: embodimentDigest(projection),
+    // Named to say what it is: a recomputation from authored data, not a persistence observation.
+    offscreenProjectionRecomputedDigest: embodimentDigest(projection),
     offscreenIntentCount: projection.length,
   };
 }

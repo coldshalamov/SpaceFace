@@ -32,10 +32,18 @@ test('PQ-020 natural miner/hauler jobs arise from the live producer on every hel
 
   for (const row of report.perSeed) {
     const census = row.withMetadata;
-    // The producer made jobs; the fixture made none.
-    assert.equal(census.jobInjectionCalls, 0, `seed ${row.seed}: fixture must never inject a job`);
     const jobCount = Object.values(census.jobKinds).reduce((sum, count) => sum + count, 0);
     assert.ok(jobCount > 0, `seed ${row.seed}: traffic produced at least one natural job`);
+
+    // The A/B actually reached the producer: this reads the live `sector:enter` payload traffic.js
+    // consumes, rather than re-deriving the weights from the same record we supplied.
+    assert.equal(census.observedSectorEnterEvents, 1, `seed ${row.seed}: one sector:enter`);
+    assert.equal(census.observedIndustriesMining, true, `seed ${row.seed}: producer saw mining`);
+    assert.equal(census.observedIndustriesRefinery, true, `seed ${row.seed}: producer saw refinery`);
+    assert.equal(row.withoutMetadata.observedIndustriesMining, false,
+      `seed ${row.seed}: counterfactual producer must NOT see mining`);
+    assert.equal(row.withoutMetadata.observedIndustriesRefinery, false,
+      `seed ${row.seed}: counterfactual producer must NOT see refinery`);
 
     // At least one INDUSTRIAL job (miner or hauler) on every held-out seed.
     const industrial = (census.jobKinds.miner || 0) + (census.jobKinds.hauler || 0);
@@ -44,17 +52,10 @@ test('PQ-020 natural miner/hauler jobs arise from the live producer on every hel
       `seed ${row.seed}: expected a natural miner or hauler job, got ${JSON.stringify(census.jobKinds)}`,
     );
 
-    // Causation at the owner: the industrial metadata raises miner + hauler weight on every seed.
+    // Owner-function characterization, reported rather than treated as independent evidence: the
+    // harness derives both arms' weights itself, so this only documents the shipped weighting rule.
     assert.ok(row.minerWeightDelta > 0, `seed ${row.seed}: miner weight delta ${row.minerWeightDelta}`);
     assert.ok(row.haulerWeightDelta > 0, `seed ${row.seed}: hauler weight delta ${row.haulerWeightDelta}`);
-    assert.ok(
-      census.roleWeights.miner > row.withoutMetadata.roleWeights.miner,
-      `seed ${row.seed}: miner weight must exceed the no-industry counterfactual`,
-    );
-    assert.ok(
-      census.roleWeights.hauler > row.withoutMetadata.roleWeights.hauler,
-      `seed ${row.seed}: hauler weight must exceed the no-industry counterfactual`,
-    );
   }
 
   // Both industrial kinds appear naturally somewhere across the held-out set.
@@ -164,11 +165,18 @@ test('PQ-020 static content materializes exactly once across re-entry and save -
   }
   assert.equal(report.staticContentMaterializesExactlyOnce, true);
 
-  // Continue preserves topology, zone set, map identity AND the offscreen projection audit.
+  // Continue preserves topology, zone set and map identity.
   assert.deepEqual(report.afterContinue, report.afterFirstEnter);
   assert.deepEqual(report.afterSecondContinue, report.afterFirstEnter);
   assert.equal(report.topologyStableAcrossReentryAndContinue, true);
-  assert.equal(report.afterContinue.offscreenProjectionDigest, 2416862514);
+
+  // The offscreen projection row must NOT be dressed up as a survived-save claim. It is a pure
+  // function of authored data, so its stability is invariance by construction; no projection state
+  // is serialized in this system subset. The report has to keep saying so.
+  assert.equal(report.offscreenProjectionPersistence.claimed, false);
+  assert.equal(report.offscreenProjectionPersistence.invariance, 'by-construction');
+  assert.match(report.offscreenProjectionPersistence.owner, /check:m2:sector-embodiment/);
+  assert.equal(report.afterContinue.offscreenProjectionRecomputedDigest, 2416862514);
   assert.equal(report.afterContinue.offscreenIntentCount, 3);
 });
 
