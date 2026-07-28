@@ -117,11 +117,20 @@ try {
     consoleErrors.push(msg.text());
   });
   const badResponses = [];
+  const abortedRequests = [];
   page.on('response', (response) => {
     if (response.status() >= 400) badResponses.push(`${response.status()} ${response.url()}`);
   });
   page.on('requestfailed', (request) => {
-    badResponses.push(`FAILED ${request.url()}`);
+    const failure = request.failure();
+    const errorText = (failure && failure.errorText) || 'unknown';
+    // An aborted request is the cleanup working, not a defect: closing a detail or hiding a host
+    // calls removeAttribute('src'), which cancels an image still in flight. Counted, not failed.
+    if (/ERR_ABORTED|net::ERR_ABORTED|aborted/i.test(errorText)) {
+      abortedRequests.push(`${errorText} ${request.url()}`);
+      return;
+    }
+    badResponses.push(`FAILED(${errorText}) ${request.url()}`);
   });
 
   await page.route(`**/${HARNESS_PATH}`, (route) => route.fulfill({
@@ -603,8 +612,12 @@ try {
     const unexpected = badResponses.filter((entry) => !entry.includes('evidence.not_admitted'));
     assert.deepEqual(unexpected, [], `unexpected failed requests: ${unexpected.join(' | ')}`);
     assert.equal(badResponses.length, 1, 'exactly one request failed, and it was the planted one');
+    // Aborts are permitted, but only for the authored media the panel itself released.
+    const strayAborts = abortedRequests.filter((entry) => !entry.includes(MEDIA_PREFIX));
+    assert.deepEqual(strayAborts, [], `aborted requests outside the evidence media: ${strayAborts.join(' | ')}`);
   });
   report.badResponses = badResponses;
+  report.abortedRequests = abortedRequests;
 
   mkdirSync(OUT_DIR, { recursive: true });
   writeFileSync(path.join(OUT_DIR, 'ledger-hosts.json'), `${JSON.stringify(report, null, 2)}\n`);
