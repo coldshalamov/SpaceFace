@@ -12,10 +12,10 @@
   "sourceGlb": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_lode.glb",
   "releaseCandidateGlb": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_lode.glb",
   "blend": "assets/ships/m4_ashline_v2/blender/ashline_v2_lode_production.blend",
-  "sha256_source": "FCF5A1FA08D47706CFEFD0FB204BE60C42F9404F0C6AAEA508CE2F13F0774C96",
+  "sha256_source": "A5F9DC2C54BE15021398D886D1B25A32353CBCF6A495FE0837EECB8DC3684C81",
   "report": {
     "file": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\source\\wholeships\\ashline_v2_lode.glb",
-    "bytes": 715408,
+    "bytes": 6163208,
     "totalTriangles": 7637,
     "hullTriangles": 6665,
     "lodBreakdown": {
@@ -140,7 +140,7 @@
       "blenderBasis": "Z-up",
       "exportBasis": "Y-up glTF",
       "lod0AabbSize": [
-        24.0,
+        24,
         7.246389865875244,
         21.82400131225586
       ],
@@ -165,7 +165,7 @@
     "lodBuildStats": [
       {
         "lod": "lod0",
-        "decimate_ratio": 1.0,
+        "decimate_ratio": 1,
         "mesh_count": 4,
         "triangles": 4492,
         "meshes": [
@@ -258,7 +258,7 @@
       }
     ],
     "lod0AabbSize": [
-      24.0,
+      24,
       7.246389865875244,
       21.82400131225586
     ],
@@ -279,7 +279,8 @@
         18.33216094970703
       ]
     },
-    "sha256": "FCF5A1FA08D47706CFEFD0FB204BE60C42F9404F0C6AAEA508CE2F13F0774C96"
+    "sha256": "A5F9DC2C54BE15021398D886D1B25A32353CBCF6A495FE0837EECB8DC3684C81",
+    "evidenceScope": "geometry-and-structure; visual evidence bound separately"
   },
   "renders": [
     "assets/ships/m4_ashline_v2/evidence/lode/renders/forward_34.png",
@@ -293,5 +294,10 @@
     "assets/ships/m4_ashline_v2/evidence/lode/renders/silhouette_gray_120px.png",
     "assets/ships/m4_ashline_v2/evidence/lode/renders/gamesky_forward_34.png"
   ],
-  "builtAt": "2026-07-12T22:19:29Z"
+  "builtAt": "2026-07-12T22:19:29Z",
+  "evidenceEpoch": {
+    "status": "post-finalize-current",
+    "epochDigest": "FF53F841FE8B4A2383E152532318B726546CC421700201490A9C3B858C15E0C3",
+    "renderEligibility": "legacy-pre-surface-unbound"
+  }
 }

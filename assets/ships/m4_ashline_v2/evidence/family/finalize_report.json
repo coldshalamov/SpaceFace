@@ -1,5 +1,5 @@
 {
-  "schema": "spaceface.m4AshlineSourceFamilyFinalize.v1",
+  "schema": "spaceface.m4AshlineSourceFamilyFinalize.v2",
   "packet": "M4-ASHLINE-SOURCE-FAMILY-V2-001",
   "family": "ashline_v2",
   "isolation": {
@@ -100,5 +100,453 @@
       "meshopt": "EXT_meshopt_compression",
       "ktx2": "KHR_texture_basisu/KTX2"
     }
-  ]
+  ],
+  "evidenceEpoch": {
+    "schema": "spaceface.ashlineEvidenceEpoch.v2",
+    "family": "ashline_v2",
+    "sourceCandidatePairs": [
+      {
+        "key": "dart",
+        "id": "ashline_v2_dart",
+        "source": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_dart.glb",
+        "sourceSha256": "12EA70C8C9E7295D65DCE57AFF3AED64CD7FB62C780FFF61C183C67AD293B987",
+        "sourceBytes": 7034616,
+        "candidate": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_dart.glb",
+        "candidateSha256": "C2D64A84D3B3575D2D4001EB82FDDEDDC31ED94158D72CAD3706125C4E8DC720",
+        "candidateBytes": 5390784
+      },
+      {
+        "key": "lode",
+        "id": "ashline_v2_lode",
+        "source": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_lode.glb",
+        "sourceSha256": "A5F9DC2C54BE15021398D886D1B25A32353CBCF6A495FE0837EECB8DC3684C81",
+        "sourceBytes": 6163208,
+        "candidate": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_lode.glb",
+        "candidateSha256": "8E003254DC9005A123D1EAB15844103DADB1C8B2841FEE45775A136559A87B5A",
+        "candidateBytes": 5202960
+      },
+      {
+        "key": "rig",
+        "id": "ashline_v2_rig",
+        "source": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_rig.glb",
+        "sourceSha256": "6517F0BA291A8F58BB0BD97866B2251F4DDF67CFA7F9EC213F49AD031C747926",
+        "sourceBytes": 7852880,
+        "candidate": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_rig.glb",
+        "candidateSha256": "21F63DDFD2FE4561668FD7CC5B51D087085D185252218649A6663F0D8C0AD662",
+        "candidateBytes": 6781904
+      }
+    ],
+    "tools": [
+      {
+        "path": "tools/art/finalize_m4_ashline_v2_candidate.mjs",
+        "sha256": "44A5764AA3A91B28F0B16DE2C51E467A8C2C745C7613A714B3D8704BDCFF23D9"
+      },
+      {
+        "path": "tools/art/lib/ashlineEvidenceEpoch.mjs",
+        "sha256": "879B8F0D70C67E2B2CFC468287501AD0ED2BB1B7AEFD3D2A1336D0090357B403"
+      },
+      {
+        "path": "tools/art/lib/ashlineSurfaceMaps.mjs",
+        "sha256": "61E67FAE692D6865513C00243B65E0E24F1A70C3A995CFE7F33A19BFF34A15F9"
+      },
+      {
+        "path": "tools/blender/build_m4_ashline_v2.py",
+        "sha256": "CF6D79D6354C4F6E67DA922288AEFDB8A1DE2DCF0A7F749C17B5E9502985C808"
+      }
+    ],
+    "eligibleArtifacts": [],
+    "legacyArtifacts": [
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/dart/renders/forward_34.png",
+        "sha256": "F25D8A3E93C1B75A63A28BA5DB4505468208A985A798BA0E504753C054599478",
+        "bytes": 467640,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/dart/renders/gamesky_forward_34.png",
+        "sha256": "F73B1DD333C63F6B409A657BD9A78071EBCDA2C4FBF40E16AE457F315C3ACEA6",
+        "bytes": 545503,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/dart/renders/readability_120px.png",
+        "sha256": "4B895160D7546B069CDCDDBAFDF159D3367844F8D8F4458E6105AAF7B4658F0A",
+        "bytes": 17679,
+        "width": 128,
+        "height": 128,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/dart/renders/readability_close.png",
+        "sha256": "19618674D647E01EAC8B6D569483AA48CD9C83FB1116E2D54FF4D6346F968C8B",
+        "bytes": 491379,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/dart/renders/readability_under45px.png",
+        "sha256": "6DAF8AE949282BCAF172509B84AFC75185079EF716B399295D75A4479B692B7A",
+        "bytes": 3223,
+        "width": 48,
+        "height": 48,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/dart/renders/rear_34.png",
+        "sha256": "85FE6A88CB489DA8E1FBBC81CBFFC8D79F748EAFB84D819166FE59F40BEAF386",
+        "bytes": 499108,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/dart/renders/side_ortho.png",
+        "sha256": "917483CEB8D53932314FA2DF7B858101B11457A38D7210AB0FF434464833CFAD",
+        "bytes": 441109,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/dart/renders/silhouette_gray_120px.png",
+        "sha256": "74863CE1338AB62F7B77073322E86D1DFD03DC56C3EDEA2EAD569BF0DB75A844",
+        "bytes": 13290,
+        "width": 128,
+        "height": 128,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/dart/renders/silhouette_gray_45px.png",
+        "sha256": "B0081F671468FD9BC134E26C1513F06C5301F31032979E363D51E263288FF828",
+        "bytes": 2680,
+        "width": 48,
+        "height": 48,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/dart/renders/top_ortho.png",
+        "sha256": "B0FF164ABFE9037B058C546CCB5B9B55A5E3B38E4FEEE93BD28FF68893DECDEF",
+        "bytes": 460507,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/family/distance_readability_contact.png",
+        "sha256": "D569A27A71A4CD3A38AB2632A109BFBB43E2AC64E83C7876AB2E129E79836176",
+        "bytes": 148629,
+        "width": 1440,
+        "height": 270,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/family/runtime_lineup.png",
+        "sha256": "3D57CD3C1410A3ED2F5201C6F66BAD886A579BDE9B266816093E138FF48CAE22",
+        "bytes": 190661,
+        "width": 1440,
+        "height": 270,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/family/surface_review_dart.png",
+        "sha256": "6DDE51D6F69C2B05BE3B2F7758B8A371F69BE8B45AB907925A1B856D4081135B",
+        "bytes": 326838,
+        "width": 1660,
+        "height": 760,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/family/surface_review_lode.png",
+        "sha256": "BCF01856A68CF2CFD131EEB1F4E492F425691AF444E7F10F01ED165BA87BF7D9",
+        "bytes": 368709,
+        "width": 1660,
+        "height": 760,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/family/surface_review_rig.png",
+        "sha256": "A457CDF103E5F22F96C17B7DEA4B40AF50B635532623AAE6253F304A0B6FB5F7",
+        "bytes": 325108,
+        "width": 1660,
+        "height": 760,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/lode/renders/forward_34.png",
+        "sha256": "E1A1639771FF682EC917A7EC075B9D7EDF260723428092F86C9B10C1D5372656",
+        "bytes": 487697,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/lode/renders/gamesky_forward_34.png",
+        "sha256": "9B995F08B41EDC2901F96C79C61D31B9DE69F9419073BD5961DA9C0764153606",
+        "bytes": 549674,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/lode/renders/readability_120px.png",
+        "sha256": "6D15954235C08C6BA8DC44D6FABBF0F1DE64DE9DE6164340A0DE911A7E51A293",
+        "bytes": 18381,
+        "width": 128,
+        "height": 128,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/lode/renders/readability_close.png",
+        "sha256": "24306BE4BB310AA7CDF5CE31237F9A5F6E428E4542B33557D3AA7A9D70B20049",
+        "bytes": 511745,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/lode/renders/readability_under45px.png",
+        "sha256": "DA16A7744823AF8E90B543529E99C7732740533B06BA05824B1409C7128A6CA8",
+        "bytes": 3451,
+        "width": 48,
+        "height": 48,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/lode/renders/rear_34.png",
+        "sha256": "0B8558C03AF48640CBCCBD877A4DE1BCEE58B4BDE419C3C0C612A40C5450E9C5",
+        "bytes": 509545,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/lode/renders/side_ortho.png",
+        "sha256": "68D6175F073CDAD640E139EAEC90B4673865F325CABABC7C0DACE9B22F7C2302",
+        "bytes": 443660,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/lode/renders/silhouette_gray_120px.png",
+        "sha256": "E91858CBA003535F8ED9D9799B4C8D7565AE7F6FAB4EA087E2A70CDD9B169085",
+        "bytes": 14342,
+        "width": 128,
+        "height": 128,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/lode/renders/silhouette_gray_45px.png",
+        "sha256": "A13141651862D35CDF8EDB74C10E84E7EFDAEB9355B494D1B26020B6E3F10049",
+        "bytes": 2823,
+        "width": 48,
+        "height": 48,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/lode/renders/top_ortho.png",
+        "sha256": "D2514315A4A63E6963A38FE5B99021B30F2537CDE56752B46FE8574D042B5EF8",
+        "bytes": 487394,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/rig/renders/forward_34.png",
+        "sha256": "42E8DD7A26A0E2E75E3DF3E01EF4D9BBBAD80697112D261DE3237F7D987C8B6E",
+        "bytes": 481745,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/rig/renders/gamesky_forward_34.png",
+        "sha256": "EDEB6286CAD4FE10227D409E105C4F7E841EFB187CC8D8B33E33A5D1FD620BB2",
+        "bytes": 546710,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/rig/renders/readability_120px.png",
+        "sha256": "AA512496DAADDC98DC1C2D10A17C0CD147BDA5BB31DFDA12166FFDCE3CB14EE7",
+        "bytes": 17975,
+        "width": 128,
+        "height": 128,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/rig/renders/readability_close.png",
+        "sha256": "2CAE255966C4300A51665F3963D6C8CCEC678840CE8CB88EA92440C30E087B47",
+        "bytes": 506544,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/rig/renders/readability_under45px.png",
+        "sha256": "02C57C5249EEB481673CC29C7C4B09F737F8E0BA749C27A1ED8601B9D8E86B3F",
+        "bytes": 3313,
+        "width": 48,
+        "height": 48,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/rig/renders/rear_34.png",
+        "sha256": "7D22F8F4BBA70D0EAF916ED45A79E8453A3B53AF9B8B3578D2FABE85B6A93FD0",
+        "bytes": 482578,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/rig/renders/side_ortho.png",
+        "sha256": "D964E85525CAAB2ED6E1F2BFE072AF465D0C8C5DF3DA30A49F4458D22860BBB3",
+        "bytes": 448166,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/rig/renders/silhouette_gray_120px.png",
+        "sha256": "8532F2A5963E1D45DAA5F71718A42963D6D41E6D20E0D824A58BF7957E0FA11B",
+        "bytes": 13837,
+        "width": 128,
+        "height": 128,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/rig/renders/silhouette_gray_45px.png",
+        "sha256": "FF476E0624615DE34BA9DA98ABFD3DF015384DF8BC44F67004219731B4AA2901",
+        "bytes": 2784,
+        "width": 48,
+        "height": 48,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/rig/renders/top_ortho.png",
+        "sha256": "D97F581958D25EA56124D5646ABA1BE8565B7A9FC3C049CF729AFCAC3C2707D6",
+        "bytes": 457657,
+        "width": 960,
+        "height": 540,
+        "eligible": false,
+        "inputBindings": null,
+        "producer": null,
+        "reason": "unbound-historical-artifact-requires-current-rebuild"
+      }
+    ],
+    "currentAcceptance": {
+      "visualEvidenceEligible": false,
+      "historicalArtifactsEligible": false,
+      "requiresCurrentRender": true
+    },
+    "epochDigest": "FF53F841FE8B4A2383E152532318B726546CC421700201490A9C3B858C15E0C3"
+  }
 }

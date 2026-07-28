@@ -4,6 +4,10 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  validateAshlineEvidenceEpoch,
+} from '../tools/art/lib/ashlineEvidenceEpoch.mjs';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const FAMILY = resolve(ROOT, 'assets/ships/m4_ashline_v2');
 const THIRD = resolve(FAMILY, 'source/reference/quaternius_ultimate_spaceships');
@@ -107,7 +111,9 @@ for (const ship of SHIPS) {
   nodeNames.some((n) => /plume|flame/i.test(n || ''))
     ? fail(`${ship.key} contains baked plume/flame`) : ok(`${ship.key} has no baked plume`);
 
-  for (const render of REQUIRED_RENDERS) need(resolve(base, 'renders', render), `${ship.key}/${render}`);
+  for (const render of REQUIRED_RENDERS) {
+    need(resolve(base, 'renders', render), `${ship.key}/historical/${render}`);
+  }
 }
 
 const familyMetricsPath = resolve(FAMILY, 'evidence/family/family_metrics.json');
@@ -120,13 +126,20 @@ if (need(finalizePath, 'finalize report')) {
   const report = json(finalizePath);
   report.finalized?.length === 3 ? ok('finalizer covers three ships') : fail('finalize report incomplete');
   report.isolation?.defaultPlayWired === false ? ok('finalizer confirms no live wiring') : fail('finalizer isolation mismatch');
+  const epoch = await validateAshlineEvidenceEpoch(report.evidenceEpoch, { root: ROOT });
+  if (epoch.pass) {
+    ok(`evidence epoch ${epoch.epochDigest}`);
+  } else {
+    for (const failure of epoch.failures) fail(`evidence epoch ${failure}`);
+  }
+  if (report.evidenceEpoch?.currentAcceptance?.visualEvidenceEligible === false
+      && report.evidenceEpoch?.currentAcceptance?.requiresCurrentRender === true) {
+    warn('current exact-source visual evidence remains open; historical renders are ineligible');
+  }
 }
 
-// Full runtime-equivalent lineup and true LOD-transition captures remain visual-review evidence,
-// not something this structural gate can infer from individual beauty renders.
-if (!existsSync(resolve(FAMILY, 'evidence/family/runtime_lineup.png'))) {
-  warn('runtime_lineup.png not produced in the single author macro-cycle');
-}
+// Historical contacts remain preservation records only. A current versioned exact-source renderer
+// must bind new artifacts into evidenceEpoch before they can close a visual gate.
 if (!existsSync(resolve(FAMILY, 'evidence/family/lod_transition_contact.png'))) {
   warn('lod_transition_contact.png not produced in the single author macro-cycle');
 }

@@ -33,7 +33,7 @@
   "tangentPrimitiveCount": 12,
   "uvPrimitiveCount": 12,
   "lod0AabbSize": [
-    24.0,
+    24,
     7.246389865875244,
     21.82400131225586
   ],
@@ -54,7 +54,13 @@
       18.33216094970703
     ]
   },
-  "sourceSha256": "FCF5A1FA08D47706CFEFD0FB204BE60C42F9404F0C6AAEA508CE2F13F0774C96",
+  "sourceSha256": "A5F9DC2C54BE15021398D886D1B25A32353CBCF6A495FE0837EECB8DC3684C81",
   "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\source\\wholeships\\ashline_v2_lode.glb",
-  "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\blender\\ashline_v2_lode_production.blend"
+  "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\blender\\ashline_v2_lode_production.blend",
+  "sourceBytes": 6163208,
+  "evidenceEpoch": {
+    "status": "post-finalize-current",
+    "epochDigest": "FF53F841FE8B4A2383E152532318B726546CC421700201490A9C3B858C15E0C3",
+    "visualEvidence": "requires-current-versioned-render"
+  }
 }

@@ -12,10 +12,10 @@
   "sourceGlb": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_dart.glb",
   "releaseCandidateGlb": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_dart.glb",
   "blend": "assets/ships/m4_ashline_v2/blender/ashline_v2_dart_production.blend",
-  "sha256_source": "91F364ED37ED839C34C5AE82F56153FA4F7CF1A2A11190646385DD00F7B442D4",
+  "sha256_source": "12EA70C8C9E7295D65DCE57AFF3AED64CD7FB62C780FFF61C183C67AD293B987",
   "report": {
     "file": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\source\\wholeships\\ashline_v2_dart.glb",
-    "bytes": 1790720,
+    "bytes": 7034616,
     "totalTriangles": 26755,
     "hullTriangles": 25503,
     "lodBreakdown": {
@@ -173,7 +173,7 @@
     "lodBuildStats": [
       {
         "lod": "lod0",
-        "decimate_ratio": 1.0,
+        "decimate_ratio": 1,
         "mesh_count": 5,
         "triangles": 15600,
         "meshes": [
@@ -301,7 +301,8 @@
         5.461220741271973
       ]
     },
-    "sha256": "91F364ED37ED839C34C5AE82F56153FA4F7CF1A2A11190646385DD00F7B442D4"
+    "sha256": "12EA70C8C9E7295D65DCE57AFF3AED64CD7FB62C780FFF61C183C67AD293B987",
+    "evidenceScope": "geometry-and-structure; visual evidence bound separately"
   },
   "renders": [
     "assets/ships/m4_ashline_v2/evidence/dart/renders/forward_34.png",
@@ -315,5 +316,10 @@
     "assets/ships/m4_ashline_v2/evidence/dart/renders/silhouette_gray_120px.png",
     "assets/ships/m4_ashline_v2/evidence/dart/renders/gamesky_forward_34.png"
   ],
-  "builtAt": "2026-07-12T22:18:50Z"
+  "builtAt": "2026-07-12T22:18:50Z",
+  "evidenceEpoch": {
+    "status": "post-finalize-current",
+    "epochDigest": "FF53F841FE8B4A2383E152532318B726546CC421700201490A9C3B858C15E0C3",
+    "renderEligibility": "legacy-pre-surface-unbound"
+  }
 }
