@@ -1,5 +1,6 @@
 import { getPresentationRecipe } from '../presentation/cueRecipes.js';
 import { normalizePresentationEvent } from '../presentation/cueSchema.js';
+import { chargeCueLanes, isCriticalCue, laneBudgetReason } from '../presentation/cueArbitration.js';
 import { damageLayerHierarchy, doctrinePhaseStage, grammarForDoctrine, isLiveDoctrineId } from '../presentation/combatChoreography.js';
 import { classifyDrillWarning, drillHardnessBand, fieldDepletionBand, seamQualityTag } from '../presentation/miningChoreography.js';
 import {
@@ -20,13 +21,10 @@ const SCENARIO_CUE_TARGET_ACTORS = Object.freeze({
   'scenario.branch.resolved': 'evidence_spindle_47a',
 });
 
-const DEFAULT_LANE_BUDGETS_PER_TICK = Object.freeze({
-  camera: 3,
-  vfx: 8,
-  audio: 6,
-  ui: 6,
-  accessibility: 6,
-});
+// Per-tick lane budgets and the critical reserve inside them now live in
+// src/presentation/cueArbitration.js (CUE_LANE_BUDGETS / CUE_LANE_CRITICAL_RESERVE) so the budget
+// table is declared data that tests can assert. Totals are unchanged from the table that used to
+// live here.
 
 // Dedupe identity includes source/target/sequence ids, so a long campaign can
 // produce an effectively unbounded key stream.  Keep only records that can
@@ -1232,11 +1230,10 @@ export const presentationOrchestrator = {
     const last = this._lastByDedupeKey.get(event.dedupeKey);
     if (last != null && tick - last.tick < recipe.dedupeWindowTicks) return 'dedupe_window';
     this._resetLaneCountsForTick(tick);
-    for (const lane of Object.keys(recipe.lanes || {}).sort()) {
-      const limit = DEFAULT_LANE_BUDGETS_PER_TICK[lane] || 1;
-      if ((this._laneCounts[lane] || 0) >= limit) return `lane_budget:${lane}`;
-    }
-    return null;
+    // Dense-scene arbitration (PQ-023). Reservation, not arrival order: a critical cue may claim
+    // the full lane cap, flavor may claim only the general pool, and `.none` placeholder lanes are
+    // never charged. Totals are unchanged, so this is a no-op below saturation.
+    return laneBudgetReason(recipe.lanes, isCriticalCue(event, recipe), this._laneCounts);
   },
 
   _recordEmission(event, recipe) {
@@ -1247,9 +1244,8 @@ export const presentationOrchestrator = {
       expiresAt: tick + recipe.dedupeWindowTicks,
     });
     this._dedupePeakKeys = Math.max(this._dedupePeakKeys || 0, this._lastByDedupeKey.size);
-    for (const lane of Object.keys(recipe.lanes || {}).sort()) {
-      this._laneCounts[lane] = (this._laneCounts[lane] || 0) + 1;
-    }
+    // Charge only the lanes this cue actually drives; `.none` placeholders cost nothing.
+    chargeCueLanes(recipe.lanes, this._laneCounts);
     this._emitted++;
     this._lastCue = {
       tick,
