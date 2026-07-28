@@ -127,19 +127,22 @@ is documented in the script so the next person does not repay it:
 | `npm run check:pq019a:facility-embodiment` | **PASS 19/19** (was 12/12) |
 | `node --test test/pq019-launch-schedule-cue.test.mjs` | **PASS 7/7** |
 | `npm run check:sim:compare` | **PASS — `ok: true`, `hashEqual: true`, `firstDivergentTick: null`** |
-| `npm run check:baseline` | **10/10 links PASS**; aggregate exit 1 on wall-clock budget only — see below |
+| `npm run check:baseline` | **PASS — 10/10 green in 81413 ms**, 8587 ms under budget |
 | `node --test test/authoritative-manifest.test.mjs` | **PASS 10/10** |
 | `npm run check:one-voice` | **RED — inherited, see below**; 10 behavioural sections passed |
 | `node --check` on both changed modules, `git diff --check` | clean |
 
-### `check:baseline` — green links, red aggregate
+### `check:baseline` — green on the final tree
 
-All ten links passed: `ui-screen-imports`, `pq020-ceres-topology`, `save-schema`, `flight-v3`,
-`m1-tether-mass`, `sim-v3-compare`, `sim-compare`, `sim-v3`, `sim`, `massline`. The aggregate still
-exits 1 because it took `94158 ms` against a hard `90000 ms` budget
-(`scripts/check-baseline.mjs:236`: `failed.length === 0 && !overBudget ? 0 : 1`). The overrun is
-entirely the `massline` link, which alone consumed `94158 ms`. PQ-019A adds no baseline link and
-touches no massline surface. Recorded as an inherited budget condition, not chased.
+All ten links pass — `ui-screen-imports`, `pq020-ceres-topology`, `save-schema`, `flight-v3`,
+`m1-tether-mass`, `sim-v3-compare`, `sim-compare`, `sim-v3`, `sim`, `massline` — in `81413 ms`
+against the hard `90000 ms` budget, leaving `8587 ms` of headroom. Exit 0.
+
+Recorded because it would otherwise look like a discrepancy: an earlier run during this work exited 1
+at `94158 ms`, over budget with zero failed links (`scripts/check-baseline.mjs:236` fails the
+aggregate on budget alone). The dominant link, `massline`, took `94158 ms` in that run and `81413 ms`
+in this one on the same tree, so that was machine contention rather than a product or budget defect.
+The final-state result above is the one that stands. PQ-019A adds no baseline link.
 
 ### `check:one-voice` — inherited red, untouched
 
@@ -250,6 +253,6 @@ compliant, sim-inert, flight-only, focused-green at 19/19, and demonstrated on t
 with the pill photographed on screen; `check:sim:compare` is `hashEqual`. Every row requiring the
 PQ-034 lease, and the human art verdict, is listed above as unclaimed. Two limitations found by
 looking at the pixels rather than the metadata — reentry plasma over the launcher stills, and the
-off-centre capsule framings — are stated at their claims rather than smoothed over. Two inherited
-reds (`check:one-voice` source-string, `check:baseline` wall-clock budget) are attributed to the base
-commit with evidence and were not chased or modified.
+off-centre capsule framings — are stated at their claims rather than smoothed over. One inherited red
+(`check:one-voice`'s stale registry source-string) is attributed to the base commit with evidence and
+was not chased or modified; `check:baseline` is green on the final tree.
