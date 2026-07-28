@@ -608,6 +608,162 @@ export const heistFacilities = {
       && entity.data?.heistPayloadStableId === PQ019_CAPSULE.stableId
       && entity.data?.runtimeOwner === 'heistFacilities';
   },
+
+  // ── PQ-019B: receiver prepare / commit / abort ────────────────────────────────────────────────
+  //
+  // This owner holds the capsule entity, so it is the only thing in the game that can physically
+  // consume it. The seam is a two-phase handoff keyed by the arbiter's TERMINAL RECEIPT, which is
+  // what stops a payload from being eaten by an outcome that was never decided.
+  //
+  // The split matters: PREPARE reserves and proves, COMMIT consumes. Nothing is destroyed, moved,
+  // or paid for during prepare, so an arbitration that ends up choosing a different winner — or a
+  // process that dies mid-handoff — costs nothing and leaves a capsule that is still physically
+  // there. "Receiver must commit before terminal arbitration" is one of the packet's stop
+  // conditions; this shape makes that ordering the only expressible one.
+  //
+  // Exactly-once is enforced twice over, deliberately. WITHIN a session the handoff record's status
+  // is the gate. ACROSS a reload the arbiter's durable effect journal is, because this system's
+  // state is not in the save owner's capture plan and the capsule is a transient entity — both are
+  // gone after a load, which is precisely why the durable answer cannot live here.
+
+  /**
+   * Reserve the capsule for one terminal receipt. Idempotent per `receiptId`.
+   *
+   * Refuses to reserve a handoff the physical world did not earn: the facility must have actually
+   * recorded a custody candidate for this capsule, so a caller cannot teleport the payload into the
+   * fence and claim a delivery that never touched anything.
+   */
+  prepareReceiverHandoff(request = {}) {
+    const receiptId = cleanScheduleId(request.receiptId);
+    const facilityId = cleanScheduleId(request.facilityId);
+    const payloadStableId = cleanScheduleId(request.payloadStableId);
+    if (!receiptId || !RECEIVER_FACILITY_IDS.has(facilityId)
+      || payloadStableId !== PQ019_CAPSULE.stableId) {
+      return receiverDenial('invalid_handoff', receiptId);
+    }
+
+    const owned = this.state.heistFacilities;
+    const active = owned.receiverHandoff;
+    if (active) {
+      if (active.receiptId !== receiptId) return receiverDenial('handoff_in_progress', receiptId);
+      if (active.status === 'committed') {
+        return { prepared: false, reason: 'already_committed', handoff: active };
+      }
+      if (active.status === 'prepared') return { prepared: true, handoff: active, resumed: true };
+    }
+
+    const schedule = owned.schedule;
+    const capsule = this._activeScheduleCapsule(schedule);
+    if (!capsule) return receiverDenial('payload_absent', receiptId);
+
+    // Physical proof: this facility must already own a custody candidate for this capsule.
+    const contact = owned.candidateReceipts.find((row) => (
+      row && row.facilityId === facilityId && row.payloadStableId === payloadStableId
+      && row.scheduleId === schedule.scheduleId
+    ));
+    if (!contact) return receiverDenial('no_custody_contact', receiptId);
+
+    const handoff = {
+      receiptId,
+      facilityId,
+      payloadStableId,
+      scheduleId: schedule.scheduleId,
+      capsuleEntityId: capsule.id,
+      custodyReceiptId: contact.receiptId,
+      status: 'prepared',
+      preparedAtTick: this.state.tick | 0,
+      committedAtTick: null,
+    };
+    owned.receiverHandoff = handoff;
+    // A reservation, not a consumption: the capsule is still alive, still colliding, still where the
+    // player left it. Only its own data carries the reservation mark.
+    capsule.data.receiverHandoffReceiptId = receiptId;
+    this.bus.emit('heist:receiverPrepared', Object.freeze({ ...handoff, source: 'heistFacilities' }));
+    return { prepared: true, handoff };
+  },
+
+  /**
+   * Consume the reserved capsule. Exactly once: a second call reports `already_committed` and
+   * removes nothing. This system never pays anyone — settlement is the mission owner's, through the
+   * terminal receipt's own effect key.
+   */
+  commitReceiverHandoff(receiptId) {
+    const id = cleanScheduleId(receiptId);
+    const owned = this.state.heistFacilities;
+    const handoff = owned.receiverHandoff;
+    if (!handoff) return { committed: false, reason: 'not_prepared', handoff: null };
+    if (id && handoff.receiptId !== id) {
+      return { committed: false, reason: 'receipt_mismatch', handoff };
+    }
+    if (handoff.status === 'committed') {
+      return { committed: false, reason: 'already_committed', handoff };
+    }
+    if (handoff.status !== 'prepared') return { committed: false, reason: 'not_prepared', handoff };
+
+    const capsule = entityIsAlive(this.state, handoff.capsuleEntityId);
+    if (!this._isOwnedCapsule(capsule)) {
+      // The capsule died or was demoted between prepare and commit. Fail closed: mark the handoff
+      // spent so nothing can retry into a fabricated delivery, and report the physical truth.
+      handoff.status = 'aborted';
+      handoff.abortReason = 'payload_absent';
+      return { committed: false, reason: 'payload_absent', handoff };
+    }
+
+    handoff.status = 'committed';
+    handoff.committedAtTick = this.state.tick | 0;
+    this.helpers.removeEntity(capsule.id);
+    owned.capsuleEntityId = null;
+    if (owned.schedule) {
+      owned.schedule.capsuleEntityId = null;
+      owned.schedule.status = 'delivered';
+    }
+    const receipt = Object.freeze({
+      ...handoff,
+      consumedEntityId: capsule.id,
+      effectId: `pq019b:receiverCommit:${handoff.receiptId}`,
+      source: 'heistFacilities',
+    });
+    this.bus.emit('heist:receiverCommitted', receipt);
+    return { committed: true, handoff, receipt };
+  },
+
+  /**
+   * Release the reservation. The capsule is left exactly as it was found — still alive, still
+   * physical — because abort must be free. Idempotent.
+   */
+  abortReceiverHandoff(receiptId, reason = 'aborted') {
+    const id = cleanScheduleId(receiptId);
+    const owned = this.state.heistFacilities;
+    const handoff = owned.receiverHandoff;
+    if (!handoff) return { aborted: false, reason: 'not_prepared' };
+    if (id && handoff.receiptId !== id) return { aborted: false, reason: 'receipt_mismatch' };
+    if (handoff.status === 'committed') return { aborted: false, reason: 'already_committed' };
+
+    const capsule = entityIsAlive(this.state, handoff.capsuleEntityId);
+    if (this._isOwnedCapsule(capsule)) delete capsule.data.receiverHandoffReceiptId;
+    owned.receiverHandoff = null;
+    this.bus.emit('heist:receiverAborted', Object.freeze({
+      receiptId: handoff.receiptId,
+      facilityId: handoff.facilityId,
+      reason: cleanScheduleId(reason) || 'aborted',
+      source: 'heistFacilities',
+    }));
+    return { aborted: true, restoredEntityId: capsule ? capsule.id : null };
+  },
+
+  /** The live handoff record, or null. */
+  receiverHandoff() {
+    return this.state.heistFacilities?.receiverHandoff || null;
+  },
 };
+
+// ── PQ-019B receiver-handoff support ─────────────────────────────────────────────────────────────
+
+/** Only the two RECEIVER facilities can take custody. The launcher is not a destination. */
+export const RECEIVER_FACILITY_IDS = new Set(['lawful_catcher', 'fence_receiver']);
+
+function receiverDenial(reason, receiptId) {
+  return { prepared: false, reason, receiptId: receiptId || null, handoff: null };
+}
 
 export default heistFacilities;
