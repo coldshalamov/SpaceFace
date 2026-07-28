@@ -1,0 +1,4 @@
+interface:
+  display_name: "SpaceFace Blender Material Truth"
+  short_description: "Rebuild primitive assets into believable hardware"
+  default_prompt: "Use $spaceface-blender-material-truth to remaster this existing SpaceFace asset without changing its identity."

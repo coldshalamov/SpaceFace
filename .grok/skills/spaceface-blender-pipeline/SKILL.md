@@ -46,6 +46,7 @@ reachability. The visual-asset standard owns craft and acceptance semantics.
 7. A focused pass skill below when it materially helps:
    - `../spaceface-blender-blockout/SKILL.md` ΓÇö form and construction;
    - `../spaceface-blender-hardsurface/SKILL.md` ΓÇö materials and surface response;
+   - `../spaceface-blender-material-truth/SKILL.md` — primitive/form plus fiction/material mismatch;
    - `../spaceface-blender-surface-pass/SKILL.md` ΓÇö articulation, sockets, and final life.
 
 Do not infer current routing or readiness from old queue prose. Verify the exact asset ID against the

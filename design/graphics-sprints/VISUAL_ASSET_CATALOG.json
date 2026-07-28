@@ -1,0 +1,1143 @@
+{
+  "schema": "spaceface.visual-asset-catalog.v1",
+  "snapshotDate": "2026-07-28",
+  "authority": {
+    "status": "read-only census and production routing; not program state or visual acceptance",
+    "craft": "docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md",
+    "program": "design/program/NOW.md and design/program/roadmap/program-queue.json",
+    "releaseTruth": "assets/ships/release/release_manifest.json",
+    "sourceTruth": "assets/ships/parts/parts_manifest.json"
+  },
+  "coverage": {
+    "releaseManifestRows": "complete: every current row, path, and exact source/release hash",
+    "liveWholeShipSelectors": "complete for the current partsLibrary player, hostile, and traffic maps",
+    "standaloneMedia": "major runtime families counted; individual 23 portrait and 9 thruster records remain in their owning registries/manifests",
+    "runtimePlaces": "ranked static-reference census for the highest-exposure places; not route telemetry",
+    "candidateAndLegacyArchaeology": "dated 2026-07-28 and hash-pinned where tracked bytes exist",
+    "glbInternals": "not complete: per-mesh materials, UVs, texture channels, LODs, fallbacks, and editable-source replay still require the deeper VA-001 inspector",
+    "visualAcceptance": "none assigned by this catalog"
+  },
+  "lifecycleVocabulary": {
+    "live": "Reachable from a current runtime selector or world-site binding. Live does not mean visually accepted.",
+    "candidate": "Tracked source or release candidate that is not wired into the default runtime.",
+    "legacy-donor": "Historical or alternate work worth selectively adapting; never promote wholesale.",
+    "rejected/evidence-only": "Useful only as evidence, failed experiment, or warning; not a production source.",
+    "unsafe-foreign": "Owned by another active or stopped lane. Inspect read-only until ownership is coordinated."
+  },
+  "manifestCensus": {
+    "releaseManifest": {
+      "path": "assets/ships/release/release_manifest.json",
+      "sha256": "ec6586683b5d0e559bc3c9fe633e2ccab7c944fce50be507dcb685e50dee878e",
+      "total": 82,
+      "byKind": {
+        "part:cockpits": 3,
+        "part:engines": 6,
+        "part:fins": 6,
+        "part:gear": 2,
+        "part:greebles": 7,
+        "part:hulls": 10,
+        "part:places": 28,
+        "part:pods": 3,
+        "part:weapons": 6,
+        "part:wholeships": 10,
+        "ship-reference": 1
+      }
+    },
+    "sourceManifest": {
+      "path": "assets/ships/parts/parts_manifest.json",
+      "sha256": "c10015874cf3d29933434c966d5d7b6778558a577acf255c361183727c33094d",
+      "total": 81
+    },
+    "sourceOnlyIds": [
+      "wholeship_pelican",
+      "wholeship_wasp"
+    ],
+    "releaseOnlyIds": [
+      "ship_kestrel_reference",
+      "wholeship_kestrel_lod1",
+      "wholeship_kestrel_lod2"
+    ],
+    "releaseAssets": [
+      {
+        "id": "hull_starter",
+        "kind": "part:hulls",
+        "source": "assets/ships/parts/hulls/hull_starter.glb",
+        "release": "assets/ships/release/parts/hulls/hull_starter.glb",
+        "sourceSha256": "0421b1a42d54e4e88f7517f044a4c04ef481e2434edceddbfee5568e0b844354",
+        "releaseSha256": "17b1e2d621bc3a2175e683084ff72796d4c37206575532a931b899e2fafec2e6"
+      },
+      {
+        "id": "hull_fighter",
+        "kind": "part:hulls",
+        "source": "assets/ships/parts/hulls/hull_fighter.glb",
+        "release": "assets/ships/release/parts/hulls/hull_fighter.glb",
+        "sourceSha256": "8947e1a864302dcd07e1b00e26f083cfe246b3a2e944a2e496b9324e83b81a0c",
+        "releaseSha256": "fa806f1af565f82f3925547892d8c20b5bc8fd70142b35b3065d342cd7e23c73"
+      },
+      {
+        "id": "hull_miner",
+        "kind": "part:hulls",
+        "source": "assets/ships/parts/hulls/hull_miner.glb",
+        "release": "assets/ships/release/parts/hulls/hull_miner.glb",
+        "sourceSha256": "7c6185a22f3c80d1366e9f751156fb57988d74c38e3472dc861dfda60b7956b9",
+        "releaseSha256": "000bd9050d3215af37b0a2cc195cac9065ca857c6a20fc7a3cab448eef1e0db9"
+      },
+      {
+        "id": "hull_freighter",
+        "kind": "part:hulls",
+        "source": "assets/ships/parts/hulls/hull_freighter.glb",
+        "release": "assets/ships/release/parts/hulls/hull_freighter.glb",
+        "sourceSha256": "8f35ff1c2e1e3077a8d9ff0bda6bdd1e0444cc1d765b5a834120533013b6a80e",
+        "releaseSha256": "965bae0970416e4ed78582b927b6dde232e8237ff22efb25d7db6b83780df361"
+      },
+      {
+        "id": "hull_interceptor",
+        "kind": "part:hulls",
+        "source": "assets/ships/parts/hulls/hull_interceptor.glb",
+        "release": "assets/ships/release/parts/hulls/hull_interceptor.glb",
+        "sourceSha256": "4803403097a4c7ff6063bae89e9a63040672f2dddd631f3be40cb286770fb7ca",
+        "releaseSha256": "35e6d3794d1a1ee4d555f951b5e8e3f8fd78f91d22e1dc7cddf2bed9170b3267"
+      },
+      {
+        "id": "hull_corvette",
+        "kind": "part:hulls",
+        "source": "assets/ships/parts/hulls/hull_corvette.glb",
+        "release": "assets/ships/release/parts/hulls/hull_corvette.glb",
+        "sourceSha256": "f40a58a6c839ae20fa49346a5fe94d3eaddbe0bcac1103e50ed841b401b7995e",
+        "releaseSha256": "475a113826d288c4cd0b496b2d390c10fed230ea4d68505470ff84d611905abf"
+      },
+      {
+        "id": "hull_frigate",
+        "kind": "part:hulls",
+        "source": "assets/ships/parts/hulls/hull_frigate.glb",
+        "release": "assets/ships/release/parts/hulls/hull_frigate.glb",
+        "sourceSha256": "0071bd65f18c37fb9d25cf4793ef163090748911a3ea7be24fc748f02158f205",
+        "releaseSha256": "98c07cd6a26b18ab676a108d1b3db177848baae7f910c4d5e1c9202a9e965234"
+      },
+      {
+        "id": "hull_capital",
+        "kind": "part:hulls",
+        "source": "assets/ships/parts/hulls/hull_capital.glb",
+        "release": "assets/ships/release/parts/hulls/hull_capital.glb",
+        "sourceSha256": "e78cec85119bacf639aed41484c5d7eb2fc431e6081ad9769b403ff3cbccfd29",
+        "releaseSha256": "574dd0b2fd8164f37caed3d69dbccbefaef11af738b4c2dc3fdd4376c6d424c7"
+      },
+      {
+        "id": "hull_multirole",
+        "kind": "part:hulls",
+        "source": "assets/ships/parts/hulls/hull_multirole.glb",
+        "release": "assets/ships/release/parts/hulls/hull_multirole.glb",
+        "sourceSha256": "81d2509c37c1bf13cffccbb8a393677fe219030bf6077ea8a6737aa2d4d69388",
+        "releaseSha256": "d5ec027690b2b3adddebbaee15213e86f0b0bfcf86f8d29a3ca33f3c9d9d74a5"
+      },
+      {
+        "id": "hull_gunship",
+        "kind": "part:hulls",
+        "source": "assets/ships/parts/hulls/hull_gunship.glb",
+        "release": "assets/ships/release/parts/hulls/hull_gunship.glb",
+        "sourceSha256": "3ec6bf9a4016e70826f3b05a37fae351bb77ff637cd4c226e08b873083621292",
+        "releaseSha256": "f94751bdd5033f91c52239ec15ae44640b60fbef827d4e60d474f5234177b911"
+      },
+      {
+        "id": "cockpit_dome",
+        "kind": "part:cockpits",
+        "source": "assets/ships/parts/cockpits/cockpit_dome.glb",
+        "release": "assets/ships/release/parts/cockpits/cockpit_dome.glb",
+        "sourceSha256": "34adb6518bccf0d570108b796e869978f33776da3acca30ee65b88e5ac78d27a",
+        "releaseSha256": "e5b940e287a63b0bddf82cdf24b8c756f3c82846da65f71464cb4bf0cec3ebe6"
+      },
+      {
+        "id": "cockpit_slab",
+        "kind": "part:cockpits",
+        "source": "assets/ships/parts/cockpits/cockpit_slab.glb",
+        "release": "assets/ships/release/parts/cockpits/cockpit_slab.glb",
+        "sourceSha256": "b0a27aef29e84169b5bb63d77086199ccab02a66bbf91d08a58d94fb8cee81b8",
+        "releaseSha256": "3dd3077f278426b07f812b527f7399d6947647aae32fd350ebbc321156577289"
+      },
+      {
+        "id": "cockpit_recessed",
+        "kind": "part:cockpits",
+        "source": "assets/ships/parts/cockpits/cockpit_recessed.glb",
+        "release": "assets/ships/release/parts/cockpits/cockpit_recessed.glb",
+        "sourceSha256": "41eb2d5af548c057908140d29ebcb322bda9e526fc845d49b0c1b66d9cfa5962",
+        "releaseSha256": "ce597dddd3d0e370aec1921b40e592047e7eb57dca9e865f5e58332d8c0fb145"
+      },
+      {
+        "id": "engine_ion_small",
+        "kind": "part:engines",
+        "source": "assets/ships/parts/engines/engine_ion_small.glb",
+        "release": "assets/ships/release/parts/engines/engine_ion_small.glb",
+        "sourceSha256": "08b52602319f0f2c6a86eb97be351bd3fce19786e9562c83401a34cd16fdc568",
+        "releaseSha256": "e753a614694fa0af32480555c0ff34537a9b490aba13f281ebcab29a4b992141"
+      },
+      {
+        "id": "engine_ion_twin",
+        "kind": "part:engines",
+        "source": "assets/ships/parts/engines/engine_ion_twin.glb",
+        "release": "assets/ships/release/parts/engines/engine_ion_twin.glb",
+        "sourceSha256": "7d9e34f308c8f7b2df7d421c8c1684057a8e12ba9f4b0ef89d218f4645a009ca",
+        "releaseSha256": "f37cd5456c5b93b999499001621a4e6ef50d24b9a02a4e486e2a129f41eec06e"
+      },
+      {
+        "id": "engine_industrial",
+        "kind": "part:engines",
+        "source": "assets/ships/parts/engines/engine_industrial.glb",
+        "release": "assets/ships/release/parts/engines/engine_industrial.glb",
+        "sourceSha256": "e1548151d36d05b543b8f775dfbadf23d245dff72d68031a58256e33a0cd4424",
+        "releaseSha256": "b3dff895895c7cb709010f90c5b0e6a7b34af2f58d47c503dc7f09c672b7b102"
+      },
+      {
+        "id": "engine_resonator",
+        "kind": "part:engines",
+        "source": "assets/ships/parts/engines/engine_resonator.glb",
+        "release": "assets/ships/release/parts/engines/engine_resonator.glb",
+        "sourceSha256": "7b1f020fd9f498c526493431bdd6be4936e02d3757ad9295ec5694c649798aa5",
+        "releaseSha256": "d6bcad63c151360f0ac61f44fd38a98b623d2dc493441d07002588817832e8cf"
+      },
+      {
+        "id": "engine_vector",
+        "kind": "part:engines",
+        "source": "assets/ships/parts/engines/engine_vector.glb",
+        "release": "assets/ships/release/parts/engines/engine_vector.glb",
+        "sourceSha256": "09a3b7bdca0091bd4d84186f4d2177647d37a81cee14a8aa2df7f6ae442ac839",
+        "releaseSha256": "305395c2ecbe679697f1b6c58534bce75a2b12333e1c663b92c36db3575a3d68"
+      },
+      {
+        "id": "engine_plasma_ring",
+        "kind": "part:engines",
+        "source": "assets/ships/parts/engines/engine_plasma_ring.glb",
+        "release": "assets/ships/release/parts/engines/engine_plasma_ring.glb",
+        "sourceSha256": "5d8b5b4ceb0d2cfc476488c591596e2c9a02ad680a3261764cadacd2d0d04d3b",
+        "releaseSha256": "d95e8d93c4a80fe05d01aed7787f38c1870058d7bc6fedc0f120462656cd8633"
+      },
+      {
+        "id": "weapon_pulse_cannon",
+        "kind": "part:weapons",
+        "source": "assets/ships/parts/weapons/weapon_pulse_cannon.glb",
+        "release": "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb",
+        "sourceSha256": "85cfeaeeabdf8ea468ce13f4a5347174f57f3dd45bf722e74444be4322a9be2e",
+        "releaseSha256": "0d3f6f238019958c893ddd598bf63092d626274de063ac3b9ca2236421d47511"
+      },
+      {
+        "id": "weapon_heavy_cannon",
+        "kind": "part:weapons",
+        "source": "assets/ships/parts/weapons/weapon_heavy_cannon.glb",
+        "release": "assets/ships/release/parts/weapons/weapon_heavy_cannon.glb",
+        "sourceSha256": "3d7fe6da830c46850244b4a7f9e113567b6ddfbff864e608b2cfe5171449bc36",
+        "releaseSha256": "e9692901fd420427d03a17de0b818c77c3c417d3ea1c76fd5d4839ae07bff366"
+      },
+      {
+        "id": "weapon_turret_dual",
+        "kind": "part:weapons",
+        "source": "assets/ships/parts/weapons/weapon_turret_dual.glb",
+        "release": "assets/ships/release/parts/weapons/weapon_turret_dual.glb",
+        "sourceSha256": "70a47b78b84fac6f18ab47f7eed2ffec22f685ac06f2e5215f2ffcdeaeec2011",
+        "releaseSha256": "decb67cccee3f9ab1b1517e51831025c774a1ff8229533f7e7afa40bbb65195a"
+      },
+      {
+        "id": "weapon_lance",
+        "kind": "part:weapons",
+        "source": "assets/ships/parts/weapons/weapon_lance.glb",
+        "release": "assets/ships/release/parts/weapons/weapon_lance.glb",
+        "sourceSha256": "34b1cefb6ed726f23dd5f4ad930d933a95e01c445b72712065cd6e3e3f7d5818",
+        "releaseSha256": "ae616831b90679cb53db2c099cb255da645a2b5af1de1f51ff9557707dea985c"
+      },
+      {
+        "id": "weapon_railgun",
+        "kind": "part:weapons",
+        "source": "assets/ships/parts/weapons/weapon_railgun.glb",
+        "release": "assets/ships/release/parts/weapons/weapon_railgun.glb",
+        "sourceSha256": "841ed9fc0d6b42912ec06efaa23eab52f3c163f414a30c00e5f95f9488ffcc10",
+        "releaseSha256": "a003c6efc15c56b5aa92d06d01ff98e7d6456a2141cd0defa0218c614b334179"
+      },
+      {
+        "id": "fin_wedge",
+        "kind": "part:fins",
+        "source": "assets/ships/parts/fins/fin_wedge.glb",
+        "release": "assets/ships/release/parts/fins/fin_wedge.glb",
+        "sourceSha256": "b2003ec52eb6c853a661d0ee889e292b9fb8d12e336c12b663bd0d7c401c123c",
+        "releaseSha256": "b916552d4b687d9c682ddba1890d0c5fe9ae5c596f17ae2190280955721a05ac"
+      },
+      {
+        "id": "fin_radiator_grid",
+        "kind": "part:fins",
+        "source": "assets/ships/parts/fins/fin_radiator_grid.glb",
+        "release": "assets/ships/release/parts/fins/fin_radiator_grid.glb",
+        "sourceSha256": "7dbf2bd022414ec20513a2470705cf73aa1e2a7f20da3ca31c5200a183847b59",
+        "releaseSha256": "f36ed9ce2824338d92340621b911931e51d242a964bb5e052800b9c71ebb0270"
+      },
+      {
+        "id": "fin_swept_smuggler",
+        "kind": "part:fins",
+        "source": "assets/ships/parts/fins/fin_swept_smuggler.glb",
+        "release": "assets/ships/release/parts/fins/fin_swept_smuggler.glb",
+        "sourceSha256": "77c196dca979a8c08aa4f5c02d0dcf2bd2d272be0898b9e8b1426ec7484a5769",
+        "releaseSha256": "3263b0ce4a315ef9734019e24db664d05bb7a34bd64788602ea4279eed399beb"
+      },
+      {
+        "id": "fin_crystalline",
+        "kind": "part:fins",
+        "source": "assets/ships/parts/fins/fin_crystalline.glb",
+        "release": "assets/ships/release/parts/fins/fin_crystalline.glb",
+        "sourceSha256": "bb483fd0e319740f6370e7ea604b5fafc4804c40511e043bdcb20351399208f7",
+        "releaseSha256": "570c7f08e38ba9d770d191261d55441debac01ddf76b590b389f0b81369d9b6c"
+      },
+      {
+        "id": "fin_delta",
+        "kind": "part:fins",
+        "source": "assets/ships/parts/fins/fin_delta.glb",
+        "release": "assets/ships/release/parts/fins/fin_delta.glb",
+        "sourceSha256": "b76e9a5a18b75bd93ed59d443c76d5f022fec949a5ffdb81298876b7c133d3bb",
+        "releaseSha256": "63bed8f39a6f3b54bb6504561e2991548da69b2a5f8c42156fe9cfaff07df464"
+      },
+      {
+        "id": "fin_stabilator",
+        "kind": "part:fins",
+        "source": "assets/ships/parts/fins/fin_stabilator.glb",
+        "release": "assets/ships/release/parts/fins/fin_stabilator.glb",
+        "sourceSha256": "b7275575b9653e6b04aa55fa1a858742425d5501986549aab414185098b6e6e1",
+        "releaseSha256": "e14d30d573518463e0f084087cd827021a8113a00e4fc269b8b19617bbe20807"
+      },
+      {
+        "id": "greeble_vents",
+        "kind": "part:greebles",
+        "source": "assets/ships/parts/greebles/greeble_vents.glb",
+        "release": "assets/ships/release/parts/greebles/greeble_vents.glb",
+        "sourceSha256": "e239fd92da5839e5168b6e789c8a30b3197e0e231b232c815afed38ceb6ef7b5",
+        "releaseSha256": "ffbd4bcab14bbcf81a18cd171cd0ffec2deda80b0c66ed148c3c135b085e5e89"
+      },
+      {
+        "id": "greeble_hatches",
+        "kind": "part:greebles",
+        "source": "assets/ships/parts/greebles/greeble_hatches.glb",
+        "release": "assets/ships/release/parts/greebles/greeble_hatches.glb",
+        "sourceSha256": "6362824b722497105fa77605efb626f2a9d4305b39cf0ed3f6410707dd01d227",
+        "releaseSha256": "8c8686cd1cbdc8fafc6d166f643d5858a408ac1d2ec1f7391a1bc0049caaaaf9"
+      },
+      {
+        "id": "greeble_pipes",
+        "kind": "part:greebles",
+        "source": "assets/ships/parts/greebles/greeble_pipes.glb",
+        "release": "assets/ships/release/parts/greebles/greeble_pipes.glb",
+        "sourceSha256": "6e53ee298c2d2a4d65990544ee26105e88db3a0aaf61997046fb97ef017f908a",
+        "releaseSha256": "014444ada089137b21b740ad0b3d55eddf3f5e5bafd016b6ba358baf272b9a0f"
+      },
+      {
+        "id": "greeble_rcs",
+        "kind": "part:greebles",
+        "source": "assets/ships/parts/greebles/greeble_rcs.glb",
+        "release": "assets/ships/release/parts/greebles/greeble_rcs.glb",
+        "sourceSha256": "ebb28eec748a46086b52b96e4c870abfd98f7e38ad256591837356f934d94934",
+        "releaseSha256": "8d081d9418e12b730e0ea982f43d66555b7db0194d2ff6021b4f690d12aebdb8"
+      },
+      {
+        "id": "greeble_antennas",
+        "kind": "part:greebles",
+        "source": "assets/ships/parts/greebles/greeble_antennas.glb",
+        "release": "assets/ships/release/parts/greebles/greeble_antennas.glb",
+        "sourceSha256": "81fe2d1eab76a04ee35d599d5e228022bff1239fa1fefb917112c78cba9e2c97",
+        "releaseSha256": "d10d243145afc63f3fd3a3b741c7298be09f48fbb7e9108bedd8de844a57470b"
+      },
+      {
+        "id": "greeble_nav_lights",
+        "kind": "part:greebles",
+        "source": "assets/ships/parts/greebles/greeble_nav_lights.glb",
+        "release": "assets/ships/release/parts/greebles/greeble_nav_lights.glb",
+        "sourceSha256": "5e25f2b74296faaa2c76b6b02ade7dd71b8be3a328479beb29afa424d22552dd",
+        "releaseSha256": "3ae9b0fdf7b57ceeec123b7c96b1cd2cf0f8a955b21f8750e4815f7666207fd8"
+      },
+      {
+        "id": "greeble_armor_plates",
+        "kind": "part:greebles",
+        "source": "assets/ships/parts/greebles/greeble_armor_plates.glb",
+        "release": "assets/ships/release/parts/greebles/greeble_armor_plates.glb",
+        "sourceSha256": "ad309c8b83a3068c534f6c64955aa6ac4582ec5073a936a90d9a488141ccd5c5",
+        "releaseSha256": "eb7b61fbf18142ba4c3a14c3cc5d836faa998c2ac2f82f317f7167adaffafd16"
+      },
+      {
+        "id": "skid_trio",
+        "kind": "part:gear",
+        "source": "assets/ships/parts/gear/skid_trio.glb",
+        "release": "assets/ships/release/parts/gear/skid_trio.glb",
+        "sourceSha256": "1d23c55e8cd3632fd83ce7e7e562c992b1de13f681611936c5764c04df01a4ed",
+        "releaseSha256": "cdfa7612fa6587878f43f98bfbfbfce9e82dca46371c8d5ff939985a60315d4d"
+      },
+      {
+        "id": "skid_quad",
+        "kind": "part:gear",
+        "source": "assets/ships/parts/gear/skid_quad.glb",
+        "release": "assets/ships/release/parts/gear/skid_quad.glb",
+        "sourceSha256": "45e5acb7083ae7cb3ac98101ef37922178fc01c2ca8d23a38fd566057b6cac8f",
+        "releaseSha256": "3185391b6028d87a30fc7a4697e4ba22fd75b8befd03d533cb70230dcab24c1e"
+      },
+      {
+        "id": "pod_utility",
+        "kind": "part:pods",
+        "source": "assets/ships/parts/pods/pod_utility.glb",
+        "release": "assets/ships/release/parts/pods/pod_utility.glb",
+        "sourceSha256": "34c1cfcf686668830f75e66fdfddae8c4c4ae2a1477693ca70c4451b83286d2f",
+        "releaseSha256": "59ed68be9d459227dbb1f9bafcccbfa0064511f71b5628b58abcde837ccbbd9c"
+      },
+      {
+        "id": "pod_cargo_container",
+        "kind": "part:pods",
+        "source": "assets/ships/parts/pods/pod_cargo_container.glb",
+        "release": "assets/ships/release/parts/pods/pod_cargo_container.glb",
+        "sourceSha256": "a7d05baf37223c7de34a0c52d8d558412cc2fb312017e6a3d4ac7c48e8e1f715",
+        "releaseSha256": "fd5b538629d17a9191a147be1a3ef6222d6fb890565f5cf4d11722c7ece0d5fa"
+      },
+      {
+        "id": "pod_repair_patch",
+        "kind": "part:pods",
+        "source": "assets/ships/parts/pods/pod_repair_patch.glb",
+        "release": "assets/ships/release/parts/pods/pod_repair_patch.glb",
+        "sourceSha256": "2cd4dee9b7263d6ef8e1f6127492d99e843382e3e933a3fc7aa844d5080b0314",
+        "releaseSha256": "5c749c12efabff01c7668447cd418b0317f46e3cda0212aabd897687038e498d"
+      },
+      {
+        "id": "place_debris_chunk",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_debris_chunk.glb",
+        "release": "assets/ships/release/parts/places/place_debris_chunk.glb",
+        "sourceSha256": "2b728182d45000ce89a353066371513038cdb09c231332c0971758b763331be6",
+        "releaseSha256": "016e7a103a40b7ba3183d56fcef1362aea0c3723274b49d4ab2439ae51151a26"
+      },
+      {
+        "id": "place_dead_hulk",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_dead_hulk.glb",
+        "release": "assets/ships/release/parts/places/place_dead_hulk.glb",
+        "sourceSha256": "7d083b28b73550434c5c4783c85719c0c6c437ab68dfc9eae4122ca1872d0327",
+        "releaseSha256": "c2c421c6ff4b87cb92566560e080190f77ac14336b0fc43045bd2be9d02ba185"
+      },
+      {
+        "id": "place_conveyor_barge",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_conveyor_barge.glb",
+        "release": "assets/ships/release/parts/places/place_conveyor_barge.glb",
+        "sourceSha256": "caf4efcb88589583563bdac54229c0531267e4a52361558e722485185a95236f",
+        "releaseSha256": "f304e55850309a53bd490525c53469337ea80ae87b0bf688e88b2455aab2d47e"
+      },
+      {
+        "id": "place_mining_drone",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_mining_drone.glb",
+        "release": "assets/ships/release/parts/places/place_mining_drone.glb",
+        "sourceSha256": "6f2ee1a53bd866d1eae52fefec016f9c07a942cef97a056f4e1fd2de392c75d5",
+        "releaseSha256": "fb620e782299be6a3d1e459d36f4c31897a5e46723e0718ec1c81b2e994be5ae"
+      },
+      {
+        "id": "place_dock_interior",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_dock_interior.glb",
+        "release": "assets/ships/release/parts/places/place_dock_interior.glb",
+        "sourceSha256": "630a1780e2490ba0d4d7d401dad8547085ed7a26a1f26a22a85fd5a5d00b1c60",
+        "releaseSha256": "926cb7784e61f8adcc533945c4c254f8d7e0af14efeff465bfd8b2caa6f0a6de"
+      },
+      {
+        "id": "place_dock_interior_military",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_dock_interior_military.glb",
+        "release": "assets/ships/release/parts/places/place_dock_interior_military.glb",
+        "sourceSha256": "b46a5553824f171da09bfb08936320bc5f739563a05bdaf4f72c84c3b7f56e7c",
+        "releaseSha256": "e3c9838321fa637f2af06486ae45a58d1bdde3d06e10d59d50070e2469686fab"
+      },
+      {
+        "id": "place_dock_interior_grit",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_dock_interior_grit.glb",
+        "release": "assets/ships/release/parts/places/place_dock_interior_grit.glb",
+        "sourceSha256": "3003f0cb0490a2b4f5c12cea4b959af3c05bb0deb2725ba5a85ce68a48a1d7b7",
+        "releaseSha256": "2a2a6a5a1c2f170024ee635101eb6737866d3de3b71795ea25eec945f8b500a9"
+      },
+      {
+        "id": "ship_kestrel_reference",
+        "kind": "ship-reference",
+        "source": "assets/ships/kestrel/kestrel_reference.glb",
+        "release": "assets/ships/release/kestrel/kestrel_reference.glb",
+        "sourceSha256": "0ddcce490d3cbf073b2ab3813fafd61138ef067764d4bc9af485aeb97c4d5e72",
+        "releaseSha256": "f06b1f263e427fe4ae21fee244634eddd7e44cd852e574c31564a0e5645c8f20"
+      },
+      {
+        "id": "place_station_refinery",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_station_refinery.glb",
+        "release": "assets/ships/release/parts/places/place_station_refinery.glb",
+        "sourceSha256": "93fce6a0401a3375cad4269cc59dbf1ad5ba3eafb822a4a6f6d464410d9093a9",
+        "releaseSha256": "52653b6b9fd0859c076bbd5912feb827a099c1f3220bfea99c4881281a5d5f57"
+      },
+      {
+        "id": "place_station_blackmarket",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_station_blackmarket.glb",
+        "release": "assets/ships/release/parts/places/place_station_blackmarket.glb",
+        "sourceSha256": "fd98a944889c396cc52242d769f86a5f833a7c890d386fe2ebd9f38fb9ac7481",
+        "releaseSha256": "18b91187afbbaf3a01149bb079ee646a95c519478726d621d8e149f761c44e9f"
+      },
+      {
+        "id": "place_gate_jump_ring",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_gate_jump_ring.glb",
+        "release": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
+        "sourceSha256": "fcf7b6b6693a081a7ddb2d0b36479263cc7f2f01b77df4ee1569f037944668ec",
+        "releaseSha256": "01ccf2695678cb42c5b086308b7bea6dc366b029b4efc9e12393a10e8b209ead"
+      },
+      {
+        "id": "place_station_mining",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_station_mining.glb",
+        "release": "assets/ships/release/parts/places/place_station_mining.glb",
+        "sourceSha256": "82be5e687143b333adb2ea11659bebf2eb2112edcdd575c06c225d3318a95bfe",
+        "releaseSha256": "b14c82ec6add74c525def05ca57e081805f3f4a09f8773ab662847ad41314b3a"
+      },
+      {
+        "id": "place_station_fab",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_station_fab.glb",
+        "release": "assets/ships/release/parts/places/place_station_fab.glb",
+        "sourceSha256": "31157f680f048bda26316dd3ef507ae4f730d432cfffeb25f47f1b439d7a3ff3",
+        "releaseSha256": "cbf20c022012ba956c90cf9fdb7710b59700623c6f1ebfa0b05186b1ec9ef0fa"
+      },
+      {
+        "id": "place_station_research",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_station_research.glb",
+        "release": "assets/ships/release/parts/places/place_station_research.glb",
+        "sourceSha256": "8fadb32e91d6dc83050c8e8e0f3db1a09803d6c5a4a4535f158dc5e59a895424",
+        "releaseSha256": "4d965bb6c2b801193a9b0ba187a65f868cfa57a08849f7932bd4fd8da552a346"
+      },
+      {
+        "id": "place_claim_outpost_base",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_claim_outpost_base.glb",
+        "release": "assets/ships/release/parts/places/place_claim_outpost_base.glb",
+        "sourceSha256": "f3a2ac6441c9eddf75a7b6def338d7203394aaa178bac0de2385f7765e8f6f30",
+        "releaseSha256": "6dab7e40086ddd6c0041977fac879069875d99a1aed52f2cb37962352658b4f0"
+      },
+      {
+        "id": "place_claim_outpost_refinery",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_claim_outpost_refinery.glb",
+        "release": "assets/ships/release/parts/places/place_claim_outpost_refinery.glb",
+        "sourceSha256": "00ea8e50883d3121298f53f7fcab0092b4d170e8c6e1e19696aef1c32b7e12ef",
+        "releaseSha256": "63802aa4f426a9031139e939e16f47d0e1e9fc37ea4c1f6c86bb914ec9cf82c7"
+      },
+      {
+        "id": "place_claim_outpost_relay",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_claim_outpost_relay.glb",
+        "release": "assets/ships/release/parts/places/place_claim_outpost_relay.glb",
+        "sourceSha256": "a93c7b4d8fd23fa925fb99c025a544dacf13716e374261b8c487399c2196fda8",
+        "releaseSha256": "dc07ebef0ea61a45e778ecbb8a9ac4dfda4e71e4970433337e0ead084fffdcc2"
+      },
+      {
+        "id": "place_claim_outpost_bastion",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_claim_outpost_bastion.glb",
+        "release": "assets/ships/release/parts/places/place_claim_outpost_bastion.glb",
+        "sourceSha256": "3362d2e412c81e6798b03ee048536d8520e8acf0351821ca7e04c2463daa74f5",
+        "releaseSha256": "bfb256d3eb1a78564011d60abd50480c1af97ab4d2358d5db5d89e08c3097eff"
+      },
+      {
+        "id": "wholeship_ashline_dart",
+        "kind": "part:wholeships",
+        "source": "assets/ships/parts/wholeships/ashline_dart.glb",
+        "release": "assets/ships/release/parts/wholeships/ashline_dart.glb",
+        "sourceSha256": "10890bc8286826b251a5f4dfef8e0a109cacb0334cac161d34e2a2f9a2de2b41",
+        "releaseSha256": "a9129044a5e791efe59cbabfd3c2961642b79a9c1c9ee22e4d3eea22719cc0b7"
+      },
+      {
+        "id": "wholeship_ashline_lode",
+        "kind": "part:wholeships",
+        "source": "assets/ships/parts/wholeships/ashline_lode.glb",
+        "release": "assets/ships/release/parts/wholeships/ashline_lode.glb",
+        "sourceSha256": "1ffdf08cea3b8c454b4ee3f3d6fc374b7877fdb85bf722b7344f6d996dbc04b9",
+        "releaseSha256": "d1d30208913b7bc49e96dfc78dc5acc19b8ecfc191a4a5136853828181824656"
+      },
+      {
+        "id": "wholeship_ashline_rig",
+        "kind": "part:wholeships",
+        "source": "assets/ships/parts/wholeships/ashline_rig.glb",
+        "release": "assets/ships/release/parts/wholeships/ashline_rig.glb",
+        "sourceSha256": "f2c60370953e59ef5985676042ad6b211a9462b4293b7112bc01fc65c06e9052",
+        "releaseSha256": "32ecc2bc92b351ff68186b1eca331149a14d200561d445309d6d9b1a322723c9"
+      },
+      {
+        "id": "place_lane_beacon",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_lane_beacon.glb",
+        "release": "assets/ships/release/parts/places/place_lane_beacon.glb",
+        "sourceSha256": "82e0302b12a0f3118b1f4ef6d4e9843f85705459615ee2ca3a1c09602a8bd7b6",
+        "releaseSha256": "72bb0fabefed2b1b81c8cd4d70a3b3ef7abbad1f09010dde14c5f0fe15d1cbbe"
+      },
+      {
+        "id": "place_nav_buoy",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_nav_buoy.glb",
+        "release": "assets/ships/release/parts/places/place_nav_buoy.glb",
+        "sourceSha256": "f1599e2f5ff47aca1bff2ff311f111bee9ce3ae076123b36eb71e32343ab7b4d",
+        "releaseSha256": "c227ec86343f3105d312c4127daf4e2516ca45ac4a26e7fb27368ae308a02c20"
+      },
+      {
+        "id": "place_station_billboard",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_station_billboard.glb",
+        "release": "assets/ships/release/parts/places/place_station_billboard.glb",
+        "sourceSha256": "557d5065d0435e3dc8128b4623135addf0b372d282ecb9f331e6a289b0d9ff7a",
+        "releaseSha256": "598b130176e2e1b4b0bf89ec57cec7993e411ca548b28ac858dd04473f2c3098"
+      },
+      {
+        "id": "place_asteroid_rock_a",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_asteroid_rock_a.glb",
+        "release": "assets/ships/release/parts/places/place_asteroid_rock_a.glb",
+        "sourceSha256": "e99971402ab9a4a7335dbbfa44c582a9596357225bd3336a2914b192677defda",
+        "releaseSha256": "05d8ed9c2770df65d48c331a843a92052efe5bc86990932364d403fe7e1983a6"
+      },
+      {
+        "id": "place_asteroid_rock_b",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_asteroid_rock_b.glb",
+        "release": "assets/ships/release/parts/places/place_asteroid_rock_b.glb",
+        "sourceSha256": "2b32f11a29e372c08c07cf8326153ed9d4150fcf8ccc3236ca5d11fb6ae9eb87",
+        "releaseSha256": "4d6dfecdbbd783a4694a19f03aa65300a3ea6bfd905785950b33f7eacaec114f"
+      },
+      {
+        "id": "place_asteroid_rock_c",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_asteroid_rock_c.glb",
+        "release": "assets/ships/release/parts/places/place_asteroid_rock_c.glb",
+        "sourceSha256": "18534d6d9eb542084aad21644c9e13d549fddf93a9d2bd1a1fca42bd7eb36ed1",
+        "releaseSha256": "6e6d96ad5f75fb1908236204171462329fb491de5a14ee3ac0c29ba98fe42752"
+      },
+      {
+        "id": "wholeship_kestrel",
+        "kind": "part:wholeships",
+        "source": "assets/ships/parts/wholeships/kestrel.glb",
+        "release": "assets/ships/release/parts/wholeships/kestrel.glb",
+        "sourceSha256": "0c0be004fbf77202380384e7d925318262a2f9b75d886f592af9620e7f8da586",
+        "releaseSha256": "dc4b841191e76e175f9e3aac93f30a9b4a1578b2f4da4127b83146468185c1a2"
+      },
+      {
+        "id": "wholeship_kestrel_lod1",
+        "kind": "part:wholeships",
+        "source": "assets/ships/parts/wholeships/kestrel_lod1.glb",
+        "release": "assets/ships/release/parts/wholeships/kestrel_lod1.glb",
+        "sourceSha256": "40e96aa6e6a00db57e9b90a7dae3914f0b73adf9e086f181c987cac15d5295c6",
+        "releaseSha256": "555bfd93161cfebba3f14ba1fe58c8b0cc257a1ed63ee16fc6a2d98fb187a7e1"
+      },
+      {
+        "id": "wholeship_kestrel_lod2",
+        "kind": "part:wholeships",
+        "source": "assets/ships/parts/wholeships/kestrel_lod2.glb",
+        "release": "assets/ships/release/parts/wholeships/kestrel_lod2.glb",
+        "sourceSha256": "83ae263c589862a3f0deb7fea4d5bcaaad1009060142264d58005ea8c46e831e",
+        "releaseSha256": "356aca6fdcd8b8a4ca30084ed19a6ed6ff51a360df013cfe99c47052bfbfc632"
+      },
+      {
+        "id": "wholeship_wasp_production_v1",
+        "kind": "part:wholeships",
+        "source": "assets/ships/parts/wholeships/wasp_production_v1.glb",
+        "release": "assets/ships/release/parts/wholeships/wasp_production_v1.glb",
+        "sourceSha256": "fdfd7c76c793c5be9593e9c095bade0708c36163086f181ff08bddfbe5173e5a",
+        "releaseSha256": "a23354195d95d57bdc2d2e8e32d5cd4fcc1f6c05d570033a7c1849ac87408dde"
+      },
+      {
+        "id": "place_asteroid_seamed",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_asteroid_seamed.glb",
+        "release": "assets/ships/release/parts/places/place_asteroid_seamed.glb",
+        "sourceSha256": "5e0e87fdc2e98f485caaeb3fcdf5c6db59c649b7160e23be2c8be71e3eece119",
+        "releaseSha256": "31cc9bae776abf00913e98bbc788b56a363cc6eaedcd4e1d5ae8a3cd624323d4"
+      },
+      {
+        "id": "place_asteroid_graffiti",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_asteroid_graffiti.glb",
+        "release": "assets/ships/release/parts/places/place_asteroid_graffiti.glb",
+        "sourceSha256": "b52927c4e140d45b062a9ee2cbdac45749b2ff85d729e0a207f42c49e23432aa",
+        "releaseSha256": "2293ab300d2eb9fc07cd0c01e78e521f7ea44283e02b0d9635d0021f5e39e128"
+      },
+      {
+        "id": "place_station_trade_hub",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_station_trade_hub.glb",
+        "release": "assets/ships/release/parts/places/place_station_trade_hub.glb",
+        "sourceSha256": "94cb9dc727d606df2f7c32f2c0ffb274ee6a572a8fa7bd40836d721563d1a578",
+        "releaseSha256": "9540c8fa263359ff3b78302a9d48080af17cb903f47d43361814ba3666f0754a"
+      },
+      {
+        "id": "wholeship_helios_lark",
+        "kind": "part:wholeships",
+        "source": "assets/ships/parts/wholeships/helios_lark.glb",
+        "release": "assets/ships/release/parts/wholeships/helios_lark.glb",
+        "sourceSha256": "9090e7c21980d0d87d1da422bdb940a7731ceb3b39f4648adc0968df931b708f",
+        "releaseSha256": "5dfb6c2a2baaa4c8e92758f4e969d262ee668cbf22e5de73020df659e782a473"
+      },
+      {
+        "id": "wholeship_helios_cradle",
+        "kind": "part:wholeships",
+        "source": "assets/ships/parts/wholeships/helios_cradle.glb",
+        "release": "assets/ships/release/parts/wholeships/helios_cradle.glb",
+        "sourceSha256": "1f10de2d7f2ae083fdac768c735f1e444616ccc59bb19088cc8418f63e88dd72",
+        "releaseSha256": "6f400dfd7caf7e18df1b0cb951e77ec2c8773a4cd8321243e4c259c840c778de"
+      },
+      {
+        "id": "wholeship_helios_span",
+        "kind": "part:wholeships",
+        "source": "assets/ships/parts/wholeships/helios_span.glb",
+        "release": "assets/ships/release/parts/wholeships/helios_span.glb",
+        "sourceSha256": "c4ceaa020861cdd1bc9f7e20172bbc6f00531290aa3753e4757dc6b89b47f2ab",
+        "releaseSha256": "5fb2a62c79d3bc07777c5bf5ff9d2e26554e2bf3bfca051ba470d28adb6ed1b5"
+      },
+      {
+        "id": "place_station_military",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_station_military.glb",
+        "release": "assets/ships/release/parts/places/place_station_military.glb",
+        "sourceSha256": "fe2676f628c8a7382e6827883128d63c53407c9a828493cac8ccb65a9ed2491e",
+        "releaseSha256": "a92f5c2b53262defcbfea27b22ec07ce8d7798f856dbd8e3fc9b12475ea67806"
+      },
+      {
+        "id": "place_landmark_wreck_cathedral",
+        "kind": "part:places",
+        "source": "assets/ships/parts/places/place_landmark_wreck_cathedral.glb",
+        "release": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb",
+        "sourceSha256": "f335935f9658bad0e721aceb5d66bb4c2f0457fe411442819b4a3455a00af704",
+        "releaseSha256": "dc5510f88b128d9a40e427700fe4b0b212987db152f60757ef5035bda270a49a"
+      },
+      {
+        "id": "weapon_gatling",
+        "kind": "part:weapons",
+        "source": "assets/ships/parts/weapons/weapon_gatling.glb",
+        "release": "assets/ships/release/parts/weapons/weapon_gatling.glb",
+        "sourceSha256": "61910d390242f8ba9f586be92c53266a9d70a23320e48c37fc201310bb6a5b99",
+        "releaseSha256": "56fe0abe8bf5251d81fb288fe29fb1dab0f0f2b64005c23722714d92fa45f679"
+      }
+    ]
+  },
+  "runtime": {
+    "selectors": {
+      "player": [
+        {
+          "runtimeId": "ship_kestrel",
+          "releaseId": "wholeship_kestrel",
+          "role": "default player ship"
+        },
+        {
+          "runtimeId": "ship_wasp",
+          "releaseId": "wholeship_wasp_production_v1",
+          "role": "alternate production player ship"
+        }
+      ],
+      "hostiles": [
+        {
+          "runtimeId": "wasp_swarmer",
+          "releaseId": "wholeship_ashline_dart"
+        },
+        {
+          "runtimeId": "bruiser_brawler",
+          "releaseId": "wholeship_ashline_lode"
+        },
+        {
+          "runtimeId": "reaver_pirate",
+          "releaseId": "wholeship_ashline_rig"
+        },
+        {
+          "runtimeId": "corsair_raider",
+          "releaseId": "wholeship_ashline_rig",
+          "finding": "role alias: no distinct corsair hull"
+        }
+      ],
+      "traffic": [
+        {
+          "runtimeId": "courier",
+          "releaseId": "wholeship_helios_lark"
+        },
+        {
+          "runtimeId": "miner",
+          "releaseId": "wholeship_helios_cradle"
+        },
+        {
+          "runtimeId": "hauler",
+          "releaseId": "wholeship_helios_span"
+        }
+      ],
+      "source": "src/render/partsLibrary.js"
+    },
+    "highExposurePlaces": {
+      "measurement": "authored static reference count from the 2026-07-28 read-only census; not runtime telemetry",
+      "rows": [
+        {
+          "id": "place_debris_chunk",
+          "authoredReferenceCount": 18
+        },
+        {
+          "id": "place_dead_hulk",
+          "authoredReferenceCount": 15
+        },
+        {
+          "id": "place_asteroid_seamed",
+          "authoredReferenceCount": 9
+        },
+        {
+          "id": "place_lane_beacon",
+          "authoredReferenceCount": 9
+        },
+        {
+          "id": "place_nav_buoy",
+          "authoredReferenceCount": 8
+        },
+        {
+          "id": "place_station_blackmarket",
+          "authoredReferenceCount": 8
+        },
+        {
+          "id": "place_station_research",
+          "authoredReferenceCount": 6
+        },
+        {
+          "id": "place_station_trade_hub",
+          "authoredReferenceCount": 6
+        },
+        {
+          "id": "place_asteroid_rock_a",
+          "authoredReferenceCount": 5
+        },
+        {
+          "id": "place_station_mining",
+          "authoredReferenceCount": 5
+        },
+        {
+          "id": "place_station_military",
+          "authoredReferenceCount": 3
+        },
+        {
+          "id": "place_station_refinery",
+          "authoredReferenceCount": 3
+        }
+      ]
+    },
+    "standaloneMedia": {
+      "authoredRecurringPortraits": 23,
+      "cinematicPosterVideoPairs": 4,
+      "deterministicThrusterMasks": 9,
+      "thrusterManifest": "assets/fx/thruster/manifest.json",
+      "menuBackdrop": "assets/cinematics/C-INTRO-01.jpg",
+      "notes": [
+        "Portrait count comes from src/data/portraits.js identity mappings.",
+        "C-INTRO-01 is preloaded by the renderer and used by the menu/UI background path.",
+        "Thruster masks are runtime inputs; the three FX JPG sheets are reference-only."
+      ]
+    },
+    "codeNativeVisuals": [
+      "src/render/spaceBackground.js",
+      "src/render/starfield.js",
+      "src/render/parallaxLayers.js",
+      "src/render/planetFactory.js",
+      "src/render/visualFactory.js",
+      "src/render/vfx.js",
+      "src/render/combat/phasedExplosions.js",
+      "src/render/post/spaceRenderGraph.js"
+    ]
+  },
+  "rankedTopFive": [
+    {
+      "rank": 1,
+      "id": "kestrel_die_laughing_stencil",
+      "assetId": "wholeship_kestrel",
+      "family": "VA-110 Starter hero",
+      "lifecycle": "candidate",
+      "exposureReason": "The Kestrel is the default player ship and remains on screen throughout normal play.",
+      "currentState": "In-place material-truth refinement; no manifest or live-release promotion is claimed here.",
+      "scope": "Replace only the misleading raised BORROWED plaque with a conformal, chipped DIE LAUGHING field stencil while preserving the ship identity, sockets, collision, scale, and LOD structure.",
+      "gates": [
+        "fiction/material agreement and authored material inventory",
+        "normal-camera and close/grazing/clay review",
+        "source/release hash and GLB contract checks",
+        "120 px and under-45 px readability",
+        "Browser/Electron default-route acceptance when browser-gpu is available",
+        "independent human-eye art verdict"
+      ],
+      "mutexOrder": [
+        "blender",
+        "asset-manifest",
+        "browser-gpu"
+      ]
+    },
+    {
+      "rank": 2,
+      "id": "ashline_v2_dart",
+      "assetId": "wholeship_ashline_dart",
+      "family": "VA-120 Common hostile/combat family",
+      "lifecycle": "candidate",
+      "exposureReason": "The live hostile selector maps wasp_swarmer to Ashline Dart.",
+      "currentState": "Offline V2 source and KTX2/Meshopt candidate exist; the live selector still uses the older Ashline family.",
+      "source": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_dart.glb",
+      "sourceSha256": "12ea70c8c9e7295d65dce57aff3aed64cd7fb62c780fff61c183c67ad293b987",
+      "candidate": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_dart.glb",
+      "candidateSha256": "c2d64a84d3b3575d2d4001eb82fddeddc31ed94158d72cad3706125c4e8dc720",
+      "gates": [
+        "fiction/material agreement and component-level critique",
+        "close, normal-flight, dense-combat, LOD-motion evidence",
+        "source/release parity and exact manifest transaction",
+        "socket, collision, scale, and behavior parity",
+        "material-cache and texture-residency checks",
+        "independent human-eye art verdict"
+      ],
+      "mutexOrder": [
+        "blender",
+        "asset-manifest",
+        "browser-gpu"
+      ]
+    },
+    {
+      "rank": 3,
+      "id": "ashline_v2_lode",
+      "assetId": "wholeship_ashline_lode",
+      "family": "VA-121 Industrial/civilian family",
+      "lifecycle": "candidate",
+      "exposureReason": "The live hostile selector maps bruiser_brawler to Ashline Lode.",
+      "currentState": "Offline V2 source and KTX2/Meshopt candidate exist; promotion remains unclaimed.",
+      "source": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_lode.glb",
+      "sourceSha256": "a5f9dc2c54be15021398d886d1b25a32353cbcf6a495fe0837eecb8dc3684c81",
+      "candidate": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_lode.glb",
+      "candidateSha256": "8e003254dc9005a123d1eab15844103dadb1c8b2841fee45775a136559a87b5a",
+      "gates": [
+        "fiction/material agreement and component-level critique",
+        "close, normal-flight, dense-combat, LOD-motion evidence",
+        "source/release parity and exact manifest transaction",
+        "socket, collision, scale, and behavior parity",
+        "material-cache and texture-residency checks",
+        "independent human-eye art verdict"
+      ],
+      "mutexOrder": [
+        "blender",
+        "asset-manifest",
+        "browser-gpu"
+      ]
+    },
+    {
+      "rank": 4,
+      "id": "ashline_v2_rig",
+      "assetId": "wholeship_ashline_rig",
+      "family": "VA-121 Industrial/civilian family",
+      "lifecycle": "candidate",
+      "exposureReason": "Two live hostile roles, reaver_pirate and corsair_raider, currently map to the same Ashline Rig.",
+      "currentState": "Offline V2 source and KTX2/Meshopt candidate exist; two tracked foundry variants are available as distinct donor directions.",
+      "source": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_rig.glb",
+      "sourceSha256": "6517f0ba291a8f58bb0bd97866b2251f4ddf67cfa7f9ec213f49ad031c747926",
+      "candidate": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_rig.glb",
+      "candidateSha256": "21f63ddfd2fe4561668fd7cc5b51d087085d185252218649a6663f0d8c0ad662",
+      "gates": [
+        "fiction/material agreement and distinct Reaver/Corsair role decision",
+        "close, normal-flight, dense-combat, LOD-motion evidence",
+        "source/release parity and exact manifest transaction",
+        "socket, collision, scale, and behavior parity",
+        "material-cache and texture-residency checks",
+        "independent human-eye art verdict"
+      ],
+      "mutexOrder": [
+        "blender",
+        "asset-manifest",
+        "browser-gpu"
+      ]
+    },
+    {
+      "rank": 5,
+      "id": "place_claim_outpost_relay",
+      "assetId": "place_claim_outpost_relay",
+      "family": "VA-160 Infrastructure/places",
+      "lifecycle": "live",
+      "exposureReason": "The relay is bound by world-site manifests and the PQ-019A heist facility data, making it a story and gameplay-facing place.",
+      "currentState": "Source and release are live. Remaster work must coordinate with the owning PQ-019/PQ-022 lane and preserve world-site identity.",
+      "scope": "Bring the relay to the same fiction-first material and shape standard without forking world-site, Atlas, collision, or facility ownership.",
+      "gates": [
+        "facility fiction/material dossier",
+        "socket, custody/collision, schedule, route, and scale parity",
+        "close, default, far, motion, and LOD evidence",
+        "source/release hash and exact manifest transaction",
+        "Atlas/world-site reachability and normal-route acceptance",
+        "independent human-eye art verdict"
+      ],
+      "mutexOrder": [
+        "blender",
+        "asset-manifest",
+        "atlas/renderer",
+        "browser-gpu"
+      ]
+    }
+  ],
+  "candidatesAndLegacyDonors": [
+    {
+      "id": "helios_lark_stopped_remaster",
+      "lifecycle": "legacy-donor",
+      "sourceRef": "refs/tags/recovery/lark-graphics-remaster-20260723",
+      "equivalentBranch": "agent/gfx-production-remaster-lark",
+      "tip": "d538a583b673c61051e305963254f6de83d871d0",
+      "uniqueCommitsVsMasterAtAudit": 16,
+      "finding": "The branch contains a newer editable Lark blend and useful build/evidence logic, but its candidate/package evidence is not safe to promote as-is.",
+      "recovery": [
+        "Do not merge or cherry-pick the branch wholesale.",
+        "Extract the editable blend and only the scripts or evidence contracts that survive review.",
+        "Rebuild source and release candidates with the current pipeline.",
+        "Recompute every hash and regenerate normal-camera, motion, LOD, and material-channel evidence.",
+        "Promote only after current source/release parity, runtime selection, and independent art review."
+      ],
+      "masterHashes": {
+        "blend": "51e8d91966ff4c7cc6528d64768341da4579ca8a375a6dcb24558fb3659c1ce5",
+        "familySource": "9090e7c21980d0d87d1da422bdb940a7731ceb3b39f4648adc0968df931b708f",
+        "candidate": "ea6b131c7e822ff727a27b15c8d707c9e8a0177198a7a9aae52edd050b2426dc",
+        "liveRelease": "5dfb6c2a2baaa4c8e92758f4e969d262ee668cbf22e5de73020df659e782a473"
+      },
+      "stoppedRefHashes": {
+        "blend": "2e2a7b454a9705e89085c9358682ec962c686d3ae5ee090d3b0a3d917b2aecee",
+        "familySource": "e16c6a28692d209319d710c5ee4b11b6b2fabb7a669848f205711ae1a09cc866",
+        "candidate": "60ed547af535336e02508d528b0ea5b1588110517010650b416db9cdd0f5b2f5"
+      }
+    },
+    {
+      "id": "foundry_ashline_rig_corsair_blade",
+      "lifecycle": "legacy-donor",
+      "path": "assets/ships/foundry/fleet_breadth_20260720/variants/var_ashline_rig_corsair_blade_v01.glb",
+      "sha256": "a795045a0b307614bfdbea7d623c73dca71c596317902cefa744297123996dae",
+      "use": "Donor direction for separating corsair_raider from reaver_pirate; never substitute without authored source and live acceptance."
+    },
+    {
+      "id": "foundry_ashline_rig_reaver_hook",
+      "lifecycle": "legacy-donor",
+      "path": "assets/ships/foundry/fleet_breadth_20260720/variants/var_ashline_rig_reaver_hook_v01.glb",
+      "sha256": "b9dfbf24667b64a9cf46a352cd250e2bf8df083b5e6b6fb75d1146290f4c2a22",
+      "use": "Donor direction for separating reaver_pirate from corsair_raider; never substitute without authored source and live acceptance."
+    },
+    {
+      "id": "helios_arclight",
+      "lifecycle": "candidate",
+      "blend": "assets/ships/m4_hero_hauler/blender/helios_arclight_production.blend",
+      "blendSha256": "61e5d2cf14ea2eb595c7f478eb0c0469250229cd60f0fc9cd94616e77d001b6b",
+      "source": "assets/ships/m4_hero_hauler/source/wholeships/helios_arclight.glb",
+      "sourceSha256": "5344a5a31a6fb6947d763b9a6715ad6ba291772dc737ab163f85bf8bc50082b0",
+      "candidate": "assets/ships/m4_hero_hauler/release_candidates/wholeships/helios_arclight.glb",
+      "candidateSha256": "04fa1d52fc38c44b0839147be08a83532796b097636a902a73fa9143b007e8f4",
+      "use": "Strong heavy-hauler candidate that still needs a gameplay identity, current build replay, and route acceptance."
+    },
+    {
+      "id": "kestrel_m5_upgrade",
+      "lifecycle": "legacy-donor",
+      "path": "assets/ships/m5_kestrel_upgrade",
+      "use": "Historical Kestrel donor only. Extract justified component ideas; do not replace the current Kestrel or reintroduce superseded geometry."
+    }
+  ],
+  "rejectedOrEvidenceOnly": [
+    {
+      "id": "legacy_pelican_and_wasp",
+      "lifecycle": "rejected/evidence-only",
+      "paths": [
+        "assets/ships/parts/wholeships/pelican.glb",
+        "assets/ships/parts/wholeships/wasp.glb",
+        "assets/ships/release/parts/wholeships/pelican.glb",
+        "assets/ships/release/parts/wholeships/wasp.glb"
+      ],
+      "finding": "Packaged residuals exist, but the current player selector uses wasp_production_v1 and neither legacy file has a current release-manifest row. They are accessory-heavy legacy shells, not alternate ships ready for promotion."
+    },
+    {
+      "id": "helios_hub_v10_v12",
+      "lifecycle": "rejected/evidence-only",
+      "finding": "Retain only for defect history/evidence. Do not treat a rejected station iteration as an alternate live station."
+    },
+    {
+      "id": "fx_reference_sheets",
+      "lifecycle": "rejected/evidence-only",
+      "paths": [
+        "assets/fx/fx_explosions.jpg",
+        "assets/fx/fx_thrusters.jpg",
+        "assets/fx/fx_weapons.jpg"
+      ],
+      "finding": "Reference-only sheets. The runtime uses deterministic masks and code-native effect systems."
+    }
+  ],
+  "unsafeForeign": [
+    {
+      "id": "stopped_grok_worktree",
+      "lifecycle": "unsafe-foreign",
+      "path": "C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041",
+      "finding": "The Git metadata is damaged, but the audited Kestrel outputs were byte-identical to tracked master files. Nothing unique should be recovered in place.",
+      "action": "Preserve read-only until the user explicitly authorizes archival or deletion."
+    },
+    {
+      "id": "active_registered_worktrees",
+      "lifecycle": "unsafe-foreign",
+      "paths": [
+        "C:/Users/93rob/sf-l21",
+        "C:/Users/93rob/sf-l22",
+        "C:/Users/93rob/sf-perf-admission-20260726",
+        "C:/Users/93rob/sf-perf-modernization-20260726",
+        "C:/Users/93rob/sf-perf01a"
+      ],
+      "finding": "Concurrent product/performance/PQ worktrees are not visual donor libraries.",
+      "action": "Do not inspect destructively, move, merge, or publish their assets without explicit coordination."
+    }
+  ],
+  "findings": [
+    "Packaged does not imply selected, and selected does not imply accepted art.",
+    "The source manifest has legacy Pelican/Wasp records that are absent from the current release manifest.",
+    "The release manifest has three Kestrel package records outside the source-manifest census: the ship reference plus LOD1 and LOD2.",
+    "Two hostile roles alias the same Ashline Rig; the foundry Corsair/Reaver variants are donor directions, not accepted alternates.",
+    "The stopped Lark branch contains useful unique authoring work but stale packaging evidence; selective recovery plus current rebuild is mandatory.",
+    "The stopped Grok worktree contains no audited unique visual output and must not be mined or cleaned destructively.",
+    "Recent dock, hulk, debris, production Wasp, Gatling, portraits, thruster masks, Cathedral, and trade-hub work should be preserved and reviewed before any reauthoring.",
+    "icons_atlas, reticle, and menu_background are cleanup/audit candidates; no player-facing upgrade priority is assigned without live reference proof."
+  ],
+  "nextQueue": [
+    {
+      "rank": 1,
+      "id": "kestrel_die_laughing_stencil",
+      "state": "In-place material-truth refinement; no manifest or live-release promotion is claimed here."
+    },
+    {
+      "rank": 2,
+      "id": "ashline_v2_dart",
+      "state": "Offline V2 source and KTX2/Meshopt candidate exist; the live selector still uses the older Ashline family."
+    },
+    {
+      "rank": 3,
+      "id": "ashline_v2_lode",
+      "state": "Offline V2 source and KTX2/Meshopt candidate exist; promotion remains unclaimed."
+    },
+    {
+      "rank": 4,
+      "id": "ashline_v2_rig",
+      "state": "Offline V2 source and KTX2/Meshopt candidate exist; two tracked foundry variants are available as distinct donor directions."
+    },
+    {
+      "rank": 5,
+      "id": "place_claim_outpost_relay",
+      "state": "Source and release are live. Remaster work must coordinate with the owning PQ-019/PQ-022 lane and preserve world-site identity."
+    },
+    {
+      "rank": 6,
+      "id": "station_tethys_unique_visual",
+      "state": "Split from trade-hub reuse after exact runtime/Atlas ownership review."
+    },
+    {
+      "rank": 7,
+      "id": "C-INTRO-01",
+      "state": "Refresh only after real game identity and crop/video contracts are established."
+    },
+    {
+      "rank": 8,
+      "id": "wholeship_helios_lark",
+      "state": "Selectively recover the stopped branch, rebuild current, then use it as civilian craft pilot."
+    },
+    {
+      "rank": 9,
+      "id": "wholeship_helios_cradle",
+      "state": "Follow only an accepted Lark construction/material method."
+    },
+    {
+      "rank": 10,
+      "id": "wholeship_helios_span",
+      "state": "Follow only an accepted Lark method; evaluate foundry faction variants as donors."
+    }
+  ]
+}
