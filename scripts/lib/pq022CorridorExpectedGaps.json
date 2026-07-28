@@ -1,0 +1,80 @@
+{
+  "schema": "spaceface.pq022.corridorExpectedGaps.v1",
+  "recordedAt": "2026-07-28",
+  "recordedBy": "PQ-022.gold-corridor-required-assets scoping lane",
+  "note": "Named, owned gaps in the Gold Corridor required-asset set. Every entry is exact (assetId + gap kind); the gate rejects wildcards, fails on any gap not listed here, and ALSO fails on any entry here that no longer reproduces. Delete an entry the moment its owner lane closes it. `blocksMilestone` records this lane's recommendation, not a gate behaviour.",
+  "gaps": [
+    {
+      "assetId": "kestrel_lod1",
+      "gap": "source-manifest-row-missing",
+      "severity": "moderate",
+      "blocksMilestone": false,
+      "ownerLane": "Kestrel material-truth remediation (asset-manifest mutex released; blocked at runtime G5/G6 behind PQ-034)",
+      "reason": "The release manifest carries wholeship_kestrel_lod1 with binding hashes and the artifact exists, but parts_manifest.json has no source row. The LOD family is real and hash-bound on the release side; only the source catalogue is asymmetric. Not a blocker: LOD family members are unreachable at runtime (lodFamily at partsLibrary.js:499 has zero consumers), so LOD0 is canonical live truth."
+    },
+    {
+      "assetId": "kestrel_lod2",
+      "gap": "source-manifest-row-missing",
+      "severity": "moderate",
+      "blocksMilestone": false,
+      "ownerLane": "Kestrel material-truth remediation (asset-manifest mutex released; blocked at runtime G5/G6 behind PQ-034)",
+      "reason": "Same asymmetry as kestrel_lod1."
+    },
+    {
+      "assetId": "wasp_production_v1_lod1",
+      "gap": "source-manifest-row-missing",
+      "severity": "moderate",
+      "blocksMilestone": false,
+      "ownerLane": "unowned — no lane has ever claimed the production Wasp LOD family",
+      "reason": "src/render/partsLibrary.js WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID.ship_wasp names this file and the GLB exists on disk, but it appears in NEITHER manifest. NOT a milestone blocker: the LOD family is unreachable at runtime. `lodFamily` is written at partsLibrary.js:499 and has zero consumers, and the only other reference is WHOLE_SHIP_URLS, whose sole uses are the whole-ship body validator and the filter that EXCLUDES these files from modular hull selection (partsLibrary.js:2548). LOD0 is canonical live truth, exactly as the source comment states. This is an unrecorded-identity gap on a dormant artifact."
+    },
+    {
+      "assetId": "wasp_production_v1_lod1",
+      "gap": "release-manifest-row-missing",
+      "severity": "moderate",
+      "blocksMilestone": false,
+      "ownerLane": "unowned — no lane has ever claimed the production Wasp LOD family",
+      "reason": "Same unmanifested dormant artifact as above, release side. Note the asymmetry with the Kestrel LODs, which DO have release rows with binding hashes."
+    },
+    {
+      "assetId": "wasp_production_v1_lod2",
+      "gap": "source-manifest-row-missing",
+      "severity": "moderate",
+      "blocksMilestone": false,
+      "ownerLane": "unowned — no lane has ever claimed the production Wasp LOD family",
+      "reason": "Same unmanifested dormant artifact as wasp_production_v1_lod1."
+    },
+    {
+      "assetId": "wasp_production_v1_lod2",
+      "gap": "release-manifest-row-missing",
+      "severity": "moderate",
+      "blocksMilestone": false,
+      "ownerLane": "unowned — no lane has ever claimed the production Wasp LOD family",
+      "reason": "Same unmanifested dormant artifact as wasp_production_v1_lod1, release side."
+    },
+    {
+      "assetId": "place_lane_beacon",
+      "gap": "source-bytes-mismatch",
+      "severity": "low",
+      "blocksMilestone": false,
+      "ownerLane": "asset-manifest metadata hygiene (unowned; safe to fold into any lane holding the asset-manifest mutex)",
+      "reason": "parts_manifest.bytes says 3,777,536; the artifact is 3,775,520. The release manifest's sourceBytes AND sourceSha256 both bind to the on-disk artifact, so asset identity is sound — only the parts_manifest byte metadata drifted (~2 KB, consistent with a re-export that updated one catalogue and not the other)."
+    },
+    {
+      "assetId": "place_nav_buoy",
+      "gap": "source-bytes-mismatch",
+      "severity": "low",
+      "blocksMilestone": false,
+      "ownerLane": "asset-manifest metadata hygiene (unowned; safe to fold into any lane holding the asset-manifest mutex)",
+      "reason": "parts_manifest.bytes says 3,777,968; the artifact is 3,775,832. Release manifest binds. Identity sound; metadata stale."
+    },
+    {
+      "assetId": "place_station_billboard",
+      "gap": "source-bytes-mismatch",
+      "severity": "low",
+      "blocksMilestone": false,
+      "ownerLane": "asset-manifest metadata hygiene (unowned; safe to fold into any lane holding the asset-manifest mutex)",
+      "reason": "parts_manifest.bytes says 4,488,768; the artifact is 4,486,260. Release manifest binds. Identity sound; metadata stale."
+    }
+  ]
+}

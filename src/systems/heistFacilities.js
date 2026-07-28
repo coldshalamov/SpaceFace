@@ -17,6 +17,68 @@ import {
 const HEIST_FACILITIES_SCHEMA_VERSION = 1;
 const MAX_CANDIDATE_RECEIPTS = 32;
 
+// ── Player-visible launch schedule cue (PQ-019A) ────────────────────────────────────────────────
+//
+// A pending schedule was previously invisible to the player: the owner produced deterministic
+// receipts, but nothing announced the launch window on the flight route. These T-minus moments are
+// the cue.
+//
+// Contract:
+//   * BOUNDED MOMENTS, NOT PER-FRAME. The publisher fires only on the tick where the sim clock
+//     CROSSES an authored threshold, so a 30 s window speaks at most four times (30/15/5 + away).
+//   * STATELESS AND DETERMINISTIC. `crossedLaunchCueTMinus` is a pure function of
+//     (launchAtSimT, previous simTime, current simTime); the previous clock is reconstructed from
+//     the frame's own `dt`. There is no cursor to persist, so the cue adds NO save key and cannot
+//     desynchronize from the schedule it describes. Re-entering the sector cannot re-fire a
+//     threshold that is already in the past, and entering mid-window speaks only the thresholds
+//     still ahead — by construction, not by bookkeeping.
+//   * ONE VOICE. Every line is enqueued under the single stable id below, on the `objective`
+//     channel (priority 60; danger 110 stays reserved for life-critical alerts). VoiceQueue
+//     coalesces same-id entries in place, so the whole countdown occupies at most one floor slot
+//     and can never stack a second pill against itself.
+//   * SIM-INERT. The publisher writes no sim state and spawns nothing. It reaches the player only
+//     through the established `ctx.helpers.voice.say` seam, which is DOM-free — alerts.js owns the
+//     floor pill and is already window-guarded. Where voiceArbiter is not registered (headless
+//     harnesses, deterministic sim) `helpers.voice` is undefined and the call is a strict no-op.
+//     This is deliberately NOT gated on `typeof window`: per the weapons.js N1 note, host-divergent
+//     behavior is the bug that gate creates, and it would also blind the focused tests.
+//   * NON-COLOR SEMANTICS. Each line states the facility and the remaining time in words. No cue
+//     depends on hue, and none introduces motion beyond the existing floor presentation.
+export const PQ019_LAUNCH_CUE_TMINUS_S = Object.freeze([30, 15, 5]);
+export const PQ019_LAUNCH_CUE_VOICE_ID = 'pq019a:launch-schedule';
+export const PQ019_LAUNCH_CUE_CHANNEL = 'objective';
+const LAUNCH_CUE_TTL_S = 4;
+
+/**
+ * Largest-information cue threshold crossed in the half-open interval (prevSimT, simT].
+ *
+ * Pure and total. Returns the SMALLEST crossed threshold when a single long frame steps over
+ * several at once, because the reading closest to launch is the truthful one to show. Returns null
+ * when the clock did not advance across any authored moment.
+ */
+export function crossedLaunchCueTMinus(launchAtSimT, prevSimT, simT) {
+  if (![launchAtSimT, prevSimT, simT].every(Number.isFinite)) return null;
+  if (!(simT > prevSimT)) return null;
+  let crossed = null;
+  for (const tMinus of PQ019_LAUNCH_CUE_TMINUS_S) {
+    const at = launchAtSimT - tMinus;
+    if (at > prevSimT && at <= simT && (crossed === null || tMinus < crossed)) {
+      crossed = tMinus;
+    }
+  }
+  return crossed;
+}
+
+/** Player-facing line for a T-minus moment. Text carries the whole meaning. */
+export function launchCueTextForTMinus(tMinus) {
+  return `${PQ019_FACILITIES.heist_launcher.name}: cargo launch in ${tMinus}s`;
+}
+
+/** Player-facing line for the moment the capsule is physically away. */
+export function launchCueAwayText() {
+  return `Cargo capsule away — outbound to ${PQ019_FACILITIES.lawful_catcher.name}`;
+}
+
 function makeState() {
   return {
     schemaVersion: HEIST_FACILITIES_SCHEMA_VERSION,
@@ -114,13 +176,72 @@ export const heistFacilities = {
     }
   },
 
-  update(_dt, state) {
+  update(dt, state) {
     const owned = state.heistFacilities;
     const schedule = owned?.schedule;
     if (!schedule || schedule.status !== 'scheduled') return;
     if (state.world?.currentSectorId !== PQ019_HEIST_SECTOR_ID) return;
+    // Announce before launching: a countdown that speaks only after the capsule is away is not a cue.
+    this._publishLaunchCue(schedule, state, dt);
     if (state.simTime + 1e-9 < schedule.launchAtSimT) return;
     this._launchScheduledCapsule(schedule);
+  },
+
+  /**
+   * Speak the authored T-minus moment, if this frame crossed one. Pure decision, seam-only effect.
+   * Returns the emitted cue receipt or null.
+   */
+  _publishLaunchCue(schedule, state, dt) {
+    const step = Number(dt);
+    if (!Number.isFinite(step) || step <= 0) return null;
+    const simT = Number(state.simTime);
+    const tMinus = crossedLaunchCueTMinus(schedule.launchAtSimT, simT - step, simT);
+    if (tMinus === null) return null;
+    return this._sayLaunchCue({
+      scheduleId: schedule.scheduleId,
+      moment: `t_minus_${tMinus}`,
+      tMinusS: tMinus,
+      text: launchCueTextForTMinus(tMinus),
+    });
+  },
+
+  /**
+   * Single exit for every player-visible schedule line.
+   *
+   * Emits an owner receipt (observable headlessly, presenter-free) and routes the spoken copy
+   * through the one-voice seam under one stable id. No DOM, no sim write.
+   */
+  _sayLaunchCue({ scheduleId, moment, tMinusS, text }) {
+    // Flight only. The countdown is a flight-HUD voice, and while docked the Station OS is a
+    // fullscreen surface in front of the #alerts slot, so speaking there would push a pill nobody
+    // can see and burn the one-voice floor behind another screen. Matches the stationBroadcast
+    // precedent (`state.mode !== 'flight'` -> strict no-op). The LAUNCH itself is world simulation
+    // and is deliberately not gated: the capsule still departs on schedule while the player is
+    // docked, it simply is not narrated to a surface they are not looking at.
+    if (this.state?.mode !== 'flight') return null;
+
+    const receipt = Object.freeze({
+      cueId: `pq019a:cue:${scheduleId}:${moment}`,
+      scheduleId,
+      moment,
+      tMinusS,
+      text,
+      voiceId: PQ019_LAUNCH_CUE_VOICE_ID,
+      channel: PQ019_LAUNCH_CUE_CHANNEL,
+      source: 'heistFacilities',
+    });
+    const say = this.helpers?.voice?.say;
+    if (typeof say === 'function') {
+      say({
+        channel: PQ019_LAUNCH_CUE_CHANNEL,
+        id: PQ019_LAUNCH_CUE_VOICE_ID,
+        text,
+        kind: 'info',
+        ttl: LAUNCH_CUE_TTL_S,
+      });
+    }
+    this.bus.emit('heist:launchCue', receipt);
+    return receipt;
   },
 
   materializeForSector(sectorId) {
@@ -379,6 +500,15 @@ export const heistFacilities = {
       launchedAtTick: schedule.launchedAtTick,
       source: 'heistFacilities',
     }));
+    // Closes the countdown on the same stable voice id, so the last thing the player heard about
+    // this schedule is that the capsule is real and where it is headed. The rebind path above
+    // returns before this point: recovering a still-live capsule is not a fresh launch.
+    this._sayLaunchCue({
+      scheduleId: schedule.scheduleId,
+      moment: 'away',
+      tMinusS: 0,
+      text: launchCueAwayText(),
+    });
     return capsule;
   },
 
@@ -478,6 +608,162 @@ export const heistFacilities = {
       && entity.data?.heistPayloadStableId === PQ019_CAPSULE.stableId
       && entity.data?.runtimeOwner === 'heistFacilities';
   },
+
+  // ── PQ-019B: receiver prepare / commit / abort ────────────────────────────────────────────────
+  //
+  // This owner holds the capsule entity, so it is the only thing in the game that can physically
+  // consume it. The seam is a two-phase handoff keyed by the arbiter's TERMINAL RECEIPT, which is
+  // what stops a payload from being eaten by an outcome that was never decided.
+  //
+  // The split matters: PREPARE reserves and proves, COMMIT consumes. Nothing is destroyed, moved,
+  // or paid for during prepare, so an arbitration that ends up choosing a different winner — or a
+  // process that dies mid-handoff — costs nothing and leaves a capsule that is still physically
+  // there. "Receiver must commit before terminal arbitration" is one of the packet's stop
+  // conditions; this shape makes that ordering the only expressible one.
+  //
+  // Exactly-once is enforced twice over, deliberately. WITHIN a session the handoff record's status
+  // is the gate. ACROSS a reload the arbiter's durable effect journal is, because this system's
+  // state is not in the save owner's capture plan and the capsule is a transient entity — both are
+  // gone after a load, which is precisely why the durable answer cannot live here.
+
+  /**
+   * Reserve the capsule for one terminal receipt. Idempotent per `receiptId`.
+   *
+   * Refuses to reserve a handoff the physical world did not earn: the facility must have actually
+   * recorded a custody candidate for this capsule, so a caller cannot teleport the payload into the
+   * fence and claim a delivery that never touched anything.
+   */
+  prepareReceiverHandoff(request = {}) {
+    const receiptId = cleanScheduleId(request.receiptId);
+    const facilityId = cleanScheduleId(request.facilityId);
+    const payloadStableId = cleanScheduleId(request.payloadStableId);
+    if (!receiptId || !RECEIVER_FACILITY_IDS.has(facilityId)
+      || payloadStableId !== PQ019_CAPSULE.stableId) {
+      return receiverDenial('invalid_handoff', receiptId);
+    }
+
+    const owned = this.state.heistFacilities;
+    const active = owned.receiverHandoff;
+    if (active) {
+      if (active.receiptId !== receiptId) return receiverDenial('handoff_in_progress', receiptId);
+      if (active.status === 'committed') {
+        return { prepared: false, reason: 'already_committed', handoff: active };
+      }
+      if (active.status === 'prepared') return { prepared: true, handoff: active, resumed: true };
+    }
+
+    const schedule = owned.schedule;
+    const capsule = this._activeScheduleCapsule(schedule);
+    if (!capsule) return receiverDenial('payload_absent', receiptId);
+
+    // Physical proof: this facility must already own a custody candidate for this capsule.
+    const contact = owned.candidateReceipts.find((row) => (
+      row && row.facilityId === facilityId && row.payloadStableId === payloadStableId
+      && row.scheduleId === schedule.scheduleId
+    ));
+    if (!contact) return receiverDenial('no_custody_contact', receiptId);
+
+    const handoff = {
+      receiptId,
+      facilityId,
+      payloadStableId,
+      scheduleId: schedule.scheduleId,
+      capsuleEntityId: capsule.id,
+      custodyReceiptId: contact.receiptId,
+      status: 'prepared',
+      preparedAtTick: this.state.tick | 0,
+      committedAtTick: null,
+    };
+    owned.receiverHandoff = handoff;
+    // A reservation, not a consumption: the capsule is still alive, still colliding, still where the
+    // player left it. Only its own data carries the reservation mark.
+    capsule.data.receiverHandoffReceiptId = receiptId;
+    this.bus.emit('heist:receiverPrepared', Object.freeze({ ...handoff, source: 'heistFacilities' }));
+    return { prepared: true, handoff };
+  },
+
+  /**
+   * Consume the reserved capsule. Exactly once: a second call reports `already_committed` and
+   * removes nothing. This system never pays anyone — settlement is the mission owner's, through the
+   * terminal receipt's own effect key.
+   */
+  commitReceiverHandoff(receiptId) {
+    const id = cleanScheduleId(receiptId);
+    const owned = this.state.heistFacilities;
+    const handoff = owned.receiverHandoff;
+    if (!handoff) return { committed: false, reason: 'not_prepared', handoff: null };
+    if (id && handoff.receiptId !== id) {
+      return { committed: false, reason: 'receipt_mismatch', handoff };
+    }
+    if (handoff.status === 'committed') {
+      return { committed: false, reason: 'already_committed', handoff };
+    }
+    if (handoff.status !== 'prepared') return { committed: false, reason: 'not_prepared', handoff };
+
+    const capsule = entityIsAlive(this.state, handoff.capsuleEntityId);
+    if (!this._isOwnedCapsule(capsule)) {
+      // The capsule died or was demoted between prepare and commit. Fail closed: mark the handoff
+      // spent so nothing can retry into a fabricated delivery, and report the physical truth.
+      handoff.status = 'aborted';
+      handoff.abortReason = 'payload_absent';
+      return { committed: false, reason: 'payload_absent', handoff };
+    }
+
+    handoff.status = 'committed';
+    handoff.committedAtTick = this.state.tick | 0;
+    this.helpers.removeEntity(capsule.id);
+    owned.capsuleEntityId = null;
+    if (owned.schedule) {
+      owned.schedule.capsuleEntityId = null;
+      owned.schedule.status = 'delivered';
+    }
+    const receipt = Object.freeze({
+      ...handoff,
+      consumedEntityId: capsule.id,
+      effectId: `pq019b:receiverCommit:${handoff.receiptId}`,
+      source: 'heistFacilities',
+    });
+    this.bus.emit('heist:receiverCommitted', receipt);
+    return { committed: true, handoff, receipt };
+  },
+
+  /**
+   * Release the reservation. The capsule is left exactly as it was found — still alive, still
+   * physical — because abort must be free. Idempotent.
+   */
+  abortReceiverHandoff(receiptId, reason = 'aborted') {
+    const id = cleanScheduleId(receiptId);
+    const owned = this.state.heistFacilities;
+    const handoff = owned.receiverHandoff;
+    if (!handoff) return { aborted: false, reason: 'not_prepared' };
+    if (id && handoff.receiptId !== id) return { aborted: false, reason: 'receipt_mismatch' };
+    if (handoff.status === 'committed') return { aborted: false, reason: 'already_committed' };
+
+    const capsule = entityIsAlive(this.state, handoff.capsuleEntityId);
+    if (this._isOwnedCapsule(capsule)) delete capsule.data.receiverHandoffReceiptId;
+    owned.receiverHandoff = null;
+    this.bus.emit('heist:receiverAborted', Object.freeze({
+      receiptId: handoff.receiptId,
+      facilityId: handoff.facilityId,
+      reason: cleanScheduleId(reason) || 'aborted',
+      source: 'heistFacilities',
+    }));
+    return { aborted: true, restoredEntityId: capsule ? capsule.id : null };
+  },
+
+  /** The live handoff record, or null. */
+  receiverHandoff() {
+    return this.state.heistFacilities?.receiverHandoff || null;
+  },
 };
+
+// ── PQ-019B receiver-handoff support ─────────────────────────────────────────────────────────────
+
+/** Only the two RECEIVER facilities can take custody. The launcher is not a destination. */
+export const RECEIVER_FACILITY_IDS = new Set(['lawful_catcher', 'fence_receiver']);
+
+function receiverDenial(reason, receiptId) {
+  return { prepared: false, reason, receiptId: receiptId || null, handoff: null };
+}
 
 export default heistFacilities;

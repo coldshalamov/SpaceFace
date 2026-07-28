@@ -147,12 +147,16 @@ test('nearest hostile requests and SpatialHash batch scratch reuse their high-wa
   assert.equal(service.getDiagnostics().queryScratchGrowth, 1);
 });
 
-test('npcJobsRuntime issues one hostile-query batch for all eligible materialized jobs', () => {
+test('npcJobsRuntime batches eligible hostile queries and excludes controlled hulls', () => {
   const firstOwner = entity(100, 0, 0);
   const secondOwner = entity(101, 20, 0);
+  const controlledOwner = entity(102, 40, 0);
   const hostile = entity(1, 10, 0, { team: 1 });
   // The hash represents the earlier physics publication; the hostile is a later same-tick spawn.
-  const state = stateFor([firstOwner, secondOwner, hostile], [firstOwner, secondOwner]);
+  const state = stateFor(
+    [firstOwner, secondOwner, controlledOwner, hostile],
+    [firstOwner, secondOwner, controlledOwner],
+  );
   state.npcJobs.byId = {
     'job:first': {
       job: { phase: NPC_JOB_PHASE.TRANSIT, corrupt: false },
@@ -165,6 +169,13 @@ test('npcJobsRuntime issues one hostile-query batch for all eligible materialize
       entityId: secondOwner.id,
       lastAdvanceSimT: 0,
       threatId: null,
+    },
+    'job:controlled': {
+      job: { phase: NPC_JOB_PHASE.TRANSIT, corrupt: false },
+      entityId: controlledOwner.id,
+      lastAdvanceSimT: 0,
+      threatId: null,
+      control: { claimId: 'heist:test' },
     },
   };
 
@@ -192,4 +203,6 @@ test('npcJobsRuntime issues one hostile-query batch for all eligible materialize
   assert.equal(state.npcJobs.byId['job:second'].job.phase, NPC_JOB_PHASE.FLEE);
   assert.equal(state.npcJobs.byId['job:first'].threatId, hostile.id);
   assert.equal(state.npcJobs.byId['job:second'].threatId, hostile.id);
+  assert.equal(state.npcJobs.byId['job:controlled'].job.phase, NPC_JOB_PHASE.TRANSIT);
+  assert.equal(state.npcJobs.byId['job:controlled'].threatId, null);
 });

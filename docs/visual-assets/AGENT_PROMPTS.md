@@ -17,6 +17,9 @@
 
 ## B. Remaster one asset
 
+When the failure combines primitive/default construction with a fiction/material mismatch, use the
+focused workflow in `.grok/skills/spaceface-blender-material-truth/SKILL.md`.
+
 > Take `<ASSET_ID>` (`<ROLE>`, Tier `<A|B|C|D>`) from its current honest state to `accepted` under
 > `docs/visual-assets/`. Inspect locks, exact source/candidate/release/runtime/fallback identities,
 > latest normal-route evidence, and representative scene cost. Capture a matched baseline and fill the

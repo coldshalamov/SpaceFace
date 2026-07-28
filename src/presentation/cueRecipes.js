@@ -11,6 +11,18 @@ export const PRESENTATION_LANES = Object.freeze([
   'accessibility',
 ]);
 
+/**
+ * PQ-023 family (d): what a cue's reduced-motion / reduced-flash form actually IS, rather than only
+ * how far to scale it down. Optional on a recipe — recipes that declare nothing keep the existing
+ * global scaling behaviour in vfxAccessibility / presentationAdapters unchanged.
+ *
+ *  - `static_dim`   hold the cue still and carry it on brightness/size instead of movement
+ *  - `slow`         same shape, reduced rate
+ *  - `caption_only` drop the visual entirely; the accessible text is the cue
+ *  - `unchanged`    already safe in reduced modes
+ */
+export const REDUCED_CUE_MODES = Object.freeze(['static_dim', 'slow', 'caption_only', 'unchanged']);
+
 export const PRESENTATION_RECIPES = Object.freeze({
   'travel.cruise.charging': travelRecipe(0.5, 30, 'cruise', 'vfx.direct_cruise_existing', ['travel', 'cruise', 'charging']),
   'travel.cruise.engaged': travelRecipe(0.64, 30, 'cruise', 'vfx.direct_cruise_existing', ['travel', 'cruise', 'engaged']),
@@ -359,6 +371,57 @@ export const PRESENTATION_RECIPES = Object.freeze({
     budgets: { particles: 36, voices: 1, uiPulses: 2 },
     tags: ['scenario', 'objective', 'civilian'],
   }),
+  // PQ-023 family (c) — World Site damage / recovery.
+  // Owner events: worldSite:failureReceipt and worldSite:operationReceipt (src/systems/asteroidSites.js).
+  // Before this leaf the orchestrator had ZERO worldSite subscriptions, so a Wreck Cathedral
+  // component failing or being restored reached no presentation lane at all.
+  //
+  // Lane choices are deliberate, not placeholders:
+  //  - camera.none  — a site component failing must never steal the camera while the player is
+  //                   flying a beam onto it (PQ-023 non-goal: camera that fights aiming).
+  //  - audio        — reuses an authored signature (see PRESENTATION_AUDIO_CUE_BY_ID); audio is a
+  //                   reinforcing channel here and is never the sole carrier of the state.
+  //  - ui.none      — HUD telemetry hierarchy is PQ-023 item 5, a different leaf.
+  //  - vfx.direct_* — the fixture controller in render/worldSitePresentation.js owns the visual.
+  //  - accessibility.world_site_condition — carries the noncolor / no-audio equivalent.
+  // With `.none` lanes no longer charged, these cost one vfx and one accessibility slot each.
+  'world_site.damage': recipe({
+    importance: 0.84,
+    dedupeWindowTicks: 12,
+    material: 'world_site',
+    lanes: {
+      camera: 'camera.none',
+      vfx: 'vfx.direct_world_site_condition',
+      audio: 'audio.world_site_condition',
+      ui: 'ui.none',
+      accessibility: 'accessibility.world_site_condition',
+    },
+    budgets: { voices: 1 },
+    // The impaired fixture's stutter collapses to a steady dim: the condition still reads through
+    // opacity and scale, but nothing moves. See worldSiteDamageStates.impairedDutyCycle.
+    reducedMotionMode: 'static_dim',
+    reducedFlashMode: 'static_dim',
+    // Losing stabilization undoes durable player work, so this must survive a saturated tick.
+    tags: ['critical', 'world_site', 'damage'],
+  }),
+  'world_site.recovery': recipe({
+    importance: 0.6,
+    dedupeWindowTicks: 12,
+    material: 'world_site',
+    lanes: {
+      camera: 'camera.none',
+      vfx: 'vfx.direct_world_site_condition',
+      audio: 'audio.world_site_condition',
+      ui: 'ui.none',
+      accessibility: 'accessibility.world_site_condition',
+    },
+    budgets: { voices: 1 },
+    reducedMotionMode: 'static_dim',
+    reducedFlashMode: 'static_dim',
+    // Deliberately NOT critical: a completion receipt is confirmation, and promoting every success
+    // to the reserved tier would refill the reserve that exists for failures.
+    tags: ['world_site', 'recovery'],
+  }),
   'scenario.branch.resolved': recipe({
     importance: 0.88,
     dedupeWindowTicks: 30,
@@ -405,12 +468,21 @@ export function validatePresentationRecipes(recipes = PRESENTATION_RECIPES) {
     if (!item.budgets || typeof item.budgets !== 'object' || Array.isArray(item.budgets)) {
       issues.push(`${path}.budgets must be an object`);
     }
+    // Optional, but when declared it must name a mode an adapter can actually honour.
+    for (const field of ['reducedMotionMode', 'reducedFlashMode']) {
+      if (item[field] != null && !REDUCED_CUE_MODES.includes(item[field])) {
+        issues.push(`${path}.${field} must be one of ${REDUCED_CUE_MODES.join('/')}`);
+      }
+    }
   }
   return { ok: issues.length === 0, issues };
 }
 
-function recipe({ importance, dedupeWindowTicks, material, lanes, budgets, tags }) {
-  return {
+function recipe({
+  importance, dedupeWindowTicks, material, lanes, budgets, tags,
+  reducedMotionMode, reducedFlashMode,
+}) {
+  const built = {
     version: PRESENTATION_RECIPE_VERSION,
     id: null,
     importance,
@@ -420,6 +492,11 @@ function recipe({ importance, dedupeWindowTicks, material, lanes, budgets, tags 
     budgets: Object.freeze({ ...budgets }),
     tags: Object.freeze([...(tags || [])]),
   };
+  // PQ-023 family (d). Optional: only recipes that have a meaningful reduced form declare one, so
+  // the ~80 recipes outside this leaf are untouched and the validator stays backward compatible.
+  if (reducedMotionMode) built.reducedMotionMode = reducedMotionMode;
+  if (reducedFlashMode) built.reducedFlashMode = reducedFlashMode;
+  return built;
 }
 
 function laneSet(vfx, ui = 'ui.none', accessibility = 'accessibility.none') {

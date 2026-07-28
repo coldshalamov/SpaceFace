@@ -15,6 +15,7 @@ const MANIFEST_LOADERS = {
   'massline-live': () => import('./validation-manifests/massline-live.mjs'),
   'pq017-world-site': () => import('./validation-manifests/pq017-world-site.mjs'),
   'lab-chromium-parity': () => import('./validation-manifests/lab-chromium-parity.mjs'),
+  'pq021-ledger-route': () => import('./validation-manifests/pq021-ledger-route.mjs'),
 };
 
 function parseArgs(argv) {
@@ -53,6 +54,7 @@ Manifests:
   massline-live
   pq017-world-site
   lab-chromium-parity
+  pq021-ledger-route
 
 Environment on spawned probes:
   SF_BROKER_CLAIM   one-use claim path

@@ -36,7 +36,41 @@ function removeAttr(node, name) {
   if (node && typeof node.removeAttribute === 'function') node.removeAttribute(name);
 }
 
+// The evidence figure is the ONE place this panel needs authored styling: every authored Cathedral
+// image is 1920x1080, and no loaded stylesheet defines `.st-ledger-*` in either host — the panel's
+// class family belongs to the vestigial stationHub CSS block, which the live app never injects. Left
+// alone the figure renders at natural size and blows out both hosts (measured: 1920px wide inside a
+// 700px column, station and codex alike).
+//
+// Scoped under `.st-ledger` so it cannot reach `.st-ledger-list` / `.st-ledger-row`, which the market
+// screen reuses under `.st-market-ledger`. Sizes in `em` so the figure tracks the shipped `--ui-scale`
+// text-scale path (ui.css:13/45) instead of pinning its own. Injected lazily, never at import time,
+// so a headless projector-only import stays DOM-free.
+const SHIP_LEDGER_CSS = `
+.st-ledger .st-ledger-figure { margin: 10px 0 0; max-width: 720px; }
+.st-ledger .st-ledger-figure-img {
+  display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover;
+  border-radius: 6px; border: 1px solid var(--panel-edge, #1d3350); background: var(--panel, #0b1220);
+}
+.st-ledger .st-ledger-figure[data-ledger-figure-state="failed"] .st-ledger-figure-img {
+  aspect-ratio: auto; border-style: dashed; padding: 10px;
+}
+.st-ledger .st-ledger-figure-caption { margin-top: 6px; color: var(--ink-dim, #84a0c8); font-size: 0.85em; }
+`;
+
+let ledgerCssInjected = false;
+function injectLedgerCss() {
+  if (ledgerCssInjected || typeof document === 'undefined' || !document.head) return;
+  if (typeof document.createElement !== 'function') return;
+  ledgerCssInjected = true;
+  const style = document.createElement('style');
+  style.id = 'ui-ship-ledger-styles';
+  style.textContent = SHIP_LEDGER_CSS;
+  document.head.appendChild(style);
+}
+
 export function createShipLedgerPanel(ctx, options = {}) {
+  injectLedgerCss();
   const rawHost = options.hostId != null ? String(options.hostId).trim() : '';
   const hostId = rawHost || 'ledger';
   const hostOptions = options.hostOptions && typeof options.hostOptions === 'object' ? options.hostOptions : {};

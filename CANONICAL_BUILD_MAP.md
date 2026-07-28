@@ -26,6 +26,14 @@ before touching those GLBs. That handoff owns live residuals, bans, KEEP/RESTORE
 meaning (dock = shipyard UI backdrop; hulk/debris = freeflight landmarks). For ordinary admitted
 roadmap work, still use `program-dispatch` above—do not substitute this handoff for a PQ packet.
 
+**Graphics / material-truth and asset recovery:** start with the current
+[`VISUAL_ASSET_CATALOG.md`](./design/graphics-sprints/VISUAL_ASSET_CATALOG.md) to distinguish live
+assets from candidates, legacy donors, rejected evidence, and protected foreign work. When an
+existing Blender/GLB asset fails because primitive construction and its in-fiction material disagree,
+use [`.grok/skills/spaceface-blender-material-truth/SKILL.md`](./.grok/skills/spaceface-blender-material-truth/SKILL.md)
+after claiming its exact source/candidate paths. The catalog is routing evidence, not permission to
+merge old branches, promote candidates, or bypass G0-G7 acceptance.
+
 Do not begin from an old handoff, screenshot directory, review transcript, archived plan, raw whole-queue dump, or broad repository grep—**except** the place remaster handoff linked above when that is the explicit task.
 
 ## 2. Product north star

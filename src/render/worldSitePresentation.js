@@ -2,6 +2,7 @@
 // objects attached to verified GLB sockets; it never writes simulation state or authored materials.
 
 import * as THREE from 'three';
+import { impairedDutyCycle, worldSiteConditionForStatus } from '../presentation/worldSiteDamageStates.js';
 
 const TAU = Math.PI * 2;
 const FULL_A11Y = Object.freeze({ reducedMotion: false, reducedFlash: false });
@@ -83,17 +84,26 @@ export function installWorldSitePresentation(root, entity, { THREE_NS = THREE } 
       const reducedFlash = !!a11y.reducedFlash;
       for (let i = 0; i < fixtures.length; i += 1) {
         const fixture = fixtures[i];
-        fixture.mount.visible = !fixture.componentId || !statuses
-          || Object.prototype.hasOwnProperty.call(statuses, fixture.componentId);
-        const pulse = !reducedMotion && !reducedFlash && fixture.pulseRate > 0
+        // PQ-023 family (c): bind the fixture to its OWN component's status. The previous guard
+        // tested key existence against a map projectWorldSitePresentation always fills for every
+        // component, so it was vacuous and every fixture rendered identically no matter what had
+        // failed. Condition is carried by opacity and scale (both survive greyscale and
+        // forced-colors) so damage is never a colour-only signal.
+        const status = fixture.componentId && statuses ? statuses[fixture.componentId] : null;
+        const condition = worldSiteConditionForStatus(status);
+        fixture.mount.visible = true;
+        // A damaged fixture must not also idle-pulse as if healthy.
+        const impaired = condition.stutter > 0;
+        const pulse = !impaired && !reducedMotion && !reducedFlash && fixture.pulseRate > 0
           ? Math.sin(time * fixture.pulseRate * TAU) * fixture.pulseAmplitude
           : 0;
-        const scale = 1 + pulse;
-        fixture.mount.scale.setScalar(scale);
-        fixture.mesh.material.opacity = reducedFlash
+        const duty = impairedDutyCycle(time, condition.stutter, reducedMotion || reducedFlash);
+        fixture.mount.scale.setScalar((1 + pulse) * condition.scaleMul);
+        const base = reducedFlash
           ? Math.max(0.55, fixture.baseOpacity * 0.82)
           : fixture.baseOpacity * (1 + pulse * 0.38);
-        fixture.mount.rotation.y = !reducedMotion && fixture.rotateRate > 0
+        fixture.mesh.material.opacity = base * condition.opacityScale * duty;
+        fixture.mount.rotation.y = !reducedMotion && !impaired && fixture.rotateRate > 0
           ? time * fixture.rotateRate
           : 0;
       }

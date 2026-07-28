@@ -41,6 +41,18 @@ import {
   PQ018_COORDINATE_ENVELOPE_RADIUS_WU,
   PQ018_LANE_HALF_WIDTH_WU,
 } from './pq018CoordinateReservation.mjs';
+import {
+  buildExactAgreementReport,
+  buildMapLayoutRecord,
+  buildMatchedBaselineRecord,
+  buildMechanicalConditionReport,
+  buildNaturalJobCensusReport,
+  buildOffscreenProjectionReport,
+  buildReentryIdempotenceReport,
+  buildRoutingHonestyReport,
+  PQ020_HELD_OUT_SEEDS,
+  PQ020_MATCHED_BASELINE_HEADED_GROUPS,
+} from './pq020CeresProofs.mjs';
 
 export const PQ020_CERES_TOPOLOGY_SCHEMA = 'spaceface.pq020-ceres-topology.v1';
 export const PQ020_CERES_SECTOR_ID = 'sector_ceres_belt';
@@ -254,6 +266,25 @@ export async function buildPq020CeresTopologySnapshot() {
     structuralCost: harness.structuralCost,
     requiresHeaded: headedEvidenceStubs(),
   };
+
+  // ── PQ-020 continuation proofs ───────────────────────────────────────────────────────────────
+  // Every row below is a SIBLING of `structuralCost`. `structuralCost` itself is deliberately left
+  // byte-identical: its digest b2232d1d… is a pinned golden, and folding new fields into it would
+  // force a re-pin. A re-pinned golden is not evidence.
+  snapshot.naturalJobs = buildNaturalJobCensusReport();
+  snapshot.offscreenProjection = buildOffscreenProjectionReport();
+  snapshot.mechanicalCondition = buildMechanicalConditionReport();
+  snapshot.reentryIdempotence = buildReentryIdempotenceReport();
+  snapshot.exactAgreement = buildExactAgreementReport();
+  snapshot.routing = buildRoutingHonestyReport();
+  snapshot.matchedBaseline = buildMatchedBaselineRecord({
+    structuralCost: harness.structuralCost,
+    route: buildRoute(pockets),
+    mapLayout: buildMapLayoutRecord(),
+    naturalJobs: snapshot.naturalJobs,
+    offscreen: snapshot.offscreenProjection,
+    routing: snapshot.routing,
+  });
   return snapshot;
 }
 
@@ -440,6 +471,7 @@ export function validatePq020CeresTopologySnapshot(snapshot) {
 
   validateStructuralCost(snapshot?.structuralCost, failures);
   validateHeadedStubs(snapshot?.requiresHeaded, failures);
+  validateContinuationProofs(snapshot, failures);
 
   const structuralCostDigest = digest(snapshot?.structuralCost || null);
   exact(
@@ -466,6 +498,13 @@ export function validatePq020CeresTopologySnapshot(snapshot) {
     rejectedStaleProposal: stale,
     structuralCost: snapshot?.structuralCost || null,
     requiresHeaded: snapshot?.requiresHeaded || null,
+    naturalJobs: snapshot?.naturalJobs || null,
+    offscreenProjection: snapshot?.offscreenProjection || null,
+    mechanicalCondition: snapshot?.mechanicalCondition || null,
+    reentryIdempotence: snapshot?.reentryIdempotence || null,
+    exactAgreement: snapshot?.exactAgreement || null,
+    routing: snapshot?.routing || null,
+    matchedBaseline: snapshot?.matchedBaseline || null,
     structuralCostDigest,
     pass: failures.length === 0,
     failures,
@@ -630,6 +669,201 @@ function validateStructuralCost(value, failures) {
   exact(failures, 'structuralCost.worldSite.plannedEntities', value.worldSite?.plannedEntities, 15);
   exact(failures, 'structuralCost.residencyTier', value.residencyTier, 'FULL');
   exact(failures, 'structuralCost.presentationAdmission', value.presentationAdmission, 'headless');
+}
+
+/**
+ * Gates for the PQ-020 continuation proofs. Each row fails CLOSED: a missing report is a failure,
+ * not a silent skip. Routing is the deliberate exception — the generic router's verdict is RECORDED
+ * rather than gated, because "does Helios↔Tethys traverse Ceres" is a fact to report honestly, not a
+ * condition PQ-020 is entitled to force.
+ */
+function validateContinuationProofs(snapshot, failures) {
+  // ── natural jobs: live, held-out seeds, zero injection ──
+  const jobs = snapshot?.naturalJobs;
+  if (jobs?.schema !== 'spaceface.pq020-ceres-natural-jobs.v1') {
+    failures.push('naturalJobs:schema');
+  } else {
+    exact(failures, 'naturalJobs.seedCount', jobs.seedCount, PQ020_HELD_OUT_SEEDS.length);
+    if (stableStringify(jobs.heldOutSeeds) !== stableStringify([...PQ020_HELD_OUT_SEEDS])) {
+      failures.push(`naturalJobs.heldOutSeeds:${stableStringify(jobs.heldOutSeeds)}`);
+    }
+    exact(failures, 'naturalJobs.seedsWithIndustrialJob', jobs.seedsWithIndustrialJob, jobs.seedCount);
+    for (const row of jobs.perSeed || []) {
+      // Some natural job must exist on EVERY held-out seed — the producer, not a fixture, made it.
+      const jobCount = Object.values(row.withMetadata?.jobKinds || {})
+        .reduce((sum, count) => sum + count, 0);
+      if (!(jobCount > 0)) failures.push(`naturalJobs:${row.seed}:no-natural-job`);
+      // THE REAL A/B GATE: what the producer was actually handed on `sector:enter`. The weight
+      // deltas are NOT gated — the harness re-derives both arms' weights from the same records, so
+      // gating them would only assert that a pure function is pure. This gates an observation.
+      exact(
+        failures,
+        `naturalJobs:${row.seed}:observedIndustriesMining`,
+        row.withMetadata?.observedIndustriesMining,
+        true,
+      );
+      exact(
+        failures,
+        `naturalJobs:${row.seed}:observedIndustriesRefinery`,
+        row.withMetadata?.observedIndustriesRefinery,
+        true,
+      );
+      exact(
+        failures,
+        `naturalJobs:${row.seed}:counterfactualIndustriesMining`,
+        row.withoutMetadata?.observedIndustriesMining,
+        false,
+      );
+      exact(
+        failures,
+        `naturalJobs:${row.seed}:counterfactualIndustriesRefinery`,
+        row.withoutMetadata?.observedIndustriesRefinery,
+        false,
+      );
+    }
+    if ((jobs.aggregateJobKinds?.miner || 0) <= 0) failures.push('naturalJobs:no-natural-miner');
+    if ((jobs.aggregateJobKinds?.hauler || 0) <= 0) failures.push('naturalJobs:no-natural-hauler');
+    if (jobs.advancementClaim?.claimed !== false) failures.push('naturalJobs:advancement-overclaim');
+  }
+
+  // ── offscreen projection determinism, reported separately from live traffic ──
+  const offscreen = snapshot?.offscreenProjection;
+  if (offscreen?.schema !== 'spaceface.pq020-ceres-offscreen-projection.v1') {
+    failures.push('offscreenProjection:schema');
+  } else {
+    if (offscreen.allStable !== true) failures.push('offscreenProjection:not-deterministic');
+    if (offscreen.allChangedByIndustries !== true) failures.push('offscreenProjection:metadata-inert');
+    for (const row of offscreen.perSeed || []) {
+      if (row.digest !== row.repeatDigest) failures.push(`offscreenProjection:${row.seed}:unstable`);
+    }
+  }
+
+  // ── one bounded mechanical condition through an existing owner ──
+  const condition = snapshot?.mechanicalCondition;
+  if (condition?.schema !== 'spaceface.pq020-ceres-mechanical-condition.v1') {
+    failures.push('mechanicalCondition:schema');
+  } else if (condition.bound !== true) {
+    failures.push(`mechanicalCondition:unbound:${condition.blocker || 'unknown'}`);
+  } else {
+    if (condition.authoredNewCondition !== false) failures.push('mechanicalCondition:new-system');
+    if (condition.movedExistingContent !== false) failures.push('mechanicalCondition:moved-content');
+    if (condition.geometry?.centerInsideProductionPocket !== true) {
+      failures.push('mechanicalCondition:not-in-pocket');
+    }
+    if (condition.geometry?.bounded !== true) failures.push('mechanicalCondition:unbounded');
+    if (condition.changesObservablePlayerDecision !== true) {
+      failures.push('mechanicalCondition:no-observable-change');
+    }
+    if (!(condition.counterplay?.length > 0)) failures.push('mechanicalCondition:no-counterplay');
+    if (condition.accessibility?.nonColorSemantics !== true) {
+      failures.push('mechanicalCondition:color-only-semantics');
+    }
+    if (condition.routeExposure?.density?.pocketIsDenser !== true) {
+      failures.push('mechanicalCondition:pocket-not-denser');
+    }
+    const enters = (condition.observedEvents || []).filter(
+      (row) => row.event === 'hazard:enter' && row.zoneType === condition.conditionType,
+    ).length;
+    const exits = (condition.observedEvents || []).filter(
+      (row) => row.event === 'hazard:exit' && row.zoneType === condition.conditionType,
+    ).length;
+    if (enters !== 1 || exits !== 1) {
+      failures.push(`mechanicalCondition:events:${enters}enter/${exits}exit`);
+    }
+  }
+
+  // ── save / materialization / re-entry idempotence ──
+  const idempotence = snapshot?.reentryIdempotence;
+  if (idempotence?.schema !== 'spaceface.pq020-ceres-idempotence.v1') {
+    failures.push('reentryIdempotence:schema');
+  } else {
+    if (idempotence.saveAvailable !== true) failures.push('reentryIdempotence:save-unavailable');
+    if (idempotence.continueAccepted !== true) failures.push('reentryIdempotence:continue-rejected');
+    if (idempotence.secondContinueAccepted !== true) {
+      failures.push('reentryIdempotence:second-continue-rejected');
+    }
+    if (idempotence.staticContentMaterializesExactlyOnce !== true) {
+      failures.push('reentryIdempotence:duplicate-static-content');
+    }
+    if (idempotence.topologyStableAcrossReentryAndContinue !== true) {
+      failures.push('reentryIdempotence:topology-drift');
+    }
+    // The projection row must keep saying it is invariance-by-construction, not a survived-save claim.
+    if (idempotence.offscreenProjectionPersistence?.claimed !== false) {
+      failures.push('reentryIdempotence:projection-persistence-overclaim');
+    }
+    exact(failures, 'reentryIdempotence.beaconEntities', idempotence.afterContinue?.beaconEntities, 1);
+  }
+
+  // ── exact agreement across every coordinate consumer, both frames ──
+  const agreement = snapshot?.exactAgreement;
+  if (agreement?.schema !== 'spaceface.pq020-ceres-exact-agreement.v1') {
+    failures.push('exactAgreement:schema');
+  } else {
+    if (agreement.allAgree !== true) failures.push('exactAgreement:disagreement');
+    const expectedRows = ['beacon', 'pocket:civic', 'pocket:production', 'pocket:transit', 'cathedral'];
+    const actualRows = (agreement.rows || []).map((row) => row.id).sort();
+    if (stableStringify(actualRows) !== stableStringify([...expectedRows].sort())) {
+      failures.push(`exactAgreement:rows:${stableStringify(actualRows)}`);
+    }
+    for (const row of agreement.rows || []) {
+      if (row.missing?.length) failures.push(`exactAgreement:${row.id}:missing:${row.missing.join(',')}`);
+      if (row.mismatches?.length) failures.push(`exactAgreement:${row.id}:${row.mismatches.join(',')}`);
+    }
+  }
+
+  // ── routing honesty: the itinerary is gated, the generic verdict is only RECORDED ──
+  const routing = snapshot?.routing;
+  if (routing?.schema !== 'spaceface.pq020-ceres-routing.v1') {
+    failures.push('routing:schema');
+  } else {
+    if (!(routing.generic?.heliosToTethys?.length > 0)) failures.push('routing:no-generic-route');
+    if (typeof routing.generic?.traversesCeres !== 'boolean') failures.push('routing:verdict-missing');
+    if (routing.throughCeresItinerary?.allWaypointsMatchAuthored !== true) {
+      failures.push('routing:itinerary-drift');
+    }
+    if (!(routing.throughCeresItinerary?.legs?.length === 3)) failures.push('routing:itinerary-legs');
+    if (!(routing.throughCeresItinerary?.totalDistanceWu > 0)) failures.push('routing:itinerary-distance');
+    exact(
+      failures,
+      'routing.itinerary.siteId',
+      routing.throughCeresItinerary?.siteId,
+      PQ020_CATHEDRAL_SITE_ID,
+    );
+  }
+
+  // ── matched baseline: headless rows populated, every headed row null and marked ──
+  const baseline = snapshot?.matchedBaseline;
+  if (baseline?.schema !== 'spaceface.pq020-ceres-matched-baseline.v1') {
+    failures.push('matchedBaseline:schema');
+  } else {
+    if (!baseline.digest) failures.push('matchedBaseline:digest-missing');
+    if (!baseline.headless?.mapLayout?.digest) failures.push('matchedBaseline:map-layout-missing');
+    if (!(baseline.headless?.structural?.entities > 0)) failures.push('matchedBaseline:structural-empty');
+    if (!(baseline.headless?.naturalJobCensus?.perSeed?.length === PQ020_HELD_OUT_SEEDS.length)) {
+      failures.push('matchedBaseline:census-missing');
+    }
+    const expectedGroups = Object.keys(PQ020_MATCHED_BASELINE_HEADED_GROUPS).sort();
+    const actualGroups = Object.keys(baseline.requiresHeaded || {}).sort();
+    if (stableStringify(actualGroups) !== stableStringify(expectedGroups)) {
+      failures.push(`matchedBaseline:headed-groups:${stableStringify(actualGroups)}`);
+    }
+    for (const [groupId, fields] of Object.entries(PQ020_MATCHED_BASELINE_HEADED_GROUPS)) {
+      const group = baseline.requiresHeaded?.[groupId];
+      if (group?.requiresHeaded !== true) {
+        failures.push(`matchedBaseline:${groupId}:marker`);
+        continue;
+      }
+      for (const field of fields) {
+        if (!Object.hasOwn(group.fields || {}, field)) {
+          failures.push(`matchedBaseline:${groupId}.${field}:missing`);
+        } else if (group.fields[field] !== null) {
+          // A non-null headed row would be fabricated evidence: PQ-034 holds those leases.
+          failures.push(`matchedBaseline:${groupId}.${field}:fabricated`);
+        }
+      }
+    }
+  }
 }
 
 function headedEvidenceStubs() {
