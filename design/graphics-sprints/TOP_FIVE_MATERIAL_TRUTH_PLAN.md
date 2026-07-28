@@ -43,23 +43,25 @@ under `assets/ships/kestrel_borrowed_time_v4/`.
 
 ## 2. Ashline V2 Dart — interceptor construction pilot
 
-**State:** unwired surfaced candidate.
+**State:** unwired material-truth candidate in active offline review.
 **Earliest failed gate:** G2 construction.
-**Current source/candidate:** `12EA70C8…B987` / `C2D64A84…C720`.
+**Current source/candidate:** regenerated from the deterministic builder; exact hashes live in
+`evidence/family/finalize_report.json`.
 
 ### Fiction-development agreement
 
 - welded low-alloy interceptor armor with austere Crimson Reach identification paint;
 - phosphated machinery and nickel-superalloy drive hardware;
-- refractory ceramic throats and nitrided gun components;
+- refractory ceramic throats and a nitrided fixed pulse-projector support;
 - a stripped, repeatedly serviced craft whose speed comes from removed mass, not toy simplification.
 
 ### Required rebuild
 
-Replace the two perfect engine cylinders, disk-like cores, 5.8 m rectangular threat rails, and
-simple gun cylinder with recessed nozzle bells, clamp flanges, cooling/feed interfaces, recoil
-housing, rooted brackets, and formed identification fairings. Preserve the donor silhouette and
-exact sockets.
+Replace the two perfect engine cylinders, disk-like cores, rectangular threat rails, and simple gun
+cylinder with faceted pressure cases, hollow refractory nozzle bells, segmented clamps,
+cooling/feed interfaces, rooted load saddles, folded feed-spine covers, and a compact fixed
+pulse-projector with no recoil, magazine, ammunition feed, or accelerator fiction. Preserve the
+donor silhouette and exact sockets.
 
 Use Dart to prove the shared Ashline drive, weapon-root, plate-joint, edge-family, and mesh-aware
 surface language before applying it to the other two ships.

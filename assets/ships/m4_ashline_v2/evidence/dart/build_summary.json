@@ -1,15 +1,15 @@
 {
   "gateOk": true,
   "gateErrors": [],
-  "totalTriangles": 26755,
-  "hullTriangles": 25503,
+  "totalTriangles": 29543,
+  "hullTriangles": 25587,
   "lodTriangles": {
-    "lod0": 15636,
-    "lod1": 8154,
+    "lod0": 18040,
+    "lod1": 8538,
     "lod2": 2965
   },
   "drawEstimates": {
-    "lod0": 8,
+    "lod0": 9,
     "lod1": 5,
     "lod2": 1
   },
@@ -25,13 +25,15 @@
     "SOCKET_Weapon_Front"
   ],
   "materials": [
-    "Material_Mechanical",
     "Material_Cyan",
+    "Material_HeatMetal",
     "Material_Hull",
-    "Material_Red_Paint"
+    "Material_Mechanical",
+    "Material_Red_Paint",
+    "Material_Refractory"
   ],
-  "tangentPrimitiveCount": 14,
-  "uvPrimitiveCount": 14,
+  "tangentPrimitiveCount": 15,
+  "uvPrimitiveCount": 15,
   "lod0AabbSize": [
     17.472002029418945,
     2.9443142414093018,
@@ -54,13 +56,82 @@
       5.461220741271973
     ]
   },
-  "sourceSha256": "12EA70C8C9E7295D65DCE57AFF3AED64CD7FB62C780FFF61C183C67AD293B987",
+  "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01",
   "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\source\\wholeships\\ashline_v2_dart.glb",
   "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\blender\\ashline_v2_dart_production.blend",
-  "sourceBytes": 7034616,
+  "materialTruth": {
+    "revision": "dart-material-truth-2026-07-28-v1",
+    "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01",
+    "driveProfileId": "drive_reaction_s",
+    "weaponId": "wpn_pulse_laser_s",
+    "weaponKind": "pulse_projector",
+    "components": [
+      "fixed-pulse-projector-s",
+      "folded-feed-spines",
+      "vector-reaction-drive-s-twin"
+    ],
+    "fictionalMaterials": {
+      "Material_Hull": "oxidized-or-coated-structural-steel",
+      "Material_Mechanical": "nitrided-structural-steel",
+      "Material_Red_Paint": "non-metallic-oxide-red-coating",
+      "Material_HeatMetal": "nickel-superalloy-and-heat-darkened-stainless",
+      "Material_Refractory": "alumina-zirconia-ceramic",
+      "Material_Cyan": "recessed-internal-energy-cue"
+    },
+    "acceptedComponentRoles": [
+      "cold-pressure-case",
+      "cooling-jacket",
+      "coolant-service",
+      "feed-spine-cover",
+      "feed-spine-mount",
+      "feed-spine-pipe",
+      "fixed-pulse-projector",
+      "hot-section",
+      "load-clevis-and-saddle",
+      "optical-collimator",
+      "power-service",
+      "refractory-nozzle-throat",
+      "segmented-clamp",
+      "thermal-shield"
+    ],
+    "forbiddenWeaponRoles": [
+      "ammo",
+      "autocannon",
+      "coilgun",
+      "magazine",
+      "projectile-accelerator",
+      "recoil"
+    ],
+    "driveCentersRuntime": [
+      {
+        "x": -7.25,
+        "y": 0,
+        "z": -2.15
+      },
+      {
+        "x": -7.25,
+        "y": 0,
+        "z": 2.15
+      }
+    ],
+    "serviceTypes": [
+      "coolant",
+      "power"
+    ],
+    "lodPolicy": {
+      "lod0": "full-component-construction",
+      "lod1": "load-path-and-material-boundaries",
+      "lod2": "donor-macro-hull-only"
+    },
+    "references": [
+      "assets/ships/m4_ashline_v2/reference/material_truth_v2/dart_twin_drive_component_reference.png",
+      "assets/ships/m4_ashline_v2/reference/material_truth_v2/dart_forward_pulse_projector_reference.png"
+    ]
+  },
+  "sourceBytes": 10167052,
   "evidenceEpoch": {
     "status": "post-finalize-current",
-    "epochDigest": "FF53F841FE8B4A2383E152532318B726546CC421700201490A9C3B858C15E0C3",
+    "epochDigest": "D5B5799FF20C2804EDAE0A4DEA251033BF8467A5DE19023EF6A7DABC7F13419B",
     "visualEvidence": "requires-current-versioned-render"
   }
 }

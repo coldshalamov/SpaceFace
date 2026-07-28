@@ -23,7 +23,10 @@ import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import JPEG from 'jpeg-js';
 import { PNG } from 'pngjs';
 import { makeAshlineSurfaceMaps } from './lib/ashlineSurfaceMaps.mjs';
-import { buildAshlineEvidenceEpoch } from './lib/ashlineEvidenceEpoch.mjs';
+import {
+  buildAshlineEvidenceEpoch,
+  validateAshlineEvidenceEpoch,
+} from './lib/ashlineEvidenceEpoch.mjs';
 import { publishFileSetTransaction } from './lib/multiFileTransaction.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -57,6 +60,7 @@ const EVIDENCE_TOOL_PATHS = Object.freeze([
   'tools/art/lib/ashlineSurfaceMaps.mjs',
   'tools/art/lib/ashlineEvidenceEpoch.mjs',
   'tools/art/finalize_m4_ashline_v2_candidate.mjs',
+  'tools/blender/render_m4_ashline_material_truth.py',
 ]);
 
 const LEGACY_RENDER_NAMES = Object.freeze([
@@ -604,6 +608,9 @@ function receiptUpdates(results, evidenceEpoch) {
       const summary = readJson(summaryPath);
       summary.sourceSha256 = row.sourceSha256;
       summary.sourceBytes = row.sourceBytes;
+      if (summary.materialTruth) {
+        summary.materialTruth.sourceSha256 = row.sourceSha256;
+      }
       summary.evidenceEpoch = {
         status: 'post-finalize-current',
         epochDigest: evidenceEpoch.epochDigest,
@@ -671,14 +678,32 @@ async function publishEvidenceReceiptSet(finalizeReport, results, evidenceEpoch)
 }
 
 async function currentEvidenceEpoch() {
-  return buildAshlineEvidenceEpoch({
+  const artifactReceiptPath = resolve(
+    FAMILY,
+    'evidence/material_truth_v2/eligible_artifacts.json',
+  );
+  let eligibleArtifacts = [];
+  if (existsSync(artifactReceiptPath)) {
+    const artifactReceipt = readJson(artifactReceiptPath);
+    if (artifactReceipt.schema !== 'spaceface.ashlineMaterialTruthArtifacts.v1'
+        || !Array.isArray(artifactReceipt.artifacts)) {
+      throw new Error('invalid Ashline material-truth artifact receipt');
+    }
+    eligibleArtifacts = artifactReceipt.artifacts;
+  }
+  const epoch = await buildAshlineEvidenceEpoch({
     root: ROOT,
     family: FAMILY,
     ships: Object.entries(SHIPS).map(([key, value]) => ({ key, id: value.id })),
     toolPaths: EVIDENCE_TOOL_PATHS,
-    eligibleArtifacts: [],
+    eligibleArtifacts,
     legacyArtifacts: LEGACY_ARTIFACTS,
   });
+  const validation = await validateAshlineEvidenceEpoch(epoch, { root: ROOT });
+  if (!validation.pass) {
+    throw new Error(`Ashline evidence epoch rejected: ${validation.failures.join('; ')}`);
+  }
+  return epoch;
 }
 
 const evidencePath = resolve(FAMILY, 'evidence/family/finalize_report.json');

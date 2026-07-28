@@ -13,7 +13,7 @@ const RECEIPT_PATH = resolve(
   ROOT,
   'assets/ships/m4_ashline_v2/evidence/family/finalize_report.json',
 );
-const EXPECTED_EPOCH_DIGEST = 'FF53F841FE8B4A2383E152532318B726546CC421700201490A9C3B858C15E0C3';
+const EXPECTED_EPOCH_DIGEST = 'D5B5799FF20C2804EDAE0A4DEA251033BF8467A5DE19023EF6A7DABC7F13419B';
 
 function receipt() {
   const report = JSON.parse(readFileSync(RECEIPT_PATH, 'utf8'));
@@ -34,14 +34,34 @@ test('Ashline V2 receipt binds one exact source/candidate/tool epoch', async () 
   assert.ok(value.tools.some((row) => row.path.endsWith('build_m4_ashline_v2.py')));
   assert.ok(value.tools.some((row) => row.path.endsWith('ashlineSurfaceMaps.mjs')));
   assert.ok(value.tools.some((row) => row.path.endsWith('finalize_m4_ashline_v2_candidate.mjs')));
+  assert.ok(value.tools.some(
+    (row) => row.path.endsWith('render_m4_ashline_material_truth.py'),
+  ));
 });
 
 test('historical Ashline renders remain preserved but cannot impersonate current evidence', async () => {
   const value = receipt();
-  assert.equal(value.eligibleArtifacts.length, 0);
+  assert.equal(value.eligibleArtifacts.length, 8);
+  assert.deepEqual(value.currentAcceptance.perShip, {
+    dart: true,
+    lode: false,
+    rig: false,
+  });
   assert.equal(value.currentAcceptance.visualEvidenceEligible, false);
   assert.equal(value.currentAcceptance.historicalArtifactsEligible, false);
   assert.equal(value.currentAcceptance.requiresCurrentRender, true);
+  for (const artifact of value.eligibleArtifacts) {
+    assert.equal(artifact.eligible, true);
+    assert.ok(artifact.path.includes('/evidence/material_truth_v2/dart/'));
+    assert.deepEqual(
+      artifact.inputBindings.map((binding) => binding.shipKey),
+      ['dart'],
+    );
+    assert.equal(
+      artifact.producer.path,
+      'tools/blender/render_m4_ashline_material_truth.py',
+    );
+  }
   assert.ok(value.legacyArtifacts.length >= 35);
   assert.ok(value.legacyArtifacts.some(
     (row) => row.path.endsWith('evidence/family/runtime_lineup.png'),

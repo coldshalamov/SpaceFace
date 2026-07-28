@@ -106,6 +106,15 @@ export async function buildAshlineEvidenceEpoch({
     }));
   }
   legacy.sort((left, right) => left.path.localeCompare(right.path));
+  const acceptedShipKeys = new Set(accepted.flatMap(
+    (artifact) => (artifact.inputBindings || []).map((binding) => binding.shipKey),
+  ));
+  const perShip = Object.fromEntries(sourceCandidatePairs.map((pair) => [
+    pair.key,
+    acceptedShipKeys.has(pair.key),
+  ]));
+  const familyVisualEvidenceEligible = sourceCandidatePairs.length > 0
+    && sourceCandidatePairs.every((pair) => perShip[pair.key] === true);
 
   const core = {
     schema: ASHLINE_EVIDENCE_EPOCH_SCHEMA,
@@ -115,9 +124,10 @@ export async function buildAshlineEvidenceEpoch({
     eligibleArtifacts: accepted,
     legacyArtifacts: legacy,
     currentAcceptance: {
-      visualEvidenceEligible: accepted.length > 0,
+      perShip,
+      visualEvidenceEligible: familyVisualEvidenceEligible,
       historicalArtifactsEligible: false,
-      requiresCurrentRender: accepted.length === 0,
+      requiresCurrentRender: !familyVisualEvidenceEligible,
     },
   };
   return {
@@ -202,14 +212,24 @@ export async function validateAshlineEvidenceEpoch(receipt, { root }) {
     }
   }
 
-  const eligibleCount = (receipt.eligibleArtifacts || []).length;
-  if (receipt.currentAcceptance?.visualEvidenceEligible !== (eligibleCount > 0)) {
+  const acceptedShipKeys = new Set((receipt.eligibleArtifacts || []).flatMap(
+    (artifact) => (artifact.inputBindings || []).map((binding) => binding.shipKey),
+  ));
+  const expectedPerShip = Object.fromEntries(
+    [...pairByKey.keys()].sort().map((key) => [key, acceptedShipKeys.has(key)]),
+  );
+  const familyVisualEvidenceEligible = pairByKey.size > 0
+    && [...pairByKey.keys()].every((key) => expectedPerShip[key] === true);
+  if (stableStringify(receipt.currentAcceptance?.perShip || {}) !== stableStringify(expectedPerShip)) {
+    failures.push('currentAcceptance:perShip');
+  }
+  if (receipt.currentAcceptance?.visualEvidenceEligible !== familyVisualEvidenceEligible) {
     failures.push('currentAcceptance:visualEvidenceEligible');
   }
   if (receipt.currentAcceptance?.historicalArtifactsEligible !== false) {
     failures.push('currentAcceptance:historicalArtifactsEligible');
   }
-  if (receipt.currentAcceptance?.requiresCurrentRender !== (eligibleCount === 0)) {
+  if (receipt.currentAcceptance?.requiresCurrentRender !== !familyVisualEvidenceEligible) {
     failures.push('currentAcceptance:requiresCurrentRender');
   }
 

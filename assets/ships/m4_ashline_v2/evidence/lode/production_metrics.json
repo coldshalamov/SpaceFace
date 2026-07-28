@@ -297,7 +297,7 @@
   "builtAt": "2026-07-12T22:19:29Z",
   "evidenceEpoch": {
     "status": "post-finalize-current",
-    "epochDigest": "FF53F841FE8B4A2383E152532318B726546CC421700201490A9C3B858C15E0C3",
+    "epochDigest": "D5B5799FF20C2804EDAE0A4DEA251033BF8467A5DE19023EF6A7DABC7F13419B",
     "renderEligibility": "legacy-pre-surface-unbound"
   }
 }

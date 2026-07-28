@@ -15,26 +15,27 @@
       "assetId": "SF_WHOLESHIP_ASHLINE_V2_DART",
       "source": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_dart.glb",
       "candidate": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_dart.glb",
-      "sourceBytes": 7034616,
-      "candidateBytes": 5390784,
-      "sourceSha256": "12EA70C8C9E7295D65DCE57AFF3AED64CD7FB62C780FFF61C183C67AD293B987",
-      "candidateSha256": "C2D64A84D3B3575D2D4001EB82FDDEDDC31ED94158D72CAD3706125C4E8DC720",
-      "sourceTextureCount": 16,
-      "releaseTextureCount": 16,
-      "releaseImageCount": 12,
-      "ktx2ImageCount": 12,
-      "meshoptBufferViewCount": 47,
+      "sourceBytes": 10167052,
+      "candidateBytes": 7824880,
+      "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01",
+      "candidateSha256": "6B8ABE9009C2846AF1FB34B74C370F33E0369B11F10A7E190FA8D7E035CA5478",
+      "sourceTextureCount": 24,
+      "releaseTextureCount": 24,
+      "releaseImageCount": 18,
+      "ktx2ImageCount": 18,
+      "meshoptBufferViewCount": 55,
       "extensionsUsed": [
         "EXT_meshopt_compression",
-        "KHR_materials_emissive_strength",
         "KHR_mesh_quantization",
         "KHR_texture_basisu"
       ],
       "materials": [
-        "Material_Mechanical",
         "Material_Cyan",
+        "Material_HeatMetal",
         "Material_Hull",
-        "Material_Red_Paint"
+        "Material_Mechanical",
+        "Material_Red_Paint",
+        "Material_Refractory"
       ],
       "meshopt": "EXT_meshopt_compression",
       "ktx2": "KHR_texture_basisu/KTX2"
@@ -109,11 +110,11 @@
         "key": "dart",
         "id": "ashline_v2_dart",
         "source": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_dart.glb",
-        "sourceSha256": "12EA70C8C9E7295D65DCE57AFF3AED64CD7FB62C780FFF61C183C67AD293B987",
-        "sourceBytes": 7034616,
+        "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01",
+        "sourceBytes": 10167052,
         "candidate": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_dart.glb",
-        "candidateSha256": "C2D64A84D3B3575D2D4001EB82FDDEDDC31ED94158D72CAD3706125C4E8DC720",
-        "candidateBytes": 5390784
+        "candidateSha256": "6B8ABE9009C2846AF1FB34B74C370F33E0369B11F10A7E190FA8D7E035CA5478",
+        "candidateBytes": 7824880
       },
       {
         "key": "lode",
@@ -139,22 +140,179 @@
     "tools": [
       {
         "path": "tools/art/finalize_m4_ashline_v2_candidate.mjs",
-        "sha256": "44A5764AA3A91B28F0B16DE2C51E467A8C2C745C7613A714B3D8704BDCFF23D9"
+        "sha256": "AAE62E73D094869AD4C43E50EC5F186FB8539251E33B05D1492BFECDF190F266"
       },
       {
         "path": "tools/art/lib/ashlineEvidenceEpoch.mjs",
-        "sha256": "879B8F0D70C67E2B2CFC468287501AD0ED2BB1B7AEFD3D2A1336D0090357B403"
+        "sha256": "CE2EC26646A98D5095737C9C4B47B6DF1D8053C11A29BC6E4CFC51B10FA2A1EC"
       },
       {
         "path": "tools/art/lib/ashlineSurfaceMaps.mjs",
-        "sha256": "61E67FAE692D6865513C00243B65E0E24F1A70C3A995CFE7F33A19BFF34A15F9"
+        "sha256": "01A234D9E7BACE32E6F3250DF2613632307CB33C9B1D0AB7E7C97729C1CAE0D3"
       },
       {
         "path": "tools/blender/build_m4_ashline_v2.py",
-        "sha256": "CF6D79D6354C4F6E67DA922288AEFDB8A1DE2DCF0A7F749C17B5E9502985C808"
+        "sha256": "7DF467EEC101C1DFAB112B9872315706FA5F4C5E57D15F27C245F95D94A392B3"
+      },
+      {
+        "path": "tools/blender/render_m4_ashline_material_truth.py",
+        "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
       }
     ],
-    "eligibleArtifacts": [],
+    "eligibleArtifacts": [
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/drive_close.png",
+        "sha256": "0AD8C45160DF90FB206D56BA2D4D349079426297A4A9DCDB9F75DA78D8A7FE69",
+        "bytes": 1112618,
+        "width": 1280,
+        "height": 720,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "dart",
+            "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_material_truth.py",
+          "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/game_120px.png",
+        "sha256": "8D742819735D06968B742E49CC1BC1F62FFC63CD86926124D3F595253ADE0F88",
+        "bytes": 18125,
+        "width": 120,
+        "height": 120,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "dart",
+            "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_material_truth.py",
+          "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/game_45px.png",
+        "sha256": "9B77B5D3F721874CFBEA02649104FBE14B67F9A6EC5883AF1C0E67C5C86C7FD9",
+        "bytes": 3293,
+        "width": 45,
+        "height": 45,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "dart",
+            "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_material_truth.py",
+          "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/neutral_front34.png",
+        "sha256": "334F0E9FC70DE45B2841DA486A154AFC207FC23708CD6560E4C667D14807A5F8",
+        "bytes": 991759,
+        "width": 1280,
+        "height": 720,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "dart",
+            "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_material_truth.py",
+          "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/neutral_rear34.png",
+        "sha256": "330B863BF8752C1D6D38A74AC60965CE9C14B2EFBA6106B220E800BF755753A8",
+        "bytes": 993965,
+        "width": 1280,
+        "height": 720,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "dart",
+            "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_material_truth.py",
+          "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/projector_close.png",
+        "sha256": "BFBF58B7AA2DA03F6B7E15F946B5DAA98BEE5AB2A90FD99CB5E41F1370020065",
+        "bytes": 1039821,
+        "width": 1280,
+        "height": 720,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "dart",
+            "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_material_truth.py",
+          "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/projector_grazing.png",
+        "sha256": "7E21B345D9C70DCC60B459FD29FC7E30843759322D0C3DD82F94FEE8A1CE536F",
+        "bytes": 1049140,
+        "width": 1280,
+        "height": 720,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "dart",
+            "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_material_truth.py",
+          "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/top_ortho.png",
+        "sha256": "EA7F341FBCE33DBBBF3FF578E7A50A4EBF285C2AAF5EA18A9BFC48943873CF16",
+        "bytes": 953551,
+        "width": 1280,
+        "height": 720,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "dart",
+            "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_material_truth.py",
+          "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+        },
+        "reason": null
+      }
+    ],
     "legacyArtifacts": [
       {
         "path": "assets/ships/m4_ashline_v2/evidence/dart/renders/forward_34.png",
@@ -543,10 +701,15 @@
       }
     ],
     "currentAcceptance": {
+      "perShip": {
+        "dart": true,
+        "lode": false,
+        "rig": false
+      },
       "visualEvidenceEligible": false,
       "historicalArtifactsEligible": false,
       "requiresCurrentRender": true
     },
-    "epochDigest": "FF53F841FE8B4A2383E152532318B726546CC421700201490A9C3B858C15E0C3"
+    "epochDigest": "D5B5799FF20C2804EDAE0A4DEA251033BF8467A5DE19023EF6A7DABC7F13419B"
   }
 }

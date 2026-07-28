@@ -99,6 +99,38 @@ manufacturing rationale, interface, and transformation into final form. An unexp
 “chiclet,” decorative hoop, or uniformly beveled slab remains blockout construction even when it has
 textures, scratches, or a plausible object name.
 
+### Blender anti-toy implementation controls
+
+For an activated material-truth repair, begin with a manufactured section and assembly sequence—not a
+software primitive. Name the rolled or faceted case, folded hat section, plate shell, hollow bell,
+gusset, saddle, clevis, flange, service line, aperture, access cover, or pressure vessel that the
+primitive is being transformed into. Then model its interfaces, wall thickness, negative space, load
+or service path, and transition into the neighboring structure.
+
+Use a deliberate size hierarchy:
+
+- macro forms preserve the existing asset identity and role;
+- meso forms explain construction, attachment, access, cooling, and replacement;
+- micro forms explain fasteners, seams, clamps, ribs, shutters, and service lines.
+
+Do not make every detail a metre-scale block. More objects or triangles do not repair a missing scale
+hierarchy.
+
+Preserve manufactured edge behavior. Do not apply unconditional smooth shading to folded sheet,
+machined facets, segmented clamps, plate edges, or ceramic throats. Record a smooth-by-angle or
+equivalent hard-edge policy, inspect it under hard grazing light, and validate the mesh before glTF
+export. Over-smoothed normals can make correct geometry read as soap, rubber, or molded plastic.
+
+Recess emissive surfaces inside a fixture, slit, aperture, instrument, or throat. The component must
+still explain its function with emissive disabled; a bright disk or glowing torus is not a substitute
+for a reactor, sensor, or thruster assembly.
+
+Render review evidence from the exact finalized uncompressed source GLB, not only the mutable Blender
+scene. Bind each image to the source hash and registered renderer hash; reject historical,
+unversioned, or mixed-source evidence. A pass fails while any prominent component is still best
+described as a tube, box, torus, glowing disk, or smooth lump rather than by a fabricated part and its
+interfaces.
+
 ### Component-first generated-reference loop
 
 When DCC blockout vocabulary is constraining design, one useful repair method is to isolate the exact deficient component from an

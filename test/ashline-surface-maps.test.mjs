@@ -53,3 +53,40 @@ test('each Ashline ship receives a distinct deterministic service history', () =
   assert.notEqual(sha256(lode.baseColor), sha256(rig.baseColor), 'Lode and Rig may not share one wear mask');
   assert.notEqual(sha256(dartA.normal), sha256(rig.normal), 'ship-specific repairs must also affect surface normals');
 });
+
+test('Ashline material roles distinguish paint, hot metal, and refractory ceramic', async () => {
+  const make = (materialName) => makeAshlineSurfaceMaps({
+    shipKey: 'dart',
+    materialName,
+    size: 96,
+  });
+  const paint = make('Material_Red_Paint');
+  const heat = make('Material_HeatMetal');
+  const refractory = make('Material_Refractory');
+
+  assert.equal(paint.metadata.role, 'red');
+  assert.equal(heat.metadata.role, 'heatmetal');
+  assert.equal(refractory.metadata.role, 'refractory');
+
+  const paintOrm = await sharp(paint.orm).stats();
+  const heatOrm = await sharp(heat.orm).stats();
+  const refractoryOrm = await sharp(refractory.orm).stats();
+  const refractoryColor = await sharp(refractory.baseColor).stats();
+  assert.ok(paintOrm.channels[2].mean < 80, 'intact oxide paint must not read as metallic plastic');
+  assert.ok(heatOrm.channels[2].mean > 210, 'nickel hot-section metal must remain metallic');
+  assert.ok(refractoryOrm.channels[2].mean < 8, 'refractory ceramic must be non-metallic');
+  assert.ok(
+    refractoryOrm.channels[1].mean > heatOrm.channels[1].mean,
+    'dry ceramic must be rougher than heat metal',
+  );
+  assert.ok(
+    refractoryColor.channels[0].mean > 105
+      && refractoryColor.channels[1].mean > 100
+      && refractoryColor.channels[2].mean > 85,
+    'alumina-zirconia must read as pale dry ceramic rather than an orange glowing hoop',
+  );
+  assert.ok(
+    refractoryColor.channels[0].stdev > 9,
+    'ceramic soot, seams, and spalls must survive as material-scale variation',
+  );
+});

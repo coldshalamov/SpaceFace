@@ -36,13 +36,18 @@ focused workflow in `.grok/skills/spaceface-blender-material-truth/SKILL.md`.
 > construction/material sheet preserving its
 > footprint, role, orientation, and interfaces. Record prompt/tool/hash and selected/rejected traits;
 > rebuild the approved manufacturing logic in editable geometry and compare material plus clay views.
+> Start the Blender implementation from a manufactured section and assembly sequence—not from
+> “add cube/cylinder/torus.” Require macro/meso/micro size hierarchy, designed cavities and wall
+> thickness, rooted load/service paths, recorded hard-edge or smooth-by-angle policy, and restrained
+> emissives recessed inside real fixtures. Review with emissive disabled and in hard grazing light.
 > Never substitute whole-asset generated concept drift or a projected generated image for modeling,
 > and never derive authoritative normal/AO/ORM maps from generated pixels. An unexplained
 > Blender/donor/default response is a P1. Use methods only for named defects; preserve editable source; export through
 > the sanctioned path; compare matched neutral/adversarial/game views; profile cost-relevant changes;
 > keep/revise/revert from evidence. Primitive stacking, one bevel radius, floating panel bars,
 > unreviewed automatic UVs, flat normals, generic tile noise, fixed-ratio decimation, Blender-only
-> beauty renders, and green checks are not finished work. Continue while any applicable gate fails or
+> beauty renders, and green checks are not finished work. Evidence for a candidate remaster must come
+> from the exact finalized source GLB and bind the source plus renderer hashes. Continue while any applicable gate fails or
 > P0/P1 remains. Stop only at exact-hash `accepted` after required independent G7 review, or `blocked`
 > with the reproducible dependency and smallest unblock action.
 
