@@ -528,7 +528,23 @@ def stamp_and_validate_glb_contract(target: Path, contract: dict) -> None:
         raise RuntimeError(f"Missing GLB JSON chunk: {target}")
 
     asset_extras = gltf.setdefault("asset", {}).setdefault("extras", {})
-    asset_extras.update({"assetId": contract["assetId"], "partId": contract["partId"], "spacefaceAsset": contract})
+    asset_extras.update(
+        {
+            "assetId": contract["assetId"],
+            "partId": contract["partId"],
+            "category": contract["category"],
+            "priority": contract["priority"],
+            "triangleCount": contract["triangleCount"],
+            "textureSize": contract["textureSize"],
+            "forwardAxis": contract["forward"],
+            "upAxis": contract["up"],
+            "starboardAxis": contract["starboard"],
+            "unit": contract["unit"],
+            "boundsDimensionsM": contract["boundsDimensionsM"],
+            "sourceProvenance": contract["sourceProvenance"],
+            "spacefaceAsset": contract,
+        }
+    )
     scene = gltf["scenes"][gltf.get("scene", 0)]
     scene_extras = scene.setdefault("extras", {})
     scene_extras.pop("spacefaceAssetJson", None)
@@ -629,6 +645,7 @@ def main() -> None:
     lod_meshes={lod:sorted([obj for obj in bpy.data.objects if obj.type=="MESH" and obj.name.startswith(f"LOD{lod}_Debris_")],key=lambda item:item.name) for lod in range(3)}
     lod_stats={f"lod{lod}":{"triangles":sum(triangles(obj) for obj in meshes),"drawGroups":len(meshes),"objects":[obj.name for obj in meshes]} for lod,meshes in lod_meshes.items()}
     candidate_bounds=bounds(lod_meshes[0])
+    all_lod_bounds=bounds([obj for meshes in lod_meshes.values() for obj in meshes])
     size_drift=[abs(candidate_bounds["size"][axis]-SOURCE_BOUNDS["size"][axis])/SOURCE_BOUNDS["size"][axis] for axis in range(3)]
     pivot_drift=[abs(candidate_bounds["min"][axis]-SOURCE_BOUNDS["min"][axis]) for axis in range(3)]
     if any(value>0.08 for value in size_drift) or pivot_drift[0]>0.40:
@@ -637,19 +654,6 @@ def main() -> None:
     root["spaceface.family"]="opening_route_manufactured_wreckage_v1"
     root["spaceface.surfaceRevision"]="opening_debris_chunk_v4"
     root["spaceface.donorClass"]="Meridian pressure/utility module"
-    root["spacefaceAssetJson"]=json.dumps({
-        "contractVersion":1,"assetId":"place_debris_chunk","partId":"place_debris_chunk","liveId":"place_debris_chunk","slot":"place",
-        "forward":"+X","up":"+Y","starboard":"+Z","unit":"metre","normalConvention":"OpenGL","ormChannels":"R=AO,G=Roughness,B=Metallic",
-        "textureCompression":"PNG-source","textureSize":512,"family":"opening_route_manufactured_wreckage_v1",
-        "role":"salvageable_manufactured_wreck","donorClass":"Meridian pressure/utility module","deliverableRole":"production_source_checkpoint",
-        "lods":["lod0","lod1","lod2"],"lodTriangles":{key:value["triangles"] for key,value in lod_stats.items()},
-        "drawGroupsPerLod":{key:value["drawGroups"] for key,value in lod_stats.items()},"wiringStatus":"source_checkpoint_release_pending",
-    },separators=(",",":"))
-    bpy.context.scene["spacefaceAssetJson"]=root["spacefaceAssetJson"]
-
-    args.output_blend.parent.mkdir(parents=True,exist_ok=True)
-    bpy.ops.wm.save_as_mainfile(filepath=str(args.output_blend),check_existing=False)
-    export_glb(args.output_glb,root)
     asset_contract = {
         "contractVersion": 1,
         "assetId": "place_debris_chunk",
@@ -657,6 +661,7 @@ def main() -> None:
         "liveId": "place_debris_chunk",
         "slot": "place",
         "category": "places",
+        "priority": "P1",
         "forward": "+X",
         "up": "+Y",
         "starboard": "+Z",
@@ -665,6 +670,22 @@ def main() -> None:
         "ormChannels": "R=AO,G=Roughness,B=Metallic",
         "textureCompression": "PNG-source",
         "textureSize": 512,
+        "triangleCount": sum(value["triangles"] for value in lod_stats.values()),
+        # Blender exports +Z-up to glTF +Y-up: X is preserved, Blender Z becomes
+        # glTF Y, and Blender Y becomes glTF Z (sign changes do not affect size).
+        "boundsDimensionsM": [
+            all_lod_bounds["size"][0],
+            all_lod_bounds["size"][2],
+            all_lod_bounds["size"][1],
+        ],
+        "sourceProvenance": {
+            "textureRoleContractVersion": 1,
+            "textureRoleMode": "bound-base-normal-orm",
+            "sourceBlend": "assets/ships/parts/blender/place_debris_chunk_authored.blend",
+            "geometryPipeline": "tools/blender/remaster_opening_debris_chunk_v1.py",
+            "texturePipeline": "tools/art/build_opening_infrastructure_maps.py",
+            "packedEditableTextures": True,
+        },
         "sourceRole": "place-environment",
         "family": "opening_route_manufactured_wreckage_v1",
         "role": "salvageable_manufactured_wreck",
@@ -678,14 +699,21 @@ def main() -> None:
         "mountAtOrigin": True,
         "sourceRevision": "opening_debris_chunk_v4",
     }
+    root["spacefaceAssetJson"] = json.dumps(asset_contract, separators=(",", ":"))
+    bpy.context.scene["spacefaceAssetJson"] = root["spacefaceAssetJson"]
+
+    args.output_blend.parent.mkdir(parents=True,exist_ok=True)
+    bpy.ops.wm.save_as_mainfile(filepath=str(args.output_blend),check_existing=False)
+    export_glb(args.output_glb,root)
     stamp_and_validate_glb_contract(args.output_glb, asset_contract)
+    args.report.parent.mkdir(parents=True, exist_ok=True)
     family_path=family_update(args.report,maps_manifest)
     report={
         "schema":"spaceface.openingDebrisChunkRemaster.v1","status":"source-checkpoint-release-pending",
         "source":{"path":str(source_path),"sha256":sha256(source_path)},
         "surfaceManifest":{"path":str(maps_manifest),"sha256":sha256(maps_manifest)},
         "outputs":{"blend":{"path":str(args.output_blend),"sha256":sha256(args.output_blend)},"glb":{"path":str(args.output_glb),"sha256":sha256(args.output_glb)},"familyUpdate":{"path":str(family_path),"sha256":sha256(family_path)}},
-        "preservedContract":{"sourceBounds":SOURCE_BOUNDS,"candidateBounds":candidate_bounds,"relativeSizeDrift":size_drift,"minimumCornerDriftM":pivot_drift,"markers":preserved},
+        "preservedContract":{"sourceBounds":SOURCE_BOUNDS,"candidateBounds":candidate_bounds,"allLodBounds":all_lod_bounds,"relativeSizeDrift":size_drift,"minimumCornerDriftM":pivot_drift,"markers":preserved},
         "materials":[{"name":name,"textureRole":role} for name,role in ROLE_BY_MATERIAL.items()],"lod":lod_stats,
         "modifierOrUvFailures":failures,"tangents":tangents,
         "knownDefects":[
@@ -695,7 +723,6 @@ def main() -> None:
             "The candidate is intentionally inert and contains no active emissive material; gameplay markers must provide any interactive highlight.",
         ],
     }
-    args.report.parent.mkdir(parents=True,exist_ok=True)
     args.report.write_text(json.dumps(report,indent=2),encoding="utf-8")
     print(json.dumps({"ok":True,"blend":str(args.output_blend),"glb":str(args.output_glb),"report":str(args.report),"lod":lod_stats,"bounds":candidate_bounds}))
 

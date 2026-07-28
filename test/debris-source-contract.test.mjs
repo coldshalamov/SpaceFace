@@ -13,6 +13,7 @@ const SOURCE_GLB = path.join(
   'places',
   'place_debris_chunk.glb',
 );
+const PARTS_MANIFEST = path.join(ROOT, 'assets', 'ships', 'parts', 'parts_manifest.json');
 
 function parseGlbJson(filePath) {
   const bytes = fs.readFileSync(filePath);
@@ -61,6 +62,7 @@ test('debris source checkpoint preserves canonical root, tether socket, and meta
   assert.deepEqual(socket.extras?.forward, [1, 0, 0]);
 
   const asset = json.asset?.extras?.spacefaceAsset;
+  const extras = json.asset?.extras;
   assert.ok(asset, 'missing asset-level SpaceFace contract');
   assert.deepEqual(root.extras?.spacefaceAsset, asset, 'root and asset contracts diverged');
   assert.equal(asset.assetId, 'place_debris_chunk');
@@ -70,6 +72,27 @@ test('debris source checkpoint preserves canonical root, tether socket, and meta
   assert.equal(asset.textureCompression, 'PNG-source');
   assert.equal(asset.wiringStatus, 'source_checkpoint_release_pending');
   assert.deepEqual(asset.lods, ['lod0', 'lod1', 'lod2']);
+
+  const manifest = JSON.parse(fs.readFileSync(PARTS_MANIFEST, 'utf8'));
+  const manifestRow = manifest.parts.find((part) => part.id === 'place_debris_chunk');
+  assert.ok(manifestRow, 'missing place_debris_chunk parts-manifest row');
+  assert.equal(extras.category, manifestRow.category);
+  assert.equal(extras.priority, manifestRow.priority);
+  assert.equal(extras.triangleCount, manifestRow.tris);
+  assert.equal(extras.textureSize, manifestRow.textureSize);
+  assert.deepEqual(extras.boundsDimensionsM, manifestRow.bounds.dimensionsM);
+  assert.equal(extras.forwardAxis, '+X');
+  assert.equal(extras.upAxis, '+Y');
+  assert.equal(extras.starboardAxis, '+Z');
+  assert.equal(extras.unit, 'metre');
+  assert.deepEqual(extras.sourceProvenance, {
+    textureRoleContractVersion: 1,
+    textureRoleMode: 'bound-base-normal-orm',
+    sourceBlend: 'assets/ships/parts/blender/place_debris_chunk_authored.blend',
+    geometryPipeline: 'tools/blender/remaster_opening_debris_chunk_v1.py',
+    texturePipeline: 'tools/art/build_opening_infrastructure_maps.py',
+    packedEditableTextures: true,
+  });
 });
 
 test('debris source checkpoint has monotonic authored LODs matching its contract', () => {

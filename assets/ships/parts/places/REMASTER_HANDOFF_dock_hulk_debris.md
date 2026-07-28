@@ -1,222 +1,162 @@
-# Resume handoff: place dock / hulk / debris remaster
+# Dock / hulk / debris remaster checkpoint
 
-**Find this later by searching the repo for:**
-`REMASTER_HANDOFF_dock_hulk_debris` · `place_dock_interior` · `G1_FORM` · `ac1_form=partial`
+**Last updated:** 2026-07-28
+**Disposition:** `blocked` at G5 runtime presentation, G6 live performance/LOD, and G7 independent
+art acceptance. Offline source and release checkpoints are integrated.
 
-**Last updated:** 2026-07-28 (debris source checkpoint integrated; goal NOT complete)
+This is the durable front door for the three opening-route place remasters. It supersedes the old
+iter219/iter280 density loop and its `G1_FORM` resume instructions.
 
----
+## Scope and player routes
 
-## What this goal was
-
-Visual remaster of **three** place GLBs to pro 2026 hard-surface form under multi-angle EEVEE:
-
-| Asset | What it is in the game | Player sees it when |
+| Asset | Runtime role | Primary route |
 |---|---|---|
-| `place_dock_interior` | Shipyard hangar **backdrop** (UI) | Docked → shipyard/shipworks ship preview |
-| `place_dead_hulk` | World **wreck landmark** | Freeflight near derelict POIs |
-| `place_debris_chunk` | World **debris prop** | Freeflight near wreck fields / stash POIs |
+| `place_dock_interior` | neutral H-04 Shipworks preview bay | Station → Shipworks selected-ship preview |
+| `place_dead_hulk` | commercial carrier/drill-tender wreck | freeflight derelict/wreck POIs |
+| `place_debris_chunk` | manufactured pressure-module fragment | freeflight wreck fields and salvage POIs |
 
-Dock is **not** a flyable interior. Variants exist: `_military`, `_grit` (not the focus of this run).
+The dock is a preview backdrop, not a flyable interior. The `_military` and `_grit` dock variants
+were not remastered in this slice.
 
-**Wiring:** `src/ui/shipPreviewMount.js` → `dockInteriorIdForArchetype()`; shipyard stage in `src/ui/screens/shipyard.js`.
+## Integrated artifacts
 
----
+| Asset | Editable Blender source | Source GLB | Release GLB |
+|---|---|---|---|
+| debris | 3,923,870 B · `AA31D88E1EBE73D146995CE073B52A9E9849E98D8C19B7F77BFF5FF6F5C5B16E` | 4,172,188 B · `2B728182D45000CE89A353066371513038CDB09C231332C0971758B763331BE6` | 1,527,596 B · `016E7A103A40B7BA3183D56FCEF1362AEA0C3723274B49D4AB2439AE51151A26` |
+| dead hulk | 5,010,011 B · `E3187B52879050E16C82EBEB7B353102D5F4688BEF97A4A6EF44315CACB65609` | 5,424,740 B · `7D083B28B73550434C5C4783C85719C0C6C437AB68DFC9EAE4122CA1872D0327` | 1,919,816 B · `C2C421C6FF4B87CB92566560E080190F77AC14336B0FC43045BD2BE9D02BA185` |
+| dock | 20,865,932 B · `87A89A9977C1C849EB2CED3C8272B71FDE1D916E24E012D641197CBFA34A5FD5` | 22,905,000 B · `630A1780E2490BA0D4D7D401DAD8547085ED7A26A1F26A22A85FD5A5D00B1C60` | 8,749,356 B · `926CB7784E61F8ADCC533945C4C254F8D7E0AF14EFEFF465BFD8B2CAA6F0A6DE` |
 
-## Current live status (honest)
+Source and release rows are exact in `assets/ships/parts/parts_manifest.json` and
+`assets/ships/release/release_manifest.json`.
 
-The earlier iteration loop has been stopped. Debris now has a deterministic editable-source rebuild
-that cleared its original G1 silhouette defect in matched offline evidence. Hulk and dock remain at
-G1 and require method resets. None of the three has passed runtime/G7 acceptance.
+## Production stop ledger
 
-| Asset | Current source | Gate | Approx source size | Residual |
+| Asset | Candidate state | Earliest open gate | Offline decision | Matched evidence |
 |---|---|---|---|---|
-| dock | scratch **iter280** copied to source | partial / **G1_FORM** | 96.6MB / 1,193,240 tris | Sealed dark slab; no readable structural bay, PBR maps, LOD, hooks, or sockets |
-| hulk | scratch **iter219** copied to source | partial / **G1_FORM** | 56.2MB / 703,433 tris | Symmetric dumbbell/citadel silhouette; no PBR maps, LOD, hooks, or sockets |
-| debris | deterministic **opening_debris_chunk_v4** rebuild | offline **G1 keep**; G2–G4 partial; G7 open | 4.17MB / 18,846 tris across LOD0–2 | Runtime release/manifest and headed acceptance remain blocked |
+| debris | source + release promoted | G5 runtime presentation | **KEEP** the deterministic rupture/load-path rebuild | `C:\Users\93rob\.codex\visualizations\2026\07\28\019fa6a4-f178-7530-8a98-a35eab6ec617\debris-rebuild-v4\matched-fast\debris_candidate_v4_sheet.png` |
+| dead hulk | source + release promoted | G5 runtime presentation | **KEEP** the continuous carrier/drill-tender method reset | `C:\Users\93rob\.codex\visualizations\2026\07\28\019fa6a4-f178-7530-8a98-a35eab6ec617\hulk-rebuild-v4\matched-fast\hulk_candidate_v4_sheet.png` |
+| dock | source + release promoted and modern/legacy preview route wired | G5 runtime presentation | **REVISE**, then **KEEP** the open-front v3 source after rejecting the obstructed three-portal candidate | `C:\Users\93rob\.codex\visualizations\2026\07\28\019fa6a4-f178-7530-8a98-a35eab6ec617\dock-rebuild-v3\runtime-composition-kestrel\shipworks-runtime-yaw-000.png` plus yaw 45°/90° siblings |
 
-- `self_accept=false`, G7 open always
-- `live_reassess_gates.py` is **RETIRED** (fabricated AC1 pass) — do not revive
-- Skeptic panel text about orange 9.69MB dock / clay hulk / soft peels 313k is **STALE** vs live disk
+The exact blocker is shared headed acceptance ownership, not source authoring: PQ-034 holds
+`browser-gpu`, `performance-evidence`, and `validation-broker`. The smallest unblock action is to
+run the existing lower gates and request the normal Browser/Electron route after those leases are
+released. G7 then requires a person who did not author the candidates.
 
-### Debris source checkpoint
+Release-size deltas versus the superseded release files are approximately: debris 12.22 MB → 1.53
+MB, hulk 5.11 MB → 1.92 MB, and dock 11.45 MB → 8.75 MB. These are artifact-size deltas, not claims
+about frame time, draw calls, residency, or perceived quality.
 
-- Authored Blender source:
-  `assets/ships/parts/blender/place_debris_chunk_authored.blend`
-  - SHA-256 `1F34FA6C4B5E351C17E4087EE0176AA3CCA079BA2B6A1FBCB79E264BA7313417`
-- Source GLB:
-  `assets/ships/parts/places/place_debris_chunk.glb`
-  - SHA-256 `2989ECA7438E3A39C91C3232DEE1A7275CD8CED6858762CD2A88035F543483FF`
-- Rebuild source:
-  `tools/blender/remaster_opening_debris_chunk_v1.py`
-- Material-source generator:
-  `tools/art/build_opening_infrastructure_maps.py`
-- Contract:
-  root `place_debris_chunk`; `SOCKET_Tether_Massline` at canonical glTF `[2,1,0]`;
-  authored monotonic LOD0/1/2; semantic Hull/Mechanical/Accent/Insulation/Radiator/Cable/Decal
-  materials; embedded base-color/normal/ORM maps with UV0 and tangents.
-- Strict offline validation:
-  Foundry pass, Khronos glTF validator `0 errors / 0 warnings`, and texture audit
-  `21/21 bound, 0 errors / 0 warnings`.
-- Determinism: two clean rebuilds from the canonical authored blend produced the identical source
-  GLB hash `2989ECA7438E3A39C91C3232DEE1A7275CD8CED6858762CD2A88035F543483FF`.
-  The builder requires explicit `--source-blend`, `--maps-root`, `--output-blend`, `--output-glb`,
-  and `--report` paths and never writes a repository or manifest path implicitly.
-- Matched current-versus-v4 review:
-  `C:\Users\93rob\.codex\visualizations\2026\07\28\019fa6a4-f178-7530-8a98-a35eab6ec617\debris-rebuild-v4\debris_current_vs_v4.png`
-- Keep rationale: the old twin-pod/spring silhouette was replaced by one manufactured pressure
-  module with a directional rupture, rooted frame/load path, severed members, exposed insulation,
-  and a canonical tether clevis. This closes the specific G1 macro-form failure offline.
-- Honest residual: the source uses authored material-scale normal/ORM inputs rather than a
-  mesh-derived bake. Deliberate seam/density/padding/bake evidence, release KTX2/Meshopt, live LOD
-  transitions, Browser/Electron presentation, and independent art acceptance remain open.
+## What changed
 
-**Goal status:** one of three has a reviewed source checkpoint; the overall goal remains incomplete.
+### Manufactured debris
 
----
+`opening_debris_chunk_v4` replaces the soft twin-pod/spring read with one pressure module whose
+rupture, rooted frame, severed members, insulation, and tether clevis share one load path.
 
-## Where files live
+- Builder: `tools/blender/remaster_opening_debris_chunk_v1.py`
+- Authored LOD triangles: 12,396 / 4,660 / 1,790 (18,846 total)
+- Contract: root `place_debris_chunk`; `SOCKET_Tether_Massline` at glTF `[2, 1, 0]`
+- Release: 21/21 KTX2 textures; 77 Meshopt buffer views
 
-### Repo (durable)
+### Dead hulk
 
-```
-assets/ships/parts/places/place_dock_interior.glb
-assets/ships/parts/places/place_dead_hulk.glb
-assets/ships/parts/places/place_debris_chunk.glb
-assets/ships/release/parts/places/   ← release pair may be STALE; check ASSET_STATUS / check:assets:live
-```
+`opening_dead_hulk_v1` replaces the symmetric dumbbell/citadel with a continuous commercial
+carrier/drill-tender and a single starboard/dorsal rupture expressed through shell, longeron,
+bulkhead, insulation, liner, and service systems.
 
-### Scratch (session artifacts; may be deleted by OS cleanup)
+- Builder: `tools/blender/remaster_opening_dead_hulk_v1.py`
+- Authored LOD triangles: 18,324 / 9,236 / 2,756 (30,316 total)
+- Contract: root `place_dead_hulk`; `SOCKET_Hazard_Core`; `SOCKET_Salvage_Core`; no unsupported hooks
+- Release: 21/21 KTX2 textures; 73 Meshopt buffer views
 
-```
-C:\Users\93rob\AppData\Local\Temp\grok-goal-6abc52c84c39\implementer\
-  visual-assets\place_dock_interior\     final/ + iter_###/
-  visual-assets\place_dead_hulk\
-  visual-assets\place_debris_chunk\
-  form_pass_dock_*.py
-  form_pass_hulk_*.py
-  form_pass_debris_*.py
-  REVERIFY_NOW_*.md
-```
+### H-04 Shipworks dock
 
-**If scratch is gone:** resume from repo GLBs + this handoff. Iteration history is lost; live meshes may still be in `parts/places/`.
+`opening_dock_interior_h04_v3` replaces the sealed slab with an open-front industrial service bowl:
+one rear structural portal, outer roof stringers, rear-parked crane, pressure bulkhead, service
+plinth, and a 28 m × 28 m × 13 m clear preview aperture.
 
-**Blender:** `C:\Program Files\Blender Foundation\Blender 5.1\blender.exe` (5.1.2 headless EEVEE used).
+The first three-portal candidate was rejected because foreground machinery obscured representative
+ships. The corrected source removes that geometry instead of hiding the problem with exposure or a
+camera trick.
 
----
+- Builder: `tools/blender/remaster_opening_dock_interior_v2.py`
+- Editable Blender LOD triangles: 21,248 / 6,216 / 2,292
+- Preview GLB: LOD0 only, because `shipPreviewMount` currently renders every primitive and owns no
+  place-asset LOD selector
+- Contract: root `place_dock_interior`; `SOCKET_Structure_Core`; 52 m × 36 m × 17.2 m envelope
+- Release: 31/31 KTX2 textures; 41 Meshopt buffer views
 
-## How to finish later (procedure)
+## Shipworks integration
 
-### 1. Re-verify first (every session)
+The modern and compatibility Shipworks routes now resolve the accepted neutral dock and mount it
+through `src/ui/shipPreviewMount.js`. The untouched military/grit variants are deliberately
+unrouted: adversarial headless sampling found that their sealed foreground geometry hid the ship.
+They must pass this same composition gate before being restored to station-specific routing.
 
-1. Open multi-angle EEVEE from the current source GLB or surviving evidence.
-2. Confirm hulk and dock remain `partial` / `G1_FORM`; do not reopen debris G1 without a concrete
-   regression.
-3. **Refute** any claim of ac1=pass, orange dock 9.69MB, clay hulk, soft peels 313k against **live** evidence.
-4. Name **ONE** residual only. Current next residual: **hulk symmetric dumbbell silhouette**.
+The dock transform is derived from the selected ship's yaw-neutral bounds: one uniform scale
+preserves the authored bay proportions, floor clearance adapts to ship height, and the selected ship
+remains centered over the bay floor. Every Shipworks show/refresh resynchronizes a cached mount, and
+turntable rotation can no longer make the bay breathe during fitting changes or authored admission.
 
-### 2. Fix one residual, then re-render multi-angle EEVEE
+`npm run check:shipworks:dock-composition` is a deterministic headless route-equivalent proof. It
+loads the canonical dock, the live loading fallbacks for Kestrel, Pelican, Bastion, and Leviathan,
+and the settled authored whole-ship Kestrel. It applies the current Shipworks camera and mount
+transforms at 0°, 45°, and 90°, then casts 18,000 rays to visible ship vertices. The accepted dock
+has **zero dock intersections**.
 
-Preferred SAFE methods:
+That ray receipt proves the source aperture does not cover the displayed ship. It does not replace
+Browser/Electron presentation or a human art verdict.
 
-- Rebuild from a low-complexity deterministic Blender script into ignored scratch.
-- Fix macro silhouette and causal load path before adding secondary detail.
-- Preserve canonical root, hooks/sockets, pivots, bounds, LOD roles, and source/release separation.
-- Generate UV-aware authored maps; derive physical data only from defensible surface information.
+## Source and release pipeline
 
-**Banned (history of RESTORES):**
+The `.blend` files are authoritative editable sources. The source GLBs preserve semantic materials,
+UV0, tangents, sockets, and metadata. Debris and hulk source GLBs retain authored LOD0/1/2; the dock
+source GLB intentionally contains LOD0 only while its `.blend` retains editable LOD1/2. Base-color,
+OpenGL tangent normal, and packed AO/roughness/metallic maps are produced from deterministic
+authored surface inputs.
 
-| Ban | Why |
-|---|---|
-| Free outer shells / tip pods left unjoined | Kitbash leftovers |
-| Hanging underhang bulbs under elevated corners | dock 277 RESTORED |
-| Thin wall seam-crack shoulders | dock 269 RESTORED |
-| Vertex-push height ramps | dock 266 RESTORED |
-| Free mid-bay height-step boxes | dock 257 RESTORED |
-| Rect deck slabs | dock 247 RESTORED |
-| Jail bars | dock 231 RESTORED |
-| Crystalline clamp densify | dock 235/261 RESTORED |
-| Force-deep densify blowout | dock 230/234 RESTORED |
-| Rebrand gates to pass/G7 without form clear | plan AC1 |
-| Resume iter219/iter280 densification | Adds cost without repairing the failed macro read |
-| Copy straight from scratch to source/release | Bypasses matched review and source/release contracts |
+`scripts/build-place-release-assets.mjs` publishes an explicit `--ids` selection:
 
-### 3. KEEP vs RESTORE
+1. builds each selected release in temporary space;
+2. applies slot-aware KTX2 and Meshopt compression;
+3. validates source/release structure, materials, texture roles, and compression;
+4. guards the source GLBs and parts manifest against mutation; and
+5. transactionally replaces only the selected release GLBs and their existing manifest rows.
 
-- **KEEP** only if matched evidence improves construction without free leftovers or regressions.
-- **REVISE** in isolated scratch; do not overwrite the source between rejected iterations.
-- **REVERT** with Git history if a promoted source checkpoint later proves worse.
-- Always leave honest `ac1_form=partial` `earliest_failed_gate=G1_FORM` until form actually clears
+It never rewrites unselected release artifacts or changes manifest membership/order.
 
-### 4. Done criteria (do not claim early)
+## Current acceptance boundary
 
-All three must show under multi-angle EEVEE:
+Completed offline:
 
-- Continuous hard-surface construction language (pro 2026)
-- No clay/plastic default slabs
-- No plain box kitbash as finished primary form
-- Dock: continuous industrial hangar read **or** explicitly descoped as “UI backdrop only” (see below)
-- Honest gate write: only then consider AC1; G7 remains independent/out-of-session
+- deterministic editable Blender rebuilds;
+- reviewed macro-form corrections;
+- source GLB root/socket/bounds/material/LOD contracts;
+- strict texture-channel validation;
+- Khronos/Foundry structural validation;
+- exact source/release hashes and byte counts;
+- KTX2/Meshopt release publication;
+- Shipworks route wiring, adaptive alignment, and zero-intersection composition proof.
 
-Ship the GLBs to both `parts/places` and release pair when form is accepted; run `npm run check:assets:live` (and owning asset checks).
+Still open and must not be inferred from the offline checkpoint:
 
-### 5. Suggested finish order (play value)
+- Browser and Electron normal-route presentation;
+- live LOD transition and residency behavior;
+- route frame-time, draw/program, and asset-admission evidence;
+- independent, nondelegable human-eye G7 art verdict.
 
-1. **Hulk** — rebuild as one continuous commercial carrier/drill-tender load path with a causal
-   starboard/dorsal rupture.
-2. **Dock** — rebuild a readable portal-bent service bay and verify the real ship-preview
-   composition.
-3. **Debris release** — after the `asset-manifest` mutex is free, build only this exact release pair
-   transactionally and run the runtime gates.
+These were intentionally not run or self-approved while PQ-034 held `browser-gpu`,
+`performance-evidence`, and `validation-broker`.
 
----
+## Resume only the remaining acceptance work
 
-## Options if dock never clears macro AC1
+When those shared leases are available:
 
-Dock is only a **shipyard preview backdrop**. Acceptable product choices:
+1. run the existing lower-layer checks first;
+2. obtain current Browser and Electron captures from the real Shipworks and freeflight routes;
+3. verify normal-camera, close, far, motion, LOD, residency, and frame-cost behavior;
+4. obtain the independent human-eye art verdict;
+5. update this file and the program packet with evidence paths and receipts.
 
-A. **Keep grinding** SAFE join/densify until continuous hangar silhouette passes pro bar
-B. **Descope dock** in writing: “UI hangar shell, not freeflight landmark” with a lower form bar (still dark HS, no orange boxes, clamps solid)
-C. **Park dock** at 279; finish hulk + debris only; close goal with explicit dock deferral
-
-Record whichever you choose in this file when you resume.
-
----
-
-## Useful prompts to paste into a new session
-
-```
-Resume place remaster from assets/ships/parts/places/REMASTER_HANDOFF_dock_hulk_debris.md
-RE-VERIFY first. Debris v4 has an offline G1 keep but no release/G7 acceptance. Hulk iter219 and
-dock iter280 remain partial/G1. Continue with the hulk method reset; do not densify iter219.
-Blender 5.1 headless EEVEE matched multi-angle evidence. Preserve source/release separation.
-```
-
-Shorter:
-
-```
-Continue REMASTER_HANDOFF_dock_hulk_debris — hulk method reset next; keep all release/G7 claims honest.
-```
-
----
-
-## Session / scratch IDs (optional archaeology)
-
-| Item | Value |
-|---|---|
-| Scratch root | `C:\Users\93rob\AppData\Local\Temp\grok-goal-6abc52c84c39\implementer` |
-| Goal session id (Grok) | `019f926a-dc52-71d3-b792-57fa921e6a6c` (may not appear in “recent” list forever) |
-| Skills | `.grok/skills/spaceface-blender-pipeline`, `spaceface-blender-blockout` |
-
----
-
-## Do not
-
-- Merge PQ-018 branches that would **revert** these place GLBs (see `design/program/NOW.md`)
-- Treat green metric-only checks as form pass
-- Call `update_goal(completed: true)` while G1 form residuals remain
-- Assume release GLBs match source parts without checking
-
----
-
-*This file is the durable front door for finishing this work without the original chat transcript.*
+Do not reopen the retired iter219/iter280 densification loop unless current player-facing evidence
+identifies a concrete regression in the promoted source.

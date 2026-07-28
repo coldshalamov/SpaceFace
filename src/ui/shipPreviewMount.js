@@ -26,18 +26,152 @@ const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
 const SHIP_PREVIEW_CACHE_LIMIT = 16;
 const FAST_PREVIEW_MATERIALS = new Map();
-
-/** Station archetype → shipyard preview dock interior (shaded hangar shell). */
-export const DOCK_INTERIOR_BY_ARCHETYPE = Object.freeze({
-  place_station_military: 'place_dock_interior_military',
-  place_station_blackmarket: 'place_dock_interior_grit',
+const DEFAULT_DOCK_PREVIEW_MOUNT = Object.freeze({
+  floorLocalY: -3.44,
+  referenceShipSpan: 24.08,
+  minimumScale: 0.8,
+  maximumScale: 12.5,
+  minimumFloorClearance: 0.45,
+  maximumFloorClearance: 2,
+  floorClearanceHeightRatio: 0.12,
 });
+
+/**
+ * Station archetype → accepted Shipworks dock interior.
+ *
+ * The historical military/grit variants remain authored assets, but their sealed foreground
+ * geometry obscures the selected ship under the current preview camera. Keep every player-facing
+ * preview on the reviewed neutral H-04 bay until a variant earns the same composition gate.
+ */
+export const DOCK_INTERIOR_BY_ARCHETYPE = Object.freeze({});
 
 export function dockInteriorIdForArchetype(archetypeGlb) {
   if (typeof archetypeGlb === 'string' && DOCK_INTERIOR_BY_ARCHETYPE[archetypeGlb]) {
     return DOCK_INTERIOR_BY_ARCHETYPE[archetypeGlb];
   }
   return 'place_dock_interior';
+}
+
+function finiteBoundsPoint(value) {
+  return !!value
+    && Number.isFinite(Number(value.x))
+    && Number.isFinite(Number(value.y))
+    && Number.isFinite(Number(value.z));
+}
+
+function finiteOr(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+/**
+ * Place and scale the Shipworks backdrop around a yaw-zero ship envelope.
+ *
+ * The dock is decorative presentation, while each ship keeps its authored/procedural world scale.
+ * Adapting the backdrop prevents medium hulls from intersecting the service floor and keeps capital
+ * previews from dwarfing a fixed 52 m room. The camera remains ship-owned.
+ */
+export function dockTransformForShipBounds(shipBounds, metadata = {}, dockBounds = null) {
+  const minimum = shipBounds && shipBounds.min;
+  const maximum = shipBounds && shipBounds.max;
+  if (!finiteBoundsPoint(minimum) || !finiteBoundsPoint(maximum)) return null;
+
+  const size = {
+    x: Number(maximum.x) - Number(minimum.x),
+    y: Number(maximum.y) - Number(minimum.y),
+    z: Number(maximum.z) - Number(minimum.z),
+  };
+  if (!(size.x > 0) || !(size.y > 0) || !(size.z > 0)) return null;
+
+  const authored = metadata && typeof metadata.previewMount === 'object'
+    ? metadata.previewMount
+    : {};
+  const referenceShipSpan = Math.max(
+    1,
+    finiteOr(authored.referenceShipSpan, DEFAULT_DOCK_PREVIEW_MOUNT.referenceShipSpan),
+  );
+  const minimumScale = Math.max(
+    0.1,
+    finiteOr(authored.minimumScale, DEFAULT_DOCK_PREVIEW_MOUNT.minimumScale),
+  );
+  const maximumScale = Math.max(
+    minimumScale,
+    finiteOr(authored.maximumScale, DEFAULT_DOCK_PREVIEW_MOUNT.maximumScale),
+  );
+  const shipSpan = Math.max(size.x, size.z);
+  const scale = Math.max(minimumScale, Math.min(maximumScale, shipSpan / referenceShipSpan));
+
+  const fallbackFloorY = Array.isArray(dockBounds && dockBounds.min)
+    && Number.isFinite(Number(dockBounds.min[1]))
+    ? Number(dockBounds.min[1]) + 0.985
+    : DEFAULT_DOCK_PREVIEW_MOUNT.floorLocalY;
+  const floorLocalY = finiteOr(authored.floorLocalY, fallbackFloorY);
+  const minimumClearance = Math.max(
+    0,
+    finiteOr(authored.minimumFloorClearance, DEFAULT_DOCK_PREVIEW_MOUNT.minimumFloorClearance),
+  );
+  const maximumClearance = Math.max(
+    minimumClearance,
+    finiteOr(authored.maximumFloorClearance, DEFAULT_DOCK_PREVIEW_MOUNT.maximumFloorClearance),
+  );
+  const clearanceRatio = Math.max(
+    0,
+    finiteOr(
+      authored.floorClearanceHeightRatio,
+      DEFAULT_DOCK_PREVIEW_MOUNT.floorClearanceHeightRatio,
+    ),
+  );
+  const floorClearance = Math.max(
+    minimumClearance,
+    Math.min(maximumClearance, size.y * clearanceRatio),
+  );
+  const floorWorldY = Number(minimum.y) - floorClearance;
+  const position = {
+    x: (Number(minimum.x) + Number(maximum.x)) * 0.5,
+    y: floorWorldY - floorLocalY * scale,
+    z: (Number(minimum.z) + Number(maximum.z)) * 0.5,
+  };
+
+  return Object.freeze({
+    scale,
+    position: Object.freeze(position),
+    shipSpan,
+    floorLocalY,
+    floorWorldY,
+    floorClearance,
+    intersectsFloor: floorWorldY >= Number(minimum.y),
+  });
+}
+
+/**
+ * Measure preview geometry in its authored yaw-zero frame and restore the displayed yaw.
+ *
+ * Shipworks can preserve turntable yaw while swapping fittings or admitting authored geometry.
+ * Measuring the rotated world AABB would make the dock rescale and recenter as the ship turns.
+ */
+export function visiblePreviewBoundsAtNeutralYaw(root, excludeObject = () => false) {
+  const box = new THREE.Box3().makeEmpty();
+  if (!root || typeof root.traverse !== 'function' || !root.rotation) return box;
+  const objectBox = new THREE.Box3();
+  const priorYaw = Number(root.rotation.y) || 0;
+  root.rotation.y = 0;
+  try {
+    root.updateWorldMatrix(true, true);
+    root.traverse((object) => {
+      if (!object || !object.geometry || excludeObject(object)) return;
+      const geometry = object.geometry;
+      if (!geometry.boundingBox && typeof geometry.computeBoundingBox === 'function') {
+        geometry.computeBoundingBox();
+      }
+      if (!geometry.boundingBox) return;
+      objectBox.copy(geometry.boundingBox).applyMatrix4(object.matrixWorld);
+      box.union(objectBox);
+    });
+  } finally {
+    root.rotation.y = priorYaw;
+    root.updateWorldMatrix(true, true);
+  }
+  return box;
 }
 
 function dockPartUrls(id) {
@@ -363,6 +497,7 @@ export function createShipPreviewMount(canvas, opts) {
 
   let current = null;     // the displayed THREE.Object3D
   let dockRoot = null;
+  let dockBlueprint = null;
   let dockId = useDock ? opts.dockId : null;
   let dockLoadGen = 0;
   let rotating = true;
@@ -537,10 +672,13 @@ export function createShipPreviewMount(canvas, opts) {
     if (dockRoot) {
       scene.remove(dockRoot);
       dockRoot = null;
+      dockBlueprint = null;
     }
     dockRoot = groupFromBlueprint(record);
+    dockBlueprint = record;
     dockRoot.position.y = 1.5;
     scene.add(dockRoot);
+    alignDockToCurrent();
     renderNow();
     if (active && rotating && !rafId) requestLoop();
   }
@@ -700,19 +838,28 @@ export function createShipPreviewMount(canvas, opts) {
   }
 
   function visibleShipBounds(root) {
-    const box = new THREE.Box3().makeEmpty();
-    const objectBox = new THREE.Box3();
-    if (!root || typeof root.traverse !== 'function') return box;
-    root.updateWorldMatrix(true, true);
-    root.traverse((object) => {
-      if (!object || !object.geometry || isPreviewOnlySurface(object)) return;
-      const geometry = object.geometry;
-      if (!geometry.boundingBox && typeof geometry.computeBoundingBox === 'function') geometry.computeBoundingBox();
-      if (!geometry.boundingBox) return;
-      objectBox.copy(geometry.boundingBox).applyMatrix4(object.matrixWorld);
-      box.union(objectBox);
-    });
-    return box;
+    return visiblePreviewBoundsAtNeutralYaw(root, isPreviewOnlySurface);
+  }
+
+  function alignDockToCurrent(box = null) {
+    if (!dockRoot || !dockBlueprint || !current) return false;
+    const shipBox = box || visibleShipBounds(current);
+    if (!shipBox || shipBox.isEmpty()) return false;
+    const transform = dockTransformForShipBounds(
+      shipBox,
+      dockBlueprint.metadata,
+      dockBlueprint.bounds,
+    );
+    if (!transform) return false;
+    dockRoot.scale.setScalar(transform.scale);
+    dockRoot.position.set(
+      transform.position.x,
+      transform.position.y,
+      transform.position.z,
+    );
+    dockRoot.userData.previewAlignment = transform;
+    dockRoot.updateWorldMatrix(true, true);
+    return true;
   }
 
   function fitCameraToCurrent() {
@@ -720,6 +867,7 @@ export function createShipPreviewMount(canvas, opts) {
     hidePreviewOnlySurfaces(current);
     const box = visibleShipBounds(current);
     if (box.isEmpty()) return false;
+    alignDockToCurrent(box);
     const sphere = new THREE.Sphere();
     box.getBoundingSphere(sphere);
     const cx = sphere.center.x;
@@ -831,6 +979,7 @@ export function createShipPreviewMount(canvas, opts) {
     if (!dockId) {
       dockLoadGen++;
       if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
+      dockBlueprint = null;
       renderNow();
       return;
     }
@@ -856,6 +1005,7 @@ export function createShipPreviewMount(canvas, opts) {
     rafId = 0;
     dockLoadGen++;
     if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
+    dockBlueprint = null;
     if (current) { scene.remove(current); current = null; }
     for (const mesh of meshCache.values()) disposePreviewMesh(mesh);
     meshCache.clear();
