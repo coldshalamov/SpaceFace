@@ -445,6 +445,14 @@
       "blender_part_id": null,
       "sector_placement_id": null,
       "story_citation": "CURATED_SPACE_FEATURES F07"
+    },
+    {
+      "concept_id": "concept_spacepunk_markings_motif_study_v1",
+      "path": "factions/spacepunk_markings_motif_study_v1.png",
+      "target_asset_role": "surface/markings_emissive_reference",
+      "blender_part_id": null,
+      "sector_placement_id": null,
+      "story_citation": "src/data/palettes.js PAINT_PROFILES; src/data/flavor/030-graffiti.js"
     }
   ]
 }
