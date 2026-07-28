@@ -38,6 +38,9 @@ const MEDIA_PREFIX = 'assets/ships/release/media/wreck-cathedral/';
 // The panel is authored for a bounded evidence figure, not a full-bleed hero. An image wider than
 // this in the mounted host means no crop is being applied at all.
 const MAX_FIGURE_WIDTH_PX = 900;
+// The panel's authored figure cap (src/ui/screens/shipLedger.js). The station host column is made wider
+// than this on purpose so the cap is what bounds the figure, not the container.
+const FIGURE_CAP_PX = 720;
 
 const { chromium } = await loadPlaywright();
 
@@ -147,6 +150,10 @@ try {
      Only its fixed positioning is neutralised, so the two columns can be measured side by side. */
   #ui-root { position: static !important; pointer-events: auto !important; contain: none !important; }
   #ui-root > div.hostcol { position: static !important; width: 700px; display: inline-block; vertical-align: top; }
+  /* Deliberately WIDER than the panel's 720px figure cap, so the cap actually binds and the
+     measurement is the rule rather than the container. Roughly the real station panel width at a
+     1460px viewport. The codex column stays narrower than the cap, so both regimes are measured. */
+  #ui-root > div#station-host.hostcol { width: 1000px; }
 </style>
 </head><body>
 <div id="ui-root">
@@ -292,6 +299,8 @@ try {
           renderedHeight: Math.round(rect.height),
           objectFit: style.objectFit,
           maxWidth: style.maxWidth,
+          figureBoxWidth: Math.round(figure.getBoundingClientRect().width),
+          hostColumnWidth: Math.round(root.getBoundingClientRect().width),
           listHiddenWhileReading: root.querySelector('.st-ledger-list').hidden,
         });
         // return to the list so the next open is a fresh arm, exactly like a player browsing
@@ -318,8 +327,12 @@ try {
   });
 
   check('station and codex show identical media information', () => {
-    const byHost = (host) => media.filter((entry) => entry.host === host)
-      .map(({ host: _h, renderedWidth, renderedHeight, settled, ...rest }) => rest);
+    // Layout measurements are deliberately excluded: the two columns are different widths on
+    // purpose (to make the figure cap bind), so geometry differs while INFORMATION must not.
+    const byHost = (host) => media.filter((entry) => entry.host === host).map(({
+      host: _host, renderedWidth: _w, renderedHeight: _h, settled: _s,
+      figureBoxWidth: _fw, hostColumnWidth: _cw, ...rest
+    }) => rest);
     assert.deepEqual(byHost('codex'), byHost('station'),
       'the two hosts must resolve identical media, copy, and provenance');
   });
@@ -332,6 +345,41 @@ try {
       `authored media is rendering unconstrained (natural ${media[0].naturalWidth}x${media[0].naturalHeight}); `
       + 'no crop or max-width is being applied by any loaded stylesheet',
     );
+  });
+
+  check('the 720px figure cap binds — the bound is the rule, not the container', () => {
+    // NON-VACUITY. With a host column narrower than the cap, `width:100%` alone yields a passing
+    // number whether or not the max-width rule exists. The station column is 1000px wide precisely
+    // so the cap has to do the work; deleting the rule makes this fail with 1000.
+    const station = media.filter((entry) => entry.host === 'station');
+    assert.ok(station.length === 5, 'five station opens were measured');
+    for (const entry of station) {
+      assert.ok(entry.hostColumnWidth > FIGURE_CAP_PX,
+        `the station column (${entry.hostColumnWidth}px) must exceed the cap for this to prove anything`);
+      assert.equal(entry.renderedWidth, FIGURE_CAP_PX,
+        `${entry.pageId}: figure is ${entry.renderedWidth}px in a ${entry.hostColumnWidth}px column — the cap is not binding`);
+    }
+    // The narrower host proves the figure still fills a column below the cap rather than being fixed.
+    for (const entry of media.filter((item) => item.host === 'codex')) {
+      assert.ok(entry.renderedWidth < FIGURE_CAP_PX && entry.renderedWidth > 0,
+        `${entry.pageId}: codex figure should track its ${entry.hostColumnWidth}px column, got ${entry.renderedWidth}px`);
+    }
+  });
+
+  check('the crop is lossless — no authored evidence is cut out of the frame', () => {
+    // THE ASSERTION THAT MATTERS. `object-fit: cover` is lossless only while the source aspect and
+    // the box aspect agree. Every authored image is 16:9 today and the box is 16:9, so nothing is
+    // cropped — but if a future page ships 4:3, `cover` would silently cut the frame and every other
+    // assertion here would still pass (it loads, it decodes, it is admitted, it is under the width
+    // bound). The packet forbids hiding evidence to pass, so the aspect agreement is asserted.
+    for (const entry of media) {
+      const natural = entry.naturalWidth / entry.naturalHeight;
+      const rendered = entry.renderedWidth / entry.renderedHeight;
+      assert.ok(Math.abs(rendered - natural) / natural <= 0.01,
+        `${entry.host}/${entry.pageId}: rendered aspect ${rendered.toFixed(4)} differs from authored `
+        + `${natural.toFixed(4)} (${entry.naturalWidth}x${entry.naturalHeight} -> `
+        + `${entry.renderedWidth}x${entry.renderedHeight}) — object-fit:cover is cropping evidence`);
+    }
   });
 
   // ---- 5. Exactly one request per open; nothing while hidden. ------------------------------------
