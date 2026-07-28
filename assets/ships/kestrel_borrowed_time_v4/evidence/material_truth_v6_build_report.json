@@ -1,0 +1,2101 @@
+{
+  "schema": "spaceface.kestrelMaterialTruthV6.build.v1",
+  "status": "complete",
+  "packet": "SF-K0-BORROWED-TIME-V6-MATERIAL-TRUTH-001",
+  "baseline": "blender/kestrel_borrowed_time_v4_production.blend",
+  "baselineSha256": "CE830C5D6FA50902DC9A9C629C95378698168F24844C5938218E58793E1B1CD4",
+  "generation": {
+    "baselineSha256": "CE830C5D6FA50902DC9A9C629C95378698168F24844C5938218E58793E1B1CD4",
+    "materialTruthPassId": "kestrel-material-truth-v6",
+    "surfaceRemasterId": "kestrel-role-surface-v6-material-truth",
+    "scriptSha256": {
+      "scripts/build_material_truth_v6_candidate.py": "85C3CB32C47CC94EFC9FE7795D045B8890B23C15C693B44DA79CA70B833ADDC1",
+      "scripts/build_v4.py": "7DE8CD994F875B5C9FA72726EF4D21AA1DF64BDB2A38970CC1B654699A968C91",
+      "scripts/material_truth_v6.py": "169D5935F0727C9F2A9E45727B0D3BCD24F32472B70EEB3DBF66E460240C15FE",
+      "scripts/surface_maps_v2.py": "42BF6627264CC3104C6A203C4A92F8B0129D5BBC05A82272FDFCF459C275BC68"
+    },
+    "generationFingerprint": "50B71F1D32C9135FC380BB6F89EE217E3FE65E31CEDDAFD33AFC86E7F343411D"
+  },
+  "generationFingerprint": "50B71F1D32C9135FC380BB6F89EE217E3FE65E31CEDDAFD33AFC86E7F343411D",
+  "materialTruthPassId": "kestrel-material-truth-v6",
+  "surfaceRemasterId": "kestrel-role-surface-v6-material-truth",
+  "surfaceRemaster": [
+    {
+      "image": "hull_basecolor.png",
+      "role": "hull",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.28375929594039917,
+        0.3057246804237366,
+        0.3230666220188141
+      ],
+      "std": [
+        0.015863535925745964,
+        0.015399513766169548,
+        0.014635123312473297
+      ],
+      "directionality": 1.0001357353485119,
+      "metallicTarget": null,
+      "macroWaviness": 0.005,
+      "orangePeel": 0.005,
+      "scratchDensity": 18,
+      "chipDensity": 0.014,
+      "recessDust": 0.12
+    },
+    {
+      "image": "hull_orm.png",
+      "role": "hull",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9768794178962708,
+        0.43154752254486084,
+        0.03504248708486557
+      ],
+      "std": [
+        0.013840685598552227,
+        0.030350496992468834,
+        0.07609179615974426
+      ],
+      "directionality": 1.0055287786863556,
+      "metallicTarget": 0.025,
+      "macroWaviness": 0.005,
+      "orangePeel": 0.005,
+      "scratchDensity": 18,
+      "chipDensity": 0.014,
+      "recessDust": 0.12
+    },
+    {
+      "image": "hull_normal.png",
+      "role": "hull",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5000012516975403,
+        0.5000005960464478,
+        0.9999999403953552
+      ],
+      "std": [
+        0.0018003361765295267,
+        0.0017854416510090232,
+        1.4530483895214275e-05
+      ],
+      "directionality": 0.7808040889863467,
+      "metallicTarget": null,
+      "macroWaviness": 0.005,
+      "orangePeel": 0.005,
+      "scratchDensity": 18,
+      "chipDensity": 0.014,
+      "recessDust": 0.12
+    },
+    {
+      "image": "mechanical_basecolor.png",
+      "role": "mechanical",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.204535573720932,
+        0.22615595161914825,
+        0.24361976981163025
+      ],
+      "std": [
+        0.00264512887224555,
+        0.001760220853611827,
+        0.0018521170131862164
+      ],
+      "directionality": 1.1701778303910315,
+      "metallicTarget": null,
+      "macroWaviness": 0.003,
+      "orangePeel": 0.003,
+      "scratchDensity": 34,
+      "chipDensity": 0.0,
+      "recessDust": 0.16
+    },
+    {
+      "image": "mechanical_orm.png",
+      "role": "mechanical",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9768909215927124,
+        0.4029841125011444,
+        0.7795298099517822
+      ],
+      "std": [
+        0.013885537162423134,
+        0.029634542763233185,
+        0.01947595551609993
+      ],
+      "directionality": 1.293440013873657,
+      "metallicTarget": 0.78,
+      "macroWaviness": 0.003,
+      "orangePeel": 0.003,
+      "scratchDensity": 34,
+      "chipDensity": 0.0,
+      "recessDust": 0.16
+    },
+    {
+      "image": "mechanical_normal.png",
+      "role": "mechanical",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.499999076128006,
+        0.49999985098838806,
+        0.9999999403953552
+      ],
+      "std": [
+        0.0022834620904177427,
+        0.0026179938577115536,
+        2.228936500614509e-05
+      ],
+      "directionality": 1.0799002952134233,
+      "metallicTarget": null,
+      "macroWaviness": 0.003,
+      "orangePeel": 0.003,
+      "scratchDensity": 34,
+      "chipDensity": 0.0,
+      "recessDust": 0.16
+    },
+    {
+      "image": "armor_dark_basecolor.png",
+      "role": "armor_dark",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.25250956416130066,
+        0.2810915410518646,
+        0.3106037974357605
+      ],
+      "std": [
+        0.013597212731838226,
+        0.012948796153068542,
+        0.01181707065552473
+      ],
+      "directionality": 1.0031043386723588,
+      "metallicTarget": null,
+      "macroWaviness": 0.006,
+      "orangePeel": 0.006,
+      "scratchDensity": 12,
+      "chipDensity": 0.008,
+      "recessDust": 0.1
+    },
+    {
+      "image": "armor_dark_orm.png",
+      "role": "armor_dark",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9770995378494263,
+        0.6016188263893127,
+        0.3038051724433899
+      ],
+      "std": [
+        0.013952639885246754,
+        0.030883897095918655,
+        0.037151314318180084
+      ],
+      "directionality": 0.9961827720505898,
+      "metallicTarget": 0.3,
+      "macroWaviness": 0.006,
+      "orangePeel": 0.006,
+      "scratchDensity": 12,
+      "chipDensity": 0.008,
+      "recessDust": 0.1
+    },
+    {
+      "image": "armor_dark_normal.png",
+      "role": "armor_dark",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5,
+        0.5000003576278687,
+        0.9999999403953552
+      ],
+      "std": [
+        0.00216736551374197,
+        0.002203668002039194,
+        1.8799655663315207e-05
+      ],
+      "directionality": 0.7673122191514747,
+      "metallicTarget": null,
+      "macroWaviness": 0.006,
+      "orangePeel": 0.006,
+      "scratchDensity": 12,
+      "chipDensity": 0.008,
+      "recessDust": 0.1
+    },
+    {
+      "image": "brushed_metal_basecolor.png",
+      "role": "brushed_metal",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.47042059898376465,
+        0.4934069514274597,
+        0.5000749230384827
+      ],
+      "std": [
+        0.004247947130352259,
+        0.004718579351902008,
+        0.002325058216229081
+      ],
+      "directionality": 1.3208739514940588,
+      "metallicTarget": null,
+      "macroWaviness": 0.003,
+      "orangePeel": 0.002,
+      "scratchDensity": 42,
+      "chipDensity": 0.0,
+      "recessDust": 0.06
+    },
+    {
+      "image": "brushed_metal_orm.png",
+      "role": "brushed_metal",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9769647121429443,
+        0.3605136573314667,
+        0.9207088351249695
+      ],
+      "std": [
+        0.01391970831900835,
+        0.032515376806259155,
+        0.022976307198405266
+      ],
+      "directionality": 1.2911303023835468,
+      "metallicTarget": 0.92,
+      "macroWaviness": 0.003,
+      "orangePeel": 0.002,
+      "scratchDensity": 42,
+      "chipDensity": 0.0,
+      "recessDust": 0.06
+    },
+    {
+      "image": "brushed_metal_normal.png",
+      "role": "brushed_metal",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.499998539686203,
+        0.5000041127204895,
+        0.9999999403953552
+      ],
+      "std": [
+        0.0034842840395867825,
+        0.004283575806766748,
+        6.229118298506364e-05
+      ],
+      "directionality": 1.0485182286861177,
+      "metallicTarget": null,
+      "macroWaviness": 0.003,
+      "orangePeel": 0.002,
+      "scratchDensity": 42,
+      "chipDensity": 0.0,
+      "recessDust": 0.06
+    },
+    {
+      "image": "frontier_cyan_basecolor.png",
+      "role": "frontier_cyan",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.14449451863765717,
+        0.43698450922966003,
+        0.4705199897289276
+      ],
+      "std": [
+        0.021260187029838562,
+        0.005356341600418091,
+        0.004693362396210432
+      ],
+      "directionality": 0.999676305950925,
+      "metallicTarget": null,
+      "macroWaviness": 0.018,
+      "orangePeel": 0.03,
+      "scratchDensity": 10,
+      "chipDensity": 0.006,
+      "recessDust": 0.08
+    },
+    {
+      "image": "frontier_cyan_orm.png",
+      "role": "frontier_cyan",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9771232008934021,
+        0.501362681388855,
+        0.03975324705243111
+      ],
+      "std": [
+        0.013881774619221687,
+        0.04618023708462715,
+        0.051525987684726715
+      ],
+      "directionality": 1.001097831890036,
+      "metallicTarget": 0.035,
+      "macroWaviness": 0.018,
+      "orangePeel": 0.03,
+      "scratchDensity": 10,
+      "chipDensity": 0.006,
+      "recessDust": 0.08
+    },
+    {
+      "image": "frontier_cyan_normal.png",
+      "role": "frontier_cyan",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.500000536441803,
+        0.5000082850456238,
+        0.9999993443489075
+      ],
+      "std": [
+        0.007440723478794098,
+        0.007441457826644182,
+        0.00019114912720397115
+      ],
+      "directionality": 0.8591917720372213,
+      "metallicTarget": null,
+      "macroWaviness": 0.018,
+      "orangePeel": 0.03,
+      "scratchDensity": 10,
+      "chipDensity": 0.006,
+      "recessDust": 0.08
+    },
+    {
+      "image": "warning_orange_basecolor.png",
+      "role": "warning_orange",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.600181519985199,
+        0.31372326612472534,
+        0.11474283039569855
+      ],
+      "std": [
+        0.009368842467665672,
+        0.011737584136426449,
+        0.02703867480158806
+      ],
+      "directionality": 0.9951244265687864,
+      "metallicTarget": null,
+      "macroWaviness": 0.018,
+      "orangePeel": 0.03,
+      "scratchDensity": 14,
+      "chipDensity": 0.009,
+      "recessDust": 0.1
+    },
+    {
+      "image": "warning_orange_orm.png",
+      "role": "warning_orange",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9771553874015808,
+        0.5417054891586304,
+        0.03593498840928078
+      ],
+      "std": [
+        0.013931366614997387,
+        0.048750218003988266,
+        0.057952605187892914
+      ],
+      "directionality": 1.001007208793341,
+      "metallicTarget": 0.03,
+      "macroWaviness": 0.018,
+      "orangePeel": 0.03,
+      "scratchDensity": 14,
+      "chipDensity": 0.009,
+      "recessDust": 0.1
+    },
+    {
+      "image": "warning_orange_normal.png",
+      "role": "warning_orange",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.49999600648880005,
+        0.4999978542327881,
+        0.9999992251396179
+      ],
+      "std": [
+        0.007866156287491322,
+        0.007888706400990486,
+        0.00022146431729197502
+      ],
+      "directionality": 0.8559714879569092,
+      "metallicTarget": null,
+      "macroWaviness": 0.018,
+      "orangePeel": 0.03,
+      "scratchDensity": 14,
+      "chipDensity": 0.009,
+      "recessDust": 0.1
+    },
+    {
+      "image": "repair_green_basecolor.png",
+      "role": "repair_green",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.20795975625514984,
+        0.3572975993156433,
+        0.2535335123538971
+      ],
+      "std": [
+        0.023081984370946884,
+        0.012038908898830414,
+        0.019582165405154228
+      ],
+      "directionality": 1.0023369355762775,
+      "metallicTarget": null,
+      "macroWaviness": 0.03,
+      "orangePeel": 0.055,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.2
+    },
+    {
+      "image": "repair_green_orm.png",
+      "role": "repair_green",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9770467281341553,
+        0.6735366582870483,
+        0.033671677112579346
+      ],
+      "std": [
+        0.013897736556828022,
+        0.05425294116139412,
+        0.07066125422716141
+      ],
+      "directionality": 1.0002014065024227,
+      "metallicTarget": 0.025,
+      "macroWaviness": 0.03,
+      "orangePeel": 0.055,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.2
+    },
+    {
+      "image": "repair_green_normal.png",
+      "role": "repair_green",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.49999523162841797,
+        0.49998798966407776,
+        0.9999940395355225
+      ],
+      "std": [
+        0.01269976980984211,
+        0.012695150449872017,
+        0.0005282451747916639
+      ],
+      "directionality": 0.8907751217514254,
+      "metallicTarget": null,
+      "macroWaviness": 0.03,
+      "orangePeel": 0.055,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.2
+    },
+    {
+      "image": "rubber_basecolor.png",
+      "role": "rubber",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.12237641215324402,
+        0.14250333607196808,
+        0.15189774334430695
+      ],
+      "std": [
+        0.013134989887475967,
+        0.004542532376945019,
+        0.0031118111219257116
+      ],
+      "directionality": 1.0045512983867535,
+      "metallicTarget": null,
+      "macroWaviness": 0.015,
+      "orangePeel": 0.08,
+      "scratchDensity": 6,
+      "chipDensity": 0.0,
+      "recessDust": 0.08
+    },
+    {
+      "image": "rubber_orm.png",
+      "role": "rubber",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9770095348358154,
+        0.8419771194458008,
+        0.0
+      ],
+      "std": [
+        0.013907077722251415,
+        0.04071459546685219,
+        0.0
+      ],
+      "directionality": 1.0024970468979377,
+      "metallicTarget": 0.0,
+      "macroWaviness": 0.015,
+      "orangePeel": 0.08,
+      "scratchDensity": 6,
+      "chipDensity": 0.0,
+      "recessDust": 0.08
+    },
+    {
+      "image": "rubber_normal.png",
+      "role": "rubber",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.4999932050704956,
+        0.49999478459358215,
+        0.9999552369117737
+      ],
+      "std": [
+        0.021052857860922813,
+        0.02099945768713951,
+        0.0012201947392895818
+      ],
+      "directionality": 0.9037513693411983,
+      "metallicTarget": null,
+      "macroWaviness": 0.015,
+      "orangePeel": 0.08,
+      "scratchDensity": 6,
+      "chipDensity": 0.0,
+      "recessDust": 0.08
+    },
+    {
+      "image": "engine_ceramic_basecolor.png",
+      "role": "engine_ceramic",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.25978341698646545,
+        0.2362092137336731,
+        0.21839822828769684
+      ],
+      "std": [
+        0.0054674092680215836,
+        0.003624709090217948,
+        0.0014584347372874618
+      ],
+      "directionality": 0.9891682513034787,
+      "metallicTarget": null,
+      "macroWaviness": 0.016,
+      "orangePeel": 0.025,
+      "scratchDensity": 8,
+      "chipDensity": 0.0,
+      "recessDust": 0.14
+    },
+    {
+      "image": "engine_ceramic_orm.png",
+      "role": "engine_ceramic",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9767000675201416,
+        0.7433813810348511,
+        0.019965076819062233
+      ],
+      "std": [
+        0.013858706690371037,
+        0.03893924131989479,
+        0.0005005559069104493
+      ],
+      "directionality": 0.9983997966414716,
+      "metallicTarget": 0.02,
+      "macroWaviness": 0.016,
+      "orangePeel": 0.025,
+      "scratchDensity": 8,
+      "chipDensity": 0.0,
+      "recessDust": 0.14
+    },
+    {
+      "image": "engine_ceramic_normal.png",
+      "role": "engine_ceramic",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5000042915344238,
+        0.5000094175338745,
+        0.9999989867210388
+      ],
+      "std": [
+        0.00813350547105074,
+        0.008185191079974174,
+        0.00019969564164057374
+      ],
+      "directionality": 0.8398846656807264,
+      "metallicTarget": null,
+      "macroWaviness": 0.016,
+      "orangePeel": 0.025,
+      "scratchDensity": 8,
+      "chipDensity": 0.0,
+      "recessDust": 0.14
+    },
+    {
+      "image": "radiator_basecolor.png",
+      "role": "radiator",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.175105482339859,
+        0.19235563278198242,
+        0.2043808549642563
+      ],
+      "std": [
+        0.008368480950593948,
+        0.0036458338145166636,
+        0.0020168758928775787
+      ],
+      "directionality": 1.3156773073308434,
+      "metallicTarget": null,
+      "macroWaviness": 0.01,
+      "orangePeel": 0.006,
+      "scratchDensity": 26,
+      "chipDensity": 0.0,
+      "recessDust": 0.11
+    },
+    {
+      "image": "radiator_orm.png",
+      "role": "radiator",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9772685170173645,
+        0.5221282839775085,
+        0.6807308793067932
+      ],
+      "std": [
+        0.013959243893623352,
+        0.04605955258011818,
+        0.016990728676319122
+      ],
+      "directionality": 1.3085036438124535,
+      "metallicTarget": 0.68,
+      "macroWaviness": 0.01,
+      "orangePeel": 0.006,
+      "scratchDensity": 26,
+      "chipDensity": 0.0,
+      "recessDust": 0.11
+    },
+    {
+      "image": "radiator_normal.png",
+      "role": "radiator",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.500000536441803,
+        0.4999973177909851,
+        0.9999991059303284
+      ],
+      "std": [
+        0.00734701007604599,
+        0.007974485866725445,
+        0.00020225065236445516
+      ],
+      "directionality": 1.098150758866435,
+      "metallicTarget": null,
+      "macroWaviness": 0.01,
+      "orangePeel": 0.006,
+      "scratchDensity": 26,
+      "chipDensity": 0.0,
+      "recessDust": 0.11
+    }
+  ],
+  "surfaceImagePixelSha256": {
+    "armor_dark_basecolor.png": "1C480485CB2FEC7A41198763BA0D2024D1B2E132BD2115572A5E7CB04CF13834",
+    "armor_dark_normal.png": "8E2B1E377BE7E0963167B5D8494C684A540324606AC0CE0C8561D7D14E49F23F",
+    "armor_dark_orm.png": "6E721FEDBB110CCD53A51E99BD4FADAFA56B2FA6EEE10140D52A64B9A8DB9AF4",
+    "brushed_metal_basecolor.png": "C31D1852952C7F4DF71C274C2573480C31D23E4AEF647076373B6D5315054386",
+    "brushed_metal_normal.png": "F659AB9502A53EE6C52AEFF0FB3EA0532BDC3C1D1BB0587FA70CC5E1B055609F",
+    "brushed_metal_orm.png": "3B7032FCDD5E96ADAA76AD16CC38F4ECB11AFF0BA5DC5235176D0D6ADBF350C9",
+    "engine_ceramic_basecolor.png": "9DC07C984F6C5179BE58FFA0296E56AFB8BEA868708B7A15EF0263D66187F8EA",
+    "engine_ceramic_normal.png": "22C5EFAD65A4824BB4650944AF234384F0C8418761F4AEBE6A5D2F3BE61D05F0",
+    "engine_ceramic_orm.png": "BEC2631B4534A875481561106654F7161106C2886313C2FD63056EE10798E1D4",
+    "frontier_cyan_basecolor.png": "70EE1BF122DD5B69166085948F7D74B37D45CA797F5B3077796E3D272D907B29",
+    "frontier_cyan_normal.png": "85E2F2287F31F7086B804855B25DD018AD05318FC2A5AAF63BD8385511AB95A7",
+    "frontier_cyan_orm.png": "440C008C8B67734E90637A6D6E0BD2323C894A6A6025D99F9259B04875221065",
+    "hull_basecolor.png": "E5203605C85789717E94A4F895BD4890BD51E1452F60E71724738F6312BE303D",
+    "hull_normal.png": "2D2CA6A5CE8E07F41132787D8327A700AB8497463AFFC76670832892F5B75BA4",
+    "hull_orm.png": "440D90FFCBA6C7DE9A09ADA8E70CB97138409F7EC2C277434851B2C711A41AD4",
+    "mechanical_basecolor.png": "0563A5454F3E0740B3DBDEC009A473593831C6106AC425A032BD0F70565C05FE",
+    "mechanical_normal.png": "455DB5110FB51710C3501F2BBA55ECD8FB5F5A61E41BAF5017B61269DE1DD73E",
+    "mechanical_orm.png": "F391B78453633432CBF18764CFC76E2D03560B00F35D6D13BE1ABBB4AC551E5A",
+    "radiator_basecolor.png": "45D654573F7C065D313BAFA0AF0B31F9E1253351C936E4840D57525DBE221C51",
+    "radiator_normal.png": "96337A9D1544477CCD0239174C5C74166F2BF87E2C2CDFCB651E25794EFD1BD8",
+    "radiator_orm.png": "0A0E2A4C99C780FA255CE9BE3488710953B655BDB036305C2E6BD09AEDA7E03C",
+    "repair_green_basecolor.png": "4F13BC973BAB63346650101E3EA1208AA9A22303859BE1F458262F11DA21BC76",
+    "repair_green_normal.png": "A1A6CE1182FF0B75B673A70050FCD80D395C442073503E8EEEF96AD97369F2E6",
+    "repair_green_orm.png": "E84967D85B431B16FC08988CA4E1206FF67E645123D7E9D3B4F477C56702C6C4",
+    "rubber_basecolor.png": "A370A58106475DB9318703E38F9C65164C28049F65C77C66E6B93EA6D8BEDB2C",
+    "rubber_normal.png": "AF9E285920EFF6F544F4AAFFDC50DA7B320588A6AB8753D0FCB0B341F62D32C1",
+    "rubber_orm.png": "D42F22C70BABAA59088FF0B8A1B185969A94CBE5AFA9352129E831CECFC2C85C",
+    "warning_orange_basecolor.png": "06FA45A40E04A977C9CCFDBE5C3A98144439C4D1AC9D458F1D3216740B8B0071",
+    "warning_orange_normal.png": "6418F73497F8DFD6D2A171E62AA0C5A47189134E653FB3E330FD6DDC0FF970C4",
+    "warning_orange_orm.png": "4DC03D017E1B528E60D9FD3B5FB453A8CA4DFB9A2A81FE4BE2389AA64F75FD0B"
+  },
+  "decalPbrRoles": [
+    {
+      "material": "Material_Decal_Hazard",
+      "baseColorAlpha": "decal_hazard_stripes.png",
+      "normal": "warning_orange_normal.png",
+      "orm": "warning_orange_orm.png",
+      "surfaceRole": "warning_orange",
+      "emissive": false
+    },
+    {
+      "material": "Material_Decal_Stencils",
+      "baseColorAlpha": "decal_stencils.png",
+      "normal": "hull_normal.png",
+      "orm": "hull_orm.png",
+      "surfaceRole": "hull",
+      "emissive": false
+    }
+  ],
+  "materialTruth": {
+    "schema": "spaceface.kestrelMaterialTruth.v1",
+    "passId": "kestrel-material-truth-v6",
+    "fictionDevelopmentAgreement": true,
+    "hiddenLegacyObjects": [
+      "Antenna_Loop",
+      "Antenna_Mast",
+      "Decal_BorrowedTime",
+      "Engine_Aft_LoadRing",
+      "Engine_CoolingRing",
+      "Engine_Core",
+      "Engine_Forward_LoadRing",
+      "Engine_HeatVane_-1_0",
+      "Engine_HeatVane_-1_1",
+      "Engine_HeatVane_-1_2",
+      "Engine_HeatVane_-1_3",
+      "Engine_HeatVane_1_0",
+      "Engine_HeatVane_1_1",
+      "Engine_HeatVane_1_2",
+      "Engine_HeatVane_1_3",
+      "Engine_NozzlePetal_00",
+      "Engine_NozzlePetal_01",
+      "Engine_NozzlePetal_02",
+      "Engine_NozzlePetal_03",
+      "Engine_NozzlePetal_04",
+      "Engine_NozzlePetal_05",
+      "Engine_NozzlePetal_06",
+      "Engine_NozzlePetal_07",
+      "Engine_NozzlePetal_08",
+      "Engine_NozzlePetal_09",
+      "Engine_NozzlePetal_10",
+      "Engine_NozzlePetal_11",
+      "Engine_NozzlePetal_12",
+      "Engine_NozzlePetal_13",
+      "Engine_NozzlePetal_14",
+      "Engine_NozzlePetal_15",
+      "Hull_Shoulder_Armor_Pair",
+      "Nose_Armored_Brow",
+      "Nose_Sensor_Slit_0",
+      "Nose_Sensor_Slit_1",
+      "Pulse_Coil_-1_0",
+      "Pulse_Coil_-1_1",
+      "Pulse_Coil_-1_2",
+      "Pulse_Coil_1_0",
+      "Pulse_Coil_1_1",
+      "Pulse_Coil_1_2",
+      "Pulse_Gimbal_Base",
+      "Pulse_Gimbal_Ring",
+      "Pulse_Receiver",
+      "Radiator_Fin_Array_Source",
+      "UtilityPod_HazardBand",
+      "UtilityPod_Starboard",
+      "V5_DriveVent_Port_00",
+      "V5_DriveVent_Port_01",
+      "V5_DriveVent_Port_02",
+      "V5_DriveVent_Port_03",
+      "V5_DriveVent_Port_04",
+      "V5_DriveVent_Starboard_00",
+      "V5_DriveVent_Starboard_01",
+      "V5_DriveVent_Starboard_02",
+      "V5_DriveVent_Starboard_03",
+      "V5_DriveVent_Starboard_04",
+      "V5_RadiatorFace_Port",
+      "V5_RadiatorFace_Starboard",
+      "V5_ShoulderInlay_Port",
+      "V5_ShoulderInlay_Starboard",
+      "V5_ShoulderOverlay_Port",
+      "V5_ShoulderOverlay_Starboard",
+      "V5_UtilityPodClamp_Aft",
+      "V5_UtilityPodClamp_Fore",
+      "V5_UtilityPodTopCap"
+    ],
+    "pressureShell": {
+      "object": "LOD0_HULL_Kestrel_PressureHull",
+      "vertices": 100,
+      "rings": 7
+    },
+    "objectsAdded": 553,
+    "visibleObjectCount": 733,
+    "materialBills": {
+      "drive_alloy": {
+        "substrate": "cast and finish-machined nickel-chromium drive alloy",
+        "manufacture": "segmented casting, machined bearing faces, drilled clamp roots",
+        "finish": "heat-darkened conversion finish with directional service polish",
+        "interface": "bolted clamp segments over ceramic isolators and aft casing flange",
+        "response": "dark metallic broad highlights with restrained directional micrograin",
+        "history": "repeated hot-cycle discoloration and tool contact at service fasteners",
+        "forbidden": "cyan tire, rubber ring, molded plastic torus"
+      },
+      "ceramic_isolator": {
+        "substrate": "alumina-silicate electrical and thermal isolation ceramic",
+        "manufacture": "pressed segment, sintered, ground at clamp interfaces",
+        "finish": "unpainted warm-gray ceramic with localized soot",
+        "interface": "captured between drive casing and metallic load-clamp segments",
+        "response": "nonmetallic diffuse response with tight low-amplitude surface variation",
+        "history": "protected faces remain clean; exposed aft edges carry carbon haze",
+        "forbidden": "rubber gasket, plastic spacer, leather grain"
+      },
+      "refractory_vane": {
+        "substrate": "refractory superalloy skin over ceramic laminate",
+        "manufacture": "taper-formed vane with machined pivot root and folded stiffening edges",
+        "finish": "oxide-darkened hot face and cooler machined root",
+        "interface": "individual root pivots around the aft drive casing",
+        "response": "thin hard vanes with rough hot faces and metallic root glints",
+        "history": "aft-edge heat staining and unequal replacement age",
+        "forbidden": "rectangular chocolate block, LEGO chiclet, painted cube"
+      },
+      "pressure_shell": {
+        "substrate": "rolled and longitudinally welded low-alloy pressure shell",
+        "manufacture": "formed shell courses with welded seams and frame saddles",
+        "finish": "dark conversion coat with patch primer and restrained orange peel",
+        "interface": "captured by shoulder roots, keel, dorsal spine and drive bulkhead",
+        "response": "broad coated-metal response with shallow formed waviness only",
+        "history": "service access polish and local patching, not universal noise",
+        "forbidden": "rubber tube, leather wrap, clay cylinder"
+      },
+      "radiator": {
+        "substrate": "folded high-temperature metallic radiator sheet",
+        "manufacture": "corrugated louvers in a welded recessed frame",
+        "finish": "oxidized dark metal with directional thermal grain",
+        "interface": "replaceable bank seated into shoulder heat-transfer rails",
+        "response": "thin rhythmic blades, dark recesses and directional metal highlights",
+        "history": "leading-edge dust and uneven oxidation from repeated heat cycles",
+        "forbidden": "floating rectangle sticks, rubber comb, solid plastic bars"
+      },
+      "sensor": {
+        "substrate": "machined aluminum-magnesium gimbal and conductive composite dish",
+        "manufacture": "ribbed shallow dish, pivot yoke and replaceable feed horn",
+        "finish": "dark low-glare coating with bare bearing faces",
+        "interface": "bolted dorsal pedestal with visible yoke pivots and service lead",
+        "response": "directional instrument; only the feed aperture emits",
+        "history": "salvaged dish with one mismatched yoke arm and field-aligned stops",
+        "forbidden": "neon hoop, lightbulb ring, decorative antenna circle"
+      },
+      "marking": {
+        "substrate": "stencil paint over the existing coated pressure shell",
+        "manufacture": "crew-cut stencil applied between service seams",
+        "finish": "warm off-white matte marking paint",
+        "interface": "paint layer follows the port shell surface",
+        "response": "legible ship identity without a floating plaque",
+        "history": "crew-applied gallows humor with restrained abrasion",
+        "forbidden": "inventory label, orange censor block, generated gibberish"
+      },
+      "coated_hull_panel": {
+        "substrate": "formed aluminum-steel aerospace hull panel",
+        "manufacture": "cut, brake-formed and mounted to the pressure-frame structure",
+        "finish": "dark conversion coat or locally renewed primer",
+        "interface": "bolted or welded to named frame, hatch, keel or armor interface",
+        "response": "coated metal with broad highlights and restrained paint microstructure",
+        "history": "localized maintenance and contact wear only",
+        "forbidden": "clay slab, plastic shell, leather skin"
+      },
+      "armor_plate": {
+        "substrate": "high-toughness steel/aluminum laminate armor plate",
+        "manufacture": "cut and brake-formed replaceable plate",
+        "finish": "ceramic-rich matte protective coating over metallic substrate",
+        "interface": "stood off from the pressure shell on visible load roots",
+        "response": "hard planar response with distinct edge wear and no molded softness",
+        "history": "impact repair and replacement age vary by plate",
+        "forbidden": "toy wing, rubber slab, one-piece molded plastic"
+      },
+      "structural_metal": {
+        "substrate": "machined or welded structural aerospace alloy",
+        "manufacture": "section-appropriate extrusion, machining, tube forming or weldment",
+        "finish": "dark passivation or directional service-polished bare metal",
+        "interface": "fastened, welded or pivoted into a named load/service path",
+        "response": "metallic response whose grain and edge scale follow manufacture",
+        "history": "tool contact and joint-local grime, not wallpaper scratches",
+        "forbidden": "default gray plastic, floating bar, unexplained cube"
+      },
+      "cable_elastomer": {
+        "substrate": "braided conductor/line inside aerospace elastomer insulation",
+        "manufacture": "extruded insulation over reinforced service line",
+        "finish": "matte flexible jacket with metal terminations",
+        "interface": "clamped at both ends and routed away from heat/contact zones",
+        "response": "localized flexible nonmetal, used only at true cable/hose scale",
+        "history": "compression and handling scuffs at clamps",
+        "forbidden": "rubber hull, tire-like structure, leather grain"
+      },
+      "canopy": {
+        "substrate": "laminated transparent ceramic pressure glazing",
+        "manufacture": "hot-formed laminate with conductive and radiation-control layers",
+        "finish": "dark conductive coating inside a metallic pressure frame",
+        "interface": "captured by canopy rails and pressure seals",
+        "response": "dense dark glazing with selective reflection and preserved depth",
+        "history": "cleaned view sector with edge abrasion at the frame",
+        "forbidden": "glowing plastic bubble, opaque toy glass"
+      },
+      "repair_panel": {
+        "substrate": "salvaged formed alloy replacement panel",
+        "manufacture": "field-cut and adapted to the original mounting pattern",
+        "finish": "rough green patch primer over mismatched substrate",
+        "interface": "clamps and adapter plates reveal the non-original fit",
+        "response": "coated metal distinct from factory hull without becoming plastic",
+        "history": "brush/roller application and localized grime around altered fasteners",
+        "forbidden": "random green LEGO block, generic plastic box"
+      },
+      "active_aperture": {
+        "substrate": "glass/ceramic optical aperture in a metallic or ceramic housing",
+        "manufacture": "small replaceable lens, lamp or emitter module",
+        "finish": "clear or coated aperture with non-emissive surrounding hardware",
+        "interface": "recessed into a named navigation, sensor, weapon or drive function",
+        "response": "emission confined to the active aperture and readable without bloom",
+        "history": "clean aperture, worn surrounding mount",
+        "forbidden": "glowing structural hoop, whole-surface neon decoration"
+      }
+    },
+    "materialResponse": {
+      "Material_Hull": 0.16,
+      "Material_ArmorDark": 0.16,
+      "Material_Mechanical": 0.18,
+      "Material_BrushedMetal": 0.22,
+      "Material_RepairGreen": 0.18,
+      "Material_Rubber": 0.2,
+      "Material_EngineCeramic": 0.2,
+      "Material_Radiator": 0.2
+    },
+    "existingMaterialBillCoverage": {
+      "covered": 180,
+      "missing": 0
+    },
+    "objects": [
+      "V6_DriveCollar_Segment_00",
+      "V6_DriveIsolator_Segment_00",
+      "V6_DriveCollar_FacePanel_00",
+      "V6_DriveClampBolt_00",
+      "V6_DriveClampEdgeBolt_00_0",
+      "V6_DriveClampEdgeBolt_00_1",
+      "V6_NozzleVane_00",
+      "V6_NozzleVaneHotFace_00",
+      "V6_NozzleVaneEdgeA_00",
+      "V6_NozzleVaneEdgeB_00",
+      "V6_NozzlePivot_00",
+      "V6_VaneActuatorBracket_00",
+      "V6_VaneActuatorLink_00_0",
+      "V6_VaneActuatorLink_00_1",
+      "V6_DriveCollar_Segment_01",
+      "V6_DriveIsolator_Segment_01",
+      "V6_DriveCollar_FacePanel_01",
+      "V6_DriveClampBolt_01",
+      "V6_DriveClampEdgeBolt_01_0",
+      "V6_DriveClampEdgeBolt_01_1",
+      "V6_NozzleVane_01",
+      "V6_NozzleVaneHotFace_01",
+      "V6_NozzleVaneEdgeA_01",
+      "V6_NozzleVaneEdgeB_01",
+      "V6_NozzlePivot_01",
+      "V6_VaneActuatorBracket_01",
+      "V6_VaneActuatorLink_01_0",
+      "V6_VaneActuatorLink_01_1",
+      "V6_DriveCollar_Segment_02",
+      "V6_DriveIsolator_Segment_02",
+      "V6_DriveCollar_FacePanel_02",
+      "V6_DriveClampBolt_02",
+      "V6_DriveClampEdgeBolt_02_0",
+      "V6_DriveClampEdgeBolt_02_1",
+      "V6_NozzleVane_02",
+      "V6_NozzleVaneHotFace_02",
+      "V6_NozzleVaneEdgeA_02",
+      "V6_NozzleVaneEdgeB_02",
+      "V6_NozzlePivot_02",
+      "V6_VaneActuatorBracket_02",
+      "V6_VaneActuatorLink_02_0",
+      "V6_VaneActuatorLink_02_1",
+      "V6_DriveCollar_Segment_03",
+      "V6_DriveIsolator_Segment_03",
+      "V6_DriveCollar_FacePanel_03",
+      "V6_DriveClampBolt_03",
+      "V6_DriveClampEdgeBolt_03_0",
+      "V6_DriveClampEdgeBolt_03_1",
+      "V6_NozzleVane_03",
+      "V6_NozzleVaneHotFace_03",
+      "V6_NozzleVaneEdgeA_03",
+      "V6_NozzleVaneEdgeB_03",
+      "V6_NozzlePivot_03",
+      "V6_VaneActuatorBracket_03",
+      "V6_VaneActuatorLink_03_0",
+      "V6_VaneActuatorLink_03_1",
+      "V6_DriveCollar_Segment_04",
+      "V6_DriveIsolator_Segment_04",
+      "V6_DriveCollar_FacePanel_04",
+      "V6_DriveClampBolt_04",
+      "V6_DriveClampEdgeBolt_04_0",
+      "V6_DriveClampEdgeBolt_04_1",
+      "V6_NozzleVane_04",
+      "V6_NozzleVaneHotFace_04",
+      "V6_NozzleVaneEdgeA_04",
+      "V6_NozzleVaneEdgeB_04",
+      "V6_NozzlePivot_04",
+      "V6_VaneActuatorBracket_04",
+      "V6_VaneActuatorLink_04_0",
+      "V6_VaneActuatorLink_04_1",
+      "V6_DriveCollar_Segment_05",
+      "V6_DriveIsolator_Segment_05",
+      "V6_DriveCollar_FacePanel_05",
+      "V6_DriveClampBolt_05",
+      "V6_DriveClampEdgeBolt_05_0",
+      "V6_DriveClampEdgeBolt_05_1",
+      "V6_NozzleVane_05",
+      "V6_NozzleVaneHotFace_05",
+      "V6_NozzleVaneEdgeA_05",
+      "V6_NozzleVaneEdgeB_05",
+      "V6_NozzlePivot_05",
+      "V6_VaneActuatorBracket_05",
+      "V6_VaneActuatorLink_05_0",
+      "V6_VaneActuatorLink_05_1",
+      "V6_DriveCollar_Segment_06",
+      "V6_DriveIsolator_Segment_06",
+      "V6_DriveCollar_FacePanel_06",
+      "V6_DriveClampBolt_06",
+      "V6_DriveClampEdgeBolt_06_0",
+      "V6_DriveClampEdgeBolt_06_1",
+      "V6_NozzleVane_06",
+      "V6_NozzleVaneHotFace_06",
+      "V6_NozzleVaneEdgeA_06",
+      "V6_NozzleVaneEdgeB_06",
+      "V6_NozzlePivot_06",
+      "V6_VaneActuatorBracket_06",
+      "V6_VaneActuatorLink_06_0",
+      "V6_VaneActuatorLink_06_1",
+      "V6_DriveCollar_Segment_07",
+      "V6_DriveIsolator_Segment_07",
+      "V6_DriveCollar_FacePanel_07",
+      "V6_DriveClampBolt_07",
+      "V6_DriveClampEdgeBolt_07_0",
+      "V6_DriveClampEdgeBolt_07_1",
+      "V6_NozzleVane_07",
+      "V6_NozzleVaneHotFace_07",
+      "V6_NozzleVaneEdgeA_07",
+      "V6_NozzleVaneEdgeB_07",
+      "V6_NozzlePivot_07",
+      "V6_VaneActuatorBracket_07",
+      "V6_VaneActuatorLink_07_0",
+      "V6_VaneActuatorLink_07_1",
+      "V6_DriveCollar_Segment_08",
+      "V6_DriveIsolator_Segment_08",
+      "V6_DriveCollar_FacePanel_08",
+      "V6_DriveClampBolt_08",
+      "V6_DriveClampEdgeBolt_08_0",
+      "V6_DriveClampEdgeBolt_08_1",
+      "V6_NozzleVane_08",
+      "V6_NozzleVaneHotFace_08",
+      "V6_NozzleVaneEdgeA_08",
+      "V6_NozzleVaneEdgeB_08",
+      "V6_NozzlePivot_08",
+      "V6_VaneActuatorBracket_08",
+      "V6_VaneActuatorLink_08_0",
+      "V6_VaneActuatorLink_08_1",
+      "V6_DriveCollar_Segment_09",
+      "V6_DriveIsolator_Segment_09",
+      "V6_DriveCollar_FacePanel_09",
+      "V6_DriveClampBolt_09",
+      "V6_DriveClampEdgeBolt_09_0",
+      "V6_DriveClampEdgeBolt_09_1",
+      "V6_NozzleVane_09",
+      "V6_NozzleVaneHotFace_09",
+      "V6_NozzleVaneEdgeA_09",
+      "V6_NozzleVaneEdgeB_09",
+      "V6_NozzlePivot_09",
+      "V6_VaneActuatorBracket_09",
+      "V6_VaneActuatorLink_09_0",
+      "V6_VaneActuatorLink_09_1",
+      "V6_DriveCollar_Segment_10",
+      "V6_DriveIsolator_Segment_10",
+      "V6_DriveCollar_FacePanel_10",
+      "V6_DriveClampBolt_10",
+      "V6_DriveClampEdgeBolt_10_0",
+      "V6_DriveClampEdgeBolt_10_1",
+      "V6_NozzleVane_10",
+      "V6_NozzleVaneHotFace_10",
+      "V6_NozzleVaneEdgeA_10",
+      "V6_NozzleVaneEdgeB_10",
+      "V6_NozzlePivot_10",
+      "V6_VaneActuatorBracket_10",
+      "V6_VaneActuatorLink_10_0",
+      "V6_VaneActuatorLink_10_1",
+      "V6_DriveCollar_Segment_11",
+      "V6_DriveIsolator_Segment_11",
+      "V6_DriveCollar_FacePanel_11",
+      "V6_DriveClampBolt_11",
+      "V6_DriveClampEdgeBolt_11_0",
+      "V6_DriveClampEdgeBolt_11_1",
+      "V6_NozzleVane_11",
+      "V6_NozzleVaneHotFace_11",
+      "V6_NozzleVaneEdgeA_11",
+      "V6_NozzleVaneEdgeB_11",
+      "V6_NozzlePivot_11",
+      "V6_VaneActuatorBracket_11",
+      "V6_VaneActuatorLink_11_0",
+      "V6_VaneActuatorLink_11_1",
+      "V6_ForwardBulkhead_00",
+      "V6_ForwardBulkhead_01",
+      "V6_ForwardBulkhead_02",
+      "V6_ForwardBulkhead_03",
+      "V6_ForwardBulkhead_04",
+      "V6_ForwardBulkhead_05",
+      "V6_ForwardBulkhead_06",
+      "V6_ForwardBulkhead_07",
+      "V6_ForwardBulkhead_08",
+      "V6_ForwardBulkhead_09",
+      "V6_CoolingManifold_00",
+      "V6_CoolingManifold_01",
+      "V6_CoolingManifold_02",
+      "V6_CoolingManifold_03",
+      "V6_CoolingManifold_04",
+      "V6_CoolingManifold_05",
+      "V6_CoolingManifold_06",
+      "V6_CoolingManifold_07",
+      "V6_CoolingManifold_08",
+      "V6_CoolingManifold_09",
+      "V6_DriveCasingCourse_00_00",
+      "V6_DriveCasingCourse_00_01",
+      "V6_DriveCasingCourse_00_02",
+      "V6_DriveCasingCourse_00_03",
+      "V6_DriveCasingCourse_00_04",
+      "V6_DriveCasingCourse_00_05",
+      "V6_DriveCasingCourse_00_06",
+      "V6_DriveCasingCourse_00_07",
+      "V6_DriveCasingCourse_01_00",
+      "V6_DriveCasingCourse_01_01",
+      "V6_DriveCasingCourse_01_02",
+      "V6_DriveCasingCourse_01_03",
+      "V6_DriveCasingCourse_01_04",
+      "V6_DriveCasingCourse_01_05",
+      "V6_DriveCasingCourse_01_06",
+      "V6_DriveCasingCourse_01_07",
+      "V6_DriveCasingCourse_02_00",
+      "V6_DriveCasingCourse_02_01",
+      "V6_DriveCasingCourse_02_02",
+      "V6_DriveCasingCourse_02_03",
+      "V6_DriveCasingCourse_02_04",
+      "V6_DriveCasingCourse_02_05",
+      "V6_DriveCasingCourse_02_06",
+      "V6_DriveCasingCourse_02_07",
+      "V6_DriveCasingRail_00",
+      "V6_DriveCasingRail_01",
+      "V6_DriveCasingRail_02",
+      "V6_DriveCasingRail_03",
+      "V6_DriveCasingRail_04",
+      "V6_DriveCasingRail_05",
+      "V6_DriveCasingRail_06",
+      "V6_DriveCasingRail_07",
+      "V6_NozzleThroatRib_00",
+      "V6_NozzleThroatRib_01",
+      "V6_NozzleThroatRib_02",
+      "V6_NozzleThroatRib_03",
+      "V6_NozzleThroatRib_04",
+      "V6_NozzleThroatRib_05",
+      "V6_NozzleThroatRib_06",
+      "V6_NozzleThroatRib_07",
+      "V6_NozzleThroatRib_08",
+      "V6_NozzleThroatRib_09",
+      "V6_NozzleThroatRib_10",
+      "V6_NozzleThroatRib_11",
+      "V6_NozzleThroatRib_12",
+      "V6_NozzleThroatRib_13",
+      "V6_NozzleThroatRib_14",
+      "V6_NozzleThroatRib_15",
+      "V6_DriveHotCore",
+      "V6_SponsonUnderframe_Port_Aft",
+      "V6_SponsonOuterPlate_Port_Aft",
+      "V6_SponsonSideBolt_Port_Aft_0",
+      "V6_SponsonSideBolt_Port_Aft_1",
+      "V6_SponsonUnderframe_Port_AftMid",
+      "V6_SponsonOuterPlate_Port_AftMid",
+      "V6_SponsonSideBolt_Port_AftMid_0",
+      "V6_SponsonSideBolt_Port_AftMid_1",
+      "V6_SponsonUnderframe_Port_Mid",
+      "V6_SponsonOuterPlate_Port_Mid",
+      "V6_SponsonSideBolt_Port_Mid_0",
+      "V6_SponsonSideBolt_Port_Mid_1",
+      "V6_SponsonUnderframe_Port_ForeMid",
+      "V6_SponsonOuterPlate_Port_ForeMid",
+      "V6_SponsonSideBolt_Port_ForeMid_0",
+      "V6_SponsonSideBolt_Port_ForeMid_1",
+      "V6_SponsonUnderframe_Port_Fore",
+      "V6_SponsonOuterPlate_Port_Fore",
+      "V6_SponsonSideBolt_Port_Fore_0",
+      "V6_SponsonSideBolt_Port_Fore_1",
+      "V6_ShoulderArmor_Port_Aft",
+      "V6_ShoulderFastener_Port_Aft_0",
+      "V6_ShoulderFastener_Port_Aft_1",
+      "V6_ShoulderFastener_Port_Aft_2",
+      "V6_ShoulderFastener_Port_Aft_3",
+      "V6_ShoulderArmor_Port_Mid",
+      "V6_ShoulderFastener_Port_Mid_0",
+      "V6_ShoulderFastener_Port_Mid_1",
+      "V6_ShoulderFastener_Port_Mid_2",
+      "V6_ShoulderFastener_Port_Mid_3",
+      "V6_ShoulderArmor_Port_Fore",
+      "V6_ShoulderFastener_Port_Fore_0",
+      "V6_ShoulderFastener_Port_Fore_1",
+      "V6_ShoulderFastener_Port_Fore_2",
+      "V6_ShoulderFastener_Port_Fore_3",
+      "V6_ShoulderEdgeRail_Port_00",
+      "V6_ShoulderEdgeRail_Port_01",
+      "V6_ShoulderEdgeRail_Port_02",
+      "V6_ShoulderHatchRecess_Port",
+      "V6_ShoulderHatch_Port",
+      "V6_SponsonServiceRecess_Port_00",
+      "V6_SponsonServiceRib_Port_00_0",
+      "V6_SponsonServiceRib_Port_00_1",
+      "V6_SponsonServiceRib_Port_00_2",
+      "V6_SponsonServiceRecess_Port_01",
+      "V6_SponsonServiceRib_Port_01_0",
+      "V6_SponsonServiceRib_Port_01_1",
+      "V6_SponsonServiceRib_Port_01_2",
+      "V6_SponsonUnderframe_Starboard_Aft",
+      "V6_SponsonOuterPlate_Starboard_Aft",
+      "V6_SponsonSideBolt_Starboard_Aft_0",
+      "V6_SponsonSideBolt_Starboard_Aft_1",
+      "V6_SponsonUnderframe_Starboard_AftMid",
+      "V6_SponsonOuterPlate_Starboard_AftMid",
+      "V6_SponsonSideBolt_Starboard_AftMid_0",
+      "V6_SponsonSideBolt_Starboard_AftMid_1",
+      "V6_SponsonUnderframe_Starboard_Mid",
+      "V6_SponsonOuterPlate_Starboard_Mid",
+      "V6_SponsonSideBolt_Starboard_Mid_0",
+      "V6_SponsonSideBolt_Starboard_Mid_1",
+      "V6_SponsonUnderframe_Starboard_ForeMid",
+      "V6_SponsonOuterPlate_Starboard_ForeMid",
+      "V6_SponsonSideBolt_Starboard_ForeMid_0",
+      "V6_SponsonSideBolt_Starboard_ForeMid_1",
+      "V6_SponsonUnderframe_Starboard_Fore",
+      "V6_SponsonOuterPlate_Starboard_Fore",
+      "V6_SponsonSideBolt_Starboard_Fore_0",
+      "V6_SponsonSideBolt_Starboard_Fore_1",
+      "V6_ShoulderArmor_Starboard_Aft",
+      "V6_ShoulderFastener_Starboard_Aft_0",
+      "V6_ShoulderFastener_Starboard_Aft_1",
+      "V6_ShoulderFastener_Starboard_Aft_2",
+      "V6_ShoulderFastener_Starboard_Aft_3",
+      "V6_ShoulderArmor_Starboard_Mid",
+      "V6_ShoulderFastener_Starboard_Mid_0",
+      "V6_ShoulderFastener_Starboard_Mid_1",
+      "V6_ShoulderFastener_Starboard_Mid_2",
+      "V6_ShoulderFastener_Starboard_Mid_3",
+      "V6_ShoulderArmor_Starboard_Fore",
+      "V6_ShoulderFastener_Starboard_Fore_0",
+      "V6_ShoulderFastener_Starboard_Fore_1",
+      "V6_ShoulderFastener_Starboard_Fore_2",
+      "V6_ShoulderFastener_Starboard_Fore_3",
+      "V6_ShoulderEdgeRail_Starboard_00",
+      "V6_ShoulderEdgeRail_Starboard_01",
+      "V6_ShoulderEdgeRail_Starboard_02",
+      "V6_ShoulderHatchRecess_Starboard",
+      "V6_ShoulderHatch_Starboard",
+      "V6_SponsonServiceRecess_Starboard_00",
+      "V6_SponsonServiceRib_Starboard_00_0",
+      "V6_SponsonServiceRib_Starboard_00_1",
+      "V6_SponsonServiceRib_Starboard_00_2",
+      "V6_SponsonServiceRecess_Starboard_01",
+      "V6_SponsonServiceRib_Starboard_01_0",
+      "V6_SponsonServiceRib_Starboard_01_1",
+      "V6_SponsonServiceRib_Starboard_01_2",
+      "V6_RepairPodPressureCase",
+      "V6_RepairPodEndCap_Aft",
+      "V6_RepairPodEndCap_Fore",
+      "V6_RepairPodTopHatch",
+      "V6_RepairPodHatchInset",
+      "V6_RepairPodBandTop_00",
+      "V6_RepairPodBandSide_Port_00",
+      "V6_RepairPodBandSide_Starboard_00",
+      "V6_RepairPodBandTop_01",
+      "V6_RepairPodBandSide_Port_01",
+      "V6_RepairPodBandSide_Starboard_01",
+      "V6_RepairPodBandTop_02",
+      "V6_RepairPodBandSide_Port_02",
+      "V6_RepairPodBandSide_Starboard_02",
+      "V6_RepairPodMount_00",
+      "V6_RepairPodIsolator_00",
+      "V6_RepairPodMount_01",
+      "V6_RepairPodIsolator_01",
+      "V6_RepairPodMount_02",
+      "V6_RepairPodIsolator_02",
+      "V6_RepairPodMount_03",
+      "V6_RepairPodIsolator_03",
+      "V6_RepairPodConnectorRecess",
+      "V6_RepairPodConnectorShell_00",
+      "V6_RepairPodConnectorInsert_00",
+      "V6_RepairPodConnectorShell_01",
+      "V6_RepairPodConnectorInsert_01",
+      "V6_RepairPodConnectorShell_02",
+      "V6_RepairPodConnectorInsert_02",
+      "V6_RepairPodSideAdapter",
+      "V6_RepairPodSideAdapterBolt_00",
+      "V6_RepairPodSideAdapterBolt_01",
+      "V6_RepairPodHatchLatch_00",
+      "V6_RepairPodHatchLatch_01",
+      "V6_RepairPodHazardMark",
+      "V6_WeaponSpineUnderframe",
+      "V6_WeaponArmor_Port_00",
+      "V6_WeaponArmorBolt_Port_00_0",
+      "V6_WeaponArmorBolt_Port_00_1",
+      "V6_WeaponArmor_Port_01",
+      "V6_WeaponArmorBolt_Port_01_0",
+      "V6_WeaponArmorBolt_Port_01_1",
+      "V6_WeaponArmor_Port_02",
+      "V6_WeaponArmorBolt_Port_02_0",
+      "V6_WeaponArmorBolt_Port_02_1",
+      "V6_WeaponCheek_Port",
+      "V6_WeaponTrunnion_Port",
+      "V6_WeaponTrunnionCap_Port",
+      "V6_WeaponLoadGusset_Port",
+      "V6_WeaponCableConduit_Port",
+      "V6_WeaponOpticalPickup_Port",
+      "V6_WeaponArmor_Starboard_00",
+      "V6_WeaponArmorBolt_Starboard_00_0",
+      "V6_WeaponArmorBolt_Starboard_00_1",
+      "V6_WeaponArmor_Starboard_01",
+      "V6_WeaponArmorBolt_Starboard_01_0",
+      "V6_WeaponArmorBolt_Starboard_01_1",
+      "V6_WeaponArmor_Starboard_02",
+      "V6_WeaponArmorBolt_Starboard_02_0",
+      "V6_WeaponArmorBolt_Starboard_02_1",
+      "V6_WeaponCheek_Starboard",
+      "V6_WeaponTrunnion_Starboard",
+      "V6_WeaponTrunnionCap_Starboard",
+      "V6_WeaponLoadGusset_Starboard",
+      "V6_WeaponCableConduit_Starboard",
+      "V6_WeaponOpticalPickup_Starboard",
+      "V6_PulseReceiver_Port",
+      "V6_PulseReceiverAccess_Port",
+      "V6_PulseRecoilRail_Port",
+      "V6_PulseBarrelJacket_Port_00",
+      "V6_PulseBarrelIsolator_Port_00",
+      "V6_PulseBarrelJacket_Port_01",
+      "V6_PulseBarrelIsolator_Port_01",
+      "V6_PulseBarrelJacket_Port_02",
+      "V6_PulseBarrelIsolator_Port_02",
+      "V6_PulseReceiver_Starboard",
+      "V6_PulseReceiverAccess_Starboard",
+      "V6_PulseRecoilRail_Starboard",
+      "V6_PulseBarrelJacket_Starboard_00",
+      "V6_PulseBarrelIsolator_Starboard_00",
+      "V6_PulseBarrelJacket_Starboard_01",
+      "V6_PulseBarrelIsolator_Starboard_01",
+      "V6_PulseBarrelJacket_Starboard_02",
+      "V6_PulseBarrelIsolator_Starboard_02",
+      "V6_WeaponCenterServiceHatch",
+      "V6_RadiatorCassetteBase_Port",
+      "V6_RadiatorCoreRecess_Port",
+      "V6_RadiatorFinPack_Port",
+      "V6_RadiatorCoverRib_Port_00",
+      "V6_RadiatorCoverBolt_Port_00",
+      "V6_RadiatorCoverRib_Port_01",
+      "V6_RadiatorCoverBolt_Port_01",
+      "V6_RadiatorCoverRib_Port_02",
+      "V6_RadiatorCoverBolt_Port_02",
+      "V6_RadiatorCoverRib_Port_03",
+      "V6_RadiatorCoverBolt_Port_03",
+      "V6_RadiatorCoverRib_Port_04",
+      "V6_RadiatorCoverBolt_Port_04",
+      "V6_RadiatorCoverRib_Port_05",
+      "V6_RadiatorCoverBolt_Port_05",
+      "V6_RadiatorCoverRib_Port_06",
+      "V6_RadiatorCoverBolt_Port_06",
+      "V6_RadiatorCoverRib_Port_07",
+      "V6_RadiatorCoverBolt_Port_07",
+      "V6_RadiatorFrameRail_Port_Inner",
+      "V6_RadiatorFrameRail_Port_Outer",
+      "V6_RadiatorManifold_Port_00",
+      "V6_RadiatorManifold_Port_01",
+      "V6_RadiatorHinge_Port_Aft",
+      "V6_RadiatorHinge_Port_Fore",
+      "V6_RadiatorCoolantRail_Port",
+      "V6_RadiatorRailCoupling_Port_00",
+      "V6_RadiatorRailCoupling_Port_01",
+      "V6_RadiatorCassetteBase_Starboard",
+      "V6_RadiatorCoreRecess_Starboard",
+      "V6_RadiatorFinPack_Starboard",
+      "V6_RadiatorCoverRib_Starboard_00",
+      "V6_RadiatorCoverBolt_Starboard_00",
+      "V6_RadiatorCoverRib_Starboard_01",
+      "V6_RadiatorCoverBolt_Starboard_01",
+      "V6_RadiatorCoverRib_Starboard_02",
+      "V6_RadiatorCoverBolt_Starboard_02",
+      "V6_RadiatorCoverRib_Starboard_03",
+      "V6_RadiatorCoverBolt_Starboard_03",
+      "V6_RadiatorCoverRib_Starboard_04",
+      "V6_RadiatorCoverBolt_Starboard_04",
+      "V6_RadiatorCoverRib_Starboard_05",
+      "V6_RadiatorCoverBolt_Starboard_05",
+      "V6_RadiatorCoverRib_Starboard_06",
+      "V6_RadiatorCoverBolt_Starboard_06",
+      "V6_RadiatorCoverRib_Starboard_07",
+      "V6_RadiatorCoverBolt_Starboard_07",
+      "V6_RadiatorFrameRail_Starboard_Inner",
+      "V6_RadiatorFrameRail_Starboard_Outer",
+      "V6_RadiatorManifold_Starboard_00",
+      "V6_RadiatorManifold_Starboard_01",
+      "V6_RadiatorHinge_Starboard_Aft",
+      "V6_RadiatorHinge_Starboard_Fore",
+      "V6_RadiatorCoolantRail_Starboard",
+      "V6_RadiatorRailCoupling_Starboard_00",
+      "V6_RadiatorRailCoupling_Starboard_01",
+      "V6_SensorBasePlate",
+      "V6_SensorPedestal",
+      "V6_SensorCableChase",
+      "V6_SensorBaseBolt_00",
+      "V6_SensorBaseBolt_01",
+      "V6_SensorBaseBolt_02",
+      "V6_SensorBaseBolt_03",
+      "V6_SensorYoke_Aft",
+      "V6_SensorBearing_Aft",
+      "V6_SensorYoke_Fore",
+      "V6_SensorBearing_Fore",
+      "V6_SensorDish",
+      "V6_SensorDishRib_00",
+      "V6_SensorDishRib_01",
+      "V6_SensorDishRib_02",
+      "V6_SensorRimFastener_00",
+      "V6_SensorRimFastener_01",
+      "V6_SensorRimFastener_02",
+      "V6_SensorRimFastener_03",
+      "V6_SensorRimFastener_04",
+      "V6_SensorRimFastener_05",
+      "V6_SensorFeedHorn",
+      "V6_SensorActiveAperture",
+      "V6_SensorServiceLead",
+      "V6_PressureSaddle_00_00",
+      "V6_PressureSaddleBolt_00_00_0",
+      "V6_PressureSaddleBolt_00_00_1",
+      "V6_PressureSaddle_00_01",
+      "V6_PressureSaddleBolt_00_01_0",
+      "V6_PressureSaddleBolt_00_01_1",
+      "V6_PressureSaddle_00_02",
+      "V6_PressureSaddleBolt_00_02_0",
+      "V6_PressureSaddleBolt_00_02_1",
+      "V6_PressureSaddle_00_03",
+      "V6_PressureSaddleBolt_00_03_0",
+      "V6_PressureSaddleBolt_00_03_1",
+      "V6_PressureSaddle_01_00",
+      "V6_PressureSaddleBolt_01_00_0",
+      "V6_PressureSaddleBolt_01_00_1",
+      "V6_PressureSaddle_01_01",
+      "V6_PressureSaddleBolt_01_01_0",
+      "V6_PressureSaddleBolt_01_01_1",
+      "V6_PressureSaddle_01_02",
+      "V6_PressureSaddleBolt_01_02_0",
+      "V6_PressureSaddleBolt_01_02_1",
+      "V6_PressureSaddle_01_03",
+      "V6_PressureSaddleBolt_01_03_0",
+      "V6_PressureSaddleBolt_01_03_1",
+      "V6_PressureSaddle_02_00",
+      "V6_PressureSaddleBolt_02_00_0",
+      "V6_PressureSaddleBolt_02_00_1",
+      "V6_PressureSaddle_02_01",
+      "V6_PressureSaddleBolt_02_01_0",
+      "V6_PressureSaddleBolt_02_01_1",
+      "V6_PressureSaddle_02_02",
+      "V6_PressureSaddleBolt_02_02_0",
+      "V6_PressureSaddleBolt_02_02_1",
+      "V6_PressureSaddle_02_03",
+      "V6_PressureSaddleBolt_02_03_0",
+      "V6_PressureSaddleBolt_02_03_1",
+      "V6_PressureSaddle_03_00",
+      "V6_PressureSaddleBolt_03_00_0",
+      "V6_PressureSaddleBolt_03_00_1",
+      "V6_PressureSaddle_03_01",
+      "V6_PressureSaddleBolt_03_01_0",
+      "V6_PressureSaddleBolt_03_01_1",
+      "V6_PressureSaddle_03_02",
+      "V6_PressureSaddleBolt_03_02_0",
+      "V6_PressureSaddleBolt_03_02_1",
+      "V6_PressureSaddle_03_03",
+      "V6_PressureSaddleBolt_03_03_0",
+      "V6_PressureSaddleBolt_03_03_1",
+      "V6_ShoulderGusset_Port_00",
+      "V6_ShoulderGusset_Port_01",
+      "V6_ShoulderGusset_Port_02",
+      "V6_ShoulderGusset_Starboard_00",
+      "V6_ShoulderGusset_Starboard_01",
+      "V6_ShoulderGusset_Starboard_02",
+      "V6_HeroMark_DieLaughing"
+    ],
+    "heroMarking": "DIE LAUGHING"
+  },
+  "socketContract": [
+    {
+      "name": "SOCKET_Weapon_Front",
+      "position": [
+        12.62,
+        1.43,
+        0.0
+      ],
+      "role": "weapon_muzzle",
+      "forward": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Mining_Front",
+      "position": [
+        12.26,
+        -1.08,
+        0.0
+      ],
+      "role": "mining_emitter",
+      "forward": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Engine_Main",
+      "position": [
+        -13.85,
+        0.0,
+        0.0
+      ],
+      "role": "engine_exhaust",
+      "forward": [
+        -1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Trail_Main",
+      "position": [
+        -14.05,
+        0.0,
+        0.0
+      ],
+      "role": "engine_trail",
+      "forward": [
+        -1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Utility_Dorsal",
+      "position": [
+        -1.45,
+        1.95,
+        -3.8
+      ],
+      "role": "utility_dorsal",
+      "forward": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Cargo_Ventral",
+      "position": [
+        -0.8,
+        -2.1,
+        0.0
+      ],
+      "role": "cargo_ventral",
+      "forward": [
+        0.0,
+        -1.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Camera_Focus",
+      "position": [
+        0.0,
+        0.35,
+        0.0
+      ],
+      "role": "camera_focus",
+      "forward": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_RCS_Port",
+      "position": [
+        1.6,
+        0.45,
+        -6.6
+      ],
+      "role": "rcs_port",
+      "forward": [
+        0.0,
+        0.0,
+        -1.0
+      ]
+    },
+    {
+      "name": "SOCKET_RCS_Starboard",
+      "position": [
+        1.6,
+        0.45,
+        6.6
+      ],
+      "role": "rcs_starboard",
+      "forward": [
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ],
+  "canonicalCollisionBoundsBlenderXYZ": {
+    "min": [
+      -13.940001,
+      -7.02,
+      -2.77
+    ],
+    "max": [
+      13.900597,
+      7.02,
+      4.172
+    ],
+    "dimensions": [
+      27.840597,
+      14.04,
+      6.942
+    ],
+    "center": [
+      -0.019702,
+      0.0,
+      0.701
+    ]
+  },
+  "visibleBoundsBlenderXYZ": {
+    "min": [
+      -14.205,
+      -7.02,
+      -2.77
+    ],
+    "max": [
+      13.905536,
+      7.02,
+      4.398539
+    ],
+    "dimensions": [
+      28.110536,
+      14.04,
+      7.168539
+    ],
+    "center": [
+      -0.149732,
+      0.0,
+      0.814269
+    ]
+  },
+  "productionBlend": "blender/kestrel_material_truth_v6_production.blend",
+  "productionBlendBytes": 33766378,
+  "productionBlendSha256": "300629CACF382191981C0B07BAC89F1A90D186F11A60EAE63CB9E6D09FD827AF",
+  "productionBlendCollectionVisibility": {
+    "KESTREL_V4_PRODUCTION_SOURCE": true,
+    "KESTREL_V5_GOLDEN_DETAIL": true,
+    "KESTREL_V6_MATERIAL_TRUTH": true,
+    "RIG_AND_SOCKETS": true,
+    "STUDIO": false
+  },
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 25758,
+      "draws": 17,
+      "animatedRoleException": 0,
+      "collisionTriangles": 22,
+      "tangentRepairs": [
+        {
+          "object": "LOD0_static_ArmorDark",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 42,
+          "collapsedUvTriangles": 42,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD0_static_BrushedMetal",
+          "removedDegenerateTriangles": 904,
+          "patchedTriangles": 4,
+          "collapsedUvTriangles": 4,
+          "canonicalUvTriangles": 2,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD0_static_Glass_Canopy",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 1,
+          "collapsedUvTriangles": 1,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD0_static_Hull",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 26,
+          "collapsedUvTriangles": 26,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD0_static_V6_MarkingIvory",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 4,
+          "collapsedUvTriangles": 4,
+          "canonicalUvTriangles": 4,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        }
+      ],
+      "materialBillRuntimeMap": {
+        "active_aperture": [
+          "Material_ArmorDark",
+          "Material_Emissive_Cyan",
+          "Material_Emissive_DriveCore",
+          "Material_Emissive_Orange"
+        ],
+        "armor_plate": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal"
+        ],
+        "cable_elastomer": [
+          "Material_Rubber"
+        ],
+        "canopy": [
+          "Material_Glass_Canopy"
+        ],
+        "ceramic_isolator": [
+          "Material_EngineCeramic"
+        ],
+        "coated_hull_panel": [
+          "Material_Hull"
+        ],
+        "drive_alloy": [
+          "Material_BrushedMetal"
+        ],
+        "marking": [
+          "Material_Accent_FrontierCyan",
+          "Material_Accent_WarningOrange",
+          "Material_Decal_Hazard",
+          "Material_Decal_Stencils",
+          "Material_V6_MarkingIvory"
+        ],
+        "pressure_shell": [
+          "Material_Hull"
+        ],
+        "radiator": [
+          "Material_BrushedMetal",
+          "Material_Radiator"
+        ],
+        "refractory_vane": [
+          "Material_BrushedMetal",
+          "Material_EngineCeramic"
+        ],
+        "repair_panel": [
+          "Material_RepairGreen"
+        ],
+        "sensor": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal",
+          "Material_Emissive_Cyan"
+        ],
+        "structural_metal": [
+          "Material_BrushedMetal",
+          "Material_Mechanical"
+        ]
+      },
+      "path": "source_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod0.glb",
+      "bytes": 36030064,
+      "sha256": "FB27CD5D38AEE01CCEEF510725621CBA43A4C63B4905BAC2C657D830A577FE40",
+      "generationFingerprint": "50B71F1D32C9135FC380BB6F89EE217E3FE65E31CEDDAFD33AFC86E7F343411D"
+    },
+    {
+      "lod": 1,
+      "triangles": 17340,
+      "draws": 13,
+      "animatedRoleException": 0,
+      "collisionTriangles": 22,
+      "tangentRepairs": [
+        {
+          "object": "LOD1_static_ArmorDark",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 26,
+          "collapsedUvTriangles": 26,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD1_static_Glass_Canopy",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 1,
+          "collapsedUvTriangles": 1,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD1_static_Hull",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 25,
+          "collapsedUvTriangles": 24,
+          "canonicalUvTriangles": 1,
+          "customNormalLoopRepairs": 1,
+          "badBefore": 1,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD1_static_V6_MarkingIvory",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 4,
+          "collapsedUvTriangles": 4,
+          "canonicalUvTriangles": 4,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        }
+      ],
+      "materialBillRuntimeMap": {
+        "active_aperture": [
+          "Material_ArmorDark",
+          "Material_Emissive_Cyan",
+          "Material_Emissive_DriveCore",
+          "Material_Emissive_Orange"
+        ],
+        "armor_plate": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal"
+        ],
+        "cable_elastomer": [
+          "Material_Rubber"
+        ],
+        "canopy": [
+          "Material_Glass_Canopy"
+        ],
+        "ceramic_isolator": [
+          "Material_ArmorDark"
+        ],
+        "coated_hull_panel": [
+          "Material_Hull"
+        ],
+        "drive_alloy": [
+          "Material_BrushedMetal"
+        ],
+        "marking": [
+          "Material_Accent_FrontierCyan",
+          "Material_Accent_WarningOrange",
+          "Material_V6_MarkingIvory"
+        ],
+        "pressure_shell": [
+          "Material_Hull"
+        ],
+        "radiator": [
+          "Material_BrushedMetal"
+        ],
+        "refractory_vane": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal"
+        ],
+        "repair_panel": [
+          "Material_RepairGreen"
+        ],
+        "sensor": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal",
+          "Material_Emissive_Cyan"
+        ],
+        "structural_metal": [
+          "Material_BrushedMetal",
+          "Material_Mechanical"
+        ]
+      },
+      "path": "source_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod1.glb",
+      "bytes": 27384728,
+      "sha256": "575276B3F4226C071ABB43E656767D991ED049DEC3490ADEF1C643465E13F55C",
+      "generationFingerprint": "50B71F1D32C9135FC380BB6F89EE217E3FE65E31CEDDAFD33AFC86E7F343411D"
+    },
+    {
+      "lod": 2,
+      "triangles": 14106,
+      "draws": 8,
+      "animatedRoleException": 0,
+      "collisionTriangles": 22,
+      "tangentRepairs": [
+        {
+          "object": "LOD2_static_ArmorDark",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 99,
+          "collapsedUvTriangles": 99,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD2_static_Hull",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 71,
+          "collapsedUvTriangles": 71,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD2_static_V6_MarkingIvory",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 4,
+          "collapsedUvTriangles": 4,
+          "canonicalUvTriangles": 4,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        }
+      ],
+      "materialBillRuntimeMap": {
+        "active_aperture": [
+          "Material_Accent_FrontierCyan"
+        ],
+        "armor_plate": [
+          "Material_ArmorDark"
+        ],
+        "cable_elastomer": [
+          "Material_Rubber"
+        ],
+        "canopy": [
+          "Material_ArmorDark"
+        ],
+        "ceramic_isolator": [
+          "Material_ArmorDark"
+        ],
+        "drive_alloy": [
+          "Material_BrushedMetal"
+        ],
+        "marking": [
+          "Material_V6_MarkingIvory"
+        ],
+        "pressure_shell": [
+          "Material_Hull"
+        ],
+        "radiator": [
+          "Material_BrushedMetal"
+        ],
+        "refractory_vane": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal"
+        ],
+        "repair_panel": [
+          "Material_RepairGreen"
+        ],
+        "sensor": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal"
+        ],
+        "structural_metal": [
+          "Material_BrushedMetal",
+          "Material_Mechanical"
+        ]
+      },
+      "path": "source_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod2.glb",
+      "bytes": 23480016,
+      "sha256": "E431014896A27C6311074D66F9CAFC71562BEDE974F72DB3DA57C17B74917174",
+      "generationFingerprint": "50B71F1D32C9135FC380BB6F89EE217E3FE65E31CEDDAFD33AFC86E7F343411D"
+    }
+  ],
+  "outputs": [
+    "source_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod0.glb",
+    "source_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod1.glb",
+    "source_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod2.glb"
+  ],
+  "candidateOnly": true,
+  "livePromotion": false
+}

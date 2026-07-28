@@ -14,6 +14,14 @@
   "emissiveAllowedRoles": ["axial drive", "RCS/nav", "sensor", "mining lens", "cockpit displays"],
   "emissiveForbiddenRoles": ["pulse muzzle at rest", "utility practicals", "hull paint", "radiator lips", "embedded plume"],
   "wear": ["directional travel wear", "engine heat path", "service grime", "repair-green mismatch", "localized edge chips"],
-  "decals": ["one-sided BORROWED TIME", "engine hazard", "service stencil"],
+  "decals": ["one-sided DIE LAUGHING identity paint", "engine hazard", "service stencil"],
+  "factorOnlyMaterialExceptions": {
+    "Material_V6_MarkingIvory": "non-emissive ivory mesh lettering; geometry spells DIE LAUGHING and must not sample the legacy stencil atlas"
+  },
+  "materialTruthDiagnostics": {
+    "scope": "V6 camera-prominent components with named G1/G2/G4 failures",
+    "requiredResult": "fiction material, manufacturing process, geometry, UVs and runtime material response agree",
+    "unacceptableReads": ["plastic toy", "clay blockout", "rubber or leather where not specified"]
+  },
   "mirroredText": false
 }
