@@ -2605,14 +2605,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_debris_chunk.glb",
-      "tris": 1124,
-      "bytes": 182380,
-      "textureSize": 1024,
+      "tris": 18846,
+      "bytes": 4172188,
+      "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 524 tris.",
+      "note": "Opening-route wreckage v4 — deterministic Blender-authored Meridian pressure-module fragment with one causal rupture, semantic PBR maps, and authored LOD0/1/2.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2638,19 +2638,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          0,
-          -3.2117,
-          -4.8696
+          0.15000057220458984,
+          -3.9518349170684814,
+          -5.0017876625061035
         ],
         "max": [
-          24.2112,
-          4.1193,
-          5.5846
+          24.048377990722656,
+          3.703914165496826,
+          5.499457359313965
         ],
         "dimensionsM": [
-          24.2112,
-          7.331,
-          10.4541
+          23.898377418518066,
+          7.655749082565308,
+          10.501245021820068
         ]
       }
     },
@@ -2715,14 +2715,13 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_dead_hulk.glb",
-      "tris": 1740,
-      "bytes": 210676,
-      "textureSize": 1024,
+      "tris": 30316,
+      "bytes": 5424740,
+      "textureSize": 512,
       "tintable": {
-        "hull": "Material_Hull",
-        "accent": "Material_Accent"
+        "hull": "Material_Hull"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 988 tris.",
+      "note": "Opening-route dead hulk v1 — deterministic Blender-authored commercial carrier/drill-tender with one rooted starboard-dorsal rupture, semantic PBR maps, and authored LOD0/1/2.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2741,9 +2740,7 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "hooks": [],
       "sockets": [
         "SOCKET_Hazard_Core",
         "SOCKET_Salvage_Core"
@@ -2751,19 +2748,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          0,
-          -1.3978,
-          -3.5
+          -27.445,
+          -5.5,
+          -6.40625
         ],
         "max": [
-          48,
-          6.3106,
-          3.5
+          27.250002,
+          6.429978,
+          6.36
         ],
         "dimensionsM": [
-          48,
-          7.7083,
-          7
+          54.695002,
+          11.929977,
+          12.766249
         ]
       }
     },
@@ -3627,8 +3624,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_dock_interior.glb",
-      "tris": 636,
-      "bytes": 105676,
+      "tris": 21248,
+      "bytes": 22905000,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3652,9 +3649,7 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "hooks": [],
       "sockets": [
         "SOCKET_Structure_Core"
       ],
@@ -3662,21 +3657,21 @@
       "bounds": {
         "min": [
           -26,
-          -4.425,
+          -4.425000190734863,
           -18
         ],
         "max": [
           26,
-          13,
+          12.774999618530273,
           18
         ],
         "dimensionsM": [
           52,
-          17.425,
+          17.199999809265137,
           36
         ]
       },
-      "note": "Default trade/refinery/fab hangar bay for shipyard preview."
+      "note": "H-04 neutral Shipworks service bay — deterministic open-front industrial backdrop with its portal and crane rear-parked outside a 28 m preview aperture, authored PBR surfaces, adaptive preview-mount policy, and LOD0-only runtime export; LOD1/LOD2 remain editable in Blender."
     },
     {
       "id": "place_dock_interior_military",

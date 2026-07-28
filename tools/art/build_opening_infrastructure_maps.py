@@ -71,6 +71,15 @@ ROLES = {
     "debris_cable_polymer": Role((0.022, 0.028, 0.033), 0.66, 0.045, 0.02, 0.09, 0.050, (0.16, 42.0), 6533),
     "debris_radiator": Role((0.042, 0.058, 0.067), 0.49, 0.038, 0.48, 0.10, 0.052, (0.18, 115.0), 6647, True),
     "debris_identity_decal": Role((0.620, 0.480, 0.160), 0.50, 0.030, 0.025, 0.055, 0.035, (0.10, 24.0), 6761),
+    # The dead hulk is a much larger commercial donor than the debris module. Its materials carry
+    # broad, cold service history while the destructive event remains authored in geometry.
+    "hulk_painted_hull": Role((0.180, 0.155, 0.120), 0.64, 0.060, 0.025, 0.11, 0.075, (0.36, 260.0), 6803),
+    "hulk_armor_dark": Role((0.105, 0.125, 0.137), 0.54, 0.046, 0.28, 0.10, 0.055, (0.24, 170.0), 6911, True),
+    "hulk_structural_alloy": Role((0.105, 0.128, 0.142), 0.41, 0.042, 0.86, 0.12, 0.055, (0.14, 92.0), 7013, True),
+    "hulk_rupture_insulation": Role((0.300, 0.260, 0.205), 0.82, 0.052, 0.010, 0.17, 0.080, (0.50, 180.0), 7121),
+    "hulk_service_trunks": Role((0.045, 0.075, 0.085), 0.60, 0.045, 0.28, 0.10, 0.052, (0.16, 54.0), 7237, True),
+    "hulk_dead_glass": Role((0.012, 0.024, 0.029), 0.58, 0.024, 0.08, 0.045, 0.025, (0.08, 26.0), 7349, True),
+    "hulk_heat_affected": Role((0.195, 0.058, 0.026), 0.57, 0.064, 0.66, 0.14, 0.080, (0.30, 135.0), 7457),
     "drone_painted_armor": Role((0.39, 0.205, 0.047), 0.49, 0.045, 0.025, 0.10, 0.060, (0.24, 150.0), 7103),
     "drone_structural_alloy": Role((0.095, 0.116, 0.126), 0.37, 0.036, 0.86, 0.095, 0.045, (0.10, 68.0), 7211, True),
     "drone_cutter_carbide": Role((0.145, 0.158, 0.164), 0.34, 0.040, 0.76, 0.11, 0.050, (0.12, 55.0), 7321, True),
@@ -102,6 +111,13 @@ ROLE_RESOLUTION_SCALE = {
     "debris_cable_polymer": 0.25,
     "debris_radiator": 0.25,
     "debris_identity_decal": 0.25,
+    "hulk_painted_hull": 0.5,
+    "hulk_armor_dark": 0.5,
+    "hulk_structural_alloy": 0.5,
+    "hulk_rupture_insulation": 0.25,
+    "hulk_service_trunks": 0.25,
+    "hulk_dead_glass": 0.25,
+    "hulk_heat_affected": 0.25,
     "drone_painted_armor": 0.5,
     "drone_structural_alloy": 0.5,
     "drone_cutter_carbide": 0.25,
@@ -134,6 +150,13 @@ CONSTRUCTION_USE = {
     "debris_cable_polymer": "bounded service harnesses rooted to trays and severed equipment",
     "debris_radiator": "surviving directional heat-exchanger and cold-plate fragments",
     "debris_identity_decal": "non-emissive donor registration and salvage classification",
+    "hulk_painted_hull": "surviving commercial pressure-hull skin and broad service-history zones",
+    "hulk_armor_dark": "replaceable drive, hold-shoulder and command-house armor",
+    "hulk_structural_alloy": "continuous keel, engine ring, bulkheads and exposed load paths",
+    "hulk_rupture_insulation": "rooted pressure and thermal layers inside the single rupture",
+    "hulk_service_trunks": "bounded power, coolant and data trunks severed by the rupture",
+    "hulk_dead_glass": "cold command-house glazing with no active emissive promise",
+    "hulk_heat_affected": "localized rupture lips and drive-adjacent thermal damage",
     "drone_painted_armor": "industrial nonmetallic battery, avionics and actuator service covers",
     "drone_structural_alloy": "compact load frame, cutter yoke, hardpoints and replaceable rails",
     "drone_cutter_carbide": "rotating cutter drum and mechanically indexed teeth",
@@ -178,10 +201,10 @@ def role_maps(role_name: str, role: Role, size: int) -> dict[str, np.ndarray]:
     # directional and sparse, not isotropic noise pasted over every surface.
     process = periodic_lines(size, count=41 if role.brushed else 13, width=0.038 if role.brushed else 0.020,
                              phase=(role.seed % 29) / 29.0)
-    if role_name in {"gate_exposed_alloy", "gate_radiator", "beacon_structural_alloy", "beacon_solar_coldplate", "debris_structural_alloy", "debris_radiator", "drone_structural_alloy", "drone_cutter_carbide", "drone_radiator"}:
+    if role_name in {"gate_exposed_alloy", "gate_radiator", "beacon_structural_alloy", "beacon_solar_coldplate", "debris_structural_alloy", "debris_radiator", "hulk_armor_dark", "hulk_structural_alloy", "hulk_service_trunks", "hulk_dead_glass", "drone_structural_alloy", "drone_cutter_carbide", "drone_radiator"}:
         height = normalized(height * 0.76 + process * 0.24)
         rough_field = normalized(rough_field * 0.82 + process * 0.18)
-    elif role_name in {"gate_thermal_ceramic", "beacon_signal_ceramic", "debris_heat_affected"}:
+    elif role_name in {"gate_thermal_ceramic", "beacon_signal_ceramic", "debris_heat_affected", "hulk_heat_affected"}:
         heat_band = np.sin(np.linspace(0.0, np.pi * 10.0, size, dtype=np.float32))[:, None]
         albedo_field = normalized(albedo_field * 0.72 + heat_band * 0.28)
         rough_field = normalized(rough_field * 0.68 + heat_band * 0.32)

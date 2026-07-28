@@ -188,10 +188,14 @@
       "packet": "M4-STATION-VISUAL-FAMILY-001"
     },
     "place_dock_interior": {
-      "method": "procedural_fallback",
-      "concept_path": "assets/cinematics/C-INTRO-04.jpg",
-      "blend_path": null,
-      "min_tris": 500
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/place_dock_interior_authored.blend",
+      "exporter_path": "tools/blender/remaster_opening_dock_interior_v2.py",
+      "texture_role_owner": "blender-source-v1",
+      "texture_pipeline": "tools/art/build_dock_interior_maps.py",
+      "family": "opening_route_neutral_shipworks_v1",
+      "semantic_note": "Reviewed deterministic H-04 neutral Shipworks service bay with an open-front 28 m preview aperture, a rear-parked structural portal and crane, adaptive ship-envelope alignment, authored LOD0/1/2, and complete base-color/normal/ORM roles.",
+      "min_tris": 21248
     },
     "place_dock_interior_military": {
       "method": "procedural_fallback",
@@ -211,11 +215,25 @@
       "semantic_note": "Lane/station billboard prop; Blender-authored via author_place_archetype pipeline; low-tri dress prop",
       "min_tris": 500
     },
+    "place_debris_chunk": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/place_debris_chunk_authored.blend",
+      "exporter_path": "tools/blender/remaster_opening_debris_chunk_v1.py",
+      "texture_role_owner": "blender-source-v1",
+      "texture_pipeline": "tools/art/build_opening_infrastructure_maps.py",
+      "family": "opening_route_manufactured_wreckage_v1",
+      "semantic_note": "Reviewed deterministic Meridian pressure-module fragment with a rooted causal rupture, authored LOD0/1/2, and complete base-color/normal/ORM roles.",
+      "min_tris": 12396
+    },
     "place_dead_hulk": {
-      "method": "blender_mcp",
+      "method": "blender_generic",
       "blend_path": "assets/ships/parts/blender/place_dead_hulk_authored.blend",
-      "semantic_note": "Fringe dead hulk wreck prop; Blender-authored via author_place_archetype pipeline",
-      "min_tris": 1500
+      "exporter_path": "tools/blender/remaster_opening_dead_hulk_v1.py",
+      "texture_role_owner": "blender-source-v1",
+      "texture_pipeline": "tools/art/build_opening_infrastructure_maps.py",
+      "family": "opening_route_dead_hulk_v1",
+      "semantic_note": "Reviewed deterministic commercial carrier/drill-tender hulk with a rooted causal rupture, authored LOD0/1/2, structure sockets, and complete base-color/normal/ORM roles.",
+      "min_tris": 18324
     },
     "place_conveyor_barge": {
       "method": "blender_mcp",

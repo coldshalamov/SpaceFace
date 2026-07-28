@@ -8,11 +8,15 @@
 // Never invent simplified fittings/geometry or raw module.mods key diffs as flight stats.
 import { buildSlotList, fits } from '../../../systems/ships.js';
 import { SHIPS } from '../../../data/ships.js';
+import { SECTORS } from '../../../data/sectors.js';
 import { MODULES } from '../../../data/modules.js';
 import { WEAPONS } from '../../../data/weapons.js';
 import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
-import { createShipPreviewMount } from '../../shipPreviewMount.js';
+import {
+  createShipPreviewMount,
+  dockInteriorIdForArchetype,
+} from '../../shipPreviewMount.js';
 import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
 import {
   formatPreviewDelta,
@@ -23,6 +27,12 @@ import {
 } from '../../presenters/engineeringPreview.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+const STATION_ARCHETYPE_BY_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) {
+    STATION_ARCHETYPE_BY_ID.set(station.id, station.archetypeGlb || null);
+  }
+}
 const CENTERED_SHIP_YAW = 0;
 const FITTABLE = MODULES.concat(WEAPONS);
 const FITTABLE_BY_ID = new Map(FITTABLE.map((d) => [d.id, d]));
@@ -32,6 +42,17 @@ const SLOT_LABEL = { weapon: 'Weapon', shield: 'Shield', engine: 'Engine', cargo
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 const shipName = (id) => { const s = SHIP_BY_ID.get(id); return s ? s.name : id; };
+
+export function shipworksDockIdForState(state) {
+  const stationId = state && state.ui && state.ui.dockedStationId;
+  return dockInteriorIdForArchetype(STATION_ARCHETYPE_BY_ID.get(stationId) || null);
+}
+
+export function syncShipworksDockForState(mount, state) {
+  const dockId = shipworksDockIdForState(state);
+  if (mount && typeof mount.setDockId === 'function') mount.setDockId(dockId);
+  return dockId;
+}
 const titleCaseWords = (value) => String(value || '').replace(/[_-]+/g, ' ')
   .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
@@ -246,7 +267,10 @@ export function createShipworksScreen(ctx) {
   }
 
   function ensureMount() {
-    if (mount) return mount;
+    if (mount) {
+      syncShipworksDockForState(mount, ctx.state);
+      return mount;
+    }
     canvas.dataset.authoredRequired = 'true';
     canvas.dataset.fallbackAllowed = 'false';
     canvas.dataset.previewReady = 'false';
@@ -254,6 +278,7 @@ export function createShipworksScreen(ctx) {
       allowFastFallback: false,
       authoredShips: true,
       authoredWarmup: true,
+      dockId: shipworksDockIdForState(ctx.state),
       onFirstFrame: ({ defId } = {}) => {
         if (!defId || defId !== expectedPreviewDefId) return;
         const state = mount && mount.getAssetState ? mount.getAssetState() : 'rendered';
@@ -1143,6 +1168,7 @@ export function createShipworksScreen(ctx) {
   });
 
   function refresh(periodicCtx) {
+    syncShipworksDockForState(mount, ctx.state);
     // The shell owns its 18-frame status cadence. Shipworks is event-driven; repainting its full
     // body on that cadence destroys live pointer targets and wastes the authored preview frame.
     if (periodicCtx === ctx) return;
