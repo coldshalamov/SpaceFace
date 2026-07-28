@@ -40,18 +40,30 @@ export const CUE_LANE_BUDGETS = Object.freeze({
 });
 
 /**
+ * How many mechanically critical cues can legitimately land in the SAME tick. A corridor engagement
+ * can collapse a shield, disable a subsystem and snap a massline on one frame, so the reserve has to
+ * be sized to that co-occurrence — a smaller reserve still drops critical state, just later.
+ *
+ * Measured: with a reserve of 2 the dense-combat gate dropped exactly one critical cue per saturated
+ * tick (6 of 18), because ten flavor cues consumed the general audio pool and only two reserved
+ * slots remained for three critical cues. See scripts/check-pq023-corridor-cues.mjs.
+ */
+export const CRITICAL_COOCCURRENCE = 3;
+
+/**
  * Slots inside each lane cap that only a critical cue may claim. The general pool is
  * `CUE_LANE_BUDGETS[lane] - CUE_LANE_CRITICAL_RESERVE[lane]`.
  *
- * Camera reserves 1 of 3 rather than 2: camera is the channel most able to fight aiming, so the
- * reserve exists to guarantee a critical kick can land, not to let several stack.
+ * Camera reserves 1 of 3 rather than CRITICAL_COOCCURRENCE: camera is the channel most able to fight
+ * aiming, and the packet's non-goals forbid camera motion that steals control. The reserve there
+ * guarantees ONE critical kick can land, deliberately not three stacking on one frame.
  */
 export const CUE_LANE_CRITICAL_RESERVE = Object.freeze({
   camera: 1,
-  vfx: 2,
-  audio: 2,
-  ui: 2,
-  accessibility: 2,
+  vfx: CRITICAL_COOCCURRENCE,
+  audio: CRITICAL_COOCCURRENCE,
+  ui: CRITICAL_COOCCURRENCE,
+  accessibility: CRITICAL_COOCCURRENCE,
 });
 
 const CRITICAL_ID_SET = new Set(CRITICAL_SLICE_EVENT_IDS);
