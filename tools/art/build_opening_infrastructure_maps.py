@@ -61,13 +61,16 @@ ROLES = {
     "beacon_solar_coldplate": Role((0.035, 0.060, 0.079), 0.49, 0.036, 0.42, 0.095, 0.045, (0.18, 110.0), 5521, True),
     "beacon_safety_surface": Role((0.66, 0.275, 0.035), 0.55, 0.034, 0.07, 0.08, 0.045, (0.24, 110.0), 5639),
     "beacon_identity_decal": Role((0.68, 0.72, 0.73), 0.43, 0.022, 0.03, 0.045, 0.025, (0.08, 18.0), 5741),
-    "debris_painted_skin": Role((0.235, 0.172, 0.108), 0.58, 0.052, 0.025, 0.11, 0.065, (0.32, 220.0), 6101),
-    "debris_structural_alloy": Role((0.105, 0.123, 0.132), 0.42, 0.043, 0.88, 0.10, 0.050, (0.12, 85.0), 6211, True),
-    "debris_insulation": Role((0.068, 0.061, 0.052), 0.78, 0.050, 0.015, 0.13, 0.070, (0.45, 150.0), 6317),
-    "debris_heat_affected": Role((0.088, 0.044, 0.024), 0.54, 0.060, 0.70, 0.12, 0.075, (0.28, 120.0), 6421),
+    # The debris family is intentionally worn, but its major construction layers must remain
+    # separable under SpaceFace's dark flight lighting. These values are mid-dark material
+    # identities, not baked illumination or a beauty-render exposure compensation.
+    "debris_painted_skin": Role((0.340, 0.270, 0.180), 0.58, 0.052, 0.025, 0.11, 0.065, (0.32, 220.0), 6101),
+    "debris_structural_alloy": Role((0.120, 0.150, 0.170), 0.42, 0.043, 0.88, 0.10, 0.050, (0.12, 85.0), 6211, True),
+    "debris_insulation": Role((0.340, 0.310, 0.250), 0.78, 0.050, 0.015, 0.13, 0.070, (0.45, 150.0), 6317),
+    "debris_heat_affected": Role((0.220, 0.080, 0.035), 0.54, 0.060, 0.70, 0.12, 0.075, (0.28, 120.0), 6421),
     "debris_cable_polymer": Role((0.022, 0.028, 0.033), 0.66, 0.045, 0.02, 0.09, 0.050, (0.16, 42.0), 6533),
     "debris_radiator": Role((0.042, 0.058, 0.067), 0.49, 0.038, 0.48, 0.10, 0.052, (0.18, 115.0), 6647, True),
-    "debris_identity_decal": Role((0.61, 0.53, 0.31), 0.50, 0.030, 0.025, 0.055, 0.035, (0.10, 24.0), 6761),
+    "debris_identity_decal": Role((0.620, 0.480, 0.160), 0.50, 0.030, 0.025, 0.055, 0.035, (0.10, 24.0), 6761),
     "drone_painted_armor": Role((0.39, 0.205, 0.047), 0.49, 0.045, 0.025, 0.10, 0.060, (0.24, 150.0), 7103),
     "drone_structural_alloy": Role((0.095, 0.116, 0.126), 0.37, 0.036, 0.86, 0.095, 0.045, (0.10, 68.0), 7211, True),
     "drone_cutter_carbide": Role((0.145, 0.158, 0.164), 0.34, 0.040, 0.76, 0.11, 0.050, (0.12, 55.0), 7321, True),

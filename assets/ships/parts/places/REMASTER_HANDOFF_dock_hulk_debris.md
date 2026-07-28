@@ -3,7 +3,7 @@
 **Find this later by searching the repo for:**
 `REMASTER_HANDOFF_dock_hulk_debris` · `place_dock_interior` · `G1_FORM` · `ac1_form=partial`
 
-**Last updated:** 2026-07-26 (session interrupted; goal NOT complete)
+**Last updated:** 2026-07-28 (debris source checkpoint integrated; goal NOT complete)
 
 ---
 
@@ -23,24 +23,55 @@ Dock is **not** a flyable interior. Variants exist: `_military`, `_grit` (not th
 
 ---
 
-## Live status when work stopped (honest)
+## Current live status (honest)
 
-**All three still fail AC1 form.** Do **not** rebrand to `ac1_form=pass` or `G7_INDEPENDENT`.
+The earlier iteration loop has been stopped. Debris now has a deterministic editable-source rebuild
+that cleared its original G1 silhouette defect in matched offline evidence. Hulk and dock remain at
+G1 and require method resets. None of the three has passed runtime/G7 acceptance.
 
-| Asset | Live iter (scratch) | Gate | Approx size | Residual |
+| Asset | Current source | Gate | Approx source size | Residual |
 |---|---|---|---|---|
-| dock | **279 KEEP** | partial / **G1_FORM** | ~90MB / ~1.19M tris | Modular multi-volume hangar (corner wings + mid height step) |
-| hulk | **219** | partial / **G1_FORM** | ~54MB / ~703k tris | Citadel/mid-poly densify residual; freighter HS (NOT clay) |
-| debris | **191** | partial / **G1_FORM** | ~11MB / ~141k tris | Tip/mid-poly residual; freighter hard-chine (NOT soft peels) |
+| dock | scratch **iter280** copied to source | partial / **G1_FORM** | 96.6MB / 1,193,240 tris | Sealed dark slab; no readable structural bay, PBR maps, LOD, hooks, or sockets |
+| hulk | scratch **iter219** copied to source | partial / **G1_FORM** | 56.2MB / 703,433 tris | Symmetric dumbbell/citadel silhouette; no PBR maps, LOD, hooks, or sockets |
+| debris | deterministic **opening_debris_chunk_v4** rebuild | offline **G1 keep**; G2–G4 partial; G7 open | 4.17MB / 18,846 tris across LOD0–2 | Runtime release/manifest and headed acceptance remain blocked |
 
 - `self_accept=false`, G7 open always
 - `live_reassess_gates.py` is **RETIRED** (fabricated AC1 pass) — do not revive
 - Skeptic panel text about orange 9.69MB dock / clay hulk / soft peels 313k is **STALE** vs live disk
 
-**Rough progress (substance, not verifier):** debris ~70–85%, hulk ~65–80%, dock ~40–55%.
-**Verifier complete:** 0/3 AC1 clear → **goal incomplete**.
+### Debris source checkpoint
 
-Dock 280 (upper longitudinal parapet) was **started but interrupted**; final live remained **279**.
+- Authored Blender source:
+  `assets/ships/parts/blender/place_debris_chunk_authored.blend`
+  - SHA-256 `1F34FA6C4B5E351C17E4087EE0176AA3CCA079BA2B6A1FBCB79E264BA7313417`
+- Source GLB:
+  `assets/ships/parts/places/place_debris_chunk.glb`
+  - SHA-256 `2989ECA7438E3A39C91C3232DEE1A7275CD8CED6858762CD2A88035F543483FF`
+- Rebuild source:
+  `tools/blender/remaster_opening_debris_chunk_v1.py`
+- Material-source generator:
+  `tools/art/build_opening_infrastructure_maps.py`
+- Contract:
+  root `place_debris_chunk`; `SOCKET_Tether_Massline` at canonical glTF `[2,1,0]`;
+  authored monotonic LOD0/1/2; semantic Hull/Mechanical/Accent/Insulation/Radiator/Cable/Decal
+  materials; embedded base-color/normal/ORM maps with UV0 and tangents.
+- Strict offline validation:
+  Foundry pass, Khronos glTF validator `0 errors / 0 warnings`, and texture audit
+  `21/21 bound, 0 errors / 0 warnings`.
+- Determinism: two clean rebuilds from the canonical authored blend produced the identical source
+  GLB hash `2989ECA7438E3A39C91C3232DEE1A7275CD8CED6858762CD2A88035F543483FF`.
+  The builder requires explicit `--source-blend`, `--maps-root`, `--output-blend`, `--output-glb`,
+  and `--report` paths and never writes a repository or manifest path implicitly.
+- Matched current-versus-v4 review:
+  `C:\Users\93rob\.codex\visualizations\2026\07\28\019fa6a4-f178-7530-8a98-a35eab6ec617\debris-rebuild-v4\debris_current_vs_v4.png`
+- Keep rationale: the old twin-pod/spring silhouette was replaced by one manufactured pressure
+  module with a directional rupture, rooted frame/load path, severed members, exposed insulation,
+  and a canonical tether clevis. This closes the specific G1 macro-form failure offline.
+- Honest residual: the source uses authored material-scale normal/ORM inputs rather than a
+  mesh-derived bake. Deliberate seam/density/padding/bake evidence, release KTX2/Meshopt, live LOD
+  transitions, Browser/Electron presentation, and independent art acceptance remain open.
+
+**Goal status:** one of three has a reviewed source checkpoint; the overall goal remains incomplete.
 
 ---
 
@@ -78,18 +109,20 @@ C:\Users\93rob\AppData\Local\Temp\grok-goal-6abc52c84c39\implementer\
 
 ### 1. Re-verify first (every session)
 
-1. Open multi-angle EEVEE from `final/final_*.png` if scratch still exists; else re-render from live GLB.
-2. Confirm gates are still `partial` / `G1_FORM` (or update honestly after review).
+1. Open multi-angle EEVEE from the current source GLB or surviving evidence.
+2. Confirm hulk and dock remain `partial` / `G1_FORM`; do not reopen debris G1 without a concrete
+   regression.
 3. **Refute** any claim of ac1=pass, orange dock 9.69MB, clay hulk, soft peels 313k against **live** evidence.
-4. Name **ONE** residual only. Primary was: **dock modular multi-volume continuous hangar**.
+4. Name **ONE** residual only. Current next residual: **hulk symmetric dumbbell silhouette**.
 
 ### 2. Fix one residual, then re-render multi-angle EEVEE
 
-Preferred SAFE methods (history of KEEP):
+Preferred SAFE methods:
 
-- Join-only solid volumes immediately merged into `D204_Wall_*` / `D204_Roof`
-- IN PLACE densify (subdiv + moderate insets; no force-deep explosion)
-- Embedded mid-height fills (no underhang bulbs)
+- Rebuild from a low-complexity deterministic Blender script into ignored scratch.
+- Fix macro silhouette and causal load path before adding secondary detail.
+- Preserve canonical root, hooks/sockets, pivots, bounds, LOD roles, and source/release separation.
+- Generate UV-aware authored maps; derive physical data only from defensible surface information.
 
 **Banned (history of RESTORES):**
 
@@ -105,11 +138,14 @@ Preferred SAFE methods (history of KEEP):
 | Crystalline clamp densify | dock 235/261 RESTORED |
 | Force-deep densify blowout | dock 230/234 RESTORED |
 | Rebrand gates to pass/G7 without form clear | plan AC1 |
+| Resume iter219/iter280 densification | Adds cost without repairing the failed macro read |
+| Copy straight from scratch to source/release | Bypasses matched review and source/release contracts |
 
 ### 3. KEEP vs RESTORE
 
-- **KEEP** only if EEVEE improves or holds construction without free leftovers / regressions
-- **RESTORE** by copying previous `iter_NNN` GLB back to `final/place_*.glb`
+- **KEEP** only if matched evidence improves construction without free leftovers or regressions.
+- **REVISE** in isolated scratch; do not overwrite the source between rejected iterations.
+- **REVERT** with Git history if a promoted source checkpoint later proves worse.
 - Always leave honest `ac1_form=partial` `earliest_failed_gate=G1_FORM` until form actually clears
 
 ### 4. Done criteria (do not claim early)
@@ -126,9 +162,12 @@ Ship the GLBs to both `parts/places` and release pair when form is accepted; run
 
 ### 5. Suggested finish order (play value)
 
-1. **Debris** — closest; tip residual only
-2. **Hulk** — citadel densify residual
-3. **Dock** — primary macro blocker **or descope** (see options)
+1. **Hulk** — rebuild as one continuous commercial carrier/drill-tender load path with a causal
+   starboard/dorsal rupture.
+2. **Dock** — rebuild a readable portal-bent service bay and verify the real ship-preview
+   composition.
+3. **Debris release** — after the `asset-manifest` mutex is free, build only this exact release pair
+   transactionally and run the runtime gates.
 
 ---
 
@@ -148,16 +187,15 @@ Record whichever you choose in this file when you resume.
 
 ```
 Resume place remaster from assets/ships/parts/places/REMASTER_HANDOFF_dock_hulk_debris.md
-RE-VERIFY first. Live was dock 279 / hulk 219 / debris 191 all ac1_form=partial G1_FORM.
-Do not rebrand gates. Fix ONE residual (primary: dock modular multi-volume continuous hangar
-OR finish debris tip then hulk citadel). Blender 5.1 headless EEVEE multi-angle.
-Ban free shells/tip pods/hanging bulbs/vertex-push/jail bars/rect decks.
+RE-VERIFY first. Debris v4 has an offline G1 keep but no release/G7 acceptance. Hulk iter219 and
+dock iter280 remain partial/G1. Continue with the hulk method reset; do not densify iter219.
+Blender 5.1 headless EEVEE matched multi-angle evidence. Preserve source/release separation.
 ```
 
 Shorter:
 
 ```
-Continue REMASTER_HANDOFF_dock_hulk_debris — re-verify, one residual, honest partial/G1 until form clears.
+Continue REMASTER_HANDOFF_dock_hulk_debris — hulk method reset next; keep all release/G7 claims honest.
 ```
 
 ---
