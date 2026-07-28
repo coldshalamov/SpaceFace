@@ -1,3 +1,11 @@
+<!-- PROGRAM_EVIDENCE_RECEIPT
+packetId: PQ-018
+leafId: PQ-018.world-site
+acceptance: focused_green
+disposition: PASS
+candidateCommit: 09417e98feaa95cd17437374f1935cc5d8aea6c5
+-->
+
 # PQ-018 leaf — Wreck Cathedral World Site, placement, and five evidence pages
 
 ```yaml
