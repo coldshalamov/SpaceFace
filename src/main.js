@@ -143,9 +143,11 @@ async function boot() {
     helpers.finalizeLoadedGame = (payload) => finalizeLoadedGame(
       state, bus, registry, runTransitionGuard, payload || {},
     );
+    let loopController = null;
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', () => {
         try { loadingPresenter.destroy(); } catch (_) {}
+        try { if (loopController) loopController.destroy(); } catch (_) { /* teardown must not throw during navigation */ }
         try { registry.destroy(); } catch (_) { /* teardown must not throw during navigation */ }
       });
     }
@@ -185,8 +187,15 @@ async function boot() {
       startNewGameTransition();
     });
 
-    startLoop(state, registry);
-    SF_DEBUG_ONLY: if (SF_DEBUG) window.SF = Object.assign(window.SF || {}, { state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace });
+    loopController = startLoop(state, registry);
+    const loopDebug = {
+      getDiagnostics: () => loopController.getDiagnostics(),
+      getLifecycleState: () => loopController.getLifecycleState(),
+      isSuspended: () => loopController.isSuspended(),
+    };
+    SF_DEBUG_ONLY: if (SF_DEBUG) window.SF = Object.assign(window.SF || {}, {
+      state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace, loop: loopDebug,
+    });
     // The title route must become usable promptly. Heavy shader/asset warmup is sector-scoped in
     // renderer.js once a run exists; running the all-archetype precompile here competes with the
     // New Game authored-visual queue and can strand Launch in loading on software WebGL.
@@ -195,7 +204,9 @@ async function boot() {
 
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)
     SF_DEBUG_ONLY: if (SF_DEBUG) {
-      window.SF = Object.assign(window.SF || {}, { state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace });
+      window.SF = Object.assign(window.SF || {}, {
+        state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace, loop: loopDebug,
+      });
       // Expose the game's OWN authored-visual readiness contract to acceptance harnesses.
       // Without this a harness cannot ask "are the visuals that matter ready?" and is forced to
       // reinvent the check from entity internals — which is exactly how the professional-travel

@@ -711,11 +711,7 @@ export const input = {
         }));
       }
     });
-    addEventListener('blur', () => {
-      for (const k in keys) keys[k] = false;
-      this._m0 = this._m1 = this._m2 = false;
-      this._masslineGrammar.reset();
-    });
+    addEventListener('blur', () => this.releaseHeldControls('window-blur'));
     const pointerSurface = this._canvas || window;
     const handlePointerMove = (e) => {
       if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
@@ -765,6 +761,52 @@ export const input = {
     });
     addEventListener('mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 1) this._m1 = false; if (e.button === 2) this._m2 = false; });
     pointerSurface.addEventListener('contextmenu', (e) => e.preventDefault());
+  },
+
+  // Lifecycle transitions clear raw device ownership here, before the next authoritative input tick.
+  // The committed state remains untouched for the coherent restore snapshot; the first resumed tick
+  // resamples neutral keyboard/pointer/touch state and the current gamepad state through update().
+  releaseHeldControls(_reason = 'lifecycle') {
+    const keys = this._keys;
+    if (keys) {
+      for (const code in keys) keys[code] = false;
+    }
+    this._m0 = false;
+    this._m1 = false;
+    this._m2 = false;
+    this._prevM1 = false;
+    this._kbmActivityPending = false;
+    if (this._edgePrev) {
+      for (const action in this._edgePrev) this._edgePrev[action] = false;
+    }
+    if (this._masslineGrammar && typeof this._masslineGrammar.reset === 'function') {
+      this._masslineGrammar.reset();
+    }
+    if (this.gamepad && typeof this.gamepad._resetState === 'function') {
+      this.gamepad._resetState();
+    }
+    const touch = this.touch;
+    if (touch) {
+      touch.axes.leftX = 0;
+      touch.axes.leftY = 0;
+      touch.axes.rightX = 0;
+      touch.axes.rightY = 0;
+      touch._sticks = {};
+      touch._btnHeld = {};
+      touch._btnPulse = {};
+      touch._activityPending = false;
+      for (const action in touch.actions) {
+        touch.actions[action] = { held: false, pressed: false, released: false, value: 0 };
+      }
+      if (touch._overlay && typeof touch._overlay.querySelectorAll === 'function') {
+        for (const button of touch._overlay.querySelectorAll('.sf-touch-btn.held')) {
+          button.classList.remove('held');
+        }
+        for (const knob of touch._overlay.querySelectorAll('.sf-touch-knob')) {
+          knob.style.transform = '';
+        }
+      }
+    }
   },
 
   // True if any of the bound codes for `action` is currently held.

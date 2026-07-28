@@ -1,11 +1,21 @@
 // Single requestAnimationFrame loop with a fixed-timestep accumulator (ARCHITECTURE §2.2).
 // Sim runs at 60 Hz; render runs every frame with an interpolation alpha. timeScale gates the
 // sim (0 = paused: render/camera/UI keep running). A step cap prevents the spiral of death.
+// Hidden/minimized/suspended states own no frame callback; restore presents before simulation resumes.
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 
 export const LOOP_FIXED_DT = 1 / 60;
 export const MAX_CATCHUP_STEPS = 4;
+export const LOOP_LIFECYCLE_STATES = Object.freeze({
+  FOREGROUND_VISIBLE: 'foreground-visible',
+  FOREGROUND_OCCLUDED: 'foreground-occluded',
+  HIDDEN_OR_MINIMIZED: 'hidden-or-minimized',
+  SYSTEM_SUSPENDED: 'system-suspended',
+  RESTORING: 'restoring',
+});
+
 const DT = LOOP_FIXED_DT;
+const RESTORE_STABILIZATION_FRAMES = 4;
 
 export function advanceFixedTimestep(accumulator, frameDt, timeScale, step, out = null, dt = DT, maxSteps = MAX_CATCHUP_STEPS) {
   const result = out || { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
@@ -43,32 +53,269 @@ export function advanceFixedTimestep(accumulator, frameDt, timeScale, step, out 
   return result;
 }
 
-export function startLoop(state, registry) {
-  let last = performance.now();
+function isPresentingState(state) {
+  return state === LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE
+    || state === LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED
+    || state === LOOP_LIFECYCLE_STATES.RESTORING;
+}
+
+function isShellState(state) {
+  return state === LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE
+    || state === LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED
+    || state === LOOP_LIFECYCLE_STATES.HIDDEN_OR_MINIMIZED
+    || state === LOOP_LIFECYCLE_STATES.SYSTEM_SUSPENDED;
+}
+
+/**
+ * Start the fixed-step/presentation loop and return its single lifecycle owner.
+ * Dependencies are injectable so lifecycle policy can be verified without real timers or DOM work.
+ */
+export function startLoop(state, registry, deps = {}) {
+  const requestFrame = deps.requestFrame
+    || globalThis.requestAnimationFrame?.bind(globalThis);
+  const cancelFrame = deps.cancelFrame
+    || globalThis.cancelAnimationFrame?.bind(globalThis);
+  const visibilityTarget = Object.prototype.hasOwnProperty.call(deps, 'visibilityTarget')
+    ? deps.visibilityTarget
+    : globalThis.document;
+  const lifecyclePort = Object.prototype.hasOwnProperty.call(deps, 'lifecyclePort')
+    ? deps.lifecyclePort
+    : globalThis.window?.spacefaceLifecycle;
+  const nowMs = deps.nowMs
+    || (() => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now()));
+
+  if (typeof requestFrame !== 'function') {
+    throw new Error('startLoop requires requestAnimationFrame');
+  }
+
+  let shellState = LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE;
+  let shellSequence = -1;
+  let documentHidden = visibilityTarget?.visibilityState === 'hidden';
+
+  function requestedState() {
+    if (shellState === LOOP_LIFECYCLE_STATES.SYSTEM_SUSPENDED) {
+      return LOOP_LIFECYCLE_STATES.SYSTEM_SUSPENDED;
+    }
+    if (documentHidden || shellState === LOOP_LIFECYCLE_STATES.HIDDEN_OR_MINIMIZED) {
+      return LOOP_LIFECYCLE_STATES.HIDDEN_OR_MINIMIZED;
+    }
+    return shellState === LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED
+      ? LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED
+      : LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE;
+  }
+
+  let destroyed = false;
+  let frameHandle = null;
+  let last = nowMs();
+  let lifecycleState = requestedState();
+  let restoreTarget = LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE;
+  let stabilizationFrames = 0;
+  let suspended = !isPresentingState(lifecycleState);
+  let unsubscribeLifecycle = null;
+
+  const diagnostics = {
+    lifecycleState,
+    requestedLifecycleState: lifecycleState,
+    restoreTarget: null,
+    suspended,
+    visibilityState: visibilityTarget?.visibilityState || 'unavailable',
+    shellState,
+    shellSequence,
+    lastLifecycleReason: 'startup',
+    requestedFrames: 0,
+    executedFrames: 0,
+    renderUpdates: 0,
+    suspendCount: 0,
+    resumeCount: 0,
+    lifecycleTransitionCount: 0,
+    staleShellCommandCount: 0,
+    duplicateShellCommandCount: 0,
+    invalidShellCommandCount: 0,
+    timestampResetCount: 0,
+    restoreFrameCount: 0,
+    restoreStabilizationFramesRemaining: 0,
+    stepsThisFrame: 0,
+    maxStepsObserved: 0,
+    shedBacklogFrames: 0,
+  };
+
   const stepResult = { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
-  // Reuse one callback rather than closing over registry on every requestAnimationFrame.
+  // Reuse one fixed-step callback rather than closing over registry on every simulation step.
   const stepSimulation = (dt) => registry.step(dt);
 
+  function schedule() {
+    if (destroyed || suspended || frameHandle !== null) return;
+    frameHandle = requestFrame(frame);
+    diagnostics.requestedFrames++;
+  }
+
+  function cancelScheduledFrame() {
+    if (frameHandle === null) return;
+    if (typeof cancelFrame === 'function') cancelFrame(frameHandle);
+    frameHandle = null;
+  }
+
+  function recordState(next, reason) {
+    if (next !== lifecycleState) diagnostics.lifecycleTransitionCount++;
+    lifecycleState = next;
+    diagnostics.lifecycleState = next;
+    diagnostics.lastLifecycleReason = reason;
+  }
+
+  function releaseHeldControls(reason) {
+    const inputOwner = typeof registry.get === 'function' ? registry.get('input') : null;
+    if (!inputOwner || typeof inputOwner.releaseHeldControls !== 'function') return;
+    try {
+      inputOwner.releaseHeldControls(reason);
+    } catch (error) {
+      console.error('[loop] failed to release held controls:', error);
+    }
+  }
+
+  function enterNonPresenting(next, reason) {
+    const wasSuspended = suspended;
+    suspended = true;
+    diagnostics.suspended = true;
+    diagnostics.restoreTarget = null;
+    stabilizationFrames = 0;
+    diagnostics.restoreStabilizationFramesRemaining = 0;
+    diagnostics.stepsThisFrame = 0;
+    recordState(next, reason);
+    cancelScheduledFrame();
+    if (!wasSuspended) {
+      diagnostics.suspendCount++;
+      releaseHeldControls(reason);
+    }
+  }
+
+  function normalizeAccumulator() {
+    const accumulator = Number(state.accumulator);
+    state.accumulator = Number.isFinite(accumulator)
+      ? Math.max(0, Math.min(accumulator, DT - Number.EPSILON))
+      : 0;
+  }
+
+  function enterRestoring(target, reason) {
+    restoreTarget = target;
+    diagnostics.restoreTarget = target;
+    if (lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {
+      diagnostics.lastLifecycleReason = reason;
+      schedule();
+      return;
+    }
+
+    const wasSuspended = suspended;
+    suspended = false;
+    diagnostics.suspended = false;
+    recordState(LOOP_LIFECYCLE_STATES.RESTORING, reason);
+    if (wasSuspended) diagnostics.resumeCount++;
+    normalizeAccumulator();
+    last = nowMs();
+    diagnostics.timestampResetCount++;
+    diagnostics.stepsThisFrame = 0;
+    schedule();
+  }
+
+  function synchronizeLifecycle(reason) {
+    const next = requestedState();
+    diagnostics.requestedLifecycleState = next;
+    if (!isPresentingState(next)) {
+      if (suspended && lifecycleState === next) {
+        diagnostics.lastLifecycleReason = reason;
+        return;
+      }
+      enterNonPresenting(next, reason);
+      return;
+    }
+
+    if (suspended || lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {
+      enterRestoring(next, reason);
+      return;
+    }
+
+    diagnostics.restoreTarget = null;
+    recordState(next, reason);
+    schedule();
+  }
+
+  function onVisibilityChange() {
+    diagnostics.visibilityState = visibilityTarget?.visibilityState || 'unavailable';
+    documentHidden = diagnostics.visibilityState === 'hidden';
+    synchronizeLifecycle('document-visibility');
+  }
+
+  function onShellLifecycle(command) {
+    if (!command || !isShellState(command.state)
+      || !Number.isSafeInteger(command.sequence) || command.sequence <= 0) {
+      diagnostics.invalidShellCommandCount++;
+      return;
+    }
+    if (command.sequence < shellSequence) {
+      diagnostics.staleShellCommandCount++;
+      return;
+    }
+    if (command.sequence === shellSequence) {
+      diagnostics.duplicateShellCommandCount++;
+      return;
+    }
+
+    shellSequence = command.sequence;
+    shellState = command.state;
+    diagnostics.shellSequence = shellSequence;
+    diagnostics.shellState = shellState;
+    synchronizeLifecycle(typeof command.reason === 'string' && command.reason
+      ? command.reason
+      : 'shell');
+  }
+
   function frame(now) {
+    frameHandle = null;
+    if (destroyed || suspended || !isPresentingState(lifecycleState)) return;
+
+    diagnostics.executedFrames++;
+    const restoring = lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING;
+    const stabilizing = !restoring && stabilizationFrames > 0;
     const callbackStart = perfNow();
     let perf = null;
-    // Monotonic clock is only read at this loop seam for frame pacing — never inside sim systems.
-    let frameDt = (now - last) / 1000;
-    if (frameDt > 0.25) frameDt = 0.25; // clamp huge stalls (tab switch, breakpoint)
+    let renderedSnapshot = false;
+    let frameDt = restoring ? 0 : (now - last) / 1000;
+    if (!Number.isFinite(frameDt) || frameDt < 0) frameDt = 0;
+    if (frameDt > 0.25) frameDt = 0.25;
+    if (stabilizing && frameDt > DT) frameDt = DT;
     last = now;
 
     try {
       perf = ensurePerfRuntime(state);
       perf.beginFrame(frameDt);
       const simFrameStart = perfNow();
-      advanceFixedTimestep(state.accumulator, frameDt, state.timeScale, stepSimulation, stepResult);
-      state.accumulator = stepResult.accumulator;
+
+      if (restoring) {
+        stepResult.steps = 0;
+        stepResult.shedBacklog = false;
+        stepResult.shedSteps = 0;
+        stepResult.accumulator = state.accumulator;
+      } else {
+        advanceFixedTimestep(state.accumulator, frameDt, state.timeScale, stepSimulation, stepResult);
+        state.accumulator = stepResult.accumulator;
+      }
+
+      diagnostics.stepsThisFrame = stepResult.steps;
+      diagnostics.maxStepsObserved = Math.max(diagnostics.maxStepsObserved, stepResult.steps);
+      if (stepResult.shedBacklog) diagnostics.shedBacklogFrames++;
       perf.recordSimFrame(perfNow() - simFrameStart);
       perf.recordLoop(stepResult.steps, stepResult.shedBacklog, state.accumulator, stepResult.shedSteps);
+
+      // A lifecycle event may synchronously fire from a system step. Do not submit a frame after it
+      // has transferred ownership to a non-presenting state or a newly scheduled restore callback.
+      if (destroyed || suspended || (!restoring && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING)) return;
 
       let alpha = state.accumulator / DT;
       if (alpha < 0) alpha = 0; else if (alpha > 1) alpha = 1;
       registry.renderUpdate(alpha, frameDt);
+      diagnostics.renderUpdates++;
+      renderedSnapshot = true;
     } catch (err) {
       // One bad frame must never kill the whole loop; log a bounded number and keep running.
       frame._errs = (frame._errs || 0) + 1;
@@ -79,8 +326,46 @@ export function startLoop(state, registry) {
         perf.recordFrameCallback(perfNow() - callbackStart);
       }
     }
-    requestAnimationFrame(frame);
+
+    if (stabilizing && stabilizationFrames > 0) {
+      stabilizationFrames--;
+      diagnostics.restoreStabilizationFramesRemaining = stabilizationFrames;
+    }
+
+    if (restoring && renderedSnapshot && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {
+      diagnostics.restoreFrameCount++;
+      diagnostics.restoreTarget = null;
+      stabilizationFrames = RESTORE_STABILIZATION_FRAMES;
+      diagnostics.restoreStabilizationFramesRemaining = stabilizationFrames;
+      recordState(restoreTarget, 'restore-frame-complete');
+    }
+    schedule();
   }
 
-  requestAnimationFrame(frame);
+  if (visibilityTarget && typeof visibilityTarget.addEventListener === 'function') {
+    visibilityTarget.addEventListener('visibilitychange', onVisibilityChange);
+  }
+  if (lifecyclePort && typeof lifecyclePort.subscribe === 'function') {
+    const unsubscribe = lifecyclePort.subscribe(onShellLifecycle);
+    if (typeof unsubscribe === 'function') unsubscribeLifecycle = unsubscribe;
+  }
+  schedule();
+
+  return {
+    destroy() {
+      if (destroyed) return;
+      destroyed = true;
+      cancelScheduledFrame();
+      if (visibilityTarget && typeof visibilityTarget.removeEventListener === 'function') {
+        visibilityTarget.removeEventListener('visibilitychange', onVisibilityChange);
+      }
+      if (unsubscribeLifecycle) {
+        try { unsubscribeLifecycle(); } catch (_) { /* teardown stays best-effort */ }
+        unsubscribeLifecycle = null;
+      }
+    },
+    isSuspended: () => suspended,
+    getLifecycleState: () => lifecycleState,
+    getDiagnostics: () => ({ ...diagnostics }),
+  };
 }
