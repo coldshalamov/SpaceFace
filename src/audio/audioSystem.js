@@ -563,6 +563,12 @@ export const audio = {
     rt._alarmNext = { lowShield: 0, lowHull: 0 }; // next scheduled beep time (ctx.currentTime)
     rt._alarmFlip = { lowShield: false };
     rt._rafId = 0;
+    rt._lifecycleSuspended = false;
+    rt._lifecycleReason = null;
+    rt._resumeAfterLifecycle = false;
+    rt._lifecycleSuspendPromise = null;
+    rt._resumePromise = null;
+    rt._lastWallTime = undefined;
     rt._wantBeam = {};            // owners desiring a beam loop (started on resume)
     rt._wantMining = null;        // { minerId, targetId } desired mining loop
     rt._wantDrillGrind = false;   // state-derived deep-drill bed (survives AudioContext resume)
@@ -779,6 +785,26 @@ export const audio = {
   // registry does not call audio.update().
   update(dt, state) { /* no-op: driven by _frame() */ },
 
+  destroy() {
+    const rt = this.rt;
+    if (!rt) return;
+    rt._lifecycleSuspended = true;
+    this._stopFrameLoop();
+    if (typeof window !== 'undefined' && window.removeEventListener && this._gestureHandler) {
+      window.removeEventListener('pointerdown', this._gestureHandler);
+      window.removeEventListener('keydown', this._gestureHandler);
+    }
+    this._gestureHandler = null;
+    if (rt.bandBed && typeof rt.bandBed.destroy === 'function') rt.bandBed.destroy();
+    rt.bandBed = null;
+    if (rt.ctx && rt.ctx.state !== 'closed' && typeof rt.ctx.close === 'function') {
+      try {
+        const closing = rt.ctx.close();
+        if (closing && typeof closing.catch === 'function') closing.catch(() => {});
+      } catch (_) {}
+    }
+  },
+
   _markMusicDirty() {
     if (this.rt) this.rt._musicDirty = true;
   },
@@ -793,10 +819,90 @@ export const audio = {
   },
 
   // ---- context lifecycle ----
+  suspendForLifecycle(reason = 'lifecycle') {
+    const rt = this.rt;
+    if (!rt) return;
+    rt._lifecycleSuspended = true;
+    rt._lifecycleReason = reason;
+    rt._lastWallTime = undefined;
+    this._stopFrameLoop();
+    this._suspendRunningContext();
+  },
+
+  resumeFromLifecycle(reason = 'lifecycle') {
+    const rt = this.rt;
+    if (!rt) return;
+    rt._lifecycleSuspended = false;
+    rt._lifecycleReason = reason;
+    rt._lastWallTime = undefined;
+    if (rt._lifecycleSuspendPromise) {
+      rt._lifecycleSuspendPromise.then(() => {
+        if (!rt._lifecycleSuspended) this._resumeAudioContext(false);
+      });
+      return;
+    }
+    this._resumeAudioContext(false);
+  },
+
+  _suspendRunningContext() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || ctx.state !== 'running' || typeof ctx.suspend !== 'function') return;
+    rt._resumeAfterLifecycle = true;
+    if (rt._lifecycleSuspendPromise) return;
+    let result;
+    try { result = ctx.suspend(); } catch (_) { return; }
+    const pending = Promise.resolve(result)
+      .catch(() => {})
+      .then(() => {
+        if (!rt._lifecycleSuspended && rt._resumeAfterLifecycle) {
+          this._resumeAudioContext(false);
+        }
+      })
+      .finally(() => {
+        if (rt._lifecycleSuspendPromise === pending) rt._lifecycleSuspendPromise = null;
+      });
+    rt._lifecycleSuspendPromise = pending;
+  },
+
+  _resumeAudioContext(allowAutoplayResume) {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || rt._lifecycleSuspended || ctx.state === 'closed') return null;
+    if (ctx.state === 'running') {
+      rt._resumeAfterLifecycle = false;
+      rt._lastWallTime = undefined;
+      this._startFrameLoop();
+      return null;
+    }
+    if (ctx.state !== 'suspended' || (!allowAutoplayResume && !rt._resumeAfterLifecycle)
+      || typeof ctx.resume !== 'function') return null;
+    if (rt._resumePromise) return rt._resumePromise;
+    let result;
+    try { result = ctx.resume(); } catch (_) { return null; }
+    const pending = Promise.resolve(result)
+      .catch(() => {})
+      .then(() => {
+        if (rt._lifecycleSuspended) {
+          this._suspendRunningContext();
+          return;
+        }
+        if (ctx.state === 'running') {
+          rt._resumeAfterLifecycle = false;
+          rt._lastWallTime = undefined;
+          this._startFrameLoop();
+        }
+      })
+      .finally(() => {
+        if (rt._resumePromise === pending) rt._resumePromise = null;
+      });
+    rt._resumePromise = pending;
+    return pending;
+  },
+
   _ensureContext() {
     const rt = this.rt;
+    if (!rt || rt._lifecycleSuspended) return null;
     if (rt.ctx) {
-      if (rt.ctx.state === 'suspended') { try { rt.ctx.resume(); } catch (_) {} }
+      this._resumeAudioContext(true);
       return rt.ctx;
     }
     const AC = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
@@ -854,7 +960,6 @@ export const audio = {
 
     this._applySettings();
     this._setBulletTimeAudio(!!rt._bulletTimeAudioActive);
-    try { if (ctx.state === 'suspended') ctx.resume(); } catch (_) {}
 
     // Continuous flight layers belong in flight. Starting them on the first menu click hard-starts
     // oscillators into a live graph and produces a one-shot "boop" with no gameplay reason.
@@ -863,7 +968,7 @@ export const audio = {
     if (!rt._paused) this._ensureContinuousSources();
     this._buildMusic();
     if (rt._paused) this._onPause(true);
-    this._startFrameLoop();
+    this._resumeAudioContext(true);
     return ctx;
   },
 
@@ -1041,7 +1146,7 @@ export const audio = {
   play(recipeId, opts) {
     const rt = this.rt;
     const ctx = rt.ctx;
-    if (!ctx || ctx.state !== 'running') return null; // graceful skip when suspended
+    if (rt._lifecycleSuspended || !ctx || ctx.state !== 'running') return null;
     if (this._isMuted()) return null; // mute is hard silence — no unlock-ramp leak
     const recipe = AUDIO_RECIPE_BY_ID[recipeId];
     if (!recipe) return null;
@@ -1403,7 +1508,7 @@ export const audio = {
 
   _startLoopVoice(recipeId, position, gain) {
     const rt = this.rt, ctx = rt.ctx;
-    if (!ctx || ctx.state !== 'running') return null;
+    if (rt._lifecycleSuspended || !ctx || ctx.state !== 'running') return null;
     const recipe = AUDIO_RECIPE_BY_ID[recipeId];
     if (!recipe) return null;
     let att = 1, pan = 0;
@@ -2137,18 +2242,32 @@ export const audio = {
   // ---- per-frame driver (self-owned rAF; registry does not call audio.update) ----
   _startFrameLoop() {
     const rt = this.rt;
-    if (rt._rafId || typeof requestAnimationFrame === 'undefined') return;
+    if (!rt || rt._rafId || rt._lifecycleSuspended || !rt.ctx
+      || rt.ctx.state !== 'running' || typeof requestAnimationFrame === 'undefined') return;
     const tick = () => {
-      rt._rafId = requestAnimationFrame(tick);
+      rt._rafId = 0;
+      if (rt._lifecycleSuspended || !rt.ctx || rt.ctx.state !== 'running') return;
       this._frame();
+      if (!rt._lifecycleSuspended && rt.ctx && rt.ctx.state === 'running') {
+        rt._rafId = requestAnimationFrame(tick);
+      }
     };
     rt._rafId = requestAnimationFrame(tick);
   },
 
+  _stopFrameLoop() {
+    const rt = this.rt;
+    if (!rt || !rt._rafId) return;
+    const frameId = rt._rafId;
+    rt._rafId = 0;
+    if (typeof cancelAnimationFrame !== 'undefined') {
+      try { cancelAnimationFrame(frameId); } catch (_) {}
+    }
+  },
+
   _frame() {
-    const rt = this.rt, ctx = rt.ctx;
-    if (!ctx) return;
-    if (ctx.state === 'suspended') { try { ctx.resume(); } catch (_) {} }
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || rt._lifecycleSuspended || ctx.state !== 'running') return;
     const nowWall = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000;
     const now = ctx.currentTime;
 

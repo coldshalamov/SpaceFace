@@ -776,11 +776,15 @@ export const input = {
     this._m2 = false;
     this._prevM1 = false;
     this._kbmActivityPending = false;
+    this._travelEdge = false;
+    // A gamepad can remain physically held while polling is stopped. Suppress countermeasure and
+    // Massline edges until each owner observes a neutral sample after presentation resumes.
+    this._cmSuppressUntilRelease = true;
     if (this._edgePrev) {
       for (const action in this._edgePrev) this._edgePrev[action] = false;
     }
     if (this._masslineGrammar && typeof this._masslineGrammar.reset === 'function') {
-      this._masslineGrammar.reset();
+      this._masslineGrammar.reset(true);
     }
     if (this.gamepad && typeof this.gamepad._resetState === 'function') {
       this.gamepad._resetState();
@@ -807,6 +811,21 @@ export const input = {
         }
       }
     }
+  },
+
+  _updateCountermeasureHold(held, inp) {
+    const active = !!held;
+    if (this._cmSuppressUntilRelease) {
+      this._cmHeld = active;
+      if (!active) this._cmSuppressUntilRelease = false;
+      return;
+    }
+    if (active) {
+      if (!this._cmHeld) inp.deployCountermeasure = true;
+      this._cmHeld = true;
+      return;
+    }
+    this._cmHeld = false;
   },
 
   // True if any of the bound codes for `action` is currently held.
@@ -1042,11 +1061,7 @@ export const input = {
     // Countermeasure deploy (P1-7): edge-triggered flag consumed by systems/countermeasures.js.
     // We set a flag (not deploy directly) so the countermeasures system owns the cooldown/equip
     // logic + AI auto-deploy in one place.
-    if (this._held(state, 'countermeasure') || gpCountermeasure) {
-      if (!this._cmHeld) { inp.deployCountermeasure = true; this._cmHeld = true; }
-    } else {
-      this._cmHeld = false;
-    }
+    this._updateCountermeasureHold(this._held(state, 'countermeasure') || gpCountermeasure, inp);
 
     const p = state.entities.get(state.playerId);
     const gpOrTouchAim = gpAimActive || tpAimActive;

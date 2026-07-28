@@ -15,7 +15,6 @@ export const LOOP_LIFECYCLE_STATES = Object.freeze({
 });
 
 const DT = LOOP_FIXED_DT;
-const RESTORE_STABILIZATION_FRAMES = 4;
 
 export function advanceFixedTimestep(accumulator, frameDt, timeScale, step, out = null, dt = DT, maxSteps = MAX_CATCHUP_STEPS) {
   const result = out || { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
@@ -111,7 +110,6 @@ export function startLoop(state, registry, deps = {}) {
   let last = nowMs();
   let lifecycleState = requestedState();
   let restoreTarget = LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE;
-  let stabilizationFrames = 0;
   let suspended = !isPresentingState(lifecycleState);
   let unsubscribeLifecycle = null;
 
@@ -135,7 +133,6 @@ export function startLoop(state, registry, deps = {}) {
     invalidShellCommandCount: 0,
     timestampResetCount: 0,
     restoreFrameCount: 0,
-    restoreStabilizationFramesRemaining: 0,
     stepsThisFrame: 0,
     maxStepsObserved: 0,
     shedBacklogFrames: 0,
@@ -174,19 +171,28 @@ export function startLoop(state, registry, deps = {}) {
     }
   }
 
+  function setAudioLifecycle(method, reason) {
+    const audioOwner = typeof registry.get === 'function' ? registry.get('audio') : null;
+    if (!audioOwner || typeof audioOwner[method] !== 'function') return;
+    try {
+      audioOwner[method](reason);
+    } catch (error) {
+      console.error(`[loop] failed to ${method} audio:`, error);
+    }
+  }
+
   function enterNonPresenting(next, reason) {
     const wasSuspended = suspended;
     suspended = true;
     diagnostics.suspended = true;
     diagnostics.restoreTarget = null;
-    stabilizationFrames = 0;
-    diagnostics.restoreStabilizationFramesRemaining = 0;
     diagnostics.stepsThisFrame = 0;
     recordState(next, reason);
     cancelScheduledFrame();
     if (!wasSuspended) {
       diagnostics.suspendCount++;
       releaseHeldControls(reason);
+      setAudioLifecycle('suspendForLifecycle', reason);
     }
   }
 
@@ -276,14 +282,12 @@ export function startLoop(state, registry, deps = {}) {
 
     diagnostics.executedFrames++;
     const restoring = lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING;
-    const stabilizing = !restoring && stabilizationFrames > 0;
     const callbackStart = perfNow();
     let perf = null;
     let renderedSnapshot = false;
     let frameDt = restoring ? 0 : (now - last) / 1000;
     if (!Number.isFinite(frameDt) || frameDt < 0) frameDt = 0;
     if (frameDt > 0.25) frameDt = 0.25;
-    if (stabilizing && frameDt > DT) frameDt = DT;
     last = now;
 
     try {
@@ -327,16 +331,10 @@ export function startLoop(state, registry, deps = {}) {
       }
     }
 
-    if (stabilizing && stabilizationFrames > 0) {
-      stabilizationFrames--;
-      diagnostics.restoreStabilizationFramesRemaining = stabilizationFrames;
-    }
-
     if (restoring && renderedSnapshot && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {
       diagnostics.restoreFrameCount++;
       diagnostics.restoreTarget = null;
-      stabilizationFrames = RESTORE_STABILIZATION_FRAMES;
-      diagnostics.restoreStabilizationFramesRemaining = stabilizationFrames;
+      setAudioLifecycle('resumeFromLifecycle', 'restore-frame-complete');
       recordState(restoreTarget, 'restore-frame-complete');
     }
     schedule();
@@ -348,6 +346,9 @@ export function startLoop(state, registry, deps = {}) {
   if (lifecyclePort && typeof lifecyclePort.subscribe === 'function') {
     const unsubscribe = lifecyclePort.subscribe(onShellLifecycle);
     if (typeof unsubscribe === 'function') unsubscribeLifecycle = unsubscribe;
+  }
+  if (suspended && diagnostics.suspendCount === 0) {
+    setAudioLifecycle('suspendForLifecycle', 'startup');
   }
   schedule();
 

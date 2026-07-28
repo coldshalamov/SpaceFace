@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  advanceFixedTimestep,
   LOOP_FIXED_DT,
   LOOP_LIFECYCLE_STATES,
   startLoop,
@@ -87,13 +88,20 @@ function createHarness({
   const lifecyclePort = createLifecyclePort(initialShellCommand);
   const calls = [];
   const releases = [];
+  const audioTransitions = [];
   const state = { accumulator, timeScale: 1 };
   const registry = {
     step(dt) { calls.push({ type: 'step', dt }); },
     renderUpdate(alpha, frameDt) { calls.push({ type: 'render', alpha, frameDt }); },
     get(name) {
-      if (name !== 'input') return null;
-      return { releaseHeldControls: (reason) => releases.push(reason) };
+      if (name === 'input') return { releaseHeldControls: (reason) => releases.push(reason) };
+      if (name === 'audio') {
+        return {
+          suspendForLifecycle: (reason) => audioTransitions.push({ type: 'suspend', reason }),
+          resumeFromLifecycle: (reason) => audioTransitions.push({ type: 'resume', reason }),
+        };
+      }
+      return null;
     },
   };
   const controller = startLoop(state, registry, {
@@ -103,7 +111,18 @@ function createHarness({
     visibilityTarget: visibility,
     lifecyclePort,
   });
-  return { clock, raf, visibility, lifecyclePort, calls, releases, state, registry, controller };
+  return {
+    clock,
+    raf,
+    visibility,
+    lifecyclePort,
+    calls,
+    releases,
+    audioTransitions,
+    state,
+    registry,
+    controller,
+  };
 }
 
 function countCalls(harness, type) {
@@ -134,6 +153,7 @@ test('hidden document cancels presentation scheduling and performs no hidden wor
   assert.equal(h.controller.getLifecycleState(), LOOP_LIFECYCLE_STATES.HIDDEN_OR_MINIMIZED);
   assert.equal(h.raf.count(), 0);
   assert.deepEqual(h.releases, ['document-visibility']);
+  assert.deepEqual(h.audioTransitions, [{ type: 'suspend', reason: 'document-visibility' }]);
 
   h.clock.advance(30_000);
   assert.equal(h.calls.length, callsBeforeHide);
@@ -159,12 +179,19 @@ test('restore publishes one coherent zero-delta snapshot before simulation resum
   assert.equal(h.calls[0].frameDt, 0);
   assert.equal(h.controller.getLifecycleState(), LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE);
   assert.equal(h.controller.getDiagnostics().restoreFrameCount, 1);
+  assert.deepEqual(h.audioTransitions, [
+    { type: 'suspend', reason: 'document-visibility' },
+    { type: 'resume', reason: 'restore-frame-complete' },
+  ]);
 
+  const expected = advanceFixedTimestep(h.state.accumulator, 0.05, 1, () => {});
   h.calls.length = 0;
   h.raf.flushOne(h.clock.advance(50));
-  assert.ok(countCalls(h, 'step') <= 1, 'restore stabilization must not create a multi-tick burst');
+  assert.equal(countCalls(h, 'step'), expected.steps,
+    'post-restore foreground time must retain the ordinary fixed-step cadence');
   assert.equal(countCalls(h, 'render'), 1);
-  assert.ok(h.calls.find((call) => call.type === 'render').frameDt <= LOOP_FIXED_DT);
+  assert.equal(h.calls.find((call) => call.type === 'render').frameDt, 0.05);
+  assert.ok(Math.abs(h.state.accumulator - expected.accumulator) < 1e-12);
   assert.equal(h.controller.getDiagnostics().shedBacklogFrames, 0);
   assert.ok(stepsBeforeHide >= 1);
   h.controller.destroy();
@@ -175,12 +202,17 @@ test('initially hidden startup owns no frame callback until restore', () => {
   assert.equal(h.controller.isSuspended(), true);
   assert.equal(h.raf.count(), 0);
   assert.equal(h.calls.length, 0);
+  assert.deepEqual(h.audioTransitions, [{ type: 'suspend', reason: 'startup' }]);
 
   h.clock.advance(5000);
   h.visibility.set('visible');
   assert.equal(h.raf.count(), 1);
   h.raf.flushOne(h.clock.advance(16.667));
   assert.deepEqual(h.calls.map((call) => call.type), ['render']);
+  assert.deepEqual(h.audioTransitions, [
+    { type: 'suspend', reason: 'startup' },
+    { type: 'resume', reason: 'restore-frame-complete' },
+  ]);
   h.controller.destroy();
 });
 
@@ -199,6 +231,7 @@ test('shell minimize and system suspend stop work with monotonic command handlin
   h.lifecyclePort.send({ state: 'system-suspended', sequence: 3, reason: 'suspend' });
   assert.equal(h.controller.getLifecycleState(), LOOP_LIFECYCLE_STATES.SYSTEM_SUSPENDED);
   assert.equal(h.releases.length, 1, 'repeated non-presenting commands release controls once');
+  assert.deepEqual(h.audioTransitions, [{ type: 'suspend', reason: 'minimize' }]);
 
   h.lifecyclePort.send({ state: 'foreground-visible', sequence: 4, reason: 'resume' });
   assert.equal(h.controller.getLifecycleState(), LOOP_LIFECYCLE_STATES.RESTORING);
