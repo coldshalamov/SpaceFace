@@ -14,14 +14,17 @@ preserving canonical scale, sockets and overall identity:
 - 66 obsolete hero objects are explicitly retired, including the three drive toruses, 16 rectangular
   nozzle petals, neon sensor hoop, mirrored 18.5-m shoulder slab, giant utility box, brow slab,
   radiator comb and `BORROWED` decal;
-- 553 authored component objects are added, producing 733 visible mesh objects versus the 246-object
+- 554 authored component objects are added, producing 734 visible mesh objects versus the 246-object
   pre-pass scene (2.98x), while the 72-fin radiator pack on each side is one efficient combined mesh;
 - all 180 retained visible source meshes and every V6 mesh carry explicit component material-bill
   metadata; the fail-closed coverage result is zero missing;
 - the drive is a segmented alloy/ceramic/vane assembly; the sensor is a filled dish and gimbal; the
   shoulders are five tapered sponson sections per side; the weapon deck is a recoil/trunnion/receiver
   module; the repair pod is an eight-sided pressure case; the radiators are recessed fin cassettes;
-- `DIE LAUGHING` replaces the inventory-like `BORROWED` label;
+- `DIE LAUGHING` replaces the inventory-like `BORROWED` label as a conventionally authored,
+  two-line hand-cut protest-punk stencil. The main paint is a one-sided conformal mesh offset
+  0.30 mm from the aft port armor course; chipped gaps are absent geometry and the localized
+  overspray/wear layer is detail-2/LOD0-only. No generated pixels ship;
 - source texture normal amplitudes and material-node micro-bump strengths were reduced so coated
   metal no longer inherits the former leather/clay response.
 
@@ -30,12 +33,14 @@ traits are recorded in `reference/REFERENCE_PROVENANCE.md`. These studies are de
 candidate uses editable deterministic geometry and physically stated material roles, not projected
 generated imagery.
 
-The exact production blend and its three retained Blender renders are hash-bound in
-`evidence/material_truth_v6/VISUAL_REVIEW.md`. That review caught and repaired a production-save
-defect that had hidden the complete V5/V6 descendant collections while leaving GLB export green.
-The corrected offline evidence supports keeping the named G1/G2/G4 remediation. Formal runtime
-normal-route/LOD/performance proof and independent exact-hash G7 remain pending and must not be
-inferred from the Blender result.
+The retained pre-stencil component review is
+`evidence/material_truth_v6/VISUAL_REVIEW.md`; it caught and repaired a production-save defect that
+had hidden the complete V5/V6 descendant collections while leaving GLB export green. The current
+stencil-refined production blend and its matched normal, orthographic, grazing, and clay renders are
+hash-bound separately in `evidence/material_truth_v6_stencil_v2/VISUAL_REVIEW.md`. Together the
+offline evidence supports keeping the named G1/G2/G4 remediation. Formal runtime normal-route,
+LOD/performance proof, and independent exact-hash G7 remain pending and must not be inferred from
+the Blender result.
 
 ## Failed reads
 

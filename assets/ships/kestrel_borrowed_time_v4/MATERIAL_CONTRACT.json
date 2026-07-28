@@ -16,7 +16,17 @@
   "wear": ["directional travel wear", "engine heat path", "service grime", "repair-green mismatch", "localized edge chips"],
   "decals": ["one-sided DIE LAUGHING identity paint", "engine hazard", "service stencil"],
   "factorOnlyMaterialExceptions": {
-    "Material_V6_MarkingIvory": "non-emissive ivory mesh lettering; geometry spells DIE LAUGHING and must not sample the legacy stencil atlas"
+    "Material_V6_MarkingIvory": "non-emissive dirty warm-ivory stencil paint; separate conventionally authored main/wear meshes spell DIE LAUGHING, conform to V6_ShoulderArmor_Port_Aft at 0.30 mm normal offset, and must not sample generated pixels or the legacy stencil atlas"
+  },
+  "heroMarkingContract": {
+    "fiction": "crew-applied gallows-humor name sprayed onto the accessible aft port armor course, clear of the inspection hatch",
+    "method": "original two-line hand-cut vector stencil with explicit bridges, missing-paint gaps, chipped edges and localized overspray",
+    "targetSurface": "V6_ShoulderArmor_Port_Aft",
+    "mainDetailLevel": 0,
+    "wearDetailLevel": 2,
+    "wearLodPolicy": "LOD0 only",
+    "surfaceOffsetMeters": 0.0003,
+    "generatedPixelsShipped": false
   },
   "materialTruthDiagnostics": {
     "scope": "V6 camera-prominent components with named G1/G2/G4 failures",

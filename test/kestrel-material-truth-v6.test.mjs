@@ -13,9 +13,9 @@ const FAMILY = resolve(ROOT, 'assets/ships/kestrel_borrowed_time_v4');
 const BUILD_REPORT = resolve(FAMILY, 'evidence/material_truth_v6_build_report.json');
 const FINALIZE_REPORT = resolve(FAMILY, 'evidence/material_truth_v6_finalize_report.json');
 const TRIANGLE_RANGES = [
-  [25_500, 28_000],
-  [15_500, 17_500],
-  [13_000, 14_500],
+  [20_900, 21_300],
+  [12_550, 12_950],
+  [9_350, 9_700],
 ];
 
 const sha256 = (path) => createHash('sha256')
@@ -31,6 +31,18 @@ function report(path) {
 function countTriangles(document) {
   return document.getRoot().listMeshes().reduce(
     (total, mesh) => total + mesh.listPrimitives().reduce((meshTotal, primitive) => {
+      const indices = primitive.getIndices();
+      const position = primitive.getAttribute('POSITION');
+      return meshTotal + Math.floor((indices?.getCount() ?? position?.getCount() ?? 0) / 3);
+    }, 0),
+    0,
+  );
+}
+
+function countMaterialTriangles(document, materialName) {
+  return document.getRoot().listMeshes().reduce(
+    (total, mesh) => total + mesh.listPrimitives().reduce((meshTotal, primitive) => {
+      if (primitive.getMaterial()?.getName() !== materialName) return meshTotal;
       const indices = primitive.getIndices();
       const position = primitive.getAttribute('POSITION');
       return meshTotal + Math.floor((indices?.getCount() ?? position?.getCount() ?? 0) / 3);
@@ -93,8 +105,30 @@ test('Kestrel V6 build is one hash-coherent isolated generation', () => {
   assert.equal(build.materialTruthPassId, 'kestrel-material-truth-v6');
   assert.equal(build.surfaceRemasterId, 'kestrel-role-surface-v6-material-truth');
   assert.equal(build.materialTruth.heroMarking, 'DIE LAUGHING');
-  assert.equal(build.materialTruth.objectsAdded, 553);
-  assert.equal(build.materialTruth.visibleObjectCount, 733);
+  assert.equal(build.materialTruth.objectsAdded, 554);
+  assert.equal(build.materialTruth.visibleObjectCount, 734);
+  const {
+    minMeasuredSurfaceOffsetMeters,
+    maxMeasuredSurfaceOffsetMeters,
+    ...markingContract
+  } = build.materialTruth.heroMarkingContract;
+  assert.deepEqual(markingContract, {
+    mainObject: 'V6_HeroMark_DieLaughing',
+    wearObject: 'V6_HeroMark_DieLaughing_Wear',
+    method: 'conventionally-authored-vector-stencil-v2',
+    style: 'original-protest-punk-hand-cut-stencil',
+    targetSurface: 'V6_ShoulderArmor_Port_Aft',
+    generatedPixelsShipped: false,
+    mainDetailLevel: 0,
+    wearDetailLevel: 2,
+    wearLodPolicy: 'LOD0_only_detail2',
+    surfaceOffsetMeters: 0.0003,
+    missingPaintBreaks: 7,
+    oversprayFragments: 34,
+    referenceSha256: 'EB4CA35AE6B22817037FA7717C7C9CACEEEAB65965730F7F388A7FE5E5036ECF',
+  });
+  assert.ok(minMeasuredSurfaceOffsetMeters >= 0.000299);
+  assert.ok(maxMeasuredSurfaceOffsetMeters <= 0.000301);
   assert.equal(build.materialTruth.existingMaterialBillCoverage.missing, 0);
   assert.equal(build.generationFingerprint, build.generation.generationFingerprint);
 
@@ -140,6 +174,11 @@ test('Kestrel V6 source LODs preserve mapped vertex roles and noncollapsed UVs',
     );
     assert.equal(materials.has('Material_Decal_BorrowedTime'), false);
     assert.equal(materials.has('Material_V6_MarkingIvory'), true);
+    assert.equal(
+      countMaterialTriangles(document, 'Material_V6_MarkingIvory'),
+      [182, 114, 114][lod],
+      `LOD${lod} marking triangles keep overspray in LOD0 only`,
+    );
     if (lod === 0) {
       for (const name of ['Material_Decal_Hazard', 'Material_Decal_Stencils']) {
         const material = materials.get(name);

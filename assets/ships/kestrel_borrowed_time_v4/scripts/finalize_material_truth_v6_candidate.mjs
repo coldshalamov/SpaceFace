@@ -77,9 +77,9 @@ const FACTOR_ONLY_MATERIALS = new Set([
   'Material_V6_MarkingIvory',
 ]);
 const TRIANGLE_RANGES = Object.freeze([
-  [25_500, 28_000],
-  [15_500, 17_500],
-  [13_000, 14_500],
+  [20_900, 21_300],
+  [12_550, 12_950],
+  [9_350, 9_700],
 ]);
 
 const sha256Buffer = (buffer) => createHash('sha256').update(buffer).digest('hex').toUpperCase();
