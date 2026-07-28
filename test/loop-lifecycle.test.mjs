@@ -89,9 +89,28 @@ function createHarness({
   const calls = [];
   const releases = [];
   const audioTransitions = [];
-  const state = { accumulator, timeScale: 1 };
+  const state = {
+    accumulator,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    input: {
+      moveX: 0,
+      moveZ: 0,
+      turnIntent: 0,
+      aimWorld: { x: 0, z: 0 },
+      mouseNdc: { x: 0, y: 0 },
+      pointerScreen: { x: 0, y: 0, active: false },
+      actions: {},
+    },
+  };
   const registry = {
-    step(dt) { calls.push({ type: 'step', dt }); },
+    step(dt, tickBoundary) {
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+      calls.push({ type: 'step', dt });
+    },
     renderUpdate(alpha, frameDt) { calls.push({ type: 'render', alpha, frameDt }); },
     get(name) {
       if (name === 'input') return { releaseHeldControls: (reason) => releases.push(reason) };
@@ -278,7 +297,10 @@ test('document visibility remains authoritative over a foreground shell command'
 
 test('a hide fired during simulation aborts presentation and rescheduling', () => {
   const h = createHarness();
-  h.registry.step = (dt) => {
+  h.registry.step = (dt, tickBoundary) => {
+    h.state.tick++;
+    h.state.simTime += dt;
+    tickBoundary.publishInputCommand(h.state.input, h.state.tick);
     h.calls.push({ type: 'step', dt });
     h.visibility.set('hidden');
   };

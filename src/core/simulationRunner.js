@@ -1,5 +1,6 @@
 // Main-thread simulation owner. Keeps the authoritative fixed-step policy separate from presentation
 // scheduling so a later transport change does not need to rediscover tick, backlog, or ordering rules.
+import { createInputCommandSnapshotQueue } from './inputCommandSnapshot.js';
 
 export const LOOP_FIXED_DT = 1 / 60;
 export const MAX_CATCHUP_STEPS = 4;
@@ -98,6 +99,23 @@ export function createSimulationRunner(state, registry, deps = {}) {
       : DEFAULT_COMPLETED_TICK_CAPACITY),
   );
   const presentationJournal = deps.presentationJournal || null;
+  const inputCommandSnapshotCapacity = Math.max(
+    maxSteps,
+    Math.floor(Number.isFinite(deps.inputCommandSnapshotCapacity)
+      ? deps.inputCommandSnapshotCapacity
+      : completedTickCapacity),
+  );
+  const inputCommandSnapshots = deps.inputCommandSnapshots
+    || createInputCommandSnapshotQueue(inputCommandSnapshotCapacity);
+  if (typeof inputCommandSnapshots.reserve !== 'function'
+    || typeof inputCommandSnapshots.capture !== 'function'
+    || typeof inputCommandSnapshots.consume !== 'function'
+    || typeof inputCommandSnapshots.cancel !== 'function') {
+    throw new TypeError('SimulationRunner requires a bounded InputCommandSnapshot queue');
+  }
+  const onInputCommandSnapshot = typeof deps.onInputCommandSnapshot === 'function'
+    ? deps.onInputCommandSnapshot
+    : null;
   const completedTicks = Array.from(
     { length: completedTickCapacity },
     () => createCompletedTickRecord(),
@@ -112,6 +130,26 @@ export function createSimulationRunner(state, registry, deps = {}) {
   let overflowCount = 0;
   let consumedTickCount = 0;
   let skippedPresentationTicks = 0;
+  let inputBoundaryCaptureCount = 0;
+  let inputBoundaryErrorCount = 0;
+  let inputSnapshotCancelCount = 0;
+  let inputObserverErrorCount = 0;
+  let lastInputObserverError = null;
+
+  const inputTickBoundary = {
+    sequence: 0,
+    targetTick: 0,
+    publishedSequence: 0,
+    publishInputCommand(input, actualTick) {
+      if (this.publishedSequence !== 0) {
+        inputBoundaryErrorCount++;
+        throw new Error(`InputCommandSnapshot ${this.sequence} published more than once`);
+      }
+      inputCommandSnapshots.capture(this.sequence, input, actualTick);
+      this.publishedSequence = this.sequence;
+      inputBoundaryCaptureCount++;
+    },
+  };
 
   function journalSequence() {
     return presentationJournal && typeof presentationJournal.getWriteSequence === 'function'
@@ -144,13 +182,42 @@ export function createSimulationRunner(state, registry, deps = {}) {
   }
 
   function stepSimulation(dt) {
-    // Reserve before advancing authoritative state so queue exhaustion fails closed rather than
-    // advancing a tick that presentation can never observe.
+    // Reserve both publications before advancing authoritative state. Exhaustion therefore fails
+    // closed rather than advancing a tick whose command or completion record cannot be represented.
     const slot = reserveCompletedTick();
     const nextInputSequence = inputSequence + 1;
+    const currentTick = Number.isSafeInteger(state.tick) && state.tick >= 0
+      ? state.tick
+      : completedSequence;
+    const targetTick = currentTick + 1;
+    inputCommandSnapshots.reserve(nextInputSequence, targetTick, lifecycleGeneration);
+    inputTickBoundary.sequence = nextInputSequence;
+    inputTickBoundary.targetTick = targetTick;
+    inputTickBoundary.publishedSequence = 0;
     const journalStart = journalSequence();
-    registry.step(dt);
-    publishCompletedTick(slot, nextInputSequence, journalStart);
+
+    try {
+      registry.step(dt, inputTickBoundary);
+      if (inputTickBoundary.publishedSequence !== nextInputSequence) {
+        inputBoundaryErrorCount++;
+        throw new Error(`InputCommandSnapshot ${nextInputSequence} was not published`);
+      }
+      const observerError = inputCommandSnapshots.consume(
+        nextInputSequence,
+        onInputCommandSnapshot,
+      );
+      inputSequence = nextInputSequence;
+      publishCompletedTick(slot, nextInputSequence, journalStart);
+      if (observerError) {
+        inputObserverErrorCount++;
+        lastInputObserverError = observerError instanceof Error
+          ? observerError.message
+          : String(observerError);
+      }
+    } catch (error) {
+      if (inputCommandSnapshots.cancel(nextInputSequence)) inputSnapshotCancelCount++;
+      throw error;
+    }
   }
 
   function prepareWithoutAdvance() {
@@ -212,6 +279,14 @@ export function createSimulationRunner(state, registry, deps = {}) {
         completedTickCapacity,
         completedSequence,
         inputSequence,
+        inputCommandSnapshotCapacity: inputCommandSnapshots.capacity
+          || inputCommandSnapshotCapacity,
+        inputBoundaryCaptureCount,
+        inputBoundaryErrorCount,
+        inputSnapshotCancelCount,
+        inputObserverErrorCount,
+        lastInputObserverError,
+        inputCommandSnapshots: inputCommandSnapshots.getDiagnostics?.() || null,
         pendingCompletedTicks: completedCount,
         consumedTickCount,
         skippedPresentationTicks,

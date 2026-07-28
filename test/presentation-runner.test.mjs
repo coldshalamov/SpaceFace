@@ -32,14 +32,24 @@ test('PresentationRunner consumes completed ticks without owning simulation orde
     timeScale: 1,
     tick: 0,
     simTime: 0,
+    input: {
+      moveX: 0,
+      moveZ: 0,
+      turnIntent: 0,
+      aimWorld: { x: 0, z: 0 },
+      mouseNdc: { x: 0, y: 0 },
+      pointerScreen: { x: 0, y: 0, active: false },
+      actions: {},
+    },
   };
   const order = [];
   const frames = [];
   const registry = {
-    step(dt) {
+    step(dt, tickBoundary) {
       order.push(`step:${state.tick + 1}`);
       state.tick++;
       state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
     },
     renderUpdate(alpha, frameDt, presentationFrame) {
       order.push(`render:${state.tick}`);

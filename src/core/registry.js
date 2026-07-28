@@ -449,6 +449,10 @@ export function createRegistry(ctx) {
   // unless `travelFlag('laneBoost')` is on AND a player exists, so it costs two reads otherwise.
   // UPDATE_ORDER is materialised from PRODUCTION_UPDATE_ORDER via the runtime manifest.
   const UPDATE_ORDER = resolved.authoritativeUpdateOrder.slice();
+  if (UPDATE_ORDER[0] !== input) {
+    throw new Error('Runtime manifest must publish input from the first fixed-tick update slot');
+  }
+  const POST_INPUT_UPDATE_ORDER = UPDATE_ORDER.slice(1);
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether
   // after combat/physics have settled. It is read-only telemetry — it writes only its own
   // state.player.masslineTelemetry subtree, never entities or SG-02 attachments, and emits only the
@@ -528,7 +532,7 @@ export function createRegistry(ctx) {
         s.destroy();
       }
     },
-    step(dt) {
+    step(dt, tickBoundary = null) {
       const state = ctx.state;
       const perf = ensurePerfRuntime(state);
       const stepStart = perfNow();
@@ -536,7 +540,11 @@ export function createRegistry(ctx) {
       if (!measureSystems) {
         try {
           core.preStep(dt, state);
-          for (const s of UPDATE_ORDER) {
+          if (input.update) input.update(dt, state);
+          if (tickBoundary && typeof tickBoundary.publishInputCommand === 'function') {
+            tickBoundary.publishInputCommand(state.input, state.tick);
+          }
+          for (const s of POST_INPUT_UPDATE_ORDER) {
             if (s.update) s.update(dt, state);
           }
           core.lifetimeSweep(dt, state);
@@ -549,7 +557,15 @@ export function createRegistry(ctx) {
       let t = perfNow();
       try { core.preStep(dt, state); }
       finally { perf.recordSystem('core.preStep', perfNow() - t); }
-      for (const s of UPDATE_ORDER) {
+      if (input.update) {
+        t = perfNow();
+        try { input.update(dt, state); }
+        finally { perf.recordSystem(input.name, perfNow() - t); }
+      }
+      if (tickBoundary && typeof tickBoundary.publishInputCommand === 'function') {
+        tickBoundary.publishInputCommand(state.input, state.tick);
+      }
+      for (const s of POST_INPUT_UPDATE_ORDER) {
         if (!s.update) continue;
         t = perfNow();
         try { s.update(dt, state); }

@@ -28,14 +28,14 @@ test('detailed per-system clocks are opt-in and default gameplay does not fill t
 
 test('registry skips per-system perfNow calls unless detailed attribution is enabled', () => {
   assert.match(registrySource, /const measureSystems = perf\.isSystemTimingEnabled\(\)/);
-  assert.match(registrySource, /if \(!measureSystems\) \{[\s\S]*?core\.preStep\(dt, state\)[\s\S]*?for \(const s of UPDATE_ORDER\)[\s\S]*?core\.lifetimeSweep\(dt, state\)[\s\S]*?return;/,
-    'default path executes the exact system order without per-system clocks');
+  assert.match(registrySource, /if \(!measureSystems\) \{[\s\S]*?core\.preStep\(dt, state\)[\s\S]*?input\.update\(dt, state\)[\s\S]*?tickBoundary\.publishInputCommand\(state\.input, state\.tick\)[\s\S]*?for \(const s of POST_INPUT_UPDATE_ORDER\)[\s\S]*?core\.lifetimeSweep\(dt, state\)[\s\S]*?return;/,
+    'default path preserves input-first order and publishes before downstream systems without clocks');
 });
 
 test('SimulationRunner reuses one fixed-step callback instead of allocating every frame', () => {
   assert.match(loopSource, /createSimulationRunner\(state, registry, deps\)/,
     'the compatibility loop must compose the extracted simulation owner');
-  assert.match(simulationRunnerSource, /function stepSimulation\(dt\) \{[\s\S]*?registry\.step\(dt\);[\s\S]*?\}/);
+  assert.match(simulationRunnerSource, /function stepSimulation\(dt\) \{[\s\S]*?registry\.step\(dt, inputTickBoundary\);[\s\S]*?publishCompletedTick\(/);
   assert.match(simulationRunnerSource, /advanceFixedTimestep\([\s\S]*?stepSimulation,[\s\S]*?advanceResult/);
   assert.doesNotMatch(simulationRunnerSource, /advanceFixedTimestep\([\s\S]{0,240}?\(dt\) => registry\.step\(dt\)/);
 });

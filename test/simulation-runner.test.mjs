@@ -13,14 +13,24 @@ function createState() {
     timeScale: 1,
     tick: 0,
     simTime: 0,
+    input: {
+      moveX: 0,
+      moveZ: 0,
+      turnIntent: 0,
+      aimWorld: { x: 0, z: 0 },
+      mouseNdc: { x: 0, y: 0 },
+      pointerScreen: { x: 0, y: 0, active: false },
+      actions: {},
+    },
   };
 }
 
 function createRegistry(state, observed = []) {
   return {
-    step(dt) {
+    step(dt, tickBoundary) {
       state.tick++;
       state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
       observed.push(state.tick);
     },
   };
