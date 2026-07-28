@@ -1953,7 +1953,9 @@ export const render = {
     }
   },
 
-  prepareFrame(alpha, frameDt) {
+  prepareFrame(alpha, frameDt, presentationFrame = null) {
+    // Shadow-consume scheduler metadata while the legacy entity-view path remains authoritative.
+    this._presentationFrame = presentationFrame;
     // While the GL context is lost, the renderer can't draw — skip all per-frame work until
     // webglcontextrestored rebuilds GPU resources. (cam.follow etc. would run against a dead
     // renderer; the context-restore handler re-applies everything that matters when it returns.)
@@ -2129,8 +2131,8 @@ export const render = {
     return true;
   },
 
-  renderFrame(alpha, frameDt) {
-    if (!this.prepareFrame(alpha, frameDt)) return;
+  renderFrame(alpha, frameDt, presentationFrame = null) {
+    if (!this.prepareFrame(alpha, frameDt, presentationFrame)) return;
     this.drawPreparedFrame();
   },
 

@@ -9,6 +9,7 @@ import {
 import { ensurePerfRuntime } from '../src/core/perfRuntime.js';
 
 const loopSource = readFileSync(new URL('../src/core/loop.js', import.meta.url), 'utf8');
+const simulationRunnerSource = readFileSync(new URL('../src/core/simulationRunner.js', import.meta.url), 'utf8');
 const registrySource = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
 
 test('detailed per-system clocks are opt-in and default gameplay does not fill timing rings', () => {
@@ -31,10 +32,12 @@ test('registry skips per-system perfNow calls unless detailed attribution is ena
     'default path executes the exact system order without per-system clocks');
 });
 
-test('requestAnimationFrame loop reuses one fixed-step callback instead of allocating every frame', () => {
-  assert.match(loopSource, /const stepSimulation = \(dt\) => registry\.step\(dt\);/);
-  assert.match(loopSource, /advanceFixedTimestep\([^\n]+stepSimulation, stepResult\)/);
-  assert.doesNotMatch(loopSource, /advanceFixedTimestep\([^\n]+\(dt\) => registry\.step\(dt\)/);
+test('SimulationRunner reuses one fixed-step callback instead of allocating every frame', () => {
+  assert.match(loopSource, /createSimulationRunner\(state, registry, deps\)/,
+    'the compatibility loop must compose the extracted simulation owner');
+  assert.match(simulationRunnerSource, /function stepSimulation\(dt\) \{[\s\S]*?registry\.step\(dt\);[\s\S]*?\}/);
+  assert.match(simulationRunnerSource, /advanceFixedTimestep\([\s\S]*?stepSimulation,[\s\S]*?advanceResult/);
+  assert.doesNotMatch(simulationRunnerSource, /advanceFixedTimestep\([\s\S]{0,240}?\(dt\) => registry\.step\(dt\)/);
 });
 
 test('catch-up cap drops whole overdue ticks but preserves the fractional interpolation remainder', () => {

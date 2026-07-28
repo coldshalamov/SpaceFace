@@ -562,7 +562,7 @@ export function createRegistry(ctx) {
         perf.recordStepTotal(perfNow() - stepStart);
       }
     },
-    renderUpdate(alpha, frameDt) {
+    renderUpdate(alpha, frameDt, presentationFrame = null) {
       const state = ctx.state;
       const perf = ensurePerfRuntime(state);
       try {
@@ -583,8 +583,8 @@ export function createRegistry(ctx) {
         const splitRender = typeof render.prepareFrame === 'function' && typeof render.drawPreparedFrame === 'function';
         let renderError = null;
         try {
-          if (splitRender) renderedPreparedScene = render.prepareFrame(alpha, frameDt) !== false;
-          else render.renderFrame(alpha, frameDt);
+          if (splitRender) renderedPreparedScene = render.prepareFrame(alpha, frameDt, presentationFrame) !== false;
+          else render.renderFrame(alpha, frameDt, presentationFrame);
         }
         catch (err) { renderError = err; }
         finally { renderMs += perfNow() - t; }
