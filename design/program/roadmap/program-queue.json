@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-27",
+  "updatedAt": "2026-07-28",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -1096,6 +1096,7 @@
       "priority": 19,
       "title": "Surface-launch cargo heist, pursuit, heat, and fence loop",
       "state": "planned",
+      "partialIntegration": "2026-07-28 leaf PQ-019A implemented on master (not yet accepted): authored cargo-capsule admission at 272e63b4 (pod_cargo_container release-slot presentation, SHA-256-pinned, hidden-until-admitted), Tethys facility/runtime owner at b66f2255 (heistFacilities sole-writes state.heistFacilities: launcher/catcher/fence embodied with Atlas courses, idempotent schedule receipts, radius-6/mass-180 CCD payload with real rapier-dynamic catcher+fence impact candidates, forged/twin/stale/wrong-ship/duplicate custody inputs rejected, sector-exit cleanup without settlement), deterministic receipt recorded in the packet doc at d7a3dcbc. check:pq019a:facility-embodiment 12/12; manifest suites 23/23; atlas-integrity/save-schema/asset-reachability/cargo-conscience/faction-standings/physics-authority/sim:compare/baseline green. State stays planned: player-visible launch schedule cue, normal-route Browser/Electron presentation, facility+capsule game-camera visual acceptance, admission/residency/draw/GPU + representative performance evidence, the accepted PQ-019A receipt file, and W03/W04/W05 parent-alias cleanup remain open; PQ-019B/C unstarted.",
       "canonical": [
         "W03",
         "W04",
@@ -1131,6 +1132,7 @@
       "priority": 20,
       "title": "Ceres Belt activity-pocket recomposition",
       "state": "planned",
+      "partialIntegration": "2026-07-28 topology/data slice implemented on master (not yet accepted) at 9b0c1c28: Ceres civic/production/transit/Cathedral pocket data (industrial metadata hauler 30->45 miner 16->40, poi_ceres_throughline beacon, production-zone recenter, no-presence transit zone), deterministic check:pq020:ceres-topology harness identifying world_site_wreck_cathedral (route legs 2074.223/2667.218/4637.893 WU, >=504.223 WU pocket clearance, pinned structural-cost digest, headless World Site residency FULL), deterministic receipt recorded in the packet doc. Supporting gates green: asset-reachability, sector-geography, atlas-integrity/spatial-truth/place-path, map-frames, m2b:sector-graph, m2:sector-embodiment, npc-jobs. State stays planned: matched Ceres baseline, natural jobs across held-out seeds, one bounded existing-owner mechanical condition, offscreen-embodiment determinism, save/materialization/reentry idempotence, Atlas/map/route/physical exact agreement, generic-vs-through-Ceres route distinction, the Cathedral-keyed headed route receipt (p95/p99/hitches, admission/residency, close/default/far/motion/LOD, entity/collider/query/draw/program cost - relocated PQ-018 Phase 4), Browser/Electron + accessibility + final receipt remain open. Dependency bookkeeping corrected this refresh: PQ-018 is consumed as the integrated PQ-018.world-site leaf via a bound evidence dependency; parent PQ-018 route acceptance is intentionally NOT a prerequisite because this packet's matched Ceres route IS that relocated verification.",
       "canonical": [
         "W07",
         "W08",
@@ -1141,8 +1143,16 @@
         "SF-21"
       ],
       "dependsOn": [
-        "PQ-014",
-        "PQ-018"
+        "PQ-014"
+      ],
+      "evidenceDependencies": [
+        {
+          "packetId": "PQ-018",
+          "leafId": "PQ-018.world-site",
+          "requiredAcceptance": "focused_green",
+          "receipt": "design/program/roadmap/receipts/PQ-018-world-site-REPORT.md",
+          "receiptBlob": "879c0a2db3d967ac0891853526341250c7aa0682"
+        }
       ],
       "mutexes": [
         "atlas",
@@ -1171,7 +1181,7 @@
       "priority": 21,
       "title": "Wire the existing Ship's Ledger",
       "state": "focused_green",
-      "partialIntegration": "2026-07-26 leaf PQ-021.ledger-wiring integrated at b266515a (candidate eebd91a9). Phases 0-3 only. The pre-existing projector and panel (zero production importers) are now reachable from a station destination and a Codex Ledger tab, surfacing the five Wreck Cathedral evidence pages from PQ-018. Direct property lookup over the frozen five-element page-id list, no scan; same-revision conflict OMITS the page with a diagnostic rather than picking a winner; projector stays pure/read-only with no new save key. Codex subscriptions unchanged at 3; TABS 6->7; station destinations 6->7. Controller repairs: replaced a VACUOUS aria-labelledby assertion (reduced to assert.notEqual(null, ...) and passed unconditionally) with a real per-host subtree-resolution check, proven non-vacuous by mutation; and dropped the ignored nextCtx parameter from the station adapter's refresh. Gates: 81/81 focused, check:depth-program:a2 + check:station-shell + check:station-tabs exit 0, check:sim:compare hashEqual true with ZERO trace-counter movement (full JSON byte-identical to baseline). State is focused_green, NOT integrated-and-accepted: Phase 4 is entirely open (no natural earning through the physical route, no Browser/Electron parity, no media-at-crop check, no legibility review), and PQ-021's route harness and broker manifest were not built. Receipt receipts/PQ-021-ledger-wiring-REPORT.md. Flagged: src/ui/station/icons.js gains one glyph (additive, safe fallback, one-line revert).",
+      "partialIntegration": "2026-07-26 leaf PQ-021.ledger-wiring integrated at b266515a (candidate eebd91a9). Phases 0-3 only. The pre-existing projector and panel (zero production importers) are now reachable from a station destination and a Codex Ledger tab, surfacing the five Wreck Cathedral evidence pages from PQ-018. Direct property lookup over the frozen five-element page-id list, no scan; same-revision conflict OMITS the page with a diagnostic rather than picking a winner; projector stays pure/read-only with no new save key. Codex subscriptions unchanged at 3; TABS 6->7; station destinations 6->7. Controller repairs: replaced a VACUOUS aria-labelledby assertion (reduced to assert.notEqual(null, ...) and passed unconditionally) with a real per-host subtree-resolution check, proven non-vacuous by mutation; and dropped the ignored nextCtx parameter from the station adapter's refresh. Gates: 81/81 focused, check:depth-program:a2 + check:station-shell + check:station-tabs exit 0, check:sim:compare hashEqual true with ZERO trace-counter movement (full JSON byte-identical to baseline). State is focused_green, NOT integrated-and-accepted: Phase 4 is entirely open (no natural earning through the physical route, no Browser/Electron parity, no media-at-crop check, no legibility review), and PQ-021's route harness and broker manifest were not built. Receipt receipts/PQ-021-ledger-wiring-REPORT.md. Flagged: src/ui/station/icons.js gains one glyph (additive, safe fallback, one-line revert). Dependency bookkeeping corrected 2026-07-28: PQ-018 is consumed as the integrated PQ-018.world-site leaf via a bound evidence dependency (placed Cathedral + five evidence pages), not as parent-level integration; PQ-018 parent Phase 4 is relocated into PQ-020's matched Ceres route and is not a PQ-021 prerequisite.",
       "canonical": [
         "Depth-A2",
         "R06"
@@ -1179,8 +1189,15 @@
       "aliases": [
         "SF-30"
       ],
-      "dependsOn": [
-        "PQ-018"
+      "dependsOn": [],
+      "evidenceDependencies": [
+        {
+          "packetId": "PQ-018",
+          "leafId": "PQ-018.world-site",
+          "requiredAcceptance": "focused_green",
+          "receipt": "design/program/roadmap/receipts/PQ-018-world-site-REPORT.md",
+          "receiptBlob": "879c0a2db3d967ac0891853526341250c7aa0682"
+        }
       ],
       "mutexes": [
         "save-schema",
