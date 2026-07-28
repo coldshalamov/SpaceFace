@@ -3,7 +3,7 @@ packetId: PQ-023
 leafId: PQ-023.gold-corridor-required-cues
 acceptance: focused_green
 disposition: PASS
-candidateCommit: 0e36c554
+candidateCommit: acddb2de611a9c462347f81072861976f6e2c69e
 -->
 
 # PQ-023 — `gold-corridor-required-cues` leaf receipt
@@ -25,7 +25,7 @@ candidateCommit: 0e36c554
 | `341746d6` | feat(pq023): bind World Site damage/recovery to noncolor cues and accessible text |
 | `0e36c554` | feat(pq023): flak impact identity, corridor cue tests, and the dense-scene gate |
 | `d9129c22` | docs(pq023): leaf receipt for gold-corridor-required-cues |
-| (tip) | fix(pq023): keep a restoration below the assertive screen-reader tier |
+| `acddb2de` | fix(pq023): keep a restoration below the assertive screen-reader tier — **candidateCommit** |
 
 ## 2. Per-family gap table
 
@@ -89,8 +89,8 @@ tests, so the declared budget and the enforced budget cannot drift.
 
 | Gate | Result |
 |---|---|
-| `npm run check:pq023:corridor-cues` | **PASS** — 19/19 focused tests; 18/18 critical cues survive, 42/60 flavor degrade |
-| `node --test test/pq023-corridor-cues.test.mjs` | **PASS** — 19 pass / 0 fail |
+| `npm run check:pq023:corridor-cues` | **PASS** — 20/20 focused tests; 18/18 critical cues survive, 42/60 flavor degrade |
+| `node --test test/pq023-corridor-cues.test.mjs` | **PASS** — 20 pass / 0 fail |
 | `npm run check:presentation` | **PASS** — 65 pass / 0 fail (baseline was also 65/0) |
 | `npm run check:combat` | **PASS** (baseline PASS) |
 | `npm run check:sim:compare` | **`hashEqual: true`** — golden unchanged |
