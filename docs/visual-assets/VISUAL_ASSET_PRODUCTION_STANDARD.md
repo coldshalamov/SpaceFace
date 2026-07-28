@@ -70,6 +70,60 @@ Never use micro detail to camouflage unresolved macro/meso work.
 The mesh should imply how the object is assembled, loaded, cooled, opened, repaired, protected, and
 replaced. Delete decoration that does not support function, scale, identity, history, or composition.
 
+### DCC defaults have no authorship value
+
+No visible surface may inherit its artistic identity from Blender defaults, a donor material, or an
+unchanged Principled BSDF merely because the software produced something renderable. When an
+activated Tier A/B rebuild has a named material-truth failure, use a component material bill to
+resolve the disputed zones:
+
+- physical substrate;
+- manufacturing or forming process;
+- coating, treatment, or intentionally bare finish;
+- attachment/interface to neighboring parts;
+- expected optical response by scale and lighting;
+- heat, abrasion, contamination, maintenance, and marking history;
+- forbidden reads such as plastic toy, clay blockout, rubber/leather when not actually specified.
+
+“Metal,” “hull,” “mechanical,” a material-slot name, a color, or a roughness number is not enough to
+resolve a disputed material identity. If a default or inherited shader response survives because no
+one made and reviewed these decisions, that is a P1—not a neutral starting point. The bill is a
+diagnostic aid for that failure, not universal release paperwork.
+
+### Primitive and shape-grammar accountability
+
+Boxes, cylinders, cones, toruses, and planes are valid blockout or manufacturing inputs, not automatic
+finished components. When a G1/G2 review identifies primitive-default construction, a shape-grammar
+audit can identify the camera-prominent primitive or repeated family and its function, scale,
+manufacturing rationale, interface, and transformation into final form. An unexplained perfect tube, floating bar, repeated rectangular
+“chiclet,” decorative hoop, or uniformly beveled slab remains blockout construction even when it has
+textures, scratches, or a plausible object name.
+
+### Component-first generated-reference loop
+
+When DCC blockout vocabulary is constraining design, one useful repair method is to isolate the exact deficient component from an
+authoritative screenshot or source render and generate a reference for that component—not a
+replacement beauty image of the whole asset. The prompt must preserve the component's footprint,
+orientation, role, interfaces, and identity while naming its substrate, manufacture, finish,
+fasteners, service access, load path, and forbidden reads. Prefer a sheet with three-quarter,
+orthographic, exploded, and material/interface views.
+
+Generated imagery remains reference-only. Record its prompt, tool, source capture, hash, selected
+traits, rejected traits, and asset-specific resemblance target. Translate the approved manufacturing
+logic into editable geometry and authored materials; do not project the image over a primitive and
+call the component resolved, and never infer authoritative normal/AO/ORM data from the generated
+pixels. Review the rebuilt component beside the reference in material and textureless/clay views.
+
+For a disputed material/shape component, fiction and implementation must agree in the result:
+
+- fiction identifies what the component is, what it does, who made or modified it, its materials,
+  manufacture, interfaces, and service history;
+- development identifies the geometry, material model, attachment, LOD, and export evidence that
+  expresses those facts;
+- if the fiction describes a machined drive clamp, ceramic isolator, rolled pressure case, or folded
+  radiator but the render reads as a plastic torus, clay box, rubber tube, or cube comb, the
+  component fails regardless of its object name or shader settings.
+
 ### Edge language
 
 Bevels/chamfers are design information. Cast masses, formed sheet, machined blocks, armor plates,
@@ -124,14 +178,19 @@ cost hypothesis. ΓÇ£Make it AAA/more detailedΓÇ¥ is not a brief.
 Review matched front/side/top/rear/three-quarter clay views, game-camera sizes, and family lineup.
 Forward direction and role must read without labels/color. Primary masses, negative space, load/thrust,
 access/service, cooling, payload/tool/weapon relationships must feel designed rather than boxes and
-cones with attachments.
+cones with attachments. For a named primitive-default failure, use a shape-grammar audit of the
+prominent primitives and repeated forms. Any
+retained primitive must have a visible functional reason, plausible scale, and designed transition
+into adjoining structure; naming a box “armor,” “vent,” or “service rail” does not satisfy this gate.
 
 ### G2 ΓÇö production geometry
 
 Prove finished intersections, joints, recesses, thickness, rooted attachments, edge-radius families,
 stable grazing-light shading, final transforms, controlled triangulation, and an editable high/low or
 direct-game strategy. Uniform bevel, floating strips as every panel cut, impossible intersections,
-and polished blockout construction fail.
+and polished blockout construction fail. Large repeated bars, petals, ribs, or louvers must show the
+brackets, pivots, gaps, housings, formed profiles, fasteners, or welds appropriate to their material
+and service method. Surface detail cannot promote unresolved primitive geometry to production.
 
 ### G3 ΓÇö UV and bake integrity
 
@@ -145,7 +204,12 @@ packing/color spaces. Automatic UV existence and a flat normal map do not pass.
 Prove declared physical surface stacks, roughness hierarchy, scale-correct normals, localized
 mesh-aware masks, causal wear, purposeful decals, stable glass/transparency, and material distinction
 under neutral, bright, dark, colored, and grazing light in the runtime. One procedural noise recipe
-recolored across roles fails.
+recolored across roles fails. For an activated material-truth remediation, the component material
+bill should map every disputed camera-visible zone to substrate, manufacture, finish, interface,
+response, and use history. Review
+material-ID isolation and native-resolution crops: labels, texture filenames, extension use, and
+shader settings cannot prove that a surface reads as its intended substance. Any unexplained
+plastic/clay/leather/rubber read fails G4 unless that substance was deliberately specified.
 
 ### G5 ΓÇö LOD and measured cost
 
@@ -174,6 +238,9 @@ Missing evidence is not `not_applicable`. No ordinary release waiver may hide a 
 ## 6. Defect-driven technique selection
 
 Start from evidence. Examples:
+
+- inherited DCC material: write the component material bill, replace or deliberately configure the
+  shader and maps, then verify the substance in material-ID isolation and adversarial light;
 
 - primitive stack ΓåÆ custom profiles, boolean/union/cut with cleanup, SubD/direct modeling, designed
   joints and negative space;

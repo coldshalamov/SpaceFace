@@ -172,6 +172,10 @@ Look specifically for:
 - scale ambiguity and detail that disappears at the normal camera.
 
 The repair target is not “more detail.” It is a better designed object in flat silhouette and clay light.
+When G1 fails on primitive/default construction, use a shape-grammar audit: list the relevant
+camera-prominent primitive origins
+and repeated form families, then record their function, manufactured final profile, scale, interfaces,
+and whether any perfect primitive is intentionally retained. Unresolved rows remain G1 blockers.
 
 ### G2 — construction and edge language
 
@@ -219,6 +223,10 @@ Look specifically for:
 
 Every Tier A/B surface cycle must inspect neutral, grazing, dark and colored/environment-lit response. At
 least one cycle must remove bloom and emissive so material quality cannot hide behind glow.
+When a Tier A/B cycle is repairing a named material-identity failure, reconcile a component material
+bill against the image: substrate, manufacture,
+finish, adjoining interfaces, expected optical response, service history and forbidden reads for every
+camera-visible zone. Material names, palette blocks and Principled-BSDF values alone are not evidence.
 
 ### G5 — LOD and cost
 

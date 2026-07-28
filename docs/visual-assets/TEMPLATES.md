@@ -56,6 +56,40 @@ industrialDesign:
   coolingAndHeat: []
   cargoToolWeaponOccupantLogic: []
   manufacturingProcesses: []
+optionalFailureDiagnostics:
+  # Use these only when the activated packet names a material/primitive-default failure.
+  fictionDevelopmentAgreement:
+    components:
+      - component: ""
+        fictionRoleAndOrigin: ""
+        fictionMaterialAndManufacture: ""
+        fictionInterfacesAndServiceHistory: ""
+        developmentGeometryAndAttachment: ""
+        developmentMaterialAndLodEvidence: ""
+        agreementStatus: pending
+  shapeGrammarAudit:
+    cameraProminentForms:
+      - component: ""
+        primitiveOrigin: ""
+        functionAndLoad: ""
+        manufacturedFinalProfile: ""
+        attachmentAndInterface: ""
+        scaleEvidence: ""
+        retainedPrimitiveRationale: ""
+    repeatedFormFamilies: []
+    unresolvedBlockoutForms: []
+  componentGeneratedReferences:
+    - component: ""
+      sourceCapture: ""
+      generatedReference: ""
+      toolAndModel: ""
+      promptRecord: ""
+      sha256: ""
+      preservedTraits: []
+      selectedTraits: []
+      rejectedTraits: []
+      resemblanceTarget: ""
+      clayAndMaterialComparisonEvidence: []
 referenceBoard:
   boardPath: ""
   sources: { form: [], construction: [], materials: [], wearAndUse: [], scale: [], lighting: [] }
@@ -78,11 +112,16 @@ materialPlan:
   roles:
     - name: primary_surface
       substrate: ""
+      manufacturingProcess: ""
       coatingOrFinish: ""
+      adjoiningInterfaces: []
+      expectedOpticalResponse: ""
       roughnessBehavior: ""
       normalAndMicrostructure: ""
       wearAndContamination: ""
       decalsAndMarkings: ""
+      forbiddenReads: []
+      evidence: []
   transparencyStrategy: ""
   colorSpacePolicy: base/emissive sRGB; normal/ORM/masks non-color
 lodAndOptimizationPlan:
@@ -176,6 +215,11 @@ identity, reviewer/date/evidence packet, and decision rationale.
 - brief summary and supported cameras;
 - baseline defects by severity/gate/region/evidence;
 - substantive work tied to defects;
+- for named material-truth failures: component material bill and material-ID isolation;
+- for named primitive/default failures: the relevant fiction/development agreement and
+  shape-grammar audit;
+- when generated references informed the rebuild: their provenance and side-by-side clay/material
+  comparisons;
 - form/orthographic/game-camera/family-lineup evidence;
 - UV/checker/density/hard-edge/cage/map/bake evidence;
 - material-role and varied-light/runtime evidence;

@@ -23,7 +23,19 @@
 > brief. Repair the earliest failed gate in order: role/primary form ΓåÆ construction/production mesh ΓåÆ
 > UV/tangent/bakes ΓåÆ material response/surface story ΓåÆ authored LOD/whole cost ΓåÆ exact runtime
 > integration ΓåÆ independent review. Do not start with more greebles, subdivision, texture resolution,
-> edge wear, or triangles. Use methods only for named defects; preserve editable source; export through
+> edge wear, or triangles. When the named defect is primitive/default construction, inventory the
+> relevant camera-prominent primitives and
+> repeated form family: identify its function, manufacture, scale, attachment, and final-profile
+> transformation. When the named defect is material identity, use a component material bill naming substrate,
+> manufacture, finish, adjoining interfaces, optical response, service history, and forbidden reads.
+> When DCC primitives are constraining a camera-prominent component and a generated-reference repair
+> is useful, crop that exact component from an authoritative capture and generate a component-only
+> construction/material sheet preserving its
+> footprint, role, orientation, and interfaces. Record prompt/tool/hash and selected/rejected traits;
+> rebuild the approved manufacturing logic in editable geometry and compare material plus clay views.
+> Never substitute whole-asset generated concept drift or a projected generated image for modeling,
+> and never derive authoritative normal/AO/ORM maps from generated pixels. An unexplained
+> Blender/donor/default response is a P1. Use methods only for named defects; preserve editable source; export through
 > the sanctioned path; compare matched neutral/adversarial/game views; profile cost-relevant changes;
 > keep/revise/revert from evidence. Primitive stacking, one bevel radius, floating panel bars,
 > unreviewed automatic UVs, flat normals, generic tile noise, fixed-ratio decimation, Blender-only
@@ -54,6 +66,13 @@
 > macro-meso-micro hierarchy, edge scale, UV/bake integrity, material response, causal history,
 > runtime stability, LOD identity, and justified whole cost. Do not accept from prose, technique count,
 > effort, beauty renders, or green checks; do not reject because a fashionable technique is absent.
+> When the activated packet includes those named failure diagnostics, reconcile the shape-grammar
+> audit against textureless orthos and the component material bill against material-ID isolation plus
+> neutral/grazing light. Reject retained default primitives without a
+> manufacturing/attachment rationale and reject any visible zone whose perceived substance conflicts
+> with its bill. Where a generated component reference informed the model, verify the provenance
+> record and whether the rebuilt component actually preserves the approved manufacture, interfaces,
+> scale and asset-specific resemblance target in both clay and material views.
 > Decision is `accept`, `reject`, or `blocked`. For every P0/P1, name gate, evidence view/state,
 > region, observed defect, and an outcome-based acceptance condition. ΓÇ£Needs more polishΓÇ¥ is invalid.
 

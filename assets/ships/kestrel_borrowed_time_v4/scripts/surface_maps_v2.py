@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 
 
-REMASTER_ID = "kestrel-role-surface-v5"
+REMASTER_ID = "kestrel-role-surface-v6-material-truth"
 
 
 @dataclass(frozen=True)
@@ -39,43 +39,43 @@ class SurfaceProfile:
 PROFILES = {
     # Painted aerospace panels: broad shallow waviness and orange peel are separate frequency
     # bands. Sparse chips reveal metal only where the coating is actually broken.
-    "hull": SurfaceProfile((0.065, 0.075, 0.085), 0.026, 0.010, 0.43, 0.115, 0.025, 0.075,
-                           macro_waviness=0.12, orange_peel=0.16, scratch_density=18,
+    "hull": SurfaceProfile((0.065, 0.075, 0.085), 0.008, 0.002, 0.43, 0.055, 0.025, 0.010,
+                           macro_waviness=0.005, orange_peel=0.005, scratch_density=18,
                            chip_density=0.014, recess_dust=0.12, coated_metal=True),
     # Exposed mechanisms carry directional machining and service scratches, not paint chips.
-    "mechanical": SurfaceProfile((0.035, 0.042, 0.048), 0.022, 0.015, 0.47, 0.125, 0.78, 0.13,
-                                 macro_waviness=0.05, orange_peel=0.03, scratch_density=34,
+    "mechanical": SurfaceProfile((0.035, 0.042, 0.048), 0.006, 0.002, 0.40, 0.055, 0.78, 0.015,
+                                 macro_waviness=0.003, orange_peel=0.003, scratch_density=34,
                                  recess_dust=0.16, brushed=True),
-    "armor_dark": SurfaceProfile((0.052, 0.063, 0.077), 0.018, 0.010, 0.68, 0.115, 0.30, 0.08,
-                                 macro_waviness=0.08, orange_peel=0.10, scratch_density=12,
+    "armor_dark": SurfaceProfile((0.052, 0.063, 0.077), 0.008, 0.002, 0.60, 0.055, 0.30, 0.012,
+                                 macro_waviness=0.006, orange_peel=0.006, scratch_density=12,
                                  chip_density=0.008, recess_dust=0.10, coated_metal=True),
-    "brushed_metal": SurfaceProfile((0.19, 0.205, 0.215), 0.014, 0.018, 0.41, 0.105, 0.92, 0.12,
-                                    brushed=True, macro_waviness=0.035, orange_peel=0.015,
+    "brushed_metal": SurfaceProfile((0.19, 0.205, 0.215), 0.006, 0.006, 0.36, 0.055, 0.92, 0.025,
+                                    brushed=True, macro_waviness=0.003, orange_peel=0.002,
                                     scratch_density=42, recess_dust=0.06),
-    "frontier_cyan": SurfaceProfile((0.018, 0.16, 0.19), 0.018, 0.008, 0.50, 0.105, 0.035, 0.07,
-                                    macro_waviness=0.08, orange_peel=0.13, scratch_density=10,
+    "frontier_cyan": SurfaceProfile((0.018, 0.16, 0.19), 0.015, 0.006, 0.50, 0.080, 0.035, 0.035,
+                                    macro_waviness=0.018, orange_peel=0.030, scratch_density=10,
                                     chip_density=0.006, recess_dust=0.08, coated_metal=True),
-    "warning_orange": SurfaceProfile((0.32, 0.080, 0.012), 0.020, 0.009, 0.54, 0.110, 0.03, 0.075,
-                                     macro_waviness=0.08, orange_peel=0.14, scratch_density=14,
+    "warning_orange": SurfaceProfile((0.32, 0.080, 0.012), 0.016, 0.006, 0.54, 0.085, 0.03, 0.038,
+                                     macro_waviness=0.018, orange_peel=0.030, scratch_density=14,
                                      chip_density=0.009, recess_dust=0.10, coated_metal=True),
     # Field repair paint is intentionally rougher, brushier, and dirtier than factory coating.
-    "repair_green": SurfaceProfile((0.035, 0.105, 0.052), 0.030, 0.014, 0.67, 0.125, 0.025, 0.095,
-                                   macro_waviness=0.15, orange_peel=0.19, scratch_density=16,
+    "repair_green": SurfaceProfile((0.035, 0.105, 0.052), 0.024, 0.009, 0.67, 0.100, 0.025, 0.052,
+                                   macro_waviness=0.030, orange_peel=0.055, scratch_density=16,
                                    chip_density=0.012, recess_dust=0.20, coated_metal=True),
     # Rubber gets molded grain and compression scuffing; no metallic substrate or paint wear.
-    "rubber": SurfaceProfile((0.014, 0.018, 0.020), 0.020, 0.020, 0.84, 0.085, 0.0, 0.14,
-                             macro_waviness=0.04, orange_peel=0.25, scratch_density=6,
+    "rubber": SurfaceProfile((0.014, 0.018, 0.020), 0.016, 0.012, 0.84, 0.070, 0.0, 0.070,
+                             macro_waviness=0.015, orange_peel=0.080, scratch_density=6,
                              recess_dust=0.08),
     # Refractory engine liners are nonmetallic, heat-darkened, and rougher than
     # the adjacent machined alloy. This is a real material identity rather than
     # a tint of the generic mechanical surface.
-    "engine_ceramic": SurfaceProfile((0.055, 0.046, 0.039), 0.020, 0.010, 0.74, 0.090, 0.02, 0.09,
-                                     macro_waviness=0.065, orange_peel=0.11, scratch_density=8,
+    "engine_ceramic": SurfaceProfile((0.055, 0.046, 0.039), 0.016, 0.006, 0.74, 0.070, 0.02, 0.040,
+                                     macro_waviness=0.016, orange_peel=0.025, scratch_density=8,
                                      recess_dust=0.14),
     # Radiator faces use a directional, oxidized metallic response. The darker
     # albedo and mid roughness keep them distinct from bright structural alloy.
-    "radiator": SurfaceProfile((0.026, 0.031, 0.035), 0.014, 0.015, 0.56, 0.105, 0.68, 0.105,
-                               brushed=True, macro_waviness=0.035, orange_peel=0.02,
+    "radiator": SurfaceProfile((0.026, 0.031, 0.035), 0.012, 0.010, 0.52, 0.080, 0.68, 0.045,
+                               brushed=True, macro_waviness=0.010, orange_peel=0.006,
                                scratch_density=26, recess_dust=0.11),
 }
 
@@ -214,7 +214,7 @@ def generate_maps(role: str, width: int, height: int) -> dict[str, np.ndarray]:
 
     height_field = _normalized(
         broad * profile.macro_waviness
-        + detail * 0.34
+        + detail * 0.035
         + micro * profile.orange_peel
         - scratches * 0.72
         - chips * 0.46

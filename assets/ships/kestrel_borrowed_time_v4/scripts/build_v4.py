@@ -24,6 +24,7 @@ from mathutils import Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from golden_asset_v5 import GOLDEN_PASS_ID, apply_golden_asset_v5
+from material_truth_v6 import PASS_ID as MATERIAL_TRUTH_PASS_ID, apply_material_truth_v6
 from surface_maps_v2 import REMASTER_ID as SURFACE_REMASTER_ID, apply_to_blender_images
 
 
@@ -69,6 +70,25 @@ MATERIAL_REPAIRS = {
     "Pulse_Cable_Port": ("Material_Rubber", "visible pulse-gun cable"),
     "Pulse_Cable_Stbd": ("Material_Rubber", "visible pulse-gun cable"),
     "FieldRepair_WeldSeam": ("Material_BrushedMetal", "visible field-repair weld seam"),
+}
+V6_LOD_MATERIAL_COLLAPSE = {
+    "Material_V6_DriveAlloy": "Material_BrushedMetal",
+    "Material_V6_ServiceSteel": "Material_BrushedMetal",
+    "Material_V6_CeramicIsolator": "Material_EngineCeramic",
+    "Material_V6_RefractoryVane": "Material_EngineCeramic",
+    "Material_V6_RadiatorSheet": "Material_Radiator",
+    "Material_V6_SensorCoat": "Material_ArmorDark",
+    "Material_V6_CableJacket": "Material_Rubber",
+    "Material_V6_FormedArmor": "Material_ArmorDark",
+    "Material_V6_RepairPrimer": "Material_RepairGreen",
+    "Material_V6_HazardPaint": "Material_Accent_WarningOrange",
+    "Material_V6_SensorLens": "Material_Emissive_Cyan",
+    "Material_V6_DarkOpticalAperture": "Material_ArmorDark",
+    "Material_V6_DriveHotCore": "Material_Emissive_DriveCore",
+}
+DECAL_PBR_PROFILES = {
+    "Material_Decal_Hazard": "warning_orange",
+    "Material_Decal_Stencils": "hull",
 }
 LOD2_SILHOUETTE_NAMES = {
     "UtilityPod_Starboard", "UtilityPod_HazardBand", "Antenna_Mast", "Antenna_Loop",
@@ -184,7 +204,16 @@ def lift_dark_texture(image_name: str, floor: float, warm: tuple[float, float, f
         image.pack()
 
 
-def clean_source() -> tuple[bpy.types.Collection, list[str], list[dict], list[dict], dict, list[dict]]:
+def clean_source() -> tuple[
+    bpy.types.Collection,
+    list[str],
+    list[dict],
+    list[dict],
+    dict,
+    dict,
+    dict,
+    list[dict],
+]:
     source = bpy.data.collections.get("SOURCE_HERO_LOD0")
     if source is None:
         raise RuntimeError("SOURCE_HERO_LOD0 missing")
@@ -214,7 +243,13 @@ def clean_source() -> tuple[bpy.types.Collection, list[str], list[dict], list[di
     lift_dark_texture("armor_dark_basecolor.png", 0.105, (0.92, 0.82, 0.70))
     lift_dark_texture("hull_basecolor.png", 0.075, (0.92, 0.84, 0.72))
     surface_remaster = apply_to_blender_images(bpy)
+    ensure_decal_pbr_roles()
     golden_asset = apply_golden_asset_v5()
+    # V6 adds visible authored hardware outside the accepted V5 presentation
+    # envelope. Collision remains the exact pre-V6 gameplay contract; visual
+    # bounds are reported separately after the material-truth pass.
+    canonical_collision_bounds = visible_bounds(source)
+    material_truth = apply_material_truth_v6()
     socket_contract = enforce_socket_contract()
     for material_name in ("Material_Plume_HotCore", "Material_Plume_Inner", "Material_Plume_Outer", "Material_StudioFloor", "Material_StudioPad", "Material_Clay"):
         material = bpy.data.materials.get(material_name)
@@ -227,15 +262,119 @@ def clean_source() -> tuple[bpy.types.Collection, list[str], list[dict], list[di
         "assetId": "SF_K0_KESTREL_BORROWED_TIME_V4", "partId": "kestrel_borrowed_time_v4",
         "packet": PACKET, "slot": "hull", "category": "wholeships", "forward": "+X",
         "up": "+Y", "starboard": "+Z", "unit": "metre", "normalConvention": "OpenGL",
-        "ormChannels": "R=AO,G=Roughness,B=Metallic", "sourceGeometryPreservation": "85-95 percent",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "sourceGeometryPreservation": (
+            "canonical silhouette and contract nodes preserved; named hero modules authoritatively rebuilt"
+        ),
         "surfaceRemasterId": SURFACE_REMASTER_ID, "goldenPassId": GOLDEN_PASS_ID,
+        "materialTruthPassId": MATERIAL_TRUTH_PASS_ID,
         "wiringStatus": "isolated_candidate_no_promote", "embeddedPlume": False,
     }
     source_objects = set(source.all_objects)
     for obj in list(bpy.data.objects):
         if obj not in source_objects and obj is not root and obj.type not in {"EMPTY", "MESH"}:
             delete_object(obj)
-    return source, sorted(removed), material_repairs, surface_remaster, golden_asset, socket_contract
+    return (
+        source,
+        sorted(removed),
+        material_repairs,
+        surface_remaster,
+        golden_asset,
+        canonical_collision_bounds,
+        material_truth,
+        socket_contract,
+    )
+
+
+def ensure_decal_pbr_roles() -> list[dict]:
+    """Keep authored decal color/alpha while binding honest normal, ORM, and AO roles."""
+    template_material = bpy.data.materials.get("Material_Hull")
+    template_group = None
+    if template_material and template_material.use_nodes:
+        template_group = next(
+            (
+                node.node_tree for node in template_material.node_tree.nodes
+                if node.bl_idname == "ShaderNodeGroup" and node.name == "glTF Material Output"
+            ),
+            None,
+        )
+    if template_group is None:
+        raise RuntimeError("glTF Material Output node group missing for decal PBR repair")
+
+    report = []
+    for material_name, surface_role in DECAL_PBR_PROFILES.items():
+        material = bpy.data.materials.get(material_name)
+        if material is None or not material.use_nodes:
+            raise RuntimeError(f"missing authored decal material {material_name}")
+        nodes = material.node_tree.nodes
+        links = material.node_tree.links
+        bsdf = next((node for node in nodes if node.bl_idname == "ShaderNodeBsdfPrincipled"), None)
+        output = next((node for node in nodes if node.bl_idname == "ShaderNodeOutputMaterial"), None)
+        base_image_name = (
+            "decal_hazard_stripes.png"
+            if material_name == "Material_Decal_Hazard"
+            else "decal_stencils.png"
+        )
+        base = next(
+            (
+                node for node in nodes
+                if node.bl_idname == "ShaderNodeTexImage"
+                and node.image
+                and node.image.name == base_image_name
+            ),
+            None,
+        )
+        if not bsdf or not output or not base:
+            raise RuntimeError(f"{material_name} is missing its authored color/alpha graph")
+
+        for link in list(links):
+            links.remove(link)
+        for node in list(nodes):
+            if node not in (bsdf, output, base):
+                nodes.remove(node)
+
+        orm_image = bpy.data.images.get(f"{surface_role}_orm.png")
+        normal_image = bpy.data.images.get(f"{surface_role}_normal.png")
+        if not orm_image or not normal_image:
+            raise RuntimeError(f"{material_name} missing {surface_role} ORM/normal images")
+        orm_image.colorspace_settings.name = "Non-Color"
+        normal_image.colorspace_settings.name = "Non-Color"
+        base.image.colorspace_settings.name = "sRGB"
+
+        orm = nodes.new("ShaderNodeTexImage")
+        orm.name = f"{surface_role}_ORM"
+        orm.label = "R=AO G=Roughness B=Metallic"
+        orm.image = orm_image
+        separate = nodes.new("ShaderNodeSeparateColor")
+        normal_tex = nodes.new("ShaderNodeTexImage")
+        normal_tex.name = f"{surface_role}_Normal_OpenGL"
+        normal_tex.image = normal_image
+        normal = nodes.new("ShaderNodeNormalMap")
+        gltf_output = nodes.new("ShaderNodeGroup")
+        gltf_output.name = "glTF Material Output"
+        gltf_output.node_tree = template_group
+
+        links.new(base.outputs["Color"], bsdf.inputs["Base Color"])
+        links.new(base.outputs["Alpha"], bsdf.inputs["Alpha"])
+        links.new(orm.outputs["Color"], separate.inputs["Color"])
+        links.new(separate.outputs["Green"], bsdf.inputs["Roughness"])
+        links.new(separate.outputs["Blue"], bsdf.inputs["Metallic"])
+        links.new(normal_tex.outputs["Color"], normal.inputs["Color"])
+        links.new(normal.outputs["Normal"], bsdf.inputs["Normal"])
+        links.new(separate.outputs["Red"], gltf_output.inputs["Occlusion"])
+        links.new(bsdf.outputs["BSDF"], output.inputs["Surface"])
+        bsdf.inputs["Emission Strength"].default_value = 0.0
+        material["spacefaceSurfaceRole"] = surface_role
+        material["spacefaceDecalPbrRepair"] = "kestrel-material-truth-v6"
+        report.append({
+            "material": material_name,
+            "baseColorAlpha": base_image_name,
+            "normal": normal_image.name,
+            "orm": orm_image.name,
+            "surfaceRole": surface_role,
+            "emissive": False,
+        })
+    return report
 
 
 def visible_bounds(source: bpy.types.Collection) -> dict:
@@ -258,9 +397,28 @@ def visible_bounds(source: bpy.types.Collection) -> dict:
     }
 
 
-def save_production_blend(source: bpy.types.Collection) -> Path:
+def set_production_collection_visibility(source: bpy.types.Collection) -> None:
+    visible = {"RIG_AND_SOCKETS"}
+    pending = [source]
+    while pending:
+        collection = pending.pop()
+        if collection.name in visible:
+            continue
+        visible.add(collection.name)
+        pending.extend(collection.children)
     for collection in bpy.data.collections:
-        collection.hide_render = collection is not source and collection.name != "RIG_AND_SOCKETS"
+        collection.hide_render = collection.name not in visible
+    hidden_descendants = [
+        collection.name
+        for collection in source.children_recursive
+        if collection.hide_render
+    ]
+    if hidden_descendants:
+        raise RuntimeError(f"production blend hides source descendants: {hidden_descendants}")
+
+
+def save_production_blend(source: bpy.types.Collection) -> Path:
+    set_production_collection_visibility(source)
     for image in bpy.data.images:
         if image.source == "FILE" and image.size[0] > 0 and not image.packed_file:
             image.pack()
@@ -297,6 +455,9 @@ def evaluated_duplicate(obj: bpy.types.Object, collection: bpy.types.Collection,
 def join_group(objects: list[bpy.types.Object], name: str) -> bpy.types.Object | None:
     if not objects:
         return None
+    if len(objects) == 1:
+        objects[0].name = name
+        return objects[0]
     bpy.ops.object.select_all(action="DESELECT")
     for obj in objects:
         obj.select_set(True)
@@ -316,9 +477,29 @@ def repair_tangent_space(obj: bpy.types.Object) -> dict:
     repair uses a stable local planar projection only on the affected faces.
     """
     mesh = obj.data
+    had_custom_normals = bool(getattr(mesh, "has_custom_normals", False))
+    if had_custom_normals:
+        # Joining and decimating authored donors can retain a split-normal
+        # record that no longer matches the evaluated topology. Clear it only
+        # on the disposable export duplicate; Blender then recomputes normals
+        # from the preserved smooth/flat face flags.
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        result = bpy.ops.mesh.customdata_custom_splitnormals_clear()
+        obj.select_set(False)
+        if "FINISHED" not in result or mesh.has_custom_normals:
+            raise RuntimeError(f"{obj.name} could not clear stale export custom normals")
     uv_layer = mesh.uv_layers.active
     if uv_layer is None:
-        return {"object": obj.name, "removedDegenerateTriangles": 0, "patchedTriangles": 0, "badBefore": 0, "badAfter": 0}
+        return {
+            "object": obj.name,
+            "removedDegenerateTriangles": 0,
+            "patchedTriangles": 0,
+            "badBefore": 0,
+            "badAfter": 0,
+            "customNormalsCleared": had_custom_normals,
+        }
 
     # A few donor faces contain numerically collapsed edges after LOD
     # evaluation. Remove only sub-micrometre degeneracy, then triangulate the
@@ -328,19 +509,56 @@ def repair_tangent_space(obj: bpy.types.Object) -> dict:
     bm.from_mesh(mesh)
     bmesh.ops.dissolve_degenerate(bm, dist=1e-7, edges=list(bm.edges))
     bmesh.ops.triangulate(bm, faces=list(bm.faces), quad_method="BEAUTY", ngon_method="BEAUTY")
+    microscopic_faces = [face for face in bm.faces if face.calc_area() < 1e-8]
+    if microscopic_faces:
+        # Evaluated bevel/decimate stacks can leave sub-square-micrometre
+        # sliver triangles whose vertices are numerically coincident. They
+        # carry no visible area and cannot define tangent space.
+        bmesh.ops.delete(bm, geom=microscopic_faces, context="FACES")
     bm.to_mesh(mesh)
     bm.free()
     mesh.update()
     removed_degenerate = max(0, before_polygons - len(mesh.polygons))
     uv_layer = mesh.uv_layers.active
+    def collapsed_uv_polygons() -> list[bpy.types.MeshPolygon]:
+        collapsed = []
+        for polygon in mesh.polygons:
+            if len(polygon.loop_indices) != 3:
+                raise RuntimeError(
+                    f"{obj.name} retains non-triangle face {polygon.index} during UV validation"
+                )
+            a, b, c = (
+                Vector(uv_layer.data[index].uv)
+                for index in polygon.loop_indices
+            )
+            uv_area = abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) * 0.5
+            # Use a four-order safety margin before float32 glTF serialization
+            # and the shared 13-bit Meshopt profile; the external source/release
+            # contract remains 1e-10 square UV units.
+            if uv_area <= 1e-6:
+                collapsed.append(polygon)
+        return collapsed
+
     mesh.calc_tangents(uvmap=uv_layer.name)
-    bad_loops = {
+    tangent_bad_loops = {
         index for index, loop in enumerate(mesh.loops)
         if Vector(loop.tangent).length_squared < 0.25
     }
     mesh.free_tangents()
+    collapsed_before = collapsed_uv_polygons()
+    bad_loops = set(tangent_bad_loops)
+    for polygon in collapsed_before:
+        bad_loops.update(polygon.loop_indices)
     if not bad_loops:
-        return {"object": obj.name, "removedDegenerateTriangles": removed_degenerate, "patchedTriangles": 0, "badBefore": 0, "badAfter": 0}
+        return {
+            "object": obj.name,
+            "removedDegenerateTriangles": removed_degenerate,
+            "patchedTriangles": 0,
+            "collapsedUvTriangles": 0,
+            "badBefore": 0,
+            "badAfter": 0,
+            "customNormalsCleared": had_custom_normals,
+        }
 
     patched = 0
     for polygon in mesh.polygons:
@@ -363,8 +581,69 @@ def repair_tangent_space(obj: bpy.types.Object) -> dict:
         patched += 1
     mesh.update()
     mesh.calc_tangents(uvmap=uv_layer.name)
-    bad_after = sum(1 for loop in mesh.loops if Vector(loop.tangent).length_squared < 0.25)
+    bad_after_loops = {
+        index for index, loop in enumerate(mesh.loops)
+        if Vector(loop.tangent).length_squared < 0.25
+    }
     mesh.free_tangents()
+    for polygon in collapsed_uv_polygons():
+        bad_after_loops.update(polygon.loop_indices)
+    canonical_uv_triangles = 0
+    custom_normal_loop_repairs = 0
+    if bad_after_loops:
+        # A joined group can retain a single invalid corner when a source face
+        # has usable geometry but numerically collapsed UVs after evaluation.
+        # Give only that triangle an explicit, non-degenerate UV basis.  This
+        # preserves all neighbouring authored UV placement and keeps tangent
+        # space available for the material's real normal map.
+        canonical_uv = ((0.0, 0.0), (0.125, 0.0), (0.0, 0.125))
+        for polygon in mesh.polygons:
+            if not bad_after_loops.intersection(polygon.loop_indices):
+                continue
+            if len(polygon.loop_indices) != 3:
+                raise RuntimeError(
+                    f"{obj.name} retains invalid tangent space on non-triangle face {polygon.index}"
+                )
+            offset_u = (polygon.index % 7) * 0.137
+            offset_v = ((polygon.index // 7) % 7) * 0.137
+            for corner, loop_index in enumerate(polygon.loop_indices):
+                uv = canonical_uv[corner]
+                uv_layer.data[loop_index].uv = (uv[0] + offset_u, uv[1] + offset_v)
+            canonical_uv_triangles += 1
+        mesh.update()
+        mesh.calc_tangents(uvmap=uv_layer.name)
+        bad_after_loops = {
+            index for index, loop in enumerate(mesh.loops)
+            if Vector(loop.tangent).length_squared < 0.25
+        }
+        mesh.free_tangents()
+        for polygon in collapsed_uv_polygons():
+            bad_after_loops.update(polygon.loop_indices)
+    if bad_after_loops:
+        # A valid face can still inherit one unusable auto corner normal at a
+        # decimation seam. Preserve every computed corner normal except the
+        # affected loop(s), which receive their own face normal. This is
+        # export-duplicate-only and leaves authored source normals untouched.
+        corner_normals = [
+            Vector(corner.vector).normalized()
+            for corner in mesh.corner_normals
+        ]
+        for polygon in mesh.polygons:
+            affected = bad_after_loops.intersection(polygon.loop_indices)
+            for loop_index in affected:
+                corner_normals[loop_index] = Vector(polygon.normal).normalized()
+                custom_normal_loop_repairs += 1
+        mesh.normals_split_custom_set(corner_normals)
+        mesh.update()
+        mesh.calc_tangents(uvmap=uv_layer.name)
+        bad_after_loops = {
+            index for index, loop in enumerate(mesh.loops)
+            if Vector(loop.tangent).length_squared < 0.25
+        }
+        mesh.free_tangents()
+        for polygon in collapsed_uv_polygons():
+            bad_after_loops.update(polygon.loop_indices)
+    bad_after = len(bad_after_loops)
     tangent_attribute_omitted = False
     material_names = {material.name for material in mesh.materials if material is not None}
     if bad_after and material_names == {"Material_Glass_Canopy"}:
@@ -377,14 +656,38 @@ def repair_tangent_space(obj: bpy.types.Object) -> dict:
         bad_after = 0
         tangent_attribute_omitted = True
     if bad_after:
-        raise RuntimeError(f"{obj.name} retains {bad_after} invalid tangent loops after local UV repair")
+        diagnostics = []
+        for polygon in mesh.polygons:
+            if not bad_after_loops.intersection(polygon.loop_indices):
+                continue
+            diagnostics.append({
+                "polygon": polygon.index,
+                "area": float(polygon.area),
+                "normal": [float(value) for value in polygon.normal],
+                "vertices": [
+                    [float(value) for value in mesh.vertices[mesh.loops[index].vertex_index].co]
+                    for index in polygon.loop_indices
+                ],
+                "uvs": [
+                    [float(value) for value in uv_layer.data[index].uv]
+                    for index in polygon.loop_indices
+                ],
+            })
+        raise RuntimeError(
+            f"{obj.name} retains {bad_after} invalid tangent loops after local UV repair: "
+            f"{json.dumps(diagnostics, separators=(',', ':'))}"
+        )
     return {
         "object": obj.name,
         "removedDegenerateTriangles": removed_degenerate,
         "patchedTriangles": patched,
-        "badBefore": len(bad_loops),
+        "collapsedUvTriangles": len(collapsed_before),
+        "canonicalUvTriangles": canonical_uv_triangles,
+        "customNormalLoopRepairs": custom_normal_loop_repairs,
+        "badBefore": len(tangent_bad_loops),
         "badAfter": bad_after,
         "tangentAttributeOmitted": tangent_attribute_omitted,
+        "customNormalsCleared": had_custom_normals,
     }
 
 
@@ -460,16 +763,29 @@ def add_collision(collection: bpy.types.Collection, bounds: dict, root: bpy.type
     return obj
 
 
-def create_lod(source: bpy.types.Collection, lod: int, bounds: dict) -> tuple[bpy.types.Collection, dict]:
+def create_lod(
+    source: bpy.types.Collection,
+    lod: int,
+    bounds: dict,
+    generation_fingerprint: str | None = None,
+) -> tuple[bpy.types.Collection, dict]:
     name = f"KESTREL_V4_LOD{lod}"
     collection = bpy.data.collections.new(name)
     bpy.context.scene.collection.children.link(collection)
     groups: dict[tuple[str, str], list[bpy.types.Object]] = {}
+    material_bill_runtime_map: dict[str, set[str]] = {}
     for obj in source.all_objects:
         if not lod_filter(obj, lod):
             continue
         material = obj.data.materials[0].name if obj.data.materials else "NO_MATERIAL"
         override = None
+        # The editable V6 blend keeps distinct authored material bills. Runtime exports map those
+        # roles onto the proven Kestrel PBR material family, avoiding a draw for every Blender-only
+        # review shader. Joined meshes cannot retain every source object's custom properties, so
+        # the complete bill-to-runtime mapping is published on the root and in the build receipt.
+        if material in V6_LOD_MATERIAL_COLLAPSE:
+            material = V6_LOD_MATERIAL_COLLAPSE[material]
+            override = material
         if lod >= 1 and material == "Material_EngineCeramic":
             # The refractory silhouette remains, but far LODs reuse the dark armor
             # response so a hero-only material role does not create another draw.
@@ -485,6 +801,9 @@ def create_lod(source: bpy.types.Collection, lod: int, bounds: dict) -> tuple[bp
             # no shimmer-prone emissive draw and no extra warning-paint draw.
             material = "Material_Accent_FrontierCyan"; override = material
         role = source_role(obj, lod)
+        bill_id = str(obj.get("sf_material_bill_id") or "")
+        if bill_id:
+            material_bill_runtime_map.setdefault(bill_id, set()).add(material)
         duplicate = evaluated_duplicate(obj, collection, f"{name}_{obj.name}", override)
         groups.setdefault((role, material), []).append(duplicate)
     targets = []
@@ -493,9 +812,25 @@ def create_lod(source: bpy.types.Collection, lod: int, bounds: dict) -> tuple[bp
         target = join_group(objects, f"LOD{lod}_{role}_{safe}")
         if target:
             targets.append((role, target))
-    ratio = {0: 0.50, 1: 0.40, 2: 1.0}[lod]
+    v6_active = any(
+        obj.get("sf_material_truth_pass") == MATERIAL_TRUTH_PASS_ID
+        for obj in source.all_objects
+    )
+    # V6 carries substantially more authored component structure than V5.
+    # Its screen-space LODs therefore use separately measured consolidation
+    # ratios instead of inheriting the old fixed percentages.
+    ratio = (
+        {0: 0.262, 1: 0.25, 2: 0.62}[lod]
+        if v6_active
+        else {0: 0.50, 1: 0.40, 2: 1.0}[lod]
+    )
     for role, obj in targets:
-        if ratio < 0.999 and len(obj.data.polygons) >= 80:
+        preserve_identity_geometry = (
+            obj.data.materials
+            and obj.data.materials[0]
+            and obj.data.materials[0].name == "Material_V6_MarkingIvory"
+        )
+        if ratio < 0.999 and len(obj.data.polygons) >= 80 and not preserve_identity_geometry:
             modifier = obj.modifiers.new("V4_LOD_Decimate", "DECIMATE")
             modifier.ratio = ratio; modifier.use_collapse_triangulate = True
             bpy.context.view_layer.objects.active = obj; obj.select_set(True)
@@ -508,13 +843,20 @@ def create_lod(source: bpy.types.Collection, lod: int, bounds: dict) -> tuple[bp
         bpy.ops.object.modifier_apply(modifier=triangulate.name); obj.select_set(False)
     tangent_repairs = [repair_tangent_space(obj) for _, obj in targets]
     root = add_empty(f"KESTREL_V4_LOD{lod}_ROOT", collection)
+    bill_runtime_receipt = {
+        bill_id: sorted(materials)
+        for bill_id, materials in sorted(material_bill_runtime_map.items())
+    }
     root["spacefaceAsset"] = {
         "assetId": "SF_K0_KESTREL_BORROWED_TIME_V4", "partId": "kestrel_borrowed_time_v4",
         "packet": PACKET, "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "up": "+Y", "starboard": "+Z", "unit": "metre",
         "normalConvention": "OpenGL", "ormChannels": "R=AO,G=Roughness,B=Metallic",
         "surfaceRemasterId": SURFACE_REMASTER_ID, "goldenPassId": GOLDEN_PASS_ID,
+        "materialTruthPassId": MATERIAL_TRUTH_PASS_ID,
         "embeddedPlume": False, "wiringStatus": "isolated_candidate_no_promote",
+        "generationFingerprint": generation_fingerprint,
+        "materialBillRuntimeMap": bill_runtime_receipt,
     }
     role_nodes = {"static": root}
     if lod == 0:
@@ -531,17 +873,35 @@ def create_lod(source: bpy.types.Collection, lod: int, bounds: dict) -> tuple[bp
             raise RuntimeError(f"missing source socket {socket_name}")
         socket = add_empty(socket_name, collection, source_socket.matrix_world, root)
         socket["socket"] = True
+        _, role, forward = SOCKET_CONTRACT[socket_name]
+        socket["spaceface"] = {
+            "socket": True,
+            "role": role,
+            "forward": list(forward),
+        }
     collision = add_collision(collection, bounds, root)
     triangles = sum(sum(max(0, len(poly.vertices) - 2) for poly in obj.data.polygons) for _, obj in targets)
     draws = len(targets)
     return collection, {"lod": lod, "triangles": triangles, "draws": draws,
                         "animatedRoleException": sum(1 for role, _ in targets if role != "static"),
                         "collisionTriangles": sum(max(0, len(poly.vertices) - 2) for poly in collision.data.polygons),
-                        "tangentRepairs": [item for item in tangent_repairs if item["badBefore"]]}
+                        "tangentRepairs": [
+                            item for item in tangent_repairs
+                            if item["badBefore"] or item.get("collapsedUvTriangles", 0)
+                        ],
+                        "materialBillRuntimeMap": bill_runtime_receipt}
 
 
-def export_lod(collection: bpy.types.Collection, lod: int) -> Path:
-    out = FAMILY / "source" / "wholeships" / f"kestrel_borrowed_time_v4_lod{lod}.glb"
+def export_lod(
+    collection: bpy.types.Collection,
+    lod: int,
+    output_dir: Path | None = None,
+) -> Path:
+    out = (
+        output_dir
+        if output_dir is not None
+        else FAMILY / "source" / "wholeships"
+    ) / f"kestrel_borrowed_time_v4_lod{lod}.glb"
     out.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.object.select_all(action="DESELECT")
     for obj in collection.all_objects:
@@ -572,7 +932,16 @@ def main() -> int:
     args = parse_args()
     source_blend, zip_hash, blend_hash = extract_source(args.source_zip)
     bpy.ops.wm.open_mainfile(filepath=str(source_blend))
-    source, removed, material_repairs, surface_remaster, golden_asset, socket_contract = clean_source()
+    (
+        source,
+        removed,
+        material_repairs,
+        surface_remaster,
+        golden_asset,
+        canonical_collision_bounds,
+        material_truth,
+        socket_contract,
+    ) = clean_source()
     bounds = visible_bounds(source)
     production_blend = save_production_blend(source)
     # Free the canonical names so isolated export copies retain exact stable socket/rig names.
@@ -582,7 +951,7 @@ def main() -> int:
     reports = []
     outputs = []
     for lod in (0, 1, 2):
-        collection, report = create_lod(source, lod, bounds)
+        collection, report = create_lod(source, lod, canonical_collision_bounds)
         output = export_lod(collection, lod)
         report.update({"path": str(output.relative_to(FAMILY)).replace("\\", "/"),
                        "bytes": output.stat().st_size, "sha256": sha256(output)})
@@ -598,8 +967,13 @@ def main() -> int:
         "productionBlendSha256": sha256(production_blend), "removedObjects": removed,
         "materialRepairs": material_repairs, "surfaceRemasterId": SURFACE_REMASTER_ID,
         "surfaceRemaster": surface_remaster, "goldenPassId": GOLDEN_PASS_ID,
-        "goldenAsset": golden_asset, "socketContract": socket_contract,
-        "preservedGeometryPolicy": "source macro/meso retained; only technique-card exclusions removed",
+        "goldenAsset": golden_asset, "materialTruthPassId": MATERIAL_TRUTH_PASS_ID,
+        "materialTruth": material_truth, "socketContract": socket_contract,
+        "preservedGeometryPolicy": (
+            "canonical silhouette, scale, collision and sockets retained; obsolete toy-read drive, "
+            "sensor, shoulder, weapon, radiator and repair-pod modules replaced by manufactured V6 forms"
+        ),
+        "canonicalCollisionBoundsBlenderXYZ": canonical_collision_bounds,
         "visibleBoundsBlenderXYZ": bounds, "lods": reports, "outputs": [str(p) for p in outputs],
         "candidateOnly": True, "livePromotion": False,
     }
