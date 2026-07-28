@@ -899,6 +899,34 @@ export function evaluateResourceStability({ series = {}, declaredHighWater = {} 
   return { ok: violations.length === 0, violations: Object.freeze(violations) };
 }
 
+// ---------------------------------------------------------------------------------------------
+// Accessibility contract
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Automation checks these; the human reviewer decides discoverability/fairness/cue clarity. A
+ * missing check is a rejection, not a warning — same rule as the performance metrics.
+ */
+export const ACCESSIBILITY_REQUIRED_CHECKS = Object.freeze([
+  'rolesAndNames', 'focusVisible', 'contrastRatio', 'reducedMotion', 'flashSafety',
+  'nonColorCues', 'nonAudioCues', 'textScale', 'inputReachability',
+]);
+
+export function evaluateAccessibilitySample(accessibilityProfile, sample = {}) {
+  if (!ACCESSIBILITY_PROFILES.includes(accessibilityProfile)) {
+    return { ok: false, reason: `unknown-accessibility-profile:${accessibilityProfile}` };
+  }
+  const missing = ACCESSIBILITY_REQUIRED_CHECKS.filter((check) => sample[check] === undefined || sample[check] === null);
+  if (missing.length > 0) {
+    return { ok: false, reason: `missing-accessibility-check:${missing.join(',')}`, missing: Object.freeze(missing) };
+  }
+  const failed = ACCESSIBILITY_REQUIRED_CHECKS.filter((check) => sample[check] !== true);
+  if (failed.length > 0) {
+    return { ok: false, reason: `accessibility-check-failed:${failed.join(',')}`, failed: Object.freeze(failed) };
+  }
+  return { ok: true, reason: null, accessibilityProfile };
+}
+
 export function assertQualityUnchanged(frozenQuality, observedQuality) {
   const same = canonicalJson(frozenQuality) === canonicalJson(observedQuality);
   return { ok: same, reason: same ? null : 'default-quality-or-settings-changed' };
@@ -1089,19 +1117,33 @@ export function registerCapture(registry, {
 
 export const MATRIX_SCHEMA = 'pq025.matrix.v1';
 
-export function createQualificationMatrix({ cells = [], frozenAtIso = null, rubricHash = null } = {}) {
-  const normalized = cells.map((cell, index) => deepFreeze({
-    cellIndex: index,
-    career: cell.career,
-    horizonMin: cell.horizonMin,
-    scenarioClass: cell.scenarioClass,
-    runtimeKind: cell.runtimeKind,
-    profileClass: cell.profileClass,
-    accessibilityProfile: cell.accessibilityProfile || 'default',
-    required: cell.required !== false,
-    cellKey: cellKey(cell),
-  }));
-  return deepFreeze({ schema: MATRIX_SCHEMA, frozenAtIso, rubricHash, cells: normalized });
+export function createQualificationMatrix({ cells = [], frozenAtIso = null, rubricHash = null, criticalQuestionIds = [] } = {}) {
+  const normalized = cells.map((cell, index) => {
+    const accessibilityProfile = cell.accessibilityProfile || 'default';
+    if (!ACCESSIBILITY_PROFILES.includes(accessibilityProfile)) {
+      throw new Error(`matrix-unknown-accessibility-profile:${accessibilityProfile}`);
+    }
+    return deepFreeze({
+      cellIndex: index,
+      career: cell.career,
+      horizonMin: cell.horizonMin,
+      scenarioClass: cell.scenarioClass,
+      runtimeKind: cell.runtimeKind,
+      profileClass: cell.profileClass,
+      accessibilityProfile,
+      required: cell.required !== false,
+      cellKey: cellKey(cell),
+    });
+  });
+  return deepFreeze({
+    schema: MATRIX_SCHEMA,
+    frozenAtIso,
+    rubricHash,
+    // The frozen set of critical human-rubric questions. Aggregation requires every one to be
+    // answered; an unanswered critical question is unknown evidence, and unknown is never a pass.
+    criticalQuestionIds: Object.freeze([...criticalQuestionIds]),
+    cells: normalized,
+  });
 }
 
 /**

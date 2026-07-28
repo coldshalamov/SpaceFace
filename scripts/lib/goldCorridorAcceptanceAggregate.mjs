@@ -13,6 +13,7 @@ import {
   canonicalJson, sha256Hex, deepFreeze,
   MATRIX_SCHEMA, LEDGER_SCHEMA,
   isHardFailureClass, validateMatrixCompleteness, verifyLedgerIntegrity, attemptsForCell,
+  evaluateRerunRequest,
 } from './goldCorridorAcceptanceContracts.mjs';
 
 export const AGGREGATE_SCHEMA = 'pq025.aggregate-receipt.v1';
@@ -54,10 +55,24 @@ export function resolveCell(matrix, ledger, cell) {
 /**
  * Human rubric handling. Critical questions are frozen before held-out runs; a critical failure is
  * an acceptance failure, and no human verdict may waive a hard technical failure.
+ *
+ * An UNANSWERED critical question is unknown evidence, and unknown is never a pass — so an empty
+ * verdict set can never produce `ok`. "Required cell or human reviewer unavailable" is a packet
+ * stop condition, not a silent skip.
  */
-export function evaluateHumanVerdicts({ rubricHash, verdicts = [] } = {}) {
+export function evaluateHumanVerdicts({ rubricHash, verdicts = [], criticalQuestionIds = [] } = {}) {
   const errors = [];
   if (!nonEmptyString(rubricHash)) errors.push('human-rubric-not-frozen');
+  if (!Array.isArray(criticalQuestionIds) || criticalQuestionIds.length === 0) {
+    errors.push('critical-rubric-questions-not-frozen');
+  }
+  if (!Array.isArray(verdicts) || verdicts.length === 0) {
+    errors.push('no-human-verdict-recorded');
+  }
+  const answered = new Set(verdicts.filter((verdict) => verdict && verdict.questionId).map((verdict) => verdict.questionId));
+  for (const questionId of (criticalQuestionIds || [])) {
+    if (!answered.has(questionId)) errors.push(`critical-question-unanswered:${questionId}`);
+  }
   const waivers = verdicts.filter((verdict) => verdict && verdict.waivesTechnicalFailure === true);
   if (waivers.length > 0) errors.push('human-judgment-cannot-waive-hard-technical-failure');
   const criticalFails = verdicts.filter((verdict) => verdict && verdict.critical === true && verdict.pass !== true);
@@ -65,6 +80,53 @@ export function evaluateHumanVerdicts({ rubricHash, verdicts = [] } = {}) {
   const missingRubric = verdicts.filter((verdict) => verdict && verdict.rubricHash && verdict.rubricHash !== rubricHash);
   if (missingRubric.length > 0) errors.push('human-verdict-rubric-hash-mismatch');
   return { ok: errors.length === 0, errors: Object.freeze(errors), criticalFailureCount: criticalFails.length };
+}
+
+/**
+ * Enforce the rerun policy at DECISION time, not only at request time. Without this, a cell whose
+ * ledger reads fail -> fail -> pass on an unchanged candidate resolves to a terminal pass: exactly
+ * the best-of-N the packet forbids. Every consecutive attempt pair on a cell must have been a
+ * legal rerun.
+ */
+export function auditRerunLegality(ledger, cellKeyValue) {
+  const attempts = attemptsForCell(ledger, cellKeyValue);
+  const violations = [];
+  for (let i = 1; i < attempts.length; i += 1) {
+    const prior = attempts[i - 1];
+    const next = attempts[i];
+    if (prior.verdict === 'pass') {
+      violations.push(`attempt-after-a-passing-attempt-at-ordinal-${next.attemptOrdinal}`);
+      continue;
+    }
+    // evaluateRerunRequest inspects the attempts recorded for this cell UP TO the prior attempt.
+    const prefix = { schema: LEDGER_SCHEMA, entries: ledger.entries.slice(0, prior.attemptOrdinal) };
+    const verdict = evaluateRerunRequest({
+      ledger: prefix,
+      cellKey: cellKeyValue,
+      priorFailureClass: prior.failureClass,
+      candidateCommit: next.identity.candidateCommit,
+      harnessHash: next.identity.harnessHash,
+      affectedEvidencePaths: next.evidencePaths,
+    });
+    if (!verdict.allowed) violations.push(`${verdict.reason}-at-ordinal-${next.attemptOrdinal}`);
+  }
+  return { ok: violations.length === 0, violations: Object.freeze(violations) };
+}
+
+/** One raw capture cannot satisfy two attempts, checked at verdict time as well as registration. */
+export function auditCaptureUniqueness(ledger) {
+  const seen = new Map();
+  const violations = [];
+  for (const entry of ledger.entries) {
+    const captureId = entry.identity?.captureId;
+    if (!captureId) { violations.push(`missing-capture-id-at-ordinal-${entry.attemptOrdinal}`); continue; }
+    if (seen.has(captureId)) {
+      violations.push(`capture-reused:${captureId}:ordinals-${seen.get(captureId)}-and-${entry.attemptOrdinal}`);
+    } else {
+      seen.set(captureId, entry.attemptOrdinal);
+    }
+  }
+  return { ok: violations.length === 0, violations: Object.freeze(violations) };
 }
 
 /**
@@ -118,7 +180,23 @@ export function validateAggregate({
     else if (resolved.state === 'fail') blockers.push(`failed-cell:${resolved.cellKey}:${resolved.reason}`);
   }
 
-  const human = evaluateHumanVerdicts({ rubricHash: humanRubricHash, verdicts: humanVerdicts });
+  // A terminal pass only counts when every rerun that produced it was legal (no best-of-N, no
+  // unchanged-candidate retry). Audited over EVERY cell present in the ledger, not just required
+  // ones, so an illegal rerun cannot hide on an optional cell.
+  const auditedCellKeys = new Set([...requiredCells.map((cell) => cell.cellKey), ...ledger.entries.map((entry) => entry.cellKey)]);
+  for (const key of auditedCellKeys) {
+    const rerun = auditRerunLegality(ledger, key);
+    for (const violation of rerun.violations) blockers.push(`illegal-rerun:${key}:${violation}`);
+  }
+
+  const captures = auditCaptureUniqueness(ledger);
+  for (const violation of captures.violations) blockers.push(`capture:${violation}`);
+
+  const human = evaluateHumanVerdicts({
+    rubricHash: humanRubricHash,
+    verdicts: humanVerdicts,
+    criticalQuestionIds: matrix.criticalQuestionIds || [],
+  });
   for (const error of human.errors) blockers.push(`human:${error}`);
 
   const ok = blockers.length === 0;
@@ -185,4 +263,7 @@ export function verifyAggregateReceipt(receipt) {
   return { ok: true, reason: null };
 }
 
-export default { validateAggregate, publishAggregateReceipt, verifyAggregateReceipt, resolveCell };
+export default {
+  validateAggregate, publishAggregateReceipt, verifyAggregateReceipt, resolveCell,
+  auditRerunLegality, auditCaptureUniqueness, evaluateHumanVerdicts,
+};

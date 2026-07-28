@@ -21,6 +21,9 @@ export function createPq025GoldCorridorSmokeManifest(overrides = {}) {
     // Phase-2 probe. The adapter does not exist yet (Phase 1 is pure contracts only).
     commandArgs: ['scripts/probe-pq025-gold-corridor-smoke.mjs'],
     // `diagnostic` keeps a smoke result structurally ineligible to back an acceptance claim.
+    // NOTE: `mode` and `maxLaunchesPerCandidate` are what actually constrain this manifest —
+    // normalizeManifest (scripts/lib/validationBroker.mjs:561-613) does not carry `acceptanceEligible`
+    // or `phase` through, so those two are documentation for human readers, not broker-enforced.
     mode: 'diagnostic',
     acceptanceEligible: false,
     phase: 'Phase2Calibration',

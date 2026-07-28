@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 
 import {
   validateAggregate, publishAggregateReceipt, verifyAggregateReceipt, resolveCell,
-  evaluateHumanVerdicts, AGGREGATE_SCHEMA,
+  evaluateHumanVerdicts, auditRerunLegality, auditCaptureUniqueness, AGGREGATE_SCHEMA,
 } from '../scripts/lib/goldCorridorAcceptanceAggregate.mjs';
 
 import {
@@ -30,8 +30,21 @@ const CELLS = Object.freeze([
   { career: 'prospector', horizonMin: 90, scenarioClass: 'success', runtimeKind: 'electron', profileClass: 'floor' },
 ]);
 
+const CRITICAL_QUESTIONS = Object.freeze(['discoverability', 'fairness', 'recovery-comprehensibility', 'coherence']);
+
 function matrix() {
-  return createQualificationMatrix({ frozenAtIso: '2026-07-28T00:00:00Z', rubricHash: RUBRIC, cells: CELLS.map((c) => ({ ...c })) });
+  return createQualificationMatrix({
+    frozenAtIso: '2026-07-28T00:00:00Z', rubricHash: RUBRIC,
+    criticalQuestionIds: [...CRITICAL_QUESTIONS],
+    cells: CELLS.map((c) => ({ ...c })),
+  });
+}
+
+/** Every frozen critical question answered and passing, unless a specific override says otherwise. */
+function humanAnswers(overrides = {}) {
+  return CRITICAL_QUESTIONS.map((questionId) => ({
+    questionId, critical: true, pass: true, rubricHash: RUBRIC, ...(overrides[questionId] || {}),
+  }));
 }
 
 function identityFor(cell, index, overrides = {}) {
@@ -89,7 +102,7 @@ function baseArgs(overrides = {}) {
     ledger: passingLedger(),
     ownerEvidence: verifiedEvidence(),
     humanRubricHash: RUBRIC,
-    humanVerdicts: [{ questionId: 'discoverability', critical: true, pass: true, rubricHash: RUBRIC }],
+    humanVerdicts: humanAnswers(),
     dependencyReceiptHashes: { 'PQ-024': 'e'.repeat(64) },
     expectedDependencyReceiptHashes: { 'PQ-024': 'e'.repeat(64) },
     ...overrides,
@@ -188,17 +201,41 @@ test('aggregate: an incomplete matrix blocks even when every present cell is gre
 // Human judgment
 // =============================================================================================
 
-test('human judgment: a frozen rubric with passing critical answers is clean', () => {
+test('human judgment: a frozen rubric with every critical question answered is clean', () => {
   const result = evaluateHumanVerdicts({
-    rubricHash: RUBRIC,
-    verdicts: [{ questionId: 'fairness', critical: true, pass: true, rubricHash: RUBRIC }],
+    rubricHash: RUBRIC, criticalQuestionIds: [...CRITICAL_QUESTIONS], verdicts: humanAnswers(),
   });
   assert.equal(result.ok, true, result.errors.join(','));
 });
 
+test('human judgment: NO human verdict at all can never be a pass', () => {
+  // The whole matrix is green; nobody judged anything. This must not qualify.
+  const result = validateAggregate(baseArgs({ humanVerdicts: [] }));
+  assert.equal(result.ok, false);
+  assert.equal(result.verdict, 'FAIL');
+  assert.ok(result.blockers.includes('human:no-human-verdict-recorded'));
+  for (const questionId of CRITICAL_QUESTIONS) {
+    assert.ok(result.blockers.includes(`human:critical-question-unanswered:${questionId}`), `${questionId} must be reported unanswered`);
+  }
+});
+
+test('human judgment: an unanswered critical question blocks even when the answered ones pass', () => {
+  const partial = humanAnswers().filter((verdict) => verdict.questionId !== 'fairness');
+  const result = validateAggregate(baseArgs({ humanVerdicts: partial }));
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('human:critical-question-unanswered:fairness'));
+});
+
+test('human judgment: an unfrozen critical question set blocks', () => {
+  const unfrozen = createQualificationMatrix({ rubricHash: RUBRIC, cells: CELLS.map((c) => ({ ...c })) });
+  const result = validateAggregate(baseArgs({ matrix: unfrozen }));
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('human:critical-rubric-questions-not-frozen'));
+});
+
 test('human judgment: a critical failure is an acceptance failure', () => {
   const result = validateAggregate(baseArgs({
-    humanVerdicts: [{ questionId: 'recovery-comprehensibility', critical: true, pass: false, rubricHash: RUBRIC }],
+    humanVerdicts: humanAnswers({ 'recovery-comprehensibility': { pass: false } }),
   }));
   assert.equal(result.ok, false);
   assert.ok(result.blockers.some((b) => b.includes('critical-human-judgment-failure:recovery-comprehensibility')));
@@ -207,7 +244,7 @@ test('human judgment: a critical failure is an acceptance failure', () => {
 test('human judgment: a human verdict cannot waive a hard technical failure', () => {
   const result = validateAggregate(baseArgs({
     ledger: passingLedger({ index: 5, verdict: 'fail', failureClass: 'PRODUCT_SAVE' }),
-    humanVerdicts: [{ questionId: 'coherence', critical: true, pass: true, waivesTechnicalFailure: true, rubricHash: RUBRIC }],
+    humanVerdicts: humanAnswers({ coherence: { waivesTechnicalFailure: true } }),
   }));
   assert.equal(result.ok, false);
   assert.ok(result.blockers.some((b) => b.includes('human-judgment-cannot-waive-hard-technical-failure')));
@@ -218,8 +255,70 @@ test('human judgment: a human verdict cannot waive a hard technical failure', ()
 test('human judgment: an unfrozen rubric and a mismatched rubric hash both block', () => {
   assert.ok(evaluateHumanVerdicts({ rubricHash: null, verdicts: [] }).errors.includes('human-rubric-not-frozen'));
   assert.ok(evaluateHumanVerdicts({
-    rubricHash: RUBRIC, verdicts: [{ questionId: 'q', critical: false, pass: true, rubricHash: 'z'.repeat(64) }],
+    rubricHash: RUBRIC, criticalQuestionIds: ['q'],
+    verdicts: [{ questionId: 'q', critical: false, pass: true, rubricHash: 'z'.repeat(64) }],
   }).errors.includes('human-verdict-rubric-hash-mismatch'));
+});
+
+// =============================================================================================
+// Rerun legality enforced at DECISION time (no best-of-N)
+// =============================================================================================
+
+test('rerun legality: fail -> fail -> pass on an UNCHANGED candidate is rejected as best-of-N', () => {
+  // Without this audit the cell resolves to a terminal pass and the whole matrix publishes PASS.
+  let ledger = createAttemptLedger();
+  CELLS.forEach((cell, index) => {
+    if (index === 0) {
+      ledger = appendAttempt(ledger, { identity: identityFor(cell, index, { captureId: 'cap-0a' }), verdict: 'fail', failureClass: 'PRODUCT_ECONOMY' });
+      ledger = appendAttempt(ledger, { identity: identityFor(cell, index, { captureId: 'cap-0b' }), verdict: 'fail', failureClass: 'PRODUCT_ECONOMY' });
+      ledger = appendAttempt(ledger, { identity: identityFor(cell, index, { captureId: 'cap-0c' }), verdict: 'pass' });
+      return;
+    }
+    ledger = appendAttempt(ledger, { identity: identityFor(cell, index), verdict: 'pass' });
+  });
+
+  // The terminal attempt really is a pass — the cell state alone would not catch this.
+  const resolved = resolveCell(matrix(), ledger, { ...CELLS[0], cellKey: cellKey(CELLS[0]), required: true });
+  assert.equal(resolved.state, 'pass');
+
+  const result = validateAggregate(baseArgs({ ledger }));
+  assert.equal(result.ok, false, 'best-of-N must not qualify');
+  assert.equal(result.verdict, 'FAIL');
+  assert.ok(result.blockers.some((b) => b.startsWith('illegal-rerun:hauler|30|success|browser|target:product-failure-requires-new-candidate')),
+    result.blockers.join('; '));
+});
+
+test('rerun legality: a legal ENVIRONMENT replacement and a new-candidate retry are accepted', () => {
+  let ledger = createAttemptLedger();
+  ledger = appendAttempt(ledger, { identity: identityFor(CELLS[0], 0, { captureId: 'c1' }), verdict: 'fail', failureClass: 'ENVIRONMENT' });
+  ledger = appendAttempt(ledger, { identity: identityFor(CELLS[0], 0, { captureId: 'c2' }), verdict: 'pass' });
+  const audit = auditRerunLegality(ledger, cellKey(CELLS[0]));
+  assert.equal(audit.ok, true, audit.violations.join(','));
+});
+
+test('rerun legality: another attempt after a passing attempt is rejected', () => {
+  let ledger = createAttemptLedger();
+  ledger = appendAttempt(ledger, { identity: identityFor(CELLS[0], 0, { captureId: 'c1' }), verdict: 'pass' });
+  ledger = appendAttempt(ledger, { identity: identityFor(CELLS[0], 0, { captureId: 'c2' }), verdict: 'pass' });
+  const audit = auditRerunLegality(ledger, cellKey(CELLS[0]));
+  assert.equal(audit.ok, false);
+  assert.match(audit.violations.join(','), /attempt-after-a-passing-attempt-at-ordinal-2/);
+});
+
+test('capture uniqueness is enforced at verdict time, not only at registration', () => {
+  let ledger = createAttemptLedger();
+  ledger = appendAttempt(ledger, { identity: identityFor(CELLS[0], 0, { captureId: 'shared-capture' }), verdict: 'pass' });
+  ledger = appendAttempt(ledger, { identity: identityFor(CELLS[1], 1, { captureId: 'shared-capture' }), verdict: 'pass' });
+  const audit = auditCaptureUniqueness(ledger);
+  assert.equal(audit.ok, false);
+  assert.match(audit.violations.join(','), /capture-reused:shared-capture:ordinals-1-and-2/);
+
+  const result = validateAggregate(baseArgs({ ledger }));
+  assert.ok(result.blockers.some((b) => b.startsWith('capture:capture-reused:shared-capture')));
+});
+
+test('capture uniqueness: a clean ledger has no capture violations', () => {
+  assert.equal(auditCaptureUniqueness(passingLedger()).ok, true);
 });
 
 // =============================================================================================

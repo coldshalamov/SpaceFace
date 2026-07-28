@@ -40,6 +40,7 @@ import {
   FAILURE_CLASSES, isHardFailureClass, evaluateRerunRequest,
   PROFILE_THRESHOLDS, freezeProfileAssignment, evaluatePerformanceSample, evaluateResourceStability,
   assertQualityUnchanged,
+  ACCESSIBILITY_PROFILES, ACCESSIBILITY_REQUIRED_CHECKS, evaluateAccessibilitySample,
   reconcileNativeDuration,
   normalizeOwnerEvidence, evaluateMasslineClaim, evaluatePurchaseClaim,
   createFingerprintRegistry, registerCapture,
@@ -519,6 +520,50 @@ test('long-session stability: monotonic growth without a declared bound is rejec
     series: { savePayloadBytes: [100, 200, 900] }, declaredHighWater: { savePayloadBytes: 500 },
   });
   assert.equal(overHighWater.ok, false);
+});
+
+// =============================================================================================
+// Accessibility contract
+// =============================================================================================
+
+function a11ySample(overrides = {}) {
+  const sample = {};
+  for (const check of ACCESSIBILITY_REQUIRED_CHECKS) sample[check] = true;
+  return { ...sample, ...overrides };
+}
+
+test('accessibility: a complete passing sample validates for a declared profile', () => {
+  const result = evaluateAccessibilitySample('reduced-motion', a11ySample());
+  assert.equal(result.ok, true, result.reason);
+});
+
+test('accessibility: a sample missing any required check is rejected', () => {
+  for (const check of ACCESSIBILITY_REQUIRED_CHECKS) {
+    const sample = a11ySample();
+    delete sample[check];
+    const result = evaluateAccessibilitySample('default', sample);
+    assert.equal(result.ok, false, `missing ${check} must reject`);
+    assert.match(result.reason, new RegExp(`missing-accessibility-check:.*${check}`));
+  }
+});
+
+test('accessibility: a failed check is rejected, and an unknown profile is rejected', () => {
+  const failed = evaluateAccessibilitySample('default', a11ySample({ contrastRatio: false, nonColorCues: false }));
+  assert.equal(failed.ok, false);
+  assert.match(failed.reason, /accessibility-check-failed:.*contrastRatio/);
+  assert.match(failed.reason, /nonColorCues/);
+  assert.equal(evaluateAccessibilitySample('psychic-mode', a11ySample()).reason, 'unknown-accessibility-profile:psychic-mode');
+});
+
+test('accessibility: the matrix rejects an unknown accessibility profile at construction', () => {
+  assert.throws(() => createQualificationMatrix({
+    cells: [{ career: 'hauler', horizonMin: 30, scenarioClass: 'success', runtimeKind: 'browser', profileClass: 'target', accessibilityProfile: 'invented' }],
+  }), /matrix-unknown-accessibility-profile:invented/);
+  const matrix = createQualificationMatrix({
+    cells: [{ career: 'hauler', horizonMin: 30, scenarioClass: 'success', runtimeKind: 'browser', profileClass: 'target', accessibilityProfile: 'text-scale-125' }],
+  });
+  assert.equal(matrix.cells[0].accessibilityProfile, 'text-scale-125');
+  for (const profile of ACCESSIBILITY_PROFILES) assert.equal(typeof profile, 'string');
 });
 
 // =============================================================================================
