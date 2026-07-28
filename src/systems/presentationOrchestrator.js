@@ -1,6 +1,8 @@
 import { getPresentationRecipe } from '../presentation/cueRecipes.js';
 import { normalizePresentationEvent } from '../presentation/cueSchema.js';
 import { chargeCueLanes, isCriticalCue, laneBudgetReason } from '../presentation/cueArbitration.js';
+import { worldSiteConditionText } from '../presentation/worldSiteDamageStates.js';
+import { worldSiteManifestById } from '../data/worldSiteManifests.js';
 import { damageLayerHierarchy, doctrinePhaseStage, grammarForDoctrine, isLiveDoctrineId } from '../presentation/combatChoreography.js';
 import { classifyDrillWarning, drillHardnessBand, fieldDepletionBand, seamQualityTag } from '../presentation/miningChoreography.js';
 import {
@@ -193,6 +195,10 @@ export const presentationOrchestrator = {
       this.bus.on('game:new', () => this._resetRuntime()),
       this.bus.on('game:started', () => this._resetRuntime()),
       this.bus.on('save:loaded', () => this._resetRuntime()),
+      // PQ-023 family (c): World Site damage / recovery. These two receipts already existed and
+      // carried the authoritative transition; nothing was listening on the presentation side.
+      this.bus.on('worldSite:failureReceipt', (payload) => this._onWorldSiteFailure(payload || {})),
+      this.bus.on('worldSite:operationReceipt', (payload) => this._onWorldSiteOperation(payload || {})),
     ];
   },
 
@@ -1180,6 +1186,59 @@ export const presentationOrchestrator = {
     });
   },
 
+  /**
+   * A World Site component failed. `componentId` is the authoritative owner truth; the accessible
+   * text is derived from it so a captions-only or greyscale player receives the same mechanical
+   * fact the dimmed fixture carries.
+   */
+  _onWorldSiteFailure(payload) {
+    const componentId = payload.componentId || null;
+    if (!componentId) return false;
+    return this._emitCue('world_site.damage', payload, {
+      sourceEvent: 'worldSite:failureReceipt',
+      sourceId: payload.siteId || null,
+      targetId: componentId,
+      subsystemId: componentId,
+      material: 'world_site',
+      sequence: payload.triggerId || (payload.receipt && payload.receipt.sequence) || null,
+      tags: ['world_site', 'damage', payload.stageId].filter(Boolean),
+      accessibilityText: worldSiteConditionText(worldSiteComponentLabel(payload.siteId, componentId), 'failed'),
+      // Addressed to the player: it undoes work the player performed.
+      playerRelevanceFloor: 0.9,
+    });
+  },
+
+  /**
+   * A World Site operation completed. Only transitions that actually restore a component are
+   * surfaced as recovery — ordinary progress operations are not damage-recovery cues, and emitting
+   * one per beam tick would be noise rather than a state change.
+   */
+  _onWorldSiteOperation(payload) {
+    const componentId = payload.componentId || null;
+    const receipt = payload.receipt || null;
+    if (!componentId || !receipt || receipt.complete !== true) return false;
+    // The receipt records amount/completion but not the state transition (that lives in
+    // record.completedOperations), so recovery identity is resolved from MANIFEST truth: an
+    // operation whose `from` set includes 'failed' is the authored recovery path. Everything else
+    // is ordinary progress and is not a damage-recovery cue.
+    const manifest = worldSiteManifestById(payload.siteId);
+    const operation = manifest && (manifest.operations || []).find((candidate) => candidate.id === payload.operationId);
+    if (!operation || !Array.isArray(operation.from) || !operation.from.includes('failed')) return false;
+    return this._emitCue('world_site.recovery', payload, {
+      sourceEvent: 'worldSite:operationReceipt',
+      sourceId: payload.siteId || null,
+      targetId: componentId,
+      subsystemId: componentId,
+      material: 'world_site',
+      sequence: payload.operationId || receipt.sequence || null,
+      tags: ['world_site', 'recovery', payload.stageId].filter(Boolean),
+      accessibilityText: worldSiteConditionText(
+        worldSiteComponentLabel(payload.siteId, componentId), operation.to || 'ready',
+      ),
+      playerRelevanceFloor: 0.9,
+    });
+  },
+
   _emitCue(cueId, payload, options = {}) {
     const recipe = getPresentationRecipe(cueId);
     if (!recipe) {
@@ -1215,6 +1274,15 @@ export const presentationOrchestrator = {
     event.sourceEvent = options.sourceEvent || null;
     event.lanes = { ...recipe.lanes };
     event.budgets = { ...recipe.budgets };
+    // PQ-023 family (e): owner-supplied noncolor / no-audio equivalent. Optional by design — the
+    // adapter still falls back to its static CAPTIONS table, so the ~80 recipes outside this leaf
+    // are untouched. An emitter that knows the specific mechanical fact (which component, which
+    // transition) states it here rather than encoding it in a per-id lookup that cannot vary.
+    const accessibilityText = options.accessibilityText ?? recipe.accessibilityText ?? null;
+    if (accessibilityText) event.accessibilityText = String(accessibilityText);
+    // Reduced-mode intent likewise travels with the cue when the recipe declares it.
+    if (recipe.reducedMotionMode) event.reducedMotionMode = recipe.reducedMotionMode;
+    if (recipe.reducedFlashMode) event.reducedFlashMode = recipe.reducedFlashMode;
 
     const suppressReason = this._suppressionReason(event, recipe);
     if (suppressReason) return this._suppress(cueId, payload, options, suppressReason, event);
@@ -1314,6 +1382,27 @@ const RELEASE_CUE_BY_CLASSIFICATION = Object.freeze({
 
 function finiteScore(value) {
   return Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * Human-readable component name for accessible text. Prefers the authored manifest label; falls
+ * back to a de-slugged component id so an unlisted site still speaks a sensible caption rather
+ * than a raw identifier.
+ */
+function worldSiteComponentLabel(siteId, componentId) {
+  const manifest = worldSiteManifestById(siteId);
+  const component = manifest && (manifest.components || []).find((candidate) => candidate.id === componentId);
+  if (component && component.label) {
+    const label = String(component.label);
+    return label === label.toUpperCase() ? titleCaseWords(label.toLowerCase()) : label;
+  }
+  return titleCaseWords(String(componentId || '').replace(/_/g, ' '));
+}
+
+function titleCaseWords(text) {
+  const trimmed = text.trim();
+  if (!trimmed) return 'Site component';
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
 
 function mergeTags(...groups) {

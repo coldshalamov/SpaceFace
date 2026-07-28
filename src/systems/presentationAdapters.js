@@ -87,6 +87,14 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'scenario.comms.denial': 'presentation.comms.denial',
   'scenario.objective.priority_split': 'presentation.objective.split',
   'scenario.branch.resolved': 'presentation.branch.resolved',
+  // PQ-023 family (c). Every presentation recipe must map to a concrete authored audio recipe
+  // (check-sg08-mix-profile enforces this), so these reuse existing authored signatures rather than
+  // inventing assets: a site component failing under `physics:impact` is a structural break, and a
+  // restoration is the completion of industrial-beam work. Deliberately NOT
+  // presentation.subsystem.disabled -- that signature means the PLAYER's own subsystem died, and
+  // reusing it would blur two different mechanical facts. Dedicated site audio is a follow-up.
+  'world_site.damage': 'presentation.mining.fracture_break',
+  'world_site.recovery': 'presentation.mining.core_reward',
 });
 
 const UI_CUES = Object.freeze({
@@ -509,7 +517,10 @@ export const presentationAdapters = {
   },
 
   _applyAccessibility(cue) {
-    const text = CAPTIONS[cue && cue.id];
+    // PQ-023 family (e): an owner-supplied accessibilityText outranks the static table. The table
+    // can only say one fixed sentence per cue id, which cannot name WHICH component failed. Cues
+    // that supply nothing keep their existing table entry unchanged.
+    const text = (cue && cue.accessibilityText) || CAPTIONS[cue && cue.id];
     if (!text) return null;
     const payload = {
       id: cue.id,
@@ -532,6 +543,10 @@ function uiCue(key, sev, text, ttl, audioOwnedByPresentation = false) {
 
 function shapeForCue(id) {
   if (id === 'combat.player.kill') return 'cross';
+  // PQ-023: distinct non-colour glyphs so a forced-colors or greyscale player can tell a site
+  // failure from a restoration without reading the caption.
+  if (id === 'world_site.damage') return 'bracket';
+  if (id === 'world_site.recovery') return 'ring';
   if (id && id.startsWith('tether.')) return 'arc';
   if (id === 'shield.collapse') return 'ring';
   if (id === 'subsystem.disabled') return 'bracket';
