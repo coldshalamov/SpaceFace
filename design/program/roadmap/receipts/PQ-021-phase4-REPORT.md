@@ -3,7 +3,7 @@ packetId: PQ-021
 leafId: PQ-021.phase4-route
 acceptance: focused_green
 disposition: PASS
-candidateCommit: 5a15e10d797d1c6cf59a2621317535b1b1f0b92b
+candidateCommit: 137ac3bc25104a26038c4bb9a5ffd1bc89ceb333
 -->
 
 # PQ-021 Phase 4 — natural earning, Continue, media, host parity
@@ -14,7 +14,7 @@ leaf: PQ-021.phase4-route
 scope: Phase 4 (natural earning, cold Continue, host parity, media at crop, accessibility,
        hidden/reopen cleanup) plus write-set item 10 (route harness + broker manifest)
 baseCommit: c6d83fe4
-candidateCommit: 5a15e10d797d1c6cf59a2621317535b1b1f0b92b
+candidateCommit: 137ac3bc25104a26038c4bb9a5ffd1bc89ceb333
 branch: claude/pq021-phase4-20260728
 lifecycleClaim: implemented
 acceptanceClaim: focused_green
@@ -35,8 +35,9 @@ teleporting the player or inflating beam dps — which is precisely the state in
 forbids. Faking the *route* to claim the *rule* would be worse than not claiming it.
 
 So the split is: **earning is proven at the ordinary operation API; the live-UI route is scoped to
-reading.** Both halves are built. The reading half is the `pq021-ledger-route` harness, which is
-lease-blocked and unrun.
+reading.** Both halves are built, and the reading half is now also *proven* — see claim 6. The
+broker acceptance cell (`pq021-ledger-route`) remains lease-blocked and unrun; what runs is a
+narrower non-broker check that drives the same two routes in the live game.
 
 ## Claims and commits
 
@@ -47,6 +48,7 @@ lease-blocked and unrun.
 | 3 | `pq021-ledger-route` harness + broker manifest, built and registered, never run | `1c10a12a` |
 | 4 | Aborted-media-request classification (flake fix in my own check) | `dce11cef` |
 | 5 | Figure-cap and lossless-crop guards, both proven by mutation | `5a15e10d` |
+| 6 | Both ordinary read routes proven in the live game, headless; two harness defects found and fixed | `137ac3bc` |
 
 ### 1 — Natural earning
 
@@ -191,6 +193,42 @@ is registered, every declared source path exists, the deterministic fast gates p
 the probe gates on `SF_BROKER_CLAIM` and exits 2, both entries share the route module, and the
 K / Y-Triangle bindings the route depends on are the shipped ones.
 
+### 6 — Both ordinary read routes, proven in the live game
+
+`scripts/check-pq021-ledger-keyboard-route.mjs` boots a real run headlessly from New Game, earns the
+five pages **inside the live runtime** through the ordinary operation API in the live registry, and
+then reaches them both ways:
+
+```
+flight   K -> Codex -> Ledger tab            -> 5 evidence rows of 6
+station  dock -> Ledger destination          -> 5 evidence rows of 6
+live figure                                   1920x1080 -> 718x404
+```
+
+Rows are identical across the two routes, each host names itself from its own heading, exactly one
+figure is mounted per host, and the live station figure is cropped and aspect-preserving.
+
+This is **not** the broker cell: it issues no claim, writes no acceptance receipt, and consumes no
+acceptance quota. `probe-pq021-ledger-route.mjs` is still unrun. Booting the game headlessly is
+routine here — `check:station-tabs`, a required gate, does it on every run.
+
+It was worth building because the route harness rested on live-game selectors and a live-registry
+earning path that nothing had ever exercised, and it found **two defects that would have failed the
+harness the moment the lease freed**, for reasons unrelated to the Ledger:
+
+1. **Assigning `state.world.currentSectorId` does not move the player.** The world system owns that
+   field (`src/systems/world.js:404`) and re-derives it every frame, so the assignment was reverted
+   and the Ceres entities despawned — surfacing as the payload missing at settlement. Both the check
+   and the route module now use the game's own intentional-jump entry point,
+   `world.enterSector(sectorId, { fromJump: true })`.
+2. **The released payload materializes on the owner's sync, not synchronously with the clamp cut**,
+   so the tow must wait for it.
+
+A third defect was in my own assertion: a real run also projects the other receipt families, so the
+panel legitimately lists six rows. Both this check and `assertRouteContract` now require exactly
+five **evidence** rows rather than five rows. Had the harness run first, that would have read as a
+Ledger failure rather than a test bug.
+
 ## Gates
 
 Baseline signatures were captured on `c6d83fe4` before any edit; all four node gates were green then
@@ -205,7 +243,7 @@ and are green now.
 | `npm run check:baseline` | **exit 0**, 10/10 green |
 | `npm run check:ui-a11y` | **exit 0** |
 | `npm run check:wcag-contrast` | **exit 0** |
-| `npm run check:pq021-ledger` (new alias) | **exit 0** — 8 focused tests + the two-host DOM check |
+| `npm run check:pq021-ledger` (new alias) | **exit 0** — 17 focused tests + two-host DOM check + live read-route check |
 | `node --test test/pq021-ledger-route-manifest.test.mjs` | 9 pass / 0 fail |
 | `node --test test/ship-ledger-evidence-host.test.mjs test/depth-program-a2-ship-ledger.test.mjs test/pq021-ledger-natural-earning.test.mjs` | 26 pass / 0 fail |
 | `node --test test/validation-broker.test.mjs` (CLI was edited) | 33 pass / 0 fail |
@@ -225,9 +263,11 @@ Inherited reds not chased, per the mission: `check:economy:anti-exploit`,
 
 Blocked on the PQ-034 performance-evidence / validation-broker / browser-gpu leases:
 
-1. **Headed Browser run of `pq021-ledger-route`.** Built, registered, never executed. Until it runs,
-   there is no evidence that a player pressed K, opened the Codex Ledger tab, and saw a page — only
-   that every piece that route depends on is green in a real DOM.
+1. **Headed Browser run of `pq021-ledger-route`.** Built, registered, never executed — the broker
+   acceptance receipt does not exist. What *is* proven (claim 6) is the same two routes driven
+   headlessly in the live game without the broker: K opens the Codex, the Ledger tab mounts the
+   panel, the dock destination mounts the same panel, and both show the five earned pages. The gap
+   is the headed run and the broker-issued acceptance receipt, not the route's existence.
 2. **Electron parity.** `check-pq021-ledger-route-electron.mjs` exists and cross-checks the Browser
    receipt; the mission barred launching Electron. `route_accepted` requires both runtimes.
 3. **Independent legibility / provenance / usefulness review.** A human judgement, not a gate.
