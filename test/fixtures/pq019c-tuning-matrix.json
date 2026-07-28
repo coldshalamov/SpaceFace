@@ -1,0 +1,95 @@
+{
+  "schema": "spaceface.pq019c.tuningMatrix.v1",
+  "packetId": "PQ-019",
+  "leafId": "PQ-019.mission-route",
+  "predeclaredAt": "2026-07-28",
+  "note": "PREDECLARED BEFORE ANY CELL WAS RUN. This file is the whole permitted search space for PQ-019C's balance numbers. Values are SELECTED ONCE from the results by the stated objective for each dimension, pinned in src/data/heistMission.js, and asserted by test/pq019c-heist-tuning.test.mjs. Anything outside these candidate lists is unrecorded taste iteration and is not allowed.",
+  "seeds": [19019, 47, 20260728],
+  "runner": "scripts/tune-pq019c-heist.mjs",
+  "constraints": [
+    "witnessRadius candidates stay STRICTLY BELOW 600. lawSecurity owns LAW_INCIDENT_WITNESS_RADIUS, and 600 WU is the lawful-station protection floor: at or above it a lawful station is always its own witness, the witness gate goes vacuous, and PQ-019B's annulus test (check:pq019b:seams) goes red. The mission may not raise it.",
+    "capsule radius is NOT a candidate: test/pq019-authored-cargo-capsule.test.mjs pins radius 6 literally, so changing it would make PQ-019A's check this packet's problem.",
+    "launchSpeed and capsuleMass live in PQ-019A's src/data/heistFacilities.js. They are measured here, and are only changed if a cell clearly beats the authored value on the stated objective. 'The matrix confirmed A's authored values' is a legitimate selection result and must be recorded as such.",
+    "unlaunchedWindowTicks must exceed launchWindowS * 60 with margin, or an ordinary countdown cuts itself short.",
+    "every cell runs headless: no browser, no Electron, no performance capture (PQ-034 holds those leases)."
+  ],
+  "dimensions": {
+    "launchSpeed": {
+      "authored": 120,
+      "candidates": [80, 100, 120, 150, 190],
+      "unit": "WU/s",
+      "objective": "The capsule must take long enough to reach the catcher that an interception is a real flight problem, and not so long that the leg is dead time. Select the fastest speed whose launcher-to-catcher transit still exceeds 20 s.",
+      "measure": "ticksLauncherToCatcher"
+    },
+    "capsuleMass": {
+      "authored": 180,
+      "candidates": [120, 180, 260, 400],
+      "unit": "mass units",
+      "objective": "The capsule must feel like cargo against the player hull (mass 24), not like a rock or a balloon. Select the authored value unless a cell changes the mass ratio band it sits in.",
+      "measure": "massRatioToPlayerHull"
+    },
+    "launchWindowS": {
+      "authored": 45,
+      "candidates": [20, 30, 45, 60],
+      "unit": "s",
+      "objective": "Time from accept to launch. Must be long enough to undock from Tethys and reach the launcher corridor, short enough that waiting is not the mission. Select the smallest window that still clears the measured undock-to-launcher transit with margin.",
+      "measure": "tethysToLauncherTransitS"
+    },
+    "runWindowTicks": {
+      "authored": 9000,
+      "candidates": [3600, 6000, 9000, 14400],
+      "unit": "ticks (60 Hz)",
+      "objective": "Bounded life of a launched capsule. Must exceed the launcher-to-catcher leg plus the catcher-to-fence leg with margin at the selected launch speed, so the window never expires a run the player was still flying. Select the smallest that does.",
+      "measure": "ticksFullRouteAtSelectedSpeed"
+    },
+    "witnessRadius": {
+      "authored": 450,
+      "candidates": [300, 450, 550],
+      "unit": "WU",
+      "objective": "The annulus where a theft is inside the law's jurisdiction but genuinely unseen must be non-empty. Select the largest candidate that still leaves a measurable unwitnessed annulus. May never reach 600.",
+      "measure": "unwitnessedAnnulusWu"
+    },
+    "responderLeaseCap": {
+      "authored": 2,
+      "candidates": [1, 2, 3],
+      "unit": "leases",
+      "objective": "How many already-flying patrols a pursuit may borrow. Bounded by the live authority policy's own responder cap; select min(authored, measured responderCap).",
+      "measure": "lawResponderCap"
+    },
+    "responderLeashWu": {
+      "authored": 2600,
+      "candidates": [1600, 2200, 2600, 3400],
+      "unit": "WU",
+      "objective": "Distance past which a borrowed patrol goes back to its own work. Must exceed the escape radius by a clear margin, or the leash releases before escape can ever latch and pursuit is decorative. Select the smallest candidate at least 600 WU above the selected escape radius.",
+      "measure": "leashMinusEscapeRadius"
+    },
+    "escapeRadiusWu": {
+      "authored": 1800,
+      "candidates": [900, 1400, 1800, 2400],
+      "unit": "WU",
+      "objective": "Distance from the nearest live pursuer at which contact counts as broken. Must be smaller than the leash and smaller than the launcher-to-catcher leg, so escaping is a thing that happens inside the route rather than only outside it.",
+      "measure": "escapeRadiusVsRouteLegs"
+    },
+    "escapeHoldTicks": {
+      "authored": 180,
+      "candidates": [60, 120, 180, 300],
+      "unit": "ticks (60 Hz)",
+      "objective": "How long the escape distance must hold before it latches, so one lucky frame is not an escape. Select the smallest candidate that is at least 1 s and that latches within the selected run window from a standing start.",
+      "measure": "ticksToLatchFromLeashBreak"
+    },
+    "payoutCr": {
+      "authored": 2400,
+      "candidates": [1200, 1800, 2400, 3200],
+      "unit": "credits",
+      "objective": "The fence payout. Must sit above the highest ordinary risk-3 board contract at Tethys (this run costs heat, a WANTED flag and a real chance of losing the capsule) without exceeding it by more than roughly 2x, which would make every other contract pointless. Select the smallest candidate inside that band.",
+      "measure": "tethysRiskAdjustedBoardMaxCr"
+    },
+    "recoveryPayoutCr": {
+      "authored": 1100,
+      "candidates": [600, 900, 1100, 1600],
+      "unit": "credits",
+      "objective": "Reduced stake. Must be strictly less than the selected payout and not less than a third of it. Select the candidate nearest half the selected payout.",
+      "measure": "selectedPayoutCr"
+    }
+  }
+}
