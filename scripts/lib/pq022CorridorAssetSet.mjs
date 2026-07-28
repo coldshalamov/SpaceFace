@@ -332,7 +332,8 @@ const WHOLESHIP_ROWS = [
     horizon: 30,
     status: 'offline-checkpoint',
     derivations: [
-      d('player-hull', 'partsLibrary.WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID.ship_kestrel.lod1', 'authored LOD family member'),
+      d('player-hull', 'partsLibrary.WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID.ship_kestrel.lod1',
+        'catalogued LOD family member; lodFamily (partsLibrary.js:499) has NO consumer, so LOD0 is canonical live truth'),
     ],
     openIssues: ['runtime-g5-g6-open'],
     ownerLane: 'Kestrel material-truth remediation (blocked behind PQ-034)',
@@ -343,7 +344,8 @@ const WHOLESHIP_ROWS = [
     horizon: 30,
     status: 'offline-checkpoint',
     derivations: [
-      d('player-hull', 'partsLibrary.WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID.ship_kestrel.lod2', 'authored LOD family member'),
+      d('player-hull', 'partsLibrary.WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID.ship_kestrel.lod2',
+        'catalogued LOD family member; lodFamily (partsLibrary.js:499) has NO consumer, so LOD0 is canonical live truth'),
     ],
     openIssues: ['runtime-g5-g6-open'],
     ownerLane: 'Kestrel material-truth remediation (blocked behind PQ-034)',
@@ -363,13 +365,15 @@ const WHOLESHIP_ROWS = [
     assetId: 'wasp_production_v1_lod1',
     family: 'wholeship-production',
     status: 'never-touched',
-    derivations: [d('production-wholeship', 'partsLibrary.WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID.ship_wasp.lod1', 'authored LOD family member')],
+    derivations: [d('production-wholeship', 'partsLibrary.WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID.ship_wasp.lod1',
+      'catalogued LOD family member; lodFamily (partsLibrary.js:499) has NO consumer, so LOD0 is canonical live truth')],
   }),
   row({
     assetId: 'wasp_production_v1_lod2',
     family: 'wholeship-production',
     status: 'never-touched',
-    derivations: [d('production-wholeship', 'partsLibrary.WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID.ship_wasp.lod2', 'authored LOD family member')],
+    derivations: [d('production-wholeship', 'partsLibrary.WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID.ship_wasp.lod2',
+      'catalogued LOD family member; lodFamily (partsLibrary.js:499) has NO consumer, so LOD0 is canonical live truth')],
   }),
   row({
     assetId: 'ashline_dart',

@@ -10,7 +10,7 @@
       "severity": "hard",
       "blocksMilestone": true,
       "ownerLane": "visual production lane (NOW.md: place_asteroid_rock_a/b/c, not yet started)",
-      "reason": "The on-disk source GLB is a different artifact (9,118,128 bytes) from the one both manifests describe (1,970,132). The RELEASE artifact still binds, so the corridor route renders correctly in the default release asset mode — this is a reproducibility/provenance failure, not a missing asset. It is a milestone blocker because the asset cannot be rebuilt from its recorded source identity, and the same asset is independently named for re-authoring."
+      "reason": "The on-disk source GLB is a different artifact (9,118,128 bytes) from the one both manifests describe (1,970,132). The RELEASE artifact's hash still binds to its manifest row, so release IDENTITY is intact and the asset is not absent from the route — but the release provably cannot be reproduced from the recorded source, because the recorded source is no longer the file on disk. It is a milestone blocker on those grounds, and the same asset is independently named for re-authoring in NOW.md."
     },
     {
       "assetId": "place_asteroid_rock_a",
@@ -26,7 +26,7 @@
       "severity": "moderate",
       "blocksMilestone": false,
       "ownerLane": "Kestrel material-truth remediation (asset-manifest mutex released; blocked at runtime G5/G6 behind PQ-034)",
-      "reason": "The release manifest carries wholeship_kestrel_lod1 with binding hashes and the artifact exists, but parts_manifest.json has no source row. The LOD family is real and hash-bound on the release side; only the source catalogue is asymmetric. Cosmetically incomplete provenance on the single most-seen asset of the corridor."
+      "reason": "The release manifest carries wholeship_kestrel_lod1 with binding hashes and the artifact exists, but parts_manifest.json has no source row. The LOD family is real and hash-bound on the release side; only the source catalogue is asymmetric. Not a blocker: LOD family members are unreachable at runtime (lodFamily at partsLibrary.js:499 has zero consumers), so LOD0 is canonical live truth."
     },
     {
       "assetId": "kestrel_lod2",
@@ -39,34 +39,34 @@
     {
       "assetId": "wasp_production_v1_lod1",
       "gap": "source-manifest-row-missing",
-      "severity": "hard",
-      "blocksMilestone": true,
+      "severity": "moderate",
+      "blocksMilestone": false,
       "ownerLane": "unowned — no lane has ever claimed the production Wasp LOD family",
-      "reason": "src/render/partsLibrary.js WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID.ship_wasp names this file and the GLB exists on disk, but it appears in NEITHER manifest. It therefore has no recorded identity, no hash binding, and no admission proof, while the runtime is prepared to select it. The production Wasp is near-guaranteed in Helios (patrol x2.5, escort x1.8 at security 0.98)."
+      "reason": "src/render/partsLibrary.js WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID.ship_wasp names this file and the GLB exists on disk, but it appears in NEITHER manifest. NOT a milestone blocker: the LOD family is unreachable at runtime. `lodFamily` is written at partsLibrary.js:499 and has zero consumers, and the only other reference is WHOLE_SHIP_URLS, whose sole uses are the whole-ship body validator and the filter that EXCLUDES these files from modular hull selection (partsLibrary.js:2548). LOD0 is canonical live truth, exactly as the source comment states. This is an unrecorded-identity gap on a dormant artifact."
     },
     {
       "assetId": "wasp_production_v1_lod1",
       "gap": "release-manifest-row-missing",
-      "severity": "hard",
-      "blocksMilestone": true,
+      "severity": "moderate",
+      "blocksMilestone": false,
       "ownerLane": "unowned — no lane has ever claimed the production Wasp LOD family",
-      "reason": "Same unmanifested artifact as above, release side."
+      "reason": "Same unmanifested dormant artifact as above, release side. Note the asymmetry with the Kestrel LODs, which DO have release rows with binding hashes."
     },
     {
       "assetId": "wasp_production_v1_lod2",
       "gap": "source-manifest-row-missing",
-      "severity": "hard",
-      "blocksMilestone": true,
+      "severity": "moderate",
+      "blocksMilestone": false,
       "ownerLane": "unowned — no lane has ever claimed the production Wasp LOD family",
-      "reason": "Same unmanifested artifact as wasp_production_v1_lod1."
+      "reason": "Same unmanifested dormant artifact as wasp_production_v1_lod1."
     },
     {
       "assetId": "wasp_production_v1_lod2",
       "gap": "release-manifest-row-missing",
-      "severity": "hard",
-      "blocksMilestone": true,
+      "severity": "moderate",
+      "blocksMilestone": false,
       "ownerLane": "unowned — no lane has ever claimed the production Wasp LOD family",
-      "reason": "Same unmanifested artifact as wasp_production_v1_lod1, release side."
+      "reason": "Same unmanifested dormant artifact as wasp_production_v1_lod1, release side."
     },
     {
       "assetId": "place_lane_beacon",
