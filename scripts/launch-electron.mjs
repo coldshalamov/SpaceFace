@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync } from 'node:fs';
+import { closeSync, mkdirSync, openSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { provisionElectronRuntime } from './lib/electronRuntimeProvisioning.mjs';
 
 const require = createRequire(import.meta.url);
 const {
@@ -15,20 +17,26 @@ const {
 } = require('./lib/electronLaunchProtocol.cjs');
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const electronExecutable = resolveElectronExecutable();
 const launchRoot = path.join(os.tmpdir(), 'spaceface-launcher');
 mkdirSync(launchRoot, { recursive: true });
 const launchId = `${Date.now()}-${process.pid}`;
 const receiptPath = path.join(launchRoot, `${launchId}.jsonl`);
 const logPath = path.join(launchRoot, `${launchId}.log`);
 
-if (!electronExecutable || !existsSync(electronExecutable)) {
-  const result = evaluateLaunchOutcome({ electronExists: false });
-  console.error(formatLaunchOutcome(result, { logPath }));
-  process.exitCode = 1;
-} else {
-  await launchElectron();
+let electronRuntime = null;
+try {
+  electronRuntime = provisionElectronRuntime({ root: ROOT });
+} catch (error) {
+  if (error && error.code === 'electron-package-missing') {
+    const result = evaluateLaunchOutcome({ electronExists: false });
+    console.error(formatLaunchOutcome(result, { logPath }));
+  } else {
+    console.error(`[electron-launcher] ${error && error.message ? error.message : error}`);
+  }
+  process.exitCode = Number.isInteger(error && error.exitCode) ? error.exitCode : 1;
 }
+
+if (electronRuntime) await launchElectron();
 
 async function launchElectron() {
   const logFd = openSync(logPath, 'a');
@@ -36,7 +44,7 @@ async function launchElectron() {
   let spawnError = null;
   let exitCode = null;
   try {
-    child = spawn(electronExecutable, ['.'], {
+    child = spawn(electronRuntime.runtimePath, ['.'], {
       cwd: ROOT,
       detached: true,
       windowsHide: false,
@@ -102,11 +110,6 @@ function readReceipts() {
 function readDiagnosticTail() {
   try { return tailDiagnosticText(readFileSync(logPath, 'utf8')); }
   catch { return ''; }
-}
-
-function resolveElectronExecutable() {
-  try { return require('electron'); }
-  catch { return null; }
 }
 
 function delay(ms) {

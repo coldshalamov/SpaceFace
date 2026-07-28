@@ -80,9 +80,12 @@ assert.doesNotMatch(
   'Electron main must NOT inline serving/freshness logic — it must come from the shared module'
 );
 assert.doesNotMatch(electronMain, /location\.reload|webContents\.reload|__dev_auto_refresh/, 'Electron dev must not auto-reload the game while agents are editing files');
+assert.match(electronMain, /const gameUrl = `http:\/\/127\.0\.0\.1:\$\{port\}\/`;/,
+  'Electron must derive one canonical loopback root game URL from the owned listener');
 const electronLoadUrlLine = electronMain.split(/\r?\n/).find((line) => line.includes('win.loadURL')) || '';
-assert.ok(electronLoadUrlLine.includes('http://127.0.0.1:${port}/`'), 'Electron must load the canonical root game URL');
-assert.doesNotMatch(electronLoadUrlLine, /\?|prod=1|release=1|debug=|dev=/, 'Electron must not inject mode/query flags into the normal game launch URL');
+assert.match(electronLoadUrlLine, /win\.loadURL\(gameUrl\)/, 'Electron must load the canonical root game URL');
+assert.doesNotMatch(electronMain.match(/const gameUrl[^\n]*/)?.[0] || '', /\?|prod=1|release=1|debug=|dev=/,
+  'Electron must not inject mode/query flags into the normal game launch URL');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BROWSER SERVER — must also wire the shared module (ESM via createRequire).

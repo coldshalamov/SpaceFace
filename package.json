@@ -4,10 +4,13 @@
   "description": "SpaceFace — a semi-3D top-down space trading/combat/mining game (Three.js).",
   "type": "module",
   "main": "electron/main.cjs",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "start": "node server.js",
     "serve": "node server.js 8123",
-    "electron": "electron .",
+    "electron": "node scripts/launch-electron.mjs",
     "dist": "npm run build:bundle && electron-builder",
     "sf": "node scripts/sf.mjs",
     "check:contracts": "node scripts/sf.mjs validate test/47a.inputs.json test/47a.telemetry.expected.json src/data/scenarios/47a.scenario.json && node scripts/check-src-reachability.mjs",
@@ -490,7 +493,7 @@
     "@gltf-transform/core": "^4.4.1",
     "@gltf-transform/extensions": "^4.4.1",
     "@gltf-transform/functions": "^4.4.1",
-    "electron": "^31.3.0",
+    "electron": "43.2.0",
     "electron-builder": "^24.13.3",
     "esbuild": "^0.28.1",
     "jpeg-js": "^0.4.4",
@@ -507,7 +510,8 @@
     },
     "files": [
       "build/web/**",
-      "electron/**",
+      "electron/main.cjs",
+      "electron/preload.cjs",
       "scripts/lib/gameServer.cjs",
       "scripts/lib/electronLaunchProtocol.cjs",
       "package.json"

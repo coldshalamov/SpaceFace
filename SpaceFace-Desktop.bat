@@ -24,11 +24,16 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-REM Install dependencies if needed (first time only, or if Electron is missing)
-if not exist "node_modules\.bin\electron.cmd" (
+REM Install package metadata if missing or stale. The Node launcher separately provisions
+REM Electron's deferred runtime binary and reports the installer's real diagnostics and exit code.
+set "NEED_INSTALL=0"
+if not exist "node_modules\electron\package.json" set "NEED_INSTALL=1"
+if exist "node_modules\electron\package.json" node -e "const project=require('./package.json');const installed=require('./node_modules/electron/package.json');process.exit(installed.version===project.devDependencies.electron?0:1)" >nul 2>nul
+if errorlevel 1 set "NEED_INSTALL=1"
+if "%NEED_INSTALL%"=="1" (
     echo Installing required packages - this may take a minute the first time...
     call npm install
-    if %errorlevel% neq 0 (
+    if errorlevel 1 (
         echo.
         echo ERROR: npm install failed.
         echo Please check the error above, then run this file again.

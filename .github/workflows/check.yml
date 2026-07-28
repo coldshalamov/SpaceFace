@@ -35,9 +35,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Node 20 LTS. The headless check scripts use Node built-ins + vendored three.module.js;
-          # the bundle check (check:bundle) additionally needs esbuild, so deps ARE installed now.
-          node-version: '20'
+          # Electron 43's npm tooling requires Node >=22.12. The headless checks also use esbuild,
+          # so CI installs the declared dependency graph on the same supported host line.
+          node-version: '22'
           cache: 'npm'
 
       # Install dev dependencies. npm ci is faster + deterministic on CI.

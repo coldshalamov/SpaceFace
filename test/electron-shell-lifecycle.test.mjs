@@ -41,10 +41,15 @@ async function loadMain({ isolatedEvidence = false, allowBackgroundExecution = f
   const windows = [];
   const commands = [];
   const receipts = [];
+  const security = {
+    permissionCheckHandler: null,
+    permissionRequestHandler: null,
+  };
   const powerMonitor = emitter();
   const app = emitter({
     isPackaged: false,
     commandLine: { appendSwitch() {} },
+    getPath(name) { return path.join(ROOT, `.electron-${name}`); },
     setPath() {},
     requestSingleInstanceLock() { return true; },
     whenReady() { return Promise.resolve(); },
@@ -55,7 +60,13 @@ async function loadMain({ isolatedEvidence = false, allowBackgroundExecution = f
   function FakeBrowserWindow(options) {
     const webContents = emitter({
       destroyed: false,
+      windowOpenHandler: null,
+      session: {
+        setPermissionCheckHandler(handler) { security.permissionCheckHandler = handler; },
+        setPermissionRequestHandler(handler) { security.permissionRequestHandler = handler; },
+      },
       isDestroyed() { return this.destroyed; },
+      setWindowOpenHandler(handler) { this.windowOpenHandler = handler; },
       send(channel, command) {
         assert.equal(channel, CHANNEL);
         commands.push(command);
@@ -79,7 +90,10 @@ async function loadMain({ isolatedEvidence = false, allowBackgroundExecution = f
       restore() { this.minimized = false; this.visible = true; this.emit('restore'); },
       focus() { this.visible = true; this.focused = true; this.emit('focus'); },
       blur() { this.focused = false; this.emit('blur'); },
-      async loadURL() { webContents.emit('did-finish-load'); },
+      async loadURL(url) {
+        this.loadedUrl = url;
+        webContents.emit('did-finish-load');
+      },
     });
     windows.push(win);
     return win;
@@ -97,6 +111,7 @@ async function loadMain({ isolatedEvidence = false, allowBackgroundExecution = f
   const sandbox = {
     __dirname: path.join(ROOT, 'electron'),
     console,
+    URL,
     module: { exports: {} },
     exports: {},
     process: {
@@ -104,6 +119,14 @@ async function loadMain({ isolatedEvidence = false, allowBackgroundExecution = f
         ? { SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' }
         : {},
       platform: 'win32',
+      execPath: path.join(ROOT, 'electron.exe'),
+      resourcesPath: path.join(ROOT, 'resources'),
+      versions: {
+        electron: '43.2.0',
+        chrome: '150.0.7871.129',
+        node: '24.18.0',
+        v8: '15.0.0',
+      },
     },
     require(specifier) {
       if (specifier === 'electron') return { app, BrowserWindow: FakeBrowserWindow, powerMonitor };
@@ -114,7 +137,7 @@ async function loadMain({ isolatedEvidence = false, allowBackgroundExecution = f
         return {
           appendLaunchReceipt(_receiptPath, status, details) { receipts.push({ status, details }); },
           isAllowedElectronListenerPort() { return true; },
-          isAssetPreloadFailureMessage() { return false; },
+          isAssetPreloadFailureMessage(message) { return /authored preload failed/i.test(String(message || '')); },
           resolveElectronLaunchConfig() {
             return {
               isolatedEvidence,
@@ -133,7 +156,7 @@ async function loadMain({ isolatedEvidence = false, allowBackgroundExecution = f
   vm.runInNewContext(readFileSync(MAIN_PATH, 'utf8'), sandbox, { filename: MAIN_PATH });
   await settle();
   assert.equal(windows.length, 1);
-  return { app, powerMonitor, win: windows[0], windows, commands, receipts };
+  return { app, powerMonitor, win: windows[0], windows, commands, receipts, security };
 }
 
 function loadPreload() {
@@ -178,9 +201,95 @@ test('normal player window restores Chromium background throttling', async () =>
   const h = await loadMain({ allowBackgroundExecution: true });
   assert.equal(h.win.options.webPreferences.contextIsolation, true);
   assert.equal(h.win.options.webPreferences.nodeIntegration, false);
+  assert.equal(h.win.options.webPreferences.sandbox, true);
+  assert.equal(h.win.options.webPreferences.webSecurity, true);
+  assert.equal(h.win.options.webPreferences.allowRunningInsecureContent, false);
+  assert.equal(h.win.options.webPreferences.experimentalFeatures, false);
   assert.equal(h.win.options.webPreferences.backgroundThrottling, true,
     'the evidence env var alone must not disable player throttling');
   assert.equal(h.win.options.webPreferences.preload, PRELOAD_PATH);
+});
+
+test('desktop shell denies popups, foreign navigation, and every permission except owned pointer lock', async () => {
+  const h = await loadMain();
+  assert.equal(h.win.loadedUrl, 'http://127.0.0.1:41788/');
+  assert.deepEqual(
+    plain(h.win.webContents.windowOpenHandler({ url: 'https://example.com/' })),
+    { action: 'deny' },
+  );
+
+  const blockedNavigation = {
+    prevented: false,
+    preventDefault() { this.prevented = true; },
+  };
+  h.win.webContents.emit('will-navigate', blockedNavigation, 'https://example.com/');
+  assert.equal(blockedNavigation.prevented, true);
+  const canonicalNavigation = {
+    prevented: false,
+    preventDefault() { this.prevented = true; },
+  };
+  h.win.webContents.emit('will-navigate', canonicalNavigation, h.win.loadedUrl);
+  assert.equal(canonicalNavigation.prevented, false);
+
+  assert.equal(typeof h.security.permissionCheckHandler, 'function');
+  assert.equal(typeof h.security.permissionRequestHandler, 'function');
+  assert.equal(
+    h.security.permissionCheckHandler(h.win.webContents, 'pointerLock', 'http://127.0.0.1:41788', {}),
+    true,
+  );
+  assert.equal(
+    h.security.permissionCheckHandler(h.win.webContents, 'pointerLock', 'https://example.com', {}),
+    false,
+  );
+  assert.equal(
+    h.security.permissionCheckHandler(h.win.webContents, 'media', 'http://127.0.0.1:41788', {}),
+    false,
+  );
+  assert.equal(
+    h.security.permissionCheckHandler({}, 'pointerLock', 'http://127.0.0.1:41788', {}),
+    false,
+  );
+
+  let requestDecision = null;
+  h.security.permissionRequestHandler(
+    h.win.webContents,
+    'pointerLock',
+    (allowed) => { requestDecision = allowed; },
+    { requestingUrl: 'http://127.0.0.1:41788/' },
+  );
+  assert.equal(requestDecision, true);
+  h.security.permissionRequestHandler(
+    h.win.webContents,
+    'notifications',
+    (allowed) => { requestDecision = allowed; },
+    { requestingUrl: 'http://127.0.0.1:41788/' },
+  );
+  assert.equal(requestDecision, false);
+  assert(h.receipts.some((entry) => entry.status === 'window-open-blocked'));
+  assert(h.receipts.some((entry) => entry.status === 'navigation-blocked'));
+  assert(h.receipts.some((entry) => entry.status === 'permission-denied'));
+});
+
+test('Electron 43 console details and runtime identity remain diagnostic-only receipts', async () => {
+  const h = await loadMain();
+  h.win.webContents.emit('console-message', {}, { message: 'authored preload failed: timeout' });
+  assert.equal(
+    h.receipts.find((entry) => entry.status === 'asset-preload-failed')?.details.message,
+    'authored preload failed: timeout',
+  );
+  assert.deepEqual(
+    plain(h.receipts.find((entry) => entry.status === 'starting')?.details.runtime),
+    {
+      electron: '43.2.0',
+      chromium: '150.0.7871.129',
+      node: '24.18.0',
+      v8: '15.0.0',
+      packaged: false,
+      executablePath: path.join(ROOT, '.electron-exe'),
+      resourcesPath: path.join(ROOT, 'resources'),
+      userDataPath: path.join(ROOT, '.electron-userData'),
+    },
+  );
 });
 
 test('only an isolated evidence process may disable background throttling', async () => {
