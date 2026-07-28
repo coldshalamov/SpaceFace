@@ -3,7 +3,7 @@ packetId: PQ-022
 leafId: PQ-022.exterior-relay-collar
 acceptance: focused_green
 disposition: PASS
-candidateCommit: 9e6aafb86b9e3319a7a27909b053ab932aa9c39c
+candidateCommit: 4057047b01c0051655e5da29447393a46bd8722c
 -->
 
 # PQ-022 leaf — exterior claim relay/collar admission
@@ -21,7 +21,7 @@ runtimeOwner:
   - src/data/worldSiteAssetBindings.js
   - src/systems/asteroidSites.js
 baseCommit: c6d83fe4
-candidateCommit: 9e6aafb86b9e3319a7a27909b053ab932aa9c39c
+candidateCommit: 4057047b01c0051655e5da29447393a46bd8722c
 lifecycleClaim: implemented
 acceptanceClaim: focused_green
 disposition: PASS
@@ -29,8 +29,10 @@ decision: ACCEPT AS-IS (structural); visual verdict deferred with a recorded res
 assetMutations: none
 ```
 
-`candidateCommit` is the parent of the commit carrying this receipt: it is the tip that contains
-every artifact the claims below rest on. The receipt commit adds only this file.
+`candidateCommit` (`4057047b`) is the parent of the commit carrying this receipt: it is the commit
+that contains every artifact the claims below rest on. The receipt commit adds only this file, and
+is the branch tip of `claude/pq022-relay-collar-20260728`. A receipt cannot name the sha of the
+commit that contains it, so the two are deliberately distinct.
 
 ## What this leaf claims
 
@@ -120,6 +122,12 @@ PQ-018 recorded for the Cathedral does **not** apply here.
 The LOD chain is a real reduction (3.6× then 4.1×), not exported copies of LOD0, and every level
 keeps all 5 draw groups.
 
+The 44 triangles outside the LOD chain are a single node, **`COLLISION_HULL`** (mesh `Cube.121`,
+`Material_Mechanical`, 93.90 × 86.27 × 49.79 m). It is deliberately un-LOD'd because it is an
+authored collision/interaction proxy rather than presentation geometry — the proxy PQ-022 Phase 1
+requires. It is demonstrably not drawn: it spans 93.90 authored m, which is wider than the entire
+measured draw union of 85.06 authored m.
+
 ### Measured bounds and the axis-order finding
 
 | Level | World AABB size (m), source |
@@ -160,7 +168,14 @@ digest that four records and the PQ-017 binding depend on.
 grey primitives — cylinders, boxes, two torus rings, a disc — with a cyan accent ring. This is the
 authored look, not a loading failure: the live capture records all five materials binding
 baseColor + normal + roughness + metalness + AO as 1024px **compressed KTX2** through the shared
-material path. It satisfies the *gameplay* signal PQ-024 wants (at ~105 m the pale silhouette reads
+material path.
+
+The stills carry their own control. In `exterior-close.png` the asteroid the relay is bolted to
+renders with clearly readable surface variation while the relay does not — same frame, same
+lighting, same renderer, same post chain. That is a direct comparison rather than an inference from
+the material table, and it is the form the argument should take in front of an independent reviewer.
+
+It satisfies the *gameplay* signal PQ-024 wants (at ~105 m the pale silhouette reads
 clearly against dark rock and black space as "something built is attached to this rock"), but it
 does not meet PQ-022's visual quality contract for meso construction or faction/function identity.
 That verdict belongs to an independent reviewer under the PQ-034 lease; it is recorded here as
@@ -221,6 +236,15 @@ exterior projection supplies none). Stamped `visualBounds` size is
 `16.6938 × 15.3374 × 10.0073 m`; the mesh actually drawn spans `13.609 × 12.320 × 9.621 m`. Placed
 on the contact ring of a 11.9109 m rock at 18.9109 m = `radius + 7`, exactly as authored.
 
+The declared-vs-drawn difference is **not** caused by socket markers: `Box3.expandByObject` unions
+geometry only, so a mesh-less node cannot expand it, and the capture records `setFromObject` at
+13.6094 m against a mesh-only walk at 13.6082 m — a 1.2 mm delta where socket participation would
+show metres. What is measured is that the loader's `record.bounds` max is 104.3364 m while the
+instantiated draw union is 85.06 authored m. The authored `COLLISION_HULL` proxy is demonstrably
+excluded from the draw union (it alone spans 93.90 m), but that does not account for the whole
+difference; the remainder arises inside instantiation. It affects none of the claims above and is
+recorded as an open row rather than chased here.
+
 Interaction envelope: the exterior relay is `collides: false` dressing, so it owns no collision.
 Where the same asset backs a World Site, `worldSiteKernel.planWorldSiteMaterialization` scales both
 proxy radii (`proxyRadius(proxy) * root.scale`) and socket offsets by the stage scale, so the
@@ -238,7 +262,8 @@ interaction envelope tracks the visual coherently rather than drifting from it.
 
 The capture manifest (`spaceface.pq022RelayCollarCapture.v1`) carries the route, viewport, placement
 record, per-shot admission state, measured extents, the full runtime material table, and an explicit
-`blockedOnPq034Lease` list. `.devshots/` is gitignored repo-wide, so the durable copy follows the
+`blockedOnPq034Lease` list. Its `preDespawnSnapshot` is labelled in-band as a reference reading
+while the relay is live — it is **not** a disposal measurement, and cleanup remains an open row. `.devshots/` is gitignored repo-wide, so the durable copy follows the
 existing `assets/ships/<family>/evidence/devshots/` precedent.
 
 ## 6. Gates
@@ -248,6 +273,7 @@ existing `assets/ships/<family>/evidence/devshots/` precedent.
 | `npm run check:pq022:relay-collar` | **9/9 pass** |
 | `node --test test/world-site-assets.test.mjs test/presentation-admission.test.mjs test/world-site-input.test.mjs` | 17/17 pass |
 | `node scripts/check-claim-outpost-visuals.mjs` | **70 ok, 0 fail** (the family's own auditor) |
+| `validateReleaseAssetPairs` on this exact pair (`src/contracts/assetReleaseValidation.js`) | **`ok: true`, `issues: []`** — the release pair is current; matches the PQ-018 precedent |
 | `npm run check:asset-reachability` | pass — 53 runtime assets reachable and bundled |
 | `npm run check:sim:compare` | `ok: true`, **`hashEqual: true`**, `firstDivergentTick: null` |
 | `npm run check:baseline` | 10/10 green, 67.3 s of a 90 s budget |
@@ -305,9 +331,11 @@ Handed to the integrator, not fixed here:
       trusts the row instead of the loaded scene. Fixing it is a 4-row family edit outside this
       leaf's write budget and interacts with `check-parts-manifest.mjs` semantics.
 - [ ] **Declared vs drawn envelope** — the stamped `visualBounds` length (16.6938 m) overstates the
-      drawn mesh union (13.609 m) by ~19%, because `record.bounds` also spans the socket marker
-      nodes. Relevant to whoever tunes culling/selection radii; the entity's `visualRadius: 6` sits
-      just under the drawn 6.8 m half-extent.
+      drawn mesh union (13.609 m) by ~19%: the loader's `record.bounds` max is 104.3364 authored m
+      while the instantiated draw union is 85.06 authored m. Not a socket-marker artifact (see §4);
+      the divergence is inside `instantiatePart`/`installAuthoredLod`/static batching and is worth a
+      look by the renderer owner. Relevant to whoever tunes culling/selection radii — the entity's
+      `visualRadius: 6` sits just under the drawn 6.8 m half-extent.
 - [ ] **Multi-LOD checker semantics** — `check-parts-manifest.mjs` sums all LODs against a LOD0
       manifest budget, so every multi-LOD asset fails by construction (16 assets).
 - [ ] Inherited reds unrelated to this leaf: `check:runtime-assets` (kestrel/wasp wholeships),
