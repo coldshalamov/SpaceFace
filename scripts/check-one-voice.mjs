@@ -13,6 +13,14 @@ import { fileURLToPath } from 'node:url';
 import { createBus } from '../src/core/eventBus.js';
 import { missions as missionsSystem } from '../src/systems/missions.js';
 import { story as storySystem } from '../src/systems/story.js';
+// The ordering invariants live in the authoritative system manifest as frozen arrays. Import them
+// directly rather than parsing registry.js / manifest source by string — registry.js materialises
+// UPDATE_ORDER from this manifest at runtime, so a source-string match there is stale by construction,
+// and array indexOf on the live exported values is exact (no substring/whitespace/comment drift).
+import {
+  PRODUCTION_INIT_ORDER,
+  PRODUCTION_UPDATE_ORDER,
+} from '../src/runtime/authoritativeSystemManifest.js';
 import {
   CHANNEL_PRIORITY,
   VoiceQueue,
@@ -227,17 +235,25 @@ run('voice arbiter uses injected sim time and keeps legacy toast bridge disabled
 });
 
 run('registry initializes voice before callers and updates it after story/onboarding', () => {
-  const src = source('src/core/registry.js');
-  assert.match(src, /core, voiceArbiter, input/);
-  const start = src.indexOf('const UPDATE_ORDER = [');
-  const end = src.indexOf('];', start);
-  const order = src.slice(start, end);
-  const arbiterAt = order.indexOf('voiceArbiter');
-  assert.ok(start >= 0 && end > start && arbiterAt >= 0, 'UPDATE_ORDER and voiceArbiter must be present');
+  // Assert against the live, frozen arrays exported from the authoritative manifest (imported at the
+  // top of this file). Index comparison on the actual array elements is exact — no substring,
+  // whitespace, or comment drift — and it is the same data registry.js materialises UPDATE_ORDER from.
+  const assertBefore = (order, first, second, phase) => {
+    const firstAt = order.indexOf(first);
+    const secondAt = order.indexOf(second);
+    assert.ok(firstAt >= 0 && secondAt >= 0 && firstAt < secondAt,
+      `${first} must precede ${second} in ${phase} order (got ${first}@${firstAt}, ${second}@${secondAt})`);
+  };
+
+  // INIT order: core binds first, voiceArbiter binds before input ever fires, so the arbiter's
+  // ctx.helpers.voice plumbing exists before any caller can route a line. (core is init-only; it is
+  // absent from UPDATE_ORDER, which is why this must be checked against the init list.)
+  assertBefore(PRODUCTION_INIT_ORDER, 'core', 'voiceArbiter', 'init');
+  assertBefore(PRODUCTION_INIT_ORDER, 'voiceArbiter', 'input', 'init');
+
+  // UPDATE order: every spoken producer flushes its queue before voiceArbiter drains the floor.
   for (const producer of ['story', 'scenarioRuntime', 'onboarding', 'masslineHud']) {
-    const producerAt = order.indexOf(producer);
-    assert.ok(producerAt >= 0 && producerAt < arbiterAt,
-      `${producer} must update before voiceArbiter flushes the one-voice queue`);
+    assertBefore(PRODUCTION_UPDATE_ORDER, producer, 'voiceArbiter', 'update');
   }
 });
 
