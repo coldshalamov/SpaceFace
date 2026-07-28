@@ -13,6 +13,21 @@ export const PERFORMANCE_BUDGETS = Object.freeze({
 });
 
 const FULL_RENDER_FLEET_COUNTS = Object.freeze([10, 25, 50]);
+const PERFORMANCE_ROUTE_DIGEST_FIELDS = Object.freeze([
+  'manifestDigest',
+  'scenarioDigest',
+  'scenarioDefinitionDigest',
+  'saveDigest',
+  'inputDigest',
+  'cameraDigest',
+]);
+const SHA256_PATTERN = /^[a-f0-9]{64}$/i;
+const COMMIT_PATTERN = /^[a-f0-9]{40}$/i;
+const ISO_8601_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+const ARRAY_SORT = Function.call.bind(Array.prototype.sort);
+const REGEXP_TEST = Function.call.bind(RegExp.prototype.test);
+const STRING_TRIM = Function.call.bind(String.prototype.trim);
+const JSON_STRINGIFY = JSON.stringify;
 
 const SCENARIOS = [
   scenario('flight_steady', 'steady-flight', { primaryCapable: true }),
@@ -70,8 +85,13 @@ const SCENARIOS = [
 export const PERFORMANCE_SCENARIOS = Object.freeze(SCENARIOS.map((entry) => Object.freeze(entry)));
 export const PERFORMANCE_SCENARIO_IDS = Object.freeze(PERFORMANCE_SCENARIOS.map((entry) => entry.id));
 
+const PERFORMANCE_SCENARIO_BY_ID = createPerformanceScenarioIndex();
+
 export function performanceScenario(id) {
-  return PERFORMANCE_SCENARIOS.find((entry) => entry.id === id) || null;
+  const descriptor = Object.getOwnPropertyDescriptor(PERFORMANCE_SCENARIO_BY_ID, id);
+  return descriptor && Object.hasOwn(descriptor, 'value')
+    ? descriptor.value
+    : null;
 }
 
 export function resolvePerformanceScenarios(ids = PERFORMANCE_SCENARIO_IDS) {
@@ -108,9 +128,27 @@ export function summarizeFrameSamples(samples, { vsyncMs = 1000 / 60 } = {}) {
   };
 }
 
-export function comparisonKey({ scenarioId, environment, settings }) {
+export function comparisonKey({
+  scenarioId,
+  environment,
+  settings,
+  manifestDigest = null,
+  scenarioDigest = null,
+  scenarioDefinitionDigest = null,
+  saveDigest = null,
+  inputDigest = null,
+  cameraDigest = null,
+}) {
   const comparable = {
     scenarioId,
+    routeIdentity: {
+      manifestDigest,
+      scenarioDigest,
+      scenarioDefinitionDigest,
+      saveDigest,
+      inputDigest,
+      cameraDigest,
+    },
     runtimeKind: environment?.runtimeKind ?? null,
     browser: environment?.browser ?? null,
     gpu: environment?.gpu ?? null,
@@ -158,6 +196,9 @@ export function comparePerformanceWindows(before, after) {
   const failures = [];
   if (!before || !after) failures.push('before and after windows are required');
   if (before?.scenarioId !== after?.scenarioId) failures.push('scenario ids differ');
+  if (stableStringify(routeIdentityFrom(before)) !== stableStringify(routeIdentityFrom(after))) {
+    failures.push('route digest identities differ; scenarios are not directly comparable');
+  }
   if (!nonempty(before?.comparisonKey) || before?.comparisonKey !== after?.comparisonKey) {
     failures.push('comparison keys differ; environments are not directly comparable');
   }
@@ -236,10 +277,10 @@ function validateWorktree(report, failures) {
     failures.push('worktree identity is required');
     return;
   }
-  if (!nonempty(worktree.id) || !/^[a-f0-9]{64}$/i.test(String(worktree.digest || ''))) {
+  if (!nonempty(worktree.id) || !REGEXP_TEST(SHA256_PATTERN, String(worktree.digest || ''))) {
     failures.push('worktree id and SHA-256 digest are required');
   }
-  if (!/^[a-f0-9]{40}$/i.test(String(worktree.commit || ''))) failures.push('exact 40-character commit is required');
+  if (!REGEXP_TEST(COMMIT_PATTERN, String(worktree.commit || ''))) failures.push('exact 40-character commit is required');
   if (!nonempty(worktree.branch)) failures.push('worktree branch is required');
   if (typeof worktree.dirty !== 'boolean') failures.push('worktree dirty state is required');
   const start = worktree.fingerprints?.start;
@@ -288,10 +329,12 @@ function validateWindow(window, index, environment, failures) {
   for (const key of Object.keys(computed)) {
     if (!sameMetric(window.summary?.[key], computed[key])) failures.push(`${prefix}.summary.${key} does not match raw samples`);
   }
+  validateRouteIdentity(window, prefix, failures);
   const expectedComparisonKey = comparisonKey({
     scenarioId: window.scenarioId,
     environment,
     settings: window.settings?.start,
+    ...routeIdentityFrom(window),
   });
   if (window.comparisonKey !== expectedComparisonKey) failures.push(`${prefix}.comparisonKey does not match the comparable environment`);
   if (!window.settings?.start || !window.settings?.end) failures.push(`${prefix}.settings start/end truth is required`);
@@ -313,6 +356,31 @@ function validateWindow(window, index, environment, failures) {
   if (!Array.isArray(window.pageErrors)) failures.push(`${prefix}.pageErrors must be an array`);
 }
 
+function routeIdentityFrom(value) {
+  const identity = {};
+  for (let index = 0; index < PERFORMANCE_ROUTE_DIGEST_FIELDS.length; index += 1) {
+    const field = PERFORMANCE_ROUTE_DIGEST_FIELDS[index];
+    identity[field] = value?.[field] ?? null;
+  }
+  return identity;
+}
+
+function validateRouteIdentity(window, prefix, failures) {
+  let supplied = 0;
+  for (let index = 0; index < PERFORMANCE_ROUTE_DIGEST_FIELDS.length; index += 1) {
+    const field = PERFORMANCE_ROUTE_DIGEST_FIELDS[index];
+    const value = window[field];
+    if (value == null) continue;
+    supplied += 1;
+    if (typeof value !== 'string' || !REGEXP_TEST(SHA256_PATTERN, value)) {
+      failures.push(`${prefix}.${field} must be a full SHA-256 digest`);
+    }
+  }
+  if (supplied > 0 && supplied !== PERFORMANCE_ROUTE_DIGEST_FIELDS.length) {
+    failures.push(`${prefix} route digest identity must provide the complete manifest, scenario, definition, save, input, and camera chain`);
+  }
+}
+
 function validateArtifacts(artifacts, failures) {
   if (!Array.isArray(artifacts) || artifacts.length === 0) {
     failures.push('content-hashed artifacts are required');
@@ -321,7 +389,7 @@ function validateArtifacts(artifacts, failures) {
   for (const artifact of artifacts) {
     if (!nonempty(artifact?.kind) || !nonempty(artifact?.path)) failures.push('each artifact needs kind and path');
     if (!Number.isInteger(artifact?.bytes) || artifact.bytes < 1) failures.push(`artifact ${artifact?.path || '<missing>'} needs positive bytes`);
-    if (!/^[a-f0-9]{64}$/i.test(String(artifact?.sha256 || ''))) failures.push(`artifact ${artifact?.path || '<missing>'} needs SHA-256`);
+    if (!REGEXP_TEST(SHA256_PATTERN, String(artifact?.sha256 || ''))) failures.push(`artifact ${artifact?.path || '<missing>'} needs SHA-256`);
   }
 }
 
@@ -340,6 +408,31 @@ function validateErrors(errors, failures) {
   for (const key of ['pageErrors', 'requestFailures', 'consoleErrors', 'httpErrors', 'warnings']) {
     if (!Array.isArray(errors[key])) failures.push(`errors.${key} must be an array`);
   }
+}
+
+function createPerformanceScenarioIndex() {
+  const result = Object.create(null);
+  for (let index = 0; index < PERFORMANCE_SCENARIOS.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      PERFORMANCE_SCENARIOS,
+      String(index),
+    );
+    if (!descriptor || !Object.hasOwn(descriptor, 'value')) {
+      throw new TypeError('performance scenarios must contain own data values');
+    }
+    const definition = descriptor.value;
+    const idDescriptor = Object.getOwnPropertyDescriptor(definition, 'id');
+    if (!idDescriptor || !Object.hasOwn(idDescriptor, 'value')) {
+      throw new TypeError('performance scenario definitions must contain own id values');
+    }
+    Object.defineProperty(result, idDescriptor.value, {
+      value: definition,
+      enumerable: true,
+      configurable: false,
+      writable: false,
+    });
+  }
+  return Object.freeze(result);
 }
 
 function scenario(id, workloadClass, extra = {}) {
@@ -381,7 +474,7 @@ function delta(a, b) {
 }
 
 function nonempty(value) {
-  return typeof value === 'string' && value.trim().length > 0;
+  return typeof value === 'string' && STRING_TRIM(value).length > 0;
 }
 
 function finiteOrNull(value) {
@@ -391,7 +484,7 @@ function finiteOrNull(value) {
 }
 
 function isIso8601(value) {
-  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/.test(value);
+  return typeof value === 'string' && REGEXP_TEST(ISO_8601_PATTERN, value);
 }
 
 function sameMetric(actual, expected) {
@@ -400,9 +493,38 @@ function sameMetric(actual, expected) {
 }
 
 function stableStringify(value) {
-  if (value == null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
+  if (value == null || typeof value !== 'object') return JSON_STRINGIFY(value);
+  if (Array.isArray(value)) {
+    let result = '[';
+    for (let index = 0; index < value.length; index += 1) {
+      if (index > 0) result += ',';
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!descriptor || !Object.hasOwn(descriptor, 'value')) {
+        throw new TypeError('stable JSON arrays must contain own data values');
+      }
+      const serialized = stableStringify(descriptor.value);
+      if (serialized !== undefined) result += serialized;
+    }
+    return `${result}]`;
+  }
+
+  const keys = Object.keys(value);
+  ARRAY_SORT(keys);
+  let result = '{';
+  for (let index = 0; index < keys.length; index += 1) {
+    if (index > 0) result += ',';
+    const keyDescriptor = Object.getOwnPropertyDescriptor(keys, String(index));
+    if (!keyDescriptor || !Object.hasOwn(keyDescriptor, 'value')) {
+      throw new TypeError('stable JSON object keys must contain own data values');
+    }
+    const key = keyDescriptor.value;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.hasOwn(descriptor, 'value')) {
+      throw new TypeError('stable JSON objects must contain own data values');
+    }
+    result += `${JSON_STRINGIFY(key)}:${stableStringify(descriptor.value)}`;
+  }
+  return `${result}}`;
 }
 
 function sha256(value) {

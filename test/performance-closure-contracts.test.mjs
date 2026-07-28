@@ -32,6 +32,15 @@ const settings = {
   video: { renderScale: 0.85, pixelRatioCap: 2, bloom: true, shadows: false, particleQuality: 'medium' },
 };
 
+const routeIdentity = Object.freeze({
+  manifestDigest: '1'.repeat(64),
+  scenarioDigest: '2'.repeat(64),
+  scenarioDefinitionDigest: '3'.repeat(64),
+  saveDigest: '4'.repeat(64),
+  inputDigest: '5'.repeat(64),
+  cameraDigest: '6'.repeat(64),
+});
+
 function samples() {
   return [
     { frameMs: 16.6, stepsThisFrame: 1, shedBacklog: false },
@@ -112,6 +121,30 @@ test('scenario matrix covers every closure workload and exact fleet scales', () 
     [10, 25, 50],
   );
   assert.throws(() => resolvePerformanceScenarios(['unknown']), /unknown performance scenario/);
+});
+
+test('scenario resolution ignores mutable Array.prototype lookup hooks', () => {
+  const targetId = PERFORMANCE_SCENARIO_IDS[1];
+  const descriptor = Object.getOwnPropertyDescriptor(Array.prototype, 'find');
+  let hookCalls = 0;
+  let resolved;
+  try {
+    Object.defineProperty(Array.prototype, 'find', {
+      configurable: true,
+      writable: true,
+      value() {
+        hookCalls += 1;
+        return this[0];
+      },
+    });
+    resolved = resolvePerformanceScenarios([targetId]);
+  } finally {
+    if (descriptor) Object.defineProperty(Array.prototype, 'find', descriptor);
+    else delete Array.prototype.find;
+  }
+
+  assert.equal(hookCalls, 0);
+  assert.equal(resolved[0].id, targetId);
 });
 
 test('raw frame summaries include threshold, missed-vsync, multi-step, and shedding counts', () => {
@@ -196,6 +229,91 @@ test('comparison rejects mismatched environments and recomputes deltas from raw 
   assert.equal(comparison.after.p95, 12);
   assert.equal(comparison.delta.p95, 12 - 50.1);
   assert.equal(comparePerformanceWindows(before, { ...after, comparisonKey: 'f'.repeat(64) }).comparable, false);
+});
+
+test('closure comparison binds the complete route digest chain', () => {
+  const candidateIdentity = {
+    ...routeIdentity,
+    inputDigest: '7'.repeat(64),
+  };
+  const before = windowFixture({
+    ...routeIdentity,
+    comparisonKey: comparisonKey({
+      scenarioId: 'flight_steady',
+      environment,
+      settings,
+      ...routeIdentity,
+    }),
+  });
+  const after = windowFixture({
+    ...candidateIdentity,
+    comparisonKey: comparisonKey({
+      scenarioId: 'flight_steady',
+      environment,
+      settings,
+      ...candidateIdentity,
+    }),
+  });
+
+  assert.equal(reportFixture(before).validation.pass, true);
+  assert.equal(reportFixture(after).validation.pass, true);
+  assert.notEqual(before.comparisonKey, after.comparisonKey);
+  assert.equal(comparePerformanceWindows(before, after).comparable, false);
+  const forgedKey = comparePerformanceWindows(before, {
+    ...after,
+    comparisonKey: before.comparisonKey,
+  });
+  assert.equal(forgedKey.comparable, false);
+  assert.match(forgedKey.failures.join(' | '), /route.*digest|digest.*identity/i);
+
+  const incomplete = windowFixture({
+    manifestDigest: routeIdentity.manifestDigest,
+    comparisonKey: comparisonKey({
+      scenarioId: 'flight_steady',
+      environment,
+      settings,
+      manifestDigest: routeIdentity.manifestDigest,
+    }),
+  });
+  const incompleteValidation = reportFixture(incomplete).validation;
+  assert.equal(incompleteValidation.pass, false);
+  assert.match(incompleteValidation.failures.join(' | '), /route.*digest|digest.*required|complete route/i);
+});
+
+test('comparison identity ignores mutable Array.prototype canonicalization hooks', () => {
+  const descriptor = Object.getOwnPropertyDescriptor(Array.prototype, 'sort');
+  let hookCalls = 0;
+  let first;
+  let second;
+  try {
+    Object.defineProperty(Array.prototype, 'sort', {
+      configurable: true,
+      writable: true,
+      value() {
+        hookCalls += 1;
+        this.length = 0;
+        return this;
+      },
+    });
+    first = comparisonKey({
+      scenarioId: 'flight_steady',
+      environment,
+      settings,
+      ...routeIdentity,
+    });
+    second = comparisonKey({
+      scenarioId: 'combat_vfx_burst',
+      environment,
+      settings,
+      ...routeIdentity,
+    });
+  } finally {
+    if (descriptor) Object.defineProperty(Array.prototype, 'sort', descriptor);
+    else delete Array.prototype.sort;
+  }
+
+  assert.equal(hookCalls, 0);
+  assert.notEqual(first, second);
 });
 
 test('closure report validates identity, hashes, cleanup, raw-summary truth, and comparability key', () => {
