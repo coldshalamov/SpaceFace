@@ -32,6 +32,13 @@ import {
   createRenderEntityFrame,
   endRenderEntityFrame,
 } from './renderEntityFrame.js';
+import {
+  createPresentationWorld,
+  PRESENTATION_DIRTY,
+  PRESENTATION_FLAGS,
+} from './presentationWorld.js';
+import { createPresentationPublisher } from './presentationPublisher.js';
+import { createPresentationQueries } from './presentationQueries.js';
 import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { createCollisionDebug } from './collisionDebug.js';
@@ -904,8 +911,45 @@ export const render = {
     this._shipAuxPool = createShipAuxPool(scene);
     this._asteroidInstancePool = createAsteroidInstancePool(scene);
     this._entityFrame = createRenderEntityFrame();
+    this._presentationWorld = createPresentationWorld();
+    this._presentationPublisher = createPresentationPublisher(
+      this._presentationWorld,
+      state,
+      { journal: ctx.presentationJournal || null },
+    );
+    this._presentationQueries = createPresentationQueries(this._presentationWorld);
+    this._presentationHandleScratch = {};
+    this._presentationQueryOptions = { bounds: null, origin: null, playerId: null };
+    this._entityViewBounds = { x: 0, z: 0, halfX: 0, halfZ: 0, margin: 0 };
+    this._entityViewDiagnostics = {
+      totalMeshes: 0,
+      candidates: 0,
+      transformed: 0,
+      fullSynced: 0,
+      culled: 0,
+      newlyVisible: 0,
+      newlyHidden: 0,
+      lodChecked: 0,
+      cullHalfX: 0,
+      cullHalfZ: 0,
+    };
+    this._hlodDiagnostics = {
+      hlodDetailedVisible: 0,
+      hlodProxyVisible: 0,
+      hlodObjectsSwapped: 0,
+    };
+    state.render.presentationWorld = this._presentationWorld.getDiagnostics();
+    state.render.presentationPublisher = this._presentationPublisher.getDiagnostics();
+    state.render.presentationQueries = this._presentationQueries.getDiagnostics();
+    state.render.entityViewSync = this._entityViewDiagnostics;
+    state.render.hlod = this._hlodDiagnostics;
     this._authoredInstanceSyncOptions = { camera: null, entityFrame: null, authoredRecords: null };
-    this._asteroidInstanceSyncOptions = { camera: null, shadowCamera: null, records: null };
+    this._asteroidInstanceSyncOptions = {
+      camera: null,
+      shadowCamera: null,
+      records: null,
+      recordsDirty: true,
+    };
     // LOD projector viewport (CSS px); onResize refreshes it. Initialize from drawSize so the first
     // frame before onResize has sane values.
     { const dpr = renderer.getPixelRatio() || 1; this.viewport = { width: drawSize.x / dpr, height: drawSize.y / dpr }; }
@@ -1227,8 +1271,10 @@ export const render = {
     bus.on('entity:destroyed', ({ id }) => {
       const m = this._meshes.get(id);
       if (m) {
+        this._unbindPresentationMesh(id, m);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         scene.remove(m); disposeObject(m); this._meshes.delete(id);
+        this._shadowReceiversDirty = true;
         this._publishAssetResidencyDiagnostics();
       }
     });
@@ -1460,12 +1506,54 @@ export const render = {
     return diagnostics;
   },
 
+  _bindPresentationMesh(entity, mesh) {
+    const world = this._presentationWorld;
+    if (!world || !entity || !mesh) return false;
+    const handle = world.handleForEntityId(entity.id, this._presentationHandleScratch);
+    if (!handle) return false;
+    if (!mesh.userData) mesh.userData = {};
+    mesh.userData.presentationEntityId = entity.id;
+    return world.bindMesh(handle, mesh, entity, entityVisualCullRadius(entity, mesh));
+  },
+
+  _unbindPresentationMesh(entityId, mesh = null) {
+    const world = this._presentationWorld;
+    if (!world) return false;
+    const handle = world.handleForEntityId(entityId, this._presentationHandleScratch);
+    if (!handle) return false;
+    return world.unbindMesh(handle, mesh);
+  },
+
+  _rebindPresentationMeshes() {
+    if (!this._presentationWorld || !this._meshes) return;
+    this._presentationQueries?.reset?.();
+    for (const [id, mesh] of this._meshes) {
+      const entity = this.state.entities.get(id);
+      if (entity && entity.alive !== false) this._bindPresentationMesh(entity, mesh);
+    }
+  },
+
+  _bindPublishedPresentationMeshes(publication) {
+    if (!publication || publication.spawnedCount <= 0) return;
+    const world = this._presentationWorld;
+    for (let index = 0; index < publication.spawnedCount; index++) {
+      const slot = publication.spawnedSlots[index];
+      if (world.alive[slot] !== 1) continue;
+      const entityId = world.entityIds[slot];
+      const entity = this.state.entities.get(entityId);
+      const mesh = this._meshes.get(entityId);
+      if (entity && entity.alive !== false && mesh) this._bindPresentationMesh(entity, mesh);
+    }
+  },
+
   clearAllMeshes(keepPlayer) {
     for (const [id, m] of [...this._meshes]) {
       if (keepPlayer && id === this.state.playerId) continue;
+      this._unbindPresentationMesh(id, m);
       releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
       this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
     }
+    this._presentationQueries?.reset?.();
     this._meshBuildQueue.length = 0;
     this._meshBuildQueueHead = 0;
     this._meshBuildQueuedIds.clear();
@@ -1514,6 +1602,7 @@ export const render = {
     for (const [id, m] of this._meshes) {
       const e = state.entities.get(id);
       if (!e || e.alive === false || !isEntityRenderRelevant(e, state, RENDER_STREAM_EVICT_RADIUS)) {
+        this._unbindPresentationMesh(id, m);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         this.scene.remove(m); disposeObject(m); this._meshes.delete(id); this._shadowReceiversDirty = true;
         clearEntityMeshReference(e, m);
@@ -1533,6 +1622,8 @@ export const render = {
     // reconciliation. Requesting is idempotent; resolved bootstrap assets install synchronously.
     for (const [id, mesh] of this._meshes) {
       const entity = state.entities.get(id);
+      if (!entity || entity.alive === false) continue;
+      this._bindPresentationMesh(entity, mesh);
       if (isEntityAuthoredUpgradeRelevant(entity, state)) {
         requestAuthoredUpgrade(mesh, this.renderer, this.scene);
       }
@@ -1560,6 +1651,7 @@ export const render = {
       e.mesh = m; e.view = { root: m };
       this._meshes.set(e.id, m);
       this.scene.add(m);
+      this._bindPresentationMesh(e, m);
       registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
       if (isEntityAuthoredUpgradeRelevant(e, this.state)) {
         requestAuthoredUpgrade(m, this.renderer, this.scene);
@@ -1586,7 +1678,13 @@ export const render = {
     const e = this.state.entities.get(id);
     if (!e || e.alive === false) return;
     const old = this._meshes.get(id);
-    if (old) { this.scene.remove(old); disposeObject(old); this._meshes.delete(id); this._shadowReceiversDirty = true; }
+    if (old) {
+      this._unbindPresentationMesh(id, old);
+      this.scene.remove(old);
+      disposeObject(old);
+      this._meshes.delete(id);
+      this._shadowReceiversDirty = true;
+    }
     const m = this.vf.build(e);
     if (!m) return;
     const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
@@ -1600,6 +1698,7 @@ export const render = {
     e.mesh = m; e.view = { root: m };
     this._meshes.set(id, m);
     this.scene.add(m);
+    this._bindPresentationMesh(e, m);
     if (isEntityAuthoredUpgradeRelevant(e, this.state)) {
       requestAuthoredUpgrade(m, this.renderer, this.scene);
     }
@@ -1624,13 +1723,13 @@ export const render = {
     const halfV = Math.tan((fov * Math.PI / 180) * 0.5) * zoom * 0.72;
     const halfH = halfV * aspect;
     const margin = Math.max(ENTITY_VIEW_CULL_MIN_MARGIN, zoom * ENTITY_VIEW_CULL_ZOOM_MARGIN);
-    return {
-      x: Number.isFinite(focus.x) ? focus.x : 0,
-      z: Number.isFinite(focus.z) ? focus.z : 0,
-      halfX: halfH + margin,
-      halfZ: halfV + margin,
-      margin,
-    };
+    const bounds = this._entityViewBounds;
+    bounds.x = Number.isFinite(focus.x) ? focus.x : 0;
+    bounds.z = Number.isFinite(focus.z) ? focus.z : 0;
+    bounds.halfX = halfH + margin;
+    bounds.halfZ = halfV + margin;
+    bounds.margin = margin;
+    return bounds;
   },
 
   _isEntityViewCulled(e, bounds, mesh = null) {
@@ -1677,6 +1776,37 @@ export const render = {
     } catch (_) { /* optional */ }
   },
 
+  _applyPresentationPose(slot, mesh, alpha, currentOnly = false) {
+    const world = this._presentationWorld;
+    const origin = this._frameMembrane.origin;
+    const noInterpolation = currentOnly
+      || (world.flags[slot] & PRESENTATION_FLAGS.NO_INTERPOLATION) !== 0;
+    let x = world.x[slot];
+    let z = world.z[slot];
+    let rot = world.rot[slot];
+    let bank = world.bank[slot];
+    let pitch = world.pitch[slot];
+    if (!noInterpolation) {
+      const t = Number.isFinite(alpha) ? alpha : 0;
+      x = world.prevX[slot] + (world.x[slot] - world.prevX[slot]) * t;
+      z = world.prevZ[slot] + (world.z[slot] - world.prevZ[slot]) * t;
+      let dr = world.rot[slot] - world.prevRot[slot];
+      dr = ((dr + Math.PI) % (Math.PI * 2)) - Math.PI;
+      if (dr < -Math.PI) dr += Math.PI * 2;
+      rot = world.prevRot[slot] + dr * t;
+      bank = world.prevBank[slot] + (world.bank[slot] - world.prevBank[slot]) * t;
+      pitch = world.prevPitch[slot] + (world.pitch[slot] - world.prevPitch[slot]) * t;
+    }
+    mesh.position.x = x - origin.x;
+    mesh.position.y = 0;
+    mesh.position.z = z - origin.z;
+    mesh.rotation.y = -rot;
+    const hull = mesh.userData && mesh.userData.hull;
+    const entity = world.entityRefs[slot];
+    if (hull && entity && entity.bank != null) hull.rotation.x = bank;
+    if (hull && entity && entity.pitch != null) hull.rotation.z = pitch;
+  },
+
   syncEntityViews(alpha) {
     // Opt-in CPU attribution only — no performance.now()/ring write when disabled.
     const useCpu = !!(this.state && this.state.perfRuntime
@@ -1687,116 +1817,145 @@ export const render = {
     const settings = this.state.settings || {};
     _worldSiteA11y.reducedMotion = !!(settings.video && settings.video.motionReduce);
     _worldSiteA11y.reducedFlash = !!(settings.accessibility && settings.accessibility.flashReduce);
+
+    const world = this._presentationWorld;
     const bounds = this._entityViewCullBounds();
-    let totalMeshes = 0;
+    const queryOptions = this._presentationQueryOptions;
+    queryOptions.bounds = bounds;
+    queryOptions.origin = this._frameMembrane.origin;
+    queryOptions.playerId = this.state.playerId;
+    const query = this._presentationQueries.query(queryOptions);
     let transformed = 0;
     let fullSynced = 0;
-    let culled = 0;
     let lodChecked = 0;
-    const membrane = this._frameMembrane;
+    let hlodDetailedVisible = 0;
+    let hlodProxyVisible = 0;
+    let hlodObjectsSwapped = 0;
+
     beginRenderEntityFrame(this._entityFrame);
-    for (const [id, m] of this._meshes) {
-      totalMeshes++;
-      const e = this.state.entities.get(id);
-      if (!e || e.alive === false || !m) continue;
-      if (this.collisionDebug && this.collisionDebug.on) m.userData.__lastEntity = e; // read-only debug overlay
-      const viewCulled = this._isEntityViewCulled(e, bounds, m);
-      if (m.userData && m.userData.asteroidInstanceBody) {
-        m.userData.asteroidInstanceViewCulled = viewCulled;
+
+    // A root crossing out of the retained visible set receives one final authoritative current pose.
+    // It can then stay untouched while far-culled without lingering at a stale near-camera transform.
+    for (let index = 0; index < query.hiddenCount; index++) {
+      const slot = query.hiddenSlots[index];
+      const generation = query.hiddenGenerations[index];
+      if (world.alive[slot] !== 1 || world.slotGenerations[slot] !== generation) continue;
+      const mesh = world.meshRefs[slot];
+      if (!mesh) continue;
+      const entityId = world.entityIds[slot];
+      const entity = this.state.entities.get(entityId) || world.entityRefs[slot];
+      if (entity && entity.alive !== false) {
+        world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
       }
-      if (viewCulled) culled++;
-      const hull = m.userData && m.userData.hull;   // bankable inner group (ships only)
-      if (e.flags.noInterp) {
-        const local = membrane.toLocal(e.pos, _meshLocalXZ);
-        m.position.set(local.x, 0, local.z); m.rotation.y = -e.rot;
-        if (hull && e.bank != null) hull.rotation.x = e.bank; // roll around forward axis; +bank banks right
-        if (hull && e.pitch != null) hull.rotation.z = e.pitch; // pitch lean nose up/down
-      } else {
-        const local = membrane.interpolateLocal(e.prevPos, e.pos, alpha, _meshLocalXZ);
-        m.position.x = local.x;
-        m.position.z = local.z;
-        m.position.y = 0;
-        let dr = e.rot - e.prevRot;
-        dr = ((dr + Math.PI) % (Math.PI * 2)) - Math.PI; if (dr < -Math.PI) dr += Math.PI * 2;
-        m.rotation.y = -(e.prevRot + dr * alpha);
-        // interpolate bank for a smooth roll (prevBank snapshotted in core.preStep each step)
-        if (hull && e.bank != null) {
-          const pb = e.prevBank || 0;
-          hull.rotation.x = pb + (e.bank - pb) * alpha;
-        }
-        // Pitch lean: nose pitches up under acceleration (boost) and relaxes otherwise.
-        if (hull && e.pitch != null) {
-          const pp = e.prevPitch || 0;
-          hull.rotation.z = pp + (e.pitch - pp) * alpha;
-        }
+      this._applyPresentationPose(slot, mesh, alpha, true);
+      if (mesh.userData && mesh.userData.asteroidInstanceBody) {
+        mesh.userData.asteroidInstanceViewCulled = true;
       }
+      world.clearDirty(slot);
       transformed++;
-      // Projected-screen-size LOD (spec §12.4): resolve each entity's detail level from its projected
-      // pixel width with hysteresis, so assets can drop detail at distance. The selector owns no
-      // geometry; per-asset hooks read m.userData.lod.level and decide what to show. Cheap for entities
-      // without a lod state (no closure attached).
-      if (m.userData.lod && m.userData.updateLod) {
+    }
+
+    for (let index = 0; index < query.visibleCount; index++) {
+      const slot = query.visibleSlots[index];
+      const generation = query.visibleGenerations[index];
+      if (world.alive[slot] !== 1 || world.slotGenerations[slot] !== generation) continue;
+      const mesh = world.meshRefs[slot];
+      const entityId = world.entityIds[slot];
+      const entity = this.state.entities.get(entityId) || world.entityRefs[slot];
+      if (!mesh || !entity || entity.alive === false) continue;
+
+      const userData = mesh.userData || (mesh.userData = {});
+      if (this.collisionDebug && this.collisionDebug.on) userData.__lastEntity = entity;
+      world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
+      const dirty = world.dirtyMasks[slot];
+      if ((dirty & (PRESENTATION_DIRTY.TRANSFORM | PRESENTATION_DIRTY.BINDING
+        | PRESENTATION_DIRTY.VISIBILITY)) !== 0 || world.poseHasDelta(slot)) {
+        this._applyPresentationPose(slot, mesh, alpha);
+        transformed++;
+      }
+      if (userData.asteroidInstanceBody) userData.asteroidInstanceViewCulled = false;
+
+      // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel
+      // width with hysteresis. Newly visible roots are fully posed above before this decision.
+      if (userData.lod && userData.updateLod) {
         lodChecked++;
-        // Camera and mesh share frame-local space; pass mesh local XZ (not galactic-global).
-        const hlodVisualRadius = m.userData.hlod && Number(m.userData.hlod.visualRadius);
+        const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
         const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
           ? hlodVisualRadius
-          : e.radius;
-        const px = projectedWidthPx(m.position, lodRadius, this.cam.obj, this.viewport);
-        // The player ship is a focal, readable object at normal flight scale. Authored LOD1 can hide
-        // too much silhouette detail, so keep player control on LOD0 and reserve reduction for NPCs.
-        const level = e.id === this.state.playerId ? 'lod0' : m.userData.lod.resolve(px);
-        m.userData.updateLod(level);
-        if (m.userData.hlod) configureShadowCasters(m);
+          : entity.radius;
+        const px = projectedWidthPx(mesh.position, lodRadius, this.cam.obj, this.viewport);
+        const level = entity.id === this.state.playerId ? 'lod0' : userData.lod.resolve(px);
+        userData.updateLod(level);
+        if (userData.hlod) configureShadowCasters(mesh);
       }
-      classifyRenderEntity(this._entityFrame, e, m, viewCulled);
-      if (viewCulled) continue;
-      fullSynced++;
-      // Small interactive props publish stateful material closures (for example mine/charge arming
-      // indicators). The closure swaps immutable cached materials only when state changes, so one
-      // entity cannot leak its status into another and the steady-state render loop allocates nothing.
-      if (m.userData.updateRuntimeState) m.userData.updateRuntimeState(e, now);
-      if (m.userData.updateWorldSitePresentation) {
-        m.userData.updateWorldSitePresentation(e, this.state.simTime, _worldSiteA11y);
-      }
-      // Hero-asset damage states (spec §9.11): hero meshes carry an updateDamageState closure that
-      // modulates light groups / armor / drive from the live hull fraction so damage reads without the
-      // HUD bar. Cheap no-op for non-hero meshes (no closure). Called once per frame per entity.
-      if (m.userData.updateDamageState) m.userData.updateDamageState(e, now);
-      if (m.userData.updateDriveState) m.userData.updateDriveState(e, now);
 
-      // Shield geometry is an impact response, not a permanent bubble. The flash decays each frame
-      // and is punched up whenever the entity's shield value drops.
-      const sb = m.userData.shieldBubble;
-      if (sb) {
-        const up = e.shield > 0;
+      classifyRenderEntity(this._entityFrame, entity, mesh, false);
+      fullSynced++;
+
+      // Visible interactive and hero roots retain their authored per-frame presentation closures.
+      if (userData.updateRuntimeState) userData.updateRuntimeState(entity, now);
+      if (userData.updateWorldSitePresentation) {
+        userData.updateWorldSitePresentation(entity, this.state.simTime, _worldSiteA11y);
+      }
+      if (userData.updateDamageState) userData.updateDamageState(entity, now);
+      if (userData.updateDriveState) userData.updateDriveState(entity, now);
+
+      // Shield geometry is an impact response, not a permanent bubble. The flash decays each visible
+      // frame and is punched up whenever the entity's shield value drops.
+      const shieldBubble = userData.shieldBubble;
+      if (shieldBubble) {
+        const up = entity.shield > 0;
         let flash = 0;
         if (up) {
-          const u = sb.material.uniforms;
-          // detect shield loss since last frame -> punch the fresnel flash
-          const prev = sb.userData._prevShield != null ? sb.userData._prevShield : e.shield;
-          if (e.shield < prev - 0.5) u.uFlash.value = Math.min(1, u.uFlash.value + 0.8);
-          sb.userData._prevShield = e.shield;
-          // frame-rate-independent exponential decay: uFlash *= 0.05^(dt) settles in ~0.4s at any fps.
-          const dt = Math.min(0.1, now - (sb.userData._prevFlashT != null ? sb.userData._prevFlashT : now));
-          sb.userData._prevFlashT = now;
-          u.uFlash.value *= Math.pow(0.05, dt);
-          flash = u.uFlash.value;
+          const uniforms = shieldBubble.material.uniforms;
+          const previousShield = shieldBubble.userData._prevShield != null
+            ? shieldBubble.userData._prevShield
+            : entity.shield;
+          if (entity.shield < previousShield - 0.5) {
+            uniforms.uFlash.value = Math.min(1, uniforms.uFlash.value + 0.8);
+          }
+          shieldBubble.userData._prevShield = entity.shield;
+          const previousFlashTime = shieldBubble.userData._prevFlashT != null
+            ? shieldBubble.userData._prevFlashT
+            : now;
+          const dt = Math.min(0.1, now - previousFlashTime);
+          shieldBubble.userData._prevFlashT = now;
+          uniforms.uFlash.value *= Math.pow(0.05, dt);
+          flash = uniforms.uFlash.value;
         }
-        const visible = shouldPresentShieldBubble(e.shield, flash);
-        if (sb.visible !== visible) sb.visible = visible;
+        const visible = shouldPresentShieldBubble(entity.shield, flash);
+        if (shieldBubble.visible !== visible) shieldBubble.visible = visible;
       }
+
+      const hlod = userData.hlod;
+      if (hlod) {
+        hlodDetailedVisible += Number(hlod.detailedVisible) || 0;
+        hlodProxyVisible += Number(hlod.proxyVisible) || 0;
+        if (hlod.swapped) hlodObjectsSwapped++;
+      }
+      world.clearDirty(slot);
     }
+
     endRenderEntityFrame(this._entityFrame);
-    this.state.render.entityViewSync = {
-      totalMeshes,
-      transformed,
-      fullSynced,
-      culled,
-      lodChecked,
-      cullHalfX: Math.round(bounds.halfX),
-      cullHalfZ: Math.round(bounds.halfZ),
-    };
+    const diagnostics = this._entityViewDiagnostics;
+    diagnostics.totalMeshes = world.boundCount;
+    diagnostics.candidates = query.candidateCount;
+    diagnostics.transformed = transformed;
+    diagnostics.fullSynced = fullSynced;
+    diagnostics.culled = query.culledCount;
+    diagnostics.newlyVisible = query.newlyVisibleCount;
+    diagnostics.newlyHidden = query.hiddenCount;
+    diagnostics.lodChecked = lodChecked;
+    diagnostics.cullHalfX = Math.round(bounds.halfX);
+    diagnostics.cullHalfZ = Math.round(bounds.halfZ);
+    this.state.render.entityViewSync = diagnostics;
+
+    const hlodDiagnostics = this._hlodDiagnostics;
+    hlodDiagnostics.hlodDetailedVisible = hlodDetailedVisible;
+    hlodDiagnostics.hlodProxyVisible = hlodProxyVisible;
+    hlodDiagnostics.hlodObjectsSwapped = hlodObjectsSwapped;
+    this.state.render.hlod = hlodDiagnostics;
+
     const frameDiagnostics = this.state.render.entityFrame
       || (this.state.render.entityFrame = {});
     frameDiagnostics.frameId = this._entityFrame.frameId;
@@ -1809,25 +1968,6 @@ export const render = {
     if (useCpu && started) {
       this.state.perfRuntime.recordRenderWork('entityViewSync', performance.now() - started);
     }
-    this._publishHlodDiagnostics();
-  },
-
-  _publishHlodDiagnostics() {
-    let hlodDetailedVisible = 0;
-    let hlodProxyVisible = 0;
-    let hlodObjectsSwapped = 0;
-    for (const mesh of this._meshes.values()) {
-      const hlod = mesh.userData && mesh.userData.hlod;
-      if (!hlod) continue;
-      hlodDetailedVisible += Number(hlod.detailedVisible) || 0;
-      hlodProxyVisible += Number(hlod.proxyVisible) || 0;
-      if (hlod.swapped) hlodObjectsSwapped++;
-    }
-    this.state.render.hlod = {
-      hlodDetailedVisible,
-      hlodProxyVisible,
-      hlodObjectsSwapped,
-    };
   },
 
   // --------------- hazard zone visuals ------------------------------------------------
@@ -1954,11 +2094,15 @@ export const render = {
   },
 
   prepareFrame(alpha, frameDt, presentationFrame = null) {
-    // Shadow-consume scheduler metadata while the legacy entity-view path remains authoritative.
     this._presentationFrame = presentationFrame;
-    // While the GL context is lost, the renderer can't draw — skip all per-frame work until
-    // webglcontextrestored rebuilds GPU resources. (cam.follow etc. would run against a dead
-    // renderer; the context-restore handler re-applies everything that matters when it returns.)
+    // Publication is consumed before any context-loss early return. PresentationRunner acknowledges
+    // the range after renderUpdate succeeds, so the dense mirror must not miss that same range merely
+    // because the GPU is temporarily unavailable.
+    const publication = this._presentationPublisher.consume(presentationFrame);
+    if (publication.rebuilt) this._rebindPresentationMeshes();
+    else this._bindPublishedPresentationMeshes(publication);
+    // While the GL context is lost, the renderer can't draw — skip all remaining per-frame work until
+    // webglcontextrestored rebuilds GPU resources. The derived publication mirror remains current.
     if (this._contextLost) return false;
     // Attribution CPU timer — opt-in only (perfRuntime.renderWorkEnabled default false).
     const perf = this.state && this.state.perfRuntime;
@@ -2017,6 +2161,7 @@ export const render = {
       ? this._keyLight.shadow.camera
       : null;
     asteroidSyncOptions.records = this._entityFrame.asteroids;
+    asteroidSyncOptions.recordsDirty = this._presentationWorld.consumeAsteroidDirty();
     this.state.render.asteroidInstancePool = syncAsteroidInstancePool(this._asteroidInstancePool, asteroidSyncOptions);
     // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
     // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).

@@ -33,9 +33,15 @@ export function createPresentationJournalRecord() {
     x: 0,
     y: 0,
     z: 0,
+    prevX: 0,
+    prevY: 0,
+    prevZ: 0,
     rot: 0,
     bank: 0,
     pitch: 0,
+    prevRot: 0,
+    prevBank: 0,
+    prevPitch: 0,
     visualRevision: 0,
   };
 }
@@ -54,9 +60,15 @@ function copyRecord(target, source) {
   target.x = source.x;
   target.y = source.y;
   target.z = source.z;
+  target.prevX = source.prevX;
+  target.prevY = source.prevY;
+  target.prevZ = source.prevZ;
   target.rot = source.rot;
   target.bank = source.bank;
   target.pitch = source.pitch;
+  target.prevRot = source.prevRot;
+  target.prevBank = source.prevBank;
+  target.prevPitch = source.prevPitch;
   target.visualRevision = source.visualRevision;
   return target;
 }
@@ -69,13 +81,20 @@ function sourceEntityId(source) {
 function fillPose(record, source) {
   const value = source && typeof source === 'object' ? source : EMPTY_OBJECT;
   const pos = value.pos && typeof value.pos === 'object' ? value.pos : EMPTY_OBJECT;
+  const prevPos = value.prevPos && typeof value.prevPos === 'object' ? value.prevPos : pos;
   record.entityType = typeof value.type === 'string' ? value.type : null;
   record.x = finite(pos.x);
   record.y = finite(pos.y);
   record.z = finite(pos.z);
+  record.prevX = Number.isFinite(prevPos.x) ? prevPos.x : record.x;
+  record.prevY = Number.isFinite(prevPos.y) ? prevPos.y : record.y;
+  record.prevZ = Number.isFinite(prevPos.z) ? prevPos.z : record.z;
   record.rot = finite(value.rot);
   record.bank = finite(value.bank);
   record.pitch = finite(value.pitch);
+  record.prevRot = Number.isFinite(value.prevRot) ? value.prevRot : record.rot;
+  record.prevBank = Number.isFinite(value.prevBank) ? value.prevBank : record.bank;
+  record.prevPitch = Number.isFinite(value.prevPitch) ? value.prevPitch : record.pitch;
   record.visualRevision = Number.isSafeInteger(value.presentationVisualRevision)
     && value.presentationVisualRevision >= 0
     ? value.presentationVisualRevision

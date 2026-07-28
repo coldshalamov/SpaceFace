@@ -74,9 +74,15 @@ test('PresentationJournal publishes ordered scalar spawn, transform, visual, and
     x: 10,
     y: 3,
     z: -4,
+    prevX: 10,
+    prevY: 3,
+    prevZ: -4,
     rot: 0.25,
     bank: 0,
     pitch: 0,
+    prevRot: 0.25,
+    prevBank: 0,
+    prevPitch: 0,
     visualRevision: 0,
   });
   assert.deepEqual(readRecord(journal, 2), {
@@ -90,9 +96,15 @@ test('PresentationJournal publishes ordered scalar spawn, transform, visual, and
     x: 12,
     y: 3,
     z: -4,
+    prevX: 10,
+    prevY: 3,
+    prevZ: -4,
     rot: 0.5,
     bank: 0,
     pitch: 0,
+    prevRot: 0.25,
+    prevBank: 0,
+    prevPitch: 0,
     visualRevision: 0,
   });
   assert.equal(readRecord(journal, 3).revision, 3);
