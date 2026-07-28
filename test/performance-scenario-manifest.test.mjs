@@ -185,6 +185,40 @@ test('scenario definition identity ignores mutable Array.prototype lookup hooks'
   assert.equal(compiled.scenarios[0].scenarioDefinitionDigest, expectedDigest);
 });
 
+test('canonical scenario ordering ignores mutable Map.prototype lookup hooks', () => {
+  const ids = PERFORMANCE_SCENARIO_IDS.slice(0, 2);
+  const expected = compilePerformanceScenarioManifest(manifestFixture({
+    scenarios: ids.map((id) => scenarioFixture(id)),
+  }));
+  const reversed = manifestFixture({
+    scenarios: ids.map((id) => scenarioFixture(id)).reverse(),
+  });
+  const descriptor = Object.getOwnPropertyDescriptor(Map.prototype, 'get');
+  let hookCalls = 0;
+  let compiled;
+  try {
+    Object.defineProperty(Map.prototype, 'get', {
+      configurable: true,
+      writable: true,
+      value() {
+        hookCalls += 1;
+        return 0;
+      },
+    });
+    compiled = compilePerformanceScenarioManifest(reversed);
+  } finally {
+    if (descriptor) Object.defineProperty(Map.prototype, 'get', descriptor);
+    else delete Map.prototype.get;
+  }
+
+  assert.equal(hookCalls, 0);
+  assert.deepEqual(
+    compiled.scenarios.map((scenario) => scenario.id),
+    expected.scenarios.map((scenario) => scenario.id),
+  );
+  assert.equal(compiled.manifestDigest, expected.manifestDigest);
+});
+
 test('canonical hashing never invokes inherited serializer hooks', () => {
   const objectDescriptor = Object.getOwnPropertyDescriptor(Object.prototype, 'toJSON');
   const arrayDescriptor = Object.getOwnPropertyDescriptor(Array.prototype, 'toJSON');
@@ -530,6 +564,80 @@ test('save path safety ignores mutable Array.prototype predicates', () => {
   } finally {
     if (descriptor) Object.defineProperty(Array.prototype, 'every', descriptor);
     else delete Array.prototype.every;
+  }
+
+  assert.equal(hookCalls, 0);
+  assert.equal(validation.ok, false);
+  assert.match(validation.issues.join(' | '), /save\.path.*repository-relative|save\.path.*unsafe/i);
+  assert.match(compileError?.message || '', /invalid performance scenario manifest/i);
+});
+
+test('save content binding ignores mutable RegExp.prototype hooks', () => {
+  const manifest = manifestFixture();
+  manifest.scenarios[0].save = {
+    kind: 'fixture',
+    path: 'test/fixtures/performance/save.json',
+    sha256: 'not-a-content-digest',
+  };
+  const descriptor = Object.getOwnPropertyDescriptor(RegExp.prototype, 'test');
+  let hookCalls = 0;
+  let validation;
+  let compileError;
+  try {
+    Object.defineProperty(RegExp.prototype, 'test', {
+      configurable: true,
+      writable: true,
+      value() {
+        hookCalls += 1;
+        return true;
+      },
+    });
+    validation = validatePerformanceScenarioManifest(manifest);
+    try {
+      compilePerformanceScenarioManifest(manifest);
+    } catch (error) {
+      compileError = error;
+    }
+  } finally {
+    if (descriptor) Object.defineProperty(RegExp.prototype, 'test', descriptor);
+    else delete RegExp.prototype.test;
+  }
+
+  assert.equal(hookCalls, 0);
+  assert.equal(validation.ok, false);
+  assert.match(validation.issues.join(' | '), /sha256.*full|sha256.*required/i);
+  assert.match(compileError?.message || '', /invalid performance scenario manifest/i);
+});
+
+test('save path safety ignores mutable String.prototype parsing hooks', () => {
+  const manifest = manifestFixture();
+  manifest.scenarios[0].save = {
+    kind: 'fixture',
+    path: '../outside.json',
+    sha256: SHA256,
+  };
+  const descriptor = Object.getOwnPropertyDescriptor(String.prototype, 'split');
+  let hookCalls = 0;
+  let validation;
+  let compileError;
+  try {
+    Object.defineProperty(String.prototype, 'split', {
+      configurable: true,
+      writable: true,
+      value() {
+        hookCalls += 1;
+        return ['safe.json'];
+      },
+    });
+    validation = validatePerformanceScenarioManifest(manifest);
+    try {
+      compilePerformanceScenarioManifest(manifest);
+    } catch (error) {
+      compileError = error;
+    }
+  } finally {
+    if (descriptor) Object.defineProperty(String.prototype, 'split', descriptor);
+    else delete String.prototype.split;
   }
 
   assert.equal(hookCalls, 0);

@@ -95,7 +95,15 @@ const WINDOWS_INVALID_PATH_CHAR = /[<>:"\\|?*]/;
 const ASCII_CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
 const INVALID = Symbol('invalid-performance-manifest-value');
 const ARRAY_SORT = Function.call.bind(Array.prototype.sort);
+const MAP_GET = Function.call.bind(Map.prototype.get);
+const REGEXP_TEST = Function.call.bind(RegExp.prototype.test);
+const STRING_IS_WELL_FORMED = Function.call.bind(String.prototype.isWellFormed);
+const STRING_NORMALIZE = Function.call.bind(String.prototype.normalize);
+const STRING_SLICE = Function.call.bind(String.prototype.slice);
+const STRING_SPLIT = Function.call.bind(String.prototype.split);
+const STRING_STARTS_WITH = Function.call.bind(String.prototype.startsWith);
 const STRING_TO_LOWER_CASE = Function.call.bind(String.prototype.toLowerCase);
+const STRING_TRIM = Function.call.bind(String.prototype.trim);
 const JSON_STRINGIFY = JSON.stringify;
 
 const CONTEXT = Object.freeze({
@@ -145,7 +153,9 @@ export function compilePerformanceScenarioManifest(document, options = {}) {
   for (let index = 0; index < prepared.document.scenarios.length; index += 1) {
     defineArrayValue(scenarios, index, compileScenario(prepared.document.scenarios[index]));
   }
-  ARRAY_SORT(scenarios, (left, right) => SCENARIO_ORDER.get(left.id) - SCENARIO_ORDER.get(right.id));
+  ARRAY_SORT(scenarios, (left, right) => (
+    MAP_GET(SCENARIO_ORDER, left.id) - MAP_GET(SCENARIO_ORDER, right.id)
+  ));
 
   const digestScenarios = new Array(scenarios.length);
   for (let index = 0; index < scenarios.length; index += 1) {
@@ -282,13 +292,13 @@ function validateSave(save, prefix, issues, limits) {
   if (save.path != null && !isSafeRepositoryRelativePath(save.path)) {
     issues.add(`${prefix}.path must be a safe repository-relative POSIX path`);
   }
-  if (save.sha256 != null && !(typeof save.sha256 === 'string' && SHA256_PATTERN.test(save.sha256))) {
+  if (save.sha256 != null && !(typeof save.sha256 === 'string' && REGEXP_TEST(SHA256_PATTERN, save.sha256))) {
     issues.add(`${prefix}.sha256 must be a full SHA-256 hex digest`);
   }
 
   const fileBound = save.kind === 'fixture' || save.kind === 'save-file' || save.kind === 'continuation';
   if (fileBound && !isNonEmptyString(save.path)) issues.add(`${prefix}.path is required for ${save.kind}`);
-  if (fileBound && !(typeof save.sha256 === 'string' && SHA256_PATTERN.test(save.sha256))) {
+  if (fileBound && !(typeof save.sha256 === 'string' && REGEXP_TEST(SHA256_PATTERN, save.sha256))) {
     issues.add(`${prefix}.sha256 is required for ${save.kind}`);
   }
   if (save.kind === 'continuation' && !boundedSafeInteger(save.checkpointTick, 0, limits.maxTick)) {
@@ -874,12 +884,12 @@ function validateVector(value, length, prefix, issues) {
 
 function isSafeRepositoryRelativePath(value) {
   if (typeof value !== 'string' || value.length === 0 || value.length > 1024) return false;
-  if (!value.isWellFormed() || value.normalize('NFC') !== value) return false;
+  if (!STRING_IS_WELL_FORMED(value) || STRING_NORMALIZE(value, 'NFC') !== value) return false;
   if (Buffer.byteLength(value, 'utf8') > 1024) return false;
-  if (ASCII_CONTROL.test(value) || WINDOWS_INVALID_PATH_CHAR.test(value)) return false;
-  if (value.startsWith('/') || value.startsWith('//')) return false;
+  if (REGEXP_TEST(ASCII_CONTROL, value) || REGEXP_TEST(WINDOWS_INVALID_PATH_CHAR, value)) return false;
+  if (STRING_STARTS_WITH(value, '/') || STRING_STARTS_WITH(value, '//')) return false;
 
-  const parts = value.split('/');
+  const parts = STRING_SPLIT(value, '/');
   for (let index = 0; index < parts.length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(parts, String(index));
     if (!descriptor || !Object.hasOwn(descriptor, 'value')) return false;
@@ -890,8 +900,8 @@ function isSafeRepositoryRelativePath(value) {
       || part === '..'
       || part.length > 255
       || Buffer.byteLength(part, 'utf8') > 255
-      || /[ .]$/.test(part)
-      || WINDOWS_RESERVED_SEGMENT.test(part)
+      || REGEXP_TEST(/[ .]$/, part)
+      || REGEXP_TEST(WINDOWS_RESERVED_SEGMENT, part)
     ) return false;
   }
   return true;
@@ -1062,7 +1072,9 @@ function validationResult(issues, limits) {
 
 function truncateUtf8(value, maxBytes) {
   if (maxBytes <= 0) return '';
-  const probe = value.length > maxBytes + 1 ? value.slice(0, maxBytes + 1) : value;
+  const probe = value.length > maxBytes + 1
+    ? STRING_SLICE(value, 0, maxBytes + 1)
+    : value;
   if (Buffer.byteLength(probe, 'utf8') <= maxBytes && probe.length === value.length) return probe;
 
   const ellipsis = maxBytes >= 3 ? '…' : '';
@@ -1079,13 +1091,13 @@ function truncateUtf8(value, maxBytes) {
 }
 
 function propertyPath(prefix, key) {
-  if (key.length <= 64 && SIMPLE_PATH_KEY.test(key)) return `${prefix}.${key}`;
+  if (key.length <= 64 && REGEXP_TEST(SIMPLE_PATH_KEY, key)) return `${prefix}.${key}`;
   return `${prefix}[${previewValue(key)}]`;
 }
 
 function previewValue(value) {
   if (typeof value === 'string') {
-    const bounded = value.length > 64 ? `${value.slice(0, 64)}…` : value;
+    const bounded = value.length > 64 ? `${STRING_SLICE(value, 0, 64)}…` : value;
     return JSON_STRINGIFY(bounded);
   }
   if (typeof value === 'number' || typeof value === 'boolean' || value == null) return String(value);
@@ -1131,11 +1143,11 @@ function boundedString(value, maxLength) {
   return typeof value === 'string'
     && value.length > 0
     && value.length <= maxLength
-    && value.trim().length > 0;
+    && STRING_TRIM(value).length > 0;
 }
 
 function boundedIdentifier(value, pattern, maxLength) {
-  return boundedString(value, maxLength) && pattern.test(value);
+  return boundedString(value, maxLength) && REGEXP_TEST(pattern, value);
 }
 
 function isJsonScalar(value) {
@@ -1149,7 +1161,7 @@ function isJsonScalar(value) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === 'string' && value.length > 0 && value.trim().length > 0;
+  return typeof value === 'string' && value.length > 0 && STRING_TRIM(value).length > 0;
 }
 
 function hasOrdinaryObjectPrototype(value) {
