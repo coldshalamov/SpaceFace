@@ -3,14 +3,14 @@ packetId: PQ-025
 leafId: PQ-025.contracts-prework
 acceptance: focused_green
 disposition: PASS
-candidateCommit: e6701d1a8016d55a10e1d66a24fdd848916102d1
+candidateCommit: 1bf605850974b747af8fd82e990cceb6dceb5e84
 -->
 
 # PQ-025 leaf — held-out Gold Corridor acceptance contracts (Phase 0 + Phase 1 only)
 
 **Worktree:** `C:\Users\93rob\sf-l20` · branch `claude/pq025-prework-20260728` · based at `aa0f0729`.
 
-`candidateCommit` above names `e6701d1a`, the commit containing the attested modules and tests.
+`candidateCommit` above names `1bf60585`, the commit containing the attested modules and tests.
 This report is committed on top of it, so the branch tip is one commit later; the receipt attests
 the code, not itself.
 
@@ -113,9 +113,9 @@ All new files. No gameplay source was modified; `package.json` untouched.
 
 | Path | Contents |
 |---|---|
-| `scripts/lib/goldCorridorAcceptanceContracts.mjs` | Semantic map; matrix vocabulary; runtime-independent seed derivation (frozen input allowlist + explicit forbidden list) and commit-reveal; attempt-identity schema covering the packet JSON exactly; append-only ledger with hash chain; failure taxonomy + rerun policy; profile contract (16.7 / 33.3 ms); native duration + sim reconciliation; owner-evidence normalization; Massline and purchase claim evaluators; capture fingerprint registry; matrix completeness + relabel guard. |
+| `scripts/lib/goldCorridorAcceptanceContracts.mjs` | Semantic map; matrix vocabulary; runtime-independent seed derivation (frozen input allowlist + explicit forbidden list) and commit-reveal; attempt-identity schema covering the packet JSON exactly; append-only ledger with hash chain; failure taxonomy + rerun policy; profile contract (16.7 / 33.3 ms); accessibility contract (9 required checks, profile validated against the enum at matrix construction); native duration + sim reconciliation; owner-evidence normalization; Massline and purchase claim evaluators; capture fingerprint registry; matrix completeness + relabel guard. |
 | `scripts/lib/goldCorridorAcceptanceSession.mjs` | Actor/observer/judge capabilities with construction-time information-flow enforcement; checkpoint schemas (C0/C1/C2 and C0..C4); evidence buffer with non-erasing bounded high-water; injection classification. Pure — no process/browser code. |
-| `scripts/lib/goldCorridorAcceptanceAggregate.mjs` | Aggregate validator (hard-cell rule, averages diagnostic-only, human verdict handling, dependency hash exactness) and immutable receipt publisher + verifier. |
+| `scripts/lib/goldCorridorAcceptanceAggregate.mjs` | Aggregate validator (hard-cell rule, averages diagnostic-only, rerun-legality audit, capture-uniqueness sweep, human verdict coverage, dependency hash exactness) and immutable receipt publisher + verifier. |
 | `scripts/validation-manifests/pq025-gold-corridor-smoke.mjs` | Phase-2 calibration manifest. `mode: 'diagnostic'`, `acceptanceEligible: false`, `maxLaunchesPerCandidate: 1`. |
 | `scripts/validation-manifests/pq025-gold-corridor-qualification.mjs` | Phase-4/5 manifest. No fixed seed (seeds are derived per cell after reveal); carries an explicit `entryConditionsUnmet` list. |
 
@@ -124,10 +124,29 @@ All new files. No gameplay source was modified; `package.json` untouched.
 is legal only once the entry conditions hold. No Browser/Electron adapter was built — those are
 items 3 and 4 of the packet's bounded write set and belong to Phase 2+.
 
-Two ledger forgery holes were found and closed while testing (commit `e6701d1a`): `cellKey` now
-enters the entry hash, and `verifyLedgerIntegrity` rejects an entry whose `cellKey` or identity
-ordinal disagrees with its own identity. Without this a retained red attempt could be relabelled
-onto a different matrix cell without breaking the chain.
+### 2.1 Defects found in this leaf's own contracts, and closed
+
+Four holes were found by adversarial self-review and fixed with tests. All four had the same shape —
+illegal or absent evidence resolving to `pass` — which is precisely what this packet exists to
+prevent, so they are recorded rather than quietly repaired.
+
+1. **Ledger relabelling** (commit `e6701d1a`). `cellKey` was not covered by the entry hash, so a
+   retained red attempt could be moved onto a different matrix cell without breaking the chain.
+   `cellKey` now enters the hash, and `verifyLedgerIntegrity` rejects an entry whose `cellKey` or
+   identity ordinal disagrees with its own identity.
+2. **Best-of-N passed** (this commit). `validateAggregate` never consumed `evaluateRerunRequest`:
+   a cell whose ledger read `fail -> fail -> pass` on an unchanged candidate and harness resolved to
+   a terminal `pass` and published `PASS`. Confirmed empirically before fixing. New
+   `auditRerunLegality` walks every consecutive attempt pair per cell and turns any denial into an
+   `illegal-rerun:` blocker; an attempt following a passing attempt is also rejected.
+3. **Zero human verdicts passed** (this commit). `evaluateHumanVerdicts` returned `ok` for an empty
+   verdict array, so a fully green matrix that no human ever judged published `PASS`. The frozen
+   critical-question set now lives on the matrix (`criticalQuestionIds`); an empty verdict set, an
+   unfrozen question set, and any unanswered critical question are each blockers. An unanswered
+   critical question is unknown evidence, and unknown is never a pass.
+4. **Capture reuse was only caught at registration** (this commit). `auditCaptureUniqueness` now
+   sweeps `captureId` across the whole ledger inside `validateAggregate`, closing ADV-13 at the
+   decision point as well as at registration time.
 
 ---
 
@@ -135,10 +154,10 @@ onto a different matrix cell without breaking the chain.
 
 | Suite | Tests |
 |---|---|
-| `test/pq025-acceptance-contracts.test.mjs` | 56 |
+| `test/pq025-acceptance-contracts.test.mjs` | 60 |
 | `test/pq025-acceptance-session.test.mjs` | 22 |
-| `test/pq025-acceptance-aggregate.test.mjs` | 18 |
-| **Total** | **96 pass / 0 fail** |
+| `test/pq025-acceptance-aggregate.test.mjs` | 26 |
+| **Total** | **108 pass / 0 fail** |
 
 ### Adversarial contract minimum
 
@@ -209,6 +228,15 @@ expected outcome and is recorded as a before/after pair rather than a single pos
 - **The five absent perf facts (F1-F5) block native qualification** until an owner read seam exists.
   This leaf does not request that seam; per the packet, it is a shared-change request the integrator
   owns.
+- **Accessibility coverage is the automation half only** — roles/names, focus, contrast, reduced
+  motion, flash safety, non-color and non-audio cues, text scale, input reachability. Whether cues
+  are actually clear is the human rubric's job and is not automatable here.
+- **The media contract is capture-identity only.** Uniqueness, staleness, and cross-cell reuse are
+  enforced by content hash; nothing decodes, compares, or judges the media itself.
+- **Parity is identity-level, not evidence-level.** `parityPairId` plus runtime-excluded seed
+  derivation guarantee the two runtimes of a pair run the same cell with the same seed, and that is
+  tested. A cross-runtime evidence comparator (same checkpoints producing equivalent semantic
+  digests) is not built and is Phase-3/4 work.
 
 ---
 
