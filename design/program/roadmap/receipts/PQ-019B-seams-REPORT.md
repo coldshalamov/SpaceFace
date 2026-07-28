@@ -47,12 +47,39 @@ Two rules the packet left open are **decided and recorded rather than silently i
   decorative, and it is the truthful one: a destruction report stamped 105 cannot overturn an expiry
   that happened at 100.
 
-**Defect the permutation suite caught before integration:** the first draft ranked terminal and
+**Defect 1, caught by the permutation suite before integration:** the first draft ranked terminal and
 nonterminal candidates in one sort. An earlier `possession` (tick 40) then suppressed a later
 `lawful_confiscation` (tick 41) purely because earliest-causal-first put the nonterminal report at the
 head of the list — stranding a decided heist in `possessed` forever. Terminal and nonterminal are now
 separate lanes, which is what "nonterminal possession applies only when no terminal candidate wins"
 actually means.
+
+**Defect 2, caught in adversarial review AFTER all six suites were green — the most serious one in
+this packet.** `restoreArbiter` restored `phase` and `receipt` independently. A snapshot with
+`phase: 'terminal'` whose receipt was dropped or unreadable (`receipt: null`, `outcome: 'jackpot'`,
+blank `receiptId`) came back **unfrozen**: `submitCandidate` saw no receipt, accepted new candidates,
+and `prepareTerminal` minted a **second receipt with new effect keys** that no longer matched the
+effects already applied — every owner effect re-applied, possibly under a different outcome. Verified
+by direct repro before and after. The fix is one fail-closed condition: if the phase claims a
+decision was reached and no receipt validated, refuse the whole record and let the consumer treat it
+as the unresolved case it is. Seven tampered shapes are now pinned, plus the inverse — a genuinely
+undecided arbiter (no receipt by definition) must still restore, or every mid-flight heist strands
+on load.
+
+### Two preconditions PQ-019C must honor
+
+Selection is order-independent and proven so. **Admission and stamping are not**, and neither can be
+enforced from inside a pure module. Both are pinned by tests and stated in the module header:
+
+1. **Within a tick, submit before you step.** `stepArbiter(T)` closes admission through `T - 1`,
+   after which a report stamped `T - 1` is refused `stale_tick`. A consumer that steps first and
+   polls second drops exactly the reports it was polling for, and the heist falls through to
+   `expired` with no terminal ever selected. The drop is recorded in `rejected[]` rather than silent,
+   so it is diagnosable — but it is still wrong.
+2. **Stamp `causalTick` from the causing event, never a cached or current clock.** Because the
+   earliest causal fact wins across ticks, a low `causalTick` is a **privilege**: an under-stamped
+   late report outranks a newer, truer fact. Pinned by a test where an `abandoned` report stamped 60
+   beats a `payload_destroyed` stamped 100.
 
 ### 2a. Law intake — `lawSecurity.reportIncident` (`49339e01`)
 
@@ -69,7 +96,7 @@ in-jurisdiction position was automatically witnessed and the gate could never de
 is now 450 WU — deliberately under the floor — and the suite pins the annulus where a theft is inside
 the law's ring but genuinely unseen, and fails if a future edit raises it back above the floor.
 
-**Second defect caught:** the reported-incident ledger materialized on *denied* reports. Any key that
+**Second law defect caught:** the reported-incident ledger materialized on *denied* reports. Any key that
 appears on one leg of the golden save/restore comparison and not the other is a hash divergence
 waiting to happen. It is now created only when an accepted receipt is actually stored.
 
@@ -81,6 +108,16 @@ receipt exactly once through the private `_raise` path every other heat source a
 cannot reach `player.heat` even if it wants to, because the only door needs a receipt it cannot sign.
 Priced at 0.22 for `payload_theft` — between a contraband bust (0.16) and a piracy kill (0.28) — with
 a 0.12 fallback so a future crime type is never silently free.
+
+**Measurement defect caught in review:** the invariant suite originally counted `heatApplicationCount`
+from `heat:changed` events. `_raise` **throttles** emission — it fires only on a WANTED-threshold
+crossing or after 0.4s — so an event counter reads 0 for a real application whenever the player was
+already wanted, and would have passed the `== 0` assertion for a theft that genuinely charged heat.
+Every scenario passed only because heat started at 0 and 0.22 crosses the 0.15 threshold. The counter
+now reads heat's **durable applied-incident ledger** (the record of what was applied, rather than a
+throttled notification about it), all ten scenarios assert identical numbers under the corrected
+counter, and a new scenario covers the hidden regime: an already-WANTED player at heat 0.5, where the
+theft charges heat with no `heat:changed` event at all.
 
 ### 2c. Job control leases — `npcJobsRuntime.claimControl` / `releaseControl` (`ff47d0bd`)
 
@@ -127,13 +164,13 @@ trivially.
 
 | Suite | Tests | Result |
 |---|---|---|
-| `test/pq019-heist-arbiter.test.mjs` | 29 | PASS |
+| `test/pq019-heist-arbiter.test.mjs` | 33 | PASS |
 | `test/pq019-law-incident-intake.test.mjs` | 14 | PASS |
 | `test/pq019-heat-incident-listener.test.mjs` | 9 | PASS |
 | `test/pq019-job-control-lease.test.mjs` | 12 | PASS |
 | `test/pq019-receiver-handoff.test.mjs` | 13 | PASS |
-| `test/pq019-owner-invariants.test.mjs` | 9 | PASS |
-| **`npm run check:pq019b:seams`** | **86** | **86/86 PASS** |
+| `test/pq019-owner-invariants.test.mjs` | 10 | PASS |
+| **`npm run check:pq019b:seams`** | **91** | **91/91 PASS** |
 
 | Gate | Result |
 |---|---|
@@ -202,6 +239,9 @@ key and therefore an integrator decision, not a packet edit.
   `capsuleProjectionCount` are proven **reachable exactly once through the arbiter's effect journal**
   by a stand-in consumer in `test/pq019-owner-invariants.test.mjs`. They are not yet proven *in
   `missions.js`* — that is PQ-019C's integration evidence, and this receipt does not claim it.
+- `stepArbiter` ordering and `causalTick` stamping are **consumer preconditions**, not guarantees.
+  They are pinned by tests and stated in the module header, but PQ-019C must honor them; a pure
+  module cannot enforce its caller's update order.
 - The witness predicate is new code, not a reused owner. `data.lawWitness` is the marker by which
   PQ-019C can make the lawful catcher a witness without `lawSecurity` learning what a heist is. The
   450 WU radius is a first, deliberately conservative value and is exported for Phase E tuning.

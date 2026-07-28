@@ -32,6 +32,23 @@
 // A decision is never taken in the same tick a candidate was reported: same-step reports are
 // BUFFERED and become eligible only at `causalTick + 1`. That is what makes "all callbacks for tick
 // T, in any order" a set rather than a race.
+//
+// ─── TWO PRECONDITIONS ON THE CONSUMER (PQ-019C) ────────────────────────────────────────────────
+// SELECTION is order-independent and proven so. ADMISSION is not, and neither is stamping. Both of
+// the following are the consumer's responsibility and cannot be enforced from inside a pure module:
+//
+//   1. WITHIN A TICK, SUBMIT BEFORE YOU STEP. `stepArbiter(T)` closes the window through `T - 1`,
+//      after which a report stamped `T - 1` is refused as `stale_tick`. A consumer that steps first
+//      and submits second — e.g. one that polls a publisher's candidate list after stepping — drops
+//      exactly the reports it was polling for, and the heist then falls through to `expired` with no
+//      terminal ever selected. The drop is RECORDED in `rejected[]` rather than silent, so it is
+//      diagnosable; it is still wrong. Submit every report for the tick, then step once.
+//
+//   2. STAMP `causalTick` FROM THE CAUSING EVENT, NEVER FROM A CACHED OR CURRENT CLOCK. Because the
+//      earliest causal fact wins across ticks (see `compareCandidates`), a low `causalTick` is a
+//      PRIVILEGE: an under-stamped late report will outrank a newer, truer physical fact. The tick
+//      must come from the event that caused the report — the physics impact, the destruction, the
+//      expiry — not from whenever the consumer got around to forwarding it.
 
 import { hash32 } from '../core/rng.js';
 
@@ -491,6 +508,9 @@ export function effectApplied(arbiter, effectKey) {
 /**
  * One arbitration step: close the window at `decisionTick`, apply nonterminal possession if no
  * terminal candidate outranks it, and compare-and-set a terminal receipt when one is decided.
+ *
+ * ORDERING PRECONDITION: this closes the admission window through `decisionTick - 1`. Submit every
+ * report for the tick BEFORE calling it — see precondition 1 in the module header.
  */
 export function stepArbiter(arbiter, decisionTick) {
   if (!arbiter) return { phase: null, receipt: null, possession: null };
@@ -556,9 +576,12 @@ export function serializeArbiter(arbiter) {
 }
 
 /**
- * Rebuild from a snapshot. A corrupt record yields null rather than a half-live arbiter that could
- * decide a second winner; every candidate is re-normalized, so a tampered save cannot smuggle a
- * forged id or an unknown kind past the same gate a live report faces.
+ * Rebuild from a snapshot.
+ *
+ * Every candidate is re-normalized, so a tampered save cannot smuggle a forged id or an unknown kind
+ * past the same gate a live report faces. A record that claims a decision was reached but cannot
+ * produce a readable receipt yields null outright — see the fail-closed block at the end. There is
+ * no half-decided arbiter, because a half-decided one is exactly the shape that pays twice.
  */
 export function restoreArbiter(data) {
   if (!data || typeof data !== 'object' || data.schema !== HEIST_ARBITER_SCHEMA) return null;
@@ -630,6 +653,17 @@ export function restoreArbiter(data) {
         effectKeys: effectKeysFor(receiptId),
       };
     }
+  }
+
+  // FAIL CLOSED. Phase and receipt are restored independently, so a record whose phase says a
+  // decision was reached but whose receipt is missing or unreadable would come back UNFROZEN: the
+  // journal would accept new candidates and `prepareTerminal` would mint a SECOND receipt, with new
+  // effect keys that no longer match the effects already applied — every owner effect re-applied,
+  // and possibly under a different outcome. There is no safe half-decided arbiter, so refuse the
+  // whole record and let the consumer treat it as the unresolved case it actually is.
+  if (!arbiter.receipt
+    && (arbiter.phase === HEIST_RESOLUTION_PHASE || arbiter.phase === HEIST_TERMINAL_PHASE)) {
+    return null;
   }
 
   for (const key of Object.keys(data.effects && typeof data.effects === 'object' ? data.effects : {})

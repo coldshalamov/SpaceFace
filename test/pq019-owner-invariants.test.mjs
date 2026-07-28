@@ -90,11 +90,12 @@ function scene(seed = 19019) {
     capsuleProjectionCount: 0,
   };
   t.bus.on('heist:receiverCommitted', () => { counts.receiverCommitCount++; });
-  t.bus.on('heat:changed', (p) => {
-    if (p && typeof p.reason === 'string' && p.reason.startsWith('law incident')) {
-      counts.heatApplicationCount++;
-    }
-  });
+  // heatApplicationCount is read from heat's own DURABLE applied-incident ledger, not from
+  // `heat:changed` events. `_raise` throttles emission — it only fires on a WANTED-threshold
+  // crossing or after 0.4s — so an event counter reads 0 for a real application whenever the player
+  // was already wanted, and would pass the `== 0` assertion for a theft that genuinely charged heat.
+  // The ledger is the record of what was applied; the event is only a notification about it.
+  const heatApplications = () => Object.keys(t.state.player.heatIncidentsApplied || {}).length;
 
   // Launch, then anchor the law fixture on the capsule's real position so jurisdiction and witnesses
   // are true facts about where the theft happens rather than hard-coded coordinates.
@@ -142,6 +143,7 @@ function scene(seed = 19019) {
     ...t, counts, capsule, theftPos, patrolHull, jobId, baseline, maxCapsules, step,
     finalize() {
       counts.capsuleProjectionCount = maxCapsules.value;
+      counts.heatApplicationCount = heatApplications();
       return {
         ...counts,
         playerCargoMutationCountForCapsule:
@@ -457,6 +459,35 @@ test('a patrol hull destroyed mid-pursuit still leaves zero claims at terminal',
   s.step(2);
 
   assertInvariants(s, c.arbiter, { outcome: 'fenced_success', validatedWitnessedTheft: true });
+});
+
+test('an ALREADY-WANTED player still has the theft applied exactly once', () => {
+  // The regime an event-based heat counter hides: `_raise` only emits on a WANTED-threshold crossing
+  // or after 0.4s, so a player who is already wanted has heat applied with no `heat:changed` at all.
+  // The invariant is about the APPLICATION, not the notification.
+  const s = scene();
+  const c = new Consumer(s);
+  s.state.player.heat = 0.5; // already deep in WANTED before the heist begins
+  const before = s.state.player.heat;
+
+  assert.equal(c.reportTheft().accepted, true);
+  assert.ok(s.state.player.heat > before, 'the crime really did charge heat');
+  assert.equal(c.claimPatrol().granted, true);
+  applyTransition(c.arbiter, 'possessed');
+  s.step(4);
+
+  // Report again several times: idempotence must hold in this regime too.
+  for (let i = 0; i < 3; i++) c.reportTheft();
+  const charged = s.state.player.heat;
+
+  c.contact('fence_receiver');
+  c.submit('fenced_success', 'fence_receiver', s.state.tick | 0);
+  c.decide((s.state.tick | 0) + 1);
+  for (let i = 0; i < 3; i++) c.applyTerminalEffects();
+  s.step(2);
+
+  assertInvariants(s, c.arbiter, { outcome: 'fenced_success', validatedWitnessedTheft: true });
+  assert.equal(s.state.player.heat, charged, 'repeat reports never re-charged');
 });
 
 test('exactly one capsule exists at any moment across a whole route', () => {

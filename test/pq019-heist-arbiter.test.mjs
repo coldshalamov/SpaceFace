@@ -465,6 +465,81 @@ test('a tampered save cannot smuggle a forged candidate or an unknown kind past 
   assert.equal(stepArbiter(restored, 91).receipt.outcome, 'expired');
 });
 
+test('a decided record whose receipt is unreadable is refused outright, never restored unfrozen', () => {
+  // Phase and receipt restore independently. A record that claims a decision was reached but cannot
+  // produce a readable receipt would otherwise come back UNFROZEN: the journal accepts new
+  // candidates and prepareTerminal mints a SECOND receipt, with new effect keys that no longer match
+  // the effects already applied. That is a double-payout, and it can even change the outcome.
+  const decided = arb();
+  submitCandidate(decided, report('expired', 'clock', 10));
+  stepArbiter(decided, 11);
+  commitTerminal(decided, decided.receipt.receiptId);
+  const snapshot = serializeArbiter(decided);
+  assert.equal(snapshot.phase, 'terminal');
+
+  for (const [label, tampered] of [
+    ['receipt dropped', { ...snapshot, receipt: null }],
+    ['receipt missing', { ...snapshot, receipt: undefined }],
+    ['unknown outcome', { ...snapshot, receipt: { ...snapshot.receipt, outcome: 'jackpot' } }],
+    ['blank receiptId', { ...snapshot, receipt: { ...snapshot.receipt, receiptId: '' } }],
+    ['blank winner', { ...snapshot, receipt: { ...snapshot.receipt, winnerCandidateId: '' } }],
+    ['bad causalTick', { ...snapshot, receipt: { ...snapshot.receipt, causalTick: -3 } }],
+    ['resolution_pending, no receipt',
+      { ...snapshot, phase: 'resolution_pending', receipt: null }],
+  ]) {
+    const restored = restoreArbiter(JSON.parse(JSON.stringify(tampered)));
+    assert.equal(restored, null, `${label} must refuse the whole record`);
+  }
+
+  // The honest record still restores, and stays frozen.
+  const good = restoreArbiter(JSON.parse(JSON.stringify(snapshot)));
+  assert.equal(good.receipt.outcome, 'expired');
+  assert.equal(submitCandidate(good, report('payload_destroyed', 'attacker', 50)).reason,
+    'journal_frozen');
+  assert.equal(prepareTerminal(good, 51).receipt.receiptId, snapshot.receipt.receiptId);
+});
+
+test('an undecided record with a dropped receipt still restores normally', () => {
+  // Fail-closed must not become fail-paranoid: a genuinely undecided arbiter has no receipt by
+  // definition, and refusing it would strand every mid-flight heist on load.
+  const pending = arb();
+  applyTransition(pending, 'launched');
+  submitCandidate(pending, report('possession', 'massline', 10));
+  const snapshot = serializeArbiter(pending);
+  assert.equal(snapshot.receipt, null);
+  const restored = restoreArbiter(JSON.parse(JSON.stringify(snapshot)));
+  assert.ok(restored, 'a pending arbiter must survive a save');
+  assert.equal(restored.phase, 'launched');
+  assert.equal(restored.candidates.length, 1);
+});
+
+test('ORDERING PRECONDITION: submit before you step, or the report is recorded as stale', () => {
+  // Selection is order-independent; ADMISSION is not. This pins the footgun PQ-019C must avoid.
+  const correct = arb();
+  submitCandidate(correct, report('fenced_success', 'fence_receiver', 40)); // submit ...
+  const decided = stepArbiter(correct, 41); // ... then step
+  assert.equal(decided.receipt.outcome, 'fenced_success');
+
+  const wrong = arb();
+  stepArbiter(wrong, 41); // step first (e.g. a consumer that polls after stepping) ...
+  const late = submitCandidate(wrong, report('fenced_success', 'fence_receiver', 40)); // ... then submit
+  assert.equal(late.accepted, false);
+  assert.equal(late.reason, 'stale_tick');
+  assert.equal(stepArbiter(wrong, 42).receipt, null, 'the heist would fall through with no terminal');
+  // The drop is diagnosable rather than silent — that is what makes the precondition enforceable.
+  assert.equal(wrong.rejected.at(-1).reason, 'stale_tick');
+  assert.equal(wrong.rejected.at(-1).causalTick, 40);
+});
+
+test('causalTick is a PRIVILEGE: an under-stamped late report outranks a newer true fact', () => {
+  // Documents precondition 2. C must stamp from the causing event, never a cached clock.
+  const a = arb();
+  submitCandidate(a, report('payload_destroyed', 'combat', 100)); // the true, newer fact
+  submitCandidate(a, report('abandoned', 'sloppy_reporter', 60)); // stamped too early
+  assert.equal(stepArbiter(a, 101).receipt.outcome, 'abandoned',
+    'an earlier stamp wins even against the strongest precedence — stamp honestly');
+});
+
 test('restore refuses a record that is not this schema', () => {
   assert.equal(restoreArbiter(null), null);
   assert.equal(restoreArbiter({ schema: 'something.else.v1' }), null);
