@@ -417,9 +417,27 @@ const IMPACT_PRESENTATION_PROFILES = Object.freeze({
   }),
 });
 
+// PQ-023 family (a). Impact identity is normally keyed by FAMILY, which left flak sharing the
+// autocannon's impact profile byte-for-byte -- a pure recolor at the one moment the leaf requires it
+// to read as its own weapon. Flak stays mechanically kinetic (it is a slug weapon and must keep the
+// kinetic trail and damage identity); only its impact gets its own entry, so the taxonomy is not
+// forked to fix a presentation problem.
+const IMPACT_PRESENTATION_BY_VARIANT = Object.freeze({
+  flak: Object.freeze({
+    // A proximity-fuzed fragmentation burst: many small fragments thrown outward, not one
+    // directional spray off a hit surface. `fragmentCount` is double the autocannon's and
+    // `lightPeak` is deliberately BELOW it -- flak fires in dense point-defense volleys, so a
+    // per-burst light as bright as a single autocannon hit would wash out the whole engagement.
+    mode: 'proximity-burst', primaryShape: 'fragment-cloud', life: 0.22, fragmentCount: 24,
+    coreColor: '#fff0cc', accentColor: '#ff8a3c', lightPeak: 1.6,
+  }),
+});
+
 export function resolveImpactPresentationProfile(weaponId, weaponData = null) {
   const presentation = resolveWeaponPresentationFamily(weaponId, weaponData);
-  const base = IMPACT_PRESENTATION_PROFILES[presentation.family] || IMPACT_PRESENTATION_PROFILES.kinetic;
+  const base = IMPACT_PRESENTATION_BY_VARIANT[presentation.variant]
+    || IMPACT_PRESENTATION_PROFILES[presentation.family]
+    || IMPACT_PRESENTATION_PROFILES.kinetic;
   const scale = presentation.variant === 'siege-lance'
     ? 1.8
     : (presentation.variant === 'torpedo' ? 1.5 : 1);

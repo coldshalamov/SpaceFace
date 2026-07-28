@@ -1,5 +1,8 @@
 import { getPresentationRecipe } from '../presentation/cueRecipes.js';
 import { normalizePresentationEvent } from '../presentation/cueSchema.js';
+import { chargeCueLanes, isCriticalCue, laneBudgetReason } from '../presentation/cueArbitration.js';
+import { worldSiteConditionText } from '../presentation/worldSiteDamageStates.js';
+import { worldSiteManifestById } from '../data/worldSiteManifests.js';
 import { damageLayerHierarchy, doctrinePhaseStage, grammarForDoctrine, isLiveDoctrineId } from '../presentation/combatChoreography.js';
 import { classifyDrillWarning, drillHardnessBand, fieldDepletionBand, seamQualityTag } from '../presentation/miningChoreography.js';
 import {
@@ -20,13 +23,10 @@ const SCENARIO_CUE_TARGET_ACTORS = Object.freeze({
   'scenario.branch.resolved': 'evidence_spindle_47a',
 });
 
-const DEFAULT_LANE_BUDGETS_PER_TICK = Object.freeze({
-  camera: 3,
-  vfx: 8,
-  audio: 6,
-  ui: 6,
-  accessibility: 6,
-});
+// Per-tick lane budgets and the critical reserve inside them now live in
+// src/presentation/cueArbitration.js (CUE_LANE_BUDGETS / CUE_LANE_CRITICAL_RESERVE) so the budget
+// table is declared data that tests can assert. Totals are unchanged from the table that used to
+// live here.
 
 // Dedupe identity includes source/target/sequence ids, so a long campaign can
 // produce an effectively unbounded key stream.  Keep only records that can
@@ -195,6 +195,10 @@ export const presentationOrchestrator = {
       this.bus.on('game:new', () => this._resetRuntime()),
       this.bus.on('game:started', () => this._resetRuntime()),
       this.bus.on('save:loaded', () => this._resetRuntime()),
+      // PQ-023 family (c): World Site damage / recovery. These two receipts already existed and
+      // carried the authoritative transition; nothing was listening on the presentation side.
+      this.bus.on('worldSite:failureReceipt', (payload) => this._onWorldSiteFailure(payload || {})),
+      this.bus.on('worldSite:operationReceipt', (payload) => this._onWorldSiteOperation(payload || {})),
     ];
   },
 
@@ -1182,6 +1186,65 @@ export const presentationOrchestrator = {
     });
   },
 
+  /**
+   * A World Site component failed. `componentId` is the authoritative owner truth; the accessible
+   * text is derived from it so a captions-only or greyscale player receives the same mechanical
+   * fact the dimmed fixture carries.
+   */
+  _onWorldSiteFailure(payload) {
+    const componentId = payload.componentId || null;
+    if (!componentId) return false;
+    return this._emitCue('world_site.damage', payload, {
+      sourceEvent: 'worldSite:failureReceipt',
+      sourceId: payload.siteId || null,
+      targetId: componentId,
+      subsystemId: componentId,
+      material: 'world_site',
+      sequence: payload.triggerId || (payload.receipt && payload.receipt.sequence) || null,
+      tags: ['world_site', 'damage', payload.stageId].filter(Boolean),
+      accessibilityText: worldSiteConditionText(worldSiteComponentLabel(payload.siteId, componentId), 'failed'),
+      // Addressed to the player: it undoes work the player performed.
+      playerRelevanceFloor: 0.9,
+    });
+  },
+
+  /**
+   * A World Site operation completed. Only transitions that actually restore a component are
+   * surfaced as recovery — ordinary progress operations are not damage-recovery cues, and emitting
+   * one per beam tick would be noise rather than a state change.
+   */
+  _onWorldSiteOperation(payload) {
+    const componentId = payload.componentId || null;
+    const receipt = payload.receipt || null;
+    if (!componentId || !receipt || receipt.complete !== true) return false;
+    // The receipt records amount/completion but not the state transition (that lives in
+    // record.completedOperations), so recovery identity is resolved from MANIFEST truth: an
+    // operation whose `from` set includes 'failed' is the authored recovery path. Everything else
+    // is ordinary progress and is not a damage-recovery cue.
+    const manifest = worldSiteManifestById(payload.siteId);
+    const operation = manifest && (manifest.operations || []).find((candidate) => candidate.id === payload.operationId);
+    if (!operation || !Array.isArray(operation.from) || !operation.from.includes('failed')) return false;
+    return this._emitCue('world_site.recovery', payload, {
+      sourceEvent: 'worldSite:operationReceipt',
+      sourceId: payload.siteId || null,
+      targetId: componentId,
+      subsystemId: componentId,
+      material: 'world_site',
+      sequence: payload.operationId || receipt.sequence || null,
+      tags: ['world_site', 'recovery', payload.stageId].filter(Boolean),
+      accessibilityText: worldSiteConditionText(
+        worldSiteComponentLabel(payload.siteId, componentId), operation.to || 'ready',
+      ),
+      // 0.88, NOT 0.9. presentationAdapters._applyAccessibility turns >= 0.9 into an ASSERTIVE
+      // screen-reader interrupt (see MASSLINE_OBSERVER_PLAYER_RELEVANCE_FLOOR above). A restoration
+      // is a payoff receipt, and interrupting a live combat warning to announce "Cathedral hull
+      // restored." inverts the priority this leaf exists to protect. 0.88 is the codebase's
+      // "player is the source" tier, which is exactly what a completed repair is. The damage cue
+      // keeps 0.9 because it IS addressed to the player: it undid their work.
+      playerRelevanceFloor: 0.88,
+    });
+  },
+
   _emitCue(cueId, payload, options = {}) {
     const recipe = getPresentationRecipe(cueId);
     if (!recipe) {
@@ -1217,6 +1280,15 @@ export const presentationOrchestrator = {
     event.sourceEvent = options.sourceEvent || null;
     event.lanes = { ...recipe.lanes };
     event.budgets = { ...recipe.budgets };
+    // PQ-023 family (e): owner-supplied noncolor / no-audio equivalent. Optional by design — the
+    // adapter still falls back to its static CAPTIONS table, so the ~80 recipes outside this leaf
+    // are untouched. An emitter that knows the specific mechanical fact (which component, which
+    // transition) states it here rather than encoding it in a per-id lookup that cannot vary.
+    const accessibilityText = options.accessibilityText ?? recipe.accessibilityText ?? null;
+    if (accessibilityText) event.accessibilityText = String(accessibilityText);
+    // Reduced-mode intent likewise travels with the cue when the recipe declares it.
+    if (recipe.reducedMotionMode) event.reducedMotionMode = recipe.reducedMotionMode;
+    if (recipe.reducedFlashMode) event.reducedFlashMode = recipe.reducedFlashMode;
 
     const suppressReason = this._suppressionReason(event, recipe);
     if (suppressReason) return this._suppress(cueId, payload, options, suppressReason, event);
@@ -1232,11 +1304,10 @@ export const presentationOrchestrator = {
     const last = this._lastByDedupeKey.get(event.dedupeKey);
     if (last != null && tick - last.tick < recipe.dedupeWindowTicks) return 'dedupe_window';
     this._resetLaneCountsForTick(tick);
-    for (const lane of Object.keys(recipe.lanes || {}).sort()) {
-      const limit = DEFAULT_LANE_BUDGETS_PER_TICK[lane] || 1;
-      if ((this._laneCounts[lane] || 0) >= limit) return `lane_budget:${lane}`;
-    }
-    return null;
+    // Dense-scene arbitration (PQ-023). Reservation, not arrival order: a critical cue may claim
+    // the full lane cap, flavor may claim only the general pool, and `.none` placeholder lanes are
+    // never charged. Totals are unchanged, so this is a no-op below saturation.
+    return laneBudgetReason(recipe.lanes, isCriticalCue(event, recipe), this._laneCounts);
   },
 
   _recordEmission(event, recipe) {
@@ -1247,9 +1318,8 @@ export const presentationOrchestrator = {
       expiresAt: tick + recipe.dedupeWindowTicks,
     });
     this._dedupePeakKeys = Math.max(this._dedupePeakKeys || 0, this._lastByDedupeKey.size);
-    for (const lane of Object.keys(recipe.lanes || {}).sort()) {
-      this._laneCounts[lane] = (this._laneCounts[lane] || 0) + 1;
-    }
+    // Charge only the lanes this cue actually drives; `.none` placeholders cost nothing.
+    chargeCueLanes(recipe.lanes, this._laneCounts);
     this._emitted++;
     this._lastCue = {
       tick,
@@ -1318,6 +1388,27 @@ const RELEASE_CUE_BY_CLASSIFICATION = Object.freeze({
 
 function finiteScore(value) {
   return Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * Human-readable component name for accessible text. Prefers the authored manifest label; falls
+ * back to a de-slugged component id so an unlisted site still speaks a sensible caption rather
+ * than a raw identifier.
+ */
+function worldSiteComponentLabel(siteId, componentId) {
+  const manifest = worldSiteManifestById(siteId);
+  const component = manifest && (manifest.components || []).find((candidate) => candidate.id === componentId);
+  if (component && component.label) {
+    const label = String(component.label);
+    return label === label.toUpperCase() ? titleCaseWords(label.toLowerCase()) : label;
+  }
+  return titleCaseWords(String(componentId || '').replace(/_/g, ' '));
+}
+
+function titleCaseWords(text) {
+  const trimmed = text.trim();
+  if (!trimmed) return 'Site component';
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
 
 function mergeTags(...groups) {
