@@ -7,7 +7,7 @@
 // This file is the Electron-only shell: app lifecycle, single-instance lock, GPU switches,
 // window creation, fixed-port-for-saves, packaged→bundle root selection.
 // `npm run check:launch-policy` enforces that both launchers share that module.
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, powerMonitor } = require('electron');
 const http = require('http');
 const path = require('path');
 const { createGameServer } = require('../scripts/lib/gameServer.cjs');
@@ -32,8 +32,18 @@ const PORT = 41788;
 const ISOLATED_PORT_RETRY_LIMIT = 3;
 const launchConfig = resolveElectronLaunchConfig(process.env);
 const launchPort = launchConfig.isolatedEvidence ? launchConfig.port : PORT;
+// Player windows use normal Chromium throttling. A temporary evidence profile may opt out only
+// through the explicit dual gate; the environment variable alone has no effect on normal play.
+const allowEvidenceBackgroundExecution = launchConfig.isolatedEvidence === true
+  && process.env.SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION === '1';
+const backgroundThrottling = !allowEvidenceBackgroundExecution;
 const RECEIPT_PATH = process.env.SPACEFACE_LAUNCH_RECEIPT || '';
 const receipt = (status, details = {}) => appendLaunchReceipt(RECEIPT_PATH, status, details);
+const SHELL_LIFECYCLE_CHANNEL = 'spaceface:shell-lifecycle';
+let shellLifecycleSequence = 0;
+let powerSuspended = false;
+let screenLocked = false;
+let powerLifecycleListenersInstalled = false;
 
 // Explicit evidence probes use a temporary Chromium profile. Electron's single-instance lock is
 // scoped by userData, so applying this before requestSingleInstanceLock gives the probe its own
@@ -123,16 +133,94 @@ function probeSpaceFacePort(port) {
   });
 }
 
+function systemLifecycleSuspended() {
+  return powerSuspended || screenLocked;
+}
+
+function deriveWindowLifecycleState(win) {
+  if (systemLifecycleSuspended()) return 'system-suspended';
+  if (!win || win.isDestroyed() || win.isMinimized() || !win.isVisible()) {
+    return 'hidden-or-minimized';
+  }
+  return win.isFocused() ? 'foreground-visible' : 'foreground-occluded';
+}
+
+function publishWindowLifecycle(win, reason) {
+  if (!win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed()) return false;
+  const command = {
+    state: deriveWindowLifecycleState(win),
+    sequence: ++shellLifecycleSequence,
+    reason,
+  };
+  try {
+    win.webContents.send(SHELL_LIFECYCLE_CHANNEL, command);
+    return true;
+  } catch (error) {
+    if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+      receipt('lifecycle-publish-failed', {
+        reason,
+        state: command.state,
+        sequence: command.sequence,
+        message: error && error.message ? error.message : String(error),
+      });
+    }
+    return false;
+  }
+}
+
+function publishAllWindowLifecycles(reason) {
+  for (const win of BrowserWindow.getAllWindows()) publishWindowLifecycle(win, reason);
+}
+
+function installPowerLifecycleListeners() {
+  if (powerLifecycleListenersInstalled) return;
+  powerLifecycleListenersInstalled = true;
+  powerMonitor.on('suspend', () => {
+    powerSuspended = true;
+    publishAllWindowLifecycles('suspend');
+  });
+  powerMonitor.on('resume', () => {
+    powerSuspended = false;
+    publishAllWindowLifecycles('resume');
+  });
+  powerMonitor.on('lock-screen', () => {
+    screenLocked = true;
+    publishAllWindowLifecycles('lock-screen');
+  });
+  powerMonitor.on('unlock-screen', () => {
+    screenLocked = false;
+    publishAllWindowLifecycles('unlock-screen');
+  });
+}
+
+function bindWindowLifecycle(win) {
+  for (const eventName of ['hide', 'minimize', 'show', 'restore', 'focus', 'blur']) {
+    win.on(eventName, () => publishWindowLifecycle(win, eventName));
+  }
+  win.webContents.on('did-finish-load', () => publishWindowLifecycle(win, 'did-finish-load'));
+}
+
 async function createWindow() {
+  installPowerLifecycleListeners();
   const port = await startServer();
   const win = new BrowserWindow({
     width: 1480, height: 920, minWidth: 1024, minHeight: 640,
     backgroundColor: '#05070d', title: 'SpaceFace', show: false,
-    webPreferences: { contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, 'preload.cjs'),
+      backgroundThrottling,
+    },
   });
+  bindWindowLifecycle(win);
   win.removeMenu();
   win.once('ready-to-show', () => {
-    receipt('window-ready', { port });
+    receipt('window-ready', {
+      port,
+      backgroundThrottling,
+      evidenceBackgroundOverride: allowEvidenceBackgroundExecution,
+    });
     win.show();
   });
   win.webContents.on('did-fail-load', (_event, code, message, url, isMainFrame) => {
@@ -160,6 +248,8 @@ if (!app.requestSingleInstanceLock()) {
     port: launchPort,
     isolatedEvidence: launchConfig.isolatedEvidence,
     lockNamespace: launchConfig.lockNamespace,
+    backgroundThrottling,
+    evidenceBackgroundOverride: allowEvidenceBackgroundExecution,
   });
   app.on('second-instance', () => {
     const w = BrowserWindow.getAllWindows()[0];
