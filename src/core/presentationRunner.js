@@ -59,6 +59,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     || (() => (typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now()));
+  const presentationJournal = deps.presentationJournal
+    || registry?.ctx?.presentationJournal
+    || null;
 
   if (typeof requestFrame !== 'function') {
     throw new Error('PresentationRunner requires requestAnimationFrame');
@@ -89,6 +92,16 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   let unsubscribeLifecycle = null;
   let lifecycleGeneration = 0;
   let hasCompletedTick = false;
+  let hasPendingJournal = false;
+  let pendingJournalStart = 0;
+  let pendingJournalEnd = 0;
+  let pendingJournalFullRebuild = false;
+  let pendingJournalRebuildGeneration = 0;
+  let acknowledgedJournalSequence = presentationJournal
+    && presentationJournal.getPendingCount?.() > 0
+    && presentationJournal.getOldestSequence?.() > 0
+    ? presentationJournal.getOldestSequence() - 1
+    : (presentationJournal?.getWriteSequence?.() || 0);
 
   const latestCompletedTick = createCompletedTickRecord();
   const presentationFrame = {
@@ -99,6 +112,13 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     lifecycleGeneration,
     completedTickCount: 0,
     completedTick: null,
+    journal: presentationJournal,
+    journalStart: 0,
+    journalEnd: 0,
+    journalRecordCount: 0,
+    journalFullRebuild: false,
+    journalRebuildGeneration: 0,
+    journalValid: presentationJournal !== null,
   };
   const diagnostics = {
     lifecycleState,
@@ -126,6 +146,16 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     stepsThisFrame: 0,
     maxStepsObserved: 0,
     shedBacklogFrames: 0,
+    journalAvailable: presentationJournal !== null,
+    journalRangeMergeCount: 0,
+    journalRangeErrorCount: 0,
+    journalAcknowledgementCount: 0,
+    journalRecordsAcknowledged: 0,
+    journalRetainedFrameCount: 0,
+    journalRebuildAttemptCount: 0,
+    journalRebuildCount: 0,
+    journalRebuildFailureCount: 0,
+    acknowledgedJournalSequence,
   };
 
   simulationRunner.setLifecycleGeneration?.(lifecycleGeneration);
@@ -270,6 +300,104 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       : 'shell');
   }
 
+  function requestJournalRebuild(reason) {
+    if (!presentationJournal || typeof presentationJournal.requestRebuild !== 'function') return;
+    try { presentationJournal.requestRebuild(reason); } catch (_) { /* derived channel only */ }
+  }
+
+  function resetPendingJournal() {
+    hasPendingJournal = false;
+    pendingJournalStart = acknowledgedJournalSequence;
+    pendingJournalEnd = acknowledgedJournalSequence;
+    pendingJournalFullRebuild = false;
+    pendingJournalRebuildGeneration = 0;
+  }
+
+  function mergeJournalRange(start, end) {
+    if (!presentationJournal || start === end) return true;
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end)
+      || start < 0 || end < start
+      || (typeof presentationJournal.hasRange === 'function'
+        && !presentationJournal.hasRange(start, end))) {
+      diagnostics.journalRangeErrorCount++;
+      requestJournalRebuild('presentation-range-invalid');
+      return false;
+    }
+    if (hasPendingJournal && start > pendingJournalEnd) {
+      diagnostics.journalRangeErrorCount++;
+      requestJournalRebuild('presentation-range-gap');
+      return false;
+    }
+    if (!hasPendingJournal) {
+      pendingJournalStart = start;
+      pendingJournalEnd = end;
+      hasPendingJournal = true;
+    } else {
+      pendingJournalStart = Math.min(pendingJournalStart, start);
+      pendingJournalEnd = Math.max(pendingJournalEnd, end);
+    }
+    diagnostics.journalRangeMergeCount++;
+    return true;
+  }
+
+  function rebuildJournalIfNeeded() {
+    if (!presentationJournal || typeof presentationJournal.needsRebuild !== 'function'
+      || !presentationJournal.needsRebuild()) return false;
+    diagnostics.journalRebuildAttemptCount++;
+    try {
+      const entities = Array.isArray(state.entityList) ? state.entityList : [];
+      const tick = Number.isSafeInteger(state.tick) && state.tick >= 0 ? state.tick : 0;
+      if (typeof presentationJournal.rebuildFrom !== 'function'
+        || presentationJournal.rebuildFrom(entities, tick) !== true) {
+        diagnostics.journalRebuildFailureCount++;
+        return false;
+      }
+      const start = presentationJournal.getLastRebuildStart?.() || 0;
+      const end = presentationJournal.getLastRebuildEnd?.() || start;
+      simulationRunner.alignJournalCursor?.(end);
+      pendingJournalStart = start;
+      pendingJournalEnd = end;
+      pendingJournalFullRebuild = true;
+      pendingJournalRebuildGeneration = presentationJournal.getRebuildGeneration?.() || 0;
+      hasPendingJournal = true;
+      diagnostics.journalRebuildCount++;
+      return true;
+    } catch (_) {
+      diagnostics.journalRebuildFailureCount++;
+      requestJournalRebuild('presentation-rebuild-error');
+      return false;
+    }
+  }
+
+  function populateJournalFrame() {
+    const valid = presentationJournal !== null
+      && !(presentationJournal.needsRebuild?.() === true);
+    presentationFrame.journalStart = hasPendingJournal
+      ? pendingJournalStart
+      : acknowledgedJournalSequence;
+    presentationFrame.journalEnd = hasPendingJournal
+      ? pendingJournalEnd
+      : acknowledgedJournalSequence;
+    presentationFrame.journalRecordCount = hasPendingJournal
+      ? Math.max(0, pendingJournalEnd - pendingJournalStart)
+      : 0;
+    presentationFrame.journalFullRebuild = pendingJournalFullRebuild;
+    presentationFrame.journalRebuildGeneration = pendingJournalRebuildGeneration;
+    presentationFrame.journalValid = valid;
+  }
+
+  function acknowledgePresentedJournal() {
+    if (!hasPendingJournal || !presentationJournal
+      || presentationJournal.needsRebuild?.() === true) return;
+    const recordCount = Math.max(0, pendingJournalEnd - pendingJournalStart);
+    presentationJournal.discardThrough?.(pendingJournalEnd);
+    acknowledgedJournalSequence = pendingJournalEnd;
+    diagnostics.acknowledgedJournalSequence = acknowledgedJournalSequence;
+    diagnostics.journalAcknowledgementCount++;
+    diagnostics.journalRecordsAcknowledged += recordCount;
+    resetPendingJournal();
+  }
+
   function frame(now) {
     frameHandle = null;
     if (destroyed || suspended || !isPresentingState(lifecycleState)) return;
@@ -307,6 +435,12 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       diagnostics.completedTicksConsumed += completedTickCount;
       if (completedTickCount > 1) diagnostics.skippedPresentationTicks += completedTickCount - 1;
 
+      const rebuiltJournal = rebuildJournalIfNeeded();
+      if (!rebuiltJournal && presentationJournal?.needsRebuild?.() !== true
+        && completedTickCount > 0) {
+        mergeJournalRange(latestCompletedTick.journalStart, latestCompletedTick.journalEnd);
+      }
+
       const alpha = simulationRunner.interpolationAlpha();
       presentationFrame.sequence++;
       presentationFrame.frameDt = frameDt;
@@ -315,10 +449,14 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       presentationFrame.lifecycleGeneration = lifecycleGeneration;
       presentationFrame.completedTickCount = completedTickCount;
       presentationFrame.completedTick = hasCompletedTick ? latestCompletedTick : null;
-      registry.renderUpdate(alpha, frameDt, presentationFrame);
+      populateJournalFrame();
+      const presentationAccepted = registry.renderUpdate(alpha, frameDt, presentationFrame) !== false;
       diagnostics.renderUpdates++;
       renderedSnapshot = true;
+      if (presentationAccepted) acknowledgePresentedJournal();
+      else if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;
     } catch (err) {
+      if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;
       // One bad frame must never kill the whole loop; log a bounded number and keep running.
       frame._errs = (frame._errs || 0) + 1;
       if (frame._errs <= 20) console.error('[loop] frame error:', err);

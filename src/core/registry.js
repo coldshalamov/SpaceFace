@@ -591,7 +591,7 @@ export function createRegistry(ctx) {
             try { ui.frame(frameDt, state); }
             finally { perf.recordPhase('ui', perfNow() - t); }
           }
-          return;
+          return false;
         }
         let t = perfNow();
         let renderMs = 0;
@@ -639,6 +639,7 @@ export function createRegistry(ctx) {
           try { ui.frame(frameDt, state); }
           finally { perf.recordPhase('ui', perfNow() - t); }
         }
+        return true;
       } finally {
         const diag = state.render && state.render.diagnostics;
         if (diag && typeof diag.update === 'function') diag.update(frameDt);

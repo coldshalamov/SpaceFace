@@ -6,6 +6,7 @@ import {
   createSimulationRunner,
   LOOP_FIXED_DT,
 } from '../src/core/simulationRunner.js';
+import { createPresentationJournal } from '../src/core/presentationJournal.js';
 
 function createState() {
   return {
@@ -98,6 +99,49 @@ test('SimulationRunner publishes ordered completed ticks and presentation may co
   });
   assert.equal(runner.getPendingCompletedTickCount(), 0);
   assert.equal(runner.getDiagnostics().skippedPresentationTicks, 2);
+});
+
+test('SimulationRunner carries between-tick journal writes and aggregates the earliest consumed range', () => {
+  const state = createState();
+  const journal = createPresentationJournal(8);
+  const ship = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: 0, y: 0, z: 0 },
+    rot: 0,
+    bank: 0,
+    pitch: 0,
+    presentationVisualRevision: 0,
+  };
+  journal.recordSpawn(0, ship);
+  const runner = createSimulationRunner(state, {
+    step(dt, tickBoundary) {
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+      ship.pos.x = state.tick;
+      journal.recordTransform(state.tick, ship);
+    },
+  }, { presentationJournal: journal });
+
+  runner.advance(LOOP_FIXED_DT, 1);
+  const first = {};
+  assert.equal(runner.consumeLatestCompletedTick(first), 1);
+  assert.equal(first.journalStart, 0);
+  assert.equal(first.journalEnd, 2);
+
+  ship.presentationVisualRevision = 1;
+  journal.recordVisual(state.tick, ship);
+  runner.advance(LOOP_FIXED_DT * 2.1, 1);
+
+  const latest = {};
+  assert.equal(runner.consumeLatestCompletedTick(latest), 2);
+  assert.equal(latest.tick, 3);
+  assert.equal(latest.journalStart, 2,
+    'the next completion must include records published after the prior fixed tick');
+  assert.equal(latest.journalEnd, 5);
+  assert.equal(runner.getDiagnostics().committedJournalSequence, 5);
 });
 
 test('completed-tick queue exhaustion fails before advancing authoritative state', () => {

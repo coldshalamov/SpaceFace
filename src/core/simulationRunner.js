@@ -135,6 +135,8 @@ export function createSimulationRunner(state, registry, deps = {}) {
   let inputSnapshotCancelCount = 0;
   let inputObserverErrorCount = 0;
   let lastInputObserverError = null;
+  let committedJournalSequence = 0;
+  let journalCursorAlignmentCount = 0;
 
   const inputTickBoundary = {
     sequence: 0,
@@ -157,6 +159,19 @@ export function createSimulationRunner(state, registry, deps = {}) {
       : 0;
   }
 
+  function initialJournalCursor() {
+    if (presentationJournal
+      && typeof presentationJournal.getPendingCount === 'function'
+      && typeof presentationJournal.getOldestSequence === 'function'
+      && presentationJournal.getPendingCount() > 0) {
+      const oldestSequence = presentationJournal.getOldestSequence();
+      if (Number.isSafeInteger(oldestSequence) && oldestSequence > 0) return oldestSequence - 1;
+    }
+    return journalSequence();
+  }
+
+  committedJournalSequence = initialJournalCursor();
+
   function reserveCompletedTick() {
     if (completedCount >= completedTickCapacity) {
       overflowCount++;
@@ -165,7 +180,7 @@ export function createSimulationRunner(state, registry, deps = {}) {
     return completedTicks[completedWrite];
   }
 
-  function publishCompletedTick(slot, nextInputSequence, journalStart) {
+  function publishCompletedTick(slot, nextInputSequence, journalStart, journalEnd) {
     completedSequence++;
     inputSequence = nextInputSequence;
     slot.sequence = completedSequence;
@@ -176,9 +191,10 @@ export function createSimulationRunner(state, registry, deps = {}) {
     slot.inputSequence = inputSequence;
     slot.lifecycleGeneration = lifecycleGeneration;
     slot.journalStart = journalStart;
-    slot.journalEnd = journalSequence();
+    slot.journalEnd = journalEnd;
     completedWrite = (completedWrite + 1) % completedTickCapacity;
     completedCount++;
+    committedJournalSequence = journalEnd;
   }
 
   function stepSimulation(dt) {
@@ -194,7 +210,9 @@ export function createSimulationRunner(state, registry, deps = {}) {
     inputTickBoundary.sequence = nextInputSequence;
     inputTickBoundary.targetTick = targetTick;
     inputTickBoundary.publishedSequence = 0;
-    const journalStart = journalSequence();
+    // The cursor advances only when a completed tick commits. Records published between fixed ticks
+    // therefore belong to the next completion instead of disappearing behind a tick-start sample.
+    const journalStart = committedJournalSequence;
 
     try {
       registry.step(dt, inputTickBoundary);
@@ -207,7 +225,7 @@ export function createSimulationRunner(state, registry, deps = {}) {
         onInputCommandSnapshot,
       );
       inputSequence = nextInputSequence;
-      publishCompletedTick(slot, nextInputSequence, journalStart);
+      publishCompletedTick(slot, nextInputSequence, journalStart, journalSequence());
       if (observerError) {
         inputObserverErrorCount++;
         lastInputObserverError = observerError instanceof Error
@@ -257,15 +275,30 @@ export function createSimulationRunner(state, registry, deps = {}) {
         throw new TypeError('consumeLatestCompletedTick requires a caller-owned output object');
       }
       let consumed = 0;
+      let earliestJournalStart = 0;
       while (completedCount > 0) {
-        copyCompletedTick(out, completedTicks[completedRead]);
+        const completedTick = completedTicks[completedRead];
+        if (consumed === 0) earliestJournalStart = completedTick.journalStart;
+        copyCompletedTick(out, completedTick);
         completedRead = (completedRead + 1) % completedTickCapacity;
         completedCount--;
         consumed++;
       }
+      if (consumed > 0) out.journalStart = earliestJournalStart;
       if (consumed > 1) skippedPresentationTicks += consumed - 1;
       consumedTickCount += consumed;
       return consumed;
+    },
+    alignJournalCursor(sequence) {
+      if (!Number.isSafeInteger(sequence) || sequence < 0 || sequence > journalSequence()) {
+        throw new RangeError(`SimulationRunner journal cursor is invalid (${sequence})`);
+      }
+      if (completedCount > 0) {
+        throw new Error('SimulationRunner cannot align the journal cursor with pending completed ticks');
+      }
+      committedJournalSequence = sequence;
+      journalCursorAlignmentCount++;
+      return committedJournalSequence;
     },
     setLifecycleGeneration(value) {
       lifecycleGeneration = Number.isSafeInteger(value) && value >= 0 ? value : lifecycleGeneration;
@@ -292,6 +325,8 @@ export function createSimulationRunner(state, registry, deps = {}) {
         skippedPresentationTicks,
         overflowCount,
         lifecycleGeneration,
+        committedJournalSequence,
+        journalCursorAlignmentCount,
       };
     },
   };

@@ -13,9 +13,36 @@ export const core = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
+    this.presentationJournal = ctx.presentationJournal || null;
     this._lastDay = 0;
+    this._presentationJournalErrorCount = 0;
+    if (Array.isArray(this._presentationJournalUnsubscribes)) {
+      for (const unsubscribe of this._presentationJournalUnsubscribes) unsubscribe();
+    }
+    this._presentationJournalUnsubscribes = [];
 
     const state = this.state, bus = this.bus;
+    const publishPresentation = (method, entity) => {
+      const journal = this.presentationJournal;
+      if (!journal || typeof journal[method] !== 'function') return 0;
+      try {
+        return journal[method](state.tick, entity);
+      } catch (error) {
+        this._presentationJournalErrorCount++;
+        try { journal.requestRebuild?.('owner-publication-error'); } catch (_) { /* derived only */ }
+        if (this._presentationJournalErrorCount <= 3) {
+          console.error(`[core] presentation journal ${method} failed:`, error);
+        }
+        return 0;
+      }
+    };
+    const requestPresentationRebuild = (reason) => {
+      const journal = this.presentationJournal;
+      if (!journal || typeof journal.requestRebuild !== 'function') return;
+      try { journal.requestRebuild(reason); }
+      catch (_) { this._presentationJournalErrorCount++; }
+    };
+    this._publishPresentation = publishPresentation;
 
     const spawnEntity = (spec) => {
       const index = ensureEntityIndex(state);
@@ -28,6 +55,7 @@ export const core = {
       state.entityList.push(e);
       appendEntityIndex(index, e);
       markEntityIndexSourceSynced(index, state.entityList);
+      publishPresentation('recordSpawn', e);
       bus.emit('entity:spawned', { id, type: e.type, entity: e });
       return e;
     };
@@ -57,9 +85,16 @@ export const core = {
     const player = () => state.entities.get(state.playerId) || null;
     ensureEntityIndex(state);
 
+    const markEntityVisualChanged = (entityOrId) => {
+      const entity = typeof entityOrId === 'object'
+        ? entityOrId
+        : state.entities.get(entityOrId);
+      return entity ? publishPresentation('recordVisual', entity) : 0;
+    };
     Object.assign(ctx.helpers, {
       spawnEntity, getEntity, removeEntity, queryRadius, player,
       entityIndex: () => ensureEntityIndex(state),
+      markEntityVisualChanged,
       mulberry32, hash32, wrapAngle,
     });
     this.helpers = ctx.helpers;
@@ -70,6 +105,24 @@ export const core = {
       if (e && e.alive) { e.alive = false; e._killerId = killerId; }
     });
     bus.on('entity:spawnRequest', ({ spec }) => spawnEntity(spec));
+
+    this._presentationJournalUnsubscribes.push(
+      bus.on('ship:appearanceChanged', ({ id }) => markEntityVisualChanged(id)),
+      bus.on('save:restoring', () => requestPresentationRebuild('save-restoring')),
+      bus.on('save:loaded', () => requestPresentationRebuild('save-loaded')),
+      bus.on('game:new', () => requestPresentationRebuild('game-new')),
+      bus.on('game:newGame', () => requestPresentationRebuild('game-new')),
+      bus.on('game:started', () => requestPresentationRebuild('game-started')),
+    );
+  },
+
+  destroy() {
+    if (Array.isArray(this._presentationJournalUnsubscribes)) {
+      for (const unsubscribe of this._presentationJournalUnsubscribes) unsubscribe();
+      this._presentationJournalUnsubscribes.length = 0;
+    }
+    this._publishPresentation = null;
+    this.presentationJournal = null;
   },
 
   // Prelude: advance clocks and snapshot interpolation state. Called by registry.step().
@@ -106,7 +159,12 @@ export const core = {
       const e = list[i];
       if (e.alive && e.ttl !== Infinity) { e.ttl -= dt; if (e.ttl <= 0) e.alive = false; }
       if (e.alive && e.data && e.data.despawnAt != null && state.simTime >= e.data.despawnAt) e.alive = false;
+      if (e.alive) {
+        if (isMovableEntity(e)) this._publishPresentation?.('recordTransformIfChanged', e);
+        continue;
+      }
       if (!e.alive) {
+        this._publishPresentation?.('recordDestroy', e);
         removeEntityIndex(state.entityIndex, e);
         this.bus.queue('entity:destroyed', {
           id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId,

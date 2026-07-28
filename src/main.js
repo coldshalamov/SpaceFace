@@ -7,6 +7,7 @@ import { bootstrapProfileSettingsBeforeRegistry } from './core/graphicsProfileBo
 import { createBus } from './core/eventBus.js';
 import { createRegistry } from './core/registry.js';
 import { startLoop } from './core/loop.js';
+import { createPresentationJournal } from './core/presentationJournal.js';
 import { canonicalStringify } from './core/simSnapshot.js';
 import { makeShipEntitySpec } from './systems/ships.js';
 import { makeEnemySpawnSpec } from './systems/combat.js';
@@ -101,6 +102,7 @@ async function boot() {
     const runTransitionGuard = createRunTransitionGuard();
     timeEffects.set('runtime:boot-menu', { scale: 0 });
     const bus = createBus();
+    const presentationJournal = createPresentationJournal();
     const loadingPresenter = createLoadingPresenter({ document, bus });
     const contract = await loadScenarioContract(new URL('./data/scenarios/47a.scenario.json', import.meta.url), SCENARIO_47A_CONTRACT_PATH);
     const helpers = {
@@ -108,7 +110,15 @@ async function boot() {
       scenarioContractPath: contract.path,
       scenarioContractHash: contract.sha256,
     };
-    const ctx = { state, bus, three: THREE, registry: null, helpers, timeEffects };
+    const ctx = {
+      state,
+      bus,
+      three: THREE,
+      registry: null,
+      helpers,
+      timeEffects,
+      presentationJournal,
+    };
 
     const registry = createRegistry(ctx);
     ctx.registry = registry;
@@ -187,7 +197,7 @@ async function boot() {
       startNewGameTransition();
     });
 
-    loopController = startLoop(state, registry);
+    loopController = startLoop(state, registry, { presentationJournal });
     const loopDebug = {
       getDiagnostics: () => loopController.getDiagnostics(),
       getLifecycleState: () => loopController.getLifecycleState(),
