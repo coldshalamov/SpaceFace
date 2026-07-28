@@ -89,9 +89,17 @@ function assertNoModal(emitted, label) {
 
 // ── 1. soak audit (Sker two-day + referee kills → full lifecycle chatter) ────────────────────────
 {
-  const { sim, state, bus, emitted, voice } = boot(31, 'sector_sker_haven', { x: -540, z: 680 }, { cmdty_refined_metals: 12 });
+  // Park the player on the Sker Haven outlaw zone. Zone centers are sector-local; encounter anchors
+  // are galactic-global (resolveEncounter composes them), so the boot position must be composed too
+  // — a raw local literal here lands ~43 km from the zone and silently starves every
+  // `proximity: true` shape at the pacing gate. Same law as the ambush section below.
+  const havenZone = zonesForSector('sector_sker_haven').find((z) => z.id === 'zone_sker_haven');
+  const havenPos = sectorLocalToGlobalForSector(havenZone.center, 'sector_sker_haven');
+  const { sim, state, bus, emitted, voice } = boot(31, 'sector_sker_haven', havenPos, { cmdty_refined_metals: 12 });
   const referee = [];
+  const firedKinds = [];
   bus.on('encounter:telegraph', (p) => {
+    firedKinds.push(p.kind);
     const live = state.encounterDirector.live[p.encounterId];
     if (live) referee.push({ at: state.simTime + 45, ids: live.ids });
   });
@@ -109,9 +117,29 @@ function assertNoModal(emitted, label) {
     sim.runTicks(60);
   }
   const byEnc = auditVoice(voice, 'sker-soak');
-  assert(byEnc.size >= 3, `soak should have voiced encounters (got ${byEnc.size})`);
+  const dir = state.encounterDirector;
+  // When a soak assertion fails it is almost always the pacing gate starving the schedule silently,
+  // so print the director's own books rather than a bare cardinality.
+  const why = () => `\n    stats=${JSON.stringify(dir.stats)}`
+    + `\n    fired kinds=[${firedKinds.join(', ')}]`
+    + `\n    still pending=[${(dir.pending || []).map((it) => `${it.encounterId}@${(it.dueAt | 0)}/d${it.defers | 0}`).join(', ')}]`;
+
+  // Coverage floor: a soak that fires (almost) nothing must fail even if what little fired voiced.
+  assert(dir.stats.fired >= 3, `soak should fire ≥3 encounters over two sim-days (got ${dir.stats.fired})${why()}`);
+  // The taste law itself, derived from the roster rather than hand-picked: EVERY encounter that
+  // fired must have voiced. Not satisfiable by lowering a constant.
+  assert.equal(byEnc.size, dir.stats.fired,
+    `every fired encounter must voice (${byEnc.size} voiced of ${dir.stats.fired} fired)${why()}`);
+  // Regression guard for the two coordinate spaces: `proximity: true` shapes only fire when the
+  // player is genuinely inside the zone, so a soak that boots the player into the wrong space fires
+  // only the proximity-exempt shapes. That failure was worth 60+ silent gate defers and read as a
+  // bare "got 2". Drive the behaviour, assert the outcome.
+  const proximityFired = firedKinds.filter((k) => ENCOUNTERS[k] && ENCOUNTERS[k].proximity === true);
+  assert(proximityFired.length >= 1,
+    `soak fired no proximity-gated encounter — the player is not actually inside its zone `
+    + `(check the boot position is composed to global space)${why()}`);
   assertNoModal(emitted, 'sker-soak');
-  ok(`soak audit: ${byEnc.size} encounters, each exactly one primary line, barks ≥4 s apart, no modals`);
+  ok(`soak audit: ${byEnc.size}/${dir.stats.fired} fired encounters voiced (${proximityFired.length} proximity-gated), one primary each, barks ≥4 s apart, no modals`);
 }
 
 // ── 2. the chattiest shapes, forced ─────────────────────────────────────────────────────────────
