@@ -422,16 +422,46 @@ export const heistMissionRuntime = {
     return false;
   },
 
-  /** `entity:destroyed` on the capsule. */
+  /**
+   * `sector:exit` for the heist sector.
+   *
+   * This is what tells destruction and ABSENCE apart, and it has to exist. `entity:destroyed` is
+   * the generic "this entity left the world" event — `coreSystem.lifetimeSweep` queues it for TTL
+   * expiry, for `despawnAt`, and for any `removeEntity` call, not only for a lethal hit. The
+   * facility owner removes its transient capsule on sector exit (PQ-019A: "removes the launched
+   * transient capsule without settlement, reward, or fabricated terminal outcome"), so without this
+   * marker a player who simply flew out of Tethys would be told their capsule was DESTROYED.
+   *
+   * `sector:exit` reaches this listener first: `entity:destroyed` is queued by the end-of-step
+   * sweep, while sector exit is emitted synchronously.
+   */
+  onSectorExit(ctx, record, sectorId) {
+    if (!record || record.settled) return false;
+    if (sectorId !== PQ019_HEIST_SECTOR_ID) return false;
+    if (record.sectorExitedAtTick == null) record.sectorExitedAtTick = intTick(ctx?.state?.tick);
+    return true;
+  },
+
+  /**
+   * `entity:destroyed` on the capsule. Classified against the fact above rather than assumed: a
+   * capsule that left with the sector is ABSENT, a capsule that stopped existing while the player
+   * was still there was destroyed. Both are non-paying, but they are different things and rank
+   * differently in the arbiter's precedence chain, so telling the player the wrong one is a lie the
+   * settlement would repeat in the receipt.
+   */
   onEntityDestroyed(ctx, record, entityId) {
     if (!record || record.settled) return false;
     if (record.capsuleEntityId == null || entityId !== record.capsuleEntityId) return false;
     record.possessed = false;
+    const absent = record.sectorExitedAtTick != null;
     submitHeistCandidate(record, {
-      kind: 'payload_destroyed',
+      kind: absent ? 'unresolved_absent' : 'payload_destroyed',
       causalTick: intTick(ctx?.state?.tick),
       sourceStableId: 'entity:destroyed',
-      proof: { entityId: String(entityId) },
+      proof: {
+        entityId: String(entityId),
+        ...(absent ? { reason: 'sector_exit' } : {}),
+      },
     });
     return true;
   },

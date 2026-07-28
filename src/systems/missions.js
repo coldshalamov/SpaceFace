@@ -3974,6 +3974,10 @@ export const missions = {
   _onSectorExit(p) {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
+    // PQ-019C: mark the run BEFORE any continuous-handoff early-return below. `entity:destroyed` is
+    // the generic "left the world" event, so without this a player who simply flew out of Tethys
+    // would be told the capsule was destroyed rather than lost. See heistMissionRuntime.onSectorExit.
+    this._heistEach((h) => heistMissionRuntime.onSectorExit(this._heistCtx(), h, sectorId));
     // Continuous free-flight membership handoff: keep escorts, target ids, and escortee links.
     // World residency may still demote RECORD_ONLY entities; enter re-spawns missing targets.
     // Hard teardown only for intentional jump / load / non-continuous boundaries (M2-C1).
