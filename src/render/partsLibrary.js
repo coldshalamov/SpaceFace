@@ -1846,6 +1846,14 @@ function monotonicNow() {
     : Date.now();
 }
 
+function recordAdmissionSlice(startedAtMs) {
+  const elapsedMs = monotonicNow() - startedAtMs;
+  const perf = authoredRuntimeState()?.perfRuntime;
+  if (perf && typeof perf.recordAdmissionWork === 'function') {
+    perf.recordAdmissionWork(elapsedMs);
+  }
+}
+
 function beginUpgradeDiagnostic(state, job) {
   const diagnostic = {
     sequence: job.sequence,
@@ -2064,7 +2072,13 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
   let swapped = false;
   try {
     const library = await (prefetchedLibrary || preloadAuthoredAssetsForEntity(renderer, entity, options));
-    const authored = buildComposedShip(entity, library, scene, boundary, options);
+    let authored;
+    const compositionStartedAtMs = monotonicNow();
+    try {
+      authored = buildComposedShip(entity, library, scene, boundary, options);
+    } finally {
+      recordAdmissionSlice(compositionStartedAtMs);
+    }
     if (!authored) {
       boundary.userData.authoredAssetState = 'unavailable';
       boundary.userData.authoredVisualRoot = 'none-build-failed';
@@ -2074,10 +2088,22 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     }
     boundary.userData.authoredAssetState = 'compiling-pipelines';
     const completeAdmission = async () => {
-      await prepareAuthoredVisualPipelines(authored.root, options);
-      swapped = commitAuthoredBoundary(
-        boundary, fallbackRoot, entity, library, scene, options, setActive, authored,
-      );
+      let pipelineReady;
+      const pipelineStartedAtMs = monotonicNow();
+      try {
+        pipelineReady = prepareAuthoredVisualPipelines(authored.root, options);
+      } finally {
+        recordAdmissionSlice(pipelineStartedAtMs);
+      }
+      await pipelineReady;
+      const commitStartedAtMs = monotonicNow();
+      try {
+        swapped = commitAuthoredBoundary(
+          boundary, fallbackRoot, entity, library, scene, options, setActive, authored,
+        );
+      } finally {
+        recordAdmissionSlice(commitStartedAtMs);
+      }
       if (!swapped) releaseBoundaryResidency(renderer, boundary, 'authored-swap-not-committed');
       return swapped;
     };
@@ -2117,7 +2143,13 @@ function installResolvedBoundary(boundary, fallbackRoot, entity, renderer, scene
     retainLibraryPlan(renderer, library, authoredPreloadPlanForEntity(entity, options), options);
     // A resident plan is decoded and validated. Commit it in the task that mounts the stable entity
     // root so no render can observe an intermediate procedural body.
-    const swapped = commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive);
+    let swapped = false;
+    const commitStartedAtMs = monotonicNow();
+    try {
+      swapped = commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive);
+    } finally {
+      recordAdmissionSlice(commitStartedAtMs);
+    }
     if (!swapped) releaseBoundaryResidency(renderer, boundary, 'resolved-swap-not-committed');
   } catch (error) {
     releaseBoundaryResidency(renderer, boundary, 'resolved-swap-failed');

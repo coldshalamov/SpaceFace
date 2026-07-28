@@ -59,6 +59,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     || (() => (typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now()));
+  const measureNow = deps.perfNow || perfNow;
   const presentationJournal = deps.presentationJournal
     || registry?.ctx?.presentationJournal
     || null;
@@ -404,7 +405,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
     diagnostics.executedFrames++;
     const restoring = lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING;
-    const callbackStart = perfNow();
+    const callbackStart = measureNow();
     let perf = null;
     let renderedSnapshot = false;
     let frameDt = restoring ? 0 : (now - last) / 1000;
@@ -414,8 +415,13 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
     try {
       perf = ensurePerfRuntime(state);
-      perf.beginFrame(frameDt);
-      const simFrameStart = perfNow();
+      perf.beginFrame(
+        frameDt,
+        callbackStart,
+        now,
+        (Number.isFinite(simulationRunner.fixedDt) ? simulationRunner.fixedDt : LOOP_FIXED_DT) * 1000,
+      );
+      const simFrameStart = measureNow();
       const stepResult = restoring
         ? simulationRunner.prepareWithoutAdvance()
         : simulationRunner.advance(frameDt, state.timeScale);
@@ -423,7 +429,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       diagnostics.stepsThisFrame = stepResult.steps;
       diagnostics.maxStepsObserved = Math.max(diagnostics.maxStepsObserved, stepResult.steps);
       if (stepResult.shedBacklog) diagnostics.shedBacklogFrames++;
-      perf.recordSimFrame(perfNow() - simFrameStart);
+      perf.recordSimFrame(measureNow() - simFrameStart);
       perf.recordLoop(stepResult.steps, stepResult.shedBacklog, state.accumulator, stepResult.shedSteps);
 
       // A lifecycle event may synchronously fire from a system step. Do not submit a frame after it
@@ -450,7 +456,13 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       presentationFrame.completedTickCount = completedTickCount;
       presentationFrame.completedTick = hasCompletedTick ? latestCompletedTick : null;
       populateJournalFrame();
-      const presentationAccepted = registry.renderUpdate(alpha, frameDt, presentationFrame) !== false;
+      const presentationStart = measureNow();
+      let presentationAccepted = false;
+      try {
+        presentationAccepted = registry.renderUpdate(alpha, frameDt, presentationFrame) !== false;
+      } finally {
+        perf.recordPresentationFrame?.(measureNow() - presentationStart);
+      }
       diagnostics.renderUpdates++;
       renderedSnapshot = true;
       if (presentationAccepted) acknowledgePresentedJournal();
@@ -463,7 +475,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       else if (frame._errs === 21) console.error('[loop] further frame errors suppressed');
     } finally {
       if (perf && typeof perf.recordFrameCallback === 'function') {
-        perf.recordFrameCallback(perfNow() - callbackStart);
+        perf.recordFrameCallback(measureNow() - callbackStart);
       }
     }
 

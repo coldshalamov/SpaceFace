@@ -257,9 +257,11 @@ test('budget results are recomputed from raw frame and autosave evidence', () =>
 
 test('perf runtime copies bounded per-frame scalars into caller-owned storage', () => {
   const perf = ensurePerfRuntime({ entityList: [], settings: { video: {} } });
-  perf.beginFrame(0.02);
+  perf.recordAdmissionWork(1.25);
+  perf.beginFrame(0.02, 100, 99.5, 1000 / 60);
   perf.recordLoop(2, true, 0.005, 3);
   perf.recordSimFrame(1.5);
+  perf.recordPresentationFrame(6);
   perf.recordPhase('render', 4.5);
   perf.recordPhase('vfx', 0.5);
   perf.recordPhase('feel', 0.25);
@@ -274,12 +276,18 @@ test('perf runtime copies bounded per-frame scalars into caller-owned storage', 
     shedStepsTotal: 3,
     callbackMs: 8,
     untrackedMs: 0.5,
+    callbackIntervalMs: 0,
+    externalCallbackGapMs: 0,
+    callbackDispatchLagMs: 0.5,
+    backlogCause: 'admission',
     simMs: 0,
     simFrameMs: 1.5,
+    presentationMs: 6,
     renderMs: 4.5,
     vfxMs: 0.5,
     feelMs: 0.25,
     uiMs: 0.75,
+    admissionMs: 1.25,
   });
 });
 

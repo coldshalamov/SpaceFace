@@ -113,16 +113,51 @@ export function ensurePerfRuntime(state) {
   const phaseStats = {
     sim: createStat(),
     simFrame: createStat(),
+    presentation: createStat(),
     render: createStat(),
     vfx: createStat(),
     feel: createStat(),
     ui: createStat(),
+    admission: createStat(),
   };
   const systemStats = Object.create(null);
   const frameStats = createStat();
   const frameCallbackStats = createStat();
   const frameUntrackedStats = createStat();
+  const frameCallbackIntervalStats = createStat();
+  const frameExternalGapStats = createStat();
+  const frameDispatchLagStats = createStat();
   let frameAccountedMs = 0;
+  let pendingAdmissionMs = 0;
+  let pendingExternalAdmissionMs = 0;
+  let frameAdmissionMs = 0;
+  let frameExternalAdmissionMs = 0;
+  let callbackOpen = false;
+  let currentCallbackStartMs = null;
+  let previousCallbackStartMs = null;
+  let previousCallbackEndMs = null;
+  let previousCallbackMs = 0;
+  let previousSimFrameMs = 0;
+  let previousPresentationMs = 0;
+  let previousUiMs = 0;
+  let fixedFrameBudgetMs = 1000 / 60;
+  const framePhaseMs = {
+    sim: 0,
+    simFrame: 0,
+    presentation: 0,
+    render: 0,
+    vfx: 0,
+    feel: 0,
+    ui: 0,
+  };
+  const backlogCauseCounts = {
+    none: 0,
+    simulation: 0,
+    presentation: 0,
+    ui: 0,
+    admission: 0,
+    externalScheduling: 0,
+  };
   const loop = {
     stepsThisFrame: 0,
     maxStepsThisFrame: 0,
@@ -131,6 +166,12 @@ export function ensurePerfRuntime(state) {
     shedStepsTotal: 0,
     accumulatorS: 0,
     lastFrameDtMs: 0,
+    callbackIntervalMs: 0,
+    externalCallbackGapMs: 0,
+    callbackDispatchLagMs: 0,
+    admissionMs: 0,
+    backlogCause: 'none',
+    backlogCauseCounts,
   };
   const counters = {
     spatialHash: {
@@ -209,6 +250,31 @@ export function ensurePerfRuntime(state) {
     return renderWorkStats[key] || (renderWorkStats[key] = createStat());
   }
 
+  function classifyBacklogCause(steps, shedBacklog) {
+    if ((steps | 0) <= 1 && !shedBacklog) return 'none';
+
+    const frameIntervalMs = Math.max(loop.lastFrameDtMs, loop.callbackIntervalMs);
+    const frameExcessMs = Math.max(0, frameIntervalMs - fixedFrameBudgetMs);
+    const ownedOverrunMs = Math.max(0, previousCallbackMs - fixedFrameBudgetMs);
+    const admissionSignificant = frameAdmissionMs >= Math.max(1, frameExcessMs * 0.25);
+
+    if (admissionSignificant && frameAdmissionMs >= ownedOverrunMs) return 'admission';
+    if (ownedOverrunMs > 0) {
+      const nonUiPresentationMs = Math.max(0, previousPresentationMs - previousUiMs);
+      if (previousSimFrameMs >= nonUiPresentationMs && previousSimFrameMs >= previousUiMs) {
+        return 'simulation';
+      }
+      return previousUiMs >= nonUiPresentationMs ? 'ui' : 'presentation';
+    }
+    if (admissionSignificant) return 'admission';
+    return 'external-scheduling';
+  }
+
+  function countBacklogCause(cause) {
+    if (cause === 'external-scheduling') backlogCauseCounts.externalScheduling++;
+    else if (Object.prototype.hasOwnProperty.call(backlogCauseCounts, cause)) backlogCauseCounts[cause]++;
+  }
+
   const api = {
     __spacefacePerfV1: true,
     RING_N,
@@ -224,11 +290,48 @@ export function ensurePerfRuntime(state) {
       renderWorkEnabled = !!on;
       return renderWorkEnabled;
     },
-    beginFrame(frameDt) {
+    beginFrame(frameDt, callbackStartMs = null, callbackTimestampMs = null, frameBudgetMs = null) {
       const ms = Number.isFinite(frameDt) ? frameDt * 1000 : 0;
+      previousCallbackMs = frameCallbackStats.last;
+      previousSimFrameMs = framePhaseMs.simFrame;
+      previousPresentationMs = framePhaseMs.presentation;
+      previousUiMs = framePhaseMs.ui;
+      framePhaseMs.sim = 0;
+      framePhaseMs.simFrame = 0;
+      framePhaseMs.presentation = 0;
+      framePhaseMs.render = 0;
+      framePhaseMs.vfx = 0;
+      framePhaseMs.feel = 0;
+      framePhaseMs.ui = 0;
+      fixedFrameBudgetMs = Number.isFinite(frameBudgetMs) && frameBudgetMs > 0
+        ? frameBudgetMs
+        : 1000 / 60;
+      currentCallbackStartMs = Number.isFinite(callbackStartMs) ? callbackStartMs : null;
+      callbackOpen = true;
       loop.lastFrameDtMs = ms;
+      loop.callbackIntervalMs = currentCallbackStartMs !== null && previousCallbackStartMs !== null
+        ? Math.max(0, currentCallbackStartMs - previousCallbackStartMs)
+        : 0;
+      frameAdmissionMs = pendingAdmissionMs;
+      frameExternalAdmissionMs = pendingExternalAdmissionMs;
+      pendingAdmissionMs = 0;
+      pendingExternalAdmissionMs = 0;
+      loop.admissionMs = frameAdmissionMs;
+      const rawCallbackGapMs = currentCallbackStartMs !== null && previousCallbackEndMs !== null
+        ? Math.max(0, currentCallbackStartMs - previousCallbackEndMs)
+        : 0;
+      loop.externalCallbackGapMs = Math.max(0, rawCallbackGapMs - frameExternalAdmissionMs);
+      loop.callbackDispatchLagMs = currentCallbackStartMs !== null
+        && Number.isFinite(callbackTimestampMs)
+        ? Math.max(0, currentCallbackStartMs - callbackTimestampMs)
+        : 0;
+      loop.backlogCause = 'none';
       frameAccountedMs = 0;
       sample(frameStats, ms);
+      sample(frameCallbackIntervalStats, loop.callbackIntervalMs);
+      sample(frameExternalGapStats, loop.externalCallbackGapMs);
+      sample(frameDispatchLagStats, loop.callbackDispatchLagMs);
+      sample(phaseStats.admission, frameAdmissionMs);
     },
     recordLoop(steps, shedBacklog, accumulatorS, shedSteps = 0) {
       loop.stepsThisFrame = steps | 0;
@@ -238,13 +341,30 @@ export function ensurePerfRuntime(state) {
       const shed = Number.isFinite(shedSteps) ? (shedSteps | 0) : 0;
       if (shed > 0) loop.shedStepsTotal += shed;
       loop.accumulatorS = Number.isFinite(accumulatorS) ? accumulatorS : 0;
+      loop.backlogCause = classifyBacklogCause(loop.stepsThisFrame, shedBacklog);
+      countBacklogCause(loop.backlogCause);
     },
     recordStepTotal(ms) {
+      if (Number.isFinite(ms) && ms >= 0) framePhaseMs.sim = ms;
       sample(phaseStats.sim, ms);
     },
     recordSimFrame(ms) {
       frameAccountedMs += Number.isFinite(ms) && ms > 0 ? ms : 0;
+      if (Number.isFinite(ms) && ms >= 0) framePhaseMs.simFrame = ms;
       sample(phaseStats.simFrame, ms);
+    },
+    recordPresentationFrame(ms) {
+      // This owner boundary contains render/VFX/feel/UI. Those child phases already contribute to
+      // frameAccountedMs, so sampling the aggregate again must not double-count callback work.
+      if (Number.isFinite(ms) && ms >= 0) framePhaseMs.presentation = ms;
+      sample(phaseStats.presentation, ms);
+    },
+    recordAdmissionWork(ms) {
+      // Carry measured synchronous admission slices into the next game frame. Keep slices that ran
+      // between callbacks separate so only those are removed from the external callback gap.
+      if (!Number.isFinite(ms) || ms <= 0) return;
+      pendingAdmissionMs += ms;
+      if (!callbackOpen) pendingExternalAdmissionMs += ms;
     },
     recordSystem(name, ms) {
       // Defense-in-depth: registry avoids the clocks too, while direct callers cannot accidentally
@@ -260,11 +380,20 @@ export function ensurePerfRuntime(state) {
     recordPhase(name, ms) {
       const stat = phaseStats[name];
       frameAccountedMs += Number.isFinite(ms) && ms > 0 ? ms : 0;
+      if (Number.isFinite(ms) && ms >= 0
+        && Object.prototype.hasOwnProperty.call(framePhaseMs, name)) {
+        framePhaseMs[name] = ms;
+      }
       if (stat) sample(stat, ms);
     },
     recordFrameCallback(ms) {
       sample(frameCallbackStats, ms);
       sample(frameUntrackedStats, Math.max(0, ms - frameAccountedMs));
+      if (currentCallbackStartMs !== null && Number.isFinite(ms) && ms >= 0) {
+        previousCallbackStartMs = currentCallbackStartMs;
+        previousCallbackEndMs = currentCallbackStartMs + ms;
+      }
+      callbackOpen = false;
     },
     /**
      * Copy the current frame's scalar timing state into a caller-owned object.
@@ -278,12 +407,18 @@ export function ensurePerfRuntime(state) {
       out.shedStepsTotal = loop.shedStepsTotal;
       out.callbackMs = frameCallbackStats.last;
       out.untrackedMs = frameUntrackedStats.last;
-      out.simMs = phaseStats.sim.last;
-      out.simFrameMs = phaseStats.simFrame.last;
-      out.renderMs = phaseStats.render.last;
-      out.vfxMs = phaseStats.vfx.last;
-      out.feelMs = phaseStats.feel.last;
-      out.uiMs = phaseStats.ui.last;
+      out.callbackIntervalMs = loop.callbackIntervalMs;
+      out.externalCallbackGapMs = loop.externalCallbackGapMs;
+      out.callbackDispatchLagMs = loop.callbackDispatchLagMs;
+      out.backlogCause = loop.backlogCause;
+      out.simMs = framePhaseMs.sim;
+      out.simFrameMs = framePhaseMs.simFrame;
+      out.presentationMs = framePhaseMs.presentation;
+      out.renderMs = framePhaseMs.render;
+      out.vfxMs = framePhaseMs.vfx;
+      out.feelMs = framePhaseMs.feel;
+      out.uiMs = framePhaseMs.ui;
+      out.admissionMs = loop.admissionMs;
       return out;
     },
     recordSpatialHash({
@@ -368,10 +503,33 @@ export function ensurePerfRuntime(state) {
       resetStat(frameStats);
       resetStat(frameCallbackStats);
       resetStat(frameUntrackedStats);
+      resetStat(frameCallbackIntervalStats);
+      resetStat(frameExternalGapStats);
+      resetStat(frameDispatchLagStats);
       for (const stat of Object.values(phaseStats)) resetStat(stat);
       for (const stat of Object.values(systemStats)) resetStat(stat);
       for (const stat of Object.values(renderWorkStats)) resetStat(stat);
       frameAccountedMs = 0;
+      pendingAdmissionMs = 0;
+      pendingExternalAdmissionMs = 0;
+      frameAdmissionMs = 0;
+      frameExternalAdmissionMs = 0;
+      callbackOpen = false;
+      currentCallbackStartMs = null;
+      previousCallbackStartMs = null;
+      previousCallbackEndMs = null;
+      previousCallbackMs = 0;
+      previousSimFrameMs = 0;
+      previousPresentationMs = 0;
+      previousUiMs = 0;
+      fixedFrameBudgetMs = 1000 / 60;
+      framePhaseMs.sim = 0;
+      framePhaseMs.simFrame = 0;
+      framePhaseMs.presentation = 0;
+      framePhaseMs.render = 0;
+      framePhaseMs.vfx = 0;
+      framePhaseMs.feel = 0;
+      framePhaseMs.ui = 0;
       loop.stepsThisFrame = 0;
       loop.maxStepsThisFrame = 0;
       loop.multiStepFrames = 0;
@@ -379,6 +537,12 @@ export function ensurePerfRuntime(state) {
       loop.shedStepsTotal = 0;
       loop.accumulatorS = 0;
       loop.lastFrameDtMs = 0;
+      loop.callbackIntervalMs = 0;
+      loop.externalCallbackGapMs = 0;
+      loop.callbackDispatchLagMs = 0;
+      loop.admissionMs = 0;
+      loop.backlogCause = 'none';
+      for (const key of Object.keys(backlogCauseCounts)) backlogCauseCounts[key] = 0;
       counters.spatialHash.rebuilds = 0;
       counters.spatialHash.dynamicRebuilds = 0;
       counters.spatialHash.dynamicFullRebuilds = 0;
@@ -441,14 +605,22 @@ export function ensurePerfRuntime(state) {
         frame: reportStat(frameStats),
         frameCallback: reportStat(frameCallbackStats),
         frameUntracked: reportStat(frameUntrackedStats),
-        loop: { ...loop },
+        frameCallbackInterval: reportStat(frameCallbackIntervalStats),
+        frameExternalGap: reportStat(frameExternalGapStats),
+        frameDispatchLag: reportStat(frameDispatchLagStats),
+        loop: {
+          ...loop,
+          backlogCauseCounts: { ...backlogCauseCounts },
+        },
         phases: {
           sim: reportStat(phaseStats.sim),
           simFrame: reportStat(phaseStats.simFrame),
+          presentation: reportStat(phaseStats.presentation),
           render: reportStat(phaseStats.render),
           vfx: reportStat(phaseStats.vfx),
           feel: reportStat(phaseStats.feel),
           ui: reportStat(phaseStats.ui),
+          admission: reportStat(phaseStats.admission),
         },
         systems,
         renderWork,
