@@ -107,6 +107,7 @@ globalThis.window = {
 // Import the systems
 import { RECIPES } from '../src/data/audioRecipes.js';
 import { audio, AUDIO_RECIPE_BY_ID, resolveAudioCueRecipeId } from '../src/audio/audioSystem.js';
+import { playRecipe } from '../src/audio/synth.js';
 import { createCuePriorityBus } from '../src/audio/cuePriorityBus.js';
 import { SECTOR_PALETTE_CLASSES } from '../src/data/sectors.js';
 import { PRESENTATION_AUDIO_CUE_BY_ID } from '../src/systems/presentationAdapters.js';
@@ -363,6 +364,12 @@ const EMITTED_CUES = {
   loot_collect: { distinct: true }, mining_core_fizzle: { distinct: true },
   shield_break: { distinct: true }, cm_chaff: { distinct: true }, cm_ecm: { distinct: true },
   sfx_explosion_small: { distinct: true },
+  // Authored weapon/mining signatures emitted by their literal sfx_* recipe id (no cue indirection):
+  // each resolves directly to a dedicated recipe via AUDIO_RECIPE_BY_ID, so they must be listed here
+  // or the drift guard treats the literal emit as uncovered.
+  sfx_mining_seam_reward: { distinct: true },   // mining.js seam bonus (layered impact+bell)
+  sfx_vector_mine: { distinct: true },          // weapons.js SF-09 vector-mine directional detonation
+  sfx_rcs_disrupt: { distinct: true },          // weapons.js SF-10 RCS-disruptor ion hit
   // Massline Physics Identity (Wave M2): throw/sling/tumble/bullet-time/cloak/jettison semantics.
   'massline.throw': { distinct: true }, 'massline.solutionLock': { distinct: true },
   'massline.sling': { distinct: true }, 'massline.tumble': { distinct: true },
@@ -382,6 +389,32 @@ for (const [cue, spec] of Object.entries(EMITTED_CUES)) {
       `Emitted cue "${cue}" collapses to the generic sfx_ui_click fallback. ` +
       `Map it to a dedicated recipe in AUDIO_CUE_TO_RECIPE so it has its own voice.`);
   }
+}
+
+// Render guard: every recipe that can be played must actually produce a voiced source when run
+// through the synth. A recipe whose `type`/fields the synth does not recognise falls through
+// buildRecipeVoice with ZERO sources — a silent voice that still consumes the voice budget.
+// Resolution alone ("recipe exists and isn't the click fallback") cannot catch this; only rendering
+// can. (This would have caught a `type:'osc'` or `type:'noise'` recipe that the synth never renders.)
+//
+// We sweep the FULL RECIPES catalog, not just EMITTED_CUES, because many recipes are played directly
+// by id (weapons/mining/massline emitters) rather than through the semantic cue contract — a silent
+// direct-play recipe would never be caught by an EMITTED_CUES-only guard.
+const renderCtx = mockCtx;
+const renderDest = mockCtx.createGain();
+for (const recipe of RECIPES) {
+  const voice = playRecipe(renderCtx, recipe, renderDest, { peakGain: 0.5 }, {});
+  assert.ok(voice.sources.length >= 1,
+    `Recipe "${recipe.id}" (type:"${recipe.type}") renders with no sources (${voice.sources.length}); ` +
+    `its type/fields are not recognised by the synth and it would be silent. Use a supported type ` +
+    `(oscillator / noise_filtered / noise_burst / continuous_*) with matching fields.`);
+}
+// Also assert the EMITTED_CUES contract specifically resolves to a real recipe (the catalog sweep
+// above proves recipes render; this proves every emitted cue MAPS to one of them).
+for (const [cue] of Object.entries(EMITTED_CUES)) {
+  const rid = resolveAudioCueRecipeId(cue);
+  assert.ok(AUDIO_RECIPE_BY_ID[rid],
+    `Emitted cue "${cue}" resolves to "${rid}", which is not a defined recipe.`);
 }
 
 // Drift guard: discover every literal audio:cue / _onCue id in src and require it to be listed

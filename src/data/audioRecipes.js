@@ -189,6 +189,20 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.001, sustain: 0.0, release: 1.2 },
     reverbMix: 0.7, reverbDecay: 3.0,
   },
+  // SF-09 vector mine detonation: a directional impulse ring, not a generic spherical blast. A
+  // band-limited noise crack with a SHORT but audible metallic ringing tail (nonzero sustain so the
+  // release decays from signal, not from silence) and a tighter bandpass than chaff, so it reads as
+  // "kinetic shunt" rather than "thing blew up" and stays distinct from both sfx_explosion_small
+  // (lowpassed boom) and sfx_cm_chaff (highpassed 2 kHz crack). Only synth-supported fields are used.
+  {
+    id: 'sfx_vector_mine',
+    category: 'explosion',
+    type: 'noise_filtered',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.22, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 1700, filterQ: 1.6,
+    pitchRange: [0.85, 1.2],
+  },
 
   // --- Mining SFX ---
   {
@@ -630,14 +644,36 @@ export const RECIPES = [
     pitchRange: [0.9, 1.3],
   },
   {
+    // ECM burst: a descending electronic whine. Converted from the unsupported `type:'osc'` shape
+    // (oscType/freqStart/freqEnd — the synth renders none of these, so it was silent) to the supported
+    // `type:'oscillator'` vocabulary (wave/baseFreq/freqSweep/sweepTimeS). Same character, now audible.
     id: 'sfx_cm_ecm',
     category: 'weapon',
-    type: 'osc',
-    oscType: 'sawtooth',
-    freqStart: 1200, freqEnd: 200,
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 1200,
+    freqSweep: [1200, 200],
+    sweepTimeS: 0.36,
     gainEnvelope: { attack: 0.01, sustain: 0.3, release: 0.4 },
     filterType: 'lowpass', filterFreq: 3000, filterQ: 2,
     pitchRange: [0.95, 1.1],
+  },
+  // SF-10 RCS disruptor hit: an ion "authority stripped" zap — a fast falling square-wave pulse
+  // band-limited through a lowpass so it reads electrical, not percussive. Pairs with the `ion` vfx
+  // material. Uses the synth's supported `type:'oscillator'` vocabulary (baseFreq/freqSweep/sweepTimeS/
+  // wave) — NOT `type:'osc'`, which the synth does not render and would produce a silent voice. The
+  // nonzero sustain holds the zap audibly through its decay so it is not just a click.
+  {
+    id: 'sfx_rcs_disrupt',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 880,
+    freqSweep: [880, 240],
+    sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.004, sustain: 0.18, release: 0.14 },
+    filterType: 'lowpass', filterFreq: 1800, filterQ: 1.4,
+    pitchRange: [0.9, 1.15],
   },
 
   // --- SPEC2/07 Juice Table SFX (1:1 bindings) ---
@@ -1184,10 +1220,12 @@ export const RECIPES = [
     gainMult: 0.65,
   },
   // Self-sling: a deep swelling whoosh as the anchor flings the ship out.
+  // (type was 'noise', which the synth does not render — corrected to 'noise_filtered' so the
+  // bandpass actually applies and the voice is audible. Intent unchanged.)
   {
     id: 'sfx_massline_sling',
     category: 'engine',
-    type: 'noise',
+    type: 'noise_filtered',
     baseFreq: 140,
     gainEnvelope: { attack: 0.03, sustain: 0.1, release: 0.34 },
     filterType: 'bandpass', filterFreq: 320, filterQ: 1.1,
@@ -1223,10 +1261,11 @@ export const RECIPES = [
     gainMult: 0.6,
   },
   // Cloak on/off: airy shimmer down into silence; the off cue is shorter and duller.
+  // (type was 'noise' — corrected to 'noise_filtered' so the synth renders it; intent unchanged.)
   {
     id: 'sfx_massline_cloak_on',
     category: 'ui',
-    type: 'noise',
+    type: 'noise_filtered',
     baseFreq: 900,
     gainEnvelope: { attack: 0.02, sustain: 0.05, release: 0.4 },
     filterType: 'highpass', filterFreq: 1400,
@@ -1235,27 +1274,29 @@ export const RECIPES = [
   {
     id: 'sfx_massline_cloak_off',
     category: 'ui',
-    type: 'noise',
+    type: 'noise_filtered',
     baseFreq: 500,
     gainEnvelope: { attack: 0.005, sustain: 0.02, release: 0.16 },
     filterType: 'bandpass', filterFreq: 700, filterQ: 1.4,
     gainMult: 0.55,
   },
   // Jettison kick: a blunt rear-quarter thud (reaction mass leaving the hold).
+  // (type was 'noise' — corrected to 'noise_filtered'; intent unchanged.)
   {
     id: 'sfx_massline_jettison',
     category: 'engine',
-    type: 'noise',
+    type: 'noise_filtered',
     baseFreq: 90,
     gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.18 },
     filterType: 'lowpass', filterFreq: 420,
     gainMult: 0.75,
   },
   // Aft charge ejector: short mechanical clack + filtered breath, distinct from detonation.
+  // (type was 'noise' — corrected to 'noise_filtered'; intent unchanged.)
   {
     id: 'sfx_massline_bomb_drop',
     category: 'engine',
-    type: 'noise',
+    type: 'noise_filtered',
     baseFreq: 150,
     gainEnvelope: { attack: 0.002, sustain: 0.015, release: 0.12 },
     filterType: 'bandpass', filterFreq: 520, filterQ: 1.8,
