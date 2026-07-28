@@ -19,12 +19,14 @@ import { attachLodState } from './lod.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
 import {
   hasExplicitAuthoredGeologyPresentation,
+  hasExplicitAuthoredPayloadPresentation,
   PRESENTATION_ADMISSION,
   setPresentationAdmission,
 } from '../core/presentationAdmission.js';
 
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
+const AUTHORED_CARGO_CAPSULE_FILE = 'pods/pod_cargo_container.glb';
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 const INSTANCE_CHUNK_SIZE = 64;
 const INSTANCE_FAR_CULL_RADIUS = 9000;
@@ -617,6 +619,320 @@ export function buildAuthoredPlaceProp(entity, options = {}) {
     ? options.fallbackRoot
     : buildFallbackPlaceProp(entity, placeFile);
   return wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options);
+}
+
+/**
+ * Exact PQ-019 cargo-pod presentation boundary. The simulation entity remains a `payload`; this
+ * wrapper only owns admission of the already-released pod visual and never publishes the generic
+ * cylinder while that exact identity is pending or unavailable.
+ */
+export function buildAuthoredCargoCapsule(entity, options = {}) {
+  if (!hasExplicitAuthoredPayloadPresentation(entity)) return null;
+  const fallbackRoot = options.fallbackRoot;
+  if (!fallbackRoot || !fallbackRoot.isObject3D) return null;
+
+  const releaseMode = isReleaseAssetMode(options);
+  setPresentationAdmission(entity, PRESENTATION_ADMISSION.pending);
+
+  const boundary = new THREE.Group();
+  boundary.name = `${entity.data.payloadStableId || entity.id || 'cargo_capsule'}_AuthoredPayloadBoundary`;
+  fallbackRoot.visible = false;
+  boundary.add(fallbackRoot);
+  boundary.userData.kind = 'payload';
+  boundary.userData.interactionKind = 'payload';
+  boundary.userData.authoredPayloadAssetId = AUTHORED_CARGO_CAPSULE_FILE
+    .replace(/^pods\//, '')
+    .replace(/\.glb$/, '');
+  boundary.userData.authoredAssetState = 'awaiting-authored-admission';
+  boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
+  boundary.userData.authoredVisualRoot = 'none-pending-admission';
+  boundary.userData.authoredParts = [];
+  boundary.userData.authoredSlots = {};
+  boundary.userData.renderContract = {
+    version: 1,
+    assetBoundary: 'exact authored PQ-019 cargo capsule',
+    gracefulFallback: false,
+    coordinateSystem: '+X forward, +Y up, +Z starboard; metres',
+  };
+
+  let activeRoot = fallbackRoot;
+  const setActiveRoot = (next) => {
+    activeRoot = next;
+    boundary.userData.hull = next;
+    boundary.userData.lod = next?.userData?.lod || null;
+  };
+  boundary.userData.__setActiveVisualRoot = setActiveRoot;
+  boundary.userData.updateLod = (level) => {
+    const update = activeRoot?.userData?.updateLod;
+    if (typeof update === 'function') update(level);
+  };
+  boundary.userData.requestAuthoredUpgrade = (renderer, scene) => {
+    if (!renderer || !scene || authoredAdmissionStarted(boundary.userData.authoredAssetState)) return false;
+    boundary.userData.authoredAssetState = 'loading';
+    const residency = residencyOptionsForBoundary(entity, boundary, renderer);
+    const upgradeOptions = {
+      releaseMode,
+      loadAuthoredPart: options.loadAuthoredPart,
+      ...residency,
+    };
+    const partRoot = releaseMode ? PART_RELEASE_ROOT : PART_ROOT;
+    return enqueueBoundaryUpgrade(scene, {
+      key: `payload:${entity.data.payloadStableId || entity.id}`,
+      boundary,
+      entity,
+      renderer,
+      scene,
+      assetUrls: [`${partRoot}${AUTHORED_CARGO_CAPSULE_FILE}`],
+      options: upgradeOptions,
+      run: () => upgradeAuthoredCargoCapsuleBoundary(
+        boundary,
+        fallbackRoot,
+        entity,
+        renderer,
+        scene,
+        upgradeOptions,
+        setActiveRoot,
+      ),
+    });
+  };
+
+  return boundary;
+}
+
+/** Test/probe hook for the same exact payload upgrade used by the live render queue. */
+export async function upgradeAuthoredCargoCapsuleBoundaryForProbe(
+  boundary,
+  fallbackRoot,
+  entity,
+  renderer,
+  scene,
+  options = {},
+) {
+  if (!boundary || !fallbackRoot || !entity || !renderer || !scene) return false;
+  const setActiveRoot = typeof boundary.userData.__setActiveVisualRoot === 'function'
+    ? boundary.userData.__setActiveVisualRoot
+    : (next) => {
+        boundary.userData.hull = next;
+        boundary.userData.lod = next?.userData?.lod || null;
+      };
+  boundary.userData.authoredAssetState = 'loading';
+  return upgradeAuthoredCargoCapsuleBoundary(
+    boundary,
+    fallbackRoot,
+    entity,
+    renderer,
+    scene,
+    options,
+    setActiveRoot,
+  );
+}
+
+async function upgradeAuthoredCargoCapsuleBoundary(
+  boundary,
+  fallbackRoot,
+  entity,
+  renderer,
+  scene,
+  options,
+  setActiveRoot,
+) {
+  const releaseMode = isReleaseAssetMode(options);
+  const partRoot = releaseMode ? PART_RELEASE_ROOT : PART_ROOT;
+  const loadPart = typeof options.loadAuthoredPart === 'function'
+    ? options.loadAuthoredPart
+    : loadAuthoredPart;
+  let record = null;
+  try {
+    record = await loadPart(`${partRoot}${AUTHORED_CARGO_CAPSULE_FILE}`, {
+      renderer,
+      slot: 'pod',
+      optional: true,
+      residencyOwner: options.residencyOwner,
+      residencyRole: options.residencyRole,
+      sectorId: options.sectorId,
+      isResidencyOwnerActive: options.isResidencyOwnerActive,
+    });
+  } catch (error) {
+    return failAuthoredCargoCapsuleAdmission(
+      boundary,
+      fallbackRoot,
+      entity,
+      renderer,
+      'load-threw',
+      error,
+    );
+  }
+  if (!record) {
+    return failAuthoredCargoCapsuleAdmission(
+      boundary,
+      fallbackRoot,
+      entity,
+      renderer,
+      'load-unavailable',
+    );
+  }
+  if (!boundary.parent) {
+    releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-before-swap');
+    boundary.userData.authoredAssetState = 'orphaned-before-swap';
+    return false;
+  }
+
+  let authored;
+  try {
+    authored = buildAuthoredCargoCapsuleRoot(entity, record, scene, boundary);
+  } catch (error) {
+    return failAuthoredCargoCapsuleAdmission(
+      boundary,
+      fallbackRoot,
+      entity,
+      renderer,
+      'build-threw',
+      error,
+    );
+  }
+  boundary.userData.authoredAssetState = 'compiling-pipelines';
+  try {
+    await prepareAuthoredVisualPipelines(authored.root, options);
+  } catch (error) {
+    disposeDetachedAuthoredCargoCapsule(authored.root);
+    return failAuthoredCargoCapsuleAdmission(
+      boundary,
+      fallbackRoot,
+      entity,
+      renderer,
+      'pipeline-compile-failed',
+      error,
+    );
+  }
+  if (!boundary.parent) {
+    disposeDetachedAuthoredCargoCapsule(authored.root);
+    releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-after-pipeline-compile');
+    boundary.userData.authoredAssetState = 'orphaned-after-pipeline-compile';
+    return false;
+  }
+  return commitAuthoredCargoCapsuleBoundary(
+    boundary,
+    fallbackRoot,
+    authored,
+    entity,
+    setActiveRoot,
+  );
+}
+
+function failAuthoredCargoCapsuleAdmission(
+  boundary,
+  fallbackRoot,
+  entity,
+  renderer,
+  reason,
+  error = null,
+) {
+  releaseBoundaryResidency(renderer, boundary, `payload-${reason}`);
+  fallbackRoot.visible = false;
+  boundary.userData.authoredAssetState = 'unavailable';
+  boundary.userData.authoredVisualRoot = reason.includes('pipeline')
+    ? 'none-pipeline-failed'
+    : (reason.includes('build') ? 'none-build-failed' : 'none-load-failed');
+  boundary.userData.authoredFailureReason = reason;
+  if (error?.message) boundary.userData.authoredFailureMessage = error.message;
+  setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+  return false;
+}
+
+function commitAuthoredCargoCapsuleBoundary(
+  boundary,
+  fallbackRoot,
+  authored,
+  entity,
+  setActiveRoot,
+) {
+  boundary.remove(fallbackRoot);
+  boundary.add(authored.root);
+  setActiveRoot(authored.root);
+  releaseDetachedCargoCapsuleSubstrate(fallbackRoot);
+  boundary.userData.authoredAssetState = 'authored';
+  boundary.userData.authoredVisualRoot = 'authored-root';
+  boundary.userData.authoredParts = authored.authoredParts;
+  boundary.userData.authoredSlots = authored.authoredSlots;
+  boundary.userData.assetId = authored.root.userData.assetId;
+  boundary.userData.renderContract = authored.root.userData.renderContract;
+  boundary.userData.__socketCache = new Map();
+  delete boundary.userData.requestAuthoredUpgrade;
+  delete boundary.userData.__setActiveVisualRoot;
+  setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
+  return true;
+}
+
+function disposeDetachedAuthoredCargoCapsule(root) {
+  if (!root) return;
+  // Authored compositions use cloned batch geometry plus materials marked by the shared-resource
+  // policy. Reuse the established detached-place disposer so only owner-local GPU resources retire.
+  disposeDetachedPlaceFallback(root);
+  root.clear();
+}
+
+function releaseDetachedCargoCapsuleSubstrate(root) {
+  if (!root) return;
+  // visualFactory payload geometry/materials are module-level caches shared by ordinary payloads.
+  // Sever this one-shot Object3D graph without disposing those shared resources.
+  root.clear();
+  root.userData.authoredSubstrateReleased = true;
+}
+
+function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
+  const palette = paletteFor(entity);
+  const root = new THREE.Group();
+  root.name = `GLTFKit_${entity.data.payloadStableId || 'cargo_capsule'}`;
+  root.userData.kind = 'payload';
+  root.userData.interactionKind = 'payload';
+  root.userData.authoredPayloadAssetId = entity.data.authoredPayloadAssetId;
+  root.userData.assetId = record.assetId;
+
+  const bindings = createBindings();
+  const mutableMaterials = new Map();
+  const staticBatches = createStaticBatchCollector(root, bindings);
+  const boundsSize = Array.isArray(record.bounds?.size) ? record.bounds.size : [1, 1, 1];
+  const authoredEnvelope = Math.max(1e-6, ...boundsSize.map((value) => Number(value) || 0));
+  const targetRadius = Math.max(1, Number(entity.radius) || 3);
+  const scale = (targetRadius * 2) / authoredEnvelope;
+  const authoredLength = Math.max(Number(boundsSize[0]) || authoredEnvelope, 1e-6);
+  instantiatePart(record, root, {
+    position: [0, 0, 0],
+    rotation: [0, 0, 0],
+    targetLength: authoredLength * scale,
+    label: 'CargoCapsule',
+  }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
+  staticBatches.flush();
+  reconcileMaplessHullMaterialAliases(palette);
+  canonicalizeMaplessHullMaterials(root, palette);
+  installAuthoredLod(root, bindings, null, authoredLevels(record), true);
+  root.userData.updateLod('lod0');
+
+  const center = Array.isArray(record.bounds?.center) ? record.bounds.center : [0, 0, 0];
+  root.position.set(
+    -(Number(center[0]) || 0) * scale,
+    -(Number(center[1]) || 0) * scale,
+    -(Number(center[2]) || 0) * scale,
+  );
+  root.userData.authoredWorldScale = scale;
+  root.userData.collisionEnvelopeRadius = targetRadius;
+  root.userData.visualBounds = {
+    center: center.map((value) => (Number(value) || 0) * scale),
+    size: boundsSize.map((value) => (Number(value) || 0) * scale),
+  };
+  root.userData.renderContract = {
+    version: 1,
+    coordinateSystem: '+X forward, +Y up, +Z starboard; authored payload centered on physics origin',
+    authoredParts: [record.url],
+    authoredSlots: { pod: [record.url] },
+    collisionEnvelope: 'longest authored axis equals payload diameter',
+    gracefulFallback: false,
+  };
+  return {
+    root,
+    authoredParts: [record.url],
+    authoredSlots: { pod: [record.url] },
+  };
 }
 
 export function buildAuthoredStationArchetype(entity, options = {}) {

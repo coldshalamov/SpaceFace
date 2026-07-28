@@ -96,10 +96,29 @@ export const ZONE_TETHYS_ANVIL = Object.freeze({
 });
 
 /**
+ * Throughline Weigh — PQ-020's no-presence transit pocket between the two Ceres core approaches.
+ *
+ * The zone contributes one map-readable checkpoint and no spawn budget. Its physical beacon is the
+ * canonical POI in sectors/sectorAnchors; this zone supplies the route context around that point.
+ */
+export const ZONE_CERES_THROUGHLINE = Object.freeze({
+  id: 'zone_ceres_throughline',
+  name: 'Throughline Weigh',
+  type: 'border_checkpoint',
+  factionId: 'faction_dmc',
+  reason: 'Collective weigh traffic crosses here between the Helios and Tethys approaches without '
+    + 'turning the checkpoint into another patrol or ambient-spawn source.',
+  center: Object.freeze({ x: 3155, z: -955 }),
+  radius: 500,
+  threat: 1,
+});
+
+/**
  * sectorId -> additional authored zone records, appended to the per-sector tables.
  * Keyed by sector so the merge stays a pure append and can never shadow an existing sector's list.
  */
 export const AUTHORED_PLACE_ZONES = Object.freeze({
+  sector_ceres_belt: Object.freeze([ZONE_CERES_THROUGHLINE]),
   sector_tethys_junction: Object.freeze([ZONE_TETHYS_DRIFTMARK, ZONE_TETHYS_ANVIL]),
 });
 

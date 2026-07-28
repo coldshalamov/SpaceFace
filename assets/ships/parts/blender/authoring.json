@@ -28,6 +28,86 @@
       "semantic_note": "Editable four-nozzle RCS maneuvering cluster; the mesh/hardware source is separate from the pooled runtime impulse VFX.",
       "min_tris": 1040
     },
+    "hull_starter": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_starter_authored.blend",
+      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_fighter": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_fighter_authored.blend",
+      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_miner": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_miner_authored.blend",
+      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_freighter": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_freighter_authored.blend",
+      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_interceptor": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_interceptor_authored.blend",
+      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_corvette": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_corvette_authored.blend",
+      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_frigate": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_frigate_authored.blend",
+      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_capital": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_capital_authored.blend",
+      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_multirole": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_multirole_authored.blend",
+      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_gunship": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_gunship_authored.blend",
+      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
     "place_station_trade_hub": {
       "method": "blender_mcp",
       "concept_id": "concept_helios_overview",

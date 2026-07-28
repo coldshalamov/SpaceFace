@@ -100,6 +100,12 @@ const LINKS = [
     why: 'A screen that imports the wrong module boots to a blank panel. Cheapest real gate we have.',
   },
   {
+    id: 'pq020-ceres-topology',
+    costHintMs: 500,
+    script: 'check:pq020:ceres-topology',
+    why: 'Pins PQ-020 Ceres pocket geometry, Cathedral identity, route legs, and headless structural-cost fingerprint; headed-only metrics stay explicit nulls.',
+  },
+  {
     id: 'save-schema',
     costHintMs: 800,
     script: 'check:save-schema',

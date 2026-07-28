@@ -63,7 +63,7 @@
       "priority": "P0",
       "file": "hulls/hull_starter.glb",
       "tris": 14550,
-      "bytes": 960552,
+      "bytes": 3391768,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -97,7 +97,7 @@
           3.1181
         ]
       },
-      "note": "PRO Full Finish 2026-07-06 — Bevel4+WN+meso insets+DET weld/reactor/DEBT/hatch/bolts/tag/soot. Surfacing: trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO bake+clearcoat+roughness_variation (textures/hull_starter/). Skin: Pit repossessed 3-owner wear, DEBT graffiti, port weld scar, reactor soot, inventory tag. 1612 tris / blender_mcp.",
+      "note": "PRO Full Finish 2026-07-06 — Bevel4+WN+meso insets+DET weld/reactor/DEBT/hatch/bolts/tag/soot. Surfacing: trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO bake+clearcoat+roughness_variation (textures/hull_starter/). Skin: Pit repossessed 3-owner wear, DEBT graffiti, port weld scar, reactor soot, inventory tag. 1612 tris / blender_mcp. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -123,7 +123,7 @@
       "priority": "P0",
       "file": "hulls/hull_fighter.glb",
       "tris": 4690,
-      "bytes": 2710692,
+      "bytes": 2287184,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -157,7 +157,7 @@
           5.8845
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + trim sheet + combat wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, roughness variation, clearcoat, 3-role EEVEE lit PBR. Core lawful patrol bounty hunter cyan-steel. 31 MCP renders. tris=3308.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + trim sheet + combat wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, roughness variation, clearcoat, 3-role EEVEE lit PBR. Core lawful patrol bounty hunter cyan-steel. 31 MCP renders. tris=3308. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -183,7 +183,7 @@
       "priority": "P0",
       "file": "hulls/hull_miner.glb",
       "tris": 12991,
-      "bytes": 4018240,
+      "bytes": 3536024,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -217,7 +217,7 @@
           5.4941
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + ore trim sheet + dust wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, roughness variation, clearcoat, 3-role EEVEE lit PBR. Belt ore hauler dust-caked rust-amber. 30 MCP renders. tris=21048.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + ore trim sheet + dust wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, roughness variation, clearcoat, 3-role EEVEE lit PBR. Belt ore hauler dust-caked rust-amber. 30 MCP renders. tris=21048. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -243,7 +243,7 @@
       "priority": "P0",
       "file": "hulls/hull_freighter.glb",
       "tris": 4621,
-      "bytes": 3110348,
+      "bytes": 2750480,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -277,7 +277,7 @@
           4.3776
         ]
       },
-      "note": "PRO revamp 2026-07-06 — 8 DET layers + Full Finish surfacing: trim sheet + wear mask (image-gen), SF_EdgeWear/SF_CavityDirt node groups, AO bake, roughness variation, clearcoat, 3-role PBR (Hull/Mech/Accent). Belt cargo runner manifest-lies character. tris=3248.",
+      "note": "PRO revamp 2026-07-06 — 8 DET layers + Full Finish surfacing: trim sheet + wear mask (image-gen), SF_EdgeWear/SF_CavityDirt node groups, AO bake, roughness variation, clearcoat, 3-role PBR (Hull/Mech/Accent). Belt cargo runner manifest-lies character. tris=3248. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -303,7 +303,7 @@
       "priority": "P0",
       "file": "hulls/hull_interceptor.glb",
       "tris": 4539,
-      "bytes": 2677748,
+      "bytes": 2797140,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -337,7 +337,7 @@
           5.3921
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + interceptor trim + heat wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat, 3-role EEVEE lit PBR. Fringe fast pursuit heat-scarred sodium-red. 24 MCP renders. tris=3212.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + interceptor trim + heat wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat, 3-role EEVEE lit PBR. Fringe fast pursuit heat-scarred sodium-red. 24 MCP renders. tris=3212. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -363,7 +363,7 @@
       "priority": "P0",
       "file": "hulls/hull_corvette.glb",
       "tris": 4596,
-      "bytes": 2510304,
+      "bytes": 2766500,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -397,7 +397,7 @@
           5.1747
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + corporate trim + fade wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat 0.22, 3-role EEVEE lit PBR. Core Bastion escort corporate-clean-fading. 24 MCP renders. tris=3240.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + corporate trim + fade wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat 0.22, 3-role EEVEE lit PBR. Core Bastion escort corporate-clean-fading. 24 MCP renders. tris=3240. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -423,7 +423,7 @@
       "priority": "P0",
       "file": "hulls/hull_frigate.glb",
       "tris": 4685,
-      "bytes": 3087004,
+      "bytes": 1899032,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -457,7 +457,7 @@
           5.5852
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + frigate trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat 0.28, stencil emissive, 3-role EEVEE lit PBR. Core authority squadron stripe + disciplined wear skin pass. 29 MCP renders. tris=3300.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + frigate trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat 0.28, stencil emissive, 3-role EEVEE lit PBR. Core authority squadron stripe + disciplined wear skin pass. 29 MCP renders. tris=3300. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -483,7 +483,7 @@
       "priority": "P0",
       "file": "hulls/hull_capital.glb",
       "tris": 4882,
-      "bytes": 4172604,
+      "bytes": 1929836,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -517,7 +517,7 @@
           7.7086
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 9 DET + cathedral trim/ashfall wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, matte oxidized, anomaly emissive, 3-role EEVEE lit PBR. Ashfall cathedral ribs + oxidation + violet vein skin pass. 30 MCP renders. tris=3468.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 9 DET + cathedral trim/ashfall wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, matte oxidized, anomaly emissive, 3-role EEVEE lit PBR. Ashfall cathedral ribs + oxidation + violet vein skin pass. 30 MCP renders. tris=3468. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -543,7 +543,7 @@
       "priority": "P0",
       "file": "hulls/hull_multirole.glb",
       "tris": 3534,
-      "bytes": 3460540,
+      "bytes": 1864252,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -577,7 +577,7 @@
           4.8922
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + patchwork trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, violet emissive stripe, 3-role EEVEE lit PBR. Free Frontier smuggler patchwork skin pass. 29 render_viewport_to_path MCP renders. tris=2566.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + patchwork trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, violet emissive stripe, 3-role EEVEE lit PBR. Free Frontier smuggler patchwork skin pass. 29 render_viewport_to_path MCP renders. tris=2566. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -603,7 +603,7 @@
       "priority": "P0",
       "file": "hulls/hull_gunship.glb",
       "tris": 4671,
-      "bytes": 3721344,
+      "bytes": 1994300,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -637,7 +637,7 @@
           5.5374
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + gunship trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat, stencil emissive, 3-role EEVEE lit PBR. Military/fringe battle-scar + soot + red stencil skin pass. 32 MCP renders. tris=3288.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + gunship trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat, stencil emissive, 3-role EEVEE lit PBR. Military/fringe battle-scar + soot + red stencil skin pass. 32 MCP renders. tris=3288. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",

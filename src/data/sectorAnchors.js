@@ -3,10 +3,12 @@
 // Gate positions are deterministic bearings toward neighbor star-map nodes (no RNG jitter).
 
 import { FRONTIER_ANCHORS, FRONTIER_CORE_GATE_PATCHES } from './frontierRegions/index.js';
+import { PQ019_FACILITY_ANCHORS } from './heistFacilities.js';
 
 const GATE_R = 0.82;
 
 export const CERES_WRECK_CATHEDRAL_LOCAL_POS = Object.freeze({ x: 300, z: 2700 });
+export const CERES_THROUGHLINE_BEACON_LOCAL_POS = Object.freeze({ x: 3040, z: -920 });
 
 function bearingGate(sector, neighbor) {
   const wr = sector.worldRadius || 4000;
@@ -56,6 +58,13 @@ const CORE_SECTOR_ANCHORS = {
     pois: [
       { id: 'poi_driller', pos: { x: 240, z: -1180 }, landmarkGlb: 'place_dead_hulk', landmark: true },
       { id: 'poi_survey', pos: { x: -1240, z: -320 }, landmarkGlb: 'place_debris_chunk' },
+      {
+        id: 'poi_ceres_throughline',
+        pos: CERES_THROUGHLINE_BEACON_LOCAL_POS,
+        position: CERES_THROUGHLINE_BEACON_LOCAL_POS,
+        landmarkGlb: 'place_lane_beacon',
+        landmark: true,
+      },
       { id: 'world_site_wreck_cathedral', pos: CERES_WRECK_CATHEDRAL_LOCAL_POS, landmark: true },
     ],
   },
@@ -77,6 +86,7 @@ const CORE_SECTOR_ANCHORS = {
       { id: 'poi_blackmkt', pos: { x: -1380, z: 420 }, landmarkGlb: 'place_nav_buoy' },
       { id: 'poi_tethys_weigh', pos: { x: 720, z: -980 }, landmarkGlb: 'place_lane_beacon' },
       { id: 'poi_tethys_customs_log', pos: { x: -920, z: -640 }, landmarkGlb: 'place_nav_buoy' },
+      ...PQ019_FACILITY_ANCHORS,
     ],
   },
   sector_vesta_forge: {

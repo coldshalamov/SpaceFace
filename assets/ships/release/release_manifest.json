@@ -26,140 +26,190 @@
       "kind": "part:hulls",
       "source": "assets/ships/parts/hulls/hull_starter.glb",
       "release": "assets/ships/release/parts/hulls/hull_starter.glb",
-      "sourceSha256": "8653bc1e718011bffd0e259298ea4f6d48f4a5f99db4a9ac503ed2b11e5221df",
-      "releaseSha256": "53c6f8e4aa083df3b7823f71992ce463499a489835f715c2e40e588f49925903",
-      "sourceBytes": 960552,
-      "releaseBytes": 244956,
-      "textures": 3,
-      "ktx2Textures": 3,
+      "sourceSha256": "0421b1a42d54e4e88f7517f044a4c04ef481e2434edceddbfee5568e0b844354",
+      "releaseSha256": "17b1e2d621bc3a2175e683084ff72796d4c37206575532a931b899e2fafec2e6",
+      "sourceBytes": 3391768,
+      "releaseBytes": 664528,
+      "textures": 4,
+      "ktx2Textures": 4,
       "meshoptBufferViews": 33,
-      "contractNodeCount": 11
+      "contractNodeCount": 11,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_fighter",
       "kind": "part:hulls",
       "source": "assets/ships/parts/hulls/hull_fighter.glb",
       "release": "assets/ships/release/parts/hulls/hull_fighter.glb",
-      "sourceSha256": "0ed7ddea3bb99add452fb88d4296d64ec3d10c6047029afbf1c8ba99a355d582",
-      "releaseSha256": "25237bcb5dbed06825617f082582fae64ec02c87b0ab3ff4483d8508d668cecb",
-      "sourceBytes": 2710692,
-      "releaseBytes": 5720316,
+      "sourceSha256": "8947e1a864302dcd07e1b00e26f083cfe246b3a2e944a2e496b9324e83b81a0c",
+      "releaseSha256": "fa806f1af565f82f3925547892d8c20b5bc8fd70142b35b3065d342cd7e23c73",
+      "sourceBytes": 2287184,
+      "releaseBytes": 436032,
       "textures": 5,
       "ktx2Textures": 5,
       "meshoptBufferViews": 20,
-      "contractNodeCount": 18
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_miner",
       "kind": "part:hulls",
       "source": "assets/ships/parts/hulls/hull_miner.glb",
       "release": "assets/ships/release/parts/hulls/hull_miner.glb",
-      "sourceSha256": "a23162c7ccd7115850eaf21681d7d3d78ce8c1dafc895078e30f8e52c8048ca1",
-      "releaseSha256": "2caee79bcd4a4947e6e9520abe3c0c2302f664e9e7d33b183feaeecf5410d0f2",
-      "sourceBytes": 4018240,
-      "releaseBytes": 6603824,
+      "sourceSha256": "7c6185a22f3c80d1366e9f751156fb57988d74c38e3472dc861dfda60b7956b9",
+      "releaseSha256": "000bd9050d3215af37b0a2cc195cac9065ca857c6a20fc7a3cab448eef1e0db9",
+      "sourceBytes": 3536024,
+      "releaseBytes": 704648,
       "textures": 5,
       "ktx2Textures": 5,
       "meshoptBufferViews": 19,
-      "contractNodeCount": 18
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_freighter",
       "kind": "part:hulls",
       "source": "assets/ships/parts/hulls/hull_freighter.glb",
       "release": "assets/ships/release/parts/hulls/hull_freighter.glb",
-      "sourceSha256": "31879aa4bbcecfc3add801311607829eb13d694f4a4b2f629305e3a7fdf3b143",
-      "releaseSha256": "f2c4d002aa80003077501e8b16f96fa38bef99ba49956bea2ed655957d269eea",
-      "sourceBytes": 3110348,
-      "releaseBytes": 5872884,
+      "sourceSha256": "8f35ff1c2e1e3077a8d9ff0bda6bdd1e0444cc1d765b5a834120533013b6a80e",
+      "releaseSha256": "965bae0970416e4ed78582b927b6dde232e8237ff22efb25d7db6b83780df361",
+      "sourceBytes": 2750480,
+      "releaseBytes": 583128,
       "textures": 5,
       "ktx2Textures": 5,
       "meshoptBufferViews": 45,
-      "contractNodeCount": 18
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_interceptor",
       "kind": "part:hulls",
       "source": "assets/ships/parts/hulls/hull_interceptor.glb",
       "release": "assets/ships/release/parts/hulls/hull_interceptor.glb",
-      "sourceSha256": "4ec82cea7cf82a387f61672a52a7de5b0737d9f37cfdaadb621127fed00e4a86",
-      "releaseSha256": "e44b144ec81ea6c6583bd7619c994cbc1dfda21a6a9bb4e47c155819994110cf",
-      "sourceBytes": 2677748,
-      "releaseBytes": 5867564,
+      "sourceSha256": "4803403097a4c7ff6063bae89e9a63040672f2dddd631f3be40cb286770fb7ca",
+      "releaseSha256": "35e6d3794d1a1ee4d555f951b5e8e3f8fd78f91d22e1dc7cddf2bed9170b3267",
+      "sourceBytes": 2797140,
+      "releaseBytes": 509988,
       "textures": 5,
       "ktx2Textures": 5,
       "meshoptBufferViews": 45,
-      "contractNodeCount": 18
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_corvette",
       "kind": "part:hulls",
       "source": "assets/ships/parts/hulls/hull_corvette.glb",
       "release": "assets/ships/release/parts/hulls/hull_corvette.glb",
-      "sourceSha256": "fd725c13bdff238f56384ee85c7e72c4aabf4f30ecf5fd70a368790ac6fbb861",
-      "releaseSha256": "94cabf19e6b61a727923874cc7560ea7ad4df099d95c6e3ac4cafb47da3906e6",
-      "sourceBytes": 2510304,
-      "releaseBytes": 5463060,
+      "sourceSha256": "f40a58a6c839ae20fa49346a5fe94d3eaddbe0bcac1103e50ed841b401b7995e",
+      "releaseSha256": "475a113826d288c4cd0b496b2d390c10fed230ea4d68505470ff84d611905abf",
+      "sourceBytes": 2766500,
+      "releaseBytes": 528648,
       "textures": 5,
       "ktx2Textures": 5,
       "meshoptBufferViews": 45,
-      "contractNodeCount": 18
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_frigate",
       "kind": "part:hulls",
       "source": "assets/ships/parts/hulls/hull_frigate.glb",
       "release": "assets/ships/release/parts/hulls/hull_frigate.glb",
-      "sourceSha256": "56b43f087e3d08859a5c3e31a27c2c5803ed4828d750ec91a7033d1d9adc7044",
-      "releaseSha256": "86dcb995c3a7e351d0f5b58bc470484b9fa11c07130b3a760f11e3983c1c34ce",
-      "sourceBytes": 3087004,
-      "releaseBytes": 2169424,
+      "sourceSha256": "0071bd65f18c37fb9d25cf4793ef163090748911a3ea7be24fc748f02158f205",
+      "releaseSha256": "98c07cd6a26b18ab676a108d1b3db177848baae7f910c4d5e1c9202a9e965234",
+      "sourceBytes": 1899032,
+      "releaseBytes": 333948,
       "textures": 5,
       "ktx2Textures": 5,
       "meshoptBufferViews": 21,
-      "contractNodeCount": 18
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_capital",
       "kind": "part:hulls",
       "source": "assets/ships/parts/hulls/hull_capital.glb",
       "release": "assets/ships/release/parts/hulls/hull_capital.glb",
-      "sourceSha256": "86d94f474665507121a7928db8f5fe97c77ed04909f51d1af67ccd4b95325674",
-      "releaseSha256": "80eaccd94c19ca8e4e226033f6f4a1d3447dbfcd968f9666b55442092bf6bad4",
-      "sourceBytes": 4172604,
-      "releaseBytes": 2729696,
+      "sourceSha256": "e78cec85119bacf639aed41484c5d7eb2fc431e6081ad9769b403ff3cbccfd29",
+      "releaseSha256": "574dd0b2fd8164f37caed3d69dbccbefaef11af738b4c2dc3fdd4376c6d424c7",
+      "sourceBytes": 1929836,
+      "releaseBytes": 371096,
       "textures": 5,
       "ktx2Textures": 5,
       "meshoptBufferViews": 21,
-      "contractNodeCount": 19
+      "contractNodeCount": 19,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_multirole",
       "kind": "part:hulls",
       "source": "assets/ships/parts/hulls/hull_multirole.glb",
       "release": "assets/ships/release/parts/hulls/hull_multirole.glb",
-      "sourceSha256": "ca35fa2d10ed4aa9645de8c054ed1cd3c7ae1cb2ca1553af06d1f02a5135211c",
-      "releaseSha256": "ed6966989d82e5d85bd2e6a72fdeb9bffd5b6407f3897e40988e5d0ae69de32f",
-      "sourceBytes": 3460540,
-      "releaseBytes": 2527512,
+      "sourceSha256": "81d2509c37c1bf13cffccbb8a393677fe219030bf6077ea8a6737aa2d4d69388",
+      "releaseSha256": "d5ec027690b2b3adddebbaee15213e86f0b0bfcf86f8d29a3ca33f3c9d9d74a5",
+      "sourceBytes": 1864252,
+      "releaseBytes": 311300,
       "textures": 5,
       "ktx2Textures": 5,
       "meshoptBufferViews": 21,
-      "contractNodeCount": 18
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_gunship",
       "kind": "part:hulls",
       "source": "assets/ships/parts/hulls/hull_gunship.glb",
       "release": "assets/ships/release/parts/hulls/hull_gunship.glb",
-      "sourceSha256": "e14100d33184e6b6d6b40b5b27552b4788537e7be6a6f651133ae5bb556419ef",
-      "releaseSha256": "bb6a9e02c9cf40da922094e7ac8185a88bd2752431f02cdac380e1378b932b7f",
-      "sourceBytes": 3721344,
-      "releaseBytes": 2497448,
+      "sourceSha256": "3ec6bf9a4016e70826f3b05a37fae351bb77ff637cd4c226e08b873083621292",
+      "releaseSha256": "f94751bdd5033f91c52239ec15ae44640b60fbef827d4e60d474f5234177b911",
+      "sourceBytes": 1994300,
+      "releaseBytes": 358348,
       "textures": 5,
       "ktx2Textures": 5,
       "meshoptBufferViews": 44,
-      "contractNodeCount": 18
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "cockpit_dome",

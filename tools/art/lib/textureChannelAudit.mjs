@@ -18,6 +18,20 @@ const ROLE_FAMILY = {
   occlusion: 'orm',
 };
 
+const TEXTURE_CHANNEL_POLICIES = {
+  NEUTRAL_NORMAL: 'neutral-normal-no-authored-height',
+  NEUTRAL_AO_MATERIAL_CLASS: 'neutral-ao-constant-material-class',
+};
+
+function imageTextureChannelPolicies(image) {
+  const declared = image?.extras?.spacefaceTexturePolicy;
+  if (typeof declared === 'string') return new Set([declared]);
+  if (Array.isArray(declared)) {
+    return new Set(declared.filter((entry) => typeof entry === 'string'));
+  }
+  return new Set();
+}
+
 function resolveTextureImageIndex(texture) {
   return texture?.extensions?.KHR_texture_basisu?.source ?? texture?.source ?? null;
 }
@@ -168,6 +182,7 @@ function auditMaterialRoleCoverage(gltf, findings) {
 
 function auditRoleSpecificPixels(image, findings) {
   const roles = new Set(image.uses.map((use) => use.role));
+  const policies = new Set(image.textureChannelPolicies);
   const stats = image.channelStats;
   const standardDeviations = [
     stats.red.standardDeviation,
@@ -187,15 +202,34 @@ function auditRoleSpecificPixels(image, findings) {
     ).toFixed(3));
     image.normalVariationDegrees = normalVariationDegrees;
     if (normalVariationDegrees <= 2) {
-      addFinding(
-        findings,
-        'warning',
-        'near-flat-normal',
-        `${image.name} is used as a normal map but has near-flat RGB variation `
-          + `(${normalVariationDegrees.toFixed(2)}° RMS tangent variation; `
-          + `mean ${formatTriplet(stats, 'mean')}, σ ${formatTriplet(stats, 'standardDeviation')})`,
-        { imageIndex: image.imageIndex, roles: [...roles], normalVariationDegrees },
-      );
+      const declaredNeutralNormal = policies.has(TEXTURE_CHANNEL_POLICIES.NEUTRAL_NORMAL)
+        && Math.abs(stats.red.mean - 128) <= 2
+        && Math.abs(stats.green.mean - 128) <= 2
+        && stats.blue.mean >= 253;
+      if (declaredNeutralNormal) {
+        addFinding(
+          findings,
+          'info',
+          'declared-neutral-normal',
+          `${image.name} is an intentionally neutral tangent-space normal because no authored height exists`,
+          {
+            imageIndex: image.imageIndex,
+            roles: [...roles],
+            normalVariationDegrees,
+            policy: TEXTURE_CHANNEL_POLICIES.NEUTRAL_NORMAL,
+          },
+        );
+      } else {
+        addFinding(
+          findings,
+          'warning',
+          'near-flat-normal',
+          `${image.name} is used as a normal map but has near-flat RGB variation `
+            + `(${normalVariationDegrees.toFixed(2)}° RMS tangent variation; `
+            + `mean ${formatTriplet(stats, 'mean')}, σ ${formatTriplet(stats, 'standardDeviation')})`,
+          { imageIndex: image.imageIndex, roles: [...roles], normalVariationDegrees },
+        );
+      }
     } else if (
       stats.blue.mean < 128
       || stats.blue.mean < Math.max(stats.red.mean, stats.green.mean) + 10
@@ -213,14 +247,31 @@ function auditRoleSpecificPixels(image, findings) {
 
   if (roles.has('metallicRoughness') || roles.has('occlusion')) {
     if (Math.max(...standardDeviations) <= 1) {
-      addFinding(
-        findings,
-        'warning',
-        'flat-orm',
-        `${image.name} is used as ORM data but all RGB channels are effectively constant `
-          + `(mean ${formatTriplet(stats, 'mean')})`,
-        { imageIndex: image.imageIndex, roles: [...roles] },
-      );
+      const declaredNeutralAoMaterialClass = policies.has(
+        TEXTURE_CHANNEL_POLICIES.NEUTRAL_AO_MATERIAL_CLASS,
+      ) && stats.red.minimum >= 254;
+      if (declaredNeutralAoMaterialClass) {
+        addFinding(
+          findings,
+          'info',
+          'declared-neutral-orm',
+          `${image.name} intentionally uses neutral AO and constant material-class roughness/metalness`,
+          {
+            imageIndex: image.imageIndex,
+            roles: [...roles],
+            policy: TEXTURE_CHANNEL_POLICIES.NEUTRAL_AO_MATERIAL_CLASS,
+          },
+        );
+      } else {
+        addFinding(
+          findings,
+          'warning',
+          'flat-orm',
+          `${image.name} is used as ORM data but all RGB channels are effectively constant `
+            + `(mean ${formatTriplet(stats, 'mean')})`,
+          { imageIndex: image.imageIndex, roles: [...roles] },
+        );
+      }
     } else {
       const flatChannels = ['red', 'green', 'blue'].filter(
         (channel) => stats[channel].standardDeviation <= 1,
@@ -304,6 +355,7 @@ export async function auditEmbeddedTextureChannels({ gltf, binary }, label = 'so
         height: decoded.info.height,
         channels: decoded.info.channels,
         uses,
+        textureChannelPolicies: [...imageTextureChannelPolicies(image)].sort(),
         channelStats: stats,
       };
       images.push(record);
