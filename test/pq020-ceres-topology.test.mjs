@@ -183,3 +183,99 @@ test('PQ-020 validator fails closed on topology, structural, map, and evidence-s
   extraField.requiresHeaded.routePerformance.fields.fabricatedGpuPass = 16.7;
   assert.equal(validatePq020CeresTopologySnapshot(extraField).pass, false);
 });
+
+test('PQ-020 matched baseline is a SIBLING of the pinned structural cost, not a re-pin of it', async () => {
+  const receipt = await evaluatePq020CeresTopology();
+
+  assert.equal(receipt.pass, true, receipt.failures.join('\n'));
+  // The load-bearing invariant: adding the matched-baseline record must not move the pinned digest.
+  assert.equal(receipt.structuralCostDigest, EXPECTED_STRUCTURAL_COST_DIGEST);
+
+  const baseline = receipt.matchedBaseline;
+  assert.equal(baseline.schema, 'spaceface.pq020-ceres-matched-baseline.v1');
+  assert.ok(baseline.digest);
+  assert.notEqual(baseline.digest, receipt.structuralCostDigest);
+
+  // Headless rows carry real numbers …
+  assert.equal(baseline.headless.structural.entities, receipt.structuralCost.entities.total);
+  assert.equal(baseline.headless.structural.colliders, receipt.structuralCost.colliders);
+  assert.equal(baseline.headless.structural.worldSiteEntities, 15);
+  assert.ok(baseline.headless.mapLayout.digest);
+  assert.equal(baseline.headless.naturalJobCensus.perSeed.length, 3);
+  assert.equal(baseline.headless.offscreenRoleMix.perSeed.length, 3);
+  assert.ok(baseline.headless.routeLegs.throughCeresItinerary.totalDistanceWu > 0);
+
+  // … and every headed row stays null and marked, because PQ-034 holds those leases.
+  for (const group of Object.values(baseline.requiresHeaded)) {
+    assert.equal(group.requiresHeaded, true);
+    assert.match(group.blockedBy, /PQ-034/);
+    for (const value of Object.values(group.fields)) assert.equal(value, null);
+  }
+});
+
+test('PQ-020 receipt carries the continuation proofs and reports routing honestly', async () => {
+  const receipt = await evaluatePq020CeresTopology();
+
+  assert.equal(receipt.pass, true, receipt.failures.join('\n'));
+  assert.equal(receipt.naturalJobs.seedsWithIndustrialJob, 3);
+  assert.deepEqual(receipt.naturalJobs.heldOutSeeds, [90731, 90737, 90743]);
+  assert.equal(receipt.naturalJobs.advancementClaim.claimed, false);
+  assert.equal(receipt.offscreenProjection.allStable, true);
+  assert.equal(receipt.mechanicalCondition.bound, true);
+  assert.equal(receipt.mechanicalCondition.changesObservablePlayerDecision, true);
+  assert.equal(receipt.mechanicalCondition.laneDangerConsumer.fires, false);
+  assert.equal(receipt.reentryIdempotence.staticContentMaterializesExactlyOnce, true);
+  assert.equal(receipt.exactAgreement.allAgree, true);
+  // The generic router bypasses Ceres. The receipt must say so rather than imply a through-route.
+  assert.equal(receipt.routing.generic.traversesCeres, false);
+  assert.match(receipt.routing.generic.verdict, /BYPASSES Ceres/);
+});
+
+test('PQ-020 validator fails closed on continuation-proof drift', async () => {
+  const snapshot = await buildPq020CeresTopologySnapshot();
+
+  // A fabricated headed row is the exact failure this packet exists to prevent.
+  const fabricatedHeaded = structuredClone(snapshot);
+  fabricatedHeaded.matchedBaseline.requiresHeaded.frame.fields.p95Ms = 16.7;
+  const fabricatedReceipt = validatePq020CeresTopologySnapshot(fabricatedHeaded);
+  assert.equal(fabricatedReceipt.pass, false);
+  assert.ok(fabricatedReceipt.failures.includes('matchedBaseline:frame.p95Ms:fabricated'));
+
+  // A seed that produced no natural job must fail, not be quietly dropped.
+  const noJobs = structuredClone(snapshot);
+  noJobs.naturalJobs.perSeed[0].withMetadata.jobKinds = {};
+  assert.equal(validatePq020CeresTopologySnapshot(noJobs).pass, false);
+
+  // Claiming lifecycle advancement this harness did not observe must fail.
+  const overclaim = structuredClone(snapshot);
+  overclaim.naturalJobs.advancementClaim.claimed = true;
+  const overclaimReceipt = validatePq020CeresTopologySnapshot(overclaim);
+  assert.equal(overclaimReceipt.pass, false);
+  assert.ok(overclaimReceipt.failures.includes('naturalJobs:advancement-overclaim'));
+
+  // A mechanical condition that stopped changing anything observable must fail.
+  const inertCondition = structuredClone(snapshot);
+  inertCondition.mechanicalCondition.changesObservablePlayerDecision = false;
+  assert.equal(validatePq020CeresTopologySnapshot(inertCondition).pass, false);
+
+  // Duplicated static content after Continue must fail.
+  const duplicated = structuredClone(snapshot);
+  duplicated.reentryIdempotence.afterContinue.beaconEntities = 2;
+  assert.equal(validatePq020CeresTopologySnapshot(duplicated).pass, false);
+
+  // A coordinate consumer that silently went missing must fail, not pass vacuously.
+  const missingConsumer = structuredClone(snapshot);
+  missingConsumer.exactAgreement.rows[0].missing = ['courseGlobal'];
+  missingConsumer.exactAgreement.allAgree = false;
+  assert.equal(validatePq020CeresTopologySnapshot(missingConsumer).pass, false);
+
+  // An itinerary waypoint drifting off its authored anchor must fail.
+  const itineraryDrift = structuredClone(snapshot);
+  itineraryDrift.routing.throughCeresItinerary.allWaypointsMatchAuthored = false;
+  assert.equal(validatePq020CeresTopologySnapshot(itineraryDrift).pass, false);
+
+  // Offscreen projection losing determinism must fail.
+  const unstableProjection = structuredClone(snapshot);
+  unstableProjection.offscreenProjection.allStable = false;
+  assert.equal(validatePq020CeresTopologySnapshot(unstableProjection).pass, false);
+});
