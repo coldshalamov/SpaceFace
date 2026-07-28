@@ -899,8 +899,9 @@ export const missions = {
    * and no recovery stacked on the standing contract.
    */
   _boardHeistRecovery(mission, outcome) {
-    const attempt = mission && mission.heist ? (mission.heist.attempt | 0) : 0;
-    if (!heistMissionRuntime.allowsRecovery(outcome, attempt)) return false;
+    const record = mission && mission.heist ? mission.heist : null;
+    const attempt = record ? (record.attempt | 0) : 0;
+    if (!heistMissionRuntime.allowsRecovery(record, outcome)) return false;
     const board = this.ensureBoard(PQ019C_HEIST_STATION_ID);
     if (!board || !Array.isArray(board.slots)) return false;
     if (board.slots.some((offer) => offer && offer.type === PQ019C_HEIST_TYPE)) return false;
@@ -1854,6 +1855,8 @@ export const missions = {
             attempt: offer.heistAttempt | 0,
             launchWindowS: offer.params && offer.params.launchWindowS,
             runWindowTicks: offer.params && offer.params.runWindowTicks,
+            unlaunchedWindowTicks: offer.params && offer.params.unlaunchedWindowTicks,
+            recoveryAllowed: offer.params && offer.params.recoveryEnabled,
           }),
         }
         : {}),

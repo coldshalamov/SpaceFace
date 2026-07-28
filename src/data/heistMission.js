@@ -41,6 +41,12 @@ export const PQ019C_HEIST_TUNING = Object.freeze({
   /** Ticks after launch before the run is called off. 60 Hz sim: 150 s of capsule life. */
   runWindowTicks: 9000,
   /**
+   * Ticks after ACCEPT before a run that never launched is called off. Must exceed
+   * `launchWindowS` x 60 with margin, or an ordinary countdown would cut itself short.
+   * 60 Hz sim: 60 s, against a 45 s launch window.
+   */
+  unlaunchedWindowTicks: 3600,
+  /**
    * Witness radius the mission ASKS law to use is not a knob it owns — `lawSecurity` owns
    * `LAW_INCIDENT_WITNESS_RADIUS`. This mirror exists so the matrix can record the interaction and
    * so a future raise above the lawful-station protection floor fails here too. PQ-019B set 450
@@ -130,6 +136,9 @@ export function buildHeistOffer({ epoch = 0, attempt = 0, sourceMissionId = null
       heistAttempt: attempt,
       launchWindowS: PQ019C_HEIST_TUNING.launchWindowS,
       runWindowTicks: PQ019C_HEIST_TUNING.runWindowTicks,
+      unlaunchedWindowTicks: PQ019C_HEIST_TUNING.unlaunchedWindowTicks,
+      // Authored per-contract policy. A recovery row never grants another recovery.
+      recoveryEnabled: isRecovery ? false : PQ019C_HEIST_TUNING.recoveryEnabled,
       fValue: 1,
     },
     title: isRecovery ? RECOVERY_TITLE : BASE_TITLE,

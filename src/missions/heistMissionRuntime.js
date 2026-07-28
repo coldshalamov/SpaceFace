@@ -91,14 +91,21 @@ export function createHeistRecord({
   attempt = 0,
   launchWindowS = PQ019C_HEIST_TUNING.launchWindowS,
   runWindowTicks = PQ019C_HEIST_TUNING.runWindowTicks,
+  unlaunchedWindowTicks = PQ019C_HEIST_TUNING.unlaunchedWindowTicks,
+  recoveryAllowed = PQ019C_HEIST_TUNING.recoveryEnabled,
 } = {}) {
   return {
     schema: HEIST_RECORD_SCHEMA,
     missionId: String(missionId),
     attempt: attempt | 0,
     scheduleId: heistScheduleIdFor(missionId),
+    acceptTick: intTick(tick),
     launchWindowS,
     runWindowTicks,
+    unlaunchedWindowTicks,
+    // Authored per-run policy rather than a read of the frozen tuning at settlement time, so the
+    // decision travels with the contract that was accepted and survives the save with it.
+    recoveryAllowed: !!recoveryAllowed,
     scheduleRequested: false,
     launchAtSimT: null,
     launchTick: null,
@@ -111,6 +118,7 @@ export function createHeistRecord({
     lawDenialReason: null,
     responderAvailability: null,
     leases: [],
+    pursuitStarted: false,
     escapeHoldTicks: 0,
     escaped: false,
     absenceGraceTicks: 0,
@@ -369,6 +377,7 @@ export const heistMissionRuntime = {
       if (!claim || claim.granted !== true) continue;
       record.leases.push({ jobId, claimId, entityId });
       taken++;
+      record.pursuitStarted = true;
     }
     return taken;
   },
@@ -490,7 +499,23 @@ export const heistMissionRuntime = {
 
     if (!record.scheduleRequested) this.requestSchedule(ctx, record);
 
-    if (record.launchTick != null) {
+    if (record.launchTick == null) {
+      // BOUNDED EVEN IF NOTHING EVER FLIES. `heistFacilities.update` returns early outside Tethys
+      // and deliberately preserves an unlaunched schedule for re-entry, so a player who accepts and
+      // leaves the sector has no capsule, no mission deadline (the authored offer declares none) and
+      // nothing physical to arbitrate — a permanently active contract. The packet requires every
+      // route to reach a bounded `expired`/`unresolved_absent`; abandonment being AVAILABLE is not
+      // the same as the run being bounded, because it needs the player to act.
+      const deadline = record.acceptTick + record.unlaunchedWindowTicks;
+      if (tick >= deadline) {
+        submitHeistCandidate(record, {
+          kind: 'unresolved_absent',
+          causalTick: deadline,
+          sourceStableId: 'heistMissionRuntime:unlaunched',
+          proof: { unlaunchedWindowTicks: record.unlaunchedWindowTicks },
+        });
+      }
+    } else {
       const capsule = liveEntity(ctx, record.capsuleEntityId);
       if (capsule) {
         record.absenceGraceTicks = 0;
@@ -540,7 +565,12 @@ export const heistMissionRuntime = {
    * the intercept, so "escape" here is an observation about distance, not a state it imposes.
    */
   _updatePursuit(ctx, record, capsule, tick) {
-    if (!record.leases.length) return;
+    // Gated on whether a pursuit ever STARTED, not on whether a lease is still held. The lease-count
+    // guard this replaces made `escaped` unreachable in play: the leash branch below is what empties
+    // `leases`, so from the very next tick the guard returned before `escapeHoldTicks` could
+    // accumulate, and the counter froze at 1 forever. Breaking contact is the whole point of the
+    // escape route, so the one state it produced was the one state that could not latch.
+    if (!record.pursuitStarted) return;
     const jobs = ownerOf(ctx, 'npcJobsRuntime');
     let nearest = Infinity;
     const kept = [];
@@ -560,6 +590,7 @@ export const heistMissionRuntime = {
       kept.push(row);
     }
     record.leases = kept;
+    // No pursuer left in the leash IS the escaped condition, not a reason to stop counting.
     if (!kept.length) nearest = Infinity;
     if (nearest > PQ019C_HEIST_TUNING.escapeRadiusWu) record.escapeHoldTicks++;
     else record.escapeHoldTicks = 0;
@@ -631,6 +662,16 @@ export const heistMissionRuntime = {
       recordEffect(arbiter, keys.jobControlRelease, { tick });
     }
 
+    // 3b. Hand the launcher back. The facility owner holds exactly one schedule and refuses every
+    //     other key, so without this the FIRST run would own the launcher for the rest of the
+    //     session and every later contract — including a reduced-stake recovery, which is a new
+    //     mission by construction — would be denied `active_schedule` before it could launch.
+    //     Idempotent by the owner's own `no_schedule` answer; no journal key needed.
+    const facilityOwner = ownerOf(ctx, 'heistFacilities');
+    if (facilityOwner && typeof facilityOwner.releaseSchedule === 'function') {
+      facilityOwner.releaseSchedule(record.scheduleId);
+    }
+
     // 4. Mission settlement — exactly once, recorded BEFORE the call so a synchronous listener that
     //    re-enters this path finds the key already taken and cannot settle a second time.
     const plan = PQ019C_TERMINAL_SETTLEMENT[outcome]
@@ -668,11 +709,16 @@ export const heistMissionRuntime = {
     if (moment) sayHeistCue(ctx, record, moment);
   },
 
-  /** May a reduced-stake retry follow this outcome? Authored policy, default off. */
-  allowsRecovery(outcome, attempt) {
-    return PQ019C_HEIST_TUNING.recoveryEnabled
-      && (attempt | 0) === 0
-      && RECOVERABLE.has(outcome);
+  /**
+   * May a reduced-stake retry follow this outcome? Authored policy, default OFF.
+   *
+   * Read from the RECORD rather than from the frozen tuning, so the policy that applies is the one
+   * the accepted contract carried. "At most one" is enforced here (attempt 0 only) and again by
+   * `_syncHeistOffer`/`_boardHeistRecovery` refusing to post onto a board that already has a row.
+   */
+  allowsRecovery(record, outcome) {
+    const allowed = record ? !!record.recoveryAllowed : PQ019C_HEIST_TUNING.recoveryEnabled;
+    return allowed && ((record?.attempt | 0) === 0) && RECOVERABLE.has(outcome);
   },
 
   // ── Save boundary ────────────────────────────────────────────────────────────────────────────
@@ -694,9 +740,11 @@ export const heistMissionRuntime = {
   serialize(record) {
     if (!record) return null;
     const {
-      leases, capsuleEntityId, possessed, escapeHoldTicks, absenceGraceTicks, ...durable
+      leases, capsuleEntityId, possessed, escapeHoldTicks, absenceGraceTicks, pursuitStarted,
+      ...durable
     } = record;
     void leases; void capsuleEntityId; void possessed; void escapeHoldTicks; void absenceGraceTicks;
+    void pursuitStarted;
     return { ...durable, arbiter: serializeArbiter(record.arbiter) };
   },
 
@@ -748,6 +796,7 @@ export const heistMissionRuntime = {
     restored.leases = [];
     restored.escapeHoldTicks = 0;
     restored.absenceGraceTicks = 0;
+    restored.pursuitStarted = false;
     restored.capsuleEntityId = null;
     restored.possessed = false;
     restored.cues = { ...(record.cues || {}) };
