@@ -197,15 +197,19 @@ try {
     return [...seen.values()];
   });
 
-  // Cleanup: despawning the relay must release its mesh and leave no authored root behind.
-  const cleanup = await page.evaluate(() => {
+  // Renderer residency at the moment the relay is still live. This is a REFERENCE READING ONLY --
+  // it is not a disposal proof: nothing here re-reads after a despawn frame, and resource
+  // high-water/cleanup is explicitly an open row blocked on the PQ-034 lease.
+  const preDespawnSnapshot = await page.evaluate(() => {
     const state = window.SF.state;
     const relay = state.entityList.find((entity) => entity?.id === window.__pq022RelayId);
-    const before = state.render.renderer.info.memory;
-    const beforeSnapshot = { geometries: before.geometries, textures: before.textures };
-    relay.alive = false;
-    relay.ttl = 0;
-    return { beforeSnapshot, relayId: relay.id };
+    const memory = state.render.renderer.info.memory;
+    return {
+      note: 'reference reading while the relay is live; NOT a disposal measurement',
+      relayId: relay.id,
+      geometries: memory.geometries,
+      textures: memory.textures,
+    };
   });
 
   await writeFile(resolve(OUT, 'manifest.json'), `${JSON.stringify({
@@ -222,7 +226,7 @@ try {
     blockedOnPq034Lease: ['headed Browser/Electron acceptance', 'independent visual verdict', 'matched performance'],
     placement,
     materials,
-    cleanup,
+    preDespawnSnapshot,
     captures: report,
   }, null, 2)}\n`);
   console.log(JSON.stringify({ placement, captures: report }, null, 2));

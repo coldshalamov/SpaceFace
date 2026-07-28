@@ -317,7 +317,6 @@ test('the Asteroid Ops exterior route projects exactly one relay beside an ancho
     id: 'site_relay_probe', asteroidId: rock.id, sectorId: 'sec_core_alpha', fieldId: 'field_1', createdT: 0,
   });
   site.anchored = true;
-  sys._sites = sys._sites || new Map();
 
   sys._ensureBeacon(site);
   const relays = spawned.filter((ent) => ent.data.placeId === PART_ID);
@@ -334,10 +333,12 @@ test('the Asteroid Ops exterior route projects exactly one relay beside an ancho
   // The authored relay is an outpost-scale body; bolted beside a ~10 m rock it is presented at 0.16.
   // placeScale is a raw uniform multiplier on the authored envelope (buildPlacePropRoot only
   // normalizes when placeTargetRadius is supplied, and the exterior projection supplies none).
-  // Confirmed live: .devshots/pq022-relay-collar/manifest.json records authoredWorldScale 0.16 and
+  // Confirmed live: the capture manifest records authoredWorldScale 0.16 and
   // authoredSourceEnvelope 104.33640453118832, giving the stamped visualBounds length below. The
-  // mesh actually drawn is smaller (13.609 m measured) because the authored envelope also spans the
-  // socket marker nodes; that gap is recorded in the leaf receipt, not asserted as equality here.
+  // mesh actually drawn is smaller (13.609 m measured, i.e. 85.06 authored m). The gap arises
+  // inside instantiation, not from the loader's bounds: sockets are mesh-less and cannot expand a
+  // Box3, and the capture measures setFromObject at 13.609 against a mesh-only walk at 13.608.
+  // Recorded as an open row in the leaf receipt, not asserted as an equality here.
   assert.equal(relay.data.placeScale, 0.16);
   const envelopeMetres = AUTHORED_X_LENGTH_M * relay.data.placeScale;
   assert.ok(Math.abs(envelopeMetres - 16.6938) < 1e-3,

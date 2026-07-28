@@ -220,17 +220,16 @@
       "emissiveMap": null
     }
   ],
-  "cleanup": {
-    "beforeSnapshot": {
-      "geometries": 93,
-      "textures": 236
-    },
-    "relayId": 319
+  "preDespawnSnapshot": {
+    "note": "reference reading while the relay is live; NOT a disposal measurement",
+    "relayId": 319,
+    "geometries": 93,
+    "textures": 236
   },
   "captures": [
     {
       "file": ".devshots/pq022-relay-collar/exterior-close.png",
-      "bytes": 590242,
+      "bytes": 588019,
       "lod": "lod0",
       "mode": "flight",
       "authoredAssetState": "authored",
@@ -269,7 +268,7 @@
     },
     {
       "file": ".devshots/pq022-relay-collar/exterior-default.png",
-      "bytes": 396084,
+      "bytes": 393425,
       "lod": "lod1",
       "mode": "flight",
       "authoredAssetState": "authored",
@@ -308,7 +307,7 @@
     },
     {
       "file": ".devshots/pq022-relay-collar/exterior-far.png",
-      "bytes": 353467,
+      "bytes": 353249,
       "lod": "lod2",
       "mode": "flight",
       "authoredAssetState": "authored",
