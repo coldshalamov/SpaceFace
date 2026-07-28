@@ -8,6 +8,7 @@ import {
 import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegions/index.js';
 import { applyClaimableBodySites } from './claimableBodies.js';
 import { applyPlanetStateAssignments } from './planetStates.js';
+import { appendPq019FacilityPois } from './heistFacilities.js';
 // Per ARCHITECTURE §0.8:
 //   dangerTier(s) = clamp(round((1 - s.security) * 5), 0, 5)
 //   wealthIndex(s) = clamp(0.3 + 0.16*tier + 0.10*(1-security), 0.3, 1.6)
@@ -300,7 +301,11 @@ export const SECTORS = [
       : sector;
   }),
   ...FRONTIER_SECTORS,
-].map(applySectorAnchors).map(applyClaimableBodySites).map(applyPlanetStateAssignments);
+]
+  .map(appendPq019FacilityPois)
+  .map(applySectorAnchors)
+  .map(applyClaimableBodySites)
+  .map(applyPlanetStateAssignments);
 
 // Security helper functions per ARCHITECTURE §0.8.
 const clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;

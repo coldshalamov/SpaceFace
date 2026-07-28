@@ -19,7 +19,7 @@ export const PRESENTATION_PLATFORM_IDS = Object.freeze([
 const PRESENTATION_SET = new Set(PRESENTATION_PLATFORM_IDS);
 
 /**
- * Production init order — matches createRegistry SYSTEMS (128 entries) at the Phase 2
+ * Production init order — matches createRegistry SYSTEMS (129 entries) at the PQ-019A
  * baseline. Includes presentation platform IDs so the browser path can materialize an
  * identical full list; Node consumers filter with isNodeSafeSystemId.
  * Invariant: every PRODUCTION_UPDATE_ORDER id must also appear here (update ⊆ init).
@@ -36,7 +36,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'mining',
   'fieldDepletion', 'cargo', 'fragileCargo', 'economy', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'factionPresence',
-  'spawnBudget', 'world', 'regionalEcology', 'encounterDirector', 'routeFollower',
+  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'encounterDirector', 'routeFollower',
   'travelLanes', 'livingPoiBehaviors', 'pirateRumor', 'ambushSignatures', 'bountyHunt',
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'gateControlDirector', 'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod',
@@ -53,7 +53,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
 ]);
 
 /**
- * Production sim update order — matches createRegistry UPDATE_ORDER (96 entries).
+ * Production sim update order — matches createRegistry UPDATE_ORDER (97 entries).
  * Excludes pure render-phase systems; includes DOM-guarded HUD systems that no-op under Node.
  */
 export const PRODUCTION_UPDATE_ORDER = Object.freeze([
@@ -68,6 +68,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
   'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'crafting', 'economy', 'intervention', 'world',
+  'heistFacilities',
   'regionalEcology', 'encounterDirector', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
   'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'gateControlDirector',
   'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',

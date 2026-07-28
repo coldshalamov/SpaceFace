@@ -1255,7 +1255,7 @@ export const world = {
       if (!disc.pois[poi.id]) disc.pois[poi.id] = { discovered: false, identified: false };
       // Static Atlas rows may delegate their physical representation to a durable runtime owner.
       // Keep the discovery identity here, but never create a second marker entity beside that owner.
-      if (poi.runtimeOwner === 'asteroidSites') continue;
+      if (typeof poi.runtimeOwner === 'string' && poi.runtimeOwner.length > 0) continue;
       const placeId = poi.landmarkGlb
         ? String(poi.landmarkGlb).replace(/^places\//, '').replace(/\.glb$/, '')
         : null;

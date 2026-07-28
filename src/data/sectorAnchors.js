@@ -3,6 +3,7 @@
 // Gate positions are deterministic bearings toward neighbor star-map nodes (no RNG jitter).
 
 import { FRONTIER_ANCHORS, FRONTIER_CORE_GATE_PATCHES } from './frontierRegions/index.js';
+import { PQ019_FACILITY_ANCHORS } from './heistFacilities.js';
 
 const GATE_R = 0.82;
 
@@ -85,6 +86,7 @@ const CORE_SECTOR_ANCHORS = {
       { id: 'poi_blackmkt', pos: { x: -1380, z: 420 }, landmarkGlb: 'place_nav_buoy' },
       { id: 'poi_tethys_weigh', pos: { x: 720, z: -980 }, landmarkGlb: 'place_lane_beacon' },
       { id: 'poi_tethys_customs_log', pos: { x: -920, z: -640 }, landmarkGlb: 'place_nav_buoy' },
+      ...PQ019_FACILITY_ANCHORS,
     ],
   },
   sector_vesta_forge: {

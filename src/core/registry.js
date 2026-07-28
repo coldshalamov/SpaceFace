@@ -68,6 +68,7 @@ import { asteroidSites } from '../systems/asteroidSites.js'; // durable in-aster
 import { asteroidFormations } from '../systems/asteroidFormations.js'; // discovered-formation knowledge owner (A02)
 import { wingmen } from '../systems/wingmen.js';
 import { world } from '../systems/world.js';
+import { heistFacilities } from '../systems/heistFacilities.js';
 import { routeFollower } from '../systems/routeFollower.js';         // reader for nav.autoTravel (RC-5)
 import { travelLanes } from '../systems/travelLanes.js';             // D8 lane infrastructure: multiplies the pilot's own travel drive
 import { factions } from '../systems/factions.js';
@@ -218,6 +219,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['factionPresence', factionPresence],
     ['spawnBudget', spawnBudget],
     ['world', world],
+    ['heistFacilities', heistFacilities],
     ['regionalEcology', regionalEcology],
     ['encounterDirector', encounterDirector],
     ['routeFollower', routeFollower],

@@ -23,8 +23,8 @@ import { combat } from '../src/systems/combat.js';
 import { weapons } from '../src/systems/weapons.js';
 
 test('production init + update order lengths match the live browser baseline', () => {
-  assert.equal(PRODUCTION_INIT_ORDER.length, 128);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 96);
+  assert.equal(PRODUCTION_INIT_ORDER.length, 129);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 97);
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
   assert.ok(PRODUCTION_INIT_ORDER.includes('render'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('save'));
@@ -32,6 +32,11 @@ test('production init + update order lengths match the live browser baseline', (
   assert.ok(!PRODUCTION_UPDATE_ORDER.includes('render'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('flightSlot'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('massSeedHud'));
+  const worldIndex = PRODUCTION_UPDATE_ORDER.indexOf('world');
+  const heistFacilitiesIndex = PRODUCTION_UPDATE_ORDER.indexOf('heistFacilities');
+  const regionalEcologyIndex = PRODUCTION_UPDATE_ORDER.indexOf('regionalEcology');
+  assert.ok(worldIndex < heistFacilitiesIndex);
+  assert.ok(heistFacilitiesIndex < regionalEcologyIndex);
 });
 
 // J6: every system in update order must also be initialized (update ⊆ init).
@@ -63,6 +68,7 @@ test('createRegistry materializes the production manifest system IDs and order',
   assert.ok(registry.get('flight'));
   assert.equal(registry.get('ai'), registry.get('aiSlot'));
   assert.equal(registry.get('flight'), registry.get('flightSlot'));
+  assert.equal(registry.get('heistFacilities')?.name, 'heistFacilities');
 });
 
 test('Node production resolve (nodeSafeOnly) shares feature values and authoritative ID order with browser path', () => {
@@ -80,6 +86,7 @@ test('Node production resolve (nodeSafeOnly) shares feature values and authorita
 
   const browserGameplayIds = browserPath.authoritativeSystemIds.filter(isNodeSafeSystemId);
   assert.deepEqual([...nodePath.authoritativeSystemIds], [...browserGameplayIds]);
+  assert.ok(nodePath.authoritativeSystemIds.includes('heistFacilities'));
 
   const browserUpdateGameplay = browserPath.authoritativeUpdateOrderIds.filter(isNodeSafeSystemId);
   assert.deepEqual([...nodePath.authoritativeUpdateOrderIds], [...browserUpdateGameplay]);
@@ -125,7 +132,7 @@ test('browser production system set is unchanged vs production manifest constant
   const registry = createRegistry({ state, bus: createBus(), helpers: {} });
 
   // Full init list length and terminal platform systems preserved.
-  assert.equal(registry.systems.length, 128);
+  assert.equal(registry.systems.length, 129);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));
