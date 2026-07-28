@@ -34,10 +34,17 @@ export function hasExplicitAuthoredGeologyPresentation(entity) {
     && targetRadius === radius;
 }
 
+/** PQ-019 cargo capsules opt into one exact authored pod without changing payload physics identity. */
+export function hasExplicitAuthoredPayloadPresentation(entity) {
+  if (!entity || entity.alive === false || entity.type !== 'payload') return false;
+  return entity.data?.authoredPayloadAssetId === 'pod_cargo_container';
+}
+
 export function entityRequiresAuthoredPresentation(entity) {
   if (!entity || entity.alive === false) return false;
   if (entity.type === 'ship' || entity.type === 'station') return true;
   if (hasExplicitAuthoredGeologyPresentation(entity)) return true;
+  if (hasExplicitAuthoredPayloadPresentation(entity)) return true;
   const data = entity.data || {};
   return entity.type === 'fx' && !!(
     data.placeId || data.landmarkGlb || data.archetypeGlb || data.claimSpecId || data.claimOwned

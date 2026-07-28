@@ -11,11 +11,17 @@ import { buildQuietRaider } from './ships/quietRaider.js';
 import { buildVaelSniper } from './ships/vaelSniper.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
 import { batchScenarioPropOpaqueMeshes } from './scenarioPropBatching.js';
-import { buildAuthoredPlaceProp, buildAuthoredStationArchetype, wrapShipWithAuthoredParts } from './partsLibrary.js';
+import {
+  buildAuthoredCargoCapsule,
+  buildAuthoredPlaceProp,
+  buildAuthoredStationArchetype,
+  wrapShipWithAuthoredParts,
+} from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import {
   hasExplicitAuthoredGeologyPresentation,
+  hasExplicitAuthoredPayloadPresentation,
   PRESENTATION_ADMISSION,
   setPresentationAdmission,
 } from '../core/presentationAdmission.js';
@@ -142,6 +148,9 @@ export function installVisualOverrides(factory, options = {}) {
   const authoredPlaceBuilder = typeof options.authoredPlaceBuilder === 'function'
     ? options.authoredPlaceBuilder
     : buildAuthoredPlaceProp;
+  const authoredCargoCapsuleBuilder = typeof options.authoredCargoCapsuleBuilder === 'function'
+    ? options.authoredCargoCapsuleBuilder
+    : buildAuthoredCargoCapsule;
   const authoredStationBuilder = typeof options.authoredStationBuilder === 'function'
     ? options.authoredStationBuilder
     : buildAuthoredStationArchetype;
@@ -153,7 +162,10 @@ export function installVisualOverrides(factory, options = {}) {
       && entity && entity.type === 'ship'
       && !(entity.data && entity.data.precompileProbe === true)
       && !(authoredWholeShipsOnly && !requiredWholeShip);
-    const scenarioProp = directShip || isWorldPlaceProp(entity) ? null : build47aScenarioProp(entity);
+    const authoredCargoCapsule = hasExplicitAuthoredPayloadPresentation(entity);
+    const scenarioProp = directShip || isWorldPlaceProp(entity) || authoredCargoCapsule
+      ? null
+      : build47aScenarioProp(entity);
     if (directShip) {
       // The production catalog is resident before control. The live route therefore needs only a
       // zero-draw ownership boundary while the exact GLB composition is committed; constructing a
@@ -180,6 +192,22 @@ export function installVisualOverrides(factory, options = {}) {
       catch (error) {
         reportVisualWarning(options, '[visualOverrides] authored station archetype failed closed', error);
         visual = unavailableVisual(entity, 'authored-station-build-failed', error);
+      }
+    } else if (authoredCargoCapsule) {
+      const payloadSubstrate = fallbackBuild(entity);
+      try {
+        visual = authoredCargoCapsuleBuilder(entity, {
+          releaseMode,
+          fallbackRoot: payloadSubstrate,
+        });
+      } catch (error) {
+        setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+        reportVisualWarning(options, '[visualOverrides] authored cargo capsule failed closed', error);
+        visual = unavailableVisual(entity, 'authored-cargo-capsule-build-failed', error);
+      }
+      if (!visual) {
+        setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+        visual = unavailableVisual(entity, 'authored-cargo-capsule-build-unavailable');
       }
     } else if (scenarioProp) {
       visual = batchScenarioPropOpaqueMeshes(scenarioProp);
