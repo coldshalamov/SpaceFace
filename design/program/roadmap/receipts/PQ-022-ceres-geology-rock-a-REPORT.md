@@ -3,7 +3,7 @@ packetId: PQ-022
 leafId: PQ-022.ceres-geology-rock-a
 acceptance: focused_green
 disposition: PASS
-candidateCommit: 2035bfc454653e414c61a93e23cb3dbd4490e752
+candidateCommit: 7741566ecebcbb10a116c528b7a984b7b2074dad
 -->
 
 # PQ-022 leaf — `place_asteroid_rock_a` source provenance repair
@@ -170,17 +170,24 @@ reachability is green with it present.
 
 ### 3.1 Allowlist
 
-Both `place_asteroid_rock_a` entries were removed from
-`scripts/lib/pq022CorridorExpectedGaps.json`. This was forced, not optional: the gate
-fails on allowlisted gaps that no longer reproduce. They were recorded under a new
-`closedGaps` block rather than deleted outright, so the allowlist retains the resolution
-evidence instead of losing it silently. The 15/15 contract tests accept the added key.
+Both `place_asteroid_rock_a` entries (`source-hash-mismatch` and `source-bytes-mismatch`)
+were **deleted** from `scripts/lib/pq022CorridorExpectedGaps.json`. This was forced, not
+optional: the gate fails on allowlisted gaps that no longer reproduce.
+
+The deletion is pure — 16 lines removed, none added — in keeping with that file's own
+stated protocol ("Delete an entry the moment its owner lane closes it"). An earlier
+revision of this leaf parked the closed entries in a new `closedGaps` key; that was
+withdrawn. The allowlist is a **gate input, not an evidence store**, its
+`spaceface.pq022.corridorExpectedGaps.v1` schema belongs to the scoping lane, and the
+resolution evidence already has its correct home in §2 and §3 of this receipt. Its only
+two consumers are `scripts/check-pq022-corridor-assets.mjs` (via the npm alias) and
+`test/pq022-corridor-asset-set-contract.test.mjs`; both are green.
 
 ---
 
 ## 4. Gates, before and after
 
-| Gate | Before (`6b56f05e`) | After (`2035bfc4`) |
+| Gate | Before (`6b56f05e`) | After (`7741566e`) |
 |---|---|---|
 | `check:graphics:asset-receipts` | **RED** — `Rock A live source bytes: actual 9118128 / expected 1970132` | **GREEN** — "Graphics asset receipt closure: PASS" |
 | `check:pq022:corridor-assets` | PASS — 67/72 binding, 11 gaps | **PASS — 68/72 binding, 9 gaps, none stale** |
@@ -195,6 +202,34 @@ evidence instead of losing it silently. The 15/15 contract tests accept the adde
 | `check:sim:compare` | — | **ok, `hashEqual: true`, `firstDivergentTick: null`** |
 | geology/admission/material/prospector test set (74) | 73 pass / 1 fail | 73 pass / 1 fail (**same** failure) |
 | `node scripts/check-m4-helios-hub-v6.mjs` | FAIL (8 errors) | FAIL (8 errors, **unchanged**) |
+
+### 4.0 Every script that names `rock_a` was swept
+
+Six scripts reference `place_asteroid_rock_a` by name. All six were run at HEAD, so no
+consumer of this asset went unexercised:
+
+| Script | Result at HEAD | Attribution |
+|---|---|---|
+| `scripts/check-graphics-asset-receipts.mjs` | **PASS** | red → green, this leaf |
+| `scripts/check-authored-place-runtime-upgrade.mjs` (= `check:authored-place-runtime`) | PASS | green before and after |
+| `scripts/check-claim-outpost-visuals.mjs` | PASS | covers the `poi_claim_rookery` claim rock_a leads |
+| `scripts/check-vfx-frame-sleep.mjs` | PASS | — |
+| `scripts/check-golden-geology-v3.py` | PASS | — |
+| `scripts/check-m4-helios-hub-v6.mjs` | FAIL (8 errors) | pre-existing, whole-family |
+| `scripts/verify-graphics-revamp-evidence.mjs` | FAIL | pre-existing, **proven** below |
+| `scripts/verify-full-finish-evidence.mjs` | FAIL | pre-existing, **proven** below |
+
+The two `verify-*` reds were attributed by swapping the GLB back to its base state,
+re-running, and swapping back:
+
+| Script | at `6b56f05e` (9.1 MB blob) | at HEAD (1.97 MB restore) |
+|---|---|---|
+| `verify-graphics-revamp-evidence.mjs` | `VERIFIED: 0/63`, `Unique PNG hashes global: 0` | **identical** |
+| `verify-full-finish-evidence.mjs` | `SUMMARY fail=82 pass=0 total=81 doc_contract=FAIL` | **identical** |
+
+Byte-identical failure signatures in both states. Both are whole-library evidence-tree
+harnesses failing on *every* asset (0 of 63 and 0 of 81 pass, plus a `plan.md` doc-contract
+failure), not on anything specific to rock_a. Neither is caused by this leaf.
 
 **Pre-existing reds, proven not mine.**
 - The single test failure is `test/prospector-ladder.test.mjs:346` — *"missing
@@ -245,6 +280,10 @@ Two files. No manifest, no gameplay source, no release artifact, no Blender file
 |---|---|
 | `09ac4ef48dc2ead5c7a065639926d35c94d85144` | `fix(assets): restore recorded place_asteroid_rock_a live source` |
 | `2035bfc454653e414c61a93e23cb3dbd4490e752` | `chore(pq022): close the rock_a provenance gaps in the corridor allowlist` |
+| `7741566ecebcbb10a116c528b7a984b7b2074dad` | `chore(pq022): delete the closed rock_a gaps outright` |
+
+The net allowlist change across the three commits is a pure 16-line deletion; `2035bfc4`
+and `7741566e` together leave no added keys.
 
 ---
 
