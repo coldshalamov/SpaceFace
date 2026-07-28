@@ -11,6 +11,7 @@ import {
   comparePerformanceWindows,
   comparisonKey,
   evaluatePerformanceWindowBudgets,
+  performanceScenario,
   resolvePerformanceScenarios,
   summarizeFrameSamples,
   validatePerformanceClosureReport,
@@ -145,6 +146,70 @@ test('scenario resolution ignores mutable Array.prototype lookup hooks', () => {
 
   assert.equal(hookCalls, 0);
   assert.equal(resolved[0].id, targetId);
+});
+
+test('scenario identity rejects non-string coercion hooks', () => {
+  let hookCalls = 0;
+  const objectId = {
+    [Symbol.toPrimitive]() {
+      hookCalls += 1;
+      return 'flight_steady';
+    },
+  };
+
+  assert.equal(performanceScenario(objectId), null);
+  assert.throws(
+    () => resolvePerformanceScenarios([objectId]),
+    /scenario ids must be strings|unknown performance scenario/,
+  );
+
+  const invalid = reportFixture(windowFixture({
+    scenarioId: objectId,
+    comparisonKey: comparisonKey({
+      scenarioId: objectId,
+      environment,
+      settings,
+    }),
+  }));
+  assert.equal(invalid.validation.pass, false);
+  assert.match(invalid.validation.failures.join(' | '), /scenarioId is unknown/);
+  assert.equal(hookCalls, 0);
+});
+
+test('digest-less v1 comparison keys remain backward compatible', () => {
+  const legacyKey = 'decab6bdca2a64e8556e94834c3f7c564dc43f4e2981680cf767584bed0e47fc';
+  assert.equal(comparisonKey({
+    scenarioId: 'flight_steady',
+    environment,
+    settings,
+  }), legacyKey);
+
+  const legacy = reportFixture(windowFixture({ comparisonKey: legacyKey }));
+  assert.equal(legacy.validation.pass, true, legacy.validation.failures.join('\n'));
+});
+
+test('digest-less reports ignore inherited route digest fields', () => {
+  const legacyKey = 'decab6bdca2a64e8556e94834c3f7c564dc43f4e2981680cf767584bed0e47fc';
+  const window = windowFixture({ comparisonKey: legacyKey });
+  const descriptor = Object.getOwnPropertyDescriptor(
+    Object.prototype,
+    'manifestDigest',
+  );
+
+  try {
+    Object.defineProperty(Object.prototype, 'manifestDigest', {
+      configurable: true,
+      value: 'a'.repeat(64),
+    });
+    const report = reportFixture(window);
+    assert.equal(report.validation.pass, true, report.validation.failures.join('\n'));
+  } finally {
+    if (descriptor) {
+      Object.defineProperty(Object.prototype, 'manifestDigest', descriptor);
+    } else {
+      delete Object.prototype.manifestDigest;
+    }
+  }
 });
 
 test('raw frame summaries include threshold, missed-vsync, multi-step, and shedding counts', () => {

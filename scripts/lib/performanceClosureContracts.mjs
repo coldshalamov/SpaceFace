@@ -88,6 +88,7 @@ export const PERFORMANCE_SCENARIO_IDS = Object.freeze(PERFORMANCE_SCENARIOS.map(
 const PERFORMANCE_SCENARIO_BY_ID = createPerformanceScenarioIndex();
 
 export function performanceScenario(id) {
+  if (typeof id !== 'string') return null;
   const descriptor = Object.getOwnPropertyDescriptor(PERFORMANCE_SCENARIO_BY_ID, id);
   return descriptor && Object.hasOwn(descriptor, 'value')
     ? descriptor.value
@@ -98,6 +99,7 @@ export function resolvePerformanceScenarios(ids = PERFORMANCE_SCENARIO_IDS) {
   if (!Array.isArray(ids) || ids.length === 0) throw new Error('at least one performance scenario is required');
   const seen = new Set();
   return ids.map((id) => {
+    if (typeof id !== 'string') throw new Error('performance scenario ids must be strings');
     if (seen.has(id)) throw new Error(`duplicate performance scenario: ${id}`);
     seen.add(id);
     const definition = performanceScenario(id);
@@ -128,27 +130,13 @@ export function summarizeFrameSamples(samples, { vsyncMs = 1000 / 60 } = {}) {
   };
 }
 
-export function comparisonKey({
-  scenarioId,
-  environment,
-  settings,
-  manifestDigest = null,
-  scenarioDigest = null,
-  scenarioDefinitionDigest = null,
-  saveDigest = null,
-  inputDigest = null,
-  cameraDigest = null,
-}) {
+export function comparisonKey(options = {}) {
+  const scenarioId = options?.scenarioId;
+  const environment = options?.environment;
+  const settings = options?.settings;
+  const routeIdentity = routeIdentityFrom(options);
   const comparable = {
     scenarioId,
-    routeIdentity: {
-      manifestDigest,
-      scenarioDigest,
-      scenarioDefinitionDigest,
-      saveDigest,
-      inputDigest,
-      cameraDigest,
-    },
     runtimeKind: environment?.runtimeKind ?? null,
     browser: environment?.browser ?? null,
     gpu: environment?.gpu ?? null,
@@ -160,6 +148,9 @@ export function comparisonKey({
     },
     scenarioSchema: PERFORMANCE_SCENARIO_SCHEMA,
   };
+  if (routeIdentitySupplied(routeIdentity)) {
+    comparable.routeIdentity = routeIdentity;
+  }
   return sha256(stableStringify(comparable));
 }
 
@@ -357,19 +348,35 @@ function validateWindow(window, index, environment, failures) {
 }
 
 function routeIdentityFrom(value) {
-  const identity = {};
+  const identity = Object.create(null);
   for (let index = 0; index < PERFORMANCE_ROUTE_DIGEST_FIELDS.length; index += 1) {
     const field = PERFORMANCE_ROUTE_DIGEST_FIELDS[index];
-    identity[field] = value?.[field] ?? null;
+    const descriptor = ownPropertyDescriptor(value, field);
+    identity[field] = descriptor && Object.hasOwn(descriptor, 'value')
+      ? descriptor.value ?? null
+      : null;
   }
   return identity;
+}
+
+function routeIdentitySupplied(identity) {
+  for (let index = 0; index < PERFORMANCE_ROUTE_DIGEST_FIELDS.length; index += 1) {
+    if (identity[PERFORMANCE_ROUTE_DIGEST_FIELDS[index]] != null) return true;
+  }
+  return false;
 }
 
 function validateRouteIdentity(window, prefix, failures) {
   let supplied = 0;
   for (let index = 0; index < PERFORMANCE_ROUTE_DIGEST_FIELDS.length; index += 1) {
     const field = PERFORMANCE_ROUTE_DIGEST_FIELDS[index];
-    const value = window[field];
+    const descriptor = ownPropertyDescriptor(window, field);
+    if (!descriptor) continue;
+    if (!Object.hasOwn(descriptor, 'value')) {
+      failures.push(`${prefix}.${field} must be an own data property`);
+      continue;
+    }
+    const value = descriptor.value;
     if (value == null) continue;
     supplied += 1;
     if (typeof value !== 'string' || !REGEXP_TEST(SHA256_PATTERN, value)) {
@@ -379,6 +386,11 @@ function validateRouteIdentity(window, prefix, failures) {
   if (supplied > 0 && supplied !== PERFORMANCE_ROUTE_DIGEST_FIELDS.length) {
     failures.push(`${prefix} route digest identity must provide the complete manifest, scenario, definition, save, input, and camera chain`);
   }
+}
+
+function ownPropertyDescriptor(value, key) {
+  if ((typeof value !== 'object' || value == null) && typeof value !== 'function') return null;
+  return Object.getOwnPropertyDescriptor(value, key) || null;
 }
 
 function validateArtifacts(artifacts, failures) {
