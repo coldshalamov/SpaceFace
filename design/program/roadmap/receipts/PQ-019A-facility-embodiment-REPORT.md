@@ -3,7 +3,7 @@ packetId: PQ-019
 leafId: PQ-019.facility-embodiment
 acceptance: focused_green
 disposition: PASS
-candidateCommit: 663a20022b9bd0af13983ff4d3903adf6ad87dca
+candidateCommit: cb877130c9279e11586e8c7bba5e9ed1e3ffc3ff
 -->
 
 # PQ-019A — facility embodiment: launch-schedule cue and presentation evidence
@@ -13,8 +13,9 @@ headless-completable remainder of PQ-019A: the player-visible launch cue, its fo
 presentation stills of the authored facilities and capsule. It does **not** claim any row that needs
 the performance-evidence / browser-GPU lease held by PQ-034 — those are listed unclaimed at the end.
 
-`candidateCommit` above is the final **code** commit. The commit adding this receipt is docs-only and
-necessarily follows it.
+`candidateCommit` above is `cb877130`, the final **code** commit. The commit carrying this receipt is
+docs-only and necessarily follows it, so it is the branch tip; an integrator should read the tip for
+the receipt text and `cb877130` for the code under review.
 
 ## Commits
 
@@ -22,6 +23,7 @@ necessarily follows it.
 |---|---|
 | `a5707626` | `feat(heist): announce the PQ-019A launch schedule to the player` |
 | `663a2002` | `test(pq019a): add presentation-still harness for the heist route` |
+| `cb877130` | `fix(heist): keep the launch countdown off the flight HUD while docked` |
 
 Write surface touched: `src/systems/heistFacilities.js`, `test/pq019-launch-schedule-cue.test.mjs`,
 `scripts/capture-pq019a-acceptance.mjs`, and the single `check:pq019a:facility-embodiment` line in
@@ -56,6 +58,14 @@ Properties, each pinned by test rather than asserted here:
   queue never exceeds size 1, that every `voice:surface` carries `id = pq019a:launch-schedule` and
   `priority = CHANNEL_PRIORITY.objective`, and that every `voice:clear` is paired to the same id.
   Danger (110) is never claimed.
+- **Flight only.** Verified as a defect before it was fixed (`cb877130`): the cue gated on schedule
+  status and sector but not on mode, so a docked player got all four moments pushed into the flight
+  HUD's `#alerts` slot behind a fullscreen Station OS, claiming the one-voice floor on a surface they
+  cannot see. Now gated at `_sayLaunchCue`, the single exit for every player-visible line. The
+  **launch itself is deliberately not gated** — it is world simulation, so the capsule still departs
+  on schedule while the player is docked; it is simply not narrated to a screen nobody is watching.
+  The test pins both halves and that undocking mid-window resumes at the next moment ahead rather
+  than replaying passed ones.
 - **Non-color semantics.** Each line states the facility and the remaining time in words
   (`"Tethys Surface Launcher: cargo launch in 30s"`). Nothing depends on hue.
 - **Sim-inert.** The publisher spawns nothing and writes no sim state; the test asserts the live
@@ -79,7 +89,7 @@ adds no second voice; it exists so consumers and harnesses can observe cue momen
 ### 2. Focused coverage (`a5707626`)
 
 `npm run check:pq019a:facility-embodiment` was extended with
-`test/pq019-launch-schedule-cue.test.mjs` (six tests). The check went **12/12 → 18/18**. Only the
+`test/pq019-launch-schedule-cue.test.mjs` (seven tests). The check went **12/12 → 19/19**. Only the
 single `check:pq019a:*` line in `package.json` was edited; no new npm script was added.
 
 ### 3. Presentation stills (`663a2002`)
@@ -114,8 +124,8 @@ is documented in the script so the next person does not repay it:
 
 | Gate | Result |
 |---|---|
-| `npm run check:pq019a:facility-embodiment` | **PASS 18/18** (was 12/12) |
-| `node --test test/pq019-launch-schedule-cue.test.mjs` | **PASS 6/6** |
+| `npm run check:pq019a:facility-embodiment` | **PASS 19/19** (was 12/12) |
+| `node --test test/pq019-launch-schedule-cue.test.mjs` | **PASS 7/7** |
 | `npm run check:sim:compare` | **PASS — `ok: true`, `hashEqual: true`, `firstDivergentTick: null`** |
 | `npm run check:baseline` | **10/10 links PASS**; aggregate exit 1 on wall-clock budget only — see below |
 | `node --test test/authoritative-manifest.test.mjs` | **PASS 10/10** |
@@ -176,6 +186,22 @@ All nine passed the harness's in-frame check; worst-case subject NDC across them
 the `0.62` threshold. `authoredReadableFallbackRetained` is `false` throughout — these are the
 authored places, not readable fallbacks.
 
+**Scoped limitation on the three launcher stills, verified by eye rather than by metadata.** The
+launcher is a *surface* installation ~56 WU off The Anvil's 470 WU body, so any framing close enough
+to photograph it puts the player inside the planet's reentry band. All three launcher stills
+therefore carry a live `REENTRY BAND — DESCENT · HEAT 100%` state and a reentry plasma effect around
+the player hull. The facility itself is present, authored and in frame in all three — clearest in
+`heist_launcher-far.png`, where the rig reads plainly against the planet limb — but in
+`close`/`default` the plasma dominates the centre of frame. These three are therefore adequate to
+show the launcher *exists, is authored and is reachable*, and are **not** adequate as a clean art
+verdict on its appearance. The catcher, fence and cue stills carry no such caveat.
+
+This is content behaviour, not a harness defect or a product defect: approaching the surface launcher
+genuinely does put a ship in reentry, which is itself useful information for whoever reviews the
+route. Metadata alone would not have revealed it — the first capture run reported
+`presentationAdmission: ready`, `authoredAssetState: authored`, `visibleMeshes: 1` for a frame in
+which the facility was entirely invisible behind plasma.
+
 ### Launch cue
 
 `launch-cue-tminus.png` — the one-voice floor pill reading
@@ -220,8 +246,10 @@ proof stays with `PQ-023.gold-corridor-required-cues`.
 ## Disposition
 
 **PASS** on what is claimed: the launch-schedule cue is implemented, deterministic, one-voice
-compliant, sim-inert, focused-green at 18/18, and demonstrated on the live player route with the pill
-photographed on screen; `check:sim:compare` is `hashEqual`. Every row requiring the PQ-034 lease, and
-the human art verdict, is listed above as unclaimed. Two inherited reds (`check:one-voice`
-source-string, `check:baseline` wall-clock budget) are attributed to the base commit with evidence
-and were not chased or modified.
+compliant, sim-inert, flight-only, focused-green at 19/19, and demonstrated on the live player route
+with the pill photographed on screen; `check:sim:compare` is `hashEqual`. Every row requiring the
+PQ-034 lease, and the human art verdict, is listed above as unclaimed. Two limitations found by
+looking at the pixels rather than the metadata — reentry plasma over the launcher stills, and the
+off-centre capsule framings — are stated at their claims rather than smoothed over. Two inherited
+reds (`check:one-voice` source-string, `check:baseline` wall-clock budget) are attributed to the base
+commit with evidence and were not chased or modified.
