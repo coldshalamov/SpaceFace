@@ -145,9 +145,27 @@ assert.match(main, /runtime:loading/, 'Loading must use a named time-effects req
 assert.match(main, /runtime:start-failed/, 'Startup failure must use a named time-effects request');
 assert.match(main, /const runTransitionGuard\s*=\s*createRunTransitionGuard\(\);/,
   'Browser/Electron must share one run-transition generation owner');
-assert.match(main, /helpers\.beginLoadedGameTransition\s*=\s*\(\)\s*=>\s*(?:runTransitionGuard\.begin\('load'\)|\{[\s\S]{0,800}?return\s+runTransitionGuard\.begin\('load'\);[\s\S]{0,80}?\});/,
-  'Save restore must reserve async route ownership before lifecycle events can reenter');
-assert.match(main, /beginLoadedGameTransition[\s\S]{0,500}?game:loadingProgress/,
+const loadedTransitionMatch = main.match(
+  /helpers\.beginLoadedGameTransition\s*=\s*\(\)\s*=>\s*\{([\s\S]{0,1200}?)\n\s*\};/,
+);
+assert.ok(loadedTransitionMatch,
+  'Save restore must define one bounded loaded-game transition helper');
+const loadedTransition = loadedTransitionMatch[1];
+const loadTokenMatch = loadedTransition.match(
+  /const\s+([A-Za-z_$][\w$]*)\s*=\s*runTransitionGuard\.begin\('load'\);/,
+);
+const loadReservationIndex = loadTokenMatch ? loadedTransition.indexOf(loadTokenMatch[0]) : -1;
+const loadingProgressIndex = loadedTransition.indexOf("bus.emit('game:loadingProgress'");
+const loadTokenReturnIndex = loadTokenMatch
+  ? loadedTransition.search(new RegExp(`return\\s+${loadTokenMatch[1]}\\s*;`))
+  : -1;
+assert.ok(
+  loadReservationIndex >= 0
+    && loadingProgressIndex > loadReservationIndex
+    && loadTokenReturnIndex > loadingProgressIndex,
+  'Save restore must reserve and return async route ownership before lifecycle events can reenter',
+);
+assert.ok(loadingProgressIndex >= 0,
   'Save restore must publish a visible loading state before destructive restore work begins');
 assert.match(
   main,
