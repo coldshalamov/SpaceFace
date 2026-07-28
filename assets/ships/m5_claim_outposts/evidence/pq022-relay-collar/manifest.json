@@ -1,0 +1,348 @@
+{
+  "schema": "spaceface.pq022RelayCollarCapture.v1",
+  "leafId": "PQ-022.exterior-relay-collar",
+  "assetId": "SF_PLACE_CLAIM_OUTPOST_RELAY",
+  "partId": "place_claim_outpost_relay",
+  "sourceSha256": "a93c7b4d8fd23fa925fb99c025a544dacf13716e374261b8c487399c2196fda8",
+  "releaseSha256": "dc07ebef0ea61a45e778ecbb8a9ac4dfda4e71e4970433337e0ead084fffdcc2",
+  "route": "http://127.0.0.1:41755/",
+  "routeDescription": "canonical player route -> new game (seed 47) -> flight -> asteroidSites._ensureBeacon on a live rock",
+  "viewport": [
+    1440,
+    900
+  ],
+  "claim": "presentation stills only; no performance measurement is made or implied",
+  "blockedOnPq034Lease": [
+    "headed Browser/Electron acceptance",
+    "independent visual verdict",
+    "matched performance"
+  ],
+  "placement": {
+    "relayId": 319,
+    "rockId": 4,
+    "rockRadius": 11.910888727754354,
+    "sectorId": "sector_helios_prime",
+    "placeId": "place_claim_outpost_relay",
+    "placeScale": 0.16,
+    "worldDressing": true,
+    "collides": false,
+    "contactRingDistance": 18.91088872775437
+  },
+  "materials": [
+    {
+      "name": "SF_Shared_accent_accent_a0eef8",
+      "type": "MeshStandardMaterial",
+      "color": "#a6f6ff",
+      "metalness": 1,
+      "roughness": 1,
+      "map": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb"
+      },
+      "normalMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "roughnessMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "metalnessMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "aoMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "emissiveMap": null
+    },
+    {
+      "name": "SF_Shared_canopy_none_native",
+      "type": "MeshStandardMaterial",
+      "color": "#ffffff",
+      "metalness": 1,
+      "roughness": 0.28,
+      "map": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb"
+      },
+      "normalMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "roughnessMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "metalnessMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "aoMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "emissiveMap": null
+    },
+    {
+      "name": "SF_Shared_hull_textured_hull_808090",
+      "type": "MeshStandardMaterial",
+      "color": "#f2f2f3",
+      "metalness": 1,
+      "roughness": 1,
+      "map": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb"
+      },
+      "normalMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "roughnessMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "metalnessMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "aoMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "emissiveMap": null
+    },
+    {
+      "name": "SF_Shared_mechanical_dark_206070",
+      "type": "MeshStandardMaterial",
+      "color": "#f6f7f7",
+      "metalness": 1,
+      "roughness": 1,
+      "map": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb"
+      },
+      "normalMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "roughnessMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "metalnessMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "aoMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "emissiveMap": null
+    },
+    {
+      "name": "SF_Shared_hull_textured_hull_808090",
+      "type": "MeshStandardMaterial",
+      "color": "#f2f2f3",
+      "metalness": 1,
+      "roughness": 1,
+      "map": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb"
+      },
+      "normalMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "roughnessMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "metalnessMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "aoMap": {
+        "compressed": true,
+        "width": 1024,
+        "height": 1024,
+        "colorSpace": "srgb-linear"
+      },
+      "emissiveMap": null
+    }
+  ],
+  "preDespawnSnapshot": {
+    "note": "reference reading while the relay is live; NOT a disposal measurement",
+    "relayId": 319,
+    "geometries": 93,
+    "textures": 236
+  },
+  "captures": [
+    {
+      "file": ".devshots/pq022-relay-collar/exterior-close.png",
+      "bytes": 588019,
+      "lod": "lod0",
+      "mode": "flight",
+      "authoredAssetState": "authored",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+        ]
+      },
+      "authoredWorldScale": 0.16,
+      "authoredSourceEnvelope": 104.33640453118832,
+      "authoredVisualBounds": {
+        "center": [
+          0.5330876375049348,
+          -9.863221066552796e-7,
+          -1.0204445945282605
+        ],
+        "size": [
+          16.693824724990133,
+          15.337441196476323,
+          10.007277864165173
+        ]
+      },
+      "worldSizeM": [
+        13.60943132048385,
+        12.320425987243652,
+        9.621477578070671
+      ],
+      "visibleSizeM": [
+        13.608183887912105,
+        12.319772720336914,
+        9.62108462355853
+      ],
+      "cameraDistance": 33.64741892032732
+    },
+    {
+      "file": ".devshots/pq022-relay-collar/exterior-default.png",
+      "bytes": 393425,
+      "lod": "lod1",
+      "mode": "flight",
+      "authoredAssetState": "authored",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+        ]
+      },
+      "authoredWorldScale": 0.16,
+      "authoredSourceEnvelope": 104.33640453118832,
+      "authoredVisualBounds": {
+        "center": [
+          0.5330876375049348,
+          -9.863221066552796e-7,
+          -1.0204445945282605
+        ],
+        "size": [
+          16.693824724990133,
+          15.337441196476323,
+          10.007277864165173
+        ]
+      },
+      "worldSizeM": [
+        13.60943132048385,
+        12.320425987243652,
+        9.621477578070671
+      ],
+      "visibleSizeM": [
+        13.609275831388572,
+        12.320099830627441,
+        9.507883302185625
+      ],
+      "cameraDistance": 104.25051558625503
+    },
+    {
+      "file": ".devshots/pq022-relay-collar/exterior-far.png",
+      "bytes": 353249,
+      "lod": "lod2",
+      "mode": "flight",
+      "authoredAssetState": "authored",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+        ]
+      },
+      "authoredWorldScale": 0.16,
+      "authoredSourceEnvelope": 104.33640453118832,
+      "authoredVisualBounds": {
+        "center": [
+          0.5330876375049348,
+          -9.863221066552796e-7,
+          -1.0204445945282605
+        ],
+        "size": [
+          16.693824724990133,
+          15.337441196476323,
+          10.007277864165173
+        ]
+      },
+      "worldSizeM": [
+        13.60943132048385,
+        12.320425987243652,
+        9.621477578070671
+      ],
+      "visibleSizeM": [
+        13.595411081317025,
+        12.320425987243652,
+        9.299960829776733
+      ],
+      "cameraDistance": 336.4741892032731
+    }
+  ]
+}
