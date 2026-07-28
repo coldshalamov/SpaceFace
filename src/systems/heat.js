@@ -33,7 +33,40 @@ const HEAT_LEVEL_COUNT = 5;
 const HEAT_RADIUS_BY_LEVEL = [0, 1200, 1700, 2300, 3000, 3700];
 const HEAT_CLEAR_SECONDS_BY_LEVEL = [0, 5, 6, 7, 8, 10];
 
+// PQ-019B — validated law incidents, priced on the same scale as every other crime above. A
+// witnessed cargo theft sits between a contraband bust (0.16: passive smuggling, caught on a scan)
+// and a piracy kill (0.28: someone died). Openly taking lawful cargo in front of witnesses is the
+// more brazen act of the two lesser ones, but nobody was hurt.
+const THEFT_INCIDENT = 0.22;
+// A validated incident of a kind this table does not price still raises SOMETHING. Silence would
+// make every future crime type free until someone remembered to add a row here.
+const INCIDENT_HEAT_DEFAULT = 0.12;
+const INCIDENT_HEAT_BY_KIND = Object.freeze({ payload_theft: THEFT_INCIDENT });
+const APPLIED_INCIDENT_CAP = 32;
+
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+
+/**
+ * Applied-incident ids, READ without creating.
+ *
+ * The lazy split matters: `check:sim:compare` replays the golden run across a save/restore boundary,
+ * and a key that materialized in `init` would exist on one leg and not the other. No law incident is
+ * ever reported in the golden scenario, so this object is never built there.
+ */
+function appliedIncidentIds(player) {
+  const ledger = player && player.heatIncidentsApplied;
+  return ledger && typeof ledger === 'object' && !Array.isArray(ledger) ? ledger : EMPTY_LEDGER;
+}
+
+function ensureAppliedIncidentIds(player) {
+  if (!player.heatIncidentsApplied || typeof player.heatIncidentsApplied !== 'object'
+    || Array.isArray(player.heatIncidentsApplied)) {
+    player.heatIncidentsApplied = {};
+  }
+  return player.heatIncidentsApplied;
+}
+
+const EMPTY_LEDGER = Object.freeze({});
 
 function defaultHeatZone() {
   return {
@@ -129,6 +162,67 @@ export const heat = {
     bus.on('heat:clear', (p) => {
       this._setHeat(0, (p && p.reason) || 'heat:clear');
     });
+
+    // PQ-019B: validated law incidents. Heat listens; it is never told what to write. A mission that
+    // wants a thief to become WANTED reports the crime to lawSecurity, lawSecurity validates
+    // jurisdiction and witnesses, and only an ACCEPTED receipt reaches this listener. There is
+    // therefore no mission-side heat write anywhere in the chain — the mission cannot reach
+    // player.heat even if it wants to, because the only door is a receipt it cannot sign.
+    bus.on('law:reportIncidentReceipt', (p) => this.applyIncidentReceipt(p));
+  },
+
+  /**
+   * Consume one validated law incident receipt EXACTLY ONCE, through the private `_raise` path that
+   * every other heat source already uses.
+   *
+   * Idempotence is durable: applied receipt ids live on `state.player`, which the save owner
+   * serializes wholesale (`_serializePlayer` = clonePlain(player)). A duplicate bus delivery, a
+   * replayed effect journal, or a reload followed by a retry all find the id already recorded.
+   *
+   * Returns `{ applied, reason, incidentReceiptId, delta }` so a caller's effect journal can key on
+   * the same fact this system just recorded.
+   */
+  applyIncidentReceipt(receipt) {
+    if (!receipt || typeof receipt !== 'object') {
+      return { applied: false, reason: 'no_receipt', incidentReceiptId: null, delta: 0 };
+    }
+    // Only law signs incidents. A denial, or anything that did not come from the law owner, is not
+    // an instruction to raise heat — it is the law explicitly declining to recognize a crime.
+    if (receipt.accepted !== true || receipt.source !== 'lawSecurity') {
+      return { applied: false, reason: 'not_law_validated', incidentReceiptId: null, delta: 0 };
+    }
+    if (receipt.validatedWitnessedTheft !== true) {
+      return { applied: false, reason: 'not_witnessed', incidentReceiptId: null, delta: 0 };
+    }
+    const incidentReceiptId = typeof receipt.incidentReceiptId === 'string'
+      && receipt.incidentReceiptId.trim().length > 0
+      ? receipt.incidentReceiptId.trim()
+      : null;
+    if (!incidentReceiptId) {
+      return { applied: false, reason: 'invalid_receipt_id', incidentReceiptId: null, delta: 0 };
+    }
+    const player = this.state && this.state.player;
+    if (!player) {
+      return { applied: false, reason: 'no_player', incidentReceiptId, delta: 0 };
+    }
+    if (appliedIncidentIds(player)[incidentReceiptId]) {
+      return { applied: false, reason: 'already_applied', incidentReceiptId, delta: 0 };
+    }
+
+    const delta = INCIDENT_HEAT_BY_KIND[receipt.kind] != null
+      ? INCIDENT_HEAT_BY_KIND[receipt.kind]
+      : INCIDENT_HEAT_DEFAULT;
+
+    // Record BEFORE mutating. If `_raise` ever throws, the alternative ordering would leave the
+    // incident un-recorded and a retry would double-charge; this ordering can at worst under-apply,
+    // which is the survivable failure.
+    const ledger = ensureAppliedIncidentIds(player);
+    ledger[incidentReceiptId] = true;
+    const keys = Object.keys(ledger);
+    while (keys.length > APPLIED_INCIDENT_CAP) delete ledger[keys.shift()];
+
+    this._raise(delta, `law incident (${receipt.kind})`);
+    return { applied: true, reason: null, incidentReceiptId, delta };
   },
 
   // Is the victim faction currently hostile to the player? If yes, the kill is legitimate combat,
@@ -294,3 +388,10 @@ export function heatClearSecondsForLevel(level) {
   return HEAT_CLEAR_SECONDS_BY_LEVEL[i] || 0;
 }
 export const THRESHOLD = WANTED_THRESHOLD;
+// PQ-019B: exported so the owner-invariant suite prices heat from the implementation rather than
+// from a copy of it, and so tuning has one home.
+export const INCIDENT_HEAT = Object.freeze({
+  byKind: INCIDENT_HEAT_BY_KIND,
+  fallback: INCIDENT_HEAT_DEFAULT,
+  appliedCap: APPLIED_INCIDENT_CAP,
+});

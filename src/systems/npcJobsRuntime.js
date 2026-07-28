@@ -68,6 +68,12 @@ function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+function cleanClaimId(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && trimmed.length <= 200 ? trimmed : null;
+}
+
 export const npcJobsRuntime = {
   name: 'npcJobsRuntime',
   // We serialize our own already-plain records; the save owner keeps its defensive clone off.
@@ -110,6 +116,11 @@ export const npcJobsRuntime = {
         summary: (jobId) => { const e = this._byId()[jobId]; return e ? summarizeJob(e.job) : null; },
         list: () => Object.values(this._byId()),
         count: () => Object.keys(this._byId()).length,
+        // PQ-019B control leases (see claimControl/releaseControl).
+        claimControl: (jobId, opts) => this.claimControl(jobId, opts),
+        releaseControl: (jobId, claimId) => this.releaseControl(jobId, claimId),
+        controlClaim: (jobId) => this.controlClaim(jobId),
+        activeControlClaimCount: () => this.activeControlClaimCount(),
       };
     }
   },
@@ -183,6 +194,108 @@ export const npcJobsRuntime = {
     return true;
   },
 
+  // ── PQ-019B: control leases ───────────────────────────────────────────────────────────────────
+  //
+  // A lease lets another owner (a heist pursuit) borrow the HULL of a real, already-existing job
+  // without inventing a ship and without a second system writing its movement intent. This is what
+  // makes "pursuit uses existing job-origin patrols" implementable: the patrol is genuinely the
+  // patrol that was already flying its route, not a spawned prop wearing its name.
+  //
+  // The lease suspends this system's intent writing for that hull (see `update`) and nothing else.
+  // The kernel job keeps advancing, so releasing hands back a job whose clock never lied.
+
+  /**
+   * Claim exclusive movement control of a job's hull.
+   *
+   * Idempotent per `claimId`: re-claiming with the same key returns the same claim. A DIFFERENT key
+   * is refused while a claim is live — that refusal is the one-writer-per-hull rule, enforced rather
+   * than documented.
+   */
+  claimControl(jobId, { claimId, holder = null } = {}) {
+    const id = cleanClaimId(claimId);
+    if (!id) return { granted: false, reason: 'invalid_claim_id', claim: null };
+    const entry = this._byId()[jobId];
+    if (!entry) return { granted: false, reason: 'no_job', claim: null };
+
+    const existing = entry.control;
+    if (existing) {
+      if (existing.claimId === id) return { granted: true, claim: existing, resumed: true };
+      return { granted: false, reason: 'already_claimed', claim: existing };
+    }
+    const entity = entry.entityId != null && this.state.entities
+      ? this.state.entities.get(entry.entityId)
+      : null;
+    if (!entity || !entity.alive) {
+      // A virtualized or destroyed job has no hull to hand over. Refusing is the honest answer;
+      // granting would produce a lease over nothing that still had to be released later.
+      return { granted: false, reason: 'hull_absent', claim: null };
+    }
+
+    entry.control = {
+      claimId: id,
+      holder: cleanClaimId(holder),
+      claimedAtSimT: finite(this.state.simTime, 0),
+      // The job state AT CLAIM. `phase` is the kernel's, recorded so a release can report whether
+      // the borrowed job came back to the same work it left.
+      claimedPhase: entry.job.phase,
+      claimedEntityId: entity.id,
+    };
+    // Any flee state belongs to the job's own reflex, which is suspended for the duration.
+    entry.threatId = null;
+    return { granted: true, claim: entry.control };
+  },
+
+  /**
+   * Return the hull. Always safe to call: an unknown job, a released lease, or a hull that no longer
+   * exists all resolve without leaving a claim behind, because a lease nobody can release is a
+   * permanently frozen patrol.
+   */
+  releaseControl(jobId, claimId) {
+    const id = cleanClaimId(claimId);
+    const entry = this._byId()[jobId];
+    if (!entry) return { released: false, reason: 'no_job', restored: false };
+    const claim = entry.control;
+    if (!claim) return { released: false, reason: 'not_claimed', restored: false };
+    if (id && claim.claimId !== id) {
+      return { released: false, reason: 'claim_mismatch', restored: false };
+    }
+
+    entry.control = null;
+    const entity = entry.entityId != null && this.state.entities
+      ? this.state.entities.get(entry.entityId)
+      : null;
+    if (!entity || !entity.alive) {
+      // Fail safe: the lease is gone either way. The hull died or was demoted under the controller.
+      return { released: true, reason: 'hull_absent', restored: false };
+    }
+
+    // Neutralize whatever the controller last wrote, so the hull cannot coast on a stale boost
+    // vector for the one tick before this system's own drive resumes.
+    this._writeIntent(entity, 0, 0, false, entity.rot || 0);
+
+    // A job that finished while leased was deliberately NOT dropped by `update` (that would have let
+    // the ambient stepper adopt a hull the controller was still writing). Complete the handback now.
+    if (entry.job.phase === NPC_JOB_PHASE.COMPLETE) {
+      this.release(jobId);
+      return { released: true, reason: 'job_complete', restored: true, resumedPhase: null };
+    }
+    return { released: true, reason: null, restored: true, resumedPhase: entry.job.phase };
+  },
+
+  /** The live claim on a job, or null. */
+  controlClaim(jobId) {
+    const entry = this._byId()[jobId];
+    return entry && entry.control ? entry.control : null;
+  },
+
+  /** How many hulls are currently leased. The packet's activeJobControlClaimsAfterTerminal reads this. */
+  activeControlClaimCount() {
+    const byId = this._byId();
+    let count = 0;
+    for (const jobId of Object.keys(byId)) if (byId[jobId] && byId[jobId].control) count++;
+    return count;
+  },
+
   // ── per-tick drive ───────────────────────────────────────────────────────────────────────────
   update(dt, state) {
     if (state) this.state = state;
@@ -212,17 +325,28 @@ export const npcJobsRuntime = {
         continue;
       }
 
-      // Threat → flee interrupt / clear → resume (kernel-owned; we only drive the hull).
-      this._reconcileThreat(entry, entity);
+      // PQ-019B control lease: while an external owner holds this hull, THIS system writes no
+      // movement intent for it, so there is still exactly one intent writer per hull per tick. The
+      // kernel keeps advancing regardless — suspending `advance` would stop the job's clock and
+      // break the offscreen≈onscreen convergence proof, and the job's own schedule did not pause
+      // just because a patrol got pulled onto an intercept.
+      const claimed = !!entry.control;
+
+      // Threat → flee interrupt / clear → resume (kernel-owned; we only drive the hull). The
+      // civilian flee reflex writes job phase, so it must not fight the controller either.
+      if (!claimed) this._reconcileThreat(entry, entity);
 
       // Materialized advance: one tick of dt. lastAdvanceSimT tracks global time for re-entry math.
       if (step > 0 && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) advance(entry.job, step, this._sink);
       entry.lastAdvanceSimT = simT;
 
       // Terminal hauler: hand the hull back to its ambient stepper (ruling 5: job ends with entity).
-      if (entry.job.phase === NPC_JOB_PHASE.COMPLETE) { this.release(jobId); continue; }
+      // NOT while leased: dropping the entry here would delete `data.jobId`, the ambient stepper
+      // would adopt the hull, and it would be written by two owners at once. The lease outlives the
+      // job; `releaseControl` completes the handback.
+      if (entry.job.phase === NPC_JOB_PHASE.COMPLETE && !claimed) { this.release(jobId); continue; }
 
-      this._drive(entry, entity);
+      if (!claimed) this._drive(entry, entity);
     }
   },
 
@@ -405,6 +529,14 @@ export const npcJobsRuntime = {
         worldRecordId: entry.worldRecordId || null,
         // entityId is deliberately NOT persisted: entity ids are not stable across load. The job
         // re-links to its rematerialized hull by worldRecordId on the next sector enter.
+        //
+        // PQ-019B: `control` is deliberately NOT persisted either, for the same reason one step
+        // further on. A lease is a LIVE relationship between a controller and a hull. After a load
+        // `deserialize` virtualizes every job and nulls every entityId, so a restored lease would
+        // name a hull that does not exist yet and a controller that no longer exists at all —
+        // nobody left alive to release it. That is a permanently frozen patrol. Dropping the lease
+        // on load is the only fail-safe answer, and it is why activeJobControlClaimsAfterTerminal
+        // is trivially 0 across any reload.
         lastAdvanceSimT: finite(entry.lastAdvanceSimT, 0),
       };
     }
