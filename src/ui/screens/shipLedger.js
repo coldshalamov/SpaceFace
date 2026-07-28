@@ -36,16 +36,17 @@ function removeAttr(node, name) {
   if (node && typeof node.removeAttribute === 'function') node.removeAttribute(name);
 }
 
-// The evidence figure is the ONE place this panel needs authored styling: every authored Cathedral
-// image is 1920x1080, and no loaded stylesheet defines `.st-ledger-*` in either host — the panel's
-// class family belongs to the vestigial stationHub CSS block, which the live app never injects. Left
-// alone the figure renders at natural size and blows out both hosts (measured: 1920px wide inside a
-// 700px column, station and codex alike).
+// The evidence figure is the ONE place this panel needs its own injected styling. The full
+// `.st-ledger-*` family is now styled in styles/station.css (sx-* tokens), but the Codex host does
+// NOT load station.css — so this scoped injection is the only styling the figure subtree receives
+// there, and it remains the authoritative image-sizing rule in both hosts. Every authored Cathedral
+// image is 1920x1080; left alone the figure renders at natural size and blows out the column
+// (measured: 1920px wide inside a 700px column).
 //
 // Scoped under `.st-ledger` so it cannot reach `.st-ledger-list` / `.st-ledger-row`, which the market
 // screen reuses under `.st-market-ledger`. Sizes in `em` so the figure tracks the shipped `--ui-scale`
-// text-scale path (ui.css:13/45) instead of pinning its own. Injected lazily, never at import time,
-// so a headless projector-only import stays DOM-free.
+// text-scale path (ui.css:13/45, plus the .sx-app base) instead of pinning its own. Injected lazily,
+// never at import time, so a headless projector-only import stays DOM-free.
 const SHIP_LEDGER_CSS = `
 .st-ledger .st-ledger-figure { margin: 10px 0 0; max-width: 720px; }
 .st-ledger .st-ledger-figure-img {
