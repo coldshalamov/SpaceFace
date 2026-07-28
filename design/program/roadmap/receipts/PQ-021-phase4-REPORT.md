@@ -3,7 +3,7 @@ packetId: PQ-021
 leafId: PQ-021.phase4-route
 acceptance: focused_green
 disposition: PASS
-candidateCommit: dce11cefc098a4abfa8283fea08050bcf0fbed14
+candidateCommit: 5a15e10d797d1c6cf59a2621317535b1b1f0b92b
 -->
 
 # PQ-021 Phase 4 — natural earning, Continue, media, host parity
@@ -14,7 +14,7 @@ leaf: PQ-021.phase4-route
 scope: Phase 4 (natural earning, cold Continue, host parity, media at crop, accessibility,
        hidden/reopen cleanup) plus write-set item 10 (route harness + broker manifest)
 baseCommit: c6d83fe4
-candidateCommit: dce11cefc098a4abfa8283fea08050bcf0fbed14
+candidateCommit: 5a15e10d797d1c6cf59a2621317535b1b1f0b92b
 branch: claude/pq021-phase4-20260728
 lifecycleClaim: implemented
 acceptanceClaim: focused_green
@@ -46,6 +46,7 @@ lease-blocked and unrun.
 | 2 | Two-host DOM parity, media, focus, cleanup counters; evidence figure crop defect reproduced and fixed | `7c5464e1` |
 | 3 | `pq021-ledger-route` harness + broker manifest, built and registered, never run | `1c10a12a` |
 | 4 | Aborted-media-request classification (flake fix in my own check) | `dce11cef` |
+| 5 | Figure-cap and lossless-crop guards, both proven by mutation | `5a15e10d` |
 
 ### 1 — Natural earning
 
@@ -112,8 +113,8 @@ Measured:
 | Rows per host | 5, byte-identical across hosts (type, cycle, line, aria-label, pageId, button label) |
 | Duplicate DOM ids across both hosts | 0; each root's `aria-labelledby` resolves inside its own subtree |
 | Images in the document | 2 — exactly one bounded figure per host, never a gallery |
-| Media opens → requests | 10 opens → **10 requests**, 5 distinct authored assets |
-| Requests during 6 further opens across hidden hosts | 10 → 16, i.e. **exactly one per open, zero while hidden** |
+| Media opens → requests | 10 opens → **exactly 10 requests** (asserted `=== 10`), 5 distinct authored assets |
+| Requests during 6 further opens across hidden hosts | 10 → 16 — asserted as an upper bound of 6, observed exactly 6, so **no hidden host refreshed** |
 | DOM nodes across 3 host-switch cycles | 113 → 113 |
 | Image elements across 3 cycles | 2 → 2 |
 | Net listener balance across 3 cycles | 19 → 19 |
@@ -143,7 +144,21 @@ own. Injected from `createShipLedgerPanel`, never at import time, and guarded on
 a headless projector-only import stays DOM-free — which is why the existing `MiniDocument` shim tests
 are unaffected.
 
-Result: **1920×1080 → rendered 700×394, `object-fit: cover`, max-width 720px**, in both hosts.
+Result: **1920×1080 → rendered 720×405 inside a 1000px column**, `object-fit: cover`.
+
+Both halves of that claim are guarded against being vacuous, because both would otherwise pass
+whether or not the rule existed:
+
+- **The cap binds.** With both host columns at 700px, `width: 100%` alone produced a passing number
+  and deleting `max-width` changed nothing. The station column is now 1000px, so the cap does the
+  work; the codex column stays under it, so both regimes are measured. Mutation: dropping
+  `max-width` fails with `figure is 1000px in a 1000px column — the cap is not binding`.
+- **The crop is lossless.** `object-fit: cover` cuts the frame whenever source aspect and box aspect
+  disagree. Every authored page is 16:9 today, but a future 4:3 page would be silently cropped while
+  every other assertion still passed — it loads, decodes, is admitted, is under the width bound. The
+  rendered aspect is now compared to the authored aspect on each of the ten opens. Mutation: a 4/3
+  box fails with `rendered aspect 1.3333 differs from authored 1.7778 (1920x1080 -> 720x540)`. The
+  packet forbids hiding evidence to pass, so this is the assertion that carries that rule.
 
 This is the only product edit in Phase 4. It is a reproduced defect, not a testing convenience, and
 the packet's Phase 2 explicitly sanctions panel-scoped styling.
