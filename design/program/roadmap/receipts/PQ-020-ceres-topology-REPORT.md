@@ -3,14 +3,14 @@ packetId: PQ-020
 leafId: PQ-020.ceres-topology
 acceptance: focused_green
 disposition: PASS
-candidateCommit: bf4fb267c371f1813d5740955ce73a91359fc885
+candidateCommit: 6c08de8b85eb4d767c47880777852b9453d1e87a
 -->
 
 # PQ-020 — Ceres activity-pocket topology: continuation evidence
 
 Branch `claude/pq020-proofs-20260728`, based on the pinned `c6d83fe4`.
 
-**`candidateCommit` convention:** the tip of the code+test work (`bf4fb267`). This receipt is
+**`candidateCommit` convention:** the tip of the code+test work (`6c08de8b`). This receipt is
 committed separately, *after* that sha, so the receipt commit is deliberately not the candidate — the
 candidate is the last commit whose content the gates below were run against.
 
@@ -20,12 +20,12 @@ This continues the landed PQ-020 data slice (`9b0c1c28`). It does **not** rebuil
 change is evidence: **six files, 1838 insertions, 0 deletions, and zero `src/` files touched.**
 
 ```
-package.json                           |    1 +   (one check:pq020:proofs alias)
-scripts/check-pq020-ceres-topology.mjs |   50 +
-scripts/lib/pq020CeresProofs.mjs       | 1178 +   (new)
-scripts/lib/pq020CeresTopology.mjs     |  207 +
-test/pq020-ceres-proofs.test.mjs       |  306 +   (new)
-test/pq020-ceres-topology.test.mjs     |   96 +
+package.json                           (one check:pq020:proofs alias)
+scripts/check-pq020-ceres-topology.mjs (evidence surfaced in the check output)
+scripts/lib/pq020CeresProofs.mjs       (new — the proof builders)
+scripts/lib/pq020CeresTopology.mjs     (matched-baseline sibling + continuation gates)
+test/pq020-ceres-proofs.test.mjs       (new)
+test/pq020-ceres-topology.test.mjs     (matched-baseline invariant + drift cases)
 ```
 
 Because no `src/` file is touched, golden risk is structurally zero rather than argued — and
@@ -37,6 +37,11 @@ was moved, no new condition system was authored, and the Cathedral reservation a
 |---|---|
 | `ece08405` | feat(pq020): prove Ceres pocket topology through live headless owners |
 | `bf4fb267` | test(pq020): gate the Ceres continuation proofs |
+| `6c08de8b` | fix(pq020): replace two unfalsifiable rows with real observations |
+
+`6c08de8b` is the result of an adversarial review of this receipt's own evidence. It removed two
+gates that could not fail and one claim the evidence did not carry; the details are recorded inline
+below rather than quietly corrected.
 
 **Note on write surface.** The brief named `scripts/lib/pq020CeresTopology.mjs`; the proofs live in a
 new sibling, `scripts/lib/pq020CeresProofs.mjs`, in the same pq020 harness lane. This was a
@@ -60,6 +65,11 @@ The A/B counterfactual removes only `industries`, installed on the live `state.w
 overlay that `world.enterSector` prefers over the module record (the same per-state overlay
 `factions.js` already writes). Geometry is identical between arms; `SECTORS` is never mutated.
 
+**That the A/B actually reached the producer is observed, not assumed.** The fixture subscribes to
+`sector:enter` and records the payload `traffic.js` itself consumes. Across the three seeds:
+`observedIndustriesMining`/`Refinery` are **`true` in all three metadata arms and `false` in all
+three counterfactual arms**, with exactly one `sector:enter` per run. This is the gated row.
+
 | Seed | Traffic roles (with metadata) | Natural jobs | Industrial share | Counterfactual roles | Counterfactual jobs | Counterfactual share |
 |---|---|---|---:|---|---|---:|
 | 90731 | escort 1, hauler 1, miner 1 | hauler 1, miner 1 | 0.667 | escort 1, hauler 1, miner 1, patrol 1 | hauler 1, patrol 1 | 0.500 |
@@ -69,12 +79,20 @@ overlay that `world.enterSector` prefers over the module record (the same per-st
 Aggregate natural jobs across the held-out set: **hauler 3, miner 3, patrol 2**; **3/3 seeds produced
 an industrial job** with zero injection.
 
-Causation is unambiguous at the owner and identical on every seed — the *live stateful* mix
-(`trafficRoleMixForSector(sector, state)`, which includes `regionalTrafficRoleWeights`, not the
-stateless convenience value):
+The shipped weighting rule, using the *live stateful* mix (`trafficRoleMixForSector(sector, state)`,
+which includes `regionalTrafficRoleWeights`, not the stateless convenience value):
 
 - miner `74.0` with metadata vs `29.6` without → **+44.4 every seed**
 - hauler `74.25` with metadata vs `49.5` without → **+24.75 every seed**
+
+**These two numbers are a characterization, not independent evidence, and are deliberately not
+gated.** The harness derives both arms' weights itself from the same records it supplied, so
+asserting the delta would only assert that a pure function is pure. They document what the shipped
+rule does; the *causal* gate is the observed `sector:enter` payload above, and the corroborating
+observation is that the two arms produce different live populations (seed 90731: 3 hulls vs 4; seed
+90743: `hauler 2/miner 1/patrol 1` vs `escort 1/hauler 2/miner 1`). That population difference is
+reported, not gated — two arms could coincidentally coincide on some seed, and gating "must differ"
+would manufacture a flake.
 
 **Honest limit on the realized population.** Ceres runs `trafficPerMin: 10`, so each seed embodies
 only 3–4 ambient hulls. The realized industrial share rises in 2 of 3 seeds and is unchanged in the
@@ -158,11 +176,26 @@ field-for-field:
 | Cathedral World Site entities | 15 / 15 / 15 | 15 | 15 |
 | Zones | 5 / 5 / 5 | 5 | 5 |
 | Map point ids / map zone ids | identical | identical | identical |
-| Offscreen projection digest | `2416862514` | `2416862514` | `2416862514` |
+| Offscreen projection (recomputed) | `2416862514` | `2416862514` | `2416862514` |
 
 Save envelope version **12**; both Continues accepted. Static content materializes **exactly once**;
-the offscreen projection audit survives save; topology, zone set and map identity are byte-identical
-across every re-entry and Continue.
+topology, zone set and map identity are byte-identical across every re-entry and Continue.
+
+**Correction — the projection row is invariance by construction, not a survived-save result.**
+An earlier draft of this receipt claimed "the offscreen projection audit survives save". It does not
+carry that weight and the claim has been withdrawn. `projectSectorEmbodiment` is a pure function of
+authored sector data plus a fixed seed/epoch; the snapshot passes it no state, so the digest would be
+identical even with `save` removed from the harness entirely. Further, this harness's system subset
+is `world`, `asteroidSites`, `save` — `sectorSim` is absent, so **no projection state is serialized
+here for save to round-trip**. The field is now named `offscreenProjectionRecomputedDigest` and the
+report carries `offscreenProjectionPersistence { claimed: false, invariance: 'by-construction' }`,
+naming `npm run check:m2:sector-embodiment` as the owner of any persisted-projection claim. The
+validator fails closed (`reentryIdempotence:projection-persistence-overclaim`) if that row is ever
+re-dressed as a persistence result. What the recomputed digest still buys is a drift canary on the
+authored record.
+
+**Open row created by this correction:** a *persisted* offscreen-projection audit surviving save is
+unproven by this packet and belongs to the sectorSim/embodiment owner.
 
 ## 4 — Exact agreement (dual-frame)
 
@@ -239,7 +272,7 @@ validator treats any non-null headed value as **fabricated evidence** and fails.
 | `npm run check:pq020:ceres-topology` | **PASS** — `structuralCostDigest` still `b2232d1d…` |
 | `node --test test/pq020-ceres-topology.test.mjs` | **PASS** 6/6 |
 | `node --test test/pq020-ceres-proofs.test.mjs` | **PASS** 8/8 |
-| `npm run check:pq020:proofs` (new alias) | **PASS** 14/14 |
+| `npm run check:pq020:proofs` (new alias) | **PASS** 14/14 (re-run after `6c08de8b`) |
 | `npm run check:sector-geography` | **PASS** |
 | `npm run check:atlas-integrity` | **PASS** |
 | `npm run check:atlas-spatial-truth` | **PASS** |
@@ -251,6 +284,12 @@ validator treats any non-null headed value as **fabricated evidence** and fails.
 | `npm run check:sim:compare` | **PASS — `hashEqual: true`**, `firstDivergentTick: null`, no diffs |
 | `npm run check:baseline` | **PASS** — 10/10 green, 62795 ms wall against a 90000 ms budget |
 | `git diff --check` | clean |
+
+`check:pq020:ceres-topology` and `check:pq020:proofs` were re-run against `6c08de8b`
+(`structuralCostDigest` confirmed still `b2232d1d…`). The atlas / geography / npc-jobs / sim-compare /
+baseline set was **not** re-run after `6c08de8b`: that commit touches only the two pq020 harness files
+and the two pq020 test files, no `src/`, so nothing those gates cover can move. Stated explicitly so
+the integrator can re-run them if that reasoning is not accepted.
 
 **One flake, recorded for honesty.** The first `check:baseline` run failed with 3 red 47a children
 (`debris-sling`, `recovery-contested`, `civilian-priority`), each a native crash
@@ -280,6 +319,9 @@ Electron, no performance or L4 capture was attempted.
 - **Perceptual pocket distinctness** — whether civic / production / transit / graveyard read as
   distinct at map and flight scale, as opposed to the mathematical separation proven here.
 - **Independent human-eye art verdict** on the Cathedral and the beacon.
+- **Persisted offscreen-projection audit across save** — see the §3 correction. Not blocked on
+  PQ-034; blocked on scope. Owner: the sectorSim/embodiment lane
+  (`npm run check:m2:sector-embodiment`). This packet proves invariance-by-construction only.
 - **Final receipt / global promotion** — integrator-owned.
 
 ## Blockers
