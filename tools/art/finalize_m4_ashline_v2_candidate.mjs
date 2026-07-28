@@ -7,22 +7,24 @@
  * Does NOT write into assets/ships/parts or assets/ships/release (default play).
  *
  * Usage:
- *   node tools/art/finalize_m4_ashline_candidate.mjs
- *   node tools/art/finalize_m4_ashline_candidate.mjs dart
+ *   node tools/art/finalize_m4_ashline_v2_candidate.mjs
+ *   node tools/art/finalize_m4_ashline_v2_candidate.mjs dart
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 
-import { NodeIO } from '@gltf-transform/core';
+import { NodeIO, PropertyType } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { meshopt } from '@gltf-transform/functions';
+import { meshopt, prune } from '@gltf-transform/functions';
 import { ktx2 } from 'ktx2-encoder/gltf-transform';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import JPEG from 'jpeg-js';
 import { PNG } from 'pngjs';
 import sharp from 'sharp';
+
+import { makeAshlineSurfaceMaps } from './lib/ashlineSurfaceMaps.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const FAMILY = resolve(ROOT, 'assets/ships/m4_ashline_v2');
@@ -107,23 +109,31 @@ function splitIncompatibleTextureSlots(document) {
   }
 }
 
-async function prepareSourceContract(abs, spec, io) {
+async function prepareSourceContract(abs, spec, io, shipKey) {
   const document = await io.read(abs);
   const root = document.getRoot();
   normalizeContractNodeTags(root);
-  applyContractTextures(document, root, spec);
+  applyContractTextures(document, root, spec, shipKey);
+  await document.transform(prune({
+    propertyTypes: [PropertyType.TEXTURE],
+    keepSolidTextures: true,
+    keepExtras: true,
+  }));
   const asset = root.getAsset();
+  asset.generator = `${asset.generator || ''}; SpaceFace tools/art/finalize_m4_ashline_v2_candidate.mjs`
+    .replace(/^; /, '');
   const extras = { ...(asset.extras || {}) };
   extras.textureSize = TEXTURE_SIZE;
   extras.spacefaceAsset = {
     ...(extras.spacefaceAsset || {}),
     assetId: spec.assetId,
     partId: spec.partId,
-    family: 'ashline',
+    family: 'ashline_v2',
     role: spec.role,
     packet: PACKET,
     textureCompression: 'PNG-source',
     textureResolution: `${TEXTURE_SIZE}x${TEXTURE_SIZE}`,
+    surfaceTreatment: 'ashline-v2-service-history-2026-07-27',
   };
   asset.extras = extras;
   const tmp = `${abs}.source.${process.pid}.${Date.now()}.glb`;
@@ -157,124 +167,42 @@ function normalizeContractNodeTags(root) {
   }
 }
 
-function applyContractTextures(document, root, spec) {
+function applyContractTextures(document, root, spec, shipKey) {
   let index = 0;
   for (const material of root.listMaterials()) {
     const name = material.getName() || `Material_${index}`;
-    const seed = hashString(`${spec.id}:${name}`);
+    const maps = makeAshlineSurfaceMaps({
+      shipKey,
+      materialName: name,
+      size: TEXTURE_SIZE,
+    });
+    const alpha = material.getBaseColorFactor()?.[3] ?? 1;
     const base = document.createTexture(`${spec.id}_${safeName(name)}_baseColor`)
-      .setImage(makeBaseColorPng(material.getBaseColorFactor(), seed, name))
+      .setImage(maps.baseColor)
       .setMimeType('image/png');
     const normal = document.createTexture(`${spec.id}_${safeName(name)}_normal`)
-      .setImage(makeNormalPng(seed))
+      .setImage(maps.normal)
       .setMimeType('image/png');
     const orm = document.createTexture(`${spec.id}_${safeName(name)}_orm`)
-      .setImage(makeOrmPng(material.getRoughnessFactor(), material.getMetallicFactor(), seed))
+      .setImage(maps.orm)
       .setMimeType('image/png');
     material
+      .setBaseColorFactor([1, 1, 1, alpha])
       .setBaseColorTexture(base)
       .setNormalTexture(normal)
       .setNormalScale(1)
       .setOcclusionTexture(orm)
       .setOcclusionStrength(1)
-      .setMetallicRoughnessTexture(orm);
+      .setMetallicRoughnessTexture(orm)
+      .setRoughnessFactor(1)
+      .setMetallicFactor(1);
     index++;
   }
-}
-
-function makeBaseColorPng(factor, seed, materialName) {
-  const png = new PNG({ width: TEXTURE_SIZE, height: TEXTURE_SIZE });
-  const rgba = Array.isArray(factor) && factor.length >= 4 ? factor : [1, 1, 1, 1];
-  const token = String(materialName || '').toLowerCase();
-  const emissiveRole = token.includes('cyan') || token.includes('warm');
-  for (let y = 0; y < TEXTURE_SIZE; y++) {
-    for (let x = 0; x < TEXTURE_SIZE; x++) {
-      const i = (y * TEXTURE_SIZE + x) * 4;
-      const seam = seamAmount(x, y, seed);
-      const wear = chipNoise(x, y, seed);
-      const shade = emissiveRole ? 1 : clamp(0.82 + wear * 0.25 - seam * 0.28, 0.42, 1.12);
-      png.data[i] = byte(rgba[0] * 255 * shade);
-      png.data[i + 1] = byte(rgba[1] * 255 * shade);
-      png.data[i + 2] = byte(rgba[2] * 255 * shade);
-      png.data[i + 3] = byte(rgba[3] * 255);
-    }
-  }
-  return PNG.sync.write(png, { colorType: 6 });
-}
-
-function makeNormalPng(seed) {
-  const png = new PNG({ width: TEXTURE_SIZE, height: TEXTURE_SIZE });
-  for (let y = 0; y < TEXTURE_SIZE; y++) {
-    for (let x = 0; x < TEXTURE_SIZE; x++) {
-      const i = (y * TEXTURE_SIZE + x) * 4;
-      const sx = signedSeamNormal(x, 104 + (seed % 41));
-      const sy = signedSeamNormal(y, 128 + ((seed >>> 5) % 37));
-      const nx = sx * 0.2;
-      const ny = sy * 0.2;
-      const nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
-      png.data[i] = byte(128 + nx * 127);
-      png.data[i + 1] = byte(128 + ny * 127);
-      png.data[i + 2] = byte(128 + nz * 127);
-      png.data[i + 3] = 255;
-    }
-  }
-  return PNG.sync.write(png, { colorType: 6 });
-}
-
-function makeOrmPng(roughnessFactor, metallicFactor, seed) {
-  const png = new PNG({ width: TEXTURE_SIZE, height: TEXTURE_SIZE });
-  const roughness = clamp(Number.isFinite(roughnessFactor) ? roughnessFactor : 0.58, 0.18, 0.92);
-  const metallic = clamp(Number.isFinite(metallicFactor) ? metallicFactor : 0.12, 0, 0.9);
-  for (let y = 0; y < TEXTURE_SIZE; y++) {
-    for (let x = 0; x < TEXTURE_SIZE; x++) {
-      const i = (y * TEXTURE_SIZE + x) * 4;
-      const seam = seamAmount(x, y, seed);
-      const wear = chipNoise(x, y, seed ^ 0x9e3779b9);
-      png.data[i] = byte(238 - seam * 58 - wear * 10);
-      png.data[i + 1] = byte((roughness + seam * 0.08 + wear * 0.035) * 255);
-      png.data[i + 2] = byte((metallic + (wear - 0.5) * 0.035) * 255);
-      png.data[i + 3] = 255;
-    }
-  }
-  return PNG.sync.write(png, { colorType: 6 });
-}
-
-function seamAmount(x, y, seed) {
-  const wx = 104 + (seed % 41);
-  const wy = 128 + ((seed >>> 5) % 37);
-  const dx = Math.min(x % wx, wx - (x % wx));
-  const dy = Math.min(y % wy, wy - (y % wy));
-  return Math.max(dx <= 2 ? 1 - dx / 3 : 0, dy <= 2 ? 1 - dy / 3 : 0);
-}
-
-function signedSeamNormal(value, width) {
-  const distance = value % width;
-  if (distance <= 2) return -1 + distance / 2;
-  if (distance >= width - 2) return 1 - (width - distance) / 2;
-  return 0;
-}
-
-function chipNoise(x, y, seed) {
-  let hash = (x * 374761393 + y * 668265263 + seed * 362437) >>> 0;
-  hash = Math.imul(hash ^ (hash >>> 13), 1274126177) >>> 0;
-  return ((hash ^ (hash >>> 16)) & 255) / 255;
-}
-
-function hashString(value) {
-  let hash = 2166136261;
-  for (let i = 0; i < String(value).length; i++) {
-    hash ^= String(value).charCodeAt(i);
-    hash = Math.imul(hash, 16777619) >>> 0;
-  }
-  return hash >>> 0;
 }
 
 function safeName(value) {
   return String(value || 'material').replace(/[^a-z0-9_]+/gi, '_').replace(/^_+|_+$/g, '') || 'material';
 }
-
-function byte(value) { return Math.max(0, Math.min(255, Math.round(value))); }
-function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
 
 function markContractNodes(document, sourceCollisionBounds = null) {
   for (const node of document.getRoot().listNodes()) {
@@ -351,7 +279,7 @@ function inspectGlbRaw(abs) {
 function stampReleaseMeta(document, spec, sourceTextureCount, proof, sourceSf = {}) {
   const root = document.getRoot();
   const asset = root.getAsset();
-  asset.generator = `${asset.generator || ''}; SpaceFace tools/art/finalize_m4_ashline_candidate.mjs`.replace(/^; /, '');
+  asset.generator = `${asset.generator || ''}; SpaceFace tools/art/finalize_m4_ashline_v2_candidate.mjs`.replace(/^; /, '');
   const extras = { ...(asset.extras || {}) };
   const sf = { ...(sourceSf || {}), ...(extras.spacefaceAsset || {}) };
   // Preserve float axis proof through quantization (accessor min/max become unusable)
@@ -360,9 +288,10 @@ function stampReleaseMeta(document, spec, sourceTextureCount, proof, sourceSf = 
   sf.assetId = sf.assetId || spec.assetId;
   sf.partId = sf.partId || spec.partId;
   sf.role = sf.role || spec.role;
-  sf.family = 'ashline';
+  sf.family = 'ashline_v2';
   sf.packet = PACKET;
   sf.wiringStatus = 'production_candidate';
+  sf.surfaceTreatment = 'ashline-v2-service-history-2026-07-27';
   sf.textureCompression = sourceTextureCount > 0 ? 'KTX2/BasisU' : (sf.textureCompression || 'none');
   sf.finalize = {
     meshopt: proof.meshoptApplied,
@@ -371,7 +300,7 @@ function stampReleaseMeta(document, spec, sourceTextureCount, proof, sourceSf = 
     ktx2Images: proof.ktx2ImageCount,
     sourceTextureCount,
     releaseTextureCount: proof.textureCount,
-    tool: 'finalize_m4_ashline_candidate.mjs',
+    tool: 'finalize_m4_ashline_v2_candidate.mjs',
     pattern: 'SG04 MeshoptEncoder + ktx2-encoder',
   };
   extras.spacefaceAsset = sf;
@@ -401,7 +330,7 @@ async function finalizeOne(key, spec, io) {
   if (!existsSync(src)) {
     throw new Error(`missing source GLB: ${src}`);
   }
-  await prepareSourceContract(src, spec, io);
+  await prepareSourceContract(src, spec, io, key);
   mkdirSync(dirname(dst), { recursive: true });
 
   const sourceRaw = inspectGlbRaw(src);
