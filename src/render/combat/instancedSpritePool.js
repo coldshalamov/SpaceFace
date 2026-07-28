@@ -1,4 +1,16 @@
 import * as THREE from 'three';
+import {
+  assertDynamicBufferOwnerWritable,
+  commitDynamicBufferOwner,
+  markDynamicBufferItems,
+  registerDynamicBufferOwner,
+} from '../dynamicBufferRanges.js';
+
+const SPRITE_POSITION = 0;
+const SPRITE_SCALE = 1;
+const SPRITE_ROLL = 2;
+const SPRITE_COLOR = 3;
+const SPRITE_OPACITY = 4;
 
 const VERTEX_SHADER = /* glsl */`
   attribute vec3 aSpritePosition;
@@ -52,16 +64,20 @@ export function createInstancedSpriteBuckets(
   combustionTexture = glowTexture,
 ) {
   const safeCapacity = Math.max(1, Math.floor(capacity || 1));
-  const glow = createBucket('glow', safeCapacity, glowTexture, THREE.AdditiveBlending);
-  const ring = createBucket('ring', safeCapacity, ringTexture, THREE.AdditiveBlending);
-  const smoke = createBucket('smoke', safeCapacity, smokeTexture, THREE.NormalBlending);
-  const combustion = createBucket('combustion', safeCapacity, combustionTexture, THREE.AdditiveBlending);
+  const glow = createBucket(scene, 'glow', safeCapacity, glowTexture, THREE.AdditiveBlending);
+  const ring = createBucket(scene, 'ring', safeCapacity, ringTexture, THREE.AdditiveBlending);
+  const smoke = createBucket(scene, 'smoke', safeCapacity, smokeTexture, THREE.NormalBlending);
+  const combustion = createBucket(scene, 'combustion', safeCapacity, combustionTexture, THREE.AdditiveBlending);
   scene.add(glow.mesh, ring.mesh, smoke.mesh, combustion.mesh);
   return { glow, ring, smoke, combustion, capacity: safeCapacity };
 }
 
 export function resetInstancedSpriteBuckets(buckets) {
   if (!buckets) return;
+  assertDynamicBufferOwnerWritable(buckets.glow.dynamicBufferOwner);
+  assertDynamicBufferOwnerWritable(buckets.ring.dynamicBufferOwner);
+  assertDynamicBufferOwnerWritable(buckets.smoke.dynamicBufferOwner);
+  assertDynamicBufferOwnerWritable(buckets.combustion.dynamicBufferOwner);
   buckets.glow.writeCount = 0;
   buckets.ring.writeCount = 0;
   buckets.smoke.writeCount = 0;
@@ -111,6 +127,7 @@ export function writeInstancedSpriteFields(
     : (bucketKind === 'combustion' ? buckets.combustion : (bucketKind ? buckets.ring : buckets.glow));
   const index = bucket.writeCount;
   if (index >= bucket.capacity) return false;
+  assertDynamicBufferOwnerWritable(bucket.dynamicBufferOwner);
   bucket.writeCount = index + 1;
   bucket.position.setXYZ(index, x, y, z);
   const scale = Math.max(0.01, scaleValue || 0.01);
@@ -122,6 +139,11 @@ export function writeInstancedSpriteFields(
   bucket.roll.setX(index, roll || 0);
   bucket.color.setXYZ(index, r, g, b);
   bucket.opacity.setX(index, Math.max(0, opacity));
+  markDynamicBufferItems(bucket.dynamicBufferOwner, SPRITE_POSITION, index);
+  markDynamicBufferItems(bucket.dynamicBufferOwner, SPRITE_SCALE, index);
+  markDynamicBufferItems(bucket.dynamicBufferOwner, SPRITE_ROLL, index);
+  markDynamicBufferItems(bucket.dynamicBufferOwner, SPRITE_COLOR, index);
+  markDynamicBufferItems(bucket.dynamicBufferOwner, SPRITE_OPACITY, index);
   return true;
 }
 
@@ -133,7 +155,7 @@ export function commitInstancedSpriteBuckets(buckets) {
   commitBucket(buckets.combustion);
 }
 
-function createBucket(id, capacity, texture, blending) {
+function createBucket(scene, id, capacity, texture, blending) {
   const geometry = new THREE.PlaneGeometry(1, 1);
   const position = dynamicAttribute(capacity * 3, 3);
   const scale = dynamicAttribute(capacity * 2, 2);
@@ -163,7 +185,29 @@ function createBucket(id, capacity, texture, blending) {
   mesh.renderOrder = 11;
   mesh.userData.spacefaceVfxSpriteBatch = true;
   mesh.userData.spriteBucket = id;
-  return { id, capacity, mesh, position, scale, roll, color, opacity, writeCount: 0 };
+  const dynamicBufferOwner = registerDynamicBufferOwner(scene, {
+    id: `combat-sprite-${id}`,
+    mesh,
+    attributes: [
+      { name: 'position', attribute: position },
+      { name: 'scale', attribute: scale },
+      { name: 'roll', attribute: roll },
+      { name: 'color', attribute: color },
+      { name: 'opacity', attribute: opacity },
+    ],
+  });
+  return {
+    id,
+    capacity,
+    mesh,
+    position,
+    scale,
+    roll,
+    color,
+    opacity,
+    dynamicBufferOwner,
+    writeCount: 0,
+  };
 }
 
 function dynamicAttribute(length, itemSize) {
@@ -173,6 +217,10 @@ function dynamicAttribute(length, itemSize) {
 }
 
 function commitBucket(bucket) {
+  if (bucket.dynamicBufferOwner) {
+    commitDynamicBufferOwner(bucket.dynamicBufferOwner, bucket.writeCount);
+    return;
+  }
   bucket.mesh.count = bucket.writeCount;
   bucket.position.needsUpdate = true;
   bucket.scale.needsUpdate = true;

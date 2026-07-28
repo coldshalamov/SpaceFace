@@ -61,6 +61,7 @@ import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import { createPipelineAdmissionTracker } from './pipelineReadiness.js';
 import { prepareStartupGpuResidency, yieldToBrowser } from './startupGpuResidency.js';
 import { collectContextLossRoots, detachStaleWebGlDisposeListeners } from './contextResourceLifecycle.js';
+import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -711,6 +712,9 @@ export const render = {
     const drawSize = applyRendererSize(renderer, state);
 
     const scene = new THREE.Scene();
+    const dynamicBuffers = createDynamicBufferCoordinator(scene);
+    this._dynamicBuffers = dynamicBuffers;
+    state.render.dynamicBufferRanges = dynamicBuffers.getDiagnostics();
     const corePalette = SECTOR_PALETTE_CLASSES.core;
     // Thin fog for gentle depth cueing only — the old 0.00085 erased the entire backdrop, leaving a
     // black void. This keeps the nebula + far stars visible while still fading the deep distance.
@@ -778,6 +782,7 @@ export const render = {
         ev.preventDefault();        // allow restoration
         if (this._contextLost) return;
         this._contextLost = true;
+        dynamicBuffers.handleContextLost();
         const contextRoots = collectContextLossRoots({
           scene,
           environment: this._envMap,
@@ -818,6 +823,7 @@ export const render = {
       canvas.addEventListener('webglcontextrestored', () => {
         if (typeof console !== 'undefined') console.warn('[render] WebGL context restored — rebuilding GPU resources');
         this._contextLost = false;
+        dynamicBuffers.handleContextRestored();
         try {
           // Re-apply renderer config that the new context defaults lose.
           this.renderer.setClearColor(0x060912, 1);
@@ -1176,7 +1182,16 @@ export const render = {
     state.render.camera = cam.obj;
     state.render.cameraCtrl = cam;   // controller (addTrauma/pushZoom) — exposed for feel.js / ui
     state.render.vf = vf;   // exposed for the dev-only ship turntable preview (shipPreview.js)
-    state.render.warmPostProcess = () => (this.bloom && state.settings.video.bloom !== false ? this.bloom.render(scene, cam.obj) : renderer.render(scene, cam.obj));
+    state.render.warmPostProcess = () => {
+      const dynamicBufferEpoch = dynamicBuffers.arm();
+      try {
+        return this.bloom && state.settings.video.bloom !== false
+          ? this.bloom.render(scene, cam.obj)
+          : renderer.render(scene, cam.obj);
+      } finally {
+        dynamicBuffers.disarm(dynamicBufferEpoch);
+      }
+    };
     const compileForCurrentTarget = (subjects) => {
       const batch = Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean);
       if (batch.length === 0) return Promise.resolve({ skipped: true, reason: 'empty pipeline batch' });
@@ -1228,13 +1243,18 @@ export const render = {
       await yieldToBrowser();
       const openingFrameStarted = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const video = state.settings && state.settings.video || {};
-      if (video.renderGraph && this._ensureRenderGraph()) {
-        this._renderGraph.render(scene, cam.obj, { time: this._bgTime || 0 });
-      } else if (this.bloom && video.bloom !== false) {
-        this.bloom.render(scene, cam.obj);
-      } else {
-        renderer.setRenderTarget(null);
-        renderer.render(scene, cam.obj);
+      const dynamicBufferEpoch = dynamicBuffers.arm();
+      try {
+        if (video.renderGraph && this._ensureRenderGraph()) {
+          this._renderGraph.render(scene, cam.obj, { time: this._bgTime || 0 });
+        } else if (this.bloom && video.bloom !== false) {
+          this.bloom.render(scene, cam.obj);
+        } else {
+          renderer.setRenderTarget(null);
+          renderer.render(scene, cam.obj);
+        }
+      } finally {
+        dynamicBuffers.disarm(dynamicBufferEpoch);
       }
       result.openingFrame = {
         durationMs: (typeof performance !== 'undefined' ? performance.now() : Date.now())
@@ -2238,26 +2258,31 @@ export const render = {
     // proven bloom path stays the default; the render graph module is no longer tree-shaken because
     // it is reachable from this live branch. The energy materials I wired write HDR radiance that the
     // render graph composites with contact-depth AO.
-    if (this.state.settings.video.renderGraph && this._ensureRenderGraph()) {
-      this._lastRenderPath = 'renderGraph';
-      if (useGpu) gpu.begin('drawPreparedFrame');
-      try {
-        this._renderGraph.render(this.scene, this.cam.obj, { time: this._bgTime || 0 });
-      } finally {
-        if (useGpu) gpu.end();
+    const dynamicBufferEpoch = this._dynamicBuffers.arm();
+    try {
+      if (this.state.settings.video.renderGraph && this._ensureRenderGraph()) {
+        this._lastRenderPath = 'renderGraph';
+        if (useGpu) gpu.begin('drawPreparedFrame');
+        try {
+          this._renderGraph.render(this.scene, this.cam.obj, { time: this._bgTime || 0 });
+        } finally {
+          if (useGpu) gpu.end();
+        }
+      } else if (this.bloom && this.state.settings.video.bloom !== false) {
+        this._lastRenderPath = 'bloom';
+        // bloom.render() records bloomScene/Downsample/Upsample/Composite CPU+GPU groups.
+        this.bloom.render(this.scene, this.cam.obj);
+      } else {
+        this._lastRenderPath = 'straight';
+        if (useGpu) gpu.begin('drawPreparedFrame');
+        try {
+          this.renderer.render(this.scene, this.cam.obj);
+        } finally {
+          if (useGpu) gpu.end();
+        }
       }
-    } else if (this.bloom && this.state.settings.video.bloom !== false) {
-      this._lastRenderPath = 'bloom';
-      // bloom.render() records bloomScene/Downsample/Upsample/Composite CPU+GPU groups.
-      this.bloom.render(this.scene, this.cam.obj);
-    } else {
-      this._lastRenderPath = 'straight';
-      if (useGpu) gpu.begin('drawPreparedFrame');
-      try {
-        this.renderer.render(this.scene, this.cam.obj);
-      } finally {
-        if (useGpu) gpu.end();
-      }
+    } finally {
+      this._dynamicBuffers.disarm(dynamicBufferEpoch);
     }
     if (useCpu) perf.recordRenderWork('drawPreparedFrame', performance.now() - t0);
     if (this.state.mode === 'flight'
