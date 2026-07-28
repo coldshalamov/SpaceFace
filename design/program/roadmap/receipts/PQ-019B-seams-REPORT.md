@@ -3,12 +3,12 @@ packetId: PQ-019
 leafId: PQ-019.owner-seams
 acceptance: focused_green
 disposition: PASS
-candidateCommit: 87c1b260775e70730e490e0720bf1fd044684f99
+candidateCommit: f2c6023e221c8f51cacf33fbd65552c0db005d87
 -->
 
 # PQ-019B — pure outcome arbiter and four owner seams
 
-Branch `claude/pq019b-seams-20260728`, based at `64840077`. Five commits, 5 source files, 6 test
+Branch `claude/pq019b-seams-20260728`, based at `64840077`. Seven commits, 5 source files, 6 test
 files, one `package.json` line. `src/core/registry.js`, the save schema, queue/global ledgers, and
 the shared HUD/style surfaces are untouched.
 
