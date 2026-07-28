@@ -212,6 +212,14 @@ export const heistFacilities = {
    * through the one-voice seam under one stable id. No DOM, no sim write.
    */
   _sayLaunchCue({ scheduleId, moment, tMinusS, text }) {
+    // Flight only. The countdown is a flight-HUD voice, and while docked the Station OS is a
+    // fullscreen surface in front of the #alerts slot, so speaking there would push a pill nobody
+    // can see and burn the one-voice floor behind another screen. Matches the stationBroadcast
+    // precedent (`state.mode !== 'flight'` -> strict no-op). The LAUNCH itself is world simulation
+    // and is deliberately not gated: the capsule still departs on schedule while the player is
+    // docked, it simply is not narrated to a surface they are not looking at.
+    if (this.state?.mode !== 'flight') return null;
+
     const receipt = Object.freeze({
       cueId: `pq019a:cue:${scheduleId}:${moment}`,
       scheduleId,

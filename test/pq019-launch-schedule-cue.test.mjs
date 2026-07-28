@@ -270,6 +270,43 @@ test('the cue is sim-inert: it spawns nothing, mutates nothing, and is silent wi
   );
 });
 
+test('the countdown stays silent while docked, but the launch still happens', () => {
+  const t = boot(19033);
+  t.system.requestLaunchSchedule({
+    scheduleId: 'pq019a-cue-docked',
+    launchAtSimT: t.state.simTime + 32,
+  });
+  // Docked: the Station OS is a fullscreen surface in front of the flight HUD's #alerts slot, so a
+  // countdown pill there would be spoken to a screen the player is not looking at.
+  t.state.mode = 'station';
+  driveWindow(t, 35);
+  assert.deepEqual(moments(t.cues), [], 'no cue is published to a hidden flight surface');
+  assert.equal(t.surfaced.length, 0, 'the one-voice floor is never claimed from behind the station screen');
+
+  // The world did not pause for the player's shopping trip: the capsule still departed on time.
+  assert.equal(t.state.heistFacilities.schedule.status, 'launched');
+  assert.equal(
+    t.state.entityList.filter((entity) => (
+      entity?.alive !== false && entity.data?.heistFacilityRole === 'cargo_capsule'
+    )).length,
+    1,
+    'the launch is world simulation and is not gated on the player watching',
+  );
+
+  // Undocking mid-window resumes the countdown at whatever moment is still ahead.
+  const back = boot(19034);
+  back.system.requestLaunchSchedule({
+    scheduleId: 'pq019a-cue-undock',
+    launchAtSimT: back.state.simTime + 32,
+  });
+  back.state.mode = 'station';
+  driveWindow(back, 20);                                   // T-30 and T-15 pass unheard
+  assert.deepEqual(moments(back.cues), []);
+  back.state.mode = 'flight';
+  driveWindow(back, 15);
+  assert.deepEqual(moments(back.cues), ['t_minus_5', 'away'], 'undocking resumes, it does not replay');
+});
+
 test('the cue rides the real fixed-timestep route end to end', async () => {
   const t = boot(19032);
   // A short authored window so the whole path runs under real physics: schedule -> T-5 -> away.
