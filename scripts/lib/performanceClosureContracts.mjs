@@ -186,6 +186,8 @@ export function evaluatePerformanceWindowBudgets({ scenarioId, summary, autosave
 export function comparePerformanceWindows(before, after) {
   const failures = [];
   if (!before || !after) failures.push('before and after windows are required');
+  validateRouteIdentity(before, 'before', failures);
+  validateRouteIdentity(after, 'after', failures);
   if (before?.scenarioId !== after?.scenarioId) failures.push('scenario ids differ');
   if (stableStringify(routeIdentityFrom(before)) !== stableStringify(routeIdentityFrom(after))) {
     failures.push('route digest identities differ; scenarios are not directly comparable');

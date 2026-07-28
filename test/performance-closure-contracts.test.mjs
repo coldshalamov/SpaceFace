@@ -345,6 +345,53 @@ test('closure comparison binds the complete route digest chain', () => {
   assert.match(incompleteValidation.failures.join(' | '), /route.*digest|digest.*required|complete route/i);
 });
 
+test('direct comparison rejects malformed route digest identities', () => {
+  const partialIdentity = {
+    manifestDigest: routeIdentity.manifestDigest,
+  };
+  const partialComparisonKey = comparisonKey({
+    scenarioId: 'flight_steady',
+    environment,
+    settings,
+    ...partialIdentity,
+  });
+  const partial = comparePerformanceWindows(
+    windowFixture({
+      ...partialIdentity,
+      comparisonKey: partialComparisonKey,
+    }),
+    windowFixture({
+      ...partialIdentity,
+      comparisonKey: partialComparisonKey,
+    }),
+  );
+
+  assert.equal(partial.comparable, false);
+  assert.match(partial.failures.join(' | '), /complete.*route.*digest|route.*digest.*complete/i);
+
+  let getterCalls = 0;
+  const accessorBefore = windowFixture();
+  const accessorAfter = windowFixture();
+  for (const window of [accessorBefore, accessorAfter]) {
+    Object.defineProperty(window, 'manifestDigest', {
+      configurable: true,
+      get() {
+        getterCalls += 1;
+        return routeIdentity.manifestDigest;
+      },
+    });
+  }
+
+  const accessor = comparePerformanceWindows(
+    accessorBefore,
+    accessorAfter,
+  );
+
+  assert.equal(accessor.comparable, false);
+  assert.match(accessor.failures.join(' | '), /manifestDigest must be an own data property/);
+  assert.equal(getterCalls, 0);
+});
+
 test('comparison identity ignores mutable Array.prototype canonicalization hooks', () => {
   const descriptor = Object.getOwnPropertyDescriptor(Array.prototype, 'sort');
   let hookCalls = 0;
