@@ -677,10 +677,27 @@ export const heistMissionRuntime = {
 
   // ── Save boundary ────────────────────────────────────────────────────────────────────────────
 
-  /** Plain snapshot. Nests inside the mission owner's already-serialized active entry. */
+  /**
+   * Plain snapshot. Nests inside the mission owner's already-serialized active entry.
+   *
+   * TRANSIENT RUN FIELDS ARE STRIPPED, on the same precedent `missions.serialize` already uses for
+   * `targetEntityIds` and `_escorteeId`. Two of them matter beyond tidiness:
+   *
+   *   * `leases` — PQ-019B §2c: a job-control lease is DELIBERATELY not persisted. After a load
+   *     every job is virtualized and every `entityId` nulled, so a restored lease would name a hull
+   *     that does not exist and a controller that no longer does either — nobody left alive to
+   *     release it, i.e. a permanently frozen patrol. Writing the rows into the save even though
+   *     `restore` clears them would leave a record that invites exactly that mistake later.
+   *   * `capsuleEntityId` — a live entity id. Ids are recycled (`state.freeIds`), so a stale one
+   *     can name a DIFFERENT entity after a load.
+   */
   serialize(record) {
     if (!record) return null;
-    return { ...record, arbiter: serializeArbiter(record.arbiter) };
+    const {
+      leases, capsuleEntityId, possessed, escapeHoldTicks, absenceGraceTicks, ...durable
+    } = record;
+    void leases; void capsuleEntityId; void possessed; void escapeHoldTicks; void absenceGraceTicks;
+    return { ...durable, arbiter: serializeArbiter(record.arbiter) };
   },
 
   /**
@@ -707,6 +724,27 @@ export const heistMissionRuntime = {
     if (!record || typeof record !== 'object') return null;
     const restored = { ...record };
     restored.arbiter = restoreArbiter(record.arbiter);
+
+    /**
+     * The tick a restore-time report must be stamped with.
+     *
+     * NOT simply the live clock. The arbiter restores its own `decidedThroughTick` from the save,
+     * and `submitCandidate` refuses anything at or below it as `stale_tick`. Whenever the caller's
+     * clock has not yet caught up to that value, a restore-time `unresolved_absent` is silently
+     * REFUSED — the run then has no terminal candidate at all and hangs active forever, which is
+     * exactly the invisible mission soft-lock the arbiter's rejection ledger exists to make
+     * diagnosable rather than acceptable.
+     *
+     * That gap is real rather than theoretical: `saveSystem` restores `state.tick` from the entity
+     * payload (saveSystem.js:2116), so whether the clock is caught up when `missions.deserialize`
+     * runs is an ORDERING property of the save owner, not something this module can assume. Taking
+     * the arbiter's own clock as a floor makes the stamp correct under either order, and it is
+     * truthful either way: the absence is discovered now, which is by definition after everything
+     * the arbiter had already decided through.
+     */
+    const restoreStamp = (arbiter) => Math.max(
+      intTick(tick), intTick(arbiter?.decidedThroughTick) + 1,
+    );
     restored.leases = [];
     restored.escapeHoldTicks = 0;
     restored.absenceGraceTicks = 0;
@@ -726,7 +764,7 @@ export const heistMissionRuntime = {
       restored.settled = false;
       submitHeistCandidate(restored, {
         kind: 'unresolved_absent',
-        causalTick: intTick(tick),
+        causalTick: restoreStamp(restored.arbiter),
         sourceStableId: 'heistMissionRuntime:restore',
         proof: { reason: 'arbiter_refused' },
       });
@@ -751,7 +789,7 @@ export const heistMissionRuntime = {
     restored.settled = false;
     submitHeistCandidate(restored, {
       kind: 'unresolved_absent',
-      causalTick: intTick(tick),
+      causalTick: restoreStamp(restored.arbiter),
       sourceStableId: 'heistMissionRuntime:restore',
       proof: { reason: 'capsule_not_durable' },
     });
