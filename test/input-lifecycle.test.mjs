@@ -21,7 +21,7 @@ test('input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
   host._kbmActivityPending = true;
   host._travelEdge = true;
   host._cmHeld = true;
-  host._cmSuppressUntilRelease = false;
+  host._gamepadLifecycleQuarantine = null;
   host._edgePrev = { cruise: true, tether: true };
   host._masslineGrammar = { reset(block) { grammarResetBlocks.push(block); } };
   host.gamepad = {
@@ -53,10 +53,14 @@ test('input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
   assert.equal(host._prevM1, false);
   assert.equal(host._kbmActivityPending, false);
   assert.equal(host._travelEdge, false);
-  assert.equal(host._cmHeld, true, 'release preserves the existing debounce state');
-  assert.equal(host._cmSuppressUntilRelease, true);
+  assert.equal(host._cmHeld, false);
+  assert.deepEqual(host._gamepadLifecycleQuarantine, {
+    massline: true,
+    countermeasure: true,
+    travelBurn: true,
+  });
   assert.deepEqual(host._edgePrev, { cruise: false, tether: false });
-  assert.deepEqual(grammarResetBlocks, [true]);
+  assert.deepEqual(grammarResetBlocks, [undefined]);
   assert.equal(gamepadResets, 1);
   assert.deepEqual(host.gamepad._prev, { massline: true, countermeasure: true });
   assert.deepEqual(host.touch.axes, { leftX: 0, leftY: 0, rightX: 0, rightY: 0 });
@@ -72,24 +76,76 @@ test('input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
   assert.equal(knob.style.transform, '');
 });
 
-test('countermeasure lifecycle suppression requires a neutral sample before another deploy edge', () => {
+test('gamepad lifecycle quarantine waits for a connected neutral sample without blocking keyboard', () => {
   const host = Object.create(input);
-  const inp = { deployCountermeasure: false };
   host._cmHeld = false;
-  host._cmSuppressUntilRelease = true;
+  host._gamepadLifecycleQuarantine = {
+    massline: true,
+    countermeasure: true,
+    travelBurn: true,
+  };
+  const actions = {
+    massline: { held: false },
+    countermeasure: { held: false },
+    travelBurn: { held: false },
+  };
 
-  host._updateCountermeasureHold(true, inp);
-  host._updateCountermeasureHold(true, inp);
-  assert.equal(inp.deployCountermeasure, false);
-  assert.equal(host._cmSuppressUntilRelease, true);
+  host._refreshGamepadLifecycleQuarantine({ isConnected: () => false, actions });
+  assert.equal(host._gamepadLifecycleActionAllowed('countermeasure'), false,
+    'a missing pad is not proof that the physical button was released');
 
+  const heldActions = {
+    massline: { held: true },
+    countermeasure: { held: true },
+    travelBurn: { held: true },
+  };
+  host._refreshGamepadLifecycleQuarantine({ isConnected: () => true, actions: heldActions });
+  assert.equal(host._gamepadLifecycleActionAllowed('massline'), false,
+    'a reconnected held pad remains quarantined');
+
+  const inp = { deployCountermeasure: false };
+  host._updateCountermeasureHold(true, inp);
+  assert.equal(inp.deployCountermeasure, true,
+    'a fresh keyboard press remains authoritative while the gamepad is quarantined');
   host._updateCountermeasureHold(false, inp);
-  assert.equal(host._cmSuppressUntilRelease, false);
-  host._updateCountermeasureHold(true, inp);
-  assert.equal(inp.deployCountermeasure, true);
+
+  host._refreshGamepadLifecycleQuarantine({ isConnected: () => true, actions });
+  assert.equal(host._gamepadLifecycleActionAllowed('massline'), true);
+  assert.equal(host._gamepadLifecycleActionAllowed('countermeasure'), true);
+  assert.equal(host._gamepadLifecycleActionAllowed('travelBurn'), true);
 });
 
-test('Massline lifecycle reset blocks a physically held source until release', () => {
+test('input release preserves the committed Massline packet before resetting grammar state', () => {
+  const grammar = createMasslineInputGrammar();
+  const published = grammar.step(1 / 60, {
+    held: true,
+    attached: false,
+    source: 'gamepad',
+  });
+  const committed = { ...published };
+  const host = Object.create(input);
+  host._keys = {};
+  host._masslineGrammar = grammar;
+  host.state = {
+    input: {
+      actions: {
+        massline: published,
+        tetherFire: published.latch,
+      },
+    },
+  };
+  host.gamepad = null;
+  host.touch = null;
+
+  host.releaseHeldControls('hidden');
+
+  assert.deepEqual(host.state.input.actions.massline, committed);
+  assert.notEqual(host.state.input.actions.massline, grammar.command);
+  assert.equal(host.state.input.actions.tetherFire, true);
+  assert.equal(grammar.command.latch, false);
+});
+
+test('Massline grammar can block a physically held source until release', () => {
   const grammar = createMasslineInputGrammar();
   assert.equal(grammar.step(1 / 60, { held: true, attached: false, source: 'gamepad' }).latch, true);
 

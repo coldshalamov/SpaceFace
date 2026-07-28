@@ -650,6 +650,8 @@ export const input = {
     this._screen = { x: Math.floor(viewportW * 0.5), y: Math.floor(viewportH * 0.5), active: false };
     resetAutoTargetPath(this, this.state);
     this._m0 = false; this._m1 = false; this._m2 = false;
+    this._cmHeld = false;
+    this._gamepadLifecycleQuarantine = null;
     this._masslineGrammar = createMasslineInputGrammar();
     // F4/G9: device arbitration uses deterministic (tick, sequence) activity stamps shared
     // across keyboard/gamepad/touch — never performance.now()/Date.now(). Sequence reflects
@@ -777,15 +779,24 @@ export const input = {
     this._prevM1 = false;
     this._kbmActivityPending = false;
     this._travelEdge = false;
-    // A gamepad can remain physically held while polling is stopped. Suppress countermeasure and
-    // Massline edges until each owner observes a neutral sample after presentation resumes.
-    this._cmSuppressUntilRelease = true;
+    this._cmHeld = false;
+    // Keyboard transitions remain event-owned after restore. Only polled gamepad actions need a
+    // connected neutral sample before a hold can become authoritative again.
+    this._gamepadLifecycleQuarantine = {
+      massline: true,
+      countermeasure: true,
+      travelBurn: true,
+    };
     if (this._edgePrev) {
       for (const action in this._edgePrev) this._edgePrev[action] = false;
     }
-    if (this._masslineGrammar && typeof this._masslineGrammar.reset === 'function') {
-      this._masslineGrammar.reset(true);
+    const grammar = this._masslineGrammar;
+    const actions = this.state && this.state.input && this.state.input.actions;
+    if (grammar && actions && actions.massline === grammar.command
+      && typeof grammar.snapshot === 'function') {
+      actions.massline = grammar.snapshot();
     }
+    if (grammar && typeof grammar.reset === 'function') grammar.reset();
     if (this.gamepad && typeof this.gamepad._resetState === 'function') {
       this.gamepad._resetState();
     }
@@ -813,13 +824,23 @@ export const input = {
     }
   },
 
+  _refreshGamepadLifecycleQuarantine(gamepad) {
+    const quarantine = this._gamepadLifecycleQuarantine;
+    if (!quarantine || !gamepad || typeof gamepad.isConnected !== 'function'
+      || !gamepad.isConnected()) return;
+    for (const action of ['massline', 'countermeasure', 'travelBurn']) {
+      const sample = gamepad.actions && gamepad.actions[action];
+      if (quarantine[action] && sample && sample.held === false) quarantine[action] = false;
+    }
+  },
+
+  _gamepadLifecycleActionAllowed(action) {
+    const quarantine = this._gamepadLifecycleQuarantine;
+    return !quarantine || quarantine[action] !== true;
+  },
+
   _updateCountermeasureHold(held, inp) {
     const active = !!held;
-    if (this._cmSuppressUntilRelease) {
-      this._cmHeld = active;
-      if (!active) this._cmSuppressUntilRelease = false;
-      return;
-    }
     if (active) {
       if (!this._cmHeld) inp.deployCountermeasure = true;
       this._cmHeld = true;
@@ -861,7 +882,10 @@ export const input = {
       this._kbmActivityPending = false;
     }
     const gp = this.gamepad;
-    if (gp) gp.tick(dt, state, this);
+    if (gp) {
+      gp.tick(dt, state, this);
+      this._refreshGamepadLifecycleQuarantine(gp);
+    }
     const tp = this.touch;
     if (tp) tp.tick(dt, state, this);
 
@@ -999,7 +1023,8 @@ export const input = {
       gpFire = gp.actions.fire && gp.actions.fire.held;
       gpMine = gp.actions.mine && gp.actions.mine.held;
       gpBrake = gp.actions.brake && gp.actions.brake.held;
-      gpCountermeasure = gp.actions.countermeasure && gp.actions.countermeasure.held;
+      gpCountermeasure = this._gamepadLifecycleActionAllowed('countermeasure')
+        && gp.actions.countermeasure && gp.actions.countermeasure.held;
       gpAimActive = Math.abs(gp.axes.rightX) > 0.001 || Math.abs(gp.axes.rightY) > 0.001;
     }
 
@@ -1108,7 +1133,9 @@ export const input = {
     const tetherHeld = this._held(state, 'tether');
     const gpMassline = gp && gp.isConnected() && gp.actions.massline;
     const gpMasslineAllowed = !(state.ui && state.ui.dockInRange);
-    const gpMasslineHeld = !!(gpMasslineAllowed && gpMassline && gpMassline.held);
+    const gpMasslineHeld = !!(gpMasslineAllowed
+      && this._gamepadLifecycleActionAllowed('massline')
+      && gpMassline && gpMassline.held);
     const masslineHeld = tetherHeld || gpMasslineHeld;
     const tetherActive = !!(state.player && state.player.tether && state.player.tether.active);
     const dedicatedLineLength = (this._held(state, 'reelOut') ? 1 : 0) - (this._held(state, 'reelIn') ? 1 : 0);
@@ -1151,7 +1178,9 @@ export const input = {
     acts.throwArm = throwArmHeld;
     // Travel Burn latch (D5/W1-5). Edge-triggered toggle; the state machine below owns what a
     // press MEANS in each state (arm a spool, cancel a spool, disengage a burn).
-    const travelPressed = edge('travelBurn') || !!(gp && gp.isConnected() && gp.actions.travelBurn && gp.actions.travelBurn.pressed);
+    const travelPressed = edge('travelBurn') || !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed('travelBurn')
+      && gp.actions.travelBurn && gp.actions.travelBurn.pressed);
     this._travelEdge = travelPressed;
     acts.travelBurn = travelPressed;
     // Positive reelDelta lengthens the authoritative line; line-control uses ship-local axes.

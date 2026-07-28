@@ -336,6 +336,10 @@ export function startLoop(state, registry, deps = {}) {
       diagnostics.restoreTarget = null;
       setAudioLifecycle('resumeFromLifecycle', 'restore-frame-complete');
       recordState(restoreTarget, 'restore-frame-complete');
+      // Restore rendering and synchronous owner wake-up are presentation work, not elapsed
+      // foreground simulation time. Start the ordinary fixed-step clock after that work commits.
+      last = nowMs();
+      diagnostics.timestampResetCount++;
     }
     schedule();
   }

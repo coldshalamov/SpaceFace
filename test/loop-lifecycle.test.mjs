@@ -197,6 +197,32 @@ test('restore publishes one coherent zero-delta snapshot before simulation resum
   h.controller.destroy();
 });
 
+test('restore callback cost is excluded from the next simulation delta', () => {
+  const h = createHarness();
+  h.raf.flushOne(h.clock.advance(16.667));
+  h.visibility.set('hidden');
+  h.clock.advance(5000);
+  h.visibility.set('visible');
+
+  h.registry.renderUpdate = (alpha, frameDt) => {
+    h.calls.push({ type: 'render', alpha, frameDt });
+    if (frameDt === 0) h.clock.advance(100);
+  };
+
+  h.calls.length = 0;
+  h.raf.flushOne(h.clock.advance(16.667));
+  assert.deepEqual(h.calls.map((call) => call.type), ['render']);
+  assert.equal(h.calls[0].frameDt, 0);
+
+  h.calls.length = 0;
+  h.raf.flushOne(h.clock.advance(16.667));
+  assert.equal(countCalls(h, 'step'), 1);
+  assert.equal(countCalls(h, 'render'), 1);
+  assert.ok(Math.abs(h.calls.find((call) => call.type === 'render').frameDt - 0.016667) < 1e-12);
+  assert.equal(h.controller.getDiagnostics().shedBacklogFrames, 0);
+  h.controller.destroy();
+});
+
 test('initially hidden startup owns no frame callback until restore', () => {
   const h = createHarness({ visibilityState: 'hidden' });
   assert.equal(h.controller.isSuspended(), true);
