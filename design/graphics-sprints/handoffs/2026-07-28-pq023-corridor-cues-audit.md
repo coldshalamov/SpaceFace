@@ -131,6 +131,15 @@ remain, each measured:
    0). `worldSite:failureReceipt` and `worldSite:operationReceipt` reach no presentation lane — no
    caption, no audio, no HUD, no reduced-mode variant, no priority.
 
+#### The removed visibility guard is not a lost case
+
+The vacuous guard hid a fixture whose `componentId` was absent from `componentStatuses`. That case is
+**unreachable for any valid manifest**: `validateStagePresentation` (`worldSiteKernel.js:944`)
+rejects a stage with `stage-presentation-component-missing` when a fixture's `componentId` is not in
+`manifest.components`, and `createWorldSiteRecord` builds `record.components` from that same list, so
+every authored fixture always has a status. When `componentStatuses` is absent entirely, the old
+guard and the new binding both leave the fixture visible. Replacing it therefore loses no behaviour.
+
 ### (d) Reduced-motion / reduced-flash — **PARTIALLY EXISTS**
 
 `vfxAccessibility.js` provides four frozen policies (`full`, `reduced-motion`, `reduced-flash`,
@@ -214,7 +223,16 @@ on screen. They are the **wrong** evidence for (f): a suppressed cue does not re
 shows the absence of a thing that cannot be pointed at. Family (f) is proved by a deterministic
 suppression trace (cue id, tick, reason, before/after), not by a photograph.
 
-## 6. Open rows (PQ-034 lease-blocked)
+## 6. Inherited red confirmed by A/B
+
+`npm run check:audio-identity` fails at **both** `b6b6422d` and this branch tip with the identical
+message — `sfx_mining_seam_reward, sfx_vector_mine, sfx_rcs_disrupt` are not covered by Check 6's
+`EMITTED_CUES` contract. None of those three ids is reachable from this leaf's diff (which adds only
+`presentation.mining.fracture_break` and `presentation.mining.core_reward`). Verified by checking out
+`b6b6422d -- src scripts test package.json`, running the check, and restoring. Pre-existing, not
+this leaf's.
+
+## 7. Open rows (PQ-034 lease-blocked)
 
 - Normal-route Browser/Electron evidence.
 - Independent motion / normal-camera review.

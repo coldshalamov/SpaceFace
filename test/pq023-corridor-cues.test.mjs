@@ -34,6 +34,7 @@ import {
   worldSiteConditionText,
 } from '../src/presentation/worldSiteDamageStates.js';
 import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
+import { presentationAdapters } from '../src/systems/presentationAdapters.js';
 import { installWorldSitePresentation } from '../src/render/worldSitePresentation.js';
 import { worldSiteManifestById } from '../src/data/worldSiteManifests.js';
 import { resolveImpactPresentationProfile } from '../src/render/vfxProfiles.js';
@@ -250,6 +251,44 @@ test('(c) only an authored recovery operation produces a recovery cue', () => {
     });
     assert.equal(bus.cues().length, before, 'an incomplete operation must not emit a recovery cue');
   } finally {
+    presentationOrchestrator.dispose();
+  }
+});
+
+test('(e) a restoration must not interrupt a screen reader; a failure may', () => {
+  // presentationAdapters._applyAccessibility promotes playerRelevance >= 0.9 (or importance >= 0.85)
+  // to an ASSERTIVE interrupt. A payoff receipt must never pre-empt a live warning mid-sentence.
+  const bus = makeBus();
+  const state = makeState(10);
+  state.settings = { video: {}, accessibility: {} };
+  const captions = [];
+  bus.on('presentation:accessibilityCue', (p) => captions.push(p));
+  bus.on('accessibility:caption', (p) => captions.push(p));
+  presentationOrchestrator.init({ state, bus });
+  presentationAdapters.init({ state, bus });
+  try {
+    bus.emit('worldSite:failureReceipt', {
+      siteId: 'world_site_wreck_cathedral', componentId: 'cathedral_hull',
+      triggerId: 'cathedral_hull_impact', stageId: 'dark', receipt: { sequence: 1 },
+    });
+    state.tick = 200;
+    state.simTime = state.tick / 60;
+    bus.emit('worldSite:operationReceipt', {
+      siteId: 'world_site_wreck_cathedral', componentId: 'cathedral_hull',
+      operationId: 'stabilize_cathedral_hull', stageId: 'stabilized',
+      receipt: { sequence: 2, complete: true },
+    });
+
+    const cues = bus.cues();
+    const damage = cues.find((c) => c.id === 'world_site.damage');
+    const recovery = cues.find((c) => c.id === 'world_site.recovery');
+    assert.ok(damage.playerRelevance >= 0.9, 'damage undoes player work and is addressed to them');
+    assert.ok(recovery.playerRelevance < 0.9,
+      `a restoration must stay below the assertive tier, got ${recovery.playerRelevance}`);
+    assert.ok(recovery.playerRelevance >= 0.88, 'but it must still clear the player-lane floor');
+    assert.ok(recovery.importance < 0.85, 'and must not reach the assertive tier by importance either');
+  } finally {
+    presentationAdapters.dispose();
     presentationOrchestrator.dispose();
   }
 });

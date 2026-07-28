@@ -24,6 +24,8 @@ candidateCommit: 0e36c554
 | `fabe4038` | feat(pq023): reserve cue lane budget for critical state in dense ticks |
 | `341746d6` | feat(pq023): bind World Site damage/recovery to noncolor cues and accessible text |
 | `0e36c554` | feat(pq023): flak impact identity, corridor cue tests, and the dense-scene gate |
+| `d9129c22` | docs(pq023): leaf receipt for gold-corridor-required-cues |
+| (tip) | fix(pq023): keep a restoration below the assertive screen-reader tier |
 
 ## 2. Per-family gap table
 
@@ -92,8 +94,28 @@ tests, so the declared budget and the enforced budget cannot drift.
 | `npm run check:presentation` | **PASS** — 65 pass / 0 fail (baseline was also 65/0) |
 | `npm run check:combat` | **PASS** (baseline PASS) |
 | `npm run check:sim:compare` | **`hashEqual: true`** — golden unchanged |
-| `npm run check:visual-stability` | PASS at baseline; final re-run recorded in `.devshots/pq023-cues/final-visual-stability.txt` |
-| `npm run check:baseline` | final run recorded in `.devshots/pq023-cues/final-baseline.txt` |
+| `npm run check:visual-stability` | **PASS** (baseline PASS) |
+| `npm run check:baseline` | **PASS** |
+
+### Gates exposed by this leaf's specific edits, run beyond the mission list
+
+Changing `_applyAccessibility`'s text resolution, adding two `PRESENTATION_AUDIO_CUE_BY_ID` entries
+and adding two keys to `PRESENTATION_RECIPES` exposes every consumer that enumerates the registry or
+asserts on `metrics.presentationCue`. `check-sg08-mix-profile` already caught this leaf once on that
+class of global invariant, so the enumerating consumers were run explicitly:
+
+| Gate | Result |
+|---|---|
+| `check-critical-signature-captions` | **PASS** |
+| `check-47a-recovery-contested` (asserts `presentationCue >= 6`) | **PASS** |
+| `check-sg05-runtime` (asserts on `presentationCue`) | **PASS** |
+| `check-47a-civilian-priority` | **PASS** |
+| `check-first-hour-audio-identity` | **PASS** |
+| `check-audio-identity` | **FAIL — pre-existing, A/B proven** |
+
+`check:audio-identity` fails **identically at `b6b6422d`** with the same three uncovered ids
+(`sfx_mining_seam_reward`, `sfx_vector_mine`, `sfx_rcs_disrupt`), none of which is reachable from
+this leaf's diff. Verified by checking out the base sources, running the check, and restoring.
 
 ### Golden safety
 
@@ -111,6 +133,24 @@ audio recipe. The first draft used `audio.none` for the World Site cues and brok
 Fixed by mapping both cues to existing authored signatures rather than inventing assets —
 deliberately **not** `presentation.subsystem.disabled`, which means the *player's own* subsystem
 died and would blur two different mechanical facts. Dedicated site audio is a follow-up.
+
+### Assertive-tier correction
+
+`_applyAccessibility` promotes `playerRelevance >= 0.9` to an **assertive** screen-reader interrupt.
+`world_site.recovery` initially declared a 0.9 floor, which would have let a routine
+"Cathedral hull restored." interrupt a live combat warning mid-sentence — inverting the very
+priority this leaf exists to protect. Lowered to **0.88**, the codebase's documented "player is the
+source" tier (see `MASSLINE_OBSERVER_PLAYER_RELEVANCE_FLOOR`). `world_site.damage` keeps 0.9 because
+it *is* addressed to the player: it undid their work. Pinned by a focused test asserting the
+recovery cue stays below the assertive tier by both relevance and importance.
+
+### Removed visibility guard loses no behaviour
+
+`validateStagePresentation` (`worldSiteKernel.js:944`) rejects any stage whose fixture `componentId`
+is not in `manifest.components`, and `createWorldSiteRecord` derives `record.components` from that
+same list. The case the vacuous guard covered — a fixture whose component has no status — is
+therefore unreachable for a valid manifest, and when `componentStatuses` is absent entirely both the
+old guard and the new binding leave the fixture visible.
 
 ## 5. Evidence paths
 

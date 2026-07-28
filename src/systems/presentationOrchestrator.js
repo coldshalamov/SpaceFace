@@ -1235,7 +1235,13 @@ export const presentationOrchestrator = {
       accessibilityText: worldSiteConditionText(
         worldSiteComponentLabel(payload.siteId, componentId), operation.to || 'ready',
       ),
-      playerRelevanceFloor: 0.9,
+      // 0.88, NOT 0.9. presentationAdapters._applyAccessibility turns >= 0.9 into an ASSERTIVE
+      // screen-reader interrupt (see MASSLINE_OBSERVER_PLAYER_RELEVANCE_FLOOR above). A restoration
+      // is a payoff receipt, and interrupting a live combat warning to announce "Cathedral hull
+      // restored." inverts the priority this leaf exists to protect. 0.88 is the codebase's
+      // "player is the source" tier, which is exactly what a completed repair is. The damage cue
+      // keeps 0.9 because it IS addressed to the player: it undid their work.
+      playerRelevanceFloor: 0.88,
     });
   },
 
