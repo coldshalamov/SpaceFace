@@ -628,7 +628,16 @@ export function createAttemptLedger() {
 }
 
 function entryHash(prevHash, entry) {
-  return sha256Hex(canonicalJson({ prevHash, identity: entry.identity, verdict: entry.verdict, failureClass: entry.failureClass, evidencePaths: entry.evidencePaths }));
+  // cellKey is derived from identity but is hashed anyway: without it, a forged cellKey could
+  // silently reassign a retained attempt to a different matrix cell without breaking the chain.
+  return sha256Hex(canonicalJson({
+    prevHash,
+    identity: entry.identity,
+    verdict: entry.verdict,
+    failureClass: entry.failureClass,
+    evidencePaths: entry.evidencePaths,
+    cellKey: entry.cellKey,
+  }));
 }
 
 /**
@@ -688,6 +697,14 @@ export function verifyLedgerIntegrity(ledger) {
   for (let i = 0; i < ledger.entries.length; i += 1) {
     const entry = ledger.entries[i];
     if (entry.attemptOrdinal !== i + 1) return { ok: false, reason: `ordinal-out-of-sequence-at-${i + 1}` };
+    if (entry.identity?.attemptOrdinal !== entry.attemptOrdinal) {
+      return { ok: false, reason: `identity-ordinal-mismatch-at-${entry.attemptOrdinal}` };
+    }
+    // The cell an attempt belongs to must remain derivable from its own identity, so an attempt
+    // cannot be relabelled into a different matrix cell after the fact.
+    if (entry.cellKey !== cellKey(entry.identity)) {
+      return { ok: false, reason: `cell-key-does-not-match-identity-at-ordinal-${entry.attemptOrdinal}` };
+    }
     const expected = entryHash(hash, entry);
     if (entry.entryHash !== expected) return { ok: false, reason: `hash-chain-broken-at-ordinal-${entry.attemptOrdinal}` };
     hash = entry.entryHash;

@@ -316,6 +316,25 @@ test('ADV-04b: a replaced attempt is rejected', () => {
   assert.match(integrity.reason, /hash-chain-broken-at-ordinal-1/);
 });
 
+test('ledger: an attempt cannot be relabelled into a different matrix cell', () => {
+  let ledger = createAttemptLedger();
+  ledger = appendAttempt(ledger, { identity: baseIdentity(), verdict: 'fail', failureClass: 'PRODUCT_PARITY' });
+  // Move a red hauler/browser attempt onto the hunter/electron cell so the red lands elsewhere.
+  const forgedEntries = ledger.entries.map((entry) => ({ ...entry, cellKey: 'hunter|30|success|electron|target' }));
+  const forged = { schema: ledger.schema, entries: forgedEntries, headHash: ledger.headHash };
+  const result = verifyLedgerIntegrity(forged);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /cell-key-does-not-match-identity-at-ordinal-1/);
+});
+
+test('ledger: an entry whose identity ordinal disagrees with its slot is rejected', () => {
+  let ledger = createAttemptLedger();
+  ledger = appendAttempt(ledger, { identity: baseIdentity(), verdict: 'pass' });
+  const forgedEntries = ledger.entries.map((entry) => ({ ...entry, identity: { ...entry.identity, attemptOrdinal: 7 } }));
+  const forged = { schema: ledger.schema, entries: forgedEntries, headHash: ledger.headHash };
+  assert.match(verifyLedgerIntegrity(forged).reason, /identity-ordinal-mismatch-at-1/);
+});
+
 test('ledger: legitimate growth (append) passes continuity', () => {
   let ledger = createAttemptLedger();
   ledger = appendAttempt(ledger, { identity: baseIdentity(), verdict: 'fail', failureClass: 'ENVIRONMENT' });
