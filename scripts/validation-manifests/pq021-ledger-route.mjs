@@ -30,6 +30,7 @@ export function createPq021LedgerRouteManifest(overrides = {}) {
     fastGateCommands: [
       'node --test test/pq021-ledger-natural-earning.test.mjs test/ship-ledger-evidence-host.test.mjs',
       'node scripts/check-pq021-ledger-hosts.mjs',
+      'node scripts/check-pq021-ledger-keyboard-route.mjs',
     ],
     scenarioPaths: [],
     regressionSourcePaths: [
@@ -62,6 +63,7 @@ export function createPq021LedgerRouteManifest(overrides = {}) {
       'scripts/probe-pq021-ledger-route.mjs',
       'scripts/check-pq021-ledger-route-electron.mjs',
       'scripts/check-pq021-ledger-hosts.mjs',
+      'scripts/check-pq021-ledger-keyboard-route.mjs',
       'scripts/lib/pq021LedgerPublicRoute.mjs',
       'scripts/lib/load-playwright.mjs',
       'scripts/lib/browser-issues.mjs',

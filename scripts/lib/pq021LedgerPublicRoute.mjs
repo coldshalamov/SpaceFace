@@ -100,9 +100,24 @@ export async function earnInRuntime(page) {
 
     // Declared shortcut: travel. Arriving mints nothing; it only materializes the site's entities
     // so the payload can be physically delivered.
-    sf.state.world.currentSectorId = sectorId;
-    sf.bus.emit('sector:enter', { sectorId });
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    //
+    // Use the game's OWN intentional-jump entry point. The world system owns currentSectorId
+    // (src/systems/world.js:404) and re-derives it every frame, so assigning it directly is reverted
+    // and the Ceres entities are despawned again. That defect was found by running
+    // scripts/check-pq021-ledger-keyboard-route.mjs against the live game, where it surfaced as the
+    // payload being missing at settlement.
+    const world = sf.ctx.registry.get('world');
+    if (!world || typeof world.enterSector !== 'function') {
+      return { ok: false, reason: 'the world system exposes no enterSector entry point' };
+    }
+    world.enterSector(sectorId, { fromJump: true });
+    for (let i = 0; i < 40 && sf.state.world.currentSectorId !== sectorId; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    if (sf.state.world.currentSectorId !== sectorId) {
+      return { ok: false, reason: `the world stayed in ${sf.state.world.currentSectorId}` };
+    }
+    await new Promise((resolve) => setTimeout(resolve, 400));
 
     const record = () => sf.state.sites && sf.state.sites.worldById && sf.state.sites.worldById[siteId];
     if (!record()) return { ok: false, reason: 'the Cathedral site record never materialized in Ceres' };
@@ -114,10 +129,21 @@ export async function earnInRuntime(page) {
     let tick = Math.max(600, (sf.state.tick | 0) + 600);
     for (const step of route) {
       if (step.towPayloadId) {
+        // The released payload materializes on the owner's sync, not synchronously with the cut.
+        for (let i = 0; i < 20 && !liveEntities(`${siteId}/payload/${step.towPayloadId}`)[0]; i += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
         const payload = liveEntities(`${siteId}/payload/${step.towPayloadId}`)[0];
         const receiver = liveEntities(`${siteId}/component/${step.componentId}`)[0];
         if (!payload || !receiver) {
-          return { ok: false, reason: `payload/receiver missing for ${step.operationId}`, log };
+          return {
+            ok: false,
+            reason: `payload/receiver missing for ${step.operationId}`,
+            sector: sf.state.world.currentSectorId,
+            payloadStatus: record().payloads && record().payloads[step.towPayloadId]
+              && record().payloads[step.towPayloadId].status,
+            log,
+          };
         }
         payload.pos = { x: receiver.pos.x, z: receiver.pos.z };
         payload.vel = { x: 0, z: 0 };
@@ -312,7 +338,12 @@ export function assertRouteContract({ earning, station, flight, runtimeLabel }) 
   note(earning.stageId === 'archived', `site stage is ${earning.stageId}, expected archived`);
 
   for (const host of [station, flight]) {
-    note(host.rows.length === 5, `${host.host}: ${host.rows.length} rows, expected 5`);
+    // A real run also projects the other receipt families (trade, loss, witness, ...), so the panel
+    // legitimately lists more than five rows. Exactly five of them must be evidence pages. Asserting
+    // a total of five here failed against the live game with six rows.
+    const evidenceRows = host.rows.filter((row) => row.pageId);
+    note(evidenceRows.length === 5,
+      `${host.host}: ${evidenceRows.length} evidence rows of ${host.rows.length} total, expected 5`);
     note(host.images === 1, `${host.host}: ${host.images} images in the panel, expected exactly 1`);
     note(host.labelledBy === `st-ledger-${host.host}-title`,
       `${host.host}: accessible name points at ${host.labelledBy}`);
