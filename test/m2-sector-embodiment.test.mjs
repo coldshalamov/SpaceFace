@@ -313,8 +313,8 @@ test('offline catch-up days are capped', () => {
   const ctx = makeCtx(42);
   boot(ctx);
   const ss = ctx.state.sectorSim;
-  // Pretend last wall was very long ago.
-  ss.meta.lastWallT = Date.now() - 30 * 24 * 3600 * 1000;
+  // The host/save seam supplies elapsed time explicitly; wall-clock never drives authoritative sim.
+  ss.meta.pendingOfflineElapsedSec = 30 * 24 * 3600;
   const epochBefore = (ss.field && ss.field.epochDays) || 0;
   sectorSim.runOfflineCatchup();
   const epochAfter = (ss.field && ss.field.epochDays) || 0;
@@ -322,6 +322,7 @@ test('offline catch-up days are capped', () => {
   // OFFLINE_CAP_SEC=14400, EFF=0.6 → max days floor(8640/600)=14
   assert.ok(advanced <= 14 + 1e-9, `offline days capped, got ${advanced}`);
   assert.ok(advanced >= 1, 'should advance at least one day when long away');
+  assert.equal(ss.meta.pendingOfflineElapsedSec, null, 'explicit elapsed is consumed once');
 });
 
 test('serialize/deserialize preserves embodiment applied set (no re-emit)', () => {
