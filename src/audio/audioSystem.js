@@ -568,6 +568,8 @@ export const audio = {
     rt._resumeAfterLifecycle = false;
     rt._lifecycleSuspendPromise = null;
     rt._resumePromise = null;
+    rt._contextEverRan = false;
+    rt._contextStateChangeHandler = null;
     rt._lastWallTime = undefined;
     rt._wantBeam = {};            // owners desiring a beam loop (started on resume)
     rt._wantMining = null;        // { minerId, targetId } desired mining loop
@@ -790,6 +792,8 @@ export const audio = {
     if (!rt) return;
     rt._lifecycleSuspended = true;
     this._stopFrameLoop();
+    this._stopMusicSchedulers();
+    this._unbindContextState();
     if (typeof window !== 'undefined' && window.removeEventListener && this._gestureHandler) {
       window.removeEventListener('pointerdown', this._gestureHandler);
       window.removeEventListener('keydown', this._gestureHandler);
@@ -826,6 +830,7 @@ export const audio = {
     rt._lifecycleReason = reason;
     rt._lastWallTime = undefined;
     this._stopFrameLoop();
+    this._pauseMusicSchedulers();
     this._suspendRunningContext();
   },
 
@@ -844,10 +849,83 @@ export const audio = {
     this._resumeAudioContext(false);
   },
 
+  _pauseMusicSchedulers() {
+    const stems = this.rt && this.rt.stems;
+    if (!stems) return;
+    for (const key of ['A', 'B', 'C', 'D']) {
+      const stem = stems[key];
+      if (stem && typeof stem.pauseScheduler === 'function') stem.pauseScheduler();
+    }
+  },
+
+  _resumeMusicSchedulers() {
+    const stems = this.rt && this.rt.stems;
+    if (!stems) return;
+    for (const key of ['A', 'B', 'C', 'D']) {
+      const stem = stems[key];
+      if (stem && typeof stem.resumeScheduler === 'function') stem.resumeScheduler();
+    }
+  },
+
+  _stopMusicSchedulers() {
+    const rt = this.rt;
+    const stems = rt && rt.stems;
+    if (!stems) return;
+    for (const key of ['A', 'B', 'C', 'D']) {
+      const stem = stems[key];
+      if (stem && typeof stem.stop === 'function') stem.stop();
+      stems[key] = null;
+    }
+  },
+
+  _bindContextState(ctx) {
+    const rt = this.rt;
+    if (!rt || !ctx || typeof ctx.addEventListener !== 'function') return;
+    this._unbindContextState();
+    const onStateChange = () => {
+      if (!this.rt || this.rt.ctx !== ctx) return;
+      if (ctx.state === 'running') {
+        rt._contextEverRan = true;
+        if (rt._lifecycleSuspended) {
+          rt._resumeAfterLifecycle = true;
+          this._stopFrameLoop();
+          this._pauseMusicSchedulers();
+          this._suspendRunningContext();
+          return;
+        }
+        // Promise fulfillment owns the first post-resume transfer. A statechange can arrive before
+        // device acquisition has actually settled, especially on interrupted mobile contexts.
+        if (rt._resumePromise) return;
+        rt._resumeAfterLifecycle = false;
+        rt._lastWallTime = undefined;
+        this._resumeMusicSchedulers();
+        this._startFrameLoop();
+        return;
+      }
+      this._stopFrameLoop();
+      this._pauseMusicSchedulers();
+    };
+    rt._contextStateChangeHandler = onStateChange;
+    ctx.addEventListener('statechange', onStateChange);
+    if (ctx.state === 'running') rt._contextEverRan = true;
+  },
+
+  _unbindContextState() {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    const handler = rt && rt._contextStateChangeHandler;
+    if (ctx && handler && typeof ctx.removeEventListener === 'function') {
+      try { ctx.removeEventListener('statechange', handler); } catch (_) {}
+    }
+    if (rt) rt._contextStateChangeHandler = null;
+  },
+
   _suspendRunningContext() {
     const rt = this.rt, ctx = rt && rt.ctx;
-    if (!ctx || ctx.state !== 'running' || typeof ctx.suspend !== 'function') return;
-    rt._resumeAfterLifecycle = true;
+    if (!ctx || ctx.state === 'closed') return;
+    if (ctx.state === 'running') rt._contextEverRan = true;
+    if (rt._contextEverRan) rt._resumeAfterLifecycle = true;
+    if (ctx.state !== 'running' || typeof ctx.suspend !== 'function') return;
     if (rt._lifecycleSuspendPromise) return;
     let result;
     try { result = ctx.suspend(); } catch (_) { return; }
@@ -867,29 +945,46 @@ export const audio = {
   _resumeAudioContext(allowAutoplayResume) {
     const rt = this.rt, ctx = rt && rt.ctx;
     if (!ctx || rt._lifecycleSuspended || ctx.state === 'closed') return null;
+    if (rt._resumePromise) return rt._resumePromise;
     if (ctx.state === 'running') {
+      rt._contextEverRan = true;
       rt._resumeAfterLifecycle = false;
       rt._lastWallTime = undefined;
+      this._resumeMusicSchedulers();
       this._startFrameLoop();
       return null;
     }
-    if (ctx.state !== 'suspended' || (!allowAutoplayResume && !rt._resumeAfterLifecycle)
+    const resumable = ctx.state === 'suspended' || ctx.state === 'interrupted';
+    if (!resumable || (!allowAutoplayResume && !rt._resumeAfterLifecycle)
       || typeof ctx.resume !== 'function') return null;
-    if (rt._resumePromise) return rt._resumePromise;
+
+    // Install a guard before invoking resume(): some implementations expose `running` or dispatch
+    // statechange synchronously while device acquisition is still pending.
+    const placeholder = Promise.resolve();
+    rt._resumePromise = placeholder;
     let result;
-    try { result = ctx.resume(); } catch (_) { return null; }
+    try {
+      result = ctx.resume();
+    } catch (_) {
+      if (rt._resumePromise === placeholder) rt._resumePromise = null;
+      return null;
+    }
     const pending = Promise.resolve(result)
-      .catch(() => {})
       .then(() => {
         if (rt._lifecycleSuspended) {
           this._suspendRunningContext();
           return;
         }
         if (ctx.state === 'running') {
+          rt._contextEverRan = true;
           rt._resumeAfterLifecycle = false;
           rt._lastWallTime = undefined;
+          this._resumeMusicSchedulers();
           this._startFrameLoop();
         }
+      }, () => {
+        // Preserve lifecycle-owned resume intent. A later gesture or context statechange can retry
+        // without mistaking a failed device acquisition for a completed resume.
       })
       .finally(() => {
         if (rt._resumePromise === pending) rt._resumePromise = null;
@@ -902,6 +997,7 @@ export const audio = {
     const rt = this.rt;
     if (!rt || rt._lifecycleSuspended) return null;
     if (rt.ctx) {
+      if (!rt._contextStateChangeHandler) this._bindContextState(rt.ctx);
       this._resumeAudioContext(true);
       return rt.ctx;
     }
@@ -967,6 +1063,8 @@ export const audio = {
     // sim:pause may have fired before AudioContext existed (main menu at boot).
     if (!rt._paused) this._ensureContinuousSources();
     this._buildMusic();
+    this._bindContextState(ctx);
+    if (ctx.state !== 'running') this._pauseMusicSchedulers();
     if (rt._paused) this._onPause(true);
     this._resumeAudioContext(true);
     return ctx;
@@ -1813,7 +1911,8 @@ export const audio = {
 
     // ---- Sequencer state ----
     const seq = {
-      running: true,
+      active: true,
+      destroyed: false,
       timerId: 0,
       step: 0,
       barBeat: 0,
@@ -1833,7 +1932,8 @@ export const audio = {
     const self = this;
 
     function scheduleNotes() {
-      if (!seq.running) return;
+      seq.timerId = 0;
+      if (!seq.active || seq.destroyed) return;
       // Schedule notes up to 100ms ahead for glitch-free timing
       while (seq.nextNoteTime < ctx.currentTime + 0.1) {
         const t = seq.nextNoteTime;
@@ -1856,9 +1956,24 @@ export const audio = {
 
     const stemObj = {
       nodes, lp, delay, delayFb,
+      pauseScheduler() {
+        if (seq.destroyed || !seq.active) return;
+        seq.active = false;
+        if (seq.timerId) clearTimeout(seq.timerId);
+        seq.timerId = 0;
+      },
+      resumeScheduler() {
+        if (seq.destroyed || seq.active) return;
+        seq.active = true;
+        seq.nextNoteTime = Math.max(seq.nextNoteTime, ctx.currentTime + 0.1);
+        scheduleNotes();
+      },
       stop() {
-        seq.running = false;
-        clearTimeout(seq.timerId);
+        if (seq.destroyed) return;
+        seq.destroyed = true;
+        seq.active = false;
+        if (seq.timerId) clearTimeout(seq.timerId);
+        seq.timerId = 0;
         for (const n of nodes) { try { n.stop(); } catch (_) {} try { n.disconnect(); } catch (_) {} }
         if (delay) { try { delay.disconnect(); } catch (_) {} }
         if (delayFb) { try { delayFb.disconnect(); } catch (_) {} }
