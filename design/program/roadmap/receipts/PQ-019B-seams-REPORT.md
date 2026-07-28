@@ -3,7 +3,7 @@ packetId: PQ-019
 leafId: PQ-019.owner-seams
 acceptance: focused_green
 disposition: PASS
-candidateCommit: 87c1b260
+candidateCommit: 87c1b260775e70730e490e0720bf1fd044684f99
 -->
 
 # PQ-019B — pure outcome arbiter and four owner seams
