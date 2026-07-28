@@ -78,6 +78,7 @@ const CORE_SECTORS = [
   {
     id: 'sector_ceres_belt', name: 'Ceres Belt', tier: 1, security: 0.72, charted: true,
     factionId: 'faction_dmc', position: { x: -3, y: 2 }, worldRadius: 4200,
+    industries: { mining: true, refinery: true },
     palette: SECTOR_PALETTE_CLASSES.belt,
     trafficPerMin: 10, enemyDensity: 0.18, enemyLevel: [2, 4],
     neighbors: ['sector_helios_prime', 'sector_tethys_junction', 'sector_pallas_drift'],
@@ -96,6 +97,12 @@ const CORE_SECTORS = [
     pois: [
       { id: 'poi_driller', type: 'derelict', name: 'Abandoned Driller' },
       { id: 'poi_survey',  type: 'cache',    name: 'Survey Cache' },
+      {
+        id: 'poi_ceres_throughline',
+        type: 'beacon',
+        name: 'Throughline Weigh Beacon',
+        factionId: 'faction_dmc',
+      },
       {
         id: 'world_site_wreck_cathedral', type: 'wreck', name: 'Wreck Cathedral',
         anchor: CERES_WRECK_CATHEDRAL_LOCAL_POS,

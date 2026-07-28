@@ -97,7 +97,7 @@ const CORE_SECTOR_ZONES = {
   sector_ceres_belt: [
     { id: 'zone_ceres_belt', name: 'Ceres Mining Belt', type: 'mining_belt', factionId: 'faction_dmc',
       reason: 'The richest metallic seams in the core, worked under Drift Miners Collective charter.',
-      center: { x: 300, z: -300 }, radius: 1100 },
+      center: { x: 500, z: -700 }, radius: 850 },
     { id: 'zone_ceres_refinery', name: 'Ceres Refinery Approach', type: 'refinery_approach', factionId: 'faction_dmc',
       reason: 'Ore in, alloys out — a light Collective watch keeps the refinery lane open.',
       center: { x: -1100, z: 620 }, radius: 720, presence: P.patrol([1, 2]) },
