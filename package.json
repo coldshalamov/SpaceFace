@@ -275,6 +275,7 @@
     "check:departure-prompts": "node scripts/check-departure-check-prompts.mjs",
     "check:first-dock-handoff": "node scripts/check-first-dock-handoff.mjs",
     "check:station-shell": "node scripts/check-station-shell.mjs",
+    "check:pq021-ledger": "node --test test/pq021-ledger-natural-earning.test.mjs test/pq021-ledger-route-manifest.test.mjs && node scripts/check-pq021-ledger-hosts.mjs && node scripts/check-pq021-ledger-keyboard-route.mjs",
     "check:station-hub-classes": "node scripts/check-station-hub-classes.mjs",
     "check:station-mission-card-keyboard": "node scripts/check-station-mission-card-keyboard.mjs",
     "check:onboarding-live-status": "node scripts/check-onboarding-live-status.mjs",
