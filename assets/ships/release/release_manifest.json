@@ -344,20 +344,6 @@
       "contractNodeCount": 2
     },
     {
-      "id": "weapon_gatling",
-      "kind": "part:weapons",
-      "source": "assets/ships/parts/weapons/weapon_gatling.glb",
-      "release": "assets/ships/release/parts/weapons/weapon_gatling.glb",
-      "sourceSha256": "402bc2326bd9031c3eb95d0d97279a4732106b8f5cc41dff7320388b69c5781a",
-      "releaseSha256": "393233cf8b05cf33a18744b4c607ed01b95af344b5af9040c3a165278cdccd8e",
-      "sourceBytes": 4239796,
-      "releaseBytes": 4476168,
-      "textures": 4,
-      "ktx2Textures": 4,
-      "meshoptBufferViews": 36,
-      "contractNodeCount": 3
-    },
-    {
       "id": "weapon_railgun",
       "kind": "part:weapons",
       "source": "assets/ships/parts/weapons/weapon_railgun.glb",
@@ -1168,6 +1154,20 @@
       "ktx2Textures": 26,
       "meshoptBufferViews": 97,
       "contractNodeCount": 30
+    },
+    {
+      "id": "weapon_gatling",
+      "kind": "part:weapons",
+      "source": "assets/ships/parts/weapons/weapon_gatling.glb",
+      "release": "assets/ships/release/parts/weapons/weapon_gatling.glb",
+      "sourceSha256": "61910d390242f8ba9f586be92c53266a9d70a23320e48c37fc201310bb6a5b99",
+      "releaseSha256": "56fe0abe8bf5251d81fb288fe29fb1dab0f0f2b64005c23722714d92fa45f679",
+      "sourceBytes": 6530340,
+      "releaseBytes": 5711308,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 36,
+      "contractNodeCount": 3
     }
   ]
 }

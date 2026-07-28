@@ -1390,13 +1390,13 @@
       "priority": "P1",
       "file": "weapons/weapon_gatling.glb",
       "tris": 3040,
-      "bytes": 4239796,
+      "bytes": 6530340,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — DET ammo/heat/rail/scuff + trim_sheet+wear_mask+SF_EdgeWear+AO bake+emissive heat+clearcoat (textures/weapon_gatling/). Skin: belt-fed Fringe rapid-fire, heat disc, cartridge scuff, BELT barrel marking. 3680 tris / blender_mcp.",
+      "note": "PRO Full Finish 2026-07-06 — DET ammo/heat/rail/scuff + trim_sheet+wear_mask+SF_EdgeWear+AO bake+emissive heat+clearcoat (textures/weapon_gatling/). Skin: belt-fed Fringe rapid-fire, heat disc, cartridge scuff, BELT barrel marking. 3680 tris / blender_mcp. Texture-role correction 2026-07-27: trim and painted atlases retain color roles; OpenGL normals are derived from their actual surface detail; Mechanical and Accent use explicit shared ORM bindings.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
