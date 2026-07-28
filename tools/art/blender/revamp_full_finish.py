@@ -694,6 +694,14 @@ def _export_context_override():
     return None
 
 
+def export_slot(part_id: str) -> str:
+    if part_id.startswith('hull_'):
+        return 'hull'
+    if part_id.startswith('place_'):
+        return 'place'
+    raise ValueError(f'unsupported full-finish export slot for {part_id}')
+
+
 def do_export(part_id: str) -> dict:
     export_script = os.path.join(ROOT, 'tools', 'blender', 'spaceface_export.py')
     tmp = os.path.join(ROOT, 'assets', 'ships', 'parts', 'blender', f'{part_id}_export_tmp.glb')
@@ -705,7 +713,7 @@ def do_export(part_id: str) -> dict:
         'kind': 'part',
         'id': part_id,
         'assetId': part_id,
-        'slot': 'place',
+        'slot': export_slot(part_id),
         'tri_budget': 15000,
         'min_hull_tris': 0,
         'required_maps': list(mod.REQUIRED_MAPS),

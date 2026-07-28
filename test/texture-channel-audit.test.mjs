@@ -20,7 +20,7 @@ async function png(width, height, pixelAt) {
   return sharp(data, { raw: { width, height, channels: 4 } }).png().toBuffer();
 }
 
-function fixtureDocument(images, material) {
+function fixtureDocument(images, material, policiesByImage = {}) {
   const chunks = [];
   const bufferViews = [];
   let byteOffset = 0;
@@ -37,6 +37,9 @@ function fixtureDocument(images, material) {
         name: `fixture_${index}`,
         bufferView: index,
         mimeType: 'image/png',
+        ...(policiesByImage[index]
+          ? { extras: { spacefaceTexturePolicy: policiesByImage[index] } }
+          : {}),
       })),
       textures: images.map((_, index) => ({ source: index })),
       materials: [material],
@@ -62,6 +65,70 @@ test('reports a near-flat tangent-space normal and flat ORM channels as advisori
   assert.equal(report.summary.errors, 0);
   assert.ok(report.findings.some((finding) => finding.code === 'near-flat-normal'));
   assert.ok(report.findings.some((finding) => finding.code === 'flat-orm'));
+});
+
+test('reports declared neutral normal and neutral-AO material-class maps as info', async () => {
+  const base = await png(4, 4, (x, y) => [30 + x * 20, 40 + y * 20, 50 + (x + y) * 8]);
+  const normal = await png(4, 4, () => [128, 128, 255]);
+  const orm = await png(4, 4, () => [255, 180, 12]);
+  const fixture = fixtureDocument(
+    [base, normal, orm],
+    {
+      name: 'Material_Hull',
+      pbrMetallicRoughness: {
+        baseColorTexture: { index: 0 },
+        metallicRoughnessTexture: { index: 2 },
+      },
+      normalTexture: { index: 1 },
+      occlusionTexture: { index: 2 },
+    },
+    {
+      1: ['neutral-normal-no-authored-height'],
+      2: ['neutral-ao-constant-material-class'],
+    },
+  );
+
+  const report = await auditEmbeddedTextureChannels(fixture, 'declared-neutral-fixture');
+  assert.equal(report.summary.errors, 0);
+  assert.equal(
+    report.findings.some((finding) => finding.severity === 'warning'
+      && ['near-flat-normal', 'flat-orm'].includes(finding.code)),
+    false,
+  );
+  assert.ok(report.findings.some((finding) => finding.severity === 'info'
+    && finding.code === 'declared-neutral-normal'
+    && finding.policy === 'neutral-normal-no-authored-height'));
+  assert.ok(report.findings.some((finding) => finding.severity === 'info'
+    && finding.code === 'declared-neutral-orm'
+    && finding.policy === 'neutral-ao-constant-material-class'));
+});
+
+test('a policy label cannot suppress a flat map that does not match its declared neutral data', async () => {
+  const base = await png(4, 4, (x, y) => [30 + x * 20, 40 + y * 20, 50 + (x + y) * 8]);
+  const invalidNormal = await png(4, 4, () => [0, 0, 0]);
+  const blackOrm = await png(4, 4, () => [0, 180, 12]);
+  const fixture = fixtureDocument(
+    [base, invalidNormal, blackOrm],
+    {
+      name: 'Material_Hull',
+      pbrMetallicRoughness: {
+        baseColorTexture: { index: 0 },
+        metallicRoughnessTexture: { index: 2 },
+      },
+      normalTexture: { index: 1 },
+      occlusionTexture: { index: 2 },
+    },
+    {
+      1: ['neutral-normal-no-authored-height'],
+      2: ['neutral-ao-constant-material-class'],
+    },
+  );
+
+  const report = await auditEmbeddedTextureChannels(fixture, 'misdeclared-neutral-fixture');
+  assert.ok(report.findings.some((finding) => finding.severity === 'warning'
+    && finding.code === 'near-flat-normal'));
+  assert.ok(report.findings.some((finding) => finding.severity === 'warning'
+    && finding.code === 'flat-orm'));
 });
 
 test('detects identical bytes occupying incompatible color and data roles', async () => {
