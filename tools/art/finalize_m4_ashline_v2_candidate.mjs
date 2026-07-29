@@ -10,10 +10,17 @@
  *   node tools/art/finalize_m4_ashline_v2_candidate.mjs
  *   node tools/art/finalize_m4_ashline_v2_candidate.mjs dart
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash } from 'node:crypto';
 
 import { NodeIO, PropertyType } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -27,12 +34,36 @@ import {
   buildAshlineEvidenceEpoch,
   validateAshlineEvidenceEpoch,
 } from './lib/ashlineEvidenceEpoch.mjs';
+import {
+  assertRigTextureContractPreserved,
+  assembleAshlineFinalizationTransaction,
+  buildAshlineEpochInputGuards,
+  buildCurrentFinalizedRows,
+  canonicalizeEvidenceEpoch,
+  fileSnapshot,
+  inspectGlbBytes,
+  inspectKtx2TextureGraph,
+  inspectRigAuthoredTextureContract,
+  inspectRigCompressedTextureContract,
+  planAshlineEvidenceRefresh,
+  reconcileAshlineBuildSummary,
+  reconcileFinalizeReport,
+  RIG_AUTHORED_TEXTURE_SIZE,
+  selectEligibleArtifactsForEpoch,
+  validateEvidenceEpochAgainstFinalized,
+} from './lib/ashlineFinalizeWorkflow.mjs';
 import { publishFileSetTransaction } from './lib/multiFileTransaction.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const FAMILY = resolve(ROOT, 'assets/ships/m4_ashline_v2');
 const PACKET = 'M4-ASHLINE-SOURCE-FAMILY-V2-001';
 const TEXTURE_SIZE = 1024;
+const ISOLATION = Object.freeze({
+  defaultPlayWired: false,
+  partsManifestTouched: false,
+  releasePartsTouched: false,
+  k0HeliosUntouched: true,
+});
 
 const SHIPS = Object.freeze({
   dart: Object.freeze({
@@ -59,9 +90,12 @@ const EVIDENCE_TOOL_PATHS = Object.freeze([
   'tools/blender/build_m4_ashline_v2.py',
   'tools/art/lib/ashlineSurfaceMaps.mjs',
   'tools/art/lib/ashlineEvidenceEpoch.mjs',
+  'tools/art/lib/ashlineFinalizeWorkflow.mjs',
+  'tools/art/lib/multiFileTransaction.mjs',
   'tools/art/finalize_m4_ashline_v2_candidate.mjs',
   'tools/blender/render_m4_ashline_material_truth.py',
   'tools/blender/render_m4_ashline_lode_material_truth.py',
+  'tools/blender/render_m4_ashline_rig_material_truth.py',
 ]);
 
 const LEGACY_RENDER_NAMES = Object.freeze([
@@ -87,12 +121,6 @@ const LEGACY_ARTIFACTS = Object.freeze([
   'assets/ships/m4_ashline_v2/evidence/family/surface_review_lode.png',
   'assets/ships/m4_ashline_v2/evidence/family/surface_review_rig.png',
 ]);
-
-function sha256(path) {
-  const h = createHash('sha256');
-  h.update(readFileSync(path));
-  return h.digest('hex').toUpperCase();
-}
 
 function sourcePath(id) {
   return resolve(FAMILY, 'source/wholeships', `${id}.glb`);
@@ -156,10 +184,16 @@ function splitIncompatibleTextureSlots(document) {
 }
 
 async function prepareSourceContract(abs, spec, io, shipKey) {
-  const document = await io.read(abs);
+  const originalBytes = readFileSync(abs);
+  const rigTextureContract = shipKey === 'rig'
+    ? inspectRigAuthoredTextureContract(originalBytes, `${spec.id} builder source`)
+    : null;
+  const document = await io.readBinary(originalBytes);
   const root = document.getRoot();
   normalizeContractNodeTags(root);
-  applyContractTextures(document, root, spec, shipKey);
+  if (shipKey !== 'rig') {
+    applyContractTextures(document, root, spec, shipKey);
+  }
   await document.transform(prune({
     propertyTypes: [PropertyType.TEXTURE],
     keepSolidTextures: true,
@@ -168,7 +202,8 @@ async function prepareSourceContract(abs, spec, io, shipKey) {
   const asset = root.getAsset();
   asset.generator = stampGeneratorOnce(asset.generator);
   const extras = { ...(asset.extras || {}) };
-  extras.textureSize = TEXTURE_SIZE;
+  const textureSize = shipKey === 'rig' ? RIG_AUTHORED_TEXTURE_SIZE : TEXTURE_SIZE;
+  extras.textureSize = textureSize;
   extras.spacefaceAsset = {
     ...(extras.spacefaceAsset || {}),
     assetId: spec.assetId,
@@ -177,25 +212,19 @@ async function prepareSourceContract(abs, spec, io, shipKey) {
     role: spec.role,
     packet: PACKET,
     textureCompression: 'PNG-source',
-    textureResolution: `${TEXTURE_SIZE}x${TEXTURE_SIZE}`,
+    textureResolution: `${textureSize}x${textureSize}`,
     surfaceTreatment: 'ashline-v2-service-history-2026-07-27',
   };
   asset.extras = extras;
-  const tmp = `${abs}.source.${process.pid}.${Date.now()}.glb`;
-  await io.write(tmp, document);
-  for (let attempt = 0; attempt < 12; attempt++) {
-    try {
-      if (existsSync(abs)) unlinkSync(abs);
-      renameSync(tmp, abs);
-      return;
-    } catch (error) {
-      if (attempt === 11) {
-        try { if (existsSync(tmp)) unlinkSync(tmp); } catch { /* ignore */ }
-        throw error;
-      }
-      await new Promise((resolveWait) => setTimeout(resolveWait, 80 * (attempt + 1)));
-    }
+  const sourceBytes = Buffer.from(await io.writeBinary(document));
+  if (rigTextureContract) {
+    const finalizedRigTextureContract = inspectRigAuthoredTextureContract(
+      sourceBytes,
+      `${spec.id} finalized source`,
+    );
+    assertRigTextureContractPreserved(rigTextureContract, finalizedRigTextureContract);
   }
+  return { sourceBytes, rigTextureContract };
 }
 
 function normalizeContractNodeTags(root) {
@@ -280,47 +309,6 @@ function countTextures(document) {
   return document.getRoot().listTextures().length;
 }
 
-function inspectGlbRaw(abs) {
-  const buf = readFileSync(abs);
-  if (buf.toString('utf8', 0, 4) !== 'glTF') throw new Error(`not GLB: ${abs}`);
-  let off = 12;
-  let json = null;
-  while (off + 8 <= buf.length) {
-    const len = buf.readUInt32LE(off);
-    const type = buf.readUInt32LE(off + 4);
-    off += 8;
-    if (type === 0x4e4f534a) {
-      json = JSON.parse(buf.subarray(off, off + len).toString('utf8').replace(/\0+$/, '').trim());
-      break;
-    }
-    off += len;
-  }
-  if (!json) throw new Error(`no JSON chunk: ${abs}`);
-  const images = json.images || [];
-  const textures = json.textures || [];
-  const bufferViews = json.bufferViews || [];
-  let ktx2Count = 0;
-  for (const img of images) {
-    const mime = (img.mimeType || '').toLowerCase();
-    if (mime.includes('ktx') || mime.includes('basis')) ktx2Count += 1;
-  }
-  const meshoptViews = bufferViews.filter(
-    (bv) => bv.extensions && bv.extensions.EXT_meshopt_compression,
-  ).length;
-  const extensionsUsed = json.extensionsUsed || [];
-  return {
-    imageCount: images.length,
-    textureCount: textures.length,
-    ktx2ImageCount: ktx2Count,
-    meshoptBufferViewCount: meshoptViews,
-    extensionsUsed,
-    hasMeshoptExt: extensionsUsed.includes('EXT_meshopt_compression'),
-    hasBasisuExt: extensionsUsed.includes('KHR_texture_basisu'),
-    nodeNames: (json.nodes || []).map((n) => n.name).filter(Boolean),
-    materials: (json.materials || []).map((m) => m.name).filter(Boolean),
-  };
-}
-
 function stampReleaseMeta(document, spec, sourceTextureCount, proof, sourceSf = {}) {
   const root = document.getRoot();
   const asset = root.getAsset();
@@ -369,37 +357,77 @@ function stampReleaseMeta(document, spec, sourceTextureCount, proof, sourceSf = 
   }
 }
 
-async function finalizeOne(key, spec, io) {
-  const src = sourcePath(spec.id);
-  const dst = candidatePath(spec.id);
+function validateCandidateContract(candidateBytes, spec, sourceTextureCount, shipKey) {
+  const releaseRaw = inspectGlbBytes(candidateBytes, `${spec.id} release candidate`);
+  for (const need of [
+    'SOCKET_Weapon_Front',
+    'SOCKET_Mining_Front',
+    'SOCKET_Engine_Main',
+    'SOCKET_Trail_Main',
+    'SOCKET_Utility_Dorsal',
+    'SOCKET_Cargo_Ventral',
+    'SOCKET_Camera_Focus',
+    'SOCKET_RCS_Port',
+    'SOCKET_RCS_Starboard',
+  ]) {
+    if (!releaseRaw.nodeNames.includes(need)) {
+      throw new Error(`${spec.id}: missing contract node after finalize: ${need}`);
+    }
+  }
+  const collisionNodes = releaseRaw.nodeNames.filter((name) => name.startsWith('COLLISION_HULL_'));
+  if (collisionNodes.length < 3) {
+    throw new Error(
+      `${spec.id}: compound collision helpers dropped after finalize: ${collisionNodes.length}/3`,
+    );
+  }
+  if (!releaseRaw.hasMeshoptExt || releaseRaw.meshoptBufferViewCount < 1) {
+    throw new Error(
+      `${spec.id}: EXT_meshopt_compression not present after finalize `
+      + `(views=${releaseRaw.meshoptBufferViewCount}, `
+      + `used=${JSON.stringify(releaseRaw.extensionsUsed)})`,
+    );
+  }
+  if (sourceTextureCount > 0) {
+    if (releaseRaw.textureCount < sourceTextureCount) {
+      throw new Error(
+        `${spec.id}: texture count dropped ${sourceTextureCount} → ${releaseRaw.textureCount}`,
+      );
+    }
+    if (releaseRaw.ktx2ImageCount !== releaseRaw.imageCount || releaseRaw.imageCount < 1) {
+      throw new Error(
+        `${spec.id}: not all release images are KTX2 `
+        + `(ktx2=${releaseRaw.ktx2ImageCount}/${releaseRaw.imageCount})`,
+      );
+    }
+    if (shipKey === 'rig') {
+      inspectRigCompressedTextureContract(candidateBytes, `${spec.id} release candidate`);
+    } else {
+      inspectKtx2TextureGraph(candidateBytes, `${spec.id} release candidate`, {
+        expectedWidth: TEXTURE_SIZE,
+      });
+    }
+  }
+  return releaseRaw;
+}
+
+async function buildFinalizedPair(key, spec, io, {
+  sourceFile = sourcePath(spec.id),
+  candidateFile = candidatePath(spec.id),
+} = {}) {
+  const src = resolve(sourceFile);
+  const dst = resolve(candidateFile);
   if (!existsSync(src)) {
     throw new Error(`missing source GLB: ${src}`);
   }
-  await prepareSourceContract(src, spec, io, key);
-  mkdirSync(dirname(dst), { recursive: true });
+  const sourceSnapshot = fileSnapshot(src);
+  const candidateSnapshot = existsSync(dst) ? fileSnapshot(dst) : null;
+  const prepared = await prepareSourceContract(src, spec, io, key);
+  const sourceBytes = prepared.sourceBytes;
+  const sourceRaw = inspectGlbBytes(sourceBytes, `${spec.id} finalized source`);
+  const sourceTextureCount = sourceRaw.textureCount;
+  const sourceSf = sourceRaw.json?.asset?.extras?.spacefaceAsset || {};
 
-  const sourceRaw = inspectGlbRaw(src);
-  const sourceTextureCount = sourceRaw.textureCount || sourceRaw.imageCount;
-  // Capture float-space axis/collision stamps before transforms (quantize destroys accessor AABB)
-  const sourceDocJson = (() => {
-    try {
-      const buf = readFileSync(src);
-      let off = 12;
-      while (off + 8 <= buf.length) {
-        const len = buf.readUInt32LE(off);
-        const type = buf.readUInt32LE(off + 4);
-        off += 8;
-        if (type === 0x4e4f534a) {
-          return JSON.parse(buf.subarray(off, off + len).toString('utf8').replace(/\0+$/, '').trim());
-        }
-        off += len;
-      }
-    } catch { /* ignore */ }
-    return null;
-  })();
-  const sourceSf = sourceDocJson?.asset?.extras?.spacefaceAsset || {};
-
-  const document = await io.read(src);
+  const document = await io.readBinary(sourceBytes);
   markContractNodes(document, sourceSf.collisionBounds || null);
   splitIncompatibleTextureSlots(document);
 
@@ -475,80 +503,17 @@ async function finalizeOne(key, spec, io) {
     ktx2ImageCount: 0,
     textureCount: docTextureCount,
   };
-  // Write via temp + rename to avoid Windows file-lock UNKNOWN errors on overwrite.
-  async function writeAtomic(documentToWrite, targetPath) {
-    const tmp = `${targetPath}.tmp.${process.pid}.${Date.now()}.glb`;
-    await io.write(tmp, documentToWrite);
-    for (let attempt = 0; attempt < 12; attempt++) {
-      try {
-        if (existsSync(targetPath)) {
-          try { unlinkSync(targetPath); } catch { /* retry */ }
-        }
-        renameSync(tmp, targetPath);
-        return;
-      } catch (err) {
-        if (attempt === 11) {
-          try { if (existsSync(tmp)) unlinkSync(tmp); } catch { /* ignore */ }
-          throw err;
-        }
-        await new Promise((r) => setTimeout(r, 80 * (attempt + 1)));
-      }
-    }
-  }
-
   stampReleaseMeta(document, spec, sourceTextureCount, proofStub, sourceSf);
-  await writeAtomic(document, dst);
-
-  if (!existsSync(dst) || statSync(dst).size < 100) {
-    throw new Error(`finalize write failed for ${spec.id}: ${dst}`);
-  }
-
-  const releaseRaw = inspectGlbRaw(dst);
-
-  // Hard contract: sockets + collision must survive
-  for (const need of [
-    'SOCKET_Weapon_Front',
-    'SOCKET_Mining_Front',
-    'SOCKET_Engine_Main',
-    'SOCKET_Trail_Main',
-    'SOCKET_Utility_Dorsal',
-    'SOCKET_Cargo_Ventral',
-    'SOCKET_Camera_Focus',
-    'SOCKET_RCS_Port',
-    'SOCKET_RCS_Starboard',
-  ]) {
-    if (!releaseRaw.nodeNames.includes(need)) {
-      throw new Error(`${spec.id}: missing contract node after finalize: ${need}`);
-    }
-  }
-  const collisionNodes = releaseRaw.nodeNames.filter((name) => name.startsWith('COLLISION_HULL_'));
-  if (collisionNodes.length < 3) {
-    throw new Error(`${spec.id}: compound collision helpers dropped after finalize: ${collisionNodes.length}/3`);
-  }
-
-  if (!releaseRaw.hasMeshoptExt || releaseRaw.meshoptBufferViewCount < 1) {
-    throw new Error(
-      `${spec.id}: EXT_meshopt_compression not present after finalize `
-      + `(views=${releaseRaw.meshoptBufferViewCount}, used=${JSON.stringify(releaseRaw.extensionsUsed)})`,
-    );
-  }
-
-  if (sourceTextureCount > 0) {
-    if (releaseRaw.textureCount < sourceTextureCount) {
-      throw new Error(
-        `${spec.id}: texture count dropped ${sourceTextureCount} → ${releaseRaw.textureCount}`,
-      );
-    }
-    if (releaseRaw.ktx2ImageCount !== releaseRaw.imageCount || releaseRaw.imageCount < 1) {
-      throw new Error(
-        `${spec.id}: not all release images are KTX2 `
-        + `(ktx2=${releaseRaw.ktx2ImageCount}/${releaseRaw.imageCount})`,
-      );
-    }
-  }
+  const provisionalCandidateBytes = Buffer.from(await io.writeBinary(document));
+  const releaseRaw = validateCandidateContract(
+    provisionalCandidateBytes,
+    spec,
+    sourceTextureCount,
+    key,
+  );
 
   // Re-stamp with proven raw metrics only (no unprovable claims)
-  const document2 = await io.read(dst);
+  const document2 = await io.readBinary(provisionalCandidateBytes);
   stampReleaseMeta(document2, spec, sourceTextureCount, {
     meshoptApplied: true,
     ktx2Applied,
@@ -556,89 +521,154 @@ async function finalizeOne(key, spec, io) {
     ktx2ImageCount: releaseRaw.ktx2ImageCount,
     textureCount: releaseRaw.textureCount,
   }, sourceSf);
-  await writeAtomic(document2, dst);
-  const finalRaw = inspectGlbRaw(dst);
+  const candidateBytes = Buffer.from(await io.writeBinary(document2));
+  const finalRaw = validateCandidateContract(candidateBytes, spec, sourceTextureCount, key);
 
   return {
-    id: spec.id,
     key,
-    assetId: spec.assetId,
-    source: rel(src),
-    candidate: rel(dst),
-    sourceBytes: statSync(src).size,
-    candidateBytes: statSync(dst).size,
-    sourceSha256: sha256(src),
-    candidateSha256: sha256(dst),
+    sourceBytes: sourceBytes.length,
+    candidateBytes: candidateBytes.length,
     sourceTextureCount,
     releaseTextureCount: finalRaw.textureCount,
     releaseImageCount: finalRaw.imageCount,
     ktx2ImageCount: finalRaw.ktx2ImageCount,
     meshoptBufferViewCount: finalRaw.meshoptBufferViewCount,
-    extensionsUsed: finalRaw.extensionsUsed,
-    materials: finalRaw.materials,
-    meshopt: finalRaw.hasMeshoptExt ? 'EXT_meshopt_compression' : 'none',
-    ktx2: finalRaw.ktx2ImageCount > 0 ? 'KHR_texture_basisu/KTX2' : 'none',
+    files: [
+      {
+        path: src,
+        bytes: sourceBytes,
+        expectedCurrentSha256: sourceSnapshot.sha256,
+        validate: async (_stagedPath, bytes) => {
+          inspectGlbBytes(bytes, `${spec.id} staged source`);
+          if (prepared.rigTextureContract) {
+            const stagedContract = inspectRigAuthoredTextureContract(
+              bytes,
+              `${spec.id} staged source`,
+            );
+            assertRigTextureContractPreserved(prepared.rigTextureContract, stagedContract);
+          }
+        },
+      },
+      {
+        path: dst,
+        bytes: candidateBytes,
+        expectedCurrentSha256: candidateSnapshot?.sha256 ?? null,
+        validate: async (_stagedPath, bytes) => {
+          validateCandidateContract(bytes, spec, sourceTextureCount, key);
+        },
+      },
+    ],
   };
 }
 
-const evidenceOnly = process.argv.slice(2).includes('--evidence-only');
-if (evidenceOnly) {
-  console.error(
-    '[m4-finalize] --evidence-only is retired: the historical inputs are not bound '
-    + 'to the current source epoch. Use the versioned exact-source evidence renderer.',
-  );
-  process.exit(2);
+async function createFinalizerIo() {
+  await MeshoptEncoder.ready;
+  await MeshoptDecoder.ready;
+  return new NodeIO()
+    .registerExtensions(ALL_EXTENSIONS)
+    .registerDependencies({
+      'meshopt.encoder': MeshoptEncoder,
+      'meshopt.decoder': MeshoptDecoder,
+    });
 }
 
-function readJson(path) {
-  return JSON.parse(readFileSync(path, 'utf8'));
+export async function finalizeAshlinePairToMemory({
+  key,
+  spec,
+  sourceFile,
+  candidateFile,
+}) {
+  if (!key || !spec || !sourceFile || !candidateFile) {
+    throw new TypeError(
+      'finalizeAshlinePairToMemory requires key, spec, sourceFile, and candidateFile',
+    );
+  }
+  const io = await createFinalizerIo();
+  return buildFinalizedPair(key, spec, io, { sourceFile, candidateFile });
+}
+
+function readJsonSnapshot(path) {
+  const snapshot = fileSnapshot(path);
+  return {
+    value: JSON.parse(snapshot.bytes.toString('utf8')),
+    expectedCurrentSha256: snapshot.sha256,
+  };
 }
 
 function jsonBytes(value) {
   return Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
 }
 
-function receiptUpdates(results, evidenceEpoch) {
+function optionalInputSnapshot(path, kind) {
+  const absolutePath = resolve(ROOT, path);
+  return {
+    epochPath: path,
+    absolutePath,
+    expectedCurrentSha256: existsSync(absolutePath)
+      ? fileSnapshot(absolutePath).sha256
+      : null,
+    kind,
+  };
+}
+
+function diagnosticForShip(diagnostics, key) {
+  return diagnostics.find((diagnostic) => diagnostic.shipKey === key) || null;
+}
+
+function receiptUpdates(results, evidenceEpoch, diagnostics) {
   const updates = [];
   const byKey = new Map(results.map((row) => [row.key, row]));
   for (const [key, row] of byKey) {
     const base = resolve(FAMILY, 'evidence', key);
     const summaryPath = resolve(base, 'build_summary.json');
     const metricsPath = resolve(base, 'production_metrics.json');
+    const invalidation = diagnosticForShip(diagnostics, key);
     if (existsSync(summaryPath)) {
-      const summary = readJson(summaryPath);
-      summary.sourceSha256 = row.sourceSha256;
-      summary.sourceBytes = row.sourceBytes;
-      if (summary.materialTruth) {
-        summary.materialTruth.sourceSha256 = row.sourceSha256;
-      }
-      summary.evidenceEpoch = {
-        status: 'post-finalize-current',
-        epochDigest: evidenceEpoch.epochDigest,
-        visualEvidence: 'requires-current-versioned-render',
-      };
-      updates.push({ path: summaryPath, value: summary });
+      const summarySnapshot = readJsonSnapshot(summaryPath);
+      const summary = reconcileAshlineBuildSummary({
+        summary: summarySnapshot.value,
+        row,
+        evidenceEpoch,
+        invalidation,
+      });
+      updates.push({
+        path: summaryPath,
+        value: summary,
+        expectedCurrentSha256: summarySnapshot.expectedCurrentSha256,
+      });
     }
     if (existsSync(metricsPath)) {
-      const metrics = readJson(metricsPath);
+      const metricsSnapshot = readJsonSnapshot(metricsPath);
+      const metrics = metricsSnapshot.value;
       metrics.sha256_source = row.sourceSha256;
       metrics.evidenceEpoch = {
         status: 'post-finalize-current',
         epochDigest: evidenceEpoch.epochDigest,
-        renderEligibility: 'legacy-pre-surface-unbound',
+        renderEligibility: evidenceEpoch.currentAcceptance?.perShip?.[key] === true
+          ? 'current-exact-source-eligible'
+          : 'requires-complete-exact-source-rerender',
+        ...(invalidation ? {
+          exclusionReason: invalidation.reason,
+          requiredAction: invalidation.action,
+        } : {}),
       };
       if (metrics.report) {
         metrics.report.bytes = row.sourceBytes;
         metrics.report.sha256 = row.sourceSha256;
         metrics.report.evidenceScope = 'geometry-and-structure; visual evidence bound separately';
       }
-      updates.push({ path: metricsPath, value: metrics });
+      updates.push({
+        path: metricsPath,
+        value: metrics,
+        expectedCurrentSha256: metricsSnapshot.expectedCurrentSha256,
+      });
     }
   }
 
   const familyMetricsPath = resolve(FAMILY, 'evidence/family/family_metrics.json');
   if (existsSync(familyMetricsPath)) {
-    const familyMetrics = readJson(familyMetricsPath);
+    const familyMetricsSnapshot = readJsonSnapshot(familyMetricsPath);
+    const familyMetrics = familyMetricsSnapshot.value;
     for (const ship of familyMetrics.ships || []) {
       const row = byKey.get(ship.key);
       if (!row) continue;
@@ -647,91 +677,326 @@ function receiptUpdates(results, evidenceEpoch) {
       ship.evidenceEpoch = {
         status: 'post-finalize-current',
         epochDigest: evidenceEpoch.epochDigest,
+        ...(diagnosticForShip(diagnostics, ship.key) ? {
+          exclusionReason: diagnosticForShip(diagnostics, ship.key).reason,
+          requiredAction: diagnosticForShip(diagnostics, ship.key).action,
+        } : {}),
       };
     }
     familyMetrics.evidenceEpoch = {
       epochDigest: evidenceEpoch.epochDigest,
       historicalRendersEligible: false,
-      requiresCurrentVersionedRenders: true,
+      requiresCurrentVersionedRenders:
+        evidenceEpoch.currentAcceptance?.requiresCurrentRender === true,
     };
-    updates.push({ path: familyMetricsPath, value: familyMetrics });
+    updates.push({
+      path: familyMetricsPath,
+      value: familyMetrics,
+      expectedCurrentSha256: familyMetricsSnapshot.expectedCurrentSha256,
+    });
   }
   return updates;
 }
 
-async function publishEvidenceReceiptSet(finalizeReport, results, evidenceEpoch) {
+function evidenceReceiptFiles({
+  finalizeReport,
+  finalizeReportExpectedCurrentSha256,
+  results,
+  evidenceEpoch,
+  diagnostics,
+  requireLivePairMatch = false,
+}) {
   const updates = [
-    { path: evidencePath, value: finalizeReport },
-    ...receiptUpdates(results, evidenceEpoch),
+    {
+      path: evidencePath,
+      value: finalizeReport,
+      expectedCurrentSha256: finalizeReportExpectedCurrentSha256,
+    },
+    ...receiptUpdates(results, evidenceEpoch, diagnostics),
   ];
-  await publishFileSetTransaction({
-    files: updates.map(({ path, value }) => ({
-      path,
-      bytes: jsonBytes(value),
-      validate: async (_stagedPath, bytes) => {
-        const parsed = JSON.parse(bytes.toString('utf8'));
-        if (parsed.evidenceEpoch?.epochDigest !== evidenceEpoch.epochDigest) {
-          throw new Error(`receipt ${path} is not bound to ${evidenceEpoch.epochDigest}`);
+  return updates.map(({ path, value, expectedCurrentSha256 }) => ({
+    path,
+    bytes: jsonBytes(value),
+    expectedCurrentSha256,
+    validate: async (_stagedPath, bytes) => {
+      const parsed = JSON.parse(bytes.toString('utf8'));
+      if (parsed.evidenceEpoch?.epochDigest !== evidenceEpoch.epochDigest) {
+        throw new Error(`receipt ${path} is not bound to ${evidenceEpoch.epochDigest}`);
+      }
+      if (path === evidencePath) {
+        const finalizedByKey = new Map(
+          (parsed.finalized || []).map((row) => [row.key, row]),
+        );
+        for (const pair of evidenceEpoch.sourceCandidatePairs) {
+          const row = finalizedByKey.get(pair.key);
+          if (row?.sourceSha256 !== pair.sourceSha256
+              || row?.candidateSha256 !== pair.candidateSha256
+              || row?.sourceBytes !== pair.sourceBytes
+              || row?.candidateBytes !== pair.candidateBytes) {
+            throw new Error(`finalize report ${pair.key} row is not current`);
+          }
         }
-      },
-    })),
+        if (requireLivePairMatch) {
+          const liveRows = buildCurrentFinalizedRows({
+            root: ROOT,
+            family: FAMILY,
+            ships: SHIPS,
+          });
+          const liveValidation = validateEvidenceEpochAgainstFinalized(
+            evidenceEpoch,
+            liveRows,
+          );
+          if (!liveValidation.pass) {
+            throw new Error(
+              `live Ashline pair changed during refresh: `
+              + `${liveValidation.failures.join('; ')}`,
+            );
+          }
+        }
+      }
+    },
+  }));
+}
+
+async function publishEvidenceReceiptSet(options) {
+  const { guards = [], ...receiptOptions } = options;
+  await publishFileSetTransaction({
+    files: evidenceReceiptFiles(receiptOptions),
+    guards,
   });
 }
 
-async function currentEvidenceEpoch() {
-  let eligibleArtifacts = [];
-  const artifactReceiptPaths = [
-    resolve(FAMILY, 'evidence/material_truth_v2/eligible_artifacts.json'),
-    resolve(FAMILY, 'evidence/material_truth_v2/eligible_artifacts_lode.json'),
+function evidenceReceipts() {
+  const receiptPaths = [
+    {
+      shipKey: 'dart',
+      path: resolve(FAMILY, 'evidence/material_truth_v2/eligible_artifacts.json'),
+    },
+    {
+      shipKey: 'lode',
+      path: resolve(FAMILY, 'evidence/material_truth_v2/eligible_artifacts_lode.json'),
+    },
+    {
+      shipKey: 'rig',
+      path: resolve(FAMILY, 'evidence/material_truth_v2/eligible_artifacts_rig.json'),
+    },
   ];
-  for (const artifactReceiptPath of artifactReceiptPaths) {
-    if (!existsSync(artifactReceiptPath)) continue;
-    const artifactReceipt = readJson(artifactReceiptPath);
-    if (artifactReceipt.schema !== 'spaceface.ashlineMaterialTruthArtifacts.v1'
-        || !Array.isArray(artifactReceipt.artifacts)) {
-      throw new Error(`invalid Ashline material-truth artifact receipt: ${artifactReceiptPath}`);
+  const receipts = [];
+  const snapshots = [];
+  for (const { path, shipKey } of receiptPaths) {
+    if (existsSync(path)) {
+      const snapshot = readJsonSnapshot(path);
+      receipts.push({
+        path: rel(path),
+        absolutePath: path,
+        expectedCurrentSha256: snapshot.expectedCurrentSha256,
+        shipKey,
+        receipt: snapshot.value,
+      });
+      snapshots.push({
+        absolutePath: path,
+        expectedCurrentSha256: snapshot.expectedCurrentSha256,
+      });
+    } else {
+      snapshots.push({
+        absolutePath: path,
+        expectedCurrentSha256: null,
+      });
     }
-    eligibleArtifacts.push(...artifactReceipt.artifacts);
   }
-  const epoch = await buildAshlineEvidenceEpoch({
+  return { receipts, snapshots };
+}
+
+async function evidenceEpochForPairFamily({
+  pairFamily,
+  finalized,
+  selectedShipKeys = [],
+  outputShipKeys = [],
+}) {
+  const currentSourceSha256ByKey = new Map(
+    finalized.map((row) => [row.key, row.sourceSha256]),
+  );
+  const receiptInputs = evidenceReceipts();
+  const legacyInputs = LEGACY_ARTIFACTS.map((path) => (
+    optionalInputSnapshot(path, 'legacy-artifact')
+  ));
+  const selectedEvidence = selectEligibleArtifactsForEpoch({
+    receipts: receiptInputs.receipts,
+    selectedShipKeys,
+    currentSourceSha256ByKey,
+  });
+  const pairEpoch = await buildAshlineEvidenceEpoch({
     root: ROOT,
-    family: FAMILY,
+    family: pairFamily,
     ships: Object.entries(SHIPS).map(([key, value]) => ({ key, id: value.id })),
     toolPaths: EVIDENCE_TOOL_PATHS,
-    eligibleArtifacts,
-    legacyArtifacts: LEGACY_ARTIFACTS,
+    eligibleArtifacts: selectedEvidence.eligibleArtifacts,
+    legacyArtifacts: legacyInputs
+      .filter((input) => input.expectedCurrentSha256 !== null)
+      .map((input) => input.epochPath),
   });
-  const validation = await validateAshlineEvidenceEpoch(epoch, { root: ROOT });
+  const validation = await validateAshlineEvidenceEpoch(pairEpoch, { root: ROOT });
   if (!validation.pass) {
     throw new Error(`Ashline evidence epoch rejected: ${validation.failures.join('; ')}`);
   }
-  return epoch;
+  const evidenceEpoch = canonicalizeEvidenceEpoch(pairEpoch, finalized);
+  const prospectiveValidation = validateEvidenceEpochAgainstFinalized(
+    evidenceEpoch,
+    finalized,
+  );
+  if (!prospectiveValidation.pass) {
+    throw new Error(
+      `Ashline prospective epoch rejected: ${prospectiveValidation.failures.join('; ')}`,
+    );
+  }
+  const guards = buildAshlineEpochInputGuards({
+    root: ROOT,
+    evidenceEpoch,
+    receiptSnapshots: receiptInputs.snapshots,
+    additionalInputSnapshots: legacyInputs,
+    outputShipKeys,
+  });
+  return {
+    evidenceEpoch,
+    diagnostics: selectedEvidence.diagnostics,
+    guards,
+  };
+}
+
+async function currentEvidenceEpoch({
+  selectedShipKeys = Object.keys(SHIPS),
+  outputShipKeys = [],
+} = {}) {
+  const finalized = buildCurrentFinalizedRows({
+    root: ROOT,
+    family: FAMILY,
+    ships: SHIPS,
+  });
+  return evidenceEpochForPairFamily({
+    pairFamily: FAMILY,
+    finalized,
+    selectedShipKeys,
+    outputShipKeys,
+  });
+}
+
+async function prospectiveEvidenceEpoch({
+  finalized,
+  selectedShipKeys,
+  byteOverrides,
+}) {
+  const scratchRoot = mkdtempSync(resolve(tmpdir(), 'spaceface-ashline-finalize-'));
+  const scratchFamily = resolve(scratchRoot, 'm4_ashline_v2');
+  try {
+    for (const spec of Object.values(SHIPS)) {
+      for (const role of ['source', 'candidate']) {
+        const canonicalPath = role === 'source'
+          ? sourcePath(spec.id)
+          : candidatePath(spec.id);
+        const scratchPath = resolve(
+          scratchFamily,
+          role === 'source' ? 'source/wholeships' : 'release_candidates/wholeships',
+          `${spec.id}.glb`,
+        );
+        mkdirSync(dirname(scratchPath), { recursive: true });
+        writeFileSync(
+          scratchPath,
+          byteOverrides.get(canonicalPath) || readFileSync(canonicalPath),
+        );
+      }
+    }
+    return await evidenceEpochForPairFamily({
+      pairFamily: scratchFamily,
+      finalized,
+      selectedShipKeys,
+      outputShipKeys: selectedShipKeys,
+    });
+  } finally {
+    rmSync(scratchRoot, { recursive: true, force: true });
+  }
 }
 
 const evidencePath = resolve(FAMILY, 'evidence/family/finalize_report.json');
-const refreshEvidenceEpoch = process.argv.slice(2).includes('--refresh-evidence-epoch');
-if (refreshEvidenceEpoch) {
+
+async function main() {
+const rawArgs = process.argv.slice(2).map((arg) => arg.toLowerCase());
+const evidenceOnly = rawArgs.includes('--evidence-only');
+if (evidenceOnly) {
+  console.error(
+    '[m4-finalize] --evidence-only is retired: the historical inputs are not bound '
+    + 'to the current source epoch. Use the versioned exact-source evidence renderer.',
+  );
+  process.exit(2);
+}
+const refreshEvidenceEpoch = rawArgs.includes('--refresh-evidence-epoch');
+const dryRunRefreshEvidenceEpoch = rawArgs.includes('--dry-run-refresh-evidence-epoch');
+const unknownFlags = rawArgs.filter((arg) => (
+  arg.startsWith('--')
+  && arg !== '--refresh-evidence-epoch'
+  && arg !== '--dry-run-refresh-evidence-epoch'
+));
+if (unknownFlags.length > 0) {
+  console.error(`[m4-finalize] unknown option(s): ${unknownFlags.join(', ')}`);
+  process.exit(2);
+}
+if (refreshEvidenceEpoch && dryRunRefreshEvidenceEpoch) {
+  console.error('[m4-finalize] choose refresh or dry-run refresh, not both');
+  process.exit(2);
+}
+const selected = rawArgs.filter((arg) => !arg.startsWith('--'));
+if ((refreshEvidenceEpoch || dryRunRefreshEvidenceEpoch) && selected.length > 0) {
+  console.error('[m4-finalize] evidence refresh is family-wide and accepts no ship selection');
+  process.exit(2);
+}
+if (refreshEvidenceEpoch || dryRunRefreshEvidenceEpoch) {
   if (!existsSync(evidencePath)) {
     console.error('[m4-finalize] no finalize report exists to refresh');
     process.exit(2);
   }
-  const existing = readJson(evidencePath);
-  const evidenceEpoch = await currentEvidenceEpoch();
-  const out = {
-    ...existing,
-    schema: 'spaceface.m4AshlineSourceFamilyFinalize.v2',
-    evidenceEpoch,
-  };
-  await publishEvidenceReceiptSet(out, existing.finalized || [], evidenceEpoch);
+  const existing = readJsonSnapshot(evidencePath);
+  const currentEvidence = await currentEvidenceEpoch();
+  const refreshPlan = planAshlineEvidenceRefresh({
+    root: ROOT,
+    family: FAMILY,
+    ships: SHIPS,
+    existing: existing.value,
+    evidenceEpoch: currentEvidence.evidenceEpoch,
+    packet: PACKET,
+    isolation: ISOLATION,
+    evidenceDiagnostics: currentEvidence.diagnostics,
+  });
+  const { finalized, report: out } = refreshPlan;
+  if (dryRunRefreshEvidenceEpoch) {
+    console.log(JSON.stringify({
+      ...refreshPlan,
+      wouldPublish: [
+        rel(evidencePath),
+        ...receiptUpdates(
+          finalized,
+          currentEvidence.evidenceEpoch,
+          currentEvidence.diagnostics,
+        ).map(({ path }) => rel(path)),
+      ],
+    }, null, 2));
+    process.exit(0);
+  }
+  await publishEvidenceReceiptSet({
+    finalizeReport: out,
+    finalizeReportExpectedCurrentSha256: existing.expectedCurrentSha256,
+    results: finalized,
+    evidenceEpoch: currentEvidence.evidenceEpoch,
+    diagnostics: currentEvidence.diagnostics,
+    requireLivePairMatch: true,
+    guards: currentEvidence.guards,
+  });
   console.log(JSON.stringify({
     status: 'complete',
     mode: 'refresh-evidence-epoch',
-    epochDigest: evidenceEpoch.epochDigest,
+    epochDigest: currentEvidence.evidenceEpoch.epochDigest,
   }, null, 2));
   process.exit(0);
 }
 
-const selected = process.argv.slice(2).map((s) => s.toLowerCase());
 const keys = selected.length ? selected : Object.keys(SHIPS);
 for (const k of keys) {
   if (!SHIPS[k]) {
@@ -740,49 +1005,79 @@ for (const k of keys) {
   }
 }
 
-await MeshoptEncoder.ready;
-await MeshoptDecoder.ready;
+const io = await createFinalizerIo();
 
-const io = new NodeIO()
-  .registerExtensions(ALL_EXTENSIONS)
-  .registerDependencies({
-    'meshopt.encoder': MeshoptEncoder,
-    'meshopt.decoder': MeshoptDecoder,
-  });
-
-const results = [];
+const builds = [];
 for (const k of keys) {
-  const r = await finalizeOne(k, SHIPS[k], io);
-  results.push(r);
+  const r = await buildFinalizedPair(k, SHIPS[k], io);
+  builds.push(r);
+}
+
+const binaryFiles = builds.flatMap((build) => build.files);
+const byteOverrides = new Map(binaryFiles.map((file) => [resolve(file.path), file.bytes]));
+const finalized = buildCurrentFinalizedRows({
+  root: ROOT,
+  family: FAMILY,
+  ships: SHIPS,
+  byteOverrides,
+});
+const currentEvidence = await prospectiveEvidenceEpoch({
+  finalized,
+  selectedShipKeys: keys,
+  byteOverrides,
+});
+for (const diagnostic of currentEvidence.diagnostics) {
+  console.warn(
+    `[m4-finalize] ${diagnostic.shipKey} evidence excluded: ${diagnostic.reason}; `
+    + `${diagnostic.action}`,
+  );
+}
+const existing = existsSync(evidencePath)
+  ? readJsonSnapshot(evidencePath)
+  : { value: {}, expectedCurrentSha256: null };
+const out = reconcileFinalizeReport({
+  existing: existing.value,
+  finalized,
+  evidenceEpoch: currentEvidence.evidenceEpoch,
+  packet: PACKET,
+  isolation: ISOLATION,
+  evidenceDiagnostics: currentEvidence.diagnostics,
+});
+
+const receiptFiles = evidenceReceiptFiles({
+  finalizeReport: out,
+  finalizeReportExpectedCurrentSha256: existing.expectedCurrentSha256,
+  results: finalized,
+  evidenceEpoch: currentEvidence.evidenceEpoch,
+  diagnostics: currentEvidence.diagnostics,
+});
+
+await publishFileSetTransaction({
+  files: assembleAshlineFinalizationTransaction(binaryFiles, receiptFiles),
+  guards: currentEvidence.guards,
+});
+
+const publishedEpochValidation = await validateAshlineEvidenceEpoch(
+  currentEvidence.evidenceEpoch,
+  { root: ROOT },
+);
+if (!publishedEpochValidation.pass) {
+  throw new Error(
+    `published Ashline evidence epoch rejected: `
+    + `${publishedEpochValidation.failures.join('; ')}`,
+  );
+}
+for (const r of builds) {
   console.log(
-    `[m4-finalize] ${k}: ${r.sourceBytes} → ${r.candidateBytes} bytes `
+    `[m4-finalize] ${r.key}: ${r.sourceBytes} → ${r.candidateBytes} bytes `
     + `(meshoptViews=${r.meshoptBufferViewCount}, ktx2=${r.ktx2ImageCount}/${r.releaseImageCount}, `
     + `tex ${r.sourceTextureCount}→${r.releaseTextureCount})`,
   );
 }
-
-const evidenceEpoch = await currentEvidenceEpoch();
-const previousRows = existsSync(evidencePath)
-  ? readJson(evidencePath).finalized || []
-  : [];
-const finalizedByKey = new Map(previousRows.map((row) => [row.key, row]));
-for (const result of results) finalizedByKey.set(result.key, result);
-const finalized = Object.keys(SHIPS)
-  .map((key) => finalizedByKey.get(key))
-  .filter(Boolean);
-const out = {
-  schema: 'spaceface.m4AshlineSourceFamilyFinalize.v2',
-  packet: PACKET,
-  family: 'ashline_v2',
-  isolation: {
-    defaultPlayWired: false,
-    partsManifestTouched: false,
-    releasePartsTouched: false,
-    k0HeliosUntouched: true,
-  },
-  finalized,
-  evidenceEpoch,
-};
-
-await publishEvidenceReceiptSet(out, finalized, evidenceEpoch);
 console.log(JSON.stringify(out, null, 2));
+}
+
+const invokedPath = process.argv[1] ? resolve(process.argv[1]).toLowerCase() : null;
+if (invokedPath === fileURLToPath(import.meta.url).toLowerCase()) {
+  await main();
+}

@@ -7,6 +7,13 @@ import sharp from 'sharp';
 export const ASHLINE_EVIDENCE_EPOCH_SCHEMA = 'spaceface.ashlineEvidenceEpoch.v2';
 export const ASHLINE_ELIGIBLE_EVIDENCE_ROOT =
   'assets/ships/m4_ashline_v2/evidence/material_truth_v2/';
+export const ASHLINE_SHIP_KEYS = Object.freeze(['dart', 'lode', 'rig']);
+export const ASHLINE_ELIGIBLE_ARTIFACT_COUNTS = Object.freeze({
+  dart: 8,
+  lode: 10,
+  rig: 11,
+});
+export const ASHLINE_ELIGIBLE_ARTIFACT_TOTAL = 29;
 
 function stableStringify(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -25,6 +32,45 @@ export function sha256File(path) {
 
 function relativePath(root, path) {
   return path.replace(/\\/g, '/').replace(`${root.replace(/\\/g, '/')}/`, '');
+}
+
+function eligibleArtifactCounts(artifacts) {
+  const counts = Object.fromEntries(
+    Object.keys(ASHLINE_ELIGIBLE_ARTIFACT_COUNTS).map((key) => [key, 0]),
+  );
+  for (const artifact of artifacts) {
+    const scope = artifact.path
+      ?.slice(ASHLINE_ELIGIBLE_EVIDENCE_ROOT.length)
+      .split('/')[0];
+    if (Object.prototype.hasOwnProperty.call(counts, scope)) counts[scope]++;
+  }
+  return counts;
+}
+
+function currentAcceptancePerShip(sourceCandidatePairs, eligibleArtifacts) {
+  const counts = eligibleArtifactCounts(eligibleArtifacts);
+  return Object.fromEntries(sourceCandidatePairs.map((pair) => {
+    const expected = ASHLINE_ELIGIBLE_ARTIFACT_COUNTS[pair.key];
+    return [
+      pair.key,
+      Number.isInteger(expected) && counts[pair.key] === expected,
+    ];
+  }));
+}
+
+function validateExactPairKeySet(pairs, failures) {
+  const expected = new Set(ASHLINE_SHIP_KEYS);
+  const counts = new Map();
+  for (const pair of pairs) {
+    const key = pair?.key;
+    counts.set(key, (counts.get(key) || 0) + 1);
+    if (!expected.has(key)) failures.push(`pairs:unknown-key:${key || 'missing'}`);
+  }
+  for (const key of ASHLINE_SHIP_KEYS) {
+    const count = counts.get(key) || 0;
+    if (count === 0) failures.push(`pairs:missing-key:${key}`);
+    if (count > 1) failures.push(`pairs:duplicate-key:${key}:${count}`);
+  }
 }
 
 async function artifactReceipt(root, path, {
@@ -106,15 +152,10 @@ export async function buildAshlineEvidenceEpoch({
     }));
   }
   legacy.sort((left, right) => left.path.localeCompare(right.path));
-  const acceptedShipKeys = new Set(accepted.flatMap(
-    (artifact) => (artifact.inputBindings || []).map((binding) => binding.shipKey),
-  ));
-  const perShip = Object.fromEntries(sourceCandidatePairs.map((pair) => [
-    pair.key,
-    acceptedShipKeys.has(pair.key),
-  ]));
+  const perShip = currentAcceptancePerShip(sourceCandidatePairs, accepted);
   const familyVisualEvidenceEligible = sourceCandidatePairs.length > 0
-    && sourceCandidatePairs.every((pair) => perShip[pair.key] === true);
+    && sourceCandidatePairs.every((pair) => perShip[pair.key] === true)
+    && accepted.length === ASHLINE_ELIGIBLE_ARTIFACT_TOTAL;
 
   const core = {
     schema: ASHLINE_EVIDENCE_EPOCH_SCHEMA,
@@ -154,6 +195,7 @@ export async function validateAshlineEvidenceEpoch(receipt, { root }) {
     ? receipt.sourceCandidatePairs
     : [];
   if (pairs.length !== 3) failures.push(`pairs:${pairs.length}!=3`);
+  validateExactPairKeySet(pairs, failures);
   const pairByKey = new Map();
   for (const pair of pairs) {
     for (const role of ['source', 'candidate']) {
@@ -173,7 +215,11 @@ export async function validateAshlineEvidenceEpoch(receipt, { root }) {
       if (pair[bytesKey] !== actualBytes) {
         failures.push(`${pair.key}.${bytesKey}:${pair[bytesKey]}!=${actualBytes}`);
       }
-      if (role === 'source') pairByKey.set(pair.key, actualHash);
+      if (role === 'source'
+          && ASHLINE_SHIP_KEYS.includes(pair.key)
+          && !pairByKey.has(pair.key)) {
+        pairByKey.set(pair.key, actualHash);
+      }
     }
   }
 
@@ -192,7 +238,12 @@ export async function validateAshlineEvidenceEpoch(receipt, { root }) {
   }
 
   const legacyPaths = new Set((receipt.legacyArtifacts || []).map((artifact) => artifact.path));
+  const eligibleArtifactPaths = new Set();
   for (const artifact of receipt.eligibleArtifacts || []) {
+    if (eligibleArtifactPaths.has(artifact.path)) {
+      failures.push(`artifact:${artifact.path}:duplicate-path`);
+    }
+    eligibleArtifactPaths.add(artifact.path);
     await validateArtifact(artifact, root, failures);
     if (artifact.eligible !== true) failures.push(`artifact:${artifact.path}:not-eligible`);
     if (!artifact.path?.startsWith(ASHLINE_ELIGIBLE_EVIDENCE_ROOT)
@@ -212,14 +263,29 @@ export async function validateAshlineEvidenceEpoch(receipt, { root }) {
     }
   }
 
-  const acceptedShipKeys = new Set((receipt.eligibleArtifacts || []).flatMap(
-    (artifact) => (artifact.inputBindings || []).map((binding) => binding.shipKey),
-  ));
-  const expectedPerShip = Object.fromEntries(
-    [...pairByKey.keys()].sort().map((key) => [key, acceptedShipKeys.has(key)]),
+  const eligibleArtifacts = receipt.eligibleArtifacts || [];
+  const artifactCounts = eligibleArtifactCounts(eligibleArtifacts);
+  for (const key of pairByKey.keys()) {
+    const actual = artifactCounts[key] || 0;
+    const expected = ASHLINE_ELIGIBLE_ARTIFACT_COUNTS[key];
+    if (actual !== 0 && actual !== expected) {
+      failures.push(`eligibleArtifactContract:${key}:${actual}!=${expected}`);
+    }
+  }
+  const expectedPerShip = currentAcceptancePerShip(
+    [...pairByKey.keys()].sort().map((key) => ({ key })),
+    eligibleArtifacts,
   );
-  const familyVisualEvidenceEligible = pairByKey.size > 0
+  const allShipsComplete = pairByKey.size > 0
     && [...pairByKey.keys()].every((key) => expectedPerShip[key] === true);
+  const familyVisualEvidenceEligible = allShipsComplete
+    && eligibleArtifacts.length === ASHLINE_ELIGIBLE_ARTIFACT_TOTAL;
+  if (allShipsComplete && eligibleArtifacts.length !== ASHLINE_ELIGIBLE_ARTIFACT_TOTAL) {
+    failures.push(
+      `eligibleArtifactContract:family:${eligibleArtifacts.length}`
+      + `!=${ASHLINE_ELIGIBLE_ARTIFACT_TOTAL}`,
+    );
+  }
   if (stableStringify(receipt.currentAcceptance?.perShip || {}) !== stableStringify(expectedPerShip)) {
     failures.push('currentAcceptance:perShip');
   }
