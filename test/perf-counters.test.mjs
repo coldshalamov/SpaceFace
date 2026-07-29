@@ -19,8 +19,11 @@ import {
   DETERMINISTIC_FIELDS,
   createPerfCounters,
   diffDeterministicCounters,
+  perfCountersRequested,
+  UNSOURCED_FIELDS,
 } from '../src/core/perfCounters.js';
 import { installGlInstrumentation } from '../src/render/glInstrumentation.js';
+import { ensurePerfRuntime } from '../src/core/perfRuntime.js';
 
 /**
  * Minimal stand-in for a WebGL2 context. Every method records its own invocation and returns a
@@ -155,6 +158,55 @@ test('counts are per-frame: beginFrame clears, totals and peak accumulate', () =
   assert.equal(snapshot.totals.drawCalls, 4, 'totals accumulate across frames');
   assert.equal(snapshot.peakPerFrame.drawCalls, 3, 'peak is the worst SINGLE frame, not the total');
   assert.equal(snapshot.nonZeroFrames.drawCalls, 2);
+});
+
+test('work recorded OUTSIDE a frame pair still reaches totals', () => {
+  // The defect this pins: if totals were accumulated in endFrame() from the per-frame bag, then
+  // anything recorded between endFrame() and the next beginFrame() would be wiped by beginFrame()'s
+  // reset and never counted. That is not a corner case — it is where most of the interesting work
+  // happens:
+  //   * the boot shader ramp links before the first presentation frame runs at all, and that ramp is
+  //     the positive control that stops a post-boot zero from being vacuous;
+  //   * precompilePipelines uses renderer.compileAsync, which completes on a promise continuation;
+  //   * texture decodes and asset-load uploads land on their own callbacks.
+  // The failure would read as GOOD NEWS — a smaller count, not an error — which is why it needs a
+  // test that records with no enclosing frame at all.
+  const counters = createPerfCounters();
+  counters.setEnabled(true);
+
+  counters.countShaderLink('before-any-frame');   // boot ramp: no frame has begun yet
+
+  counters.beginFrame();
+  counters.countShaderLink('inside-frame');
+  counters.endFrame();
+
+  counters.countShaderLink('async-continuation'); // e.g. compileAsync resolving between frames
+
+  counters.beginFrame();                          // the reset that used to destroy the above
+  counters.endFrame();
+
+  const snapshot = counters.snapshot();
+  assert.equal(snapshot.totals.shaderLinks, 3,
+    'every link must reach totals regardless of whether a frame was open when it happened');
+  assert.equal(snapshot.offFrame.shaderLinks, 2,
+    'off-frame work is tracked separately: an async compile and a draw-time cache miss are '
+    + 'different defects with different fixes');
+  assert.equal(snapshot.peakPerFrame.shaderLinks, 1, 'peak stays a genuinely per-frame figure');
+  assert.equal(snapshot.events.length, 3, 'and each one is still attributable');
+});
+
+test('the boot boundary applies to off-frame work too', () => {
+  const counters = createPerfCounters();
+  counters.setEnabled(true);
+
+  counters.countShaderLink('boot-ramp');          // off-frame, pre-boundary
+  counters.markBootBoundary();
+  counters.countShaderLink('post-boot-async');    // off-frame, post-boundary
+
+  const snapshot = counters.snapshot();
+  assert.equal(snapshot.totals.shaderLinks, 2);
+  assert.equal(snapshot.postBoot.shaderLinks, 1,
+    'a compileAsync that resolves after boot is a post-boot compile even though no frame was open');
 });
 
 test('the boot boundary separates post-boot counts from boot counts', () => {
@@ -326,6 +378,77 @@ test('installing twice is a no-op rather than a double count', () => {
   // And uninstall must still fully restore, not leave one layer behind.
   first.uninstall();
   assert.equal(gl.__sfInstrumentation, undefined);
+});
+
+test('unsourced counters are declared so a vacuous zero cannot be read as healthy', () => {
+  // A counter with no producer and a perfectly healthy subsystem both report 0. Family H is in the
+  // schema but not yet wired, so the report must say so rather than let a reader conclude the HUD
+  // performs no forced layouts — a conclusion this run did not establish either way.
+  const counters = createPerfCounters();
+  counters.setEnabled(true);
+  const snapshot = counters.snapshot();
+
+  assert.ok(snapshot.unsourcedFields.length > 0 || UNSOURCED_FIELDS.length === 0,
+    'the snapshot must republish the unsourced list, not drop it');
+  for (const field of UNSOURCED_FIELDS) {
+    assert.ok(COUNTER_FIELDS.includes(field),
+      `${field} is declared unsourced but is not a counter field — a typo here silently un-declares `
+      + 'a counter, restoring exactly the vacuous zero this list exists to prevent');
+  }
+  // Overlap would be incoherent: a field cannot be both a bisectable signal and unmeasured.
+  for (const field of UNSOURCED_FIELDS) {
+    assert.ok(!DETERMINISTIC_FIELDS.includes(field),
+      `${field} cannot be both an equivalence-gate signal and unsourced`);
+  }
+});
+
+// --- The runtime seam ---------------------------------------------------------------------------
+
+test('the instrumentation opt-in is OFF unless a probe explicitly asks', () => {
+  const originalWindow = globalThis.window;
+  try {
+    // No window at all (node-side sim routes): must not throw, must be off.
+    delete globalThis.window;
+    assert.equal(perfCountersRequested(), false, 'no window means no instrumentation, not a crash');
+
+    globalThis.window = { location: { search: '' } };
+    assert.equal(perfCountersRequested(), false, 'ordinary play must never arm the instrumentation');
+
+    globalThis.window = { location: { search: '?debug=flight&perf=1' } };
+    assert.equal(perfCountersRequested(), false,
+      'the existing ?perf overlay flag must not arm GL wrapping — it is a different feature');
+
+    globalThis.window = { location: { search: '?perfCounters=1' } };
+    assert.equal(perfCountersRequested(), true);
+
+    globalThis.window = { location: { search: '' }, __SPACEFACE_PERF_COUNTERS__: true };
+    assert.equal(perfCountersRequested(), true, 'a pre-boot global is how a Playwright probe opts in');
+  } finally {
+    if (originalWindow === undefined) delete globalThis.window;
+    else globalThis.window = originalWindow;
+  }
+});
+
+test('perfRuntime exposes counters on the parity-safe handle, disabled', () => {
+  const originalWindow = globalThis.window;
+  try {
+    delete globalThis.window;
+    const state = { entityList: [], settings: {} };
+    const perf = ensurePerfRuntime(state);
+
+    assert.ok(perf.tier1, 'counters must hang off perfRuntime, not off the SF_DEBUG-gated window.SF');
+    assert.equal(perf.tier1.isEnabled(), false, 'the seam must be inert until a probe arms it');
+    assert.equal(typeof perf.getCounterSnapshot, 'function');
+
+    // The counter tier must not leak into the timing report: that report's shape is pinned by
+    // existing gates, and blending the two tiers in one document is what the brief forbids.
+    const report = perf.getReport();
+    assert.equal(report.counters.spatialHash !== undefined, true, 'the pre-existing counters block stays');
+    assert.equal(report.tier1, undefined, 'Tier-1 counters must NOT be folded into getReport()');
+  } finally {
+    if (originalWindow === undefined) delete globalThis.window;
+    else globalThis.window = originalWindow;
+  }
 });
 
 test('a context missing a method is skipped rather than throwing', () => {

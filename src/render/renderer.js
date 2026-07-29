@@ -51,6 +51,9 @@ import {
 } from './precompile.js';
 import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
+import { ensurePerfRuntime } from '../core/perfRuntime.js';
+import { perfCountersRequested } from '../core/perfCounters.js';
+import { installGlInstrumentation } from './glInstrumentation.js';
 import {
   invalidateShadowCasterPolicy,
   syncShadowCasterPolicy,
@@ -705,6 +708,18 @@ export const render = {
     // canvas (render targets are compiled with NoToneMapping), so rtScene stays linear HDR for the
     // composite to tone-map itself, and raw ShaderMaterial shaders never get three's tonemapping chunk
     // injected — so the composite is untouched and is NOT double-mapped.
+    // --- Tier-1 instrumentation seam (OFF by default) -----------------------------------------
+    // Installed here, before anything renders, because the first thing worth counting is the boot
+    // shader ramp and a seam armed later would miss it. Install-on-enable: with the opt-in absent
+    // nothing is wrapped at all, so the hottest GL calls in the frame carry no wrapper and not even
+    // a boolean read. Counting only — see src/core/perfCounters.js for why no timing lives here.
+    if (perfCountersRequested()) {
+      const perfCounters = ensurePerfRuntime(state).tier1;
+      perfCounters.setEnabled(true);
+      const instrumentedGl = renderer.getContext();
+      if (instrumentedGl) installGlInstrumentation(instrumentedGl, perfCounters);
+    }
+
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.setClearColor(0x060912, 1);
     const drawSize = applyRendererSize(renderer, state);

@@ -415,6 +415,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
     try {
       perf = ensurePerfRuntime(state);
+      // Tier-1 counter frame boundary. Presentation-side by construction: this is the rAF callback,
+      // not a sim step, so it cannot perturb sim state, ordering or RNG draw counts, and it adds
+      // nothing to PRODUCTION_UPDATE_ORDER or the manifest hash (invariants #2 and #3).
+      perf.tier1?.beginFrame();
       perf.beginFrame(
         frameDt,
         callbackStart,
@@ -431,6 +435,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       if (stepResult.shedBacklog) diagnostics.shedBacklogFrames++;
       perf.recordSimFrame(measureNow() - simFrameStart);
       perf.recordLoop(stepResult.steps, stepResult.shedBacklog, state.accumulator, stepResult.shedSteps);
+      // perfRuntime keeps a max and a multi-step frame count; a histogram is what distinguishes
+      // "occasionally 2 steps" from "routinely 4", and only the latter means the sim is starving
+      // everything downstream.
+      perf.tier1?.recordStepsThisFrame(stepResult.steps);
 
       // A lifecycle event may synchronously fire from a system step. Do not submit a frame after it
       // has transferred ownership to a non-presenting state or a newly scheduled restore callback.
@@ -477,6 +485,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       if (perf && typeof perf.recordFrameCallback === 'function') {
         perf.recordFrameCallback(measureNow() - callbackStart);
       }
+      // In the same `finally` as recordFrameCallback so a frame that threw still closes its counter
+      // frame. Without this an error would fold two frames' counts into one and silently understate
+      // the per-frame peak, which is the number the zero-budgets are actually about.
+      if (perf) perf.tier1?.endFrame();
     }
 
     if (restoring && renderedSnapshot && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {

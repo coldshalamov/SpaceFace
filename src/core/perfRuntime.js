@@ -1,3 +1,5 @@
+import { createPerfCounters } from './perfCounters.js';
+
 const RING_N = 180;
 
 function nowMs() {
@@ -275,9 +277,23 @@ export function ensurePerfRuntime(state) {
     else if (Object.prototype.hasOwnProperty.call(backlogCauseCounts, cause)) backlogCauseCounts[cause]++;
   }
 
+  // Tier-1 counters live here rather than in their own global because __SPACEFACE_PERF__ is
+  // published unconditionally (see the end of this function) while window.SF is debug-gated, and
+  // invariant #5 requires the browser and Electron routes to expose the same surface.
+  // Deliberately NOT folded into getReport(): that report's shape is pinned by existing gates, and
+  // counters are a separate evidence tier that must never be blended with the timings above.
+  // Named tier1Counters, not `counters`: this function already has a `counters` local holding the
+  // pre-existing spatial-hash and VFX tallies, and the two are different things.
+  const tier1Counters = createPerfCounters();
+
   const api = {
     __spacefacePerfV1: true,
     RING_N,
+    // Exposed as `tier1`, not `counters`, because getReport() already returns a `counters` block
+    // holding the pre-existing spatial-hash and VFX tallies. Two surfaces called `counters` meaning
+    // different things is exactly the ambiguity a later reader would resolve wrongly.
+    tier1: tier1Counters,
+    getCounterSnapshot() { return tier1Counters.snapshot(); },
     get systemTimingEnabled() { return systemTimingEnabled; },
     isSystemTimingEnabled() { return systemTimingEnabled === true; },
     setSystemTimingEnabled(on) {

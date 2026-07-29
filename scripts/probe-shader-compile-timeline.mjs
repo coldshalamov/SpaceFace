@@ -103,6 +103,18 @@ try {
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) { /* private mode */ }
 
+    // Arm the PRODUCTION instrumentation seam (src/core/perfCounters.js + glInstrumentation.js).
+    // Set before navigation because the seam is read once, at renderer construction, and installs
+    // the GL wrappers there — after that point there is no way to start counting without producing
+    // a report whose provenance is invisible.
+    //
+    // This makes the run a cross-validation rather than a single measurement: the page-level
+    // linkProgram wrapper below and the production counters observe the same context by different
+    // routes, so a disagreement between them is a defect in one of the two instruments. Unit tests
+    // exercise the production seam only against a fake context; this is the only place it meets a
+    // real WebGL2RenderingContext.
+    window.__SPACEFACE_PERF_COUNTERS__ = true;
+
     const events = [];
     const seen = new Set();
     let frame = 0;
@@ -192,10 +204,15 @@ try {
     return last < 0 || (timeline.flightFrame - last) >= quiescence;
   }, QUIESCENCE_FRAMES, { timeout: FRAME_WAIT_TIMEOUT_MS });
 
+  // Tell the production counters where boot ended. The runtime deliberately does not decide this
+  // for itself: "boot has settled" is the quiescence predicate evaluated just above, and it belongs
+  // with the harness that owns the scenario rather than baked into shipped code.
   const boundary = await page.evaluate(() => ({
     flightFrame: window.__SF_PROGRAM_TIMELINE__.flightFrame,
     eventCount: window.__SF_PROGRAM_TIMELINE__.events.length,
     linkCount: window.__SF_PROGRAM_TIMELINE__.linkCount,
+    productionBoundaryFrame: window.__SPACEFACE_PERF__?.tier1?.markBootBoundary?.() ?? null,
+    productionLinksAtBoundary: window.__SPACEFACE_PERF__?.getCounterSnapshot?.().totals.shaderLinks ?? null,
   }));
 
   // --- Phase 1: idle flight (no input) --------------------------------------------------------
@@ -239,6 +256,9 @@ try {
   const linkEvents = await page.evaluate(() => window.__SF_PROGRAM_TIMELINE__.linkEvents);
   const postBootLinks = linkEvents.slice(boundary.linkCount, afterStimulus.linkCount);
 
+  const productionCounters = await page.evaluate(() => (
+    window.__SPACEFACE_PERF__?.getCounterSnapshot?.() ?? null));
+
   const report = {
     schema: 'spaceface.shaderCompileTimeline.v1',
     tier: 1,
@@ -273,6 +293,8 @@ try {
     },
     postBootLinks,
     bootRamp,
+    // The production seam's own view of the same run. Two instruments, one context.
+    productionCounters,
     pageErrors,
   };
 
@@ -308,6 +330,50 @@ try {
     for (const line of link.stack.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 8)) {
       console.log(`         ${line}`);
     }
+  }
+
+  // --- Cross-validation: production seam vs page-level wrapper --------------------------------
+  console.log('');
+  if (!productionCounters) {
+    throw new Error(
+      'the production instrumentation seam never armed: __SPACEFACE_PERF__.getCounterSnapshot() '
+      + 'returned nothing. src/core/perfCounters.js and src/render/glInstrumentation.js are then '
+      + 'covered only by unit tests against a fake context, and every count they produce in a real '
+      + 'browser is unverified',
+    );
+  }
+  console.log(`[shader-timeline] production seam: totals.shaderLinks=${productionCounters.totals.shaderLinks} `
+    + `postBoot=${productionCounters.postBoot.shaderLinks} offFrame=${productionCounters.offFrame.shaderLinks} `
+    + `frames=${productionCounters.framesObserved}`);
+  console.log(`[shader-timeline] page wrapper  : linkProgram=${linkEvents.length} postBoot=${postBootLinks.length}`);
+  console.log(`[shader-timeline] draw calls=${productionCounters.totals.drawCalls} `
+    + `programSwitches=${productionCounters.totals.programSwitches} `
+    + `bufferFull=${productionCounters.totals.bufferFullUploads} `
+    + `bufferPartial=${productionCounters.totals.bufferPartialUploads} `
+    + `textureUploads=${productionCounters.totals.textureUploads}`);
+  console.log(`[shader-timeline] stepsPerFrame histogram: ${JSON.stringify(productionCounters.stepsPerFrameHistogram)}`);
+  // Printed loudly because these fields read 0 in the report above and 0 is the answer a reader
+  // hopes for. They have no producer wired yet; this run says nothing about them either way.
+  if (productionCounters.unsourcedFields?.length) {
+    console.log(`[shader-timeline] NOT MEASURED (no producer wired — a 0 here is not a finding): `
+      + productionCounters.unsourcedFields.join(', '));
+  }
+
+  // Both instruments wrap the same gl.linkProgram, so they must agree. A production count of 0
+  // against a page-wrapper count in the dozens means the production wrappers did not install —
+  // and 0 is exactly what a healthy result looks like, so nothing else would reveal it.
+  if (productionCounters.totals.shaderLinks === 0 && linkEvents.length > 0) {
+    throw new Error(
+      `the production seam counted 0 shader links while the page wrapper counted ${linkEvents.length}. `
+      + 'The production GL wrappers did not install on the real context.',
+    );
+  }
+  if (productionCounters.totals.drawCalls === 0) {
+    throw new Error(
+      'the production seam counted 0 draw calls. A rendered frame cannot happen without a draw, so '
+      + 'this is a dead hook rather than a quiet frame — every zero-budget built on it would be a '
+      + 'false pass.',
+    );
   }
 
   if (pageErrors.length) {

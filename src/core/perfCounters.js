@@ -21,10 +21,10 @@
 // ------------------
 // This is a performance tool; it must not be a performance problem. Every entry point begins with a
 // single boolean read and returns. There is no allocation, no closure creation, no string building
-// and no array push on the disabled path — `test/perf-counters-zero-cost.test.mjs` proves it by
-// asserting that a disabled counter set is structurally identical before and after a large number of
-// calls. The heavier observers (GL context wrappers, MutationObserver) are not merely branched over
-// but INSTALLED ON ENABLE, so when disabled they do not exist as call sites at all.
+// and no array push on the disabled path — `test/perf-counters.test.mjs` proves it by driving 5,000
+// disabled frames and asserting the event list, the histogram and every total are still untouched.
+// The heavier observers (GL context wrappers, MutationObserver) are not merely branched over but
+// INSTALLED ON ENABLE, so when disabled they do not exist as call sites at all.
 //
 // DETERMINISM
 // -----------
@@ -88,6 +88,25 @@ export const DETERMINISTIC_FIELDS = Object.freeze([
   'bufferUploadBytes',
 ]);
 
+// Counters that are DECLARED but have no producer wired yet.
+//
+// This list exists because an unsourced counter and a perfectly healthy subsystem report the same
+// thing: 0. Family H (DOM mutations, forced layout reads, longtasks) is specified in the brief and
+// present in the schema, but nothing calls its entry points yet — so reading `layoutReads: 0` as
+// "no forced layouts, healthy" would be exactly the vacuous zero this whole design is built to
+// avoid, and it would be believed precisely because it is the answer everyone wants.
+//
+// Wiring a producer means DELETING its field from this list in the same change. `snapshot()`
+// republishes the list so no downstream report can present an unsourced field as a measurement.
+export const UNSOURCED_FIELDS = Object.freeze([
+  'domMutations',
+  'domChildListMutations',
+  'domAttributeMutations',
+  'domCharacterDataMutations',
+  'layoutReads',
+  'longTasks',
+]);
+
 // Bounded so a pathological run cannot grow this without limit. A compile storm is fully
 // characterised by its first few hundred events; the counts stay exact regardless of this cap.
 const MAX_RECORDED_EVENTS = 512;
@@ -103,6 +122,30 @@ function resetFieldBag(bag) {
 }
 
 /**
+ * Has a measurement probe asked for Tier-1 instrumentation?
+ *
+ * Read once, at renderer construction, because the GL wrappers are install-on-enable: there is no
+ * way to start counting mid-session without leaving a report whose provenance is invisible. Two
+ * opt-ins, both explicit and both unavailable to ordinary play:
+ *
+ *   window.__SPACEFACE_PERF_COUNTERS__ = true   set by a Playwright addInitScript before boot
+ *   ?perfCounters=1                             set by a human driving the game by hand
+ *
+ * Deliberately NOT gated on SF_DEBUG. `window.SF` is absent from a production bundle
+ * (src/main.js:40), and invariant #5 requires the browser and Electron routes to produce the same
+ * counters for the same scenario — a debug-only seam could not satisfy that.
+ */
+export function perfCountersRequested() {
+  if (typeof window === 'undefined') return false;
+  if (window.__SPACEFACE_PERF_COUNTERS__ === true) return true;
+  try {
+    return new URLSearchParams(window.location?.search || '').get('perfCounters') === '1';
+  } catch (_) {
+    return false;   // exotic location objects must not break boot
+  }
+}
+
+/**
  * Create a Tier-1 counter set. Default OFF.
  *
  * The returned object is the single sink every instrumentation source writes into: the GL context
@@ -113,15 +156,20 @@ export function createPerfCounters() {
   let enabled = false;
   let frameIndex = 0;
   let framesObserved = 0;
-  // Frames are counted from the moment the boot boundary is declared, so "post-boot compiles" is a
-  // property of the report rather than something each caller has to recompute.
+  // The frame index at which the boot boundary was declared, and the frame tally at that moment.
+  // Both are kept so `postBootFrames` is an exact subtraction rather than an index arithmetic that
+  // is off by one depending on whether a frame happened to be open when the boundary was marked.
   let bootBoundaryFrame = -1;
+  let framesObservedAtBoundary = 0;
 
-  const frame = createFieldBag();     // reset every frame
-  const totals = createFieldBag();    // accumulated across the capture
+  const frame = createFieldBag();     // reset every frame; feeds peak and nonZeroFrames only
+  const totals = createFieldBag();    // accumulated AT RECORD TIME — see the note below
   const peak = createFieldBag();      // worst single frame
-  const postBoot = createFieldBag();  // accumulated only after the boot boundary
+  const postBoot = createFieldBag();  // accumulated at record time, after markBootBoundary()
+  const offFrame = createFieldBag();  // recorded outside any beginFrame/endFrame pair
   const nonZeroFrames = createFieldBag();
+  let insideFrame = false;
+  let afterBootBoundary = false;
 
   const events = [];
   let eventsDropped = 0;
@@ -131,10 +179,32 @@ export function createPerfCounters() {
   // for a Tier-1 signal or accidentally swept into the equivalence gate.
   const allocation = { heapBytesDeltaTotal: 0, collectionsDetected: 0, samples: 0, lastHeapBytes: 0 };
 
+  /**
+   * The one accumulation path. Every counter routes through here.
+   *
+   * `totals` is incremented HERE and not in endFrame(), because a large share of the work worth
+   * counting does not happen inside the rAF callback at all:
+   *
+   *   - The boot shader ramp links before the first presentation frame ever runs. That ramp is the
+   *     positive control that stops a post-boot zero from being vacuous, so losing it would quietly
+   *     defeat the only guard against a dead hook.
+   *   - `precompilePipelines` uses `renderer.compileAsync`, which finishes on a promise
+   *     continuation. That is precisely the traverse -> prepareMaterial -> linkProgram class the
+   *     first capture found.
+   *   - Texture decodes and asset-load uploads land on their own callbacks.
+   *
+   * Accumulating totals in endFrame() would let beginFrame()'s reset discard all of it, and the
+   * failure would read as good news — a smaller number, not an error. `frame` therefore feeds only
+   * the per-frame derivatives (peak, nonZeroFrames), which are the only figures that are genuinely
+   * per-frame.
+   */
   function record(field, amount) {
     // The single boolean read that the whole zero-cost claim rests on.
     if (!enabled) return;
-    frame[field] += amount;
+    totals[field] += amount;
+    if (afterBootBoundary) postBoot[field] += amount;
+    if (insideFrame) frame[field] += amount;
+    else offFrame[field] += amount;
   }
 
   const api = {
@@ -150,10 +220,22 @@ export function createPerfCounters() {
       return enabled;
     },
 
-    /** Mark the end of boot. Counts after this point are what the zero-budgets in §7 apply to. */
+    /**
+     * Mark the end of boot. Everything recorded after this call is post-boot, and post-boot is what
+     * every zero-budget in the brief's §7 is actually about.
+     *
+     * Called by the MEASUREMENT PROBE, not by the runtime, and deliberately so: "boot has settled"
+     * is a quiescence predicate over observed counts (K consecutive frames that linked no new
+     * program), and evaluating it belongs with the harness that also owns the scenario. Putting a
+     * wall-clock or heuristic boundary in the runtime would bake a moving definition into shipped
+     * code. Reachable from `__SPACEFACE_PERF__.tier1.markBootBoundary()`, which exists on both the
+     * browser and Electron routes because __SPACEFACE_PERF__ is not debug-gated.
+     */
     markBootBoundary() {
       if (!enabled) return -1;
       bootBoundaryFrame = frameIndex;
+      framesObservedAtBoundary = framesObserved;
+      afterBootBoundary = true;
       return bootBoundaryFrame;
     },
     getBootBoundaryFrame() { return bootBoundaryFrame; },
@@ -162,20 +244,18 @@ export function createPerfCounters() {
     beginFrame() {
       if (!enabled) return;
       resetFieldBag(frame);
+      insideFrame = true;
     },
 
     endFrame() {
       if (!enabled) return;
-      const afterBoot = bootBoundaryFrame >= 0 && frameIndex > bootBoundaryFrame;
+      // Totals were already accumulated at record time; this only derives the per-frame figures.
       for (const field of COUNTER_FIELDS) {
         const value = frame[field];
-        totals[field] += value;
         if (value > peak[field]) peak[field] = value;
-        if (value !== 0) {
-          nonZeroFrames[field]++;
-          if (afterBoot) postBoot[field] += value;
-        }
+        if (value !== 0) nonZeroFrames[field]++;
       }
+      insideFrame = false;
       frameIndex++;
       framesObserved++;
     },
@@ -185,36 +265,33 @@ export function createPerfCounters() {
 
     countShaderLink(cacheKey = '', name = '') {
       if (!enabled) return;
-      frame.shaderLinks += 1;
+      record('shaderLinks', 1);
       api.recordEvent('shaderLink', { cacheKey, name });
     },
     countShaderCompile() { record('shaderCompiles', 1); },
     countRenderTargetAllocation(width = 0, height = 0) {
       if (!enabled) return;
-      frame.renderTargetAllocations += 1;
+      record('renderTargetAllocations', 1);
       api.recordEvent('renderTargetAllocation', { width, height });
     },
     countRenderTargetResize(width = 0, height = 0) {
       if (!enabled) return;
-      frame.renderTargetResizes += 1;
+      record('renderTargetResizes', 1);
       api.recordEvent('renderTargetResize', { width, height });
     },
     countTextureUpload(full = true) {
-      if (!enabled) return;
-      if (full) frame.textureUploads += 1;
-      else frame.textureSubUploads += 1;
+      record(full ? 'textureUploads' : 'textureSubUploads', 1);
     },
     countMipmapGeneration() { record('mipmapGenerations', 1); },
     countBufferUpload(full, bytes = 0) {
       if (!enabled) return;
-      if (full) frame.bufferFullUploads += 1;
-      else frame.bufferPartialUploads += 1;
-      frame.bufferUploadBytes += Number.isFinite(bytes) && bytes > 0 ? bytes : 0;
+      record(full ? 'bufferFullUploads' : 'bufferPartialUploads', 1);
+      record('bufferUploadBytes', Number.isFinite(bytes) && bytes > 0 ? bytes : 0);
     },
     countDraw(instanced = false) {
       if (!enabled) return;
-      frame.drawCalls += 1;
-      if (instanced) frame.drawInstancedCalls += 1;
+      record('drawCalls', 1);
+      if (instanced) record('drawInstancedCalls', 1);
     },
     countProgramSwitch() { record('programSwitches', 1); },
     countTextureBind() { record('textureBinds', 1); },
@@ -222,10 +299,10 @@ export function createPerfCounters() {
     countLongTask() { record('longTasks', 1); },
     countDomMutation(type) {
       if (!enabled) return;
-      frame.domMutations += 1;
-      if (type === 'childList') frame.domChildListMutations += 1;
-      else if (type === 'attributes') frame.domAttributeMutations += 1;
-      else if (type === 'characterData') frame.domCharacterDataMutations += 1;
+      record('domMutations', 1);
+      if (type === 'childList') record('domChildListMutations', 1);
+      else if (type === 'attributes') record('domAttributeMutations', 1);
+      else if (type === 'characterData') record('domCharacterDataMutations', 1);
     },
 
     /** Steps-per-frame DISTRIBUTION (I). perfRuntime keeps a max and a multi-step count; a
@@ -258,11 +335,15 @@ export function createPerfCounters() {
       frameIndex = 0;
       framesObserved = 0;
       bootBoundaryFrame = -1;
+      framesObservedAtBoundary = 0;
       resetFieldBag(frame);
       resetFieldBag(totals);
       resetFieldBag(peak);
       resetFieldBag(postBoot);
+      resetFieldBag(offFrame);
       resetFieldBag(nonZeroFrames);
+      insideFrame = false;
+      afterBootBoundary = false;
       events.length = 0;
       eventsDropped = 0;
       for (const key of Object.keys(stepsPerFrameHistogram)) delete stepsPerFrameHistogram[key];
@@ -279,11 +360,19 @@ export function createPerfCounters() {
         enabled,
         framesObserved,
         bootBoundaryFrame,
-        postBootFrames: bootBoundaryFrame >= 0 ? Math.max(0, frameIndex - bootBoundaryFrame - 1) : 0,
+        postBootFrames: bootBoundaryFrame >= 0 ? framesObserved - framesObservedAtBoundary : 0,
         deterministicFields: [...DETERMINISTIC_FIELDS],
+        // Republished so a report cannot present "0" from a counter that has no producer as though
+        // it were a measurement. A reader who ignores this will conclude the HUD performs no forced
+        // layouts, which is not something this run established either way.
+        unsourcedFields: [...UNSOURCED_FIELDS],
         totals: { ...totals },
         postBoot: { ...postBoot },
         peakPerFrame: { ...peak },
+        // Work that landed outside any beginFrame/endFrame pair. Diagnostic in its own right: a
+        // shader link here is an async compile (compileAsync, asset load), while one inside a frame
+        // is a draw-time cache miss stalling the frame being drawn. Same counter, different defect.
+        offFrame: { ...offFrame },
         nonZeroFrames: { ...nonZeroFrames },
         stepsPerFrameHistogram: { ...stepsPerFrameHistogram },
         // Segregated, and labelled, so no reader mistakes it for a bisectable counter.
