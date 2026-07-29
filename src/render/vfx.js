@@ -524,6 +524,7 @@ export const vfx = {
     this._projectileListLength = -1;
     this._projectileTrailDiag = emptyProjectileTrailDiag();
     this._projectileTrailPlanScratch = createProjectileTrailSpawnPlanScratch();
+    this._projectileTrailFrameIndex = 0;
     this._projectileTrailsWereRelevant = false;
     this._seamMarkersWereRelevant = false;
     this._energyPlumeWasRelevant = false;
@@ -5240,6 +5241,11 @@ export const vfx = {
     return true;
   },
 
+  _resetProjectileTrailWakePhase() {
+    this._projectileTrailFrameIndex = 0;
+    this._cadenceProjectileTrail = 0;
+  },
+
   update(frameDt) {
     if (!this._scene) {
       // render may have come up after vfx.init (defensive) — try once to attach pools
@@ -5268,10 +5274,15 @@ export const vfx = {
     if (this._projectileTrailsRelevant()) {
       const projWake = !this._projectileTrailsWereRelevant;
       this._projectileTrailsWereRelevant = true;
-      let projStep = this._consumeCadence('_cadenceProjectileTrail', dt, VFX_PROJECTILE_TRAILS_HZ);
+      let projStep = 0;
       if (projWake) {
-        this._cadenceProjectileTrail = 0;
-        projStep = Math.max(projStep, dt);
+        // A new projectile volley owns a fresh cosmetic cadence. Carrying the previous volley's
+        // modulo phase made an identical missile receipt emit one extra/missing smoke card after
+        // variable boot presentation work, which changed exact draw/upload counts.
+        this._resetProjectileTrailWakePhase();
+        projStep = dt;
+      } else {
+        projStep = this._consumeCadence('_cadenceProjectileTrail', dt, VFX_PROJECTILE_TRAILS_HZ);
       }
       if (projStep > 0) {
         this._emitProjectileTrails(projStep);
