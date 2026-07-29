@@ -374,3 +374,89 @@ test('a fenced success never posts a recovery, even with policy enabled', () => 
     .filter((o) => o && o.type === PQ019C_HEIST_TYPE);
   assert.ok(rows.every((o) => o.heistAttempt === 0), 'a completed run is never "recovered"');
 });
+
+// ── The ownership marker ───────────────────────────────────────────────────────────────────────
+//
+// The nav waypoint is the one player-visible part of this feature that is NOT a voice line, and the
+// packet names ownership as a required cue. It runs on every accept via trackMission, so "it does
+// not throw" was already covered; these assert that it points at the right thing in each state.
+
+test('the mission marker tracks ownership: launcher, then capsule, then fence', () => {
+  const t = boot();
+  const m = t.accept({ launchWindowS: 4 });
+  t.step(2);
+
+  const launcherHead = roleEntities(t.state, 'heist_launcher_head')[0];
+  const before = t.missionsSys._missionWaypoint(m);
+  assert.equal(before.sectorId, PQ019_HEIST_SECTOR_ID);
+  assert.equal(before.label, 'Tethys Surface Launcher');
+  assert.match(before.reason, /launch/i, 'TIMING: it says why you are going there');
+  assert.ok(Math.hypot(before.pos.x - launcherHead.pos.x, before.pos.z - launcherHead.pos.z) < 1,
+    'the marker sits on the real physical head, not a few WU off its centre');
+
+  assert.ok(t.stepToLaunch());
+  const inFlight = t.missionsSys._missionWaypoint(m);
+  const capsule = t.capsule();
+  assert.equal(inFlight.label, 'Cargo Capsule');
+  assert.equal(inFlight.pos.x, capsule.pos.x);
+  assert.equal(inFlight.pos.z, capsule.pos.z);
+  assert.match(inFlight.reason, /intercept/i);
+
+  t.latch();
+  const inTow = t.missionsSys._missionWaypoint(m);
+  const fenceHead = roleEntities(t.state, 'fence_receiver_head')[0];
+  assert.equal(inTow.label, 'Quiet Fence Receiver');
+  assert.match(inTow.reason, /deliver/i, 'OWNERSHIP: in tow, the fence is the only buyer');
+  assert.ok(Math.hypot(inTow.pos.x - fenceHead.pos.x, inTow.pos.z - fenceHead.pos.z) < 1,
+    'the marker points at the head the capsule actually has to touch');
+
+  // Releasing the capsule hands the marker back to the capsule itself.
+  t.bus.emit('tether:released', { targetId: capsule.id });
+  assert.equal(t.missionsSys._missionWaypoint(m).label, 'Cargo Capsule');
+});
+
+test('a schedule the launcher refuses is spoken and settles, never a silent stall', () => {
+  const t = boot();
+  // Another schedule already owns the launcher when the contract is accepted.
+  t.facilities.requestLaunchSchedule({
+    scheduleId: 'someone-else', launchAtSimT: (t.state.simTime || 0) + 900,
+  });
+  const m = t.accept();
+  t.step(4);
+  assert.equal(m.heist.scheduleDenied, 'active_schedule');
+  assert.ok(t.cueMoments().includes('denied'), 'DENIAL: the player is told there is no run');
+  assert.equal(m.heist.arbiter.receipt.outcome, 'unresolved_absent');
+  assert.equal(t.payouts().length, 0);
+  assert.equal(t.settlements.length, 1);
+  assert.equal(t.settlements[0].kind, 'failed');
+});
+
+test('the expiry, absence and abandonment outcomes each speak their own line', () => {
+  // expired
+  const a = boot();
+  const boardA = a.missionsSys.ensureBoard(PQ019C_HEIST_STATION_ID);
+  boardA.slots = boardA.slots.filter((o) => o && o.type !== PQ019C_HEIST_TYPE);
+  const offer = buildHeistOffer({ epoch: 0 });
+  offer.params.launchWindowS = 1;
+  offer.params.runWindowTicks = 12;
+  boardA.slots.push(offer);
+  a.bus.emit('ui:acceptMission', { missionId: offer.id });
+  assert.ok(a.stepToLaunch());
+  a.step(24);
+  assert.ok(a.cueMoments().includes('expired'));
+
+  // absent
+  const b = boot();
+  b.accept();
+  assert.ok(b.stepToLaunch());
+  b.bus.emit('sector:exit', { sectorId: PQ019_HEIST_SECTOR_ID });
+  b.step(8);
+  assert.ok(b.cueMoments().includes('absent'));
+
+  // abandoned
+  const c = boot();
+  const cm = c.accept();
+  c.step(2);
+  c.bus.emit('ui:abandonMission', { missionId: cm.id });
+  assert.ok(c.cueMoments().includes('abandoned'));
+});

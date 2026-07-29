@@ -70,7 +70,7 @@ import {
   PQ019C_HEIST_SECTOR_ID,
   buildHeistOffer,
 } from '../data/heistMission.js';
-import { PQ019_FACILITIES } from '../data/heistFacilities.js';
+import { PQ019_FACILITIES, projectPq019FacilitySocket } from '../data/heistFacilities.js';
 import {
   heistMissionRuntime,
   createHeistRecord,
@@ -854,11 +854,16 @@ export const missions = {
     board = {
       refreshEpoch: epoch,
       slots: [
-        ...retainedHeistOffers,
         ...retainedFirstTradeOffers,
         ...retainedSetPieceOffers,
         ...retainedPoiOffers,
         ...this._generateOffers(info, epoch),
+        // Retained at the very END, after generation, for the same reason `_syncHeistOffer` appends.
+        // `_generateOffers` puts the B4 branch-intro contract at the head of what it returns, and
+        // check:mission-standing-ladder asserts a branch station leads with that tagged intro both
+        // on a fresh board and on a same-epoch cached board after story advancement. Any retained
+        // row placed before the generated block pushes the intro off the head.
+        ...retainedHeistOffers,
       ],
     };
     state.missions.boards[stationId] = board;
@@ -886,7 +891,13 @@ export const missions = {
       return false;
     }
     if (board.slots.some((offer) => offer && offer.type === PQ019C_HEIST_TYPE)) return false;
-    board.slots.unshift(buildHeistOffer({ epoch }));
+    // APPEND, never unshift. `_syncEmbodiedStoryOffer` and `_syncSetPieceOpeningOffers` both run
+    // before this and both unshift, and `_generateOffers` puts a B4 branch-intro contract at the head
+    // of what it returns. A standing black-market contract that claimed the top slot would displace
+    // whichever authored story row the board is supposed to lead with — caught by
+    // check:mission-standing-ladder, which asserts a branch station boards its tagged intro FIRST.
+    // The heist is a standing offer, not story progress; it sits with the rest of the board.
+    board.slots.push(buildHeistOffer({ epoch }));
     return true;
   },
 
@@ -905,7 +916,9 @@ export const missions = {
     const board = this.ensureBoard(PQ019C_HEIST_STATION_ID);
     if (!board || !Array.isArray(board.slots)) return false;
     if (board.slots.some((offer) => offer && offer.type === PQ019C_HEIST_TYPE)) return false;
-    board.slots.unshift(buildHeistOffer({
+    // Appended for the same reason as the standing row: a recovery offer must not displace a story
+    // row at the head of the board. The player is pointed at it by the recovery cue below.
+    board.slots.push(buildHeistOffer({
       epoch: this._epoch(), attempt: attempt + 1, sourceMissionId: mission.id,
     }));
     this.bus.emit('mission:updated', { missionId: null, stationId: PQ019C_HEIST_STATION_ID });
@@ -2119,7 +2132,12 @@ export const missions = {
         return {
           ...heistBase,
           label: fence.name,
-          pos: sectorLocalToGlobalForSector(fence.localPos, PQ019C_HEIST_SECTOR_ID),
+          // The authored DOCK-APPROACH SOCKET, not the facility's centre: that is where the physical
+          // custody head actually sits (heistFacilities._spawnFacilityHead projects the same socket),
+          // so the marker points at the thing the capsule has to touch rather than a few WU off it.
+          pos: sectorLocalToGlobalForSector(
+            projectPq019FacilitySocket(fence), PQ019C_HEIST_SECTOR_ID,
+          ),
           reason: `Deliver the capsule to ${fence.name}`,
         };
       }
@@ -2135,7 +2153,9 @@ export const missions = {
       return {
         ...heistBase,
         label: launcher.name,
-        pos: sectorLocalToGlobalForSector(launcher.localPos, PQ019C_HEIST_SECTOR_ID),
+        pos: sectorLocalToGlobalForSector(
+          projectPq019FacilitySocket(launcher), PQ019C_HEIST_SECTOR_ID,
+        ),
         reason: `Hold station off ${launcher.name} for the launch`,
       };
     }

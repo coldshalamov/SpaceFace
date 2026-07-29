@@ -263,6 +263,15 @@ Tethys was told the capsule had been DESTROYED. Destruction and absence are now 
 explicit sector-exit marker; they rank differently in the arbiter's precedence chain, so the wrong
 one would have been repeated in the settlement receipt.
 
+**5.6 The authored row displaced a story row at the head of the board.** `_syncHeistOffer` and the
+epoch-retention list both put the heist offer at the FRONT of the Tethys board. `station_tethys` is
+an MTS branch station, and `check:mission-standing-ladder` asserts a branch station leads with its
+tagged B4 intro contract — both on a fresh board and on a same-epoch cached board after story
+advancement. The check was **green at `2438b140` and red on this branch**, so it was mine, not
+inherited; found by running the whole `check:mission-*` family rather than the subset that looked
+relevant. Fixed by appending in both places, after `_generateOffers` in the rebuild path: a standing
+black-market contract is not story progress and must never take the slot the board leads with.
+
 **5.5 Two save-boundary defects.** `restore()` stamped its `unresolved_absent` report with the live
 world clock while the arbiter restores its own `decidedThroughTick` from the save — whenever the
 clock had not caught up the report was refused `stale_tick`, leaving a run with no terminal candidate
@@ -278,9 +287,12 @@ that does not exist and a controller that no longer does.
 Eight named families, through existing surfaces only, pinned by `test/pq019c-heist-cues.test.mjs`
 (13 tests) driving the **real** `voiceArbiter`.
 
-Timing (`accepted`, `launched`), ownership (`possessed`), witness + WANTED + pursuit (one composed
-line), denial (`theft_unwitnessed`, `theft_witnessed_no_patrol`, launcher `denied`), catcher/fence
-(`lawful_arrival`, `fenced`, `confiscated`), and recovery.
+Every family below is ASSERTED by a test, not merely present in `HEIST_CUE_TEXT`: timing
+(`accepted`, `launched`), ownership (`possessed`), witness + WANTED + pursuit (one composed line),
+denial (`theft_unwitnessed`, `theft_witnessed_no_patrol`, and the launcher `denied` line when a
+competing schedule already owns the launcher), catcher/fence (`lawful_arrival`, `fenced`,
+`confiscated`), the remaining outcomes (`destroyed`, `expired`, `absent`, `abandoned`), `escaped`,
+and `recovery`.
 
 **Witness, WANTED and pursuit are one line, not three — and that is a defect the arbiter caught.**
 All three are decided inside one call in one tick. Emitted as three lines under one stable voice id
@@ -297,6 +309,14 @@ presenter, so reduced-motion safety is inherited from the existing floor rather 
 cues are flight-only (docked, the world still runs and the crime is still logged — only the pill is
 suppressed, matching PQ-019A's rule); and with no `voiceArbiter` registered the owner receipt still
 fires, so the cue is observable headlessly.
+
+**The ownership marker is asserted too, not just smoke-covered.** The nav waypoint is the one
+player-visible part of this feature that is not a voice line. `_missionWaypoint` runs on every accept
+via `trackMission`, so "it does not throw" was already covered; a test now asserts it points at the
+launcher before launch, at the live capsule in flight, and at the fence once the capsule is in tow,
+reverting to the capsule on release. It resolves the authored DOCK-APPROACH SOCKET rather than the
+facility centre — the same projection `heistFacilities._spawnFacilityHead` uses — so the marker sits
+on the physical head the capsule has to touch rather than a few WU off it; asserted to within 1 WU.
 
 **Recorded interaction, not a defect:** `missions.trackMission` enqueues its own "Tracking: …" line
 (`objective:tracked`) at the same `objective` priority on accept, and the queue resolves equal
@@ -319,7 +339,7 @@ that itself grants no further recovery.
 
 | Gate | Result |
 |---|---|
-| `npm run check:pq019c:mission` | **PASS — 62/62** across five suites |
+| `npm run check:pq019c:mission` | **PASS — 65/65** across five suites |
 | `npm run check:pq019b:seams` | **PASS — unchanged, 91/91** |
 | `npm run check:pq019a:facility-embodiment` | **PASS — unchanged, 19/19** |
 | `npm run check:sim:compare` (before any edit, at `2438b140`) | `hashEqual: true`, `firstDivergentTick: null` |
@@ -331,6 +351,10 @@ that itself grants no further recovery.
 | `npm run check:mission-board-recommendation` | PASS |
 | `npm run check:mission-preflight` | PASS |
 | `npm run check:mission-handoff` | PASS |
+| `npm run check:mission-navigation` | PASS — owns `_missionWaypoint`, which this packet edits |
+| `npm run check:mission-standing-ladder` | **PASS — was a real regression, see §5.6** |
+| `npm run check:mission-log-map` | PASS |
+| `npm run check:mission-log-contract-terms` | PASS |
 | `npm run check:one-voice` | **PASS — 16 sections** (repaired on master today; stays green) |
 | `npm run check:audio-identity` | **PASS** (repaired on master today; stays green) |
 | `node --test test/content-census.test.mjs` | PASS 5/5 (the new mission type satisfies `authored-type` evidence) |
@@ -354,8 +378,13 @@ reload comparison byte-identical.
   assertion, same message *"station missions tab should exist"*. Checked deliberately because this
   packet changes `ensureBoard` retention and puts a new offer type on `station_tethys`, which is that
   script's surface — the signature did not move, so it did not become mine.
+- **`check:mission-log-map:runtime`** — RED at base and RED now, same assertion *"tracked
+  recommendation should render a Star Map button"* at
+  `scripts/check-mission-log-map-runtime.mjs:176`. A/B'd by checking out `2438b140` and re-running.
 - **`check:art`** — inherited per the packet brief; not run, not used as acceptance evidence, and
   untouched by this change surface.
+
+All ten `check:mission-*` suites that own a surface this packet touches were run, not a subset.
 
 ## 9. Open rows — PQ-034 lease-blocked, NOT claimed
 
