@@ -119,15 +119,8 @@ ENVIRONMENT artifact by re-running on master. **Verify source-string gates in th
 
 ## Residuals — honestly unproven
 
-- The relocated Phase-4 functional route was attempted once through the registered
-  `pq020-ceres-topology` Browser broker cell at fixed seed `47`; it is **FAIL — HARNESS**. The public
-  production jump reached Ceres and materialized all fifteen Cathedral entities, but an unsupported
-  absolute endpoint-distance assertion stopped the route before Cathedral approach, save/Continue,
-  the second endpoint direction, or Electron parity. See
-  [`row5-pq020-ceres-route`](../evidence/h1/row5-pq020-ceres-route/EVIDENCE.md).
-- Browser/Electron route acceptance and game-camera visual review therefore remain open. The successful
-  jump/materialization facts do not close either claim.
-- Matched Ceres/Cathedral performance remains Phase H3; H1 makes no performance claim.
+- No Browser/Electron **route** acceptance, no game-camera visual review, no measured performance
+  profile. Phase 4 is open; the packet's broker manifest `pq018-wreck-cathedral` was not exercised.
 - The independent **art** verdict on the exact source candidate is still outstanding.
 - `visualRoot.anchorId` remains inert in the kernel (validated, never read) — pre-existing.
 - `evidenceRevision` is a count, not a revision: normalize sets it to the key count while forward play
@@ -144,7 +137,7 @@ ENVIRONMENT artifact by re-running on master. **Verify source-string gates in th
 
 1. Decide the lore canon: leave the Cathedral in `zone_io_derelict` or move it to Ceres with a real
    `zone_*` id.
-2. Phase 4: complete route acceptance and visual review after the H1 HARNESS failure; run matched Ceres performance separately in H3.
+2. Phase 4: route acceptance, visual review, matched Ceres performance.
 3. Rename `evidenceRevision` → `evidenceCount`.
 4. PQ-021 may now consume `evidenceReceiptsByPageId` and
    `src/data/wreckCathedralEvidenceCatalog.js`.
