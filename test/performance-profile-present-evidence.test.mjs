@@ -28,6 +28,7 @@ const gpu = summarizeGpuTimerReport({
 });
 assert.equal(gpu.frameGpuAvgMs, 9);
 assert.deepEqual(gpu.frameLabels, ['bloomScene', 'bloomDownsample', 'bloomUpsample', 'bloomComposite']);
+assert.equal(gpu.captureValid, true, 'legacy sampled reports infer validity without losing compatibility');
 
 const compositor = classifyPresentEvidence({
   rafP95: 33.4,
@@ -56,5 +57,29 @@ const unavailable = classifyPresentEvidence({
   gpu: summarizeGpuTimerReport({ available: false, status: 'unavailable', passes: {} }),
 });
 assert.equal(unavailable.classification, 'insufficient-gpu-timing');
+
+const invalid = summarizeGpuTimerReport({
+  available: true,
+  enabled: true,
+  status: 'backpressure',
+  captureValid: false,
+  invalidation: 'backpressure',
+  queryCounts: { issued: 49, completed: 48, pending: 0, dropped: 0, rejected: 1 },
+  passes: {
+    drawPreparedFrame: { avg: 20, max: 25, last: 19, samples: 48 },
+  },
+});
+assert.equal(invalid.frameGpuAvgMs, null, 'invalid captures never collapse to a numeric GPU time');
+assert.equal(invalid.completedQueries, 48);
+assert.equal(invalid.rejectedQueries, 1);
+const invalidClassification = classifyPresentEvidence({
+  rafP95: 33.4,
+  callbackP95: 10,
+  noopRafP95: 16.8,
+  cadence: quantized,
+  gpu: invalid,
+});
+assert.equal(invalidClassification.classification, 'gpu-timing-invalid');
+assert.equal(invalidClassification.evidence.gpuFrameAvgMs, null);
 
 console.log('performance-profile-present-evidence: PASS');
