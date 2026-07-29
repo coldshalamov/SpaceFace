@@ -119,7 +119,56 @@ The tool already names the frame: `snapshot().events` plus `peakPerFrame` in
 
 ---
 
-## Lead 4 — the sim catch-up cap (verify before believing)
+## Lead 4 — the HUD writes DOM attributes every frame (NEW, first family-H capture)
+
+**Measured on the first real-browser run with family H wired**, 1216 post-boot frames:
+
+| counter | post-boot total | per frame |
+|---|---:|---:|
+| `domAttributeMutations` | 16542 | **13.6** |
+| `domChildListMutations` | 967 | 0.8 |
+| `layoutReads` | 2 | ~0 |
+
+**13.6 attribute mutations per frame is the PERF-C05 signature**: DOM writes scaling with *frame
+count* rather than with *state changes*. A HUD showing values that change a few times a second should
+not be rewriting attributes 13 times every frame. Find the writers — most likely `style` or `class`
+being set unconditionally in a HUD update loop instead of behind a changed-value guard.
+
+Each write dirties style/layout for the next read. This is CPU on the game thread, every frame.
+
+**`layoutReads: 2` is genuine good news and is now non-vacuous** — the counter demonstrably works
+(it recorded 4 total), so a near-zero reading means the HUD really does not thrash layout. Leave it
+alone.
+
+**A structural caveat to record:** `peakPerFrame` for every DOM counter is **0**, because
+MutationObserver delivers its callback as a microtask, always outside the `beginFrame`/`endFrame`
+pair. The totals and `offFrame` figures are correct; per-frame peak attribution for family H is
+structurally unavailable. Do not read that 0 as "no spike".
+
+---
+
+## Lead 5 — a 2.19 GB JS heap with zero collections (NEW, verify before believing)
+
+First heap capture, 1499 samples over one probe run:
+
+```
+lastHeapBytes:        2,190,000,000   (~2.19 GB)
+heapBytesDeltaTotal:  2,152,700,000   (monotonic growth)
+collectionsDetected:  0
+```
+
+A heap that grows ~2.15 GB across a run and is **never once observed shrinking** is a leak signature.
+Chrome's `performance.memory` is quantised, so treat the exact figures as approximate — but zero
+collections across 1499 samples is not a quantisation artifact.
+
+**Verify before acting.** This is the first heap measurement ever taken here and it has no positive
+control yet. Confirm with Chrome DevTools' allocation timeline on a headed session before hunting a
+cause. If it holds, it is a first-rank problem: heap pressure at that scale causes major GC pauses,
+which is exactly the stutter being chased.
+
+---
+
+## Lead 6 — the sim catch-up cap (verify before believing)
 
 The sim ran at its 4-step catch-up cap on a large share of frames, past which whole ticks are shed.
 
