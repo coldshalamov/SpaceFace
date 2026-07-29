@@ -3,13 +3,13 @@ packetId: PQ-019
 leafId: PQ-019.mission-route
 acceptance: focused_green
 disposition: PASS
-candidateCommit: 1f6f649e
+candidateCommit: 5f2c7137
 -->
 
 # PQ-019C — authored mission and public route
 
-Branch `claude/pq019c-mission-20260728`, based at `2438b140`. Six code commits. `candidateCommit`
-above is `1f6f649e`, the final code commit; the commit carrying this receipt is docs-only and
+Branch `claude/pq019c-mission-20260728`, based at `2438b140`. Seven code commits. `candidateCommit`
+above is `5f2c7137`, the final code commit; the commit carrying this receipt is docs-only and
 necessarily follows it.
 
 Write surface: `src/data/heistMission.js` and `src/missions/heistMissionRuntime.js` (new),
@@ -28,6 +28,7 @@ runner, one registered broker manifest, and a single `check:pq019c:mission` line
 | `05bb6e8e` | `test(pq019c): reconcile save/reload at the nine named Phase E points` |
 | `edcdbb00` | `fix(heist): unblock the second run, make escape flyable, bound an unlaunched contract` |
 | `22d94c82` | `chore(pq019c): predeclare the fixed-seed tuning matrix before running it` |
+| `5f2c7137` | `fix(missions): keep the authored heist row off the head of the board` |
 | `1f6f649e` | `feat(pq019c): select tuning from the matrix, compose the theft cue, add the check line` |
 
 ## 1. What is claimed
