@@ -17,6 +17,7 @@ const MANIFEST_LOADERS = {
   'lab-chromium-parity': () => import('./validation-manifests/lab-chromium-parity.mjs'),
   'pq021-ledger-route': () => import('./validation-manifests/pq021-ledger-route.mjs'),
   'pq019-surface-heist': () => import('./validation-manifests/pq019-surface-heist.mjs'),
+  'pq020-ceres-topology': () => import('./validation-manifests/pq020-ceres-topology.mjs'),
 };
 
 function parseArgs(argv) {
@@ -57,6 +58,7 @@ Manifests:
   lab-chromium-parity
   pq021-ledger-route
   pq019-surface-heist
+  pq020-ceres-topology
 
 Environment on spawned probes:
   SF_BROKER_CLAIM   one-use claim path
