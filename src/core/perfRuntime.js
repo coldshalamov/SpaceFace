@@ -50,11 +50,25 @@ function reportStat(stat) {
     if (v < min) min = v;
     if (v > max) max = v;
   }
+  let p50 = 0;
   let p95 = 0;
+  let p99 = 0;
+  let p999 = 0;
+  let hitchesOver2xMedian = 0;
   if (stat.count > 0) {
     const sub = stat.scratch.subarray(0, stat.count);
     Array.prototype.sort.call(sub, (a, b) => a - b);
-    p95 = sub[Math.min(stat.count - 1, Math.floor(0.95 * (stat.count - 1)))];
+    const percentile = (fraction) => (
+      sub[Math.min(stat.count - 1, Math.floor(fraction * (stat.count - 1)))]
+    );
+    p50 = percentile(0.50);
+    p95 = percentile(0.95);
+    p99 = percentile(0.99);
+    p999 = percentile(0.999);
+    const hitchThreshold = p50 * 2;
+    for (let i = 0; i < stat.count; i++) {
+      if (sub[i] > hitchThreshold) hitchesOver2xMedian++;
+    }
   } else {
     min = 0;
   }
@@ -63,8 +77,13 @@ function reportStat(stat) {
     avg: stat.count ? stat.total / stat.count : 0,
     min,
     max,
+    p50,
     p95,
+    p99,
+    p999,
+    hitchesOver2xMedian,
     samples: stat.count,
+    retainedSampleCapacity: RING_N,
   };
 }
 
