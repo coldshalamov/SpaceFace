@@ -16,6 +16,7 @@ const MANIFEST_LOADERS = {
   'pq017-world-site': () => import('./validation-manifests/pq017-world-site.mjs'),
   'lab-chromium-parity': () => import('./validation-manifests/lab-chromium-parity.mjs'),
   'pq021-ledger-route': () => import('./validation-manifests/pq021-ledger-route.mjs'),
+  'pq019-surface-heist': () => import('./validation-manifests/pq019-surface-heist.mjs'),
 };
 
 function parseArgs(argv) {
@@ -55,6 +56,7 @@ Manifests:
   pq017-world-site
   lab-chromium-parity
   pq021-ledger-route
+  pq019-surface-heist
 
 Environment on spawned probes:
   SF_BROKER_CLAIM   one-use claim path
