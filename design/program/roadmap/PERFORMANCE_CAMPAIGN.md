@@ -69,6 +69,44 @@ sim suspended. Two ratios that bracket the answer.
 GPU-fill-bound; bloom is 40% of frame time."* Write them into this file. **Do not proceed without
 this.** Everything after here is chosen by that sentence.
 
+### Phase 0 exit — measured 2026-07-29, headed on the real GPU
+
+**0.1 — The GPU is real.** The headed session runs `ANGLE (Intel, Intel(R) Graphics (0x00007D45)
+Direct3D11)`, hardware tier — not SwiftShader. The software-rendering theory is retired for this
+machine.
+
+**Scenario sentences** (probe scenario `crowded-flight`; the 16 declared scenarios are not yet
+wired — that is Phase 2.3, and no sentence below pretends otherwise):
+
+- In `crowded-flight` under active stimulus the game is **CPU-bound in the JS frame callback**:
+  halving render scale leaves rAF p95 unchanged (33.3 → 33.5 ms) while GPU frame time falls
+  9.4 → 6.1 ms; callback p95 (21–32 ms) exceeds both the GPU time and the 16.7 ms budget.
+  **Phase 3-CPU applies. Phase 3-GPU is not the binding constraint on this hardware.**
+- In settled idle flight (the same session's diagnostic-variant windows) the game **already holds
+  a locked 60 fps** after the corruption fix below — 150/150 one-vsync frames in nearly every
+  2.5 s window, including windows that *add* GPU work. The live problem is **transient hitches
+  under stimulus**, not steady-state throughput: Phase 1 is the front line.
+- The 0.4 bracket: render-suppressed (`webgl-submit-noop`) callback p95 ≈ **6.7 ms**; sim-paused
+  render-only ≈ **6.1 ms**. Each half fits the budget alone; stacked they leave ~4 ms of headroom,
+  so any spike class blows a frame — measured spikes: **physics 48.6 ms max single tick** (avg
+  0.89 ms), autosave blocking slice 16.3 ms, plus GC of a high allocation rate.
+- No single sim system dominates the steady cost (top: tacticalAI p95 1.5 ms) — the callback cost
+  is breadth × the 4-step catch-up amplifier: `simFrame` p95 12.5 ms under stimulus collapses to
+  4.7 ms once frames fit the vsync budget. Every saving compounds by unwinding catch-up steps.
+- GPU ablation deltas for the record (GPU-timer averages; frame times were vsync-masked and
+  variant windows are sequence-confounded, so these are indicative): shadows ≈ 4.6 ms, canopy
+  transmission ≈ 6 ms, bloom ≈ 2.5 ms of a ~9.4 ms GPU frame. Real costs, worth Phase 3-GPU
+  attention only after the CPU spikes are dead or on weaker GPUs.
+
+**Root cause fixed during Phase 0** (commit `75c693b2`): the spatial grid's `INVALID_INDEX = -1`
+sentinel collided with legitimate cell coordinate -1 (positions in [-cellSize, 0) on either axis —
+gameplay orbits the origin). `removeFromGrid` skipped real unlinks, chains corrupted into
+self-cycles, and every visibility query pushed candidates until V8 threw `RangeError: Invalid
+array length` — a per-frame error storm with GB-scale allocation churn. After the fix, frame
+errors 7 → 0, hitches 76 → 51, rAF p95 50 → 33.3 ms under the same stimulus, and settled flight
+locks to 60 fps. Evidence: `.devshots/perf/phase0/*.{json,md}`, regression tests in
+`test/presentation-world-origin-cell-corruption.test.mjs`.
+
 ---
 
 ## Phase 1 — Kill the hitches (independent of throughput)
