@@ -61,6 +61,7 @@ const EVIDENCE_TOOL_PATHS = Object.freeze([
   'tools/art/lib/ashlineEvidenceEpoch.mjs',
   'tools/art/finalize_m4_ashline_v2_candidate.mjs',
   'tools/blender/render_m4_ashline_material_truth.py',
+  'tools/blender/render_m4_ashline_lode_material_truth.py',
 ]);
 
 const LEGACY_RENDER_NAMES = Object.freeze([
@@ -678,18 +679,19 @@ async function publishEvidenceReceiptSet(finalizeReport, results, evidenceEpoch)
 }
 
 async function currentEvidenceEpoch() {
-  const artifactReceiptPath = resolve(
-    FAMILY,
-    'evidence/material_truth_v2/eligible_artifacts.json',
-  );
   let eligibleArtifacts = [];
-  if (existsSync(artifactReceiptPath)) {
+  const artifactReceiptPaths = [
+    resolve(FAMILY, 'evidence/material_truth_v2/eligible_artifacts.json'),
+    resolve(FAMILY, 'evidence/material_truth_v2/eligible_artifacts_lode.json'),
+  ];
+  for (const artifactReceiptPath of artifactReceiptPaths) {
+    if (!existsSync(artifactReceiptPath)) continue;
     const artifactReceipt = readJson(artifactReceiptPath);
     if (artifactReceipt.schema !== 'spaceface.ashlineMaterialTruthArtifacts.v1'
         || !Array.isArray(artifactReceipt.artifacts)) {
-      throw new Error('invalid Ashline material-truth artifact receipt');
+      throw new Error(`invalid Ashline material-truth artifact receipt: ${artifactReceiptPath}`);
     }
-    eligibleArtifacts = artifactReceipt.artifacts;
+    eligibleArtifacts.push(...artifactReceipt.artifacts);
   }
   const epoch = await buildAshlineEvidenceEpoch({
     root: ROOT,

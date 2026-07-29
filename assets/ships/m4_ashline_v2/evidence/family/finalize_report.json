@@ -46,26 +46,28 @@
       "assetId": "SF_WHOLESHIP_ASHLINE_V2_LODE",
       "source": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_lode.glb",
       "candidate": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_lode.glb",
-      "sourceBytes": 6163208,
-      "candidateBytes": 5202960,
-      "sourceSha256": "A5F9DC2C54BE15021398D886D1B25A32353CBCF6A495FE0837EECB8DC3684C81",
-      "candidateSha256": "8E003254DC9005A123D1EAB15844103DADB1C8B2841FEE45775A136559A87B5A",
-      "sourceTextureCount": 16,
-      "releaseTextureCount": 16,
-      "releaseImageCount": 12,
-      "ktx2ImageCount": 12,
-      "meshoptBufferViewCount": 39,
+      "sourceBytes": 12265996,
+      "candidateBytes": 9941096,
+      "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036",
+      "candidateSha256": "32EF4CB197670257D6679780008F04E571EA2EEE5B539F00836635C7397683DA",
+      "sourceTextureCount": 28,
+      "releaseTextureCount": 28,
+      "releaseImageCount": 21,
+      "ktx2ImageCount": 21,
+      "meshoptBufferViewCount": 55,
       "extensionsUsed": [
         "EXT_meshopt_compression",
-        "KHR_materials_emissive_strength",
         "KHR_mesh_quantization",
         "KHR_texture_basisu"
       ],
       "materials": [
-        "Material_Mechanical",
         "Material_Cyan",
+        "Material_HeatMetal",
         "Material_Hull",
-        "Material_Red_Paint"
+        "Material_Mechanical",
+        "Material_Red_Paint",
+        "Material_Refractory",
+        "Material_RepairPrimer"
       ],
       "meshopt": "EXT_meshopt_compression",
       "ktx2": "KHR_texture_basisu/KTX2"
@@ -120,11 +122,11 @@
         "key": "lode",
         "id": "ashline_v2_lode",
         "source": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_lode.glb",
-        "sourceSha256": "A5F9DC2C54BE15021398D886D1B25A32353CBCF6A495FE0837EECB8DC3684C81",
-        "sourceBytes": 6163208,
+        "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036",
+        "sourceBytes": 12265996,
         "candidate": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_lode.glb",
-        "candidateSha256": "8E003254DC9005A123D1EAB15844103DADB1C8B2841FEE45775A136559A87B5A",
-        "candidateBytes": 5202960
+        "candidateSha256": "32EF4CB197670257D6679780008F04E571EA2EEE5B539F00836635C7397683DA",
+        "candidateBytes": 9941096
       },
       {
         "key": "rig",
@@ -140,7 +142,7 @@
     "tools": [
       {
         "path": "tools/art/finalize_m4_ashline_v2_candidate.mjs",
-        "sha256": "AAE62E73D094869AD4C43E50EC5F186FB8539251E33B05D1492BFECDF190F266"
+        "sha256": "68C13AAEBCA6D66162CF82E7C00E3DB293E617D16DDC798933934A3B67FE7886"
       },
       {
         "path": "tools/art/lib/ashlineEvidenceEpoch.mjs",
@@ -148,11 +150,15 @@
       },
       {
         "path": "tools/art/lib/ashlineSurfaceMaps.mjs",
-        "sha256": "01A234D9E7BACE32E6F3250DF2613632307CB33C9B1D0AB7E7C97729C1CAE0D3"
+        "sha256": "929E291DEA758B5B9F0E4FEB7EC545520B50D7B9B9AAD412D5DC9C29D895CFDA"
       },
       {
         "path": "tools/blender/build_m4_ashline_v2.py",
-        "sha256": "7DF467EEC101C1DFAB112B9872315706FA5F4C5E57D15F27C245F95D94A392B3"
+        "sha256": "493D9E80398266A0757B4FE53B09AF02F77D503099378BE256EC92A4C6B80014"
+      },
+      {
+        "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+        "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
       },
       {
         "path": "tools/blender/render_m4_ashline_material_truth.py",
@@ -309,6 +315,196 @@
         "producer": {
           "path": "tools/blender/render_m4_ashline_material_truth.py",
           "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/breech_recoil_close.png",
+        "sha256": "6558ADF77CFFE4A5B6D6E15687AFEF538657AC11055CBE8E1D8C5432069B90AD",
+        "bytes": 1156022,
+        "width": 1280,
+        "height": 720,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "lode",
+            "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+          "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/casemate_close.png",
+        "sha256": "82223C70B70CFC80C38A65548D73343A8C0CE53A11E7F39BA52CEFF781A4C591",
+        "bytes": 1139512,
+        "width": 1280,
+        "height": 720,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "lode",
+            "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+          "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/emission_off.png",
+        "sha256": "15D3095ECEA931A25FCC7DDC0E73042762154211C935982E8501EAA763BC3B2A",
+        "bytes": 1064838,
+        "width": 1280,
+        "height": 720,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "lode",
+            "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+          "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/game_120px.png",
+        "sha256": "2B4CD3A5CFAB3A1609ED4252F17BE9C050621BD36B41915B7D976FDED76CAADE",
+        "bytes": 19652,
+        "width": 120,
+        "height": 120,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "lode",
+            "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+          "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/game_45px.png",
+        "sha256": "57365EF202F4F2B76E92159DA1BA3D131C3E36DAF51111DC56E6B87ECAC56B32",
+        "bytes": 3676,
+        "width": 45,
+        "height": 45,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "lode",
+            "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+          "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/hard_grazing.png",
+        "sha256": "625A3DFD73B145B7E655AEBD64EEA055261FD66B5C9F4190567B6376834C35EF",
+        "bytes": 1187485,
+        "width": 1280,
+        "height": 720,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "lode",
+            "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+          "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/neutral_front34.png",
+        "sha256": "3DCB95E5F2895EF393D5E3AA4A49F5FF859AA22FF6DBE928C0A04607718E1FD2",
+        "bytes": 978430,
+        "width": 1280,
+        "height": 720,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "lode",
+            "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+          "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/neutral_rear34.png",
+        "sha256": "B10AB3927DC66152F510C9338A6CA4A8AB063FDA5F5D885D2C3838BD7CA5A31A",
+        "bytes": 1012861,
+        "width": 1280,
+        "height": 720,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "lode",
+            "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+          "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/top_ortho.png",
+        "sha256": "BD66BF11574D9D15809890096CA786C37BC9B1954C4A6EC4AC94F429D2D8F0DC",
+        "bytes": 1028828,
+        "width": 1280,
+        "height": 720,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "lode",
+            "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+          "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+        },
+        "reason": null
+      },
+      {
+        "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/torch_close.png",
+        "sha256": "6ED1065E390AFBA68002107A285DAE64ECD0FC2C4009F2F057AFB7244E104274",
+        "bytes": 1032569,
+        "width": 1280,
+        "height": 720,
+        "eligible": true,
+        "inputBindings": [
+          {
+            "shipKey": "lode",
+            "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+          }
+        ],
+        "producer": {
+          "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+          "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
         },
         "reason": null
       }
@@ -703,13 +899,13 @@
     "currentAcceptance": {
       "perShip": {
         "dart": true,
-        "lode": false,
+        "lode": true,
         "rig": false
       },
       "visualEvidenceEligible": false,
       "historicalArtifactsEligible": false,
       "requiresCurrentRender": true
     },
-    "epochDigest": "D5B5799FF20C2804EDAE0A4DEA251033BF8467A5DE19023EF6A7DABC7F13419B"
+    "epochDigest": "0D1A0628F23449E1B04C806FAB101E61F7CC41C6050C677D740A67110A38C098"
   }
 }

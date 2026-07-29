@@ -2,8 +2,8 @@
   "schema": "spaceface.m4AshlineSourceFamilyMetrics.v1",
   "packet": "M4-ASHLINE-SOURCE-FAMILY-V2-001",
   "familyId": "ashline_v2",
-  "builtAt": "2026-07-28T21:45:07Z",
-  "elapsedSec": 5.08,
+  "builtAt": "2026-07-28T23:34:38Z",
+  "elapsedSec": 19,
   "ships": [
     {
       "key": "dart",
@@ -63,18 +63,18 @@
       "sourceBytes": 10167052,
       "evidenceEpoch": {
         "status": "post-finalize-current",
-        "epochDigest": "D5B5799FF20C2804EDAE0A4DEA251033BF8467A5DE19023EF6A7DABC7F13419B"
+        "epochDigest": "0D1A0628F23449E1B04C806FAB101E61F7CC41C6050C677D740A67110A38C098"
       }
     },
     {
       "key": "lode",
       "id": "ashline_v2_lode",
       "role": "heavy_brawler",
-      "totalTriangles": 7637,
-      "hullTriangles": 6665,
+      "totalTriangles": 18436,
+      "hullTriangles": 6392,
       "lodTriangles": {
-        "lod0": 4528,
-        "lod1": 2401,
+        "lod0": 13472,
+        "lod1": 4256,
         "lod2": 708
       },
       "lod0AabbSize": [
@@ -111,18 +111,21 @@
         "SOCKET_Weapon_Front"
       ],
       "materials": [
-        "Material_Mechanical",
         "Material_Cyan",
+        "Material_HeatMetal",
         "Material_Hull",
-        "Material_Red_Paint"
+        "Material_Mechanical",
+        "Material_Red_Paint",
+        "Material_Refractory",
+        "Material_RepairPrimer"
       ],
-      "sha256": "A5F9DC2C54BE15021398D886D1B25A32353CBCF6A495FE0837EECB8DC3684C81",
+      "sha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036",
       "sourceGlb": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_lode.glb",
       "blend": "assets/ships/m4_ashline_v2/blender/ashline_v2_lode_production.blend",
-      "sourceBytes": 6163208,
+      "sourceBytes": 12265996,
       "evidenceEpoch": {
         "status": "post-finalize-current",
-        "epochDigest": "D5B5799FF20C2804EDAE0A4DEA251033BF8467A5DE19023EF6A7DABC7F13419B"
+        "epochDigest": "0D1A0628F23449E1B04C806FAB101E61F7CC41C6050C677D740A67110A38C098"
       }
     },
     {
@@ -182,7 +185,7 @@
       "sourceBytes": 7852880,
       "evidenceEpoch": {
         "status": "post-finalize-current",
-        "epochDigest": "D5B5799FF20C2804EDAE0A4DEA251033BF8467A5DE19023EF6A7DABC7F13419B"
+        "epochDigest": "0D1A0628F23449E1B04C806FAB101E61F7CC41C6050C677D740A67110A38C098"
       }
     }
   ],
@@ -194,7 +197,7 @@
   },
   "sourceAdaptationReceipt": "assets/ships/m4_ashline_v2/SOURCE_ADAPTATION.json",
   "evidenceEpoch": {
-    "epochDigest": "D5B5799FF20C2804EDAE0A4DEA251033BF8467A5DE19023EF6A7DABC7F13419B",
+    "epochDigest": "0D1A0628F23449E1B04C806FAB101E61F7CC41C6050C677D740A67110A38C098",
     "historicalRendersEligible": false,
     "requiresCurrentVersionedRenders": true
   }

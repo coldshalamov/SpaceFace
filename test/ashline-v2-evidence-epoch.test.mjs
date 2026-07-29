@@ -13,7 +13,7 @@ const RECEIPT_PATH = resolve(
   ROOT,
   'assets/ships/m4_ashline_v2/evidence/family/finalize_report.json',
 );
-const EXPECTED_EPOCH_DIGEST = 'D5B5799FF20C2804EDAE0A4DEA251033BF8467A5DE19023EF6A7DABC7F13419B';
+const EXPECTED_EPOCH_DIGEST = '0D1A0628F23449E1B04C806FAB101E61F7CC41C6050C677D740A67110A38C098';
 
 function receipt() {
   const report = JSON.parse(readFileSync(RECEIPT_PATH, 'utf8'));
@@ -37,30 +37,52 @@ test('Ashline V2 receipt binds one exact source/candidate/tool epoch', async () 
   assert.ok(value.tools.some(
     (row) => row.path.endsWith('render_m4_ashline_material_truth.py'),
   ));
+  assert.ok(value.tools.some(
+    (row) => row.path.endsWith('render_m4_ashline_lode_material_truth.py'),
+  ));
 });
 
 test('historical Ashline renders remain preserved but cannot impersonate current evidence', async () => {
   const value = receipt();
-  assert.equal(value.eligibleArtifacts.length, 8);
+  assert.equal(value.eligibleArtifacts.length, 18);
   assert.deepEqual(value.currentAcceptance.perShip, {
     dart: true,
-    lode: false,
+    lode: true,
     rig: false,
   });
   assert.equal(value.currentAcceptance.visualEvidenceEligible, false);
   assert.equal(value.currentAcceptance.historicalArtifactsEligible, false);
   assert.equal(value.currentAcceptance.requiresCurrentRender, true);
+  const expectedByShip = {
+    dart: {
+      count: 8,
+      pathToken: '/evidence/material_truth_v2/dart/',
+      producer: 'tools/blender/render_m4_ashline_material_truth.py',
+    },
+    lode: {
+      count: 10,
+      pathToken: '/evidence/material_truth_v2/lode/',
+      producer: 'tools/blender/render_m4_ashline_lode_material_truth.py',
+    },
+  };
+  for (const [shipKey, expected] of Object.entries(expectedByShip)) {
+    const artifacts = value.eligibleArtifacts.filter(
+      (artifact) => artifact.inputBindings[0]?.shipKey === shipKey,
+    );
+    assert.equal(artifacts.length, expected.count);
+    for (const artifact of artifacts) {
+      assert.equal(artifact.eligible, true);
+      assert.ok(artifact.path.includes(expected.pathToken));
+      assert.deepEqual(
+        artifact.inputBindings.map((binding) => binding.shipKey),
+        [shipKey],
+      );
+      assert.equal(artifact.producer.path, expected.producer);
+    }
+  }
   for (const artifact of value.eligibleArtifacts) {
     assert.equal(artifact.eligible, true);
-    assert.ok(artifact.path.includes('/evidence/material_truth_v2/dart/'));
-    assert.deepEqual(
-      artifact.inputBindings.map((binding) => binding.shipKey),
-      ['dart'],
-    );
-    assert.equal(
-      artifact.producer.path,
-      'tools/blender/render_m4_ashline_material_truth.py',
-    );
+    assert.equal(artifact.inputBindings.length, 1);
   }
   assert.ok(value.legacyArtifacts.length >= 35);
   assert.ok(value.legacyArtifacts.some(

@@ -54,25 +54,36 @@ test('each Ashline ship receives a distinct deterministic service history', () =
   assert.notEqual(sha256(dartA.normal), sha256(rig.normal), 'ship-specific repairs must also affect surface normals');
 });
 
-test('Ashline material roles distinguish paint, hot metal, and refractory ceramic', async () => {
+test('Ashline material roles distinguish paint, repair primer, hot metal, and refractory ceramic', async () => {
   const make = (materialName) => makeAshlineSurfaceMaps({
     shipKey: 'dart',
     materialName,
     size: 96,
   });
   const paint = make('Material_Red_Paint');
+  const repair = make('Material_RepairPrimer');
   const heat = make('Material_HeatMetal');
   const refractory = make('Material_Refractory');
 
   assert.equal(paint.metadata.role, 'red');
+  assert.equal(repair.metadata.role, 'repair');
   assert.equal(heat.metadata.role, 'heatmetal');
   assert.equal(refractory.metadata.role, 'refractory');
 
   const paintOrm = await sharp(paint.orm).stats();
+  const repairOrm = await sharp(repair.orm).stats();
   const heatOrm = await sharp(heat.orm).stats();
   const refractoryOrm = await sharp(refractory.orm).stats();
   const refractoryColor = await sharp(refractory.baseColor).stats();
   assert.ok(paintOrm.channels[2].mean < 80, 'intact oxide paint must not read as metallic plastic');
+  assert.ok(
+    repairOrm.channels[2].mean < 80,
+    'intact zinc/phosphate repair primer must remain dielectric',
+  );
+  assert.ok(
+    repairOrm.channels[1].mean > paintOrm.channels[1].mean,
+    'chalked repair primer must remain rougher than intact oxide paint',
+  );
   assert.ok(heatOrm.channels[2].mean > 210, 'nickel hot-section metal must remain metallic');
   assert.ok(refractoryOrm.channels[2].mean < 8, 'refractory ceramic must be non-metallic');
   assert.ok(
@@ -89,4 +100,56 @@ test('Ashline material roles distinguish paint, hot metal, and refractory cerami
     refractoryColor.channels[0].stdev > 9,
     'ceramic soot, seams, and spalls must survive as material-scale variation',
   );
+});
+
+test('unknown Ashline material names fail closed instead of inheriting hull maps', () => {
+  assert.throws(
+    () => makeAshlineSurfaceMaps({
+      shipKey: 'lode',
+      materialName: 'Material_RepairPr1mer',
+      size: 64,
+    }),
+    /unknown Ashline material role/u,
+  );
+});
+
+test('curved and machined roles suppress the hull plate grid instead of wrapping leather-like seams', async () => {
+  const make = (materialName) => makeAshlineSurfaceMaps({
+    shipKey: 'lode',
+    materialName,
+    size: 128,
+  });
+  const hull = make('Material_Hull');
+  const mechanical = make('Material_Mechanical');
+  const heat = make('Material_HeatMetal');
+  const refractory = make('Material_Refractory');
+
+  const hullNormal = await sharp(hull.normal).stats();
+  const mechanicalNormal = await sharp(mechanical.normal).stats();
+  const heatNormal = await sharp(heat.normal).stats();
+  const mechanicalColor = await sharp(mechanical.baseColor).stats();
+  const heatColor = await sharp(heat.baseColor).stats();
+
+  assert.ok(
+    mechanicalNormal.channels[0].stdev < hullNormal.channels[0].stdev * 0.6,
+    'machined receivers must not inherit the hull plate-grid relief',
+  );
+  assert.ok(
+    heatNormal.channels[0].stdev < hullNormal.channels[0].stdev * 0.4,
+    'rolled hot jackets must use restrained microstructure rather than block seams',
+  );
+  assert.ok(mechanicalNormal.channels[0].stdev > 2, 'machined metal must retain micro-response');
+  assert.ok(heatNormal.channels[0].stdev > 1.5, 'hot metal must retain micro-response');
+  assert.ok(
+    mechanicalColor.channels[2].mean > mechanicalColor.channels[0].mean,
+    'machined steel should retain a cool alloy separation',
+  );
+  assert.ok(
+    heatColor.channels[0].mean > heatColor.channels[2].mean,
+    'heat-darkened alloy should retain a warm thermal separation',
+  );
+  assert.equal(hull.metadata.panelFasteners, true);
+  assert.equal(mechanical.metadata.panelFasteners, false);
+  assert.equal(heat.metadata.panelFasteners, false);
+  assert.equal(refractory.metadata.panelFasteners, false);
 });

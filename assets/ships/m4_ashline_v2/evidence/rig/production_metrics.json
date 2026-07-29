@@ -320,7 +320,7 @@
   "builtAt": "2026-07-12T22:20:09Z",
   "evidenceEpoch": {
     "status": "post-finalize-current",
-    "epochDigest": "D5B5799FF20C2804EDAE0A4DEA251033BF8467A5DE19023EF6A7DABC7F13419B",
+    "epochDigest": "0D1A0628F23449E1B04C806FAB101E61F7CC41C6050C677D740A67110A38C098",
     "renderEligibility": "legacy-pre-surface-unbound"
   }
 }

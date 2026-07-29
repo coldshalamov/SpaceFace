@@ -51,6 +51,7 @@ base.LOD_RECIPES = (
 )
 base.CANONICAL_MATERIAL_NAMES = tuple(dict.fromkeys((
     *base.CANONICAL_MATERIAL_NAMES,
+    "Material_RepairPrimer",
     "Material_HeatMetal",
     "Material_Refractory",
 )))
@@ -71,6 +72,8 @@ def create_material_truth_materials() -> dict[str, bpy.types.Material]:
         0.35,
     )
     additions = {
+        # Chalked zinc/phosphate repair primer. It remains dielectric until physically chipped.
+        "Material_RepairPrimer": ((132, 124, 108, 255), 0.82, 0.0, None, 0.0),
         # Nickel-superalloy hot sections and heat-darkened stainless shielding.
         "Material_HeatMetal": ((58, 48, 44, 255), 0.44, 0.92, None, 0.0),
         # Alumina/zirconia nozzle throats and optical collimators.
@@ -378,6 +381,235 @@ def make_runtime_box(
     )
 
 
+def make_runtime_beveled_box(
+    name: str,
+    size_rt: tuple[float, float, float],
+    location_rt: tuple[float, float, float],
+    material: bpy.types.Material,
+    coll: bpy.types.Collection,
+    *,
+    bevel: float = 0.04,
+    detail: int = 1,
+    close_only: bool = False,
+    component: str = "",
+) -> bpy.types.Object:
+    """Small manufactured block with explicit edge breaks; never use for primary silhouette masses."""
+    obj = make_runtime_box(
+        name, size_rt, location_rt, material, coll,
+        detail=detail, close_only=close_only, component=component,
+    )
+    base.bevel_object(obj, bevel, 2)
+    return obj
+
+
+def make_chamfered_prism_x(
+    name: str,
+    x0: float,
+    x1: float,
+    center_y0: float,
+    center_y1: float,
+    center_z0: float,
+    center_z1: float,
+    height0: float,
+    height1: float,
+    width0: float,
+    width1: float,
+    chamfer_ratio: float,
+    material: bpy.types.Material,
+    coll: bpy.types.Collection,
+    *,
+    detail: int = 0,
+    close_only: bool = False,
+    component: str = "",
+) -> bpy.types.Object:
+    """Eight-sided changing section for receivers, girders, and housings with real edge breaks."""
+    ratio = max(0.04, min(0.42, chamfer_ratio))
+    vertices: list[tuple[float, float, float]] = []
+    for x, cy, cz, height, width in (
+        (x0, center_y0, center_z0, height0, width0),
+        (x1, center_y1, center_z1, height1, width1),
+    ):
+        hy, hz = height * 0.5, width * 0.5
+        dy, dz = height * ratio, width * ratio
+        vertices.extend([
+            (x, cy - hy + dy, cz - hz),
+            (x, cy - hy, cz - hz + dz),
+            (x, cy - hy, cz + hz - dz),
+            (x, cy - hy + dy, cz + hz),
+            (x, cy + hy - dy, cz + hz),
+            (x, cy + hy, cz + hz - dz),
+            (x, cy + hy, cz - hz + dz),
+            (x, cy + hy - dy, cz - hz),
+        ])
+    faces: list[tuple[int, ...]] = [
+        tuple(reversed(range(8))),
+        tuple(8 + index for index in range(8)),
+    ]
+    for index in range(8):
+        nxt = (index + 1) % 8
+        faces.append((index, nxt, 8 + nxt, 8 + index))
+    return make_material_truth_mesh(
+        name, vertices, faces, material, coll,
+        detail=detail, close_only=close_only, component=component,
+    )
+
+
+def make_plate_outline_y(
+    name: str,
+    outline_xz: list[tuple[float, float]],
+    y0: float,
+    y1: float,
+    material: bpy.types.Material,
+    coll: bpy.types.Collection,
+    *,
+    detail: int = 0,
+    close_only: bool = False,
+    component: str = "",
+) -> bpy.types.Object:
+    """Folded plate with an authored plan outline, avoiding rectangular decal-like slabs."""
+    vertices = [
+        (x, y, z)
+        for y in (y0, y1)
+        for x, z in outline_xz
+    ]
+    count = len(outline_xz)
+    faces: list[tuple[int, ...]] = [
+        tuple(reversed(range(count))),
+        tuple(count + index for index in range(count)),
+    ]
+    for index in range(count):
+        nxt = (index + 1) % count
+        faces.append((index, nxt, count + nxt, count + index))
+    return make_material_truth_mesh(
+        name, vertices, faces, material, coll,
+        detail=detail, close_only=close_only, component=component,
+    )
+
+
+def make_revolved_profile_z(
+    name: str,
+    profile: list[tuple[float, float]],
+    center_x: float,
+    center_y: float,
+    material: bpy.types.Material,
+    coll: bpy.types.Collection,
+    *,
+    sides: int = 10,
+    detail: int = 2,
+    close_only: bool = True,
+    component: str = "",
+) -> bpy.types.Object:
+    """Faceted bolt, bearing cap, or pin aligned to runtime Z."""
+    vertices: list[tuple[float, float, float]] = []
+    for z, radius in profile:
+        for index in range(sides):
+            angle = math.tau * index / sides
+            vertices.append((
+                center_x + math.cos(angle) * radius,
+                center_y + math.sin(angle) * radius,
+                z,
+            ))
+    faces: list[tuple[int, ...]] = []
+    for ring in range(len(profile) - 1):
+        for index in range(sides):
+            nxt = (index + 1) % sides
+            a = ring * sides + index
+            b = ring * sides + nxt
+            c = (ring + 1) * sides + nxt
+            d = (ring + 1) * sides + index
+            faces.append((a, b, c, d))
+    faces.append(tuple(reversed(range(sides))))
+    last = (len(profile) - 1) * sides
+    faces.append(tuple(last + index for index in range(sides)))
+    return make_material_truth_mesh(
+        name, vertices, faces, material, coll,
+        detail=detail, close_only=close_only, component=component,
+    )
+
+
+def make_revolved_profile_y(
+    name: str,
+    profile: list[tuple[float, float]],
+    center_x: float,
+    center_z: float,
+    material: bpy.types.Material,
+    coll: bpy.types.Collection,
+    *,
+    sides: int = 8,
+    detail: int = 2,
+    close_only: bool = True,
+    component: str = "",
+) -> bpy.types.Object:
+    """Faceted roof fastener or vertical pin aligned to runtime Y."""
+    vertices: list[tuple[float, float, float]] = []
+    for y, radius in profile:
+        for index in range(sides):
+            angle = math.tau * index / sides
+            vertices.append((
+                center_x + math.cos(angle) * radius,
+                y,
+                center_z + math.sin(angle) * radius,
+            ))
+    faces: list[tuple[int, ...]] = []
+    for ring in range(len(profile) - 1):
+        for index in range(sides):
+            nxt = (index + 1) % sides
+            a = ring * sides + index
+            b = ring * sides + nxt
+            c = (ring + 1) * sides + nxt
+            d = (ring + 1) * sides + index
+            faces.append((a, b, c, d))
+    faces.append(tuple(reversed(range(sides))))
+    last = (len(profile) - 1) * sides
+    faces.append(tuple(last + index for index in range(sides)))
+    return make_material_truth_mesh(
+        name, vertices, faces, material, coll,
+        detail=detail, close_only=close_only, component=component,
+    )
+
+
+def make_tapered_prism_x(
+    name: str,
+    x0: float,
+    x1: float,
+    center_y0: float,
+    center_y1: float,
+    center_z0: float,
+    center_z1: float,
+    height0: float,
+    height1: float,
+    width0: float,
+    width1: float,
+    material: bpy.types.Material,
+    coll: bpy.types.Collection,
+    *,
+    detail: int = 0,
+    close_only: bool = False,
+    component: str = "",
+) -> bpy.types.Object:
+    """Closed folded/forged mass whose section changes along X instead of reading as a cuboid."""
+    vertices: list[tuple[float, float, float]] = []
+    for x, cy, cz, height, width in (
+        (x0, center_y0, center_z0, height0, width0),
+        (x1, center_y1, center_z1, height1, width1),
+    ):
+        hy, hz = height * 0.5, width * 0.5
+        vertices.extend([
+            (x, cy - hy, cz - hz),
+            (x, cy - hy, cz + hz),
+            (x, cy + hy, cz + hz),
+            (x, cy + hy, cz - hz),
+        ])
+    faces = [
+        (0, 1, 2, 3), (4, 7, 6, 5),
+        (0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0),
+    ]
+    return make_material_truth_mesh(
+        name, vertices, faces, material, coll,
+        detail=detail, close_only=close_only, component=component,
+    )
+
+
 def make_revolved_profile_x(
     name: str,
     profile: list[tuple[float, float]],
@@ -643,6 +875,7 @@ def add_source_role_layer(ship_key: str, coll: bpy.types.Collection,
     red = mats["Material_Red_Paint"]
     cyan = mats["Material_Cyan"]
     warm = mats["Material_Warm"]
+    primer = mats["Material_RepairPrimer"]
     heat = mats["Material_HeatMetal"]
     refractory = mats["Material_Refractory"]
     if ship_key == "dart":
@@ -808,16 +1041,464 @@ def add_source_role_layer(ship_key: str, coll: bpy.types.Collection,
             0.032, mech, coll,
         ))
     elif ship_key == "lode":
-        for z in (-3.35, 3.35):
-            pod = base.make_box(f"Maul_Casemate_{z}", (6.8, 1.35, 1.55), (0.0, 0.1, z), hull, coll)
-            base.bevel_object(pod, 0.12, 3); out.append(pod)
-            gun = base.make_cylinder(f"Maul_Gun_{z}", 0.28, 2.4, (10.6, 0.1, z), mech, coll,
-                                     vertices=28, component="weapon", keep_separate=True)
-            out.append(gun)
-            rail = base.make_box(f"Maul_Rail_{z}", (6.2, 0.14, 0.18), (1.0, 1.0, z), red, coll)
-            base.bevel_object(rail, 0.025, 2); out.append(rail)
-        out.append(base.make_cylinder("Maul_Engine", 1.2, 1.8, (-11.0, 0.0, 0.0), cyan, coll,
-                                      vertices=36, component="engine", keep_separate=True))
+        # The Lode is a broad industrial/security hull converted around two heavy-autocannon load
+        # paths. Each casemate is an open steel machine bay: a radial cradle, framed aperture,
+        # faceted receiver, exposed recoil cylinders, and replaceable folded weather plates.
+        # None of the visible primary masses are allowed to be a plain cuboid.
+        for side, z, outward in (("P", -3.55, -1.0), ("S", 3.55, 1.0)):
+            component = f"autocannon_{side.lower()}"
+
+            # Two changing-section longitudinal rails carry recoil into the donor hull.
+            for beam_index, z_offset in enumerate((-0.44, 0.44)):
+                out.append(make_chamfered_prism_x(
+                    f"Lode_RadialLoadFrame_{side}_{beam_index}",
+                    -2.60, 5.62,
+                    -0.43, -0.30,
+                    z + z_offset, z + z_offset * 0.72,
+                    0.26, 0.20, 0.22, 0.16, 0.22,
+                    mech, coll, detail=1, component=component,
+                ))
+            for cross_index, x in enumerate((-1.75, 0.10, 1.92, 3.70, 5.10)):
+                out.append(make_runtime_beveled_box(
+                    f"Lode_RadialLoadFrame_CrossMember_{side}_{cross_index}",
+                    (0.18, 0.27, 1.04 - cross_index * 0.055),
+                    (x, -0.36, z), mech, coll,
+                    bevel=0.025, detail=2, close_only=True, component=component,
+                ))
+                out.append(make_gusset(
+                    f"Lode_RadialLoadFrame_Gusset_{side}_{cross_index}",
+                    ((x - 0.30, -0.31), (x + 0.30, -0.31), (x - 0.04, 0.15)),
+                    z + outward * 0.55, 0.12, mech, coll,
+                    detail=2, close_only=True,
+                ))
+
+            # Irregular folded weather plates bridge the open frame. Their plan outlines, lap
+            # offsets, edge returns, and isolated repair colors prevent "one long roof slab".
+            roof_layout = (
+                ("Root", -1.62, -0.18, 0.62, 0.56, 0.54, 0.48,
+                 hull),
+                ("Service", 0.18, 1.62, 0.60, 0.53, 0.49, 0.43,
+                 primer if side == "P" else hull),
+                ("Forward", 1.98, 3.48, 0.55, 0.48, 0.45, 0.38,
+                 hull),
+                ("Trunnion", 3.82, 5.28, 0.50, 0.42, 0.42, 0.34,
+                 hull),
+            )
+            for panel_id, x0, x1, y0, y1, half_width0, half_width1, panel_material in roof_layout:
+                panel_center_z = z + outward * 0.03
+                outline = [
+                    (x0 + 0.10, panel_center_z - half_width0),
+                    (x1 - 0.16, panel_center_z - half_width1),
+                    (x1, panel_center_z - half_width1 * 0.62),
+                    (x1 - 0.05, panel_center_z + half_width1),
+                    (x0 + 0.20, panel_center_z + half_width0),
+                    (x0, panel_center_z + half_width0 * 0.45),
+                ]
+                out.append(make_plate_outline_y(
+                    f"Lode_CasemateShell_Roof_{side}_{panel_id}",
+                    outline, max(y0, y1), max(y0, y1) + 0.065,
+                    panel_material, coll, component=component,
+                ))
+                out.append(make_chamfered_prism_x(
+                    f"Lode_CasemateShell_RoofFlange_{side}_{panel_id}",
+                    x0 + 0.05, x1 - 0.10,
+                    min(y0, y1) - 0.045, min(y0, y1) - 0.035,
+                    panel_center_z + outward * (half_width0 + 0.035),
+                    panel_center_z + outward * (half_width1 + 0.035),
+                    0.09, 0.08, 0.10, 0.09, 0.22,
+                    mech, coll, detail=2, close_only=True, component=component,
+                ))
+                for fastener_id, (fastener_x, fastener_z) in enumerate((
+                    (x0 + (x1 - x0) * 0.24, panel_center_z + outward * half_width0 * 0.70),
+                    (x0 + (x1 - x0) * 0.76, panel_center_z + outward * half_width1 * 0.70),
+                )):
+                    out.append(make_revolved_profile_y(
+                        f"Lode_CasemateShell_RoofFastener_{side}_{panel_id}_{fastener_id}",
+                        [(max(y0, y1) + 0.060, 0.050),
+                         (max(y0, y1) + 0.115, 0.050)],
+                        fastener_x, fastener_z, heat, coll, sides=8,
+                        detail=2, close_only=True, component=component,
+                    ))
+
+            # A low sill and two open perimeter rails expose the working mechanism. Small local
+            # guards replace the former featureless wall panels.
+            out.append(make_chamfered_prism_x(
+                f"Lode_CasemateShell_FloorSill_{side}",
+                -1.48, 5.42, -0.56, -0.42, z, z,
+                0.18, 0.14, 1.36, 1.02, 0.18,
+                hull, coll, component=component,
+            ))
+            for rail_id, y0, y1, width0, width1 in (
+                ("UpperOuter", 0.48, 0.36, 0.17, 0.13),
+                ("LowerOuter", -0.46, -0.36, 0.20, 0.15),
+            ):
+                out.append(make_chamfered_prism_x(
+                    f"Lode_CasemateShell_FrameRail_{side}_{rail_id}",
+                    -1.36, 5.38, y0, y1,
+                    z + outward * 0.79, z + outward * 0.58,
+                    0.18, 0.14, width0, width1, 0.22,
+                    mech, coll, detail=1, component=component,
+                ))
+            for post_index, (x, lower_y, upper_y, outside_z) in enumerate((
+                (-1.10, -0.43, 0.51, 0.77),
+                (1.72, -0.41, 0.47, 0.69),
+                (4.35, -0.36, 0.40, 0.60),
+            )):
+                out.append(make_service_line(
+                    f"Lode_CasemateShell_FramePost_{side}_{post_index}",
+                    [
+                        (x - 0.20, lower_y, z + outward * outside_z),
+                        (x + 0.02, (lower_y + upper_y) * 0.35,
+                         z + outward * (outside_z + 0.06)),
+                        (x + 0.26, upper_y, z + outward * (outside_z - 0.03)),
+                    ],
+                    0.075, mech, coll, detail=1, close_only=False,
+                ))
+                for bolt_y in (lower_y + 0.09, upper_y - 0.09):
+                    cap_z0 = z + outward * (outside_z + 0.07)
+                    cap_z1 = z + outward * (outside_z + 0.14)
+                    out.append(make_revolved_profile_z(
+                        f"Lode_CasemateShell_FrameBolt_{side}_{post_index}_{'U' if bolt_y > 0 else 'L'}",
+                        [(min(cap_z0, cap_z1), 0.075), (max(cap_z0, cap_z1), 0.075)],
+                        x, bolt_y, mech, coll, sides=8,
+                        detail=2, close_only=True, component=component,
+                    ))
+            out.append(make_plate_outline_y(
+                f"Lode_CasemateShell_AccessPanel_{side}",
+                [
+                    (-0.74, z - 0.31), (0.96, z - 0.27),
+                    (1.22, z - 0.12), (1.14, z + 0.28),
+                    (-0.52, z + 0.34), (-0.82, z + 0.13),
+                ],
+                0.705, 0.785,
+                red if side == "P" else primer, coll,
+                detail=1, component=component,
+            ))
+
+            # Faceted receiver, removable feed cassette, trunnion bearings, and exposed fasteners.
+            out.append(make_chamfered_prism_x(
+                f"Lode_AutocannonBreech_{side}",
+                3.20, 5.78, 0.02, 0.02, z, z,
+                1.18, 0.86, 1.22, 0.94, 0.20,
+                mech, coll, component=component,
+            ))
+            out.append(make_chamfered_prism_x(
+                f"Lode_AutocannonFeedHousing_{side}",
+                2.42, 3.42, 0.08, 0.04,
+                z - outward * 0.04, z - outward * 0.02,
+                0.92, 1.06, 1.05, 1.14, 0.18,
+                mech, coll, detail=1, component=component,
+            ))
+            for trunnion_index, x in enumerate((3.58, 5.18)):
+                out.append(make_segmented_clamp_x(
+                    f"Lode_AutocannonTrunnion_{side}_{trunnion_index}",
+                    x, 0.22, 0.02, z, 0.59, 0.75, mech, coll,
+                    segments=8, fill_ratio=0.64, detail=1, component=component,
+                ))
+                for bearing_side, bearing_outward in (("Outer", outward), ("Inner", -outward)):
+                    bearing_z0 = z + bearing_outward * 0.58
+                    bearing_z1 = z + bearing_outward * 0.82
+                    out.append(make_revolved_profile_z(
+                        f"Lode_AutocannonTrunnionCap_{side}_{trunnion_index}_{bearing_side}",
+                        [(min(bearing_z0, bearing_z1), 0.18),
+                         (max(bearing_z0, bearing_z1), 0.18)],
+                        x, 0.02, mech, coll, sides=10,
+                        detail=1, close_only=False, component=component,
+                    ))
+                    pin_center = (bearing_z0 + bearing_z1) * 0.5
+                    pin_half = 0.15
+                    out.append(make_revolved_profile_z(
+                        f"Lode_AutocannonTrunnionPin_{side}_{trunnion_index}_{bearing_side}",
+                        [(pin_center - pin_half, 0.085), (pin_center + pin_half, 0.085)],
+                        x, 0.02, heat, coll, sides=8,
+                        detail=2, close_only=True, component=component,
+                    ))
+            out.append(make_chamfered_prism_x(
+                f"Lode_AutocannonCassetteDoor_{side}",
+                2.50, 3.30, 0.48, 0.50,
+                z + outward * 0.10, z + outward * 0.10,
+                0.13, 0.11, 0.76, 0.64, 0.18,
+                primer if side == "S" else red, coll,
+                detail=1, component=component,
+            ))
+            for fastener_index, (x, y) in enumerate((
+                (2.62, 0.43), (3.14, 0.43), (2.64, -0.30), (3.16, -0.30),
+            )):
+                cap_z0 = z + outward * 0.58
+                cap_z1 = z + outward * 0.69
+                out.append(make_revolved_profile_z(
+                    f"Lode_AutocannonReceiverFastener_{side}_{fastener_index}",
+                    [(min(cap_z0, cap_z1), 0.065), (max(cap_z0, cap_z1), 0.065)],
+                    x, y, heat, coll, sides=8, component=component,
+                ))
+
+            # Paired hydraulic dampers sit outside the receiver silhouette so the recoil path reads.
+            for damper_index, (y, z_offset) in enumerate(((0.46, -0.48), (-0.43, 0.48))):
+                damper_z = z + z_offset
+                out.append(make_revolved_profile_x(
+                    f"Lode_RecoilDamper_{side}_{damper_index}",
+                    [(1.92, 0.12), (2.08, 0.20), (4.08, 0.20), (4.24, 0.14)],
+                    y, damper_z, heat, coll, sides=10,
+                    detail=1, component=component,
+                ))
+                out.append(make_revolved_profile_x(
+                    f"Lode_RecoilDamper_Rod_{side}_{damper_index}",
+                    [(4.18, 0.070), (5.34, 0.070)],
+                    y, damper_z, mech, coll, sides=10,
+                    detail=1, component=component,
+                ))
+                out.append(make_segmented_clamp_x(
+                    f"Lode_RecoilDamper_Gland_{side}_{damper_index}",
+                    4.15, 0.13, y, damper_z, 0.18, 0.25, mech, coll,
+                    segments=8, fill_ratio=0.70, detail=2, close_only=True,
+                ))
+                out.append(make_service_line(
+                    f"Lode_RecoilDamper_Service_{side}_{damper_index}",
+                    [(2.08, y, damper_z), (1.56, y * 1.10, damper_z),
+                     (0.82, y * 1.12, z + outward * 0.69)],
+                    0.035, mech, coll,
+                ))
+
+            # Stepped barrel, replaceable heat shroud, and actual bore depth.
+            out.append(make_revolved_profile_x(
+                f"Lode_AutocannonBarrel_{side}",
+                [(5.45, 0.34), (5.72, 0.42), (6.15, 0.38), (8.90, 0.28),
+                 (10.36, 0.24)],
+                0.02, z, mech, coll, sides=12, component=component,
+            ))
+            out.append(make_revolved_shell_x(
+                f"Lode_AutocannonHeatShroud_{side}",
+                [(6.02, 0.49, 0.40), (6.32, 0.50, 0.40), (8.72, 0.40, 0.32),
+                 (8.96, 0.36, 0.29)],
+                0.02, z, heat, coll, sides=12, component=component,
+            ))
+            for rib_index, (x, depth, outer, fill) in enumerate((
+                (6.38, 0.13, 0.54, 0.70),
+                (7.42, 0.09, 0.49, 0.46),
+                (8.48, 0.16, 0.51, 0.60),
+            )):
+                out.append(make_segmented_clamp_x(
+                    f"Lode_AutocannonCoolingRib_{side}_{rib_index}",
+                    x, depth, 0.02, z, 0.42, outer, heat, coll,
+                    segments=10, fill_ratio=fill, detail=2, close_only=True,
+                ))
+            for rail_index, (y_offset, z_offset) in enumerate((
+                (0.36, 0.0), (-0.36, 0.0), (0.0, -0.36), (0.0, 0.36),
+            )):
+                out.append(make_service_line(
+                    f"Lode_AutocannonShroudStringer_{side}_{rail_index}",
+                    [(6.10, 0.02 + y_offset, z + z_offset),
+                     (7.42, 0.02 + y_offset * 0.92, z + z_offset * 0.92),
+                     (8.84, 0.02 + y_offset * 0.76, z + z_offset * 0.76)],
+                    0.028, heat, coll, detail=2, close_only=True,
+                ))
+            out.append(make_revolved_shell_x(
+                f"Lode_AutocannonMuzzle_{side}",
+                [(10.24, 0.34, 0.19), (10.53, 0.36, 0.19), (10.82, 0.29, 0.18)],
+                0.02, z, heat, coll, sides=12, component=component,
+            ))
+
+            # Two triangular trunnion cheeks leave the barrel, rods, and bearing caps visible.
+            for cheek_id, cheek_z in (
+                ("Outer", z + outward * 0.66),
+                ("Inner", z - outward * 0.66),
+            ):
+                out.append(make_gusset(
+                    f"Lode_AutocannonMantlet_{side}_{cheek_id}_Upper",
+                    ((4.92, 0.17), (5.64, 0.15), (5.08, 0.48)),
+                    cheek_z, 0.13, mech, coll, detail=1,
+                ))
+                out.append(make_gusset(
+                    f"Lode_AutocannonMantlet_{side}_{cheek_id}_Lower",
+                    ((4.94, -0.15), (5.66, -0.13), (5.10, -0.46)),
+                    cheek_z, 0.13, mech, coll, detail=1,
+                ))
+                out.append(make_revolved_profile_z(
+                    f"Lode_AutocannonMantletPivot_{side}_{cheek_id}",
+                    [(cheek_z - 0.11, 0.20), (cheek_z + 0.11, 0.20)],
+                    5.20, 0.02, heat, coll, sides=10,
+                    detail=1, close_only=False, component=component,
+                ))
+
+        # Compact central pulse projector terminating immediately behind the existing socket.
+        out.append(make_tapered_prism_x(
+            "Lode_PulseProjector_LoadSaddle",
+            7.85, 8.48,
+            0.22, 0.29, 0.0, 0.0,
+            0.46, 0.36, 0.78, 0.64,
+            mech, coll, detail=1, component="pulse_projector",
+        ))
+        out.append(make_revolved_profile_x(
+            "Lode_PulseProjector_OpticalBody",
+            [(8.18, 0.22), (8.32, 0.30), (9.42, 0.30), (9.62, 0.23)],
+            0.35, 0.0, mech, coll, sides=10, component="pulse_projector",
+        ))
+        out.append(make_revolved_profile_x(
+            "Lode_PulseProjector_CoolingJacket",
+            [(8.72, 0.31), (8.82, 0.37), (9.44, 0.37), (9.60, 0.26)],
+            0.35, 0.0, heat, coll, sides=10, component="pulse_projector",
+        ))
+        out.append(make_revolved_shell_x(
+            "Lode_PulseProjector_RefractoryCollimator",
+            [(9.58, 0.25, 0.14), (9.82, 0.23, 0.12), (10.02, 0.18, 0.09)],
+            0.35, 0.0, refractory, coll, sides=10, component="pulse_projector",
+        ))
+        out.append(make_revolved_profile_x(
+            "Lode_PulseProjector_RecessedAperture",
+            [(9.83, 0.052), (9.87, 0.052)],
+            0.35, 0.0, cyan, coll, sides=10, detail=2, close_only=True,
+        ))
+        out.append(make_service_line(
+            "Lode_PulseProjector_PowerService",
+            [(7.82, 0.58, -0.22), (8.24, 0.53, -0.18), (8.78, 0.46, -0.13)],
+            0.038, heat, coll,
+        ))
+        out.append(make_service_line(
+            "Lode_PulseProjector_CoolantService",
+            [(7.76, 0.10, 0.30), (8.24, 0.14, 0.26), (8.76, 0.22, 0.18)],
+            0.032, mech, coll,
+        ))
+
+        # Single open-cycle torch: explicit hot/cold sections, hollow bell, thrust frame,
+        # asymmetric service packs, and a tiny energy cue buried inside the flow path.
+        out.append(make_revolved_profile_x(
+            "Lode_TorchPressureCase",
+            [(-10.28, 0.82), (-10.10, 1.02), (-8.72, 1.08), (-8.42, 0.84)],
+            0.0, 0.0, mech, coll, sides=14, component="drive",
+        ))
+        out.append(make_revolved_profile_x(
+            "Lode_TorchHotJacket",
+            [(-10.72, 0.66), (-10.58, 0.85), (-10.20, 0.92), (-10.04, 0.76)],
+            0.0, 0.0, heat, coll, sides=14, component="drive",
+        ))
+        out.append(make_revolved_shell_x(
+            "Lode_TorchBell",
+            [(-11.82, 1.20, 0.94), (-11.34, 1.06, 0.78), (-10.62, 0.69, 0.49)],
+            0.0, 0.0, heat, coll, sides=14, component="drive",
+        ))
+        out.append(make_revolved_shell_x(
+            "Lode_TorchRefractoryThroat",
+            [(-11.78, 0.91, 0.72), (-11.32, 0.75, 0.57), (-10.66, 0.47, 0.32)],
+            0.0, 0.0, refractory, coll, sides=14, component="drive",
+        ))
+        out.append(make_revolved_shell_x(
+            "Lode_TorchSootedInnerLiner",
+            [(-11.70, 0.69, 0.60), (-11.27, 0.54, 0.46), (-10.70, 0.29, 0.21)],
+            0.0, 0.0, heat, coll, sides=14, detail=1, component="drive",
+        ))
+        out.append(make_revolved_profile_x(
+            "Lode_TorchRecessedEnergyCue",
+            [(-10.50, 0.035), (-10.46, 0.035)],
+            0.0, 0.0, cyan, coll, sides=12, detail=2, close_only=True,
+        ))
+        for clamp_index, x in enumerate((-10.20, -8.80)):
+            out.append(make_revolved_profile_x(
+                f"Lode_TorchClamp_Band_{clamp_index}",
+                [(x - 0.07, 1.105), (x + 0.07, 1.105)],
+                0.0, 0.0, mech, coll, sides=14, detail=1, component="drive",
+            ))
+            for latch_id, y, z in (
+                ("Upper", 1.12, 0.0),
+                ("Lower", -1.12, 0.0),
+                ("Port", 0.0, -1.12),
+                ("Starboard", 0.0, 1.12),
+            ):
+                out.append(make_tapered_prism_x(
+                    f"Lode_TorchClamp_Latch_{clamp_index}_{latch_id}",
+                    x - 0.13, x + 0.13,
+                    y, y * 1.02, z, z * 1.02,
+                    0.20 if y else 0.26, 0.16 if y else 0.22,
+                    0.26 if z else 0.20, 0.22 if z else 0.16,
+                    mech, coll, detail=2, close_only=True, component="drive",
+                ))
+        for side, z in (("P", -1.20), ("S", 1.20)):
+            out.append(make_tapered_prism_x(
+                f"Lode_TorchThrustSaddle_{side}",
+                -9.20, -7.65,
+                -0.52, -0.40, z, z * 0.76,
+                0.40, 0.30, 0.38, 0.32,
+                mech, coll, detail=1, component="drive",
+            ))
+            out.append(make_gusset(
+                f"Lode_TorchThrustGusset_{side}",
+                ((-9.15, -0.40), (-7.45, -0.40), (-8.05, 0.34)),
+                z, 0.18, mech, coll, detail=1,
+            ))
+        # The three pump/valve stations are mounted equipment, not anonymous boxes. Each station
+        # has a faceted manifold, cylindrical accumulator, split clamp, valves, and rooted lines.
+        for pack_id, y, z, size in (
+            ("A", 0.72, -1.08, (0.62, 0.44, 0.42)),
+            ("B", -0.56, 1.16, (0.54, 0.40, 0.52)),
+            ("C", 0.36, 1.32, (0.44, 0.34, 0.34)),
+        ):
+            pack_material = heat if pack_id == "A" else mech
+            out.append(make_chamfered_prism_x(
+                f"Lode_TorchServicePack_{pack_id}",
+                -9.76, -9.76 + size[0],
+                y, y * 0.92, z, z,
+                size[1], size[1] * 0.82, size[2], size[2] * 0.84, 0.24,
+                pack_material, coll,
+                detail=1, component="drive",
+            ))
+            accumulator_z = z + (0.26 if z < 0 else -0.26)
+            out.append(make_revolved_profile_x(
+                f"Lode_TorchAccumulator_{pack_id}",
+                [(-9.70, 0.12), (-9.62, 0.17), (-9.22, 0.17), (-9.14, 0.12)],
+                y * 0.82, accumulator_z, heat, coll, sides=10,
+                detail=1, component="drive",
+            ))
+            out.append(make_segmented_clamp_x(
+                f"Lode_TorchAccumulatorClamp_{pack_id}",
+                -9.44, 0.10, y * 0.82, accumulator_z, 0.16, 0.21,
+                mech, coll, segments=8, fill_ratio=0.66,
+                detail=2, close_only=True, component="drive",
+            ))
+            for valve_index, (valve_x, valve_y) in enumerate((
+                (-9.60, y + 0.22), (-9.28, y - 0.20),
+            )):
+                out.append(make_revolved_profile_z(
+                    f"Lode_TorchValve_{pack_id}_{valve_index}",
+                    [(z - 0.12, 0.075), (z + 0.12, 0.075)],
+                    valve_x, valve_y, heat, coll, sides=8,
+                    detail=2, close_only=True, component="drive",
+                ))
+            out.append(make_service_line(
+                f"Lode_TorchServiceLine_{pack_id}",
+                [(-8.16, y * 0.58, z * 0.52), (-8.72, y * 0.72, z * 0.72),
+                 (-9.45, y, z)],
+                0.045 if pack_id == "A" else 0.035,
+                pack_material,
+                coll, detail=1, close_only=False,
+            ))
+            out.append(make_service_line(
+                f"Lode_TorchReturnLine_{pack_id}",
+                [(-8.08, y * 0.48, z * 0.42), (-8.64, y * 0.58, z * 0.62),
+                 (-9.18, y * 0.72, accumulator_z)],
+                0.028, mech, coll, detail=2, close_only=True,
+            ))
+
+        # Longitudinal jacket stringers and inspection lugs break the "smooth leather tube"
+        # reading while remaining visibly attached to the thrust case.
+        for stringer_index, (y_factor, z_factor) in enumerate((
+            (0.78, 0.0), (-0.78, 0.0), (0.0, 0.78), (0.0, -0.78),
+            (0.55, 0.55), (-0.55, 0.55),
+        )):
+            out.append(make_service_line(
+                f"Lode_TorchJacketStringer_{stringer_index}",
+                [(-10.50, y_factor * 0.92, z_factor * 0.92),
+                 (-9.62, y_factor * 1.02, z_factor * 1.02),
+                 (-8.62, y_factor * 0.86, z_factor * 0.86)],
+                0.035, mech, coll, detail=2, close_only=True,
+            ))
+        for lug_index, (x, y, z) in enumerate((
+            (-10.08, 1.08, 0.36), (-10.08, -1.08, -0.36),
+            (-8.92, 0.36, 1.08), (-8.92, -0.36, -1.08),
+        )):
+            out.append(make_runtime_beveled_box(
+                f"Lode_TorchInspectionLug_{lug_index}",
+                (0.24, 0.18, 0.14), (x, y, z), mech, coll,
+                bevel=0.025, detail=2, close_only=True, component="drive",
+            ))
     else:
         boom = base.make_box("Hook_CaptureBoom", (8.2, 0.72, 0.82), (3.9, -0.65, -2.65), hull, coll)
         base.bevel_object(boom, 0.10, 3); out.append(boom)
@@ -901,6 +1582,27 @@ def create_root_with_material_truth(
                 "vector-reaction-drive-s-twin",
                 "folded-feed-spines",
                 "fixed-pulse-projector-s",
+            ],
+        }
+        root["spaceface"] = spaceface
+    elif spec["id"] == "ashline_v2_lode":
+        asset = dict(root.get("spacefaceAsset", {}))
+        asset["materialTruthRevision"] = "lode-material-truth-2026-07-28-v1"
+        asset["driveProfileId"] = "drive_torch_l"
+        asset["weaponIds"] = [
+            "wpn_autocannon_m",
+            "wpn_autocannon_m",
+            "wpn_pulse_laser_s",
+        ]
+        root["spacefaceAsset"] = asset
+        spaceface = dict(root.get("spaceface", {}))
+        spaceface["materialTruth"] = {
+            "revision": "lode-material-truth-2026-07-28-v1",
+            "components": [
+                "paired-heavy-autocannon-casemates",
+                "radial-recoil-load-frames",
+                "fixed-pulse-projector-s",
+                "open-cycle-torch-l",
             ],
         }
         root["spaceface"] = spaceface
@@ -998,13 +1700,62 @@ def write_source_receipt() -> None:
 
 
 def write_material_truth_receipt(ship_key: str) -> None:
-    if ship_key != "dart":
+    if ship_key not in {"dart", "lode"}:
         return
     summary_path = FAMILY_ROOT / "evidence" / ship_key / "build_summary.json"
-    source_path = FAMILY_ROOT / "source" / "wholeships" / "ashline_v2_dart.glb"
+    source_path = FAMILY_ROOT / "source" / "wholeships" / f"ashline_v2_{ship_key}.glb"
     if not summary_path.exists() or not source_path.exists():
-        raise FileNotFoundError("Dart material-truth receipt inputs are missing")
+        raise FileNotFoundError(f"{ship_key.title()} material-truth receipt inputs are missing")
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    if ship_key == "lode":
+        summary["materialTruth"] = {
+            "revision": "lode-material-truth-2026-07-28-v1",
+            "sourceSha256": sha256(source_path),
+            "driveProfileId": "drive_torch_l",
+            "weaponIds": [
+                "wpn_autocannon_m",
+                "wpn_autocannon_m",
+                "wpn_pulse_laser_s",
+            ],
+            "components": [
+                "paired-heavy-autocannon-casemates",
+                "radial-recoil-load-frames",
+                "fixed-pulse-projector-s",
+                "open-cycle-torch-l",
+            ],
+            "fictionalMaterials": {
+                "Material_Hull": "coated-or-oxidized-armor-and-donor-structure",
+                "Material_Mechanical": "nitrided-load-frame-trunnion-and-service-steel",
+                "Material_Red_Paint": "non-metallic-reach-oxide-red-coating",
+                "Material_RepairPrimer": "chalked-zinc-phosphate-dielectric-primer",
+                "Material_HeatMetal": "nickel-hot-sections-and-heat-darkened-stainless",
+                "Material_Refractory": "alumina-zirconia-ceramic",
+                "Material_Cyan": "recessed-internal-energy-cue",
+            },
+            "acceptedComponentRoles": [
+                "armor-shell", "autocannon-barrel", "autocannon-breech",
+                "cassette-access", "hydraulic-recoil-damper", "mantlet",
+                "open-cycle-torch", "pulse-projector", "radial-load-frame",
+                "refractory-throat", "service-pack", "thrust-saddle", "trunnion",
+            ],
+            "lodPolicy": {
+                "lod0": "full-component-construction",
+                "lod1": "load-path-and-material-boundaries",
+                "lod2": "donor-macro-hull-only",
+            },
+            "references": [
+                "assets/ships/m4_ashline_v2/reference/material_truth_v2/"
+                "lode_autocannon_casemate_reference.png",
+                "assets/ships/m4_ashline_v2/reference/material_truth_v2/"
+                "lode_open_cycle_torch_reference.png",
+            ],
+            "promotionBlockers": [
+                "single-central-weapon-socket-versus-three-visible-weapons-needs-runtime-vfx-proof",
+                "browser-electron-and-lod-transition-evidence-remains-external",
+            ],
+        }
+        summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+        return
     summary["materialTruth"] = {
         "revision": "dart-material-truth-2026-07-28-v1",
         "sourceSha256": sha256(source_path),
