@@ -99,6 +99,31 @@ const AUTHORED_ASSET_IMMEDIATE_RADIUS = 1000;
 const AUTHORED_ASSET_LOOKAHEAD_SECONDS = 10;
 const RENDER_RESIDENCY_POLL_SECONDS = 0.25;
 
+export function warmActivePostProcessFrame({
+  video = {},
+  ensureRenderGraph,
+  getRenderGraph,
+  bloom,
+  renderer,
+  scene,
+  camera,
+  time = 0,
+}) {
+  if (video.renderGraph && ensureRenderGraph?.()) {
+    const graph = getRenderGraph?.();
+    if (graph && typeof graph.render === 'function') {
+      graph.render(scene, camera, { time });
+      return 'renderGraph';
+    }
+  }
+  if (bloom && video.bloom !== false) {
+    bloom.render(scene, camera);
+    return 'bloom';
+  }
+  renderer.render(scene, camera);
+  return 'straight';
+}
+
 function isDebugRuntime() {
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') return false;
   return true;
@@ -898,6 +923,7 @@ export const render = {
             preparePipelines: compileForCurrentTarget,
             video: state.settings && state.settings.video,
             yieldToMain: yieldToBrowser,
+            warmPostProcess: state.render.warmPostProcess,
           }).catch((error) => {
             console.warn('[render] restored-context pipeline precompile failed', error);
             return null;
@@ -1223,9 +1249,16 @@ export const render = {
     state.render.warmPostProcess = () => {
       const dynamicBufferEpoch = dynamicBuffers.arm();
       try {
-        return this.bloom && state.settings.video.bloom !== false
-          ? this.bloom.render(scene, cam.obj)
-          : renderer.render(scene, cam.obj);
+        return warmActivePostProcessFrame({
+          video: state.settings && state.settings.video || {},
+          ensureRenderGraph: () => this._ensureRenderGraph(),
+          getRenderGraph: () => this._renderGraph,
+          bloom: this.bloom,
+          renderer,
+          scene,
+          camera: cam.obj,
+          time: this._bgTime || 0,
+        });
       } finally {
         dynamicBuffers.disarm(dynamicBufferEpoch);
       }
@@ -1461,6 +1494,7 @@ export const render = {
           preparePipelines: compileForCurrentTarget,
           video: state.settings && state.settings.video,
           yieldToMain: yieldToBrowser,
+          warmPostProcess: state.render.warmPostProcess,
         }).catch((error) => {
           console.warn('[render] global pipeline precompile failed', error);
           return null;
