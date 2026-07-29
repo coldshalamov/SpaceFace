@@ -301,13 +301,17 @@ test('install law: hollow + rover adjacency + materials; core anchors and freeze
   // Gas tap demands a gas contact.
   res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_gas_tap', col: 15, row: 2 });
   assert.equal(res.reason, 'needs-gas-contact');
-  // Core anchors, freezes boreSeed, stamps the entity, and spawns the exterior relay.
+  // Core anchors, freezes boreSeed, and stamps the entity. PQ-024: the exterior relay is the
+  // PRODUCING site's consequence — committed (anchored, pre-output) sites project nothing yet.
   res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_massline_core', col: 14, row: 1 });
   assert.equal(res.ok, true);
   assert.equal(site.anchored, true);
   assert.equal(site.boreSeed, 42);
   assert.equal(h.entities.get(42).data.siteAnchored, true);
-  assert.ok(h.spawned.some((e) => e.data && e.data.siteBeacon === site.id), 'exterior relay spawned');
+  assert.ok(!h.spawned.some((e) => e.data && e.data.siteBeacon === site.id),
+    'no exterior relay before the first real output (PQ-024: committed = 0)');
+  assert.equal(site.survey && site.survey.lifecycle, 'committed',
+    'Core commitment records the durable survey (derived when no pulse assay exists)');
   // Second core refused.
   res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_massline_core', col: 15, row: 1 });
   assert.equal(res.reason, 'unique');

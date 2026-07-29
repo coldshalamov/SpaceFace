@@ -17,7 +17,7 @@ import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { MATERIALS, ORE_TINTS, machineName } from './asteroidRenderer2d.js';
 import { createAsteroidRenderer3d } from './asteroidRenderer3d.js';
 import { createAsteroidController, MODES } from './asteroidController.js';
-import { createInspector, placementReason, commodityName } from './inspector.js';
+import { createInspector, placementReason, commodityName, formationLabel } from './inspector.js';
 import { createBuildPalette, costText } from './buildPalette.js';
 
 const { COLS, ROWS } = DRILL_CONST;
@@ -194,12 +194,18 @@ export const asteroidScreen = {
     scanBtn.className = 'ao-btn ao-survey';
     scanBtn.innerHTML = `<span>Pulse survey <span class="ao-key-cap">${controlMap.scanLabel}</span></span> <span class="st ready" data-scan-state>Ready</span>`;
     hudEls.scanState = scanBtn.querySelector('[data-scan-state]');
+    // Claim-survey assay chip (PQ-024): volatile cold-state progress next to the verb that drives
+    // it; committed/producing read from the durable record. Ambient status surface, one voice.
+    const assayChip = document.createElement('span');
+    assayChip.className = 'ao-chip';
+    assayChip.style.display = 'none';
+    hudEls.assay = assayChip;
     const hints = document.createElement('div');
     hints.className = 'ao-hints';
     hints.innerHTML =
       `<div>${controlMap.movementLabel} — drive · hold to bore</div>`
       + '<div>Enter place · X dismantle · Q/E cycle · Esc retract</div>';
-    cmdBay.append(cmdTitle, modeSwitch, cardHost, scanBtn, hints);
+    cmdBay.append(cmdTitle, modeSwitch, cardHost, scanBtn, assayChip, hints);
     deck.appendChild(cmdBay);
     wrap.appendChild(deck);
 
@@ -580,6 +586,36 @@ export const asteroidScreen = {
       }));
     }
 
+    // Claim-survey milestones (PQ-024). Detection and completion warn about volatility BEFORE the
+    // player commits; commitment and first real output are durable site receipts. One voice:
+    // everything routes through the screen's single announcer + the ledger tape.
+    unsubs.push(ctx.bus.on('site:surveyDetected', (p) => {
+      if (!p || p.asteroidId !== asteroidId()) return;
+      const label = formationLabel(p.material);
+      pushLedgerLine('info', `Survey: ${label} detected — assaying ${p.cellsTotal} cells.`);
+      announce(`Survey detected a ${label}. Assay is volatile — install a Massline Core before leaving this rock to commit it.`);
+      inspElapsed = 10;
+    }));
+    unsubs.push(ctx.bus.on('site:surveyComplete', (p) => {
+      if (!p || p.asteroidId !== asteroidId()) return;
+      pushLedgerLine('good', `Survey complete — ${p.cellsTotal} cells assayed. Commit a Core to keep this record.`);
+      announce('Formation fully assayed. Install a Massline Core to commit the survey record.');
+      inspElapsed = 10;
+    }));
+    unsubs.push(ctx.bus.on('site:surveyCommitted', (p) => {
+      if (!p || p.siteId !== currentSiteId) return;
+      pushLedgerLine('good', `Survey committed — ${p.cellsTotal} formation cells recorded to the claim.`);
+      projDirty = true;
+      inspElapsed = 10;
+    }));
+    unsubs.push(ctx.bus.on('site:producing', (p) => {
+      if (!p || p.siteId !== currentSiteId) return;
+      pushLedgerLine('good', 'First real output — the site is producing. Exterior relay online.');
+      announce('First real output recorded. The site is producing — exterior relay online.');
+      projDirty = true;
+      inspElapsed = 10;
+    }));
+
     function syncLedgerFromSite() {
       const s = site();
       if (!s || !s.ledger.length) return;
@@ -725,9 +761,33 @@ export const asteroidScreen = {
       const disabled = remaining > 0;
       if (hudCache.scanDis !== disabled) { hudCache.scanDis = disabled; scanBtn.disabled = disabled; }
 
+      // claim-survey assay chip + claim chip (PQ-024): cold progress is volatile knowledge and
+      // must be visible BEFORE the player commits; committed/producing read the durable record.
+      const survey = siteSys ? siteSys.surveyStatusFor(asteroidId()) : null;
+      let assayText = '';
+      let assayCls = 'ao-chip';
+      if (survey && survey.state === 'cold' && survey.material) {
+        assayText = `Assay ${survey.revealed}/${survey.cells}`;
+        assayCls = 'ao-chip bad'; // volatile — same risk voice as UNANCHORED
+      } else if (survey && survey.state === 'cold') {
+        assayText = 'No assay';
+      } else if (survey && (survey.state === 'committed' || survey.state === 'producing')) {
+        assayText = `Assay ${survey.cells} cells`;
+        assayCls = 'ao-chip ok';
+      }
+      setText(hudEls.assay, 'as', assayText);
+      setCn(hudEls.assay, 'ascn', assayCls);
+      const assayHidden = !assayText;
+      if (hudCache.assayHide !== assayHidden) {
+        hudCache.assayHide = assayHidden;
+        hudEls.assay.style.display = assayHidden ? 'none' : '';
+      }
+
       // claim chip
       const s = site();
-      setText(hudEls.claim, 'dc', !s ? 'No claim' : (s.anchored ? 'Anchored' : 'UNANCHORED'));
+      const claimText = !s ? 'No claim'
+        : (!s.anchored ? 'UNANCHORED' : (survey && survey.state === 'producing' ? 'Producing' : 'Anchored'));
+      setText(hudEls.claim, 'dc', claimText);
       setCn(hudEls.claim, 'dccn', !s ? 'ao-chip' : (s.anchored ? 'ao-chip ok' : 'ao-chip bad'));
       if (s && !s.anchored && bannerKind == null) {
         showBanner('unanchored', 'UNANCHORED CLAIM — install a Massline Core or this work is lost when you leave the sector.');
@@ -776,17 +836,19 @@ export const asteroidScreen = {
             surveyed: drillSys.isTileSurveyed(cursor.col, cursor.row),
             telemetry: t.type !== 'empty' ? drillSys.getTargetTelemetry(cursor.col, cursor.row) : null,
             drillTier: drillSys.getDrillTier(),
+            formation: siteSys ? siteSys.surveyCellRole(asteroidId(), tileIndex(cursor.col, cursor.row)) : null,
           });
           return;
         }
       }
-      if (projection) inspector.showSite(projection, { paused: true });
+      if (projection) inspector.showSite(projection, { paused: true, survey: siteSys ? siteSys.surveyStatusFor(asteroidId()) : null });
       else if (cursor && d.field) {
         const t = d.field[cursor.col] && d.field[cursor.col][cursor.row];
         inspector.showTile({
           tile: t || null, col: cursor ? cursor.col : 0, row: cursor ? cursor.row : 0,
           surveyed: cursor ? drillSys.isTileSurveyed(cursor.col, cursor.row) : false,
           telemetry: null, drillTier: drillSys.getDrillTier(),
+          formation: (cursor && siteSys) ? siteSys.surveyCellRole(asteroidId(), tileIndex(cursor.col, cursor.row)) : null,
         });
       } else {
         inspector.showTile({ tile: null, col: 0, row: 0, surveyed: false, telemetry: null, drillTier: 1 });

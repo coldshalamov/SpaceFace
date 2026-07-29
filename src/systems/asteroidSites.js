@@ -44,6 +44,10 @@ import {
 import {
   syncWorldSiteMaterialization, removeWorldSiteMaterialization, captureWorldSitePayloadState,
 } from './worldSiteRuntime.js';
+import {
+  SURVEY_LIMITS, selectSurveyTarget, surveyRevealFrontier, validateSurveyTarget,
+  normalizeSurveyRecord,
+} from './siteSurvey.js';
 
 const WORLD_SITE_PAYLOAD_CAPTURE_TICKS = 15;
 
@@ -120,6 +124,11 @@ export const asteroidSites = {
 
     this._accum = 0;
     this._rt = new Map(); // siteId -> transient runtime caches (field, networks, geo, status)
+    // asteroidId -> VOLATILE claim-survey session (PQ-024). Pre-Core assay knowledge: target
+    // selection + progressive reveal. Never serialized, never written into state.sites — it dies
+    // with the drill session (drill:end), on save restore, and on adoption. The Core commitment
+    // is the ONLY path that turns it into durable truth.
+    this._surveyByAsteroid = new Map();
     this._worldSyncWanted = true;
     this._worldRestoreActive = false;
     this._worldAdmissionBySite = new Map();
@@ -152,6 +161,10 @@ export const asteroidSites = {
     });
 
     this.bus.on('drill:end', ({ asteroidId }) => {
+      // The volatile claim survey is session-bound, exactly like the pulse's tile.surveyed marks:
+      // leaving the bore discards uncommitted assay knowledge (the UI warns before the player
+      // commits). Committed records live on the site and are untouched here.
+      this._surveyByAsteroid.delete(asteroidId);
       const site = this.siteForAsteroid(asteroidId);
       if (!site) return;
       const ent = state.entities && state.entities.get ? state.entities.get(asteroidId) : null;
@@ -159,6 +172,17 @@ export const asteroidSites = {
         site.cleared = normalizeClearedTiles(ent.data.drillCleared);
         this._markDirty(site.id, { field: true });
       }
+    });
+
+    // PQ-024: an effective Survey pulse (drill.js already gated cooldown — no event, no advance)
+    // progressively reveals the ONE deterministic interior formation while the rock is cold
+    // (no anchored site). Anchored rocks keep vanilla pulse geology; their survey is committed.
+    this.bus.on('drill:scanPulse', () => {
+      const d = state.drill;
+      if (!d || !d.active || !d.field || d.asteroidId == null) return;
+      const site = this.siteForAsteroid(d.asteroidId);
+      if (site && site.anchored) return;
+      this._advanceClaimSurvey(d);
     });
 
     // Anchored sites re-materialize their rock on every sector visit (self-healing in _repairTick,
@@ -176,6 +200,7 @@ export const asteroidSites = {
       this._worldSyncWanted = true;
       this._worldAdmissionBySite.clear();
       this._worldPayloadCaptureTicks.clear();
+      this._surveyByAsteroid.clear(); // volatile assay knowledge never crosses a load
     });
     this.bus.on('save:loaded', () => {
       this._worldRestoreActive = false;
@@ -194,6 +219,7 @@ export const asteroidSites = {
     this.state.sites = makeDefaultSites();
     this._ensureWorldSiteRecords();
     this._rt = new Map();
+    this._surveyByAsteroid = new Map();
     this._accum = 0;
     this._worldSyncWanted = true;
     this._worldRestoreActive = false;
@@ -257,6 +283,7 @@ export const asteroidSites = {
     this._normalize(next);
     this._ensureWorldSiteRecords();
     this._rt = new Map();
+    this._surveyByAsteroid = new Map();
     this._repairSweepWanted = true;
     this._worldSyncWanted = true;
     this._worldAdmissionBySite = new Map();
@@ -284,6 +311,10 @@ export const asteroidSites = {
       if (!Array.isArray(site.fleet.inFlight)) site.fleet.inFlight = [];
       if (!Array.isArray(site.ledger)) site.ledger = [];
       if (!site.stats) site.stats = { grossCr: 0, creditedCr: 0, exportedU: 0 };
+      // PQ-024: the durable survey record rides the EXISTING anchored-site save path. Harden it
+      // here (malformed formation drops the record; an unprovable producing demotes to committed)
+      // so a corrupt save fails closed to a playable path instead of inventing terminal truth.
+      if (site.survey != null) site.survey = normalizeSurveyRecord(site.survey, COLS, ROWS);
       for (const m of site.machines) {
         if (!m.carry) m.carry = {};
         if (m.job === undefined) m.job = null;
@@ -641,6 +672,15 @@ export const asteroidSites = {
       return { ok: false, reason: 'unique', missing: {}, profile: null };
     }
 
+    // PQ-024: Core commitment adopts the volatile claim survey atomically. When a survey exists
+    // but no longer matches the rock (the assayed formation was drilled into), the commitment
+    // refuses VISIBLY — it never silently rerolls to a different formation. Runs even before the
+    // site record exists (a Core-first install must not strand a stale survey mid-transaction).
+    if (defId === 'sm_massline_core'
+      && this._surveyAdoption(site, asteroidId, field).status === 'stale') {
+      return { ok: false, reason: 'survey-stale', missing: {}, profile: null };
+    }
+
     // Brief §5 learning curve: before a Core exists installation is physical — the rover must be
     // beside the cell. Once the site is anchored, construction is remotely queueable anywhere
     // hollow (the Core's command bandwidth), tethered or not.
@@ -786,10 +826,245 @@ export const asteroidSites = {
       yieldU: (ent.data && ent.data.yieldU) || 0,
     };
     site.sectorId = (state.world && state.world.currentSectorId) || site.sectorId;
+    // PQ-024: the same transaction that anchors the site also commits the claim survey — either
+    // adopting the volatile session assay EXACTLY (no reroll) or, when no survey was ever pulsed,
+    // deriving the same deterministic target from the field the Core just froze. One record, one
+    // truth: no durable survey without an anchored site, no anchored site without its survey.
+    this._commitClaimSurvey(site);
     this._ledger(site, 'good', 'Massline Core online — this asteroid is now a permanent site.');
     this.bus.emit('site:anchored', { siteId: site.id, asteroidId: site.asteroidId, sectorId: site.sectorId });
-    // The rock is visibly modified the moment the core hums (the exterior relay).
+    // The exterior relay is deliberately NOT projected here: it is the producing site's visible
+    // industrial consequence (PQ-024 lifecycle cold -> committed -> producing) and appears only
+    // with the first real positive output. See _acceptProductionReceipt/_repairAnchors.
+  },
+
+  // ------------------------------------------------------------ claim survey (PQ-024)
+
+  _isProducing(site) {
+    return !!(site && site.survey && site.survey.lifecycle === 'producing');
+  },
+
+  /** Advance (or found) the VOLATILE claim survey for a live drill session's rock. */
+  _advanceClaimSurvey(d) {
+    const asteroidId = d.asteroidId;
+    let sv = this._surveyByAsteroid.get(asteroidId);
+    if (!sv) {
+      const target = selectSurveyTarget(d.field, COLS, ROWS, SURVEY_LIMITS);
+      if (!target) return; // no solid interior cell — nothing assayable on this rock
+      sv = {
+        asteroidId,
+        seed: (asteroidId >>> 0) || 1,
+        targetId: target.targetId,
+        material: target.material,
+        cells: target.cells.slice(),
+        revealed: [],
+        pulses: 0,
+        startedT: Number(this.state.simTime) || 0,
+      };
+      this._surveyByAsteroid.set(asteroidId, sv);
+      this.bus.emit('site:surveyDetected', {
+        asteroidId, targetId: sv.targetId, material: sv.material, cellsTotal: sv.cells.length,
+      });
+    }
+    if (sv.revealed.length >= sv.cells.length) return; // fully assayed — later pulses stay vanilla
+    const next = surveyRevealFrontier(sv.cells, sv.revealed, SURVEY_LIMITS.revealBudget, COLS);
+    if (!next.length) return;
+    sv.revealed = sv.revealed.concat(next).sort((a, b) => a - b);
+    sv.pulses++;
+    if (sv.revealed.length >= sv.cells.length) {
+      this.bus.emit('site:surveyComplete', {
+        asteroidId, targetId: sv.targetId, material: sv.material, cellsTotal: sv.cells.length,
+      });
+    }
+  },
+
+  /**
+   * Preflight the Core's adoption of the volatile survey against the current field.
+   * 'adopt' = take the session record exactly; 'derive' = no session record (the Core derives the
+   * same deterministic target at commit); 'stale' = a session record exists but no longer matches
+   * the rock — the caller must refuse visibly, never reroll.
+   */
+  _surveyAdoption(site, asteroidId, field) {
+    const sv = this._surveyByAsteroid.get(asteroidId);
+    if (!sv) return { status: 'derive', survey: null };
+    if (sv.seed !== (((asteroidId >>> 0) || 1)) || !field) return { status: 'stale', survey: sv };
+    if (!validateSurveyTarget({ material: sv.material, cells: sv.cells }, field, COLS, ROWS)) {
+      return { status: 'stale', survey: sv };
+    }
+    return { status: 'adopt', survey: sv };
+  },
+
+  /** Atomic Core-time commitment of the durable survey record (idempotent — never a reroll). */
+  _commitClaimSurvey(site) {
+    if (!site || site.survey) return false;
+    const d = this.state.drill;
+    const sessionHere = !!(d && d.active && d.asteroidId === site.asteroidId && d.field);
+    const field = sessionHere ? d.field : this._runtime(site).field;
+    const adoption = this._surveyAdoption(site, site.asteroidId, field);
+    let target = null;
+    let revealedCells = [];
+    if (adoption.status === 'adopt') {
+      target = adoption.survey;
+      revealedCells = adoption.survey.revealed.filter((idx) => adoption.survey.cells.includes(idx));
+    } else {
+      // No session survey: derive the SAME deterministic target from the field the Core just
+      // froze. canInstall already refused a genuinely stale record, so this is the documented
+      // reconstruction path (and the pre-PQ-024 save convergence), never a silent reroll.
+      target = selectSurveyTarget(field, COLS, ROWS, SURVEY_LIMITS);
+    }
+    if (!target) return false; // fully hollow interior — no formation exists to record
+    const tick = Math.max(0, Math.trunc(Number(this.state.tick) || 0));
+    site.survey = {
+      version: 1,
+      targetId: target.targetId,
+      material: target.material,
+      cells: target.cells.slice(),
+      revealedCells,
+      seed: site.boreSeed,
+      committedTick: tick,
+      committedT: Number(this.state.simTime) || 0,
+      lifecycle: 'committed',
+      receipt: null,
+    };
+    this._surveyByAsteroid.delete(site.asteroidId);
+    this._ledger(site, 'info', `Survey committed — ${site.survey.cells.length} formation cells recorded to the claim.`);
+    this.bus.emit('site:surveyCommitted', {
+      siteId: site.id,
+      targetId: site.survey.targetId,
+      material: site.survey.material,
+      cellsTotal: site.survey.cells.length,
+      revealed: site.survey.revealedCells.length,
+    });
+    return true;
+  },
+
+  /**
+   * Production-owner seam: report a REAL positive-output mutation (landed whole units into a
+   * lane store or the fleet). Mints the stable unique receipt and submits it to the site owner.
+   * Never fires for the Core, for non-positive amounts, or for unanchored (volatile) sites, and
+   * stays silent once producing — replays are idempotent by construction.
+   */
+  _emitProductionReceipt(site, machine, { outputId, qty, recipeId } = {}) {
+    if (!site || !site.anchored || !machine || machine.defId === 'sm_massline_core') return false;
+    if (!(Number(qty) > 0)) return false;
+    if (!site.survey) {
+      // Pre-PQ-024 anchored save: reconstruct the committed record byte-identically from the
+      // frozen bore seed at the first real output, so the receipt has durable truth to land on.
+      if (!this._commitClaimSurvey(site)) return false;
+    }
+    if (site.survey.lifecycle !== 'committed') return false;
+    const tick = Math.max(0, Math.trunc(Number(this.state.tick) || 0));
+    return this._acceptProductionReceipt(site, {
+      receiptId: `prod_${site.id}_${tick}_${machine.id}`,
+      siteId: site.id,
+      producerId: machine.id,
+      defId: machine.defId,
+      recipeId: recipeId || null,
+      outputId,
+      positiveQuantity: qty,
+      committedTick: tick,
+      sourceMutationId: `tick:${tick}:${machine.id}:${outputId}`,
+    }).ok;
+  },
+
+  /**
+   * Site-owner seam: validate one production receipt (belongs to this site, positive, authentic
+   * non-Core producer, well-formed tick) and monotonically record `producing`. The accepted
+   * transition is also the ONLY projector of the exterior relay (PQ-024: cold 0, committed 0,
+   * producing 1). Replays of the accepted receipt are idempotent no-ops.
+   */
+  _acceptProductionReceipt(site, receipt) {
+    if (!site || !site.anchored || !site.survey) {
+      return { ok: false, duplicate: false, reason: 'not-committed' };
+    }
+    const survey = site.survey;
+    if (survey.lifecycle === 'producing') {
+      const same = !!(receipt && survey.receipt && receipt.receiptId === survey.receipt.receiptId);
+      return { ok: same, duplicate: same, reason: same ? null : 'already-producing' };
+    }
+    if (!receipt || receipt.siteId !== site.id) {
+      return { ok: false, duplicate: false, reason: 'site-mismatch' };
+    }
+    if (!(Number(receipt.positiveQuantity) > 0)) {
+      return { ok: false, duplicate: false, reason: 'not-positive' };
+    }
+    const tick = Math.max(0, Math.trunc(Number(this.state.tick) || 0));
+    if (!Number.isFinite(receipt.committedTick) || receipt.committedTick < 0 || receipt.committedTick > tick) {
+      return { ok: false, duplicate: false, reason: 'receipt-stale' };
+    }
+    const machine = site.machines.find((m) => m.id === receipt.producerId);
+    const def = machine && SITE_MACHINE_BY_ID.get(machine.defId);
+    if (!machine || !def || machine.defId === 'sm_massline_core' || machine.defId !== receipt.defId) {
+      return { ok: false, duplicate: false, reason: 'producer-invalid' };
+    }
+    survey.receipt = {
+      receiptId: String(receipt.receiptId),
+      siteId: site.id,
+      producerId: machine.id,
+      defId: machine.defId,
+      recipeId: typeof receipt.recipeId === 'string' && receipt.recipeId ? receipt.recipeId : null,
+      outputId: String(receipt.outputId),
+      positiveQuantity: Number(receipt.positiveQuantity),
+      committedTick: Math.trunc(receipt.committedTick),
+      sourceMutationId: typeof receipt.sourceMutationId === 'string' ? receipt.sourceMutationId : null,
+    };
+    survey.lifecycle = 'producing';
+    this._ledger(site, 'good', `First real output — ${receipt.positiveQuantity} ${receipt.outputId} landed. The site is producing.`);
+    this.bus.emit('site:producing', { siteId: site.id, receipt: { ...survey.receipt } });
     this._ensureBeacon(site);
+    return { ok: true, duplicate: false, reason: null };
+  },
+
+  // -------------------------------------------------------- claim survey reads (UI)
+
+  /**
+   * One merged read of the claim survey for the inspector/status surfaces: the VOLATILE session
+   * assay while cold, the durable record once committed. Null when neither exists.
+   */
+  surveyStatusFor(asteroidId) {
+    if (asteroidId == null) return null;
+    const site = this.siteForAsteroid(asteroidId);
+    if (site && site.survey) {
+      return {
+        state: site.survey.lifecycle,
+        volatile: false,
+        targetId: site.survey.targetId,
+        material: site.survey.material,
+        cells: site.survey.cells.length,
+        revealed: site.survey.revealedCells.length,
+        receipt: site.survey.receipt ? { ...site.survey.receipt } : null,
+      };
+    }
+    if (site && site.anchored) return null;
+    const sv = this._surveyByAsteroid.get(asteroidId);
+    if (sv) {
+      return {
+        state: 'cold', volatile: true, targetId: sv.targetId, material: sv.material,
+        cells: sv.cells.length, revealed: sv.revealed.length, receipt: null,
+      };
+    }
+    if (site) {
+      return { state: 'cold', volatile: true, targetId: null, material: null, cells: 0, revealed: 0, receipt: null };
+    }
+    return null;
+  },
+
+  /** Membership read for one field cell (hover context): the survey role it plays, if any. */
+  surveyCellRole(asteroidId, idx) {
+    if (asteroidId == null || !Number.isFinite(idx)) return null;
+    const site = this.siteForAsteroid(asteroidId);
+    if (site && site.survey) {
+      if (!site.survey.cells.includes(idx)) return null;
+      return {
+        material: site.survey.material,
+        revealed: site.survey.revealedCells.includes(idx),
+        state: site.survey.lifecycle,
+        volatile: false,
+      };
+    }
+    const sv = this._surveyByAsteroid.get(asteroidId);
+    if (!sv || (site && site.anchored) || !sv.cells.includes(idx)) return null;
+    return { material: sv.material, revealed: sv.revealed.includes(idx), state: 'cold', volatile: true };
   },
 
   /**
@@ -1047,6 +1322,7 @@ export const asteroidSites = {
     const at = sites.order.indexOf(site.id);
     if (at !== -1) sites.order.splice(at, 1);
     this._rt.delete(site.id);
+    this._surveyByAsteroid.delete(site.asteroidId); // a lost claim keeps no assay residue
     this.bus.emit('site:lost', {
       siteId: site.id,
       reason: 'unanchored',
@@ -1097,7 +1373,9 @@ export const asteroidSites = {
     }
     for (const siteId of state.sites.order) {
       const site = state.sites.byId[siteId];
-      if (site && site.anchored && site.sectorId === sectorId) this._ensureBeacon(site);
+      // Only a PRODUCING site wears the exterior relay (PQ-024): committed claims stay
+      // visually unmarked until real output lands; re-entry re-ensures exactly one.
+      if (site && site.anchored && site.sectorId === sectorId && this._isProducing(site)) this._ensureBeacon(site);
     }
   },
 
@@ -1213,7 +1491,12 @@ export const asteroidSites = {
               const raw = grant + (Number(m.carry[carryKey]) || 0);
               const whole = Math.floor(raw + 1e-9);
               m.carry[carryKey] = Math.max(0, raw - whole);
-              if (whole > 0) store[goodId] = (Number(store[goodId]) || 0) + whole;
+              if (whole > 0) {
+                store[goodId] = (Number(store[goodId]) || 0) + whole;
+                // PQ-024: a real positive output mutation — the production owner reports it to
+                // the receipt seam (no self-minted capability claims; only landed whole units).
+                this._emitProductionReceipt(site, m, { outputId: goodId, qty: whole, recipeId: null });
+              }
               laneBudget[laneKey] = Math.max(0, budget - grant);
               produced = true;
               status.ratePerMin[goodId] = round3(cap.outputsPerMin[goodId] * clamp01(powerRatio || 1));
@@ -1236,6 +1519,11 @@ export const asteroidSites = {
             carry: m.carry,
             throughputBudget: laneBudget[laneKey],
           });
+          for (const outId of Object.keys(res.produced || {}).sort()) {
+            if (res.produced[outId] > 0) {
+              this._emitProductionReceipt(site, m, { outputId: outId, qty: res.produced[outId], recipeId: m.mode });
+            }
+          }
           laneBudget[laneKey] = Math.max(0, laneBudget[laneKey] - res.moved);
           status.state = res.status;
           status.limit = res.limit;
@@ -1275,6 +1563,13 @@ export const asteroidSites = {
             site.fleet.podsReady += res.completed.qty;
             this._ledger(site, 'good', `Courier pod assembled — ${site.fleet.podsReady} ready.`);
             this.bus.emit('site:podBuilt', { siteId: site.id, podsReady: site.fleet.podsReady });
+          }
+          if (res.completed) {
+            // A committed fabricator batch finishing IS real positive output (goods into the lane
+            // store, or a pod into the fleet) — the production owner reports the landed mutation.
+            this._emitProductionReceipt(site, m, {
+              outputId: res.completed.outputId, qty: res.completed.qty, recipeId: m.mode,
+            });
           }
         }
       } else if (def.id === 'sm_cargo_port') {

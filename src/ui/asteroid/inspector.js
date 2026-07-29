@@ -35,6 +35,49 @@ export function statusSentence(status) {
   return fn(status && status.limit);
 }
 
+/** Display label for a survey formation material key ('vein:cmdty_ore_iron', 'gas', ...). */
+export function formationLabel(material) {
+  const key = String(material || '');
+  if (key.startsWith('vein:')) return `${commodityName(key.slice(5))} vein cluster`;
+  if (key === 'gas') return 'sealed gas pocket cluster';
+  if (key === 'basalt') return 'basalt formation';
+  if (key === 'matrix') return 'silicate matrix formation';
+  return 'geological formation';
+}
+
+/**
+ * Claim-survey sentences for the site overview card (PQ-024). Returns [{ text, kind }] in the
+ * inspector's sentence voice: progress and the explicit volatility warning while cold, the
+ * committed record and what it waits on, and the producing receipt once real output landed.
+ */
+export function surveySentences(survey) {
+  if (!survey) return [];
+  if (survey.state === 'cold') {
+    if (!survey.material) return [{ text: 'No formation assay yet — pulse the survey scanner.', kind: '' }];
+    return [
+      { text: `Survey: ${formationLabel(survey.material)} detected — ${survey.revealed}/${survey.cells} cells assayed.`, kind: '' },
+      { text: 'Assay is volatile: leaving this rock discards it. Install a Massline Core to commit the survey.', kind: 'warn' },
+    ];
+  }
+  if (survey.state === 'committed') {
+    return [
+      { text: `Survey record: ${formationLabel(survey.material)} — ${survey.cells} cells committed to the claim.`, kind: 'good' },
+      { text: 'Awaiting first real output — the exterior relay comes online when the site produces.', kind: '' },
+    ];
+  }
+  if (survey.state === 'producing') {
+    const receipt = survey.receipt;
+    return [
+      { text: `Survey record: ${formationLabel(survey.material)} — ${survey.cells} cells committed.`, kind: 'good' },
+      {
+        text: `Producing since first real output${receipt ? ` (${receipt.positiveQuantity} ${commodityName(receipt.outputId)})` : ''} — exterior relay online.`,
+        kind: 'good',
+      },
+    ];
+  }
+  return [];
+}
+
 export function contactSentence(geo) {
   if (!geo) return 'Contacts unresolved.';
   const parts = [];
@@ -178,8 +221,15 @@ export function createInspector(container, actions, opts = {}) {
     return b;
   }
 
-  function showTile({ tile, col, row, surveyed, telemetry, drillTier }) {
+  function showTile({ tile, col, row, surveyed, telemetry, drillTier, formation = null }) {
     clear();
+    const noteFormation = () => {
+      if (!formation) return;
+      const label = formationLabel(formation.material);
+      line(formation.revealed
+        ? `Assayed cell of the ${label}${formation.volatile ? ' — volatile until a Core commits it.' : '.'}`
+        : `Part of the ${label} — not assayed yet.`, formation.revealed ? 'good' : '');
+    };
     if (!tile) { head('Boundary', 'Asteroid edge'); line('Nothing beyond the survey line.'); return; }
     if (!surveyed && tile.type !== 'gas' && tile.type !== 'empty') {
       head(`Cell ${col},${row}`, 'Unsurveyed strata');
@@ -197,6 +247,7 @@ export function createInspector(container, actions, opts = {}) {
       head(`Cell ${col},${row}`, 'Compressed gas pocket');
       line('Breaching it vents into the bore and damages the rig.', 'bad');
       line('A Gas Tap built beside it turns the hazard into power or feedstock — the pocket itself must stay sealed.', 'good');
+      noteFormation();
       return;
     }
     if (tile.type === 'vein' && tile.ore) {
@@ -208,6 +259,7 @@ export function createInspector(container, actions, opts = {}) {
       const req = tile.tierReq || drillTierReqForOre(tile.ore);
       if (drillTier < req) line(`Locked — needs drill MK${req}.`, 'bad');
       if (telemetry) line(`Hardness ${telemetry.hardness.toFixed(2)} · ${Math.round(telemetry.progress * 100)}% cut.`);
+      noteFormation();
       return;
     }
     const isMatrix = tile.type === 'dirt';
@@ -216,6 +268,7 @@ export function createInspector(container, actions, opts = {}) {
       ? 'Bulk silicate feedstock. Extractors work it for silicate; hollowing it is cheap floor.'
       : 'Dense mineral mass. Slow to cut; extractors read it as low-grade silicate.');
     if (telemetry) line(`Hardness ${telemetry.hardness.toFixed(2)} · ${Math.round(telemetry.progress * 100)}% cut.`);
+    noteFormation();
   }
 
   function showMachine(m, proj) {
@@ -315,6 +368,7 @@ export function createInspector(container, actions, opts = {}) {
     } else {
       line('Massline Core online. This asteroid persists and accepts remote construction.', 'good');
     }
+    for (const s of surveySentences(extra.survey)) line(s.text, s.kind);
     const totalGen = proj.power.reduce((s, p) => s + p.gen, 0);
     const totalDraw = proj.power.reduce((s, p) => s + p.draw, 0);
     const worst = proj.power.reduce((w, p) => Math.min(w, p.ratio), 1);
@@ -414,6 +468,7 @@ export function placementReason(check) {
     'no-session': 'No bore link. Tether and drill into the rock first.',
     'out-of-bounds': 'Outside the survey grid.',
     'core-locked': 'The Core does not dismantle.',
+    'survey-stale': 'Survey readings no longer match this rock — the assayed formation changed. Pulse the survey scanner again before anchoring.',
   };
   let text = reasons[check.reason] || 'Placement blocked.';
   if (check.reason === 'materials' && check.missing) {
