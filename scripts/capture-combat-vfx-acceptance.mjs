@@ -2,6 +2,7 @@
 // Normal-route, real-renderer acceptance for projectile impacts and phased destruction.
 // This drives the live VFX owner after a normal New Game boot; it does not use a standalone preview.
 
+import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -13,6 +14,7 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const PQ023_H1 = process.env.SF_PQ023_H1 === '1';
 const OUT = process.env.SF_COMBAT_CAPTURE_DIR
   ? path.resolve(ROOT, process.env.SF_COMBAT_CAPTURE_DIR)
   : path.join(ROOT, '.devshots', 'graphics', 'combat-vfx-acceptance');
@@ -27,9 +29,18 @@ if (!executablePath) throw new Error('Chrome or Edge is required for combat VFX 
 const ownedServer = await acquireVisualProbeServer({ explicitUrl: BASE_URL, root: ROOT });
 const { chromium } = await loadPlaywright();
 const browser = await chromium.launch({
-  headless: true,
+  headless: !PQ023_H1,
   executablePath,
-  args: ['--ignore-gpu-blocklist', '--enable-webgl'],
+  args: [
+    '--ignore-gpu-blocklist',
+    '--enable-webgl',
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
+    '--disable-features=CalculateNativeWinOcclusion',
+    `--window-size=${WIDTH},${HEIGHT}`,
+    '--force-device-scale-factor=1',
+  ],
 });
 const context = await browser.newContext({
   viewport: { width: WIDTH, height: HEIGHT },
@@ -42,6 +53,8 @@ const captures = [];
 const motionSegments = [];
 let videoPath = null;
 let report = null;
+let gpu = null;
+let pq023H1 = null;
 page.on('pageerror', (error) => issues.push({ type: 'pageerror', text: error?.stack || error?.message || String(error) }));
 page.on('console', (message) => {
   if (message.type() === 'error') issues.push({ type: 'console.error', text: message.text() });
@@ -64,6 +77,12 @@ try {
   }, null, { timeout: 90_000 });
   await dismissTutorial(page);
   await page.waitForTimeout(800);
+
+  gpu = await readGpuContract(page);
+  assert.equal(gpu.available, true, 'combat VFX acceptance requires WebGL');
+  assert.doesNotMatch(gpu.renderer || '', /SwiftShader|llvmpipe|software/i,
+    `combat VFX acceptance requires a real GPU path, got ${gpu.renderer}`);
+  if (PQ023_H1) await installPq023CueObservers(page);
 
   const explosionOrigin = await page.evaluate(() => {
     const state = window.SF.state;
@@ -110,6 +129,14 @@ try {
     await triggerMaterialImpact(page, { ...origin, weaponId, index: i, material: 'hull', freezeMs: 18 });
     await capture(`${String(i + 1).padStart(2, '0')}-${family}-hull.png`, `${family} hull-material response`);
     await page.waitForTimeout(520);
+  }
+
+  if (PQ023_H1) {
+    const impactProfiles = await readPq023ImpactProfiles(page);
+    assert.notEqual(impactProfiles.flak.mode, impactProfiles.autocannon.mode,
+      'PQ-023 flak and autocannon impact modes must remain distinct');
+    const impactFrames = await capturePq023ImpactStrips(page);
+    pq023H1 = { impactProfiles, impactFrames };
   }
 
   await setCaptureTargetVisible(page, false);
@@ -192,6 +219,16 @@ try {
       endMs: Date.now() - videoStartMs,
     });
   }
+  if (PQ023_H1) {
+    const startMs = Date.now() - videoStartMs;
+    await triggerImpact(page, { weaponId: 'wpn_flak_turret_s', freezeMs: 1 });
+    await advanceCombatMotion(page, 720, { family: 'flak', stage: 'impact' });
+    motionSegments.push({
+      scenario: 'flak proximity-burst impact motion',
+      startMs,
+      endMs: Date.now() - videoStartMs,
+    });
+  }
   await setCaptureTargetVisible(page, false);
   for (const spec of classes) {
     const durationMs = spec.classId === 'capital' ? 4800 : spec.classId === 'ordinary' ? 1700 : 1000;
@@ -244,6 +281,19 @@ try {
       endMs: Date.now() - videoStartMs,
     });
   }
+
+  if (PQ023_H1) {
+    const worldSite = await capturePq023WorldSiteSequences(page);
+    pq023H1 = {
+      ...pq023H1,
+      worldSite,
+      semanticProjection: buildPq023SemanticProjection({
+        impactProfiles: pq023H1.impactProfiles,
+        worldSite,
+      }),
+    };
+  }
+
   await page.evaluate(() => window.__sfResetCombatVfx?.());
   const contactSheets = await buildEvidenceSheets();
 
@@ -320,12 +370,19 @@ try {
   report = {
     schema: 'spaceface.combatVfxAcceptance.v3',
     baseUrl: ownedServer.baseUrl,
+    runtimeKind: 'browser',
     viewport: { width: WIDTH, height: HEIGHT },
+    gpu,
     captures,
     motionSegments,
     contactSheets,
     spatialContract,
-    diagnostics,
+    pq023H1,
+    informational_contended: PQ023_H1,
+    informational_contended_note: PQ023_H1
+      ? 'Phase H1 ran contended by design. videoTimeMs and motion-segment offsets are editorial navigation metadata only; no time-valued field is performance evidence. Matched performance remains Phase H3.'
+      : null,
+    noPerformanceEvidence: PQ023_H1,
     issues,
     ok: issues.length === 0
       && diagnostics.route.mode === 'flight'
@@ -343,9 +400,11 @@ try {
       && diagnostics.persistentDrawBudget.combatBeamLayers === 2
       && spatialContract.pathLength > 10
       && spatialContract.source.muzzleToFrontSocket < spatialContract.source.muzzleToEngineSocket
-      && captures.length === 67
-      && motionSegments.length >= 10
-      && contactSheets.length === 3,
+      && captures.length === (PQ023_H1 ? 87 : 67)
+      && motionSegments.length >= (PQ023_H1 ? 15 : 10)
+      && contactSheets.length === 3
+      && (!PQ023_H1 || pq023H1?.semanticProjection?.worldSiteCueIds?.join(',')
+        === 'world_site.recovery,world_site.damage,world_site.recovery,world_site.damage'),
   };
   await writeFile(path.join(OUT, 'report.json'), JSON.stringify(report, null, 2));
   if (!report.ok) process.exitCode = 1;
@@ -920,6 +979,461 @@ async function advanceCombatMotion(targetPage, durationMs, { family, stage }) {
   }), { duration: durationMs, familyId: family, stageId: stage });
 }
 
+async function readGpuContract(targetPage) {
+  return targetPage.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    if (!gl) return { available: false, vendor: null, renderer: null };
+    const debug = gl.getExtension('WEBGL_debug_renderer_info');
+    return {
+      available: true,
+      vendor: debug
+        ? String(gl.getParameter(debug.UNMASKED_VENDOR_WEBGL))
+        : String(gl.getParameter(gl.VENDOR)),
+      renderer: debug
+        ? String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL))
+        : String(gl.getParameter(gl.RENDERER)),
+    };
+  });
+}
+
+async function installPq023CueObservers(targetPage) {
+  await targetPage.evaluate(() => {
+    window.__pq023H1CueEvents = [];
+    const retain = (event, payload = {}) => {
+      const row = {
+        event,
+        id: payload.id || null,
+        sourceEvent: payload.sourceEvent || null,
+        sourceReceiptId: payload.sourceReceiptId || null,
+        subsystemId: payload.subsystemId || null,
+        accessibilityText: payload.accessibilityText || null,
+        reducedMotionMode: payload.reducedMotionMode || null,
+        reducedFlashMode: payload.reducedFlashMode || null,
+        tags: Array.isArray(payload.tags) ? [...payload.tags] : [],
+        text: payload.text || null,
+        shape: payload.shape || null,
+        assertive: payload.assertive === true,
+        reducedMotion: payload.reducedMotion === true,
+        flashReduced: payload.flashReduced === true,
+        reason: payload.reason || null,
+      };
+      window.__pq023H1CueEvents.push(row);
+      if (window.__pq023H1CueEvents.length > 200) window.__pq023H1CueEvents.shift();
+    };
+    for (const event of [
+      'presentation:cue',
+      'presentation:caption',
+      'presentation:cueApplied',
+      'presentation:cueSuppressed',
+    ]) window.SF.bus.on(event, (payload) => retain(event, payload || {}));
+  });
+}
+
+async function readPq023ImpactProfiles(targetPage) {
+  return targetPage.evaluate(async () => {
+    const { resolveImpactPresentationProfile } = await import('/src/render/vfxProfiles.js');
+    const pick = (weaponId) => {
+      const profile = resolveImpactPresentationProfile(weaponId);
+      return {
+        weaponId,
+        family: profile.family,
+        variant: profile.variant || null,
+        mode: profile.mode,
+        primaryShape: profile.primaryShape,
+        fragmentCount: profile.fragmentCount,
+        lightPeak: profile.lightPeak,
+      };
+    };
+    return {
+      autocannon: pick('wpn_autocannon_m'),
+      flak: pick('wpn_flak_turret_s'),
+    };
+  });
+}
+
+async function capturePq023ImpactStrips(targetPage) {
+  const waits = [16, 48, 96, 180];
+  const specs = [
+    { key: 'autocannon', weaponId: 'wpn_autocannon_m' },
+    { key: 'flak', weaponId: 'wpn_flak_turret_s' },
+  ];
+  const frames = [];
+  for (const spec of specs) {
+    for (let index = 0; index < waits.length; index += 1) {
+      const freezeMs = waits[index];
+      const file = `pq023-impact-${spec.key}-${String(index + 1).padStart(2, '0')}.png`;
+      await triggerImpact(targetPage, { weaponId: spec.weaponId, freezeMs });
+      await capture(file, `${spec.key} impact temporal frame ${index + 1}`, {
+        resume: false,
+        receipt: { weaponId: spec.weaponId, authoredPhaseOffsetMs: freezeMs },
+      });
+      frames.push({ file, weaponId: spec.weaponId, authoredPhaseOffsetMs: freezeMs });
+      await targetPage.waitForTimeout(80);
+    }
+  }
+  await targetPage.evaluate(() => window.__sfResumeCombatVfx?.());
+  return frames;
+}
+
+async function capturePq023WorldSiteSequences(targetPage) {
+  await targetPage.evaluate(() => {
+    window.__sfResetCombatVfx?.();
+    window.__sfResumeCombatVfx?.();
+    const state = window.SF.state;
+    state.timeScale = Number(window.__sfCombatOriginalTimeScale) || 1;
+    state.accumulator = 0;
+    if (window.__sfCombatSpatialOverlay) window.__sfCombatSpatialOverlay.style.display = 'none';
+    if (window.__sfCombatVfxCaptureTarget) window.__sfCombatVfxCaptureTarget.visible = false;
+    window.SF.registry.get('world').enterSector('sector_ceres_belt', {
+      fromJump: true,
+      via: 'gate',
+      fromSectorId: 'sector_helios_prime',
+    });
+  });
+
+  const initial = await waitForPq023CathedralState(targetPage, 'failed');
+  const framing = await framePq023Cathedral(targetPage, initial.rootId);
+  assert.ok(framing.subjectNdc
+    && Math.abs(framing.subjectNdc.x) <= 0.9
+    && Math.abs(framing.subjectNdc.y) <= 0.9,
+  `Wreck Cathedral must be in frame, got ${JSON.stringify(framing.subjectNdc)}`);
+
+  const transitions = [];
+  const sequences = [];
+  await setPq023Accessibility(targetPage, false);
+
+  const recoveryNormal = await applyPq023CathedralRecovery(targetPage);
+  assert.equal(recoveryNormal.ok, true, `normal recovery owner rejected: ${recoveryNormal.reason || 'unknown'}`);
+  transitions.push({ kind: 'recovery', reduced: false, owner: recoveryNormal });
+  await waitForPq023CathedralState(targetPage, 'stabilized');
+  sequences.push(await capturePq023WorldSiteFrames(targetPage, {
+    key: 'recovery-normal',
+    expectedStatus: 'stabilized',
+    reduced: false,
+  }));
+
+  const damageNormal = await applyPq023CathedralDamage(targetPage);
+  assert.equal(damageNormal.status, 'failed', 'normal damage owner must fail the stabilized hull');
+  transitions.push({ kind: 'damage', reduced: false, owner: damageNormal });
+  await waitForPq023CathedralState(targetPage, 'failed');
+  sequences.push(await capturePq023WorldSiteFrames(targetPage, {
+    key: 'damage-normal',
+    expectedStatus: 'failed',
+    reduced: false,
+  }));
+
+  await setPq023Accessibility(targetPage, true);
+  const recoveryReduced = await applyPq023CathedralRecovery(targetPage);
+  assert.equal(recoveryReduced.ok, true, `reduced recovery owner rejected: ${recoveryReduced.reason || 'unknown'}`);
+  transitions.push({ kind: 'recovery', reduced: true, owner: recoveryReduced });
+  await waitForPq023CathedralState(targetPage, 'stabilized');
+  sequences.push(await capturePq023WorldSiteFrames(targetPage, {
+    key: 'recovery-reduced',
+    expectedStatus: 'stabilized',
+    reduced: true,
+  }));
+
+  const damageReduced = await applyPq023CathedralDamage(targetPage);
+  assert.equal(damageReduced.status, 'failed', 'reduced damage owner must fail the stabilized hull');
+  transitions.push({ kind: 'damage', reduced: true, owner: damageReduced });
+  await waitForPq023CathedralState(targetPage, 'failed');
+  const reducedDamage = await capturePq023WorldSiteFrames(targetPage, {
+    key: 'damage-reduced',
+    expectedStatus: 'failed',
+    reduced: true,
+  });
+  sequences.push(reducedDamage);
+
+  const reducedSignatures = reducedDamage.frames.map((frame) => JSON.stringify(
+    frame.fixtures.map((fixture) => [fixture.id, fixture.opacity, fixture.scale]),
+  ));
+  assert.equal(new Set(reducedSignatures).size, 1,
+    'reduced-motion/flash damaged fixtures must hold a steady non-motion state');
+
+  const cueEvents = await targetPage.evaluate(() => (
+    window.__pq023H1CueEvents || []
+  ).filter((row) => String(row.id || '').startsWith('world_site.')));
+  const worldSiteCueIds = cueEvents
+    .filter((row) => row.event === 'presentation:cue')
+    .map((row) => row.id);
+  assert.deepEqual(worldSiteCueIds, [
+    'world_site.recovery',
+    'world_site.damage',
+    'world_site.recovery',
+    'world_site.damage',
+  ]);
+
+  const captions = cueEvents
+    .filter((row) => row.event === 'presentation:caption')
+    .map((row) => ({
+      id: row.id,
+      text: row.text,
+      shape: row.shape,
+      assertive: row.assertive,
+      reducedMotion: row.reducedMotion,
+      flashReduced: row.flashReduced,
+    }));
+  assert.deepEqual(captions.map((row) => row.shape), ['ring', 'bracket', 'ring', 'bracket']);
+  assert.match(captions[0]?.text || '', /restored\.$/);
+  assert.match(captions[1]?.text || '', /failed\.$/);
+
+  return {
+    route: 'New Game -> production world.enterSector(Ceres) -> asteroidSites owner receipts',
+    initial,
+    framing,
+    transitions,
+    sequences,
+    cueEvents,
+    worldSiteCueIds,
+    captions,
+    reducedDamageSteady: true,
+  };
+}
+
+async function setPq023Accessibility(targetPage, reduced) {
+  await targetPage.evaluate((enabled) => {
+    const state = window.SF.state;
+    state.settings.video.motionReduce = enabled;
+    state.settings.accessibility.flashReduce = enabled;
+    window.SF.bus.emit('settings:changed', { section: 'video', key: null });
+    window.SF.bus.emit('settings:changed', { section: 'accessibility', key: null });
+  }, !!reduced);
+}
+
+async function applyPq023CathedralRecovery(targetPage) {
+  return targetPage.evaluate(() => {
+    const sf = window.SF;
+    const system = sf.registry.get('asteroidSites');
+    window.__pq023WorldSiteSequence = (window.__pq023WorldSiteSequence || 9000) + 1;
+    const result = system.applyWorldSiteBeamOperation({
+      siteId: 'world_site_wreck_cathedral',
+      componentId: 'cathedral_hull',
+      verb: 'repair',
+      amount: 48,
+      requestStreamId: 'player-industrial-beam',
+      requestSequence: window.__pq023WorldSiteSequence,
+      tick: sf.state.tick,
+    });
+    return {
+      ok: result.ok === true,
+      duplicate: result.duplicate === true,
+      reason: result.reason || null,
+      moved: result.moved || 0,
+      operationId: result.operationId || null,
+      stageId: result.record?.stageId || null,
+      status: result.record?.components?.cathedral_hull?.status || null,
+    };
+  });
+}
+
+async function applyPq023CathedralDamage(targetPage) {
+  return targetPage.evaluate(() => {
+    const sf = window.SF;
+    const state = sf.state;
+    const component = state.entityList.find((entity) => entity?.alive !== false
+      && entity.data?.worldSiteId === 'world_site_wreck_cathedral'
+      && (entity.data?.worldSiteImpactComponentId === 'cathedral_hull'
+        || entity.data?.worldSiteComponentId === 'cathedral_hull'));
+    if (!component) throw new Error('Cathedral hull has no live impact-owned component entity');
+    sf.bus.emit('physics:impact', {
+      aId: state.playerId,
+      bId: component.id,
+      dp: 240,
+      tick: state.tick,
+    });
+    const record = state.sites?.worldById?.world_site_wreck_cathedral;
+    return {
+      actorPolicy: 'player-contact',
+      componentRole: component.data?.role || null,
+      dp: 240,
+      stageId: record?.stageId || null,
+      status: record?.components?.cathedral_hull?.status || null,
+    };
+  });
+}
+
+async function waitForPq023CathedralState(targetPage, expectedStatus) {
+  const handle = await targetPage.waitForFunction((status) => {
+    const sf = window.SF;
+    const record = sf?.state?.sites?.worldById?.world_site_wreck_cathedral;
+    const root = sf?.state?.entityList?.find((entity) => entity?.alive !== false
+      && entity.data?.worldSiteId === 'world_site_wreck_cathedral'
+      && entity.data?.role === 'world_site_root');
+    const authored = String(root?.mesh?.userData?.authoredAssetState || '').startsWith('authored');
+    if (record?.components?.cathedral_hull?.status !== status
+      || root?.presentationAdmission !== 'ready'
+      || !authored) return false;
+    return {
+      rootId: root.id,
+      status,
+      stageId: record.stageId,
+      revision: record.revision,
+      presentationAdmission: root.presentationAdmission,
+      authoredAssetState: root.mesh.userData.authoredAssetState,
+    };
+  }, expectedStatus, { timeout: 120_000 });
+  return handle.jsonValue();
+}
+
+async function framePq023Cathedral(targetPage, targetId) {
+  return targetPage.evaluate(async (rootId) => {
+    const state = window.SF.state;
+    const player = state.entities.get(state.playerId);
+    const target = state.entities.get(rootId);
+    if (!player || !target?.pos || !target.mesh) throw new Error('Cathedral framing subject is unavailable');
+    const camera = state.render?.cameraCtrl?.obj
+      || state.render?.cameraCtrl?.camera
+      || state.render?.camera;
+    const project = () => {
+      if (!camera || !window.SF.THREE || !target.mesh?.getWorldPosition) return null;
+      const point = new window.SF.THREE.Vector3();
+      target.mesh.getWorldPosition(point);
+      point.project(camera);
+      return { x: point.x, y: point.y };
+    };
+    const settle = async (ms) => {
+      await new Promise((resolve) => setTimeout(resolve, ms));
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    };
+    const radius = Number(target.data?.placeRadius || target.radius || 360);
+    const zoom = Math.min(1400, Math.max(720, radius * 2.6));
+    const dir = { x: -0.94, z: -0.34 };
+    let offset = radius * 1.7;
+    let ndc = null;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const x = target.pos.x + dir.x * offset;
+      const z = target.pos.z + dir.z * offset;
+      if (typeof player.pos.set === 'function') player.pos.set(x, 0, z);
+      else { player.pos.x = x; player.pos.z = z; }
+      player.prevPos?.copy?.(player.pos);
+      if (player.vel?.set) player.vel.set(0, 0, 0);
+      else { player.vel.x = 0; player.vel.z = 0; }
+      player.rot = 0;
+      player.prevRot = 0;
+      player.flags = { ...(player.flags || {}), noInterp: true };
+      state.camera.zoom = zoom;
+      window.SF.bus.emit('camera:zoom', { level: zoom });
+      state.render?.cameraCtrl?.snapToPlayer?.();
+      await settle(attempt === 0 ? 1200 : 450);
+      ndc = project();
+      if (!ndc || (Math.abs(ndc.x) <= 0.9 && Math.abs(ndc.y) <= 0.9)) break;
+      offset *= 0.62;
+    }
+    await settle(650);
+    return {
+      targetId: rootId,
+      targetPos: { x: target.pos.x, z: target.pos.z },
+      playerPos: { x: player.pos.x, z: player.pos.z },
+      subjectNdc: ndc,
+      cameraZoom: state.camera.zoom,
+      camera: 'normal gameplay chase camera',
+    };
+  }, targetId);
+}
+
+async function capturePq023WorldSiteFrames(targetPage, { key, expectedStatus, reduced }) {
+  const startMs = Date.now() - videoStartMs;
+  const frames = [];
+  for (let index = 0; index < 3; index += 1) {
+    await targetPage.waitForTimeout(180);
+    const receipt = await readPq023WorldSiteFrame(targetPage);
+    assert.equal(receipt.status, expectedStatus, `${key} frame ${index + 1} status drifted`);
+    assert.equal(receipt.settings.motionReduce, reduced, `${key} frame ${index + 1} motion profile drifted`);
+    assert.equal(receipt.settings.flashReduce, reduced, `${key} frame ${index + 1} flash profile drifted`);
+    assert.ok(receipt.subjectNdc
+      && Math.abs(receipt.subjectNdc.x) <= 0.9
+      && Math.abs(receipt.subjectNdc.y) <= 0.9,
+    `${key} frame ${index + 1} missed the Cathedral`);
+    const file = `pq023-cathedral-${key}-${String(index + 1).padStart(2, '0')}.png`;
+    await capture(file, `Wreck Cathedral ${key} motion frame ${index + 1}`, {
+      receipt,
+    });
+    frames.push({ file, ...receipt });
+  }
+  motionSegments.push({
+    scenario: `Wreck Cathedral ${key} motion`,
+    startMs,
+    endMs: Date.now() - videoStartMs,
+  });
+  return { key, expectedStatus, reduced, frames };
+}
+
+async function readPq023WorldSiteFrame(targetPage) {
+  return targetPage.evaluate(() => {
+    const sf = window.SF;
+    const state = sf.state;
+    const record = state.sites?.worldById?.world_site_wreck_cathedral;
+    const root = state.entityList.find((entity) => entity?.alive !== false
+      && entity.data?.worldSiteId === 'world_site_wreck_cathedral'
+      && entity.data?.role === 'world_site_root');
+    const camera = state.render?.cameraCtrl?.obj
+      || state.render?.cameraCtrl?.camera
+      || state.render?.camera;
+    let subjectNdc = null;
+    if (camera && root?.mesh?.getWorldPosition && sf.THREE) {
+      const point = new sf.THREE.Vector3();
+      root.mesh.getWorldPosition(point);
+      point.project(camera);
+      subjectNdc = { x: point.x, y: point.y };
+    }
+    const fixtures = [];
+    root?.mesh?.traverse?.((object) => {
+      const id = object.userData?.worldSitePresentationFixtureId;
+      if (!id || !object.material) return;
+      fixtures.push({
+        id,
+        opacity: Number(object.material.opacity.toFixed(6)),
+        scale: Number((object.parent?.scale?.x || 0).toFixed(6)),
+        visible: object.visible !== false && object.parent?.visible !== false,
+      });
+    });
+    fixtures.sort((a, b) => a.id.localeCompare(b.id));
+    return {
+      stageId: record?.stageId || null,
+      status: record?.components?.cathedral_hull?.status || null,
+      revision: record?.revision || null,
+      rootId: root?.id || null,
+      presentationAdmission: root?.presentationAdmission || null,
+      authoredAssetState: root?.mesh?.userData?.authoredAssetState || null,
+      subjectNdc,
+      fixtures,
+      settings: {
+        motionReduce: !!state.settings?.video?.motionReduce,
+        flashReduce: !!state.settings?.accessibility?.flashReduce,
+      },
+    };
+  });
+}
+
+function buildPq023SemanticProjection({ impactProfiles, worldSite }) {
+  const profile = (value) => ({
+    weaponId: value.weaponId,
+    family: value.family,
+    variant: value.variant,
+    mode: value.mode,
+    primaryShape: value.primaryShape,
+    fragmentCount: value.fragmentCount,
+    lightPeak: value.lightPeak,
+  });
+  return {
+    schema: 'spaceface.pq023-cue-semantic-projection.v1',
+    impactProfiles: {
+      autocannon: profile(impactProfiles.autocannon),
+      flak: profile(impactProfiles.flak),
+    },
+    worldSiteCueIds: [...worldSite.worldSiteCueIds],
+    captions: worldSite.captions.map((row) => ({ ...row })),
+    transitions: worldSite.transitions.map((row) => ({
+      kind: row.kind,
+      reduced: row.reduced,
+      status: row.owner.status,
+      stageId: row.owner.stageId,
+    })),
+    reducedDamageSteady: worldSite.reducedDamageSteady === true,
+  };
+}
+
 async function buildEvidenceSheets() {
   const sheetSpecs = [
     {
@@ -1054,6 +1568,7 @@ async function capture(file, scenario, options = {}) {
     settings: runtime.settings,
     videoTimeMs: Date.now() - videoStartMs,
     runtime,
+    receipt: options.receipt || null,
   });
   if (options.resume !== false) await page.evaluate(() => window.__sfResumeCombatVfx?.());
 }
