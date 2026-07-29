@@ -726,6 +726,19 @@ export const render = {
     // This lets a default shadows:false profile enable shadows live without allocating a new light.
     const shadowsOn = !(state.settings && state.settings.video && state.settings.video.shadows === false);
 
+    // --- GPU capability detection (adaptiveQuality.js) -----------------------------------------
+    // Detection MUST publish state.render.gpu before createSpaceBackground below. SpaceBackground
+    // picks its quality tier inside its constructor by reading state.render.gpu; when detection ran
+    // later in init it saw an empty object, guessed 'mid', and the renderer then re-tiered it — so
+    // every machine whose true tier is not 'mid' built the entire procedural backdrop twice at boot
+    // (nebula bakes up to 2048², 6-16k stars, the flare set, the comet, the hero impostors), threw
+    // the first build away, and paid the biggest stall on the fastest hardware.
+    // Safe this early: detectGpu only reads the renderer's GL context, which exists from the
+    // WebGLRenderer construction above, and nothing between here and the dynamic-resolution setup
+    // below reads state.render.gpu (the ?perf overlay closure reads it lazily, per frame).
+    const gpu = detectGpu(renderer);
+    state.render.gpu = gpu;
+
     const cam = createChaseCamera(state);
     const spaceBg = createSpaceBackground(scene, state, { renderer, camera: cam.obj, debug: SF_DEBUG });
     state.render.spaceBg = spaceBg;
@@ -1122,18 +1135,19 @@ export const render = {
     }
     catch (err) { console.warn('[render] diagnostics unavailable:', err); this.diag = null; }
 
-    // --- GPU capability detection + dynamic resolution (adaptiveQuality.js) --------------------
+    // --- Dynamic resolution (adaptiveQuality.js) -----------------------------------------------
     // Profiling proved SpaceFace is GPU present-bound: the JS/sim side fits the frame budget, but a
     // weak/integrated GPU can't shade the full-res HDR scene + bloom composite in time, and a browser
     // that has fallen back to SOFTWARE rendering (hardware acceleration off/blocklisted) drops to a
-    // few fps regardless of content. Detect the real renderer so we can warn + pick a floor, then run
-    // a dynamic-resolution controller (renderFrame -> prepareFrame each frame) that trades internal
-    // resolution for a smooth framerate. It never mutates settings.video, so it fully recovers.
+    // few fps regardless of content. The tier detected above (before the background was built) both
+    // warns the player and picks the floor for the dynamic-resolution controller below
+    // (renderFrame -> prepareFrame each frame), which trades internal resolution for a smooth
+    // framerate. It never mutates settings.video, so it fully recovers.
     state.render.dynResScale = 1;
-    const gpu = detectGpu(renderer);
-    state.render.gpu = gpu;
-    // The background was constructed before GPU detection ran; re-tier it now (no-op unless
-    // the tier actually changed — e.g. software rendering drops it to the cheap path).
+    // Detection now runs before createSpaceBackground, so the background was already built at its
+    // true tier and this call is a no-op safety net (applyGpuTier returns immediately when the tier
+    // is unchanged). Kept because it is also the live re-tier entry point: SF.bg.forceTier and any
+    // future settings-driven quality change route through the same rebuild.
     if (spaceBg && typeof spaceBg.applyGpuTier === 'function') spaceBg.applyGpuTier(gpu);
     try {
       const pr = renderer.getPixelRatio() || 1;

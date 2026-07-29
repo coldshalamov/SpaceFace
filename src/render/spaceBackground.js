@@ -1030,7 +1030,10 @@ export class SpaceBackground {
     this.H = measureScreenHeightWorld(this.camera);
     this.bgY = -this.H * 2.2;
 
-    // ---- quality tier (re-applied by renderer via applyGpuTier once GPU is known) --
+    // ---- quality tier -------------------------------------------------------------
+    // renderer.js runs detectGpu() and publishes state.render.gpu BEFORE constructing us, so this
+    // resolves the TRUE tier and everything below is built once at the right size. (It used to
+    // detect afterwards, which meant a guessed 'mid' build followed by a full applyGpuTier rebuild.)
     this._resolveTier();
 
     this.group = new THREE.Group();
@@ -1160,8 +1163,15 @@ export class SpaceBackground {
     this.flareCount = tier === 'low' ? 36 : tier === 'mid' ? 56 : 72;
   }
 
-  // Renderer calls this right after detectGpu() (which runs later in init than our
-  // construction). Re-tiers and rebuilds only if the tier actually changed.
+  // Live re-tier entry point. renderer.js detects the GPU before constructing us, so its call right
+  // after construction is a no-op safety net; this exists for an actual tier CHANGE (SF.bg.forceTier,
+  // a future settings-driven quality switch). Rebuilds only if the tier actually changed.
+  //
+  // Known gap, deliberately not fixed here: this does not invalidate planetCache, so a live re-tier
+  // leaves already-baked planet impostors at the previous resolution (_bakePlanetTarget sizes off
+  // this.lowTier). That used to bite every boot on a software renderer — the guessed 'mid' build
+  // baked 512² planets and the cache kept them after the drop to 'low' — which the detect-first
+  // ordering removes at its source. Add a cache purge here if live re-tiering ever ships.
   applyGpuTier() {
     const was = this.tierName;
     this._resolveTier();
