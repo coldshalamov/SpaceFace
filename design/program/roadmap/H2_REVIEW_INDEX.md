@@ -27,7 +27,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 | 3 | PQ-019A presentation + counts | **FAIL — HARNESS (facility/count evidence survives; capsule stills missed subject)** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
 | 4 | `pq019-surface-heist` broker manifest | **FAIL — HARNESS (DOM abandon + lawful observe survive; remaining routes unproven)** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
 | 5 | PQ-020 Ceres functional route | **FAIL — HARNESS (valid Helios→Ceres jump survived; route stopped on unsupported 300-WU threshold)** | [row5-pq020-ceres-route](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) |
-| 6 | PQ-023 cues in motion | _pending_ | |
+| 6 | PQ-023 cues in motion | **FAIL — HARNESS (combat motion survives; Cathedral sequence and Electron parity unproven)** | [row6-pq023-cues](evidence/h1/row6-pq023-cues/EVIDENCE.md) |
 | 7 | PQ-022 asset leaves | _pending_ | |
 | 8 | Electron end-to-end smoke | _pending_ | |
 
@@ -74,20 +74,27 @@ promotion (including the W03/W04/W05 alias replacement).
 
 ## Decision 3 — PQ-023 cues in motion
 
-**Question:** Watch the frame sequences, not the stills. Does a flak impact read as *different from*
-an autocannon impact at a glance? Does a destruction land? Do the Cathedral's damage and recovery
-states read as damage and recovery? And do the reduced-motion and reduced-flash variants still carry
-the same information?
+**Question:** Watch the committed reel and frame sequences. Does a flak impact read as *different from*
+an autocannon impact at a glance? Do the small, ordinary and capital destruction lifecycles land? Does
+the reduced-motion/reduced-flash ordinary sequence retain the same state information, and does the
+dense scene remain readable?
 
-The PQ-023 receipt argues its headline claim "cannot be photographed" — that objection is about
-*suppressed* cues, which by definition do not render. Everything in this section does render; the
-committed suppression trace covers the rest.
+**Evidence:** [row 6 headed cue-motion attempt](evidence/h1/row6-pq023-cues/EVIDENCE.md), including
+the original WebM, curated frame sequences, and the deterministic suppression trace. The one Browser
+attempt completed the combat/reduced/dense sections, then failed **HARNESS** before the first Cathedral
+frame because it waited for authored admission before moving the player into admission range.
 
-**Evidence:** _pending (row 6)_
+The available combat subset is valid for H2 notes. The Cathedral's normal/reduced damage and recovery
+states, its `ring` / `bracket` live-route captions, final Browser cleanup assertions, and Electron parity
+are **not** evidenced. Suppressed cues remain covered by the committed deterministic trace: all 18
+critical cues emitted and 42 flavor cues were intentionally suppressed with an explicit lane-budget
+reason.
 
-**Unblocks:** cues milestone receipt → `milestone_accepted`, which PQ-025's binding requires.
+**Unblocks:** no milestone upgrade yet. A future valid Cathedral capture plus Browser completion,
+Electron parity, and the human motion verdict are still required before `milestone_accepted` can bind
+into PQ-025.
 
-**Verdict:** _____________
+**Verdict:** DEFER — review combat subset now; Cathedral motion and Electron parity not captured
 
 ---
 
