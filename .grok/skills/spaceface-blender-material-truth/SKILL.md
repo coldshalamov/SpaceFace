@@ -111,6 +111,15 @@ Apply these explicitly; Blender defaults are not art direction.
   rolled/faceted case, hollow bell, folded hat section, plate shell, gusset, saddle, clevis, flange,
   service run, aperture, or formed pressure vessel. A cylinder with rings and boxes attached is still
   a cylinder with rings and boxes attached.
+- **Use authored cross-sections when the silhouette needs transition.** When an existing hull or
+  large housing reads as one tube/box, consider a short sequence of stepped or lofted sections that
+  establishes taper, shoulder, waist, flare, wall thickness, and mounting transition. Preserve the
+  asset's silhouette anchors and interfaces; lofting is a repair method, not permission to restart
+  the ship. Reject twists, pinching, shading waves, or gratuitous section count.
+- **Cut construction into the shell.** Use inset/recess, clean booleans, or equivalent direct
+  modeling for bays, trenches, keel channels, service apertures, and hangars. Give them rims, wall
+  thickness, interiors, and connections. Keep separate stuck-on parts only when they are plausibly
+  replaceable hardware.
 - **Make the surfaced assembly the authoritative working view.** Keep the actual materials applied
   to the complete model in the visible Blender window while authoring. Do not spend an entire pass
   looking at a clay model and defer substance judgment to an external render. After every geometry,
@@ -119,6 +128,10 @@ Apply these explicitly; Blender defaults are not art direction.
 - **Use size hierarchy.** Macro shape carries identity; meso parts explain construction; small
   fasteners, clamps, ribs, shutter leaves, and lines explain service. Do not make every detail a
   metre-scale block.
+- **Zone detail against clean plate.** Assign primary-read, construction, service, heat/wear, and
+  quiet-plate regions. Concentrate meso detail where forces, access, cooling, fastening, or repair
+  justify it, and preserve visual rest areas. Size fine work from supported screen space and
+  function, not a borrowed hull-length quota.
 - **Audit the visible cross-section, not the object count or object name.** A "recoil beam,"
   "mantlet," "service pack," or "casemate panel" is still toy construction when the supported
   camera sees only a blank rectangular bar or slab. Primary housings need authored section changes,
@@ -129,6 +142,10 @@ Apply these explicitly; Blender defaults are not art direction.
   machined facets, clamp segments, or plate edges. Use `shade_smooth_by_angle` at a recorded angle
   (the Ashline pilot uses 28 degrees), inspect hard grazing light, and validate the mesh before glTF
   export. Over-smoothed normals turn correct geometry into soap, rubber, or molded plastic.
+- **Resolve scale before bevel evaluation.** Inspect object and parent transforms before adding or
+  tuning bevels. Apply non-uniform mesh scale only when doing so preserves authored dimensions,
+  pivots, parents, sockets, collision, and shared-data intent; otherwise compensate deliberately.
+  Recheck those contracts after the operation.
 - **Classify the substance before setting Principled values.** Intact paint/coating is dielectric;
   bare steel and nickel alloy are metallic; refractory ceramic is non-metallic and dry; carbon
   composite has its own weave/edge logic; glass is not dark polished metal. Vary roughness from
@@ -143,6 +160,13 @@ Apply these explicitly; Blender defaults are not art direction.
   for geometry in the supported close view. Procedural corner studs or plate fasteners belong only
   to actual plate roles; use modeled fasteners at the real interfaces of receivers, hot sections,
   cable hardware, and refractory assemblies.
+- **Audit the generator, not only the material names.** A single base/ORM/normal recipe recolored for
+  every role is still one fake substance. Inspect native-size outputs from each material generator:
+  plate may carry authored seams and sparse fasteners; machined steel needs directional machining;
+  hot alloy needs heat/flow response; refractory needs dry granular structure; paint may reveal metal
+  only where the coating is actually lost. Reject repeated icons, rosettes, quilted bumps, or corner
+  studs on curved drums, bearings, cables, hot sections, and ceramics even when their shader slots and
+  metallic values are technically different.
 - **Model interfaces and depth.** Throats, apertures, vents, bays, and reflectors need cavities,
   inner walls, rims, attachment structure, and a believable load or service path. A bright disk on a
   surface is not a reactor, sensor, or thruster.
@@ -163,6 +187,18 @@ Apply these explicitly; Blender defaults are not art direction.
   with a new source hash; eligible evidence must be produced by a complete exact-source rerender.
 - **Preserve the connected Blender environment.** Clear scene datablocks locally; do not reset
   factory preferences or disable the MCP add-on as a build shortcut.
+- **Verify the visible graph and post-export scene.** When auditing Principled inputs, follow active
+  node links and inspect the linked image or procedural source; an input's default value is not the
+  rendered value when the socket is linked. Exporters may also unhide selected collision/non-render
+  helpers. Re-hide those helpers, restore the complete surfaced assembly, and save the clean
+  production scene before taking the visible Blender checkpoint.
+- **Use bounds-fitted diagnostic cameras.** Derive full-subject framing from evaluated visible
+  world-space bounds, record camera/exposure, and keep supported gameplay cameras mandatory. A sudden
+  render-time spike or implausible crop first triggers a check for a camera inside geometry.
+- **Treat Blender API names as versioned facts.** Query the connected version and available
+  RNA/socket/operator surface, establish mode/selection/context explicitly, and keep compatibility
+  helpers local. A suspiciously fast transparent-black render is a failed render dependency, not
+  successful evidence.
 
 Reject the pass if any prominent component is still best described as “tube,” “box,” “torus,”
 “glowing disk,” or “smooth lump” rather than by a fabricated part and its interfaces.
@@ -171,6 +207,11 @@ Reject the pass if any prominent component is still best described as “tube,�
 
 Use `tools/blender/spaceface_export.py` and the asset family's actual source/release workflow. Do not
 invent a parallel exporter.
+
+SpaceFace ships authored GLBs through its manifest/finalizer/runtime path. Do not copy project-specific
+advice that assumes there is no glTF loader, uses a different world-unit scale, or exports loose
+models to an unrelated folder. Blender-only procedural nodes are authoring inputs; preserve their
+approved result through portable textures/material parameters and the real SpaceFace finalizer.
 
 Validate:
 
@@ -195,6 +236,8 @@ Required references:
 - `docs/visual-assets/TEMPLATES.md`
 - `docs/visual-assets/AGENT_PROMPTS.md`
 - `design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md`
+- `references/loft-recess-method.md` when primitive-stack, blank-shell, recess, diagnostic-camera,
+  or Blender-version defects are active.
 
 For a concrete example, inspect:
 

@@ -210,6 +210,10 @@ Define substrate, coating/finish, roughness response, microstructure, interfaces
 and markings. Material roles must differ by response, not only tint. Base color must not carry baked
 lighting; metallic is a material classification; roughness should have intentional scale hierarchy;
 normal detail must match physical scale; glass/transparency must survive Three.js sorting/depth.
+Audit the material generators themselves: one base/ORM/normal recipe recolored across every slot is
+still one fake substance. Repeated panel grids, corner studs, rosettes, quilted bumps, or leather-like
+normal structure on curved drums, bearings, hot sections, cables, and refractory are P1 material
+failures even when the files, channel bindings, and scalar values are technically valid.
 
 ### LODs are authored representations
 
@@ -258,6 +262,12 @@ direct-game strategy. Uniform bevel, floating strips as every panel cut, impossi
 and polished blockout construction fail. Large repeated bars, petals, ribs, or louvers must show the
 brackets, pivots, gaps, housings, formed profiles, fasteners, or welds appropriate to their material
 and service method. Surface detail cannot promote unresolved primitive geometry to production.
+When a continuous hull or large housing is a prominent tube/box stack, an authored stepped
+cross-section loft is a valid repair candidate: preserve identity and interfaces, vary the
+manufactured section along its axis, and bridge it into one shell. Where the fiction calls for
+depth, cut bays, trenches, channels, apertures, and hangars into that shell with real rims, walls,
+thickness, and interiors. Detail must be zoned against quiet plate; full-surface greeble noise is not
+construction. These are defect-driven methods, not a mandatory house silhouette.
 
 ### G3 ΓÇö UV and bake integrity
 
@@ -310,9 +320,11 @@ Start from evidence. Examples:
   shader and maps, then verify the substance in material-ID isolation and adversarial light;
 
 - primitive stack ΓåÆ custom profiles, boolean/union/cut with cleanup, SubD/direct modeling, designed
-  joints and negative space;
+  joints and negative space; for continuous primary masses, consider stepped section lofts rather
+  than another layer of attached primitives;
 - toy/clay edge response ΓåÆ edge-radius families, stronger plane hierarchy, grazing-light review;
-- floating panel bars ΓåÆ true inset/recess/shadow gap where depth matters, trim/decal where shallow;
+- floating panel bars ΓåÆ true inset/recess/shadow gap with wall thickness where depth matters,
+  trim/decal where shallow;
 - shading waves ΓåÆ planar/topology cleanup, support geometry, weighted normals/data transfer after valid
   form, frozen triangulation;
 - UV stretch/density debt ΓåÆ logical seams, unwrap/relax/pin/straighten, density and padding review;
