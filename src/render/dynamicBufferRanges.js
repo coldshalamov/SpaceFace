@@ -2,6 +2,10 @@ import { BufferAttribute } from 'three';
 
 const DEFAULT_UPLOAD_CALLBACK = BufferAttribute.prototype.onUploadCallback;
 const COORDINATORS = new WeakMap();
+const DEFAULT_RENDER_PHASE = 'unlabeled-render';
+const MAX_FAULT_MESSAGE_CHARS = 512;
+const MAX_FAULT_STACK_CHARS = 8_000;
+const MAX_FAULT_UPDATE_RANGES = 4;
 let uploadCallbackBinding = null;
 
 function integer(value) {
@@ -20,17 +24,107 @@ function resetBindingPending(binding) {
   binding.pending.logicalComponents = 0;
 }
 
-function markOwnerInvalid(owner, message, counter = null) {
+function boundedText(value, maxChars) {
+  const text = typeof value === 'string' ? value : String(value ?? '');
+  return text.length <= maxChars ? text : `${text.slice(0, maxChars - 1)}…`;
+}
+
+function renderPhaseLabel(value) {
+  return typeof value === 'string' && value.length > 0
+    ? boundedText(value, 96)
+    : DEFAULT_RENDER_PHASE;
+}
+
+function isAttachedToScene(object, scene) {
+  let current = object;
+  while (current) {
+    if (current === scene) return true;
+    current = current.parent;
+  }
+  return false;
+}
+
+function captureOwnerFault(owner, binding, message) {
+  const coordinator = owner.coordinator;
+  if (!coordinator || coordinator.diagnostics.firstFault) {
+    return coordinator?.diagnostics.firstFault ?? owner.diagnostics.firstFault ?? null;
+  }
+  const attribute = binding?.attribute ?? null;
+  const snapshot = binding?.snapshot ?? null;
+  const ranges = Array.isArray(attribute?.updateRanges)
+    ? attribute.updateRanges.slice(0, MAX_FAULT_UPDATE_RANGES).map((range) => ({
+      start: Number.isFinite(range?.start) ? range.start : null,
+      count: Number.isFinite(range?.count) ? range.count : null,
+    }))
+    : [];
+  const fault = {
+    schema: 'spaceface.dynamicBufferFault.v1',
+    message: boundedText(message, MAX_FAULT_MESSAGE_CHARS),
+    phase: coordinator.activePhase,
+    coordinator: {
+      active: coordinator.active,
+      epoch: coordinator.epoch,
+      sceneInvocations: coordinator.diagnostics.sceneInvocations,
+      lastArmPhase: coordinator.diagnostics.lastArmPhase,
+    },
+    owner: {
+      id: boundedText(owner.id, 128),
+      publishedEpoch: owner.publishedEpoch,
+      activeCount: owner.mesh?.count ?? null,
+      visible: owner.mesh?.visible !== false,
+      attachedToScene: isAttachedToScene(owner.mesh, coordinator.scene),
+    },
+    binding: binding ? {
+      name: boundedText(binding.name, 128),
+      forceFull: binding.forceFull,
+      forceReason: boundedText(binding.forceReason, 96) || null,
+      knownVersion: binding.knownVersion,
+      publishedGeneration: binding.publishedGeneration,
+      acknowledgedGeneration: binding.acknowledgedGeneration,
+      snapshot: {
+        active: snapshot.active,
+        epoch: snapshot.epoch,
+        version: snapshot.version,
+        generation: snapshot.generation,
+      },
+    } : null,
+    attribute: attribute ? {
+      version: attribute.version,
+      updateRangeCount: Array.isArray(attribute.updateRanges) ? attribute.updateRanges.length : null,
+      updateRanges: ranges,
+    } : null,
+    stack: boundedText(new Error(message).stack || '', MAX_FAULT_STACK_CHARS),
+  };
+  coordinator.diagnostics.firstFault = fault;
+  owner.diagnostics.firstFault = fault;
+  return fault;
+}
+
+function faultSummary(fault) {
+  if (!fault) return '';
+  return ` [dynamic-buffer-fault phase=${fault.phase ?? 'none'} active=${fault.coordinator.active}`
+    + ` epoch=${fault.coordinator.epoch} sceneInvocations=${fault.coordinator.sceneInvocations}`
+    + ` lastArmPhase=${fault.coordinator.lastArmPhase ?? 'none'}`
+    + ` ownerPublishedEpoch=${fault.owner.publishedEpoch}`
+    + ` binding=${fault.binding?.name ?? 'none'} forceFull=${fault.binding?.forceFull ?? 'n/a'}`
+    + ` knownVersion=${fault.binding?.knownVersion ?? 'n/a'}`
+    + ` attributeVersion=${fault.attribute?.version ?? 'n/a'}`
+    + ` updateRanges=${fault.attribute?.updateRangeCount ?? 'n/a'}]`;
+}
+
+function markOwnerInvalid(owner, message, counter = null, binding = null) {
+  const fault = captureOwnerFault(owner, binding, message);
+  const detailedMessage = `${message}${faultSummary(fault)}`;
   owner.invalid = true;
   owner.diagnostics.invalid = true;
-  owner.diagnostics.lastError = message;
+  owner.diagnostics.lastError = detailedMessage;
   const coordinator = owner.coordinator;
   if (coordinator) {
     coordinator.diagnostics.invalid = true;
-    coordinator.diagnostics.lastError = message;
+    coordinator.diagnostics.lastError = detailedMessage;
     if (counter) coordinator.diagnostics[counter]++;
   }
-  throw new Error(message);
+  throw new Error(detailedMessage);
 }
 
 function requireDefaultUploadCallback(attribute, ownerId, name) {
@@ -55,28 +149,28 @@ function acknowledgeUpload(binding, callbackAttribute) {
   const owner = binding.owner;
   const snapshot = binding.snapshot;
   if (uploadCallbackBinding) {
-    markOwnerInvalid(owner, `${owner.id}:${binding.name} upload callback re-entered`, 'callbackViolations');
+    markOwnerInvalid(owner, `${owner.id}:${binding.name} upload callback re-entered`, 'callbackViolations', binding);
   }
   uploadCallbackBinding = binding;
   try {
     if (!snapshot.active) {
-      markOwnerInvalid(owner, `${owner.id}:${binding.name} received an unsolicited upload callback`, 'callbackViolations');
+      markOwnerInvalid(owner, `${owner.id}:${binding.name} received an unsolicited upload callback`, 'callbackViolations', binding);
     }
     if (callbackAttribute !== binding.attribute || snapshot.attribute !== binding.attribute) {
-      markOwnerInvalid(owner, `${owner.id}:${binding.name} upload callback used a stale attribute`, 'callbackViolations');
+      markOwnerInvalid(owner, `${owner.id}:${binding.name} upload callback used a stale attribute`, 'callbackViolations', binding);
     }
     if (binding.attribute.onUploadCallback !== binding.callback) {
-      markOwnerInvalid(owner, `${owner.id}:${binding.name} upload callback identity changed`, 'callbackViolations');
+      markOwnerInvalid(owner, `${owner.id}:${binding.name} upload callback identity changed`, 'callbackViolations', binding);
     }
     if (binding.attribute.version !== snapshot.version) {
-      markOwnerInvalid(owner, `${owner.id}:${binding.name} upload version changed before acknowledgement`, 'callbackViolations');
+      markOwnerInvalid(owner, `${owner.id}:${binding.name} upload version changed before acknowledgement`, 'callbackViolations', binding);
     }
 
     // Ordinary bufferSubData clears the public list before this callback. Initial bufferData does not,
     // so remove only the exact record this owner appended and never erase foreign metadata.
     removeRangeByIdentity(binding.attribute, snapshot.record);
     if (binding.attribute.updateRanges.length !== 0) {
-      markOwnerInvalid(owner, `${owner.id}:${binding.name} retained foreign update ranges`, 'callbackViolations');
+      markOwnerInvalid(owner, `${owner.id}:${binding.name} retained foreign update ranges`, 'callbackViolations', binding);
     }
 
     snapshot.active = false;
@@ -119,16 +213,16 @@ function validateBindingForPublication(binding) {
   const owner = binding.owner;
   const attribute = binding.attribute;
   if (attribute.onUploadCallback !== binding.callback) {
-    markOwnerInvalid(owner, `${owner.id}:${binding.name} upload callback identity changed`, 'callbackViolations');
+    markOwnerInvalid(owner, `${owner.id}:${binding.name} upload callback identity changed`, 'callbackViolations', binding);
   }
   if (attribute.version !== binding.knownVersion) {
-    markOwnerInvalid(owner, `${owner.id}:${binding.name} attribute version changed outside its owner`, 'callbackViolations');
+    markOwnerInvalid(owner, `${owner.id}:${binding.name} attribute version changed outside its owner`, 'callbackViolations', binding);
   }
   if (binding.snapshot.active) {
-    markOwnerInvalid(owner, `${owner.id}:${binding.name} still has an unacknowledged publication`, 'callbackViolations');
+    markOwnerInvalid(owner, `${owner.id}:${binding.name} still has an unacknowledged publication`, 'callbackViolations', binding);
   }
   if (attribute.updateRanges.length !== 0) {
-    markOwnerInvalid(owner, `${owner.id}:${binding.name} public update ranges changed outside its owner`, 'callbackViolations');
+    markOwnerInvalid(owner, `${owner.id}:${binding.name} public update ranges changed outside its owner`, 'callbackViolations', binding);
   }
 }
 
@@ -164,7 +258,7 @@ function publishBinding(binding, epoch, forceFull) {
     throw error;
   }
   if (attribute.version !== snapshot.version) {
-    markOwnerInvalid(binding.owner, `${binding.owner.id}:${binding.name} did not advance one upload version`, 'callbackViolations');
+    markOwnerInvalid(binding.owner, `${binding.owner.id}:${binding.name} did not advance one upload version`, 'callbackViolations', binding);
   }
 
   binding.knownVersion = attribute.version;
@@ -318,6 +412,9 @@ export function createDynamicBufferCoordinator(scene) {
     contextRestores: 0,
     invalid: false,
     lastError: null,
+    activePhase: null,
+    lastArmPhase: null,
+    firstFault: null,
     owners: [],
   };
   const coordinator = {
@@ -330,6 +427,7 @@ export function createDynamicBufferCoordinator(scene) {
     inSceneHook: false,
     priorHook: null,
     priorHookHadOwnProperty: false,
+    activePhase: null,
   };
 
   const wrapper = function dynamicBufferSceneBeforeRender(renderer, renderedScene, camera, renderTarget) {
@@ -364,7 +462,9 @@ export function createDynamicBufferCoordinator(scene) {
   };
   coordinator.wrapper = wrapper;
 
-  coordinator.arm = () => {
+  coordinator.arm = (label = DEFAULT_RENDER_PHASE) => {
+    const phase = renderPhaseLabel(label);
+    diagnostics.lastArmPhase = phase;
     if (diagnostics.invalid) throw new Error(diagnostics.lastError || 'dynamic buffer coordinator is invalid');
     if (coordinator.active) {
       diagnostics.hookViolations++;
@@ -373,6 +473,8 @@ export function createDynamicBufferCoordinator(scene) {
       throw new Error(diagnostics.lastError);
     }
     coordinator.active = true;
+    coordinator.activePhase = phase;
+    diagnostics.activePhase = phase;
     coordinator.epoch++;
     diagnostics.epochs++;
     coordinator.priorHookHadOwnProperty = Object.prototype.hasOwnProperty.call(scene, 'onBeforeRender');
@@ -400,6 +502,8 @@ export function createDynamicBufferCoordinator(scene) {
       else delete scene.onBeforeRender;
     } finally {
       coordinator.active = false;
+      coordinator.activePhase = null;
+      diagnostics.activePhase = null;
       coordinator.priorHook = null;
       coordinator.priorHookHadOwnProperty = false;
     }
@@ -464,6 +568,7 @@ export function registerDynamicBufferOwner(scene, spec) {
       drawEligibilitySkips: 0,
       invalid: false,
       lastError: null,
+      firstFault: null,
     },
   };
 

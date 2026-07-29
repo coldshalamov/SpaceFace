@@ -53,8 +53,8 @@ function makeOwnerFixture(capacity = 4) {
   return { scene, coordinator, attribute, material, mesh, owner, camera: new THREE.PerspectiveCamera() };
 }
 
-function beginSceneRender(fixture) {
-  const epoch = fixture.coordinator.arm();
+function beginSceneRender(fixture, label) {
+  const epoch = fixture.coordinator.arm(label);
   fixture.scene.onBeforeRender({}, fixture.scene, fixture.camera, null);
   return epoch;
 }
@@ -92,6 +92,50 @@ test('scene-owned publication forces the initial buffer and restores the prior h
   assert.equal(fixture.scene.onBeforeRender, prior);
   assert.equal(fixture.owner.diagnostics.forceFullUploads, 1);
   assert.equal(fixture.owner.diagnostics.acknowledgements, 1);
+});
+
+test('render phases label one bounded first-fault record without weakening callback canaries', () => {
+  const fixture = makeOwnerFixture();
+  const epoch = beginSceneRender(fixture, 'warm-post-process');
+  acknowledgeInitial(fixture.attribute);
+
+  let failure;
+  try {
+    fixture.attribute.onUploadCallback();
+  } catch (error) {
+    failure = error;
+  }
+  assert.ok(failure);
+  assert.match(failure.message, /received an unsolicited upload callback/);
+  assert.match(failure.message, /phase=warm-post-process/);
+  assert.ok(failure.message.length < 2_000, 'fault summary in the thrown text must stay bounded');
+
+  const diagnostics = fixture.coordinator.getDiagnostics();
+  const firstFault = diagnostics.firstFault;
+  assert.equal(diagnostics.invalid, true);
+  assert.equal(diagnostics.activePhase, 'warm-post-process');
+  assert.equal(firstFault.schema, 'spaceface.dynamicBufferFault.v1');
+  assert.equal(firstFault.phase, 'warm-post-process');
+  assert.equal(firstFault.coordinator.active, true);
+  assert.equal(firstFault.coordinator.epoch, epoch);
+  assert.equal(firstFault.owner.id, 'fixture');
+  assert.equal(firstFault.owner.publishedEpoch, epoch);
+  assert.equal(firstFault.binding.name, 'fixture');
+  assert.equal(firstFault.binding.snapshot.active, false);
+  assert.equal(firstFault.attribute.version, fixture.attribute.version);
+  assert.equal(firstFault.attribute.updateRangeCount, 0);
+  assert.ok(firstFault.stack.includes('received an unsolicited upload callback'));
+  assert.ok(firstFault.stack.length <= 8_000);
+
+  assert.throws(
+    () => fixture.attribute.onUploadCallback(),
+    /received an unsolicited upload callback/,
+  );
+  assert.equal(diagnostics.firstFault, firstFault, 'only the first fault record may be retained');
+
+  fixture.coordinator.disarm(epoch);
+  assert.equal(diagnostics.activePhase, null);
+  assert.equal(diagnostics.lastArmPhase, 'warm-post-process');
 });
 
 test('ordinary dirty spans survive skipped draws and publish once on eligibility', () => {
