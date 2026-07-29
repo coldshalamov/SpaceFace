@@ -56,7 +56,7 @@ test('persistent roster stays in the reserved right stack at target resolutions'
     'roster, selected-target detail, and radar must remain one non-overlapping vertical stack');
 });
 
-test('mounted HUD roster stays visible, capped, clickable, and <=5 Hz at high refresh', () => {
+test('mounted HUD roster stays visible, capped, clickable, and rebuild-free at high refresh', () => {
   for (const fps of [60, 144, 240]) {
     const fixture = mountHudFixture();
     try {
@@ -78,10 +78,11 @@ test('mounted HUD roster stays visible, capped, clickable, and <=5 Hz at high re
         `${fps} FPS keeps selected/threat/ally/wreck ordering in the mounted DOM`);
       assert.equal(overview.querySelector('.sf-overview-footer')?.textContent, '+2 · 2 OTHERS',
         `${fps} FPS mounts truthful compact overflow`);
-      assert.ok(overview.rebuildCount >= seconds * 5 - 1,
-        `${fps} FPS exercises the real roster close to its 5 Hz cadence`);
-      assert.ok(overview.rebuildCount <= seconds * 5,
-        `${fps} FPS never exceeds 5 Hz real DOM rebuilds`);
+      // The roster is reconciled by entity id, so a moving contact never tears the subtree down.
+      // The 5 Hz cadence itself is covered by hud-contact-roster-keyed-rows.test.mjs, which counts
+      // the text writes the reconcile performs instead of the rebuilds it no longer performs.
+      assert.equal(overview.rebuildCount, 0,
+        `${fps} FPS never rebuilds the roster subtree (retained keyed rows)`);
 
       let toast = null;
       fixture.bus.on('toast', (payload) => { toast = payload; });
@@ -256,10 +257,20 @@ class HudElement {
     this.children.length = 0;
     if (value != null && String(value) !== '') this.appendChild(new HudText(String(value)));
   }
-  appendChild(child) { child.parentNode = this; this.children.push(child); return child; }
+  // Fidelity: real appendChild DETACHES first, so appending a live node MOVES it. Without this the
+  // shim duplicates any node a reconciler reorders.
+  appendChild(child) {
+    if (child.parentNode) child.parentNode.removeChild(child);
+    child.parentNode = this; this.children.push(child); return child;
+  }
   append(...children) { children.forEach((child) => this.appendChild(child)); }
   prepend(child) { child.parentNode = this; this.children.unshift(child); return child; }
-  removeChild(child) { const i = this.children.indexOf(child); if (i >= 0) this.children.splice(i, 1); return child; }
+  removeChild(child) {
+    const i = this.children.indexOf(child);
+    if (i >= 0) this.children.splice(i, 1);
+    if (child.parentNode === this) child.parentNode = null;
+    return child;
+  }
   setAttribute(name, value) {
     const text = String(value);
     this.attributes.set(name, text);

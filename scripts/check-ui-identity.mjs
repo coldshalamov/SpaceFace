@@ -36,13 +36,18 @@ const checks = [
     path: 'src/ui/hud.js',
     label: 'Contact roster — bounded cadence, useful priority, truthful overflow, click-to-target and memoised DOM work',
     needs: [
-      'state.player.targetId = e.id',
+      'state.player.targetId = rec.id',
       'sf-overview-row',
-      'lastOverviewSignature',
+      // Memoised DOM work is now retained keyed rows (createOverviewRow builds a row once,
+      // syncOverviewRow writes only the fields that changed) instead of the old
+      // lastOverviewSignature rebuild guard, which embedded rounded distance/closing speed and
+      // therefore almost never hit while the player was flying.
+      'syncOverviewRow',
       'SEMANTIC_PALETTE',
     ],
     forbids: [
       'overviewTick % 12',
+      "elOverview.innerHTML = ''",
     ],
   },
 
