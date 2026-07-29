@@ -155,9 +155,19 @@ test('asteroid pool reuses a static matrix and uploads real instance data after 
   assert.equal(stable.matrixUploads, 0);
   assert.equal(bucket.mesh.instanceMatrix.version, warmVersion);
 
+  frame.asteroids[0].renderDirty = true;
+  const explicitlyStable = syncAsteroidInstancePool(harness.pool, {
+    records: frame.asteroids,
+    recordsDirty: false,
+  });
+  assert.equal(explicitlyStable.matrixEvaluations, 0, 'dense dirty state bypasses broad record checks');
+
   root.position.x = 12.5;
   classifyAsteroids(frame, harness.asteroids);
-  const moved = syncAsteroidInstancePool(harness.pool, { records: frame.asteroids });
+  const moved = syncAsteroidInstancePool(harness.pool, {
+    records: frame.asteroids,
+    recordsDirty: true,
+  });
   const movedVersion = bucket.mesh.instanceMatrix.version;
   assert.ok(moved.matrixEvaluations > 0);
   assert.ok(moved.matrixUploads > 0);

@@ -4,6 +4,12 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  inspectElectronRuntime,
+  isNodeVersionAtLeast,
+  provisionElectronRuntime,
+} from '../scripts/lib/electronRuntimeProvisioning.mjs';
+
 const require = createRequire(import.meta.url);
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const {
@@ -129,11 +135,107 @@ assert.doesNotMatch(tailed, /old detail/);
 assert.match(tailed, /middle detail/);
 assert.match(tailed, /actual final error/);
 
+assert.equal(isNodeVersionAtLeast('22.12.0', '22.12.0'), true);
+assert.equal(isNodeVersionAtLeast('24.0.0', '22.12.0'), true);
+assert.equal(isNodeVersionAtLeast('22.11.9', '22.12.0'), false);
+
+const installedPackage = join(ROOT, 'package.json');
+let provisioned = false;
+let provisionSpawn = null;
+const provisionResult = provisionElectronRuntime({
+  root: ROOT,
+  nodeVersion: '22.12.0',
+  inspect() {
+    return {
+      ready: provisioned,
+      code: provisioned ? 'ready' : 'electron-runtime-missing',
+      packageJsonPath: installedPackage,
+      packageRoot: ROOT,
+      packageVersion: '43.2.0',
+      declaredVersion: '43.2.0',
+      installScript: installedPackage,
+      overrideDistPath: null,
+      runtimePath: join(ROOT, 'electron.exe'),
+      runtimeRelativePath: 'electron.exe',
+      runtimeVersion: provisioned ? '43.2.0' : null,
+      failures: provisioned ? [] : ['runtime missing'],
+    };
+  },
+  spawnSyncImpl(executable, args, options) {
+    provisionSpawn = { executable, args, options };
+    provisioned = true;
+    return { status: 0 };
+  },
+});
+assert.equal(provisionResult.provisioned, true);
+assert.equal(provisionSpawn.executable, process.execPath);
+assert.deepEqual(provisionSpawn.args, [installedPackage]);
+assert.equal(provisionSpawn.options.stdio, 'inherit');
+assert.throws(
+  () => provisionElectronRuntime({
+    root: ROOT,
+    nodeVersion: '22.12.0',
+    inspect: () => ({
+      ready: false,
+      code: 'electron-runtime-missing',
+      packageJsonPath: installedPackage,
+      packageVersion: '43.2.0',
+      declaredVersion: '43.2.0',
+      installScript: installedPackage,
+      overrideDistPath: null,
+      failures: ['runtime missing'],
+    }),
+    spawnSyncImpl: () => ({ status: 7 }),
+  }),
+  (error) => error.code === 'electron-provision-failed' && error.exitCode === 7,
+  'the launcher must preserve the explicit Electron installer exit code',
+);
+
+let stalePackageInstallerRan = false;
+assert.throws(
+  () => provisionElectronRuntime({
+    root: ROOT,
+    nodeVersion: '22.12.0',
+    inspect: () => ({
+      ready: false,
+      code: 'electron-package-version-mismatch',
+      packageJsonPath: installedPackage,
+      packageVersion: '31.7.7',
+      declaredVersion: '43.2.0',
+      installScript: installedPackage,
+      overrideDistPath: null,
+      failures: ['installed package is stale'],
+    }),
+    spawnSyncImpl: () => {
+      stalePackageInstallerRan = true;
+      return { status: 0 };
+    },
+  }),
+  (error) => error.code === 'electron-package-version-mismatch' && /npm install/i.test(error.message),
+  'a stale Electron npm package must not silently launch or provision the wrong major',
+);
+assert.equal(stalePackageInstallerRan, false);
+
+const installedRuntime = inspectElectronRuntime({ root: ROOT });
+assert.equal(installedRuntime.packageVersion, '43.2.0');
+assert.equal(installedRuntime.declaredVersion, '43.2.0');
+assert.equal(installedRuntime.packageJsonPath.endsWith(join('electron', 'package.json')), true);
+
 const batch = readFileSync(join(ROOT, 'SpaceFace-Desktop.bat'), 'utf8');
+const launcher = readFileSync(join(ROOT, 'scripts/launch-electron.mjs'), 'utf8');
 const main = readFileSync(join(ROOT, 'electron/main.cjs'), 'utf8');
 const packageJson = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 assert.match(batch, /node scripts\\launch-electron\.mjs/);
+assert.match(batch, /node_modules\\electron\\package\.json/);
+assert.match(batch, /installed\.version===project\.devDependencies\.electron/,
+  'the Windows launcher must refresh stale Electron package metadata before runtime provisioning');
+assert.doesNotMatch(batch, /node_modules\\\.bin\\electron\.cmd/);
 assert.doesNotMatch(batch, /npm run electron/);
+assert.match(launcher, /provisionElectronRuntime/);
+assert.doesNotMatch(launcher, /require\(['"]electron['"]\)/,
+  'executable discovery must not execute Electron index.js and trigger a hidden download');
+assert.equal(packageJson.scripts.electron, 'node scripts/launch-electron.mjs');
+assert.equal(packageJson.engines.node, '>=22.12.0');
 assert.match(main, /existing-instance/);
 assert.match(main, /port-conflict/);
 assert.match(main, /navigation-failed/);
@@ -146,5 +248,9 @@ for (const requiredMainModule of ['scripts/lib/gameServer.cjs', 'scripts/lib/ele
   assert(packageJson.build.files.includes(requiredMainModule),
     `packaged Electron must include main-process module ${requiredMainModule}`);
 }
+assert(packageJson.build.files.includes('electron/main.cjs'));
+assert(packageJson.build.files.includes('electron/preload.cjs'));
+assert.equal(packageJson.build.files.includes('electron/**'), false,
+  'packaging must not include development-only Electron utilities');
 
-console.log('PASS Electron launcher reliability: explicit outcomes, preserved process ownership, actionable diagnostics');
+console.log('PASS Electron launcher reliability: explicit provisioning, preserved process ownership, actionable diagnostics');

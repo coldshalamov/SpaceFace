@@ -32,6 +32,13 @@ import {
   createRenderEntityFrame,
   endRenderEntityFrame,
 } from './renderEntityFrame.js';
+import {
+  createPresentationWorld,
+  PRESENTATION_DIRTY,
+  PRESENTATION_FLAGS,
+} from './presentationWorld.js';
+import { createPresentationPublisher } from './presentationPublisher.js';
+import { createPresentationQueries } from './presentationQueries.js';
 import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { createCollisionDebug } from './collisionDebug.js';
@@ -44,7 +51,11 @@ import {
 } from './precompile.js';
 import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
-import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
+import {
+  invalidateShadowCasterPolicy,
+  syncShadowCasterPolicy,
+} from './shadowCasterPolicy.js';
+import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
@@ -54,6 +65,7 @@ import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import { createPipelineAdmissionTracker } from './pipelineReadiness.js';
 import { prepareStartupGpuResidency, yieldToBrowser } from './startupGpuResidency.js';
 import { collectContextLossRoots, detachStaleWebGlDisposeListeners } from './contextResourceLifecycle.js';
+import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -642,24 +654,18 @@ function requestAuthoredUpgrade(mesh, renderer, scene) {
   catch (error) { console.warn('[render] authored asset upgrade request failed', error); }
 }
 
-function configureShadowCasters(root) {
-  configureRealtimeCanopyMaterials(root);
-  root.traverse((o) => {
-    if (!o.isMesh) return;
-    if (!o.visible) { o.castShadow = false; o.receiveShadow = false; return; }
-    if (o.userData && o.userData.spacefaceNoShadow) { o.castShadow = false; o.receiveShadow = false; return; }
-    if (o.userData && o.userData.sharedContactShadow) { o.castShadow = false; return; }
-    const mats = Array.isArray(o.material) ? o.material : [o.material];
-    const casts = mats.some((m) => m && !m.transparent && m.depthWrite !== false && (m.opacity == null || m.opacity >= 1) && m.blending === THREE.NormalBlending);
-    o.castShadow = casts;
-    // GR-2: opaque hulls also RECEIVE shadows — a ship resting on a station pad should be shaded by
-    // the station's superstructure, and ships in formation should shadow each other. The same opacity
-    // test as casting: transparent shields/engine-plumes neither cast nor receive (they'd self-shadow
-    // and flicker). This is what gives ships groundedness beyond the fake contact-shadow disc.
-    o.receiveShadow = casts;
-  });
+// Prepare the live directional-shadow camera before asteroid visibility consumes its frustum.
+// The renderer's actual shadow-map state is authoritative: a setting can remain on while zero
+// receivers intentionally disable the map for this frame.
+export function prepareActiveShadowCamera(renderer, keyLight) {
+  const shadowMap = renderer && renderer.shadowMap;
+  const shadow = keyLight && keyLight.shadow;
+  if (!shadowMap || !shadowMap.enabled || !shadow) return null;
+  keyLight.updateMatrixWorld(true);
+  if (keyLight.target) keyLight.target.updateMatrixWorld(true);
+  shadow.updateMatrices(keyLight);
+  return shadow.camera || null;
 }
-
 const _plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const _ray = new THREE.Raycaster();
 const _pt = new THREE.Vector3();
@@ -704,6 +710,9 @@ export const render = {
     const drawSize = applyRendererSize(renderer, state);
 
     const scene = new THREE.Scene();
+    const dynamicBuffers = createDynamicBufferCoordinator(scene);
+    this._dynamicBuffers = dynamicBuffers;
+    state.render.dynamicBufferRanges = dynamicBuffers.getDiagnostics();
     const corePalette = SECTOR_PALETTE_CLASSES.core;
     // Thin fog for gentle depth cueing only — the old 0.00085 erased the entire backdrop, leaving a
     // black void. This keeps the nebula + far stars visible while still fading the deep distance.
@@ -717,6 +726,19 @@ export const render = {
     // This lets a default shadows:false profile enable shadows live without allocating a new light.
     const shadowsOn = !(state.settings && state.settings.video && state.settings.video.shadows === false);
 
+    // --- GPU capability detection (adaptiveQuality.js) -----------------------------------------
+    // Detection MUST publish state.render.gpu before createSpaceBackground below. SpaceBackground
+    // picks its quality tier inside its constructor by reading state.render.gpu; when detection ran
+    // later in init it saw an empty object, guessed 'mid', and the renderer then re-tiered it — so
+    // every machine whose true tier is not 'mid' built the entire procedural backdrop twice at boot
+    // (nebula bakes up to 2048², 6-16k stars, the flare set, the comet, the hero impostors), threw
+    // the first build away, and paid the biggest stall on the fastest hardware.
+    // Safe this early: detectGpu only reads the renderer's GL context, which exists from the
+    // WebGLRenderer construction above, and nothing between here and the dynamic-resolution setup
+    // below reads state.render.gpu (the ?perf overlay closure reads it lazily, per frame).
+    const gpu = detectGpu(renderer);
+    state.render.gpu = gpu;
+
     const cam = createChaseCamera(state);
     const spaceBg = createSpaceBackground(scene, state, { renderer, camera: cam.obj, debug: SF_DEBUG });
     state.render.spaceBg = spaceBg;
@@ -729,7 +751,12 @@ export const render = {
       // visible identity. Preview-only factories may still opt into hidden diagnostic geometry.
       directAuthoredMount: true,
       onAuthoredAssetSwap: ({ boundary, root } = {}) => {
-        configureRealtimeCanopyMaterials(boundary || root);
+        const target = boundary || root;
+        if (target) {
+          invalidateShadowCasterPolicy(target);
+          syncShadowCasterPolicy(target, target.userData && target.userData.lod
+            ? target.userData.lod.level : null);
+        }
         this._shadowReceiversDirty = true;
       },
     });
@@ -771,6 +798,7 @@ export const render = {
         ev.preventDefault();        // allow restoration
         if (this._contextLost) return;
         this._contextLost = true;
+        dynamicBuffers.handleContextLost();
         const contextRoots = collectContextLossRoots({
           scene,
           environment: this._envMap,
@@ -811,6 +839,7 @@ export const render = {
       canvas.addEventListener('webglcontextrestored', () => {
         if (typeof console !== 'undefined') console.warn('[render] WebGL context restored — rebuilding GPU resources');
         this._contextLost = false;
+        dynamicBuffers.handleContextRestored();
         try {
           // Re-apply renderer config that the new context defaults lose.
           this.renderer.setClearColor(0x060912, 1);
@@ -899,13 +928,52 @@ export const render = {
     this._shadowSettingOn = shadowsOn;
     this._shadowReceiversDirty = true;
     this._shadowReceiverCount = 0;
+    this._w2sCamCache = null; // see _syncProjectionCamera(): decomposed chase-camera transform
     this._ensureKeyLightShadows();
     this._contactShadowPool = createContactShadowPool(scene);
     this._shipAuxPool = createShipAuxPool(scene);
     this._asteroidInstancePool = createAsteroidInstancePool(scene);
     this._entityFrame = createRenderEntityFrame();
+    this._presentationWorld = createPresentationWorld();
+    this._presentationPublisher = createPresentationPublisher(
+      this._presentationWorld,
+      state,
+      { journal: ctx.presentationJournal || null },
+    );
+    this._presentationQueries = createPresentationQueries(this._presentationWorld);
+    this._presentationHandleScratch = {};
+    this._presentationQueryOptions = { bounds: null, origin: null, playerId: null };
+    this._entityViewBounds = { x: 0, z: 0, halfX: 0, halfZ: 0, margin: 0 };
+    this._entityViewDiagnostics = {
+      totalMeshes: 0,
+      candidates: 0,
+      transformed: 0,
+      fullSynced: 0,
+      culled: 0,
+      newlyVisible: 0,
+      newlyHidden: 0,
+      lodChecked: 0,
+      cullHalfX: 0,
+      cullHalfZ: 0,
+    };
+    this._hlodDiagnostics = {
+      hlodDetailedVisible: 0,
+      hlodProxyVisible: 0,
+      hlodObjectsSwapped: 0,
+      shadowPolicyRefreshes: 0,
+    };
+    state.render.presentationWorld = this._presentationWorld.getDiagnostics();
+    state.render.presentationPublisher = this._presentationPublisher.getDiagnostics();
+    state.render.presentationQueries = this._presentationQueries.getDiagnostics();
+    state.render.entityViewSync = this._entityViewDiagnostics;
+    state.render.hlod = this._hlodDiagnostics;
     this._authoredInstanceSyncOptions = { camera: null, entityFrame: null, authoredRecords: null };
-    this._asteroidInstanceSyncOptions = { camera: null, shadowCamera: null, records: null };
+    this._asteroidInstanceSyncOptions = {
+      camera: null,
+      shadowCamera: null,
+      records: null,
+      recordsDirty: true,
+    };
     // LOD projector viewport (CSS px); onResize refreshes it. Initialize from drawSize so the first
     // frame before onResize has sane values.
     { const dpr = renderer.getPixelRatio() || 1; this.viewport = { width: drawSize.x / dpr, height: drawSize.y / dpr }; }
@@ -1067,18 +1135,19 @@ export const render = {
     }
     catch (err) { console.warn('[render] diagnostics unavailable:', err); this.diag = null; }
 
-    // --- GPU capability detection + dynamic resolution (adaptiveQuality.js) --------------------
+    // --- Dynamic resolution (adaptiveQuality.js) -----------------------------------------------
     // Profiling proved SpaceFace is GPU present-bound: the JS/sim side fits the frame budget, but a
     // weak/integrated GPU can't shade the full-res HDR scene + bloom composite in time, and a browser
     // that has fallen back to SOFTWARE rendering (hardware acceleration off/blocklisted) drops to a
-    // few fps regardless of content. Detect the real renderer so we can warn + pick a floor, then run
-    // a dynamic-resolution controller (renderFrame -> prepareFrame each frame) that trades internal
-    // resolution for a smooth framerate. It never mutates settings.video, so it fully recovers.
+    // few fps regardless of content. The tier detected above (before the background was built) both
+    // warns the player and picks the floor for the dynamic-resolution controller below
+    // (renderFrame -> prepareFrame each frame), which trades internal resolution for a smooth
+    // framerate. It never mutates settings.video, so it fully recovers.
     state.render.dynResScale = 1;
-    const gpu = detectGpu(renderer);
-    state.render.gpu = gpu;
-    // The background was constructed before GPU detection ran; re-tier it now (no-op unless
-    // the tier actually changed — e.g. software rendering drops it to the cheap path).
+    // Detection now runs before createSpaceBackground, so the background was already built at its
+    // true tier and this call is a no-op safety net (applyGpuTier returns immediately when the tier
+    // is unchanged). Kept because it is also the live re-tier entry point: SF.bg.forceTier and any
+    // future settings-driven quality change route through the same rebuild.
     if (spaceBg && typeof spaceBg.applyGpuTier === 'function') spaceBg.applyGpuTier(gpu);
     try {
       const pr = renderer.getPixelRatio() || 1;
@@ -1132,7 +1201,16 @@ export const render = {
     state.render.camera = cam.obj;
     state.render.cameraCtrl = cam;   // controller (addTrauma/pushZoom) — exposed for feel.js / ui
     state.render.vf = vf;   // exposed for the dev-only ship turntable preview (shipPreview.js)
-    state.render.warmPostProcess = () => (this.bloom && state.settings.video.bloom !== false ? this.bloom.render(scene, cam.obj) : renderer.render(scene, cam.obj));
+    state.render.warmPostProcess = () => {
+      const dynamicBufferEpoch = dynamicBuffers.arm();
+      try {
+        return this.bloom && state.settings.video.bloom !== false
+          ? this.bloom.render(scene, cam.obj)
+          : renderer.render(scene, cam.obj);
+      } finally {
+        dynamicBuffers.disarm(dynamicBufferEpoch);
+      }
+    };
     const compileForCurrentTarget = (subjects) => {
       const batch = Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean);
       if (batch.length === 0) return Promise.resolve({ skipped: true, reason: 'empty pipeline batch' });
@@ -1184,13 +1262,18 @@ export const render = {
       await yieldToBrowser();
       const openingFrameStarted = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const video = state.settings && state.settings.video || {};
-      if (video.renderGraph && this._ensureRenderGraph()) {
-        this._renderGraph.render(scene, cam.obj, { time: this._bgTime || 0 });
-      } else if (this.bloom && video.bloom !== false) {
-        this.bloom.render(scene, cam.obj);
-      } else {
-        renderer.setRenderTarget(null);
-        renderer.render(scene, cam.obj);
+      const dynamicBufferEpoch = dynamicBuffers.arm();
+      try {
+        if (video.renderGraph && this._ensureRenderGraph()) {
+          this._renderGraph.render(scene, cam.obj, { time: this._bgTime || 0 });
+        } else if (this.bloom && video.bloom !== false) {
+          this.bloom.render(scene, cam.obj);
+        } else {
+          renderer.setRenderTarget(null);
+          renderer.render(scene, cam.obj);
+        }
+      } finally {
+        dynamicBuffers.disarm(dynamicBufferEpoch);
       }
       result.openingFrame = {
         durationMs: (typeof performance !== 'undefined' ? performance.now() : Date.now())
@@ -1212,7 +1295,10 @@ export const render = {
     };
     state.camera.obj = cam.obj;
 
-    ctx.helpers.worldToScreen = (v) => this.worldToScreen(v);
+    // `out` is forwarded so HUD-side hot callers can opt into the no-allocation form; every existing
+    // single-argument call site is unaffected. Passing the helper as a bare function reference stays
+    // safe regardless — worldToScreen ignores a non-object second argument (a .map() index, say).
+    ctx.helpers.worldToScreen = (v, out) => this.worldToScreen(v, out);
     ctx.helpers.raycastToPlane = (ndc) => this.raycastToPlane(ndc);
     ctx.helpers.addTrauma = (a) => cam.addTrauma(a);
     ctx.helpers.socketWorldPose = (id, name) => this.socketWorldPose(id, name);
@@ -1227,8 +1313,10 @@ export const render = {
     bus.on('entity:destroyed', ({ id }) => {
       const m = this._meshes.get(id);
       if (m) {
+        this._unbindPresentationMesh(id, m);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         scene.remove(m); disposeObject(m); this._meshes.delete(id);
+        this._shadowReceiversDirty = true;
         this._publishAssetResidencyDiagnostics();
       }
     });
@@ -1460,12 +1548,54 @@ export const render = {
     return diagnostics;
   },
 
+  _bindPresentationMesh(entity, mesh) {
+    const world = this._presentationWorld;
+    if (!world || !entity || !mesh) return false;
+    const handle = world.handleForEntityId(entity.id, this._presentationHandleScratch);
+    if (!handle) return false;
+    if (!mesh.userData) mesh.userData = {};
+    mesh.userData.presentationEntityId = entity.id;
+    return world.bindMesh(handle, mesh, entity, entityVisualCullRadius(entity, mesh));
+  },
+
+  _unbindPresentationMesh(entityId, mesh = null) {
+    const world = this._presentationWorld;
+    if (!world) return false;
+    const handle = world.handleForEntityId(entityId, this._presentationHandleScratch);
+    if (!handle) return false;
+    return world.unbindMesh(handle, mesh);
+  },
+
+  _rebindPresentationMeshes() {
+    if (!this._presentationWorld || !this._meshes) return;
+    this._presentationQueries?.reset?.();
+    for (const [id, mesh] of this._meshes) {
+      const entity = this.state.entities.get(id);
+      if (entity && entity.alive !== false) this._bindPresentationMesh(entity, mesh);
+    }
+  },
+
+  _bindPublishedPresentationMeshes(publication) {
+    if (!publication || publication.spawnedCount <= 0) return;
+    const world = this._presentationWorld;
+    for (let index = 0; index < publication.spawnedCount; index++) {
+      const slot = publication.spawnedSlots[index];
+      if (world.alive[slot] !== 1) continue;
+      const entityId = world.entityIds[slot];
+      const entity = this.state.entities.get(entityId);
+      const mesh = this._meshes.get(entityId);
+      if (entity && entity.alive !== false && mesh) this._bindPresentationMesh(entity, mesh);
+    }
+  },
+
   clearAllMeshes(keepPlayer) {
     for (const [id, m] of [...this._meshes]) {
       if (keepPlayer && id === this.state.playerId) continue;
+      this._unbindPresentationMesh(id, m);
       releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
       this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
     }
+    this._presentationQueries?.reset?.();
     this._meshBuildQueue.length = 0;
     this._meshBuildQueueHead = 0;
     this._meshBuildQueuedIds.clear();
@@ -1514,6 +1644,7 @@ export const render = {
     for (const [id, m] of this._meshes) {
       const e = state.entities.get(id);
       if (!e || e.alive === false || !isEntityRenderRelevant(e, state, RENDER_STREAM_EVICT_RADIUS)) {
+        this._unbindPresentationMesh(id, m);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         this.scene.remove(m); disposeObject(m); this._meshes.delete(id); this._shadowReceiversDirty = true;
         clearEntityMeshReference(e, m);
@@ -1533,6 +1664,8 @@ export const render = {
     // reconciliation. Requesting is idempotent; resolved bootstrap assets install synchronously.
     for (const [id, mesh] of this._meshes) {
       const entity = state.entities.get(id);
+      if (!entity || entity.alive === false) continue;
+      this._bindPresentationMesh(entity, mesh);
       if (isEntityAuthoredUpgradeRelevant(entity, state)) {
         requestAuthoredUpgrade(mesh, this.renderer, this.scene);
       }
@@ -1556,10 +1689,14 @@ export const render = {
       const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
       m.position.set(local.x, 0, local.z);
       m.rotation.y = -e.rot;
-      if (e.type === 'ship' || e.type === 'station') { attachContactShadow(m, e); configureShadowCasters(m); }
+      if (e.type === 'ship' || e.type === 'station') {
+        attachContactShadow(m, e);
+        syncShadowCasterPolicy(m, m.userData && m.userData.lod ? m.userData.lod.level : null);
+      }
       e.mesh = m; e.view = { root: m };
       this._meshes.set(e.id, m);
       this.scene.add(m);
+      this._bindPresentationMesh(e, m);
       registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
       if (isEntityAuthoredUpgradeRelevant(e, this.state)) {
         requestAuthoredUpgrade(m, this.renderer, this.scene);
@@ -1586,7 +1723,13 @@ export const render = {
     const e = this.state.entities.get(id);
     if (!e || e.alive === false) return;
     const old = this._meshes.get(id);
-    if (old) { this.scene.remove(old); disposeObject(old); this._meshes.delete(id); this._shadowReceiversDirty = true; }
+    if (old) {
+      this._unbindPresentationMesh(id, old);
+      this.scene.remove(old);
+      disposeObject(old);
+      this._meshes.delete(id);
+      this._shadowReceiversDirty = true;
+    }
     const m = this.vf.build(e);
     if (!m) return;
     const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
@@ -1596,10 +1739,14 @@ export const render = {
     const hull = m.userData && m.userData.hull;
     if (hull && e.bank != null) hull.rotation.x = e.bank;
     if (hull && e.pitch != null) hull.rotation.z = e.pitch;
-    if (e.type === 'ship' || e.type === 'station') { attachContactShadow(m, e); configureShadowCasters(m); }
+    if (e.type === 'ship' || e.type === 'station') {
+      attachContactShadow(m, e);
+      syncShadowCasterPolicy(m, m.userData && m.userData.lod ? m.userData.lod.level : null);
+    }
     e.mesh = m; e.view = { root: m };
     this._meshes.set(id, m);
     this.scene.add(m);
+    this._bindPresentationMesh(e, m);
     if (isEntityAuthoredUpgradeRelevant(e, this.state)) {
       requestAuthoredUpgrade(m, this.renderer, this.scene);
     }
@@ -1624,13 +1771,13 @@ export const render = {
     const halfV = Math.tan((fov * Math.PI / 180) * 0.5) * zoom * 0.72;
     const halfH = halfV * aspect;
     const margin = Math.max(ENTITY_VIEW_CULL_MIN_MARGIN, zoom * ENTITY_VIEW_CULL_ZOOM_MARGIN);
-    return {
-      x: Number.isFinite(focus.x) ? focus.x : 0,
-      z: Number.isFinite(focus.z) ? focus.z : 0,
-      halfX: halfH + margin,
-      halfZ: halfV + margin,
-      margin,
-    };
+    const bounds = this._entityViewBounds;
+    bounds.x = Number.isFinite(focus.x) ? focus.x : 0;
+    bounds.z = Number.isFinite(focus.z) ? focus.z : 0;
+    bounds.halfX = halfH + margin;
+    bounds.halfZ = halfV + margin;
+    bounds.margin = margin;
+    return bounds;
   },
 
   _isEntityViewCulled(e, bounds, mesh = null) {
@@ -1677,6 +1824,37 @@ export const render = {
     } catch (_) { /* optional */ }
   },
 
+  _applyPresentationPose(slot, mesh, alpha, currentOnly = false) {
+    const world = this._presentationWorld;
+    const origin = this._frameMembrane.origin;
+    const noInterpolation = currentOnly
+      || (world.flags[slot] & PRESENTATION_FLAGS.NO_INTERPOLATION) !== 0;
+    let x = world.x[slot];
+    let z = world.z[slot];
+    let rot = world.rot[slot];
+    let bank = world.bank[slot];
+    let pitch = world.pitch[slot];
+    if (!noInterpolation) {
+      const t = Number.isFinite(alpha) ? alpha : 0;
+      x = world.prevX[slot] + (world.x[slot] - world.prevX[slot]) * t;
+      z = world.prevZ[slot] + (world.z[slot] - world.prevZ[slot]) * t;
+      let dr = world.rot[slot] - world.prevRot[slot];
+      dr = ((dr + Math.PI) % (Math.PI * 2)) - Math.PI;
+      if (dr < -Math.PI) dr += Math.PI * 2;
+      rot = world.prevRot[slot] + dr * t;
+      bank = world.prevBank[slot] + (world.bank[slot] - world.prevBank[slot]) * t;
+      pitch = world.prevPitch[slot] + (world.pitch[slot] - world.prevPitch[slot]) * t;
+    }
+    mesh.position.x = x - origin.x;
+    mesh.position.y = 0;
+    mesh.position.z = z - origin.z;
+    mesh.rotation.y = -rot;
+    const hull = mesh.userData && mesh.userData.hull;
+    const entity = world.entityRefs[slot];
+    if (hull && entity && entity.bank != null) hull.rotation.x = bank;
+    if (hull && entity && entity.pitch != null) hull.rotation.z = pitch;
+  },
+
   syncEntityViews(alpha) {
     // Opt-in CPU attribution only — no performance.now()/ring write when disabled.
     const useCpu = !!(this.state && this.state.perfRuntime
@@ -1687,116 +1865,147 @@ export const render = {
     const settings = this.state.settings || {};
     _worldSiteA11y.reducedMotion = !!(settings.video && settings.video.motionReduce);
     _worldSiteA11y.reducedFlash = !!(settings.accessibility && settings.accessibility.flashReduce);
+
+    const world = this._presentationWorld;
     const bounds = this._entityViewCullBounds();
-    let totalMeshes = 0;
+    const queryOptions = this._presentationQueryOptions;
+    queryOptions.bounds = bounds;
+    queryOptions.origin = this._frameMembrane.origin;
+    queryOptions.playerId = this.state.playerId;
+    const query = this._presentationQueries.query(queryOptions);
     let transformed = 0;
     let fullSynced = 0;
-    let culled = 0;
     let lodChecked = 0;
-    const membrane = this._frameMembrane;
+    let hlodDetailedVisible = 0;
+    let hlodProxyVisible = 0;
+    let hlodObjectsSwapped = 0;
+    let shadowPolicyRefreshes = 0;
+
     beginRenderEntityFrame(this._entityFrame);
-    for (const [id, m] of this._meshes) {
-      totalMeshes++;
-      const e = this.state.entities.get(id);
-      if (!e || e.alive === false || !m) continue;
-      if (this.collisionDebug && this.collisionDebug.on) m.userData.__lastEntity = e; // read-only debug overlay
-      const viewCulled = this._isEntityViewCulled(e, bounds, m);
-      if (m.userData && m.userData.asteroidInstanceBody) {
-        m.userData.asteroidInstanceViewCulled = viewCulled;
+
+    // A root crossing out of the retained visible set receives one final authoritative current pose.
+    // It can then stay untouched while far-culled without lingering at a stale near-camera transform.
+    for (let index = 0; index < query.hiddenCount; index++) {
+      const slot = query.hiddenSlots[index];
+      const generation = query.hiddenGenerations[index];
+      if (world.alive[slot] !== 1 || world.slotGenerations[slot] !== generation) continue;
+      const mesh = world.meshRefs[slot];
+      if (!mesh) continue;
+      const entityId = world.entityIds[slot];
+      const entity = this.state.entities.get(entityId) || world.entityRefs[slot];
+      if (entity && entity.alive !== false) {
+        world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
       }
-      if (viewCulled) culled++;
-      const hull = m.userData && m.userData.hull;   // bankable inner group (ships only)
-      if (e.flags.noInterp) {
-        const local = membrane.toLocal(e.pos, _meshLocalXZ);
-        m.position.set(local.x, 0, local.z); m.rotation.y = -e.rot;
-        if (hull && e.bank != null) hull.rotation.x = e.bank; // roll around forward axis; +bank banks right
-        if (hull && e.pitch != null) hull.rotation.z = e.pitch; // pitch lean nose up/down
-      } else {
-        const local = membrane.interpolateLocal(e.prevPos, e.pos, alpha, _meshLocalXZ);
-        m.position.x = local.x;
-        m.position.z = local.z;
-        m.position.y = 0;
-        let dr = e.rot - e.prevRot;
-        dr = ((dr + Math.PI) % (Math.PI * 2)) - Math.PI; if (dr < -Math.PI) dr += Math.PI * 2;
-        m.rotation.y = -(e.prevRot + dr * alpha);
-        // interpolate bank for a smooth roll (prevBank snapshotted in core.preStep each step)
-        if (hull && e.bank != null) {
-          const pb = e.prevBank || 0;
-          hull.rotation.x = pb + (e.bank - pb) * alpha;
-        }
-        // Pitch lean: nose pitches up under acceleration (boost) and relaxes otherwise.
-        if (hull && e.pitch != null) {
-          const pp = e.prevPitch || 0;
-          hull.rotation.z = pp + (e.pitch - pp) * alpha;
-        }
+      this._applyPresentationPose(slot, mesh, alpha, true);
+      if (mesh.userData && mesh.userData.asteroidInstanceBody) {
+        mesh.userData.asteroidInstanceViewCulled = true;
       }
+      world.clearDirty(slot);
       transformed++;
-      // Projected-screen-size LOD (spec §12.4): resolve each entity's detail level from its projected
-      // pixel width with hysteresis, so assets can drop detail at distance. The selector owns no
-      // geometry; per-asset hooks read m.userData.lod.level and decide what to show. Cheap for entities
-      // without a lod state (no closure attached).
-      if (m.userData.lod && m.userData.updateLod) {
+    }
+
+    for (let index = 0; index < query.visibleCount; index++) {
+      const slot = query.visibleSlots[index];
+      const generation = query.visibleGenerations[index];
+      if (world.alive[slot] !== 1 || world.slotGenerations[slot] !== generation) continue;
+      const mesh = world.meshRefs[slot];
+      const entityId = world.entityIds[slot];
+      const entity = this.state.entities.get(entityId) || world.entityRefs[slot];
+      if (!mesh || !entity || entity.alive === false) continue;
+
+      const userData = mesh.userData || (mesh.userData = {});
+      if (this.collisionDebug && this.collisionDebug.on) userData.__lastEntity = entity;
+      world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
+      const dirty = world.dirtyMasks[slot];
+      if ((dirty & (PRESENTATION_DIRTY.TRANSFORM | PRESENTATION_DIRTY.BINDING
+        | PRESENTATION_DIRTY.VISIBILITY)) !== 0 || world.poseHasDelta(slot)) {
+        this._applyPresentationPose(slot, mesh, alpha);
+        transformed++;
+      }
+      if (userData.asteroidInstanceBody) userData.asteroidInstanceViewCulled = false;
+
+      // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel
+      // width with hysteresis. Newly visible roots are fully posed above before this decision.
+      if (userData.lod && userData.updateLod) {
         lodChecked++;
-        // Camera and mesh share frame-local space; pass mesh local XZ (not galactic-global).
-        const hlodVisualRadius = m.userData.hlod && Number(m.userData.hlod.visualRadius);
+        const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
         const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
           ? hlodVisualRadius
-          : e.radius;
-        const px = projectedWidthPx(m.position, lodRadius, this.cam.obj, this.viewport);
-        // The player ship is a focal, readable object at normal flight scale. Authored LOD1 can hide
-        // too much silhouette detail, so keep player control on LOD0 and reserve reduction for NPCs.
-        const level = e.id === this.state.playerId ? 'lod0' : m.userData.lod.resolve(px);
-        m.userData.updateLod(level);
-        if (m.userData.hlod) configureShadowCasters(m);
+          : entity.radius;
+        const px = projectedWidthPx(mesh.position, lodRadius, this.cam.obj, this.viewport);
+        const level = entity.id === this.state.playerId ? 'lod0' : userData.lod.resolve(px);
+        userData.updateLod(level);
+        if (userData.hlod && syncShadowCasterPolicy(mesh, level)) shadowPolicyRefreshes++;
       }
-      classifyRenderEntity(this._entityFrame, e, m, viewCulled);
-      if (viewCulled) continue;
-      fullSynced++;
-      // Small interactive props publish stateful material closures (for example mine/charge arming
-      // indicators). The closure swaps immutable cached materials only when state changes, so one
-      // entity cannot leak its status into another and the steady-state render loop allocates nothing.
-      if (m.userData.updateRuntimeState) m.userData.updateRuntimeState(e, now);
-      if (m.userData.updateWorldSitePresentation) {
-        m.userData.updateWorldSitePresentation(e, this.state.simTime, _worldSiteA11y);
-      }
-      // Hero-asset damage states (spec §9.11): hero meshes carry an updateDamageState closure that
-      // modulates light groups / armor / drive from the live hull fraction so damage reads without the
-      // HUD bar. Cheap no-op for non-hero meshes (no closure). Called once per frame per entity.
-      if (m.userData.updateDamageState) m.userData.updateDamageState(e, now);
-      if (m.userData.updateDriveState) m.userData.updateDriveState(e, now);
 
-      // Shield geometry is an impact response, not a permanent bubble. The flash decays each frame
-      // and is punched up whenever the entity's shield value drops.
-      const sb = m.userData.shieldBubble;
-      if (sb) {
-        const up = e.shield > 0;
+      classifyRenderEntity(this._entityFrame, entity, mesh, false);
+      fullSynced++;
+
+      // Visible interactive and hero roots retain their authored per-frame presentation closures.
+      if (userData.updateRuntimeState) userData.updateRuntimeState(entity, now);
+      if (userData.updateWorldSitePresentation) {
+        userData.updateWorldSitePresentation(entity, this.state.simTime, _worldSiteA11y);
+      }
+      if (userData.updateDamageState) userData.updateDamageState(entity, now);
+      if (userData.updateDriveState) userData.updateDriveState(entity, now);
+
+      // Shield geometry is an impact response, not a permanent bubble. The flash decays each visible
+      // frame and is punched up whenever the entity's shield value drops.
+      const shieldBubble = userData.shieldBubble;
+      if (shieldBubble) {
+        const up = entity.shield > 0;
         let flash = 0;
         if (up) {
-          const u = sb.material.uniforms;
-          // detect shield loss since last frame -> punch the fresnel flash
-          const prev = sb.userData._prevShield != null ? sb.userData._prevShield : e.shield;
-          if (e.shield < prev - 0.5) u.uFlash.value = Math.min(1, u.uFlash.value + 0.8);
-          sb.userData._prevShield = e.shield;
-          // frame-rate-independent exponential decay: uFlash *= 0.05^(dt) settles in ~0.4s at any fps.
-          const dt = Math.min(0.1, now - (sb.userData._prevFlashT != null ? sb.userData._prevFlashT : now));
-          sb.userData._prevFlashT = now;
-          u.uFlash.value *= Math.pow(0.05, dt);
-          flash = u.uFlash.value;
+          const uniforms = shieldBubble.material.uniforms;
+          const previousShield = shieldBubble.userData._prevShield != null
+            ? shieldBubble.userData._prevShield
+            : entity.shield;
+          if (entity.shield < previousShield - 0.5) {
+            uniforms.uFlash.value = Math.min(1, uniforms.uFlash.value + 0.8);
+          }
+          shieldBubble.userData._prevShield = entity.shield;
+          const previousFlashTime = shieldBubble.userData._prevFlashT != null
+            ? shieldBubble.userData._prevFlashT
+            : now;
+          const dt = Math.min(0.1, now - previousFlashTime);
+          shieldBubble.userData._prevFlashT = now;
+          uniforms.uFlash.value *= Math.pow(0.05, dt);
+          flash = uniforms.uFlash.value;
         }
-        const visible = shouldPresentShieldBubble(e.shield, flash);
-        if (sb.visible !== visible) sb.visible = visible;
+        const visible = shouldPresentShieldBubble(entity.shield, flash);
+        if (shieldBubble.visible !== visible) shieldBubble.visible = visible;
       }
+
+      const hlod = userData.hlod;
+      if (hlod) {
+        hlodDetailedVisible += Number(hlod.detailedVisible) || 0;
+        hlodProxyVisible += Number(hlod.proxyVisible) || 0;
+        if (hlod.swapped) hlodObjectsSwapped++;
+      }
+      world.clearDirty(slot);
     }
+
     endRenderEntityFrame(this._entityFrame);
-    this.state.render.entityViewSync = {
-      totalMeshes,
-      transformed,
-      fullSynced,
-      culled,
-      lodChecked,
-      cullHalfX: Math.round(bounds.halfX),
-      cullHalfZ: Math.round(bounds.halfZ),
-    };
+    const diagnostics = this._entityViewDiagnostics;
+    diagnostics.totalMeshes = world.boundCount;
+    diagnostics.candidates = query.candidateCount;
+    diagnostics.transformed = transformed;
+    diagnostics.fullSynced = fullSynced;
+    diagnostics.culled = query.culledCount;
+    diagnostics.newlyVisible = query.newlyVisibleCount;
+    diagnostics.newlyHidden = query.hiddenCount;
+    diagnostics.lodChecked = lodChecked;
+    diagnostics.cullHalfX = Math.round(bounds.halfX);
+    diagnostics.cullHalfZ = Math.round(bounds.halfZ);
+    this.state.render.entityViewSync = diagnostics;
+
+    const hlodDiagnostics = this._hlodDiagnostics;
+    hlodDiagnostics.hlodDetailedVisible = hlodDetailedVisible;
+    hlodDiagnostics.hlodProxyVisible = hlodProxyVisible;
+    hlodDiagnostics.hlodObjectsSwapped = hlodObjectsSwapped;
+    hlodDiagnostics.shadowPolicyRefreshes = shadowPolicyRefreshes;
+    this.state.render.hlod = hlodDiagnostics;
+
     const frameDiagnostics = this.state.render.entityFrame
       || (this.state.render.entityFrame = {});
     frameDiagnostics.frameId = this._entityFrame.frameId;
@@ -1809,25 +2018,6 @@ export const render = {
     if (useCpu && started) {
       this.state.perfRuntime.recordRenderWork('entityViewSync', performance.now() - started);
     }
-    this._publishHlodDiagnostics();
-  },
-
-  _publishHlodDiagnostics() {
-    let hlodDetailedVisible = 0;
-    let hlodProxyVisible = 0;
-    let hlodObjectsSwapped = 0;
-    for (const mesh of this._meshes.values()) {
-      const hlod = mesh.userData && mesh.userData.hlod;
-      if (!hlod) continue;
-      hlodDetailedVisible += Number(hlod.detailedVisible) || 0;
-      hlodProxyVisible += Number(hlod.proxyVisible) || 0;
-      if (hlod.swapped) hlodObjectsSwapped++;
-    }
-    this.state.render.hlod = {
-      hlodDetailedVisible,
-      hlodProxyVisible,
-      hlodObjectsSwapped,
-    };
   },
 
   // --------------- hazard zone visuals ------------------------------------------------
@@ -1953,10 +2143,16 @@ export const render = {
     }
   },
 
-  prepareFrame(alpha, frameDt) {
-    // While the GL context is lost, the renderer can't draw — skip all per-frame work until
-    // webglcontextrestored rebuilds GPU resources. (cam.follow etc. would run against a dead
-    // renderer; the context-restore handler re-applies everything that matters when it returns.)
+  prepareFrame(alpha, frameDt, presentationFrame = null) {
+    this._presentationFrame = presentationFrame;
+    // Publication is consumed before any context-loss early return. PresentationRunner acknowledges
+    // the range after renderUpdate succeeds, so the dense mirror must not miss that same range merely
+    // because the GPU is temporarily unavailable.
+    const publication = this._presentationPublisher.consume(presentationFrame);
+    if (publication.rebuilt) this._rebindPresentationMeshes();
+    else this._bindPublishedPresentationMeshes(publication);
+    // While the GL context is lost, the renderer can't draw — skip all remaining per-frame work until
+    // webglcontextrestored rebuilds GPU resources. The derived publication mirror remains current.
     if (this._contextLost) return false;
     // Attribution CPU timer — opt-in only (perfRuntime.renderWorkEnabled default false).
     const perf = this.state && this.state.perfRuntime;
@@ -1982,7 +2178,7 @@ export const render = {
       }
       if (this._meshReconcileDirty) this.reconcileMeshes();
     }
-    this._updateShipPitch(frameDt);
+    updateShipPitchPresentation(this.state, frameDt);
     this.syncEntityViews(alpha);
     this.cam.follow(frameDt);
     syncContactShadowPool(this._contactShadowPool, this._entityFrame);
@@ -2002,67 +2198,20 @@ export const render = {
     this._syncShadowMapEnabled();
     // Shadow follow (graphics spec G): keep the key light's shadow frustum centered on the player
     // so the tight 1400-unit ortho box always covers the local action. DirectionalLight position is
-    // an offset from its target; we move both together. No-op if shadows are disabled.
+    // an offset from its target; we move both together. No-op unless the shadow map will render.
     this._updateShadowFollow();
-    if (this._shadowSettingOn && this._keyLight && this._keyLight.shadow) {
-      this._keyLight.updateMatrixWorld(true);
-      if (this._keyLight.target) this._keyLight.target.updateMatrixWorld(true);
-      this._keyLight.shadow.updateMatrices(this._keyLight);
-    }
+    const shadowCamera = prepareActiveShadowCamera(this.renderer, this._keyLight);
     const asteroidSyncOptions = this._asteroidInstanceSyncOptions;
     asteroidSyncOptions.camera = this.cam.obj;
-    asteroidSyncOptions.shadowCamera = this._shadowSettingOn && this._keyLight && this._keyLight.shadow
-      ? this._keyLight.shadow.camera
-      : null;
+    asteroidSyncOptions.shadowCamera = shadowCamera;
     asteroidSyncOptions.records = this._entityFrame.asteroids;
+    asteroidSyncOptions.recordsDirty = this._presentationWorld.consumeAsteroidDirty();
     this.state.render.asteroidInstancePool = syncAsteroidInstancePool(this._asteroidInstancePool, asteroidSyncOptions);
     // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
     // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
       if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();
     if (useCpu) perf.recordRenderWork('prepareFrame', performance.now() - t0);
     return true;
-  },
-
-  // Cosmetic pitch lean: the ship hull tilts nose-up when boosting / accelerating hard, and relaxes
-  // back to level when coasting. This is a render-only feel cue (does not affect physics/collision).
-  _updateShipPitch(frameDt) {
-    const dt = Math.min(0.05, Math.max(0, frameDt));
-    const rate = 6.0;   // rad/s — snappy but not jittery
-    for (const e of this.state.entityList) {
-      if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
-      if (e.flags && e.flags.docked) continue;
-      const boosting = !!(e.flags && e.flags.boosting);
-      const drive = this._engineDrive(e);
-      let target = 0;
-      if (boosting) target = -0.13;            // strong nose-up lean into afterburner
-      else if (drive > 0.75) target = -0.055;  // moderate lean under hard thrust
-      else if (drive > 0.35) target = -0.025;  // slight lean under cruise thrust
-      // reverse-thrust read: if drive is high but velocity opposes heading, pitch forward slightly
-      if (!boosting && drive > 0.3 && e.vel) {
-        const vx = e.vel.x, vz = e.vel.z;
-        const speed = Math.hypot(vx, vz);
-        if (speed > 8) {
-          const hx = Math.cos(e.rot), hz = Math.sin(e.rot);
-          const align = (vx * hx + vz * hz) / Math.max(1, speed);
-          if (align < -0.35) target = 0.07;    // braking/drifting backward
-        }
-      }
-      if (e.pitch == null) e.pitch = 0;
-      e.pitch += (target - e.pitch) * (1 - Math.exp(-rate * dt));
-      if (Math.abs(e.pitch) < 0.0005 && Math.abs(target) < 0.0005) e.pitch = 0;
-    }
-  },
-
-  // Approximate engine drive for a ship/drone for VFX/feel purposes. Mirrors the logic in vfx.js
-  // without importing it, to keep renderer decoupled from vfx internals.
-  _engineDrive(e) {
-    if (!e.vel) return 0;
-    const speed = Math.hypot(e.vel.x, e.vel.z);
-    const maxSpd = Math.max(1, e.maxSpeed || 1);
-    // A ship under thrust has speed near its heading; idle/drifting ships have low drive.
-    const hx = Math.cos(e.rot), hz = Math.sin(e.rot);
-    const align = speed > 1 ? (e.vel.x * hx + e.vel.z * hz) / speed : 0;
-    return Math.max(0, Math.min(1, (speed / maxSpd) * Math.max(0, align)));
   },
 
   drawPreparedFrame() {
@@ -2091,26 +2240,31 @@ export const render = {
     // proven bloom path stays the default; the render graph module is no longer tree-shaken because
     // it is reachable from this live branch. The energy materials I wired write HDR radiance that the
     // render graph composites with contact-depth AO.
-    if (this.state.settings.video.renderGraph && this._ensureRenderGraph()) {
-      this._lastRenderPath = 'renderGraph';
-      if (useGpu) gpu.begin('drawPreparedFrame');
-      try {
-        this._renderGraph.render(this.scene, this.cam.obj, { time: this._bgTime || 0 });
-      } finally {
-        if (useGpu) gpu.end();
+    const dynamicBufferEpoch = this._dynamicBuffers.arm();
+    try {
+      if (this.state.settings.video.renderGraph && this._ensureRenderGraph()) {
+        this._lastRenderPath = 'renderGraph';
+        if (useGpu) gpu.begin('drawPreparedFrame');
+        try {
+          this._renderGraph.render(this.scene, this.cam.obj, { time: this._bgTime || 0 });
+        } finally {
+          if (useGpu) gpu.end();
+        }
+      } else if (this.bloom && this.state.settings.video.bloom !== false) {
+        this._lastRenderPath = 'bloom';
+        // bloom.render() records bloomScene/Downsample/Upsample/Composite CPU+GPU groups.
+        this.bloom.render(this.scene, this.cam.obj);
+      } else {
+        this._lastRenderPath = 'straight';
+        if (useGpu) gpu.begin('drawPreparedFrame');
+        try {
+          this.renderer.render(this.scene, this.cam.obj);
+        } finally {
+          if (useGpu) gpu.end();
+        }
       }
-    } else if (this.bloom && this.state.settings.video.bloom !== false) {
-      this._lastRenderPath = 'bloom';
-      // bloom.render() records bloomScene/Downsample/Upsample/Composite CPU+GPU groups.
-      this.bloom.render(this.scene, this.cam.obj);
-    } else {
-      this._lastRenderPath = 'straight';
-      if (useGpu) gpu.begin('drawPreparedFrame');
-      try {
-        this.renderer.render(this.scene, this.cam.obj);
-      } finally {
-        if (useGpu) gpu.end();
-      }
+    } finally {
+      this._dynamicBuffers.disarm(dynamicBufferEpoch);
     }
     if (useCpu) perf.recordRenderWork('drawPreparedFrame', performance.now() - t0);
     if (this.state.mode === 'flight'
@@ -2129,8 +2283,8 @@ export const render = {
     return true;
   },
 
-  renderFrame(alpha, frameDt) {
-    if (!this.prepareFrame(alpha, frameDt)) return;
+  renderFrame(alpha, frameDt, presentationFrame = null) {
+    if (!this.prepareFrame(alpha, frameDt, presentationFrame)) return;
     this.drawPreparedFrame();
   },
 
@@ -2150,7 +2304,6 @@ export const render = {
     }
     this._keyLight.position.set(px + 60, 140, pz + 40);
     this._keyLight.target.position.set(px, 0, pz);
-    this._keyLight.target.updateMatrixWorld();
   },
 
   _syncShadowMapEnabled() {
@@ -2195,19 +2348,92 @@ export const render = {
     return true;
   },
 
+  // Projection reads camera.matrixWorldInverse, and THREE.Camera#updateMatrixWorld rebuilds that
+  // inverse (a decompose plus a 4x4 invert) on EVERY call, dirty or not. The chase camera is posed
+  // once per frame by cam.follow() in prepareFrame, yet the flight HUD projects ~7 points per frame
+  // (selected-target marker, reticle centre + edge, the lead-pip pair, the projected-stop pair, the
+  // waypoint marker) and every one of them redid the inverse for a camera that had not moved.
+  //
+  // The guard deliberately does NOT hang off a frame-lifecycle flag: worldToScreen is exposed through
+  // ctx.helpers and is also called from input paths outside the render frame, where a "already
+  // refreshed this frame" flag can go stale and silently project against a wrong camera. Instead it is
+  // self-validating — cache the decomposed transform and refresh only when it demonstrably differs.
+  // Ten float compares replace the compose + inverse.
+  //
+  // COVERED: camera translation/rotation/scale (cam.follow, shake, reprojectFrame), a swapped camera
+  // object, reparenting (parent identity — a new parent changes matrixWorld with the local transform
+  // untouched, and Object3D#add does not flag the child), THREE's own dirty flag (updateMatrix /
+  // applyMatrix4 / add / attach / remove), the r184 `pivot` offset (composes into `matrix` without
+  // touching position/quaternion/scale), and hand-driven matrix modes — matrixAutoUpdate:false or
+  // matrixWorldAutoUpdate:false both fall back to the unconditional refresh this replaced, so those
+  // paths behave exactly as before. NaN coordinates fail every compare and therefore force a refresh.
+  //
+  // NEEDS NOTHING HERE: projectionMatrix is not part of matrixWorldInverse. Vector3#project reads it
+  // live, updateMatrixWorld never writes it, and every FOV/near mutation site already calls
+  // updateProjectionMatrix() — so an FOV slider or a resize is handled upstream, not by this guard.
+  //
+  // NOT COVERED, AND WAS NOT BEFORE: a moving ANCESTOR of the camera. updateMatrixWorld() walks down
+  // to children and never up to parents, so the previous unconditional call was equally blind to it.
+  //
+  // ONE DELIBERATE BEHAVIOR CHANGE: the old unconditional call also recomposed cam.matrix from P/Q/S
+  // every projection, clobbering a hand-written cam.matrix; on a cache hit that write now survives.
+  // Nothing writes cam.matrix directly (camera.js/cameraDirector.js/feel.js drive the camera only via
+  // position/lookAt), and renderer.render() recomposes it from P/Q/S each frame anyway, so this cannot
+  // change any projection here.
+  _syncProjectionCamera() {
+    const cam = this.cam.obj;
+    const pos = cam.position;
+    const quat = cam.quaternion;
+    const scale = cam.scale;
+    const cache = this._w2sCamCache;
+    if (
+      cache
+      && cache.cam === cam
+      && cache.parent === cam.parent
+      && cam.matrixWorldNeedsUpdate === false
+      && cam.matrixAutoUpdate !== false
+      && cam.matrixWorldAutoUpdate !== false
+      && (cam.pivot === null || cam.pivot === undefined)
+      && cache.px === pos.x && cache.py === pos.y && cache.pz === pos.z
+      && cache.qx === quat.x && cache.qy === quat.y && cache.qz === quat.z && cache.qw === quat.w
+      && cache.sx === scale.x && cache.sy === scale.y && cache.sz === scale.z
+    ) return cam;
+    cam.updateMatrixWorld();
+    const next = cache || (this._w2sCamCache = {
+      cam: null, parent: null,
+      px: 0, py: 0, pz: 0,
+      qx: 0, qy: 0, qz: 0, qw: 0,
+      sx: 0, sy: 0, sz: 0,
+    });
+    next.cam = cam;
+    next.parent = cam.parent;
+    next.px = pos.x; next.py = pos.y; next.pz = pos.z;
+    next.qx = quat.x; next.qy = quat.y; next.qz = quat.z; next.qw = quat.w;
+    next.sx = scale.x; next.sy = scale.y; next.sz = scale.z;
+    return cam;
+  },
+
   // Accepts authoritative galactic-global XZ (and optional y); projects the frame-local point.
-  worldToScreen(v) {
-    this.cam.obj.updateMatrixWorld();
+  // `out` is optional: hot per-frame callers may pass a reused { x, y, onScreen } record to avoid the
+  // allocation; it is written in place and returned. Omitting it allocates, exactly as before.
+  worldToScreen(v, out) {
+    const cam = this._syncProjectionCamera();
     const membrane = this._frameMembrane;
     const local = membrane
       ? membrane.toLocal(v, _w2sLocalXZ)
       : { x: v && v.x, z: v && v.z };
-    _pt.set(local.x, (v && v.y) || 0, local.z).project(this.cam.obj);
-    return {
-      x: (_pt.x * 0.5 + 0.5) * window.innerWidth,
-      y: (-_pt.y * 0.5 + 0.5) * window.innerHeight,
-      onScreen: _pt.z < 1 && Math.abs(_pt.x) <= 1 && Math.abs(_pt.y) <= 1,
-    };
+    _pt.set(local.x, (v && v.y) || 0, local.z).project(cam);
+    const x = (_pt.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-_pt.y * 0.5 + 0.5) * window.innerHeight;
+    const onScreen = _pt.z < 1 && Math.abs(_pt.x) <= 1 && Math.abs(_pt.y) <= 1;
+    // typeof-guarded so a stray second argument (a .map() index, say) can never be written through.
+    if (out && typeof out === 'object') {
+      out.x = x;
+      out.y = y;
+      out.onScreen = onScreen;
+      return out;
+    }
+    return { x, y, onScreen };
   },
 
   // Plane pick returns authoritative galactic-global XZ (input systems keep global aimWorld).

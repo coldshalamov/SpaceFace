@@ -1933,7 +1933,7 @@
       "id": "PQ-040",
       "priority": 40,
       "title": "PERF-06 Dirty-range GPU uploads",
-      "state": "planned",
+      "state": "implemented",
       "canonical": [
         "PERF-06"
       ],
@@ -1971,7 +1971,7 @@
       "id": "PQ-041",
       "priority": 41,
       "title": "PERF-07 Electron modernization",
-      "state": "planned",
+      "state": "implemented",
       "canonical": [
         "PERF-07"
       ],

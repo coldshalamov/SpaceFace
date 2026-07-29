@@ -7,7 +7,7 @@
 // This file is the Electron-only shell: app lifecycle, single-instance lock, GPU switches,
 // window creation, fixed-port-for-saves, packaged→bundle root selection.
 // `npm run check:launch-policy` enforces that both launchers share that module.
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, powerMonitor } = require('electron');
 const http = require('http');
 const path = require('path');
 const { createGameServer } = require('../scripts/lib/gameServer.cjs');
@@ -32,8 +32,18 @@ const PORT = 41788;
 const ISOLATED_PORT_RETRY_LIMIT = 3;
 const launchConfig = resolveElectronLaunchConfig(process.env);
 const launchPort = launchConfig.isolatedEvidence ? launchConfig.port : PORT;
+// Player windows use normal Chromium throttling. A temporary evidence profile may opt out only
+// through the explicit dual gate; the environment variable alone has no effect on normal play.
+const allowEvidenceBackgroundExecution = launchConfig.isolatedEvidence === true
+  && process.env.SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION === '1';
+const backgroundThrottling = !allowEvidenceBackgroundExecution;
 const RECEIPT_PATH = process.env.SPACEFACE_LAUNCH_RECEIPT || '';
 const receipt = (status, details = {}) => appendLaunchReceipt(RECEIPT_PATH, status, details);
+const SHELL_LIFECYCLE_CHANNEL = 'spaceface:shell-lifecycle';
+let shellLifecycleSequence = 0;
+let powerSuspended = false;
+let screenLocked = false;
+let powerLifecycleListenersInstalled = false;
 
 // Explicit evidence probes use a temporary Chromium profile. Electron's single-instance lock is
 // scoped by userData, so applying this before requestSingleInstanceLock gives the probe its own
@@ -123,30 +133,190 @@ function probeSpaceFacePort(port) {
   });
 }
 
+function systemLifecycleSuspended() {
+  return powerSuspended || screenLocked;
+}
+
+function deriveWindowLifecycleState(win) {
+  if (systemLifecycleSuspended()) return 'system-suspended';
+  if (!win || win.isDestroyed() || win.isMinimized() || !win.isVisible()) {
+    return 'hidden-or-minimized';
+  }
+  return win.isFocused() ? 'foreground-visible' : 'foreground-occluded';
+}
+
+function publishWindowLifecycle(win, reason) {
+  if (!win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed()) return false;
+  const command = {
+    state: deriveWindowLifecycleState(win),
+    sequence: ++shellLifecycleSequence,
+    reason,
+  };
+  try {
+    win.webContents.send(SHELL_LIFECYCLE_CHANNEL, command);
+    return true;
+  } catch (error) {
+    if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+      receipt('lifecycle-publish-failed', {
+        reason,
+        state: command.state,
+        sequence: command.sequence,
+        message: error && error.message ? error.message : String(error),
+      });
+    }
+    return false;
+  }
+}
+
+function publishAllWindowLifecycles(reason) {
+  for (const win of BrowserWindow.getAllWindows()) publishWindowLifecycle(win, reason);
+}
+
+function installPowerLifecycleListeners() {
+  if (powerLifecycleListenersInstalled) return;
+  powerLifecycleListenersInstalled = true;
+  powerMonitor.on('suspend', () => {
+    powerSuspended = true;
+    publishAllWindowLifecycles('suspend');
+  });
+  powerMonitor.on('resume', () => {
+    powerSuspended = false;
+    publishAllWindowLifecycles('resume');
+  });
+  powerMonitor.on('lock-screen', () => {
+    screenLocked = true;
+    publishAllWindowLifecycles('lock-screen');
+  });
+  powerMonitor.on('unlock-screen', () => {
+    screenLocked = false;
+    publishAllWindowLifecycles('unlock-screen');
+  });
+}
+
+function bindWindowLifecycle(win) {
+  for (const eventName of ['hide', 'minimize', 'show', 'restore', 'focus', 'blur']) {
+    win.on(eventName, () => publishWindowLifecycle(win, eventName));
+  }
+  win.webContents.on('did-finish-load', () => publishWindowLifecycle(win, 'did-finish-load'));
+}
+
+function installWindowSecurity(win, gameUrl) {
+  const gameOrigin = new URL(gameUrl).origin;
+  win.webContents.setWindowOpenHandler((details) => {
+    receipt('window-open-blocked', { url: receiptText(details && details.url) });
+    return { action: 'deny' };
+  });
+  win.webContents.on('will-navigate', (event, targetUrl) => {
+    if (isCanonicalGameUrl(targetUrl, gameUrl)) return;
+    event.preventDefault();
+    receipt('navigation-blocked', { url: receiptText(targetUrl) });
+  });
+
+  const permissionSession = win.webContents.session;
+  permissionSession.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => (
+    isOwnedPointerLockPermission(win, gameOrigin, webContents, permission, requestingOrigin, details)
+  ));
+  permissionSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
+    const requestingOrigin = details && (
+      details.requestingOrigin || details.securityOrigin || details.requestingUrl
+    );
+    const allowed = isOwnedPointerLockPermission(
+      win,
+      gameOrigin,
+      webContents,
+      permission,
+      requestingOrigin,
+      details,
+    );
+    if (!allowed) {
+      receipt('permission-denied', {
+        permission: receiptText(permission),
+        origin: receiptText(requestingOrigin),
+      });
+    }
+    callback(allowed);
+  });
+}
+
+function isOwnedPointerLockPermission(win, gameOrigin, webContents, permission, requestingOrigin, details) {
+  if (permission !== 'pointerLock' || webContents !== win.webContents) return false;
+  const candidate = requestingOrigin || details && (
+    details.requestingOrigin || details.securityOrigin || details.requestingUrl
+  );
+  try { return new URL(String(candidate || '')).origin === gameOrigin; }
+  catch { return false; }
+}
+
+function isCanonicalGameUrl(candidate, gameUrl) {
+  try { return new URL(String(candidate || '')).href === gameUrl; }
+  catch { return false; }
+}
+
+function receiptText(value) {
+  return String(value || '').slice(0, 500);
+}
+
+function collectRuntimeIdentity() {
+  const versions = process.versions || {};
+  return {
+    electron: versions.electron || null,
+    chromium: versions.chrome || null,
+    node: versions.node || null,
+    v8: versions.v8 || null,
+    packaged: app.isPackaged === true,
+    executablePath: readAppPath('exe') || process.execPath || null,
+    resourcesPath: process.resourcesPath || null,
+    userDataPath: readAppPath('userData'),
+  };
+}
+
+function readAppPath(name) {
+  try { return typeof app.getPath === 'function' ? app.getPath(name) : null; }
+  catch { return null; }
+}
+
 async function createWindow() {
+  installPowerLifecycleListeners();
   const port = await startServer();
   const win = new BrowserWindow({
     width: 1480, height: 920, minWidth: 1024, minHeight: 640,
     backgroundColor: '#05070d', title: 'SpaceFace', show: false,
-    webPreferences: { contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false,
+      preload: path.join(__dirname, 'preload.cjs'),
+      backgroundThrottling,
+    },
   });
+  const gameUrl = `http://127.0.0.1:${port}/`;
+  installWindowSecurity(win, gameUrl);
+  bindWindowLifecycle(win);
   win.removeMenu();
   win.once('ready-to-show', () => {
-    receipt('window-ready', { port });
+    receipt('window-ready', {
+      port,
+      backgroundThrottling,
+      evidenceBackgroundOverride: allowEvidenceBackgroundExecution,
+    });
     win.show();
   });
   win.webContents.on('did-fail-load', (_event, code, message, url, isMainFrame) => {
     if (!isMainFrame) return;
     receipt('navigation-failed', { code, message, url });
   });
-  win.webContents.on('console-message', (_event, _level, message) => {
+  win.webContents.on('console-message', (_event, details) => {
+    const message = details && details.message;
     if (isAssetPreloadFailureMessage(message)) {
-      receipt('asset-preload-failed', { message: String(message).slice(0, 500) });
+      receipt('asset-preload-failed', { message: receiptText(message) });
     }
   });
   // One player-facing launch URL: Electron and a browser tab both boot the same game route.
   // Release-only debug stripping is handled by the production bundle, not by a gameplay URL flag.
-  await win.loadURL(`http://127.0.0.1:${port}/`);
+  await win.loadURL(gameUrl);
   // win.webContents.openDevTools();
 }
 
@@ -160,6 +330,9 @@ if (!app.requestSingleInstanceLock()) {
     port: launchPort,
     isolatedEvidence: launchConfig.isolatedEvidence,
     lockNamespace: launchConfig.lockNamespace,
+    backgroundThrottling,
+    evidenceBackgroundOverride: allowEvidenceBackgroundExecution,
+    runtime: collectRuntimeIdentity(),
   });
   app.on('second-instance', () => {
     const w = BrowserWindow.getAllWindows()[0];

@@ -152,6 +152,20 @@ function linearGain(v) { const c = v < 0 ? 0 : v > 1 ? 1 : v; return c * c; }
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 function isPhysicalAudioBus(name) { return name === 'engine' || name === 'ambient' || name === 'combat'; }
 
+/**
+ * `_applySettings` owns master/engine/ambient/combat/ui/comms/music bus gain and used to rewrite
+ * all seven every rendered frame. `rt._busGainCache` records the last tuple actually written per
+ * bus so an unchanged frame can skip the write; see `_applySettings` for why that is signal-exact.
+ *
+ * `musicBus.gain` is the one settings-owned param with foreign writers (pause, bullet time, music
+ * duck + duck recovery). Each of them drops the cache entry here so the next `_applySettings`
+ * re-asserts the settings target exactly as it does today — including stomping the duck.
+ */
+function invalidateBusGainCache(rt, key) {
+  const cache = rt && rt._busGainCache;
+  if (cache) delete cache[key];
+}
+
 /** Event-driven slow-time mix over pooled graph nodes. UI/comms never enter `filters`. */
 export function applyBulletTimeAudioTreatment(rt, requestedActive, muted = false) {
   if (!rt) return;
@@ -193,6 +207,7 @@ export function applyBulletTimeAudioTreatment(rt, requestedActive, muted = false
       rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), now);
       rt.musicBus.gain.linearRampToValueAtTime(target, now + duration);
     } catch (_) { try { rt.musicBus.gain.value = target; } catch (__) {} }
+    invalidateBusGainCache(rt, 'music');
   }
 }
 
@@ -563,6 +578,14 @@ export const audio = {
     rt._alarmNext = { lowShield: 0, lowHull: 0 }; // next scheduled beep time (ctx.currentTime)
     rt._alarmFlip = { lowShield: false };
     rt._rafId = 0;
+    rt._lifecycleSuspended = false;
+    rt._lifecycleReason = null;
+    rt._resumeAfterLifecycle = false;
+    rt._lifecycleSuspendPromise = null;
+    rt._resumePromise = null;
+    rt._contextEverRan = false;
+    rt._contextStateChangeHandler = null;
+    rt._lastWallTime = undefined;
     rt._wantBeam = {};            // owners desiring a beam loop (started on resume)
     rt._wantMining = null;        // { minerId, targetId } desired mining loop
     rt._wantDrillGrind = false;   // state-derived deep-drill bed (survives AudioContext resume)
@@ -609,6 +632,8 @@ export const audio = {
     rt._heliosTrafficTelemetry = { active: false, targetGain: 0.0001, sectorId: null };
     rt._lastSquelchEndTime = 0;
     rt.sidechainDuck = 1;
+    rt._busGainCache = null;      // last settings-derived bus gain written per bus
+    rt._bedTargetCache = null;    // last brake/tether bed target written per param
     rt._bulletTimeAudioActive = false;
     rt._bulletTimePitch = 1;
     rt._bulletTimeMusicMult = 1;
@@ -779,6 +804,28 @@ export const audio = {
   // registry does not call audio.update().
   update(dt, state) { /* no-op: driven by _frame() */ },
 
+  destroy() {
+    const rt = this.rt;
+    if (!rt) return;
+    rt._lifecycleSuspended = true;
+    this._stopFrameLoop();
+    this._stopMusicSchedulers();
+    this._unbindContextState();
+    if (typeof window !== 'undefined' && window.removeEventListener && this._gestureHandler) {
+      window.removeEventListener('pointerdown', this._gestureHandler);
+      window.removeEventListener('keydown', this._gestureHandler);
+    }
+    this._gestureHandler = null;
+    if (rt.bandBed && typeof rt.bandBed.destroy === 'function') rt.bandBed.destroy();
+    rt.bandBed = null;
+    if (rt.ctx && rt.ctx.state !== 'closed' && typeof rt.ctx.close === 'function') {
+      try {
+        const closing = rt.ctx.close();
+        if (closing && typeof closing.catch === 'function') closing.catch(() => {});
+      } catch (_) {}
+    }
+  },
+
   _markMusicDirty() {
     if (this.rt) this.rt._musicDirty = true;
   },
@@ -793,10 +840,182 @@ export const audio = {
   },
 
   // ---- context lifecycle ----
+  suspendForLifecycle(reason = 'lifecycle') {
+    const rt = this.rt;
+    if (!rt) return;
+    rt._lifecycleSuspended = true;
+    rt._lifecycleReason = reason;
+    rt._lastWallTime = undefined;
+    this._stopFrameLoop();
+    this._pauseMusicSchedulers();
+    this._suspendRunningContext();
+  },
+
+  resumeFromLifecycle(reason = 'lifecycle') {
+    const rt = this.rt;
+    if (!rt) return;
+    rt._lifecycleSuspended = false;
+    rt._lifecycleReason = reason;
+    rt._lastWallTime = undefined;
+    if (rt._lifecycleSuspendPromise) {
+      rt._lifecycleSuspendPromise.then(() => {
+        if (!rt._lifecycleSuspended) this._resumeAudioContext(false);
+      });
+      return;
+    }
+    this._resumeAudioContext(false);
+  },
+
+  _pauseMusicSchedulers() {
+    const stems = this.rt && this.rt.stems;
+    if (!stems) return;
+    for (const key of ['A', 'B', 'C', 'D']) {
+      const stem = stems[key];
+      if (stem && typeof stem.pauseScheduler === 'function') stem.pauseScheduler();
+    }
+  },
+
+  _resumeMusicSchedulers() {
+    const stems = this.rt && this.rt.stems;
+    if (!stems) return;
+    for (const key of ['A', 'B', 'C', 'D']) {
+      const stem = stems[key];
+      if (stem && typeof stem.resumeScheduler === 'function') stem.resumeScheduler();
+    }
+  },
+
+  _stopMusicSchedulers() {
+    const rt = this.rt;
+    const stems = rt && rt.stems;
+    if (!stems) return;
+    for (const key of ['A', 'B', 'C', 'D']) {
+      const stem = stems[key];
+      if (stem && typeof stem.stop === 'function') stem.stop();
+      stems[key] = null;
+    }
+  },
+
+  _bindContextState(ctx) {
+    const rt = this.rt;
+    if (!rt || !ctx || typeof ctx.addEventListener !== 'function') return;
+    this._unbindContextState();
+    const onStateChange = () => {
+      if (!this.rt || this.rt.ctx !== ctx) return;
+      if (ctx.state === 'running') {
+        rt._contextEverRan = true;
+        if (rt._lifecycleSuspended) {
+          rt._resumeAfterLifecycle = true;
+          this._stopFrameLoop();
+          this._pauseMusicSchedulers();
+          this._suspendRunningContext();
+          return;
+        }
+        // Promise fulfillment owns the first post-resume transfer. A statechange can arrive before
+        // device acquisition has actually settled, especially on interrupted mobile contexts.
+        if (rt._resumePromise) return;
+        rt._resumeAfterLifecycle = false;
+        rt._lastWallTime = undefined;
+        this._resumeMusicSchedulers();
+        this._startFrameLoop();
+        return;
+      }
+      this._stopFrameLoop();
+      this._pauseMusicSchedulers();
+    };
+    rt._contextStateChangeHandler = onStateChange;
+    ctx.addEventListener('statechange', onStateChange);
+    if (ctx.state === 'running') rt._contextEverRan = true;
+  },
+
+  _unbindContextState() {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    const handler = rt && rt._contextStateChangeHandler;
+    if (ctx && handler && typeof ctx.removeEventListener === 'function') {
+      try { ctx.removeEventListener('statechange', handler); } catch (_) {}
+    }
+    if (rt) rt._contextStateChangeHandler = null;
+  },
+
+  _suspendRunningContext() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || ctx.state === 'closed') return;
+    if (ctx.state === 'running') rt._contextEverRan = true;
+    if (rt._contextEverRan) rt._resumeAfterLifecycle = true;
+    if (ctx.state !== 'running' || typeof ctx.suspend !== 'function') return;
+    if (rt._lifecycleSuspendPromise) return;
+    let result;
+    try { result = ctx.suspend(); } catch (_) { return; }
+    const pending = Promise.resolve(result)
+      .catch(() => {})
+      .then(() => {
+        if (!rt._lifecycleSuspended && rt._resumeAfterLifecycle) {
+          this._resumeAudioContext(false);
+        }
+      })
+      .finally(() => {
+        if (rt._lifecycleSuspendPromise === pending) rt._lifecycleSuspendPromise = null;
+      });
+    rt._lifecycleSuspendPromise = pending;
+  },
+
+  _resumeAudioContext(allowAutoplayResume) {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || rt._lifecycleSuspended || ctx.state === 'closed') return null;
+    if (rt._resumePromise) return rt._resumePromise;
+    if (ctx.state === 'running') {
+      rt._contextEverRan = true;
+      rt._resumeAfterLifecycle = false;
+      rt._lastWallTime = undefined;
+      this._resumeMusicSchedulers();
+      this._startFrameLoop();
+      return null;
+    }
+    const resumable = ctx.state === 'suspended' || ctx.state === 'interrupted';
+    if (!resumable || (!allowAutoplayResume && !rt._resumeAfterLifecycle)
+      || typeof ctx.resume !== 'function') return null;
+
+    // Install a guard before invoking resume(): some implementations expose `running` or dispatch
+    // statechange synchronously while device acquisition is still pending.
+    const placeholder = Promise.resolve();
+    rt._resumePromise = placeholder;
+    let result;
+    try {
+      result = ctx.resume();
+    } catch (_) {
+      if (rt._resumePromise === placeholder) rt._resumePromise = null;
+      return null;
+    }
+    const pending = Promise.resolve(result)
+      .then(() => {
+        if (rt._lifecycleSuspended) {
+          this._suspendRunningContext();
+          return;
+        }
+        if (ctx.state === 'running') {
+          rt._contextEverRan = true;
+          rt._resumeAfterLifecycle = false;
+          rt._lastWallTime = undefined;
+          this._resumeMusicSchedulers();
+          this._startFrameLoop();
+        }
+      }, () => {
+        // Preserve lifecycle-owned resume intent. A later gesture or context statechange can retry
+        // without mistaking a failed device acquisition for a completed resume.
+      })
+      .finally(() => {
+        if (rt._resumePromise === pending) rt._resumePromise = null;
+      });
+    rt._resumePromise = pending;
+    return pending;
+  },
+
   _ensureContext() {
     const rt = this.rt;
+    if (!rt || rt._lifecycleSuspended) return null;
     if (rt.ctx) {
-      if (rt.ctx.state === 'suspended') { try { rt.ctx.resume(); } catch (_) {} }
+      if (!rt._contextStateChangeHandler) this._bindContextState(rt.ctx);
+      this._resumeAudioContext(true);
       return rt.ctx;
     }
     const AC = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
@@ -845,6 +1064,9 @@ export const audio = {
     rt.masterGain = master; rt.limiter = limiter; rt.sfxBus = sfxBus; rt.musicBus = musicBus;
     rt.engineBus = engineBus; rt.ambientBus = ambientBus; rt.combatBus = combatBus;
     rt.uiBus = uiBus; rt.commsBus = commsBus;
+    // Fresh graph: every cached "already written" target belongs to nodes that no longer exist.
+    rt._busGainCache = null;
+    rt._bedTargetCache = null;
     rt._bulletTimeFilters = [engineSlowFilter, ambientSlowFilter, combatSlowFilter];
     if (rt.bandBed) rt.bandBed.destroy();
     rt.bandBed = createBandBedRuntime(ctx, ambientBus);
@@ -854,7 +1076,6 @@ export const audio = {
 
     this._applySettings();
     this._setBulletTimeAudio(!!rt._bulletTimeAudioActive);
-    try { if (ctx.state === 'suspended') ctx.resume(); } catch (_) {}
 
     // Continuous flight layers belong in flight. Starting them on the first menu click hard-starts
     // oscillators into a live graph and produces a one-shot "boop" with no gameplay reason.
@@ -862,8 +1083,10 @@ export const audio = {
     // sim:pause may have fired before AudioContext existed (main menu at boot).
     if (!rt._paused) this._ensureContinuousSources();
     this._buildMusic();
+    this._bindContextState(ctx);
+    if (ctx.state !== 'running') this._pauseMusicSchedulers();
     if (rt._paused) this._onPause(true);
-    this._startFrameLoop();
+    this._resumeAudioContext(true);
     return ctx;
   },
 
@@ -931,6 +1154,7 @@ export const audio = {
       try {
         const t = ctx.currentTime;
         if (rt.musicBus) {
+          invalidateBusGainCache(rt, 'music');
           rt.musicBus.gain.cancelScheduledValues(t);
           rt.musicBus.gain.setValueAtTime(0.0001, t);
         }
@@ -940,6 +1164,7 @@ export const audio = {
       // restore to the configured music base
       try {
         const t = ctx.currentTime;
+        invalidateBusGainCache(rt, 'music');
         rt.musicBus.gain.cancelScheduledValues(t);
         rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), t);
         rt.musicBus.gain.linearRampToValueAtTime(
@@ -975,6 +1200,10 @@ export const audio = {
     silence(rt.tetherOverloadGain);
     if (rt.heliosTrafficBed) silence(rt.heliosTrafficBed.gain);
     rt._heliosTrafficTarget = 0.0001;
+    // These params were just hard-written behind the bed updaters' backs. Drop their cached
+    // targets so resume re-asserts the live value even when it happens to equal the cached one
+    // (e.g. still braking across a pause, where a skip would leave the hiss silenced forever).
+    rt._bedTargetCache = null;
   },
 
   _isMuted() {
@@ -987,46 +1216,62 @@ export const audio = {
     const a = (this.state.settings && this.state.settings.audio) || {};
     const muted = !!a.muted;
     const t = rt.ctx.currentTime;
-    const ramp = (param, target, instant) => {
+    const cache = rt._busGainCache || (rt._busGainCache = Object.create(null));
+    // Unlike setTargetAtTime, the 50 ms linear glide below is NOT memoryless: it re-reads
+    // `param.value` and re-anchors, so skipping it mid-glide would change the trajectory. The gate
+    // therefore only stands down once the glide window opened by the last genuine change has
+    // elapsed — at that point the param is sitting on `safe`, and cancel + setValueAtTime(safe) +
+    // linearRamp(safe -> safe) is provably a no-op on the audible signal. Inside the window every
+    // frame still re-applies, so the transient shape is bit-for-bit what it was before.
+    // The cache key is (param identity, target, snap) — `snap` matters on its own because muting
+    // leaves engine/ambient/combat/ui/comms targets untouched and only flips the ramp to a snap.
+    const ramp = (key, param, target, instant) => {
       const safe = Math.max(0.0001, target);
+      // Mute / silence targets snap immediately so unlock + mute never leak a 50ms ramp blip.
+      const snap = !!(instant || muted || safe <= 0.0001);
+      const prev = cache[key];
+      const unchanged = !!prev && prev.param === param && prev.target === safe && prev.snap === snap;
+      if (unchanged && t >= prev.settleAt) return;
       try {
         param.cancelScheduledValues(t);
-        // Mute / silence targets snap immediately so unlock + mute never leak a 50ms ramp blip.
-        if (instant || muted || safe <= 0.0001) {
+        if (snap) {
           param.setValueAtTime(safe, t);
-          return;
+        } else {
+          param.setValueAtTime(Math.max(0.0001, param.value), t);
+          param.linearRampToValueAtTime(safe, t + 0.05);
         }
-        param.setValueAtTime(Math.max(0.0001, param.value), t);
-        param.linearRampToValueAtTime(safe, t + 0.05);
       } catch (_) { try { param.value = safe; } catch (__) {} }
+      // Anchor the settle deadline to the frame the target changed, never to the re-applications
+      // inside the window, or the window would be pushed forward forever and never close.
+      if (!unchanged) cache[key] = { param, target: safe, snap, settleAt: snap ? t : t + 0.05 };
     };
 
     const masterVal = a.master == null ? 0.55 : a.master;
     const masterTarget = muted ? 0.0001 : linearGain(masterVal) * 0.501187;
-    ramp(rt.masterGain.gain, masterTarget, true);
+    ramp('master', rt.masterGain.gain, masterTarget, true);
 
     const sfxVal = a.sfx == null ? 0.7 : a.sfx;
 
     const engineVal = a.engine == null ? 0.7 : a.engine;
     const engineTarget = linearGain(sfxVal) * linearGain(engineVal) * 0.12589;
-    ramp(rt.engineBus.gain, engineTarget);
+    ramp('engine', rt.engineBus.gain, engineTarget);
 
     const sidechain = rt.sidechainDuck || 1.0;
     const ambientVal = a.ambient == null ? 0.7 : a.ambient;
     const ambientTarget = linearGain(sfxVal) * linearGain(ambientVal) * 0.06309 * sidechain;
-    ramp(rt.ambientBus.gain, ambientTarget);
+    ramp('ambient', rt.ambientBus.gain, ambientTarget);
 
     const combatVal = a.combat == null ? 0.7 : a.combat;
     const combatTarget = linearGain(sfxVal) * linearGain(combatVal) * 0.25119;
-    ramp(rt.combatBus.gain, combatTarget);
+    ramp('combat', rt.combatBus.gain, combatTarget);
 
     const uiVal = a.ui == null ? 0.7 : a.ui;
     const uiTarget = linearGain(sfxVal) * linearGain(uiVal) * 0.1;
-    ramp(rt.uiBus.gain, uiTarget);
+    ramp('ui', rt.uiBus.gain, uiTarget);
 
     const commsVal = a.comms == null ? 0.7 : a.comms;
     const commsTarget = linearGain(sfxVal) * linearGain(commsVal) * 0.15849;
-    ramp(rt.commsBus.gain, commsTarget);
+    ramp('comms', rt.commsBus.gain, commsTarget);
 
     const musicVal = a.music == null ? 0.32 : a.music;
     rt._musicBase = linearGain(musicVal) * 0.05012 * sidechain;
@@ -1034,14 +1279,14 @@ export const audio = {
     const musicTarget = (muted || rt._paused)
       ? 0.0001
       : rt._musicBase * (rt._bulletTimeMusicMult || 1);
-    ramp(rt.musicBus.gain, musicTarget, muted || rt._paused);
+    ramp('music', rt.musicBus.gain, musicTarget, muted || rt._paused);
   },
 
   // ---- one-shot SFX API ----
   play(recipeId, opts) {
     const rt = this.rt;
     const ctx = rt.ctx;
-    if (!ctx || ctx.state !== 'running') return null; // graceful skip when suspended
+    if (rt._lifecycleSuspended || !ctx || ctx.state !== 'running') return null;
     if (this._isMuted()) return null; // mute is hard silence — no unlock-ramp leak
     const recipe = AUDIO_RECIPE_BY_ID[recipeId];
     if (!recipe) return null;
@@ -1403,7 +1648,7 @@ export const audio = {
 
   _startLoopVoice(recipeId, position, gain) {
     const rt = this.rt, ctx = rt.ctx;
-    if (!ctx || ctx.state !== 'running') return null;
+    if (rt._lifecycleSuspended || !ctx || ctx.state !== 'running') return null;
     const recipe = AUDIO_RECIPE_BY_ID[recipeId];
     if (!recipe) return null;
     let att = 1, pan = 0;
@@ -1596,6 +1841,7 @@ export const audio = {
     const rt = this.rt; if (!rt.ctx) return;
     rt._duckUntil = rt.ctx.currentTime + (seconds || 0.8);
     const t = rt.ctx.currentTime;
+    invalidateBusGainCache(rt, 'music');
     try {
       rt.musicBus.gain.cancelScheduledValues(t);
       rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), t);
@@ -1708,7 +1954,8 @@ export const audio = {
 
     // ---- Sequencer state ----
     const seq = {
-      running: true,
+      active: true,
+      destroyed: false,
       timerId: 0,
       step: 0,
       barBeat: 0,
@@ -1728,7 +1975,8 @@ export const audio = {
     const self = this;
 
     function scheduleNotes() {
-      if (!seq.running) return;
+      seq.timerId = 0;
+      if (!seq.active || seq.destroyed) return;
       // Schedule notes up to 100ms ahead for glitch-free timing
       while (seq.nextNoteTime < ctx.currentTime + 0.1) {
         const t = seq.nextNoteTime;
@@ -1751,9 +1999,24 @@ export const audio = {
 
     const stemObj = {
       nodes, lp, delay, delayFb,
+      pauseScheduler() {
+        if (seq.destroyed || !seq.active) return;
+        seq.active = false;
+        if (seq.timerId) clearTimeout(seq.timerId);
+        seq.timerId = 0;
+      },
+      resumeScheduler() {
+        if (seq.destroyed || seq.active) return;
+        seq.active = true;
+        seq.nextNoteTime = Math.max(seq.nextNoteTime, ctx.currentTime + 0.1);
+        scheduleNotes();
+      },
       stop() {
-        seq.running = false;
-        clearTimeout(seq.timerId);
+        if (seq.destroyed) return;
+        seq.destroyed = true;
+        seq.active = false;
+        if (seq.timerId) clearTimeout(seq.timerId);
+        seq.timerId = 0;
         for (const n of nodes) { try { n.stop(); } catch (_) {} try { n.disconnect(); } catch (_) {} }
         if (delay) { try { delay.disconnect(); } catch (_) {} }
         if (delayFb) { try { delayFb.disconnect(); } catch (_) {} }
@@ -2137,18 +2400,32 @@ export const audio = {
   // ---- per-frame driver (self-owned rAF; registry does not call audio.update) ----
   _startFrameLoop() {
     const rt = this.rt;
-    if (rt._rafId || typeof requestAnimationFrame === 'undefined') return;
+    if (!rt || rt._rafId || rt._lifecycleSuspended || !rt.ctx
+      || rt.ctx.state !== 'running' || typeof requestAnimationFrame === 'undefined') return;
     const tick = () => {
-      rt._rafId = requestAnimationFrame(tick);
+      rt._rafId = 0;
+      if (rt._lifecycleSuspended || !rt.ctx || rt.ctx.state !== 'running') return;
       this._frame();
+      if (!rt._lifecycleSuspended && rt.ctx && rt.ctx.state === 'running') {
+        rt._rafId = requestAnimationFrame(tick);
+      }
     };
     rt._rafId = requestAnimationFrame(tick);
   },
 
+  _stopFrameLoop() {
+    const rt = this.rt;
+    if (!rt || !rt._rafId) return;
+    const frameId = rt._rafId;
+    rt._rafId = 0;
+    if (typeof cancelAnimationFrame !== 'undefined') {
+      try { cancelAnimationFrame(frameId); } catch (_) {}
+    }
+  },
+
   _frame() {
-    const rt = this.rt, ctx = rt.ctx;
-    if (!ctx) return;
-    if (ctx.state === 'suspended') { try { ctx.resume(); } catch (_) {} }
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || rt._lifecycleSuspended || ctx.state !== 'running') return;
     const nowWall = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000;
     const now = ctx.currentTime;
 
@@ -2199,6 +2476,7 @@ export const audio = {
     // recover music gain after a duck (skip while paused — _onPause manages the bus)
     if (!rt._paused && rt._duckUntil && now >= rt._duckUntil && rt.musicBus) {
       rt._duckUntil = 0;
+      invalidateBusGainCache(rt, 'music');
       try {
         rt.musicBus.gain.cancelScheduledValues(now);
         rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), now);
@@ -2583,10 +2861,25 @@ export const audio = {
       targetGain = Math.min(0.25, Math.max(0.04, decel * 0.04));
     }
 
-    if (rt.brakeNoise && rt.brakeNoise.playbackRate) {
-      rt.brakeNoise.playbackRate.setTargetAtTime(rt._bulletTimePitch || 1, ctx.currentTime, 0.05);
+    // setTargetAtTime is memoryless: re-issuing the same (target, timeConstant) from the curve's
+    // own current value reproduces the identical exponential, so a frame whose targets are
+    // unchanged may skip the write with no effect at all on the audible signal. Everything above
+    // — including `rt._prevSpeed` — still runs every frame, and a changed target is written on the
+    // very frame it appears, so a brake onset is never delayed, dropped or re-levelled.
+    const now = ctx.currentTime;
+    const rate = rt._bulletTimePitch || 1;
+    const cache = rt._bedTargetCache || (rt._bedTargetCache = Object.create(null));
+    if (rt.brakeNoise && rt.brakeNoise.playbackRate
+      && (cache.brakeNoiseNode !== rt.brakeNoise || cache.brakeRate !== rate)) {
+      cache.brakeNoiseNode = rt.brakeNoise;
+      cache.brakeRate = rate;
+      rt.brakeNoise.playbackRate.setTargetAtTime(rate, now, 0.05);
     }
-    rt.brakeGain.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.05);
+    if (cache.brakeGainNode !== rt.brakeGain || cache.brakeGain !== targetGain) {
+      cache.brakeGainNode = rt.brakeGain;
+      cache.brakeGain = targetGain;
+      rt.brakeGain.gain.setTargetAtTime(targetGain, now, 0.05);
+    }
   },
 
   _ensureTetherHum() {
@@ -2641,14 +2934,38 @@ export const audio = {
     }
 
     const slowPitch = rt._bulletTimePitch || 1;
-    rt.tetherOsc.frequency.setTargetAtTime(targetFreq * slowPitch, ctx.currentTime, 0.05);
-    rt.tetherHum.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.05);
+    const now = ctx.currentTime;
+    const humFreq = targetFreq * slowPitch;
+    // Same memoryless-setTargetAtTime argument as _updateBrakeHiss: an idle tether re-asserts the
+    // exact curve it is already on, so skipping it is inaudible, while the frame a line engages
+    // changes the targets and writes immediately. The `gainValue` mirrors stay unconditional.
+    const cache = rt._bedTargetCache || (rt._bedTargetCache = Object.create(null));
+    if (cache.tetherOscNode !== rt.tetherOsc || cache.tetherFreq !== humFreq) {
+      cache.tetherOscNode = rt.tetherOsc;
+      cache.tetherFreq = humFreq;
+      rt.tetherOsc.frequency.setTargetAtTime(humFreq, now, 0.05);
+    }
+    if (cache.tetherHumNode !== rt.tetherHum || cache.tetherGain !== targetGain) {
+      cache.tetherHumNode = rt.tetherHum;
+      cache.tetherGain = targetGain;
+      rt.tetherHum.gain.setTargetAtTime(targetGain, now, 0.05);
+    }
     rt.tetherHum.gainValue = targetGain;
     if (rt.tetherOverloadOsc && rt.tetherOverloadGain) {
       const overload = clamp((strain - 0.72) / 0.28, 0, 1);
-      rt.tetherOverloadOsc.frequency.setTargetAtTime((targetFreq + 7 + overload * 9) * slowPitch, ctx.currentTime, 0.05);
-      rt.tetherOverloadGain.gain.setTargetAtTime(Math.max(0.0001, overload * 0.055), ctx.currentTime, 0.05);
-      rt.tetherOverloadGain.gainValue = Math.max(0.0001, overload * 0.055);
+      const overloadFreq = (targetFreq + 7 + overload * 9) * slowPitch;
+      const overloadGain = Math.max(0.0001, overload * 0.055);
+      if (cache.tetherOverloadOscNode !== rt.tetherOverloadOsc || cache.tetherOverloadFreq !== overloadFreq) {
+        cache.tetherOverloadOscNode = rt.tetherOverloadOsc;
+        cache.tetherOverloadFreq = overloadFreq;
+        rt.tetherOverloadOsc.frequency.setTargetAtTime(overloadFreq, now, 0.05);
+      }
+      if (cache.tetherOverloadGainNode !== rt.tetherOverloadGain || cache.tetherOverloadGain !== overloadGain) {
+        cache.tetherOverloadGainNode = rt.tetherOverloadGain;
+        cache.tetherOverloadGain = overloadGain;
+        rt.tetherOverloadGain.gain.setTargetAtTime(overloadGain, now, 0.05);
+      }
+      rt.tetherOverloadGain.gainValue = overloadGain;
     }
   },
 

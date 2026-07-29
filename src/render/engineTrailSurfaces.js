@@ -5,6 +5,16 @@ import {
   buildParticleTrailFrag,
   buildParticleTrailVert,
 } from './trailTexture.js';
+import {
+  assertDynamicBufferOwnerWritable,
+  commitDynamicBufferOwner,
+  markDynamicBufferItems,
+  registerDynamicBufferOwner,
+} from './dynamicBufferRanges.js';
+
+const TRAIL_MATRIX = 0;
+const TRAIL_COLOR = 1;
+const TRAIL_OPACITY = 2;
 
 const PARTICLE_VERT_BASE = `
   attribute float aSize;
@@ -209,6 +219,15 @@ export function createTrailStreakSlot(scene) {
 export function initTrailStreakPool(scene, cap) {
   const pool = createTrailStreakPool(cap);
   scene.add(pool.mesh);
+  pool.dynamicBufferOwner = registerDynamicBufferOwner(scene, {
+    id: 'trail-streak-instances',
+    mesh: pool.mesh,
+    attributes: [
+      { name: 'matrix', attribute: pool.mesh.instanceMatrix },
+      { name: 'color', attribute: pool.colorAttribute },
+      { name: 'opacity', attribute: pool.opacityAttribute },
+    ],
+  });
   return pool;
 }
 
@@ -244,6 +263,7 @@ export function updateTrailStreakInstance(pool, index, {
   if (!pool || !pool.mesh || index < 0 || index >= pool.capacity || !Number.isInteger(index)) {
     throw new RangeError(`trail instance index ${index} exceeds pool capacity`);
   }
+  assertDynamicBufferOwnerWritable(pool.dynamicBufferOwner);
   const transform = pool._transform;
   transform.position.set(x, y || 0.4, z);
   transform.rotation.set(0, Math.atan2(vz || 0, vx || 0) - Math.PI * 0.5, 0);
@@ -255,22 +275,30 @@ export function updateTrailStreakInstance(pool, index, {
     color && Number.isFinite(color.g) ? color.g : 1,
     color && Number.isFinite(color.b) ? color.b : 1);
   pool.opacityAttribute.setX(index, Math.max(0, opacity));
+  markDynamicBufferItems(pool.dynamicBufferOwner, TRAIL_MATRIX, index);
+  markDynamicBufferItems(pool.dynamicBufferOwner, TRAIL_COLOR, index);
+  markDynamicBufferItems(pool.dynamicBufferOwner, TRAIL_OPACITY, index);
 }
 
 export function commitTrailStreakInstances(pool, liveCount, { scroll, time } = {}) {
   if (!pool || !pool.mesh || liveCount < 0 || liveCount > pool.capacity || !Number.isInteger(liveCount)) {
     throw new RangeError(`trail live count ${liveCount} exceeds pool capacity`);
   }
-  pool.mesh.count = liveCount;
-  pool.mesh.instanceMatrix.needsUpdate = true;
-  pool.colorAttribute.needsUpdate = true;
-  pool.opacityAttribute.needsUpdate = true;
+  if (pool.dynamicBufferOwner) commitDynamicBufferOwner(pool.dynamicBufferOwner, liveCount);
+  else {
+    pool.mesh.count = liveCount;
+    pool.mesh.instanceMatrix.needsUpdate = true;
+    pool.colorAttribute.needsUpdate = true;
+    pool.opacityAttribute.needsUpdate = true;
+  }
   pool.mesh.material.uniforms.uTrailTime.value = time || 0;
   pool.mesh.material.uniforms.uTrailScroll.value = scroll || 0;
 }
 
 export function clearTrailStreakInstances(pool) {
-  if (pool && pool.mesh) pool.mesh.count = 0;
+  if (!pool || !pool.mesh) return;
+  if (pool.dynamicBufferOwner) commitDynamicBufferOwner(pool.dynamicBufferOwner, 0);
+  else pool.mesh.count = 0;
 }
 
 export function updateTrailStreakMesh(mesh, {

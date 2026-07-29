@@ -4763,6 +4763,9 @@ export const vfx = {
     this._fieldVec3 = new THREE.Vector3();
     this._fieldScale = new THREE.Vector3();
     this._fieldColor = new THREE.Color();
+    this._fieldColor2 = new THREE.Color();
+    this._fieldLeanQuat = new THREE.Quaternion();
+    this._fieldActiveIds = new Set();
   },
 
   _updateFieldGeometry(dt) {
@@ -4772,16 +4775,35 @@ export const vfx = {
     if (!fg) return;
 
     const active = this.state.fields && this.state.fields.active;
+    const activeList = Array.isArray(active) ? active : [];
+    const activeIds = this._fieldActiveIds;
+    activeIds.clear();
+
+    if (activeList.length === 0) {
+      if (fg.deployStart.size > 0) fg.deployStart.clear();
+
+      fg.vaneMesh.count = 0;
+      fg.pipMesh.count = 0;
+      fg.knotMesh.count = 0;
+      fg.domeMesh.count = 0;
+      fg.ribMesh.count = 0;
+      fg.bermMesh.count = 0;
+      fg.chevronMesh.count = 0;
+      fg.bankMesh.count = 0;
+
+      for (let i = 0; i < fg.coreVols.length; i++) {
+        if (fg.coreVols[i].visible) fg.coreVols[i].visible = false;
+      }
+      return;
+    }
+
     const settings = this.state && this.state.settings;
     const v = settings && settings.video;
     const a = settings && settings.accessibility;
     const motionReduce = !!(v && v.motionReduce);
     const flashReduce = !!((v && v.flashReduce) || (a && a.flashReduce));
-
-    const activeList = Array.isArray(active) ? active : [];
     const now = (this.state && Number.isFinite(this.state.simTime)) ? this.state.simTime : this._t;
 
-    const activeIds = new Set();
     for (const f of activeList) {
       if (f && f.id) {
         activeIds.add(f.id);
@@ -4806,9 +4828,11 @@ export const vfx = {
 
     const mat4 = this._fieldMat4;
     const quat = this._fieldQuat;
+    const leanQuat = this._fieldLeanQuat;
     const vec3 = this._fieldVec3;
     const scale = this._fieldScale;
     const col = this._fieldColor;
+    const col2 = this._fieldColor2;
 
     const numFields = Math.min(activeList.length, 6);
 
@@ -4899,7 +4923,6 @@ export const vfx = {
           quat.setFromAxisAngle(vec3.set(0, 1, 0), tangAngle);
 
           if (engaged && !motionReduce) {
-            const leanQuat = fg._scratchQuat || (fg._scratchQuat = new THREE.Quaternion());
             leanQuat.setFromAxisAngle(vec3.set(1, 0, 0), -0.28);
             quat.multiply(leanQuat);
           }
@@ -4966,7 +4989,7 @@ export const vfx = {
           fg.ribMesh.setMatrixAt(ribCount, mat4);
 
           const pulseT = motionReduce ? 0.5 : ((this._t * 3.0 + i * 0.25) % 1.0);
-          col.set(pal ? pal.rib : '#ffc878').lerp(new THREE.Color(pal ? pal.berm : '#39d0ff'), pulseT);
+          col.set(pal ? pal.rib : '#ffc878').lerp(col2.set(pal ? pal.berm : '#39d0ff'), pulseT);
           fg.ribMesh.setColorAt(ribCount, col);
           ribCount++;
         }
@@ -5082,34 +5105,46 @@ export const vfx = {
     }
 
     fg.vaneMesh.count = vaneCount;
-    fg.vaneMesh.instanceMatrix.needsUpdate = true;
-    if (fg.vaneMesh.instanceColor) fg.vaneMesh.instanceColor.needsUpdate = true;
+    if (vaneCount > 0) {
+      fg.vaneMesh.instanceMatrix.needsUpdate = true;
+      if (fg.vaneMesh.instanceColor) fg.vaneMesh.instanceColor.needsUpdate = true;
+    }
 
     fg.pipMesh.count = pipCount;
-    fg.pipMesh.instanceMatrix.needsUpdate = true;
-    if (fg.pipMesh.instanceColor) fg.pipMesh.instanceColor.needsUpdate = true;
+    if (pipCount > 0) {
+      fg.pipMesh.instanceMatrix.needsUpdate = true;
+      if (fg.pipMesh.instanceColor) fg.pipMesh.instanceColor.needsUpdate = true;
+    }
 
     fg.knotMesh.count = knotCount;
-    fg.knotMesh.instanceMatrix.needsUpdate = true;
+    if (knotCount > 0) fg.knotMesh.instanceMatrix.needsUpdate = true;
 
     fg.domeMesh.count = domeCount;
-    fg.domeMesh.instanceMatrix.needsUpdate = true;
+    if (domeCount > 0) fg.domeMesh.instanceMatrix.needsUpdate = true;
 
     fg.ribMesh.count = ribCount;
-    fg.ribMesh.instanceMatrix.needsUpdate = true;
-    if (fg.ribMesh.instanceColor) fg.ribMesh.instanceColor.needsUpdate = true;
+    if (ribCount > 0) {
+      fg.ribMesh.instanceMatrix.needsUpdate = true;
+      if (fg.ribMesh.instanceColor) fg.ribMesh.instanceColor.needsUpdate = true;
+    }
 
     fg.bermMesh.count = bermCount;
-    fg.bermMesh.instanceMatrix.needsUpdate = true;
-    if (fg.bermMesh.instanceColor) fg.bermMesh.instanceColor.needsUpdate = true;
+    if (bermCount > 0) {
+      fg.bermMesh.instanceMatrix.needsUpdate = true;
+      if (fg.bermMesh.instanceColor) fg.bermMesh.instanceColor.needsUpdate = true;
+    }
 
     fg.chevronMesh.count = chevronCount;
-    fg.chevronMesh.instanceMatrix.needsUpdate = true;
-    if (fg.chevronMesh.instanceColor) fg.chevronMesh.instanceColor.needsUpdate = true;
+    if (chevronCount > 0) {
+      fg.chevronMesh.instanceMatrix.needsUpdate = true;
+      if (fg.chevronMesh.instanceColor) fg.chevronMesh.instanceColor.needsUpdate = true;
+    }
 
     fg.bankMesh.count = bankCount;
-    fg.bankMesh.instanceMatrix.needsUpdate = true;
-    if (fg.bankMesh.instanceColor) fg.bankMesh.instanceColor.needsUpdate = true;
+    if (bankCount > 0) {
+      fg.bankMesh.instanceMatrix.needsUpdate = true;
+      if (fg.bankMesh.instanceColor) fg.bankMesh.instanceColor.needsUpdate = true;
+    }
   },
 
   _fieldFlowRelevant() {

@@ -3022,7 +3022,20 @@ export function createHud(ctx, alerts) {
   }
 
   const overviewClock = createContactRosterClock();
-  let lastOverviewSignature = '';
+  // Retained, keyed contact rows (PERF). The strip used to guard a full `innerHTML = ''` teardown
+  // behind a signature string that embedded Math.round(dist) and Math.round(closingSpeed) per
+  // contact. Those tick on nearly every 5 Hz sample while the player is flying, so the guard almost
+  // never hit and the roster paid subtree teardown + HTML parse + listener rebinding + style
+  // recalc five times a second, forever. Rows are now keyed by entity id, reused across samples,
+  // and written field-by-field only where a value actually changed; a distance ticking 431 -> 430
+  // costs exactly one textContent write.
+  const overviewRows = new Map();      // entity id -> retained row record
+  let overviewStamp = 0;               // marks the rows touched by the current reconcile pass
+  let overviewFooter = null;           // retained overflow footer (detached when there is no overflow)
+  let overviewFooterAttached = false;
+  const _overviewContacts = [];        // retained scratch: cleared per call, never reallocated
+  const _overviewOrder = [];           // retained scratch: this sample's rows, in display order
+  let _overviewIdScratch = new Set();  // retained scratch: swapped with _knownContactIds each call
   // Compact contacts roster (GDD 2.0 "Radar & Contacts"): known targeting contacts remain available
   // whenever radar can identify them. Scan/threat reveals still surface the empty shell for a beat,
   // and state.settings.ui.overviewOpen remains the manual PIN (O key).
@@ -3074,6 +3087,128 @@ export function createHud(ctx, alerts) {
     return man.length > 2 ? `${top} +${man.length - 2}` : top;
   }
 
+  const OVERVIEW_TIER_TITLE = 'Threat tier (mass + faction)';
+
+  /**
+   * Build one retained contact row. Structure is created with createElement/textContent rather than
+   * an innerHTML template so that later updates can address individual spans; textContent supersedes
+   * the old escapeHtml(...) interpolation (it is not markup, so nothing is escaped twice).
+   * Every static class/style/attribute is written exactly once, here.
+   */
+  function createOverviewRow(entity) {
+    const el = document.createElement('div');
+    el.className = 'sf-overview-row';
+
+    const left = document.createElement('div');
+    left.className = 'sf-overview-row__left';
+    const iffIcon = document.createElement('span');
+    iffIcon.style.setProperty('font-weight', 'bold');
+    const glyphEl = document.createElement('span');
+    glyphEl.style.setProperty('color', 'var(--ink-dim)');
+    glyphEl.style.setProperty('font-size', '10px');
+    const nameEl = document.createElement('span');
+    nameEl.className = 'sf-overview-row__name';
+    const stateEl = document.createElement('span');
+    left.append(iffIcon, glyphEl, nameEl, stateEl);
+
+    const right = document.createElement('div');
+    right.className = 'sf-overview-row__right';
+    const tierEl = document.createElement('span');
+    tierEl.setAttribute('title', OVERVIEW_TIER_TITLE);
+    const distEl = document.createElement('span');
+    const speedEl = document.createElement('span');
+    speedEl.style.setProperty('width', '24px');
+    speedEl.style.setProperty('text-align', 'right');
+    right.append(tierEl, distEl, speedEl);
+
+    el.append(left, right);
+
+    const rec = {
+      id: entity.id,
+      el, iffIcon, glyphEl, nameEl, stateEl, tierEl, distEl, speedEl,
+      detailEl: null,
+      attached: false,
+      stamp: 0,
+      // Last value written to each field. A write happens only when one of these changes.
+      name: '', iffColor: '', icon: '', glyph: '', stateWord: '', stateCls: '',
+      tier: -1, dist: null, speed: '', detail: '', selected: false, unscanned: false,
+    };
+
+    // Bound ONCE for the life of the row. Re-binding a fresh closure per sample was part of the
+    // teardown cost this rewrite removes; the record carries the live name so the toast stays current.
+    el.addEventListener('click', () => {
+      state.player.targetId = rec.id;
+      ctx.bus.emit('toast', { text: `Selected target: ${rec.name}`, kind: 'info', ttl: 2 });
+      updateOverview();
+    });
+
+    return rec;
+  }
+
+  /** Write only the fields of a retained row whose value actually changed this sample. */
+  function syncOverviewRow(rec, c, playerTeam, player, targetId) {
+    const e = c.e;
+    const iff = getIffData(e, playerTeam);
+    const glyph = getClassGlyph(e);
+    const sword = c.ally ? 'ALLY' : contactStateWord(e, playerTeam, state);
+    const stateCls = OVERVIEW_STATE_CLASS[sword] || 'neutral';
+    const scannedWreck = c.isWreck && wreckScanned(e);
+    const data = e.data || {};
+    const name = data.callsign || data.name || data.trafficRole || data.role || e.role
+      || (c.isWreck ? 'Derelict' : 'Ship');
+
+    // Derelict manifest line: unscanned shows only a ghost outline; a scan resolves the manifest
+    // + weak-point callout (GDD 2.0 §7.4).
+    let detail = '';
+    if (c.isWreck) {
+      detail = scannedWreck ? `${manifestSummary(e)} · WEAK ${e.data.weakPoint || '—'}` : '??? UNSCANNED';
+    }
+
+    const rvx = e.vel.x - player.vel.x;
+    const rvz = e.vel.z - player.vel.z;
+    const closingSpeed = -((rvx * c.dx + rvz * c.dz) / (c.dist || 1));
+    const speedIcon = closingSpeed >= 0.5 ? '▸' : (closingSpeed <= -0.5 ? '▹' : '');
+    const speedText = Math.abs(closingSpeed) >= 0.5 ? `${speedIcon}${Math.round(Math.abs(closingSpeed))}` : '';
+    const dist = Math.round(c.dist);
+    const unscanned = c.isWreck && !scannedWreck;
+    const selected = e.id === targetId;
+
+    if (rec.unscanned !== unscanned) { setClass(rec.el, 'unscanned', unscanned); rec.unscanned = unscanned; }
+    if (rec.selected !== selected) { setClass(rec.el, 'selected', selected); rec.selected = selected; }
+    if (rec.iffColor !== iff.color) {
+      rec.el.style.setProperty('--iff-color', iff.color);
+      rec.iffIcon.style.setProperty('color', iff.color);
+      rec.iffColor = iff.color;
+    }
+    if (rec.icon !== iff.icon) { rec.iffIcon.textContent = iff.icon; rec.icon = iff.icon; }
+    if (rec.glyph !== glyph) { rec.glyphEl.textContent = glyph; rec.glyph = glyph; }
+    if (rec.name !== name) { rec.nameEl.textContent = name; rec.name = name; }
+    if (rec.stateWord !== sword) { rec.stateEl.textContent = sword; rec.stateWord = sword; }
+    if (rec.stateCls !== stateCls) {
+      // Rewrite the whole className: add-only would leave a stale sf-cs--<old> beside the new one.
+      rec.stateEl.className = `sf-overview-row__state sf-cs--${stateCls}`;
+      rec.tierEl.className = `sf-overview-row__tier sf-cs--${stateCls}`;
+      rec.stateCls = stateCls;
+    }
+    if (rec.tier !== c.threatTier) { rec.tierEl.textContent = tierPips(c.threatTier); rec.tier = c.threatTier; }
+    if (rec.dist !== dist) { rec.distEl.textContent = String(dist); rec.dist = dist; }
+    if (rec.speed !== speedText) { rec.speedEl.textContent = speedText; rec.speed = speedText; }
+    if (rec.detail !== detail) {
+      if (detail) {
+        if (!rec.detailEl) {
+          rec.detailEl = document.createElement('div');
+          rec.detailEl.className = 'sf-overview-row__detail';
+          rec.el.appendChild(rec.detailEl);   // always after __left/__right, as in the old template
+        }
+        rec.detailEl.textContent = detail;
+      } else if (rec.detailEl) {
+        rec.el.removeChild(rec.detailEl);
+        rec.detailEl = null;
+      }
+      rec.detail = detail;
+    }
+  }
+
   function updateOverview() {
     const player = state.entities.get(state.playerId);
     if (!player) {
@@ -3082,7 +3217,9 @@ export function createHud(ctx, alerts) {
     }
     const playerTeam = player.team;
 
-    const contacts = [];
+    // Retained scratch list: cleared and refilled, never reallocated (this runs at 5 Hz forever).
+    const contacts = _overviewContacts;
+    contacts.length = 0;
     for (const e of state.entityList || []) {
       if (!e.alive || e === player) continue;
       const isShip = verbAcceptsType('target', e.type); // PQ-015: shared ship|drone membership
@@ -3105,13 +3242,17 @@ export function createHud(ctx, alerts) {
     // On-demand reveal bookkeeping: a fresh hostile/derelict arriving, or a hostile closing inside
     // the reveal radius, surfaces the strip for a beat even when it isn't pinned (one-voice rule).
     const nowMs = performance.now();
-    const curIds = new Set();
+    // Double-buffered id sets. _knownContactIds must stay the PREVIOUS sample's set while the
+    // current one is filled, so the two are swapped rather than aliased or reallocated.
+    const curIds = _overviewIdScratch;
+    curIds.clear();
     let nearbyHostile = false;
     for (const c of contacts) {
       curIds.add(c.e.id);
       if (c.hostile && c.dist < OVERVIEW_HOSTILE_REVEAL_R) nearbyHostile = true;
       if (!_knownContactIds.has(c.e.id) && (c.hostile || c.isWreck)) revealOverview(OVERVIEW_CONTACT_REVEAL_MS);
     }
+    _overviewIdScratch = _knownContactIds;
     _knownContactIds = curIds;
 
     const pinned = !!state.settings.ui.overviewOpen;
@@ -3122,8 +3263,8 @@ export function createHud(ctx, alerts) {
       revealActive: nowMs < _overviewRevealUntil,
     });
     if (!visible) {
+      // Rows stay retained while hidden; the next reveal reconciles them back to the truth.
       if (elOverview.style.display !== 'none') elOverview.style.display = 'none';
-      lastOverviewSignature = '';   // force a fresh render when it next reveals
       return;
     }
 
@@ -3139,91 +3280,71 @@ export function createHud(ctx, alerts) {
       typeof window !== 'undefined' ? window.innerWidth : 1280,
       typeof window !== 'undefined' ? window.innerHeight : 720,
     );
-    const signature = `${displayLimit}|` + contacts.map(c => {
-      const isGhost = c.e.data && (c.e.data.isGhost || c.e.data.ghost || c.e.data.kind === 'unknown');
-      const rvx = c.e.vel.x - player.vel.x;
-      const rvz = c.e.vel.z - player.vel.z;
-      const closingSpeed = -((rvx * c.dx + rvz * c.dz) / (c.dist || 1));
-      const scanned = c.isWreck ? (wreckScanned(c.e) ? 1 : 0) : '';
-      const fsm = (c.e.data && c.e.data.ai && c.e.data.ai.fsm) || '';
-      return `${c.e.id}:${c.e.team}:${isGhost}:${Math.round(c.dist)}:${Math.round(closingSpeed)}:${c.e.id === state.player.targetId}:${scanned}:${fsm}`;
-    }).join('|');
-
-    if (signature === lastOverviewSignature) {
-      if (elOverview.style.display === 'none') elOverview.style.display = 'flex';
-      return;
-    }
-    lastOverviewSignature = signature;
-
-    elOverview.innerHTML = '';
     if (elOverview.style.display === 'none') elOverview.style.display = 'flex';
 
     const visibleCount = Math.min(displayLimit, contacts.length);
+
+    // --- keyed reconcile -------------------------------------------------------------------
+    // Pass 1: stamp the rows that survive into this sample, so stale rows can be dropped BEFORE
+    // any reordering (index comparisons below must see only live rows).
+    overviewStamp++;
+    let retained = 0;
+    for (let i = 0; i < visibleCount; i++) {
+      const rec = overviewRows.get(contacts[i].e.id);
+      if (rec) { rec.stamp = overviewStamp; retained++; }
+    }
+    if (overviewRows.size > retained) {
+      for (const rec of overviewRows.values()) {
+        if (rec.stamp === overviewStamp) continue;
+        if (rec.attached) { elOverview.removeChild(rec.el); rec.attached = false; }
+        overviewRows.delete(rec.id);
+      }
+    }
+
+    // Pass 2: create only what is new and write only what changed.
+    const order = _overviewOrder;
+    order.length = 0;
     for (let i = 0; i < visibleCount; i++) {
       const c = contacts[i];
-      const e = c.e;
-      const iff = getIffData(e, playerTeam);
-      const glyph = getClassGlyph(e);
-      const hostile = c.hostile;
-      const sword = c.ally ? 'ALLY' : contactStateWord(e, playerTeam, state);
-      const stateCls = OVERVIEW_STATE_CLASS[sword] || 'neutral';
-      const tier = c.threatTier;
-      const scannedWreck = c.isWreck && wreckScanned(e);
-      const data = e.data || {};
-      const name = data.callsign || data.name || data.trafficRole || data.role || e.role
-        || (c.isWreck ? 'Derelict' : 'Ship');
-
-      // Derelict manifest line: unscanned shows only a ghost outline; a scan resolves the manifest
-      // + weak-point callout (GDD 2.0 §7.4).
-      let detail = '';
-      if (c.isWreck) {
-        detail = scannedWreck ? `${manifestSummary(e)} · WEAK ${e.data.weakPoint || '—'}` : '??? UNSCANNED';
+      let rec = overviewRows.get(c.e.id);
+      if (!rec) {
+        rec = createOverviewRow(c.e);
+        rec.stamp = overviewStamp;
+        overviewRows.set(rec.id, rec);
       }
+      syncOverviewRow(rec, c, playerTeam, player, targetId);
+      order.push(rec);
+    }
 
-      const rvx = e.vel.x - player.vel.x;
-      const rvz = e.vel.z - player.vel.z;
-      const closingSpeed = -((rvx * c.dx + rvz * c.dz) / (c.dist || 1));
-
-      const speedIcon = closingSpeed >= 0.5 ? '▸' : (closingSpeed <= -0.5 ? '▹' : '');
-      const speedText = Math.abs(closingSpeed) >= 0.5 ? `${speedIcon}${Math.round(Math.abs(closingSpeed))}` : '';
-
-      const row = document.createElement('div');
-      row.className = 'sf-overview-row';
-      if (c.isWreck && !scannedWreck) row.classList.add('unscanned');
-      if (e.id === state.player.targetId) {
-        row.classList.add('selected');
+    // Pass 3: ordering. Check first (a pure read) so the steady state performs zero DOM moves;
+    // a genuine reorder or insert re-appends the whole run, and appendChild MOVES a live node
+    // rather than recreating it.
+    let inOrder = true;
+    for (let i = 0; i < visibleCount; i++) {
+      if (elOverview.children[i] !== order[i].el) { inOrder = false; break; }
+    }
+    if (!inOrder) {
+      for (let i = 0; i < visibleCount; i++) {
+        elOverview.appendChild(order[i].el);
+        order[i].attached = true;
       }
-      row.style.setProperty('--iff-color', iff.color);
-
-      row.innerHTML = `
-        <div class="sf-overview-row__left">
-          <span style="color:${iff.color}; font-weight:bold;">${iff.icon}</span>
-          <span style="color:var(--ink-dim); font-size:10px;">${glyph}</span>
-          <span class="sf-overview-row__name">${escapeHtml(name)}</span>
-          <span class="sf-overview-row__state sf-cs--${stateCls}">${sword}</span>
-        </div>
-        <div class="sf-overview-row__right">
-          <span class="sf-overview-row__tier sf-cs--${stateCls}" title="Threat tier (mass + faction)">${tierPips(tier)}</span>
-          <span>${Math.round(c.dist)}</span>
-          <span style="width: 24px; text-align: right;">${speedText}</span>
-        </div>
-        ${detail ? `<div class="sf-overview-row__detail">${escapeHtml(detail)}</div>` : ''}
-      `;
-
-      row.addEventListener('click', () => {
-        state.player.targetId = e.id;
-        ctx.bus.emit('toast', { text: `Selected target: ${name}`, kind: 'info', ttl: 2 });
-        updateOverview();
-      });
-      elOverview.appendChild(row);
     }
 
     const overflow = contactOverflowSummary(contacts, visibleCount);
     if (overflow) {
-      const footer = document.createElement('div');
-      footer.className = 'sf-overview-footer';
-      footer.textContent = overflow;
-      elOverview.appendChild(footer);
+      if (!overviewFooter) {
+        overviewFooter = document.createElement('div');
+        overviewFooter.className = 'sf-overview-footer';
+      }
+      setText(overviewFooter, overflow);
+      // The footer always trails the rows, so a row move can never land behind it.
+      if (!overviewFooterAttached || elOverview.children[visibleCount] !== overviewFooter) {
+        elOverview.appendChild(overviewFooter);
+        overviewFooterAttached = true;
+      }
+    } else if (overviewFooterAttached) {
+      elOverview.removeChild(overviewFooter);
+      overviewFooterAttached = false;
     }
   }
 

@@ -21,6 +21,7 @@ try {
   const report = await page.evaluate(async () => {
     const THREE = await import('three');
     const { createVfxPrecompileSalvo } = await import('/src/render/vfx.js');
+    const { createDynamicBufferCoordinator } = await import('/src/render/dynamicBufferRanges.js');
     const {
       initTrailStreakPool,
       updateTrailStreakInstance,
@@ -45,6 +46,7 @@ try {
     const programsAfterPrecompile = renderer.info.programs.length;
     scene.remove(salvo);
 
+    const dynamicBuffers = createDynamicBufferCoordinator(scene);
     const pool = initTrailStreakPool(scene, 96);
     updateTrailStreakInstance(pool, 0, {
       x: 0, y: 0, z: 0, vx: 1, vz: 0,
@@ -53,7 +55,25 @@ try {
     });
     commitTrailStreakInstances(pool, 1, { scroll: 0.17, time: 0.8 });
     renderer.clear();
-    renderer.render(scene, camera);
+    let epoch = dynamicBuffers.arm();
+    try {
+      renderer.render(scene, camera);
+    } finally {
+      dynamicBuffers.disarm(epoch);
+    }
+
+    updateTrailStreakInstance(pool, 0, {
+      x: 1, y: 0, z: 0, vx: 1, vz: 0,
+      width: 5, length: 12, opacity: 0.9,
+      color: { r: 1, g: 0.5, b: 0.2 },
+    });
+    commitTrailStreakInstances(pool, 1, { scroll: 0.2, time: 1.0 });
+    epoch = dynamicBuffers.arm();
+    try {
+      renderer.render(scene, camera);
+    } finally {
+      dynamicBuffers.disarm(epoch);
+    }
 
     const programsAfterFirstLiveTrail = renderer.info.programs.length;
     const materialProperties = renderer.properties.get(pool.mesh.material);
@@ -75,6 +95,7 @@ try {
       if (pixels[i] || pixels[i + 1] || pixels[i + 2]) litPixels++;
     }
     const glError = gl.getError();
+    const dynamicDiagnostics = dynamicBuffers.getDiagnostics().owners[0];
 
     target.dispose();
     renderer.dispose();
@@ -88,6 +109,9 @@ try {
       activeAttributes,
       litPixels,
       glError,
+      dynamicForceFullUploads: dynamicDiagnostics.forceFullUploads,
+      dynamicPartialUploads: dynamicDiagnostics.partialUploads,
+      dynamicAcknowledgements: dynamicDiagnostics.acknowledgements,
     };
   });
 
@@ -104,6 +128,12 @@ try {
   }
   assert(report.litPixels > 0, 'the instanced trail must produce visible render-target pixels');
   assert.equal(report.glError, 0, 'instanced trail draw must complete without a WebGL error');
+  assert.equal(report.dynamicForceFullUploads, 3,
+    'first processing must publish the complete matrix/color/opacity generation');
+  assert.equal(report.dynamicPartialUploads, 3,
+    'the next draw must publish one packed prefix per changed trail attribute');
+  assert.equal(report.dynamicAcknowledgements, 6,
+    'Three upload callbacks must acknowledge both trail generations');
 
   console.log('trail-streak-instancing-webgl PASS', JSON.stringify(report));
 } finally {

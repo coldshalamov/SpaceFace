@@ -106,9 +106,13 @@ export function syncAsteroidInstancePool(pool, options = {}) {
   const viewCameraDirty = cameraStateChanged(options.camera, pool.cameraState.view);
   const shadowCameraDirty = cameraStateChanged(options.shadowCamera, pool.cameraState.shadow);
   const cameraDirty = viewCameraDirty || shadowCameraDirty;
-  const classifiedDirty = classifiedRecords
-    ? hasDirtyClassifiedRecord(classifiedRecords, pool)
-    : true;
+  const classifiedDirty = options.recordsDirty === true
+    ? true
+    : options.recordsDirty === false
+      ? false
+      : classifiedRecords
+        ? hasDirtyClassifiedRecord(classifiedRecords, pool)
+        : true;
   const canReuseStaticSubmission = !pool.dirty && !classifiedDirty && !cameraDirty;
   const stats = pool.stats;
   stats.registered = pool.byEntity.size;

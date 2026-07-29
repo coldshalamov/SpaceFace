@@ -53,6 +53,7 @@ import {
   NPC_JOB_KIND,
   NPC_JOB_PHASE,
 } from './npcJobs.js';
+import { createNearestEntityQueryService } from '../core/spatialQuery.js';
 
 // A hostile ship within this range interrupts a civilian job into flee; beyond it (with hysteresis)
 // the job resumes. Civilian traffic today flees the player at 500wu (traffic.js _stepFlee) — matched.
@@ -85,6 +86,11 @@ export const npcJobsRuntime = {
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
     this._ensureState();
+    this._threatQueries = createNearestEntityQueryService(this.state, {
+      entityType: 'ship',
+      team: 1,
+      fallbackIndex: 'ships',
+    });
 
     // Runtime bridge for intents: every kernel intent is surfaced on the bus under its own event
     // name (npcjobs:transit / :work / :cycle / :hold / :complete / …). Cargo/economy owners MAY
@@ -101,9 +107,20 @@ export const npcJobsRuntime = {
       // place. On re-entry the sector's jobs advance by the away time and re-link to the hull.
       this.bus.on('sector:exit', (p) => this._onSectorExit(p || {}));
       this.bus.on('sector:enter', (p) => this._onSectorEnter(p || {}));
+      // Physics publishes the hash before several later systems may spawn. Keep those stable IDs as
+      // one-tick candidates so this owner sees the same live hulls the former entityList scan saw.
+      this.bus.on('entity:spawned', (p) => this._threatQueries.recordSpawn(p || {}));
       // A job whose hull is destroyed (never demoted) ends with the entity (ruling 5).
-      this.bus.on('entity:killed', (p) => this._onEntityGone(p || {}));
-      this.bus.on('entity:destroyed', (p) => this._onEntityGone(p || {}));
+      this.bus.on('entity:killed', (p) => {
+        const payload = p || {};
+        this._threatQueries.recordDestroy(payload);
+        this._onEntityGone(payload);
+      });
+      this.bus.on('entity:destroyed', (p) => {
+        const payload = p || {};
+        this._threatQueries.recordDestroy(payload);
+        this._onEntityGone(payload);
+      });
     }
 
     // Producer-facing API. Traffic (and any future civilian producer) calls assign() at spawn.
@@ -145,6 +162,7 @@ export const npcJobsRuntime = {
 
   newGame() {
     this.state.npcJobs = { byId: {} };
+    this._threatQueries?.reset();
   },
 
   // ── producer seam: create + link a job for a freshly spawned civilian hull ───────────────────
@@ -299,16 +317,57 @@ export const npcJobsRuntime = {
   // ── per-tick drive ───────────────────────────────────────────────────────────────────────────
   update(dt, state) {
     if (state) this.state = state;
-    if (this.state.mode !== 'flight') return; // scenery only matters in flight (mirrors traffic)
+    const threatQueries = this._threatQueries
+      || (this._threatQueries = createNearestEntityQueryService(this.state, {
+        entityType: 'ship',
+        team: 1,
+        fallbackIndex: 'ships',
+      }));
+    threatQueries.setState(this.state).begin();
+    if (this.state.mode !== 'flight') {
+      threatQueries.execute();
+      return; // scenery only matters in flight (mirrors traffic)
+    }
     const byId = this._byId();
     const ids = Object.keys(byId);
-    if (ids.length === 0) return; // strict no-op when no jobs exist
+    if (ids.length === 0) {
+      threatQueries.execute();
+      return; // strict no-op when no jobs exist
+    }
 
     const step = Math.max(0, finite(dt, 0));
     const simT = finite(this.state.simTime, 0);
     const currentSector = (this.state.world && this.state.world.currentSectorId) || null;
 
-    for (const jobId of ids) {
+    // Build every eligible threat request before advancing any job, then execute one owner-facing
+    // broadphase batch. Requests retain only stable ids and scalar origins; GameState remains authority.
+    for (let index = 0; index < ids.length; index++) {
+      const jobId = ids[index];
+      const entry = byId[jobId];
+      if (!entry || !entry.job || entry.entityId == null) continue;
+      const entity = this.state.entities && this.state.entities.get(entry.entityId);
+      if (!entity || !entity.alive || !entity.pos) continue;
+      if (entry.control || entry.job.corrupt || entry.job.phase === NPC_JOB_PHASE.COMPLETE) continue;
+      threatQueries.request(
+        jobId,
+        entity.id,
+        entity.pos.x,
+        entity.pos.z,
+        entry.job.phase === NPC_JOB_PHASE.FLEE ? RESUME_RADIUS : FLEE_RADIUS,
+      );
+    }
+    const threatRequests = threatQueries.execute();
+    let threatRequestIndex = 0;
+
+    for (let index = 0; index < ids.length; index++) {
+      const jobId = ids[index];
+      let threatRequest = null;
+      const pendingRequest = threatRequests[threatRequestIndex];
+      if (pendingRequest && pendingRequest.requestId === jobId) {
+        threatRequest = pendingRequest;
+        threatRequestIndex++;
+      }
+
       const entry = byId[jobId];
       if (!entry || !entry.job) { delete byId[jobId]; continue; }
 
@@ -334,7 +393,9 @@ export const npcJobsRuntime = {
 
       // Threat → flee interrupt / clear → resume (kernel-owned; we only drive the hull). The
       // civilian flee reflex writes job phase, so it must not fight the controller either.
-      if (!claimed) this._reconcileThreat(entry, entity);
+      if (!claimed && threatRequest && threatRequest.sourceEntityId === entity.id) {
+        this._reconcileThreatResult(entry, threatRequest.resultId);
+      }
 
       // Materialized advance: one tick of dt. lastAdvanceSimT tracks global time for re-entry math.
       if (step > 0 && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) advance(entry.job, step, this._sink);
@@ -404,33 +465,24 @@ export const npcJobsRuntime = {
   },
 
   // ── threat / flee ─────────────────────────────────────────────────────────────────────────────
-  _reconcileThreat(entry, entity) {
+  _reconcileThreatResult(entry, resultId) {
     const job = entry.job;
     if (!job || job.corrupt || job.phase === NPC_JOB_PHASE.COMPLETE) return;
-    const nearest = this._nearestHostile(entity, job.phase === NPC_JOB_PHASE.FLEE ? RESUME_RADIUS : FLEE_RADIUS);
+    const nearest = resultId != null && this.state.entities
+      ? this.state.entities.get(resultId)
+      : null;
+    const liveHostile = nearest && nearest.alive && nearest.type === 'ship' && nearest.team === 1
+      ? nearest
+      : null;
     if (job.phase === NPC_JOB_PHASE.FLEE) {
-      if (!nearest) { resume(job); entry.threatId = null; }
-      else { entry.threatId = nearest.id; }
+      if (!liveHostile) { resume(job); entry.threatId = null; }
+      else { entry.threatId = liveHostile.id; }
       return;
     }
-    if (nearest) {
-      interrupt(job, { entityId: nearest.id });
-      entry.threatId = nearest.id;
+    if (liveHostile) {
+      interrupt(job, { entityId: liveHostile.id });
+      entry.threatId = liveHostile.id;
     }
-  },
-
-  /** Nearest live hostile combat ship (team 1) to `entity` within `radius`, or null. */
-  _nearestHostile(entity, radius) {
-    const list = this.state.entityList || [];
-    let best = null;
-    let bestD = radius;
-    for (const other of list) {
-      if (!other || !other.alive || other.type !== 'ship') continue;
-      if (other.team !== 1) continue; // only actual hostiles; civilian traffic (team 2) is not a threat
-      const d = Math.hypot(other.pos.x - entity.pos.x, other.pos.z - entity.pos.z);
-      if (d < bestD) { bestD = d; best = other; }
-    }
-    return best;
   },
 
   // ── sector transitions: virtualize on exit, re-link + advance on enter ───────────────────────
@@ -563,6 +615,7 @@ export const npcJobsRuntime = {
       };
     }
     this.state.npcJobs = { byId };
+    this._threatQueries?.reset();
   },
 };
 

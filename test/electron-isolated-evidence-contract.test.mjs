@@ -141,6 +141,7 @@ test('all release evidence Electron routes use the shared isolation helper', () 
     'scripts/check-m5-story-embodied-electron.mjs',
     'scripts/check-professional-travel-public-route-electron.mjs',
     'scripts/check-alpha-live-baseline-electron.mjs',
+    'scripts/check-electron-new-game-launch.mjs',
     'scripts/lib/releaseSoakProbe.mjs',
   ];
   for (const route of routes) {
@@ -148,6 +149,8 @@ test('all release evidence Electron routes use the shared isolation helper', () 
     assert.match(source, /createIsolatedElectronLaunch/, `${route} must use the common isolated launcher`);
     assert.match(source, /assertIsolatedElectronRootUrl/, `${route} must reject the player listener port`);
     assert.match(source, /cleanup\(\{\s*runtimeClosed:/, `${route} must prove owned shutdown before deleting its profile`);
-    if (route.includes('m5-story')) assert.doesNotMatch(source, /\bapp\.close\s*\(/, 'M5 must use owned runtime cleanup');
+    if (route.includes('m5-story') || route.includes('electron-new-game')) {
+      assert.doesNotMatch(source, /\bapp\.close\s*\(/, `${route} must use owned runtime cleanup`);
+    }
   }
 });

@@ -26,6 +26,9 @@ export class SpatialHash {
     this._memberRemoveScratch = [];
     this._seenIds = new Map();
     this._batchSeenIds = [];
+    this._batchFootprints = [];
+    this._batchMetas = [];
+    this._staticQueryResult = { entities: null, candidates: 0 };
     this._queryStamp = 1;
     this._pending = {
       rebuilds: 0,
@@ -335,44 +338,75 @@ export class SpatialHash {
   queryRadiusBatch(requests = [], opts = null) {
     if (!Array.isArray(requests) || requests.length === 0) return requests;
     const c = this.cell;
+    const requestCount = requests.length;
     const activeCount = this._activeBuckets.length + this._staticActiveBuckets.length;
     const shareResults = !!(opts && opts.shareResults === true);
     const shareSupersetResults = shareResults && !!(opts && opts.shareSupersetResults === true);
-    const metas = [];
-    const footprints = requests.map((request) => {
+    const footprints = this._batchFootprints;
+    let allScanActive = requestCount > 1;
+    let unionX0 = Infinity;
+    let unionX1 = -Infinity;
+    let unionZ0 = Infinity;
+    let unionZ1 = -Infinity;
+
+    for (let index = 0; index < requestCount; index++) {
+      const request = requests[index];
+      let footprint = footprints[index];
+      if (!footprint) {
+        footprint = { request: null, x0: 0, x1: 0, z0: 0, z1: 0, scanActive: false };
+        footprints[index] = footprint;
+      }
       const r = Number(request.r) || 0;
-      const x0 = Math.floor((request.x - r) / c), x1 = Math.floor((request.x + r) / c);
-      const z0 = Math.floor((request.z - r) / c), z1 = Math.floor((request.z + r) / c);
-      const scanActive = activeCount > 0 && ((x1 - x0 + 1) * (z1 - z0 + 1)) > activeCount * 3;
-      return { request, x0, x1, z0, z1, scanActive };
-    });
-    const canShareSuperset = shareSupersetResults && footprints.length > 1 &&
-      footprints.every((footprint) => footprint.scanActive);
+      const x0 = Math.floor((request.x - r) / c);
+      const x1 = Math.floor((request.x + r) / c);
+      const z0 = Math.floor((request.z - r) / c);
+      const z1 = Math.floor((request.z + r) / c);
+      const scanActive = activeCount > 0
+        && ((x1 - x0 + 1) * (z1 - z0 + 1)) > activeCount * 3;
+      footprint.request = request;
+      footprint.x0 = x0;
+      footprint.x1 = x1;
+      footprint.z0 = z0;
+      footprint.z1 = z1;
+      footprint.scanActive = scanActive;
+      if (!scanActive) allScanActive = false;
+      if (x0 < unionX0) unionX0 = x0;
+      if (x1 > unionX1) unionX1 = x1;
+      if (z0 < unionZ0) unionZ0 = z0;
+      if (z1 > unionZ1) unionZ1 = z1;
+    }
+
+    const metas = this._batchMetas;
+    let metaCount = 0;
+    const canShareSuperset = shareSupersetResults && allScanActive;
     if (canShareSuperset) {
       const firstRequest = footprints[0].request;
-      const out = firstRequest.out && !Object.isFrozen(firstRequest.out) ? firstRequest.out : [];
+      const out = firstRequest.out && !Object.isFrozen(firstRequest.out)
+        ? firstRequest.out
+        : [];
       out.length = 0;
-      for (const footprint of footprints) footprint.request.out = out;
-      const x0 = Math.min(...footprints.map((footprint) => footprint.x0));
-      const x1 = Math.max(...footprints.map((footprint) => footprint.x1));
-      const z0 = Math.min(...footprints.map((footprint) => footprint.z0));
-      const z1 = Math.max(...footprints.map((footprint) => footprint.z1));
-      const batchSeen = this._batchSeenIds[0] || (this._batchSeenIds[0] = new Set());
-      batchSeen.clear();
-      metas.push({
-        out, x0, x1, z0, z1,
-        stamp: this._nextQueryStamp(),
-        batchSeen,
-        candidates: 0,
-        scanActive: true,
-      });
-    }
-    for (let index = 0; index < footprints.length && !canShareSuperset; index++) {
-      const { request, x0, x1, z0, z1, scanActive } = footprints[index];
-      if (shareResults) {
-        const shared = metas.find((meta) =>
-          meta.x0 === x0 && meta.x1 === x1 && meta.z0 === z0 && meta.z1 === z1 &&
-          meta.scanActive === scanActive);
+      for (let index = 0; index < requestCount; index++) footprints[index].request.out = out;
+      this._prepareBatchMeta(
+        metaCount++, out, unionX0, unionX1, unionZ0, unionZ1, true,
+      );
+    } else {
+      for (let index = 0; index < requestCount; index++) {
+        const footprint = footprints[index];
+        const request = footprint.request;
+        let shared = null;
+        if (shareResults) {
+          for (let metaIndex = 0; metaIndex < metaCount; metaIndex++) {
+            const candidate = metas[metaIndex];
+            if (
+              candidate.x0 === footprint.x0 && candidate.x1 === footprint.x1
+              && candidate.z0 === footprint.z0 && candidate.z1 === footprint.z1
+              && candidate.scanActive === footprint.scanActive
+            ) {
+              shared = candidate;
+              break;
+            }
+          }
+        }
         if (shared) {
           // The broadphase result is a function of occupied cells, not the exact center inside
           // those cells. AI applies its exact circular range test afterwards, so sharing this
@@ -380,31 +414,48 @@ export class SpatialHash {
           request.out = shared.out;
           continue;
         }
+        const out = request.out && !Object.isFrozen(request.out)
+          ? request.out
+          : (request.out = []);
+        out.length = 0;
+        this._prepareBatchMeta(
+          metaCount++, out,
+          footprint.x0, footprint.x1, footprint.z0, footprint.z1,
+          footprint.scanActive,
+        );
       }
-      const out = request.out && !Object.isFrozen(request.out) ? request.out : (request.out = []);
-      out.length = 0;
-      const stamp = this._nextQueryStamp();
-      const metaIndex = metas.length;
-      const batchSeen = this._batchSeenIds[metaIndex] || (this._batchSeenIds[metaIndex] = new Set());
-      batchSeen.clear();
-      metas.push({ out, x0, x1, z0, z1, stamp, batchSeen, candidates: 0, scanActive });
     }
+
     // Resolve stable static candidates once per unique query footprint. Dynamic contacts still
     // use the live layer below, while each caller keeps its own output array and ordering.
-    for (const meta of metas) {
+    for (let index = 0; index < metaCount; index++) {
+      const meta = metas[index];
       const staticResult = this._cachedStaticQuery(
         meta.x0, meta.x1, meta.z0, meta.z1, meta.scanActive,
       );
       meta.staticEntities = staticResult.entities;
       meta.candidates += staticResult.candidates;
     }
-    this._queryLayerBatch(this.buckets, this._activeBuckets, this._activeCellX, this._activeCellZ, metas);
-    for (const meta of metas) {
+    this._queryLayerBatch(
+      this.buckets,
+      this._activeBuckets,
+      this._activeCellX,
+      this._activeCellZ,
+      metas,
+      metaCount,
+    );
+    for (let index = 0; index < metaCount; index++) {
+      const meta = metas[index];
       const staticEntities = meta.staticEntities;
-      for (let i = 0; i < staticEntities.length; i++) {
-        const entity = staticEntities[i];
-        if (meta.batchSeen.has(entity.id)) continue;
-        meta.batchSeen.add(entity.id);
+      for (let staticIndex = 0; staticIndex < staticEntities.length; staticIndex++) {
+        const entity = staticEntities[staticIndex];
+        if (meta.scanActive) {
+          if (meta.batchSeen.has(entity.id)) continue;
+          meta.batchSeen.add(entity.id);
+        } else {
+          if (this._seenIds.get(entity.id) === meta.stamp) continue;
+          this._seenIds.set(entity.id, meta.stamp);
+        }
         meta.out.push(entity);
       }
     }
@@ -412,27 +463,79 @@ export class SpatialHash {
       // Opt-in shared batches are immutable by contract: downstream sensor consumers can read
       // the common candidate list but cannot corrupt another formation member's view or the
       // static cache. A subsequent batch receives fresh outputs.
-      for (const meta of metas) Object.freeze(meta.out);
+      for (let index = 0; index < metaCount; index++) Object.freeze(metas[index].out);
     }
     if (!(opts && opts.countDiagnostics === false)) {
-      const candidates = metas.reduce((sum, meta) => sum + meta.candidates, 0);
+      let candidates = 0;
+      for (let index = 0; index < metaCount; index++) candidates += metas[index].candidates;
       this._pending.queries++;
       this._pending.candidates += candidates;
       this.diagnostics.queries++;
       this.diagnostics.candidates += candidates;
     }
+    for (let index = 0; index < requestCount; index++) footprints[index].request = null;
+    for (let index = 0; index < metaCount; index++) {
+      const meta = metas[index];
+      meta.out = null;
+      meta.staticEntities = null;
+      meta.batchSeen.clear();
+    }
     return requests;
   }
 
-  _queryLayerBatch(buckets, activeBuckets, activeCellX, activeCellZ, metas) {
-    const scanned = metas.filter((meta) => meta.scanActive);
-    if (scanned.length) {
-      for (let i = 0; i < activeBuckets.length; i++) {
-        const cx = activeCellX[i], cz = activeCellZ[i], bucket = activeBuckets[i];
-        for (const meta of scanned) {
-          if (cx < meta.x0 || cx > meta.x1 || cz < meta.z0 || cz > meta.z1) continue;
+  _prepareBatchMeta(index, out, x0, x1, z0, z1, scanActive) {
+    let meta = this._batchMetas[index];
+    if (!meta) {
+      meta = {
+        out: null,
+        x0: 0,
+        x1: 0,
+        z0: 0,
+        z1: 0,
+        stamp: 0,
+        batchSeen: null,
+        candidates: 0,
+        scanActive: false,
+        staticEntities: null,
+      };
+      this._batchMetas[index] = meta;
+    }
+    const batchSeen = this._batchSeenIds[index]
+      || (this._batchSeenIds[index] = new Set());
+    batchSeen.clear();
+    meta.out = out;
+    meta.x0 = x0;
+    meta.x1 = x1;
+    meta.z0 = z0;
+    meta.z1 = z1;
+    meta.stamp = this._nextQueryStamp();
+    meta.batchSeen = batchSeen;
+    meta.candidates = 0;
+    meta.scanActive = scanActive;
+    meta.staticEntities = null;
+    return meta;
+  }
+
+  _queryLayerBatch(buckets, activeBuckets, activeCellX, activeCellZ, metas, metaCount) {
+    let hasScannedMeta = false;
+    for (let index = 0; index < metaCount; index++) {
+      if (metas[index].scanActive) {
+        hasScannedMeta = true;
+        break;
+      }
+    }
+    if (hasScannedMeta) {
+      for (let bucketIndex = 0; bucketIndex < activeBuckets.length; bucketIndex++) {
+        const cx = activeCellX[bucketIndex];
+        const cz = activeCellZ[bucketIndex];
+        const bucket = activeBuckets[bucketIndex];
+        for (let metaIndex = 0; metaIndex < metaCount; metaIndex++) {
+          const meta = metas[metaIndex];
+          if (!meta.scanActive
+            || cx < meta.x0 || cx > meta.x1 || cz < meta.z0 || cz > meta.z1) continue;
           meta.candidates += bucket.length;
-          for (const entity of bucket) {
+          for (let entityIndex = 0; entityIndex < bucket.length; entityIndex++) {
+            const entity = bucket[entityIndex];
             if (meta.batchSeen.has(entity.id)) continue;
             meta.batchSeen.add(entity.id);
             meta.out.push(entity);
@@ -440,10 +543,22 @@ export class SpatialHash {
         }
       }
     }
-    for (const meta of metas) {
+    for (let index = 0; index < metaCount; index++) {
+      const meta = metas[index];
       if (meta.scanActive) continue;
-      meta.candidates += this._queryLayer(buckets, activeBuckets, activeCellX, activeCellZ,
-        false, meta.x0, meta.x1, meta.z0, meta.z1, meta.stamp, meta.out);
+      meta.candidates += this._queryLayer(
+        buckets,
+        activeBuckets,
+        activeCellX,
+        activeCellZ,
+        false,
+        meta.x0,
+        meta.x1,
+        meta.z0,
+        meta.z1,
+        meta.stamp,
+        meta.out,
+      );
     }
   }
 
@@ -494,10 +609,13 @@ export class SpatialHash {
   }
 
   _cachedStaticQuery(x0, x1, z0, z1, scanActive) {
+    const result = this._staticQueryResult;
     const cached = this._getStaticQueryCache(x0, x1, z0, z1, scanActive);
     if (cached) {
       this.diagnostics.staticQueryCacheHits++;
-      return { entities: cached, candidates: 0 };
+      result.entities = cached;
+      result.candidates = 0;
+      return result;
     }
 
     const entities = [];
@@ -514,7 +632,9 @@ export class SpatialHash {
     );
     this._setStaticQueryCache(x0, x1, z0, z1, scanActive, entities);
     this.diagnostics.staticQueryCacheMisses++;
-    return { entities, candidates };
+    result.entities = entities;
+    result.candidates = candidates;
+    return result;
   }
 
   _getStaticQueryCache(x0, x1, z0, z1, scanActive) {

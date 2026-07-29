@@ -80,9 +80,12 @@ assert.doesNotMatch(
   'Electron main must NOT inline serving/freshness logic — it must come from the shared module'
 );
 assert.doesNotMatch(electronMain, /location\.reload|webContents\.reload|__dev_auto_refresh/, 'Electron dev must not auto-reload the game while agents are editing files');
+assert.match(electronMain, /const gameUrl = `http:\/\/127\.0\.0\.1:\$\{port\}\/`;/,
+  'Electron must derive one canonical loopback root game URL from the owned listener');
 const electronLoadUrlLine = electronMain.split(/\r?\n/).find((line) => line.includes('win.loadURL')) || '';
-assert.ok(electronLoadUrlLine.includes('http://127.0.0.1:${port}/`'), 'Electron must load the canonical root game URL');
-assert.doesNotMatch(electronLoadUrlLine, /\?|prod=1|release=1|debug=|dev=/, 'Electron must not inject mode/query flags into the normal game launch URL');
+assert.match(electronLoadUrlLine, /win\.loadURL\(gameUrl\)/, 'Electron must load the canonical root game URL');
+assert.doesNotMatch(electronMain.match(/const gameUrl[^\n]*/)?.[0] || '', /\?|prod=1|release=1|debug=|dev=/,
+  'Electron must not inject mode/query flags into the normal game launch URL');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BROWSER SERVER — must also wire the shared module (ESM via createRequire).
@@ -145,9 +148,27 @@ assert.match(main, /runtime:loading/, 'Loading must use a named time-effects req
 assert.match(main, /runtime:start-failed/, 'Startup failure must use a named time-effects request');
 assert.match(main, /const runTransitionGuard\s*=\s*createRunTransitionGuard\(\);/,
   'Browser/Electron must share one run-transition generation owner');
-assert.match(main, /helpers\.beginLoadedGameTransition\s*=\s*\(\)\s*=>\s*(?:runTransitionGuard\.begin\('load'\)|\{[\s\S]{0,800}?return\s+runTransitionGuard\.begin\('load'\);[\s\S]{0,80}?\});/,
-  'Save restore must reserve async route ownership before lifecycle events can reenter');
-assert.match(main, /beginLoadedGameTransition[\s\S]{0,500}?game:loadingProgress/,
+const loadedTransitionMatch = main.match(
+  /helpers\.beginLoadedGameTransition\s*=\s*\(\)\s*=>\s*\{([\s\S]{0,1200}?)\n\s*\};/,
+);
+assert.ok(loadedTransitionMatch,
+  'Save restore must define one bounded loaded-game transition helper');
+const loadedTransition = loadedTransitionMatch[1];
+const loadTokenMatch = loadedTransition.match(
+  /const\s+([A-Za-z_$][\w$]*)\s*=\s*runTransitionGuard\.begin\('load'\);/,
+);
+const loadReservationIndex = loadTokenMatch ? loadedTransition.indexOf(loadTokenMatch[0]) : -1;
+const loadingProgressIndex = loadedTransition.indexOf("bus.emit('game:loadingProgress'");
+const loadTokenReturnIndex = loadTokenMatch
+  ? loadedTransition.search(new RegExp(`return\\s+${loadTokenMatch[1]}\\s*;`))
+  : -1;
+assert.ok(
+  loadReservationIndex >= 0
+    && loadingProgressIndex > loadReservationIndex
+    && loadTokenReturnIndex > loadingProgressIndex,
+  'Save restore must reserve and return async route ownership before lifecycle events can reenter',
+);
+assert.ok(loadingProgressIndex >= 0,
   'Save restore must publish a visible loading state before destructive restore work begins');
 assert.match(
   main,

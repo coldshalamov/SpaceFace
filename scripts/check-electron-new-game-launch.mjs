@@ -6,6 +6,15 @@ import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
 import { flightReadyInPage } from './lib/alphaLiveBaselineRoute.mjs';
+import {
+  closeOwnedElectronRuntime,
+  createElectronCanonicalUrlTracker,
+  createElectronProcessMonitor,
+} from './lib/alphaLiveBaselineElectronContracts.mjs';
+import {
+  assertIsolatedElectronRootUrl,
+  createIsolatedElectronLaunch,
+} from './lib/electronTestIsolation.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -15,13 +24,29 @@ const FLIGHT_TIMEOUT_MS = 120000;
 const { _electron: electron } = await loadPlaywright();
 
 let app = null;
+let page = null;
+let childProcess = null;
+let processMonitor = null;
+let canonicalUrlTracker = null;
+let isolatedLaunch = null;
+let rootUrl = null;
+let primaryError = null;
 const processMessages = [];
 
 try {
-  app = await electron.launch({ args: ['.'], cwd: ROOT, timeout: 90000 });
+  isolatedLaunch = createIsolatedElectronLaunch({ root: ROOT, taskId: 'electron-new-game' });
+  app = await electron.launch(isolatedLaunch.options);
+  childProcess = app.process();
+  processMonitor = createElectronProcessMonitor({ electronApp: app, childProcess });
   captureElectronProcess(app);
 
-  const page = await app.firstWindow({ timeout: 90000 });
+  page = await app.firstWindow({ timeout: 90000 });
+  canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
+    bootstrapTimeoutMs: 10_000,
+    pollIntervalMs: 75,
+    allowAnyLoopbackPort: true,
+  });
+  rootUrl = assertIsolatedElectronRootUrl(await canonicalUrlTracker.waitForCanonicalRoot(10_000));
   const pageIssues = collectPageIssues(page, { ignoreProbeWarnings: true });
 
   await page.waitForLoadState('domcontentloaded', { timeout: 90000 });
@@ -96,6 +121,12 @@ try {
   writeReport({
     schema: 'spaceface.electronNewGameLaunch.v1',
     generatedAt: new Date().toISOString(),
+    launch: {
+      mode: isolatedLaunch.mode,
+      rootUrl,
+      listenerPort: Number(new URL(rootUrl).port),
+      userDataDir: isolatedLaunch.userDataDir,
+    },
     pass: report.mode === 'flight'
       && report.player && report.player.alive
       && report.ships.length > 0
@@ -128,9 +159,41 @@ try {
 
   console.log(`Electron New Game launch OK - mode=${report.mode}, player=${report.player.id}, authoredShips=${report.ships.length}, gpu=${report.gpu.renderer}`);
   console.log(`[electron-new-game] report: ${REPORT_PATH}`);
+} catch (error) {
+  primaryError = error;
 } finally {
-  if (app) await app.close().catch(() => {});
+  let cleanupReport = null;
+  if (app) {
+    try {
+      cleanupReport = await closeOwnedElectronRuntime({
+        page,
+        electronApp: app,
+        childProcess,
+        canonicalUrlTracker,
+        processMonitor,
+        rootUrl,
+      });
+      if (cleanupReport.pass !== true) {
+        const error = new Error(`owned Electron cleanup failed: ${cleanupReport.failures.join('; ')}`);
+        error.cleanupReport = cleanupReport;
+        throw error;
+      }
+    } catch (error) {
+      if (!primaryError) primaryError = error;
+      else primaryError.cleanupError = error;
+    }
+  }
+  if (isolatedLaunch && cleanupReport?.pass === true) {
+    try {
+      isolatedLaunch.cleanup({ runtimeClosed: true });
+    } catch (error) {
+      if (!primaryError) primaryError = error;
+      else primaryError.profileCleanupError = error;
+    }
+  }
 }
+
+if (primaryError) throw primaryError;
 
 function captureElectronProcess(target) {
   const proc = target && typeof target.process === 'function' ? target.process() : null;
