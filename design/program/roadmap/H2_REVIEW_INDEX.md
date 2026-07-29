@@ -23,7 +23,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 | Row | Subject | Result | Evidence |
 |---|---|---|---|
 | 1 | headed `check:assets:live` | **PASS** | [row1-assets-live](evidence/h1/row1-assets-live/EVIDENCE.md) |
-| 2 | PQ-021 broker cell + Electron parity | _pending_ | |
+| 2 | PQ-021 broker cell + Electron parity | **PASS** | [row2-pq021-ledger](evidence/h1/row2-pq021-ledger/EVIDENCE.md) |
 | 3 | PQ-019A presentation + counts | _pending_ | |
 | 4 | `pq019-surface-heist` broker manifest | _pending_ | |
 | 5 | PQ-020 Ceres functional route | _pending_ | |
@@ -110,9 +110,12 @@ PQ-018 checkoff decision.
 each authored image legible at its bounded crop, is its provenance clear, and does the same
 information genuinely arrive in both hosts?
 
-Includes the physical-controller pass — focus must enter the evidence list and return.
+The H1 route proves keyboard/mouse focus enters each evidence page and returns to its opener. During
+this H2 sitting, also perform the still-open **physical-controller pass** (Y/Triangle → Codex →
+Ledger → evidence page → Back) rather than treating the shipped mapping assertion as controller
+evidence.
 
-**Evidence:** _pending (row 2)_
+**Evidence:** [Browser broker cell + Electron parity](evidence/h1/row2-pq021-ledger/EVIDENCE.md)
 
 **Unblocks:** PQ-021 → `route_accepted` / `integrated`.
 

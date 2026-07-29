@@ -22,6 +22,12 @@ import {
   createIsolatedElectronLaunch,
 } from './lib/electronTestIsolation.mjs';
 import {
+  closeOwnedElectronRuntime,
+  createElectronCanonicalUrlTracker,
+  createElectronProcessMonitor,
+} from './lib/alphaLiveBaselineElectronContracts.mjs';
+import { loadPlaywright } from './lib/load-playwright.mjs';
+import {
   assertRouteContract,
   bootToFlight,
   earnInRuntime,
@@ -39,14 +45,34 @@ const BROWSER_RECEIPT = path.join(OUT_ROOT, 'route-receipt.json');
 mkdirSync(ELECTRON_DIR, { recursive: true });
 
 let app = null;
+let childProcess = null;
+let page = null;
 let receipt = null;
+let launch = null;
+let canonicalUrlTracker = null;
+let processMonitor = null;
+let rootUrl = null;
 
 try {
-  const launch = await createIsolatedElectronLaunch({ root: ROOT, label: 'pq021-ledger-route' });
-  app = launch.app ?? launch.electronApp ?? launch;
-  const page = await app.firstWindow();
-  await page.waitForLoadState('domcontentloaded');
-  assertIsolatedElectronRootUrl(page.url());
+  // createIsolatedElectronLaunch returns a launch DESCRIPTOR ({ options, cleanup, ... }); the caller
+  // owns the spawn. The original never-run entry treated that descriptor as an ElectronApplication.
+  // It also waited for DOMContentLoaded before following the normal about:blank -> loopback-root
+  // bootstrap. Follow the same proven ownership and canonical-root pattern as the accepted Alpha
+  // and professional-travel Electron evidence routes.
+  const { _electron: electron } = await loadPlaywright();
+  launch = createIsolatedElectronLaunch({ root: ROOT, taskId: 'pq021-ledger-route' });
+  app = await electron.launch(launch.options);
+  childProcess = app.process();
+  processMonitor = createElectronProcessMonitor({ electronApp: app, childProcess });
+  page = await app.firstWindow({ timeout: 90_000 });
+  canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
+    bootstrapTimeoutMs: 10_000,
+    pollIntervalMs: 75,
+    allowAnyLoopbackPort: true,
+  });
+  rootUrl = await canonicalUrlTracker.waitForCanonicalRoot(10_000);
+  rootUrl = assertIsolatedElectronRootUrl(rootUrl);
+  await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
 
   const shots = [];
   const screenshot = async (name) => {
@@ -55,7 +81,7 @@ try {
     shots.push(repoRel(ROOT, file));
   };
 
-  await bootToFlight(page, page.url());
+  await bootToFlight(page, rootUrl);
   const earning = await earnInRuntime(page);
   const station = await runStationReadRoute(page, { screenshot });
   const flight = await runFlightReadRoute(page, { screenshot });
@@ -92,7 +118,38 @@ try {
     problems: [err && err.message ? err.message : String(err)],
   };
 } finally {
-  if (app && typeof app.close === 'function') await app.close().catch(() => {});
+  let cleanupReport = null;
+  try {
+    cleanupReport = await closeOwnedElectronRuntime({
+      page,
+      electronApp: app,
+      childProcess,
+      canonicalUrlTracker,
+      processMonitor,
+      rootUrl,
+    });
+  } catch (error) {
+    cleanupReport = { pass: false, failures: [error && error.message ? error.message : String(error)] };
+  }
+  if (cleanupReport?.pass !== true) {
+    receipt ||= {
+      schema: 'spaceface.pq021-ledger-route.v1',
+      runtime: 'electron',
+      disposition: 'FAIL',
+      problems: [],
+    };
+    receipt.disposition = 'FAIL';
+    receipt.problems ||= [];
+    receipt.problems.push(`owned Electron cleanup failed: ${(cleanupReport?.failures || []).join('; ')}`);
+  }
+  // The isolated profile may only be removed against proof we owned and closed the runtime.
+  if (launch && cleanupReport?.pass === true) {
+    try { launch.cleanup({ runtimeClosed: true }); }
+    catch (error) {
+      receipt.disposition = 'FAIL';
+      receipt.problems.push(`isolated profile cleanup failed: ${error && error.message ? error.message : String(error)}`);
+    }
+  }
 }
 
 writeFileSync(path.join(ELECTRON_DIR, 'route-receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`);

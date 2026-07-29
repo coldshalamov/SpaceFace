@@ -108,6 +108,20 @@ test('both runtime entries share one route module and one schema', () => {
   assert.equal(PQ021_SCREENSHOTS.length, 4, 'both hosts capture a list view and an evidence view');
 });
 
+test('the Electron entry follows the proven isolated canonical-root bootstrap', () => {
+  const electron = read('scripts/check-pq021-ledger-route-electron.mjs');
+  assert.ok(electron.includes('loadPlaywright'),
+    'the Electron entry must load and launch Playwright rather than treating a launch descriptor as an app');
+  assert.ok(electron.includes('createIsolatedElectronLaunch'),
+    'the Electron entry must use an isolated evidence profile and non-player port');
+  assert.ok(electron.includes('createElectronCanonicalUrlTracker'),
+    'the Electron entry must tolerate about:blank bootstrap and establish the canonical loopback root');
+  assert.ok(electron.includes('waitForCanonicalRoot'),
+    'the Electron entry must establish its root before waiting for the routed document');
+  assert.ok(electron.includes('closeOwnedElectronRuntime'),
+    'the Electron entry must prove owned shutdown before deleting the isolated profile');
+});
+
 test('the route module drives the ordinary keyboard and destination routes, not internal APIs', () => {
   const route = read('scripts/lib/pq021LedgerPublicRoute.mjs');
   assert.ok(route.includes("page.keyboard.press('k')"),
