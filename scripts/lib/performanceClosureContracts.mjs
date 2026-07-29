@@ -115,12 +115,15 @@ export function summarizeFrameSamples(samples, { vsyncMs = 1000 / 60 } = {}) {
     .filter((value) => Number.isFinite(value) && value > 0)
     .sort((a, b) => a - b);
   const over = (threshold) => values.filter((value) => value > threshold).length;
+  const p50 = percentile(values, 0.50);
   return {
     sampleCount: values.length,
-    p50: percentile(values, 0.50),
+    p50,
     p95: percentile(values, 0.95),
     p99: percentile(values, 0.99),
+    p999: percentile(values, 0.999),
     max: values.length ? values[values.length - 1] : null,
+    hitchesOver2xMedian: p50 == null ? 0 : over(p50 * 2),
     framesAbove16_7Ms: over(16.7),
     framesAbove32Ms: over(32),
     framesAbove50Ms: over(50),
