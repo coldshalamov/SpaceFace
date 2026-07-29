@@ -44,6 +44,8 @@ export function createFloatingText(ctx) {
     n.alive = false;
     if (activeCount > 0) activeCount--;
     n.el.style.display = 'none';
+    n._sfHudTransform = '';
+    n._sfOpacity = '';
   }
 
   function spawn(text, cls, wx, wz, targetId, opts) {
@@ -63,6 +65,8 @@ export function createFloatingText(ctx) {
     n.el.style.display = 'block';
     n.el.style.opacity = '1';
     n.el.style.transform = 'translate3d(0,0,0) translate(-50%,-50%)';
+    n._sfHudTransform = 'translate3d(0,0,0) translate(-50%,-50%)';
+    n._sfOpacity = '1';
     n.x = 0; n.y = 0;
   }
 
@@ -196,8 +200,16 @@ export function createFloatingText(ctx) {
       const rise = n.vy * n.age;            // integrated rise (px)
       const drift = n.vx * n.age;
       const sc = popScale(n.age);           // spawn-pop scale (overshoot -> 1.0)
-      n.el.style.transform = `translate3d(${s.x + drift}px,${s.y + rise}px,0) translate(-50%,-50%) scale(${sc})`;
-      n.el.style.opacity = String(s.onScreen ? (1 - t * t) : 0);
+      const nextTransform = `translate3d(${s.x + drift}px,${s.y + rise}px,0) translate(-50%,-50%) scale(${sc})`;
+      if (n._sfHudTransform !== nextTransform) {
+        n._sfHudTransform = nextTransform;
+        n.el.style.transform = nextTransform;
+      }
+      const nextOpacity = String(s.onScreen ? (1 - t * t) : 0);
+      if (n._sfOpacity !== nextOpacity) {
+        n._sfOpacity = nextOpacity;
+        n.el.style.opacity = nextOpacity;
+      }
     }
   }
 

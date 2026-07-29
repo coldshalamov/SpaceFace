@@ -61,13 +61,35 @@ export function createCircularGauge(mountEl, opts = {}) {
    * @param {number} v01  progress in [0,1]
    * @param {object} [o]  { kind, label }
    */
+  let lastOffset = null;
+  let lastLabel = null;
+  let lastKindToken = null;
+  let lastDone = null;
   function setValue(v01, o = {}) {
     value = v01 < 0 ? 0 : v01 > 1 ? 1 : v01;
-    if (o.kind) svg.style.setProperty('--sf-fx-arc', `var(${tokenForKind(o.kind)})`);
-    arc.style.setProperty('stroke-dashoffset', (CIRC * (1 - value)).toFixed(2));
-    svg.setAttribute('aria-label', o.label || `${Math.round(value * 100)}%`);
-    if (value >= 1) svg.classList.add('sf-fx-gauge--done');
-    else svg.classList.remove('sf-fx-gauge--done');
+    if (o.kind) {
+      const token = `var(${tokenForKind(o.kind)})`;
+      if (lastKindToken !== token) {
+        lastKindToken = token;
+        svg.style.setProperty('--sf-fx-arc', token);
+      }
+    }
+    const offset = (CIRC * (1 - value)).toFixed(2);
+    if (lastOffset !== offset) {
+      lastOffset = offset;
+      arc.style.setProperty('stroke-dashoffset', offset);
+    }
+    const label = o.label || `${Math.round(value * 100)}%`;
+    if (lastLabel !== label) {
+      lastLabel = label;
+      svg.setAttribute('aria-label', label);
+    }
+    const done = value >= 1;
+    if (lastDone !== done) {
+      lastDone = done;
+      if (done) svg.classList.add('sf-fx-gauge--done');
+      else svg.classList.remove('sf-fx-gauge--done');
+    }
   }
 
   function update(state) {

@@ -924,7 +924,11 @@ export function createRadar(ctx) {
     const wpLabel = waypointLabel(wp);
     const objectiveKeyText = wp ? `◆ AMBER DIAMOND · ${wpLabel}` : '';
     if (objectiveKey.textContent !== objectiveKeyText) objectiveKey.textContent = objectiveKeyText;
-    objectiveKey.hidden = !wp;
+    const objectiveHidden = !wp;
+    if (objectiveKey._sfHidden !== objectiveHidden) {
+      objectiveKey._sfHidden = objectiveHidden;
+      objectiveKey.hidden = objectiveHidden;
+    }
     if (wp && !pos) {
       g.save();
       const x = C, y = C - R + 18;

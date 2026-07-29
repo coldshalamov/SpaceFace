@@ -205,7 +205,11 @@ export function createComms(ctx) {
       if (age > rec.ttl) { dismissLive(rec); continue; }
       const left = rec.ttl - age;
       if (left < 400) {
-        rec.el.style.opacity = String(Math.max(0, left / 400));
+        const nextOpacity = String(Math.max(0, left / 400));
+        if (rec._sfOpacity !== nextOpacity) {
+          rec._sfOpacity = nextOpacity;
+          rec.el.style.opacity = nextOpacity;
+        }
         next = Math.min(next, now);
       } else {
         next = Math.min(next, rec.born + Math.max(0, rec.ttl - 400));

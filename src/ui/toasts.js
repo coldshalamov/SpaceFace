@@ -228,7 +228,11 @@ export function createToasts(ctx) {
       if (age > rec.ttl) { dismiss(rec); continue; }
       const left = rec.ttl - age;
       if (left < 300) {
-        rec.el.style.opacity = String(Math.max(0, left / 300));
+        const nextOpacity = String(Math.max(0, left / 300));
+        if (rec._sfOpacity !== nextOpacity) {
+          rec._sfOpacity = nextOpacity;
+          rec.el.style.opacity = nextOpacity;
+        }
         next = Math.min(next, now);
       } else {
         next = Math.min(next, rec.born + Math.max(0, rec.ttl - 300));

@@ -205,7 +205,10 @@ function setText(el, t) { if (el && el.textContent !== t) el.textContent = t; }
 // Bar fill via transform:scaleX (matches the existing HUD pattern at hud.js:200) — no transition.
 function setFill(el, frac) {
   if (!el) return;
-  el.style.transform = 'scaleX(' + clamp01(frac).toFixed(3) + ')';
+  const next = Math.round(clamp01(frac) * 1000) / 1000;
+  if (el._sfScaleX === next) return;
+  el._sfScaleX = next;
+  el.style.transform = 'scaleX(' + next.toFixed(3) + ')';
 }
 
 export function createCommandBar(ctx) {

@@ -644,8 +644,57 @@ function setScaleX(el, value) {
   el._sfScaleX = next;
   el.style.transform = `scaleX(${next})`;
 }
+// JS-side last-written cache — never read el.style/dataset (those can themselves dirty or miss).
 function setStyle(el, prop, value) {
-  if (el && el.style[prop] !== value) el.style[prop] = value;
+  if (!el) return;
+  const cache = el._sfStyle || (el._sfStyle = Object.create(null));
+  if (cache[prop] === value) return;
+  cache[prop] = value;
+  el.style[prop] = value;
+}
+function setCssVar(el, name, value) {
+  if (!el) return;
+  const cache = el._sfCssVar || (el._sfCssVar = Object.create(null));
+  if (cache[name] === value) return;
+  cache[name] = value;
+  el.style.setProperty(name, value);
+}
+function setOpacity(el, value) {
+  if (!el) return;
+  const next = String(value);
+  if (el._sfOpacity === next) return;
+  el._sfOpacity = next;
+  el.style.opacity = next;
+}
+function setAttr(el, name, value) {
+  if (!el) return;
+  const text = String(value);
+  const cache = el._sfAttr || (el._sfAttr = Object.create(null));
+  if (cache[name] === text) return;
+  cache[name] = text;
+  el.setAttribute(name, text);
+}
+function setDataEdge(el, edge) {
+  if (!el) return;
+  const next = edge == null ? '' : String(edge);
+  if (el._sfDataEdge === next) return;
+  el._sfDataEdge = next;
+  if (next) el.setAttribute('data-edge', next);
+  else el.removeAttribute('data-edge');
+}
+function setTitle(el, title) {
+  if (!el) return;
+  const next = title == null ? '' : String(title);
+  if (el._sfTitle === next) return;
+  el._sfTitle = next;
+  el.title = next;
+}
+function setHidden(el, hidden) {
+  if (!el) return;
+  const next = !!hidden;
+  if (el._sfHidden === next) return;
+  el._sfHidden = next;
+  el.hidden = next;
 }
 // Screen-space HUD overlays: position with translate3d only (never per-frame left/top layout).
 function setHudScreenTransform(el, x, y, opts = {}) {
@@ -667,7 +716,10 @@ function setClass(el, cls, active) {
 function setDisplay(el, visible, mode = 'block') {
   if (!el) return;
   const next = visible ? mode : 'none';
-  if (el.style.display !== next) el.style.display = next;
+  const cache = el._sfStyle || (el._sfStyle = Object.create(null));
+  if (cache.display === next) return;
+  cache.display = next;
+  el.style.display = next;
 }
 
 function createHudClock(hz, startReady = true) {
@@ -1287,7 +1339,7 @@ export function createHud(ctx, alerts) {
   function rebuildWeaponHeatBars(weapons) {
     wpnHeatsWrap.innerHTML = '';
     wpnHeatEls = [];
-    if (!weapons || !weapons.length) { wpnHeatsWrap.style.display = 'none'; return; }
+    if (!weapons || !weapons.length) { setStyle(wpnHeatsWrap, 'display', 'none'); return; }
     for (const w of weapons) {
       const name = (w.name || w.defId || '').replace(/^wpn_/, '').replace(/_/g, ' ').slice(0, 8);
       const row = document.createElement('div');
@@ -1305,7 +1357,7 @@ export function createHud(ctx, alerts) {
       wpnHeatsWrap.appendChild(row);
       wpnHeatEls.push({ fill, row, lastHeat: -1 });
     }
-    wpnHeatsWrap.style.display = 'flex';
+    setStyle(wpnHeatsWrap, 'display', 'flex');
   }
 
   // Target lock diamond — follows the locked target's screen position.
@@ -1606,9 +1658,9 @@ export function createHud(ctx, alerts) {
       setDisplay(slot.el, true, 'inline-flex');
       setClass(slot.el, 'is-offscreen', !placement.onScreen);
       setHudScreenTransform(slot.el, placement.x, placement.y, { center: true });
-      if (slot.dirEl) slot.dirEl.style.transform = `rotate(${placement.directionDeg.toFixed(1)}deg)`;
-      slot.el.hidden = false;
-      slot.el.classList.add('is-on');
+      if (slot.dirEl) setStyle(slot.dirEl, 'transform', `rotate(${placement.directionDeg.toFixed(1)}deg)`);
+      setHidden(slot.el, false);
+      setClass(slot.el, 'is-on', true);
     }
   }
 
@@ -2825,10 +2877,11 @@ export function createHud(ctx, alerts) {
   // ---------------------------------------------------------------------------
   function updateCombatHud(p, slow) {
     if (!p) {
-      lockRing.classList.remove('active', 'locked');
-      lockDiamond.classList.remove('visible');
-      leadPip.classList.remove('visible');
-      wpnHeatsWrap.style.display = 'none';
+      setClass(lockRing, 'active', false);
+      setClass(lockRing, 'locked', false);
+      setClass(lockDiamond, 'visible', false);
+      setClass(leadPip, 'visible', false);
+      setStyle(wpnHeatsWrap, 'display', 'none');
       return;
     }
 
@@ -2842,14 +2895,15 @@ export function createHud(ctx, alerts) {
     const isLocking = lockProgress > 0 && lockProgress < 1;
     const isLocked = lockProgress >= 1;
     if (isLocking || isLocked) {
-      lockRing.classList.add('active');
+      setClass(lockRing, 'active', true);
       setClass(lockRing, 'locked', isLocked);
       const offset = LOCK_C * (1 - lockProgress);
       const offsetText = offset.toFixed(2);
-      if (lockFill.getAttribute('stroke-dashoffset') !== offsetText) lockFill.setAttribute('stroke-dashoffset', offsetText);
+      setAttr(lockFill, 'stroke-dashoffset', offsetText);
       setText(lockLabel, isLocked ? 'LOCKED' : Math.round(lockProgress * 100) + '%');
     } else {
-      lockRing.classList.remove('active', 'locked');
+      setClass(lockRing, 'active', false);
+      setClass(lockRing, 'locked', false);
     }
     // Lock-acquired tone: fire a two-note ascending cue on the rising edge (not-locked → locked).
     // Locking a missile target was visually indicated but sonically silent — a clear cue closes that.
@@ -2889,16 +2943,16 @@ export function createHud(ctx, alerts) {
     if (tgt && tgt.alive && helpers.worldToScreen) {
       const proj = helpers.worldToScreen({ x: tgt.pos.x, y: 0, z: tgt.pos.z });
       if (proj.onScreen) {
-        lockDiamond.classList.add('visible');
+        setClass(lockDiamond, 'visible', true);
         setHudScreenTransform(lockDiamond, proj.x, proj.y);
         // Tint: red when missile-locked, cyan when just selected/tracking.
         const tgtLocked = isLocked && combat && combat.lockTarget === tid;
         setClass(lockDiamond, 'locked-tgt', tgtLocked);
       } else {
-        lockDiamond.classList.remove('visible');
+        setClass(lockDiamond, 'visible', false);
       }
     } else {
-      lockDiamond.classList.remove('visible');
+      setClass(lockDiamond, 'visible', false);
     }
 
     // ---- Lead pip (BP-02) — pure gate in gunnery; HUD only applies screen coords ----
@@ -2910,11 +2964,11 @@ export function createHud(ctx, alerts) {
       primaryProjSpeed,
     });
     if (pipOverlay.visible) {
-      leadPip.classList.add('visible');
+      setClass(leadPip, 'visible', true);
       setHudScreenTransform(leadPip, pipOverlay.x, pipOverlay.y);
       setClass(leadPip, 'on-solution', pipOverlay.onSolution);
     } else {
-      leadPip.classList.remove('visible');
+      setClass(leadPip, 'visible', false);
     }
   }
 
@@ -2962,12 +3016,7 @@ export function createHud(ctx, alerts) {
   }
 
   function setSvgAttr(el, name, value) {
-    if (!el) return;
-    const text = String(value);
-    const cache = el.__sfAttrCache || (el.__sfAttrCache = {});
-    if (cache[name] === text) return;
-    el.setAttribute(name, text);
-    cache[name] = text;
+    setAttr(el, name, value);
   }
 
   function getIffData(e, playerTeam) {
@@ -3212,7 +3261,7 @@ export function createHud(ctx, alerts) {
   function updateOverview() {
     const player = state.entities.get(state.playerId);
     if (!player) {
-      if (elOverview.style.display !== 'none') elOverview.style.display = 'none';
+      setDisplay(elOverview, false);
       return;
     }
     const playerTeam = player.team;
@@ -3264,7 +3313,7 @@ export function createHud(ctx, alerts) {
     });
     if (!visible) {
       // Rows stay retained while hidden; the next reveal reconciles them back to the truth.
-      if (elOverview.style.display !== 'none') elOverview.style.display = 'none';
+      setDisplay(elOverview, false);
       return;
     }
 
@@ -3280,7 +3329,7 @@ export function createHud(ctx, alerts) {
       typeof window !== 'undefined' ? window.innerWidth : 1280,
       typeof window !== 'undefined' ? window.innerHeight : 720,
     );
-    if (elOverview.style.display === 'none') elOverview.style.display = 'flex';
+    setDisplay(elOverview, true, 'flex');
 
     const visibleCount = Math.min(displayLimit, contacts.length);
 
@@ -3359,12 +3408,13 @@ export function createHud(ctx, alerts) {
     const tgt = tid != null ? state.entities.get(tid) : null;
     
     if (!tgt || !tgt.alive) {
-      targetArcs.classList.remove('visible');
+      setClass(targetArcs, 'visible', false);
       if (!targetArcs.classList.contains('visible')) {
-        if (targetArcs.style.display !== 'none' && !_fadeOutTimer) {
+        const cache = targetArcs._sfStyle || (targetArcs._sfStyle = Object.create(null));
+        if (cache.display !== 'none' && !_fadeOutTimer) {
           _fadeOutTimer = setTimeout(() => {
             if (!targetArcs.classList.contains('visible')) {
-              targetArcs.style.display = 'none';
+              setDisplay(targetArcs, false);
             }
             _fadeOutTimer = null;
           }, 260);
@@ -3380,15 +3430,15 @@ export function createHud(ctx, alerts) {
     
     const p = state.entities.get(state.playerId);
     if (!p || !helpers.worldToScreen) {
-      targetArcs.style.display = 'none';
-      targetArcs.classList.remove('visible');
+      setDisplay(targetArcs, false);
+      setClass(targetArcs, 'visible', false);
       return;
     }
     
     const center = helpers.worldToScreen({ x: tgt.pos.x, y: 0, z: tgt.pos.z });
     if (!center.onScreen) {
-      targetArcs.style.display = 'none';
-      targetArcs.classList.remove('visible');
+      setDisplay(targetArcs, false);
+      setClass(targetArcs, 'visible', false);
       return;
     }
     
@@ -3403,15 +3453,13 @@ export function createHud(ctx, alerts) {
     const rHull = getPixelRadius(tgt.pos, tgt.radius + 6);
     
     if (rShield <= 0) {
-      targetArcs.style.display = 'none';
-      targetArcs.classList.remove('visible');
+      setDisplay(targetArcs, false);
+      setClass(targetArcs, 'visible', false);
       return;
     }
     
-    if (targetArcs.style.display === 'none') {
-      targetArcs.style.display = 'block';
-    }
-    targetArcs.classList.add('visible');
+    setDisplay(targetArcs, true, 'block');
+    setClass(targetArcs, 'visible', true);
     
     const size = rShield * 2 + 10;
     setStyle(targetArcs, 'width', `${size}px`);
@@ -3492,7 +3540,7 @@ export function createHud(ctx, alerts) {
       return;
     }
 
-    if (vt.root.dataset.state !== driveState) vt.root.dataset.state = driveState;
+    setAttr(vt.root, 'data-state', driveState);
 
     // --- tape: current speed against the per-family ceiling ---
     const scale = Math.max(1, ceiling * VTAPE_HEADROOM);
@@ -3549,7 +3597,7 @@ export function createHud(ctx, alerts) {
       setClass(vt.root, 'sf-vtape--brake', brakeOn);
       // role=alert announces once on reveal; keep the node in the tree so it is not re-announced
       // every frame while the condition persists.
-      if (vt.brake) vt.brake.setAttribute('aria-hidden', brakeOn ? 'false' : 'true');
+      if (vt.brake) setAttr(vt.brake, 'aria-hidden', brakeOn ? 'false' : 'true');
     }
   }
 
@@ -3581,7 +3629,7 @@ export function createHud(ctx, alerts) {
       // Use a resolved percentage token rather than CSS multiplication. The latter is not
       // consistently accepted by the Chromium versions used by browser and Electron builds,
       // which can leave the damage fill stuck at its fallback height.
-      schematic.style.setProperty('--hull-pct', `${(hullFrac * 100).toFixed(1)}%`);
+      setCssVar(schematic, '--hull-pct', `${(hullFrac * 100).toFixed(1)}%`);
       setStyle(schShield, 'strokeDashoffset', (SHIELD_RING_LEN * (1 - shieldFrac)).toFixed(1));
       setClass(schematic, 'sf-sch-critical', hullFrac < 0.25);
       setClass(schematic, 'sf-sch-warning', hullFrac >= 0.25 && hullFrac < 0.55);
@@ -3683,7 +3731,7 @@ export function createHud(ctx, alerts) {
         const wantA = spd > 2 ? 0.9 : 0;
         _proAlpha += (wantA - _proAlpha) * (1 - Math.exp(-6 * frameDt));
         if (_proAlpha <= 0.02 || !helpers.worldToScreen) {
-          if (proTick.style.opacity !== '0') proTick.style.opacity = '0';
+          setOpacity(proTick, '0');
         } else {
           const k = (p.radius || 6) * 3;
           const inv = 1 / (spd || 1);
@@ -3699,9 +3747,9 @@ export function createHud(ctx, alerts) {
               offset: 'translate(-4px,-1px)',
               rotate: ang,
             });
-            proTick.style.opacity = _proAlpha.toFixed(3);
-          } else if (proTick.style.opacity !== '0') {
-            proTick.style.opacity = '0';
+            setOpacity(proTick, _proAlpha.toFixed(3));
+          } else {
+            setOpacity(proTick, '0');
           }
         }
       }
@@ -3719,7 +3767,7 @@ export function createHud(ctx, alerts) {
       if (elTetherStat) {
         // Only show reel/cut while the gameplay mirror reports an active attachment.
         const active = !!(tether && tether.active);
-        elTetherStat.style.display = active ? '' : 'none';
+        setStyle(elTetherStat, 'display', active ? '' : 'none');
         if (active) {
           const strain = tether.strain || 0;
           const targetEnt = state.entities.get(tether.targetId);
@@ -3777,11 +3825,11 @@ export function createHud(ctx, alerts) {
         if (tracked.deadline_s != null && Number.isFinite(tracked.deadline_s)) {
           const remaining = Math.max(0, tracked.deadline_s - (state.simTime || 0));
           setText(mtTime, mtMarkerLine(state, navWaypoint, mtFmtTime(remaining)));
-          mtTime.classList.toggle('sf-mt-urgent', remaining < 120);
+          setClass(mtTime, 'sf-mt-urgent', remaining < 120);
           setDisplay(mtTime, true);
         } else {
           setText(mtTime, mtMarkerLine(state, navWaypoint));
-          mtTime.classList.remove('sf-mt-urgent');
+          setClass(mtTime, 'sf-mt-urgent', false);
           setDisplay(mtTime, true);
         }
         setDisplay(missionTracker, true);
@@ -3790,7 +3838,7 @@ export function createHud(ctx, alerts) {
         setText(mtTitle, coreText(wp.onboarding ? 'tutorialObjective' : 'currentObjective'));
         setText(mtObj, mtObjectiveAction(wp.reason || wp.label || 'Follow the marked route', wp));
         setText(mtTime, mtMarkerLine(state, wp, routeGuide && routeGuide.summary || ''));
-        mtTime.classList.remove('sf-mt-urgent');
+        setClass(mtTime, 'sf-mt-urgent', false);
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);
       } else if (active.some((m) => m && m.status === 'active')) {
@@ -3801,14 +3849,14 @@ export function createHud(ctx, alerts) {
           contract: candidate.title || candidate.name || 'one contract',
         }));
         setText(mtTime, coreText('noGoalTrack'));
-        mtTime.classList.remove('sf-mt-urgent');
+        setClass(mtTime, 'sf-mt-urgent', false);
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);
       } else if (state.story && STORY_BEATS[state.story.beatIndex]) {
         setText(mtTitle, coreText('nextAction'));
         setText(mtObj, coreText('chooseStoryAction', { key: BINDINGS.missionLog.label }));
         setText(mtTime, coreText('noGoalSet'));
-        mtTime.classList.remove('sf-mt-urgent');
+        setClass(mtTime, 'sf-mt-urgent', false);
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);
       } else {
@@ -3839,7 +3887,7 @@ export function createHud(ctx, alerts) {
         else if (wp) revealedWeakPoints.delete(tgtId);
       }
       if (routeOwnsAttention && target && !combatRelevant && !miningRelevant) {
-        if (targetPanel.el.style.display !== 'none') targetPanel.el.style.display = 'none';
+        setDisplay(targetPanel.el, false);
       } else {
         targetPanel.update({ slow, weakPoint });
       }
@@ -3947,14 +3995,14 @@ export function createHud(ctx, alerts) {
     setDisplay(elNavReadout, !objectiveOwnsAttention);
     setClass(elNavReadout, 'sf-nav--lock', false);
     const label = wpLabel || '—';
-    arrow.title = label;
+    setTitle(arrow, label);
     if (label !== lastNavLabel) { setText(elNavLabel, label); lastNavLabel = label; }
     const travel = objectiveTravelReadout(state, { pos: wp });
     const conciseLabel = String(label).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 28) || 'OBJECTIVE';
     const markerText = `GOAL · ${conciseLabel} · ${travel.distanceText} · ${travel.etaText}`;
     if (markerText !== lastObjectiveMarkerText) {
       setText(arrowLabel, markerText);
-      arrow.setAttribute('aria-label', `Current objective: ${conciseLabel}, ${travel.distanceText}, ${travel.etaText}`);
+      setAttr(arrow, 'aria-label', `Current objective: ${conciseLabel}, ${travel.distanceText}, ${travel.etaText}`);
       lastObjectiveMarkerText = markerText;
     }
     if (slow || !lastNavDist) {
@@ -3970,11 +4018,11 @@ export function createHud(ctx, alerts) {
       const overlapsLeftAnchor = x < 370 && y > h - 340;
       const overlapsRightAnchor = x > w - 270 && y > h - 470;
       const overlapsActionAnchor = y > h - 125 && x > w * 0.28 && x < w * 0.72;
-      arrow.classList.add('sf-objarrow--onscreen');
-      arrow.classList.remove('sf-objarrow--edge');
-      arrow.classList.toggle('sf-objarrow--compact', overlapsLeftAnchor || overlapsRightAnchor || overlapsActionAnchor);
-      arrow.dataset.edge = x > w * 0.62 ? 'right' : (y < 62 ? 'top' : 'left');
-      arrow.style.transform = `translate3d(${x}px,${y}px,0)`;
+      setClass(arrow, 'sf-objarrow--onscreen', true);
+      setClass(arrow, 'sf-objarrow--edge', false);
+      setClass(arrow, 'sf-objarrow--compact', overlapsLeftAnchor || overlapsRightAnchor || overlapsActionAnchor);
+      setDataEdge(arrow, x > w * 0.62 ? 'right' : (y < 62 ? 'top' : 'left'));
+      setStyle(arrow, 'transform', `translate3d(${x}px,${y}px,0)`);
       setDisplay(arrow, true);
       return;
     }
@@ -3983,22 +4031,22 @@ export function createHud(ctx, alerts) {
       setDisplay(arrow, false);
       return;
     }
-    arrow.classList.add('sf-objarrow--edge');
-    arrow.classList.remove('sf-objarrow--onscreen');
+    setClass(arrow, 'sf-objarrow--edge', true);
+    setClass(arrow, 'sf-objarrow--onscreen', false);
     const edgeOverlapsLeftAnchor = edgePlacement.x < 370 && edgePlacement.y > h - 400;
     const edgeOverlapsRightAnchor = edgePlacement.x > w - 300 && edgePlacement.y > h - 520;
     const edgeOverlapsActionAnchor = edgePlacement.y > h - 135
       && edgePlacement.x > w * 0.27 && edgePlacement.x < w * 0.73;
-    arrow.classList.toggle('sf-objarrow--compact',
+    setClass(arrow, 'sf-objarrow--compact',
       edgeOverlapsLeftAnchor || edgeOverlapsRightAnchor || edgeOverlapsActionAnchor);
-    arrow.dataset.edge = edgePlacement.edge;
-    arrow.style.setProperty('--sf-arrow-angle', `${edgePlacement.angleRad}rad`);
+    setDataEdge(arrow, edgePlacement.edge);
+    setCssVar(arrow, '--sf-arrow-angle', `${edgePlacement.angleRad}rad`);
     setDisplay(arrow, true);
-    arrow.style.transform = `translate3d(${edgePlacement.x}px,${edgePlacement.y}px,0)`;
+    setStyle(arrow, 'transform', `translate3d(${edgePlacement.x}px,${edgePlacement.y}px,0)`);
   }
 
   function setVisible(v) {
-    root.style.display = v ? 'block' : 'none';
+    setDisplay(root, !!v, 'block');
     if (hudMeta && hudMeta.setVisible) hudMeta.setVisible(v);
   }
 

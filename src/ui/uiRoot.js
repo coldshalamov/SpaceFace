@@ -337,6 +337,12 @@ export const ui = {
     let lastReticleX = NaN;
     let lastReticleY = NaN;
     let lastFlightPathPoints = '';
+    let lastReticleDisplay = null;
+    let lastFlightPathDisplay = null;
+    let lastFlightPathOpacity = null;
+    let lastEndpointCx = null;
+    let lastEndpointCy = null;
+    let lastFlightPathDrawing = null;
 
     // Always-visible (when in flight) control hints. The default text below is the open-flight set;
     // the onboarding system's _updateControlBar() replaces it each frame with context-sensitive
@@ -386,9 +392,21 @@ export const ui = {
         && Array.isArray(flightPath.points) && flightPath.points.length >= 2);
       document.body.classList.toggle('sf-flight-cursor', active);
       const reticleEl = document.getElementById('aim-reticle') || reticle;
-      reticleEl.style.display = visible && !autoTarget ? 'block' : 'none';
-      autoTargetFlightPath.style.display = autoTarget ? 'block' : 'none';
-      autoTargetFlightPath.style.opacity = pathActive ? '1' : '0';
+      const nextReticleDisplay = visible && !autoTarget ? 'block' : 'none';
+      if (lastReticleDisplay !== nextReticleDisplay) {
+        lastReticleDisplay = nextReticleDisplay;
+        reticleEl.style.display = nextReticleDisplay;
+      }
+      const nextFlightPathDisplay = autoTarget ? 'block' : 'none';
+      if (lastFlightPathDisplay !== nextFlightPathDisplay) {
+        lastFlightPathDisplay = nextFlightPathDisplay;
+        autoTargetFlightPath.style.display = nextFlightPathDisplay;
+      }
+      const nextFlightPathOpacity = pathActive ? '1' : '0';
+      if (lastFlightPathOpacity !== nextFlightPathOpacity) {
+        lastFlightPathOpacity = nextFlightPathOpacity;
+        autoTargetFlightPath.style.opacity = nextFlightPathOpacity;
+      }
       if (!visible) return;
       const fallbackX = typeof innerWidth === 'number' ? innerWidth * 0.5 : 0;
       const fallbackY = typeof innerHeight === 'number' ? innerHeight * 0.5 : 0;
@@ -419,12 +437,20 @@ export const ui = {
         if (endpoint) {
           const x = endpoint.x.toFixed(1);
           const y = endpoint.y.toFixed(1);
-          autoTargetEndpointRing.setAttribute('cx', x);
-          autoTargetEndpointRing.setAttribute('cy', y);
-          autoTargetEndpoint.setAttribute('cx', x);
-          autoTargetEndpoint.setAttribute('cy', y);
+          if (lastEndpointCx !== x || lastEndpointCy !== y) {
+            lastEndpointCx = x;
+            lastEndpointCy = y;
+            autoTargetEndpointRing.setAttribute('cx', x);
+            autoTargetEndpointRing.setAttribute('cy', y);
+            autoTargetEndpoint.setAttribute('cx', x);
+            autoTargetEndpoint.setAttribute('cy', y);
+          }
         }
-        autoTargetFlightPath.classList.toggle('is-drawing', !!flightPath.drawing);
+        const drawing = !!flightPath.drawing;
+        if (lastFlightPathDrawing !== drawing) {
+          lastFlightPathDrawing = drawing;
+          autoTargetFlightPath.classList.toggle('is-drawing', drawing);
+        }
         return;
       }
       let x = active && Number.isFinite(pointer.x) ? pointer.x : fallbackX;

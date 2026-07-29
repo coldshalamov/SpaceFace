@@ -334,18 +334,27 @@ export function createTargetPanel(ctx) {
     if (node.textContent !== text) node.textContent = text;
   }
 
+  // hud.js drives this same element through its _sfStyle write-cache (setDisplay); a direct
+  // style.display write here must keep that cache coherent or hud's next suppress is skipped.
+  function setPanelDisplay(value) {
+    const cache = el._sfStyle || (el._sfStyle = Object.create(null));
+    if (cache.display === value && el.style.display === value) return;
+    cache.display = value;
+    el.style.display = value;
+  }
+
   function update(options = {}) {
     tickN++;
     const gunRead = engagedContactReadout(state);
     const t = gunRead.subject;
     const tid = gunRead.subjectId;
     if (!t || !t.alive) {
-      if (el.style.display !== 'none') el.style.display = 'none';
+      setPanelDisplay('none');
       lastTargetId = null;
       lastEngagedKey = null;
       return;
     }
-    if (el.style.display === 'none') el.style.display = 'block';
+    setPanelDisplay('block');
 
     // The divergence row: the one thing the panel could not previously say.
     if (gunRead.text !== lastEngagedKey) {
@@ -367,7 +376,10 @@ export function createTargetPanel(ctx) {
         ? ` · ${nextClass}`.toUpperCase()
         : '';
       setText(elName, `${nextName}${classText}`);
-      el.setAttribute('aria-label', `Current target: ${nextName}${nextClass ? `, ${nextClass}` : ''}`);
+      if (el._sfAriaLabel !== `Current target: ${nextName}${nextClass ? `, ${nextClass}` : ''}`) {
+        el._sfAriaLabel = `Current target: ${nextName}${nextClass ? `, ${nextClass}` : ''}`;
+        el.setAttribute('aria-label', el._sfAriaLabel);
+      }
       const fac = t.factionId ? FACTION_BY_ID.get(t.factionId) : null;
       if (fac) {
         setText(elFac, fac.short || fac.name);
@@ -494,7 +506,11 @@ export function createTargetPanel(ctx) {
         setText(elIntent, `INTENT ${intel.intent} · MOTIVE ${intel.motive} · THREAT ${intel.threatPips}`);
         setText(elRange, intel.rangeBand);
         if (elIntent.style.display !== 'block') elIntent.style.display = 'block';
-        el.setAttribute('aria-label', `Current target: ${nextName}, ${nextClass || 'contact'}, intent ${intel.intent}, motive ${intel.motive}, threat ${intel.threatTier}, ${intel.rangeBand}`);
+        const aria = `Current target: ${nextName}, ${nextClass || 'contact'}, intent ${intel.intent}, motive ${intel.motive}, threat ${intel.threatTier}, ${intel.rangeBand}`;
+        if (el._sfAriaLabel !== aria) {
+          el._sfAriaLabel = aria;
+          el.setAttribute('aria-label', aria);
+        }
       } else if (!intel) {
         lastIntelKey = null;
         if (elIntent.style.display !== 'none') elIntent.style.display = 'none';

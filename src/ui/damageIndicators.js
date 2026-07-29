@@ -157,6 +157,10 @@ export function createDamageIndicators() {
     if (!marker || marker.age === Infinity) return;
     marker.element.style.display = 'none';
     marker.element.style.opacity = '0';
+    marker._sfDisplay = 'none';
+    marker._sfOpacity = '0';
+    marker._sfHudTransform = '';
+    marker._sfChevron = '';
     marker.cue = null;
     marker.age = Infinity;
     if (activeCount > 0) activeCount--;
@@ -234,10 +238,25 @@ export function createDamageIndicators() {
       const fadeIn = reduced ? 1 : Math.min(1, marker.age / FADE_IN_S);
       const fadeOut = Math.max(0, 1 - marker.age / marker.cue.ttl);
 
-      marker.element.style.display = 'flex';
-      marker.element.style.opacity = String(fadeIn * fadeOut);
-      marker.element.style.transform = `translate3d(${x}px,${y}px,0) translate(-50%,-50%)`;
-      marker.chevron.style.transform = `rotate(${screenAngle + Math.PI * 0.25}rad)`;
+      if (marker._sfDisplay !== 'flex') {
+        marker._sfDisplay = 'flex';
+        marker.element.style.display = 'flex';
+      }
+      const nextOpacity = String(fadeIn * fadeOut);
+      if (marker._sfOpacity !== nextOpacity) {
+        marker._sfOpacity = nextOpacity;
+        marker.element.style.opacity = nextOpacity;
+      }
+      const nextTransform = `translate3d(${x}px,${y}px,0) translate(-50%,-50%)`;
+      if (marker._sfHudTransform !== nextTransform) {
+        marker._sfHudTransform = nextTransform;
+        marker.element.style.transform = nextTransform;
+      }
+      const nextChevron = `rotate(${screenAngle + Math.PI * 0.25}rad)`;
+      if (marker._sfChevron !== nextChevron) {
+        marker._sfChevron = nextChevron;
+        marker.chevron.style.transform = nextChevron;
+      }
     }
   }
 
