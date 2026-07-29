@@ -1,0 +1,20 @@
+command:
+node scripts/validation-broker-cli.mjs --manifest pq023-corridor-cues
+
+[validation-broker] status: fail
+[validation-broker] fixedSeed: 47
+[validation-broker] pid: 1028 exit=1 signal=null
+[validation-broker] launchCounts global=1 browser=1 electron=0
+
+page.waitForFunction: Timeout 120000ms exceeded.
+    at waitForPq023CathedralState
+      (C:\Users\93rob\sf-h1\scripts\capture-combat-vfx-acceptance.mjs:1257:35)
+    at capturePq023WorldSiteSequences
+      (C:\Users\93rob\sf-h1\scripts\capture-combat-vfx-acceptance.mjs:1095:25)
+
+video C:\Users\93rob\sf-h1\.devshots\pq023-corridor-cues\combat-vfx-normal-route.webm
+
+exitCode=1
+
+informational_contended=true
+The timeout value above is a harness control and not performance evidence. Phase H1 ran contended by design; matched performance remains Phase H3.

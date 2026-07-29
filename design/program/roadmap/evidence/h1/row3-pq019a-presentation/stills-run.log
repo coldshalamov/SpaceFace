@@ -1,0 +1,16 @@
+PQ-019A presentation stills OK: 13 captures
+  .devshots/pq019a-acceptance/heist_launcher-close.png  (565070 bytes)  heist_launcher/close
+  .devshots/pq019a-acceptance/heist_launcher-default.png  (497629 bytes)  heist_launcher/default
+  .devshots/pq019a-acceptance/heist_launcher-far.png  (497319 bytes)  heist_launcher/far
+  .devshots/pq019a-acceptance/lawful_catcher-close.png  (431431 bytes)  lawful_catcher/close
+  .devshots/pq019a-acceptance/lawful_catcher-default.png  (400276 bytes)  lawful_catcher/default
+  .devshots/pq019a-acceptance/lawful_catcher-far.png  (491174 bytes)  lawful_catcher/far
+  .devshots/pq019a-acceptance/fence_receiver-close.png  (502370 bytes)  fence_receiver/close
+  .devshots/pq019a-acceptance/fence_receiver-default.png  (435712 bytes)  fence_receiver/default
+  .devshots/pq019a-acceptance/fence_receiver-far.png  (409550 bytes)  fence_receiver/far
+  .devshots/pq019a-acceptance/launch-cue-tminus.png  (431531 bytes)  launch_schedule_cue/default
+  .devshots/pq019a-acceptance/cargo-capsule-inflight-close.png  (477276 bytes)  cargo_capsule/close
+  .devshots/pq019a-acceptance/cargo-capsule-inflight-default.png  (469112 bytes)  cargo_capsule/default
+  .devshots/pq019a-acceptance/cargo-capsule-inflight-far.png  (469113 bytes)  cargo_capsule/far
+  cue moments observed: t_minus_30, t_minus_15, t_minus_5, away
+Manifest: .devshots/pq019a-acceptance/manifest.json

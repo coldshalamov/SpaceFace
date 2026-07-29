@@ -1,0 +1,14 @@
+{
+  "schema": "spaceface.validation-fast-gate.v1",
+  "generatedAt": "2026-07-29T07:32:48.693Z",
+  "routeDigest": "1bd97d1ab4ef378ea0420a6d8a0de939e88d70451c1c13c0740348093f69f753",
+  "regressionDigest": "48931386d5cc693dfd7e154cbac42ef5138ac10ce1cde1a626dc53f90646dedf",
+  "productionDigest": "1bd97d1ab4ef378ea0420a6d8a0de939e88d70451c1c13c0740348093f69f753",
+  "candidateDigest": "0de1ed5ca1a348ed95c786ec0f217551508e10b5d79dd790f2a9b9684936da5b",
+  "buildDigest": "cdd523a24578c280983f59a98f0439201a07e1136dcf24686b379de8a74671dd",
+  "scenarioDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "inputDigest": "83e393d12ceadafc7d2dcf6d8d1cadd91e054916e73528bf5f50a9aa684f2f1d",
+  "profileDigest": "4648d249bc847fee3eebc6392a6b05cd910508cc51b578e75f1cfe18a46cba78",
+  "manifestDigest": "9023c91620521eca031e6f8c3f7685f683a4b7e15a0ef56a880a78342faf995d",
+  "acknowledgesFailureFingerprint": null
+}

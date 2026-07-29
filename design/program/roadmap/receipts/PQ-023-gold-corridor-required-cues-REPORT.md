@@ -158,6 +158,7 @@ old guard and the new binding leave the fixture visible.
 |---|---|
 | Phase-0 audit | `design/graphics-sprints/handoffs/2026-07-28-pq023-corridor-cues-audit.md` |
 | Durable route evidence | `design/graphics-sprints/evidence/pq023-corridor-cues/dense-scene-suppression-trace.json` |
+| H1 headed motion attempt | `design/program/roadmap/evidence/h1/row6-pq023-cues/EVIDENCE.md` |
 | Working evidence + baselines | `.devshots/pq023-cues/` (untracked) |
 | Gate | `scripts/check-pq023-corridor-cues.mjs` |
 | Focused tests | `test/pq023-corridor-cues.test.mjs` |
@@ -176,15 +177,24 @@ damage/recovery cues. `worldSiteDamageStates` likewise has two: the fixture rend
 path. No propulsion, no `check-vfx-frame-sleep.mjs`, no HUD anchor layout, no voice-arbiter rules,
 no protected asset families were touched.
 
-## 7. Open rows — all PQ-034 lease-blocked
+## 7. H1 headed result and remaining open rows
+
+The single H1 Browser attempt ran through the registered `pq023-corridor-cues` broker manifest at fixed
+seed `47`. It produced a reviewable WebM plus impact, destruction, reduced-profile, and dense-scene
+frame sequences, then stopped before the first Cathedral frame on an unsatisfiable harness ordering:
+the route waited for authored Cathedral admission before calling the function that moves the player
+into the authored-admission runway. Result: **FAIL — HARNESS**, one Browser launch, no retry, and zero
+Electron launches. Full classification and bounded surviving claims are in
+`design/program/roadmap/evidence/h1/row6-pq023-cues/EVIDENCE.md`.
 
 | Row | Status |
 |---|---|
-| Normal-route Browser/Electron evidence with source fingerprint and exact cue IDs | **OPEN** — performance-evidence / validation-broker / browser-gpu leases held by PQ-034 |
-| Independent motion / normal-camera review (dense overlap, damage/failure, reduced variants) | **OPEN** — same lease |
-| Matched target/floor performance: frame phases, particles/sprites/lights, draw calls, hitches, cleanup | **OPEN** — same lease |
-| Pixel stills of the Cathedral damage/recovery states at the normal camera | **OPEN** — deferred with the headed set rather than brushing the browser-GPU lease boundary. The committed condition matrix is stronger evidence for the specific claim (a still cannot show that damaged reads dimmer *by a measured ratio*, nor that the distinction survives greyscale), but it does not replace normal-camera review. |
-| `milestone_accepted` upgrade | **OPEN** — PQ-025's binding requires `milestone_accepted`; the integrator grants it after the headed set. This leaf claims `focused_green` only. |
+| Normal-route Browser evidence with source fingerprint and exact cue IDs | **PARTIAL / FAIL — HARNESS** — combat motion survived; the Browser report and World Site semantic projection were never constructed because the Cathedral sequence did not return. |
+| Independent motion / normal-camera review (impacts, destruction, reduced variants, dense overlap) | **PARTIAL** — committed WebM and frame sequences are reviewable in H2; the human verdict is still required. |
+| Pixel stills and motion of Cathedral damage/recovery at the normal camera | **OPEN** — no Cathedral frame was reached. The deterministic condition matrix remains valid focused evidence, but does not replace normal-camera review. |
+| Electron semantic parity | **OPEN** — correctly did not launch because Browser was not `PASS`; the row's single Browser attempt was not retried. |
+| Matched target/floor performance: frame phases, particles/sprites/lights, draw calls, hitches, cleanup | **OPEN — Phase H3**. H1 makes no performance claim; all time-valued diagnostics are informational/contended only. |
+| `milestone_accepted` upgrade | **OPEN** — PQ-025's binding requires `milestone_accepted`; Cathedral motion, Browser completion, Electron parity, and the H2 verdict remain missing. This leaf continues to claim `focused_green` only. |
 
 ## 8. Blockers
 

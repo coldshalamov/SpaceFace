@@ -1,0 +1,8 @@
+node C:\Users\93rob\sf-h1\scripts\validation-broker-cli.mjs --manifest pq022-corridor-asset-leaves
+[validation-broker] status: pass
+[validation-broker] fixedSeed: 47
+[validation-broker] pid: 36716 exit=0 signal=null
+[validation-broker] launchCounts global=1 browser=1 electron=0
+[pq022-corridor-asset-leaves] PASS — eleven exact identities, thirteen headed stills
+
+Phase H1 note: any broker timing metadata is informational/contended and is not performance evidence. Matched performance remains Phase H3.

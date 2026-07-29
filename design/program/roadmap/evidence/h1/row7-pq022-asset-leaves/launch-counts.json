@@ -1,0 +1,11 @@
+{
+  "schema": "spaceface.validation-launch-counts.v1",
+  "currentCandidateDigest": "22100055717522d0a493ffd048d25f326636f25fce4a7855a3e2edcae639b689",
+  "byCandidate": {
+    "22100055717522d0a493ffd048d25f326636f25fce4a7855a3e2edcae639b689": 1
+  },
+  "updatedAt": "2026-07-29T16:36:01.067Z",
+  "informational_contended": true,
+  "informational_contended_note": "updatedAt is broker control metadata, not performance evidence.",
+  "noPerformanceEvidence": true
+}

@@ -1,0 +1,15 @@
+{
+  "schema": "spaceface.validation-acceptance-failure.v1",
+  "generatedAt": "2026-07-29T07:33:19.637Z",
+  "pass": false,
+  "runtimeKind": "browser",
+  "primaryAcceptance": true,
+  "artifactKind": "probe-run",
+  "phase": "acceptance-probe",
+  "error": "[pq020-ceres-topology] FAIL in helios-to-ceres-jump\n  - Ceres entry from sector_helios_prime landed 429.564 WU from its endpoint gate\n\nexitCode=1",
+  "regressionDigest": "48931386d5cc693dfd7e154cbac42ef5138ac10ce1cde1a626dc53f90646dedf",
+  "routeDigest": "1bd97d1ab4ef378ea0420a6d8a0de939e88d70451c1c13c0740348093f69f753",
+  "candidateDigest": "0de1ed5ca1a348ed95c786ec0f217551508e10b5d79dd790f2a9b9684936da5b",
+  "failureFingerprint": "197801541ea5ccd6ab394b3f756e35c1ae44f70abba165192421fb7284b246f2",
+  "family": "browser/acceptance-probe/pq-ceres-topology-fail-in-helios-to-ceres-jump-ceres-entry-from-sector-helios-prime-landed-wu-from-its-endpoint-gate-exitcode/none/none/pq-ceres-topology-fail-in-helios-to-ceres-jump-ceres-entry-from-sector-helios-prime-landed-wu-from-its-endpoint-gate-exitcode"
+}

@@ -303,24 +303,36 @@ attributable to this change.
 Inherited reds named in the brief (`check:economy:anti-exploit`, `check:mission-cargo-loading`) were
 not run and not chased.
 
-## Open rows — all blocked on the PQ-034 lease
+## H1 headed-attempt result and remaining open rows
 
-PQ-034 holds performance-evidence / validation-broker / browser-gpu. No validation-broker run, no
-Electron, no performance or L4 capture was attempted.
+Phase H1 consumed exactly one Browser launch through the registered `pq020-ceres-topology` broker
+manifest at fixed seed `47`. The production jump FSM selected Ceres from Helios, charged, jumped, and
+arrived in Ceres. The saved state preserves one beacon, fifteen Cathedral entities, an alive player,
+and zero page issues. The arrival was correctly closest to the gate back to Helios.
 
-- **Headed route receipt (relocated PQ-018 Phase 4).** Matched before/after route through
-  refinery → Belt Outpost → beacon → Cathedral on target and floor profiles, with real p95/p99/hitch
-  counts, map-open and sector-entry cost, render admission, GPU residency, draw/program counts, and
-  close/default/far/motion/applied-LOD states. This is relocated PQ-018 verification, not optional.
-- **Browser/Electron acceptance** — `npm run check:assets:live`, `npm run check:visual-stability`.
-- **Accessibility route review** — keyboard, pointer and controller map selection of the beacon and
-  Cathedral; label/inspector non-color semantics at real render scale. The hazard readout's
-  non-colour semantics are proven structurally here, but *perceptual* legibility is a headed claim.
+The route then stopped on a harness-authored `sourceGate.distance <= 300` assertion. The recorded
+entry was `429.564 WU` from the Helios return gate and `1573.512 WU` from the Tethys return gate, so
+the load-bearing source-direction relation passed; neither this packet nor the production owner
+specifies the extra absolute tolerance. H1 row 5 is therefore **FAIL — HARNESS**. It was not retried.
+Electron correctly did not launch after the Browser receipt failed. Evidence:
+[`row5-pq020-ceres-route`](../evidence/h1/row5-pq020-ceres-route/EVIDENCE.md).
+
+The successful jump/materialization facts are partial evidence only. The following remain open:
+
+- **Full Browser/Electron functional route (relocated PQ-018 Phase 4)** — refinery → Belt Outpost →
+  beacon → Cathedral, both endpoint directions, F5/reload/Continue, repeated selections, and parity.
+- **Cathedral presentation** — natural close/default/far/arrival frames were never reached.
+- **Accessibility route review** — keyboard, pointer, and controller selection of the beacon and
+  Cathedral; label/inspector non-color semantics at real render scale.
 - **Perceptual pocket distinctness** — whether civic / production / transit / graveyard read as
   distinct at map and flight scale, as opposed to the mathematical separation proven here.
-- **Independent human-eye art verdict** on the Cathedral and the beacon.
-- **Persisted offscreen-projection audit across save** — see the §3 correction. Not blocked on
-  PQ-034; blocked on scope. Owner: the sectorSim/embodiment lane
+- **Independent human-eye art verdict** on the Cathedral and beacon.
+- **Matched performance and renderer structure (Phase H3)** — target/floor matched routes,
+  percentiles/hitches, render admission, residency, counts, and applied-LOD states. H1 makes no
+  performance claim; incidental autosave/process timing fields in its raw artifacts are explicitly
+  marked informational/contended.
+- **Persisted offscreen-projection audit across save** — see the §3 correction. Separate from H1/H3
+  and blocked on scope. Owner: the sectorSim/embodiment lane
   (`npm run check:m2:sector-embodiment`). This packet proves invariance-by-construction only.
 - **Final receipt / global promotion** — integrator-owned.
 

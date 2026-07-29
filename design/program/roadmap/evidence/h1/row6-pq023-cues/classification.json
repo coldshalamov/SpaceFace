@@ -1,0 +1,69 @@
+{
+  "schema": "spaceface.h1-row-classification.v1",
+  "row": 6,
+  "subject": "PQ-023 cues in motion",
+  "result": "FAIL",
+  "classification": "HARNESS",
+  "attemptsConsumed": 1,
+  "retryPerformed": false,
+  "manifestId": "pq023-corridor-cues",
+  "fixedSeed": 47,
+  "candidateDigest": "317f02f82b1ac15d482018ff6569fe4e754a2d101622c45d454923b25c32d595",
+  "launches": {
+    "browser": 1,
+    "electron": 0
+  },
+  "browserReportWritten": false,
+  "failure": {
+    "operation": "waitForPq023CathedralState(targetPage, 'failed')",
+    "error": "page.waitForFunction: Timeout 120000ms exceeded",
+    "source": "scripts/capture-combat-vfx-acceptance.mjs:1095,1257",
+    "failureFingerprint": "7ff04a8ea6ab0485fe5b94ff19cbbdf47f9b10fa0c3f808b4e9aa2851f1000fa"
+  },
+  "rootCause": {
+    "kind": "unsatisfiable-harness-ordering",
+    "waitRequired": [
+      "cathedral_hull status is failed",
+      "root presentationAdmission is ready",
+      "root authoredAssetState begins with authored"
+    ],
+    "enablingMoveSequencedAfterWait": "framePq023Cathedral(targetPage, initial.rootId)",
+    "ceresEntryPoint": {
+      "x": -9367.359619140625,
+      "z": 6708.0743408203125
+    },
+    "cathedralGlobalPosition": {
+      "x": -11988,
+      "z": 10892
+    },
+    "entryDistanceWu": 4936.901,
+    "authoredAdmissionPolicy": {
+      "immediateRadiusWu": 1000,
+      "approachRadiusWu": 2400,
+      "playerStationary": true,
+      "cathedralTargeted": false
+    },
+    "corroboratingReceipt": "design/program/roadmap/evidence/h1/row5-pq020-ceres-route/route-receipt.json",
+    "corroboratingState": {
+      "presentationAdmission": "pending",
+      "authoredAssetState": null
+    }
+  },
+  "survivingEvidence": {
+    "combatMotionWebm": true,
+    "autocannonImpactSequence": true,
+    "flakImpactSequence": true,
+    "smallDestructionSequence": true,
+    "ordinaryDestructionSequence": true,
+    "capitalDestructionSequence": true,
+    "reducedProfileSequence": true,
+    "denseSceneSequence": true,
+    "deterministicSuppressionTrace": true,
+    "cathedralDamageRecoverySequence": false,
+    "browserSemanticProjection": false,
+    "electronParity": false
+  },
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran contended by design. The timeout and process-duration fields are diagnostic controls/metadata only, and the WebM is a perceptual artifact only. No time-valued field is performance evidence. Matched performance remains Phase H3.",
+  "noPerformanceEvidence": true
+}

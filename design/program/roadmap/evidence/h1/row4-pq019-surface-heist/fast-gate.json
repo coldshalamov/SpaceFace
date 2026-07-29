@@ -1,0 +1,14 @@
+{
+  "schema": "spaceface.validation-fast-gate.v1",
+  "generatedAt": "2026-07-29T05:52:05.996Z",
+  "routeDigest": "892435dcae0bb21b388910bd9b00fd24b0070c8cad990af87c1f00aba5636d6c",
+  "regressionDigest": "da468be88bda804a6646a6a73aa99b5c4b0a0885dfed7397969b0329ccf9c1a8",
+  "productionDigest": "892435dcae0bb21b388910bd9b00fd24b0070c8cad990af87c1f00aba5636d6c",
+  "candidateDigest": "21afdc13a66d0cb6fa3b729921203e814b98e5115139e949572a7dc7e3896474",
+  "buildDigest": "cdd523a24578c280983f59a98f0439201a07e1136dcf24686b379de8a74671dd",
+  "scenarioDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "inputDigest": "35b2ee5ebb702bfda915399ca27e860dd5992828f2f922ca8763335ee75c9ffe",
+  "profileDigest": "4648d249bc847fee3eebc6392a6b05cd910508cc51b578e75f1cfe18a46cba78",
+  "manifestDigest": "cd388a41cfca7a45698ebb6d1702ff6b29588df7acf9868cc460c1e248c13aae",
+  "acknowledgesFailureFingerprint": null
+}

@@ -218,27 +218,37 @@ Cue moments observed live on the route, in order: `t_minus_30`, `t_minus_15`, `t
 `authoredPayloadAssetId: pod_cargo_container`. Genuinely downrange: `travelledFromLauncher`
 1140.8 WU, speed 52.3 WU/s at the moment the clock was stopped.
 
-**Scoped limitation, stated rather than papered over:** these three stills are *wide* framings. The
-capsule is in frame in all three (screen-space NDC `0.31`–`0.68`) and identified by the live
-`Payload · TOW` affordance, but it sits off-centre with the player hull prominent; only the `far`
-framing lands inside the harness's own `0.62` centring threshold. The projection check is therefore
-advisory for the capsule and fatal for the facilities. A tight, centred close-up of the capsule
-remains **open**. It is a harness-framing gap, not a product defect: the asset is authored, admitted
-and visible.
+**Earlier scoped limitation:** the receipt's original capture produced wide capsule framings at
+screen-space NDC `0.31`–`0.68`; only `far` landed inside the harness's `0.62` centring threshold.
 
-## Open rows blocked on the PQ-034 lease — NOT claimed
+**Phase H1 one-attempt correction (2026-07-29): the current harness did not reproduce even that
+limited result.** All three requested capsule frames record `projectionInFrame: false`, at NDC
+approximately `(4.4, 6.7)`, and the pixels show the player/traffic/planet effects rather than a
+judgeable capsule. Classified **HARNESS**, not product: the same run launched a real capsule 1257.5
+WU downrange, and the sibling functional collector observed it `ready` / `authored` / visible at
+default and far with 3,776 subject triangles. Per the H1 one-attempt rule it was not recaptured. A
+valid capsule art still therefore remains **open**. The committed H1 evidence also corrects another
+harness fact: the numeric `seed` written by the stills script is metadata only; the ordinary New Game
+route never applies it, so it cannot be cited as deterministic evidence.
 
-PQ-034 holds the performance-evidence, validation-broker and browser-GPU leases. No broker manifest,
-no Electron run, and no performance or L4 capture was executed. The following remain unproven and are
-explicitly **not** claimed by this receipt:
+## Open rows after Phase H1
 
-- **GPU admission and residency** — no residency or admission measurement was taken.
-- **Draw-call and shader-program counts** — not counted.
-- **Representative matched performance** — no frame p95/p99, no hitch measurement, no traffic-loaded
-  route. The capture harness records no timings at all, by construction.
-- **Electron parity** — not run; browser-only.
-- **Independent human art verdict** — the facility and capsule stills have had no independent
-  human-eye review. Agent inspection of a screenshot is not an art verdict.
+H1 evidence: [`../evidence/h1/row3-pq019a-presentation/EVIDENCE.md`](../evidence/h1/row3-pq019a-presentation/EVIDENCE.md).
+
+- **GPU admission and residency: CLOSED / FUNCTIONAL PASS.** The real D3D11 route sampled all four
+  subjects. Launcher/catcher/fence were `ready` + `authored` at close/default/far; the capsule was
+  pending/invisible at the first close sample, then `ready` + `authored` + visible at default/far.
+  Every admitted subject used a static-batch surface, not an instance proxy.
+- **Draw-call and shader-program counts: CLOSED / FUNCTIONAL PASS.** Per-frame draw ranges were
+  launcher 51–57, catcher 49–55, fence 50–61, capsule 37–39; program counts 101–115 across the route.
+  These are counts only, not performance claims.
+- **Representative matched performance: OPEN — H3.** No frame p95/p99 or hitch measurement is cited;
+  H1 ran contended by design. `presentation-counts.json` contains no timing field.
+- **Electron parity: OPEN.** H1 row 3 was the batch's Browser presentation route; no PQ-019A Electron
+  presentation parity was requested or run.
+- **Independent human art verdict: PARTIALLY READY — H2.** Launcher/catcher/fence stills are ready for
+  human review. The capsule verdict is blocked because the one allowed H1 attempt missed the moving
+  subject at all three requested framings (HARNESS). A future valid capsule capture is required.
 
 Also still open from the packet's own list, unchanged by this work: solver-level PAYLOAD-only
 collision-group exclusivity, and the two broader Phase A checkboxes those rows gate.

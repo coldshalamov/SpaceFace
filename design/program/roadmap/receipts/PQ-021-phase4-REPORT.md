@@ -259,21 +259,24 @@ work — nothing here runs inside that budget.
 Inherited reds not chased, per the mission: `check:economy:anti-exploit`,
 `check:mission-cargo-loading`.
 
-## Open rows
+## Open rows after Phase H1
 
-Blocked on the PQ-034 performance-evidence / validation-broker / browser-gpu leases:
+H1 evidence: [`../evidence/h1/row2-pq021-ledger/EVIDENCE.md`](../evidence/h1/row2-pq021-ledger/EVIDENCE.md).
 
-1. **Headed Browser run of `pq021-ledger-route`.** Built, registered, never executed — the broker
-   acceptance receipt does not exist. What *is* proven (claim 6) is the same two routes driven
-   headlessly in the live game without the broker: K opens the Codex, the Ledger tab mounts the
-   panel, the dock destination mounts the same panel, and both show the five earned pages. The gap
-   is the headed run and the broker-issued acceptance receipt, not the route's existence.
-2. **Electron parity.** `check-pq021-ledger-route-electron.mjs` exists and cross-checks the Browser
-   receipt; the mission barred launching Electron. `route_accepted` requires both runtimes.
-3. **Independent legibility / provenance / usefulness review.** A human judgement, not a gate.
-4. **Physical controller pass.** The Y/Triangle → Codex mapping is asserted as a shipped config fact
-   (`src/systems/gamepad.js` button 3, `src/ui/input.js:815`). Stubbing `navigator.getGamepads` and
-   the poll loop would prove the stub, not the controller.
+1. **Headed Browser run of `pq021-ledger-route`: CLOSED / PASS.** The broker issued and consumed a
+   claim at fixed seed 47. Five Cathedral pages were earned in the live runtime and read through
+   both ordinary hosts; all images admitted, all page fields/provenance were present, focus entered
+   and returned, and the Browser reported no page issues.
+2. **Electron parity: CLOSED / PASS.** The repaired evidence entry ran through the same two hosts and
+   compared both page sets field-for-field against the Browser receipt with no divergence. The two
+   pre-route failures were classified HARNESS (launch descriptor mistaken for the app; canonical
+   root bootstrap omitted), fixed without touching product code, and are documented with the pass.
+3. **Independent legibility / provenance / usefulness review: OPEN — H2 human verdict.** H1 gives the
+   reviewer eight Browser/Electron stills and both machine-readable receipts; it cannot make the
+   aesthetic/usefulness judgement for them.
+4. **Physical controller pass: OPEN — H2 human action.** The Y/Triangle → Codex mapping remains only a
+   shipped config fact (`src/systems/gamepad.js` button 3, `src/ui/input.js:815`). H1 deliberately did
+   not substitute a stubbed gamepad for the real controller.
 
 Findings recorded rather than fixed, because they sit outside this write surface:
 

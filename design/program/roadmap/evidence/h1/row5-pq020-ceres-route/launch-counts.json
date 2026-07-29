@@ -1,0 +1,8 @@
+{
+  "schema": "spaceface.validation-launch-counts.v1",
+  "currentCandidateDigest": "0de1ed5ca1a348ed95c786ec0f217551508e10b5d79dd790f2a9b9684936da5b",
+  "byCandidate": {
+    "0de1ed5ca1a348ed95c786ec0f217551508e10b5d79dd790f2a9b9684936da5b": 1
+  },
+  "updatedAt": "2026-07-29T07:32:48.701Z"
+}

@@ -307,22 +307,45 @@ All four claim-outpost family members fail the identical 8 assertions. Repairing
 rewriting source GLB JSON chunks, which changes the frozen digests that the evidence record, the
 release row and the PQ-017 binding all pin. Recorded as follow-up, not silently absorbed.
 
-Not run, deliberately: `npm run check:art` (contains the known mutually-unsatisfiable
-`check-asset-pipeline-contract` gate-wiring assertion, out of scope by instruction) and any
-validation-broker, Electron, or performance capture (PQ-034 lease).
+Not run by the original structural leaf, deliberately: `npm run check:art` (contains the known
+mutually-unsatisfiable `check-asset-pipeline-contract` gate-wiring assertion, out of scope by
+instruction). Phase H1 later consumed the validation-broker/browser-GPU lease exactly once for this
+asset; matched performance remains Phase H3.
+
+### Phase H1 headed presentation addendum
+
+H1 Row 7 ran the registered `pq022-corridor-asset-leaves` Browser manifest at fixed seed `47` and
+**passed on its first and only launch** (`browser=1`, `electron=0`). The shipped
+`asteroidSites._ensureBeacon` owner placed `place_claim_outpost_relay` on a live Helios asteroid, and
+all three captures admitted the exact release artifact with `presentationAdmission: "ready"`,
+`authoredAssetState: "authored"`, `authoredAssetMode: "release"`, and
+`authoredReadableFallbackRetained: false`.
+
+Durable H1 stills:
+
+- [close](../evidence/h1/row7-pq022-asset-leaves/01-relay-close.png)
+- [default](../evidence/h1/row7-pq022-asset-leaves/02-relay-default.png)
+- [far](../evidence/h1/row7-pq022-asset-leaves/03-relay-far.png)
+- [full Row 7 evidence](../evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md)
+
+The captures confirm that the reservation in §3 describes the admitted authored asset, not a loading
+fallback. They do **not** resolve the reservation: the relay still reads as a generic grey primitive
+assembly, so Phase H2 Decision 1 must choose accept versus re-author. Zero Electron launches is by
+manifest design for this visual leaf; the shipped-shell sanity route is H1 Row 8, not a second relay
+capture.
 
 ## 7. Open rows
 
-Blocked on the **PQ-034 lease** (performance-evidence / validation-broker / browser-gpu). The leaf's
-upgrade to `route_accepted` happens there, not here:
+H1 functional presentation is complete. The remaining acceptance boundaries are:
 
-- [ ] headed Browser/Electron route acceptance and parity;
-- [ ] independent human visual verdict at the game camera — the reservation in §3 is the input to it,
-      not a substitute for it;
+- [x] one-use headed Browser presentation — H1 Row 7 PASS, fixed seed 47, exact release identity,
+      close/default/far stills, one Browser launch and no retry;
+- [ ] independent human visual verdict at the game camera — the reservation in §3 is the input to H2
+      Decision 1, not a substitute for it;
 - [ ] matched before/after performance on identical route/settings/viewport/seed: admission latency,
       draw calls/primitives, programs/materials, texture and GPU residency, LOD occupancy, frame
       p95/p99/hitches, resource high-water and cleanup. **No performance claim is made anywhere in
-      this leaf**; the stills are presentation only.
+      H1**; matched performance remains Phase H3.
 
 Handed to the integrator, not fixed here:
 
