@@ -915,6 +915,7 @@ export const render = {
     this._shadowSettingOn = shadowsOn;
     this._shadowReceiversDirty = true;
     this._shadowReceiverCount = 0;
+    this._w2sCamCache = null; // see _syncProjectionCamera(): decomposed chase-camera transform
     this._ensureKeyLightShadows();
     this._contactShadowPool = createContactShadowPool(scene);
     this._shipAuxPool = createShipAuxPool(scene);
@@ -1280,7 +1281,10 @@ export const render = {
     };
     state.camera.obj = cam.obj;
 
-    ctx.helpers.worldToScreen = (v) => this.worldToScreen(v);
+    // `out` is forwarded so HUD-side hot callers can opt into the no-allocation form; every existing
+    // single-argument call site is unaffected. Passing the helper as a bare function reference stays
+    // safe regardless — worldToScreen ignores a non-object second argument (a .map() index, say).
+    ctx.helpers.worldToScreen = (v, out) => this.worldToScreen(v, out);
     ctx.helpers.raycastToPlane = (ndc) => this.raycastToPlane(ndc);
     ctx.helpers.addTrauma = (a) => cam.addTrauma(a);
     ctx.helpers.socketWorldPose = (id, name) => this.socketWorldPose(id, name);
@@ -2330,19 +2334,92 @@ export const render = {
     return true;
   },
 
+  // Projection reads camera.matrixWorldInverse, and THREE.Camera#updateMatrixWorld rebuilds that
+  // inverse (a decompose plus a 4x4 invert) on EVERY call, dirty or not. The chase camera is posed
+  // once per frame by cam.follow() in prepareFrame, yet the flight HUD projects ~7 points per frame
+  // (selected-target marker, reticle centre + edge, the lead-pip pair, the projected-stop pair, the
+  // waypoint marker) and every one of them redid the inverse for a camera that had not moved.
+  //
+  // The guard deliberately does NOT hang off a frame-lifecycle flag: worldToScreen is exposed through
+  // ctx.helpers and is also called from input paths outside the render frame, where a "already
+  // refreshed this frame" flag can go stale and silently project against a wrong camera. Instead it is
+  // self-validating — cache the decomposed transform and refresh only when it demonstrably differs.
+  // Ten float compares replace the compose + inverse.
+  //
+  // COVERED: camera translation/rotation/scale (cam.follow, shake, reprojectFrame), a swapped camera
+  // object, reparenting (parent identity — a new parent changes matrixWorld with the local transform
+  // untouched, and Object3D#add does not flag the child), THREE's own dirty flag (updateMatrix /
+  // applyMatrix4 / add / attach / remove), the r184 `pivot` offset (composes into `matrix` without
+  // touching position/quaternion/scale), and hand-driven matrix modes — matrixAutoUpdate:false or
+  // matrixWorldAutoUpdate:false both fall back to the unconditional refresh this replaced, so those
+  // paths behave exactly as before. NaN coordinates fail every compare and therefore force a refresh.
+  //
+  // NEEDS NOTHING HERE: projectionMatrix is not part of matrixWorldInverse. Vector3#project reads it
+  // live, updateMatrixWorld never writes it, and every FOV/near mutation site already calls
+  // updateProjectionMatrix() — so an FOV slider or a resize is handled upstream, not by this guard.
+  //
+  // NOT COVERED, AND WAS NOT BEFORE: a moving ANCESTOR of the camera. updateMatrixWorld() walks down
+  // to children and never up to parents, so the previous unconditional call was equally blind to it.
+  //
+  // ONE DELIBERATE BEHAVIOR CHANGE: the old unconditional call also recomposed cam.matrix from P/Q/S
+  // every projection, clobbering a hand-written cam.matrix; on a cache hit that write now survives.
+  // Nothing writes cam.matrix directly (camera.js/cameraDirector.js/feel.js drive the camera only via
+  // position/lookAt), and renderer.render() recomposes it from P/Q/S each frame anyway, so this cannot
+  // change any projection here.
+  _syncProjectionCamera() {
+    const cam = this.cam.obj;
+    const pos = cam.position;
+    const quat = cam.quaternion;
+    const scale = cam.scale;
+    const cache = this._w2sCamCache;
+    if (
+      cache
+      && cache.cam === cam
+      && cache.parent === cam.parent
+      && cam.matrixWorldNeedsUpdate === false
+      && cam.matrixAutoUpdate !== false
+      && cam.matrixWorldAutoUpdate !== false
+      && (cam.pivot === null || cam.pivot === undefined)
+      && cache.px === pos.x && cache.py === pos.y && cache.pz === pos.z
+      && cache.qx === quat.x && cache.qy === quat.y && cache.qz === quat.z && cache.qw === quat.w
+      && cache.sx === scale.x && cache.sy === scale.y && cache.sz === scale.z
+    ) return cam;
+    cam.updateMatrixWorld();
+    const next = cache || (this._w2sCamCache = {
+      cam: null, parent: null,
+      px: 0, py: 0, pz: 0,
+      qx: 0, qy: 0, qz: 0, qw: 0,
+      sx: 0, sy: 0, sz: 0,
+    });
+    next.cam = cam;
+    next.parent = cam.parent;
+    next.px = pos.x; next.py = pos.y; next.pz = pos.z;
+    next.qx = quat.x; next.qy = quat.y; next.qz = quat.z; next.qw = quat.w;
+    next.sx = scale.x; next.sy = scale.y; next.sz = scale.z;
+    return cam;
+  },
+
   // Accepts authoritative galactic-global XZ (and optional y); projects the frame-local point.
-  worldToScreen(v) {
-    this.cam.obj.updateMatrixWorld();
+  // `out` is optional: hot per-frame callers may pass a reused { x, y, onScreen } record to avoid the
+  // allocation; it is written in place and returned. Omitting it allocates, exactly as before.
+  worldToScreen(v, out) {
+    const cam = this._syncProjectionCamera();
     const membrane = this._frameMembrane;
     const local = membrane
       ? membrane.toLocal(v, _w2sLocalXZ)
       : { x: v && v.x, z: v && v.z };
-    _pt.set(local.x, (v && v.y) || 0, local.z).project(this.cam.obj);
-    return {
-      x: (_pt.x * 0.5 + 0.5) * window.innerWidth,
-      y: (-_pt.y * 0.5 + 0.5) * window.innerHeight,
-      onScreen: _pt.z < 1 && Math.abs(_pt.x) <= 1 && Math.abs(_pt.y) <= 1,
-    };
+    _pt.set(local.x, (v && v.y) || 0, local.z).project(cam);
+    const x = (_pt.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-_pt.y * 0.5 + 0.5) * window.innerHeight;
+    const onScreen = _pt.z < 1 && Math.abs(_pt.x) <= 1 && Math.abs(_pt.y) <= 1;
+    // typeof-guarded so a stray second argument (a .map() index, say) can never be written through.
+    if (out && typeof out === 'object') {
+      out.x = x;
+      out.y = y;
+      out.onScreen = onScreen;
+      return out;
+    }
+    return { x, y, onScreen };
   },
 
   // Plane pick returns authoritative galactic-global XZ (input systems keep global aimWorld).
