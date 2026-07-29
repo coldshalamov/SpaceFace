@@ -94,6 +94,13 @@ const BEATS = [
 // Beat index for the choice beat (B5) — accepting its offer ends tutorial mode permanently.
 const CHOICE_BEAT_INDEX = BEATS.length - 1;
 
+// Cold-open premise (spec2/03 B0 "no modal"): the tutorial voice frames the 47-A contract at the
+// opening beat rather than via a modal. This carries the 47-A intent that the intro card used to own.
+const COLD_OPEN_PREMISE = 'Contract 47-A: the manifest says one mass — your instruments say another.';
+// Surfaced when the firing lesson first hands the player a trigger, so the starter weapon is named,
+// not just felt. Pulled from NEW_GAME's fitted starter loadout (see check:phase0-slice-contract).
+const STARTER_WEAPON_HINT = 'The Kestrel is armed: fire the Pulse Laser S, then let the heat clear.';
+
 const ORE_PREFIXES = [
   'cmdty_ore', 'cmdty_silicate', 'cmdty_ice', 'cmdty_volatiles',
   'cmdty_crystal', 'cmdty_gas', 'cmdty_scrap', 'cmdty_salvage',
@@ -511,7 +518,13 @@ export const onboarding = {
   // Spawn only inert, invulnerable training content during the flight drill.
   _enterBeat(beat) {
     if (!beat) return;
-    if (beat.key === 'thrust' || beat.key === 'brake') this._setObjectiveWaypoint(true);
+    if (beat.key === 'thrust') {
+      this._setObjectiveWaypoint(true);
+      // Cold-open: frame the 47-A contract the instant the tutorial begins (replaces the old intro
+      // modal's headline intent, per spec2/03 B0 "no modal"). Shares the beat voice channel.
+      this._sayTutorial(COLD_OPEN_PREMISE, { visual: false });
+    }
+    else if (beat.key === 'brake') this._setObjectiveWaypoint(true);
     else if (beat.key === 'marker') {
       this._spawnTrainer('marker');
       this._setObjectiveWaypoint(true);
@@ -530,6 +543,8 @@ export const onboarding = {
         ob.burstCooling = false;
       }
       this._setObjectiveWaypoint(true);
+      // Name the starter weapon at the firing lesson so the loadout is surfaced, not just felt.
+      this._sayTutorial(STARTER_WEAPON_HINT, { visual: false });
     }
     else if (beat.key === 'disengage') this._setObjectiveWaypoint(true);
     else if (beat.key === 'seam') {
