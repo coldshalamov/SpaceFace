@@ -654,6 +654,18 @@ function requestAuthoredUpgrade(mesh, renderer, scene) {
   catch (error) { console.warn('[render] authored asset upgrade request failed', error); }
 }
 
+// Prepare the live directional-shadow camera before asteroid visibility consumes its frustum.
+// The renderer's actual shadow-map state is authoritative: a setting can remain on while zero
+// receivers intentionally disable the map for this frame.
+export function prepareActiveShadowCamera(renderer, keyLight) {
+  const shadowMap = renderer && renderer.shadowMap;
+  const shadow = keyLight && keyLight.shadow;
+  if (!shadowMap || !shadowMap.enabled || !shadow) return null;
+  keyLight.updateMatrixWorld(true);
+  if (keyLight.target) keyLight.target.updateMatrixWorld(true);
+  shadow.updateMatrices(keyLight);
+  return shadow.camera || null;
+}
 const _plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const _ray = new THREE.Raycaster();
 const _pt = new THREE.Vector3();
@@ -2168,18 +2180,12 @@ export const render = {
     this._syncShadowMapEnabled();
     // Shadow follow (graphics spec G): keep the key light's shadow frustum centered on the player
     // so the tight 1400-unit ortho box always covers the local action. DirectionalLight position is
-    // an offset from its target; we move both together. No-op if shadows are disabled.
+    // an offset from its target; we move both together. No-op unless the shadow map will render.
     this._updateShadowFollow();
-    if (this._shadowSettingOn && this._keyLight && this._keyLight.shadow) {
-      this._keyLight.updateMatrixWorld(true);
-      if (this._keyLight.target) this._keyLight.target.updateMatrixWorld(true);
-      this._keyLight.shadow.updateMatrices(this._keyLight);
-    }
+    const shadowCamera = prepareActiveShadowCamera(this.renderer, this._keyLight);
     const asteroidSyncOptions = this._asteroidInstanceSyncOptions;
     asteroidSyncOptions.camera = this.cam.obj;
-    asteroidSyncOptions.shadowCamera = this._shadowSettingOn && this._keyLight && this._keyLight.shadow
-      ? this._keyLight.shadow.camera
-      : null;
+    asteroidSyncOptions.shadowCamera = shadowCamera;
     asteroidSyncOptions.records = this._entityFrame.asteroids;
     asteroidSyncOptions.recordsDirty = this._presentationWorld.consumeAsteroidDirty();
     this.state.render.asteroidInstancePool = syncAsteroidInstancePool(this._asteroidInstancePool, asteroidSyncOptions);
@@ -2280,7 +2286,6 @@ export const render = {
     }
     this._keyLight.position.set(px + 60, 140, pz + 40);
     this._keyLight.target.position.set(px, 0, pz);
-    this._keyLight.target.updateMatrixWorld();
   },
 
   _syncShadowMapEnabled() {
