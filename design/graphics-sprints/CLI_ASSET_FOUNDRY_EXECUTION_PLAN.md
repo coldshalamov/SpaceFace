@@ -65,8 +65,11 @@ The production pipeline is CLI-first. MCP is optional and must never be a checkp
 | Spector.js | library injected by a repo CLI wrapper | WebGL frame, draw-call, shader, texture, and state capture |
 
 Spector's MCP adapter may be enabled temporarily by an operator for an interactive diagnosis, but the
-committed pipeline calls a normal Node command. Blender MCP has the same status: useful for interactive
-inspection, never required for production.
+committed pipeline calls a normal Node command. Blender MCP is likewise not required for reproducible
+CLI production. When a connected Blender session is available for a material-truth repair, however,
+the complete surfaced asset must remain the primary Material Preview/Rendered authoring view under
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`; headless output can diagnose or build, but
+cannot close G4 surface truth, replace exact-source evidence, or grant acceptance.
 
 Material Maker 1.6 is not a dependency. On the reference Windows machine its official build repeatedly
 terminated with 0xc0000005 before its export script began, including default, OpenGL compatibility, and
@@ -107,16 +110,21 @@ evidence of isolation.
 1. Read AGENTS.md.
 2. Read assets/AGENTS.md, assets/ships/AGENTS.md, and src/render/AGENTS.md when the packet touches
    their scope.
-3. Read design/graphics-sprints/README.md, TOP50_WONDER_BUILD_PLAN.md section 5, and
+3. Read `docs/visual-assets/README.md` and
+   `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`; they own G0-G7 craft and acceptance.
+4. If the selected asset has a plastic/clay/LEGO-like, primitive-default, glowing disk/torus, or
+   fiction/material defect, read `.grok/skills/spaceface-blender-material-truth/SKILL.md` and use its
+   component-only image-generation/Codex-handoff route when that method is selected.
+5. Read design/graphics-sprints/README.md, TOP50_WONDER_BUILD_PLAN.md section 5, and
    QUALITY_RITUAL.md.
-4. Read only the packet-specific owner files listed below.
-5. Run git status --short.
-6. Run git worktree list --porcelain and prove the current directory is the assigned worktree.
-7. Run git diff -- each intended owner file before editing.
-8. Inspect release.__lock, release.__building, relevant Blender processes, and current file activity.
+6. Read only the packet-specific owner files listed below.
+7. Run git status --short.
+8. Run git worktree list --porcelain and prove the current directory is the assigned worktree.
+9. Run git diff -- each intended owner file before editing.
+10. Inspect release.__lock, release.__building, relevant Blender processes, and current file activity.
    Coordinate genuine overlap; do not delete signals.
-9. Record the starting commit and dirty-file list in the packet handoff.
-10. Capture or locate the packet's exact before evidence before changing presentation.
+11. Record the starting commit and dirty-file list in the packet handoff.
+12. Capture or locate the packet's exact before evidence before changing presentation.
 
 If owner files already contain unrelated work, the agent stops and reports the overlap. It does not
 absorb, revert, or rewrite another lane.

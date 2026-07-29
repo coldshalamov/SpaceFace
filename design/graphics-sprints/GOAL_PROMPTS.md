@@ -15,6 +15,16 @@ For every Tier A/B asset or VFX prompt below, append the mandatory worker clause
 `VISUAL_ITERATION_PROTOCOL.md` and require that file in the worker's read list. A cropped/tiny/stale
 screenshot is `EVIDENCE_INVALID`, and the protocol's minimum review cycles do not grant acceptance.
 
+For every authored 3D/Blender prompt—including a copied Top-50 goal—prepend the canonical craft route:
+`assets/ships/AGENTS.md` → `docs/visual-assets/README.md` →
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`. If a camera-prominent component reads as
+plastic/clay/LEGO-like, primitive-stacked, a glowing disk/torus, or fiction/material-incoherent, also
+require `.grok/skills/spaceface-blender-material-truth/SKILL.md`. The worker then uses a component
+fiction/material bill, component-only generated reference when that method is selected, the Codex
+handoff in `docs/visual-assets/AGENT_PROMPTS.md` § E if image generation is unavailable, a complete
+surfaced Material Preview/Rendered Blender assembly when connected, and exact-source evidence. Clay,
+headless builds, and beauty renders may diagnose; none alone closes G4 or grants acceptance.
+
 ---
 
 ## Master campaign (Top-50 wonder)
@@ -114,6 +124,10 @@ Read in order:
 7. design/world-identity/PIPELINE.md
 8. design/revamp/BP-08_VISUAL_ASSET_SPEC.md §2 — silhouette target for <ASSET_IDS>
 9. needed-assets.md §B + assets/QUEUE.md
+10. assets/ships/AGENTS.md + docs/visual-assets/README.md +
+    docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md
+11. .grok/skills/spaceface-blender-material-truth/SKILL.md when the named or observed defect matches
+    its trigger
 
 You are THREAD B — World Identity only.
 
@@ -232,6 +246,10 @@ Read in order:
 7. design/spec3/SPEC3-F9-asset-pipeline.md SPEC3-37 step 2
 8. assets/AGENTS.md §2.1 blocked wholeships
 9. FULL_GRAPHICS_REVAMP_GOAL.md Batch 5
+10. assets/ships/AGENTS.md + docs/visual-assets/README.md +
+    docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md
+11. .grok/skills/spaceface-blender-material-truth/SKILL.md when the named or observed defect matches
+    its trigger
 
 You are THREAD E — Wholeship Repair only.
 

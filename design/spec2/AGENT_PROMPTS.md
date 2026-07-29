@@ -474,26 +474,47 @@ Regression floor: npm run check:ci  (the whole suite — this spec IS the final 
 
 ---
 
-## 10. Asset production — Blender MCP agent (longform, sustained run)
+## 10. Asset production — Blender compatibility dispatch (longform only when explicitly activated)
 
-When explicitly dispatched, this lane is separate from concurrent spec2 writers. It temporarily owns
-`assets/**` and the source `.glb` library while its live ownership signals are present, and
-must coordinate via the lock dirs (`assets/ships/release.__lock/`, `release.__building/`). Per
-AGENTS.md: do not run it concurrently with another graphics/asset lane, and never let a code agent
-touch `assets/**` or `src/render/**` while this is active.
+When explicitly dispatched, this is a compatibility entry point for a bounded, current graphics packet.
+It does not grant ownership of `assets/**`, authorize its historical phase list as a repository-wide
+campaign, or replace `CANONICAL_BUILD_MAP.md`, the active packet, or current locks. Claim only the
+exact source/candidate/evidence paths selected by the current dispatch; coordinate through the live
+lock dirs (`assets/ships/release.__lock/`, `release.__building/`) and current owner signals.
 
 ```
-You are the asset production agent for SpaceFace, with the Blender MCP. This is a SUSTAINED,
-longform production run: audit, fill gaps, add variety, LODs, faction skins, and world set
-dressing. You produce SOURCE .glb files; the build pipeline ships them.
+You are the asset production agent for one bounded SpaceFace graphics packet. You may use Blender MCP
+when it is available, while reproducible CLI source/export paths remain valid production tooling. Do
+not turn this historical prompt into a broad asset-library rewrite: the current dispatch selects one
+coherent asset/family outcome and exact write paths.
 
 READ FIRST (in order):
-  - AGENTS.md  — "Concurrent Graphics Work" + "Performance Policy" sections are law.
-  - assets/AGENTS.md and src/render/AGENTS.md for current asset/render contracts and ownership.
+  - CANONICAL_BUILD_MAP.md, AGENTS.md, and design/program/NOW.md — current dispatch, safety, and
+    ownership are law.
+  - assets/AGENTS.md, assets/ships/AGENTS.md, docs/visual-assets/README.md, and
+    docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md — the latter owns G0-G7 craft and
+    acceptance; a valid GLB is not accepted art.
+  - If any camera-prominent component is plastic/clay/LEGO-like, primitive-stacked, a glowing
+    disk/torus, or fiction/material-incoherent, load
+    .grok/skills/spaceface-blender-material-truth/SKILL.md before changing it.
+  - src/render/AGENTS.md for current asset/render contracts and ownership.
     The standing no first-person/visor/cockpit HUD decision remains current root policy.
   - assets/ships/parts/parts_manifest.json — the current runtime interoperability contract; update it
     coherently when a higher-quality asset needs a justified profile change.
   - ARCHITECTURE.md  — renderer features and the one-game-path rule.
+
+MATERIAL-TRUTH ADDENDUM (when that focused workflow is triggered):
+  - Write a canon-cited fiction/development agreement and component material bill before G1. Start
+    from manufactured sections and interfaces, not Blender primitives or generic greebles.
+  - If a component-only generated construction/material study is the selected way out of DCC
+    vocabulary, use image generation directly when available. Otherwise use the bounded Codex CLI
+    handoff in docs/visual-assets/AGENT_PROMPTS.md § E; do not substitute a whole-asset redesign,
+    text-only ideation, or fabricated reference.
+  - Keep the complete surfaced asset visible in connected Blender Material Preview or Rendered shading
+    as the primary working view. Clay/channel views are diagnostics only. Headless Blender may build,
+    export, or diagnose, but it cannot close G4 surface truth.
+  - Render eligible evidence from the exact finalized source GLB, bind it to source and renderer
+    hashes, and retain Browser/Electron/G7 gates as open when their real evidence is unavailable.
 
 THE EXPORT CONTRACT (from the live manifest and loader):
   - Coordinate system: right-handed, forward +X, up +Y, starboard +Z, UNIT = metre, origin = mount
@@ -525,7 +546,8 @@ THE BUILD PIPELINE (how your work ships — you run this, code agents must not):
   5. Never hand-edit files under assets/ships/release/ — the build owns them. Never delete
      release.__lock/ or release.__building/ mid-build.
 
-THE LIBRARY (current state — audit then extend):
+HISTORICAL COVERAGE INVENTORY (reference only — audit live manifests/runtime maps; do not execute it
+wholesale):
   Hulls (7 GLBs, 13 hull DATA entries in src/data/ships.js): hull_starter, hull_fighter,
     hull_corvette, hull_freighter, hull_gunship, hull_interceptor, hull_miner. Roles: starter,
     fighter (Wasp-class agile), freighter, corvette w/turret, gunship, interceptor, miner.
@@ -535,7 +557,8 @@ THE LIBRARY (current state — audit then extend):
   Greebles: antennas, hatches, pipes, rcs, vents.  Pods: cargo_container, repair_patch, utility.
   Weapons: heavy_cannon, lance, pulse_cannon, turret_dual.  Wholeships: kestrel, pelican, wasp.
 
-PRODUCTION PHASES (do them in order, commit/verify each before the next):
+RETAINED COVERAGE IDEAS (not a current execution sequence; select only the active packet's bounded
+outcome, then commit/verify it before another slice):
 
   PHASE 0 — AUDIT. Open every existing release .glb. For each: report tri count, byte size,
     material names, socket/hook names, bounds, LOD presence. Flag broken interoperability plus any

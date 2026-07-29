@@ -24,6 +24,24 @@ Machine-readable index: `design/world-identity/place-identity-index.json`
 
 ## Pipeline stages
 
+### Authored-place craft route (required before stage 4)
+
+This pipeline owns story-to-place and geography routing; it does **not** define a separate quality bar
+for the resulting GLB. Before substantive Blender/place authoring, read
+`assets/ships/AGENTS.md` → `docs/visual-assets/README.md` →
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`. If current player-facing evidence identifies
+plastic/clay/LEGO-like primitive construction, an unexplained glowing torus/disk, or a mismatch between
+fictional function and visible substance, also load
+`.grok/skills/spaceface-blender-material-truth/SKILL.md`.
+
+For that defect class, the fiction/material bill, shape-grammar audit, optional **component-only**
+generated reference, and exact-source evidence rules are mandatory. Generated imagery remains
+reference-only; if the selected component-reference method needs image generation and the worker lacks
+it, use the bounded Codex handoff in `docs/visual-assets/AGENT_PROMPTS.md` § E. When connected Blender
+is available, keep the complete surfaced place in Material Preview or Rendered shading as the primary
+working state. Headless bootstrap or export commands can diagnose/produce a candidate, but cannot close
+G4 material truth or replace exact-source/player-route review.
+
 ### 1. Story intake (read-only canon)
 
 - **Sources:** `docs/worldbuilding/story/SECTOR-GRADIENT.md`,
@@ -62,7 +80,9 @@ in the player route.
   records authoring provenance, and appends `iteration_ledger.json`. Its concept-overlap result is a
   diagnostic: use a justified override when player-camera silhouette, identity, or quality evidence is
   stronger than the legacy configured threshold.
-- **Tool:** Blender MCP per `design/spec2/AGENT_PROMPTS.md` §10 — load concept JPG as `REF_<part_id>` in Blender
+- **Tool:** Blender MCP when available — load concept JPG as `REF_<part_id>` in Blender. The current
+  authoring/acceptance route is the visual-asset standard above; the legacy Spec2 prompt is a
+  compatibility dispatch aid, not a substitute for it.
 - **Builder script:** `tools/art/blender/author_place_archetype.py` — a bootstrap for concept-informed
   authoring, not a mandatory geometry or surfacing recipe.
 - **Resemblance diagnostic:** `npm run check:place-concept-resemblance` reports concept↔GLB silhouette
