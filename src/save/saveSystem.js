@@ -36,6 +36,11 @@ const RECOVERY_PREFIX = 'sf.recovery.';
 const FMT = 'spaceface-save';
 const AUTOSAVE_SLOT = 'auto';
 const AUTOSAVE_DEBOUNCE_MS = 10000; // ≤1 autosave write per 10s (§4.5)
+// Calm-window deferral (diagnosis §3): non-forced saves may wait out a recent player hit instead
+// of stacking capture work on a hot combat frame. Hard cap keeps a starved deferral bounded.
+const AUTOSAVE_DEFER_CALM_S = 3;      // player dealt/took damage within this sim-time window → defer
+const AUTOSAVE_DEFER_HARD_CAP_S = 60; // max sim seconds a deferred save waits before it flushes anyway
+const DEFERRABLE_AUTOSAVE_REASONS = new Set(['interval', 'trade', 'hud_layout']);
 const AUTOSAVE_TARGET_SLICE_MS = 8;
 const AUTOSAVE_HARD_SLICE_MS = 12;
 const SAVE_VALIDATION_CHUNK_CHARS = 8_192;
@@ -81,6 +86,7 @@ export const save = {
     this._lastAutosaveAt = -Infinity;  // wall-clock ms of last successful autosave (first is eligible)
     this._lastAutosavePlaytime = 0;    // meta.playtimeS at last interval autosave
     this._playerDead = false;          // set by player:death, cleared by player:respawn (autosave gate)
+    this._lastPlayerCombatSimTime = -Infinity; // sim-time of last player dealt/took damage (calm-window gate)
     this._autosavePending = null;      // accepted/coalesced job waiting beyond the current event stack
     this._autosaveInFlight = false;    // prevents forced triggers from starting concurrent writes
     this._autosaveGeneration = 0;      // invalidates stale worker/task completions
@@ -108,7 +114,17 @@ export const save = {
     // Death/respawn gate autosave (combat signals via events, not a state.player.dead field).
     bus.on('player:death', () => { this._playerDead = true; });
     bus.on('player:respawn', () => { this._playerDead = false; });
-    const clearPlayerDeathGate = () => { this._playerDead = false; };
+    // Calm-window gate signal: cheapest player-involved combat recency. No centralized timestamp
+    // lives in reachable state (the player entity's lastDamageT only fires on taking damage), so a
+    // tiny listener mirrors stationBroadcast's proven combat:damage recency for dealt+took hits.
+    bus.on('combat:damage', (p) => {
+      const s = this.state;
+      if (!s || !p) return;
+      if (p.targetId === s.playerId || p.attackerId === s.playerId) {
+        this._lastPlayerCombatSimTime = Number.isFinite(s.simTime) ? s.simTime : 0;
+      }
+    });
+    const clearPlayerDeathGate = () => { this._playerDead = false; this._lastPlayerCombatSimTime = -Infinity; };
     bus.on('save:loaded', clearPlayerDeathGate);
     bus.on('game:started', clearPlayerDeathGate);
     // Registered during system init, before main installs its new-game bootstrap listener, so old
@@ -850,13 +866,26 @@ export const save = {
     if (this._restoring) return false;
     if (state.mode !== 'flight') return false;
     if (this._playerDead) return false; // death/respawn pending (combat signals via events)
-    if (this._autosavePending || this._autosaveInFlight) return false;
+    const pending = this._autosavePending;
+    if (pending || this._autosaveInFlight) {
+      // A forced checkpoint (dock/jump/respawn) must not be swallowed by a non-forced job waiting
+      // out the combat calm window — promote the pending job in place. Object identity is what the
+      // flush chain checks, so the promoted job rides the already-scheduled hop and the force flag
+      // short-circuits the deferral gate on that hop.
+      if (pending && !pending.force && options.force && !this._autosaveInFlight) {
+        pending.force = true;
+        pending.reason = _reason || pending.reason;
+        return true;
+      }
+      return false;
+    }
     const now = nowMs();
     if (!options.force && now - this._lastAutosaveAt < AUTOSAVE_DEBOUNCE_MS) return false;
     const job = {
       reason: _reason || 'autosave',
       force: !!options.force,
       requestedAt: now,
+      requestedSimTime: Number.isFinite(state.simTime) ? state.simTime : 0,
       runEpoch: this._runEpoch,
     };
     this._autosavePending = job;
@@ -903,6 +932,20 @@ export const save = {
     if (state.mode !== 'flight') {
       this._autosavePending = null;
       return false;
+    }
+
+    // Calm-window deferral (diagnosis §3): non-forced interval/trade/hud_layout saves wait out a
+    // recent player-involved hit instead of stacking capture work on a hot combat frame. Forced and
+    // mission saves keep today's timing; the hard cap guarantees a starved deferral still flushes.
+    if (!job.force && DEFERRABLE_AUTOSAVE_REASONS.has(job.reason)) {
+      const nowSim = Number.isFinite(state.simTime) ? state.simTime : 0;
+      const lastCombat = Number.isFinite(this._lastPlayerCombatSimTime) ? this._lastPlayerCombatSimTime : -Infinity;
+      const sinceCombat = nowSim - lastCombat;
+      const sinceRequest = nowSim - (job.requestedSimTime || 0);
+      if (sinceCombat < AUTOSAVE_DEFER_CALM_S && sinceRequest < AUTOSAVE_DEFER_HARD_CAP_S) {
+        this._scheduleAutosaveWork(() => this._flushAutosave(job), true);
+        return false;
+      }
     }
 
     this._autosavePending = null;
@@ -1096,6 +1139,7 @@ export const save = {
     this._autosaveGeneration = (Number.isSafeInteger(this._autosaveGeneration)
       ? this._autosaveGeneration : 0) + 1;
     this._autosavePending = null;
+    this._lastPlayerCombatSimTime = -Infinity;
     const workers = this._activeSaveWorkers ? [...this._activeSaveWorkers] : [];
     for (const worker of workers) {
       try {
