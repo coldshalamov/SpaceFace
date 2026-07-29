@@ -55,6 +55,7 @@ import {
   invalidateShadowCasterPolicy,
   syncShadowCasterPolicy,
 } from './shadowCasterPolicy.js';
+import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
@@ -2147,7 +2148,7 @@ export const render = {
       }
       if (this._meshReconcileDirty) this.reconcileMeshes();
     }
-    this._updateShipPitch(frameDt);
+    updateShipPitchPresentation(this.state, frameDt);
     this.syncEntityViews(alpha);
     this.cam.follow(frameDt);
     syncContactShadowPool(this._contactShadowPool, this._entityFrame);
@@ -2187,48 +2188,6 @@ export const render = {
       if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();
     if (useCpu) perf.recordRenderWork('prepareFrame', performance.now() - t0);
     return true;
-  },
-
-  // Cosmetic pitch lean: the ship hull tilts nose-up when boosting / accelerating hard, and relaxes
-  // back to level when coasting. This is a render-only feel cue (does not affect physics/collision).
-  _updateShipPitch(frameDt) {
-    const dt = Math.min(0.05, Math.max(0, frameDt));
-    const rate = 6.0;   // rad/s — snappy but not jittery
-    for (const e of this.state.entityList) {
-      if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
-      if (e.flags && e.flags.docked) continue;
-      const boosting = !!(e.flags && e.flags.boosting);
-      const drive = this._engineDrive(e);
-      let target = 0;
-      if (boosting) target = -0.13;            // strong nose-up lean into afterburner
-      else if (drive > 0.75) target = -0.055;  // moderate lean under hard thrust
-      else if (drive > 0.35) target = -0.025;  // slight lean under cruise thrust
-      // reverse-thrust read: if drive is high but velocity opposes heading, pitch forward slightly
-      if (!boosting && drive > 0.3 && e.vel) {
-        const vx = e.vel.x, vz = e.vel.z;
-        const speed = Math.hypot(vx, vz);
-        if (speed > 8) {
-          const hx = Math.cos(e.rot), hz = Math.sin(e.rot);
-          const align = (vx * hx + vz * hz) / Math.max(1, speed);
-          if (align < -0.35) target = 0.07;    // braking/drifting backward
-        }
-      }
-      if (e.pitch == null) e.pitch = 0;
-      e.pitch += (target - e.pitch) * (1 - Math.exp(-rate * dt));
-      if (Math.abs(e.pitch) < 0.0005 && Math.abs(target) < 0.0005) e.pitch = 0;
-    }
-  },
-
-  // Approximate engine drive for a ship/drone for VFX/feel purposes. Mirrors the logic in vfx.js
-  // without importing it, to keep renderer decoupled from vfx internals.
-  _engineDrive(e) {
-    if (!e.vel) return 0;
-    const speed = Math.hypot(e.vel.x, e.vel.z);
-    const maxSpd = Math.max(1, e.maxSpeed || 1);
-    // A ship under thrust has speed near its heading; idle/drifting ships have low drive.
-    const hx = Math.cos(e.rot), hz = Math.sin(e.rot);
-    const align = speed > 1 ? (e.vel.x * hx + e.vel.z * hz) / speed : 0;
-    return Math.max(0, Math.min(1, (speed / maxSpd) * Math.max(0, align)));
   },
 
   drawPreparedFrame() {
