@@ -4,9 +4,9 @@
 
 This is the production contract for authored real-time assets. It separates three proofs:
 
-- **technical validity** ΓÇö source/export/release files are structurally correct and load;
-- **performance validity** ΓÇö the exact candidate fits a measured representative scene;
-- **visual acceptance** ΓÇö the exported runtime result communicates its role with professional form,
+- **technical validity**  -  source/export/release files are structurally correct and load;
+- **performance validity**  -  the exact candidate fits a measured representative scene;
+- **visual acceptance**  -  the exported runtime result communicates its role with professional form,
   construction, surface response, hierarchy, stability, and presentation.
 
 All three are required. A script may prove technical facts. It may not grant artistic acceptance.
@@ -16,22 +16,22 @@ no acceptance value by themselves.
 
 ## 2. Production states
 
-- `blockout` ΓÇö scale, occupancy, sockets, and broad silhouette. Primitives and temporary materials are
+- `blockout`  -  scale, occupancy, sockets, and broad silhouette. Primitives and temporary materials are
   allowed only with honest classification.
-- `design_candidate` ΓÇö distinctive role, orientation, primary masses, negative space, and construction
+- `design_candidate`  -  distinctive role, orientation, primary masses, negative space, and construction
   logic are proven in neutral views and the real camera.
-- `production_model` ΓÇö final macro/meso geometry, intersections, edge language, topology, shading, and
+- `production_model`  -  final macro/meso geometry, intersections, edge language, topology, shading, and
   transforms are stable enough for deliberate UV/bake work.
-- `bake_candidate` ΓÇö final UVs, tangent basis, map transfer, cage/rays, padding, and exported map
+- `bake_candidate`  -  final UVs, tangent basis, map transfer, cage/rays, padding, and exported map
   assignments are proven clean.
-- `surfaced_candidate` ΓÇö physically coherent, mesh-aware materials survive neutral and adversarial
+- `surfaced_candidate`  -  physically coherent, mesh-aware materials survive neutral and adversarial
   lighting and the actual renderer.
-- `integration_candidate` ΓÇö authored LODs, metadata, sockets, states, compression, exact runtime load,
+- `integration_candidate`  -  authored LODs, metadata, sockets, states, compression, exact runtime load,
   normal-route evidence, and representative performance pass.
-- `accepted` ΓÇö every applicable gate passes and required independent review is recorded against the
+- `accepted`  -  every applicable gate passes and required independent review is recorded against the
   exact candidate hash.
-- `blocked` ΓÇö a named dependency prevents the next proof. It is not completion.
-- `deprecated` ΓÇö intentionally removed from production use.
+- `blocked`  -  a named dependency prevents the next proof. It is not completion.
+- `deprecated`  -  intentionally removed from production use.
 
 No Tier A/B asset may self-promote to `accepted`.
 
@@ -57,7 +57,7 @@ Define supported camera states and projected-size bands before deciding geometry
 silhouette defect cannot be repaired by microtexture. A detail invisible at every supported view does
 not justify runtime cost.
 
-### Macro ΓåÆ meso ΓåÆ micro
+### Macro -> meso -> micro
 
 - macro: silhouette, proportion, direction, negative space, dominant masses;
 - meso: frame/shell relationships, bays, armor, access, engines, tools, payload, cooling, service;
@@ -171,6 +171,16 @@ logic into editable geometry and authored materials; do not project the image ov
 call the component resolved, and never infer authoritative normal/AO/ORM data from the generated
 pixels. Review the rebuilt component beside the reference in material and textureless/clay views.
 
+Image generation is optional until the chosen repair method actually depends on it; tool absence is
+not permission to fake a reference or quietly lower the quality bar. If the assigned worker lacks
+image generation and the component remains blocked by DCC vocabulary, hand the bounded component
+packet to a Codex session with image-generation capability using `AGENT_PROMPTS.md` § E. The handoff
+must receive the authoritative component crop, frozen footprint/orientation/interfaces, material
+bill, forbidden reads, and exact output/provenance paths. If the delegated Codex session also lacks
+the tool, record `blocked:image-generation-capability` and return to the controller. Do not
+substitute a text-only description, unrelated web image, or whole-asset redesign and call the
+reference step complete.
+
 ### Visible Blender working state
 
 For connected Blender work, keep the complete surfaced asset visible in Material Preview or Rendered
@@ -223,7 +233,7 @@ decimation may create a rough candidate but cannot prove production LOD quality.
 
 ### Budgets are measured hypotheses
 
-No global 4,000-triangle, 2ΓÇô6k-ship, texture-size, or material-count ceiling defines quality. Measure:
+No global 4,000-triangle, 2-6k-ship, texture-size, or material-count ceiling defines quality. Measure:
 
 - visible triangles and exported vertices;
 - draw calls/primitives/material slots;
@@ -236,15 +246,15 @@ No global 4,000-triangle, 2ΓÇô6k-ship, texture-size, or material-count ceilin
 Use the least expensive representation that preserves the accepted visual premise. Compression can
 reduce transfer; it cannot repair bad design, draw structure, or invisible geometry.
 
-## 5. G0ΓÇôG7 acceptance gates
+## 5. G0-G7 acceptance gates
 
-### G0 ΓÇö identity and brief
+### G0  -  identity and brief
 
 Prove exact asset/source/release/runtime identity, owner/locks, role/tier, supported views, scale,
 interfaces, family language, reference/provenance, exclusions, representative scene, and provisional
-cost hypothesis. ΓÇ£Make it AAA/more detailedΓÇ¥ is not a brief.
+cost hypothesis. "Make it AAA/more detailed" is not a brief.
 
-### G1 ΓÇö design and silhouette
+### G1  -  design and silhouette
 
 Review matched front/side/top/rear/three-quarter clay views, game-camera sizes, and family lineup.
 Forward direction and role must read without labels/color. Primary masses, negative space, load/thrust,
@@ -254,7 +264,7 @@ prominent primitives and repeated forms. Any
 retained primitive must have a visible functional reason, plausible scale, and designed transition
 into adjoining structure; naming a box “armor,” “vent,” or “service rail” does not satisfy this gate.
 
-### G2 ΓÇö production geometry
+### G2  -  production geometry
 
 Prove finished intersections, joints, recesses, thickness, rooted attachments, edge-radius families,
 stable grazing-light shading, final transforms, controlled triangulation, and an editable high/low or
@@ -269,14 +279,14 @@ depth, cut bays, trenches, channels, apertures, and hangars into that shell with
 thickness, and interiors. Detail must be zoned against quiet plate; full-surface greeble noise is not
 construction. These are defect-driven methods, not a mandatory house silhouette.
 
-### G3 ΓÇö UV and bake integrity
+### G3  -  UV and bake integrity
 
 Prove deliberate unique/trim/tiled/decal/hybrid UV strategy, measured density, checker/stretch,
 orientation, mip padding, mirror/overlap policy, frozen triangulation/tangent basis, controlled
 high-to-low cage/rays, clean tangent normal/AO/curvature/ID and other useful maps, and exported channel
 packing/color spaces. Automatic UV existence and a flat normal map do not pass.
 
-### G4 ΓÇö materials and surface story
+### G4  -  materials and surface story
 
 Prove declared physical surface stacks, roughness hierarchy, scale-correct normals, localized
 mesh-aware masks, causal wear, purposeful decals, stable glass/transparency, and material distinction
@@ -288,26 +298,26 @@ material-ID isolation and native-resolution crops: labels, texture filenames, ex
 shader settings cannot prove that a surface reads as its intended substance. Any unexplained
 plastic/clay/leather/rubber read fails G4 unless that substance was deliberately specified.
 
-### G5 ΓÇö LOD and measured cost
+### G5  -  LOD and measured cost
 
 Compare baseline/candidate in a representative worst-case scene. Record calls, scene triangles,
 asset vertices/triangles by LOD, materials/textures/nodes, transfer and estimated GPU memory,
 transparency/overdraw, load/upload stalls, CPU/GPU/frame timing where available, switch conditions, and
 transition captures. Optimization must preserve the visual premise.
 
-### G6 ΓÇö runtime integration
+### G6  -  runtime integration
 
 Prove sanctioned export, glTF validation, metadata, axes/scale/pivot/bounds/collision/sockets/materials/
 LOD/states, release processing, exact reviewed hash, no fallback, normal browser route, packaged route
 where required, movement/combat/tool/VFX behavior, mips/culling/shadows/transparency/post stability,
 and current runtime profile. Blender-only renders cannot pass.
 
-### G7 ΓÇö independent acceptance
+### G7  -  independent acceptance
 
 A separate reviewer inspects the brief, matched form/bake/material/LOD evidence, normal-route capture,
 profile, exact hashes, and unresolved issues. Decision is `accept`, `reject`, or `blocked`. Rejection
-must name gate, view/state, region, defect, and an outcome-based acceptance condition. ΓÇ£Needs more
-polishΓÇ¥ is insufficient.
+must name gate, view/state, region, defect, and an outcome-based acceptance condition. "Needs more
+polish" is insufficient.
 
 Gate results are `pass`, `fail`, `not_applicable`, `blocked`, or a specifically approved `waived`.
 Missing evidence is not `not_applicable`. No ordinary release waiver may hide a P0/P1.
@@ -319,23 +329,23 @@ Start from evidence. Examples:
 - inherited DCC material: write the component material bill, replace or deliberately configure the
   shader and maps, then verify the substance in material-ID isolation and adversarial light;
 
-- primitive stack ΓåÆ custom profiles, boolean/union/cut with cleanup, SubD/direct modeling, designed
+- primitive stack -> custom profiles, boolean/union/cut with cleanup, SubD/direct modeling, designed
   joints and negative space; for continuous primary masses, consider stepped section lofts rather
   than another layer of attached primitives;
-- toy/clay edge response ΓåÆ edge-radius families, stronger plane hierarchy, grazing-light review;
-- floating panel bars ΓåÆ true inset/recess/shadow gap with wall thickness where depth matters,
+- toy/clay edge response -> edge-radius families, stronger plane hierarchy, grazing-light review;
+- floating panel bars -> true inset/recess/shadow gap with wall thickness where depth matters,
   trim/decal where shallow;
-- shading waves ΓåÆ planar/topology cleanup, support geometry, weighted normals/data transfer after valid
+- shading waves -> planar/topology cleanup, support geometry, weighted normals/data transfer after valid
   form, frozen triangulation;
-- UV stretch/density debt ΓåÆ logical seams, unwrap/relax/pin/straighten, density and padding review;
-- bake skew/bleed ΓåÆ custom cage, isolated/exploded pairs, added low support, tangent/hard-edge fixes;
-- plastic metal ΓåÆ substrate/coating model, correct metallic classification, broad-to-micro roughness,
+- UV stretch/density debt -> logical seams, unwrap/relax/pin/straighten, density and padding review;
+- bake skew/bleed -> custom cage, isolated/exploded pairs, added low support, tangent/hard-edge fixes;
+- plastic metal -> substrate/coating model, correct metallic classification, broad-to-micro roughness,
   environment reflections, anisotropy/clearcoat only when supported and useful;
-- random grunge ΓåÆ reduce albedo noise, use panel variation and causal masks/painting/decals;
-- LOD pop ΓåÆ hand-authored simplification, preserve anchors, move subpixel detail to maps, better switch;
-- high repeated cost ΓåÆ instancing/BatchedMesh, compatible merge/atlas/trim, scene hierarchy cleanup;
-- shimmer ΓåÆ remove/bake subpixel geometry, mip-safe texture frequency, LOD/filter/anisotropy review;
-- glowing VFX blob ΓåÆ temporal envelope and core/body/halo/particle hierarchy with restrained bloom.
+- random grunge -> reduce albedo noise, use panel variation and causal masks/painting/decals;
+- LOD pop -> hand-authored simplification, preserve anchors, move subpixel detail to maps, better switch;
+- high repeated cost -> instancing/BatchedMesh, compatible merge/atlas/trim, scene hierarchy cleanup;
+- shimmer -> remove/bake subpixel geometry, mip-safe texture frequency, LOD/filter/anisotropy review;
+- glowing VFX blob -> temporal envelope and core/body/halo/particle hierarchy with restrained bloom.
 
 Techniques have no quota. Keep only methods that improve exported role/readability, construction,
 material identity, story, motion, cost at equal quality, or reproducibility.
@@ -344,11 +354,13 @@ material identity, story, motion, cost at equal quality, or reproducibility.
 
 Before editing:
 
-1. inspect status/diffs and locks;
-2. resolve exact source/candidate/release/runtime/fallback identities;
-3. inventory geometry, modifiers, UVs, maps, materials, sockets, LODs, metadata and states;
-4. capture fresh matched baseline and representative profile;
-5. fill a brief, classify current state, and list defects by earliest gate/severity.
+1. follow root `AGENTS.md` → `assets/AGENTS.md` → `assets/ships/AGENTS.md`; load
+   `.grok/skills/spaceface-blender-material-truth/SKILL.md` for its named defect class;
+2. inspect status/diffs and locks;
+3. resolve exact source/candidate/release/runtime/fallback identities;
+4. inventory geometry, modifiers, UVs, maps, materials, sockets, LODs, metadata and states;
+5. capture fresh matched baseline and representative profile;
+6. fill a brief, classify current state, and list defects by earliest gate/severity.
 
 Then loop:
 
@@ -365,7 +377,7 @@ while state is not accepted and state is not blocked:
   profile when cost-relevant
   keep, revise, or revert from evidence
   update gates and candidate hashes
-  request independent review after G0ΓÇôG6 pass
+  request independent review after G0-G6 pass
 ```
 
 The loop has no arbitrary pass count. One excellent pass may suffice; twenty superficial passes do
@@ -388,7 +400,7 @@ is the test. Beauty renders supplement diagnostics; they never replace them.
 
 An asset may stop only at:
 
-- `accepted` ΓÇö applicable G0ΓÇôG7 pass, no P0/P1, exact runtime candidate and required reviewer recorded;
-- `blocked` ΓÇö exact dependency, attempted action, remaining gate, and smallest unblock action recorded.
+- `accepted`  -  applicable G0-G7 pass, no P0/P1, exact runtime candidate and required reviewer recorded;
+- `blocked`  -  exact dependency, attempted action, remaining gate, and smallest unblock action recorded.
 
 `integration_candidate` is not finished.

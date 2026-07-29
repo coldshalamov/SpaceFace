@@ -25,7 +25,7 @@ counts, deficiency counts, triangle counts, and self-scores have no acceptance w
 Read `docs/visual-assets/README.md` and
 `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` first for substantive authored-asset work.
 The standard contains the state machine, tiers/severity, form/construction/UV/bake/material/LOD/VFX
-outcomes, G0ΓÇôG7 gates, defect-driven technique selection, evidence rules, and agent execution loop.
+outcomes, G0-G7 gates, defect-driven technique selection, evidence rules, and agent execution loop.
 
 Use `docs/visual-assets/SPACEFACE_MIGRATION.md` for the repository audit and migration sequence,
 `docs/visual-assets/AGENT_PROMPTS.md` for reusable task prompts, and
@@ -44,10 +44,10 @@ reachability. The visual-asset standard owns craft and acceptance semantics.
 6. The constitution, acceptance gates, execution protocol, and only the craft documents relevant to
    the earliest failed gate.
 7. A focused pass skill below when it materially helps:
-   - `../spaceface-blender-blockout/SKILL.md` ΓÇö form and construction;
-   - `../spaceface-blender-hardsurface/SKILL.md` ΓÇö materials and surface response;
+   - `../spaceface-blender-blockout/SKILL.md`  -  form and construction;
+   - `../spaceface-blender-hardsurface/SKILL.md`  -  materials and surface response;
    - `../spaceface-blender-material-truth/SKILL.md` — primitive/form plus fiction/material mismatch;
-   - `../spaceface-blender-surface-pass/SKILL.md` ΓÇö articulation, sockets, and final life.
+   - `../spaceface-blender-surface-pass/SKILL.md`  -  articulation, sockets, and final life.
 
 Do not infer current routing or readiness from old queue prose. Verify the exact asset ID against the
 live manifest, runtime map, exporter, candidate hash, and fresh normal-route capture.
@@ -56,8 +56,8 @@ live manifest, runtime map, exporter, candidate hash, and fresh normal-route cap
 
 Use only these states:
 
-`blockout` ΓåÆ `design_candidate` ΓåÆ `production_model` ΓåÆ `bake_candidate` ΓåÆ
-`surfaced_candidate` ΓåÆ `integration_candidate` ΓåÆ `accepted`.
+`blockout` -> `design_candidate` -> `production_model` -> `bake_candidate` ->
+`surfaced_candidate` -> `integration_candidate` -> `accepted`.
 
 `blocked` and `deprecated` are terminal classifications outside that progression. `done`, `finished`,
 `production-ready`, and `shippable` are reserved for `accepted`.
@@ -91,7 +91,7 @@ assets require independent G7 review against the exact candidate hash.
    transparency, scene, and frame impact. A generic triangle or texture ceiling is not measurement.
 7. **Validate and integrate.** Prove the exact reviewed release hash is reachable with no fallback in
    required browser/Electron paths. Complete required wiring only when the task owns the seam.
-8. **Request independent review.** Assemble the G7 packet after G0ΓÇôG6 pass. Continue on rejection at
+8. **Request independent review.** Assemble the G7 packet after G0-G6 pass. Continue on rejection at
    the earliest implicated gate.
 
 The loop has no arbitrary technique, pass, or iteration count. Continue while an applicable gate
@@ -141,6 +141,9 @@ Do not present these as final work:
 - Respect `assets/ships/release.__lock/`, `release.__building/`, authoring locks, and an active
   graphics owner. Never delete or impersonate another session's lock.
 - Preserve provenance and licenses for external/generated inputs.
+- When a selected component-reference repair needs image generation but the assigned worker lacks
+  it, use the Codex terminal handoff in `docs/visual-assets/AGENT_PROMPTS.md` § E. Never silently
+  skip the step, substitute text-only ideation, or broaden it into whole-asset concept drift.
 - Do not hand-edit generated release assets or weaken exporter/check assertions to ship a candidate.
 - Never use destructive Git commands against the shared working tree.
 - Do not replace detailed authored visuals with primitives or lower runtime quality to hide a
@@ -150,7 +153,7 @@ Do not present these as final work:
 
 ## Acceptance evidence
 
-Use the tier-appropriate G0ΓÇôG7 packet in
+Use the tier-appropriate G0-G7 packet in
 `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`, including:
 
 - exact source/export/release identity and exporter/validator result;

@@ -7,6 +7,11 @@ description: >
 
 # SpaceFace Blender — Life and Integration Pass
 
+Read `docs/visual-assets/README.md` and
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` first. This pass cannot grant acceptance or
+hide an unresolved material-truth G1–G4 failure; load
+`../spaceface-blender-material-truth/SKILL.md` when that defect class is present.
+
 ## Scope
 
 Use this pass when motion, state change, attachment behavior, or integration polish materially improves

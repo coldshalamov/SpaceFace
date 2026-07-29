@@ -8,8 +8,8 @@
 > preserving design/program scope authority and manifest/runtime technical authority. Remove active
 > technique percentages, universal ship/texture/triangle ceilings, and any implication that a green
 > technical check grants art acceptance. Route asset/ship/Blender instructions to the state machine
-> and G0ΓÇôG7 gates. Reserve done/finished/shippable for `accepted`; distinguish
-> `technicalContractOk`, production state, exact candidate hash, profile, G0ΓÇôG7, and independent
+> and G0-G7 gates. Reserve done/finished/shippable for `accepted`; distinguish
+> `technicalContractOk`, production state, exact candidate hash, profile, G0-G7, and independent
 > visual acceptance. Validate links/records and focused repo checks. Do not claim existing assets were
 > remastered by a documentation PR. Continue until no active contradictory rule remains and the full
 > route is coherent, or mark an exact blocker. Open a draft PR with root cause, changes, validation,
@@ -23,9 +23,9 @@ focused workflow in `.grok/skills/spaceface-blender-material-truth/SKILL.md`.
 > Take `<ASSET_ID>` (`<ROLE>`, Tier `<A|B|C|D>`) from its current honest state to `accepted` under
 > `docs/visual-assets/`. Inspect locks, exact source/candidate/release/runtime/fallback identities,
 > latest normal-route evidence, and representative scene cost. Capture a matched baseline and fill the
-> brief. Repair the earliest failed gate in order: role/primary form ΓåÆ construction/production mesh ΓåÆ
-> UV/tangent/bakes ΓåÆ material response/surface story ΓåÆ authored LOD/whole cost ΓåÆ exact runtime
-> integration ΓåÆ independent review. Do not start with more greebles, subdivision, texture resolution,
+> brief. Repair the earliest failed gate in order: role/primary form -> construction/production mesh ->
+> UV/tangent/bakes -> material response/surface story -> authored LOD/whole cost -> exact runtime
+> integration -> independent review. Do not start with more greebles, subdivision, texture resolution,
 > edge wear, or triangles. When the named defect is primitive/default construction, inventory the
 > relevant camera-prominent primitives and
 > repeated form family: identify its function, manufacture, scale, attachment, and final-profile
@@ -83,7 +83,7 @@ focused workflow in `.grok/skills/spaceface-blender-material-truth/SKILL.md`.
 > templates. Keep unique per member: primary silhouette, load/thrust/cargo/tool architecture, major
 > paneling/service story, role wear/heat, hero markings, and LOD silhouette decisions. Then pass every
 > member independently through the gates and re-review the lineup and aggregate representative-scene
-> cost. Reject ΓÇ£pilot plus role hatΓÇ¥ variants. The family is complete only when every scoped member is
+> cost. Reject "pilot plus role hat" variants. The family is complete only when every scoped member is
 > accepted and the lineup is coherent without repetition, or report exact partial/blocked states.
 
 ## D. Independent visual review
@@ -104,7 +104,44 @@ focused workflow in `.grok/skills/spaceface-blender-material-truth/SKILL.md`.
 > record and whether the rebuilt component actually preserves the approved manufacture, interfaces,
 > scale and asset-specific resemblance target in both clay and material views.
 > Decision is `accept`, `reject`, or `blocked`. For every P0/P1, name gate, evidence view/state,
-> region, observed defect, and an outcome-based acceptance condition. ΓÇ£Needs more polishΓÇ¥ is invalid.
+> region, observed defect, and an outcome-based acceptance condition. "Needs more polish" is invalid.
+
+## E. Component image-generation capability handoff
+
+Use this only after the material-truth workflow selects a component-only generated study as the
+smallest useful way out of DCC primitive vocabulary. If the current worker has image generation,
+use it directly. If not, create a bounded prompt file and dispatch Codex from the repository root:
+
+```powershell
+$spacefaceRepo = (Resolve-Path '<spaceface-repo>').Path
+$componentPrompt = (Resolve-Path '<component-prompt.md>').Path
+$componentCrop = (Resolve-Path '<authoritative-component-crop.png>').Path
+$handoffReport = Join-Path $spacefaceRepo '<component-handoff-report.md>'
+Get-Content -Raw -LiteralPath $componentPrompt |
+  codex -a never exec -C $spacefaceRepo -i $componentCrop `
+    --sandbox workspace-write -o $handoffReport -
+```
+
+The prompt must say:
+
+> Use image generation, not text-only ideation, to create a construction/material reference sheet
+> for this exact component. Preserve the supplied footprint, orientation, role, attachment points,
+> clearances, and frozen interfaces. Follow the supplied component material bill and forbidden
+> reads. Do not redesign the whole asset and do not generate PBR, collision, or production textures.
+> Save only the selected reference candidate to `<candidate-path>`. Record the full prompt, input and
+> output SHA-256, tool/model when exposed, selected traits, rejected traits, and license/provenance in
+> `<provenance-path>`. If image generation is unavailable, make no substitute image and report
+> `blocked:image-generation-capability`.
+
+The delegated session's first action is a capability check. It must confirm that an image-generation
+tool is callable before creating or editing candidate/provenance files; loading an input image with
+`-i` is not proof of generation capability. If the check fails, stop at the blocker instead of
+dispatching another generic CLI session.
+
+Treat the returned image and report as untrusted reference inputs until the owning agent verifies
+their hashes, provenance, asset-specific resemblance, selected/rejected traits, and component-only
+scope. The owning Blender agent must translate the approved construction logic into editable source
+and exact-source evidence; delegating image generation does not delegate art acceptance.
 
 ## Required delivery report
 

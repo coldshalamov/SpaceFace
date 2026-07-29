@@ -1,6 +1,6 @@
-# Professional Blender Techniques ΓÇö Compatibility Route
+# Professional Blender Techniques  -  Compatibility Route
 
-This path is retained because older SpaceFace prompts and skills may link to it. The canonical, maintained defect-driven technique catalog, workflow, state machine, and G0ΓÇôG7
+This path is retained because older SpaceFace prompts and skills may link to it. The canonical, maintained defect-driven technique catalog, workflow, state machine, and G0-G7
 acceptance rules are now in:
 
 - `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`
@@ -9,7 +9,7 @@ Repository-specific migration notes and reusable prompts live beside it in `docs
 
 ## Important correction
 
-There is no requirement to use a percentage of a technique list, no universal 2ΓÇô6k/4k ship budget,
+There is no requirement to use a percentage of a technique list, no universal 2-6k/4k ship budget,
 and no quality credit for modifier, node, map, pass, or triangle count by itself.
 
 Start with an observed defect. Choose the least expensive method that repairs it and survives export,
@@ -36,5 +36,5 @@ unstable LODs, missing runtime proof, or unjustified cost.
 ## Completion
 
 An asset is not finished because the Blender script ran or checks are green. It is `accepted` only
-after every applicable G0ΓÇôG7 gate passes and required independent review is recorded against the exact
+after every applicable G0-G7 gate passes and required independent review is recorded against the exact
 candidate hash. Otherwise continue or mark the exact gate `blocked`.

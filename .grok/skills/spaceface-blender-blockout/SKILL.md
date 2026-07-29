@@ -7,6 +7,11 @@ description: >
 
 # SpaceFace Blender — Form and Construction Pass
 
+Read `docs/visual-assets/README.md` and
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` first. If the form defect is also a
+plastic/clay/LEGO-like or fiction/material mismatch, load
+`../spaceface-blender-material-truth/SKILL.md`; this pass cannot weaken that workflow or G0–G7.
+
 ## Scope
 
 Use this focused pass when inspection shows that the asset's silhouette, proportion, construction,

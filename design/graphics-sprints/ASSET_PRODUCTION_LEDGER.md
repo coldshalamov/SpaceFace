@@ -15,8 +15,8 @@ Use this order inside an activated graphics lane:
 1. `CANONICAL_BUILD_MAP.md`, the live queue, and `design/program/NOW.md` for dispatch and leases.
 2. `design/program/08_GRAPHICS_OVERHAUL_CHECKPOINT.md` for current integration truth.
 3. This ledger for PQ-022/PQ-023 subdivision and coverage.
-4. `VISUAL_ITERATION_PROTOCOL.md` for minimum scrutiny, valid framing, story-grounded briefs and
-   non-gameable review cycles.
+4. `VISUAL_ITERATION_PROTOCOL.md` for outcome-based scrutiny, valid framing, story-grounded briefs
+   and non-gameable review records.
 5. `TOP50_WONDER_BUILD_PLAN.md` for visible priority and slice order.
 6. `FULL_GRAPHICS_REVAMP_GOAL.md` and `LONG_TERM_GRAPHICS_OVERHAUL.md` for outcome and architecture.
 7. Live manifests, runtime maps, checks, and current player-route evidence for technical truth.
@@ -269,12 +269,12 @@ acceptance. Use exact-candidate matched views, game-camera motion, normal browse
 and required Electron routes, measured representative-scene cost and independent
 review. Preserve default quality and unrelated work.
 
-The protocol's stage counts are minimum valid review cycles, not permission to
-stop. A cycle counts only after a source change, exact-candidate rebuild/hash,
-valid full-subject matched evidence, original-resolution inspection and a written
-keep/revise/revert decision. Cropped, tiny, obscured, stale, wrong-hash/LOD or
-beauty-only evidence is invalid and must be recaptured. Build the canon-cited
-narrative dossier before G1; continue beyond the floor while P0/P1 defects remain.
+The protocol has no stage-count quota. A revision becomes evidence only after a
+source change, exact-candidate rebuild/hash, valid full-subject matched evidence,
+original-resolution inspection and a written keep/revise/revert decision.
+Cropped, tiny, obscured, stale, wrong-hash/LOD or beauty-only evidence is invalid
+and must be recaptured. Build the canon-cited narrative dossier before G1 and
+continue while P0/P1 defects remain.
 
 Integrate one coherent visual vertical at a time and leave the game bootable. Update
 this ledger's evidence/state for the exact VA/VP packet, then update the existing

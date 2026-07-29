@@ -24,10 +24,10 @@ production vehicle-art pipeline. Raising a triangle cap would make a more expens
 - Root/design/program documents retain scope/order authority.
 - Manifests/runtime maps retain exact identity and reachability authority.
 - Exporter/checks retain technical contract authority.
-- G0ΓÇôG7 evidence and independent review own visual acceptance.
+- G0-G7 evidence and independent review own visual acceptance.
 
-The compatibility technique reference no longer contains a ΓÇ£70%+ techniquesΓÇ¥ rule or a global
-2ΓÇô6k/4k ship target. Concrete quotas were overriding the repoΓÇÖs better outcome-driven policy.
+The compatibility technique reference no longer contains a "70%+ techniques" rule or a global
+2-6k/4k ship target. Concrete quotas were overriding the repo's better outcome-driven policy.
 
 ## Honest field names
 
@@ -62,18 +62,18 @@ when it is flat.
 
 ## Migration phases
 
-### Phase 0 ΓÇö stop semantic drift
+### Phase 0  -  stop semantic drift
 
 Install state vocabulary, reserve finished/shippable for `accepted`, rename misleading technical
 gates when safe, classify primitive generators honestly, and remove contradictory technique/count
 quotas.
 
-### Phase 1 ΓÇö install standards and records
+### Phase 1  -  install standards and records
 
 Route asset/ship/Blender instructions here. Add brief, performance, review, and acceptance records.
 Make exact candidate hash and independent reviewer required for Tier A/B acceptance.
 
-### Phase 2 ΓÇö one end-to-end pilot
+### Phase 2  -  one end-to-end pilot
 
 Use Helios Lark as a strong pilot: compact and visible, with canopy, engines, control surfaces,
 service regions, decals, LODs, and traffic cost sufficient to exercise the full pipeline.
@@ -92,7 +92,7 @@ Required pilot work:
 
 Do not rebuild every family member in parallel with one new recipe before the pilot is accepted.
 
-### Phase 3 ΓÇö migrate the family
+### Phase 3  -  migrate the family
 
 Extract only proven shared language: material roles, edge families, trim/decal atlas, fasteners,
 engine/service interfaces, sockets, bake/export/profile templates. Keep unique per member: primary
@@ -102,13 +102,13 @@ and LOD silhouette decisions.
 Cradle must not be Lark plus a mining tool. Span must not be a stretched Lark with boxes. Review each
 in clay and the unlabeled same-scale lineup.
 
-### Phase 4 ΓÇö migrate prominent assets by exposure
+### Phase 4  -  migrate prominent assets by exposure
 
 Prioritize starter/player/shipyard assets, frequent traffic/enemies, major stations/gates/landmarks,
 signature weapons/tools, close mission props, then supporting/distant families. Status remains per
 exact asset; accepted old assets stay available until replacements pass and rollback is proven.
 
-### Phase 5 ΓÇö industrialize without flattening art
+### Phase 5  -  industrialize without flattening art
 
 Automate validation, bake setup, evidence framing, compression, profiling, and approved bounded
 variants. Do not automate final primary design or independent acceptance into a generator threshold.
@@ -121,7 +121,7 @@ variants. Do not automate final primary design or independent acceptance into a 
    padding/tangents, bake maps, pack runtime textures, validate dimensions/content/color spaces, render
    diagnostics.
 3. **Exporter/release:** stamp exact metadata, validate contract, export GLB, Khronos-validate,
-   meshopt/gltfpack/glTF-Transform/KTX2 process where reviewed, record hashes/profileΓÇönever art accept.
+   meshopt/gltfpack/glTF-Transform/KTX2 process where reviewed, record hashes/profile - never art accept.
 4. **Runtime verification:** exact no-fallback browser/package load, supported cameras/lighting/states,
    sockets/VFX, LOD transition, renderer/frame/memory/load profile, G6 packet.
 
@@ -145,7 +145,7 @@ triangle alarm may still be costly due to draws, overdraw, textures, nodes, uplo
 asset above it may be justified when it preserves visible form inside measured headroom.
 
 No authoritative public current Destiny 2 per-asset triangle number was found that should govern this
-Three.js game. Another engineΓÇÖs isolated number would not encode SpaceFace camera, traffic density,
+Three.js game. Another engine's isolated number would not encode SpaceFace camera, traffic density,
 WebGL upload/memory, materials, LODs, or draw structure.
 
 ## Migration success

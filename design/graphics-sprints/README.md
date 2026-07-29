@@ -26,9 +26,9 @@ authorize quality cuts, arbitrary asset budgets, or process metrics as substitut
 8. [`ASSET_PRODUCTION_LEDGER.md`](ASSET_PRODUCTION_LEDGER.md) subdivides PQ-022/PQ-023 into stable,
    manifest-covering asset and presentation packets. It is a subordinate execution ledger, not a
    global queue or completion authority.
-9. [`VISUAL_ITERATION_PROTOCOL.md`](VISUAL_ITERATION_PROTOCOL.md) defines minimum scrutiny floors,
+9. [`VISUAL_ITERATION_PROTOCOL.md`](VISUAL_ITERATION_PROTOCOL.md) defines outcome-based scrutiny,
    valid full-subject/game-camera evidence, story-grounded art briefs, defect escalation and
-   independent review. Counts create inspection pressure; they never grant acceptance.
+   independent review. Iteration counts never grant or withhold acceptance.
 
 The canonical G0–G7 craft and acceptance contract lives at
 [`docs/visual-assets/`](../../docs/visual-assets/README.md)
@@ -52,8 +52,8 @@ captures.
 - Use references and techniques as a vocabulary, not a universal recipe. Choose the methods that serve the
   asset's role and avoid samey procedural sci-fi surfaces.
 - A useful loop is inspect → render → critique → make the largest justified improvement → render again.
-  Repeat until the visible result and technical evidence are convincing. The iteration protocol's floors
-  prevent one-pass exits; no fixed count grants acceptance or permits stopping with visible blockers.
+  Repeat until the visible result and technical evidence are convincing. No fixed count grants
+  acceptance or permits stopping with visible blockers.
 - Performance work removes invisible work and improves algorithms. It must not lower visible quality,
   disable authored assets, or impose fixed triangle/texture ceilings. Measured exceptions and asset-specific
   constraints belong in the live manifest/export contract with rationale.

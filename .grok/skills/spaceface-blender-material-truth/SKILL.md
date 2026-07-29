@@ -21,8 +21,10 @@ in `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`.
 
 ## 1. Establish authority and boundaries
 
-1. Read the root and nearest `AGENTS.md`, the live lock/lease board, the activated asset packet,
-   exact manifests/runtime maps, and the current asset source.
+1. Read the root and nearest `AGENTS.md`, `design/program/NOW.md`, the activated asset packet, exact
+   manifests/runtime maps, and the current asset source. Inspect any applicable path-local
+   `authoring.__lock/`, `assets/ships/release.__lock/`, and `assets/ships/release.__building/`
+   signals when present; never infer ownership from an old handoff alone.
 2. Record source, candidate, and live-release paths and hashes before editing.
 3. Freeze the gameplay identity, silhouette anchors, dimensions, sockets, collision, pivots, forward
    axis, and runtime role unless the brief explicitly authorizes a change.
@@ -49,7 +51,8 @@ UVs, bakes, wear, and LOD treatment. A convincing object name or shader value ca
 incorrect rendered substance.
 
 Use the component profile and material-bill shapes in `docs/visual-assets/TEMPLATES.md`. Require
-fail-closed material-bill coverage for every retained and newly visible component.
+fail-closed material-bill coverage for every disputed, changed, or newly camera-visible component
+in this pass. Do not turn the diagnostic into universal release paperwork for untouched quiet zones.
 
 ## 3. Audit the shape grammar
 
@@ -70,10 +73,14 @@ tube, box, torus, slab, rail, comb, and repeated bar, require a functional and m
 When a specific component is trapped by the current software vocabulary:
 
 1. Crop or isolate that exact component from the authoritative asset.
-2. Generate a component-only construction or material study that preserves its footprint,
+2. If this worker lacks image generation, use the bounded Codex terminal handoff in
+   `docs/visual-assets/AGENT_PROMPTS.md` § E. Do not skip the selected reference method, fabricate a
+   text-only substitute, or broaden the request into a whole-asset redesign. If the delegated
+   session also lacks image generation, record `blocked:image-generation-capability`.
+3. Generate a component-only construction or material study that preserves its footprint,
    orientation, interfaces, and role.
-3. Record tool, prompt, input/output hashes, selected traits, rejected traits, and license/provenance.
-4. Translate the chosen logic into editable geometry and authored materials.
+4. Record tool, prompt, input/output hashes, selected traits, rejected traits, and license/provenance.
+5. Translate the chosen logic into editable geometry and authored materials.
 
 Never use a generated whole-asset redesign as identity proof. Never project generated pixels onto the
 shipping asset, and never treat generated normal, AO, roughness, metallic, or collision data as
@@ -98,10 +105,11 @@ physically authoritative.
    object count increased.
 8. Derive physical maps from the actual mesh and authored surface information.
 
-For Tier A/B assets, follow the minimum valid-cycle floors in
+For Tier A/B assets, follow the outcome-based iteration protocol in
 `design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md`; one self-reviewed render is never the whole
-proof. If the same defect survives two repair cycles, change method rather than nudging parameters.
-If it survives a third, return to the earlier gate or request independent specialist review.
+proof, but an iteration count is not acceptance. When the same defect survives a repair method,
+change the method or return to the earliest failed gate instead of accumulating parameter nudges.
+Request independent specialist review when the owning agent can no longer discriminate the defect.
 
 ### Proven controls against the toy/plastic failure mode
 

@@ -9,6 +9,7 @@ maps, report commands, and current player-route captures are the status authorit
 |---|---|
 | Ship, station, gate, place, Blender/export | `assets/ships/AGENTS.md` |
 | Craft / acceptance (G0–G7, states, evidence) | `docs/visual-assets/README.md` |
+| Existing 3D asset reads plastic/clay/LEGO-like, primitive-stacked, or contradicts its fictional material/function | `.grok/skills/spaceface-blender-material-truth/SKILL.md` **and** `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` |
 | Station-bar portraits | `assets/portraits/AGENTS.md` |
 | Concept/reference art | `assets/concept/AGENTS.md` |
 | Visual program and priorities | `design/graphics-sprints/README.md` and `design/program/` |
@@ -60,6 +61,9 @@ accepted/blocked roster into policy.
   residency. Do not solve performance by replacing authored quality with primitives.
 - Require coherent silhouette, materials, scale, sockets, transforms, provenance, reproducible
   source, and player-camera evidence appropriate to the asset's role.
+- A Tier A/B material-truth complaint is not satisfied by a generic surfacing pass. Load the focused
+  material-truth skill, write the component fiction/material bill, repair the earliest failed form
+  or construction gate, and keep exact-source evidence fail-closed.
 
 ### 3.1 Coordination
 

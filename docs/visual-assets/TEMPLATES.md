@@ -225,7 +225,7 @@ identity, reviewer/date/evidence packet, and decision rationale.
 - material-role and varied-light/runtime evidence;
 - LOD transition and representative profile;
 - exact no-fallback runtime/behavior evidence;
-- G0ΓÇôG7 result and rationale;
+- G0-G7 result and rationale;
 - P0/P1 blockers, P2, P3;
 - provenance/tool versions/rebuild commands;
 - independent `accept|reject|blocked` decision and next action.

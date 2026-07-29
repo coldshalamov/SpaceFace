@@ -12,10 +12,11 @@ files, or saying that the result looks good. It earns acceptance only when the e
 survives valid evidence, defect-driven revision, normal-route use, measured cost, and required
 independent review.
 
-The counts below are **minimum scrutiny floors**, introduced because agents have repeatedly stopped
-after one technically compliant pass. Reaching a floor does not permit stopping while a visible P0/P1
-defect remains. A controller may waive a floor only when current exact-hash evidence proves that gate
-already passed before the task began; the waiver must name that evidence and an independent reviewer.
+Scrutiny is outcome-based. A technically compliant pass, source change, render count, elapsed time, or
+iteration number cannot close a gate. Continue while valid evidence shows a visible P0/P1 defect;
+stop only when the applicable evidence pack proves the gate and the required independent reviewer
+agrees. Current exact-hash evidence from before the task may satisfy a gate only when the record names
+that evidence and its reviewer.
 
 ## 2. What counts as one iteration
 
@@ -59,8 +60,8 @@ Unless the view is explicitly a detail crop or an unmodified gameplay-camera cap
 
 A full-subject image is invalid if the asset is cropped, smaller than roughly 35% of the frame without
 game-camera justification, mostly occluded, too dark/bright to evaluate, the wrong asset or LOD, or has
-unknown candidate identity. Invalid evidence does not count toward an iteration floor and cannot be
-approved. Adjust the camera/lighting and recapture before critique.
+unknown candidate identity. Invalid evidence cannot support a gate or approval. Adjust the
+camera/lighting and recapture before critique.
 
 ### 3.2 Gameplay-camera views
 
@@ -136,26 +137,22 @@ The prose is a design constraint, not decoration. Every major modeled or surface
 the production translation; every decorative part must justify function, scale, identity, history, or
 composition.
 
-## 5. Minimum scrutiny floors by production tier
+## 5. Scrutiny scales with exposure, never by iteration quota
 
-Each number is the minimum number of **valid review cycles**, including the stage baseline. Four cycles
-normally means baseline plus at least three source revisions. A cycle may satisfy adjacent stages only
-when it contains both complete evidence packs and separate defect decisions.
+No tier or gate has a prescribed render, revision, review, or iteration count. Tier changes the
+breadth and independence of evidence because exposure and repetition change the consequence of a
+defect.
 
-| Stage | Tier A hero/landmark | Tier B prominent/repeated | Tier C supporting modular | Tier D distant dressing |
-|---|---:|---:|---:|---:|
-| G0 dossier/brief | 2 | 2 | 1 | 1 |
-| G1 primary form/silhouette | 4 | 3 | 2 | 1 |
-| G2 construction/geometry/shading | 4 | 3 | 2 | 1 |
-| G3 UV/tangent/bake | 3 | 2 | 2 | 1 |
-| G4 materials/surface story | 4 | 3 | 2 | 1 |
-| G5 LOD and measured cost | 3 | 2 | 2 | 1 |
-| G6 runtime integration | 3 | 2 | 1 | 1 |
-| G7 independent review | at least 1 independent round | at least 1 independent round | controller review | controller review |
+| Tier | Required scrutiny outcome |
+|---|---|
+| Tier A hero/landmark | Complete applicable matched packs, supported gameplay pixel bands and states, dense-context cost, exact runtime route, and independent G7 review |
+| Tier B prominent/repeated | Complete applicable matched packs at normal and repeated use, representative aggregate cost, exact runtime route, and independent G7 review |
+| Tier C supporting modular | Evidence for the affected gates, representative assembly/repetition, controller review, and no unresolved P0/P1 in supported views |
+| Tier D distant dressing | Identity, cost, reachability, and supported-distance evidence proportionate to its actual presentation |
 
-These floors are deliberately higher for Tier A/B because professional hard-surface form and material
-response rarely emerge from one generated pass. They must not become “four renders means finished.” A
-stage exits only when valid evidence shows no remaining P0/P1 for that stage.
+A stage exits only when valid exact-candidate evidence covers its applicable defect classes and shows
+no remaining P0/P1. One revision may be enough when it genuinely repairs the defect and all required
+evidence agrees; many revisions are insufficient when the same defect remains.
 
 ## 6. What to inspect at each stage
 
@@ -204,8 +201,8 @@ Look specifically for:
 - high/low triangulation or tangent basis changing after bake;
 - texture sources that cannot be reproduced or edited.
 
-At least one bake cycle must use an adversarial checker and one must inspect the exported runtime normal,
-not only Blender's viewport.
+Required bake evidence includes an adversarial checker and the exported runtime normal, not only
+Blender's viewport.
 
 ### G4 — materials and surface story
 
@@ -221,9 +218,10 @@ Look specifically for:
 - clean panels with no hierarchy versus uniformly filthy objects with no maintenance history;
 - decals floating like stickers, emissive used as surface detail, and glass that fails sorting/depth.
 
-Every Tier A/B surface cycle must inspect neutral, grazing, dark and colored/environment-lit response. At
-least one cycle must remove bloom and emissive so material quality cannot hide behind glow.
-When a Tier A/B cycle is repairing a named material-identity failure, reconcile a component material
+Every Tier A/B surface decision must inspect neutral, grazing, dark and colored/environment-lit
+response. The matched pack must include bloom-off and emissive-off evidence so material quality
+cannot hide behind glow. When Tier A/B work is repairing a named material-identity failure, reconcile
+a component material
 bill against the image: substrate, manufacture,
 finish, adjoining interfaces, expected optical response, service history and forbidden reads for every
 camera-visible zone. Material names, palette blocks and Principled-BSDF values alone are not evidence.
@@ -256,8 +254,8 @@ Look specifically for:
 
 ### VFX-specific inspection
 
-VFX iteration requires motion. Inspect ignition, growth, sustain, decay and cleanup; pause on at least five
-meaningful temporal frames. Reject polygon cones, bead trails, visible cards, generic circular flashes,
+VFX iteration requires motion. Inspect ignition, growth, sustain, decay and cleanup using frames that
+represent each named phase. Reject polygon cones, bead trails, visible cards, generic circular flashes,
 primary expanding rings, color-only family identity, strobing beams, identical smoke puffs and long-lived
 white bloom. Include idle/ordinary/high-energy, dense, reduced-motion and reduced-flash scenarios.
 
@@ -271,8 +269,9 @@ After every valid cycle, produce a defect table:
 Rules:
 
 - fix macro before meso, meso before micro, and geometry/UV before surfacing that depends on them;
-- if the same defect survives two repair cycles, stop parameter nudging and change method;
-- if it survives a third cycle, return to the earlier gate or request controller/Blender-specialist review;
+- if the same defect survives the chosen repair, stop parameter nudging and change method;
+- return to the earlier gate or request controller/Blender-specialist review when the current method
+  cannot produce or discriminate the required observable result;
 - if a revision improves one view but breaks another, it is not a clean improvement;
 - discovering an earlier-gate failure invalidates dependent bakes, materials and LOD claims;
 - never hide a defect by changing evidence camera, lighting, crop, background, bloom or exposure;
@@ -309,18 +308,18 @@ Append this to every Tier A/B asset or VFX prompt:
 
 ```text
 Follow design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md. Its review-cycle
-numbers are minimum scrutiny floors, not completion quotas. A cycle counts only
-after a source change, exact-candidate rebuild/hash, valid full-subject matched
+records are evidence units, not completion quotas. A revision counts only after
+a source change, exact-candidate rebuild/hash, valid full-subject matched
 evidence, original-resolution inspection, and a recorded keep/revise/revert
 decision. Cropped, tiny, obscured, stale, unmatched, beauty-only or wrong-LOD
 images are EVIDENCE_INVALID: adjust camera/lighting and recapture; do not approve.
 
 Write the canon-cited narrative dossier and production translation before G1.
 Repair the earliest failed gate and inspect every named defect class for that
-stage. Continue beyond the floor while any P0/P1 remains. After two failed repairs
-change method; after three return to an earlier gate or escalate. Tier A/B cannot
-self-accept. The independent reviewer validates evidence first and reviews the
-normal gameplay frame before closeups.
+stage. Continue while any P0/P1 remains. If the chosen repair does not produce
+the observable result, change method or return to the earlier gate rather than
+accumulating nudges. Tier A/B cannot self-accept. The independent reviewer
+validates evidence first and reviews the normal gameplay frame before closeups.
 ```
 
 ## 10. Evidence record additions

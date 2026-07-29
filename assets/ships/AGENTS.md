@@ -11,8 +11,12 @@ manifests that bridge them to runtime. Exact machine records outrank prose inven
   in `src/render/partsLibrary.js`.
 - Source assets are authoring inputs; default runtime loads release assets.
 - For substantive visual authoring or remaster work, read `docs/visual-assets/README.md` and
-  `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`; use its craft principles, G0ΓÇôG7 gates,
+  `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`; use its craft principles, G0-G7 gates,
   and execution protocol as the canonical definition of done.
+- If any camera-prominent component is described as plastic, clay, rubber/leather without intent,
+  LEGO-like, primitive-stacked, a glowing disk/torus, or inconsistent with its fictional function
+  and manufacture, also load `.grok/skills/spaceface-blender-material-truth/SKILL.md`. This focused
+  workflow is mandatory for that defect class; it may add techniques but never weaken G0–G7.
 
 ## Current routing principle
 
@@ -43,9 +47,9 @@ candidate state.
   work where applicable, physically coherent materials, authored screen-space LODs, stable sockets,
   provenance, reproducible source/build steps, measured representative-scene cost, and current
   player-camera evidence.
-- Geometry, texture density, material count, and LOD are screen-space/profile decisionsΓÇönot global
+- Geometry, texture density, material count, and LOD are screen-space/profile decisions - not global
   quality ceilings. A historical count is a diagnostic only when tied to an exact scene and profile.
-- Use the G0ΓÇôG7 records in `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`. Tier A/B assets
+- Use the G0-G7 records in `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`. Tier A/B assets
   require an independent G7 review against the exact candidate hash.
 - Run asset status/reachability/live-load/visual-stability checks and inspect the normal game route.
 - Never edit generated release metadata by hand, weaken a check to ship a candidate, or wire an

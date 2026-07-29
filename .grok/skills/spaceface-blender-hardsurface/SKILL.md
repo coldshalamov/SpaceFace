@@ -7,6 +7,12 @@ description: >
 
 # SpaceFace Blender — Surfacing Pass
 
+Read `docs/visual-assets/README.md` and
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` first. If the surface complaint also names
+primitive/default construction or a fiction/material mismatch, load
+`../spaceface-blender-material-truth/SKILL.md`; a surface-only pass may not hide the earlier G1/G2
+failure.
+
 ## Scope
 
 Use this pass when current evidence shows a material or surface-response problem. It is not a mandate
