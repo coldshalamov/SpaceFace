@@ -20,7 +20,7 @@ One paragraph describing the player-visible result and the ordinary route that p
 - [ ] Current owner modules/events/APIs re-read and recorded below.
 - [ ] Required leases/mutexes free.
 - [ ] Existing behavior characterized by a seconds-scale test.
-- [ ] `npm run check:baseline` entry receipt persisted at the exact candidate base before the first edit; any entry red is repaired or carries an integrator-issued `INHERITED_RED` token.
+- [ ] `npm run check:baseline` run at the candidate base before the first edit; any entry red is noted (so a red at exit is attributable). Repair inherited reds when bounded; record them when not.
 - [ ] Baseline route/performance evidence captured when relevant.
 
 ## Live seams
@@ -75,36 +75,20 @@ Never use default quality reduction as the mitigation.
 
 > “Do not gain performance by reducing content, population, effects, draw distance, render quality, or default visual quality.”
 
-## Verification budget
+## Verification
 
-```yaml
-L0: []
-L1: []
-L2: []
-labScenario:
-  path: <src/testing/scenarios/... or null>
-  executor: <run|repeat|compare|null>
-  requiredForL3: true
-  exception: <null or the exact unrepresentable claim/schema gap>
-soak:
-  required: false
-  invariants: []
-browserOnlyClaims: []
-L3BrokerManifest: <single manifest name or null>
-L3BrokerManifests: []
-acceptanceAttemptsPerCellPerCandidateDigest: 1
-reviewClosure: discovery -> repair -> causal re-review when repairs affect the claim
-```
+Run `npm run check:baseline` before and after edits — that's the default gate. Beyond that, choose
+the checks proportionate to the change: a focused owner test for a small fix, broader checks for
+render/sim/save work, and route-level evidence only when the change actually warrants it. The point
+is to be *right*, not to fill out a verification matrix.
 
-Name exact commands. In addition to L0–L2, run `npm run check:baseline` before the first edit and at exit, persist both link matrices, and require the exit green set to be a superset of the entry green set under `00_EXECUTION_PROTOCOL.md`. Use exactly one broker field: `L3BrokerManifest` for one acceptance manifest,
-or `L3BrokerManifests` for a required multi-runtime/compound set; leave the unused field null/empty.
-Each manifest still owns one scalar runtime kind. A paired set must share an explicit source/scenario
-identity while retaining distinct runtime-bound broker candidate and raw-trace digests. If an eligible
-lab scenario exists, every applicable broker manifest must declare `requiresScenario`; a manually
-reported prior green is insufficient. For physics-heavy work, decide whether a seeded soak is required
-and name invariant-level failures rather than only one scripted outcome. Keep claims that genuinely
-require rendering, public input, accessibility, or visual judgment in `browserOnlyClaims`. After an L3
-failure, require a focused fail→fix→pass regression before another candidate claim.
+If you need the full validation ladder or broker-managed Browser/Electron route evidence, see
+[`docs/VALIDATION_WORKFLOW.md`](../../../../docs/VALIDATION_WORKFLOW.md). Use the deterministic lab
+(`src/testing/lab/`) for gameplay claims it can represent; reach for headed route evidence only when
+a claim genuinely can't be proven headlessly.
+
+List any packet-specific checks here (exact commands are fine when you know them), but don't treat
+this as a mandatory inventory — an empty list just means "the default gate covers it."
 
 ## Review questions
 
@@ -119,7 +103,7 @@ List missing owner seams, semantic collisions, lease conflicts, unbounded work, 
 - [ ] All entry conditions recorded.
 - [ ] Diff stays inside approved write budget.
 - [ ] L0–L2 receipt green at exact candidate.
-- [ ] Exit `npm run check:baseline` receipt is a superset of the entry green set; no red check is classified `OUT_OF_SCOPE`.
+- [ ] Exit `npm run check:baseline` passes; nothing green at entry is now red.
 - [ ] Independent discovery review complete.
 - [ ] Validated findings repaired.
 - [ ] Causal re-review terminal.

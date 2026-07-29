@@ -16,10 +16,7 @@ implementation hazards.
 - Generated `docs/EVENT_ROUTING.md` and `docs/SYSTEM_REGISTRY.md` come from the index builder; never patch generated output as the source fix.
 - Prefer focused tests/probes before broad chains. `package.json` is not a verification shopping list; the active packet names the relevant ladder.
 - Expensive Browser/Electron acceptance routes use the validation broker and a packet manifest. Direct launches are diagnostic unless the execution protocol records a one-use equivalent claim.
-- After an expensive product, harness, or nondeterminism failure, do not rerun the affected acceptance
-  cell until a deterministic seconds-scale regression at the owner seam is observed failing then
-  passing. Environment, stale-baseline, out-of-scope, and unknown failures follow the protocol's
-  class-specific disposition. Unchanged cell/failure fingerprints cannot authorize another attempt.
+- After an expensive failure, reduce it to a focused deterministic regression before rerunning the acceptance cell — don't loop an identical failed capture. See the execution protocol's failure-class dispositions.
 - Probes clean up browser/server/process resources and write evidence only to the designated ignored artifact tree.
 - Acceptance actors use public controls and visible semantics. Observers may collect approved owner evidence but may not mutate gameplay state or tell the actor hidden facts.
 - Performance probes bind candidate, route, runtime, hardware/profile, settings, viewport, seed/save, and raw trace identity. Never reuse a capture across acceptance cells.

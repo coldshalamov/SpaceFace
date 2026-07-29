@@ -26,6 +26,7 @@
 7. [My perf fix made the frame worse / browser diverged](#7-my-perf-fix-made-the-frame-worse--browser-diverged)
 8. [The sim/hash check broke after my change](#8-the-simhash-check-broke-after-my-change)
 9. [The Massline breaks during ordinary piloting](#9-the-massline-breaks-during-ordinary-piloting)
+10. [Check-tooling traps: hidden links, fail-fast aggregates, golden churn](#10-check-tooling-traps)
 
 ---
 
@@ -345,6 +346,55 @@ Do not add that flag to ordinary ships, asteroids, payloads, or World Site recov
 Run `npm run check:massline`, `npm run check:m1:tether-mass`,
 `npm run check:sg06:tether-resilience`, `npm run check:core:first-ten-minute`, and
 `npm run check:sim:compare`. Never restore a desired-break test for a normal standard line.
+
+---
+
+## 10. Check-tooling traps
+
+Historical incidents with the `check:*` tooling. None of these need to be carried in mind every
+turn; they explain the *shape* of the check commands and what a misleading result looks like. Reach
+for this section when a check result surprises you.
+
+### 10a. An invisible link is worse than a red one (deleted `precheck` lifecycle hook)
+
+Until 2026-07-27, `package.json` defined a `precheck` npm **lifecycle** script. npm runs lifecycle
+hooks automatically, so `npm run check` silently ran three extra gates first — and when one of them
+went red, `check` exited 1 having executed **zero** of its own links, for 333 commits, while looking
+like an ordinary check failure. That hook is now deleted and its three gates are the first three
+links of `check` itself, where you can see them.
+
+If you ever add a `pre*` or `post*` npm script here, you are re-creating that bug.
+
+### 10b. A fail-fast aggregate under-reports
+
+`check:massline` runs 23 children with a fail-fast loop, so it names only the first red one. On
+2026-07-27 it had three. **If an aggregate says one thing is broken, that is a lower bound, not a
+count.** Run the children individually or use `check:all` to see the full picture.
+
+### 10c. `check:sim:compare` is not a correctness check
+
+A green `check:sim:compare` does not mean the golden is current. `sf-sim compare` returns ok whenever
+the two runs agree with *each other*; `scripts/sf-sim.mjs` tolerates `expectedHash` and
+`expectedTraceCount` diffs against the expected envelope. It is a **determinism** check, not a
+**correctness** check. Only `check:sim` / `check:sim:v3` (the `--hash --expect` path) gate
+`test/47a.telemetry*.expected.json`.
+
+### 10d. When a sim golden hash fails, run the diff tool before re-recording
+
+Do not re-record `test/*.expected.json` just to pass. Run `node scripts/sim-golden-diff.mjs` first
+(add `--flight-system v3` for the V3 envelope). It exports a reference commit with `git archive`
+(read-only, no checkout, safe while other agents hold the working tree), runs the sim on both trees,
+diffs the snapshots, and answers the only question that matters:
+
+- **`IDENTICAL`** — nothing moved.
+- **`CONTENT_ONLY`** — zero entity `pos`/`vel`/`rot`/`angVel`/`prevPos` fields changed. The physics
+  and flight contract is bit-identical and a re-record is bookkeeping. Write the by-key breakdown and
+  the words "zero motion fields changed" into the expected file's `notes`.
+- **`MOTION_CHANGED`** — something moved differently. If you did not mean to change flight, physics,
+  or weapons behaviour, that is a **regression** and re-recording would bury it.
+
+Nine tenths of the churn in that hash is the economy price-cycle table, which is not physics at all,
+so "the hash changed" is never by itself a reason to do anything. The verdict is.
 
 ---
 
