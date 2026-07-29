@@ -1247,7 +1247,7 @@ export const render = {
     state.render.cameraCtrl = cam;   // controller (addTrauma/pushZoom) — exposed for feel.js / ui
     state.render.vf = vf;   // exposed for the dev-only ship turntable preview (shipPreview.js)
     state.render.warmPostProcess = () => {
-      const dynamicBufferEpoch = dynamicBuffers.arm();
+      const dynamicBufferEpoch = dynamicBuffers.arm('warm-post-process');
       try {
         return warmActivePostProcessFrame({
           video: state.settings && state.settings.video || {},
@@ -1314,7 +1314,7 @@ export const render = {
       await yieldToBrowser();
       const openingFrameStarted = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const video = state.settings && state.settings.video || {};
-      const dynamicBufferEpoch = dynamicBuffers.arm();
+      const dynamicBufferEpoch = dynamicBuffers.arm('opening-gpu-residency');
       try {
         if (video.renderGraph && this._ensureRenderGraph()) {
           this._renderGraph.render(scene, cam.obj, { time: this._bgTime || 0 });
@@ -2293,7 +2293,7 @@ export const render = {
     // proven bloom path stays the default; the render graph module is no longer tree-shaken because
     // it is reachable from this live branch. The energy materials I wired write HDR radiance that the
     // render graph composites with contact-depth AO.
-    const dynamicBufferEpoch = this._dynamicBuffers.arm();
+    const dynamicBufferEpoch = this._dynamicBuffers.arm('draw-prepared-frame');
     try {
       if (this.state.settings.video.renderGraph && this._ensureRenderGraph()) {
         this._lastRenderPath = 'renderGraph';
