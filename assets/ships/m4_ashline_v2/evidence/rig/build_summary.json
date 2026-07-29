@@ -1,17 +1,36 @@
 {
   "gateOk": true,
   "gateErrors": [],
-  "totalTriangles": 13640,
-  "hullTriangles": 12214,
+  "totalTriangles": 30065,
+  "hullTriangles": 12741,
   "lodTriangles": {
-    "lod0": 8076,
-    "lod1": 4177,
+    "lod0": 19154,
+    "lod1": 9488,
     "lod2": 1387
   },
   "drawEstimates": {
-    "lod0": 8,
+    "lod0": 6,
     "lod1": 5,
     "lod2": 1
+  },
+  "helperBreakdown": {
+    "triangles": 36,
+    "primitives": 3,
+    "drawEstimate": 3,
+    "nodes": [
+      {
+        "name": "COLLISION_HULL_00",
+        "tris": 12
+      },
+      {
+        "name": "COLLISION_HULL_01",
+        "tris": 12
+      },
+      {
+        "name": "COLLISION_HULL_02",
+        "tris": 12
+      }
+    ]
   },
   "sockets": [
     "SOCKET_Camera_Focus",
@@ -26,42 +45,705 @@
   ],
   "materials": [
     "Material_Cyan",
-    "Material_Warm",
+    "Material_HeatMetal",
     "Material_Hull",
     "Material_Mechanical",
-    "Material_Red_Paint"
+    "Material_Red_Paint",
+    "Material_Refractory"
   ],
-  "tangentPrimitiveCount": 14,
-  "uvPrimitiveCount": 14,
+  "tangentPrimitiveCount": 15,
+  "uvPrimitiveCount": 15,
   "lod0AabbSize": [
     18.5,
     6.601560115814209,
     11.493575096130371
   ],
   "collisionBounds": {
+    "basis": "root-local-aabb",
     "min": [
-      -3.3299999237060547,
-      -2.7726552486419678,
-      -4.827301502227783
+      -9.496666431427002,
+      -3.036717653274536,
+      -5.287044525146484
     ],
     "max": [
-      3.3299999237060547,
-      2.7726552486419678,
-      4.827301502227783
+      9.496666431427002,
+      3.036717653274536,
+      5.287044525146484
+    ],
+    "helpers": [
+      "COLLISION_HULL_00",
+      "COLLISION_HULL_01",
+      "COLLISION_HULL_02"
     ],
     "size": [
-      6.659999847412109,
-      5.5453104972839355,
-      9.654603004455566
+      18.993332862854004,
+      6.073435306549072,
+      10.574089050292969
     ]
   },
-  "sourceSha256": "6517F0BA291A8F58BB0BD97866B2251F4DDF67CFA7F9EC213F49AD031C747926",
+  "sourceSha256": "F77B8F1C5058B2C23BE9BF82D5BF1ACAE3940DEDC9F488728C593B78622059E6",
   "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\source\\wholeships\\ashline_v2_rig.glb",
   "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\blender\\ashline_v2_rig_production.blend",
-  "sourceBytes": 7852880,
-  "evidenceEpoch": {
-    "status": "post-finalize-current",
-    "epochDigest": "0D1A0628F23449E1B04C806FAB101E61F7CC41C6050C677D740A67110A38C098",
-    "visualEvidence": "requires-current-versioned-render"
+  "materialTruth": {
+    "revision": "rig-material-truth-2026-07-28-v1",
+    "components": [
+      "capture-boom-a-frame",
+      "forged-two-arm-jaw",
+      "grooved-tether-drum-and-fairlead",
+      "paired-reaction-drives",
+      "generic-forward-mount"
+    ],
+    "componentInventory": {
+      "schema": "spaceface.rigMaterialTruthInventory.v1",
+      "roles": [
+        {
+          "role": "boomChord",
+          "count": 4,
+          "namePrefix": "Hook_BoomChord_"
+        },
+        {
+          "role": "boomWeb",
+          "count": 6,
+          "namePrefix": "Hook_BoomWeb_"
+        },
+        {
+          "role": "captureRootDoubler",
+          "count": 2,
+          "namePrefix": "Hook_BoomRootDoubler_"
+        },
+        {
+          "role": "jawClevis",
+          "count": 4,
+          "namePrefix": "Hook_ClevisEar_"
+        },
+        {
+          "role": "jawArm",
+          "count": 2,
+          "namePrefix": "Hook_JawArm_"
+        },
+        {
+          "role": "jawKeeper",
+          "count": 2,
+          "namePrefix": "Hook_JawKeeper_"
+        },
+        {
+          "role": "jawPad",
+          "count": 6,
+          "namePrefix": "Hook_JawPad_"
+        },
+        {
+          "role": "tetherDrum",
+          "count": 1,
+          "namePrefix": "Hook_TetherDrum_Grooved"
+        },
+        {
+          "role": "drumCableWrap",
+          "count": 1,
+          "namePrefix": "Hook_TetherDrum_CableWrap"
+        },
+        {
+          "role": "tetherFairlead",
+          "count": 1,
+          "namePrefix": "Hook_TetherFairlead_Sheave"
+        },
+        {
+          "role": "braidedCable",
+          "count": 1,
+          "namePrefix": "Hook_TetherFairlead_BraidedRun"
+        },
+        {
+          "role": "drumBearing",
+          "count": 2,
+          "namePrefix": "Hook_TetherDrum_Bearing_"
+        },
+        {
+          "role": "drumBrake",
+          "count": 1,
+          "namePrefix": "Hook_TetherDrum_BrakeBand"
+        },
+        {
+          "role": "drumGuard",
+          "count": 2,
+          "namePrefix": "Hook_TetherGuard_"
+        },
+        {
+          "role": "hydraulicCylinder",
+          "count": 2,
+          "namePrefix": "Hook_JawHydraulicCase_"
+        },
+        {
+          "role": "drivePressureCase",
+          "count": 2,
+          "namePrefix": "Hook_DrivePressureCase_"
+        },
+        {
+          "role": "driveBell",
+          "count": 2,
+          "namePrefix": "Hook_DriveBell_"
+        },
+        {
+          "role": "driveRefractoryThroat",
+          "count": 2,
+          "namePrefix": "Hook_DriveRefractoryThroat_"
+        },
+        {
+          "role": "driveSaddle",
+          "count": 2,
+          "namePrefix": "Hook_DriveThrustSaddle_"
+        },
+        {
+          "role": "driveValvePack",
+          "count": 2,
+          "namePrefix": "Hook_DriveValvePack_"
+        }
+      ],
+      "manufacturedNormalPolicy": {
+        "method": "smooth_by_angle",
+        "angleDegrees": 28,
+        "keepSharpEdges": true
+      },
+      "digest": "20C9C457709E6AF250BDECD316C37D8C3262034BA7325366FF388DBFCD37D016"
+    },
+    "componentInventoryDigest": "20C9C457709E6AF250BDECD316C37D8C3262034BA7325366FF388DBFCD37D016",
+    "semanticBounds": {
+      "schema": "spaceface.m4-ashline-v2.rig-semantic-bounds.v1",
+      "basis": "rig-root-local-aabb",
+      "groups": {
+        "capture": {
+          "components": [
+            "Hook_BoomChord_Lower_Port",
+            "Hook_BoomChord_Lower_Starboard",
+            "Hook_BoomChord_Upper_Port",
+            "Hook_BoomChord_Upper_Starboard",
+            "Hook_BoomRootDoubler_Port",
+            "Hook_BoomRootDoubler_Starboard",
+            "Hook_BoomRootGusset_Port",
+            "Hook_BoomRootGusset_Starboard",
+            "Hook_BoomWebFrame_Port",
+            "Hook_BoomWebFrame_Starboard",
+            "Hook_BoomWeb_Port_A",
+            "Hook_BoomWeb_Port_B",
+            "Hook_BoomWeb_Port_C",
+            "Hook_BoomWeb_Starboard_A",
+            "Hook_BoomWeb_Starboard_B",
+            "Hook_BoomWeb_Starboard_C",
+            "Hook_ClevisCollar_Port",
+            "Hook_ClevisCollar_Starboard",
+            "Hook_ClevisEar_Port_Inboard",
+            "Hook_ClevisEar_Port_Outboard",
+            "Hook_ClevisEar_Starboard_Inboard",
+            "Hook_ClevisEar_Starboard_Outboard",
+            "Hook_ClevisPin_Port",
+            "Hook_ClevisPin_Starboard",
+            "Hook_ClevisRetainer_Port",
+            "Hook_ClevisRetainer_Starboard"
+          ],
+          "min": {
+            "x": -0.52,
+            "y": 0.49,
+            "z": -4.16
+          },
+          "max": {
+            "x": 7.94,
+            "y": 2.119928,
+            "z": -1.22
+          },
+          "center": {
+            "x": 3.71,
+            "y": 1.304964,
+            "z": -2.69
+          },
+          "size": {
+            "x": 8.46,
+            "y": 1.629928,
+            "z": 2.94
+          }
+        },
+        "jaw": {
+          "components": [
+            "Hook_ClevisCollar_Port",
+            "Hook_ClevisCollar_Starboard",
+            "Hook_ClevisEar_Port_Inboard",
+            "Hook_ClevisEar_Port_Outboard",
+            "Hook_ClevisEar_Starboard_Inboard",
+            "Hook_ClevisEar_Starboard_Outboard",
+            "Hook_ClevisPin_Port",
+            "Hook_ClevisPin_Starboard",
+            "Hook_ClevisRetainer_Port",
+            "Hook_ClevisRetainer_Starboard",
+            "Hook_JawActuatorEnd_Port",
+            "Hook_JawActuatorEnd_Starboard",
+            "Hook_JawArm_Port",
+            "Hook_JawArm_Starboard",
+            "Hook_JawForging_Port",
+            "Hook_JawForging_Starboard",
+            "Hook_JawHydraulicCase_Port",
+            "Hook_JawHydraulicCase_Starboard",
+            "Hook_JawHydraulicClevis_Port",
+            "Hook_JawHydraulicClevis_Starboard",
+            "Hook_JawHydraulicHose_Port",
+            "Hook_JawHydraulicHose_Starboard",
+            "Hook_JawHydraulicRod_Port",
+            "Hook_JawHydraulicRod_Starboard",
+            "Hook_JawKeeper_Port",
+            "Hook_JawKeeper_Starboard",
+            "Hook_JawPad_Port_0",
+            "Hook_JawPad_Port_1",
+            "Hook_JawPad_Port_2",
+            "Hook_JawPad_Starboard_0",
+            "Hook_JawPad_Starboard_1",
+            "Hook_JawPad_Starboard_2",
+            "Hook_JawPin_Port_0",
+            "Hook_JawPin_Port_1",
+            "Hook_JawPin_Starboard_0",
+            "Hook_JawPin_Starboard_1"
+          ],
+          "min": {
+            "x": 3.962715,
+            "y": 0.65,
+            "z": -3.72
+          },
+          "max": {
+            "x": 9.21,
+            "y": 2.11,
+            "z": -1.58
+          },
+          "center": {
+            "x": 6.586358,
+            "y": 1.38,
+            "z": -2.65
+          },
+          "size": {
+            "x": 5.247285,
+            "y": 1.46,
+            "z": 2.14
+          }
+        },
+        "winch": {
+          "components": [
+            "Hook_TetherBearingCap_Lower",
+            "Hook_TetherBearingCap_Upper",
+            "Hook_TetherBrake_ServiceCover",
+            "Hook_TetherDrum_Bearing_Lower",
+            "Hook_TetherDrum_Bearing_Upper",
+            "Hook_TetherDrum_BrakeBand",
+            "Hook_TetherDrum_CableWrap",
+            "Hook_TetherDrum_ClutchLever",
+            "Hook_TetherDrum_Grooved",
+            "Hook_TetherDrum_KeyedShaft",
+            "Hook_TetherFairlead_BraidedRun",
+            "Hook_TetherFairlead_DrumRun",
+            "Hook_TetherFairlead_Guide",
+            "Hook_TetherFairlead_Sheave",
+            "Hook_TetherFairlead_Terminal_Fairlead",
+            "Hook_TetherFairlead_Terminal_Jaw",
+            "Hook_TetherGuard_Port",
+            "Hook_TetherGuard_Starboard"
+          ],
+          "min": {
+            "x": 0.21,
+            "y": -0.099414,
+            "z": -3.27
+          },
+          "max": {
+            "x": 7.81,
+            "y": 2.3,
+            "z": -0.93
+          },
+          "center": {
+            "x": 4.01,
+            "y": 1.100293,
+            "z": -2.1
+          },
+          "size": {
+            "x": 7.6,
+            "y": 2.399414,
+            "z": 2.34
+          }
+        },
+        "drives": {
+          "components": [
+            "Hook_DriveBell_Port",
+            "Hook_DriveBell_Starboard",
+            "Hook_DriveClamp_Port_0",
+            "Hook_DriveClamp_Port_1",
+            "Hook_DriveClamp_Starboard_0",
+            "Hook_DriveClamp_Starboard_1",
+            "Hook_DriveEngineGusset_Port",
+            "Hook_DriveEngineGusset_Starboard",
+            "Hook_DriveHotSection_Port",
+            "Hook_DriveHotSection_Starboard",
+            "Hook_DriveInternalCue_Port",
+            "Hook_DriveInternalCue_Starboard",
+            "Hook_DrivePressureCase_Port",
+            "Hook_DrivePressureCase_Starboard",
+            "Hook_DriveRefractoryThroat_Port",
+            "Hook_DriveRefractoryThroat_Starboard",
+            "Hook_DriveRootDoubler_Port",
+            "Hook_DriveRootDoubler_Starboard",
+            "Hook_DriveRootGusset_Port",
+            "Hook_DriveRootGusset_Starboard",
+            "Hook_DriveSaddleWeb_Port",
+            "Hook_DriveSaddleWeb_Starboard",
+            "Hook_DriveServiceLine_Port",
+            "Hook_DriveServiceLine_Starboard",
+            "Hook_DriveThrustSaddle_Port",
+            "Hook_DriveThrustSaddle_Starboard",
+            "Hook_DriveTrussNodeLower_Port_Engine_Engine",
+            "Hook_DriveTrussNodeLower_Port_Engine_Root",
+            "Hook_DriveTrussNodeLower_Port_Root_Engine",
+            "Hook_DriveTrussNodeLower_Port_Root_Root",
+            "Hook_DriveTrussNodeLower_Starboard_Engine_Engine",
+            "Hook_DriveTrussNodeLower_Starboard_Engine_Root",
+            "Hook_DriveTrussNodeLower_Starboard_Root_Engine",
+            "Hook_DriveTrussNodeLower_Starboard_Root_Root",
+            "Hook_DriveTrussNodeUpper_Port_Engine_Engine",
+            "Hook_DriveTrussNodeUpper_Port_Engine_Root",
+            "Hook_DriveTrussNodeUpper_Port_Root_Engine",
+            "Hook_DriveTrussNodeUpper_Port_Root_Root",
+            "Hook_DriveTrussNodeUpper_Starboard_Engine_Engine",
+            "Hook_DriveTrussNodeUpper_Starboard_Engine_Root",
+            "Hook_DriveTrussNodeUpper_Starboard_Root_Engine",
+            "Hook_DriveTrussNodeUpper_Starboard_Root_Root",
+            "Hook_DriveTrussWeb_Port_Engine",
+            "Hook_DriveTrussWeb_Port_Root",
+            "Hook_DriveTrussWeb_Starboard_Engine",
+            "Hook_DriveTrussWeb_Starboard_Root",
+            "Hook_DriveValveFitting_Port_0",
+            "Hook_DriveValveFitting_Port_1",
+            "Hook_DriveValveFitting_Starboard_0",
+            "Hook_DriveValveFitting_Starboard_1",
+            "Hook_DriveValvePack_Port",
+            "Hook_DriveValvePack_Starboard"
+          ],
+          "min": {
+            "x": -9.17,
+            "y": -0.96,
+            "z": -2.8
+          },
+          "max": {
+            "x": -3.78,
+            "y": 0.8,
+            "z": 2.5
+          },
+          "center": {
+            "x": -6.475,
+            "y": -0.08,
+            "z": -0.15
+          },
+          "size": {
+            "x": 5.39,
+            "y": 1.76,
+            "z": 5.3
+          }
+        },
+        "authoredRig": {
+          "components": [
+            "Hook_BoomChord_Lower_Port",
+            "Hook_BoomChord_Lower_Starboard",
+            "Hook_BoomChord_Upper_Port",
+            "Hook_BoomChord_Upper_Starboard",
+            "Hook_BoomRootDoubler_Port",
+            "Hook_BoomRootDoubler_Starboard",
+            "Hook_BoomRootGusset_Port",
+            "Hook_BoomRootGusset_Starboard",
+            "Hook_BoomWebFrame_Port",
+            "Hook_BoomWebFrame_Starboard",
+            "Hook_BoomWeb_Port_A",
+            "Hook_BoomWeb_Port_B",
+            "Hook_BoomWeb_Port_C",
+            "Hook_BoomWeb_Starboard_A",
+            "Hook_BoomWeb_Starboard_B",
+            "Hook_BoomWeb_Starboard_C",
+            "Hook_ClevisCollar_Port",
+            "Hook_ClevisCollar_Starboard",
+            "Hook_ClevisEar_Port_Inboard",
+            "Hook_ClevisEar_Port_Outboard",
+            "Hook_ClevisEar_Starboard_Inboard",
+            "Hook_ClevisEar_Starboard_Outboard",
+            "Hook_ClevisPin_Port",
+            "Hook_ClevisPin_Starboard",
+            "Hook_ClevisRetainer_Port",
+            "Hook_ClevisRetainer_Starboard",
+            "Hook_DriveBell_Port",
+            "Hook_DriveBell_Starboard",
+            "Hook_DriveClamp_Port_0",
+            "Hook_DriveClamp_Port_1",
+            "Hook_DriveClamp_Starboard_0",
+            "Hook_DriveClamp_Starboard_1",
+            "Hook_DriveEngineGusset_Port",
+            "Hook_DriveEngineGusset_Starboard",
+            "Hook_DriveHotSection_Port",
+            "Hook_DriveHotSection_Starboard",
+            "Hook_DriveInternalCue_Port",
+            "Hook_DriveInternalCue_Starboard",
+            "Hook_DrivePressureCase_Port",
+            "Hook_DrivePressureCase_Starboard",
+            "Hook_DriveRefractoryThroat_Port",
+            "Hook_DriveRefractoryThroat_Starboard",
+            "Hook_DriveRootDoubler_Port",
+            "Hook_DriveRootDoubler_Starboard",
+            "Hook_DriveRootGusset_Port",
+            "Hook_DriveRootGusset_Starboard",
+            "Hook_DriveSaddleWeb_Port",
+            "Hook_DriveSaddleWeb_Starboard",
+            "Hook_DriveServiceLine_Port",
+            "Hook_DriveServiceLine_Starboard",
+            "Hook_DriveThrustSaddle_Port",
+            "Hook_DriveThrustSaddle_Starboard",
+            "Hook_DriveTrussNodeLower_Port_Engine_Engine",
+            "Hook_DriveTrussNodeLower_Port_Engine_Root",
+            "Hook_DriveTrussNodeLower_Port_Root_Engine",
+            "Hook_DriveTrussNodeLower_Port_Root_Root",
+            "Hook_DriveTrussNodeLower_Starboard_Engine_Engine",
+            "Hook_DriveTrussNodeLower_Starboard_Engine_Root",
+            "Hook_DriveTrussNodeLower_Starboard_Root_Engine",
+            "Hook_DriveTrussNodeLower_Starboard_Root_Root",
+            "Hook_DriveTrussNodeUpper_Port_Engine_Engine",
+            "Hook_DriveTrussNodeUpper_Port_Engine_Root",
+            "Hook_DriveTrussNodeUpper_Port_Root_Engine",
+            "Hook_DriveTrussNodeUpper_Port_Root_Root",
+            "Hook_DriveTrussNodeUpper_Starboard_Engine_Engine",
+            "Hook_DriveTrussNodeUpper_Starboard_Engine_Root",
+            "Hook_DriveTrussNodeUpper_Starboard_Root_Engine",
+            "Hook_DriveTrussNodeUpper_Starboard_Root_Root",
+            "Hook_DriveTrussWeb_Port_Engine",
+            "Hook_DriveTrussWeb_Port_Root",
+            "Hook_DriveTrussWeb_Starboard_Engine",
+            "Hook_DriveTrussWeb_Starboard_Root",
+            "Hook_DriveValveFitting_Port_0",
+            "Hook_DriveValveFitting_Port_1",
+            "Hook_DriveValveFitting_Starboard_0",
+            "Hook_DriveValveFitting_Starboard_1",
+            "Hook_DriveValvePack_Port",
+            "Hook_DriveValvePack_Starboard",
+            "Hook_JawActuatorEnd_Port",
+            "Hook_JawActuatorEnd_Starboard",
+            "Hook_JawArm_Port",
+            "Hook_JawArm_Starboard",
+            "Hook_JawForging_Port",
+            "Hook_JawForging_Starboard",
+            "Hook_JawHydraulicCase_Port",
+            "Hook_JawHydraulicCase_Starboard",
+            "Hook_JawHydraulicClevis_Port",
+            "Hook_JawHydraulicClevis_Starboard",
+            "Hook_JawHydraulicHose_Port",
+            "Hook_JawHydraulicHose_Starboard",
+            "Hook_JawHydraulicRod_Port",
+            "Hook_JawHydraulicRod_Starboard",
+            "Hook_JawKeeper_Port",
+            "Hook_JawKeeper_Starboard",
+            "Hook_JawPad_Port_0",
+            "Hook_JawPad_Port_1",
+            "Hook_JawPad_Port_2",
+            "Hook_JawPad_Starboard_0",
+            "Hook_JawPad_Starboard_1",
+            "Hook_JawPad_Starboard_2",
+            "Hook_JawPin_Port_0",
+            "Hook_JawPin_Port_1",
+            "Hook_JawPin_Starboard_0",
+            "Hook_JawPin_Starboard_1",
+            "Hook_TetherBearingCap_Lower",
+            "Hook_TetherBearingCap_Upper",
+            "Hook_TetherBrake_ServiceCover",
+            "Hook_TetherDrum_Bearing_Lower",
+            "Hook_TetherDrum_Bearing_Upper",
+            "Hook_TetherDrum_BrakeBand",
+            "Hook_TetherDrum_CableWrap",
+            "Hook_TetherDrum_ClutchLever",
+            "Hook_TetherDrum_Grooved",
+            "Hook_TetherDrum_KeyedShaft",
+            "Hook_TetherFairlead_BraidedRun",
+            "Hook_TetherFairlead_DrumRun",
+            "Hook_TetherFairlead_Guide",
+            "Hook_TetherFairlead_Sheave",
+            "Hook_TetherFairlead_Terminal_Fairlead",
+            "Hook_TetherFairlead_Terminal_Jaw",
+            "Hook_TetherGuard_Port",
+            "Hook_TetherGuard_Starboard"
+          ],
+          "min": {
+            "x": -9.17,
+            "y": -0.96,
+            "z": -4.16
+          },
+          "max": {
+            "x": 9.21,
+            "y": 2.3,
+            "z": 2.5
+          },
+          "center": {
+            "x": 0.02,
+            "y": 0.67,
+            "z": -0.83
+          },
+          "size": {
+            "x": 18.38,
+            "y": 3.26,
+            "z": 6.66
+          }
+        }
+      }
+    },
+    "collisionContract": {
+      "schema": "spaceface.rigCompoundCollision.v1",
+      "helpers": [
+        {
+          "name": "COLLISION_HULL_00",
+          "compoundIndex": 0,
+          "translation": [
+            -6.166666507720947,
+            0.0,
+            0.0
+          ],
+          "bounds": {
+            "min": [
+              -3.3299999237060547,
+              -2.7726552486419678,
+              -4.827301502227783
+            ],
+            "max": [
+              3.3299999237060547,
+              2.7726552486419678,
+              4.827301502227783
+            ]
+          }
+        },
+        {
+          "name": "COLLISION_HULL_01",
+          "compoundIndex": 1,
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "bounds": {
+            "min": [
+              -3.3299999237060547,
+              -3.036717653274536,
+              -5.287044525146484
+            ],
+            "max": [
+              3.3299999237060547,
+              3.036717653274536,
+              5.287044525146484
+            ]
+          }
+        },
+        {
+          "name": "COLLISION_HULL_02",
+          "compoundIndex": 2,
+          "translation": [
+            6.166666507720947,
+            0.0,
+            0.0
+          ],
+          "bounds": {
+            "min": [
+              -3.3299999237060547,
+              -2.7726552486419678,
+              -4.827301502227783
+            ],
+            "max": [
+              3.3299999237060547,
+              2.7726552486419678,
+              4.827301502227783
+            ]
+          }
+        }
+      ]
+    },
+    "collisionContractDigest": "2B86BFA1FF77F2760E8EFF23B6FAD96CCC56DF83A652F6A8A29D5B5B8458B92C",
+    "manufacturedNormalPolicy": {
+      "method": "smooth_by_angle",
+      "angleDegrees": 28,
+      "keepSharpEdges": true
+    },
+    "materialMapPolicy": {
+      "mode": "role-specific-deterministic-base-orm-normal",
+      "resolution": 256,
+      "universalRecipe": false,
+      "plateFastenersEmbeddedInMaps": false,
+      "roleMicrostructure": {
+        "Material_Hull": "phosphate-coated-plate-without-global-grid",
+        "Material_Mechanical": "directional-machining",
+        "Material_Red_Paint": "dielectric-coating-with-localized-steel-chips",
+        "Material_HeatMetal": "axial-heat-and-machining-bands",
+        "Material_Refractory": "dry-granular-ceramic-with-sparse-cracks",
+        "Material_Cyan": "smooth-protected-indicator"
+      }
+    },
+    "materialRoles": {
+      "Material_Red_Paint": "oxide-red-dielectric-guards-and-service-markings-only",
+      "Material_Cyan": "small-recessed-internal-drive-cue-only",
+      "Material_HeatMetal": "metallic-nickel-hot-sections-hardface-and-braided-cable",
+      "Material_Refractory": "dry-dielectric-alumina-zirconia-throat"
+    },
+    "promotionBlockers": [
+      "reaver-pirate-and-corsair-raider-share-one-rig-needs-accepted-variant-decision",
+      "v2-has-no-socket-tether-front-needs-runtime-tool-and-vfx-contract-decision",
+      "single-central-engine-trail-sockets-versus-two-visible-drive-bells-needs-runtime-vfx-proof",
+      "browser-electron-cost-and-independent-g7-evidence-remain-external"
+    ],
+    "sourceSha256": "F77B8F1C5058B2C23BE9BF82D5BF1ACAE3940DEDC9F488728C593B78622059E6",
+    "sourceHashBinding": {
+      "sourceSha256": "F77B8F1C5058B2C23BE9BF82D5BF1ACAE3940DEDC9F488728C593B78622059E6",
+      "componentInventoryDigest": "20C9C457709E6AF250BDECD316C37D8C3262034BA7325366FF388DBFCD37D016",
+      "collisionContractDigest": "2B86BFA1FF77F2760E8EFF23B6FAD96CCC56DF83A652F6A8A29D5B5B8458B92C"
+    },
+    "captureProfileId": "capture_hook_tether_control",
+    "weaponMountKind": "generic_shared_forward_mount",
+    "fictionalMaterials": {
+      "Material_Hull": "phosphate-coated-welded-high-strength-plate-girder-and-donor-structure",
+      "Material_Mechanical": "nitrided-tool-steel-pins-drum-bearings-and-pressure-cases",
+      "Material_Red_Paint": "non-metallic-oxide-red-guards-and-service-markings-only",
+      "Material_HeatMetal": "hardfaced-jaw-pads-braided-tether-and-nickel-hot-sections",
+      "Material_Refractory": "dry-alumina-zirconia-drive-throats",
+      "Material_Cyan": "small-recessed-internal-drive-cue-only"
+    },
+    "authoredComponentRoles": [
+      "a-frame-boom",
+      "band-brake",
+      "bearing-block",
+      "braided-tether",
+      "capture-clevis",
+      "drive-pressure-case",
+      "forged-jaw",
+      "hollow-bell",
+      "hydraulic-cylinder",
+      "jaw-keeper",
+      "refractory-throat",
+      "rope-fairlead",
+      "serrated-hardface-pad",
+      "split-bearing",
+      "thrust-saddle",
+      "valve-pack"
+    ],
+    "forbiddenReads": [
+      "box-boom",
+      "box-jaw",
+      "bright-engine-disk",
+      "glowing-disk",
+      "naked-cylinder",
+      "smooth-lump",
+      "torus",
+      "tube",
+      "unrooted-threat-rail"
+    ],
+    "lodPolicy": {
+      "lod0": "full-capture-machinery-and-drive-construction",
+      "lod1": "capture-load-path-drive-cases-and-material-boundaries",
+      "lod2": "donor-macro-hull-only"
+    },
+    "references": [
+      "assets/ships/m4_ashline_v2/reference/material_truth_v2/rig_capture_assembly_reference.png",
+      "assets/ships/m4_ashline_v2/reference/material_truth_v2/rig_tether_winch_reference.png",
+      "assets/ships/m4_ashline_v2/reference/material_truth_v2/rig_paired_reaction_drive_reference.png"
+    ],
+    "producer": {
+      "path": "tools/blender/build_m4_ashline_v2.py",
+      "sha256": "EBC25D15E5F00B805357A8EC264EE0DD8518756C0E85B69C23E67E28171454D7"
+    },
+    "materialBill": "assets/ships/m4_ashline_v2/reference/material_truth_v2/RIG_COMPONENT_MATERIAL_BILL.md"
   }
 }

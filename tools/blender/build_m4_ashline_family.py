@@ -34,6 +34,7 @@ import traceback
 from pathlib import Path
 from typing import Any
 
+import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
@@ -549,6 +550,29 @@ def triangulate_object(obj: bpy.types.Object) -> None:
     except Exception as exc:
         log(f'WARN triangulate {obj.name}: {exc}')
     obj.select_set(False)
+
+
+def remove_zero_area_faces(obj: bpy.types.Object, epsilon: float = 1e-12) -> int:
+    """Delete triangles collapsed by evaluated modifiers/decimation before tangent export."""
+    if obj.type != 'MESH' or not obj.data or not obj.data.polygons:
+        return 0
+    mesh = obj.data
+    bm = bmesh.new()
+    try:
+        bm.from_mesh(mesh)
+        degenerate = [
+            face for face in bm.faces
+            if not math.isfinite(face.calc_area()) or face.calc_area() <= epsilon
+        ]
+        removed = len(degenerate)
+        if degenerate:
+            bmesh.ops.delete(bm, geom=degenerate, context='FACES')
+            bm.normal_update()
+            bm.to_mesh(mesh)
+            mesh.update()
+        return removed
+    finally:
+        bm.free()
 
 
 def ensure_mikktspace_tangents(obj: bpy.types.Object) -> None:
@@ -1491,10 +1515,15 @@ def build_lod_collection(
                 log(f'WARN decimate {o.name}: {exc}')
             o.select_set(False)
 
+    removed_degenerate_faces: dict[str, int] = {}
     for o in targets:
         ensure_uvs_force(o)
-        ensure_normals(o)
         triangulate_object(o)
+        removed = remove_zero_area_faces(o)
+        if removed:
+            removed_degenerate_faces[o.name] = removed
+            log(f'  {lod_name}: removed {removed} zero-area triangle(s) from {o.name}')
+        ensure_normals(o)
         ensure_mikktspace_tangents(o)
         mat_token = ' '.join((s.material.name if s.material else '') for s in o.material_slots).lower()
         extras: dict[str, Any] = {}
@@ -1524,6 +1553,7 @@ def build_lod_collection(
             for o in targets
         ],
         'removed_close_only': removed_close[:40],
+        'removed_degenerate_faces': removed_degenerate_faces,
         'draw_estimate': len(targets),
     }
     return coll, targets, stats
@@ -1713,6 +1743,37 @@ def accessor_aabb(doc: dict, accessor_index: int) -> tuple[list[float], list[flo
     return None
 
 
+def transform_gltf_node_point(node: dict, point: list[float]) -> list[float]:
+    """Transform one glTF-local point into the node parent's basis."""
+    if len(point) != 3:
+        raise ValueError(f'Expected VEC3 point, got {point}')
+    matrix = node.get('matrix')
+    if matrix:
+        if len(matrix) != 16:
+            raise ValueError(f'Invalid glTF node matrix on {node.get("name")}: {matrix}')
+        x, y, z = point
+        return [
+            matrix[0] * x + matrix[4] * y + matrix[8] * z + matrix[12],
+            matrix[1] * x + matrix[5] * y + matrix[9] * z + matrix[13],
+            matrix[2] * x + matrix[6] * y + matrix[10] * z + matrix[14],
+        ]
+    scale = node.get('scale') or [1.0, 1.0, 1.0]
+    x, y, z = (point[index] * scale[index] for index in range(3))
+    qx, qy, qz, qw = node.get('rotation') or [0.0, 0.0, 0.0, 1.0]
+    # Quaternion-vector rotation, matching glTF's [x,y,z,w] convention.
+    ix = qw * x + qy * z - qz * y
+    iy = qw * y + qz * x - qx * z
+    iz = qw * z + qx * y - qy * x
+    iw = -qx * x - qy * y - qz * z
+    rotated = [
+        ix * qw + iw * -qx + iy * -qz - iz * -qy,
+        iy * qw + iw * -qy + iz * -qx - ix * -qz,
+        iz * qw + iw * -qz + ix * -qy - iy * -qx,
+    ]
+    translation = node.get('translation') or [0.0, 0.0, 0.0]
+    return [rotated[index] + translation[index] for index in range(3)]
+
+
 def ensure_packed_orm_assignments(doc: dict) -> None:
     materials = doc.get('materials') or []
     donor = next((m for m in materials if m.get('name') == 'Material_Hull'), None)
@@ -1756,6 +1817,7 @@ def stamp_glb_metadata(path: Path, spec: dict[str, Any], lod_stats: list[dict]) 
     meshes = doc.get('meshes') or []
     collision_bounds = None
     lod0_aabb = None
+    helper_breakdown = {'triangles': 0, 'primitives': 0, 'nodes': []}
 
     for mesh in meshes:
         total_tris += mesh_tri_count(doc, mesh)
@@ -1785,6 +1847,15 @@ def stamp_glb_metadata(path: Path, spec: dict[str, Any], lod_stats: list[dict]) 
         name = node.get('name') or ''
         extras = node.setdefault('extras', {})
         sf = extras.setdefault('spaceface', {})
+        numbered_collision_fallback = name.upper().startswith('COLLISION_HULL')
+        is_helper = bool(
+            sf.get('collision')
+            or sf.get('nonRender')
+            or extras.get('sf_collision')
+            or extras.get('collision')
+            or extras.get('nonRender')
+            or numbered_collision_fallback
+        )
         if name.startswith('SOCKET_') and '.' not in name:
             sf['socket'] = True
             for sn, loc_rt, role, fwd in spec['sockets']:
@@ -1797,14 +1868,17 @@ def stamp_glb_metadata(path: Path, spec: dict[str, Any], lod_stats: list[dict]) 
                     node['translation'] = [float(loc_rt[0]), float(loc_rt[1]), float(loc_rt[2])]
                     break
             sockets.append(name)
-        if name == 'COLLISION_HULL' or sf.get('collision') or extras.get('sf_collision'):
+        if numbered_collision_fallback or sf.get('collision') or extras.get('sf_collision'):
             sf['collision'] = True
             sf['helper'] = True
             sf['nonRender'] = True
             sf['role'] = 'collision'
             extras['collision'] = True
             extras['nonRender'] = True
-            # Measure AABB from mesh POSITION
+            # Preserve each helper's mesh-local AABB, then accumulate its transformed corners into
+            # one root-local compound envelope. Numbered helpers are translated away from the
+            # origin, so overwriting this receipt with the final local cube materially underreports
+            # collision reach.
             if node.get('mesh') is not None:
                 mesh = meshes[node['mesh']]
                 mins = [1e9, 1e9, 1e9]
@@ -1818,15 +1892,33 @@ def stamp_glb_metadata(path: Path, spec: dict[str, Any], lod_stats: list[dict]) 
                         mins[i] = min(mins[i], aabb[0][i])
                         maxs[i] = max(maxs[i], aabb[1][i])
                 if mins[0] < maxs[0]:
-                    collision_bounds = {
+                    local_bounds = {
                         'min': mins,
                         'max': maxs,
                         'size': [maxs[i] - mins[i] for i in range(3)],
                     }
-                    sf['bounds'] = collision_bounds
+                    sf['bounds'] = local_bounds
+                    transformed = [
+                        transform_gltf_node_point(node, [x, y, z])
+                        for x in (mins[0], maxs[0])
+                        for y in (mins[1], maxs[1])
+                        for z in (mins[2], maxs[2])
+                    ]
+                    if collision_bounds is None:
+                        collision_bounds = {
+                            'basis': 'root-local-aabb',
+                            'min': [math.inf, math.inf, math.inf],
+                            'max': [-math.inf, -math.inf, -math.inf],
+                            'helpers': [],
+                        }
+                    for point in transformed:
+                        for i in range(3):
+                            collision_bounds['min'][i] = min(collision_bounds['min'][i], point[i])
+                            collision_bounds['max'][i] = max(collision_bounds['max'][i], point[i])
+                    collision_bounds['helpers'].append(name)
         if node.get('mesh') is not None:
             mesh = meshes[node['mesh']]
-            lod = sf.get('lod')
+            lod = 'helper' if is_helper else sf.get('lod')
             if not lod:
                 low = name.lower()
                 if low.startswith('lod0') or 'lod0_' in low:
@@ -1835,12 +1927,9 @@ def stamp_glb_metadata(path: Path, spec: dict[str, Any], lod_stats: list[dict]) 
                     lod = 'lod1'
                 elif low.startswith('lod2') or 'lod2_' in low:
                     lod = 'lod2'
-                elif name == 'COLLISION_HULL':
-                    lod = 'helper'
                 else:
                     lod = 'lod0'
-            if name != 'COLLISION_HULL':
-                sf['lod'] = lod
+            sf['lod'] = lod
             sf['chamfered'] = True
             sf['bevelRadiusM'] = 0.025
             if 'hook_drive_fan' in name.lower():
@@ -1854,7 +1943,10 @@ def stamp_glb_metadata(path: Path, spec: dict[str, Any], lod_stats: list[dict]) 
             if 'mining_emitter' in name.lower():
                 sf['damageRole'] = 'mining'
             tris = mesh_tri_count(doc, mesh)
-            if lod != 'helper':
+            if lod == 'helper':
+                helper_breakdown['triangles'] += tris
+                helper_breakdown['nodes'].append({'name': name, 'tris': tris})
+            else:
                 bucket = lod_breakdown.setdefault(lod, {'triangles': 0, 'primitives': 0, 'nodes': []})
                 bucket['triangles'] += tris
                 bucket['nodes'].append({'name': name, 'tris': tris})
@@ -1867,7 +1959,9 @@ def stamp_glb_metadata(path: Path, spec: dict[str, Any], lod_stats: list[dict]) 
                     tangent_prims += 1
                 if 'TEXCOORD_0' in attrs:
                     uv_prims += 1
-                if lod != 'helper':
+                if lod == 'helper':
+                    helper_breakdown['primitives'] += 1
+                else:
                     bucket = lod_breakdown.setdefault(lod, {'triangles': 0, 'primitives': 0, 'nodes': []})
                     bucket['primitives'] = bucket.get('primitives', 0) + 1
                 # Accumulate LOD0 AABB for axis proof
@@ -1883,6 +1977,12 @@ def stamp_glb_metadata(path: Path, spec: dict[str, Any], lod_stats: list[dict]) 
                                 lod0_aabb['max'][i] = max(lod0_aabb['max'][i], aabb[1][i])
 
     ensure_packed_orm_assignments(doc)
+    if collision_bounds is not None:
+        collision_bounds['size'] = [
+            collision_bounds['max'][i] - collision_bounds['min'][i]
+            for i in range(3)
+        ]
+        collision_bounds['helpers'].sort()
     lod0_size = None
     if lod0_aabb:
         lod0_size = [lod0_aabb['max'][i] - lod0_aabb['min'][i] for i in range(3)]
@@ -1952,6 +2052,12 @@ def stamp_glb_metadata(path: Path, spec: dict[str, Any], lod_stats: list[dict]) 
                 'nodes': v['nodes'],
             }
             for k, v in sorted(lod_breakdown.items())
+        },
+        'helperBreakdown': {
+            'triangles': helper_breakdown['triangles'],
+            'primitives': helper_breakdown['primitives'],
+            'drawEstimate': len(helper_breakdown['nodes']),
+            'nodes': helper_breakdown['nodes'],
         },
         'sockets': sorted(set(sockets)),
         'materials': [m.get('name') for m in (doc.get('materials') or [])],
@@ -2289,6 +2395,7 @@ def build_one_ship(ship_key: str) -> dict[str, Any]:
         'hullTriangles': report['hullTriangles'],
         'lodTriangles': {k: v['triangles'] for k, v in report['lodBreakdown'].items()},
         'drawEstimates': {k: v['drawEstimate'] for k, v in report['lodBreakdown'].items()},
+        'helperBreakdown': report['helperBreakdown'],
         'sockets': report['sockets'],
         'materials': report['materials'],
         'tangentPrimitiveCount': report['tangentPrimitiveCount'],
