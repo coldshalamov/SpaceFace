@@ -25,6 +25,6 @@ export function configureTransparentSinglePassSurfaces(root) {
 export function shouldUseTransparentSinglePass(material, tags = {}) {
   if (!material || material.transparent !== true) return false;
   if (material.side !== THREE.DoubleSide || material.depthWrite !== false) return false;
-  if (tags.canopy || tags.decal) return true;
+  if (tags.canopy || tags.decal || /canopy|cockpit.?glass/i.test(String(material.name || ''))) return true;
   return material.blending === THREE.AdditiveBlending;
 }
