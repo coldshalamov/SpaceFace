@@ -54,6 +54,7 @@ import { createGpuTimers } from './gpuTimers.js';
 import { ensurePerfRuntime } from '../core/perfRuntime.js';
 import { perfCountersRequested } from '../core/perfCounters.js';
 import { installGlInstrumentation } from './glInstrumentation.js';
+import { installDomInstrumentation } from '../ui/domInstrumentation.js';
 import {
   invalidateShadowCasterPolicy,
   syncShadowCasterPolicy,
@@ -718,6 +719,9 @@ export const render = {
       perfCounters.setEnabled(true);
       const instrumentedGl = renderer.getContext();
       if (instrumentedGl) installGlInstrumentation(instrumentedGl, perfCounters);
+      // Family H (DOM mutations / layout reads / longtasks): same install-on-enable contract —
+      // with the opt-in absent no observer is constructed and no prototype is patched.
+      installDomInstrumentation(perfCounters);
     }
 
     renderer.toneMapping = THREE.ACESFilmicToneMapping;

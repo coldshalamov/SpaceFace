@@ -23,7 +23,9 @@ import {
   UNSOURCED_FIELDS,
 } from '../src/core/perfCounters.js';
 import { installGlInstrumentation } from '../src/render/glInstrumentation.js';
+import { installDomInstrumentation } from '../src/ui/domInstrumentation.js';
 import { ensurePerfRuntime } from '../src/core/perfRuntime.js';
+import { startLoop } from '../src/core/loop.js';
 
 /**
  * Minimal stand-in for a WebGL2 context. Every method records its own invocation and returns a
@@ -47,6 +49,143 @@ function createFakeGl() {
     };
   }
   return { gl, calls };
+}
+
+// --- DOM instrumentation fixtures ---------------------------------------------------------
+
+/** Minimal DOM node: just the parent/child links the mutation filter walks. */
+function createFakeNode(tag = 'div') {
+  return {
+    tagName: String(tag).toUpperCase(),
+    parentNode: null,
+    childNodes: [],
+    appendChild(child) {
+      child.parentNode = this;
+      this.childNodes.push(child);
+      return child;
+    },
+    setAttribute(name, value) { (this.attributes ||= {})[name] = value; },
+  };
+}
+
+/**
+ * Minimal document: documentElement > body, plus an id registry so the test decides WHEN #hud
+ * appears. Install must not require it to exist yet — renderer construction precedes the HUD
+ * build, and a root captured once at install would be null forever.
+ */
+function createFakeDocument() {
+  const documentElement = createFakeNode('html');
+  const body = documentElement.appendChild(createFakeNode('body'));
+  const byId = new Map();
+  return {
+    documentElement,
+    body,
+    getElementById(id) { return byId.get(id) ?? null; },
+    registerId(id, element) { byId.set(id, element); return element; },
+  };
+}
+
+function createFakeMutationObserverClass() {
+  const instances = [];
+  class FakeMutationObserver {
+    constructor(callback) {
+      this.callback = callback;
+      this.observations = [];
+      this.disconnects = 0;
+      instances.push(this);
+    }
+    observe(target, options) { this.observations.push({ target, options }); }
+    disconnect() { this.disconnects++; }
+    /** Test driver: deliver a batch exactly as the browser would — never after disconnect(). */
+    deliver(records) { if (this.disconnects === 0) this.callback(records); }
+  }
+  return { FakeMutationObserver, instances };
+}
+
+function createFakePerformanceObserverClass({ supportLongTask = true } = {}) {
+  const instances = [];
+  class FakePerformanceObserver {
+    constructor(callback) {
+      this.callback = callback;
+      this.disconnects = 0;
+      instances.push(this);
+    }
+    observe(options) {
+      if (!supportLongTask) throw new TypeError("'longtask' is not a supported entryType");
+      this.observed = options;
+    }
+    disconnect() { this.disconnects++; }
+    deliver(entries) { if (this.disconnects === 0) this.callback({ getEntries: () => entries }); }
+  }
+  return { FakePerformanceObserver, instances };
+}
+
+/**
+ * Stand-ins for Element.prototype / HTMLElement.prototype. Every accessor returns the receiver
+ * so a wrapper that lost `this` fails loudly; clientWidth additionally carries a SETTER so the
+ * byte-identical restore covers the set field, and a write can be proven not to count as a read.
+ */
+function createFakeElementPrototypes() {
+  const elementPrototype = {};
+  const htmlElementPrototype = Object.create(elementPrototype);
+  const defineAccessor = (proto, name, { withSetter = false } = {}) => {
+    Object.defineProperty(proto, name, {
+      get: function () { return this; },
+      ...(withSetter ? { set: function (v) { this.__assigned = v; } } : {}),
+      enumerable: true,
+      configurable: true,
+    });
+  };
+  defineAccessor(htmlElementPrototype, 'offsetWidth');
+  defineAccessor(htmlElementPrototype, 'offsetHeight');
+  defineAccessor(htmlElementPrototype, 'offsetTop');
+  defineAccessor(htmlElementPrototype, 'offsetLeft');
+  defineAccessor(elementPrototype, 'clientWidth', { withSetter: true });
+  defineAccessor(elementPrototype, 'clientHeight');
+  defineAccessor(elementPrototype, 'scrollWidth');
+  defineAccessor(elementPrototype, 'scrollHeight');
+  Object.defineProperty(elementPrototype, 'getBoundingClientRect', {
+    value: function (...args) { return { self: this, args }; },
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+  return { elementPrototype, htmlElementPrototype };
+}
+
+function createFakeWindow() {
+  return {
+    getComputedStyle(el) { return { arg: el, display: 'fake-block' }; },
+  };
+}
+
+function normalizeDescriptor(desc) {
+  if (!desc) return null;
+  return {
+    get: desc.get ?? null,
+    set: desc.set ?? null,
+    value: desc.value ?? null,
+    writable: desc.writable ?? null,
+    enumerable: desc.enumerable,
+    configurable: desc.configurable,
+  };
+}
+
+/** Every descriptor the layout producer could touch, for byte-identical before/after compares. */
+function captureLayoutDescriptors({ elementPrototype, htmlElementPrototype }, win) {
+  const names = [
+    'offsetWidth', 'offsetHeight', 'offsetTop', 'offsetLeft',
+    'clientWidth', 'clientHeight', 'scrollWidth', 'scrollHeight',
+    'getBoundingClientRect',
+  ];
+  const captured = {};
+  for (const [label, proto] of [['element', elementPrototype], ['htmlElement', htmlElementPrototype]]) {
+    for (const name of names) {
+      captured[`${label}.${name}`] = normalizeDescriptor(Object.getOwnPropertyDescriptor(proto, name));
+    }
+  }
+  captured['window.getComputedStyle'] = normalizeDescriptor(Object.getOwnPropertyDescriptor(win, 'getComputedStyle'));
+  return captured;
 }
 
 test('a disabled counter set records nothing, no matter how hard it is called', () => {
@@ -89,6 +228,57 @@ test('a disabled counter set records nothing, no matter how hard it is called', 
   assert.deepEqual(snapshot.stepsPerFrameHistogram, {}, 'no histogram bucket while disabled');
   assert.equal(snapshot.framesObserved, 0, 'endFrame must not advance the frame index while disabled');
   assert.equal(snapshot.nondeterministic.allocation.samples, 0, 'no heap sample while disabled');
+
+  // The DOM seam obeys the same zero-cost contract, in both senses of "off".
+  //
+  // 1. NOT INSTALLED. The only production call site is the renderer's `if (perfCountersRequested())`
+  //    block; with the opt-in absent that block never runs, so no observer is constructed and no
+  //    prototype descriptor is touched. The gate is replicated literally below so that a regression
+  //    making installation unconditional fails this test.
+  const prototypes = createFakeElementPrototypes();
+  const win = createFakeWindow();
+  const mo = createFakeMutationObserverClass();
+  const po = createFakePerformanceObserverClass();
+  const before = captureLayoutDescriptors(prototypes, win);
+  if (perfCountersRequested()) {   // the renderer's gate, verbatim — false under node:test
+    installDomInstrumentation(counters, {
+      document: createFakeDocument(),
+      MutationObserver: mo.FakeMutationObserver,
+      PerformanceObserver: po.FakePerformanceObserver,
+      elementPrototype: prototypes.elementPrototype,
+      htmlElementPrototype: prototypes.htmlElementPrototype,
+      window: win,
+    });
+  }
+  assert.equal(mo.instances.length, 0, 'no MutationObserver may exist while instrumentation is off');
+  assert.equal(po.instances.length, 0, 'no PerformanceObserver may exist while instrumentation is off');
+  assert.deepEqual(captureLayoutDescriptors(prototypes, win), before,
+    'Element/HTMLElement/Window descriptors must be untouched while instrumentation is off');
+
+  // 2. INSTALLED AGAINST DISABLED COUNTERS — a combination production never creates, pinned
+  //    anyway: the record() guard stops every DOM producer too.
+  const doc = createFakeDocument();
+  const handle = installDomInstrumentation(counters, {
+    document: doc,
+    MutationObserver: mo.FakeMutationObserver,
+    PerformanceObserver: po.FakePerformanceObserver,
+    elementPrototype: prototypes.elementPrototype,
+    htmlElementPrototype: prototypes.htmlElementPrototype,
+    window: win,
+  });
+  const hud = doc.registerId('hud', doc.body.appendChild(createFakeNode('div')));
+  mo.instances[0].deliver([{ type: 'childList', target: hud }]);
+  po.instances[0].deliver([{}]);
+  const element = Object.create(prototypes.htmlElementPrototype);
+  element.offsetWidth;
+  element.getBoundingClientRect();
+  win.getComputedStyle(element);
+  assert.equal(counters.snapshot().totals.domMutations, 0);
+  assert.equal(counters.snapshot().totals.layoutReads, 0);
+  assert.equal(counters.snapshot().totals.longTasks, 0);
+  handle.uninstall();
+  assert.deepEqual(captureLayoutDescriptors(prototypes, win), before,
+    'even the belt-and-braces install must uninstall cleanly');
 });
 
 test('an enabled counter set records every family — the vacuity guard', () => {
@@ -381,14 +571,16 @@ test('installing twice is a no-op rather than a double count', () => {
 });
 
 test('unsourced counters are declared so a vacuous zero cannot be read as healthy', () => {
-  // A counter with no producer and a perfectly healthy subsystem both report 0. Family H is in the
-  // schema but not yet wired, so the report must say so rather than let a reader conclude the HUD
-  // performs no forced layouts — a conclusion this run did not establish either way.
+  // A counter with no producer and a perfectly healthy subsystem both report 0. The list is
+  // currently EMPTY — family H was wired in phase 3a and the heap sampler in phase 3c — but the
+  // mechanism is pinned for future fields: a snapshot must republish whatever the list holds, the
+  // list must reference real counter fields, and nothing on it may also be a deterministic gate
+  // signal.
   const counters = createPerfCounters();
   counters.setEnabled(true);
   const snapshot = counters.snapshot();
 
-  assert.ok(snapshot.unsourcedFields.length > 0 || UNSOURCED_FIELDS.length === 0,
+  assert.deepEqual(snapshot.unsourcedFields, [...UNSOURCED_FIELDS],
     'the snapshot must republish the unsourced list, not drop it');
   for (const field of UNSOURCED_FIELDS) {
     assert.ok(COUNTER_FIELDS.includes(field),
@@ -399,6 +591,25 @@ test('unsourced counters are declared so a vacuous zero cannot be read as health
   for (const field of UNSOURCED_FIELDS) {
     assert.ok(!DETERMINISTIC_FIELDS.includes(field),
       `${field} cannot be both an equivalence-gate signal and unsourced`);
+  }
+});
+
+test('the fields wired in phases 3a/3c are sourced and no longer declared unsourced', () => {
+  // Wiring a producer without deleting the field from UNSOURCED_FIELDS leaves a measured counter
+  // labelled "not measured", and downstream reports discard real data. Nothing else in the suite
+  // forces that deletion, so this test does.
+  for (const field of [
+    'domMutations',
+    'domChildListMutations',
+    'domAttributeMutations',
+    'domCharacterDataMutations',
+    'layoutReads',
+    'longTasks',
+  ]) {
+    assert.ok(COUNTER_FIELDS.includes(field), `${field} must remain a declared counter field`);
+    assert.ok(!UNSOURCED_FIELDS.includes(field),
+      `${field} has a producer now; leaving it unsourced restores exactly the vacuous-zero lie `
+      + 'the list exists to prevent');
   }
 });
 
@@ -462,4 +673,372 @@ test('a context missing a method is skipped rather than throwing', () => {
   const handle = installGlInstrumentation(gl, counters);
   assert.ok(!handle.wrapped.includes('drawArraysInstanced'));
   assert.ok(handle.wrapped.includes('drawElements'), 'present methods are still wrapped');
+});
+
+// --- DOM instrumentation (family H) ----------------------------------------------------------
+//
+// Same vacuity discipline as the GL wrappers: a dead observer and a quiet HUD both report 0, so
+// the positive control (the count MOVES once #hud exists) and the filter (non-HUD mutations do
+// NOT count) are both load-bearing, and both are mutation-proven.
+
+test('DOM mutations are counted even when #hud is created AFTER install', () => {
+  // Install happens at renderer construction; the HUD is built later. If the root were resolved
+  // once at install it would be null forever and this counter would report a vacuous 0 for the
+  // whole session — good news, no error (handoff §9 traps 1 and 2).
+  const counters = createPerfCounters();
+  counters.setEnabled(true);
+  const doc = createFakeDocument();
+  const mo = createFakeMutationObserverClass();
+  const handle = installDomInstrumentation(counters, {
+    document: doc,
+    MutationObserver: mo.FakeMutationObserver,
+  });
+
+  assert.equal(mo.instances.length, 1, 'exactly one observer is constructed');
+  assert.ok(mo.instances[0].observations[0].target === doc.documentElement,
+    'the observer attaches to a stable ancestor that outlives the HUD build');
+  assert.deepEqual(mo.instances[0].observations[0].options, {
+    childList: true, attributes: true, characterData: true, subtree: true,
+  });
+
+  // Before #hud exists, delivered mutations cannot be HUD mutations — and must not crash.
+  mo.instances[0].deliver([{ type: 'childList', target: doc.body }]);
+  assert.equal(counters.snapshot().totals.domMutations, 0);
+
+  // The HUD root appears later; from then on its subtree mutations must move the counter.
+  const hud = doc.registerId('hud', doc.body.appendChild(createFakeNode('div')));
+  const row = hud.appendChild(createFakeNode('div'));
+  const text = createFakeNode('#text');
+  text.parentNode = row;
+
+  mo.instances[0].deliver([
+    { type: 'childList', target: hud },
+    { type: 'attributes', target: row },
+    { type: 'characterData', target: text },
+  ]);
+
+  const totals = counters.snapshot().totals;
+  assert.equal(totals.domMutations, 3,
+    'a dead observer and a quiet HUD both report 0 — the counter must MOVE');
+  assert.equal(totals.domChildListMutations, 1);
+  assert.equal(totals.domAttributeMutations, 1);
+  assert.equal(totals.domCharacterDataMutations, 1);
+
+  handle.uninstall();
+  assert.equal(mo.instances[0].disconnects, 1, 'uninstall disconnects the observer');
+  mo.instances[0].deliver([{ type: 'childList', target: hud }]);
+  assert.equal(counters.snapshot().totals.domMutations, 3, 'an uninstalled observer must not count');
+});
+
+test('mutations OUTSIDE the #hud subtree are never counted as HUD mutations', () => {
+  // The observer sits on a stable ancestor, so its batches contain screens, toasts, alerts —
+  // everything. Without the subtree filter the counter would measure "the whole document
+  // changes", which is not a HUD signal and would drown the PERF-C05 failure mode in noise.
+  const counters = createPerfCounters();
+  counters.setEnabled(true);
+  const doc = createFakeDocument();
+  const mo = createFakeMutationObserverClass();
+  const handle = installDomInstrumentation(counters, {
+    document: doc,
+    MutationObserver: mo.FakeMutationObserver,
+  });
+  const hud = doc.registerId('hud', doc.body.appendChild(createFakeNode('div')));
+  const screens = doc.body.appendChild(createFakeNode('div'));
+  const toast = screens.appendChild(createFakeNode('div'));
+
+  mo.instances[0].deliver([
+    { type: 'childList', target: doc.body },
+    { type: 'childList', target: screens },
+    { type: 'attributes', target: toast },
+    { type: 'characterData', target: hud },   // the HUD root itself IS inside the filter
+  ]);
+
+  const totals = counters.snapshot().totals;
+  assert.equal(totals.domMutations, 1, 'only the record inside #hud may count');
+  assert.equal(totals.domCharacterDataMutations, 1);
+  assert.equal(totals.domChildListMutations, 0, 'document churn outside #hud is not HUD churn');
+  handle.uninstall();
+});
+
+test('layout reads count once per read and pass values, arguments and receiver through', () => {
+  const counters = createPerfCounters();
+  counters.setEnabled(true);
+  const prototypes = createFakeElementPrototypes();
+  const win = createFakeWindow();
+  const handle = installDomInstrumentation(counters, {
+    elementPrototype: prototypes.elementPrototype,
+    htmlElementPrototype: prototypes.htmlElementPrototype,
+    window: win,
+  });
+
+  const element = Object.create(prototypes.htmlElementPrototype);
+  assert.ok(element.offsetWidth === element,
+    'the patched getter must return the ORIGINAL value unchanged');
+  element.offsetHeight;
+  element.offsetTop;
+  element.offsetLeft;
+  element.clientWidth;
+  element.clientHeight;
+  element.scrollWidth;
+  element.scrollHeight;
+  const rect = element.getBoundingClientRect('a', 'b');
+  assert.ok(rect.self === element, 'getBoundingClientRect must keep its receiver');
+  assert.deepEqual(rect.args, ['a', 'b'], 'arguments must pass through unchanged');
+  const style = win.getComputedStyle(element);
+  assert.ok(style.arg === element, 'getComputedStyle must receive the element');
+  assert.equal(style.display, 'fake-block', 'the original return value passes through');
+
+  assert.equal(counters.snapshot().totals.layoutReads, 10,
+    '8 accessor reads + getBoundingClientRect + getComputedStyle');
+
+  element.clientWidth = 7;   // a WRITE through the preserved setter is not a read
+  assert.equal(element.__assigned, 7, 'the original setter still runs while patched');
+  assert.equal(counters.snapshot().totals.layoutReads, 10, 'writes must not count as reads');
+
+  handle.uninstall();
+});
+
+test('uninstall restores every patched descriptor byte-identically', () => {
+  // Prototype patching without a proven uninstall leaks into every other test in the process.
+  const counters = createPerfCounters();
+  counters.setEnabled(true);
+  const prototypes = createFakeElementPrototypes();
+  const win = createFakeWindow();
+  const before = captureLayoutDescriptors(prototypes, win);
+
+  const handle = installDomInstrumentation(counters, {
+    elementPrototype: prototypes.elementPrototype,
+    htmlElementPrototype: prototypes.htmlElementPrototype,
+    window: win,
+  });
+
+  // Install must actually change something, or the restore assertion below is vacuous.
+  const element = Object.create(prototypes.htmlElementPrototype);
+  element.offsetWidth;
+  assert.equal(counters.snapshot().totals.layoutReads, 1, 'install must be live before uninstall');
+
+  handle.uninstall();
+  assert.deepEqual(captureLayoutDescriptors(prototypes, win), before,
+    'get/set/value/writable/enumerable/configurable must all be the originals');
+
+  const readsBefore = counters.snapshot().totals.layoutReads;
+  element.offsetWidth;
+  element.getBoundingClientRect();
+  win.getComputedStyle(element);
+  assert.equal(counters.snapshot().totals.layoutReads, readsBefore,
+    'a restored prototype must not count');
+});
+
+test('missing or non-configurable layout properties are skipped, never forced', () => {
+  const counters = createPerfCounters();
+  counters.setEnabled(true);
+  const prototypes = createFakeElementPrototypes();
+  // Make one accessor and one method non-configurable: defineProperty on either would throw, so
+  // the installer must not even attempt them.
+  Object.defineProperty(prototypes.htmlElementPrototype, 'offsetWidth', {
+    get: function () { return 'locked'; },
+    enumerable: true,
+    configurable: false,
+  });
+  Object.defineProperty(prototypes.elementPrototype, 'getBoundingClientRect', {
+    value: function () { return 'locked-rect'; },
+    writable: true,
+    enumerable: false,
+    configurable: false,
+  });
+  const win = createFakeWindow();
+
+  let handle;
+  assert.doesNotThrow(() => {
+    handle = installDomInstrumentation(counters, {
+      elementPrototype: prototypes.elementPrototype,
+      htmlElementPrototype: prototypes.htmlElementPrototype,
+      window: win,
+    });
+  }, 'a non-configurable property must degrade to a skip, not a boot failure');
+
+  const element = Object.create(prototypes.htmlElementPrototype);
+  assert.equal(element.offsetWidth, 'locked', 'the locked getter is untouched');
+  assert.equal(element.getBoundingClientRect(), 'locked-rect', 'the locked method is untouched');
+  element.clientWidth;
+  assert.equal(counters.snapshot().totals.layoutReads, 1,
+    'the non-configurable reads are NOT counted; the configurable one is');
+
+  handle.uninstall();
+  assert.equal(element.offsetWidth, 'locked', 'and uninstall did not clobber the accessor');
+  assert.equal(element.getBoundingClientRect(), 'locked-rect', 'or the method');
+});
+
+test('longtask entries count, and uninstall disconnects the observer', () => {
+  const counters = createPerfCounters();
+  counters.setEnabled(true);
+  const po = createFakePerformanceObserverClass();
+  const handle = installDomInstrumentation(counters, {
+    PerformanceObserver: po.FakePerformanceObserver,
+  });
+  assert.equal(po.instances.length, 1);
+  assert.deepEqual(po.instances[0].observed, { entryTypes: ['longtask'] });
+
+  po.instances[0].deliver([{}, {}, {}]);
+  assert.equal(counters.snapshot().totals.longTasks, 3);
+
+  handle.uninstall();
+  assert.equal(po.instances[0].disconnects, 1);
+  po.instances[0].deliver([{}]);
+  assert.equal(counters.snapshot().totals.longTasks, 3, 'a disconnected observer must not count');
+});
+
+test('an unsupported longtask entry type degrades to no producer, never a broken install', () => {
+  // Firefox/Safari throw from observe({ entryTypes: ['longtask'] }). A measurement probe must
+  // never break boot, and the other producers must survive.
+  const counters = createPerfCounters();
+  counters.setEnabled(true);
+  const doc = createFakeDocument();
+  const mo = createFakeMutationObserverClass();
+  const po = createFakePerformanceObserverClass({ supportLongTask: false });
+
+  let handle;
+  assert.doesNotThrow(() => {
+    handle = installDomInstrumentation(counters, {
+      document: doc,
+      MutationObserver: mo.FakeMutationObserver,
+      PerformanceObserver: po.FakePerformanceObserver,
+    });
+  });
+
+  const hud = doc.registerId('hud', doc.body.appendChild(createFakeNode('div')));
+  mo.instances[0].deliver([{ type: 'childList', target: hud }]);
+  assert.equal(counters.snapshot().totals.domMutations, 1, 'the mutation producer survived');
+  assert.equal(counters.snapshot().totals.longTasks, 0);
+  handle.uninstall();
+});
+
+test('installing DOM instrumentation twice returns the existing handle and never double-counts', () => {
+  const counters = createPerfCounters();
+  counters.setEnabled(true);
+  const doc = createFakeDocument();
+  const mo = createFakeMutationObserverClass();
+  const options = { document: doc, MutationObserver: mo.FakeMutationObserver };
+
+  const first = installDomInstrumentation(counters, options);
+  const second = installDomInstrumentation(counters, options);
+  assert.ok(first === second, 'the second install must return the existing handle');
+  assert.equal(mo.instances.length, 1, 'a second observer would double every count');
+
+  const hud = doc.registerId('hud', doc.body.appendChild(createFakeNode('div')));
+  mo.instances[0].deliver([{ type: 'childList', target: hud }]);
+  assert.equal(counters.snapshot().totals.domMutations, 1, 'double-wrapping would double the count');
+
+  first.uninstall();
+  const third = installDomInstrumentation(counters, options);
+  assert.ok(third !== first, 'after uninstall a fresh install produces a fresh handle');
+  assert.equal(mo.instances.length, 2);
+  third.uninstall();
+});
+
+// --- The frame-loop heap sampler (family G) ---------------------------------------------------
+
+function createRafPump() {
+  let nextId = 1;
+  const pending = new Map();
+  return {
+    requestFrame(callback) { const id = nextId++; pending.set(id, callback); return id; },
+    cancelFrame(id) { pending.delete(id); },
+    flushOne(now) {
+      const entry = pending.entries().next().value;
+      assert.ok(entry, 'expected one scheduled frame');
+      pending.delete(entry[0]);
+      entry[1](now);
+    },
+  };
+}
+
+function startHeapTestLoop() {
+  const raf = createRafPump();
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    entityList: [],
+    settings: {},
+    input: {
+      moveX: 0, moveZ: 0, turnIntent: 0,
+      aimWorld: { x: 0, z: 0 },
+      mouseNdc: { x: 0, y: 0 },
+      pointerScreen: { x: 0, y: 0, active: false },
+      actions: {},
+    },
+  };
+  const registry = {
+    step(dt, tickBoundary) {
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+    },
+    renderUpdate() {},
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+  return { raf, state, controller };
+}
+
+test('the presentation loop samples the heap once per frame when performance.memory exists', () => {
+  const loop = startHeapTestLoop();
+  const tier1 = ensurePerfRuntime(loop.state).tier1;
+  tier1.setEnabled(true);
+  const originalMemory = Object.getOwnPropertyDescriptor(globalThis.performance, 'memory');
+  globalThis.performance.memory = { usedJSHeapSize: 1_000_000 };
+  try {
+    loop.raf.flushOne(1020);
+    globalThis.performance.memory.usedJSHeapSize = 1_100_000;
+    loop.raf.flushOne(1040);
+    globalThis.performance.memory.usedJSHeapSize = 900_000;
+    loop.raf.flushOne(1060);
+
+    const allocation = tier1.snapshot().nondeterministic.allocation;
+    assert.equal(allocation.samples, 3, 'one sample per presentation frame');
+    assert.equal(allocation.lastHeapBytes, 900_000);
+    assert.equal(allocation.heapBytesDeltaTotal, 100_000, 'growth between samples accrues');
+    assert.equal(allocation.collectionsDetected, 1, 'a drop reads as a collection');
+  } finally {
+    if (originalMemory) Object.defineProperty(globalThis.performance, 'memory', originalMemory);
+    else delete globalThis.performance.memory;
+    loop.controller.destroy();
+  }
+});
+
+test('heap samples stay out of the deterministic counter fields', () => {
+  // GC scheduling is at the VM's discretion; a heap figure must never become a bisectable signal.
+  for (const field of COUNTER_FIELDS) assert.ok(!/heap/i.test(field), field);
+  for (const field of DETERMINISTIC_FIELDS) assert.ok(!/heap/i.test(field), field);
+});
+
+test('a missing performance.memory is a per-frame no-op, never a frame error', () => {
+  // Node has no performance.memory, which makes this the unsupported-browser case by default.
+  assert.equal(globalThis.performance.memory, undefined,
+    'host grew performance.memory: stub it away for this test instead of deleting the assertion');
+  const loop = startHeapTestLoop();
+  const tier1 = ensurePerfRuntime(loop.state).tier1;
+  tier1.setEnabled(true);
+  const errors = [];
+  const originalError = console.error;
+  console.error = (...args) => { errors.push(args); };
+  try {
+    loop.raf.flushOne(1020);
+    loop.raf.flushOne(1040);
+    assert.equal(errors.length, 0,
+      'a throw at the sample site escapes into the rAF catch and is logged EVERY frame (trap 8)');
+    assert.equal(tier1.snapshot().nondeterministic.allocation.samples, 0, 'no memory, no samples');
+    assert.equal(tier1.snapshot().framesObserved, 2, 'frames still close cleanly');
+  } finally {
+    console.error = originalError;
+    loop.controller.destroy();
+  }
 });

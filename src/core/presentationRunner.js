@@ -419,6 +419,13 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       // not a sim step, so it cannot perturb sim state, ordering or RNG draw counts, and it adds
       // nothing to PRODUCTION_UPDATE_ORDER or the manifest hash (invariants #2 and #3).
       perf.tier1?.beginFrame();
+      // G — one heap sample per frame, at the counter frame boundary. Nondeterministic by
+      // construction (GC scheduling is the VM's), so sampleHeap feeds the segregated
+      // snapshot().nondeterministic.allocation block and can never enter DETERMINISTIC_FIELDS.
+      // performance.memory is Chromium-only: every link in this chain is optional so the absent
+      // case is a no-op — a throw here would escape into the rAF loop's catch and be logged
+      // every frame (handoff §9 trap 8).
+      perf.tier1?.sampleHeap(globalThis.performance?.memory?.usedJSHeapSize);
       perf.beginFrame(
         frameDt,
         callbackStart,

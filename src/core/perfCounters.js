@@ -91,20 +91,18 @@ export const DETERMINISTIC_FIELDS = Object.freeze([
 // Counters that are DECLARED but have no producer wired yet.
 //
 // This list exists because an unsourced counter and a perfectly healthy subsystem report the same
-// thing: 0. Family H (DOM mutations, forced layout reads, longtasks) is specified in the brief and
-// present in the schema, but nothing calls its entry points yet — so reading `layoutReads: 0` as
-// "no forced layouts, healthy" would be exactly the vacuous zero this whole design is built to
-// avoid, and it would be believed precisely because it is the answer everyone wants.
+// thing: 0. Reading `layoutReads: 0` as "no forced layouts, healthy" while nothing calls
+// countLayoutRead() would be exactly the vacuous zero this whole design is built to avoid, and it
+// would be believed precisely because it is the answer everyone wants.
 //
-// Wiring a producer means DELETING its field from this list in the same change. `snapshot()`
-// republishes the list so no downstream report can present an unsourced field as a measurement.
+// The list is currently EMPTY: every declared field has a producer. Family H (DOM mutations,
+// layout reads, longtasks) was wired by Phase 3a in src/ui/domInstrumentation.js (installed from
+// the renderer construction seam), and the family G heap sampler was wired by Phase 3c in
+// src/core/presentationRunner.js. The list and its discipline stay for future fields: a new
+// counter field enters this list when it is declared, and wiring its producer means DELETING the
+// field here in the same change. `snapshot()` republishes the list so no downstream report can
+// present an unsourced field as a measurement.
 export const UNSOURCED_FIELDS = Object.freeze([
-  'domMutations',
-  'domChildListMutations',
-  'domAttributeMutations',
-  'domCharacterDataMutations',
-  'layoutReads',
-  'longTasks',
 ]);
 
 // Bounded so a pathological run cannot grow this without limit. A compile storm is fully
