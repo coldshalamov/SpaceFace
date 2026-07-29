@@ -22,7 +22,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 
 | Row | Subject | Result | Evidence |
 |---|---|---|---|
-| 1 | headed `check:assets:live` | _pending_ | |
+| 1 | headed `check:assets:live` | **PASS** | [row1-assets-live](evidence/h1/row1-assets-live/EVIDENCE.md) |
 | 2 | PQ-021 broker cell + Electron parity | _pending_ | |
 | 3 | PQ-019A presentation + counts | _pending_ | |
 | 4 | `pq019-surface-heist` broker manifest | _pending_ | |
