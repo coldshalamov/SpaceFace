@@ -387,24 +387,40 @@ reload comparison byte-identical.
 
 All ten `check:mission-*` suites that own a surface this packet touches were run, not a subset.
 
-## 9. Open rows — PQ-034 lease-blocked, NOT claimed
+## 9. Open rows after Phase H1
 
-PQ-034 holds the performance-evidence, validation-broker and browser-GPU leases. No broker manifest
-was executed, no Electron run, no Browser run, and no performance or L4 capture. The L3 manifest
-`pq019-surface-heist` is **authored and registered only** (`scripts/validation-manifests/pq019-surface-heist.mjs`),
-matching PQ-021's shape, with its fast gates wired to the headless checks above. Its probe script is
-deliberately not written: writing it would be taking the lease.
+H1 evidence: [`../evidence/h1/row4-pq019-surface-heist/EVIDENCE.md`](../evidence/h1/row4-pq019-surface-heist/EVIDENCE.md).
 
-The following remain unproven and are explicitly **not** claimed:
+The registered `pq019-surface-heist` manifest consumed its one permitted headed Browser acceptance
+launch at fixed seed `19019`. Its four deterministic fast gates passed before claim issue. The route
+then completed two contexts and stopped in the third:
 
-- **Browser/Electron route acceptance** — the five routes flown at normal camera through the real
-  DOM (station board accept, Mission Log abandon) rather than through `ui:acceptMission`.
-- **Accessibility route review** — focus behaviour, reduced motion and non-colour semantics
-  confirmed on the live route. The properties are asserted headlessly; a human route review is not.
-- **Visual / fun review** — no independent human-eye verdict on the run. Agent inspection of a
-  screenshot is not a review, and none was taken.
-- **Matched performance** — no frame p95/p99, no hitch measurement, no draw/program counts, no GPU
-  admission or residency, no traffic-loaded route.
+- **Station DOM accept + Mission Log abandonment: CLOSED / FUNCTIONAL PASS.** The visible station
+  Missions controls created active mission `m_2`; `KeyJ` opened the ordinary Mission Log; the danger
+  confirmation exposed `role="dialog"`, `aria-modal="true"`, labels/descriptions and safe initial
+  focus on Cancel; confirming committed one `abandoned` receipt and one settlement.
+- **Lawful-observe route: CLOSED / FUNCTIONAL PASS.** A live capsule reached the production
+  `physics:impact` seam at the lawful catcher and committed `lawful_arrival_observed`. The one visible
+  floor carried the complete outcome sentence under stable id `pq019c:capsule-run`, with queue size
+  one and no mirrored toast.
+- **Heist-plus-fence and the remaining named routes: OPEN — H1 FAIL / HARNESS.** The third context
+  timed out at `waitForCapsule()` after 20,000 ms. That actor waits on transient
+  `state.heistFacilities.capsuleEntityId` using wall time but did not persist simulation-clock,
+  schedule, launch, mission-heist or competing-terminal state on failure. The saved frame remained on
+  the pre-launch objective. Because the same attempt had already completed a live-capsule route on a
+  real Intel/ANGLE D3D11 renderer with no page errors, this is classified HARNESS rather than PRODUCT
+  or ENVIRONMENT. Per the one-attempt rule it was not retried. `fenced_success`,
+  `lawful_confiscation`, production-combat `payload_destroyed`, reduced-stake recovery, and the
+  composed witnessed-theft/WANTED/pursuit line remain unproven.
+- **Accessibility route review: PARTIAL.** Dangerous-confirmation semantics and safe focus passed;
+  the lawful outcome carried meaning in text. The reduced-motion recovery context was never reached.
+- **Electron route acceptance: OPEN.** The PQ-019C cell was Browser-only; no PQ-019C Electron route
+  was requested or run in H1.
+- **Independent human visual/fun verdict: BLOCKED.** The lawful outcome and DOM frames are available,
+  but the full five-route sequence is not. H2 carries this as functional status inside the existing
+  PQ-019A facility/capsule decision, not as a seventh human-review decision.
+- **Matched performance: OPEN — H3.** No frame p95/p99, hitch measurement, or speed claim is cited.
+  The broker process duration is marked informational/contended and is not evidence.
 
 Also open, and recorded above rather than buried:
 
@@ -421,16 +437,17 @@ Cathedral damage/recovery claim. That proof stays with `PQ-023.gold-corridor-req
 
 ## 10. Disposition
 
-**PASS** on what is claimed. The authored offer reaches the ordinary Tethys board, is accepted and
-abandoned through shipped flows, and cannot be procedurally rolled. Every packet invariant holds in
-`missions.js` across all seven terminal outcomes, measured as real side effects. All nine Phase E
-save points reconcile to exactly one capsule or a bounded `expired`/`unresolved_absent`, and no
-undecided outcome ever pays. The five named routes are flown through normal input. Tuning was
-selected once from a matrix predeclared before the runner existed, with the one out-of-scope
-selection recorded and refused. `check:pq019c:mission` is 62/62 in one `package.json` line;
-`check:pq019b:seams` and `check:pq019a:facility-embodiment` are unchanged; `check:sim:compare` is
-`hashEqual` and the save schema is byte-identical.
+**PASS** on the packet's headless claims. The authored offer reaches the ordinary Tethys board, is
+accepted and abandoned through shipped flows, and cannot be procedurally rolled. Every packet
+invariant holds in `missions.js` across all seven terminal outcomes, measured as real side effects.
+All nine Phase E save points reconcile to exactly one capsule or a bounded
+`expired`/`unresolved_absent`, and no undecided outcome ever pays. Tuning was selected once from a
+matrix predeclared before the runner existed, with the one out-of-scope selection recorded and
+refused. The current focused gate is 65/65; `check:pq019b:seams` and
+`check:pq019a:facility-embodiment` remain green; `check:sim:compare` is `hashEqual` and the save schema
+is byte-identical.
 
-Five real defects found by running the thing are fixed and pinned, and the one measurement defect in
-the tuning runner is recorded with the void run rather than smoothed over. Every row needing the
-PQ-034 lease is listed unclaimed.
+Phase H1 does **not** upgrade the five-route acceptance claim. Its one Browser attempt proved the real
+DOM abandonment and lawful-observe routes, then failed **HARNESS** before heist-plus-fence and never
+reached confiscation, destruction or recovery. The failure and all surviving evidence are carried in
+§9 rather than smoothed over; H3 performance and the remaining headed rows stay open.

@@ -25,7 +25,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 | 1 | headed `check:assets:live` | **PASS** | [row1-assets-live](evidence/h1/row1-assets-live/EVIDENCE.md) |
 | 2 | PQ-021 broker cell + Electron parity | **PASS** | [row2-pq021-ledger](evidence/h1/row2-pq021-ledger/EVIDENCE.md) |
 | 3 | PQ-019A presentation + counts | **FAIL — HARNESS (facility/count evidence survives; capsule stills missed subject)** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
-| 4 | `pq019-surface-heist` broker manifest | _pending_ | |
+| 4 | `pq019-surface-heist` broker manifest | **FAIL — HARNESS (DOM abandon + lawful observe survive; remaining routes unproven)** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
 | 5 | PQ-020 Ceres functional route | _pending_ | |
 | 6 | PQ-023 cues in motion | _pending_ | |
 | 7 | PQ-022 asset leaves | _pending_ | |

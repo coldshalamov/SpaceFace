@@ -1,0 +1,562 @@
+{
+  "schema": "spaceface.pq019-surface-heist.v1",
+  "runtime": "browser-chromium-headed",
+  "disposition": "FAIL",
+  "failureClass": "UNCLASSIFIED_BY_PROBE",
+  "phase": "heist-plus-fence",
+  "problems": [
+    "page.waitForFunction: Timeout 20000ms exceeded."
+  ],
+  "stack": "page.waitForFunction: Timeout 20000ms exceeded.\n    at waitForCapsule (C:\\Users\\93rob\\sf-h1\\scripts\\probe-pq019-surface-heist.mjs:633:15)\n    at C:\\Users\\93rob\\sf-h1\\scripts\\probe-pq019-surface-heist.mjs:225:11\n    at async runScenario (C:\\Users\\93rob\\sf-h1\\scripts\\probe-pq019-surface-heist.mjs:129:22)\n    at async file:///C:/Users/93rob/sf-h1/scripts/probe-pq019-surface-heist.mjs:222:18",
+  "fixedSeed": 19019,
+  "gpu": {
+    "available": true,
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "completed": [
+    {
+      "id": "dom-abandon",
+      "fixture": {
+        "recordedSeed": 19019,
+        "sectorId": "sector_tethys_junction",
+        "offer": {
+          "id": "heist_tethys_capsule_run",
+          "title": "Capsule Run — Tethys Surface Launcher",
+          "type": "heist_intercept",
+          "stationId": "station_tethys",
+          "rewardCr": 1800,
+          "launchWindowS": 4,
+          "recoveryEnabled": false
+        },
+        "witnessStationId": 105,
+        "patrolEntityId": 106,
+        "patrolJobId": "job:h1_pq019_patrol",
+        "launcherHeadId": 84,
+        "setup": "live station witness + live npcJobsRuntime patrol; no law receipt or heist state injected"
+      },
+      "accepted": {
+        "acceptedThroughDom": true,
+        "stationNavSelector": "[data-nav=\"contracts\"]",
+        "acceptSelector": "[data-accept=\"heist_tethys_capsule_run\"]",
+        "focusOnCommit": true,
+        "boardTextIncludesAuthoredTitle": true,
+        "mission": {
+          "id": "m_2",
+          "sourceOfferId": "heist_tethys_capsule_run",
+          "title": "Capsule Run — Tethys Surface Launcher",
+          "attempt": 0,
+          "recoveryAllowed": false,
+          "trackedMissionId": "m_2"
+        }
+      },
+      "confirmation": {
+        "role": "dialog",
+        "ariaModal": "true",
+        "labelledBy": "sf-confirm-title",
+        "describedBy": "sf-confirm-body",
+        "title": "Abandon Capsule Run — Tethys Surface Launcher?",
+        "body": "You will lose all progress on this contract. -5 contract standing No payout will be issued.",
+        "initialFocusIsCancel": true
+      },
+      "focusAfter": {
+        "confirmOpen": false,
+        "activeTag": "BODY",
+        "activeClass": "ui-modal-open"
+      },
+      "terminal": {
+        "missionId": "m_2",
+        "outcome": "abandoned",
+        "status": "committed",
+        "winner": null,
+        "terminalReceiptCount": 1,
+        "missionSettlementCount": 1,
+        "economyRewardCount": 0,
+        "factionOutcomeCount": 1,
+        "heatApplicationCount": 0,
+        "lawIncidentCount": 0,
+        "attempt": 0,
+        "recoveryAllowed": false
+      },
+      "trace": {
+        "cues": [
+          {
+            "cueId": "pq019c:cue:m_2:accepted",
+            "missionId": "m_2",
+            "moment": "accepted",
+            "text": "Capsule run accepted — launcher arming, stay in Tethys Junction",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:abandoned",
+            "missionId": "m_2",
+            "moment": "abandoned",
+            "text": "Capsule run abandoned",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          }
+        ],
+        "surfaces": [
+          {
+            "id": "barkDirector:92:scan",
+            "channel": "bark",
+            "priority": 50,
+            "text": "Transponder query logged under your registry. Your prior operator already answered this one.",
+            "kind": "barkDirector",
+            "ttl": 1.2
+          },
+          {
+            "id": "tutorial:hint:firstHub",
+            "channel": "tutorial",
+            "priority": 70,
+            "text": "Use the left rail. Departure Check owns undock.",
+            "kind": "info",
+            "ttl": 7
+          }
+        ],
+        "clears": [
+          {
+            "id": "barkDirector:92:scan"
+          }
+        ],
+        "settlements": [
+          {
+            "kind": "failed",
+            "missionId": "m_2",
+            "reason": "abandoned",
+            "source": "heistContract"
+          }
+        ],
+        "grants": [],
+        "accepts": [
+          {
+            "missionId": "heist_tethys_capsule_run"
+          }
+        ],
+        "vfxCues": [
+          {
+            "id": "mission.accept",
+            "lane": "objective",
+            "material": "objective",
+            "particles": 24,
+            "lights": 1,
+            "magnitude": 1,
+            "position": {
+              "x": 9484.1552734375,
+              "z": 6823.47802734375
+            },
+            "targetId": 1
+          }
+        ]
+      },
+      "declaredRoute": "station Missions DOM accept -> J Mission Log -> danger confirmation -> abandon",
+      "pageIssues": [],
+      "screenshots": [
+        {
+          "path": ".devshots/pq019-surface-heist/dom-abandon-board.png",
+          "bytes": 600184,
+          "sha256": "3f89fdff4cb83a666d03c97fedc0c94413c221f47d606c2d8ac8ef1d2cbfb4c3"
+        },
+        {
+          "path": ".devshots/pq019-surface-heist/dom-abandon-log.png",
+          "bytes": 1420776,
+          "sha256": "5a6b411d0f44886151d3f38a48c8e23966f0726c0536e508e3e96ed7e5a0fe36"
+        },
+        {
+          "path": ".devshots/pq019-surface-heist/dom-abandon-confirm.png",
+          "bytes": 957294,
+          "sha256": "8836c800906a56d1186ff8e0814414b1d13540f66fcf6241b4b29d5342154f4d"
+        }
+      ]
+    },
+    {
+      "id": "lawful-observe",
+      "fixture": {
+        "recordedSeed": 19019,
+        "sectorId": "sector_tethys_junction",
+        "offer": {
+          "id": "heist_tethys_capsule_run",
+          "title": "Capsule Run — Tethys Surface Launcher",
+          "type": "heist_intercept",
+          "stationId": "station_tethys",
+          "rewardCr": 1800,
+          "launchWindowS": 4,
+          "recoveryEnabled": false
+        },
+        "witnessStationId": 104,
+        "patrolEntityId": 105,
+        "patrolJobId": "job:h1_pq019_patrol",
+        "launcherHeadId": 84,
+        "setup": "live station witness + live npcJobsRuntime patrol; no law receipt or heist state injected"
+      },
+      "recordedSeed": 19019,
+      "accepted": {
+        "acceptedThroughDom": true,
+        "stationNavSelector": "[data-nav=\"contracts\"]",
+        "acceptSelector": "[data-accept=\"heist_tethys_capsule_run\"]",
+        "focusOnCommit": true,
+        "boardTextIncludesAuthoredTitle": true,
+        "mission": {
+          "id": "m_2",
+          "sourceOfferId": "heist_tethys_capsule_run",
+          "title": "Capsule Run — Tethys Surface Launcher",
+          "attempt": 0,
+          "recoveryAllowed": false,
+          "trackedMissionId": "m_2"
+        }
+      },
+      "terminal": {
+        "missionId": "m_2",
+        "outcome": "lawful_arrival_observed",
+        "status": "committed",
+        "winner": null,
+        "terminalReceiptCount": 1,
+        "missionSettlementCount": 1,
+        "economyRewardCount": 0,
+        "factionOutcomeCount": 1,
+        "heatApplicationCount": 0,
+        "lawIncidentCount": 0,
+        "attempt": 0,
+        "recoveryAllowed": false
+      },
+      "floor": {
+        "count": 1,
+        "text": "Capsule caught by Concord — the run is over, nothing was taken",
+        "role": "group",
+        "matchingToastCount": 0,
+        "latestSurface": {
+          "id": "pq019c:capsule-run",
+          "channel": "objective",
+          "priority": 60,
+          "text": "Capsule caught by Concord — the run is over, nothing was taken",
+          "kind": "info",
+          "ttl": 5
+        },
+        "heistSurfaceCount": 1,
+        "queue": {
+          "activeId": "pq019c:capsule-run",
+          "activeText": "Capsule caught by Concord — the run is over, nothing was taken",
+          "pendingCount": 0,
+          "size": 1
+        }
+      },
+      "cueMoments": [
+        "accepted",
+        "launched",
+        "lawful_arrival"
+      ],
+      "payouts": [],
+      "trace": {
+        "cues": [
+          {
+            "cueId": "pq019c:cue:m_2:accepted",
+            "missionId": "m_2",
+            "moment": "accepted",
+            "text": "Capsule run accepted — launcher arming, stay in Tethys Junction",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:launched",
+            "missionId": "m_2",
+            "moment": "launched",
+            "text": "Capsule away — intercept it before the Concord catcher takes it",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:lawful_arrival",
+            "missionId": "m_2",
+            "moment": "lawful_arrival",
+            "text": "Capsule caught by Concord — the run is over, nothing was taken",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          }
+        ],
+        "surfaces": [
+          {
+            "id": "barkDirector:92:scan",
+            "channel": "bark",
+            "priority": 50,
+            "text": "Transponder query logged under your registry. Your prior operator already answered this one.",
+            "kind": "barkDirector",
+            "ttl": 1.2
+          },
+          {
+            "id": "tutorial:hint:firstHub",
+            "channel": "tutorial",
+            "priority": 70,
+            "text": "Use the left rail. Departure Check owns undock.",
+            "kind": "info",
+            "ttl": 7
+          },
+          {
+            "id": "poi:poib:sector_tethys_junction:lawful_station_yard:zone_tethys_checkpoint",
+            "channel": "objective",
+            "priority": 60,
+            "text": "YARD CONTROL · DOCK 0/1 · LAWFUL INSPECTION → LOCAL TRUST",
+            "kind": "info",
+            "ttl": 5
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 60,
+            "text": "Capsule caught by Concord — the run is over, nothing was taken",
+            "kind": "info",
+            "ttl": 5
+          }
+        ],
+        "clears": [
+          {
+            "id": "barkDirector:92:scan"
+          },
+          {},
+          {
+            "id": "poi:poib:sector_tethys_junction:lawful_station_yard:zone_tethys_checkpoint"
+          }
+        ],
+        "settlements": [
+          {
+            "kind": "failed",
+            "missionId": "m_2",
+            "reason": "lawful_arrival",
+            "source": "heistContract"
+          }
+        ],
+        "grants": [],
+        "accepts": [
+          {
+            "missionId": "heist_tethys_capsule_run"
+          }
+        ],
+        "vfxCues": [
+          {
+            "id": "mission.accept",
+            "lane": "objective",
+            "material": "objective",
+            "particles": 24,
+            "lights": 1,
+            "magnitude": 1,
+            "position": {
+              "x": 9484.1552734375,
+              "z": 6823.47802734375
+            },
+            "targetId": 1
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13988.30224609375,
+              "z": 6252.2178955078125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13990.37255859375,
+              "z": 6261.6298828125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13989.75,
+              "z": 6274.9443359375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13981.52685546875,
+              "z": 6290.1748046875
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13966.80322265625,
+              "z": 6306.081298828125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13946.9951171875,
+              "z": 6322.0850830078125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13928.74072265625,
+              "z": 6335.50048828125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13915.13330078125,
+              "z": 6345.4942626953125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13904.36767578125,
+              "z": 6353.4014892578125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13895.85205078125,
+              "z": 6359.6641845703125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13889.09814453125,
+              "z": 6364.6221923828125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 1335.5546875,
+              "z": -367.8818359375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13883.75439453125,
+              "z": 6368.5494384765625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13879.64111328125,
+              "z": 6371.5684814453125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": -268.38671875,
+              "z": 16250.1796875
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": -297.6328125,
+              "z": 16238.875
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13876.36376953125,
+              "z": 6373.9781494140625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13873.74853515625,
+              "z": 6375.9005126953125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13871.66064453125,
+              "z": 6377.4346923828125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          }
+        ]
+      },
+      "declaredRoute": "live capsule -> production physics:impact at lawful catcher",
+      "pageIssues": [],
+      "screenshots": [
+        {
+          "path": ".devshots/pq019-surface-heist/lawful-observe-board.png",
+          "bytes": 601137,
+          "sha256": "dda944cc2675b06635e5614f9ee365bbf43999e13c25b71bcf919c0957eb9615"
+        },
+        {
+          "path": ".devshots/pq019-surface-heist/lawful-arrival.png",
+          "bytes": 454889,
+          "sha256": "cd7f727ddb75f95c61c756da2ffcac6fba63eebdcd97b0065802cffa8b6a4b9c"
+        }
+      ]
+    }
+  ],
+  "noPerformanceEvidence": true
+}
