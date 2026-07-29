@@ -1818,6 +1818,8 @@ def stamp_glb_metadata(path: Path, spec: dict[str, Any], lod_stats: list[dict]) 
     collision_bounds = None
     lod0_aabb = None
     helper_breakdown = {'triangles': 0, 'primitives': 0, 'nodes': []}
+    visible_lod0_bounds = None
+    visible_lod0_nodes: list[dict[str, Any]] = []
 
     for mesh in meshes:
         total_tris += mesh_tri_count(doc, mesh)
@@ -1952,9 +1954,15 @@ def stamp_glb_metadata(path: Path, spec: dict[str, Any], lod_stats: list[dict]) 
                 bucket['nodes'].append({'name': name, 'tris': tris})
             if is_hull_node(name, mesh):
                 hull_tris += tris
+            visible_node_materials: set[str] = set()
             for prim in mesh.get('primitives') or []:
                 prim_count += 1
                 attrs = prim.get('attributes') or {}
+                material_index = prim.get('material')
+                if material_index is not None and material_index in materials:
+                    material_name = materials[material_index].get('name')
+                    if material_name:
+                        visible_node_materials.add(material_name)
                 if 'TANGENT' in attrs:
                     tangent_prims += 1
                 if 'TEXCOORD_0' in attrs:
@@ -1975,6 +1983,30 @@ def stamp_glb_metadata(path: Path, spec: dict[str, Any], lod_stats: list[dict]) 
                             for i in range(3):
                                 lod0_aabb['min'][i] = min(lod0_aabb['min'][i], aabb[0][i])
                                 lod0_aabb['max'][i] = max(lod0_aabb['max'][i], aabb[1][i])
+                        transformed = [
+                            transform_gltf_node_point(node, [x, y, z])
+                            for x in (aabb[0][0], aabb[1][0])
+                            for y in (aabb[0][1], aabb[1][1])
+                            for z in (aabb[0][2], aabb[1][2])
+                        ]
+                        if visible_lod0_bounds is None:
+                            visible_lod0_bounds = {
+                                'min': [math.inf, math.inf, math.inf],
+                                'max': [-math.inf, -math.inf, -math.inf],
+                            }
+                        for point in transformed:
+                            for i in range(3):
+                                visible_lod0_bounds['min'][i] = min(
+                                    visible_lod0_bounds['min'][i], point[i],
+                                )
+                                visible_lod0_bounds['max'][i] = max(
+                                    visible_lod0_bounds['max'][i], point[i],
+                                )
+            if lod == 'lod0':
+                visible_lod0_nodes.append({
+                    'name': name,
+                    'materials': sorted(visible_node_materials),
+                })
 
     ensure_packed_orm_assignments(doc)
     if collision_bounds is not None:
@@ -1983,6 +2015,40 @@ def stamp_glb_metadata(path: Path, spec: dict[str, Any], lod_stats: list[dict]) 
             for i in range(3)
         ]
         collision_bounds['helpers'].sort()
+    if visible_lod0_bounds is not None:
+        minimum = visible_lod0_bounds['min']
+        maximum = visible_lod0_bounds['max']
+        full_rig = {
+            'visualNodes': sorted(visible_lod0_nodes, key=lambda row: row['name']),
+            'min': {'x': minimum[0], 'y': minimum[1], 'z': minimum[2]},
+            'max': {'x': maximum[0], 'y': maximum[1], 'z': maximum[2]},
+            'center': {
+                'x': (minimum[0] + maximum[0]) * 0.5,
+                'y': (minimum[1] + maximum[1]) * 0.5,
+                'z': (minimum[2] + maximum[2]) * 0.5,
+            },
+            'size': {
+                'x': maximum[0] - minimum[0],
+                'y': maximum[1] - minimum[1],
+                'z': maximum[2] - minimum[2],
+            },
+        }
+        root_node = next(
+            (node for node in doc.get('nodes') or [] if node.get('name') == spec['rootName']),
+            None,
+        )
+        material_truth = (
+            ((root_node or {}).get('extras') or {}).get('spaceface') or {}
+        ).get('materialTruth')
+        semantic_bounds = (material_truth or {}).get('semanticBounds')
+        if semantic_bounds is not None:
+            authored_components = (
+                (semantic_bounds.get('groups') or {}).get('authoredRig') or {}
+            ).get('components')
+            if not authored_components:
+                raise RuntimeError('fullRig requires authoredRig component provenance')
+            full_rig['components'] = list(authored_components)
+            semantic_bounds.setdefault('groups', {})['fullRig'] = full_rig
     lod0_size = None
     if lod0_aabb:
         lod0_size = [lod0_aabb['max'][i] - lod0_aabb['min'][i] for i in range(3)]

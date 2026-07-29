@@ -81,7 +81,7 @@
       10.574089050292969
     ]
   },
-  "sourceSha256": "F77B8F1C5058B2C23BE9BF82D5BF1ACAE3940DEDC9F488728C593B78622059E6",
+  "sourceSha256": "F70EBC2876D0D358B67939C25E7C6B17EDAD5ECC4287A496EBF15EA0FF39B8A8",
   "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\source\\wholeships\\ashline_v2_rig.glb",
   "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\blender\\ashline_v2_rig_production.blend",
   "materialTruth": {
@@ -685,9 +685,9 @@
       "single-central-engine-trail-sockets-versus-two-visible-drive-bells-needs-runtime-vfx-proof",
       "browser-electron-cost-and-independent-g7-evidence-remain-external"
     ],
-    "sourceSha256": "F77B8F1C5058B2C23BE9BF82D5BF1ACAE3940DEDC9F488728C593B78622059E6",
+    "sourceSha256": "F70EBC2876D0D358B67939C25E7C6B17EDAD5ECC4287A496EBF15EA0FF39B8A8",
     "sourceHashBinding": {
-      "sourceSha256": "F77B8F1C5058B2C23BE9BF82D5BF1ACAE3940DEDC9F488728C593B78622059E6",
+      "sourceSha256": "F70EBC2876D0D358B67939C25E7C6B17EDAD5ECC4287A496EBF15EA0FF39B8A8",
       "componentInventoryDigest": "20C9C457709E6AF250BDECD316C37D8C3262034BA7325366FF388DBFCD37D016",
       "collisionContractDigest": "2B86BFA1FF77F2760E8EFF23B6FAD96CCC56DF83A652F6A8A29D5B5B8458B92C"
     },

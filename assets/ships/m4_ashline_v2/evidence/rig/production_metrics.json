@@ -12,10 +12,10 @@
   "sourceGlb": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_rig.glb",
   "releaseCandidateGlb": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_rig.glb",
   "blend": "assets/ships/m4_ashline_v2/blender/ashline_v2_rig_production.blend",
-  "sha256_source": "F77B8F1C5058B2C23BE9BF82D5BF1ACAE3940DEDC9F488728C593B78622059E6",
+  "sha256_source": "F70EBC2876D0D358B67939C25E7C6B17EDAD5ECC4287A496EBF15EA0FF39B8A8",
   "report": {
     "file": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\source\\wholeships\\ashline_v2_rig.glb",
-    "bytes": 2936304,
+    "bytes": 2940872,
     "totalTriangles": 30065,
     "hullTriangles": 12741,
     "lodBreakdown": {
@@ -364,7 +364,7 @@
         10.574089050292969
       ]
     },
-    "sha256": "F77B8F1C5058B2C23BE9BF82D5BF1ACAE3940DEDC9F488728C593B78622059E6"
+    "sha256": "F70EBC2876D0D358B67939C25E7C6B17EDAD5ECC4287A496EBF15EA0FF39B8A8"
   },
   "renders": [
     "assets/ships/m4_ashline_v2/evidence/rig/renders/forward_34.png",
@@ -378,5 +378,5 @@
     "assets/ships/m4_ashline_v2/evidence/rig/renders/silhouette_gray_45px.png",
     "assets/ships/m4_ashline_v2/evidence/rig/renders/top_ortho.png"
   ],
-  "builtAt": "2026-07-29T19:52:25Z"
+  "builtAt": "2026-07-29T20:11:18Z"
 }

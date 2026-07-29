@@ -212,6 +212,51 @@ function collisionUnion(gltf, binary, collisionNodes) {
   };
 }
 
+function visibleLod0Contract(gltf, binary, authoredComponents) {
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  const visualNodes = [];
+  for (const node of gltf.nodes ?? []) {
+    const sf = node.extras?.spaceface ?? {};
+    if (node.mesh === undefined || sf.lod !== 'lod0' || sf.nonRender === true || sf.collision === true) {
+      continue;
+    }
+    const materials = new Set();
+    for (const primitive of gltf.meshes[node.mesh].primitives ?? []) {
+      materials.add(gltf.materials[primitive.material]?.name);
+      for (const point of accessorPositions(gltf, binary, primitive.attributes.POSITION)) {
+        const transformed = transformPoint(point, node);
+        for (let axis = 0; axis < 3; axis += 1) {
+          min[axis] = Math.min(min[axis], transformed[axis]);
+          max[axis] = Math.max(max[axis], transformed[axis]);
+        }
+      }
+    }
+    visualNodes.push({
+      name: node.name,
+      materials: [...materials].filter(Boolean).sort(),
+    });
+  }
+  visualNodes.sort((left, right) => left.name.localeCompare(right.name));
+  assert.ok(visualNodes.length > 0, 'visible LOD0 contract has no contributing nodes');
+  return {
+    visualNodes,
+    min: { x: min[0], y: min[1], z: min[2] },
+    max: { x: max[0], y: max[1], z: max[2] },
+    center: {
+      x: (min[0] + max[0]) * 0.5,
+      y: (min[1] + max[1]) * 0.5,
+      z: (min[2] + max[2]) * 0.5,
+    },
+    size: {
+      x: max[0] - min[0],
+      y: max[1] - min[1],
+      z: max[2] - min[2],
+    },
+    components: authoredComponents,
+  };
+}
+
 function assertNoDegenerateExportPrimitives(gltf, binary) {
   let triangleCount = 0;
   for (const node of gltf.nodes ?? []) {
@@ -278,7 +323,10 @@ function assertSemanticBounds(bounds, lod0Extents) {
   assert.equal(bounds?.schema, SEMANTIC_BOUNDS_SCHEMA);
   assert.equal(bounds?.basis, 'rig-root-local-aabb');
   const groups = bounds.groups;
-  assert.deepEqual(Object.keys(groups).sort(), ['authoredRig', 'capture', 'drives', 'jaw', 'winch']);
+  assert.deepEqual(
+    Object.keys(groups).sort(),
+    ['authoredRig', 'capture', 'drives', 'fullRig', 'jaw', 'winch'],
+  );
   const tolerance = 1e-5;
   const uniqueMembers = new Set();
   for (const [groupId, requiredPrefixes] of Object.entries(SEMANTIC_GROUPS)) {
@@ -312,6 +360,11 @@ function assertSemanticBounds(bounds, lod0Extents) {
     const authored = groups.authoredRig;
     assert.ok(Number.isFinite(authored.min?.[axis]) && Number.isFinite(authored.max?.[axis]));
     assert.ok(authored.max[axis] > authored.min[axis], `authored Rig ${axis} is degenerate`);
+    assert.ok(
+      authored.min[axis] >= groups.fullRig.min[axis]
+      && authored.max[axis] <= groups.fullRig.max[axis],
+      `fullRig does not contain authoredRig on ${axis}`,
+    );
   }
 }
 
@@ -474,6 +527,15 @@ test('Rig GLB preserves exact roots, sockets, collision, physical material bindi
   assert.deepEqual(rootTruth?.collisionContract, COLLISION_CONTRACT);
   const lod0Extents = lodAabbExtents(gltf, binary, 'LOD0');
   assertSemanticBounds(rootTruth?.semanticBounds, lod0Extents);
+  assert.deepEqual(
+    rootTruth.semanticBounds.groups.fullRig,
+    visibleLod0Contract(
+      gltf,
+      binary,
+      rootTruth.semanticBounds.groups.authoredRig.components,
+    ),
+    'fullRig must be the exact transformed visible LOD0 subject',
+  );
   const { json: candidateGltf } = glbDocument(CANDIDATE);
   const candidateRoot = (candidateGltf.nodes ?? []).find(
     (node) => node.name === 'SF_M4_ASHLINE_V2_RIG_ROOT',
