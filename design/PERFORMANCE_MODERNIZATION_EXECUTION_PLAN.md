@@ -185,88 +185,33 @@ offline compiler is built. PERF-04 depends on the change-journal seam created by
 begin on unleased pools before PERF-04 and then adopt `PresentationWorld` handles. PERF-08 begins only
 after PERF-07 so it measures the runtime intended to ship.
 
-## 6. Common acceptance system
+## 6. Equivalence principle
 
-Before the first edit in every claimed packet, persist the exact candidate's `npm run check:baseline` link matrix in addition to the packet's L0–L2 entry gates. Rerun the same fast baseline at exit and require its green set to be a superset of the entry green set. A red entry check is repaired or carries an integrator-issued `INHERITED_RED` token under `design/program/roadmap/00_EXECUTION_PROTOCOL.md`; a worker may never classify a red check as `OUT_OF_SCOPE`.
+The optimized game must be observably the same game. Decide what evidence is proportionate to the
+change — the point is to be *right*, not to build a complete measurement apparatus before touching
+code.
 
-### 6.1 Deterministic simulation oracle
+**Simulation equivalence:** the same seed and input tape must produce the same authoritative results —
+fixed-timestep outputs, system/event order, RNG consumption, flight/AI/combat/economy outcomes, and
+save continuation. If you change sim behavior you did not intend to change, that is a regression.
 
-For each scenario, record the seed and timestamped input-command tape. At every fixed tick, hash an
-explicit authoritative projection:
+**Presentation equivalence:** authored geometry, materials, transforms, sockets, visibility/LOD
+selection, render order, animation, HUD information, and accessibility must be preserved. Any
+player-visible difference is a bug unless it fixes a separately documented one.
 
-- player and NPC transforms and velocities;
-- health, shields, energy, heat, ammo, cooldowns, and active effects;
-- AI state, selected target, job state, and issued intents;
-- active entities with stable IDs and archetypes;
-- credits, cargo, reputation, missions, faction state, and sector ownership;
-- RNG state and consumed-stream counters;
-- ordered gameplay events emitted during the tick.
+**Proportionality:** a one-line refactor does not need the same proof as a renderer overhaul. Run
+`npm run check:baseline` before and after edits as the default; reach for broader or route-level
+evidence when the change actually warrants it, and stop when further verification isn't going to
+change the outcome. Don't loop on it.
 
-Compare baseline and candidate tick by tick. A mismatch reports the first tick, field, and preceding
-events. Expected-output files are never edited to make an optimization pass.
+A handful of representative routes (boot→flight, normal flight, denser population, combat,
+mining/tether, dock/station, save/load, cold/warm asset admission, lifecycle transitions) are the
+useful checklist when you need route-level confidence — not a mandatory 12-cell matrix for every
+packet. The existing deterministic simulation goldens and focused tests already cover most
+equivalence; lean on them.
 
-### 6.2 Presentation semantic oracle
-
-For fixed cameras and fixed simulation snapshots, compare:
-
-- stable render-object identity and parent relationship;
-- world transform and interpolation result;
-- visibility, culling classification, and LOD selection;
-- geometry content hash, index/vertex count, draw range, bounds, and material pipeline key;
-- texture identity and color-space settings;
-- socket, hardpoint, trail, light, shadow, canopy, and dynamic-surface attachment transforms;
-- render order, depth/blend behavior, and authored animation state;
-- HUD semantic tree and accessibility state.
-
-Near-, middle-, and far-camera stills plus short temporal sequences supplement the semantic comparison.
-Pixel differences caused by driver sampling must be investigated; they are not an automatic waiver.
-Any player-visible difference fails unless it fixes a separately documented bug.
-
-### 6.3 Required routes
-
-The harness must cover:
-
-1. boot → new game → first controllable flight;
-2. quiet flight with the current normal population;
-3. the same flight with five times the entity population;
-4. dense hostile combat with weapons, shields, trails, particles, and destruction;
-5. mining/tether/salvage;
-6. travel and system/region transition;
-7. dock, station UI, undock;
-8. map and navigation overlays;
-9. save, load, and deterministic continuation;
-10. authored ship/place cold admission and warm cache admission;
-11. minimize, restore, hide/show, display change, suspend/resume, and lock/unlock;
-12. WebGL context loss and recovery.
-
-### 6.4 Matched A/B method
-
-- Run baseline and candidate from the same seed, save, camera route, and input tape.
-- Alternate run order so thermal or background drift does not always favor one build.
-- Record display refresh, renderer/GPU identity, process census, power state, window state, and
-  background contention.
-- Run a WebGL no-op control beside game captures. A slow control invalidates whole-frame conclusions.
-- Capture browser and Electron separately.
-- Keep the old path behind a temporary diagnostic switch until the candidate passes equivalence and
-  demonstrates a repeatable gain outside run noise.
-- Remove the old path in the same packet or a named immediate cleanup packet; do not leave permanent
-  dual implementations.
-
-### 6.5 Measurements
-
-Each capture publishes:
-
-- rAF interval and callback duration distributions;
-- fixed-tick count per callback, individual tick duration, backlog, and discarded-time events;
-- render prepare, visibility, publication, scene render, post, and UI CPU duration;
-- pass-level GPU duration where timer queries are valid;
-- draw calls, triangles, visible roots, visible meshes, material pipeline keys, and shader programs;
-- asset decode, compile, upload, admission, and first-visible latency;
-- bytes requested and uploaded for dynamic attributes;
-- query count, candidates visited, and results returned by owner;
-- allocation rate, long tasks, GC pauses, and heap trend;
-- memory/residency by asset class;
-- input-to-photon markers for representative commands.
+The full validation ladder and broker-managed route evidence live in
+[`docs/VALIDATION_WORKFLOW.md`](../docs/VALIDATION_WORKFLOW.md) if you need them.
 
 ## 7. PERF-00 — Equivalence and attribution harness
 
@@ -303,16 +248,14 @@ equivalence report that can close a major refactor.
 
 ### Completion proof
 
-- Intentionally alter one simulation field: the harness identifies the first divergent tick.
-- Intentionally alter one material/transform/socket: the presentation comparison identifies it.
-- Run a deliberately contended capture: measurement validity fails without failing equivalence.
-- Run baseline against itself: it closes with no semantic difference and reports natural run variance.
-
+The harness can tell three things apart: the same game, a valid measurement, and a faster one.
+A quick way to prove it works: deliberately flip one sim field and one presentation field and
+confirm the harness catches each. Don't over-build the apparatus — it needs to be trustworthy
+enough to gate later work, not exhaustive.
 ### Exit condition
 
-No later packet may claim completion until this harness can distinguish “same game,” “valid capture,”
-and “faster.”
-
+Don't start claiming later packets are faster until this harness can actually distinguish
+"same game," "valid capture," and "faster." If it can't, that's the gap to close first.
 ## 8. PERF-01 — Foreground/background lifecycle correctness
 
 ### Current state
@@ -365,12 +308,10 @@ rather than accidental background execution.
 
 ### Completion proof
 
-- foreground input tape produces the same tick digest before and after;
-- minimized/hidden CPU and GPU submission cease;
-- restore produces no multi-tick storm and no large interpolation jump;
-- suspend/resume and lock/unlock do not duplicate listeners or lose input state;
-- packaged Electron and browser lifecycle routes both pass.
-
+Foreground play is unchanged; minimized/hidden windows stop doing GPU/sim work; restore
+doesn't cause a multi-tick storm or input loss; suspend/resume and lock/unlock are clean;
+both browser and packaged Electron behave. Run whatever focused checks convince you it's
+correct — `test/loop-lifecycle.test.mjs` and the lifecycle scripts are the natural owners.
 ## 9. PERF-02 — Separate simulation scheduling from presentation scheduling
 
 ### Defect
@@ -418,18 +359,15 @@ parallelism.
 
 ### Completion proof
 
-- all deterministic scenario digests match the pre-extraction loop;
-- callback traces no longer conflate fixed-tick and presentation ownership;
-- no lifecycle transition creates catch-up work;
-- renderer disabled, renderer stalled, and UI stalled tests attribute the delay correctly;
-- the game remains playable after each extraction commit.
-
+Deterministic scenario digests match the pre-extraction loop; callback traces cleanly
+separate fixed-tick ownership from presentation; lifecycle transitions don't create catch-up
+work; the game stays playable after each extraction commit. The point is a clean seam, not
+a speed win in this packet.
 ### Exit condition
 
-Do not move simulation to another thread in this packet. The purpose is to make that later change
-possible without rewriting gameplay systems and to stop presentation stalls from being an opaque
-whole-loop failure.
-
+Don't move simulation to another thread in this packet. The purpose is to make that later
+change possible without rewriting gameplay, and to stop presentation stalls from being an
+opaque whole-loop failure.
 ## 10. PERF-03 — Offline semantic render compiler
 
 ### Defect
@@ -525,12 +463,10 @@ This deliberately covers the most difficult semantic cases before bulk conversio
 
 ### Completion proof
 
-- compiler outputs are reproducible;
-- geometry, materials, anchors, dynamic groups, LOD/HLOD, screenshots, and temporal sequences match;
-- no clone/apply/merge/de-index operation occurs on the accepted runtime route;
-- cold and warm admission traces show those phases absent, not merely faster;
-- all release assets pass before the fallback is removed.
-
+Compiler outputs are reproducible (rebuild twice, byte-identical); geometry, materials,
+anchors, dynamic groups, and LOD/HLOD match; the accepted runtime route no longer does
+clone/apply/merge/de-index work; cold and warm admission traces show those phases gone,
+not merely faster; all release assets pass before the fallback is removed.
 ### Expected magnitude
 
 For assets that previously performed seconds of runtime geometry work, removing that work can exceed
@@ -608,14 +544,10 @@ No simulation system reads `PresentationWorld`; it can be destroyed and rebuilt 
 
 ### Completion proof
 
-- shadow mode reports identical records and cull/LOD results;
-- deterministic and presentation-semantic oracles pass;
-- no per-frame diagnostic allocation or second diagnostic scan remains;
-- transform work is proportional to visible/changed handles;
-- at five times current entity count, entity-view publication is no slower than the old path at
-  current count on the same route and machine;
-- destroying/spawning into a reused slot cannot produce a one-frame wrong mesh, effect, or attachment.
-
+Shadow mode reports identical records and cull/LOD results; deterministic and presentation
+equivalence hold; transform work scales with visible/changed handles rather than every
+registered root; at higher entity counts the new path holds up where the old one degrades.
+Prove the win at a population that actually stresses it, but don't loop on the exact ratio.
 ### Expected magnitude
 
 This is the strongest credible path to a fivefold entity-scale improvement because it changes the
@@ -652,12 +584,10 @@ eligible update. With `J` jobs and `N` entities, this is `O(JN)` even though the
 
 ### Completion proof
 
-- baseline/candidate select the same hostile for every request and tick;
-- empty, equal-distance, destroyed, spawned, cross-team, and boundary-cell cases pass;
-- candidate visits grow with nearby density rather than total world population;
-- the five-times-population scenario shows the NPC-jobs query remaining a small, stable portion of
-  fixed-tick time.
-
+Baseline and candidate select the same hostile for every request and tick; edge cases
+(empty, equal-distance, destroyed, spawned, cross-team, boundaries) pass; candidate visits
+scale with nearby density, not total population. This is the lightest packet — don't
+over-prove an obvious algorithmic fix.
 ## 13. PERF-06 — Dirty-range GPU uploads
 
 ### Defect
@@ -729,17 +659,12 @@ Do not alter leased VFX files merely to complete this packet.
 
 ### Completion proof
 
-- output, instance identity, lifetime, ordering, and capacity behavior match;
-- randomized sparse/dense dirty patterns upload the correct components;
-- after initialization, a skipped/material-hidden/zero-count render followed by a disjoint write publishes nothing until the next ordinary-draw-eligible armed scene traversal, then uploads the complete union on that first draw, including `ZERO_MATRIX` release and immediate slot reuse;
-- registration/create/grow/restore force-full attributes publish before their first processing-eligible `bufferData` even at hidden material or zero count, and no upload callback occurs without its exact immutable snapshot;
-- prior scene-hook receiver/order/restoration, first-qualifying multi-render publication, static LOD eligibility, and scene-hook ownership are proved; hook re-entry/replacement and same-epoch post-publication writes fail before stale traversal or mutation;
-- callback-time owner writes, callback identity replacement, and direct callback version/range mutation fail before tracked typed-array mutation or publication; captured sibling-attribute transfers remain one coherent generation, and Three.js never caches an unuploaded version;
-- buffers never display stale or cross-generation data after wrap, grow, shrink, spawn, destroy, interrupted-render supersession, or context restoration;
-- telemetry shows upload bytes and force-full reasons following the union published by the armed `Scene.onBeforeRender` coordinator before `WebGLObjects.update`, rather than allocated capacity;
-- cumulative range-record and GC ceilings hold at one-times and five-times population, including exactly three final trail records across the 18-spawn-plus-one-integration-plus-grow pre-draw fanout;
-- matched combat captures demonstrate a repeatable CPU/driver gain or the abstraction is removed.
-
+Output, instance identity, lifetime, ordering, and capacity behavior match; dirty ranges
+upload the correct components and never display stale/cross-generation data after wrap,
+grow, shrink, spawn, destroy, or context loss; telemetry reflects changed bytes rather than
+capacity. A matched combat capture should show a repeatable CPU/driver gain, or the
+abstraction gets removed. Don't chase exact record-count ceilings in prose — verify the
+behavior is right and the gain is real.
 ## 14. PERF-07 — Electron modernization
 
 ### Defect
@@ -775,62 +700,35 @@ sandbox/preload boundaries, crash recovery, and power-monitor events.
 
 ### Completion proof
 
-- the supported runtime launches, packages, saves, loads, and plays the same route;
-- deterministic and presentation-semantic oracles pass;
-- hardware acceleration and expected renderer are active;
-- browser/Electron parity remains;
-- performance comparison is reported even if the upgrade is neutral; support/security alone justify
-  leaving 31.x.
-
+The supported runtime launches, packages, saves, loads, and plays the same route; hardware
+acceleration is active; browser/Electron parity holds; deterministic equivalence passes.
+Report a performance comparison even if the upgrade is neutral — support/security alone
+justify leaving the old Electron line.
 ## 15. PERF-08 — GPU pipeline correction selected by clean evidence
 
-This packet is required, but its implementation branch is selected by valid pass-level evidence after
-PERF-07. The July 25 contended trace is not enough to choose. Before either selecting capture begins,
-the active packet must freeze and independently review the selecting render path, exact diagnostic
-cells, scalar metric formulas, within-block and cross-block estimators, deterministic bootstrap,
-numeric thresholds, sample floors, runtime manifests, and fail-closed selector. Before a valid D result
-is consumed, changing any of those values invalidates the selecting evidence and requires recapture.
-After a valid D result is consumed, the packet-terminal rule forbids replacement capture and routes any
-later defect to separately admitted work.
+This packet's branch is selected by clean pass-level evidence after PERF-07 — not by a contaminated
+trace. The July 25 capture was run on a badly contended machine, so it can suggest where GPU time
+goes (bloom composite, full-screen passes) but cannot by itself choose the fix.
 
-The admitted contract disables the overlapping render-graph path for selecting cells and asserts the
-live bloom or straight path. Physical default-bloom timing consists only of `bloomScene`,
-`bloomDownsample`, and the fused `bloomComposite`; the diagnostic bypass consists of `bloomScene` plus
-`bloomBypassCopy`. It uses seven paired counterbalanced blocks per runtime, Type-7 within-block
-statistics, paired block-level transforms, literal statistic keys, deterministic FNV-1a/xorshift32
-bootstrap streams with a zero-state remap, at least 120 sampled rendered frames per cell, at least 700
-completed origin-linked queries per required physical pass/cell, zero promoted
-overlap/disjoint/drop/reset/context-loss/nested/overflow states, and bounded pending-query drain.
-Browser and Electron compute A/B/C raw facts independently, apply the frozen disjoint dominance/exclusion
-equations, and must produce the same single final branch. Zero final results, an impossible multiple
-result, invalid scalar or confidence boundary, missing data, or runtime disagreement returns `BLOCKED`.
-For B, aggregate eligibility is domain-conditioned before tie-breaking: `sceneGpuMs` uses the frozen
-`totalGpuMs` floor, while `rendererCpuMs` uses the frozen `rendererCpuMs` floor. D0/D1 use callback-start
-interval p95, never callback execution duration; owner work from callback `k` may explain only the interval
-ending at callback `k+1` through immutable causal IDs. D1 owner IDs are predeclared, exclusive,
-non-overlapping, present in the statistic keys, and exactly one must pass per late route.
+The diagnostic idea is sound and worth keeping: vary output-pixel count, draw/state structure, and
+post-pass cost independently, attribute the dominant cost to one of four buckets, and fix that bucket.
+But the exact statistical method (block design, sample floors, threshold values, branch-exclusion
+equations) should be chosen by whoever runs the capture against the real machine, not frozen in prose
+ahead of time. Pinning FNV seeds, exact query counts, and irrevocable "packet-terminal" verdicts into
+a plan document makes the result impossible to re-validate and primes a loop where a misread number
+freezes the packet forever.
 
 ### Diagnostic matrix
 
-| Clean result | Root interpretation | Implemented branch |
-|---|---|---|
-| scene GPU time has the packet's minimum output-pixel elasticity, the `1.00 → 0.80 → 0.60` cells are directionally monotone, and draw/triangle/state counts stay fixed | fragment shading, transparency, lighting, or overdraw | PERF-08A pixel/overdraw correction when B and C raw facts are false |
-| named structural growth, same-metric structure effect, absolute structure-minus-pixel effect, and the packet's zero-safe cross-multiplied relative margin all pass | submission/pipeline fragmentation | PERF-08B material and ordering correction when C is false |
-| physical post share, post/display-interval cost, fleet-size equivalence, copy-cost-adjusted bypass reduction, scene equivalence, and omitted-group agreement all meet PQ-042's scalar bounds | full-screen pass cost | PERF-08C post-pass fusion/reuse |
-| A/B/C raw facts are false and GPU p95/p99 remain below the packet's display-interval health ceilings; no route meets both callback-interval-late tests (D0), or each late route/runtime has exactly one frozen prior-callback origin-linked exclusive non-GPU/non-renderer owner while non-late peers remain healthy (D1) | not a GPU problem | PERF-08D evidence-only closure; no follow-up for D0, machine-resolved separately admitted owner routing for D1, and no corrective product/runtime mutation inside PQ-042 |
+Use these four buckets to attribute the dominant GPU cost; pick the one the evidence actually
+supports. If the evidence is ambiguous or the runtimes disagree, report that — don't force a branch.
 
-Raw facts may overlap, but final corrective ownership is literal and disjoint: C owns `C_raw`; B owns
-`B_raw && !C_raw`; A owns `A_raw && !B_raw && !C_raw`; D owns the healthy case only when all three
-corrective raw facts are false. The literal thresholds, statistics, exclusions, and D0/D1 cross-runtime
-disposition are executable authority in `design/program/roadmap/active/PQ-042.md`; they may not be
-invented or tuned after capture. D0 and D1 permit no corrective product/runtime mutation inside PQ-042.
-D1 records each uniquely passing non-GPU/non-renderer owner in a machine-readable mapping to a separately
-admitted follow-up rather than fixing it in this packet. The first valid consumed D result is packet-terminal:
-no later PQ-042 revision, source/build/harness/manifest/selector change, producer launch, claim, or promoting
-capture may replace it. Before capture, Phase 0 freezes the selecting source/contract digests plus one exact
-reviewed diagnostic-removal patch and its predicted terminal digest. D closes only with diagnostics retained
-at the selecting digest or after byte-for-byte application of that pre-hashed removal; every other delta is
-`BLOCKED` and separately admitted.
+| If clean evidence shows… | …the cost is likely… | …so implement |
+|---|---|---|
+| scene GPU time scales with output pixels (vary resolution, hold draw/state counts) | fragment shading, transparency, lighting, or overdraw | PERF-08A pixel/overdraw correction |
+| cost scales with draw calls / state changes / pipeline switches (hold pixels) | submission/pipeline fragmentation | PERF-08B material and ordering correction |
+| cost concentrates in full-screen passes (bloom composite, copies, post) | full-screen pass cost | PERF-08C post-pass fusion/reuse |
+| none of the above; GPU timing is healthy but callbacks are still late | not a GPU problem | PERF-08D — investigate the non-GPU owner, don't mutate GPU code |
 
 ### PERF-08A — Pixel/overdraw correction
 
@@ -864,15 +762,12 @@ at the selecting digest or after byte-for-byte application of that pre-hashed re
 
 ### Completion proof
 
-- the frozen graph-disabled selector reports all raw facts, applies the literal exclusions, and yields exactly one matching Browser/Electron final branch from consumed broker claims; a selected B metric and CPU/GPU aggregate domain also match across runtimes after the metric-specific aggregate floor is applied;
-- the selected diagnosis reproduces across matched runs without post-capture exclusions, undefined qualitative rulings, or threshold changes;
-- unchanged scene complexity or pixel coverage behaves according to the predicted scalar causal model;
-- semantic and image/temporal equivalence pass at default scale, population, post, and quality;
-- for A/B/C, the exact predeclared logical scope has complete non-overlapping pre/post owner-query lineage, its duration falls by at least 10% with six positive blocks and a paired lower bound above zero, and its selected aggregate domain improves by at least 1% under the same direction/confidence rules;
-- every non-selected aggregate domain and unselected physical owner remains inside its frozen regression margin, so individually small regressions cannot sum to a whole-domain slowdown, and no unresolved dominant owner remains in the frozen selected aggregate domain (`totalGpuMs` for a GPU scope or `rendererCpuMs` for a CPU/submission scope). The original pathology predicate may disappear after a successful correction and is rerun for reporting rather than required to stay true; a different actionable post-fix A/B/C branch is mapped to a separately admitted digest-bound follow-up rather than implemented in the same packet;
-- for D0, GPU timing remains healthy and no route meets both callback-interval-late tests; for D1, GPU remains healthy, every late route/runtime uses the frozen prior-callback causal join and exactly one exclusive origin-linked non-GPU/non-renderer owner meets the frozen late-interval/excess equations, resolves to a separately admitted follow-up, and every non-late peer is recorded healthy. Neither subcase makes any corrective product/runtime mutation inside PQ-042. Terminal identity must equal the selecting digest or the predicted digest after the exact pre-hashed diagnostic-removal transform, with no second producer launch or promoting claim;
-- no quality switch or diagnostic perturbation is used as the accepted route.
-
+The selected diagnosis reproduces across matched runs without post-capture threshold
+tweaks; semantic and image/temporal equivalence pass at default scale, population, post,
+and quality; the chosen branch (A/B/C/D) is the one the evidence actually supports. If the
+evidence is ambiguous or the captures disagree across runtimes, that's a real signal — say
+so rather than forcing a branch. One clean, interpretable result beats a frozen contract
+that no one can re-validate.
 ## 16. PERF-09 — Conditional simulation Worker
 
 ### Trigger
@@ -911,13 +806,10 @@ graph every frame.
 
 ### Completion proof
 
-- tick-by-tick digest and ordered events match;
-- input target-tick semantics are exact;
-- save/load continuation and Worker restart match;
-- renderer stalls no longer delay fixed-tick cadence;
-- snapshot transfer does not replace main-thread stalls with allocation/GC stalls;
-- reduced-motion/accessibility/UI event delivery remains correct.
-
+Tick-by-tick digest and ordered events match; input target-tick semantics are exact;
+save/load continuation and Worker restart match; renderer stalls no longer delay fixed-tick
+cadence; snapshot transfer doesn't substitute allocation/GC stalls; a11y/UI event delivery
+stays correct.
 ## 17. PERF-10 — Conditional WebGPU/TSL vertical slice
 
 ### Purpose
@@ -940,15 +832,9 @@ After PERF-03, PERF-04, and PERF-07:
 
 ### Decision
 
-- Continue migration only if the slice reaches semantic/image equivalence and provides a repeatable
-  benefit on the actual limiting routes.
-- Retain the slice as an experiment, not a hidden production fork, if it is neutral or worse.
-- Consider GPU-driven visibility/indirect draw work only after the basic backend proves itself.
-
-No PlayCanvas, Babylon, Godot, Bevy, or native renderer port should begin before this slice and the
-core program establish what remains slow. The broad appendix retains those options if future evidence
-justifies a recreation.
-
+Continue migration only if the slice reaches semantic/image equivalence and shows a
+repeatable benefit on the actual limiting routes. Otherwise retain it as an experiment,
+not a hidden production fork.
 ## 18. Parallelism and ownership
 
 The work can be scheduled in disjoint lanes, but repository ownership and live leases control actual

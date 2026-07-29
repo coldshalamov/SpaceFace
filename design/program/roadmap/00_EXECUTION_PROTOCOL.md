@@ -5,16 +5,20 @@ This protocol applies to every autonomous implementation handoff. Its purpose is
 
 ## 1. Terminal outcomes
 
-Every run ends in exactly one disposition:
+A run should end in one of these dispositions — but the goal is a trustworthy result and a clear
+handoff, not ceremony. Use judgment: a small focused fix doesn't need the same receipt as a packet
+that touches the render or simulation core.
 
 | Outcome | Meaning | Required artifact |
 |---|---|---|
-| `PASS` | packet outcome implemented; required focused proof and declared route evidence pass at the exact revision; **and the exit check set is a superset of the entry baseline's green set** | completed packet checklist + receipt |
-| `FAIL` | an in-scope product defect remains after the packet's repair/review budget, **or a check green at the entry baseline is red at exit** | failing regression, failure class, owner, minimal next action |
+| `PASS` | packet outcome implemented; focused proof passes; nothing green at entry is now red | completed packet checklist + receipt |
+| `FAIL` | an in-scope product defect remains after repair, or a check green at entry is now red | failing regression, failure class, owner, minimal next action |
 | `BLOCKED` | an entry condition, owner seam, lease, asset, environment, or dependency is absent | blocker evidence and requested upstream change |
 | `DEFERRED` | user/integrator deliberately stops or reschedules valid work | preserved branch/diff and explicit resume point |
 
-“Still verifying,” “probably green,” “needs more review,” and “tests mostly pass” are not terminal states.
+Don't camp in "still verifying." If you're looping on the same check without new information, stop —
+either reduce it to a focused regression, classify the failure, or defer. Repetition is not
+investigation.
 
 ## 2. Two state axes
 
@@ -116,11 +120,15 @@ A changed source digest invalidates the old claim. A documentation-only or evide
 
 ## 7. Expensive-probe launch policy
 
-Default convergence rules unless a packet declares a stricter evidence-driven policy:
+Expensive Browser/Electron route captures should be bounded — don't rerun the same failing probe
+hoping for a different result, and don't escalate to broad gates without new evidence. But the exact
+attempt budget is the agent's call: one clean attempt is the default, not a hard ceiling. If a capture
+failed for an environmental reason (contention, GPU process, etc.) or you have new evidence, re-running
+is correct.
 
 ```yaml
-acceptanceAttemptsPerCellPerCandidateDigest: 1
-unchangedFailureRetries: 0
+acceptanceAttemptsPerCellPerCandidateDigest: 1   # default, not a ceiling — re-run is fine with new evidence
+unchangedFailureRetries: 0                        # don't repeat an identical failed run unchanged
 broadGateEscalationsWithoutNewEvidence: 0
 reviewClosure: discovery -> repair -> causal re-review when repairs affect the claim
 ```
@@ -153,25 +161,25 @@ an identical rerun. Repetition is not investigation.
 | `NONDETERMINISM` | equal candidate/seed/input can diverge | hard stop; reduce to deterministic regression before any route rerun |
 | `STALE_BASELINE` | expected data or prose no longer describes live code | update packet/check deliberately; never rewrite a golden blindly |
 | `OUT_OF_SCOPE` | valid defect outside the selected outcome/write budget, **and not a red check** | record follow-up; do not reopen current acceptance unless it invalidates the route |
-| `INHERITED_RED` | a declared check was already red at the recorded entry baseline | repair it, or obtain an integrator-signed inheritance token naming the owner and the reason. Never a self-issued follow-up |
+| `INHERITED_RED` | a declared check was already red at the recorded entry baseline | repair it when bounded; otherwise record it clearly (owner, reason, entry-evidence) and either defer it as a follow-up or flag for the integrator. Don't silently ignore it |
 | `UNKNOWN` | evidence cannot support attribution | fail closed; collect one discriminating diagnostic, not another identical run |
 
-### Red checks are never out of scope
+### Red checks are a floor, not a wall
 
-A failing check is a defect in the repository, not a note about it. Whether the test or the code is
-wrong is the agent's call to make and justify — but leaving it red is not an outcome.
+A failing check is a defect in the repository, not a note about it. The check set is a floor that runs
+may raise and may not lower — but the goal is a working game and an honest record, not blocking every
+packet on a pre-existing red until someone issues a token.
 
-- A check **green at the recorded entry baseline and red at exit** is `PRODUCT`, regardless of whether
-  the cause lies inside the packet's write budget. The packet made it red; the packet owns it.
+- A check **green at entry and red at exit** is `PRODUCT` — the packet made it red, the packet owns it.
 - A check **red at the entry baseline** is `INHERITED_RED`. Repair it in the same run when the repair
-  is bounded, or return `BLOCKED` with the integrator's inheritance token. "Preexisting, therefore not
-  mine" is not a disposition.
-- `OUT_OF_SCOPE` covers observed defects with no failing check behind them. It does not cover a red
-  check.
+  is bounded. When it isn't, record the owner and reason and move on — don't let one unrelated
+  pre-existing red freeze all downstream work indefinitely. "Preexisting, therefore not my problem" is
+  wrong, but so is "I cannot proceed until every inherited red is gone."
+- `OUT_OF_SCOPE` covers observed defects with no failing check behind them.
 
-This rule exists because scope was previously defined only against the packet outcome, which made
-inheriting a red tree the protocol-compliant ending. The game is expected to be working and robust at
-every checkpoint, so the check set is a floor that runs may raise and may not lower.
+This exists because scope was once defined only against the packet outcome, which made inheriting a
+red tree the protocol-compliant ending. Keep the floor; apply judgment about when an inherited red
+actually blocks the work in front of you.
 
 ## 8. Independent review that terminates
 

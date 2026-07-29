@@ -33,6 +33,24 @@ surface can be intentional when it has convincing form response and identity.
 5. Validate source licensing/provenance, map packing, material roles, exporter output, memory/upload
    cost, and in-game response.
 
+## Substance and portability safeguards
+
+- Use broad, low-amplitude per-plate variation only on objects actually assembled from distinct
+  plates or batches. Do not smear one Voronoi/noise field across bells, bearings, cable, ceramic,
+  glass, and painted sheet and call the result material variety.
+- Derive edge wear, soot, heat, exposure, and cavity response from exact geometry or authored
+  object-space masks. Blender/Cycles `Pointiness`, object coordinates, and procedural nodes do not
+  automatically survive glTF; bake or reproduce only the approved causal signal through the
+  family's sanctioned portable PBR pipeline.
+- Put wear where handling, abrasion, flow, heat, repair, or exposure explains it. Raw curvature is
+  an input, not finished storytelling.
+- Use a bounds-fitted camera and a hard lateral key with restrained fill/rim as reproducible
+  diagnostics. Record transforms/exposure and keep the camera on the key side for the primary
+  material read. These views supplement rather than replace supported gameplay-camera and
+  normal-route evidence.
+- Keep shadows readable rather than crushed, but never raise fill until metal, paint, ceramic, and
+  composite collapse into the same gray response.
+
 ## Evidence
 
 - representative before/after lit views with consistent framing;

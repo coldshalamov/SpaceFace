@@ -1,13 +1,6 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace agent orientation
 
-This is the repository engineering front door (invariants + routing). Keep it short: global
-invariants and routing belong here; volatile status, subsystem detail, and design technique belong
-in the linked owner documents.
-
-After context compaction, route again from this file and live state; do not trust remembered status,
-leases, selected packets, or validation results.
-
 **Program / "what next" / multi-plan work:** start at root
 [`CANONICAL_BUILD_MAP.md`](./CANONICAL_BUILD_MAP.md). It is the single program map and check-off
 workflow; it does not replace original plans.
@@ -99,18 +92,7 @@ them casually. Confirm selection in `src/core/registry.js` and defaults in `src/
   pacing. Do not pass gates by removing authored visuals or lowering default quality.
 - **Accessibility:** preserve input reachability, reduced-motion/flash behavior, legibility, and
   contrast. Accessibility does not require a universal visual style.
-- **HUD:** keep the flight HUD non-diegetic; no cockpit/visor/helmet framing. Preserve useful roster,
-  radar, objective, station, navigation, and tactical information unless a tested replacement is
-  demonstrably clearer.
-- **Dependencies/media:** allowed when they materially improve quality and their license,
-  bundle/performance, determinism/save, and maintenance effects are understood.
-
-### Rules that do not belong here
-
-Do not add global palette lists, blur/opacity recipes, triangle or texture ceilings, effect counts,
-iteration/deficiency quotas, mandatory techniques, self-score thresholds, fixed file ownership for
-inactive lanes, or report-only completion rituals. Checks should prove behavior, contracts,
-accessibility, determinism, reachability, or measured performance—not freeze an aesthetic recipe.
+- **Dependencies/media:** allowed when they materially improve quality and their bundle/performance, determinism/save, and maintenance effects are understood.
 
 ## 7. Common-bug routing
 
@@ -124,68 +106,29 @@ order; do not copy the list into policy files.
 
 ## 9. Verification router
 
-Use [`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md). Run the narrow owner proof first;
-use the deterministic lab for eligible gameplay claims; reach Browser/Electron acceptance only
-through the packet's broker manifest after lower layers pass. An unchanged expensive failure must
-be reduced to a focused regression before another acceptance claim. Visual, accessibility, and
-performance acceptance still require current player-facing evidence.
+Run the checks you think are necessary for the change you made. Prefer the fast gate first and
+escalate only when it justifies the cost; don't loop on verification rituals.
 
-### Which gate to run
+| You want | Run |
+|---|---|
+| Fast gate, before and after an edit | `npm run check:baseline` (~15s) |
+| Broad sweep | `npm run check:all` (not `check` — that's a fail-fast chain that hides failures) |
+| Middle tier | `npm run check:all:smoke` |
 
-| You want | Run | Cost |
-|---|---|---|
-| The fast gate, before and after any edit | **`npm run check:baseline`** | ~15 s green, ~60 s once `check:massline` is fully green. Hard budget: 90 s. |
-| The broad sweep | `npm run check:all` | many minutes |
-| A middle tier | `npm run check:all:smoke` | ~7m37s (six minutes of it is `check:flight:clean`) |
+- `check:baseline` is the everyday tool. `--list` shows what it covers; `--only=a,b` runs a subset.
+- Prefer `check:all` over `check`: `check` is a fail-fast `&&` chain, so a green tail is not coverage
+  if it aborted early.
+- Don't re-record `test/*.expected.json` goldens just to pass — and don't loop on a failing hash
+  without understanding it. See [`docs/COMMON_BUGS.md`](./docs/COMMON_BUGS.md) §8 for the sim/hash
+  procedure (`scripts/sim-golden-diff.mjs` answers whether a hash change is motion or bookkeeping).
+- Historical check-tooling traps (deleted lifecycle hooks, fail-fast under-reporting, golden churn)
+  are recorded in [`docs/COMMON_BUGS.md`](./docs/COMMON_BUGS.md), not here — look them up when
+  relevant rather than carrying them every turn.
+- Visual, accessibility, and performance claims need current player-facing evidence, but decide
+  proportionately in the moment how much. Don't run headed acceptance as a ritual.
 
-**`npm run check:baseline` is the one you will use a hundred times.** Nine links: `check:sim`,
-`check:sim:v3`, `check:sim:compare`, `check:sim:v3:compare`, `check:save-schema`, `check:flight:v3`,
-`check:m1:tether-mass`, `check:massline`, and `check-ui-screen-imports`. It runs them in a bounded
-parallel pool, **runs every link even after one fails**, prints per-link wall time, and exits red if
-any link fails *or* if the whole thing blows its 90-second budget. `--list` shows the membership and
-why each link is there; `--only=a,b` runs a subset; `--serial` and `--json` exist. It deliberately
-excludes `check:flight:clean` (~6 min). Source: `scripts/check-baseline.mjs`.
-
-**When you need the broad sweep, run `npm run check:all`, not `npm run check`.** `check` is a
-~100-link `&&` chain, so it reports the FIRST failure and silently skips everything downstream of it
-— a single stale assertion can hide twenty gates, including every sim-determinism and flight check.
-`check:all` runs the same matrix to completion, continues past failures, and writes
-`scratch/check-ci-report/<run>/` with `report.md` (failure-first summary), `report.json`, and a
-per-command log. A green `check` tail is not coverage when `check` aborted early — read the report,
-not the exit code.
-
-**Two lessons this repo paid for; do not re-learn them.**
-
-1. *An invisible link is worse than a red one.* Until 2026-07-27 `package.json` defined a `precheck`
-   npm **lifecycle** script. npm runs lifecycle hooks automatically, so `npm run check` silently ran
-   three extra gates first — and when one of them went red, `check` exited 1 having executed **zero**
-   of its own links, for 333 commits, while looking like an ordinary check failure. That hook is now
-   deleted and its three gates are the first three links of `check` itself, where you can see them.
-   If you ever add a `pre*` or `post*` script here, you are re-creating that bug.
-2. *A fail-fast aggregate under-reports.* `check:massline` runs 23 children with a fail-fast loop, so
-   it names only the first red one. On 2026-07-27 it had three. If an aggregate says one thing is
-   broken, that is a lower bound, not a count.
-
-**A green `check:sim:compare` does not mean the golden is current.** `sf-sim compare` returns ok
-whenever the two runs agree with *each other*; `scripts/sf-sim.mjs:716` explicitly tolerates
-`expectedHash` and `expectedTraceCount` diffs against the expected envelope. It is a determinism
-check, not a correctness check. Only `check:sim` / `check:sim:v3` (the `--hash --expect` path) gate
-`test/47a.telemetry*.expected.json`.
-
-**When one of those hashes fails, do not re-record it. Run `node scripts/sim-golden-diff.mjs` first**
-(add `--flight-system v3` for the V3 envelope). In about thirty seconds it exports a reference commit
-with `git archive` — read-only, no checkout, safe while other agents hold the working tree — runs the
-sim on both trees, diffs the snapshots, and answers the only question that matters:
-
-- **`IDENTICAL`** — nothing moved.
-- **`CONTENT_ONLY`** — zero entity `pos`/`vel`/`rot`/`angVel`/`prevPos` fields changed. The physics and
-  flight contract is bit-identical and a re-record is bookkeeping. Write the by-key breakdown and the
-  words "zero motion fields changed" into the expected file's `notes` so the next person can trust it.
-- **`MOTION_CHANGED`** — something moved differently. If you did not mean to change flight, physics,
-  or weapons behaviour, that is a **regression** and re-recording would bury it.
-
-Nine tenths of the churn in that hash is the economy price-cycle table, which is not physics at all,
-so "the hash changed" is never by itself a reason to do anything. The verdict is.
+For the full validation ladder and broker-managed route evidence, see
+[`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md).
 
 ## 10. Scoped instruction map
 

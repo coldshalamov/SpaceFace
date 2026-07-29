@@ -80,7 +80,9 @@ assets require independent G7 review against the exact candidate hash.
    `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`. Select only methods that repair an
    observed defect or provide required runtime behavior. Simpler methods
    are correct when they produce the stronger result; advanced methods are correct when their value
-   survives export and is visible in context.
+   survives export and is visible in context. For a primitive-stack failure, try a stepped
+   cross-section loft for the continuous skin and inset/recess construction for meaningful bays
+   before adding another layer of attached primitives.
 5. **Author, export, compare.** Work in editable Blender source, export through the sanctioned path,
    render matched neutral/lit/adversarial views, run the actual player route, and keep/revise/revert
    based on evidence.
@@ -103,6 +105,26 @@ high-poly sources, weighted normals, controlled bevels, direct game modeling, re
 UV/trim/decal workflows, baked normal/AO/curvature/ID/ORM, layered materials, Geometry Nodes for
 genuine repeatable structure, texture painting, rigging, animation, sockets, shape keys, or
 image-assisted masks. None is mandatory merely to demonstrate tool use.
+
+For hard-surface spacecraft and places:
+
+- build large continuous shells from a few authored manufacturing sections when that solves the
+  observed tube/box read;
+- cut real bays, trenches, apertures, and channels into the skin where depth has structural meaning;
+- zone fine detail against clean primary plate instead of filling every face;
+- inspect transforms before beveling and apply mesh scale only when pivots, parents, sockets,
+  collision, dimensions, and shared datablocks remain correct;
+- derive proof cameras from evaluated visible bounds and inspect unexpected render slowness for an
+  inside-geometry camera before lowering quality;
+- use a hard key, weak complementary fill, and restrained rim for material diagnostics, while keeping
+  beauty-lighting choices separate from evidence;
+- inspect the connected Blender version/RNA for compositor, animation, socket, and operator APIs
+  instead of copying version-specific snippets blindly.
+
+Do not assume procedural Blender nodes survive glTF. Bake or translate their approved, mesh-aware
+result into SpaceFace's portable PBR and KTX2 path. Do not copy unit scale, output folders, runtime
+loader claims, draw-merge recipes, or renderer settings from another game without verifying the live
+SpaceFace exporter, manifest, runtime loader, and performance evidence.
 
 Do not present these as final work:
 

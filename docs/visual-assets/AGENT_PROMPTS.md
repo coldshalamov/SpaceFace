@@ -47,13 +47,23 @@ focused workflow in `.grok/skills/spaceface-blender-material-truth/SKILL.md`.
 > `Mantlet`, `ServicePack`, or `CasematePanel` still fails when it appears as a blank bar, cuboid, or
 > slab. If the fiction calls for an open machinery bay, require the receiver, bearings, dampers,
 > fasteners, frame, and rooted service paths to remain visibly exposed.
+> When the prominent hull/housing still reads as a tube or box stack, consider rebuilding that
+> existing mass from stepped authored cross-sections bridged into a continuous manufactured skin.
+> Cut structural bays, trenches, channels, apertures, and hangars into the shell with rims, walls,
+> thickness, and interiors; do not replace them with another layer of glued boxes. Zone macro,
+> construction, and fine detail against deliberate clean plate, preserving the asset's silhouette
+> anchors, sockets, collision, and role rather than starting over. Resolve non-uniform scale safely
+> before judging bevel width.
 > Never substitute whole-asset generated concept drift or a projected generated image for modeling,
 > and never derive authoritative normal/AO/ORM maps from generated pixels. An unexplained
 > Blender/donor/default response is a P1. Use methods only for named defects; preserve editable source; export through
 > the sanctioned path; compare matched neutral/adversarial/game views; profile cost-relevant changes;
 > keep/revise/revert from evidence. Primitive stacking, one bevel radius, floating panel bars,
 > unreviewed automatic UVs, flat normals, generic tile noise, fixed-ratio decimation, Blender-only
-> beauty renders, and green checks are not finished work. Evidence for a candidate remaster must come
+> beauty renders, and green checks are not finished work. Require material-specific generators as
+> well as material-specific names: reject one recolored
+> base/ORM/normal recipe that stamps plate grids, studs, rosettes, quilted bumps, or leather-like
+> normals onto machined steel, hot alloy, cable, and refractory. Eligible evidence must come
 > from the exact finalized source GLB and bind the source plus renderer hashes. Treat pre-finalize
 > renders as geometry diagnostics only, keep them out of eligible evidence, and assert that every
 > authored material name resolves to its declared physical surface role before encoding. Never
