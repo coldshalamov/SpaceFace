@@ -1,0 +1,5 @@
+2026-07-29T17:22:05.659Z electron-canonical-root
+2026-07-29T17:22:17.010Z intro-dismissed
+2026-07-29T17:22:17.629Z FAIL at main-menu: Main Menu must be visible | false !== true
+
+Phase H1 note: timestamps are informational/contended diagnostics, not performance evidence. No retry was performed.

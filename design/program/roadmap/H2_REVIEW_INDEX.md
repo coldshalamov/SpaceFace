@@ -29,7 +29,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 | 5 | PQ-020 Ceres functional route | **FAIL — HARNESS (valid Helios→Ceres jump survived; route stopped on unsupported 300-WU threshold)** | [row5-pq020-ceres-route](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) |
 | 6 | PQ-023 cues in motion | **FAIL — HARNESS (combat motion survives; Cathedral sequence and Electron parity unproven)** | [row6-pq023-cues](evidence/h1/row6-pq023-cues/EVIDENCE.md) |
 | 7 | PQ-022 asset leaves | **PASS — one Browser launch; 11 exact identities, 13 admitted stills** | [row7-pq022-asset-leaves](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md) |
-| 8 | Electron end-to-end smoke | _pending_ | |
+| 8 | Electron end-to-end smoke | **FAIL — HARNESS (Main Menu visibly rendered; separate visibility sample false-negative; New Game→Ledger unproven)** | [row8-electron-e2e](evidence/h1/row8-electron-e2e/EVIDENCE.md) |
 
 ---
 
@@ -161,9 +161,19 @@ evidence.
 **Question:** Not an art judgement — a go/no-go. Does the shipped Electron shell carry a player from
 menu → New Game → flight → dock → Ledger without a defect that would embarrass a build?
 
-**Evidence:** _pending (rows 2 and 8)_
+**Evidence:** [Row 2 Ledger Browser/Electron parity](evidence/h1/row2-pq021-ledger/EVIDENCE.md) and
+[Row 8 shipped-shell attempt](evidence/h1/row8-electron-e2e/EVIDENCE.md). Row 2 proves the Ledger
+surface in Electron after route preparation. Row 8 proves isolated shell launch, canonical root,
+visible Main Menu, and clean owned shutdown, but its single attempt stopped on a **HARNESS** false
+negative before New Game: the rejected predicate said the menu was invisible while the screenshot,
+`mode: menu`, `visibleScreens: [mainMenu]`, and focused New Game button all showed otherwise.
 
-**Verdict:** _____________
+During H2, perform this short manual chain in the shipped Electron shell: Main Menu → New Game →
+Launch → Helios Station waypoint/autopilot → visible `E` dock → Ledger. If any player-visible defect
+appears, record it here. If the chain is not performed, keep the decision deferred; do not infer a PASS
+from Row 2 or the Row 8 Main Menu frame alone.
+
+**Verdict:** DEFER — automated menu→dock→Ledger chain not captured; manual H2 smoke required
 
 ---
 
