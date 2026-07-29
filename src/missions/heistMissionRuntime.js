@@ -153,11 +153,18 @@ export const HEIST_CUE_TEXT = Object.freeze({
   accepted: 'Capsule run accepted — launcher arming, stay in Tethys Junction',
   launched: 'Capsule away — intercept it before the Concord catcher takes it',
   possessed: 'Capsule in tow — the Quiet fence is your only buyer now',
-  witnessed: 'Theft witnessed — Concord has logged the capsule as stolen',
-  unwitnessed: 'No witness in range — the theft is unlogged, for now',
-  wanted: 'WANTED — heat applied for the capsule theft',
-  pursuit: 'Patrol units released to intercept — break contact or lose the capsule',
-  no_patrol: 'No patrol in range — Concord logged the theft with nobody to send',
+  // WITNESS, WANTED and PURSUIT are ONE LINE, not three.
+  //
+  // All three facts are decided inside a single call to `reportTheft`, in one tick. Emitted as
+  // separate lines under one stable voice id they COALESCE IN PLACE — `VoiceQueue` replaces a
+  // same-id entry rather than stacking it — so the player would see only the last one written and
+  // the other two would be silently discarded. Verified by driving the real arbiter before this was
+  // composed. Emitting them under three DIFFERENT ids would instead put three pills on a floor that
+  // is supposed to hold one. Composing is the only option that is both one-voice compliant and
+  // truthful: one slot, and every fact the player needs is in it.
+  theft_witnessed_pursuit: 'Theft witnessed — WANTED, and Concord patrol units are inbound',
+  theft_witnessed_no_patrol: 'Theft witnessed — WANTED, but Concord has no patrol in range',
+  theft_unwitnessed: 'No witness in range — the theft is unlogged, for now',
   escaped: 'Contact broken — run the capsule to the Quiet fence',
   fenced: 'Capsule fenced — the Quiet paid and forgot your face',
   confiscated: 'Capsule confiscated — Concord recovered its cargo',
@@ -343,20 +350,22 @@ export const heistMissionRuntime = {
     });
     if (!receipt || receipt.accepted !== true) {
       record.lawDenialReason = receipt?.reason || 'denied';
-      sayHeistCue(ctx, record, 'unwitnessed');
+      sayHeistCue(ctx, record, 'theft_unwitnessed');
       return receipt;
     }
     record.lawIncidentReceiptId = receipt.incidentReceiptId;
     record.responderAvailability = receipt.responderAvailability;
-    sayHeistCue(ctx, record, 'witnessed');
-    // The heat owner consumed this receipt synchronously on `law:reportIncidentReceipt` through its
-    // own private mutation path. The mission never wrote heat and could not have.
-    sayHeistCue(ctx, record, 'wanted');
+    // Heat was consumed synchronously by its own owner on `law:reportIncidentReceipt`, through the
+    // private mutation path every other heat source uses. The mission never wrote heat and could
+    // not have: the only door needs a receipt it cannot sign. The WANTED half of the line below is
+    // therefore a report of what law and heat did, not a claim this module made anything happen.
     if (receipt.responderAvailability === 'available') {
       this.claimPursuitLeases(ctx, record, receipt.responderEntityIds || []);
-      sayHeistCue(ctx, record, 'pursuit');
+      sayHeistCue(ctx, record, 'theft_witnessed_pursuit');
     } else {
-      sayHeistCue(ctx, record, 'no_patrol');
+      // "No patrol in range" is a first-class outcome the player must be able to HEAR, rather than
+      // infer from silence.
+      sayHeistCue(ctx, record, 'theft_witnessed_no_patrol');
     }
     return receipt;
   },

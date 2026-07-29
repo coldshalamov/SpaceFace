@@ -30,44 +30,92 @@ export const PQ019C_HEIST_SECTOR_ID = 'sector_tethys_junction';
 export const PQ019C_HEIST_FACTION_ID = 'faction_quiet';
 
 /**
- * Selected tuning. Every value here was chosen ONCE from the predeclared fixed-seed matrix in
- * `test/fixtures/pq019c-tuning-matrix.json` and is pinned by `test/pq019c-heist-tuning.test.mjs`.
- * Changing a number without re-running the matrix and re-recording the selection is the thing this
- * file exists to prevent.
+ * Selected tuning.
+ *
+ * Every value here was selected ONCE by `scripts/tune-pq019c-heist.mjs` from the fixed-seed matrix
+ * in `test/fixtures/pq019c-tuning-matrix.json`, which was committed BEFORE the runner existed so the
+ * search space could not be back-fitted to numbers somebody already liked. Each dimension's
+ * objective is stated in the matrix; the runner prints the rationale it applied. The values are
+ * pinned by `test/pq019c-heist-tuning.test.mjs`. Changing a number without re-running the matrix and
+ * re-recording the selection is exactly what this file exists to prevent.
+ *
+ * The matrix moved five of these off their hand-authored starting values (launch window 45->30, run
+ * window 9000->6000, escape hold 180->60, payout 2400->1800, recovery 1100->900) and confirmed three
+ * (responder cap 2, leash 2600, escape radius 1800). It also moved PQ-019A's authored capsule launch
+ * speed 120->100 and CONFIRMED its mass at 180.
+ *
+ * ONE SELECTION IS DELIBERATELY NOT APPLIED - see `witnessRadiusMirror` below.
  */
 export const PQ019C_HEIST_TUNING = Object.freeze({
-  /** Seconds from accept to launch. Long enough to fly launcher-side; short enough to feel timed. */
-  launchWindowS: 45,
-  /** Ticks after launch before the run is called off. 60 Hz sim: 150 s of capsule life. */
-  runWindowTicks: 9000,
   /**
-   * Ticks after ACCEPT before a run that never launched is called off. Must exceed
-   * `launchWindowS` x 60 with margin, or an ordinary countdown would cut itself short.
-   * 60 Hz sim: 60 s, against a 45 s launch window.
+   * Seconds from accept to launch. SELECTED 30: the measured Tethys-station-to-launcher-head
+   * distance is 2433 WU, which is 17.4 s at the live `MISSION_TUNING.cruiseSpeedRef` of 140 WU/s,
+   * and 30 is the smallest candidate clearing that with the objective's 25% margin.
    */
-  unlaunchedWindowTicks: 3600,
+  launchWindowS: 30,
   /**
-   * Witness radius the mission ASKS law to use is not a knob it owns — `lawSecurity` owns
-   * `LAW_INCIDENT_WITNESS_RADIUS`. This mirror exists so the matrix can record the interaction and
-   * so a future raise above the lawful-station protection floor fails here too. PQ-019B set 450
-   * deliberately UNDER the 600 WU floor; above it the witness gate goes vacuous and B's annulus
-   * test goes red.
+   * Ticks after launch before the run is called off. SELECTED 6000: the full authored route
+   * (launcher->catcher 2040 WU plus catcher->fence 1921 WU) is 40 s at the selected 100 WU/s launch
+   * speed, so the objective's 2x margin needs at least 4754 ticks and 6000 is the smallest candidate
+   * above it. The window can therefore never expire a run the player was still flying.
+   */
+  runWindowTicks: 6000,
+  /**
+   * Ticks after ACCEPT before a run that never launched is called off. Derived, not chosen: the
+   * selected 30 s launch window is 1800 ticks, plus 35% margin, rounded up to 600. A player who
+   * accepts and leaves Tethys still reaches a bounded terminal.
+   */
+  unlaunchedWindowTicks: 3000,
+  /**
+   * THE ONE MATRIX SELECTION THAT IS DELIBERATELY NOT APPLIED.
+   *
+   * The matrix's stated objective ("largest candidate that still leaves an unwitnessed annulus,
+   * never reaching 600") selects 550. This packet does not apply it, and the mirror stays at
+   * PQ-019B's live 450, for a reason about OWNERSHIP rather than balance: `lawSecurity` owns
+   * `LAW_INCIDENT_WITNESS_RADIUS`. PQ-019B chose 450 deliberately after finding the witness gate was
+   * VACUOUS above the 600 WU lawful-station protection floor, and its annulus test pins the band
+   * where a theft is inside the law's ring but genuinely unseen. Raising an owner's constant from a
+   * consumer packet is a shared-change request, not a tuning edit - so 550 is RECORDED as the
+   * matrix's answer and 450 is what ships. The receipt carries the delta as an open row.
+   *
+   * The mirror is asserted against the live constant, so if either moves without the other the
+   * tuning test fails loudly instead of drifting.
    */
   witnessRadiusMirror: 450,
+  /** What the matrix selected under its own objective. Recorded, not applied. See above. */
+  witnessRadiusMatrixSelection: 550,
   /** Hard ceiling the mirror may never reach. The lawful-station protection floor. */
   witnessRadiusCeiling: 600,
-  /** Maximum simultaneous job-control leases taken from real, already-flying patrols. */
+  /** Simultaneous job-control leases. CONFIRMED 2 = the live authority policy's own responderCap. */
   responderLeaseCap: 2,
-  /** WU beyond which a leased responder gives up and the lease is released. */
+  /**
+   * WU beyond which a leased responder gives up and the lease is released. CONFIRMED 2600: the
+   * smallest candidate at least 600 WU above the selected escape radius, so the leash can never
+   * release before escape can latch - which would make pursuit decorative.
+   */
   responderLeashWu: 2600,
-  /** WU from the nearest live responder at which the run counts as escaped. */
+  /**
+   * WU from the nearest live responder at which the run counts as escaped. CONFIRMED 1800: the
+   * largest candidate under 95% of the 2040 WU launcher-to-catcher leg, so breaking contact happens
+   * inside the route rather than only far outside it.
+   */
   escapeRadiusWu: 1800,
-  /** Consecutive ticks the player must hold `escapeRadiusWu` before `escaped` latches. */
-  escapeHoldTicks: 180,
-  /** Fence payout, credits. Settled by `_completeMission` through `economy:grantCredits`. */
-  payoutCr: 2400,
-  /** Reduced-stake recovery payout when the recovery offer is enabled and taken. */
-  recoveryPayoutCr: 1100,
+  /**
+   * Consecutive ticks the player must hold `escapeRadiusWu` before `escaped` latches. SELECTED 60:
+   * the smallest candidate that is at least one full second, so a single lucky frame is not an
+   * escape, and that still latches well inside the selected run window from a standing start.
+   */
+  escapeHoldTicks: 60,
+  /**
+   * Fence payout, credits. SELECTED 1800: the highest ordinary risk-tier-3 board contract computes
+   * to 1320 cr from the live `MISSION_TUNING` (best BASE times RISK_MULT[3]), and the objective's
+   * band is (1320, 2640] - above the best honest work, because this run costs heat, a WANTED flag
+   * and a real chance of losing the capsule, but not so far above that every other contract becomes
+   * pointless. 1800 is the smallest candidate in the band.
+   */
+  payoutCr: 1800,
+  /** Reduced-stake recovery payout. SELECTED 900: the candidate nearest half the selected payout. */
+  recoveryPayoutCr: 900,
   /**
    * Authored recovery policy. DEFAULT OFF: the packet's balance section mandates nothing, and
    * "at most one" is satisfied most cheaply by not posting one at all. The mechanism is
