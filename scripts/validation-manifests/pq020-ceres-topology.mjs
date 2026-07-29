@@ -89,7 +89,7 @@ export function createPq020CeresTopologyManifest(overrides = {}) {
       'scripts/validation-manifests/pq020-ceres-topology.mjs',
     ],
     runtimeProfile: 'default',
-    timeoutMs: 900_000,
+    timeoutMs: 540_000,
     maxLaunchesPerCandidate: 1,
     artifactRoot: path.join('.devshots', 'pq020-ceres-topology'),
     fixedSeed: PQ020_CERES_TOPOLOGY_FIXED_SEED,
