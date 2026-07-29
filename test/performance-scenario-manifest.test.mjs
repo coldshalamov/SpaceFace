@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -39,7 +40,8 @@ function scenarioFixture(id = PERFORMANCE_SCENARIO_IDS[0]) {
     ],
     entityMultiplier: 1,
     requiredTelemetry: [...PERFORMANCE_FRAME_IDENTIFIERS],
-    expectedRouteCompletion: { marker: 'route:performance-window-complete', value: true },
+    measurementWindow: { startFrame: 120, frameCount: 180 },
+    expectedRouteCompletion: { marker: 'frames:scenario-complete', value: 600 },
   };
 }
 
@@ -88,6 +90,7 @@ test('manifest compiler reuses the current scenario authority and emits immutabl
   );
   assert.deepEqual(scenario.inputTape.frames.map((entry) => [entry.tick, entry.sequence]), [[0, 0], [3, 1]]);
   assert.deepEqual(scenario.cameraTape.map((entry) => entry.tick), [0, 3]);
+  assert.deepEqual({ ...scenario.measurementWindow }, { frameCount: 180, startFrame: 120 });
   for (const digest of [
     compiled.manifestDigest,
     scenario.scenarioDigest,
@@ -102,6 +105,7 @@ test('manifest compiler reuses the current scenario authority and emits immutabl
   );
   assert.equal(Object.isFrozen(compiled), true);
   assert.equal(Object.isFrozen(compiled.scenarios), true);
+  assert.equal(Object.isFrozen(scenario.measurementWindow), true);
   assert.equal(Object.isFrozen(scenario.inputTape.events[0]), true);
   assert.throws(() => { scenario.seed = 9; }, TypeError);
 });
@@ -119,12 +123,48 @@ test('canonical fixture pins every SHA-256 identity', () => {
       cameraDigest: scenario.cameraDigest,
     },
     {
-      manifestDigest: '5812fd8d8aca521d83f91679bcd63021d75ae313332634a09bbcab74b6ef2c1e',
-      scenarioDigest: '7c47e0215805125fd7778fba82c4d80ff5542af4e007de79a5be17941a6fb5d4',
+      manifestDigest: 'd2f896f705e7d72fd527337ad04bd2abadf182125a522d6933b922b134b10a8a',
+      scenarioDigest: '844765cf38ec7e9e77322a36a410bb36fe864118961e2569f078c579bcaca1c8',
       scenarioDefinitionDigest: 'ed6dbe808b969feaa02bd4ae66a227236847768344c30e2dced7161b5e960047',
       saveDigest: '41e9fd33c745acb8544570483e55218fe10d23bc4ef94c694e0d733b0f5ec843',
       inputDigest: '9606bc9b06fe8a288da01bb1899a523532d840f3e562c3187695606e15158273',
       cameraDigest: 'c99aa272a48bc74a36ebaabc168e2e1c1ce71c622b5fad0957f1a2005995697b',
+    },
+  );
+});
+
+test('checked-in manifest pins jump asset admission input, window, and SHA-256 identities', () => {
+  const document = JSON.parse(
+    readFileSync(new URL('../design/perf/scenario-manifest.json', import.meta.url), 'utf8'),
+  );
+  const compiled = compilePerformanceScenarioManifest(document, {
+    requireCompleteMatrix: true,
+    source: 'design/perf/scenario-manifest.json',
+  });
+  const scenario = compiled.scenarios.find((entry) => entry.id === 'jump_asset_admission');
+
+  assert.ok(scenario);
+  assert.deepEqual(
+    scenario.inputTape.events.map((entry) => ({ ...entry })),
+    [
+      { code: 'Enter', device: 'keyboard', pressed: true, sequence: 0, tick: 0 },
+      { code: 'Enter', device: 'keyboard', pressed: false, sequence: 0, tick: 1 },
+    ],
+  );
+  assert.deepEqual(
+    { ...scenario.measurementWindow },
+    { frameCount: 180, startFrame: 240 },
+  );
+  assert.deepEqual(
+    {
+      manifestDigest: compiled.manifestDigest,
+      scenarioDigest: scenario.scenarioDigest,
+      inputDigest: scenario.inputDigest,
+    },
+    {
+      manifestDigest: 'b110b5648a0faccfe8e1bf2d941bc312c498a6d0407bd4769b3b0af19e1c1804',
+      scenarioDigest: '7e4d61e31981297d14b9b34f124a010b554d6cbe72f2c4bf4cd8379147c1a713',
+      inputDigest: 'befd64a09e6e22976ed777bf9f60305e1459112fd2e3c27322991df3e72195a8',
     },
   );
 });
@@ -140,6 +180,7 @@ test('scenario identity binds the canonical production route definition', () => 
     cameraDigest: scenario.cameraDigest,
     entityMultiplier: scenario.entityMultiplier,
     requiredTelemetry: scenario.requiredTelemetry,
+    measurementWindow: scenario.measurementWindow,
     expectedRouteCompletion: scenario.expectedRouteCompletion,
   };
 
@@ -403,6 +444,8 @@ test('scenario identity changes for every bound route input and ignores non-sema
     (scenario) => { scenario.inputTape.events[0].pressed = !scenario.inputTape.events[0].pressed; },
     (scenario) => { scenario.cameraTape[0].fov += 1; },
     (scenario) => { scenario.requiredTelemetry.push('post-render-target-allocation'); },
+    (scenario) => { scenario.measurementWindow.startFrame += 1; },
+    (scenario) => { scenario.measurementWindow.frameCount -= 1; },
     (scenario) => { scenario.expectedRouteCompletion.marker = 'route:alternate-complete'; },
   ];
   for (const mutate of mutations) {
@@ -460,6 +503,102 @@ test('required telemetry and route completion are bounded identity-bearing contr
   assert.match(result.issues.join(' | '), /must include simulation-tick/i);
   assert.match(result.issues.join(' | '), /completion.*marker.*non-empty/i);
   assert.match(result.issues.join(' | '), /completion.*value.*scalar/i);
+});
+
+test('measurement windows are required, bounded, completion-contained identity contracts', async (t) => {
+  const missing = manifestFixture();
+  delete missing.scenarios[0].measurementWindow;
+  assert.match(
+    validatePerformanceScenarioManifest(missing).issues.join(' | '),
+    /measurementWindow.*plain object/i,
+  );
+  assert.throws(
+    () => compilePerformanceScenarioManifest(missing),
+    /invalid performance scenario manifest/i,
+  );
+
+  const invalidCases = [
+    {
+      name: 'negative start',
+      measurementWindow: { startFrame: -1, frameCount: 180 },
+      pattern: /startFrame.*non-negative.*integer/i,
+    },
+    {
+      name: 'fractional start',
+      measurementWindow: { startFrame: 0.5, frameCount: 180 },
+      pattern: /startFrame.*integer/i,
+    },
+    {
+      name: 'zero frames',
+      measurementWindow: { startFrame: 0, frameCount: 0 },
+      pattern: /frameCount.*1 to 180/i,
+    },
+    {
+      name: 'too many frames',
+      measurementWindow: { startFrame: 0, frameCount: 181 },
+      pattern: /frameCount.*1 to 180/i,
+    },
+    {
+      name: 'fractional frames',
+      measurementWindow: { startFrame: 0, frameCount: 179.5 },
+      pattern: /frameCount.*integer/i,
+    },
+    {
+      name: 'past completion',
+      measurementWindow: { startFrame: 421, frameCount: 180 },
+      pattern: /end at or before.*600/i,
+    },
+    {
+      name: 'non-frame completion',
+      measurementWindow: { startFrame: 0, frameCount: 180 },
+      completion: { marker: 'route:complete', value: true },
+      pattern: /expectedRouteCompletion\.value.*non-negative.*integer/i,
+    },
+    {
+      name: 'unknown key',
+      measurementWindow: { startFrame: 0, frameCount: 180, endFrame: 180 },
+      pattern: /measurementWindow\.endFrame.*not allowed/i,
+    },
+  ];
+
+  for (const invalidCase of invalidCases) {
+    await t.test(invalidCase.name, () => {
+      const manifest = manifestFixture();
+      manifest.scenarios[0].measurementWindow = invalidCase.measurementWindow;
+      if (invalidCase.completion) {
+        manifest.scenarios[0].expectedRouteCompletion = invalidCase.completion;
+      }
+      const result = validatePerformanceScenarioManifest(manifest);
+      assert.equal(result.ok, false);
+      assert.match(result.issues.join(' | '), invalidCase.pattern);
+      assert.throws(
+        () => compilePerformanceScenarioManifest(manifest),
+        /invalid performance scenario manifest/i,
+      );
+    });
+  }
+
+  const exactBoundary = manifestFixture();
+  exactBoundary.scenarios[0].measurementWindow = { startFrame: 420, frameCount: 180 };
+  assert.equal(
+    validatePerformanceScenarioManifest(exactBoundary).ok,
+    true,
+    validatePerformanceScenarioManifest(exactBoundary).issues.join(' | '),
+  );
+
+  const reducedLimit = validatePerformanceScenarioManifest(manifestFixture(), {
+    limits: { maxMeasurementFrames: 179 },
+  });
+  assert.equal(reducedLimit.ok, false);
+  assert.match(reducedLimit.issues.join(' | '), /frameCount.*1 to 179/i);
+
+  const raisedLimit = validatePerformanceScenarioManifest(manifestFixture(), {
+    limits: { maxMeasurementFrames: 181 },
+  });
+  assert.equal(
+    raisedLimit.limits.maxMeasurementFrames,
+    PERFORMANCE_SCENARIO_MANIFEST_LIMITS.maxMeasurementFrames,
+  );
 });
 
 test('identity-bearing integers and entity multipliers are bounded against precision aliases', () => {
@@ -887,14 +1026,15 @@ test('object-member limits are exact and halt before overflow values or later si
     aimAngle: 0,
     reelDelta: 0,
     masslineHeld: false,
+    lineLength: 1,
   };
   assert.equal(validatePerformanceScenarioManifest(exact, {
-    limits: { maxObjectKeys: 8 },
+    limits: { maxObjectKeys: 9 },
   }).ok, true);
 
   const overflow = clone(exact);
   let overflowGetterCalls = 0;
-  Object.defineProperty(overflow.scenarios[0].inputTape.frames[0].input, 'lineLength', {
+  Object.defineProperty(overflow.scenarios[0].inputTape.frames[0].input, 'orbitDirection', {
     enumerable: true,
     get() {
       overflowGetterCalls += 1;
@@ -910,11 +1050,11 @@ test('object-member limits are exact and halt before overflow values or later si
   );
 
   const result = validatePerformanceScenarioManifest(overflow, {
-    limits: { maxObjectKeys: 8 },
+    limits: { maxObjectKeys: 9 },
   });
   assert.equal(result.ok, false);
   assert.equal(result.issueCount, 1);
-  assert.match(result.issues[0], /input.*own enumerable-key limit 8/i);
+  assert.match(result.issues[0], /input.*own enumerable-key limit 9/i);
   assert.equal(overflowGetterCalls, 0);
 });
 

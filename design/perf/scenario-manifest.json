@@ -1,0 +1,271 @@
+{
+  "schema": "spaceface.performanceScenarioManifest.v1",
+  "version": 1,
+  "id": "perf-scenarios-core",
+  "scenarios": [
+    {
+      "id": "flight_steady",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": {
+        "events": [
+          { "tick": 60, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": true },
+          { "tick": 300, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": false }
+        ],
+        "frames": []
+      },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 90, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 600 }
+    },
+    {
+      "id": "mining_tether_active",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": {
+        "events": [
+          { "tick": 30, "sequence": 0, "device": "keyboard", "code": "Space", "pressed": true },
+          { "tick": 420, "sequence": 0, "device": "keyboard", "code": "Space", "pressed": false }
+        ],
+        "frames": []
+      },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 90, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 600 }
+    },
+    {
+      "id": "docked_market_ui",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": { "events": [], "frames": [] },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 120, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 600 }
+    },
+    {
+      "id": "context_recover_steady",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": {
+        "events": [
+          { "tick": 60, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": true },
+          { "tick": 300, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": false }
+        ],
+        "frames": []
+      },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 120, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 600 }
+    },
+    {
+      "id": "fleet_full_render_10",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": {
+        "events": [
+          { "tick": 60, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": true },
+          { "tick": 300, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": false }
+        ],
+        "frames": []
+      },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 120, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 600 }
+    },
+    {
+      "id": "fleet_full_render_25",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": {
+        "events": [
+          { "tick": 60, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": true },
+          { "tick": 300, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": false }
+        ],
+        "frames": []
+      },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 120, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 600 }
+    },
+    {
+      "id": "fleet_full_render_50",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": {
+        "events": [
+          { "tick": 60, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": true },
+          { "tick": 300, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": false }
+        ],
+        "frames": []
+      },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 120, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 600 }
+    },
+    {
+      "id": "fleet_transparent_heavy",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": {
+        "events": [
+          { "tick": 60, "sequence": 0, "device": "keyboard", "code": "KeyA", "pressed": true },
+          { "tick": 300, "sequence": 0, "device": "keyboard", "code": "KeyA", "pressed": false }
+        ],
+        "frames": []
+      },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 120, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 600 }
+    },
+    {
+      "id": "station_arrival_approach",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": {
+        "events": [
+          { "tick": 0, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": true },
+          { "tick": 240, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": false }
+        ],
+        "frames": []
+      },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 60, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 360 }
+    },
+    {
+      "id": "station_visible_steady",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": { "events": [], "frames": [] },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 120, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 600 }
+    },
+    {
+      "id": "combat_vfx_burst",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": {
+        "events": [
+          { "tick": 30, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": true },
+          { "tick": 30, "sequence": 1, "device": "keyboard", "code": "KeyJ", "pressed": true },
+          { "tick": 360, "sequence": 0, "device": "keyboard", "code": "KeyJ", "pressed": false },
+          { "tick": 360, "sequence": 1, "device": "keyboard", "code": "KeyW", "pressed": false }
+        ],
+        "frames": []
+      },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 90, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 600 }
+    },
+    {
+      "id": "jump_asset_admission",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": {
+        "events": [
+          { "tick": 0, "sequence": 0, "device": "keyboard", "code": "Enter", "pressed": true },
+          { "tick": 1, "sequence": 0, "device": "keyboard", "code": "Enter", "pressed": false }
+        ],
+        "frames": []
+      },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 240, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 600 }
+    },
+    {
+      "id": "autosave_under_load",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": {
+        "events": [
+          { "tick": 60, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": true },
+          { "tick": 420, "sequence": 0, "device": "keyboard", "code": "KeyW", "pressed": false }
+        ],
+        "frames": []
+      },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 120, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 600 }
+    },
+    {
+      "id": "map_open",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": {
+        "events": [
+          { "tick": 30, "sequence": 0, "device": "keyboard", "code": "KeyM", "pressed": true },
+          { "tick": 31, "sequence": 0, "device": "keyboard", "code": "KeyM", "pressed": false }
+        ],
+        "frames": []
+      },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 0, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 360 }
+    },
+    {
+      "id": "map_interaction_steady",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": {
+        "events": [
+          { "tick": 30, "sequence": 0, "device": "keyboard", "code": "KeyM", "pressed": true },
+          { "tick": 31, "sequence": 0, "device": "keyboard", "code": "KeyM", "pressed": false }
+        ],
+        "frames": []
+      },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 120, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 600 }
+    },
+    {
+      "id": "map_to_flight_transition",
+      "seed": 47,
+      "save": { "kind": "new-game" },
+      "inputTape": {
+        "events": [
+          { "tick": 30, "sequence": 0, "device": "keyboard", "code": "KeyM", "pressed": true },
+          { "tick": 31, "sequence": 0, "device": "keyboard", "code": "KeyM", "pressed": false },
+          { "tick": 180, "sequence": 0, "device": "keyboard", "code": "Escape", "pressed": true },
+          { "tick": 181, "sequence": 0, "device": "keyboard", "code": "Escape", "pressed": false }
+        ],
+        "frames": []
+      },
+      "cameraTape": [],
+      "entityMultiplier": 1,
+      "requiredTelemetry": ["display-frame", "simulation-tick", "render-frame", "GPU-query", "background-job"],
+      "measurementWindow": { "startFrame": 150, "frameCount": 180 },
+      "expectedRouteCompletion": { "marker": "frames:scenario-complete", "value": 360 }
+    }
+  ]
+}

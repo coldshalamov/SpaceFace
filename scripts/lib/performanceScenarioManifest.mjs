@@ -36,6 +36,7 @@ export const PERFORMANCE_SCENARIO_MANIFEST_LIMITS = Object.freeze({
   maxTick: 10_000_000,
   maxSequence: 1_000_000,
   maxEntityMultiplier: 100,
+  maxMeasurementFrames: 180,
 });
 
 const TOP_LEVEL_KEYS = new Set(['schema', 'version', 'id', 'scenarios']);
@@ -47,6 +48,7 @@ const SCENARIO_KEYS = new Set([
   'cameraTape',
   'entityMultiplier',
   'requiredTelemetry',
+  'measurementWindow',
   'expectedRouteCompletion',
 ]);
 const SAVE_KEYS = new Set(['kind', 'path', 'sha256', 'slot', 'checkpointTick']);
@@ -80,6 +82,7 @@ const INPUT_FRAME_NUMBER_KEYS = new Set([
 const INPUT_FRAME_BOOLEAN_KEYS = new Set(['boost', 'fire', 'masslineHeld']);
 const INPUT_FRAME_REJECTED_KEYS = new Set(['fireGroup', 'brake', 'massline']);
 const CAMERA_KEYS = new Set(['tick', 'sequence', 'mode', 'position', 'target', 'quaternion', 'fov']);
+const MEASUREMENT_WINDOW_KEYS = new Set(['startFrame', 'frameCount']);
 const COMPLETION_KEYS = new Set(['marker', 'value']);
 const MANIFEST_ID_PATTERN = /^[a-z0-9][a-z0-9._-]*$/;
 const TELEMETRY_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
@@ -276,6 +279,13 @@ function validateScenario(scenario, prefix, seenScenarioIds, issues, limits) {
   validateCameraTape(scenario.cameraTape, `${prefix}.cameraTape`, issues, limits);
   validateRequiredTelemetry(scenario.requiredTelemetry, `${prefix}.requiredTelemetry`, issues, limits);
   validateCompletion(scenario.expectedRouteCompletion, `${prefix}.expectedRouteCompletion`, issues);
+  validateMeasurementWindow(
+    scenario.measurementWindow,
+    scenario.expectedRouteCompletion,
+    `${prefix}.measurementWindow`,
+    issues,
+    limits,
+  );
 }
 
 function validateSave(save, prefix, issues, limits) {
@@ -436,6 +446,35 @@ function validateCompletion(completion, prefix, issues) {
   }
   if (!Object.hasOwn(completion, 'value') || !isJsonScalar(completion.value)) {
     issues.add(`${prefix} completion value must be a finite JSON scalar`);
+  }
+}
+
+function validateMeasurementWindow(window, completion, prefix, issues, limits) {
+  if (!isPlainObject(window)) {
+    issues.add(`${prefix} must be a plain object`);
+    return;
+  }
+  rejectUnknownKeys(window, MEASUREMENT_WINDOW_KEYS, prefix, issues);
+
+  const validStart = boundedSafeInteger(window.startFrame, 0, limits.maxTick);
+  if (!validStart) {
+    issues.add(`${prefix}.startFrame must be a non-negative bounded safe integer from 0 to ${limits.maxTick}`);
+  }
+
+  const validCount = boundedSafeInteger(window.frameCount, 1, limits.maxMeasurementFrames);
+  if (!validCount) {
+    issues.add(`${prefix}.frameCount must be a bounded safe integer from 1 to ${limits.maxMeasurementFrames}`);
+  }
+
+  const completionValue = isPlainObject(completion) ? completion.value : null;
+  const validCompletionValue = boundedSafeInteger(completionValue, 0, limits.maxTick);
+  if (!validCompletionValue) {
+    issues.add(`${prefix} requires expectedRouteCompletion.value to be a non-negative bounded safe integer from 0 to ${limits.maxTick}`);
+    return;
+  }
+
+  if (validStart && validCount && window.startFrame + window.frameCount > completionValue) {
+    issues.add(`${prefix} must end at or before expectedRouteCompletion.value ${completionValue}`);
   }
 }
 
@@ -803,6 +842,7 @@ function compileScenario(scenario) {
   const definition = scenarioDefinition(scenario.id);
   if (!definition) throw new Error(`missing production performance scenario definition: ${scenario.id}`);
   const scenarioDefinitionDigest = sha256Canonical(definition);
+  const measurementWindow = canonicalize(scenario.measurementWindow);
   const expectedRouteCompletion = canonicalize(scenario.expectedRouteCompletion);
   const saveDigest = sha256Canonical(save);
   const inputDigest = sha256Canonical(inputTape);
@@ -816,6 +856,7 @@ function compileScenario(scenario) {
     cameraDigest,
     entityMultiplier: scenario.entityMultiplier,
     requiredTelemetry,
+    measurementWindow,
     expectedRouteCompletion,
   };
   return {
