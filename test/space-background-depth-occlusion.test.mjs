@@ -97,9 +97,28 @@ test('comet material follows the same depth contract', () => {
   };
   try {
     const background = backgroundHarness();
+    let warmedTexture = null;
+    background.renderer = {
+      initTexture(texture) { warmedTexture = texture; },
+    };
     background._createComet();
     assertBackgroundMaterial(background.comet.mat, 'comet');
     assert(background.comet.sprite.renderOrder < 0);
+    assert.equal(warmedTexture, background.comet.tex, 'hidden comet texture is resident before first visibility');
+    assert.deepEqual(background.getCometAdmissionState(), {
+      applicable: true,
+      textureWarmReady: true,
+      textureWarmReceipt: {
+        attempted: true,
+        ready: true,
+        reason: 'create',
+        textureVersion: background.comet.tex.version,
+        error: null,
+      },
+      state: 'idle',
+      timer: background.comet.timer,
+      visible: false,
+    });
   } finally {
     if (previousDocument === undefined) delete globalThis.document;
     else globalThis.document = previousDocument;

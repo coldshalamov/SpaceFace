@@ -83,16 +83,23 @@ test('planet pipeline warm uses a disposable 1px target with the production colo
   assert.equal(disposed, 1, 'only the material/program survives the boot warm');
 });
 
-test('context-loss resources include the retained planet material', () => {
+test('context-loss resources include retained off-scene planet and comet resources', () => {
   const background = planetBakeHarness();
   background.l0Target = null;
   background.l1Target = null;
   background.l2Target = null;
   background.planetCache = new Map();
   background._planetBakeMaterial = new THREE.ShaderMaterial();
+  background.lowTier = true;
+  background.comet = null;
+  background._cometMat = new THREE.SpriteMaterial();
+  background._cometTex = new THREE.Texture();
 
-  assert.deepEqual(background.contextLossResources(), [background._planetBakeMaterial],
-    'old-context material listeners must be detached before the same material enters a new context');
+  assert.deepEqual(background.contextLossResources(), [
+    background._planetBakeMaterial,
+    background._cometMat,
+    background._cometTex,
+  ], 'old-context listeners must be detached even when low-tier resources are outside the scene');
 });
 
 function contextRestoreHarness() {
@@ -123,6 +130,27 @@ test('context restore warms the retained planet pipeline when no hero target is 
   background.onContextRestore();
 
   assert.equal(warmCalls, 1);
+});
+
+test('context restore warms the retained comet texture while its low-tier sprite is detached', () => {
+  const background = contextRestoreHarness();
+  const texture = new THREE.Texture();
+  const initialized = [];
+  background.lowTier = true;
+  background.comet = null;
+  background._cometTex = texture;
+  background.renderer = {
+    initTexture(actualTexture) {
+      initialized.push(actualTexture);
+    },
+  };
+  background._warmPlanetBakePipeline = () => {};
+
+  background.onContextRestore();
+
+  assert.deepEqual(initialized, [texture]);
+  assert.equal(background._cometTextureWarmReceipt?.reason, 'context-restore');
+  assert.equal(background._cometTextureWarmReceipt?.ready, true);
 });
 
 test('context restore re-bakes an active planet without a redundant temporary warm', () => {
