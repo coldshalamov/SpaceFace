@@ -28,7 +28,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 | 4 | `pq019-surface-heist` broker manifest | **FAIL — HARNESS (DOM abandon + lawful observe survive; remaining routes unproven)** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
 | 5 | PQ-020 Ceres functional route | **FAIL — HARNESS (valid Helios→Ceres jump survived; route stopped on unsupported 300-WU threshold)** | [row5-pq020-ceres-route](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) |
 | 6 | PQ-023 cues in motion | **FAIL — HARNESS (combat motion survives; Cathedral sequence and Electron parity unproven)** | [row6-pq023-cues](evidence/h1/row6-pq023-cues/EVIDENCE.md) |
-| 7 | PQ-022 asset leaves | _pending_ | |
+| 7 | PQ-022 asset leaves | **PASS — one Browser launch; 11 exact identities, 13 admitted stills** | [row7-pq022-asset-leaves](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md) |
 | 8 | Electron end-to-end smoke | _pending_ | |
 
 ---
@@ -43,7 +43,10 @@ Context you need: the PQ-022 receipt carries a re-authoring advisory of its own,
 census ranked this leaf in its top five re-author candidates. So the default is *not* "accept
 because it renders".
 
-**Evidence:** _pending (row 7)_
+**Evidence:** [Row 7 relay close/default/far and exact-admission receipt](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md).
+The one-use Browser cell passed at fixed seed 47 with the exact release identity admitted and no
+readable fallback. Review all three relay framings. The structural receipt's reservation remains live:
+this is an authored grey primitive assembly, not a loading failure.
 
 **Unblocks:** relay-collar receipt → `route_accepted`, which is the blob PQ-024 binds as
 `evidenceDependencies` before PQ-024 implementation can dispatch.
@@ -52,21 +55,33 @@ because it renders".
 
 ---
 
-## Decision 2 — PQ-019A facility and capsule art
+## Decision 2 — PQ-019 facility/capsule art and heist-route status
 
-**Question:** At the normal game camera, do the launcher, the lawful catcher, the fence and the
-physical cargo capsule read as four *distinct, purposeful* facilities — or as interchangeable
-greebled boxes? Is the capsule legible as a thing you could steal?
+**Question, art:** At the normal game camera, do the launcher, lawful catcher, fence, and physical
+cargo capsule read as four *distinct, purposeful* facilities — or as interchangeable greebled boxes?
+Is the capsule legible as a thing you could steal?
 
-**Evidence:** [row 3 presentation and counts](evidence/h1/row3-pq019a-presentation/EVIDENCE.md).
-The facility stills and all functional counts are reviewable. The capsule question is **not
-answerable from H1**: the one attempt missed the moving subject at all three framings (HARNESS), so
-do not mistake its player/planet frames for capsule art evidence.
+**Question, function:** Do the five named PQ-019C routes — lawful observe, heist-plus-fence,
+confiscation, destruction, and reduced-stake recovery — hold up on the live route, with one composed
+witness/WANTED/pursuit floor pill and no competing pill?
 
-**Unblocks:** a facility-only verdict now; the capsule half and therefore full PQ-019A art closure
-remain blocked on a valid future capture. Once that exists, it closes the remaining evidence rows in
-`receipts/PQ-019A-facility-embodiment-REPORT.md` and, with Decision 6, unblocks the parent PQ-019
-promotion (including the W03/W04/W05 alias replacement).
+**Evidence:**
+
+- [row 3 presentation and counts](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) — facility stills
+  and functional counts survive; the capsule question is **not answerable from H1** because the single
+  attempt missed the moving subject at all three framings (HARNESS). Do not treat its player/planet
+  frames as capsule art evidence.
+- [row 4 registered surface-heist attempt](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) — the DOM
+  abandon and lawful-observe evidence survive, but the remaining heist/fence, confiscation,
+  destruction, recovery, and final one-voice composition routes are unproven after the HARNESS
+  failure.
+
+PQ-019C is deliberately folded into this broader PQ-019 decision; it does **not** receive a seventh
+standalone decision. Record useful facility/lawful-observe notes now, but do not promote the parent on
+partial evidence.
+
+**Unblocks:** a facility-only art note now. Full PQ-019A/PQ-019C closure and the parent PQ-019
+promotion remain blocked on valid capsule and remaining functional-route evidence.
 
 **Verdict:** _____________
 
@@ -141,21 +156,7 @@ evidence.
 
 ---
 
-## Decision 6 — PQ-019C heist route acceptance
-
-**Question:** Do the five named heist routes — lawful observe, heist-plus-fence, confiscation,
-destruction, reduced-stake recovery — hold up on the live route, with a single one-voice floor pill
-carrying the composed witness/WANTED/pursuit line and no competing pill?
-
-**Evidence:** _pending (row 4)_
-
-**Unblocks:** PQ-019C acceptance evidence, and with Decision 2 the parent PQ-019 promotion.
-
-**Verdict:** _____________
-
----
-
-## Decision 7 — Electron sanity
+## Decision 6 — Electron sanity
 
 **Question:** Not an art judgement — a go/no-go. Does the shipped Electron shell carry a player from
 menu → New Game → flight → dock → Ledger without a defect that would embarrass a build?

@@ -197,11 +197,13 @@ completion. It is strict in three ways, or it becomes a graveyard: entries are e
 that **no longer reproduces** also fails, telling the reader to delete the entry. All three properties
 are covered by tests.
 
-**Admission probing was deliberately not built.** No cheap importable admission predicate exists in
-the current checks, and building a probe would touch the `browser-gpu` lease PQ-034 holds. Admission
-is recorded as unprobed rather than faked.
+**The original scoping leaf deliberately did not build admission probing.** No cheap importable
+admission predicate existed in the static checks, and the `browser-gpu` lease was held elsewhere.
+Phase H1 later added a registered, one-use presentation cell without turning this static census into a
+second runtime registry; the shipped world, traffic, renderer, loader, and admission owners remain
+authoritative.
 
-### Gate results
+### Original scoping gate results
 
 ```
 [pq022] required : 72 assets (17 machine-derived places, 13 recorded exclusions)
@@ -209,17 +211,59 @@ is recorded as unprobed rather than faked.
 [pq022] PASS — 11 gap(s), all named in the allowlist, none stale.
 ```
 
-Bare run (no allowlist) fails with 11 unexpected gaps — that is the intended behaviour and the
-finding. The 11 gaps are 4 `source-manifest-row-missing`, 2 `release-manifest-row-missing`,
-4 `source-bytes-mismatch`, 1 `source-hash-mismatch`.
+Bare run (no allowlist) failed with 11 unexpected gaps in the original scoping run — that was the
+intended behaviour and the finding. The 11 gaps were 4 `source-manifest-row-missing`, 2
+`release-manifest-row-missing`, 4 `source-bytes-mismatch`, and 1 `source-hash-mismatch`.
+
+### Phase H1 headed presentation update — 2026-07-29
+
+H1 Row 7 ran the registered `pq022-corridor-asset-leaves` manifest at fixed seed `47` and **passed on
+its first and only headed Browser launch** (`browser=1`, `electron=0`). The durable record is
+[row7-pq022-asset-leaves](../evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md).
+
+The cell admitted and photographed these exact release identities through the production renderer:
+
+- four station archetypes — `place_station_trade_hub`, `place_station_military`,
+  `place_station_refinery`, `place_station_mining`;
+- three lane-furniture identities — `place_gate_jump_ring`, `place_station_billboard`,
+  `place_nav_buoy`;
+- three traffic whole-ships — `wholeship_helios_lark`, `wholeship_helios_span`,
+  `wholeship_helios_cradle`;
+- the relay collar — `place_claim_outpost_relay`, at close/default/far framing on a live asteroid.
+
+All thirteen still records report ready authored admission from release artifacts with no readable
+fallback. Station/furniture travel was compressed through the registered `world.enterSector` owner,
+so this is presentation evidence rather than inter-sector route-completion evidence. The traffic
+roles were selected deterministically while `makeShipEntitySpec`, traffic durable identity and cargo
+manifest assignment, `wholeShipVisualForEntity`, rendering, and admission stayed production-owned.
+`distributionClaim: false`: the fixture proves exact role-to-hull paths, not random ambient-role
+frequency.
+
+The standing gate immediately before claim issue now reports **9 named allowlisted gaps, none stale**.
+The original `place_asteroid_rock_a` source-provenance gap no longer reproduces. The remaining
+source-byte metadata gaps include `place_lane_beacon`, `place_nav_buoy`, and
+`place_station_billboard`; the latter two stills bind live source bytes and release-manifest identity,
+but H1 does not pretend their stale `parts_manifest` byte fields are synchronized.
+
+Open boundaries after H1:
+
+- [x] exact headed presentation for the four stations, three lane-furniture identities, three traffic
+      whole-ships, and relay collar;
+- [ ] relay accept-versus-re-author verdict — intentionally one of the six H2 decisions;
+- [ ] broader PQ-022 leaf/parent closure; stations, furniture, and traffic do not receive extra H2
+      decision headings in this batch;
+- [ ] matched performance and resource/cleanup evidence — Phase H3 only. No H1 timing field is
+      evidence.
 
 ---
 
 ## 5. Completion plan
 
-### HARD milestone blockers — 1 asset
+### Historical HARD milestone blocker — resolved before H1
 
-**`place_asteroid_rock_a` — source provenance broken + named for re-authoring.**
+**At the original scoping pin, `place_asteroid_rock_a` had broken source provenance and was named for
+re-authoring.** The Phase H1 pre-claim gate no longer reproduces that gap; this paragraph is retained
+to explain the original completion plan, not to report a current blocker.
 
 - *What is missing:* the on-disk source GLB (9,118,128 bytes,
   `fd08251e…`) is a different artifact from the one both manifests describe (1,970,132 bytes,
@@ -233,17 +277,20 @@ finding. The 11 gaps are 4 `source-manifest-row-missing`, 2 `release-manifest-ro
 - *Mutex:* Blender + asset-manifest. Both currently free.
 - *Blast radius:* one place GLB pair, three manifest/receipt rows. Two Ceres fields and one claim
   site. No runtime code.
-- *Verdict:* blocks the milestone.
+- *Historical verdict:* blocked the milestone at this pin. Current H1 gate: resolved; no longer among
+  the nine allowlisted gaps.
 
-### Verdict-pending — built, awaiting headed acceptance under the PQ-034 lease
+### Verdict-pending — headed evidence partially captured; human/H3 closure remains
 
-`place_debris_chunk`, `place_dead_hulk`, `place_dock_interior`, `kestrel` (+2 LODs),
-`place_claim_outpost_relay`, `place_landmark_wreck_cathedral`, `pod_cargo_container`,
-`place_lane_beacon`, the 10 modular hulls, `ashline_dart/lode/rig`.
+H1 Row 7 now supplies admitted game-camera stills for `place_claim_outpost_relay`, the four corridor
+stations, the jump ring/billboard/nav-buoy furniture set, and the Lark/Span/Cradle traffic set. The
+relay still needs H2 Decision 1; the other three groups are supporting PQ-022 evidence and do not add
+standalone decisions to the six-decision H2 agenda.
 
-These are **not** blockers to re-open. Each has an owner lane and each is waiting on the same shared
-resource: PQ-034 holds `browser-gpu`, `performance-evidence`, and `validation-broker`. No work here is
-dispatchable until that lease is released. Nothing in this lane changes their status.
+Other named graphics leaves — `place_debris_chunk`, `place_dead_hulk`, `place_dock_interior`,
+`kestrel` (+2 LODs), `place_landmark_wreck_cathedral`, `pod_cargo_container`,
+`place_lane_beacon`, the 10 modular hulls, and `ashline_dart/lode/rig` — retain their own receipt and
+owner-lane boundaries. Matched performance for every group remains Phase H3.
 
 ### Moderate and low — bounded, non-blocking
 
@@ -279,10 +326,10 @@ Everything at horizon 90 that is `never-touched` — the 33 modular parts and 10
 explicitly **out** of the minimal set. PQ-022's parent contract does not require every family, and
 these are crowd assets whose screen-space class does not justify blocking a milestone.
 
-**Sequencing note.** Only `PQ-022.ceres-geology-rock-a` is dispatchable today. The other three leaves
-need a game-camera visual verdict, which is behind the PQ-034 lease. The realistic path to
-`milestone_accepted` is: land rock-a now → release PQ-034 → run the three identity leaves → close the
-verdict-pending set.
+**Sequencing update.** The rock-a provenance gap no longer reproduces, and H1 Row 7 has supplied the
+headed admitted still set for the three identity groups. That does not silently promote them to
+`milestone_accepted`: retain the exact Row 7 evidence, take the single relay visual verdict in H2,
+close any broader leaf/parent evidence requirements explicitly, then run matched performance in H3.
 
 ---
 
@@ -304,17 +351,20 @@ name. The actual evidence that no gameplay changed here is the **diff scope**: t
 only `scripts/`, `test/`, one `package.json` line, and this receipt. No gameplay source, no asset, no
 manifest was modified.
 
-`check:graphics:asset-receipts` remains red at `place_asteroid_rock_a`; it is reported above as a
-finding and was **not** repaired — that asset belongs to the visual production lane.
+At the original scoping pin, `check:graphics:asset-receipts` was red at
+`place_asteroid_rock_a`; this leaf reported the finding and did not repair it. The later H1 standing
+gate no longer reproduces that source-provenance gap, consistent with an upstream owner-lane repair.
 
 ---
 
 ## 8. Scope discipline
 
-No asset authoring, no Blender, no GLB or manifest mutation, no broker execution, no Electron, no
-performance capture. No gameplay source touched. Defects found in other lanes' territory
-(`check:graphics:asset-receipts`, the unowned Wasp LOD family, the `parts_manifest.bytes` drifts) were
-named with owner lanes and left alone.
+The original scoping leaf performed no asset authoring, Blender work, GLB/manifest mutation, broker
+execution, Electron run, performance capture, or gameplay-source change. The later H1 addendum adds
+only a registered Browser presentation harness, static contract, durable evidence, and receipt links.
+It still performs no asset/gameplay mutation and introduces no runtime asset registry. Known corpus
+bookkeeping gaps remain named and unfixed; all time-valued broker metadata is informational/contended,
+not performance evidence.
 
 ## 9. Write set
 
