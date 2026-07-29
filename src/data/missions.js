@@ -199,6 +199,25 @@ export const MISSION_TYPES = [
     failureCondition: 'timer OR scan-target despawns',
     constraints: { fValueIsScanTargets: true },
   },
+  {
+    // PQ-019C — the authored physical capsule heist. AUTHORED-ONLY, never procedurally rolled.
+    //
+    // Procedural weight is zero STRUCTURALLY rather than by a table entry: every OFFER_MIX row is
+    // 10 long and this is the 11th type, so `missions._pickType` reads `weights[10] || 0` = 0 for
+    // every station type. Because 0 does not change the weight total, adding this entry leaves the
+    // procedural offer RNG stream byte-identical. `missions._syncHeistOffer` is the only thing that
+    // ever puts it on a board.
+    //
+    // `chainable: false` keeps `_instanceFromOffer` from minting a chainNextSeed, so completing a
+    // heist cannot auto-offer a procedural sequel. No `collateral`: see src/data/heistMission.js.
+    type: 'heist_intercept', riskTierRange: [3, 3], chainable: false, proceduralWeight: 0,
+    completionEvent: 'heist terminal receipt (fenced_success) from the pure outcome arbiter',
+    rewardFormula: 'authored flat payout (src/data/heistMission.js PQ019C_HEIST_TUNING.payoutCr)',
+    timeFormula: 'none — the run window is an arbitrated `expired` candidate, not a mission deadline',
+    taskTime: 0,
+    failureCondition: 'any terminal outcome other than fenced_success',
+    constraints: { authoredOnly: true },
+  },
 ];
 
 // SP1 — authored set-piece chains compiled into ordinary sequential mission offers.

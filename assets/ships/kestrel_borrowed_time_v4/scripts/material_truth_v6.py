@@ -109,10 +109,10 @@ MATERIAL_BILLS = {
     "marking": {
         "substrate": "stencil paint over the existing coated pressure shell",
         "manufacture": "crew-cut stencil applied between service seams",
-        "finish": "warm off-white matte marking paint",
-        "interface": "paint layer follows the port shell surface",
+        "finish": "dirty warm-ivory aerosol marking paint with chipped hard edges",
+        "interface": "conformal paint layer on the aft port armor course, clear of the inspection hatch",
         "response": "legible ship identity without a floating plaque",
-        "history": "crew-applied gallows humor with restrained abrasion",
+        "history": "crew-applied gallows humor, edge overspray and scrape-local paint loss",
         "forbidden": "inventory label, orange censor block, generated gibberish",
     },
     "coated_hull_panel": {
@@ -401,7 +401,8 @@ def _materials() -> dict[str, bpy.types.Material]:
             micro_scale=220.0, micro_strength=0.018,
         ),
         "marking": _principled_material(
-            "Material_V6_MarkingIvory", (0.82, 0.69, 0.46, 1.0), 0.0, 0.72,
+            "Material_V6_MarkingIvory", (0.62, 0.50, 0.31, 1.0), 0.0, 0.82,
+            micro_scale=185.0, micro_strength=0.020,
         ),
         "lens": _principled_material(
             "Material_V6_SensorLens", (0.008, 0.055, 0.072, 1.0), 0.12, 0.24,
@@ -1723,31 +1724,306 @@ def _build_shell_interfaces(collection: bpy.types.Collection, materials: dict) -
     return objects
 
 
-def _build_marking(collection: bpy.types.Collection, materials: dict) -> bpy.types.Object:
-    curve = bpy.data.curves.new(f"{PREFIX}HeroMark_DieLaughing_Curve", type="FONT")
-    curve.body = "DIE LAUGHING"
-    curve.align_x = "CENTER"
-    curve.align_y = "CENTER"
-    curve.size = 0.58
-    curve.extrude = 0.012
-    curve.bevel_depth = 0.006
-    curve.bevel_resolution = 1
-    obj = bpy.data.objects.new(f"{PREFIX}HeroMark_DieLaughing", curve)
-    collection.objects.link(obj)
-    obj.location = (-0.65, -4.42, 1.115)
-    obj.rotation_euler = (0.0, 0.0, 0.0)
-    obj.data.materials.append(materials["marking"])
-    bpy.context.view_layer.objects.active = obj
-    obj.select_set(True)
-    bpy.ops.object.convert(target="MESH")
-    obj = bpy.context.view_layer.objects.active
-    obj.name = f"{PREFIX}HeroMark_DieLaughing"
-    for candidate in bpy.context.selected_objects:
-        candidate.select_set(False)
-    return _finish(
-        obj, materials["marking"], "marking", "crew-applied ship identity stencil",
+MARKING_GLYPHS = {
+    "A": (
+        ((0.08, 0.00), (0.48, 1.00)),
+        ((0.48, 1.00), (0.92, 0.00)),
+        ((0.25, 0.42), (0.75, 0.42)),
+    ),
+    "D": (
+        ((0.08, 0.00), (0.08, 1.00)),
+        ((0.08, 0.93), (0.62, 0.93)),
+        ((0.62, 0.93), (0.90, 0.73)),
+        ((0.90, 0.73), (0.90, 0.25)),
+        ((0.90, 0.25), (0.62, 0.07)),
+        ((0.62, 0.07), (0.08, 0.07)),
+    ),
+    "E": (
+        ((0.08, 0.00), (0.08, 1.00)),
+        ((0.08, 0.93), (0.90, 0.93)),
+        ((0.08, 0.50), (0.72, 0.50)),
+        ((0.08, 0.07), (0.90, 0.07)),
+    ),
+    "G": (
+        ((0.83, 0.82), (0.62, 0.95)),
+        ((0.62, 0.95), (0.23, 0.95)),
+        ((0.23, 0.95), (0.07, 0.74)),
+        ((0.07, 0.74), (0.07, 0.25)),
+        ((0.07, 0.25), (0.25, 0.06)),
+        ((0.25, 0.06), (0.67, 0.06)),
+        ((0.67, 0.06), (0.88, 0.23)),
+        ((0.88, 0.23), (0.88, 0.48)),
+        ((0.88, 0.48), (0.55, 0.48)),
+    ),
+    "H": (
+        ((0.08, 0.00), (0.08, 1.00)),
+        ((0.92, 0.00), (0.92, 1.00)),
+        ((0.08, 0.50), (0.92, 0.50)),
+    ),
+    "I": (
+        ((0.08, 0.93), (0.92, 0.93)),
+        ((0.50, 0.07), (0.50, 0.93)),
+        ((0.08, 0.07), (0.92, 0.07)),
+    ),
+    "L": (
+        ((0.08, 0.06), (0.08, 1.00)),
+        ((0.08, 0.06), (0.90, 0.06)),
+    ),
+    "N": (
+        ((0.08, 0.00), (0.08, 1.00)),
+        ((0.08, 1.00), (0.92, 0.00)),
+        ((0.92, 0.00), (0.92, 1.00)),
+    ),
+    "U": (
+        ((0.08, 1.00), (0.08, 0.25)),
+        ((0.08, 0.25), (0.25, 0.06)),
+        ((0.25, 0.06), (0.72, 0.06)),
+        ((0.72, 0.06), (0.92, 0.25)),
+        ((0.92, 0.25), (0.92, 1.00)),
+    ),
+}
+
+MARKING_WIDTHS = {
+    "I": 0.44,
+    "L": 0.68,
+}
+
+
+def _append_marking_quad(
+    vertices: list[tuple[float, float, float]],
+    faces: list[tuple[int, ...]],
+    start: tuple[float, float],
+    end: tuple[float, float],
+    width_start: float,
+    width_end: float,
+    surface_z,
+    surface_offset: float,
+) -> None:
+    """Append one conformal, one-sided paint stroke with no plaque sidewall."""
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
+    length = math.hypot(dx, dy)
+    if length <= 1e-6:
+        raise ValueError("zero-length marking stroke")
+    px = -dy / length
+    py = dx / length
+    half_start = width_start * 0.5
+    half_end = width_end * 0.5
+    outline = (
+        (start[0] + px * half_start, start[1] + py * half_start),
+        (end[0] + px * half_end, end[1] + py * half_end),
+        (end[0] - px * half_end, end[1] - py * half_end),
+        (start[0] - px * half_start, start[1] - py * half_start),
+    )
+    base = len(vertices)
+    vertices.extend((x, y, surface_z(x) + surface_offset) for x, y in outline)
+    faces.append((base + 0, base + 3, base + 2, base + 1))
+
+
+def _marking_transform(
+    point: tuple[float, float],
+    *,
+    origin: tuple[float, float],
+    scale: tuple[float, float],
+    rotation: float,
+) -> tuple[float, float]:
+    x = (point[0] - 0.5) * scale[0]
+    y = (point[1] - 0.5) * scale[1]
+    cosine = math.cos(rotation)
+    sine = math.sin(rotation)
+    return (
+        origin[0] + x * cosine - y * sine,
+        origin[1] + x * sine + y * cosine,
+    )
+
+
+def _build_marking(
+    collection: bpy.types.Collection,
+    materials: dict,
+) -> list[bpy.types.Object]:
+    """Build the crew name as original protest-stencil paint, not desktop type.
+
+    The generated component study guides energy and paint loss only. Exact
+    glyphs, chips, bridges and edge-following overspray are conventionally authored
+    here so no generated pixels or proprietary typeface enter the asset.
+    """
+    plate = bpy.data.objects.get(f"{PREFIX}ShoulderArmor_Port_Aft")
+    if plate is None or plate.type != "MESH":
+        raise RuntimeError("port aft shoulder armor missing for conformal marking")
+    vertices: list[tuple[float, float, float]] = []
+    faces: list[tuple[int, ...]] = []
+    wear_vertices: list[tuple[float, float, float]] = []
+    wear_faces: list[tuple[int, ...]] = []
+    wear_anchors: list[tuple[float, float]] = []
+    surface_offset = 0.00030
+    wear_surface_offset = 0.00036
+    plate_half_length = 4.05 * 0.5
+
+    def plate_top_z(local_x: float) -> float:
+        t = max(0.0, min(1.0, (local_x + plate_half_length) / (plate_half_length * 2.0)))
+        return 0.17 + (0.15 - 0.17) * t
+
+    stroke_index = 0
+    chip_count = 0
+
+    # Two lines preserve the generated study's protest-poster hierarchy while
+    # staying inside the existing port shoulder marking plate.
+    lines = (
+        ("DIE", (0.0, 0.23), 0.43, 0.31, 0.118, 0.10),
+        ("LAUGHING", (0.0, -0.18), 0.45, 0.39, 0.112, 0.050),
+    )
+    chip_strokes = {1, 8, 16, 25, 34, 43, 47}
+
+    for line_index, (text, center, nominal_width, height, stroke_width, spacing) in enumerate(lines):
+        widths = [MARKING_WIDTHS.get(letter, 1.0) * nominal_width for letter in text]
+        line_width = sum(widths) + spacing * (len(text) - 1)
+        cursor = center[0] - line_width * 0.5
+        for glyph_index, (letter, glyph_width) in enumerate(zip(text, widths, strict=True)):
+            origin = (
+                cursor + glyph_width * 0.5,
+                center[1] + math.sin((glyph_index + 1) * 2.13 + line_index) * 0.008,
+            )
+            rotation = math.radians(
+                math.sin((glyph_index + 2) * 1.71 + line_index * 0.83) * 2.2
+            )
+            scale = (
+                glyph_width,
+                height * (1.0 + math.sin((glyph_index + 4) * 1.19) * 0.025),
+            )
+            for local_start, local_end in MARKING_GLYPHS[letter]:
+                start = _marking_transform(
+                    local_start, origin=origin, scale=scale, rotation=rotation,
+                )
+                end = _marking_transform(
+                    local_end, origin=origin, scale=scale, rotation=rotation,
+                )
+                wear_anchors.extend((
+                    start,
+                    end,
+                    ((start[0] + end[0]) * 0.5, (start[1] + end[1]) * 0.5),
+                ))
+                width = stroke_width * (
+                    1.0 + math.sin((stroke_index + 1) * 4.17) * 0.08
+                )
+                width_end = width * (
+                    1.0 + math.sin((stroke_index + 3) * 2.63) * 0.07
+                )
+                if stroke_index in chip_strokes:
+                    # Missing paint rather than a dark overlay: the graphite
+                    # substrate remains the actual visible chip material.
+                    t0 = 0.43 + math.sin(stroke_index * 1.37) * 0.05
+                    gap = 0.065
+                    a = (
+                        start[0] + (end[0] - start[0]) * (t0 - gap * 0.5),
+                        start[1] + (end[1] - start[1]) * (t0 - gap * 0.5),
+                    )
+                    b = (
+                        start[0] + (end[0] - start[0]) * (t0 + gap * 0.5),
+                        start[1] + (end[1] - start[1]) * (t0 + gap * 0.5),
+                    )
+                    _append_marking_quad(
+                        vertices, faces, start, a, width, width_end,
+                        plate_top_z, surface_offset,
+                    )
+                    _append_marking_quad(
+                        vertices, faces, b, end, width_end, width * 0.96,
+                        plate_top_z, surface_offset,
+                    )
+                    chip_count += 1
+                else:
+                    _append_marking_quad(
+                        vertices, faces, start, end, width, width_end,
+                        plate_top_z, surface_offset,
+                    )
+                stroke_index += 1
+            cursor += glyph_width + spacing
+
+    # Sparse LOD0-only overspray follows actual glyph edges; it does not cluster
+    # at the plate center or survive into normal-route LODs.
+    overspray_count = 34
+    for index in range(overspray_count):
+        phase = index * 2.399963229728653
+        anchor = wear_anchors[(index * 7) % len(wear_anchors)]
+        center = (
+            anchor[0] + math.cos(phase) * (0.020 + (index % 4) * 0.008),
+            anchor[1] + math.sin(phase * 1.31) * (0.014 + (index % 3) * 0.006),
+        )
+        length = 0.015 + (index % 4) * 0.006
+        angle = phase * 0.37
+        end = (
+            center[0] + math.cos(angle) * length,
+            center[1] + math.sin(angle) * length,
+        )
+        width = 0.006 + (index % 3) * 0.003
+        _append_marking_quad(
+            wear_vertices, wear_faces, center, end, width, width * 0.72,
+            plate_top_z, wear_surface_offset,
+        )
+
+    obj = _mesh_object(
+        collection,
+        f"{PREFIX}HeroMark_DieLaughing",
+        vertices,
+        faces,
+    )
+    obj = _finish(
+        obj, materials["marking"], "marking",
+        "crew-cut two-line protest stencil with chipped spray paint",
         bevel=0.0, detail=0,
     )
+    obj.parent = plate
+    obj.matrix_parent_inverse = Matrix.Identity(4)
+    obj.location = (0.0, 0.0, 0.0)
+    obj.rotation_euler = (0.0, 0.0, 0.0)
+    obj.scale = (1.0, 1.0, 1.0)
+    obj["sf_marking_text"] = "DIE LAUGHING"
+    obj["sf_marking_method"] = "conventionally-authored-vector-stencil-v2"
+    obj["sf_marking_style"] = "original-protest-punk-hand-cut-stencil"
+    obj["sf_target_surface"] = plate.name
+    obj["sf_surface_offset_m"] = surface_offset
+    measured_offsets = [
+        vertex.co.z - plate_top_z(vertex.co.x)
+        for vertex in obj.data.vertices
+    ]
+    obj["sf_min_surface_offset_m"] = min(measured_offsets)
+    obj["sf_max_surface_offset_m"] = max(measured_offsets)
+    obj["sf_marking_reference_sha256"] = (
+        "EB4CA35AE6B22817037FA7717C7C9CACEEEAB65965730F7F388A7FE5E5036ECF"
+    )
+    obj["sf_generated_pixels_shipped"] = False
+    obj["sf_stencil_missing_paint_breaks"] = chip_count
+    obj["sf_overspray_fragments"] = overspray_count
+
+    wear = _mesh_object(
+        collection,
+        f"{PREFIX}HeroMark_DieLaughing_Wear",
+        wear_vertices,
+        wear_faces,
+    )
+    wear = _finish(
+        wear, materials["marking"], "marking",
+        "LOD0-only stencil overspray at crew-cut paint edges",
+        bevel=0.0, detail=2,
+    )
+    wear.parent = plate
+    wear.matrix_parent_inverse = Matrix.Identity(4)
+    wear.location = (0.0, 0.0, 0.0)
+    wear.rotation_euler = (0.0, 0.0, 0.0)
+    wear.scale = (1.0, 1.0, 1.0)
+    wear["sf_marking_text"] = "DIE LAUGHING"
+    wear["sf_marking_method"] = "conventionally-authored-vector-overspray-v2"
+    wear["sf_target_surface"] = plate.name
+    wear["sf_surface_offset_m"] = wear_surface_offset
+    wear_offsets = [
+        vertex.co.z - plate_top_z(vertex.co.x)
+        for vertex in wear.data.vertices
+    ]
+    wear["sf_min_surface_offset_m"] = min(wear_offsets)
+    wear["sf_max_surface_offset_m"] = max(wear_offsets)
+    wear["sf_lod_policy"] = "LOD0_only_detail2"
+    wear["sf_generated_pixels_shipped"] = False
+    wear["sf_overspray_fragments"] = overspray_count
+    return [obj, wear]
 
 
 def apply_material_truth_v6() -> dict:
@@ -1774,7 +2050,8 @@ def apply_material_truth_v6() -> dict:
     objects.extend(_build_radiators(collection, materials))
     objects.extend(_build_sensor(collection, materials))
     objects.extend(_build_shell_interfaces(collection, materials))
-    objects.append(_build_marking(collection, materials))
+    marking_objects = _build_marking(collection, materials)
+    objects.extend(marking_objects)
     root = _root()
     report = {
         "schema": "spaceface.kestrelMaterialTruth.v1",
@@ -1792,6 +2069,23 @@ def apply_material_truth_v6() -> dict:
         "existingMaterialBillCoverage": existing_bill_coverage,
         "objects": [obj.name for obj in objects],
         "heroMarking": "DIE LAUGHING",
+        "heroMarkingContract": {
+            "mainObject": marking_objects[0].name,
+            "wearObject": marking_objects[1].name,
+            "method": marking_objects[0]["sf_marking_method"],
+            "style": marking_objects[0]["sf_marking_style"],
+            "targetSurface": marking_objects[0]["sf_target_surface"],
+            "generatedPixelsShipped": marking_objects[0]["sf_generated_pixels_shipped"],
+            "mainDetailLevel": marking_objects[0]["sf_detail_level"],
+            "wearDetailLevel": marking_objects[1]["sf_detail_level"],
+            "wearLodPolicy": marking_objects[1]["sf_lod_policy"],
+            "surfaceOffsetMeters": marking_objects[0]["sf_surface_offset_m"],
+            "minMeasuredSurfaceOffsetMeters": marking_objects[0]["sf_min_surface_offset_m"],
+            "maxMeasuredSurfaceOffsetMeters": marking_objects[0]["sf_max_surface_offset_m"],
+            "missingPaintBreaks": marking_objects[0]["sf_stencil_missing_paint_breaks"],
+            "oversprayFragments": marking_objects[1]["sf_overspray_fragments"],
+            "referenceSha256": marking_objects[0]["sf_marking_reference_sha256"],
+        },
     }
     root["materialTruthPass"] = report
     root["fictionName"] = "DIE LAUGHING"

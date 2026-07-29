@@ -99,6 +99,63 @@ manufacturing rationale, interface, and transformation into final form. An unexp
 “chiclet,” decorative hoop, or uniformly beveled slab remains blockout construction even when it has
 textures, scratches, or a plausible object name.
 
+### Blender anti-toy implementation controls
+
+For an activated material-truth repair, begin with a manufactured section and assembly sequence—not a
+software primitive. Name the rolled or faceted case, folded hat section, plate shell, hollow bell,
+gusset, saddle, clevis, flange, service line, aperture, access cover, or pressure vessel that the
+primitive is being transformed into. Then model its interfaces, wall thickness, negative space, load
+or service path, and transition into the neighboring structure.
+
+Use a deliberate size hierarchy:
+
+- macro forms preserve the existing asset identity and role;
+- meso forms explain construction, attachment, access, cooling, and replacement;
+- micro forms explain fasteners, seams, clamps, ribs, shutters, and service lines.
+
+Do not make every detail a metre-scale block. More objects or triangles do not repair a missing scale
+hierarchy.
+
+Review what the supported camera sees, not what the outliner calls the object. Naming a long blank
+bar `RecoilBeam`, a slab `Mantlet`, or a cuboid `ServicePack` does not transform its visible
+cross-section. Camera-prominent housings need section changes, edge breaks, mounting transitions,
+openings, and smaller interfaces. If a design claims an open machinery bay, the render must expose
+the receiver, bearing/trunnion, recoil device, load frame, fasteners, and rooted service paths rather
+than hiding them behind decorative plate walls.
+
+Preserve manufactured edge behavior. Do not apply unconditional smooth shading to folded sheet,
+machined facets, segmented clamps, plate edges, or ceramic throats. Record a smooth-by-angle or
+equivalent hard-edge policy, inspect it under hard grazing light, and validate the mesh before glTF
+export. Over-smoothed normals can make correct geometry read as soap, rubber, or molded plastic.
+
+Surface grammar must match the component and its UV scale. A generic plate grid, leather-like bump,
+or large tile noise projected across a machined receiver, rolled hot jacket, nozzle bell, cable, or
+ceramic throat is a material error, even when the image is technically a valid base/normal/ORM set.
+Apply plate seams only where plate construction exists. Let modeled clamps, stringers, joints, wall
+thickness, and cavities describe assembly; use substrate-appropriate microstructure for the
+remaining response. Reject visible texel/block scale that substitutes for modeled construction in a
+supported close view. Procedural corner studs or plate fasteners belong only to actual plate roles;
+receivers, hot sections, cable hardware, and refractory assemblies require modeled fasteners at
+their real interfaces.
+
+Recess emissive surfaces inside a fixture, slit, aperture, instrument, or throat. The component must
+still explain its function with emissive disabled; a bright disk or glowing torus is not a substitute
+for a reactor, sensor, or thruster assembly.
+
+Render review evidence from the exact finalized uncompressed source GLB, not only the mutable Blender
+scene. Bind each image to the source hash and registered renderer hash; reject historical,
+unversioned, or mixed-source evidence. A pass fails while any prominent component is still best
+described as a tube, box, torus, glowing disk, or smooth lump rather than by a fabricated part and its
+interfaces.
+
+A pre-finalize render may reject geometry, framing, or component construction, but it cannot close
+G4. Keep its receipt ineligible, run the actual surface/finalization path, and rerender the exact
+post-finalize source. The material pipeline must also fail closed when an authored material name
+does not resolve to its declared physical role. A `RepairPrimer` slot classified and generated as
+generic hull steel is not material truth merely because both paths emit valid PNG/KTX2 data. A
+receipt-only shortcut may not relabel existing images with a new source or producer hash. Eligible
+evidence requires a complete exact-source rerender.
+
 ### Component-first generated-reference loop
 
 When DCC blockout vocabulary is constraining design, one useful repair method is to isolate the exact deficient component from an
@@ -113,6 +170,16 @@ traits, rejected traits, and asset-specific resemblance target. Translate the ap
 logic into editable geometry and authored materials; do not project the image over a primitive and
 call the component resolved, and never infer authoritative normal/AO/ORM data from the generated
 pixels. Review the rebuilt component beside the reference in material and textureless/clay views.
+
+### Visible Blender working state
+
+For connected Blender work, keep the complete surfaced asset visible in Material Preview or Rendered
+shading as the primary authoring state. Materials, adjacent assemblies, recessed emission, and edge
+response must remain available for judgment while geometry changes. Solid/clay, wireframe,
+material-ID, and channel-isolation views are bounded diagnostics: they can reveal a silhouette,
+intersection, normal, or construction defect, but they cannot demonstrate substance or close G4.
+Return to the surfaced assembly after each meaningful edit. An external beauty render or later
+texturing pass must not be used to excuse a toy-like component accepted in the working viewport.
 
 For a disputed material/shape component, fiction and implementation must agree in the result:
 

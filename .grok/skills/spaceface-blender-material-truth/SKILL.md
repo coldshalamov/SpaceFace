@@ -30,6 +30,11 @@ in `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`.
 
 ## 2. Write the fiction-development agreement
 
+Start at `docs/worldbuilding/README.md` and follow its canon authority order before inventing component
+history. Cite the relevant canon source in the asset dossier. Label every unsupported but useful
+manufacturing, manufacturer, service-history, or slang detail `ART EXTRAPOLATION`; fiction and
+geometry agreeing with each other is not enough if both contradict the game.
+
 For every disputed camera-visible component, write:
 
 - function, origin, and manufacturer or repair context;
@@ -80,13 +85,87 @@ physically authoritative.
    modifiers, shared datablocks, sockets, collision, and render visibility.
 2. Rebuild only the selected component logic in editable, repeatable, idempotent source.
 3. Prefer manufacturing-specific sections and joints over generic bevels or stuck-on greebles.
-4. Review matched clay, neutral material, hard grazing-light, and supported-camera views after each
-   meaningful pass.
-5. Ask continuously: "Does this still look like the same asset?" and "Does this look like fabricated
+4. Keep the complete surfaced asset visible in the connected Blender window. Use Material Preview
+   or Rendered shading as the primary working state, with the intended materials, neighboring
+   components, and restrained emission present. Review matched neutral material, hard grazing-light,
+   and supported-camera views after each meaningful pass.
+5. Use solid/clay, wireframe, material-ID, and channel-isolation views as short diagnostic modes.
+   Return immediately to the complete surfaced assembly before deciding whether a change survives.
+   Clay can reject construction; it cannot prove material truth or grant acceptance.
+6. Ask continuously: "Does this still look like the same asset?" and "Does this look like fabricated
    hardware rather than a model made from software defaults?"
-6. Keep, revise, or revert from those images. Do not accept a change because the script ran or the
+7. Keep, revise, or revert from those images. Do not accept a change because the script ran or the
    object count increased.
-7. Derive physical maps from the actual mesh and authored surface information.
+8. Derive physical maps from the actual mesh and authored surface information.
+
+For Tier A/B assets, follow the minimum valid-cycle floors in
+`design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md`; one self-reviewed render is never the whole
+proof. If the same defect survives two repair cycles, change method rather than nudging parameters.
+If it survives a third, return to the earlier gate or request independent specialist review.
+
+### Proven controls against the toy/plastic failure mode
+
+Apply these explicitly; Blender defaults are not art direction.
+
+- **Do not start with the primitive.** Start with a component section and assembly sequence:
+  rolled/faceted case, hollow bell, folded hat section, plate shell, gusset, saddle, clevis, flange,
+  service run, aperture, or formed pressure vessel. A cylinder with rings and boxes attached is still
+  a cylinder with rings and boxes attached.
+- **Make the surfaced assembly the authoritative working view.** Keep the actual materials applied
+  to the complete model in the visible Blender window while authoring. Do not spend an entire pass
+  looking at a clay model and defer substance judgment to an external render. After every geometry,
+  normal, material, or emission change, inspect the result in Material Preview or Rendered shading
+  with adjacent parts present. Use clay only to expose silhouette and construction defects.
+- **Use size hierarchy.** Macro shape carries identity; meso parts explain construction; small
+  fasteners, clamps, ribs, shutter leaves, and lines explain service. Do not make every detail a
+  metre-scale block.
+- **Audit the visible cross-section, not the object count or object name.** A "recoil beam,"
+  "mantlet," "service pack," or "casemate panel" is still toy construction when the supported
+  camera sees only a blank rectangular bar or slab. Primary housings need authored section changes,
+  edge breaks, mounting transitions, openings, and adjacent smaller interfaces. An open machinery
+  bay must actually expose its receiver, bearings, dampers, fasteners, lines, and load frame; a
+  painted shell hiding those parts fails even when they exist behind it.
+- **Preserve hard-surface normals.** Never apply unconditional `shade_smooth()` to folded sheet,
+  machined facets, clamp segments, or plate edges. Use `shade_smooth_by_angle` at a recorded angle
+  (the Ashline pilot uses 28 degrees), inspect hard grazing light, and validate the mesh before glTF
+  export. Over-smoothed normals turn correct geometry into soap, rubber, or molded plastic.
+- **Classify the substance before setting Principled values.** Intact paint/coating is dielectric;
+  bare steel and nickel alloy are metallic; refractory ceramic is non-metallic and dry; carbon
+  composite has its own weave/edge logic; glass is not dark polished metal. Vary roughness from
+  manufacture and wear, not generic noise. Assert that every authored material name resolves to its
+  intended surface-generator role. A named repair primer that silently falls through to a generic
+  hull profile is a contract failure even when the render technically contains textures.
+- **Match surface grammar to the component and UV scale.** Do not stamp a generic plate grid,
+  leather-like bump, or large tile noise across a machined receiver, rolled hot jacket, nozzle bell,
+  cable, or ceramic throat. Plate seams belong to actual plate construction; curved hardware gets
+  material-appropriate microstructure, while modeled clamps, stringers, joints, and wall breaks
+  carry its assembly story. Reject any texture whose texel/block scale becomes a visible substitute
+  for geometry in the supported close view. Procedural corner studs or plate fasteners belong only
+  to actual plate roles; use modeled fasteners at the real interfaces of receivers, hot sections,
+  cable hardware, and refractory assemblies.
+- **Model interfaces and depth.** Throats, apertures, vents, bays, and reflectors need cavities,
+  inner walls, rims, attachment structure, and a believable load or service path. A bright disk on a
+  surface is not a reactor, sensor, or thruster.
+- **Recess and restrain emissives.** Emissive pixels live inside a fixture, throat, slit, or
+  instrument. Review with emissive disabled; the component must still explain itself.
+- **Keep generated references component-only.** Record why a reference was selected or rejected,
+  then translate its construction logic into deterministic source. A wrong weapon or mechanism must
+  be preserved as rejected provenance, not quietly adapted into canon.
+- **Make LODs preserve meaning.** LOD0 keeps clamps, seams, lines, ribs, shutters, and cavities;
+  LOD1 keeps the load path, pressure cases, bells, housings, and material boundaries; LOD2 keeps the
+  macro identity. Dropping all construction at LOD1 recreates the toy read during normal play.
+- **Separate authoring from evidence.** A Blender scene or beauty render is not proof. Render from
+  the exact finalized uncompressed source GLB, register and hash the renderer, bind each artifact to
+  its exact ship/source hash, and make historical or mixed-epoch images fail closed. Pre-finalize
+  renders are useful geometry diagnostics only; keep them out of the eligible receipt, then rerender
+  after the authored surface finalizer so material response is judged on the candidate actually
+  being encoded. Never offer a receipt-only mode that checks filenames and relabels existing images
+  with a new source hash; eligible evidence must be produced by a complete exact-source rerender.
+- **Preserve the connected Blender environment.** Clear scene datablocks locally; do not reset
+  factory preferences or disable the MCP add-on as a build shortcut.
+
+Reject the pass if any prominent component is still best described as “tube,” “box,” “torus,”
+“glowing disk,” or “smooth lump” rather than by a fabricated part and its interfaces.
 
 ## 6. Export and validate
 
@@ -122,3 +201,8 @@ For a concrete example, inspect:
 - `assets/ships/kestrel_borrowed_time_v4/MATERIAL_AND_SHAPE_AUDIT.md`
 - `assets/ships/kestrel_borrowed_time_v4/MATERIAL_CONTRACT.json`
 - `assets/ships/kestrel_borrowed_time_v4/reference/REFERENCE_PROVENANCE.md`
+- `assets/ships/m4_ashline_v2/reference/material_truth_v2/DART_COMPONENT_MATERIAL_BILL.md`
+- `assets/ships/m4_ashline_v2/reference/material_truth_v2/REFERENCE_PROVENANCE.md`
+- `tools/blender/build_m4_ashline_v2.py`
+- `tools/blender/render_m4_ashline_material_truth.py`
+- `tools/art/lib/ashlineEvidenceEpoch.mjs`

@@ -44,7 +44,13 @@
   position:absolute; inset:0; width:100%; height:100%;
   display:grid; grid-template-rows:auto auto minmax(0,1fr);
   font-family:var(--sx-ui); color:var(--ink-1);
-  font-size:15px; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  /* Track the global --ui-scale text-scale path (#ui-root uses the same calc). A fixed 15px here
+     would shadow the inherited scaled font-size and pin the station screens at 1x regardless of the
+     player's uiScale setting (Settings range 0.75–2.0). em-based children then scale with this base.
+     Note: station.css retains ~135 other fixed-px font-size declarations outside this block; those are
+     a station-wide follow-up, not addressed by this one-line base fix. */
+  font-size:calc(15px * var(--ui-scale, 1));
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
   background:
     radial-gradient(120% 78% at 50% -12%, rgba(74,168,255,.07), transparent 58%),
     radial-gradient(90% 60% at 50% 116%, rgba(95,208,192,.045), transparent 60%),
@@ -660,3 +666,92 @@
 @media (prefers-reduced-motion:reduce) {
   .sx-app *, .sx-app *::before, .sx-app *::after { transition-duration:.001ms !important; animation-duration:.001ms !important; }
 }
+
+/* =========================== SHIP'S LEDGER (st-ledger family) ===========================
+   The Ship's Ledger panel ships its own `.st-ledger-*` class family (see src/ui/screens/shipLedger.js).
+   Before this block the family was unstyled in the live station host — only four figure rules were
+   injected by the panel itself, and the rest lived only in the vestigial stationHub STATION_CSS that
+   the live route never injects. This gives the family proper live styling in the station design system
+   (sx-* tokens, refined readable surfaces).
+
+   EVERY selector descends from `.sx-app .st-ledger` (the panel root) — e.g. `.sx-app .st-ledger
+   .st-ledger-list`, never `.sx-app .st-ledger-list` (which would match ANY `.st-ledger-list` under
+   .sx-app) and never a bare `.st-ledger-*`. The market screen (src/ui/screens/market.js) is itself a
+   tab inside .sx-app and reuses `.st-ledger-list` / `.st-ledger-row` under `.st-market-ledger`, so a
+   selector rooted only at `.sx-app` would restyle the market ledger; rooting at `.st-ledger` excludes
+   it because `.st-market-ledger` is not `.st-ledger`. The `.sx-app` anchor also keeps this family out
+   of the Codex host entirely (Codex does not load station.css); the Codex host is still styled only by
+   the panel's own SHIP_LEDGER_CSS figure injection. Sizes in em and ≥ .87em so every label clears the
+   13px legibility floor at the .sx-app 15px base, and muted body text uses --ink-2 (not --ink-3) for
+   AA contrast on the dark surfaces. */
+.sx-app .st-ledger { display:flex; flex-direction:column; gap:10px; min-height:0; }
+.sx-app .st-ledger .st-sub-h,
+.sx-app .st-ledger .st-ledger-detail-title { font-family:var(--sx-display); font-weight:600; font-size:1.05em;
+  letter-spacing:.05em; text-transform:uppercase; color:var(--ink-1); margin:0; }
+.sx-app .st-ledger .st-ledger-intro { margin:0; font-size:.92em; line-height:1.55; color:var(--ink-2); max-width:60ch; }
+.sx-app .st-ledger .st-ledger-status { margin:0; font-family:var(--sx-mono); font-size:.88em; color:var(--ink-2);
+  letter-spacing:.02em; }
+
+/* entry list — newest first; each row is an article with a cycle stamp, type tag, and line */
+.sx-app .st-ledger .st-ledger-list { display:flex; flex-direction:column; gap:6px; margin:0; padding:0; list-style:none;
+  overflow-y:auto; min-height:80px; }
+.sx-app .st-ledger .st-ledger-entry { list-style:none; }
+.sx-app .st-ledger .st-ledger-entry-body { display:grid; grid-template-columns:auto auto 1fr; align-items:baseline; gap:8px 12px;
+  padding:9px 12px; border:1px solid var(--line-1); border-radius:var(--r-sm);
+  background:linear-gradient(180deg, var(--surface-1), color-mix(in srgb, var(--surface-1) 70%, var(--void-1)));
+  transition:border-color .14s var(--ease), background .14s var(--ease); }
+.sx-app .st-ledger .st-ledger-entry-body:hover { border-color:var(--line-2); }
+.sx-app .st-ledger .st-ledger-cycle { font-family:var(--sx-mono); font-size:.88em; color:var(--ink-2);
+  font-variant-numeric:tabular-nums; white-space:nowrap; }
+.sx-app .st-ledger .st-ledger-type { font-family:var(--sx-mono); font-size:.88em; font-weight:600; letter-spacing:.1em;
+  text-transform:uppercase; padding:2px 7px; border-radius:20px; border:1px solid var(--line-1);
+  color:var(--ink-1); background:var(--surface-2); white-space:nowrap; justify-self:start; }
+.sx-app .st-ledger .st-ledger-line { margin:0; font-size:.92em; line-height:1.5; color:var(--ink-1); }
+/* per-type accent on the tag only — the line text stays one ink so the archive reads as one voice */
+.sx-app .st-ledger .st-ledger-entry--loss .st-ledger-type { color:var(--loss); border-color:color-mix(in srgb,var(--loss) 40%,transparent); }
+.sx-app .st-ledger .st-ledger-entry--trade .st-ledger-type { color:var(--gain); border-color:color-mix(in srgb,var(--gain) 40%,transparent); }
+.sx-app .st-ledger .st-ledger-entry--rumor .st-ledger-type { color:var(--azure); border-color:color-mix(in srgb,var(--azure) 40%,transparent); }
+.sx-app .st-ledger .st-ledger-entry--bearing .st-ledger-type { color:var(--cargo); border-color:color-mix(in srgb,var(--cargo) 40%,transparent); }
+.sx-app .st-ledger .st-ledger-entry--unique .st-ledger-type { color:var(--warn); border-color:color-mix(in srgb,var(--warn) 40%,transparent); }
+.sx-app .st-ledger .st-ledger-entry--witness .st-ledger-type { color:var(--ink-1); border-color:var(--line-3); }
+.sx-app .st-ledger .st-ledger-entry--name .st-ledger-type,
+.sx-app .st-ledger .st-ledger-entry--title .st-ledger-type { color:var(--azure-bright); border-color:color-mix(in srgb,var(--azure-bright) 40%,transparent); }
+/* Captain Vols annotation sits below the line, indented and dimmed */
+.sx-app .st-ledger .st-ledger-entry-body .st-ledger-annotation { grid-column:1 / -1; margin:4px 0 0; padding:6px 10px;
+  border-left:2px solid color-mix(in srgb,var(--warn) 50%,transparent); background:color-mix(in srgb,var(--warn) 7%,transparent);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; font-size:.9em; font-style:italic; line-height:1.5; color:var(--ink-2); }
+.sx-app .st-ledger .st-ledger-evidence-btn { grid-column:1 / -1; justify-self:start; margin-top:4px; padding:5px 12px;
+  font-family:var(--sx-mono); font-size:.9em; letter-spacing:.04em; color:var(--azure-bright);
+  background:var(--azure-dim); border:1px solid color-mix(in srgb,var(--azure) 40%,transparent);
+  border-radius:20px; cursor:pointer; transition:background .14s var(--ease); }
+.sx-app .st-ledger .st-ledger-evidence-btn:hover { background:color-mix(in srgb,var(--azure) 22%,transparent); }
+.sx-app .st-ledger .st-ledger-evidence-btn:focus-visible { outline:2px solid var(--azure-bright); outline-offset:2px; }
+
+.sx-app .st-ledger .st-ledger-empty { margin:0; padding:18px 4px; font-size:.95em; font-style:italic; color:var(--ink-2); }
+
+/* pagination nav — Older / page readout / Newer */
+.sx-app .st-ledger .st-ledger-nav { display:flex; align-items:center; justify-content:center; gap:14px; padding:4px 0 2px; }
+.sx-app .st-ledger .st-ledger-page-btn { padding:6px 15px; font-family:var(--sx-ui); font-size:.92em; color:var(--ink-1);
+  background:var(--surface-2); border:1px solid var(--line-2); border-radius:var(--r-sm); cursor:pointer;
+  transition:border-color .14s var(--ease), color .14s var(--ease); }
+.sx-app .st-ledger .st-ledger-page-btn:hover:not(:disabled) { border-color:var(--azure); color:var(--azure-bright); }
+.sx-app .st-ledger .st-ledger-page-btn:focus-visible { outline:2px solid var(--azure-bright); outline-offset:2px; }
+.sx-app .st-ledger .st-ledger-page-btn:disabled { opacity:.4; cursor:not-allowed; }
+.sx-app .st-ledger .st-ledger-page { font-family:var(--sx-mono); font-size:.9em; color:var(--ink-2); font-variant-numeric:tabular-nums; }
+
+/* evidence detail subtree — one heading, fragment, body, figure, provenance */
+.sx-app .st-ledger .st-ledger-detail { display:flex; flex-direction:column; gap:10px; padding:14px 16px;
+  border:1px solid var(--line-2); border-radius:var(--r-md); background:var(--surface-1); }
+.sx-app .st-ledger .st-ledger-back { align-self:flex-start; padding:6px 14px; font-family:var(--sx-ui); font-size:.92em;
+  color:var(--ink-1); background:transparent; border:1px solid var(--line-1); border-radius:var(--r-sm);
+  cursor:pointer; transition:color .14s var(--ease), border-color .14s var(--ease); }
+.sx-app .st-ledger .st-ledger-back:hover { color:var(--ink-0); border-color:var(--line-3); }
+.sx-app .st-ledger .st-ledger-back:focus-visible { outline:2px solid var(--azure-bright); outline-offset:2px; }
+.sx-app .st-ledger .st-ledger-detail-fragment { margin:0; font-family:var(--sx-display); font-weight:600; font-size:1.05em;
+  line-height:1.4; color:var(--ink-0); }
+.sx-app .st-ledger .st-ledger-detail-body { margin:0; font-size:.95em; line-height:1.6; color:var(--ink-1); }
+/* The figure + image are sized by the panel's own scoped injection (shipLedger.js SHIP_LEDGER_CSS),
+   which is the ONLY styling the Codex host gets (it does not load station.css). Do not re-declare
+   figure/image rules here — let the panel's host-safe injection own that subtree in both hosts. */
+.sx-app .st-ledger .st-ledger-provenance { margin:0; font-family:var(--sx-mono); font-size:.9em; color:var(--ink-2);
+  letter-spacing:.02em; line-height:1.5; }

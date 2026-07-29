@@ -2,13 +2,16 @@
 
 Date: 2026-07-27
 
-Status: **offline surface pass accepted; live promotion remains on hold**
+Status: **historical review retained; current exact-source visual acceptance is open**
 
-This review covers the deterministic service-history maps embedded by
-`tools/art/finalize_m4_ashline_v2_candidate.mjs`. It does not replace Browser/Electron gameplay,
-LOD-transition, dense-combat, or performance acceptance.
+This file preserves the 2026-07-27 art notes and images for comparison only. The source GLBs were
+subsequently finalized again, so these images are not cryptographically bound to the current source
+epoch and cannot close a visual gate. The authoritative machine status is
+`finalize_report.json:evidenceEpoch`; it currently requires a new versioned exact-source render.
+Nothing here replaces Browser/Electron gameplay, LOD-transition, dense-combat, or performance
+acceptance.
 
-## Art verdict
+## Historical art notes — not a current verdict
 
 - **Dart:** readable stripped gunmetal, restrained red threat hardware, sparse repairs, and a
   non-repeating recognition slash. It remains the fastest and least armored family member.
@@ -20,10 +23,10 @@ LOD-transition, dense-combat, or performance acceptance.
   logic without sharing one identical wear mask.
 - The maps add hierarchy without changing geometry, sockets, collision, scale, or LOD meshes.
 
-## Durable contacts
+## Historical contacts — ineligible for acceptance
 
-The contacts show neutral close, game camera, zoomed-out silhouette, base color, roughness,
-metallic, tangent normal, and AO:
+The contacts showed neutral close, game camera, zoomed-out silhouette, base color, roughness,
+metallic, tangent normal, and AO at the time they were made:
 
 | Ship | Contact | SHA-256 |
 |---|---|---|
@@ -31,20 +34,22 @@ metallic, tangent normal, and AO:
 | Lode | `surface_review_lode.png` | `BCF01856A68CF2CFD131EEB1F4E492F425691AF444E7F10F01ED165BA87BF7D9` |
 | Rig | `surface_review_rig.png` | `A457CDF103E5F22F96C17B7DEA4B40AF50B635532623AAE6253F304A0B6FB5F7` |
 
-Each contact is 1660 by 760 pixels. The offline renderer was given a temporary copy of the source
+Each contact is 1660 by 760 pixels. They remain useful visual references, but are explicitly listed
+under `legacyArtifacts` in the current evidence epoch and must not be cited as acceptance. The
+offline renderer was given a temporary copy of the source
 graph with nodes explicitly tagged `nonRender`/`collision` removed. The first unfiltered attempt
 proved the generic part renderer otherwise frames the compound collision boxes as visible hulls;
 those invalid images were discarded. LOD0 render geometry, materials, and texture images were not
 changed in the filtered copies.
 
-## Technical proof
+## Historical technical notes
 
 - `node --test test/ashline-surface-maps.test.mjs`: 2/2 pass.
 - Strict source texture audit: 39 images, 39 bound, 0 errors, 0 warnings, 0 info.
 - Dart and Lode each contain 12 bound source images and 12 KTX2 candidate images.
 - Rig contains 15 bound source images and 15 KTX2 candidate images.
-- `node scripts/check-m4-ashline-v2.mjs`: 0 errors, one known warning for the missing live
-  `lod_transition_contact.png`.
+- The current `node scripts/check-m4-ashline-v2.mjs` result is 0 errors and two warnings: no
+  current exact-source visual evidence, and no live `lod_transition_contact.png`.
 - Repeated finalizer runs replace the prior map set. They no longer accumulate orphaned embedded
   images.
 
@@ -53,9 +58,11 @@ Blender 5.1 cannot import the candidate GLBs because its bundled glTF importer d
 the encoded candidates are separately proven to contain Meshopt, KTX2, the required sockets,
 collision metadata, LODs, materials, and exact candidate hashes in `finalize_report.json`.
 
-## Remaining gate
+## Current remaining gates
 
-Do not promote these files to the live Ashline paths until the current `browser-gpu` lease is
-released and the candidate has current Browser and Electron captures at close, normal-flight,
-LOD-transition, and dense-combat scales. That live pass must also confirm texture residency,
-material-cache behavior, and no VFX or asset-load failures.
+1. Rebuild versioned offline contacts from the exact current source GLBs with a registered,
+   hash-bound renderer, then bind each artifact to its ship input in `evidenceEpoch`.
+2. Do not promote these files to live Ashline paths until the current `browser-gpu` lease is
+   released and the candidate has current Browser and Electron captures at close, normal-flight,
+   LOD-transition, and dense-combat scales. That live pass must also confirm texture residency,
+   material-cache behavior, and no VFX or asset-load failures.

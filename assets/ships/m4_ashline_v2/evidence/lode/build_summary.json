@@ -1,16 +1,16 @@
 {
   "gateOk": true,
   "gateErrors": [],
-  "totalTriangles": 7637,
-  "hullTriangles": 6665,
+  "totalTriangles": 18436,
+  "hullTriangles": 6392,
   "lodTriangles": {
-    "lod0": 4528,
-    "lod1": 2401,
+    "lod0": 13472,
+    "lod1": 4256,
     "lod2": 708
   },
   "drawEstimates": {
-    "lod0": 7,
-    "lod1": 4,
+    "lod0": 10,
+    "lod1": 6,
     "lod2": 1
   },
   "sockets": [
@@ -25,15 +25,18 @@
     "SOCKET_Weapon_Front"
   ],
   "materials": [
-    "Material_Mechanical",
     "Material_Cyan",
+    "Material_HeatMetal",
     "Material_Hull",
-    "Material_Red_Paint"
+    "Material_Mechanical",
+    "Material_Red_Paint",
+    "Material_Refractory",
+    "Material_RepairPrimer"
   ],
-  "tangentPrimitiveCount": 12,
-  "uvPrimitiveCount": 12,
+  "tangentPrimitiveCount": 17,
+  "uvPrimitiveCount": 17,
   "lod0AabbSize": [
-    24.0,
+    24,
     7.246389865875244,
     21.82400131225586
   ],
@@ -54,7 +57,66 @@
       18.33216094970703
     ]
   },
-  "sourceSha256": "FCF5A1FA08D47706CFEFD0FB204BE60C42F9404F0C6AAEA508CE2F13F0774C96",
+  "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036",
   "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\source\\wholeships\\ashline_v2_lode.glb",
-  "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\blender\\ashline_v2_lode_production.blend"
+  "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\blender\\ashline_v2_lode_production.blend",
+  "materialTruth": {
+    "revision": "lode-material-truth-2026-07-28-v1",
+    "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036",
+    "driveProfileId": "drive_torch_l",
+    "weaponIds": [
+      "wpn_autocannon_m",
+      "wpn_autocannon_m",
+      "wpn_pulse_laser_s"
+    ],
+    "components": [
+      "paired-heavy-autocannon-casemates",
+      "radial-recoil-load-frames",
+      "fixed-pulse-projector-s",
+      "open-cycle-torch-l"
+    ],
+    "fictionalMaterials": {
+      "Material_Hull": "coated-or-oxidized-armor-and-donor-structure",
+      "Material_Mechanical": "nitrided-load-frame-trunnion-and-service-steel",
+      "Material_Red_Paint": "non-metallic-reach-oxide-red-coating",
+      "Material_RepairPrimer": "chalked-zinc-phosphate-dielectric-primer",
+      "Material_HeatMetal": "nickel-hot-sections-and-heat-darkened-stainless",
+      "Material_Refractory": "alumina-zirconia-ceramic",
+      "Material_Cyan": "recessed-internal-energy-cue"
+    },
+    "acceptedComponentRoles": [
+      "armor-shell",
+      "autocannon-barrel",
+      "autocannon-breech",
+      "cassette-access",
+      "hydraulic-recoil-damper",
+      "mantlet",
+      "open-cycle-torch",
+      "pulse-projector",
+      "radial-load-frame",
+      "refractory-throat",
+      "service-pack",
+      "thrust-saddle",
+      "trunnion"
+    ],
+    "lodPolicy": {
+      "lod0": "full-component-construction",
+      "lod1": "load-path-and-material-boundaries",
+      "lod2": "donor-macro-hull-only"
+    },
+    "references": [
+      "assets/ships/m4_ashline_v2/reference/material_truth_v2/lode_autocannon_casemate_reference.png",
+      "assets/ships/m4_ashline_v2/reference/material_truth_v2/lode_open_cycle_torch_reference.png"
+    ],
+    "promotionBlockers": [
+      "single-central-weapon-socket-versus-three-visible-weapons-needs-runtime-vfx-proof",
+      "browser-electron-and-lod-transition-evidence-remains-external"
+    ]
+  },
+  "sourceBytes": 12265996,
+  "evidenceEpoch": {
+    "status": "post-finalize-current",
+    "epochDigest": "0D1A0628F23449E1B04C806FAB101E61F7CC41C6050C677D740A67110A38C098",
+    "visualEvidence": "requires-current-versioned-render"
+  }
 }

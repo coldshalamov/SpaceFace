@@ -542,7 +542,8 @@ try {
     openBoth();
     const normalBoth = { station: measureHost('station'), codex: measureHost('codex') };
     // The shipped text-scale knob is `--ui-scale` (ui.css:13 default, ui.css:45 drives #ui-root
-    // font-size; Settings > Video range 0.75-1.5). Driving the browser root font-size instead would
+    // font-size; Settings range 0.75–2.0). We probe at 1.5 (a stable mid-range point; the full 2.0
+    // max is exercised by the accessibility gate). Driving the browser root font-size instead would
     // move nothing and pass vacuously, because #ui-root pins its own px base.
     document.documentElement.style.setProperty('--ui-scale', '1.5');
     await new Promise((resolve) => setTimeout(resolve, 60));
@@ -596,20 +597,24 @@ try {
     }
   });
 
-  check('the Ledger panel itself pins no font size (it tracks --ui-scale where the host allows)', () => {
-    // Non-vacuity, and the attribution that matters: in the Codex host — which sits directly under
-    // #ui-root — every panel string grows with --ui-scale, proving the panel declares no px sizes of
-    // its own. The station host does NOT grow, and the cause is one line of the station design
-    // system: styles/station.css `.sx-app { font-size:15px }` pins the entire Orbital Command app.
-    // That is a station-wide property, not a Ledger regression, and it is outside this write surface.
-    for (const label of Object.keys(scale.byHost.normal.codex)) {
-      const before = parseFloat(scale.byHost.normal.codex[label].fontSize);
-      const after = parseFloat(scale.byHost.enlarged.codex[label].fontSize);
-      assert.ok(after > before * 1.4,
-        `codex/${label} did not track --ui-scale (${before}px -> ${after}px at 1.5x)`);
+  check('the Ledger panel tracks --ui-scale in BOTH hosts (no host pins a px base)', () => {
+    // The panel declares no px font sizes of its own (everything is em), so whether its strings grow
+    // with --ui-scale is entirely a property of the host. styles/station.css `.sx-app` now derives its
+    // base from `calc(15px * var(--ui-scale))` — matching #ui-root — so BOTH hosts must grow ~1.5x at
+    // the enlarged setting. (Previously the station host pinned font-size:15px and did not grow; that
+    // pin was removed so the station screens respect the player's uiScale setting like the rest of the
+    // UI.) This is the non-vacuous attribution: if either host regresses to a px pin, this fails.
+    for (const host of ['station', 'codex']) {
+      for (const label of Object.keys(scale.byHost.normal[host])) {
+        const before = parseFloat(scale.byHost.normal[host][label].fontSize);
+        const after = parseFloat(scale.byHost.enlarged[host][label].fontSize);
+        assert.ok(after > before * 1.4,
+          `${host}/${label} did not track --ui-scale (${before}px -> ${after}px at 1.5x)`);
+      }
     }
+    // The station base at normal scale is still 15px (15 * 1); only the enlarged scale grows it.
     assert.equal(scale.stationRootFontSize, '15px',
-      'the measured station pinning is still 15px — revisit this note if station.css changes');
+      'station base font-size is calc(15px * var(--ui-scale)); at --ui-scale:1 this resolves to 15px');
   });
   check('meaning is carried without colour', () => {
     assert.equal(scale.typeText, 'WITNESS', 'the row type is spelled out, not colour-coded');

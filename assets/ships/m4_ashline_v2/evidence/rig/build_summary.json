@@ -55,7 +55,13 @@
       9.654603004455566
     ]
   },
-  "sourceSha256": "70269FA13282BBB680278B53A819361E7FF54D8C03329920549C5EF6AAA91A2B",
+  "sourceSha256": "6517F0BA291A8F58BB0BD97866B2251F4DDF67CFA7F9EC213F49AD031C747926",
   "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\source\\wholeships\\ashline_v2_rig.glb",
-  "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\blender\\ashline_v2_rig_production.blend"
+  "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\blender\\ashline_v2_rig_production.blend",
+  "sourceBytes": 7852880,
+  "evidenceEpoch": {
+    "status": "post-finalize-current",
+    "epochDigest": "0D1A0628F23449E1B04C806FAB101E61F7CC41C6050C677D740A67110A38C098",
+    "visualEvidence": "requires-current-versioned-render"
+  }
 }

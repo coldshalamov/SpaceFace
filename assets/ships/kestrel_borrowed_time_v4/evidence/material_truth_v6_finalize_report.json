@@ -2,18 +2,18 @@
   "schema": "spaceface.kestrelMaterialTruthV6.finalize.v1",
   "status": "complete",
   "packet": "SF-K0-BORROWED-TIME-V6-MATERIAL-TRUTH-001",
-  "generationFingerprint": "50B71F1D32C9135FC380BB6F89EE217E3FE65E31CEDDAFD33AFC86E7F343411D",
+  "generationFingerprint": "AD08B58D0DE4C11CA21BA5FE204F931681D82603559F83FB7382E483589C472B",
   "finalizer": {
     "path": "assets/ships/kestrel_borrowed_time_v4/scripts/finalize_material_truth_v6_candidate.mjs",
-    "sha256": "18346D7A79AFEBA911293546A39A71D1DC92F845F7DEF66E43BD2E2699CEBBD9"
+    "sha256": "047AC170C89FD20CC3E1854BCFCE05BD9FC77FE76C21BE65CC0D15EA473D8F22"
   },
   "sources": [
     {
       "lod": 0,
       "path": "assets/ships/kestrel_borrowed_time_v4/source_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod0.glb",
-      "bytes": 36030064,
-      "sha256": "FB27CD5D38AEE01CCEEF510725621CBA43A4C63B4905BAC2C657D830A577FE40",
-      "triangles": 25615,
+      "bytes": 35503012,
+      "sha256": "1F8D4B050BBE8FCF9D928B98CDE75DCE30356E04670F3674CF4F0D4DAA03D976",
+      "triangles": 21093,
       "draws": 17,
       "collisionFingerprint": "3F179660D0B58DA9E23D49253C090091547E8679006B4CC19292C429FCEC00A3",
       "canonicalCollisionFingerprint": "3F179660D0B58DA9E23D49253C090091547E8679006B4CC19292C429FCEC00A3",
@@ -143,9 +143,9 @@
     {
       "lod": 1,
       "path": "assets/ships/kestrel_borrowed_time_v4/source_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod1.glb",
-      "bytes": 27384728,
-      "sha256": "575276B3F4226C071ABB43E656767D991ED049DEC3490ADEF1C643465E13F55C",
-      "triangles": 17337,
+      "bytes": 26848168,
+      "sha256": "887447BFB2270BE89CE6F630C870194E397CA7855EE04586473E158756F7AE21",
+      "triangles": 12747,
       "draws": 13,
       "collisionFingerprint": "3F179660D0B58DA9E23D49253C090091547E8679006B4CC19292C429FCEC00A3",
       "canonicalCollisionFingerprint": "3F179660D0B58DA9E23D49253C090091547E8679006B4CC19292C429FCEC00A3",
@@ -242,9 +242,9 @@
     {
       "lod": 2,
       "path": "assets/ships/kestrel_borrowed_time_v4/source_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod2.glb",
-      "bytes": 23480016,
-      "sha256": "E431014896A27C6311074D66F9CAFC71562BEDE974F72DB3DA57C17B74917174",
-      "triangles": 14106,
+      "bytes": 22943284,
+      "sha256": "F2F1C32CDB5BE01C6F23CA051C99B9808D2CA630DED64903695D4118A3F3FA35",
+      "triangles": 9516,
       "draws": 8,
       "collisionFingerprint": "3F179660D0B58DA9E23D49253C090091547E8679006B4CC19292C429FCEC00A3",
       "canonicalCollisionFingerprint": "3F179660D0B58DA9E23D49253C090091547E8679006B4CC19292C429FCEC00A3",
@@ -332,9 +332,9 @@
   "releases": [
     {
       "path": "assets/ships/kestrel_borrowed_time_v4/release_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod0.glb",
-      "bytes": 12231476,
-      "sha256": "B4D13284168435EEDD7E7BFDE1FEB9A5FD43D89682D9F27A64ED291385301817",
-      "triangles": 25615,
+      "bytes": 12101140,
+      "sha256": "66D778A4EDA56765D75C0DB8395D44F9192F82DF441FC10F0D5C2D4B8AC6CEE9",
+      "triangles": 21093,
       "draws": 17,
       "meshoptViews": 69,
       "imageCount": 32,
@@ -713,9 +713,9 @@
     },
     {
       "path": "assets/ships/kestrel_borrowed_time_v4/release_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod1.glb",
-      "bytes": 9476672,
-      "sha256": "F06E62C20BB4B5219EC9A610173D38A215AA2869F94788BE69D5C5867AE4DBF6",
-      "triangles": 17337,
+      "bytes": 9344024,
+      "sha256": "65AA7279D9E51B0220A37EF691A3C0DE3EF9CC00B4D3C90BCA5B0424FE68E6B8",
+      "triangles": 12747,
       "draws": 13,
       "meshoptViews": 55,
       "imageCount": 24,
@@ -1004,9 +1004,9 @@
     },
     {
       "path": "assets/ships/kestrel_borrowed_time_v4/release_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod2.glb",
-      "bytes": 8057996,
-      "sha256": "E8EB82E47400AAF55AB158554E6BE108168E16F1B10A83DC962BA4A12FBBD04C",
-      "triangles": 14106,
+      "bytes": 7925188,
+      "sha256": "B28CF2A127E2D0E1312EB9B1B60012F37912AA7B1B300042E0DCF017E2AF1741",
+      "triangles": 9516,
       "draws": 8,
       "meshoptViews": 35,
       "imageCount": 21,

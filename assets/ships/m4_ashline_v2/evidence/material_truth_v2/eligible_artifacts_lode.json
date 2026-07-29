@@ -1,0 +1,142 @@
+{
+  "schema": "spaceface.ashlineMaterialTruthArtifacts.v1",
+  "shipKey": "lode",
+  "source": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_lode.glb",
+  "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036",
+  "producer": {
+    "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+    "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+  },
+  "artifacts": [
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/neutral_front34.png",
+      "inputBindings": [
+        {
+          "shipKey": "lode",
+          "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+        "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/neutral_rear34.png",
+      "inputBindings": [
+        {
+          "shipKey": "lode",
+          "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+        "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/casemate_close.png",
+      "inputBindings": [
+        {
+          "shipKey": "lode",
+          "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+        "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/breech_recoil_close.png",
+      "inputBindings": [
+        {
+          "shipKey": "lode",
+          "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+        "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/torch_close.png",
+      "inputBindings": [
+        {
+          "shipKey": "lode",
+          "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+        "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/hard_grazing.png",
+      "inputBindings": [
+        {
+          "shipKey": "lode",
+          "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+        "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/top_ortho.png",
+      "inputBindings": [
+        {
+          "shipKey": "lode",
+          "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+        "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/emission_off.png",
+      "inputBindings": [
+        {
+          "shipKey": "lode",
+          "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+        "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/game_120px.png",
+      "inputBindings": [
+        {
+          "shipKey": "lode",
+          "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+        "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/lode/game_45px.png",
+      "inputBindings": [
+        {
+          "shipKey": "lode",
+          "sourceSha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_lode_material_truth.py",
+        "sha256": "2E052DF70ACC320CA5B9E68FF0AFB1D57CF35CEABAF60842FE0A1F9EED16215D"
+      }
+    }
+  ]
+}

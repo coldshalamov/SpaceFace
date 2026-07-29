@@ -28,12 +28,17 @@ const SHIP_PROFILES = Object.freeze({
 });
 
 const MATERIAL_PROFILES = Object.freeze({
-  hull: Object.freeze({ roughness: 0.58, metallic: 0.68 }),
-  red: Object.freeze({ roughness: 0.64, metallic: 0.24 }),
-  mechanical: Object.freeze({ color: [34, 39, 43], roughness: 0.52, metallic: 0.82 }),
-  threat: Object.freeze({ color: [76, 16, 14], roughness: 0.31, metallic: 0.2 }),
-  warm: Object.freeze({ color: [128, 73, 27], roughness: 0.45, metallic: 0.38 }),
-  glass: Object.freeze({ color: [23, 43, 50], roughness: 0.2, metallic: 0.1 }),
+  // Intact hull coating and oxide-red paint are dielectrics. Metallic response appears only at
+  // exposed chips or explicitly bare replacement panels.
+  hull: Object.freeze({ roughness: 0.58, metallic: 0.08 }),
+  red: Object.freeze({ roughness: 0.64, metallic: 0.02 }),
+  repair: Object.freeze({ roughness: 0.82, metallic: 0 }),
+  mechanical: Object.freeze({ color: [50, 57, 63], roughness: 0.44, metallic: 0.88 }),
+  threat: Object.freeze({ color: [76, 16, 14], roughness: 0.31, metallic: 0.04 }),
+  warm: Object.freeze({ color: [128, 73, 27], roughness: 0.45, metallic: 0.04 }),
+  glass: Object.freeze({ color: [23, 43, 50], roughness: 0.2, metallic: 0.04 }),
+  heatmetal: Object.freeze({ color: [75, 62, 56], roughness: 0.38, metallic: 0.92 }),
+  refractory: Object.freeze({ color: [154, 148, 132], roughness: 0.82, metallic: 0 }),
 });
 
 function clamp(value, minimum, maximum) {
@@ -64,19 +69,28 @@ function hash2d(x, y, seed) {
 
 function materialRole(materialName) {
   const token = String(materialName || '').toLowerCase();
-  if (token.includes('red') || token.includes('paint')) return 'red';
-  if (token.includes('mechanical')) return 'mechanical';
-  // The legacy slot name remains part of the runtime contract, but Ashline authors it as
-  // hostile sodium-red threat hardware rather than literal cyan.
-  if (token.includes('cyan')) return 'threat';
-  if (token.includes('warm')) return 'warm';
-  if (token.includes('glass')) return 'glass';
-  return 'hull';
+  const roles = {
+    material_hull: 'hull',
+    material_red_paint: 'red',
+    material_repairprimer: 'repair',
+    material_mechanical: 'mechanical',
+    material_heatmetal: 'heatmetal',
+    material_refractory: 'refractory',
+    // The legacy slot name remains part of the runtime contract, but Ashline authors it as
+    // hostile sodium-red threat hardware rather than literal cyan.
+    material_cyan: 'threat',
+    material_warm: 'warm',
+    material_glass: 'glass',
+  };
+  const role = roles[token];
+  if (!role) throw new Error(`unknown Ashline material role '${materialName}'`);
+  return role;
 }
 
 function colorForRole(role, ship) {
   if (role === 'hull') return ship.hull;
   if (role === 'red') return ship.red;
+  if (role === 'repair') return ship.repair;
   return MATERIAL_PROFILES[role].color;
 }
 
@@ -132,18 +146,41 @@ export function makeAshlineSurfaceMaps({
       );
       const seam = clamp((2.4 - edgeDistance) / 2.4, 0, 1);
       const bevel = clamp(1 - Math.abs(edgeDistance - 4.5) / 2.5, 0, 1);
+      // Only folded/coated plate roles receive the large authored panel grid. Projecting that grid
+      // across a machined receiver, hot jacket, nozzle, or ceramic throat makes curved hardware read
+      // as pixelated leather. Those roles get restrained micro-response; their actual seams,
+      // clamps, stringers, and wall breaks must come from geometry.
+      const plateRole = role === 'hull' || role === 'red' || role === 'repair';
+      const surfaceSeam = plateRole
+        ? seam
+        : role === 'refractory'
+          ? seam * 0.12
+          : seam * 0.04;
+      const surfaceBevel = plateRole
+        ? bevel
+        : 0;
       const cellX = Math.floor(x / panelWidth);
       const cellY = Math.floor(y / panelHeight);
-      const patch = hash2d(cellX, cellY, seed ^ 0xa511e9b3) * 255 < ship.patchThreshold ? 1 : 0;
+      const acceptsPatch = role === 'hull' || role === 'red';
+      const acceptsChip = acceptsPatch || role === 'repair';
+      const patch = acceptsPatch
+        && hash2d(cellX, cellY, seed ^ 0xa511e9b3) * 255 < ship.patchThreshold ? 1 : 0;
       const patchRidge = patch * clamp(1 - Math.abs(edgeDistance - 7) / 2.4, 0, 1);
       const cornerX = Math.min(localX, panelWidth - 1 - localX);
       const cornerY = Math.min(localY, panelHeight - 1 - localY);
       const fastenerDistance = Math.hypot(cornerX - 8, cornerY - 8);
-      const fastener = clamp(1 - fastenerDistance / 3.2, 0, 1);
+      // Repeated corner studs belong to authored hull/painted plate only. Receivers, hot jackets,
+      // cable hardware, and ceramic throats receive modeled fasteners at their real interfaces.
+      const fastener = plateRole ? clamp(1 - fastenerDistance / 3.2, 0, 1) : 0;
       const scratch = ((x * 7 + y * 3 + seed) % 257) < 1 ? 1 : 0;
       const noise = hash2d(x, y, seed);
       const broadNoise = hash2d(Math.floor(x / 8), Math.floor(y / 8), seed ^ 0x1b873593);
-      const chip = seam > 0.15 && noise > (shipKey === 'lode' ? 0.68 : 0.78) ? 1 : 0;
+      const chip = acceptsChip
+        && surfaceSeam > 0.15
+        && noise > (shipKey === 'lode' ? 0.68 : 0.78) ? 1 : 0;
+      const ceramicSpall = role === 'refractory'
+        && surfaceSeam > 0.08
+        && noise > 0.84 ? 1 : 0;
       const sootDirection = shipKey === 'rig'
         ? clamp((x / size - 0.48) * 1.5, 0, 1)
         : shipKey === 'dart'
@@ -151,13 +188,31 @@ export function makeAshlineSurfaceMaps({
           : clamp((y / size - 0.76) * 2.4, 0, 1);
       const soot = sootDirection * (0.35 + broadNoise * 0.65);
       const marking = serviceMark(shipKey, x, y, size, seed);
+      const microRelief = role === 'mechanical'
+        ? Math.sin((x + (seed & 15)) * Math.PI / 8) * 0.018
+          + (broadNoise - 0.5) * 0.018
+        : role === 'heatmetal'
+          ? Math.sin((y + ((seed >>> 4) & 15)) * Math.PI / 12) * 0.014
+            + (broadNoise - 0.5) * 0.022
+          : role === 'refractory'
+            ? Math.sin((x + y + (seed & 31)) * Math.PI / 10) * 0.008
+              + (broadNoise - 0.5) * 0.014
+            : 0;
 
-      height[index] = 0.5 - seam * 0.2 + bevel * 0.035 + patchRidge * 0.12
-        + fastener * 0.16 - scratch * 0.045;
+      const constructionRelief = role === 'refractory'
+        ? 0.18
+        : role === 'heatmetal'
+          ? 0.48
+          : 1;
+      height[index] = 0.5 - surfaceSeam * 0.2 * constructionRelief
+        + surfaceBevel * 0.035 * constructionRelief
+        + patchRidge * 0.12
+        + fastener * 0.16 * constructionRelief
+        + microRelief
+        - scratch * 0.045;
 
       let color = [...baseColor];
-      const canPatch = role === 'hull' || role === 'red';
-      if (canPatch && patch) {
+      if (acceptsPatch && patch) {
         color = color.map((component, channel) => component * 0.32 + ship.repair[channel] * 0.68);
       }
       if (role === 'hull' && marking > 0) {
@@ -166,15 +221,19 @@ export function makeAshlineSurfaceMaps({
       }
       const exposed = role === 'red' ? [104, 98, 88] : [112, 106, 96];
       if (chip) color = color.map((component, channel) => component * 0.25 + exposed[channel] * 0.75);
-      const shade = 0.86 + broadNoise * 0.2 + noise * 0.04 - seam * 0.12 - soot * 0.24;
+      if (ceramicSpall) {
+        const spall = [103, 99, 90];
+        color = color.map((component, channel) => component * 0.28 + spall[channel] * 0.72);
+      }
+      const shade = 0.86 + broadNoise * 0.2 + noise * 0.04 - surfaceSeam * 0.12 - soot * 0.24;
       base[outputOffset] = byte(color[0] * shade);
       base[outputOffset + 1] = byte(color[1] * shade);
       base[outputOffset + 2] = byte(color[2] * shade);
       base[outputOffset + 3] = 255;
 
       const roughness = clamp(
-        material.roughness + (broadNoise - 0.5) * 0.16 + seam * 0.08
-          + patch * 0.07 + soot * 0.18 - chip * 0.06,
+        material.roughness + (broadNoise - 0.5) * 0.16 + surfaceSeam * 0.08
+          + patch * 0.07 + soot * 0.18 - chip * 0.06 + ceramicSpall * 0.08,
         0.08,
         0.96,
       );
@@ -184,7 +243,7 @@ export function makeAshlineSurfaceMaps({
         0,
         1,
       );
-      const ao = clamp(0.96 - seam * 0.3 - soot * 0.09, 0.42, 1);
+      const ao = clamp(0.96 - surfaceSeam * 0.3 - soot * 0.09, 0.42, 1);
       orm[outputOffset] = byte(ao * 255);
       orm[outputOffset + 1] = byte(roughness * 255);
       orm[outputOffset + 2] = byte(metallic * 255);
@@ -196,7 +255,11 @@ export function makeAshlineSurfaceMaps({
   const sampleHeight = (x, y) => height[
     clamp(y, 0, size - 1) * size + clamp(x, 0, size - 1)
   ];
-  const normalStrength = role === 'threat' || role === 'warm' || role === 'glass' ? 1.5 : 2.2;
+  const normalStrength = role === 'refractory'
+    ? 1.25
+    : role === 'threat' || role === 'warm' || role === 'glass'
+      ? 1.5
+      : 2.2;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const left = sampleHeight(x - 1, y);
@@ -226,6 +289,7 @@ export function makeAshlineSurfaceMaps({
       shipKey,
       materialName,
       role,
+      panelFasteners: role === 'hull' || role === 'red' || role === 'repair',
       serviceHistory: shipKey === 'dart'
         ? 'stripped-interceptor'
         : shipKey === 'lode'

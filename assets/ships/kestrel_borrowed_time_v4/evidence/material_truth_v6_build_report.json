@@ -11,12 +11,12 @@
     "scriptSha256": {
       "scripts/build_material_truth_v6_candidate.py": "85C3CB32C47CC94EFC9FE7795D045B8890B23C15C693B44DA79CA70B833ADDC1",
       "scripts/build_v4.py": "7DE8CD994F875B5C9FA72726EF4D21AA1DF64BDB2A38970CC1B654699A968C91",
-      "scripts/material_truth_v6.py": "169D5935F0727C9F2A9E45727B0D3BCD24F32472B70EEB3DBF66E460240C15FE",
+      "scripts/material_truth_v6.py": "A83EBCEED0A2EACC13B418B322BE701B2751B4E5E08C14711023C134171948E2",
       "scripts/surface_maps_v2.py": "42BF6627264CC3104C6A203C4A92F8B0129D5BBC05A82272FDFCF459C275BC68"
     },
-    "generationFingerprint": "50B71F1D32C9135FC380BB6F89EE217E3FE65E31CEDDAFD33AFC86E7F343411D"
+    "generationFingerprint": "AD08B58D0DE4C11CA21BA5FE204F931681D82603559F83FB7382E483589C472B"
   },
-  "generationFingerprint": "50B71F1D32C9135FC380BB6F89EE217E3FE65E31CEDDAFD33AFC86E7F343411D",
+  "generationFingerprint": "AD08B58D0DE4C11CA21BA5FE204F931681D82603559F83FB7382E483589C472B",
   "materialTruthPassId": "kestrel-material-truth-v6",
   "surfaceRemasterId": "kestrel-role-surface-v6-material-truth",
   "surfaceRemaster": [
@@ -868,8 +868,8 @@
       "vertices": 100,
       "rings": 7
     },
-    "objectsAdded": 553,
-    "visibleObjectCount": 733,
+    "objectsAdded": 554,
+    "visibleObjectCount": 734,
     "materialBills": {
       "drive_alloy": {
         "substrate": "cast and finish-machined nickel-chromium drive alloy",
@@ -928,10 +928,10 @@
       "marking": {
         "substrate": "stencil paint over the existing coated pressure shell",
         "manufacture": "crew-cut stencil applied between service seams",
-        "finish": "warm off-white matte marking paint",
-        "interface": "paint layer follows the port shell surface",
+        "finish": "dirty warm-ivory aerosol marking paint with chipped hard edges",
+        "interface": "conformal paint layer on the aft port armor course, clear of the inspection hatch",
         "response": "legible ship identity without a floating plaque",
-        "history": "crew-applied gallows humor with restrained abrasion",
+        "history": "crew-applied gallows humor, edge overspray and scrape-local paint loss",
         "forbidden": "inventory label, orange censor block, generated gibberish"
       },
       "coated_hull_panel": {
@@ -1565,9 +1565,27 @@
       "V6_ShoulderGusset_Starboard_00",
       "V6_ShoulderGusset_Starboard_01",
       "V6_ShoulderGusset_Starboard_02",
-      "V6_HeroMark_DieLaughing"
+      "V6_HeroMark_DieLaughing",
+      "V6_HeroMark_DieLaughing_Wear"
     ],
-    "heroMarking": "DIE LAUGHING"
+    "heroMarking": "DIE LAUGHING",
+    "heroMarkingContract": {
+      "mainObject": "V6_HeroMark_DieLaughing",
+      "wearObject": "V6_HeroMark_DieLaughing_Wear",
+      "method": "conventionally-authored-vector-stencil-v2",
+      "style": "original-protest-punk-hand-cut-stencil",
+      "targetSurface": "V6_ShoulderArmor_Port_Aft",
+      "generatedPixelsShipped": false,
+      "mainDetailLevel": 0,
+      "wearDetailLevel": 2,
+      "wearLodPolicy": "LOD0_only_detail2",
+      "surfaceOffsetMeters": 0.0003,
+      "minMeasuredSurfaceOffsetMeters": 0.00029999278209827396,
+      "maxMeasuredSurfaceOffsetMeters": 0.00030000753608749875,
+      "missingPaintBreaks": 7,
+      "oversprayFragments": 34,
+      "referenceSha256": "EB4CA35AE6B22817037FA7717C7C9CACEEEAB65965730F7F388A7FE5E5036ECF"
+    }
   },
   "socketContract": [
     {
@@ -1726,24 +1744,24 @@
       -2.77
     ],
     "max": [
-      13.905536,
+      13.900597,
       7.02,
-      4.398539
+      2.72
     ],
     "dimensions": [
-      28.110536,
+      28.105597,
       14.04,
-      7.168539
+      5.49
     ],
     "center": [
-      -0.149732,
+      -0.152202,
       0.0,
-      0.814269
+      -0.025
     ]
   },
   "productionBlend": "blender/kestrel_material_truth_v6_production.blend",
-  "productionBlendBytes": 33766378,
-  "productionBlendSha256": "300629CACF382191981C0B07BAC89F1A90D186F11A60EAE63CB9E6D09FD827AF",
+  "productionBlendBytes": 33679716,
+  "productionBlendSha256": "3B4AD8D971555E78FF3B92EDB03081853BB35CA889112F9F337D3EF244D49987",
   "productionBlendCollectionVisibility": {
     "KESTREL_V4_PRODUCTION_SOURCE": true,
     "KESTREL_V5_GOLDEN_DETAIL": true,
@@ -1754,7 +1772,7 @@
   "lods": [
     {
       "lod": 0,
-      "triangles": 25758,
+      "triangles": 21236,
       "draws": 17,
       "animatedRoleException": 0,
       "collisionTriangles": 22,
@@ -1801,18 +1819,6 @@
           "patchedTriangles": 26,
           "collapsedUvTriangles": 26,
           "canonicalUvTriangles": 0,
-          "customNormalLoopRepairs": 0,
-          "badBefore": 0,
-          "badAfter": 0,
-          "tangentAttributeOmitted": false,
-          "customNormalsCleared": true
-        },
-        {
-          "object": "LOD0_static_V6_MarkingIvory",
-          "removedDegenerateTriangles": 0,
-          "patchedTriangles": 4,
-          "collapsedUvTriangles": 4,
-          "canonicalUvTriangles": 4,
           "customNormalLoopRepairs": 0,
           "badBefore": 0,
           "badAfter": 0,
@@ -1878,13 +1884,13 @@
         ]
       },
       "path": "source_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod0.glb",
-      "bytes": 36030064,
-      "sha256": "FB27CD5D38AEE01CCEEF510725621CBA43A4C63B4905BAC2C657D830A577FE40",
-      "generationFingerprint": "50B71F1D32C9135FC380BB6F89EE217E3FE65E31CEDDAFD33AFC86E7F343411D"
+      "bytes": 35503012,
+      "sha256": "1F8D4B050BBE8FCF9D928B98CDE75DCE30356E04670F3674CF4F0D4DAA03D976",
+      "generationFingerprint": "AD08B58D0DE4C11CA21BA5FE204F931681D82603559F83FB7382E483589C472B"
     },
     {
       "lod": 1,
-      "triangles": 17340,
+      "triangles": 12750,
       "draws": 13,
       "animatedRoleException": 0,
       "collisionTriangles": 22,
@@ -1921,18 +1927,6 @@
           "canonicalUvTriangles": 1,
           "customNormalLoopRepairs": 1,
           "badBefore": 1,
-          "badAfter": 0,
-          "tangentAttributeOmitted": false,
-          "customNormalsCleared": true
-        },
-        {
-          "object": "LOD1_static_V6_MarkingIvory",
-          "removedDegenerateTriangles": 0,
-          "patchedTriangles": 4,
-          "collapsedUvTriangles": 4,
-          "canonicalUvTriangles": 4,
-          "customNormalLoopRepairs": 0,
-          "badBefore": 0,
           "badAfter": 0,
           "tangentAttributeOmitted": false,
           "customNormalsCleared": true
@@ -1993,13 +1987,13 @@
         ]
       },
       "path": "source_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod1.glb",
-      "bytes": 27384728,
-      "sha256": "575276B3F4226C071ABB43E656767D991ED049DEC3490ADEF1C643465E13F55C",
-      "generationFingerprint": "50B71F1D32C9135FC380BB6F89EE217E3FE65E31CEDDAFD33AFC86E7F343411D"
+      "bytes": 26848168,
+      "sha256": "887447BFB2270BE89CE6F630C870194E397CA7855EE04586473E158756F7AE21",
+      "generationFingerprint": "AD08B58D0DE4C11CA21BA5FE204F931681D82603559F83FB7382E483589C472B"
     },
     {
       "lod": 2,
-      "triangles": 14106,
+      "triangles": 9516,
       "draws": 8,
       "animatedRoleException": 0,
       "collisionTriangles": 22,
@@ -2022,18 +2016,6 @@
           "patchedTriangles": 71,
           "collapsedUvTriangles": 71,
           "canonicalUvTriangles": 0,
-          "customNormalLoopRepairs": 0,
-          "badBefore": 0,
-          "badAfter": 0,
-          "tangentAttributeOmitted": false,
-          "customNormalsCleared": true
-        },
-        {
-          "object": "LOD2_static_V6_MarkingIvory",
-          "removedDegenerateTriangles": 0,
-          "patchedTriangles": 4,
-          "collapsedUvTriangles": 4,
-          "canonicalUvTriangles": 4,
           "customNormalLoopRepairs": 0,
           "badBefore": 0,
           "badAfter": 0,
@@ -2086,9 +2068,9 @@
         ]
       },
       "path": "source_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod2.glb",
-      "bytes": 23480016,
-      "sha256": "E431014896A27C6311074D66F9CAFC71562BEDE974F72DB3DA57C17B74917174",
-      "generationFingerprint": "50B71F1D32C9135FC380BB6F89EE217E3FE65E31CEDDAFD33AFC86E7F343411D"
+      "bytes": 22943284,
+      "sha256": "F2F1C32CDB5BE01C6F23CA051C99B9808D2CA630DED64903695D4118A3F3FA35",
+      "generationFingerprint": "AD08B58D0DE4C11CA21BA5FE204F931681D82603559F83FB7382E483589C472B"
     }
   ],
   "outputs": [

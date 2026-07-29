@@ -472,6 +472,7 @@
     "probe:atlas:perf": "node --expose-gc scripts/probe-atlas-perf-baseline.mjs",
     "check:pq019a:facility-embodiment": "node --test test/pq019-authored-cargo-capsule.test.mjs test/pq019-facility-embodiment.test.mjs test/pq019-launch-schedule-cue.test.mjs",
     "check:pq019b:seams": "node --test test/pq019-heist-arbiter.test.mjs test/pq019-law-incident-intake.test.mjs test/pq019-heat-incident-listener.test.mjs test/pq019-job-control-lease.test.mjs test/pq019-receiver-handoff.test.mjs test/pq019-owner-invariants.test.mjs",
+    "check:pq019c:mission": "node --test test/pq019c-heist-mission.test.mjs test/pq019c-heist-routes.test.mjs test/pq019c-heist-save-reload.test.mjs test/pq019c-heist-cues.test.mjs test/pq019c-heist-tuning.test.mjs",
     "check:pq020:ceres-topology": "node scripts/check-pq020-ceres-topology.mjs",
     "check:pq020:proofs": "node --test test/pq020-ceres-topology.test.mjs test/pq020-ceres-proofs.test.mjs",
     "check:pq022:relay-collar": "node --test test/pq022-relay-collar-admission.test.mjs",

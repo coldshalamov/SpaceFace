@@ -22,9 +22,12 @@ import { ktx2 } from 'ktx2-encoder/gltf-transform';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import JPEG from 'jpeg-js';
 import { PNG } from 'pngjs';
-import sharp from 'sharp';
-
 import { makeAshlineSurfaceMaps } from './lib/ashlineSurfaceMaps.mjs';
+import {
+  buildAshlineEvidenceEpoch,
+  validateAshlineEvidenceEpoch,
+} from './lib/ashlineEvidenceEpoch.mjs';
+import { publishFileSetTransaction } from './lib/multiFileTransaction.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const FAMILY = resolve(ROOT, 'assets/ships/m4_ashline_v2');
@@ -52,6 +55,39 @@ const SHIPS = Object.freeze({
   }),
 });
 
+const EVIDENCE_TOOL_PATHS = Object.freeze([
+  'tools/blender/build_m4_ashline_v2.py',
+  'tools/art/lib/ashlineSurfaceMaps.mjs',
+  'tools/art/lib/ashlineEvidenceEpoch.mjs',
+  'tools/art/finalize_m4_ashline_v2_candidate.mjs',
+  'tools/blender/render_m4_ashline_material_truth.py',
+  'tools/blender/render_m4_ashline_lode_material_truth.py',
+]);
+
+const LEGACY_RENDER_NAMES = Object.freeze([
+  'forward_34.png',
+  'rear_34.png',
+  'top_ortho.png',
+  'side_ortho.png',
+  'readability_close.png',
+  'readability_under45px.png',
+  'readability_120px.png',
+  'silhouette_gray_45px.png',
+  'silhouette_gray_120px.png',
+  'gamesky_forward_34.png',
+]);
+
+const LEGACY_ARTIFACTS = Object.freeze([
+  ...Object.keys(SHIPS).flatMap((key) => LEGACY_RENDER_NAMES.map(
+    (name) => `assets/ships/m4_ashline_v2/evidence/${key}/renders/${name}`,
+  )),
+  'assets/ships/m4_ashline_v2/evidence/family/runtime_lineup.png',
+  'assets/ships/m4_ashline_v2/evidence/family/distance_readability_contact.png',
+  'assets/ships/m4_ashline_v2/evidence/family/surface_review_dart.png',
+  'assets/ships/m4_ashline_v2/evidence/family/surface_review_lode.png',
+  'assets/ships/m4_ashline_v2/evidence/family/surface_review_rig.png',
+]);
+
 function sha256(path) {
   const h = createHash('sha256');
   h.update(readFileSync(path));
@@ -68,6 +104,16 @@ function candidatePath(id) {
 
 function rel(abs) {
   return abs.replace(/\\/g, '/').replace(ROOT.replace(/\\/g, '/') + '/', '');
+}
+
+function stampGeneratorOnce(current) {
+  const marker = 'SpaceFace tools/art/finalize_m4_ashline_v2_candidate.mjs';
+  const tokens = String(current || '')
+    .split(';')
+    .map((token) => token.trim())
+    .filter(Boolean);
+  if (!tokens.includes(marker)) tokens.push(marker);
+  return tokens.join('; ');
 }
 
 function decodePng(buffer) {
@@ -120,8 +166,7 @@ async function prepareSourceContract(abs, spec, io, shipKey) {
     keepExtras: true,
   }));
   const asset = root.getAsset();
-  asset.generator = `${asset.generator || ''}; SpaceFace tools/art/finalize_m4_ashline_v2_candidate.mjs`
-    .replace(/^; /, '');
+  asset.generator = stampGeneratorOnce(asset.generator);
   const extras = { ...(asset.extras || {}) };
   extras.textureSize = TEXTURE_SIZE;
   extras.spacefaceAsset = {
@@ -279,7 +324,7 @@ function inspectGlbRaw(abs) {
 function stampReleaseMeta(document, spec, sourceTextureCount, proof, sourceSf = {}) {
   const root = document.getRoot();
   const asset = root.getAsset();
-  asset.generator = `${asset.generator || ''}; SpaceFace tools/art/finalize_m4_ashline_v2_candidate.mjs`.replace(/^; /, '');
+  asset.generator = stampGeneratorOnce(asset.generator);
   const extras = { ...(asset.extras || {}) };
   const sf = { ...(sourceSf || {}), ...(extras.spacefaceAsset || {}) };
   // Preserve float axis proof through quantization (accessor min/max become unusable)
@@ -536,51 +581,153 @@ async function finalizeOne(key, spec, io) {
   };
 }
 
-async function buildEvidenceContacts() {
-  const familyEvidence = resolve(FAMILY, 'evidence/family');
-  mkdirSync(familyEvidence, { recursive: true });
-  const panels = [
-    ['dart', 'DART'], ['lode', 'MAUL'], ['rig', 'HOOK'],
-  ];
-  const width = 480;
-  const height = 270;
-  const composites = [];
-  for (let i = 0; i < panels.length; i++) {
-    const [key, label] = panels[i];
-    const image = resolve(FAMILY, `evidence/${key}/renders/gamesky_forward_34.png`);
-    if (!existsSync(image)) continue;
-    const input = await sharp(image).resize(width, height, { fit: 'cover' }).png().toBuffer();
-    const title = Buffer.from(`<svg width="${width}" height="${height}"><rect x="0" y="0" width="${width}" height="32" fill="#09111bcc"/><text x="18" y="23" fill="#f5a06b" font-family="monospace" font-size="18" font-weight="700">ASHLINE V2 ${label}</text></svg>`);
-    composites.push({ input, left: i * width, top: 0 });
-    composites.push({ input: title, left: i * width, top: 0 });
-  }
-  await sharp({ create: { width: width * 3, height, channels: 4, background: '#09111b' } })
-    .composite(composites)
-    .png()
-    .toFile(resolve(familyEvidence, 'runtime_lineup.png'));
-
-  const distance = [];
-  const distanceFiles = [
-    ['evidence/dart/renders/readability_under45px.png', 'FAR 45 PX'],
-    ['evidence/dart/renders/readability_120px.png', 'MID 120 PX'],
-    ['evidence/dart/renders/readability_close.png', 'CLOSE'],
-  ];
-  for (let i = 0; i < distanceFiles.length; i++) {
-    const [relPath, label] = distanceFiles[i];
-    const input = await sharp(resolve(FAMILY, relPath)).resize(width, height, { fit: 'contain', background: '#111820' }).png().toBuffer();
-    const title = Buffer.from(`<svg width="${width}" height="${height}"><text x="18" y="28" fill="#dbe8ef" font-family="monospace" font-size="18">${label}</text></svg>`);
-    distance.push({ input, left: i * width, top: 0 }, { input: title, left: i * width, top: 0 });
-  }
-  await sharp({ create: { width: width * 3, height, channels: 4, background: '#111820' } })
-    .composite(distance)
-    .png()
-    .toFile(resolve(familyEvidence, 'distance_readability_contact.png'));
-}
-
 const evidenceOnly = process.argv.slice(2).includes('--evidence-only');
 if (evidenceOnly) {
-  await buildEvidenceContacts();
-  console.log('[m4-finalize] wrote runtime lineup and distance-readability contact sheets');
+  console.error(
+    '[m4-finalize] --evidence-only is retired: the historical inputs are not bound '
+    + 'to the current source epoch. Use the versioned exact-source evidence renderer.',
+  );
+  process.exit(2);
+}
+
+function readJson(path) {
+  return JSON.parse(readFileSync(path, 'utf8'));
+}
+
+function jsonBytes(value) {
+  return Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
+}
+
+function receiptUpdates(results, evidenceEpoch) {
+  const updates = [];
+  const byKey = new Map(results.map((row) => [row.key, row]));
+  for (const [key, row] of byKey) {
+    const base = resolve(FAMILY, 'evidence', key);
+    const summaryPath = resolve(base, 'build_summary.json');
+    const metricsPath = resolve(base, 'production_metrics.json');
+    if (existsSync(summaryPath)) {
+      const summary = readJson(summaryPath);
+      summary.sourceSha256 = row.sourceSha256;
+      summary.sourceBytes = row.sourceBytes;
+      if (summary.materialTruth) {
+        summary.materialTruth.sourceSha256 = row.sourceSha256;
+      }
+      summary.evidenceEpoch = {
+        status: 'post-finalize-current',
+        epochDigest: evidenceEpoch.epochDigest,
+        visualEvidence: 'requires-current-versioned-render',
+      };
+      updates.push({ path: summaryPath, value: summary });
+    }
+    if (existsSync(metricsPath)) {
+      const metrics = readJson(metricsPath);
+      metrics.sha256_source = row.sourceSha256;
+      metrics.evidenceEpoch = {
+        status: 'post-finalize-current',
+        epochDigest: evidenceEpoch.epochDigest,
+        renderEligibility: 'legacy-pre-surface-unbound',
+      };
+      if (metrics.report) {
+        metrics.report.bytes = row.sourceBytes;
+        metrics.report.sha256 = row.sourceSha256;
+        metrics.report.evidenceScope = 'geometry-and-structure; visual evidence bound separately';
+      }
+      updates.push({ path: metricsPath, value: metrics });
+    }
+  }
+
+  const familyMetricsPath = resolve(FAMILY, 'evidence/family/family_metrics.json');
+  if (existsSync(familyMetricsPath)) {
+    const familyMetrics = readJson(familyMetricsPath);
+    for (const ship of familyMetrics.ships || []) {
+      const row = byKey.get(ship.key);
+      if (!row) continue;
+      ship.sha256 = row.sourceSha256;
+      ship.sourceBytes = row.sourceBytes;
+      ship.evidenceEpoch = {
+        status: 'post-finalize-current',
+        epochDigest: evidenceEpoch.epochDigest,
+      };
+    }
+    familyMetrics.evidenceEpoch = {
+      epochDigest: evidenceEpoch.epochDigest,
+      historicalRendersEligible: false,
+      requiresCurrentVersionedRenders: true,
+    };
+    updates.push({ path: familyMetricsPath, value: familyMetrics });
+  }
+  return updates;
+}
+
+async function publishEvidenceReceiptSet(finalizeReport, results, evidenceEpoch) {
+  const updates = [
+    { path: evidencePath, value: finalizeReport },
+    ...receiptUpdates(results, evidenceEpoch),
+  ];
+  await publishFileSetTransaction({
+    files: updates.map(({ path, value }) => ({
+      path,
+      bytes: jsonBytes(value),
+      validate: async (_stagedPath, bytes) => {
+        const parsed = JSON.parse(bytes.toString('utf8'));
+        if (parsed.evidenceEpoch?.epochDigest !== evidenceEpoch.epochDigest) {
+          throw new Error(`receipt ${path} is not bound to ${evidenceEpoch.epochDigest}`);
+        }
+      },
+    })),
+  });
+}
+
+async function currentEvidenceEpoch() {
+  let eligibleArtifacts = [];
+  const artifactReceiptPaths = [
+    resolve(FAMILY, 'evidence/material_truth_v2/eligible_artifacts.json'),
+    resolve(FAMILY, 'evidence/material_truth_v2/eligible_artifacts_lode.json'),
+  ];
+  for (const artifactReceiptPath of artifactReceiptPaths) {
+    if (!existsSync(artifactReceiptPath)) continue;
+    const artifactReceipt = readJson(artifactReceiptPath);
+    if (artifactReceipt.schema !== 'spaceface.ashlineMaterialTruthArtifacts.v1'
+        || !Array.isArray(artifactReceipt.artifacts)) {
+      throw new Error(`invalid Ashline material-truth artifact receipt: ${artifactReceiptPath}`);
+    }
+    eligibleArtifacts.push(...artifactReceipt.artifacts);
+  }
+  const epoch = await buildAshlineEvidenceEpoch({
+    root: ROOT,
+    family: FAMILY,
+    ships: Object.entries(SHIPS).map(([key, value]) => ({ key, id: value.id })),
+    toolPaths: EVIDENCE_TOOL_PATHS,
+    eligibleArtifacts,
+    legacyArtifacts: LEGACY_ARTIFACTS,
+  });
+  const validation = await validateAshlineEvidenceEpoch(epoch, { root: ROOT });
+  if (!validation.pass) {
+    throw new Error(`Ashline evidence epoch rejected: ${validation.failures.join('; ')}`);
+  }
+  return epoch;
+}
+
+const evidencePath = resolve(FAMILY, 'evidence/family/finalize_report.json');
+const refreshEvidenceEpoch = process.argv.slice(2).includes('--refresh-evidence-epoch');
+if (refreshEvidenceEpoch) {
+  if (!existsSync(evidencePath)) {
+    console.error('[m4-finalize] no finalize report exists to refresh');
+    process.exit(2);
+  }
+  const existing = readJson(evidencePath);
+  const evidenceEpoch = await currentEvidenceEpoch();
+  const out = {
+    ...existing,
+    schema: 'spaceface.m4AshlineSourceFamilyFinalize.v2',
+    evidenceEpoch,
+  };
+  await publishEvidenceReceiptSet(out, existing.finalized || [], evidenceEpoch);
+  console.log(JSON.stringify({
+    status: 'complete',
+    mode: 'refresh-evidence-epoch',
+    epochDigest: evidenceEpoch.epochDigest,
+  }, null, 2));
   process.exit(0);
 }
 
@@ -614,8 +761,17 @@ for (const k of keys) {
   );
 }
 
+const evidenceEpoch = await currentEvidenceEpoch();
+const previousRows = existsSync(evidencePath)
+  ? readJson(evidencePath).finalized || []
+  : [];
+const finalizedByKey = new Map(previousRows.map((row) => [row.key, row]));
+for (const result of results) finalizedByKey.set(result.key, result);
+const finalized = Object.keys(SHIPS)
+  .map((key) => finalizedByKey.get(key))
+  .filter(Boolean);
 const out = {
-  schema: 'spaceface.m4AshlineSourceFamilyFinalize.v1',
+  schema: 'spaceface.m4AshlineSourceFamilyFinalize.v2',
   packet: PACKET,
   family: 'ashline_v2',
   isolation: {
@@ -624,11 +780,9 @@ const out = {
     releasePartsTouched: false,
     k0HeliosUntouched: true,
   },
-  finalized: results,
+  finalized,
+  evidenceEpoch,
 };
 
-const evidencePath = resolve(FAMILY, 'evidence/family/finalize_report.json');
-mkdirSync(dirname(evidencePath), { recursive: true });
-writeFileSync(evidencePath, JSON.stringify(out, null, 2));
-await buildEvidenceContacts();
+await publishEvidenceReceiptSet(out, finalized, evidenceEpoch);
 console.log(JSON.stringify(out, null, 2));
