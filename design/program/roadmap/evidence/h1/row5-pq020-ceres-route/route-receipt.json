@@ -1,0 +1,610 @@
+{
+  "schema": "spaceface.pq020-ceres-functional-route.v1",
+  "runtime": "browser-chromium-headed",
+  "disposition": "FAIL",
+  "failureClass": "UNCLASSIFIED_BY_PROBE",
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran on a contended machine by design. The production save:completed event copied into failureSnapshot.trace carries timing diagnostics. Every *Ms field in that event is informational only and must not be cited as performance evidence. The load-bearing evidence is the functional jump state, source-gate geometry, seed, sector, entity counts, and screenshots. Matched performance remains Phase H3.",
+  "phase": "helios-to-ceres-jump",
+  "problems": [
+    "Ceres entry from sector_helios_prime landed 429.564 WU from its endpoint gate"
+  ],
+  "stack": "AssertionError [ERR_ASSERTION]: Ceres entry from sector_helios_prime landed 429.564 WU from its endpoint gate\n    at assertEndpointApproach (file:///C:/Users/93rob/sf-h1/scripts/lib/pq020CeresFunctionalRoute.mjs:671:10)\n    at runPq020CeresFunctionalRoute (file:///C:/Users/93rob/sf-h1/scripts/lib/pq020CeresFunctionalRoute.mjs:141:5)\n    at async file:///C:/Users/93rob/sf-h1/scripts/probe-pq020-ceres-topology.mjs:111:13",
+  "fixedSeed": 47,
+  "brokerManifestId": "pq020-ceres-topology",
+  "screenshots": [
+    {
+      "path": ".devshots/pq020-ceres-topology/01-helios-to-ceres-map.png",
+      "bytes": 464054,
+      "sha256": "65ba983bf3b156903906a20326f896344cd2c9bf43459e99fab558dc2deb0d00"
+    }
+  ],
+  "expectedScreenshots": [
+    "01-helios-to-ceres-map.png",
+    "02-ceres-helios-entry.png",
+    "03-refinery-map.png",
+    "04-refinery-flight.png",
+    "05-belt-outpost-map.png",
+    "06-belt-outpost-flight.png",
+    "07-beacon-map.png",
+    "08-beacon-flight.png",
+    "09-cathedral-map.png",
+    "10-cathedral-far.png",
+    "11-cathedral-default.png",
+    "12-cathedral-close.png",
+    "13-cathedral-arrival.png",
+    "14-pre-save.png",
+    "15-continue-menu.png",
+    "16-continue-restored.png",
+    "17-repeat-beacon-map.png",
+    "18-repeat-cathedral-map.png",
+    "19-ceres-to-tethys-map.png",
+    "20-tethys-to-ceres-map.png",
+    "21-ceres-tethys-entry.png"
+  ],
+  "pageIssues": [],
+  "failureSnapshot": {
+    "pageAvailable": true,
+    "stateAvailable": true,
+    "seed": 47,
+    "mode": "flight",
+    "tick": 405,
+    "simTime": 6.749999999999981,
+    "timeScale": 1,
+    "sectorId": "sector_ceres_belt",
+    "entryPoint": {
+      "x": -9367.359559472121,
+      "z": 6708.074322227316
+    },
+    "currentZone": null,
+    "jump": {
+      "state": "IDLE",
+      "targetSectorId": null,
+      "via": null,
+      "chargeT": 0,
+      "chargeNeeded": 0
+    },
+    "autopilot": {
+      "active": false,
+      "label": "",
+      "status": "route-plotted",
+      "distance": null,
+      "arrivalRadius": 36,
+      "target": null,
+      "targetEntityId": null
+    },
+    "player": {
+      "alive": true,
+      "hull": 140,
+      "pos": {
+        "x": -9367.359619140625,
+        "z": 6708.0743408203125
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "speed": 0
+    },
+    "beaconEntities": 1,
+    "cathedralEntities": 15,
+    "cathedralRoot": {
+      "id": 80,
+      "presentationAdmission": "pending",
+      "authoredAssetState": null,
+      "projection": null
+    },
+    "trace": [
+      {
+        "event": "jump:chargeStart",
+        "tick": 126,
+        "payload": {
+          "targetSectorId": "sector_ceres_belt",
+          "via": "gate",
+          "chargeNeeded": 3
+        }
+      },
+      {
+        "event": "jump:start",
+        "tick": 307,
+        "payload": {
+          "from": "sector_helios_prime",
+          "to": "sector_ceres_belt",
+          "via": "gate",
+          "fromPos": {
+            "x": 0,
+            "z": 0
+          }
+        }
+      },
+      {
+        "event": "sector:enter",
+        "tick": 379,
+        "payload": {
+          "sectorId": "sector_ceres_belt",
+          "sector": {
+            "id": "sector_ceres_belt",
+            "name": "Ceres Belt",
+            "tier": 1,
+            "security": 0.72,
+            "charted": true,
+            "factionId": "faction_dmc",
+            "position": {
+              "x": -3,
+              "y": 2
+            },
+            "worldRadius": 4200,
+            "industries": {
+              "mining": true,
+              "refinery": true
+            },
+            "palette": {
+              "key": 16766362,
+              "rim": 11889967,
+              "fill": 16757053,
+              "ambient": 5851714,
+              "fog": 591621,
+              "fogDensity": 0.00002,
+              "nebulaTint": 9062942,
+              "dust": 12613949
+            },
+            "trafficPerMin": 10,
+            "enemyDensity": 0.18,
+            "enemyLevel": [
+              2,
+              4
+            ],
+            "neighbors": [
+              "sector_helios_prime",
+              "sector_tethys_junction",
+              "sector_pallas_drift",
+              "sector_hyperion_cut"
+            ],
+            "stations": [
+              {
+                "id": "station_ceres",
+                "name": "Ceres Refinery",
+                "type": "refinery",
+                "factionId": "faction_dmc",
+                "size": "M",
+                "services": [
+                  "trade",
+                  "refuel",
+                  "repair",
+                  "ore_buy",
+                  "refine"
+                ],
+                "chartNote": "Refinery row — buys ore dear, sells plates cheap.",
+                "pos": {
+                  "x": -1100,
+                  "z": 620
+                },
+                "archetypeGlb": "place_station_refinery",
+                "landmark": true
+              },
+              {
+                "id": "station_beltout",
+                "name": "Belt Outpost",
+                "type": "mining",
+                "factionId": "faction_dmc",
+                "size": "S",
+                "services": [
+                  "trade",
+                  "missions",
+                  "ore_buy"
+                ],
+                "chartNote": "Rock crews and a scale. Ore moves same-shift; nothing else does.",
+                "pos": {
+                  "x": 780,
+                  "z": -940
+                },
+                "archetypeGlb": "place_station_mining"
+              }
+            ],
+            "fields": [
+              {
+                "id": "f_ceres_1",
+                "type": "ast_metallic",
+                "countWeight": 1,
+                "center": {
+                  "x": 420,
+                  "z": -720
+                },
+                "clusterRadius": 480
+              },
+              {
+                "id": "f_ceres_2",
+                "type": "ast_common_rock",
+                "countWeight": 1,
+                "center": {
+                  "x": -680,
+                  "z": 240
+                },
+                "clusterRadius": 420
+              },
+              {
+                "id": "f_ceres_3",
+                "type": "ast_metallic",
+                "countWeight": 0.8,
+                "center": {
+                  "x": 920,
+                  "z": 860
+                },
+                "clusterRadius": 380
+              }
+            ],
+            "hazards": [
+              {
+                "type": "dense_asteroid",
+                "center": {
+                  "x": 600,
+                  "z": -400
+                },
+                "radius": 700,
+                "intensity": 0.5
+              }
+            ],
+            "pois": [
+              {
+                "id": "poi_driller",
+                "type": "derelict",
+                "name": "Abandoned Driller",
+                "pos": {
+                  "x": 240,
+                  "z": -1180
+                },
+                "landmarkGlb": "place_dead_hulk",
+                "landmark": true
+              },
+              {
+                "id": "poi_survey",
+                "type": "cache",
+                "name": "Survey Cache",
+                "pos": {
+                  "x": -1240,
+                  "z": -320
+                },
+                "landmarkGlb": "place_debris_chunk"
+              },
+              {
+                "id": "poi_ceres_throughline",
+                "type": "beacon",
+                "name": "Throughline Weigh Beacon",
+                "factionId": "faction_dmc",
+                "pos": {
+                  "x": 3040,
+                  "z": -920
+                },
+                "position": {
+                  "x": 3040,
+                  "z": -920
+                },
+                "landmarkGlb": "place_lane_beacon",
+                "landmark": true
+              },
+              {
+                "id": "world_site_wreck_cathedral",
+                "type": "wreck",
+                "name": "Wreck Cathedral",
+                "anchor": {
+                  "x": 300,
+                  "z": 2700
+                },
+                "runtimeOwner": "asteroidSites",
+                "pos": {
+                  "x": 300,
+                  "z": 2700
+                },
+                "landmark": true
+              },
+              {
+                "sectorId": "sector_ceres_belt",
+                "id": "poi_claim_rookery",
+                "type": "colony",
+                "name": "Rookery Prospect",
+                "claimable": true,
+                "size": "S",
+                "pos": {
+                  "x": -1900,
+                  "z": 1100
+                },
+                "landmark": true,
+                "landmarkGlb": "place_asteroid_rock_a",
+                "visualRadius": 20
+              }
+            ],
+            "gates": [
+              {
+                "to": "sector_helios_prime",
+                "pos": {
+                  "x": 2866,
+                  "z": -1910
+                }
+              },
+              {
+                "to": "sector_tethys_junction",
+                "pos": {
+                  "x": 3444,
+                  "z": 0
+                }
+              },
+              {
+                "to": "sector_pallas_drift",
+                "pos": {
+                  "x": -1910,
+                  "z": 2866
+                }
+              },
+              {
+                "to": "sector_hyperion_cut",
+                "pos": {
+                  "x": -3080,
+                  "z": -1540
+                }
+              }
+            ],
+            "owner": "faction_dmc"
+          },
+          "entryPoint": {
+            "x": -9367.359559472121,
+            "z": 6708.074322227316,
+            "heading": 2.671500139455861
+          },
+          "firstVisit": false,
+          "continuous": false,
+          "noTeleport": false
+        }
+      },
+      {
+        "event": "jump:arrive",
+        "tick": 379,
+        "payload": {
+          "sectorId": "sector_ceres_belt",
+          "interdicted": false,
+          "ambushCount": 0,
+          "toPos": {
+            "x": -9367.359559472121,
+            "z": 6708.074322227316
+          }
+        }
+      },
+      {
+        "event": "world:zoneExited",
+        "tick": 379,
+        "payload": {
+          "zoneId": "zone_helios_freight"
+        }
+      },
+      {
+        "event": "save:completed",
+        "tick": 397,
+        "payload": {
+          "slot": "auto",
+          "reason": "sector",
+          "trigger": "sector",
+          "autosave": true,
+          "ok": true,
+          "failure": null,
+          "durationMs": 973.7,
+          "totalMs": 973.7,
+          "elapsedMs": 973.7,
+          "totalCpuMs": 15.799999997019768,
+          "totalBlockingMs": 15.799999997019768,
+          "maxBlockingSliceMs": 6.599999999627471,
+          "maxBlockingPhase": "capture",
+          "blockingClock": "high_resolution_sync_wall",
+          "targetSliceMs": 8,
+          "hardSliceMs": 12,
+          "observedTargetMet": true,
+          "observedHardLimitMet": true,
+          "blockingSamples": [
+            {
+              "phase": "capture",
+              "ms": 6.599999999627471
+            },
+            {
+              "phase": "encode_worker_setup",
+              "ms": 0.8999999985098839
+            },
+            {
+              "phase": "encode_begin_dispatch",
+              "ms": 0
+            },
+            {
+              "phase": "encode_part_dispatch",
+              "ms": 1.5
+            },
+            {
+              "phase": "storage_read_previous",
+              "ms": 0
+            },
+            {
+              "phase": "storage_write_backup",
+              "ms": 0
+            },
+            {
+              "phase": "storage_write_primary",
+              "ms": 3.699999999254942
+            },
+            {
+              "phase": "storage_readback",
+              "ms": 0.5
+            },
+            {
+              "phase": "validate_readback_setup",
+              "ms": 1.199999999254942
+            },
+            {
+              "phase": "readback_validate_chunk_dispatch",
+              "ms": 0.8000000007450581
+            },
+            {
+              "phase": "storage_write_index",
+              "ms": 0.599999999627471
+            }
+          ],
+          "maxSerializerMs": 1.900000000372529,
+          "slowSerializer": null,
+          "serializerTimings": [
+            {
+              "key": "meta",
+              "ms": 0
+            },
+            {
+              "key": "player",
+              "ms": 0.09999999962747097
+            },
+            {
+              "key": "cargo",
+              "ms": 0
+            },
+            {
+              "key": "economy",
+              "ms": 1.300000000745058
+            },
+            {
+              "key": "economyContracts",
+              "ms": 0
+            },
+            {
+              "key": "factions",
+              "ms": 0
+            },
+            {
+              "key": "world",
+              "ms": 1.900000000372529
+            },
+            {
+              "key": "entities",
+              "ms": 0.6999999992549419
+            },
+            {
+              "key": "combat",
+              "ms": 0.30000000074505806
+            },
+            {
+              "key": "missions",
+              "ms": 0.19999999925494194
+            },
+            {
+              "key": "careerOrigins",
+              "ms": 0.30000000074505806
+            },
+            {
+              "key": "careerLadders",
+              "ms": 0.09999999962747097
+            },
+            {
+              "key": "scenario",
+              "ms": 0.2000000011175871
+            },
+            {
+              "key": "automation",
+              "ms": 0
+            },
+            {
+              "key": "crafting",
+              "ms": 0
+            },
+            {
+              "key": "sectorSim",
+              "ms": 0.19999999925494194
+            },
+            {
+              "key": "npcJobs",
+              "ms": 0.09999999962747097
+            },
+            {
+              "key": "claims",
+              "ms": 0
+            },
+            {
+              "key": "sites",
+              "ms": 0.599999999627471
+            },
+            {
+              "key": "formations",
+              "ms": 0
+            },
+            {
+              "key": "aceMemory",
+              "ms": 0.10000000149011612
+            },
+            {
+              "key": "lossLedger",
+              "ms": 0
+            },
+            {
+              "key": "factionPresence",
+              "ms": 0
+            },
+            {
+              "key": "bandRadio",
+              "ms": 0
+            },
+            {
+              "key": "v2Flavor",
+              "ms": 0
+            },
+            {
+              "key": "aftermathWrecks",
+              "ms": 0.09999999962747097
+            },
+            {
+              "key": "fieldDepletion",
+              "ms": 0
+            },
+            {
+              "key": "livingPoiBehaviors",
+              "ms": 0
+            },
+            {
+              "key": "signalInvestigation",
+              "ms": 0
+            },
+            {
+              "key": "recoveryEncounters",
+              "ms": 0
+            },
+            {
+              "key": "regionalEcology",
+              "ms": 0
+            },
+            {
+              "key": "encounterDirector",
+              "ms": 0.09999999962747097
+            },
+            {
+              "key": "flight",
+              "ms": 0
+            },
+            {
+              "key": "nav",
+              "ms": 0.09999999962747097
+            },
+            {
+              "key": "settings",
+              "ms": 0
+            }
+          ],
+          "serializeMs": 6.6,
+          "writeMs": 6.8,
+          "stringifyMs": 9.1,
+          "storageMs": 3.7,
+          "indexMs": 0.6,
+          "backupMs": 0,
+          "readbackMs": 0.5,
+          "verifyMs": 2,
+          "workerSetupMs": 0.9,
+          "workerDispatchMs": 1.5,
+          "workerRoundtripMs": 78.9,
+          "captureStartedAtMs": 28518.9,
+          "captureEndedAtMs": 28525.5,
+          "bytes": 509211
+        }
+      }
+    ]
+  },
+  "noPerformanceEvidence": true,
+  "noPerformanceEvidenceNote": "This receipt makes no performance claim. Its failure trace includes incidental timing diagnostics from the production save:completed autosave event; those fields are informational/contended only and excluded from H1 evidence. Matched performance remains Phase H3."
+}

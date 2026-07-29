@@ -1,0 +1,38 @@
+{
+  "schema": "spaceface.validation-run-result.v1",
+  "recordedAt": "2026-07-29T07:33:19.642Z",
+  "status": "fail",
+  "exitCode": 1,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 30928,
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran contended by design. durationMs and all other time-valued process metadata are informational only and are not performance evidence. Matched performance remains Phase H3.",
+  "pidRecord": {
+    "pid": 6628,
+    "command": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "scripts/probe-pq020-ceres-topology.mjs"
+    ],
+    "startedAt": "2026-07-29T07:32:48.708Z",
+    "platform": "win32",
+    "finishedAt": "2026-07-29T07:33:19.636Z",
+    "exitCode": 1,
+    "signal": null,
+    "timedOut": false,
+    "killResult": null
+  },
+  "ownership": {
+    "probeId": "pq020-ceres-topology",
+    "runtimeKind": "browser",
+    "browserOwned": true,
+    "serverOwned": true,
+    "pid": 6628
+  },
+  "fixedSeed": 47,
+  "failureFingerprint": "197801541ea5ccd6ab394b3f756e35c1ae44f70abba165192421fb7284b246f2",
+  "family": "browser/acceptance-probe/pq-ceres-topology-fail-in-helios-to-ceres-jump-ceres-entry-from-sector-helios-prime-landed-wu-from-its-endpoint-gate-exitcode/none/none/pq-ceres-topology-fail-in-helios-to-ceres-jump-ceres-entry-from-sector-helios-prime-landed-wu-from-its-endpoint-gate-exitcode",
+  "routeDigest": "1bd97d1ab4ef378ea0420a6d8a0de939e88d70451c1c13c0740348093f69f753",
+  "regressionDigest": "48931386d5cc693dfd7e154cbac42ef5138ac10ce1cde1a626dc53f90646dedf",
+  "candidateDigest": "0de1ed5ca1a348ed95c786ec0f217551508e10b5d79dd790f2a9b9684936da5b"
+}

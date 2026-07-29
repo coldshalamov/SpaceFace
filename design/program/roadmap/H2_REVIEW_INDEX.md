@@ -26,7 +26,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 | 2 | PQ-021 broker cell + Electron parity | **PASS** | [row2-pq021-ledger](evidence/h1/row2-pq021-ledger/EVIDENCE.md) |
 | 3 | PQ-019A presentation + counts | **FAIL — HARNESS (facility/count evidence survives; capsule stills missed subject)** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
 | 4 | `pq019-surface-heist` broker manifest | **FAIL — HARNESS (DOM abandon + lawful observe survive; remaining routes unproven)** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
-| 5 | PQ-020 Ceres functional route | _pending_ | |
+| 5 | PQ-020 Ceres functional route | **FAIL — HARNESS (valid Helios→Ceres jump survived; route stopped on unsupported 300-WU threshold)** | [row5-pq020-ceres-route](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) |
 | 6 | PQ-023 cues in motion | _pending_ | |
 | 7 | PQ-022 asset leaves | _pending_ | |
 | 8 | Electron end-to-end smoke | _pending_ | |
@@ -99,12 +99,18 @@ a *different place*, or does Ceres read as one undifferentiated field with diffe
 **Question, part B:** Does the Wreck Cathedral have presence — does it land as a landmark worth
 travelling to — at close, default and far framing?
 
-**Evidence:** _pending (row 5)_
+**Evidence:** [row 5 Ceres route attempt](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md).
+The one Browser attempt made a valid public Helios → Ceres production jump, then stopped immediately
+on an unsupported absolute endpoint-distance assertion. It never reached the refinery, outpost,
+beacon, Cathedral approach, save/Continue, second endpoint direction, or Electron parity. The two
+surviving frames are route/failure diagnostics, not pocket-distinctness or Cathedral-presence art
+evidence.
 
-**Unblocks:** PQ-020 → `integrated`, plus the relocated PQ-018 Phase-4 functional closure and the
-PQ-018 checkoff decision.
+**Unblocks:** nothing from H2 yet. Both visual questions must be **deferred** until a valid future
+capture reaches the four pockets and the Cathedral's close/default/far framings. PQ-020 integration
+and the relocated PQ-018 Phase-4 closure remain open.
 
-**Verdict:** _____________
+**Verdict:** DEFER — valid presentation evidence not captured
 
 ---
 
