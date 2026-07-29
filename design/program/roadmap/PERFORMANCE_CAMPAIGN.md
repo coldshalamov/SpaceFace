@@ -107,6 +107,17 @@ errors 7 → 0, hitches 76 → 51, rAF p95 50 → 33.3 ms under the same stimulu
 locks to 60 fps. Evidence: `.devshots/perf/phase0/*.{json,md}`, regression tests in
 `test/presentation-world-origin-cell-corruption.test.mjs`.
 
+**End-of-day result (all Phase-1 fixes committed, same scenario, same hardware, quiet run —
+`.devshots/perf/phase0/final-allfixes.md`):** rAF p95 **50 → 16.8 ms** (vsync-locked), hitches
+>32 ms **76 → 0**, missed vsyncs **288 → 0**, callback p95 **25.9 → 8.2 ms**, simFrame p95
+**15.9 → 3.8 ms** (the catch-up amplifier fully unwound), GPU **10.2 → 2.8 ms**. Fix set: the
+sentinel corruption (`75c693b2`), sprite-material caches (`77c608f9`), HUD write-on-change guards
+(`f111d71d`), boot buffer warm (`5b83641a`), autosave calm-window deferral (`ed9fb815`), physics
+CCD gating + projectile pooling (`48369798`); adversarial review in `design/perf/FLEET-REVIEW.md`
+(2 findings, both fixed pre-commit). Remaining reds: the spatialHash query/candidate-rate budgets
+(the named Phase 3-CPU-sim item 12 debt) and a residual canopy-admission draw-time compile
+(lead1 report §5) — the open front for Phase 2/3.
+
 ---
 
 ## Phase 1 — Kill the hitches (independent of throughput)
