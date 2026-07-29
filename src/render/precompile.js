@@ -70,6 +70,8 @@ async function precompileNow(
   scene.add(staging);
   let canopyPipelineWarmup = null;
   let keepWarmupPrograms = false;
+  let stagingAttached = true;
+  let residentBufferWarm = null;
 
   try {
     const vf = installVisualOverrides(createVisualFactory(), { releaseMode: true });
@@ -137,11 +139,29 @@ async function precompileNow(
         await renderer.compileAsync(staging, camera, scene);
       }
     }
-    if (includeGlobalPipelines && typeof options.warmPostProcess === 'function') {
-      await options.warmPostProcess();
-    }
+
+    // Detach synthetic probes BEFORE any resident-scene warm. Three.compile only links programs;
+    // the first real draw still pays gl.bufferData for every BufferAttribute. If staging is still
+    // in the graph during that warm draw, its throwaway attributes inflate the boot upload spike
+    // and disposeObject() immediately frees those GPU buffers — forcing the live scene to upload
+    // again on the first flight frame. Keep probes out of the warm graph; only resident content
+    // should receive bufferData under the loading shell.
+    scene.remove(staging);
+    stagingAttached = false;
+    if (canopyPipelineWarmup) canopyPipelineWarmup.removeFromParent();
+
     const stillCurrent = precompileGenerationFor(renderer) === generation;
     keepWarmupPrograms = !!canopyPipelineWarmup && stillCurrent;
+
+    // Warm GPU buffers for the LIVE scene (player ship, background, aux pools, …) while the
+    // loading shell still covers the canvas. Prefer the host warmPostProcess hook (bloom /
+    // render-graph / dynamic-buffer arming); fall back to one straight render.
+    if (stillCurrent && includeGlobalPipelines) {
+      residentBufferWarm = await warmResidentSceneGpuBuffers(
+        renderer, scene, camera, options, yieldToMain,
+      );
+    }
+
     if (!incremental && stillCurrent) {
       for (const spec of shipSpecs) compiledShipKeys.add(spec.key);
     }
@@ -153,16 +173,58 @@ async function precompileNow(
       retainedCanopyVariants: countCanopyVariants(canopyPipelineWarmup),
       retainedPipelines: retainedPipelineIds(canopyPipelineWarmup),
       authoredUpgradeQueue: authoredQueue,
+      residentBufferWarm,
       programs: renderer.info && renderer.info.programs ? renderer.info.programs.length : 0,
     };
   } finally {
-    scene.remove(staging);
+    if (stagingAttached) scene.remove(staging);
     if (canopyPipelineWarmup) {
       canopyPipelineWarmup.removeFromParent();
       if (keepWarmupPrograms) retainPipelineWarmup(renderer, canopyPipelineWarmup);
       else disposeObject(canopyPipelineWarmup);
     }
     disposeObject(staging);
+  }
+}
+
+/**
+ * Force first-touch GPU buffer uploads for the resident scene graph under the load shell.
+ * Staging probes must already be detached so their synthetic attributes are not uploaded.
+ *
+ * Host `preparePipelines` is intentionally not invoked here: callers pass it as a per-probe
+ * exact-target compile for staging subjects, and the live scene is admitted separately via
+ * `compileCurrentPipelines` after authored visuals commit. This path only owns bufferData warm.
+ */
+async function warmResidentSceneGpuBuffers(renderer, scene, camera, options = {}, yieldToMain = yieldToBrowser) {
+  if (typeof yieldToMain === 'function') await yieldToMain();
+
+  // When no host prepare hook is driving admission, compile resident materials directly so the
+  // subsequent draw does not also pay first-use program links on the same frame as bufferData.
+  if (typeof options.preparePipelines !== 'function' && typeof renderer.compileAsync === 'function') {
+    try {
+      await renderer.compileAsync(scene, camera, scene);
+    } catch (_) { /* best-effort; buffer warm below still runs */ }
+  }
+
+  if (typeof options.warmPostProcess === 'function') {
+    await options.warmPostProcess();
+    return { warmed: true, mode: 'warmPostProcess' };
+  }
+  if (typeof renderer.render !== 'function') {
+    return { warmed: false, mode: 'unavailable' };
+  }
+
+  const previousTarget = typeof renderer.getRenderTarget === 'function'
+    ? renderer.getRenderTarget()
+    : null;
+  try {
+    if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(null);
+    renderer.render(scene, camera);
+    return { warmed: true, mode: 'renderer.render' };
+  } finally {
+    if (typeof renderer.setRenderTarget === 'function') {
+      renderer.setRenderTarget(previousTarget || null);
+    }
   }
 }
 
