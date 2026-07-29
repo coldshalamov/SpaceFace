@@ -20,6 +20,19 @@ export const PRESENTATION_FLAGS = Object.freeze({
 const DEFAULT_CAPACITY = 256;
 const DEFAULT_CELL_SIZE = 512;
 const INVALID_INDEX = -1;
+// Cell coordinates get their own sentinel: -1 is a legitimate cell (positions in [-cellSize, 0)),
+// so reusing INVALID_INDEX made removeFromGrid skip real unlinks and corrupt the cell chains.
+const INVALID_CELL = -0x80000000;
+// Clamp keeps the stored Int32 value identical to the Map key for any finite coordinate, and
+// keeps every real cell index distinct from INVALID_CELL.
+const MIN_CELL_INDEX = -0x7fffffff;
+const MAX_CELL_INDEX = 0x7fffffff;
+
+function clampCellIndex(value) {
+  if (value > MAX_CELL_INDEX) return MAX_CELL_INDEX;
+  if (value < MIN_CELL_INDEX) return MIN_CELL_INDEX;
+  return value;
+}
 const EMPTY_OBJECT = Object.freeze({});
 
 function finite(value) {
@@ -105,6 +118,7 @@ export function createPresentationWorld(options = {}) {
     staleHandleRejects: 0,
     duplicateIdRejects: 0,
     spatialMoves: 0,
+    chainGuardTrips: 0,
     maxRadius: 0,
     cellSize,
   };
@@ -200,8 +214,8 @@ export function createPresentationWorld(options = {}) {
     world.freeSlots = growTyped(world.freeSlots, Uint32Array, capacity);
     world.specialSlots = growTyped(world.specialSlots, Uint32Array, capacity);
     world.specialPositions = growTyped(world.specialPositions, Int32Array, capacity, INVALID_INDEX);
-    world.cellX = growTyped(world.cellX, Int32Array, capacity, INVALID_INDEX);
-    world.cellZ = growTyped(world.cellZ, Int32Array, capacity, INVALID_INDEX);
+    world.cellX = growTyped(world.cellX, Int32Array, capacity, INVALID_CELL);
+    world.cellZ = growTyped(world.cellZ, Int32Array, capacity, INVALID_CELL);
     world.cellPrev = growTyped(world.cellPrev, Int32Array, capacity, INVALID_INDEX);
     world.cellNext = growTyped(world.cellNext, Int32Array, capacity, INVALID_INDEX);
     world.entityRefs = growRefs(world.entityRefs, capacity);
@@ -265,7 +279,7 @@ export function createPresentationWorld(options = {}) {
   function removeFromGrid(slot) {
     const cx = world.cellX[slot];
     const cz = world.cellZ[slot];
-    if (cx === INVALID_INDEX || cz === INVALID_INDEX) return;
+    if (cx === INVALID_CELL || cz === INVALID_CELL) return;
     const column = gridColumns.get(cx);
     const previous = world.cellPrev[slot];
     const next = world.cellNext[slot];
@@ -276,15 +290,15 @@ export function createPresentationWorld(options = {}) {
     }
     if (next >= 0) world.cellPrev[next] = previous;
     if (column && column.size === 0) gridColumns.delete(cx);
-    world.cellX[slot] = INVALID_INDEX;
-    world.cellZ[slot] = INVALID_INDEX;
+    world.cellX[slot] = INVALID_CELL;
+    world.cellZ[slot] = INVALID_CELL;
     world.cellPrev[slot] = INVALID_INDEX;
     world.cellNext[slot] = INVALID_INDEX;
   }
 
   function insertIntoGrid(slot) {
-    const cx = Math.floor(world.x[slot] / cellSize);
-    const cz = Math.floor(world.z[slot] / cellSize);
+    const cx = clampCellIndex(Math.floor(world.x[slot] / cellSize));
+    const cz = clampCellIndex(Math.floor(world.z[slot] / cellSize));
     if (world.cellX[slot] === cx && world.cellZ[slot] === cz) return;
     removeFromGrid(slot);
     let column = gridColumns.get(cx);
@@ -471,8 +485,8 @@ export function createPresentationWorld(options = {}) {
     world.radii[slot] = 0;
     world.entityRefs[slot] = entity;
     world.meshRefs[slot] = null;
-    world.cellX[slot] = INVALID_INDEX;
-    world.cellZ[slot] = INVALID_INDEX;
+    world.cellX[slot] = INVALID_CELL;
+    world.cellZ[slot] = INVALID_CELL;
     world.cellPrev[slot] = INVALID_INDEX;
     world.cellNext[slot] = INVALID_INDEX;
     world.activePositions[slot] = INVALID_INDEX;
@@ -669,14 +683,28 @@ export function createPresentationWorld(options = {}) {
     if (span > column.size * 2) {
       for (const [cz, head] of column) {
         if (cz < minCellZ || cz > maxCellZ) continue;
-        for (let slot = head; slot >= 0; slot = world.cellNext[slot]) target.push(slot);
+        collectCellChain(head, target);
       }
       return;
     }
     for (let cz = minCellZ; cz <= maxCellZ; cz++) {
       const head = column.get(cz);
       if (head === undefined) continue;
-      for (let slot = head; slot >= 0; slot = world.cellNext[slot]) target.push(slot);
+      collectCellChain(head, target);
+    }
+  }
+
+  // A legal chain never exceeds the slot capacity. The guard converts a corrupted chain (a cycle
+  // would otherwise push until the target array overflows the VM limit, stalling the frame for
+  // seconds) into a bounded walk plus a diagnostics count that gates can assert on.
+  function collectCellChain(head, target) {
+    let guard = world.capacity;
+    for (let slot = head; slot >= 0; slot = world.cellNext[slot]) {
+      if (--guard < 0) {
+        diagnostics.chainGuardTrips++;
+        return;
+      }
+      target.push(slot);
     }
   }
 
