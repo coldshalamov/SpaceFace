@@ -19,6 +19,7 @@ const MANIFEST_LOADERS = {
   'pq019-surface-heist': () => import('./validation-manifests/pq019-surface-heist.mjs'),
   'pq020-ceres-topology': () => import('./validation-manifests/pq020-ceres-topology.mjs'),
   'pq023-corridor-cues': () => import('./validation-manifests/pq023-corridor-cues.mjs'),
+  'pq022-corridor-asset-leaves': () => import('./validation-manifests/pq022-corridor-asset-leaves.mjs'),
 };
 
 function parseArgs(argv) {
@@ -61,6 +62,7 @@ Manifests:
   pq019-surface-heist
   pq020-ceres-topology
   pq023-corridor-cues
+  pq022-corridor-asset-leaves
 
 Environment on spawned probes:
   SF_BROKER_CLAIM   one-use claim path
