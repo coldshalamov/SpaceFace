@@ -61,6 +61,21 @@ import {
 } from '../data/missionConditions.js';
 import { attachConditions } from './contractClauses.js';
 import { isFragileCommodity } from './fragileCargo.js';
+// PQ-019C — the authored physical capsule heist. The offer and its tuned scalars are data; the run
+// itself is driven by the runtime module below, which consumes PQ-019B's pure arbiter. Both are
+// inert unless an active mission actually carries a `heist` subrecord.
+import {
+  PQ019C_HEIST_TYPE,
+  PQ019C_HEIST_STATION_ID,
+  PQ019C_HEIST_SECTOR_ID,
+  buildHeistOffer,
+} from '../data/heistMission.js';
+import { PQ019_FACILITIES, projectPq019FacilitySocket } from '../data/heistFacilities.js';
+import {
+  heistMissionRuntime,
+  createHeistRecord,
+  sayHeistCue,
+} from '../missions/heistMissionRuntime.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
@@ -530,6 +545,25 @@ export const missions = {
     // entity. Generic scan pulses remain valid for ordinary recon_scan contracts.
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p));
     bus.on('tether:reel', (p) => this._onContract47aB2TetherReel(p));
+
+    // ── PQ-019C: physical capsule heist ──────────────────────────────────────────────────────
+    // Possession is read from the EXISTING Massline/tether latch rather than owned here — the
+    // mission normalizes a latch on the authored capsule into one `possession` candidate and never
+    // touches physics. Every listener below is a strict no-op unless an active mission carries a
+    // `heist` subrecord, so the feature is inert in the golden scenario and in any save that has
+    // never seen one. All of these fire BEFORE missions.update for the same tick (registry order:
+    // physics 177 < tetherGameplay 197 < heistFacilities 222 < missions 246), which is the
+    // arbiter's submit-before-step precondition satisfied structurally.
+    bus.on('heist:capsuleLaunched', (p) => this._heistEach(
+      (h) => heistMissionRuntime.onCapsuleLaunched(this._heistCtx(), h, p || {})));
+    bus.on('heist:facilityCandidate', (p) => this._heistEach(
+      (h) => heistMissionRuntime.onFacilityCandidate(this._heistCtx(), h, p || {})));
+    bus.on('tether:latched', (p) => this._heistEach(
+      (h) => heistMissionRuntime.onTetherLatched(this._heistCtx(), h, p || {})));
+    for (const releaseEvent of ['tether:released', 'tether:cut', 'tether:broke']) {
+      bus.on(releaseEvent, (p) => this._heistEach(
+        (h) => heistMissionRuntime.onTetherReleased(this._heistCtx(), h, p || {})));
+    }
     // smuggling bust: a patrol scan caught contraband.
     bus.on('player:scannedByPatrol', (p) => this._onScannedByPatrol(p));
     // Contract clauses are observers only. Their single breach intent returns here so the canonical
@@ -570,6 +604,11 @@ export const missions = {
       if (m.status !== 'active') continue;
       // Expiry by deadline.
       if (m.deadline_s != null && Number.isFinite(m.deadline_s) && now >= m.deadline_s) { this._expireMission(m, i); continue; }
+      // PQ-019C: the capsule run's bounded window is an arbitrated `expired` CANDIDATE, never a
+      // mission deadline — the branch above would settle with zero terminal receipts. The authored
+      // offer therefore declares no `duration_s`, and this drive may remove `m` from `active`, which
+      // the reverse iteration above already tolerates.
+      if (m.heist) { this._driveHeist(m, i); continue; }
       // Escort: steer the friendly escortee toward the destination each tick.
       if (m.type === 'escort' && m._escorteeId != null) this._steerEscortee(m, state, dt);
       if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
@@ -783,7 +822,8 @@ export const missions = {
     if (board && board.refreshEpoch === epoch && board.slots && !this._boardNeedsStoryBranchIntro(info, board)) {
       const storyChanged = this._syncEmbodiedStoryOffer(info, board, epoch);
       const setPieceChanged = this._syncSetPieceOpeningOffers(info, board, epoch);
-      if (storyChanged || setPieceChanged) {
+      const heistChanged = this._syncHeistOffer(info, board, epoch);
+      if (storyChanged || setPieceChanged || heistChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -805,6 +845,12 @@ export const missions = {
       offer && offer.source === 'firstTradeContract'
       && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
     )).slice(0, 1);
+    // PQ-019C: an authored heist row (standing contract or its one reduced-stake recovery) is
+    // authored progress, not a procedural roll. Carry it through an epoch refresh; _syncHeistOffer
+    // re-posts the standing row only when none is present, so a pending recovery is never replaced.
+    const retainedHeistOffers = previousSlots.filter((offer) => (
+      offer && offer.type === PQ019C_HEIST_TYPE
+    )).slice(0, 1);
     board = {
       refreshEpoch: epoch,
       slots: [
@@ -812,13 +858,118 @@ export const missions = {
         ...retainedSetPieceOffers,
         ...retainedPoiOffers,
         ...this._generateOffers(info, epoch),
+        // Retained at the very END, after generation, for the same reason `_syncHeistOffer` appends.
+        // `_generateOffers` puts the B4 branch-intro contract at the head of what it returns, and
+        // check:mission-standing-ladder asserts a branch station leads with that tagged intro both
+        // on a fresh board and on a same-epoch cached board after story advancement. Any retained
+        // row placed before the generated block pushes the intro off the head.
+        ...retainedHeistOffers,
       ],
     };
     state.missions.boards[stationId] = board;
     this._syncEmbodiedStoryOffer(info, board, epoch);
     this._syncSetPieceOpeningOffers(info, board, epoch);
+    this._syncHeistOffer(info, board, epoch);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
+  },
+
+  /**
+   * PQ-019C — keep exactly one authored capsule-run row on the Tethys board.
+   *
+   * Modelled on `_syncEmbodiedStoryOffer`, deliberately: that is the live precedent for one authored
+   * row that must survive board epochs, de-dupe against the active list, and never auto-accept. The
+   * board remains the only acceptance authority; this seam only posts.
+   *
+   * Never posts while a heist is active or while any heist row (including a pending reduced-stake
+   * recovery) is already on the board, so "at most one" is structural rather than bookkept.
+   */
+  _syncHeistOffer(info, board, epoch = this._epoch()) {
+    if (!info || info.id !== PQ019C_HEIST_STATION_ID) return false;
+    if (!board || !Array.isArray(board.slots)) return false;
+    if ((this.state.missions.active || []).some((m) => m && m.status === 'active' && m.heist)) {
+      return false;
+    }
+    if (board.slots.some((offer) => offer && offer.type === PQ019C_HEIST_TYPE)) return false;
+    // APPEND, never unshift. `_syncEmbodiedStoryOffer` and `_syncSetPieceOpeningOffers` both run
+    // before this and both unshift, and `_generateOffers` puts a B4 branch-intro contract at the head
+    // of what it returns. A standing black-market contract that claimed the top slot would displace
+    // whichever authored story row the board is supposed to lead with — caught by
+    // check:mission-standing-ladder, which asserts a branch station boards its tagged intro FIRST.
+    // The heist is a standing offer, not story progress; it sits with the rest of the board.
+    board.slots.push(buildHeistOffer({ epoch }));
+    return true;
+  },
+
+  /**
+   * Post the ONE authored reduced-stake retry, when policy allows it. Default policy is OFF
+   * (`PQ019C_HEIST_TUNING.recoveryEnabled`), so this normally does nothing at all.
+   *
+   * Bounded by construction: only from attempt 0, only for recoverable outcomes (never a completed
+   * fence run), and only onto a board that carries no heist row — so there is no second recovery
+   * and no recovery stacked on the standing contract.
+   */
+  _boardHeistRecovery(mission, outcome) {
+    const record = mission && mission.heist ? mission.heist : null;
+    const attempt = record ? (record.attempt | 0) : 0;
+    if (!heistMissionRuntime.allowsRecovery(record, outcome)) return false;
+    const board = this.ensureBoard(PQ019C_HEIST_STATION_ID);
+    if (!board || !Array.isArray(board.slots)) return false;
+    if (board.slots.some((offer) => offer && offer.type === PQ019C_HEIST_TYPE)) return false;
+    // Appended for the same reason as the standing row: a recovery offer must not displace a story
+    // row at the head of the board. The player is pointed at it by the recovery cue below.
+    board.slots.push(buildHeistOffer({
+      epoch: this._epoch(), attempt: attempt + 1, sourceMissionId: mission.id,
+    }));
+    this.bus.emit('mission:updated', { missionId: null, stationId: PQ019C_HEIST_STATION_ID });
+    // The recovery cue rides the same single voice id as the rest of the run, so the last thing the
+    // player hears about a lost capsule is where the second pass is posted.
+    sayHeistCue(this._heistCtx(), mission.heist, 'recovery');
+    return true;
+  },
+
+  _heistCtx() {
+    return { state: this.state, bus: this.bus, helpers: this.helpers, registry: this.registry };
+  },
+
+  /** Apply `fn` to every live heist subrecord. Zero active heists costs one length check. */
+  _heistEach(fn) {
+    const active = this.state.missions && this.state.missions.active;
+    if (!active || !active.length) return;
+    for (const m of active) {
+      if (m && m.status === 'active' && m.heist && !m.heist.settled) fn(m.heist, m);
+    }
+  },
+
+  /**
+   * One tick of one capsule run, then settlement if a terminal receipt was decided.
+   *
+   * SETTLEMENT ROUTES THROUGH THE ORDINARY PATHS. `fenced_success` is the only payday and goes to
+   * `_completeMission`; every other terminal outcome goes to `_failMission`. That is what buys the
+   * packet's invariants by construction rather than by hand-rolled calls:
+   *   * `missionSettlementCount == 1` — the effect journal's `missionSettlement` key is taken before
+   *     the call, so a synchronous re-entry finds it spent;
+   *   * `economyRewardCount == (fenced ? 1 : 0)` — `_completeMission` is the only reward emitter,
+   *     and the authored offer carries `collateral_cr: 0` so its refund branch cannot post a second
+   *     `economy:grantCredits`;
+   *   * `factionOutcomeCount <= 1` — completion routes rep through `mission:completed{repMult}` and
+   *     failure emits one `faction:repDelta`; neither path stacks the other.
+   * This module calls neither economy nor factions itself.
+   */
+  _driveHeist(m, index, options = {}) {
+    const ctx = this._heistCtx();
+    const receipt = heistMissionRuntime.drive(ctx, m.heist, options);
+    if (!receipt) return null;
+    return heistMissionRuntime.settleTerminal(ctx, m.heist, receipt, (settlement, reason, outcome) => {
+      // Recovery is boarded BEFORE the settlement removes the mission, for two reasons: public
+      // failure observers may inspect the promised next row synchronously from `mission:failed`
+      // (the same ordering `_failMission` already honours for set-piece recovery), and while the
+      // mission is still active `_syncHeistOffer` will not re-post the standing contract over it.
+      this._boardHeistRecovery(m, outcome);
+      if (settlement === 'complete') this._completeMission(m, index);
+      else this._failMission(m, index, reason || 'heist_failed');
+      return outcome;
+    });
   },
 
   /** Seed each authored SP1 opening on its real home board once per board epoch. */
@@ -1085,14 +1236,27 @@ export const missions = {
     }
     if (total <= 0) return TYPE_ORDER[0];
     let r = rng() * total;
-    for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return TYPE_ORDER[i]; }
-    return TYPE_ORDER[TYPE_ORDER.length - 1];
+    let lastWeighted = -1;
+    for (let i = 0; i < w.length; i++) {
+      if (w[i] > 0) lastWeighted = i;
+      r -= w[i];
+      if (r <= 0) return TYPE_ORDER[i];
+    }
+    // Float-rounding fallthrough: `r` can end a hair above 0 when rng() approaches 1. Return the
+    // last WEIGHTED type rather than the last type in the registry — an authored-only type
+    // (procedural weight 0, e.g. heist_intercept) has no _rollOffer/_rollParams case and must never
+    // be reachable here. For every shipped OFFER_MIX row the final entry is non-zero, so this is
+    // the same answer the previous expression gave.
+    return TYPE_ORDER[lastWeighted >= 0 ? lastWeighted : TYPE_ORDER.length - 1];
   },
 
   /** Roll a concrete MissionOffer for a type at an origin station. */
   _rollOffer(typeId, info, rng, epoch, idx) {
     const def = TYPE_BY_ID.get(typeId);
     if (!def) return null;
+    // Authored-only types are never rolled. Second guard behind _pickType's weighted fallthrough:
+    // a procedural roll of one would produce an offer with no params and no physical facility.
+    if (def.proceduralWeight === 0) return null;
     const cfg = this.state.missions.config || MISSION_TUNING;
 
     // Destination: pick a reachable station (or self for mining/recon-at-home).
@@ -1692,6 +1856,23 @@ export const missions = {
       channelId: offer.channelId || null,
       ...(Array.isArray(offer.clauses) && offer.clauses.length
         ? { clauses: JSON.parse(JSON.stringify(offer.clauses)) } : {}),
+      // PQ-019C. The heist subrecord nests inside an active entry, which serialize() already carries
+      // wholesale via `{ ...rest }` — durable with NO save-schema change and no new top-level key.
+      // Conditional spread on the same precedent as `clauses` above: every non-heist instance gains
+      // no key at all, which is what keeps the golden `--reload-at 600` comparison byte-identical.
+      ...(offer.type === PQ019C_HEIST_TYPE
+        ? {
+          heist: createHeistRecord({
+            missionId: id,
+            tick: state.tick | 0,
+            attempt: offer.heistAttempt | 0,
+            launchWindowS: offer.params && offer.params.launchWindowS,
+            runWindowTicks: offer.params && offer.params.runWindowTicks,
+            unlaunchedWindowTicks: offer.params && offer.params.unlaunchedWindowTicks,
+            recoveryAllowed: offer.params && offer.params.recoveryEnabled,
+          }),
+        }
+        : {}),
       ...(setPieceCauseOf(offer)
         ? { upfrontCostCr: setPieceUpfrontCost(offer, this.state) } : {}),
       sourceOfferId: offer.id || null,
@@ -1732,6 +1913,20 @@ export const missions = {
     const i = state.missions.active.findIndex((m) => m.id === missionId);
     if (i < 0) return false;
     const m = state.missions.active[i];
+    // PQ-019C: a capsule run is never settled behind the arbiter's back. `_failMission` here would
+    // remove the mission with ZERO terminal receipts, breaking `terminalReceiptCount == 1` — so
+    // abandonment becomes one more candidate in the arbiter's own vocabulary, competing with any
+    // physical fact already reported. If the capsule was destroyed a tick earlier, that outranks
+    // the walk-away and the run settles as destroyed, which is the truth.
+    if (m.heist && !m.heist.settled) {
+      const ctx = this._heistCtx();
+      heistMissionRuntime.onAbandoned(ctx, m.heist);
+      // Decide at tick + 1: the arbiter never decides in the tick a report arrived. The explicit
+      // decision tick matters because `update()` is frozen while docked, and the Mission Log's
+      // abandon button is a docked surface.
+      this._driveHeist(m, i, { decisionTick: (state.tick | 0) + 1 });
+      return true;
+    }
     this._failMission(m, i, 'abandoned');
     return true;
   },
@@ -1920,6 +2115,49 @@ export const missions = {
         };
       }
       return base;
+    }
+
+    // PQ-019C — the capsule run's marker is an OWNERSHIP cue, read off the run's own record rather
+    // than a script step. Before the launch it points at the launcher (where and when the throw
+    // happens); in flight it points at the capsule itself (the thing to meet); once the capsule is
+    // in tow it points at the fence, because that is the only place it can be sold. Each state
+    // carries its own words, so the marker says what to do without depending on colour.
+    if (m.type === PQ019C_HEIST_TYPE && m.heist) {
+      const h = m.heist;
+      const capsule = h.capsuleEntityId != null && this.state.entities
+        ? this.state.entities.get(h.capsuleEntityId) : null;
+      const heistBase = { ...base, stationId: null, sectorId: PQ019C_HEIST_SECTOR_ID };
+      if (h.possessed) {
+        const fence = PQ019_FACILITIES.fence_receiver;
+        return {
+          ...heistBase,
+          label: fence.name,
+          // The authored DOCK-APPROACH SOCKET, not the facility's centre: that is where the physical
+          // custody head actually sits (heistFacilities._spawnFacilityHead projects the same socket),
+          // so the marker points at the thing the capsule has to touch rather than a few WU off it.
+          pos: sectorLocalToGlobalForSector(
+            projectPq019FacilitySocket(fence), PQ019C_HEIST_SECTOR_ID,
+          ),
+          reason: `Deliver the capsule to ${fence.name}`,
+        };
+      }
+      if (capsule && capsule.alive !== false && capsule.pos) {
+        return {
+          ...heistBase,
+          label: 'Cargo Capsule',
+          pos: { x: capsule.pos.x, z: capsule.pos.z },
+          reason: 'Intercept the capsule before the Concord catcher takes it',
+        };
+      }
+      const launcher = PQ019_FACILITIES.heist_launcher;
+      return {
+        ...heistBase,
+        label: launcher.name,
+        pos: sectorLocalToGlobalForSector(
+          projectPq019FacilitySocket(launcher), PQ019C_HEIST_SECTOR_ID,
+        ),
+        reason: `Hold station off ${launcher.name} for the launch`,
+      };
     }
 
     if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
@@ -2293,6 +2531,10 @@ export const missions = {
 
   _onEntityDestroyed(p) {
     if (!p || p.id == null) return;
+    // PQ-019C: a destroyed capsule is a `payload_destroyed` CANDIDATE, arbitrated against whatever
+    // else happened this tick — not an immediate failure. It is stamped from the live tick because
+    // this listener runs synchronously with the destruction that caused it.
+    this._heistEach((h) => heistMissionRuntime.onEntityDestroyed(this._heistCtx(), h, p.id));
     // Escort fail: the escortee entity died.
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
@@ -3755,6 +3997,10 @@ export const missions = {
   _onSectorExit(p) {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
+    // PQ-019C: mark the run BEFORE any continuous-handoff early-return below. `entity:destroyed` is
+    // the generic "left the world" event, so without this a player who simply flew out of Tethys
+    // would be told the capsule was destroyed rather than lost. See heistMissionRuntime.onSectorExit.
+    this._heistEach((h) => heistMissionRuntime.onSectorExit(this._heistCtx(), h, sectorId));
     // Continuous free-flight membership handoff: keep escorts, target ids, and escortee links.
     // World residency may still demote RECORD_ONLY entities; enter re-spawns missing targets.
     // Hard teardown only for intentional jump / load / non-continuous boundaries (M2-C1).
@@ -4278,7 +4524,12 @@ export const missions = {
     // Strip transient runtime fields (entity ids) from active missions.
     const active = (m.active || []).map((a) => {
       const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, ...rest } = a;
-      return { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
+      const row = { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
+      // PQ-019C: canonical, order-stable snapshot of the heist subrecord. It rides INSIDE the active
+      // entry this owner already serializes, so there is no new top-level save key and no schema
+      // bump. Live entity ids inside it are transient and are dropped on restore, not here.
+      if (a.heist) row.heist = heistMissionRuntime.serialize(a.heist);
+      return row;
     });
     const serialized = {
       boards: m.boards, active, completedLog: m.completedLog, receipts: normalizeMissionReceipts(m.receipts),
@@ -4322,9 +4573,21 @@ export const missions = {
       delete state.missions.postEndingReplay;
     }
     // Stale-target GC: clear live entity ids; targets re-spawn when the player (re-)enters the sector.
-    state.missions.active = (data.active || []).map((a) => ({
-      ...a, targetEntityIds: [], _escorteeId: null, _escorteeArrived: false, status: a.status || 'active',
-    }));
+    const heistRestoreTick = state.tick | 0;
+    state.missions.active = (data.active || []).map((a) => {
+      const row = {
+        ...a, targetEntityIds: [], _escorteeId: null, _escorteeArrived: false,
+        status: a.status || 'active',
+      };
+      // PQ-019C: rebuild the arbiter and reconcile against a world that does not remember the
+      // capsule. `state.heistFacilities` and `state.lawSecurity` are NOT in the save capture plan
+      // (PQ-019B §4) and the capsule is a transient entity, so after a load there is no schedule, no
+      // capsule and no custody record. The rule is explicit in heistMissionRuntime.restore: resume a
+      // decided receipt, re-request a never-launched schedule, and otherwise reach
+      // `unresolved_absent`. Never fabricate a capsule and never fabricate a payout.
+      if (a && a.heist) row.heist = heistMissionRuntime.restore(a.heist, { tick: heistRestoreTick });
+      return row;
+    });
     if (data.story) state.story = data.story;
     // Sidecar lives inside already-serialized state.story — migrate/init without save schema change.
     ensureCampaign47aState(state);

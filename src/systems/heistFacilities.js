@@ -755,6 +755,45 @@ export const heistFacilities = {
   receiverHandoff() {
     return this.state.heistFacilities?.receiverHandoff || null;
   },
+
+  /**
+   * PQ-019C — release a SETTLED schedule so the launcher can take the next contract.
+   *
+   * Why this has to exist: `requestLaunchSchedule` denies any request whose `scheduleId` differs
+   * from the live one, and nothing ever cleared `owned.schedule`. `_dematerializeSector` only nulls
+   * the capsule id and `commitReceiverHandoff` only marks the schedule `delivered`, both of which
+   * deliberately PRESERVE the schedule so sector re-entry can resume a run in progress. The result
+   * was that the first capsule run permanently owned the launcher: every later mission carries a new
+   * stable `scheduleId`, so a second accepted contract — and every reduced-stake recovery, which is
+   * a new mission by construction — was refused `active_schedule` and died before it launched.
+   * `owned.receiverHandoff` had the same shape of problem: a spent handoff refused the next run's
+   * prepare with `handoff_in_progress`.
+   *
+   * This is the ONLY thing that clears either, it is called only after the mission owner has a
+   * committed terminal receipt, and it is idempotent. It deliberately does NOT decide anything: a
+   * capsule still physically present at release belongs to a run that is already over (an expired or
+   * abandoned one), so it is removed rather than left orphaned in the sector with no owner.
+   */
+  releaseSchedule(scheduleId) {
+    const id = cleanScheduleId(scheduleId);
+    const owned = this.state.heistFacilities;
+    const schedule = owned?.schedule;
+    if (!schedule) return { released: false, reason: 'no_schedule' };
+    if (id && schedule.scheduleId !== id) {
+      return { released: false, reason: 'schedule_mismatch', activeScheduleId: schedule.scheduleId };
+    }
+    const capsule = this._activeScheduleCapsule(schedule);
+    if (capsule) this.helpers.removeEntity(capsule.id);
+    owned.capsuleEntityId = null;
+    owned.schedule = null;
+    owned.receiverHandoff = null;
+    this.bus.emit('heist:launchScheduleReleased', Object.freeze({
+      scheduleId: schedule.scheduleId,
+      removedCapsuleEntityId: capsule ? capsule.id : null,
+      source: 'heistFacilities',
+    }));
+    return { released: true, scheduleId: schedule.scheduleId };
+  },
 };
 
 // ── PQ-019B receiver-handoff support ─────────────────────────────────────────────────────────────

@@ -87,7 +87,11 @@ export const PQ019_CAPSULE = Object.freeze({
   authoredPayloadAssetId: 'pod_cargo_container',
   legalOwnerFactionId: 'faction_mts',
   ownerId: 'facility:heist_launcher',
-  launchSpeed: 120,
+  // PQ-019C Phase E tuning selection (test/fixtures/pq019c-tuning-matrix.json). 120 WU/s put
+  // the capsule at the catcher in 17.0 s, under the matrix objective's 20 s floor for the
+  // launcher leg to be a real interception problem rather than a reflex. 100 WU/s is the
+  // fastest candidate that clears it, at 20.4 s. The matrix CONFIRMED `mass` at 180 unchanged.
+  launchSpeed: 100,
 });
 
 export const PQ019_FACILITY_POIS = Object.freeze(
