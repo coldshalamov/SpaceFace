@@ -1669,9 +1669,20 @@ export const render = {
         : this._envMap;
       const disposePrevious = options.disposePrevious !== false;
       const pmrem = new THREE.PMREMGenerator(renderer);
-      const envMap = scene.background && scene.background.isTexture
-        ? pmrem.fromEquirectangular(scene.background).texture
-        : pmrem.fromScene(scene, 0, 0.1, 1000).texture;
+      let envMap;
+      if (scene.background && scene.background.isTexture) {
+        envMap = pmrem.fromEquirectangular(scene.background).texture;
+      } else {
+        // PMREMGenerator.fromScene renders the live scene six times through an internal cube
+        // camera. Own those renders like every other live-scene submission so Three's implicit
+        // first bufferData callbacks acknowledge the coordinator's initial full publication.
+        const dynamicBufferEpoch = this._dynamicBuffers.arm('environment-map-bake');
+        try {
+          envMap = pmrem.fromScene(scene, 0, 0.1, 1000).texture;
+        } finally {
+          this._dynamicBuffers.disarm(dynamicBufferEpoch);
+        }
+      }
       pmrem.dispose();
       // Dispose the previous env GPU texture if we're re-baking (context restore path).
       if (disposePrevious && previousEnvMap && previousEnvMap !== envMap) {
