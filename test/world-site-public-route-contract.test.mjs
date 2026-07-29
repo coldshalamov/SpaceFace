@@ -730,9 +730,9 @@ test('PQ-017 browser and Electron wrappers share one fail-closed public player r
   assert.equal(pkg.scripts['check:pq017:world-site:fast'],
     'node scripts/check-pq017-world-site-fast.mjs');
   assert.equal(pkg.scripts['check:pq017:world-site:browser'],
-    'npm run check:pq017:world-site:fast && node scripts/probe-pq017-world-site.mjs --acceptance');
+    'npm run check:pq017:world-site:fast && node scripts/pq017-authorize-probe.mjs --browser');
   assert.equal(pkg.scripts['check:pq017:world-site:electron'],
-    'npm run check:pq017:world-site:fast && node scripts/probe-pq017-world-site-electron.mjs --acceptance');
+    'npm run check:pq017:world-site:fast && node scripts/pq017-authorize-probe.mjs --electron');
   assert.equal(pkg.scripts['check:pq017:world-site:public-route'],
     'npm run check:pq017:world-site:browser && npm run check:pq017:world-site:electron');
 });
