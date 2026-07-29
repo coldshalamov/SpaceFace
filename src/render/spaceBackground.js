@@ -1093,6 +1093,14 @@ export class SpaceBackground {
 
     // planet texture LRU (render targets, disposed when evicted)
     this.planetCache = new Map();
+    // Shared sprite materials, one per baked texture — never disposed during flight. Disposing a
+    // sprite material releases the shared sprite GL program once its last user dies; the next
+    // impostor spawn then re-links it inside renderBufferDirect (a 50-300 ms draw-time stall).
+    // noDispose matches the materialLibrary/visualFactory shared-material pattern; real disposal
+    // happens only in dispose() at module teardown.
+    this._spriteMatCache = new Map();
+    this._cometMat = null;
+    this._cometTex = null;
     this.planetCacheOrder = [];
     // Must comfortably exceed the number of distinct planets a travel session revisits, or the LRU
     // thrashes and every grid crossing re-bakes a 512² procedural planet on the GPU mid-flight.
@@ -1790,7 +1798,8 @@ export class SpaceBackground {
     // clear + respawn (rare: bg-space grid crossings are ~20x slower than travel)
     for (const p of this.planets) {
       this.group.remove(p.sprite);
-      p.sprite.material.dispose();
+      // Material stays alive in _spriteMatCache: disposing it here released the shared sprite
+      // program (usedTimes -> 0) and the next impostor spawn re-linked it at draw time.
     }
     this.planets = [];
     if (this.wormhole) {
@@ -1857,15 +1866,29 @@ export class SpaceBackground {
     }
   }
 
+  // Shared sprite material for a baked planet texture: identical config for every impostor, so
+  // one cache entry per texture; all entries share (and pin) the single sprite GL program.
+  _getPlanetSpriteMaterial(tex) {
+    // Lazy-init: focused tests build this module via Object.create(prototype) with no constructor.
+    if (!this._spriteMatCache) this._spriteMatCache = new Map();
+    let mat = this._spriteMatCache.get(tex);
+    if (!mat) {
+      mat = new THREE.SpriteMaterial({
+        map: tex,
+        transparent: true,
+        depthWrite: false,
+        depthTest: true,
+        fog: false,
+      });
+      mat.dispose = () => {}; // cache-owned; the hero-clear path must not release the program
+      this._spriteMatCache.set(tex, mat);
+    }
+    return mat;
+  }
+
   _spawnPlanet(spec) {
     const tex = this._getPlanetTexture(spec);
-    const mat = new THREE.SpriteMaterial({
-      map: tex,
-      transparent: true,
-      depthWrite: false,
-      depthTest: true,
-      fog: false,
-    });
+    const mat = this._getPlanetSpriteMaterial(tex);
     const sprite = new THREE.Sprite(mat);
     sprite.name = 'L5_planet';
     // texture: planet radius = 0.42 of the quad half-extent → quad = diameter / 0.42.
@@ -2079,6 +2102,10 @@ export class SpaceBackground {
       const oldRt = this.planetCache.get(old);
       if (oldRt) oldRt.dispose();
       this.planetCache.delete(old);
+      // Retire the evicted texture's material slot without disposing it: the wrapper makes dispose
+      // a no-op anyway; dropping our reference lets GC take the JS object while the shared sprite
+      // program stays pinned by the remaining live entries.
+      if (oldRt && this._spriteMatCache) this._spriteMatCache.delete(oldRt.texture);
     }
     return rt.texture;
   }
@@ -2159,26 +2186,36 @@ export class SpaceBackground {
   _createComet() {
     if (this.comet) {
       this.group.remove(this.comet.sprite);
-      this.comet.mat.dispose(); this.comet.tex.dispose();
+      // Shared material/texture survive rebuilds: disposing them released the shared sprite
+      // program alongside the planet clear (same draw-time relink class).
       this.comet = null;
     }
     if (this.lowTier) return;
-    const c = document.createElement('canvas');
-    c.width = 256; c.height = 64;
-    const ctx = c.getContext('2d');
-    const g = ctx.createLinearGradient(0, 32, 256, 32);
-    g.addColorStop(0, 'rgba(255,255,255,0)');
-    g.addColorStop(0.3, 'rgba(190,215,255,0.10)');
-    g.addColorStop(0.65, 'rgba(235,242,255,0.45)');
-    g.addColorStop(0.97, 'rgba(255,255,255,0.95)');
-    g.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 8, 256, 48);
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    const mat = new THREE.SpriteMaterial({
-      map: tex, transparent: true, blending: THREE.AdditiveBlending,
-      depthWrite: false, depthTest: true, fog: false,
-    });
+    // Comet texture/material content is constant across rebuilds — create both exactly once and
+    // keep them for the module's lifetime (noDispose, same shared-program pinning as planets).
+    if (!this._cometTex) {
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 64;
+      const ctx = c.getContext('2d');
+      const g = ctx.createLinearGradient(0, 32, 256, 32);
+      g.addColorStop(0, 'rgba(255,255,255,0)');
+      g.addColorStop(0.3, 'rgba(190,215,255,0.10)');
+      g.addColorStop(0.65, 'rgba(235,242,255,0.45)');
+      g.addColorStop(0.97, 'rgba(255,255,255,0.95)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 8, 256, 48);
+      this._cometTex = new THREE.CanvasTexture(c);
+      this._cometTex.colorSpace = THREE.SRGBColorSpace;
+    }
+    if (!this._cometMat) {
+      this._cometMat = new THREE.SpriteMaterial({
+        map: this._cometTex, transparent: true, blending: THREE.AdditiveBlending,
+        depthWrite: false, depthTest: true, fog: false,
+      });
+      this._cometMat.dispose = () => {};
+    }
+    const tex = this._cometTex;
+    const mat = this._cometMat;
     const sprite = new THREE.Sprite(mat);
     sprite.name = 'L6_comet';
     sprite.renderOrder = -50;
@@ -2495,6 +2532,7 @@ export class SpaceBackground {
     for (const [, rt] of this.planetCache) rt.dispose();
     this.planetCache.clear();
     this.planetCacheOrder.length = 0;
+    this._spriteMatCache.clear();
     this._refreshHeroes(true);
   }
 
@@ -2506,6 +2544,7 @@ export class SpaceBackground {
     for (const [, rt] of this.planetCache) rt.dispose();
     this.planetCache.clear();
     this.planetCacheOrder.length = 0;
+    this._spriteMatCache.clear();
     this._refreshHeroes(true);
   }
 
@@ -2559,6 +2598,12 @@ export class SpaceBackground {
     if (this.flareAtlas) this.flareAtlas.dispose();
     for (const [, rt] of this.planetCache) rt.dispose();
     this.planetCache.clear();
+    // Really dispose the cache-owned shared sprite materials: their dispose() is a deliberate
+    // no-op during flight (shared-program pinning), so the group walk below cannot free them.
+    for (const [, mat] of this._spriteMatCache) THREE.Material.prototype.dispose.call(mat);
+    this._spriteMatCache.clear();
+    if (this._cometMat) { THREE.Material.prototype.dispose.call(this._cometMat); this._cometMat = null; }
+    if (this._cometTex) { this._cometTex.dispose(); this._cometTex = null; }
     const layerGeometry = this.layerGeometry;
     this.group.traverse((o) => {
       if (o.geometry && o.geometry !== layerGeometry) o.geometry.dispose();

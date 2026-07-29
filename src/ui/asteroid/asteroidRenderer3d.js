@@ -185,6 +185,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return m;
   }
   const badgeTextures = new Map();
+  // Shared badge sprite materials, one per tier: disposeGroup() frees per-cell (_own) materials,
+  // and a disposed sprite material releases the shared sprite GL program once its last user dies —
+  // the next badge would then re-link it mid-render. Cache-owned + noDispose keeps it pinned.
+  const badgeMats = new Map();
   function badgeTexture(tier) {
     let t = badgeTextures.get(tier);
     if (t) return t;
@@ -204,6 +208,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     t = new THREE.CanvasTexture(cv);
     badgeTextures.set(tier, t);
     return t;
+  }
+  function badgeSpriteMaterial(tier) {
+    let m = badgeMats.get(tier);
+    if (!m) {
+      m = new THREE.SpriteMaterial({ map: badgeTexture(tier), transparent: true, depthTest: false });
+      m.dispose = () => {}; // cache-owned: per-cell disposeGroup must not release the shared program
+      badgeMats.set(tier, m);
+    }
+    return m;
   }
 
   // conduit materials — plan palette: cyan = command/lane, amber = power/process
@@ -573,8 +586,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       g.add(m);
     }
     if (locked) {
-      const sMat = new THREE.SpriteMaterial({ map: badgeTexture(req), transparent: true, depthTest: false });
-      sMat._own = true;
+      const sMat = badgeSpriteMaterial(req); // shared per tier — cache-owned, disposeGroup leaves it alone
       const badge = new THREE.Sprite(sMat);
       badge.scale.set(S * 0.7, S * 0.35, 1);
       badge.position.set(worldX(c), worldY(r), Z.face);
@@ -1316,6 +1328,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       rockInst[bucket] = [];
     }
     for (const [, t] of badgeTextures) t.dispose();
+    for (const [, m] of badgeMats) THREE.Material.prototype.dispose.call(m);
+    badgeMats.clear();
     for (const [, m] of oreMats) m.dispose();
     for (const m of [gasMat, laneCoreMat, powerCoreMat, casingMat, umbCasingMat, umbCoreMat,
       frameMat, ringSolidMat, ringEmptyMat, padOkMat, padBadMat, scanMat, partMat,
