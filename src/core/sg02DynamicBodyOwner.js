@@ -90,6 +90,15 @@ const MAX_CONTACT_DV = 40;       // wu/s of contact-sourced linear delta-v per t
 const MAX_CONTACT_DW = 2.0;      // rad/s of contact-sourced yaw-rate delta per tick
 const SANE_MAX_YAW_RATE = 6.0;   // absolute yaw-rate ceiling, above every legit tether clamp
 
+// Rank-1 CCD gate (physics-spike diagnosis): CCD on every craft × dense static fields makes
+// Rapier TOI work bursty/super-linear. Reserve CCD for genuine fast movers — projectiles
+// always (mirrors legacy rapierCollisionWorld wantsCcd), boosting craft, and craft above the
+// enable speed; hysteresis keeps the gate from flapping around the band. Idle-craft contacts
+// are unchanged: below the gate a body moves < 2.5 wu/tick against ≥10 wu collider radii, so
+// discrete collision sees the same contacts CCD would have caught.
+const CCD_GATE_ENABLE_SPEED = 150;   // wu/s, above every authored cruise max (~147)
+const CCD_GATE_DISABLE_SPEED = 120;  // hysteresis floor while enabled
+
 const RAPIER_COMPAT_INIT_WARNING = 'using deprecated parameters for the initialization function';
 let rapierInitPromise = null;
 
@@ -124,6 +133,7 @@ export class Sg02DynamicBodyOwner {
     this.attachments = new Map();
     this.captureContactImpacts = options.captureContactImpacts !== false;
     this._colliderOwners = new Map();
+    this._ghostProjectilePool = new Map();
     this._contactImpacts = [];
     this._eventQueue = this.captureContactImpacts && typeof RAPIER.EventQueue === 'function'
       ? new RAPIER.EventQueue(true) : null;
@@ -290,6 +300,13 @@ export class Sg02DynamicBodyOwner {
     for (const attachment of this.attachments.values()) this._removeAttachmentJoints(attachment);
     this.attachments.clear();
     for (const [id, rec] of this.records) this._removeRecord(id, rec);
+    for (const bucket of this._ghostProjectilePool.values()) {
+      for (const entry of bucket) {
+        for (const collider of entry.colliders) this.world.removeCollider(collider, false);
+        this.world.removeRigidBody(entry.body);
+      }
+    }
+    this._ghostProjectilePool.clear();
     if (this.world && typeof this.world.free === 'function') this.world.free();
     if (this._eventQueue && typeof this._eventQueue.free === 'function') this._eventQueue.free();
     this._eventQueue = null;
@@ -590,14 +607,35 @@ export class Sg02DynamicBodyOwner {
       );
     }
 
-    const body = this.world.createRigidBody(desc);
-    // Compound planar collision proxies (PQ-008): entities declaring a collisionProxyManifest get
-    // a bounded static collider SET registered once at body creation — never per-frame rebuilds.
-    const proxyManifest = spec.dynamic ? null : resolveCollisionProxyManifest(entity);
-    const colliderDescs = proxyManifest
-      ? buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec, this.captureContactImpacts)
-      : [buildBallColliderDesc(this.RAPIER, spec, material, this.captureContactImpacts)];
-    const colliders = colliderDescs.map((colliderDesc) => this.world.createCollider(colliderDesc, body));
+    // Ghost projectile bodies join no contact pairs, so a retired body is interchangeable with
+    // a fresh one at the same shape/mass key. Reuse skips the per-shot createRigidBody +
+    // createCollider WASM burst; the pose/velocity reset below restores the exact creation-desc
+    // state, and with zero gravity, zero damping, and no contacts the motion is identical.
+    const ghostPoolKey = spec.dynamic && material.ghost && spec.material === 'projectile'
+      ? ghostProjectilePoolKey(spec)
+      : null;
+    const pooled = ghostPoolKey ? this._takePooledGhostBody(ghostPoolKey) : null;
+    let body;
+    let colliders;
+    let proxyManifest = null;
+    if (pooled) {
+      body = pooled.body;
+      colliders = pooled.colliders;
+      body.setTranslation({ x: posX, y: 0, z: posZ }, true);
+      body.setRotation(quatFromYaw(finite(entity.rot)), true);
+      body.setLinvel({ x: vel.x, y: 0, z: vel.z }, true);
+      body.setAngvel({ x: 0, y: finite(entity.angVel), z: 0 }, true);
+      body.setEnabled(true);
+    } else {
+      body = this.world.createRigidBody(desc);
+      // Compound planar collision proxies (PQ-008): entities declaring a collisionProxyManifest get
+      // a bounded static collider SET registered once at body creation — never per-frame rebuilds.
+      proxyManifest = spec.dynamic ? null : resolveCollisionProxyManifest(entity);
+      const colliderDescs = proxyManifest
+        ? buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec, this.captureContactImpacts)
+        : [buildBallColliderDesc(this.RAPIER, spec, material, this.captureContactImpacts)];
+      colliders = colliderDescs.map((colliderDesc) => this.world.createCollider(colliderDesc, body));
+    }
     const collider = colliders[0];
     const ccdEnabled = typeof body.isCcdEnabled === 'function' ? body.isCcdEnabled() : !!spec.ccd;
     const record = {
@@ -609,6 +647,7 @@ export class Sg02DynamicBodyOwner {
       colliders,
       ccdEnabled,
       proxyId: proxyManifest ? proxyManifest.id : null,
+      ghostPoolKey,
       appliedForce: zero3(),
       appliedTorque: zero3(),
       controlForce: zero3(),
@@ -644,12 +683,31 @@ export class Sg02DynamicBodyOwner {
     }
     this.dynamicRecords.delete(rec);
     const colliders = Array.isArray(rec.colliders) && rec.colliders.length ? rec.colliders : [rec.collider];
+    if (rec.ghostPoolKey != null && typeof rec.body.setEnabled === 'function') {
+      // Retire, don't free: disabled bodies/colliders leave the broad phase and the solver.
+      rec.body.setEnabled(false);
+      let bucket = this._ghostProjectilePool.get(rec.ghostPoolKey);
+      if (!bucket) {
+        bucket = [];
+        this._ghostProjectilePool.set(rec.ghostPoolKey, bucket);
+      }
+      bucket.push({ body: rec.body, colliders });
+      for (const collider of colliders) this._colliderOwners.delete(collider.handle);
+      this.records.delete(id);
+      return;
+    }
     for (const collider of colliders) {
       this._colliderOwners.delete(collider.handle);
       this.world.removeCollider(collider, false);
     }
     this.world.removeRigidBody(rec.body);
     this.records.delete(id);
+  }
+
+  _takePooledGhostBody(key) {
+    const bucket = this._ghostProjectilePool.get(key);
+    if (!bucket || !bucket.length) return null;
+    return bucket.pop();
   }
 
   _syncRecord(entity, spec) {
@@ -661,17 +719,42 @@ export class Sg02DynamicBodyOwner {
       if (rec && rec.proxyId === proxyId && massPropertiesOnlyChanged(rec, spec) && this._updateMassPropertiesInPlace(rec, spec)) {
         rec.entity = entity;
         this._maybeResyncBodyPose(rec, entity);
+        this._applyCcdGate(rec, entity);
         return rec;
       }
       if (rec) this._removeRecord(entity.id, rec);
       const next = this._createRecord(entity, spec);
       this.records.set(entity.id, next);
       if (next.spec.dynamic) this.dynamicRecords.add(next);
+      this._applyCcdGate(next, entity);
       return next;
     }
     rec.entity = entity;
     this._maybeResyncBodyPose(rec, entity);
+    this._applyCcdGate(rec, entity);
     return rec;
+  }
+
+  // Rank-1 CCD gate: reevaluate CCD on every sync from live speed/boost state, body-level only.
+  // spec.ccd authoring stays intact (no record rebuilds); authored ccd:false is never overridden.
+  _applyCcdGate(rec, entity) {
+    if (!rec || !rec.spec.dynamic || !rec.spec.ccd) return;
+    const type = entity.type;
+    let desired = rec.ccdEnabled;
+    if (type === 'projectile') {
+      desired = true;
+    } else if (type === 'ship' || type === 'drone' || type === 'payload') {
+      if (entity.flags && entity.flags.boosting) {
+        desired = true;
+      } else {
+        const vel = entity.vel;
+        const speed = vel ? Math.hypot(finite(vel.x), finite(vel.z)) : 0;
+        desired = rec.ccdEnabled ? speed >= CCD_GATE_DISABLE_SPEED : speed > CCD_GATE_ENABLE_SPEED;
+      }
+    }
+    if (desired === rec.ccdEnabled) return;
+    if (typeof rec.body.enableCcd === 'function') rec.body.enableCcd(desired);
+    rec.ccdEnabled = desired;
   }
 
   _captureContactImpacts() {
@@ -1603,6 +1686,11 @@ function recordMatchesSpec(rec, spec) {
 function proxyIdForEntity(entity) {
   const manifest = resolveCollisionProxyManifest(entity);
   return manifest ? manifest.id : null;
+}
+
+function ghostProjectilePoolKey(spec) {
+  const com = spec.centerOfMass || {};
+  return [spec.radius, spec.mass, spec.inertiaY, spec.ccd ? 1 : 0, finite(com.x), finite(com.z)].join('|');
 }
 
 function buildBallColliderDesc(R, spec, material, captureContactImpacts = true) {

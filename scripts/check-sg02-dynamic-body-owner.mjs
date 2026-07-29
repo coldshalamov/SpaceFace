@@ -24,6 +24,8 @@ const layeredFirst = await runLayeredSyncScenario();
 const layeredSecond = await runLayeredSyncScenario();
 const combatFirst = await runCombatKernelScenario();
 const combatSecond = await runCombatKernelScenario();
+const ccdGateFirst = await runCcdGateScenario();
+const ccdGateSecond = await runCcdGateScenario();
 
 assert.deepEqual(second.hash, first.hash, 'SG-02 dynamic owner lab should replay to the same quantized hash');
 assert.deepEqual(second.snapshot, first.snapshot, 'SG-02 dynamic owner lab snapshots should be stable');
@@ -33,6 +35,8 @@ assert.deepEqual(layeredSecond.hash, layeredFirst.hash, 'SG-02 layered body sync
 assert.deepEqual(layeredSecond.snapshot, layeredFirst.snapshot, 'SG-02 layered body sync snapshots should be stable');
 assert.deepEqual(combatSecond.compactTrace, combatFirst.compactTrace, 'SG-03 kernel trace over SG-02 port should be deterministic');
 assert.deepEqual(combatSecond.snapshot, combatFirst.snapshot, 'SG-03 kernel over SG-02 port should replay to the same body snapshot');
+assert.deepEqual(ccdGateSecond.hash, ccdGateFirst.hash, 'CCD gating and ghost projectile pooling should replay deterministically');
+assert.deepEqual(ccdGateSecond.snapshot, ccdGateFirst.snapshot, 'CCD gating and ghost projectile pooling snapshots should be stable');
 
 console.log('SG-02 dynamic body owner checks OK');
 
@@ -46,7 +50,7 @@ async function runScenario() {
     assert.equal(initialDiagnostics.schemaVersion, SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION, 'diagnostics should be versioned');
     assert.equal(initialDiagnostics.bodies, 1, 'lab should create one Rapier body');
     assert.equal(initialDiagnostics.dynamicBodies, 1, 'ship should be a dynamic body');
-    assert.equal(initialDiagnostics.ccdBodies, 1, 'ship should preserve CCD authoring');
+    assert.equal(initialDiagnostics.ccdBodies, 0, 'idle ship should have CCD gated off at sync');
 
     writePhysicsControl(ship, {
       source: 'sg02-dynamic-owner-check',
@@ -294,6 +298,72 @@ async function runCombatKernelScenario() {
   }
 }
 
+async function runCcdGateScenario() {
+  const ship = makeShip(909, 0);
+  ship.flags = {};
+  const owner = await createSg02DynamicBodyOwner({ fixedDt: 1 / 60, quantum: 1e-5 });
+  try {
+    owner.syncFromEntities([ship]);
+    assert.equal(owner.diagnostics().ccdBodies, 0, 'idle ship should keep CCD gated off');
+    ship.vel.x = 200;
+    owner.syncFromEntities([ship]);
+    assert.equal(owner.diagnostics().ccdBodies, 1, 'ship above the enable speed should enable CCD');
+    ship.vel.x = 130;
+    owner.syncFromEntities([ship]);
+    assert.equal(owner.diagnostics().ccdBodies, 1, 'CCD hysteresis should hold inside the gate band');
+    ship.vel.x = 100;
+    owner.syncFromEntities([ship]);
+    assert.equal(owner.diagnostics().ccdBodies, 0, 'ship below the hysteresis floor should drop CCD');
+    ship.vel.x = 0;
+    ship.flags.boosting = true;
+    owner.syncFromEntities([ship]);
+    assert.equal(owner.diagnostics().ccdBodies, 1, 'boosting ship should enable CCD');
+    ship.flags.boosting = false;
+    owner.syncFromEntities([ship]);
+    assert.equal(owner.diagnostics().ccdBodies, 0, 'ending boost should re-gate an idle ship CCD off');
+
+    const volley1a = makeProjectile(910, { x: 40, z: 0 }, { x: 260, z: 0 });
+    const volley1b = makeProjectile(911, { x: 40, z: 5 }, { x: 260, z: 0 });
+    owner.syncFromEntities([ship, volley1a, volley1b]);
+    assert.equal(owner.diagnostics().ccdBodies, 2, 'projectiles should always keep CCD');
+    assert.equal(owner.diagnostics().bodies, 3, 'volley should register one body per live entity');
+    for (let i = 0; i < 10; i++) owner.step(1 / 60);
+    volley1a.alive = false;
+    volley1b.alive = false;
+    owner.syncFromEntities([ship]);
+    assert.equal(owner.diagnostics().bodies, 1, 'retired projectiles should leave the live body set');
+    const volley2a = makeProjectile(912, { x: 40, z: 0 }, { x: 260, z: 0 });
+    const volley2b = makeProjectile(913, { x: 40, z: 5 }, { x: 260, z: 0 });
+    owner.syncFromEntities([ship, volley2a, volley2b]);
+    assert.equal(owner.diagnostics().bodies, 3, 'second volley should re-register from the ghost body pool');
+    assert.equal(owner.diagnostics().ccdBodies, 2, 'pooled projectile bodies should keep CCD');
+    for (let i = 0; i < 10; i++) owner.step(1 / 60);
+    const snapshot = owner.quantizedSnapshot();
+    assert.equal(snapshot.length, 3, 'snapshot should cover ship plus live volley');
+    for (const entry of snapshot) assertFiniteSnapshot(entry);
+    return { snapshot, hash: hashSnapshot(snapshot) };
+  } finally {
+    owner.dispose();
+  }
+}
+
+function makeProjectile(id, pos, vel) {
+  return {
+    id,
+    type: 'projectile',
+    alive: true,
+    collides: true,
+    radius: 1,
+    ownerId: 47,
+    pos: { x: pos.x, z: pos.z },
+    vel: { x: vel.x, z: vel.z },
+    rot: 0,
+    angVel: 0,
+    flags: {},
+    data: {},
+  };
+}
+
 function makeShip(id = 47, x = 0) {
   return {
     id,
@@ -394,7 +464,7 @@ function assertAttachmentTelemetry(value, restLength) {
 function assertTelemetry(value) {
   assert(value, 'telemetry should be published');
   assert.equal(value.dynamic, true, 'telemetry should preserve dynamic body state');
-  assert.equal(value.ccd, true, 'telemetry should preserve CCD state');
+  assert.equal(typeof value.ccd, 'boolean', 'telemetry should report the gated CCD state');
   for (const field of ['force', 'torque', 'linearAcceleration']) {
     assertVectorFinite(value[field], `telemetry ${field} should be finite`);
   }
