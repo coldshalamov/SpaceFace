@@ -51,7 +51,10 @@ import {
 } from './precompile.js';
 import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
-import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
+import {
+  invalidateShadowCasterPolicy,
+  syncShadowCasterPolicy,
+} from './shadowCasterPolicy.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
@@ -650,24 +653,6 @@ function requestAuthoredUpgrade(mesh, renderer, scene) {
   catch (error) { console.warn('[render] authored asset upgrade request failed', error); }
 }
 
-function configureShadowCasters(root) {
-  configureRealtimeCanopyMaterials(root);
-  root.traverse((o) => {
-    if (!o.isMesh) return;
-    if (!o.visible) { o.castShadow = false; o.receiveShadow = false; return; }
-    if (o.userData && o.userData.spacefaceNoShadow) { o.castShadow = false; o.receiveShadow = false; return; }
-    if (o.userData && o.userData.sharedContactShadow) { o.castShadow = false; return; }
-    const mats = Array.isArray(o.material) ? o.material : [o.material];
-    const casts = mats.some((m) => m && !m.transparent && m.depthWrite !== false && (m.opacity == null || m.opacity >= 1) && m.blending === THREE.NormalBlending);
-    o.castShadow = casts;
-    // GR-2: opaque hulls also RECEIVE shadows — a ship resting on a station pad should be shaded by
-    // the station's superstructure, and ships in formation should shadow each other. The same opacity
-    // test as casting: transparent shields/engine-plumes neither cast nor receive (they'd self-shadow
-    // and flicker). This is what gives ships groundedness beyond the fake contact-shadow disc.
-    o.receiveShadow = casts;
-  });
-}
-
 const _plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const _ray = new THREE.Raycaster();
 const _pt = new THREE.Vector3();
@@ -740,7 +725,12 @@ export const render = {
       // visible identity. Preview-only factories may still opt into hidden diagnostic geometry.
       directAuthoredMount: true,
       onAuthoredAssetSwap: ({ boundary, root } = {}) => {
-        configureRealtimeCanopyMaterials(boundary || root);
+        const target = boundary || root;
+        if (target) {
+          invalidateShadowCasterPolicy(target);
+          syncShadowCasterPolicy(target, target.userData && target.userData.lod
+            ? target.userData.lod.level : null);
+        }
         this._shadowReceiversDirty = true;
       },
     });
@@ -943,6 +933,7 @@ export const render = {
       hlodDetailedVisible: 0,
       hlodProxyVisible: 0,
       hlodObjectsSwapped: 0,
+      shadowPolicyRefreshes: 0,
     };
     state.render.presentationWorld = this._presentationWorld.getDiagnostics();
     state.render.presentationPublisher = this._presentationPublisher.getDiagnostics();
@@ -1667,7 +1658,10 @@ export const render = {
       const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
       m.position.set(local.x, 0, local.z);
       m.rotation.y = -e.rot;
-      if (e.type === 'ship' || e.type === 'station') { attachContactShadow(m, e); configureShadowCasters(m); }
+      if (e.type === 'ship' || e.type === 'station') {
+        attachContactShadow(m, e);
+        syncShadowCasterPolicy(m, m.userData && m.userData.lod ? m.userData.lod.level : null);
+      }
       e.mesh = m; e.view = { root: m };
       this._meshes.set(e.id, m);
       this.scene.add(m);
@@ -1714,7 +1708,10 @@ export const render = {
     const hull = m.userData && m.userData.hull;
     if (hull && e.bank != null) hull.rotation.x = e.bank;
     if (hull && e.pitch != null) hull.rotation.z = e.pitch;
-    if (e.type === 'ship' || e.type === 'station') { attachContactShadow(m, e); configureShadowCasters(m); }
+    if (e.type === 'ship' || e.type === 'station') {
+      attachContactShadow(m, e);
+      syncShadowCasterPolicy(m, m.userData && m.userData.lod ? m.userData.lod.level : null);
+    }
     e.mesh = m; e.view = { root: m };
     this._meshes.set(id, m);
     this.scene.add(m);
@@ -1851,6 +1848,7 @@ export const render = {
     let hlodDetailedVisible = 0;
     let hlodProxyVisible = 0;
     let hlodObjectsSwapped = 0;
+    let shadowPolicyRefreshes = 0;
 
     beginRenderEntityFrame(this._entityFrame);
 
@@ -1906,7 +1904,7 @@ export const render = {
         const px = projectedWidthPx(mesh.position, lodRadius, this.cam.obj, this.viewport);
         const level = entity.id === this.state.playerId ? 'lod0' : userData.lod.resolve(px);
         userData.updateLod(level);
-        if (userData.hlod) configureShadowCasters(mesh);
+        if (userData.hlod && syncShadowCasterPolicy(mesh, level)) shadowPolicyRefreshes++;
       }
 
       classifyRenderEntity(this._entityFrame, entity, mesh, false);
@@ -1974,6 +1972,7 @@ export const render = {
     hlodDiagnostics.hlodDetailedVisible = hlodDetailedVisible;
     hlodDiagnostics.hlodProxyVisible = hlodProxyVisible;
     hlodDiagnostics.hlodObjectsSwapped = hlodObjectsSwapped;
+    hlodDiagnostics.shadowPolicyRefreshes = shadowPolicyRefreshes;
     this.state.render.hlod = hlodDiagnostics;
 
     const frameDiagnostics = this.state.render.entityFrame
