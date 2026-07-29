@@ -1,0 +1,548 @@
+{
+  "packet": "PQ-019",
+  "leafId": "PQ-019.facility-embodiment",
+  "schema": "spaceface.pq019a.presentationStills.v1",
+  "evidenceClass": "presentation-stills",
+  "notMeasured": [
+    "frame timing",
+    "draw calls",
+    "shader program counts",
+    "GPU admission/residency",
+    "matched traffic performance",
+    "Electron parity"
+  ],
+  "note": "Presentation stills only. This manifest is not performance evidence and records no timings.",
+  "sectorId": "sector_tethys_junction",
+  "scheduleId": "pq019a-capture-route",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "cameraPolicy": "game-camera close/default/far at zoom 48/72/140; default 72 is the shipped gameplay zoom",
+  "framings": [
+    {
+      "name": "close",
+      "zoomRadii": 3,
+      "offsetRadii": 1.3
+    },
+    {
+      "name": "default",
+      "zoomRadii": 5.5,
+      "offsetRadii": 2
+    },
+    {
+      "name": "far",
+      "zoomRadii": 11,
+      "offsetRadii": 3.2
+    }
+  ],
+  "route": "main menu -> New Game -> Launch -> world.enterSector(sector_tethys_junction) -> heist:requestLaunchSchedule",
+  "launchCueMoments": [
+    {
+      "moment": "t_minus_30",
+      "tMinusS": 30,
+      "text": "Tethys Surface Launcher: cargo launch in 30s"
+    },
+    {
+      "moment": "t_minus_15",
+      "tMinusS": 15,
+      "text": "Tethys Surface Launcher: cargo launch in 15s"
+    },
+    {
+      "moment": "t_minus_5",
+      "tMinusS": 5,
+      "text": "Tethys Surface Launcher: cargo launch in 5s"
+    },
+    {
+      "moment": "away",
+      "tMinusS": 0,
+      "text": "Cargo capsule away — outbound to Concord Lawful Catcher"
+    }
+  ],
+  "captures": [
+    {
+      "subject": "heist_launcher",
+      "label": "Tethys Surface Launcher",
+      "framing": "close",
+      "route": "New Game -> sector_tethys_junction -> heist_launcher",
+      "seed": 1347498297,
+      "receipt": {
+        "subjectId": 83,
+        "subjectRadius": 20,
+        "subjectPos": {
+          "x": 13803,
+          "z": 6180
+        },
+        "playerPos": {
+          "x": 13779.9541015625,
+          "z": 6188.6650390625
+        },
+        "playerOffset": 16.12,
+        "subjectNdc": {
+          "x": -0.42706478723005875,
+          "y": -0.21207691020447694
+        },
+        "cameraZoom": 60,
+        "presentationAdmission": "ready",
+        "authoredAssetState": "authored",
+        "authoredReadableFallbackRetained": false,
+        "placeId": "place_claim_outpost_relay",
+        "authoredPayloadAssetId": null,
+        "visibleMeshes": 1,
+        "sectorId": "sector_tethys_junction",
+        "simTime": 5.699999999999985
+      },
+      "file": ".devshots/pq019a-acceptance/heist_launcher-close.png",
+      "bytes": 565070,
+      "sha256": "fcf1908ed8d26e7872448b79034eef2bc6a8b0c1424c5b814a644a9dd975945d"
+    },
+    {
+      "subject": "heist_launcher",
+      "label": "Tethys Surface Launcher",
+      "framing": "default",
+      "route": "New Game -> sector_tethys_junction -> heist_launcher",
+      "seed": 1347498297,
+      "receipt": {
+        "subjectId": 83,
+        "subjectRadius": 20,
+        "subjectPos": {
+          "x": 13803,
+          "z": 6180
+        },
+        "playerPos": {
+          "x": 13765.7041015625,
+          "z": 6194.45703125
+        },
+        "playerOffset": 40,
+        "subjectNdc": {
+          "x": -0.5402511473345988,
+          "y": -0.27313400877944116
+        },
+        "cameraZoom": 110,
+        "presentationAdmission": "ready",
+        "authoredAssetState": "authored",
+        "authoredReadableFallbackRetained": false,
+        "placeId": "place_claim_outpost_relay",
+        "authoredPayloadAssetId": null,
+        "visibleMeshes": 1,
+        "sectorId": "sector_tethys_junction",
+        "simTime": 7.849999999999977
+      },
+      "file": ".devshots/pq019a-acceptance/heist_launcher-default.png",
+      "bytes": 497629,
+      "sha256": "49261b9138624a27084daf2c7cc92e04147333d76ba2fc59d59905ace782a632"
+    },
+    {
+      "subject": "heist_launcher",
+      "label": "Tethys Surface Launcher",
+      "framing": "far",
+      "route": "New Game -> sector_tethys_junction -> heist_launcher",
+      "seed": 1347498297,
+      "receipt": {
+        "subjectId": 83,
+        "subjectRadius": 20,
+        "subjectPos": {
+          "x": 13803,
+          "z": 6180
+        },
+        "playerPos": {
+          "x": 13743.326171875,
+          "z": 6203.1312255859375
+        },
+        "playerOffset": 64,
+        "subjectNdc": {
+          "x": -0.42619404560271296,
+          "y": -0.21213659505747004
+        },
+        "cameraZoom": 220,
+        "presentationAdmission": "ready",
+        "authoredAssetState": "authored",
+        "authoredReadableFallbackRetained": false,
+        "placeId": "place_claim_outpost_relay",
+        "authoredPayloadAssetId": null,
+        "visibleMeshes": 1,
+        "sectorId": "sector_tethys_junction",
+        "simTime": 9.733333333333396
+      },
+      "file": ".devshots/pq019a-acceptance/heist_launcher-far.png",
+      "bytes": 497319,
+      "sha256": "7eb92bfd2bb33f96dac94392b85e2ac72bcab759098f4ccab6bd61f1434ce7e3"
+    },
+    {
+      "subject": "lawful_catcher",
+      "label": "Concord Lawful Catcher",
+      "framing": "close",
+      "route": "New Game -> sector_tethys_junction -> lawful_catcher",
+      "seed": 1347498297,
+      "receipt": {
+        "subjectId": 85,
+        "subjectRadius": 24,
+        "subjectPos": {
+          "x": 11888,
+          "z": 6922
+        },
+        "playerPos": {
+          "x": 11869.962890625,
+          "z": 6928.9893798828125
+        },
+        "playerOffset": 19.344,
+        "subjectNdc": {
+          "x": -0.37531204563946047,
+          "y": -0.18647220401010245
+        },
+        "cameraZoom": 72,
+        "presentationAdmission": "ready",
+        "authoredAssetState": "authored",
+        "authoredReadableFallbackRetained": false,
+        "placeId": "place_claim_outpost_base",
+        "authoredPayloadAssetId": null,
+        "visibleMeshes": 1,
+        "sectorId": "sector_tethys_junction",
+        "simTime": 15.350000000000342
+      },
+      "file": ".devshots/pq019a-acceptance/lawful_catcher-close.png",
+      "bytes": 431431,
+      "sha256": "efb7fd7d962c4a2983f2646ac8d39fa72362253a7d8ea2ce37019b0bb23de0f4"
+    },
+    {
+      "subject": "lawful_catcher",
+      "label": "Concord Lawful Catcher",
+      "framing": "default",
+      "route": "New Game -> sector_tethys_junction -> lawful_catcher",
+      "seed": 1347498297,
+      "receipt": {
+        "subjectId": 85,
+        "subjectRadius": 24,
+        "subjectPos": {
+          "x": 11888,
+          "z": 6922
+        },
+        "playerPos": {
+          "x": 11843.242919921875,
+          "z": 6939.3433837890625
+        },
+        "playerOffset": 48,
+        "subjectNdc": {
+          "x": -0.5393312071479222,
+          "y": -0.2725545491776373
+        },
+        "cameraZoom": 132,
+        "presentationAdmission": "ready",
+        "authoredAssetState": "authored",
+        "authoredReadableFallbackRetained": false,
+        "placeId": "place_claim_outpost_base",
+        "authoredPayloadAssetId": null,
+        "visibleMeshes": 1,
+        "sectorId": "sector_tethys_junction",
+        "simTime": 17.033333333333648
+      },
+      "file": ".devshots/pq019a-acceptance/lawful_catcher-default.png",
+      "bytes": 400276,
+      "sha256": "02bf582b8056a8f6e5f8be1c99481e0a9dc4c5f69a923fd6ee69fcdf647104c6"
+    },
+    {
+      "subject": "lawful_catcher",
+      "label": "Concord Lawful Catcher",
+      "framing": "far",
+      "route": "New Game -> sector_tethys_junction -> lawful_catcher",
+      "seed": 1347498297,
+      "receipt": {
+        "subjectId": 85,
+        "subjectRadius": 24,
+        "subjectPos": {
+          "x": 11888,
+          "z": 6922
+        },
+        "playerPos": {
+          "x": 11816.388427734375,
+          "z": 6949.74951171875
+        },
+        "playerOffset": 76.80000000000001,
+        "subjectNdc": {
+          "x": -0.4262016037001173,
+          "y": -0.21206464745311804
+        },
+        "cameraZoom": 264,
+        "presentationAdmission": "ready",
+        "authoredAssetState": "authored",
+        "authoredReadableFallbackRetained": false,
+        "placeId": "place_claim_outpost_base",
+        "authoredPayloadAssetId": null,
+        "visibleMeshes": 1,
+        "sectorId": "sector_tethys_junction",
+        "simTime": 18.916666666666874
+      },
+      "file": ".devshots/pq019a-acceptance/lawful_catcher-far.png",
+      "bytes": 491174,
+      "sha256": "8e743f31e99912d5139a046dfeb90d5d420a099c5a28361819239fac413c523a"
+    },
+    {
+      "subject": "fence_receiver",
+      "label": "Quiet Fence Receiver",
+      "framing": "close",
+      "route": "New Game -> sector_tethys_junction -> fence_receiver",
+      "seed": 1347498297,
+      "receipt": {
+        "subjectId": 96,
+        "subjectRadius": 24,
+        "subjectPos": {
+          "x": 10968,
+          "z": 8612
+        },
+        "playerPos": {
+          "x": 10942.357177734375,
+          "z": 8605.164306640625
+        },
+        "playerOffset": 31.200000000000003,
+        "subjectNdc": {
+          "x": -0.4546026556866915,
+          "y": -0.03427376911624805
+        },
+        "cameraZoom": 72,
+        "presentationAdmission": "ready",
+        "authoredAssetState": "authored",
+        "authoredReadableFallbackRetained": false,
+        "placeId": "place_claim_outpost_refinery",
+        "authoredPayloadAssetId": null,
+        "visibleMeshes": 1,
+        "sectorId": "sector_tethys_junction",
+        "simTime": 22.183333333333355
+      },
+      "file": ".devshots/pq019a-acceptance/fence_receiver-close.png",
+      "bytes": 502370,
+      "sha256": "730d26f1d9a2a03811f1303c076c2b4b8ab1edac99e68d7fee07b7cd1b5272b6"
+    },
+    {
+      "subject": "fence_receiver",
+      "label": "Quiet Fence Receiver",
+      "framing": "default",
+      "route": "New Game -> sector_tethys_junction -> fence_receiver",
+      "seed": 1347498297,
+      "receipt": {
+        "subjectId": 96,
+        "subjectRadius": 24,
+        "subjectPos": {
+          "x": 10968,
+          "z": 8612
+        },
+        "playerPos": {
+          "x": 10951.89404296875,
+          "z": 8623.515533447266
+        },
+        "playerOffset": 48,
+        "subjectNdc": {
+          "x": 0.053062516296357894,
+          "y": -0.21796427338960034
+        },
+        "cameraZoom": 132,
+        "presentationAdmission": "ready",
+        "authoredAssetState": "authored",
+        "authoredReadableFallbackRetained": false,
+        "placeId": "place_claim_outpost_refinery",
+        "authoredPayloadAssetId": null,
+        "visibleMeshes": 1,
+        "sectorId": "sector_tethys_junction",
+        "simTime": 23.733333333333267
+      },
+      "file": ".devshots/pq019a-acceptance/fence_receiver-default.png",
+      "bytes": 435712,
+      "sha256": "04d9d12d7cc70c937df8a7c55e445892313b58d6f6f7ddebd899df508e46e3f3"
+    },
+    {
+      "subject": "fence_receiver",
+      "label": "Quiet Fence Receiver",
+      "framing": "far",
+      "route": "New Game -> sector_tethys_junction -> fence_receiver",
+      "seed": 1347498297,
+      "receipt": {
+        "subjectId": 96,
+        "subjectRadius": 24,
+        "subjectPos": {
+          "x": 10968,
+          "z": 8612
+        },
+        "playerPos": {
+          "x": 10926.41748046875,
+          "z": 8579.20654296875
+        },
+        "playerOffset": 76.80000000000001,
+        "subjectNdc": {
+          "x": 0.06894918609593506,
+          "y": 0.29040422953030826
+        },
+        "cameraZoom": 264,
+        "presentationAdmission": "ready",
+        "authoredAssetState": "authored",
+        "authoredReadableFallbackRetained": false,
+        "placeId": "place_claim_outpost_refinery",
+        "authoredPayloadAssetId": null,
+        "visibleMeshes": 1,
+        "sectorId": "sector_tethys_junction",
+        "simTime": 24.683333333333213
+      },
+      "file": ".devshots/pq019a-acceptance/fence_receiver-far.png",
+      "bytes": 409550,
+      "sha256": "0762c5eeb0193124678c4bacdc1bcbc2eea212e2feb7dd1eb09deda7d15009af"
+    },
+    {
+      "subject": "launch_schedule_cue",
+      "label": "player-visible T-minus launch cue on the one-voice floor",
+      "framing": "default",
+      "route": "New Game -> sector_tethys_junction -> heist:requestLaunchSchedule",
+      "seed": 1347498297,
+      "receipt": {
+        "pillText": "Tethys Surface Launcher: cargo launch in 30s",
+        "vantage": {
+          "x": 12655.555932996966,
+          "z": 6624.511279693361,
+          "distanceFromLauncher": 1224.282232972334
+        }
+      },
+      "file": ".devshots/pq019a-acceptance/launch-cue-tminus.png",
+      "bytes": 431531,
+      "sha256": "72c606ec921bc48fa2535742d8ed87095f03f8e5fb0b9b41d48997d227951115"
+    },
+    {
+      "subject": "cargo_capsule",
+      "label": "in-flight authored cargo capsule at closest approach (clock stopped for the still)",
+      "framing": "close",
+      "route": "New Game -> sector_tethys_junction -> scheduled launch -> in flight",
+      "seed": 1347498297,
+      "clockStoppedForStill": true,
+      "projectionInFrame": false,
+      "flight": {
+        "travelledFromLauncher": 1257.5003369269339,
+        "speedAtFreeze": 41.27996110007532,
+        "separationAtFreeze": 2221.2633709337692,
+        "heldBy": "timeEffects scale 0 (clock stopped, body untouched)",
+        "timeScale": 0
+      },
+      "receipt": {
+        "subjectId": 297,
+        "subjectRadius": 6,
+        "subjectPos": {
+          "x": 12624.50927734375,
+          "z": 6636.3258056640625
+        },
+        "playerPos": {
+          "x": 11141.235107421875,
+          "z": 8289.779373168945
+        },
+        "separationFromPlayer": 2221.2633709337692,
+        "subjectNdc": {
+          "x": 4.385936963473403,
+          "y": 6.7265673025073065
+        },
+        "cameraZoom": 330,
+        "presentationAdmission": "ready",
+        "authoredAssetState": "authored",
+        "authoredPayloadAssetId": "pod_cargo_container",
+        "visibleMeshes": 1,
+        "sectorId": "sector_tethys_junction",
+        "simTime": 72.83333333333049
+      },
+      "file": ".devshots/pq019a-acceptance/cargo-capsule-inflight-close.png",
+      "bytes": 477276,
+      "sha256": "bbc89d4c370bbbe86395e18da2fc4de39dd4c32c22d0878d9c70463bedfc1913"
+    },
+    {
+      "subject": "cargo_capsule",
+      "label": "in-flight authored cargo capsule at closest approach (clock stopped for the still)",
+      "framing": "default",
+      "route": "New Game -> sector_tethys_junction -> scheduled launch -> in flight",
+      "seed": 1347498297,
+      "clockStoppedForStill": true,
+      "projectionInFrame": false,
+      "flight": {
+        "travelledFromLauncher": 1257.5003369269339,
+        "speedAtFreeze": 41.27996110007532,
+        "separationAtFreeze": 2221.2633709337692,
+        "heldBy": "timeEffects scale 0 (clock stopped, body untouched)",
+        "timeScale": 0
+      },
+      "receipt": {
+        "subjectId": 297,
+        "subjectRadius": 6,
+        "subjectPos": {
+          "x": 12624.50927734375,
+          "z": 6636.3258056640625
+        },
+        "playerPos": {
+          "x": 11141.235107421875,
+          "z": 8289.779373168945
+        },
+        "separationFromPlayer": 2221.2633709337692,
+        "subjectNdc": {
+          "x": 4.405463075383872,
+          "y": 6.7529917361414125
+        },
+        "cameraZoom": 330,
+        "presentationAdmission": "ready",
+        "authoredAssetState": "authored",
+        "authoredPayloadAssetId": "pod_cargo_container",
+        "visibleMeshes": 1,
+        "sectorId": "sector_tethys_junction",
+        "simTime": 72.83333333333049
+      },
+      "file": ".devshots/pq019a-acceptance/cargo-capsule-inflight-default.png",
+      "bytes": 469112,
+      "sha256": "98240ce59f70c0a622ae9378253e3504e8e246c51f7b6a5fbec4a9993ac294d7"
+    },
+    {
+      "subject": "cargo_capsule",
+      "label": "in-flight authored cargo capsule at closest approach (clock stopped for the still)",
+      "framing": "far",
+      "route": "New Game -> sector_tethys_junction -> scheduled launch -> in flight",
+      "seed": 1347498297,
+      "clockStoppedForStill": true,
+      "projectionInFrame": false,
+      "flight": {
+        "travelledFromLauncher": 1257.5003369269339,
+        "speedAtFreeze": 41.27996110007532,
+        "separationAtFreeze": 2221.2633709337692,
+        "heldBy": "timeEffects scale 0 (clock stopped, body untouched)",
+        "timeScale": 0
+      },
+      "receipt": {
+        "subjectId": 297,
+        "subjectRadius": 6,
+        "subjectPos": {
+          "x": 12624.50927734375,
+          "z": 6636.3258056640625
+        },
+        "playerPos": {
+          "x": 11141.235107421875,
+          "z": 8289.779373168945
+        },
+        "separationFromPlayer": 2221.2633709337692,
+        "subjectNdc": {
+          "x": 4.4268426378597665,
+          "y": 6.785944619650366
+        },
+        "cameraZoom": 330,
+        "presentationAdmission": "ready",
+        "authoredAssetState": "authored",
+        "authoredPayloadAssetId": "pod_cargo_container",
+        "visibleMeshes": 1,
+        "sectorId": "sector_tethys_junction",
+        "simTime": 72.83333333333049
+      },
+      "file": ".devshots/pq019a-acceptance/cargo-capsule-inflight-far.png",
+      "bytes": 469113,
+      "sha256": "97e0f62abf9c731f1b63a5d5444121da8e81461d5b64ff12e0a555a365898c2d"
+    }
+  ],
+  "pageErrors": [],
+  "consoleMessages": [
+    {
+      "type": "warning",
+      "text": "THREE.WebGLProgram: Program Info Log: (137,1): warning X4000: use of potentially uninitialized variable (f_surfaceColor)\n\n\n\u0000"
+    },
+    {
+      "type": "warning",
+      "text": "THREE.WebGLProgram: Program Info Log: (210,81-129): warning X4122: sum of 0.996094 and -2.98545e-017 cannot be represented accurately in double precision\n(209,37-61): warning X4122: sum of 1 and -1.49272e-017 cannot be represented accurately in double precision\n(210,82-106): warning X4122: sum of 1 and -1.49272e-017 cannot be represented accurately in double precision\n(209,37-61): warning X4122: sum of 1 and -1.66644e-018 cannot be represented accurately in double precision\n(210,82-106): warning X4122: sum of 1 and -1.66644e-018 cannot be represented accurately in double precision\n\n\n\u0000"
+    }
+  ],
+  "declaredSeedMetadata": 1347498297,
+  "seedControl": "NOT APPLIED by the unmodified capture harness; it follows the ordinary New Game UI and never passes this number into game:new. The H1 committed copy records this correction so the number cannot be cited as deterministic evidence."
+}

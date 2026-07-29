@@ -24,7 +24,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 |---|---|---|---|
 | 1 | headed `check:assets:live` | **PASS** | [row1-assets-live](evidence/h1/row1-assets-live/EVIDENCE.md) |
 | 2 | PQ-021 broker cell + Electron parity | **PASS** | [row2-pq021-ledger](evidence/h1/row2-pq021-ledger/EVIDENCE.md) |
-| 3 | PQ-019A presentation + counts | _pending_ | |
+| 3 | PQ-019A presentation + counts | **FAIL — HARNESS (facility/count evidence survives; capsule stills missed subject)** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
 | 4 | `pq019-surface-heist` broker manifest | _pending_ | |
 | 5 | PQ-020 Ceres functional route | _pending_ | |
 | 6 | PQ-023 cues in motion | _pending_ | |
@@ -58,10 +58,15 @@ because it renders".
 physical cargo capsule read as four *distinct, purposeful* facilities — or as interchangeable
 greebled boxes? Is the capsule legible as a thing you could steal?
 
-**Evidence:** _pending (row 3)_
+**Evidence:** [row 3 presentation and counts](evidence/h1/row3-pq019a-presentation/EVIDENCE.md).
+The facility stills and all functional counts are reviewable. The capsule question is **not
+answerable from H1**: the one attempt missed the moving subject at all three framings (HARNESS), so
+do not mistake its player/planet frames for capsule art evidence.
 
-**Unblocks:** the evidence rows in `receipts/PQ-019A-facility-embodiment-REPORT.md`, and with
-Decision 6 the parent PQ-019 promotion (including the W03/W04/W05 alias replacement).
+**Unblocks:** a facility-only verdict now; the capsule half and therefore full PQ-019A art closure
+remain blocked on a valid future capture. Once that exists, it closes the remaining evidence rows in
+`receipts/PQ-019A-facility-embodiment-REPORT.md` and, with Decision 6, unblocks the parent PQ-019
+promotion (including the W03/W04/W05 alias replacement).
 
 **Verdict:** _____________
 
