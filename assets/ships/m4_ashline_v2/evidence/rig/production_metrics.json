@@ -219,7 +219,7 @@
     "lodBuildStats": [
       {
         "lod": "lod0",
-        "decimate_ratio": 1.0,
+        "decimate_ratio": 1,
         "mesh_count": 9,
         "triangles": 19774,
         "meshes": [
@@ -429,7 +429,8 @@
         10.574089050292969
       ]
     },
-    "sha256": "E46AAFCB5A5BEB40B24918248A03704FFAEF10D342324C3D0E02893898B7B892"
+    "sha256": "E46AAFCB5A5BEB40B24918248A03704FFAEF10D342324C3D0E02893898B7B892",
+    "evidenceScope": "geometry-and-structure; visual evidence bound separately"
   },
   "renders": [
     "assets/ships/m4_ashline_v2/evidence/rig/renders/forward_34.png",
@@ -443,5 +444,10 @@
     "assets/ships/m4_ashline_v2/evidence/rig/renders/silhouette_gray_45px.png",
     "assets/ships/m4_ashline_v2/evidence/rig/renders/top_ortho.png"
   ],
-  "builtAt": "2026-07-30T02:12:05Z"
+  "builtAt": "2026-07-30T02:12:05Z",
+  "evidenceEpoch": {
+    "status": "post-finalize-current",
+    "epochDigest": "D40B2BE67B0DC2470E5AE96D3499E89B3F834F7EC52C1AEB314C0BE14B71A44E",
+    "renderEligibility": "current-exact-source-eligible"
+  }
 }

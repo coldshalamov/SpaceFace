@@ -13,7 +13,7 @@ const RECEIPT_PATH = resolve(
   ROOT,
   'assets/ships/m4_ashline_v2/evidence/family/finalize_report.json',
 );
-const EXPECTED_EPOCH_DIGEST = '0D1A0628F23449E1B04C806FAB101E61F7CC41C6050C677D740A67110A38C098';
+const EXPECTED_EPOCH_DIGEST = 'D40B2BE67B0DC2470E5AE96D3499E89B3F834F7EC52C1AEB314C0BE14B71A44E';
 
 function receipt() {
   const report = JSON.parse(readFileSync(RECEIPT_PATH, 'utf8'));
@@ -40,19 +40,22 @@ test('Ashline V2 receipt binds one exact source/candidate/tool epoch', async () 
   assert.ok(value.tools.some(
     (row) => row.path.endsWith('render_m4_ashline_lode_material_truth.py'),
   ));
+  assert.ok(value.tools.some(
+    (row) => row.path.endsWith('render_m4_ashline_rig_material_truth.py'),
+  ));
 });
 
 test('historical Ashline renders remain preserved but cannot impersonate current evidence', async () => {
   const value = receipt();
-  assert.equal(value.eligibleArtifacts.length, 18);
+  assert.equal(value.eligibleArtifacts.length, 29);
   assert.deepEqual(value.currentAcceptance.perShip, {
     dart: true,
     lode: true,
-    rig: false,
+    rig: true,
   });
-  assert.equal(value.currentAcceptance.visualEvidenceEligible, false);
+  assert.equal(value.currentAcceptance.visualEvidenceEligible, true);
   assert.equal(value.currentAcceptance.historicalArtifactsEligible, false);
-  assert.equal(value.currentAcceptance.requiresCurrentRender, true);
+  assert.equal(value.currentAcceptance.requiresCurrentRender, false);
   const expectedByShip = {
     dart: {
       count: 8,
@@ -63,6 +66,11 @@ test('historical Ashline renders remain preserved but cannot impersonate current
       count: 10,
       pathToken: '/evidence/material_truth_v2/lode/',
       producer: 'tools/blender/render_m4_ashline_lode_material_truth.py',
+    },
+    rig: {
+      count: 11,
+      pathToken: '/evidence/material_truth_v2/rig/',
+      producer: 'tools/blender/render_m4_ashline_rig_material_truth.py',
     },
   };
   for (const [shipKey, expected] of Object.entries(expectedByShip)) {
