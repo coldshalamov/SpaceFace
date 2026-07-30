@@ -66,7 +66,14 @@ materialTruthPreflight:
       interfacesLoadAccessAndHeatPaths: ""
       expectedOpticalResponse: ""
       forbiddenReads: []
-  unchangedQuietZones: []
+  visibleZoneRegister:
+    - zone: ""
+      # outside_supported_view is legal only with supportedViews: [] and never for visible/dominant zones.
+      disposition: blocked # billed | retained_reviewed | outside_supported_view | blocked
+      supportedViews: []
+      dominatesSupportedView: false
+      materialBillOrRetainedReviewEvidence: ""
+  allSupportedViewZonesClassified: false
   fictionDevelopmentAgreement:
     # Required per changed Tier A/B component. Tier C/D may group one repeated manufactured family.
     components:
@@ -78,6 +85,31 @@ materialTruthPreflight:
         developmentMaterialAndLodEvidence: ""
         agreementStatus: pending
   componentReferenceDecision: not_needed # native_imagegen | codex_handoff | blocked:image-generation-capability
+  referenceQualityParity:
+    frozenIdentity:
+      silhouetteEnvelope: ""
+      proportionsAndFootprint: ""
+      orientationAndInterfaces: ""
+      socketsAndClearances: []
+      runtimeRole: ""
+      usefulExistingWork: []
+      allowedLocalChanges: []
+      prohibitedChanges: []
+    qualityAxes:
+      materialDifferentiation: pending
+      manufacturingLogic: pending
+      sectionAndCavityDepth: pending
+      rootedInterfaces: pending
+      scaleHierarchy: pending
+      edgeBehavior: pending
+      causalWear: pending
+      supportedCameraSurfaceResponse: pending
+    decision: pending # keep | revise | revert | blocked
+  wholeAssetCoverage:
+    changedZones: []
+    dominantInheritedOrRetainedZones: []
+    visibleMaterialAllocationEvidence: ""
+    visibleZoneRegisterComplete: false
   surfacedBlenderWorkingScene: ""
   supportedReviewCameras: []
 optionalFailureDiagnostics:
@@ -97,6 +129,7 @@ optionalFailureDiagnostics:
     - component: ""
       sourceCapture: ""
       generatedReference: ""
+      candidateComparisonCrop: ""
       toolAndModel: ""
       promptRecord: ""
       sha256: ""
@@ -105,6 +138,10 @@ optionalFailureDiagnostics:
       rejectedTraits: []
       resemblanceTarget: ""
       clayAndMaterialComparisonEvidence: []
+      identityPreserved: false
+      matchedCameraExposureAndResolution: false
+      qualityAxisResults: {} # met | partial | miss | not_applicable
+      iterationDecision: pending # keep | revise | revert | blocked
 referenceBoard:
   boardPath: ""
   sources: { form: [], construction: [], materials: [], wearAndUse: [], scale: [], lighting: [] }
@@ -197,10 +234,28 @@ The threshold source must name a baseline/profile decision, not a universal tast
   "technicalContractOk": false,
   "gates": {
     "G0": { "status": "pending", "evidence": [], "notes": "" },
-    "G1": { "status": "pending", "evidence": [], "notes": "" },
-    "G2": { "status": "pending", "evidence": [], "notes": "" },
+    "G1": {
+      "status": "pending",
+      "scope": "pending",
+      "reviewedSubjects": [],
+      "evidence": [],
+      "notes": ""
+    },
+    "G2": {
+      "status": "pending",
+      "scope": "pending",
+      "reviewedSubjects": [],
+      "evidence": [],
+      "notes": ""
+    },
     "G3": { "status": "pending", "evidence": [], "notes": "" },
-    "G4": { "status": "pending", "evidence": [], "notes": "" },
+    "G4": {
+      "status": "pending",
+      "scope": "pending",
+      "reviewedSubjects": [],
+      "evidence": [],
+      "notes": ""
+    },
     "G5": { "status": "pending", "evidence": [], "notes": "" },
     "G6": { "status": "pending", "evidence": [], "notes": "" },
     "G7": { "status": "pending", "evidence": [], "notes": "" }
@@ -211,9 +266,16 @@ The threshold source must name a baseline/profile decision, not a universal tast
   "normalRouteEvidence": [],
   "visualAcceptance": {
     "status": "pending",
+    "scope": "pending",
     "reviewer": "",
     "reviewedAt": null,
     "candidateHash": "",
+    "originalResolutionInspected": false,
+    "dominantInheritedOrRetainedZonesReviewed": [],
+    "allSupportedViewZonesClassified": false,
+    "visibleMaterialAllocationEvidence": "",
+    "referenceQualityParityEvidence": [],
+    "iterationDecision": "pending",
     "evidencePacket": "",
     "decisionRationale": ""
   }
@@ -231,10 +293,13 @@ identity, reviewer/date/evidence packet, and decision rationale.
 - baseline defects by severity/gate/region/evidence;
 - substantive work tied to defects;
 - for all changed camera-visible 3D zones: proportional material-truth preflight, material bill,
-  fiction/development agreement, changed/quiet-zone disposition, and material-ID isolation;
+  fiction/development agreement, billed/retained/outside/blocked disposition, and material-ID
+  isolation;
 - for primitive/default failures: the relevant fiction/development agreement and shape-grammar audit;
 - when generated references informed the rebuild: their provenance and side-by-side clay/material
-  comparisons;
+  comparisons, frozen-identity checks, quality-axis matrix, and `keep|revise|revert|blocked`;
+- gate scope (`component|zone|whole_asset`), visible material allocation, dominant inherited/retained
+  zones, and exact-candidate hash-bound visual verdict separate from machine receipts;
 - form/orthographic/game-camera/family-lineup evidence;
 - UV/checker/density/hard-edge/cage/map/bake evidence;
 - material-role and varied-light/runtime evidence;

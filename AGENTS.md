@@ -96,6 +96,11 @@ them casually. Confirm selection in `src/core/registry.js` and defaults in `src/
   `.grok/skills/spaceface-blender-material-truth/SKILL.md`; Tier A/B uses component-level records and
   Tier C/D may group a repeated manufactured family. Do not wait for a reviewer to name the
   plastic/clay/primitive failure after authoring, and never treat a DCC default as a material choice.
+  A technical receipt may mark `evidence_ready`; it cannot close G1, G2, or G4. A component-scoped
+  pass never implies a whole-asset pass. Whole-asset G1/G2/G4 claims require a hash-bound visual
+  review that covers dominant inherited/retained zones, records original-resolution matched views and
+  `keep|revise|revert|blocked`, and preserves frozen asset identity when generated references are
+  used as quality targets. Missing review keeps the gate open.
 - **Performance:** optimize algorithms, allocation, batching, cadence, culling, residency, and frame
   pacing. Do not pass gates by removing authored visuals or lowering default quality.
 - **Accessibility:** preserve input reachability, reduced-motion/flash behavior, legibility, and

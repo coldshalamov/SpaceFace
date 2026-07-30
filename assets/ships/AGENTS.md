@@ -45,6 +45,17 @@ candidate state.
 
 - Technical validity, performance validity, and visual acceptance are separate proofs. A valid GLB,
   green exporter, socket/collision report, or triangle count cannot set final visual acceptance.
+- A technical receipt may mark `evidence_ready`; it cannot close G1, G2, or G4. Every gate result
+  names its scope (`component`, `zone`, or `whole_asset`), and a component-scoped pass never implies
+  a whole-asset pass.
+- For remasters, generated references are reference-quality targets under a frozen identity
+  contract—not replacement blueprints. Preserve silhouette envelope, proportions, sockets,
+  interfaces, role, and useful existing work. A visual mismatch authorizes revision of the deficient
+  quality axis, never wholesale deletion or redesign.
+- Whole-asset G1/G2/G4 requires an exact-candidate, hash-bound visual review recording original-
+  resolution matched views, dominant inherited/retained-zone coverage, reference-parity evidence when
+  used, unresolved P0/P1 defects, and `keep|revise|revert|blocked`. An inherited zone that dominates
+  a supported view remains inside the whole-asset veto even when it was not edited.
 - Require role-readable primary form, plausible construction, correct transforms, deliberate UV/bake
   work where applicable, physically coherent materials, authored screen-space LODs, stable sockets,
   provenance, reproducible source/build steps, measured representative-scene cost, and current

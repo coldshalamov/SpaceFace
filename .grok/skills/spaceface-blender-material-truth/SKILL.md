@@ -27,14 +27,26 @@ Complete this preflight before any camera-visible Blender/GLB geometry or surfac
 record to the work, never the quality bar: Tier A/B components require individual entries; Tier C/D
 may use one entry for a repeated manufactured family, but no changed zone may inherit a DCC default.
 
-1. classify every changed component or changed repeated family as `billed` or `unchanged quiet zone`;
+1. create one exhaustive visible-zone register; classify every zone visible in a supported review
+   camera as `billed`, `retained_reviewed`, or `blocked`; use `outside_supported_view` only when the
+   zone is absent from every supported review camera (`supportedViews: []`), never for a visible or
+   dominant region; record supported views and whether the zone dominates one, and keep
+   `allSupportedViewZonesClassified: false` until a reviewer confirms coverage; “quiet” describes
+   composition, not permission to leave donor/default material unexamined;
 2. write the fiction-development agreement and material bill for every `billed` item or grouped
    repeated family;
 3. record the shape-grammar failure or new manufactured assembly sequence;
 4. record `componentReferenceDecision` as `not_needed`, `native_imagegen`, `codex_handoff`, or
    `blocked:image-generation-capability`;
-5. name the complete surfaced Blender working scene and the supported cameras that will judge it;
-6. name the G0-G7 evidence and independent reviewer required for the exact candidate.
+5. when a reference is used for a remaster, freeze silhouette envelope, footprint, orientation,
+   attachment points, sockets, neighboring clearances, role, and useful authored work; then name the
+   quality axes the reference will judge;
+6. inventory dominant inherited/retained zones visible in the supported whole-asset cameras;
+   `retained_reviewed` requires an actual material/construction review and remains inside the
+   whole-asset visual veto;
+7. name the complete surfaced Blender working scene and the supported cameras that will judge it;
+8. name the G0-G7 evidence, gate scope, hash-bound review record, and independent reviewer required
+   for the exact candidate.
 
 Do not begin from a generic primitive, shader preset, procedural texture recipe, or beauty-render
 goal and invent the fictional explanation afterward.
@@ -72,7 +84,8 @@ incorrect rendered substance.
 
 Use the component profile and material-bill shapes in `docs/visual-assets/TEMPLATES.md`. Require
 fail-closed material-bill coverage for every disputed, changed, or newly camera-visible component
-in this pass. Do not turn the diagnostic into universal release paperwork for untouched quiet zones.
+in this pass. Do not turn the diagnostic into universal release paperwork for
+`outside_supported_view` zones; every visible retained zone still requires review.
 
 ## 3. Audit the shape grammar
 
@@ -92,7 +105,9 @@ tube, box, torus, slab, rail, comb, and repeated bar, require a functional and m
 
 When a specific component is trapped by the current software vocabulary:
 
-1. Crop or isolate that exact component from the authoritative asset.
+1. Crop or isolate that exact component from the authoritative asset. For a remaster this is required
+   by default; if genuinely impossible, record why. A text-only study may inspire construction, but
+   cannot satisfy reference-quality parity or close an artistic gate.
 2. If this worker lacks image generation, run
    `scripts/request_imagegen_reference.mjs` from this skill (usage and packet requirements are in
    `docs/visual-assets/AGENT_PROMPTS.md` § E). The wrapper dispatches a bounded Codex terminal
@@ -120,6 +135,22 @@ Never use a generated whole-asset redesign as identity proof. Never project gene
 shipping asset, and never treat generated normal, AO, roughness, metallic, or collision data as
 physically authoritative.
 
+### Reference-quality parity contract
+
+Before generation, separate the two contracts:
+
+- **frozen identity:** silhouette envelope, proportions, component footprint/orientation, sockets,
+  interfaces, runtime role, neighboring clearances, and useful existing work;
+- **quality target:** material differentiation, manufacture, section/cavity depth, rooted interfaces,
+  macro/meso/micro hierarchy, edge behavior, causal wear, and supported-camera surface response.
+
+Compare the rebuilt component and generated reference at similar views and record every selected
+quality axis as `met`, `partial`, `miss`, or `not_applicable`, followed by
+`keep|revise|revert|blocked`. Do not score pixel similarity or require the asset to copy the
+reference's silhouette. A mismatch authorizes revising the deficient quality axis; it never
+authorizes deleting sound work, moving frozen interfaces, or restarting the ship merely to resemble
+the generated image.
+
 ## 5. Iterate in Blender
 
 1. Inspect the connected scene before mutation: collections, units, transforms, parents, materials,
@@ -146,6 +177,22 @@ For Tier A/B assets, follow the outcome-based iteration protocol in
 proof, but an iteration count is not acceptance. When the same defect survives a repair method,
 change the method or return to the earliest failed gate instead of accumulating parameter nudges.
 Request independent specialist review when the owning agent can no longer discriminate the defect.
+
+### Fail-closed whole-asset review
+
+Every G1/G2/G4 result names `component`, `zone`, or `whole_asset` scope. A technical receipt may mark
+`evidence_ready`; it cannot close G1, G2, or G4. Pixel coverage, luma, hashes, material bindings,
+camera framing, renderer completion, and channel audits prepare evidence only. A component-scoped
+pass never implies a whole-asset pass. Each gate record names the reviewed subjects; empty subjects
+or an incomplete visible-zone register cannot support `pass`.
+
+Before any whole-asset G1/G2/G4 claim, commit a review record bound to the exact candidate hash. It
+must name the reviewer, supported views, original-resolution inspection, changed zones, dominant
+inherited/retained zones, reference-quality parity evidence when used, visible material allocation,
+open P0/P1 defects, and `keep|revise|revert|blocked`. If the new component succeeds but the inherited
+hull still reads as clay, plastic, leather, generic noise, or primitive blockout, keep the successful
+component work and fail the whole-asset gate. Do not discard the good work and do not promote its
+component-scoped pass into a whole-asset status.
 
 ### Proven controls against the toy/plastic failure mode
 
@@ -263,6 +310,8 @@ Validate:
 - GLB structure, texture roles and KTX2 profiles;
 - source and release LODs, sockets, collision, transforms, and runtime identity;
 - matched clay, material, grazing-light, normal-route, and supported-size evidence;
+- exact-candidate, hash-bound review scope and verdict for G1/G2/G4, including dominant inherited
+  zones and reference-quality parity when used;
 - representative cost when geometry, draws, textures, or residency changed.
 
 Leave Browser/Electron, performance, or independent G7 gates explicitly open when their real
@@ -288,6 +337,7 @@ For a concrete example, inspect:
 - `assets/ships/kestrel_borrowed_time_v4/MATERIAL_AND_SHAPE_AUDIT.md`
 - `assets/ships/kestrel_borrowed_time_v4/MATERIAL_CONTRACT.json`
 - `assets/ships/kestrel_borrowed_time_v4/reference/REFERENCE_PROVENANCE.md`
+- `assets/ships/kestrel_borrowed_time_v4/evidence/material_truth_v6/VISUAL_REVIEW.md`
 - `assets/ships/m4_ashline_v2/reference/material_truth_v2/DART_COMPONENT_MATERIAL_BILL.md`
 - `assets/ships/m4_ashline_v2/reference/material_truth_v2/REFERENCE_PROVENANCE.md`
 - `tools/blender/build_m4_ashline_v2.py`

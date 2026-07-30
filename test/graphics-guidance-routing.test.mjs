@@ -94,6 +94,88 @@ test('official graphics entry points route authored 3D work through one canonica
   }
 });
 
+test('graphics guidance fails closed between component evidence and whole-asset art acceptance', () => {
+  const root = text('AGENTS.md');
+  const ships = text('assets/ships/AGENTS.md');
+  const standard = text('docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md');
+  const skill = text('.grok/skills/spaceface-blender-material-truth/SKILL.md');
+  const templates = text('docs/visual-assets/TEMPLATES.md');
+
+  for (const [path, value] of [
+    ['AGENTS.md', root],
+    ['assets/AGENTS.md', text('assets/AGENTS.md')],
+    ['assets/ships/AGENTS.md', ships],
+  ]) {
+    assert.match(value, /component-scoped/i, `${path} omits scoped visual acceptance`);
+    assert.match(value, /whole-asset/i, `${path} omits whole-asset visual acceptance`);
+  }
+
+  for (const [path, value] of [
+    ['VISUAL_ASSET_PRODUCTION_STANDARD.md', standard],
+    ['spaceface-blender-material-truth/SKILL.md', skill],
+  ]) {
+    assert.match(value, /evidence_ready/, `${path} must separate technical evidence from art verdict`);
+    assert.match(
+      value,
+      /cannot close G1, G2, or G4/,
+      `${path} lets technical evidence close an artistic gate`,
+    );
+    assert.match(value, /component-scoped\s+pass\s+never\s+implies\s+a\s+whole-asset\s+pass/i);
+    assert.match(value, /dominant inherited/i, `${path} lets inherited surfaces evade whole-asset review`);
+    assert.match(value, /hash-bound\s+(?:visual\s+review|review\s+record)/i);
+  }
+
+  for (const [path, value] of [
+    ['VISUAL_ASSET_PRODUCTION_STANDARD.md', standard],
+    ['spaceface-blender-material-truth/SKILL.md', skill],
+    ['docs/visual-assets/TEMPLATES.md', templates],
+  ]) {
+    assert.match(
+      value,
+      /reference-quality parity|referenceQualityParity/i,
+      `${path} omits quality-only reference comparison`,
+    );
+    assert.match(value, /frozen identity|frozenIdentity/i, `${path} omits remaster identity protection`);
+    assert.match(value, /keep\|revise\|revert\|blocked/);
+  }
+
+  assert.match(standard, /mismatch\s+never\s+authorizes\s+deleting\s+sound\s+authored\s+work/i);
+  assert.match(skill, /never\s+authorizes\s+deleting\s+sound\s+work/i);
+  assert.match(standard, /exact deficient-component crop is required by default/i);
+  assert.match(skill, /Crop or isolate that exact component from the authoritative asset/i);
+  assert.match(templates, /sourceCapture/);
+  assert.match(templates, /dominantInheritedOrRetainedZones/);
+  assert.match(templates, /originalResolutionInspected/);
+  assert.match(templates, /visibleZoneRegister/);
+  assert.match(templates, /allSupportedViewZonesClassified/);
+  for (const gate of ['G1', 'G2', 'G4']) {
+    assert.match(
+      templates,
+      new RegExp(`"${gate}"[\\s\\S]{0,180}"scope": "pending"[\\s\\S]{0,120}"reviewedSubjects"`),
+      `${gate} template omits scope or reviewed subjects`,
+    );
+  }
+  assert.doesNotMatch(templates, /"scope": "whole_asset"/);
+  for (const value of [standard, skill, templates]) {
+    assert.match(value, /retained_reviewed/);
+    assert.match(value, /outside_supported_view/);
+    assert.match(value, /blocked/);
+  }
+  assert.match(
+    standard,
+    /outside_supported_view[\s\S]{0,80}valid only when[\s\S]{0,80}absent from every supported review camera/i,
+  );
+  assert.match(
+    skill,
+    /use `outside_supported_view` only when[\s\S]{0,80}absent from every supported review camera/i,
+  );
+  for (const value of [standard, skill]) {
+    assert.match(value, /supportedViews: \[\]/);
+    assert.match(value, /never for a visible or[\s\S]{0,40}dominant region|cannot classify a visible or[\s\S]{0,40}dominant region/i);
+  }
+  assert.match(templates, /outside_supported_view is legal only with supportedViews: \[\]/);
+});
+
 test('portrait and render routes name their visual quality authorities', () => {
   const portraits = text('assets/portraits/AGENTS.md');
   assert.match(portraits, /CANONICAL_PORTRAIT_DIRECTION\.md/);

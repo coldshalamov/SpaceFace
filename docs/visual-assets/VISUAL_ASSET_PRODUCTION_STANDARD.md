@@ -74,10 +74,13 @@ replaced. Delete decoration that does not support function, scale, identity, his
 
 No visible surface may inherit its artistic identity from Blender defaults, a donor material, or an
 unchanged Principled BSDF merely because the software produced something renderable. Before any
-modification to camera-visible 3D form or surfacing, complete a material-truth preflight. Classify
-every changed component or visibly changed repeated family as a billed zone, and classify untouched
-areas explicitly as unchanged quiet zones. Tier A/B work records individual components; Tier C/D may
-group one repeated manufactured family. Each billed zone records:
+modification to camera-visible 3D form or surfacing, complete a material-truth preflight. Inventory
+the asset zones relevant to the candidate. Every zone visible in a supported review camera must be
+`billed`, `retained_reviewed`, or `blocked`. `outside_supported_view` is valid only when the zone is
+absent from every supported review camera (`supportedViews: []`); it cannot classify a visible or
+dominant region. Tier A/B work records individual components; Tier C/D may group one repeated
+manufactured family. A compositionally quiet plate may be `retained_reviewed`, but “quiet” is not a
+status and cannot mean unexamined donor/default material. Each billed zone records:
 
 - physical substrate;
 - manufacturing or forming process;
@@ -90,7 +93,15 @@ group one repeated manufactured family. Each billed zone records:
 “Metal,” “hull,” “mechanical,” a material-slot name, a color, or a roughness number is not enough to
 resolve material identity. If a default or inherited shader response survives because no one made
 and reviewed these decisions, that is a P1—not a neutral starting point. The bill covers changed
-camera-visible work; it is not universal release paperwork for invisible or untouched quiet zones.
+camera-visible work; it is not universal release paperwork for `outside_supported_view` zones.
+`retained_reviewed` records why an unchanged zone already supports the accepted visual premise;
+`blocked` keeps whole-asset G1/G2/G4 open. Any inherited or untouched zone that dominates a supported
+whole-asset view remains inside the whole-asset P1 veto.
+
+Use one exhaustive visible-zone register rather than independent optional lists. Every row names its
+supported views, whether it dominates one, its disposition, and its bill or retained-review
+evidence. `allSupportedViewZonesClassified` remains false until the reviewer confirms that every
+camera-visible zone is present; false or missing blocks whole-asset G1/G2/G4.
 
 ### Primitive and shape-grammar accountability
 
@@ -168,11 +179,24 @@ orientation, role, interfaces, and identity while naming its substrate, manufact
 fasteners, service access, load path, and forbidden reads. Prefer a sheet with three-quarter,
 orthographic, exploded, and material/interface views.
 
+For a remaster, record a frozen identity contract before generation: silhouette envelope, component
+footprint, orientation, attachment points, sockets, neighboring clearances, runtime role, and useful
+existing work that must survive. The exact deficient-component crop is required by default. When a
+crop is genuinely impossible, record the reason; a text-only study may inform construction, but it
+cannot satisfy reference-quality parity or authorize a gate pass.
+
 Generated imagery remains reference-only. Record its prompt, tool, source capture, hash, selected
 traits, rejected traits, and asset-specific resemblance target. Translate the approved manufacturing
 logic into editable geometry and authored materials; do not project the image over a primitive and
 call the component resolved, and never infer authoritative normal/AO/ORM data from the generated
 pixels. Review the rebuilt component beside the reference in material and textureless/clay views.
+
+Reference-quality parity is not pixel, outline, or whole-shape similarity. It judges the selected
+quality axes: material differentiation, manufacturing logic, section and cavity depth, rooted
+interfaces, macro/meso/micro hierarchy, edge behavior, causal wear, and supported-camera surface
+response. Record each axis as `met`, `partial`, `miss`, or `not_applicable`, then record
+`keep|revise|revert|blocked`. A reference mismatch never authorizes deleting sound authored work,
+moving frozen interfaces, or redesigning the asset until it resembles the generated image.
 
 Image generation is optional until the chosen repair method actually depends on it; tool absence is
 not permission to fake a reference or quietly lower the quality bar. If the assigned worker lacks
@@ -205,6 +229,27 @@ For a disputed material/shape component, fiction and implementation must agree i
 - if the fiction describes a machined drive clamp, ceramic isolator, rolled pressure case, or folded
   radiator but the render reads as a plastic torus, clay box, rubber tube, or cube comb, the
   component fails regardless of its object name or shader settings.
+
+### Scope and whole-asset visual veto
+
+Every G1, G2, and G4 result declares `component`, `zone`, or `whole_asset` scope. A technical receipt
+may mark `evidence_ready`; it cannot close G1, G2, or G4. Hashes, renderer completion, material-slot
+presence, luminance, pixel coverage, framing, and channel correctness are necessary evidence where
+applicable, but none is an art verdict. A component-scoped pass never implies a whole-asset pass.
+Each gate record also names its reviewed subjects; an empty subject list cannot support `pass`.
+
+A whole-asset G1/G2/G4 pass requires a committed review record bound to the exact candidate hash. It
+must name the reviewer, supported views, original-resolution inspection, changed zones, dominant
+inherited/retained zones, reference-quality parity when used, open P0/P1 defects, and an iteration
+decision of `keep`, `revise`, `revert`, or `blocked`. Machine evidence can prepare that record but
+cannot choose its verdict. If a repaired component succeeds while a dominant inherited hull still
+reads as clay, plastic, leather, generic noise, or primitive blockout, retain the successful
+component work and fail the whole-asset gate. Do not delete the successful work or relabel the
+component pass as whole-asset acceptance.
+
+Program ledgers, evidence epochs, and handoffs may not say `G1-G4 green`, `visually eligible`,
+`finished`, or an equivalent whole-asset claim without that exact-candidate review record. Missing
+or stale review evidence keeps the artistic gate open.
 
 ### Edge language
 
@@ -300,7 +345,11 @@ recolored across roles fails. The material bill maps every changed camera-visibl
 manufactured family to substrate, manufacture, finish, interface, response, and use history. Review
 material-ID isolation and native-resolution crops: labels, texture filenames, extension use, and
 shader settings cannot prove that a surface reads as its intended substance. Any unexplained
-plastic/clay/leather/rubber read fails G4 unless that substance was deliberately specified.
+plastic/clay/leather/rubber read fails G4 unless that substance was deliberately specified. A
+whole-asset G4 result also inventories the visible material allocation of dominant changed and
+inherited zones; a small successful machinery treatment cannot close G4 while most supported views
+remain visually unresolved. The exact-candidate, hash-bound visual review—not a technical receipt—
+records the gate verdict.
 
 ### G5  -  LOD and measured cost
 
@@ -401,6 +450,11 @@ decision.
 
 Evidence must use matched camera, framing, exposure, background, and resolution unless that variable
 is the test. Beauty renders supplement diagnostics; they never replace them.
+
+For G1/G2/G4, record gate scope and keep technical evidence separate from the visual verdict.
+Whole-asset claims additionally record the exact-candidate review, original-resolution inspection,
+dominant inherited/retained-zone coverage, material allocation, any reference-quality parity matrix,
+and remaining P0/P1 defects. Without that record the result is `evidence_ready`, not `pass`.
 
 An asset may stop only at:
 

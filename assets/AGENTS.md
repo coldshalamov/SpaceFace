@@ -64,8 +64,12 @@ accepted/blocked roster into policy.
   source, and player-camera evidence appropriate to the asset's role.
 - A 3D form/surfacing pass is not allowed to wait for a material-truth complaint. Load the focused
   skill and complete its proportional material-truth preflight before authoring, classify changed
-  camera-visible components as billed or unchanged quiet zones, repair the earliest failed
-  form/construction gate, and keep exact-source evidence fail-closed.
+  camera-visible zones as `billed`, `retained_reviewed`, `outside_supported_view`, or `blocked`,
+  repair the earliest failed form/construction gate, and keep exact-source evidence fail-closed.
+- A technical receipt may mark `evidence_ready`; it cannot close G1, G2, or G4. A component-scoped
+  pass never implies a whole-asset pass. Whole-asset G1/G2/G4 requires a hash-bound visual review of
+  original-resolution matched views, including dominant inherited/retained zones; missing review
+  keeps the gate open.
 
 ### 3.1 Coordination
 
