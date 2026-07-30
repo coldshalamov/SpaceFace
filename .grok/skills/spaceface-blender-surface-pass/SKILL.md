@@ -9,8 +9,9 @@ description: >
 
 Read `docs/visual-assets/README.md` and
 `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` first. This pass cannot grant acceptance or
-hide an unresolved material-truth G1–G4 failure; load
-`../spaceface-blender-material-truth/SKILL.md` when that defect class is present.
+hide an unresolved material-truth G1–G4 failure. Load
+`.grok/skills/spaceface-blender-material-truth/SKILL.md` before changing any geometry or surfacing, and
+complete its proportional preflight rather than waiting for that defect class to be reported later.
 
 ## Scope
 

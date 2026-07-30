@@ -13,10 +13,12 @@ manifests that bridge them to runtime. Exact machine records outrank prose inven
 - For substantive visual authoring or remaster work, read `docs/visual-assets/README.md` and
   `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`; use its craft principles, G0-G7 gates,
   and execution protocol as the canonical definition of done.
-- If any camera-prominent component is described as plastic, clay, rubber/leather without intent,
-  LEGO-like, primitive-stacked, a glowing disk/torus, or inconsistent with its fictional function
-  and manufacture, also load `.grok/skills/spaceface-blender-material-truth/SKILL.md`. This focused
-  workflow is mandatory for that defect class; it may add techniques but never weaken G0–G7.
+- For every Blender/GLB form or surfacing change, also load
+  `.grok/skills/spaceface-blender-material-truth/SKILL.md` and complete its preflight before
+  modeling. Tier C/D may group one repeated manufactured family, but no changed visible zone may
+  inherit a DCC default. This prevents plastic/clay, LEGO-like primitive stacks, glowing
+  disks/toruses, generic greebles, and fiction/material contradictions instead of diagnosing them
+  after export. The skill may add techniques but never weaken G0-G7.
 
 ## Current routing principle
 

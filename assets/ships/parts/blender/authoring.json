@@ -17,6 +17,9 @@
       "method": "blender_generic",
       "blend_path": "assets/ships/parts/blender/engine_plasma_ring_authored.blend",
       "exporter_path": "tools/art/blender/export_sprint_part.py",
+      "current_authoring_route": "docs/visual-assets/README.md",
+      "material_truth_skill_path": ".grok/skills/spaceface-blender-material-truth/SKILL.md",
+      "material_truth_preflight_required": true,
       "texture_role_owner": "finalizer-v1",
       "min_tris": 1500
     },
@@ -24,6 +27,9 @@
       "method": "blender_generic",
       "blend_path": "assets/ships/parts/blender/greeble_rcs_authored.blend",
       "exporter_path": "tools/art/blender/export_sprint_part.py",
+      "current_authoring_route": "docs/visual-assets/README.md",
+      "material_truth_skill_path": ".grok/skills/spaceface-blender-material-truth/SKILL.md",
+      "material_truth_preflight_required": true,
       "texture_role_owner": "finalizer-v1",
       "semantic_note": "Editable four-nozzle RCS maneuvering cluster; the mesh/hardware source is separate from the pooled runtime impulse VFX.",
       "min_tris": 1040
@@ -31,7 +37,9 @@
     "hull_starter": {
       "method": "blender_mcp",
       "blend_path": "assets/ships/parts/blender/hull_starter_authored.blend",
-      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
       "texture_role_owner": "modular-hull-texture-finalizer-v2",
       "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
       "texture_finalizer_status": "canonical-glb-repair-only"
@@ -39,7 +47,9 @@
     "hull_fighter": {
       "method": "blender_mcp",
       "blend_path": "assets/ships/parts/blender/hull_fighter_authored.blend",
-      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
       "texture_role_owner": "modular-hull-texture-finalizer-v2",
       "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
       "texture_finalizer_status": "canonical-glb-repair-only"
@@ -47,7 +57,9 @@
     "hull_miner": {
       "method": "blender_mcp",
       "blend_path": "assets/ships/parts/blender/hull_miner_authored.blend",
-      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
       "texture_role_owner": "modular-hull-texture-finalizer-v2",
       "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
       "texture_finalizer_status": "canonical-glb-repair-only"
@@ -55,7 +67,9 @@
     "hull_freighter": {
       "method": "blender_mcp",
       "blend_path": "assets/ships/parts/blender/hull_freighter_authored.blend",
-      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
       "texture_role_owner": "modular-hull-texture-finalizer-v2",
       "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
       "texture_finalizer_status": "canonical-glb-repair-only"
@@ -63,7 +77,9 @@
     "hull_interceptor": {
       "method": "blender_mcp",
       "blend_path": "assets/ships/parts/blender/hull_interceptor_authored.blend",
-      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
       "texture_role_owner": "modular-hull-texture-finalizer-v2",
       "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
       "texture_finalizer_status": "canonical-glb-repair-only"
@@ -71,7 +87,9 @@
     "hull_corvette": {
       "method": "blender_mcp",
       "blend_path": "assets/ships/parts/blender/hull_corvette_authored.blend",
-      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
       "texture_role_owner": "modular-hull-texture-finalizer-v2",
       "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
       "texture_finalizer_status": "canonical-glb-repair-only"
@@ -79,7 +97,9 @@
     "hull_frigate": {
       "method": "blender_mcp",
       "blend_path": "assets/ships/parts/blender/hull_frigate_authored.blend",
-      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
       "texture_role_owner": "modular-hull-texture-finalizer-v2",
       "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
       "texture_finalizer_status": "canonical-glb-repair-only"
@@ -87,7 +107,9 @@
     "hull_capital": {
       "method": "blender_mcp",
       "blend_path": "assets/ships/parts/blender/hull_capital_authored.blend",
-      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
       "texture_role_owner": "modular-hull-texture-finalizer-v2",
       "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
       "texture_finalizer_status": "canonical-glb-repair-only"
@@ -95,7 +117,9 @@
     "hull_multirole": {
       "method": "blender_mcp",
       "blend_path": "assets/ships/parts/blender/hull_multirole_authored.blend",
-      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
       "texture_role_owner": "modular-hull-texture-finalizer-v2",
       "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
       "texture_finalizer_status": "canonical-glb-repair-only"
@@ -103,7 +127,9 @@
     "hull_gunship": {
       "method": "blender_mcp",
       "blend_path": "assets/ships/parts/blender/hull_gunship_authored.blend",
-      "exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
       "texture_role_owner": "modular-hull-texture-finalizer-v2",
       "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
       "texture_finalizer_status": "canonical-glb-repair-only"

@@ -73,9 +73,11 @@ replaced. Delete decoration that does not support function, scale, identity, his
 ### DCC defaults have no authorship value
 
 No visible surface may inherit its artistic identity from Blender defaults, a donor material, or an
-unchanged Principled BSDF merely because the software produced something renderable. When an
-activated Tier A/B rebuild has a named material-truth failure, use a component material bill to
-resolve the disputed zones:
+unchanged Principled BSDF merely because the software produced something renderable. Before any
+modification to camera-visible 3D form or surfacing, complete a material-truth preflight. Classify
+every changed component or visibly changed repeated family as a billed zone, and classify untouched
+areas explicitly as unchanged quiet zones. Tier A/B work records individual components; Tier C/D may
+group one repeated manufactured family. Each billed zone records:
 
 - physical substrate;
 - manufacturing or forming process;
@@ -86,23 +88,24 @@ resolve the disputed zones:
 - forbidden reads such as plastic toy, clay blockout, rubber/leather when not actually specified.
 
 “Metal,” “hull,” “mechanical,” a material-slot name, a color, or a roughness number is not enough to
-resolve a disputed material identity. If a default or inherited shader response survives because no
-one made and reviewed these decisions, that is a P1—not a neutral starting point. The bill is a
-diagnostic aid for that failure, not universal release paperwork.
+resolve material identity. If a default or inherited shader response survives because no one made
+and reviewed these decisions, that is a P1—not a neutral starting point. The bill covers changed
+camera-visible work; it is not universal release paperwork for invisible or untouched quiet zones.
 
 ### Primitive and shape-grammar accountability
 
 Boxes, cylinders, cones, toruses, and planes are valid blockout or manufacturing inputs, not automatic
-finished components. When a G1/G2 review identifies primitive-default construction, a shape-grammar
-audit can identify the camera-prominent primitive or repeated family and its function, scale,
-manufacturing rationale, interface, and transformation into final form. An unexplained perfect tube, floating bar, repeated rectangular
-“chiclet,” decorative hoop, or uniformly beveled slab remains blockout construction even when it has
-textures, scratches, or a plausible object name.
+finished components. The preflight inventories primitive-derived camera-prominent forms. When one
+survives into a changed zone, a shape-grammar audit is mandatory before G1/G2: identify the primitive
+or repeated family and its function, scale, manufacturing rationale, interface, and transformation
+into final form. An unexplained perfect tube, floating bar, repeated rectangular “chiclet,”
+decorative hoop, or uniformly beveled slab remains blockout construction even when it has textures,
+scratches, or a plausible object name.
 
 ### Blender anti-toy implementation controls
 
-For an activated material-truth repair, begin with a manufactured section and assembly sequence—not a
-software primitive. Name the rolled or faceted case, folded hat section, plate shell, hollow bell,
+For every billed changed zone, begin with a manufactured section and assembly sequence—not a software
+primitive. Name the rolled or faceted case, folded hat section, plate shell, hollow bell,
 gusset, saddle, clevis, flange, service line, aperture, access cover, or pressure vessel that the
 primitive is being transformed into. Then model its interfaces, wall thickness, negative space, load
 or service path, and transition into the neighboring structure.
@@ -183,9 +186,11 @@ reference step complete.
 
 ### Visible Blender working state
 
-For connected Blender work, keep the complete surfaced asset visible in Material Preview or Rendered
-shading as the primary authoring state. Materials, adjacent assemblies, recessed emission, and edge
-response must remain available for judgment while geometry changes. Solid/clay, wireframe,
+When a non-conflicting connected Blender MCP session is available for authored 3D work, use it for
+the primary geometry/material iteration and keep the complete surfaced asset visible in Material
+Preview or Rendered shading. Materials, adjacent assemblies, recessed emission, and edge response
+must remain available for judgment while geometry changes. Headless builders remain useful for
+repeatability and output, not a substitute for surfaced iteration. Solid/clay, wireframe,
 material-ID, and channel-isolation views are bounded diagnostics: they can reveal a silhouette,
 intersection, normal, or construction defect, but they cannot demonstrate substance or close G4.
 Return to the surfaced assembly after each meaningful edit. An external beauty render or later
@@ -291,9 +296,8 @@ packing/color spaces. Automatic UV existence and a flat normal map do not pass.
 Prove declared physical surface stacks, roughness hierarchy, scale-correct normals, localized
 mesh-aware masks, causal wear, purposeful decals, stable glass/transparency, and material distinction
 under neutral, bright, dark, colored, and grazing light in the runtime. One procedural noise recipe
-recolored across roles fails. For an activated material-truth remediation, the component material
-bill should map every disputed camera-visible zone to substrate, manufacture, finish, interface,
-response, and use history. Review
+recolored across roles fails. The material bill maps every changed camera-visible zone or grouped
+manufactured family to substrate, manufacture, finish, interface, response, and use history. Review
 material-ID isolation and native-resolution crops: labels, texture filenames, extension use, and
 shader settings cannot prove that a surface reads as its intended substance. Any unexplained
 plastic/clay/leather/rubber read fails G4 unless that substance was deliberately specified.
@@ -355,7 +359,7 @@ material identity, story, motion, cost at equal quality, or reproducibility.
 Before editing:
 
 1. follow root `AGENTS.md` → `assets/AGENTS.md` → `assets/ships/AGENTS.md`; load
-   `.grok/skills/spaceface-blender-material-truth/SKILL.md` for its named defect class;
+   `.grok/skills/spaceface-blender-material-truth/SKILL.md` before any 3D form/surfacing change;
 2. inspect status/diffs and locks;
 3. resolve exact source/candidate/release/runtime/fallback identities;
 4. inventory geometry, modifiers, UVs, maps, materials, sockets, LODs, metadata and states;

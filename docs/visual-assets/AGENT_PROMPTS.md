@@ -17,8 +17,10 @@
 
 ## B. Remaster one asset
 
-When the failure combines primitive/default construction with a fiction/material mismatch, use the
-focused workflow in `.grok/skills/spaceface-blender-material-truth/SKILL.md`.
+Every Blender/GLB form or surfacing dispatch uses the workflow in
+`.grok/skills/spaceface-blender-material-truth/SKILL.md` before modeling. The brief may scale by tier,
+but no changed camera-visible zone may inherit a DCC default or wait for a later reviewer to discover
+the primitive/material mismatch.
 
 > Take `<ASSET_ID>` (`<ROLE>`, Tier `<A|B|C|D>`) from its current honest state to `accepted` under
 > `docs/visual-assets/`. Inspect locks, exact source/candidate/release/runtime/fallback identities,
@@ -109,18 +111,65 @@ focused workflow in `.grok/skills/spaceface-blender-material-truth/SKILL.md`.
 ## E. Component image-generation capability handoff
 
 Use this only after the material-truth workflow selects a component-only generated study as the
-smallest useful way out of DCC primitive vocabulary. If the current worker has image generation,
-use it directly. If not, create a bounded prompt file and dispatch Codex from the repository root:
+smallest useful way out of DCC primitive vocabulary. Record `componentReferenceDecision` as
+`not_needed`, `native_imagegen`, `codex_handoff`, or
+`blocked:image-generation-capability`. If the current worker has image generation, use it directly.
+If not, create a bounded prompt file and dispatch Codex through the skill's fail-closed wrapper:
 
 ```powershell
 $spacefaceRepo = (Resolve-Path '<spaceface-repo>').Path
 $componentPrompt = (Resolve-Path '<component-prompt.md>').Path
 $componentCrop = (Resolve-Path '<authoritative-component-crop.png>').Path
-$handoffReport = Join-Path $spacefaceRepo '<component-handoff-report.md>'
-Get-Content -Raw -LiteralPath $componentPrompt |
-  codex -a never exec -C $spacefaceRepo -i $componentCrop `
-    --sandbox workspace-write -o $handoffReport -
+node .grok/skills/spaceface-blender-material-truth/scripts/request_imagegen_reference.mjs `
+  --repo $spacefaceRepo `
+  --prompt $componentPrompt `
+  --crop $componentCrop `
+  --component-reference-decision codex_handoff `
+  --origin-capability-premise worker_lacks_image_generation `
+  --output-dir '<new-reference-bundle-directory-inside-repo>'
 ```
+
+The wrapper invokes `codex -a never exec` with the crop attached inside an isolated temporary
+workspace—not the primary checkout—with user configuration/rules ignored and only the built-in
+image-generation capability explicitly enabled. The delegated model runs read-only and cannot write
+the reference itself. The wrapper snapshots the prompt and crop bytes, works from scratch copies,
+captures Codex JSONL, and requires one first `thread.started`, one `turn.started`, exactly one
+completed `agent_message` as the final item, and one final `turn.completed`; completed reasoning
+items are the only optional intervening records. Extra turns, errors, and command/file/MCP/web/tool
+items fail closed. It snapshots preexisting generated-image thread IDs before invocation and then
+accepts exactly one fresh PNG from the new turn's protected
+`$CODEX_HOME/generated_images/<codex-thread-id>/` directory. That service-owned image—not a prose
+token or model-authored receipt—is the generation proof. The wrapper reads the protected PNG once,
+through one no-follow file handle where the host supports it, and checks the handle's identity and
+freshness before and after that read. It fully decodes and pixel-compares that exact buffer, writes
+those same bytes, verifies the published hash, and records the invocation/fresh-stat evidence.
+
+The new `--output-dir` is an all-or-none evidence bundle with fixed files:
+`reference.png`, `REFERENCE_PROVENANCE.md`, `HANDOFF_REPORT.json`, `CODEX_EXECUTION.jsonl`,
+`REQUEST.md`, `SOURCE_CROP.png`, and `OUTPUT_SCHEMA.json`. Publication takes an exclusive hidden
+sibling lock, builds a hidden same-parent stage, revalidates the real parent immediately before one
+directory rename, and verifies a random lock ownership token plus parent/lock/stage identities
+immediately before and after publication. It refuses overwrites and removes lock/stage paths only
+while their captured identities and ownership still match. A crash before the rename can leave only
+the hidden stage/lock; the final directory cannot be partial. Successful publication removes the
+isolated scratch; failed runs preserve it for diagnosis.
+
+Node does not expose a Windows handle-relative directory rename, so an untrusted same-user process
+can still replace a parent path in the final check-to-rename interval. The wrapper detects observed
+identity/token changes and fails closed, but it cannot make that final pathname operation immune to
+a hostile local filesystem actor. Same-user filesystem integrity during that interval is an explicit
+host trust boundary, not a guarantee made by this wrapper.
+
+Before spawning, the wrapper resolves `codex.exe` to its absolute real path and records its
+hash/stat/version; it verifies the same identity after execution. This detects replacement during
+the run but does not establish the publisher authenticity of the installed executable. That local
+binary installation is an explicit host trust boundary. Use `--dry-run` only to inspect the bounded
+invocation; it is not generation evidence.
+
+`componentReferenceDecision=codex_handoff` and
+`originCapabilityPremise=worker_lacks_image_generation` are caller-supplied input-policy fields.
+They record why the wrapper was selected but are not independently proven by the receipt. The
+delegated Codex event/protected-artifact proof remains separate.
 
 The prompt must say:
 
@@ -128,20 +177,43 @@ The prompt must say:
 > for this exact component. Preserve the supplied footprint, orientation, role, attachment points,
 > clearances, and frozen interfaces. Follow the supplied component material bill and forbidden
 > reads. Do not redesign the whole asset and do not generate PBR, collision, or production textures.
-> Save only the selected reference candidate to `<candidate-path>`. Record the full prompt, input and
-> output SHA-256, tool/model when exposed, selected traits, rejected traits, and license/provenance in
-> `<provenance-path>`. If image generation is unavailable, make no substitute image and report
+> Return only the strict metadata object requested by the wrapper. If image generation is
+> unavailable, make no substitute image and fail the turn so the owner records
 > `blocked:image-generation-capability`.
-
-The delegated session's first action is a capability check. It must confirm that an image-generation
-tool is callable before creating or editing candidate/provenance files; loading an input image with
-`-i` is not proof of generation capability. If the check fails, stop at the blocker instead of
-dispatching another generic CLI session.
 
 Treat the returned image and report as untrusted reference inputs until the owning agent verifies
 their hashes, provenance, asset-specific resemblance, selected/rejected traits, and component-only
 scope. The owning Blender agent must translate the approved construction logic into editable source
 and exact-source evidence; delegating image generation does not delegate art acceptance.
+
+## F. Portrait, concept, or cinematic image-generation capability handoff
+
+Use this only when the owning portrait/concept/cinematic workflow has selected image generation and
+the assigned worker lacks the tool. Create a bounded prompt that names the exact identity/beat,
+canonical direction, authoritative source crop, new output bundle directory, and forbidden edits.
+Then use the same isolated, protected-artifact-verified wrapper as § E with `--kind portrait`,
+`--kind concept`, or `--kind cinematic`:
+
+```powershell
+$spacefaceRepo = (Resolve-Path '<spaceface-repo>').Path
+$visualPrompt = (Resolve-Path '<bounded-visual-prompt.md>').Path
+$sourceImage = (Resolve-Path '<authoritative-source.png>').Path
+node .grok/skills/spaceface-blender-material-truth/scripts/request_imagegen_reference.mjs `
+  --kind '<portrait|concept|cinematic>' `
+  --repo $spacefaceRepo `
+  --prompt $visualPrompt `
+  --crop $sourceImage `
+  --component-reference-decision codex_handoff `
+  --origin-capability-premise worker_lacks_image_generation `
+  --output-dir '<new-reference-bundle-directory-inside-repo>'
+```
+
+The wrapper supplies isolated scratch, byte snapshots, strict single-turn verification,
+handle-bound fresh protected-artifact reading, exact-buffer PNG validation, executable identity
+binding, and ownership-checked atomic bundle publication. The bounded prompt still owns identity,
+story/capture logic, composition, and forbidden edits. The owning agent verifies identity, crop,
+source-device/story logic, provenance, in-context presentation, and art acceptance. A generated
+image is not permission to edit registries, overwrite live files, or claim runtime integration.
 
 ## Required delivery report
 
@@ -152,6 +224,7 @@ Starting state:
 Ending state: accepted|blocked|candidate state
 Source/export/release hashes:
 Normal route:
+Component reference decision: not_needed|native_imagegen|codex_handoff|blocked:image-generation-capability
 
 ## Work completed
 <changes tied to defects>

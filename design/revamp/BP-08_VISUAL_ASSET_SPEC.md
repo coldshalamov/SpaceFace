@@ -7,6 +7,13 @@
 > **Prime directive:** every asset must load through the existing fallback-safe pipeline. If a GLB violates
 > the contract it silently falls back to a procedural mesh (ships never disappear) — so a "shipped" asset is
 > one that passes `check:assets:live` + `check:asset-reachability`, not merely one that exists on disk.
+>
+> **Craft authority:** before changing form or surfacing on any substantive Tier A/B 3D asset, read
+> `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` and run the mandatory fiction/material
+> preflight in `.grok/skills/spaceface-blender-material-truth/SKILL.md`. BP-08 supplies identity and
+> coverage; it does not supersede that professional quality bar. If component image generation is
+> useful but unavailable to the worker, use the isolated Codex terminal handoff in
+> `docs/visual-assets/AGENT_PROMPTS.md` § E.
 
 ---
 
@@ -23,9 +30,10 @@ The Blender agent (Grok) is already running **`FULL_GRAPHICS_REVAMP_GOAL.md` (FG
 | **Scope** | Upgrade the ~70 **existing** authored GLBs (hulls, parts, current places). | Author the **missing** assets the new systems reference (faction-distinct stations, landmarks, ring-gates, wrecks, hero rocks) + re-author blocked whole-ships. |
 | **Authority** | Owns full-set coverage and the professional outcome/evidence bar. Live exporter/runtime files own exact technical constraints. | Owns the *what & why* — the list below + the faction/identity targets. |
 
-**The one rule when they touch the same asset:** FGRG's process/quality bar always applies; BP-08 supplies the
-**character/silhouette target** to hit. Where BP-08 asks for something FGRG already lists, they are the *same
-task* — use BP-08's identity note as that asset's "define character" step (FGRG §3.3).
+**The one rule when they touch the same asset:** the canonical visual standard and material-truth
+skill apply first; FGRG supplies coverage/outcome and BP-08 supplies the **character/silhouette
+target**. Where BP-08 asks for something FGRG already lists, they are the *same task* — use BP-08's
+identity note as that asset's "define character" step (FGRG §3.3).
 
 ### Combined execution order (fold BP-08 into FGRG's batch plan)
 

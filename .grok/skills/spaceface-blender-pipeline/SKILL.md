@@ -43,10 +43,13 @@ reachability. The visual-asset standard owns craft and acceptance semantics.
 5. The task's brief, concept, role, faction, and normal-route references.
 6. The constitution, acceptance gates, execution protocol, and only the craft documents relevant to
    the earliest failed gate.
-7. A focused pass skill below when it materially helps:
+7. `.grok/skills/spaceface-blender-material-truth/SKILL.md` for every Blender/GLB form or
+   surfacing authoring task. Every changed camera-visible zone needs a concrete fiction/material
+   disposition; Tier A/B work completes the full preflight and component bill, while Tier C/D may
+   group a repeated manufactured family but may not inherit a DCC default. Load other focused pass
+   skills only when they materially help:
    - `../spaceface-blender-blockout/SKILL.md`  -  form and construction;
    - `../spaceface-blender-hardsurface/SKILL.md`  -  materials and surface response;
-   - `../spaceface-blender-material-truth/SKILL.md` — primitive/form plus fiction/material mismatch;
    - `../spaceface-blender-surface-pass/SKILL.md`  -  articulation, sockets, and final life.
 
 Do not infer current routing or readiness from old queue prose. Verify the exact asset ID against the

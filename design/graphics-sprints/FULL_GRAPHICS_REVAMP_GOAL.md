@@ -6,6 +6,13 @@
 > pickup; a bounded slice must be explicitly selected. `TOP50_WONDER_BUILD_PLAN.md`
 > owns priority/order. `README.md` owns this folder's authority map and quality doctrine. Whole-program
 > status lives in `design/program/`.
+>
+> Every substantive Tier A/B authored-3D slice must first use
+> `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` and the mandatory fiction/material
+> preflight in `.grok/skills/spaceface-blender-material-truth/SKILL.md`. Those authorities govern
+> how this coverage goal is executed. If a useful component reference requires image generation that
+> the worker does not have, use the isolated Codex terminal handoff in
+> `docs/visual-assets/AGENT_PROMPTS.md` § E.
 
 ## Goal
 

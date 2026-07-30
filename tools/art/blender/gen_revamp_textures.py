@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Procedural trim/wear texture generator for Full Finish Bar surfacing."""
+"""Procedural trim/wear generator for historical Full Finish Bar replay only."""
 from __future__ import annotations
 
 import argparse
@@ -131,7 +131,20 @@ def generate(part_id: str) -> tuple[str, str]:
 
 
 def main() -> None:
+    if '--legacy-replay' not in os.sys.argv[1:]:
+        print(
+            'LEGACY FULL FINISH REPLAY BLOCKED: use --legacy-replay explicitly; '
+            'new work follows docs/visual-assets/README.md',
+            file=os.sys.stderr,
+        )
+        raise SystemExit(2)
     ap = argparse.ArgumentParser()
+    ap.add_argument(
+        '--legacy-replay',
+        action='store_true',
+        required=True,
+        help='reproduce the retired Full Finish texture workflow',
+    )
     ap.add_argument('part_ids', nargs='+')
     args = ap.parse_args()
     for pid in args.part_ids:

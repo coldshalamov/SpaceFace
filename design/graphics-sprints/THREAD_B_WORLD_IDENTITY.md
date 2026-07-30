@@ -24,15 +24,21 @@ One **place pack** per sprint:
 
 ## Task list (per place)
 
-1. Read `design/world-identity/PIPELINE.md` + sector spec for story band.
-2. Load `assets/concept/index.json` entry → Blender `REF_<id>` plane.
-3. Acquire Blender lock (coordinate with A/E).
-4. `npm run author:place-archetype -- <part_id>` OR MCP sculpt per pipeline.
-5. Iterate from representative renders and player-route critique until the silhouette, material language,
+1. Read `assets/ships/AGENTS.md`, `docs/visual-assets/README.md`,
+   `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`, and
+   `.grok/skills/spaceface-blender-material-truth/SKILL.md`.
+2. Read `design/world-identity/PIPELINE.md` + sector spec for story band, then complete the
+   material-truth preflight for the changed place assemblies.
+3. Load `assets/concept/index.json` entry → Blender `REF_<id>` plane. If the selected component
+   reference needs image generation and this worker lacks it, use
+   `docs/visual-assets/AGENT_PROMPTS.md` § E.
+4. Acquire Blender lock (coordinate with A/E).
+5. `npm run author:place-archetype -- <part_id>` OR MCP sculpt per pipeline.
+6. Iterate from representative renders and player-route critique until the silhouette, material language,
    scale, and faction identity withstand independent review.
-6. `finalize_part.mjs` + `check:place-concept-resemblance` when promoted.
-7. Handoff YAML — `thread_c_actions` must list `sectorAnchors` + `PLACE_FILES`.
-8. Release lock.
+7. `finalize_part.mjs` + `check:place-concept-resemblance` when promoted.
+8. Handoff YAML — `thread_c_actions` must list `sectorAnchors` + `PLACE_FILES`.
+9. Release lock.
 
 ## Verification
 
@@ -47,6 +53,9 @@ npm run check:station-archetype-wiring
 
 - `design/world-identity/PIPELINE.md`
 - `design/revamp/BP-08_VISUAL_ASSET_SPEC.md` §2
+- `docs/visual-assets/README.md`
+- `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`
+- `.grok/skills/spaceface-blender-material-truth/SKILL.md`
 - `needed-assets.md` §B
 - `assets/QUEUE.md`
 

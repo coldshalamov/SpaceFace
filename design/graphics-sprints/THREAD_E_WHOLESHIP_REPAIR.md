@@ -24,15 +24,19 @@ Prefer one wholeship per sprint so a hero-scale repair receives coherent review 
 
 ## Task list
 
-1. Pause Thread A — acquire `blender.LOCK` as Thread E.
-2. Round-trip through `spaceface_export.py` with a credible complete `Material_Hull` body. The live contract
+1. Read `assets/ships/AGENTS.md`, `docs/visual-assets/README.md`,
+   `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`, and
+   `.grok/skills/spaceface-blender-material-truth/SKILL.md`; complete the material-truth preflight for
+   the exact changed whole-ship components.
+2. Pause Thread A — acquire `blender.LOCK` as Thread E.
+3. Round-trip through `spaceface_export.py` with a credible complete `Material_Hull` body. The live contract
    owns exact validation thresholds.
-3. Bake AO/roughness/normal per contract.
-4. Use `QUALITY_RITUAL.md` until the complete ship reads professionally at the player camera and independent
+4. Bake AO/roughness/normal per contract.
+5. Use `QUALITY_RITUAL.md` until the complete ship reads professionally at the player camera and independent
    review finds no material gaps.
-5. Update manifest `statusNote` only via integrator after checks pass.
-6. Handoff YAML with `blocked: false` only after exporter + hull audit green.
-7. Release lock → Thread A may resume.
+6. Update manifest `statusNote` only via integrator after checks pass.
+7. Handoff YAML with `blocked: false` only after exporter + hull audit green.
+8. Release lock → Thread A may resume.
 
 ## Verification
 
@@ -48,6 +52,9 @@ Thread C wires `WHOLE_SHIP_FILE_BY_DEF_ID` **only after** integrator + checks.
 
 - `design/spec3/SPEC3-F9-asset-pipeline.md` §SPEC3-37 step 2
 - `assets/AGENTS.md` §2.1 blocked wholeships
+- `docs/visual-assets/README.md`
+- `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`
+- `.grok/skills/spaceface-blender-material-truth/SKILL.md`
 - `FULL_GRAPHICS_REVAMP_GOAL.md` Batch 5
 
 ## Goal prompt

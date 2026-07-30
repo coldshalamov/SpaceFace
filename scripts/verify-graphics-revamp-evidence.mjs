@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Strict verify for graphics revamp evidence.
- * Usage: node scripts/verify-graphics-revamp-evidence.mjs [--id <id>] [--global]
+ * HISTORICAL / LEGACY REPLAY ONLY.
+ * Usage: node scripts/verify-graphics-revamp-evidence.mjs --legacy-replay [--id <id>] [--global]
  * Per ID: >=3 PNGs with <id> and pairwise distinct MD5 (no dups within ID),
  * deficiency.md SHA unique, contains <id> >=2 times + 'iter' detail + >=15 '-' lines (rejects templates),
  * finalize.log tris/bytes == manifest,
@@ -12,6 +12,22 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+
+if (!process.argv.includes('--legacy-replay')) {
+  console.error(
+    'LEGACY FULL FINISH REPLAY BLOCKED: current graphics verification starts at '
+    + 'docs/visual-assets/README.md; pass --legacy-replay only to reproduce the retired report.',
+  );
+  process.exit(2);
+}
+if (process.argv.includes('--help')) {
+  console.log(
+    'historical graphics-revamp evidence replay only; '
+    + 'usage: node scripts/verify-graphics-revamp-evidence.mjs '
+    + '--legacy-replay [--id <id>] [--global]',
+  );
+  process.exit(0);
+}
 
 const SCRATCH = 'C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-93d8d4790125\\implementer';
 const DEVSHOTS = path.join(process.cwd(), '.devshots', 'graphics-revamp');

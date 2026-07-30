@@ -1,5 +1,12 @@
 # Graphics Overhaul Integration Checkpoint
 
+> **Current graphics authority:** this checkpoint is a historical integration/resumption record,
+> not an authoring recipe. New and resumed visual work starts at
+> [`../../docs/visual-assets/README.md`](../../docs/visual-assets/README.md) and follows
+> [`../../.grok/skills/spaceface-blender-material-truth/SKILL.md`](../../.grok/skills/spaceface-blender-material-truth/SKILL.md).
+> The former SPEC3-F9 fixed technique/detail/render counts and its Full Finish executables are
+> **HISTORICAL / LEGACY REPLAY ONLY** and require an explicit `--legacy-replay` opt-in.
+
 **Checkpoint date:** 2026-07-21 (fleet-foundry and PQ-011 synthesis)
 
 **Status:** GRAPHICS CLOSEOUT PROMOTED TO `master` THROUGH `54548e09`; PLAYABLE BROWSER/ELECTRON
@@ -369,9 +376,10 @@ gltf-validator result, reproducible authoring scripts, and a 45-entry SHA-256 ma
 registered, placed, interactive, saved, or route-accepted. Full PQ-018 depends on PQ-017 (World
 Site kernel); the queue row stays `planned`.
 
-**Untracked-graphics-batch classification.** 263 foreign untracked files were classified into five
+**Untracked-graphics-batch classification (historical).** 263 foreign untracked files were classified into five
 categories per closeout spec. 17 durable canon/spec/tooling files committed (`a418c111`): the FACT
-Voice Bible, the 47-A opening comms script, SPEC3-F9 (the LIVE Full Finish Bar contract), the
+Voice Bible, the 47-A opening comms script, SPEC3-F9 (now retained only as the historical Full
+Finish Bar replay contract), the
 Gemini/T1c design briefs, the Blender authoring tooling (`revamp_full_finish.py`,
 `gen_revamp_textures.py`, `cli_export_part.py`, `update_place_manifest_notes.py`,
 `write_place_evidence.py`, three PowerShell runners), the evidence/contract scripts
@@ -385,6 +393,11 @@ batch logs that record the batch crashing with a PowerShell parameter-binding er
 removed files is referenced by any tracked manifest or source. Disposition record:
 `design/program/_archives/pq022-closeout-20260720/DISPOSITION.md`. Primary checkout untracked count
 is now 0.
+
+The named Full Finish tools and verifier are not a current production route. They preserve exact
+reproduction of this checkpoint and fail closed unless invoked with `--legacy-replay`. Their
+fixed counts and technique list must not be copied into a new asset brief or used to overrule the
+current material-truth standard.
 
 **Donor worktree cleanup.** `sf-pq014`, `sf-pq018`, `sf-pq022` were removed after their accepted
 content was verified byte-identical on master. On 2026-07-21 the remaining

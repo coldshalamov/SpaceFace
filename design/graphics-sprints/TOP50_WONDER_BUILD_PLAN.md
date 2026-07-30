@@ -372,12 +372,15 @@ indie” are failures. Target enables Steam ~$30 store stills and Freelancer-suc
 4. design/graphics-sprints/QUALITY_RITUAL.md
 5. design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md
 6. design/graphics-sprints/00_ORCHESTRATION.md + BLENDER_EXCLUSIVE_LOCK.md
-7. .grok/skills/spaceface-blender-pipeline/SKILL.md
-8. .grok/skills/spaceface-blender-pipeline/references/professional-techniques.md
-9. assets/AGENTS.md (ship stack, blocked wholeships, registries)
-10. tools/blender/spaceface_export.py contract (do not relax)
-11. FULL_GRAPHICS_REVAMP_GOAL.md (coverage and outcome bar)
-12. design/revamp/BP-08_VISUAL_ASSET_SPEC.md §0 for station/landmark identity when relevant
+7. assets/ships/AGENTS.md + docs/visual-assets/README.md +
+   docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md
+8. .grok/skills/spaceface-blender-material-truth/SKILL.md
+9. .grok/skills/spaceface-blender-pipeline/SKILL.md (subordinate technique router)
+10. .grok/skills/spaceface-blender-pipeline/references/professional-techniques.md
+11. assets/AGENTS.md (ship stack, blocked wholeships, registries)
+12. tools/blender/spaceface_export.py contract (do not relax)
+13. FULL_GRAPHICS_REVAMP_GOAL.md (coverage and outcome bar)
+14. design/revamp/BP-08_VISUAL_ASSET_SPEC.md §0 for station/landmark identity when relevant
 
 ## Your assignment this session
 Slice: <SLICE_LETTER>   (A | B | C | D | E)
@@ -405,12 +408,15 @@ For EACH id:
    real deficiencies.
 2. State the asset's role, identity, silhouette, construction, and exposure target concisely enough to
    guide decisions.
-3. Repair modeling, surfacing, motion/life, sockets, and authored maps in the combination current
+3. Complete the material-truth preflight and record the component-reference decision before
+   authoring. If selected image generation is unavailable, use
+   `docs/visual-assets/AGENT_PROMPTS.md` § E.
+4. Repair modeling, surfacing, motion/life, sockets, and authored maps in the combination current
    evidence requires. The named Blender skills are technique references, not mandatory pass counts.
-4. Capture representative neutral, lit, detail, and player-route evidence for the resulting claim.
-5. Keep `deficiency.md` focused on material remaining gaps and chosen repairs; chronology is optional.
-6. Export through `spaceface_export.py` / `finalize_part.mjs` with zero assertion failures.
-7. Store evidence under `assets/ships/parts/revamp-evidence/<id>/`, write the handoff YAML, and release
+5. Capture representative neutral, lit, detail, and player-route evidence for the resulting claim.
+6. Keep `deficiency.md` focused on material remaining gaps and chosen repairs; chronology is optional.
+7. Export through `spaceface_export.py` / `finalize_part.mjs` with zero assertion failures.
+8. Store evidence under `assets/ships/parts/revamp-evidence/<id>/`, write the handoff YAML, and release
    or explicitly transfer verified ownership when the batch is safe to hand off.
 
 ## VFX / RUNTIME / UI packs (when Thread D / UI)

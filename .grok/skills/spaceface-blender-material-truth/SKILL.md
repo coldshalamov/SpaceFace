@@ -1,23 +1,43 @@
 ---
 name: spaceface-blender-material-truth
 description: >
-  Focused SpaceFace remaster pass for an existing Blender or GLB ship, station, place, or prop whose
-  camera-prominent components read as plastic, clay, rubber, leather, LEGO-like primitive stacks,
-  generic greebles, or otherwise disagree with their in-fiction function and manufacture. Use to
-  preserve the asset's identity, footprint, sockets, collision, and runtime role while rebuilding
-  selected components through a fiction-development agreement, component material bills,
-  shape-grammar audits, optional component-only generated references, editable Blender source,
-  sanctioned GLB export, and matched clay/material/runtime evidence.
+  Primary SpaceFace hard-surface workflow for authoring or remastering a camera-prominent Blender or
+  GLB ship, station, place, or prop. Always use for Blender/GLB form or surfacing work, and
+  especially when components read as plastic, clay, rubber, leather, LEGO-like primitive stacks,
+  generic greebles, or otherwise disagree with their in-fiction function and manufacture. Establish
+  fiction/material truth before modeling, preserve existing identity and gameplay interfaces when
+  remastering, use component-only generated references when selected, iterate on the complete
+  surfaced asset in Blender, export through the sanctioned pipeline, and require matched
+  clay/material/runtime evidence.
 ---
 
 # SpaceFace Blender Material Truth
 
-Remaster the existing asset rather than designing a replacement. Start from what each visible
-component is in the fiction, then make its geometry, construction, material response, wear, and LOD
-agree with that fact.
+For an existing asset, remaster what is there rather than designing a replacement. For a new asset,
+establish its manufactured assemblies before accepting a blockout. In either case, start from what
+each visible component is in the fiction, then make its geometry, construction, material response,
+wear, and LOD agree with that fact.
 
 This is a technique workflow, not acceptance authority. Route the result through the G0-G7 process
 in `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`.
+
+## 0. Material-truth preflight
+
+Complete this preflight before any camera-visible Blender/GLB geometry or surfacing change. Scale the
+record to the work, never the quality bar: Tier A/B components require individual entries; Tier C/D
+may use one entry for a repeated manufactured family, but no changed zone may inherit a DCC default.
+
+1. classify every changed component or changed repeated family as `billed` or `unchanged quiet zone`;
+2. write the fiction-development agreement and material bill for every `billed` item or grouped
+   repeated family;
+3. record the shape-grammar failure or new manufactured assembly sequence;
+4. record `componentReferenceDecision` as `not_needed`, `native_imagegen`, `codex_handoff`, or
+   `blocked:image-generation-capability`;
+5. name the complete surfaced Blender working scene and the supported cameras that will judge it;
+6. name the G0-G7 evidence and independent reviewer required for the exact candidate.
+
+Do not begin from a generic primitive, shader preset, procedural texture recipe, or beauty-render
+goal and invent the fictional explanation afterward.
 
 ## 1. Establish authority and boundaries
 
@@ -73,10 +93,24 @@ tube, box, torus, slab, rail, comb, and repeated bar, require a functional and m
 When a specific component is trapped by the current software vocabulary:
 
 1. Crop or isolate that exact component from the authoritative asset.
-2. If this worker lacks image generation, use the bounded Codex terminal handoff in
-   `docs/visual-assets/AGENT_PROMPTS.md` § E. Do not skip the selected reference method, fabricate a
-   text-only substitute, or broaden the request into a whole-asset redesign. If the delegated
-   session also lacks image generation, record `blocked:image-generation-capability`.
+2. If this worker lacks image generation, run
+   `scripts/request_imagegen_reference.mjs` from this skill (usage and packet requirements are in
+   `docs/visual-assets/AGENT_PROMPTS.md` § E). The wrapper dispatches a bounded Codex terminal
+   session in isolated read-only scratch. It snapshots the prompt and crop, pins the resolved local
+   Codex executable across the run, requires one strictly ordered completed turn with one final
+   agent message and no other tool/file/web/MCP work, and accepts exactly one fresh PNG from that
+   turn's protected `$CODEX_HOME/generated_images/<thread-id>/` directory. It binds freshness and
+   identity to a single no-follow handle read, fully decodes and pixel-compares that exact protected
+   buffer, then publishes one fixed seven-file evidence bundle with an ownership-token-checked
+   same-parent atomic directory rename. Prose attestations are never generation evidence.
+   The installed Codex binary's authenticity remains a local host trust boundary even though the
+   wrapper records and rechecks its real path, hash, stat, and version. Because Node lacks a Windows
+   handle-relative rename, same-user filesystem integrity during the final check-to-rename interval
+   is also an explicit host trust boundary. The wrapper records the caller's `codex_handoff` and
+   `worker_lacks_image_generation` routing premise without claiming the receipt independently proves
+   it. Do not skip the selected reference method, fabricate a text-only substitute, or broaden the
+   request into a whole-asset redesign. If the delegated session also lacks image generation, record
+   `blocked:image-generation-capability`.
 3. Generate a component-only construction or material study that preserves its footprint,
    orientation, interfaces, and role.
 4. Record tool, prompt, input/output hashes, selected traits, rejected traits, and license/provenance.
@@ -92,10 +126,12 @@ physically authoritative.
    modifiers, shared datablocks, sockets, collision, and render visibility.
 2. Rebuild only the selected component logic in editable, repeatable, idempotent source.
 3. Prefer manufacturing-specific sections and joints over generic bevels or stuck-on greebles.
-4. Keep the complete surfaced asset visible in the connected Blender window. Use Material Preview
-   or Rendered shading as the primary working state, with the intended materials, neighboring
-   components, and restrained emission present. Review matched neutral material, hard grazing-light,
-   and supported-camera views after each meaningful pass.
+4. When a non-conflicting connected Blender MCP session is available, use it for the primary
+   geometry/material iteration. Keep the complete surfaced asset visible in that Blender window.
+   Use Material Preview or Rendered shading as the primary working state, with the intended
+   materials, neighboring components, and restrained emission present. Headless builders remain
+   reproducible authoring/output tools, not a reason to hide the surfaced result. Review matched
+   neutral material, hard grazing-light, and supported-camera views after each meaningful pass.
 5. Use solid/clay, wireframe, material-ID, and channel-isolation views as short diagnostic modes.
    Return immediately to the complete surfaced assembly before deciding whether a change survives.
    Clay can reject construction; it cannot prove material truth or grant acceptance.

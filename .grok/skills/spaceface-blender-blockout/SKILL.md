@@ -8,9 +8,10 @@ description: >
 # SpaceFace Blender — Form and Construction Pass
 
 Read `docs/visual-assets/README.md` and
-`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` first. If the form defect is also a
-plastic/clay/LEGO-like or fiction/material mismatch, load
-`../spaceface-blender-material-truth/SKILL.md`; this pass cannot weaken that workflow or G0–G7.
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` first, then load
+`.grok/skills/spaceface-blender-material-truth/SKILL.md` before changing form. Complete its proportional
+fiction/material preflight even when the starting asset has no already-recorded plastic/clay/LEGO
+defect; this pass cannot weaken that workflow or G0–G7.
 
 ## Scope
 

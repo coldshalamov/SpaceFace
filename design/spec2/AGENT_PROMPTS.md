@@ -494,16 +494,18 @@ READ FIRST (in order):
   - assets/AGENTS.md, assets/ships/AGENTS.md, docs/visual-assets/README.md, and
     docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md — the latter owns G0-G7 craft and
     acceptance; a valid GLB is not accepted art.
-  - If any camera-prominent component is plastic/clay/LEGO-like, primitive-stacked, a glowing
-    disk/torus, or fiction/material-incoherent, load
-    .grok/skills/spaceface-blender-material-truth/SKILL.md before changing it.
+  - For every Blender/GLB form or surfacing change, load
+    .grok/skills/spaceface-blender-material-truth/SKILL.md before modeling. Give every changed
+    camera-visible zone a concrete fiction/material disposition; substantive Tier A/B work requires
+    the full preflight and component bill. Do not wait for a reviewer to identify plastic/clay,
+    primitive-stacked, glowing-disk/torus, or fiction/material-incoherent output.
   - src/render/AGENTS.md for current asset/render contracts and ownership.
     The standing no first-person/visor/cockpit HUD decision remains current root policy.
   - assets/ships/parts/parts_manifest.json — the current runtime interoperability contract; update it
     coherently when a higher-quality asset needs a justified profile change.
   - ARCHITECTURE.md  — renderer features and the one-game-path rule.
 
-MATERIAL-TRUTH ADDENDUM (when that focused workflow is triggered):
+MATERIAL-TRUTH ADDENDUM (mandatory for Blender/GLB form or surfacing authoring):
   - Write a canon-cited fiction/development agreement and component material bill before G1. Start
     from manufactured sections and interfaces, not Blender primitives or generic greebles.
   - If a component-only generated construction/material study is the selected way out of DCC

@@ -1,13 +1,30 @@
 #!/usr/bin/env node
 /**
- * Strict Full Finish Bar evidence gate — counts + doc contract.
- * Usage: node scripts/verify-full-finish-evidence.mjs [--out <path>]
+ * Historical Full Finish Bar replay verifier — counts + doc contract.
+ * Usage: node scripts/verify-full-finish-evidence.mjs --legacy-replay [--out <path>]
  */
 import { createHash } from 'node:crypto';
 import fs from 'fs';
 import path from 'path';
 
 import { inspectReleaseAssetPair } from '../src/contracts/assetReleaseValidation.js';
+
+const LEGACY_REPLAY_FLAG = '--legacy-replay';
+if (!process.argv.includes(LEGACY_REPLAY_FLAG)) {
+  console.error(
+    'LEGACY FULL FINISH REPLAY BLOCKED: use --legacy-replay explicitly; '
+    + 'new work follows docs/visual-assets/README.md',
+  );
+  process.exit(2);
+}
+if (process.argv.includes('--help')) {
+  console.log(
+    'usage: node scripts/verify-full-finish-evidence.mjs '
+    + '--legacy-replay [--out <path>]\n'
+    + 'historical replay only; not current visual acceptance',
+  );
+  process.exit(0);
+}
 
 const ROOT = process.cwd();
 const DEVSHOTS = path.join(ROOT, '.devshots', 'graphics-revamp');

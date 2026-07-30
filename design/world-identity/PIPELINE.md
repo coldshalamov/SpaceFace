@@ -29,18 +29,19 @@ Machine-readable index: `design/world-identity/place-identity-index.json`
 This pipeline owns story-to-place and geography routing; it does **not** define a separate quality bar
 for the resulting GLB. Before substantive Blender/place authoring, read
 `assets/ships/AGENTS.md` → `docs/visual-assets/README.md` →
-`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`. If current player-facing evidence identifies
-plastic/clay/LEGO-like primitive construction, an unexplained glowing torus/disk, or a mismatch between
-fictional function and visible substance, also load
-`.grok/skills/spaceface-blender-material-truth/SKILL.md`.
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`, then load
+`.grok/skills/spaceface-blender-material-truth/SKILL.md` before changing form or surfacing. Every
+changed camera-visible zone needs a concrete fiction/material preflight; substantive Tier A/B work
+requires the full fiction/development agreement and component material bill. Tier C/D work may group
+a repeated manufactured family, but it may not inherit a Blender default or postpone material truth
+until a reviewer notices plastic/clay/LEGO-like construction.
 
-For that defect class, the fiction/material bill, shape-grammar audit, optional **component-only**
-generated reference, and exact-source evidence rules are mandatory. Generated imagery remains
-reference-only; if the selected component-reference method needs image generation and the worker lacks
-it, use the bounded Codex handoff in `docs/visual-assets/AGENT_PROMPTS.md` § E. When connected Blender
-is available, keep the complete surfaced place in Material Preview or Rendered shading as the primary
-working state. Headless bootstrap or export commands can diagnose/produce a candidate, but cannot close
-G4 material truth or replace exact-source/player-route review.
+When a **component-only** generated construction/material reference is selected, its provenance and
+exact-source comparison rules are mandatory. Generated imagery remains reference-only; if the worker
+lacks image generation, use the bounded Codex wrapper in `docs/visual-assets/AGENT_PROMPTS.md` § E.
+When connected Blender is available, keep the complete surfaced place in Material Preview or Rendered
+shading as the primary working state. Headless bootstrap or export commands can diagnose/produce a
+candidate, but cannot close G4 material truth or replace exact-source/player-route review.
 
 ### 1. Story intake (read-only canon)
 

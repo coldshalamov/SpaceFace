@@ -1,10 +1,30 @@
-# run_full_finish_bar.ps1 — CLI fallback for revamp_full_finish.py (Blender singleton per asset)
+# HISTORICAL / LEGACY REPLAY ONLY.
+# Current graphics work follows docs/visual-assets/README.md and the material-truth skill.
+# run_full_finish_bar.ps1 — retired CLI fallback for revamp_full_finish.py
+[CmdletBinding()]
 param(
-    [Parameter(Mandatory)][string]$PartId,
+    [string]$PartId,
     [string[]]$Phases = @('iter0','det','materials','bake_hull','bake_mech','bake_accent','render','export'),
-    [string]$Date = '2026-07-06'
+    [string]$Date = '2026-07-06',
+    [switch]$LegacyReplay,
+    [switch]$Help
 )
 $ErrorActionPreference = 'Stop'
+if (-not $LegacyReplay) {
+    throw 'LEGACY FULL FINISH REPLAY BLOCKED: pass -LegacyReplay explicitly; new work follows docs/visual-assets/README.md'
+}
+if ($Help) {
+    Write-Host 'usage: run_full_finish_bar.ps1 -LegacyReplay -PartId <id> [-Phases <phase[]>]'
+    Write-Host 'historical replay only; not a current graphics production route'
+    return
+}
+if ([string]::IsNullOrWhiteSpace($PartId)) {
+    throw 'Legacy replay requires -PartId <id>.'
+}
+$previousReplay = $env:SF_LEGACY_REPLAY
+$env:SF_LEGACY_REPLAY = '--legacy-replay'
+
+try {
 $BLENDER = 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe'
 $SCRIPT = Join-Path $PSScriptRoot 'revamp_full_finish.py'
 $ROOT = Resolve-Path (Join-Path $PSScriptRoot '..\..\..')
@@ -53,3 +73,10 @@ if ($Phases -contains 'export') {
     }
 }
 Write-Host "[$PartId] DONE"
+} finally {
+    if ($null -eq $previousReplay) {
+        Remove-Item Env:SF_LEGACY_REPLAY -ErrorAction SilentlyContinue
+    } else {
+        $env:SF_LEGACY_REPLAY = $previousReplay
+    }
+}

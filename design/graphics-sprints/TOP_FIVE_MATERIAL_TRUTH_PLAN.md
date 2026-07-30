@@ -70,7 +70,8 @@ surface language before applying it to the other two ships.
 
 **State:** unwired surfaced candidate.
 **Earliest failed gate:** G2 construction.
-**Current source/candidate:** `A5F9DC2C…C81` / `8E003254…7B5A`.
+**Current source/candidate:** resolve from `evidence/family/finalize_report.json`; this plan does not
+pin volatile candidate hashes.
 
 ### Fiction-development agreement
 
@@ -90,7 +91,8 @@ wide boxes.”
 
 **State:** unwired surfaced candidate.
 **Earliest failed gate:** G1 primary form because primitive machinery defines the role.
-**Current source/candidate:** `6517F0BA…926` / `21F63DDF…662`.
+**Current source/candidate:** resolve from `evidence/family/finalize_report.json`; this plan does not
+pin volatile candidate hashes.
 
 ### Fiction-development agreement
 

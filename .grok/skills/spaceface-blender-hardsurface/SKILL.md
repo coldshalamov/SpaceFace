@@ -8,10 +8,10 @@ description: >
 # SpaceFace Blender — Surfacing Pass
 
 Read `docs/visual-assets/README.md` and
-`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` first. If the surface complaint also names
-primitive/default construction or a fiction/material mismatch, load
-`../spaceface-blender-material-truth/SKILL.md`; a surface-only pass may not hide the earlier G1/G2
-failure.
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` first, then load
+`.grok/skills/spaceface-blender-material-truth/SKILL.md` before changing surfacing. Complete its proportional
+fiction/material preflight even when no reviewer has already named primitive/default construction;
+a surface-only pass may not hide an earlier G1/G2 failure or inherit a DCC default.
 
 ## Scope
 

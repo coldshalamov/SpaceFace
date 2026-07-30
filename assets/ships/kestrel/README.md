@@ -1,5 +1,10 @@
 # SF-K0 Kestrel / BORROWED TIME
 
+Before any new form or surfacing pass, follow
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` and complete the mandatory fiction/material
+preflight in `.grok/skills/spaceface-blender-material-truth/SKILL.md`. This package records Kestrel
+identity and technical contracts; it does not waive the repository-wide material-truth bar.
+
 The starter ship and the first reference implementation of the SpaceFace hero-asset standard
 (see `design/spec3/SPEC3-F9-asset-pipeline.md` and `design/graphics-sprints/FULL_GRAPHICS_REVAMP_GOAL.md`).
 It is a bespoke, authored hull — not a generic procedural family build — that coexists with the

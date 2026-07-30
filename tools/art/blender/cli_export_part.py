@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Background Blender export helper for Full Finish Bar (avoids MCP window cursor_set bug)."""
+"""Historical background export helper for the retired Full Finish Bar."""
 from __future__ import annotations
 
 import importlib.util
@@ -7,16 +7,30 @@ import json
 import os
 import sys
 
+if '--legacy-replay' not in sys.argv:
+    print(
+        'LEGACY FULL FINISH REPLAY BLOCKED: current graphics authoring starts at '
+        'docs/visual-assets/README.md; pass --legacy-replay only for archaeology.',
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+if '--help' in sys.argv:
+    print(
+        'historical export replay only; usage: blender --background file.blend '
+        '--python cli_export_part.py -- --legacy-replay <part_id>',
+    )
+    raise SystemExit(0)
+
 import bpy
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+
+
 def _resolve_part_id() -> str:
-    if '--' in sys.argv:
-        idx = sys.argv.index('--') + 1
-        if idx < len(sys.argv):
-            return sys.argv[idx]
-    if len(sys.argv) > 1 and not sys.argv[-1].endswith('.py'):
-        return sys.argv[-1]
+    args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:]
+    for value in args:
+        if not value.startswith('-') and not value.endswith('.py'):
+            return value
     return os.environ.get('SF_PART_ID', '')
 
 
@@ -25,7 +39,10 @@ PART_ID = _resolve_part_id()
 
 def main() -> None:
     if not PART_ID:
-        raise SystemExit('usage: blender --background file.blend --python cli_export_part.py -- <part_id>')
+        raise SystemExit(
+            'usage: blender --background file.blend --python cli_export_part.py '
+            '-- --legacy-replay <part_id>',
+        )
     export_script = os.path.join(ROOT, 'tools', 'blender', 'spaceface_export.py')
     spec = importlib.util.spec_from_file_location('spaceface_export', export_script)
     mod = importlib.util.module_from_spec(spec)

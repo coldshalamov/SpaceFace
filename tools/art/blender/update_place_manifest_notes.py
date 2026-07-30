@@ -1,9 +1,25 @@
 #!/usr/bin/env python3
-"""Patch parts_manifest.json PRO notes from revamp-evidence finalize.log files."""
+"""HISTORICAL / LEGACY REPLAY ONLY: patch retired Full Finish manifest notes."""
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+_LEGACY_REPLAY_FLAG = '--legacy-replay'
+if _LEGACY_REPLAY_FLAG not in sys.argv[1:]:
+    print(
+        'LEGACY FULL FINISH REPLAY BLOCKED: use --legacy-replay explicitly; '
+        'new work follows docs/visual-assets/README.md',
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+if '--help' in sys.argv[1:]:
+    print(
+        'usage: update_place_manifest_notes.py --legacy-replay\n'
+        'historical replay only; not a current graphics production route'
+    )
+    raise SystemExit(0)
 
 ROOT = Path(__file__).resolve().parents[3]
 MANIFEST = ROOT / 'assets' / 'ships' / 'parts' / 'parts_manifest.json'

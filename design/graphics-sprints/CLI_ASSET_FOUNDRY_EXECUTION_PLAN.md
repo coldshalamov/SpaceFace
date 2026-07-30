@@ -13,6 +13,13 @@ Program, or the production status roll-up. Those documents own priority, coverag
 and cross-program status. This document owns the repeatable CLI-first production method and the six
 checkpoint boundaries.
 
+For substantive Tier A/B authored-3D work, the repeatable method begins with
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` and the mandatory fiction/material preflight
+in `.grok/skills/spaceface-blender-material-truth/SKILL.md`. Deterministic CLI reconstruction remains
+the reproducibility spine; it does not waive the material-truth or player-facing visual bar. If
+component image generation is useful but unavailable to the worker, use the isolated Codex terminal
+handoff in `docs/visual-assets/AGENT_PROMPTS.md` § E.
+
 ## 1. Outcome
 
 Build a zero-cost asset foundry that:
@@ -66,10 +73,11 @@ The production pipeline is CLI-first. MCP is optional and must never be a checkp
 
 Spector's MCP adapter may be enabled temporarily by an operator for an interactive diagnosis, but the
 committed pipeline calls a normal Node command. Blender MCP is likewise not required for reproducible
-CLI production. When a connected Blender session is available for a material-truth repair, however,
-the complete surfaced asset must remain the primary Material Preview/Rendered authoring view under
+CLI production. When a non-conflicting connected Blender session is available, however, the complete
+surfaced asset must remain the primary Material Preview/Rendered authoring view under
 `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`; headless output can diagnose or build, but
-cannot close G4 surface truth, replace exact-source evidence, or grant acceptance.
+cannot close G2 construction truth or G4 surface truth, replace exact-source evidence, or grant
+acceptance.
 
 Material Maker 1.6 is not a dependency. On the reference Windows machine its official build repeatedly
 terminated with 0xc0000005 before its export script began, including default, OpenGL compatibility, and
@@ -112,9 +120,11 @@ evidence of isolation.
    their scope.
 3. Read `docs/visual-assets/README.md` and
    `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`; they own G0-G7 craft and acceptance.
-4. If the selected asset has a plastic/clay/LEGO-like, primitive-default, glowing disk/torus, or
-   fiction/material defect, read `.grok/skills/spaceface-blender-material-truth/SKILL.md` and use its
-   component-only image-generation/Codex-handoff route when that method is selected.
+4. For every substantive Tier A/B authored-3D slice, read
+   `.grok/skills/spaceface-blender-material-truth/SKILL.md` and complete its material-truth preflight
+   before form or surfacing work. Use its component-only image-generation/Codex-handoff route when
+   that method is selected; this is not conditional on an existing complaint already naming
+   plastic/clay/LEGO-like work.
 5. Read design/graphics-sprints/README.md, TOP50_WONDER_BUILD_PLAN.md section 5, and
    QUALITY_RITUAL.md.
 6. Read only the packet-specific owner files listed below.

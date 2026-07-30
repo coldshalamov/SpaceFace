@@ -26,13 +26,21 @@ before touching those GLBs. That handoff owns live residuals, bans, KEEP/RESTORE
 meaning (dock = shipyard UI backdrop; hulk/debris = freeflight landmarks). For ordinary admitted
 roadmap work, still use `program-dispatch` above—do not substitute this handoff for a PQ packet.
 
-**Graphics / material-truth and asset recovery:** start with the current
+**Graphics / visual assets:** every player-facing graphics task starts at
+[`docs/visual-assets/README.md`](./docs/visual-assets/README.md), which routes authored 3D, portraits,
+concept/reference generation, cinematics, VFX, and UI art to their owning quality contract. For
+repository-wide asset recovery, then use the current
 [`VISUAL_ASSET_CATALOG.md`](./design/graphics-sprints/VISUAL_ASSET_CATALOG.md) to distinguish live
-assets from candidates, legacy donors, rejected evidence, and protected foreign work. When an
-existing Blender/GLB asset fails because primitive construction and its in-fiction material disagree,
-use [`.grok/skills/spaceface-blender-material-truth/SKILL.md`](./.grok/skills/spaceface-blender-material-truth/SKILL.md)
-after claiming its exact source/candidate paths. The catalog is routing evidence, not permission to
-merge old branches, promote candidates, or bypass G0-G7 acceptance.
+assets from candidates, legacy donors, rejected evidence, and protected foreign work. Any
+Blender/GLB form or surfacing pass uses
+[`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`](./docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md)
+and
+[`.grok/skills/spaceface-blender-material-truth/SKILL.md`](./.grok/skills/spaceface-blender-material-truth/SKILL.md)
+and completes its proportional material-truth preflight before modeling, whether or not a reviewer
+has already named a plastic/clay/primitive defect. Tier C/D may group a repeated manufactured family,
+but no changed visible zone may inherit a DCC default. Claim
+the exact source/candidate paths first. The catalog is routing evidence, not permission to merge old
+branches, promote candidates, or bypass G0-G7 acceptance.
 
 Do not begin from an old handoff, screenshot directory, review transcript, archived plan, raw whole-queue dump, or broad repository grep—**except** the place remaster handoff linked above when that is the explicit task.
 

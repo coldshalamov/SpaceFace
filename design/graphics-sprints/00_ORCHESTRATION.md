@@ -10,12 +10,22 @@
 ## Authority chain
 
 1. Root `AGENTS.md` for repository safety, ownership, live paths, and performance policy.
-2. [`README.md`](README.md) for this folder's authority map and quality doctrine.
-3. **`TOP50_WONDER_BUILD_PLAN.md`** for priority/order and slice outcomes.
-4. `FULL_GRAPHICS_REVAMP_GOAL.md` for full authored-asset coverage and outcome bar.
-5. `VISUAL_ITERATION_PROTOCOL.md` for evidence validity, outcome-based scrutiny and defect escalation.
-6. `design/revamp/BP-08_VISUAL_ASSET_SPEC.md` for missing-asset and silhouette intent.
-7. Live exporter/runtime contracts and current checks for technical truth.
+2. `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` for the canonical G0-G7 craft and
+   acceptance contract.
+3. `.grok/skills/spaceface-blender-material-truth/SKILL.md` for the mandatory fiction/material
+   preflight and anti-primitive hard-surface workflow on every substantive Tier A/B authored-3D
+   slice. Run that preflight before form or surfacing work begins.
+4. [`README.md`](README.md) for this folder's authority map and quality doctrine.
+5. **`TOP50_WONDER_BUILD_PLAN.md`** for priority/order and slice outcomes.
+6. `FULL_GRAPHICS_REVAMP_GOAL.md` for full authored-asset coverage and outcome bar.
+7. `VISUAL_ITERATION_PROTOCOL.md` for evidence validity, outcome-based scrutiny and defect escalation.
+8. `design/revamp/BP-08_VISUAL_ASSET_SPEC.md` for missing-asset and silhouette intent.
+9. Live exporter/runtime contracts and current checks for technical truth.
+
+When a component reference would materially improve the result and the assigned worker lacks image
+generation, use the isolated Codex terminal handoff in `docs/visual-assets/AGENT_PROMPTS.md` § E.
+When a non-conflicting connected Blender MCP session exists, the complete surfaced asset—not a clay
+proxy—is the primary authoring view.
 
 `design/spec2/00_MASTER_TASTE.md` is historical taste context, not a visual-token authority. Apply its
 standing non-diegetic HUD restriction where relevant, but judge current work from player-facing evidence.

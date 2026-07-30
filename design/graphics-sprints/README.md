@@ -11,8 +11,13 @@ authorize quality cuts, arbitrary asset budgets, or process metrics as substitut
 ## Authority and routing
 
 1. Root `AGENTS.md` owns repository safety, live-system routing, performance policy, and ownership.
-2. [`docs/visual-assets/`](../../docs/visual-assets/README.md) owns **craft and acceptance** for
-   authored 3D assets (states, G0–G7 gates, evidence shapes). A valid GLB is not accepted art.
+2. [`docs/visual-assets/`](../../docs/visual-assets/README.md), specifically
+   `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`, owns **craft and acceptance** for
+   player-facing graphics routing and authored 3D assets (states, G0–G7 gates, evidence shapes). A
+   valid GLB is not accepted art. Substantive Tier A/B Blender form or surfacing also requires
+   [`.grok/skills/spaceface-blender-material-truth/SKILL.md`](../../.grok/skills/spaceface-blender-material-truth/SKILL.md)
+   and its material-truth preflight before modeling, not only after a plastic/clay/primitive defect
+   is reported.
 3. [`TOP50_WONDER_BUILD_PLAN.md`](TOP50_WONDER_BUILD_PLAN.md) owns **priority and build order**: what
    produces the largest visible improvement first.
 4. [`FULL_GRAPHICS_REVAMP_GOAL.md`](FULL_GRAPHICS_REVAMP_GOAL.md) owns **coverage and outcome bar**:

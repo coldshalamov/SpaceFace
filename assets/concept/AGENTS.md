@@ -6,6 +6,8 @@
 > **Machine index:** `assets/concept/index.json` (concept_id → path → `blender_part_id` / sector placement).
 > **Pipeline doc:** `design/world-identity/PIPELINE.md` (cited in index.json).
 > **Generation ledger:** `VISUAL_ASSET_PLAN.md` (historical IDs; not implementation authority).
+> **Graphics quality route:** `docs/visual-assets/README.md`; generated-reference handoffs are in
+> `docs/visual-assets/AGENT_PROMPTS.md` §§ E–F.
 
 ---
 
@@ -55,6 +57,9 @@ material/readability review, runtime validation, and measured performance.
 2. **Do not** substitute a concept JPG for a missing GLB — flight will look wrong and bypass the asset contract.
 3. **Do** read `index.json` before authoring a new `place_*` or hull to find the approved mood reference.
 4. **Do** copy the *look* into Blender/portrait outputs under the proper live folders (`ships/parts/`, `portraits/`).
+5. **Do** record prompt, input/output hashes, tool/model when exposed, selected/rejected traits, and
+   license/provenance for generated references. If the selected generation method is unavailable,
+   use the bounded Codex terminal handoff rather than a text-only substitute.
 
 ---
 

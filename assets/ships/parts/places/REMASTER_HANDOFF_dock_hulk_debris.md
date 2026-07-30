@@ -10,20 +10,19 @@ iter219/iter280 density loop and its `G1_FORM` resume instructions.
 ## Mandatory craft route for any reopened authoring
 
 This handoff records an offline checkpoint and the remaining G5-G7 acceptance work; it does not
-create a separate art bar. Before changing any source because current player-route evidence identifies
-a concrete regression, read `assets/ships/AGENTS.md` → `docs/visual-assets/README.md` →
-`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`. For plastic/clay/LEGO-like construction,
-unexplained primitive stacks or glowing hoops/disks, or a fiction/material mismatch, also load
-`.grok/skills/spaceface-blender-material-truth/SKILL.md`.
+create a separate art bar. Before changing any source, read `assets/ships/AGENTS.md` →
+`docs/visual-assets/README.md` → `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`, then load
+`.grok/skills/spaceface-blender-material-truth/SKILL.md`. Every changed camera-visible zone receives
+a concrete fiction/material preflight before modeling; substantive Tier A/B changes require the
+full fiction/development agreement, component bill, and shape-grammar audit. Preserve the frozen role,
+dimensions, sockets, collision, and route composition.
 
-That remediation begins with a component fiction/material bill and shape-grammar audit; it preserves
-the frozen role, dimensions, sockets, collision, and route composition. Use a generated reference only
-for the exact blocked component, never as a whole-place replacement or PBR source. If the worker needs
-that selected method but lacks image generation, use `docs/visual-assets/AGENT_PROMPTS.md` § E to hand
-the bounded component to Codex. When connected Blender is available, keep the complete surfaced place
-in Material Preview or Rendered shading while authoring. Headless outputs/clay views may diagnose but
-cannot close G4; eligible evidence must be rerendered from the exact finalized source GLB and bound to
-the source/renderer hashes.
+Use a generated reference only for the exact blocked component, never as a whole-place replacement or
+PBR source. If the worker needs that selected method but lacks image generation, use the bounded Codex
+wrapper specified in `docs/visual-assets/AGENT_PROMPTS.md` § E. When connected Blender is available,
+keep the complete surfaced place in Material Preview or Rendered shading while authoring. Headless
+outputs/clay views may diagnose but cannot close G4; eligible evidence must be rerendered from the
+exact finalized source GLB and bound to the source/renderer hashes.
 
 ## Scope and player routes
 

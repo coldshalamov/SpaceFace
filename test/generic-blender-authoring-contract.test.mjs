@@ -10,6 +10,17 @@ assert.equal(plasma?.method, 'blender_generic');
 assert.equal(plasma?.texture_role_owner, 'finalizer-v1');
 assert.equal(plasma?.exporter_path, 'tools/art/blender/export_sprint_part.py');
 assert.match(plasma?.blend_path || '', /engine_plasma_ring_authored\.blend$/);
+for (const id of ['engine_plasma_ring', 'greeble_rcs']) {
+  const entry = authoring.entries?.[id];
+  assert.equal(entry?.current_authoring_route, 'docs/visual-assets/README.md');
+  assert.equal(
+    entry?.material_truth_skill_path,
+    '.grok/skills/spaceface-blender-material-truth/SKILL.md',
+  );
+  assert.equal(entry?.material_truth_preflight_required, true);
+  assert.equal(entry?.exporter_path, 'tools/art/blender/export_sprint_part.py');
+  assert.equal('legacy_exporter_path' in entry, false);
+}
 
 const wrapper = await readFile(new URL('../tools/art/blender/export_sprint_part.py', import.meta.url), 'utf8');
 assert.match(wrapper, /'texture_role_owner': TEXTURE_ROLE_OWNER/,

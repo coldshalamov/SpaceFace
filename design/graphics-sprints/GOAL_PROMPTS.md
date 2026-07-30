@@ -17,13 +17,14 @@ screenshot is `EVIDENCE_INVALID`, and the protocol's minimum review cycles do no
 
 For every authored 3D/Blender prompt—including a copied Top-50 goal—prepend the canonical craft route:
 `assets/ships/AGENTS.md` → `docs/visual-assets/README.md` →
-`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`. If a camera-prominent component reads as
-plastic/clay/LEGO-like, primitive-stacked, a glowing disk/torus, or fiction/material-incoherent, also
-require `.grok/skills/spaceface-blender-material-truth/SKILL.md`. The worker then uses a component
-fiction/material bill, component-only generated reference when that method is selected, the Codex
-handoff in `docs/visual-assets/AGENT_PROMPTS.md` § E if image generation is unavailable, a complete
-surfaced Material Preview/Rendered Blender assembly when connected, and exact-source evidence. Clay,
-headless builds, and beauty renders may diagnose; none alone closes G4 or grants acceptance.
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` →
+`.grok/skills/spaceface-blender-material-truth/SKILL.md`. The worker completes the material-truth
+preflight before modeling, records `componentReferenceDecision`, uses a component-only generated
+reference when that method is selected, invokes the Codex handoff in
+`docs/visual-assets/AGENT_PROMPTS.md` § E if native image generation is unavailable, keeps the
+complete surfaced assembly visible in Material Preview/Rendered shading when a non-conflicting
+Blender MCP session is available, and produces exact-source evidence. Clay, headless builds, and
+beauty renders may diagnose; none alone closes G4 or grants acceptance.
 
 ---
 
@@ -74,11 +75,14 @@ Read in order:
 2. design/graphics-sprints/README.md
 3. design/graphics-sprints/00_ORCHESTRATION.md
 4. design/graphics-sprints/THREAD_A_KIT_QUALITY.md
-5. design/graphics-sprints/QUALITY_RITUAL.md
-6. design/graphics-sprints/BLENDER_EXCLUSIVE_LOCK.md
-7. .grok/skills/spaceface-blender-pipeline/SKILL.md
-8. needed-assets.md §A — story roles for <ASSET_IDS>
-9. FULL_GRAPHICS_REVAMP_GOAL.md §2–3
+5. assets/ships/AGENTS.md
+6. docs/visual-assets/README.md + docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md
+7. .grok/skills/spaceface-blender-material-truth/SKILL.md
+8. design/graphics-sprints/QUALITY_RITUAL.md
+9. design/graphics-sprints/BLENDER_EXCLUSIVE_LOCK.md
+10. .grok/skills/spaceface-blender-pipeline/SKILL.md
+11. needed-assets.md §A — story roles for <ASSET_IDS>
+12. FULL_GRAPHICS_REVAMP_GOAL.md §2–3
 
 You are THREAD A — Kit Quality only.
 
@@ -126,8 +130,8 @@ Read in order:
 9. needed-assets.md §B + assets/QUEUE.md
 10. assets/ships/AGENTS.md + docs/visual-assets/README.md +
     docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md
-11. .grok/skills/spaceface-blender-material-truth/SKILL.md when the named or observed defect matches
-    its trigger
+11. .grok/skills/spaceface-blender-material-truth/SKILL.md for the mandatory preflight and any
+    substantive Tier A/B form/surfacing work
 
 You are THREAD B — World Identity only.
 
@@ -248,8 +252,8 @@ Read in order:
 9. FULL_GRAPHICS_REVAMP_GOAL.md Batch 5
 10. assets/ships/AGENTS.md + docs/visual-assets/README.md +
     docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md
-11. .grok/skills/spaceface-blender-material-truth/SKILL.md when the named or observed defect matches
-    its trigger
+11. .grok/skills/spaceface-blender-material-truth/SKILL.md for the mandatory preflight and any
+    substantive Tier A/B form/surfacing work
 
 You are THREAD E — Wholeship Repair only.
 

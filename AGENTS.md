@@ -17,8 +17,8 @@ workflow; it does not replace original plans.
 | Recurring bug | `docs/COMMON_BUGS.md` |
 | Event or update-order trace | Generated `docs/EVENT_ROUTING.md` / `docs/SYSTEM_REGISTRY.md` |
 | Product or system design | `design/GDD_2_0.md` → relevant spec2/spec3 slice |
-| Ship, station, place, portrait | `assets/AGENTS.md`; ship pipeline at `assets/ships/AGENTS.md`; craft/acceptance at `docs/visual-assets/` |
-| Existing 3D asset reads plastic/clay/LEGO-like, primitive-stacked, or fiction/material-incoherent | **`.grok/skills/spaceface-blender-material-truth/SKILL.md`** after the asset routing above; it remains subordinate to `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` |
+| Any player-facing graphics or visual asset | **`docs/visual-assets/README.md` first**, then `assets/AGENTS.md` or the owning runtime/UI route it names |
+| Ship, station, place, prop, or other Blender/GLB form or surfacing work | `assets/ships/AGENTS.md` **and** `.grok/skills/spaceface-blender-material-truth/SKILL.md`; Tier C/D may group a repeated manufactured family, but no changed visible zone may inherit a DCC default |
 | Resolve the current starter/player ship before graphics work | `src/data/newGameDefaults.js` -> exact ship/root maps in `src/render/partsLibrary.js`; do not infer identity from a screenshot or legacy filename |
 | Resume dock/hulk/debris place remaster (Blender/EEVEE) | **`assets/ships/parts/places/REMASTER_HANDOFF_dock_hulk_debris.md`** (also linked from `CANONICAL_BUILD_MAP.md` §1) |
 | Add a map-visible place (planet, station, route, region) | `src/data/PLACE_REGISTRATION.md` — **a new place is not done until `npm run check:atlas-integrity` is green** |
@@ -90,6 +90,12 @@ them casually. Confirm selection in `src/core/registry.js` and defaults in `src/
   report, or hidden flag is not completion.
 - **Assets:** exact manifests, release metadata, and runtime maps outrank prose inventories. Honor a
   currently active lock/authoring signal, but historical lane documents are not permanent ownership.
+- **Visual craft:** all player-facing graphics work starts at `docs/visual-assets/README.md` and
+  obeys `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`.
+  Any Blender/GLB form or surfacing work must complete the proportional fiction/material preflight in
+  `.grok/skills/spaceface-blender-material-truth/SKILL.md`; Tier A/B uses component-level records and
+  Tier C/D may group a repeated manufactured family. Do not wait for a reviewer to name the
+  plastic/clay/primitive failure after authoring, and never treat a DCC default as a material choice.
 - **Performance:** optimize algorithms, allocation, batching, cadence, culling, residency, and frame
   pacing. Do not pass gates by removing authored visuals or lowering default quality.
 - **Accessibility:** preserve input reachability, reduced-motion/flash behavior, legibility, and

@@ -3,6 +3,9 @@
 > The presentation / GPU layer. Pure rendering — never writes sim state.
 > Read root `AGENTS.md` §6 (performance/assets contracts) first.
 > Asset pipeline runtime side; full pipeline in `assets/AGENTS.md`.
+> For player-visible VFX, compositor, lighting, or camera changes, also read
+> `docs/visual-assets/README.md` and `design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md`;
+> representative route evidence and independent visual judgment outrank source-level confidence.
 
 ## The silent-fallback trap (why "my model won't render")
 

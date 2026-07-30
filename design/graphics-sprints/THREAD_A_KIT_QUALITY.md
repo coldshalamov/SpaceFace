@@ -22,16 +22,22 @@ One **category** per sprint (not the whole 63 at once):
 
 ## Task list (per asset)
 
-1. Read story role from `needed-assets.md` for this `id`.
-2. Load concept/bible refs per `spaceface-blender-pipeline` SKILL.
-3. Acquire `assets/ships/blender.LOCK` (Thread A).
-4. Inspect the current GLB and representative renders; record only the material player-facing or
+1. Read `assets/ships/AGENTS.md`, `docs/visual-assets/README.md`,
+   `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`, and
+   `.grok/skills/spaceface-blender-material-truth/SKILL.md`.
+2. Read story role from `needed-assets.md` for this `id`, then complete the material-truth preflight
+   for every changed camera-visible component or repeated family.
+3. Load concept/bible refs per `spaceface-blender-pipeline` SKILL. If the selected
+   component-reference method needs image generation and this worker lacks it, use
+   `docs/visual-assets/AGENT_PROMPTS.md` § E.
+4. Acquire `assets/ships/blender.LOCK` (Thread A).
+5. Inspect the current GLB and representative renders; record only the material player-facing or
    contract defects that the evidence actually demonstrates.
-5. Use `QUALITY_RITUAL.md` to critique and improve modeling, surfacing, and life until independent review
+6. Use `QUALITY_RITUAL.md` to critique and improve modeling, surfacing, and life until independent review
    supports the professional outcome.
-6. Export via `spaceface_export.py` / `finalize_part.mjs`.
-7. Write handoff YAML (`HANDOFF_TEMPLATE.md`).
-8. Release Blender lock.
+7. Export via `spaceface_export.py` / `finalize_part.mjs`.
+8. Write handoff YAML (`HANDOFF_TEMPLATE.md`).
+9. Release Blender lock.
 
 ## Verification
 
@@ -46,6 +52,9 @@ One **category** per sprint (not the whole 63 at once):
 
 - `FULL_GRAPHICS_REVAMP_GOAL.md`
 - `needed-assets.md` §A
+- `docs/visual-assets/README.md`
+- `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`
+- `.grok/skills/spaceface-blender-material-truth/SKILL.md`
 - `.grok/skills/spaceface-blender-pipeline/SKILL.md`
 - `assets/AGENTS.md` §3 registries (read only — do not edit)
 

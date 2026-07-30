@@ -1,25 +1,37 @@
-# SPEC3-F9 — Full Finish Bar (manifest part quality contract)
+# SPEC3-F9 — Full Finish Bar (historical manifest-part workflow)
 
-**Thread:** F9 extension · **Authority:** `design/spec2/00_MASTER_TASTE.md` (taste + Forbidden list) → this doc → `assets/AGENTS.md` §3.1 → `needed-assets.md` (per-ID story) · **Status:** LIVE (2026-07-06 revamp baseline)
+**Thread:** F9 extension · **Status:** **HISTORICAL / LEGACY REPLAY ONLY** (retired
+2026-07-29; records the 2026-07-06 revamp baseline)
 
-**One-line pitch:** Every ID in `parts_manifest.json` must pass the same professional bar — modeled form, surfaced skins, story-matched wear, EEVEE lit evidence, finalized `parts/` GLB, synced `release/` GLB — before a manifest PRO note or GOAL row may claim done.
+This file preserves the former fixed-technique/count-based workflow for archaeology and exact
+reproduction of its old evidence. It is **not** current graphics authority and must not be used to
+judge, author, or accept new work. New and resumed visual-asset work starts at
+[`../../docs/visual-assets/README.md`](../../docs/visual-assets/README.md) and follows
+[`../../.grok/skills/spaceface-blender-material-truth/SKILL.md`](../../.grok/skills/spaceface-blender-material-truth/SKILL.md).
+Those current routes require fiction-first component and material truth, asset-specific visual
+iteration, exact-source receipts, and representative game-camera evidence; they do not accept a
+universal number of detail meshes, named techniques, or renders as a proxy for quality.
+
+The legacy executables named below now fail closed unless the operator supplies
+`--legacy-replay`. That flag authorizes reproduction only; it does not confer production approval.
 
 ---
 
-## 1. When this applies
+## 1. Historical applicability
 
 | Lane | Use Full Finish Bar? |
 |---|---|
-| Any row in `assets/ships/parts/parts_manifest.json` (63 modular parts today) | **Yes — mandatory** |
-| `assets/QUEUE.md` / BP-08 gap assets not yet in manifest | No — until manifest entry exists |
-| Wholeships (`status:"blocked"`) | Repair contract first (SPEC3-F9 §37); Full Finish when unblocked |
-| Code-native ships (`kestrelHero.js`, faction builders) | Separate lane — not this bar |
+| Any row in `assets/ships/parts/parts_manifest.json` (63 modular parts at the time) | Historical only |
+| `assets/QUEUE.md` / BP-08 gap assets not yet in manifest | Never; use current visual-asset routing |
+| Wholeships (`status:"blocked"`) | Never; use current visual-asset routing |
+| Code-native ships (`kestrelHero.js`, faction builders) | Never; use current visual-asset routing |
 
 ---
 
-## 2. Full Finish Bar (per asset — all required)
+## 2. Retired Full Finish Bar (per-asset replay requirements)
 
-An asset is **NOT finished** until **every** row below is true.
+The following requirements describe what the retired verifier expected. They do not define whether
+an asset is finished under the current production standard.
 
 ### 2.1 Modeling
 - Authored blend: `assets/ships/parts/blender/<id>_authored.blend`
@@ -82,7 +94,11 @@ After any batch of finalize writes:
 
 ---
 
-## 3. Agent workflow (transcribed MCP loop)
+## 3. Legacy replay workflow (transcribed MCP loop)
+
+Do not use this loop for new or resumed asset work. It is retained only to reproduce the historical
+revamp. Supply `--legacy-replay` to the entry point being invoked; direct Blender `runpy` replay must
+also place `--legacy-replay` in `sys.argv` before loading `revamp_full_finish.py`.
 
 Process **`needed-assets.md` in order**. Do not stop after one ID. Do not ask to continue.
 
@@ -127,11 +143,11 @@ Process **`needed-assets.md` in order**. Do not stop after one ID. Do not ask to
 
 ---
 
-## 4. Verification gates (run before claiming done)
+## 4. Historical replay verification gates
 
 | Order | Command | Pass bar |
 |---|---|---|
-| 1 | `npm run check:revamp:evidence` | exit 0; `SUMMARY fail=0 pass=63`; `doc_contract=PASS` |
+| 1 | `node scripts/verify-full-finish-evidence.mjs --legacy-replay` | historical report only; never current visual acceptance |
 | 2 | `node scripts/fix-revamp-part-contract.mjs` | only if new/changed parts since last release build |
 | 3 | `node scripts/build-sg04-release-assets.mjs` | exit 0; `release manifest wrote` |
 | 4 | `node scripts/check-sg04-release-assets.mjs --release` | `releaseReady=true` |
@@ -140,7 +156,10 @@ Process **`needed-assets.md` in order**. Do not stop after one ID. Do not ask to
 
 **Floor (no regression):** `npm run check:asset-reachability` · `npm run check:visual-stability`
 
-`scripts/verify-full-finish-evidence.mjs` checks per ID: 4 Before-iter blocks, ≥6 techniques, textures folder, lit render counts, `finalize.log` tris/bytes, release manifest `sourceSha256` parity, no viewport doc violations in deficiency/GOAL rows.
+`scripts/verify-full-finish-evidence.mjs --legacy-replay` checks the retired per-ID contract: 4
+Before-iter blocks, ≥6 techniques, textures folder, lit render counts, `finalize.log` tris/bytes,
+release manifest `sourceSha256` parity, and no viewport doc violations in deficiency/GOAL rows. A
+green replay report proves only conformance to this historical receipt format.
 
 ---
 
@@ -182,7 +201,7 @@ Do **not** use `PRO revamp` or mention `render_viewport` in manifest notes.
 | `tools/art/finalize_part.mjs` | Metadata stamp + manifest patch |
 | `scripts/fix-revamp-part-contract.mjs` | Pre-release GLB repairs |
 | `scripts/build-sg04-release-assets.mjs` | parts → release (KTX2 + meshopt) |
-| `scripts/verify-full-finish-evidence.mjs` | Full Finish evidence gate |
+| `scripts/verify-full-finish-evidence.mjs` | Historical Full Finish replay verifier; requires `--legacy-replay` |
 | `src/contracts/assetReleaseValidation.js` | Release pair parity |
 | `src/render/assetLoader.js` | Runtime contract (MOUNT, UV, ORM, normal linear) |
 

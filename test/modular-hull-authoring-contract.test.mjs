@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,7 +19,7 @@ const HULL_IDS = [
   'hull_gunship',
 ];
 
-test('every modular hull declares the canonical finalizer and blocks unproven Blender promotion', () => {
+test('every modular hull routes new authoring through material truth and quarantines its legacy exporter', () => {
   const authoring = JSON.parse(readFileSync(
     resolve(ROOT, 'assets/ships/parts/blender/authoring.json'),
     'utf8',
@@ -31,19 +30,30 @@ test('every modular hull declares the canonical finalizer and blocks unproven Bl
     assert.ok(entry, `${id} must have an authoring registry entry`);
     assert.equal(entry.texture_role_owner, 'modular-hull-texture-finalizer-v2');
     assert.equal(entry.texture_finalizer_status, 'canonical-glb-repair-only');
+    assert.equal(entry.exporter_path, undefined, `${id} must not advertise a legacy current exporter`);
+    assert.equal(
+      entry.authoring_status,
+      'legacy-source-requires-new-material-truth-authoring-packet',
+    );
+    assert.equal(entry.current_authoring_route, 'docs/visual-assets/README.md');
     assert.equal(
       entry.texture_finalizer_path,
       'tools/art/repair_modular_hull_texture_roles.mjs',
     );
     assert.ok(existsSync(resolve(ROOT, entry.blend_path)), `${id} editable .blend must exist`);
-    assert.ok(existsSync(resolve(ROOT, entry.exporter_path)), `${id} exporter must exist`);
+    assert.ok(
+      existsSync(resolve(ROOT, entry.legacy_exporter_path)),
+      `${id} legacy exporter must remain reproducible`,
+    );
     assert.ok(existsSync(resolve(ROOT, entry.texture_finalizer_path)), `${id} finalizer must exist`);
   }
 });
 
-test('the Blender controller blocks modular promotion until exact Blender parity is proven', () => {
-  assert.ok(existsSync(resolve(ROOT, CONTROLLER_PATH)), 'authoring controller must exist');
+test('the historical Blender controller requires explicit replay and blocks modular promotion', () => {
+  assert.ok(existsSync(resolve(ROOT, CONTROLLER_PATH)), 'legacy controller must exist');
   const controller = readFileSync(resolve(ROOT, CONTROLLER_PATH), 'utf8');
+  assert.match(controller, /LEGACY FULL FINISH REPLAY BLOCKED/);
+  assert.match(controller, /LegacyReplay/);
   assert.match(controller, /authoring\.json/);
   assert.match(controller, /texture_finalizer_path/);
   assert.match(controller, /texture_finalizer_status -ne 'blender-export-ready'/);
@@ -53,20 +63,11 @@ test('the Blender controller blocks modular promotion until exact Blender parity
   assert.match(controller, /texture-finalizer-report\.json/);
 });
 
-test('the actual full-finish exporter classifies hull and place slots correctly', () => {
+test('the retired full-finish exporter cannot masquerade as current authoring', () => {
   const exporter = resolve(ROOT, 'tools/art/blender/revamp_full_finish.py');
-  const probe = [
-    'import ast, json, pathlib, sys',
-    'tree = ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))',
-    'fn = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "export_slot")',
-    'scope = {}',
-    'exec(compile(ast.Module(body=[fn], type_ignores=[]), sys.argv[1], "exec"), scope)',
-    'print(json.dumps([scope["export_slot"]("hull_fighter"), scope["export_slot"]("place_dead_hulk")]))',
-  ].join('; ');
-  const output = execFileSync('python', ['-c', probe, exporter], {
-    cwd: ROOT,
-    encoding: 'utf8',
-    timeout: 10_000,
-  });
-  assert.deepEqual(JSON.parse(output), ['hull', 'place']);
+  const source = readFileSync(exporter, 'utf8');
+  assert.match(source, /HISTORICAL \/ LEGACY REPLAY ONLY/);
+  assert.match(source, /LEGACY FULL FINISH REPLAY BLOCKED/);
+  assert.match(source, /--legacy-replay/);
+  assert.match(source, /docs\/visual-assets\/README\.md/);
 });

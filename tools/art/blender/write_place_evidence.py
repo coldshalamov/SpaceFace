@@ -1,9 +1,25 @@
 #!/usr/bin/env python3
-"""Generate deficiency.md + finalize.log for Full Finish place assets."""
+"""HISTORICAL / LEGACY REPLAY ONLY: generate retired Full Finish place evidence."""
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+_LEGACY_REPLAY_FLAG = '--legacy-replay'
+if _LEGACY_REPLAY_FLAG not in sys.argv[1:]:
+    print(
+        'LEGACY FULL FINISH REPLAY BLOCKED: use --legacy-replay explicitly; '
+        'new work follows docs/visual-assets/README.md',
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+if '--help' in sys.argv[1:]:
+    print(
+        'usage: write_place_evidence.py --legacy-replay [place_id ...]\n'
+        'historical replay only; not a current graphics production route'
+    )
+    raise SystemExit(0)
 
 ROOT = Path(__file__).resolve().parents[3]
 EVIDENCE = ROOT / 'assets' / 'ships' / 'parts' / 'revamp-evidence'
@@ -141,8 +157,7 @@ def deficiency(part_id: str, m: dict) -> str:
 
 
 def main() -> None:
-    import sys
-    for part_id in sys.argv[1:]:
+    for part_id in (arg for arg in sys.argv[1:] if arg != _LEGACY_REPLAY_FLAG):
         log_path = ROOT / 'assets' / 'ships' / 'parts' / 'revamp-evidence' / part_id / 'finalize.log'
         if not log_path.exists():
             print(f'skip {part_id}: no finalize.log')

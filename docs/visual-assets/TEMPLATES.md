@@ -56,9 +56,19 @@ industrialDesign:
   coolingAndHeat: []
   cargoToolWeaponOccupantLogic: []
   manufacturingProcesses: []
-optionalFailureDiagnostics:
-  # Use these only when the activated packet names a material/primitive-default failure.
+materialTruthPreflight:
+  applicability: required_for_all_changed_camera_visible_3d
+  changedComponents:
+    - component: ""
+      disposition: billed
+      functionOriginAndServiceContext: ""
+      substrateManufactureAndFinish: ""
+      interfacesLoadAccessAndHeatPaths: ""
+      expectedOpticalResponse: ""
+      forbiddenReads: []
+  unchangedQuietZones: []
   fictionDevelopmentAgreement:
+    # Required per changed Tier A/B component. Tier C/D may group one repeated manufactured family.
     components:
       - component: ""
         fictionRoleAndOrigin: ""
@@ -67,6 +77,11 @@ optionalFailureDiagnostics:
         developmentGeometryAndAttachment: ""
         developmentMaterialAndLodEvidence: ""
         agreementStatus: pending
+  componentReferenceDecision: not_needed # native_imagegen | codex_handoff | blocked:image-generation-capability
+  surfacedBlenderWorkingScene: ""
+  supportedReviewCameras: []
+optionalFailureDiagnostics:
+  # Expand these when the preflight or review identifies a primitive/default construction failure.
   shapeGrammarAudit:
     cameraProminentForms:
       - component: ""
@@ -215,9 +230,9 @@ identity, reviewer/date/evidence packet, and decision rationale.
 - brief summary and supported cameras;
 - baseline defects by severity/gate/region/evidence;
 - substantive work tied to defects;
-- for named material-truth failures: component material bill and material-ID isolation;
-- for named primitive/default failures: the relevant fiction/development agreement and
-  shape-grammar audit;
+- for all changed camera-visible 3D zones: proportional material-truth preflight, material bill,
+  fiction/development agreement, changed/quiet-zone disposition, and material-ID isolation;
+- for primitive/default failures: the relevant fiction/development agreement and shape-grammar audit;
 - when generated references informed the rebuild: their provenance and side-by-side clay/material
   comparisons;
 - form/orthographic/game-camera/family-lineup evidence;

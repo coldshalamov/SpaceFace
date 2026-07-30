@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-"""SpaceFace graphics-revamp Full Finish Bar — Blender MCP helper.
+"""HISTORICAL / LEGACY REPLAY ONLY
 
-Run inside Blender via execute_blender_code:
+SpaceFace historical graphics-revamp Full Finish Bar — Blender MCP replay helper.
+
+Legacy replay inside Blender via execute_blender_code:
   import runpy
   import os
+  import sys
+  sys.argv.append('--legacy-replay')
   os.environ['SF_PART_ID'] = 'place_dead_hulk'
   os.environ['SF_PHASE'] = 'iter0'  # setup|iter0|det|materials|bake_hull|bake_mech|bake_accent|render|export|all
   runpy.run_path(r'.../tools/art/blender/revamp_full_finish.py')
+
+New and resumed graphics work must use docs/visual-assets/README.md and the
+spaceface-blender-material-truth skill instead of this fixed-count workflow.
 """
 from __future__ import annotations
 
@@ -14,6 +21,27 @@ import json
 import math
 import os
 import sys
+
+_LEGACY_REPLAY_FLAG = '--legacy-replay'
+_LEGACY_REPLAY_ENV = 'SF_LEGACY_REPLAY'
+_legacy_replay_requested = (
+    _LEGACY_REPLAY_FLAG in sys.argv[1:]
+    or os.environ.get(_LEGACY_REPLAY_ENV) == _LEGACY_REPLAY_FLAG
+)
+if not _legacy_replay_requested:
+    print(
+        'LEGACY FULL FINISH REPLAY BLOCKED: use --legacy-replay explicitly; '
+        'new work follows docs/visual-assets/README.md',
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+if '--help' in sys.argv[1:]:
+    print(
+        'usage: Blender ... revamp_full_finish.py -- --legacy-replay\n'
+        'historical replay only; not a current graphics production route'
+    )
+    raise SystemExit(0)
+
 from mathutils import Vector
 
 import bmesh

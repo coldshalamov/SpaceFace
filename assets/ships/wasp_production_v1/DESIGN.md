@@ -1,5 +1,10 @@
 # Wasp Production V1
 
+Before any new form or surfacing pass, follow
+`docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` and complete the mandatory fiction/material
+preflight in `.grok/skills/spaceface-blender-material-truth/SKILL.md`. The accepted live-production
+status below is not permission to bypass current craft or exact-source evidence requirements.
+
 Status: **accepted live production Wasp**
 
 This packet replaces the rejected glare-heavy modular Wasp attempt with a new
