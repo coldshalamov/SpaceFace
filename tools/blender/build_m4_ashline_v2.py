@@ -34,28 +34,139 @@ MANUFACTURED_NORMAL_POLICY = {
     "angleDegrees": 28,
     "keepSharpEdges": True,
 }
+# Every camera-visible Rig mesh authored by this pass must match exactly one rule below. The rules
+# drive both the inventory and semantic subjects; adding a Hook_* object without classifying it is a
+# build error rather than a silent omission from the claimed authoredRig union.
+RIG_COMPONENT_RULES: tuple[tuple[str, str, int, tuple[str, ...]], ...] = (
+    ("boomChord", "Hook_BoomChord_", 4, ("capture",)),
+    ("boomWeb", "Hook_BoomWeb_", 6, ("capture",)),
+    ("boomWebFrame", "Hook_BoomWebFrame_", 6, ("capture",)),
+    ("boomSplice", "Hook_BoomSplice_", 16, ("capture",)),
+    ("captureRootDoubler", "Hook_BoomRootDoubler_", 2, ("capture",)),
+    ("captureRootGusset", "Hook_BoomRootGusset_", 2, ("capture",)),
+    ("captureRootTransition", "Hook_BoomRootTransition_", 2, ("capture",)),
+    ("captureJawTransition", "Hook_BoomJawTransition_", 2, ("capture",)),
+    ("jawClevis", "Hook_ClevisEar_", 4, ("capture", "jaw")),
+    ("clevisPin", "Hook_ClevisPin_", 2, ("capture", "jaw")),
+    ("clevisCollar", "Hook_ClevisCollar_", 2, ("capture", "jaw")),
+    ("clevisRetainer", "Hook_ClevisRetainer_", 2, ("capture", "jaw")),
+    ("jawArm", "Hook_JawArm_", 2, ("jaw",)),
+    ("jawForging", "Hook_JawForging_", 2, ("jaw",)),
+    ("jawKeeper", "Hook_JawKeeper_", 2, ("jaw",)),
+    ("jawPad", "Hook_JawPad_", 6, ("jaw",)),
+    ("jawPin", "Hook_JawPin_", 4, ("jaw",)),
+    ("jawPivotBoss", "Hook_JawPivotBoss_", 2, ("jaw",)),
+    ("jawActuatorEnd", "Hook_JawActuatorEnd_", 2, ("jaw",)),
+    ("hydraulicCylinder", "Hook_JawHydraulicCase_", 2, ("jaw",)),
+    ("hydraulicRod", "Hook_JawHydraulicRod_", 2, ("jaw",)),
+    ("hydraulicGland", "Hook_JawHydraulicGland_", 2, ("jaw",)),
+    ("hydraulicClevis", "Hook_JawHydraulicClevis_", 2, ("jaw",)),
+    ("hydraulicRootPin", "Hook_JawHydraulicRootPin_", 2, ("jaw",)),
+    ("hydraulicHose", "Hook_JawHydraulicHose_", 2, ("jaw",)),
+    ("tetherBaseFrame", "Hook_TetherBaseFrame_", 2, ("winch",)),
+    ("tetherBearingCap", "Hook_TetherBearingCap_", 2, ("winch",)),
+    ("tetherBrakeServiceCover", "Hook_TetherBrake_ServiceCover", 1, ("winch",)),
+    ("drumBearing", "Hook_TetherDrum_Bearing_", 2, ("winch",)),
+    ("drumBrake", "Hook_TetherDrum_BrakeBand", 1, ("winch",)),
+    ("drumCableWrap", "Hook_TetherDrum_CableWrap", 1, ("winch",)),
+    ("drumClutchLever", "Hook_TetherDrum_ClutchLever", 1, ("winch",)),
+    ("tetherDrum", "Hook_TetherDrum_Grooved", 1, ("winch",)),
+    ("drumKeyedShaft", "Hook_TetherDrum_KeyedShaft", 1, ("winch",)),
+    ("braidedCable", "Hook_TetherFairlead_BraidedRun", 1, ("winch",)),
+    ("fairleadDrumRun", "Hook_TetherFairlead_DrumRun", 1, ("winch",)),
+    ("fairleadGuide", "Hook_TetherFairlead_Guide_", 2, ("winch",)),
+    ("fairleadRoller", "Hook_TetherFairlead_Roller_", 2, ("winch",)),
+    ("tetherFairlead", "Hook_TetherFairlead_Sheave", 1, ("winch",)),
+    ("fairleadTerminal", "Hook_TetherFairlead_Terminal_", 2, ("winch",)),
+    ("drumGuard", "Hook_TetherGuard_", 2, ("winch",)),
+    ("driveBell", "Hook_DriveBell_", 2, ("drives",)),
+    ("driveCavityLiner", "Hook_DriveCavityLiner_", 2, ("drives",)),
+    ("driveClamp", "Hook_DriveClamp_", 4, ("drives",)),
+    ("driveHotSection", "Hook_DriveHotSection_", 2, ("drives",)),
+    ("driveInternalCue", "Hook_DriveInternalCue_", 2, ("drives",)),
+    ("drivePressureCase", "Hook_DrivePressureCase_", 2, ("drives",)),
+    ("driveRefractoryThroat", "Hook_DriveRefractoryThroat_", 2, ("drives",)),
+    ("driveRootDoubler", "Hook_DriveRootDoubler_", 4, ("drives",)),
+    ("driveRootLink", "Hook_DriveRootLink_", 4, ("drives",)),
+    ("driveSaddleCheek", "Hook_DriveSaddleCheek_", 2, ("drives",)),
+    ("driveSaddleFoot", "Hook_DriveSaddleFoot_", 4, ("drives",)),
+    ("driveSaddleWeb", "Hook_DriveSaddleWeb_", 4, ("drives",)),
+    ("driveServiceLine", "Hook_DriveServiceLine_", 2, ("drives",)),
+    ("driveSaddle", "Hook_DriveThrustSaddle_", 2, ("drives",)),
+    ("driveValveFitting", "Hook_DriveValveFitting_", 4, ("drives",)),
+    ("driveValvePack", "Hook_DriveValvePack_", 2, ("drives",)),
+    ("driveServiceTag", "Hook_ServiceTag_Drive_", 2, ("drives",)),
+    ("forwardMountSaddle", "Hook_ForwardMountSaddle", 1, ("forwardMount",)),
+    ("forwardMountGusset", "Hook_ForwardMountGusset_", 2, ("forwardMount",)),
+)
 RIG_COMPONENT_COUNT_EXPECTATIONS = {
-    "boomChord": 4,
-    "boomWeb": 6,
-    "captureRootDoubler": 2,
-    "jawClevis": 4,
-    "jawArm": 2,
-    "jawKeeper": 2,
-    "jawPad": 6,
-    "tetherDrum": 1,
-    "drumCableWrap": 1,
-    "tetherFairlead": 1,
-    "braidedCable": 1,
-    "drumBearing": 2,
-    "drumBrake": 1,
-    "drumGuard": 2,
-    "hydraulicCylinder": 2,
-    "drivePressureCase": 2,
-    "driveBell": 2,
-    "driveRefractoryThroat": 2,
-    "driveSaddle": 2,
-    "driveValvePack": 2,
+    role: expected for role, _prefix, expected, _groups in RIG_COMPONENT_RULES
 }
+RIG_COMPONENT_MATERIAL_EXPECTATIONS = {
+    "boomChord": "Material_Hull",
+    "boomWeb": "Material_Mechanical",
+    "boomWebFrame": "Material_Hull",
+    "boomSplice": "Material_Mechanical",
+    "captureRootDoubler": "Material_Mechanical",
+    "captureRootGusset": "Material_Hull",
+    "captureRootTransition": "Material_Hull",
+    "captureJawTransition": "Material_Mechanical",
+    "jawClevis": "Material_Mechanical",
+    "clevisPin": "Material_Mechanical",
+    "clevisCollar": "Material_Mechanical",
+    "clevisRetainer": "Material_PolishedSteel",
+    "jawArm": "Material_Mechanical",
+    "jawForging": "Material_Mechanical",
+    "jawKeeper": "Material_Hull",
+    "jawPad": "Material_Hardface",
+    "jawPin": "Material_Mechanical",
+    "jawPivotBoss": "Material_Mechanical",
+    "jawActuatorEnd": "Material_Mechanical",
+    "hydraulicCylinder": "Material_Mechanical",
+    "hydraulicRod": "Material_PolishedSteel",
+    "hydraulicGland": "Material_Mechanical",
+    "hydraulicClevis": "Material_Mechanical",
+    "hydraulicRootPin": "Material_Mechanical",
+    "hydraulicHose": "Material_CableSteel",
+    "tetherBaseFrame": "Material_Hull",
+    "tetherBearingCap": "Material_Mechanical",
+    "tetherBrakeServiceCover": "Material_Red_Paint",
+    "drumBearing": "Material_Mechanical",
+    "drumBrake": "Material_Mechanical",
+    "drumCableWrap": "Material_CableSteel",
+    "drumClutchLever": "Material_Mechanical",
+    "tetherDrum": "Material_Mechanical",
+    "drumKeyedShaft": "Material_PolishedSteel",
+    "braidedCable": "Material_CableSteel",
+    "fairleadDrumRun": "Material_CableSteel",
+    "fairleadGuide": "Material_Hull",
+    "fairleadRoller": "Material_Mechanical",
+    "tetherFairlead": "Material_Mechanical",
+    "fairleadTerminal": "Material_Mechanical",
+    "drumGuard": "Material_Mechanical",
+    "driveBell": "Material_HotSection",
+    "driveCavityLiner": "Material_Mechanical",
+    "driveClamp": "Material_Mechanical",
+    "driveHotSection": "Material_HotSection",
+    "driveInternalCue": "Material_Cyan",
+    "drivePressureCase": "Material_Mechanical",
+    "driveRefractoryThroat": "Material_Refractory",
+    "driveRootDoubler": "Material_Hull",
+    "driveRootLink": "Material_Mechanical",
+    "driveSaddleCheek": "Material_Hull",
+    "driveSaddleFoot": "Material_Mechanical",
+    "driveSaddleWeb": "Material_Mechanical",
+    "driveServiceLine": "Material_Mechanical",
+    "driveSaddle": "Material_Hull",
+    "driveValveFitting": "Material_PolishedSteel",
+    "driveValvePack": "Material_Mechanical",
+    "driveServiceTag": "Material_Red_Paint",
+    "forwardMountSaddle": "Material_Mechanical",
+    "forwardMountGusset": "Material_Hull",
+}
+if set(RIG_COMPONENT_MATERIAL_EXPECTATIONS) != set(RIG_COMPONENT_COUNT_EXPECTATIONS):
+    raise RuntimeError("Rig component material expectations must cover exactly every component rule")
+RIG_COMPONENT_INVENTORY_SCHEMA = "spaceface.rigMaterialTruthInventory.v3"
 RIG_COLLISION_CONTRACT = {
     "schema": "spaceface.rigCompoundCollision.v1",
     "helpers": [
@@ -91,26 +202,18 @@ RIG_COLLISION_CONTRACT = {
 RIG_COMPONENT_INVENTORY: dict[str, Any] | None = None
 RIG_SEMANTIC_BOUNDS: dict[str, Any] | None = None
 
-# These are intentionally pre-merge authoring names.  The released mesh is still joined by
-# material to preserve the Rig's nine-draw LOD0 budget; the root contract retains what the
-# material merge otherwise has to erase.  A component may appear in both capture and jaw where a
-# forged clevis genuinely carries the load between those two assemblies.
+# These are intentionally pre-merge authoring names. The released mesh is joined by material to
+# preserve the Rig's nine-draw LOD0 budget; the root contract retains what that merge erases.
+RIG_SEMANTIC_GROUP_IDS = ("capture", "jaw", "winch", "drives", "forwardMount")
 RIG_SEMANTIC_GROUP_PREFIXES: dict[str, tuple[str, ...]] = {
-    "capture": (
-        "Hook_BoomChord_", "Hook_BoomWeb_", "Hook_BoomWebFrame_",
-        "Hook_BoomRootDoubler_", "Hook_BoomRootGusset_",
-        "Hook_ClevisEar_", "Hook_ClevisPin_", "Hook_ClevisCollar_", "Hook_ClevisRetainer_",
-    ),
-    "jaw": (
-        "Hook_ClevisEar_", "Hook_ClevisPin_", "Hook_ClevisCollar_", "Hook_ClevisRetainer_",
-        "Hook_JawArm_", "Hook_JawForging_", "Hook_JawKeeper_", "Hook_JawPad_",
-        "Hook_JawPin_", "Hook_JawActuatorEnd_", "Hook_JawHydraulicCase_",
-        "Hook_JawHydraulicRod_", "Hook_JawHydraulicClevis_", "Hook_JawHydraulicHose_",
-    ),
-    "winch": ("Hook_Tether",),
-    "drives": ("Hook_Drive",),
+    group_id: tuple(
+        prefix
+        for _role, prefix, _expected, groups in RIG_COMPONENT_RULES
+        if group_id in groups
+    )
+    for group_id in RIG_SEMANTIC_GROUP_IDS
 }
-RIG_SEMANTIC_BOUNDS_SCHEMA = "spaceface.m4-ashline-v2.rig-semantic-bounds.v1"
+RIG_SEMANTIC_BOUNDS_SCHEMA = "spaceface.m4-ashline-v2.rig-semantic-bounds.v2"
 
 
 def canonical_digest(value: Any) -> str:
@@ -153,11 +256,46 @@ base.CANONICAL_MATERIAL_NAMES = tuple(dict.fromkeys((
     *base.CANONICAL_MATERIAL_NAMES,
     "Material_RepairPrimer",
     "Material_HeatMetal",
+    "Material_PolishedSteel",
+    "Material_CableSteel",
+    "Material_Hardface",
+    "Material_HotSection",
     "Material_Refractory",
 )))
 
 ORIGINAL_CREATE_CANONICAL_MATERIALS = base.create_canonical_materials
 ORIGINAL_ENSURE_PACKED_ORM_ASSIGNMENTS = base.ensure_packed_orm_assignments
+ORIGINAL_BUILD_ONE_SHIP = base.build_one_ship
+ACTIVE_BUILD_SHIP_KEY: str | None = None
+
+# One Rig authority table feeds the direct Blender material setup and the authored embedded maps.
+# Family defaults remain intentionally separate for Dart/Lode, whose accepted preservation
+# contracts use Material_HeatMetal and a different shared plate response.
+RIG_MATERIAL_TREATMENTS = {
+    "Material_Hull": ((26, 32, 36, 255), 0.72, 0.08, None, 0.0),
+    "Material_Mechanical": ((43, 46, 48, 255), 0.31, 0.88, None, 0.0),
+    "Material_Red_Paint": ((82, 22, 15, 255), 0.78, 0.0, None, 0.0),
+    "Material_PolishedSteel": ((104, 112, 116, 255), 0.18, 0.96, None, 0.0),
+    "Material_CableSteel": ((52, 58, 60, 255), 0.42, 0.93, None, 0.0),
+    "Material_Hardface": ((68, 54, 48, 255), 0.38, 0.90, None, 0.0),
+    "Material_HotSection": ((67, 62, 57, 255), 0.34, 0.94, None, 0.0),
+    "Material_Refractory": ((55, 49, 41, 255), 0.97, 0.0, None, 0.0),
+    "Material_Cyan": ((8, 20, 23, 255), 0.52, 0.02, (0.004, 0.07, 0.11), 1.0),
+}
+
+
+def build_one_ship_with_active_material_role(ship_key: str) -> dict[str, Any]:
+    """Select Rig direct-material truth without changing Dart/Lode family defaults."""
+    global ACTIVE_BUILD_SHIP_KEY
+    prior = ACTIVE_BUILD_SHIP_KEY
+    ACTIVE_BUILD_SHIP_KEY = ship_key
+    try:
+        return ORIGINAL_BUILD_ONE_SHIP(ship_key)
+    finally:
+        ACTIVE_BUILD_SHIP_KEY = prior
+
+
+base.build_one_ship = build_one_ship_with_active_material_role
 
 
 def ensure_rig_packed_orm_assignments(doc: dict[str, Any]) -> None:
@@ -174,7 +312,8 @@ def ensure_rig_packed_orm_assignments(doc: dict[str, Any]) -> None:
         return
     required = {
         "Material_Hull", "Material_Mechanical", "Material_Red_Paint",
-        "Material_Cyan", "Material_HeatMetal", "Material_Refractory",
+        "Material_PolishedSteel", "Material_CableSteel", "Material_Hardface",
+        "Material_HotSection", "Material_Refractory", "Material_Cyan",
     }
     materials = {material.get("name"): material for material in doc.get("materials") or []}
     missing = sorted(required - set(materials))
@@ -226,6 +365,11 @@ def create_material_truth_materials() -> dict[str, bpy.types.Material]:
         "Material_RepairPrimer": ((132, 124, 108, 255), 0.82, 0.0, None, 0.0),
         # Nickel-superalloy hot sections and heat-darkened stainless shielding.
         "Material_HeatMetal": ((58, 48, 44, 255), 0.44, 0.92, None, 0.0),
+        # Rig-only authored roles. Dart and Lode continue to use Material_HeatMetal unchanged.
+        "Material_PolishedSteel": ((104, 112, 116, 255), 0.18, 0.96, None, 0.0),
+        "Material_CableSteel": ((52, 58, 60, 255), 0.42, 0.93, None, 0.0),
+        "Material_Hardface": ((68, 54, 48, 255), 0.38, 0.90, None, 0.0),
+        "Material_HotSection": ((67, 62, 57, 255), 0.34, 0.94, None, 0.0),
         # Alumina/zirconia nozzle throats and optical collimators.
         "Material_Refractory": ((91, 86, 76, 255), 0.78, 0.0, None, 0.0),
     }
@@ -233,12 +377,22 @@ def create_material_truth_materials() -> dict[str, bpy.types.Material]:
         mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
         base._wire_material_maps(mat, rgba, rough, metal, emit, strength)
         mats[name] = mat
+    if ACTIVE_BUILD_SHIP_KEY == "rig":
+        # Establish the exact Rig factors and colors before any geometry is authored. The later
+        # treatment replaces these temporary solid maps with role-specific generated maps using
+        # this same table, so neither path can silently retain the shared family defaults.
+        for name, (rgba, rough, metal, emit, strength) in RIG_MATERIAL_TREATMENTS.items():
+            base._wire_material_maps(mats[name], rgba, rough, metal, emit, strength)
     material_contracts = {
         "Material_Hull": {"surfaceClass": "coated_structural_steel", "metallic": 0.34, "emissive": False},
         "Material_Mechanical": {"surfaceClass": "nitrided_cold_steel", "metallic": 0.82, "emissive": False},
         "Material_Red_Paint": {"surfaceClass": "oxide_red_guard_coating", "metallic": 0.0, "emissive": False},
         "Material_Cyan": {"surfaceClass": "recessed_internal_indicator", "metallic": 0.02, "emissive": True},
         "Material_HeatMetal": {"surfaceClass": "nickel_hot_section_or_hardface", "metallic": 0.92, "emissive": False},
+        "Material_PolishedSteel": {"surfaceClass": "polished_shaft_and_interface_steel", "metallic": 0.96, "emissive": False},
+        "Material_CableSteel": {"surfaceClass": "braided_high_carbon_cable_steel", "metallic": 0.93, "emissive": False},
+        "Material_Hardface": {"surfaceClass": "heat_darkened_hardface_alloy", "metallic": 0.90, "emissive": False},
+        "Material_HotSection": {"surfaceClass": "nickel_hot_section_and_bell", "metallic": 0.94, "emissive": False},
         "Material_Refractory": {"surfaceClass": "dry_alumina_zirconia_ceramic", "metallic": 0.0, "emissive": False},
     }
     for name, contract in material_contracts.items():
@@ -640,6 +794,222 @@ def make_plate_outline_y(
     for index in range(count):
         nxt = (index + 1) % count
         faces.append((index, nxt, count + nxt, count + index))
+    return make_material_truth_mesh(
+        name, vertices, faces, material, coll,
+        detail=detail, close_only=close_only, component=component,
+    )
+
+
+def make_plate_outline_z(
+    name: str,
+    outline_xy: list[tuple[float, float]],
+    z0: float,
+    z1: float,
+    material: bpy.types.Material,
+    coll: bpy.types.Collection,
+    *,
+    detail: int = 0,
+    close_only: bool = False,
+    component: str = "",
+) -> bpy.types.Object:
+    """Fabricated side plate in the X/Y load plane, with honest thickness across runtime Z."""
+    vertices = [
+        (x, y, z)
+        for z in (z0, z1)
+        for x, y in outline_xy
+    ]
+    count = len(outline_xy)
+    faces: list[tuple[int, ...]] = [
+        tuple(reversed(range(count))),
+        tuple(count + index for index in range(count)),
+    ]
+    for index in range(count):
+        nxt = (index + 1) % count
+        faces.append((index, nxt, count + nxt, count + index))
+    return make_material_truth_mesh(
+        name, vertices, faces, material, coll,
+        detail=detail, close_only=close_only, component=component,
+    )
+
+
+def make_plate_frame_z(
+    name: str,
+    outer_xy: list[tuple[float, float]],
+    inner_xy: list[tuple[float, float]],
+    z0: float,
+    z1: float,
+    material: bpy.types.Material,
+    coll: bpy.types.Collection,
+    *,
+    detail: int = 0,
+    close_only: bool = False,
+    component: str = "",
+) -> bpy.types.Object:
+    """Thick fabricated cheek with a real through-opening, not a painted triangle on a slab."""
+    if len(outer_xy) != len(inner_xy) or len(outer_xy) < 3:
+        raise ValueError(f"{name} frame loops must have equal vertex counts >= 3")
+    count = len(outer_xy)
+    vertices: list[tuple[float, float, float]] = []
+    for z in (z0, z1):
+        vertices.extend((x, y, z) for x, y in outer_xy)
+        vertices.extend((x, y, z) for x, y in inner_xy)
+    faces: list[tuple[int, ...]] = []
+    stride = count * 2
+    for index in range(count):
+        nxt = (index + 1) % count
+        # Front and rear annular faces.
+        faces.append((index, nxt, count + nxt, count + index))
+        faces.append((
+            stride + index, stride + count + index,
+            stride + count + nxt, stride + nxt,
+        ))
+        # Outer perimeter wall and inner aperture wall.
+        faces.append((index, stride + index, stride + nxt, nxt))
+        faces.append((
+            count + index, count + nxt,
+            stride + count + nxt, stride + count + index,
+        ))
+    return make_material_truth_mesh(
+        name, vertices, faces, material, coll,
+        detail=detail, close_only=close_only, component=component,
+    )
+
+
+def make_profiled_plate_chord(
+    name: str,
+    sections: list[tuple[float, float, float, float]],
+    thickness: float,
+    material: bpy.types.Material,
+    coll: bpy.types.Collection,
+    *,
+    detail: int = 0,
+    close_only: bool = False,
+    component: str = "",
+) -> bpy.types.Object:
+    """Stepped plate-girder flange from an authored centerline and changing visible depth."""
+    if len(sections) < 2:
+        raise ValueError(f"{name} requires at least two chord sections")
+    vertices: list[tuple[float, float, float]] = []
+    for index, (x, y, z, width) in enumerate(sections):
+        previous = sections[max(0, index - 1)]
+        following = sections[min(len(sections) - 1, index + 1)]
+        dx, dy = following[0] - previous[0], following[1] - previous[1]
+        length = math.hypot(dx, dy)
+        if length <= 1e-6:
+            raise ValueError(f"{name} has a collapsed centerline section")
+        nx, ny = -dy / length, dx / length
+        for z_offset in (-thickness * 0.5, thickness * 0.5):
+            vertices.extend([
+                (x + nx * width * 0.5, y + ny * width * 0.5, z + z_offset),
+                (x - nx * width * 0.5, y - ny * width * 0.5, z + z_offset),
+            ])
+    faces: list[tuple[int, ...]] = []
+    for section in range(len(sections) - 1):
+        start = section * 4
+        nxt = (section + 1) * 4
+        faces.extend([
+            (start, nxt, nxt + 1, start + 1),
+            (start + 2, start + 3, nxt + 3, nxt + 2),
+            (start, start + 2, nxt + 2, nxt),
+            (start + 1, nxt + 1, nxt + 3, start + 3),
+        ])
+    faces.extend([
+        (0, 1, 3, 2),
+        (
+            (len(sections) - 1) * 4,
+            (len(sections) - 1) * 4 + 2,
+            (len(sections) - 1) * 4 + 3,
+            (len(sections) - 1) * 4 + 1,
+        ),
+    ])
+    return make_material_truth_mesh(
+        name, vertices, faces, material, coll,
+        detail=detail, close_only=close_only, component=component,
+    )
+
+
+def make_tapered_plate_strap(
+    name: str,
+    start: tuple[float, float, float],
+    end: tuple[float, float, float],
+    width_start: float,
+    width_end: float,
+    thickness: float,
+    material: bpy.types.Material,
+    coll: bpy.types.Collection,
+    *,
+    detail: int = 0,
+    close_only: bool = False,
+    component: str = "",
+) -> bpy.types.Object:
+    """Load-directed plate strap with a visibly changing section and no box-primitive ancestry."""
+    x0, y0, z0 = start
+    x1, y1, z1 = end
+    dx, dy = x1 - x0, y1 - y0
+    length = math.hypot(dx, dy)
+    if length <= 1e-6:
+        raise ValueError(f"{name} strap endpoints collapse")
+    nx, ny = -dy / length, dx / length
+    outline = [
+        (x0 + nx * width_start * 0.5, y0 + ny * width_start * 0.5, z0),
+        (x1 + nx * width_end * 0.5, y1 + ny * width_end * 0.5, z1),
+        (x1 - nx * width_end * 0.5, y1 - ny * width_end * 0.5, z1),
+        (x0 - nx * width_start * 0.5, y0 - ny * width_start * 0.5, z0),
+    ]
+    half_t = thickness * 0.5
+    vertices = [
+        (x, y, z + offset)
+        for offset in (-half_t, half_t)
+        for x, y, z in outline
+    ]
+    faces = [
+        (0, 3, 2, 1), (4, 5, 6, 7),
+        (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7),
+    ]
+    return make_material_truth_mesh(
+        name, vertices, faces, material, coll,
+        detail=detail, close_only=close_only, component=component,
+    )
+
+
+def make_multisection_chamfered_prism_x(
+    name: str,
+    sections: list[tuple[float, float, float, float, float]],
+    chamfer_ratio: float,
+    material: bpy.types.Material,
+    coll: bpy.types.Collection,
+    *,
+    detail: int = 0,
+    close_only: bool = False,
+    component: str = "",
+) -> bpy.types.Object:
+    """Faceted welded pressure case with shoulders and waist changes along its flow axis."""
+    if len(sections) < 2:
+        raise ValueError(f"{name} requires at least two pressure-case sections")
+    ratio = max(0.04, min(0.42, chamfer_ratio))
+    vertices: list[tuple[float, float, float]] = []
+    for x, cy, cz, height, width in sections:
+        hy, hz = height * 0.5, width * 0.5
+        dy, dz = height * ratio, width * ratio
+        vertices.extend([
+            (x, cy - hy + dy, cz - hz),
+            (x, cy - hy, cz - hz + dz),
+            (x, cy - hy, cz + hz - dz),
+            (x, cy - hy + dy, cz + hz),
+            (x, cy + hy - dy, cz + hz),
+            (x, cy + hy, cz + hz - dz),
+            (x, cy + hy, cz - hz + dz),
+            (x, cy + hy - dy, cz - hz),
+        ])
+    faces: list[tuple[int, ...]] = [tuple(reversed(range(8)))]
+    for section in range(len(sections) - 1):
+        start = section * 8
+        nxt_start = (section + 1) * 8
+        for index in range(8):
+            nxt = (index + 1) % 8
+            faces.append((start + index, start + nxt, nxt_start + nxt, nxt_start + index))
+    last = (len(sections) - 1) * 8
+    faces.append(tuple(last + index for index in range(8)))
     return make_material_truth_mesh(
         name, vertices, faces, material, coll,
         detail=detail, close_only=close_only, component=component,
@@ -1170,6 +1540,56 @@ def make_segmented_clamp_y(
     )
 
 
+def make_segmented_clamp_z(
+    name: str,
+    z_center: float,
+    depth: float,
+    center_x: float,
+    center_y: float,
+    inner_radius: float,
+    outer_radius: float,
+    material: bpy.types.Material,
+    coll: bpy.types.Collection,
+    *,
+    segments: int = 8,
+    fill_ratio: float = 0.54,
+    detail: int = 1,
+    close_only: bool = False,
+    component: str = "",
+) -> bpy.types.Object:
+    """Serviceable split brake band around a transverse Z-axis salvage drum."""
+    vertices: list[tuple[float, float, float]] = []
+    faces: list[tuple[int, ...]] = []
+    z0, z1 = z_center - depth * 0.5, z_center + depth * 0.5
+    for segment in range(segments):
+        center = math.tau * (segment + 0.5) / segments
+        half = math.pi * fill_ratio / segments
+        a0, a1 = center - half, center + half
+        base_index = len(vertices)
+        for z in (z0, z1):
+            for radius, angle in (
+                (inner_radius, a0), (inner_radius, a1),
+                (outer_radius, a1), (outer_radius, a0),
+            ):
+                vertices.append((
+                    center_x + math.cos(angle) * radius,
+                    center_y + math.sin(angle) * radius,
+                    z,
+                ))
+        faces.extend([
+            (base_index, base_index + 1, base_index + 2, base_index + 3),
+            (base_index + 4, base_index + 7, base_index + 6, base_index + 5),
+            (base_index, base_index + 4, base_index + 5, base_index + 1),
+            (base_index + 1, base_index + 5, base_index + 6, base_index + 2),
+            (base_index + 2, base_index + 6, base_index + 7, base_index + 3),
+            (base_index + 3, base_index + 7, base_index + 4, base_index),
+        ])
+    return make_material_truth_mesh(
+        name, vertices, faces, material, coll,
+        detail=detail, close_only=close_only, component=component,
+    )
+
+
 def make_service_line(
     name: str,
     points_rt: list[tuple[float, float, float]],
@@ -1320,6 +1740,59 @@ def make_braided_drum_wrap_y(
     )
 
 
+def make_braided_drum_wrap_z(
+    name: str,
+    center_x: float,
+    center_y: float,
+    z0: float,
+    z1: float,
+    radius: float,
+    material: bpy.types.Material,
+    coll: bpy.types.Collection,
+    *,
+    wraps: float = 15.0,
+    strand_radius: float = 0.036,
+    detail: int = 1,
+) -> bpy.types.Object:
+    """Cable-filled transverse drum; the rope lay stays visible between broad flanges."""
+    slices_per_turn, sides, strands = 10, 6, 3
+    slices = max(24, int(round(wraps * slices_per_turn)))
+    vertices: list[tuple[float, float, float]] = []
+    faces: list[tuple[int, ...]] = []
+    for strand in range(strands):
+        strand_start = len(vertices)
+        phase_offset = math.tau * strand / strands
+        for step in range(slices + 1):
+            t = step / slices
+            phase = phase_offset + math.tau * wraps * t
+            z = z0 + (z1 - z0) * t
+            radial_x = math.cos(phase)
+            radial_y = math.sin(phase)
+            tangent_x = -math.sin(phase)
+            tangent_y = math.cos(phase)
+            for side in range(sides):
+                angle = math.tau * side / sides
+                vertices.append((
+                    center_x + radial_x * (radius + math.cos(angle) * strand_radius)
+                    + tangent_x * math.sin(angle) * strand_radius,
+                    center_y + radial_y * (radius + math.cos(angle) * strand_radius)
+                    + tangent_y * math.sin(angle) * strand_radius,
+                    z,
+                ))
+        for step in range(slices):
+            for side in range(sides):
+                nxt = (side + 1) % sides
+                a = strand_start + step * sides + side
+                b = strand_start + step * sides + nxt
+                c = strand_start + (step + 1) * sides + nxt
+                d = strand_start + (step + 1) * sides + side
+                faces.append((a, b, c, d))
+    return make_material_truth_mesh(
+        name, vertices, faces, material, coll,
+        detail=detail, close_only=False, component="tether_drum",
+    )
+
+
 def make_rig_material_image(
     name: str,
     rgba: tuple[int, int, int, int],
@@ -1336,7 +1809,10 @@ def make_rig_material_image(
         "Material_Hull": 0.72,
         "Material_Mechanical": 0.31,
         "Material_Red_Paint": 0.78,
-        "Material_HeatMetal": 0.30,
+        "Material_PolishedSteel": 0.18,
+        "Material_CableSteel": 0.42,
+        "Material_Hardface": 0.38,
+        "Material_HotSection": 0.34,
         "Material_Refractory": 0.97,
         "Material_Cyan": 0.52,
     }[material_name]
@@ -1344,11 +1820,37 @@ def make_rig_material_image(
         "Material_Hull": 0.08,
         "Material_Mechanical": 0.88,
         "Material_Red_Paint": 0.0,
-        "Material_HeatMetal": 0.94,
+        "Material_PolishedSteel": 0.96,
+        "Material_CableSteel": 0.93,
+        "Material_Hardface": 0.90,
+        "Material_HotSection": 0.94,
         "Material_Refractory": 0.0,
         "Material_Cyan": 0.02,
     }[material_name]
     material_code = sum(ord(char) for char in material_name) % 101
+
+    def hashed_noise(column: int, row: int, salt: int) -> float:
+        value = (column * 374761393 + row * 668265263 + salt * 69069) & 0xFFFFFFFF
+        value = ((value ^ (value >> 13)) * 1274126177) & 0xFFFFFFFF
+        return ((value ^ (value >> 16)) & 0xFFFFFFFF) / 0xFFFFFFFF
+
+    def smooth_unit(value: float) -> float:
+        return value * value * (3.0 - 2.0 * value)
+
+    def value_noise(column: int, row: int, cell: int, salt: int) -> float:
+        grid_x, grid_y = column // cell, row // cell
+        local_x = smooth_unit((column % cell) / cell)
+        local_y = smooth_unit((row % cell) / cell)
+        low = (
+            hashed_noise(grid_x, grid_y, salt) * (1.0 - local_x)
+            + hashed_noise(grid_x + 1, grid_y, salt) * local_x
+        )
+        high = (
+            hashed_noise(grid_x, grid_y + 1, salt) * (1.0 - local_x)
+            + hashed_noise(grid_x + 1, grid_y + 1, salt) * local_x
+        )
+        return low * (1.0 - local_y) + high * local_y
+
     pixels: list[float] = []
     for y in range(size):
         for x in range(size):
@@ -1360,15 +1862,30 @@ def make_rig_material_image(
                 + math.sin(y * 0.037 - x * 0.019 + material_code * 0.31) * 0.58
                 + 1.58
             ) / 3.16
+            turned_line = math.sin(y * 0.61 + x * 0.017 + material_code * 0.07) * 0.5 + 0.5
+            braid_a = math.sin((x + y) * 0.31 + material_code * 0.03)
+            braid_b = math.sin((x - y) * 0.29 - material_code * 0.05)
+            braid = (braid_a + braid_b + 2.0) * 0.25
+            abrasion = math.sin(x * 0.093 + y * 0.171 + large_noise * 2.3) * 0.5 + 0.5
+            heat_band = math.sin(x * 0.055 + large_noise * 0.7)
             plate_seam = False
             plate_fastener = False
             paint_chip = material_name == "Material_Red_Paint" and (
                 (large_noise > 0.91 and seed > 0.68)
                 or (x % 79 <= 1 and y % 37 < 9)
             )
-            refractory_crack = material_name == "Material_Refractory" and (
-                (x + y * 2 + material_code) % 113 <= 1
-                and large_noise > 0.54
+            refractory_fine = value_noise(x, y, 3, material_code + 17)
+            refractory_medium = value_noise(x, y, 13, material_code + 41)
+            refractory_pit = material_name == "Material_Refractory" and (
+                hashed_noise(x // 5, y // 5, material_code + 73) > 0.975
+                and refractory_fine < 0.44
+            )
+            # A sparse pair of adjacent, hash-selected texels reads as micro erosion instead of a
+            # repeated contour.  It deliberately avoids radial/periodic terms that become swirls
+            # after the nozzle's cylindrical UV projection.
+            refractory_microcrack = material_name == "Material_Refractory" and (
+                hashed_noise(x // 3, y // 3, material_code + 97) > 0.993
+                and hashed_noise((x + 2) // 3, y // 3, material_code + 101) > 0.72
             )
 
             if role == "base":
@@ -1381,26 +1898,40 @@ def make_rig_material_image(
                         base_rgb = [0.24, 0.25, 0.26]
                         delta = 0.0
                 elif material_name == "Material_Mechanical":
-                    delta = (grain - 0.5) * 0.07 + (seed - 0.5) * 0.014
-                elif material_name == "Material_HeatMetal":
-                    band = math.sin(x * 0.055 + large_noise * 0.7)
-                    base_rgb[0] += max(0.0, band) * 0.055
-                    base_rgb[1] += min(0.0, band) * 0.025
-                    base_rgb[2] += max(0.0, -band) * 0.045
-                    delta = (grain - 0.5) * 0.025
+                    delta = (grain - 0.5) * 0.052 + (seed - 0.5) * 0.012
+                elif material_name == "Material_PolishedSteel":
+                    delta = (turned_line - 0.5) * 0.045 + (seed - 0.5) * 0.008
+                elif material_name == "Material_CableSteel":
+                    delta = (braid - 0.5) * 0.095 + (seed - 0.5) * 0.012
+                elif material_name == "Material_Hardface":
+                    delta = (abrasion - 0.5) * 0.085 - max(0.0, large_noise - 0.82) * 0.05
+                elif material_name == "Material_HotSection":
+                    # Restrained nickel temper variation, not a copper/orange identity color.
+                    base_rgb[0] += max(0.0, heat_band) * 0.020
+                    base_rgb[1] += min(0.0, heat_band) * 0.012
+                    base_rgb[2] += max(0.0, -heat_band) * 0.026
+                    delta = (grain - 0.5) * 0.020
                 elif material_name == "Material_Red_Paint":
                     if paint_chip:
-                        base_rgb = [0.20, 0.21, 0.22]
+                        base_rgb = [0.16, 0.17, 0.18]
                         delta = 0.0
                     else:
-                        delta = (large_noise - 0.5) * 0.035
+                        delta = (large_noise - 0.5) * 0.055 - max(0.0, seed - 0.88) * 0.045
                 elif material_name == "Material_Refractory":
-                    delta = (seed - 0.5) * 0.105 - (0.12 if refractory_crack else 0.0)
+                    # Dry ceramic gets fine non-periodic grain and occasional erosion only. Keep
+                    # contrast low so the texture cannot read as woodgrain, leather, a fingerprint,
+                    # or a topographic ring over the physically modeled throat annulus.
+                    delta = (
+                        (refractory_fine - 0.5) * 0.025
+                        + (refractory_medium - 0.5) * 0.012
+                        - (0.045 if refractory_pit else 0.0)
+                        - (0.060 if refractory_microcrack else 0.0)
+                    )
                 else:
                     delta = (seed - 0.5) * 0.012
                 r, g, b = (max(0.0, min(1.0, value + delta)) for value in base_rgb)
             elif role == "orm":
-                ao = 0.72 if plate_seam or refractory_crack else 0.90 - seed * 0.025
+                ao = 0.72 if plate_seam else 0.90 - seed * 0.025
                 rough = roughness
                 metal = metallic
                 if material_name == "Material_Hull":
@@ -1409,14 +1940,29 @@ def make_rig_material_image(
                         metal = 0.86
                 elif material_name == "Material_Mechanical":
                     rough += (grain - 0.5) * 0.16
-                elif material_name == "Material_HeatMetal":
+                elif material_name == "Material_PolishedSteel":
+                    rough += (turned_line - 0.5) * 0.075 + (seed - 0.5) * 0.012
+                elif material_name == "Material_CableSteel":
+                    rough += (braid - 0.5) * 0.18 + (seed - 0.5) * 0.025
+                elif material_name == "Material_Hardface":
+                    rough += (abrasion - 0.5) * 0.20 + max(0.0, large_noise - 0.84) * 0.08
+                elif material_name == "Material_HotSection":
                     rough += math.sin(x * 0.055) * 0.08 + (grain - 0.5) * 0.06
                 elif material_name == "Material_Red_Paint":
                     rough += (large_noise - 0.5) * 0.12
                     if paint_chip:
                         rough, metal = 0.42, 0.86
                 elif material_name == "Material_Refractory":
-                    rough += (seed - 0.5) * 0.10
+                    ao = (
+                        0.82 if refractory_microcrack
+                        else 0.85 if refractory_pit
+                        else 0.89 - refractory_fine * 0.016
+                    )
+                    rough += (
+                        (refractory_fine - 0.5) * 0.035
+                        + (refractory_medium - 0.5) * 0.018
+                        + (0.025 if refractory_pit else 0.0)
+                    )
                 else:
                     rough += (seed - 0.5) * 0.025
                 r, g, b = ao, max(0.04, min(0.96, rough)), max(0.0, min(1.0, metal))
@@ -1424,23 +1970,41 @@ def make_rig_material_image(
                 nx, ny, nz = 0.5, 0.5, 1.0
                 if material_name == "Material_Hull":
                     # The donor hull is coated plate, not quilted leather or a tiled floor. Keep
-                    # the native normal almost planar and use only non-periodic microvariation;
-                    # plate boundaries and fasteners must come from authored geometry.
-                    nx += (large_noise - 0.5) * 0.008
-                    ny += (seed - 0.5) * 0.006
-                    nz = 1.0
-                elif material_name in ("Material_Mechanical", "Material_HeatMetal"):
-                    ny += (grain - 0.5) * (0.055 if material_name == "Material_Mechanical" else 0.032)
+                    # the native normal restrained and non-periodic.  A second broad directional
+                    # term suggests ground weld cleanup without drawing fake seams into quiet plate;
+                    # plate boundaries and fasteners still come from authored geometry.
+                    cleanup = math.sin(x * 0.047 + y * 0.009 + large_noise * 1.3)
+                    nx += (large_noise - 0.5) * 0.017
+                    ny += (seed - 0.5) * 0.012 + cleanup * 0.004
+                    nz = 0.998
+                elif material_name == "Material_Mechanical":
+                    ny += (grain - 0.5) * 0.055
                     nx += (seed - 0.5) * 0.012
-                    nz = 0.985
+                    nz = 0.982
+                elif material_name == "Material_PolishedSteel":
+                    ny += (turned_line - 0.5) * 0.038
+                    nx += (seed - 0.5) * 0.006
+                    nz = 0.995
+                elif material_name == "Material_CableSteel":
+                    nx += braid_a * 0.060 + braid_b * 0.020
+                    ny += braid_a * 0.020 - braid_b * 0.060
+                    nz = 0.962
+                elif material_name == "Material_Hardface":
+                    nx += (abrasion - 0.5) * 0.082 + (seed - 0.5) * 0.024
+                    ny += (large_noise - 0.5) * 0.068
+                    nz = 0.968
+                elif material_name == "Material_HotSection":
+                    ny += (grain - 0.5) * 0.052
+                    nx += heat_band * 0.020 + (seed - 0.5) * 0.010
+                    nz = 0.984
                 elif material_name == "Material_Red_Paint":
-                    nx += (large_noise - 0.5) * 0.024
-                    ny += (seed - 0.5) * 0.024
-                    nz = 0.90 if paint_chip else 0.995
+                    nx += (large_noise - 0.5) * 0.038
+                    ny += (seed - 0.5) * 0.034
+                    nz = 0.88 if paint_chip else 0.992
                 elif material_name == "Material_Refractory":
-                    nx += (seed - 0.5) * 0.085
-                    ny += (large_noise - 0.5) * 0.085
-                    nz = 0.88 if refractory_crack else 0.97
+                    nx += (refractory_fine - 0.5) * 0.014 + (refractory_medium - 0.5) * 0.005
+                    ny += (refractory_medium - 0.5) * 0.014 + (refractory_fine - 0.5) * 0.005
+                    nz = 0.955 if refractory_microcrack else 0.972 if refractory_pit else 0.989
                 r, g, b = nx, ny, nz
             pixels.extend([r, g, b, rgba[3] / 255.0])
     image.pixels = pixels
@@ -1451,22 +2015,7 @@ def make_rig_material_image(
 
 def apply_rig_material_treatment(mats: dict[str, bpy.types.Material]) -> None:
     """Give the Rig a sober salvage-yard palette without changing Dart or Lode outputs."""
-    treatments = {
-        # Phosphate-coated structural plate: dark, workmanlike, and predominantly dielectric.
-        "Material_Hull": ((49, 54, 58, 255), 0.72, 0.08, None, 0.0),
-        # Nitrided housings, pins, bearings, clevises, and thrust structures.
-        "Material_Mechanical": ((38, 44, 50, 255), 0.31, 0.88, None, 0.0),
-        # Removable guards and service markings only.
-        "Material_Red_Paint": ((70, 15, 12, 255), 0.78, 0.0, None, 0.0),
-        # Nickel hot sections, hardface pads, cable, and polished hydraulic rods.
-        "Material_HeatMetal": ((82, 55, 42, 255), 0.30, 0.94, None, 0.0),
-        # Heat-soaked alumina/zirconia liners: dry and dark in the recessed throat, never a white
-        # face plate or glossy plastic hub.
-        "Material_Refractory": ((38, 36, 32, 255), 0.97, 0.0, None, 0.0),
-        # One protected status cue, deliberately too dim to become exterior neon.
-        "Material_Cyan": ((38, 8, 6, 255), 0.52, 0.02, (0.45, 0.01, 0.005), 0.22),
-    }
-    for name, (rgba, rough, metal, emit, strength) in treatments.items():
+    for name, (rgba, rough, metal, emit, strength) in RIG_MATERIAL_TREATMENTS.items():
         mat = mats[name]
         # The shared creator has already packed role images. Remove only this new scene's copies so
         # the Rig treatment is regenerated rather than silently reusing the Dart/Lode palette.
@@ -1484,11 +2033,14 @@ def apply_rig_material_treatment(mats: dict[str, bpy.types.Material]) -> None:
         "Material_Hull": "phosphate_coated_structural_steel",
         "Material_Mechanical": "nitrided_cold_steel",
         "Material_Red_Paint": "oxide_red_dielectric_coating",
-        "Material_HeatMetal": "nickel_hot_section_or_hardface",
+        "Material_PolishedSteel": "polished_shaft_and_interface_steel",
+        "Material_CableSteel": "braided_high_carbon_cable_steel",
+        "Material_Hardface": "heat_darkened_hardface_alloy",
+        "Material_HotSection": "nickel_hot_section_and_bell",
         "Material_Refractory": "alumina_zirconia_refractory",
         "Material_Cyan": "protected_low_intensity_indicator",
     }
-    for name, (_, rough, metal, emit, strength) in treatments.items():
+    for name, (_, rough, metal, emit, strength) in RIG_MATERIAL_TREATMENTS.items():
         mats[name]["spacefaceMaterial"] = {
             "surfaceClass": surface_classes[name],
             "roughness": rough,
@@ -1498,42 +2050,54 @@ def apply_rig_material_treatment(mats: dict[str, bpy.types.Material]) -> None:
 
 
 def audit_rig_component_inventory(parts: list[bpy.types.Object]) -> dict[str, Any]:
-    """Bind the source contract to components actually authored in this build, before LOD merging."""
-    rules = (
-        ("boomChord", "Hook_BoomChord_"),
-        ("boomWeb", "Hook_BoomWeb_"),
-        ("captureRootDoubler", "Hook_BoomRootDoubler_"),
-        ("jawClevis", "Hook_ClevisEar_"),
-        ("jawArm", "Hook_JawArm_"),
-        ("jawKeeper", "Hook_JawKeeper_"),
-        ("jawPad", "Hook_JawPad_"),
-        ("tetherDrum", "Hook_TetherDrum_Grooved"),
-        ("drumCableWrap", "Hook_TetherDrum_CableWrap"),
-        ("tetherFairlead", "Hook_TetherFairlead_Sheave"),
-        ("braidedCable", "Hook_TetherFairlead_BraidedRun"),
-        ("drumBearing", "Hook_TetherDrum_Bearing_"),
-        ("drumBrake", "Hook_TetherDrum_BrakeBand"),
-        ("drumGuard", "Hook_TetherGuard_"),
-        ("hydraulicCylinder", "Hook_JawHydraulicCase_"),
-        ("drivePressureCase", "Hook_DrivePressureCase_"),
-        ("driveBell", "Hook_DriveBell_"),
-        ("driveRefractoryThroat", "Hook_DriveRefractoryThroat_"),
-        ("driveSaddle", "Hook_DriveThrustSaddle_"),
-        ("driveValvePack", "Hook_DriveValvePack_"),
-    )
-    authored_names = [obj.name for obj in parts]
+    """Fail closed on every authored Hook mesh's role, material, identity, and runtime bounds."""
+    by_name = {
+        obj.name: obj
+        for obj in parts
+        if obj.type == "MESH" and obj.name.startswith("Hook_")
+    }
+    classified: dict[str, str] = {}
     roles = []
-    for role, prefix in rules:
-        names = sorted(name for name in authored_names if name.startswith(prefix))
-        expected = RIG_COMPONENT_COUNT_EXPECTATIONS[role]
+    for role, prefix, expected, semantic_groups in RIG_COMPONENT_RULES:
+        expected_material = RIG_COMPONENT_MATERIAL_EXPECTATIONS[role]
+        names = sorted(name for name in by_name if name.startswith(prefix))
         if len(names) != expected:
             raise RuntimeError(
                 f"Rig material-truth component inventory drift: {role}={len(names)} expected={expected} names={names}",
             )
-        roles.append({"role": role, "count": len(names), "namePrefix": prefix})
+        duplicates = sorted(name for name in names if name in classified)
+        if duplicates:
+            raise RuntimeError(
+                f"Rig material-truth inventory prefix overlap: {role} duplicates={duplicates}",
+            )
+        for name in names:
+            classified[name] = role
+            materials = [slot.material.name for slot in by_name[name].material_slots if slot.material]
+            if materials != [expected_material]:
+                raise RuntimeError(
+                    "Rig material-truth component material drift: "
+                    f"{name}={materials} expected={[expected_material]}",
+                )
+        roles.append({
+            "role": role,
+            "count": len(names),
+            "namePrefix": prefix,
+            "names": names,
+            "material": expected_material,
+            "materialBindings": {name: expected_material for name in names},
+            "semanticGroups": list(semantic_groups),
+            "bounds": evaluated_runtime_aabb([by_name[name] for name in names]),
+        })
+    omitted = sorted(set(by_name) - set(classified))
+    if omitted:
+        raise RuntimeError(
+            f"Rig material-truth inventory has unclassified camera-visible Hook meshes: {omitted}",
+        )
     inventory = {
-        "schema": "spaceface.rigMaterialTruthInventory.v1",
+        "schema": RIG_COMPONENT_INVENTORY_SCHEMA,
         "roles": roles,
+        "componentCount": len(classified),
+        "components": sorted(classified),
         "manufacturedNormalPolicy": MANUFACTURED_NORMAL_POLICY,
     }
     inventory["digest"] = canonical_digest(inventory)
@@ -1601,6 +2165,17 @@ def build_rig_semantic_bounds(parts: list[bpy.types.Object]) -> dict[str, Any]:
             **evaluated_runtime_aabb([by_name[name] for name in names]),
         }
     authored_names = sorted({name for group in groups.values() for name in group["components"]})
+    omitted = sorted(set(by_name) - set(authored_names))
+    if omitted:
+        raise RuntimeError(
+            f"Rig authoredRig semantic union omits camera-visible Hook meshes: {omitted}",
+        )
+    inventory_names = (RIG_COMPONENT_INVENTORY or {}).get("components")
+    if authored_names != inventory_names:
+        raise RuntimeError(
+            "Rig authoredRig semantic union differs from the exact component inventory: "
+            f"semantic={authored_names} inventory={inventory_names}",
+        )
     groups["authoredRig"] = {
         "components": authored_names,
         **evaluated_runtime_aabb([by_name[name] for name in authored_names]),
@@ -1623,6 +2198,10 @@ def add_source_role_layer(ship_key: str, coll: bpy.types.Collection,
     warm = mats["Material_Warm"]
     primer = mats["Material_RepairPrimer"]
     heat = mats["Material_HeatMetal"]
+    polished = mats["Material_PolishedSteel"]
+    cable = mats["Material_CableSteel"]
+    hardface = mats["Material_Hardface"]
+    hot_section = mats["Material_HotSection"]
     refractory = mats["Material_Refractory"]
     if ship_key == "dart":
         # Vector Reaction Drive S: paired faceted pressure cases, explicit hot sections,
@@ -2247,68 +2826,174 @@ def add_source_role_layer(ship_key: str, coll: bpy.types.Collection,
             ))
     else:
         apply_rig_material_treatment(mats)
-        # The Hook's forward silhouette is a serviceable capture machine, not a single decorated
-        # rail. Four tapered plate-girder chords converge from broad hull doublers to two jaw
-        # clevises. The separated web plates deliberately leave real negative space through which
-        # the root-to-pad load path remains readable at flight distance.
-        boom_x0, boom_x1 = -0.18, 7.72
-        for chord_id, y0, y1, z0, z1 in (
-            ("Upper_Port", -0.12, -0.34, -3.76, -3.22),
-            ("Upper_Starboard", -0.12, -0.34, -1.52, -2.08),
-            ("Lower_Port", -1.44, -1.02, -3.84, -3.28),
-            ("Lower_Starboard", -1.44, -1.02, -1.44, -2.02),
-        ):
-            out.append(make_chamfered_prism_x(
-                f"Hook_BoomChord_{chord_id}", boom_x0, boom_x1,
-                y0, y1, z0, z1, 0.24, 0.17, 0.24, 0.16, 0.22,
-                hull, coll, detail=0, component="capture_boom",
+        # Two fabricated side girders carry the capture tool.  Each side is assembled from a
+        # broad-root/narrow-tip upper and lower flange plus three unequal plate separators, leaving
+        # four large irregular voids.  This follows the component study's plate-girder logic and
+        # deliberately retires both the constant-section rail and repeated X-lattice reads.
+        boom_x0, boom_x1 = -0.46, 7.58
+        side_specs = (
+            ("Port", -3.62, -3.12),
+            ("Starboard", -1.48, -2.18),
+        )
+        for side, z_root, z_tip in side_specs:
+            def boom_z(x: float) -> float:
+                t = (x - boom_x0) / (boom_x1 - boom_x0)
+                # The root stays buried into the donor load band while the girder itself becomes
+                # the deep tapered pylon that raises the working machine. No blanket object lift.
+                return z_root + (z_tip - z_root) * t
+
+            def boom_y(x: float, base_y: float) -> float:
+                # Keep the doubler end in the donor frame, then lift only the authored chord/web
+                # centerline toward the exposed service band. This is component-local re-spacing,
+                # not another uniform translation of the capture machine.
+                t = max(0.0, min(1.0, (x - boom_x0) / (boom_x1 - boom_x0)))
+                return base_y + 0.64 * t
+
+            upper_sections = [
+                (-0.46, boom_y(-0.46, 0.10), boom_z(-0.46), 0.62),
+                (0.12, boom_y(0.12, 0.08), boom_z(0.12), 0.62),
+                (0.24, boom_y(0.24, 0.03), boom_z(0.24), 0.48),
+                (2.10, boom_y(2.10, -0.02), boom_z(2.10), 0.45),
+                (2.24, boom_y(2.24, -0.08), boom_z(2.24), 0.34),
+                (4.18, boom_y(4.18, -0.14), boom_z(4.18), 0.32),
+                (4.34, boom_y(4.34, -0.20), boom_z(4.34), 0.26),
+                (6.12, boom_y(6.12, -0.27), boom_z(6.12), 0.24),
+                (6.28, boom_y(6.28, -0.33), boom_z(6.28), 0.20),
+                (7.58, boom_y(7.58, -0.39), boom_z(7.58), 0.18),
+            ]
+            lower_sections = [
+                (-0.46, boom_y(-0.46, -1.68), boom_z(-0.46), 0.58),
+                (0.12, boom_y(0.12, -1.64), boom_z(0.12), 0.58),
+                (0.24, boom_y(0.24, -1.54), boom_z(0.24), 0.44),
+                (2.10, boom_y(2.10, -1.40), boom_z(2.10), 0.42),
+                (2.24, boom_y(2.24, -1.34), boom_z(2.24), 0.34),
+                (4.18, boom_y(4.18, -1.20), boom_z(4.18), 0.32),
+                (4.34, boom_y(4.34, -1.14), boom_z(4.34), 0.27),
+                (6.12, boom_y(6.12, -1.02), boom_z(6.12), 0.24),
+                (6.28, boom_y(6.28, -0.98), boom_z(6.28), 0.20),
+                (7.58, boom_y(7.58, -0.91), boom_z(7.58), 0.18),
+            ]
+            out.append(make_profiled_plate_chord(
+                f"Hook_BoomChord_Upper_{side}",
+                upper_sections, 0.18, hull, coll,
+                detail=0, component="capture_boom",
             ))
-        for side, z in (("Port", -3.48), ("Starboard", -1.82)):
-            for web_id, x0, x1 in (("A", 0.10, 2.62), ("B", 2.70, 5.16), ("C", 5.24, 7.46)):
-                out.append(make_open_web_brace(
+            out.append(make_profiled_plate_chord(
+                f"Hook_BoomChord_Lower_{side}",
+                lower_sections, 0.18, hull, coll,
+                detail=0, component="capture_boom",
+            ))
+            for web_id, start, end, widths in (
+                (
+                    "Root",
+                    (0.34, boom_y(0.34, -1.49), boom_z(0.34)),
+                    (1.92, boom_y(1.92, -0.01), boom_z(1.92)),
+                    (0.34, 0.22),
+                ),
+                (
+                    "Mid",
+                    (2.34, boom_y(2.34, -0.10), boom_z(2.34)),
+                    (4.06, boom_y(4.06, -1.19), boom_z(4.06)),
+                    (0.27, 0.21),
+                ),
+                (
+                    "Tip",
+                    (4.42, boom_y(4.42, -1.12), boom_z(4.42)),
+                    (6.12, boom_y(6.12, -0.29), boom_z(6.12)),
+                    (0.24, 0.18),
+                ),
+            ):
+                out.append(make_tapered_plate_strap(
                     f"Hook_BoomWeb_{side}_{web_id}",
-                    x0, x1, -1.16, -0.30, z, 0.075, 0.14,
-                    mech, coll, detail=1, component="capture_boom",
+                    start, end, widths[0], widths[1],
+                    0.16, mech, coll, detail=1, component="capture_boom",
                 ))
-            # A plate-girder assembly has one legible force direction and three unequal voids.
-            # This is intentionally a continuous fabricated web frame rather than a collection of
-            # parallel square rails whose only distinction is their material slot.
-            out.append(make_tapered_web_frame_x(
-                f"Hook_BoomWebFrame_{side}", 0.08, 7.48,
-                -1.42, -1.03, -0.08, -0.31, z, 0.17,
-                hull, coll, detail=0, component="capture_boom",
-            ))
-        for side, z0, z1 in (("Port", -4.08, -2.98), ("Starboard", -2.32, -1.22)):
-            out.append(make_plate_outline_y(
+                # Compact node doublers identify welded load intersections while preserving the
+                # large negative-space openings and quiet chord spans.
+                node_x, node_y, node_z = start
+                out.append(make_plate_outline_z(
+                    f"Hook_BoomWebFrame_{side}_{web_id}",
+                    [
+                        (node_x - 0.24, node_y - 0.10), (node_x + 0.28, node_y - 0.04),
+                        (node_x + 0.22, node_y + 0.28), (node_x - 0.18, node_y + 0.24),
+                    ],
+                    node_z - 0.13, node_z + 0.13, hull, coll,
+                    detail=1, component="capture_boom",
+                ))
+            for chord_id, sections in (("Upper", upper_sections), ("Lower", lower_sections)):
+                for splice_index, section_index in enumerate((2, 4, 6, 8)):
+                    x, y, z, width = sections[section_index]
+                    out.append(make_plate_outline_z(
+                        f"Hook_BoomSplice_{side}_{chord_id}_{splice_index}",
+                        [
+                            (x - 0.11, y - width * 0.62),
+                            (x + 0.13, y - width * 0.56),
+                            (x + 0.13, y + width * 0.56),
+                            (x - 0.11, y + width * 0.62),
+                        ],
+                        z - 0.13, z + 0.13, mech, coll,
+                        detail=1, component="capture_boom",
+                    ))
+            # Heavy root cheeks overlap the donor structure and flare into both chord ends.  The
+            # lower heel, upper shoulder, and two triangular gussets make the hull transition part
+            # of the force path instead of a surface-mounted tab.
+            out.append(make_plate_frame_z(
                 f"Hook_BoomRootDoubler_{side}",
-                [(-0.52, z0), (0.82, z0 - 0.08), (1.28, z0 + 0.18),
-                 (1.04, z1 - 0.12), (-0.38, z1)],
-                -0.91, -0.72, mech, coll, detail=1, component="capture_boom",
+                [
+                    (-0.88, -1.84), (0.78, -1.78), (1.30, -1.26),
+                    (0.90, 0.30), (-0.64, 0.28),
+                ],
+                [
+                    (-0.48, -1.42), (0.48, -1.38), (0.82, -1.08),
+                    (0.52, -0.18), (-0.38, -0.14),
+                ],
+                z_root - 0.16, z_root + 0.16, mech, coll,
+                detail=1, component="capture_boom",
             ))
-            out.append(make_gusset(
+            out.append(make_plate_outline_z(
                 f"Hook_BoomRootGusset_{side}",
-                ((-0.36, -1.22), (0.74, -0.10), (1.24, -1.02)),
-                (z0 + z1) * 0.5, 0.11, hull, coll, detail=1,
+                [(-0.62, -1.62), (0.94, -1.48), (0.26, -0.38)],
+                z_root - 0.27, z_root - 0.15, hull, coll,
+                detail=1, component="capture_boom",
+            ))
+            out.append(make_plate_outline_z(
+                f"Hook_BoomRootTransition_{side}",
+                [(-1.18, -1.54), (-0.58, -1.82), (0.14, -1.42), (-0.54, -0.48)],
+                z_root + 0.15, z_root + 0.27, hull, coll,
+                detail=1, component="capture_boom",
+            ))
+            out.append(make_plate_frame_z(
+                f"Hook_BoomJawTransition_{side}",
+                [
+                    (6.78, -1.18), (7.66, -1.06), (7.98, -0.72),
+                    (7.90, -0.06), (7.40, 0.06), (6.94, -0.28),
+                ],
+                [
+                    (7.10, -0.86), (7.54, -0.80), (7.69, -0.62),
+                    (7.64, -0.31), (7.39, -0.24), (7.17, -0.42),
+                ],
+                boom_z(boom_x1) - 0.16, boom_z(boom_x1) + 0.16, mech, coll,
+                detail=1, component="capture_boom",
             ))
 
         # Each arm has a narrow two-ear clevis and a visible pin. This keeps the jaw replaceable
         # in close view instead of collapsing its whole root into a single front clamp.
         jaw_center_z = -2.65
         for side, sign in (("Port", -1.0), ("Starboard", 1.0)):
-            clevis_z = jaw_center_z + sign * 0.68
+            clevis_z = jaw_center_z + sign * 0.82
             clevis_outline = [
-                (7.30, clevis_z - 0.27), (7.72, clevis_z - 0.34),
-                (7.94, clevis_z - 0.18), (7.90, clevis_z + 0.18),
-                (7.60, clevis_z + 0.31), (7.32, clevis_z + 0.19),
+                (7.16, clevis_z - 0.30), (7.66, clevis_z - 0.37),
+                (7.98, clevis_z - 0.16), (7.94, clevis_z + 0.20),
+                (7.58, clevis_z + 0.35), (7.20, clevis_z + 0.20),
             ]
-            for ear_id, y0, y1 in (("Outboard", -1.30, -1.12), ("Inboard", -0.22, -0.04)):
+            for ear_id, y0, y1 in (("Outboard", -1.42, -1.20), ("Inboard", -0.30, -0.08)):
                 out.append(make_plate_outline_y(
                     f"Hook_ClevisEar_{side}_{ear_id}", clevis_outline, y0, y1,
                     mech, coll, detail=1, component="capture_jaw",
                 ))
             out.append(make_revolved_profile_y(
                 f"Hook_ClevisPin_{side}",
-                [(-1.40, 0.14), (-1.30, 0.21), (-0.04, 0.21), (0.06, 0.14)],
+                [(-1.52, 0.17), (-1.42, 0.27), (-0.08, 0.27), (0.02, 0.17)],
                 7.62, clevis_z, mech, coll, sides=10, detail=1,
                 close_only=False, component="capture_jaw",
             ))
@@ -2316,59 +3001,57 @@ def add_source_role_layer(ship_key: str, coll: bpy.types.Collection,
             # button.  The visible separation gives the tool a serviceable, replaceable hinge.
             out.append(make_revolved_profile_y(
                 f"Hook_ClevisCollar_{side}",
-                [(-1.34, 0.24), (-1.21, 0.27), (-1.12, 0.23)],
+                [(-1.46, 0.29), (-1.32, 0.34), (-1.19, 0.27)],
                 7.62, clevis_z, mech, coll, sides=10, detail=1,
                 close_only=False, component="capture_jaw",
             ))
             out.append(make_revolved_profile_y(
                 f"Hook_ClevisRetainer_{side}",
-                [(-0.18, 0.25), (-0.08, 0.25), (0.02, 0.17)],
-                7.62, clevis_z, heat, coll, sides=8, detail=2,
+                [(-0.31, 0.30), (-0.18, 0.30), (-0.05, 0.20)],
+                7.62, clevis_z, polished, coll, sides=8, detail=2,
                 close_only=True, component="capture_jaw",
             ))
 
-        # Each forged jaw arm is an independent tapered plate. The central gap, replaceable
-        # serrated contact pads, keeper plates, and pin bosses all survive LOD1.
+        # Each forged jaw arm is a separate hooked cheek with a narrow root, broad curved shoulder,
+        # and inward-facing service tip.  The two parts never bridge the central capture void.
+        # Replaceable hardface pads sit on that inward face behind independent keeper plates.
         for side, sign in (("Port", -1.0), ("Starboard", 1.0)):
             def jaw_z(offset: float) -> float:
                 return jaw_center_z + sign * offset
 
             arm_outline = [
-                (7.54, jaw_z(0.38)), (7.76, jaw_z(0.70)), (8.18, jaw_z(0.92)),
-                (8.72, jaw_z(1.07)), (9.06, jaw_z(0.91)), (9.20, jaw_z(0.64)),
-                (9.06, jaw_z(0.43)), (8.62, jaw_z(0.54)), (8.12, jaw_z(0.63)),
-                (7.66, jaw_z(0.31)),
+                (7.42, jaw_z(0.38)), (7.70, jaw_z(0.84)), (8.12, jaw_z(1.18)),
+                (8.58, jaw_z(1.40)), (8.98, jaw_z(1.25)), (9.20, jaw_z(0.92)),
+                (9.18, jaw_z(0.46)), (8.94, jaw_z(0.54)), (8.58, jaw_z(0.72)),
+                (8.08, jaw_z(0.62)), (7.64, jaw_z(0.34)),
             ]
             out.append(make_plate_outline_y(
-                f"Hook_JawArm_{side}", arm_outline, -1.08, -0.22,
+                f"Hook_JawArm_{side}", arm_outline, -1.18, -0.16,
                 mech, coll, detail=0, component="capture_jaw",
             ))
-            # A forged backing changes section toward the contact end.  It sits inside the broad
-            # plate silhouette, making the arm read as a high-load casting with a machined jaw
-            # face—not a flat fork paddle extruded from a rectangle.
-            out.append(make_chamfered_prism_x(
-                f"Hook_JawForging_{side}", 7.58, 9.02,
-                -0.64, -0.72, jaw_z(0.48), jaw_z(0.78),
-                0.52, 0.36, 0.34, 0.24, 0.26,
+            out.append(make_tapered_plate_strap(
+                f"Hook_JawForging_{side}",
+                (7.62, -0.12, jaw_z(0.70)), (8.98, -0.12, jaw_z(0.82)),
+                0.58, 0.34, 0.36,
                 mech, coll, detail=1, component="capture_jaw",
             ))
             keeper_outline = [
-                (8.32, jaw_z(0.80)), (8.96, jaw_z(1.00)), (9.14, jaw_z(0.84)),
-                (9.02, jaw_z(0.70)), (8.48, jaw_z(0.61)),
+                (8.48, jaw_z(0.70)), (9.08, jaw_z(0.58)), (9.20, jaw_z(0.45)),
+                (9.04, jaw_z(0.34)), (8.54, jaw_z(0.50)),
             ]
             out.append(make_plate_outline_y(
-                f"Hook_JawKeeper_{side}", keeper_outline, -1.17, -1.08,
+                f"Hook_JawKeeper_{side}", keeper_outline, -1.31, -1.18,
                 hull, coll, detail=1, close_only=False, component="capture_jaw",
             ))
-            for tooth_index, x in enumerate((8.42, 8.66, 8.90)):
+            for tooth_index, x in enumerate((8.56, 8.78, 9.00)):
                 pad_outline = [
-                    (x, jaw_z(0.78)), (x + 0.18, jaw_z(0.86)),
-                    (x + 0.31, jaw_z(0.75)), (x + 0.23, jaw_z(0.56)),
-                    (x + 0.05, jaw_z(0.58)),
+                    (x, jaw_z(0.55)), (x + 0.14, jaw_z(0.50)),
+                    (x + 0.23, jaw_z(0.42)), (x + 0.16, jaw_z(0.36)),
+                    (x + 0.02, jaw_z(0.42)),
                 ]
                 out.append(make_plate_outline_y(
-                    f"Hook_JawPad_{side}_{tooth_index}", pad_outline, -1.24, -1.08,
-                    heat, coll, detail=1, component="capture_jaw",
+                    f"Hook_JawPad_{side}_{tooth_index}", pad_outline, -1.42, -1.18,
+                    hardface, coll, detail=1, component="capture_jaw",
                 ))
             for pin_index, x in enumerate((7.83, 8.62)):
                 out.append(make_revolved_profile_y(
@@ -2378,97 +3061,134 @@ def add_source_role_layer(ship_key: str, coll: bpy.types.Collection,
                     close_only=True, component="capture_jaw",
                 ))
             out.append(make_revolved_profile_y(
+                f"Hook_JawPivotBoss_{side}",
+                [(-1.20, 0.34), (-1.08, 0.43), (-0.28, 0.43), (-0.16, 0.34)],
+                7.66, clevis_z, mech, coll, sides=10, detail=1,
+                close_only=False, component="capture_jaw",
+            ))
+            out.append(make_revolved_profile_y(
                 f"Hook_JawActuatorEnd_{side}",
-                [(-1.17, 0.18), (-1.07, 0.22), (-0.94, 0.20)],
-                7.42, jaw_z(0.30), mech, coll, sides=10, detail=1,
+                [(-1.22, 0.21), (-1.10, 0.28), (0.66, 0.28), (0.78, 0.21)],
+                7.94, jaw_z(0.76), mech, coll, sides=10, detail=1,
                 close_only=False, component="capture_jaw",
             ))
 
         # The tether drum is a stepped fabricated assembly. Radius changes are actual rope grooves,
         # not texture noise on a naked cylinder; flanges, shaft, bearing blocks, and brake guard
         # tell the player where the cable load goes.
-        drum_x, drum_z = 1.40, -2.10
+        drum_x, drum_y = 1.72, 0.16
         drum_profile = [
-            (-1.72, 1.16), (-1.60, 1.16), (-1.54, 0.98),
-            (-1.38, 0.98), (-1.31, 0.90), (-1.21, 0.90),
-            (-1.14, 0.98), (-0.98, 0.98), (-0.91, 0.90),
-            (-0.81, 0.90), (-0.74, 0.98), (-0.58, 0.98),
-            (-0.51, 0.90), (-0.41, 0.90), (-0.34, 0.98),
-            (-0.18, 0.98), (-0.12, 1.16), (0.00, 1.16),
+            (-4.02, 1.02), (-3.84, 1.02), (-3.76, 0.86),
+            (-3.64, 0.86), (-3.58, 0.80), (-3.48, 0.80),
+            (-3.42, 0.86), (-3.30, 0.86), (-3.24, 0.80),
+            (-3.12, 0.80), (-3.06, 0.86), (-2.94, 0.86),
+            (-2.88, 0.80), (-2.76, 0.80), (-2.70, 0.86),
+            (-2.58, 0.86), (-2.52, 0.80), (-2.40, 0.80),
+            (-2.34, 0.86), (-2.22, 0.86), (-2.16, 0.80),
+            (-2.04, 0.80), (-1.98, 0.86), (-1.78, 0.86),
+            (-1.70, 1.02), (-1.50, 1.02),
         ]
-        out.append(make_revolved_profile_y(
-            "Hook_TetherDrum_Grooved", drum_profile, drum_x, drum_z,
-            mech, coll, sides=12, detail=0, close_only=False, component="tether_drum",
+        out.append(make_revolved_profile_z(
+            "Hook_TetherDrum_Grooved", drum_profile, drum_x, drum_y,
+            mech, coll, sides=16, detail=0, close_only=False, component="tether_drum",
         ))
-        out.append(make_revolved_profile_y(
-            "Hook_TetherDrum_KeyedShaft", [(-1.94, 0.20), (-1.78, 0.28), (0.06, 0.28), (0.22, 0.20)],
-            drum_x, drum_z, heat, coll, sides=8, detail=1,
+        out.append(make_revolved_profile_z(
+            "Hook_TetherDrum_KeyedShaft",
+            [(-4.28, 0.21), (-4.10, 0.31), (-1.42, 0.31), (-1.20, 0.21)],
+            drum_x, drum_y, polished, coll, sides=8, detail=1,
             close_only=False, component="tether_drum",
         ))
-        out.append(make_braided_drum_wrap_y(
-            "Hook_TetherDrum_CableWrap", drum_x, drum_z, -1.50, -0.20, 1.025,
-            heat, coll, wraps=14.0, strand_radius=0.030, detail=1,
+        out.append(make_braided_drum_wrap_z(
+            "Hook_TetherDrum_CableWrap", drum_x, drum_y, -3.72, -1.80, 0.905,
+            cable, coll, wraps=10.0, strand_radius=0.036, detail=1,
         ))
-        for bearing_id, y in (("Lower", -1.84), ("Upper", 0.10)):
-            out.append(make_chamfered_prism_x(
-                f"Hook_TetherDrum_Bearing_{bearing_id}", 0.98, 1.82,
-                y, y, drum_z, drum_z, 0.30, 0.30, 0.58, 0.58, 0.22,
-                mech, coll, detail=1, component="tether_drum",
+        for bearing_id, z in (("Port", -4.12), ("Starboard", -1.38)):
+            out.append(make_plate_outline_z(
+                f"Hook_TetherDrum_Bearing_{bearing_id}",
+                [
+                    (0.86, -1.22), (2.58, -1.22), (2.52, -0.18),
+                    (2.16, 0.36), (1.28, 0.36), (0.92, -0.18),
+                ],
+                z - 0.16, z + 0.16, mech, coll,
+                detail=1, component="tether_drum",
             ))
-            out.append(make_revolved_profile_y(
+            out.append(make_revolved_profile_z(
                 f"Hook_TetherBearingCap_{bearing_id}",
-                [(y - 0.11, 0.28), (y - 0.04, 0.35), (y + 0.06, 0.35), (y + 0.12, 0.25)],
-                drum_x, drum_z, mech, coll, sides=10, detail=2,
+                [(z - 0.20, 0.33), (z - 0.10, 0.44), (z + 0.10, 0.44), (z + 0.20, 0.33)],
+                drum_x, drum_y, mech, coll, sides=10, detail=2,
                 close_only=True, component="tether_drum",
             ))
-        out.append(make_segmented_clamp_y(
-            "Hook_TetherDrum_BrakeBand", -1.27, 0.16, drum_x, drum_z, 1.01, 1.14,
-            heat, coll, segments=7, fill_ratio=0.48, detail=1,
+        out.append(make_segmented_clamp_z(
+            "Hook_TetherDrum_BrakeBand", -3.82, 0.18, drum_x, drum_y, 0.91, 1.04,
+            mech, coll, segments=7, fill_ratio=0.48, detail=1,
             close_only=False, component="tether_drum",
         ))
-        out.append(make_plate_outline_y(
+        out.append(make_plate_frame_z(
             "Hook_TetherBrake_ServiceCover",
-            [(0.72, -3.05), (1.98, -3.05), (2.16, -2.76), (1.80, -2.56), (0.82, -2.62)],
-            -1.48, -1.34, red, coll, detail=1, component="tether_guard",
+            [(0.68, -0.72), (0.76, 0.32), (0.98, 0.76),
+             (1.20, 0.66), (1.08, 0.18), (0.96, -0.68)],
+            [(0.82, -0.46), (0.86, 0.18), (0.97, 0.46),
+             (1.07, 0.40), (1.00, 0.10), (0.94, -0.43)],
+            -4.30, -4.14, red, coll, detail=1, component="tether_guard",
         ))
-        out.append(make_chamfered_prism_x(
-            "Hook_TetherDrum_ClutchLever", 1.74, 2.18,
-            -1.38, -1.05, -2.72, -2.72, 0.12, 0.12, 0.12, 0.10, 0.20,
-            mech, coll, detail=2, close_only=True, component="tether_drum",
+        out.append(make_tapered_plate_strap(
+            "Hook_TetherDrum_ClutchLever",
+            (2.52, 0.02, -4.20), (2.94, 0.56, -4.20),
+            0.13, 0.09, 0.10, mech, coll,
+            detail=2, close_only=True, component="tether_drum",
         ))
-        # Two open fabricated guard sides protect the drum without hiding the rope lay, bearing
-        # caps, or brake. Their unequal roof height makes the removable red cover purposeful.
-        for guard_id, guard_z, upper in (("Port", -3.22, -0.02), ("Starboard", -0.98, -0.20)):
-            out.append(make_tapered_web_frame_x(
-                f"Hook_TetherGuard_{guard_id}", 0.36, 2.46,
-                -2.02, -1.82, upper, upper - 0.10, guard_z, 0.10,
-                mech, coll, detail=1, close_only=False, component="tether_guard",
+        # The base rails pass bearing and brake reactions into both boom roots.  Two thin guard
+        # cheeks leave the broad cable-filled drum face open instead of hiding it behind a cage.
+        for rail_id, z in (("Port", -4.10), ("Starboard", -1.38)):
+            out.append(make_tapered_plate_strap(
+                f"Hook_TetherBaseFrame_{rail_id}",
+                (0.34, -1.26, z), (2.96, -1.26, z),
+                0.34, 0.24, 0.22, hull, coll,
+                detail=1, component="tether_drum",
+            ))
+            out.append(make_plate_outline_z(
+                f"Hook_TetherGuard_{rail_id}",
+                [(0.56, -1.16), (0.72, 0.18), (1.04, 0.86),
+                 (1.26, 0.86), (1.02, 0.08), (0.92, -1.14)],
+                z - 0.09, z + 0.09, mech, coll,
+                detail=1, close_only=False, component="tether_guard",
             ))
 
-        # The cable path has an explicit drum exit, fairlead, sheave, and jaw endpoint. It cannot
-        # be mistaken for a loose tube because every run terminates in hardware.
+        # The cable path has a visible drum exit, paired fairlead rollers, a grooved sheave, and
+        # two swaged terminals.  Its transverse drum axis and rooted bearing pedestals now match
+        # the mechanical reference rather than reading as a hidden vertical spring.
         out.append(make_revolved_profile_z(
             "Hook_TetherFairlead_Sheave",
-            [(-2.28, 0.42), (-2.20, 0.50), (-2.02, 0.50), (-1.94, 0.42)],
-            3.04, -0.66, mech, coll, sides=10, detail=1,
+            [(-3.78, 0.42), (-3.66, 0.54), (-2.78, 0.54), (-2.66, 0.42)],
+            3.54, 0.02, mech, coll, sides=10, detail=1,
             close_only=False, component="tether_fairlead",
         ))
-        out.append(make_chamfered_prism_x(
-            "Hook_TetherFairlead_Guide", 2.62, 3.42,
-            -0.66, -0.66, -2.10, -2.10, 0.34, 0.34, 0.82, 0.68, 0.20,
-            mech, coll, detail=1, component="tether_fairlead",
-        ))
+        for roller_id, roller_y in (("Upper", 0.42), ("Lower", -0.24)):
+            out.append(make_revolved_profile_z(
+                f"Hook_TetherFairlead_Roller_{roller_id}",
+                [(-3.72, 0.22), (-3.62, 0.31), (-2.82, 0.31), (-2.72, 0.22)],
+                2.94, roller_y, mech, coll, sides=10, detail=1,
+                close_only=False, component="tether_fairlead",
+            ))
+        for side, z in (("Port", -3.80), ("Starboard", -2.64)):
+            out.append(make_plate_outline_z(
+                f"Hook_TetherFairlead_Guide_{side}",
+                [(2.58, -0.68), (3.90, -0.68), (4.08, -0.08),
+                 (3.78, 0.76), (2.76, 0.76), (2.50, -0.04)],
+                z - 0.09, z + 0.09, hull, coll,
+                detail=1, component="tether_fairlead",
+            ))
         out.append(make_service_line(
             "Hook_TetherFairlead_DrumRun",
-            [(1.40, -0.02, -2.10), (2.20, -0.16, -2.10), (3.00, -0.48, -2.10)],
-            0.052, heat, coll, detail=1, close_only=False,
+            [(2.62, 0.12, -3.20), (3.02, 0.42, -3.20), (3.52, 0.02, -3.20)],
+            0.060, cable, coll, detail=1, close_only=False,
         ))
         out.append(make_braided_tether_x(
-            "Hook_TetherFairlead_BraidedRun", 3.12, 7.72,
-            -0.72, -0.65, -2.12, -2.65, heat, coll,
-            braid_radius=0.046, strand_radius=0.022, turns=11.0,
+            "Hook_TetherFairlead_BraidedRun", 3.58, 7.76,
+            0.02, -0.12, -3.20, -2.65, cable, coll,
+            braid_radius=0.060, strand_radius=0.026, turns=11.0,
         ))
-        for fitting_id, x, y, z in (("Fairlead", 3.12, -0.72, -2.12), ("Jaw", 7.72, -0.65, -2.65)):
+        for fitting_id, x, y, z in (("Fairlead", 3.58, 0.02, -3.20), ("Jaw", 7.76, -0.12, -2.65)):
             out.append(make_revolved_profile_x(
                 f"Hook_TetherFairlead_Terminal_{fitting_id}",
                 [(x - 0.09, 0.105), (x - 0.03, 0.105), (x + 0.03, 0.078), (x + 0.09, 0.078)],
@@ -2478,120 +3198,165 @@ def add_source_role_layer(ship_key: str, coll: bpy.types.Collection,
 
         # Closing cylinders, polished rods, and rooted braided service runs make the jaw motion
         # explainable without introducing a gameplay socket or an unowned hose bundle.
-        for side, z in (("Port", -3.12), ("Starboard", -2.18)):
+        for side, z in (("Port", -3.47), ("Starboard", -1.83)):
             out.append(make_revolved_profile_x(
                 f"Hook_JawHydraulicCase_{side}",
-                [(4.90, 0.20), (5.02, 0.30), (6.36, 0.30), (6.48, 0.22)],
-                -0.72, z, mech, coll, sides=10, detail=1,
+                [(4.52, 0.18), (4.66, 0.29), (6.18, 0.29), (6.34, 0.20)],
+                0.18, z, mech, coll, sides=12, detail=1,
                 close_only=False, component="hydraulics",
             ))
             out.append(make_revolved_profile_x(
                 f"Hook_JawHydraulicRod_{side}",
-                [(6.34, 0.11), (7.46, 0.11)],
-                -0.72, z, heat, coll, sides=8, detail=2,
-                close_only=True, component="hydraulics",
+                [(6.24, 0.10), (7.78, 0.10)],
+                0.18, z, polished, coll, sides=10, detail=1,
+                close_only=False, component="hydraulics",
+            ))
+            out.append(make_segmented_clamp_x(
+                f"Hook_JawHydraulicGland_{side}",
+                6.26, 0.14, 0.18, z, 0.22, 0.33, mech, coll,
+                segments=8, fill_ratio=0.68, detail=1,
+                close_only=False, component="hydraulics",
             ))
             out.append(make_revolved_profile_y(
                 f"Hook_JawHydraulicClevis_{side}",
-                [(-1.02, 0.14), (-0.38, 0.14)], 7.46, z,
-                mech, coll, sides=8, detail=2, close_only=True, component="hydraulics",
+                [(0.20, 0.17), (0.32, 0.24), (0.64, 0.24), (0.76, 0.17)],
+                7.84, z, mech, coll, sides=8, detail=1,
+                close_only=False, component="hydraulics",
+            ))
+            out.append(make_revolved_profile_y(
+                f"Hook_JawHydraulicRootPin_{side}",
+                [(0.22, 0.14), (0.34, 0.21), (0.62, 0.21), (0.74, 0.14)],
+                4.48, z, mech, coll, sides=8, detail=1,
+                close_only=False, component="hydraulics",
             ))
             out.append(make_service_line(
                 f"Hook_JawHydraulicHose_{side}",
-                [(4.92, -0.48, z), (4.46, -0.22, z), (3.98, -0.05, z * 0.93)],
-                0.036, heat, coll, detail=2, close_only=True,
+                [(4.66, 0.40, z), (4.18, 0.52, z), (3.78, 0.24, z * 0.96)],
+                0.044, cable, coll, detail=2, close_only=True,
             ))
 
         # Paired reaction drives follow the shared Ashline material language: faceted cold cases,
         # nickel hot sections, hollow bells, dry ceramic throats, thrust saddles, and valve service.
         for drive_id, z in (("Port", -2.00), ("Starboard", 1.70)):
-            out.append(make_revolved_profile_x(
+            out.append(make_multisection_chamfered_prism_x(
                 f"Hook_DrivePressureCase_{drive_id}",
-                [(-8.44, 0.40), (-8.34, 0.52), (-8.12, 0.58), (-7.72, 0.58),
-                 (-7.60, 0.51), (-7.30, 0.51), (-7.18, 0.42), (-6.98, 0.32)],
-                0.0, z, mech, coll, sides=12, detail=0,
+                [
+                    (-8.46, 0.0, z, 0.78, 1.10),
+                    (-8.34, 0.0, z, 0.92, 1.28),
+                    (-8.12, 0.0, z, 1.02, 1.38),
+                    (-7.68, 0.0, z, 1.02, 1.38),
+                    (-7.56, 0.0, z, 0.92, 1.24),
+                    (-7.24, 0.0, z, 0.88, 1.18),
+                    (-7.08, 0.0, z, 0.74, 1.00),
+                    (-6.90, 0.0, z, 0.56, 0.80),
+                ],
+                0.18, mech, coll, detail=0,
                 close_only=False, component="drive",
             ))
             out.append(make_revolved_profile_x(
                 f"Hook_DriveHotSection_{drive_id}",
-                [(-8.72, 0.42), (-8.60, 0.48), (-8.44, 0.48), (-8.30, 0.38)],
-                0.0, z, heat, coll, sides=12, detail=1,
+                [(-8.78, 0.38), (-8.72, 0.46), (-8.60, 0.50),
+                 (-8.46, 0.50), (-8.34, 0.43), (-8.26, 0.35)],
+                0.0, z, hot_section, coll, sides=16, detail=1,
                 close_only=False, component="drive",
             ))
             out.append(make_revolved_shell_x(
                 f"Hook_DriveBell_{drive_id}",
-                [(-9.17, 0.68, 0.46), (-9.04, 0.80, 0.52), (-8.89, 0.73, 0.43),
-                 (-8.58, 0.50, 0.29), (-8.36, 0.34, 0.18)],
-                0.0, z, heat, coll, sides=12, detail=0,
+                [(-9.17, 0.68, 0.55), (-9.08, 0.78, 0.63), (-8.94, 0.74, 0.58),
+                 (-8.76, 0.60, 0.45), (-8.55, 0.43, 0.30), (-8.36, 0.30, 0.18)],
+                0.0, z, hot_section, coll, sides=16, detail=0,
                 close_only=False, component="drive",
             ))
+            # The rolled bell gets a separate dark, nested liner.  Keep its front edge behind the
+            # bell lip, but leave a broad enough visual throat through the liner for the recessed
+            # ceramic to read at a supported three-quarter camera.  The liner remains a distinct
+            # inner wall; it is not a black cap hiding the functional throat.
+            out.append(make_revolved_shell_x(
+                f"Hook_DriveCavityLiner_{drive_id}",
+                [(-9.08, 0.54, 0.45), (-8.94, 0.56, 0.48),
+                 (-8.76, 0.43, 0.40), (-8.58, 0.31, 0.30)],
+                0.0, z, mech, coll, sides=16, detail=1,
+                close_only=False, component="drive",
+            ))
+            # The dry alumina/zirconia throat stays recessed behind the lip, with an open center
+            # and a shallow taper toward the protected internal cue.  Its wider annulus preserves
+            # a legible manufactured refractory register at game scale without changing the
+            # bell's exterior, mounting geometry, or any frozen ship envelope.
             out.append(make_revolved_shell_x(
                 f"Hook_DriveRefractoryThroat_{drive_id}",
-                [(-9.08, 0.42, 0.31), (-8.90, 0.39, 0.29), (-8.66, 0.30, 0.20),
-                 (-8.48, 0.21, 0.13)],
-                0.0, z, refractory, coll, sides=10, detail=1,
+                [(-9.10, 0.50, 0.24), (-8.92, 0.42, 0.20),
+                 (-8.73, 0.30, 0.14), (-8.58, 0.20, 0.10)],
+                0.0, z, refractory, coll, sides=16, detail=1,
                 close_only=False, component="drive",
             ))
             out.append(make_revolved_profile_x(
                 f"Hook_DriveInternalCue_{drive_id}",
-                [(-8.745, 0.055), (-8.705, 0.055)],
-                0.0, z, cyan, coll, sides=8, detail=2,
+                [(-8.92, 0.042), (-8.87, 0.034)],
+                0.0, z, cyan, coll, sides=12, detail=2,
                 close_only=True, component="drive",
             ))
             for clamp_index, x in enumerate((-8.14, -7.54)):
                 out.append(make_segmented_clamp_x(
                     f"Hook_DriveClamp_{drive_id}_{clamp_index}",
-                    x, 0.075, 0.0, z, 0.53 if clamp_index == 0 else 0.47,
-                    0.59 if clamp_index == 0 else 0.53, mech, coll,
+                    x, 0.075, 0.0, z, 0.68 if clamp_index == 0 else 0.60,
+                    0.75 if clamp_index == 0 else 0.67, mech, coll,
                     segments=7, fill_ratio=0.46, detail=1,
                     close_only=False, component="drive",
                 ))
-            # Two short formed truss bays carry each pressure case to a spread root. They have
-            # discrete chords, crossed straps, collars, and a root doubler rather than a pair of
-            # unbroken rectangular rails ending in arbitrary tabs.
-            for bay_id, x0, x1 in (("Engine", -7.54, -6.18), ("Root", -6.02, -4.48)):
-                # Collared nodes retain the truss section at real load-transfer points without
-                # reintroducing a continuous pair of rectangular rails across the whole mount.
-                for end_id, node_x in (("Engine", x0), ("Root", x1)):
-                    out.append(make_chamfered_prism_x(
-                        f"Hook_DriveTrussNodeLower_{drive_id}_{bay_id}_{end_id}",
-                        node_x - 0.16, node_x + 0.16,
-                        -0.86, -0.78, z, z, 0.20, 0.18, 0.30, 0.26, 0.28,
-                        mech, coll, detail=1, component="drive",
-                    ))
-                    out.append(make_chamfered_prism_x(
-                        f"Hook_DriveTrussNodeUpper_{drive_id}_{bay_id}_{end_id}",
-                        node_x - 0.14, node_x + 0.14,
-                        -0.12, -0.20, z, z, 0.18, 0.16, 0.28, 0.24, 0.28,
-                        mech, coll, detail=1, component="drive",
-                    ))
-                out.append(make_open_web_brace(
-                    f"Hook_DriveTrussWeb_{drive_id}_{bay_id}",
-                    x0 + 0.08, x1 - 0.08, -0.68, -0.28, z, 0.10, 0.12,
-                    mech, coll, detail=1, component="drive",
+            # One continuous 1.95 m triangular saddle per drive wraps the lower pressure case and
+            # exposes a large service/load aperture. A matching inboard cheek, transverse feet,
+            # cheek-plane webs, and overlapping root links carry the visible load path into hull
+            # doublers. Buried center-plane straps/gussets are deliberately absent.
+            saddle_outer = [
+                (-8.38, -1.08), (-6.28, -1.08), (-6.34, -0.56),
+                (-6.96, 0.24), (-7.84, 0.26),
+            ]
+            saddle_inner = [
+                (-7.88, -0.80), (-6.74, -0.80), (-6.76, -0.60),
+                (-7.16, -0.14), (-7.62, -0.12),
+            ]
+            out.append(make_plate_frame_z(
+                f"Hook_DriveThrustSaddle_{drive_id}",
+                saddle_outer, saddle_inner,
+                z - 0.70, z - 0.50, hull, coll,
+                detail=1, component="drive",
+            ))
+            out.append(make_plate_frame_z(
+                f"Hook_DriveSaddleCheek_{drive_id}_Inboard",
+                saddle_outer, saddle_inner,
+                z + 0.50, z + 0.70, hull, coll,
+                detail=1, component="drive",
+            ))
+            for cheek_id, cheek_z in (("Outboard", z - 0.60), ("Inboard", z + 0.60)):
+                out.append(make_plate_outline_z(
+                    f"Hook_DriveSaddleFoot_{drive_id}_{cheek_id}",
+                    [
+                        (-8.30, -1.18), (-6.18, -1.18), (-6.08, -0.96),
+                        (-6.34, -0.82), (-8.22, -0.86),
+                    ],
+                    cheek_z - 0.12, cheek_z + 0.12, mech, coll,
+                    detail=1, component="drive",
                 ))
-            out.append(make_hat_section_x(
-                f"Hook_DriveThrustSaddle_{drive_id}", -7.38, -6.62,
-                -0.44, z, 0.46, 1.16, mech, coll, detail=1,
-            ))
-            out.append(make_open_web_brace(
-                f"Hook_DriveSaddleWeb_{drive_id}", -7.30, -6.68,
-                -0.74, -0.22, z, 0.11, 0.12,
-                hull, coll, detail=1, component="drive",
-            ))
-            out.append(make_plate_outline_y(
-                f"Hook_DriveRootDoubler_{drive_id}",
-                [(-4.82, z - 0.56), (-4.30, z - 0.66), (-3.86, z - 0.42),
-                 (-3.78, z + 0.10), (-4.12, z + 0.42), (-4.72, z + 0.34)],
-                -0.74, -0.46, hull, coll, detail=1, component="drive",
-            ))
-            for gusset_id, points in (
-                ("Engine", ((-7.42, -0.84), (-6.92, -0.62), (-6.92, -0.16))),
-                ("Root", ((-4.74, -0.72), (-4.02, -0.48), (-4.06, -0.10))),
-            ):
-                out.append(make_gusset(
-                    f"Hook_Drive{gusset_id}Gusset_{drive_id}",
-                    points, z, 0.12, hull, coll, detail=1, close_only=False,
+                out.append(make_tapered_plate_strap(
+                    f"Hook_DriveSaddleWeb_{drive_id}_{cheek_id}",
+                    (-7.82, -0.88, cheek_z), (-6.62, -0.10, cheek_z),
+                    0.28, 0.18, 0.15, mech, coll,
+                    detail=1, component="drive",
+                ))
+                out.append(make_plate_outline_z(
+                    f"Hook_DriveRootDoubler_{drive_id}_{cheek_id}",
+                    [
+                        (-5.18, -1.00), (-4.18, -1.02), (-3.68, -0.62),
+                        (-3.72, -0.10), (-4.22, 0.14), (-5.08, -0.20),
+                    ],
+                    cheek_z - 0.13, cheek_z + 0.13, hull, coll,
+                    detail=1, component="drive",
+                ))
+                out.append(make_tapered_plate_strap(
+                    f"Hook_DriveRootLink_{drive_id}_{cheek_id}",
+                    (-6.34, -0.88, cheek_z), (-4.44, -0.46, cheek_z),
+                    0.32, 0.50, 0.18, mech, coll,
+                    detail=1, component="drive",
                 ))
             out.append(make_revolved_profile_x(
                 f"Hook_DriveValvePack_{drive_id}",
@@ -2603,7 +3368,7 @@ def add_source_role_layer(ship_key: str, coll: bpy.types.Collection,
                 out.append(make_revolved_profile_y(
                     f"Hook_DriveValveFitting_{drive_id}_{fitting_index}",
                     [(0.44, 0.055), (0.56, 0.072), (0.64, 0.050)],
-                    fitting_x, z + 0.38, heat, coll, sides=8, detail=2,
+                    fitting_x, z + 0.38, polished, coll, sides=8, detail=2,
                     close_only=True, component="drive",
                 ))
             out.append(make_service_line(
@@ -2636,16 +3401,17 @@ def add_source_role_layer(ship_key: str, coll: bpy.types.Collection,
                 z, 0.07, hull, coll, detail=1,
             ))
     if ship_key == "rig":
-        # The donor's outer plate rose through the first capture-tool pass, hiding the clevises
-        # and making close evidence read as a front clamp. Raise only the authored recovery
-        # machine to its service-side hardpoint band; it stays inside the frozen donor envelope,
-        # retains every root/doubler interface, and does not move collision or gameplay sockets.
-        capture_prefixes = (
-            "Hook_Boom", "Hook_Clevis", "Hook_Jaw", "Hook_Tether",
+        # Component-local service offsets keep the jaw and winch exposed while preserving fixed
+        # boom roots. They intentionally differ, so there is no blanket capture-machine lift.
+        component_y_offsets = (
+            (("Hook_Clevis", "Hook_Jaw"), 0.64),
+            (("Hook_Tether",), 0.54),
         )
         for obj in out:
-            if obj.name.startswith(capture_prefixes):
-                obj.location.z += 2.05
+            for prefixes, y_offset in component_y_offsets:
+                if obj.name.startswith(prefixes):
+                    obj.location.z += y_offset
+                    break
     for obj in out:
         obj["sf_source_adaptation_detail"] = True
     return out
@@ -2699,7 +3465,7 @@ def rig_root_material_truth_contract() -> dict[str, Any]:
     if RIG_SEMANTIC_BOUNDS is None:
         raise RuntimeError("Rig semantic bounds missing before root creation")
     return {
-        "revision": "rig-material-truth-2026-07-28-v1",
+        "revision": "rig-material-truth-2026-07-29-v5",
         "components": [
             "capture-boom-a-frame",
             "forged-two-arm-jaw",
@@ -2716,21 +3482,31 @@ def rig_root_material_truth_contract() -> dict[str, Any]:
         "materialMapPolicy": {
             "mode": "role-specific-deterministic-base-orm-normal",
             "resolution": 256,
+            "materialCount": 9,
+            "imageCount": 27,
             "universalRecipe": False,
             "plateFastenersEmbeddedInMaps": False,
             "roleMicrostructure": {
                 "Material_Hull": "phosphate-coated-plate-without-global-grid",
                 "Material_Mechanical": "directional-machining",
                 "Material_Red_Paint": "dielectric-coating-with-localized-steel-chips",
-                "Material_HeatMetal": "axial-heat-and-machining-bands",
+                "Material_PolishedSteel": "fine-turned-shaft-lines-and-rubbed-interfaces",
+                "Material_CableSteel": "crossed-braided-strand-breakup",
+                "Material_Hardface": "irregular-contact-abrasion-and-dark-alloy-grain",
+                "Material_HotSection": "axial-nickel-heat-and-flow-bands",
                 "Material_Refractory": "dry-granular-ceramic-with-sparse-cracks",
                 "Material_Cyan": "smooth-protected-indicator",
             },
         },
         "materialRoles": {
+            "Material_Hull": "phosphate-coated-structural-plate-and-donor-frame",
+            "Material_Mechanical": "nitrided-cold-housings-bearings-and-pressure-cases",
             "Material_Red_Paint": "oxide-red-dielectric-guards-and-service-markings-only",
+            "Material_PolishedSteel": "turned-shafts-rods-retainers-and-service-interfaces",
+            "Material_CableSteel": "braided-tether-wrap-and-hydraulic-service-lines",
+            "Material_Hardface": "replaceable-jaw-contact-pads-only",
+            "Material_HotSection": "nickel-drive-hot-jackets-and-rolled-bells-only",
             "Material_Cyan": "small-recessed-internal-drive-cue-only",
-            "Material_HeatMetal": "metallic-nickel-hot-sections-hardface-and-braided-cable",
             "Material_Refractory": "dry-dielectric-alumina-zirconia-throat",
         },
         "promotionBlockers": [
@@ -2786,7 +3562,7 @@ def create_root_with_material_truth(
         root["spaceface"] = spaceface
     elif spec["id"] == "ashline_v2_rig":
         asset = dict(root.get("spacefaceAsset", {}))
-        asset["materialTruthRevision"] = "rig-material-truth-2026-07-28-v1"
+        asset["materialTruthRevision"] = "rig-material-truth-2026-07-29-v5"
         asset["captureProfileId"] = "capture_hook_tether_control"
         asset["weaponMountKind"] = "generic_shared_forward_mount"
         asset["manufacturedNormalPolicy"] = copy.deepcopy(MANUFACTURED_NORMAL_POLICY)
@@ -2965,7 +3741,10 @@ def write_material_truth_receipt(ship_key: str) -> None:
                 "Material_Hull": "phosphate-coated-welded-high-strength-plate-girder-and-donor-structure",
                 "Material_Mechanical": "nitrided-tool-steel-pins-drum-bearings-and-pressure-cases",
                 "Material_Red_Paint": "non-metallic-oxide-red-guards-and-service-markings-only",
-                "Material_HeatMetal": "hardfaced-jaw-pads-braided-tether-and-nickel-hot-sections",
+                "Material_PolishedSteel": "turned-shafts-hydraulic-rods-retainers-and-service-fittings",
+                "Material_CableSteel": "braided-high-carbon-tether-wrap-and-hydraulic-service-lines",
+                "Material_Hardface": "heat-darkened-replaceable-jaw-contact-pads",
+                "Material_HotSection": "nickel-drive-hot-jackets-and-rolled-bells",
                 "Material_Refractory": "dry-alumina-zirconia-drive-throats",
                 "Material_Cyan": "small-recessed-internal-drive-cue-only",
             },
@@ -3117,13 +3896,26 @@ def normalize_family_metrics() -> None:
 
 
 def main() -> int:
-    write_source_receipt()
     built_keys = requested_ship_keys()
-    code = int(base.main())
+    scoped_build = len(built_keys) != len(SHIP_CONFIG)
+    if not scoped_build:
+        write_source_receipt()
+    original_argv = sys.argv
+    if scoped_build:
+        # Suppress the shared builder's one-ship rollup at the producer. Restoring a pre-build
+        # snapshot after a long Blender run can erase a concurrent finalizer's newer family epoch.
+        sys.argv = [*sys.argv, "--no-family-metrics"] if "--" in sys.argv else [
+            *sys.argv, "--", "--no-family-metrics",
+        ]
+    try:
+        code = int(base.main())
+    finally:
+        sys.argv = original_argv
     if code == 0:
         for ship_key in built_keys:
             write_material_truth_receipt(ship_key)
-        normalize_family_metrics()
+        if not scoped_build:
+            normalize_family_metrics()
     return code
 
 

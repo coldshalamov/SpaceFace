@@ -139,15 +139,19 @@ def Sz(sx: float, sy: float, sz: float) -> tuple[float, float, float]:
 
 def parse_args(argv: list[str]) -> dict[str, Any]:
     only = None
+    no_family_metrics = False
     i = 0
     while i < len(argv):
         a = argv[i]
         if a == '--only' and i + 1 < len(argv):
             only = argv[i + 1].strip().lower()
             i += 2
+        elif a == '--no-family-metrics':
+            no_family_metrics = True
+            i += 1
         else:
             i += 1
-    return {'only': only}
+    return {'only': only, 'noFamilyMetrics': no_family_metrics}
 
 
 def log(msg: str) -> None:
@@ -2571,10 +2575,13 @@ def main() -> int:
             'wiredDefaultPlay': False,
         },
     }
-    fam_path = FAMILY_ROOT / 'evidence' / 'family' / 'family_metrics.json'
-    fam_path.parent.mkdir(parents=True, exist_ok=True)
-    fam_path.write_text(json.dumps(family, indent=2), encoding='utf-8')
-    log(f'Family metrics → {fam_path} ({family["elapsedSec"]}s)')
+    if args['noFamilyMetrics']:
+        log('Family metrics publication suppressed for scoped caller')
+    else:
+        fam_path = FAMILY_ROOT / 'evidence' / 'family' / 'family_metrics.json'
+        fam_path.parent.mkdir(parents=True, exist_ok=True)
+        fam_path.write_text(json.dumps(family, indent=2), encoding='utf-8')
+        log(f'Family metrics → {fam_path} ({family["elapsedSec"]}s)')
     return 0
 
 

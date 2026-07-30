@@ -728,18 +728,32 @@ test('epoch input guards prevent a mixed receipt epoch and roll back promoted fi
   }
 });
 
-test('Rig authored texture contract covers six physical roles and eighteen 256px images', () => {
+test('Rig authored texture contract covers nine physical roles and twenty-seven 256px images', () => {
   const contract = inspectRigAuthoredTextureContract(readFileSync(RIG_SOURCE));
-  assert.equal(contract.materialCount, 6);
-  assert.equal(contract.imageCount, 18);
+  assert.equal(contract.materialCount, 9);
+  assert.equal(contract.imageCount, 27);
   assert.equal(contract.textureSize, 256);
+  assert.deepEqual(
+    [...new Set(contract.images.map((image) => image.material))].sort(),
+    [
+      'Material_CableSteel',
+      'Material_Cyan',
+      'Material_Hardface',
+      'Material_HotSection',
+      'Material_Hull',
+      'Material_Mechanical',
+      'Material_PolishedSteel',
+      'Material_Red_Paint',
+      'Material_Refractory',
+    ],
+  );
   assert.deepEqual(
     [...new Set(contract.images.map((image) => image.role))].sort(),
     ['baseColor', 'normal', 'orm'],
   );
   assert.equal(
     new Set(contract.images.map((image) => image.sha256)).size,
-    18,
+    27,
     'each authored material role must retain its own image payload',
   );
   assert.doesNotThrow(() => assertRigTextureContractPreserved(
@@ -759,7 +773,7 @@ test('Rig source contract rejects extra graph entries and non-ORM occlusion bind
   const mutations = [
     {
       label: 'extra material',
-      pattern: /material count 7 != 6/u,
+      pattern: /material count 10 != 9/u,
       apply: (gltf) => gltf.materials.push({
         ...structuredClone(gltf.materials[0]),
         name: 'Material_Unexpected',
@@ -767,12 +781,12 @@ test('Rig source contract rejects extra graph entries and non-ORM occlusion bind
     },
     {
       label: 'extra texture',
-      pattern: /expected exactly 18 textures\/images, got 19\/18/u,
+      pattern: /expected exactly 27 textures\/images, got 28\/27/u,
       apply: (gltf) => gltf.textures.push(structuredClone(gltf.textures[0])),
     },
     {
       label: 'extra image',
-      pattern: /expected exactly 18 textures\/images, got 18\/19/u,
+      pattern: /expected exactly 27 textures\/images, got 27\/28/u,
       apply: (gltf) => gltf.images.push(structuredClone(gltf.images[0])),
     },
     {
@@ -881,11 +895,11 @@ test('actual Rig source finalizes in memory to an exact KTX2 and Meshopt candida
 
     const sourceContract = inspectRigAuthoredTextureContract(sourceOutput.bytes);
     const candidateContract = inspectRigCompressedTextureContract(candidateOutput.bytes);
-    assert.equal(sourceContract.materialCount, 6);
-    assert.equal(sourceContract.imageCount, 18);
-    assert.equal(candidateContract.materialCount, 6);
-    assert.equal(candidateContract.imageCount, 18);
-    assert.equal(new Set(candidateContract.images.map((image) => image.sha256)).size, 18);
+    assert.equal(sourceContract.materialCount, 9);
+    assert.equal(sourceContract.imageCount, 27);
+    assert.equal(candidateContract.materialCount, 9);
+    assert.equal(candidateContract.imageCount, 27);
+    assert.equal(new Set(candidateContract.images.map((image) => image.sha256)).size, 27);
     const parsedCandidate = parseGlbBytes(candidateOutput.bytes);
     const candidateFacts = parsedCandidate.json;
     assert.ok(candidateFacts.extensionsUsed.includes('EXT_meshopt_compression'));

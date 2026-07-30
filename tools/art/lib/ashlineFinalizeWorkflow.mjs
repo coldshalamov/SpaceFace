@@ -13,10 +13,13 @@ const BIN_CHUNK = 0x004e4942;
 export const RIG_AUTHORED_MATERIALS = Object.freeze({
   Material_Hull: ['phosphate_coated_structural_steel'],
   Material_Mechanical: ['nitrided_cold_steel'],
-  Material_Red_Paint: ['oxide_red_guard_coating', 'oxide_red_dielectric_coating'],
-  Material_HeatMetal: ['nickel_hot_section_or_hardface'],
-  Material_Refractory: ['dry_alumina_zirconia_ceramic', 'alumina_zirconia_refractory'],
-  Material_Cyan: ['recessed_internal_indicator', 'protected_low_intensity_indicator'],
+  Material_Red_Paint: ['oxide_red_dielectric_coating'],
+  Material_PolishedSteel: ['polished_shaft_and_interface_steel'],
+  Material_CableSteel: ['braided_high_carbon_cable_steel'],
+  Material_Hardface: ['heat_darkened_hardface_alloy'],
+  Material_HotSection: ['nickel_hot_section_and_bell'],
+  Material_Refractory: ['alumina_zirconia_refractory'],
+  Material_Cyan: ['protected_low_intensity_indicator'],
 });
 
 export const RIG_AUTHORED_TEXTURE_SIZE = 256;

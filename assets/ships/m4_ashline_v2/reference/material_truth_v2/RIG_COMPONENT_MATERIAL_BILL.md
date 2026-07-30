@@ -1,7 +1,8 @@
 # Ashline V2 Rig / Hook — fiction-development component bill
 
 Status: G0 implementation contract for the existing Rig candidate; not runtime promotion or visual
-acceptance authority.
+acceptance authority. The current deterministic correction revision is
+`rig-material-truth-2026-07-29-v5`; its source and candidate remain an exact pre-finalize mirror.
 
 The Rig remains the V2 Ashline `tether_control_raider`: the Striker donor macro hull, the exact
 `[18.5, 6.601560115814209, 11.493575096130371]` m envelope, `+X` forward axis, root
@@ -132,7 +133,7 @@ asymmetry must do more identity work than paint or bloom.
 | 7 | drum, keyed shaft, and bearings | Grooved fabricated drum on a keyed shaft lands in two split bearing blocks rooted to a base frame. |
 | 8 | brake, clutch, and service guard | External brake band and clutch lever remain serviceable behind one removable oxide-red sheet guard. |
 | 9 | fairlead, sheave, and tether | Drum exit, guided direction change, braided run, and two terminal fittings form one unbroken route to the jaw. |
-| 10 | drive roots and saddles | Short open truss bays, collars, gussets, saddles, and root doublers transfer axial load into the aft donor frame. |
+| 10 | drive roots and saddles | Paired apertured saddle cheeks, transverse feet, cheek-plane webs, overlapping root links, and root doublers transfer axial load into the aft donor frame. Buried center-plane straps are forbidden. |
 | 11 | pressure cases and hot sections | Faceted cold cases step into nickel hot sections with clamps, covers, valve packs, and rooted lines. |
 | 12 | bells, throats, and forward mount | Hollow bells contain recessed dry ceramic throats; the generic forward saddle preserves `SOCKET_Weapon_Front` without new weapon fiction. |
 
@@ -149,13 +150,17 @@ the rendered substance.
 | donor plate, boom, doublers / `Material_Hull` | welded high-strength steel → phosphate-like coating → low-amplitude plate-batch variation without a global grid → joint/contact edge rub and sheltered residue → no broad decorative mark | `0.72 / 0.08` |
 | pins, drum, bearings, cases / `Material_Mechanical` | cold/tool steel → nitrided or blackened finish → directional machining → grease at bearings and rubbed pin shoulders → stamped identity deferred | `0.31 / 0.88` |
 | guards and service tags / `Material_Red_Paint` | steel sheet → oxide-red dielectric paint → restrained coating variation → localized chips where handled or struck → alignment and hazard shapes only | `0.78 / 0.00` |
-| hot sections, hardface pads, cable / `Material_HeatMetal` | nickel hot alloy, hardface alloy, or braided high-carbon wire according to geometry → exposed metallic surface → axial heat bands, machined pad grain, or strand breakup → flow/contact/flex wear → unpainted | `0.30 / 0.94` |
-| drive throats / `Material_Refractory` | alumina/zirconia-like ceramic → dry exposed surface → fine granular variation with sparse erosion → throat-local heat and edge loss → none | `0.97 / 0.00` |
-| protected cues / `Material_Cyan` | recessed metal fixture with non-plastic optical insert → dark protected face → smooth, low-noise response → little exterior wear → dim internal status cue only | `0.52 / 0.02`, emission `0.22` |
+| keyed shaft, hydraulic rods, retainers, valve fittings / `Material_PolishedSteel` | turned interface steel → polished service surface → fine axial/turned lines → rubbed shoulders and handling marks → unpainted | `0.18 / 0.96` |
+| tether, drum wrap, and braided hydraulic runs / `Material_CableSteel` | high-carbon wire → braided metallic cable → crossed strand breakup → crown/flex wear → unpainted | `0.42 / 0.93` |
+| replaceable jaw contact inserts / `Material_Hardface` | hardfacing alloy → heat-darkened exposed contact surface → irregular abrasion grain → rubbed crowns and impact wear → unpainted | `0.38 / 0.90` |
+| drive hot jackets and rolled bells / `Material_HotSection` | nickel hot alloy → heat-darkened exposed shell → axial heat/flow bands → throat-local staining and service variation → unpainted | `0.34 / 0.94` |
+| drive throats / `Material_Refractory` | alumina/zirconia-like ceramic → dark dry exposed surface → low-contrast non-periodic fine grain with sparse pitting/microcracks, never contour rings or swirls → throat-local heat and edge loss → none | `0.97 / 0.00` |
+| protected cues / `Material_Cyan` | recessed metal fixture with non-plastic optical insert → dark protected face → smooth, low-noise response → little exterior wear → dim internal pilot/status cue only | `0.52 / 0.02`, emission RGB `(0.004, 0.07, 0.11)`, strength `1.0` |
 
-`Material_HeatMetal` is a shared implementation slot, not a claim that cable, hardface, and nickel hot
-sections are one substance. Their geometry, flow direction, scale, and wear must keep those reads
-distinct. No image may be accepted solely because these numeric factors exist.
+The Rig source contract is exactly these nine authored roles and exactly three distinct 256 px images
+per role: base color, packed ORM, and OpenGL normal. `Material_HeatMetal` remains the established
+Dart/Lode implementation slot but is forbidden from the Rig material graph; cable, hardface, polished
+interfaces, and nickel hot sections may not share or alias image payloads.
 
 ### Edge-radius families
 
@@ -226,8 +231,8 @@ Pixel bands below are authoring targets, not measured acceptance evidence.
 2. A single bevelled jaw block or creature-claw silhouette without pins and replaceable pads.
 3. Naked cylinders, torus rings, or bright disks standing in for drum, pressure case, bell, or
    throat.
-4. A universal plate grid, leather bump, corner-stud recipe, or recolored one-material shader across
-   all six slots.
+4. A universal plate grid, leather bump, corner-stud recipe, recolored one-material shader, or
+   shared image payload across any of the nine Rig roles.
 5. Floating hoses, rails, tags, or greebles with no fittings, load root, service purpose, or
    endpoint.
 6. Emission, bloom, oxide red, or grime used to hide unreadable geometry or undifferentiated
@@ -245,24 +250,24 @@ Pixel bands below are authoring targets, not measured acceptance evidence.
 |---|---|---|---|
 | plate-girder A-frame | Four tapered, chamfered high-strength welded chords form an open bay with crossed strap webs and real negative-space openings. Root doublers overlap the donor frame. | Dark phosphate-coated structural steel (`Material_Hull`) with bare edge wear only at service joints. | Root doublers, gussets, collar plates, clevis ears, and bolts visibly terminate in hull structure; never one 8.2 m box or a solid triangular wall. |
 | boom clevises and pins | Split ears receive the jaw y-axis pin; caps let the tool be replaced. | Nitrided cold steel (`Material_Mechanical`), dark metallic with tight grazing highlights. | Two ear plates, pin collars, retainer caps, and bearing gaps; never painted-on hinge detail. |
-| two-arm capture jaw | Forged tapered arms leave a real central opening while closing around salvage. Replaceable pads bolt to the arms. | Tool steel (`Material_Mechanical`), with hardfaced darker pad inserts (`Material_HeatMetal`). | Pin bosses and keeper plates are visible; never a single bevelled block. |
-| serrated pads and keeper plates | Three small hardfaced inserts per arm are consumable contact surfaces retained by plates and countersunk fasteners. | Heat-darkened hardface alloy (`Material_HeatMetal`) against nitrided steel. | Teeth attach to the jaw tip with explicit keepers; no glowing teeth or rubber contact strip. |
+| two-arm capture jaw | Forged tapered arms leave a real central opening while closing around salvage. Replaceable pads bolt to the arms. | Tool steel (`Material_Mechanical`), with darker contact inserts (`Material_Hardface`). | Pin bosses and keeper plates are visible; never a single bevelled block. |
+| serrated pads and keeper plates | Three small hardfaced inserts per arm are consumable contact surfaces retained by plates and countersunk fasteners. | Heat-darkened contact alloy (`Material_Hardface`) against nitrided steel. | Teeth attach to the jaw tip with explicit keepers; no glowing teeth or rubber contact strip. |
 
 ### Tether, drum, and service path
 
 | Visible component | Function and construction | Material and optical read | Interfaces / forbidden read |
 |---|---|---|---|
-| grooved fabricated drum | A flanged, welded steel drum has discrete rope grooves rather than a smooth spool. A keyed shaft runs through it. | Fabricated, machined steel (`Material_Mechanical`), variably rough but metallic. | Flanged ends, shaft shoulders, split bearing blocks, and a band-brake/clutch side; never `HOOK_TETHER_SPOOL` cylinder vocabulary. |
-| tether and fairlead | Braided cable leaves the drum through a protected fairlead and sheave so its direction change is explainable. | Braided metal (`Material_HeatMetal`) with restrained highlights. | Cable has drum, sheave, and jaw endpoints; no free-floating hose or torus. |
+| grooved fabricated drum | A flanged, welded steel drum has discrete rope grooves rather than a smooth spool. A keyed shaft runs through it. | Fabricated drum (`Material_Mechanical`) around a turned keyed shaft (`Material_PolishedSteel`). | Flanged ends, shaft shoulders, split bearing blocks, and a band-brake/clutch side; never `HOOK_TETHER_SPOOL` cylinder vocabulary. |
+| tether and fairlead | Braided cable leaves the drum through a protected fairlead and sheave so its direction change is explainable. | Braided metal (`Material_CableSteel`) with crossed strand breakup and restrained highlights. | Cable has drum, sheave, and jaw endpoints; no free-floating hose or torus. |
 | brake / clutch guard | Bolted sheet guard shields the brake band while exposing the service seam and release lever. | Oxide-red painted steel (`Material_Red_Paint`) over structural steel. | The only broad red tether treatment; guard is rooted to bearing housing, not a floating threat rail. |
-| hydraulics and hoses | Paired cylinders close the arms; polished rods pass through gland blocks and clevises. Braided hoses route to fixed valve packs. | Cylinders and fittings (`Material_Mechanical`); rods and hose braid use the appropriate metallic role. | Every hose ends at a fitting; no generic round tube network. |
+| hydraulics and hoses | Paired cylinders close the arms; polished rods pass through gland blocks and clevises. Braided hoses route to fixed valve packs. | Cylinders and glands (`Material_Mechanical`); rods and interfaces (`Material_PolishedSteel`); hose braid (`Material_CableSteel`). | Every hose ends at a fitting; no generic round tube network. |
 
 ### Drive and generic weapon root
 
 | Visible component | Function and construction | Material and optical read | Interfaces / forbidden read |
 |---|---|---|---|
-| paired drive pressure cases | Faceted welded pressure cases carry stepped nickel hot sections on thrust saddles. | Cold case (`Material_Mechanical`), hot jacket (`Material_HeatMetal`). | Split saddles, clamps, valve packs, and rooted service lines; never a cylinder with a bright end disk. |
-| hollow bells and refractory throats | Each drive has a converging/diverging hollow bell, dark cavity, and dry replaceable ceramic throat. | Bell: heat-darkened nickel (`Material_HeatMetal`); throat: non-metallic refractory (`Material_Refractory`). | Recessed cavity remains meaningful with emission off; no exterior emissive cap. |
+| paired drive pressure cases | Faceted welded pressure cases carry stepped nickel hot sections on thrust saddles. | Cold case (`Material_Mechanical`), nickel jacket (`Material_HotSection`). | Paired saddle cheeks, feet, cheek-plane webs, overlapping root links, valve packs, and rooted service lines; never a cylinder with a bright end disk or a buried decorative truss. |
+| hollow bells, cavity liners, and refractory throats | Each drive has a 16-sided converging/diverging rolled bell, a separately modeled dark nested liner behind the lip, and a smaller dry replaceable ceramic throat recessed behind that liner. | Bell: restrained heat-darkened nickel (`Material_HotSection`); cavity liner: dark nitrided steel (`Material_Mechanical`); throat: dark dry non-metallic refractory (`Material_Refractory`). | The annular opening remains physically hollow and meaningful with emission off; the liner cannot cap the aperture, and neither ceramic nor cue may return to the mouth as a bright plug. |
 | generic forward mount | Retains `SOCKET_Weapon_Front` without asserting a new weapon class. | Nitrided steel saddle and protected service routing (`Material_Mechanical`). | It is generic because shared reaver/corsair use remains unresolved; no unique weapon fiction or changed socket. |
 
 ## Promotion blockers

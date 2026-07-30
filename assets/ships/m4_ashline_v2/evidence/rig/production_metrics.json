@@ -12,68 +12,92 @@
   "sourceGlb": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_rig.glb",
   "releaseCandidateGlb": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_rig.glb",
   "blend": "assets/ships/m4_ashline_v2/blender/ashline_v2_rig_production.blend",
-  "sha256_source": "F70EBC2876D0D358B67939C25E7C6B17EDAD5ECC4287A496EBF15EA0FF39B8A8",
+  "sha256_source": "E46AAFCB5A5BEB40B24918248A03704FFAEF10D342324C3D0E02893898B7B892",
   "report": {
     "file": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\source\\wholeships\\ashline_v2_rig.glb",
-    "bytes": 2940872,
-    "totalTriangles": 30065,
-    "hullTriangles": 12741,
+    "bytes": 3610796,
+    "totalTriangles": 31041,
+    "hullTriangles": 13093,
     "lodBreakdown": {
       "lod0": {
-        "triangles": 19154,
-        "primitives": 6,
-        "drawEstimate": 6,
+        "triangles": 19774,
+        "primitives": 9,
+        "drawEstimate": 9,
         "nodes": [
           {
-            "name": "LOD0_Merged_Material_Cyan",
-            "tris": 56
+            "name": "LOD0_Merged_Material_CableSteel",
+            "tris": 4752
           },
           {
-            "name": "LOD0_Merged_Material_HeatMetal",
-            "tris": 7416
+            "name": "LOD0_Merged_Material_Cyan",
+            "tris": 88
+          },
+          {
+            "name": "LOD0_Merged_Material_Hardface",
+            "tris": 96
+          },
+          {
+            "name": "LOD0_Merged_Material_HotSection",
+            "tris": 1144
           },
           {
             "name": "LOD0_Merged_Material_Hull",
-            "tris": 7470
+            "tris": 7702
           },
           {
             "name": "LOD0_Merged_Material_Mechanical",
-            "tris": 3844
+            "tris": 5004
+          },
+          {
+            "name": "LOD0_Merged_Material_PolishedSteel",
+            "tris": 396
           },
           {
             "name": "LOD0_Merged_Material_Red_Paint",
-            "tris": 48
+            "tris": 80
           },
           {
             "name": "LOD0_Merged_Material_Refractory",
-            "tris": 320
+            "tris": 512
           }
         ]
       },
       "lod1": {
-        "triangles": 9488,
-        "primitives": 5,
-        "drawEstimate": 5,
+        "triangles": 9844,
+        "primitives": 8,
+        "drawEstimate": 8,
         "nodes": [
           {
-            "name": "LOD1_Merged_Material_HeatMetal",
-            "tris": 3664
+            "name": "LOD1_Merged_Material_CableSteel",
+            "tris": 2446
           },
           {
-            "name": "LOD1_Merged_Material_Hull",
-            "tris": 3884
-          },
-          {
-            "name": "LOD1_Merged_Material_Mechanical",
-            "tris": 1726
-          },
-          {
-            "name": "LOD1_Merged_Material_Red_Paint",
+            "name": "LOD1_Merged_Material_Hardface",
             "tris": 48
           },
           {
+            "name": "LOD1_Merged_Material_HotSection",
+            "tris": 594
+          },
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 4004
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 2338
+          },
+          {
+            "name": "LOD1_Merged_Material_PolishedSteel",
+            "tris": 68
+          },
+          {
+            "name": "LOD1_Merged_Material_Red_Paint",
+            "tris": 80
+          },
+          {
             "name": "LOD1_Merged_Material_Refractory",
-            "tris": 166
+            "tris": 266
           }
         ]
       },
@@ -120,16 +144,19 @@
       "SOCKET_Weapon_Front"
     ],
     "materials": [
+      "Material_CableSteel",
       "Material_Cyan",
-      "Material_HeatMetal",
+      "Material_Hardface",
+      "Material_HotSection",
       "Material_Hull",
       "Material_Mechanical",
+      "Material_PolishedSteel",
       "Material_Red_Paint",
       "Material_Refractory"
     ],
-    "primitiveCount": 15,
-    "tangentPrimitiveCount": 15,
-    "uvPrimitiveCount": 15,
+    "primitiveCount": 21,
+    "tangentPrimitiveCount": 21,
+    "uvPrimitiveCount": 21,
     "spacefaceAsset": {
       "contractVersion": 1,
       "assetId": "SF_WHOLESHIP_ASHLINE_V2_RIG",
@@ -149,8 +176,8 @@
       "packet": "M4-ASHLINE-SOURCE-FAMILY-V2-001",
       "family": "ashline_v2",
       "role": "tether_control_raider",
-      "triangleCount": 30065,
-      "hullTriangleCount": 12741,
+      "triangleCount": 31041,
+      "hullTriangleCount": 13093,
       "deliverableRole": "candidate_multi_lod",
       "lods": [
         "lod0",
@@ -193,47 +220,68 @@
       {
         "lod": "lod0",
         "decimate_ratio": 1.0,
-        "mesh_count": 6,
-        "triangles": 19154,
+        "mesh_count": 9,
+        "triangles": 19774,
         "meshes": [
           {
             "name": "LOD0_Merged_Material_Hull",
-            "tris": 7470,
+            "tris": 7702,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD0_Merged_Material_Mechanical",
-            "tris": 3844,
+            "tris": 5004,
             "materials": [
               "Material_Mechanical"
             ]
           },
           {
-            "name": "LOD0_Merged_Material_HeatMetal",
-            "tris": 7416,
+            "name": "LOD0_Merged_Material_PolishedSteel",
+            "tris": 396,
             "materials": [
-              "Material_HeatMetal"
+              "Material_PolishedSteel"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Hardface",
+            "tris": 96,
+            "materials": [
+              "Material_Hardface"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_CableSteel",
+            "tris": 4752,
+            "materials": [
+              "Material_CableSteel"
             ]
           },
           {
             "name": "LOD0_Merged_Material_Red_Paint",
-            "tris": 48,
+            "tris": 80,
             "materials": [
               "Material_Red_Paint"
             ]
           },
           {
+            "name": "LOD0_Merged_Material_HotSection",
+            "tris": 1144,
+            "materials": [
+              "Material_HotSection"
+            ]
+          },
+          {
             "name": "LOD0_Merged_Material_Refractory",
-            "tris": 320,
+            "tris": 512,
             "materials": [
               "Material_Refractory"
             ]
           },
           {
             "name": "LOD0_Merged_Material_Cyan",
-            "tris": 56,
+            "tris": 88,
             "materials": [
               "Material_Cyan"
             ]
@@ -243,45 +291,66 @@
         "removed_degenerate_faces": {
           "LOD0_Merged_Material_Hull": 2
         },
-        "draw_estimate": 6
+        "draw_estimate": 9
       },
       {
         "lod": "lod1",
         "decimate_ratio": 0.52,
-        "mesh_count": 5,
-        "triangles": 9488,
+        "mesh_count": 8,
+        "triangles": 9844,
         "meshes": [
           {
             "name": "LOD1_Merged_Material_Hull",
-            "tris": 3884,
+            "tris": 4004,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD1_Merged_Material_Mechanical",
-            "tris": 1726,
+            "tris": 2338,
             "materials": [
               "Material_Mechanical"
             ]
           },
           {
-            "name": "LOD1_Merged_Material_HeatMetal",
-            "tris": 3664,
+            "name": "LOD1_Merged_Material_Hardface",
+            "tris": 48,
             "materials": [
-              "Material_HeatMetal"
+              "Material_Hardface"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_PolishedSteel",
+            "tris": 68,
+            "materials": [
+              "Material_PolishedSteel"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_CableSteel",
+            "tris": 2446,
+            "materials": [
+              "Material_CableSteel"
             ]
           },
           {
             "name": "LOD1_Merged_Material_Red_Paint",
-            "tris": 48,
+            "tris": 80,
             "materials": [
               "Material_Red_Paint"
             ]
           },
           {
+            "name": "LOD1_Merged_Material_HotSection",
+            "tris": 594,
+            "materials": [
+              "Material_HotSection"
+            ]
+          },
+          {
             "name": "LOD1_Merged_Material_Refractory",
-            "tris": 166,
+            "tris": 266,
             "materials": [
               "Material_Refractory"
             ]
@@ -294,14 +363,10 @@
           "Hook_JawPin_Port_1",
           "Hook_JawPin_Starboard_0",
           "Hook_JawPin_Starboard_1",
-          "Hook_TetherBearingCap_Lower",
-          "Hook_TetherBearingCap_Upper",
+          "Hook_TetherBearingCap_Port",
+          "Hook_TetherBearingCap_Starboard",
           "Hook_TetherDrum_ClutchLever",
-          "Hook_JawHydraulicRod_Port",
-          "Hook_JawHydraulicClevis_Port",
           "Hook_JawHydraulicHose_Port",
-          "Hook_JawHydraulicRod_Starboard",
-          "Hook_JawHydraulicClevis_Starboard",
           "Hook_JawHydraulicHose_Starboard",
           "Hook_DriveInternalCue_Port",
           "Hook_DriveValveFitting_Port_0",
@@ -315,7 +380,7 @@
         "removed_degenerate_faces": {
           "LOD1_Merged_Material_Hull": 1
         },
-        "draw_estimate": 5
+        "draw_estimate": 8
       },
       {
         "lod": "lod2",
@@ -364,7 +429,7 @@
         10.574089050292969
       ]
     },
-    "sha256": "F70EBC2876D0D358B67939C25E7C6B17EDAD5ECC4287A496EBF15EA0FF39B8A8"
+    "sha256": "E46AAFCB5A5BEB40B24918248A03704FFAEF10D342324C3D0E02893898B7B892"
   },
   "renders": [
     "assets/ships/m4_ashline_v2/evidence/rig/renders/forward_34.png",
@@ -378,5 +443,5 @@
     "assets/ships/m4_ashline_v2/evidence/rig/renders/silhouette_gray_45px.png",
     "assets/ships/m4_ashline_v2/evidence/rig/renders/top_ortho.png"
   ],
-  "builtAt": "2026-07-29T20:11:18Z"
+  "builtAt": "2026-07-30T02:12:05Z"
 }
