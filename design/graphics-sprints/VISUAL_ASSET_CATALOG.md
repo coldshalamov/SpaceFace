@@ -1,6 +1,6 @@
 # SpaceFace visual-asset catalog
 
-**Snapshot:** 2026-07-28
+**Snapshot:** 2026-07-29
 **Status:** read-only census and production routing; not program state or visual acceptance
 
 This is the readable companion to [VISUAL_ASSET_CATALOG.json](./VISUAL_ASSET_CATALOG.json). It
@@ -16,7 +16,7 @@ The ranked remediation sequence and component-level fiction/development agreemen
 - Every current release-manifest row, path, and exact source/release hash is included.
 - Current whole-ship player, hostile, and traffic selectors are included.
 - Major standalone-media families and the highest-exposure place references are counted.
-- Candidate/worktree archaeology is a dated 2026-07-28 snapshot, hash-pinned where the
+- Candidate/worktree archaeology is a dated 2026-07-29 snapshot, hash-pinned where the
   files are tracked.
 - Per-mesh materials, UVs, embedded texture channels, LODs, fallbacks, and editable-source replay
   are **not yet a complete GLB-internal census**. Those remain the deeper VA-001 inspector task.
@@ -83,7 +83,7 @@ not accepted alternate ships.
 | 1 | `kestrel_die_laughing_stencil` | candidate | The Kestrel is the default player ship and remains on screen throughout normal play. | In-place material-truth refinement; no manifest or live-release promotion is claimed here. |
 | 2 | `ashline_v2_dart` | candidate | The live hostile selector maps wasp_swarmer to Ashline Dart. | Offline V2 source and KTX2/Meshopt candidate exist; the live selector still uses the older Ashline family. |
 | 3 | `ashline_v2_lode` | candidate | The live hostile selector maps bruiser_brawler to Ashline Lode. | Offline V2 source and KTX2/Meshopt candidate exist; promotion remains unclaimed. |
-| 4 | `ashline_v2_rig` | candidate | Two live hostile roles, reaver_pirate and corsair_raider, currently map to the same Ashline Rig. | Offline V2 source and KTX2/Meshopt candidate exist; two tracked foundry variants are available as distinct donor directions. |
+| 4 | `ashline_v2_rig` | candidate | Two live hostile roles, reaver_pirate and corsair_raider, currently map to the same Ashline Rig. | Offline material-truth-v2 checkpoint E46AAFCB is unwired; source/candidate mirror exactly at 3610796 bytes, while G5/G6/G7 and the Reaver/Corsair identity split remain open. |
 | 5 | `place_claim_outpost_relay` | live | The relay is bound by world-site manifests and the PQ-019A heist facility data, making it a story and gameplay-facing place. | Source and release are live. Remaster work must coordinate with the owning PQ-019/PQ-022 lane and preserve world-site identity. |
 
 Each row in the JSON carries its exact acceptance gates and mutex order. None may skip fiction and
@@ -92,7 +92,7 @@ required, or an independent human-eye verdict.
 
 ## High-exposure places
 
-These counts are authored static references from the read-only 2026-07-28 census, not
+These counts are authored static references from the read-only 2026-07-29 census, not
 runtime telemetry:
 
 | Place | Static references |
@@ -133,9 +133,10 @@ and stopped-ref hashes needed to audit that extraction.
 
 ### Stopped Grok worktree
 
-`C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041` still exists. Its audited Kestrel outputs were byte-identical to
-tracked master assets and no unique visual output was found. Preserve it read-only; do not use
-damaged Git metadata as a reason to copy, delete, or promote files.
+`C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041` still exists. Its routed Kestrel references match tracked master,
+but its Blender source and build-summary records differ. Those divergent records remain unsafe
+foreign work pending a coordinated source/build audit. Preserve the tree read-only; do not mine,
+clean, copy, delete, or promote from it.
 
 ## Standalone and code-native visuals
 
@@ -153,7 +154,7 @@ damaged Git metadata as a reason to copy, delete, or promote files.
 - The release manifest has three Kestrel package records outside the source-manifest census: the ship reference plus LOD1 and LOD2.
 - Two hostile roles alias the same Ashline Rig; the foundry Corsair/Reaver variants are donor directions, not accepted alternates.
 - The stopped Lark branch contains useful unique authoring work but stale packaging evidence; selective recovery plus current rebuild is mandatory.
-- The stopped Grok worktree contains no audited unique visual output and must not be mined or cleaned destructively.
+- The stopped Grok worktree has routed Kestrel references matching master, but divergent Blender/build records remain unsafe foreign work pending coordinated audit; it must not be mined or cleaned.
 - Recent dock, hulk, debris, production Wasp, Gatling, portraits, thruster masks, Cathedral, and trade-hub work should be preserved and reviewed before any reauthoring.
 - icons_atlas, reticle, and menu_background are cleanup/audit candidates; no player-facing upgrade priority is assigned without live reference proof.
 

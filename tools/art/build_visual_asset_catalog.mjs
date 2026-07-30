@@ -51,9 +51,7 @@ const TOP_FIVE = Object.freeze([
     exposureReason: 'The live hostile selector maps wasp_swarmer to Ashline Dart.',
     currentState: 'Offline V2 source and KTX2/Meshopt candidate exist; the live selector still uses the older Ashline family.',
     source: 'assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_dart.glb',
-    sourceSha256: '12ea70c8c9e7295d65dce57aff3aed64cd7fb62c780fff61c183c67ad293b987',
     candidate: 'assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_dart.glb',
-    candidateSha256: 'c2d64a84d3b3575d2d4001eb82fddeddc31ed94158d72cad3706125c4e8dc720',
     gates: [
       'fiction/material agreement and component-level critique',
       'close, normal-flight, dense-combat, LOD-motion evidence',
@@ -73,9 +71,7 @@ const TOP_FIVE = Object.freeze([
     exposureReason: 'The live hostile selector maps bruiser_brawler to Ashline Lode.',
     currentState: 'Offline V2 source and KTX2/Meshopt candidate exist; promotion remains unclaimed.',
     source: 'assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_lode.glb',
-    sourceSha256: 'a5f9dc2c54be15021398d886d1b25a32353cbcf6a495fe0837eecb8dc3684c81',
     candidate: 'assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_lode.glb',
-    candidateSha256: '8e003254dc9005a123d1eab15844103dadb1c8b2841fee45775a136559a87b5a',
     gates: [
       'fiction/material agreement and component-level critique',
       'close, normal-flight, dense-combat, LOD-motion evidence',
@@ -93,11 +89,9 @@ const TOP_FIVE = Object.freeze([
     family: 'VA-121 Industrial/civilian family',
     lifecycle: 'candidate',
     exposureReason: 'Two live hostile roles, reaver_pirate and corsair_raider, currently map to the same Ashline Rig.',
-    currentState: 'Offline V2 source and KTX2/Meshopt candidate exist; two tracked foundry variants are available as distinct donor directions.',
+    currentState: 'Offline material-truth-v2 checkpoint exists and remains unwired; source/candidate mirror exactly, while G5/G6/G7 and the Reaver/Corsair identity split remain open.',
     source: 'assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_rig.glb',
-    sourceSha256: '6517f0ba291a8f58bb0bd97866b2251f4ddf67cfa7f9ec213f49ad031c747926',
     candidate: 'assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_rig.glb',
-    candidateSha256: '21f63ddfd2fe4561668fd7cc5b51d087085d185252218649a6663f0d8c0ad662',
     gates: [
       'fiction/material agreement and distinct Reaver/Corsair role decision',
       'close, normal-flight, dense-combat, LOD-motion evidence',
@@ -220,8 +214,8 @@ const UNSAFE_FOREIGN = Object.freeze([
     id: 'stopped_grok_worktree',
     lifecycle: 'unsafe-foreign',
     path: 'C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041',
-    finding: 'The Git metadata is damaged, but the audited Kestrel outputs were byte-identical to tracked master files. Nothing unique should be recovered in place.',
-    action: 'Preserve read-only until the user explicitly authorizes archival or deletion.',
+    finding: 'Its routed Kestrel references match tracked master, but its Blender source and build-summary records differ. Those divergent records are unsafe foreign work pending a coordinated audit, not recovery-ready donor assets.',
+    action: 'Preserve read-only. Do not mine, clean, copy, delete, or promote from it without explicit coordination and a source/build audit.',
   },
   {
     id: 'active_registered_worktrees',
@@ -255,6 +249,38 @@ const HIGH_EXPOSURE_PLACES = Object.freeze([
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
+}
+
+function fingerprint(path) {
+  const bytes = readFileSync(resolve(ROOT, path));
+  return {
+    sha256: sha256(bytes),
+    bytes: bytes.length,
+  };
+}
+
+function bindTopFiveFingerprints(row) {
+  if (!row.source && !row.candidate) return { ...row };
+  const bound = { ...row };
+  if (row.source) {
+    const source = fingerprint(row.source);
+    bound.sourceSha256 = source.sha256;
+    bound.sourceBytes = source.bytes;
+  }
+  if (row.candidate) {
+    const candidate = fingerprint(row.candidate);
+    bound.candidateSha256 = candidate.sha256;
+    bound.candidateBytes = candidate.bytes;
+  }
+  if (row.id === 'ashline_v2_rig') {
+    const mirror = bound.sourceSha256 === bound.candidateSha256
+      && bound.sourceBytes === bound.candidateBytes;
+    bound.sourceCandidateMirror = mirror;
+    bound.currentState = mirror
+      ? `Offline material-truth-v2 checkpoint ${bound.sourceSha256.slice(0, 8).toUpperCase()} is unwired; source/candidate mirror exactly at ${bound.sourceBytes} bytes, while G5/G6/G7 and the Reaver/Corsair identity split remain open.`
+      : 'Offline material-truth-v2 Rig source/candidate drift is present; promotion and G5/G6/G7 remain blocked pending repair, and the Reaver/Corsair identity split remains open.';
+  }
+  return bound;
 }
 
 function readJson(path) {
@@ -298,10 +324,11 @@ export function buildVisualAssetCatalog() {
   const partsIds = new Set(parts.parts.map((row) => row.id));
   const sourceOnly = [...partsIds].filter((id) => !releaseIds.has(id)).sort();
   const releaseOnly = [...releaseIds].filter((id) => !partsIds.has(id)).sort();
+  const rankedTopFive = TOP_FIVE.map(bindTopFiveFingerprints);
 
   const catalog = {
     schema: 'spaceface.visual-asset-catalog.v1',
-    snapshotDate: '2026-07-28',
+    snapshotDate: '2026-07-29',
     authority: {
       status: 'read-only census and production routing; not program state or visual acceptance',
       craft: 'docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md',
@@ -314,7 +341,7 @@ export function buildVisualAssetCatalog() {
       liveWholeShipSelectors: 'complete for the current partsLibrary player, hostile, and traffic maps',
       standaloneMedia: 'major runtime families counted; individual 23 portrait and 9 thruster records remain in their owning registries/manifests',
       runtimePlaces: 'ranked static-reference census for the highest-exposure places; not route telemetry',
-      candidateAndLegacyArchaeology: 'dated 2026-07-28 and hash-pinned where tracked bytes exist',
+      candidateAndLegacyArchaeology: 'dated 2026-07-29 and hash-pinned where tracked bytes exist',
       glbInternals: 'not complete: per-mesh materials, UVs, texture channels, LODs, fallbacks, and editable-source replay still require the deeper VA-001 inspector',
       visualAcceptance: 'none assigned by this catalog',
     },
@@ -345,7 +372,7 @@ export function buildVisualAssetCatalog() {
     runtime: {
       selectors: selectorMappings(),
       highExposurePlaces: {
-        measurement: 'authored static reference count from the 2026-07-28 read-only census; not runtime telemetry',
+        measurement: 'authored static reference count from the 2026-07-29 read-only census; not runtime telemetry',
         rows: HIGH_EXPOSURE_PLACES,
       },
       standaloneMedia: {
@@ -371,7 +398,7 @@ export function buildVisualAssetCatalog() {
         'src/render/post/spaceRenderGraph.js',
       ],
     },
-    rankedTopFive: TOP_FIVE,
+    rankedTopFive,
     candidatesAndLegacyDonors: RECOVERY_AND_DONORS,
     rejectedOrEvidenceOnly: REJECTED,
     unsafeForeign: UNSAFE_FOREIGN,
@@ -381,12 +408,12 @@ export function buildVisualAssetCatalog() {
       'The release manifest has three Kestrel package records outside the source-manifest census: the ship reference plus LOD1 and LOD2.',
       'Two hostile roles alias the same Ashline Rig; the foundry Corsair/Reaver variants are donor directions, not accepted alternates.',
       'The stopped Lark branch contains useful unique authoring work but stale packaging evidence; selective recovery plus current rebuild is mandatory.',
-      'The stopped Grok worktree contains no audited unique visual output and must not be mined or cleaned destructively.',
+      'The stopped Grok worktree has routed Kestrel references matching master, but divergent Blender/build records remain unsafe foreign work pending coordinated audit; it must not be mined or cleaned.',
       'Recent dock, hulk, debris, production Wasp, Gatling, portraits, thruster masks, Cathedral, and trade-hub work should be preserved and reviewed before any reauthoring.',
       'icons_atlas, reticle, and menu_background are cleanup/audit candidates; no player-facing upgrade priority is assigned without live reference proof.',
     ],
     nextQueue: [
-      ...TOP_FIVE.map((row) => ({ rank: row.rank, id: row.id, state: row.currentState })),
+      ...rankedTopFive.map((row) => ({ rank: row.rank, id: row.id, state: row.currentState })),
       { rank: 6, id: 'station_tethys_unique_visual', state: 'Split from trade-hub reuse after exact runtime/Atlas ownership review.' },
       { rank: 7, id: 'C-INTRO-01', state: 'Refresh only after real game identity and crop/video contracts are established.' },
       { rank: 8, id: 'wholeship_helios_lark', state: 'Selectively recover the stopped branch, rebuild current, then use it as civilian craft pilot.' },
@@ -414,6 +441,13 @@ export function validateVisualAssetCatalog(catalog) {
     if (!Object.hasOwn(LIFECYCLE, row.lifecycle)) failures.push(`top-five-lifecycle:${row.id}`);
     if (!Array.isArray(row.gates) || row.gates.length < 5) failures.push(`top-five-gates:${row.id}`);
     if (!row.gates.some((gate) => gate.includes('human-eye'))) failures.push(`top-five-art-gate:${row.id}`);
+    validateFingerprint(row, 'source', 'sourceSha256', 'sourceBytes', failures);
+    validateFingerprint(row, 'candidate', 'candidateSha256', 'candidateBytes', failures);
+  }
+  const rig = catalog?.rankedTopFive?.find((row) => row.id === 'ashline_v2_rig');
+  if (!rig?.sourceCandidateMirror) failures.push('rig-source-candidate-mirror');
+  if (!rig?.currentState?.includes(rig.sourceSha256?.slice(0, 8).toUpperCase())) {
+    failures.push('rig-current-state-fingerprint');
   }
   const lark = catalog?.candidatesAndLegacyDonors?.find((row) => row.id === 'helios_lark_stopped_remaster');
   if (lark?.tip !== 'd538a583b673c61051e305963254f6de83d871d0') failures.push('lark-tip');
@@ -458,6 +492,19 @@ function validatePinnedFile(row, pathField, hashField, failures) {
   }
   const actual = sha256(readFileSync(absolute));
   if (actual !== expected) failures.push(`pinned-hash-drift:${row.id}:${pathField}`);
+}
+
+function validateFingerprint(row, pathField, hashField, bytesField, failures) {
+  const path = row?.[pathField];
+  if (!path) return;
+  const absolute = resolve(ROOT, path);
+  if (!existsSync(absolute)) {
+    failures.push(`missing-fingerprinted-file:${row.id}:${pathField}`);
+    return;
+  }
+  const bytes = readFileSync(absolute);
+  if (row?.[hashField] !== sha256(bytes)) failures.push(`fingerprint-hash-drift:${row.id}:${pathField}`);
+  if (row?.[bytesField] !== bytes.length) failures.push(`fingerprint-bytes-drift:${row.id}:${pathField}`);
 }
 
 export function renderVisualAssetCatalogMarkdown(catalog) {
@@ -578,9 +625,10 @@ and stopped-ref hashes needed to audit that extraction.
 
 ### Stopped Grok worktree
 
-\`${catalog.unsafeForeign[0].path}\` still exists. Its audited Kestrel outputs were byte-identical to
-tracked master assets and no unique visual output was found. Preserve it read-only; do not use
-damaged Git metadata as a reason to copy, delete, or promote files.
+\`${catalog.unsafeForeign[0].path}\` still exists. Its routed Kestrel references match tracked master,
+but its Blender source and build-summary records differ. Those divergent records remain unsafe
+foreign work pending a coordinated source/build audit. Preserve the tree read-only; do not mine,
+clean, copy, delete, or promote from it.
 
 ## Standalone and code-native visuals
 

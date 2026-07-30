@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
@@ -10,6 +11,10 @@ import {
 
 const JSON_PATH = new URL('../design/graphics-sprints/VISUAL_ASSET_CATALOG.json', import.meta.url);
 const MARKDOWN_PATH = new URL('../design/graphics-sprints/VISUAL_ASSET_CATALOG.md', import.meta.url);
+
+function sha256(bytes) {
+  return createHash('sha256').update(bytes).digest('hex');
+}
 
 test('visual asset catalog covers the exact release manifest without confusing packaging and selection', () => {
   const catalog = buildVisualAssetCatalog();
@@ -63,6 +68,21 @@ test('top five has honest states, ordered gates, and no visual-acceptance fabric
     assert.ok(row.gates.some((gate) => gate.includes('human-eye')));
     assert.doesNotMatch(row.currentState, /\b(?:accepted|complete|passed)\b/i);
   }
+  for (const id of ['ashline_v2_dart', 'ashline_v2_lode', 'ashline_v2_rig']) {
+    const row = catalog.rankedTopFive.find((candidate) => candidate.id === id);
+    const sourceBytes = readFileSync(new URL(`../${row.source}`, import.meta.url));
+    const candidateBytes = readFileSync(new URL(`../${row.candidate}`, import.meta.url));
+    assert.equal(row.sourceBytes, sourceBytes.length, `${id} source bytes`);
+    assert.equal(row.candidateBytes, candidateBytes.length, `${id} candidate bytes`);
+    assert.equal(row.sourceSha256, sha256(sourceBytes), `${id} source sha256`);
+    assert.equal(row.candidateSha256, sha256(candidateBytes), `${id} candidate sha256`);
+  }
+  const rig = catalog.rankedTopFive.find((row) => row.id === 'ashline_v2_rig');
+  assert.equal(rig.sourceCandidateMirror, true);
+  assert.equal(rig.sourceSha256, 'e46aafcb5a5beb40b24918248a03704ffaef10d342324c3d0e02893898b7b892');
+  assert.equal(rig.sourceBytes, 3610796);
+  assert.match(rig.currentState, /G5\/G6\/G7/);
+  assert.match(rig.currentState, /Reaver\/Corsair identity split remain open/);
 });
 
 test('legacy recovery is selective and unsafe worktrees remain protected', () => {
@@ -76,7 +96,9 @@ test('legacy recovery is selective and unsafe worktrees remain protected', () =>
   assert.equal(lark.stoppedRefHashes.blend, '2e2a7b454a9705e89085c9358682ec962c686d3ae5ee090d3b0a3d917b2aecee');
   assert.equal(grok.lifecycle, 'unsafe-foreign');
   assert.match(grok.action, /Preserve read-only/);
-  assert.match(grok.finding, /byte-identical/);
+  assert.match(grok.action, /Do not mine, clean/);
+  assert.match(grok.finding, /routed Kestrel references match tracked master/);
+  assert.match(grok.finding, /Blender source and build-summary records differ/);
 });
 
 test('tracked catalog artifacts are deterministic products of current manifests and routing facts', () => {

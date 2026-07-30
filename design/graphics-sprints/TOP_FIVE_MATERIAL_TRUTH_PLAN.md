@@ -1,6 +1,6 @@
 # Top-five visual material-truth program
 
-**Snapshot:** 2026-07-28
+**Snapshot:** 2026-07-29
 **Authority:** execution companion to `VISUAL_ASSET_CATALOG.json`; not acceptance or a permanent
 lease
 **Workflow:** `.grok/skills/spaceface-blender-material-truth/SKILL.md`
@@ -89,7 +89,9 @@ wide boxes.”
 
 ## 4. Ashline V2 Rig / Hook — capture machinery
 
-**State:** unwired surfaced candidate.
+**State:** unwired offline material-truth-v2 checkpoint at `E46AAFCB…B7B892`; source and release
+candidate mirror byte-for-byte at 3,610,796 bytes. G5/G6/G7 and the Reaver/Corsair role split remain
+open.
 **Earliest failed gate:** G1 primary form because primitive machinery defines the role.
 **Current source/candidate:** resolve from `evidence/family/finalize_report.json`; this plan does not
 pin volatile candidate hashes.
@@ -107,6 +109,14 @@ The 8.2 m boom cannot remain one solid box, the jaw cannot remain a beveled bloc
 cannot remain a naked cylinder. Build the load path and serviceable mechanisms first. Use the old
 Foundry Reaver Hook and Corsair Blade only as selective construction references; do not merge their
 old live Rig wholesale into V2.
+
+The current checkpoint replaces those primitive role-defining masses with a chord-and-web capture
+boom, rooted transitions, forged two-arm jaw and clevis hardware, a grooved tether drum with
+bearing/brake/fairlead vocabulary, and paired reaction-drive construction. Its nine semantic
+material roles include dry refractory throats and a small recessed internal drive cue rather than a
+bright exhaust disk. This is an offline construction/material checkpoint, not a live promotion or
+an independent art verdict. Exact current hashes and byte counts are generated from disk into the
+visual-asset catalog rather than copied into this plan.
 
 Before promotion, decide whether `reaver_pirate` and `corsair_raider` receive distinct accepted
 variants rather than continuing to share one Rig.
