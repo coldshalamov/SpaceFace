@@ -2333,14 +2333,70 @@
       "brief": "Add one broker cell for the actual default-route chain probe, reveal, commit, install Core, produce genuine positive output, observe exactly one relay, save, Continue, and re-enter. Build and register it headlessly; do not spend a Browser or Electron claim in this unit."
     },
     {
-      "id": "PQ-007.route-acceptance",
+      "id": "PQ-007.prompt-truth-repair",
       "parentId": "PQ-007",
       "priority": 8,
-      "title": "Close the corrected auto-target and draw-to-fly player route",
-      "kind": "acceptance_capture",
+      "title": "Remove rejected pursuit copy from the live Pilot and Helm prompts",
+      "kind": "acceptance_repair",
+      "state": "claimed",
+      "dependsOn": [
+        "PQ-007.focused-implementation"
+      ],
+      "mutexes": [
+        "pq007-control-prompts"
+      ],
+      "paths": [
+        "src/ui/controlPrompts.js",
+        "test/pq007-control-prompts.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq007-control-prompts.test.mjs",
+        "npm run check:player-facing-labels",
+        "npm run check:ui-a11y"
+      ],
+      "receiptRefs": [],
+      "brief": "Remove the still-live MMB pursuit and flight-keys-break-pursuit teaching from Pilot and Helm prompts, replace it with truthful G auto-target plus clutchable direct draw-to-fly copy, and pin all active keyboard prompt families."
+    },
+    {
+      "id": "PQ-007.route-harness-repair",
+      "parentId": "PQ-007",
+      "priority": 9,
+      "title": "Build broker-authorized Browser and Electron control-route cells",
+      "kind": "acceptance_repair",
       "state": "ready",
       "dependsOn": [
         "PQ-007.focused-implementation"
+      ],
+      "mutexes": [
+        "pq007-control-harness"
+      ],
+      "paths": [
+        "scripts/probe-auto-target-steering.mjs",
+        "scripts/probe-dod-flight-acceptance.mjs",
+        "scripts/validation-manifests/pq007-control-browser.mjs",
+        "scripts/validation-manifests/pq007-control-electron.mjs",
+        "scripts/validation-broker-cli.mjs",
+        "test/pq007-control-route-manifest.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq007-control-route-manifest.test.mjs",
+        "node scripts/check-auto-target-registry.mjs",
+        "node scripts/check-massline-auto-target.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Preserve both probes' current seconds-scale fixture modes while adding separate fixed-seed one-use broker cells that exercise only public keyboard and native relative-pointer input in Browser and Electron. Build and register headlessly; do not spend either acceptance claim."
+    },
+    {
+      "id": "PQ-007.route-acceptance",
+      "parentId": "PQ-007",
+      "priority": 10,
+      "title": "Close the corrected auto-target and draw-to-fly player route",
+      "kind": "acceptance_capture",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-007.focused-implementation",
+        "PQ-007.prompt-truth-repair",
+        "PQ-007.route-harness-repair"
       ],
       "mutexes": [
         "browser-gpu",
@@ -2357,12 +2413,13 @@
         "node scripts/check-massline-auto-target.mjs"
       ],
       "receiptRefs": [],
-      "brief": "Run one bounded Browser/Electron control-route acceptance for the user-directed G auto-target and clutchable draw-to-fly correction, with keyboard and pointer semantics and no resurrection of the rejected pursuit-slot behavior."
+      "brief": "Run one bounded Browser/Electron control-route acceptance for the user-directed G auto-target and clutchable draw-to-fly correction, with keyboard and pointer semantics and no resurrection of the rejected pursuit-slot behavior.",
+      "blocker": "The existing probes are headless fixtures with no broker manifests, and the live Pilot/Helm prompts still teach the rejected pursuit behavior. Complete both exact repair units before launching either runtime."
     },
     {
       "id": "PQ-021.h2-legibility-controller",
       "parentId": "PQ-021",
-      "priority": 9,
+      "priority": 11,
       "title": "Human Ledger legibility and physical-controller verdict",
       "kind": "human_gate",
       "state": "ready",
@@ -2383,7 +2440,7 @@
     {
       "id": "PQ-022.relay-human-verdict",
       "parentId": "PQ-022",
-      "priority": 10,
+      "priority": 12,
       "title": "Human accept-versus-reauthor verdict for the claim relay",
       "kind": "human_gate",
       "state": "ready",
@@ -2404,7 +2461,7 @@
     {
       "id": "PQ-022.corridor-assets-human-disposition",
       "parentId": "PQ-022",
-      "priority": 11,
+      "priority": 13,
       "title": "Record the missing corridor station, furniture, and traffic visual dispositions",
       "kind": "human_gate",
       "state": "ready",
