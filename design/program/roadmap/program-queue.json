@@ -2147,7 +2147,7 @@
       "priority": 1,
       "title": "Audit the ten-commit PERF-00 candidate delta against current master",
       "kind": "program_control",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "performance-control"
@@ -2162,7 +2162,9 @@
         "npm run check:perf-packets",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-034-candidate-audit-REPORT.md"
+      ],
       "brief": "Review commits ed1df0d7..dce03987 one by one against current master, classify accept/revise/reject, selectively integrate only accepted commits, and write the missing PQ-034 terminal or residual receipt. The clean worktree and branch remain protected; no wholesale merge."
     },
     {
@@ -2730,7 +2732,7 @@
       "priority": 200,
       "title": "Close PERF-00 equivalence and native evidence authority",
       "kind": "performance",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-034.candidate-audit"
       ],
@@ -2749,9 +2751,11 @@
         "node scripts/validation-broker-cli.mjs --manifest performance-closure-browser",
         "node scripts/validation-broker-cli.mjs --manifest performance-closure-electron"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-034-candidate-audit-REPORT.md"
+      ],
       "brief": "After the candidate audit lands, run the exact matched Browser/Electron authority and write the terminal PERF-00 receipt.",
-      "blocker": "The unmerged ten-commit candidate has not been selectively reviewed against current master."
+      "blocker": null
     },
     {
       "id": "PQ-018.art-verdict",
