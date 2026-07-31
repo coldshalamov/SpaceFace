@@ -2598,7 +2598,7 @@
       "priority": 17,
       "title": "Continue the repaired Ceres and Cathedral route",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-020.route-harness-repair",
         "PQ-020.electron-cold-reload-lifecycle-repair"
