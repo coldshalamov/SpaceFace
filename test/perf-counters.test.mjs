@@ -347,40 +347,7 @@ test('counts are per-frame: beginFrame clears, totals and peak accumulate', () =
   const snapshot = counters.snapshot();
   assert.equal(snapshot.totals.drawCalls, 4, 'totals accumulate across frames');
   assert.equal(snapshot.peakPerFrame.drawCalls, 3, 'peak is the worst SINGLE frame, not the total');
-  assert.equal(snapshot.peakFrame.drawCalls, 0,
-    'peak frame identifies the exact frame that set the high-water mark');
   assert.equal(snapshot.nonZeroFrames.drawCalls, 2);
-});
-
-test('peak frames start unset, keep the first equal peak, advance on a higher peak, and reset', () => {
-  const counters = createPerfCounters();
-  counters.setEnabled(true);
-  assert.equal(Object.values(counters.snapshot().peakFrame).every((frame) => frame === -1), true,
-    'every field starts without a fabricated peak frame');
-
-  counters.beginFrame();
-  counters.countDraw();
-  counters.countDraw();
-  counters.endFrame();
-  counters.beginFrame();
-  counters.countDraw();
-  counters.countDraw();
-  counters.endFrame();
-  assert.equal(counters.snapshot().peakFrame.drawCalls, 0,
-    'an equal high-water mark keeps the first frame that established it');
-
-  counters.beginFrame();
-  counters.countDraw();
-  counters.countDraw();
-  counters.countDraw();
-  counters.endFrame();
-  assert.equal(counters.snapshot().peakFrame.drawCalls, 2,
-    'a strictly higher value records the later frame that established it');
-
-  counters.setEnabled(false);
-  counters.setEnabled(true);
-  assert.equal(Object.values(counters.snapshot().peakFrame).every((frame) => frame === -1), true,
-    're-enabling begins a fresh capture with no stale peak provenance');
 });
 
 test('work recorded OUTSIDE a frame pair still reaches totals', () => {

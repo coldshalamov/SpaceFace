@@ -163,7 +163,6 @@ export function createPerfCounters() {
   const frame = createFieldBag();     // reset every frame; feeds peak and nonZeroFrames only
   const totals = createFieldBag();    // accumulated AT RECORD TIME — see the note below
   const peak = createFieldBag();      // worst single frame
-  const peakFrame = createFieldBag(); // frame index that produced each peak (-1 means never nonzero)
   const postBoot = createFieldBag();  // accumulated at record time, after markBootBoundary()
   const offFrame = createFieldBag();  // recorded outside any beginFrame/endFrame pair
   const nonZeroFrames = createFieldBag();
@@ -177,11 +176,6 @@ export function createPerfCounters() {
   // Nondeterministic by construction (G). Kept apart from the field bags so it cannot be mistaken
   // for a Tier-1 signal or accidentally swept into the equivalence gate.
   const allocation = { heapBytesDeltaTotal: 0, collectionsDetected: 0, samples: 0, lastHeapBytes: 0 };
-  resetPeakFrames();
-
-  function resetPeakFrames() {
-    for (const field of COUNTER_FIELDS) peakFrame[field] = -1;
-  }
 
   /**
    * The one accumulation path. Every counter routes through here.
@@ -256,10 +250,7 @@ export function createPerfCounters() {
       // Totals were already accumulated at record time; this only derives the per-frame figures.
       for (const field of COUNTER_FIELDS) {
         const value = frame[field];
-        if (value > peak[field]) {
-          peak[field] = value;
-          peakFrame[field] = frameIndex;
-        }
+        if (value > peak[field]) peak[field] = value;
         if (value !== 0) nonZeroFrames[field]++;
       }
       insideFrame = false;
@@ -346,7 +337,6 @@ export function createPerfCounters() {
       resetFieldBag(frame);
       resetFieldBag(totals);
       resetFieldBag(peak);
-      resetPeakFrames();
       resetFieldBag(postBoot);
       resetFieldBag(offFrame);
       resetFieldBag(nonZeroFrames);
@@ -377,7 +367,6 @@ export function createPerfCounters() {
         totals: { ...totals },
         postBoot: { ...postBoot },
         peakPerFrame: { ...peak },
-        peakFrame: { ...peakFrame },
         // Work that landed outside any beginFrame/endFrame pair. Diagnostic in its own right: a
         // shader link here is an async compile (compileAsync, asset load), while one inside a frame
         // is a draw-time cache miss stalling the frame being drawn. Same counter, different defect.

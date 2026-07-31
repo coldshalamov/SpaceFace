@@ -150,115 +150,11 @@ try {
       return ctx;
     };
 
-    function materialLayout(material) {
-      if (!material) return null;
-      const hashText = (value) => {
-        const text = String(value || '');
-        let hash = 2166136261;
-        for (let i = 0; i < text.length; i++) {
-          hash ^= text.charCodeAt(i);
-          hash = Math.imul(hash, 16777619);
-        }
-        return `${(hash >>> 0).toString(16).padStart(8, '0')}:${text.length}`;
-      };
-      return {
-        name: String(material.name || ''),
-        type: String(material.type || ''),
-        transparent: material.transparent === true,
-        depthWrite: material.depthWrite !== false,
-        depthTest: material.depthTest !== false,
-        side: Number(material.side),
-        blending: Number(material.blending),
-        forceSinglePass: material.forceSinglePass === true,
-        vertexColors: material.vertexColors === true,
-        fog: material.fog === true,
-        lights: material.lights === true,
-        toneMapped: material.toneMapped !== false,
-        maps: [
-          'map', 'alphaMap', 'aoMap', 'emissiveMap', 'metalnessMap', 'roughnessMap', 'normalMap',
-        ].filter((key) => !!material[key]),
-        hasCustomProgramCacheKey: typeof material.customProgramCacheKey === 'function',
-        vertexShader: material.isShaderMaterial ? hashText(material.vertexShader) : null,
-        fragmentShader: material.isShaderMaterial ? hashText(material.fragmentShader) : null,
-        uniforms: material.uniforms && typeof material.uniforms === 'object'
-          ? Object.keys(material.uniforms).sort()
-          : [],
-        defines: material.defines && typeof material.defines === 'object'
-          ? Object.keys(material.defines).sort()
-          : [],
-      };
-    }
-
-    function renderOwner(object, material) {
-      const path = [];
-      let cursor = object;
-      while (cursor && path.length < 8) {
-        path.push(String(cursor.name || cursor.type || '(unnamed)'));
-        cursor = cursor.parent;
-      }
-      const data = object && object.userData || {};
-      return {
-        objectName: String(object?.name || ''),
-        objectType: String(object?.type || ''),
-        isInstancedMesh: object?.isInstancedMesh === true,
-        isPoints: object?.isPoints === true,
-        geometryAttributes: object?.geometry?.attributes
-          ? Object.keys(object.geometry.attributes).sort()
-          : [],
-        path,
-        material: materialLayout(material),
-        role: String(
-          data.shipAuxPool
-          || data.asteroidInstanceTypeId
-          || data.spacefacePartUrl
-          || data.kind
-          || '',
-        ),
-        tags: data.spacefaceTags && { ...data.spacefaceTags },
-      };
-    }
-
-    function installRenderOwnerCapture(renderer) {
-      if (!renderer || renderer.__sfRenderOwnerCapture || typeof renderer.renderBufferDirect !== 'function') return;
-      renderer.__sfRenderOwnerCapture = true;
-      const originalRenderBufferDirect = renderer.renderBufferDirect;
-      renderer.renderBufferDirect = function renderBufferDirect(camera, scene, geometry, material, object, group) {
-        const linksBeforeDraw = linkEvents.length;
-        try {
-          return originalRenderBufferDirect.call(this, camera, scene, geometry, material, object, group);
-        } finally {
-          if (linkEvents.length > linksBeforeDraw) {
-            // Diagnostics must never change renderer behavior. Materials and userData are authored
-            // extension surfaces and may expose getters/proxies, so attribution is deliberately
-            // fail-open and never invokes an arbitrary material callback.
-            let owner;
-            try {
-              owner = renderOwner(object, material);
-            } catch (error) {
-              owner = {
-                objectName: '',
-                objectType: '',
-                path: [],
-                material: null,
-                role: '',
-                tags: null,
-                captureError: String(error?.message || error),
-              };
-            }
-            for (let i = linksBeforeDraw; i < linkEvents.length; i++) {
-              if (!linkEvents[i].owner) linkEvents[i].owner = owner;
-            }
-          }
-        }
-      };
-    }
-
     function sample() {
       const state = window.SF && window.SF.state;
       if (state && state.mode === 'flight') flightFrame = flightFrame < 0 ? 0 : flightFrame + 1;
 
       const renderer = state && state.render && state.render.renderer;
-      installRenderOwnerCapture(renderer);
       const programs = renderer && renderer.info && renderer.info.programs;
       if (programs) {
         for (let i = 0; i < programs.length; i++) {
@@ -301,14 +197,10 @@ try {
   await page.waitForFunction((quiescence) => {
     const timeline = window.__SF_PROGRAM_TIMELINE__;
     if (!timeline || timeline.flightFrame < quiescence) return false;
-    const lastProgram = timeline.events.length
+    const last = timeline.events.length
       ? timeline.events[timeline.events.length - 1].flightFrame
       : -1;
-    const lastLink = timeline.linkEvents.length
-      ? timeline.linkEvents[timeline.linkEvents.length - 1].flightFrame
-      : -1;
-    const last = Math.max(lastProgram, lastLink);
-    // last < 0 means every program/link happened before flight mode: already quiescent.
+    // last < 0 means every program was acquired before flight mode: already quiescent.
     return last < 0 || (timeline.flightFrame - last) >= quiescence;
   }, QUIESCENCE_FRAMES, { timeout: FRAME_WAIT_TIMEOUT_MS });
 
@@ -435,10 +327,6 @@ try {
     //       = WebGLRenderer.compile(), i.e. precompilePipelines running. Deliberate work, but if it
     //         lands after the boot boundary it is still a stall in flight.
     console.log(`  [link] flightFrame=${link.flightFrame} class=${classifyLink(link.stack)}`);
-    if (link.owner) {
-      console.log(`         owner=${link.owner.path.join(' <- ')} material=${link.owner.material?.name || '(unnamed)'} `
-        + `type=${link.owner.material?.type || '?'} role=${link.owner.role || '-'}`);
-    }
     for (const line of link.stack.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 8)) {
       console.log(`         ${line}`);
     }
