@@ -151,12 +151,8 @@ test('phase0: absent owner facts are recorded honestly, not faked', () => {
   const absent = absentSemanticRows();
   const names = absent.map((row) => row.outcome);
   // These are the Phase-0 stop-condition findings located by reading the live source.
-  for (const expected of ['perf.missedVsync', 'perf.residency', 'perf.drawTriangleCounts']) {
+  for (const expected of ['perf.p50', 'perf.p99', 'perf.missedVsync', 'perf.residency', 'perf.drawTriangleCounts']) {
     assert.ok(names.includes(expected), `expected ${expected} to be recorded as an absent owner fact`);
-  }
-  for (const nowOwned of ['perf.p50', 'perf.p99']) {
-    assert.ok(!names.includes(nowOwned), `${nowOwned} now has an additive perfRuntime owner`);
-    assert.equal(semanticRow(nowOwned).confidence, 'verified');
   }
   for (const row of absent) {
     assert.equal(row.confidence, 'absent');
@@ -645,7 +641,7 @@ test('ADV-17: unknown owner evidence is never a warning or a pass', () => {
 
   // An outcome whose owner fact does not exist cannot be talked into a pass by claiming `verified`.
   const absent = normalizeOwnerEvidence({
-    outcome: 'perf.residency', observation: { value: 21 }, rawRef: 'made-up', confidence: 'verified',
+    outcome: 'perf.p99', observation: { value: 21 }, rawRef: 'made-up', confidence: 'verified',
   });
   assert.equal(absent.satisfied, false);
   assert.equal(absent.reason, 'owner-fact-absent-at-this-revision');

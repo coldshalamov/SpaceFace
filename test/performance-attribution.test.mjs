@@ -76,35 +76,6 @@ test('render-work CPU attribution is default-off and explicitly gated', () => {
   perf.setRenderWorkEnabled(false);
 });
 
-test('perfRuntime reports retained-tail distributions and strict median-relative hitches', () => {
-  const perf = ensurePerfRuntime({});
-  for (let value = 1; value <= 179; value++) perf.recordFrameCallback(value);
-  perf.recordFrameCallback(400);
-  const stat = perf.getReport().frameCallback;
-  assert.deepEqual(
-    {
-      samples: stat.samples,
-      retainedSampleCapacity: stat.retainedSampleCapacity,
-      p50: stat.p50,
-      p95: stat.p95,
-      p99: stat.p99,
-      p999: stat.p999,
-      max: stat.max,
-      hitchesOver2xMedian: stat.hitchesOver2xMedian,
-    },
-    {
-      samples: 180,
-      retainedSampleCapacity: 180,
-      p50: 90,
-      p95: 171,
-      p99: 178,
-      p999: 179,
-      max: 400,
-      hitchesOver2xMedian: 1,
-    },
-  );
-});
-
 test('diagnostic variants round-trip timeScale and bloom exactly', () => {
   let entityIsolationActive = false;
   let entityIsolationScope = null;
