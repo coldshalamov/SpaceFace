@@ -2661,8 +2661,7 @@
       "priority": 19,
       "title": "Run the survey-to-relay public route pair",
       "kind": "acceptance_capture",
-      "state": "claimed",
-      "owner": "Codex primary integrator",
+      "state": "done",
       "dependsOn": [
         "PQ-024.survey-route-harness"
       ],
@@ -2685,7 +2684,9 @@
         "node --test test/asteroid-sites.test.mjs",
         "npm run check:sim:compare"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-024-survey-h1-capture-REPORT.md"
+      ],
       "brief": "Run the registered Browser public route exactly once, add and run a distinct Electron parity cell, and retain the claim-bound survey, Core adoption, real-output, single-relay, save/Continue, and re-entry evidence."
     },
     {
@@ -3410,7 +3411,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Judge comprehension, feedback, relay consequence, and save/re-entry after a valid headed route pair exists.",
-      "blocker": "The dedicated PQ-024 headed route cell does not exist yet."
+      "blocker": "The Browser/Electron H1 route pair is accepted. Named owners remain unavailable: SpaceFace human gameplay/visual reviewer for the survey-to-relay corridor and SpaceFace human visual reviewer for PQ-022.relay-human-verdict. Codex cannot substitute for either judgment."
     },
     {
       "id": "PQ-024.h3-performance",
@@ -3432,7 +3433,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Capture matched route and relay-admission performance after the functional route cell is valid.",
-      "blocker": "The route cell and PERF-00 evidence authority are open."
+      "blocker": "The functional Browser/Electron route pair is accepted; PQ-034.native-closure and a quiet-machine matched-performance window remain open."
     },
     {
       "id": "PQ-024.promote",
@@ -3458,7 +3459,7 @@
       ],
       "receiptRefs": [],
       "brief": "Bind the route_accepted relay blob, tick the full survey-claim packet, and retire its active document.",
-      "blocker": "Relay, headed route, human, and performance acceptance are open."
+      "blocker": "PQ-022 relay promotion, the named human survey/relay verdicts, and matched H3 performance remain open; functional H1 is accepted."
     },
     {
       "id": "PQ-025.perf-owner-facts",

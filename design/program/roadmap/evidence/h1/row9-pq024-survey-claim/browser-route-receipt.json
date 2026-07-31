@@ -1,0 +1,298 @@
+{
+  "schema": "spaceface.pq024-asteroid-claim-route.v1",
+  "runtime": "browser-chromium-headed",
+  "disposition": "PASS",
+  "problems": [],
+  "fixedSeed": 24024,
+  "recordedSeed": 24024,
+  "brokerManifestId": "pq024-asteroid-claim",
+  "gpu": {
+    "available": true,
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "routeContract": "New Game -> Helios public market -> public local-map asteroid course -> Massline -> Asteroid Ops -> survey reveal -> Core -> real extractor output -> one relay -> F5 -> cold Continue -> public re-entry",
+  "noPerformanceEvidence": true,
+  "noPerformanceEvidenceNote": "Functional H1 receipt only: visible controls, owner receipts, identity, counts, and screenshots. No frame timing, percentile, hitch, or speed claim is recorded.",
+  "informational_contended": true,
+  "actorControls": [
+    "New Game and Launch buttons",
+    "N galaxy map search and Set Waypoint",
+    "held E dock and canonical Undock",
+    "Market search, commodity tabs, quantity input, and Confirm Purchase",
+    "M local-map asteroid dot and production autopilot",
+    "Space Massline, B Asteroid Ops, Pulse survey, command-card machine keys, cursor arrows, Enter",
+    "F5, Continue, and the same public asteroid-entry chain after restore"
+  ],
+  "observations": {
+    "cargo": [
+      {
+        "commodityId": "cmdty_regocrete",
+        "name": "Regocrete",
+        "qty": 7,
+        "before": {
+          "owned": 0,
+          "credits": 5000
+        },
+        "after": {
+          "owned": 7,
+          "credits": 4808
+        }
+      },
+      {
+        "commodityId": "cmdty_control_unit",
+        "name": "Machine Control Unit",
+        "qty": 2,
+        "before": {
+          "owned": 0,
+          "credits": 4808
+        },
+        "after": {
+          "owned": 2,
+          "credits": 4059
+        }
+      },
+      {
+        "commodityId": "cmdty_refined_metals",
+        "name": "Refined Metals",
+        "qty": 2,
+        "before": {
+          "owned": 0,
+          "credits": 4059
+        },
+        "after": {
+          "owned": 2,
+          "credits": 3873
+        }
+      }
+    ],
+    "asteroid": {
+      "targetEntityId": 27,
+      "label": "asteroid",
+      "sx": 507.45321766408466,
+      "sy": 406.95399587689747,
+      "siteId": null
+    },
+    "surveyReveal": {
+      "visibleText": "ASSAY 2/3",
+      "revealed": 2,
+      "cells": 3
+    },
+    "core": {
+      "siteId": "site_1",
+      "anchored": true,
+      "lifecycle": "committed",
+      "machineId": "m1",
+      "cell": {
+        "col": 14,
+        "row": 1
+      }
+    },
+    "extractor": {
+      "siteId": "site_1",
+      "anchored": true,
+      "lifecycle": "committed",
+      "machineId": "m2",
+      "cell": {
+        "col": 14,
+        "row": 0
+      }
+    },
+    "production": {
+      "siteId": "site_1",
+      "lifecycle": "producing",
+      "receipt": {
+        "receiptId": "prod_site_1_5820_m2",
+        "siteId": "site_1",
+        "producerId": "m2",
+        "defId": "sm_extractor",
+        "recipeId": null,
+        "outputId": "cmdty_silicate",
+        "positiveQuantity": 1,
+        "committedTick": 5820,
+        "sourceMutationId": "tick:5820:m2:cmdty_silicate"
+      },
+      "eventCount": 1
+    },
+    "relay": {
+      "count": 1,
+      "entityId": 326,
+      "placeId": "place_claim_outpost_relay",
+      "siteId": "site_1"
+    },
+    "saved": {
+      "slot": "quick",
+      "reason": "manual",
+      "trigger": "manual",
+      "autosave": false,
+      "ok": true,
+      "failure": null,
+      "durationMs": 38.4,
+      "totalMs": 38.4,
+      "elapsedMs": 38.4,
+      "totalCpuMs": 38.4,
+      "totalBlockingMs": 38.4,
+      "maxBlockingSliceMs": 38.4,
+      "maxBlockingPhase": "elapsed",
+      "blockingClock": "high_resolution_sync_wall",
+      "targetSliceMs": 8,
+      "hardSliceMs": 12,
+      "observedTargetMet": false,
+      "observedHardLimitMet": false,
+      "blockingSamples": [
+        {
+          "phase": "elapsed",
+          "ms": 38.4
+        }
+      ],
+      "maxSerializerMs": 0,
+      "slowSerializer": null,
+      "serializerTimings": [],
+      "serializeMs": 16.5,
+      "writeMs": 21.5,
+      "stringifyMs": 5,
+      "storageMs": 4.1,
+      "indexMs": 0.5,
+      "backupMs": 0,
+      "readbackMs": 0,
+      "verifyMs": 0,
+      "workerSetupMs": 0,
+      "workerDispatchMs": 0,
+      "workerRoundtripMs": 0,
+      "captureStartedAtMs": 0,
+      "captureEndedAtMs": 0,
+      "bytes": 602725
+    },
+    "continued": {
+      "siteId": "site_1",
+      "lifecycle": "producing",
+      "outputId": "cmdty_silicate",
+      "positiveQuantity": 1,
+      "receiptMatches": true,
+      "relayCount": 1
+    },
+    "restoredAsteroid": {
+      "targetEntityId": 312,
+      "label": "asteroid",
+      "sx": 457.0051478664023,
+      "sy": 421.6918936268641,
+      "siteId": "site_1"
+    },
+    "reentered": {
+      "siteId": "site_1",
+      "lifecycle": "producing",
+      "chips": [
+        "Producing",
+        "Assay 3 cells"
+      ]
+    },
+    "restoredRelay": {
+      "count": 1,
+      "entityId": 313,
+      "placeId": "place_claim_outpost_relay",
+      "siteId": "site_1"
+    }
+  },
+  "screenshots": [
+    {
+      "path": ".devshots/pq024-asteroid-claim/01-market-materials.png",
+      "bytes": 765170,
+      "sha256": "d18d6ebc26090d3c6605e437a1c08b43bcbcdab471f7396ffc080317e1cec92f"
+    },
+    {
+      "path": ".devshots/pq024-asteroid-claim/02-survey-reveal.png",
+      "bytes": 661748,
+      "sha256": "9ce75b027601e82636dfa67f99e57e03605d8fe600b687b611b47791404eae7b"
+    },
+    {
+      "path": ".devshots/pq024-asteroid-claim/03-core-committed.png",
+      "bytes": 677908,
+      "sha256": "fb580970c6dec15b34a2e632c7b34076c3f579a206b083845828b70ad346b2b2"
+    },
+    {
+      "path": ".devshots/pq024-asteroid-claim/04-producing-relay.png",
+      "bytes": 479431,
+      "sha256": "1f6638a71023529e610e79e4cb67bf088df993b675d8c49cdc064013ad450dac"
+    },
+    {
+      "path": ".devshots/pq024-asteroid-claim/05-continue-reentered.png",
+      "bytes": 757570,
+      "sha256": "e1876ef9cc1bd6f6ae2527c5a5c59af23ed5b0cd0a40c3eadc2e825a0a1f1881"
+    }
+  ],
+  "pageIssues": [],
+  "semanticProjection": {
+    "schema": "spaceface.pq024-asteroid-claim-semantics.v1",
+    "fixedSeed": 24024,
+    "recordedSeed": 24024,
+    "cargo": [
+      {
+        "commodityId": "cmdty_regocrete",
+        "requested": 7,
+        "acquired": 7
+      },
+      {
+        "commodityId": "cmdty_control_unit",
+        "requested": 2,
+        "acquired": 2
+      },
+      {
+        "commodityId": "cmdty_refined_metals",
+        "requested": 2,
+        "acquired": 2
+      }
+    ],
+    "asteroidSiteId": null,
+    "survey": {
+      "revealed": 2,
+      "cells": 3
+    },
+    "core": {
+      "siteId": "site_1",
+      "anchored": true,
+      "lifecycle": "committed",
+      "cell": {
+        "col": 14,
+        "row": 1
+      }
+    },
+    "extractor": {
+      "siteId": "site_1",
+      "cell": {
+        "col": 14,
+        "row": 0
+      }
+    },
+    "production": {
+      "siteId": "site_1",
+      "lifecycle": "producing",
+      "outputId": "cmdty_silicate",
+      "positiveQuantity": 1,
+      "eventCount": 1
+    },
+    "relay": {
+      "count": 1,
+      "placeId": "place_claim_outpost_relay",
+      "siteId": "site_1"
+    },
+    "continue": {
+      "siteId": "site_1",
+      "lifecycle": "producing",
+      "outputId": "cmdty_silicate",
+      "positiveQuantity": 1,
+      "receiptMatches": true,
+      "relayCount": 1
+    },
+    "restoredAsteroidSiteId": "site_1",
+    "reentered": {
+      "siteId": "site_1",
+      "lifecycle": "producing",
+      "producingChip": true
+    },
+    "restoredRelay": {
+      "count": 1,
+      "placeId": "place_claim_outpost_relay",
+      "siteId": "site_1"
+    }
+  }
+}
