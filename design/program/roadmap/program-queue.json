@@ -2695,7 +2695,8 @@
       "priority": 20,
       "title": "Continue the repaired Electron end-to-end smoke",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
+      "owner": "Codex primary integrator",
       "dependsOn": [
         "PQ-041.electron-smoke-harness-repair"
       ],
