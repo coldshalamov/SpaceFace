@@ -216,34 +216,72 @@ async function frameSubject(page, targetId, framing) {
   }, { targetId, framing, zoomMax: CAMERA_ZOOM_MAX, ndcLimit: NDC_LIMIT });
 }
 
-// Frame purely by camera distance, leaving the player exactly where it stands. Used for the
-// in-flight capsule, where any teleport would rebase the renderer's frame origin under a stopped
-// clock and desynchronize the scene from entity positions.
-async function zoomFrame(page, targetId, framing) {
+// Track the frozen subject with the ordinary game camera, leaving the player exactly where it
+// stands. The presentation runner continues to call cameraCtrl.follow() on wall-clock frames even
+// while simulation time is stopped, so a one-shot lookAt() would be overwritten before the
+// screenshot. This temporary hook preserves the normal follow update, then re-aims that same live
+// camera at the capsule mesh's frame-local world position on every frame.
+async function trackFrozenSubject(page, targetId, framing) {
   return page.evaluate(async ({ targetId, framing, zoomMax }) => {
     const state = window.SF.state;
     const target = state.entities.get(targetId);
-    const player = state.entities.get(state.playerId);
     if (!target?.pos) throw new Error(`missing capture subject ${targetId}`);
 
-    const cam = state.render?.cameraCtrl?.obj || state.render?.camera || null;
-    const separation = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
-    // Distance must cover the gap to the subject, not just the subject's own size.
+    const ctrl = state.render?.cameraCtrl;
+    const cam = ctrl?.obj || state.render?.camera || null;
+    if (!ctrl?.follow || !cam || !window.SF.THREE || !target.mesh?.getWorldPosition) {
+      throw new Error(`capture camera cannot track frozen subject ${targetId}`);
+    }
+
     const radius = Number(target.radius || 6);
-    const zoom = Math.min(zoomMax, Math.max(45, separation * 1.35 + radius * framing.zoomRadii));
+    const zoom = Math.min(zoomMax, Math.max(45, radius * framing.zoomRadii));
     state.camera.zoom = zoom;
     window.SF.bus.emit('camera:zoom', { level: zoom });
-    state.render?.cameraCtrl?.snapToPlayer?.();
+
+    let tracker = window.__pq019aFrozenSubjectTracking;
+    if (!tracker) {
+      const originalFollow = ctrl.follow;
+      const focus = new window.SF.THREE.Vector3();
+      tracker = {
+        ctrl,
+        originalFollow,
+        targetId,
+        zoom,
+        apply() {
+          const tracked = state.entities.get(this.targetId);
+          if (!tracked?.mesh?.getWorldPosition) return;
+          tracked.mesh.updateWorldMatrix?.(true, true);
+          tracked.mesh.getWorldPosition(focus);
+          const tiltRad = (Number(state.camera?.tilt) || 60) * Math.PI / 180;
+          cam.position.set(
+            focus.x,
+            focus.y + this.zoom * Math.sin(tiltRad),
+            focus.z - this.zoom * Math.cos(tiltRad),
+          );
+          cam.lookAt(focus);
+          cam.updateMatrixWorld(true);
+        },
+      };
+      ctrl.follow = function pq019aFrozenSubjectFollow(frameDt) {
+        originalFollow.call(ctrl, frameDt);
+        tracker.apply();
+      };
+      window.__pq019aFrozenSubjectTracking = tracker;
+    } else if (tracker.ctrl !== ctrl) {
+      throw new Error('capture camera controller changed while frozen-subject tracking was active');
+    }
+    tracker.targetId = targetId;
+    tracker.zoom = zoom;
+    tracker.apply();
+
     await new Promise((resolve) => setTimeout(resolve, 450));
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-    let ndc = null;
-    if (cam && window.SF.THREE && target.mesh?.getWorldPosition) {
-      const v = new window.SF.THREE.Vector3();
-      target.mesh.getWorldPosition(v);
-      v.project(cam);
-      ndc = { x: v.x, y: v.y };
-    }
+    tracker.apply();
+    const projected = new window.SF.THREE.Vector3();
+    target.mesh.getWorldPosition(projected);
+    projected.project(cam);
+    const ndc = { x: projected.x, y: projected.y };
     let visibleMeshes = 0;
     target.mesh?.traverse?.((object) => {
       if (object.isMesh && object.visible !== false) visibleMeshes++;
@@ -264,6 +302,16 @@ async function zoomFrame(page, targetId, framing) {
       simTime: state.simTime,
     };
   }, { targetId, framing, zoomMax: CAMERA_ZOOM_MAX });
+}
+
+async function clearFrozenSubjectTracking(page) {
+  await page.evaluate(() => {
+    const tracker = window.__pq019aFrozenSubjectTracking;
+    if (!tracker) return;
+    tracker.ctrl.follow = tracker.originalFollow;
+    delete window.__pq019aFrozenSubjectTracking;
+    tracker.ctrl.snapToPlayer?.();
+  });
 }
 
 // A still whose subject is off-frame is not evidence. Fail loudly instead of shipping it.
@@ -306,8 +354,12 @@ try {
   await page.waitForFunction(() => !!(window.SF?.state && window.SF?.bus && window.SF?.registry), null, { timeout: 45_000 });
   await page.keyboard.press('Space');
   await page.getByRole('button', { name: /^New Game$/i }).click({ timeout: 30_000 });
+  await page.locator('[data-screen="newGame"]').waitFor({ state: 'visible', timeout: 30_000 });
+  await page.fill('#sf-ng-seed', String(CAPTURE_SEED));
   await page.getByRole('button', { name: /^Launch$/i }).click({ timeout: 30_000 });
   await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 90_000 });
+  const recordedSeed = await page.evaluate(() => window.SF.state.meta?.seed ?? null);
+  assert.equal(recordedSeed, CAPTURE_SEED, 'New Game must consume the declared capture seed');
   await page.waitForFunction(() => {
     const state = window.SF.state;
     const player = state.entities.get(state.playerId);
@@ -453,32 +505,31 @@ try {
     `capsule must be genuinely in flight, travelled ${capsuleFlight.travelledFromLauncher}`,
   );
 
-  // Zoom-only framings: the player does not move, so nothing can shift the frame origin.
-  for (const framing of FRAMINGS) {
-    const receipt = await zoomFrame(page, capsuleId, framing);
-    assert.equal(receipt.presentationAdmission, 'ready', 'the in-flight capsule must be admitted');
-    assert.ok(receipt.visibleMeshes > 0, `capsule must present visible geometry at ${framing.name}`);
-    // The projection check is advisory for the capsule rather than fatal. It is reliable for the
-    // static facility places, but the capsule is a small dynamic payload whose mesh transform is
-    // not guaranteed to be refreshed while the clock is stopped, so a stale matrixWorld can report
-    // out-of-frame for a still that is actually correct. Record the reading and judge the pixels.
-    const inFrame = !!receipt.subjectNdc
-      && Math.abs(receipt.subjectNdc.x) <= NDC_LIMIT
-      && Math.abs(receipt.subjectNdc.y) <= NDC_LIMIT;
-    captures.push(await screenshot(page, `cargo-capsule-inflight-${framing.name}.png`, {
-      subject: 'cargo_capsule',
-      label: 'in-flight authored cargo capsule at closest approach (clock stopped for the still)',
-      framing: framing.name,
-      route: `New Game -> ${SECTOR_ID} -> scheduled launch -> in flight`,
-      seed: CAPTURE_SEED,
-      clockStoppedForStill: true,
-      projectionInFrame: inFrame,
-      flight: capsuleFlight,
-      receipt,
-    }));
+  try {
+    // Camera-only framings: the player does not move, so nothing can shift the frame origin. The
+    // temporary follow hook keeps the frozen live capsule at camera focus across screenshot frames.
+    for (const framing of FRAMINGS) {
+      const receipt = await trackFrozenSubject(page, capsuleId, framing);
+      assert.equal(receipt.presentationAdmission, 'ready', 'the in-flight capsule must be admitted');
+      assert.ok(receipt.visibleMeshes > 0, `capsule must present visible geometry at ${framing.name}`);
+      assertInFrame(receipt, `cargo_capsule/${framing.name}`);
+      captures.push(await screenshot(page, `cargo-capsule-inflight-${framing.name}.png`, {
+        subject: 'cargo_capsule',
+        label: 'in-flight authored cargo capsule at closest approach (clock stopped for the still)',
+        framing: framing.name,
+        route: `New Game -> ${SECTOR_ID} -> scheduled launch -> in flight`,
+        seed: CAPTURE_SEED,
+        clockStoppedForStill: true,
+        projectionInFrame: true,
+        flight: capsuleFlight,
+        receipt,
+      }));
+    }
+  } finally {
+    await clearFrozenSubjectTracking(page);
+    await page.evaluate(() => window.SF.timeEffects.clear('pq019a-capture'));
   }
 
-  await page.evaluate(() => window.SF.timeEffects.clear('pq019a-capture'));
   cueLog = await page.evaluate(() => window.__pq019cues || []);
 
   const manifest = {
@@ -492,10 +543,13 @@ try {
     ],
     note: 'Presentation stills only. This manifest is not performance evidence and records no timings.',
     seed: CAPTURE_SEED,
+    declaredSeed: CAPTURE_SEED,
+    recordedSeed,
+    seedControl: 'applied through visible New Game seed input and verified from state.meta.seed',
     sectorId: SECTOR_ID,
     scheduleId: SCHEDULE_ID,
     viewport: VIEWPORT,
-    cameraPolicy: 'game-camera close/default/far at zoom 48/72/140; default 72 is the shipped gameplay zoom',
+    cameraPolicy: 'ordinary game camera; static facilities use player-relative framing and the frozen live capsule is tracked at mesh world position',
     framings: FRAMINGS,
     route: 'main menu -> New Game -> Launch -> world.enterSector(sector_tethys_junction) -> heist:requestLaunchSchedule',
     launchCueMoments: cueLog.map((cue) => ({ moment: cue.moment, tMinusS: cue.tMinusS, text: cue.text })),

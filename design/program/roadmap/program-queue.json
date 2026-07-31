@@ -2173,7 +2173,7 @@
       "priority": 2,
       "title": "Repair the PQ-019A moving-capsule framing and seed-control harness",
       "kind": "acceptance_repair",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-019.headless-implementation"
       ],
@@ -2189,7 +2189,9 @@
         "npm run check:pq019a:facility-embodiment",
         "npm run check:sim:compare"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-019-capsule-capture-repair-REPORT.md"
+      ],
       "brief": "Make the camera track the frozen live capsule so close/default/far projections are in-frame, apply the declared New Game seed for real, and prove the old offscreen NDC fingerprint fails without launching headed acceptance."
     },
     {
