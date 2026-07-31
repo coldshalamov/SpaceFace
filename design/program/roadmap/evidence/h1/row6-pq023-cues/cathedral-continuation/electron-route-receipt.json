@@ -1,0 +1,132 @@
+{
+  "schema": "spaceface.pq023-corridor-cues-electron.v1",
+  "disposition": "PASS",
+  "runtime": "electron",
+  "fixedSeed": 47,
+  "gpu": {
+    "available": true,
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "semanticProjection": {
+    "schema": "spaceface.pq023-cue-semantic-projection.v1",
+    "impactProfiles": {
+      "autocannon": {
+        "weaponId": "wpn_autocannon_m",
+        "family": "kinetic",
+        "variant": "autocannon",
+        "mode": "directional-fragments",
+        "primaryShape": "spray",
+        "fragmentCount": 12,
+        "lightPeak": 2.2
+      },
+      "flak": {
+        "weaponId": "wpn_flak_turret_s",
+        "family": "kinetic",
+        "variant": "flak",
+        "mode": "proximity-burst",
+        "primaryShape": "fragment-cloud",
+        "fragmentCount": 24,
+        "lightPeak": 1.6
+      }
+    },
+    "worldSiteCueIds": [
+      "world_site.recovery",
+      "world_site.damage",
+      "world_site.recovery",
+      "world_site.damage"
+    ],
+    "captions": [
+      {
+        "id": "world_site.recovery",
+        "text": "Cathedral hull restored.",
+        "shape": "ring",
+        "assertive": false,
+        "reducedMotion": false,
+        "flashReduced": false
+      },
+      {
+        "id": "world_site.damage",
+        "text": "Cathedral hull failed.",
+        "shape": "bracket",
+        "assertive": true,
+        "reducedMotion": false,
+        "flashReduced": false
+      },
+      {
+        "id": "world_site.recovery",
+        "text": "Cathedral hull restored.",
+        "shape": "ring",
+        "assertive": false,
+        "reducedMotion": true,
+        "flashReduced": true
+      },
+      {
+        "id": "world_site.damage",
+        "text": "Cathedral hull failed.",
+        "shape": "bracket",
+        "assertive": true,
+        "reducedMotion": true,
+        "flashReduced": true
+      }
+    ],
+    "transitions": [
+      {
+        "kind": "recovery",
+        "reduced": false,
+        "status": "stabilized",
+        "stageId": "stabilized"
+      },
+      {
+        "kind": "damage",
+        "reduced": false,
+        "status": "failed",
+        "stageId": "dark"
+      },
+      {
+        "kind": "recovery",
+        "reduced": true,
+        "status": "stabilized",
+        "stageId": "stabilized"
+      },
+      {
+        "kind": "damage",
+        "reduced": true,
+        "status": "failed",
+        "stageId": "dark"
+      }
+    ],
+    "reducedDamageSteady": true
+  },
+  "crossRuntimeParity": {
+    "pass": true,
+    "comparedAgainst": ".devshots/pq023-corridor-cues/report.json"
+  },
+  "screenshots": [
+    {
+      "path": ".devshots/pq023-corridor-cues/electron/01-recovery-normal.png",
+      "bytes": 678031,
+      "sha256": "f6bc0bc59b3ce33a6a2a5391039d948d1534a8d26189147cbfbe646b8fc1bc39"
+    },
+    {
+      "path": ".devshots/pq023-corridor-cues/electron/02-damage-normal.png",
+      "bytes": 660937,
+      "sha256": "10147bff6c99f407ec7dc6fc8797c950ed40db4c22290c4fdc2397a9231d905d"
+    },
+    {
+      "path": ".devshots/pq023-corridor-cues/electron/03-recovery-reduced.png",
+      "bytes": 649993,
+      "sha256": "e2d7e069b8ef56d9d5ba911dd6fc6f34177ea4ad9174cd92b64bca9a6272eafe"
+    },
+    {
+      "path": ".devshots/pq023-corridor-cues/electron/04-damage-reduced.png",
+      "bytes": 655590,
+      "sha256": "78615b3ca3bfe5c4941ceb354d0e808e8b98264e614fb796b960c10eb09fb33b"
+    }
+  ],
+  "pageIssues": [],
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran contended by design. This receipt contains functional cue identity, accessibility, fixture-state, and screenshot evidence only. No time-valued field is performance evidence. Matched performance remains Phase H3.",
+  "noPerformanceEvidence": true,
+  "ownedRuntimeClosed": true
+}

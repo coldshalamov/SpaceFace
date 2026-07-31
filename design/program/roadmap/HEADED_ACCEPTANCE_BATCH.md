@@ -24,7 +24,7 @@ receipts live in the queue; this file remains sequencing and review context only
 | PQ-019A presentation | **PASS**; facilities/counts retained plus brokered capsule views at runtime zooms 45/66/108 | H2 human art verdict remains |
 | PQ-019C route | **PASS**; retained DOM/lawful evidence plus fence, confiscation, destruction, recovery continuation | H2 human visual/fun verdict remains |
 | PQ-020 route | **REPAIR PASS** after valid Helios→Ceres jump | dispatch `PQ-020.ceres-h1-capture` |
-| PQ-023 cues | **REPAIR PASS**; combat/reduced/dense subset survives | dispatch `PQ-023.cues-h1-capture` |
+| PQ-023 cues | **PASS**; retained combat/reduced/dense evidence plus Cathedral Browser/Electron continuation | H2 human motion/accessibility verdict remains |
 | PQ-022 asset leaves | **PASS** for 11 exact identities and 13 stills | H2 evidence is ready; human visual owner unavailable |
 | Electron end-to-end | **REPAIR PASS** for the false-negative menu predicate | dispatch `PQ-041.electron-smoke-h1-capture` |
 
@@ -42,9 +42,10 @@ recovery run because the named human owners are unavailable:
 - `PQ-022.corridor-assets-human-disposition` — this was missing from the old six-decision index even
   though the milestone required explicit station/furniture/traffic verdicts; owner
   `SpaceFace human visual reviewer`.
+- `PQ-023.h2-verdict` — `SpaceFace human motion/accessibility reviewer`.
 
-PQ-020, PQ-023, PQ-024, and the Cathedral verdict remain blocked until their named repair/capture
-units produce valid evidence.
+PQ-020, PQ-024, and the Cathedral art verdict remain blocked until their named repair/capture units
+produce valid evidence. PQ-023 functional H1 is complete; only its independent H2 and H3 gates remain.
 
 ## Phase H3 — matched performance (quiet machine, one lane at a time)
 

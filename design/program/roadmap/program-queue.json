@@ -2630,8 +2630,7 @@
       "priority": 18,
       "title": "Capture the repaired Cathedral cue continuation",
       "kind": "acceptance_capture",
-      "state": "claimed",
-      "owner": "Codex primary integrator",
+      "state": "done",
       "dependsOn": [
         "PQ-023.cues-harness-repair"
       ],
@@ -2650,7 +2649,9 @@
         "npm run check:pq023:corridor-cues",
         "npm run check:presentation"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-023-cues-h1-capture-REPORT.md"
+      ],
       "brief": "Spend one fresh Browser claim plus Electron parity for the missing Cathedral normal/reduced damage and recovery states, captions, and cleanup while retaining the already-valid combat/reduced/dense evidence."
     },
     {
@@ -3333,7 +3334,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Review the retained combat subset plus newly captured Cathedral damage/recovery motion and Electron parity.",
-      "blocker": "The Cathedral sequence was not captured."
+      "blocker": "Named owner: SpaceFace human motion/accessibility reviewer. Functional Browser/Electron H1 is complete, but no independent human reviewer is available in this autonomous recovery run to judge impact distinction, destruction timing, dense readability, or normal/reduced Cathedral motion and captions."
     },
     {
       "id": "PQ-023.h3-performance",
@@ -3357,7 +3358,7 @@
       ],
       "receiptRefs": [],
       "brief": "Capture matched target/floor dense-scene performance without weakening authored effects.",
-      "blocker": "The cue harness and PERF-00 evidence authority are open."
+      "blocker": "PQ-034.native-closure has not established the matched performance authority, and no quiet-machine window has been claimed. Functional cue H1 is complete; do not treat its contended duration metadata as performance evidence."
     },
     {
       "id": "PQ-023.promote-corridor-cues",

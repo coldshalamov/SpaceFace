@@ -2,6 +2,12 @@ export function findLinkedProgramActiveAttributes(gl, programs, requiredNames) {
   if (!gl || !Array.isArray(programs) || !Array.isArray(requiredNames)) return [];
 
   for (const candidate of programs) {
+    if (candidate && typeof candidate.getAttributes === 'function') {
+      const cached = candidate.getAttributes();
+      const cachedNames = cached && typeof cached === 'object' ? Object.keys(cached) : [];
+      if (requiredNames.every((name) => cachedNames.includes(name))) return cachedNames;
+    }
+
     const handle = candidate && candidate.program ? candidate.program : candidate;
     if (!handle) continue;
 

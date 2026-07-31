@@ -1,0 +1,51 @@
+{
+  "schema": "spaceface.h1-continuation.v1",
+  "row": 6,
+  "subject": "PQ-023 Cathedral cues Browser and Electron continuation",
+  "result": "PASS",
+  "dispatchUnit": "PQ-023.cues-h1-capture",
+  "fixedSeed": 47,
+  "browser": {
+    "candidateCommit": "f373e8a7",
+    "claimId": "40008-bf8ebe348500b65aa41197e6",
+    "candidateDigest": "3b31ee47da771989ef583301b78169a577ab714b8d2deb1168ce3c1a95e6a82b",
+    "productionDigest": "15961a9914d0a4d2239f589f7f78c5ff9041b00ac88e4a94afd89c19d93b04af",
+    "gpu": "Google Inc. (Intel) / ANGLE Intel Direct3D11",
+    "captures": 87,
+    "motionSegments": 15,
+    "contactSheets": 3,
+    "pageIssues": 0,
+    "allNamedAcceptanceChecks": true
+  },
+  "electron": {
+    "harnessCommit": "e2bb0165",
+    "runtime": "electron",
+    "gpu": "Google Inc. (Intel) / ANGLE Intel Direct3D11",
+    "semanticProjectionMatchesBrowser": true,
+    "screenshots": 4,
+    "pageIssues": 0,
+    "ownedRuntimeClosed": true
+  },
+  "semanticProjection": {
+    "worldSiteCueIds": [
+      "world_site.recovery",
+      "world_site.damage",
+      "world_site.recovery",
+      "world_site.damage"
+    ],
+    "captionShapes": ["ring", "bracket", "ring", "bracket"],
+    "reducedDamageSteady": true,
+    "autocannonMode": "directional-fragments",
+    "flakMode": "proximity-burst"
+  },
+  "artifactHashes": {
+    "browserMotionReelSha256": "1b43ab0845b53b1b7f244a0dbeddb2db4b404d462b256b50b7389d060b37eb24",
+    "browserReportSha256": "12c6bea31b0e0ae93bfbf0e0b6af6016ea61668f85770c7195ce5159bb1ac77e",
+    "electronReceiptSha256": "c2ca06ad5424ac45163f28fea1e5d4db4b6635634679c9bda02444ddb473f959"
+  },
+  "retainedEvidenceReplaced": false,
+  "humanVerdict": "UNPROVEN",
+  "noPerformanceEvidence": true,
+  "informational_contended": true,
+  "informational_contended_note": "H1 functional evidence only. Time-valued metadata is diagnostic and not performance evidence."
+}

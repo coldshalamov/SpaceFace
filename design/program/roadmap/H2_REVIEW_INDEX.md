@@ -27,7 +27,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 | 3 | PQ-019A presentation + counts | **PASS — facilities/counts retained; brokered capsule continuation accepted at runtime zooms 45/66/108** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
 | 4 | `pq019-surface-heist` broker manifest | **PASS — retained DOM/lawful evidence plus accepted fence/confiscation/destruction/recovery continuation** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
 | 5 | PQ-020 Ceres functional route | **REPAIR PASS / H1 CONTINUATION READY (valid Helios→Ceres jump survives; remainder unproven)** | [row5-pq020-ceres-route](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) |
-| 6 | PQ-023 cues in motion | **REPAIR PASS / H1 CONTINUATION READY (combat motion survives; Cathedral sequence and Electron parity unproven)** | [row6-pq023-cues](evidence/h1/row6-pq023-cues/EVIDENCE.md) |
+| 6 | PQ-023 cues in motion | **PASS — retained combat motion plus accepted Cathedral Browser/Electron continuation** | [row6-pq023-cues](evidence/h1/row6-pq023-cues/EVIDENCE.md) |
 | 7 | PQ-022 asset leaves | **PASS — one Browser launch; 11 exact identities, 13 admitted stills** | [row7-pq022-asset-leaves](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md) |
 | 8 | Electron end-to-end smoke | **REPAIR PASS / H1 CONTINUATION READY (Main Menu visibly rendered; New Game→Ledger unproven)** | [row8-electron-e2e](evidence/h1/row8-electron-e2e/EVIDENCE.md) |
 
@@ -96,22 +96,19 @@ an autocannon impact at a glance? Do the small, ordinary and capital destruction
 the reduced-motion/reduced-flash ordinary sequence retain the same state information, and does the
 dense scene remain readable?
 
-**Evidence:** [row 6 headed cue-motion attempt](evidence/h1/row6-pq023-cues/EVIDENCE.md), including
-the original WebM, curated frame sequences, and the deterministic suppression trace. The one Browser
-attempt completed the combat/reduced/dense sections, then failed **HARNESS** before the first Cathedral
-frame because it waited for authored admission before moving the player into admission range.
+**Evidence:** [row 6 cue-motion evidence](evidence/h1/row6-pq023-cues/EVIDENCE.md), including the
+retained original WebM and combat frame sequences, deterministic suppression trace, and the accepted
+Cathedral continuation's motion reel, 12 Browser frames, four Electron frames, complete Browser report,
+and cross-runtime semantic receipt. Functional H1 proves normal/reduced recovery and damage, the
+`ring` / `bracket` caption sequence, terminal cleanup, and Electron parity. Suppressed cues remain
+covered by the deterministic trace: all 18 critical cues emitted and 42 flavor cues were intentionally
+suppressed with an explicit lane-budget reason.
 
-The available combat subset is valid for H2 notes. The Cathedral's normal/reduced damage and recovery
-states, its `ring` / `bracket` live-route captions, final Browser cleanup assertions, and Electron parity
-are **not** evidenced. Suppressed cues remain covered by the committed deterministic trace: all 18
-critical cues emitted and 42 flavor cues were intentionally suppressed with an explicit lane-budget
-reason.
+**Unblocks:** the independent human motion/accessibility verdict. `milestone_accepted` still also
+requires H3 matched performance; neither is implied by H1.
 
-**Unblocks:** no milestone upgrade yet. A future valid Cathedral capture plus Browser completion,
-Electron parity, and the human motion verdict are still required before `milestone_accepted` can bind
-into PQ-025.
-
-**Verdict:** DEFER — review combat subset now; Cathedral motion and Electron parity not captured
+**Verdict:** BLOCKED — named owner `SpaceFace human motion/accessibility reviewer`; no independent
+human reviewer is available in this autonomous recovery run
 
 ---
 

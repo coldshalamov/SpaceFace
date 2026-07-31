@@ -1,8 +1,39 @@
 # H1 row 6 — PQ-023 cues in motion
 
-**Overall result: FAIL — HARNESS (partial combat-motion evidence survives).**
+**Overall result: PASS — retained combat-motion evidence plus accepted Cathedral Browser/Electron continuation.**
 
-The one permitted Browser acceptance attempt was consumed through the registered broker manifest:
+## Accepted Cathedral continuation
+
+Exact unit `PQ-023.cues-h1-capture` consumed fresh Browser claims only after materially changed
+candidates. Candidate `f373e8a7`, Browser claim `40008-bf8ebe348500b65aa41197e6`, and candidate
+digest `3b31ee47da771989ef583301b78169a577ab714b8d2deb1168ce3c1a95e6a82b` completed the registered
+fixed-seed route on real Intel ANGLE/D3D11:
+
+- `87/87` Browser frames, `15/15` motion segments, and three contact sheets;
+- normal and reduced recovery/damage in the live Wreck Cathedral route;
+- cue order `recovery → damage → recovery → damage`;
+- noncolor captions `ring → bracket → ring → bracket` with correct assertive and reduced flags;
+- distinct autocannon `directional-fragments` and flak `proximity-burst` projections;
+- all named route, framing, pool, capacity, and cleanup predicates true;
+- zero Browser page issues.
+
+The first Electron parity attempt exposed a harness-only duplicate navigation: the first window had
+already loaded the canonical root, and a second `goto` cancelled its in-flight scenario fetch. Commit
+`e2bb0165` removed that redundant navigation and pinned the one-load contract. The causal re-review
+then passed on the same production source digest: the four representative Electron states match the
+Browser semantic projection exactly, WebGL uses real Intel ANGLE/D3D11, page issues are empty, and
+the owned runtime/profile closed cleanly.
+
+Review artifacts and machine receipts are in
+[`cathedral-continuation/`](cathedral-continuation/). The latest motion reel is hash-bound as
+`1b43ab0845b53b1b7f244a0dbeddb2db4b404d462b256b50b7389d060b37eb24`; the Browser report is
+`12c6bea31b0e0ae93bfbf0e0b6af6016ea61668f85770c7195ce5159bb1ac77e`; the Electron receipt is
+`c2ca06ad5424ac45163f28fea1e5d4db4b6635634679c9bda02444ddb473f959`.
+
+The original one-attempt failure and its surviving combat evidence remain below unchanged as the
+causal history. The continuation adds only the missing Cathedral/Browser-completion/Electron cells.
+
+The original Browser acceptance attempt was consumed through the registered broker manifest:
 
 ```text
 node scripts/validation-broker-cli.mjs --manifest pq023-corridor-cues
@@ -13,7 +44,7 @@ one Browser launch and zero Electron launches. The Browser exited with a harness
 was not retried. The Electron parity harness correctly remained unlaunched because the Browser cell did
 not produce a passing `report.json`.
 
-## Exact failure and why it is HARNESS
+## Retained original failure and why it is HARNESS
 
 The Browser completed the impact, destruction, reduced-profile, dense-scene, and video sections. It then
 entered Ceres and failed at the first Wreck Cathedral predicate:
@@ -83,7 +114,7 @@ The committed deterministic suppression trace covers cues that intentionally do 
 dense ticks it records `18/18` critical cues emitted, zero critical drops, and `42/60` flavor cues
 suppressed with the explicit reason `lane_budget:audio`.
 
-## Claims left unproven by the stopped attempt
+## Claims left unproven by the stopped attempt, now closed by the continuation
 
 - Wreck Cathedral normal recovery motion and stills;
 - Wreck Cathedral normal damage motion and stills;
@@ -95,10 +126,11 @@ suppressed with the explicit reason `lane_budget:audio`.
 - Electron semantic parity, because Electron is gated on a passing Browser report;
 - full PQ-023 `milestone_accepted` closure.
 
-H2 may review and annotate the surviving combat subset, but the overall PQ-023 motion decision must
-**defer** until a valid future capture reaches the Cathedral sequence and Electron parity.
+The accepted continuation closes every functional item in that list. H2 must now review the retained
+combat subset together with the new Cathedral motion/stills; machine H1 does not substitute for that
+independent motion/accessibility judgment.
 
-## Deterministic preflight and broker boundary
+## Deterministic preflight and broker boundary for the original attempt
 
 All declared fast gates passed before the one-use claim was issued:
 
@@ -127,3 +159,8 @@ harness timeout value are diagnostic metadata; committed copies carrying those f
 - `latest-run-result.json` — owned process record, with process-duration metadata marked contended;
 - `dense-scene-suppression-trace.json` — deterministic cue arbitration trace;
 - `broker-run.log` — exact terminal summary from the one attempt.
+- `cathedral-continuation/continuation.json` — accepted Browser/Electron identity and bounded claims;
+- `cathedral-continuation/browser-report.json` — complete named Browser acceptance predicates;
+- `cathedral-continuation/electron-route-receipt.json` — exact cross-runtime semantic parity and cleanup;
+- `cathedral-continuation/browser-claim*.json`, fast-gate, launch counts, and terminal run record;
+- `cathedral-continuation/browser-motion-reel.webm` plus 12 Browser and four Electron Cathedral frames.

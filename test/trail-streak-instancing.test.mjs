@@ -35,6 +35,22 @@ const {
     attributesByProgram.get(linkedTrailProgram),
     'linked-program evidence must survive a missing transient material.currentProgram pointer',
   );
+
+  const cachedAttributes = {
+    instanceMatrix: { location: 4 },
+    position: { location: 0 },
+    aTrailColor: { location: 8 },
+    aTrailOpacity: { location: 9 },
+  };
+  assert.deepEqual(
+    findLinkedProgramActiveAttributes(
+      fakeGl,
+      [{ program: { id: 'late-empty-handle' }, getAttributes: () => cachedAttributes }],
+      ['instanceMatrix', 'aTrailColor', 'aTrailOpacity'],
+    ),
+    Object.keys(cachedAttributes),
+    'linked-program evidence must prefer Three cached attributes when a later raw query is empty',
+  );
 }
 
 const precompileSalvo = createVfxPrecompileSalvo();
