@@ -260,6 +260,14 @@ test('the continuation lets the real arbiter surface theft before freezing the f
     'the actor must observe the urgent theft truth before freezing its evidence frame');
 });
 
+test('one-voice acceptance allows preempted tutorials but no duplicate heist slot', () => {
+  const source = probe();
+  assert.ok(source.includes('pendingHeistCount'),
+    'one active floor does not imply the real arbiter has no unrelated queued tutorial');
+  assert.doesNotMatch(source, /assert\.equal\(floor\.queue\.pendingCount,\s*0/,
+    'the contract must not reject a valid tutorial re-queued by urgent theft');
+});
+
 test('the H1 probe contains no performance sampler or timing result field', () => {
   const source = probe();
   for (const forbidden of [

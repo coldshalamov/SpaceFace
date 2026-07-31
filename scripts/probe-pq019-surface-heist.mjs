@@ -973,6 +973,7 @@ async function readFloor(page) {
       (row.textContent || '').trim() === text.trim()
     ));
     const arbiter = window.SF.registry.get('voiceArbiter');
+    const pending = arbiter?.queue?.pending || [];
     return {
       count: floors.length,
       text,
@@ -983,7 +984,9 @@ async function readFloor(page) {
       queue: {
         activeId: arbiter?.queue?.active?.id || null,
         activeText: arbiter?.queue?.active?.text || null,
-        pendingCount: arbiter?.queue?.pending?.length || 0,
+        pendingCount: pending.length,
+        pendingIds: pending.map((entry) => entry?.id || null),
+        pendingHeistCount: pending.filter((entry) => entry?.id === voiceId).length,
         size: arbiter?.queue?.size || 0,
       },
     };
@@ -1000,8 +1003,10 @@ function assertComposedFloor(floor) {
   assert.equal(floor.latestSurface?.id, HEIST_VOICE_ID);
   assert.equal(floor.latestSurface?.priority, HEIST_VOICE_PRIORITY);
   assert.equal(floor.queue.activeId, HEIST_VOICE_ID);
-  assert.equal(floor.queue.pendingCount, 0, 'no second voice may wait behind the composed line');
-  assert.equal(floor.queue.size, 1, 'the heist line must occupy one queue slot');
+  assert.equal(floor.queue.pendingHeistCount, 0,
+    'the composed line must occupy one heist slot even when preempted tutorials remain queued');
+  assert.equal(floor.queue.size, floor.queue.pendingCount + 1,
+    'the active heist floor plus the reported pending queue must account for every voice slot');
 }
 
 async function summarizeNamedRoute({ page, fixture, accepted, terminal, floor, declaredRoute }) {
