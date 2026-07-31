@@ -18,6 +18,7 @@ const MANIFEST_LOADERS = {
   'pq017-world-site': () => import('./validation-manifests/pq017-world-site.mjs'),
   'lab-chromium-parity': () => import('./validation-manifests/lab-chromium-parity.mjs'),
   'pq021-ledger-route': () => import('./validation-manifests/pq021-ledger-route.mjs'),
+  'pq019a-capsule-presentation': () => import('./validation-manifests/pq019a-capsule-presentation.mjs'),
   'pq019-surface-heist': () => import('./validation-manifests/pq019-surface-heist.mjs'),
   'pq020-ceres-topology': () => import('./validation-manifests/pq020-ceres-topology.mjs'),
   'pq023-corridor-cues': () => import('./validation-manifests/pq023-corridor-cues.mjs'),
@@ -64,6 +65,7 @@ Manifests:
   pq017-world-site
   lab-chromium-parity
   pq021-ledger-route
+  pq019a-capsule-presentation
   pq019-surface-heist
   pq020-ceres-topology
   pq023-corridor-cues

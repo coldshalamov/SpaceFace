@@ -2506,10 +2506,13 @@
       ],
       "paths": [
         "scripts/capture-pq019a-acceptance.mjs",
+        "scripts/validation-manifests/pq019a-capsule-presentation.mjs",
+        "test/pq019a-capsule-presentation-h1-manifest.test.mjs",
         "design/program/roadmap/evidence/h1/row3-pq019a-presentation/",
         "design/program/roadmap/active/PQ-019.md"
       ],
       "checks": [
+        "node --test test/pq019a-capsule-capture-repair.test.mjs test/pq019a-capsule-presentation-h1-manifest.test.mjs",
         "npm run check:pq019a:facility-embodiment",
         "npm run check:sim:compare"
       ],

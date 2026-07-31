@@ -23,7 +23,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
+import pq019aCapsulePresentationManifest from './validation-manifests/pq019a-capsule-presentation.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT = path.join(ROOT, '.devshots', 'pq019a-acceptance');
@@ -321,6 +323,18 @@ function assertInFrame(receipt, label) {
     Math.abs(receipt.subjectNdc.x) <= NDC_LIMIT && Math.abs(receipt.subjectNdc.y) <= NDC_LIMIT,
     `${label}: subject is out of frame at ndc ${JSON.stringify(receipt.subjectNdc)}`,
   );
+}
+
+const brokerGate = await requireBrokerClaimOrDiagnostic({
+  outputRoot: OUT,
+  manifest: pq019aCapsulePresentationManifest,
+  tokenOrPath: process.env.SF_BROKER_CLAIM,
+  root: ROOT,
+  requiredRuntimeKind: 'browser',
+});
+if (!brokerGate.ok) {
+  console.error(`PQ-019A presentation capture blocked: ${brokerGate.reason}`);
+  process.exit(2);
 }
 
 await mkdir(OUT, { recursive: true });
