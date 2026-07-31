@@ -13,7 +13,7 @@ export function createPq019aCapsulePresentationManifest(overrides = {}) {
     id: 'pq019a-capsule-presentation',
     runtimeKind: 'browser',
     command: process.execPath,
-    commandArgs: ['scripts/capture-pq019a-acceptance.mjs'],
+    commandArgs: ['scripts/capture-pq019a-acceptance.mjs', '--capsule-only'],
     mode: 'acceptance',
     fastGateCommands: [
       'node --test test/pq019a-capsule-capture-repair.test.mjs test/pq019a-capsule-presentation-h1-manifest.test.mjs',

@@ -36,6 +36,7 @@ const CAPTURE_SEED = 0x50513139; // "PQ19"
 const SCHEDULE_ID = 'pq019a-capture-route';
 const ADMISSION_TIMEOUT_MS = Math.max(5_000, Number(process.env.SPACEFACE_ADMISSION_TIMEOUT_MS) || 120_000);
 const MIN_PNG_BYTES = 15_000;
+const CAPSULE_ONLY = process.argv.includes('--capsule-only');
 
 // Matched framings, expressed as a multiple of the SUBJECT's own radius rather than as absolute
 // zoom. A 24 WU facility and a 6 WU capsule then read comparably instead of one overflowing the
@@ -238,7 +239,7 @@ async function trackFrozenSubject(page, targetId, framing) {
     }
 
     const radius = Number(target.radius || 6);
-    const zoom = Math.min(zoomMax, Math.max(45, radius * framing.zoomRadii));
+    const zoom = Math.min(zoomMax, Math.max(24, radius * framing.zoomRadii));
     state.camera.zoom = zoom;
     window.SF.bus.emit('camera:zoom', { level: zoom });
 
@@ -392,25 +393,27 @@ try {
 
   // ── the three facilities, matched close/default/far ────────────────────────────────────────────
   const launcherId = await findEntity(page, 'heist_launcher_visual');
-  for (const facility of FACILITIES) {
-    const subjectId = await findEntity(page, facility.role);
-    // Fly there first, THEN wait for the authored asset to decode.
-    await frameSubject(page, subjectId, FRAMINGS[1]);
-    await waitForAdmission(page, subjectId, { requireAuthored: true });
-    for (const framing of FRAMINGS) {
-      const receipt = await frameSubject(page, subjectId, framing);
-      assert.equal(receipt.presentationAdmission, 'ready', `${facility.id} must be admitted, not pending`);
-      assert.ok(receipt.visibleMeshes > 0, `${facility.id} must present visible geometry at ${framing.name}`);
-      assertInFrame(receipt, `${facility.id}/${framing.name}`);
-      captures.push(await screenshot(page, `${facility.id}-${framing.name}.png`, {
-        subject: facility.id,
-        label: facility.label,
-        framing: framing.name,
-        framingRadii: framing.radii,
-        route: `New Game -> ${SECTOR_ID} -> ${facility.id}`,
-        seed: CAPTURE_SEED,
-        receipt,
-      }));
+  if (!CAPSULE_ONLY) {
+    for (const facility of FACILITIES) {
+      const subjectId = await findEntity(page, facility.role);
+      // Fly there first, THEN wait for the authored asset to decode.
+      await frameSubject(page, subjectId, FRAMINGS[1]);
+      await waitForAdmission(page, subjectId, { requireAuthored: true });
+      for (const framing of FRAMINGS) {
+        const receipt = await frameSubject(page, subjectId, framing);
+        assert.equal(receipt.presentationAdmission, 'ready', `${facility.id} must be admitted, not pending`);
+        assert.ok(receipt.visibleMeshes > 0, `${facility.id} must present visible geometry at ${framing.name}`);
+        assertInFrame(receipt, `${facility.id}/${framing.name}`);
+        captures.push(await screenshot(page, `${facility.id}-${framing.name}.png`, {
+          subject: facility.id,
+          label: facility.label,
+          framing: framing.name,
+          framingRadii: framing.radii,
+          route: `New Game -> ${SECTOR_ID} -> ${facility.id}`,
+          seed: CAPTURE_SEED,
+          receipt,
+        }));
+      }
     }
   }
 
@@ -452,14 +455,16 @@ try {
     { timeout: 45_000, polling: 100 },
   );
   const cuePillText = await page.evaluate(() => document.querySelector('.sf-alert--floor')?.textContent?.trim() || '');
-  captures.push(await screenshot(page, 'launch-cue-tminus.png', {
-    subject: 'launch_schedule_cue',
-    label: 'player-visible T-minus launch cue on the one-voice floor',
-    framing: 'default',
-    route: `New Game -> ${SECTOR_ID} -> heist:requestLaunchSchedule`,
-    seed: CAPTURE_SEED,
-    receipt: { pillText: cuePillText, vantage },
-  }));
+  if (!CAPSULE_ONLY) {
+    captures.push(await screenshot(page, 'launch-cue-tminus.png', {
+      subject: 'launch_schedule_cue',
+      label: 'player-visible T-minus launch cue on the one-voice floor',
+      framing: 'default',
+      route: `New Game -> ${SECTOR_ID} -> heist:requestLaunchSchedule`,
+      seed: CAPTURE_SEED,
+      receipt: { pillText: cuePillText, vantage },
+    }));
+  }
 
   const capsuleId = await findEntity(page, 'cargo_capsule');
 
@@ -559,6 +564,9 @@ try {
       'matched traffic performance', 'Electron parity',
     ],
     note: 'Presentation stills only. This manifest is not performance evidence and records no timings.',
+    captureScope: CAPSULE_ONLY
+      ? 'missing physical-capsule close/default/far continuation only; retained facility/cue evidence not recaptured'
+      : 'full facility, cue, and physical-capsule presentation',
     seed: CAPTURE_SEED,
     declaredSeed: CAPTURE_SEED,
     recordedSeed,

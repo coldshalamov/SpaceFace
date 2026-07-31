@@ -18,7 +18,7 @@ test('the repaired capsule presentation is one candidate-bound Browser cell', ()
   assert.equal(manifest.id, 'pq019a-capsule-presentation');
   assert.equal(manifest.runtimeKind, 'browser');
   assert.equal(manifest.mode, 'acceptance');
-  assert.deepEqual(manifest.commandArgs, ['scripts/capture-pq019a-acceptance.mjs']);
+  assert.deepEqual(manifest.commandArgs, ['scripts/capture-pq019a-acceptance.mjs', '--capsule-only']);
   assert.equal(manifest.requireBrokerClaim, true);
   assert.equal(manifest.maxLaunchesPerCandidate, 1);
   assert.equal(manifest.fixedSeed, PQ019A_CAPSULE_PRESENTATION_FIXED_SEED);
@@ -64,6 +64,17 @@ test('the frozen-subject page context declares every returned player-relative fa
     'the accepted run failed with ReferenceError: player is not defined');
   assert.match(body, /const separation = Math\.hypot\(/,
     'separationFromPlayer must be computed inside the same page.evaluate context');
+  assert.match(body, /Math\.max\(24, radius \* framing\.zoomRadii\)/,
+    'a 45-WU floor collapses the 6-WU capsule close/default views to the same zoom');
+  assert.deepEqual([3, 5.5, 11].map((zoomRadii) => Math.max(24, 6 * zoomRadii)), [24, 33, 66],
+    'the repaired physical-capsule views must be strictly distinct');
+});
+
+test('the continuation skips already-valid facility and cue screenshots', () => {
+  const source = read('scripts/capture-pq019a-acceptance.mjs');
+  assert.match(source, /const CAPSULE_ONLY = process\.argv\.includes\('--capsule-only'\)/);
+  assert.match(source, /if \(!CAPSULE_ONLY\) \{[\s\S]*?for \(const facility of FACILITIES\)/);
+  assert.match(source, /if \(!CAPSULE_ONLY\) \{[\s\S]*?launch-cue-tminus\.png/);
 });
 
 test('the broker CLI registers and lists the capsule presentation cell', () => {
