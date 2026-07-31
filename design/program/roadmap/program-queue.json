@@ -2556,14 +2556,50 @@
       "brief": "Use one fresh broker claim to capture the missing heist/fence, confiscation, destruction, recovery, and final one-voice composition routes without reclassifying the retained DOM-abandon and lawful-observe evidence as new."
     },
     {
-      "id": "PQ-020.ceres-h1-capture",
+      "id": "PQ-020.electron-cold-reload-lifecycle-repair",
       "parentId": "PQ-020",
       "priority": 16,
-      "title": "Continue the repaired Ceres and Cathedral route",
-      "kind": "acceptance_capture",
+      "title": "Repair stale UI registration and issue attribution across the Electron cold reload",
+      "kind": "acceptance_repair",
       "state": "claimed",
       "dependsOn": [
         "PQ-020.route-harness-repair"
+      ],
+      "mutexes": [
+        "ui-lifecycle",
+        "pq020-acceptance-harness"
+      ],
+      "paths": [
+        "src/ui/uiRoot.js",
+        "scripts/lib/browser-issues.mjs",
+        "scripts/lib/pq020CeresFunctionalRoute.mjs",
+        "scripts/probe-pq020-ceres-topology.mjs",
+        "scripts/check-pq020-ceres-topology-electron.mjs",
+        "test/ui-screen-registration-lifecycle.test.mjs",
+        "test/browser-issues.test.mjs",
+        "test/pq020-ceres-topology-manifest.test.mjs",
+        "design/program/NOW.md",
+        "design/program/roadmap/active/PQ-020.md",
+        "design/program/roadmap/receipts/PQ-020-electron-cold-reload-lifecycle-repair-REPORT.md"
+      ],
+      "checks": [
+        "node --test test/ui-screen-registration-lifecycle.test.mjs test/browser-issues.test.mjs test/pq020-ceres-topology-manifest.test.mjs",
+        "node scripts/check-ui-screen-imports.mjs",
+        "npm run check:pq020:proofs"
+      ],
+      "receiptRefs": [],
+      "brief": "Invalidate stale asynchronous screen registrations when uiRoot is destroyed or reinitialized, and classify only reload-window net::ERR_ABORTED requests as expected navigation cancellations while preserving console, page, HTTP, and unrelated request failures. Do not launch Browser or Electron in this repair unit."
+    },
+    {
+      "id": "PQ-020.ceres-h1-capture",
+      "parentId": "PQ-020",
+      "priority": 17,
+      "title": "Continue the repaired Ceres and Cathedral route",
+      "kind": "acceptance_capture",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-020.route-harness-repair",
+        "PQ-020.electron-cold-reload-lifecycle-repair"
       ],
       "mutexes": [
         "browser-gpu",
@@ -2581,12 +2617,13 @@
         "npm run check:pq020:ceres-topology"
       ],
       "receiptRefs": [],
-      "brief": "Spend one fresh Browser claim and one distinct Electron parity attempt to continue beyond the retained valid Helios-to-Ceres jump through all four pockets, Cathedral framing, save/Continue, and the second endpoint direction."
+      "brief": "Spend one fresh Browser claim and one distinct Electron parity attempt to continue beyond the retained valid Helios-to-Ceres jump through all four pockets, Cathedral framing, save/Continue, and the second endpoint direction.",
+      "blocker": "The first Electron parity attempt completed all 21 route frames and matched every normalized Browser gameplay fact, but the intentional cold reload exposed stale uiRoot dynamic registration and misclassified net::ERR_ABORTED navigation cancellations. Exact repair unit PQ-020.electron-cold-reload-lifecycle-repair is claimed; browser-gpu and validation-broker are released until it closes."
     },
     {
       "id": "PQ-023.cues-h1-capture",
       "parentId": "PQ-023",
-      "priority": 17,
+      "priority": 18,
       "title": "Capture the repaired Cathedral cue continuation",
       "kind": "acceptance_capture",
       "state": "ready",
@@ -2614,7 +2651,7 @@
     {
       "id": "PQ-024.survey-h1-capture",
       "parentId": "PQ-024",
-      "priority": 18,
+      "priority": 19,
       "title": "Run the survey-to-relay public route pair",
       "kind": "acceptance_capture",
       "state": "ready",
@@ -2641,7 +2678,7 @@
     {
       "id": "PQ-041.electron-smoke-h1-capture",
       "parentId": "PQ-041",
-      "priority": 19,
+      "priority": 20,
       "title": "Continue the repaired Electron end-to-end smoke",
       "kind": "acceptance_capture",
       "state": "ready",
