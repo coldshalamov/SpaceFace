@@ -91,6 +91,8 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
   }
   assert.doesNotMatch(source, /locator\(['"]button\.st-undock['"]\)/,
     'the PQ-024 default route must not wait on the retired Station Hub Undock control');
+  assert.doesNotMatch(source, /button\[data-act=["']undock["']\][\s\S]{0,160}getByRole\(['"]button['"],\s*\{\s*name:/,
+    'the exact Station App action must not be intersected with its dynamic readiness title');
 
   const orderedMilestones = [
     'openStationMarket(page)',
