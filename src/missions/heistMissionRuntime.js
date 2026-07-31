@@ -72,6 +72,11 @@ export const HEIST_OFFENDER_STABLE_ID = 'player';
 /** One stable voice id for the whole run, so the countdown/pursuit/outcome lines coalesce in place. */
 export const HEIST_VOICE_ID = 'pq019c:capsule-run';
 export const HEIST_VOICE_CHANNEL = 'objective';
+const HEIST_DEFAULT_CUE_TTL_S = 5;
+// The tether latch can legitimately raise the seven-second first-use Massline tutorial at priority
+// 70. Theft truth is priority-60 objective speech, so it needs the tutorial window plus its own
+// five-second reading window or the arbiter will stale-drop witness/WANTED/pursuit before surfacing it.
+const HEIST_THEFT_CUE_TTL_S = 12;
 
 const RECOVERABLE = new Set(PQ019C_RECOVERABLE_OUTCOMES);
 
@@ -201,7 +206,8 @@ export function sayHeistCue(ctx, record, moment, textOverride = null) {
   if (ctx?.state?.mode === 'flight') {
     const say = ctx.helpers?.voice?.say;
     if (typeof say === 'function') {
-      say({ channel: HEIST_VOICE_CHANNEL, id: HEIST_VOICE_ID, text, kind: 'info', ttl: 5 });
+      const ttl = moment.startsWith('theft_') ? HEIST_THEFT_CUE_TTL_S : HEIST_DEFAULT_CUE_TTL_S;
+      say({ channel: HEIST_VOICE_CHANNEL, id: HEIST_VOICE_ID, text, kind: 'info', ttl });
     }
   }
   ctx?.bus?.emit?.('heist:missionCue', receipt);

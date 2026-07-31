@@ -802,7 +802,6 @@ async function latchAndPresentTheft(page) {
     state.render?.cameraCtrl?.snapToPlayer?.();
     sf.bus.emit('tether:latched', { targetId: capsule.id, type: 'tether_massline' });
     arbiter?.update?.(0, state);
-    sf.timeEffects.set(freezeId, { scale: 0 });
     const mission = (state.missions.active || []).find((candidate) => candidate?.heist);
     return {
       capsuleId: capsule.id,
@@ -818,13 +817,51 @@ async function latchAndPresentTheft(page) {
   assert.equal(theft.responderAvailability, 'available');
   assert.ok(theft.leaseCount >= 1, 'a real patrol job lease must be active');
   assert.ok(theft.heat > 0, 'the heat owner must consume the law-signed incident');
-  await page.waitForFunction(({ voiceId, priority }) => {
-    const floor = document.querySelector('#alerts .sf-alert--floor');
-    const text = floor?.querySelector('.sf-alert__text')?.textContent || '';
-    const surfaces = window.__PQ019_H1_TRACE__?.surfaces || [];
-    return floor && /Theft witnessed/i.test(text) && /WANTED/.test(text) && /patrol/i.test(text)
-      && surfaces.some((row) => row.id === voiceId && row.priority === priority && row.text === text);
-  }, { voiceId: HEIST_VOICE_ID, priority: HEIST_VOICE_PRIORITY }, { timeout: 10_000 });
+  try {
+    await page.waitForFunction(({ voiceId, priority }) => {
+      const floor = document.querySelector('#alerts .sf-alert--floor');
+      const text = floor?.querySelector('.sf-alert__text')?.textContent || '';
+      const surfaces = window.__PQ019_H1_TRACE__?.surfaces || [];
+      return floor && /Theft witnessed/i.test(text) && /WANTED/.test(text) && /patrol/i.test(text)
+        && surfaces.some((row) => row.id === voiceId && row.priority === priority && row.text === text);
+    }, { voiceId: HEIST_VOICE_ID, priority: HEIST_VOICE_PRIORITY }, { timeout: 10_000 });
+  } catch (_) {
+    const snapshot = await page.evaluate((voiceId) => {
+      const sf = window.SF;
+      const trace = window.__PQ019_H1_TRACE__ || {};
+      const arbiter = sf.registry.get('voiceArbiter');
+      const mission = (sf.state.missions.active || []).find((candidate) => candidate?.heist);
+      const clone = (value) => {
+        try { return JSON.parse(JSON.stringify(value)); } catch (_) { return null; }
+      };
+      return {
+        mode: sf.state.mode || null,
+        simTime: Number(sf.state.simTime) || 0,
+        tick: sf.state.tick | 0,
+        timeScale: Number(sf.state.timeScale) || 0,
+        heistCues: clone(mission?.heist?.cues || {}),
+        cueReceipts: clone((trace.cues || []).filter((row) => row?.voiceId === voiceId)),
+        traceSurfaces: clone(trace.surfaces || []),
+        traceClears: clone(trace.clears || []),
+        queue: {
+          active: clone(arbiter?.queue?.active || null),
+          pending: clone(arbiter?.queue?.pending || []),
+          size: arbiter?.queue?.size || 0,
+          activeKey: arbiter?._activeKey || null,
+          presentSig: arbiter?._presentSig || null,
+        },
+        floors: [...document.querySelectorAll('#alerts .sf-alert--floor')].map((element) => ({
+          className: element.className,
+          role: element.getAttribute('role'),
+          text: element.querySelector('.sf-alert__text')?.textContent || '',
+        })),
+      };
+    }, HEIST_VOICE_ID);
+    throw new Error(`PQ019_THEFT_PRESENTATION_STALLED ${JSON.stringify(snapshot)}`);
+  }
+  await page.evaluate((freezeId) => {
+    window.SF.timeEffects.set(freezeId, { scale: 0 });
+  }, ACCEPTANCE_SETUP_ID);
   return theft;
 }
 

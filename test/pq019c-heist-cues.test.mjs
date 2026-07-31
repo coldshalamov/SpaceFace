@@ -246,6 +246,32 @@ test('every surfaced heist line carries one stable id on the objective channel',
   }
 });
 
+test('the theft truth waits out the first-use Massline tutorial instead of going stale', () => {
+  const t = boot();
+  t.accept();
+  assert.ok(t.stepToLaunch());
+  t.arbiter.newGame();
+  t.bus.emit('voice:say', {
+    channel: 'tutorial',
+    id: 'tutorial:hint:masslineThrow',
+    text: 'Hold RIGHT MOUSE; release waits for the white diamond.',
+    ttl: 7,
+  });
+  t.arbiter.update(0, t.state);
+  const latchedAtSimTime = t.state.simTime;
+  t.latch();
+  t.arbiter.update(0, t.state);
+
+  assert.equal(t.arbiter.queue.active?.id, 'tutorial:hint:masslineThrow');
+  assert.equal(t.arbiter.queue.pending.some((entry) => entry.id === HEIST_VOICE_ID), true);
+
+  t.state.simTime = latchedAtSimTime + 7.01;
+  t.arbiter.update(0, t.state);
+  assert.equal(t.arbiter.queue.active?.id, HEIST_VOICE_ID,
+    'the composed witness/WANTED/pursuit truth must surface after the tutorial floor expires');
+  assert.equal(t.arbiter.queue.active?.text, HEIST_CUE_TEXT.theft_witnessed_pursuit);
+});
+
 test('each cue moment fires at most once, no matter how long the run is driven', () => {
   const t = boot();
   flyFullHeist(t);

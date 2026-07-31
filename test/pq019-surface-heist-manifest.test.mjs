@@ -236,6 +236,30 @@ test('the fresh H1 claim executes only the four missing route contexts', () => {
   assert.match(source, /retainedEvidenceReferences:[\s\S]*?row4-pq019-surface-heist/);
 });
 
+test('a theft-floor timeout identifies the failed owner-to-presenter boundary', () => {
+  const source = probe();
+  assert.ok(source.includes('PQ019_THEFT_PRESENTATION_STALLED'),
+    'a generic Playwright timeout cannot distinguish cue, arbiter, or DOM failure');
+  for (const required of [
+    'heistCues:',
+    'traceSurfaces:',
+    'traceClears:',
+    'queue:',
+    'floors:',
+  ]) assert.ok(source.includes(required), `the timeout snapshot is missing ${required}`);
+});
+
+test('the continuation lets the real arbiter surface theft before freezing the frame', () => {
+  const source = probe();
+  const start = source.indexOf('async function latchAndPresentTheft(page)');
+  const end = source.indexOf('async function emitFacilityContact(page', start);
+  const latch = source.slice(start, end);
+  const wait = latch.indexOf('await page.waitForFunction');
+  const freeze = latch.indexOf('window.SF.timeEffects.set(freezeId, { scale: 0 })');
+  assert.ok(wait >= 0 && freeze > wait,
+    'freezing on the latch tick strands the priority-60 theft truth behind the seven-second tutorial');
+});
+
 test('the H1 probe contains no performance sampler or timing result field', () => {
   const source = probe();
   for (const forbidden of [
