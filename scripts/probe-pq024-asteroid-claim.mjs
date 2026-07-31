@@ -277,6 +277,7 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
     phase = 'dock-helios';
     await dockAtHelios(page);
     phase = 'market-materials';
+    await openStationMarket(page);
     const cargo = await buyConstructionCargo(page);
     await screenshot('01-market-materials.png');
     await publicUndock(page);
@@ -489,6 +490,13 @@ async function buyConstructionCargo(page) {
     result.push({ ...item, before, after });
   }
   return result;
+}
+
+async function openStationMarket(page) {
+  const market = page.getByRole('tab', { name: 'Market', exact: true });
+  await market.waitFor({ state: 'visible' });
+  await market.click();
+  await waitVisible(page, '[data-screen="station"] .sx-mkt', 'station Market');
 }
 
 async function readCargo(page, commodityId) {

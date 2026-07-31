@@ -70,6 +70,7 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
   for (const publicSeam of [
     "page.keyboard.type('Helios Station')",
     '.sf-alert--dock',
+    "getByRole('tab', { name: 'Market', exact: true })",
     '[data-market-search]',
     '[data-cmdty="${item.commodityId}"]',
     '.sx-qty__in',
@@ -90,6 +91,7 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
   }
 
   const orderedMilestones = [
+    'openStationMarket(page)',
     'buyConstructionCargo(page)',
     'selectAsteroidOnLocalMap(page)',
     'pulseSurveyReveal(page)',
