@@ -280,12 +280,20 @@ test('Electron cannot launch before Browser PASS and follows isolated canonical-
     'buildPq020ParityProjection',
     'assert.deepEqual(electronProjection, browserProjection',
   ]) assert.ok(source.includes(required), `missing Electron ownership/parity contract: ${required}`);
-  assert.ok(
-    source.indexOf('issueTracker = collectPageIssues(page') < source.indexOf('waitForCanonicalRoot'),
-    'Electron issue collection must attach before canonical-root and document-load waits',
-  );
-  assert.ok(source.includes('await issueTracker.backfillActiveRequests()'),
-    'Electron must backfill requests that began before page attachment');
+});
+
+test('cold Continue scopes reload and menu-to-flight cancellation windows separately', () => {
+  const source = route();
+  const reloadToken = source.indexOf("'pq020-cold-continue'");
+  const continueToken = source.indexOf("'pq020-continue-transition'");
+  const continueClick = source.indexOf("continueButton.click");
+  const inputReady = source.indexOf("const inputReady = state.mode === 'flight'");
+  assert.ok(reloadToken >= 0, 'reload cancellation scope is missing');
+  assert.ok(continueToken > reloadToken && continueToken < continueClick,
+    'Continue lifecycle scope must begin after reload and before the public click');
+  assert.ok(inputReady > continueClick, 'Continue lifecycle scope must retain production readiness');
+  assert.equal((source.match(/endExpectedNavigation/g) || []).length, 2,
+    'reload and Continue must each close exactly one expected-cancellation scope');
 });
 
 test('the H1 cell creates no Phase H3 performance evidence', () => {

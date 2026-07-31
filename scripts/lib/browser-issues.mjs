@@ -5,8 +5,6 @@ export function collectPageIssues(page, options = {}) {
   const ignoredIssues = [];
   const activeRequests = new Set();
   const expectedNavigationAborts = new Map();
-  const expectedNavigationAbortsByKey = new Map();
-  const expectedNavigationAbortsByRoute = new Map();
   const expectedNavigationTokens = new Map();
   let nextExpectedNavigationToken = 1;
 
@@ -16,17 +14,11 @@ export function collectPageIssues(page, options = {}) {
       const labels = expectedNavigationAborts.get(request) || new Set();
       for (const label of expectedNavigationTokens.values()) labels.add(label);
       expectedNavigationAborts.set(request, labels);
-      expectedNavigationAbortsByKey.set(requestIdentityKey(request), labels);
-      expectedNavigationAbortsByRoute.set(requestRouteKey(request), labels);
-    } else if (expectedNavigationAbortsByRoute.has(requestRouteKey(request))) {
-      expectedNavigationAbortsByRoute.delete(requestRouteKey(request));
     }
   });
   page.on('requestfinished', (request) => {
     activeRequests.delete(request);
     expectedNavigationAborts.delete(request);
-    expectedNavigationAbortsByKey.delete(requestIdentityKey(request));
-    expectedNavigationAbortsByRoute.delete(requestRouteKey(request));
   });
   page.on('console', (msg) => {
     const issue = { type: msg.type(), text: msg.text() };
@@ -45,16 +37,9 @@ export function collectPageIssues(page, options = {}) {
   });
   page.on('requestfailed', (request) => {
     const failure = request.failure();
-    const requestKey = requestIdentityKey(request);
-    const routeKey = requestRouteKey(request);
-    const expectedByObject = expectedNavigationAborts.get(request);
-    const expectedByKey = expectedNavigationAbortsByKey.get(requestKey);
-    const expectedNavigation = expectedByObject || expectedByKey
-      || expectedNavigationAbortsByRoute.get(routeKey);
+    const expectedNavigation = expectedNavigationAborts.get(request);
     activeRequests.delete(request);
     expectedNavigationAborts.delete(request);
-    expectedNavigationAbortsByKey.delete(requestKey);
-    expectedNavigationAbortsByRoute.delete(routeKey);
     const issue = {
       type: 'error',
       text: `Request failed ${request.url()}${failure && failure.errorText ? `: ${failure.errorText}` : ''}`,
@@ -63,9 +48,6 @@ export function collectPageIssues(page, options = {}) {
       ignoredIssues.push({
         ...issue,
         expectedNavigation: [...expectedNavigation],
-        expectedNavigationAttribution: expectedByObject
-          ? 'request-object'
-          : expectedByKey ? 'request-key' : 'request-route',
       });
       return;
     }
@@ -84,25 +66,6 @@ export function collectPageIssues(page, options = {}) {
     warningIssues() {
       return issues.filter((issue) => issue.type === 'warning');
     },
-    async backfillActiveRequests() {
-      if (typeof page.requests !== 'function') {
-        return { supported: false, observed: 0, active: activeRequests.size };
-      }
-      const requests = await page.requests();
-      const observed = Array.isArray(requests) ? requests : [];
-      for (const request of observed) {
-        if (!request) continue;
-        activeRequests.add(request);
-        const failure = typeof request.failure === 'function' ? request.failure() : null;
-        if (failure) {
-          activeRequests.delete(request);
-          expectedNavigationAborts.delete(request);
-          expectedNavigationAbortsByKey.delete(requestIdentityKey(request));
-          expectedNavigationAbortsByRoute.delete(requestRouteKey(request));
-        }
-      }
-      return { supported: true, observed: observed.length, active: activeRequests.size };
-    },
     beginExpectedNavigation(label = 'expected-navigation') {
       const token = nextExpectedNavigationToken++;
       const normalizedLabel = String(label);
@@ -111,8 +74,6 @@ export function collectPageIssues(page, options = {}) {
         const labels = expectedNavigationAborts.get(request) || new Set();
         labels.add(normalizedLabel);
         expectedNavigationAborts.set(request, labels);
-        expectedNavigationAbortsByKey.set(requestIdentityKey(request), labels);
-        expectedNavigationAbortsByRoute.set(requestRouteKey(request), labels);
       }
       return token;
     },
@@ -120,39 +81,6 @@ export function collectPageIssues(page, options = {}) {
       return expectedNavigationTokens.delete(token);
     },
   };
-}
-
-export function requestIdentityKey(request) {
-  const read = (name, fallback) => {
-    try {
-      return typeof request?.[name] === 'function' ? request[name]() : fallback;
-    } catch (_) {
-      return fallback;
-    }
-  };
-  const timing = read('timing', null);
-  const startTime = Number(timing?.startTime);
-  return JSON.stringify([
-    String(read('method', 'GET') || 'GET'),
-    String(read('resourceType', 'unknown') || 'unknown'),
-    String(read('url', '') || ''),
-    Number.isFinite(startTime) ? startTime : null,
-  ]);
-}
-
-export function requestRouteKey(request) {
-  const read = (name, fallback) => {
-    try {
-      return typeof request?.[name] === 'function' ? request[name]() : fallback;
-    } catch (_) {
-      return fallback;
-    }
-  };
-  return JSON.stringify([
-    String(read('method', 'GET') || 'GET'),
-    String(read('resourceType', 'unknown') || 'unknown'),
-    String(read('url', '') || ''),
-  ]);
 }
 
 export function isNavigationCancelledRequest(failure) {

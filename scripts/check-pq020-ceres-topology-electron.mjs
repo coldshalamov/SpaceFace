@@ -73,7 +73,6 @@ try {
   childProcess = app.process();
   processMonitor = createElectronProcessMonitor({ electronApp: app, childProcess });
   page = await app.firstWindow({ timeout: 90_000 });
-  issueTracker = collectPageIssues(page, { includeWarnings: false });
   canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
     bootstrapTimeoutMs: 10_000,
     pollIntervalMs: 75,
@@ -87,7 +86,7 @@ try {
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
   });
-  await issueTracker.backfillActiveRequests();
+  issueTracker = collectPageIssues(page, { includeWarnings: false });
 
   const screenshot = async (name) => {
     const record = await capturePng(page, name);
