@@ -188,6 +188,14 @@ test('Cathedral framing reacquires the durable root after admission replaces its
   assert.ok(Math.abs(pose.z + 731.2) < 1e-9);
   assert.equal(pose.zoom, 1040);
   assert.equal(pose.radius, 400);
+
+  const source = capture();
+  const start = source.indexOf('async function framePq023Cathedral');
+  const end = source.indexOf('async function capturePq023WorldSiteFrames', start);
+  const body = source.slice(start, end);
+  assert.ok(body.includes('return targetPage.evaluate(async () =>'));
+  assert.doesNotMatch(body, /},\s*targetId\);/,
+    'post-admission framing must not retain the discarded pre-admission runtime id argument');
 });
 
 test('the Browser cell rejects software rendering and makes no H1 performance claim', () => {

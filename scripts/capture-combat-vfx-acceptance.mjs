@@ -1379,14 +1379,14 @@ async function framePq023Cathedral(targetPage) {
     }
     await settle(650);
     return {
-        targetId: target.id,
+      targetId: target.id,
       targetPos: { x: target.pos.x, z: target.pos.z },
       playerPos: { x: player.pos.x, z: player.pos.z },
       subjectNdc: ndc,
       cameraZoom: state.camera.zoom,
       camera: 'normal gameplay chase camera',
     };
-  }, targetId);
+  });
 }
 
 async function capturePq023WorldSiteFrames(targetPage, { key, expectedStatus, reduced }) {
