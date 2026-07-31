@@ -10,7 +10,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import manifest, {
+  classifyPq019CapsuleWaitSnapshot,
   createPq019SurfaceHeistManifest,
+  PQ019_CAPSULE_LAUNCH_GRACE_S,
   PQ019_SURFACE_HEIST_FIXED_SEED,
 } from '../scripts/validation-manifests/pq019-surface-heist.mjs';
 
@@ -80,6 +82,70 @@ test('the deterministic mission, seam, facility, and sim gates run before claim 
     'npm run check:pq019a:facility-embodiment',
     'npm run check:sim:compare',
   ]);
+});
+
+test('capsule readiness is decided by simulation progress and terminal state, never wall time', () => {
+  const oldWallTimeoutFingerprint = {
+    startedAtSimT: 100,
+    simTime: 102,
+    tick: 6_120,
+    timeScale: 0.1,
+    mode: 'flight',
+    schedule: { scheduleId: 'heist:mission-1', status: 'scheduled', launchAtSimT: 104 },
+    mission: {
+      found: true,
+      status: 'active',
+      heist: {
+        scheduleId: 'heist:mission-1',
+        scheduleRequested: true,
+        launchAtSimT: 104,
+        launchTick: null,
+        capsuleEntityId: null,
+        capsuleSeen: false,
+        settled: false,
+        settledOutcome: null,
+        terminalReceipt: null,
+      },
+    },
+    capsule: null,
+  };
+
+  assert.deepEqual(classifyPq019CapsuleWaitSnapshot(oldWallTimeoutFingerprint), {
+    status: 'pending',
+    reason: 'launch_not_due',
+    simElapsedS: 2,
+    launchLagS: -2,
+  }, 'twenty wall seconds at 0.1x is not a missing capsule when only two sim seconds elapsed');
+
+  const scheduleNotYetObserved = structuredClone(oldWallTimeoutFingerprint);
+  scheduleNotYetObserved.schedule = null;
+  scheduleNotYetObserved.mission.heist.launchAtSimT = null;
+  assert.equal(
+    classifyPq019CapsuleWaitSnapshot(scheduleNotYetObserved).reason,
+    'launch_schedule_unobserved',
+    'a null launch timestamp must not be coerced into simulation time zero',
+  );
+
+  const afterLaunchGrace = {
+    ...oldWallTimeoutFingerprint,
+    simTime: 104 + PQ019_CAPSULE_LAUNCH_GRACE_S,
+    tick: 6_300,
+  };
+  assert.equal(classifyPq019CapsuleWaitSnapshot(afterLaunchGrace).status, 'launch_missed');
+
+  const terminalRace = structuredClone(oldWallTimeoutFingerprint);
+  terminalRace.mission.heist.terminalReceipt = {
+    receiptId: 'heist-terminal-1',
+    outcome: 'unresolved_absent',
+  };
+  assert.equal(classifyPq019CapsuleWaitSnapshot(terminalRace).status, 'terminal_race');
+
+  const liveCapsule = {
+    ...oldWallTimeoutFingerprint,
+    simTime: 104,
+    capsule: { id: 77, role: 'cargo_capsule', hull: 160 },
+  };
+  assert.equal(classifyPq019CapsuleWaitSnapshot(liveCapsule).status, 'ready');
 });
 
 test('the broker CLI registers and lists pq019-surface-heist', () => {

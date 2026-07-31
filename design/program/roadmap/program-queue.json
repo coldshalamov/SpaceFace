@@ -2173,7 +2173,7 @@
       "priority": 2,
       "title": "Repair the PQ-019A moving-capsule framing and seed-control harness",
       "kind": "acceptance_repair",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-019.headless-implementation"
       ],
@@ -2198,7 +2198,7 @@
       "priority": 3,
       "title": "Repair the PQ-019C surface-heist simulation-time wait",
       "kind": "acceptance_repair",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-019.headless-implementation"
       ],
@@ -2215,7 +2215,9 @@
         "npm run check:pq019b:seams",
         "npm run check:pq019a:facility-embodiment"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-019-route-harness-repair-REPORT.md"
+      ],
       "brief": "Replace the uninstrumented 20-second wall-clock capsule wait with simulation-progress and terminal-race evidence, capture the failure-state facts named by H1, and pin the unchanged fingerprint as a seconds-scale regression. Do not run the broker in this repair unit."
     },
     {
@@ -2224,7 +2226,7 @@
       "priority": 4,
       "title": "Remove the unsupported Ceres endpoint-distance assertion",
       "kind": "acceptance_repair",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-020.headless-implementation"
       ],
@@ -2278,7 +2280,7 @@
       "priority": 6,
       "title": "Repair the Electron Main Menu visibility false negative",
       "kind": "acceptance_repair",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-041.focused-implementation"
       ],

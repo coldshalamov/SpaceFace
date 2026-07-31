@@ -25,6 +25,7 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 import manifest, {
+  classifyPq019CapsuleWaitSnapshot,
   createPq019SurfaceHeistManifest,
   PQ019_SURFACE_HEIST_FIXED_SEED,
 } from './validation-manifests/pq019-surface-heist.mjs';
@@ -208,7 +209,7 @@ try {
       screenshot,
       boardShot: 'lawful-observe-board.png',
     });
-    await waitForCapsule(page);
+    await waitForCapsule(page, accepted.mission.id);
     await clearVoiceAndStage(page, 'lawful_catcher_visual');
     await emitFacilityContact(page, 'lawful_catcher');
     const terminal = await waitForOutcome(page, accepted.mission.id, 'lawful_arrival_observed');
@@ -222,7 +223,7 @@ try {
   const fenced = await runScenario('heist-plus-fence', {}, async ({ page, screenshot }) => {
     const fixture = await prepareFixture(page, { recoveryEnabled: false });
     const accepted = await acceptOfferThroughStationDom(page, fixture.offer.id);
-    await waitForCapsule(page);
+    await waitForCapsule(page, accepted.mission.id);
     const theft = await latchAndPresentTheft(page);
     const composedFloor = await readFloor(page);
     assertComposedFloor(composedFloor);
@@ -243,7 +244,7 @@ try {
   const confiscated = await runScenario('confiscation', {}, async ({ page, screenshot }) => {
     const fixture = await prepareFixture(page, { recoveryEnabled: false });
     const accepted = await acceptOfferThroughStationDom(page, fixture.offer.id);
-    await waitForCapsule(page);
+    await waitForCapsule(page, accepted.mission.id);
     const theft = await latchAndPresentTheft(page);
     assertComposedFloor(await readFloor(page));
     await unfreeze(page);
@@ -261,7 +262,7 @@ try {
   const destroyed = await runScenario('destruction', {}, async ({ page, screenshot }) => {
     const fixture = await prepareFixture(page, { recoveryEnabled: false });
     const accepted = await acceptOfferThroughStationDom(page, fixture.offer.id);
-    await waitForCapsule(page);
+    await waitForCapsule(page, accepted.mission.id);
     const theft = await latchAndPresentTheft(page);
     assertComposedFloor(await readFloor(page));
     await unfreeze(page);
@@ -281,7 +282,7 @@ try {
   const recovery = await runScenario('reduced-stake-recovery', { reducedMotion: true }, async ({ page, screenshot }) => {
     const fixture = await prepareFixture(page, { recoveryEnabled: true });
     const accepted = await acceptOfferThroughStationDom(page, fixture.offer.id);
-    await waitForCapsule(page);
+    await waitForCapsule(page, accepted.mission.id);
     const firstTheft = await latchAndPresentTheft(page);
     assertComposedFloor(await readFloor(page));
     await unfreeze(page);
@@ -310,7 +311,7 @@ try {
       screenshot,
       boardShot: 'recovery-offer-reduced-motion.png',
     });
-    await waitForCapsule(page);
+    await waitForCapsule(page, retryAccepted.mission.id);
     const retryTheft = await latchAndPresentTheft(page);
     assertComposedFloor(await readFloor(page));
     await unfreeze(page);
@@ -464,6 +465,7 @@ async function installObservers(page) {
     };
     const trace = window.__PQ019_H1_TRACE__ = {
       cues: [], surfaces: [], clears: [], settlements: [], grants: [], accepts: [], vfxCues: [],
+      capsuleWaits: [],
     };
     const bus = window.SF.bus;
     bus.on('heist:missionCue', (payload) => trace.cues.push(clone(payload)));
@@ -629,15 +631,79 @@ async function acceptOfferThroughStationDom(page, offerId, { screenshot = null, 
   };
 }
 
-async function waitForCapsule(page) {
-  return page.waitForFunction(() => {
-    const state = window.SF.state;
-    const id = state.heistFacilities?.capsuleEntityId;
-    const capsule = id == null ? null : state.entities.get(id);
-    return capsule?.alive !== false && capsule?.data?.heistFacilityRole === 'cargo_capsule'
-      ? { id: capsule.id, role: capsule.data.heistFacilityRole, hull: capsule.hull }
-      : null;
-  }, null, { timeout: 20_000 }).then((handle) => handle.jsonValue());
+async function waitForCapsule(page, missionId) {
+  const startedAtSimT = await page.evaluate(() => Number(window.SF.state.simTime) || 0);
+  const protectiveWallDeadline = Date.now() + 45_000;
+  let latestSnapshot = null;
+
+  while (Date.now() < protectiveWallDeadline) {
+    const snapshot = await page.evaluate(({ id, started }) => {
+      const sf = window.SF;
+      const state = sf.state;
+      const mission = window.__PQ019_H1_MISSIONS__?.[id]
+        || (state.missions.active || []).find((candidate) => candidate?.id === id)
+        || null;
+      const heist = mission?.heist || null;
+      const owned = state.heistFacilities || {};
+      const capsuleId = owned.capsuleEntityId ?? heist?.capsuleEntityId ?? null;
+      const capsule = capsuleId == null ? null : state.entities.get(capsuleId);
+      const schedule = owned.schedule || null;
+      return {
+        missionId: id,
+        startedAtSimT: started,
+        simTime: Number(state.simTime) || 0,
+        tick: state.tick | 0,
+        timeScale: Number(state.timeScale) || 0,
+        mode: state.mode || null,
+        schedule: schedule ? {
+          scheduleId: schedule.scheduleId || null,
+          status: schedule.status || null,
+          launchAtSimT: Number.isFinite(schedule.launchAtSimT) ? schedule.launchAtSimT : null,
+          launchedAtTick: Number.isInteger(schedule.launchedAtTick) ? schedule.launchedAtTick : null,
+          capsuleEntityId: schedule.capsuleEntityId ?? null,
+          receipt: schedule.receipt || null,
+        } : null,
+        mission: {
+          found: !!mission,
+          status: mission?.status || null,
+          heist: heist ? {
+            scheduleId: heist.scheduleId || null,
+            scheduleRequested: !!heist.scheduleRequested,
+            launchAtSimT: Number.isFinite(heist.launchAtSimT) ? heist.launchAtSimT : null,
+            launchTick: Number.isInteger(heist.launchTick) ? heist.launchTick : null,
+            capsuleEntityId: heist.capsuleEntityId ?? null,
+            capsuleSeen: !!heist.capsuleSeen,
+            settled: !!heist.settled,
+            settledOutcome: heist.settledOutcome || null,
+            terminalReceipt: heist.arbiter?.receipt || null,
+          } : null,
+        },
+        capsule: capsule?.alive !== false && capsule?.data?.heistFacilityRole === 'cargo_capsule'
+          ? { id: capsule.id, role: capsule.data.heistFacilityRole, hull: capsule.hull }
+          : null,
+      };
+    }, { id: missionId, started: startedAtSimT });
+    latestSnapshot = snapshot;
+    const verdict = classifyPq019CapsuleWaitSnapshot(snapshot);
+    if (verdict.status === 'ready') {
+      const evidence = { missionId, verdict, snapshot };
+      await page.evaluate((row) => window.__PQ019_H1_TRACE__?.capsuleWaits?.push(row), evidence);
+      return { ...snapshot.capsule, waitEvidence: evidence };
+    }
+    if (verdict.status === 'terminal_race' || verdict.status === 'launch_missed') {
+      throw new Error(`PQ019_CAPSULE_WAIT_${verdict.status.toUpperCase()} ${JSON.stringify({
+        verdict,
+        snapshot,
+      })}`);
+    }
+    await page.waitForTimeout(50);
+  }
+
+  throw new Error(`PQ019_CAPSULE_WAIT_HARNESS_STALLED ${JSON.stringify({
+    reason: 'protective_wall_deadline_without_simulation_verdict',
+    verdict: classifyPq019CapsuleWaitSnapshot(latestSnapshot || { startedAtSimT }),
+    snapshot: latestSnapshot,
+  })}`);
 }
 
 async function clearVoiceAndStage(page, role) {

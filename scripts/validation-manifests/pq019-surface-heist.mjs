@@ -21,6 +21,56 @@ import path from 'node:path';
 /** Deterministic seed for the acceptance cell (not wall-clock). Matches the headless suites. */
 export const PQ019_SURFACE_HEIST_FIXED_SEED = 19019;
 
+/** One simulation second after the scheduled launch is enough to observe the facility owner's spawn. */
+export const PQ019_CAPSULE_LAUNCH_GRACE_S = 1;
+
+const finiteOrNull = (value) => (
+  value === null || value === undefined || value === ''
+    ? null
+    : (Number.isFinite(Number(value)) ? Number(value) : null)
+);
+const stableSeconds = (value) => Math.round(value * 1_000) / 1_000;
+
+/**
+ * Classify one immutable capsule-wait observation.
+ *
+ * Wall time is deliberately absent. Slow motion, a paused simulation, and a delayed render frame
+ * cannot prove that a scheduled launch was missed. Only the simulation clock, the facility
+ * schedule, the live capsule, and the mission's terminal receipt can make that decision.
+ */
+export function classifyPq019CapsuleWaitSnapshot(snapshot = {}) {
+  const startedAtSimT = finiteOrNull(snapshot.startedAtSimT);
+  const simTime = finiteOrNull(snapshot.simTime);
+  const heist = snapshot.mission?.heist || {};
+  const launchAtSimT = finiteOrNull(heist.launchAtSimT ?? snapshot.schedule?.launchAtSimT);
+  const simElapsedS = startedAtSimT == null || simTime == null
+    ? null : stableSeconds(Math.max(0, simTime - startedAtSimT));
+  const launchLagS = launchAtSimT == null || simTime == null
+    ? null : stableSeconds(simTime - launchAtSimT);
+
+  if (heist.terminalReceipt || heist.settled || heist.settledOutcome
+    || (snapshot.mission?.found === false && startedAtSimT != null)) {
+    return {
+      status: 'terminal_race',
+      reason: heist.terminalReceipt?.outcome || heist.settledOutcome || 'mission_missing',
+      simElapsedS,
+      launchLagS,
+    };
+  }
+  if (snapshot.capsule?.role === 'cargo_capsule') {
+    return { status: 'ready', reason: 'live_capsule', simElapsedS, launchLagS };
+  }
+  if (launchLagS != null && launchLagS >= PQ019_CAPSULE_LAUNCH_GRACE_S) {
+    return { status: 'launch_missed', reason: 'capsule_absent_after_launch_grace', simElapsedS, launchLagS };
+  }
+  return {
+    status: 'pending',
+    reason: launchLagS == null ? 'launch_schedule_unobserved' : 'launch_not_due',
+    simElapsedS,
+    launchLagS,
+  };
+}
+
 export function createPq019SurfaceHeistManifest(overrides = {}) {
   return {
     id: 'pq019-surface-heist',
