@@ -559,7 +559,7 @@ async function selectAsteroidOnLocalMap(page, options = {}) {
   await page.mouse.click(box.x + target.sx, box.y + target.sy);
   await page.waitForFunction((id) => {
     const selected = window.SF?.ctx?.screenManager?.getActiveScreenDef?.()?._selectedTarget;
-    return (selected?.entityId ?? selected?.targetEntityId) === id;
+    return String(selected?.entityId ?? selected?.targetEntityId) === String(id);
   }, target.targetEntityId, { timeout: 10_000 });
   const course = page.locator('#gm-set-course-btn');
   await course.waitFor({ state: 'visible' });

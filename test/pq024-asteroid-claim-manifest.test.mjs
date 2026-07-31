@@ -100,8 +100,8 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     source,
     /#sf-localmap|_lastClickTargets|def\?\.id\s*===\s*['"]localmap['"]/,
     'the PQ-024 player route must not reopen the compatibility local-map implementation');
-  assert.match(source, /selected\?\.entityId \?\? selected\?\.targetEntityId/,
-    'same-site reentry must accept the active waypoint overlay when it names the exact asteroid');
+  assert.match(source, /String\(selected\?\.entityId \?\? selected\?\.targetEntityId\) === String\(id\)/,
+    'same-site reentry must accept the exact active waypoint across restored id representation');
 
   const orderedMilestones = [
     'openStationMarket(page)',
