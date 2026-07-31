@@ -44,6 +44,7 @@ const HEIST_SECTOR_ID = 'sector_tethys_junction';
 const HEIST_VOICE_ID = 'pq019c:capsule-run';
 const HEIST_VOICE_PRIORITY = 80;
 const ACCEPTANCE_SETUP_ID = 'h1:pq019-surface-heist';
+const ACCEPTANCE_PATROL_PHASE_S = 120;
 
 if (!DIAGNOSTIC && !CONTINUATION_ONLY) {
   console.error('[pq019-surface-heist] CONTINUATION_ONLY_REQUIRED: retained DOM-abandon and lawful-observe evidence must not be rerun');
@@ -537,7 +538,7 @@ async function installObservers(page) {
 }
 
 async function prepareFixture(page, { recoveryEnabled }) {
-  return page.evaluate(async ({ sectorId, stationId, type, recovery }) => {
+  return page.evaluate(async ({ sectorId, stationId, type, recovery, patrolPhaseS }) => {
     const sf = window.SF;
     const state = sf.state;
     const world = sf.registry.get('world');
@@ -588,8 +589,14 @@ async function prepareFixture(page, { recoveryEnabled }) {
         { id: 'h1-b1', pos: { x: launcher.pos.x, z: launcher.pos.z + 200 } },
       ],
       sectorId,
-      speed: 100, commissionS: 1, departS: 1, approachS: 1,
-      workS: 2, loadS: 1, unloadS: 1, dwellS: 1,
+      speed: 100,
+      commissionS: patrolPhaseS,
+      departS: patrolPhaseS,
+      approachS: patrolPhaseS,
+      workS: patrolPhaseS,
+      loadS: patrolPhaseS,
+      unloadS: patrolPhaseS,
+      dwellS: patrolPhaseS,
     });
     if (!job) throw new Error('npcJobsRuntime refused the lawful patrol fixture');
 
@@ -625,6 +632,7 @@ async function prepareFixture(page, { recoveryEnabled }) {
     stationId: HEIST_STATION_ID,
     type: HEIST_TYPE,
     recovery: recoveryEnabled,
+    patrolPhaseS: ACCEPTANCE_PATROL_PHASE_S,
   });
 }
 
@@ -810,12 +818,23 @@ async function latchAndPresentTheft(page) {
       responderAvailability: mission?.heist?.responderAvailability || null,
       leaseCount: mission?.heist?.leases?.length || 0,
       heat: state.player.heat,
+      patrolJobs: Object.entries(state.npcJobs?.byId || {})
+        .filter(([, entry]) => entry?.kind === 'patrol')
+        .map(([jobId, entry]) => ({
+          jobId,
+          entityId: entry.entityId ?? null,
+          phase: entry.job?.phase || null,
+          controlled: !!entry.control,
+          controlClaimId: entry.control?.claimId || null,
+        })),
     };
   }, ACCEPTANCE_SETUP_ID);
   assert.equal(theft.possessed, true, 'tether:latched must transfer heist ownership');
   assert.ok(theft.lawIncidentReceiptId, 'the live law owner must sign the witnessed theft');
   assert.equal(theft.responderAvailability, 'available');
-  assert.ok(theft.leaseCount >= 1, 'a real patrol job lease must be active');
+  if (!(theft.leaseCount >= 1)) {
+    throw new Error(`PQ019_PATROL_LEASE_MISSING ${JSON.stringify(theft)}`);
+  }
   assert.ok(theft.heat > 0, 'the heat owner must consume the law-signed incident');
   try {
     await page.waitForFunction(({ voiceId, priority }) => {

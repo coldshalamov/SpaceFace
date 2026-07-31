@@ -274,6 +274,20 @@ test('one-voice acceptance allows preempted tutorials but no duplicate heist slo
     'the contract must not reject a valid tutorial re-queued by urgent theft');
 });
 
+test('the live patrol fixture outlives both reduced-stake attempts', () => {
+  const source = probe();
+  assert.match(source, /const ACCEPTANCE_PATROL_PHASE_S = 120/);
+  assert.ok(source.includes('patrolPhaseS: ACCEPTANCE_PATROL_PHASE_S'),
+    'the Node-side duration must be passed explicitly into the page context');
+  for (const phase of ['commissionS', 'departS', 'approachS', 'workS', 'loadS', 'unloadS', 'dwellS']) {
+    assert.ok(source.includes(`${phase}: patrolPhaseS`),
+      `${phase} must not expire the real patrol job between recovery attempts`);
+  }
+  assert.ok(source.includes('PQ019_PATROL_LEASE_MISSING'));
+  assert.ok(source.includes('patrolJobs:'),
+    'a future owner disagreement must preserve the live job ledger');
+});
+
 test('the H1 probe contains no performance sampler or timing result field', () => {
   const source = probe();
   for (const forbidden of [
