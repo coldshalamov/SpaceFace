@@ -62,9 +62,29 @@ import {
   restorePerformanceScenario,
   validateScenarioRestoration,
 } from './performanceScenarioDriver.mjs';
+import { requireBrokerClaimOrDiagnostic } from './validationBroker.mjs';
 
 export const DEFAULT_VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 export const DEFAULT_CYCLES = Object.freeze({ browser: 2, electron: 2, local: 6 });
+
+export function performanceAttributionRuntimePlan(runtimeKind) {
+  assert(['browser', 'electron'].includes(runtimeKind), 'runtimeKind must be browser or electron');
+  return runtimeKind === 'browser'
+    ? {
+      runtimeKind,
+      canonicalRootOwner: 'visual-probe-server',
+      launcher: 'system-browser',
+      issueTracker: 'page',
+      cleanupOwner: 'closeOwnedResources',
+    }
+    : {
+      runtimeKind,
+      canonicalRootOwner: 'isolated-electron-launcher',
+      launcher: 'playwright-electron',
+      issueTracker: 'electron-application',
+      cleanupOwner: 'closeOwnedElectronRuntime',
+    };
+}
 
 export async function runReleaseSoakProbe({
   root,
@@ -314,9 +334,9 @@ async function launchBrowser(viewport) {
   return { browser, context, page };
 }
 
-async function launchElectron(root, onOwnership = () => {}) {
+async function launchElectron(root, onOwnership = () => {}, taskId = 'release-soak-electron') {
   const { _electron: electron } = await loadPlaywright();
-  const isolatedLaunch = createIsolatedElectronLaunch({ root, taskId: 'release-soak-electron' });
+  const isolatedLaunch = createIsolatedElectronLaunch({ root, taskId });
   let electronApp;
   try {
     electronApp = await electron.launch(isolatedLaunch.options);
@@ -2130,7 +2150,7 @@ function captureProcessOutput(command, args, maxBytes = 4 * 1024 * 1024) {
   });
 }
 
-async function readAttributionEnvironment(page, browser, viewport, seed, activity) {
+async function readAttributionEnvironment(page, browser, viewport, seed, activity, runtimeKind) {
   const browserVersion = typeof browser?.version === 'function' ? browser.version() : null;
   const live = await page.evaluate(() => {
     const gameRenderer = window.SF?.state?.render?.renderer;
@@ -2172,7 +2192,7 @@ async function readAttributionEnvironment(page, browser, viewport, seed, activit
     };
   });
   return {
-    runtimeKind: 'browser',
+    runtimeKind,
     seed,
     browser: { ...live.browser, version: browserVersion },
     gpu: live.gpu,
@@ -2258,10 +2278,41 @@ function performanceArtifactDescriptors(root, outputDir, routeResult) {
     .filter((artifact) => existsSync(path.resolve(root, artifact.path)));
 }
 
-async function closeAttributionResources({ page, context, browser, ownedServer, canonicalUrlTracker }) {
+async function closeAttributionResources({
+  runtimeKind,
+  page,
+  context,
+  browser,
+  ownedServer,
+  canonicalUrlTracker,
+  electronApp,
+  childProcess,
+  processMonitor,
+  rootUrl,
+}) {
   try {
+    if (runtimeKind === 'electron') {
+      return await closeOwnedElectronRuntime({
+        page,
+        electronApp,
+        childProcess,
+        canonicalUrlTracker,
+        processMonitor,
+        rootUrl,
+      });
+    }
     return await closeOwnedResources({ page, context, browser, server: ownedServer, canonicalUrlTracker });
   } catch (error) {
+    if (runtimeKind === 'electron') {
+      return error?.cleanupReport || {
+        pass: false,
+        pageClosed: page?.isClosed?.() === true,
+        appCloseCompleted: false,
+        processExited: false,
+        listenerReleased: false,
+        failures: [{ name: 'cleanup', error: { message: error?.message || String(error) } }],
+      };
+    }
     return error?.cleanupReport || {
       pass: false,
       pageClosed: page?.isClosed?.() === true,
@@ -2274,6 +2325,7 @@ async function closeAttributionResources({ page, context, browser, ownedServer, 
 
 async function finalizePerformanceAttributionRun({
   root,
+  outputRoot,
   outputDir,
   taskId,
   seed,
@@ -2282,12 +2334,18 @@ async function finalizePerformanceAttributionRun({
   routeResult,
   startFingerprint,
   activity,
+  runtimeKind,
+  authority,
   pageIssueTracker,
   page,
   context,
   browser,
   ownedServer,
   canonicalUrlTracker,
+  electronApp,
+  childProcess,
+  processMonitor,
+  rootUrl,
   logLines,
   setCleanupReport,
 }) {
@@ -2296,23 +2354,40 @@ async function finalizePerformanceAttributionRun({
     && measurementState.systemTimingEnabled !== true
     && measurementState.gpuTimersEnabled !== true
     && measurementState.restoreJournalPresent !== true;
-  const environment = await readAttributionEnvironment(page, browser, viewport, seed, { start: activity, end: null });
-  const errors = buildErrorEvidence('browser', pageIssueTracker);
-  const closureWindows = buildClosureWindows(document, environment, errors, measurementDisabled);
-
-  await writeFile(path.join(outputDir, 'performance-windows.json'), `${JSON.stringify(closureWindows, null, 2)}\n`, 'utf8');
+  const environment = await readAttributionEnvironment(
+    page,
+    browser,
+    viewport,
+    seed,
+    { start: activity, end: null },
+    runtimeKind,
+  );
   await page.screenshot({
     path: path.join(outputDir, 'performance-closure-overview.png'),
     type: 'png',
     animations: 'disabled',
   });
-  pageIssueTracker?.stop?.();
-
-  const ownedCleanup = await closeAttributionResources({ page, context, browser, ownedServer, canonicalUrlTracker });
+  const ownedCleanup = await closeAttributionResources({
+    runtimeKind,
+    page,
+    context,
+    browser,
+    ownedServer,
+    canonicalUrlTracker,
+    electronApp,
+    childProcess,
+    processMonitor,
+    rootUrl,
+  });
   setCleanupReport(ownedCleanup);
 
-  const normalizedCleanup = normalizeCleanup('browser', ownedCleanup);
-  const cleanupValidation = validateCleanupEvidence(normalizedCleanup, { runtimeKind: 'browser' });
+  const errors = buildErrorEvidence(runtimeKind, pageIssueTracker);
+  const closureWindows = buildClosureWindows(document, environment, errors, measurementDisabled);
+  await writeFile(path.join(outputDir, 'performance-windows.json'), `${JSON.stringify(closureWindows, null, 2)}\n`, 'utf8');
+  pageIssueTracker?.stop?.();
+
+  const normalizedCleanup = normalizeCleanup(runtimeKind, ownedCleanup);
+  const cleanupValidation = validateCleanupEvidence(normalizedCleanup, { runtimeKind });
   const cleanup = {
     pass: cleanupValidation.pass && measurementDisabled,
     pageClosed: normalizedCleanup.pageClosed === true,
@@ -2349,7 +2424,9 @@ async function finalizePerformanceAttributionRun({
     ],
   });
 
-  document.runtimeKind = 'browser';
+  document.runtimeKind = runtimeKind;
+  document.authority = authority;
+  document.primaryAcceptance = authority.primaryAcceptance === true;
   document.taskId = taskId;
   document.worktree = closureReport.worktree;
   document.environment = environment;
@@ -2378,15 +2455,78 @@ async function finalizePerformanceAttributionRun({
     writeFile(outPath, `${JSON.stringify(document, null, 2)}\n`, 'utf8'),
     writeFile(closurePath, `${JSON.stringify(closureReport, null, 2)}\n`, 'utf8'),
   ]);
-  return { pass, outPath, closurePath, outputDir, document, closureReport, validation };
+  const acceptedEvidencePath = authority.primaryAcceptance === true && pass
+    ? await publishPerformanceAttributionAuthorityEvidence({
+      root,
+      outputRoot,
+      runtimeKind,
+      authority,
+      outPath,
+      closurePath,
+      closureReport,
+    })
+    : null;
+  return {
+    pass,
+    outPath,
+    closurePath,
+    acceptedEvidencePath,
+    outputDir,
+    document,
+    closureReport,
+    validation,
+  };
+}
+
+async function publishPerformanceAttributionAuthorityEvidence({
+  root,
+  outputRoot,
+  runtimeKind,
+  authority,
+  outPath,
+  closurePath,
+  closureReport,
+}) {
+  assert.equal(authority.primaryAcceptance, true, 'primary evidence requires acceptance authority');
+  assert(authority.claimId, 'primary evidence requires consumed claim identity');
+  assert(authority.digests?.candidateDigest, 'primary evidence requires candidate-bound digests');
+  const evidence = {
+    schema: 'spaceface.performanceClosureAcceptance.v1',
+    generatedAt: new Date().toISOString(),
+    pass: true,
+    primaryAcceptance: true,
+    runtimeKind,
+    claimId: authority.claimId,
+    digests: authority.digests,
+    artifacts: {
+      attribution: relativeTo(root, outPath),
+      closure: relativeTo(root, closurePath),
+    },
+    closure: {
+      schema: closureReport.schema,
+      taskId: closureReport.taskId,
+      generatedAt: closureReport.generatedAt,
+      worktree: closureReport.worktree,
+      validation: closureReport.validation,
+    },
+  };
+  const evidenceDir = path.join(outputRoot, runtimeKind);
+  await mkdir(evidenceDir, { recursive: true });
+  const evidencePath = path.join(evidenceDir, 'evidence.json');
+  await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
+  return evidencePath;
 }
 
 /**
- * Full headed attribution matrix on the canonical browser game route.
+ * Full headed attribution matrix on the shared canonical Browser/Electron game route.
  * Writes performance-attribution.json under outputDir. Does not fork game serving policy.
  */
 async function runPerformanceAttributionProbe({
   root,
+  runtimeKind = 'browser',
+  manifest,
+  mode = 'diagnostic',
+  brokerClaimToken = process.env.SF_BROKER_CLAIM ?? null,
   outputRoot = null,
   taskId = 'performance-attribution',
   viewport = DEFAULT_VIEWPORT,
@@ -2401,7 +2541,33 @@ async function runPerformanceAttributionProbe({
   log = () => {},
 } = {}) {
   assert(root, 'runPerformanceAttributionProbe requires root');
+  const runtimePlan = performanceAttributionRuntimePlan(runtimeKind);
+  assert(manifest?.id, 'runPerformanceAttributionProbe requires its tracked manifest');
+  assert.equal(manifest.runtimeKind, runtimeKind, 'manifest runtime must match attribution runtime');
+  assert(['diagnostic', 'acceptance'].includes(mode), 'mode must be diagnostic or acceptance');
   const outRoot = outputRoot || path.join(root, '.devshots', 'perf');
+  const gate = await requireBrokerClaimOrDiagnostic({
+    outputRoot: outRoot,
+    manifest,
+    tokenOrPath: brokerClaimToken,
+    diagnostic: mode === 'diagnostic',
+    explicitDiagnostic: mode === 'diagnostic',
+    root,
+    requiredMode: mode,
+    requiredRuntimeKind: runtimeKind,
+  });
+  if (!gate.ok) {
+    const error = new Error(`PERFORMANCE_ATTRIBUTION_AUTHORITY_REJECTED: ${gate.reason}`);
+    error.code = 'PERFORMANCE_ATTRIBUTION_AUTHORITY_REJECTED';
+    error.reason = gate.reason;
+    throw error;
+  }
+  const authority = Object.freeze({
+    mode: gate.diagnostic ? 'diagnostic' : 'acceptance',
+    primaryAcceptance: gate.primaryAcceptance === true,
+    claimId: gate.claim?.claimId ?? null,
+    digests: gate.claim?.digests ?? null,
+  });
   const outputDir = await allocateOutputDir(outRoot, taskId);
   const startFingerprint = await strictWorktreeFingerprint(root);
   const activity = await inspectPerformanceActivity(root);
@@ -2421,19 +2587,56 @@ async function runPerformanceAttributionProbe({
   let contextLossDone = false;
   let pageIssueTracker = null;
   let routeResult = null;
+  let electronApp = null;
+  let childProcess = null;
+  let processMonitor = null;
+  let isolatedLaunch = null;
+  let rootUrl = null;
 
   try {
-    ownedServer = await acquireVisualProbeServer({ root });
-    assert.equal(ownedServer.ownsServer, true, 'attribution probe must own its canonical in-process server');
-    const rootUrl = ownedServer.baseUrl;
-    ({ page, browser, context } = await launchBrowser(viewport));
-    pageIssueTracker = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
-    canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
-    await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    if (runtimeKind === 'browser') {
+      ownedServer = await acquireVisualProbeServer({ root });
+      assert.equal(ownedServer.ownsServer, true, 'attribution probe must own its canonical in-process server');
+      rootUrl = ownedServer.baseUrl;
+      ({ page, browser, context } = await launchBrowser(viewport));
+      pageIssueTracker = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
+      canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
+      await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    } else {
+      const launched = await launchElectron(root, (owned) => {
+        electronApp = owned.electronApp;
+        childProcess = owned.childProcess;
+        processMonitor = owned.processMonitor;
+        pageIssueTracker = owned.pageIssueTracker;
+      }, taskId);
+      ({
+        page,
+        electronApp,
+        childProcess,
+        processMonitor,
+        pageIssueTracker,
+        isolatedLaunch,
+      } = launched);
+      canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
+        bootstrapTimeoutMs: 10_000,
+        pollIntervalMs: 75,
+        allowAnyLoopbackPort: true,
+      });
+      await pageIssueTracker.bindAndBackfillPage(page);
+      rootUrl = assertIsolatedElectronRootUrl(
+        await canonicalUrlTracker.waitForCanonicalRoot(10_000),
+      );
+      assert.deepEqual(
+        inspectCanonicalRootUrl(page.url(), rootUrl).failures,
+        [],
+        'Electron attribution must remain on its launcher-owned canonical root',
+      );
+      await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
+    }
     page.setDefaultTimeout(30_000);
     page.setDefaultNavigationTimeout(60_000);
     await page.bringToFront();
-    doLog(`browser canonical root ${rootUrl}`);
+    doLog(`${runtimePlan.runtimeKind} canonical root ${rootUrl}`);
 
     try {
       routeResult = await runBrowserPublicRoute({
@@ -2529,6 +2732,7 @@ async function runPerformanceAttributionProbe({
     });
     return await finalizePerformanceAttributionRun({
       root,
+      outputRoot: outRoot,
       outputDir,
       taskId,
       seed,
@@ -2537,12 +2741,18 @@ async function runPerformanceAttributionProbe({
       routeResult,
       startFingerprint,
       activity,
+      runtimeKind,
+      authority,
       pageIssueTracker,
       page,
       context,
       browser,
       ownedServer,
       canonicalUrlTracker,
+      electronApp,
+      childProcess,
+      processMonitor,
+      rootUrl,
       logLines,
       setCleanupReport: (value) => { cleanupReport = value; },
     });
@@ -2564,11 +2774,22 @@ async function runPerformanceAttributionProbe({
       && measurementState.systemTimingEnabled !== true
       && measurementState.gpuTimersEnabled !== true
       && measurementState.restoreJournalPresent !== true;
-    const errors = buildErrorEvidence('browser', pageIssueTracker);
+    cleanupReport = await closeAttributionResources({
+      runtimeKind,
+      page,
+      context,
+      browser,
+      ownedServer,
+      canonicalUrlTracker,
+      electronApp,
+      childProcess,
+      processMonitor,
+      rootUrl,
+    });
+    const errors = buildErrorEvidence(runtimeKind, pageIssueTracker);
     pageIssueTracker?.stop?.();
-    cleanupReport = await closeAttributionResources({ page, context, browser, ownedServer, canonicalUrlTracker });
-    const normalizedCleanup = normalizeCleanup('browser', cleanupReport);
-    const cleanupValidation = validateCleanupEvidence(normalizedCleanup, { runtimeKind: 'browser' });
+    const normalizedCleanup = normalizeCleanup(runtimeKind, cleanupReport);
+    const cleanupValidation = validateCleanupEvidence(normalizedCleanup, { runtimeKind });
     const activityEnd = await inspectPerformanceActivity(root);
     const endFingerprint = await strictWorktreeFingerprint(root);
     const failureMessage = error?.message || String(error);
@@ -2592,6 +2813,9 @@ async function runPerformanceAttributionProbe({
       generatedAt: new Date().toISOString(),
       taskId,
       pass: false,
+      runtimeKind,
+      primaryAcceptance: false,
+      authority,
       failure: {
         name: error?.name || 'Error',
         message: failureMessage,
@@ -2625,7 +2849,21 @@ async function runPerformanceAttributionProbe({
     };
   } finally {
     if (!cleanupReport) {
-      await closeOwnedResources({ page, context, browser, server: ownedServer, canonicalUrlTracker }).catch(() => null);
+      cleanupReport = await closeAttributionResources({
+        runtimeKind,
+        page,
+        context,
+        browser,
+        ownedServer,
+        canonicalUrlTracker,
+        electronApp,
+        childProcess,
+        processMonitor,
+        rootUrl,
+      }).catch(() => null);
+    }
+    if (runtimeKind === 'electron' && isolatedLaunch && cleanupReport?.pass === true) {
+      isolatedLaunch.cleanup({ runtimeClosed: true });
     }
     await writeFile(path.join(outputDir, 'run.log'), `${logLines.join('\n')}\n`, 'utf8').catch(() => {});
   }

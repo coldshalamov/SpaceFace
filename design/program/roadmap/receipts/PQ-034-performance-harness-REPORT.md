@@ -65,9 +65,37 @@ load their actual tracked modules instead of matching strings in a hard-coded CL
   `VALIDATION_MANIFEST_REGISTRY_DISABLED` before broker construction;
 - no broker claim, browser, Electron, or performance capture was launched.
 
+## Paired runtime-driver and broker-authority slice
+
+`runPerformanceAttributionProbe` now owns one Browser/Electron matrix rather than a Browser-only
+branch. Browser still owns the visual probe server, system browser, page issue tracker, canonical URL
+tracker, and `closeOwnedResources`; Electron uses the existing isolated launcher, application-wide
+issue tracker, canonical-root tracker, process monitor, and `closeOwnedElectronRuntime`. Both paths
+then execute the same public route, scenario ordering, preparation/restoration, sampling, failure
+snapshot, artifact policy, and measurement-disable contract.
+
+Two tracked manifests pin distinct one-use runtime claims and artifact roots over an identical
+scenario/production/regression/harness set. The CLI resolves the exact tracked manifest for its
+runtime. The library runner consumes the claim before `allocateOutputDir` and before either launcher;
+direct CLI and library acceptance calls without a claim both reject in under one second. Diagnostic
+authority cannot be supplied by a caller as a promotable object: the runner derives it from the
+broker helper and writes no primary evidence. A passing accepted run may publish a claim/digest-bound
+`evidence.json` only after closure validation and owned cleanup.
+
+- characterization: the new two-file contract failed at module load because neither paired manifest
+  nor the runtime plan existed; the direct-runner guard assertion then failed until claim consumption
+  moved into the library boundary;
+- paired manifest/runtime contracts — PASS 6/6, including real tracked lookup plus direct CLI and
+  direct library no-claim rejection before launch;
+- PERF-00 changed-lane suite — PASS 44/44;
+- validation broker plus manifest registry — PASS 40/40;
+- `npm run check:launch-policy` — PASS;
+- `npm run check:baseline` — PASS 10/10 in 51.211 s;
+- no broker claim, browser, Electron, GPU capture, or performance conclusion was spent.
+
 ## Honest residual
 
-This is not the terminal dispatch receipt. Background-job identity, current runtime-driver
-integration, paired Browser/Electron broker authority, source pairing,
-clean matched evidence, overhead measurement, and independent causal review remain open. No headed
-runtime or performance capture was launched in this slice.
+This is not the terminal dispatch receipt. Background-job identity, source pairing, clean matched
+evidence, overhead measurement, and independent causal review remain open. The current driver and
+paired authority are focused-green but intentionally unspent while the machine remains ineligible for
+a quiet L4 capture.
