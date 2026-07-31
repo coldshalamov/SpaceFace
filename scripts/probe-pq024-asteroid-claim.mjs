@@ -288,6 +288,7 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
     await enterAsteroidOps(page, asteroid.targetEntityId);
 
     phase = 'survey-reveal';
+    await carveCoreBuildCorridor(page);
     const surveyReveal = await pulseSurveyReveal(page);
     await screenshot('02-survey-reveal.png');
 
@@ -618,6 +619,28 @@ async function pulseSurveyReveal(page) {
   assert(match && Number(match[1]) > 0 && Number(match[2]) >= Number(match[1]),
     `visible survey chip did not reveal geology: ${text}`);
   return { visibleText: text.trim(), revealed: Number(match[1]), cells: Number(match[2]) };
+}
+
+async function carveCoreBuildCorridor(page) {
+  // Core commitment adopts the current assayed formation atomically. Bore the two-cell dogleg
+  // first, then pulse Survey, so the public route leaves one hollow adjacent Core cell and one
+  // geology-contacting extractor cell without invalidating the survey after it is recorded.
+  await driveOneCell(page, 'ArrowDown', { dc: 0, dr: 1 });
+  await driveOneCell(page, 'ArrowRight', { dc: 1, dr: 0 });
+}
+
+async function driveOneCell(page, key, delta) {
+  const before = await page.evaluate(() => ({ ...window.SF.state.drill.avatar }));
+  await page.keyboard.down(key);
+  try {
+    await page.waitForFunction(({ col, row }) => {
+      const avatar = window.SF?.state?.drill?.avatar;
+      return avatar?.col === col && avatar?.row === row
+        && avatar.isDrilling !== true && !avatar.drillTarget;
+    }, { col: before.col + delta.dc, row: before.row + delta.dr }, { timeout: 20_000 });
+  } finally {
+    await page.keyboard.up(key);
+  }
 }
 
 async function planCorePlacement(page) {

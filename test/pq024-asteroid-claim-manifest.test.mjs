@@ -104,6 +104,7 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     'openStationMarket(page)',
     'buyConstructionCargo(page)',
     'selectAsteroidOnLocalMap(page)',
+    'carveCoreBuildCorridor(page)',
     'pulseSurveyReveal(page)',
     "placeSiteMachine(page, 'sm_massline_core'",
     "placeSiteMachine(page, 'sm_extractor'",
@@ -119,6 +120,11 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     assert.ok(next > cursor, `route milestone is absent or out of order: ${milestone}`);
     cursor = next;
   }
+
+  assert.match(source, /driveOneCell\(page, 'ArrowDown', \{ dc: 0, dr: 1 \}\)[\s\S]*driveOneCell\(page, 'ArrowRight', \{ dc: 1, dr: 0 \}\)/,
+    'the public route must pre-bore a deterministic dogleg before Survey/Core placement');
+  assert.ok(source.indexOf('carveCoreBuildCorridor(page)') < source.indexOf('pulseSurveyReveal(page)'),
+    'the route must not mutate the formation after recording the volatile survey');
 
   assert.match(source, /requireBrokerClaimOrDiagnostic/);
   assert.match(source, /headless:\s*false/);
