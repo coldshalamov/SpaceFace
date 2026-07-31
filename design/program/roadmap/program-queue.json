@@ -3130,7 +3130,8 @@
       "priority": 200,
       "title": "Close PERF-00 equivalence and native evidence authority",
       "kind": "performance",
-      "state": "ready",
+      "state": "claimed",
+      "owner": "Codex primary integrator",
       "dependsOn": [
         "PQ-034.candidate-audit"
       ],
