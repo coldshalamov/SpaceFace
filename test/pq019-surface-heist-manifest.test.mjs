@@ -257,7 +257,7 @@ test('the continuation lets the real arbiter surface theft before freezing the f
   const wait = latch.indexOf('await page.waitForFunction');
   const freeze = latch.indexOf('window.SF.timeEffects.set(freezeId, { scale: 0 })');
   assert.ok(wait >= 0 && freeze > wait,
-    'freezing on the latch tick strands the priority-60 theft truth behind the seven-second tutorial');
+    'the actor must observe the urgent theft truth before freezing its evidence frame');
 });
 
 test('the H1 probe contains no performance sampler or timing result field', () => {

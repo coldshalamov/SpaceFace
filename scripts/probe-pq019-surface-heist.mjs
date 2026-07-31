@@ -42,7 +42,7 @@ const HEIST_TYPE = 'heist_intercept';
 const HEIST_STATION_ID = 'station_tethys';
 const HEIST_SECTOR_ID = 'sector_tethys_junction';
 const HEIST_VOICE_ID = 'pq019c:capsule-run';
-const HEIST_VOICE_PRIORITY = 60;
+const HEIST_VOICE_PRIORITY = 80;
 const ACCEPTANCE_SETUP_ID = 'h1:pq019-surface-heist';
 
 if (!DIAGNOSTIC && !CONTINUATION_ONLY) {

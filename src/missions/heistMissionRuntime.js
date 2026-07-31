@@ -72,11 +72,9 @@ export const HEIST_OFFENDER_STABLE_ID = 'player';
 /** One stable voice id for the whole run, so the countdown/pursuit/outcome lines coalesce in place. */
 export const HEIST_VOICE_ID = 'pq019c:capsule-run';
 export const HEIST_VOICE_CHANNEL = 'objective';
-const HEIST_DEFAULT_CUE_TTL_S = 5;
-// The tether latch can legitimately raise the seven-second first-use Massline tutorial at priority
-// 70. Theft truth is priority-60 objective speech, so it needs the tutorial window plus its own
-// five-second reading window or the arbiter will stale-drop witness/WANTED/pursuit before surfacing it.
-const HEIST_THEFT_CUE_TTL_S = 12;
+// Theft truth is urgent but not life-critical: it must interrupt first-use tutorial speech (70)
+// without claiming the danger floor (110). Other heist progress remains ordinary objective voice.
+export const HEIST_THEFT_VOICE_PRIORITY = 80;
 
 const RECOVERABLE = new Set(PQ019C_RECOVERABLE_OUTCOMES);
 
@@ -142,10 +140,11 @@ export function createHeistRecord({
 // ── Presentation ────────────────────────────────────────────────────────────────────────────────
 //
 // ONE VOICE. Every player-visible line in this feature goes through `helpers.voice.say` under the
-// single stable id above on the `objective` channel (priority 60). `VoiceQueue` coalesces same-id
+// single stable id above on the `objective` channel. Ordinary progress uses priority 60; the three
+// theft results explicitly use urgent priority 80 so witness/WANTED/pursuit cannot stale or coalesce
+// away behind the seven-second first-use Massline tutorial. `VoiceQueue` still coalesces same-id
 // entries in place, so the whole run — timing, ownership, witness, WANTED, pursuit, catcher/fence,
-// denial, recovery — occupies at most ONE floor slot and can never stack a second pill against
-// itself. Danger (110) is never claimed: none of these lines is life-critical.
+// denial, recovery — occupies at most ONE floor slot. Danger (110) is never claimed.
 //
 // Each moment fires AT MOST ONCE per run (`record.cues`), so this is bounded, not per-frame.
 // Every line states its subject and its consequence in words: no cue depends on hue, none adds
@@ -206,8 +205,8 @@ export function sayHeistCue(ctx, record, moment, textOverride = null) {
   if (ctx?.state?.mode === 'flight') {
     const say = ctx.helpers?.voice?.say;
     if (typeof say === 'function') {
-      const ttl = moment.startsWith('theft_') ? HEIST_THEFT_CUE_TTL_S : HEIST_DEFAULT_CUE_TTL_S;
-      say({ channel: HEIST_VOICE_CHANNEL, id: HEIST_VOICE_ID, text, kind: 'info', ttl });
+      const priority = moment.startsWith('theft_') ? HEIST_THEFT_VOICE_PRIORITY : undefined;
+      say({ channel: HEIST_VOICE_CHANNEL, id: HEIST_VOICE_ID, text, kind: 'info', ttl: 5, priority });
     }
   }
   ctx?.bus?.emit?.('heist:missionCue', receipt);

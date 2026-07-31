@@ -28,7 +28,7 @@ import {
   PQ019C_HEIST_TYPE, PQ019C_HEIST_STATION_ID, buildHeistOffer,
 } from '../src/data/heistMission.js';
 import {
-  HEIST_CUE_TEXT, HEIST_VOICE_CHANNEL, HEIST_VOICE_ID,
+  HEIST_CUE_TEXT, HEIST_THEFT_VOICE_PRIORITY, HEIST_VOICE_CHANNEL, HEIST_VOICE_ID,
 } from '../src/missions/heistMissionRuntime.js';
 
 const SYSTEMS = [
@@ -236,7 +236,10 @@ test('every surfaced heist line carries one stable id on the objective channel',
   assert.ok(surfaces.length >= 1, 'the run reached the floor at least once');
   for (const surface of surfaces) {
     assert.equal(surface.id, HEIST_VOICE_ID, 'one stable id, so lines coalesce in place');
-    assert.equal(surface.priority, CHANNEL_PRIORITY[HEIST_VOICE_CHANNEL]);
+    const expectedPriority = /^Theft witnessed|^No witness/.test(surface.text)
+      ? HEIST_THEFT_VOICE_PRIORITY
+      : CHANNEL_PRIORITY[HEIST_VOICE_CHANNEL];
+    assert.equal(surface.priority, expectedPriority);
     assert.notEqual(surface.priority, CHANNEL_PRIORITY.danger,
       'danger is reserved for life-critical alerts; a contract cue never claims it');
   }
@@ -246,7 +249,7 @@ test('every surfaced heist line carries one stable id on the objective channel',
   }
 });
 
-test('the theft truth waits out the first-use Massline tutorial instead of going stale', () => {
+test('the theft truth immediately preempts the first-use Massline tutorial', () => {
   const t = boot();
   t.accept();
   assert.ok(t.stepToLaunch());
@@ -258,18 +261,15 @@ test('the theft truth waits out the first-use Massline tutorial instead of going
     ttl: 7,
   });
   t.arbiter.update(0, t.state);
-  const latchedAtSimTime = t.state.simTime;
   t.latch();
   t.arbiter.update(0, t.state);
 
-  assert.equal(t.arbiter.queue.active?.id, 'tutorial:hint:masslineThrow');
-  assert.equal(t.arbiter.queue.pending.some((entry) => entry.id === HEIST_VOICE_ID), true);
-
-  t.state.simTime = latchedAtSimTime + 7.01;
-  t.arbiter.update(0, t.state);
   assert.equal(t.arbiter.queue.active?.id, HEIST_VOICE_ID,
-    'the composed witness/WANTED/pursuit truth must surface after the tutorial floor expires');
+    'witness/WANTED/pursuit must not stale or coalesce away behind first-use teaching');
   assert.equal(t.arbiter.queue.active?.text, HEIST_CUE_TEXT.theft_witnessed_pursuit);
+  assert.equal(t.arbiter.queue.active?.priority, HEIST_THEFT_VOICE_PRIORITY);
+  assert.equal(t.arbiter.queue.pending.some((entry) => entry.id === 'tutorial:hint:masslineThrow'), true,
+    'the valid tutorial remains queued and can resume after the urgent theft truth');
 });
 
 test('each cue moment fires at most once, no matter how long the run is driven', () => {
