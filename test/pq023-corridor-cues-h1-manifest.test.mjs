@@ -14,6 +14,8 @@ import {
   findLivePq023CathedralRoot,
   pq023CathedralApproachPose,
 } from '../scripts/lib/pq023CathedralFraming.mjs';
+import { setPq023AccessibilityPreference } from '../scripts/lib/pq023Accessibility.mjs';
+import { applyAccessibility } from '../src/ui/accessibility.js';
 
 const ROOT = new URL('../', import.meta.url);
 const read = (relative) => readFileSync(new URL(relative, ROOT), 'utf8');
@@ -196,6 +198,28 @@ test('Cathedral framing reacquires the durable root after admission replaces its
   assert.ok(body.includes('return targetPage.evaluate(async () =>'));
   assert.doesNotMatch(body, /},\s*targetId\);/,
     'post-admission framing must not retain the discarded pre-admission runtime id argument');
+});
+
+test('PQ-023 reduced capture changes the motion preference owner, not only its effective boolean', () => {
+  const settings = {
+    video: { motionReduce: false },
+    accessibility: { motionPreference: 'system', flashReduce: false },
+  };
+  assert.deepEqual(setPq023AccessibilityPreference(settings, true), {
+    motionPreference: 'reduce',
+    motionReduce: true,
+    flashReduce: true,
+  });
+  const reduced = applyAccessibility(settings, null);
+  assert.equal(reduced.motionPreference, 'reduce');
+  assert.equal(reduced.motionReduced, true);
+  assert.equal(reduced.flashReduced, true);
+
+  setPq023AccessibilityPreference(settings, false);
+  const full = applyAccessibility(settings, null);
+  assert.equal(full.motionPreference, 'full');
+  assert.equal(full.motionReduced, false);
+  assert.equal(full.flashReduced, false);
 });
 
 test('the Browser cell rejects software rendering and makes no H1 performance claim', () => {

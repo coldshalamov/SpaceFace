@@ -827,10 +827,10 @@ async function triggerMaterialImpact(targetPage, { weaponId, index, material, fr
 }
 
 async function setCombatAccessibility(targetPage, reduced) {
-  await targetPage.evaluate((enabled) => {
+  await targetPage.evaluate(async (enabled) => {
+    const { setPq023AccessibilityPreference } = await import('/scripts/lib/pq023Accessibility.mjs');
     const state = window.SF.state;
-    state.settings.video.motionReduce = enabled;
-    state.settings.accessibility.flashReduce = enabled;
+    setPq023AccessibilityPreference(state.settings, enabled);
     window.SF.bus.emit('settings:changed', { section: 'video', key: null });
     window.SF.bus.emit('settings:changed', { section: 'accessibility', key: null });
   }, !!reduced);
@@ -856,11 +856,12 @@ async function triggerExplosion(targetPage, { x, z, classId, radius, freezeMs })
 }
 
 async function triggerDenseDestruction(targetPage, { x, z, freezeMs }) {
-  await targetPage.evaluate(({ px, pz, holdMs }) => {
+  await targetPage.evaluate(async ({ px, pz, holdMs }) => {
+    const { setPq023AccessibilityPreference } = await import('/scripts/lib/pq023Accessibility.mjs');
     const state = window.SF.state;
-    state.settings.video.motionReduce = false;
-    state.settings.accessibility.flashReduce = false;
+    setPq023AccessibilityPreference(state.settings, false);
     window.SF.bus.emit('settings:changed', { section: 'video', key: null });
+    window.SF.bus.emit('settings:changed', { section: 'accessibility', key: null });
     const vfx = window.SF.registry.get('vfx');
     window.__sfResetCombatVfx?.();
     vfx._explosions.clear();
@@ -1195,10 +1196,10 @@ async function capturePq023WorldSiteSequences(targetPage) {
 }
 
 async function setPq023Accessibility(targetPage, reduced) {
-  await targetPage.evaluate((enabled) => {
+  await targetPage.evaluate(async (enabled) => {
+    const { setPq023AccessibilityPreference } = await import('/scripts/lib/pq023Accessibility.mjs');
     const state = window.SF.state;
-    state.settings.video.motionReduce = enabled;
-    state.settings.accessibility.flashReduce = enabled;
+    setPq023AccessibilityPreference(state.settings, enabled);
     window.SF.bus.emit('settings:changed', { section: 'video', key: null });
     window.SF.bus.emit('settings:changed', { section: 'accessibility', key: null });
   }, !!reduced);

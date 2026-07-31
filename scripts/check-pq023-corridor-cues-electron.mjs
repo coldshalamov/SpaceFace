@@ -396,10 +396,10 @@ async function frameCathedral(targetPage) {
 }
 
 async function setAccessibility(targetPage, reduced) {
-  await targetPage.evaluate((enabled) => {
+  await targetPage.evaluate(async (enabled) => {
+    const { setPq023AccessibilityPreference } = await import('/scripts/lib/pq023Accessibility.mjs');
     const state = window.SF.state;
-    state.settings.video.motionReduce = enabled;
-    state.settings.accessibility.flashReduce = enabled;
+    setPq023AccessibilityPreference(state.settings, enabled);
     window.SF.bus.emit('settings:changed', { section: 'video', key: null });
     window.SF.bus.emit('settings:changed', { section: 'accessibility', key: null });
   }, reduced);
