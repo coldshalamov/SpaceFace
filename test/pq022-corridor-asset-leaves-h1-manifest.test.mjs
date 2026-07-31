@@ -9,6 +9,7 @@ import manifest, {
   createPq022CorridorAssetLeavesManifest,
   PQ022_CORRIDOR_ASSET_LEAVES_FIXED_SEED,
 } from '../scripts/validation-manifests/pq022-corridor-asset-leaves.mjs';
+import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = (relative) => readFileSync(new URL(relative, ROOT), 'utf8');
@@ -79,11 +80,13 @@ test('deterministic asset, relay, static, and sim gates precede claim issue', ()
   ]);
 });
 
-test('broker CLI registers and lists pq022-corridor-asset-leaves', () => {
-  const cli = read('scripts/validation-broker-cli.mjs');
-  assert.ok(cli.includes("'pq022-corridor-asset-leaves': () => import('./validation-manifests/pq022-corridor-asset-leaves.mjs')"));
-  const help = cli.slice(cli.indexOf('Manifests:'), cli.indexOf('Environment on spawned probes:'));
-  assert.ok(help.includes('pq022-corridor-asset-leaves'));
+test('the tracked registry resolves pq022-corridor-asset-leaves', async () => {
+  const registered = await loadValidationManifestById({
+    root: fileURLToPath(ROOT),
+    id: 'pq022-corridor-asset-leaves',
+  });
+  assert.equal(registered.id, manifest.id);
+  assert.match(registered.__trackedManifest.relativePath, /pq022-corridor-asset-leaves\.mjs$/);
 });
 
 test('the probe is broker-gated before exactly one headed system-browser launch', () => {

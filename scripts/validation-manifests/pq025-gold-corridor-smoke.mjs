@@ -4,9 +4,8 @@
 // actor reachability, observer completeness, checkpointing, evidence streaming, and cleanup. A
 // green result here proves the HARNESS works; it can never be read as 30/90-minute qualification.
 //
-// Phase-1 status: this file is CREATED, NEVER EXECUTED. It is intentionally absent from
-// MANIFEST_LOADERS in scripts/validation-broker-cli.mjs — registering it is an integrator step
-// taken only after the Phase-0 stop conditions are resolved and the entry conditions are true.
+// Phase-1 status: this file is CREATED, NEVER EXECUTED. `registryEnabled: false` keeps the dynamic
+// broker registry fail-closed until the Phase-0 stop conditions and entry conditions are true.
 
 import path from 'node:path';
 
@@ -16,6 +15,7 @@ export const PQ025_SMOKE_FIXED_SEED = 25047;
 export function createPq025GoldCorridorSmokeManifest(overrides = {}) {
   return {
     id: 'pq025-gold-corridor-smoke',
+    registryEnabled: false,
     runtimeKind: 'browser',
     command: process.execPath,
     // Phase-2 probe. The adapter does not exist yet (Phase 1 is pure contracts only).

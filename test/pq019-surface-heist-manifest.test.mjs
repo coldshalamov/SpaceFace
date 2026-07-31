@@ -15,6 +15,7 @@ import manifest, {
   PQ019_CAPSULE_LAUNCH_GRACE_S,
   PQ019_SURFACE_HEIST_FIXED_SEED,
 } from '../scripts/validation-manifests/pq019-surface-heist.mjs';
+import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = (relative) => readFileSync(new URL(relative, ROOT), 'utf8');
@@ -151,11 +152,13 @@ test('capsule readiness is decided by simulation progress and terminal state, ne
   assert.equal(classifyPq019CapsuleWaitSnapshot(liveCapsule).status, 'ready');
 });
 
-test('the broker CLI registers and lists pq019-surface-heist', () => {
-  const cli = read('scripts/validation-broker-cli.mjs');
-  assert.ok(cli.includes("'pq019-surface-heist': () => import('./validation-manifests/pq019-surface-heist.mjs')"));
-  const help = cli.slice(cli.indexOf('Manifests:'), cli.indexOf('Environment on spawned probes:'));
-  assert.ok(help.includes('pq019-surface-heist'), 'the one-command cell must appear in CLI help');
+test('the tracked registry resolves pq019-surface-heist', async () => {
+  const registered = await loadValidationManifestById({
+    root: fileURLToPath(ROOT),
+    id: 'pq019-surface-heist',
+  });
+  assert.equal(registered.id, manifest.id);
+  assert.match(registered.__trackedManifest.relativePath, /pq019-surface-heist\.mjs$/);
 });
 
 test('the probe is broker-gated and applies the broker seed through New Game', () => {

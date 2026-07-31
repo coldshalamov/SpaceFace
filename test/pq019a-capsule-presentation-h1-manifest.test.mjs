@@ -10,6 +10,7 @@ import manifest, {
   PQ019A_CAPSULE_FRAMINGS,
   PQ019A_CAPSULE_PRESENTATION_FIXED_SEED,
 } from '../scripts/validation-manifests/pq019a-capsule-presentation.mjs';
+import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = (relative) => readFileSync(new URL(relative, ROOT), 'utf8');
@@ -91,11 +92,13 @@ test('the continuation skips already-valid facility and cue screenshots', () => 
   assert.match(source, /if \(!CAPSULE_ONLY\) \{[\s\S]*?launch-cue-tminus\.png/);
 });
 
-test('the broker CLI registers and lists the capsule presentation cell', () => {
-  const cli = read('scripts/validation-broker-cli.mjs');
-  assert.match(cli, /'pq019a-capsule-presentation': \(\) => import\('\.\/validation-manifests\/pq019a-capsule-presentation\.mjs'\)/);
-  const help = cli.slice(cli.indexOf('Manifests:'), cli.indexOf('Environment on spawned probes:'));
-  assert.match(help, /pq019a-capsule-presentation/);
+test('the tracked registry resolves the capsule presentation cell', async () => {
+  const registered = await loadValidationManifestById({
+    root: fileURLToPath(ROOT),
+    id: 'pq019a-capsule-presentation',
+  });
+  assert.equal(registered.id, manifest.id);
+  assert.match(registered.__trackedManifest.relativePath, /pq019a-capsule-presentation\.mjs$/);
 });
 
 test('the cell stays presentation-only', () => {

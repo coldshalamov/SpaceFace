@@ -3,9 +3,9 @@
 // This is the only manifest permitted to back an acceptance claim for the held-out Gold Corridor
 // qualification. It binds one fixed matrix to candidate + harness + profile manifest.
 //
-// Phase-1 status: CREATED, NEVER EXECUTED. It is intentionally absent from MANIFEST_LOADERS in
-// scripts/validation-broker-cli.mjs. Registration is an integrator step and is legal only when
-// EVERY entry condition in design/program/roadmap/active/PQ-025.md is true — including the Phase-0
+// Phase-1 status: CREATED, NEVER EXECUTED. `registryEnabled: false` keeps the dynamic broker
+// registry fail-closed. Enabling it is an integrator step and is legal only when EVERY entry
+// condition in design/program/roadmap/active/PQ-025.md is true — including the Phase-0
 // stop conditions recorded in the semantic map (perf p50/p99/missed-vsync/residency/draw counts
 // currently have no owner surface).
 
@@ -26,6 +26,7 @@ export const PQ025_QUALIFICATION_SEED_POLICY = Object.freeze({
 export function createPq025GoldCorridorQualificationManifest(overrides = {}) {
   return {
     id: 'pq025-gold-corridor-qualification',
+    registryEnabled: false,
     // Assigned per cell by the matrix; both browser and electron are represented at each horizon.
     runtimeKind: 'browser',
     command: process.execPath,

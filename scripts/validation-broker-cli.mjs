@@ -8,23 +8,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createValidationBroker, getLaunchCounts } from './lib/validationBroker.mjs';
+import { loadValidationManifestById } from './lib/validationManifestRegistry.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-
-const MANIFEST_LOADERS = {
-  'massline-live': () => import('./validation-manifests/massline-live.mjs'),
-  'pq007-control-browser': () => import('./validation-manifests/pq007-control-browser.mjs'),
-  'pq007-control-electron': () => import('./validation-manifests/pq007-control-electron.mjs'),
-  'pq017-world-site': () => import('./validation-manifests/pq017-world-site.mjs'),
-  'lab-chromium-parity': () => import('./validation-manifests/lab-chromium-parity.mjs'),
-  'pq021-ledger-route': () => import('./validation-manifests/pq021-ledger-route.mjs'),
-  'pq019a-capsule-presentation': () => import('./validation-manifests/pq019a-capsule-presentation.mjs'),
-  'pq019-surface-heist': () => import('./validation-manifests/pq019-surface-heist.mjs'),
-  'pq020-ceres-topology': () => import('./validation-manifests/pq020-ceres-topology.mjs'),
-  'pq023-corridor-cues': () => import('./validation-manifests/pq023-corridor-cues.mjs'),
-  'pq022-corridor-asset-leaves': () => import('./validation-manifests/pq022-corridor-asset-leaves.mjs'),
-  'pq024-asteroid-claim': () => import('./validation-manifests/pq024-asteroid-claim.mjs'),
-};
 
 function parseArgs(argv) {
   const out = {
@@ -58,19 +44,8 @@ function printHelp() {
 Usage:
   node scripts/validation-broker-cli.mjs --manifest <id> [--issue-claim-only] [--diagnostic] [-- <probe args>]
 
-Manifests:
-  massline-live
-  pq007-control-browser
-  pq007-control-electron
-  pq017-world-site
-  lab-chromium-parity
-  pq021-ledger-route
-  pq019a-capsule-presentation
-  pq019-surface-heist
-  pq020-ceres-topology
-  pq023-corridor-cues
-  pq022-corridor-asset-leaves
-  pq024-asteroid-claim
+Manifest IDs resolve only to Git-tracked regular files at:
+  scripts/validation-manifests/<id>.mjs
 
 Environment on spawned probes:
   SF_BROKER_CLAIM   one-use claim path
@@ -87,21 +62,11 @@ if (args.help || !args.manifestId) {
 }
 
 async function main({ manifestId, issueClaimOnly, diagnostic, extraArgs }) {
-  const loader = MANIFEST_LOADERS[manifestId];
-  if (!loader) {
-    console.error(`[validation-broker] unknown manifest: ${manifestId}`);
-    console.error(`[validation-broker] known: ${Object.keys(MANIFEST_LOADERS).join(', ')}`);
-    process.exitCode = 1;
-    return;
-  }
-
-  const mod = await loader();
-  const rawManifest = mod.default
-    ?? mod.masslineLiveManifest
-    ?? mod.pq017WorldSiteManifest
-    ?? mod.labChromiumParityManifest;
-  if (!rawManifest) {
-    console.error(`[validation-broker] manifest module did not export a manifest: ${manifestId}`);
+  let rawManifest;
+  try {
+    rawManifest = await loadValidationManifestById({ root: ROOT, id: manifestId });
+  } catch (error) {
+    console.error(`[validation-broker] manifest rejected: ${error?.message || error}`);
     process.exitCode = 1;
     return;
   }

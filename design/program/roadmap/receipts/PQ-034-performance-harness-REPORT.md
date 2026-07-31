@@ -39,9 +39,35 @@ origin rather than inheriting stale frame identity.
 - `npm run check:perf-packets` — PASS 39/39;
 - `npm run check:baseline` — PASS 10/10 in 50.822 s.
 
+## Tracked manifest-registry slice
+
+The validation broker CLI now derives exactly one module path from a safe manifest ID and delegates
+to `loadValidationManifestById`. Before any candidate module executes, the registry proves a
+stage-zero Git index entry with regular-file mode, rejects an on-disk symlink or non-file, resolves the
+real path inside the manifest directory, and then requires an object default export whose ID matches
+the request. A manifest may remain deliberately undiscoverable with `registryEnabled: false`.
+
+That explicit stop is set on both deferred PQ-025 manifests. They remain created-but-unexecuted and
+cannot be made broker-runnable merely because their files are tracked; their packet entry conditions
+must be closed before a later integrator removes the stop. Existing active-manifest contracts now
+load their actual tracked modules instead of matching strings in a hard-coded CLI table.
+
+- characterization: all eight existing CLI-table assertions failed after the table was removed,
+  identifying their stale source-string coupling before the assertions were migrated;
+- `node --test test/validation-manifest-registry.test.mjs` — PASS 7/7, including pre-import
+  rejection of an untracked top-level side effect and live PQ-025 disablement;
+- active manifest migration set (`PQ-007`, `PQ-019A`, `PQ-019C`, `PQ-020`, `PQ-021`, `PQ-022`,
+  `PQ-023`, `PQ-024`) plus registry contracts — PASS 92/92;
+- all current `*manifest*.test.mjs` contracts — PASS 161/161;
+- `test/validation-broker.test.mjs` — PASS 33/33;
+- `npm run check:baseline` — PASS 10/10 in 47.218 s;
+- direct CLI rejection of `pq025-gold-corridor-smoke` — exit 1 with
+  `VALIDATION_MANIFEST_REGISTRY_DISABLED` before broker construction;
+- no broker claim, browser, Electron, or performance capture was launched.
+
 ## Honest residual
 
 This is not the terminal dispatch receipt. Background-job identity, current runtime-driver
-integration, tracked manifest discovery, paired Browser/Electron broker authority, source pairing,
+integration, paired Browser/Electron broker authority, source pairing,
 clean matched evidence, overhead measurement, and independent causal review remain open. No headed
 runtime or performance capture was launched in this slice.

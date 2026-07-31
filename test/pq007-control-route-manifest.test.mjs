@@ -8,13 +8,13 @@ import browserManifest, {
   PQ007_CONTROL_FIXED_SEED,
 } from '../scripts/validation-manifests/pq007-control-browser.mjs';
 import electronManifest from '../scripts/validation-manifests/pq007-control-electron.mjs';
+import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const browserProbe = read('scripts/probe-auto-target-steering.mjs');
 const electronProbe = read('scripts/probe-dod-flight-acceptance.mjs');
-const brokerCli = read('scripts/validation-broker-cli.mjs');
 
-test('PQ-007 cells pin separate one-use Browser and Electron broker authority', () => {
+test('PQ-007 cells pin separate one-use Browser and Electron broker authority', async () => {
   assert.equal(PQ007_CONTROL_FIXED_SEED, 47);
   assert.equal(browserManifest.id, 'pq007-control-browser');
   assert.equal(browserManifest.runtimeKind, 'browser');
@@ -42,8 +42,12 @@ test('PQ-007 cells pin separate one-use Browser and Electron broker authority', 
         `${manifest.id} fingerprints a missing source: ${sourcePath}`);
     }
   }
-  assert.match(brokerCli, /'pq007-control-browser'/);
-  assert.match(brokerCli, /'pq007-control-electron'/);
+  for (const id of ['pq007-control-browser', 'pq007-control-electron']) {
+    const registered = await loadValidationManifestById({ root: ROOT, id });
+    assert.equal(registered.id, id);
+    assert.equal(registered.__trackedManifest.relativePath,
+      `scripts/validation-manifests/${id}.mjs`);
+  }
 });
 
 test('acceptance gates on a broker claim before loading Playwright or launching a runtime', () => {

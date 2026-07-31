@@ -20,6 +20,7 @@ import {
   SECTOR_ID,
   SITE_ID,
 } from '../scripts/lib/pq021LedgerPublicRoute.mjs';
+import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = (relative) => readFileSync(new URL(relative, ROOT), 'utf8');
@@ -77,12 +78,13 @@ test('the deterministic fast gates run before any claim is issued', () => {
     'the two-host DOM proof must be green before the route cell is authorized');
 });
 
-test('the broker CLI registers the manifest so one command runs the cell', () => {
-  // Substring matches only: a CRLF worktree makes any newline-anchored pattern lie.
-  const cli = read('scripts/validation-broker-cli.mjs');
-  assert.ok(cli.includes("'pq021-ledger-route': () => import('./validation-manifests/pq021-ledger-route.mjs')"),
-    'the CLI must be able to load the manifest by id');
-  assert.ok(cli.includes('pq021-ledger-route'), 'the manifest id appears in the CLI help listing');
+test('the tracked registry resolves the manifest so one command runs the cell', async () => {
+  const registered = await loadValidationManifestById({
+    root: fileURLToPath(ROOT),
+    id: 'pq021-ledger-route',
+  });
+  assert.equal(registered.id, manifest.id);
+  assert.match(registered.__trackedManifest.relativePath, /pq021-ledger-route\.mjs$/);
 });
 
 test('the probe is inert without a broker claim', () => {

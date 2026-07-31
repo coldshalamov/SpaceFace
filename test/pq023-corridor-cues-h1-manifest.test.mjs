@@ -17,6 +17,7 @@ import {
 import { setPq023AccessibilityPreference } from '../scripts/lib/pq023Accessibility.mjs';
 import { quiescePq023Capture } from '../scripts/lib/pq023CaptureCleanup.mjs';
 import { applyAccessibility } from '../src/ui/accessibility.js';
+import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = (relative) => readFileSync(new URL(relative, ROOT), 'utf8');
@@ -59,11 +60,13 @@ test('deterministic cue, presentation, sim, and static gates precede claim issue
   ]);
 });
 
-test('broker CLI registers and lists pq023-corridor-cues', () => {
-  const cli = read('scripts/validation-broker-cli.mjs');
-  assert.ok(cli.includes("'pq023-corridor-cues': () => import('./validation-manifests/pq023-corridor-cues.mjs')"));
-  const help = cli.slice(cli.indexOf('Manifests:'), cli.indexOf('Environment on spawned probes:'));
-  assert.ok(help.includes('pq023-corridor-cues'));
+test('the tracked registry resolves pq023-corridor-cues', async () => {
+  const registered = await loadValidationManifestById({
+    root: fileURLToPath(ROOT),
+    id: 'pq023-corridor-cues',
+  });
+  assert.equal(registered.id, manifest.id);
+  assert.match(registered.__trackedManifest.relativePath, /pq023-corridor-cues\.mjs$/);
 });
 
 test('the Browser wrapper is inert without a broker claim and opts into one headed capture', () => {

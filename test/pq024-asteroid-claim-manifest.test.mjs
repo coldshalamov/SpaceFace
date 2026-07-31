@@ -1,16 +1,17 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import manifest, {
   createPq024AsteroidClaimManifest,
   PQ024_ASTEROID_CLAIM_FIXED_SEED,
 } from '../scripts/validation-manifests/pq024-asteroid-claim.mjs';
 import { projectPq024RouteSemantics } from '../scripts/lib/pq024AsteroidClaimParity.mjs';
+import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const PROBE_URL = new URL('../scripts/probe-pq024-asteroid-claim.mjs', import.meta.url);
 const ELECTRON_URL = new URL('../scripts/check-pq024-asteroid-claim-electron.mjs', import.meta.url);
-const BROKER_CLI_URL = new URL('../scripts/validation-broker-cli.mjs', import.meta.url);
 
 test('PQ-024 broker manifest binds one acceptance launch to the queue-listed headless gates', () => {
   const fresh = createPq024AsteroidClaimManifest();
@@ -241,12 +242,11 @@ test('PQ-024 semantic parity ignores runtime ids while retaining the claim corri
   assert.equal(projected.reentered.producingChip, true);
 });
 
-test('validation broker CLI registers the PQ-024 manifest without changing its export fallback', () => {
-  const source = readFileSync(BROKER_CLI_URL, 'utf8');
-  assert.match(
-    source,
-    /'pq024-asteroid-claim':\s*\(\)\s*=>\s*import\('\.\/validation-manifests\/pq024-asteroid-claim\.mjs'\)/,
-  );
-  assert.match(source, /^\s*pq024-asteroid-claim\s*$/m);
-  assert.match(source, /const rawManifest = mod\.default/);
+test('the tracked registry resolves the PQ-024 manifest default export', async () => {
+  const registered = await loadValidationManifestById({
+    root: fileURLToPath(new URL('../', import.meta.url)),
+    id: 'pq024-asteroid-claim',
+  });
+  assert.equal(registered.id, manifest.id);
+  assert.match(registered.__trackedManifest.relativePath, /pq024-asteroid-claim\.mjs$/);
 });

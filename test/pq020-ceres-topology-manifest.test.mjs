@@ -22,6 +22,7 @@ import {
   PQ020_FUNCTIONAL_SCREENSHOTS,
   PQ020_ROUTE_TARGETS,
 } from '../scripts/lib/pq020CeresFunctionalRoute.mjs';
+import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = (relative) => readFileSync(new URL(relative, ROOT), 'utf8');
@@ -65,11 +66,13 @@ test('deterministic PQ-020, sim, and route-contract gates run before claim issue
   ]);
 });
 
-test('the broker CLI registers and lists pq020-ceres-topology', () => {
-  const cli = read('scripts/validation-broker-cli.mjs');
-  assert.ok(cli.includes("'pq020-ceres-topology': () => import('./validation-manifests/pq020-ceres-topology.mjs')"));
-  const help = cli.slice(cli.indexOf('Manifests:'), cli.indexOf('Environment on spawned probes:'));
-  assert.ok(help.includes('pq020-ceres-topology'));
+test('the tracked registry resolves pq020-ceres-topology', async () => {
+  const registered = await loadValidationManifestById({
+    root: fileURLToPath(ROOT),
+    id: 'pq020-ceres-topology',
+  });
+  assert.equal(registered.id, manifest.id);
+  assert.match(registered.__trackedManifest.relativePath, /pq020-ceres-topology\.mjs$/);
 });
 
 test('the Browser entry is inert without a broker claim and owns one headed real-GPU process', () => {
