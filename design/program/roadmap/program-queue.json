@@ -2496,7 +2496,7 @@
       "priority": 14,
       "title": "Capture the repaired moving-capsule presentation",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-019.capsule-capture-repair"
       ],
