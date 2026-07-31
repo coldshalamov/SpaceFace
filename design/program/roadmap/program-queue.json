@@ -2496,7 +2496,7 @@
       "priority": 14,
       "title": "Capture the repaired moving-capsule presentation",
       "kind": "acceptance_capture",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-019.capsule-capture-repair"
       ],
@@ -2516,7 +2516,9 @@
         "npm run check:pq019a:facility-embodiment",
         "npm run check:sim:compare"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-019-capsule-h1-capture-REPORT.md"
+      ],
       "brief": "Spend one fresh candidate-bound Browser presentation attempt after the framing repair, retain the already-valid facility/count evidence, and capture only the missing close/default/far physical-capsule evidence."
     },
     {

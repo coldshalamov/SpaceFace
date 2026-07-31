@@ -24,7 +24,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 |---|---|---|---|
 | 1 | headed `check:assets:live` | **PASS** | [row1-assets-live](evidence/h1/row1-assets-live/EVIDENCE.md) |
 | 2 | PQ-021 broker cell + Electron parity | **PASS** | [row2-pq021-ledger](evidence/h1/row2-pq021-ledger/EVIDENCE.md) |
-| 3 | PQ-019A presentation + counts | **REPAIR PASS / H1 CONTINUATION READY (facility/count evidence survives; capsule stills remain unproven)** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
+| 3 | PQ-019A presentation + counts | **PASS — facilities/counts retained; brokered capsule continuation accepted at runtime zooms 45/66/108** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
 | 4 | `pq019-surface-heist` broker manifest | **REPAIR PASS / H1 CONTINUATION READY (DOM abandon + lawful observe survive; remaining routes unproven)** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
 | 5 | PQ-020 Ceres functional route | **REPAIR PASS / H1 CONTINUATION READY (valid Helios→Ceres jump survives; remainder unproven)** | [row5-pq020-ceres-route](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) |
 | 6 | PQ-023 cues in motion | **REPAIR PASS / H1 CONTINUATION READY (combat motion survives; Cathedral sequence and Electron parity unproven)** | [row6-pq023-cues](evidence/h1/row6-pq023-cues/EVIDENCE.md) |
@@ -68,10 +68,10 @@ witness/WANTED/pursuit floor pill and no competing pill?
 
 **Evidence:**
 
-- [row 3 presentation and counts](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) — facility stills
-  and functional counts survive; the capsule question is **not answerable from H1** because the single
-  attempt missed the moving subject at all three framings (HARNESS). Do not treat its player/planet
-  frames as capsule art evidence.
+- [row 3 presentation and counts](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) — retained
+  facility stills/counts plus the accepted brokered capsule-only continuation at applied runtime
+  zooms `45/66/108`. The capsule art question is now answerable by a human reviewer; no such verdict
+  is implied by the functional acceptance.
 - [row 4 registered surface-heist attempt](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) — the DOM
   abandon and lawful-observe evidence survive, but the remaining heist/fence, confiscation,
   destruction, recovery, and final one-voice composition routes are unproven after the HARNESS

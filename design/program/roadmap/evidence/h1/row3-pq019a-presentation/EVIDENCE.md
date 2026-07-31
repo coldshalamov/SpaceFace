@@ -1,6 +1,31 @@
 # H1 row 3 — PQ-019A facility/capsule presentation and functional counts
 
-**Overall result: FAIL — HARNESS (partial evidence survives).**
+**Overall result: PASS — H1 presentation/functional evidence complete; H2 human verdict open.**
+
+The original H1 attempt and failure artifacts below remain immutable history. The accepted
+post-repair continuation is in [capsule-continuation](capsule-continuation/): one clean,
+broker-authorized `--capsule-only` Browser cell on `3590acf9`, consumed claim
+`7584-0f021eaf85838a532440c0a8`, candidate digest
+`530315c2db88bb92502e6f602bd1e4d690a30ef137aa2e88be514da3e509d992`.
+
+## Accepted physical-capsule continuation
+
+Original-resolution inspection confirms three materially distinct, judgeable views. The runtime
+receipts themselves enforce applied zooms `45 < 66 < 108`; all three report authored
+`pod_cargo_container`, one visible mesh, near-zero NDC center and no page error.
+
+| Framing | Applied zoom | Accepted evidence |
+|---|---:|---|
+| close | 45 | [close](capsule-continuation/cargo-capsule-inflight-close.png) |
+| default | 66 | [default](capsule-continuation/cargo-capsule-inflight-default.png) |
+| far | 108 | [far](capsule-continuation/cargo-capsule-inflight-far.png) |
+
+The final route was intentionally capsule-only. It did not replace or recapture the valid facility,
+count, admission or T-minus evidence below. See
+[`PQ-019-capsule-h1-capture-REPORT.md`](../../../receipts/PQ-019-capsule-h1-capture-REPORT.md) for the
+claim, hashes, causal attempt record and exact limits.
+
+## Original H1 attempt (retained failure history)
 
 - **PASS:** the unmodified presentation harness completed and produced usable close/default/far
   facility stills plus the live T-minus cue.

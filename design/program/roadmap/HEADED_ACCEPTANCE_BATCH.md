@@ -21,7 +21,7 @@ receipts live in the queue; this file remains sequencing and review context only
 |---|---|---|
 | `check:assets:live` | **PASS** on real D3D11 GPU | functional authored admission closed; no timing claim |
 | PQ-021 route | **PASS** Browser broker + Electron parity | H2 legibility/controller evidence is ready; human/physical owner unavailable |
-| PQ-019A presentation | **REPAIR PASS**; facilities/counts survive, moving capsule unproven | dispatch `PQ-019.capsule-h1-capture` |
+| PQ-019A presentation | **PASS**; facilities/counts retained plus brokered capsule views at runtime zooms 45/66/108 | H2 human art verdict remains |
 | PQ-019C route | **REPAIR PASS**; DOM abandon + lawful observe survive | dispatch `PQ-019.surface-heist-h1-capture` |
 | PQ-020 route | **REPAIR PASS** after valid Helios→Ceres jump | dispatch `PQ-020.ceres-h1-capture` |
 | PQ-023 cues | **REPAIR PASS**; combat/reduced/dense subset survives | dispatch `PQ-023.cues-h1-capture` |
