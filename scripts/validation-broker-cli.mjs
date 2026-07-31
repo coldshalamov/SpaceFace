@@ -20,6 +20,7 @@ const MANIFEST_LOADERS = {
   'pq020-ceres-topology': () => import('./validation-manifests/pq020-ceres-topology.mjs'),
   'pq023-corridor-cues': () => import('./validation-manifests/pq023-corridor-cues.mjs'),
   'pq022-corridor-asset-leaves': () => import('./validation-manifests/pq022-corridor-asset-leaves.mjs'),
+  'pq024-asteroid-claim': () => import('./validation-manifests/pq024-asteroid-claim.mjs'),
 };
 
 function parseArgs(argv) {
@@ -63,6 +64,7 @@ Manifests:
   pq020-ceres-topology
   pq023-corridor-cues
   pq022-corridor-asset-leaves
+  pq024-asteroid-claim
 
 Environment on spawned probes:
   SF_BROKER_CLAIM   one-use claim path
