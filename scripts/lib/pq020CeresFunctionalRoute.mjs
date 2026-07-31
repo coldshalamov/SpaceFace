@@ -432,6 +432,7 @@ export async function readPq020FailureSnapshot(page) {
             || root.view?.root?.userData?.authoredAssetState || null,
           projection: projectEntity(root, state.render?.camera),
         } : null,
+        inputReadiness: readInputReadiness(state),
         trace: (window.__PQ020_H1_TRACE__?.events || []).slice(-40),
       };
 
@@ -459,6 +460,21 @@ export async function readPq020FailureSnapshot(page) {
             inFrame: Math.abs(point.x) <= 1 && Math.abs(point.y) <= 1 && point.z >= -1 && point.z <= 1,
           };
         } catch (_) { return null; }
+      }
+      function readInputReadiness(currentState) {
+        const overlay = document.getElementById('boot-overlay');
+        const activeScreen = window.SF?.ctx?.screenManager?.top?.() || null;
+        return {
+          mode: currentState.mode || null,
+          activeScreen,
+          modalOpen: document.body.classList.contains('ui-modal-open'),
+          documentHasFocus: document.hasFocus(),
+          loadingOverlay: overlay ? {
+            hiddenClass: overlay.classList.contains('hidden'),
+            ariaBusy: overlay.getAttribute('aria-busy'),
+            display: getComputedStyle(overlay).display,
+          } : null,
+        };
       }
     }, { siteId: PQ020_CATHEDRAL_SITE_ID, beaconId: PQ020_BEACON_POI_ID });
   } catch (error) {
@@ -874,12 +890,25 @@ async function coldContinue(page, rootUrl, fixedSeed, screenshot) {
     const entities = [...state.entities.values()];
     const beaconCount = entities.filter((entity) => entity?.alive !== false && entity.data?.poiId === beaconId).length;
     const cathedralCount = entities.filter((entity) => entity?.alive !== false && entity.data?.worldSiteId === siteId).length;
-    return state.world?.currentSectorId === sectorId && beaconCount === 1 && cathedralCount === 15;
+    const overlay = document.getElementById('boot-overlay');
+    const activeScreen = window.SF?.ctx?.screenManager?.top?.() || null;
+    const inputReady = state.mode === 'flight'
+      && activeScreen == null
+      && !document.body.classList.contains('ui-modal-open')
+      && (!overlay || (
+        overlay.classList.contains('hidden')
+        && overlay.getAttribute('aria-busy') === 'false'
+      ));
+    return state.world?.currentSectorId === sectorId
+      && beaconCount === 1
+      && cathedralCount === 15
+      && inputReady;
   }, {
     sectorId: PQ020_CERES_SECTOR_ID,
     siteId: PQ020_CATHEDRAL_SITE_ID,
     beaconId: PQ020_BEACON_POI_ID,
   }, { timeout: CONTINUE_TIMEOUT_MS });
+  await page.bringToFront().catch(() => {});
   await screenshot('16-continue-restored.png');
   const after = await readFunctionalSnapshot(page);
   assert.equal(after.seed, fixedSeed, 'Continue must preserve the fixed seed');

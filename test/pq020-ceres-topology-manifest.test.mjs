@@ -172,7 +172,17 @@ test('both Ceres endpoint directions and cold Continue are non-vacuous assertion
   assert.ok(source.includes('endpointGates.find((gate) => gate.gateTo === sourceSectorId)'));
   assert.doesNotMatch(source, /sourceGate\.distance\s*<=\s*300/);
   assert.ok(source.includes("PQ020_SAVE_STORAGE_KEY = 'sf.save.quick'"));
-  assert.ok(source.includes("state.world?.currentSectorId === sectorId && beaconCount === 1 && cathedralCount === 15"));
+  assert.ok(source.includes("state.world?.currentSectorId === sectorId"));
+  assert.ok(source.includes('beaconCount === 1'));
+  assert.ok(source.includes('cathedralCount === 15'));
+  assert.ok(source.includes("state.mode === 'flight'"));
+  assert.ok(source.includes('activeScreen == null'));
+  assert.ok(source.includes("!document.body.classList.contains('ui-modal-open')"));
+  assert.ok(source.includes("overlay.classList.contains('hidden')"));
+  assert.ok(source.includes("overlay.getAttribute('aria-busy') === 'false'"));
+  assert.ok(source.indexOf("const inputReady = state.mode === 'flight'")
+    < source.indexOf("await screenshot('16-continue-restored.png')"),
+  'cold Continue must not capture or issue a map key while the production loading fence owns input');
   assert.ok(source.includes('poseDelta <= 8'));
   assert.ok(source.includes('repeatedBeacon'));
   assert.ok(source.includes('repeatedCathedral'));
@@ -238,6 +248,9 @@ test('failure evidence contains enough simulation state to classify one attempt'
     'cathedralEntities:',
     'cathedralRoot:',
     'projection: projectEntity',
+    'inputReadiness: readInputReadiness(state)',
+    'documentHasFocus: document.hasFocus()',
+    "ariaBusy: overlay.getAttribute('aria-busy')",
     "trace: (window.__PQ020_H1_TRACE__?.events || []).slice(-40)",
   ]) assert.ok(source.includes(required), `missing failure-classification state: ${required}`);
 });
