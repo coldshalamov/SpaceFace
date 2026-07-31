@@ -557,9 +557,10 @@ async function selectAsteroidOnLocalMap(page, options = {}) {
   const box = await canvas.boundingBox();
   assert(box, 'unified local map canvas has no pointer box');
   await page.mouse.click(box.x + target.sx, box.y + target.sy);
-  await page.waitForFunction((id) => (
-    window.SF?.ctx?.screenManager?.getActiveScreenDef?.()?._selectedTarget?.entityId === id
-  ), target.targetEntityId, { timeout: 10_000 });
+  await page.waitForFunction((id) => {
+    const selected = window.SF?.ctx?.screenManager?.getActiveScreenDef?.()?._selectedTarget;
+    return (selected?.entityId ?? selected?.targetEntityId) === id;
+  }, target.targetEntityId, { timeout: 10_000 });
   const course = page.locator('#gm-set-course-btn');
   await course.waitFor({ state: 'visible' });
   await course.click();
