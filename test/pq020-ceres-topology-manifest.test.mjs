@@ -15,6 +15,7 @@ import manifest, {
   PQ020_CERES_TOPOLOGY_FIXED_SEED,
 } from '../scripts/validation-manifests/pq020-ceres-topology.mjs';
 import {
+  assertEndpointApproach,
   PQ020_CATHEDRAL_SITE_ID,
   PQ020_CERES_FUNCTIONAL_SCHEMA,
   PQ020_CERES_SECTOR_ID,
@@ -168,12 +169,39 @@ test('both Ceres endpoint directions and cold Continue are non-vacuous assertion
   assert.ok(source.includes('assertEndpointApproach(heliosApproach, PQ020_HELIOS_SECTOR_ID)'));
   assert.ok(source.includes('assertEndpointApproach(tethysApproach, PQ020_TETHYS_SECTOR_ID)'));
   assert.ok(source.includes('closestEndpointGateTo'));
-  assert.ok(source.includes('sourceGate.distance <= 300'));
+  assert.ok(source.includes('endpointGates.find((gate) => gate.gateTo === sourceSectorId)'));
+  assert.doesNotMatch(source, /sourceGate\.distance\s*<=\s*300/);
   assert.ok(source.includes("PQ020_SAVE_STORAGE_KEY = 'sf.save.quick'"));
   assert.ok(source.includes("state.world?.currentSectorId === sectorId && beaconCount === 1 && cathedralCount === 15"));
   assert.ok(source.includes('poseDelta <= 8'));
   assert.ok(source.includes('repeatedBeacon'));
   assert.ok(source.includes('repeatedCathedral'));
+});
+
+test('the recorded 429.564-WU Helios arrival is valid by source-direction identity', () => {
+  const recordedArrival = {
+    closestEndpointGateTo: 'sector_helios_prime',
+    endpointGates: [
+      { gateTo: 'sector_helios_prime', distance: 429.564 },
+      { gateTo: 'sector_tethys_junction', distance: 1573.512 },
+    ],
+  };
+
+  assert.doesNotThrow(() => assertEndpointApproach(recordedArrival, 'sector_helios_prime'));
+  assert.throws(
+    () => assertEndpointApproach(
+      { ...recordedArrival, closestEndpointGateTo: 'sector_tethys_junction' },
+      'sector_helios_prime',
+    ),
+    /must land closest to the gate back to that endpoint/,
+  );
+  assert.throws(
+    () => assertEndpointApproach(
+      { ...recordedArrival, endpointGates: recordedArrival.endpointGates.slice(1) },
+      'sector_helios_prime',
+    ),
+    /exposes no endpoint gate back to sector_helios_prime/,
+  );
 });
 
 test('Cathedral frames require natural distance bands, in-frame projection, and authored admission', () => {

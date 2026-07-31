@@ -2228,7 +2228,7 @@
       "priority": 4,
       "title": "Remove the unsupported Ceres endpoint-distance assertion",
       "kind": "acceptance_repair",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-020.headless-implementation"
       ],
@@ -2246,7 +2246,9 @@
         "npm run check:pq020:proofs",
         "npm run check:pq020:ceres-topology"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-020-route-harness-repair-REPORT.md"
+      ],
       "brief": "Retain the valid source-direction gate identity check, delete the packet-less absolute 300-WU threshold, and regression-test the recorded 429.564-WU valid arrival before any new Browser or Electron attempt."
     },
     {

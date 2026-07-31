@@ -663,13 +663,11 @@ async function waitForJumpArrival(page, { sourceSectorId, targetSectorId }) {
   return snapshot;
 }
 
-function assertEndpointApproach(snapshot, sourceSectorId) {
+export function assertEndpointApproach(snapshot, sourceSectorId) {
   assert.equal(snapshot.closestEndpointGateTo, sourceSectorId,
     `Ceres arrival from ${sourceSectorId} must land closest to the gate back to that endpoint`);
   const sourceGate = snapshot.endpointGates.find((gate) => gate.gateTo === sourceSectorId);
   assert(sourceGate, `Ceres exposes no endpoint gate back to ${sourceSectorId}`);
-  assert.ok(sourceGate.distance <= 300,
-    `Ceres entry from ${sourceSectorId} landed ${sourceGate.distance.toFixed(3)} WU from its endpoint gate`);
 }
 
 async function waitForAutopilotArrival(page, target) {
