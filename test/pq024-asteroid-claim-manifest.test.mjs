@@ -62,6 +62,11 @@ test('PQ-024 broker manifest binds one acceptance launch to the queue-listed hea
 test('PQ-024 probe preserves the public route and observes owner-produced terminal truth', () => {
   const source = readFileSync(PROBE_URL, 'utf8');
 
+  assert.doesNotMatch(source, /\.isFocused\s*\(/,
+    'Playwright Locator has no isFocused API');
+  assert.match(source, /element\s*===\s*document\.activeElement/,
+    'map search focus must use a real DOM active-element comparison');
+
   for (const publicSeam of [
     "page.keyboard.type('Helios Station')",
     '.sf-alert--dock',

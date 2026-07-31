@@ -432,7 +432,9 @@ async function dockAtHelios(page) {
   await waitVisible(page, '#sf-galaxymap', 'galaxy map');
   await page.keyboard.press('/');
   const search = page.locator('.gm-search-input');
-  if (!(await search.isFocused().catch(() => false))) await search.click();
+  const searchFocused = await search.evaluate((element) => element === document.activeElement)
+    .catch(() => false);
+  if (!searchFocused) await search.click();
   await page.keyboard.type('Helios Station');
   await page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first()
     .waitFor({ state: 'visible' });
