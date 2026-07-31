@@ -2326,6 +2326,7 @@
         "test/"
       ],
       "checks": [
+        "node --test test/pq024-asteroid-claim-manifest.test.mjs",
         "npm run check:pq024:survey-claim",
         "node --test test/asteroid-sites.test.mjs",
         "npm run check:sim:compare"
@@ -2672,6 +2673,7 @@
       "paths": [
         "scripts/probe-pq024-asteroid-claim.mjs",
         "scripts/check-pq024-asteroid-claim-electron.mjs",
+        "scripts/lib/pq024AsteroidClaimParity.mjs",
         "scripts/validation-manifests/pq024-asteroid-claim.mjs",
         "test/pq024-asteroid-claim-manifest.test.mjs",
         "design/program/roadmap/active/PQ-024.md",

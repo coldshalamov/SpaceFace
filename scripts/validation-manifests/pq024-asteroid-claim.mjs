@@ -59,8 +59,12 @@ export function createPq024AsteroidClaimManifest(overrides = {}) {
     ],
     harnessSourcePaths: [
       'scripts/probe-pq024-asteroid-claim.mjs',
+      'scripts/check-pq024-asteroid-claim-electron.mjs',
+      'scripts/lib/alphaLiveBaselineElectronContracts.mjs',
       'scripts/lib/browser-issues.mjs',
+      'scripts/lib/electronTestIsolation.mjs',
       'scripts/lib/load-playwright.mjs',
+      'scripts/lib/pq024AsteroidClaimParity.mjs',
       'scripts/lib/validationBroker.mjs',
       'scripts/lib/visualProbeServer.mjs',
       'scripts/validation-broker-cli.mjs',

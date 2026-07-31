@@ -16,7 +16,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
+import {
+  closeOwnedElectronRuntime,
+  createElectronCanonicalUrlTracker,
+  createElectronProcessMonitor,
+} from './lib/alphaLiveBaselineElectronContracts.mjs';
+import {
+  assertIsolatedElectronRootUrl,
+  createIsolatedElectronLaunch,
+} from './lib/electronTestIsolation.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { projectPq024RouteSemantics } from './lib/pq024AsteroidClaimParity.mjs';
 import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 import manifest, {
@@ -25,7 +35,12 @@ import manifest, {
 } from './validation-manifests/pq024-asteroid-claim.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const ARTIFACT_ROOT = path.join(ROOT, '.devshots', 'pq024-asteroid-claim');
+const ELECTRON_PARITY = process.argv.includes('--electron-parity');
+const BASE_ARTIFACT_ROOT = path.join(ROOT, '.devshots', 'pq024-asteroid-claim');
+const ARTIFACT_ROOT = ELECTRON_PARITY
+  ? path.join(BASE_ARTIFACT_ROOT, 'electron')
+  : BASE_ARTIFACT_ROOT;
+const BROWSER_RECEIPT_PATH = path.join(BASE_ARTIFACT_ROOT, 'route-receipt.json');
 const VIEWPORT = Object.freeze({ width: 1460, height: 900 });
 const DIAGNOSTIC = process.argv.includes('--diagnostic');
 const FIXED_SEED = Number(process.env.SF_PROBE_SEED) > 0
@@ -39,7 +54,7 @@ const SCREENSHOTS = Object.freeze([
   '05-continue-reentered.png',
 ]);
 
-const brokerGate = await requireBrokerClaimOrDiagnostic({
+const brokerGate = ELECTRON_PARITY ? { ok: true } : await requireBrokerClaimOrDiagnostic({
   outputRoot: ARTIFACT_ROOT,
   manifest: createPq024AsteroidClaimManifest(),
   tokenOrPath: process.env.SF_BROKER_CLAIM ?? null,
@@ -59,43 +74,73 @@ await mkdir(ARTIFACT_ROOT, { recursive: true });
 
 let server = null;
 let browser = null;
+let electronApp = null;
+let electronChildProcess = null;
+let electronLaunch = null;
+let electronUrlTracker = null;
+let electronProcessMonitor = null;
 let page = null;
 let issueTracker = null;
 let receipt = null;
+let browserReceipt = null;
+let rootUrl = null;
 const screenshots = [];
 
 try {
-  server = await acquireVisualProbeServer({ root: ROOT });
-  const executablePath = findSystemBrowser();
-  assert(executablePath, 'headed Chrome or Edge is required for PQ-024 route acceptance');
-  const { chromium } = await loadPlaywright();
-  browser = await chromium.launch({
-    headless: false,
-    executablePath,
-    args: [
-      '--incognito',
-      '--no-first-run',
-      '--no-default-browser-check',
-      '--disable-extensions',
-      '--ignore-gpu-blocklist',
-      '--enable-webgl',
-      '--disable-background-timer-throttling',
-      '--disable-backgrounding-occluded-windows',
-      '--disable-renderer-backgrounding',
-      '--disable-features=CalculateNativeWinOcclusion',
-      `--window-size=${VIEWPORT.width},${VIEWPORT.height}`,
-      '--force-device-scale-factor=1',
-    ],
-  });
-  const context = await browser.newContext({
-    viewport: VIEWPORT,
-    screen: VIEWPORT,
-    deviceScaleFactor: 1,
-    locale: 'en-US',
-    colorScheme: 'dark',
-    reducedMotion: 'no-preference',
-  });
-  page = await context.newPage();
+  if (ELECTRON_PARITY) {
+    browserReceipt = JSON.parse(await readFile(BROWSER_RECEIPT_PATH, 'utf8'));
+    assert.equal(browserReceipt.disposition, 'PASS',
+      'PQ-024 Electron parity requires a passing Browser route receipt');
+    const { _electron: electron } = await loadPlaywright();
+    electronLaunch = createIsolatedElectronLaunch({ root: ROOT, taskId: 'pq024-asteroid-claim' });
+    electronApp = await electron.launch(electronLaunch.options);
+    electronChildProcess = electronApp.process();
+    electronProcessMonitor = createElectronProcessMonitor({
+      electronApp,
+      childProcess: electronChildProcess,
+    });
+    page = await electronApp.firstWindow({ timeout: 90_000 });
+    electronUrlTracker = createElectronCanonicalUrlTracker(page, {
+      bootstrapTimeoutMs: 10_000,
+      pollIntervalMs: 75,
+      allowAnyLoopbackPort: true,
+    });
+    rootUrl = assertIsolatedElectronRootUrl(await electronUrlTracker.waitForCanonicalRoot(10_000));
+    await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
+  } else {
+    server = await acquireVisualProbeServer({ root: ROOT });
+    rootUrl = server.baseUrl;
+    const executablePath = findSystemBrowser();
+    assert(executablePath, 'headed Chrome or Edge is required for PQ-024 route acceptance');
+    const { chromium } = await loadPlaywright();
+    browser = await chromium.launch({
+      headless: false,
+      executablePath,
+      args: [
+        '--incognito',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-extensions',
+        '--ignore-gpu-blocklist',
+        '--enable-webgl',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=CalculateNativeWinOcclusion',
+        `--window-size=${VIEWPORT.width},${VIEWPORT.height}`,
+        '--force-device-scale-factor=1',
+      ],
+    });
+    const context = await browser.newContext({
+      viewport: VIEWPORT,
+      screen: VIEWPORT,
+      deviceScaleFactor: 1,
+      locale: 'en-US',
+      colorScheme: 'dark',
+      reducedMotion: 'no-preference',
+    });
+    page = await context.newPage();
+  }
   page.setDefaultTimeout(30_000);
   page.setDefaultNavigationTimeout(90_000);
   await page.addInitScript(() => {
@@ -117,10 +162,26 @@ try {
     return row;
   };
 
-  receipt = await runDefaultRoute(page, server.baseUrl, screenshot);
+  receipt = await runDefaultRoute(page, rootUrl, screenshot, {
+    runtime: ELECTRON_PARITY ? 'electron' : 'browser-chromium-headed',
+    navigateInitialRoot: !ELECTRON_PARITY,
+    pageIssueTracker: issueTracker,
+  });
   receipt.screenshots = screenshots;
   receipt.pageIssues = summarizeIssues(issueTracker.errorIssues());
   assert.equal(receipt.pageIssues.length, 0, `page issues: ${JSON.stringify(receipt.pageIssues)}`);
+  receipt.semanticProjection = projectPq024RouteSemantics(receipt);
+  if (ELECTRON_PARITY) {
+    assert.deepEqual(
+      receipt.semanticProjection,
+      projectPq024RouteSemantics(browserReceipt),
+      'PQ-024 Electron route semantics must match the accepted Browser route',
+    );
+    receipt.crossRuntimeParity = {
+      pass: true,
+      comparedAgainst: repoRel(BROWSER_RECEIPT_PATH),
+    };
+  }
 } catch (error) {
   if (page && !page.isClosed()) {
     await page.screenshot({
@@ -131,7 +192,7 @@ try {
   }
   receipt = {
     schema: 'spaceface.pq024-asteroid-claim-route.v1',
-    runtime: 'browser-chromium-headed',
+    runtime: ELECTRON_PARITY ? 'electron' : 'browser-chromium-headed',
     disposition: 'FAIL',
     phase: error?.routePhase || null,
     problems: [error?.message || String(error)],
@@ -143,8 +204,46 @@ try {
     noPerformanceEvidence: true,
   };
 } finally {
-  if (browser) await browser.close().catch(() => {});
-  if (server) await server.close().catch(() => {});
+  if (ELECTRON_PARITY) {
+    let cleanup = null;
+    try {
+      cleanup = await closeOwnedElectronRuntime({
+        page,
+        electronApp,
+        childProcess: electronChildProcess,
+        canonicalUrlTracker: electronUrlTracker,
+        processMonitor: electronProcessMonitor,
+        rootUrl,
+      });
+    } catch (error) {
+      cleanup = { pass: false, failures: [error?.message || String(error)] };
+    }
+    receipt ||= {
+      schema: 'spaceface.pq024-asteroid-claim-route.v1',
+      runtime: 'electron',
+      disposition: 'FAIL',
+      problems: [],
+      fixedSeed: FIXED_SEED,
+      noPerformanceEvidence: true,
+    };
+    if (cleanup?.pass === true) {
+      receipt.ownedRuntimeClosed = true;
+      try { electronLaunch?.cleanup({ runtimeClosed: true }); }
+      catch (error) {
+        receipt.disposition = 'FAIL';
+        receipt.problems ||= [];
+        receipt.problems.push(`isolated profile cleanup failed: ${error?.message || String(error)}`);
+      }
+    } else {
+      receipt.disposition = 'FAIL';
+      receipt.ownedRuntimeClosed = false;
+      receipt.problems ||= [];
+      receipt.problems.push(`owned Electron cleanup failed: ${(cleanup?.failures || []).join('; ')}`);
+    }
+  } else {
+    if (browser) await browser.close().catch(() => {});
+    if (server) await server.close().catch(() => {});
+  }
 }
 
 await writeFile(
@@ -159,13 +258,20 @@ if (receipt.disposition !== 'PASS') {
   process.exit(1);
 }
 
-console.log('[pq024-asteroid-claim] PASS — public claim route survived save/Continue/re-entry');
+console.log(`[pq024-asteroid-claim/${ELECTRON_PARITY ? 'electron' : 'browser'}] PASS — public claim route survived save/Continue/re-entry`);
 console.log(`  receipt: ${repoRel(path.join(ARTIFACT_ROOT, 'route-receipt.json'))}`);
 
-async function runDefaultRoute(page, rootUrl, screenshot) {
+async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
   let phase = 'boot';
   try {
-    const boot = await bootSeededFlight(page, rootUrl);
+    const runtime = options.runtime || 'browser-chromium-headed';
+    const boot = await bootSeededFlight(page, rootUrl, {
+      navigateInitialRoot: options.navigateInitialRoot !== false,
+    });
+    const gpu = await readGpuContract(page);
+    assert.equal(gpu.available, true, 'PQ-024 headed route requires WebGL');
+    assert.doesNotMatch(gpu.renderer || '', /SwiftShader|llvmpipe|software/i,
+      `PQ-024 headed route requires a real GPU path, got ${gpu.renderer}`);
     await installObservers(page);
 
     phase = 'dock-helios';
@@ -203,7 +309,13 @@ async function runDefaultRoute(page, rootUrl, screenshot) {
     phase = 'quick-save';
     const saved = await quickSave(page);
     phase = 'cold-continue';
-    const continued = await coldContinue(page, rootUrl, core.siteId, production.receipt);
+    const continued = await coldContinue(
+      page,
+      rootUrl,
+      core.siteId,
+      production.receipt,
+      options.pageIssueTracker,
+    );
 
     phase = 'public-re-entry';
     const restoredAsteroid = await selectAsteroidOnLocalMap(page, { siteId: core.siteId });
@@ -214,12 +326,13 @@ async function runDefaultRoute(page, rootUrl, screenshot) {
 
     return {
       schema: 'spaceface.pq024-asteroid-claim-route.v1',
-      runtime: 'browser-chromium-headed',
+      runtime,
       disposition: 'PASS',
       problems: [],
       fixedSeed: FIXED_SEED,
       recordedSeed: boot.recordedSeed,
       brokerManifestId: manifest.id,
+      gpu,
       routeContract:
         'New Game -> Helios public market -> public local-map asteroid course -> Massline -> Asteroid Ops '
         + '-> survey reveal -> Core -> real extractor output -> one relay -> F5 -> cold Continue -> public re-entry',
@@ -227,6 +340,7 @@ async function runDefaultRoute(page, rootUrl, screenshot) {
       noPerformanceEvidenceNote:
         'Functional H1 receipt only: visible controls, owner receipts, identity, counts, and screenshots. '
         + 'No frame timing, percentile, hitch, or speed claim is recorded.',
+      informational_contended: true,
       actorControls: [
         'New Game and Launch buttons',
         'N galaxy map search and Set Waypoint',
@@ -257,13 +371,26 @@ async function runDefaultRoute(page, rootUrl, screenshot) {
   }
 }
 
-async function bootSeededFlight(page, rootUrl) {
-  await page.goto(rootUrl, { waitUntil: 'domcontentloaded' });
+async function bootSeededFlight(page, rootUrl, { navigateInitialRoot = true } = {}) {
+  if (navigateInitialRoot) {
+    await page.goto(rootUrl, { waitUntil: 'domcontentloaded' });
+  } else {
+    assert.equal(
+      new URL(page.url()).href,
+      new URL(rootUrl).href,
+      'PQ-024 Electron parity must continue from the already-loaded canonical first window',
+    );
+  }
   const url = new URL(page.url());
   assert.equal(url.search, '', 'PQ-024 uses the canonical root without debug flags');
   assert.equal(url.hash, '', 'PQ-024 uses the canonical root without hash flags');
   await page.waitForFunction(() => !!(window.SF?.state && window.SF?.bus && window.SF?.registry && window.SF?.ctx),
     null, { timeout: 60_000 });
+  const splash = page.locator('#cinematic-splash');
+  if (await splash.isVisible().catch(() => false)) {
+    await page.keyboard.press('Space');
+    await splash.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => {});
+  }
   await waitVisible(page, '[data-screen="mainMenu"]', 'main menu');
   await page.getByRole('button', { name: 'New Game', exact: true }).click();
   await waitVisible(page, '[data-screen="newGame"]', 'New Game');
@@ -633,8 +760,13 @@ async function quickSave(page) {
   return handle.jsonValue();
 }
 
-async function coldContinue(page, rootUrl, siteId, productionReceipt) {
-  await page.reload({ waitUntil: 'domcontentloaded' });
+async function coldContinue(page, rootUrl, siteId, productionReceipt, pageIssueTracker) {
+  const navigationToken = pageIssueTracker?.beginExpectedNavigation?.('pq024-cold-continue');
+  try {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  } finally {
+    pageIssueTracker?.endExpectedNavigation?.(navigationToken);
+  }
   assert.equal(new URL(page.url()).href, new URL(rootUrl).href, 'Continue reload stays on canonical root');
   await page.waitForFunction(() => !!(window.SF?.state && window.SF?.bus && window.SF?.registry),
     null, { timeout: 60_000 });
@@ -688,6 +820,20 @@ async function waitVisible(page, selector, label, timeout = 30_000) {
   await locator.waitFor({ state: 'visible', timeout });
   assert.equal(await locator.isVisible(), true, `${label} must be visible`);
   return locator;
+}
+
+async function readGpuContract(page) {
+  return page.evaluate(() => {
+    const canvas = document.querySelector('#game-canvas') || document.querySelector('canvas');
+    const gl = canvas?.getContext?.('webgl2') || canvas?.getContext?.('webgl');
+    if (!gl) return { available: false, vendor: null, renderer: null };
+    const debug = gl.getExtension('WEBGL_debug_renderer_info');
+    return {
+      available: true,
+      vendor: debug ? gl.getParameter(debug.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR),
+      renderer: debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER),
+    };
+  });
 }
 
 function repoRel(file) {

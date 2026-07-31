@@ -6,8 +6,10 @@ import manifest, {
   createPq024AsteroidClaimManifest,
   PQ024_ASTEROID_CLAIM_FIXED_SEED,
 } from '../scripts/validation-manifests/pq024-asteroid-claim.mjs';
+import { projectPq024RouteSemantics } from '../scripts/lib/pq024AsteroidClaimParity.mjs';
 
 const PROBE_URL = new URL('../scripts/probe-pq024-asteroid-claim.mjs', import.meta.url);
+const ELECTRON_URL = new URL('../scripts/check-pq024-asteroid-claim-electron.mjs', import.meta.url);
 const BROKER_CLI_URL = new URL('../scripts/validation-broker-cli.mjs', import.meta.url);
 
 test('PQ-024 broker manifest binds one acceptance launch to the queue-listed headless gates', () => {
@@ -46,6 +48,14 @@ test('PQ-024 broker manifest binds one acceptance launch to the queue-listed hea
     'src/ui/station/screens/market.js',
   ]) {
     assert.ok(fresh.productionSourcePaths.includes(required), `missing production dependency ${required}`);
+  }
+  for (const required of [
+    'scripts/check-pq024-asteroid-claim-electron.mjs',
+    'scripts/lib/alphaLiveBaselineElectronContracts.mjs',
+    'scripts/lib/electronTestIsolation.mjs',
+    'scripts/lib/pq024AsteroidClaimParity.mjs',
+  ]) {
+    assert.ok(fresh.harnessSourcePaths.includes(required), `missing harness dependency ${required}`);
   }
 });
 
@@ -112,6 +122,85 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
   ]) {
     assert.doesNotMatch(source, forbidden, `probe contains forbidden terminal mutation ${forbidden}`);
   }
+});
+
+test('PQ-024 Electron parity reuses one public actor after Browser PASS and owns teardown', () => {
+  const source = readFileSync(PROBE_URL, 'utf8');
+  const electron = readFileSync(ELECTRON_URL, 'utf8');
+  assert.match(electron, /process\.argv\.push\(['"]--electron-parity['"]\)/);
+  assert.match(electron, /import\(['"]\.\/probe-pq024-asteroid-claim\.mjs['"]\)/);
+  assert.equal((source.match(/async function runDefaultRoute/g) || []).length, 1,
+    'Browser and Electron must share one public route actor');
+  const browserGuard = source.indexOf("browserReceipt.disposition, 'PASS'");
+  const electronLaunch = source.indexOf('electron.launch(electronLaunch.options)');
+  assert.ok(browserGuard >= 0 && electronLaunch > browserGuard,
+    'Electron must remain gated behind a passing Browser receipt');
+  for (const required of [
+    'createIsolatedElectronLaunch',
+    'createElectronCanonicalUrlTracker',
+    'assertIsolatedElectronRootUrl',
+    'createElectronProcessMonitor',
+    'closeOwnedElectronRuntime',
+    'electronLaunch?.cleanup({ runtimeClosed: true })',
+    'projectPq024RouteSemantics(browserReceipt)',
+    "beginExpectedNavigation?.('pq024-cold-continue')",
+    'endExpectedNavigation?.(navigationToken)',
+  ]) assert.ok(source.includes(required), `missing Electron/shared-route contract: ${required}`);
+
+  const bootStart = source.indexOf('async function bootSeededFlight');
+  const bootEnd = source.indexOf('async function installObservers', bootStart);
+  const boot = source.slice(bootStart, bootEnd);
+  assert.match(boot, /if \(navigateInitialRoot\)[\s\S]*page\.goto/);
+  assert.match(boot, /else \{[\s\S]*new URL\(page\.url\(\)\)\.href/);
+});
+
+test('PQ-024 semantic parity ignores runtime ids while retaining the claim corridor', () => {
+  const sample = {
+    fixedSeed: 24024,
+    recordedSeed: 24024,
+    observations: {
+      cargo: [{ commodityId: 'cmdty_regocrete', qty: 7, before: { owned: 2 }, after: { owned: 9 } }],
+      asteroid: { targetEntityId: 91, siteId: 'site_claim_1' },
+      surveyReveal: { revealed: 2, cells: 5 },
+      core: {
+        siteId: 'site_claim_1', anchored: true, lifecycle: 'committed', machineId: 101,
+        cell: { col: 4, row: 6 },
+      },
+      extractor: { siteId: 'site_claim_1', machineId: 102, cell: { col: 5, row: 6 } },
+      production: {
+        siteId: 'site_claim_1', lifecycle: 'producing', eventCount: 1,
+        receipt: { receiptId: 'a', outputId: 'cmdty_iron_ore', positiveQuantity: 1 },
+      },
+      relay: {
+        count: 1, entityId: 201, placeId: 'place_claim_outpost_relay', siteId: 'site_claim_1',
+      },
+      continued: {
+        siteId: 'site_claim_1', lifecycle: 'producing', outputId: 'cmdty_iron_ore',
+        positiveQuantity: 1, receiptMatches: true, relayCount: 1,
+      },
+      restoredAsteroid: { targetEntityId: 301, siteId: 'site_claim_1' },
+      reentered: { siteId: 'site_claim_1', lifecycle: 'producing', chips: ['Producing'] },
+      restoredRelay: {
+        count: 1, entityId: 401, placeId: 'place_claim_outpost_relay', siteId: 'site_claim_1',
+      },
+    },
+  };
+  const otherRuntime = structuredClone(sample);
+  otherRuntime.runtime = 'electron';
+  otherRuntime.observations.asteroid.targetEntityId = 9991;
+  otherRuntime.observations.core.machineId = 9992;
+  otherRuntime.observations.production.receipt.receiptId = 'other-runtime';
+  otherRuntime.observations.relay.entityId = 9993;
+  otherRuntime.observations.restoredAsteroid.targetEntityId = 9994;
+  otherRuntime.observations.restoredRelay.entityId = 9995;
+  assert.deepEqual(projectPq024RouteSemantics(otherRuntime), projectPq024RouteSemantics(sample));
+  const projected = projectPq024RouteSemantics(sample);
+  assert.deepEqual(projected.production, {
+    siteId: 'site_claim_1', lifecycle: 'producing', outputId: 'cmdty_iron_ore',
+    positiveQuantity: 1, eventCount: 1,
+  });
+  assert.equal(projected.continue.receiptMatches, true);
+  assert.equal(projected.reentered.producingChip, true);
 });
 
 test('validation broker CLI registers the PQ-024 manifest without changing its export fallback', () => {
