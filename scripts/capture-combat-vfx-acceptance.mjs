@@ -367,6 +367,35 @@ try {
       textureStates: [...textureMap.values()],
     };
   });
+  const acceptanceChecks = {
+    noPageIssues: issues.length === 0,
+    routeRemainsInFlight: diagnostics.route.mode === 'flight',
+    playerAssetRemainsAuthored:
+      String(diagnostics.player.authoredAssetState || '').startsWith('authored'),
+    explosionPoolExists: diagnostics.explosionCapacity >= 3,
+    explosionPoolClean: diagnostics.explosionActiveAfterCapture === 0,
+    particlesClean: diagnostics.liveParticles === 0,
+    spritesClean: diagnostics.liveSprites === 0,
+    trailStreaksClean: diagnostics.trailStreaks === 0,
+    combatBeamsClean: diagnostics.combatBeams === 0,
+    spriteCapacityPreserved: diagnostics.poolCapacities.sprites === 256,
+    trailCapacityPreserved: diagnostics.poolCapacities.trailStreaks === 96,
+    combatBeamCapacityPreserved: diagnostics.poolCapacities.combatBeams === 16,
+    spriteBucketBudgetPreserved: diagnostics.persistentDrawBudget.spriteBuckets === 4,
+    combatBeamLayerBudgetPreserved: diagnostics.persistentDrawBudget.combatBeamLayers === 2,
+    spatialPathIsNontrivial: spatialContract.pathLength > 10,
+    muzzleUsesFrontNotEngine:
+      spatialContract.source.muzzleToFrontSocket < spatialContract.source.muzzleToEngineSocket,
+    captureCountComplete: captures.length === (PQ023_H1 ? 87 : 67),
+    motionSegmentsComplete: motionSegments.length >= (PQ023_H1 ? 15 : 10),
+    contactSheetsComplete: contactSheets.length === 3,
+    pq023WorldSiteSequenceComplete: !PQ023_H1
+      || pq023H1?.semanticProjection?.worldSiteCueIds?.join(',')
+        === 'world_site.recovery,world_site.damage,world_site.recovery,world_site.damage',
+  };
+  const failedAcceptanceChecks = Object.entries(acceptanceChecks)
+    .filter(([, passed]) => passed !== true)
+    .map(([name]) => name);
   report = {
     schema: 'spaceface.combatVfxAcceptance.v3',
     baseUrl: ownedServer.baseUrl,
@@ -377,6 +406,9 @@ try {
     motionSegments,
     contactSheets,
     spatialContract,
+    diagnostics,
+    acceptanceChecks,
+    failedAcceptanceChecks,
     pq023H1,
     informational_contended: PQ023_H1,
     informational_contended_note: PQ023_H1
@@ -384,27 +416,7 @@ try {
       : null,
     noPerformanceEvidence: PQ023_H1,
     issues,
-    ok: issues.length === 0
-      && diagnostics.route.mode === 'flight'
-      && String(diagnostics.player.authoredAssetState || '').startsWith('authored')
-      && diagnostics.explosionCapacity >= 3
-      && diagnostics.explosionActiveAfterCapture === 0
-      && diagnostics.liveParticles === 0
-      && diagnostics.liveSprites === 0
-      && diagnostics.trailStreaks === 0
-      && diagnostics.combatBeams === 0
-      && diagnostics.poolCapacities.sprites === 256
-      && diagnostics.poolCapacities.trailStreaks === 96
-      && diagnostics.poolCapacities.combatBeams === 16
-      && diagnostics.persistentDrawBudget.spriteBuckets === 4
-      && diagnostics.persistentDrawBudget.combatBeamLayers === 2
-      && spatialContract.pathLength > 10
-      && spatialContract.source.muzzleToFrontSocket < spatialContract.source.muzzleToEngineSocket
-      && captures.length === (PQ023_H1 ? 87 : 67)
-      && motionSegments.length >= (PQ023_H1 ? 15 : 10)
-      && contactSheets.length === 3
-      && (!PQ023_H1 || pq023H1?.semanticProjection?.worldSiteCueIds?.join(',')
-        === 'world_site.recovery,world_site.damage,world_site.recovery,world_site.damage'),
+    ok: failedAcceptanceChecks.length === 0,
   };
   await writeFile(path.join(OUT, 'report.json'), JSON.stringify(report, null, 2));
   if (!report.ok) process.exitCode = 1;

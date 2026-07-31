@@ -97,6 +97,8 @@ test('the motion cell captures distinct impact, destruction, reduced, dense, and
     "key: 'damage-reduced'",
     "captures.length === (PQ023_H1 ? 87 : 67)",
     "recordVideo",
+    "failedAcceptanceChecks",
+    "ok: failedAcceptanceChecks.length === 0",
   ]) assert.ok(source.includes(required), `missing motion evidence contract: ${required}`);
 });
 
