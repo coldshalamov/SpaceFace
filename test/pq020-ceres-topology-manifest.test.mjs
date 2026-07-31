@@ -280,6 +280,12 @@ test('Electron cannot launch before Browser PASS and follows isolated canonical-
     'buildPq020ParityProjection',
     'assert.deepEqual(electronProjection, browserProjection',
   ]) assert.ok(source.includes(required), `missing Electron ownership/parity contract: ${required}`);
+  assert.ok(
+    source.indexOf('issueTracker = collectPageIssues(page') < source.indexOf('waitForCanonicalRoot'),
+    'Electron issue collection must attach before canonical-root and document-load waits',
+  );
+  assert.ok(source.includes('await issueTracker.backfillActiveRequests()'),
+    'Electron must backfill requests that began before page attachment');
 });
 
 test('the H1 cell creates no Phase H3 performance evidence', () => {

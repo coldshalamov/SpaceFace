@@ -63,12 +63,26 @@ that begins after the reload promise resolves, an abort with no tagged request, 
 or any non-abort failure remains hard. This removes the observed ordering race without adding a time
 grace period or weakening diagnostics outside the reload call.
 
+The next candidate digest
+`113c356357837da5e9b4f12805315a5a93f9b39c8178e8078b6c4252ea089c51` reproduced the same
+functional outcome: Browser passed 21/21 with zero issues; Electron completed 21/21, matched all
+gameplay facts, and closed its runtime, but eight aborts remained entirely untagged. The common
+property was that Electron attached `collectPageIssues()` only after canonical-root and
+`domcontentloaded` waits. Long-lived module requests that started before attachment could later fail,
+but the collector had never observed their identity.
+
+Electron now attaches collection immediately after `firstWindow()`, before canonical-root and load
+waits, and then backfills still-pending requests from Playwright request history. Completed or
+already-failed history is not marked active. A regression creates a request before collector
+attachment, backfills it as pending, closes the navigation token, and only then delivers its abort;
+the exact request is retained as an expected navigation cancellation.
+
 ## Focused evidence
 
 - Recorded native failure: 21/21 Electron frames, normalized gameplay projection equal to Browser,
   owned runtime closed, but one stale registration error plus seven reload-aborted requests.
 - `node --test test/ui-screen-registration-lifecycle.test.mjs test/browser-issues.test.mjs
-  test/pq020-ceres-topology-manifest.test.mjs` — PASS, 18/18.
+  test/pq020-ceres-topology-manifest.test.mjs` — PASS, 19/19.
 - The issue regression explicitly delivers the tagged request failure after the expected-navigation
   token closes, matching the observed Electron ordering; it covers both pre-existing and
   during-navigation request starts, and rejects post-navigation, untagged, completed, and non-abort

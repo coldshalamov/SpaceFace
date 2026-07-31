@@ -66,6 +66,29 @@ export function collectPageIssues(page, options = {}) {
     warningIssues() {
       return issues.filter((issue) => issue.type === 'warning');
     },
+    async backfillActiveRequests() {
+      if (typeof page.requests !== 'function') {
+        return { supported: false, observed: 0, active: activeRequests.size };
+      }
+      const requests = await page.requests();
+      const observed = Array.isArray(requests) ? requests : [];
+      for (const request of observed) {
+        if (!request) continue;
+        activeRequests.add(request);
+        let response = null;
+        try {
+          response = typeof request.response === 'function' ? await request.response() : null;
+        } catch (_) {
+          response = null;
+        }
+        const failure = typeof request.failure === 'function' ? request.failure() : null;
+        if (response || failure) {
+          activeRequests.delete(request);
+          expectedNavigationAborts.delete(request);
+        }
+      }
+      return { supported: true, observed: observed.length, active: activeRequests.size };
+    },
     beginExpectedNavigation(label = 'expected-navigation') {
       const token = nextExpectedNavigationToken++;
       const normalizedLabel = String(label);

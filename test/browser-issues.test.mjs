@@ -73,6 +73,32 @@ test('completed requests lose expected-navigation attribution', () => {
   ]);
 });
 
+test('request history backfills work that was already in flight when collection attached', async () => {
+  const page = new FakePage();
+  let failure = null;
+  const pending = {
+    url: () => 'http://game.test/pre-attachment.js',
+    failure: () => failure,
+    response: async () => null,
+  };
+  page.requests = async () => [pending];
+  const tracker = collectPageIssues(page);
+
+  assert.deepEqual(await tracker.backfillActiveRequests(), {
+    supported: true,
+    observed: 1,
+    active: 1,
+  });
+  const token = tracker.beginExpectedNavigation('cold-continue');
+  tracker.endExpectedNavigation(token);
+  failure = { errorText: 'net::ERR_ABORTED' };
+  page.emit('requestfailed', pending);
+
+  assert.equal(tracker.errorIssues().length, 0);
+  assert.equal(tracker.ignoredIssues.length, 1);
+  assert.deepEqual(tracker.ignoredIssues[0].expectedNavigation, ['cold-continue']);
+});
+
 test('navigation-cancellation classification is exact', () => {
   assert.equal(isNavigationCancelledRequest({ errorText: 'net::ERR_ABORTED' }), true);
   assert.equal(isNavigationCancelledRequest({ errorText: 'NET::err_aborted' }), true);
