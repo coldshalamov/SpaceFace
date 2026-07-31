@@ -9,9 +9,29 @@
 // This is the generated kernel exercised exactly as the live game integrates it — not a parallel
 // reimplementation. The bodies are advanced the same way flightV3.spec.mjs advances them (force/mass).
 import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { PROPULSION_PROFILES } from '../src/core/flight/propulsionCatalog.js';
 import { createPropulsionRuntime, stepPropulsion } from '../src/core/flight/propulsionKernel.js';
 import { estimateBrakingSolution } from '../src/core/flight/flightTelemetry.js';
+import { collectPageIssues } from './lib/browser-issues.mjs';
+import { createIsolatedElectronLaunch } from './lib/electronTestIsolation.mjs';
+import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
+import { runPq007PublicActorRoute } from './probe-auto-target-steering.mjs';
+import {
+  createPq007ControlElectronManifest,
+} from './validation-manifests/pq007-control-electron.mjs';
+
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const ARTIFACT_ROOT = path.join(ROOT, '.devshots', 'pq007-control-route');
+const ACCEPTANCE = process.argv.includes('--acceptance');
+
+if (ACCEPTANCE) await runElectronAcceptance();
+else runKernelFixture();
+
+function runKernelFixture() {
 
 const DT = 1 / 60;
 const profile = PROPULSION_PROFILES.drive_reaction_s;
@@ -125,3 +145,70 @@ const evidence = { schema: 'spaceface.dodFlightAcceptance.v1', dt: DT, drive: pr
 console.log('\nDoD §22 flight acceptance evidence bundle:');
 console.log(JSON.stringify(evidence, null, 2));
 console.log('\nAll 3 DoD §22 flight acceptance scenarios PASS — captured from the production propulsion kernel.');
+}
+
+async function runElectronAcceptance() {
+  const manifest = createPq007ControlElectronManifest();
+  const outputDir = path.join(ARTIFACT_ROOT, 'electron');
+  const diagnostic = process.argv.includes('--diagnostic');
+  const brokerGate = await requireBrokerClaimOrDiagnostic({
+    outputRoot: ARTIFACT_ROOT,
+    manifest,
+    tokenOrPath: process.env.SF_BROKER_CLAIM ?? null,
+    diagnostic,
+    explicitDiagnostic: diagnostic,
+    root: ROOT,
+  });
+  if (!brokerGate.ok) {
+    console.error(`[pq007-control-electron] BROKER_CLAIM_REQUIRED: ${brokerGate.reason}`);
+    console.error('[pq007-control-electron] invoke via validation-broker-cli --manifest pq007-control-electron');
+    process.exitCode = 2;
+    return;
+  }
+
+  const { loadPlaywright } = await import('./lib/load-playwright.mjs');
+  await mkdir(outputDir, { recursive: true });
+  let electronApp = null;
+  let isolatedLaunch = null;
+  let runtimeClosed = false;
+  try {
+    const { _electron: electron } = await loadPlaywright();
+    isolatedLaunch = createIsolatedElectronLaunch({
+      root: ROOT,
+      taskId: 'pq007-control-electron',
+    });
+    electronApp = await electron.launch(isolatedLaunch.options);
+    const page = await electronApp.firstWindow({ timeout: 90_000 });
+    page.setDefaultTimeout(30_000);
+    page.setDefaultNavigationTimeout(60_000);
+    await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
+    await page.bringToFront();
+    await page.waitForFunction(() => !!(window.SF && window.SF.state), null, { timeout: 180_000 });
+    const rootUrl = page.url();
+    const parsed = new URL(rootUrl);
+    assert.equal(parsed.protocol, 'http:', 'isolated Electron must serve the canonical HTTP route');
+    assert.equal(parsed.hostname, '127.0.0.1', 'isolated Electron must use the loopback host');
+    assert.equal(parsed.pathname, '/', 'isolated Electron must start at the canonical root');
+    assert.equal(parsed.search, '', 'isolated Electron root cannot carry query flags');
+    assert.equal(parsed.hash, '', 'isolated Electron root cannot carry a hash');
+    const issues = collectPageIssues(page, { ignoreProbeWarnings: true });
+    const result = await runPq007PublicActorRoute({
+      page,
+      fixedSeed: manifest.fixedSeed,
+      outputDir,
+      runtimeKind: 'electron',
+      expectedRootUrl: rootUrl,
+    });
+    assert.deepEqual(issues.errorIssues(), [], 'PQ-007 Electron route emitted page errors');
+    console.log(`PQ-007 Electron control route PASS\n${JSON.stringify({
+      target: result.usefulTarget.targetName,
+      artifact: path.relative(ROOT, path.join(outputDir, 'route-report.json')),
+    }, null, 2)}`);
+  } finally {
+    if (electronApp) {
+      await electronApp.close().catch(() => {});
+      runtimeClosed = true;
+    }
+    if (isolatedLaunch && runtimeClosed) isolatedLaunch.cleanup({ runtimeClosed: true });
+  }
+}

@@ -13,6 +13,8 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 const MANIFEST_LOADERS = {
   'massline-live': () => import('./validation-manifests/massline-live.mjs'),
+  'pq007-control-browser': () => import('./validation-manifests/pq007-control-browser.mjs'),
+  'pq007-control-electron': () => import('./validation-manifests/pq007-control-electron.mjs'),
   'pq017-world-site': () => import('./validation-manifests/pq017-world-site.mjs'),
   'lab-chromium-parity': () => import('./validation-manifests/lab-chromium-parity.mjs'),
   'pq021-ledger-route': () => import('./validation-manifests/pq021-ledger-route.mjs'),
@@ -57,6 +59,8 @@ Usage:
 
 Manifests:
   massline-live
+  pq007-control-browser
+  pq007-control-electron
   pq017-world-site
   lab-chromium-parity
   pq021-ledger-route
