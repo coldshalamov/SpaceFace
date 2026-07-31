@@ -2398,7 +2398,7 @@
       "priority": 10,
       "title": "Close the corrected auto-target and draw-to-fly player route",
       "kind": "acceptance_capture",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-007.focused-implementation",
         "PQ-007.prompt-truth-repair",
@@ -2418,7 +2418,9 @@
         "node scripts/check-auto-target-registry.mjs",
         "node scripts/check-massline-auto-target.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-007-route-acceptance-REPORT.md"
+      ],
       "brief": "Run one bounded Browser/Electron control-route acceptance for the user-directed G auto-target and clutchable draw-to-fly correction, with keyboard and pointer semantics and no resurrection of the rejected pursuit-slot behavior.",
       "blocker": null
     },
