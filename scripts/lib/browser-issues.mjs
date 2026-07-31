@@ -5,6 +5,7 @@ export function collectPageIssues(page, options = {}) {
   const ignoredIssues = [];
   const activeRequests = new Set();
   const expectedNavigationAborts = new Map();
+  const expectedNavigationAbortsByKey = new Map();
   const expectedNavigationTokens = new Map();
   let nextExpectedNavigationToken = 1;
 
@@ -14,11 +15,13 @@ export function collectPageIssues(page, options = {}) {
       const labels = expectedNavigationAborts.get(request) || new Set();
       for (const label of expectedNavigationTokens.values()) labels.add(label);
       expectedNavigationAborts.set(request, labels);
+      expectedNavigationAbortsByKey.set(requestIdentityKey(request), labels);
     }
   });
   page.on('requestfinished', (request) => {
     activeRequests.delete(request);
     expectedNavigationAborts.delete(request);
+    expectedNavigationAbortsByKey.delete(requestIdentityKey(request));
   });
   page.on('console', (msg) => {
     const issue = { type: msg.type(), text: msg.text() };
@@ -37,9 +40,12 @@ export function collectPageIssues(page, options = {}) {
   });
   page.on('requestfailed', (request) => {
     const failure = request.failure();
-    const expectedNavigation = expectedNavigationAborts.get(request);
+    const requestKey = requestIdentityKey(request);
+    const expectedByObject = expectedNavigationAborts.get(request);
+    const expectedNavigation = expectedByObject || expectedNavigationAbortsByKey.get(requestKey);
     activeRequests.delete(request);
     expectedNavigationAborts.delete(request);
+    expectedNavigationAbortsByKey.delete(requestKey);
     const issue = {
       type: 'error',
       text: `Request failed ${request.url()}${failure && failure.errorText ? `: ${failure.errorText}` : ''}`,
@@ -48,6 +54,7 @@ export function collectPageIssues(page, options = {}) {
       ignoredIssues.push({
         ...issue,
         expectedNavigation: [...expectedNavigation],
+        expectedNavigationAttribution: expectedByObject ? 'request-object' : 'request-key',
       });
       return;
     }
@@ -79,6 +86,7 @@ export function collectPageIssues(page, options = {}) {
         if (failure) {
           activeRequests.delete(request);
           expectedNavigationAborts.delete(request);
+          expectedNavigationAbortsByKey.delete(requestIdentityKey(request));
         }
       }
       return { supported: true, observed: observed.length, active: activeRequests.size };
@@ -91,6 +99,7 @@ export function collectPageIssues(page, options = {}) {
         const labels = expectedNavigationAborts.get(request) || new Set();
         labels.add(normalizedLabel);
         expectedNavigationAborts.set(request, labels);
+        expectedNavigationAbortsByKey.set(requestIdentityKey(request), labels);
       }
       return token;
     },
@@ -98,6 +107,24 @@ export function collectPageIssues(page, options = {}) {
       return expectedNavigationTokens.delete(token);
     },
   };
+}
+
+export function requestIdentityKey(request) {
+  const read = (name, fallback) => {
+    try {
+      return typeof request?.[name] === 'function' ? request[name]() : fallback;
+    } catch (_) {
+      return fallback;
+    }
+  };
+  const timing = read('timing', null);
+  const startTime = Number(timing?.startTime);
+  return JSON.stringify([
+    String(read('method', 'GET') || 'GET'),
+    String(read('resourceType', 'unknown') || 'unknown'),
+    String(read('url', '') || ''),
+    Number.isFinite(startTime) ? startTime : null,
+  ]);
 }
 
 export function isNavigationCancelledRequest(failure) {

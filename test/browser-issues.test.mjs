@@ -9,9 +9,12 @@ import {
 
 class FakePage extends EventEmitter {}
 
-const failedRequest = (url, errorText) => ({
+const failedRequest = (url, errorText, startTime = null) => ({
   url: () => url,
   failure: () => ({ errorText }),
+  method: () => 'GET',
+  resourceType: () => 'script',
+  timing: () => ({ startTime }),
 });
 
 const consoleMessage = (type, text) => ({
@@ -97,6 +100,27 @@ test('request history backfills work that was already in flight when collection 
   assert.equal(tracker.errorIssues().length, 0);
   assert.equal(tracker.ignoredIssues.length, 1);
   assert.deepEqual(tracker.ignoredIssues[0].expectedNavigation, ['cold-continue']);
+});
+
+test('stable request keys bridge distinct Electron wrappers without hiding a later same-URL abort', () => {
+  const page = new FakePage();
+  const tracker = collectPageIssues(page);
+  const started = failedRequest('http://game.test/module.js', null, 101);
+  const failedProxy = failedRequest('http://game.test/module.js', 'net::ERR_ABORTED', 101);
+  const later = failedRequest('http://game.test/module.js', 'net::ERR_ABORTED', 202);
+
+  page.emit('request', started);
+  const token = tracker.beginExpectedNavigation('cold-continue');
+  tracker.endExpectedNavigation(token);
+  page.emit('requestfailed', failedProxy);
+  page.emit('requestfailed', later);
+
+  assert.equal(tracker.ignoredIssues.length, 1);
+  assert.equal(tracker.ignoredIssues[0].expectedNavigationAttribution, 'request-key');
+  assert.match(tracker.ignoredIssues[0].text, /module\.js: net::ERR_ABORTED/);
+  assert.deepEqual(tracker.errorIssues().map((issue) => issue.text), [
+    'Request failed http://game.test/module.js: net::ERR_ABORTED',
+  ]);
 });
 
 test('navigation-cancellation classification is exact', () => {

@@ -79,12 +79,21 @@ attachment, gives it a successful response object without a finish event, closes
 token, and only then delivers its abort; the exact request is retained as an expected navigation
 cancellation.
 
+Candidate digest `97c8c822f875b41dd276b4c9c4270da11c06037d03a7e4598715eb3ca809d3b0`
+again passed Browser 21/21 with zero issues; Electron again completed 21/21, matched every gameplay
+fact, and closed cleanly, but eight varying module aborts remained untagged. Early attachment,
+history backfill, and response-pending retention therefore did not make object identity survive to
+the failure surface. The collector now falls back from exact object identity to a stable Playwright
+request fingerprint: method, resource type, URL, and network start time. The fallback is consumed
+once. An adversarial regression uses distinct start/failure wrappers for one fingerprint and proves
+that a later same-URL request with a different start time remains a hard failure.
+
 ## Focused evidence
 
 - Recorded native failure: 21/21 Electron frames, normalized gameplay projection equal to Browser,
   owned runtime closed, but one stale registration error plus seven reload-aborted requests.
 - `node --test test/ui-screen-registration-lifecycle.test.mjs test/browser-issues.test.mjs
-  test/pq020-ceres-topology-manifest.test.mjs` — PASS, 19/19.
+  test/pq020-ceres-topology-manifest.test.mjs` — PASS, 20/20.
 - The issue regression explicitly delivers the tagged request failure after the expected-navigation
   token closes, matching the observed Electron ordering; it covers both pre-existing and
   during-navigation request starts, and rejects post-navigation, untagged, completed, and non-abort
