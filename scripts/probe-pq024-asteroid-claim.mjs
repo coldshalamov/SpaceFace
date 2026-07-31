@@ -529,6 +529,7 @@ async function selectAsteroidOnLocalMap(page, options = {}) {
       return !siteId || entity?.data?.siteId === siteId;
     });
   }, options.siteId || null, { timeout: 20_000 });
+  if (options.siteId) await hideWaypointOverlayForReentry(page);
   const target = await page.evaluate((siteId) => {
     const def = window.SF.ctx.screenManager.getActiveScreenDef();
     const state = window.SF.state;
@@ -567,6 +568,22 @@ async function selectAsteroidOnLocalMap(page, options = {}) {
   await page.waitForFunction((id) => window.SF?.state?.nav?.autopilot?.targetEntityId === id,
     target.targetEntityId, { timeout: 10_000 });
   return target;
+}
+
+async function hideWaypointOverlayForReentry(page) {
+  // After Continue the active waypoint still marks the pre-reload entity identity at the same
+  // screen position and intentionally outranks ambient contacts. Use the shipped lens controls to
+  // hide Route + Mission overlays, making the rematerialized asteroid contact pointer-reachable.
+  for (const layer of ['route', 'mission']) {
+    const button = page.locator(`#sf-galaxymap .gm-layer-btn[data-layer="${layer}"]`);
+    await button.waitFor({ state: 'visible' });
+    if ((await button.getAttribute('aria-pressed')) === 'true') await button.click();
+  }
+  await page.waitForFunction(() => {
+    const def = window.SF?.ctx?.screenManager?.getActiveScreenDef?.();
+    return def?.id === 'galaxyMap'
+      && !(def._clickTargets || []).some((target) => target.kind === 'waypoint' || target.objective === true);
+  }, null, { timeout: 10_000 });
 }
 
 async function waitForAutopilotArrival(page, target) {

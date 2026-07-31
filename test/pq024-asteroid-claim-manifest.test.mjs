@@ -102,6 +102,10 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     'the PQ-024 player route must not reopen the compatibility local-map implementation');
   assert.match(source, /String\(selected\?\.entityId \?\? selected\?\.targetEntityId\) === String\(id\)/,
     'same-site reentry must accept the exact active waypoint across restored id representation');
+  assert.match(source, /if \(options\.siteId\) await hideWaypointOverlayForReentry\(page\)/,
+    'same-site reentry must clear the higher-priority restored waypoint before pointer selection');
+  assert.match(source, /for \(const layer of \['route', 'mission'\]\)[\s\S]*\.gm-layer-btn\[data-layer=[\s\S]*aria-pressed[\s\S]*target\.kind === 'waypoint'/,
+    'reentry must use the two shipped lens controls and verify the overlay click target is gone');
 
   const orderedMilestones = [
     'openStationMarket(page)',
