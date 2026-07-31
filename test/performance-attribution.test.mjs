@@ -166,8 +166,9 @@ test('GPU timers are unavailable without an extension and reject nested begin', 
   };
   const timers = createGpuTimers(gl);
   assert.equal(timers.setEnabled(true), true);
-  assert.equal(timers.begin('bloomScene'), true);
-  assert.equal(timers.begin('bloomComposite'), false, 'nested begin must preserve the active outer query');
+  const queryOrigin = { displayFrameId: 1, renderFrameId: 1, simTick: 1 };
+  assert.equal(timers.begin('bloomScene', queryOrigin), true);
+  assert.equal(timers.begin('bloomComposite', queryOrigin), false, 'nested begin must preserve the active outer query');
   assert.equal(timers.end(), true);
   disjoint = true;
   timers.poll();

@@ -612,12 +612,15 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     const gpu = instrument && typeof instrument.getGpuTimers === 'function' ? instrument.getGpuTimers() : null;
     const useCpu = !!(perf && perf.renderWorkEnabled && typeof perf.recordRenderWork === 'function');
     const useGpu = gpu && gpu.enabled && typeof gpu.begin === 'function';
+    const gpuOrigin = useGpu && instrument && typeof instrument.getGpuOrigin === 'function'
+      ? instrument.getGpuOrigin()
+      : null;
     const t0 = useCpu ? performance.now() : 0;
-    if (useGpu) gpu.begin(label);
+    const gpuQueryBegan = !!(useGpu && gpu.begin(label, gpuOrigin));
     try {
       return fn();
     } finally {
-      if (useGpu) gpu.end();
+      if (gpuQueryBegan) gpu.end();
       if (useCpu) perf.recordRenderWork(label, performance.now() - t0);
     }
   }

@@ -241,6 +241,11 @@ export function ensurePerfRuntime(state) {
   // Opt-in CPU render-work attribution. Default OFF so production frames never pay
   // performance.now() + ring sample cost. Measurement probes enable for a window only.
   let renderWorkEnabled = false;
+  // Common monotonic identities for bounded attribution. Integer increments are allocation-free;
+  // callers copy them only while an evidence window is enabled.
+  let displayFrameId = 0;
+  let renderFrameId = 0;
+  let currentSimTick = 0;
 
   function statForSystem(name) {
     const key = name || 'unknown';
@@ -307,6 +312,10 @@ export function ensurePerfRuntime(state) {
       return renderWorkEnabled;
     },
     beginFrame(frameDt, callbackStartMs = null, callbackTimestampMs = null, frameBudgetMs = null) {
+      if (displayFrameId >= Number.MAX_SAFE_INTEGER) {
+        throw new Error('performance display frame identity exhausted');
+      }
+      displayFrameId++;
       const ms = Number.isFinite(frameDt) ? frameDt * 1000 : 0;
       previousCallbackMs = frameCallbackStats.last;
       previousSimFrameMs = framePhaseMs.simFrame;
@@ -348,6 +357,24 @@ export function ensurePerfRuntime(state) {
       sample(frameExternalGapStats, loop.externalCallbackGapMs);
       sample(frameDispatchLagStats, loop.callbackDispatchLagMs);
       sample(phaseStats.admission, frameAdmissionMs);
+    },
+    beginRenderFrame(simTick) {
+      if (!Number.isSafeInteger(simTick) || simTick < 0) {
+        throw new TypeError('performance render origin simTick must be a non-negative safe integer');
+      }
+      if (renderFrameId >= Number.MAX_SAFE_INTEGER) {
+        throw new Error('performance render frame identity exhausted');
+      }
+      renderFrameId++;
+      currentSimTick = simTick;
+      return renderFrameId;
+    },
+    readFrameIdentity(out = {}) {
+      out.schema = 'spaceface.performanceFrameOrigin.v1';
+      out.displayFrameId = displayFrameId;
+      out.renderFrameId = renderFrameId;
+      out.simTick = currentSimTick;
+      return out;
     },
     recordLoop(steps, shedBacklog, accumulatorS, shedSteps = 0) {
       loop.stepsThisFrame = steps | 0;

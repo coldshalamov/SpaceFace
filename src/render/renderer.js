@@ -43,7 +43,12 @@ import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { createCollisionDebug } from './collisionDebug.js';
 import { installDiagnostics } from './diagnostics.js';
-import { getPostRenderTargetTelemetry, resetPostRenderTargetSampleCounter } from './postTelemetry.js';
+import {
+  beginPostRenderTargetFrameOrigin,
+  endPostRenderTargetFrameOrigin,
+  getPostRenderTargetTelemetry,
+  resetPostRenderTargetSampleCounter,
+} from './postTelemetry.js';
 import {
   invalidatePrecompileState,
   precompileGlobalPipelines,
@@ -1010,6 +1015,7 @@ export const render = {
       this.bloom = createBloom(renderer, drawSize.x, drawSize.y, {
         getPerf: () => state.perfRuntime,
         getGpuTimers: () => this._gpuTimers,
+        getGpuOrigin: () => this._gpuFrameOrigin || null,
       });
     } catch (err) { console.warn('[render] bloom unavailable, falling back:', err); this.bloom = null; }
     this._postOptionsSig = null;
@@ -2250,6 +2256,14 @@ export const render = {
     const gpu = this._gpuTimers;
     const useCpu = !!(perf && perf.renderWorkEnabled && typeof perf.recordRenderWork === 'function');
     const useGpu = gpu && gpu.enabled && typeof gpu.begin === 'function';
+    if (perf && typeof perf.beginRenderFrame === 'function') perf.beginRenderFrame(this.state.tick);
+    let frameOrigin = null;
+    if (perf && typeof perf.readFrameIdentity === 'function') {
+      this._perfFrameOrigin = this._perfFrameOrigin || {};
+      frameOrigin = perf.readFrameIdentity(this._perfFrameOrigin);
+    }
+    const gpuOrigin = useGpu ? frameOrigin : null;
+    this._gpuFrameOrigin = gpuOrigin;
     const t0 = useCpu ? performance.now() : 0;
     // Post options sync on settings:changed, init, context restore, and render-graph creation —
     // not every draw (video settings are event-driven).
@@ -2259,15 +2273,17 @@ export const render = {
     // proven bloom path stays the default; the render graph module is no longer tree-shaken because
     // it is reachable from this live branch. The energy materials I wired write HDR radiance that the
     // render graph composites with contact-depth AO.
-    const dynamicBufferEpoch = this._dynamicBuffers.arm();
+    const postFrameToken = frameOrigin ? beginPostRenderTargetFrameOrigin(frameOrigin) : 0;
+    let dynamicBufferEpoch = null;
     try {
+      dynamicBufferEpoch = this._dynamicBuffers.arm();
       if (this.state.settings.video.renderGraph && this._ensureRenderGraph()) {
         this._lastRenderPath = 'renderGraph';
-        if (useGpu) gpu.begin('drawPreparedFrame');
+        const gpuQueryBegan = !!(useGpu && gpu.begin('drawPreparedFrame', gpuOrigin));
         try {
           this._renderGraph.render(this.scene, this.cam.obj, { time: this._bgTime || 0 });
         } finally {
-          if (useGpu) gpu.end();
+          if (gpuQueryBegan) gpu.end();
         }
       } else if (this.bloom && this.state.settings.video.bloom !== false) {
         this._lastRenderPath = 'bloom';
@@ -2275,15 +2291,16 @@ export const render = {
         this.bloom.render(this.scene, this.cam.obj);
       } else {
         this._lastRenderPath = 'straight';
-        if (useGpu) gpu.begin('drawPreparedFrame');
+        const gpuQueryBegan = !!(useGpu && gpu.begin('drawPreparedFrame', gpuOrigin));
         try {
           this.renderer.render(this.scene, this.cam.obj);
         } finally {
-          if (useGpu) gpu.end();
+          if (gpuQueryBegan) gpu.end();
         }
       }
     } finally {
-      this._dynamicBuffers.disarm(dynamicBufferEpoch);
+      if (dynamicBufferEpoch !== null) this._dynamicBuffers.disarm(dynamicBufferEpoch);
+      if (postFrameToken) endPostRenderTargetFrameOrigin(postFrameToken);
     }
     if (useCpu) perf.recordRenderWork('drawPreparedFrame', performance.now() - t0);
     if (this.state.mode === 'flight'
