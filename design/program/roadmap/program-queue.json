@@ -2561,7 +2561,7 @@
       "priority": 16,
       "title": "Continue the repaired Ceres and Cathedral route",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-020.route-harness-repair"
       ],
