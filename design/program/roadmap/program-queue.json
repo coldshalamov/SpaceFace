@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-28",
+  "updatedAt": "2026-07-30",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -1095,7 +1095,7 @@
       "id": "PQ-019",
       "priority": 19,
       "title": "Surface-launch cargo heist, pursuit, heat, and fence loop",
-      "state": "planned",
+      "state": "focused_green",
       "partialIntegration": "2026-07-28 leaf PQ-019A implemented on master (not yet accepted): authored cargo-capsule admission at 272e63b4 (pod_cargo_container release-slot presentation, SHA-256-pinned, hidden-until-admitted), Tethys facility/runtime owner at b66f2255 (heistFacilities sole-writes state.heistFacilities: launcher/catcher/fence embodied with Atlas courses, idempotent schedule receipts, radius-6/mass-180 CCD payload with real rapier-dynamic catcher+fence impact candidates, forged/twin/stale/wrong-ship/duplicate custody inputs rejected, sector-exit cleanup without settlement), deterministic receipt recorded in the packet doc at d7a3dcbc. check:pq019a:facility-embodiment 12/12; manifest suites 23/23; atlas-integrity/save-schema/asset-reachability/cargo-conscience/faction-standings/physics-authority/sim:compare/baseline green. State stays planned: player-visible launch schedule cue, normal-route Browser/Electron presentation, facility+capsule game-camera visual acceptance, admission/residency/draw/GPU + representative performance evidence, the accepted PQ-019A receipt file, and W03/W04/W05 parent-alias cleanup remain open; PQ-019B/C unstarted. || 2026-07-28 PQ-019A headless acceptance completed (merge 69918909, receipt receipts/PQ-019A-facility-embodiment-REPORT.md): bounded T-minus launch cue (single one-voice pill, t_minus_30/15/5/away) through the helpers.voice.say seam (deliberately NOT typeof-window gated — weapons.js:58-60 records the opposite repo rule; the seam is inert headless and testable), including a real docked-mode defect found+fixed (cue was entering the flight-HUD alerts slot behind the fullscreen Station OS; launch itself deliberately remains ungated world simulation); focused check grown 12/12->19/19; 13 presentation stills with an honest qualifier (launcher stills are reentry-plasma-dominated: they prove existence/authored admission, NOT a clean art verdict; capsule stills off-centre NDC 0.31-0.68). check:sim:compare hashEqual; check:baseline content-green 10/10 (one wall-budget-only exceedance under concurrent-lane load recorded honestly: 94158ms red then 81413ms green on the same tree). INTEGRATOR RULING (mirrors the PQ-018 Phase-4 relocation): PQ-019B is unblocked on the deterministic facility contract now proven (schedule/custody/contact receipts); PQ-019A's remaining GPU/draw/residency, matched performance, Electron, and independent human art verdict rows stay open under the PQ-034 lease and gate A's route_accepted, not B's start. New inherited red discovered and flagged, not chased: check:one-voice fails on a stale source-string assertion (scripts/check-one-voice.mjs:231 expects a registry.js composition string absent since before c6d83fe4); its 10 behavioural sections pass. || 2026-07-28 leaf PQ-019.owner-seams (PQ-019B) integrated at focused_green/PASS (tip 20a8521e, receipt receipts/PQ-019B-seams-REPORT.md): pure heist outcome arbiter (buffered causal-tick+1 decisions, pinned terminal precedence, compare-and-set receipt, effect journal, crash-resume) + four owner seams — law incident intake on lawSecurity (witness-annulus validated, idempotent receipt, structurally CANNOT reach the responder-spawn path), heat listener with a NEW durable applied-key ledger on state.player (heat owner previously had no ledger of any kind), npcJobsRuntime claimControl/releaseControl leases, receiver prepare/commit/abort on heistFacilities (NOT the worldSiteKernel settlement substrate — different capsule). 91/91 focused; save schema UNTOUCHED v12/274 (durability solved without a version bump: arbiter record nests in missions.active[], heat ledger rides state.player); golden hashEqual before+after; npc-jobs 61/61 unregressed. Live-symbol audit recorded six packet-vs-live deltas including: NO witness owner exists in the codebase (annulus logic added at the seam), law _openIncident keyed on live entity ids (useless across save), lawSecurity/heistFacilities absent from the save capture plan. Three real defects found+fixed: possession candidate suppressed a decided terminal (permutation suite); vacuous witness gate (lawful station was itself a witness, gate could never deny — radius 450 WU with annulus pinned); restoreArbiter FAIL-OPEN (half-decided record restored unfrozen and could mint a second terminal receipt re-applying every owner effect — found by adversarial review after suites were green, seven tampered shapes pinned). Plus one measurement defect: heat invariant counted throttled heat:changed events (vacuous for already-WANTED players) — now reads the durable ledger. INTEGRATOR NOTE for C: settlement counts are proven reachable-exactly-once via a stand-in consumer, NOT yet in missions.js (C's evidence); if C needs law receipts or receiver handoffs durable in their own right, that is a save-capture-plan addition = new top-level key = integrator decision; two module contracts pinned (submit-before-step within a tick; causalTick stamped from the causing event). || 2026-07-28 leaf PQ-019.mission-route (PQ-019C) integrated at focused_green/PASS (tip 7a1c3ce3, candidate 5f2c7137, receipt receipts/PQ-019C-mission-REPORT.md): one authored procedural-weight-zero Tethys capsule-run contract through the ordinary board/accept route; all packet invariants proven INSIDE missions.js as real emissions across all seven terminal outcomes (settlement exactly-once, economy reward only on fenced_success, heat only on witnessed theft; economy/faction proven at the request boundary, same basis as B); nine Phase E save points reconciled to exactly-one-capsule or bounded expired/unresolved_absent; tuning selected ONCE from a pre-committed fixed-seed matrix (launch 120->100, window 45->30, run 9000->6000, escape-hold 180->60, payout 2400->1800, recovery 1100->900; one NaN-contaminated run voided and recorded); L3 manifest pq019-surface-heist authored+registered, never run. Six defects found by running: dead second run (launcher never released its schedule), escaped-unreachable-in-play, unbounded unlaunched contract, clean-despawn-misreported-as-destruction, stale-tick soft-lock + persisted-leases at save boundaries, and C's own board-order regression (heist row displaced the B4 branch intro; caught by the full mission-family sweep, fixed at 5f2c7137). check:pq019c:mission 65/65; B 91/91 and A 19/19 unregressed; all ten touched check:mission-* suites green; hashEqual; save schema untouched v12/274 (the save-capture STOP rule was never reached — the capsule not surviving reload is a reconciled design consequence). Shared-change request recorded: tuning selected witness radius 550 vs the 450 lawSecurity ships (owner: PQ-019B seam constants). New inherited red A/B-attributed: check:mission-log-map:runtime. PQ-019 A+B+C are now ALL headless-complete; parent promotion (incl. W03/W04/W05 alias replacement) rides the headed-acceptance batch H4.",
       "canonical": [
         "W03",
@@ -1131,7 +1131,7 @@
       "id": "PQ-020",
       "priority": 20,
       "title": "Ceres Belt activity-pocket recomposition",
-      "state": "planned",
+      "state": "focused_green",
       "partialIntegration": "2026-07-28 topology/data slice implemented on master (not yet accepted) at 9b0c1c28: Ceres civic/production/transit/Cathedral pocket data (industrial metadata hauler 30->45 miner 16->40, poi_ceres_throughline beacon, production-zone recenter, no-presence transit zone), deterministic check:pq020:ceres-topology harness identifying world_site_wreck_cathedral (route legs 2074.223/2667.218/4637.893 WU, >=504.223 WU pocket clearance, pinned structural-cost digest, headless World Site residency FULL), deterministic receipt recorded in the packet doc. Supporting gates green: asset-reachability, sector-geography, atlas-integrity/spatial-truth/place-path, map-frames, m2b:sector-graph, m2:sector-embodiment, npc-jobs. State stays planned: matched Ceres baseline, natural jobs across held-out seeds, one bounded existing-owner mechanical condition, offscreen-embodiment determinism, save/materialization/reentry idempotence, Atlas/map/route/physical exact agreement, generic-vs-through-Ceres route distinction, the Cathedral-keyed headed route receipt (p95/p99/hitches, admission/residency, close/default/far/motion/LOD, entity/collider/query/draw/program cost - relocated PQ-018 Phase 4), Browser/Electron + accessibility + final receipt remain open. Dependency bookkeeping corrected this refresh: PQ-018 is consumed as the integrated PQ-018.world-site leaf via a bound evidence dependency; parent PQ-018 route acceptance is intentionally NOT a prerequisite because this packet's matched Ceres route IS that relocated verification. || 2026-07-28 continuation proofs integrated at ece08405..f98367c1 (candidate 6c08de8b, receipt receipts/PQ-020-ceres-topology-REPORT.md, zero src/ files touched): natural industrial jobs on 3/3 held-out seeds (90731/90737/90743) with sector:enter causation gating and no injection; the authored dense_asteroid hazard proven as the production-pocket mechanical condition through existing owners (14.2x rock density, hazardRead counterplay [avoid|time|tether]; honest negatives: playerIsInLaneDanger gated off at Ceres, bypass sides do not reduce exposure); save/re-entry idempotence; exact dual-frame Atlas/map/course/physical agreement; generic Helios-Tethys routing honestly bypasses Ceres with a deliberate through-Ceres itinerary artifact; offscreen digests metadata-sensitive and stable. check:pq020:proofs 14/14, all supporting gates green, sim:compare hashEqual, structural digest b2232d1d unchanged. Still open: headed Cathedral-keyed route receipt (relocated PQ-018 Phase 4), Browser/Electron, accessibility route review, perceptual pocket distinctness, human art verdict (all PQ-034-lease-blocked), and the persisted offscreen-projection-audit-across-save row withdrawn to the sectorSim/embodiment owner.",
       "canonical": [
         "W07",
@@ -1269,7 +1269,7 @@
       "id": "PQ-023",
       "priority": 23,
       "title": "Unified propulsion, weapon VFX, HUD, camera, and accessibility language",
-      "state": "planned",
+      "state": "focused_green",
       "partialIntegration": "2026-07-26 leaf PQ-023.propulsion-vp220-port integrated at cdcbac32 (candidate 2feedc58), cherry-picked from the stale codex/vp220-propulsion-graphics checkpoint 74775bf8 (1 ahead / 73 behind). Extends ContinuousPlumeSystem into a bounded per-engine-family fleet so NPC ships get production propulsion presentation; adds segmented plume geometry, per-instance shader dynamics, RCS impulse and throttle response. Both cherry-pick conflicts resolved MASTER-SIDE, preserving all 16 plume-coherence constants from 8d55015d. The branch's relaxation of the idle-sleep perf invariant was REFUSED: check-vfx-frame-sleep.mjs is byte-identical to master and the fleet genuinely sleeps (wake signal is thrust, not admission). Accepted trade: no always-on idle nozzle glow, matching master's current behaviour. Gates on master: 137/137 thruster/vfx/vp220, check:presentation exit 0, check:sim:compare hashEqual true, check:visual-stability exit 0. Receipt receipts/PQ-023-propulsion-family-REPORT.md. This closes ONE of seven cue families; PQ-023 remains an umbrella and is NOT complete. No Browser/Electron visual acceptance and no matched performance capture exist, so acceptance stays focused_green. Also flagged for user review: low-tier compact silhouette changed from core+sheath to core+inner. || 2026-07-28 leaf PQ-023.gold-corridor-required-cues integrated at focused_green (tip 7db47ba0, candidate acddb2de, receipt receipts/PQ-023-gold-corridor-required-cues-REPORT.md): gap-driven against PQ-010's integrated combat presentation — flak impact gained mechanically-distinct variant-keyed proximity-burst identity (was byte-identical to autocannon; lightPeak deliberately below autocannon because flak volleys); Wreck Cathedral damage/recovery bound to noncolor fixture states + owner-supplied accessible captions (three real gaps closed: color-only signal, vacuous per-component key-existence guard, zero worldSite orchestrator subscriptions — the folded PQ-018 damage/recovery cue proof now exists at the cue layer); optional validator-checked reducedMotionMode/reducedFlashMode added (policy previously only scaled); accessibilityText live (had zero src/ hits) with distinct glyphs; NEW dense-scene cue arbitration (did not exist: .none lanes were charged real budget and suppression was first-come — measured before/after: critical tether.break dropped pre-fix, 18/18 critical survive post-fix with 42/60 flavor degrading by lane budget). Two self-caught corrections: CRITICAL_COOCCURRENCE 2->3 (reserve of 2 still dropped one critical per saturated tick, caught by the lane's own new gate); world_site.recovery relevance 0.9->0.88 so 'Cathedral hull restored' cannot fire an assertive screen-reader interrupt across a live combat warning. Gates: check:pq023:corridor-cues 20/20, check:presentation, check:combat, check:visual-stability, check:baseline, check:sim:compare hashEqual. Impacts/destruction family verified sound and deliberately not rebuilt. Open rows for milestone_accepted (PQ-025's requiredAcceptance): normal-route Browser/Electron evidence, independent motion review, matched target/floor performance, normal-camera stills — all PQ-034-lease-blocked. New inherited red identified by A/B at base: check:audio-identity (sfx_mining_seam_reward, sfx_vector_mine, sfx_rcs_disrupt uncovered), not this leaf's.",
       "canonical": [
         "G19",
@@ -1728,7 +1728,7 @@
       "id": "PQ-034",
       "priority": 34,
       "title": "PERF-00 Equivalence and attribution harness",
-      "state": "claimed",
+      "state": "implemented",
       "canonical": [
         "PERF-00"
       ],
@@ -1761,7 +1761,7 @@
       "id": "PQ-035",
       "priority": 35,
       "title": "PERF-01 Foreground/background lifecycle correctness",
-      "state": "planned",
+      "state": "implemented",
       "canonical": [
         "PERF-01"
       ],
@@ -1796,7 +1796,7 @@
       "id": "PQ-036",
       "priority": 36,
       "title": "PERF-02 Simulation/presentation scheduler seam",
-      "state": "planned",
+      "state": "implemented",
       "canonical": [
         "PERF-02"
       ],
@@ -1830,7 +1830,7 @@
       "id": "PQ-037",
       "priority": 37,
       "title": "PERF-03 Offline semantic render compiler",
-      "state": "planned",
+      "state": "implemented",
       "canonical": [
         "PERF-03"
       ],
@@ -1865,7 +1865,7 @@
       "id": "PQ-038",
       "priority": 38,
       "title": "PERF-04 Dense PresentationWorld",
-      "state": "planned",
+      "state": "implemented",
       "canonical": [
         "PERF-04"
       ],
@@ -1901,7 +1901,7 @@
       "id": "PQ-039",
       "priority": 39,
       "title": "PERF-05 Deterministic hot-query service",
-      "state": "planned",
+      "state": "implemented",
       "canonical": [
         "PERF-05"
       ],
@@ -2138,6 +2138,1267 @@
         "electron"
       ],
       "brief": "Remain deferred until the compiler, PresentationWorld, supported Electron runtime, and GPU correction establish a representative limiting route worth testing through one rollback-safe WebGPU/TSL slice."
+    }
+  ],
+  "dispatchUnits": [
+    {
+      "id": "PQ-034.candidate-audit",
+      "parentId": "PQ-034",
+      "priority": 1,
+      "title": "Audit the ten-commit PERF-00 candidate delta against current master",
+      "kind": "program_control",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "performance-control"
+      ],
+      "paths": [
+        "claude/perf00-20260727",
+        "design/program/roadmap/active/PQ-034.md",
+        "design/program/roadmap/receipts/"
+      ],
+      "checks": [
+        "npm run check:perf-counters",
+        "npm run check:perf-packets",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Review commits ed1df0d7..dce03987 one by one against current master, classify accept/revise/reject, selectively integrate only accepted commits, and write the missing PQ-034 terminal or residual receipt. The clean worktree and branch remain protected; no wholesale merge."
+    },
+    {
+      "id": "PQ-019.capsule-capture-repair",
+      "parentId": "PQ-019",
+      "priority": 2,
+      "title": "Repair the PQ-019A moving-capsule framing and seed-control harness",
+      "kind": "acceptance_repair",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-019.headless-implementation"
+      ],
+      "mutexes": [
+        "pq019a-acceptance-harness"
+      ],
+      "paths": [
+        "scripts/capture-pq019a-acceptance.mjs",
+        "test/",
+        "design/program/roadmap/evidence/h1/row3-pq019a-presentation/"
+      ],
+      "checks": [
+        "npm run check:pq019a:facility-embodiment",
+        "npm run check:sim:compare"
+      ],
+      "receiptRefs": [],
+      "brief": "Make the camera track the frozen live capsule so close/default/far projections are in-frame, apply the declared New Game seed for real, and prove the old offscreen NDC fingerprint fails without launching headed acceptance."
+    },
+    {
+      "id": "PQ-019.route-harness-repair",
+      "parentId": "PQ-019",
+      "priority": 3,
+      "title": "Repair the PQ-019C surface-heist simulation-time wait",
+      "kind": "acceptance_repair",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-019.headless-implementation"
+      ],
+      "mutexes": [
+        "pq019c-acceptance-harness"
+      ],
+      "paths": [
+        "scripts/probe-pq019-surface-heist.mjs",
+        "scripts/validation-manifests/pq019-surface-heist.mjs",
+        "test/pq019-surface-heist-manifest.test.mjs"
+      ],
+      "checks": [
+        "npm run check:pq019c:mission",
+        "npm run check:pq019b:seams",
+        "npm run check:pq019a:facility-embodiment"
+      ],
+      "receiptRefs": [],
+      "brief": "Replace the uninstrumented 20-second wall-clock capsule wait with simulation-progress and terminal-race evidence, capture the failure-state facts named by H1, and pin the unchanged fingerprint as a seconds-scale regression. Do not run the broker in this repair unit."
+    },
+    {
+      "id": "PQ-020.route-harness-repair",
+      "parentId": "PQ-020",
+      "priority": 4,
+      "title": "Remove the unsupported Ceres endpoint-distance assertion",
+      "kind": "acceptance_repair",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-020.headless-implementation"
+      ],
+      "mutexes": [
+        "pq020-acceptance-harness"
+      ],
+      "paths": [
+        "scripts/lib/pq020CeresFunctionalRoute.mjs",
+        "scripts/probe-pq020-ceres-topology.mjs",
+        "scripts/check-pq020-ceres-topology-electron.mjs",
+        "scripts/validation-manifests/pq020-ceres-topology.mjs",
+        "test/pq020-ceres-topology-manifest.test.mjs"
+      ],
+      "checks": [
+        "npm run check:pq020:proofs",
+        "npm run check:pq020:ceres-topology"
+      ],
+      "receiptRefs": [],
+      "brief": "Retain the valid source-direction gate identity check, delete the packet-less absolute 300-WU threshold, and regression-test the recorded 429.564-WU valid arrival before any new Browser or Electron attempt."
+    },
+    {
+      "id": "PQ-023.cues-harness-repair",
+      "parentId": "PQ-023",
+      "priority": 5,
+      "title": "Repair the Cathedral cue-capture admission ordering",
+      "kind": "acceptance_repair",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-023.corridor-cues-implementation"
+      ],
+      "mutexes": [
+        "pq023-acceptance-harness"
+      ],
+      "paths": [
+        "scripts/capture-combat-vfx-acceptance.mjs",
+        "scripts/probe-pq023-corridor-cues.mjs",
+        "scripts/check-pq023-corridor-cues-electron.mjs",
+        "scripts/validation-manifests/pq023-corridor-cues.mjs",
+        "test/pq023-corridor-cues-h1-manifest.test.mjs"
+      ],
+      "checks": [
+        "npm run check:pq023:corridor-cues",
+        "npm run check:presentation"
+      ],
+      "receiptRefs": [],
+      "brief": "Move or target the player into authored-admission range before waiting for ready Cathedral presentation, then pin the prior unsatisfiable ordering fingerprint. Preserve the valid combat/reduced/dense H1 evidence and do not recapture it."
+    },
+    {
+      "id": "PQ-041.electron-smoke-harness-repair",
+      "parentId": "PQ-041",
+      "priority": 6,
+      "title": "Repair the Electron Main Menu visibility false negative",
+      "kind": "acceptance_repair",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-041.focused-implementation"
+      ],
+      "mutexes": [
+        "electron-e2e-harness"
+      ],
+      "paths": [
+        "scripts/check-h1-electron-e2e.mjs",
+        "test/h1-electron-e2e.test.mjs"
+      ],
+      "checks": [
+        "node --test test/h1-electron-e2e.test.mjs",
+        "npm run check:launch-policy"
+      ],
+      "receiptRefs": [],
+      "brief": "Replace the second unstable querySelector sample with one semantic/locator-backed visibility authority and pin the recorded state where the menu, focus, and visible-screen list all prove visibility. Do not launch Electron in this repair unit."
+    },
+    {
+      "id": "PQ-024.survey-route-harness",
+      "parentId": "PQ-024",
+      "priority": 7,
+      "title": "Author the missing headed survey-to-relay route cell",
+      "kind": "acceptance_repair",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-024.headless-implementation"
+      ],
+      "mutexes": [
+        "pq024-acceptance-harness"
+      ],
+      "paths": [
+        "scripts/validation-manifests/",
+        "scripts/",
+        "test/"
+      ],
+      "checks": [
+        "npm run check:pq024:survey-claim",
+        "node --test test/asteroid-sites.test.mjs",
+        "npm run check:sim:compare"
+      ],
+      "receiptRefs": [],
+      "brief": "Add one broker cell for the actual default-route chain probe, reveal, commit, install Core, produce genuine positive output, observe exactly one relay, save, Continue, and re-enter. Build and register it headlessly; do not spend a Browser or Electron claim in this unit."
+    },
+    {
+      "id": "PQ-007.route-acceptance",
+      "parentId": "PQ-007",
+      "priority": 8,
+      "title": "Close the corrected auto-target and draw-to-fly player route",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-007.focused-implementation"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "scripts/probe-auto-target-steering.mjs",
+        "scripts/probe-dod-flight-acceptance.mjs",
+        "design/program/roadmap/active/PQ-007.md"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "node scripts/check-auto-target-registry.mjs",
+        "node scripts/check-massline-auto-target.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Run one bounded Browser/Electron control-route acceptance for the user-directed G auto-target and clutchable draw-to-fly correction, with keyboard and pointer semantics and no resurrection of the rejected pursuit-slot behavior."
+    },
+    {
+      "id": "PQ-021.h2-legibility-controller",
+      "parentId": "PQ-021",
+      "priority": 9,
+      "title": "Human Ledger legibility and physical-controller verdict",
+      "kind": "human_gate",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-021.h1-route"
+      ],
+      "mutexes": [
+        "human-review"
+      ],
+      "paths": [
+        "design/program/roadmap/H2_REVIEW_INDEX.md",
+        "design/program/roadmap/evidence/h1/row2-pq021-ledger/"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Review all five page crops and provenance in both hosts, then perform the physical-controller Codex to Ledger to evidence to Back path. Record keep, revise, or blocked; the existing H1 functional pair already passed."
+    },
+    {
+      "id": "PQ-022.relay-human-verdict",
+      "parentId": "PQ-022",
+      "priority": 10,
+      "title": "Human accept-versus-reauthor verdict for the claim relay",
+      "kind": "human_gate",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-022.h1-asset-presentation"
+      ],
+      "mutexes": [
+        "human-review"
+      ],
+      "paths": [
+        "design/program/roadmap/H2_REVIEW_INDEX.md",
+        "design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Decide whether the exact place_claim_outpost_relay identity is good enough to ship or must return to re-authoring. Rendering and structural correctness are already proven; generic-grey-primitive quality is the explicit open question."
+    },
+    {
+      "id": "PQ-022.corridor-assets-human-disposition",
+      "parentId": "PQ-022",
+      "priority": 11,
+      "title": "Record the missing corridor station, furniture, and traffic visual dispositions",
+      "kind": "human_gate",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-022.h1-asset-presentation"
+      ],
+      "mutexes": [
+        "human-review"
+      ],
+      "paths": [
+        "design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/",
+        "design/program/roadmap/receipts/PQ-022-gold-corridor-required-assets-SCOPING.md"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Give explicit keep, revise, revert, or blocked dispositions for the four stations, three lane-furniture identities, and three Helios traffic bodies. H1 proved exact admission but the six-decision H2 index accidentally omitted these milestone-closing verdicts."
+    },
+    {
+      "id": "PQ-007.focused-implementation",
+      "parentId": "PQ-007",
+      "priority": 100,
+      "title": "User-directed control correction",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/01_VERIFIED_DONE.md"
+      ],
+      "brief": "Focused-green correction landed at 4d00867e; only route acceptance remains."
+    },
+    {
+      "id": "PQ-018.world-site-implementation",
+      "parentId": "PQ-018",
+      "priority": 101,
+      "title": "Wreck Cathedral source, admission, placement, and World Site implementation",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-018-asset-admission-REPORT.md",
+        "design/program/roadmap/receipts/PQ-018-world-site-REPORT.md"
+      ],
+      "brief": "Phases 0-3 are integrated; route, performance, and art acceptance are relocated into the current acceptance units."
+    },
+    {
+      "id": "PQ-019.headless-implementation",
+      "parentId": "PQ-019",
+      "priority": 102,
+      "title": "PQ-019A/B/C headless implementation",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-019A-facility-embodiment-REPORT.md",
+        "design/program/roadmap/receipts/PQ-019B-seams-REPORT.md",
+        "design/program/roadmap/receipts/PQ-019C-mission-REPORT.md"
+      ],
+      "brief": "Facilities, owner seams, mission route, save reconciliation, tuning, and deterministic checks are integrated."
+    },
+    {
+      "id": "PQ-020.headless-implementation",
+      "parentId": "PQ-020",
+      "priority": 103,
+      "title": "Ceres topology and deterministic continuation proofs",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-020-ceres-topology-REPORT.md"
+      ],
+      "brief": "Ceres pocket data, exact coordinate truth, natural jobs, condition, save/re-entry, and route honesty are integrated."
+    },
+    {
+      "id": "PQ-021.headless-implementation",
+      "parentId": "PQ-021",
+      "priority": 104,
+      "title": "Ship's Ledger wiring and headless Phase 4",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-021-ledger-wiring-REPORT.md",
+        "design/program/roadmap/receipts/PQ-021-phase4-REPORT.md"
+      ],
+      "brief": "Both hosts, earned evidence, Continue stability, resource flatness, and route harness are integrated."
+    },
+    {
+      "id": "PQ-021.h1-route",
+      "parentId": "PQ-021",
+      "priority": 105,
+      "title": "Ledger Browser broker and Electron parity",
+      "kind": "acceptance_capture",
+      "state": "done",
+      "dependsOn": [
+        "PQ-021.headless-implementation"
+      ],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/evidence/h1/row2-pq021-ledger/EVIDENCE.md"
+      ],
+      "brief": "H1 functional headed evidence passed in both Browser and Electron; human legibility/controller review remains."
+    },
+    {
+      "id": "PQ-022.relay-structural",
+      "parentId": "PQ-022",
+      "priority": 106,
+      "title": "Claim relay structural and route-admission proof",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-exterior-relay-collar-REPORT.md"
+      ],
+      "brief": "Exact release identity, admission, envelope, LOD, collision, cleanup, and exterior-route presence are focused-green."
+    },
+    {
+      "id": "PQ-022.corridor-assets-scope",
+      "parentId": "PQ-022",
+      "priority": 107,
+      "title": "Gold Corridor required-asset census and provenance repair",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-gold-corridor-required-assets-SCOPING.md",
+        "design/program/roadmap/receipts/PQ-022-ceres-geology-rock-a-REPORT.md"
+      ],
+      "brief": "The 72-asset set, exact named gaps, standing gate, and rock-a provenance repair are integrated."
+    },
+    {
+      "id": "PQ-022.h1-asset-presentation",
+      "parentId": "PQ-022",
+      "priority": 108,
+      "title": "Eleven exact corridor identities in headed Browser presentation",
+      "kind": "acceptance_capture",
+      "state": "done",
+      "dependsOn": [
+        "PQ-022.relay-structural",
+        "PQ-022.corridor-assets-scope"
+      ],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md"
+      ],
+      "brief": "H1 passed exact authored admission for the relay, stations, lane furniture, and traffic bodies; human dispositions and performance remain."
+    },
+    {
+      "id": "PQ-023.corridor-cues-implementation",
+      "parentId": "PQ-023",
+      "priority": 109,
+      "title": "Gold Corridor cue-family implementation",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-023-gold-corridor-required-cues-REPORT.md"
+      ],
+      "brief": "Flak identity, Cathedral damage/recovery semantics, reduced modes, accessibility text, and dense-scene arbitration are integrated."
+    },
+    {
+      "id": "PQ-024.headless-implementation",
+      "parentId": "PQ-024",
+      "priority": 110,
+      "title": "Survey, claim, production, and relay implementation",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-024-survey-claim-REPORT.md"
+      ],
+      "brief": "The complete deterministic default-route gameplay chain is integrated at focused-green; the missing headed route cell is a separate unit."
+    },
+    {
+      "id": "PQ-025.contracts-prework",
+      "parentId": "PQ-025",
+      "priority": 111,
+      "title": "Gold Corridor qualification contracts and adversarial prework",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-025-contracts-prework-REPORT.md"
+      ],
+      "brief": "The semantic map, pure contracts, ledgers, and adversarial anti-laundering tests are integrated; calibration and qualification remain blocked."
+    },
+    {
+      "id": "PQ-035.focused-implementation",
+      "parentId": "PQ-035",
+      "priority": 112,
+      "title": "PERF-01 lifecycle implementation",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-035-lifecycle-REPORT.md"
+      ],
+      "brief": "Focused implementation is on master; native broker acceptance remains."
+    },
+    {
+      "id": "PQ-036.focused-implementation",
+      "parentId": "PQ-036",
+      "priority": 113,
+      "title": "PERF-02 scheduler-seam implementation",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-036-scheduler-seam-REPORT.md"
+      ],
+      "brief": "Simulation/presentation runners, input snapshots, and presentation journal are on master; native broker acceptance remains."
+    },
+    {
+      "id": "PQ-037.focused-implementation",
+      "parentId": "PQ-037",
+      "priority": 114,
+      "title": "PERF-03 render-compiler foundation",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-037-render-compiler-REPORT.md"
+      ],
+      "brief": "The deterministic offline compiler foundation is on master; production pilot and acceptance remain."
+    },
+    {
+      "id": "PQ-038.focused-implementation",
+      "parentId": "PQ-038",
+      "priority": 115,
+      "title": "PERF-04 dense PresentationWorld implementation",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-038-presentation-world-REPORT.md"
+      ],
+      "brief": "Dense presentation ownership is on master with deterministic focused proof; native broker acceptance remains."
+    },
+    {
+      "id": "PQ-039.focused-implementation",
+      "parentId": "PQ-039",
+      "priority": 116,
+      "title": "PERF-05 deterministic hot-query implementation",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-039-hot-query-REPORT.md"
+      ],
+      "brief": "Batched stable-order NPC hostile queries are on master; native broker acceptance remains."
+    },
+    {
+      "id": "PQ-040.focused-implementation",
+      "parentId": "PQ-040",
+      "priority": 117,
+      "title": "PERF-06 dirty-range implementation",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-040-dirty-range-uploads-REPORT.md"
+      ],
+      "brief": "Scene-owned dirty component ranges are on master; native GPU acceptance remains."
+    },
+    {
+      "id": "PQ-041.focused-implementation",
+      "parentId": "PQ-041",
+      "priority": 118,
+      "title": "PERF-07 Electron 43.2 implementation",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-041-electron-modernization-REPORT.md"
+      ],
+      "brief": "The supported runtime and hardened shell are on master; exact packaging and native route acceptance remain."
+    },
+    {
+      "id": "PQ-034.native-closure",
+      "parentId": "PQ-034",
+      "priority": 200,
+      "title": "Close PERF-00 equivalence and native evidence authority",
+      "kind": "performance",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-034.candidate-audit"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "performance-evidence",
+        "validation-broker"
+      ],
+      "paths": [
+        "design/program/roadmap/active/PQ-034.md",
+        "scripts/validation-manifests/",
+        "scripts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "node scripts/validation-broker-cli.mjs --manifest performance-closure-browser",
+        "node scripts/validation-broker-cli.mjs --manifest performance-closure-electron"
+      ],
+      "receiptRefs": [],
+      "brief": "After the candidate audit lands, run the exact matched Browser/Electron authority and write the terminal PERF-00 receipt.",
+      "blocker": "The unmerged ten-commit candidate has not been selectively reviewed against current master."
+    },
+    {
+      "id": "PQ-018.art-verdict",
+      "parentId": "PQ-018",
+      "priority": 201,
+      "title": "Wreck Cathedral independent art verdict",
+      "kind": "human_gate",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-020.route-harness-repair"
+      ],
+      "mutexes": [
+        "human-review"
+      ],
+      "paths": [
+        "design/program/roadmap/evidence/h1/row5-pq020-ceres-route/"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Judge the frozen Cathedral at close, default, far, and in motion only after a repaired Ceres route capture reaches it.",
+      "blocker": "H1 stopped before capturing the Cathedral."
+    },
+    {
+      "id": "PQ-019.h2-verdict",
+      "parentId": "PQ-019",
+      "priority": 202,
+      "title": "PQ-019 facility, capsule, and complete route human verdict",
+      "kind": "human_gate",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-019.capsule-capture-repair",
+        "PQ-019.route-harness-repair"
+      ],
+      "mutexes": [
+        "human-review"
+      ],
+      "paths": [
+        "design/program/roadmap/H2_REVIEW_INDEX.md"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Review four distinct facility/capsule identities and all five live terminal routes after valid evidence exists.",
+      "blocker": "The capsule framings and most terminal routes were not captured."
+    },
+    {
+      "id": "PQ-019.h3-performance",
+      "parentId": "PQ-019",
+      "priority": 203,
+      "title": "PQ-019 matched facility and heist-route performance",
+      "kind": "performance",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-019.capsule-capture-repair",
+        "PQ-019.route-harness-repair",
+        "PQ-034.native-closure"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "performance-evidence",
+        "validation-broker"
+      ],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Capture matched normal and traffic-loaded facility/heist routes in a quiet window.",
+      "blocker": "The route harnesses and PERF-00 evidence authority are not closed."
+    },
+    {
+      "id": "PQ-019.promote",
+      "parentId": "PQ-019",
+      "priority": 204,
+      "title": "Promote PQ-019 and replace W03/W04/W05 aliases",
+      "kind": "integration",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-019.h2-verdict",
+        "PQ-019.h3-performance"
+      ],
+      "mutexes": [
+        "program-control",
+        "registry"
+      ],
+      "paths": [
+        "design/program/roadmap/program-queue.json",
+        "design/program/roadmap/active/PQ-019.md"
+      ],
+      "checks": [
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Bind the upgraded receipts, correct the parent aliases, tick the packet, and retire its active document.",
+      "blocker": "Human and matched-performance acceptance are open."
+    },
+    {
+      "id": "PQ-020.h2-verdict",
+      "parentId": "PQ-020",
+      "priority": 205,
+      "title": "Ceres pocket-distinctness and Cathedral-presence verdict",
+      "kind": "human_gate",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-020.route-harness-repair"
+      ],
+      "mutexes": [
+        "human-review"
+      ],
+      "paths": [
+        "design/program/roadmap/H2_REVIEW_INDEX.md"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Review all four pockets plus Cathedral approach after the repaired route produces valid evidence.",
+      "blocker": "H1 stopped immediately after the valid Helios-to-Ceres jump."
+    },
+    {
+      "id": "PQ-020.h3-performance",
+      "parentId": "PQ-020",
+      "priority": 206,
+      "title": "Cathedral-keyed matched Ceres performance",
+      "kind": "performance",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-020.route-harness-repair",
+        "PQ-034.native-closure"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "performance-evidence",
+        "validation-broker"
+      ],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Capture p95/p99/hitches, admission, residency, LOD, entity, collider, query, draw, and program facts on the matched Ceres route.",
+      "blocker": "The functional route harness and PERF-00 evidence authority are not closed."
+    },
+    {
+      "id": "PQ-020.promote",
+      "parentId": "PQ-020",
+      "priority": 207,
+      "title": "Promote PQ-020 and close relocated PQ-018 Phase 4",
+      "kind": "integration",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-018.art-verdict",
+        "PQ-020.h2-verdict",
+        "PQ-020.h3-performance"
+      ],
+      "mutexes": [
+        "program-control"
+      ],
+      "paths": [
+        "design/program/roadmap/program-queue.json",
+        "design/program/roadmap/active/PQ-018.md",
+        "design/program/roadmap/active/PQ-020.md"
+      ],
+      "checks": [
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Bind the matched route receipt, tick both packets' acceptance rows, and retire completed active documents.",
+      "blocker": "Ceres route, art, and performance acceptance remain."
+    },
+    {
+      "id": "PQ-021.promote",
+      "parentId": "PQ-021",
+      "priority": 208,
+      "title": "Promote and retire PQ-021",
+      "kind": "integration",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-021.h2-legibility-controller"
+      ],
+      "mutexes": [
+        "program-control"
+      ],
+      "paths": [
+        "design/program/roadmap/program-queue.json",
+        "design/program/roadmap/active/PQ-021.md"
+      ],
+      "checks": [
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Upgrade the route receipt, tick the packet, and retire the active document.",
+      "blocker": "The human legibility and physical-controller verdict is open."
+    },
+    {
+      "id": "PQ-022.h3-performance",
+      "parentId": "PQ-022",
+      "priority": 209,
+      "title": "Matched corridor-asset performance and cleanup",
+      "kind": "performance",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-034.native-closure",
+        "PQ-022.relay-human-verdict",
+        "PQ-022.corridor-assets-human-disposition"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "performance-evidence",
+        "validation-broker"
+      ],
+      "paths": [],
+      "checks": [
+        "npm run check:pq022:corridor-assets"
+      ],
+      "receiptRefs": [],
+      "brief": "Capture matched resource, residency, LOD, and cleanup evidence for the accepted exact corridor identities.",
+      "blocker": "Human dispositions and PERF-00 evidence authority are open."
+    },
+    {
+      "id": "PQ-022.promote-relay",
+      "parentId": "PQ-022",
+      "priority": 210,
+      "title": "Upgrade and blob-bind the relay-collar receipt",
+      "kind": "integration",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-022.relay-human-verdict",
+        "PQ-022.h3-performance"
+      ],
+      "mutexes": [
+        "program-control"
+      ],
+      "paths": [
+        "design/program/roadmap/receipts/PQ-022-exterior-relay-collar-REPORT.md",
+        "design/program/roadmap/program-queue.json"
+      ],
+      "checks": [
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Upgrade the exact leaf to route_accepted and bind its Git blob into PQ-024.",
+      "blocker": "The human relay verdict and matched performance are open."
+    },
+    {
+      "id": "PQ-022.promote-corridor-assets",
+      "parentId": "PQ-022",
+      "priority": 211,
+      "title": "Issue the corridor-required-assets milestone receipt",
+      "kind": "integration",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-022.corridor-assets-human-disposition",
+        "PQ-022.h3-performance"
+      ],
+      "mutexes": [
+        "program-control"
+      ],
+      "paths": [
+        "design/program/roadmap/receipts/",
+        "design/program/roadmap/program-queue.json"
+      ],
+      "checks": [
+        "npm run check:pq022:corridor-assets",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Convert the scoping report plus accepted leaf evidence into the missing milestone_accepted receipt for PQ-025.",
+      "blocker": "Explicit visual dispositions and matched performance are open."
+    },
+    {
+      "id": "PQ-023.h2-verdict",
+      "parentId": "PQ-023",
+      "priority": 212,
+      "title": "Complete cue-motion and Cathedral accessibility verdict",
+      "kind": "human_gate",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-023.cues-harness-repair"
+      ],
+      "mutexes": [
+        "human-review"
+      ],
+      "paths": [
+        "design/program/roadmap/H2_REVIEW_INDEX.md"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Review the retained combat subset plus newly captured Cathedral damage/recovery motion and Electron parity.",
+      "blocker": "The Cathedral sequence was not captured."
+    },
+    {
+      "id": "PQ-023.h3-performance",
+      "parentId": "PQ-023",
+      "priority": 213,
+      "title": "Matched dense-scene cue performance",
+      "kind": "performance",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-023.cues-harness-repair",
+        "PQ-034.native-closure"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "performance-evidence",
+        "validation-broker"
+      ],
+      "paths": [],
+      "checks": [
+        "npm run check:pq023:corridor-cues"
+      ],
+      "receiptRefs": [],
+      "brief": "Capture matched target/floor dense-scene performance without weakening authored effects.",
+      "blocker": "The cue harness and PERF-00 evidence authority are open."
+    },
+    {
+      "id": "PQ-023.promote-corridor-cues",
+      "parentId": "PQ-023",
+      "priority": 214,
+      "title": "Upgrade the corridor-cues milestone receipt",
+      "kind": "integration",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-023.h2-verdict",
+        "PQ-023.h3-performance"
+      ],
+      "mutexes": [
+        "program-control"
+      ],
+      "paths": [
+        "design/program/roadmap/receipts/PQ-023-gold-corridor-required-cues-REPORT.md",
+        "design/program/roadmap/program-queue.json"
+      ],
+      "checks": [
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Upgrade the exact leaf to milestone_accepted and bind its Git blob into PQ-025.",
+      "blocker": "Motion/accessibility and matched-performance acceptance are open."
+    },
+    {
+      "id": "PQ-024.h2-verdict",
+      "parentId": "PQ-024",
+      "priority": 215,
+      "title": "Survey-to-relay player-route and visual verdict",
+      "kind": "human_gate",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-024.survey-route-harness",
+        "PQ-022.relay-human-verdict"
+      ],
+      "mutexes": [
+        "human-review"
+      ],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Judge comprehension, feedback, relay consequence, and save/re-entry after a valid headed route pair exists.",
+      "blocker": "The dedicated PQ-024 headed route cell does not exist yet."
+    },
+    {
+      "id": "PQ-024.h3-performance",
+      "parentId": "PQ-024",
+      "priority": 216,
+      "title": "Matched Asteroid Ops survey-to-relay performance",
+      "kind": "performance",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-024.survey-route-harness",
+        "PQ-034.native-closure"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "performance-evidence",
+        "validation-broker"
+      ],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Capture matched route and relay-admission performance after the functional route cell is valid.",
+      "blocker": "The route cell and PERF-00 evidence authority are open."
+    },
+    {
+      "id": "PQ-024.promote",
+      "parentId": "PQ-024",
+      "priority": 217,
+      "title": "Bind relay evidence and promote PQ-024",
+      "kind": "integration",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-022.promote-relay",
+        "PQ-024.h2-verdict",
+        "PQ-024.h3-performance"
+      ],
+      "mutexes": [
+        "program-control"
+      ],
+      "paths": [
+        "design/program/roadmap/program-queue.json",
+        "design/program/roadmap/active/PQ-024.md"
+      ],
+      "checks": [
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Bind the route_accepted relay blob, tick the full survey-claim packet, and retire its active document.",
+      "blocker": "Relay, headed route, human, and performance acceptance are open."
+    },
+    {
+      "id": "PQ-025.perf-owner-facts",
+      "parentId": "PQ-025",
+      "priority": 218,
+      "title": "Land the five qualification performance owner facts",
+      "kind": "implementation",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-034.candidate-audit"
+      ],
+      "mutexes": [
+        "performance-control"
+      ],
+      "paths": [
+        "src/core/perfRuntime.js",
+        "src/core/perfCounters.js",
+        "scripts/lib/goldCorridorAcceptanceContracts.mjs"
+      ],
+      "checks": [
+        "npm run check:perf-counters",
+        "node --test test/pq025-acceptance-contracts.test.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Resolve p50 raw samples, p99, missed-vsync, residency, and draw/triangle owner facts from accepted PERF-00 work without duplicating harness-side guesses.",
+      "blocker": "The ten-commit PERF candidate containing part of this work has not been audited."
+    },
+    {
+      "id": "PQ-025.calibration-qualification",
+      "parentId": "PQ-025",
+      "priority": 219,
+      "title": "Freeze, calibrate, and run the held-out 30/90-minute Gold Corridor qualification",
+      "kind": "acceptance_capture",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-019.promote",
+        "PQ-020.promote",
+        "PQ-021.promote",
+        "PQ-022.promote-corridor-assets",
+        "PQ-023.promote-corridor-cues",
+        "PQ-024.promote",
+        "PQ-025.perf-owner-facts"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "performance-evidence",
+        "validation-broker",
+        "human-review"
+      ],
+      "paths": [
+        "design/program/roadmap/active/PQ-025.md",
+        "scripts/validation-manifests/"
+      ],
+      "checks": [
+        "npm run check:launch-policy",
+        "npm run check:sim:compare"
+      ],
+      "receiptRefs": [],
+      "brief": "Freeze the draft matrix and profiles, perform Phase 2 calibration, then run held-out Browser/Electron 30- and 90-minute routes for all three careers.",
+      "blocker": "The corridor parents, two milestone leaf receipts, and performance owner facts are not terminal."
+    },
+    {
+      "id": "PQ-035.native-acceptance",
+      "parentId": "PQ-035",
+      "priority": 220,
+      "title": "PERF-01 native lifecycle acceptance",
+      "kind": "acceptance_capture",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-034.native-closure",
+        "PQ-035.focused-implementation"
+      ],
+      "mutexes": [
+        "validation-broker",
+        "browser-gpu"
+      ],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Close foreground/background/minimize/suspend/restore parity on the accepted harness.",
+      "blocker": "PERF-00 native evidence authority is not terminal."
+    },
+    {
+      "id": "PQ-036.native-acceptance",
+      "parentId": "PQ-036",
+      "priority": 221,
+      "title": "PERF-02 scheduler attribution acceptance",
+      "kind": "acceptance_capture",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-034.native-closure",
+        "PQ-036.focused-implementation"
+      ],
+      "mutexes": [
+        "validation-broker",
+        "performance-evidence"
+      ],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Close scheduler attribution and lifecycle parity against the accepted harness.",
+      "blocker": "PERF-00 native evidence authority is not terminal."
+    },
+    {
+      "id": "PQ-037.native-acceptance",
+      "parentId": "PQ-037",
+      "priority": 222,
+      "title": "PERF-03 production render-package pilot",
+      "kind": "acceptance_capture",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-034.native-closure",
+        "PQ-037.focused-implementation"
+      ],
+      "mutexes": [
+        "asset-manifest",
+        "renderer",
+        "validation-broker"
+      ],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Run one bounded production pilot and prove semantic, admission, visual, and performance equivalence.",
+      "blocker": "PERF-00 native evidence authority is not terminal."
+    },
+    {
+      "id": "PQ-038.native-acceptance",
+      "parentId": "PQ-038",
+      "priority": 223,
+      "title": "PERF-04 dense PresentationWorld native acceptance",
+      "kind": "acceptance_capture",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-034.native-closure",
+        "PQ-038.focused-implementation"
+      ],
+      "mutexes": [
+        "renderer",
+        "browser-gpu",
+        "performance-evidence"
+      ],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Close native visual parity, lifecycle, culling, and entity-scale performance.",
+      "blocker": "PERF-00 native evidence authority is not terminal."
+    },
+    {
+      "id": "PQ-039.native-acceptance",
+      "parentId": "PQ-039",
+      "priority": 224,
+      "title": "PERF-05 hot-query scale acceptance",
+      "kind": "acceptance_capture",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-034.native-closure",
+        "PQ-039.focused-implementation"
+      ],
+      "mutexes": [
+        "performance-evidence"
+      ],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Close candidate growth, stable order, NPC-jobs parity, and performance.",
+      "blocker": "PERF-00 native evidence authority is not terminal."
+    },
+    {
+      "id": "PQ-040.native-acceptance",
+      "parentId": "PQ-040",
+      "priority": 225,
+      "title": "PERF-06 dirty-range Browser/Electron acceptance",
+      "kind": "acceptance_capture",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-034.native-closure",
+        "PQ-040.focused-implementation"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "performance-evidence",
+        "validation-broker"
+      ],
+      "paths": [],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Close upload bytes, buffer lifecycle, dense-combat parity, and matched performance.",
+      "blocker": "PERF-00 native evidence authority is not terminal."
+    },
+    {
+      "id": "PQ-041.native-acceptance",
+      "parentId": "PQ-041",
+      "priority": 226,
+      "title": "PERF-07 exact-package and native Electron acceptance",
+      "kind": "acceptance_capture",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-034.native-closure",
+        "PQ-041.electron-smoke-harness-repair"
+      ],
+      "mutexes": [
+        "package",
+        "electron-shell",
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [],
+      "checks": [
+        "npm run check:m6:packaging",
+        "node scripts/check-electron-platform-contracts.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Close packaged startup, hardware GPU, Browser parity, controller/audio/display, lifecycle, and matched performance.",
+      "blocker": "The Electron smoke harness and PERF-00 native evidence authority are not terminal."
+    },
+    {
+      "id": "PQ-042.branch-selection",
+      "parentId": "PQ-042",
+      "priority": 227,
+      "title": "Run PERF-08 evidence-selected GPU branch",
+      "kind": "performance",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-034.native-closure",
+        "PQ-035.native-acceptance",
+        "PQ-036.native-acceptance",
+        "PQ-037.native-acceptance",
+        "PQ-038.native-acceptance",
+        "PQ-039.native-acceptance",
+        "PQ-040.native-acceptance",
+        "PQ-041.native-acceptance"
+      ],
+      "mutexes": [
+        "renderer",
+        "browser-gpu",
+        "performance-evidence",
+        "validation-broker"
+      ],
+      "paths": [
+        "design/program/roadmap/active/PQ-042.md"
+      ],
+      "checks": [
+        "node scripts/check-performance-gpu-pipeline.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Use valid post-modernization evidence to select A, B, C, or an explicit D closure; do not choose from the contaminated July trace.",
+      "blocker": "PERF-00 through PERF-07 do not yet have terminal acceptance receipts."
     }
   ]
 }

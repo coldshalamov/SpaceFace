@@ -11,7 +11,13 @@ Before changing anything:
 2. Read root [`AGENTS.md`](./AGENTS.md).
 3. Read only the relevant sections of [`ARCHITECTURE.md`](./ARCHITECTURE.md) and [`design/GDD_2_0.md`](./design/GDD_2_0.md).
 4. Read the volatile lease board: [`design/program/NOW.md`](./design/program/NOW.md).
-5. Run `node scripts/program-dispatch.mjs --next` or `node scripts/program-dispatch.mjs --id PQ-XXX` to obtain one compact dispatch record. Open the raw [`program-queue.json`](./design/program/roadmap/program-queue.json) only when maintaining its index or diagnosing dependency/identity history.
+5. Run `node scripts/program-dispatch.mjs --next` for the first exact claim-ready unit,
+   `node scripts/program-dispatch.mjs --ready` for every currently claim-ready unit, or
+   `node scripts/program-dispatch.mjs --id PQ-XXX` for one parent outcome. The dispatcher includes
+   implementation, acceptance-repair, capture, human-gate, performance, and integration units, so a
+   headless-complete parent is not redispatched as feature work. Open the raw
+   [`program-queue.json`](./design/program/roadmap/program-queue.json) only when maintaining its
+   index/dispatch units or diagnosing dependency/identity history.
 6. Open the returned packet in [`design/program/roadmap/active/`](./design/program/roadmap/active/README.md).
    If no active packet exists, stop and ask the integrator to admit one from the template; do not
    leapfrog to a later row or self-authorize implementation.
@@ -83,7 +89,7 @@ buggy implementation is current.
 | Surface | Lifetime | Owns | Must not own |
 |---|---|---|---|
 | [`NOW.md`](./design/program/NOW.md) | volatile | active worktrees, leases, mutexes, protected foreign work, immediate blockers | history, detailed plans, test transcripts |
-| `scripts/program-dispatch.mjs` + [`program-queue.json`](./design/program/roadmap/program-queue.json) | compact read view + durable legacy index | selected packet identity, dependencies, mutexes, broad checks/evidence, coarse queue state | current leases, implementation prose, acceptance transcripts |
+| `scripts/program-dispatch.mjs` + [`program-queue.json`](./design/program/roadmap/program-queue.json) | compact read view + durable machine index | exact dispatch units, parent identity, unit dependencies, mutexes, broad checks/evidence, coarse parent state | current leases, implementation prose, acceptance transcripts |
 | [`active/`](./design/program/roadmap/active/README.md) | active packet | executable outcome, live seams, phases, write budget, proof budget, stop conditions | global status, unrelated backlog, permanent architecture |
 | `receipts/` and acceptance pages | evidence | exact-revision proof and honest residuals | future requirements or dispatch state |
 | module/event/system maps | generated or maintained reference | low-context code navigation | product priority or completion claims |
@@ -99,7 +105,11 @@ The existing queue's `state` field is transitional and can contain legacy accept
 
 ## 5. Selecting and shaping work
 
-Choose the first queue packet whose dependencies are integrated, whose required owner seams exist, and whose mutexes are free. Then reduce it to the smallest coherent player-visible slice that can reach a terminal receipt. The dispatch command can identify a dependency-ready candidate; it cannot see every live branch, lease, owner change, or packet entry blocker, so it never grants a claim by itself.
+Choose the first claim-ready dispatch unit whose dependencies are done, whose required owner seams
+exist, and whose mutexes are free. `--ready` may expose several disjoint units at once; each still
+receives its own owner and receipt. Then reduce the selected unit to the smallest coherent slice that
+can reach its declared terminal state. The dispatch command cannot see every live process or
+unrecorded owner change, so it never grants a claim by itself.
 
 An executable packet must name:
 

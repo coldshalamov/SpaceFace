@@ -7,8 +7,10 @@ import { afterEach, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   ProgramControlError,
+  dispatchUnitReady,
   evidenceDependenciesSatisfied,
   parsePacketDocument,
+  readyDispatchUnits,
   selectNextPacket,
   validateControlPlane,
   validateQueueDocument,
@@ -337,6 +339,78 @@ test('dispatcher rejects conflicting modes and unknown flags', () => {
   });
   assert.equal(unknown.status, 2);
   assert.match(unknown.stderr, /Unknown option/);
+});
+
+test('dispatch units expose exact ready work and fail closed on incomplete checkoff', () => {
+  const parsed = queue([
+    row('PQ-001', 1, 'planned'),
+    row('PQ-002', 2, 'planned'),
+  ]);
+  parsed.dispatchUnits = [
+    {
+      id: 'PQ-001.headless',
+      parentId: 'PQ-001',
+      priority: 1,
+      title: 'Headless implementation',
+      kind: 'implementation',
+      state: 'done',
+      dependsOn: [],
+      mutexes: [],
+      paths: ['src/example.js'],
+      checks: ['npm run check:example'],
+      receiptRefs: ['design/receipt.md'],
+      brief: 'Completed implementation slice.',
+    },
+    {
+      id: 'PQ-001.acceptance-repair',
+      parentId: 'PQ-001',
+      priority: 2,
+      title: 'Repair the acceptance harness',
+      kind: 'acceptance_repair',
+      state: 'ready',
+      dependsOn: ['PQ-001.headless'],
+      mutexes: ['validation-harness'],
+      paths: ['scripts/example.mjs'],
+      checks: ['npm run check:example'],
+      receiptRefs: [],
+      brief: 'Repair the reproduced harness defect without launching headed acceptance.',
+    },
+    {
+      id: 'PQ-002.capture',
+      parentId: 'PQ-002',
+      priority: 3,
+      title: 'Run capture',
+      kind: 'acceptance_capture',
+      state: 'blocked',
+      dependsOn: ['PQ-001.acceptance-repair'],
+      mutexes: ['browser-gpu'],
+      paths: ['scripts/example.mjs'],
+      checks: ['npm run check:example'],
+      receiptRefs: [],
+      brief: 'Run one broker capture after the repair lands.',
+      blocker: 'The acceptance repair is not done.',
+    },
+  ];
+  const control = validateQueueDocument(parsed);
+  assert.equal(dispatchUnitReady(control.dispatchById.get('PQ-001.acceptance-repair'), control), true);
+  assert.deepEqual(
+    readyDispatchUnits(control).map((unit) => unit.id),
+    ['PQ-001.acceptance-repair'],
+  );
+
+  parsed.dispatchUnits[0].receiptRefs = [];
+  assert.throws(
+    () => validateQueueDocument(parsed),
+    (error) => error instanceof ProgramControlError
+      && error.details.some((detail) => detail.includes('done requires at least one receiptRefs')),
+  );
+
+  parsed.dispatchUnits[0].receiptRefs = ['design/missing-receipt.md'];
+  assert.throws(
+    () => validateControlPlane(ROOT, parsed),
+    (error) => error instanceof ProgramControlError
+      && error.details.some((detail) => detail.includes('missing path design/missing-receipt.md')),
+  );
 });
 
 test('program-doc checker validates the live control plane and rejects unknown flags', () => {

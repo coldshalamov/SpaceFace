@@ -7,7 +7,7 @@ This directory is the only whole-program status and acceptance surface. It separ
 
 | Need | Read |
 |---|---|
-| Compact dependency-ready candidate or one queue row | `node scripts/program-dispatch.mjs --next` or `--id PQ-XXX` |
+| First exact claim-ready unit, every ready unit, or one parent row | `node scripts/program-dispatch.mjs --next`, `--ready`, or `--id PQ-XXX` |
 | Live worktrees, leases, protected paths, blockers | [`NOW.md`](./NOW.md) |
 | Maintain stable packet IDs, dependencies, broad checks/evidence | [`roadmap/program-queue.json`](./roadmap/program-queue.json) |
 | Executable instructions for admitted packets | [`roadmap/active/README.md`](./roadmap/active/README.md) |
@@ -28,12 +28,15 @@ Lifecycle and acceptance are tracked separately:
 
 Never infer one axis from the other. A source asset can be implemented but not runtime-wired. Integrated code can retain an open route or visual acceptance debt. A packet can be blocked even when substantial substrate already exists.
 
-The queue's current `state` field is a transitional legacy value and can contain acceptance-like labels. Use the active packet and exact-revision receipts for separate claims; the compact dispatch command labels the field accordingly and omits narrative payloads.
+The queue's parent `state` field is a transitional legacy value and can contain acceptance-like
+labels. Exact `dispatchUnits` own claimability, dependencies, and terminal receipt references. Use
+the active packet and exact-revision receipts for separate claims; the compact dispatch command
+labels the parent field accordingly and omits narrative payloads.
 
 ## Maintenance
 
 - `NOW.md` contains only volatile state and an expiry marker.
-- Queue rows stay compact over time; link receipts instead of embedding incident histories and test transcripts.
+- Queue rows stay compact over time; exact dispatch units link receipts instead of embedding incident histories and test transcripts.
 - Active packets are the implementation handoff. Retire or replace them when the live seam changes materially.
 - Feature agents update packet checkboxes and receipts. The integrator updates global state.
 - Run `node scripts/check-program-docs.mjs` after changing these control surfaces.

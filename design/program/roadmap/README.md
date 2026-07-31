@@ -7,8 +7,8 @@ This directory contains the stable queue index, the execution protocol, executab
 
 | Surface | Role |
 |---|---|
-| `../../../scripts/program-dispatch.mjs` | compact read-only view of one packet or the dependency-ready candidate; omits narrative history |
-| [`program-queue.json`](./program-queue.json) | stable IDs, dependencies, broad mutexes/checks/evidence, and a transitional legacy state field |
+| `../../../scripts/program-dispatch.mjs` | compact read-only view of the first or all exact claim-ready units, or one parent packet; omits narrative history |
+| [`program-queue.json`](./program-queue.json) | stable parent IDs plus exact dispatch-unit dependencies, mutexes, checks, receipts, and a transitional legacy parent state field |
 | [`active/`](./active/README.md) | current executable packet set and recommended dependency order |
 | [`00_EXECUTION_PROTOCOL.md`](./00_EXECUTION_PROTOCOL.md) | finite implementation, validation, review, and receipt state machine |
 | `receipts/` | immutable or append-only exact-revision evidence |
@@ -16,7 +16,11 @@ This directory contains the stable queue index, the execution protocol, executab
 
 ## Queue discipline
 
-Use `node scripts/program-dispatch.mjs --next` or `--id PQ-XXX` for ordinary orientation; open the raw queue only when maintaining identities/dependencies or investigating history. The command labels the queue's transitional combined `state` field as legacy and never treats dependency readiness as a claim.
+Use `node scripts/program-dispatch.mjs --next`, `--ready`, or `--id PQ-XXX` for ordinary
+orientation; open the raw queue only when maintaining identities/dependencies or investigating
+history. `--next` and `--ready` return exact claim-ready dispatch units. `--id` returns parent context
+and its units, labels the parent's transitional combined `state` field as legacy, and never turns a
+parent into a claim.
 
 Queue rows should become compact. A row may name sources, dependencies, mutex domains, focused check aliases, evidence classes, and receipt links. It should not carry full test transcripts, rejection history, speculative architecture, or a multi-page integration narrative. Put that information in the active packet while work is live and in a receipt when the evidence is durable.
 

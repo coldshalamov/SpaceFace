@@ -20,13 +20,17 @@ implementation hazards.
 - Probes clean up browser/server/process resources and write evidence only to the designated ignored artifact tree.
 - Acceptance actors use public controls and visible semantics. Observers may collect approved owner evidence but may not mutate gameplay state or tell the actor hidden facts.
 - Performance probes bind candidate, route, runtime, hardware/profile, settings, viewport, seed/save, and raw trace identity. Never reuse a capture across acceptance cells.
-- `program-dispatch.mjs` is read-only, omits narrative queue fields, and labels its output as dependency-ready rather than claim-ready. Do not add mutation, leasing, or automatic promotion to it.
+- `program-dispatch.mjs` is read-only, omits narrative queue fields, and reports exact queue
+  `dispatchUnits` as claim-ready only when their machine dependencies are `done`. Its caution still
+  requires a fresh `NOW.md` collision check; it never mutates, leases, launches acceptance, or
+  promotes work.
 
 See [`../design/program/roadmap/00_EXECUTION_PROTOCOL.md`](../design/program/roadmap/00_EXECUTION_PROTOCOL.md) for the finite state machine.
 
 ## Routing
 
-- Program orientation: `program-dispatch.mjs` for one compact queue/packet record.
+- Program orientation: `program-dispatch.mjs --next` for one exact unit, `--ready` for the current
+  claim-ready set, and `--id PQ-XXX` for parent context.
 - Simulation: `sf-sim.mjs` and focused `check-*-sim`/compare scripts.
 - Browser/Electron proof: launcher/probe scripts plus the shared game server and validation broker.
 - Assets: reachability, status, live-load, release-build, residency, and visual-stability scripts.

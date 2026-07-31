@@ -1,5 +1,5 @@
 <!-- LIFETIME: VOLATILE -->
-# H2 review index — one sitting, six decisions
+# H2 review index — seven named decisions
 
 Phase H1 produced the **functional headed evidence** for the Gold-Corridor packets. This page is the
 agenda for the Phase H2 human-verdict session. Budget ~30 minutes.
@@ -174,6 +174,25 @@ appears, record it here. If the chain is not performed, keep the decision deferr
 from Row 2 or the Row 8 Main Menu frame alone.
 
 **Verdict:** DEFER — automated menu→dock→Ledger chain not captured; manual H2 smoke required
+
+---
+
+## Decision 7 — Corridor stations, lane furniture, and traffic bodies
+
+**Question:** Do the four corridor stations, jump ring/billboard/nav-buoy set, and three Helios
+traffic bodies each carry a readable, role-specific identity at the captured game camera, or does any
+group need revision before the corridor-required-assets milestone can close?
+
+**Evidence:** [Row 7 exact headed presentation](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md).
+H1 proved exact release identity, authored admission, centered subjects, and no readable fallback.
+It did not issue a visual-quality verdict. The traffic frames include the player Kestrel in the
+foreground; record `blocked` for any identity whose framing is not sufficient to judge rather than
+silently accepting it.
+
+**Unblocks:** the human-disposition half of
+`PQ-022.gold-corridor-required-assets` → `milestone_accepted`. Matched performance remains H3.
+
+**Verdict:** _____________
 
 ---
 

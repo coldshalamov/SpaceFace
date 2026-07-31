@@ -39,16 +39,16 @@ PQ-034 through PQ-041 accepted
         └─> PQ-044 PERF-10 WebGPU/TSL slice (deferred unless triggered)
 ```
 
-PQ-018 remains the dependency root for the Gold Corridor line. PQ-019A can begin only after the
-integrator resolves the parent's canonical identity collision and advances `activeSlice: PQ-019A`; B
-and C remain blocked on their preceding leaf receipts. PQ-022 and PQ-023 are non-dispatchable
-portfolio containers until the integrator admits an exact leaf with one owner/write surface and one
-acceptance route.
+PQ-018 through PQ-024 now have their headless implementation layers integrated. Current corridor
+work is exact acceptance repair, headed capture, human verdict, performance evidence, and promotion;
+run `node scripts/program-dispatch.mjs --ready` and claim the returned unit rather than redispatching
+a parent implementation. PQ-022 and PQ-023 remain portfolio containers, but their current leaf units
+are explicit in the queue.
 
-PQ-034 is the independent root of the admitted performance-modernization program. Admission leaves it
-`ready` and `unclaimed`; dependency readiness does not grant leases. PQ-035 through PQ-042 remain
-planned until their preceding receipts and exact owner/mutex gates are satisfied. PQ-043 and PQ-044
-remain deferred and intentionally have no active packet until their evidence triggers are proved.
+PQ-034 through PQ-041 have focused implementation on master. PQ-034 also retains a clean protected
+ten-commit candidate that must be audited selectively before native closure. PQ-042 remains blocked
+on terminal PERF-00–07 acceptance. PQ-043 and PQ-044 remain deferred and intentionally have no active
+packet until their evidence triggers are proved.
 
 ## Packet index
 
@@ -62,14 +62,14 @@ remain deferred and intentionally have no active packet until their evidence tri
 | [`PQ-023.md`](./PQ-023.md) | implement physics-readable presentation as separate cue-family leaves | current owner events and shared presentation lease |
 | [`PQ-024.md`](./PQ-024.md) | one transient survey target, Core commitment, real-output producing receipt, one exterior consequence | PQ-017 seam rebound; one accepted exterior visual |
 | [`PQ-025.md`](./PQ-025.md) | observational held-out qualification, not a feature branch | PQ-019–024 exact integrated receipts and frozen owner evidence map |
-| [`PQ-034.md`](./PQ-034.md) | establish separate equivalence, measurement-validity, and improvement authority | clean claimed worktree; performance-evidence/broker/GPU leases |
-| [`PQ-035.md`](./PQ-035.md) | review and selectively port the protected lifecycle candidate | PQ-034 integrated; lifecycle/electron/package leases |
-| [`PQ-036.md`](./PQ-036.md) | extract main-thread simulation and presentation ownership plus journals | PQ-034 and PQ-035 integrated; loop/input/registry leases |
-| [`PQ-037.md`](./PQ-037.md) | compile deterministic render packages outside gameplay | PQ-034 integrated; fixture lane first, asset locks gate production pilots |
-| [`PQ-038.md`](./PQ-038.md) | migrate rendering to a dense generation-safe presentation mirror | PQ-034 and PQ-036 integrated; renderer/VFX leases |
-| [`PQ-039.md`](./PQ-039.md) | replace the measured NPC-jobs hostile full scan with one deterministic batch | PQ-034 integrated; NPC-jobs/spatial-query leases |
-| [`PQ-040.md`](./PQ-040.md) | upload only changed GPU attribute/matrix component ranges | PQ-034 integrated; exact renderer/VFX pool lease |
-| [`PQ-041.md`](./PQ-041.md) | move Electron through compatibility checkpoints to a supported runtime | PQ-034 and PQ-035 integrated; package/electron-shell leases |
+| [`PQ-034.md`](./PQ-034.md) | establish separate equivalence, measurement-validity, and improvement authority | focused implementation on master; clean ten-commit candidate audit is the first unit |
+| [`PQ-035.md`](./PQ-035.md) | foreground/background lifecycle correctness | focused implementation on master; native acceptance waits on terminal PERF-00 |
+| [`PQ-036.md`](./PQ-036.md) | main-thread simulation/presentation ownership plus journals | focused implementation on master; native attribution acceptance remains |
+| [`PQ-037.md`](./PQ-037.md) | compile deterministic render packages outside gameplay | foundation on master; bounded production pilot and native acceptance remain |
+| [`PQ-038.md`](./PQ-038.md) | dense generation-safe PresentationWorld | focused implementation on master; native dense-route acceptance remains |
+| [`PQ-039.md`](./PQ-039.md) | deterministic batched NPC hostile query | focused implementation on master; native scale acceptance remains |
+| [`PQ-040.md`](./PQ-040.md) | upload only changed GPU attribute/matrix component ranges | focused implementation on master; native GPU acceptance remains |
+| [`PQ-041.md`](./PQ-041.md) | supported Electron 43.2 runtime | focused implementation on master; H1 harness repair plus exact-package/native acceptance remain |
 | [`PQ-042.md`](./PQ-042.md) | select one GPU correction—or no GPU change—from valid pass evidence | PQ-034–041 accepted; clean trace selects A/B/C/D |
 
 PQ-043 and PQ-044 are admitted queue identities but remain deferred and packet-less until their

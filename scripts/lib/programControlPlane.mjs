@@ -37,6 +37,16 @@ const QUEUE_STATES = [
 ];
 const CHECKED_OFF_STATES = ['integrated', 'historical'];
 const INTEGRATION_FIELDS = ['integratedCommit', 'acceptanceRef', 'receipt'];
+const DISPATCH_UNIT_STATES = new Set(['ready', 'claimed', 'blocked', 'done', 'deferred']);
+const DISPATCH_UNIT_KINDS = new Set([
+  'program_control',
+  'implementation',
+  'acceptance_repair',
+  'acceptance_capture',
+  'human_gate',
+  'performance',
+  'integration',
+]);
 
 export class ProgramControlError extends Error {
   constructor(message, details = []) {
@@ -291,6 +301,99 @@ export function validateQueueDocument(parsed) {
   }
   for (const id of byId.keys()) visit(id);
 
+  const dispatchUnits = [];
+  const dispatchById = new Map();
+  const dispatchPriorities = new Map();
+  const rawDispatchUnits = parsed?.dispatchUnits ?? [];
+  if (!Array.isArray(rawDispatchUnits)) {
+    errors.push('dispatchUnits must be an array when present');
+  } else {
+    for (const [index, unit] of rawDispatchUnits.entries()) {
+      const prefix = `dispatchUnits[${index}]`;
+      if (!unit || typeof unit !== 'object' || Array.isArray(unit)) {
+        errors.push(`${prefix} must be an object`);
+        continue;
+      }
+      const id = requireString(unit.id, `${prefix}.id`, errors);
+      if (id && !/^PQ-\d{3}\.[a-z0-9][a-z0-9-]*$/.test(id)) {
+        errors.push(`${prefix}.id has invalid dispatch-unit ID ${id}`);
+      }
+      if (id && dispatchById.has(id)) errors.push(`duplicate dispatch-unit ID ${id}`);
+      if (id) dispatchById.set(id, unit);
+
+      const parentId = requireString(unit.parentId, `${id || prefix}.parentId`, errors);
+      if (parentId && !byId.has(parentId)) {
+        errors.push(`${id || prefix}.parentId names missing packet ${parentId}`);
+      }
+      if (!Number.isInteger(unit.priority) || unit.priority <= 0) {
+        errors.push(`${id || prefix}.priority must be a positive integer`);
+      } else if (dispatchPriorities.has(unit.priority)) {
+        errors.push(
+          `duplicate dispatch-unit priority ${unit.priority} (${dispatchPriorities.get(unit.priority)}, ${id || prefix})`,
+        );
+      } else {
+        dispatchPriorities.set(unit.priority, id || prefix);
+      }
+      requireString(unit.title, `${id || prefix}.title`, errors);
+      const kind = requireString(unit.kind, `${id || prefix}.kind`, errors);
+      if (kind && !DISPATCH_UNIT_KINDS.has(kind)) {
+        errors.push(`${id || prefix}.kind is not allowed: ${kind}`);
+      }
+      const state = requireString(unit.state, `${id || prefix}.state`, errors);
+      if (state && !DISPATCH_UNIT_STATES.has(state)) {
+        errors.push(`${id || prefix}.state is not allowed: ${state}`);
+      }
+      requireStringArray(unit.dependsOn, `${id || prefix}.dependsOn`, errors);
+      requireStringArray(unit.mutexes, `${id || prefix}.mutexes`, errors);
+      requireStringArray(unit.paths, `${id || prefix}.paths`, errors);
+      requireStringArray(unit.checks, `${id || prefix}.checks`, errors);
+      const receiptRefs = requireStringArray(
+        unit.receiptRefs,
+        `${id || prefix}.receiptRefs`,
+        errors,
+      );
+      requireString(unit.brief, `${id || prefix}.brief`, errors);
+      if (state === 'done' && receiptRefs.length === 0) {
+        errors.push(`${id || prefix}.state done requires at least one receiptRefs entry`);
+      }
+      if (state === 'blocked') {
+        requireString(unit.blocker, `${id || prefix}.blocker`, errors);
+      }
+      dispatchUnits.push(unit);
+    }
+  }
+
+  for (const unit of dispatchUnits) {
+    if (!unit?.id) continue;
+    for (const dependency of Array.isArray(unit.dependsOn) ? unit.dependsOn : []) {
+      if (!dispatchById.has(dependency)) {
+        errors.push(`${unit.id} depends on missing dispatch unit ${dependency}`);
+      }
+    }
+  }
+
+  const dispatchVisiting = new Set();
+  const dispatchVisited = new Set();
+  const dispatchStack = [];
+  function visitDispatch(id) {
+    if (dispatchVisited.has(id)) return;
+    if (dispatchVisiting.has(id)) {
+      const start = dispatchStack.indexOf(id);
+      errors.push(`dispatch-unit dependency cycle ${[...dispatchStack.slice(start), id].join(' -> ')}`);
+      return;
+    }
+    dispatchVisiting.add(id);
+    dispatchStack.push(id);
+    const dependencies = dispatchById.get(id)?.dependsOn;
+    for (const dependency of Array.isArray(dependencies) ? dependencies : []) {
+      if (dispatchById.has(dependency)) visitDispatch(dependency);
+    }
+    dispatchStack.pop();
+    dispatchVisiting.delete(id);
+    dispatchVisited.add(id);
+  }
+  for (const id of dispatchById.keys()) visitDispatch(id);
+
   if (errors.length) {
     throw new ProgramControlError('queue schema is invalid', [...new Set(errors)]);
   }
@@ -305,6 +408,8 @@ export function validateQueueDocument(parsed) {
     },
     canonicalOwners,
     evidenceDependenciesById,
+    dispatchUnits,
+    dispatchById,
     verifiedIntegrationIds: new Set(),
     evidenceDependencyStatusById: new Map(),
   };
@@ -465,6 +570,24 @@ export function validateControlPlane(root, parsed, { allowNoGit = false } = {}) 
       }
       validateReference(normalizedRoot, row.acceptanceRef, `${row.id}.acceptanceRef`, errors);
       validateReference(normalizedRoot, row.receipt, `${row.id}.receipt`, errors);
+    }
+  }
+  for (const unit of control.dispatchUnits) {
+    for (const command of unit.checks) {
+      const npm = command.match(/^npm run ([^\s]+)$/);
+      if (npm && !packageScripts[npm[1]]) {
+        errors.push(`${unit.id} names missing package script ${npm[1]}`);
+      }
+    }
+    if (unit.state === 'done') {
+      for (const [index, reference] of unit.receiptRefs.entries()) {
+        validateReference(
+          normalizedRoot,
+          reference,
+          `${unit.id}.receiptRefs[${index}]`,
+          errors,
+        );
+      }
     }
   }
 
@@ -744,7 +867,18 @@ export function summarizePacket(row, control, packet) {
     brief: row.brief,
     hasPartialLanding: Boolean(row.partialIntegration || row.integrationNote),
     receipt: row.receipt || row.acceptanceRef || null,
-    caution: 'Dependency-ready is not claim-ready. Re-read design/program/NOW.md and the active packet entry conditions before mutation. The queue state field is transitional; exact integration evidence is required for every satisfied dependency.',
+    dispatchUnits: control.dispatchUnits
+      .filter((unit) => unit.parentId === row.id)
+      .sort((a, b) => a.priority - b.priority)
+      .map((unit) => ({
+        id: unit.id,
+        kind: unit.kind,
+        state: unit.state,
+        claimReady: dispatchUnitReady(unit, control),
+        title: unit.title,
+        blocker: unit.blocker || null,
+      })),
+    caution: 'This is parent context, not a claim. Use its exact dispatchUnits and re-read design/program/NOW.md before mutation. The queue state field remains a coarse parent index; unit receipts own completion.',
   };
 }
 
@@ -766,4 +900,42 @@ export function selectNextPacket(control, root) {
     return { row, packet };
   }
   return null;
+}
+
+export function dispatchUnitReady(unit, control) {
+  if (!unit || unit.state !== 'ready') return false;
+  return unit.dependsOn.every((id) => control.dispatchById.get(id)?.state === 'done');
+}
+
+export function summarizeDispatchUnit(unit, control) {
+  const parent = control.byId.get(unit.parentId);
+  return {
+    id: unit.id,
+    parentId: unit.parentId,
+    parentTitle: parent?.title || null,
+    priority: unit.priority,
+    title: unit.title,
+    kind: unit.kind,
+    state: unit.state,
+    claimReady: dispatchUnitReady(unit, control),
+    dependsOn: unit.dependsOn.map((id) => ({
+      id,
+      state: control.dispatchById.get(id)?.state || 'missing',
+    })),
+    mutexes: unit.mutexes,
+    paths: unit.paths,
+    checks: unit.checks,
+    receiptRefs: unit.receiptRefs,
+    brief: unit.brief,
+    blocker: unit.blocker || null,
+    owner: unit.owner || 'unclaimed',
+    packet: `design/program/roadmap/active/${unit.parentId}.md`,
+    caution: 'Claim-ready still requires a fresh design/program/NOW.md collision check. A ready harness repair does not grant browser-gpu, validation-broker, performance-evidence, or human acceptance.',
+  };
+}
+
+export function readyDispatchUnits(control) {
+  return [...control.dispatchUnits]
+    .filter((unit) => dispatchUnitReady(unit, control))
+    .sort((a, b) => a.priority - b.priority);
 }

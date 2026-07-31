@@ -1,5 +1,25 @@
 # Worktree and Integration Inventory
 
+## Recovery refresh — 2026-07-30
+
+The registered worktree count is 25. Master is clean at `b157f715`. Twenty-three worktrees have zero
+tracked changes. Two protected foreign candidates remain tracked-dirty and were not inspected beyond
+status counts:
+
+| Worktree | Branch | Tracked changes | Disposition |
+|---|---|---:|---|
+| `C:\Users\93rob\sf-perf-modernization-20260726` | `claude/perf-modernization-20260726` | 19 | Protected old performance candidate; do not clean, merge, or classify here. |
+| `C:\Users\93rob\sf-perf01a` | `codex/perf-01a-background-lifecycle` | 9 | Protected lifecycle candidate; focused accepted concepts are already on master, but its working diff remains foreign. |
+
+Most clean worktree refs are fully merged or old/superseded checkpoints. Four clean branches retain
+unique commits and must remain recoverable. The only one admitted for immediate review is
+`claude/perf00-20260727`: its clean tip `dce03987` is ten commits ahead and 32 commits behind master.
+`PQ-034.candidate-audit` owns a commit-by-commit selective review; no wholesale merge.
+
+No worktree or branch is removed by the recovery transaction. The July 24 snapshot below is retained
+as labeled history and is not current dispatch authority; use `NOW.md` plus
+`program-dispatch.mjs --ready`.
+
 **Current integration snapshot:** 2026-07-24 after PQ-007's focused-green integration at `4d00867e`.
 PQ-017 is integrated at `2a9517d8`. PQ-007's former pursuit-slot acceptance is revoked; its
 user-directed auto-target/draw-to-fly correction is commit-bound, with current browser/Electron

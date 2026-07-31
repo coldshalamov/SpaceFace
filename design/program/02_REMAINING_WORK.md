@@ -3,6 +3,41 @@
 This is the canonical roll-up of everything still required from the Full Solo Alpha and the Depth
 Program. Detailed behavior remains in the linked source plans; this file owns status and next action.
 
+## Recovered dispatch index — 2026-07-30
+
+The old parent queue had mixed implementation lifecycle with acceptance status, so completed
+PQ-019–PQ-024 work appeared redispatchable while a stale PQ-034 lease made every real residual look
+blocked. The machine queue now owns exact `dispatchUnits`. Use:
+
+```text
+node scripts/program-dispatch.mjs --next
+node scripts/program-dispatch.mjs --ready
+```
+
+Claim-ready agent work, in order:
+
+| Unit | Exact result |
+|---|---|
+| `PQ-034.candidate-audit` | Review/selectively integrate the clean ten-commit PERF candidate; write the missing terminal/residual PERF-00 receipt. |
+| `PQ-019.capsule-capture-repair` | Fix offscreen moving-capsule framing and fake seed metadata; no headed run. |
+| `PQ-019.route-harness-repair` | Replace the wall-clock-only capsule wait with simulation/terminal evidence; no headed run. |
+| `PQ-020.route-harness-repair` | Remove the unsupported 300-WU endpoint threshold and pin the valid 429.564-WU arrival. |
+| `PQ-023.cues-harness-repair` | Move into Cathedral admission range before waiting for authored presentation. |
+| `PQ-041.electron-smoke-harness-repair` | Replace the Main Menu visibility false negative with one semantic authority. |
+| `PQ-024.survey-route-harness` | Build/register the missing survey→commit→produce→relay→Continue broker cell. |
+| `PQ-007.route-acceptance` | Close the user-directed G auto-target/draw-to-fly Browser/Electron route. |
+
+Human gates ready from already-valid H1 evidence:
+
+- `PQ-021.h2-legibility-controller`;
+- `PQ-022.relay-human-verdict`;
+- `PQ-022.corridor-assets-human-disposition`.
+
+After those units close, the queue unlocks the H2 verdicts that lacked evidence, H3 matched
+performance, H4 receipt/blob binding and parent promotion, then PQ-025 calibration/qualification.
+PQ-042 remains behind terminal PERF-00–07 acceptance; PQ-043/PQ-044 remain deliberately deferred.
+This section supersedes dated “immediate queue” prose below when the two disagree.
+
 ## Alpha M0–M6
 
 | ID | Present maturity | Exact remaining work | Acceptance required |

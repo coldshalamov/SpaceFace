@@ -7,8 +7,10 @@ import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import {
   ProgramControlError,
+  readyDispatchUnits,
   readPacket,
   selectNextPacket,
+  summarizeDispatchUnit,
   summarizePacket,
   validateControlPlane,
 } from './lib/programControlPlane.mjs';
@@ -24,10 +26,12 @@ function fail(message, code = 2, details = []) {
 function usage() {
   console.log(`Usage:
   node scripts/program-dispatch.mjs --next [--root PATH]
+  node scripts/program-dispatch.mjs --ready [--root PATH]
   node scripts/program-dispatch.mjs --id PQ-018 [--root PATH]
   node scripts/program-dispatch.mjs --list [--root PATH]
 
-Outputs compact JSON. It omits integration narratives and never grants a lease or acceptance claim.`);
+When dispatchUnits exist, --next returns the first claim-ready unit and --ready returns every
+claim-ready unit. Outputs compact JSON and never grants a lease or acceptance claim.`);
 }
 
 let values;
@@ -39,6 +43,7 @@ try {
     options: {
       help: { type: 'boolean', short: 'h' },
       next: { type: 'boolean' },
+      ready: { type: 'boolean' },
       id: { type: 'string' },
       list: { type: 'boolean' },
       root: { type: 'string' },
@@ -53,8 +58,8 @@ if (values.help) {
   process.exit(0);
 }
 
-const selectedModes = [values.next, values.id !== undefined, values.list].filter(Boolean).length;
-if (selectedModes > 1) fail('choose exactly one of --next, --id, or --list');
+const selectedModes = [values.next, values.ready, values.id !== undefined, values.list].filter(Boolean).length;
+if (selectedModes > 1) fail('choose exactly one of --next, --ready, --id, or --list');
 if (values.id !== undefined && !/^PQ-\d{3}$/.test(values.id)) {
   fail(`--id requires a packet ID such as PQ-018, received ${JSON.stringify(values.id)}`);
 }
@@ -72,6 +77,15 @@ try {
 }
 
 try {
+  if (values.ready) {
+    console.log(JSON.stringify(
+      readyDispatchUnits(control).map((unit) => summarizeDispatchUnit(unit, control)),
+      null,
+      2,
+    ));
+    process.exit(0);
+  }
+
   if (values.list) {
     const summaries = [];
     for (const row of [...control.rows].sort((a, b) => a.priority - b.priority)) {
@@ -88,6 +102,13 @@ try {
     const packet = readPacket(ROOT, values.id);
     if (!packet) fail(`packet ${values.id} has no active packet document`, 1);
     console.log(JSON.stringify(summarizePacket(row, control, packet), null, 2));
+    process.exit(0);
+  }
+
+  if (control.dispatchUnits.length > 0) {
+    const [nextUnit] = readyDispatchUnits(control);
+    if (!nextUnit) fail('no claim-ready dispatch unit found', 1);
+    console.log(JSON.stringify(summarizeDispatchUnit(nextUnit, control), null, 2));
     process.exit(0);
   }
 
