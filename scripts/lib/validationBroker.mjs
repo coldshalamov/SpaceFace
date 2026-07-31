@@ -20,6 +20,7 @@ import {
   readSourceSet,
   stableJson,
 } from './validationFingerprint.mjs';
+import { strictWorktreeFingerprint } from './releaseSoakContracts.mjs';
 import { runWithTimeout } from './validationProcessControl.mjs';
 
 export const STATUS = Object.freeze({
@@ -282,6 +283,7 @@ function brokerClaimConsumedSentinelPath(claimPath) {
  */
 const REQUIRED_IDENTITY_DIGEST_KEYS = Object.freeze([
   'candidateDigest',
+  'sourceCandidateDigest',
   'routeDigest',
   'regressionDigest',
   'profileDigest',
@@ -355,6 +357,7 @@ function extractEvidenceDigests(acceptedEvidence) {
       regressionDigest: acceptedEvidence.regressionDigest,
       profileDigest: acceptedEvidence.profileDigest,
       manifestDigest: acceptedEvidence.manifestDigest,
+      sourceCandidateDigest: acceptedEvidence.sourceCandidateDigest,
     };
 }
 
@@ -598,6 +601,7 @@ function normalizeManifest(manifest = {}) {
       : 3,
     artifactRoot: manifest.artifactRoot ?? path.join('.devshots', 'validation', manifest.id),
     fixedSeed: manifest.fixedSeed ?? null,
+    sourceIdentity: manifest.sourceIdentity ?? null,
     receiptSchema: manifest.receiptSchema ?? DEFAULT_RECEIPT_SCHEMA,
     lockSchema: manifest.lockSchema ?? DEFAULT_LOCK_SCHEMA,
     inflightSchema: manifest.inflightSchema ?? DEFAULT_INFLIGHT_SCHEMA,
@@ -750,6 +754,10 @@ export async function computeGateDigestsFromManifest({ root, manifest: rawManife
     ...harnessSources,
   });
   const scenarioDigest = computeSourceSetDigest(scenarioSources);
+  const scenarioManifestDigest = scenarioDigest;
+  const saveDigest = computeSourceSetDigest(manifest.sourceIdentity?.saveManifest ?? null);
+  const inputTapeDigest = computeSourceSetDigest(manifest.sourceIdentity?.inputTapeManifest ?? null);
+  const cameraManifestDigest = computeSourceSetDigest(manifest.sourceIdentity?.cameraManifest ?? null);
   const inputDigest = computeSourceSetDigest({
     fixedSeed: manifest.fixedSeed,
     commandArgs: manifest.commandArgs,
@@ -759,6 +767,28 @@ export async function computeGateDigestsFromManifest({ root, manifest: rawManife
     runtimeKind: manifest.runtimeKind,
   });
   const manifestDigest = computeManifestDigest(manifest);
+  const buildDigest = shaOfBuildEnv();
+  const worktree = manifest.sourceIdentity
+    ? await strictWorktreeFingerprint(root)
+    : null;
+  const sourceCandidateDigest = worktree
+    ? computeSourceSetDigest({
+      schema: 'spaceface.validationSourceCandidate.v1',
+      worktree: {
+        digest: worktree.digest,
+        head: worktree.head,
+        branch: worktree.branch,
+      },
+      buildDigest,
+      productionDigest,
+      regressionDigest,
+      harnessDigest,
+      scenarioManifestDigest,
+      saveDigest,
+      inputTapeDigest,
+      cameraManifestDigest,
+    })
+    : null;
   const candidateDigest = computeCandidateDigest({
     candidateId: manifest.id,
     buildId: process.env.SF_BUILD_ID ?? null,
@@ -768,6 +798,7 @@ export async function computeGateDigestsFromManifest({ root, manifest: rawManife
     inputDigest,
     profileDigest,
     manifestDigest,
+    sourceCandidateDigest,
   });
   return {
     // PQ-017 compatibility aliases
@@ -781,7 +812,16 @@ export async function computeGateDigestsFromManifest({ root, manifest: rawManife
     profileDigest,
     manifestDigest,
     candidateDigest,
-    buildDigest: shaOfBuildEnv(),
+    buildDigest,
+    sourceCandidateDigest,
+    worktreeDigest: worktree?.digest ?? null,
+    worktreeHead: worktree?.head ?? null,
+    worktreeBranch: worktree?.branch ?? null,
+    worktreeChangedFileCount: worktree?.changedFileCount ?? null,
+    scenarioManifestDigest,
+    saveDigest,
+    inputTapeDigest,
+    cameraManifestDigest,
     candidateSourceDigestMode: CANDIDATE_SOURCE_DIGEST_MODE,
     candidateSourcePathCount: existingSrcExtra.length + brokerBoundaryPaths.length
       + productionPaths.length,
@@ -886,6 +926,12 @@ export function createFastGateReceipt({
   inputDigest = null,
   profileDigest = null,
   manifestDigest = null,
+  sourceCandidateDigest = null,
+  worktreeDigest = null,
+  scenarioManifestDigest = null,
+  saveDigest = null,
+  inputTapeDigest = null,
+  cameraManifestDigest = null,
   acknowledgesFailureFingerprint = null,
   receiptSchema = DEFAULT_RECEIPT_SCHEMA,
 } = {}) {
@@ -901,6 +947,12 @@ export function createFastGateReceipt({
     inputDigest,
     profileDigest,
     manifestDigest,
+    sourceCandidateDigest,
+    worktreeDigest,
+    scenarioManifestDigest,
+    saveDigest,
+    inputTapeDigest,
+    cameraManifestDigest,
     acknowledgesFailureFingerprint,
   };
 }
@@ -1710,6 +1762,12 @@ export async function issueBrokerClaim({
       inputDigest: receipt.inputDigest ?? null,
       profileDigest: receipt.profileDigest ?? null,
       manifestDigest: receipt.manifestDigest ?? null,
+      sourceCandidateDigest: receipt.sourceCandidateDigest ?? null,
+      worktreeDigest: receipt.worktreeDigest ?? null,
+      scenarioManifestDigest: receipt.scenarioManifestDigest ?? null,
+      saveDigest: receipt.saveDigest ?? null,
+      inputTapeDigest: receipt.inputTapeDigest ?? null,
+      cameraManifestDigest: receipt.cameraManifestDigest ?? null,
     }
     : null);
 
@@ -2378,6 +2436,12 @@ async function authorizeAndMaybeRun({
         inputDigest: digests.inputDigest,
         profileDigest: digests.profileDigest,
         manifestDigest: digests.manifestDigest,
+        sourceCandidateDigest: digests.sourceCandidateDigest,
+        worktreeDigest: digests.worktreeDigest,
+        scenarioManifestDigest: digests.scenarioManifestDigest,
+        saveDigest: digests.saveDigest,
+        inputTapeDigest: digests.inputTapeDigest,
+        cameraManifestDigest: digests.cameraManifestDigest,
         acknowledgesFailureFingerprint: fastEval.acknowledgesFailureFingerprint,
       });
       await publishFastGateReceipt({ outputRoot, receipt });

@@ -4,6 +4,28 @@ import path from 'node:path';
 
 export const PERFORMANCE_CLOSURE_FIXED_SEED = 47;
 
+export const PERFORMANCE_CLOSURE_SOURCE_IDENTITY = Object.freeze({
+  schema: 'spaceface.performanceClosureSourceIdentity.v1',
+  saveManifest: Object.freeze({
+    schema: 'spaceface.performanceSaveManifest.v1',
+    kind: 'production-new-game',
+    seed: PERFORMANCE_CLOSURE_FIXED_SEED,
+    routeOwner: 'scripts/lib/alphaLiveBaselineRoute.mjs#runBrowserPublicRoute',
+  }),
+  inputTapeManifest: Object.freeze({
+    schema: 'spaceface.performanceInputTapeManifest.v1',
+    kind: 'procedural-public-player-route',
+    routeOwner: 'scripts/lib/alphaLiveBaselineRoute.mjs#runBrowserPublicRoute',
+    scenarioOwner: 'scripts/lib/performanceScenarioDriver.mjs',
+    replayedSyntheticTape: false,
+  }),
+  cameraManifest: Object.freeze({
+    schema: 'spaceface.performanceCameraManifest.v1',
+    kind: 'production-runtime-camera',
+    settingsOverride: false,
+  }),
+});
+
 const FAST_GATES = Object.freeze([
   'node --test test/performance-closure-manifests.test.mjs test/performance-attribution-runtime-matrix.test.mjs',
   'node --test test/performance-closure-contracts.test.mjs test/performance-closure-probe-contract.test.mjs test/performance-final-acceptance.test.mjs',
@@ -81,6 +103,7 @@ export function createPerformanceClosureBrowserManifest(overrides = {}) {
     maxLaunchesPerCandidate: 1,
     artifactRoot: path.join('.devshots', 'perf', 'closure', 'browser'),
     fixedSeed: PERFORMANCE_CLOSURE_FIXED_SEED,
+    sourceIdentity: PERFORMANCE_CLOSURE_SOURCE_IDENTITY,
     requireFastReceipt: true,
     requireBrokerClaim: true,
     cleanupPolicy: 'kill-tree',

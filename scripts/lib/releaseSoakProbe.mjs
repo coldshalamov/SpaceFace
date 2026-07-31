@@ -62,6 +62,7 @@ import {
   restorePerformanceScenario,
   validateScenarioRestoration,
 } from './performanceScenarioDriver.mjs';
+import { PERFORMANCE_CLOSURE_ACCEPTANCE_SCHEMA } from './performanceFinalAcceptance.mjs';
 import { requireBrokerClaimOrDiagnostic } from './validationBroker.mjs';
 
 export const DEFAULT_VIEWPORT = Object.freeze({ width: 1440, height: 900 });
@@ -2490,17 +2491,24 @@ async function publishPerformanceAttributionAuthorityEvidence({
   assert.equal(authority.primaryAcceptance, true, 'primary evidence requires acceptance authority');
   assert(authority.claimId, 'primary evidence requires consumed claim identity');
   assert(authority.digests?.candidateDigest, 'primary evidence requires candidate-bound digests');
+  assert(authority.digests?.sourceCandidateDigest, 'primary evidence requires source-candidate identity');
+  const rawTrace = closureReport.artifacts?.find((artifact) => artifact.kind === 'raw-evidence');
+  assert(rawTrace && /^[a-f0-9]{64}$/i.test(rawTrace.sha256), 'primary evidence requires a content-hashed raw trace');
   const evidence = {
-    schema: 'spaceface.performanceClosureAcceptance.v1',
+    schema: PERFORMANCE_CLOSURE_ACCEPTANCE_SCHEMA,
     generatedAt: new Date().toISOString(),
     pass: true,
     primaryAcceptance: true,
     runtimeKind,
     claimId: authority.claimId,
+    sourceCandidateDigest: authority.digests.sourceCandidateDigest,
+    candidateDigest: authority.digests.candidateDigest,
+    rawTraceDigest: rawTrace.sha256,
     digests: authority.digests,
     artifacts: {
       attribution: relativeTo(root, outPath),
       closure: relativeTo(root, closurePath),
+      rawTrace,
     },
     closure: {
       schema: closureReport.schema,

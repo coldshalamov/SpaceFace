@@ -4,8 +4,9 @@ import {
   validatePerformanceClosureReport,
 } from './performanceClosureContracts.mjs';
 
-export const PERFORMANCE_FINAL_ACCEPTANCE_SCHEMA = 'spaceface.performanceFinalAcceptance.v1';
+export const PERFORMANCE_FINAL_ACCEPTANCE_SCHEMA = 'spaceface.performanceFinalAcceptance.v2';
 export const PERFORMANCE_FINAL_ACCEPTANCE_RUNS = 3;
+export const PERFORMANCE_CLOSURE_ACCEPTANCE_SCHEMA = 'spaceface.performanceClosureAcceptance.v2';
 
 const PROFILE_SCHEMA = 'spaceface.performanceProfile.v1';
 const STEADY_RESIDENCY_SCENARIOS = new Set([
@@ -19,6 +20,7 @@ export function evaluatePerformanceFinalAcceptance({
   currentWorktree,
   profiles = [],
   matrices = [],
+  runtimePairs = [],
 } = {}) {
   const failures = [];
   if (!/^[a-f0-9]{40}$/i.test(String(expectedCommit || ''))) {
@@ -27,12 +29,16 @@ export function evaluatePerformanceFinalAcceptance({
   validateCurrentWorktree(currentWorktree, expectedCommit, failures);
   requireExactRunCount('profiles', profiles, failures);
   requireExactRunCount('matrices', matrices, failures);
+  requireExactRunCount('runtimePairs', runtimePairs, failures);
 
   const profileRuns = profiles.map((input, index) => validateProfile(input, index, expectedCommit, failures));
   const matrixRuns = matrices.map((input, index) => validateMatrix(input, index, expectedCommit, failures));
+  const pairedRuns = runtimePairs.map((input, index) => validateRuntimePair(input, index, expectedCommit, failures));
 
   validateUniqueReceipts('profiles', profiles, failures);
   validateUniqueReceipts('matrices', matrices, failures);
+  validateUniqueReceipts('runtimePairs.browser', runtimePairs.map((pair) => pair?.browser), failures);
+  validateUniqueReceipts('runtimePairs.electron', runtimePairs.map((pair) => pair?.electron), failures);
   validateChronology('profiles', profileRuns, failures);
   validateChronology('matrices', matrixRuns, failures);
   validateComparableProfiles(profileRuns, failures);
@@ -47,12 +53,93 @@ export function evaluatePerformanceFinalAcceptance({
       profiles: 'primary-player-route-acceptance',
       matrices: 'diagnostic-controlled-scenario-coverage',
       diagnosticCannotWaivePrimaryBudgets: true,
+      runtimePairing: 'same-source-distinct-runtime-candidate-and-raw-trace',
     },
     worktree: currentWorktree || null,
     profiles: profileRuns,
     matrices: matrixRuns,
+    runtimePairs: pairedRuns,
     pass: failures.length === 0,
     failures: [...new Set(failures)],
+  };
+}
+
+function validateRuntimePair(input, index, expectedCommit, failures) {
+  const prefix = `runtimePairs[${index}]`;
+  const browser = validateRuntimeEvidence(input?.browser, `${prefix}.browser`, 'browser', expectedCommit, failures);
+  const electron = validateRuntimeEvidence(input?.electron, `${prefix}.electron`, 'electron', expectedCommit, failures);
+  if (browser.sourceCandidateDigest && electron.sourceCandidateDigest
+    && browser.sourceCandidateDigest !== electron.sourceCandidateDigest) {
+    failures.push(`${prefix} sourceCandidateDigest must match across Browser/Electron evidence`);
+  }
+  if (browser.candidateDigest && electron.candidateDigest
+    && browser.candidateDigest === electron.candidateDigest) {
+    failures.push(`${prefix} candidateDigest values must be distinct across runtimes`);
+  }
+  if (browser.rawTraceDigest && electron.rawTraceDigest
+    && browser.rawTraceDigest === electron.rawTraceDigest) {
+    failures.push(`${prefix} rawTraceDigest values must be distinct across runtimes`);
+  }
+  return {
+    sourceCandidateDigest: browser.sourceCandidateDigest === electron.sourceCandidateDigest
+      ? browser.sourceCandidateDigest
+      : null,
+    browser,
+    electron,
+    pass: !failures.some((failure) => failure.startsWith(prefix)),
+  };
+}
+
+function validateRuntimeEvidence(input, prefix, expectedRuntimeKind, expectedCommit, failures) {
+  validateInputReceipt(input, prefix, failures);
+  const evidence = input?.document;
+  if (!evidence || typeof evidence !== 'object') {
+    failures.push(`${prefix} accepted evidence document is required`);
+    return runtimeEvidenceSummary(input, null);
+  }
+  if (evidence.schema !== PERFORMANCE_CLOSURE_ACCEPTANCE_SCHEMA) {
+    failures.push(`${prefix}.schema must be ${PERFORMANCE_CLOSURE_ACCEPTANCE_SCHEMA}`);
+  }
+  if (!isIso8601(evidence.generatedAt)) failures.push(`${prefix}.generatedAt must be ISO 8601`);
+  if (evidence.pass !== true || evidence.primaryAcceptance !== true) failures.push(`${prefix} must be primary passing evidence`);
+  if (evidence.runtimeKind !== expectedRuntimeKind) failures.push(`${prefix}.runtimeKind must be ${expectedRuntimeKind}`);
+  if (!nonempty(evidence.claimId)) failures.push(`${prefix}.claimId is required`);
+  for (const key of ['sourceCandidateDigest', 'candidateDigest', 'rawTraceDigest']) {
+    if (!sha256(evidence[key])) failures.push(`${prefix}.${key} must be SHA-256`);
+  }
+  if (evidence.digests?.sourceCandidateDigest !== evidence.sourceCandidateDigest) {
+    failures.push(`${prefix}.sourceCandidateDigest must match its broker-bound digest`);
+  }
+  if (evidence.digests?.candidateDigest !== evidence.candidateDigest) {
+    failures.push(`${prefix}.candidateDigest must match its broker-bound digest`);
+  }
+  const rawTrace = evidence.artifacts?.rawTrace;
+  if (!nonempty(rawTrace?.path) || !Number.isInteger(rawTrace?.bytes) || rawTrace.bytes < 1
+    || rawTrace?.sha256 !== evidence.rawTraceDigest) {
+    failures.push(`${prefix}.rawTraceDigest must match its declared raw-trace artifact`);
+  }
+  if (input?.artifactValidation?.pass !== true) {
+    failures.push(`${prefix} raw-trace artifact failed content-hash validation`);
+    for (const failure of input?.artifactValidation?.failures || []) failures.push(`${prefix}: ${failure}`);
+  }
+  if (evidence.closure?.worktree?.commit !== expectedCommit) {
+    failures.push(`${prefix} commit does not match expectedCommit`);
+  }
+  return runtimeEvidenceSummary(input, evidence);
+}
+
+function runtimeEvidenceSummary(input, evidence) {
+  return {
+    path: input?.path || null,
+    bytes: input?.bytes || null,
+    sha256: input?.sha256 || null,
+    generatedAt: evidence?.generatedAt || null,
+    runtimeKind: evidence?.runtimeKind || null,
+    claimId: evidence?.claimId || null,
+    sourceCandidateDigest: evidence?.sourceCandidateDigest || null,
+    candidateDigest: evidence?.candidateDigest || null,
+    rawTraceDigest: evidence?.rawTraceDigest || null,
+    commit: evidence?.closure?.worktree?.commit || null,
   };
 }
 
@@ -367,3 +454,4 @@ function nonempty(value) { return typeof value === 'string' && value.trim().leng
 function positive(value) { return Number.isFinite(value) && value > 0; }
 function finite(value) { return value != null && value !== '' && Number.isFinite(Number(value)); }
 function isIso8601(value) { return typeof value === 'string' && Number.isFinite(Date.parse(value)); }
+function sha256(value) { return /^[a-f0-9]{64}$/i.test(String(value || '')); }

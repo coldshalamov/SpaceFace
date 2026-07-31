@@ -11,12 +11,15 @@ import { strictWorktreeFingerprint, validateArtifactFiles } from './lib/releaseS
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const profiles = readList('profiles');
 const matrices = readList('matrices');
+const browserEvidence = readList('browser-evidence');
+const electronEvidence = readList('electron-evidence');
 const outputPath = resolveInsideRoot(readArg('out', '.devshots/perf/performance-final-acceptance.json'));
 const currentWorktree = await strictWorktreeFingerprint(ROOT);
 const expectedCommit = readArg('expected-commit', currentWorktree.head);
 
 let profileInputs = [];
 let matrixInputs = [];
+let runtimePairs = [];
 let loadFailure = null;
 try {
   profileInputs = await Promise.all(profiles.map((filePath) => readEvidence(filePath)));
@@ -25,6 +28,14 @@ try {
     input.artifactValidation = await validateArtifactFiles(ROOT, input.document?.artifacts, { requireClaims: true });
     return input;
   }));
+  const [browserInputs, electronInputs] = await Promise.all([
+    Promise.all(browserEvidence.map((filePath) => readRuntimeEvidence(filePath))),
+    Promise.all(electronEvidence.map((filePath) => readRuntimeEvidence(filePath))),
+  ]);
+  runtimePairs = Array.from(
+    { length: Math.max(browserInputs.length, electronInputs.length) },
+    (_, index) => ({ browser: browserInputs[index], electron: electronInputs[index] }),
+  );
 } catch (error) {
   loadFailure = error;
 }
@@ -34,6 +45,7 @@ const report = evaluatePerformanceFinalAcceptance({
   currentWorktree,
   profiles: profileInputs,
   matrices: matrixInputs,
+  runtimePairs,
 });
 if (loadFailure) {
   report.pass = false;
@@ -43,7 +55,7 @@ if (loadFailure) {
 await mkdir(path.dirname(outputPath), { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
 console.log(`[perf-final] report: ${path.relative(ROOT, outputPath)}`);
-console.log(`[perf-final] profiles=${profileInputs.length} matrices=${matrixInputs.length} commit=${expectedCommit}`);
+console.log(`[perf-final] profiles=${profileInputs.length} matrices=${matrixInputs.length} runtimePairs=${runtimePairs.length} commit=${expectedCommit}`);
 if (report.pass) {
   console.log('[perf-final] PASS');
 } else {
@@ -64,6 +76,16 @@ async function readEvidence(value) {
     sha256: createHash('sha256').update(contents).digest('hex'),
     document: JSON.parse(contents.toString('utf8')),
   };
+}
+
+async function readRuntimeEvidence(value) {
+  const input = await readEvidence(value);
+  input.artifactValidation = await validateArtifactFiles(
+    ROOT,
+    input.document?.artifacts?.rawTrace ? [input.document.artifacts.rawTrace] : [],
+    { requireClaims: true },
+  );
+  return input;
 }
 
 function readArg(name, fallback = null) {

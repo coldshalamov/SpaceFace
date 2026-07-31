@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import browserManifest from '../scripts/validation-manifests/performance-closure-browser.mjs';
 import electronManifest from '../scripts/validation-manifests/performance-closure-electron.mjs';
+import { computeGateDigestsFromManifest } from '../scripts/lib/validationBroker.mjs';
 import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -44,4 +45,34 @@ test('both paired manifests resolve through the tracked registry', async () => {
     assert.equal(registered.runtimeKind, expected.runtimeKind);
     assert.equal(registered.__trackedManifest.mode, '100644');
   }
+});
+
+test('paired PERF-00 claims share only source identity, not runtime candidate identity', async () => {
+  const [browser, electron] = await Promise.all([
+    computeGateDigestsFromManifest({ root: ROOT, manifest: browserManifest }),
+    computeGateDigestsFromManifest({ root: ROOT, manifest: electronManifest }),
+  ]);
+
+  for (const digests of [browser, electron]) {
+    for (const key of [
+      'sourceCandidateDigest',
+      'worktreeDigest',
+      'buildDigest',
+      'scenarioManifestDigest',
+      'saveDigest',
+      'inputTapeDigest',
+      'cameraManifestDigest',
+      'candidateDigest',
+    ]) assert.match(digests[key], /^[a-f0-9]{64}$/i, key);
+  }
+
+  assert.equal(browser.sourceCandidateDigest, electron.sourceCandidateDigest);
+  assert.equal(browser.worktreeDigest, electron.worktreeDigest);
+  assert.equal(browser.scenarioManifestDigest, electron.scenarioManifestDigest);
+  assert.equal(browser.saveDigest, electron.saveDigest);
+  assert.equal(browser.inputTapeDigest, electron.inputTapeDigest);
+  assert.equal(browser.cameraManifestDigest, electron.cameraManifestDigest);
+  assert.notEqual(browser.candidateDigest, electron.candidateDigest);
+  assert.notEqual(browser.profileDigest, electron.profileDigest);
+  assert.notEqual(browser.manifestDigest, electron.manifestDigest);
 });

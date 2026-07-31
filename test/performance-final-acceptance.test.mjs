@@ -21,7 +21,28 @@ test('requires three clean, same-commit, directly comparable passing runs', () =
   const result = evaluatePerformanceFinalAcceptance(fixture());
   assert.equal(result.pass, true, result.failures.join('\n'));
   assert.equal(result.profiles.length, 3);
+  assert.equal(result.runtimePairs.length, 3);
   assert.equal(result.matrices.every((run) => run.scenarioCount === PERFORMANCE_SCENARIO_IDS.length), true);
+});
+
+test('requires source-paired Browser/Electron evidence with distinct candidates and raw traces', () => {
+  const sourceMismatch = fixture();
+  sourceMismatch.runtimePairs[0].electron.document.sourceCandidateDigest = 'f'.repeat(64);
+  let result = evaluatePerformanceFinalAcceptance(sourceMismatch);
+  assert.equal(result.pass, false);
+  assert.match(result.failures.join('\n'), /sourceCandidateDigest must match/);
+
+  const candidateAlias = fixture();
+  candidateAlias.runtimePairs[1].electron.document.candidateDigest = candidateAlias.runtimePairs[1].browser.document.candidateDigest;
+  result = evaluatePerformanceFinalAcceptance(candidateAlias);
+  assert.equal(result.pass, false);
+  assert.match(result.failures.join('\n'), /candidateDigest values must be distinct/);
+
+  const traceAlias = fixture();
+  traceAlias.runtimePairs[2].electron.document.rawTraceDigest = traceAlias.runtimePairs[2].browser.document.rawTraceDigest;
+  result = evaluatePerformanceFinalAcceptance(traceAlias);
+  assert.equal(result.pass, false);
+  assert.match(result.failures.join('\n'), /rawTraceDigest values must be distinct/);
 });
 
 test('diagnostic matrix evidence cannot waive a primary 16.7 ms profile miss', () => {
@@ -70,6 +91,44 @@ function fixture() {
       ...receipt(`matrix-${index}`, matrix(index)),
       artifactValidation: { pass: true, failures: [], verified: [] },
     })),
+    runtimePairs: [0, 1, 2].map(runtimePair),
+  };
+}
+
+function runtimePair(index) {
+  const sourceCandidateDigest = 'c'.repeat(64);
+  return {
+    browser: receipt(`browser-evidence-${index}`, runtimeEvidence({
+      index,
+      runtimeKind: 'browser',
+      sourceCandidateDigest,
+      candidateDigest: `${index + 1}`.repeat(64),
+      rawTraceDigest: `${index + 4}`.repeat(64),
+    })),
+    electron: receipt(`electron-evidence-${index}`, runtimeEvidence({
+      index,
+      runtimeKind: 'electron',
+      sourceCandidateDigest,
+      candidateDigest: `${index + 7}`.repeat(64),
+      rawTraceDigest: ['d', 'e', 'f'][index].repeat(64),
+    })),
+  };
+}
+
+function runtimeEvidence({ index, runtimeKind, sourceCandidateDigest, candidateDigest, rawTraceDigest }) {
+  return {
+    schema: 'spaceface.performanceClosureAcceptance.v2',
+    generatedAt: new Date(Date.UTC(2026, 6, 19, 14, index, runtimeKind === 'browser' ? 0 : 30)).toISOString(),
+    pass: true,
+    primaryAcceptance: true,
+    runtimeKind,
+    claimId: `claim-${runtimeKind}`,
+    sourceCandidateDigest,
+    candidateDigest,
+    rawTraceDigest,
+    digests: { sourceCandidateDigest, candidateDigest },
+    artifacts: { rawTrace: { kind: 'raw-evidence', path: `${runtimeKind}-${index}.json`, bytes: 100, sha256: rawTraceDigest } },
+    closure: { worktree: { commit: COMMIT } },
   };
 }
 
@@ -197,7 +256,13 @@ function performanceWindow(scenarioId, environment) {
 }
 
 function receipt(name, document) {
-  return { path: `${name}.json`, bytes: 100, sha256: Buffer.from(name).toString('hex').padEnd(64, '0').slice(0, 64), document };
+  return {
+    path: `${name}.json`,
+    bytes: 100,
+    sha256: Buffer.from(name).toString('hex').padEnd(64, '0').slice(0, 64),
+    document,
+    ...(name.includes('evidence-') ? { artifactValidation: { pass: true, failures: [], verified: [] } } : {}),
+  };
 }
 
 function fingerprint() {

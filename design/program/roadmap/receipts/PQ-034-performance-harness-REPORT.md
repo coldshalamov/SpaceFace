@@ -93,9 +93,31 @@ broker helper and writes no primary evidence. A passing accepted run may publish
 - `npm run check:baseline` — PASS 10/10 in 51.211 s;
 - no broker claim, browser, Electron, GPU capture, or performance conclusion was spent.
 
+## Source-candidate pairing and final-acceptance slice
+
+The paired manifests now declare one explicit production New Game save identity, one procedural
+public-player-route input identity, and one unmodified production-camera identity. The broker combines
+those declarations with exact Git worktree, build, production, regression, harness, and scenario
+digests into `sourceCandidateDigest`, excluding runtime kind and manifest ID. It then folds the shared
+digest into the ordinary runtime-bound `candidateDigest`; claims therefore invalidate on any exact
+source candidate change while Browser and Electron still receive distinct one-use candidates.
+
+Passing accepted evidence uses `spaceface.performanceClosureAcceptance.v2` and exposes the shared
+source digest, runtime candidate, and the actual content hash of `performance-windows.json`. The v2
+final arbiter consumes explicit Browser/Electron evidence pairs, revalidates each raw artifact from
+disk in the CLI, and fails closed on source mismatch, candidate aliasing, raw-trace aliasing, wrong
+runtime/commit, missing claim authority, or digest disagreement.
+
+- characterization: the paired-manifest digest assertion failed because all source/worktree identity
+  fields were absent; final acceptance ignored all three injected pair failures before implementation;
+- focused paired-manifest/final-acceptance characterization set — PASS 8/8 after implementation;
+- broker, paired runtime, closure-publication, and final-acceptance set — PASS 48/48;
+- full current PERF-00 focused suite — PASS 127/127;
+- no broker claim, browser, Electron, GPU capture, or performance conclusion was spent.
+
 ## Honest residual
 
-This is not the terminal dispatch receipt. Background-job identity, source pairing, clean matched
-evidence, overhead measurement, and independent causal review remain open. The current driver and
-paired authority are focused-green but intentionally unspent while the machine remains ineligible for
-a quiet L4 capture.
+This is not the terminal dispatch receipt. Background-job identity, explicit comparison invalidation,
+clean matched evidence, overhead measurement, and independent causal review remain open. The current
+driver and paired authority are focused-green but intentionally unspent while the machine remains
+ineligible for a quiet L4 capture.

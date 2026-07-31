@@ -190,6 +190,7 @@ export function computeCandidateDigest({
   inputDigest = null,
   profileDigest = null,
   manifestDigest = null,
+  sourceCandidateDigest = null,
 } = {}) {
   return computeSourceSetDigest({
     candidateId,
@@ -200,6 +201,7 @@ export function computeCandidateDigest({
     inputDigest,
     profileDigest,
     manifestDigest,
+    sourceCandidateDigest,
   });
 }
 
@@ -222,6 +224,7 @@ export function computeManifestDigest(manifest = {}) {
     maxLaunchesPerCandidate: manifest.maxLaunchesPerCandidate ?? null,
     artifactRoot: manifest.artifactRoot ?? null,
     fixedSeed: manifest.fixedSeed ?? null,
+    sourceIdentity: manifest.sourceIdentity ?? null,
     receiptSchema: manifest.receiptSchema ?? null,
   };
   return computeSourceSetDigest(normalized);
