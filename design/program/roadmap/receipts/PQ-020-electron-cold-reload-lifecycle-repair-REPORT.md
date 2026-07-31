@@ -59,9 +59,16 @@ was removed.
 
 The durable boundary is the production owner's registration settlement. `uiRoot.registerScreens()`
 now owns a generation-bound `Promise.allSettled` and records the settled generation only while its
-cycle remains current. The route waits for that owner signal before the public Continue click.
-Destroy/re-init invalidates the generation, so stale work cannot satisfy the wait. No Continue-time
-cancellation ignore is needed; only the exact document reload retains a cancellation scope.
+cycle remains current. The route waits for that owner signal before the public Continue click and
+again after the new flight/input generation becomes ready. Destroy/re-init invalidates the
+generation, so stale work cannot satisfy either wait. No Continue-time cancellation ignore is
+needed; only the exact document reload retains a cancellation scope.
+
+Candidate digest `7accb892e30556c6b930fe891f5883cff88561c1d4c3820fb3c2de82ca2a42da`
+proved the second wait is required: Browser passed 21/21 with zero issues; Electron completed 21/21,
+matched facts, and closed cleanly, but the remaining abort set was dominated by dependencies of the
+incoming flight UI generation. Settling only the outgoing menu generation could not cover that new
+owner cycle.
 
 ## Focused evidence
 
@@ -75,8 +82,8 @@ cancellation ignore is needed; only the exact document reload retains a cancella
   failures.
 - The lifecycle regression proves a new registration generation begins unsettled and a stale
   generation cannot revive after invalidation/re-init.
-- The route regression requires the owner-settled generation before the public Continue click and
-  permits exactly one cancellation scope: the document reload.
+- The route regression requires owner-settled generations before the public Continue click and after
+  restored flight/input readiness, and permits exactly one cancellation scope: the document reload.
 - `node scripts/check-ui-screen-imports.mjs` — PASS, 41/41.
 - `npm run check:pq020:proofs` — PASS, 14/14.
 - `node --check` for the changed UI, issue-collector, and route modules — PASS.

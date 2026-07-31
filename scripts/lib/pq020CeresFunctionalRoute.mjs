@@ -875,6 +875,15 @@ async function quickSave(page) {
   };
 }
 
+async function waitForScreenRegistrationSettled(page) {
+  await page.waitForFunction(() => {
+    const ui = window.SF?.registry?.get?.('ui');
+    return !!ui
+      && Number.isFinite(ui._screenRegistrationGeneration)
+      && ui._screenRegistrationSettledGeneration === ui._screenRegistrationGeneration;
+  }, null, { timeout: 60_000 });
+}
+
 async function coldContinue(page, rootUrl, fixedSeed, screenshot, pageIssueTracker) {
   const before = await readFunctionalSnapshot(page);
   const navigationToken = pageIssueTracker?.beginExpectedNavigation?.('pq020-cold-continue');
@@ -889,12 +898,7 @@ async function coldContinue(page, rootUrl, fixedSeed, screenshot, pageIssueTrack
   await waitVisible(page, '[data-screen="mainMenu"]', 'main menu after reload', 30_000);
   const continueButton = page.getByRole('button', { name: 'Continue', exact: true });
   await continueButton.waitFor({ state: 'visible', timeout: 20_000 });
-  await page.waitForFunction(() => {
-    const ui = window.SF?.registry?.get?.('ui');
-    return !!ui
-      && Number.isFinite(ui._screenRegistrationGeneration)
-      && ui._screenRegistrationSettledGeneration === ui._screenRegistrationGeneration;
-  }, null, { timeout: 60_000 });
+  await waitForScreenRegistrationSettled(page);
   await screenshot('15-continue-menu.png');
   await continueButton.click({ timeout: 20_000 });
   await page.waitForFunction(({ sectorId, siteId, beaconId }) => {
@@ -922,6 +926,7 @@ async function coldContinue(page, rootUrl, fixedSeed, screenshot, pageIssueTrack
     siteId: PQ020_CATHEDRAL_SITE_ID,
     beaconId: PQ020_BEACON_POI_ID,
   }, { timeout: CONTINUE_TIMEOUT_MS });
+  await waitForScreenRegistrationSettled(page);
   await page.bringToFront().catch(() => {});
   await screenshot('16-continue-restored.png');
   const after = await readFunctionalSnapshot(page);
