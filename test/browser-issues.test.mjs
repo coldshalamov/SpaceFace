@@ -79,7 +79,7 @@ test('request history backfills work that was already in flight when collection 
   const pending = {
     url: () => 'http://game.test/pre-attachment.js',
     failure: () => failure,
-    response: async () => null,
+    response: async () => ({ status: () => 200 }),
   };
   page.requests = async () => [pending];
   const tracker = collectPageIssues(page);

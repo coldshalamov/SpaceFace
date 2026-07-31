@@ -75,14 +75,8 @@ export function collectPageIssues(page, options = {}) {
       for (const request of observed) {
         if (!request) continue;
         activeRequests.add(request);
-        let response = null;
-        try {
-          response = typeof request.response === 'function' ? await request.response() : null;
-        } catch (_) {
-          response = null;
-        }
         const failure = typeof request.failure === 'function' ? request.failure() : null;
-        if (response || failure) {
+        if (failure) {
           activeRequests.delete(request);
           expectedNavigationAborts.delete(request);
         }

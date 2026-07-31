@@ -72,10 +72,12 @@ property was that Electron attached `collectPageIssues()` only after canonical-r
 but the collector had never observed their identity.
 
 Electron now attaches collection immediately after `firstWindow()`, before canonical-root and load
-waits, and then backfills still-pending requests from Playwright request history. Completed or
-already-failed history is not marked active. A regression creates a request before collector
-attachment, backfills it as pending, closes the navigation token, and only then delivers its abort;
-the exact request is retained as an expected navigation cancellation.
+waits, and then backfills request identity from Playwright history. An already-recorded failure is
+retired; response headers alone do not mean the body/module request finished. Only the real
+`requestfinished` event retires a successful request. A regression creates a request before collector
+attachment, gives it a successful response object without a finish event, closes the navigation
+token, and only then delivers its abort; the exact request is retained as an expected navigation
+cancellation.
 
 ## Focused evidence
 
