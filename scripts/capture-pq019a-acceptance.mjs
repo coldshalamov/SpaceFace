@@ -25,7 +25,9 @@ import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
-import pq019aCapsulePresentationManifest from './validation-manifests/pq019a-capsule-presentation.mjs';
+import pq019aCapsulePresentationManifest, {
+  PQ019A_CAPSULE_FRAMINGS,
+} from './validation-manifests/pq019a-capsule-presentation.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT = path.join(ROOT, '.devshots', 'pq019a-acceptance');
@@ -53,7 +55,9 @@ const FRAMINGS = Object.freeze([
   Object.freeze({ name: 'far', zoomRadii: 11.0, offsetRadii: 3.2 }),
 ]);
 const CAMERA_ZOOM_MAX = 330;   // src/render/camera.js
+const CAMERA_ZOOM_MIN = 45;    // src/render/camera.js; emitted zoom requests clamp here
 const NDC_LIMIT = 0.62;        // subject must sit inside this fraction of the frame
+const CAPSULE_FRAMINGS = PQ019A_CAPSULE_FRAMINGS;
 
 const FACILITIES = Object.freeze([
   Object.freeze({ id: 'heist_launcher', role: 'heist_launcher_visual', label: 'Tethys Surface Launcher' }),
@@ -225,7 +229,7 @@ async function frameSubject(page, targetId, framing) {
 // screenshot. This temporary hook preserves the normal follow update, then re-aims that same live
 // camera at the capsule mesh's frame-local world position on every frame.
 async function trackFrozenSubject(page, targetId, framing) {
-  return page.evaluate(async ({ targetId, framing, zoomMax }) => {
+  return page.evaluate(async ({ targetId, framing, zoomMax, cameraZoomMin }) => {
     const state = window.SF.state;
     const target = state.entities.get(targetId);
     const player = state.entities.get(state.playerId);
@@ -239,7 +243,7 @@ async function trackFrozenSubject(page, targetId, framing) {
     }
 
     const radius = Number(target.radius || 6);
-    const zoom = Math.min(zoomMax, Math.max(24, radius * framing.zoomRadii));
+    const zoom = Math.min(zoomMax, Math.max(cameraZoomMin, radius * framing.zoomRadii));
     state.camera.zoom = zoom;
     window.SF.bus.emit('camera:zoom', { level: zoom });
 
@@ -307,7 +311,12 @@ async function trackFrozenSubject(page, targetId, framing) {
       sectorId: state.world?.currentSectorId || null,
       simTime: state.simTime,
     };
-  }, { targetId, framing, zoomMax: CAMERA_ZOOM_MAX });
+  }, {
+    targetId,
+    framing,
+    zoomMax: CAMERA_ZOOM_MAX,
+    cameraZoomMin: CAMERA_ZOOM_MIN,
+  });
 }
 
 async function clearFrozenSubjectTracking(page) {
@@ -530,10 +539,16 @@ try {
   try {
     // Camera-only framings: the player does not move, so nothing can shift the frame origin. The
     // temporary follow hook keeps the frozen live capsule at camera focus across screenshot frames.
-    for (const framing of FRAMINGS) {
+    let priorCameraZoom = -Infinity;
+    for (const framing of CAPSULE_FRAMINGS) {
       const receipt = await trackFrozenSubject(page, capsuleId, framing);
       assert.equal(receipt.presentationAdmission, 'ready', 'the in-flight capsule must be admitted');
       assert.ok(receipt.visibleMeshes > 0, `capsule must present visible geometry at ${framing.name}`);
+      assert.equal(receipt.cameraZoom, framing.expectedCameraZoom,
+        `${framing.name} must apply its declared product camera zoom`);
+      assert.ok(receipt.cameraZoom > priorCameraZoom,
+        `capsule framings must be strictly increasing, got ${priorCameraZoom} then ${receipt.cameraZoom}`);
+      priorCameraZoom = receipt.cameraZoom;
       assertInFrame(receipt, `cargo_capsule/${framing.name}`);
       captures.push(await screenshot(page, `cargo-capsule-inflight-${framing.name}.png`, {
         subject: 'cargo_capsule',
@@ -575,7 +590,10 @@ try {
     scheduleId: SCHEDULE_ID,
     viewport: VIEWPORT,
     cameraPolicy: 'ordinary game camera; static facilities use player-relative framing and the frozen live capsule is tracked at mesh world position',
-    framings: FRAMINGS,
+    framings: {
+      facilities: FRAMINGS,
+      capsule: CAPSULE_FRAMINGS,
+    },
     route: 'main menu -> New Game -> Launch -> world.enterSector(sector_tethys_junction) -> heist:requestLaunchSchedule',
     launchCueMoments: cueLog.map((cue) => ({ moment: cue.moment, tMinusS: cue.tMinusS, text: cue.text })),
     captures,

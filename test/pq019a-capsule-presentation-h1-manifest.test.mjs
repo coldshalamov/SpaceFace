@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import manifest, {
   createPq019aCapsulePresentationManifest,
+  PQ019A_CAPSULE_FRAMINGS,
   PQ019A_CAPSULE_PRESENTATION_FIXED_SEED,
 } from '../scripts/validation-manifests/pq019a-capsule-presentation.mjs';
 
@@ -23,6 +24,16 @@ test('the repaired capsule presentation is one candidate-bound Browser cell', ()
   assert.equal(manifest.maxLaunchesPerCandidate, 1);
   assert.equal(manifest.fixedSeed, PQ019A_CAPSULE_PRESENTATION_FIXED_SEED);
   assert.equal(PQ019A_CAPSULE_PRESENTATION_FIXED_SEED, 0x50513139);
+  assert.deepEqual(
+    PQ019A_CAPSULE_FRAMINGS.map(({ name, zoomRadii, expectedCameraZoom }) => (
+      { name, zoomRadii, expectedCameraZoom }
+    )),
+    [
+      { name: 'close', zoomRadii: 7.5, expectedCameraZoom: 45 },
+      { name: 'default', zoomRadii: 11, expectedCameraZoom: 66 },
+      { name: 'far', zoomRadii: 18, expectedCameraZoom: 108 },
+    ],
+  );
   assert.match(manifest.artifactRoot.replace(/\\/g, '/'), /^\.devshots\/pq019a-acceptance$/);
   assert.equal(createPq019aCapsulePresentationManifest({ timeoutMs: 1234 }).timeoutMs, 1234);
 });
@@ -64,15 +75,18 @@ test('the frozen-subject page context declares every returned player-relative fa
     'the accepted run failed with ReferenceError: player is not defined');
   assert.match(body, /const separation = Math\.hypot\(/,
     'separationFromPlayer must be computed inside the same page.evaluate context');
-  assert.match(body, /Math\.max\(24, radius \* framing\.zoomRadii\)/,
-    'a 45-WU floor collapses the 6-WU capsule close/default views to the same zoom');
-  assert.deepEqual([3, 5.5, 11].map((zoomRadii) => Math.max(24, 6 * zoomRadii)), [24, 33, 66],
-    'the repaired physical-capsule views must be strictly distinct');
+  assert.match(body, /Math\.max\(cameraZoomMin, radius \* framing\.zoomRadii\)/,
+    'the capture calculation must model the product camera owner minimum');
+  assert.match(body, /cameraZoomMin:\s*CAMERA_ZOOM_MIN/,
+    'Node-side camera constants must be passed into the page context explicitly');
+  assert.match(source, /assert\.equal\(receipt\.cameraZoom, framing\.expectedCameraZoom/,
+    'each runtime receipt must prove that the camera owner applied the declared zoom');
 });
 
 test('the continuation skips already-valid facility and cue screenshots', () => {
   const source = read('scripts/capture-pq019a-acceptance.mjs');
   assert.match(source, /const CAPSULE_ONLY = process\.argv\.includes\('--capsule-only'\)/);
+  assert.match(source, /for \(const framing of CAPSULE_FRAMINGS\)/);
   assert.match(source, /if \(!CAPSULE_ONLY\) \{[\s\S]*?for \(const facility of FACILITIES\)/);
   assert.match(source, /if \(!CAPSULE_ONLY\) \{[\s\S]*?launch-cue-tminus\.png/);
 });

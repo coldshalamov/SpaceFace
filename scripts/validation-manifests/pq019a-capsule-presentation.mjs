@@ -7,6 +7,11 @@
 import path from 'node:path';
 
 export const PQ019A_CAPSULE_PRESENTATION_FIXED_SEED = 0x50513139;
+export const PQ019A_CAPSULE_FRAMINGS = Object.freeze([
+  Object.freeze({ name: 'close', zoomRadii: 7.5, expectedCameraZoom: 45 }),
+  Object.freeze({ name: 'default', zoomRadii: 11, expectedCameraZoom: 66 }),
+  Object.freeze({ name: 'far', zoomRadii: 18, expectedCameraZoom: 108 }),
+]);
 
 export function createPq019aCapsulePresentationManifest(overrides = {}) {
   return {
