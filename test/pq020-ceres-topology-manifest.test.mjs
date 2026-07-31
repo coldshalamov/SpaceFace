@@ -282,18 +282,16 @@ test('Electron cannot launch before Browser PASS and follows isolated canonical-
   ]) assert.ok(source.includes(required), `missing Electron ownership/parity contract: ${required}`);
 });
 
-test('cold Continue scopes reload and menu-to-flight cancellation windows separately', () => {
+test('cold Continue waits for screen registration settlement before the public click', () => {
   const source = route();
   const reloadToken = source.indexOf("'pq020-cold-continue'");
-  const continueToken = source.indexOf("'pq020-continue-transition'");
+  const settledGeneration = source.indexOf('ui._screenRegistrationSettledGeneration');
   const continueClick = source.indexOf("continueButton.click");
-  const inputReady = source.indexOf("const inputReady = state.mode === 'flight'");
   assert.ok(reloadToken >= 0, 'reload cancellation scope is missing');
-  assert.ok(continueToken > reloadToken && continueToken < continueClick,
-    'Continue lifecycle scope must begin after reload and before the public click');
-  assert.ok(inputReady > continueClick, 'Continue lifecycle scope must retain production readiness');
-  assert.equal((source.match(/endExpectedNavigation/g) || []).length, 2,
-    'reload and Continue must each close exactly one expected-cancellation scope');
+  assert.ok(settledGeneration > reloadToken && settledGeneration < continueClick,
+    'the owner registration-settled barrier must precede Continue');
+  assert.equal((source.match(/endExpectedNavigation/g) || []).length, 1,
+    'only the exact document reload may ignore request cancellations');
 });
 
 test('the H1 cell creates no Phase H3 performance evidence', () => {

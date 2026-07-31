@@ -52,34 +52,31 @@ were removed rather than retained as complexity.
 
 A short isolated Electron reload produced 2,951 request lifecycle events and zero failures. The full
 route differs at one exact point: after reload presents Main Menu and starts lazy screen imports, the
-actor clicks Continue, which destroys that menu UI generation and starts restored flight. The
-varying aborted URLs are members of that lazy screen graph. Therefore the missing authority boundary
-is the menu-to-flight Continue transition, not the document reload. The new second scope tags only
-requests active or started from the public click until production flight/input readiness. It does not
-cover the menu screenshot, restored screenshot, later map input, or unrelated route work.
+actor clicks Continue while that registration generation can still be settling. Flight/input becomes
+ready before all background registration promises close, so widening a cancellation scope through
+flight readiness did not capture the later aborts. A request-wrapper fallback also captured zero and
+was removed.
 
-Candidate digest `277098519ff6174007d9e90f30050bfd2b3993124ad4df5b8505374357c18612`
-then proved the second half of the boundary: Browser passed 21/21 with zero issues; Electron again
-completed 21/21, matched facts, and closed cleanly, but none of the eight Continue-time aborts carried
-object attribution. Electron exposes distinct request wrappers across the relevant start/failure
-surfaces. The collector therefore uses method/resource/URL as a fallback only while that route is
-unambiguous inside an expected transition. Any same-route request observed after the transition
-invalidates the fallback before failure.
+The durable boundary is the production owner's registration settlement. `uiRoot.registerScreens()`
+now owns a generation-bound `Promise.allSettled` and records the settled generation only while its
+cycle remains current. The route waits for that owner signal before the public Continue click.
+Destroy/re-init invalidates the generation, so stale work cannot satisfy the wait. No Continue-time
+cancellation ignore is needed; only the exact document reload retains a cancellation scope.
 
 ## Focused evidence
 
 - Recorded native failure: 21/21 Electron frames, normalized gameplay projection equal to Browser,
   owned runtime closed, but one stale registration error plus seven reload-aborted requests.
 - `node --test test/ui-screen-registration-lifecycle.test.mjs test/browser-issues.test.mjs
-  test/pq020-ceres-topology-manifest.test.mjs` — PASS, 20/20.
+  test/pq020-ceres-topology-manifest.test.mjs` — PASS, 19/19.
 - The issue regression explicitly delivers the tagged request failure after the expected-navigation
   token closes, matching the observed Electron ordering; it covers both pre-existing and
   during-navigation request starts, and rejects post-navigation, untagged, completed, and non-abort
   failures.
-- The route regression requires separate reload and Continue scopes, places the second before the
-  public click, retains production readiness, and requires exactly two scope closures.
-- The wrapper regression permits one request-route fallback and proves a later same-route request
-  invalidates that attribution and remains hard.
+- The lifecycle regression proves a new registration generation begins unsettled and a stale
+  generation cannot revive after invalidation/re-init.
+- The route regression requires the owner-settled generation before the public Continue click and
+  permits exactly one cancellation scope: the document reload.
 - `node scripts/check-ui-screen-imports.mjs` — PASS, 41/41.
 - `npm run check:pq020:proofs` — PASS, 14/14.
 - `node --check` for the changed UI, issue-collector, and route modules — PASS.

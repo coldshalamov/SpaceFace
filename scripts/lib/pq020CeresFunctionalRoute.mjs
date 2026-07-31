@@ -889,39 +889,39 @@ async function coldContinue(page, rootUrl, fixedSeed, screenshot, pageIssueTrack
   await waitVisible(page, '[data-screen="mainMenu"]', 'main menu after reload', 30_000);
   const continueButton = page.getByRole('button', { name: 'Continue', exact: true });
   await continueButton.waitFor({ state: 'visible', timeout: 20_000 });
+  await page.waitForFunction(() => {
+    const ui = window.SF?.registry?.get?.('ui');
+    return !!ui
+      && Number.isFinite(ui._screenRegistrationGeneration)
+      && ui._screenRegistrationSettledGeneration === ui._screenRegistrationGeneration;
+  }, null, { timeout: 60_000 });
   await screenshot('15-continue-menu.png');
-  const continueTransitionToken =
-    pageIssueTracker?.beginExpectedNavigation?.('pq020-continue-transition');
-  try {
-    await continueButton.click({ timeout: 20_000 });
-    await page.waitForFunction(({ sectorId, siteId, beaconId }) => {
-      const state = window.SF?.state;
-      const player = state?.entities?.get(state.playerId);
-      if (!state || !player || player.alive === false || Number(player.hull) <= 0) return false;
-      const entities = [...state.entities.values()];
-      const beaconCount = entities.filter((entity) => entity?.alive !== false && entity.data?.poiId === beaconId).length;
-      const cathedralCount = entities.filter((entity) => entity?.alive !== false && entity.data?.worldSiteId === siteId).length;
-      const overlay = document.getElementById('boot-overlay');
-      const activeScreen = window.SF?.ctx?.screenManager?.top?.() || null;
-      const inputReady = state.mode === 'flight'
-        && activeScreen == null
-        && !document.body.classList.contains('ui-modal-open')
-        && (!overlay || (
-          overlay.classList.contains('hidden')
-          && overlay.getAttribute('aria-busy') === 'false'
-        ));
-      return state.world?.currentSectorId === sectorId
-        && beaconCount === 1
-        && cathedralCount === 15
-        && inputReady;
-    }, {
-      sectorId: PQ020_CERES_SECTOR_ID,
-      siteId: PQ020_CATHEDRAL_SITE_ID,
-      beaconId: PQ020_BEACON_POI_ID,
-    }, { timeout: CONTINUE_TIMEOUT_MS });
-  } finally {
-    pageIssueTracker?.endExpectedNavigation?.(continueTransitionToken);
-  }
+  await continueButton.click({ timeout: 20_000 });
+  await page.waitForFunction(({ sectorId, siteId, beaconId }) => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get(state.playerId);
+    if (!state || !player || player.alive === false || Number(player.hull) <= 0) return false;
+    const entities = [...state.entities.values()];
+    const beaconCount = entities.filter((entity) => entity?.alive !== false && entity.data?.poiId === beaconId).length;
+    const cathedralCount = entities.filter((entity) => entity?.alive !== false && entity.data?.worldSiteId === siteId).length;
+    const overlay = document.getElementById('boot-overlay');
+    const activeScreen = window.SF?.ctx?.screenManager?.top?.() || null;
+    const inputReady = state.mode === 'flight'
+      && activeScreen == null
+      && !document.body.classList.contains('ui-modal-open')
+      && (!overlay || (
+        overlay.classList.contains('hidden')
+        && overlay.getAttribute('aria-busy') === 'false'
+      ));
+    return state.world?.currentSectorId === sectorId
+      && beaconCount === 1
+      && cathedralCount === 15
+      && inputReady;
+  }, {
+    sectorId: PQ020_CERES_SECTOR_ID,
+    siteId: PQ020_CATHEDRAL_SITE_ID,
+    beaconId: PQ020_BEACON_POI_ID,
+  }, { timeout: CONTINUE_TIMEOUT_MS });
   await page.bringToFront().catch(() => {});
   await screenshot('16-continue-restored.png');
   const after = await readFunctionalSnapshot(page);

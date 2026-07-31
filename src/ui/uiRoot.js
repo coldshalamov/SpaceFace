@@ -79,7 +79,10 @@ const HUD_STYLE_ID = 'sf-hud-style';
 
 export function beginScreenRegistrationCycle(owner, screenManager) {
   const generation = (Number(owner && owner._screenRegistrationGeneration) || 0) + 1;
-  if (owner) owner._screenRegistrationGeneration = generation;
+  if (owner) {
+    owner._screenRegistrationGeneration = generation;
+    owner._screenRegistrationSettledGeneration = null;
+  }
   return { owner, screenManager, generation };
 }
 
@@ -96,6 +99,12 @@ export function isScreenRegistrationCycleCurrent(cycle) {
     && cycle.screenManager
     && cycle.owner._screenRegistrationGeneration === cycle.generation
     && cycle.owner.screenManager === cycle.screenManager);
+}
+
+export function isScreenRegistrationCycleSettled(owner) {
+  return !!(owner
+    && Number.isFinite(owner._screenRegistrationGeneration)
+    && owner._screenRegistrationSettledGeneration === owner._screenRegistrationGeneration);
 }
 
 export function createFadeLeaseController(dockFade, {
@@ -959,8 +968,9 @@ export const ui = {
   // Dynamically import + register every screen; a missing/throwing module is logged and skipped.
   registerScreens() {
     const registrationCycle = this._screenRegistrationCycle;
+    const registrations = [];
     for (const { path, load, name } of SCREEN_MODULES) {
-      load()
+      registrations.push(load()
         .then((mod) => {
           if (!isScreenRegistrationCycleCurrent(registrationCycle)) return;
           const def = mod && (mod[name] || mod.default);
@@ -988,8 +998,14 @@ export const ui = {
             try { this.screenManager.pushScreen('station'); } catch (e) { console.error(e); }
           }
         })
-        .catch((err) => { console.warn(`[ui] screen module "${path}" unavailable:`, err && err.message ? err.message : err); });
+        .catch((err) => { console.warn(`[ui] screen module "${path}" unavailable:`, err && err.message ? err.message : err); }));
     }
+    this._screenRegistrationPromise = Promise.allSettled(registrations).then(() => {
+      if (isScreenRegistrationCycleCurrent(registrationCycle)) {
+        this._screenRegistrationSettledGeneration = registrationCycle.generation;
+      }
+    });
+    return this._screenRegistrationPromise;
   },
 
   // Per-render-frame cheap HUD path (§5.5). The expensive HUD paint/update path only runs when
@@ -1046,6 +1062,7 @@ export const ui = {
     this._titleFlowDisposed = true;
     invalidateScreenRegistrationCycle(this);
     this._screenRegistrationCycle = null;
+    this._screenRegistrationSettledGeneration = null;
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;
     if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();

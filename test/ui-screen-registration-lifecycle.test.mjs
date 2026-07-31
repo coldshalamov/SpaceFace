@@ -5,6 +5,7 @@ import {
   beginScreenRegistrationCycle,
   invalidateScreenRegistrationCycle,
   isScreenRegistrationCycleCurrent,
+  isScreenRegistrationCycleSettled,
 } from '../src/ui/uiRoot.js';
 
 test('a destroyed or reinitialized uiRoot cannot complete stale screen registrations', () => {
@@ -12,6 +13,9 @@ test('a destroyed or reinitialized uiRoot cannot complete stale screen registrat
   const owner = { screenManager: firstManager };
   const firstCycle = beginScreenRegistrationCycle(owner, firstManager);
   assert.equal(isScreenRegistrationCycleCurrent(firstCycle), true);
+  assert.equal(isScreenRegistrationCycleSettled(owner), false);
+  owner._screenRegistrationSettledGeneration = firstCycle.generation;
+  assert.equal(isScreenRegistrationCycleSettled(owner), true);
 
   invalidateScreenRegistrationCycle(owner);
   owner.screenManager = null;
@@ -29,4 +33,5 @@ test('a destroyed or reinitialized uiRoot cannot complete stale screen registrat
   const secondCycle = beginScreenRegistrationCycle(owner, secondManager);
   assert.equal(isScreenRegistrationCycleCurrent(firstCycle), false);
   assert.equal(isScreenRegistrationCycleCurrent(secondCycle), true);
+  assert.equal(isScreenRegistrationCycleSettled(owner), false);
 });
