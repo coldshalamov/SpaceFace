@@ -28,7 +28,8 @@ import {
   PQ019C_HEIST_TYPE, PQ019C_HEIST_STATION_ID, buildHeistOffer,
 } from '../src/data/heistMission.js';
 import {
-  HEIST_CUE_TEXT, HEIST_THEFT_VOICE_PRIORITY, HEIST_VOICE_CHANNEL, HEIST_VOICE_ID,
+  HEIST_CUE_TEXT, HEIST_TERMINAL_VOICE_PRIORITY, HEIST_THEFT_VOICE_PRIORITY,
+  HEIST_VOICE_CHANNEL, HEIST_VOICE_ID,
 } from '../src/missions/heistMissionRuntime.js';
 
 const SYSTEMS = [
@@ -234,11 +235,17 @@ test('every surfaced heist line carries one stable id on the objective channel',
   t.step(300);
   const surfaces = t.heistSurfaces();
   assert.ok(surfaces.length >= 1, 'the run reached the floor at least once');
+  const terminalTexts = new Set([
+    'fenced', 'confiscated', 'lawful_arrival', 'destroyed', 'expired',
+    'absent', 'abandoned', 'denied', 'recovery',
+  ].map((moment) => HEIST_CUE_TEXT[moment]));
   for (const surface of surfaces) {
     assert.equal(surface.id, HEIST_VOICE_ID, 'one stable id, so lines coalesce in place');
-    const expectedPriority = /^Theft witnessed|^No witness/.test(surface.text)
-      ? HEIST_THEFT_VOICE_PRIORITY
-      : CHANNEL_PRIORITY[HEIST_VOICE_CHANNEL];
+    const expectedPriority = terminalTexts.has(surface.text)
+      ? HEIST_TERMINAL_VOICE_PRIORITY
+      : (/^Theft witnessed|^No witness/.test(surface.text)
+          ? HEIST_THEFT_VOICE_PRIORITY
+          : CHANNEL_PRIORITY[HEIST_VOICE_CHANNEL]);
     assert.equal(surface.priority, expectedPriority);
     assert.notEqual(surface.priority, CHANNEL_PRIORITY.danger,
       'danger is reserved for life-critical alerts; a contract cue never claims it');
@@ -270,6 +277,32 @@ test('the theft truth immediately preempts the first-use Massline tutorial', () 
   assert.equal(t.arbiter.queue.active?.priority, HEIST_THEFT_VOICE_PRIORITY);
   assert.equal(t.arbiter.queue.pending.some((entry) => entry.id === 'tutorial:hint:masslineThrow'), true,
     'the valid tutorial remains queued and can resume after the urgent theft truth');
+});
+
+test('a terminal heist outcome preempts repeatable combat alerts', () => {
+  const t = boot();
+  t.accept();
+  assert.ok(t.stepToLaunch());
+  t.latch();
+  t.arbiter.newGame();
+  t.bus.emit('voice:say', {
+    channel: 'alert',
+    priority: 80,
+    id: 'alert:incoming',
+    text: 'TAKING FIRE',
+    ttl: 1.5,
+  });
+  t.arbiter.update(0, t.state);
+  assert.equal(t.arbiter.queue.active?.id, 'alert:incoming');
+
+  t.contact('fence_receiver');
+  t.step(2);
+  assert.equal(t.mission(), null, 'the real route must settle before judging its terminal voice');
+  assert.equal(t.arbiter.queue.active?.id, HEIST_VOICE_ID);
+  assert.equal(t.arbiter.queue.active?.text, HEIST_CUE_TEXT.fenced);
+  assert.equal(t.arbiter.queue.active?.priority, HEIST_TERMINAL_VOICE_PRIORITY);
+  assert.ok(HEIST_TERMINAL_VOICE_PRIORITY < 110,
+    'terminal story remains below life-critical danger');
 });
 
 test('each cue moment fires at most once, no matter how long the run is driven', () => {

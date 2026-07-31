@@ -75,6 +75,20 @@ export const HEIST_VOICE_CHANNEL = 'objective';
 // Theft truth is urgent but not life-critical: it must interrupt first-use tutorial speech (70)
 // without claiming the danger floor (110). Other heist progress remains ordinary objective voice.
 export const HEIST_THEFT_VOICE_PRIORITY = 80;
+// Terminal and recovery truth is load-bearing story: it must interrupt repeatable combat alerts
+// while still yielding to the life-critical danger floor.
+export const HEIST_TERMINAL_VOICE_PRIORITY = 100;
+const HEIST_TERMINAL_CUE_MOMENTS = new Set([
+  'fenced',
+  'confiscated',
+  'lawful_arrival',
+  'destroyed',
+  'expired',
+  'absent',
+  'abandoned',
+  'denied',
+  'recovery',
+]);
 
 const RECOVERABLE = new Set(PQ019C_RECOVERABLE_OUTCOMES);
 
@@ -141,10 +155,10 @@ export function createHeistRecord({
 //
 // ONE VOICE. Every player-visible line in this feature goes through `helpers.voice.say` under the
 // single stable id above on the `objective` channel. Ordinary progress uses priority 60; the three
-// theft results explicitly use urgent priority 80 so witness/WANTED/pursuit cannot stale or coalesce
-// away behind the seven-second first-use Massline tutorial. `VoiceQueue` still coalesces same-id
-// entries in place, so the whole run — timing, ownership, witness, WANTED, pursuit, catcher/fence,
-// denial, recovery — occupies at most ONE floor slot. Danger (110) is never claimed.
+// theft results use urgent priority 80 so witness/WANTED/pursuit cannot stale behind first-use
+// teaching; terminal/recovery truth uses load-bearing story priority 100 so repeatable combat alerts
+// cannot hide the result. `VoiceQueue` still coalesces same-id entries in place, so the whole run
+// occupies at most ONE floor slot. Life-critical danger (110) remains the top tier.
 //
 // Each moment fires AT MOST ONCE per run (`record.cues`), so this is bounded, not per-frame.
 // Every line states its subject and its consequence in words: no cue depends on hue, none adds
@@ -205,7 +219,9 @@ export function sayHeistCue(ctx, record, moment, textOverride = null) {
   if (ctx?.state?.mode === 'flight') {
     const say = ctx.helpers?.voice?.say;
     if (typeof say === 'function') {
-      const priority = moment.startsWith('theft_') ? HEIST_THEFT_VOICE_PRIORITY : undefined;
+      const priority = moment.startsWith('theft_')
+        ? HEIST_THEFT_VOICE_PRIORITY
+        : (HEIST_TERMINAL_CUE_MOMENTS.has(moment) ? HEIST_TERMINAL_VOICE_PRIORITY : undefined);
       say({ channel: HEIST_VOICE_CHANNEL, id: HEIST_VOICE_ID, text, kind: 'info', ttl: 5, priority });
     }
   }

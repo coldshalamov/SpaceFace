@@ -249,6 +249,12 @@ test('a theft-floor timeout identifies the failed owner-to-presenter boundary', 
   ]) assert.ok(source.includes(required), `the timeout snapshot is missing ${required}`);
 });
 
+test('an outcome-floor timeout reports the same owner-to-presenter boundaries', () => {
+  const source = probe();
+  assert.ok(source.includes('PQ019_OUTCOME_PRESENTATION_STALLED'),
+    'terminal timeout must distinguish a missing cue from queue preemption or missing DOM');
+});
+
 test('the continuation lets the real arbiter surface theft before freezing the frame', () => {
   const source = probe();
   const start = source.indexOf('async function latchAndPresentTheft(page)');
