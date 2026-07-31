@@ -1105,7 +1105,6 @@ export class SpaceBackground {
     this._planetBakeMaterial = null;
     this._cometMat = null;
     this._cometTex = null;
-    this._cometTextureWarmReceipt = null;
     this.planetCacheOrder = [];
     // Must comfortably exceed the number of distinct planets a travel session revisits, or the LRU
     // thrashes and every grid crossing re-bakes a 512² procedural planet on the GPU mid-flight.
@@ -1428,8 +1427,6 @@ export class SpaceBackground {
       this.l1Target,
       this.l2Target,
       this._planetBakeMaterial,
-      this._cometMat,
-      this._cometTex,
       ...this.planetCache.values(),
     ].filter(Boolean);
   }
@@ -1483,7 +1480,6 @@ export class SpaceBackground {
     }
     this.planetCacheOrder = this.planetCacheOrder.filter((key) => activePlanetKeys.has(key));
     if (activePlanetKeys.size === 0) this._warmPlanetBakePipeline();
-    this._warmCometTexture('context-restore');
   }
 
   _disposeBakeTargets() {
@@ -2263,7 +2259,6 @@ export class SpaceBackground {
       this._cometTex = new THREE.CanvasTexture(c);
       this._cometTex.colorSpace = THREE.SRGBColorSpace;
     }
-    this._warmCometTexture('create');
     if (!this._cometMat) {
       this._cometMat = new THREE.SpriteMaterial({
         map: this._cometTex, transparent: true, blending: THREE.AdditiveBlending,
@@ -2286,45 +2281,6 @@ export class SpaceBackground {
       sprite, mat, tex,
       state: 'idle', timer: this._nextCometDelay(0.45), progress: 0, duration: 2,
       start: new THREE.Vector3(), end: new THREE.Vector3(),
-    };
-  }
-
-  _warmCometTexture(reason = 'manual') {
-    const texture = this._cometTex;
-    const renderer = this.renderer;
-    const receipt = {
-      attempted: !!texture && typeof renderer?.initTexture === 'function',
-      ready: false,
-      reason,
-      textureVersion: texture?.version ?? null,
-      error: null,
-    };
-    if (!receipt.attempted) {
-      receipt.error = texture ? 'renderer.initTexture unavailable' : 'comet texture unavailable';
-      this._cometTextureWarmReceipt = receipt;
-      return receipt;
-    }
-    try {
-      renderer.initTexture(texture);
-      receipt.ready = true;
-    } catch (error) {
-      receipt.error = String(error?.message || error);
-    }
-    this._cometTextureWarmReceipt = receipt;
-    return receipt;
-  }
-
-  getCometAdmissionState() {
-    const comet = this.comet;
-    return {
-      applicable: !!comet,
-      textureWarmReady: this._cometTextureWarmReceipt?.ready === true,
-      textureWarmReceipt: this._cometTextureWarmReceipt
-        ? { ...this._cometTextureWarmReceipt }
-        : null,
-      state: comet?.state ?? null,
-      timer: Number.isFinite(comet?.timer) ? comet.timer : null,
-      visible: comet?.sprite?.visible === true,
     };
   }
 
@@ -2668,7 +2624,6 @@ export class SpaceBackground {
       flares: this.flares ? this.flares.mesh.count : 0,
       planets: this.planets.length,
       wormhole: !!this.wormhole,
-      cometAdmission: this.getCometAdmissionState(),
       heroCandidates: this.heroPlacement.length,
       bakedTexMB: Math.round(texMB * 10) / 10,
       palette: this.currentPaletteName,
