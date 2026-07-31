@@ -246,8 +246,17 @@ try {
   }
   await page.waitForFunction(() => window.SF?.state?.ui?.docked === true,
     null, { timeout: 20_000 });
-  await waitForVisible('[data-screen="station"] .sx-dock', 20_000, 'Station command dock');
-  const station = await readStationSnapshot();
+  const stationScreen = page.locator('[data-screen="station"]');
+  const stationCommandDock = stationScreen.locator('.sx-dock');
+  await waitForVisible(stationScreen, 20_000, 'Station screen');
+  await waitForVisible(stationCommandDock, 20_000, 'Station command dock');
+  await waitForOpaque(stationScreen, 20_000, 'Station screen dock transition');
+  const station = {
+    ...(await readStationSnapshot()),
+    screenVisible: true,
+    commandDockVisible: true,
+    visibilityAuthority: 'locator:[data-screen=station] .sx-dock',
+  };
   assert.equal(station.docked, true, 'public E input must dock the player');
   assert.ok(station.stationId, 'docked state must identify its station');
   assert.equal(station.screenVisible, true, 'Station screen must be visible');
@@ -393,6 +402,25 @@ async function waitForVisible(target, timeout, label) {
   });
 }
 
+async function waitForOpaque(locator, timeout, label) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const visible = await locator.evaluate((element) => {
+      let current = element;
+      while (current instanceof HTMLElement) {
+        const style = getComputedStyle(current);
+        if (style.display === 'none' || style.visibility === 'hidden'
+          || Number(style.opacity || 1) <= 0.01) return false;
+        current = current.parentElement;
+      }
+      return true;
+    }).catch(() => false);
+    if (visible) return;
+    await page.waitForTimeout(50);
+  }
+  throw new Error(`Timed out waiting for opaque ${label}`);
+}
+
 async function waitForBootOverlayGone() {
   await page.waitForFunction(() => {
     const overlay = document.getElementById('boot-overlay');
@@ -517,8 +545,6 @@ async function readStationSnapshot() {
     return {
       docked: window.SF?.state?.ui?.docked === true,
       stationId: window.SF?.state?.ui?.dockedStationId || null,
-      screenVisible: isVisible(document.querySelector('[data-screen="station"]')),
-      commandDockVisible: isVisible(document.querySelector('[data-screen="station"] .sx-dock')),
       visibleDestinations: [...document.querySelectorAll('[data-screen="station"] .sx-dock [data-nav]')]
         .filter(isVisible)
         .map((element) => element.getAttribute('data-nav')),

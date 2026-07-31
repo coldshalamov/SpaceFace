@@ -1,0 +1,23 @@
+{
+  "schema": "spaceface.pq041.station-visibility-failure.v1",
+  "candidateCommit": "147df4dd819b694c92f159e3cdd3195f8be63a44",
+  "phase": "dock-input",
+  "assertion": "Station screen must be visible",
+  "locatorWaitPassed": "[data-screen=\"station\"] .sx-dock",
+  "progress": {
+    "physicalDockPrompt": "[ E ] DOCK AT STATION",
+    "approachTick": 2807,
+    "berthDistance": 38.043451453382914
+  },
+  "snapshot": {
+    "mode": "flight",
+    "docked": true,
+    "dockedStationId": "station_helios",
+    "visibleScreens": [
+      "station"
+    ],
+    "dockPromptVisible": false,
+    "ledgerVisible": false
+  },
+  "visualReview": "Original-resolution failure-row8.png visibly shows the complete Helios Station screen and command dock."
+}

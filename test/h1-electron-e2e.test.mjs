@@ -10,6 +10,10 @@ const recordedFailure = () => JSON.parse(readFileSync(new URL(
   'design/program/roadmap/evidence/h1/row8-electron-e2e/failure-state.json',
   ROOT,
 ), 'utf8'));
+const recordedStationVisibilityFailure = () => JSON.parse(readFileSync(new URL(
+  'test/fixtures/pq041-station-visibility-failure.json',
+  ROOT,
+), 'utf8'));
 
 const REQUIRED_STILLS = Object.freeze([
   '01-main-menu.png',
@@ -85,6 +89,23 @@ test('the recorded visible Main Menu uses one role-locator authority, not a seco
     'the menu must not be re-sampled through querySelector after the role locator proves visibility');
   assert.doesNotMatch(text, /document\.querySelector\(`\[data-screen="\$\{id\}"\]`\)/,
     'the removed generic surface sampler must not return under a different caller');
+});
+
+test('the recorded visible Station screen uses locator authority, not an immediate opacity resample', () => {
+  const failure = recordedStationVisibilityFailure();
+  assert.equal(failure.phase, 'dock-input');
+  assert.equal(failure.snapshot.docked, true);
+  assert.equal(failure.snapshot.dockedStationId, 'station_helios');
+  assert.deepEqual(failure.snapshot.visibleScreens, ['station']);
+  assert.match(failure.visualReview, /complete Helios Station screen and command dock/i);
+
+  const text = source();
+  assert.ok(text.includes("const stationScreen = page.locator('[data-screen=\"station\"]')"));
+  assert.ok(text.includes("visibilityAuthority: 'locator:[data-screen=station] .sx-dock'"));
+  assert.doesNotMatch(text, /screenVisible:\s*isVisible\(document\.querySelector\('\[data-screen="station"\]'\)\)/,
+    'the Station screen must not be re-sampled through an opacity-sensitive selector after its locator wait');
+  assert.doesNotMatch(text, /commandDockVisible:\s*isVisible\(document\.querySelector\('\[data-screen="station"\] \.sx-dock'\)\)/,
+    'the command dock must not be re-sampled through a second selector after its locator wait');
 });
 
 test('docking uses the public map, autopilot, visible dock prompt, and held E input', () => {
