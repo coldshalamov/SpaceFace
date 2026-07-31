@@ -204,18 +204,23 @@ test('the recorded 429.564-WU Helios arrival is valid by source-direction identi
   );
 });
 
-test('Cathedral frames require natural distance bands, in-frame projection, and authored admission', () => {
+test('Cathedral frames use public camera controls after natural arrival and require authored admission', () => {
   const source = route();
   for (const required of [
-    "name: 'far', minDistance: 1100, maxDistance: 1600",
-    "name: 'default', minDistance: 700, maxDistance: 1050",
-    "name: 'close', minDistance: 250, maxDistance: 650",
+    "name: 'far', cameraZoom: 112",
+    "name: 'default', cameraZoom: 72",
+    "name: 'close', cameraZoom: 64",
+    "const key = current < targetZoom ? 'Minus' : 'Equal'",
+    "framingControl: 'public keyboard +/-'",
     "root.presentationAdmission === 'ready'",
     "authoredAssetState || '').startsWith('authored')",
     'admittedComponents === 7',
     'projection?.inFrame',
-    "reason: 'missed-distance-band'",
   ]) assert.ok(source.includes(required), `missing Cathedral framing contract: ${required}`);
+  assert.ok(source.indexOf("setPhase('cathedral-arrival')")
+    < source.indexOf('for (const framing of CATHEDRAL_FRAMINGS)'),
+  'the public autopilot must arrive before player-controlled camera framing');
+  assert.doesNotMatch(source, /minDistance:\s*1100|maxDistance:\s*1600|missed-distance-band/);
   assert.doesNotMatch(source, /snapToPlayer/);
 });
 

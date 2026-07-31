@@ -95,9 +95,9 @@ const ADMISSION_TIMEOUT_MS = 120_000;
 const CONTINUE_TIMEOUT_MS = 180_000;
 
 const CATHEDRAL_FRAMINGS = Object.freeze([
-  Object.freeze({ name: 'far', minDistance: 1100, maxDistance: 1600, screenshot: '10-cathedral-far.png' }),
-  Object.freeze({ name: 'default', minDistance: 700, maxDistance: 1050, screenshot: '11-cathedral-default.png' }),
-  Object.freeze({ name: 'close', minDistance: 250, maxDistance: 650, screenshot: '12-cathedral-close.png' }),
+  Object.freeze({ name: 'far', cameraZoom: 112, screenshot: '10-cathedral-far.png' }),
+  Object.freeze({ name: 'default', cameraZoom: 72, screenshot: '11-cathedral-default.png' }),
+  Object.freeze({ name: 'close', cameraZoom: 64, screenshot: '12-cathedral-close.png' }),
 ]);
 
 export async function runPq020CeresFunctionalRoute({
@@ -195,6 +195,10 @@ export async function runPq020CeresFunctionalRoute({
     setPhase('cathedral-admission');
     const cathedralAdmission = await waitForCathedralAdmission(page);
 
+    setPhase('cathedral-arrival');
+    const cathedral = await waitForAutopilotArrival(page, PQ020_ROUTE_TARGETS.cathedral);
+    await waitForShipSettled(page);
+
     const cathedralFramings = [];
     for (const framing of CATHEDRAL_FRAMINGS) {
       setPhase(`cathedral-${framing.name}-framing`);
@@ -203,9 +207,6 @@ export async function runPq020CeresFunctionalRoute({
       cathedralFramings.push(frame);
     }
 
-    setPhase('cathedral-arrival');
-    const cathedral = await waitForAutopilotArrival(page, PQ020_ROUTE_TARGETS.cathedral);
-    await waitForShipSettled(page);
     await screenshot('13-cathedral-arrival.png');
 
     setPhase('quick-save');
@@ -747,7 +748,8 @@ async function waitForCathedralAdmission(page) {
 }
 
 async function waitForCathedralFraming(page, framing) {
-  const handle = await page.waitForFunction(({ siteId, minDistance, maxDistance, name }) => {
+  const appliedCameraZoom = await setPublicCameraZoom(page, framing.cameraZoom);
+  const handle = await page.waitForFunction(({ siteId, cameraZoom, name }) => {
     const state = window.SF?.state;
     const player = state?.entities?.get(state.playerId);
     const root = [...(state?.entities?.values?.() || [])].find((entity) => (
@@ -786,23 +788,47 @@ async function waitForCathedralFraming(page, framing) {
       authoredAssetState: mesh?.userData?.authoredAssetState || null,
       admittedComponents,
     };
-    if (distance < minDistance) {
-      return { terminal: true, ok: false, reason: 'missed-distance-band', name, distance, projection, admission };
-    }
-    if (distance <= maxDistance && projection?.inFrame && admission.ready && admission.authored) {
-      return { terminal: true, ok: true, name, distance, projection, admission };
+    const appliedZoom = Number(state.camera?.zoom);
+    if (Math.abs(appliedZoom - cameraZoom) <= 0.01
+        && projection?.inFrame && admission.ready && admission.authored) {
+      return {
+        terminal: true,
+        ok: true,
+        name,
+        distance,
+        projection,
+        admission,
+        appliedCameraZoom: appliedZoom,
+        framingControl: 'public keyboard +/-',
+      };
     }
     return false;
   }, {
     siteId: PQ020_CATHEDRAL_SITE_ID,
-    minDistance: framing.minDistance,
-    maxDistance: framing.maxDistance,
+    cameraZoom: framing.cameraZoom,
     name: framing.name,
-  }, { timeout: AUTOPILOT_TIMEOUT_MS });
+  }, { timeout: 30_000 });
   const terminal = await handle.jsonValue();
+  assert.equal(appliedCameraZoom, framing.cameraZoom,
+    `Cathedral ${framing.name} public camera control did not reach ${framing.cameraZoom}`);
   assert.equal(terminal.ok, true,
     `Cathedral ${framing.name} framing failed: ${terminal.reason || 'unknown'} at ${terminal.distance ?? 'unknown'} WU`);
   return terminal;
+}
+
+async function setPublicCameraZoom(page, targetZoom) {
+  for (let step = 0; step < 40; step += 1) {
+    const current = await page.evaluate(() => Number(window.SF?.state?.camera?.zoom));
+    assert.ok(Number.isFinite(current), 'public camera zoom needs the live camera owner');
+    if (Math.abs(current - targetZoom) <= 0.01) return current;
+    const key = current < targetZoom ? 'Minus' : 'Equal';
+    await page.keyboard.press(key);
+    await page.waitForFunction(({ before, direction }) => {
+      const next = Number(window.SF?.state?.camera?.zoom);
+      return Number.isFinite(next) && (direction > 0 ? next > before : next < before);
+    }, { before: current, direction: current < targetZoom ? 1 : -1 }, { timeout: 2_000 });
+  }
+  return page.evaluate(() => Number(window.SF?.state?.camera?.zoom));
 }
 
 async function waitForShipSettled(page) {
