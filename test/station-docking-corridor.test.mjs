@@ -25,6 +25,10 @@ import {
   resolveCorridorAxisWorld,
 } from '../src/data/collisionProxyManifests.js';
 import { dockingCorridor } from '../src/systems/dockingCorridor.js';
+import {
+  resolveAutopilotArrivalRadius,
+  resolveAutopilotTarget,
+} from '../src/systems/flightV3.js';
 import { consumePhysicsCommand, writePhysicsControl } from '../src/core/physicsAuthority.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 
@@ -112,6 +116,39 @@ test('capture volume: the lane and the berth hug classify capture', () => {
   // At the berth but still moving faster than the berth gate (12): not berthed.
   const hot = corridorStateFor(HELIOS, heliosStation(), { x: berth.x, z: berth.z }, frameVel(-13));
   assert.equal(hot.berthed, false);
+});
+
+test('default station autopilot hands a manifest station into berth capture, not the legacy center ring', () => {
+  const station = heliosStation();
+  const player = { id: 'player', radius: 14 };
+  const state = {
+    entities: new Map([[station.id, station]]),
+  };
+  const autopilot = {
+    targetEntityId: station.id,
+    target: { x: station.pos.x, z: station.pos.z },
+    label: 'Helios Station',
+    arrivalRadius: 90,
+  };
+
+  // The retained 5c5421ac failure stopped on this legacy station-center ring. At an ordinary
+  // off-corridor bearing it is outside the authored capture volume, so waiting cannot create a
+  // physical dock prompt.
+  const legacyCenterStop = { x: station.pos.x + 90, z: station.pos.z };
+  assert.equal(corridorStateFor(HELIOS, station, legacyCenterStop, { x: 0, z: 0 }).inCapture, false);
+
+  const target = resolveAutopilotTarget(state, autopilot);
+  const berth = resolveBerthWorld(station, HELIOS);
+  assert.deepEqual({ x: target.x, z: target.z }, berth, 'default flight must resolve the authored berth');
+  assert.equal(target.radius, 0, 'station center collision radius must not re-expand the berth arrival');
+  assert.equal(target.dockingProxyId, HELIOS.id);
+
+  const arrivalRadius = resolveAutopilotArrivalRadius(player, autopilot, target);
+  assert.equal(arrivalRadius, 38, 'the flight floor remains intact while the legacy 90-WU radius is rejected');
+  const terminalStop = { x: berth.x + arrivalRadius, z: berth.z };
+  const terminal = corridorStateFor(HELIOS, station, terminalStop, { x: 0, z: 0 });
+  assert.equal(terminal.inCapture, true, 'arrival must hand the stopped ship to bounded berth assist');
+  assert.equal(terminal.phase, 'capture');
 });
 
 // ---------------------------------------------------------------------------------------------

@@ -17,6 +17,11 @@ import { computeFlightTelemetry } from '../core/flight/flightTelemetry.js';
 import { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
+import {
+  proxyScaleFor,
+  resolveBerthWorld,
+  resolveCollisionProxyManifest,
+} from '../data/collisionProxyManifests.js';
 
 // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
 // stick. A ship carving at speed rolls into the turn like an aircraft; the same ship pivoting
@@ -649,11 +654,7 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   const dx = finite(target.x) - finite(pos.x);
   const dz = finite(target.z) - finite(pos.z);
   const dist = Math.hypot(dx, dz);
-  const arrivalRadius = Math.max(
-    AUTOPILOT_ARRIVAL_RADIUS,
-    finite(autopilot.arrivalRadius, 0),
-    positive(entity.radius, 0) + positive(target.radius, 0) + 18
-  );
+  const arrivalRadius = resolveAutopilotArrivalRadius(entity, autopilot, target);
   const speed = Math.hypot(finite(vel.x), finite(vel.z));
   if (dist <= arrivalRadius && speed < 11) {
     stopAutopilot(host, state, 'arrived');
@@ -787,7 +788,7 @@ function stopAutopilot(host, state, reason) {
   }
 }
 
-function resolveAutopilotTarget(state, autopilot) {
+export function resolveAutopilotTarget(state, autopilot) {
   if (!state || !autopilot) return null;
   const id = autopilot.targetEntityId;
   let entity = null;
@@ -799,6 +800,34 @@ function resolveAutopilotTarget(state, autopilot) {
     }
   }
   if (entity && entity.alive !== false && entity.pos) {
+    // PQ-008 stations with truthful collision geometry dock at an authored berth, not at the
+    // legacy center-radius ring. A station waypoint still identifies the live entity, but default
+    // flight resolves its terminal point into the manifest-owned corridor. The stopped ship then
+    // lands inside dockingCorridor's bounded capture assist instead of declaring arrival where a
+    // physical dock prompt can never exist.
+    const manifest = entity.type === 'station' ? resolveCollisionProxyManifest(entity) : null;
+    if (manifest && manifest.docking) {
+      const berth = resolveBerthWorld(entity, manifest);
+      const scale = proxyScaleFor(entity, manifest);
+      const berthDockRadius = positive(manifest.docking.berth && manifest.docking.berth.dockRadius, 12);
+      const captureHalfWidth = positive(
+        manifest.docking.capture && manifest.docking.capture.halfWidth,
+        0,
+      ) * positive(scale, 1);
+      const dockingArrivalRadius = Math.max(
+        12,
+        Math.min(berthDockRadius * 2, captureHalfWidth || berthDockRadius * 2),
+      );
+      return {
+        x: berth.x,
+        z: berth.z,
+        radius: 0,
+        arrivalRadius: dockingArrivalRadius,
+        dockingProxyId: manifest.id || null,
+        entity,
+        label: autopilot.label || entity.name || (entity.data && entity.data.name) || 'Station berth',
+      };
+    }
     return {
       x: entity.pos.x,
       z: entity.pos.z,
@@ -810,6 +839,19 @@ function resolveAutopilotTarget(state, autopilot) {
   const target = autopilot.target;
   if (!target || !Number.isFinite(target.x) || !Number.isFinite(target.z)) return null;
   return { x: target.x, z: target.z, radius: 0, entity: null, label: autopilot.label || 'Autopilot target' };
+}
+
+export function resolveAutopilotArrivalRadius(entity, autopilot, target) {
+  // A resolved owner target may deliberately narrow a generic map radius. This is used only for
+  // manifest-backed station berths; ordinary entities retain the existing payload radius exactly.
+  const requested = Number.isFinite(target && target.arrivalRadius)
+    ? target.arrivalRadius
+    : finite(autopilot && autopilot.arrivalRadius, 0);
+  return Math.max(
+    AUTOPILOT_ARRIVAL_RADIUS,
+    requested,
+    positive(entity && entity.radius, 0) + positive(target && target.radius, 0) + 18,
+  );
 }
 
 function computeAutopilotGuidance(state, player, target, distance, arrivalRadius, autopilot) {

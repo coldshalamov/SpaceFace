@@ -2313,8 +2313,7 @@
       "priority": 21,
       "title": "Route station autopilot into the truthful Helios berth corridor",
       "kind": "acceptance_repair",
-      "state": "claimed",
-      "owner": "Codex primary integrator",
+      "state": "done",
       "dependsOn": [
         "PQ-041.electron-smoke-harness-repair"
       ],
@@ -2333,7 +2332,9 @@
         "npm run check:flight:v3",
         "npm run check:sim:compare"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-041-electron-smoke-dock-arrival-repair-REPORT.md"
+      ],
       "brief": "Resolve manifest-backed station autopilot to the authored berth/capture geometry instead of stopping at the legacy 90-WU center ring; pin the retained candidate 5c5421ac arrival at 90.060 WU with no physical dock prompt. Do not launch Electron in this repair unit."
     },
     {
@@ -2724,7 +2725,7 @@
       "priority": 20,
       "title": "Continue the repaired Electron end-to-end smoke",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-041.electron-smoke-harness-repair",
         "PQ-041.electron-smoke-dock-arrival-repair"
@@ -2744,8 +2745,7 @@
         "npm run check:launch-policy"
       ],
       "receiptRefs": [],
-      "brief": "Spend one fresh candidate-bound Electron attempt after the semantic menu-visibility repair and complete the Main Menu to New Game to flight to dock to Ledger smoke without treating the retained Main Menu frame as a new launch.",
-      "blocker": "Candidate 5c5421ac reached authored flight and armed Helios, then default flightV3 stopped at the legacy station-center arrival ring (90.060 WU) outside the PQ-008 berth-only dock gate. Exact repair PQ-041.electron-smoke-dock-arrival-repair must be focused-green before another materially changed candidate may launch."
+      "brief": "Spend one fresh candidate-bound Electron attempt after the semantic menu-visibility and truthful station dock-arrival repairs, preserving the retained failed attempts, and complete the Main Menu to New Game to flight to dock to Ledger smoke."
     },
     {
       "id": "PQ-007.focused-implementation",
