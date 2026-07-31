@@ -50,8 +50,8 @@ const TOUCH_PROMPTS = Object.freeze({
 // classic table. Keep verbs honest: don't promise mechanics that haven't shipped.
 // Space/F is the canonical new-profile pair; the HUD resolves custom labels at runtime.
 const KBM_HELM_OVERRIDES = Object.freeze({
-  flight: `Mouse steer+aim  •  W thrust  •  0 or S/Down brake  •  A D strafe  •  LMB fire  •  RMB mine  •  Shift boost  •  Space/F Massline  •  4 anchor seed  •  MMB course/pursue  •  G auto-target  •  Tab target  •  ${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`,
-  combat: 'G auto-target (guns track lock)  •  MMB pursue locked ship  •  Space/F Massline  •  LMB fire  •  0 or S/Down brake',
+  flight: `Mouse steer+aim  •  W thrust  •  0 or S/Down brake  •  A D strafe  •  LMB fire  •  RMB mine  •  Shift boost  •  Space/F Massline  •  4 anchor seed  •  G auto-target  •  Draw with pointer to fly; pause to clutch  •  Tab target  •  ${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`,
+  combat: 'G auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  Space/F Massline  •  LMB fire  •  0 or S/Down brake',
   tutorialFlight: 'Follow the yellow nav arrow. Nose follows the mouse — W thrusts, 0 or S/Down brakes, Space/F controls the Massline.',
   firstFlight: 'Nose follows the mouse. W thrusts. 0 or S/Down brakes to a stop.',
   firstCombat: 'G toggles auto-target. Guns track lock.',
@@ -59,8 +59,8 @@ const KBM_HELM_OVERRIDES = Object.freeze({
 
 // PILOT (the default scheme) — keyboard flies, mouse fights. Same override-only policy as helm.
 const KBM_PILOT_OVERRIDES = Object.freeze({
-  flight: `W thrust  •  0 or S/Down brake  •  A D turn  •  Mouse aim  •  LMB fire  •  MMB pursue/course  •  G auto-target  •  Space/F Massline  •  4 anchor seed  •  Shift boost  •  Tab target  •  ${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`,
-  combat: 'MMB pursue locked ship  •  G auto-target  •  Space/F Massline  •  LMB fire  •  flight keys break pursuit',
+  flight: `W thrust  •  0 or S/Down brake  •  A D turn  •  Mouse aim  •  LMB fire  •  G auto-target  •  Draw with pointer to fly; pause to clutch  •  Space/F Massline  •  4 anchor seed  •  Shift boost  •  Tab target  •  ${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`,
+  combat: 'G auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  Space/F Massline  •  LMB fire',
   tutorialFlight: 'Follow the yellow nav arrow. W thrusts; 0 or S/Down brakes; A/D turns; mouse aims; Space/F controls the Massline.',
   firstFlight: 'W thrusts. 0 or S/Down brakes to a stop. A D turn. Mouse aims.',
   firstCombat: 'G toggles auto-target. Guns track lock.',

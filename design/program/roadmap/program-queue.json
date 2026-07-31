@@ -2338,7 +2338,7 @@
       "priority": 8,
       "title": "Remove rejected pursuit copy from the live Pilot and Helm prompts",
       "kind": "acceptance_repair",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-007.focused-implementation"
       ],
@@ -2354,7 +2354,9 @@
         "npm run check:player-facing-labels",
         "npm run check:ui-a11y"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-007-prompt-truth-repair-REPORT.md"
+      ],
       "brief": "Remove the still-live MMB pursuit and flight-keys-break-pursuit teaching from Pilot and Helm prompts, replace it with truthful G auto-target plus clutchable direct draw-to-fly copy, and pin all active keyboard prompt families."
     },
     {
