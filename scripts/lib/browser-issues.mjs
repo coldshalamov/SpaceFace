@@ -10,6 +10,11 @@ export function collectPageIssues(page, options = {}) {
 
   page.on('request', (request) => {
     activeRequests.add(request);
+    if (expectedNavigationTokens.size > 0) {
+      const labels = expectedNavigationAborts.get(request) || new Set();
+      for (const label of expectedNavigationTokens.values()) labels.add(label);
+      expectedNavigationAborts.set(request, labels);
+    }
   });
   page.on('requestfinished', (request) => {
     activeRequests.delete(request);

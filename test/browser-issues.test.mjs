@@ -19,7 +19,7 @@ const consoleMessage = (type, text) => ({
   text: () => text,
 });
 
-test('only in-flight requests tagged by an expected navigation may become navigation cancellations', () => {
+test('only requests tagged at expected-navigation start or during its live call may become cancellations', () => {
   const page = new FakePage();
   const tracker = collectPageIssues(page);
 
@@ -38,9 +38,11 @@ test('only in-flight requests tagged by an expected navigation may become naviga
   page.emit('requestfailed', startedDuringNavigation);
   page.emit('requestfailed', failedRequest('http://game.test/after.js', 'net::ERR_ABORTED'));
 
-  assert.equal(tracker.ignoredIssues.length, 1);
+  assert.equal(tracker.ignoredIssues.length, 2);
   assert.deepEqual(tracker.ignoredIssues[0].expectedNavigation, ['cold-continue']);
   assert.match(tracker.ignoredIssues[0].text, /cancelled\.js: net::ERR_ABORTED/);
+  assert.deepEqual(tracker.ignoredIssues[1].expectedNavigation, ['cold-continue']);
+  assert.match(tracker.ignoredIssues[1].text, /new-page\.js: net::ERR_ABORTED/);
   assert.deepEqual(
     tracker.errorIssues().map((issue) => issue.text),
     [
@@ -49,7 +51,6 @@ test('only in-flight requests tagged by an expected navigation may become naviga
       'live console error',
       'HTTP 503 http://game.test/unavailable.js',
       'live page error',
-      'Request failed http://game.test/new-page.js: net::ERR_ABORTED',
       'Request failed http://game.test/after.js: net::ERR_ABORTED',
     ],
   );

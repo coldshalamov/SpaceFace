@@ -34,8 +34,9 @@ This was a mixed product/harness lifecycle failure, not a Ceres route failure.
   Destroy or re-init invalidates unresolved batches; restoring an old manager reference cannot revive
   them, and a stale batch never registers into a replacement manager.
 - `collectPageIssues()` now exposes an explicit expected-navigation token. Only
-  `net::ERR_ABORTED` requests that were already in flight when such a token begins become retained
-  ignored diagnostics.
+  `net::ERR_ABORTED` requests that were already in flight when such a token begins, or whose
+  `request` event occurs during the exact awaited navigation call, become retained ignored
+  diagnostics.
 - The PQ-020 route holds that token only around its awaited `page.reload()` call. The window closes
   before root validation, boot, Continue, asset readiness, screenshot, or subsequent input.
 - Both Browser and Electron receipts retain ignored cancellations. Console errors, page errors, HTTP
@@ -49,11 +50,18 @@ again completed all 21 frames and matched every gameplay fact but delivered eigh
 collector classified by failure-event time, so those late events became false hard failures.
 
 The collector now records request identity from `request` through `requestfinished` or
-`requestfailed`. Starting the expected navigation tags only requests already in flight; their later
-`net::ERR_ABORTED` event retains the navigation label even after the token closes. A new-page request
-that starts inside the bracket, an abort with no tagged request, a completed request, or any
-non-abort failure remains hard. This removes the Electron event-delivery race without adding a time
-grace period or weakening other diagnostics.
+`requestfailed`. Starting the expected navigation tags requests already in flight, and a request
+whose start event is observed during the exact awaited navigation call receives the same tag. The
+request-bound label survives delayed failure delivery after the token closes.
+
+The first identity-bound version was still too narrow: on candidate digest
+`e5c4ecf47ec2b0652321e05bae383f22fc7ee313619d2d25ee7e230ca65ce22a`, Browser again passed
+21/21 frames with zero issues, while Electron again reached full gameplay parity and closed its
+runtime but reported eight different module aborts. Those requests began during the reload call,
+not before it. The regression now covers both start orderings and delayed failure delivery. A request
+that begins after the reload promise resolves, an abort with no tagged request, a completed request,
+or any non-abort failure remains hard. This removes the observed ordering race without adding a time
+grace period or weakening diagnostics outside the reload call.
 
 ## Focused evidence
 
@@ -62,8 +70,9 @@ grace period or weakening other diagnostics.
 - `node --test test/ui-screen-registration-lifecycle.test.mjs test/browser-issues.test.mjs
   test/pq020-ceres-topology-manifest.test.mjs` — PASS, 18/18.
 - The issue regression explicitly delivers the tagged request failure after the expected-navigation
-  token closes, matching the observed Electron ordering; it also rejects new-page, untagged,
-  completed, and non-abort failures.
+  token closes, matching the observed Electron ordering; it covers both pre-existing and
+  during-navigation request starts, and rejects post-navigation, untagged, completed, and non-abort
+  failures.
 - `node scripts/check-ui-screen-imports.mjs` — PASS, 41/41.
 - `npm run check:pq020:proofs` — PASS, 14/14.
 - `node --check` for the changed UI, issue-collector, and route modules — PASS.
