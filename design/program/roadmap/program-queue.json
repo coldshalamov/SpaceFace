@@ -2308,6 +2308,35 @@
       "brief": "Replace the second unstable querySelector sample with one semantic/locator-backed visibility authority and pin the recorded state where the menu, focus, and visible-screen list all prove visibility. Do not launch Electron in this repair unit."
     },
     {
+      "id": "PQ-041.electron-smoke-dock-arrival-repair",
+      "parentId": "PQ-041",
+      "priority": 21,
+      "title": "Route station autopilot into the truthful Helios berth corridor",
+      "kind": "acceptance_repair",
+      "state": "claimed",
+      "owner": "Codex primary integrator",
+      "dependsOn": [
+        "PQ-041.electron-smoke-harness-repair"
+      ],
+      "mutexes": [
+        "input",
+        "physics-authority"
+      ],
+      "paths": [
+        "src/systems/flightV3.js",
+        "test/station-docking-corridor.test.mjs",
+        "design/program/roadmap/active/PQ-041.md",
+        "design/program/roadmap/receipts/PQ-041-electron-smoke-dock-arrival-repair-REPORT.md"
+      ],
+      "checks": [
+        "node --test test/station-docking-corridor.test.mjs",
+        "npm run check:flight:v3",
+        "npm run check:sim:compare"
+      ],
+      "receiptRefs": [],
+      "brief": "Resolve manifest-backed station autopilot to the authored berth/capture geometry instead of stopping at the legacy 90-WU center ring; pin the retained candidate 5c5421ac arrival at 90.060 WU with no physical dock prompt. Do not launch Electron in this repair unit."
+    },
+    {
       "id": "PQ-024.survey-route-harness",
       "parentId": "PQ-024",
       "priority": 7,
@@ -2695,10 +2724,10 @@
       "priority": 20,
       "title": "Continue the repaired Electron end-to-end smoke",
       "kind": "acceptance_capture",
-      "state": "claimed",
-      "owner": "Codex primary integrator",
+      "state": "blocked",
       "dependsOn": [
-        "PQ-041.electron-smoke-harness-repair"
+        "PQ-041.electron-smoke-harness-repair",
+        "PQ-041.electron-smoke-dock-arrival-repair"
       ],
       "mutexes": [
         "electron-shell",
@@ -2715,7 +2744,8 @@
         "npm run check:launch-policy"
       ],
       "receiptRefs": [],
-      "brief": "Spend one fresh candidate-bound Electron attempt after the semantic menu-visibility repair and complete the Main Menu to New Game to flight to dock to Ledger smoke without treating the retained Main Menu frame as a new launch."
+      "brief": "Spend one fresh candidate-bound Electron attempt after the semantic menu-visibility repair and complete the Main Menu to New Game to flight to dock to Ledger smoke without treating the retained Main Menu frame as a new launch.",
+      "blocker": "Candidate 5c5421ac reached authored flight and armed Helios, then default flightV3 stopped at the legacy station-center arrival ring (90.060 WU) outside the PQ-008 berth-only dock gate. Exact repair PQ-041.electron-smoke-dock-arrival-repair must be focused-green before another materially changed candidate may launch."
     },
     {
       "id": "PQ-007.focused-implementation",
