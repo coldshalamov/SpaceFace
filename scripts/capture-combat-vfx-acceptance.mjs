@@ -1092,9 +1092,10 @@ async function capturePq023WorldSiteSequences(targetPage) {
     });
   });
 
-  const initialRoot = await waitForPq023CathedralRoot(targetPage, 'failed');
-  const framing = await framePq023Cathedral(targetPage, initialRoot.rootId);
+  await waitForPq023CathedralRoot(targetPage, 'failed');
+  const approach = await approachPq023Cathedral(targetPage);
   const initial = await waitForPq023CathedralState(targetPage, 'failed');
+  const framing = await framePq023Cathedral(targetPage);
   assert.ok(framing.subjectNdc
     && Math.abs(framing.subjectNdc.x) <= 0.9
     && Math.abs(framing.subjectNdc.y) <= 0.9,
@@ -1182,6 +1183,7 @@ async function capturePq023WorldSiteSequences(targetPage) {
   return {
     route: 'New Game -> production world.enterSector(Ceres) -> asteroidSites owner receipts',
     initial,
+    approach,
     framing,
     transitions,
     sequences,
@@ -1295,12 +1297,49 @@ async function waitForPq023CathedralState(targetPage, expectedStatus) {
   return handle.jsonValue();
 }
 
-async function framePq023Cathedral(targetPage, targetId) {
-  return targetPage.evaluate(async (rootId) => {
+async function approachPq023Cathedral(targetPage) {
+  return targetPage.evaluate(async () => {
+    const {
+      findLivePq023CathedralRoot,
+      pq023CathedralApproachPose,
+    } = await import('/scripts/lib/pq023CathedralFraming.mjs');
     const state = window.SF.state;
     const player = state.entities.get(state.playerId);
-    const target = state.entities.get(rootId);
-    if (!player || !target?.pos || !target.mesh) throw new Error('Cathedral framing subject is unavailable');
+    const target = findLivePq023CathedralRoot(state);
+    const pose = pq023CathedralApproachPose(target);
+    if (!player || !target || !pose) throw new Error('Cathedral approach subject is unavailable');
+    if (typeof player.pos.set === 'function') player.pos.set(pose.x, 0, pose.z);
+    else { player.pos.x = pose.x; player.pos.z = pose.z; }
+    player.prevPos?.copy?.(player.pos);
+    if (player.vel?.set) player.vel.set(0, 0, 0);
+    else { player.vel.x = 0; player.vel.z = 0; }
+    player.rot = 0;
+    player.prevRot = 0;
+    player.flags = { ...(player.flags || {}), noInterp: true };
+    state.camera.zoom = pose.zoom;
+    window.SF.bus.emit('camera:zoom', { level: pose.zoom });
+    state.render?.cameraCtrl?.snapToPlayer?.();
+    await new Promise((resolve) => setTimeout(resolve, 650));
+    return {
+      targetId: target.id,
+      targetPos: { x: target.pos.x, z: target.pos.z },
+      playerPos: { x: player.pos.x, z: player.pos.z },
+      cameraZoom: state.camera.zoom,
+    };
+  });
+}
+
+async function framePq023Cathedral(targetPage) {
+  return targetPage.evaluate(async () => {
+    const {
+      findLivePq023CathedralRoot,
+      pq023CathedralApproachPose,
+    } = await import('/scripts/lib/pq023CathedralFraming.mjs');
+    const state = window.SF.state;
+    const player = state.entities.get(state.playerId);
+    const target = findLivePq023CathedralRoot(state);
+    const pose = pq023CathedralApproachPose(target);
+    if (!player || !target?.mesh || !pose) throw new Error('Cathedral framing subject is unavailable');
     const camera = state.render?.cameraCtrl?.obj
       || state.render?.cameraCtrl?.camera
       || state.render?.camera;
@@ -1315,8 +1354,7 @@ async function framePq023Cathedral(targetPage, targetId) {
       await new Promise((resolve) => setTimeout(resolve, ms));
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     };
-    const radius = Number(target.data?.placeRadius || target.radius || 360);
-    const zoom = Math.min(1400, Math.max(720, radius * 2.6));
+    const { radius, zoom } = pose;
     const dir = { x: -0.94, z: -0.34 };
     let offset = radius * 1.7;
     let ndc = null;
@@ -1341,7 +1379,7 @@ async function framePq023Cathedral(targetPage, targetId) {
     }
     await settle(650);
     return {
-      targetId: rootId,
+        targetId: target.id,
       targetPos: { x: target.pos.x, z: target.pos.z },
       playerPos: { x: player.pos.x, z: player.pos.z },
       subjectNdc: ndc,

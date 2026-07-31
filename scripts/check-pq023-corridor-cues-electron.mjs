@@ -89,9 +89,10 @@ try {
       fromSectorId: 'sector_helios_prime',
     });
   });
-  const initialRoot = await waitForCathedralRoot(page, 'failed');
-  await frameCathedral(page, initialRoot.rootId);
+  await waitForCathedralRoot(page, 'failed');
+  await approachCathedral(page);
   const initial = await waitForCathedralState(page, 'failed');
+  await frameCathedral(page);
 
   const transitions = [];
   await setAccessibility(page, false);
@@ -346,26 +347,52 @@ async function waitForCathedralState(targetPage, status) {
   return handle.jsonValue();
 }
 
-async function frameCathedral(targetPage, rootId) {
-  await targetPage.evaluate(async (id) => {
+async function approachCathedral(targetPage) {
+  await targetPage.evaluate(async () => {
+    const {
+      findLivePq023CathedralRoot,
+      pq023CathedralApproachPose,
+    } = await import('/scripts/lib/pq023CathedralFraming.mjs');
     const state = window.SF.state;
     const player = state.entities.get(state.playerId);
-    const target = state.entities.get(id);
-    const radius = Number(target?.data?.placeRadius || target?.radius || 360);
-    const offset = radius * 1.7;
-    const x = target.pos.x - 0.94 * offset;
-    const z = target.pos.z - 0.34 * offset;
-    if (typeof player.pos.set === 'function') player.pos.set(x, 0, z);
-    else { player.pos.x = x; player.pos.z = z; }
+    const target = findLivePq023CathedralRoot(state);
+    const pose = pq023CathedralApproachPose(target);
+    if (!player || !target || !pose) throw new Error('Cathedral approach subject is unavailable');
+    if (typeof player.pos.set === 'function') player.pos.set(pose.x, 0, pose.z);
+    else { player.pos.x = pose.x; player.pos.z = pose.z; }
     player.prevPos?.copy?.(player.pos);
     player.vel?.set?.(0, 0, 0);
     player.rot = 0;
     player.prevRot = 0;
-    state.camera.zoom = Math.min(1400, Math.max(720, radius * 2.6));
+    state.camera.zoom = pose.zoom;
     window.SF.bus.emit('camera:zoom', { level: state.camera.zoom });
     state.render?.cameraCtrl?.snapToPlayer?.();
-    await new Promise((resolve) => setTimeout(resolve, 1600));
-  }, rootId);
+    await new Promise((resolve) => setTimeout(resolve, 650));
+  });
+}
+
+async function frameCathedral(targetPage) {
+  await targetPage.evaluate(async () => {
+    const {
+      findLivePq023CathedralRoot,
+      pq023CathedralApproachPose,
+    } = await import('/scripts/lib/pq023CathedralFraming.mjs');
+    const state = window.SF.state;
+    const player = state.entities.get(state.playerId);
+    const target = findLivePq023CathedralRoot(state);
+    const pose = pq023CathedralApproachPose(target);
+    if (!player || !target?.mesh || !pose) throw new Error('Cathedral framing subject is unavailable');
+    if (typeof player.pos.set === 'function') player.pos.set(pose.x, 0, pose.z);
+    else { player.pos.x = pose.x; player.pos.z = pose.z; }
+    player.prevPos?.copy?.(player.pos);
+    player.vel?.set?.(0, 0, 0);
+    player.rot = 0;
+    player.prevRot = 0;
+    state.camera.zoom = pose.zoom;
+    window.SF.bus.emit('camera:zoom', { level: state.camera.zoom });
+    state.render?.cameraCtrl?.snapToPlayer?.();
+    await new Promise((resolve) => setTimeout(resolve, 950));
+  });
 }
 
 async function setAccessibility(targetPage, reduced) {

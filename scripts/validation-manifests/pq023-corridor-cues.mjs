@@ -62,6 +62,7 @@ export function createPq023CorridorCuesManifest(overrides = {}) {
       'scripts/lib/alphaLiveBaselineElectronContracts.mjs',
       'scripts/lib/electronTestIsolation.mjs',
       'scripts/lib/load-playwright.mjs',
+      'scripts/lib/pq023CathedralFraming.mjs',
       'scripts/lib/validationBroker.mjs',
       'scripts/lib/visualProbeServer.mjs',
       'scripts/validation-broker-cli.mjs',

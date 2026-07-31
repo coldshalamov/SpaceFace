@@ -10,6 +10,10 @@ import manifest, {
   createPq023CorridorCuesManifest,
   PQ023_CORRIDOR_CUES_FIXED_SEED,
 } from '../scripts/validation-manifests/pq023-corridor-cues.mjs';
+import {
+  findLivePq023CathedralRoot,
+  pq023CathedralApproachPose,
+} from '../scripts/lib/pq023CathedralFraming.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = (relative) => readFileSync(new URL(relative, ROOT), 'utf8');
@@ -125,8 +129,9 @@ test('Cathedral framing enters authored-admission range before either runtime wa
       sequence: 'async function capturePq023WorldSiteSequences',
       sequenceEnd: 'async function setPq023Accessibility',
       discover: "waitForPq023CathedralRoot(targetPage, 'failed')",
-      frame: 'framePq023Cathedral(targetPage, initialRoot.rootId)',
+      approach: 'approachPq023Cathedral(targetPage)',
       admit: "waitForPq023CathedralState(targetPage, 'failed')",
+      frame: 'framePq023Cathedral(targetPage)',
     },
     {
       runtime: 'Electron',
@@ -134,8 +139,9 @@ test('Cathedral framing enters authored-admission range before either runtime wa
       sequence: "window.SF.registry.get('world').enterSector('sector_ceres_belt'",
       sequenceEnd: 'const transitions = [];',
       discover: "waitForCathedralRoot(page, 'failed')",
-      frame: 'frameCathedral(page, initialRoot.rootId)',
+      approach: 'approachCathedral(page)',
       admit: "waitForCathedralState(page, 'failed')",
+      frame: 'frameCathedral(page)',
     },
   ];
 
@@ -144,12 +150,44 @@ test('Cathedral framing enters authored-admission range before either runtime wa
     const end = spec.source.indexOf(spec.sequenceEnd, start);
     const body = spec.source.slice(start, end);
     const discover = body.indexOf(spec.discover);
-    const frame = body.indexOf(spec.frame);
+    const approach = body.indexOf(spec.approach);
     const admit = body.indexOf(spec.admit);
+    const frame = body.indexOf(spec.frame);
     assert.ok(start >= 0 && end > start, `${spec.runtime} Cathedral sequence must remain inspectable`);
-    assert.ok(discover >= 0 && frame > discover && admit > frame,
-      `${spec.runtime} must discover, frame inside 2400 WU, then wait for authored admission`);
+    assert.ok(discover >= 0 && approach > discover && admit > approach && frame > admit,
+      `${spec.runtime} must discover, approach inside 2400 WU, await authored replacement, then frame`);
   }
+});
+
+test('Cathedral framing reacquires the durable root after admission replaces its runtime id', () => {
+  const staleRoot = {
+    id: 41,
+    alive: false,
+    pos: { x: 10, z: 20 },
+    data: { worldSiteId: 'world_site_wreck_cathedral', role: 'world_site_root' },
+  };
+  const admittedRoot = {
+    id: 42,
+    alive: true,
+    pos: { x: 1000, z: -500 },
+    radius: 400,
+    data: {
+      worldSiteId: 'world_site_wreck_cathedral',
+      role: 'world_site_root',
+      placeRadius: 400,
+    },
+  };
+  const state = {
+    entities: new Map([[staleRoot.id, staleRoot]]),
+    entityList: [staleRoot, admittedRoot],
+  };
+  assert.equal(findLivePq023CathedralRoot(state), admittedRoot,
+    'framing must use durable site/role identity rather than the pre-admission runtime id');
+  const pose = pq023CathedralApproachPose(admittedRoot);
+  assert.ok(Math.abs(pose.x - 360.8) < 1e-9);
+  assert.ok(Math.abs(pose.z + 731.2) < 1e-9);
+  assert.equal(pose.zoom, 1040);
+  assert.equal(pose.radius, 400);
 });
 
 test('the Browser cell rejects software rendering and makes no H1 performance claim', () => {
