@@ -593,7 +593,10 @@ async function enterAsteroidOps(page, targetEntityId) {
     targetId: window.SF?.state?.player?.tether?.targetId ?? null,
   }));
   if (!(current.active && current.targetId === targetEntityId)) {
-    await page.keyboard.press('Space');
+    // Ctrl+Massline is the shipped explicit nearest-target override. At the completed asteroid
+    // waypoint the selected rock is the nearest attachable body; using the override avoids
+    // consuming a stale contextual preview left from the travel frame.
+    await page.keyboard.press('Control+Space');
     await page.waitForFunction((id) => {
       const tether = window.SF?.state?.player?.tether;
       return tether?.active === true && tether.targetId === id;
