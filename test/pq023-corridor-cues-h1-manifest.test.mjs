@@ -258,7 +258,14 @@ test('Electron launches only after Browser PASS and compares normalized cue sema
   const source = electron();
   const guard = source.indexOf('browserReport.ok !== true');
   const launch = source.indexOf('electron.launch(launch.options)');
+  const bootStart = source.indexOf('async function bootSeededFlight');
+  const bootEnd = source.indexOf('async function readGpuContract', bootStart);
+  const bootSource = source.slice(bootStart, bootEnd);
   assert.ok(guard >= 0 && launch > guard);
+  assert.ok(bootSource.includes('new URL(targetPage.url()).href'),
+    'Electron must prove that the first window already owns the canonical root');
+  assert.doesNotMatch(bootSource, /targetPage\.goto|targetPage\.reload/,
+    'Electron must not cancel the first-window boot with a redundant canonical-root navigation');
   for (const required of [
     'createIsolatedElectronLaunch',
     'createElectronCanonicalUrlTracker',

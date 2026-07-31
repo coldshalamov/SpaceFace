@@ -244,7 +244,11 @@ console.log('[pq023-corridor-cues/electron] PASS — cue semantics match Browser
 console.log('  receipt: .devshots/pq023-corridor-cues/electron/route-receipt.json');
 
 async function bootSeededFlight(targetPage, canonicalRoot, seed) {
-  await targetPage.goto(canonicalRoot, { waitUntil: 'domcontentloaded', timeout: 90_000 });
+  assert.equal(
+    new URL(targetPage.url()).href,
+    new URL(canonicalRoot).href,
+    'Electron cue parity must continue from the already-loaded canonical root',
+  );
   await targetPage.waitForFunction(() => !!(window.SF?.state && window.SF?.bus && window.SF?.ctx), null,
     { timeout: 60_000 });
   const splash = targetPage.locator('#cinematic-splash');
