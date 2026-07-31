@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import { findLinkedProgramActiveAttributes } from '../scripts/lib/webglProgramEvidence.mjs';
 
 const surfaces = await import('../src/render/engineTrailSurfaces.js');
 const {
@@ -7,6 +8,34 @@ const {
   createVfxPrecompileSalvo,
   runProjectileTrailEmissionSelfCheck,
 } = await import('../src/render/vfx.js');
+
+{
+  const linkedTrailProgram = { id: 'trail' };
+  const unrelatedProgram = { id: 'unrelated' };
+  const attributesByProgram = new Map([
+    [unrelatedProgram, ['position']],
+    [linkedTrailProgram, ['instanceMatrix', 'position', 'aTrailColor', 'aTrailOpacity']],
+  ]);
+  const fakeGl = {
+    ACTIVE_ATTRIBUTES: 0x8B89,
+    getProgramParameter(program) {
+      return attributesByProgram.get(program)?.length || 0;
+    },
+    getActiveAttrib(program, index) {
+      const name = attributesByProgram.get(program)?.[index];
+      return name ? { name } : null;
+    },
+  };
+  assert.deepEqual(
+    findLinkedProgramActiveAttributes(
+      fakeGl,
+      [{ program: unrelatedProgram }, { program: linkedTrailProgram }],
+      ['instanceMatrix', 'aTrailColor', 'aTrailOpacity'],
+    ),
+    attributesByProgram.get(linkedTrailProgram),
+    'linked-program evidence must survive a missing transient material.currentProgram pointer',
+  );
+}
 
 const precompileSalvo = createVfxPrecompileSalvo();
 const precompileStreak = precompileSalvo.getObjectByName('SF_Precompile_TrailStreak');

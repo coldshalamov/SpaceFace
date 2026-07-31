@@ -22,6 +22,7 @@ try {
     const THREE = await import('three');
     const { createVfxPrecompileSalvo } = await import('/src/render/vfx.js');
     const { createDynamicBufferCoordinator } = await import('/src/render/dynamicBufferRanges.js');
+    const { findLinkedProgramActiveAttributes } = await import('/scripts/lib/webglProgramEvidence.mjs');
     const {
       initTrailStreakPool,
       updateTrailStreakInstance,
@@ -76,18 +77,15 @@ try {
     }
 
     const programsAfterFirstLiveTrail = renderer.info.programs.length;
-    const materialProperties = renderer.properties.get(pool.mesh.material);
-    const currentProgram = materialProperties && materialProperties.currentProgram;
     const gl = renderer.getContext();
-    const handle = currentProgram && currentProgram.program;
-    const activeAttributes = [];
-    if (handle) {
-      const count = gl.getProgramParameter(handle, gl.ACTIVE_ATTRIBUTES);
-      for (let i = 0; i < count; i++) {
-        const info = gl.getActiveAttrib(handle, i);
-        if (info) activeAttributes.push(info.name);
-      }
-    }
+    const requiredTrailAttributes = ['instanceMatrix', 'aTrailColor', 'aTrailOpacity'];
+    // Three's private material.currentProgram pointer can be transiently absent even after a
+    // successful draw. The renderer program cache is the durable linked-program evidence.
+    const activeAttributes = findLinkedProgramActiveAttributes(
+      gl,
+      renderer.info.programs,
+      requiredTrailAttributes,
+    );
     const pixels = new Uint8Array(96 * 96 * 4);
     renderer.readRenderTargetPixels(target, 0, 0, 96, 96, pixels);
     let litPixels = 0;
