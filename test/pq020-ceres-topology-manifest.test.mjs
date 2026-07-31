@@ -94,6 +94,10 @@ test('Browser and Electron share one route schema and the full declared still se
     assert.ok(source.includes('pq020CeresFunctionalRoute.mjs'), `${label} must import the shared route`);
     assert.ok(source.includes('runPq020CeresFunctionalRoute'), `${label} must execute the shared route`);
     assert.ok(source.includes('PQ020_FUNCTIONAL_SCREENSHOTS'), `${label} must bind the declared still set`);
+    assert.ok(source.includes('pageIssueTracker: issueTracker'),
+      `${label} must bracket the intentional cold navigation with its issue tracker`);
+    assert.ok(source.includes('ignoredPageIssues'),
+      `${label} must retain explicitly ignored navigation cancellations in its receipt`);
   }
   assert.equal(PQ020_CERES_FUNCTIONAL_SCHEMA, 'spaceface.pq020-ceres-functional-route.v1');
   assert.equal(PQ020_CERES_SECTOR_ID, 'sector_ceres_belt');
@@ -119,6 +123,8 @@ test('the shared route uses visible player controls and production owners only',
     '#gm-set-course-btn',
     "page.keyboard.press('F5')",
     "name: 'Continue'",
+    "beginExpectedNavigation?.('pq020-cold-continue')",
+    'endExpectedNavigation?.(navigationToken)',
     'autopilot.status === \'arrived\'',
     "state.jump?.state === 'IDLE'",
   ]) assert.ok(source.includes(required), `missing public route contract: ${required}`);
@@ -180,6 +186,9 @@ test('both Ceres endpoint directions and cold Continue are non-vacuous assertion
   assert.ok(source.includes("!document.body.classList.contains('ui-modal-open')"));
   assert.ok(source.includes("overlay.classList.contains('hidden')"));
   assert.ok(source.includes("overlay.getAttribute('aria-busy') === 'false'"));
+  assert.ok(source.indexOf('endExpectedNavigation?.(navigationToken)')
+    < source.indexOf("assert.equal(new URL(page.url()).href"),
+  'only the page.reload call may suppress expected net::ERR_ABORTED navigation cancellations');
   assert.ok(source.indexOf("const inputReady = state.mode === 'flight'")
     < source.indexOf("await screenshot('16-continue-restored.png')"),
   'cold Continue must not capture or issue a map key while the production loading fence owns input');

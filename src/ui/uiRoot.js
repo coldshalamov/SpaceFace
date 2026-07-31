@@ -77,6 +77,27 @@ const SCREEN_MODULES = [
 
 const HUD_STYLE_ID = 'sf-hud-style';
 
+export function beginScreenRegistrationCycle(owner, screenManager) {
+  const generation = (Number(owner && owner._screenRegistrationGeneration) || 0) + 1;
+  if (owner) owner._screenRegistrationGeneration = generation;
+  return { owner, screenManager, generation };
+}
+
+export function invalidateScreenRegistrationCycle(owner) {
+  if (!owner) return 0;
+  const generation = (Number(owner._screenRegistrationGeneration) || 0) + 1;
+  owner._screenRegistrationGeneration = generation;
+  return generation;
+}
+
+export function isScreenRegistrationCycleCurrent(cycle) {
+  return !!(cycle
+    && cycle.owner
+    && cycle.screenManager
+    && cycle.owner._screenRegistrationGeneration === cycle.generation
+    && cycle.owner.screenManager === cycle.screenManager);
+}
+
 export function createFadeLeaseController(dockFade, {
   requestFrame = (fn) => requestAnimationFrame(fn),
   setDelay = (fn, ms) => setTimeout(fn, ms),
@@ -247,6 +268,8 @@ export const ui = {
   name: 'ui',
 
   init(ctx) {
+    invalidateScreenRegistrationCycle(this);
+    this._screenRegistrationCycle = null;
     if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();
     this.hud = null;
     if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();
@@ -288,6 +311,7 @@ export const ui = {
     this.manager = this.screenManager;
     ctx.screenManager = this.screenManager;
     ctx.screens = this.screenManager;
+    this._screenRegistrationCycle = beginScreenRegistrationCycle(this, this.screenManager);
 
     // Register the administrative-blackout capture fence before any interactive comms/HUD module.
     // Document capture listeners on the same target run in registration order, so constructing the
@@ -934,9 +958,11 @@ export const ui = {
 
   // Dynamically import + register every screen; a missing/throwing module is logged and skipped.
   registerScreens() {
+    const registrationCycle = this._screenRegistrationCycle;
     for (const { path, load, name } of SCREEN_MODULES) {
       load()
         .then((mod) => {
+          if (!isScreenRegistrationCycleCurrent(registrationCycle)) return;
           const def = mod && (mod[name] || mod.default);
           if (!def || !def.id) { console.warn(`[ui] screen "${name}" missing valid export`); return; }
           try { this.screenManager.register(def); }
@@ -1018,6 +1044,8 @@ export const ui = {
     // global capture listeners and timers. Re-init/destroy must remove them without marking the
     // cinematic seen or opening a menu behind the caller.
     this._titleFlowDisposed = true;
+    invalidateScreenRegistrationCycle(this);
+    this._screenRegistrationCycle = null;
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;
     if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();

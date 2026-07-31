@@ -115,12 +115,14 @@ try {
     runtimeLabel: 'browser-chromium-headed',
     fixedSeed: FIXED_SEED,
     screenshot,
+    pageIssueTracker: issueTracker,
   });
   receipt.brokerManifestId = manifest.id;
   receipt.launchContract = 'one headed system-Browser process; one route; Electron runs only after Browser closes';
   receipt.screenshots = screenshots;
   receipt.expectedScreenshots = [...PQ020_FUNCTIONAL_SCREENSHOTS];
   receipt.pageIssues = summarizeIssues(issueTracker.errorIssues());
+  receipt.ignoredPageIssues = summarizeIssues(issueTracker.ignoredIssues);
   if (receipt.pageIssues.length) {
     receipt.disposition = 'FAIL';
     receipt.failureClass = 'UNCLASSIFIED_BY_PROBE';
@@ -147,6 +149,7 @@ try {
     screenshots,
     expectedScreenshots: [...PQ020_FUNCTIONAL_SCREENSHOTS],
     pageIssues: issueTracker ? summarizeIssues(issueTracker.errorIssues()) : [],
+    ignoredPageIssues: issueTracker ? summarizeIssues(issueTracker.ignoredIssues) : [],
     failureSnapshot: await readPq020FailureSnapshot(page),
     noPerformanceEvidence: true,
     noPerformanceEvidenceNote:

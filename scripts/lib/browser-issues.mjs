@@ -3,6 +3,8 @@ export function collectPageIssues(page, options = {}) {
   const ignoreProbeWarnings = options.ignoreProbeWarnings === true;
   const issues = [];
   const ignoredIssues = [];
+  const expectedNavigationTokens = new Map();
+  let nextExpectedNavigationToken = 1;
 
   page.on('console', (msg) => {
     const issue = { type: msg.type(), text: msg.text() };
@@ -21,10 +23,18 @@ export function collectPageIssues(page, options = {}) {
   });
   page.on('requestfailed', (request) => {
     const failure = request.failure();
-    issues.push({
+    const issue = {
       type: 'error',
       text: `Request failed ${request.url()}${failure && failure.errorText ? `: ${failure.errorText}` : ''}`,
-    });
+    };
+    if (expectedNavigationTokens.size > 0 && isNavigationCancelledRequest(failure)) {
+      ignoredIssues.push({
+        ...issue,
+        expectedNavigation: [...expectedNavigationTokens.values()],
+      });
+      return;
+    }
+    issues.push(issue);
   });
   page.on('pageerror', (err) => {
     issues.push({ type: 'pageerror', text: String(err && err.message || err) });
@@ -39,7 +49,19 @@ export function collectPageIssues(page, options = {}) {
     warningIssues() {
       return issues.filter((issue) => issue.type === 'warning');
     },
+    beginExpectedNavigation(label = 'expected-navigation') {
+      const token = nextExpectedNavigationToken++;
+      expectedNavigationTokens.set(token, String(label));
+      return token;
+    },
+    endExpectedNavigation(token) {
+      return expectedNavigationTokens.delete(token);
+    },
   };
+}
+
+export function isNavigationCancelledRequest(failure) {
+  return /^net::ERR_ABORTED$/i.test(String(failure && failure.errorText || '').trim());
 }
 
 export function isGenericResourceLoadConsoleError(issue) {

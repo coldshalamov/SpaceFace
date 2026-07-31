@@ -107,6 +107,7 @@ export async function runPq020CeresFunctionalRoute({
   runtimeLabel,
   fixedSeed,
   screenshot,
+  pageIssueTracker = null,
 } = {}) {
   if (!page) throw new TypeError('PQ-020 functional route requires a Playwright page');
   if (!rootUrl) throw new TypeError('PQ-020 functional route requires a canonical root URL');
@@ -214,7 +215,9 @@ export async function runPq020CeresFunctionalRoute({
     const saved = await quickSave(page);
 
     setPhase('cold-continue');
-    const continued = await coldContinue(page, rootUrl, fixedSeed, screenshot);
+    const continued = await coldContinue(
+      page, rootUrl, fixedSeed, screenshot, pageIssueTracker,
+    );
     await installObservers(page);
 
     setPhase('repeat-beacon-selection');
@@ -872,9 +875,14 @@ async function quickSave(page) {
   };
 }
 
-async function coldContinue(page, rootUrl, fixedSeed, screenshot) {
+async function coldContinue(page, rootUrl, fixedSeed, screenshot, pageIssueTracker) {
   const before = await readFunctionalSnapshot(page);
-  await page.reload({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+  const navigationToken = pageIssueTracker?.beginExpectedNavigation?.('pq020-cold-continue');
+  try {
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+  } finally {
+    pageIssueTracker?.endExpectedNavigation?.(navigationToken);
+  }
   assert.equal(new URL(page.url()).href, new URL(rootUrl).href, 'cold Continue must reload the canonical root');
   await page.waitForFunction(() => !!(window.SF?.state && window.SF?.bus), null, { timeout: 60_000 });
   await dismissCinematic(page);

@@ -101,10 +101,12 @@ try {
     runtimeLabel: 'electron',
     fixedSeed: PQ020_CERES_TOPOLOGY_FIXED_SEED,
     screenshot,
+    pageIssueTracker: issueTracker,
   });
   receipt.screenshots = screenshots;
   receipt.expectedScreenshots = [...PQ020_FUNCTIONAL_SCREENSHOTS];
   receipt.pageIssues = summarizeIssues(issueTracker.errorIssues());
+  receipt.ignoredPageIssues = summarizeIssues(issueTracker.ignoredIssues);
   if (receipt.pageIssues.length) {
     receipt.disposition = 'FAIL';
     receipt.failureClass = 'UNCLASSIFIED_BY_PROBE';
@@ -140,6 +142,7 @@ try {
     screenshots,
     expectedScreenshots: [...PQ020_FUNCTIONAL_SCREENSHOTS],
     pageIssues: issueTracker ? summarizeIssues(issueTracker.errorIssues()) : [],
+    ignoredPageIssues: issueTracker ? summarizeIssues(issueTracker.ignoredIssues) : [],
     failureSnapshot: await readPq020FailureSnapshot(page),
     crossRuntimeParity: {
       comparedAgainst: '.devshots/pq020-ceres-topology/route-receipt.json',

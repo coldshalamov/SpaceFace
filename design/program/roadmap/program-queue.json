@@ -2561,7 +2561,7 @@
       "priority": 16,
       "title": "Repair stale UI registration and issue attribution across the Electron cold reload",
       "kind": "acceptance_repair",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-020.route-harness-repair"
       ],
@@ -2587,7 +2587,9 @@
         "node scripts/check-ui-screen-imports.mjs",
         "npm run check:pq020:proofs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-020-electron-cold-reload-lifecycle-repair-REPORT.md"
+      ],
       "brief": "Invalidate stale asynchronous screen registrations when uiRoot is destroyed or reinitialized, and classify only reload-window net::ERR_ABORTED requests as expected navigation cancellations while preserving console, page, HTTP, and unrelated request failures. Do not launch Browser or Electron in this repair unit."
     },
     {
@@ -2596,7 +2598,7 @@
       "priority": 17,
       "title": "Continue the repaired Ceres and Cathedral route",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-020.route-harness-repair",
         "PQ-020.electron-cold-reload-lifecycle-repair"
@@ -2617,8 +2619,7 @@
         "npm run check:pq020:ceres-topology"
       ],
       "receiptRefs": [],
-      "brief": "Spend one fresh Browser claim and one distinct Electron parity attempt to continue beyond the retained valid Helios-to-Ceres jump through all four pockets, Cathedral framing, save/Continue, and the second endpoint direction.",
-      "blocker": "The first Electron parity attempt completed all 21 route frames and matched every normalized Browser gameplay fact, but the intentional cold reload exposed stale uiRoot dynamic registration and misclassified net::ERR_ABORTED navigation cancellations. Exact repair unit PQ-020.electron-cold-reload-lifecycle-repair is claimed; browser-gpu and validation-broker are released until it closes."
+      "brief": "Spend one fresh Browser claim and one distinct Electron parity attempt to continue beyond the retained valid Helios-to-Ceres jump through all four pockets, Cathedral framing, save/Continue, and the second endpoint direction."
     },
     {
       "id": "PQ-023.cues-h1-capture",
