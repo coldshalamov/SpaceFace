@@ -518,44 +518,50 @@ async function publicUndock(page) {
 
 async function selectAsteroidOnLocalMap(page, options = {}) {
   await page.keyboard.press('KeyM');
-  await waitVisible(page, '#sf-localmap', 'local map');
+  await waitVisible(page, '#sf-galaxymap', 'unified local map');
   await page.waitForFunction((siteId) => {
     const def = window.SF?.ctx?.screenManager?.getActiveScreenDef?.();
     const state = window.SF?.state;
-    return def?.id === 'localmap' && (def._lastClickTargets || []).some((target) => {
+    return def?.id === 'galaxyMap' && (def._clickTargets || []).some((target) => {
       if (target.kind !== 'asteroid') return false;
-      const entity = state?.entities?.get(target.targetEntityId);
+      const entity = state?.entities?.get(target.entityId);
       return !siteId || entity?.data?.siteId === siteId;
     });
   }, options.siteId || null, { timeout: 20_000 });
   const target = await page.evaluate((siteId) => {
     const def = window.SF.ctx.screenManager.getActiveScreenDef();
     const state = window.SF.state;
-    const candidates = (def._lastClickTargets || []).filter((row) => {
+    const candidates = (def._clickTargets || []).filter((row) => {
       if (row.kind !== 'asteroid') return false;
-      const entity = state.entities.get(row.targetEntityId);
+      const entity = state.entities.get(row.entityId);
       if (!entity || entity.alive === false || entity.data?.respawnAt != null) return false;
       return !siteId || entity.data?.siteId === siteId;
     });
     const player = state.entities.get(state.playerId);
     candidates.sort((a, b) => (
-      Math.hypot(a.pos.x - player.pos.x, a.pos.z - player.pos.z)
-      - Math.hypot(b.pos.x - player.pos.x, b.pos.z - player.pos.z)
+      Math.hypot(a.x - player.pos.x, a.z - player.pos.z)
+      - Math.hypot(b.x - player.pos.x, b.z - player.pos.z)
     ));
     const row = candidates[0];
     return row ? {
-      targetEntityId: row.targetEntityId,
-      label: row.label,
+      targetEntityId: row.entityId,
+      label: row.name,
       sx: row.sx,
       sy: row.sy,
-      siteId: state.entities.get(row.targetEntityId)?.data?.siteId || null,
+      siteId: state.entities.get(row.entityId)?.data?.siteId || null,
     } : null;
   }, options.siteId || null);
-  assert(target, `local map did not expose ${options.siteId ? `site ${options.siteId}` : 'an asteroid'} dot`);
-  const canvas = page.locator('#sf-localmap canvas');
+  assert(target, `unified local map did not expose ${options.siteId ? `site ${options.siteId}` : 'an asteroid'} dot`);
+  const canvas = page.locator('#sf-galaxymap canvas');
   const box = await canvas.boundingBox();
-  assert(box, 'local map canvas has no pointer box');
+  assert(box, 'unified local map canvas has no pointer box');
   await page.mouse.click(box.x + target.sx, box.y + target.sy);
+  await page.waitForFunction((id) => (
+    window.SF?.ctx?.screenManager?.getActiveScreenDef?.()?._selectedTarget?.entityId === id
+  ), target.targetEntityId, { timeout: 10_000 });
+  const course = page.locator('#gm-set-course-btn');
+  await course.waitFor({ state: 'visible' });
+  await course.click();
   await page.waitForFunction((id) => window.SF?.state?.nav?.autopilot?.targetEntityId === id,
     target.targetEntityId, { timeout: 10_000 });
   return target;

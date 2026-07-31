@@ -77,7 +77,9 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     '[data-go]',
     '[data-screen="station"] .sx-dock button[data-act="undock"]',
     "page.keyboard.press('KeyM')",
-    '_lastClickTargets',
+    '#sf-galaxymap',
+    '_clickTargets',
+    '#gm-set-course-btn',
     "page.keyboard.press('Space')",
     "page.keyboard.press('KeyB')",
     '.ao-survey',
@@ -93,6 +95,8 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     'the PQ-024 default route must not wait on the retired Station Hub Undock control');
   assert.doesNotMatch(source, /button\[data-act=["']undock["']\][\s\S]{0,160}getByRole\(['"]button['"],\s*\{\s*name:/,
     'the exact Station App action must not be intersected with its dynamic readiness title');
+  assert.doesNotMatch(source, /#sf-localmap|_lastClickTargets|def\?\.id\s*===\s*['"]localmap['"]/, 
+    'the PQ-024 player route must not reopen the compatibility local-map implementation');
 
   const orderedMilestones = [
     'openStationMarket(page)',
