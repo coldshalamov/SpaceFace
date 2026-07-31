@@ -593,14 +593,20 @@ async function enterAsteroidOps(page, targetEntityId) {
     targetId: window.SF?.state?.player?.tether?.targetId ?? null,
   }));
   if (!(current.active && current.targetId === targetEntityId)) {
-    // Ctrl+Massline is the shipped explicit nearest-target override. At the completed asteroid
-    // waypoint the selected rock is the nearest attachable body; using the override avoids
-    // consuming a stale contextual preview left from the travel frame.
-    await page.keyboard.press('Control+Space');
-    await page.waitForFunction((id) => {
-      const tether = window.SF?.state?.player?.tether;
-      return tether?.active === true && tether.targetId === id;
-    }, targetEntityId, { timeout: 10_000 });
+    // Ctrl+Massline is the shipped explicit nearest-target override. Keep the chord down until the
+    // 60 Hz input owner has consumed its edge; Playwright's zero-duration press can deliver both
+    // DOM edges between fixed ticks and intermittently produce no gameplay command at all.
+    await page.keyboard.down('Control');
+    await page.keyboard.down('Space');
+    try {
+      await page.waitForFunction((id) => {
+        const tether = window.SF?.state?.player?.tether;
+        return tether?.active === true && tether.targetId === id;
+      }, targetEntityId, { timeout: 10_000 });
+    } finally {
+      await page.keyboard.up('Space');
+      await page.keyboard.up('Control');
+    }
   }
   await page.keyboard.press('KeyB');
   await waitVisible(page, '[data-screen="drill"]', 'Asteroid Ops');

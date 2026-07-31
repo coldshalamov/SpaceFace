@@ -80,7 +80,8 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     '#sf-galaxymap',
     '_clickTargets',
     '#gm-set-course-btn',
-    "page.keyboard.press('Control+Space')",
+    "page.keyboard.down('Control')",
+    "page.keyboard.down('Space')",
     "page.keyboard.press('KeyB')",
     '.ao-survey',
     '[data-item-id="${defId}"]',
@@ -125,8 +126,10 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     'the public route must pre-bore a deterministic dogleg before Survey/Core placement');
   assert.ok(source.indexOf('carveCoreBuildCorridor(page)') < source.indexOf('pulseSurveyReveal(page)'),
     'the route must not mutate the formation after recording the volatile survey');
-  assert.match(source, /enterAsteroidOps[\s\S]*page\.keyboard\.press\('Control\+Space'\)[\s\S]*tether\?\.active === true/,
-    'Asteroid Ops entry must use the shipped nearest-target Massline override and verify its exact rock');
+  assert.match(source, /enterAsteroidOps[\s\S]*keyboard\.down\('Control'\)[\s\S]*keyboard\.down\('Space'\)[\s\S]*tether\?\.active === true[\s\S]*keyboard\.up\('Space'\)[\s\S]*keyboard\.up\('Control'\)/,
+    'Asteroid Ops entry must hold the shipped nearest-target chord across an input tick and verify its exact rock');
+  assert.doesNotMatch(source, /keyboard\.press\('Control\+Space'\)/,
+    'a zero-duration chord may vanish between fixed input ticks');
 
   assert.match(source, /requireBrokerClaimOrDiagnostic/);
   assert.match(source, /headless:\s*false/);
