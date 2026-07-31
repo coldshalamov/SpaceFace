@@ -75,7 +75,7 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     '[data-cmdty="${item.commodityId}"]',
     '.sx-qty__in',
     '[data-go]',
-    'button.st-undock',
+    '[data-screen="station"] .sx-dock button[data-act="undock"]',
     "page.keyboard.press('KeyM')",
     '_lastClickTargets',
     "page.keyboard.press('Space')",
@@ -89,6 +89,8 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
   ]) {
     assert.ok(source.includes(publicSeam), `probe must retain public seam ${publicSeam}`);
   }
+  assert.doesNotMatch(source, /locator\(['"]button\.st-undock['"]\)/,
+    'the PQ-024 default route must not wait on the retired Station Hub Undock control');
 
   const orderedMilestones = [
     'openStationMarket(page)',

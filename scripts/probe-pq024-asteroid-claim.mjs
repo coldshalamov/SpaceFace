@@ -507,7 +507,9 @@ async function readCargo(page, commodityId) {
 }
 
 async function publicUndock(page) {
-  const undock = page.locator('button.st-undock').and(page.getByRole('button', { name: /\bundock\b/i }));
+  const undock = page
+    .locator('[data-screen="station"] .sx-dock button[data-act="undock"]')
+    .and(page.getByRole('button', { name: /\bundock\b/i }));
   await undock.waitFor({ state: 'visible' });
   await undock.click();
   const confirm = page.locator('[data-pop-launch]');
