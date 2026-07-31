@@ -95,7 +95,9 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     'the PQ-024 default route must not wait on the retired Station Hub Undock control');
   assert.doesNotMatch(source, /button\[data-act=["']undock["']\][\s\S]{0,160}getByRole\(['"]button['"],\s*\{\s*name:/,
     'the exact Station App action must not be intersected with its dynamic readiness title');
-  assert.doesNotMatch(source, /#sf-localmap|_lastClickTargets|def\?\.id\s*===\s*['"]localmap['"]/, 
+  assert.doesNotMatch(
+    source,
+    /#sf-localmap|_lastClickTargets|def\?\.id\s*===\s*['"]localmap['"]/,
     'the PQ-024 player route must not reopen the compatibility local-map implementation');
 
   const orderedMilestones = [
