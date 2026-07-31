@@ -54,6 +54,18 @@ test('the capture consumes a broker claim and cannot silently turn a direct run 
   assert.match(source, /assertInFrame\(receipt, `cargo_capsule\/\$\{framing\.name\}`\)/);
 });
 
+test('the frozen-subject page context declares every returned player-relative fact', () => {
+  const source = read('scripts/capture-pq019a-acceptance.mjs');
+  const body = source.slice(
+    source.indexOf('async function trackFrozenSubject'),
+    source.indexOf('async function clearFrozenSubjectTracking'),
+  );
+  assert.match(body, /const player = state\.entities\.get\(state\.playerId\)/,
+    'the accepted run failed with ReferenceError: player is not defined');
+  assert.match(body, /const separation = Math\.hypot\(/,
+    'separationFromPlayer must be computed inside the same page.evaluate context');
+});
+
 test('the broker CLI registers and lists the capsule presentation cell', () => {
   const cli = read('scripts/validation-broker-cli.mjs');
   assert.match(cli, /'pq019a-capsule-presentation': \(\) => import\('\.\/validation-manifests\/pq019a-capsule-presentation\.mjs'\)/);

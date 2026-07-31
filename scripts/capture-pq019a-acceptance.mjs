@@ -227,7 +227,9 @@ async function trackFrozenSubject(page, targetId, framing) {
   return page.evaluate(async ({ targetId, framing, zoomMax }) => {
     const state = window.SF.state;
     const target = state.entities.get(targetId);
+    const player = state.entities.get(state.playerId);
     if (!target?.pos) throw new Error(`missing capture subject ${targetId}`);
+    if (!player?.pos) throw new Error('missing player while framing frozen capsule');
 
     const ctrl = state.render?.cameraCtrl;
     const cam = ctrl?.obj || state.render?.camera || null;
@@ -284,6 +286,7 @@ async function trackFrozenSubject(page, targetId, framing) {
     target.mesh.getWorldPosition(projected);
     projected.project(cam);
     const ndc = { x: projected.x, y: projected.y };
+    const separation = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
     let visibleMeshes = 0;
     target.mesh?.traverse?.((object) => {
       if (object.isMesh && object.visible !== false) visibleMeshes++;
