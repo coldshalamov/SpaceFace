@@ -294,7 +294,10 @@ try {
     };
   }
 
-  await page.evaluate(() => window.__sfResetCombatVfx?.());
+  await page.evaluate(async () => {
+    const { quiescePq023Capture } = await import('/scripts/lib/pq023CaptureCleanup.mjs');
+    quiescePq023Capture(window.SF.state, window.__sfResetCombatVfx);
+  });
   const contactSheets = await buildEvidenceSheets();
 
   const diagnostics = await page.evaluate(() => {

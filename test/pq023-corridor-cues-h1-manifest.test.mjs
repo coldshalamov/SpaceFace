@@ -15,6 +15,7 @@ import {
   pq023CathedralApproachPose,
 } from '../scripts/lib/pq023CathedralFraming.mjs';
 import { setPq023AccessibilityPreference } from '../scripts/lib/pq023Accessibility.mjs';
+import { quiescePq023Capture } from '../scripts/lib/pq023CaptureCleanup.mjs';
 import { applyAccessibility } from '../src/ui/accessibility.js';
 
 const ROOT = new URL('../', import.meta.url);
@@ -222,6 +223,16 @@ test('PQ-023 reduced capture changes the motion preference owner, not only its e
   assert.equal(full.motionPreference, 'full');
   assert.equal(full.motionReduced, false);
   assert.equal(full.flashReduced, false);
+});
+
+test('PQ-023 cleanup freezes simulation before clearing acceptance-owned VFX pools', () => {
+  const state = { timeScale: 1, accumulator: 0.75 };
+  let observed = null;
+  assert.equal(quiescePq023Capture(state, () => {
+    observed = { timeScale: state.timeScale, accumulator: state.accumulator };
+  }), true);
+  assert.deepEqual(observed, { timeScale: 0, accumulator: 0 });
+  assert.deepEqual(state, { timeScale: 0, accumulator: 0 });
 });
 
 test('the Browser cell rejects software rendering and makes no H1 performance claim', () => {
