@@ -201,6 +201,17 @@ test('Cathedral framing reacquires the durable root after admission replaces its
   assert.ok(body.includes('return targetPage.evaluate(async () =>'));
   assert.doesNotMatch(body, /},\s*targetId\);/,
     'post-admission framing must not retain the discarded pre-admission runtime id argument');
+
+  const captureFramesStart = source.indexOf('async function capturePq023WorldSiteFrames');
+  const captureFramesEnd = source.indexOf('async function readPq023WorldSiteFrame', captureFramesStart);
+  const captureFramesBody = source.slice(captureFramesStart, captureFramesEnd);
+  assert.ok(
+    captureFramesBody.indexOf('framePq023Cathedral(targetPage)')
+      < captureFramesBody.indexOf('for (let index = 0; index < 3; index += 1)'),
+    'every Browser stage must reacquire and frame its replacement root before capturing frames',
+  );
+  assert.equal((electron().match(/await frameCathedral\(page\);/g) || []).length, 5,
+    'Electron must frame the initial root and each of four admitted stage replacements');
 });
 
 test('PQ-023 reduced capture changes the motion preference owner, not only its effective boolean', () => {

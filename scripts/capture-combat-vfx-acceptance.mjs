@@ -1407,6 +1407,11 @@ async function framePq023Cathedral(targetPage) {
 
 async function capturePq023WorldSiteFrames(targetPage, { key, expectedStatus, reduced }) {
   const startMs = Date.now() - videoStartMs;
+  const framing = await framePq023Cathedral(targetPage);
+  assert.ok(framing.subjectNdc
+    && Math.abs(framing.subjectNdc.x) <= 0.9
+    && Math.abs(framing.subjectNdc.y) <= 0.9,
+  `${key} replacement root could not be framed`);
   const frames = [];
   for (let index = 0; index < 3; index += 1) {
     await targetPage.waitForTimeout(180);
@@ -1429,7 +1434,7 @@ async function capturePq023WorldSiteFrames(targetPage, { key, expectedStatus, re
     startMs,
     endMs: Date.now() - videoStartMs,
   });
-  return { key, expectedStatus, reduced, frames };
+  return { key, expectedStatus, reduced, framing, frames };
 }
 
 async function readPq023WorldSiteFrame(targetPage) {

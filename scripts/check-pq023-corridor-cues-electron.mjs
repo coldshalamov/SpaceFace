@@ -98,19 +98,23 @@ try {
   await setAccessibility(page, false);
   transitions.push({ kind: 'recovery', reduced: false, owner: await recoverCathedral(page) });
   await waitForCathedralState(page, 'stabilized');
+  await frameCathedral(page);
   screenshots.push(await capturePng(page, '01-recovery-normal.png'));
 
   transitions.push({ kind: 'damage', reduced: false, owner: await damageCathedral(page) });
   await waitForCathedralState(page, 'failed');
+  await frameCathedral(page);
   screenshots.push(await capturePng(page, '02-damage-normal.png'));
 
   await setAccessibility(page, true);
   transitions.push({ kind: 'recovery', reduced: true, owner: await recoverCathedral(page) });
   await waitForCathedralState(page, 'stabilized');
+  await frameCathedral(page);
   screenshots.push(await capturePng(page, '03-recovery-reduced.png'));
 
   transitions.push({ kind: 'damage', reduced: true, owner: await damageCathedral(page) });
   await waitForCathedralState(page, 'failed');
+  await frameCathedral(page);
   screenshots.push(await capturePng(page, '04-damage-reduced.png'));
 
   const reducedFrames = [];
