@@ -24,12 +24,12 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 |---|---|---|---|
 | 1 | headed `check:assets:live` | **PASS** | [row1-assets-live](evidence/h1/row1-assets-live/EVIDENCE.md) |
 | 2 | PQ-021 broker cell + Electron parity | **PASS** | [row2-pq021-ledger](evidence/h1/row2-pq021-ledger/EVIDENCE.md) |
-| 3 | PQ-019A presentation + counts | **FAIL — HARNESS (facility/count evidence survives; capsule stills missed subject)** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
-| 4 | `pq019-surface-heist` broker manifest | **FAIL — HARNESS (DOM abandon + lawful observe survive; remaining routes unproven)** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
-| 5 | PQ-020 Ceres functional route | **FAIL — HARNESS (valid Helios→Ceres jump survived; route stopped on unsupported 300-WU threshold)** | [row5-pq020-ceres-route](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) |
-| 6 | PQ-023 cues in motion | **FAIL — HARNESS (combat motion survives; Cathedral sequence and Electron parity unproven)** | [row6-pq023-cues](evidence/h1/row6-pq023-cues/EVIDENCE.md) |
+| 3 | PQ-019A presentation + counts | **REPAIR PASS / H1 CONTINUATION READY (facility/count evidence survives; capsule stills remain unproven)** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
+| 4 | `pq019-surface-heist` broker manifest | **REPAIR PASS / H1 CONTINUATION READY (DOM abandon + lawful observe survive; remaining routes unproven)** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
+| 5 | PQ-020 Ceres functional route | **REPAIR PASS / H1 CONTINUATION READY (valid Helios→Ceres jump survives; remainder unproven)** | [row5-pq020-ceres-route](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) |
+| 6 | PQ-023 cues in motion | **REPAIR PASS / H1 CONTINUATION READY (combat motion survives; Cathedral sequence and Electron parity unproven)** | [row6-pq023-cues](evidence/h1/row6-pq023-cues/EVIDENCE.md) |
 | 7 | PQ-022 asset leaves | **PASS — one Browser launch; 11 exact identities, 13 admitted stills** | [row7-pq022-asset-leaves](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md) |
-| 8 | Electron end-to-end smoke | **FAIL — HARNESS (Main Menu visibly rendered; separate visibility sample false-negative; New Game→Ledger unproven)** | [row8-electron-e2e](evidence/h1/row8-electron-e2e/EVIDENCE.md) |
+| 8 | Electron end-to-end smoke | **REPAIR PASS / H1 CONTINUATION READY (Main Menu visibly rendered; New Game→Ledger unproven)** | [row8-electron-e2e](evidence/h1/row8-electron-e2e/EVIDENCE.md) |
 
 ---
 
@@ -51,7 +51,8 @@ this is an authored grey primitive assembly, not a loading failure.
 **Unblocks:** relay-collar receipt → `route_accepted`, which is the blob PQ-024 binds as
 `evidenceDependencies` before PQ-024 implementation can dispatch.
 
-**Verdict:** _____________
+**Verdict:** BLOCKED — named owner `SpaceFace human visual reviewer`; no independent human art
+reviewer is available in this autonomous recovery run
 
 ---
 
@@ -152,7 +153,8 @@ evidence.
 
 **Unblocks:** PQ-021 → `route_accepted` / `integrated`.
 
-**Verdict:** _____________
+**Verdict:** BLOCKED — named owner `SpaceFace human reviewer with a physical controller`; no such
+reviewer/controller is available in this autonomous recovery run
 
 ---
 
@@ -192,7 +194,8 @@ silently accepting it.
 **Unblocks:** the human-disposition half of
 `PQ-022.gold-corridor-required-assets` → `milestone_accepted`. Matched performance remains H3.
 
-**Verdict:** _____________
+**Verdict:** BLOCKED — named owner `SpaceFace human visual reviewer`; the required four station,
+three furniture, and three traffic dispositions cannot be issued by Codex
 
 ---
 

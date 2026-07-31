@@ -2430,7 +2430,7 @@
       "priority": 11,
       "title": "Human Ledger legibility and physical-controller verdict",
       "kind": "human_gate",
-      "state": "ready",
+      "state": "blocked",
       "dependsOn": [
         "PQ-021.h1-route"
       ],
@@ -2443,7 +2443,8 @@
       ],
       "checks": [],
       "receiptRefs": [],
-      "brief": "Review all five page crops and provenance in both hosts, then perform the physical-controller Codex to Ledger to evidence to Back path. Record keep, revise, or blocked; the existing H1 functional pair already passed."
+      "brief": "Review all five page crops and provenance in both hosts, then perform the physical-controller Codex to Ledger to evidence to Back path. Record keep, revise, or blocked; the existing H1 functional pair already passed.",
+      "blocker": "Named owner: SpaceFace human reviewer with a physical controller. No such reviewer/controller is available in this autonomous recovery run, so Codex cannot issue the visual-legibility or physical Y/Triangle verdict."
     },
     {
       "id": "PQ-022.relay-human-verdict",
@@ -2451,7 +2452,7 @@
       "priority": 12,
       "title": "Human accept-versus-reauthor verdict for the claim relay",
       "kind": "human_gate",
-      "state": "ready",
+      "state": "blocked",
       "dependsOn": [
         "PQ-022.h1-asset-presentation"
       ],
@@ -2464,7 +2465,8 @@
       ],
       "checks": [],
       "receiptRefs": [],
-      "brief": "Decide whether the exact place_claim_outpost_relay identity is good enough to ship or must return to re-authoring. Rendering and structural correctness are already proven; generic-grey-primitive quality is the explicit open question."
+      "brief": "Decide whether the exact place_claim_outpost_relay identity is good enough to ship or must return to re-authoring. Rendering and structural correctness are already proven; generic-grey-primitive quality is the explicit open question.",
+      "blocker": "Named owner: SpaceFace human visual reviewer. No independent human art reviewer is available in this autonomous recovery run, so the generic-grey relay cannot be accepted or sent back for re-authoring by Codex."
     },
     {
       "id": "PQ-022.corridor-assets-human-disposition",
@@ -2472,7 +2474,7 @@
       "priority": 13,
       "title": "Record the missing corridor station, furniture, and traffic visual dispositions",
       "kind": "human_gate",
-      "state": "ready",
+      "state": "blocked",
       "dependsOn": [
         "PQ-022.h1-asset-presentation"
       ],
@@ -2485,7 +2487,172 @@
       ],
       "checks": [],
       "receiptRefs": [],
-      "brief": "Give explicit keep, revise, revert, or blocked dispositions for the four stations, three lane-furniture identities, and three Helios traffic bodies. H1 proved exact admission but the six-decision H2 index accidentally omitted these milestone-closing verdicts."
+      "brief": "Give explicit keep, revise, revert, or blocked dispositions for the four stations, three lane-furniture identities, and three Helios traffic bodies. H1 proved exact admission but the six-decision H2 index accidentally omitted these milestone-closing verdicts.",
+      "blocker": "Named owner: SpaceFace human visual reviewer. No independent human art reviewer is available in this autonomous recovery run, so the four station, three furniture, and three traffic keep/revise/revert dispositions remain unissued."
+    },
+    {
+      "id": "PQ-019.capsule-h1-capture",
+      "parentId": "PQ-019",
+      "priority": 14,
+      "title": "Capture the repaired moving-capsule presentation",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-019.capsule-capture-repair"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "scripts/capture-pq019a-acceptance.mjs",
+        "design/program/roadmap/evidence/h1/row3-pq019a-presentation/",
+        "design/program/roadmap/active/PQ-019.md"
+      ],
+      "checks": [
+        "npm run check:pq019a:facility-embodiment",
+        "npm run check:sim:compare"
+      ],
+      "receiptRefs": [],
+      "brief": "Spend one fresh candidate-bound Browser presentation attempt after the framing repair, retain the already-valid facility/count evidence, and capture only the missing close/default/far physical-capsule evidence."
+    },
+    {
+      "id": "PQ-019.surface-heist-h1-capture",
+      "parentId": "PQ-019",
+      "priority": 15,
+      "title": "Capture the missing surface-heist terminal routes",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-019.route-harness-repair"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "scripts/probe-pq019-surface-heist.mjs",
+        "scripts/validation-manifests/pq019-surface-heist.mjs",
+        "design/program/roadmap/evidence/h1/row4-pq019-surface-heist/",
+        "design/program/roadmap/active/PQ-019.md"
+      ],
+      "checks": [
+        "npm run check:pq019c:mission",
+        "npm run check:pq019b:seams",
+        "npm run check:pq019a:facility-embodiment"
+      ],
+      "receiptRefs": [],
+      "brief": "Use one fresh broker claim to capture the missing heist/fence, confiscation, destruction, recovery, and final one-voice composition routes without reclassifying the retained DOM-abandon and lawful-observe evidence as new."
+    },
+    {
+      "id": "PQ-020.ceres-h1-capture",
+      "parentId": "PQ-020",
+      "priority": 16,
+      "title": "Continue the repaired Ceres and Cathedral route",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-020.route-harness-repair"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "scripts/probe-pq020-ceres-topology.mjs",
+        "scripts/check-pq020-ceres-topology-electron.mjs",
+        "scripts/validation-manifests/pq020-ceres-topology.mjs",
+        "design/program/roadmap/evidence/h1/row5-pq020-ceres-route/",
+        "design/program/roadmap/active/PQ-020.md"
+      ],
+      "checks": [
+        "npm run check:pq020:proofs",
+        "npm run check:pq020:ceres-topology"
+      ],
+      "receiptRefs": [],
+      "brief": "Spend one fresh Browser claim and one distinct Electron parity attempt to continue beyond the retained valid Helios-to-Ceres jump through all four pockets, Cathedral framing, save/Continue, and the second endpoint direction."
+    },
+    {
+      "id": "PQ-023.cues-h1-capture",
+      "parentId": "PQ-023",
+      "priority": 17,
+      "title": "Capture the repaired Cathedral cue continuation",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-023.cues-harness-repair"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "scripts/probe-pq023-corridor-cues.mjs",
+        "scripts/check-pq023-corridor-cues-electron.mjs",
+        "scripts/validation-manifests/pq023-corridor-cues.mjs",
+        "design/program/roadmap/evidence/h1/row6-pq023-cues/",
+        "design/program/roadmap/active/PQ-023.md"
+      ],
+      "checks": [
+        "npm run check:pq023:corridor-cues",
+        "npm run check:presentation"
+      ],
+      "receiptRefs": [],
+      "brief": "Spend one fresh Browser claim plus Electron parity for the missing Cathedral normal/reduced damage and recovery states, captions, and cleanup while retaining the already-valid combat/reduced/dense evidence."
+    },
+    {
+      "id": "PQ-024.survey-h1-capture",
+      "parentId": "PQ-024",
+      "priority": 18,
+      "title": "Run the survey-to-relay public route pair",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-024.survey-route-harness"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "scripts/probe-pq024-asteroid-claim.mjs",
+        "scripts/validation-manifests/pq024-asteroid-claim.mjs",
+        "design/program/roadmap/active/PQ-024.md"
+      ],
+      "checks": [
+        "npm run check:pq024:survey-claim",
+        "node --test test/asteroid-sites.test.mjs",
+        "npm run check:sim:compare"
+      ],
+      "receiptRefs": [],
+      "brief": "Run the registered Browser public route exactly once, add and run a distinct Electron parity cell, and retain the claim-bound survey, Core adoption, real-output, single-relay, save/Continue, and re-entry evidence."
+    },
+    {
+      "id": "PQ-041.electron-smoke-h1-capture",
+      "parentId": "PQ-041",
+      "priority": 19,
+      "title": "Continue the repaired Electron end-to-end smoke",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-041.electron-smoke-harness-repair"
+      ],
+      "mutexes": [
+        "electron-shell",
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "scripts/check-h1-electron-e2e.mjs",
+        "design/program/roadmap/evidence/h1/row8-electron-e2e/",
+        "design/program/roadmap/active/PQ-041.md"
+      ],
+      "checks": [
+        "node --test test/h1-electron-e2e.test.mjs",
+        "npm run check:launch-policy"
+      ],
+      "receiptRefs": [],
+      "brief": "Spend one fresh candidate-bound Electron attempt after the semantic menu-visibility repair and complete the Main Menu to New Game to flight to dock to Ledger smoke without treating the retained Main Menu frame as a new launch."
     },
     {
       "id": "PQ-007.focused-implementation",
@@ -2840,7 +3007,7 @@
       "kind": "human_gate",
       "state": "blocked",
       "dependsOn": [
-        "PQ-020.route-harness-repair"
+        "PQ-020.ceres-h1-capture"
       ],
       "mutexes": [
         "human-review"
@@ -2861,8 +3028,8 @@
       "kind": "human_gate",
       "state": "blocked",
       "dependsOn": [
-        "PQ-019.capsule-capture-repair",
-        "PQ-019.route-harness-repair"
+        "PQ-019.capsule-h1-capture",
+        "PQ-019.surface-heist-h1-capture"
       ],
       "mutexes": [
         "human-review"
@@ -2883,8 +3050,8 @@
       "kind": "performance",
       "state": "blocked",
       "dependsOn": [
-        "PQ-019.capsule-capture-repair",
-        "PQ-019.route-harness-repair",
+        "PQ-019.capsule-h1-capture",
+        "PQ-019.surface-heist-h1-capture",
         "PQ-034.native-closure"
       ],
       "mutexes": [
@@ -2932,7 +3099,7 @@
       "kind": "human_gate",
       "state": "blocked",
       "dependsOn": [
-        "PQ-020.route-harness-repair"
+        "PQ-020.ceres-h1-capture"
       ],
       "mutexes": [
         "human-review"
@@ -2953,7 +3120,7 @@
       "kind": "performance",
       "state": "blocked",
       "dependsOn": [
-        "PQ-020.route-harness-repair",
+        "PQ-020.ceres-h1-capture",
         "PQ-034.native-closure"
       ],
       "mutexes": [
@@ -3102,7 +3269,7 @@
       "kind": "human_gate",
       "state": "blocked",
       "dependsOn": [
-        "PQ-023.cues-harness-repair"
+        "PQ-023.cues-h1-capture"
       ],
       "mutexes": [
         "human-review"
@@ -3123,7 +3290,7 @@
       "kind": "performance",
       "state": "blocked",
       "dependsOn": [
-        "PQ-023.cues-harness-repair",
+        "PQ-023.cues-h1-capture",
         "PQ-034.native-closure"
       ],
       "mutexes": [
@@ -3172,7 +3339,7 @@
       "kind": "human_gate",
       "state": "blocked",
       "dependsOn": [
-        "PQ-024.survey-route-harness",
+        "PQ-024.survey-h1-capture",
         "PQ-022.relay-human-verdict"
       ],
       "mutexes": [
@@ -3192,7 +3359,7 @@
       "kind": "performance",
       "state": "blocked",
       "dependsOn": [
-        "PQ-024.survey-route-harness",
+        "PQ-024.survey-h1-capture",
         "PQ-034.native-closure"
       ],
       "mutexes": [
@@ -3429,7 +3596,7 @@
       "state": "blocked",
       "dependsOn": [
         "PQ-034.native-closure",
-        "PQ-041.electron-smoke-harness-repair"
+        "PQ-041.electron-smoke-h1-capture"
       ],
       "mutexes": [
         "package",
