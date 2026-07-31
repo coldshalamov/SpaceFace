@@ -6,6 +6,10 @@ import { readFileSync } from 'node:fs';
 
 const ROOT = new URL('../', import.meta.url);
 const source = () => readFileSync(new URL('scripts/check-h1-electron-e2e.mjs', ROOT), 'utf8');
+const recordedFailure = () => JSON.parse(readFileSync(new URL(
+  'design/program/roadmap/evidence/h1/row8-electron-e2e/failure-state.json',
+  ROOT,
+), 'utf8'));
 
 const REQUIRED_STILLS = Object.freeze([
   '01-main-menu.png',
@@ -56,7 +60,7 @@ test('the proven about:blank to canonical-root ownership and cleanup pattern sur
 test('the visible public route is menu to fixed-seed New Game to authored flight', () => {
   const text = source();
   for (const required of [
-    "[data-screen=\"mainMenu\"]",
+    "await waitForVisible(newGameButton, 30_000, 'Main Menu')",
     "getByRole('button', { name: 'New Game', exact: true })",
     "[data-screen=\"newGame\"]",
     "page.fill('#sf-ng-seed', String(FIXED_SEED))",
@@ -65,6 +69,22 @@ test('the visible public route is menu to fixed-seed New Game to authored flight
     "flight.mode, 'flight'",
     'SwiftShader|llvmpipe|software',
   ]) assert.ok(text.includes(required), `missing public launch contract: ${required}`);
+});
+
+test('the recorded visible Main Menu uses one role-locator authority, not a second selector sample', () => {
+  const failure = recordedFailure();
+  assert.equal(failure.phase, 'main-menu');
+  assert.equal(failure.snapshot.mode, 'menu');
+  assert.deepEqual(failure.snapshot.visibleScreens, ['mainMenu']);
+  assert.match(failure.snapshot.activeElement, /<button\b[^>]*>New Game<\/button>/);
+
+  const text = source();
+  assert.ok(text.includes("const newGameButton = page.getByRole('button', { name: 'New Game', exact: true })"));
+  assert.ok(text.includes("visibilityAuthority: 'role:button[name=\"New Game\"]'"));
+  assert.doesNotMatch(text, /readSurfaceSnapshot\('mainMenu'\)/,
+    'the menu must not be re-sampled through querySelector after the role locator proves visibility');
+  assert.doesNotMatch(text, /document\.querySelector\(`\[data-screen="\$\{id\}"\]`\)/,
+    'the removed generic surface sampler must not return under a different caller');
 });
 
 test('docking uses the public map, autopilot, visible dock prompt, and held E input', () => {

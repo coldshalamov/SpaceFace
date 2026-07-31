@@ -2284,7 +2284,7 @@
       "priority": 6,
       "title": "Repair the Electron Main Menu visibility false negative",
       "kind": "acceptance_repair",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-041.focused-implementation"
       ],
@@ -2299,7 +2299,9 @@
         "node --test test/h1-electron-e2e.test.mjs",
         "npm run check:launch-policy"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-041-electron-smoke-harness-repair-REPORT.md"
+      ],
       "brief": "Replace the second unstable querySelector sample with one semantic/locator-backed visibility authority and pin the recorded state where the menu, focus, and visible-screen list all prove visibility. Do not launch Electron in this repair unit."
     },
     {

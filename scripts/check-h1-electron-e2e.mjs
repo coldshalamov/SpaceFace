@@ -117,9 +117,14 @@ try {
     await splash.waitFor({ state: 'hidden', timeout: 5_000 });
     mark('intro-dismissed');
   }
-  await waitForVisible('[data-screen="mainMenu"]', 30_000, 'Main Menu');
   await waitForBootOverlayGone();
-  const mainMenu = await readSurfaceSnapshot('mainMenu');
+  const newGameButton = page.getByRole('button', { name: 'New Game', exact: true });
+  await waitForVisible(newGameButton, 30_000, 'Main Menu');
+  const mainMenu = {
+    ...(await readMainMenuSnapshot()),
+    visible: true,
+    visibilityAuthority: 'role:button[name="New Game"]',
+  };
   assert.equal(mainMenu.visible, true, 'Main Menu must be visible');
   assert.equal(mainMenu.mode, 'menu', 'Main Menu must retain menu mode');
   await shot(SHOTS.mainMenu);
@@ -127,7 +132,7 @@ try {
   mark('main-menu-visible', mainMenu);
 
   phase = 'new-game';
-  await page.getByRole('button', { name: 'New Game', exact: true }).click();
+  await newGameButton.click();
   await waitForVisible('[data-screen="newGame"]', 30_000, 'New Game');
   await page.fill('#sf-ng-seed', String(FIXED_SEED));
   const newGame = await page.evaluate(() => {
@@ -381,8 +386,9 @@ async function shot(name) {
   screenshots.push(name);
 }
 
-async function waitForVisible(selector, timeout, label) {
-  await page.locator(selector).waitFor({ state: 'visible', timeout }).catch((error) => {
+async function waitForVisible(target, timeout, label) {
+  const locator = typeof target === 'string' ? page.locator(target) : target;
+  await locator.waitFor({ state: 'visible', timeout }).catch((error) => {
     throw new Error(`Timed out waiting for visible ${label}: ${error.message}`);
   });
 }
@@ -424,23 +430,14 @@ async function clickWaypointWithPointer(locator) {
   throw new Error(`Visible Set Waypoint click did not arm autopilot; last box=${JSON.stringify(lastBox)}`);
 }
 
-async function readSurfaceSnapshot(screenId) {
-  return page.evaluate((id) => {
-    const isVisible = (element) => {
-      if (!element || element.hidden) return false;
-      const style = getComputedStyle(element);
-      const rect = element.getBoundingClientRect();
-      return style.display !== 'none' && style.visibility !== 'hidden'
-        && Number(style.opacity || 1) > 0.01 && rect.width > 1 && rect.height > 1;
-    };
-    const element = document.querySelector(`[data-screen="${id}"]`);
+async function readMainMenuSnapshot() {
+  return page.evaluate(() => {
     return {
       mode: window.SF?.state?.mode || null,
-      visible: isVisible(element),
       title: document.title,
       focusedText: String(document.activeElement?.textContent || '').trim().slice(0, 120),
     };
-  }, screenId);
+  });
 }
 
 async function readFlightSnapshot() {
