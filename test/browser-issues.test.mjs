@@ -12,6 +12,8 @@ class FakePage extends EventEmitter {}
 const failedRequest = (url, errorText) => ({
   url: () => url,
   failure: () => ({ errorText }),
+  method: () => 'GET',
+  resourceType: () => 'script',
 });
 
 const consoleMessage = (type, text) => ({
@@ -70,6 +72,30 @@ test('completed requests lose expected-navigation attribution', () => {
   assert.equal(tracker.ignoredIssues.length, 0);
   assert.deepEqual(tracker.errorIssues().map((issue) => issue.text), [
     'Request failed http://game.test/completed.js: net::ERR_ABORTED',
+  ]);
+});
+
+test('request-route fallback bridges Electron wrappers but invalidates on a later same-route start', () => {
+  const page = new FakePage();
+  const tracker = collectPageIssues(page);
+  const started = failedRequest('http://game.test/module.js', null);
+  const failedProxy = failedRequest('http://game.test/module.js', 'net::ERR_ABORTED');
+  const laterStarted = failedRequest('http://game.test/later.js', null);
+  const laterFailed = failedRequest('http://game.test/later.js', 'net::ERR_ABORTED');
+
+  page.emit('request', started);
+  page.emit('request', laterStarted);
+  const token = tracker.beginExpectedNavigation('continue-transition');
+  tracker.endExpectedNavigation(token);
+  page.emit('requestfailed', failedProxy);
+  page.emit('request', failedRequest('http://game.test/later.js', null));
+  page.emit('requestfailed', laterFailed);
+
+  assert.equal(tracker.ignoredIssues.length, 1);
+  assert.equal(tracker.ignoredIssues[0].expectedNavigationAttribution, 'request-route');
+  assert.match(tracker.ignoredIssues[0].text, /module\.js: net::ERR_ABORTED/);
+  assert.deepEqual(tracker.errorIssues().map((issue) => issue.text), [
+    'Request failed http://game.test/later.js: net::ERR_ABORTED',
   ]);
 });
 

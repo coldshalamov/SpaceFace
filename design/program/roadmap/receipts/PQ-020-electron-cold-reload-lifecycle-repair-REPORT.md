@@ -58,18 +58,28 @@ is the menu-to-flight Continue transition, not the document reload. The new seco
 requests active or started from the public click until production flight/input readiness. It does not
 cover the menu screenshot, restored screenshot, later map input, or unrelated route work.
 
+Candidate digest `277098519ff6174007d9e90f30050bfd2b3993124ad4df5b8505374357c18612`
+then proved the second half of the boundary: Browser passed 21/21 with zero issues; Electron again
+completed 21/21, matched facts, and closed cleanly, but none of the eight Continue-time aborts carried
+object attribution. Electron exposes distinct request wrappers across the relevant start/failure
+surfaces. The collector therefore uses method/resource/URL as a fallback only while that route is
+unambiguous inside an expected transition. Any same-route request observed after the transition
+invalidates the fallback before failure.
+
 ## Focused evidence
 
 - Recorded native failure: 21/21 Electron frames, normalized gameplay projection equal to Browser,
   owned runtime closed, but one stale registration error plus seven reload-aborted requests.
 - `node --test test/ui-screen-registration-lifecycle.test.mjs test/browser-issues.test.mjs
-  test/pq020-ceres-topology-manifest.test.mjs` — PASS, 19/19.
+  test/pq020-ceres-topology-manifest.test.mjs` — PASS, 20/20.
 - The issue regression explicitly delivers the tagged request failure after the expected-navigation
   token closes, matching the observed Electron ordering; it covers both pre-existing and
   during-navigation request starts, and rejects post-navigation, untagged, completed, and non-abort
   failures.
 - The route regression requires separate reload and Continue scopes, places the second before the
   public click, retains production readiness, and requires exactly two scope closures.
+- The wrapper regression permits one request-route fallback and proves a later same-route request
+  invalidates that attribution and remains hard.
 - `node scripts/check-ui-screen-imports.mjs` — PASS, 41/41.
 - `npm run check:pq020:proofs` — PASS, 14/14.
 - `node --check` for the changed UI, issue-collector, and route modules — PASS.
