@@ -1,0 +1,97 @@
+{
+  "schema": "spaceface.h1-electron-e2e-continuation-summary.v1",
+  "row": 8,
+  "disposition": "PASS",
+  "acceptedCandidateCommit": "c8b4fa2ca8be5239194879ec09380f43bf764af8",
+  "runtime": "electron-headed-source",
+  "fixedSeed": 47,
+  "launches": {
+    "browser": 0,
+    "electron": 1,
+    "retryPerformed": false
+  },
+  "route": [
+    "canonical-root",
+    "main-menu",
+    "new-game",
+    "authored-flight",
+    "public-helios-waypoint",
+    "physical-dock-prompt",
+    "public-held-e-dock",
+    "station-command-dock",
+    "ledger"
+  ],
+  "gpu": {
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "software": false
+  },
+  "station": {
+    "stationId": "station_helios",
+    "dockInputCount": 1,
+    "visibilityAuthority": "locator:[data-screen=station] .sx-dock"
+  },
+  "ledger": {
+    "title": "The Ship's Ledger",
+    "tabSelected": true,
+    "labelledBy": "st-ledger-station-title",
+    "hasContentSurface": true
+  },
+  "cleanup": {
+    "pass": true,
+    "processExited": true,
+    "listenerReleased": true
+  },
+  "pageErrors": [],
+  "warnings": [
+    "Electron source-runtime CSP warning",
+    "Three.js shader compiler warnings"
+  ],
+  "visualReview": {
+    "reviewedOriginalResolution": true,
+    "frames": [
+      "01-main-menu.png",
+      "02-new-game.png",
+      "03-flight.png",
+      "04-dock-prompt.png",
+      "05-station.png",
+      "06-ledger.png"
+    ],
+    "scope": "functional H1 route only; no H2 visual-quality or legibility verdict"
+  },
+  "retainedFailures": [
+    {
+      "candidate": "5c5421ac",
+      "classification": "PRODUCT",
+      "phase": "dock-prompt",
+      "reason": "legacy 90-WU center-ring arrival outside truthful berth capture",
+      "path": "continuation-failure-5c5421ac"
+    },
+    {
+      "candidate": "93143293",
+      "classification": "PRODUCT",
+      "phase": "dock-prompt",
+      "reason": "direct-to-berth course met compound silhouette outside the corridor gap",
+      "path": "continuation-failure-93143293"
+    },
+    {
+      "candidate": "147df4dd",
+      "classification": "HARNESS",
+      "phase": "dock-input",
+      "reason": "post-dock opacity resample contradicted visible Station locator and frame",
+      "path": "continuation-failure-147df4dd"
+    }
+  ],
+  "digests": {
+    "report.json": "b8c04424a0278fa328839a2073a68b63ce82bd4280fe98e68877725b4bbaf66a",
+    "launch-counts.json": "05c2702a3f1b376a36fef242a2e3bdca63f63d128802390474f4b47936563f77",
+    "01-main-menu.png": "1ec0778717861a192d62c60439c6d2e16564c46e0050b9969524955da9555fb8",
+    "02-new-game.png": "439cf1194ffeb006640e6bae5662898ca5365e509fea78c62867ed8b1eec26e5",
+    "03-flight.png": "161c25dafa6e733c3851435ab5b6618a9d246c08666931410ccb4e69bbfe8d94",
+    "04-dock-prompt.png": "d11e61a2e055b850f22fe40b97e79fdbf7792a64e370bea56482508c2e1a688e",
+    "05-station.png": "5ebf6c05f1a3f3b221b676bc55c65f23a34c4f76d741070a956bc20c4155ee2b",
+    "06-ledger.png": "4601a96ebf00ae40357b10e3d37b74da59f1a4eff400d569d6b462e7b1ac8c42"
+  },
+  "informational_contended": true,
+  "noPerformanceEvidence": true
+}

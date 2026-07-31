@@ -29,7 +29,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 | 5 | PQ-020 Ceres functional route | **REPAIR PASS / H1 CONTINUATION READY (valid Helios→Ceres jump survives; remainder unproven)** | [row5-pq020-ceres-route](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) |
 | 6 | PQ-023 cues in motion | **PASS — retained combat motion plus accepted Cathedral Browser/Electron continuation** | [row6-pq023-cues](evidence/h1/row6-pq023-cues/EVIDENCE.md) |
 | 7 | PQ-022 asset leaves | **PASS — one Browser launch; 11 exact identities, 13 admitted stills** | [row7-pq022-asset-leaves](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md) |
-| 8 | Electron end-to-end smoke | **REPAIR PASS / H1 CONTINUATION READY (Main Menu visibly rendered; New Game→Ledger unproven)** | [row8-electron-e2e](evidence/h1/row8-electron-e2e/EVIDENCE.md) |
+| 8 | Electron end-to-end smoke | **PASS — accepted source-Electron menu→physical dock→Ledger chain** | [row8-electron-e2e](evidence/h1/row8-electron-e2e/EVIDENCE.md) |
 
 ---
 
@@ -162,18 +162,17 @@ reviewer/controller is available in this autonomous recovery run
 menu → New Game → flight → dock → Ledger without a defect that would embarrass a build?
 
 **Evidence:** [Row 2 Ledger Browser/Electron parity](evidence/h1/row2-pq021-ledger/EVIDENCE.md) and
-[Row 8 shipped-shell attempt](evidence/h1/row8-electron-e2e/EVIDENCE.md). Row 2 proves the Ledger
-surface in Electron after route preparation. Row 8 proves isolated shell launch, canonical root,
-visible Main Menu, and clean owned shutdown, but its single attempt stopped on a **HARNESS** false
-negative before New Game: the rejected predicate said the menu was invisible while the screenshot,
-`mode: menu`, `visibleScreens: [mainMenu]`, and focused New Game button all showed otherwise.
+[Row 8 accepted source-Electron continuation](evidence/h1/row8-electron-e2e/EVIDENCE.md). At fixed
+seed 47, Row 8 proves isolated canonical launch, Main Menu, New Game, authored flight, public Helios
+waypoint/autopilot, the physical dock prompt, one held `E` docking input, Station command dock, and
+Ledger on real Intel ANGLE/D3D11. Cleanup passed with no hard page/request errors. The three product
+and harness failures that preceded the accepted candidate remain preserved with causal repairs and
+regressions.
 
-During H2, perform this short manual chain in the shipped Electron shell: Main Menu → New Game →
-Launch → Helios Station waypoint/autopilot → visible `E` dock → Ledger. If any player-visible defect
-appears, record it here. If the chain is not performed, keep the decision deferred; do not infer a PASS
-from Row 2 or the Row 8 Main Menu frame alone.
+This decision is the named functional go/no-go, not an art judgment. It does not stand in for the
+separate physical-controller, human legibility/art, exact-package, or matched-performance gates.
 
-**Verdict:** DEFER — automated menu→dock→Ledger chain not captured; manual H2 smoke required
+**Verdict:** PASS — candidate-bound source-Electron menu→dock→Ledger chain accepted
 
 ---
 

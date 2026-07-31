@@ -2784,8 +2784,7 @@
       "priority": 20,
       "title": "Continue the repaired Electron end-to-end smoke",
       "kind": "acceptance_capture",
-      "state": "claimed",
-      "owner": "Codex primary integrator",
+      "state": "done",
       "dependsOn": [
         "PQ-041.electron-smoke-harness-repair",
         "PQ-041.electron-smoke-dock-arrival-repair",
@@ -2806,7 +2805,9 @@
         "node --test test/h1-electron-e2e.test.mjs",
         "npm run check:launch-policy"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-041-electron-smoke-h1-capture-REPORT.md"
+      ],
       "brief": "Spend one fresh candidate-bound Electron attempt after the semantic menu-visibility, truthful station dock-arrival, corridor-approach, and Station visibility repairs, preserving the retained failed attempts, and complete the Main Menu to New Game to flight to dock to Ledger smoke."
     },
     {
@@ -3766,7 +3767,7 @@
       ],
       "receiptRefs": [],
       "brief": "Close packaged startup, hardware GPU, Browser parity, controller/audio/display, lifecycle, and matched performance.",
-      "blocker": "The Electron smoke harness and PERF-00 native evidence authority are not terminal."
+      "blocker": "PERF-00 native evidence authority is not terminal; the source-Electron H1 smoke is accepted but does not prove the generated package or paired native performance."
     },
     {
       "id": "PQ-042.branch-selection",

@@ -1,0 +1,9 @@
+2026-07-31T16:14:17.738Z electron-canonical-root
+2026-07-31T16:14:21.914Z intro-dismissed
+2026-07-31T16:14:23.246Z main-menu-visible
+2026-07-31T16:14:24.312Z new-game-visible
+2026-07-31T16:14:38.655Z authored-flight-visible
+2026-07-31T16:14:44.984Z helios-waypoint-armed
+2026-07-31T16:16:45.123Z FAIL at dock-prompt: autopilot did not reach a physical dock prompt; last={"tick":7281,"playerAlive":true,"position":{"x":1353.900146484375,"z":-355.0405578613281},"autopilot":{"active":false,"status":"arrived","label":"Helios Station","distance":90.06014303629895}}
+
+false !== true

@@ -1,8 +1,58 @@
 # H1 row 8 — Electron end-to-end sanity smoke
 
-**Result: FAIL — HARNESS.** The single permitted Electron attempt stopped at the Main Menu because a
-second harness visibility sample returned `false` even though the product surface was visibly present.
-No retry was performed.
+**Result: PASS — accepted continuation candidate
+`c8b4fa2ca8be5239194879ec09380f43bf764af8`.** One fresh candidate-bound source-Electron launch
+completed the full public route from Main Menu through physical station docking to Ledger. The
+original Main Menu harness failure and all three continuation failures remain retained below; none
+was overwritten or reclassified.
+
+## Accepted continuation
+
+Command:
+
+```text
+node scripts/check-h1-electron-e2e.mjs
+```
+
+Attempt controls and runtime facts:
+
+- candidate commit: `c8b4fa2ca8be5239194879ec09380f43bf764af8`;
+- attempts consumed: `1`;
+- launches: `browser=0`, `electron=1`;
+- fixed seed: `47`;
+- retry performed: `false`;
+- GPU: Google/Intel ANGLE Direct3D11, software fallback `false`;
+- hard page/request errors: none;
+- cleanup: app, page, process, listener, and isolated profile PASS; process exit `0`.
+
+The accepted route proved:
+
+1. canonical isolated root, Main Menu, New Game, and authored flight;
+2. public Helios Station waypoint/autopilot;
+3. physical `[ E ] DOCK AT STATION` prompt at `38.043 WU` from the authored berth;
+4. one public held-`E` input setting `ui.docked=true` at `station_helios`;
+5. visible Station command dock through locator authority
+   `locator:[data-screen=station] .sx-dock`;
+6. Ledger tab selected with title `The Ship's Ledger`, accessible label
+   `st-ledger-station-title`, and a real content surface.
+
+All six original-resolution accepted frames were reviewed for functional route continuity. That
+review does not issue a human legibility, art-quality, or visual-polish verdict.
+
+The accepted files live under `continuation-pass-c8b4fa2c/`; their SHA-256 digests and the bounded
+claim are in `continuation-summary.json`.
+
+## Retained failure trail
+
+- `continuation-failure-5c5421ac/` — **PRODUCT**, legacy 90-WU station-center arrival stopped
+  outside truthful berth capture;
+- `continuation-failure-93143293/` — **PRODUCT**, direct-to-berth course met the compound station
+  silhouette outside its corridor gap;
+- `continuation-failure-147df4dd/` — **HARNESS**, an immediate opacity resample contradicted the
+  passed Station locator, `visibleScreens=["station"]`, and the visible Station frame.
+
+Each fingerprint has a separate focused repair receipt and seconds-scale regression. The root files
+described below remain the original candidate `01a398f0` Main Menu harness failure.
 
 ## Attempt
 
@@ -56,7 +106,7 @@ not page/request errors.
 
 ## What survives
 
-H1 Row 8 proves only:
+The original root attempt proved only:
 
 - the shipped headed Electron shell launches in an isolated profile;
 - its canonical clean loopback root is established;
@@ -73,14 +123,14 @@ It does **not** prove:
 - the station command dock or Ledger;
 - the complete Electron sanity chain requested by H2 Decision 6.
 
-Row 2 separately proves Electron parity for the two Ledger hosts after its own route preparation. It
-does not fill this Row 8 gap because it did not prove this exact menu → physical dock → Ledger chain.
-H2 must therefore perform the short manual Electron smoke or defer Decision 6; it must not infer a PASS
-from the visible Main Menu alone.
+That original attempt did not fill Row 8. The accepted `c8b4fa2c` continuation now proves the exact
+menu → physical dock → Ledger source-Electron chain and closes H2 Decision 6's functional go/no-go
+question. It does not close any separate human visual, physical-controller, packaged-runtime, or
+matched-performance gate.
 
 ## NOT performance evidence
 
-`report.json`, `failure-state.json`, and `launch-counts.json` are stamped
+The original and continuation reports are stamped
 `"informational_contended": true` and `"noPerformanceEvidence": true`. Timestamps, timeout controls,
 and cleanup lifecycle metadata are diagnostics only. No renderer/per-frame sampler, p95/p99, hitch
 measure, or matched before/after result was collected. Matched performance remains Phase H3.
@@ -93,3 +143,7 @@ measure, or matched before/after result was collected. Matched performance remai
 - `report.json` — complete one-attempt Electron lifecycle and cleanup record;
 - `launch-counts.json` — one Electron launch, zero Browser launches, no retry;
 - `run.log` — canonical-root, intro, and failure lines.
+- `continuation-summary.json` — accepted candidate, bounded functional claim, retained failures, and
+  pass-artifact digests;
+- `continuation-pass-c8b4fa2c/` — six original-resolution frames, report, launch controls, and log;
+- `continuation-failure-*/` — the three preserved product/harness continuation failures.

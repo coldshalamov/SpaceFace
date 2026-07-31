@@ -1,0 +1,16 @@
+{
+  "schema": "spaceface.h1-electron-e2e-launch-counts.v1",
+  "row": 8,
+  "candidateCommit": "c8b4fa2ca8be5239194879ec09380f43bf764af8",
+  "attemptsConsumed": 1,
+  "retryPerformed": false,
+  "launches": {
+    "browser": 0,
+    "electron": 1
+  },
+  "disposition": "PASS",
+  "updatedAt": "2026-07-31T16:54:12.280Z",
+  "informational_contended": true,
+  "informational_contended_note": "updatedAt is attempt-control metadata, not performance evidence.",
+  "noPerformanceEvidence": true
+}
