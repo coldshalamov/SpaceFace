@@ -25,7 +25,10 @@ test('the pq019-surface-heist manifest is a one-use headed Browser acceptance ce
   assert.equal(manifest.id, 'pq019-surface-heist');
   assert.equal(manifest.runtimeKind, 'browser');
   assert.equal(manifest.mode, 'acceptance');
-  assert.deepEqual(manifest.commandArgs, ['scripts/probe-pq019-surface-heist.mjs']);
+  assert.deepEqual(manifest.commandArgs, [
+    'scripts/probe-pq019-surface-heist.mjs',
+    '--continuation-only',
+  ]);
   assert.equal(manifest.requireBrokerClaim, true);
   assert.equal(manifest.maxLaunchesPerCandidate, 1,
     'the H1 one-attempt rule must be structural at the broker boundary');
@@ -220,6 +223,17 @@ test('one headed Browser process runs the six isolated contexts sequentially', (
   assert.ok(source.includes("reducedMotion: options.reducedMotion ? 'reduce' : 'no-preference'"));
   assert.ok(source.includes("assert.doesNotMatch(scenarioGpu.renderer, /SwiftShader|llvmpipe|software/i"),
     'the functional receipt must not silently come from software rendering');
+});
+
+test('the fresh H1 claim executes only the four missing route contexts', () => {
+  const source = probe();
+  assert.ok(source.includes("const CONTINUATION_ONLY = process.argv.includes('--continuation-only')"));
+  assert.match(source, /if \(!DIAGNOSTIC && !CONTINUATION_ONLY\)[\s\S]*?process\.exit\(2\)/,
+    'an acceptance claim must fail closed before consumption unless it is the declared continuation');
+  assert.match(source, /const abandon = CONTINUATION_ONLY \? null : await runScenario\('dom-abandon'/);
+  assert.match(source, /const lawful = CONTINUATION_ONLY \? null : await runScenario\('lawful-observe'/);
+  assert.match(source, /CONTINUATION_ONLY[\s\S]*?assertContinuationContract\(\{ fenced, confiscated, destroyed, recovery \}\)/);
+  assert.match(source, /retainedEvidenceReferences:[\s\S]*?row4-pq019-surface-heist/);
 });
 
 test('the H1 probe contains no performance sampler or timing result field', () => {

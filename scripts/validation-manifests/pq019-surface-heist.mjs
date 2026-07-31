@@ -76,7 +76,7 @@ export function createPq019SurfaceHeistManifest(overrides = {}) {
     id: 'pq019-surface-heist',
     runtimeKind: 'browser',
     command: process.execPath,
-    commandArgs: ['scripts/probe-pq019-surface-heist.mjs'],
+    commandArgs: ['scripts/probe-pq019-surface-heist.mjs', '--continuation-only'],
     mode: 'acceptance',
     // Deterministic gates that must be green before a claim is issued. These are exactly the
     // headless checks that prove the mission route without a browser lease.

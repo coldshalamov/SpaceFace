@@ -34,6 +34,7 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const ARTIFACT_ROOT = path.join(ROOT, '.devshots', 'pq019-surface-heist');
 const VIEWPORT = Object.freeze({ width: 1460, height: 900 });
 const DIAGNOSTIC = process.argv.includes('--diagnostic');
+const CONTINUATION_ONLY = process.argv.includes('--continuation-only');
 const FIXED_SEED = Number(process.env.SF_PROBE_SEED) > 0
   ? Number(process.env.SF_PROBE_SEED)
   : PQ019_SURFACE_HEIST_FIXED_SEED;
@@ -43,6 +44,11 @@ const HEIST_SECTOR_ID = 'sector_tethys_junction';
 const HEIST_VOICE_ID = 'pq019c:capsule-run';
 const HEIST_VOICE_PRIORITY = 60;
 const ACCEPTANCE_SETUP_ID = 'h1:pq019-surface-heist';
+
+if (!DIAGNOSTIC && !CONTINUATION_ONLY) {
+  console.error('[pq019-surface-heist] CONTINUATION_ONLY_REQUIRED: retained DOM-abandon and lawful-observe evidence must not be rerun');
+  process.exit(2);
+}
 
 const brokerGate = await requireBrokerClaimOrDiagnostic({
   outputRoot: ARTIFACT_ROOT,
@@ -147,7 +153,7 @@ try {
     }
   };
 
-  const abandon = await runScenario('dom-abandon', {}, async ({ page, screenshot }) => {
+  const abandon = CONTINUATION_ONLY ? null : await runScenario('dom-abandon', {}, async ({ page, screenshot }) => {
     const fixture = await prepareFixture(page, { recoveryEnabled: false });
     const accepted = await acceptOfferThroughStationDom(page, fixture.offer.id, {
       screenshot,
@@ -203,7 +209,7 @@ try {
     };
   });
 
-  const lawful = await runScenario('lawful-observe', {}, async ({ page, screenshot }) => {
+  const lawful = CONTINUATION_ONLY ? null : await runScenario('lawful-observe', {}, async ({ page, screenshot }) => {
     const fixture = await prepareFixture(page, { recoveryEnabled: false });
     const accepted = await acceptOfferThroughStationDom(page, fixture.offer.id, {
       screenshot,
@@ -336,7 +342,9 @@ try {
     return summary;
   });
 
-  receipt = assertAcceptanceContract({ abandon, lawful, fenced, confiscated, destroyed, recovery });
+  receipt = CONTINUATION_ONLY
+    ? assertContinuationContract({ fenced, confiscated, destroyed, recovery })
+    : assertAcceptanceContract({ abandon, lawful, fenced, confiscated, destroyed, recovery });
 } catch (error) {
   if (activePage && !activePage.isClosed()) {
     await activePage.screenshot({
@@ -371,8 +379,55 @@ if (receipt.disposition !== 'PASS') {
   process.exit(1);
 }
 
-console.log('[pq019-surface-heist] PASS — five terminal routes plus DOM abandonment');
+console.log(CONTINUATION_ONLY
+  ? '[pq019-surface-heist] PASS — four missing terminal/composition routes; retained contexts skipped'
+  : '[pq019-surface-heist] PASS — five terminal routes plus DOM abandonment');
 console.log(`  receipt: ${repoRel(path.join(ARTIFACT_ROOT, 'route-receipt.json'))}`);
+
+function assertContinuationContract({ fenced, confiscated, destroyed, recovery }) {
+  assert.equal(fenced.terminal.outcome, 'fenced_success');
+  assert.equal(confiscated.terminal.outcome, 'lawful_confiscation');
+  assert.equal(destroyed.terminal.outcome, 'payload_destroyed');
+  assert.equal(recovery.firstTerminal.outcome, 'payload_destroyed');
+  assert.equal(recovery.terminal.outcome, 'fenced_success');
+  assert.equal(recovery.recoveryOffer.heistAttempt, 1);
+  assert.ok(recovery.recoveryOffer.rewardCr < recovery.fixture.offer.rewardCr);
+  assert.equal(recovery.accessibility.reducedMotion, true);
+  assert.equal(recovery.accessibility.floorCarriesMeaningInText, true);
+  assertComposedFloor(fenced.composedFloor);
+
+  const all = [fenced, confiscated, destroyed, recovery];
+  for (const route of all) {
+    assert.equal(route.accepted.acceptedThroughDom, true, `${route.id}: offer must be accepted through DOM`);
+    assert.equal(route.recordedSeed ?? route.fixture?.recordedSeed, FIXED_SEED,
+      `${route.id}: fixed seed drifted`);
+    assert.equal(route.pageIssues.length, 0, `${route.id}: page errors are not allowed`);
+    assert.equal(route.terminal.terminalReceiptCount, 1, `${route.id}: exactly one terminal receipt`);
+    assert.equal(route.terminal.missionSettlementCount, 1, `${route.id}: mission settles exactly once`);
+  }
+  return {
+    schema: 'spaceface.pq019-surface-heist.v1',
+    runtime: 'browser-chromium-headed',
+    disposition: 'PASS',
+    problems: [],
+    continuationOnly: true,
+    retainedEvidenceReferences: [
+      'design/program/roadmap/evidence/h1/row4-pq019-surface-heist/EVIDENCE.md#functional-evidence-that-survived',
+    ],
+    skippedAcceptedContexts: ['dom-abandon', 'lawful-observe'],
+    fixedSeed: FIXED_SEED,
+    recordedSeeds: all.map((row) => ({ id: row.id, seed: row.recordedSeed ?? row.fixture?.recordedSeed })),
+    gpu,
+    brokerManifestId: manifest.id,
+    launchContract: 'one headed browser process; four missing isolated route contexts run sequentially',
+    noPerformanceEvidence: true,
+    noPerformanceEvidenceNote:
+      'This continuation contains functional states, DOM facts, counts, booleans, and screenshots only. '
+      + 'It records no frame timing, percentile, hitch, or speed measurement; matched performance remains Phase H3.',
+    routes: { fenced, confiscated, destroyed, recovery },
+    screenshots: all.flatMap((row) => row.screenshots || []),
+  };
+}
 
 function assertAcceptanceContract({ abandon, lawful, fenced, confiscated, destroyed, recovery }) {
   assert.equal(abandon.terminal.outcome, 'abandoned');

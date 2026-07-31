@@ -2213,6 +2213,7 @@
         "test/pq019-surface-heist-manifest.test.mjs"
       ],
       "checks": [
+        "node --test test/pq019-surface-heist-manifest.test.mjs",
         "npm run check:pq019c:mission",
         "npm run check:pq019b:seams",
         "npm run check:pq019a:facility-embodiment"
