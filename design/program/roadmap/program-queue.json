@@ -2528,7 +2528,7 @@
       "priority": 15,
       "title": "Capture the missing surface-heist terminal routes",
       "kind": "acceptance_capture",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-019.route-harness-repair"
       ],
@@ -2550,7 +2550,9 @@
         "npm run check:pq019b:seams",
         "npm run check:pq019a:facility-embodiment"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-019-surface-heist-h1-capture-REPORT.md"
+      ],
       "brief": "Use one fresh broker claim to capture the missing heist/fence, confiscation, destruction, recovery, and final one-voice composition routes without reclassifying the retained DOM-abandon and lawful-observe evidence as new."
     },
     {
@@ -3049,7 +3051,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Review four distinct facility/capsule identities and all five live terminal routes after valid evidence exists.",
-      "blocker": "The capsule framings and most terminal routes were not captured."
+      "blocker": "Named owner SpaceFace human visual/fun reviewer is unavailable; machine H1 evidence cannot issue the independent art/fun verdict."
     },
     {
       "id": "PQ-019.h3-performance",
@@ -3072,7 +3074,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Capture matched normal and traffic-loaded facility/heist routes in a quiet window.",
-      "blocker": "The route harnesses and PERF-00 evidence authority are not closed."
+      "blocker": "PQ-034.native-closure and a quiet-machine performance window are required; H1 route capture is closed."
     },
     {
       "id": "PQ-019.promote",

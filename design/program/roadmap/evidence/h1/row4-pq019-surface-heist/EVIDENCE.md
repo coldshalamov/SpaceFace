@@ -1,18 +1,53 @@
 # H1 row 4 — PQ-019C surface-heist Browser broker cell
 
-**Overall result: FAIL — HARNESS (partial functional evidence survives).**
+**Overall result: PASS — retained DOM/lawful evidence plus accepted four-context continuation.**
 
-The one permitted acceptance attempt was consumed through the registered broker manifest:
+The original H1 attempt failed in its third context and is preserved below without revision. Exact
+dispatch unit `PQ-019.surface-heist-h1-capture` later consumed a fresh materially changed candidate
+through the same registered broker manifest:
 
 ```text
 node scripts/validation-broker-cli.mjs --manifest pq019-surface-heist
 ```
 
-The broker issued and consumed one claim at fixed seed `19019`, launched one headed Browser process,
-and used six intended sequential isolated contexts. The attempt stopped in the third context, so it was
-not retried and no diagnostic Browser launch was made.
+The accepted continuation intentionally skipped the already-valid `dom-abandon` and `lawful-observe`
+contexts. Browser claim `16760-d2392f32208ac30dca5602a5`, candidate commit `f30a35d0`, and
+candidate digest `df8e06183f7ab95c7731b195709423864091583e57e01521b83a780ac962bb6f`
+ran the four missing isolated contexts in one headed Browser process at fixed seed `19019`.
 
-## Exact failure and classification
+## Accepted continuation
+
+- **Heist + fence:** the live tether route produced one law-signed incident, one patrol lease,
+  WANTED heat, the composed `Theft witnessed — WANTED, and Concord patrol units are inbound` floor,
+  and exactly one `1800`-credit settlement.
+- **Confiscation:** production facility contact committed `lawful_confiscation`; one terminal
+  receipt, one mission settlement, one faction outcome, one heat/law effect, and zero payout.
+- **Destruction:** the production combat kernel destroyed the live capsule and committed
+  `payload_destroyed`; owner effects remained exactly once and payout remained zero.
+- **Reduced-stake recovery:** destroyed attempt `m_2` produced one authored retry offer; the ordinary
+  station DOM accepted attempt `m_3`; its real patrol lease remained live; fence settlement paid
+  exactly `900`, half the first-pass stake. Reduced motion was active and the result remained
+  complete in text.
+- **Presentation:** theft priority `80` preempted onboarding; terminal priority `100` preempted
+  repeatable combat; life-critical danger retained priority `110`. No heist line duplicated as a
+  toast, and no page errors were recorded.
+- **Runtime:** real Intel/ANGLE D3D11 WebGL. This is functional evidence only; no frame time,
+  percentile, hitch, or speed claim is present.
+
+Accepted screenshots:
+
+- [composed witness/WANTED/patrol floor](surface-heist-continuation/fenced-composed-wanted.png)
+- [fenced settlement](surface-heist-continuation/fenced-success.png)
+- [lawful confiscation](surface-heist-continuation/confiscation.png)
+- [production-combat destruction](surface-heist-continuation/destruction.png)
+- [reduced-motion half-stake offer](surface-heist-continuation/recovery-offer-reduced-motion.png)
+- [reduced-motion retry success](surface-heist-continuation/recovery-success-reduced-motion.png)
+
+Machine-readable continuation artifacts are under
+[`surface-heist-continuation/`](surface-heist-continuation/): broker claim and consumption record,
+fast-gate digests, launch counts, terminal run result, and the complete route receipt.
+
+## Retained original failure and classification
 
 The saved stack localises the failure exactly:
 

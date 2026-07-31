@@ -25,7 +25,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 | 1 | headed `check:assets:live` | **PASS** | [row1-assets-live](evidence/h1/row1-assets-live/EVIDENCE.md) |
 | 2 | PQ-021 broker cell + Electron parity | **PASS** | [row2-pq021-ledger](evidence/h1/row2-pq021-ledger/EVIDENCE.md) |
 | 3 | PQ-019A presentation + counts | **PASS — facilities/counts retained; brokered capsule continuation accepted at runtime zooms 45/66/108** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
-| 4 | `pq019-surface-heist` broker manifest | **REPAIR PASS / H1 CONTINUATION READY (DOM abandon + lawful observe survive; remaining routes unproven)** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
+| 4 | `pq019-surface-heist` broker manifest | **PASS — retained DOM/lawful evidence plus accepted fence/confiscation/destruction/recovery continuation** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
 | 5 | PQ-020 Ceres functional route | **REPAIR PASS / H1 CONTINUATION READY (valid Helios→Ceres jump survives; remainder unproven)** | [row5-pq020-ceres-route](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) |
 | 6 | PQ-023 cues in motion | **REPAIR PASS / H1 CONTINUATION READY (combat motion survives; Cathedral sequence and Electron parity unproven)** | [row6-pq023-cues](evidence/h1/row6-pq023-cues/EVIDENCE.md) |
 | 7 | PQ-022 asset leaves | **PASS — one Browser launch; 11 exact identities, 13 admitted stills** | [row7-pq022-asset-leaves](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md) |
@@ -72,19 +72,20 @@ witness/WANTED/pursuit floor pill and no competing pill?
   facility stills/counts plus the accepted brokered capsule-only continuation at applied runtime
   zooms `45/66/108`. The capsule art question is now answerable by a human reviewer; no such verdict
   is implied by the functional acceptance.
-- [row 4 registered surface-heist attempt](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) — the DOM
-  abandon and lawful-observe evidence survive, but the remaining heist/fence, confiscation,
-  destruction, recovery, and final one-voice composition routes are unproven after the HARNESS
-  failure.
+- [row 4 surface-heist evidence](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) — retained DOM
+  abandon/lawful-observe evidence plus the accepted candidate-bound continuation for the composed
+  witness/WANTED/patrol floor, fence, confiscation, production-combat destruction, and both
+  reduced-stake attempts.
 
 PQ-019C is deliberately folded into this broader PQ-019 decision; it does **not** receive a seventh
-standalone decision. Record useful facility/lawful-observe notes now, but do not promote the parent on
-partial evidence.
+standalone decision. Functional H1 is complete, but do not infer the independent human art/fun
+verdict or matched performance from machine route acceptance.
 
-**Unblocks:** a facility-only art note now. Full PQ-019A/PQ-019C closure and the parent PQ-019
-promotion remain blocked on valid capsule and remaining functional-route evidence.
+**Unblocks:** H2 visual/fun disposition. Parent PQ-019 promotion still requires this independent
+human verdict and H3 matched performance.
 
-**Verdict:** _____________
+**Verdict:** BLOCKED — named owner `SpaceFace human visual/fun reviewer`; no independent human
+reviewer is available in this autonomous recovery run
 
 ---
 

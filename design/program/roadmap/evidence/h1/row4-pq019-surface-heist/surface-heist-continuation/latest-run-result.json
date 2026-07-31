@@ -1,0 +1,37 @@
+{
+  "schema": "spaceface.validation-run-result.v1",
+  "recordedAt": "2026-07-31T07:54:08.354Z",
+  "status": "pass",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 113817,
+  "pidRecord": {
+    "pid": 15512,
+    "command": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "scripts/probe-pq019-surface-heist.mjs",
+      "--continuation-only"
+    ],
+    "startedAt": "2026-07-31T07:52:14.536Z",
+    "platform": "win32",
+    "finishedAt": "2026-07-31T07:54:08.353Z",
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "killResult": null
+  },
+  "ownership": {
+    "probeId": "pq019-surface-heist",
+    "runtimeKind": "browser",
+    "browserOwned": true,
+    "serverOwned": true,
+    "pid": 15512
+  },
+  "fixedSeed": 19019,
+  "failureFingerprint": null,
+  "family": null,
+  "routeDigest": "7347f99c3d2cbe9893e7005b7ba063dcadb7710155408b66e8e59174cdc87b41",
+  "regressionDigest": "f13e1669d001d2796559dddd9257d2af4f5e753a1b3df7ea86db92812306d9e8",
+  "candidateDigest": "df8e06183f7ab95c7731b195709423864091583e57e01521b83a780ac962bb6f"
+}
