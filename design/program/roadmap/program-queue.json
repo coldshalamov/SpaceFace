@@ -2527,7 +2527,7 @@
       "priority": 15,
       "title": "Capture the missing surface-heist terminal routes",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-019.route-harness-repair"
       ],
