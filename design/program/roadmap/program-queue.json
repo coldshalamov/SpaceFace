@@ -2368,6 +2368,34 @@
       "brief": "Pin candidate 93143293 remaining active at 115.110 WU with zero displayed speed after a direct-to-berth course met Helios's compound silhouette outside the gap; stage manifest-backed station autopilot through the authored corridor mouth before terminal berth capture. Do not launch Electron in this repair unit."
     },
     {
+      "id": "PQ-041.electron-smoke-station-visibility-repair",
+      "parentId": "PQ-041",
+      "priority": 23,
+      "title": "Remove the post-dock Station visibility false negative",
+      "kind": "acceptance_repair",
+      "state": "claimed",
+      "owner": "Codex primary integrator",
+      "dependsOn": [
+        "PQ-041.electron-smoke-corridor-approach-repair"
+      ],
+      "mutexes": [
+        "electron-e2e-harness"
+      ],
+      "paths": [
+        "scripts/check-h1-electron-e2e.mjs",
+        "test/h1-electron-e2e.test.mjs",
+        "test/fixtures/pq041-station-visibility-failure.json",
+        "design/program/roadmap/active/PQ-041.md",
+        "design/program/roadmap/receipts/PQ-041-electron-smoke-station-visibility-repair-REPORT.md"
+      ],
+      "checks": [
+        "node --test test/h1-electron-e2e.test.mjs",
+        "npm run check:launch-policy"
+      ],
+      "receiptRefs": [],
+      "brief": "Pin candidate 147df4dd already docked with visibleScreens=[station] and a visibly complete Station frame after the locator wait passed, then remove the immediate opacity-sensitive querySelector resample. Reuse locator-backed visibility authority and do not launch Electron in this repair unit."
+    },
+    {
       "id": "PQ-024.survey-route-harness",
       "parentId": "PQ-024",
       "priority": 7,
@@ -2755,12 +2783,12 @@
       "priority": 20,
       "title": "Continue the repaired Electron end-to-end smoke",
       "kind": "acceptance_capture",
-      "state": "claimed",
-      "owner": "Codex primary integrator",
+      "state": "blocked",
       "dependsOn": [
         "PQ-041.electron-smoke-harness-repair",
         "PQ-041.electron-smoke-dock-arrival-repair",
-        "PQ-041.electron-smoke-corridor-approach-repair"
+        "PQ-041.electron-smoke-corridor-approach-repair",
+        "PQ-041.electron-smoke-station-visibility-repair"
       ],
       "mutexes": [
         "electron-shell",
@@ -2777,7 +2805,8 @@
         "npm run check:launch-policy"
       ],
       "receiptRefs": [],
-      "brief": "Spend one fresh candidate-bound Electron attempt after the semantic menu-visibility, truthful station dock-arrival, and corridor-approach repairs, preserving the retained failed attempts, and complete the Main Menu to New Game to flight to dock to Ledger smoke."
+      "brief": "Spend one fresh candidate-bound Electron attempt after the semantic menu-visibility, truthful station dock-arrival, corridor-approach, and Station visibility repairs, preserving the retained failed attempts, and complete the Main Menu to New Game to flight to dock to Ledger smoke.",
+      "blocker": "Candidate 147df4dd reached the physical dock prompt and public E input set docked=true with station_helios and visibleScreens=[station]; the failure screenshot visibly shows the complete Station screen. The harness immediately re-sampled opacity through querySelector and returned screenVisible=false. Exact repair PQ-041.electron-smoke-station-visibility-repair must be focused-green before another candidate may launch."
     },
     {
       "id": "PQ-007.focused-implementation",
