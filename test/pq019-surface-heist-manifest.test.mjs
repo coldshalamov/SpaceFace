@@ -277,15 +277,24 @@ test('one-voice acceptance allows preempted tutorials but no duplicate heist slo
 test('the live patrol fixture outlives both reduced-stake attempts', () => {
   const source = probe();
   assert.match(source, /const ACCEPTANCE_PATROL_PHASE_S = 120/);
+  assert.match(source, /const ACCEPTANCE_PATROL_DURABILITY = 1_000_000/);
   assert.ok(source.includes('patrolPhaseS: ACCEPTANCE_PATROL_PHASE_S'),
     'the Node-side duration must be passed explicitly into the page context');
+  assert.ok(source.includes('patrolDurability: ACCEPTANCE_PATROL_DURABILITY'),
+    'the Node-side durability must be passed explicitly into the page context');
   for (const phase of ['commissionS', 'departS', 'approachS', 'workS', 'loadS', 'unloadS', 'dwellS']) {
     assert.ok(source.includes(`${phase}: patrolPhaseS`),
       `${phase} must not expire the real patrol job between recovery attempts`);
   }
+  for (const field of ['hull', 'hullMax', 'shield', 'shieldMax']) {
+    assert.ok(source.includes(`${field}: patrolDurability`),
+      `${field} must survive the real Tethys reentry/combat environment`);
+  }
   assert.ok(source.includes('PQ019_PATROL_LEASE_MISSING'));
   assert.ok(source.includes('patrolJobs:'),
     'a future owner disagreement must preserve the live job ledger');
+  assert.ok(source.includes('fixturePatrol:'),
+    'a future owner disagreement must distinguish job expiry from hull removal');
 });
 
 test('the H1 probe contains no performance sampler or timing result field', () => {

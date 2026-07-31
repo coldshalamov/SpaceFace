@@ -45,6 +45,7 @@ const HEIST_VOICE_ID = 'pq019c:capsule-run';
 const HEIST_VOICE_PRIORITY = 80;
 const ACCEPTANCE_SETUP_ID = 'h1:pq019-surface-heist';
 const ACCEPTANCE_PATROL_PHASE_S = 120;
+const ACCEPTANCE_PATROL_DURABILITY = 1_000_000;
 
 if (!DIAGNOSTIC && !CONTINUATION_ONLY) {
   console.error('[pq019-surface-heist] CONTINUATION_ONLY_REQUIRED: retained DOM-abandon and lawful-observe evidence must not be rerun');
@@ -538,7 +539,9 @@ async function installObservers(page) {
 }
 
 async function prepareFixture(page, { recoveryEnabled }) {
-  return page.evaluate(async ({ sectorId, stationId, type, recovery, patrolPhaseS }) => {
+  return page.evaluate(async ({
+    sectorId, stationId, type, recovery, patrolPhaseS, patrolDurability,
+  }) => {
     const sf = window.SF;
     const state = sf.state;
     const world = sf.registry.get('world');
@@ -575,7 +578,12 @@ async function prepareFixture(page, { recoveryEnabled }) {
     const patrol = sf.helpers.spawnEntity({
       type: 'ship', team: 2, factionId: 'faction_scn',
       pos: { x: launcher.pos.x + 200, z: launcher.pos.z + 60 },
-      radius: 9, mass: 24, hull: 100, hullMax: 100, collides: true, ttl: Infinity,
+      radius: 9, mass: 24,
+      hull: patrolDurability,
+      hullMax: patrolDurability,
+      shield: patrolDurability,
+      shieldMax: patrolDurability,
+      collides: true, ttl: Infinity,
       data: {
         worldRecordId: 'h1_pq019_patrol', acceptanceFixture: true,
         ai: { lawful: true, archetype: 'patrol_lawman', passive: true },
@@ -599,6 +607,11 @@ async function prepareFixture(page, { recoveryEnabled }) {
       dwellS: patrolPhaseS,
     });
     if (!job) throw new Error('npcJobsRuntime refused the lawful patrol fixture');
+    const patrolJobId = typeof job === 'string' ? job : (job.id || job.jobId || null);
+    window.__PQ019_H1_FIXTURE__ = {
+      patrolEntityId: patrol.id,
+      patrolJobId,
+    };
 
     const { buildHeistOffer } = await import('/src/data/heistMission.js');
     const missions = sf.registry.get('missions');
@@ -623,7 +636,7 @@ async function prepareFixture(page, { recoveryEnabled }) {
       },
       witnessStationId: station.id,
       patrolEntityId: patrol.id,
-      patrolJobId: typeof job === 'string' ? job : (job.id || job.jobId || null),
+      patrolJobId,
       launcherHeadId: launcher.id,
       setup: 'live station witness + live npcJobsRuntime patrol; no law receipt or heist state injected',
     };
@@ -633,6 +646,7 @@ async function prepareFixture(page, { recoveryEnabled }) {
     type: HEIST_TYPE,
     recovery: recoveryEnabled,
     patrolPhaseS: ACCEPTANCE_PATROL_PHASE_S,
+    patrolDurability: ACCEPTANCE_PATROL_DURABILITY,
   });
 }
 
@@ -811,7 +825,10 @@ async function latchAndPresentTheft(page) {
     sf.bus.emit('tether:latched', { targetId: capsule.id, type: 'tether_massline' });
     arbiter?.update?.(0, state);
     const mission = (state.missions.active || []).find((candidate) => candidate?.heist);
+    const fixturePatrolId = window.__PQ019_H1_FIXTURE__?.patrolEntityId ?? null;
+    const fixturePatrol = fixturePatrolId == null ? null : state.entities.get(fixturePatrolId);
     return {
+      simTime: Number(state.simTime) || 0,
       capsuleId: capsule.id,
       possessed: mission?.heist?.possessed === true,
       lawIncidentReceiptId: mission?.heist?.lawIncidentReceiptId || null,
@@ -827,6 +844,13 @@ async function latchAndPresentTheft(page) {
           controlled: !!entry.control,
           controlClaimId: entry.control?.claimId || null,
         })),
+      fixturePatrol: fixturePatrol ? {
+        id: fixturePatrol.id,
+        alive: fixturePatrol.alive !== false,
+        hull: Number(fixturePatrol.hull) || 0,
+        shield: Number(fixturePatrol.shield) || 0,
+        jobId: fixturePatrol.data?.jobId || null,
+      } : null,
     };
   }, ACCEPTANCE_SETUP_ID);
   assert.equal(theft.possessed, true, 'tether:latched must transfer heist ownership');
