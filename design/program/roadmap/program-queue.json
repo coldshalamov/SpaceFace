@@ -2257,7 +2257,7 @@
       "priority": 5,
       "title": "Repair the Cathedral cue-capture admission ordering",
       "kind": "acceptance_repair",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-023.corridor-cues-implementation"
       ],
@@ -2275,7 +2275,9 @@
         "npm run check:pq023:corridor-cues",
         "npm run check:presentation"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-023-cues-harness-repair-REPORT.md"
+      ],
       "brief": "Move or target the player into authored-admission range before waiting for ready Cathedral presentation, then pin the prior unsatisfiable ordering fingerprint. Preserve the valid combat/reduced/dense H1 evidence and do not recapture it."
     },
     {
@@ -2310,7 +2312,7 @@
       "priority": 7,
       "title": "Author the missing headed survey-to-relay route cell",
       "kind": "acceptance_repair",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-024.headless-implementation"
       ],

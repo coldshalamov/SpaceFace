@@ -89,8 +89,9 @@ try {
       fromSectorId: 'sector_helios_prime',
     });
   });
+  const initialRoot = await waitForCathedralRoot(page, 'failed');
+  await frameCathedral(page, initialRoot.rootId);
   const initial = await waitForCathedralState(page, 'failed');
-  await frameCathedral(page, initial.rootId);
 
   const transitions = [];
   await setAccessibility(page, false);
@@ -310,6 +311,24 @@ async function readImpactProfiles(targetPage) {
     };
     return { autocannon: pick('wpn_autocannon_m'), flak: pick('wpn_flak_turret_s') };
   });
+}
+
+async function waitForCathedralRoot(targetPage, status) {
+  const handle = await targetPage.waitForFunction((expected) => {
+    const sf = window.SF;
+    const record = sf?.state?.sites?.worldById?.world_site_wreck_cathedral;
+    const root = sf?.state?.entityList?.find((entity) => entity?.alive !== false
+      && entity.data?.worldSiteId === 'world_site_wreck_cathedral'
+      && entity.data?.role === 'world_site_root');
+    if (record?.components?.cathedral_hull?.status !== expected || !root?.pos) return false;
+    return {
+      rootId: root.id,
+      status: expected,
+      stageId: record.stageId,
+      presentationAdmission: root.presentationAdmission || null,
+    };
+  }, status, { timeout: 30_000 });
+  return handle.jsonValue();
 }
 
 async function waitForCathedralState(targetPage, status) {

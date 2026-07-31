@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import manifest, {
+  PQ023_CATHEDRAL_ADMISSION_REGRESSION,
   createPq023CorridorCuesManifest,
   PQ023_CORRIDOR_CUES_FIXED_SEED,
 } from '../scripts/validation-manifests/pq023-corridor-cues.mjs';
@@ -103,6 +104,52 @@ test('Cathedral transitions flow through production owners rather than status as
   assert.ok(source.includes("['ring', 'bracket', 'ring', 'bracket']"));
   assert.doesNotMatch(source, /components\.cathedral_hull\.status\s*=/);
   assert.doesNotMatch(source, /record\.stageId\s*=/);
+});
+
+test('Cathedral framing enters authored-admission range before either runtime waits for ready', () => {
+  assert.deepEqual(PQ023_CATHEDRAL_ADMISSION_REGRESSION, {
+    retainedPlayerDistanceWu: 4936.901,
+    authoredApproachDistanceWu: 2400,
+    failure: 'waited-for-authored-admission-before-framing',
+  });
+  assert.ok(
+    PQ023_CATHEDRAL_ADMISSION_REGRESSION.retainedPlayerDistanceWu
+      > PQ023_CATHEDRAL_ADMISSION_REGRESSION.authoredApproachDistanceWu,
+    'the retained failure position must remain outside Cathedral authored-admission range',
+  );
+
+  const cases = [
+    {
+      runtime: 'Browser',
+      source: capture(),
+      sequence: 'async function capturePq023WorldSiteSequences',
+      sequenceEnd: 'async function setPq023Accessibility',
+      discover: "waitForPq023CathedralRoot(targetPage, 'failed')",
+      frame: 'framePq023Cathedral(targetPage, initialRoot.rootId)',
+      admit: "waitForPq023CathedralState(targetPage, 'failed')",
+    },
+    {
+      runtime: 'Electron',
+      source: electron(),
+      sequence: "window.SF.registry.get('world').enterSector('sector_ceres_belt'",
+      sequenceEnd: 'const transitions = [];',
+      discover: "waitForCathedralRoot(page, 'failed')",
+      frame: 'frameCathedral(page, initialRoot.rootId)',
+      admit: "waitForCathedralState(page, 'failed')",
+    },
+  ];
+
+  for (const spec of cases) {
+    const start = spec.source.indexOf(spec.sequence);
+    const end = spec.source.indexOf(spec.sequenceEnd, start);
+    const body = spec.source.slice(start, end);
+    const discover = body.indexOf(spec.discover);
+    const frame = body.indexOf(spec.frame);
+    const admit = body.indexOf(spec.admit);
+    assert.ok(start >= 0 && end > start, `${spec.runtime} Cathedral sequence must remain inspectable`);
+    assert.ok(discover >= 0 && frame > discover && admit > frame,
+      `${spec.runtime} must discover, frame inside 2400 WU, then wait for authored admission`);
+  }
 });
 
 test('the Browser cell rejects software rendering and makes no H1 performance claim', () => {

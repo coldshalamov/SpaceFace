@@ -1092,8 +1092,9 @@ async function capturePq023WorldSiteSequences(targetPage) {
     });
   });
 
+  const initialRoot = await waitForPq023CathedralRoot(targetPage, 'failed');
+  const framing = await framePq023Cathedral(targetPage, initialRoot.rootId);
   const initial = await waitForPq023CathedralState(targetPage, 'failed');
-  const framing = await framePq023Cathedral(targetPage, initial.rootId);
   assert.ok(framing.subjectNdc
     && Math.abs(framing.subjectNdc.x) <= 0.9
     && Math.abs(framing.subjectNdc.y) <= 0.9,
@@ -1251,6 +1252,24 @@ async function applyPq023CathedralDamage(targetPage) {
       status: record?.components?.cathedral_hull?.status || null,
     };
   });
+}
+
+async function waitForPq023CathedralRoot(targetPage, expectedStatus) {
+  const handle = await targetPage.waitForFunction((status) => {
+    const sf = window.SF;
+    const record = sf?.state?.sites?.worldById?.world_site_wreck_cathedral;
+    const root = sf?.state?.entityList?.find((entity) => entity?.alive !== false
+      && entity.data?.worldSiteId === 'world_site_wreck_cathedral'
+      && entity.data?.role === 'world_site_root');
+    if (record?.components?.cathedral_hull?.status !== status || !root?.pos) return false;
+    return {
+      rootId: root.id,
+      status,
+      stageId: record.stageId,
+      presentationAdmission: root.presentationAdmission || null,
+    };
+  }, expectedStatus, { timeout: 30_000 });
+  return handle.jsonValue();
 }
 
 async function waitForPq023CathedralState(targetPage, expectedStatus) {

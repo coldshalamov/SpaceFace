@@ -6,6 +6,11 @@
 import path from 'node:path';
 
 export const PQ023_CORRIDOR_CUES_FIXED_SEED = 47;
+export const PQ023_CATHEDRAL_ADMISSION_REGRESSION = Object.freeze({
+  retainedPlayerDistanceWu: 4936.901,
+  authoredApproachDistanceWu: 2400,
+  failure: 'waited-for-authored-admission-before-framing',
+});
 
 export function createPq023CorridorCuesManifest(overrides = {}) {
   return {
