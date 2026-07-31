@@ -19,18 +19,23 @@ const consoleMessage = (type, text) => ({
   text: () => text,
 });
 
-test('only explicitly bracketed net::ERR_ABORTED requests are navigation cancellations', () => {
+test('only in-flight requests tagged by an expected navigation may become navigation cancellations', () => {
   const page = new FakePage();
   const tracker = collectPageIssues(page);
 
   page.emit('requestfailed', failedRequest('http://game.test/before.js', 'net::ERR_ABORTED'));
+  const cancelled = failedRequest('http://game.test/cancelled.js', 'net::ERR_ABORTED');
+  page.emit('request', cancelled);
   const token = tracker.beginExpectedNavigation('cold-continue');
-  page.emit('requestfailed', failedRequest('http://game.test/cancelled.js', 'net::ERR_ABORTED'));
+  const startedDuringNavigation = failedRequest('http://game.test/new-page.js', 'net::ERR_ABORTED');
+  page.emit('request', startedDuringNavigation);
   page.emit('requestfailed', failedRequest('http://game.test/broken.js', 'net::ERR_FAILED'));
   page.emit('console', consoleMessage('error', 'live console error'));
   page.emit('response', { status: () => 503, url: () => 'http://game.test/unavailable.js' });
   page.emit('pageerror', new Error('live page error'));
   assert.equal(tracker.endExpectedNavigation(token), true);
+  page.emit('requestfailed', cancelled);
+  page.emit('requestfailed', startedDuringNavigation);
   page.emit('requestfailed', failedRequest('http://game.test/after.js', 'net::ERR_ABORTED'));
 
   assert.equal(tracker.ignoredIssues.length, 1);
@@ -44,9 +49,27 @@ test('only explicitly bracketed net::ERR_ABORTED requests are navigation cancell
       'live console error',
       'HTTP 503 http://game.test/unavailable.js',
       'live page error',
+      'Request failed http://game.test/new-page.js: net::ERR_ABORTED',
       'Request failed http://game.test/after.js: net::ERR_ABORTED',
     ],
   );
+});
+
+test('completed requests lose expected-navigation attribution', () => {
+  const page = new FakePage();
+  const tracker = collectPageIssues(page);
+  const completed = failedRequest('http://game.test/completed.js', 'net::ERR_ABORTED');
+
+  page.emit('request', completed);
+  const token = tracker.beginExpectedNavigation('cold-continue');
+  page.emit('requestfinished', completed);
+  tracker.endExpectedNavigation(token);
+  page.emit('requestfailed', completed);
+
+  assert.equal(tracker.ignoredIssues.length, 0);
+  assert.deepEqual(tracker.errorIssues().map((issue) => issue.text), [
+    'Request failed http://game.test/completed.js: net::ERR_ABORTED',
+  ]);
 });
 
 test('navigation-cancellation classification is exact', () => {

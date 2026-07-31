@@ -3,9 +3,18 @@ export function collectPageIssues(page, options = {}) {
   const ignoreProbeWarnings = options.ignoreProbeWarnings === true;
   const issues = [];
   const ignoredIssues = [];
+  const activeRequests = new Set();
+  const expectedNavigationAborts = new Map();
   const expectedNavigationTokens = new Map();
   let nextExpectedNavigationToken = 1;
 
+  page.on('request', (request) => {
+    activeRequests.add(request);
+  });
+  page.on('requestfinished', (request) => {
+    activeRequests.delete(request);
+    expectedNavigationAborts.delete(request);
+  });
   page.on('console', (msg) => {
     const issue = { type: msg.type(), text: msg.text() };
     if (isGenericResourceLoadConsoleError(issue)) return;
@@ -23,14 +32,17 @@ export function collectPageIssues(page, options = {}) {
   });
   page.on('requestfailed', (request) => {
     const failure = request.failure();
+    const expectedNavigation = expectedNavigationAborts.get(request);
+    activeRequests.delete(request);
+    expectedNavigationAborts.delete(request);
     const issue = {
       type: 'error',
       text: `Request failed ${request.url()}${failure && failure.errorText ? `: ${failure.errorText}` : ''}`,
     };
-    if (expectedNavigationTokens.size > 0 && isNavigationCancelledRequest(failure)) {
+    if (expectedNavigation && isNavigationCancelledRequest(failure)) {
       ignoredIssues.push({
         ...issue,
-        expectedNavigation: [...expectedNavigationTokens.values()],
+        expectedNavigation: [...expectedNavigation],
       });
       return;
     }
@@ -51,7 +63,13 @@ export function collectPageIssues(page, options = {}) {
     },
     beginExpectedNavigation(label = 'expected-navigation') {
       const token = nextExpectedNavigationToken++;
-      expectedNavigationTokens.set(token, String(label));
+      const normalizedLabel = String(label);
+      expectedNavigationTokens.set(token, normalizedLabel);
+      for (const request of activeRequests) {
+        const labels = expectedNavigationAborts.get(request) || new Set();
+        labels.add(normalizedLabel);
+        expectedNavigationAborts.set(request, labels);
+      }
       return token;
     },
     endExpectedNavigation(token) {
