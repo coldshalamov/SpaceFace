@@ -297,6 +297,20 @@ test('the live patrol fixture outlives both reduced-stake attempts', () => {
     'a future owner disagreement must distinguish job expiry from hull removal');
 });
 
+test('the composed theft observation freezes atomically before real danger may preempt it', () => {
+  const source = probe();
+  const latchRoute = source.slice(
+    source.indexOf('async function latchAndPresentTheft'),
+    source.indexOf('async function emitFacilityContact'),
+  );
+  assert.ok(latchRoute.includes('if (composedFloorVisible) {'));
+  assert.ok(latchRoute.includes('window.SF.timeEffects.set(freezeId, { scale: 0 });'));
+  assert.ok(latchRoute.includes('freezeId: ACCEPTANCE_SETUP_ID'));
+  const observationRoute = latchRoute.slice(latchRoute.indexOf('await page.waitForFunction'));
+  assert.doesNotMatch(observationRoute, /await page\.evaluate\(\(freezeId\)/,
+    'the proof and freeze must not be separated by a browser-to-Node round trip');
+});
+
 test('the H1 probe contains no performance sampler or timing result field', () => {
   const source = probe();
   for (const forbidden of [

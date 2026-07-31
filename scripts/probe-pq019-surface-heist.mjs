@@ -861,20 +861,29 @@ async function latchAndPresentTheft(page) {
   }
   assert.ok(theft.heat > 0, 'the heat owner must consume the law-signed incident');
   try {
-    await page.waitForFunction(({ voiceId, priority }) => {
+    await page.waitForFunction(({ voiceId, priority, freezeId }) => {
       const floor = document.querySelector('#alerts .sf-alert--floor');
       const text = floor?.querySelector('.sf-alert__text')?.textContent || '';
       const surfaces = window.__PQ019_H1_TRACE__?.surfaces || [];
-      return floor && /Theft witnessed/i.test(text) && /WANTED/.test(text) && /patrol/i.test(text)
+      const composedFloorVisible = floor && /Theft witnessed/i.test(text)
+        && /WANTED/.test(text)
+        && /patrol/i.test(text)
         && surfaces.some((row) => row.id === voiceId && row.priority === priority && row.text === text);
-    }, { voiceId: HEIST_VOICE_ID, priority: HEIST_VOICE_PRIORITY }, { timeout: 10_000 });
+      if (composedFloorVisible) {
+        // Freeze in the same page turn that proves the floor. A separate evaluate() leaves a real
+        // frame in which priority-110 reentry danger can legally preempt this priority-80 line.
+        window.SF.timeEffects.set(freezeId, { scale: 0 });
+      }
+      return composedFloorVisible;
+    }, {
+      voiceId: HEIST_VOICE_ID,
+      priority: HEIST_VOICE_PRIORITY,
+      freezeId: ACCEPTANCE_SETUP_ID,
+    }, { timeout: 10_000 });
   } catch (_) {
     const snapshot = await captureHeistPresentationSnapshot(page);
     throw new Error(`PQ019_THEFT_PRESENTATION_STALLED ${JSON.stringify(snapshot)}`);
   }
-  await page.evaluate((freezeId) => {
-    window.SF.timeEffects.set(freezeId, { scale: 0 });
-  }, ACCEPTANCE_SETUP_ID);
   return theft;
 }
 
