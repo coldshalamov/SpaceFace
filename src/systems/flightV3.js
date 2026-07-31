@@ -18,9 +18,11 @@ import { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 import {
+  corridorStateFor,
   proxyScaleFor,
   resolveBerthWorld,
   resolveCollisionProxyManifest,
+  resolveCorridorAxisWorld,
 } from '../data/collisionProxyManifests.js';
 
 // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
@@ -809,6 +811,12 @@ export function resolveAutopilotTarget(state, autopilot) {
     if (manifest && manifest.docking) {
       const berth = resolveBerthWorld(entity, manifest);
       const scale = proxyScaleFor(entity, manifest);
+      const axis = resolveCorridorAxisWorld(entity, manifest);
+      const mouthRadius = positive(manifest.docking.corridor && manifest.docking.corridor.mouthRadius, 0) * scale;
+      const approach = {
+        x: finite(entity.pos.x) + axis.x * mouthRadius,
+        z: finite(entity.pos.z) + axis.z * mouthRadius,
+      };
       const berthDockRadius = positive(manifest.docking.berth && manifest.docking.berth.dockRadius, 12);
       const captureHalfWidth = positive(
         manifest.docking.capture && manifest.docking.capture.halfWidth,
@@ -818,12 +826,31 @@ export function resolveAutopilotTarget(state, autopilot) {
         12,
         Math.min(berthDockRadius * 2, captureHalfWidth || berthDockRadius * 2),
       );
+      const player = state.playerId != null && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(state.playerId)
+        : null;
+      const corridor = player && player.pos
+        ? corridorStateFor(manifest, entity, player.pos, player.vel)
+        : null;
+      // Targeting the berth directly from an arbitrary bearing can drive the ship into the compound
+      // station silhouette outside its authored gap. First converge on the corridor mouth. Switch
+      // to the berth slightly BEFORE the global 38-WU arrival floor could stop/deactivate the
+      // staging course, or immediately when the ship is already geometrically inside the lane.
+      const approachDistance = player && player.pos
+        ? Math.hypot(finite(player.pos.x) - approach.x, finite(player.pos.z) - approach.z)
+        : 0;
+      const approachSwitchRadius = Math.max(AUTOPILOT_ARRIVAL_RADIUS + 7, captureHalfWidth);
+      const berthStage = !player || !player.pos || approachDistance <= approachSwitchRadius || !!(
+        corridor && (corridor.inCorridor || corridor.inCapture || corridor.berthed)
+      );
       return {
-        x: berth.x,
-        z: berth.z,
+        x: berthStage ? berth.x : approach.x,
+        z: berthStage ? berth.z : approach.z,
         radius: 0,
         arrivalRadius: dockingArrivalRadius,
         dockingProxyId: manifest.id || null,
+        dockingStage: berthStage ? 'berth' : 'corridor-mouth',
+        approachPoint: approach,
         entity,
         label: autopilot.label || entity.name || (entity.data && entity.data.name) || 'Station berth',
       };

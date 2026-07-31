@@ -151,6 +151,53 @@ test('default station autopilot hands a manifest station into berth capture, not
   assert.equal(terminal.phase, 'capture');
 });
 
+test('default station autopilot stages an outside-gap approach through the authored corridor mouth', () => {
+  const station = heliosStation();
+  // Candidate 93143293's live station center was (1280, -420); translate its terminal player
+  // position (1233.7025146484375, -489.2889404296875) into this origin-centered fixture.
+  const player = {
+    id: 'player', type: 'ship', alive: true, radius: 14,
+    pos: { x: -46.2974853515625, z: -69.2889404296875 },
+    vel: { x: 0, z: 0 },
+  };
+  const state = {
+    playerId: player.id,
+    entities: new Map([[player.id, player], [station.id, station]]),
+  };
+  const autopilot = {
+    targetEntityId: station.id,
+    target: { x: station.pos.x, z: station.pos.z },
+    label: 'Helios Station',
+    arrivalRadius: 90,
+  };
+
+  // Candidate 93143293 reached the same geometric condition: stopped outside the snapped gap,
+  // roughly 115 WU from the berth, while the direct berth course remained active forever.
+  const retained = corridorStateFor(HELIOS, station, player.pos, player.vel);
+  assert.equal(retained.phase, 'approach');
+  assert.equal(retained.inCorridor, false);
+  assert.equal(retained.inCapture, false);
+  assert.ok(Math.abs(retained.distToBerth - 115.11044802097827) < 1e-9);
+
+  const mouthRadius = HELIOS.docking.corridor.mouthRadius * station.data.dockRadius;
+  const mouth = framePos(mouthRadius);
+  const approachTarget = resolveAutopilotTarget(state, autopilot);
+  assert.equal(approachTarget.dockingStage, 'corridor-mouth');
+  assert.deepEqual({ x: approachTarget.x, z: approachTarget.z }, mouth,
+    'an outside-gap ship must first target the manifest corridor mouth');
+
+  // The switch threshold must beat the 38-WU autopilot arrival floor; otherwise the flight
+  // computer can stop at the staging point and deactivate before it ever targets the berth.
+  player.pos = framePos(mouthRadius + 40);
+  const berthTarget = resolveAutopilotTarget(state, autopilot);
+  assert.equal(berthTarget.dockingStage, 'berth');
+  assert.deepEqual(
+    { x: berthTarget.x, z: berthTarget.z },
+    resolveBerthWorld(station, HELIOS),
+    'once aligned just outside the mouth, the terminal leg must run down the open lane',
+  );
+});
+
 // ---------------------------------------------------------------------------------------------
 // speed and heading gates
 // ---------------------------------------------------------------------------------------------

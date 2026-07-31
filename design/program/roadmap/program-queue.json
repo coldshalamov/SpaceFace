@@ -2343,8 +2343,7 @@
       "priority": 22,
       "title": "Stage station autopilot through the authored corridor mouth",
       "kind": "acceptance_repair",
-      "state": "claimed",
-      "owner": "Codex primary integrator",
+      "state": "done",
       "dependsOn": [
         "PQ-041.electron-smoke-dock-arrival-repair"
       ],
@@ -2363,7 +2362,9 @@
         "npm run check:flight:v3",
         "npm run check:sim:compare"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-041-electron-smoke-corridor-approach-repair-REPORT.md"
+      ],
       "brief": "Pin candidate 93143293 remaining active at 115.110 WU with zero displayed speed after a direct-to-berth course met Helios's compound silhouette outside the gap; stage manifest-backed station autopilot through the authored corridor mouth before terminal berth capture. Do not launch Electron in this repair unit."
     },
     {
@@ -2754,7 +2755,7 @@
       "priority": 20,
       "title": "Continue the repaired Electron end-to-end smoke",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-041.electron-smoke-harness-repair",
         "PQ-041.electron-smoke-dock-arrival-repair",
@@ -2775,8 +2776,7 @@
         "npm run check:launch-policy"
       ],
       "receiptRefs": [],
-      "brief": "Spend one fresh candidate-bound Electron attempt after the semantic menu-visibility, truthful station dock-arrival, and corridor-approach repairs, preserving the retained failed attempts, and complete the Main Menu to New Game to flight to dock to Ledger smoke.",
-      "blocker": "Candidate 93143293 retained active cruising at 115.110 WU from the authored berth with zero displayed speed after the direct-to-berth course met Helios's compound silhouette outside its snapped corridor gap. Exact repair PQ-041.electron-smoke-corridor-approach-repair must be focused-green before another materially changed candidate may launch."
+      "brief": "Spend one fresh candidate-bound Electron attempt after the semantic menu-visibility, truthful station dock-arrival, and corridor-approach repairs, preserving the retained failed attempts, and complete the Main Menu to New Game to flight to dock to Ledger smoke."
     },
     {
       "id": "PQ-007.focused-implementation",
