@@ -2630,7 +2630,8 @@
       "priority": 18,
       "title": "Capture the repaired Cathedral cue continuation",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
+      "owner": "Codex primary integrator",
       "dependsOn": [
         "PQ-023.cues-harness-repair"
       ],
