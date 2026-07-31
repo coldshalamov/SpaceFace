@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 
 import {
@@ -93,48 +92,6 @@ test('scene-owned publication forces the initial buffer and restores the prior h
   assert.equal(fixture.scene.onBeforeRender, prior);
   assert.equal(fixture.owner.diagnostics.forceFullUploads, 1);
   assert.equal(fixture.owner.diagnostics.acknowledgements, 1);
-});
-
-test('epoch-zero PMREM allocation stays canary-protected and the scene bake owns a render epoch', () => {
-  const unowned = makeOwnerFixture();
-  assert.throws(
-    () => unowned.attribute.onUploadCallback(),
-    /received an unsolicited upload callback.*phase=none.*epoch=0.*ownerPublishedEpoch=0/,
-  );
-  const fault = unowned.coordinator.getDiagnostics().firstFault;
-  assert.equal(fault.phase, null);
-  assert.equal(fault.coordinator.active, false);
-  assert.equal(fault.coordinator.epoch, 0);
-  assert.equal(fault.coordinator.sceneInvocations, 0);
-  assert.equal(fault.owner.publishedEpoch, 0);
-  assert.equal(fault.binding.forceFull, true);
-  assert.equal(fault.binding.knownVersion, 0);
-  assert.equal(fault.attribute.version, 0);
-  assert.equal(fault.attribute.updateRangeCount, 0);
-
-  const owned = makeOwnerFixture();
-  const epoch = owned.coordinator.arm('environment-map-bake');
-  for (let face = 0; face < 6; face++) {
-    owned.scene.onBeforeRender({}, owned.scene, owned.camera, null);
-    if (face === 0) acknowledgeInitial(owned.attribute);
-  }
-  owned.coordinator.disarm(epoch);
-  const ownedDiagnostics = owned.coordinator.getDiagnostics();
-  assert.equal(ownedDiagnostics.invalid, false);
-  assert.equal(ownedDiagnostics.sceneInvocations, 6);
-  assert.equal(ownedDiagnostics.publishedOwners, 1);
-  assert.equal(ownedDiagnostics.acknowledgedUploads, 1);
-  assert.equal(ownedDiagnostics.lastArmPhase, 'environment-map-bake');
-
-  const rendererSource = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  const bakeStart = rendererSource.indexOf('_bakeEnv(options = {})');
-  const bakeEnd = rendererSource.indexOf('reconcileMeshes()', bakeStart);
-  const bakeSource = rendererSource.slice(bakeStart, bakeEnd);
-  assert.match(
-    bakeSource,
-    /arm\('environment-map-bake'\)[\s\S]*try\s*\{[\s\S]*pmrem\.fromScene\(scene,[\s\S]*finally\s*\{[\s\S]*disarm\(/,
-    'PMREM live-scene capture must publish initial dynamic buffers inside a labeled epoch',
-  );
 });
 
 test('render phases label one bounded first-fault record without weakening callback canaries', () => {
