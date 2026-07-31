@@ -311,6 +311,16 @@ test('the composed theft observation freezes atomically before real danger may p
     'the proof and freeze must not be separated by a browser-to-Node round trip');
 });
 
+test('bounded cue accounting distinguishes the two recovery mission runs', () => {
+  const source = probe();
+  assert.ok(source.includes('const cueRunMoments = trace.cues'));
+  assert.ok(source.includes('`${row.missionId}:${row.moment}`'));
+  assert.ok(source.includes('new Set(cueRunMoments).size, cueRunMoments.length'));
+  assert.doesNotMatch(source,
+    /new Set\(cueMoments\)\.size,\s*cueMoments\.length/,
+    'attempt 0 and attempt 1 may truthfully repeat an authored moment under distinct mission ids');
+});
+
 test('the H1 probe contains no performance sampler or timing result field', () => {
   const source = probe();
   for (const forbidden of [

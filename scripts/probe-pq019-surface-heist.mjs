@@ -1076,7 +1076,13 @@ function assertComposedFloor(floor) {
 async function summarizeNamedRoute({ page, fixture, accepted, terminal, floor, declaredRoute }) {
   const trace = await readTrace(page);
   const cueMoments = trace.cues.map((row) => row.moment).filter(Boolean);
-  assert.equal(new Set(cueMoments).size, cueMoments.length, 'cue moments must be bounded, not repeated');
+  const cueIds = trace.cues.map((row) => row.cueId).filter(Boolean);
+  const cueRunMoments = trace.cues
+    .filter((row) => row.missionId && row.moment)
+    .map((row) => `${row.missionId}:${row.moment}`);
+  assert.equal(new Set(cueIds).size, cueIds.length, 'cue ids must be emitted at most once');
+  assert.equal(new Set(cueRunMoments).size, cueRunMoments.length,
+    'cue moments must be bounded once per mission run');
   const payouts = trace.grants.filter((row) => String(row?.reason || '').startsWith('mission:'));
   if (terminal.outcome === 'fenced_success') assert.equal(payouts.length, 1, 'fence success pays exactly once');
   else assert.equal(payouts.length, 0, `${terminal.outcome} must not pay`);
@@ -1087,6 +1093,7 @@ async function summarizeNamedRoute({ page, fixture, accepted, terminal, floor, d
     terminal,
     floor,
     cueMoments,
+    cueRunMoments,
     payouts,
     trace,
     declaredRoute,
