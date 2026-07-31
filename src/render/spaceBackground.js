@@ -1099,10 +1099,6 @@ export class SpaceBackground {
     // noDispose matches the materialLibrary/visualFactory shared-material pattern; real disposal
     // happens only in dispose() at module teardown.
     this._spriteMatCache = new Map();
-    // The planet impostor shader bakes into an offscreen target only when travel admits a new hero.
-    // Retain one material for the background lifetime so that rare admission reuses the boot-warmed
-    // driver program instead of creating, linking, and immediately releasing it inside a flight draw.
-    this._planetBakeMaterial = null;
     this._cometMat = null;
     this._cometTex = null;
     this.planetCacheOrder = [];
@@ -1288,32 +1284,6 @@ export class SpaceBackground {
     renderer.setClearColor(this._prevClearColor, prevAlpha);
   }
 
-  _warmPlanetBakePipeline() {
-    // Program variants key on the render-target color space. Warm against a tiny target with the
-    // exact planet-bake output contract, then retain the material (not the throwaway target).
-    const target = new THREE.WebGLRenderTarget(1, 1, {
-      format: THREE.RGBAFormat,
-      type: THREE.UnsignedByteType,
-      generateMipmaps: false,
-      minFilter: THREE.LinearFilter,
-      magFilter: THREE.LinearFilter,
-      depthBuffer: false,
-      stencilBuffer: false,
-    });
-    target.texture.colorSpace = THREE.SRGBColorSpace;
-    try {
-      this._renderPlanetTarget(target, {
-        type: 'rocky',
-        seed: 0,
-        lightAngle: 0,
-        ring: false,
-        ringTilt: 0,
-      });
-    } finally {
-      target.dispose();
-    }
-  }
-
   _paletteColors(name) {
     const pal = PALETTES[name] || PALETTES.EMBER;
     const u = {};
@@ -1405,8 +1375,6 @@ export class SpaceBackground {
     l2Mat.dispose();
     this.l2Target = l2;
 
-    if (!this._planetBakeMaterial) this._warmPlanetBakePipeline();
-
     this.bakeTimer = ((typeof performance !== 'undefined') ? performance.now() : 0) - t0;
     this._buildLayers();
     if (this.wormhole) {
@@ -1426,7 +1394,6 @@ export class SpaceBackground {
       this.l0Target,
       this.l1Target,
       this.l2Target,
-      this._planetBakeMaterial,
       ...this.planetCache.values(),
     ].filter(Boolean);
   }
@@ -1479,7 +1446,6 @@ export class SpaceBackground {
       if (!activePlanetKeys.has(key)) this.planetCache.delete(key);
     }
     this.planetCacheOrder = this.planetCacheOrder.filter((key) => activePlanetKeys.has(key));
-    if (activePlanetKeys.size === 0) this._warmPlanetBakePipeline();
   }
 
   _disposeBakeTargets() {
@@ -2180,41 +2146,23 @@ export class SpaceBackground {
     }
     colB.lerp(emission, 0.12); colC.lerp(emission, 0.08); atm.lerp(emission, 0.18);
 
-    let mat = this._planetBakeMaterial;
-    if (!mat) {
-      mat = new THREE.ShaderMaterial({
-        vertexShader: QUAD_VERT,
-        fragmentShader: PLANET_FRAG,
-        uniforms: {
-          uSeed: { value: 0 },
-          uType: { value: 0 },
-          uLightDir: { value: new THREE.Vector2(1, 0) },
-          uRing: { value: 0 },
-          uRingTilt: { value: 0 },
-          uColA: { value: new THREE.Color() },
-          uColB: { value: new THREE.Color() },
-          uColC: { value: new THREE.Color() },
-          uAtm: { value: new THREE.Color() },
-        },
-        transparent: true,
-        blending: THREE.NoBlending,
-        depthTest: false,
-        depthWrite: false,
-      });
-      mat.name = 'SF_PlanetBake_Pipeline';
-      this._planetBakeMaterial = mat;
-    }
     const type = spec.type === 'gas' ? 0 : (spec.type === 'rocky' ? 1 : 2);
-    mat.uniforms.uSeed.value = (spec.seed % 1000) * 0.13;
-    mat.uniforms.uType.value = type;
-    mat.uniforms.uLightDir.value.set(Math.cos(spec.lightAngle), Math.sin(spec.lightAngle));
-    mat.uniforms.uRing.value = spec.ring ? 1 : 0;
-    mat.uniforms.uRingTilt.value = spec.ringTilt || 0;
-    mat.uniforms.uColA.value.copy(colA);
-    mat.uniforms.uColB.value.copy(colB);
-    mat.uniforms.uColC.value.copy(colC);
-    mat.uniforms.uAtm.value.copy(atm);
+    const mat = new THREE.ShaderMaterial({
+      vertexShader: QUAD_VERT,
+      fragmentShader: PLANET_FRAG,
+      uniforms: {
+        uSeed: { value: (spec.seed % 1000) * 0.13 },
+        uType: { value: type },
+        uLightDir: { value: new THREE.Vector2(Math.cos(spec.lightAngle), Math.sin(spec.lightAngle)) },
+        uRing: { value: spec.ring ? 1 : 0 },
+        uRingTilt: { value: spec.ringTilt || 0 },
+        uColA: { value: colA }, uColB: { value: colB }, uColC: { value: colC },
+        uAtm: { value: atm },
+      },
+      transparent: true,
+    });
     this._bakeLayer(mat, rt);
+    mat.dispose();
   }
 
   _spawnWormhole(spec) {
@@ -2654,10 +2602,6 @@ export class SpaceBackground {
     // no-op during flight (shared-program pinning), so the group walk below cannot free them.
     for (const [, mat] of this._spriteMatCache) THREE.Material.prototype.dispose.call(mat);
     this._spriteMatCache.clear();
-    if (this._planetBakeMaterial) {
-      this._planetBakeMaterial.dispose();
-      this._planetBakeMaterial = null;
-    }
     if (this._cometMat) { THREE.Material.prototype.dispose.call(this._cometMat); this._cometMat = null; }
     if (this._cometTex) { this._cometTex.dispose(); this._cometTex = null; }
     const layerGeometry = this.layerGeometry;

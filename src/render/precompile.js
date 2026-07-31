@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
-import { configureCommonRockPbr, createVisualFactory } from './visualFactory.js';
+import { createVisualFactory } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import {
   getAuthoredUpgradeQueueStats,
@@ -120,7 +120,6 @@ async function precompileNow(
       addBeamWarmup(globalWarmup);
       canopyPipelineWarmup = addAuthoredCanopyPipelineWarmup(globalWarmup);
       addLateWorldPipelineWarmup(canopyPipelineWarmup);
-      addMeasuredLatePipelineWarmups(canopyPipelineWarmup);
       const vfxWarmup = createVfxPrecompileSalvo();
       globalWarmup.add(vfxWarmup);
       retainVfxPipelineWarmups(vfxWarmup, canopyPipelineWarmup);
@@ -479,11 +478,11 @@ function rememberGlobalPrecompile(renderer, run) {
 }
 
 function addAuthoredCanopyPipelineWarmup(staging) {
-  // The authored catalog contains three physical-canopy layouts plus one standard alpha-glass
-  // layout used by mapped station/whole-ship surfaces. They compile to distinct Three.js programs
-  // even though all four share the same semantic canopy/glass role. Warm the exact declared
-  // layouts with 1x1 textures so a late traffic/place admission cannot compile during exposed
-  // flight. This creates no authored GLB residency and retains only four tiny synthetic variants.
+  // The authored cockpit catalog deliberately contains three texture-slot layouts. They compile to
+  // distinct Three.js programs even though all three share the same semantic canopy material role.
+  // Warm those declared layouts with 1x1 textures so a late traffic spawn cannot compile a canopy
+  // shader during exposed flight. This creates no authored GLB residency and retains only the three
+  // tiny synthetic variants needed to keep their shared driver programs alive.
   const baseColor = warmupTexture([210, 230, 250, 255], THREE.SRGBColorSpace);
   const normal = warmupTexture([128, 128, 255, 255]);
   const surface = warmupTexture([255, 180, 0, 255]);
@@ -491,37 +490,23 @@ function addAuthoredCanopyPipelineWarmup(staging) {
     { id: 'surface', roughnessMap: surface, metalnessMap: surface },
     { id: 'normal-surface-ao', normalMap: normal, roughnessMap: surface, metalnessMap: surface, aoMap: surface },
     { id: 'base-normal-surface', map: baseColor, normalMap: normal, roughnessMap: surface, metalnessMap: surface },
-    {
-      id: 'base-normal-surface-ao-standard',
-      standard: true,
-      map: baseColor,
-      normalMap: normal,
-      roughnessMap: surface,
-      metalnessMap: surface,
-      aoMap: surface,
-    },
   ];
   const root = new THREE.Group();
   root.name = 'SF_Precompile_Canopy_KeepAlive';
   for (let i = 0; i < variants.length; i++) {
-    const { id, standard = false, ...maps } = variants[i];
-    const parameters = {
+    const { id, ...maps } = variants[i];
+    const material = new THREE.MeshPhysicalMaterial({
       color: 0xd7edff,
       metalness: 0,
       roughness: 0.12,
+      transmission: 0.65,
       side: THREE.DoubleSide,
       forceSinglePass: true,
       dithering: true,
-      transparent: true,
-      opacity: 0.78,
-      depthWrite: false,
       ...maps,
-    };
-    const material = standard
-      ? new THREE.MeshStandardMaterial(parameters)
-      : new THREE.MeshPhysicalMaterial({ ...parameters, transmission: 0.65 });
+    });
     material.name = `SF_Precompile_Canopy_${id}`;
-    if (!standard) applyRealtimeCanopyPolicy(material);
+    applyRealtimeCanopyPolicy(material);
     const geometry = new THREE.PlaneGeometry(8, 5);
     geometry.computeTangents();
     const mesh = new THREE.Mesh(geometry, material);
@@ -553,132 +538,6 @@ function addLateWorldPipelineWarmup(root) {
     spindle.name = 'SF_Precompile_47A_Evidence_Spindle';
     root.add(spindle);
   }
-}
-
-function addMeasuredLatePipelineWarmups(root) {
-  // These retained probes cover exact program families that the shader timeline observed only
-  // after the opening ramp: authored mapped physical surfaces, pooled common-rock geology, and
-  // fogged sprite/basic presentation. Keep them synthetic so the hitch gate does not turn into
-  // whole-catalog GLB residency.
-  const baseColor = warmupTexture([154, 164, 176, 255], THREE.SRGBColorSpace);
-  const normal = warmupTexture([128, 128, 255, 255]);
-  const surface = warmupTexture([255, 170, 12, 255]);
-
-  const add = (object, id) => {
-    object.name = `SF_Precompile_${id}`;
-    object.userData.precompileRetainedPipeline = id;
-    root.add(object);
-    return object;
-  };
-  const plane = (tangents = false) => {
-    const geometry = new THREE.PlaneGeometry(3, 3);
-    if (tangents) geometry.computeTangents();
-    return geometry;
-  };
-  const fullMaps = {
-    map: baseColor,
-    normalMap: normal,
-    aoMap: surface,
-    roughnessMap: surface,
-    metalnessMap: surface,
-  };
-
-  add(new THREE.Mesh(
-    plane(true),
-    new THREE.MeshPhysicalMaterial({
-      ...fullMaps,
-      color: 0xffffff,
-      roughness: 0.6,
-      metalness: 0.1,
-      clearcoat: 0,
-      transmission: 0,
-      dithering: true,
-    }),
-  ), 'authored-physical-fullmap-tangent');
-  add(new THREE.Mesh(
-    plane(false),
-    new THREE.MeshPhysicalMaterial({
-      ...fullMaps,
-      color: 0xffffff,
-      roughness: 0.6,
-      metalness: 0.1,
-      clearcoat: 0,
-      transmission: 0,
-      dithering: true,
-    }),
-  ), 'authored-physical-fullmap-no-tangent');
-  add(new THREE.Mesh(
-    plane(true),
-    new THREE.MeshPhysicalMaterial({
-      ...fullMaps,
-      color: 0xffffff,
-      roughness: 0.12,
-      metalness: 0,
-      clearcoat: 1,
-      transmission: 0.65,
-      dithering: true,
-    }),
-  ), 'authored-physical-transmission-fullmap');
-  add(new THREE.Mesh(
-    plane(true),
-    new THREE.MeshPhysicalMaterial({
-      ...fullMaps,
-      color: 0xffffff,
-      roughness: 0.2,
-      metalness: 0,
-      clearcoat: 1,
-      transmission: 0,
-      dithering: true,
-    }),
-  ), 'authored-physical-clearcoat-fullmap');
-
-  add(new THREE.Mesh(
-    plane(false),
-    new THREE.MeshStandardMaterial({
-      map: baseColor,
-      normalMap: normal,
-      roughnessMap: surface,
-      color: 0xffffff,
-      roughness: 0.7,
-      metalness: 0,
-    }),
-  ), 'mapped-standard-surface');
-
-  const rockGeometry = plane(false);
-  const rockVertexCount = rockGeometry.getAttribute('position').count;
-  rockGeometry.setAttribute('color', new THREE.BufferAttribute(
-    new Float32Array(rockVertexCount * 3).fill(0.65), 3,
-  ));
-  rockGeometry.setAttribute('sfGeologyPbr', new THREE.BufferAttribute(
-    new Float32Array(rockVertexCount * 4).fill(0.75), 4,
-  ));
-  const rockMaterial = configureCommonRockPbr(new THREE.MeshStandardMaterial({
-    ...fullMaps,
-    color: 0xffffff,
-    roughness: 1,
-    metalness: 1,
-    vertexColors: true,
-  }));
-  const rock = new THREE.InstancedMesh(rockGeometry, rockMaterial, 1);
-  rock.setMatrixAt(0, new THREE.Matrix4());
-  add(rock, 'common-rock-instanced-pbr');
-
-  add(new THREE.Sprite(new THREE.SpriteMaterial({
-    map: baseColor,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    fog: true,
-  })), 'fogged-halo-sprite');
-  add(new THREE.Mesh(
-    plane(false),
-    new THREE.MeshBasicMaterial({
-      color: 0x909090,
-      fog: true,
-      transparent: true,
-      depthWrite: false,
-    }),
-  ), 'fogged-basic-surface');
 }
 
 function retainVfxPipelineWarmups(vfxWarmup, retainedRoot) {

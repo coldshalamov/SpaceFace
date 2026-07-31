@@ -1907,7 +1907,7 @@ function replaceRequiredShaderSource(source, needle, replacement, label) {
   return source.replace(needle, replacement);
 }
 
-export function configureCommonRockPbr(material) {
+function configureCommonRockPbr(material) {
   material.name = 'SF_CommonRock_GeologicalPBR_v4';
   material.userData.spacefaceMaterialRoles = Object.keys(COMMON_ROCK_MATERIAL_ROLES);
   material.userData.spacefacePbrAttribute = 'sfGeologyPbr';

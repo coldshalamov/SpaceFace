@@ -12,12 +12,10 @@ import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
-import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
 import { attachStationHlod } from './hlod.js';
 import { attachLodState } from './lod.js';
-import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
 import {
   hasExplicitAuthoredGeologyPresentation,
@@ -2054,11 +2052,6 @@ export function preloadAuthoredAssetsForEntity(renderer, entity, options = {}) {
  * while the driver's exact HDR material programs are still absent; do not publish that object until
  * this promise settles. Preview/test harnesses without a live pipeline compiler remain supported. */
 export async function prepareAuthoredVisualPipelines(root, options = {}) {
-  // Pipeline admission must see the exact material state that the first visible draw will use.
-  // Applying these policies only from renderer.onSwap mutated defines/side-pass flags after
-  // compileAsync had already completed, leaving a late canopy program link on first draw.
-  configureRealtimeCanopyMaterials(root);
-  configureTransparentSinglePassSurfaces(root);
   const prepare = options && options.prepareAuthoredPipelines;
   if (typeof prepare !== 'function') return { skipped: true, reason: 'pipeline compiler unavailable' };
   return prepare(root);
