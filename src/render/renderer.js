@@ -2308,11 +2308,11 @@ export const render = {
     try {
       if (this.state.settings.video.renderGraph && this._ensureRenderGraph()) {
         this._lastRenderPath = 'renderGraph';
-        const gpuQueryBegan = !!(useGpu && gpu.begin('drawPreparedFrame'));
+        if (useGpu) gpu.begin('drawPreparedFrame');
         try {
           this._renderGraph.render(this.scene, this.cam.obj, { time: this._bgTime || 0 });
         } finally {
-          if (gpuQueryBegan) gpu.end();
+          if (useGpu) gpu.end();
         }
       } else if (this.bloom && this.state.settings.video.bloom !== false) {
         this._lastRenderPath = 'bloom';
@@ -2320,11 +2320,11 @@ export const render = {
         this.bloom.render(this.scene, this.cam.obj);
       } else {
         this._lastRenderPath = 'straight';
-        const gpuQueryBegan = !!(useGpu && gpu.begin('drawPreparedFrame'));
+        if (useGpu) gpu.begin('drawPreparedFrame');
         try {
           this.renderer.render(this.scene, this.cam.obj);
         } finally {
-          if (gpuQueryBegan) gpu.end();
+          if (useGpu) gpu.end();
         }
       }
     } finally {

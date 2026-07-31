@@ -49,52 +49,18 @@ export function summarizeGpuTimerReport(report) {
   const frameLabels = bloomPasses.length
     ? bloomPasses
     : (sampledPasses.drawPreparedFrame ? ['drawPreparedFrame'] : []);
-  const sampleCount = Object.values(sampledPasses)
-    .reduce((total, pass) => total + (Number(pass.samples) || 0), 0);
-  const queryCounts = {
-    issued: finiteCount(report?.queryCounts?.issued ?? report?.issuedQueries),
-    completed: finiteCount(report?.queryCounts?.completed ?? report?.completedQueries),
-    pending: finiteCount(report?.queryCounts?.pending ?? report?.pendingQueries ?? report?.pending),
-    dropped: finiteCount(report?.queryCounts?.dropped ?? report?.droppedQueries),
-    rejected: finiteCount(report?.queryCounts?.rejected ?? report?.rejectedQueries),
-  };
-  const inferredLegacyValidity = !!(report?.available)
-    && report?.status === 'ok'
-    && sampleCount > 0
-    && !report?.lastDisjoint;
-  const captureValid = typeof report?.captureValid === 'boolean'
-    ? report.captureValid
-    : inferredLegacyValidity;
-  const frameGpuAvgMs = captureValid && frameLabels.length
-    ? sumLabels(sampledPasses, frameLabels, 'avg')
-    : null;
-  const frameGpuMaxPassSumMs = captureValid && frameLabels.length
-    ? sumLabels(sampledPasses, frameLabels, 'max')
-    : null;
   return {
     available: !!(report && report.available),
-    live: report?.live !== false,
     enabled: !!(report && report.enabled),
     status: report && report.status || 'unavailable',
     reason: report && report.reason || null,
     extension: report && report.extension || null,
     disjoint: !!(report && report.lastDisjoint),
-    pending: queryCounts.pending,
-    captureValid,
-    invalidation: report?.invalidation ?? null,
-    invalidations: report?.invalidations && typeof report.invalidations === 'object'
-      ? { ...report.invalidations }
-      : {},
-    queryCounts,
-    issuedQueries: queryCounts.issued,
-    completedQueries: queryCounts.completed,
-    pendingQueries: queryCounts.pending,
-    droppedQueries: queryCounts.dropped,
-    rejectedQueries: queryCounts.rejected,
+    pending: Number(report && report.pending) || 0,
     sampledPasses,
     frameLabels,
-    frameGpuAvgMs,
-    frameGpuMaxPassSumMs,
+    frameGpuAvgMs: sumLabels(sampledPasses, frameLabels, 'avg'),
+    frameGpuMaxPassSumMs: sumLabels(sampledPasses, frameLabels, 'max'),
   };
 }
 
@@ -106,7 +72,7 @@ export function classifyPresentEvidence({
   gpu,
   frameBudgetMs = DEFAULT_VSYNC_MS,
 } = {}) {
-  const gpuMs = finiteOrNull(gpu && gpu.frameGpuAvgMs);
+  const gpuMs = Number(gpu && gpu.frameGpuAvgMs) || 0;
   const gpuSamples = Object.values(gpu && gpu.sampledPasses || {})
     .reduce((total, pass) => total + (Number(pass && pass.samples) || 0), 0);
   const evidence = {
@@ -116,20 +82,9 @@ export function classifyPresentEvidence({
     frameBudgetMs,
     gpuFrameAvgMs: gpuMs,
     gpuSamples,
-    gpuCaptureValid: gpu?.captureValid === true,
-    gpuStatus: gpu?.status ?? 'unavailable',
-    gpuCompletedQueries: finiteCount(gpu?.completedQueries ?? gpu?.queryCounts?.completed),
-    gpuDroppedQueries: finiteCount(gpu?.droppedQueries ?? gpu?.queryCounts?.dropped),
-    gpuRejectedQueries: finiteCount(gpu?.rejectedQueries ?? gpu?.queryCounts?.rejected),
     twoVsyncRatio: finiteOrZero(cadence && cadence.ratios && cadence.ratios.twoVsync),
   };
-  if (!gpu || !gpu.available) {
-    return { classification: 'insufficient-gpu-timing', confidence: 'low', evidence };
-  }
-  if (gpu.captureValid !== true) {
-    return { classification: 'gpu-timing-invalid', confidence: 'low', evidence };
-  }
-  if (gpuSamples === 0 || gpuMs === null) {
+  if (!gpu || !gpu.available || gpuSamples === 0) {
     return { classification: 'insufficient-gpu-timing', confidence: 'low', evidence };
   }
   if (gpu.disjoint) {
@@ -158,13 +113,7 @@ function finiteOrZero(value) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function finiteCount(value) {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
-}
-
 function finiteOrNull(value) {
-  if (value == null) return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }

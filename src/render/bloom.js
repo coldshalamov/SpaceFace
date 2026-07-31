@@ -613,11 +613,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     const useCpu = !!(perf && perf.renderWorkEnabled && typeof perf.recordRenderWork === 'function');
     const useGpu = gpu && gpu.enabled && typeof gpu.begin === 'function';
     const t0 = useCpu ? performance.now() : 0;
-    const gpuQueryBegan = !!(useGpu && gpu.begin(label));
+    if (useGpu) gpu.begin(label);
     try {
       return fn();
     } finally {
-      if (gpuQueryBegan) gpu.end();
+      if (useGpu) gpu.end();
       if (useCpu) perf.recordRenderWork(label, performance.now() - t0);
     }
   }

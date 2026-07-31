@@ -7,8 +7,6 @@
 
 const RING_N = 64;
 const MAX_PENDING = 48;
-const DEFAULT_DRAIN_MAX_POLLS = 120;
-const DEFAULT_DRAIN_TIMEOUT_MS = 2_000;
 const LABEL_POOL = Object.freeze([
   'drawPreparedFrame',
   'bloomScene',
@@ -25,21 +23,15 @@ function createRing() {
     last: 0,
     max: 0,
     total: 0,
-    issuedQueries: 0,
-    completedQueries: 0,
-    droppedQueries: 0,
-    rejectedQueries: 0,
-    completedTotal: 0,
   };
 }
 
 function sampleRing(ring, ms) {
-  if (!Number.isFinite(ms) || ms <= 0) return;
+  if (!Number.isFinite(ms) || ms < 0) return;
   if (ring.count === RING_N) ring.total -= ring.values[ring.head];
   else ring.count++;
   ring.values[ring.head] = ms;
   ring.total += ms;
-  ring.completedTotal += ms;
   ring.head = (ring.head + 1) % RING_N;
   ring.last = ms;
   if (ms > ring.max) ring.max = ms;
@@ -47,16 +39,10 @@ function sampleRing(ring, ms) {
 
 function reportRing(ring) {
   return {
-    last: ring.count ? ring.last : null,
-    avg: ring.count ? ring.total / ring.count : null,
-    max: ring.count ? ring.max : null,
+    last: ring.last,
+    avg: ring.count ? ring.total / ring.count : 0,
+    max: ring.max,
     samples: ring.count,
-    retainedSamples: ring.count,
-    issuedQueries: ring.issuedQueries,
-    completedQueries: ring.completedQueries,
-    droppedQueries: ring.droppedQueries,
-    rejectedQueries: ring.rejectedQueries,
-    completedAvg: ring.completedQueries ? ring.completedTotal / ring.completedQueries : null,
   };
 }
 
@@ -128,54 +114,10 @@ export function createGpuTimers(gl) {
   let enabled = false;
   let status = cap.available ? 'available' : 'unavailable';
   let lastDisjoint = false;
-  let disjointActive = false;
-  let lastInvalidation = null;
   let activeLabel = null;
   let activeQuery = null;
-  let submissionsPaused = false;
-  let abandoned = false;
-  let disposed = false;
   const free = [];
   const pending = []; // { query, label, startedAt }
-  const captureCounts = {
-    issued: 0,
-    completed: 0,
-    dropped: 0,
-    rejected: 0,
-  };
-  const invalidations = {
-    disjoint: 0,
-    resultReadError: 0,
-    zeroResult: 0,
-    backpressure: 0,
-    drainTimeout: 0,
-    submissionError: 0,
-    disabled: 0,
-    contextLost: 0,
-  };
-
-  function ringFor(label) {
-    return rings[label] || (rings[label] = createRing());
-  }
-
-  function markInvalid(reason) {
-    lastInvalidation = reason;
-    status = reason;
-    if (reason === 'disjoint') invalidations.disjoint++;
-    else if (reason === 'result-read-error') invalidations.resultReadError++;
-    else if (reason === 'zero-result') invalidations.zeroResult++;
-    else if (reason === 'backpressure') invalidations.backpressure++;
-    else if (reason === 'drain-timeout') invalidations.drainTimeout++;
-    else if (reason === 'disabled-with-pending') invalidations.disabled++;
-    else if (reason === 'context-lost') invalidations.contextLost++;
-    else invalidations.submissionError++;
-  }
-
-  function noteRejected(label, reason = null) {
-    captureCounts.rejected++;
-    if (label) ringFor(label).rejectedQueries++;
-    if (reason) markInvalid(reason);
-  }
 
   function acquireQuery() {
     if (free.length) return free.pop();
@@ -190,62 +132,25 @@ export function createGpuTimers(gl) {
     }
   }
 
-  function deleteQuery(query) {
-    if (!query) return;
-    try { cap.deleteQuery(query); } catch (_) { /* ignore */ }
-  }
-
-  function dropIssuedQuery(query, label) {
-    if (!query) return;
-    deleteQuery(query);
-    captureCounts.dropped++;
-    if (label) ringFor(label).droppedQueries++;
-  }
-
-  function dropActiveQuery() {
-    if (!activeQuery) return;
-    const query = activeQuery;
-    const label = activeLabel;
-    activeQuery = null;
-    activeLabel = null;
-    try { cap.endQuery(cap.TIME_ELAPSED); } catch (_) { /* ignore */ }
-    dropIssuedQuery(query, label);
-  }
-
-  function dropPendingQueries() {
-    while (pending.length) {
-      const slot = pending.shift();
-      dropIssuedQuery(slot.query, slot.label);
-    }
-  }
-
-  function invalidateUnresolved(reason) {
-    markInvalid(reason);
-    dropActiveQuery();
-    dropPendingQueries();
-  }
-
   function poll() {
-    const completedBefore = captureCounts.completed;
-    if (!cap.available || abandoned || disposed) {
-      return { completed: 0, pending: 0, status: 'unavailable' };
-    }
+    if (!cap.available) return;
     // Non-blocking: only harvest queries that already report RESULT_AVAILABLE.
     // Disjoint invalidates in-flight results; drop them and mark status.
     let disjoint = false;
     try {
       disjoint = !!cap.getParameter(cap.GPU_DISJOINT);
     } catch (_) {
-      invalidateUnresolved('result-read-error');
-      return { completed: 0, pending: 0, status };
+      disjoint = false;
     }
     if (disjoint) {
       lastDisjoint = true;
-      if (!disjointActive) invalidateUnresolved('disjoint');
-      disjointActive = true;
-      return { completed: 0, pending: 0, status };
+      status = 'disjoint';
+      while (pending.length) {
+        const slot = pending.shift();
+        releaseQuery(slot.query);
+      }
+      return;
     }
-    disjointActive = false;
 
     // Harvest from the front only while results are ready (preserve order, no spin).
     while (pending.length) {
@@ -254,91 +159,46 @@ export function createGpuTimers(gl) {
       try {
         available = !!cap.getQueryParameter(slot.query, cap.QUERY_RESULT_AVAILABLE);
       } catch (_) {
-        pending.shift();
-        markInvalid('result-read-error');
-        dropIssuedQuery(slot.query, slot.label);
-        continue;
+        available = false;
       }
       if (!available) break;
       pending.shift();
-      let ns;
+      let ns = 0;
       try {
-        ns = Number(cap.getQueryParameter(slot.query, cap.QUERY_RESULT));
+        ns = Number(cap.getQueryParameter(slot.query, cap.QUERY_RESULT)) || 0;
       } catch (_) {
-        markInvalid('result-read-error');
-        dropIssuedQuery(slot.query, slot.label);
-        continue;
-      }
-      if (!Number.isFinite(ns)) {
-        markInvalid('result-read-error');
-        dropIssuedQuery(slot.query, slot.label);
-        continue;
-      }
-      // A full authored pass cannot consume zero GPU time. Treat a zero result as a dead or
-      // unusably quantized timer instead of publishing the most dangerous false-green value.
-      if (ns <= 0) {
-        markInvalid('zero-result');
-        dropIssuedQuery(slot.query, slot.label);
-        continue;
+        ns = 0;
       }
       releaseQuery(slot.query);
       // TIME_ELAPSED is nanoseconds.
       const ms = ns / 1e6;
-      const ring = ringFor(slot.label);
-      captureCounts.completed++;
-      ring.completedQueries++;
+      const ring = rings[slot.label] || (rings[slot.label] = createRing());
       sampleRing(ring, ms);
-      if (!lastInvalidation) status = 'ok';
+      if (status === 'disjoint' || status === 'available') status = 'ok';
     }
-    if (!lastInvalidation && captureCounts.completed === 0 && enabled) {
-      status = 'no-completed-queries';
-    }
-    return {
-      completed: captureCounts.completed - completedBefore,
-      pending: pending.length + (activeQuery ? 1 : 0),
-      status,
-    };
+    if (!pending.length && status === 'available' && enabled) status = 'ok';
   }
 
   function begin(label) {
-    if (!enabled || !cap.available || abandoned || disposed || !label) return false;
-    // An intentional capture-close pause is not a rejected measurement. The
-    // renderer may continue presenting while drainPending() waits for results.
-    if (submissionsPaused) return false;
+    if (!enabled || !cap.available || !label) return false;
     if (activeQuery) {
       // Nested begins are not supported. Refuse the nested begin without ending
       // or dropping the active outer query (outer end() remains responsible).
-      noteRejected(label, 'nested-query');
       return false;
     }
     poll();
-    if (disjointActive) {
-      noteRejected(label);
-      return false;
-    }
-    if (pending.length >= MAX_PENDING) {
-      noteRejected(label, 'backpressure');
-      return false;
-    }
+    if (pending.length >= MAX_PENDING) return false;
     const query = acquireQuery();
-    if (!query) {
-      noteRejected(label, 'query-create-error');
-      return false;
-    }
+    if (!query) return false;
     try {
       cap.beginQuery(cap.TIME_ELAPSED, query);
       activeQuery = query;
       activeLabel = label;
-      captureCounts.issued++;
-      ringFor(label).issuedQueries++;
       return true;
     } catch (_) {
-      // beginQuery may have partially touched driver state before throwing;
-      // never recycle a query whose ownership is uncertain.
-      deleteQuery(query);
+      releaseQuery(query);
       activeQuery = null;
       activeLabel = null;
-      noteRejected(label, 'query-begin-error');
       return false;
     }
   }
@@ -352,8 +212,7 @@ export function createGpuTimers(gl) {
     try {
       cap.endQuery(cap.TIME_ELAPSED);
     } catch (_) {
-      markInvalid('query-end-error');
-      dropIssuedQuery(query, label);
+      releaseQuery(query);
       return false;
     }
     pending.push({ query, label, startedAt: (typeof performance !== 'undefined' ? performance.now() : Date.now()) });
@@ -363,12 +222,13 @@ export function createGpuTimers(gl) {
   }
 
   function reset() {
-    // Reset is a capture boundary. Unresolved queries may still be owned by the
-    // driver, so delete them; only completed queries are safe to recycle.
     if (activeQuery) {
-      dropActiveQuery();
+      try { cap.endQuery(cap.TIME_ELAPSED); } catch (_) { /* ignore */ }
+      releaseQuery(activeQuery);
+      activeQuery = null;
+      activeLabel = null;
     }
-    dropPendingQueries();
+    while (pending.length) releaseQuery(pending.shift().query);
     for (const label of Object.keys(rings)) {
       const ring = rings[label];
       ring.values.fill(0);
@@ -377,24 +237,9 @@ export function createGpuTimers(gl) {
       ring.last = 0;
       ring.max = 0;
       ring.total = 0;
-      ring.issuedQueries = 0;
-      ring.completedQueries = 0;
-      ring.droppedQueries = 0;
-      ring.rejectedQueries = 0;
-      ring.completedTotal = 0;
     }
-    captureCounts.issued = 0;
-    captureCounts.completed = 0;
-    captureCounts.dropped = 0;
-    captureCounts.rejected = 0;
-    for (const key of Object.keys(invalidations)) invalidations[key] = 0;
     lastDisjoint = false;
-    disjointActive = false;
-    lastInvalidation = null;
-    submissionsPaused = false;
-    status = cap.available && !abandoned && !disposed
-      ? (enabled ? 'no-completed-queries' : 'available')
-      : 'unavailable';
+    status = cap.available ? (enabled ? 'ok' : 'available') : 'unavailable';
   }
 
   /**
@@ -403,187 +248,46 @@ export function createGpuTimers(gl) {
    * endQuery/deleteQuery on a lost context is unsafe and rejected by policy.
    */
   function abandon() {
-    const unresolved = pending.length + (activeQuery ? 1 : 0);
-    if (unresolved > 0) {
-      captureCounts.dropped += unresolved;
-      if (activeLabel) ringFor(activeLabel).droppedQueries++;
-      for (const slot of pending) ringFor(slot.label).droppedQueries++;
-      markInvalid('context-lost');
-    }
     enabled = false;
-    submissionsPaused = true;
-    abandoned = true;
     activeQuery = null;
     activeLabel = null;
     pending.length = 0;
     free.length = 0;
     lastDisjoint = false;
-    disjointActive = false;
     status = 'unavailable';
   }
 
   function dispose() {
-    if (disposed) return;
-    // Live-context path only. Delete every unresolved query directly; recycling
-    // it before disposal can hide ownership bugs and leave driver work alive.
-    enabled = false;
-    submissionsPaused = true;
-    if (activeQuery || pending.length) {
-      markInvalid('disabled-with-pending');
-      dropActiveQuery();
-      dropPendingQueries();
-    }
+    // Live-context path only: end/delete GL objects before dropping refs.
+    setEnabled(false);
+    reset();
     while (free.length) {
-      deleteQuery(free.pop());
+      try { cap.deleteQuery(free.pop()); } catch (_) { /* ignore */ }
     }
-    disposed = true;
-    status = 'unavailable';
   }
 
   function setEnabled(on) {
-    enabled = !!on && cap.available && !abandoned && !disposed;
+    enabled = !!on && cap.available;
     if (!enabled) {
-      submissionsPaused = false;
-      if (activeQuery || pending.length) {
-        invalidateUnresolved('disabled-with-pending');
-      } else if (!lastInvalidation) {
-        status = cap.available && !abandoned && !disposed ? 'available' : 'unavailable';
+      if (activeQuery) {
+        try { cap.endQuery(cap.TIME_ELAPSED); } catch (_) { /* ignore */ }
+        releaseQuery(activeQuery);
+        activeQuery = null;
+        activeLabel = null;
       }
+      // Leave pending to drain via poll when re-enabled; drop to avoid stale attribution.
+      while (pending.length) releaseQuery(pending.shift().query);
+      status = cap.available ? 'available' : 'unavailable';
     } else {
-      submissionsPaused = false;
-      if (!lastInvalidation) {
-        status = captureCounts.completed > 0 ? 'ok' : 'no-completed-queries';
-      }
+      status = 'ok';
     }
     return enabled;
   }
 
-  function pauseSubmissions() {
-    if (!enabled || !cap.available || abandoned || disposed) return false;
-    submissionsPaused = true;
-    return true;
-  }
-
-  function resumeSubmissions() {
-    if (!enabled || !cap.available || abandoned || disposed) return false;
-    submissionsPaused = false;
-    return true;
-  }
-
-  function defaultDrainYield() {
-    return new Promise((resolve) => {
-      if (typeof setTimeout === 'function') setTimeout(resolve, 0);
-      else Promise.resolve().then(resolve);
-    });
-  }
-
-  function drainClockNow() {
-    return typeof performance !== 'undefined' ? performance.now() : Date.now();
-  }
-
-  async function yieldBeforeDeadline(yieldFn, deadlineAt) {
-    const remainingMs = Math.max(0, deadlineAt - drainClockNow());
-    if (remainingMs <= 0) return false;
-    if (typeof setTimeout !== 'function') {
-      await yieldFn();
-      return drainClockNow() < deadlineAt;
-    }
-    let timeoutId = null;
-    let deadlineWon = false;
-    try {
-      await Promise.race([
-        Promise.resolve().then(yieldFn),
-        new Promise((resolve) => {
-          timeoutId = setTimeout(() => {
-            deadlineWon = true;
-            resolve();
-          }, remainingMs);
-        }),
-      ]);
-    } finally {
-      if (timeoutId !== null) clearTimeout(timeoutId);
-    }
-    return !deadlineWon && drainClockNow() < deadlineAt;
-  }
-
-  /**
-   * Pause new submissions and non-blockingly drain already-issued queries.
-   * The loop is bounded by both poll count and elapsed time and deliberately
-   * never calls gl.finish().
-   */
-  async function drainPending({
-    maxPolls = DEFAULT_DRAIN_MAX_POLLS,
-    timeoutMs = DEFAULT_DRAIN_TIMEOUT_MS,
-    yieldFn = defaultDrainYield,
-  } = {}) {
-    const boundedPolls = Math.max(1, Math.floor(Number(maxPolls) || DEFAULT_DRAIN_MAX_POLLS));
-    const boundedTimeout = Math.max(0, Number.isFinite(Number(timeoutMs))
-      ? Number(timeoutMs)
-      : DEFAULT_DRAIN_TIMEOUT_MS);
-    const yieldBetweenPolls = typeof yieldFn === 'function' ? yieldFn : defaultDrainYield;
-    pauseSubmissions();
-
-    // If capture close lands inside a labeled pass, end that pass once before
-    // readback. No new query can begin while submissions are paused.
-    if (activeQuery) end();
-
-    const startedAt = drainClockNow();
-    const deadlineAt = startedAt + boundedTimeout;
-    let polls = 0;
-    while (pending.length && polls < boundedPolls) {
-      poll();
-      polls++;
-      if (!pending.length) break;
-      if (drainClockNow() >= deadlineAt) break;
-      if (polls < boundedPolls) {
-        const yieldedBeforeDeadline = await yieldBeforeDeadline(yieldBetweenPolls, deadlineAt);
-        if (!yieldedBeforeDeadline) break;
-      }
-    }
-
-    const timedOut = pending.length > 0;
-    if (timedOut) {
-      markInvalid('drain-timeout');
-      dropPendingQueries();
-    }
-    return {
-      drained: !timedOut,
-      timedOut,
-      polls,
-      pending: pending.length,
-      completedQueries: captureCounts.completed,
-      droppedQueries: captureCounts.dropped,
-      status: effectiveStatus(true),
-    };
-  }
-
-  function getQueryCounts() {
-    return {
-      issued: captureCounts.issued,
-      completed: captureCounts.completed,
-      pending: pending.length + (activeQuery ? 1 : 0),
-      dropped: captureCounts.dropped,
-      rejected: captureCounts.rejected,
-    };
-  }
-
-  function effectiveStatus(forReport = false) {
-    if (!cap.available || abandoned || disposed) return 'unavailable';
-    if (lastInvalidation) return lastInvalidation;
-    if (captureCounts.completed > 0) return 'ok';
-    if (forReport || enabled || captureCounts.issued > 0 || captureCounts.rejected > 0) {
-      return 'no-completed-queries';
-    }
-    return status;
-  }
-
   function getCapability() {
-    const queryCounts = getQueryCounts();
-    const live = cap.available && !abandoned && !disposed;
     return {
       available: cap.available,
-      live,
-      status: effectiveStatus(false),
+      status: cap.available ? status : 'unavailable',
       reason: cap.reason,
       webgl2: !!cap.webgl2,
       extension: cap.available
@@ -592,21 +296,6 @@ export function createGpuTimers(gl) {
       enabled,
       lastDisjoint,
       pending: pending.length,
-      submissionsPaused,
-      captureValid: live
-        && lastInvalidation === null
-        && queryCounts.completed > 0
-        && queryCounts.pending === 0
-        && queryCounts.dropped === 0
-        && queryCounts.rejected === 0,
-      invalidation: lastInvalidation,
-      invalidations: { ...invalidations },
-      queryCounts,
-      issuedQueries: queryCounts.issued,
-      completedQueries: queryCounts.completed,
-      pendingQueries: queryCounts.pending,
-      droppedQueries: queryCounts.dropped,
-      rejectedQueries: queryCounts.rejected,
       labels: LABEL_POOL.slice(),
     };
   }
@@ -621,7 +310,6 @@ export function createGpuTimers(gl) {
     }
     return {
       ...getCapability(),
-      status: effectiveStatus(true),
       passes,
     };
   }
@@ -634,9 +322,6 @@ export function createGpuTimers(gl) {
     abandon,
     dispose,
     setEnabled,
-    pauseSubmissions,
-    resumeSubmissions,
-    drainPending,
     get enabled() { return enabled; },
     getCapability,
     getReport,
