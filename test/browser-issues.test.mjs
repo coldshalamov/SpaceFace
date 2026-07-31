@@ -102,24 +102,33 @@ test('request history backfills work that was already in flight when collection 
   assert.deepEqual(tracker.ignoredIssues[0].expectedNavigation, ['cold-continue']);
 });
 
-test('stable request keys bridge distinct Electron wrappers without hiding a later same-URL abort', () => {
+test('request-route fallback bridges unstable wrappers but invalidates on a later same-route start', () => {
   const page = new FakePage();
   const tracker = collectPageIssues(page);
   const started = failedRequest('http://game.test/module.js', null, 101);
   const failedProxy = failedRequest('http://game.test/module.js', 'net::ERR_ABORTED', 101);
-  const later = failedRequest('http://game.test/module.js', 'net::ERR_ABORTED', 202);
+  const coarseProxy = failedRequest('http://game.test/coarse.js', 'net::ERR_ABORTED', 404);
+  const coarseStarted = failedRequest('http://game.test/coarse.js', null, 303);
+  const laterStarted = failedRequest('http://game.test/later.js', null, 505);
+  const laterFailed = failedRequest('http://game.test/later.js', 'net::ERR_ABORTED', 606);
 
   page.emit('request', started);
+  page.emit('request', coarseStarted);
+  page.emit('request', laterStarted);
   const token = tracker.beginExpectedNavigation('cold-continue');
   tracker.endExpectedNavigation(token);
   page.emit('requestfailed', failedProxy);
-  page.emit('requestfailed', later);
+  page.emit('requestfailed', coarseProxy);
+  page.emit('request', failedRequest('http://game.test/later.js', null, 606));
+  page.emit('requestfailed', laterFailed);
 
-  assert.equal(tracker.ignoredIssues.length, 1);
+  assert.equal(tracker.ignoredIssues.length, 2);
   assert.equal(tracker.ignoredIssues[0].expectedNavigationAttribution, 'request-key');
   assert.match(tracker.ignoredIssues[0].text, /module\.js: net::ERR_ABORTED/);
+  assert.equal(tracker.ignoredIssues[1].expectedNavigationAttribution, 'request-route');
+  assert.match(tracker.ignoredIssues[1].text, /coarse\.js: net::ERR_ABORTED/);
   assert.deepEqual(tracker.errorIssues().map((issue) => issue.text), [
-    'Request failed http://game.test/module.js: net::ERR_ABORTED',
+    'Request failed http://game.test/later.js: net::ERR_ABORTED',
   ]);
 });
 

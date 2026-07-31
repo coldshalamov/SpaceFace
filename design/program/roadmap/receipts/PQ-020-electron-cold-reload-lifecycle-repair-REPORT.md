@@ -88,6 +88,14 @@ request fingerprint: method, resource type, URL, and network start time. The fal
 once. An adversarial regression uses distinct start/failure wrappers for one fingerprint and proves
 that a later same-URL request with a different start time remains a hard failure.
 
+Candidate digest `e97b2667ede0798e48ecc90cfd93fd5ae543c884ca97831aa3059fd6f4992891`
+showed that Electron does not keep network start time stable across the relevant wrappers either:
+Browser passed 21/21 with zero issues; Electron completed 21/21, matched facts, and closed cleanly,
+while eight varying aborts remained untagged. The final fallback uses method, resource type, and URL
+only while that route is unambiguous. Observing a same-route request after the navigation window
+invalidates the fallback before failure, so an unrelated later request cannot inherit the old
+navigation label.
+
 ## Focused evidence
 
 - Recorded native failure: 21/21 Electron frames, normalized gameplay projection equal to Browser,
