@@ -130,6 +130,10 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     'Asteroid Ops entry must hold the shipped nearest-target chord across an input tick and verify its exact rock');
   assert.doesNotMatch(source, /keyboard\.press\('Control\+Space'\)/,
     'a zero-duration chord may vanish between fixed input ticks');
+  assert.match(source, /releaseMassline[\s\S]*keyboard\.down\('Space'\)[\s\S]*actions\?\.massline\?\.source === 'keyboard'[\s\S]*keyboard\.up\('Space'\)[\s\S]*tether\?\.active !== true/,
+    'Massline release must cross a fixed input tick before the public key is released');
+  assert.doesNotMatch(source, /releaseMassline[\s\S]{0,220}keyboard\.press\('Space'\)/,
+    'a zero-duration Massline cut may vanish between fixed input ticks');
 
   assert.match(source, /requireBrokerClaimOrDiagnostic/);
   assert.match(source, /headless:\s*false/);

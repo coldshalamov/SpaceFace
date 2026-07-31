@@ -794,7 +794,14 @@ async function assertExactlyOneExteriorRelay(page, siteId) {
 async function releaseMassline(page) {
   const active = await page.evaluate(() => window.SF?.state?.player?.tether?.active === true);
   if (!active) return;
-  await page.keyboard.press('Space');
+  await page.keyboard.down('Space');
+  try {
+    await page.waitForFunction(() => (
+      window.SF?.state?.input?.actions?.massline?.source === 'keyboard'
+    ), null, { timeout: 2_000 });
+  } finally {
+    await page.keyboard.up('Space');
+  }
   await page.waitForFunction(() => window.SF?.state?.player?.tether?.active !== true);
 }
 
