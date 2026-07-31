@@ -2660,7 +2660,8 @@
       "priority": 19,
       "title": "Run the survey-to-relay public route pair",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
+      "owner": "Codex primary integrator",
       "dependsOn": [
         "PQ-024.survey-route-harness"
       ],
@@ -2670,8 +2671,12 @@
       ],
       "paths": [
         "scripts/probe-pq024-asteroid-claim.mjs",
+        "scripts/check-pq024-asteroid-claim-electron.mjs",
         "scripts/validation-manifests/pq024-asteroid-claim.mjs",
-        "design/program/roadmap/active/PQ-024.md"
+        "test/pq024-asteroid-claim-manifest.test.mjs",
+        "design/program/roadmap/active/PQ-024.md",
+        "design/program/roadmap/evidence/h1/row9-pq024-survey-claim/",
+        "design/program/roadmap/receipts/PQ-024-survey-h1-capture-REPORT.md"
       ],
       "checks": [
         "npm run check:pq024:survey-claim",
