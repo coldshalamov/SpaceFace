@@ -2548,7 +2548,7 @@
       "priority": 12,
       "title": "Accept-versus-reauthor review for the claim relay",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-022.h1-asset-presentation"
       ],
@@ -2560,8 +2560,84 @@
         "design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/"
       ],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-relay-h2-verdict-REPORT.md"
+      ],
       "brief": "Review the retained close/default/far evidence and decide whether the exact place_claim_outpost_relay identity ships or returns to re-authoring. Rendering and structural correctness are already proven."
+    },
+    {
+      "id": "PQ-022.relay-reauthor",
+      "parentId": "PQ-022",
+      "priority": 24,
+      "title": "Re-author the claim relay's visible manufactured identity",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-022.relay-human-verdict"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "assets/ships/parts/places/place_claim_outpost_relay.glb",
+        "assets/ships/release/parts/places/place_claim_outpost_relay.glb",
+        "assets/ships/parts/parts_manifest.json",
+        "assets/ships/release/release_manifest.json"
+      ],
+      "checks": [
+        "npm run check:pq022:relay-collar",
+        "npm run check:graphics:asset-receipts",
+        "npm run check:asset-reachability"
+      ],
+      "receiptRefs": [],
+      "brief": "Preserve identity, anchors, interaction envelope, placement scale, collision, cleanup, and release technique while replacing the cylinder-and-box read with a rock-gripping claim collar, powered relay core, serviceable structure, and ownership signal legible without HUD rings."
+    },
+    {
+      "id": "PQ-022.relay-reauthor-h1",
+      "parentId": "PQ-022",
+      "priority": 25,
+      "title": "Capture revised claim-relay Browser and Electron presentation",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-022.relay-reauthor"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/",
+        "design/program/roadmap/active/PQ-022.md"
+      ],
+      "checks": [
+        "npm run check:pq022:relay-collar",
+        "npm run check:assets:live"
+      ],
+      "receiptRefs": [],
+      "brief": "Capture candidate-bound close/default/far game-camera evidence and Electron parity for the revised exact release identity; retain rather than rerun unrelated row-7 assets."
+    },
+    {
+      "id": "PQ-022.relay-reauthor-review",
+      "parentId": "PQ-022",
+      "priority": 26,
+      "title": "Causally review the revised claim relay",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-022.relay-reauthor-h1"
+      ],
+      "mutexes": [
+        "evidence-review"
+      ],
+      "paths": [
+        "design/program/roadmap/H2_REVIEW_INDEX.md",
+        "design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Review only whether the revised candidate closes the recorded silhouette, construction, material-zone, and ownership-signal defects at close/default/far framing."
     },
     {
       "id": "PQ-022.corridor-assets-human-disposition",
@@ -3356,7 +3432,7 @@
       "state": "ready",
       "dependsOn": [
         "PQ-034.native-closure",
-        "PQ-022.relay-human-verdict",
+        "PQ-022.relay-reauthor-review",
         "PQ-022.corridor-assets-human-disposition"
       ],
       "mutexes": [
@@ -3380,7 +3456,7 @@
       "kind": "integration",
       "state": "ready",
       "dependsOn": [
-        "PQ-022.relay-human-verdict",
+        "PQ-022.relay-reauthor-review",
         "PQ-022.h3-performance"
       ],
       "mutexes": [
@@ -3502,7 +3578,7 @@
       "state": "ready",
       "dependsOn": [
         "PQ-024.survey-h1-capture",
-        "PQ-022.relay-human-verdict"
+        "PQ-022.relay-reauthor-review"
       ],
       "mutexes": [
         "evidence-review"

@@ -48,11 +48,14 @@ The one-use Browser cell passed at fixed seed 47 with the exact release identity
 readable fallback. Review all three relay framings. The structural receipt's reservation remains live:
 this is an authored grey primitive assembly, not a loading failure.
 
-**Unblocks:** relay-collar receipt → `route_accepted`, which is the blob PQ-024 binds as
-`evidenceDependencies` before PQ-024 implementation can dispatch.
+**Continuation:** the negative asset disposition preserves the structural/H1 proof but routes
+through `PQ-022.relay-reauthor` → revised H1 → causal re-review. Only a passing revised review can
+promote the relay receipt to `route_accepted` for PQ-024 binding.
 
-**Verdict:** BLOCKED — named owner `SpaceFace human visual reviewer`; no independent human art
-reviewer is available in this autonomous recovery run
+**Verdict:** PASS review / REVISE asset — solo integrator review confirms the current identity is a
+generic cylinder-and-box assembly whose HUD rings carry more meaning than its manufactured form.
+The review is complete; exact re-authoring, recapture, and causal re-review units are now in the
+queue. Receipt: [relay H2 verdict](receipts/PQ-022-relay-h2-verdict-REPORT.md).
 
 ---
 
