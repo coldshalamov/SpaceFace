@@ -171,6 +171,35 @@ export function createMarketScreen(ctx) {
     return cid || null;
   }
 
+  function trackedCargoGuidance(state, cmdtyId, commodityName) {
+    const trackedId = state && state.ui && state.ui.trackedMissionId;
+    const active = (state && state.missions && state.missions.active) || [];
+    const mission = trackedId ? active.find((entry) => entry && entry.id === trackedId) : null;
+    const missionCmdty = mission && ((mission.cargo && mission.cargo.commodityId)
+      || (mission.params && mission.params.cmdtyId));
+    if (!mission || !missionCmdty || missionCmdty !== cmdtyId) {
+      return { state: 'missing', text: `Buy ${commodityName} here to load your job.` };
+    }
+    const requested = Math.max(1, Math.floor(Number(
+      (mission.cargo && mission.cargo.qty) || (mission.params && mission.params.qty) || 1,
+    ) || 1));
+    const held = heldQty(state, cmdtyId);
+    if (held >= requested) {
+      const destination = mission.destinationName || mission.destName
+        || (mission.params && (mission.params.destinationName || mission.params.destName))
+        || mission.destStationId || mission.destSectorId || 'the marked destination';
+      return {
+        state: 'aboard',
+        text: `Cargo is aboard — undock and follow nav to ${destination}.`,
+      };
+    }
+    const remaining = requested - held;
+    return {
+      state: 'missing',
+      text: `Load ${remaining}u more ${commodityName} before undocking.`,
+    };
+  }
+
   function tradedList(state) {
     const table = marketTable(state);
     const ids = table ? Object.keys(table) : COMMODITIES.map((c) => c.id);
@@ -323,11 +352,12 @@ export function createMarketScreen(ctx) {
     const legal = def.legality || 'legal';
     const legalTone = LEGAL_TONE[legal];
     const isTracked = trackedCmdty(state) === r.id;
+    const trackedGuidance = isTracked ? trackedCargoGuidance(state, r.id, def.name) : null;
     activeChart = { hist, avg, label: def.name };
     stageEl.setAttribute('aria-labelledby', `sx-market-tab-${r.id}`);
     stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
     stageEl.innerHTML =
-      (isTracked ? `<div class="sx-mkt-tracked">${icon('contracts', 15)}<span><b>Tracked contract</b> — buy ${escapeHtml(def.name)} here to load your job.</span></div>` : '') +
+      (isTracked ? `<div class="sx-mkt-tracked" data-tracked-state="${trackedGuidance.state}">${icon('contracts', 15)}<span><b>Tracked contract</b> — ${escapeHtml(trackedGuidance.text)}</span></div>` : '') +
       `<div class="sx-mkt-head">` +
         `<div class="sx-mkt-title"><h2>${escapeHtml(def.name)}</h2>` +
           `<span class="sx-tag${legalTone ? ' sx-tag--' + (legalTone === 'loss' ? 'bad' : 'warn') : ''}">${LEGAL_LABEL[legal]}</span>` +

@@ -93,7 +93,10 @@ try {
   assert.equal(seeded.ok, true, 'probe should seed an affordable one-unit contract cargo offer: ' + JSON.stringify(seeded));
 
   assert.equal(await page.evaluate(() => {
-    const button = document.querySelector('[data-screen="station"] .st-mission-btns button[data-mid="cargo_loading_probe_bulk_trade"][data-act="accept"]');
+    const row = document.querySelector('[data-screen="station"] .sx-ct-row[data-mid="cargo_loading_probe_bulk_trade"]');
+    if (!row) return false;
+    row.click();
+    const button = document.querySelector('[data-screen="station"] .sx-ct-commit[data-accept="cargo_loading_probe_bulk_trade"]');
     if (!button || button.disabled) return false;
     button.click();
     return true;
@@ -128,23 +131,24 @@ try {
   assert.match(marketReport.calloutText, /TRACKED CONTRACT/i, 'Market callout should label tracked contract context');
   assert.match(marketReport.calloutText + ' ' + marketReport.rowMissionLine, /load\s+1u more|load\s+1u|before undocking/i,
     'Market should tell the player to load missing contract cargo: ' + JSON.stringify(marketReport));
-  assert.match(marketReport.rowClass, /tracked-mission/, 'tracked commodity row should be highlighted before buying');
+  assert.match(marketReport.rowClass, /is-tracked/, 'tracked commodity row should be highlighted before buying');
 
   const buyReport = await page.evaluate(() => {
     const state = window.SF.state;
     const mission = state.missions.active.find((m) => m.id === state.ui.trackedMissionId);
     const cmdtyId = mission && mission.params && mission.params.cmdtyId;
-    const row = cmdtyId && document.querySelector(`[data-screen="station"] .st-row[data-cmdty="${cmdtyId}"]`);
+    const row = cmdtyId && document.querySelector(`[data-screen="station"] .sx-mkt-row[data-cmdty="${cmdtyId}"]`);
     if (!mission || !cmdtyId || !row) return { ok: false, reason: 'missing mission row', cmdtyId };
-    row.querySelector('[data-act="step"][data-v="1"]')?.click();
-    const buy = row.querySelector('[data-act="buy"]');
-    if (!buy || buy.disabled) return { ok: false, reason: 'buy disabled', buyTitle: buy && buy.title, rowText: text(row) };
+    row.click();
+    const buy = document.querySelector('[data-screen="station"] .sx-trade__go[data-go]');
+    if (!buy || buy.disabled) return { ok: false, reason: 'buy disabled', buyText: text(buy), rowText: text(row) };
+    const beforeOwned = state.player.cargo.items[cmdtyId] || 0;
     buy.click();
-    return { ok: true, missionId: mission.id, cmdtyId, beforeOwned: state.player.cargo.items[cmdtyId] || 0, buyTitle: buy.title };
+    return { ok: true, missionId: mission.id, cmdtyId, beforeOwned, buyText: text(buy) };
     function text(el) { return (el && el.textContent || '').replace(/\s+/g, ' ').trim(); }
   });
   assert.equal(buyReport.ok, true, 'Market should let the player buy the tracked contract commodity: ' + JSON.stringify(buyReport));
-  assert.match(buyReport.buyTitle || '', /Buy 1 .* CR/i, 'Buy affordance should reflect the one-unit contract cargo purchase');
+  assert.match(buyReport.buyText || '', /Confirm Purchase/i, 'Buy affordance should expose the current purchase commitment');
   await page.waitForFunction(({ cmdtyId, beforeOwned }) => (window.SF.state.player.cargo.items[cmdtyId] || 0) >= beforeOwned + 1,
     { cmdtyId: buyReport.cmdtyId, beforeOwned: buyReport.beforeOwned }, { timeout: 10000 });
 
@@ -156,7 +160,7 @@ try {
   assert.match(marketReport.calloutText + ' ' + marketReport.rowMissionLine, /aboard|undock and follow nav|cargo is aboard/i,
     'Market should advance from missing-cargo copy to cargo-aboard guidance after buying: ' + JSON.stringify(marketReport));
 
-  assert.equal(await clickButton(page, 'UNDOCK'), true, 'station should still expose Undock after cargo loading');
+  assert.equal(await undockFromStation(page), true, 'station should still expose Undock after cargo loading');
   await page.waitForFunction(() => {
     const state = window.SF && window.SF.state;
     return !!(state && state.mode === 'flight' && state.ui && state.ui.docked === false);
@@ -200,8 +204,8 @@ function trackedMarketReport(page) {
     const trackedId = state.ui.trackedMissionId;
     const mission = state.missions.active.find((m) => m.id === trackedId);
     const cmdtyId = mission && mission.params && mission.params.cmdtyId;
-    const callout = document.querySelector('[data-screen="station"] .st-market-mission');
-    const row = cmdtyId && document.querySelector(`[data-screen="station"] .st-row[data-cmdty="${cmdtyId}"]`);
+    const callout = document.querySelector('[data-screen="station"] .sx-mkt-tracked');
+    const row = cmdtyId && document.querySelector(`[data-screen="station"] .sx-mkt-row[data-cmdty="${cmdtyId}"]`);
     return {
       trackedMissionId: trackedId,
       missionId: mission && mission.id,
@@ -211,20 +215,46 @@ function trackedMarketReport(page) {
       calloutVisible: !!callout && !callout.hidden && getComputedStyle(callout).display !== 'none',
       calloutText: norm(callout && callout.textContent),
       rowClass: row && row.className || '',
-      rowMissionLine: norm(row && row.querySelector('.st-market-mission-line') && row.querySelector('.st-market-mission-line').textContent),
+      rowMissionLine: norm(row && row.querySelector('.sx-mkt-row__flag') && row.querySelector('.sx-mkt-row__flag').getAttribute('title')),
     };
   });
 }
 
 async function stationTab(page, tabId) {
+  const operationId = tabId === 'missions' ? 'contracts' : tabId;
+  const selector = operationId === 'contracts' ? '.sx-ct' : operationId === 'market' ? '.sx-mkt' : '';
   const opened = await page.evaluate((id) => {
-    const tab = document.querySelector('[data-screen="station"] [role="tab"][data-tab="' + id + '"]') || document.querySelector('[data-screen="station"] [data-tab="' + id + '"]');
+    const tab = document.querySelector('[data-screen="station"] [data-nav="' + id + '"]');
     if (!tab) return false;
     tab.click();
     return true;
-  }, tabId);
+  }, operationId);
   assert.equal(opened, true, 'station ' + tabId + ' tab should exist');
-  await waitVisible(page, '[data-screen="station"] #st-panel-' + tabId, 'station ' + tabId + ' panel');
+  await waitVisible(page, '[data-screen="station"] .sx-app[data-operation="' + operationId + '"] #sx-panel ' + selector,
+    'station ' + tabId + ' panel');
+}
+
+async function undockFromStation(page) {
+  const clicked = await page.evaluate(() => {
+    const button = document.querySelector('[data-screen="station"] [data-act="undock"]');
+    if (!button || button.disabled || button.classList.contains('is-disabled')) return false;
+    button.click();
+    return true;
+  });
+  if (!clicked) return false;
+  const needsConfirmation = await page.evaluate(() => {
+    const pop = document.querySelector('[data-screen="station"] .sx-pop--dep');
+    return !!(pop && !pop.hidden);
+  });
+  if (needsConfirmation) {
+    return page.evaluate(() => {
+      const launch = document.querySelector('[data-screen="station"] .sx-pop--dep [data-pop-launch]');
+      if (!launch || launch.disabled) return false;
+      launch.click();
+      return true;
+    });
+  }
+  return true;
 }
 
 async function finishOnboardingForProbe(page) {

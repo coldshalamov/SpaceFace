@@ -15,6 +15,8 @@ import {
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
 import { mountContactPortrait } from '../../portraitArt.js';
 import { escapeHtml } from '../../comms.js';
+import { BINDINGS } from '../../bindings.js';
+import { missionConsequenceSummary, missionPreflight } from '../../missionPreflight.js';
 import { icon } from '../icons.js';
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
@@ -38,6 +40,8 @@ export function createBarScreen(ctx) {
 
   let selectedId = null;
   let saidText = null;   // what the selected contact just said
+  let pendingMissionOffer = null;
+  let acceptedMissionId = null;
 
   const sid = () => (ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId) || null;
   function contacts(state) {
@@ -46,6 +50,40 @@ export function createBarScreen(ctx) {
   function selected(state) {
     const list = contacts(state);
     return list.find((c) => c.id === selectedId) || list[0] || null;
+  }
+
+  function missionOfferAvailable(state, missionId) {
+    const boards = state && state.missions && state.missions.boards;
+    if (!missionId || !boards) return false;
+    for (const board of Object.values(boards)) {
+      if (Array.isArray(board && board.slots)
+        && board.slots.some((offer) => offer && String(offer.id) === String(missionId))) return true;
+    }
+    return false;
+  }
+
+  function missionOfferHtml(state) {
+    if (acceptedMissionId) {
+      const label = `Mission Log (${BINDINGS.missionLog.label})`;
+      return `<section class="sx-bar-offer is-accepted" aria-label="Accepted mission handoff">` +
+        `<div class="sx-bar-offer__state"><b>ACCEPTED + TRACKED</b><span>${escapeHtml(label)} carries the route, timer, and progress. Launch when Departure Check is green.</span></div>` +
+        `<button type="button" class="sx-btn-primary" data-open-mission-log="${escapeHtml(String(acceptedMissionId))}">OPEN ${escapeHtml(label.toUpperCase())}</button>` +
+      `</section>`;
+    }
+    const offer = pendingMissionOffer;
+    if (!offer || !missionOfferAvailable(state, offer.id)) return '';
+    const preflight = missionPreflight(offer, state);
+    const consequences = missionConsequenceSummary(offer);
+    const unmet = offer.requirementUnmet || offer.lockedReason || preflight.blocker || null;
+    return `<section class="sx-bar-offer" aria-label="Mission readiness">` +
+      `<div class="sx-bar-offer__chips">${preflight.chips.map((chip) =>
+        `<span class="sx-bar-offer__chip is-${escapeHtml(chip.kind)}">${escapeHtml(chip.text)}</span>`).join('')}</div>` +
+      `<div class="sx-bar-offer__stakes">${consequences.chips.map((chip) =>
+        `<span class="sx-bar-offer__stake is-${escapeHtml(chip.kind)}"><b>${escapeHtml(chip.label)}</b>${escapeHtml(chip.text)}</span>`).join('')}</div>` +
+      (preflight.warning ? `<p class="sx-bar-offer__warning">${escapeHtml(preflight.warning)}</p>` : '') +
+      (unmet ? `<p class="sx-bar-offer__blocker">${escapeHtml(unmet)}</p>` : '') +
+      `<button type="button" class="sx-btn-primary" data-accept-mission="${escapeHtml(String(offer.id))}"${unmet ? ' disabled' : ''}>ACCEPT + TRACK</button>` +
+    `</section>`;
   }
 
   // ---------- rail ----------
@@ -99,7 +137,7 @@ export function createBarScreen(ctx) {
           (choices.length
             ? choices.map((ch) => `<button type="button" class="sx-choice" data-choice="${escapeHtml(ch.id)}">${escapeHtml(ch.label)}</button>`).join('')
             : `<p class="sx-muted">They have nothing to say.</p>`) +
-        `</div>` +
+        `</div>` + missionOfferHtml(state) +
       `</div>`;
 
     const big = stageEl.querySelector('[data-bigpic]');
@@ -152,13 +190,38 @@ export function createBarScreen(ctx) {
     const b = ev.target.closest('[data-contact]'); if (!b) return;
     const id = b.getAttribute('data-contact');
     if (id === selectedId) return;
-    selectedId = id; saidText = null;
+    selectedId = id; saidText = null; pendingMissionOffer = null; acceptedMissionId = null;
     const st = ctx.state || {};
     renderRail(st); renderStage(st); renderLeads(st);
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   });
 
   stageEl.addEventListener('click', (ev) => {
+    const accept = ev.target.closest('[data-accept-mission]');
+    if (accept && !accept.disabled) {
+      const missionId = accept.getAttribute('data-accept-mission');
+      const wasAvailable = missionOfferAvailable(ctx.state || {}, missionId);
+      if (ctx.bus) {
+        ctx.bus.emit('ui:acceptMission', { missionId });
+        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      }
+      if (wasAvailable && !missionOfferAvailable(ctx.state || {}, missionId)) {
+        acceptedMissionId = missionId;
+        pendingMissionOffer = null;
+        saidText = `Accepted + tracked. Mission Log (${BINDINGS.missionLog.label}) now carries route, timer, and progress. Undock when Departure Check is green.`;
+      } else {
+        saidText = wasAvailable
+          ? 'Mission still pending. Resolve the readiness blocker before accepting.'
+          : 'That offer is no longer available.';
+      }
+      renderStage(ctx.state || {});
+      renderLeads(ctx.state || {});
+      return;
+    }
+    if (ev.target.closest('[data-open-mission-log]')) {
+      if (ctx.bus) ctx.bus.emit('ui:pushScreen', { id: 'missionLog', source: 'station-bar' });
+      return;
+    }
     const b = ev.target.closest('[data-choice]'); if (!b) return;
     const st = ctx.state || {};
     const c = selected(st); if (!c) return;
@@ -174,6 +237,8 @@ export function createBarScreen(ctx) {
     try { result = buildReply(c.role, choiceId, ctx, sid(), c); } catch (_) { result = null; }
     if (result && result.uniqueWreckRumor && ctx.bus) ctx.bus.emit('uniqueWreck:rumorHeard', result.uniqueWreckRumor);
     saidText = (result && result.text) || 'They shrug.';
+    pendingMissionOffer = result && result.missionOffer || null;
+    acceptedMissionId = null;
     renderStage(ctx.state || {});
     renderLeads(ctx.state || {});
   });

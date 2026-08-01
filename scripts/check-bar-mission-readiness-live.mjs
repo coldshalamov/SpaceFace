@@ -66,77 +66,95 @@ try {
       }],
     };
     sf.state.ui.dockedStationId = 'station_coalition';
-    sf.state.ui.activeStationTab = 'bar';
+    if (sf.state.fuel) sf.state.fuel.current = 0;
     sf.ctx.screenManager.pushScreen('station');
     sf.ctx.screenManager.syncVisibility && sf.ctx.screenManager.syncVisibility();
   });
-  await waitForVisible(page, '.st-bar', 10000, 'station bar');
+  await waitForVisible(page, '[data-screen="station"] .sx-app', 10000, 'station command app');
+  assert.equal(await openStationDestination(page, 'bar', '.sx-bar'), true,
+    'current station dock should expose the Bar destination');
+
+  assert.equal(await page.evaluate(() => {
+    const button = document.querySelector('[data-screen="station"] [data-act="undock"]');
+    if (!button) return false;
+    button.click();
+    return true;
+  }), true, 'station command dock should expose Undock');
+  await waitForVisible(page, '[data-screen="station"] .sx-pop--dep', 5000, 'Departure Check popover');
 
   const departureReport = await page.evaluate(() => {
-    const strip = document.querySelector('.st-departure');
-    const chips = [...document.querySelectorAll('.st-departure-chip')].map((chip) => ({
+    const strip = document.querySelector('[data-screen="station"] .sx-pop--dep');
+    const chips = [...document.querySelectorAll('[data-screen="station"] .sx-pop--dep .sx-depchip')].map((chip) => ({
       label: (chip.querySelector('b') && chip.querySelector('b').textContent || '').trim(),
       text: (chip.querySelector('span') && chip.querySelector('span').textContent || '').trim(),
       className: chip.className,
     }));
     return {
       visible: !!strip && getComputedStyle(strip).display !== 'none',
-      label: (document.querySelector('.st-departure-label') && document.querySelector('.st-departure-label').textContent || '').trim(),
+      label: (strip && strip.querySelector('.sx-pop__head') && strip.querySelector('.sx-pop__head').textContent || '').trim(),
       chips,
     };
   });
-  assert.equal(departureReport.visible, true, 'station should render the Departure Check strip');
-  assert.equal(departureReport.label, 'Departure Check', 'departure strip should be labeled for pre-undock trust');
+  assert.equal(departureReport.visible, true, 'station should render the Departure Check popover');
+  assert.match(departureReport.label, /Departure Check/, 'departure popover should be labeled for pre-undock trust');
   for (const label of ['Track', 'Hold', 'Fuel', 'Hull']) {
     assert(departureReport.chips.some((chip) => chip.label === label),
       `departure strip missing ${label} chip: ${JSON.stringify(departureReport)}`);
   }
   assert(departureReport.chips.some((chip) => chip.label === 'Track' && /Probe Delivery/.test(chip.text)),
-    'departure strip should show the tracked mission title: ' + JSON.stringify(departureReport));
+    'departure popover should show the tracked mission title: ' + JSON.stringify(departureReport));
+  await page.keyboard.press('Escape');
+
+  assert.equal(await page.evaluate(() => {
+    const contacts = [...document.querySelectorAll('[data-screen="station"] .sx-bar-row[data-contact]')];
+    const hunter = contacts.find((button) => /bounty hunter/i.test(button.querySelector('.sx-bar-row__role')?.textContent || ''));
+    if (!hunter) return false;
+    hunter.click();
+    return true;
+  }), true, 'Bar contact rail should expose its bounty hunter');
 
   const bountyButton = page.getByRole('button', { name: 'Any bounties worth chasing?' });
   assert.equal(await bountyButton.count(), 1, 'Rook bounty choice should be reachable in the Bar');
   await bountyButton.click();
-  await page.waitForFunction(() => !!document.querySelector('.st-bar-offer .st-mission-preflight-chip'), null, {
+  await page.waitForFunction(() => !!document.querySelector('.sx-bar-offer .sx-bar-offer__chip'), null, {
     timeout: 5000,
   }).catch(async (err) => {
     const debug = await page.evaluate(() => ({
-      activeTab: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.activeStationTab,
+      operation: document.querySelector('[data-screen="station"] .sx-app')?.dataset.operation,
       dockedStationId: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.dockedStationId,
       boardSlots: window.SF && window.SF.state && window.SF.state.missions
         && window.SF.state.missions.boards.station_coalition
         && window.SF.state.missions.boards.station_coalition.slots
         && window.SF.state.missions.boards.station_coalition.slots.map((slot) => ({ id: slot.id, type: slot.type, title: slot.title })),
-      barText: (document.querySelector('.st-bar') && document.querySelector('.st-bar').textContent || '')
+      barText: (document.querySelector('.sx-bar') && document.querySelector('.sx-bar').textContent || '')
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 1200),
-      offerCount: document.querySelectorAll('.st-bar-offer').length,
+      offerCount: document.querySelectorAll('.sx-bar-offer').length,
     }));
     throw new Error('Timed out waiting for Bar offer chips: ' + err.message + ' ' + JSON.stringify(debug));
   });
 
   const report = await page.evaluate(() => {
-    const offer = document.querySelector('.st-bar-offer');
-    const card = offer && offer.closest('.st-bar-card');
+    const offer = document.querySelector('.sx-bar-offer');
+    const conversation = offer && offer.closest('.sx-talk');
     const text = (root, sel) => (root && root.querySelector(sel) && root.querySelector(sel).textContent || '')
       .replace(/\s+/g, ' ')
       .trim();
     const button = offer && offer.querySelector('[data-accept-mission]');
     return {
       hasOffer: !!offer,
-      hasCard: !!card,
-      cardContact: card && card.getAttribute('data-contact') || '',
-      reply: text(card, '.st-bar-reply'),
-      chips: [...(offer ? offer.querySelectorAll('.st-mission-preflight-chip') : [])]
+      hasConversation: !!conversation,
+      reply: text(conversation, '.sx-talk__reply'),
+      chips: [...(offer ? offer.querySelectorAll('.sx-bar-offer__chip') : [])]
         .map((el) => (el.textContent || '').trim()),
-      consequenceChips: [...(offer ? offer.querySelectorAll('.st-mission-consequence') : [])]
+      consequenceChips: [...(offer ? offer.querySelectorAll('.sx-bar-offer__stake') : [])]
         .map((el) => (el.textContent || '').replace(/\s+/g, ' ').trim()),
-      blocker: text(offer, '.st-bar-offer-blocker'),
+      blocker: text(offer, '.sx-bar-offer__blocker'),
       buttonText: button ? (button.textContent || '').trim() : '',
       buttonDisabled: button ? button.disabled : null,
       offerText: (offer && offer.textContent || '').replace(/\s+/g, ' ').trim(),
-      visibleBarText: (document.querySelector('.st-bar') && document.querySelector('.st-bar').textContent || '')
+      visibleBarText: (document.querySelector('.sx-bar') && document.querySelector('.sx-bar').textContent || '')
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 800),
@@ -145,7 +163,7 @@ try {
   });
 
   assert.equal(report.top, 'station', 'station screen should remain open');
-  assert.equal(report.hasCard, true, 'bar offer should belong to a contact card: ' + JSON.stringify(report));
+  assert.equal(report.hasConversation, true, 'bar offer should belong to the active contact conversation: ' + JSON.stringify(report));
   assert.match(report.reply, /Accept \+ Track/i, 'bar reply should use tracking language: ' + JSON.stringify(report));
   assert(report.chips.some((chip) => /500 cr collateral/.test(chip)),
     'bar offer should show collateral readiness chip: ' + JSON.stringify(report));
@@ -181,20 +199,20 @@ try {
   });
   await bountyButton.click();
   await page.waitForFunction(() => {
-    const button = document.querySelector('.st-bar-offer [data-accept-mission="bar_probe_ready_bounty"]');
+    const button = document.querySelector('.sx-bar-offer [data-accept-mission="bar_probe_ready_bounty"]');
     return !!(button && !button.disabled);
   }, null, { timeout: 5000 });
   const acceptClickReport = await page.evaluate((missionLogLabel) => {
     const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
-    const button = document.querySelector('.st-bar-offer [data-accept-mission="bar_probe_ready_bounty"]');
+    const button = document.querySelector('.sx-bar-offer [data-accept-mission="bar_probe_ready_bounty"]');
     if (!button) throw new Error('Ready Bar bounty accept button not found');
     button.click();
     const state = window.SF.state;
     const trackedId = state.ui && state.ui.trackedMissionId;
     const tracked = state.missions.active.find((m) => m && m.id === trackedId);
     const board = state.missions.boards.station_coalition;
-    const offer = document.querySelector('.st-bar-offer');
-    const card = offer && offer.closest('.st-bar-card');
+    const offer = document.querySelector('.sx-bar-offer');
+    const conversation = offer && offer.closest('.sx-talk');
     const openButton = offer && offer.querySelector('[data-open-mission-log]');
     return {
       trackedId,
@@ -202,17 +220,17 @@ try {
       trackedType: tracked && tracked.type,
       activeCount: state.missions.active.length,
       boardSlots: board && board.slots && board.slots.map((slot) => slot && slot.id),
-      reply: normalize(card && card.querySelector('.st-bar-reply') && card.querySelector('.st-bar-reply').textContent),
+      reply: normalize(conversation && conversation.querySelector('.sx-talk__reply') && conversation.querySelector('.sx-talk__reply').textContent),
       hasOpenButton: !!openButton,
       openButtonText: normalize(openButton && openButton.textContent),
       openButtonDisabled: openButton ? openButton.disabled : null,
       hasAcceptButton: !!(offer && offer.querySelector('[data-accept-mission]')),
-      offerAccepted: !!(offer && offer.classList.contains('accepted')),
+      offerAccepted: !!(offer && offer.classList.contains('is-accepted')),
       missionLogLabel,
     };
   }, MISSION_LOG_LABEL);
   await page.waitForFunction(() => {
-    const button = document.querySelector('.st-bar-offer [data-open-mission-log]');
+    const button = document.querySelector('.sx-bar-offer [data-open-mission-log]');
     return !!(button && !button.disabled);
   }, null, { timeout: 10000 }).catch(async (err) => {
     const debug = await page.evaluate((clickReport) => {
@@ -221,12 +239,12 @@ try {
       const trackedId = state.ui && state.ui.trackedMissionId;
       const tracked = state.missions.active.find((m) => m && m.id === trackedId);
       const board = state.missions.boards.station_coalition;
-      const offer = document.querySelector('.st-bar-offer');
+      const offer = document.querySelector('.sx-bar-offer');
       const button = offer && (offer.querySelector('[data-open-mission-log]') || offer.querySelector('[data-accept-mission]'));
       return {
         clickReport,
         top: window.SF.ctx.screenManager.top(),
-        activeTab: state.ui && state.ui.activeStationTab,
+        operation: document.querySelector('[data-screen="station"] .sx-app')?.dataset.operation,
         trackedId,
         trackedTitle: tracked && tracked.title,
         trackedType: tracked && tracked.type,
@@ -239,7 +257,7 @@ try {
           open: button.getAttribute('data-open-mission-log'),
           disabled: button.disabled,
         } : null,
-        visibleBarText: normalize(document.querySelector('.st-bar') && document.querySelector('.st-bar').textContent).slice(0, 1000),
+        visibleBarText: normalize(document.querySelector('.sx-bar') && document.querySelector('.sx-bar').textContent).slice(0, 1000),
       };
     }, acceptClickReport);
     throw new Error('Timed out waiting for accepted Bar Mission Log handoff: ' + err.message + ' ' + JSON.stringify(debug));
@@ -250,26 +268,26 @@ try {
     const state = window.SF.state;
     const trackedId = state.ui && state.ui.trackedMissionId;
     const tracked = state.missions.active.find((m) => m && m.id === trackedId);
-    const offer = document.querySelector('.st-bar-offer');
-    const card = offer && offer.closest('.st-bar-card');
+    const offer = document.querySelector('.sx-bar-offer');
+    const conversation = offer && offer.closest('.sx-talk');
     const button = offer && offer.querySelector('[data-open-mission-log]');
     return {
       top: window.SF.ctx.screenManager.top(),
-      activeTab: state.ui.activeStationTab,
+      operation: document.querySelector('[data-screen="station"] .sx-app')?.dataset.operation,
       trackedId,
       trackedTitle: tracked && tracked.title,
       trackedType: tracked && tracked.type,
-      reply: normalize(card && card.querySelector('.st-bar-reply') && card.querySelector('.st-bar-reply').textContent),
+      reply: normalize(conversation && conversation.querySelector('.sx-talk__reply') && conversation.querySelector('.sx-talk__reply').textContent),
       buttonText: normalize(button && button.textContent),
       buttonTitle: button && button.title || '',
       buttonDisabled: button ? button.disabled : null,
-      offerAccepted: !!(offer && offer.classList.contains('accepted')),
+      offerAccepted: !!(offer && offer.classList.contains('is-accepted')),
       hasAcceptButton: !!(offer && offer.querySelector('[data-accept-mission]')),
       missionLogLabel,
     };
   }, MISSION_LOG_LABEL);
   assert.equal(acceptedReport.top, 'station', 'Bar should remain in the station after accepting before handoff: ' + JSON.stringify(acceptedReport));
-  assert.equal(acceptedReport.activeTab, 'bar', 'Bar tab should stay active before Mission Log handoff: ' + JSON.stringify(acceptedReport));
+  assert.equal(acceptedReport.operation, 'bar', 'Bar operation should stay active before Mission Log handoff: ' + JSON.stringify(acceptedReport));
   assert.equal(acceptedReport.trackedTitle, 'Ready Bar Bounty', 'ready Bar offer should become the tracked mission: ' + JSON.stringify(acceptedReport));
   assert.equal(acceptedReport.offerAccepted, true, 'accepted Bar offer should mark the offer wrapper accepted: ' + JSON.stringify(acceptedReport));
   assert.equal(acceptedReport.hasAcceptButton, false, 'accepted Bar offer should replace the accept intent with a handoff intent: ' + JSON.stringify(acceptedReport));
@@ -285,7 +303,7 @@ try {
     'accepted Bar Mission Log handoff button should stay enabled: ' + JSON.stringify(acceptedReport));
 
   await page.evaluate(() => {
-    const button = document.querySelector('.st-bar-offer [data-open-mission-log]');
+    const button = document.querySelector('.sx-bar-offer [data-open-mission-log]');
     if (!button) throw new Error('Open Mission Log button not found');
     button.click();
   });
@@ -326,6 +344,18 @@ async function waitForVisible(page, selector, timeoutMs, label) {
   }, selector, { timeout: timeoutMs }).catch((err) => {
     throw new Error('Timed out waiting for ' + label + ': ' + err.message);
   });
+}
+
+async function openStationDestination(page, destinationId, screenSelector) {
+  const opened = await page.evaluate((id) => {
+    const tab = document.querySelector(`[data-screen="station"] [data-nav="${id}"]`);
+    if (!tab) return false;
+    tab.click();
+    return true;
+  }, destinationId);
+  if (!opened) return false;
+  await waitForVisible(page, `[data-screen="station"] ${screenSelector}`, 10000, `station ${destinationId} operation`);
+  return true;
 }
 
 async function clickButton(page, label) {
