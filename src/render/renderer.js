@@ -80,6 +80,10 @@ import {
   isWebGlContextUnavailable,
 } from './contextResourceLifecycle.js';
 import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
+import {
+  AUTHORED_ASSET_PREFETCH_RADIUS,
+  willEntityEnterAuthoredUpgradeRunway,
+} from './authoredAdmissionPolicy.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -104,9 +108,6 @@ const RENDER_STREAM_EVICT_RADIUS = 6400;
 // Start authored decode well before the normal camera can see the boundary. At the fastest early
 // ship speeds this provides several seconds of runway, while current-sector objects farther away
 // remain dormant instead of replacing procedural placeholders during unrelated play.
-const AUTHORED_ASSET_PREFETCH_RADIUS = 2400;
-const AUTHORED_ASSET_IMMEDIATE_RADIUS = 1000;
-const AUTHORED_ASSET_LOOKAHEAD_SECONDS = 10;
 const RENDER_RESIDENCY_POLL_SECONDS = 0.25;
 
 function isDebugRuntime() {
@@ -205,34 +206,6 @@ function entityWithinPlayerRadius(entity, state, radius) {
   return dx * dx + dz * dz <= radius * radius;
 }
 
-function isCriticalStartingHub(entity) {
-  if (!entity || entity.type !== 'station') return false;
-  const data = entity.data || {};
-  if (entity.id === 'station_helios' || data.stationId === 'station_helios') return true;
-  const token = String(data.archetypeGlb || data.placeId || '')
-    .replace(/^places\//, '')
-    .replace(/\.glb$/, '');
-  return token === 'place_station_trade_hub' && data.sectorId === 'sector_helios_prime';
-}
-
-function entityIsOnApproachVector(entity, state, radius) {
-  const player = playerEntityForRenderState(state);
-  if (!player || !player.pos || !player.vel || !entity || !entity.pos) return false;
-  const dx = entity.pos.x - player.pos.x;
-  const dz = entity.pos.z - player.pos.z;
-  const distance = Math.hypot(dx, dz);
-  if (!Number.isFinite(distance) || distance <= 0 || distance > radius) return false;
-  // Use relative velocity, not only player velocity. Inbound traffic can enter the camera runway
-  // while the player is stationary; ignoring the traffic velocity deferred its GLB decode/upload
-  // until the ship crossed the immediate radius and exposed that work during flight.
-  const relativeX = (Number(player.vel.x) || 0) - (Number(entity.vel?.x) || 0);
-  const relativeZ = (Number(player.vel.z) || 0) - (Number(entity.vel?.z) || 0);
-  const closingSpeed = (dx * relativeX + dz * relativeZ) / distance;
-  if (closingSpeed <= 1) return false;
-  const projectedDistance = distance - closingSpeed * AUTHORED_ASSET_LOOKAHEAD_SECONDS;
-  return projectedDistance <= AUTHORED_ASSET_IMMEDIATE_RADIUS;
-}
-
 /** Pure render-streaming policy used by reconciliation and focused tests. */
 export function isEntityRenderRelevant(entity, state, radius = RENDER_STREAM_PREFETCH_RADIUS) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
@@ -248,10 +221,7 @@ export function isEntityRenderRelevant(entity, state, radius = RENDER_STREAM_PRE
 export function isEntityAuthoredUpgradeRelevant(entity, state, radius = AUTHORED_ASSET_PREFETCH_RADIUS) {
   if (!entity || entity.alive === false) return false;
   if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
-  if (entityIsExplicitRenderFocus(entity, state)) return true;
-  if (isCriticalStartingHub(entity)) return true;
-  if (entityWithinPlayerRadius(entity, state, AUTHORED_ASSET_IMMEDIATE_RADIUS)) return true;
-  return entityIsOnApproachVector(entity, state, radius);
+  return willEntityEnterAuthoredUpgradeRunway(entity, state, { radius });
 }
 
 function clearEntityMeshReference(entity, mesh) {

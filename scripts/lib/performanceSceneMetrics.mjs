@@ -1,6 +1,8 @@
 // Browser-safe scene, pipeline, and residency measurement helpers shared by performance probes.
 // No Three.js import is required: the helpers inspect the live Object3D and diagnostic contracts.
 
+import { willEntityEnterAuthoredUpgradeRunway } from '../../src/render/authoredAdmissionPolicy.js';
+
 const PERFORMANCE_RENDER_PREFETCH_RADIUS = 5200;
 
 export const PERFORMANCE_PIPELINE_WARMUP_SCHEMA = 'spaceface.performancePipelineWarmup.v1';
@@ -207,6 +209,7 @@ export function collectPerformancePipelineReadiness({
   registry = globalThis.SF?.registry,
   diagnostics = readDiagnostics(),
   resourceStartTime = 0,
+  measurementHorizonMs = 0,
 } = {}) {
   const renderSystem = registry && typeof registry.get === 'function' ? registry.get('render') : null;
   const renderState = state?.render || {};
@@ -215,6 +218,7 @@ export function collectPerformancePipelineReadiness({
     : null;
   const upgrade = renderState.scene?.userData?.authoredUpgradeDiagnostics || null;
   const authored = authoredAssetStatus(state);
+  const admissionRiskEntities = pendingAdmissionRiskEntities(state, measurementHorizonMs);
   const resources = typeof performance !== 'undefined' && typeof performance.getEntriesByType === 'function'
     ? performance.getEntriesByType('resource')
       .filter((entry) => entry.startTime >= resourceStartTime && /(?:assets|vendor)\//.test(String(entry.name || '')))
@@ -236,6 +240,8 @@ export function collectPerformancePipelineReadiness({
     authoredShipCount: authored.shipCount,
     authoredReadyCount: authored.readyCount,
     authoredPendingCount: authored.pendingCount,
+    authoredPendingAdmissionRiskCount: admissionRiskEntities.length,
+    authoredPendingAdmissionRiskEntities: admissionRiskEntities,
     authoredPresentedCount: authored.readyCount,
     authoredFallbackCount: authored.fallbackCount,
     authoredMissingMeshCount: authored.missingMeshCount,
@@ -266,6 +272,7 @@ export function performancePipelineFingerprint(readiness = {}) {
     meshReconcileDirty: readiness?.meshReconcileDirty === true,
     pipelineCompilePending: finiteOrNull(readiness?.pipelineCompilePending),
     authoredPendingCount: finiteOrNull(readiness?.authoredPendingCount),
+    authoredPendingAdmissionRiskCount: finiteOrNull(readiness?.authoredPendingAdmissionRiskCount),
     residentAssets: finiteOrNull(residency?.residentAssets),
     residentResources: finiteOrNull(residency?.residentResources),
   };
@@ -277,7 +284,29 @@ export function isPerformancePipelineSettled(readiness = {}) {
     && fingerprint.activeAdmissionJobs === 0
     && fingerprint.meshBuildQueueRemaining === 0
     && fingerprint.meshReconcileDirty === false
+    && fingerprint.authoredPendingAdmissionRiskCount === 0
     && (fingerprint.pipelineCompilePending == null || fingerprint.pipelineCompilePending === 0);
+}
+
+function pendingAdmissionRiskEntities(state, measurementHorizonMs) {
+  const horizonSeconds = Math.max(0, Number(measurementHorizonMs) || 0) / 1000;
+  const result = [];
+  for (const entity of state?.entityList || []) {
+    if (entity?.type !== 'ship' || entity.alive === false) continue;
+    const assetState = entity.mesh?.userData?.authoredAssetState;
+    if (entity.presentationAdmission !== 'pending' || ![
+      'awaiting-authored-admission',
+      'loading',
+      'compiling-pipelines',
+    ].includes(assetState)) continue;
+    if (!willEntityEnterAuthoredUpgradeRunway(entity, state, { horizonSeconds })) continue;
+    result.push({
+      id: entity.id ?? null,
+      defId: entity.data?.defId || null,
+      distanceToPlayer: performanceDistanceToPlayer(entity, state),
+    });
+  }
+  return result;
 }
 
 function readDiagnostics() {

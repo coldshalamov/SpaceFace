@@ -3,8 +3,10 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
 import {
+  preparePerformanceScenario,
   performanceScenarioExecutionOrder,
   performanceScenarioHoldsMeasuredPose,
+  restorePerformanceScenario,
   validateScenarioRestoration,
 } from '../scripts/lib/performanceScenarioDriver.mjs';
 import { PERFORMANCE_SCENARIOS } from '../scripts/lib/performanceClosureContracts.mjs';
@@ -77,4 +79,70 @@ test('only injected non-transition workloads hold the measured pose', async () =
     'station scenarios restore the exact Flyby Focus journal after measurement');
   assert.match(source, /flybyFocus: !snapshot\.isolatesFlybyFocus[\s\S]*sameFlybyFocus/,
     'restoration fails closed when the Flyby Focus journal does not round-trip');
+});
+
+test('mining diagnostic stress is armed and stopped by one scenario journal', async () => {
+  const priorWindow = globalThis.window;
+  const events = [];
+  const vector = (x = 0, y = 0, z = 0) => ({
+    x, y, z,
+    set(nx, ny, nz) { this.x = nx; this.y = ny; this.z = nz; return this; },
+    copy(other) { this.x = other.x; this.y = other.y; this.z = other.z; return this; },
+  });
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: vector(),
+    prevPos: vector(),
+    vel: vector(),
+    rot: 0,
+    prevRot: 0,
+    flags: {},
+  };
+  const asteroid = { id: 2, type: 'asteroid', alive: true, data: { typeId: 'ast_metallic' } };
+  const entities = new Map([[1, player], [2, asteroid]]);
+  const vfxSystem = { _miningBeam: { active: false } };
+  const state = {
+    playerId: 1,
+    player: { targetId: null },
+    entities,
+    entityList: [player, asteroid],
+    timeScale: 1,
+    world: { currentSectorId: 'sector_helios_prime' },
+  };
+  const sf = {
+    state,
+    helpers: { removeEntity: (id) => entities.delete(id) },
+    registry: { get: (name) => (name === 'vfx' ? vfxSystem : null) },
+    bus: {
+      emit(name, payload) {
+        events.push({ name, payload });
+        if (name === 'mining:start') vfxSystem._miningBeam.active = true;
+        if (name === 'mining:stop') vfxSystem._miningBeam.active = false;
+      },
+    },
+  };
+  const page = {
+    evaluate: async (fn, arg) => fn(arg),
+    waitForFunction: async (fn, arg) => {
+      assert.equal(await fn(arg), true);
+    },
+  };
+  globalThis.window = { SF: sf };
+  try {
+    const prepared = await preparePerformanceScenario(page, 'mining_tether_active');
+    assert.equal(prepared.miningDiagnosticArmed, true);
+    assert.equal(prepared.stateInjected, true);
+    assert.equal(vfxSystem._miningBeam.active, true);
+
+    const restored = await restorePerformanceScenario(page, 'mining_tether_active');
+    assert.equal(restored.restored, true);
+    assert.equal(restored.checks.miningDiagnosticStopped, true);
+    assert.equal(vfxSystem._miningBeam.active, false);
+    assert.deepEqual(events.map((event) => event.name), ['mining:start', 'mining:tick', 'mining:stop']);
+  } finally {
+    if (priorWindow === undefined) delete globalThis.window;
+    else globalThis.window = priorWindow;
+  }
 });

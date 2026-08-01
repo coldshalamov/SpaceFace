@@ -94,6 +94,10 @@ test('profile and closure probes share scene metrics and bounded measurement gat
   assert.match(probe, /timers\.setEnabled\(false\)/);
   assert.match(probe, /pipelineStableMs = 5_000/);
   assert.match(probe, /pipelineSettleTimeoutMs = 20_000/);
+  assert.match(probe, /await awaitPipelinePrerequisites\(pipelineTimeout\)/,
+    'presence-only readiness promises must settle before the stable observation begins');
+  assert.match(probe, /measurementHorizonMs: duration/,
+    'warmup must predict authored admissions across the upcoming sample window');
   assert.match(probe, /pipeline:\s*\{ warmup: pipelineWarmup, start: pipelineStart, end: pipelineEnd \}/);
   assert.match(probe, /isPerformancePipelineSettled\(pipelineReadiness\)/);
   assert.doesNotMatch(probe, /^[ \t]*gl\.finish\s*\(/m,

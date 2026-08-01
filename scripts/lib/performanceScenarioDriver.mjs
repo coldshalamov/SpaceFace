@@ -70,6 +70,8 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
       entityCount: state.entityList.length,
       currentSectorId: state.world?.currentSectorId || null,
       resourceStartTime: performance.now(),
+      miningDiagnosticArmed: false,
+      miningDiagnosticStopped: false,
     };
     window.__SF_PERFORMANCE_SCENARIO_RESTORE__ = snapshot;
 
@@ -115,7 +117,25 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
       }
     };
 
-    if (id.startsWith('fleet_full_render_')) await spawnFleet(fleetCount || Number(id.split('_').pop()));
+    if (id === 'mining_tether_active') {
+      const vfxSystem = sf.registry?.get?.('vfx');
+      if (vfxSystem?._miningBeam?.active) {
+        throw new Error('mining_tether_active requires an inactive mining VFX baseline');
+      }
+      const asteroid = state.entityList.find((entity) => (
+        entity?.alive !== false && entity?.type === 'asteroid'
+      ));
+      if (!asteroid) throw new Error('mining_tether_active requires a live asteroid');
+      // Diagnostic stress only: bus events, not the player mining/tether input path. This arm is
+      // journaled here—not in route navigation—so the scenario restorer owns its exact stop edge.
+      sf.bus.emit('mining:start', { targetId: asteroid.id });
+      sf.bus.emit('mining:tick', {
+        targetId: asteroid.id,
+        oreId: asteroid.data?.typeId || 'ast_metallic',
+      });
+      snapshot.miningDiagnosticArmed = true;
+      snapshot.miningDiagnosticTargetId = asteroid.id;
+    } else if (id.startsWith('fleet_full_render_')) await spawnFleet(fleetCount || Number(id.split('_').pop()));
     else if (id === 'fleet_transparent_heavy') await spawnFleet(fleetCount || 25, { transparentHeavy: true });
     else if (id === 'autosave_under_load') await spawnFleet(fleetCount || 25, { transparentHeavy: true });
     else if (id === 'combat_vfx_burst') {
@@ -185,7 +205,9 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
     return {
       scenarioId: id,
       seed: scenarioSeed,
-      stateInjected: snapshot.injectedIds.length > 0 || id.startsWith('station_'),
+      stateInjected: snapshot.injectedIds.length > 0
+        || id.startsWith('station_')
+        || snapshot.miningDiagnosticArmed,
       injectedEntityCount: snapshot.injectedIds.length,
       injectedIds: [...snapshot.injectedIds],
       baselineEntityCount: snapshot.entityCount,
@@ -193,6 +215,8 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
       activity: snapshot.activityTimer != null,
       holdsMeasuredPose,
       physicsPoseSynchronized: snapshot.physicsPoseSynchronized === true,
+      miningDiagnosticArmed: snapshot.miningDiagnosticArmed,
+      miningDiagnosticTargetId: snapshot.miningDiagnosticTargetId ?? null,
     };
 
     function vector(value) {
@@ -264,6 +288,14 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
     if (snapshot.id !== expectedId) throw new Error(`scenario restore mismatch: expected ${expectedId}, found ${snapshot.id}`);
     if (snapshot.activityTimer != null) clearInterval(snapshot.activityTimer);
     snapshot.activityTimer = null;
+    if (snapshot.miningDiagnosticArmed) {
+      sf.bus.emit('mining:stop', {
+        minerId: state.playerId,
+        targetId: snapshot.miningDiagnosticTargetId,
+        diagnostic: true,
+      });
+      snapshot.miningDiagnosticStopped = true;
+    }
     for (const id of snapshot.injectedIds) sf.helpers.removeEntity(id);
     snapshot.restoreRequested = true;
     return { scenarioId: expectedId, injectedIds: [...snapshot.injectedIds], restoreRequested: true };
@@ -278,6 +310,7 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
     const snapshot = window.__SF_PERFORMANCE_SCENARIO_RESTORE__;
     if (!snapshot) return { scenarioId: expectedId, restored: true, reason: 'nothing-to-restore' };
     const player = state?.entities?.get?.(state.playerId);
+    const vfxSystem = sf.registry?.get?.('vfx');
     const remainingInjectedIds = snapshot.injectedIds.filter((id) => state.entities.has(id));
     const routeProgression = expectedId === 'jump_asset_admission';
     if (player && !routeProgression) {
@@ -307,6 +340,8 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
       injectedEntitiesRemoved: remainingInjectedIds.length === 0,
       timeScale: state.timeScale === snapshot.timeScale,
       activityStopped: snapshot.activityTimer == null,
+      miningDiagnosticStopped: !snapshot.miningDiagnosticArmed
+        || (snapshot.miningDiagnosticStopped === true && vfxSystem?._miningBeam?.active !== true),
       routeProgressed: state.world?.currentSectorId !== snapshot.currentSectorId,
     } : {
       injectedEntitiesRemoved: remainingInjectedIds.length === 0,
@@ -319,6 +354,8 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
       flybyFocus: !snapshot.isolatesFlybyFocus
         || sameFlybyFocus(state.player?.flybyFocus, snapshot.flybyFocus),
       activityStopped: snapshot.activityTimer == null,
+      miningDiagnosticStopped: !snapshot.miningDiagnosticArmed
+        || (snapshot.miningDiagnosticStopped === true && vfxSystem?._miningBeam?.active !== true),
       playerNoInterp: !player?.flags || player.flags.noInterp === snapshot.player.noInterp,
     };
     const restored = Object.values(checks).every(Boolean);

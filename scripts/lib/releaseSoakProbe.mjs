@@ -1135,12 +1135,45 @@ async function sampleRafWindow(page, {
     }
 
     const raf = () => new Promise((resolve) => requestAnimationFrame(resolve));
+    async function awaitPipelinePrerequisites(timeoutMs) {
+      const candidates = [
+        ['authoredPartLibraryReady', state?.render?.authoredPartLibraryReady],
+        ['pipelinePrecompileReady', state?.render?.pipelinePrecompileReady],
+        ['backgroundPipelinePrecompileReady', state?.render?.backgroundPipelinePrecompileReady],
+        ['exactPipelineWarmupReady', state?.render?.exactPipelineWarmupReady],
+      ].filter(([, promise]) => promise && typeof promise.then === 'function');
+      const startedAt = performance.now();
+      let timeoutId = null;
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(
+          `steady-state ${tag} pipeline prerequisite timeout after ${timeoutMs} ms`,
+        )), timeoutMs);
+      });
+      try {
+        await Promise.race([
+          Promise.all(candidates.map(([, promise]) => promise)),
+          timeoutPromise,
+        ]);
+      } finally {
+        if (timeoutId != null) clearTimeout(timeoutId);
+      }
+      return {
+        labels: candidates.map(([label]) => label),
+        elapsedMs: performance.now() - startedAt,
+      };
+    }
+
+    // A Promise's presence is not readiness. In particular, context recovery republishes the
+    // procedural precompile gate; begin the stable observation only after the exact live promises
+    // captured for this route have settled.
+    const pipelinePrerequisiteBarrier = await awaitPipelinePrerequisites(pipelineTimeout);
     const pipelineObservationIntervalMs = 100;
     const pipelineWarmupStartedAt = performance.now();
     let pipelineReadiness = collectPerformancePipelineReadiness({
       state,
       registry: window.SF?.registry,
       resourceStartTime: pipelineWarmupStartedAt,
+      measurementHorizonMs: duration,
     });
     let pipelineFingerprint = performancePipelineFingerprint(pipelineReadiness);
     const pipelineStartFingerprint = pipelineFingerprint;
@@ -1159,6 +1192,7 @@ async function sampleRafWindow(page, {
           state,
           registry: window.SF?.registry,
           resourceStartTime: pipelineWarmupStartedAt,
+          measurementHorizonMs: duration,
         });
         const nextFingerprint = performancePipelineFingerprint(pipelineReadiness);
         const nextFingerprintKey = JSON.stringify(nextFingerprint);
@@ -1193,6 +1227,7 @@ async function sampleRafWindow(page, {
       timedOut: pipelineWarmupPassed !== true,
       observationCount: pipelineObservationCount,
       transitionCount: pipelineTransitionCount,
+      prerequisiteBarrier: pipelinePrerequisiteBarrier,
       startFingerprint: pipelineStartFingerprint,
       endFingerprint: pipelineFingerprint,
     };
@@ -1212,7 +1247,12 @@ async function sampleRafWindow(page, {
     setGpuTimersEnabled(gpuOn);
     const resourceStartTime = performance.now();
     const sceneStart = collectPerformanceSceneStructure({ state });
-    const pipelineStart = collectPerformancePipelineReadiness({ state, registry: window.SF?.registry, resourceStartTime });
+    const pipelineStart = collectPerformancePipelineReadiness({
+      state,
+      registry: window.SF?.registry,
+      resourceStartTime,
+      measurementHorizonMs: duration,
+    });
     const heapStart = readHeapSlice();
     const longTasks = [];
     const gcSignals = [];
@@ -1340,7 +1380,12 @@ async function sampleRafWindow(page, {
       const settingsEnd = readSettingsSlice();
       const routeEnd = readRouteProof();
       const sceneEnd = collectPerformanceSceneStructure({ state });
-      const pipelineEnd = collectPerformancePipelineReadiness({ state, registry: window.SF?.registry, resourceStartTime });
+      const pipelineEnd = collectPerformancePipelineReadiness({
+        state,
+        registry: window.SF?.registry,
+        resourceStartTime,
+        measurementHorizonMs: duration,
+      });
       const heapEnd = readHeapSlice();
 
       // Local percentile summary matching summarizeSamples contract keys.
@@ -1634,46 +1679,6 @@ async function restoreDiagnosticVariant(page) {
   });
 }
 
-/**
- * Ensure mining or tether VFX is active for route proof.
- * DIAGNOSTIC STRESS: emits mining:start/tick on the bus — not the player input path.
- */
-async function ensureMiningOrTetherVfx(page) {
-  return page.evaluate(() => {
-    const sf = window.SF;
-    const state = sf?.state;
-    if (!state) return { ok: false, reason: 'no-state' };
-    const player = state.entityList?.find((e) => e?.id === state.playerId);
-    if (!player || state.ui?.docked) return { ok: false, reason: 'not-in-flight' };
-    let asteroid = null;
-    for (const e of state.entityList || []) {
-      if (e && e.alive !== false && e.type === 'asteroid') { asteroid = e; break; }
-    }
-    if (!asteroid) return { ok: false, reason: 'no-asteroid' };
-    try {
-      // Diagnostic stress only: bus events, not player mining/tether input actions.
-      sf.bus.emit('mining:start', { targetId: asteroid.id });
-      sf.bus.emit('mining:tick', {
-        targetId: asteroid.id,
-        oreId: asteroid.data?.typeId || 'ast_metallic',
-      });
-    } catch (err) {
-      return { ok: false, reason: String(err && err.message || err) };
-    }
-    const perf = window.__SPACEFACE_PERF__?.getReport?.();
-    const vfx = perf?.counters?.vfxSubsystems || {};
-    return {
-      ok: true,
-      diagnostic: true,
-      diagnosticStress: true,
-      playerInputPath: false,
-      label: 'DIAGNOSTIC STRESS — bus-emitted mining:start/tick (not player input path)',
-      targetId: asteroid.id,
-      vfx,
-    };
-  });
-}
-
 function buildPerformanceAttributionDocument({
   taskId = 'performance-attribution',
   runtimeKind = 'browser',
@@ -1831,10 +1836,6 @@ async function samplePerformanceAttribution(page, {
       if (typeof navigateToRoute === 'function') {
         await navigateToRoute(page, routeTag, log);
       } else {
-        if (routeTag === 'mining_tether_active') {
-          await ensureMiningOrTetherVfx(page);
-          await page.waitForTimeout(400);
-        }
         if (routeTag === 'docked_market_ui') {
           const docked = await isDocked(page);
           if (!docked) {
@@ -3158,11 +3159,6 @@ async function runPerformanceAttributionProbe({
           await pg.keyboard.press('Escape');
           await pg.locator('#sf-galaxymap').waitFor({ state: 'hidden', timeout: 20_000 });
         }
-        if (routeTag === 'mining_tether_active') {
-          const arm = await ensureMiningOrTetherVfx(pg);
-          if (!arm?.ok) routeLog(`[attribution] mining diagnostic stress arm: ${arm?.reason || 'unknown'}`);
-          await pg.waitForTimeout(400);
-        }
         if (routeTag === 'context_recover_steady' && !contextLossDone) {
           await probeWebGlContextLoss(pg, { outputDir, log: routeLog });
           contextLossDone = true;
@@ -3339,7 +3335,6 @@ export {
   performanceAttributionExecutionPlan,
   applyDiagnosticVariant,
   restoreDiagnosticVariant,
-  ensureMiningOrTetherVfx,
   buildPerformanceAttributionDocument,
   snapshotDiagnosticSettings,
   applyDiagnosticVariantToState,

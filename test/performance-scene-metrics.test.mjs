@@ -133,6 +133,7 @@ test('pipeline warmup fingerprint tracks compile, admission, queue, and residenc
     meshReconcileDirty: false,
     pipelineCompilePending: 0,
     authoredPendingCount: 4,
+    authoredPendingAdmissionRiskCount: 0,
     assetResidency: { residentAssets: 27, residentResources: 799, residentBytes: 123 },
     recentResources: [{ name: 'ignored-by-fingerprint.glb' }],
   };
@@ -143,6 +144,7 @@ test('pipeline warmup fingerprint tracks compile, admission, queue, and residenc
     meshReconcileDirty: false,
     pipelineCompilePending: 0,
     authoredPendingCount: 4,
+    authoredPendingAdmissionRiskCount: 0,
     residentAssets: 27,
     residentResources: 799,
   });
@@ -153,10 +155,66 @@ test('pipeline warmup fingerprint tracks compile, admission, queue, and residenc
     { meshBuildQueueRemaining: 1 },
     { meshReconcileDirty: true },
     { pipelineCompilePending: 1 },
+    { authoredPendingAdmissionRiskCount: 1 },
     { programCount: null },
   ]) {
     assert.equal(isPerformancePipelineSettled({ ...readiness, ...unsettled }), false);
   }
+});
+
+test('pipeline warmup predicts inbound authored admission across the measured horizon', () => {
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    isPlayer: true,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    presentationAdmission: 'ready',
+    mesh: { userData: { authoredAssetState: 'authored' } },
+  };
+  const inbound = {
+    id: 2,
+    type: 'ship',
+    alive: true,
+    pos: { x: 2488, z: 0 },
+    vel: { x: -190, z: 0 },
+    presentationAdmission: 'pending',
+    mesh: { userData: { authoredAssetState: 'awaiting-authored-admission' } },
+    data: { defId: 'ship_kestrel' },
+  };
+  const outbound = {
+    id: 3,
+    type: 'ship',
+    alive: true,
+    pos: { x: 1800, z: 0 },
+    vel: { x: 190, z: 0 },
+    presentationAdmission: 'pending',
+    mesh: { userData: { authoredAssetState: 'awaiting-authored-admission' } },
+    data: { defId: 'ship_wasp' },
+  };
+  const state = {
+    playerId: 1,
+    player: { targetId: null },
+    entities: new Map([[1, player], [2, inbound], [3, outbound]]),
+    entityList: [player, inbound, outbound],
+    render: { scene: { userData: { authoredUpgradeDiagnostics: { activeJobs: 0, jobs: [] } } } },
+  };
+  const renderSystem = { _meshBuildQueue: [], _meshBuildQueueHead: 0, _meshReconcileDirty: false };
+  const options = {
+    state,
+    registry: { get: () => renderSystem },
+    diagnostics: { memory: { programs: 9 } },
+  };
+
+  const now = collectPerformancePipelineReadiness(options);
+  assert.equal(now.authoredPendingAdmissionRiskCount, 0,
+    'the live zero-horizon predicate must not start the 2488-unit boundary yet');
+
+  const measured = collectPerformancePipelineReadiness({ ...options, measurementHorizonMs: 5_000 });
+  assert.deepEqual(measured.authoredPendingAdmissionRiskEntities.map((entity) => entity.id), [2]);
+  assert.equal(isPerformancePipelineSettled(measured), false,
+    'an inbound boundary that will enter the runway during sampling must hold the warmup gate');
 });
 
 test('invisible pending authored admission is not misreported as a procedural fallback', () => {
