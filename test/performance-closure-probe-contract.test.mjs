@@ -100,7 +100,21 @@ test('profile and closure probes share scene metrics and bounded measurement gat
     'warmup must convert the wall-time sample window into the live simulation horizon');
   assert.match(probe, /measurementHorizonMs: admissionMeasurementHorizonMs/,
     'every readiness snapshot must use the simulation-scaled admission horizon');
-  assert.match(probe, /pipeline:\s*\{ warmup: pipelineWarmup, start: pipelineStart, end: pipelineEnd \}/);
+  assert.match(probe, /collectPerformanceProgramInventory\(\{ state \}\)/,
+    'program identity capture must occur only at measurement boundaries');
+  assert.match(probe,
+    /buildAttribution\(\{[\s\S]{0,900}programInventoryStart,[\s\S]{0,120}programInventoryEnd,/,
+    'both boundary inventories must be passed into the attribution builder');
+  assert.match(probe,
+    /programs:\s*\{[\s\S]{0,220}comparePerformanceProgramInventories\(programInventoryStart, programInventoryEnd\)/,
+    'the retained window must publish the exact program-cache delta');
+  assert.match(probe, /chromium\.launchServer\(/,
+    'headed Browser attribution must own an exact BrowserServer process');
+  assert.match(probe, /browserServer\.process\(\)/);
+  assert.match(probe,
+    /const pipelineWarmup = await page\.evaluate\(async \(\) => \{[\s\S]{0,420}compileCurrentPipelines/,
+    'diagnostic target switches must compile the installed scene before measurement begins');
+  assert.match(probe, /return \{ \.\.\.applied, pipelineWarmup \}/);
   assert.match(probe, /isPerformancePipelineSettled\(pipelineReadiness\)/);
   assert.doesNotMatch(probe, /^[ \t]*gl\.finish\s*\(/m,
     'pipeline readiness must be observed without forcing synchronous GPU completion');

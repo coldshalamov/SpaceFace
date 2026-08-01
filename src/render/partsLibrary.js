@@ -582,10 +582,6 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       bootstrapPlan: options.bootstrapPlan,
       ...residencyOptionsForBoundary(entity, boundary, renderer),
     };
-    if (installResolvedBoundary(boundary, fallbackRoot, entity, renderer, scene, upgradeOptions, (next) => {
-      active = next;
-      syncActiveSurface(boundary, active);
-    })) return;
     boundary.userData.authoredAssetState = 'loading';
     enqueueBoundaryUpgrade(scene, {
       boundary,
@@ -2155,33 +2151,6 @@ function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swappe
     boundary.userData.authoredAssetState = 'authored-with-cleanup-error';
     console.warn('[partsLibrary] authored ship is live, but post-swap bookkeeping failed', error);
   }
-}
-
-function installResolvedBoundary(boundary, fallbackRoot, entity, renderer, scene, options, setActive) {
-  const library = resolvedCanonicalLibrary(renderer, options);
-  if (!library || !libraryHasPreloadPlan(library, authoredPreloadPlanForEntity(entity, options))) return false;
-  boundary.userData.authoredAssetState = 'loading';
-  try {
-    retainLibraryPlan(renderer, library, authoredPreloadPlanForEntity(entity, options), options);
-    // A resident plan is decoded and validated. Commit it in the task that mounts the stable entity
-    // root so no render can observe an intermediate procedural body.
-    let swapped = false;
-    const commitStartedAtMs = monotonicNow();
-    try {
-      swapped = commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive);
-    } finally {
-      recordAdmissionSlice(commitStartedAtMs);
-    }
-    if (!swapped) releaseBoundaryResidency(renderer, boundary, 'resolved-swap-not-committed');
-  } catch (error) {
-    releaseBoundaryResidency(renderer, boundary, 'resolved-swap-failed');
-    releaseOwnerInstances(boundary);
-    boundary.userData.authoredAssetState = 'unavailable';
-    boundary.userData.authoredVisualRoot = 'none-build-failed';
-    setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
-    console.warn('[partsLibrary] authored composition failed; no substitute visual published', error);
-  }
-  return true;
 }
 
 function commitAuthoredBoundary(

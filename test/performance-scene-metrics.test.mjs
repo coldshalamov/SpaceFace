@@ -3,12 +3,38 @@ import { test } from 'node:test';
 
 import {
   authoredAssetStatus,
+  collectPerformanceProgramInventory,
   collectPerformancePipelineReadiness,
   collectPerformanceSceneStructure,
+  comparePerformanceProgramInventories,
   isPerformancePipelineSettled,
   performanceAdmissionHorizonMs,
   performancePipelineFingerprint,
 } from '../scripts/lib/performanceSceneMetrics.mjs';
+
+test('program inventories name exact boundary admissions without entering warmup fingerprints', () => {
+  const first = { id: 4, name: 'physical', cacheKey: 'physical,lights:4', usedTimes: 2 };
+  const late = { id: 9, name: 'physical', cacheKey: 'physical,lights:5', usedTimes: 1 };
+  const state = { render: { renderer: { info: { programs: [first] } } } };
+  const start = collectPerformanceProgramInventory({ state });
+  state.render.renderer.info.programs.push(late);
+  const end = collectPerformanceProgramInventory({ state });
+  const delta = comparePerformanceProgramInventories(start, end);
+
+  assert.equal(start.count, 1);
+  assert.equal(end.count, 2);
+  assert.equal(delta.available, true);
+  assert.equal(delta.countDelta, 1);
+  assert.deepEqual(delta.added, [{
+    identity: 'physical,lights:5',
+    id: 9,
+    name: 'physical',
+    cacheKey: 'physical,lights:5',
+    usedTimes: 1,
+  }]);
+  assert.deepEqual(delta.removed, []);
+  assert.equal(Object.hasOwn(performancePipelineFingerprint({ programCount: 2 }), 'programInventory'), false);
+});
 
 function node(properties = {}, children = []) {
   const value = { visible: true, userData: {}, children, ...properties };

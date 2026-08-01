@@ -62,6 +62,18 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     return run;
   }
 
+  async function waitForPending() {
+    while (pending.size > 0) {
+      flushQueued();
+      await Promise.all([...pending]);
+    }
+    // Admission consumers commit their already-built roots in promise continuations. Yield through
+    // those continuations before the startup guard is allowed to publish the first flight frame.
+    await Promise.resolve();
+    await Promise.resolve();
+    return { skipped: false, pendingCount: 0 };
+  }
+
   return {
     compile(subject) {
       let resolve;
@@ -73,17 +85,16 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       scheduleFlush();
       return tracked;
     },
-    async waitForPending() {
-      while (pending.size > 0) {
-        flushQueued();
-        await Promise.all([...pending]);
-      }
-      // Admission consumers commit their already-built roots in promise continuations. Yield through
-      // those continuations before the startup guard is allowed to publish the first flight frame.
-      await Promise.resolve();
-      await Promise.resolve();
-      return { skipped: false, pendingCount: 0 };
+    compileCurrent(subject) {
+      // A render-target transition needs the complete installed scene compiled after all currently
+      // queued authored roots. Put that pass directly on the same serial driver runway; any roots
+      // admitted while it runs append behind it, and the returned promise waits for those too.
+      flushQueued();
+      const run = compileTail.then(() => compileBatch([subject]));
+      compileTail = run.catch(() => null);
+      return run.finally(() => waitForPending());
     },
+    waitForPending,
     get pendingCount() { return pending.size; },
   };
 }

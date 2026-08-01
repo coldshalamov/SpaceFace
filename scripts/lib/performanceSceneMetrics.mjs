@@ -272,6 +272,44 @@ export function collectPerformancePipelineReadiness({
   };
 }
 
+// Renderer.info.programs is the authoritative live cache, but the normal readiness fingerprint
+// intentionally keeps only its count so warmup polling remains cheap. Capture identities only at
+// the two measurement boundaries: that names an unexpected admission without adding per-frame or
+// per-warmup allocation to the measured route.
+export function collectPerformanceProgramInventory({ state = globalThis.SF?.state } = {}) {
+  const programs = state?.render?.renderer?.info?.programs;
+  if (!Array.isArray(programs)) {
+    return { available: false, count: null, entries: [] };
+  }
+  const entries = programs.map((program, index) => {
+    const cacheKey = String(program?.cacheKey || '');
+    const id = Number.isFinite(Number(program?.id)) ? Number(program.id) : null;
+    return {
+      identity: cacheKey || (id != null ? `id:${id}` : `index:${index}`),
+      id,
+      name: String(program?.name || ''),
+      cacheKey,
+      usedTimes: finiteOrNull(program?.usedTimes),
+    };
+  }).sort((a, b) => a.identity.localeCompare(b.identity) || (a.id ?? -1) - (b.id ?? -1));
+  return { available: true, count: programs.length, entries };
+}
+
+export function comparePerformanceProgramInventories(start = {}, end = {}) {
+  if (start?.available !== true || end?.available !== true
+      || !Array.isArray(start.entries) || !Array.isArray(end.entries)) {
+    return { available: false, countDelta: null, added: [], removed: [] };
+  }
+  const startByIdentity = new Map(start.entries.map((entry) => [entry.identity, entry]));
+  const endByIdentity = new Map(end.entries.map((entry) => [entry.identity, entry]));
+  return {
+    available: true,
+    countDelta: Number(end.count) - Number(start.count),
+    added: end.entries.filter((entry) => !startByIdentity.has(entry.identity)),
+    removed: start.entries.filter((entry) => !endByIdentity.has(entry.identity)),
+  };
+}
+
 export function performancePipelineFingerprint(readiness = {}) {
   const residency = readiness?.assetResidency || {};
   return {

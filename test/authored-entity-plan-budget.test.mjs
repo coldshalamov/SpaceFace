@@ -528,3 +528,88 @@ test('an evicted matching authored record is reloaded before a repeated entity p
   assert.equal(matchingHulls[0].residency.state, 'resident');
   partsLibrary.invalidatePartsLibraryCaches(renderer);
 });
+
+test('a resolved authored ship still awaits exact pipeline admission before publication', async () => {
+  const renderer = {};
+  const scene = new THREE.Scene();
+  const entity = {
+    id: 'resolved-mule-pipeline-gate',
+    type: 'ship',
+    alive: true,
+    team: 2,
+    factionId: 'faction_union',
+    radius: 20,
+    pos: { x: 0, z: 0 },
+    data: { defId: 'ship_mule', sectorId: 'sector_helios_prime' },
+  };
+  const loadAuthoredPart = async (url) => fixtureRecord(url);
+  const options = { releaseMode: true, loadAuthoredPart };
+
+  await partsLibrary.preloadAuthoredPartLibrary(renderer, options);
+  await partsLibrary.preloadAuthoredAssetsForEntity(renderer, entity, options);
+
+  const priorWindow = globalThis.window;
+  const priorRaf = globalThis.requestAnimationFrame;
+  const scheduledFrames = [];
+  let compiledRoot = null;
+  let releasePipeline;
+  const pipelineGate = new Promise((resolve) => { releasePipeline = resolve; });
+  globalThis.requestAnimationFrame = (callback) => {
+    scheduledFrames.push(callback);
+    return scheduledFrames.length;
+  };
+  globalThis.window = {
+    SF: {
+      state: {
+        mode: 'flight',
+        player: null,
+        world: { currentSectorId: 'sector_helios_prime' },
+        render: {
+          scene,
+          compileObjectPipelines(root) {
+            compiledRoot = root;
+            return pipelineGate;
+          },
+        },
+      },
+    },
+  };
+
+  try {
+    const fallback = fallbackShip();
+    const boundary = partsLibrary.wrapShipWithAuthoredParts(entity, fallback, options);
+    entity.mesh = boundary;
+    scene.add(boundary);
+    boundary.userData.requestAuthoredUpgrade(renderer, scene);
+
+    assert.equal(boundary.userData.authoredAssetState, 'loading');
+    assert.equal(boundary.children.includes(fallback), true,
+      'a decoded cache hit must remain unpublished until its exact material programs are ready');
+    assert.equal(scheduledFrames.length, 1, 'resolved plans still use the frame-bounded admission queue');
+
+    scheduledFrames.shift()();
+    for (let turn = 0; turn < 50 && !compiledRoot; turn++) await Promise.resolve();
+
+    assert.ok(compiledRoot, 'the resolved composition must enter the exact GPU pipeline compiler');
+    assert.equal(boundary.userData.authoredAssetState, 'compiling-pipelines');
+    assert.equal(boundary.children.includes(fallback), true,
+      'pipeline work cannot publish the authored root early');
+    assert.equal(compiledRoot.parent, null, 'pipeline admission compiles the detached authored root');
+
+    releasePipeline({ skipped: false, programCount: 1 });
+    for (let turn = 0; turn < 50 && boundary.userData.authoredAssetState !== 'authored'; turn++) {
+      await Promise.resolve();
+    }
+
+    assert.equal(boundary.userData.authoredAssetState, 'authored');
+    assert.equal(boundary.children.includes(fallback), false);
+    assert.equal(boundary.children.includes(compiledRoot), true,
+      'the exact compiled root is the one atomically published');
+  } finally {
+    if (priorRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = priorRaf;
+    if (priorWindow === undefined) delete globalThis.window;
+    else globalThis.window = priorWindow;
+    partsLibrary.invalidatePartsLibraryCaches(renderer);
+  }
+});

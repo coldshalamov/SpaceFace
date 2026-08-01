@@ -574,6 +574,11 @@ async function testOwnedResourceCleanupBehavior() {
     async close() { this.connected = false; },
     isConnected() { return this.connected; },
   };
+  const browserChildProcess = { pid: 8080, exitCode: null, signalCode: null };
+  const browserServer = {
+    process() { return browserChildProcess; },
+    async close() { browserChildProcess.exitCode = 0; },
+  };
   const listener = { listening: true };
   const server = {
     baseUrl: canonical,
@@ -581,7 +586,7 @@ async function testOwnedResourceCleanupBehavior() {
     async close() { listener.listening = false; },
   };
   const report = await closeOwnedResources(
-    { page, context, browser, server, canonicalUrlTracker: tracker },
+    { page, context, browser, browserServer, browserChildProcess, server, canonicalUrlTracker: tracker },
     { fetchImpl: async () => { throw new Error('connection refused'); } },
   );
   assert.equal(report.pass, true, 'fake owned resources close in order and certify release');
@@ -589,6 +594,11 @@ async function testOwnedResourceCleanupBehavior() {
   assert.equal(report.urlTracker.pageClosedWhenStopped, true, 'tracker remains active through fake page closure');
   assert.equal(context.closed, true);
   assert.equal(browser.connected, false);
+  assert.equal(report.browserServerClosed, true);
+  assert.equal(report.browserProcessPid, 8080);
+  assert.equal(report.browserProcessExited, true,
+    'BrowserServer.close must confirm the exact owned Chrome process before cleanup returns');
+  assert.deepEqual(report.closed.map((entry) => entry.name), ['page', 'context', 'browser', 'browserServer', 'server']);
   assert.equal(listener.listening, false);
 }
 
@@ -616,6 +626,20 @@ function testResourceCleanupAssessment() {
   assert(incomplete.failures.some((failure) => /browser/i.test(failure)));
   assert(incomplete.failures.some((failure) => /tracker/i.test(failure)));
   assert(incomplete.failures.some((failure) => /preclose/i.test(failure)));
+
+  const processPending = assessOwnedResourceCleanup({
+    pageClosed: true,
+    contextClosed: true,
+    browserDisconnected: true,
+    browserServerClosed: true,
+    browserProcessExited: false,
+    serverReleased: true,
+    trackerStoppedAfterPageClose: true,
+    precloseUrlCheck: { pass: true },
+    errors: [],
+  });
+  assert.equal(processPending.pass, false);
+  assert.match(processPending.failures.join('\n'), /browser child process exit/i);
 }
 
 function stationFrame(index) {

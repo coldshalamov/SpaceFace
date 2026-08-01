@@ -1245,7 +1245,7 @@ export const render = {
       deferAutoFlush: () => state.mode === 'loading',
     });
     state.render.compileObjectPipelines = (subject) => pipelineAdmissions.compile(subject);
-    state.render.compileCurrentPipelines = () => pipelineAdmissions.waitForPending();
+    state.render.compileCurrentPipelines = () => pipelineAdmissions.compileCurrent(scene);
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
     state.render.prepareOpeningGpuResources = async () => {
       // Flight admission waits behind the loading presenter, so every subsequently streamed common

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import * as THREE from 'three';
@@ -279,6 +280,42 @@ test('loading admission can defer all automatic compiles until the explicit star
   await tracker.waitForPending();
   assert.deepEqual(started, [['player', 'station']]);
   assert.deepEqual(await Promise.all([first, second]), [{ ok: true }, { ok: true }]);
+});
+
+test('current-scene compilation is serialized behind admissions and waits for later arrivals', async () => {
+  const started = [];
+  const lateGate = deferred();
+  const tracker = createPipelineAdmissionTracker(async (subjects) => {
+    started.push(subjects);
+    if (subjects[0] === 'late-ship') return lateGate.promise;
+    return { subjects };
+  }, {
+    deferAutoFlush: () => true,
+  });
+
+  const first = tracker.compile('opening-ship');
+  let currentSettled = false;
+  const current = tracker.compileCurrent('installed-scene').then((result) => {
+    currentSettled = true;
+    return result;
+  });
+  const late = tracker.compile('late-ship');
+  for (let turn = 0; turn < 10 && started.length < 3; turn++) await Promise.resolve();
+
+  assert.deepEqual(started, [['opening-ship'], ['installed-scene'], ['late-ship']]);
+  assert.equal(currentSettled, false, 'the current-scene gate must include admissions queued during its compile');
+  lateGate.resolve({ ok: true });
+  await Promise.all([first, current, late]);
+  assert.equal(currentSettled, true);
+  assert.equal(tracker.pendingCount, 0);
+});
+
+test('renderer wires current-scene compilation to the installed scene, not a wait-only gate', async () => {
+  const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(source,
+    /compileCurrentPipelines\s*=\s*\(\)\s*=>\s*pipelineAdmissions\.compileCurrent\(scene\)/);
+  assert.doesNotMatch(source,
+    /compileCurrentPipelines\s*=\s*\(\)\s*=>\s*pipelineAdmissions\.waitForPending\(\)/);
 });
 
 function deferred() {

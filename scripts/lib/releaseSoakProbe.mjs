@@ -153,6 +153,8 @@ export async function runReleaseSoakProbe({
   };
 
   let ownedServer = null;
+  let browserServer = null;
+  let browserChildProcess = null;
   let browser = null;
   let context = null;
   let page = null;
@@ -173,7 +175,7 @@ export async function runReleaseSoakProbe({
       ownedServer = await acquireVisualProbeServer({ root });
       assert.equal(ownedServer.ownsServer, true, 'browser soak must own its canonical in-process server');
       rootUrl = ownedServer.baseUrl;
-      ({ page, browser, context } = await launchBrowser(viewport));
+      ({ page, browser, context, browserServer, browserChildProcess } = await launchBrowser(viewport));
       pageIssueTracker = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
       canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
       await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
@@ -286,7 +288,7 @@ export async function runReleaseSoakProbe({
 
     cleanupReport = runtime === 'electron'
       ? await closeOwnedElectronRuntime({ page, electronApp, childProcess, canonicalUrlTracker, processMonitor, rootUrl })
-      : await closeOwnedResources({ page, context, browser, server: ownedServer, canonicalUrlTracker });
+      : await closeOwnedResources({ page, context, browser, browserServer, browserChildProcess, server: ownedServer, canonicalUrlTracker });
     if (runtime === 'electron' && cleanupReport?.pass === true) {
       isolatedLaunch?.cleanup({ runtimeClosed: true });
     }
@@ -352,7 +354,7 @@ export async function runReleaseSoakProbe({
       if (runtime === 'electron' && electronApp) {
         cleanupReport = await closeOwnedElectronRuntime({ page, electronApp, childProcess, canonicalUrlTracker, processMonitor, rootUrl }).catch(() => null);
       } else {
-        cleanupReport = await closeOwnedResources({ page, context, browser, server: ownedServer, canonicalUrlTracker }).catch(() => null);
+        cleanupReport = await closeOwnedResources({ page, context, browser, browserServer, browserChildProcess, server: ownedServer, canonicalUrlTracker }).catch(() => null);
       }
     }
     if (runtime === 'electron' && isolatedLaunch && cleanupReport?.pass === true) {
@@ -367,14 +369,28 @@ async function launchBrowser(viewport) {
   const executablePath = findSystemBrowser();
   assert(executablePath, 'headed Chrome or Edge is required for browser release-soak evidence');
   const { chromium } = await loadPlaywright();
-  const browser = await chromium.launch({
-    headless: false,
-    executablePath,
-    args: ['--incognito', '--no-first-run', '--no-default-browser-check', '--disable-extensions', `--window-size=${viewport.width},${viewport.height}`, '--force-device-scale-factor=1'],
-  });
-  const context = await browser.newContext({ viewport, screen: viewport, deviceScaleFactor: 1, locale: 'en-US', colorScheme: 'dark' });
-  const page = await context.newPage();
-  return { browser, context, page };
+  let browserServer = null;
+  let browser = null;
+  try {
+    // Browser.close() only proves the Playwright connection disconnected. LaunchServer gives this
+    // harness the exact ChildProcess and a close() promise that resolves after Chrome terminates,
+    // so the post-run activity census cannot mistake our own trailing process for outside work.
+    browserServer = await chromium.launchServer({
+      headless: false,
+      executablePath,
+      args: ['--incognito', '--no-first-run', '--no-default-browser-check', '--disable-extensions', `--window-size=${viewport.width},${viewport.height}`, '--force-device-scale-factor=1'],
+    });
+    const browserChildProcess = browserServer.process();
+    assert(browserChildProcess, 'browser launch server must expose its owned child process');
+    browser = await chromium.connect(browserServer.wsEndpoint());
+    const context = await browser.newContext({ viewport, screen: viewport, deviceScaleFactor: 1, locale: 'en-US', colorScheme: 'dark' });
+    const page = await context.newPage();
+    return { browserServer, browserChildProcess, browser, context, page };
+  } catch (error) {
+    await browser?.close?.().catch(() => {});
+    await browserServer?.close?.().catch(() => {});
+    throw error;
+  }
 }
 
 async function launchElectron(root, onOwnership = () => {}, taskId = 'release-soak-electron') {
@@ -864,7 +880,9 @@ async function sampleRafWindow(page, {
     const player = state?.entityList?.find((entity) => entity?.id === state.playerId);
     const {
       collectPerformancePipelineReadiness,
+      collectPerformanceProgramInventory,
       collectPerformanceSceneStructure,
+      comparePerformanceProgramInventories,
       isPerformancePipelineSettled,
       performanceAdmissionHorizonMs,
       performancePipelineFingerprint,
@@ -985,6 +1003,8 @@ async function sampleRafWindow(page, {
       pipelineWarmup,
       pipelineStart,
       pipelineEnd,
+      programInventoryStart,
+      programInventoryEnd,
       heapStart,
       heapEnd,
       longTasks,
@@ -1058,7 +1078,16 @@ async function sampleRafWindow(page, {
           programs: memory.programs,
         },
         scene: { start: sceneStart, end: sceneEnd },
-        pipeline: { warmup: pipelineWarmup, start: pipelineStart, end: pipelineEnd },
+        pipeline: {
+          warmup: pipelineWarmup,
+          start: pipelineStart,
+          end: pipelineEnd,
+          programs: {
+            start: programInventoryStart,
+            end: programInventoryEnd,
+            delta: comparePerformanceProgramInventories(programInventoryStart, programInventoryEnd),
+          },
+        },
         memory: {
           comparableState: {
             start: { mode: routeStart?.mode || null, docked: routeStart?.docked === true },
@@ -1255,6 +1284,7 @@ async function sampleRafWindow(page, {
       resourceStartTime,
       measurementHorizonMs: admissionMeasurementHorizonMs,
     });
+    const programInventoryStart = collectPerformanceProgramInventory({ state });
     const heapStart = readHeapSlice();
     const longTasks = [];
     const gcSignals = [];
@@ -1388,6 +1418,7 @@ async function sampleRafWindow(page, {
         resourceStartTime,
         measurementHorizonMs: admissionMeasurementHorizonMs,
       });
+      const programInventoryEnd = collectPerformanceProgramInventory({ state });
       const heapEnd = readHeapSlice();
 
       // Local percentile summary matching summarizeSamples contract keys.
@@ -1432,6 +1463,8 @@ async function sampleRafWindow(page, {
         pipelineWarmup,
         pipelineStart,
         pipelineEnd,
+        programInventoryStart,
+        programInventoryEnd,
         heapStart,
         heapEnd,
         longTasks,
@@ -1580,7 +1613,7 @@ function restoreDiagnosticVariantToState(state, snap) {
  */
 async function applyDiagnosticVariant(page, variantId) {
   assert(ATTRIBUTION_DIAGNOSTIC_VARIANTS.includes(variantId), `unknown diagnostic variant: ${variantId}`);
-  return page.evaluate((id) => {
+  const applied = await page.evaluate((id) => {
     const state = window.SF?.state;
     if (!state) throw new Error('SF.state unavailable for diagnostic variant');
     const label = 'DIAGNOSTIC-ONLY — not a shippable fix';
@@ -1648,6 +1681,14 @@ async function applyDiagnosticVariant(page, variantId) {
     }
     throw new Error(`unhandled diagnostic variant ${id}`);
   }, variantId);
+  const pipelineWarmup = await page.evaluate(async () => {
+    const compileCurrent = window.SF?.state?.render?.compileCurrentPipelines;
+    if (typeof compileCurrent !== 'function') {
+      throw new Error('current-scene pipeline compiler unavailable after diagnostic variant');
+    }
+    return compileCurrent();
+  });
+  return { ...applied, pipelineWarmup };
 }
 
 async function restoreDiagnosticVariant(page) {
@@ -2225,9 +2266,9 @@ function normalizeCleanup(runtime, report) {
   return {
     pageClosed: report?.pageClosed === true,
     browserDisconnected: report?.browserDisconnected === true,
-    browserClosed: report?.browserClosed === true,
+    browserClosed: report?.browserServerClosed === true || report?.browserClosed === true,
     serverReleased: report?.serverReleased === true,
-    processExited: true,
+    processExited: report?.browserProcessExited === true,
     portsReleased: report?.serverReleased === true,
     reportPass: report?.pass !== false,
     ownedReport: report,
@@ -2700,6 +2741,8 @@ async function closeAttributionResources({
   page,
   context,
   browser,
+  browserServer,
+  browserChildProcess,
   ownedServer,
   canonicalUrlTracker,
   electronApp,
@@ -2718,7 +2761,15 @@ async function closeAttributionResources({
         rootUrl,
       });
     }
-    return await closeOwnedResources({ page, context, browser, server: ownedServer, canonicalUrlTracker });
+    return await closeOwnedResources({
+      page,
+      context,
+      browser,
+      browserServer,
+      browserChildProcess,
+      server: ownedServer,
+      canonicalUrlTracker,
+    });
   } catch (error) {
     if (runtimeKind === 'electron') {
       return error?.cleanupReport || {
@@ -2734,6 +2785,8 @@ async function closeAttributionResources({
       pass: false,
       pageClosed: page?.isClosed?.() === true,
       browserDisconnected: browser ? !browser.isConnected() : true,
+      browserServerClosed: browserServer ? false : true,
+      browserProcessExited: browserServer ? false : true,
       serverReleased: ownedServer?.server?.listening === false,
       failures: [{ name: 'cleanup', error: { message: error?.message || String(error) } }],
     };
@@ -2758,6 +2811,8 @@ async function finalizePerformanceAttributionRun({
   page,
   context,
   browser,
+  browserServer,
+  browserChildProcess,
   ownedServer,
   canonicalUrlTracker,
   electronApp,
@@ -2792,6 +2847,8 @@ async function finalizePerformanceAttributionRun({
     page,
     context,
     browser,
+    browserServer,
+    browserChildProcess,
     ownedServer,
     canonicalUrlTracker,
     electronApp,
@@ -3042,6 +3099,8 @@ async function runPerformanceAttributionProbe({
   };
 
   let ownedServer = null;
+  let browserServer = null;
+  let browserChildProcess = null;
   let browser = null;
   let context = null;
   let page = null;
@@ -3062,7 +3121,7 @@ async function runPerformanceAttributionProbe({
       ownedServer = await acquireVisualProbeServer({ root });
       assert.equal(ownedServer.ownsServer, true, 'attribution probe must own its canonical in-process server');
       rootUrl = ownedServer.baseUrl;
-      ({ page, browser, context } = await launchBrowser(viewport));
+      ({ page, browser, context, browserServer, browserChildProcess } = await launchBrowser(viewport));
       pageIssueTracker = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
       canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
       await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
@@ -3208,6 +3267,8 @@ async function runPerformanceAttributionProbe({
       page,
       context,
       browser,
+      browserServer,
+      browserChildProcess,
       ownedServer,
       canonicalUrlTracker,
       electronApp,
@@ -3240,6 +3301,8 @@ async function runPerformanceAttributionProbe({
       page,
       context,
       browser,
+      browserServer,
+      browserChildProcess,
       ownedServer,
       canonicalUrlTracker,
       electronApp,
@@ -3315,6 +3378,8 @@ async function runPerformanceAttributionProbe({
         page,
         context,
         browser,
+        browserServer,
+        browserChildProcess,
         ownedServer,
         canonicalUrlTracker,
         electronApp,

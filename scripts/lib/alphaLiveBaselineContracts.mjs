@@ -602,6 +602,9 @@ export async function closeOwnedResources(resources, {
     pass: false,
     closed: [],
     serverReleased: false,
+    browserServerClosed: resources.browserServer ? false : true,
+    browserProcessExited: resources.browserServer ? false : true,
+    browserProcessPid: null,
     failures: [],
     precloseUrlCheck: null,
     urlTracker: null,
@@ -625,6 +628,7 @@ export async function closeOwnedResources(resources, {
     ['page', resources.page],
     ['context', resources.context],
     ['browser', resources.browser],
+    ['browserServer', resources.browserServer],
     ['server', resources.server],
   ]) {
     if (!resource || typeof resource.close !== 'function') {
@@ -638,6 +642,29 @@ export async function closeOwnedResources(resources, {
       report.closed.push({ name, present: true, closed: false });
       report.failures.push({ name, error: serializeError(error) });
     }
+  }
+
+  const browserChildProcess = resources.browserChildProcess
+    || resources.browserServer?.process?.()
+    || null;
+  report.browserServerClosed = report.closed.find((item) => item.name === 'browserServer')?.closed === true;
+  report.browserProcessPid = Number.isSafeInteger(Number(browserChildProcess?.pid))
+    ? Number(browserChildProcess.pid)
+    : null;
+  report.browserProcessExited = !resources.browserServer
+    || browserChildProcess?.exitCode != null
+    || browserChildProcess?.signalCode != null;
+  if (resources.browserServer && report.browserProcessPid == null) {
+    report.failures.push({
+      name: 'browser-process-ownership',
+      error: { message: 'owned browser server did not expose its exact child process' },
+    });
+  }
+  if (resources.browserServer && report.browserProcessExited !== true) {
+    report.failures.push({
+      name: 'browser-process-exit',
+      error: { message: 'owned browser child process had not exited after BrowserServer.close()' },
+    });
   }
 
   if (resources.canonicalUrlTracker) {
@@ -681,6 +708,8 @@ export async function closeOwnedResources(resources, {
     serverReleased: report.serverReleased,
     trackerStoppedAfterPageClose: report.urlTracker?.pageClosedWhenStopped === true,
     precloseUrlCheck: report.precloseUrlCheck,
+    browserServerClosed: report.browserServerClosed,
+    browserProcessExited: report.browserProcessExited,
     errors: report.failures,
   });
   for (const failure of assessment.failures) {
@@ -708,6 +737,8 @@ export function assessOwnedResourceCleanup({
   serverReleased,
   trackerStoppedAfterPageClose,
   precloseUrlCheck,
+  browserServerClosed = true,
+  browserProcessExited = true,
   errors = [],
 } = {}) {
   const failures = [];
@@ -717,6 +748,8 @@ export function assessOwnedResourceCleanup({
   if (serverReleased !== true) failures.push('owned server listener remained active');
   if (trackerStoppedAfterPageClose !== true) failures.push('canonical URL tracker did not stop after page close');
   if (precloseUrlCheck?.pass !== true) failures.push('immediately-preclose live URL check is missing or failed');
+  if (browserServerClosed !== true) failures.push('owned browser server did not close cleanly');
+  if (browserProcessExited !== true) failures.push('owned browser child process exit was not confirmed');
   if (Array.isArray(errors) && errors.length > 0) failures.push(`${errors.length} owned resource close operation(s) failed`);
   return { pass: failures.length === 0, failures };
 }
