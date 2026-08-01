@@ -1634,6 +1634,41 @@ async function disableMeasurementGates(page) {
  * Each diagnostic variant body is failure-atomic: restore settings/timeScale + disable
  * measurement gates in finally.
  */
+const CLEANUP_SCOPED_ATTRIBUTION_ROUTES = new Set(['jump_asset_admission']);
+
+function performanceAttributionExecutionPlan({
+  routes = ['flight_steady', 'docked_market_ui'],
+  variants = ['baseline'],
+  variantScenarioIds = ['flight_steady'],
+} = {}) {
+  const ordinary = [];
+  const cleanupScoped = [];
+  for (const variantId of variants) {
+    for (const routeTag of routes) {
+      if (variantId !== 'baseline' && !variantScenarioIds.includes(routeTag)) continue;
+      if (CLEANUP_SCOPED_ATTRIBUTION_ROUTES.has(routeTag) && variantId !== 'baseline') {
+        throw new Error(`cleanup-scoped attribution route ${routeTag} only supports the baseline variant`);
+      }
+      const cell = { variantId, routeTag };
+      (CLEANUP_SCOPED_ATTRIBUTION_ROUTES.has(routeTag) ? cleanupScoped : ordinary).push(cell);
+    }
+  }
+  return [...ordinary, ...cleanupScoped];
+}
+
+function groupAttributionExecutionPasses(cells) {
+  const passes = [];
+  for (const cell of cells) {
+    let pass = passes[passes.length - 1];
+    if (!pass || pass.variantId !== cell.variantId) {
+      pass = { variantId: cell.variantId, routeTags: [] };
+      passes.push(pass);
+    }
+    pass.routeTags.push(cell.routeTag);
+  }
+  return passes;
+}
+
 async function samplePerformanceAttribution(page, {
   routes = ['flight_steady', 'docked_market_ui'],
   variants = ['baseline'],
@@ -1647,16 +1682,27 @@ async function samplePerformanceAttribution(page, {
   captureWindow = null,
 } = {}) {
   const windows = [];
-  const variantResults = [];
+  const variantResultsById = new Map(variants.map((variantId) => [variantId, {
+    id: variantId,
+    diagnostic: variantId !== 'baseline',
+    applied: true,
+    restored: true,
+    label: variantId === 'baseline' ? 'baseline (restored defaults)' : 'DIAGNOSTIC-ONLY',
+    measuredRoutes: 0,
+  }]));
+  const executionPasses = groupAttributionExecutionPasses(performanceAttributionExecutionPlan({
+    routes,
+    variants,
+    variantScenarioIds,
+  }));
 
-  for (const variantId of variants) {
+  for (const { variantId, routeTags } of executionPasses) {
     log(`[attribution] diagnostic variant ${variantId}`);
     let appliedAll = true;
     let restoredAll = true;
     let variantLabel = variantId === 'baseline' ? 'baseline (restored defaults)' : 'DIAGNOSTIC-ONLY';
     let measuredRoutes = 0;
-    for (const routeTag of routes) {
-      if (variantId !== 'baseline' && !variantScenarioIds.includes(routeTag)) continue;
+    for (const routeTag of routeTags) {
       measuredRoutes++;
       log(`[attribution] route ${routeTag} @ ${variantId}`);
       if (typeof navigateToRoute === 'function') {
@@ -1778,15 +1824,13 @@ async function samplePerformanceAttribution(page, {
         windows.push(attribution);
       }
     }
-    variantResults.push({
-      id: variantId,
-      diagnostic: variantId !== 'baseline',
-      applied: appliedAll,
-      restored: restoredAll,
-      label: variantLabel,
-      measuredRoutes,
-    });
+    const aggregate = variantResultsById.get(variantId);
+    aggregate.applied = aggregate.applied && appliedAll;
+    aggregate.restored = aggregate.restored && restoredAll;
+    aggregate.label = variantLabel;
+    aggregate.measuredRoutes += measuredRoutes;
   }
+  const variantResults = variants.map((variantId) => variantResultsById.get(variantId));
 
   const doc = buildPerformanceAttributionDocument({
     taskId: 'performance-attribution-ab',
@@ -3107,6 +3151,7 @@ export {
   allocateOutputDir,
   sampleRafWindow,
   samplePerformanceAttribution,
+  performanceAttributionExecutionPlan,
   applyDiagnosticVariant,
   restoreDiagnosticVariant,
   ensureMiningOrTetherVfx,
