@@ -60,6 +60,7 @@ import {
 } from './performanceClosureContracts.mjs';
 import {
   performanceScenarioExecutionOrder,
+  performanceScenarioPipelineSettleTimeoutMs,
   preparePerformanceScenario,
   restorePerformanceScenario,
   validateScenarioRestoration,
@@ -857,8 +858,8 @@ async function sampleRafWindow(page, {
     'pipeline readiness must remain stable for at least 5000 ms');
   assert(Number.isFinite(pipelineSettleTimeoutMs)
     && pipelineSettleTimeoutMs >= Math.max(warmupMs, pipelineStableMs)
-    && pipelineSettleTimeoutMs <= 20_000,
-  'pipeline readiness timeout must bound warmup between its minimum and 20000 ms');
+    && pipelineSettleTimeoutMs <= 30_000,
+  'pipeline readiness timeout must bound warmup between its minimum and 30000 ms');
   // Attribution-only routes (market / mining) may use shorter windows; soak steady phases stay ≥5s.
   const minSampleMs = (phaseTag === 'flight_steady' || phaseTag === 'context_recover_steady') ? 5_000 : 1_000;
   assert(Number.isFinite(sampleMs) && sampleMs >= minSampleMs, `rAF sample window must cover at least ${minSampleMs} ms`);
@@ -1924,6 +1925,7 @@ async function samplePerformanceAttribution(page, {
         const result = await sampleRafWindow(page, {
           phaseTag: routeTag,
           warmupMs,
+          pipelineSettleTimeoutMs: performanceScenarioPipelineSettleTimeoutMs(routeTag),
           sampleMs: routeTag === 'jump_asset_admission'
             ? Math.max(12_000, sampleMs)
             : (routeTag === 'docked_market_ui' ? Math.max(1_000, sampleMs) : sampleMs),

@@ -27,7 +27,7 @@ export const PERFORMANCE_CLOSURE_SOURCE_IDENTITY = Object.freeze({
 });
 
 const FAST_GATES = Object.freeze([
-  'node --test test/loop-orchestration-perf.test.mjs',
+  'node --test test/loop-orchestration-perf.test.mjs test/performance-scenario-driver.test.mjs',
   'node --test test/performance-closure-manifests.test.mjs test/performance-attribution-runtime-matrix.test.mjs',
   'node --test test/performance-closure-contracts.test.mjs test/performance-closure-probe-contract.test.mjs test/performance-final-acceptance.test.mjs',
   'node --test test/alpha-live-baseline-contracts.test.mjs test/authored-entity-plan-budget.test.mjs test/render-target-pipeline-warmup.test.mjs',

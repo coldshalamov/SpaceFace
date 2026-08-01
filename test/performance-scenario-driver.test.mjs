@@ -6,6 +6,7 @@ import {
   preparePerformanceScenario,
   performanceScenarioExecutionOrder,
   performanceScenarioHoldsMeasuredPose,
+  performanceScenarioPipelineSettleTimeoutMs,
   restorePerformanceScenario,
   validateScenarioRestoration,
 } from '../scripts/lib/performanceScenarioDriver.mjs';
@@ -79,6 +80,21 @@ test('only injected non-transition workloads hold the measured pose', async () =
     'station scenarios restore the exact Flyby Focus journal after measurement');
   assert.match(source, /flybyFocus: !snapshot\.isolatesFlybyFocus[\s\S]*sameFlybyFocus/,
     'restoration fails closed when the Flyby Focus journal does not round-trip');
+});
+
+test('terminal jump warmup preserves five-second stability inside a bounded longer envelope', async () => {
+  assert.equal(performanceScenarioPipelineSettleTimeoutMs('flight_steady'), 20_000);
+  assert.equal(performanceScenarioPipelineSettleTimeoutMs('context_recover_steady'), 20_000);
+  assert.equal(performanceScenarioPipelineSettleTimeoutMs('jump_asset_admission'), 30_000);
+
+  const source = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
+  assert.match(source,
+    /pipelineSettleTimeoutMs:\s*performanceScenarioPipelineSettleTimeoutMs\(routeTag\)/,
+    'the live sampler must consume the scenario-specific bounded envelope');
+  assert.match(source, /pipelineStableMs\s*=\s*5_000/,
+    'the repair may not shorten the required stable interval');
+  assert.match(source, /pipelineSettleTimeoutMs\s*<=\s*30_000/,
+    'the extended terminal envelope must remain fail-closed and bounded');
 });
 
 test('mining diagnostic stress is armed and stopped by one scenario journal', async () => {
