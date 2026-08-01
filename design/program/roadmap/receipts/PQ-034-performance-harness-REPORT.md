@@ -12,9 +12,10 @@ activityAuthorityCandidate: 52cd5eb3949bfb0e88fd8a2c10d37cd1c149fe65
 firstFailedBrowserCandidate: 2ab10f91483b38a4cfbd2197d99d7bfa84ae198f
 secondFailedBrowserCandidate: dc8a4ae8148bf771188a2e982f0ba7c55da8bd4d
 thirdFailedBrowserCandidate: da98b9645e5096390990a0962c91fdd1c685d092
-browserClaimsConsumed: 3
+fourthFailedBrowserCandidate: cc88a5d8b1d0f68198b0e3f08badaebb46a8e84c
+browserClaimsConsumed: 4
 browserClaimAccepted: false
-latestBrowserRepairCandidate: 243d3bce9f5865a81faafb7fb7c2e02ee1f42c42
+latestBrowserRepairCandidate: 89470005843bca49a3b140f7e3f8931b4da671b3
 headedRuntimeLaunched: true
 performanceEvidenceClaimed: false
 protectedWorktreeMutated: false
@@ -424,3 +425,43 @@ cell. The order regression failed before implementation and now pins the exact s
 
 No timing conclusion from this claim is promoted. The exact unit remains `IN_PROGRESS`; one fresh
 Browser claim on the changed clean candidate is next, while Electron remains unspent.
+
+## Fourth Browser claim: fixed delay did not prove pipeline readiness
+
+The claim on clean pushed candidate `cc88a5d8b1d0f68198b0e3f08badaebb46a8e84c` ran once and is
+retained at
+`.devshots/perf/closure/browser/performance-closure-browser-2026-08-01T10-36-06-675Z-35024-c5b89875/`.
+The artifact proves the complete intended order: reversible baseline/diagnostic windows 0-22,
+`context_recover_steady` at 23, and `jump_asset_admission` at 24. Runtime, page, request, HTTP, console,
+and GL error arrays are empty. All GPU queries completed and drained without pending, dropped, or
+rejected records; route/activity/restoration/context/jump policies and owned cleanup all pass. The
+only validity reasons are `windows[15]-pipeline-cache-mismatch` and
+`windows[16]-pipeline-cache-mismatch`.
+
+Window 15 was `flight_steady @ bloom_off`: programs changed `95 → 97`, while active admission jobs
+stayed `0`, mesh queue stayed `0`, authored pending stayed `4`, resident assets stayed `27`, and
+resident resources stayed `799`. Window 16 was `flight_steady @ background_hidden`: programs changed
+`97 → 98` while every one of those admission, queue, and residency facts stayed unchanged. These are
+ordinary lazy program compilations after the fixed two-second delay, not asset-streaming or a reason
+to relax the stable-cache verdict. No timing result is promoted.
+
+Candidate `89470005843bca49a3b140f7e3f8931b4da671b3` adds the missing readiness proof. Each arm now polls a
+bounded fingerprint of program count, admission jobs, mesh queue/dirty state, compile-pending count,
+authored pending count, and asset/resource residency every 100 ms. Measurement begins only after the
+fingerprint is unchanged for at least five seconds and the active queue/admission owners are settled,
+with a hard 20-second cap. The versioned `spaceface.performancePipelineWarmup.v1` receipt records
+elapsed/stable time, observations, transitions, and start/end fingerprints; timeout or a malformed
+receipt fails measurement validity as `pipeline-warmup-unsettled`. The normal start/end program-cache
+rule remains binding, and the observer does not force GPU completion with `gl.finish`.
+
+- the seconds-scale warmup-validity regression failed before implementation and now passes;
+- focused attribution/closure/final-acceptance/scene tests — PASS 49/49;
+- selected PERF-00/broker regression set — PASS 144/144 in 15.779 s;
+- `npm run check:perf-counters` — PASS 35/35;
+- `npm run check:perf-packets` — PASS 39/39;
+- `npm run check:sim:compare` — PASS, deterministic and hash-equal;
+- `npm run check:launch-policy` — PASS;
+- `npm run check:baseline` — PASS 10/10 in 47.246 s.
+
+The exact unit remains `IN_PROGRESS`. One fresh Browser claim on the changed clean pushed candidate is
+next; Electron remains unspent until Browser passes.
