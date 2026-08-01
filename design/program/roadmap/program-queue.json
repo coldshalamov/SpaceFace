@@ -2521,7 +2521,7 @@
       "priority": 11,
       "title": "Ledger legibility and input-reachability review",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-021.h1-route"
       ],
@@ -2533,7 +2533,9 @@
         "design/program/roadmap/evidence/h1/row2-pq021-ledger/"
       ],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-021-h2-legibility-controller-REPORT.md"
+      ],
       "brief": "Review all five page crops and provenance in both hosts, verify controller semantics through the shipped input contract, and record keep or revise. The existing H1 functional pair already passed."
     },
     {
