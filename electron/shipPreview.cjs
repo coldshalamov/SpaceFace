@@ -23,7 +23,8 @@ app.whenReady().then(() => {
   setTimeout(() => { console.error('[shipPreview-driver] TIMEOUT'); finish(2); }, TIMEOUT_MS);
 
   // The page logs '[shipPreview] done — N shots' when finished; watch the console for it.
-  win.webContents.on('console-message', (_e, level, message) => {
+  win.webContents.on('console-message', (details) => {
+    const message = details && details.message;
     console.log('[page]', message);
     if (String(message).includes('[shipPreview] done')) finish(0);
     if (String(message).includes('[shipPreview] BOOT') || String(message).includes('BOOT ERROR')) finish(3);

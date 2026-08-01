@@ -314,7 +314,7 @@ async function createWindow() {
     if (!isMainFrame) return;
     receipt('navigation-failed', { code, message, url });
   });
-  win.webContents.on('console-message', (_event, details) => {
+  win.webContents.on('console-message', (details) => {
     const message = details && details.message;
     if (isAssetPreloadFailureMessage(message)) {
       receipt('asset-preload-failed', { message: receiptText(message) });

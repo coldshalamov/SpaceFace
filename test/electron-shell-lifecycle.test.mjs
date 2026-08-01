@@ -272,7 +272,7 @@ test('desktop shell denies popups, foreign navigation, and every permission exce
 
 test('Electron 43 console details and runtime identity remain diagnostic-only receipts', async () => {
   const h = await loadMain();
-  h.win.webContents.emit('console-message', {}, { message: 'authored preload failed: timeout' });
+  h.win.webContents.emit('console-message', { message: 'authored preload failed: timeout' });
   assert.equal(
     h.receipts.find((entry) => entry.status === 'asset-preload-failed')?.details.message,
     'authored preload failed: timeout',

@@ -14,6 +14,7 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const read = (relative) => readFileSync(path.join(ROOT, relative), 'utf8');
 const packageJson = JSON.parse(read('package.json'));
 const electronMain = read('electron/main.cjs');
+const electronShipPreview = read('electron/shipPreview.cjs');
 const launcher = read('scripts/launch-electron.mjs');
 const batch = read('SpaceFace-Desktop.bat');
 const workflow = read('.github/workflows/check.yml');
@@ -64,9 +65,14 @@ assert.match(electronMain, /setPermissionCheckHandler/);
 assert.match(electronMain, /setPermissionRequestHandler/);
 assert.match(electronMain, /permission !== 'pointerLock'/);
 assert.match(electronMain, /webContents !== win\.webContents/);
-assert.match(electronMain, /console-message', \(_event, details\)/,
-  'Electron 43 console messages must consume the details object');
-assert.doesNotMatch(electronMain, /console-message', \(_event, _level, message\)/);
+assert.match(electronMain, /console-message', \(details\)/,
+  'Electron 43 console messages must consume the single details event object');
+assert.match(electronShipPreview, /console-message', \(details\)/,
+  'the development preview must use the same Electron 43 console event contract');
+for (const source of [electronMain, electronShipPreview]) {
+  assert.doesNotMatch(source, /console-message', \([^)]*,[^)]*\)/,
+    'deprecated positional console-message listeners emit a runtime warning');
+}
 assert.match(electronMain, /const ELECTRON_CONTENT_SECURITY_POLICY\s*=/,
   'the Electron shell must publish an explicit Content Security Policy');
 assert.match(electronMain, /script-src\s+'self'/i,
