@@ -4050,7 +4050,7 @@
       "priority": 240,
       "title": "Capture the final small-destruction candidate",
       "kind": "acceptance_capture",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-023.small-destruction-salience-repair"
       ],
@@ -4071,7 +4071,9 @@
         "npm run check:pq023:corridor-cues",
         "npm run check:presentation"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-023-small-destruction-salience-h1-REPORT.md"
+      ],
       "brief": "Run a candidate-bound small-only Browser and source-Electron continuation covering normal small destruction, reduced small destruction, and one dense representative. Retain accepted flak, Cathedral, unrelated weapons, and larger destruction cells.",
       "blocker": null
     },
