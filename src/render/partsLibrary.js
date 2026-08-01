@@ -1855,6 +1855,20 @@ function recordAdmissionSlice(startedAtMs) {
 }
 
 function beginUpgradeDiagnostic(state, job) {
+  const perf = authoredRuntimeState()?.perfRuntime;
+  let backgroundJob = null;
+  if (perf?.backgroundJobTrackingEnabled === true
+    && typeof perf.beginBackgroundJob === 'function') {
+    try {
+      backgroundJob = perf.beginBackgroundJob('authored-upgrade', {
+        sourceSequence: job.sequence,
+      });
+    } catch {
+      backgroundJob = null;
+    }
+  }
+  job.perfBackgroundJob = backgroundJob;
+  job.perfBackgroundJobOwner = perf || null;
   const diagnostic = {
     sequence: job.sequence,
     key: typeof job.key === 'string' ? job.key : 'boundary',
@@ -1869,6 +1883,8 @@ function beginUpgradeDiagnostic(state, job) {
     endedAtMs: null,
     durationMs: null,
     status: 'running',
+    backgroundJobId: backgroundJob?.backgroundJobId ?? null,
+    backgroundJobOrigin: backgroundJob ? { ...backgroundJob.origin } : null,
   };
   state.diagnostics.jobs.push(diagnostic);
   if (state.diagnostics.jobs.length > 128) state.diagnostics.jobs.splice(0, state.diagnostics.jobs.length - 128);
@@ -1890,6 +1906,12 @@ function finishUpgradeDiagnostic(state, job, diagnostic) {
   diagnostic.endedAtMs = monotonicNow();
   diagnostic.durationMs = Math.max(0, diagnostic.endedAtMs - diagnostic.startedAtMs);
   diagnostic.transferBytes = resourceBytesForUrls(job.assetUrls);
+  const perf = job.perfBackgroundJobOwner;
+  if (perf && typeof perf.endBackgroundJob === 'function' && job.perfBackgroundJob) {
+    try { perf.endBackgroundJob(job.perfBackgroundJob, diagnostic.status); } catch { /* evidence only */ }
+  }
+  job.perfBackgroundJob = null;
+  job.perfBackgroundJobOwner = null;
   state.diagnostics.activeJobs = Math.max(0, state.diagnostics.activeJobs - 1);
   state.diagnostics.activePlannedBytes = Math.max(
     0,

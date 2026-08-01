@@ -115,9 +115,31 @@ runtime/commit, missing claim authority, or digest disagreement.
 - full current PERF-00 focused suite — PASS 127/127;
 - no broker claim, browser, Electron, GPU capture, or performance conclusion was spent.
 
+## Background-job identity slice
+
+The common display/render/simulation/GPU chain now includes the real asynchronous authored-upgrade
+owner. Measurement opt-in creates a monotonic background-job token with immutable start/end origins;
+the ordinary disabled path performs no record allocation. Evidence storage is fixed at 128 records,
+IDs survive reset, and disable/reset/overflow/refusal states remain explicit rather than disappearing.
+`partsLibrary` binds the token at its existing serial start/finish boundary without changing queue
+ordering, concurrency, decode, composition, or visual publication.
+
+The paired attribution route and current profiler enable the gate inside their existing measurement
+window. Closure CPU evidence carries the bounded job report, cleanup proves the gate is off, and final
+acceptance rejects missing, disabled, active, overflowed, refused, non-monotonic, or unterminated job
+evidence.
+
+- characterization: three focused tests failed because the perf API and queue binding did not exist;
+  the final arbiter also accepted a matrix with the job report deleted;
+- identity/queue/final-acceptance focused set — PASS 23/23;
+- full current PERF-00 suite plus authored queue ownership — PASS 133/133;
+- `npm run check:perf-counters` — PASS 29/29;
+- `npm run check:perf-packets` — PASS 39/39;
+- no broker claim, browser, Electron, GPU capture, or performance conclusion was spent.
+
 ## Honest residual
 
-This is not the terminal dispatch receipt. Background-job identity, explicit comparison invalidation,
-clean matched evidence, overhead measurement, and independent causal review remain open. The current
-driver and paired authority are focused-green but intentionally unspent while the machine remains
-ineligible for a quiet L4 capture.
+This is not the terminal dispatch receipt. Explicit comparison invalidation, clean matched evidence,
+overhead measurement, and independent causal review remain open. The current driver and paired
+authority are focused-green but intentionally unspent while the machine remains ineligible for a
+quiet L4 capture.

@@ -305,6 +305,7 @@ function validateMatrix(input, index, expectedCommit, failures) {
       || Number(pipelineStart.programCount) !== Number(pipelineEnd.programCount)) {
       failures.push(`${windowPrefix} program residency changed during capture`);
     }
+    validateBackgroundJobs(window.cpu?.backgroundJobs, windowPrefix, failures);
     if (window.restoration?.restored !== true || window.restoration?.measurementDisabled !== true) {
       failures.push(`${windowPrefix} did not restore scenario/instrumentation state`);
     }
@@ -312,6 +313,40 @@ function validateMatrix(input, index, expectedCommit, failures) {
   }
   const runPass = !failures.some((failure) => failure.startsWith(prefix));
   return matrixSummary(input, report, runPass, keys);
+}
+
+function validateBackgroundJobs(report, prefix, failures) {
+  if (!report || report.schema !== 'spaceface.performanceBackgroundJobs.v1'
+    || report.enabled !== true || report.capacity !== 128 || !Array.isArray(report.records)) {
+    failures.push(`${prefix} background-job evidence is missing or disabled`);
+    return;
+  }
+  if (report.records.length > report.capacity
+    || report.activeCount !== 0
+    || report.droppedRecords !== 0
+    || report.overwrittenActiveRecords !== 0
+    || report.refusedStarts !== 0) {
+    failures.push(`${prefix} background-job evidence is incomplete or still active`);
+  }
+  let previousId = 0;
+  for (const record of report.records) {
+    const id = record?.backgroundJobId;
+    const origin = record?.origin;
+    const endOrigin = record?.endOrigin;
+    if (!Number.isSafeInteger(id) || id <= previousId
+      || !nonempty(record?.kind) || !nonempty(record?.terminal)
+      || !validFrameOrigin(origin) || !validFrameOrigin(endOrigin)
+      || !Number.isFinite(record?.durationMs) || record.durationMs < 0) {
+      failures.push(`${prefix} background-job evidence contains an invalid identity or terminal record`);
+      break;
+    }
+    previousId = id;
+  }
+}
+
+function validFrameOrigin(origin) {
+  return origin && ['displayFrameId', 'renderFrameId', 'simTick']
+    .every((key) => Number.isSafeInteger(origin[key]) && origin[key] >= 0);
 }
 
 function requireWindowBudget(window, id, limit, prefix, failures) {

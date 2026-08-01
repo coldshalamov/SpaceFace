@@ -1434,6 +1434,9 @@ async function resetRuntimeDiagnostics(cdp) {
       && runtimePerf.setSystemTimingEnabled(true));
     const renderWorkEnabled = !!(runtimePerf && typeof runtimePerf.setRenderWorkEnabled === 'function'
       && runtimePerf.setRenderWorkEnabled(true));
+    const backgroundJobsEnabled = !!(runtimePerf
+      && typeof runtimePerf.setBackgroundJobTrackingEnabled === 'function'
+      && runtimePerf.setBackgroundJobTrackingEnabled(true));
     resolve({
       diagnostics: !!(diag && typeof diag.reset === 'function'),
       perfRuntime: !!(perf && typeof perf.reset === 'function'),
@@ -1441,6 +1444,7 @@ async function resetRuntimeDiagnostics(cdp) {
       gpuTimers: gpuTimersEnabled,
       systemTiming: systemTimingEnabled,
       renderWork: renderWorkEnabled,
+      backgroundJobs: backgroundJobsEnabled,
     });
   }))`);
   assert.ok(reset.diagnostics, 'renderer diagnostics reset must be available');
@@ -1449,6 +1453,7 @@ async function resetRuntimeDiagnostics(cdp) {
   // Fail loudly rather than silently producing another attribution-free report.
   assert.ok(reset.systemTiming, 'per-system CPU timing must be enabled or the report cannot attribute sim cost');
   assert.ok(reset.renderWork, 'per-render-work CPU timing must be enabled or the report cannot attribute draw cost');
+  assert.ok(reset.backgroundJobs, 'background-job identity must be enabled or the report cannot attribute admission work');
   await sleep(300);
 }
 

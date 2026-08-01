@@ -75,11 +75,13 @@ test('fails closed when residency or admission metrics are absent', () => {
   delete window.memory.renderer.delta.programs;
   delete window.memory.heap.growthBytes;
   delete window.pipeline.start.activeAdmissionJobs;
+  delete window.cpu.backgroundJobs;
   const result = evaluatePerformanceFinalAcceptance(input);
   assert.equal(result.pass, false);
   assert.match(result.failures.join('\n'), /lacks stable program residency/);
   assert.match(result.failures.join('\n'), /lacks finite heap evidence/);
   assert.match(result.failures.join('\n'), /active or uncontrolled asset admission/);
+  assert.match(result.failures.join('\n'), /background-job evidence/);
 });
 
 function fixture() {
@@ -236,7 +238,18 @@ function performanceWindow(scenarioId, environment) {
     summary,
     comparisonKey: comparisonKey({ scenarioId, environment, settings }),
     settings: { start: settings, end: settings },
-    cpu: {},
+    cpu: {
+      backgroundJobs: {
+        schema: 'spaceface.performanceBackgroundJobs.v1',
+        enabled: true,
+        capacity: 128,
+        activeCount: 0,
+        droppedRecords: 0,
+        overwrittenActiveRecords: 0,
+        refusedStarts: 0,
+        records: [],
+      },
+    },
     gpu: {},
     scene: {},
     pipeline: {

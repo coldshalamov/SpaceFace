@@ -3,6 +3,7 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import * as partsLibrary from '../src/render/partsLibrary.js';
+import { ensurePerfRuntime } from '../src/core/perfRuntime.js';
 import { waitForAuthoredAssetDeadline } from '../scripts/lib/authoredAssetDeadline.mjs';
 
 test('authored boundary admission exposes the runtime queue seam', () => {
@@ -119,14 +120,21 @@ test('post-flight admission is priority-aware, frame-staggered, and serial at co
     let inFlight = 0;
     let maxInFlight = 0;
     const player = { id: 'player', team: 0 };
+    const runtimeState = {
+      mode: 'flight',
+      playerId: player.id,
+      player: { targetId: 'selected' },
+      entities: new Map([[player.id, player]]),
+      entityList: [player],
+      settings: { video: {} },
+    };
+    const perf = ensurePerfRuntime(runtimeState);
+    perf.beginFrame(1 / 60);
+    perf.beginRenderFrame(31);
+    perf.setBackgroundJobTrackingEnabled(true);
     globalThis.window = {
       SF: {
-        state: {
-          mode: 'flight',
-          playerId: player.id,
-          player: { targetId: 'selected' },
-          entities: new Map([[player.id, player]]),
-        },
+        state: runtimeState,
       },
     };
 
@@ -173,6 +181,12 @@ test('post-flight admission is priority-aware, frame-staggered, and serial at co
 
     const activeDiagnostics = scene.userData.authoredUpgradeDiagnostics;
     assert.ok(activeDiagnostics, 'queue diagnostics must be published for the live probe');
+    assert.equal(activeDiagnostics.jobs[0].backgroundJobId, 1);
+    assert.deepEqual(activeDiagnostics.jobs[0].backgroundJobOrigin, {
+      displayFrameId: 1,
+      renderFrameId: 1,
+      simTick: 31,
+    });
     assert.equal(activeDiagnostics.maxConcurrentJobs, 1);
     assert.equal(activeDiagnostics.maxConcurrentDecode, 1,
       'distinct asset decode remains serial alongside serial composition');
@@ -202,6 +216,9 @@ test('post-flight admission is priority-aware, frame-staggered, and serial at co
       scene.userData.authoredUpgradeDiagnostics.jobs.map((job) => job.entityId),
       ['selected', 'hostile', 'onscreen', 'ambient'],
     );
+    const backgroundJobs = perf.getReport().backgroundJobs;
+    assert.deepEqual(backgroundJobs.records.map((job) => job.backgroundJobId), [1, 2, 3, 4]);
+    assert.equal(backgroundJobs.records.every((job) => job.terminal === 'authored'), true);
   } finally {
     if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
     else globalThis.requestAnimationFrame = previousRaf;

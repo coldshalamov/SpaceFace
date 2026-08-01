@@ -1,6 +1,7 @@
 import { createPerfCounters } from './perfCounters.js';
 
 const RING_N = 180;
+const BACKGROUND_JOB_RING_N = 128;
 
 function nowMs() {
   return (typeof performance !== 'undefined' && performance && typeof performance.now === 'function')
@@ -241,6 +242,17 @@ export function ensurePerfRuntime(state) {
   // Opt-in CPU render-work attribution. Default OFF so production frames never pay
   // performance.now() + ring sample cost. Measurement probes enable for a window only.
   let renderWorkEnabled = false;
+  // Background-job evidence is opt-in. The live queue pays one branch at job boundaries while
+  // ordinary frames pay nothing; enabled captures use a fixed-capacity record ring.
+  let backgroundJobTrackingEnabled = false;
+  let backgroundJobId = 0;
+  const backgroundJobRecords = new Array(BACKGROUND_JOB_RING_N);
+  const activeBackgroundJobs = new Set();
+  let backgroundJobHead = 0;
+  let backgroundJobCount = 0;
+  let backgroundJobDroppedRecords = 0;
+  let backgroundJobOverwrittenActiveRecords = 0;
+  let backgroundJobRefusedStarts = 0;
   // Common monotonic identities for bounded attribution. Integer increments are allocation-free;
   // callers copy them only while an evidence window is enabled.
   let displayFrameId = 0;
@@ -255,6 +267,81 @@ export function ensurePerfRuntime(state) {
   function statForRenderWork(name) {
     const key = name || 'unknown';
     return renderWorkStats[key] || (renderWorkStats[key] = createStat());
+  }
+
+  function backgroundJobOrigin() {
+    return {
+      displayFrameId,
+      renderFrameId,
+      simTick: currentSimTick,
+    };
+  }
+
+  function closeBackgroundJob(record, terminal) {
+    if (!record || record.terminal != null) return false;
+    record.terminal = typeof terminal === 'string' && terminal.trim()
+      ? terminal.trim().slice(0, 80)
+      : 'unknown';
+    record.endedAtMs = nowMs();
+    record.durationMs = Math.max(0, record.endedAtMs - record.startedAtMs);
+    record.endOrigin = backgroundJobOrigin();
+    activeBackgroundJobs.delete(record);
+    return true;
+  }
+
+  function appendBackgroundJob(record) {
+    const replaced = backgroundJobRecords[backgroundJobHead];
+    if (backgroundJobCount === BACKGROUND_JOB_RING_N) {
+      backgroundJobDroppedRecords++;
+      if (replaced && replaced.terminal == null) backgroundJobOverwrittenActiveRecords++;
+    } else {
+      backgroundJobCount++;
+    }
+    backgroundJobRecords[backgroundJobHead] = record;
+    backgroundJobHead = (backgroundJobHead + 1) % BACKGROUND_JOB_RING_N;
+  }
+
+  function resetBackgroundJobRecords(reason = 'measurement-reset') {
+    for (const record of activeBackgroundJobs) closeBackgroundJob(record, reason);
+    activeBackgroundJobs.clear();
+    backgroundJobRecords.fill(undefined);
+    backgroundJobHead = 0;
+    backgroundJobCount = 0;
+    backgroundJobDroppedRecords = 0;
+    backgroundJobOverwrittenActiveRecords = 0;
+    backgroundJobRefusedStarts = 0;
+  }
+
+  function backgroundJobReport() {
+    const records = [];
+    const start = (backgroundJobHead - backgroundJobCount + BACKGROUND_JOB_RING_N)
+      % BACKGROUND_JOB_RING_N;
+    for (let index = 0; index < backgroundJobCount; index++) {
+      const record = backgroundJobRecords[(start + index) % BACKGROUND_JOB_RING_N];
+      if (!record) continue;
+      records.push({
+        schema: record.schema,
+        backgroundJobId: record.backgroundJobId,
+        kind: record.kind,
+        sourceSequence: record.sourceSequence,
+        origin: { ...record.origin },
+        startedAtMs: record.startedAtMs,
+        terminal: record.terminal,
+        endedAtMs: record.endedAtMs,
+        durationMs: record.durationMs,
+        endOrigin: record.endOrigin ? { ...record.endOrigin } : null,
+      });
+    }
+    return {
+      schema: 'spaceface.performanceBackgroundJobs.v1',
+      enabled: backgroundJobTrackingEnabled,
+      capacity: BACKGROUND_JOB_RING_N,
+      activeCount: activeBackgroundJobs.size,
+      droppedRecords: backgroundJobDroppedRecords,
+      overwrittenActiveRecords: backgroundJobOverwrittenActiveRecords,
+      refusedStarts: backgroundJobRefusedStarts,
+      records,
+    };
   }
 
   function classifyBacklogCause(steps, shedBacklog) {
@@ -310,6 +397,50 @@ export function ensurePerfRuntime(state) {
     setRenderWorkEnabled(on) {
       renderWorkEnabled = !!on;
       return renderWorkEnabled;
+    },
+    get backgroundJobTrackingEnabled() { return backgroundJobTrackingEnabled; },
+    isBackgroundJobTrackingEnabled() { return backgroundJobTrackingEnabled === true; },
+    setBackgroundJobTrackingEnabled(on) {
+      const next = !!on;
+      if (!next && backgroundJobTrackingEnabled) {
+        for (const record of [...activeBackgroundJobs]) {
+          closeBackgroundJob(record, 'measurement-disabled');
+        }
+      }
+      backgroundJobTrackingEnabled = next;
+      return backgroundJobTrackingEnabled;
+    },
+    beginBackgroundJob(kind, { sourceSequence = null } = {}) {
+      if (!backgroundJobTrackingEnabled) return null;
+      if (typeof kind !== 'string' || !kind.trim()) {
+        throw new TypeError('performance background job kind must be a non-empty string');
+      }
+      if (activeBackgroundJobs.size >= BACKGROUND_JOB_RING_N) {
+        backgroundJobRefusedStarts++;
+        return null;
+      }
+      if (backgroundJobId >= Number.MAX_SAFE_INTEGER) {
+        throw new Error('performance background job identity exhausted');
+      }
+      backgroundJobId++;
+      const record = {
+        schema: 'spaceface.performanceBackgroundJob.v1',
+        backgroundJobId,
+        kind: kind.trim().slice(0, 80),
+        sourceSequence: Number.isSafeInteger(sourceSequence) ? sourceSequence : null,
+        origin: backgroundJobOrigin(),
+        startedAtMs: nowMs(),
+        terminal: null,
+        endedAtMs: null,
+        durationMs: null,
+        endOrigin: null,
+      };
+      activeBackgroundJobs.add(record);
+      appendBackgroundJob(record);
+      return record;
+    },
+    endBackgroundJob(record, terminal = 'completed') {
+      return closeBackgroundJob(record, terminal);
     },
     beginFrame(frameDt, callbackStartMs = null, callbackTimestampMs = null, frameBudgetMs = null) {
       if (displayFrameId >= Number.MAX_SAFE_INTEGER) {
@@ -543,6 +674,7 @@ export function ensurePerfRuntime(state) {
       if (autosave) saveStats.autosaveLast = plain;
     },
     reset() {
+      resetBackgroundJobRecords();
       resetStat(frameStats);
       resetStat(frameCallbackStats);
       resetStat(frameUntrackedStats);
@@ -667,6 +799,7 @@ export function ensurePerfRuntime(state) {
         },
         systems,
         renderWork,
+        backgroundJobs: backgroundJobReport(),
         saves: {
           count: saveStats.count,
           autosaveCount: saveStats.autosaveCount,

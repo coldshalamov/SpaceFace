@@ -889,6 +889,13 @@ async function sampleRafWindow(page, {
       }
     }
 
+    function setBackgroundJobTrackingEnabled(on) {
+      const perf = window.__SPACEFACE_PERF__ || state?.perfRuntime;
+      if (perf && typeof perf.setBackgroundJobTrackingEnabled === 'function') {
+        try { perf.setBackgroundJobTrackingEnabled(!!on); } catch (_) { /* ignore */ }
+      }
+    }
+
     function resetProbes() {
       try { if (window.__SPACEFACE_PERF__?.reset) window.__SPACEFACE_PERF__.reset(); } catch (_) { /* ignore */ }
       try { if (window.__THREE_GAME_DIAGNOSTICS__?.reset) window.__THREE_GAME_DIAGNOSTICS__.reset(); } catch (_) { /* ignore */ }
@@ -958,6 +965,7 @@ async function sampleRafWindow(page, {
             bloomComposite: renderWork.bloomComposite || null,
           },
           systems: perf?.systems || {},
+          backgroundJobs: perf?.backgroundJobs || null,
           saves: perf?.saves || null,
           longTasks,
           gcSignals,
@@ -1067,6 +1075,7 @@ async function sampleRafWindow(page, {
     // Opt-in measurement window only. Always disable CPU/GPU gates on exit.
     setRenderWorkEnabled(true);
     setSystemTimingEnabled(true);
+    setBackgroundJobTrackingEnabled(true);
     setGpuTimersEnabled(gpuOn);
     const resourceStartTime = performance.now();
     const sceneStart = collectPerformanceSceneStructure({ state });
@@ -1258,6 +1267,7 @@ async function sampleRafWindow(page, {
       setGpuTimersEnabled(false);
       setRenderWorkEnabled(false);
       setSystemTimingEnabled(false);
+      setBackgroundJobTrackingEnabled(false);
     }
   }, {
     tag: phaseTag,
@@ -1557,6 +1567,11 @@ async function disableMeasurementGates(page) {
       }
     } catch (_) { /* ignore */ }
     try {
+      if (perf && typeof perf.setBackgroundJobTrackingEnabled === 'function') {
+        perf.setBackgroundJobTrackingEnabled(false);
+      }
+    } catch (_) { /* ignore */ }
+    try {
       const timers = window.SF?.state?.render?.gpuTimers;
       if (timers && typeof timers.setEnabled === 'function') timers.setEnabled(false);
     } catch (_) { /* ignore */ }
@@ -1565,12 +1580,15 @@ async function disableMeasurementGates(page) {
     return {
       renderWorkEnabled: perf?.renderWorkEnabled === true || perf?.isRenderWorkEnabled?.() === true,
       systemTimingEnabled: perf?.systemTimingEnabled === true || perf?.isSystemTimingEnabled?.() === true,
+      backgroundJobTrackingEnabled: perf?.backgroundJobTrackingEnabled === true
+        || perf?.isBackgroundJobTrackingEnabled?.() === true,
       gpuTimersEnabled: gpuReport?.enabled === true,
       restoreJournalPresent: window.__SF_PERF_ATTRIBUTION_RESTORE__ != null,
     };
   }).catch(() => ({
     renderWorkEnabled: false,
     systemTimingEnabled: false,
+    backgroundJobTrackingEnabled: false,
     gpuTimersEnabled: false,
     restoreJournalPresent: false,
   }));
@@ -2353,6 +2371,7 @@ async function finalizePerformanceAttributionRun({
   const measurementState = await disableMeasurementGates(page);
   const measurementDisabled = measurementState.renderWorkEnabled !== true
     && measurementState.systemTimingEnabled !== true
+    && measurementState.backgroundJobTrackingEnabled !== true
     && measurementState.gpuTimersEnabled !== true
     && measurementState.restoreJournalPresent !== true;
   const environment = await readAttributionEnvironment(
