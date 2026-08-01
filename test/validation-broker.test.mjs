@@ -287,6 +287,16 @@ test('§3.7 direct raw acceptance fails closed without broker claim', async (t) 
 
   // One-use claim authorizes once, then fails on reuse.
   const issued = await issueBrokerClaim({ outputRoot, manifest });
+  const preview = await requireBrokerClaimOrDiagnostic({
+    outputRoot,
+    manifest,
+    tokenOrPath: issued.claimPath,
+    diagnostic: false,
+    explicitDiagnostic: false,
+    consume: false,
+  });
+  assert.equal(preview.ok, true);
+  assert.equal(preview.reason, 'broker-claim-validated');
   const first = await validateBrokerClaim({
     outputRoot,
     manifest,

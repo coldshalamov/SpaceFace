@@ -199,9 +199,30 @@ equivalent result inside measured noise is non-promoting `neutral` rather than a
 - `npm run check:baseline` — PASS 10/10 in 42.066 s after the final artifact-alias guard;
 - no Browser, Electron, broker claim, raw trace, or performance conclusion was fabricated or spent.
 
+## Host-preflight and claim-preservation slice
+
+Performance acceptance now validates authority in two stages. The first stage checks the exact
+claim, manifest, source candidate, runtime, and broker digest without consuming the claim. The
+bounded activity census then runs before artifact allocation or launcher setup. Active or unknown
+Blender/browser/Electron activity raises `PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED`; only an
+explicitly quiet census reaches the existing atomic consume and runtime path.
+
+Characterization initially returned `broker-claim-missing-digest` instead of the expected
+environment blocker. The source-bound claim was correct, but `validateBrokerClaim` omitted
+`sourceCandidateDigest` from its local digest projection. The repair carries that already-required
+field into validation. A real temp-root broker claim now validates, encounters an injected Blender
+census, rejects before launch, and remains valid and unconsumed afterward.
+
+- focused broker/runtime preflight contracts — PASS 38/38;
+- expanded PERF-00, broker, and manifest-registry set — PASS 184/184;
+- program docs — PASS with 0 warnings; program-control tools — PASS 9/9;
+- `npm run check:baseline` — PASS 10/10 in 44.017 s;
+- the blocked-host test allocates no run artifact and invokes no Browser or Electron launcher;
+- no production broker claim, headed runtime, GPU capture, or performance conclusion was spent.
+
 ## Honest residual
 
 This is not the terminal dispatch receipt. Clean matched evidence, instrumentation overhead
-measurement, broker preflight, bounded termination proof, and independent causal review remain open. The current driver and paired
+measurement, bounded termination proof, and independent causal review remain open. The current driver and paired
 authority are focused-green but intentionally unspent while the machine remains ineligible for a
 quiet L4 capture.

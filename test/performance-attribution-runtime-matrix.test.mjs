@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -9,6 +11,11 @@ import {
   runPerformanceAttributionProbe,
 } from '../scripts/lib/releaseSoakProbe.mjs';
 import browserManifest from '../scripts/validation-manifests/performance-closure-browser.mjs';
+import {
+  createValidationBroker,
+  issueBrokerClaim,
+  validateBrokerClaim,
+} from '../scripts/lib/validationBroker.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
@@ -84,4 +91,39 @@ test('the library runner rejects direct acceptance before allocating or launchin
     }),
     /PERFORMANCE_ATTRIBUTION_AUTHORITY_REJECTED: broker-claim-required/,
   );
+});
+
+test('contaminated preflight rejects before consuming a valid claim or allocating run artifacts', async (t) => {
+  const outputRoot = await mkdtemp(path.join(os.tmpdir(), 'spaceface-perf-preflight-'));
+  t.after(() => rm(outputRoot, { recursive: true, force: true }));
+  const digests = await createValidationBroker(browserManifest, { root: ROOT, outputRoot }).computeGateDigests();
+  const issued = await issueBrokerClaim({ outputRoot, manifest: browserManifest, digests });
+
+  await assert.rejects(
+    runPerformanceAttributionProbe({
+      root: ROOT,
+      runtimeKind: 'browser',
+      manifest: browserManifest,
+      mode: 'acceptance',
+      brokerClaimToken: issued.claimPath,
+      outputRoot,
+      activityInspector: async () => ({
+        capturedAt: new Date().toISOString(),
+        active: true,
+        contaminatingProcesses: { available: true, names: ['blender.exe'], entries: [{ name: 'blender.exe', pid: 47 }] },
+      }),
+    }),
+    /PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED/,
+  );
+
+  const entries = await readdir(outputRoot);
+  assert.equal(entries.some((entry) => entry.startsWith('performance-attribution-')), false);
+
+  const stillValid = await validateBrokerClaim({
+    outputRoot,
+    manifest: browserManifest,
+    tokenOrPath: issued.claimPath,
+    root: ROOT,
+  });
+  assert.equal(stillValid.ok, true, stillValid.reason);
 });

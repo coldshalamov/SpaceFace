@@ -2577,6 +2577,7 @@ async function runPerformanceAttributionProbe({
   sampleMs = 5_000,
   flightTimeoutMs = 150_000,
   dockTimeoutMs = 90_000,
+  activityInspector = inspectPerformanceActivity,
   log = () => {},
 } = {}) {
   assert(root, 'runPerformanceAttributionProbe requires root');
@@ -2585,7 +2586,7 @@ async function runPerformanceAttributionProbe({
   assert.equal(manifest.runtimeKind, runtimeKind, 'manifest runtime must match attribution runtime');
   assert(['diagnostic', 'acceptance'].includes(mode), 'mode must be diagnostic or acceptance');
   const outRoot = outputRoot || path.join(root, '.devshots', 'perf');
-  const gate = await requireBrokerClaimOrDiagnostic({
+  let gate = await requireBrokerClaimOrDiagnostic({
     outputRoot: outRoot,
     manifest,
     tokenOrPath: brokerClaimToken,
@@ -2594,12 +2595,44 @@ async function runPerformanceAttributionProbe({
     root,
     requiredMode: mode,
     requiredRuntimeKind: runtimeKind,
+    consume: mode !== 'acceptance',
   });
   if (!gate.ok) {
     const error = new Error(`PERFORMANCE_ATTRIBUTION_AUTHORITY_REJECTED: ${gate.reason}`);
     error.code = 'PERFORMANCE_ATTRIBUTION_AUTHORITY_REJECTED';
     error.reason = gate.reason;
     throw error;
+  }
+  let activity = null;
+  if (mode === 'acceptance') {
+    try {
+      activity = await activityInspector(root);
+    } catch (error) {
+      activity = { capturedAt: new Date().toISOString(), active: null, error: error?.message || String(error) };
+    }
+    if (activity?.active !== false) {
+      const error = new Error('PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED: performance activity census is active or unavailable');
+      error.code = 'PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED';
+      error.activity = activity;
+      throw error;
+    }
+    gate = await requireBrokerClaimOrDiagnostic({
+      outputRoot: outRoot,
+      manifest,
+      tokenOrPath: brokerClaimToken,
+      diagnostic: false,
+      explicitDiagnostic: false,
+      root,
+      requiredMode: mode,
+      requiredRuntimeKind: runtimeKind,
+      consume: true,
+    });
+    if (!gate.ok) {
+      const error = new Error(`PERFORMANCE_ATTRIBUTION_AUTHORITY_REJECTED: ${gate.reason}`);
+      error.code = 'PERFORMANCE_ATTRIBUTION_AUTHORITY_REJECTED';
+      error.reason = gate.reason;
+      throw error;
+    }
   }
   const authority = Object.freeze({
     mode: gate.diagnostic ? 'diagnostic' : 'acceptance',
@@ -2609,7 +2642,7 @@ async function runPerformanceAttributionProbe({
   });
   const outputDir = await allocateOutputDir(outRoot, taskId);
   const startFingerprint = await strictWorktreeFingerprint(root);
-  const activity = await inspectPerformanceActivity(root);
+  activity ||= await activityInspector(root);
   const logLines = [];
   const doLog = (message) => {
     const line = `${new Date().toISOString()} ${message}`;

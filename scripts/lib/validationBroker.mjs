@@ -2065,6 +2065,9 @@ export async function validateBrokerClaim({
       candidateDigest: claim.digests?.candidateDigest
         ?? claim.receipt?.candidateDigest
         ?? null,
+      sourceCandidateDigest: claim.digests?.sourceCandidateDigest
+        ?? claim.receipt?.sourceCandidateDigest
+        ?? null,
       routeDigest: claim.digests?.routeDigest
         ?? claim.digests?.productionDigest
         ?? claim.receipt?.routeDigest
@@ -2262,6 +2265,7 @@ export async function requireBrokerClaimOrDiagnostic({
   digests = null,
   requiredMode = null,
   requiredRuntimeKind = null,
+  consume = true,
 }) {
   if (diagnostic) {
     if (!explicitDiagnostic) {
@@ -2298,6 +2302,16 @@ export async function requireBrokerClaimOrDiagnostic({
         : STATUS.BLOCKED_MISSING_FAST_RECEIPT,
       reason: check.reason,
       diagnostic: false,
+    };
+  }
+  if (consume === false) {
+    return {
+      ok: true,
+      status: STATUS.PASS,
+      reason: 'broker-claim-validated',
+      diagnostic: false,
+      primaryAcceptance: false,
+      claim: check.claim,
     };
   }
   // Atomic consume — concurrent second caller loses here even if both validated.
