@@ -4,15 +4,15 @@ packetId: PQ-020
 leafId: PQ-020.electron-cold-reload-lifecycle-repair
 acceptance: focused_green
 disposition: PASS
-candidateCommit: d9a5b1ec019a637ab550d8d8b71c2c8d53f0e441
+candidateCommit: 533e5bd1f3d1f5eba4be9071c8f3ef18ae0044df
 -->
 # PQ-020 Electron cold-reload lifecycle repair report
 
 ```yaml
 packet: PQ-020
 dispatchUnit: PQ-020.electron-cold-reload-lifecycle-repair
-candidateBase: d9a5b1ec019a637ab550d8d8b71c2c8d53f0e441
-lastRedAcceptanceCandidate: 1c9d317d
+candidateBase: 533e5bd1f3d1f5eba4be9071c8f3ef18ae0044df
+lastRedAcceptanceCandidate: 533e5bd1f3d1f5eba4be9071c8f3ef18ae0044df
 lifecycleClaim: focused_green
 acceptanceClaim: unproven
 disposition: PASS
@@ -45,9 +45,10 @@ This was a mixed product/harness lifecycle failure, not a Ceres route failure.
 - PQ-020 now uses the same application/browser-context issue authority as the accepted Electron
   baseline and end-to-end lanes. It attaches synchronously after `electron.launch()` and before
   `firstWindow`, then binds and backfills the page before canonical route work begins.
-- That authority owns the exact expected-navigation token. Requests already active when the token
-  begins, or starting while it is live, retain the label through delayed failure delivery. Only an
-  exact `net::ERR_ABORTED` on one of those request objects becomes diagnostic.
+- That authority owns both exact lifecycle tokens: the document reload and public Continue's
+  same-document UI-generation replacement through incoming owner settlement. Requests already
+  active when a token begins, or starting while it is live, retain the label through delayed failure
+  delivery. Only an exact `net::ERR_ABORTED` on one of those request objects becomes diagnostic.
 - Browser keeps its page-scoped collector; Electron no longer asks a late page-only observer to
   reconstruct application request history. Console errors, page errors, crashes, HTTP failures,
   non-abort failures, completed-request failures, and every unscoped abort remain hard failures.
@@ -70,16 +71,28 @@ reported zero hard page issues. Restored flight reached registration generation 
 Electron process, page, profile listener, and process all closed cleanly. No URL or module-name
 allowlist is involved.
 
+The first fresh pair on the application/context authority (`533e5bd1`) was intentionally retained as
+red diagnostic evidence: Browser and Electron again completed all 21 frames and matching functional
+facts, and Electron closed cleanly, but eight incoming UI dependency requests were cancelled during
+the public Continue generation replacement. The earlier Continue scope had been removed after a
+page-only observer attributed zero requests; the authoritative application/context tracker changes
+that premise. The repaired scope begins immediately before the visible Continue click and ends only
+after restored flight/input and the incoming screen-registration generation are both settled.
+
 ## Focused evidence
 
 - Historical native failure: candidate `1c9d317d` produced 21/21 Electron frames, normalized gameplay
   parity, and clean owned shutdown, but eight unattributed module aborts.
+- Fresh diagnostic pair: candidate `533e5bd1` produced 21/21 in both runtimes with clean Electron
+  shutdown and isolated eight exact `net::ERR_ABORTED` UI dependencies at the same-document Continue
+  owner replacement; it remains red and is not promoted.
 - `node test/alpha-live-baseline-electron-contract.test.mjs` — PASS. The regression proves an active
   context request retains its exact navigation label after token close and that an unscoped abort
   remains fatal.
 - `node --test test/browser-issues.test.mjs test/pq020-ceres-topology-manifest.test.mjs
   test/ui-screen-registration-lifecycle.test.mjs` — PASS, 19/19.
-- `node scripts/check-pq020-electron-request-provenance.mjs` — PASS in one bounded native launch:
+- `node scripts/check-pq020-electron-request-provenance.mjs` — PASS after the second-scope repair in
+  one bounded native launch:
   seed `47`, restored flight, registration `2/2`, zero hard issues, one identity-bound expected abort,
   and clean owned teardown.
 - `node scripts/check-ui-screen-imports.mjs` — PASS, 41/41.

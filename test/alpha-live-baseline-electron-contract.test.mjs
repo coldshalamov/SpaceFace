@@ -224,6 +224,17 @@ async function testApplicationWideIssueTrackerAndBackfill() {
   assert.equal(tracker.endExpectedNavigation(navigationToken), true);
   context.emit('requestfailed', cancelledByReload);
 
+  const cancelledByContinueTransition = {
+    method: () => 'GET',
+    url: () => `${CANONICAL}incoming-screen-dependency.js`,
+    failure: () => ({ errorText: 'net::ERR_ABORTED' }),
+    response: async () => null,
+  };
+  const transitionToken = tracker.beginExpectedNavigation('continue-transition');
+  context.emit('request', cancelledByContinueTransition);
+  assert.equal(tracker.endExpectedNavigation(transitionToken), true);
+  context.emit('requestfailed', cancelledByContinueTransition);
+
   const unscopedAbort = {
     method: () => 'GET',
     url: () => `${CANONICAL}later-module.js`,
@@ -249,9 +260,10 @@ async function testApplicationWideIssueTrackerAndBackfill() {
     'context WebError and page history dedupe by the underlying Error object');
   assert.equal(errors.filter((entry) => entry.source === 'request').length, 2,
     'a repeated hard failure is deduplicated while an unscoped abort remains fatal');
-  assert.equal(tracker.ignored().length, 1,
-    'only the exact active request cancelled by the named navigation becomes diagnostic');
+  assert.equal(tracker.ignored().length, 2,
+    'only exact request objects active in or started during a named lifecycle scope become diagnostic');
   assert.deepEqual(tracker.ignored()[0].expectedNavigation, ['cold-continue']);
+  assert.deepEqual(tracker.ignored()[1].expectedNavigation, ['continue-transition']);
   assert.equal(errors.filter((entry) => entry.source === 'response').length, 1,
     'context-wide HTTP response observation catches failures before firstWindow resolves');
   assert(errors.some((entry) => entry.source === 'page-crash'), 'bound pages retain live crash observation');

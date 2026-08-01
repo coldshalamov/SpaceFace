@@ -144,11 +144,16 @@ try {
   const continueButton = page.getByRole('button', { name: 'Continue', exact: true });
   await continueButton.waitFor({ state: 'visible', timeout: 30_000 });
   await waitForScreenRegistrationSettled(page);
-  await continueButton.click();
+  const continueTransitionToken = issueTracker.beginExpectedNavigation('pq020-focused-continue-transition');
+  try {
+    await continueButton.click();
 
-  phase = 'restored-flight';
-  await page.waitForFunction(flightReadyInPage, null, { timeout: 150_000 });
-  await waitForScreenRegistrationSettled(page);
+    phase = 'restored-flight';
+    await page.waitForFunction(flightReadyInPage, null, { timeout: 150_000 });
+    await waitForScreenRegistrationSettled(page);
+  } finally {
+    issueTracker.endExpectedNavigation(continueTransitionToken);
+  }
   await page.waitForTimeout(750);
 
   const state = await page.evaluate(() => ({
