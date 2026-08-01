@@ -144,16 +144,11 @@ try {
   const continueButton = page.getByRole('button', { name: 'Continue', exact: true });
   await continueButton.waitFor({ state: 'visible', timeout: 30_000 });
   await waitForScreenRegistrationSettled(page);
-  const continueTransitionToken = issueTracker.beginExpectedNavigation('pq020-focused-continue-transition');
-  try {
-    await continueButton.click();
+  await continueButton.click();
 
-    phase = 'restored-flight';
-    await page.waitForFunction(flightReadyInPage, null, { timeout: 150_000 });
-    await waitForScreenRegistrationSettled(page);
-  } finally {
-    issueTracker.endExpectedNavigation(continueTransitionToken);
-  }
+  phase = 'restored-flight';
+  await page.waitForFunction(flightReadyInPage, null, { timeout: 150_000 });
+  await waitForScreenRegistrationSettled(page);
   await page.waitForTimeout(750);
 
   const state = await page.evaluate(() => ({
@@ -164,6 +159,11 @@ try {
     screenSettledGeneration:
       window.SF?.registry?.get?.('ui')?._screenRegistrationSettledGeneration ?? null,
   }));
+  const canonicalDocumentRequests = [...requestStarts.values()].filter((request) => {
+    if (request.resourceType !== 'document') return false;
+    try { return new URL(request.url).href === new URL(rootUrl).href; }
+    catch (_) { return false; }
+  });
   report = {
     schema: 'spaceface.pq020ElectronRequestProvenance.v1',
     generatedAt: new Date().toISOString(),
@@ -173,10 +173,13 @@ try {
     ignoredPageIssues: summarizeIssues(issueTracker.ignored()),
     ignoredNavigationIssues: issueTracker.ignored(),
     requestFailures: failures,
+    canonicalDocumentRequests,
   };
   assert.equal(state.mode, 'flight');
   assert.equal(state.seed, FIXED_SEED);
   assert.equal(state.screenSettledGeneration, state.screenGeneration);
+  assert.equal(canonicalDocumentRequests.length, 2,
+    'the focused route must load the canonical first window once and reload it once, with no duplicate boot navigation');
   assert.ok(report.ignoredNavigationIssues.some((issue) => (
     issue.expectedNavigation?.includes('pq020-focused-cold-continue')
     && /net::ERR_ABORTED$/i.test(issue.text)

@@ -74,6 +74,7 @@ try {
   childProcess = app.process();
   processMonitor = createElectronProcessMonitor({ electronApp: app, childProcess });
   issueTracker = createStrictElectronApplicationIssueTracker(app);
+  issueTracker.setPhase('electron-first-window');
   page = await app.firstWindow({ timeout: 90_000 });
   canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
     bootstrapTimeoutMs: 10_000,
@@ -81,6 +82,7 @@ try {
     allowAnyLoopbackPort: true,
   });
   await issueTracker.bindAndBackfillPage(page);
+  issueTracker.setPhase('electron-canonical-root');
   rootUrl = await canonicalUrlTracker.waitForCanonicalRoot(10_000);
   rootUrl = assertIsolatedElectronRootUrl(rootUrl);
   await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
@@ -103,11 +105,14 @@ try {
     fixedSeed: PQ020_CERES_TOPOLOGY_FIXED_SEED,
     screenshot,
     pageIssueTracker: issueTracker,
+    navigateInitialRoot: false,
   });
   receipt.screenshots = screenshots;
   receipt.expectedScreenshots = [...PQ020_FUNCTIONAL_SCREENSHOTS];
   receipt.pageIssues = summarizeIssues(issueTracker.errors());
   receipt.ignoredPageIssues = summarizeIssues(issueTracker.ignored());
+  receipt.pageIssueDetails = issueTracker.errors();
+  receipt.ignoredPageIssueDetails = issueTracker.ignored();
   if (receipt.pageIssues.length) {
     receipt.disposition = 'FAIL';
     receipt.failureClass = 'UNCLASSIFIED_BY_PROBE';
@@ -144,6 +149,8 @@ try {
     expectedScreenshots: [...PQ020_FUNCTIONAL_SCREENSHOTS],
     pageIssues: issueTracker ? summarizeIssues(issueTracker.errors()) : [],
     ignoredPageIssues: issueTracker ? summarizeIssues(issueTracker.ignored()) : [],
+    pageIssueDetails: issueTracker ? issueTracker.errors() : [],
+    ignoredPageIssueDetails: issueTracker ? issueTracker.ignored() : [],
     failureSnapshot: await readPq020FailureSnapshot(page),
     crossRuntimeParity: {
       comparedAgainst: '.devshots/pq020-ceres-topology/route-receipt.json',

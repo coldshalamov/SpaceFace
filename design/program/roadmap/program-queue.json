@@ -2915,7 +2915,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-020-electron-cold-reload-lifecycle-repair-REPORT.md"
       ],
-      "brief": "Invalidate stale asynchronous screen registrations when uiRoot is destroyed or reinitialized. The application/context tracker may classify only request-identity-bound exact net::ERR_ABORTED failures inside the document reload or the public Continue same-document UI-generation replacement; console, page, HTTP, non-abort, completed-request, and unrelated failures remain hard. The only native launch authorized in this repair is the seconds-scale request-provenance regression."
+      "brief": "Invalidate stale asynchronous screen registrations when uiRoot is destroyed or reinitialized, attach request provenance before firstWindow, and keep Electron on its already-loaded canonical first window instead of issuing a duplicate root page.goto. Only request-identity-bound exact net::ERR_ABORTED failures inside the explicit cold reload may become diagnostic; console, page, HTTP, non-abort, completed-request, and unrelated failures remain hard. The only native launch authorized in this repair is the seconds-scale request-provenance regression."
     },
     {
       "id": "PQ-020.ceres-h1-capture",

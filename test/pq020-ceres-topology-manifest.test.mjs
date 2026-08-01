@@ -295,23 +295,32 @@ test('Electron cannot launch before Browser PASS and follows isolated canonical-
     'page history backfill must complete before canonical route work begins');
 });
 
-test('cold Continue brackets reload and same-document UI replacement with exact request scopes', () => {
+test('cold Continue waits for screen registration settlement around its public click', () => {
   const source = route();
   const reloadToken = source.indexOf("'pq020-cold-continue'");
-  const transitionToken = source.indexOf("'pq020-continue-transition'");
   const firstSettlement = source.indexOf('await waitForScreenRegistrationSettled(page)');
   const secondSettlement = source.indexOf('await waitForScreenRegistrationSettled(page)', firstSettlement + 1);
   const continueClick = source.indexOf("continueButton.click");
   const inputReady = source.indexOf("const inputReady = state.mode === 'flight'");
   assert.ok(reloadToken >= 0, 'reload cancellation scope is missing');
-  assert.ok(transitionToken > firstSettlement && transitionToken < continueClick,
-    'same-document Continue replacement scope must begin after outgoing settlement and before click');
   assert.ok(firstSettlement > reloadToken && firstSettlement < continueClick,
     'the outgoing owner registration-settled barrier must precede Continue');
   assert.ok(secondSettlement > inputReady && secondSettlement > continueClick,
     'the incoming owner registration-settled barrier must follow flight/input readiness');
-  assert.equal((source.match(/endExpectedNavigation/g) || []).length, 2,
-    'only the exact reload and bounded same-document UI replacement may ignore request cancellations');
+  assert.equal((source.match(/endExpectedNavigation/g) || []).length, 1,
+    'only the exact document reload may ignore request cancellations');
+});
+
+test('Electron continues from its canonical first window without a duplicate root navigation', () => {
+  const routeSource = route();
+  const electronSource = electron();
+  const bootStart = routeSource.indexOf('async function bootSeededFlight');
+  const bootEnd = routeSource.indexOf('async function readGpu', bootStart);
+  const boot = routeSource.slice(bootStart, bootEnd);
+  assert.match(boot, /if \(navigateInitialRoot\)[\s\S]*page\.goto/);
+  assert.match(boot, /else \{[\s\S]*new URL\(page\.url\(\)\)\.href/);
+  assert.match(electronSource, /navigateInitialRoot:\s*false/,
+    'Electron must not abort its canonical first-window imports with a second page.goto');
 });
 
 test('the H1 cell creates no Phase H3 performance evidence', () => {

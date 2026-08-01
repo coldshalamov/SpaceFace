@@ -68,9 +68,11 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
   const contextEvents = [];
   const pageEvents = new Set();
   const activeRequests = new Set();
+  const requestProvenance = new WeakMap();
   const expectedNavigationAborts = new Map();
   const expectedNavigationTokens = new Map();
   let nextExpectedNavigationToken = 1;
+  let currentPhase = 'electron-bootstrap';
   const backfill = Object.fromEntries(['consoleMessages', 'pageErrors', 'requests'].map((name) => [name, {
     supported: null,
     attempted: false,
@@ -109,6 +111,15 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
   };
   const observeRequest = (request) => {
     if (!request) return;
+    if (!requestProvenance.has(request)) {
+      requestProvenance.set(request, {
+        startedAt: new Date().toISOString(),
+        startedPhase: currentPhase,
+        method: readMaybeFunction(request, 'method') || 'REQUEST',
+        resourceType: readMaybeFunction(request, 'resourceType') || 'unknown',
+        url: readMaybeFunction(request, 'url') || '',
+      });
+    }
     activeRequests.add(request);
     if (expectedNavigationTokens.size > 0) {
       const labels = expectedNavigationAborts.get(request) || new Set();
@@ -124,12 +135,24 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
     const failure = readMaybeFunction(request, 'failure');
     if (!failure && !failedEventObserved) return;
     const expectedNavigation = expectedNavigationAborts.get(request);
+    const provenance = requestProvenance.get(request) || {
+      startedAt: null,
+      startedPhase: null,
+      method: readMaybeFunction(request, 'method') || 'REQUEST',
+      resourceType: readMaybeFunction(request, 'resourceType') || 'unknown',
+      url: readMaybeFunction(request, 'url') || '',
+    };
     completeRequest(request);
     if (!markOnce(seenFailedRequests, request)) return;
     const issue = {
       source: 'request',
       level: 'error',
       text: `${readMaybeFunction(request, 'method') || 'REQUEST'} ${readMaybeFunction(request, 'url') || ''} failed: ${failure?.errorText || 'unknown'}`,
+      requestProvenance: {
+        ...provenance,
+        failedAt: new Date().toISOString(),
+        failedPhase: currentPhase,
+      },
     };
     if (expectedNavigation && isExactNavigationCancellation(failure)) {
       ignoredIssues.push({
@@ -239,6 +262,10 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
     all: () => issues.slice(),
     errors: () => issues.filter((issue) => issue.level === 'error'),
     ignored: () => ignoredIssues.slice(),
+    setPhase(nextPhase) {
+      currentPhase = String(nextPhase || 'unspecified');
+      return currentPhase;
+    },
     beginExpectedNavigation(label = 'expected-navigation') {
       const token = nextExpectedNavigationToken++;
       const normalizedLabel = String(label);
@@ -259,6 +286,7 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
       applicationEvents: [...new Set(applicationEvents)],
       contextEvents: [...new Set(contextEvents)],
       pageEvents: [...pageEvents],
+      currentPhase,
       backfill: Object.fromEntries(Object.entries(backfill).map(([name, status]) => [name, {
         ...status,
         errors: status.errors.map((error) => ({ ...error })),

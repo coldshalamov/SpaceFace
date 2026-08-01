@@ -220,6 +220,7 @@ async function testApplicationWideIssueTrackerAndBackfill() {
     response: async () => null,
   };
   context.emit('request', cancelledByReload);
+  tracker.setPhase('cold-reload');
   const navigationToken = tracker.beginExpectedNavigation('cold-continue');
   assert.equal(tracker.endExpectedNavigation(navigationToken), true);
   context.emit('requestfailed', cancelledByReload);
@@ -230,6 +231,7 @@ async function testApplicationWideIssueTrackerAndBackfill() {
     failure: () => ({ errorText: 'net::ERR_ABORTED' }),
     response: async () => null,
   };
+  tracker.setPhase('continue-transition');
   const transitionToken = tracker.beginExpectedNavigation('continue-transition');
   context.emit('request', cancelledByContinueTransition);
   assert.equal(tracker.endExpectedNavigation(transitionToken), true);
@@ -264,6 +266,10 @@ async function testApplicationWideIssueTrackerAndBackfill() {
     'only exact request objects active in or started during a named lifecycle scope become diagnostic');
   assert.deepEqual(tracker.ignored()[0].expectedNavigation, ['cold-continue']);
   assert.deepEqual(tracker.ignored()[1].expectedNavigation, ['continue-transition']);
+  assert.equal(tracker.ignored()[0].requestProvenance.startedPhase, 'electron-bootstrap');
+  assert.equal(tracker.ignored()[0].requestProvenance.failedPhase, 'cold-reload');
+  assert.equal(tracker.ignored()[1].requestProvenance.startedPhase, 'continue-transition');
+  assert.equal(tracker.ignored()[1].requestProvenance.failedPhase, 'continue-transition');
   assert.equal(errors.filter((entry) => entry.source === 'response').length, 1,
     'context-wide HTTP response observation catches failures before firstWindow resolves');
   assert(errors.some((entry) => entry.source === 'page-crash'), 'bound pages retain live crash observation');

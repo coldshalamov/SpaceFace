@@ -108,6 +108,7 @@ export async function runPq020CeresFunctionalRoute({
   fixedSeed,
   screenshot,
   pageIssueTracker = null,
+  navigateInitialRoot = true,
 } = {}) {
   if (!page) throw new TypeError('PQ-020 functional route requires a Playwright page');
   if (!rootUrl) throw new TypeError('PQ-020 functional route requires a canonical root URL');
@@ -115,10 +116,14 @@ export async function runPq020CeresFunctionalRoute({
   if (typeof screenshot !== 'function') throw new TypeError('PQ-020 functional route requires a screenshot callback');
 
   let phase = 'boot';
-  const setPhase = (next) => { phase = next; };
+  pageIssueTracker?.setPhase?.(phase);
+  const setPhase = (next) => {
+    phase = next;
+    pageIssueTracker?.setPhase?.(next);
+  };
 
   try {
-    const boot = await bootSeededFlight(page, rootUrl, fixedSeed);
+    const boot = await bootSeededFlight(page, rootUrl, fixedSeed, { navigateInitialRoot });
     setPhase('gpu-contract');
     const gpu = await readGpu(page);
     assert.equal(gpu.available, true, 'WebGL must be available');
@@ -485,8 +490,16 @@ export async function readPq020FailureSnapshot(page) {
   }
 }
 
-async function bootSeededFlight(page, rootUrl, fixedSeed) {
-  await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 90_000 });
+async function bootSeededFlight(page, rootUrl, fixedSeed, { navigateInitialRoot = true } = {}) {
+  if (navigateInitialRoot) {
+    await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 90_000 });
+  } else {
+    assert.equal(
+      new URL(page.url()).href,
+      new URL(rootUrl).href,
+      'PQ-020 Electron parity must continue from the already-loaded canonical first window',
+    );
+  }
   const url = new URL(page.url());
   assert.equal(url.search, '', 'PQ-020 route must use the canonical root with no query flags');
   assert.equal(url.hash, '', 'PQ-020 route must use the canonical root with no hash flags');
@@ -900,44 +913,33 @@ async function coldContinue(page, rootUrl, fixedSeed, screenshot, pageIssueTrack
   await continueButton.waitFor({ state: 'visible', timeout: 20_000 });
   await waitForScreenRegistrationSettled(page);
   await screenshot('15-continue-menu.png');
-  // Continue replaces the menu-owned registry/UI generation in the same document. Electron can
-  // therefore deliver exact ERR_ABORTED failures for dependency requests owned by the generation
-  // being replaced even though there is no second document navigation. Keep this scope bounded to
-  // the public click plus the incoming owner's settled signal. Request identity still determines
-  // attribution; console/page/HTTP/non-abort failures remain fatal in the tracker.
-  const continueTransitionToken =
-    pageIssueTracker?.beginExpectedNavigation?.('pq020-continue-transition');
-  try {
-    await continueButton.click({ timeout: 20_000 });
-    await page.waitForFunction(({ sectorId, siteId, beaconId }) => {
-      const state = window.SF?.state;
-      const player = state?.entities?.get(state.playerId);
-      if (!state || !player || player.alive === false || Number(player.hull) <= 0) return false;
-      const entities = [...state.entities.values()];
-      const beaconCount = entities.filter((entity) => entity?.alive !== false && entity.data?.poiId === beaconId).length;
-      const cathedralCount = entities.filter((entity) => entity?.alive !== false && entity.data?.worldSiteId === siteId).length;
-      const overlay = document.getElementById('boot-overlay');
-      const activeScreen = window.SF?.ctx?.screenManager?.top?.() || null;
-      const inputReady = state.mode === 'flight'
-        && activeScreen == null
-        && !document.body.classList.contains('ui-modal-open')
-        && (!overlay || (
-          overlay.classList.contains('hidden')
-          && overlay.getAttribute('aria-busy') === 'false'
-        ));
-      return state.world?.currentSectorId === sectorId
-        && beaconCount === 1
-        && cathedralCount === 15
-        && inputReady;
-    }, {
-      sectorId: PQ020_CERES_SECTOR_ID,
-      siteId: PQ020_CATHEDRAL_SITE_ID,
-      beaconId: PQ020_BEACON_POI_ID,
-    }, { timeout: CONTINUE_TIMEOUT_MS });
-    await waitForScreenRegistrationSettled(page);
-  } finally {
-    pageIssueTracker?.endExpectedNavigation?.(continueTransitionToken);
-  }
+  await continueButton.click({ timeout: 20_000 });
+  await page.waitForFunction(({ sectorId, siteId, beaconId }) => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get(state.playerId);
+    if (!state || !player || player.alive === false || Number(player.hull) <= 0) return false;
+    const entities = [...state.entities.values()];
+    const beaconCount = entities.filter((entity) => entity?.alive !== false && entity.data?.poiId === beaconId).length;
+    const cathedralCount = entities.filter((entity) => entity?.alive !== false && entity.data?.worldSiteId === siteId).length;
+    const overlay = document.getElementById('boot-overlay');
+    const activeScreen = window.SF?.ctx?.screenManager?.top?.() || null;
+    const inputReady = state.mode === 'flight'
+      && activeScreen == null
+      && !document.body.classList.contains('ui-modal-open')
+      && (!overlay || (
+        overlay.classList.contains('hidden')
+        && overlay.getAttribute('aria-busy') === 'false'
+      ));
+    return state.world?.currentSectorId === sectorId
+      && beaconCount === 1
+      && cathedralCount === 15
+      && inputReady;
+  }, {
+    sectorId: PQ020_CERES_SECTOR_ID,
+    siteId: PQ020_CATHEDRAL_SITE_ID,
+    beaconId: PQ020_BEACON_POI_ID,
+  }, { timeout: CONTINUE_TIMEOUT_MS });
+  await waitForScreenRegistrationSettled(page);
   await page.bringToFront().catch(() => {});
   await screenshot('16-continue-restored.png');
   const after = await readFunctionalSnapshot(page);
