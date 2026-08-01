@@ -5,6 +5,7 @@ export const PERFORMANCE_WINDOW_SCHEMA = 'spaceface.performanceWindow.v1';
 export const PERFORMANCE_SCENARIO_SCHEMA = 'spaceface.performanceScenarioMatrix.v1';
 export const PERFORMANCE_MEASUREMENT_VALIDITY_SCHEMA = 'spaceface.performanceMeasurementValidity.v1';
 export const PERFORMANCE_IMPROVEMENT_SCHEMA = 'spaceface.performanceImprovement.v1';
+export const PERFORMANCE_PIPELINE_WARMUP_SCHEMA = 'spaceface.performancePipelineWarmup.v1';
 export const PERFORMANCE_BUDGETS = Object.freeze({
   targetFrameP95Ms: 16.7,
   floorFrameP95Ms: 33.3,
@@ -395,6 +396,36 @@ export function evaluatePerformanceMeasurementValidity(report) {
       `windows[${index}].gpu-timer-valid`,
       gpuTimerValid,
       `windows[${index}]-gpu-timer-invalid`,
+    ));
+
+    const pipelineWarmup = window?.pipeline?.warmup;
+    const pipelineStableMs = finiteOrNull(pipelineWarmup?.requiredStableMs);
+    const pipelineMaxWaitMs = finiteOrNull(pipelineWarmup?.maxWaitMs);
+    const pipelineElapsedMs = finiteOrNull(pipelineWarmup?.elapsedMs);
+    const pipelineObservedStableMs = finiteOrNull(pipelineWarmup?.stableMs);
+    const pipelineWarmupValid = pipelineWarmup?.schema === PERFORMANCE_PIPELINE_WARMUP_SCHEMA
+      && pipelineWarmup?.pass === true
+      && pipelineWarmup?.timedOut === false
+      && pipelineStableMs != null
+      && pipelineStableMs >= 5_000
+      && pipelineMaxWaitMs != null
+      && pipelineMaxWaitMs >= pipelineStableMs
+      && pipelineMaxWaitMs <= 20_000
+      && pipelineElapsedMs != null
+      && pipelineElapsedMs >= pipelineStableMs
+      && pipelineElapsedMs <= pipelineMaxWaitMs + 250
+      && pipelineObservedStableMs != null
+      && pipelineObservedStableMs >= pipelineStableMs
+      && pipelineObservedStableMs <= pipelineElapsedMs + 1
+      && Number.isInteger(pipelineWarmup?.observationCount)
+      && pipelineWarmup.observationCount > 0
+      && Number.isInteger(pipelineWarmup?.transitionCount)
+      && pipelineWarmup.transitionCount >= 0
+      && pipelineWarmup.transitionCount < pipelineWarmup.observationCount;
+    reasons.push(add(
+      `windows[${index}].pipeline-warmup`,
+      pipelineWarmupValid,
+      `windows[${index}]-pipeline-warmup-unsettled`,
     ));
 
     const pipelineStart = window?.pipeline?.start;

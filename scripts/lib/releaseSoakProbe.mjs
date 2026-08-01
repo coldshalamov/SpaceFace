@@ -786,6 +786,8 @@ async function probeWebGlContextLoss(page, { outputDir, log }) {
 async function sampleRafWindow(page, {
   phaseTag,
   warmupMs,
+  pipelineStableMs = 5_000,
+  pipelineSettleTimeoutMs = 20_000,
   sampleMs,
   enableGpuTimers = true,
   requireAuthoredFlight = null,
@@ -797,6 +799,12 @@ async function sampleRafWindow(page, {
   const allowed = new Set([...ATTRIBUTION_ROUTE_TAGS, ...PERFORMANCE_SCENARIO_IDS, 'flight_steady', 'context_recover_steady']);
   assert(allowed.has(phaseTag), `unsupported steady-state phase: ${phaseTag}`);
   assert(Number.isFinite(warmupMs) && warmupMs >= 0, 'rAF warmup must be finite and non-negative');
+  assert(Number.isFinite(pipelineStableMs) && pipelineStableMs >= 5_000,
+    'pipeline readiness must remain stable for at least 5000 ms');
+  assert(Number.isFinite(pipelineSettleTimeoutMs)
+    && pipelineSettleTimeoutMs >= Math.max(warmupMs, pipelineStableMs)
+    && pipelineSettleTimeoutMs <= 20_000,
+  'pipeline readiness timeout must bound warmup between its minimum and 20000 ms');
   // Attribution-only routes (market / mining) may use shorter windows; soak steady phases stay ≥5s.
   const minSampleMs = (phaseTag === 'flight_steady' || phaseTag === 'context_recover_steady') ? 5_000 : 1_000;
   assert(Number.isFinite(sampleMs) && sampleMs >= minSampleMs, `rAF sample window must cover at least ${minSampleMs} ms`);
@@ -809,7 +817,8 @@ async function sampleRafWindow(page, {
     : phaseTag === 'docked_market_ui';
 
   return page.evaluate(async ({
-    tag, warmup, duration, gpuOn, needFlight: needFlightFlag, needDocked: needDockedFlag, needMining,
+    tag, warmup, pipelineStable, pipelineTimeout, duration, gpuOn,
+    needFlight: needFlightFlag, needDocked: needDockedFlag, needMining,
     autosaveUnderLoad, action,
   }) => {
     if (document.visibilityState !== 'visible') throw new Error(`steady-state ${tag} requires a visible document`);
@@ -818,6 +827,9 @@ async function sampleRafWindow(page, {
     const {
       collectPerformancePipelineReadiness,
       collectPerformanceSceneStructure,
+      isPerformancePipelineSettled,
+      performancePipelineFingerprint,
+      PERFORMANCE_PIPELINE_WARMUP_SCHEMA,
     } = await import('/scripts/lib/performanceSceneMetrics.mjs');
 
     if (needFlightFlag) {
@@ -930,6 +942,7 @@ async function sampleRafWindow(page, {
       routeEnd,
       sceneStart,
       sceneEnd,
+      pipelineWarmup,
       pipelineStart,
       pipelineEnd,
       heapStart,
@@ -1005,7 +1018,7 @@ async function sampleRafWindow(page, {
           programs: memory.programs,
         },
         scene: { start: sceneStart, end: sceneEnd },
-        pipeline: { start: pipelineStart, end: pipelineEnd },
+        pipeline: { warmup: pipelineWarmup, start: pipelineStart, end: pipelineEnd },
         memory: {
           comparableState: {
             start: { mode: routeStart?.mode || null, docked: routeStart?.docked === true },
@@ -1084,8 +1097,67 @@ async function sampleRafWindow(page, {
     }
 
     const raf = () => new Promise((resolve) => requestAnimationFrame(resolve));
-    const warmupStart = performance.now();
-    while (performance.now() - warmupStart < warmup) await raf();
+    const pipelineObservationIntervalMs = 100;
+    const pipelineWarmupStartedAt = performance.now();
+    let pipelineReadiness = collectPerformancePipelineReadiness({
+      state,
+      registry: window.SF?.registry,
+      resourceStartTime: pipelineWarmupStartedAt,
+    });
+    let pipelineFingerprint = performancePipelineFingerprint(pipelineReadiness);
+    const pipelineStartFingerprint = pipelineFingerprint;
+    let pipelineFingerprintKey = JSON.stringify(pipelineFingerprint);
+    let pipelineStableSince = pipelineWarmupStartedAt;
+    let pipelineObservationCount = 1;
+    let pipelineTransitionCount = 0;
+    let pipelineWarmupPassed = false;
+    let nextPipelineObservationAt = pipelineWarmupStartedAt + pipelineObservationIntervalMs;
+    while (true) {
+      await raf();
+      const now = performance.now();
+      const elapsedMs = now - pipelineWarmupStartedAt;
+      if (now >= nextPipelineObservationAt) {
+        pipelineReadiness = collectPerformancePipelineReadiness({
+          state,
+          registry: window.SF?.registry,
+          resourceStartTime: pipelineWarmupStartedAt,
+        });
+        const nextFingerprint = performancePipelineFingerprint(pipelineReadiness);
+        const nextFingerprintKey = JSON.stringify(nextFingerprint);
+        pipelineObservationCount++;
+        if (nextFingerprintKey !== pipelineFingerprintKey) {
+          pipelineTransitionCount++;
+          pipelineStableSince = now;
+          pipelineFingerprint = nextFingerprint;
+          pipelineFingerprintKey = nextFingerprintKey;
+        }
+        nextPipelineObservationAt = now + pipelineObservationIntervalMs;
+      }
+      const stableMs = now - pipelineStableSince;
+      if (elapsedMs >= warmup
+          && stableMs >= pipelineStable
+          && isPerformancePipelineSettled(pipelineReadiness)) {
+        pipelineWarmupPassed = true;
+        break;
+      }
+      if (elapsedMs >= pipelineTimeout) break;
+    }
+    const pipelineWarmupEndedAt = performance.now();
+    const pipelineWarmup = {
+      schema: PERFORMANCE_PIPELINE_WARMUP_SCHEMA,
+      pass: pipelineWarmupPassed,
+      requiredStableMs: pipelineStable,
+      maxWaitMs: pipelineTimeout,
+      minimumWarmupMs: warmup,
+      observationIntervalMs: pipelineObservationIntervalMs,
+      elapsedMs: pipelineWarmupEndedAt - pipelineWarmupStartedAt,
+      stableMs: pipelineWarmupEndedAt - pipelineStableSince,
+      timedOut: pipelineWarmupPassed !== true,
+      observationCount: pipelineObservationCount,
+      transitionCount: pipelineTransitionCount,
+      startFingerprint: pipelineStartFingerprint,
+      endFingerprint: pipelineFingerprint,
+    };
 
     const settingsStart = readSettingsSlice();
     const routeStart = readRouteProof();
@@ -1272,6 +1344,7 @@ async function sampleRafWindow(page, {
         routeEnd,
         sceneStart,
         sceneEnd,
+        pipelineWarmup,
         pipelineStart,
         pipelineEnd,
         heapStart,
@@ -1307,6 +1380,8 @@ async function sampleRafWindow(page, {
   }, {
     tag: phaseTag,
     warmup: warmupMs,
+    pipelineStable: pipelineStableMs,
+    pipelineTimeout: pipelineSettleTimeoutMs,
     duration: sampleMs,
     gpuOn: enableGpuTimers === true,
     needFlight,

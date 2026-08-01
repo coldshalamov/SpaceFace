@@ -92,6 +92,12 @@ test('profile and closure probes share scene metrics and bounded measurement gat
   assert.match(probe, /setRenderWorkEnabled\(false\)/);
   assert.match(probe, /setSystemTimingEnabled\(false\)/);
   assert.match(probe, /timers\.setEnabled\(false\)/);
+  assert.match(probe, /pipelineStableMs = 5_000/);
+  assert.match(probe, /pipelineSettleTimeoutMs = 20_000/);
+  assert.match(probe, /pipeline:\s*\{ warmup: pipelineWarmup, start: pipelineStart, end: pipelineEnd \}/);
+  assert.match(probe, /isPerformancePipelineSettled\(pipelineReadiness\)/);
+  assert.doesNotMatch(probe, /^[ \t]*gl\.finish\s*\(/m,
+    'pipeline readiness must be observed without forcing synchronous GPU completion');
   assert.match(
     probe,
     /await timers\.drainPending\(\{[\s\S]{0,260}maxPolls:\s*120[\s\S]{0,260}timeoutMs:\s*2_000[\s\S]{0,260}yieldFn:\s*raf[\s\S]{0,120}\}\)/,

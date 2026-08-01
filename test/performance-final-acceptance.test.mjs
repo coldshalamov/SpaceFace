@@ -375,6 +375,17 @@ function performanceWindow(scenarioId, environment, frameMs = 16.5) {
     gpu: gpuTimer(),
     scene: {},
     pipeline: {
+      warmup: {
+        schema: 'spaceface.performancePipelineWarmup.v1',
+        pass: true,
+        requiredStableMs: 5_000,
+        maxWaitMs: 20_000,
+        elapsedMs: 5_000,
+        stableMs: 5_000,
+        timedOut: false,
+        observationCount: 301,
+        transitionCount: 0,
+      },
       start: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 20 },
       end: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 20 },
     },

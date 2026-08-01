@@ -5,6 +5,8 @@ import {
   authoredAssetStatus,
   collectPerformancePipelineReadiness,
   collectPerformanceSceneStructure,
+  isPerformancePipelineSettled,
+  performancePipelineFingerprint,
 } from '../scripts/lib/performanceSceneMetrics.mjs';
 
 function node(properties = {}, children = []) {
@@ -120,6 +122,40 @@ test('pipeline readiness exposes queue, fallback, admission, residency, and rece
     assert.deepEqual(result.assetResidency, { residentBytes: 123 });
   } finally {
     Object.defineProperty(globalThis, 'performance', { configurable: true, value: originalPerformance });
+  }
+});
+
+test('pipeline warmup fingerprint tracks compile, admission, queue, and residency quiescence', () => {
+  const readiness = {
+    programCount: 42,
+    activeAdmissionJobs: 0,
+    meshBuildQueueRemaining: 0,
+    meshReconcileDirty: false,
+    pipelineCompilePending: 0,
+    authoredPendingCount: 4,
+    assetResidency: { residentAssets: 27, residentResources: 799, residentBytes: 123 },
+    recentResources: [{ name: 'ignored-by-fingerprint.glb' }],
+  };
+  assert.deepEqual(performancePipelineFingerprint(readiness), {
+    programCount: 42,
+    activeAdmissionJobs: 0,
+    meshBuildQueueRemaining: 0,
+    meshReconcileDirty: false,
+    pipelineCompilePending: 0,
+    authoredPendingCount: 4,
+    residentAssets: 27,
+    residentResources: 799,
+  });
+  assert.equal(isPerformancePipelineSettled(readiness), true);
+
+  for (const unsettled of [
+    { activeAdmissionJobs: 1 },
+    { meshBuildQueueRemaining: 1 },
+    { meshReconcileDirty: true },
+    { pipelineCompilePending: 1 },
+    { programCount: null },
+  ]) {
+    assert.equal(isPerformancePipelineSettled({ ...readiness, ...unsettled }), false);
   }
 });
 

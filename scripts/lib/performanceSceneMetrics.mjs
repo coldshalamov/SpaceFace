@@ -3,6 +3,8 @@
 
 const PERFORMANCE_RENDER_PREFETCH_RADIUS = 5200;
 
+export const PERFORMANCE_PIPELINE_WARMUP_SCHEMA = 'spaceface.performancePipelineWarmup.v1';
+
 export function collectPerformanceSceneStructure({ state = globalThis.SF?.state, diagnostics = readDiagnostics() } = {}) {
   const renderState = state?.render || null;
   const scene = renderState?.scene || null;
@@ -253,6 +255,29 @@ export function collectPerformancePipelineReadiness({
     maxConcurrentDecode: finiteOrNull(upgrade?.maxConcurrentDecode),
     assetResidency: plainObject(renderState.assetResidency),
   };
+}
+
+export function performancePipelineFingerprint(readiness = {}) {
+  const residency = readiness?.assetResidency || {};
+  return {
+    programCount: finiteOrNull(readiness?.programCount),
+    activeAdmissionJobs: finiteOrNull(readiness?.activeAdmissionJobs),
+    meshBuildQueueRemaining: finiteOrNull(readiness?.meshBuildQueueRemaining),
+    meshReconcileDirty: readiness?.meshReconcileDirty === true,
+    pipelineCompilePending: finiteOrNull(readiness?.pipelineCompilePending),
+    authoredPendingCount: finiteOrNull(readiness?.authoredPendingCount),
+    residentAssets: finiteOrNull(residency?.residentAssets),
+    residentResources: finiteOrNull(residency?.residentResources),
+  };
+}
+
+export function isPerformancePipelineSettled(readiness = {}) {
+  const fingerprint = performancePipelineFingerprint(readiness);
+  return fingerprint.programCount != null
+    && fingerprint.activeAdmissionJobs === 0
+    && fingerprint.meshBuildQueueRemaining === 0
+    && fingerprint.meshReconcileDirty === false
+    && (fingerprint.pipelineCompilePending == null || fingerprint.pipelineCompilePending === 0);
 }
 
 function readDiagnostics() {

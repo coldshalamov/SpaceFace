@@ -61,6 +61,20 @@ function samples() {
   ];
 }
 
+function pipelineWarmupFixture() {
+  return {
+    schema: 'spaceface.performancePipelineWarmup.v1',
+    pass: true,
+    requiredStableMs: 5_000,
+    maxWaitMs: 20_000,
+    elapsedMs: 5_000,
+    stableMs: 5_000,
+    timedOut: false,
+    observationCount: 301,
+    transitionCount: 0,
+  };
+}
+
 function windowFixture(overrides = {}) {
   const rawSamples = samples();
   const scenarioId = overrides.scenarioId || 'flight_steady';
@@ -79,6 +93,7 @@ function windowFixture(overrides = {}) {
     gpu: gpuTimerFixture(),
     scene: {},
     pipeline: {
+      warmup: pipelineWarmupFixture(),
       start: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 20 },
       end: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 20 },
     },
@@ -582,6 +597,14 @@ test('measurement validity fails closed on contamination, fallback GPU identity,
   assert.equal(verdict.pass, false);
   assert.ok(verdict.reasons.includes('windows[0]-pipeline-cache-mismatch'));
 
+  const unsettledWarmup = structuredClone(valid);
+  unsettledWarmup.windows[0].pipeline.warmup.pass = false;
+  unsettledWarmup.windows[0].pipeline.warmup.timedOut = true;
+  unsettledWarmup.windows[0].pipeline.warmup.stableMs = 750;
+  verdict = evaluatePerformanceMeasurementValidity(unsettledWarmup);
+  assert.equal(verdict.pass, false);
+  assert.ok(verdict.reasons.includes('windows[0]-pipeline-warmup-unsettled'));
+
   const dockedIdle = reportFixture(windowFixture({
     scenarioId: 'docked_market_ui',
     routeProof: { mode: 'flight', docked: true, uiOnlyPath: true },
@@ -611,6 +634,7 @@ test('measurement validity fails closed on contamination, fallback GPU identity,
     scenarioId: 'jump_asset_admission',
     action: { kind: 'jump_request', dispatched: true },
     pipeline: {
+      warmup: pipelineWarmupFixture(),
       start: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 20 },
       end: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 28 },
     },
