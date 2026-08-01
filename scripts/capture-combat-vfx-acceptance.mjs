@@ -11,10 +11,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import {
+  buildPq023CombatReadabilityProjection,
+  PQ023_COMBAT_READABILITY_CELLS,
+  validatePq023CombatReadabilityProjection,
+} from './lib/pq023CombatReadabilityProjection.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PQ023_H1 = process.env.SF_PQ023_H1 === '1';
+const PQ023_COMBAT_READABILITY_ONLY = process.env.SF_PQ023_COMBAT_READABILITY === '1';
 const OUT = process.env.SF_COMBAT_CAPTURE_DIR
   ? path.resolve(ROOT, process.env.SF_COMBAT_CAPTURE_DIR)
   : path.join(ROOT, '.devshots', 'graphics', 'combat-vfx-acceptance');
@@ -102,33 +108,35 @@ try {
     ['beam', 'wpn_beam_laser_m'],
     ['missile', 'wpn_missile_rack_m'],
   ];
-  for (let i = 0; i < weapons.length; i++) {
-    const [family, weaponId] = weapons[i];
-    await triggerMuzzle(page, { ...origin, family, weaponId, index: i, freezeMs: 16 });
-    await capture(`${String(i + 1).padStart(2, '0')}-${family}-muzzle.png`, `${family} directional muzzle`);
-    await page.waitForTimeout(180);
+  if (!PQ023_COMBAT_READABILITY_ONLY) {
+    for (let i = 0; i < weapons.length; i++) {
+      const [family, weaponId] = weapons[i];
+      await triggerMuzzle(page, { ...origin, family, weaponId, index: i, freezeMs: 16 });
+      await capture(`${String(i + 1).padStart(2, '0')}-${family}-muzzle.png`, `${family} directional muzzle`);
+      await page.waitForTimeout(180);
 
-    await triggerFlight(page, { ...origin, family, weaponId, index: i, freezeMs: 18, motion: false });
-    await capture(`${String(i + 1).padStart(2, '0')}-${family}-flight.png`, `${family} projectile or sustained-beam flight`);
-    await stopBeam(page, { family, index: i });
-    await page.waitForTimeout(180);
+      await triggerFlight(page, { ...origin, family, weaponId, index: i, freezeMs: 18, motion: false });
+      await capture(`${String(i + 1).padStart(2, '0')}-${family}-flight.png`, `${family} projectile or sustained-beam flight`);
+      await stopBeam(page, { family, index: i });
+      await page.waitForTimeout(180);
 
-    await triggerImpact(page, { ...origin, weaponId, index: i, freezeMs: 16 });
-    await capture(`${String(i + 1).padStart(2, '0')}-${family}-impact-contact.png`, `${family} impact contact`);
-    await page.waitForTimeout(260);
-    const releaseWait = family === 'rail' ? 42 : family === 'beam' ? 30
-      : family === 'kinetic' ? 82 : family === 'plasma' ? 150 : 210;
-    await triggerImpact(page, { ...origin, weaponId, index: i, freezeMs: releaseWait });
-    await capture(`${String(i + 1).padStart(2, '0')}-${family}-impact-release.png`, `${family} impact release`);
-    await page.waitForTimeout(360);
+      await triggerImpact(page, { ...origin, weaponId, index: i, freezeMs: 16 });
+      await capture(`${String(i + 1).padStart(2, '0')}-${family}-impact-contact.png`, `${family} impact contact`);
+      await page.waitForTimeout(260);
+      const releaseWait = family === 'rail' ? 42 : family === 'beam' ? 30
+        : family === 'kinetic' ? 82 : family === 'plasma' ? 150 : 210;
+      await triggerImpact(page, { ...origin, weaponId, index: i, freezeMs: releaseWait });
+      await capture(`${String(i + 1).padStart(2, '0')}-${family}-impact-release.png`, `${family} impact release`);
+      await page.waitForTimeout(360);
 
-    await triggerMaterialImpact(page, { ...origin, weaponId, index: i, material: 'shield', freezeMs: 18 });
-    await capture(`${String(i + 1).padStart(2, '0')}-${family}-shield.png`, `${family} shield-material response`);
-    await page.waitForTimeout(360);
+      await triggerMaterialImpact(page, { ...origin, weaponId, index: i, material: 'shield', freezeMs: 18 });
+      await capture(`${String(i + 1).padStart(2, '0')}-${family}-shield.png`, `${family} shield-material response`);
+      await page.waitForTimeout(360);
 
-    await triggerMaterialImpact(page, { ...origin, weaponId, index: i, material: 'hull', freezeMs: 18 });
-    await capture(`${String(i + 1).padStart(2, '0')}-${family}-hull.png`, `${family} hull-material response`);
-    await page.waitForTimeout(520);
+      await triggerMaterialImpact(page, { ...origin, weaponId, index: i, material: 'hull', freezeMs: 18 });
+      await capture(`${String(i + 1).padStart(2, '0')}-${family}-hull.png`, `${family} hull-material response`);
+      await page.waitForTimeout(520);
+    }
   }
 
   if (PQ023_H1) {
@@ -146,8 +154,11 @@ try {
     { classId: 'ordinary', radius: 8, waits: [18, 95, 190, 430, 1050] },
     { classId: 'capital', radius: 15, waits: [20, 180, 430, 690, 1030, 2200] },
   ];
+  const evidenceClasses = PQ023_COMBAT_READABILITY_ONLY
+    ? classes.filter((spec) => spec.classId === 'small')
+    : classes;
   let fileIndex = weapons.length + 1;
-  for (const spec of classes) {
+  for (const spec of evidenceClasses) {
     for (let i = 0; i < spec.waits.length; i++) {
       const target = spec.waits[i];
       // Each strip frame starts a fresh lifecycle. page.screenshot itself can take hundreds of
@@ -164,73 +175,103 @@ try {
     await page.waitForTimeout(spec.classId === 'capital' ? 900 : 500);
   }
 
+  const reducedClass = PQ023_COMBAT_READABILITY_ONLY ? 'small' : 'ordinary';
+  const reducedRadius = PQ023_COMBAT_READABILITY_ONLY ? 4 : 8;
+  const reducedWaits = [190, 500];
+  const reducedPrefix = PQ023_COMBAT_READABILITY_ONLY ? 'pq023-reduced-small' : '09-reduced-ordinary';
   await setCombatAccessibility(page, true);
-  await triggerExplosion(page, { ...explosionOrigin, classId: 'ordinary', radius: 8, freezeMs: 190 });
-  await capture('09-reduced-ordinary-01.png', 'ordinary explosion reduced motion and flash 190ms');
+  await triggerExplosion(page, {
+    ...explosionOrigin,
+    classId: reducedClass,
+    radius: reducedRadius,
+    freezeMs: reducedWaits[0],
+  });
+  await capture(`${reducedPrefix}-01.png`, `${reducedClass} explosion reduced motion and flash ${reducedWaits[0]}ms`);
   await page.waitForTimeout(180);
-  await triggerExplosion(page, { ...explosionOrigin, classId: 'ordinary', radius: 8, freezeMs: 500 });
-  await capture('09-reduced-ordinary-02.png', 'ordinary explosion reduced motion and flash 500ms');
+  await triggerExplosion(page, {
+    ...explosionOrigin,
+    classId: reducedClass,
+    radius: reducedRadius,
+    freezeMs: reducedWaits[1],
+  });
+  await capture(`${reducedPrefix}-02.png`, `${reducedClass} explosion reduced motion and flash ${reducedWaits[1]}ms`);
   await page.waitForTimeout(1000);
 
   await setCaptureTargetVisible(page, true);
-  await triggerDenseDestruction(page, { ...explosionOrigin, freezeMs: 180 });
-  await capture('10-dense-destruction-01.png', 'dense mixed destruction readability 180ms', { resume: false });
-  await capture('10-dense-combat-beam-01.png', 'dense mixed destruction with connected beam 180ms');
-  await page.waitForTimeout(180);
-  await triggerDenseDestruction(page, { ...explosionOrigin, freezeMs: 520 });
-  await capture('10-dense-destruction-02.png', 'dense mixed destruction readability 520ms', { resume: false });
-  await capture('10-dense-combat-beam-02.png', 'dense mixed destruction with connected beam 520ms');
+  if (PQ023_COMBAT_READABILITY_ONLY) {
+    await triggerDenseDestruction(page, { ...explosionOrigin, freezeMs: 180 });
+    await capture('pq023-dense-representative.png',
+      'dense mixed destruction with connected beam 180ms');
+  } else {
+    await triggerDenseDestruction(page, { ...explosionOrigin, freezeMs: 180 });
+    await capture('10-dense-destruction-01.png', 'dense mixed destruction readability 180ms', { resume: false });
+    await capture('10-dense-combat-beam-01.png', 'dense mixed destruction with connected beam 180ms');
+    await page.waitForTimeout(180);
+    await triggerDenseDestruction(page, { ...explosionOrigin, freezeMs: 520 });
+    await capture('10-dense-destruction-02.png', 'dense mixed destruction readability 520ms', { resume: false });
+    await capture('10-dense-combat-beam-02.png', 'dense mixed destruction with connected beam 520ms');
+  }
 
   // A still strip cannot reveal beam strobing, detached projectile wakes, texture-card pops, or
   // lifecycle discontinuities. Record a compact real-time reel using the same production pools and
   // camera; only simulation remains frozen so unrelated NPC combat cannot contaminate the proof.
   await setCombatAccessibility(page, false);
   await setCaptureTargetVisible(page, true);
-  for (let i = 0; i < weapons.length; i++) {
-    const [family, weaponId] = weapons[i];
-    const startMs = Date.now() - videoStartMs;
-    await triggerMuzzle(page, { ...origin, family, weaponId, index: i, freezeMs: 1 });
-    await advanceCombatMotion(page, 150, { family, stage: 'muzzle' });
-    await triggerFlight(page, { ...origin, family, weaponId, index: i, freezeMs: 1, motion: true });
-    const flightDuration = family === 'beam' ? 620 : family === 'rail' ? 260 : 480;
-    const proofStep = family === 'beam' ? 140 : family === 'plasma' ? 120 : family === 'kinetic' ? 90 : 0;
-    let proofAdvanced = 0;
-    if (proofStep > 0) {
-      for (let proofIndex = 0; proofIndex < 3; proofIndex++) {
-        await advanceCombatMotion(page, proofStep, { family, stage: 'flight' });
-        proofAdvanced += proofStep;
-        await capture(
-          `motion-${family}-${String(proofIndex + 1).padStart(2, '0')}.png`,
-          `${family} consecutive production flight frame ${proofIndex + 1}`,
-          { resume: false },
-        );
+  if (!PQ023_COMBAT_READABILITY_ONLY) {
+    for (let i = 0; i < weapons.length; i++) {
+      const [family, weaponId] = weapons[i];
+      const startMs = Date.now() - videoStartMs;
+      await triggerMuzzle(page, { ...origin, family, weaponId, index: i, freezeMs: 1 });
+      await advanceCombatMotion(page, 150, { family, stage: 'muzzle' });
+      await triggerFlight(page, { ...origin, family, weaponId, index: i, freezeMs: 1, motion: true });
+      const flightDuration = family === 'beam' ? 620 : family === 'rail' ? 260 : 480;
+      const proofStep = family === 'beam' ? 140 : family === 'plasma' ? 120 : family === 'kinetic' ? 90 : 0;
+      let proofAdvanced = 0;
+      if (proofStep > 0) {
+        for (let proofIndex = 0; proofIndex < 3; proofIndex++) {
+          await advanceCombatMotion(page, proofStep, { family, stage: 'flight' });
+          proofAdvanced += proofStep;
+          await capture(
+            `motion-${family}-${String(proofIndex + 1).padStart(2, '0')}.png`,
+            `${family} consecutive production flight frame ${proofIndex + 1}`,
+            { resume: false },
+          );
+        }
       }
+      if (flightDuration > proofAdvanced) {
+        await advanceCombatMotion(page, flightDuration - proofAdvanced, { family, stage: 'flight' });
+      }
+      await triggerImpact(page, { ...origin, weaponId, index: i, freezeMs: 1 });
+      await advanceCombatMotion(page, family === 'missile' ? 680 : family === 'plasma' ? 520 : 360,
+        { family, stage: 'impact' });
+      await stopBeam(page, { family, index: i });
+      motionSegments.push({
+        scenario: `${family} muzzle, flight, and impact motion`,
+        startMs,
+        endMs: Date.now() - videoStartMs,
+      });
     }
-    if (flightDuration > proofAdvanced) {
-      await advanceCombatMotion(page, flightDuration - proofAdvanced, { family, stage: 'flight' });
-    }
-    await triggerImpact(page, { ...origin, weaponId, index: i, freezeMs: 1 });
-    await advanceCombatMotion(page, family === 'missile' ? 680 : family === 'plasma' ? 520 : 360,
-      { family, stage: 'impact' });
-    await stopBeam(page, { family, index: i });
-    motionSegments.push({
-      scenario: `${family} muzzle, flight, and impact motion`,
-      startMs,
-      endMs: Date.now() - videoStartMs,
-    });
   }
   if (PQ023_H1) {
-    const startMs = Date.now() - videoStartMs;
-    await triggerImpact(page, { weaponId: 'wpn_flak_turret_s', freezeMs: 1 });
-    await advanceCombatMotion(page, 720, { family: 'flak', stage: 'impact' });
-    motionSegments.push({
-      scenario: 'flak proximity-burst impact motion',
-      startMs,
-      endMs: Date.now() - videoStartMs,
-    });
+    const specs = PQ023_COMBAT_READABILITY_ONLY
+      ? [
+        { family: 'autocannon', weaponId: 'wpn_autocannon_m', scenario: 'autocannon directional incidence impact motion' },
+        { family: 'flak', weaponId: 'wpn_flak_turret_s', scenario: 'flak proximity-burst impact motion' },
+      ]
+      : [{ family: 'flak', weaponId: 'wpn_flak_turret_s', scenario: 'flak proximity-burst impact motion' }];
+    for (const spec of specs) {
+      const startMs = Date.now() - videoStartMs;
+      await triggerImpact(page, { weaponId: spec.weaponId, freezeMs: 1 });
+      await advanceCombatMotion(page, 720, { family: spec.family, stage: 'impact' });
+      motionSegments.push({
+        scenario: spec.scenario,
+        startMs,
+        endMs: Date.now() - videoStartMs,
+      });
+    }
   }
   await setCaptureTargetVisible(page, false);
-  for (const spec of classes) {
+  for (const spec of evidenceClasses) {
     const durationMs = spec.classId === 'capital' ? 4800 : spec.classId === 'ordinary' ? 1700 : 1000;
     const startMs = Date.now() - videoStartMs;
     await triggerExplosion(page, { ...explosionOrigin, ...spec, freezeMs: 1 });
@@ -246,17 +287,24 @@ try {
   await setCaptureTargetVisible(page, false);
   {
     const startMs = Date.now() - videoStartMs;
-    await triggerExplosion(page, { ...explosionOrigin, classId: 'ordinary', radius: 8, freezeMs: 1 });
+    await triggerExplosion(page, {
+      ...explosionOrigin,
+      classId: reducedClass,
+      radius: reducedRadius,
+      freezeMs: 1,
+    });
     for (let proofIndex = 0; proofIndex < 3; proofIndex++) {
-      await advanceCombatMotion(page, 180, { family: 'ordinary-reduced', stage: 'destruction' });
+      await advanceCombatMotion(page, 180, { family: `${reducedClass}-reduced`, stage: 'destruction' });
       await capture(
-        `motion-reduced-ordinary-${String(proofIndex + 1).padStart(2, '0')}.png`,
-        `reduced-motion ordinary destruction frame ${proofIndex + 1}`,
+        `motion-reduced-${reducedClass}-${String(proofIndex + 1).padStart(2, '0')}.png`,
+        `reduced-motion ${reducedClass} destruction frame ${proofIndex + 1}`,
         { resume: false },
       );
     }
     motionSegments.push({
-      scenario: 'reduced-motion and reduced-flash ordinary destruction',
+      scenario: PQ023_COMBAT_READABILITY_ONLY
+        ? 'reduced-motion and reduced-flash small destruction'
+        : 'reduced-motion and reduced-flash ordinary destruction',
       startMs,
       endMs: Date.now() - videoStartMs,
     });
@@ -282,7 +330,7 @@ try {
     });
   }
 
-  if (PQ023_H1) {
+  if (PQ023_H1 && !PQ023_COMBAT_READABILITY_ONLY) {
     const worldSite = await capturePq023WorldSiteSequences(page);
     pq023H1 = {
       ...pq023H1,
@@ -291,6 +339,28 @@ try {
         impactProfiles: pq023H1.impactProfiles,
         worldSite,
       }),
+    };
+  } else if (PQ023_COMBAT_READABILITY_ONLY) {
+    const cells = PQ023_COMBAT_READABILITY_CELLS.map((spec) => {
+      const row = captures.find((captureRow) => path.basename(captureRow.path) === spec.browserFile);
+      assert.ok(row, `missing targeted combat-readability cell ${spec.key}: ${spec.browserFile}`);
+      return { key: spec.key, runtime: row.runtime };
+    });
+    const semanticProjection = buildPq023CombatReadabilityProjection({
+      impactProfiles: pq023H1.impactProfiles,
+      cells,
+    });
+    assert.deepEqual(validatePq023CombatReadabilityProjection(semanticProjection), [],
+      'targeted Browser combat-readability projection failed closed');
+    pq023H1 = {
+      ...pq023H1,
+      continuation: 'combat-readability-only',
+      retainedEvidenceNotRecaptured: [
+        'Wreck Cathedral normal/reduced recovery and damage',
+        'rail, plasma, beam, and missile families',
+        'ordinary and capital destruction',
+      ],
+      semanticProjection,
     };
   }
 
@@ -389,12 +459,17 @@ try {
     spatialPathIsNontrivial: spatialContract.pathLength > 10,
     muzzleUsesFrontNotEngine:
       spatialContract.source.muzzleToFrontSocket < spatialContract.source.muzzleToEngineSocket,
-    captureCountComplete: captures.length === (PQ023_H1 ? 87 : 67),
-    motionSegmentsComplete: motionSegments.length >= (PQ023_H1 ? 15 : 10),
+    captureCountComplete: PQ023_COMBAT_READABILITY_ONLY
+      ? captures.length === 22
+      : captures.length === (PQ023_H1 ? 87 : 67),
+    motionSegmentsComplete: motionSegments.length >= (PQ023_COMBAT_READABILITY_ONLY ? 5 : (PQ023_H1 ? 15 : 10)),
     contactSheetsComplete: contactSheets.length === 3,
-    pq023WorldSiteSequenceComplete: !PQ023_H1
+    pq023WorldSiteSequenceComplete: !PQ023_H1 || PQ023_COMBAT_READABILITY_ONLY
       || pq023H1?.semanticProjection?.worldSiteCueIds?.join(',')
         === 'world_site.recovery,world_site.damage,world_site.recovery,world_site.damage',
+    pq023CombatReadabilityComplete: !PQ023_COMBAT_READABILITY_ONLY
+      || (pq023H1?.semanticProjection?.cells?.length === 5
+        && validatePq023CombatReadabilityProjection(pq023H1.semanticProjection).length === 0),
   };
   const failedAcceptanceChecks = Object.entries(acceptanceChecks)
     .filter(([, passed]) => passed !== true)
@@ -413,6 +488,7 @@ try {
     acceptanceChecks,
     failedAcceptanceChecks,
     pq023H1,
+    continuationMode: PQ023_COMBAT_READABILITY_ONLY ? 'combat-readability-only' : null,
     informational_contended: PQ023_H1,
     informational_contended_note: PQ023_H1
       ? 'Phase H1 ran contended by design. videoTimeMs and motion-segment offsets are editorial navigation metadata only; no time-valued field is performance evidence. Matched performance remains Phase H3.'
@@ -1513,7 +1589,37 @@ function buildPq023SemanticProjection({ impactProfiles, worldSite }) {
 }
 
 async function buildEvidenceSheets() {
-  const sheetSpecs = [
+  const sheetSpecs = PQ023_COMBAT_READABILITY_ONLY ? [
+    {
+      output: 'pq023-impact-temporal-sheet.png',
+      tile: '4x2',
+      sources: ['autocannon', 'flak'].flatMap((key) => (
+        Array.from({ length: 4 }, (_, index) => `pq023-impact-${key}-${String(index + 1).padStart(2, '0')}.png`)
+      )),
+    },
+    {
+      output: 'pq023-small-reduced-sheet.png',
+      tile: '5x2',
+      sources: [
+        ...Array.from({ length: 5 }, (_, index) => `06-small-${String(index + 1).padStart(2, '0')}.png`),
+        'pq023-reduced-small-01.png',
+        'pq023-reduced-small-02.png',
+        'motion-reduced-small-01.png',
+        'motion-reduced-small-02.png',
+        'motion-reduced-small-03.png',
+      ],
+    },
+    {
+      output: 'pq023-dense-readability-sheet.png',
+      tile: '4x1',
+      sources: [
+        'pq023-dense-representative.png',
+        'motion-dense-destruction-01.png',
+        'motion-dense-destruction-02.png',
+        'motion-dense-destruction-03.png',
+      ],
+    },
+  ] : [
     {
       output: 'explosion-temporal-sheet.png',
       tile: '6x3',
@@ -1601,6 +1707,10 @@ async function capture(file, scenario, options = {}) {
     return {
       particles: vfx?._liveCount || 0,
       sprites: vfx?._liveSpriteCount || 0,
+      spriteKinds: vfx ? Array.from(
+        { length: vfx._liveSpriteCount || 0 },
+        (_, index) => vfx._spr[vfx._activeSprites[index]]?.kind,
+      ).filter(Number.isFinite).sort((a, b) => a - b) : [],
       trailStreaks: vfx?._liveTrailStreakCount || 0,
       combatBeams: vfx?._combatBeams?.activeCount || 0,
       beamVisible: !!vfx?._combatBeams?.group?.visible,

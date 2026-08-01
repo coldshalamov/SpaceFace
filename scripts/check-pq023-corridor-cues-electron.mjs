@@ -23,10 +23,20 @@ import {
   createIsolatedElectronLaunch,
 } from './lib/electronTestIsolation.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import {
+  buildPq023CombatReadabilityProjection,
+  validatePq023CombatReadabilityProjection,
+} from './lib/pq023CombatReadabilityProjection.mjs';
+import { PQ023_COMBAT_READABILITY_FIXED_SEED } from './validation-manifests/pq023-combat-readability.mjs';
 import { PQ023_CORRIDOR_CUES_FIXED_SEED } from './validation-manifests/pq023-corridor-cues.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const OUT_ROOT = path.join(ROOT, '.devshots', 'pq023-corridor-cues');
+const COMBAT_READABILITY_ONLY = process.argv.includes('--combat-readability-only');
+const FIXED_SEED = COMBAT_READABILITY_ONLY
+  ? PQ023_COMBAT_READABILITY_FIXED_SEED
+  : PQ023_CORRIDOR_CUES_FIXED_SEED;
+const TASK_ID = COMBAT_READABILITY_ONLY ? 'pq023-combat-readability' : 'pq023-corridor-cues';
+const OUT_ROOT = path.join(ROOT, '.devshots', TASK_ID);
 const ELECTRON_DIR = path.join(OUT_ROOT, 'electron');
 const BROWSER_REPORT_PATH = path.join(OUT_ROOT, 'report.json');
 const RECEIPT_PATH = path.join(ELECTRON_DIR, 'route-receipt.json');
@@ -38,6 +48,10 @@ if (!existsSync(BROWSER_REPORT_PATH)) {
 const browserReport = JSON.parse(await readFile(BROWSER_REPORT_PATH, 'utf8'));
 if (browserReport.ok !== true || !browserReport.pq023H1?.semanticProjection) {
   console.error('[pq023-corridor-cues/electron] Browser motion cell did not pass; Electron will not launch');
+  process.exit(2);
+}
+if (COMBAT_READABILITY_ONLY && browserReport.continuationMode !== 'combat-readability-only') {
+  console.error('[pq023-combat-readability/electron] Browser report is not the targeted continuation');
   process.exit(2);
 }
 
@@ -56,7 +70,7 @@ const screenshots = [];
 
 try {
   const { _electron: electron } = await loadPlaywright();
-  launch = createIsolatedElectronLaunch({ root: ROOT, taskId: 'pq023-corridor-cues' });
+  launch = createIsolatedElectronLaunch({ root: ROOT, taskId: TASK_ID });
   app = await electron.launch(launch.options);
   childProcess = app.process();
   processMonitor = createElectronProcessMonitor({ electronApp: app, childProcess });
@@ -72,7 +86,7 @@ try {
   page.setDefaultNavigationTimeout(90_000);
   issueTracker = collectPageIssues(page, { includeWarnings: false });
 
-  await bootSeededFlight(page, rootUrl, PQ023_CORRIDOR_CUES_FIXED_SEED);
+  await bootSeededFlight(page, rootUrl, FIXED_SEED);
   const gpu = await readGpuContract(page);
   assert.equal(gpu.available, true, 'PQ-023 Electron parity requires WebGL');
   assert.doesNotMatch(gpu.renderer || '', /SwiftShader|llvmpipe|software/i,
@@ -82,87 +96,96 @@ try {
   const impactProfiles = await readImpactProfiles(page);
   assert.notEqual(impactProfiles.flak.mode, impactProfiles.autocannon.mode);
 
-  await page.evaluate(() => {
-    window.SF.registry.get('world').enterSector('sector_ceres_belt', {
-      fromJump: true,
-      via: 'gate',
-      fromSectorId: 'sector_helios_prime',
+  let semanticProjection;
+  if (COMBAT_READABILITY_ONLY) {
+    const targeted = await captureElectronCombatReadability(page, impactProfiles);
+    screenshots.push(...targeted.screenshots);
+    semanticProjection = targeted.semanticProjection;
+  } else {
+    await page.evaluate(() => {
+      window.SF.registry.get('world').enterSector('sector_ceres_belt', {
+        fromJump: true,
+        via: 'gate',
+        fromSectorId: 'sector_helios_prime',
+      });
     });
-  });
-  await waitForCathedralRoot(page, 'failed');
-  await approachCathedral(page);
-  const initial = await waitForCathedralState(page, 'failed');
-  await frameCathedral(page);
+    await waitForCathedralRoot(page, 'failed');
+    await approachCathedral(page);
+    const initial = await waitForCathedralState(page, 'failed');
+    await frameCathedral(page);
 
-  const transitions = [];
-  await setAccessibility(page, false);
-  transitions.push({ kind: 'recovery', reduced: false, owner: await recoverCathedral(page) });
-  await waitForCathedralState(page, 'stabilized');
-  await frameCathedral(page);
-  screenshots.push(await capturePng(page, '01-recovery-normal.png'));
+    const transitions = [];
+    await setAccessibility(page, false);
+    transitions.push({ kind: 'recovery', reduced: false, owner: await recoverCathedral(page) });
+    await waitForCathedralState(page, 'stabilized');
+    await frameCathedral(page);
+    screenshots.push(await capturePng(page, '01-recovery-normal.png'));
 
-  transitions.push({ kind: 'damage', reduced: false, owner: await damageCathedral(page) });
-  await waitForCathedralState(page, 'failed');
-  await frameCathedral(page);
-  screenshots.push(await capturePng(page, '02-damage-normal.png'));
+    transitions.push({ kind: 'damage', reduced: false, owner: await damageCathedral(page) });
+    await waitForCathedralState(page, 'failed');
+    await frameCathedral(page);
+    screenshots.push(await capturePng(page, '02-damage-normal.png'));
 
-  await setAccessibility(page, true);
-  transitions.push({ kind: 'recovery', reduced: true, owner: await recoverCathedral(page) });
-  await waitForCathedralState(page, 'stabilized');
-  await frameCathedral(page);
-  screenshots.push(await capturePng(page, '03-recovery-reduced.png'));
+    await setAccessibility(page, true);
+    transitions.push({ kind: 'recovery', reduced: true, owner: await recoverCathedral(page) });
+    await waitForCathedralState(page, 'stabilized');
+    await frameCathedral(page);
+    screenshots.push(await capturePng(page, '03-recovery-reduced.png'));
 
-  transitions.push({ kind: 'damage', reduced: true, owner: await damageCathedral(page) });
-  await waitForCathedralState(page, 'failed');
-  await frameCathedral(page);
-  screenshots.push(await capturePng(page, '04-damage-reduced.png'));
+    transitions.push({ kind: 'damage', reduced: true, owner: await damageCathedral(page) });
+    await waitForCathedralState(page, 'failed');
+    await frameCathedral(page);
+    screenshots.push(await capturePng(page, '04-damage-reduced.png'));
 
-  const reducedFrames = [];
-  for (let index = 0; index < 3; index += 1) {
-    await page.waitForTimeout(180);
-    reducedFrames.push(await readFixtureSignature(page));
+    const reducedFrames = [];
+    for (let index = 0; index < 3; index += 1) {
+      await page.waitForTimeout(180);
+      reducedFrames.push(await readFixtureSignature(page));
+    }
+    assert.equal(new Set(reducedFrames.map((row) => JSON.stringify(row))).size, 1,
+      'Electron reduced Cathedral damage must hold a steady fixture state');
+
+    const cueEvents = await page.evaluate(() => (
+      window.__pq023H1CueEvents || []
+    ).filter((row) => String(row.id || '').startsWith('world_site.')));
+    const worldSiteCueIds = cueEvents
+      .filter((row) => row.event === 'presentation:cue')
+      .map((row) => row.id);
+    const captions = cueEvents
+      .filter((row) => row.event === 'presentation:caption')
+      .map((row) => ({
+        id: row.id,
+        text: row.text,
+        shape: row.shape,
+        assertive: row.assertive,
+        reducedMotion: row.reducedMotion,
+        flashReduced: row.flashReduced,
+      }));
+
+    semanticProjection = buildSemanticProjection({
+      impactProfiles,
+      worldSiteCueIds,
+      captions,
+      transitions,
+    });
   }
-  assert.equal(new Set(reducedFrames.map((row) => JSON.stringify(row))).size, 1,
-    'Electron reduced Cathedral damage must hold a steady fixture state');
-
-  const cueEvents = await page.evaluate(() => (
-    window.__pq023H1CueEvents || []
-  ).filter((row) => String(row.id || '').startsWith('world_site.')));
-  const worldSiteCueIds = cueEvents
-    .filter((row) => row.event === 'presentation:cue')
-    .map((row) => row.id);
-  const captions = cueEvents
-    .filter((row) => row.event === 'presentation:caption')
-    .map((row) => ({
-      id: row.id,
-      text: row.text,
-      shape: row.shape,
-      assertive: row.assertive,
-      reducedMotion: row.reducedMotion,
-      flashReduced: row.flashReduced,
-    }));
-
-  const semanticProjection = buildSemanticProjection({
-    impactProfiles,
-    worldSiteCueIds,
-    captions,
-    transitions,
-  });
   assert.deepEqual(semanticProjection, browserReport.pq023H1.semanticProjection,
     'Electron must match the Browser PQ-023 cue semantics');
 
   const pageIssues = summarizeIssues(issueTracker.errorIssues());
   assert.deepEqual(pageIssues, [], 'Electron cue parity emitted page issues');
   receipt = {
-    schema: 'spaceface.pq023-corridor-cues-electron.v1',
+    schema: COMBAT_READABILITY_ONLY
+      ? 'spaceface.pq023-combat-readability-electron.v1'
+      : 'spaceface.pq023-corridor-cues-electron.v1',
     disposition: 'PASS',
     runtime: 'electron',
-    fixedSeed: PQ023_CORRIDOR_CUES_FIXED_SEED,
+    fixedSeed: FIXED_SEED,
     gpu,
     semanticProjection,
     crossRuntimeParity: {
       pass: true,
-      comparedAgainst: '.devshots/pq023-corridor-cues/report.json',
+      comparedAgainst: `.devshots/${TASK_ID}/report.json`,
     },
     screenshots,
     pageIssues,
@@ -180,11 +203,13 @@ try {
     }).catch(() => {});
   }
   receipt = {
-    schema: 'spaceface.pq023-corridor-cues-electron.v1',
+    schema: COMBAT_READABILITY_ONLY
+      ? 'spaceface.pq023-combat-readability-electron.v1'
+      : 'spaceface.pq023-corridor-cues-electron.v1',
     disposition: 'FAIL',
     failureClass: 'UNCLASSIFIED_BY_PROBE',
     runtime: 'electron',
-    fixedSeed: PQ023_CORRIDOR_CUES_FIXED_SEED,
+    fixedSeed: FIXED_SEED,
     problems: [error?.message || String(error)],
     stack: error?.stack || null,
     screenshots,
@@ -210,7 +235,9 @@ try {
   }
   if (cleanupReport?.pass !== true) {
     receipt ||= {
-      schema: 'spaceface.pq023-corridor-cues-electron.v1',
+      schema: COMBAT_READABILITY_ONLY
+        ? 'spaceface.pq023-combat-readability-electron.v1'
+        : 'spaceface.pq023-corridor-cues-electron.v1',
       disposition: 'FAIL',
       problems: [],
       noPerformanceEvidence: true,
@@ -236,12 +263,12 @@ try {
 
 await writeFile(RECEIPT_PATH, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
 if (receipt.disposition !== 'PASS') {
-  console.error('[pq023-corridor-cues/electron] FAIL');
+  console.error(`[${TASK_ID}/electron] FAIL`);
   for (const problem of receipt.problems || []) console.error(`  - ${problem}`);
   process.exit(1);
 }
-console.log('[pq023-corridor-cues/electron] PASS — cue semantics match Browser');
-console.log('  receipt: .devshots/pq023-corridor-cues/electron/route-receipt.json');
+console.log(`[${TASK_ID}/electron] PASS — cue semantics match Browser`);
+console.log(`  receipt: .devshots/${TASK_ID}/electron/route-receipt.json`);
 
 async function bootSeededFlight(targetPage, canonicalRoot, seed) {
   assert.equal(
@@ -319,6 +346,240 @@ async function readImpactProfiles(targetPage) {
       };
     };
     return { autocannon: pick('wpn_autocannon_m'), flak: pick('wpn_flak_turret_s') };
+  });
+}
+
+async function captureElectronCombatReadability(targetPage, impactProfiles) {
+  const spatial = await prepareElectronCombatReadabilityTarget(targetPage);
+  const explosionOrigin = await targetPage.evaluate(() => {
+    const state = window.SF.state;
+    const player = state.entities.get(state.playerId);
+    return { x: player.pos.x + 15, z: player.pos.z + 5 };
+  });
+  const cells = [];
+  const captured = [];
+  const captureCell = async (key, file) => {
+    const screenshot = await capturePng(targetPage, file);
+    const runtime = await readElectronCombatRuntime(targetPage);
+    cells.push({ key, runtime });
+    captured.push({ key, ...screenshot, runtime });
+  };
+
+  await setElectronCombatTargetVisible(targetPage, true);
+  await triggerElectronImpact(targetPage, 'wpn_autocannon_m', 48);
+  await captureCell('autocannon', '01-autocannon-impact.png');
+  await triggerElectronImpact(targetPage, 'wpn_flak_turret_s', 48);
+  await captureCell('flak', '02-flak-impact.png');
+
+  await setElectronCombatTargetVisible(targetPage, false);
+  await setAccessibility(targetPage, false);
+  await triggerElectronExplosion(targetPage, { ...explosionOrigin, classId: 'small', radius: 4, freezeMs: 18 });
+  await captureCell('small', '03-small-destruction.png');
+
+  await setAccessibility(targetPage, true);
+  await triggerElectronExplosion(targetPage, { ...explosionOrigin, classId: 'small', radius: 4, freezeMs: 190 });
+  await captureCell('small-reduced', '04-small-destruction-reduced.png');
+
+  await setAccessibility(targetPage, false);
+  await setElectronCombatTargetVisible(targetPage, true);
+  await triggerElectronDenseDestruction(targetPage, { ...explosionOrigin, freezeMs: 180 });
+  await captureCell('dense', '05-dense-representative.png');
+
+  const semanticProjection = buildPq023CombatReadabilityProjection({ impactProfiles, cells });
+  assert.deepEqual(validatePq023CombatReadabilityProjection(semanticProjection), [],
+    'targeted Electron combat-readability projection failed closed');
+  await targetPage.evaluate(() => window.__sfResetCombatVfx?.());
+  return { spatial, screenshots: captured, semanticProjection };
+}
+
+async function prepareElectronCombatReadabilityTarget(targetPage) {
+  const spatial = await targetPage.evaluate(async () => {
+    const sf = window.SF;
+    const state = sf.state;
+    const player = state.entities.get(state.playerId);
+    const vfx = sf.registry.get('vfx');
+    const weapons = sf.registry.get('weapons');
+    const parent = player?.mesh?.parent || vfx?._scene;
+    const fittedWeapon = player?.data?.weapons?.find((weapon) => weapon && weapon.slotIndex === 0)
+      || player?.data?.weapons?.[0];
+    if (!player?.mesh || !parent || !vfx?._scene || !weapons || !fittedWeapon) {
+      throw new Error('Electron combat-readability target requires authored player/VFX/weapons owners');
+    }
+
+    const direction = weapons._hardpointDir(player, fittedWeapon, player.rot, 0);
+    const forward = { x: Math.cos(direction), z: Math.sin(direction) };
+    const muzzle = weapons._muzzle(player, fittedWeapon, direction);
+    const targetCenter = {
+      x: muzzle.x + forward.x * 31.5,
+      z: muzzle.z + forward.z * 31.5,
+    };
+    const targetRadius = Math.max(2, Number(player.radius) || 14);
+    const targetContact = {
+      x: targetCenter.x - forward.x * (targetRadius + 0.4),
+      z: targetCenter.z - forward.z * (targetRadius + 0.4),
+    };
+    state.camera.zoom = Math.max(88, Number(state.camera.zoom) || 0);
+    const target = player.mesh.clone(true);
+    const local = vfx._toLocalXZ(targetCenter.x, targetCenter.z, { x: 0, z: 0 });
+    target.name = 'SF_PQ023_Electron_Combat_Readability_Target';
+    target.position.set(local.x, player.mesh.position.y, local.z);
+    target.rotation.copy(player.mesh.rotation);
+    target.rotation.y += Math.PI;
+    target.scale.copy(player.mesh.scale);
+    parent.add(target);
+    window.__sfCombatVfxCaptureTarget = target;
+    window.__sfCombatSpatialContract = {
+      source: {
+        entityId: player.id,
+        hardpointIdx: fittedWeapon.slotIndex,
+        forward,
+        muzzle: { x: muzzle.x, y: 0.25, z: muzzle.z },
+      },
+      target: {
+        center: targetCenter,
+        contact: { x: targetContact.x, y: 0.25, z: targetContact.z },
+        radius: targetRadius,
+      },
+      pathLength: Math.hypot(targetContact.x - muzzle.x, targetContact.z - muzzle.z),
+    };
+
+    state.timeScale = 0;
+    state.accumulator = 0;
+    const originalUpdate = vfx.update;
+    window.__sfOriginalCombatVfxUpdate = originalUpdate;
+    window.__sfResetCombatVfx = () => {
+      vfx.update = () => {};
+      vfx._combatBeams?.clear();
+      vfx._explosions?.clear();
+      while (vfx._liveTrailStreakCount > 0) vfx._retireTrailStreak(vfx._activeTrailStreaks[0]);
+      while (vfx._liveSpriteCount > 0) vfx._retireSprite(vfx._activeSprites[0]);
+      while (vfx._liveCount > 0) vfx._retireParticle(vfx._activeParticles[0]);
+      vfx._integrateParticles(0);
+      vfx._integrateSprites(0);
+      vfx._commitTrailStreakInstances();
+    };
+    window.__sfFreezeCombatVfx = (advanceMs = 16) => {
+      let remaining = Math.max(1, Number(advanceMs) || 16) / 1000;
+      while (remaining > 1e-6) {
+        const step = Math.min(1 / 60, remaining);
+        vfx._t += step;
+        vfx._explosions?.update(step, vfx._explosionEmitter);
+        vfx._combatBeams?.update(vfx._t, vfx._combatBeamLocalizer, null);
+        vfx._integrateParticles(step);
+        vfx._integrateSprites(step);
+        vfx._integrateTrailStreaks(step);
+        vfx._decayEventLights(step);
+        remaining -= step;
+      }
+      vfx.update = () => {};
+    };
+    state.render?.cameraCtrl?.snapToPlayer?.();
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    return window.__sfCombatSpatialContract;
+  });
+  assert.ok(spatial.pathLength > 10, 'Electron combat-readability fire axis must be nontrivial');
+  return spatial;
+}
+
+async function setElectronCombatTargetVisible(targetPage, visible) {
+  await targetPage.evaluate((next) => {
+    if (window.__sfCombatVfxCaptureTarget) window.__sfCombatVfxCaptureTarget.visible = next;
+  }, visible);
+}
+
+async function triggerElectronImpact(targetPage, weaponId, freezeMs) {
+  await targetPage.evaluate(({ id, holdMs }) => {
+    const vfx = window.SF.registry.get('vfx');
+    const spatial = window.__sfCombatSpatialContract;
+    window.__sfResetCombatVfx();
+    const approach = spatial.source.forward;
+    vfx._onProjectileHit({
+      weaponId: id,
+      pos: spatial.target.contact,
+      approach,
+      normal: { x: -approach.x, z: -approach.z },
+      damageType: 'kinetic',
+    });
+    window.__sfFreezeCombatVfx(holdMs);
+  }, { id: weaponId, holdMs: freezeMs });
+}
+
+async function triggerElectronExplosion(targetPage, { x, z, classId, radius, freezeMs }) {
+  await targetPage.evaluate(({ px, pz, cls, r, holdMs }) => {
+    const vfx = window.SF.registry.get('vfx');
+    window.__sfResetCombatVfx();
+    vfx._explosions._serial = cls === 'capital' ? 3103 : (cls === 'ordinary' ? 2102 : 1101);
+    vfx._queueExplosion({
+      pos: { x: px, z: pz },
+      radius: r,
+      direction: { x: 0.92, z: 0.38 },
+      type: cls === 'capital' ? 'capital-structure' : 'ship',
+    }, cls);
+    window.__sfFreezeCombatVfx(holdMs);
+  }, { px: x, pz: z, cls: classId, r: radius, holdMs: freezeMs });
+}
+
+async function triggerElectronDenseDestruction(targetPage, { x, z, freezeMs }) {
+  await targetPage.evaluate(({ px, pz, holdMs }) => {
+    const vfx = window.SF.registry.get('vfx');
+    window.__sfResetCombatVfx();
+    vfx._explosions._serial = 5105;
+    const offsets = [[-8, -5], [0, -7], [8, -4], [-7, 6], [3, 5], [9, 7]];
+    for (let index = 0; index < offsets.length; index += 1) {
+      const [ox, oz] = offsets[index];
+      vfx._queueExplosion({
+        pos: { x: px + ox, z: pz + oz },
+        radius: index % 3 === 0 ? 8 : 4,
+        direction: { x: 0.8, z: index % 2 ? -0.6 : 0.6 },
+        type: index % 3 === 0 ? 'ship' : 'small-object',
+      }, index % 3 === 0 ? 'ordinary' : 'small');
+    }
+    window.__sfFreezeCombatVfx(holdMs);
+    const spatial = window.__sfCombatSpatialContract;
+    const beam = {
+      weaponId: 'wpn_beam_laser_m',
+      ownerId: spatial.source.entityId,
+      hardpointIdx: spatial.source.hardpointIdx,
+      beamKey: 'capture-dense-beam',
+      continuous: true,
+      phase: 'update',
+      origin: spatial.source.muzzle,
+      from: spatial.source.muzzle,
+      to: spatial.target.contact,
+      dir: spatial.source.forward,
+    };
+    vfx._onFire(beam);
+    vfx._onDamage({
+      weaponId: beam.weaponId,
+      attackerId: spatial.source.entityId,
+      targetId: 'capture-target',
+      pos: spatial.target.contact,
+      approach: spatial.source.forward,
+      normal: { x: -spatial.source.forward.x, z: -spatial.source.forward.z },
+      hullHit: true,
+      amount: 5,
+    });
+    window.__sfFreezeCombatVfx(8);
+  }, { px: x, pz: z, holdMs: freezeMs });
+}
+
+async function readElectronCombatRuntime(targetPage) {
+  return targetPage.evaluate(() => {
+    const vfx = window.SF.registry.get('vfx');
+    return {
+      particles: vfx?._liveCount || 0,
+      sprites: vfx?._liveSpriteCount || 0,
+      spriteKinds: vfx ? Array.from(
+        { length: vfx._liveSpriteCount || 0 },
+        (_, index) => vfx._spr[vfx._activeSprites[index]]?.kind,
+      ).filter(Number.isFinite).sort((a, b) => a - b) : [],
+      trailStreaks: vfx?._liveTrailStreakCount || 0,
+      combatBeams: vfx?._combatBeams?.activeCount || 0,
+      settings: {
+        motionReduce: !!window.SF.state.settings.video.motionReduce,
+        flashReduce: !!window.SF.state.settings.accessibility.flashReduce,
+      },
+    };
   });
 }
 

@@ -3965,7 +3965,7 @@
       "priority": 237,
       "title": "Capture revised flak and small-destruction readability",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-023.combat-readability-repair"
       ],
@@ -3976,9 +3976,11 @@
       "paths": [
         "scripts/capture-combat-vfx-acceptance.mjs",
         "scripts/check-pq023-corridor-cues-electron.mjs",
-        "scripts/validation-manifests/pq023-corridor-cues.mjs",
+        "scripts/probe-pq023-combat-readability.mjs",
+        "scripts/lib/pq023CombatReadabilityProjection.mjs",
+        "scripts/validation-manifests/pq023-combat-readability.mjs",
         "test/pq023-corridor-cues-h1-manifest.test.mjs",
-        "design/program/roadmap/evidence/h1/row6-pq023-cues/"
+        "design/program/roadmap/evidence/h1/row6-pq023-combat-readability/"
       ],
       "checks": [
         "npm run check:pq023:corridor-cues",
