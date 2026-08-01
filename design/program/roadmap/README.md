@@ -10,6 +10,7 @@ This directory contains the stable queue index, the execution protocol, executab
 | `../../../scripts/program-dispatch.mjs` | compact read-only view of the first or all exact claim-ready units, or one parent packet; omits narrative history |
 | [`program-queue.json`](./program-queue.json) | stable parent IDs plus exact dispatch-unit dependencies, mutexes, checks, receipts, and a transitional legacy parent state field |
 | [`active/`](./active/README.md) | current executable packet set and recommended dependency order |
+| `retired/` | checked-off packet plans retained for audit without advertising them as executable work |
 | [`00_EXECUTION_PROTOCOL.md`](./00_EXECUTION_PROTOCOL.md) | finite implementation, validation, review, and receipt state machine |
 | `receipts/` | immutable or append-only exact-revision evidence |
 | numbered roadmap chapters | durable milestone/product references |

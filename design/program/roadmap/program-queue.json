@@ -1180,7 +1180,7 @@
       "id": "PQ-021",
       "priority": 21,
       "title": "Wire the existing Ship's Ledger",
-      "state": "focused_green",
+      "state": "integrated",
       "partialIntegration": "2026-07-26 leaf PQ-021.ledger-wiring integrated at b266515a (candidate eebd91a9). Phases 0-3 only. The pre-existing projector and panel (zero production importers) are now reachable from a station destination and a Codex Ledger tab, surfacing the five Wreck Cathedral evidence pages from PQ-018. Direct property lookup over the frozen five-element page-id list, no scan; same-revision conflict OMITS the page with a diagnostic rather than picking a winner; projector stays pure/read-only with no new save key. Codex subscriptions unchanged at 3; TABS 6->7; station destinations 6->7. Controller repairs: replaced a VACUOUS aria-labelledby assertion (reduced to assert.notEqual(null, ...) and passed unconditionally) with a real per-host subtree-resolution check, proven non-vacuous by mutation; and dropped the ignored nextCtx parameter from the station adapter's refresh. Gates: 81/81 focused, check:depth-program:a2 + check:station-shell + check:station-tabs exit 0, check:sim:compare hashEqual true with ZERO trace-counter movement (full JSON byte-identical to baseline). State is focused_green, NOT integrated-and-accepted: Phase 4 is entirely open (no natural earning through the physical route, no Browser/Electron parity, no media-at-crop check, no legibility review), and PQ-021's route harness and broker manifest were not built. Receipt receipts/PQ-021-ledger-wiring-REPORT.md. Flagged: src/ui/station/icons.js gains one glyph (additive, safe fallback, one-line revert). Dependency bookkeeping corrected 2026-07-28: PQ-018 is consumed as the integrated PQ-018.world-site leaf via a bound evidence dependency (placed Cathedral + five evidence pages), not as parent-level integration; PQ-018 parent Phase 4 is relocated into PQ-020's matched Ceres route and is not a PQ-021 prerequisite. || 2026-07-28 Phase 4 headless completion integrated (merge 7b29a6fb, receipt receipts/PQ-021-phase4-REPORT.md, candidate 137ac3bc): natural earning proven at the ordinary operation API (applyWorldSiteBeamOperation, the exact call mining.js makes; seven-operation route including the pageless marker-spine repair gate; duplicate-op and forged/fabricated receipts fail closed twice over), cold Continue byte-identical with second-load fixed point, two-host DOM parity (5 identical rows, 10 opens -> exactly 10 requests, nodes/images/listeners flat across host-switch cycles, focus-return exact), live headless game routes proven for both hosts (K->Codex->Ledger and dock->Ledger destination). One product fix: authored 1920x1080 figures rendered unconstrained in a ~700px column because no loaded stylesheet defined .st-ledger-* (family belonged to vestigial stationHub CSS); fixed with four panel-scoped lazily-injected rules, mutation-guarded both directions. The pq021-ledger-route broker manifest + harness are built and registered but deliberately UNRUN under the PQ-034 lease; two latent harness defects found and fixed pre-run (currentSectorId assignment does not move the player; payload materializes on owner sync). Ruling recorded: live-UI EARNING is not achievable headlessly without forbidden state injection, so earning is proven at the operation API and the live routes prove READING. Remaining for route_accepted: headed Browser broker run, Electron parity, independent legibility review, physical controller pass (all PQ-034-lease-blocked). Out-of-surface findings recorded: .sx-app font-size pins station app against --ui-scale; remainder of .st-ledger-* family still unstyled.",
       "canonical": [
         "Depth-A2",
@@ -1215,7 +1215,11 @@
         "save",
         "accessibility"
       ],
-      "brief": "Make the existing ledger reachable and feed it earned events, fragments, and imagery without rebuilding the screen or inventing unsupported history."
+      "brief": "Make the existing ledger reachable and feed it earned events, fragments, and imagery without rebuilding the screen or inventing unsupported history.",
+      "integratedCommit": "61f2ffe7",
+      "acceptanceRef": "design/program/03_LIVE_ACCEPTANCE_MATRIX.md#pq-021-ships-ledger-closure-2026-08-01-61f2ffe7",
+      "receipt": "design/program/roadmap/receipts/PQ-021-h2-legibility-controller-REPORT.md",
+      "integrationNote": "2026-08-01 CHECKED OFF at 61f2ffe7: one bounded Ship's Ledger projector/panel is reachable through station and Codex, five physically earned Cathedral pages survive Continue with exact Browser/Electron host parity, media/provenance/focus/accessibility are accepted, and the shipped Y/Triangle controller action reaches the same Codex route. H2 was a disclosed solo-integrator evidence review; no physical-device or performance claim was invented."
     },
     {
       "id": "PQ-022",
@@ -3323,7 +3327,7 @@
       "priority": 208,
       "title": "Promote and retire PQ-021",
       "kind": "integration",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-021.h2-legibility-controller"
       ],
@@ -3337,7 +3341,9 @@
       "checks": [
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-021-h2-legibility-controller-REPORT.md"
+      ],
       "brief": "Upgrade the route receipt, tick the packet, and retire the active document.",
       "blocker": null
     },

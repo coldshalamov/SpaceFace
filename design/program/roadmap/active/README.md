@@ -9,8 +9,7 @@ The queue priority numbers remain stable identities, not permission to ignore cu
 
 ```text
 PQ-018 Wreck Cathedral runtime promotion
-  ├─> PQ-020 Ceres topology consumes the accepted Cathedral placement
-  └─> PQ-021 Ship's Ledger receipt/catalog wiring
+  └─> PQ-020 Ceres topology consumes the accepted Cathedral placement
 
 PQ-019A physical launcher/capsule/catcher/fence
   └─> PQ-019B owner seams and outcome arbiter
@@ -39,7 +38,8 @@ PQ-034 through PQ-041 accepted
         └─> PQ-044 PERF-10 WebGPU/TSL slice (deferred unless triggered)
 ```
 
-PQ-018 through PQ-024 now have their headless implementation layers integrated. Current corridor
+PQ-021 is checked off and retained under `../retired/`. PQ-018, PQ-019, PQ-020, PQ-022, PQ-023, and
+PQ-024 have their headless implementation layers integrated. Current corridor
 work is exact acceptance repair, headed capture, evidence-bound integrator review, performance
 evidence, and promotion;
 run `node scripts/program-dispatch.mjs --ready` and claim the returned unit rather than redispatching
@@ -59,7 +59,6 @@ and intentionally have no active packet until their evidence triggers are proved
 | [`PQ-018.md`](./PQ-018.md) | release, register, place, wire, and accept the Wreck Cathedral through the integrated World Site substrate | PQ-017 current contract; asset/renderer/GPU lane free |
 | [`PQ-019.md`](./PQ-019.md) | split the heist into physical facilities, owner seams, and one authored route | stable ID correction; facility phase precedes mission phase |
 | [`PQ-020.md`](./PQ-020.md) | bounded Ceres topology/data slice, one existing-owner local condition, and route proof | consume PQ-018 placement without relocation; Atlas/data lease |
-| [`PQ-021.md`](./PQ-021.md) | reuse one pure projector and one panel in station + Codex | PQ-018 direct-keyed receipts/catalog/media integrated |
 | [`PQ-022.md`](./PQ-022.md) | run asset/family leaf packets through source→release→route→perf | exact leaf selected; relevant asset/renderer mutex free |
 | [`PQ-023.md`](./PQ-023.md) | implement physics-readable presentation as separate cue-family leaves | current owner events and shared presentation lease |
 | [`PQ-024.md`](./PQ-024.md) | one transient survey target, Core commitment, real-output producing receipt, one exterior consequence | PQ-017 seam rebound; one accepted exterior visual |
