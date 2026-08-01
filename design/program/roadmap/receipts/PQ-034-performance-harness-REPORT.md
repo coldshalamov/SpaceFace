@@ -9,10 +9,11 @@ acceptanceClaim: focused_green
 terminalDisposition: IN_PROGRESS
 claimBase: 070064b4ff9aff9c4addb54d876c7ad877ba8e53
 activityAuthorityCandidate: 52cd5eb3949bfb0e88fd8a2c10d37cd1c149fe65
-failedBrowserCandidate: 2ab10f91483b38a4cfbd2197d99d7bfa84ae198f
-browserClaimConsumed: true
+firstFailedBrowserCandidate: 2ab10f91483b38a4cfbd2197d99d7bfa84ae198f
+secondFailedBrowserCandidate: dc8a4ae8148bf771188a2e982f0ba7c55da8bd4d
+browserClaimsConsumed: 2
 browserClaimAccepted: false
-browserRepairCandidate: 0fb2fc10bcceefbdb45fff768edd77ac71f76c16
+latestBrowserRepairCandidate: fc18ed4680711da7d88e97080ab8129ebfd523d7
 headedRuntimeLaunched: true
 performanceEvidenceClaimed: false
 protectedWorktreeMutated: false
@@ -356,3 +357,36 @@ windows remain invalid.
 This is a source-changing repair, not a waiver or a retry of unchanged evidence. The next bounded
 action is one fresh Browser claim on the clean pushed repair; Electron remains unspent until that
 claim passes.
+
+## Second Browser claim: terminal progression ran before diagnostics
+
+The next one-use Browser claim ran once on clean pushed candidate
+`dc8a4ae8148bf771188a2e982f0ba7c55da8bd4d`; its artifacts are retained at
+`.devshots/perf/closure/browser/performance-closure-browser-2026-08-01T10-08-31-743Z-26696-1ac246b9/`.
+It cleared all failures from the first claim: no runtime/page/GL/request errors, all 25 GPU timing
+windows completed with zero pending/dropped/rejected queries, exact docked-idle and jump-admission
+policies passed, route state and context recovery passed, activity was quiet at both boundaries, and
+cleanup passed. The only invalidity reason was `windows[24]-pipeline-cache-mismatch`.
+
+The retained window evidence identifies the causal sequence. `jump_asset_admission` intentionally
+progressed from Helios to Ceres and left five authored presentations pending. The scenario restorer
+correctly labels that route `route-progression-cleanup-scoped` and does not undo the sector change.
+The runner nevertheless executed nine diagnostic flight cells afterward. During the final
+`material_depth_override` window, one destination asset completed: program count `88 → 92`, pending
+authored count `5 → 4`, resident assets `33 → 34`, and resident resources `886 → 940`. The window's
+stable-pipeline policy correctly rejected the measurement; no timing result is promoted.
+
+Candidate `fc18ed4680711da7d88e97080ab8129ebfd523d7` fixes the ordering contract rather than adding a
+waiver. Its explicit execution plan runs every reversible baseline and diagnostic cell first and the
+cleanup-scoped jump cell last. It also refuses a non-baseline variant on that irreversible route. The
+new order regression failed before implementation because the planner did not exist and now passes.
+
+- selected PERF-00/broker regression set — PASS 143/143 in 15.302 s;
+- `npm run check:perf-counters` — PASS 35/35;
+- `npm run check:perf-packets` — PASS 39/39;
+- `npm run check:sim:compare` — PASS, deterministic and hash-equal;
+- `npm run check:launch-policy` — PASS;
+- `npm run check:baseline` — PASS 10/10 in 44.283 s.
+
+The exact unit remains `IN_PROGRESS`. The next action is one fresh Browser claim on the changed,
+clean pushed candidate. Electron remains unspent until Browser passes.
