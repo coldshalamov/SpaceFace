@@ -113,11 +113,16 @@ and cross-runtime semantic receipt. Functional H1 proves normal/reduced recovery
 covered by the deterministic trace: all 18 critical cues emitted and 42 flavor cues were intentionally
 suppressed with an explicit lane-budget reason.
 
-**Unblocks:** the independent human motion/accessibility verdict. `milestone_accepted` still also
-requires H3 matched performance; neither is implied by H1.
+**Unblocks:** the motion/accessibility disposition. `milestone_accepted` still requires the exact
+combat-readability repair/review chain and H3 matched performance; neither is implied by H1.
 
-**Verdict:** BLOCKED — named owner `SpaceFace human motion/accessibility reviewer`; no independent
-human reviewer is available in this autonomous recovery run
+**Verdict:** PASS review / KEEP Cathedral accessibility, ordinary/capital destruction, reduced mode,
+and dense composition / REVISE flak differentiation and small destruction — the Cathedral states
+retain explicit text plus noncolor ring/bracket semantics in both hosts, and the larger lifecycles
+land without burying the combat scene. Flak does not: its `proximity-burst` profile has no renderer
+branch and falls through the autocannon default, matching the near-identical ordinary-camera pixels.
+The small lifecycle is bounded but too faint to read as a destruction event. Exact repair, targeted
+recapture, and causal review are queued. Receipt: [PQ-023 H2 cue review](receipts/PQ-023-h2-cue-motion-accessibility-REPORT.md).
 
 ---
 

@@ -3888,7 +3888,7 @@
       "priority": 212,
       "title": "Complete cue-motion and Cathedral accessibility verdict",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-023.cues-h1-capture"
       ],
@@ -3899,7 +3899,9 @@
         "design/program/roadmap/H2_REVIEW_INDEX.md"
       ],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-023-h2-cue-motion-accessibility-REPORT.md"
+      ],
       "brief": "Review the retained combat subset plus newly captured Cathedral damage/recovery motion and Electron parity.",
       "blocker": null
     },
@@ -3912,6 +3914,7 @@
       "state": "ready",
       "dependsOn": [
         "PQ-023.cues-h1-capture",
+        "PQ-023.combat-readability-review",
         "PQ-034.native-closure"
       ],
       "mutexes": [
@@ -3925,6 +3928,84 @@
       ],
       "receiptRefs": [],
       "brief": "Capture matched target/floor dense-scene performance without weakening authored effects.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-023.combat-readability-repair",
+      "parentId": "PQ-023",
+      "priority": 236,
+      "title": "Repair flak impact dispatch and small-destruction salience",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-023.h2-verdict"
+      ],
+      "mutexes": [
+        "renderer"
+      ],
+      "paths": [
+        "src/render/vfx.js",
+        "src/render/vfxProfiles.js",
+        "test/pq023-corridor-cues.test.mjs",
+        "test/combat-vfx-presentation-contract.test.mjs"
+      ],
+      "checks": [
+        "npm run check:pq023:corridor-cues",
+        "npm run check:presentation"
+      ],
+      "receiptRefs": [],
+      "brief": "Add a real proximity-burst renderer branch so flak cannot fall through the autocannon incidence-fan default, and strengthen the compact small-destruction hot-core/asymmetric breakup without borrowing ordinary/capital ring grammar, changing mechanics, or weakening cue budgets and cleanup. Add seconds-scale regressions for both reproduced defects.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-023.combat-readability-h1",
+      "parentId": "PQ-023",
+      "priority": 237,
+      "title": "Capture revised flak and small-destruction readability",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-023.combat-readability-repair"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "scripts/capture-combat-vfx-acceptance.mjs",
+        "scripts/check-pq023-corridor-cues-electron.mjs",
+        "scripts/validation-manifests/pq023-corridor-cues.mjs",
+        "test/pq023-corridor-cues-h1-manifest.test.mjs",
+        "design/program/roadmap/evidence/h1/row6-pq023-cues/"
+      ],
+      "checks": [
+        "npm run check:pq023:corridor-cues",
+        "npm run check:presentation"
+      ],
+      "receiptRefs": [],
+      "brief": "Add a targeted continuation that captures only autocannon, flak, small destruction, reduced small destruction, and one dense representative in Browser plus source Electron; retain the accepted Cathedral and unrelated combat cells.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-023.combat-readability-review",
+      "parentId": "PQ-023",
+      "priority": 238,
+      "title": "Causally review revised combat-cue readability",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-023.combat-readability-h1"
+      ],
+      "mutexes": [
+        "evidence-review"
+      ],
+      "paths": [
+        "design/program/roadmap/H2_REVIEW_INDEX.md",
+        "design/program/roadmap/evidence/h1/row6-pq023-cues/"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Review only whether flak now reads as a volume/proximity burst distinct from autocannon's directional incidence fan and whether small destruction lands while preserving reduced-mode, dense-scene, cleanup, and the accepted larger hierarchy.",
       "blocker": null
     },
     {
