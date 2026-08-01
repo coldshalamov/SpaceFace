@@ -17,9 +17,13 @@ fifthFailedBrowserCandidate: 1ad68828dff71d599b2e14f8639677837af2dab1
 acceptedBrowserCandidate: b847320e4aa0f864e2f6c4862de306fddd773a6b
 acceptedBrowserClaimId: 4256-1baf8886d6425c5283c0dd78
 acceptedBrowserSourceCandidateDigest: b8193f952d13371c586753168dc3c4fa762d9c0dec3f59c8a2b61e8654cc5645
-browserClaimsConsumed: 6
+browserClaimsConsumed: 7
 browserClaimAccepted: true
-latestBrowserRepairCandidate: c812ca50651c48265915de3df3a21b1a7bdaac55
+latestFailedBrowserCandidate: 4240fb429a46af03c3f3ee5bea55ddc5a8920477
+latestFailedBrowserClaimId: 16368-9b4a75a2c2720889162335f7
+latestFailedBrowserSourceCandidateDigest: 286995aa07ab1f051178315571a2294893b6d2541adfc33ab80ee935720105d3
+latestBrowserClaimAccepted: false
+latestBrowserRepairCandidate: c580a43e7d6c165949d6c58d64871aa0ad9fd87a
 firstFailedElectronCandidate: b1b15ee9a5f3a9cc3e6a77c41dabe36370d3fe0c
 firstFailedElectronClaimId: 25476-83c733557dbe390afc61eedb
 firstFailedElectronSourceCandidateDigest: 96cfc12382d3fb0b3eee146953c07023df8d6c2a0fd9e0d11ebfdae90a2b7047
@@ -595,3 +599,37 @@ This is a repair checkpoint, not acceptance. The production/harness source chang
 Browser matrix remains valid historical Browser authority but is not current pair material. One fresh
 Browser claim and one Electron claim must now pass on the same clean pushed source before overhead
 and terminal causal review can close the unit.
+
+## Seventh Browser claim: predictive runway and mining-journal repair
+
+Claim `16368-9b4a75a2c2720889162335f7` ran once on clean pushed candidate
+`4240fb429a46af03c3f3ee5bea55ddc5a8920477` with source digest
+`286995aa07ab1f051178315571a2294893b6d2541adfc33ab80ee935720105d3`. The immutable artifact is
+`.devshots/perf/closure/browser/performance-closure-browser-2026-08-01T13-13-29-855Z-34716-3b1a910b/`.
+All 25 windows, real Intel D3D11 GPU timing, public-route checks, context recovery, quiet activity,
+runtime issue arrays, measurement disablement, scenario restoration, and owned cleanup completed.
+The run correctly remained failed evidence because exactly two stable-pipeline cells changed program
+count: `fleet_full_render_10` from `84 → 86` and `context_recover_steady` from `81 → 82`.
+
+The first cell proves a predictable admission boundary. Pending natural courier `303` began an
+authored Kestrel cache-miss admission during measurement, moved from `2488.253` to `1539.867` world
+units from the held player pose, and changed pending count `3 → 2`, resident assets `30 → 31`,
+resident resources `735 → 786`, visible ship meshes `130 → 134`, and static batches `30 → 32`.
+The second cell proves scenario contamination: mining VFX remained active after its diagnostic arm;
+after context recovery, its sprites/event lights changed `0/0 → 1/1`, visible unowned instanced roots
+`28 → 31`, geometries `92 → 97`, textures `207 → 210`, and programs `81 → 82`.
+
+Candidate `c580a43e7d6c165949d6c58d64871aa0ad9fd87a` preserves the fail-closed program comparison and
+repairs both causes. The renderer and evidence route share a pure authored-runway predicate; capture
+projects pending admissions over the exact upcoming sample duration and waits until that risk is
+zero. Captured pipeline promises must settle under a bounded prerequisite barrier before stable
+observation. Mining start/tick now belongs to the scenario journal, whose restorer emits and verifies
+one stop edge before releasing the arm.
+
+- focused performance/render set — PASS 71/71;
+- inbound-runway regression — PASS at the reproduced 2488-unit distance and 190 WU/s closure;
+- mining journal regression — PASS exact `mining:start`, `mining:tick`, `mining:stop` sequence;
+- `npm run check:baseline` — PASS 10/10 in 42.194 seconds.
+
+No timing or performance conclusion is accepted from this failed claim. One fresh Browser claim on
+the clean pushed repair must pass before the source-paired Electron claim is spent.
