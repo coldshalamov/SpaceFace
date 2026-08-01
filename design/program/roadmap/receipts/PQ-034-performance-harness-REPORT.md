@@ -17,17 +17,17 @@ fifthFailedBrowserCandidate: 1ad68828dff71d599b2e14f8639677837af2dab1
 acceptedBrowserCandidate: b847320e4aa0f864e2f6c4862de306fddd773a6b
 acceptedBrowserClaimId: 4256-1baf8886d6425c5283c0dd78
 acceptedBrowserSourceCandidateDigest: b8193f952d13371c586753168dc3c4fa762d9c0dec3f59c8a2b61e8654cc5645
-browserClaimsConsumed: 9
+browserClaimsConsumed: 10
 browserClaimAccepted: true
-latestFailedBrowserCandidate: 4240fb429a46af03c3f3ee5bea55ddc5a8920477
-latestFailedBrowserClaimId: 16368-9b4a75a2c2720889162335f7
-latestFailedBrowserSourceCandidateDigest: 286995aa07ab1f051178315571a2294893b6d2541adfc33ab80ee935720105d3
+latestFailedBrowserCandidate: 85f12646805f41adae32c3b7f17e3d51fa8b83e4
+latestFailedBrowserClaimId: 9824-4daa4c2591fd966a3d776dd4
+latestFailedBrowserSourceCandidateDigest: 193c6f951c2e41a6af6f5f81fa02c1eed4bf294fb275e35099ff3748c10ac75c
 latestBrowserClaimAccepted: false
-latestBrowserCandidate: 5473dab9b24ddfbd1adebcb27f8ecf946e0a16be
-latestBrowserClaimId: 7344-04c1b7704fa773e53b8f5ad4
-latestBrowserSourceCandidateDigest: 948af238401dd8c4da1f51ada35faa4b8e6a05e9ad3e3adf86ef2c67fa04115b
+latestBrowserCandidate: 85f12646805f41adae32c3b7f17e3d51fa8b83e4
+latestBrowserClaimId: 9824-4daa4c2591fd966a3d776dd4
+latestBrowserSourceCandidateDigest: 193c6f951c2e41a6af6f5f81fa02c1eed4bf294fb275e35099ff3748c10ac75c
 latestVfxCacheRepairCandidate: 12b6b905b36b9820f2e7cd02b49b1a4f61b7f5c4
-latestBrowserRepairCandidate: e343fe57ba0e727318b31161e535caa3aae1cf5e
+latestBrowserRepairCandidate: d521232acf5a08420c6cf061c8f108a8ff91623c
 latestBrokerPrelaunchDisposition: regression-required-after-acceptance-failure
 firstFailedElectronCandidate: b1b15ee9a5f3a9cc3e6a77c41dabe36370d3fe0c
 firstFailedElectronClaimId: 25476-83c733557dbe390afc61eedb
@@ -736,3 +736,37 @@ real-WebGL executable checks. Focused evidence:
 `browserClaimsConsumed` remains `9`; no headed or timing evidence is inferred from the prelaunch
 stop. The next valid action is one fresh Browser claim on a clean pushed program-doc-synchronized
 candidate, followed by Electron only if Browser passes on that identical source digest.
+
+## Tenth Browser claim: frozen-route prediction repair
+
+Claim `9824-4daa4c2591fd966a3d776dd4` ran once on clean pushed candidate
+`85f12646805f41adae32c3b7f17e3d51fa8b83e4`, source digest
+`193c6f951c2e41a6af6f5f81fa02c1eed4bf294fb275e35099ff3748c10ac75c`. Its retained artifact is
+`.devshots/perf/closure/browser/performance-closure-browser-2026-08-01T14-37-13-199Z-41544-1ae02976/`.
+Every scenario, issue, route, GPU, cache-stability, restoration, context-recovery, admission, and
+cleanup check passed except the first docked window's warmup-settled predicate. In particular, the
+previous fleet-25 and bloom-off program misses did not recur. Electron was not spent.
+
+The failed window was internally stable for the entire bounded observation:
+
+- route `docked_market_ui`, `uiOnlyPath=true`, `timeScale=0`;
+- tick `3139 → 3139`, every sampled frame reported zero simulation steps;
+- program count `87 → 87`, transition count `0`, stable time `20006.5 ms`;
+- active admission jobs `0 → 0` and pipeline compile pending remained absent;
+- residency stayed at 27 assets / 799 resources.
+
+The only unsettled predicate was a projected admission risk for Mule entity 303 at 3324.57 WU. The
+predictor used the wall-time sample duration even though simulation time was frozen, so its stored
+velocity invented movement that could not occur during the measured route. Candidate
+`d521232acf5a08420c6cf061c8f108a8ff91623c` adds a pure wall-to-simulation horizon mapping and uses
+it for every warmup/start/end readiness snapshot. `timeScale=1` retains the full horizon,
+`timeScale=0.5` retains half, and `timeScale=0` uses zero without weakening current-state runway
+eligibility.
+
+- focused performance contracts — PASS 50/50;
+- `npm run check:sim:compare` — PASS, `hashEqual=true`;
+- `npm run check:baseline` — PASS 10/10 in 42.446 seconds.
+
+No performance conclusion is promoted from the failed claim. The regression digest changes on this
+repair, so the next bounded action is one fresh Browser claim followed by Electron only after an
+accepted Browser result on the identical clean pushed source.
