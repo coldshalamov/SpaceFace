@@ -27,6 +27,7 @@ export const PERFORMANCE_CLOSURE_SOURCE_IDENTITY = Object.freeze({
 });
 
 const FAST_GATES = Object.freeze([
+  'node --test test/loop-orchestration-perf.test.mjs',
   'node --test test/performance-closure-manifests.test.mjs test/performance-attribution-runtime-matrix.test.mjs',
   'node --test test/performance-closure-contracts.test.mjs test/performance-closure-probe-contract.test.mjs test/performance-final-acceptance.test.mjs',
   'node --test test/alpha-live-baseline-contracts.test.mjs test/authored-entity-plan-budget.test.mjs test/render-target-pipeline-warmup.test.mjs',
@@ -46,6 +47,7 @@ const REGRESSION_PATHS = Object.freeze([
   'test/authored-entity-plan-budget.test.mjs',
   'test/authored-precompile-residency.test.mjs',
   'test/electron-shell-lifecycle.test.mjs',
+  'test/loop-orchestration-perf.test.mjs',
   'test/performance-attribution.test.mjs',
   'test/performance-attribution-runtime-matrix.test.mjs',
   'test/performance-closure-contracts.test.mjs',
@@ -66,6 +68,7 @@ const PRODUCTION_PATHS = Object.freeze([
   'electron/main.cjs',
   'package.json',
   'src/core/perfRuntime.js',
+  'src/core/registry.js',
   'src/render/bloom.js',
   'src/render/engineTrailSurfaces.js',
   'src/render/gpuTimers.js',

@@ -536,7 +536,7 @@ export function createRegistry(ctx) {
       const state = ctx.state;
       const perf = ensurePerfRuntime(state);
       const stepStart = perfNow();
-      const measureSystems = perf.isSystemTimingEnabled();
+      const measureSystems = perf.shouldMeasureSystemsThisStep(state.tick);
       if (!measureSystems) {
         try {
           core.preStep(dt, state);

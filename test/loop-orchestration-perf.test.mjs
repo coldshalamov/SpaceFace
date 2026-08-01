@@ -6,7 +6,12 @@ import {
   advanceFixedTimestep,
   LOOP_FIXED_DT,
 } from '../src/core/loop.js';
-import { ensurePerfRuntime } from '../src/core/perfRuntime.js';
+import {
+  ensurePerfRuntime,
+  shouldSampleSystemTimingTick,
+  SYSTEM_TIMING_SAMPLE_PERIOD_TICKS,
+  SYSTEM_TIMING_SAMPLES_PER_PERIOD,
+} from '../src/core/perfRuntime.js';
 
 const loopSource = readFileSync(new URL('../src/core/loop.js', import.meta.url), 'utf8');
 const simulationRunnerSource = readFileSync(new URL('../src/core/simulationRunner.js', import.meta.url), 'utf8');
@@ -18,18 +23,53 @@ test('detailed per-system clocks are opt-in and default gameplay does not fill t
   const perf = ensurePerfRuntime({});
   assert.equal(perf.systemTimingEnabled, false);
   assert.equal(perf.isSystemTimingEnabled(), false);
+  assert.equal(perf.shouldMeasureSystemsThisStep(0), false);
   perf.recordSystem('idle-default', 4);
   assert.equal(perf.getReport().systems['idle-default'], undefined,
     'recordSystem is defense-in-depth gated while detailed attribution is disabled');
 
   assert.equal(perf.setSystemTimingEnabled(true), true);
+  assert.equal(perf.shouldMeasureSystemsThisStep(0), true);
   perf.recordSystem('measured', 2.5);
-  assert.equal(perf.getReport().systems.measured.samples, 1);
+  const report = perf.getReport();
+  assert.equal(report.systems.measured.samples, 1);
+  assert.deepEqual(report.systemTimingSampling, {
+    schema: 'spaceface.systemTimingSampling.v1',
+    periodTicks: SYSTEM_TIMING_SAMPLE_PERIOD_TICKS,
+    samplesPerPeriod: SYSTEM_TIMING_SAMPLES_PER_PERIOD,
+    strategy: 'prime-period-stratified',
+  });
   assert.equal(perf.setSystemTimingEnabled(false), false);
 });
 
-test('registry skips per-system perfNow calls unless detailed attribution is enabled', () => {
-  assert.match(registrySource, /const measureSystems = perf\.isSystemTimingEnabled\(\)/);
+test('system timing uses a prime-period bounded sampler without aliasing common owner cadences', () => {
+  const onePeriod = Array.from(
+    { length: SYSTEM_TIMING_SAMPLE_PERIOD_TICKS },
+    (_, tick) => shouldSampleSystemTimingTick(tick),
+  );
+  assert.equal(onePeriod.filter(Boolean).length, SYSTEM_TIMING_SAMPLES_PER_PERIOD);
+  assert.deepEqual(
+    Array.from(
+      { length: SYSTEM_TIMING_SAMPLE_PERIOD_TICKS },
+      (_, offset) => shouldSampleSystemTimingTick(SYSTEM_TIMING_SAMPLE_PERIOD_TICKS + offset),
+    ),
+    onePeriod,
+    'the sample contract must be stable across exact prime-length periods',
+  );
+  for (const cadence of [2, 3, 4, 5, 6, 10, 12, 15]) {
+    const cadenceSamples = [];
+    for (let tick = 0; tick < SYSTEM_TIMING_SAMPLE_PERIOD_TICKS * cadence; tick += cadence) {
+      cadenceSamples.push(shouldSampleSystemTimingTick(tick));
+    }
+    assert.ok(cadenceSamples.includes(true), `cadence ${cadence} must be sampled`);
+    assert.ok(cadenceSamples.includes(false), `cadence ${cadence} must not be sampled every time`);
+  }
+  assert.equal(shouldSampleSystemTimingTick(Number.NaN), true,
+    'callers without a valid tick fail toward attribution rather than silently losing samples');
+});
+
+test('registry skips per-system perfNow calls unless the bounded sampler selects the tick', () => {
+  assert.match(registrySource, /const measureSystems = perf\.shouldMeasureSystemsThisStep\(state\.tick\)/);
   assert.match(registrySource, /if \(!measureSystems\) \{[\s\S]*?core\.preStep\(dt, state\)[\s\S]*?input\.update\(dt, state\)[\s\S]*?tickBoundary\.publishInputCommand\(state\.input, state\.tick\)[\s\S]*?for \(const s of POST_INPUT_UPDATE_ORDER\)[\s\S]*?core\.lifetimeSweep\(dt, state\)[\s\S]*?return;/,
     'default path preserves input-first order and publishes before downstream systems without clocks');
 });

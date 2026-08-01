@@ -3,6 +3,19 @@ import { createPerfCounters } from './perfCounters.js';
 const RING_N = 180;
 const BACKGROUND_JOB_RING_N = 128;
 const MAX_QUALIFICATION_INTERVAL_SAMPLES = 2_000_000;
+// Detailed per-system timing is an attribution sampler, not an always-on trace. A prime-length
+// schedule avoids locking onto common 2/3/4/5/6/10/12/15-tick owner cadences while retaining
+// 16 representative ticks per 31-tick cycle. A five-second 60 Hz window still yields about 155
+// samples per owner (inside the 180-value ring) and pays roughly half the clock/sample tax.
+export const SYSTEM_TIMING_SAMPLE_PERIOD_TICKS = 31;
+export const SYSTEM_TIMING_SAMPLES_PER_PERIOD = 16;
+
+export function shouldSampleSystemTimingTick(simTick) {
+  if (!Number.isSafeInteger(simTick) || simTick < 0) return true;
+  const slot = simTick % SYSTEM_TIMING_SAMPLE_PERIOD_TICKS;
+  return ((slot * SYSTEM_TIMING_SAMPLES_PER_PERIOD) % SYSTEM_TIMING_SAMPLE_PERIOD_TICKS)
+    < SYSTEM_TIMING_SAMPLES_PER_PERIOD;
+}
 
 function nowMs() {
   return (typeof performance !== 'undefined' && performance && typeof performance.now === 'function')
@@ -407,6 +420,17 @@ export function ensurePerfRuntime(state) {
     getCounterSnapshot() { return tier1Counters.snapshot(); },
     get systemTimingEnabled() { return systemTimingEnabled; },
     isSystemTimingEnabled() { return systemTimingEnabled === true; },
+    shouldMeasureSystemsThisStep(simTick) {
+      return systemTimingEnabled === true && shouldSampleSystemTimingTick(simTick);
+    },
+    get systemTimingSampling() {
+      return {
+        schema: 'spaceface.systemTimingSampling.v1',
+        periodTicks: SYSTEM_TIMING_SAMPLE_PERIOD_TICKS,
+        samplesPerPeriod: SYSTEM_TIMING_SAMPLES_PER_PERIOD,
+        strategy: 'prime-period-stratified',
+      };
+    },
     setSystemTimingEnabled(on) {
       systemTimingEnabled = !!on;
       return systemTimingEnabled;
@@ -891,6 +915,12 @@ export function ensurePerfRuntime(state) {
       for (const name of Object.keys(renderWorkStats)) renderWork[name] = reportStat(renderWorkStats[name]);
       return {
         systemTimingEnabled,
+        systemTimingSampling: {
+          schema: 'spaceface.systemTimingSampling.v1',
+          periodTicks: SYSTEM_TIMING_SAMPLE_PERIOD_TICKS,
+          samplesPerPeriod: SYSTEM_TIMING_SAMPLES_PER_PERIOD,
+          strategy: 'prime-period-stratified',
+        },
         frame: reportStat(frameStats),
         frameCallback: reportStat(frameCallbackStats),
         frameUntracked: reportStat(frameUntrackedStats),
