@@ -14,14 +14,21 @@ import combatReadabilityManifest, {
   createPq023CombatReadabilityManifest,
   PQ023_COMBAT_READABILITY_FIXED_SEED,
 } from '../scripts/validation-manifests/pq023-combat-readability.mjs';
+import smallDestructionSalienceManifest, {
+  createPq023SmallDestructionSalienceManifest,
+  PQ023_SMALL_DESTRUCTION_SALIENCE_FIXED_SEED,
+} from '../scripts/validation-manifests/pq023-small-destruction-salience.mjs';
 import {
   findLivePq023CathedralRoot,
   pq023CathedralApproachPose,
 } from '../scripts/lib/pq023CathedralFraming.mjs';
 import {
   buildPq023CombatReadabilityProjection,
+  buildPq023SmallDestructionSalienceProjection,
   PQ023_COMBAT_READABILITY_CELLS,
+  PQ023_SMALL_DESTRUCTION_SALIENCE_CELLS,
   validatePq023CombatReadabilityProjection,
+  validatePq023SmallDestructionSalienceProjection,
 } from '../scripts/lib/pq023CombatReadabilityProjection.mjs';
 import { setPq023AccessibilityPreference } from '../scripts/lib/pq023Accessibility.mjs';
 import { quiescePq023Capture } from '../scripts/lib/pq023CaptureCleanup.mjs';
@@ -32,6 +39,7 @@ const ROOT = new URL('../', import.meta.url);
 const read = (relative) => readFileSync(new URL(relative, ROOT), 'utf8');
 const abs = (relative) => fileURLToPath(new URL(relative, ROOT));
 const wrapper = () => read('scripts/probe-pq023-corridor-cues.mjs');
+const smallWrapper = () => read('scripts/probe-pq023-small-destruction-salience.mjs');
 const capture = () => read('scripts/capture-combat-vfx-acceptance.mjs');
 const electron = () => read('scripts/check-pq023-corridor-cues-electron.mjs');
 
@@ -85,6 +93,16 @@ test('the tracked registry resolves the targeted combat-readability continuation
   });
   assert.equal(registered.id, combatReadabilityManifest.id);
   assert.match(registered.__trackedManifest.relativePath, /pq023-combat-readability\.mjs$/);
+});
+
+test('the tracked registry resolves the final small-destruction continuation', async () => {
+  const registered = await loadValidationManifestById({
+    root: fileURLToPath(ROOT),
+    id: 'pq023-small-destruction-salience',
+  });
+  assert.equal(registered.id, smallDestructionSalienceManifest.id);
+  assert.match(registered.__trackedManifest.relativePath,
+    /pq023-small-destruction-salience\.mjs$/);
 });
 
 test('the Browser wrapper is inert without a broker claim and opts into one headed capture', () => {
@@ -160,6 +178,59 @@ test('the combat-readability continuation is a separate five-cell claim that ret
   assert.ok(electronSource.includes('validatePq023CombatReadabilityProjection'));
 });
 
+test('the final small-destruction continuation recaptures only its three owned cells', () => {
+  const source = capture();
+  assert.equal(smallDestructionSalienceManifest.id, 'pq023-small-destruction-salience');
+  assert.equal(smallDestructionSalienceManifest.runtimeKind, 'browser');
+  assert.equal(smallDestructionSalienceManifest.mode, 'acceptance');
+  assert.equal(smallDestructionSalienceManifest.requireBrokerClaim, true);
+  assert.equal(smallDestructionSalienceManifest.maxLaunchesPerCandidate, 1);
+  assert.equal(smallDestructionSalienceManifest.fixedSeed,
+    PQ023_SMALL_DESTRUCTION_SALIENCE_FIXED_SEED);
+  assert.equal(PQ023_SMALL_DESTRUCTION_SALIENCE_FIXED_SEED, 47);
+  assert.deepEqual(smallDestructionSalienceManifest.commandArgs,
+    ['scripts/probe-pq023-small-destruction-salience.mjs']);
+  assert.match(smallDestructionSalienceManifest.artifactRoot.replace(/\\/g, '/'),
+    /^\.devshots\/pq023-small-destruction-salience$/);
+  assert.equal(createPq023SmallDestructionSalienceManifest({ timeoutMs: 1234 }).timeoutMs, 1234);
+  for (const group of ['regressionSourcePaths', 'productionSourcePaths', 'harnessSourcePaths']) {
+    for (const relative of smallDestructionSalienceManifest[group]) {
+      assert.equal(existsSync(abs(relative)), true, `small-only manifest path missing: ${relative}`);
+    }
+  }
+  assert.deepEqual(PQ023_SMALL_DESTRUCTION_SALIENCE_CELLS.map((row) => row.browserFile), [
+    '06-small-01.png',
+    'pq023-reduced-small-01.png',
+    'pq023-dense-representative.png',
+  ]);
+
+  const wrapperSource = smallWrapper();
+  for (const required of [
+    'requireBrokerClaimOrDiagnostic',
+    'process.env.SF_BROKER_CLAIM',
+    "process.env.SF_PQ023_H1 = '1'",
+    "process.env.SF_PQ023_SMALL_DESTRUCTION_SALIENCE = '1'",
+    "process.env.SF_COMBAT_CAPTURE_DIR = '.devshots/pq023-small-destruction-salience'",
+    "await import('./capture-combat-vfx-acceptance.mjs')",
+  ]) assert.ok(wrapperSource.includes(required), `missing small-only wrapper contract: ${required}`);
+
+  for (const required of [
+    'PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY',
+    'PQ023_SMALL_DESTRUCTION_SALIENCE_CELLS.map',
+    "continuation: 'small-destruction-salience-only'",
+    'retainedEvidenceNotRecaptured',
+    'captures.length === 14',
+    '? 3',
+    'PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY ? 2 : 3',
+    'validatePq023SmallDestructionSalienceProjection',
+  ]) assert.ok(source.includes(required), `missing small-only capture contract: ${required}`);
+
+  const electronSource = electron();
+  assert.ok(electronSource.includes("process.argv.includes('--small-destruction-salience-only')"));
+  assert.ok(electronSource.includes('captureElectronSmallDestructionSalience(page)'));
+  assert.ok(electronSource.includes('validatePq023SmallDestructionSalienceProjection'));
+});
+
 test('the combat-readability projection fails closed on all five executed runtime grammars', () => {
   assert.deepEqual(PQ023_COMBAT_READABILITY_CELLS.map((row) => row.key), [
     'autocannon', 'flak', 'small', 'small-reduced', 'dense',
@@ -195,6 +266,65 @@ test('the combat-readability projection fails closed on all five executed runtim
     const runtime = copy.cells.find((row) => row.key === mutant.key).runtime;
     runtime[mutant.field] = mutant.value;
     assert.ok(validatePq023CombatReadabilityProjection(copy).length > 0,
+      `${mutant.key}.${mutant.field} mutant must fail closed`);
+  }
+});
+
+test('the small-destruction projection fails closed on its repaired salience contract', () => {
+  assert.deepEqual(PQ023_SMALL_DESTRUCTION_SALIENCE_CELLS.map((row) => row.key), [
+    'small', 'small-reduced', 'dense',
+  ]);
+  const projection = buildPq023SmallDestructionSalienceProjection({
+    cells: [
+      {
+        key: 'small',
+        runtime: {
+          particles: 0,
+          sprites: 3,
+          spriteKinds: [0, 4, 4],
+          trailStreaks: 3,
+          maxFlashSize1: 1.5,
+          maxTrailLength: 3.1,
+          settings: {},
+        },
+      },
+      {
+        key: 'small-reduced',
+        runtime: {
+          particles: 0,
+          sprites: 7,
+          spriteKinds: [2, 2, 4, 4, 4, 4, 4],
+          trailStreaks: 6,
+          settings: { motionReduce: true, flashReduce: true },
+        },
+      },
+      {
+        key: 'dense',
+        runtime: {
+          particles: 0,
+          sprites: 60,
+          trailStreaks: 30,
+          combatBeams: 1,
+          settings: {},
+        },
+      },
+    ],
+  });
+  assert.deepEqual(validatePq023SmallDestructionSalienceProjection(projection), []);
+  const mutants = [
+    { key: 'small', field: 'sprites', value: 2 },
+    { key: 'small', field: 'trailStreaks', value: 2 },
+    { key: 'small', field: 'maxFlashSize1', value: 1.0 },
+    { key: 'small', field: 'maxTrailLength', value: 2.5 },
+    { key: 'small', field: 'spriteKinds', value: [0, 1, 4] },
+    { key: 'small-reduced', field: 'motionReduce', value: false },
+    { key: 'dense', field: 'combatBeams', value: 0 },
+  ];
+  for (const mutant of mutants) {
+    const copy = structuredClone(projection);
+    const runtime = copy.cells.find((row) => row.key === mutant.key).runtime;
+    runtime[mutant.field] = mutant.value;
+    assert.ok(validatePq023SmallDestructionSalienceProjection(copy).length > 0,
       `${mutant.key}.${mutant.field} mutant must fail closed`);
   }
 });

@@ -25,17 +25,29 @@ import {
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import {
   buildPq023CombatReadabilityProjection,
+  buildPq023SmallDestructionSalienceProjection,
   validatePq023CombatReadabilityProjection,
+  validatePq023SmallDestructionSalienceProjection,
 } from './lib/pq023CombatReadabilityProjection.mjs';
 import { PQ023_COMBAT_READABILITY_FIXED_SEED } from './validation-manifests/pq023-combat-readability.mjs';
 import { PQ023_CORRIDOR_CUES_FIXED_SEED } from './validation-manifests/pq023-corridor-cues.mjs';
+import { PQ023_SMALL_DESTRUCTION_SALIENCE_FIXED_SEED } from './validation-manifests/pq023-small-destruction-salience.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const COMBAT_READABILITY_ONLY = process.argv.includes('--combat-readability-only');
-const FIXED_SEED = COMBAT_READABILITY_ONLY
-  ? PQ023_COMBAT_READABILITY_FIXED_SEED
-  : PQ023_CORRIDOR_CUES_FIXED_SEED;
-const TASK_ID = COMBAT_READABILITY_ONLY ? 'pq023-combat-readability' : 'pq023-corridor-cues';
+const SMALL_DESTRUCTION_SALIENCE_ONLY =
+  process.argv.includes('--small-destruction-salience-only');
+const FIXED_SEED = SMALL_DESTRUCTION_SALIENCE_ONLY
+  ? PQ023_SMALL_DESTRUCTION_SALIENCE_FIXED_SEED
+  : COMBAT_READABILITY_ONLY ? PQ023_COMBAT_READABILITY_FIXED_SEED : PQ023_CORRIDOR_CUES_FIXED_SEED;
+const TASK_ID = SMALL_DESTRUCTION_SALIENCE_ONLY
+  ? 'pq023-small-destruction-salience'
+  : COMBAT_READABILITY_ONLY ? 'pq023-combat-readability' : 'pq023-corridor-cues';
+const RECEIPT_SCHEMA = SMALL_DESTRUCTION_SALIENCE_ONLY
+  ? 'spaceface.pq023-small-destruction-salience-electron.v1'
+  : COMBAT_READABILITY_ONLY
+    ? 'spaceface.pq023-combat-readability-electron.v1'
+    : 'spaceface.pq023-corridor-cues-electron.v1';
 const OUT_ROOT = path.join(ROOT, '.devshots', TASK_ID);
 const ELECTRON_DIR = path.join(OUT_ROOT, 'electron');
 const BROWSER_REPORT_PATH = path.join(OUT_ROOT, 'report.json');
@@ -52,6 +64,11 @@ if (browserReport.ok !== true || !browserReport.pq023H1?.semanticProjection) {
 }
 if (COMBAT_READABILITY_ONLY && browserReport.continuationMode !== 'combat-readability-only') {
   console.error('[pq023-combat-readability/electron] Browser report is not the targeted continuation');
+  process.exit(2);
+}
+if (SMALL_DESTRUCTION_SALIENCE_ONLY
+  && browserReport.continuationMode !== 'small-destruction-salience-only') {
+  console.error('[pq023-small-destruction-salience/electron] Browser report is not the small-only continuation');
   process.exit(2);
 }
 
@@ -93,11 +110,15 @@ try {
     `PQ-023 Electron parity requires a real GPU path, got ${gpu.renderer}`);
   await installCueObservers(page);
 
-  const impactProfiles = await readImpactProfiles(page);
-  assert.notEqual(impactProfiles.flak.mode, impactProfiles.autocannon.mode);
+  const impactProfiles = SMALL_DESTRUCTION_SALIENCE_ONLY ? null : await readImpactProfiles(page);
+  if (impactProfiles) assert.notEqual(impactProfiles.flak.mode, impactProfiles.autocannon.mode);
 
   let semanticProjection;
-  if (COMBAT_READABILITY_ONLY) {
+  if (SMALL_DESTRUCTION_SALIENCE_ONLY) {
+    const targeted = await captureElectronSmallDestructionSalience(page);
+    screenshots.push(...targeted.screenshots);
+    semanticProjection = targeted.semanticProjection;
+  } else if (COMBAT_READABILITY_ONLY) {
     const targeted = await captureElectronCombatReadability(page, impactProfiles);
     screenshots.push(...targeted.screenshots);
     semanticProjection = targeted.semanticProjection;
@@ -175,9 +196,7 @@ try {
   const pageIssues = summarizeIssues(issueTracker.errorIssues());
   assert.deepEqual(pageIssues, [], 'Electron cue parity emitted page issues');
   receipt = {
-    schema: COMBAT_READABILITY_ONLY
-      ? 'spaceface.pq023-combat-readability-electron.v1'
-      : 'spaceface.pq023-corridor-cues-electron.v1',
+    schema: RECEIPT_SCHEMA,
     disposition: 'PASS',
     runtime: 'electron',
     fixedSeed: FIXED_SEED,
@@ -203,9 +222,7 @@ try {
     }).catch(() => {});
   }
   receipt = {
-    schema: COMBAT_READABILITY_ONLY
-      ? 'spaceface.pq023-combat-readability-electron.v1'
-      : 'spaceface.pq023-corridor-cues-electron.v1',
+    schema: RECEIPT_SCHEMA,
     disposition: 'FAIL',
     failureClass: 'UNCLASSIFIED_BY_PROBE',
     runtime: 'electron',
@@ -235,9 +252,7 @@ try {
   }
   if (cleanupReport?.pass !== true) {
     receipt ||= {
-      schema: COMBAT_READABILITY_ONLY
-        ? 'spaceface.pq023-combat-readability-electron.v1'
-        : 'spaceface.pq023-corridor-cues-electron.v1',
+      schema: RECEIPT_SCHEMA,
       disposition: 'FAIL',
       problems: [],
       noPerformanceEvidence: true,
@@ -347,6 +362,47 @@ async function readImpactProfiles(targetPage) {
     };
     return { autocannon: pick('wpn_autocannon_m'), flak: pick('wpn_flak_turret_s') };
   });
+}
+
+async function captureElectronSmallDestructionSalience(targetPage) {
+  const spatial = await prepareElectronCombatReadabilityTarget(targetPage);
+  const explosionOrigin = await targetPage.evaluate(() => {
+    const state = window.SF.state;
+    const player = state.entities.get(state.playerId);
+    return { x: player.pos.x + 15, z: player.pos.z + 5 };
+  });
+  const cells = [];
+  const captured = [];
+  const captureCell = async (key, file) => {
+    const screenshot = await capturePng(targetPage, file);
+    const runtime = await readElectronCombatRuntime(targetPage);
+    cells.push({ key, runtime });
+    captured.push({ key, ...screenshot, runtime });
+  };
+
+  await setElectronCombatTargetVisible(targetPage, false);
+  await setAccessibility(targetPage, false);
+  await triggerElectronExplosion(targetPage, {
+    ...explosionOrigin, classId: 'small', radius: 4, freezeMs: 18,
+  });
+  await captureCell('small', '01-small-destruction.png');
+
+  await setAccessibility(targetPage, true);
+  await triggerElectronExplosion(targetPage, {
+    ...explosionOrigin, classId: 'small', radius: 4, freezeMs: 190,
+  });
+  await captureCell('small-reduced', '02-small-destruction-reduced.png');
+
+  await setAccessibility(targetPage, false);
+  await setElectronCombatTargetVisible(targetPage, true);
+  await triggerElectronDenseDestruction(targetPage, { ...explosionOrigin, freezeMs: 180 });
+  await captureCell('dense', '03-dense-representative.png');
+
+  const semanticProjection = buildPq023SmallDestructionSalienceProjection({ cells });
+  assert.deepEqual(validatePq023SmallDestructionSalienceProjection(semanticProjection), [],
+    'targeted Electron small-destruction projection failed closed');
+  await targetPage.evaluate(() => window.__sfResetCombatVfx?.());
+  return { spatial, screenshots: captured, semanticProjection };
 }
 
 async function captureElectronCombatReadability(targetPage, impactProfiles) {
@@ -566,15 +622,27 @@ async function triggerElectronDenseDestruction(targetPage, { x, z, freezeMs }) {
 async function readElectronCombatRuntime(targetPage) {
   return targetPage.evaluate(() => {
     const vfx = window.SF.registry.get('vfx');
+    const liveSprites = vfx ? Array.from(
+      { length: vfx._liveSpriteCount || 0 },
+      (_, index) => vfx._spr[vfx._activeSprites[index]],
+    ).filter(Boolean) : [];
+    const liveStreaks = vfx ? Array.from(
+      { length: vfx._liveTrailStreakCount || 0 },
+      (_, index) => vfx._ts[vfx._activeTrailStreaks[index]],
+    ).filter(Boolean) : [];
     return {
       particles: vfx?._liveCount || 0,
       sprites: vfx?._liveSpriteCount || 0,
-      spriteKinds: vfx ? Array.from(
-        { length: vfx._liveSpriteCount || 0 },
-        (_, index) => vfx._spr[vfx._activeSprites[index]]?.kind,
-      ).filter(Number.isFinite).sort((a, b) => a - b) : [],
+      spriteKinds: liveSprites.map((row) => row.kind)
+        .filter(Number.isFinite).sort((a, b) => a - b),
       trailStreaks: vfx?._liveTrailStreakCount || 0,
       combatBeams: vfx?._combatBeams?.activeCount || 0,
+      maxFlashSize1: liveSprites.reduce((max, row) => (
+        row.kind === 0 ? Math.max(max, Number(row.size1) || 0) : max
+      ), 0),
+      maxTrailLength: liveStreaks.reduce((max, row) => (
+        Math.max(max, (Number(row.size0) || 0) * (Number(row.stretch) || 0))
+      ), 0),
       settings: {
         motionReduce: !!window.SF.state.settings.video.motionReduce,
         flashReduce: !!window.SF.state.settings.accessibility.flashReduce,

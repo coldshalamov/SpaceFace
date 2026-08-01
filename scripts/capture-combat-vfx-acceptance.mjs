@@ -13,14 +13,21 @@ import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import {
   buildPq023CombatReadabilityProjection,
+  buildPq023SmallDestructionSalienceProjection,
   PQ023_COMBAT_READABILITY_CELLS,
+  PQ023_SMALL_DESTRUCTION_SALIENCE_CELLS,
   validatePq023CombatReadabilityProjection,
+  validatePq023SmallDestructionSalienceProjection,
 } from './lib/pq023CombatReadabilityProjection.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PQ023_H1 = process.env.SF_PQ023_H1 === '1';
 const PQ023_COMBAT_READABILITY_ONLY = process.env.SF_PQ023_COMBAT_READABILITY === '1';
+const PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY =
+  process.env.SF_PQ023_SMALL_DESTRUCTION_SALIENCE === '1';
+const PQ023_TARGETED_CONTINUATION =
+  PQ023_COMBAT_READABILITY_ONLY || PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY;
 const OUT = process.env.SF_COMBAT_CAPTURE_DIR
   ? path.resolve(ROOT, process.env.SF_COMBAT_CAPTURE_DIR)
   : path.join(ROOT, '.devshots', 'graphics', 'combat-vfx-acceptance');
@@ -108,7 +115,7 @@ try {
     ['beam', 'wpn_beam_laser_m'],
     ['missile', 'wpn_missile_rack_m'],
   ];
-  if (!PQ023_COMBAT_READABILITY_ONLY) {
+  if (!PQ023_TARGETED_CONTINUATION) {
     for (let i = 0; i < weapons.length; i++) {
       const [family, weaponId] = weapons[i];
       await triggerMuzzle(page, { ...origin, family, weaponId, index: i, freezeMs: 16 });
@@ -139,7 +146,7 @@ try {
     }
   }
 
-  if (PQ023_H1) {
+  if (PQ023_H1 && !PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY) {
     const impactProfiles = await readPq023ImpactProfiles(page);
     assert.notEqual(impactProfiles.flak.mode, impactProfiles.autocannon.mode,
       'PQ-023 flak and autocannon impact modes must remain distinct');
@@ -154,7 +161,7 @@ try {
     { classId: 'ordinary', radius: 8, waits: [18, 95, 190, 430, 1050] },
     { classId: 'capital', radius: 15, waits: [20, 180, 430, 690, 1030, 2200] },
   ];
-  const evidenceClasses = PQ023_COMBAT_READABILITY_ONLY
+  const evidenceClasses = PQ023_TARGETED_CONTINUATION
     ? classes.filter((spec) => spec.classId === 'small')
     : classes;
   let fileIndex = weapons.length + 1;
@@ -175,10 +182,10 @@ try {
     await page.waitForTimeout(spec.classId === 'capital' ? 900 : 500);
   }
 
-  const reducedClass = PQ023_COMBAT_READABILITY_ONLY ? 'small' : 'ordinary';
-  const reducedRadius = PQ023_COMBAT_READABILITY_ONLY ? 4 : 8;
+  const reducedClass = PQ023_TARGETED_CONTINUATION ? 'small' : 'ordinary';
+  const reducedRadius = PQ023_TARGETED_CONTINUATION ? 4 : 8;
   const reducedWaits = [190, 500];
-  const reducedPrefix = PQ023_COMBAT_READABILITY_ONLY ? 'pq023-reduced-small' : '09-reduced-ordinary';
+  const reducedPrefix = PQ023_TARGETED_CONTINUATION ? 'pq023-reduced-small' : '09-reduced-ordinary';
   await setCombatAccessibility(page, true);
   await triggerExplosion(page, {
     ...explosionOrigin,
@@ -198,7 +205,7 @@ try {
   await page.waitForTimeout(1000);
 
   await setCaptureTargetVisible(page, true);
-  if (PQ023_COMBAT_READABILITY_ONLY) {
+  if (PQ023_TARGETED_CONTINUATION) {
     await triggerDenseDestruction(page, { ...explosionOrigin, freezeMs: 180 });
     await capture('pq023-dense-representative.png',
       'dense mixed destruction with connected beam 180ms');
@@ -217,7 +224,7 @@ try {
   // camera; only simulation remains frozen so unrelated NPC combat cannot contaminate the proof.
   await setCombatAccessibility(page, false);
   await setCaptureTargetVisible(page, true);
-  if (!PQ023_COMBAT_READABILITY_ONLY) {
+  if (!PQ023_TARGETED_CONTINUATION) {
     for (let i = 0; i < weapons.length; i++) {
       const [family, weaponId] = weapons[i];
       const startMs = Date.now() - videoStartMs;
@@ -252,7 +259,7 @@ try {
       });
     }
   }
-  if (PQ023_H1) {
+  if (PQ023_H1 && !PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY) {
     const specs = PQ023_COMBAT_READABILITY_ONLY
       ? [
         { family: 'autocannon', weaponId: 'wpn_autocannon_m', scenario: 'autocannon directional incidence impact motion' },
@@ -302,7 +309,7 @@ try {
       );
     }
     motionSegments.push({
-      scenario: PQ023_COMBAT_READABILITY_ONLY
+      scenario: PQ023_TARGETED_CONTINUATION
         ? 'reduced-motion and reduced-flash small destruction'
         : 'reduced-motion and reduced-flash ordinary destruction',
       startMs,
@@ -330,7 +337,7 @@ try {
     });
   }
 
-  if (PQ023_H1 && !PQ023_COMBAT_READABILITY_ONLY) {
+  if (PQ023_H1 && !PQ023_TARGETED_CONTINUATION) {
     const worldSite = await capturePq023WorldSiteSequences(page);
     pq023H1 = {
       ...pq023H1,
@@ -339,6 +346,25 @@ try {
         impactProfiles: pq023H1.impactProfiles,
         worldSite,
       }),
+    };
+  } else if (PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY) {
+    const cells = PQ023_SMALL_DESTRUCTION_SALIENCE_CELLS.map((spec) => {
+      const row = captures.find((captureRow) => path.basename(captureRow.path) === spec.browserFile);
+      assert.ok(row, `missing targeted small-destruction cell ${spec.key}: ${spec.browserFile}`);
+      return { key: spec.key, runtime: row.runtime };
+    });
+    const semanticProjection = buildPq023SmallDestructionSalienceProjection({ cells });
+    assert.deepEqual(validatePq023SmallDestructionSalienceProjection(semanticProjection), [],
+      'targeted Browser small-destruction projection failed closed');
+    pq023H1 = {
+      continuation: 'small-destruction-salience-only',
+      retainedEvidenceNotRecaptured: [
+        'Wreck Cathedral normal/reduced recovery and damage',
+        'autocannon and flak impact differentiation',
+        'rail, plasma, beam, and missile families',
+        'ordinary and capital destruction',
+      ],
+      semanticProjection,
     };
   } else if (PQ023_COMBAT_READABILITY_ONLY) {
     const cells = PQ023_COMBAT_READABILITY_CELLS.map((spec) => {
@@ -459,17 +485,24 @@ try {
     spatialPathIsNontrivial: spatialContract.pathLength > 10,
     muzzleUsesFrontNotEngine:
       spatialContract.source.muzzleToFrontSocket < spatialContract.source.muzzleToEngineSocket,
-    captureCountComplete: PQ023_COMBAT_READABILITY_ONLY
-      ? captures.length === 22
-      : captures.length === (PQ023_H1 ? 87 : 67),
-    motionSegmentsComplete: motionSegments.length >= (PQ023_COMBAT_READABILITY_ONLY ? 5 : (PQ023_H1 ? 15 : 10)),
-    contactSheetsComplete: contactSheets.length === 3,
-    pq023WorldSiteSequenceComplete: !PQ023_H1 || PQ023_COMBAT_READABILITY_ONLY
+    captureCountComplete: PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY
+      ? captures.length === 14
+      : PQ023_COMBAT_READABILITY_ONLY
+        ? captures.length === 22
+        : captures.length === (PQ023_H1 ? 87 : 67),
+    motionSegmentsComplete: motionSegments.length >= (PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY
+      ? 3
+      : PQ023_COMBAT_READABILITY_ONLY ? 5 : (PQ023_H1 ? 15 : 10)),
+    contactSheetsComplete: contactSheets.length === (PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY ? 2 : 3),
+    pq023WorldSiteSequenceComplete: !PQ023_H1 || PQ023_TARGETED_CONTINUATION
       || pq023H1?.semanticProjection?.worldSiteCueIds?.join(',')
         === 'world_site.recovery,world_site.damage,world_site.recovery,world_site.damage',
     pq023CombatReadabilityComplete: !PQ023_COMBAT_READABILITY_ONLY
       || (pq023H1?.semanticProjection?.cells?.length === 5
         && validatePq023CombatReadabilityProjection(pq023H1.semanticProjection).length === 0),
+    pq023SmallDestructionSalienceComplete: !PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY
+      || (pq023H1?.semanticProjection?.cells?.length === 3
+        && validatePq023SmallDestructionSalienceProjection(pq023H1.semanticProjection).length === 0),
   };
   const failedAcceptanceChecks = Object.entries(acceptanceChecks)
     .filter(([, passed]) => passed !== true)
@@ -488,7 +521,9 @@ try {
     acceptanceChecks,
     failedAcceptanceChecks,
     pq023H1,
-    continuationMode: PQ023_COMBAT_READABILITY_ONLY ? 'combat-readability-only' : null,
+    continuationMode: PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY
+      ? 'small-destruction-salience-only'
+      : PQ023_COMBAT_READABILITY_ONLY ? 'combat-readability-only' : null,
     informational_contended: PQ023_H1,
     informational_contended_note: PQ023_H1
       ? 'Phase H1 ran contended by design. videoTimeMs and motion-segment offsets are editorial navigation metadata only; no time-valued field is performance evidence. Matched performance remains Phase H3.'
@@ -1589,7 +1624,30 @@ function buildPq023SemanticProjection({ impactProfiles, worldSite }) {
 }
 
 async function buildEvidenceSheets() {
-  const sheetSpecs = PQ023_COMBAT_READABILITY_ONLY ? [
+  const sheetSpecs = PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY ? [
+    {
+      output: 'pq023-small-final-sheet.png',
+      tile: '5x2',
+      sources: [
+        ...Array.from({ length: 5 }, (_, index) => `06-small-${String(index + 1).padStart(2, '0')}.png`),
+        'pq023-reduced-small-01.png',
+        'pq023-reduced-small-02.png',
+        'motion-reduced-small-01.png',
+        'motion-reduced-small-02.png',
+        'motion-reduced-small-03.png',
+      ],
+    },
+    {
+      output: 'pq023-dense-guard-sheet.png',
+      tile: '4x1',
+      sources: [
+        'pq023-dense-representative.png',
+        'motion-dense-destruction-01.png',
+        'motion-dense-destruction-02.png',
+        'motion-dense-destruction-03.png',
+      ],
+    },
+  ] : PQ023_COMBAT_READABILITY_ONLY ? [
     {
       output: 'pq023-impact-temporal-sheet.png',
       tile: '4x2',
@@ -1697,6 +1755,14 @@ async function capture(file, scenario, options = {}) {
   const sha256 = createHash('sha256').update(bytes).digest('hex');
   const runtime = await page.evaluate(() => {
     const vfx = window.SF.registry.get('vfx');
+    const liveSprites = vfx ? Array.from(
+      { length: vfx._liveSpriteCount || 0 },
+      (_, index) => vfx._spr[vfx._activeSprites[index]],
+    ).filter(Boolean) : [];
+    const liveStreaks = vfx ? Array.from(
+      { length: vfx._liveTrailStreakCount || 0 },
+      (_, index) => vfx._ts[vfx._activeTrailStreaks[index]],
+    ).filter(Boolean) : [];
     const streakIndex = vfx?._liveTrailStreakCount > 0 ? vfx._activeTrailStreaks[0] : -1;
     const spriteIndex = vfx?._liveSpriteCount > 0 ? vfx._activeSprites[0] : -1;
     const streak = streakIndex >= 0 ? vfx._ts[streakIndex] : null;
@@ -1707,12 +1773,16 @@ async function capture(file, scenario, options = {}) {
     return {
       particles: vfx?._liveCount || 0,
       sprites: vfx?._liveSpriteCount || 0,
-      spriteKinds: vfx ? Array.from(
-        { length: vfx._liveSpriteCount || 0 },
-        (_, index) => vfx._spr[vfx._activeSprites[index]]?.kind,
-      ).filter(Number.isFinite).sort((a, b) => a - b) : [],
+      spriteKinds: liveSprites.map((row) => row.kind)
+        .filter(Number.isFinite).sort((a, b) => a - b),
       trailStreaks: vfx?._liveTrailStreakCount || 0,
       combatBeams: vfx?._combatBeams?.activeCount || 0,
+      maxFlashSize1: liveSprites.reduce((max, row) => (
+        row.kind === 0 ? Math.max(max, Number(row.size1) || 0) : max
+      ), 0),
+      maxTrailLength: liveStreaks.reduce((max, row) => (
+        Math.max(max, (Number(row.size0) || 0) * (Number(row.stretch) || 0))
+      ), 0),
       beamVisible: !!vfx?._combatBeams?.group?.visible,
       projectileVisual: projectile ? {
         name: projectile.name,

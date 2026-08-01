@@ -4050,7 +4050,7 @@
       "priority": 240,
       "title": "Capture the final small-destruction candidate",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-023.small-destruction-salience-repair"
       ],
@@ -4061,7 +4061,7 @@
       "paths": [
         "scripts/capture-combat-vfx-acceptance.mjs",
         "scripts/check-pq023-corridor-cues-electron.mjs",
-        "scripts/probe-pq023-combat-readability.mjs",
+        "scripts/probe-pq023-small-destruction-salience.mjs",
         "scripts/lib/pq023CombatReadabilityProjection.mjs",
         "scripts/validation-manifests/pq023-small-destruction-salience.mjs",
         "test/pq023-corridor-cues-h1-manifest.test.mjs",
