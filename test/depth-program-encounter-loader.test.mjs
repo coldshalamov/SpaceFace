@@ -87,7 +87,9 @@ test('encounter migration preserves every definition byte-for-byte under JSON se
 // can draw. Measured on master 2026-07-27: with the authored zones in, the matrix hashes
 // eba685c5…; with them held out it hashes 332c517a…, the fixture value, exactly. 5 of the 60 rows
 // moved and all 5 are sector_tethys_junction (seeds 7/47/1234 on day 0, seed 1 on days 1 and 2).
-// No other sector moved, so nothing else in the planner's inputs drifted.
+// PQ-020 later reshaped the existing `zone_ceres_belt` from center (300, -300), radius 1100
+// to center (500, -700), radius 850 while adding its route-harness place. That is legitimate live
+// world evolution too, but unlike an appended place it must be explicitly reconstructed here.
 //
 // Holding the authored places out is therefore reconstruction, not relaxation: the hash still pins
 // the full planner output across all 60 sector-day-seed combinations, and a change to the core
@@ -97,8 +99,26 @@ const AUTHORED_PLACE_ZONE_IDS = new Set(
   Object.values(AUTHORED_PLACE_ZONES).flat().map((zone) => zone.id),
 );
 
+const MIGRATION_ZONE_OVERRIDES = Object.freeze({
+  zone_ceres_belt: Object.freeze({
+    sectorId: 'sector_ceres_belt',
+    center: Object.freeze({ x: 300, z: -300 }),
+    radius: 1100,
+  }),
+});
+
 function migrationBaselineZones(sectorId) {
-  return zonesForSector(sectorId).filter((zone) => !AUTHORED_PLACE_ZONE_IDS.has(zone.id));
+  return zonesForSector(sectorId)
+    .filter((zone) => !AUTHORED_PLACE_ZONE_IDS.has(zone.id))
+    .map((zone) => {
+      const override = MIGRATION_ZONE_OVERRIDES[zone.id];
+      if (!override) return zone;
+      return {
+        ...zone,
+        center: { ...override.center },
+        radius: override.radius,
+      };
+    });
 }
 
 test('encounter migration preserves the seeded 60-schedule matrix', () => {
@@ -117,7 +137,10 @@ test('encounter migration preserves the seeded 60-schedule matrix', () => {
   // The reconstruction above must stay honest: whatever the live world adds may only move rows in
   // sectors that actually received an authored place. If a core zone, the planner, or the catalogue
   // drifts, it moves a row somewhere else and this fails — the hold-out cannot hide it.
-  const sectorsWithAuthoredPlaces = new Set(Object.keys(AUTHORED_PLACE_ZONES));
+  const sectorsWithExpectedZoneDrift = new Set([
+    ...Object.keys(AUTHORED_PLACE_ZONES),
+    ...Object.values(MIGRATION_ZONE_OVERRIDES).map((override) => override.sectorId),
+  ]);
   const movedSectors = new Set();
   for (const sectorId of fixture.scheduleMatrix.sectors) {
     const live = zonesForSector(sectorId);
@@ -130,7 +153,7 @@ test('encounter migration preserves the seeded 60-schedule matrix', () => {
       }
     }
   }
-  const unexplained = [...movedSectors].filter((id) => !sectorsWithAuthoredPlaces.has(id));
+  const unexplained = [...movedSectors].filter((id) => !sectorsWithExpectedZoneDrift.has(id));
   assert.deepEqual(unexplained, [],
-    'only sectors carrying an authored place may differ between the live and migration-era zone sets');
+    'only sectors with an authored place or explicit migration-era geometry may differ from live zones');
 });
