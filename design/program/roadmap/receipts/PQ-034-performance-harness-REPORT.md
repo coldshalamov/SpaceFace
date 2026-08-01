@@ -20,6 +20,13 @@ acceptedBrowserSourceCandidateDigest: b8193f952d13371c586753168dc3c4fa762d9c0dec
 browserClaimsConsumed: 6
 browserClaimAccepted: true
 latestBrowserRepairCandidate: c812ca50651c48265915de3df3a21b1a7bdaac55
+firstFailedElectronCandidate: b1b15ee9a5f3a9cc3e6a77c41dabe36370d3fe0c
+firstFailedElectronClaimId: 25476-83c733557dbe390afc61eedb
+firstFailedElectronSourceCandidateDigest: 96cfc12382d3fb0b3eee146953c07023df8d6c2a0fd9e0d11ebfdae90a2b7047
+latestElectronRepairCandidate: 137e4d8f12a3f20df08d645a47b321c1afb90b1b
+electronClaimsConsumed: 1
+electronClaimAccepted: false
+sourcePairedEvidenceCurrent: false
 headedRuntimeLaunched: true
 performanceEvidenceClaimed: false
 protectedWorktreeMutated: false
@@ -535,3 +542,56 @@ matrix misses literal budgets in multiple routes (for example 50 ms p95 in the 5
 transparent-heavy windows), and the packet has no matched improvement verdict yet. No performance
 gain or absolute-budget pass is promoted. Browser will not be rerun unchanged. The exact unit remains
 `IN_PROGRESS`; one source-paired Electron claim, overhead proof, and integrator causal review remain.
+
+## First Electron claim: exact-runtime, strict-CSP, and context-loss repair
+
+Claim `25476-83c733557dbe390afc61eedb` ran once on clean pushed candidate
+`b1b15ee9a5f3a9cc3e6a77c41dabe36370d3fe0c`. Its source digest was `96cfc123…`, already different
+from the accepted Browser digest `b8193f95…`; the evidence could never form a source pair. The
+retained artifact is
+`.devshots/perf/closure/electron/performance-closure-electron-2026-08-01T11-20-50-729Z-29580-c325bd84/`.
+It completed 25/25 windows, recorded quiet start/end activity, and passed owned cleanup, but correctly
+failed measurement validity.
+
+The artifact names the causes precisely:
+
+- its renderer user agent is `Electron/31.7.7`, not the package/lock target `43.2.0`;
+- its warning set contains exactly one Electron insecure/missing-CSP warning and twelve
+  `GL_INVALID_VALUE: Program object expected` warnings after context recovery;
+- the warning arrays therefore remain binding as `runtime-errors-observed-or-unreported`; no raw
+  timing is accepted from this run.
+
+Candidate `137e4d8f12a3f20df08d645a47b321c1afb90b1b` closes the causes with fail-closed authority:
+
+- exact Electron provisioning now requires package, declared, and binary versions to agree and
+  records the runtime executable/version plus matching renderer user agent;
+- the Electron-owned server sends an explicit CSP without `unsafe-eval`, while the Browser route is
+  unchanged;
+- Playwright wait conditions use direct page evaluation; Rapier accepts only wasm-bindgen's inert
+  `return this` lookup; and the Basis worker replaces exactly its two pinned dynamic Emscripten shims;
+- the Basis regression runs real WASM over an embedded KTX2 from a release GLB and matches the stock
+  decoder's width, height, levels, faces, layers, validity, and alpha facts;
+- context rebuild is deferred until restore listeners settle, and the draw boundary observes live
+  `gl.isContextLost()` during the asynchronous event-delivery gap.
+
+The bounded context diagnostic at
+`.devshots/perf/diagnostic/pq034-context-gap-guard/performance-closure-electron-2026-08-01T12-57-24-501Z-19448-6d0db5ce/`
+records `lostEvent=true`, `restoredEvent=true`, retained authored mesh identity, pixel and rAF proof,
+replaced Three.js properties at event tail and microtask, and `invalidProgramCalls: []`. Its overall
+exit is intentionally non-promoting because the diagnostic used a one-second sample below the
+five-second measurement contract. The temporary program trace is absent from the committed source.
+
+Final repair evidence:
+
+- strict-CSP/runtime/context focused set — PASS 48/48;
+- physics authority — PASS;
+- floating-origin Rapier plus collision manifest — PASS 18/18;
+- Electron platform contracts and launch policy — PASS;
+- `npm run check:baseline` — PASS 10/10 in 43.300 seconds;
+- `npm run check:electron:new-game` — PASS on Electron 43.2.0, Intel D3D11 hardware WebGL, flight
+  mode, 16 authored ship presentations, zero page/GPU-process errors, and owned cleanup.
+
+This is a repair checkpoint, not acceptance. The production/harness source changed, so the old
+Browser matrix remains valid historical Browser authority but is not current pair material. One fresh
+Browser claim and one Electron claim must now pass on the same clean pushed source before overhead
+and terminal causal review can close the unit.

@@ -3377,11 +3377,21 @@
       ],
       "paths": [
         "design/program/roadmap/active/PQ-034.md",
+        "electron/main.cjs",
         "scripts/validation-manifests/",
-        "scripts/"
+        "scripts/",
+        "src/core/rapierCompatRuntime.js",
+        "src/core/rapierCollisionWorld.js",
+        "src/core/sg02DynamicBodyOwner.js",
+        "src/render/contextResourceLifecycle.js",
+        "src/render/renderer.js",
+        "test/",
+        "vendor/addons/loaders/KTX2Loader.js"
       ],
       "checks": [
         "npm run check:baseline",
+        "npm run check:electron:new-game",
+        "node scripts/check-electron-platform-contracts.mjs",
         "node scripts/validation-broker-cli.mjs --manifest performance-closure-browser",
         "node scripts/validation-broker-cli.mjs --manifest performance-closure-electron"
       ],
@@ -3389,7 +3399,7 @@
         "design/program/roadmap/receipts/PQ-034-candidate-audit-REPORT.md",
         "design/program/roadmap/receipts/PQ-034-performance-harness-REPORT.md"
       ],
-      "brief": "After the candidate audit lands, run the exact matched Browser/Electron authority and write the terminal PERF-00 receipt.",
+      "brief": "The candidate audit and Electron runtime/CSP/context repair are integrated. Run one fresh same-source Browser/Electron pair, prove enabled overhead, perform the integrator causal review, and write the terminal PERF-00 receipt.",
       "blocker": null
     },
     {
