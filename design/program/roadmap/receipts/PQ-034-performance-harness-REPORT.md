@@ -14,8 +14,11 @@ secondFailedBrowserCandidate: dc8a4ae8148bf771188a2e982f0ba7c55da8bd4d
 thirdFailedBrowserCandidate: da98b9645e5096390990a0962c91fdd1c685d092
 fourthFailedBrowserCandidate: cc88a5d8b1d0f68198b0e3f08badaebb46a8e84c
 fifthFailedBrowserCandidate: 1ad68828dff71d599b2e14f8639677837af2dab1
-browserClaimsConsumed: 5
-browserClaimAccepted: false
+acceptedBrowserCandidate: b847320e4aa0f864e2f6c4862de306fddd773a6b
+acceptedBrowserClaimId: 4256-1baf8886d6425c5283c0dd78
+acceptedBrowserSourceCandidateDigest: b8193f952d13371c586753168dc3c4fa762d9c0dec3f59c8a2b61e8654cc5645
+browserClaimsConsumed: 6
+browserClaimAccepted: true
 latestBrowserRepairCandidate: c812ca50651c48265915de3df3a21b1a7bdaac55
 headedRuntimeLaunched: true
 performanceEvidenceClaimed: false
@@ -497,3 +500,38 @@ activity during or after the measured route cannot be waited away.
 
 No performance conclusion is promoted. The exact unit remains `IN_PROGRESS`; a fresh Browser claim on
 the changed clean pushed candidate is next, and Electron remains unspent until Browser passes.
+
+## Sixth Browser claim: accepted measurement authority
+
+The one-use Browser claim on clean pushed candidate `b847320e4aa0f864e2f6c4862de306fddd773a6b`
+passed in 454.166 seconds. Its immutable artifacts are retained at
+`.devshots/perf/closure/browser/performance-closure-browser-2026-08-01T11-08-23-266Z-9852-98f87623/`,
+and `.devshots/perf/closure/browser/browser/evidence.json` is the content-verified v2 broker
+projection. Claim `4256-1baf8886d6425c5283c0dd78` binds:
+
+- `sourceCandidateDigest`: `b8193f952d13371c586753168dc3c4fa762d9c0dec3f59c8a2b61e8654cc5645`;
+- Browser `candidateDigest`: `2e47f480e08cde76139bf5dec795a5d3c04b9d64d31d1d31349a3764844f0848`;
+- raw `performance-windows.json` SHA-256: `d02eaa44328ad975a3b88984b3accb01bce73c305e7dc47c72a4ddde6753cf30`.
+
+The exact closure verdict is green: worktree clean/stable, activity quiet, real Intel ANGLE D3D11,
+cleanup complete, errors empty, and 25/25 windows present. All 25 GPU-timer, pipeline-warmup, pipeline
+policy, and route/restoration check groups pass. The warmup receipt caught and settled the three lazy
+program transitions that motivated the repair: `bloom_off` observed one transition and waited
+5.854 seconds total / 5.028 seconds stable; `background_hidden` observed one and waited 9.730 seconds
+total / 5.024 seconds stable; material-basic observed one and waited 5.271 seconds total / 5.008
+seconds stable. Their measured arms then held programs `100 → 100`, `102 → 102`, and `105 → 105`.
+Every GPU queue ended with zero pending records, including a valid zero-query docked 3D-idle window.
+
+The public menu → New Game → authored flight → map/waypoint → physical dock → Station route passed,
+as did controlled context loss/restoration and cleanup-scoped jump. Page, request, HTTP, console, GL,
+and ordinary warning arrays are empty; only two expected context messages and two retained driver
+compiler warnings remain outside the error verdict. The start census used one quiet sample at
+`0.109375` CPU-seconds / `0.021875` aggregate core fraction; the single fail-closed end sample was
+quiet at `0.125` CPU-seconds / `0.025`, with no churn at either boundary. Cleanup closed the page,
+context, Browser, server, ports, measurement gates, and broker-owned process successfully.
+
+This evidence proves trustworthy Browser measurement authority, not target performance. The raw
+matrix misses literal budgets in multiple routes (for example 50 ms p95 in the 50-ship and
+transparent-heavy windows), and the packet has no matched improvement verdict yet. No performance
+gain or absolute-budget pass is promoted. Browser will not be rerun unchanged. The exact unit remains
+`IN_PROGRESS`; one source-paired Electron claim, overhead proof, and integrator causal review remain.
