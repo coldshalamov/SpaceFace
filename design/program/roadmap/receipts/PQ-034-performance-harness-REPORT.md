@@ -17,17 +17,19 @@ fifthFailedBrowserCandidate: 1ad68828dff71d599b2e14f8639677837af2dab1
 acceptedBrowserCandidate: b847320e4aa0f864e2f6c4862de306fddd773a6b
 acceptedBrowserClaimId: 4256-1baf8886d6425c5283c0dd78
 acceptedBrowserSourceCandidateDigest: b8193f952d13371c586753168dc3c4fa762d9c0dec3f59c8a2b61e8654cc5645
-browserClaimsConsumed: 11
+browserClaimsConsumed: 14
 browserClaimAccepted: true
-latestFailedBrowserCandidate: 937fe965357a7ef8e20aa009819ad42a2a979752
-latestFailedBrowserClaimId: 18776-f52e09cf45f6f2f38ae80cec
-latestFailedBrowserSourceCandidateDigest: 22012469e3a95f26e3d06b6446c611283560e0d8bdb014f05d2c0aaa2b518e99
+latestFailedBrowserCandidate: f252108c408b77dafd7d72f6c74051a8204925bb
+latestFailedBrowserClaimId: 26188-b177fe4f5ba9036b8f779059
+latestFailedBrowserSourceCandidateDigest: e64d83a1bdbe86e9cacb20a6cc026c47ce21cc0cad26804ef6723d7acfedfa79
 latestBrowserClaimAccepted: false
-latestBrowserCandidate: 937fe965357a7ef8e20aa009819ad42a2a979752
-latestBrowserClaimId: 18776-f52e09cf45f6f2f38ae80cec
-latestBrowserSourceCandidateDigest: 22012469e3a95f26e3d06b6446c611283560e0d8bdb014f05d2c0aaa2b518e99
+latestBrowserCandidate: f252108c408b77dafd7d72f6c74051a8204925bb
+latestBrowserClaimId: 26188-b177fe4f5ba9036b8f779059
+latestBrowserSourceCandidateDigest: e64d83a1bdbe86e9cacb20a6cc026c47ce21cc0cad26804ef6723d7acfedfa79
 latestVfxCacheRepairCandidate: 12b6b905b36b9820f2e7cd02b49b1a4f61b7f5c4
-latestBrowserRepairCandidate: 20f78f492b32de7ce8c4932c5f0b5612110c12a7
+latestBrowserRepairCandidate: 98012cdb8fddd1fa9e34ccc3497d15b0c23da09a
+latestTimeoutAuthorityCandidate: f252108c408b77dafd7d72f6c74051a8204925bb
+latestOverheadCandidate: e4d9afdfb9bcab5e47d5186e36acab44c23341e0
 latestBrokerPrelaunchDisposition: regression-required-after-acceptance-failure
 firstFailedElectronCandidate: b1b15ee9a5f3a9cc3e6a77c41dabe36370d3fe0c
 firstFailedElectronClaimId: 25476-83c733557dbe390afc61eedb
@@ -36,11 +38,15 @@ latestFailedElectronCandidate: 191857fdc8aa44f1b77a20b4578e1b62d4118ead
 latestFailedElectronClaimId: 2612-798b762726a8c0634f5a3e40
 latestFailedElectronSourceCandidateDigest: c8a6cd7f2f232a74810c9a5e1c8cfb45a5914bd2d2964e6b6bd625aaddcfdb7f
 latestElectronRepairCandidate: 429f36f0
-electronClaimsConsumed: 2
-electronClaimAccepted: false
+electronClaimsConsumed: 3
+electronClaimAccepted: true
+latestElectronCandidate: dc3fffd47ae5b4c09d12be08d321990a1e9cfbf0
+latestElectronClaimId: 13324-8c09c47a327e4a7f8e5a024e
+latestElectronSourceCandidateDigest: 3b2a850c43d7883869b107637eea8bf306c2a7841e9b9d744b5585b7cee8328a
 sourcePairedEvidenceCurrent: false
 headedRuntimeLaunched: true
 performanceEvidenceClaimed: false
+overheadEvidenceAccepted: true
 protectedWorktreeMutated: false
 leasesReleased: false
 ```
@@ -854,3 +860,51 @@ renderer and soak harness but omitted `src/render/partsLibrary.js`,
 incomplete source identity. Candidate `965c8dfb` adds all five exact paths to both paired digests and
 runs the regressions as a manifest fast gate. The paired manifest/repair set passes 31/31 and
 `npm run check:baseline` remains 10/10 in 40.679 seconds.
+
+## Source-paired checkpoint, terminal warmup, and cleanup-tree repair
+
+Clean `dc3fffd4` produced a complete Browser/Electron checkpoint before the later repairs. Browser
+claim `16236-6e95a71046a66b8d6e2dd353` and Electron claim
+`13324-8c09c47a327e4a7f8e5a024e` share source digest
+`3b2a850c43d7883869b107637eea8bf306c2a7841e9b9d744b5585b7cee8328a`; both pass all 25 windows,
+public route, Intel D3D11 GPU authority, activity, issues, restoration, context, and cleanup. Their
+runtime candidates remain distinct (`e5aae686…` / `5a83373d…`). This proves the pair can close, but
+source changed afterward and the checkpoint is not terminally promoted.
+
+Claim `39440-b1317c193d1f3971ae634427` on `b4d995ee` then passed the route and first 24 windows but
+correctly rejected terminal jump warmup after late authored-residency transitions left only 1.862 of
+five required stable seconds inside 20 seconds. `276e3ccf` grants only that transition 30 seconds;
+`f252108c` makes the scenario contract the sole runner/validator timeout owner. The same-source
+terminal diagnostic passed route, zero-transition five-second stability, restoration, and cleanup.
+
+Full Browser claim `26188-b177fe4f5ba9036b8f779059` on clean `f252108c` then passed every one of
+the 25 window-validity rows. It failed only because an owned Chrome descendant exited during the end
+activity census after BrowserServer root PID `11688` had exited; aggregate activity was still only
+`0.075` of one core. Candidate `98012cdb` captures the Windows descendant graph before teardown and
+requires the exact owned set to reach zero. Its persistent-child counterexample stays red. A live
+diagnostic observed root `27012` plus seven descendants and zero lingering PIDs on the first poll,
+while route, terminal warmup, restoration, measurement disablement, and cleanup all passed. Unrelated
+Chrome activity beginning during that diagnostic's later end census kept it non-promoting and is
+reported rather than relabeled.
+
+## Disabled/enabled instrumentation overhead closure
+
+The retained route records a real red-to-green sequence. The clean full-rate `dc3fffd4` predecessor
+measured `1.492537%` matched-block median. `b4d995ee` introduced 16/31 sampling, but a later clean
+`4ca85aac` run under the tracked arbiter still measured `1.797753%`, so the earlier isolated 0.699%
+sample was not cherry-picked as the verdict. Candidate `e4d9afdf` reduces only detailed system timing
+to eight prime-distributed ticks per 31, still yielding 75–80 samples per owner in five seconds.
+
+The final clean pushed Browser record is
+`.devshots/perf/diagnostic/pq034-instrumentation-overhead.json`:
+
+- source `e4d9afdfb9bcab5e47d5186e36acab44c23341e0`, Chrome 150 / Intel ANGLE D3D11;
+- 1,125 matched adjacent pairs, 37 independent 30-pair blocks, no runtime issues;
+- resolution-capable block median `0.772627%` with effective resolution `0.052910%` — PASS under 1%;
+- coarse per-frame medians `6.3 / 6.3 ms`; their 0.1 ms clock step equals `1.587300%`, so they remain
+  visible diagnostic context and cannot arbitrate the smaller budget;
+- system, render-work, and background-job gates all restore disabled; Browser/server cleanup passes;
+- focused 13/13, manifest 3/3, program docs, and baseline 10/10 in 44.307 seconds pass.
+
+Overhead is accepted. The exact unit remains `IN_PROGRESS` only for a fresh Browser/Electron pair on
+the same post-repair source and the primary integrator's terminal causal review.

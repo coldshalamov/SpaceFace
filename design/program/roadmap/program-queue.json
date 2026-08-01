@@ -3406,7 +3406,7 @@
         "design/program/roadmap/receipts/PQ-034-candidate-audit-REPORT.md",
         "design/program/roadmap/receipts/PQ-034-performance-harness-REPORT.md"
       ],
-      "brief": "The twelfth Browser claim completed all 25 windows and exposed two exact defects: the harness did not own/await its Chrome OS child, and the bloom-off target switch compiled already-installed authored variants during measurement. Repair ddc9c1f5 owns exact BrowserServer teardown, frame-bounded resident-plan admission, current-target scene compilation, and a 133-to-133 zero-addition bloom window; 965c8dfb binds every repair owner/regression into both paired manifests. Run one fresh Browser claim and, only after it passes, Electron on that same clean source; then prove enabled overhead, perform the integrator causal review, and write the terminal PERF-00 receipt.",
+      "brief": "A clean dc3fffd4 Browser/Electron pair passed 25/25 per runtime but became historical after necessary source repairs. Browser claim 26188-b177fe4f5ba9036b8f779059 proved all 25 window rows and failed only old cleanup descendant churn; 98012cdb now proves the exact owned Windows Chrome tree reaches zero. e4d9afdf closes enabled instrumentation overhead at a resolution-capable 0.772627% with 75-80 owner samples per five seconds. Run one fresh Browser claim and, only after it passes, Electron on that same clean source; then perform the integrator causal review and write the terminal PERF-00 receipt.",
       "blocker": null
     },
     {
