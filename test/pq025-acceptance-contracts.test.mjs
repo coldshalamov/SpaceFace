@@ -497,7 +497,6 @@ test('ADV-12a..f: a sample missing any required metric is rejected', () => {
 
 test('performance owner normalizer composes complete qualification facts from owner reports', () => {
   const perfReport = {
-    frameCallbackInterval: { raw: [10, 12, 18, 40], samples: 4, p50: 12, p95: 18, p99: 18, max: 40 },
     displayCadence: { valid: true, displayIntervalMs: 16.7, observedIntervals: 4, missedVsync: 1 },
     loop: { multiStepFrames: 2, shedBacklogFrames: 1, shedStepsTotal: 3, maxStepsThisFrame: 4, backlogCauseCounts: { simulation: 1 } },
     phases: { sim: { p95: 3 }, render: { p95: 7 }, ui: { p95: 1 } },
@@ -523,8 +522,13 @@ test('performance owner normalizer composes complete qualification facts from ow
       },
     },
   };
+  const qualificationFrameReport = {
+    schema: 'spaceface.qualificationFrameIntervals.v1', enabled: true,
+    capacity: 10, samples: 4, overflow: 0,
+    raw: [10, 12, 18, 40], p50: 12, p95: 18, p99: 18, max: 40,
+  };
 
-  const normalized = normalizePerformanceOwnerFacts({ perfReport, counterSnapshot });
+  const normalized = normalizePerformanceOwnerFacts({ perfReport, counterSnapshot, qualificationFrameReport });
   assert.equal(normalized.ok, true, normalized.failures?.join(','));
   assert.deepEqual(normalized.sample.rawThresholdCounts, { over16_7Ms: 2, over32Ms: 1 });
   assert.equal(normalized.sample.p50Ms, 12);
@@ -541,16 +545,41 @@ test('performance owner normalizer composes complete qualification facts from ow
   const mismatchedWindow = normalizePerformanceOwnerFacts({
     perfReport,
     counterSnapshot: { ...counterSnapshot, framesObserved: 6 },
+    qualificationFrameReport,
   });
   assert.equal(mismatchedWindow.ok, false);
   assert.ok(mismatchedWindow.failures.includes('capture-window-frame-count-mismatch'));
   assert.ok(mismatchedWindow.failures.includes('renderer-frame-count-mismatch'));
+
+  const overflowed = normalizePerformanceOwnerFacts({
+    perfReport: {
+      ...perfReport,
+      displayCadence: { ...perfReport.displayCadence, observedIntervals: 5 },
+    },
+    counterSnapshot: {
+      ...counterSnapshot,
+      framesObserved: 6,
+      nondeterministic: {
+        ...counterSnapshot.nondeterministic,
+        renderer: {
+          ...counterSnapshot.nondeterministic.renderer,
+          samples: 6,
+          drawTriangleCounts: {
+            ...counterSnapshot.nondeterministic.renderer.drawTriangleCounts,
+            samples: 6,
+          },
+        },
+      },
+    },
+    qualificationFrameReport: { ...qualificationFrameReport, overflow: 1 },
+  });
+  assert.equal(overflowed.ok, false);
+  assert.ok(overflowed.failures.includes('qualification-frame-capture-overflow'));
 });
 
 test('performance owner normalizer fails closed on uncalibrated cadence or incomplete renderer capture', () => {
   const base = {
     perfReport: {
-      frameCallbackInterval: { raw: [10], samples: 1, p50: 10, p95: 10, p99: 10, max: 10 },
       displayCadence: { valid: false, displayIntervalMs: null, observedIntervals: 1, missedVsync: 0 },
       loop: {}, phases: {}, entities: {}, saves: { maxBlockingSlice: { max: 0 } }, counters: { vfxSubsystems: {} },
     },
@@ -558,10 +587,15 @@ test('performance owner normalizer fails closed on uncalibrated cadence or incom
       schema: 'spaceface.perfCounters.v1', enabled: true, framesObserved: 2,
       nondeterministic: { allocation: { samples: 0 }, renderer: { samples: 0, unavailableSamples: 1 } },
     },
+    qualificationFrameReport: {
+      schema: 'spaceface.qualificationFrameIntervals.v1', enabled: false,
+      capacity: 0, samples: 0, overflow: 0, raw: [], p50: 0, p95: 0, p99: 0, max: 0,
+    },
   };
   const result = normalizePerformanceOwnerFacts(base);
   assert.equal(result.ok, false);
   assert.ok(result.failures.includes('display-cadence-uncalibrated'));
+  assert.ok(result.failures.includes('qualification-frame-capture-missing'));
   assert.ok(result.failures.includes('renderer-owner-samples-missing'));
   assert.equal(result.sample, null);
 });

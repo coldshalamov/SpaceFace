@@ -2,6 +2,7 @@ import { createPerfCounters } from './perfCounters.js';
 
 const RING_N = 180;
 const BACKGROUND_JOB_RING_N = 128;
+const MAX_QUALIFICATION_INTERVAL_SAMPLES = 2_000_000;
 
 function nowMs() {
   return (typeof performance !== 'undefined' && performance && typeof performance.now === 'function')
@@ -42,14 +43,12 @@ function sample(stat, ms) {
   if (ms > stat.max) stat.max = ms;
 }
 
-function reportStat(stat, includeRaw = false) {
+function reportStat(stat) {
   let min = Infinity;
   let max = 0;
-  const raw = includeRaw ? new Array(stat.count) : null;
   const start = (stat.head - stat.count + RING_N) % RING_N;
   for (let i = 0; i < stat.count; i++) {
     const v = stat.values[(start + i) % RING_N];
-    if (raw) raw[i] = v;
     stat.scratch[i] = v;
     if (v < min) min = v;
     if (v > max) max = v;
@@ -66,7 +65,7 @@ function reportStat(stat, includeRaw = false) {
   } else {
     min = 0;
   }
-  const report = {
+  return {
     last: stat.last,
     avg: stat.count ? stat.total / stat.count : 0,
     min,
@@ -76,8 +75,11 @@ function reportStat(stat, includeRaw = false) {
     p99,
     samples: stat.count,
   };
-  if (raw) report.raw = raw;
-  return report;
+}
+
+function percentile(sorted, fraction) {
+  if (sorted.length === 0) return 0;
+  return sorted[Math.min(sorted.length - 1, Math.floor(fraction * (sorted.length - 1)))];
 }
 
 function entityCounts(state) {
@@ -158,6 +160,9 @@ export function ensurePerfRuntime(state) {
   let displayIntervalMs = null;
   let displayCadenceObservedIntervals = 0;
   let missedVsync = 0;
+  let qualificationIntervalValues = null;
+  let qualificationIntervalCount = 0;
+  let qualificationIntervalOverflow = 0;
   const framePhaseMs = {
     sim: 0,
     simFrame: 0,
@@ -431,10 +436,72 @@ export function ensurePerfRuntime(state) {
       if (frameStats.count !== 0) {
         throw new Error('performance timing report must be reset before setting display interval');
       }
+      if (qualificationIntervalValues !== null) {
+        throw new Error('qualification frame capture must be cleared before changing display interval');
+      }
       displayIntervalMs = intervalMs;
       displayCadenceObservedIntervals = 0;
       missedVsync = 0;
       return displayIntervalMs;
+    },
+    beginQualificationFrameCapture(maxIntervals) {
+      if (displayIntervalMs === null) {
+        throw new Error('display interval must be calibrated before qualification frame capture');
+      }
+      if (frameStats.count !== 0) {
+        throw new Error('performance timing report must be reset before qualification frame capture');
+      }
+      if (!Number.isSafeInteger(maxIntervals) || maxIntervals <= 0
+        || maxIntervals > MAX_QUALIFICATION_INTERVAL_SAMPLES) {
+        throw new RangeError(
+          `qualification frame capture capacity must be 1..${MAX_QUALIFICATION_INTERVAL_SAMPLES}`,
+        );
+      }
+      qualificationIntervalValues = new Float64Array(maxIntervals);
+      qualificationIntervalCount = 0;
+      qualificationIntervalOverflow = 0;
+      return maxIntervals;
+    },
+    clearQualificationFrameCapture() {
+      const wasEnabled = qualificationIntervalValues !== null;
+      qualificationIntervalValues = null;
+      qualificationIntervalCount = 0;
+      qualificationIntervalOverflow = 0;
+      displayIntervalMs = null;
+      displayCadenceObservedIntervals = 0;
+      missedVsync = 0;
+      return wasEnabled;
+    },
+    getQualificationFrameReport() {
+      if (qualificationIntervalValues === null) {
+        return {
+          schema: 'spaceface.qualificationFrameIntervals.v1',
+          enabled: false,
+          capacity: 0,
+          samples: 0,
+          overflow: 0,
+          p50: 0,
+          p95: 0,
+          p99: 0,
+          max: 0,
+          raw: [],
+        };
+      }
+      const raw = Array.from(qualificationIntervalValues.subarray(0, qualificationIntervalCount));
+      const sorted = qualificationIntervalValues.slice(0, qualificationIntervalCount);
+      sorted.sort();
+      return {
+        schema: 'spaceface.qualificationFrameIntervals.v1',
+        enabled: true,
+        capacity: qualificationIntervalValues.length,
+        samples: qualificationIntervalCount,
+        overflow: qualificationIntervalOverflow,
+        p50: percentile(sorted, 0.50),
+        p95: percentile(sorted, 0.95),
+        p99: percentile(sorted, 0.99),
+        max: sorted.length > 0 ? sorted[sorted.length - 1] : 0,
+        raw,
+      };
     },
     beginBackgroundJob(kind, { sourceSequence = null } = {}) {
       if (!backgroundJobTrackingEnabled) return null;
@@ -503,6 +570,13 @@ export function ensurePerfRuntime(state) {
             Math.floor((loop.callbackIntervalMs / displayIntervalMs) + 0.5),
           );
           missedVsync += Math.max(0, elapsedIntervals - 1);
+          if (qualificationIntervalValues !== null) {
+            if (qualificationIntervalCount < qualificationIntervalValues.length) {
+              qualificationIntervalValues[qualificationIntervalCount++] = loop.callbackIntervalMs;
+            } else {
+              qualificationIntervalOverflow++;
+            }
+          }
         }
       }
       frameAdmissionMs = pendingAdmissionMs;
@@ -736,6 +810,8 @@ export function ensurePerfRuntime(state) {
       fixedFrameBudgetMs = 1000 / 60;
       displayCadenceObservedIntervals = 0;
       missedVsync = 0;
+      qualificationIntervalCount = 0;
+      qualificationIntervalOverflow = 0;
       framePhaseMs.sim = 0;
       framePhaseMs.simFrame = 0;
       framePhaseMs.presentation = 0;
@@ -818,7 +894,7 @@ export function ensurePerfRuntime(state) {
         frame: reportStat(frameStats),
         frameCallback: reportStat(frameCallbackStats),
         frameUntracked: reportStat(frameUntrackedStats),
-        frameCallbackInterval: reportStat(frameCallbackIntervalStats, true),
+        frameCallbackInterval: reportStat(frameCallbackIntervalStats),
         frameExternalGap: reportStat(frameExternalGapStats),
         frameDispatchLag: reportStat(frameDispatchLagStats),
         displayCadence: {

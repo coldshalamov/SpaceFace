@@ -356,21 +356,21 @@ export const SEMANTIC_OUTCOME_MAP = deepFreeze([
     outcome: 'perf.p50',
     owner: 'perfRuntime',
     module: 'src/core/perfRuntime.js',
-    symbol: 'getReport().frameCallbackInterval.p50 / raw',
+    symbol: 'getQualificationFrameReport().p50 / raw',
     evidenceKind: 'projection',
-    rawRef: 'src/core/perfRuntime.js beginFrame(), reportStat(), getReport()',
+    rawRef: 'src/core/perfRuntime.js beginQualificationFrameCapture(), beginFrame(), getQualificationFrameReport()',
     confidence: 'verified',
-    note: 'Bounded chronological raw frame samples and their p50 owner projection.',
+    note: 'Explicit default-off fixed-capacity capture retains the full chronological attempt window.',
   },
   {
     outcome: 'perf.p99',
     owner: 'perfRuntime',
     module: 'src/core/perfRuntime.js',
-    symbol: 'getReport().frameCallbackInterval.p99 / raw',
+    symbol: 'getQualificationFrameReport().p99 / raw',
     evidenceKind: 'projection',
-    rawRef: 'src/core/perfRuntime.js beginFrame(), reportStat(), getReport()',
+    rawRef: 'src/core/perfRuntime.js beginQualificationFrameCapture(), beginFrame(), getQualificationFrameReport()',
     confidence: 'verified',
-    note: 'Bounded raw samples remain available for independent percentile verification.',
+    note: 'The full bounded attempt window remains available for independent percentile verification.',
   },
   {
     outcome: 'perf.missedVsync',
@@ -833,19 +833,37 @@ function validRendererResidency(value) {
  * scenario or bless a measurement: missing calibration, raw samples, or completed renderer frames
  * returns a fail-closed result for the later qualification adapter to retain.
  */
-export function normalizePerformanceOwnerFacts({ perfReport, counterSnapshot } = {}) {
+export function normalizePerformanceOwnerFacts({
+  perfReport,
+  counterSnapshot,
+  qualificationFrameReport,
+} = {}) {
   const failures = [];
-  const frame = perfReport?.frameCallbackInterval;
+  const frame = qualificationFrameReport;
+  if (frame?.schema !== 'spaceface.qualificationFrameIntervals.v1') {
+    failures.push('qualification-frame-schema-invalid');
+  }
+  if (frame?.enabled !== true) failures.push('qualification-frame-capture-missing');
   const raw = Array.isArray(frame?.raw) ? frame.raw : null;
   if (!raw || raw.length === 0) failures.push('raw-frame-samples-missing');
   else if (raw.some((value) => !Number.isFinite(value) || value < 0)) failures.push('raw-frame-samples-invalid');
   if (!Number.isSafeInteger(frame?.samples) || frame.samples !== raw?.length) {
     failures.push('raw-frame-sample-count-mismatch');
   }
+  if (!Number.isSafeInteger(frame?.capacity) || frame.capacity <= 0
+    || (Number.isSafeInteger(frame?.samples) && frame.capacity < frame.samples)) {
+    failures.push('qualification-frame-capacity-invalid');
+  }
+  if (!Number.isSafeInteger(frame?.overflow) || frame.overflow < 0) {
+    failures.push('qualification-frame-overflow-invalid');
+  } else if (frame.overflow > 0) {
+    failures.push('qualification-frame-capture-overflow');
+  }
 
   let calculated = null;
   if (raw && raw.length > 0 && raw.every((value) => Number.isFinite(value) && value >= 0)) {
-    const sorted = [...raw].sort((a, b) => a - b);
+    const sorted = Float64Array.from(raw);
+    sorted.sort();
     calculated = {
       p50: ownerPercentile(sorted, 0.50),
       p95: ownerPercentile(sorted, 0.95),
@@ -862,7 +880,7 @@ export function normalizePerformanceOwnerFacts({ perfReport, counterSnapshot } =
   if (cadence?.valid !== true || !Number.isFinite(cadence.displayIntervalMs)
     || cadence.displayIntervalMs <= 0) failures.push('display-cadence-uncalibrated');
   if (!Number.isSafeInteger(cadence?.observedIntervals)
-    || cadence.observedIntervals < (raw?.length || 0)
+    || cadence.observedIntervals !== (frame?.samples || 0) + (frame?.overflow || 0)
     || !Number.isSafeInteger(cadence?.missedVsync) || cadence.missedVsync < 0) {
     failures.push('display-cadence-invalid');
   }
@@ -918,15 +936,20 @@ export function normalizePerformanceOwnerFacts({ perfReport, counterSnapshot } =
     renderer: { ...renderer.residency[label] },
   });
   const vfx = perfReport.counters?.vfxSubsystems || {};
+  let over16_7Ms = 0;
+  let over32Ms = 0;
+  for (const value of raw) {
+    if (value > 16.7) over16_7Ms++;
+    if (value > 32) over32Ms++;
+  }
   const sample = {
     p50Ms: calculated.p50,
     p95Ms: calculated.p95,
     p99Ms: calculated.p99,
     maxMs: calculated.max,
-    rawFrameSamplesMs: [...raw],
     rawThresholdCounts: {
-      over16_7Ms: raw.filter((value) => value > 16.7).length,
-      over32Ms: raw.filter((value) => value > 32).length,
+      over16_7Ms,
+      over32Ms,
     },
     missedVsync: cadence.missedVsync,
     multiStepFrames: Number(perfReport.loop?.multiStepFrames) || 0,

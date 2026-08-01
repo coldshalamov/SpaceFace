@@ -1074,8 +1074,22 @@ test('the presentation loop samples renderer facts after the current frame compl
   }
 });
 
-test('perfRuntime publishes bounded raw callback intervals with p50 and p99 after ring wrap', () => {
+test('qualification frame capture retains the full bounded callback window beyond the overlay ring', () => {
   const perf = ensurePerfRuntime({ entityList: [], settings: {} });
+  assert.deepEqual(perf.getQualificationFrameReport(), {
+    schema: 'spaceface.qualificationFrameIntervals.v1',
+    enabled: false,
+    capacity: 0,
+    samples: 0,
+    overflow: 0,
+    p50: 0,
+    p95: 0,
+    p99: 0,
+    max: 0,
+    raw: [],
+  });
+  perf.setDisplayIntervalMs(16.7);
+  perf.beginQualificationFrameCapture(perf.RING_N + 10);
   let callbackStartMs = 1_000;
   perf.beginFrame(0, callbackStartMs);
   perf.recordFrameCallback(0);
@@ -1085,14 +1099,39 @@ test('perfRuntime publishes bounded raw callback intervals with p50 and p99 afte
     perf.recordFrameCallback(0);
   }
 
-  const frame = perf.getReport().frameCallbackInterval;
-  assert.equal(frame.samples, perf.RING_N);
-  assert.deepEqual(frame.raw.slice(0, 3), [6, 7, 8], 'raw samples stay chronological after wrap');
-  assert.deepEqual(frame.raw.slice(-3), [183, 184, 185]);
-  assert.equal(frame.p50, 95);
-  assert.equal(frame.p95, 176);
-  assert.equal(frame.p99, 183);
-  assert.equal(frame.max, 185);
+  const overlay = perf.getReport().frameCallbackInterval;
+  assert.equal(overlay.samples, perf.RING_N, 'the ordinary diagnostic ring remains bounded');
+  assert.equal(overlay.raw, undefined, 'the diagnostic ring is not PQ-025 raw evidence');
+
+  const full = perf.getQualificationFrameReport();
+  assert.equal(full.capacity, perf.RING_N + 10);
+  assert.equal(full.samples, perf.RING_N + 5);
+  assert.equal(full.overflow, 0);
+  assert.deepEqual(full.raw.slice(0, 3), [1, 2, 3]);
+  assert.deepEqual(full.raw.slice(-3), [183, 184, 185]);
+  assert.equal(full.p50, 93);
+  assert.equal(full.p95, 175);
+  assert.equal(full.p99, 183);
+  assert.equal(full.max, 185);
+
+  assert.equal(perf.clearQualificationFrameCapture(), true);
+  assert.equal(perf.getQualificationFrameReport().enabled, false, 'cleanup releases the capture buffer');
+});
+
+test('qualification frame capture reports overflow instead of truncating silently', () => {
+  const perf = ensurePerfRuntime({ entityList: [], settings: {} });
+  perf.setDisplayIntervalMs(16.7);
+  perf.beginQualificationFrameCapture(2);
+  let callbackStartMs = 1_000;
+  perf.beginFrame(0, callbackStartMs);
+  perf.recordFrameCallback(0);
+  for (const interval of [10, 20, 30]) {
+    callbackStartMs += interval;
+    perf.beginFrame(interval / 1000, callbackStartMs);
+    perf.recordFrameCallback(0);
+  }
+  assert.deepEqual(perf.getQualificationFrameReport().raw, [10, 20]);
+  assert.equal(perf.getQualificationFrameReport().overflow, 1);
 });
 
 test('perfRuntime missed-vsync accounting requires an explicit display interval', () => {
