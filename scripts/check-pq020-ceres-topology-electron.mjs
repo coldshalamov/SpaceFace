@@ -22,8 +22,9 @@ import {
   closeOwnedElectronRuntime,
   createElectronCanonicalUrlTracker,
   createElectronProcessMonitor,
+  createStrictElectronApplicationIssueTracker,
 } from './lib/alphaLiveBaselineElectronContracts.mjs';
-import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
+import { summarizeIssues } from './lib/browser-issues.mjs';
 import {
   assertIsolatedElectronRootUrl,
   createIsolatedElectronLaunch,
@@ -72,12 +73,14 @@ try {
   app = await electron.launch(launch.options);
   childProcess = app.process();
   processMonitor = createElectronProcessMonitor({ electronApp: app, childProcess });
+  issueTracker = createStrictElectronApplicationIssueTracker(app);
   page = await app.firstWindow({ timeout: 90_000 });
   canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
     bootstrapTimeoutMs: 10_000,
     pollIntervalMs: 75,
     allowAnyLoopbackPort: true,
   });
+  await issueTracker.bindAndBackfillPage(page);
   rootUrl = await canonicalUrlTracker.waitForCanonicalRoot(10_000);
   rootUrl = assertIsolatedElectronRootUrl(rootUrl);
   await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
@@ -86,8 +89,6 @@ try {
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
   });
-  issueTracker = collectPageIssues(page, { includeWarnings: false });
-
   const screenshot = async (name) => {
     const record = await capturePng(page, name);
     screenshots.push(record);
@@ -105,8 +106,8 @@ try {
   });
   receipt.screenshots = screenshots;
   receipt.expectedScreenshots = [...PQ020_FUNCTIONAL_SCREENSHOTS];
-  receipt.pageIssues = summarizeIssues(issueTracker.errorIssues());
-  receipt.ignoredPageIssues = summarizeIssues(issueTracker.ignoredIssues);
+  receipt.pageIssues = summarizeIssues(issueTracker.errors());
+  receipt.ignoredPageIssues = summarizeIssues(issueTracker.ignored());
   if (receipt.pageIssues.length) {
     receipt.disposition = 'FAIL';
     receipt.failureClass = 'UNCLASSIFIED_BY_PROBE';
@@ -141,8 +142,8 @@ try {
     fixedSeed: PQ020_CERES_TOPOLOGY_FIXED_SEED,
     screenshots,
     expectedScreenshots: [...PQ020_FUNCTIONAL_SCREENSHOTS],
-    pageIssues: issueTracker ? summarizeIssues(issueTracker.errorIssues()) : [],
-    ignoredPageIssues: issueTracker ? summarizeIssues(issueTracker.ignoredIssues) : [],
+    pageIssues: issueTracker ? summarizeIssues(issueTracker.errors()) : [],
+    ignoredPageIssues: issueTracker ? summarizeIssues(issueTracker.ignored()) : [],
     failureSnapshot: await readPq020FailureSnapshot(page),
     crossRuntimeParity: {
       comparedAgainst: '.devshots/pq020-ceres-topology/route-receipt.json',

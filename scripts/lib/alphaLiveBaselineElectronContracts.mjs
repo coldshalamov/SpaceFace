@@ -56,6 +56,7 @@ export function createStrictElectronPageIssueTracker(page) {
 export function createStrictElectronApplicationIssueTracker(electronApp) {
   const context = typeof electronApp?.context === 'function' ? electronApp.context() : null;
   const issues = [];
+  const ignoredIssues = [];
   const removers = [];
   const boundPages = new WeakSet();
   const backfillPromises = new WeakMap();
@@ -66,6 +67,10 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
   const applicationEvents = [];
   const contextEvents = [];
   const pageEvents = new Set();
+  const activeRequests = new Set();
+  const expectedNavigationAborts = new Map();
+  const expectedNavigationTokens = new Map();
+  let nextExpectedNavigationToken = 1;
   const backfill = Object.fromEntries(['consoleMessages', 'pageErrors', 'requests'].map((name) => [name, {
     supported: null,
     attempted: false,
@@ -102,14 +107,40 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
     if (!markOnce(seenPageErrors, error)) return;
     push({ source: 'pageerror', level: 'error', text: String(error?.message || error) });
   };
+  const observeRequest = (request) => {
+    if (!request) return;
+    activeRequests.add(request);
+    if (expectedNavigationTokens.size > 0) {
+      const labels = expectedNavigationAborts.get(request) || new Set();
+      for (const label of expectedNavigationTokens.values()) labels.add(label);
+      expectedNavigationAborts.set(request, labels);
+    }
+  };
+  const completeRequest = (request) => {
+    activeRequests.delete(request);
+    expectedNavigationAborts.delete(request);
+  };
   const recordFailedRequest = (request, failedEventObserved = false) => {
     const failure = readMaybeFunction(request, 'failure');
-    if ((!failure && !failedEventObserved) || !markOnce(seenFailedRequests, request)) return;
-    push({
+    if (!failure && !failedEventObserved) return;
+    const expectedNavigation = expectedNavigationAborts.get(request);
+    completeRequest(request);
+    if (!markOnce(seenFailedRequests, request)) return;
+    const issue = {
       source: 'request',
       level: 'error',
       text: `${readMaybeFunction(request, 'method') || 'REQUEST'} ${readMaybeFunction(request, 'url') || ''} failed: ${failure?.errorText || 'unknown'}`,
-    });
+    };
+    if (expectedNavigation && isExactNavigationCancellation(failure)) {
+      ignoredIssues.push({
+        at: new Date().toISOString(),
+        ...issue,
+        level: 'diagnostic',
+        expectedNavigation: [...expectedNavigation],
+      });
+      return;
+    }
+    push(issue);
   };
   const recordResponse = (response) => {
     if (!response || !markOnce(seenResponses, response)) return;
@@ -127,6 +158,8 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
     bind('console', recordConsole);
     bind('pageerror', recordPageError);
     bind('crash', () => push({ source: 'page-crash', level: 'error', text: 'Electron renderer page crashed' }));
+    bind('request', observeRequest);
+    bind('requestfinished', completeRequest);
     bind('requestfailed', (request) => recordFailedRequest(request, true));
     bind('response', recordResponse);
     return page;
@@ -178,6 +211,7 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
       });
       await readHistory(page, 'requests', async (requests) => {
         for (const request of requests) {
+          observeRequest(request);
           recordFailedRequest(request);
           if (typeof request?.response === 'function') recordResponse(await request.response());
         }
@@ -192,6 +226,8 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
   listen(context, 'page', bindPage, contextEvents);
   listen(context, 'console', recordConsole, contextEvents);
   listen(context, 'weberror', (webError) => recordPageError(readMaybeFunction(webError, 'error') || webError), contextEvents);
+  listen(context, 'request', observeRequest, contextEvents);
+  listen(context, 'requestfinished', completeRequest, contextEvents);
   listen(context, 'requestfailed', (request) => recordFailedRequest(request, true), contextEvents);
   listen(context, 'response', recordResponse, contextEvents);
 
@@ -202,6 +238,21 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
     bindAndBackfillPage,
     all: () => issues.slice(),
     errors: () => issues.filter((issue) => issue.level === 'error'),
+    ignored: () => ignoredIssues.slice(),
+    beginExpectedNavigation(label = 'expected-navigation') {
+      const token = nextExpectedNavigationToken++;
+      const normalizedLabel = String(label);
+      expectedNavigationTokens.set(token, normalizedLabel);
+      for (const request of activeRequests) {
+        const labels = expectedNavigationAborts.get(request) || new Set();
+        labels.add(normalizedLabel);
+        expectedNavigationAborts.set(request, labels);
+      }
+      return token;
+    },
+    endExpectedNavigation(token) {
+      return expectedNavigationTokens.delete(token);
+    },
     coverage: () => ({
       schema: 'spaceface.electronApplicationIssueCoverage.v1',
       contextAvailable: !!context,
@@ -221,6 +272,10 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
       return issues.slice();
     },
   };
+}
+
+function isExactNavigationCancellation(failure) {
+  return /^net::ERR_ABORTED$/i.test(String(failure?.errorText || '').trim());
 }
 
 export function createElectronCanonicalUrlTracker(targetPage, options = {}) {

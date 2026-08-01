@@ -278,11 +278,21 @@ test('Electron cannot launch before Browser PASS and follows isolated canonical-
     'waitForCanonicalRoot',
     'assertIsolatedElectronRootUrl',
     'createElectronProcessMonitor',
+    'createStrictElectronApplicationIssueTracker',
+    'bindAndBackfillPage',
     'closeOwnedElectronRuntime',
     'launch.cleanup({ runtimeClosed: true })',
     'buildPq020ParityProjection',
     'assert.deepEqual(electronProjection, browserProjection',
   ]) assert.ok(source.includes(required), `missing Electron ownership/parity contract: ${required}`);
+  const tracker = source.indexOf('createStrictElectronApplicationIssueTracker(app)');
+  const firstWindow = source.indexOf('app.firstWindow');
+  const backfill = source.indexOf('issueTracker.bindAndBackfillPage(page)');
+  const canonicalWait = source.indexOf('canonicalUrlTracker.waitForCanonicalRoot');
+  assert.ok(tracker > 0 && tracker < firstWindow,
+    'application/context request observation must attach before firstWindow acquisition');
+  assert.ok(backfill > firstWindow && backfill < canonicalWait,
+    'page history backfill must complete before canonical route work begins');
 });
 
 test('cold Continue waits for screen registration settlement before the public click', () => {

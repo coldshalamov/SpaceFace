@@ -8,6 +8,7 @@ candidate: 1c9d317d
 lifecycleClaim: blocked
 acceptanceClaim: unproven
 disposition: BLOCKED
+blockerStatus: resolved-by-PQ-020.electron-cold-reload-lifecycle-repair
 browserClaimId: 33252-1f76b2da863de3164445d96a
 browserCandidateDigest: 629b90d569d211d23b44b96970d4892d409aada8040012ce8828fd97cdeba13e
 performanceEvidenceClaimed: false
@@ -57,3 +58,12 @@ Electron parity attempt.
 No row-5 H1 evidence is promoted from this candidate because the Electron half is red. No GPU timing,
 matched performance, visual judgment, or human verdict is claimed. `browser-gpu` and
 `validation-broker` are released so disjoint recovery work can continue.
+
+## Resolution — 2026-08-01
+
+This remains the truthful failure receipt for candidate `1c9d317d`; it is no longer a live blocker.
+The exact repair is recorded in `PQ-020-electron-cold-reload-lifecycle-repair-REPORT.md`. PQ-020 now
+attaches its application/context issue authority before `firstWindow`, backfills page history, and
+uses request-identity-scoped reload cancellation attribution. A bounded native New Game → F5 →
+reload → Continue regression passed with one expected request abort, zero hard issues, and clean
+owned teardown. The next unit is the fresh candidate-bound Browser/Electron Ceres pair.

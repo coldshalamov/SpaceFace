@@ -26,7 +26,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 | 2 | PQ-021 broker cell + Electron parity | **PASS** | [row2-pq021-ledger](evidence/h1/row2-pq021-ledger/EVIDENCE.md) |
 | 3 | PQ-019A presentation + counts | **PASS — facilities/counts retained; brokered capsule continuation accepted at runtime zooms 45/66/108** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
 | 4 | `pq019-surface-heist` broker manifest | **PASS — retained DOM/lawful evidence plus accepted fence/confiscation/destruction/recovery continuation** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
-| 5 | PQ-020 Ceres functional route | **BLOCKED / NO H1 PROMOTION — Browser passed 21/21 and Electron matched gameplay facts, but eight unattributed `ERR_ABORTED` module requests keep the Electron receipt red** | [exact blocker receipt](receipts/PQ-020-ceres-h1-capture-BLOCKER.md) |
+| 5 | PQ-020 Ceres functional route | **READY FOR FRESH PAIR / NO H1 PROMOTION YET — the application/context provenance repair and bounded native regression pass; candidate `1c9d317d` remains historical red** | [historical failure receipt](receipts/PQ-020-ceres-h1-capture-BLOCKER.md) |
 | 6 | PQ-023 cues in motion | **PASS — retained combat motion plus accepted Cathedral Browser/Electron continuation** | [row6-pq023-cues](evidence/h1/row6-pq023-cues/EVIDENCE.md) |
 | 7 | PQ-022 asset leaves | **PASS — one Browser launch; 11 exact identities, 13 admitted stills** | [row7-pq022-asset-leaves](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md) |
 | 8 | Electron end-to-end smoke | **PASS — accepted source-Electron menu→physical dock→Ledger chain** | [row8-electron-e2e](evidence/h1/row8-electron-e2e/EVIDENCE.md) |
@@ -129,13 +129,13 @@ completed the Browser route 21/21. Electron completed the same 21 frames, matche
 gameplay facts, and closed its owned runtime, but eight varying module requests remained hard
 `net::ERR_ABORTED` with no authoritative document/teardown provenance. Under the pair contract the
 Electron receipt is red, so none of those candidate frames or semantic facts are promoted into H2.
+The exact application/context provenance repair and its bounded native regression now pass; a fresh
+candidate-bound pair is the only remaining H1 step.
 
-**Unblocks:** nothing from H2 yet. Both visual questions remain **deferred** until the named
-`SpaceFace Electron/Playwright request-provenance maintainer` supplies a native provenance regression
-and a new candidate-bound Browser/Electron pair passes. PQ-020 integration and the relocated PQ-018
-Phase-4 closure remain open.
+**Continuation:** both visual questions remain deferred only until the fresh Browser/Electron pair
+passes. PQ-020 integration and the relocated PQ-018 Phase-4 closure remain open.
 
-**Verdict:** DEFER — paired evidence remains red on the named request-provenance blocker
+**Verdict:** DEFER — the repair is green; fresh paired H1 evidence has not yet been issued
 
 ---
 

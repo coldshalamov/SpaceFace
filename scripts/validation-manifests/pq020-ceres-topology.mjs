@@ -36,6 +36,7 @@ export function createPq020CeresTopologyManifest(overrides = {}) {
     scenarioPaths: [],
     regressionSourcePaths: [
       'test/pq020-ceres-topology-manifest.test.mjs',
+      'test/alpha-live-baseline-electron-contract.test.mjs',
       'test/pq020-ceres-topology.test.mjs',
       'test/pq020-ceres-proofs.test.mjs',
       'test/pq018-wreck-cathedral.test.mjs',
@@ -76,6 +77,7 @@ export function createPq020CeresTopologyManifest(overrides = {}) {
     harnessSourcePaths: [
       'scripts/probe-pq020-ceres-topology.mjs',
       'scripts/check-pq020-ceres-topology-electron.mjs',
+      'scripts/check-pq020-electron-request-provenance.mjs',
       'scripts/lib/pq020CeresFunctionalRoute.mjs',
       'scripts/lib/pq020CeresProofs.mjs',
       'scripts/lib/pq020CeresTopology.mjs',

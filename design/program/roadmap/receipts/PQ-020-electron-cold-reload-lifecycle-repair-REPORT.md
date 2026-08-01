@@ -1,15 +1,24 @@
 <!-- LIFETIME: EVIDENCE -->
+<!-- PROGRAM_EVIDENCE_RECEIPT
+packetId: PQ-020
+leafId: PQ-020.electron-cold-reload-lifecycle-repair
+acceptance: focused_green
+disposition: PASS
+candidateCommit: d9a5b1ec019a637ab550d8d8b71c2c8d53f0e441
+-->
 # PQ-020 Electron cold-reload lifecycle repair report
 
 ```yaml
 packet: PQ-020
 dispatchUnit: PQ-020.electron-cold-reload-lifecycle-repair
-candidateBase: 5ef49e26
+candidateBase: d9a5b1ec019a637ab550d8d8b71c2c8d53f0e441
+lastRedAcceptanceCandidate: 1c9d317d
 lifecycleClaim: focused_green
 acceptanceClaim: unproven
 disposition: PASS
 headedBrowserLaunchedByRepair: false
-headedElectronLaunchedByRepair: false
+headedElectronLaunchedByRepair: true
+headedElectronPurpose: focused-native-request-provenance-regression
 performanceEvidenceClaimed: false
 ```
 
@@ -33,67 +42,57 @@ This was a mixed product/harness lifecycle failure, not a Ceres route failure.
 - `uiRoot` now assigns every dynamic screen-registration batch a monotonic owner generation.
   Destroy or re-init invalidates unresolved batches; restoring an old manager reference cannot revive
   them, and a stale batch never registers into a replacement manager.
-- `collectPageIssues()` exposes an explicit expected-transition token. A request already in flight
-  when a token begins, or starting while it is live, retains the transition label through delayed
-  failure delivery.
-- The PQ-020 route has two separate scopes: the awaited `page.reload()` call, and the public Continue
-  click through production-owned flight/input readiness. The first closes before menu validation; the
-  second begins only after the Continue menu screenshot and closes before restored-state capture.
-- Both Browser and Electron receipts retain ignored cancellations. Console errors, page errors, HTTP
-  failures, non-abort request failures, and aborts outside either exact transition remain hard
-  failures.
+- PQ-020 now uses the same application/browser-context issue authority as the accepted Electron
+  baseline and end-to-end lanes. It attaches synchronously after `electron.launch()` and before
+  `firstWindow`, then binds and backfills the page before canonical route work begins.
+- That authority owns the exact expected-navigation token. Requests already active when the token
+  begins, or starting while it is live, retain the label through delayed failure delivery. Only an
+  exact `net::ERR_ABORTED` on one of those request objects becomes diagnostic.
+- Browser keeps its page-scoped collector; Electron no longer asks a late page-only observer to
+  reconstruct application request history. Console errors, page errors, crashes, HTTP failures,
+  non-abort failures, completed-request failures, and every unscoped abort remain hard failures.
+- The PQ-020 broker manifest binds both the application-level regression and the focused native
+  provenance check into the candidate digest.
 
-Successive candidate-bound pairs falsified the initial assumption that the aborts belonged to the
-reload itself. Browser repeatedly passed 21/21 with zero issues. Electron repeatedly completed 21/21,
-matched every normalized gameplay fact, and closed its owned runtime, while a varying set of eight
-lazy UI module aborts remained completely untagged. Moving collection earlier, retaining request
-identity, and testing wrapper fingerprints did not change that outcome; those speculative variants
-were removed rather than retained as complexity.
+Successive candidate-bound pairs already established that this was an observation defect rather than
+a Ceres disagreement: Browser repeatedly passed 21/21; Electron repeatedly completed the same route,
+matched normalized facts, and closed cleanly. Candidate `1c9d317d` finally isolated eight varying lazy
+module aborts with no attribution. The old PQ-020 observer was created only after initial
+`DOMContentLoaded` and listened to one Page, while an Electron renderer's request lifetime begins at
+the application/context boundary before `firstWindow`. A start that predates the page collector
+cannot receive the reload token later, so its cancellation was necessarily reported as unscoped.
 
-A short isolated Electron reload produced 2,951 request lifecycle events and zero failures. The full
-route differs at one exact point: after reload presents Main Menu and starts lazy screen imports, the
-actor clicks Continue while that registration generation can still be settling. Flight/input becomes
-ready before all background registration promises close, so widening a cancellation scope through
-flight readiness did not capture the later aborts. A request-wrapper fallback also captured zero and
-was removed.
-
-The durable boundary is the production owner's registration settlement. `uiRoot.registerScreens()`
-now owns a generation-bound `Promise.allSettled` and records the settled generation only while its
-cycle remains current. The route waits for that owner signal before the public Continue click and
-again after the new flight/input generation becomes ready. Destroy/re-init invalidates the
-generation, so stale work cannot satisfy either wait. No Continue-time cancellation ignore is
-needed; only the exact document reload retains a cancellation scope.
-
-Candidate digest `7accb892e30556c6b930fe891f5883cff88561c1d4c3820fb3c2de82ca2a42da`
-proved the second wait is required: Browser passed 21/21 with zero issues; Electron completed 21/21,
-matched facts, and closed cleanly, but the remaining abort set was dominated by dependencies of the
-incoming flight UI generation. Settling only the outgoing menu generation could not cover that new
-owner cycle.
+The focused native regression proves the classification without replaying Ceres: New Game → F5 →
+reload → Continue at seed `47` produced one real `place_station_trade_hub.glb` request that began in
+initial flight and was cancelled during the exact reload. Context and Page reported the same request
+identity; the early context authority retained the navigation label, emitted one diagnostic, and
+reported zero hard page issues. Restored flight reached registration generation `2/2`, and the owned
+Electron process, page, profile listener, and process all closed cleanly. No URL or module-name
+allowlist is involved.
 
 ## Focused evidence
 
-- Recorded native failure: 21/21 Electron frames, normalized gameplay projection equal to Browser,
-  owned runtime closed, but one stale registration error plus seven reload-aborted requests.
-- `node --test test/ui-screen-registration-lifecycle.test.mjs test/browser-issues.test.mjs
-  test/pq020-ceres-topology-manifest.test.mjs` — PASS, 19/19.
-- The issue regression explicitly delivers the tagged request failure after the expected-navigation
-  token closes, matching the observed Electron ordering; it covers both pre-existing and
-  during-navigation request starts, and rejects post-navigation, untagged, completed, and non-abort
-  failures.
-- The lifecycle regression proves a new registration generation begins unsettled and a stale
-  generation cannot revive after invalidation/re-init.
-- The route regression requires owner-settled generations before the public Continue click and after
-  restored flight/input readiness, and permits exactly one cancellation scope: the document reload.
+- Historical native failure: candidate `1c9d317d` produced 21/21 Electron frames, normalized gameplay
+  parity, and clean owned shutdown, but eight unattributed module aborts.
+- `node test/alpha-live-baseline-electron-contract.test.mjs` — PASS. The regression proves an active
+  context request retains its exact navigation label after token close and that an unscoped abort
+  remains fatal.
+- `node --test test/browser-issues.test.mjs test/pq020-ceres-topology-manifest.test.mjs
+  test/ui-screen-registration-lifecycle.test.mjs` — PASS, 19/19.
+- `node scripts/check-pq020-electron-request-provenance.mjs` — PASS in one bounded native launch:
+  seed `47`, restored flight, registration `2/2`, zero hard issues, one identity-bound expected abort,
+  and clean owned teardown.
 - `node scripts/check-ui-screen-imports.mjs` — PASS, 41/41.
 - `npm run check:pq020:proofs` — PASS, 14/14.
-- `node --check` for the changed UI, issue-collector, and route modules — PASS.
+- `npm run check:pq020:ceres-topology` — PASS.
+- `node --check` for the changed application issue authority, Electron route, and focused native
+  regression — PASS.
 - Path-scoped `git diff --check` — PASS.
 
 ## Honest residual
 
-The headed processes described above belong to the claimed `PQ-020.ceres-h1-capture` unit and are
-recorded here only because they revealed the delayed-event defect; they do not convert this repair
-receipt into route or performance evidence. The issue-attribution source changed again, so the
-Browser PASS cannot certify the corrected candidate. `PQ-020.ceres-h1-capture` must spend one fresh
-broker-owned Browser claim and one distinct Electron parity attempt. No performance, physical
-controller, visual, or human verdict is claimed.
+The focused native process proves only the repaired lifecycle seam; it does not convert this receipt
+into Ceres route or performance evidence. Because the Electron attribution authority and broker
+invalidation surface changed, the retained Browser PASS cannot certify the corrected candidate.
+`PQ-020.ceres-h1-capture` must spend one fresh broker-owned Browser claim and one distinct Electron
+parity attempt. No performance, physical-controller, visual, or H2 verdict is claimed.

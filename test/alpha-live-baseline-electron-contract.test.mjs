@@ -213,6 +213,26 @@ async function testApplicationWideIssueTrackerAndBackfill() {
   context.emit('requestfailed', request);
   context.emit('response', response);
 
+  const cancelledByReload = {
+    method: () => 'GET',
+    url: () => `${CANONICAL}in-flight.glb`,
+    failure: () => ({ errorText: 'net::ERR_ABORTED' }),
+    response: async () => null,
+  };
+  context.emit('request', cancelledByReload);
+  const navigationToken = tracker.beginExpectedNavigation('cold-continue');
+  assert.equal(tracker.endExpectedNavigation(navigationToken), true);
+  context.emit('requestfailed', cancelledByReload);
+
+  const unscopedAbort = {
+    method: () => 'GET',
+    url: () => `${CANONICAL}later-module.js`,
+    failure: () => ({ errorText: 'net::ERR_ABORTED' }),
+    response: async () => null,
+  };
+  context.emit('request', unscopedAbort);
+  context.emit('requestfailed', unscopedAbort);
+
   const page = new HistoryFakePage(CANONICAL, {
     consoleMessages: [consoleError],
     pageErrors: [pageError],
@@ -227,8 +247,11 @@ async function testApplicationWideIssueTrackerAndBackfill() {
     'the same console object seen live and in history is recorded once without losing the error');
   assert.equal(errors.filter((entry) => entry.source === 'pageerror').length, 1,
     'context WebError and page history dedupe by the underlying Error object');
-  assert.equal(errors.filter((entry) => entry.source === 'request').length, 1,
-    'the same failed request seen live and in recent history is recorded once');
+  assert.equal(errors.filter((entry) => entry.source === 'request').length, 2,
+    'a repeated hard failure is deduplicated while an unscoped abort remains fatal');
+  assert.equal(tracker.ignored().length, 1,
+    'only the exact active request cancelled by the named navigation becomes diagnostic');
+  assert.deepEqual(tracker.ignored()[0].expectedNavigation, ['cold-continue']);
   assert.equal(errors.filter((entry) => entry.source === 'response').length, 1,
     'context-wide HTTP response observation catches failures before firstWindow resolves');
   assert(errors.some((entry) => entry.source === 'page-crash'), 'bound pages retain live crash observation');
