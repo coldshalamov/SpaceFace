@@ -526,12 +526,12 @@ test('(a) flak executes an outward volume burst instead of the autocannon fallba
     'flak spread must remain plainly wider than the autocannon incidence fan');
 });
 
-function captureExplosionPhase(classId, phase) {
+function captureExplosionPhase(classId, phase, settings = { video: {}, accessibility: {} }) {
   const calls = { sprites: [], streaks: [], cones: [], lights: [], bus: [] };
   const host = Object.create(vfx);
   host._scene = {};
   host._burst = 1;
-  host.state = { settings: { video: {}, accessibility: {} } };
+  host.state = { settings };
   host.bus = { emit: (...args) => calls.bus.push(args) };
   host._spawnSprite = (...args) => calls.sprites.push(args);
   host._spawnProjectileTrailStreak = (...args) => calls.streaks.push(args);
@@ -565,4 +565,31 @@ test('(b) small destruction opens with a compact readable breakup, not an ordina
     `small hot-core release must remain readable relative to its radius, got ${hotCore[6]}`);
   assert.ok(small.streaks.length >= 2,
     'small destruction needs an asymmetric fragment break at ignition');
+});
+
+test('(b) reviewed normal-mode small destruction sustains a judgeable hot footprint', () => {
+  const radius = 6;
+  const small = captureExplosionPhase('small', 'ignition');
+  const SPR_FLASH = 0;
+  const hotCore = small.sprites.find((args) => args[0] === SPR_FLASH);
+
+  assert.ok(hotCore[4] >= 0.13,
+    `the hot core must survive ordinary-camera frame pacing, got ${hotCore[4]}s`);
+  assert.ok(hotCore[6] >= radius * 0.38,
+    `the hot footprint must reach at least 38% of the destroyed body's radius, got ${hotCore[6]}`);
+  assert.ok(small.streaks.length >= 3,
+    `the breakup needs a three-point asymmetric envelope, got ${small.streaks.length} fragments`);
+  assert.ok(Math.max(...small.streaks.map((args) => args[5])) >= radius * 0.5,
+    'at least one fragment must leave a half-radius silhouette before cleanup');
+
+  const reduced = captureExplosionPhase('small', 'ignition', {
+    video: { motionReduce: true, flashReduce: true },
+    accessibility: {},
+  });
+  assert.ok(reduced.streaks.length >= 2,
+    'the accepted reduced fallback must retain its noncolor fragment pair');
+  assert.ok(small.streaks.length > reduced.streaks.length,
+    'the extra full-motion envelope must not inflate the reduced fallback');
+  assert.ok(small.sprites.length > reduced.sprites.length,
+    'the offset full-motion lobe must remain pruned from the reduced fallback');
 });

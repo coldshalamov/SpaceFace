@@ -2504,22 +2504,42 @@ export const vfx = {
       // implied, and because they are compact they add heat without adding coverage.
       const ignitionCore = r * (isSmall ? 0.10 : 0.06) * scale;
       this._spawnSprite(SPR_FLASH, x, 0.30, z,
-        entry.classId === 'capital' ? 0.13 : 0.09,
-        ignitionCore, ignitionCore * (isSmall ? 3.25 : 2.6),
+        entry.classId === 'capital' ? 0.13 : (isSmall && !reduced ? 0.14 : 0.09),
+        ignitionCore, ignitionCore * (isSmall ? (reduced ? 3.25 : 5.2) : 2.6),
         reduced ? 0.72 : 1.0, 0.0, '#ffffff',
         entry.dirX * 2, entry.dirZ * 2);
       if (isSmall) {
-        // A compact body's identity is a hot asymmetric snap and two departing fragments. It must
-        // not be the accepted ordinary shock ring merely scaled down until it becomes invisible.
-        for (const side of [-1, 1]) {
-          const a = dirAngle + side * 0.46;
+        // A compact body's identity is a hot asymmetric snap and departing fragments. Full motion
+        // gets a three-point biased envelope plus one offset combustion lobe so the event survives
+        // the ordinary chase camera; reduced mode retains its accepted quieter two-fragment fallback.
+        // Neither path borrows the ordinary shock ring.
+        const fragmentCount = reduced ? 2 : 3;
+        for (let k = 0; k < fragmentCount; k++) {
+          const angleOffset = reduced
+            ? (k === 0 ? -0.46 : 0.46)
+            : (k === 0 ? -0.72 : (k === 1 ? 0.08 : 0.58));
+          const a = dirAngle + angleOffset;
           this._spawnProjectileTrailStreak(
             x + Math.cos(a) * r * 0.04, 0.23,
             z + Math.sin(a) * r * 0.04,
-            0.30, 0.09 * scale, 2.8 * scale,
-            reduced ? 0.34 : 0.68, side < 0 ? '#fff0c0' : '#ff8a38',
-            Math.cos(a) * 18 * scale, Math.sin(a) * 18 * scale,
+            reduced ? 0.30 : 0.38 + k * 0.03,
+            (reduced ? 0.09 : 0.11) * scale,
+            (reduced ? 2.8 : 4.3 + k * 0.35) * scale,
+            reduced ? 0.34 : (k === 1 ? 0.78 : 0.68),
+            k === 0 ? '#fff0c0' : '#ff8a38',
+            Math.cos(a) * (reduced ? 18 : 22 + k * 2) * scale,
+            Math.sin(a) * (reduced ? 18 : 22 + k * 2) * scale,
             Math.cos(a), Math.sin(a));
+        }
+        if (!reduced) {
+          const lobeAngle = dirAngle - 0.34;
+          this._spawnSprite(SPR_COMBUSTION,
+            x + entry.dirX * r * 0.05 + tangentX * r * 0.10, 0.24,
+            z + entry.dirZ * r * 0.05 + tangentZ * r * 0.10,
+            0.24, r * 0.055 * scale, r * 0.20 * scale,
+            0.68, 0, '#ffb05a',
+            Math.cos(lobeAngle) * 4.5, Math.sin(lobeAngle) * 4.5,
+            1.34, lobeAngle);
         }
       } else {
         this._spawnSprite(SPR_RING, x, 0.28, z,

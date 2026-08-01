@@ -4023,7 +4023,7 @@
       "priority": 239,
       "title": "Strengthen normal-mode small-destruction salience",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-023.combat-readability-review"
       ],
@@ -4038,7 +4038,9 @@
         "npm run check:pq023:corridor-cues",
         "npm run check:presentation"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-023-small-destruction-salience-repair-REPORT.md"
+      ],
       "brief": "Increase only the full-motion small-destruction hot core and asymmetric fragment envelope enough to land at the ordinary chase camera. Preserve the no-ordinary-ring grammar, reduced fallback, larger hierarchy, dense budgets, mechanics, determinism, and cleanup; reproduce the salience defect with a seconds-scale regression before editing production.",
       "blocker": null
     },
