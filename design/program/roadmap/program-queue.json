@@ -3378,6 +3378,7 @@
       "paths": [
         "design/program/roadmap/active/PQ-034.md",
         "electron/main.cjs",
+        "electron/shipPreview.cjs",
         "scripts/validation-manifests/",
         "scripts/",
         "src/core/rapierCompatRuntime.js",
@@ -3386,6 +3387,7 @@
         "src/render/contextResourceLifecycle.js",
         "src/render/authoredAdmissionPolicy.js",
         "src/render/renderer.js",
+        "src/render/vfx.js",
         "test/",
         "vendor/addons/loaders/KTX2Loader.js"
       ],
@@ -3400,7 +3402,7 @@
         "design/program/roadmap/receipts/PQ-034-candidate-audit-REPORT.md",
         "design/program/roadmap/receipts/PQ-034-performance-harness-REPORT.md"
       ],
-      "brief": "The candidate audit, Electron runtime/CSP/context repair, and Browser predictive-runway/scenario-isolation repair are integrated. Run one fresh Browser claim and, only after it passes, Electron on the same clean source; prove enabled overhead, perform the integrator causal review, and write the terminal PERF-00 receipt.",
+      "brief": "The current Browser matrix passed; its source-paired Electron run completed but exposed the deprecated console event signature and a missing seam-marker precompile. Both have exact focused/WebGL repairs at 429f36f0. Run a fresh Browser claim and, only after it passes, Electron on that same clean source; then prove enabled overhead, perform the integrator causal review, and write the terminal PERF-00 receipt.",
       "blocker": null
     },
     {

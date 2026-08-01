@@ -17,18 +17,24 @@ fifthFailedBrowserCandidate: 1ad68828dff71d599b2e14f8639677837af2dab1
 acceptedBrowserCandidate: b847320e4aa0f864e2f6c4862de306fddd773a6b
 acceptedBrowserClaimId: 4256-1baf8886d6425c5283c0dd78
 acceptedBrowserSourceCandidateDigest: b8193f952d13371c586753168dc3c4fa762d9c0dec3f59c8a2b61e8654cc5645
-browserClaimsConsumed: 7
+browserClaimsConsumed: 8
 browserClaimAccepted: true
 latestFailedBrowserCandidate: 4240fb429a46af03c3f3ee5bea55ddc5a8920477
 latestFailedBrowserClaimId: 16368-9b4a75a2c2720889162335f7
 latestFailedBrowserSourceCandidateDigest: 286995aa07ab1f051178315571a2294893b6d2541adfc33ab80ee935720105d3
-latestBrowserClaimAccepted: false
-latestBrowserRepairCandidate: c580a43e7d6c165949d6c58d64871aa0ad9fd87a
+latestBrowserClaimAccepted: true
+latestBrowserCandidate: 191857fdc8aa44f1b77a20b4578e1b62d4118ead
+latestBrowserClaimId: 32112-9404c78daa9d2a9c5b1c8d1e
+latestBrowserSourceCandidateDigest: c8a6cd7f2f232a74810c9a5e1c8cfb45a5914bd2d2964e6b6bd625aaddcfdb7f
+latestBrowserRepairCandidate: 429f36f0
 firstFailedElectronCandidate: b1b15ee9a5f3a9cc3e6a77c41dabe36370d3fe0c
 firstFailedElectronClaimId: 25476-83c733557dbe390afc61eedb
 firstFailedElectronSourceCandidateDigest: 96cfc12382d3fb0b3eee146953c07023df8d6c2a0fd9e0d11ebfdae90a2b7047
-latestElectronRepairCandidate: 137e4d8f12a3f20df08d645a47b321c1afb90b1b
-electronClaimsConsumed: 1
+latestFailedElectronCandidate: 191857fdc8aa44f1b77a20b4578e1b62d4118ead
+latestFailedElectronClaimId: 2612-798b762726a8c0634f5a3e40
+latestFailedElectronSourceCandidateDigest: c8a6cd7f2f232a74810c9a5e1c8cfb45a5914bd2d2964e6b6bd625aaddcfdb7f
+latestElectronRepairCandidate: 429f36f0
+electronClaimsConsumed: 2
 electronClaimAccepted: false
 sourcePairedEvidenceCurrent: false
 headedRuntimeLaunched: true
@@ -633,3 +639,37 @@ one stop edge before releasing the arm.
 
 No timing or performance conclusion is accepted from this failed claim. One fresh Browser claim on
 the clean pushed repair must pass before the source-paired Electron claim is spent.
+
+## Eighth Browser pass and second Electron claim: current console and seam-pipeline repair
+
+The fresh Browser claim on clean pushed candidate `191857fdc8aa44f1b77a20b4578e1b62d4118ead`
+passed the complete acceptance matrix under claim `32112-9404c78daa9d2a9c5b1c8d1e`. Its immutable
+artifact is
+`.devshots/perf/closure/browser/performance-closure-browser-2026-08-01T13-41-05-219Z-30952-5c58acf0/`,
+bound to source digest `c8a6cd7f2f232a74810c9a5e1c8cfb45a5914bd2d2964e6b6bd625aaddcfdb7f`.
+All 25 windows, scenario restoration, public route, real Intel D3D11 GPU timers, activity
+boundaries, context recovery, runtime issue arrays, measurement disablement, and owned cleanup
+passed. This is accepted Browser authority for that exact source.
+
+The source-paired Electron claim ran once on the same clean candidate and digest under claim
+`2612-798b762726a8c0634f5a3e40`. Its retained artifact is
+`.devshots/perf/closure/electron/performance-closure-electron-2026-08-01T13-48-41-163Z-28352-04917484/`.
+It completed all 25 windows plus graceful owned teardown on Electron 43.2.0 and real Intel D3D11.
+Every route, GPU, activity, restoration, and cleanup check passed. It remained failed evidence for
+two precise reasons: one Electron deprecation warning and `windows[11]-pipeline-cache-mismatch`.
+
+Both causes were harness/runtime readiness defects, not performance waivers. Electron 43's local
+type contract exposes `console-message` as one event object; the main shell and development preview
+still declared two- and five-position listeners, which caused the warning. Candidate `7a5820a4`
+uses the single-object contract everywhere, and the executable shell test plus platform check pin it.
+The program drift was the first wake of the mining seam-marker pool: during `map_open`, a natural
+nearby seam changed from inactive to active, adding five geometries and one previously unlinked
+instanced/vertex-coloured/additive/double-sided program (`86 → 87`) with no asset admission or
+residency change. Candidate `429f36f0` builds live and precompile seam markers through the same
+factory and stages one initialized instance in the startup salvo. The seconds-scale WebGL regression
+proves `programsAfterPrecompile = programsAfterFirstLiveSeam = 7`; the complete trail/VFX lane passes.
+
+No Electron or paired performance conclusion is promoted from the failed matrix. Because the two
+repairs changed source after the accepted Browser run, one fresh Browser claim and then one Electron
+claim must pass on the same clean pushed repair before overhead and terminal causal review close the
+unit.

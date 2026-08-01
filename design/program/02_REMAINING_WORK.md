@@ -25,7 +25,7 @@ Current recovery order is:
 |---|---|
 | Retained-evidence H2 reviews | Issue keep/revise/revert decisions for PQ-021, PQ-022, PQ-019, and PQ-023. A negative verdict creates an executable repair leaf; it does not become a reviewer blocker. |
 | `PQ-020.ceres-h1-capture` | Resolve the Electron aborted-request provenance policy with a seconds-scale regression, then promote the already-matched route facts or spend one bounded causal pair if the repair changes the claim. |
-| `PQ-034.native-closure` | Runtime/CSP/context repair `137e4d8f` and predictive-runway/scenario-isolation repair `c580a43e` are pushed. The latest Browser characterization isolated one inbound authored admission and one leaked mining arm; both have seconds-scale regressions. Run one fresh Browser claim and, only after it passes, Electron on the same source, then close overhead and causal review. Report uncertainty/variance honestly. |
+| `PQ-034.native-closure` | Browser passed on source `191857fd`; the paired Electron matrix completed and isolated a deprecated console callback plus one missing seam-marker precompile. Exact repairs `7a5820a4` and `429f36f0` are pushed, including a real-WebGL no-new-program regression. Run one fresh Browser claim and, only after it passes, Electron on the same repaired source, then close overhead and causal review. Report uncertainty/variance honestly. |
 | H3 and H4 units | Consume newly satisfied dependencies, run matched performance, bind exact receipt blobs, and promote the corridor packets in dependency order. |
 | PQ-025 qualification | Calibrate and run only after its exact corridor/performance dependencies are accepted. |
 
