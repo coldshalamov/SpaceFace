@@ -801,3 +801,49 @@ receipt.
 The failed artifact remains historical rather than retroactively promoted. Because the authority
 code changed, one fresh Browser claim and then Electron on the exact same clean pushed source remain
 required.
+
+## Twelfth Browser claim: exact program attribution and current-target repair
+
+Claim `40996-2ebe5dcf069da08a18e4d580` ran once on clean pushed candidate
+`b56d6e787ec4cabcb718b08d6e9ca0ea46f3ac52`, source digest
+`00154caf67a9c816ffa6c82f114b94bb3a5545597bdfbe3868a502f2d433d8a0`, runtime candidate digest
+`2684d0ebe7e246817bb893090d475c211238e37f01795c8299e45aa0516c72a9`. Its retained artifact is
+`.devshots/perf/closure/browser/performance-closure-browser-2026-08-01T15-08-23-000Z-11272-a4c87117/`.
+The full 25-window matrix completed. Semantic jump admission, every previously repaired route,
+GPU-query accounting, issue/restoration/context gates, and the owned-resource cleanup report passed.
+Measurement validity failed only `contaminating-process-or-authoring-activity` and
+`windows[15]-pipeline-cache-mismatch`; Electron was not spent.
+
+The activity reason was the harness's own Chrome PID exiting during the post-cleanup census. The old
+Browser cleanup proved page/context closure and Playwright disconnection but did not own an OS
+`ChildProcess` whose exit it could await. The browser runner now launches a `BrowserServer`, retains
+the exact process, closes the server, and requires both server closure and child exit before cleanup
+can pass. The seconds-scale baseline contract proves that order and process identity.
+
+The failing `flight_steady @ bloom_off` window was stable in every captured scene/admission/residency
+dimension but moved from 96 to 97 programs. Exact boundary inventory instrumentation was added only
+at measurement boundaries. One full diagnostic stopped after sampling on a missing inventory argument
+and produced a regression; a second never entered measurement because the public autopilot stalled,
+so neither was reused as evidence. A bounded public menu → New Game → flight → bloom-off diagnostic
+then identified late Mule/Atlas material and canopy variants from roots already installed at the
+measurement boundary.
+
+The runtime cause had two parts. Already-resident authored plans bypassed the frame-bounded exact
+pipeline admission used by newly decoded plans, and `compileCurrentPipelines()` only waited for queued
+admissions instead of compiling the installed scene against the newly selected straight/default
+target. Candidate `ddc9c1f5` removes the cached-plan publication bypass, adds a serialized installed-
+scene compile behind the admission runway, and invokes that public seam after diagnostic variants.
+Program inventories now retain exact identities and deltas without weakening the count-based warmup
+fingerprint.
+
+Focused and live evidence:
+
+- changed-lane contracts — PASS 54/54;
+- exact Intel D3D11 bloom-off diagnostic — measurement starts at 133 programs, ends at 133, and
+  `measurementAdded` is empty across 20 seconds;
+- `npm run check:baseline` — PASS 10/10 in 42.564 seconds;
+- `git diff --check` — PASS; repair committed and pushed as `ddc9c1f5`.
+
+No failed artifact is retroactively promoted. The next bounded action is one fresh Browser claim on
+the clean pushed program-doc-synchronized source, followed by Electron only after Browser passes on
+that identical `sourceCandidateDigest`.

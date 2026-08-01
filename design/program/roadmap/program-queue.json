@@ -3387,6 +3387,8 @@
         "src/render/contextResourceLifecycle.js",
         "src/render/authoredAdmissionPolicy.js",
         "src/render/engineTrailSurfaces.js",
+        "src/render/partsLibrary.js",
+        "src/render/pipelineReadiness.js",
         "src/render/precompile.js",
         "src/render/renderer.js",
         "src/render/vfx.js",
@@ -3404,7 +3406,7 @@
         "design/program/roadmap/receipts/PQ-034-candidate-audit-REPORT.md",
         "design/program/roadmap/receipts/PQ-034-performance-harness-REPORT.md"
       ],
-      "brief": "The eleventh Browser claim proved the docked/fleet/bloom repairs and completed all 25 windows, then failed only because valid Ceres admission released one net old-sector program. Repair 20f78f49 replaces monotonic cache growth with a required newer terminal authored-admission sequence, so real admission passes and a no-op fails. Run one fresh Browser claim and, only after it passes, Electron on that same clean source; then prove enabled overhead, perform the integrator causal review, and write the terminal PERF-00 receipt.",
+      "brief": "The twelfth Browser claim completed all 25 windows and exposed two exact defects: the harness did not own/await its Chrome OS child, and the bloom-off target switch compiled already-installed authored variants during measurement. Repair ddc9c1f5 owns exact BrowserServer teardown, routes resident plans through frame-bounded admission, compiles the installed scene for each selected target, and proves a 133-to-133 zero-addition bloom window. Run one fresh Browser claim and, only after it passes, Electron on that same clean source; then prove enabled overhead, perform the integrator causal review, and write the terminal PERF-00 receipt.",
       "blocker": null
     },
     {
