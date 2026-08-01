@@ -1225,7 +1225,7 @@
       "id": "PQ-022",
       "priority": 22,
       "title": "Visual-family production pipeline and representative families",
-      "state": "blocked",
+      "state": "planned",
       "canonical": [
         "G19",
         "R10",
@@ -2645,7 +2645,7 @@
       "priority": 13,
       "title": "Record the missing corridor station, furniture, and traffic visual dispositions",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-022.h1-asset-presentation"
       ],
@@ -2657,8 +2657,160 @@
         "design/program/roadmap/receipts/PQ-022-gold-corridor-required-assets-SCOPING.md"
       ],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-corridor-assets-h2-disposition-REPORT.md"
+      ],
       "brief": "Give explicit keep, revise, or revert dispositions for the four stations, three lane-furniture identities, and three Helios traffic bodies. H1 already proved exact admission."
+    },
+    {
+      "id": "PQ-022.refinery-reauthor",
+      "parentId": "PQ-022",
+      "priority": 27,
+      "title": "Re-author the Ceres refinery's visible process identity",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-022.corridor-assets-human-disposition"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "assets/ships/parts/places/place_station_refinery.glb",
+        "assets/ships/release/parts/places/place_station_refinery.glb",
+        "assets/ships/parts/parts_manifest.json",
+        "assets/ships/release/release_manifest.json"
+      ],
+      "checks": [
+        "npm run check:pq022:corridor-assets",
+        "npm run check:graphics:asset-receipts",
+        "npm run check:asset-reachability"
+      ],
+      "receiptRefs": [],
+      "brief": "Preserve the exact refinery identity, routing, scale, anchors, collision, LOD and release contracts while replacing the flat drum-and-wall row with a connected feed, processing, thermal and service construction legible at ordinary framing."
+    },
+    {
+      "id": "PQ-022.refinery-reauthor-h1",
+      "parentId": "PQ-022",
+      "priority": 28,
+      "title": "Capture revised refinery Browser and Electron presentation",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-022.refinery-reauthor"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/",
+        "design/program/roadmap/active/PQ-022.md"
+      ],
+      "checks": [
+        "npm run check:pq022:corridor-assets",
+        "npm run check:assets:live"
+      ],
+      "receiptRefs": [],
+      "brief": "Capture only the revised exact refinery at useful ordinary and diagnostic framings with distinct Electron parity; retain the other nine corridor-asset decisions."
+    },
+    {
+      "id": "PQ-022.refinery-reauthor-review",
+      "parentId": "PQ-022",
+      "priority": 29,
+      "title": "Causally review the revised Ceres refinery",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-022.refinery-reauthor-h1"
+      ],
+      "mutexes": [
+        "evidence-review"
+      ],
+      "paths": [
+        "design/program/roadmap/H2_REVIEW_INDEX.md",
+        "design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Review only whether the revised refinery closes the recorded process-chain, silhouette, material-zone and serviceability defects at ordinary framing."
+    },
+    {
+      "id": "PQ-022.billboard-buoy-reauthor",
+      "parentId": "PQ-022",
+      "priority": 30,
+      "title": "Re-author the corridor billboard and navigation buoy",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-022.corridor-assets-human-disposition"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "assets/ships/parts/places/place_station_billboard.glb",
+        "assets/ships/release/parts/places/place_station_billboard.glb",
+        "assets/ships/parts/places/place_nav_buoy.glb",
+        "assets/ships/release/parts/places/place_nav_buoy.glb",
+        "assets/ships/parts/parts_manifest.json",
+        "assets/ships/release/release_manifest.json"
+      ],
+      "checks": [
+        "npm run check:pq022:corridor-assets",
+        "npm run check:graphics:asset-receipts",
+        "npm run check:asset-reachability"
+      ],
+      "receiptRefs": [],
+      "brief": "Preserve the two exact route identities, scales and envelopes while giving the billboard a dominant framed display face and the buoy a role-legible navigation head, power/service construction and durable beacon signal."
+    },
+    {
+      "id": "PQ-022.billboard-buoy-reauthor-h1",
+      "parentId": "PQ-022",
+      "priority": 31,
+      "title": "Capture revised billboard and buoy Browser and Electron presentation",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-022.billboard-buoy-reauthor"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/",
+        "design/program/roadmap/active/PQ-022.md"
+      ],
+      "checks": [
+        "npm run check:pq022:corridor-assets",
+        "npm run check:assets:live"
+      ],
+      "receiptRefs": [],
+      "brief": "Capture only the revised billboard and navigation buoy at useful game-camera framings with distinct Electron parity; retain all unaffected Row 7 evidence."
+    },
+    {
+      "id": "PQ-022.billboard-buoy-reauthor-review",
+      "parentId": "PQ-022",
+      "priority": 32,
+      "title": "Causally review the revised billboard and navigation buoy",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-022.billboard-buoy-reauthor-h1"
+      ],
+      "mutexes": [
+        "evidence-review"
+      ],
+      "paths": [
+        "design/program/roadmap/H2_REVIEW_INDEX.md",
+        "design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Review only whether both revised candidates close the recorded role-readability, display/signal, navigation and construction defects."
     },
     {
       "id": "PQ-019.capsule-h1-capture",
@@ -3433,7 +3585,9 @@
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-022.relay-reauthor-review",
-        "PQ-022.corridor-assets-human-disposition"
+        "PQ-022.corridor-assets-human-disposition",
+        "PQ-022.refinery-reauthor-review",
+        "PQ-022.billboard-buoy-reauthor-review"
       ],
       "mutexes": [
         "browser-gpu",

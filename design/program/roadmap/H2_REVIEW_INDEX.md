@@ -196,11 +196,12 @@ It did not issue a visual-quality verdict. The traffic frames include the player
 foreground; record `blocked` for any identity whose framing is not sufficient to judge rather than
 silently accepting it.
 
-**Unblocks:** the human-disposition half of
-`PQ-022.gold-corridor-required-assets` → `milestone_accepted`. Matched performance remains H3.
+**Continuation:** seven identities are retained; the refinery plus the billboard/buoy pair route
+through exact re-authoring, targeted H1, and causal re-review units. Matched performance remains H3.
 
-**Verdict:** BLOCKED — named owner `SpaceFace human visual reviewer`; the required four station,
-three furniture, and three traffic dispositions cannot be issued by Codex
+**Verdict:** PASS review — **KEEP 7 / REVISE 3 / REVERT 0**. Keep trade hub, military station,
+mining station, jump ring, and all three traffic bodies. Revise the refinery, station billboard, and
+navigation buoy. Receipt: [corridor-assets H2 disposition](receipts/PQ-022-corridor-assets-h2-disposition-REPORT.md).
 
 ---
 
