@@ -9,7 +9,11 @@ acceptanceClaim: focused_green
 terminalDisposition: IN_PROGRESS
 claimBase: 070064b4ff9aff9c4addb54d876c7ad877ba8e53
 activityAuthorityCandidate: 52cd5eb3949bfb0e88fd8a2c10d37cd1c149fe65
-headedRuntimeLaunched: false
+failedBrowserCandidate: 2ab10f91483b38a4cfbd2197d99d7bfa84ae198f
+browserClaimConsumed: true
+browserClaimAccepted: false
+browserRepairCandidate: 0fb2fc10bcceefbdb45fff768edd77ac71f76c16
+headedRuntimeLaunched: true
 performanceEvidenceClaimed: false
 protectedWorktreeMutated: false
 leasesReleased: false
@@ -312,3 +316,43 @@ route must still prove its own GPU and no-op validity.
 The exact unit remains `IN_PROGRESS`: the next bounded work is one clean Browser claim, followed by
 its source-paired Electron claim if Browser passes, then integrator causal review. The primary
 integrator owns that review; no separate human reviewer exists or is required.
+
+## First Browser claim: retained failure and repair
+
+The broker consumed the one-use Browser claim for candidate
+`2ab10f91483b38a4cfbd2197d99d7bfa84ae198f` exactly once. Its immutable artifacts are retained at
+`.devshots/perf/closure/browser/performance-closure-browser-2026-08-01T09-42-04-324Z-38724-955b49cc/`.
+The route reached public menu, New Game, controllable flight, map/travel, dock, and station; identified
+the game renderer as Intel ANGLE/D3D11 WebGL2; completed context loss/restoration; recorded quiet
+start and end activity samples; and passed owned cleanup. The claim nevertheless failed measurement
+validity, so it carries no accepted performance conclusion.
+
+Characterization found three bounded defects rather than a product-performance regression:
+
+- Three.js legitimately invokes an attribute upload callback during driver-side context recovery,
+  outside the coordinator's normal draw epoch. The coordinator reported 46 unsolicited-upload errors,
+  invalidated itself, and prevented later post-recovery draws.
+- The sampler allowed only two animation frames for asynchronous GPU query readback. Early windows
+  accumulated hundreds of valid queries while later queries remained pending at measurement close.
+- Universal policies misclassified the canonical docked route, where the registry deliberately keeps
+  UI/rAF live while skipping the 3D renderer, and the jump asset-admission window, where dispatched
+  admission is expected to grow the settled program cache.
+
+Candidate `0fb2fc10bcceefbdb45fff768edd77ac71f76c16` closes each defect. A context restore now grants
+one narrowly bound driver reupload per tracked attribute and preserves subsequent unsolicited-upload
+rejection. Window close performs and records a bounded two-second pending-query drain without a GPU
+finish. Versioned scenario policy requires exact docked/UI evidence for a zero-query idle-3D window
+and exact dispatched, settled queue evidence for jump admission; ordinary zero-query and cache-drift
+windows remain invalid.
+
+- red-to-green focused regressions — PASS 40/40;
+- expanded PERF-00/broker contracts — PASS 201/201 in 14.7 s;
+- `npm run check:perf-counters` — PASS 35/35;
+- `npm run check:perf-packets` — PASS 39/39;
+- `npm run check:sim:compare` — PASS, deterministic and hash-equal;
+- `npm run check:launch-policy` — PASS;
+- `npm run check:baseline` — PASS 10/10 in 50.109 s.
+
+This is a source-changing repair, not a waiver or a retry of unchanged evidence. The next bounded
+action is one fresh Browser claim on the clean pushed repair; Electron remains unspent until that
+claim passes.
