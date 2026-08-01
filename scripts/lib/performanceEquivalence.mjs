@@ -602,6 +602,11 @@ export function composePerformanceVerdict(options = {}) {
     }
   }
 
+  const neutral = !pass
+    && dimensions.equivalence.pass
+    && dimensions.measurementValidity.pass
+    && dimensions.absoluteBudget.pass
+    && dimensions.improvement.status === 'neutral';
   return deepFreeze({
     schema: PERFORMANCE_VERDICT_SCHEMA,
     equivalence: dimensions.equivalence,
@@ -609,7 +614,7 @@ export function composePerformanceVerdict(options = {}) {
     improvement: dimensions.improvement,
     absoluteBudget: dimensions.absoluteBudget,
     pass,
-    status: pass ? 'pass' : 'fail',
+    status: pass ? 'pass' : (neutral ? 'neutral' : 'fail'),
     failures,
   });
 }

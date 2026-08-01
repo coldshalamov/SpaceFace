@@ -1012,3 +1012,22 @@ test('machine verdict keeps equivalence, validity, improvement, and absolute bud
   assert.equal(missing.absoluteBudget.pass, false);
   assert.equal(missing.pass, false);
 });
+
+test('machine verdict reports valid equivalent within-noise evidence as neutral rather than failed equivalence', () => {
+  const verdict = composePerformanceVerdict({
+    equivalence: { pass: true, status: 'equivalent' },
+    measurementValidity: { pass: true, status: 'valid' },
+    improvement: {
+      pass: false,
+      status: 'neutral',
+      reasons: ['improvement-does-not-exceed-noise'],
+    },
+    absoluteBudget: { pass: true, status: 'within-budget' },
+  });
+
+  assert.equal(verdict.equivalence.pass, true);
+  assert.equal(verdict.measurementValidity.pass, true);
+  assert.equal(verdict.improvement.pass, false);
+  assert.equal(verdict.pass, false);
+  assert.equal(verdict.status, 'neutral');
+});

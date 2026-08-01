@@ -161,9 +161,26 @@ into final acceptance, which rejects both invalid runtime evidence and invalid m
   a stable explicit reason;
 - no broker claim, browser, Electron, GPU capture, or performance conclusion was spent.
 
+## Noise-aware improvement slice
+
+The versioned improvement evaluator consumes exactly three directly comparable raw windows per arm,
+recomputes p95 rather than trusting a summary, and publishes both arm values, medians, ranges, the
+declared resolution floor, the resulting noise floor, and the signed improvement. A gain must exceed
+the larger of observed baseline range, observed candidate range, 1% of baseline median, and 0.1 ms.
+Within-noise evidence is `neutral`; a candidate slower beyond the same bound is `regressed`.
+
+- characterization: the import failed before the evaluator existed, and the combined verdict first
+  mislabeled a valid/equivalent within-noise result as a generic failure;
+- closure/improvement plus equivalence/verdict contracts — PASS 46/46;
+- full current PERF-00 focused suite plus authored queue ownership — PASS 134/134;
+- program docs — PASS with 0 warnings; program-control tools — PASS 9/9;
+- `npm run check:baseline` — PASS 10/10 in 54.173 s;
+- baseline-against-identical-baseline reports zero improvement and a nonzero noise floor;
+- no browser, Electron, broker claim, or live performance conclusion was spent.
+
 ## Honest residual
 
-This is not the terminal dispatch receipt. Noise-aware improvement and combined verdict publication,
-clean matched evidence, overhead measurement, and independent causal review remain open. The current driver and paired
+This is not the terminal dispatch receipt. Final-arbiter baseline/equivalence input binding and
+combined verdict publication, clean matched evidence, overhead measurement, and independent causal review remain open. The current driver and paired
 authority are focused-green but intentionally unspent while the machine remains ineligible for a
 quiet L4 capture.

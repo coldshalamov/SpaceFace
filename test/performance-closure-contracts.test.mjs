@@ -10,6 +10,7 @@ import {
   buildPerformanceClosureReport,
   comparePerformanceWindows,
   comparisonKey,
+  evaluatePerformanceImprovement,
   evaluatePerformanceMeasurementValidity,
   evaluatePerformanceWindowBudgets,
   performanceScenario,
@@ -500,6 +501,48 @@ test('closure report validates identity, hashes, cleanup, raw-summary truth, and
   assert.equal(validatePerformanceClosureReport(missingCleanup).pass, false);
   const missingArtifacts = { ...report, artifacts: [] };
   assert.equal(validatePerformanceClosureReport(missingArtifacts).pass, false);
+});
+
+test('baseline noise classification reports variance without manufacturing improvement', () => {
+  const windows = (values) => values.map((value) => windowFixture({
+    rawSamples: [{ frameMs: value - 0.1 }, { frameMs: value }],
+    summary: summarizeFrameSamples([{ frameMs: value - 0.1 }, { frameMs: value }]),
+  }));
+  const baseline = windows([16, 16.1, 15.9]);
+  const neutral = evaluatePerformanceImprovement({
+    baselineWindows: baseline,
+    candidateWindows: structuredClone(baseline),
+  });
+  assert.equal(neutral.pass, false);
+  assert.equal(neutral.status, 'neutral');
+  assert.equal(neutral.metrics.improvementMs, 0);
+  assert.ok(neutral.metrics.noiseFloorMs > 0);
+
+  const improved = evaluatePerformanceImprovement({
+    baselineWindows: baseline,
+    candidateWindows: windows([14, 14.1, 13.9]),
+  });
+  assert.equal(improved.pass, true);
+  assert.equal(improved.status, 'improved');
+  assert.ok(improved.metrics.improvementMs > improved.metrics.noiseFloorMs);
+
+  const regressed = evaluatePerformanceImprovement({
+    baselineWindows: baseline,
+    candidateWindows: windows([18, 18.1, 17.9]),
+  });
+  assert.equal(regressed.pass, false);
+  assert.equal(regressed.status, 'regressed');
+
+  const mismatched = evaluatePerformanceImprovement({
+    baselineWindows: baseline,
+    candidateWindows: windows([14, 14.1, 13.9]).map((window) => ({
+      ...window,
+      comparisonKey: 'f'.repeat(64),
+    })),
+  });
+  assert.equal(mismatched.pass, false);
+  assert.equal(mismatched.status, 'invalid');
+  assert.match(mismatched.reasons.join(' | '), /not directly comparable/);
 });
 
 test('measurement validity fails closed on contamination, fallback GPU identity, disjoint timing, and cache drift', () => {

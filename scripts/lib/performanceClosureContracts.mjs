@@ -4,6 +4,7 @@ export const PERFORMANCE_CLOSURE_SCHEMA = 'spaceface.performanceClosure.v1';
 export const PERFORMANCE_WINDOW_SCHEMA = 'spaceface.performanceWindow.v1';
 export const PERFORMANCE_SCENARIO_SCHEMA = 'spaceface.performanceScenarioMatrix.v1';
 export const PERFORMANCE_MEASUREMENT_VALIDITY_SCHEMA = 'spaceface.performanceMeasurementValidity.v1';
+export const PERFORMANCE_IMPROVEMENT_SCHEMA = 'spaceface.performanceImprovement.v1';
 export const PERFORMANCE_BUDGETS = Object.freeze({
   targetFrameP95Ms: 16.7,
   floorFrameP95Ms: 33.3,
@@ -217,6 +218,83 @@ export function comparePerformanceWindows(before, after) {
       framesAbove50Ms: afterSummary.framesAbove50Ms - beforeSummary.framesAbove50Ms,
       estimatedMissedVsyncs: afterSummary.estimatedMissedVsyncs - beforeSummary.estimatedMissedVsyncs,
     },
+  };
+}
+
+export function evaluatePerformanceImprovement({
+  baselineWindows = [],
+  candidateWindows = [],
+  metric = 'p95',
+} = {}) {
+  const reasons = [];
+  if (!['p50', 'p95', 'p99', 'max'].includes(metric)) reasons.push('unsupported-improvement-metric');
+  if (!Array.isArray(baselineWindows) || baselineWindows.length !== 3) {
+    reasons.push('baseline-windows-must-contain-exactly-three-runs');
+  }
+  if (!Array.isArray(candidateWindows) || candidateWindows.length !== 3) {
+    reasons.push('candidate-windows-must-contain-exactly-three-runs');
+  }
+  if (reasons.length > 0) return invalidImprovement(metric, reasons);
+
+  const reference = baselineWindows[0];
+  for (let index = 1; index < baselineWindows.length; index += 1) {
+    const comparison = comparePerformanceWindows(reference, baselineWindows[index]);
+    if (!comparison.comparable) reasons.push(`baselineWindows[${index}] not directly comparable: ${comparison.failures.join('; ')}`);
+  }
+  for (let index = 0; index < candidateWindows.length; index += 1) {
+    const comparison = comparePerformanceWindows(reference, candidateWindows[index]);
+    if (!comparison.comparable) reasons.push(`candidateWindows[${index}] not directly comparable: ${comparison.failures.join('; ')}`);
+  }
+  if (reasons.length > 0) return invalidImprovement(metric, reasons);
+
+  const baselineValues = baselineWindows.map((window) => summarizeFrameSamples(window.rawSamples)[metric]);
+  const candidateValues = candidateWindows.map((window) => summarizeFrameSamples(window.rawSamples)[metric]);
+  if (![...baselineValues, ...candidateValues].every(Number.isFinite)) {
+    return invalidImprovement(metric, ['improvement-metric-must-be-finite']);
+  }
+  const sortedBaseline = [...baselineValues].sort((a, b) => a - b);
+  const sortedCandidate = [...candidateValues].sort((a, b) => a - b);
+  const baselineMedian = sortedBaseline[1];
+  const candidateMedian = sortedCandidate[1];
+  const baselineRangeMs = sortedBaseline[2] - sortedBaseline[0];
+  const candidateRangeMs = sortedCandidate[2] - sortedCandidate[0];
+  const resolutionFloorMs = Math.max(0.1, Math.abs(baselineMedian) * 0.01);
+  const noiseFloorMs = Math.max(baselineRangeMs, candidateRangeMs, resolutionFloorMs);
+  const improvementMs = baselineMedian - candidateMedian;
+  const status = improvementMs > noiseFloorMs
+    ? 'improved'
+    : (improvementMs < -noiseFloorMs ? 'regressed' : 'neutral');
+  const statusReasons = status === 'neutral'
+    ? ['improvement-does-not-exceed-noise']
+    : (status === 'regressed' ? ['candidate-regressed-outside-noise'] : []);
+  return {
+    schema: PERFORMANCE_IMPROVEMENT_SCHEMA,
+    pass: status === 'improved',
+    status,
+    reasons: statusReasons,
+    metric,
+    metrics: {
+      baselineValues,
+      candidateValues,
+      baselineMedian,
+      candidateMedian,
+      baselineRangeMs,
+      candidateRangeMs,
+      resolutionFloorMs,
+      noiseFloorMs,
+      improvementMs,
+    },
+  };
+}
+
+function invalidImprovement(metric, reasons) {
+  return {
+    schema: PERFORMANCE_IMPROVEMENT_SCHEMA,
+    pass: false,
+    status: 'invalid',
+    reasons: [...new Set(reasons)],
+    metric,
+    metrics: null,
   };
 }
 
