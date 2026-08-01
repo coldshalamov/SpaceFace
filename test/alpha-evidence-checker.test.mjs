@@ -286,24 +286,37 @@ async function runRepositoryWiringAssertions() {
 
   const rootAgents = await readFile(path.join(PROJECT_ROOT, 'AGENTS.md'), 'utf8');
   const authorityHead = rootAgents.split(/\r?\n/).slice(0, 18).join('\n');
-  assert.match(authorityHead, /00_MASTER_TASTE\.md[\s\S]*ALPHA_PROGRAM\.md[\s\S]*specific.*spec/i);
-  const productRoute = rootAgents.split(/\r?\n/).find((line) => line.includes('Product sprints')) || '';
+  assert.match(authorityHead, /CANONICAL_BUILD_MAP\.md[\s\S]*single program map/i,
+    'root orientation routes multi-plan work through the canonical program map');
+  const programRoute = rootAgents.split(/\r?\n/).find((line) => line.includes('Program map, "next N"')) || '';
   assert.ok(
-    productRoute.indexOf('vision/README.md') < productRoute.indexOf('vision/ALPHA_PROGRAM.md')
-      && productRoute.indexOf('vision/ALPHA_PROGRAM.md') < productRoute.indexOf('vision/01_CURRENT_STATE.md'),
-    'product sprint routing reads README then ALPHA_PROGRAM then current state',
+    programRoute.indexOf('CANONICAL_BUILD_MAP.md') < programRoute.indexOf('design/program/NOW.md'),
+    'program routing reads the canonical map before live NOW state',
   );
+  const productRoute = rootAgents.split(/\r?\n/).find((line) => line.includes('Product or system design')) || '';
   assert.match(
-    rootAgents.split(/\r?\n/).slice(0, 45).join('\n'),
-    /00_CONSTITUTION\.md.*03_MASTER_BUILD_PLAN\.md.*supporting only when.*ALPHA_PROGRAM/i,
-    'root routing marks the old constitution and master plan supporting-only unless activated',
+    productRoute,
+    /design\/GDD_2_0\.md.*spec2\/spec3/i,
+    'product design starts at the GDD and then selects the relevant spec slice',
   );
+  const authorityTokens = [
+    'user direction',
+    'ARCHITECTURE.md',
+    'design/GDD_2_0.md',
+    'design/program/',
+    'activated plan/spec',
+  ];
+  const authoritySection = rootAgents.slice(rootAgents.indexOf('When sources disagree:'));
+  const authorityIndexes = authorityTokens.map((token) => authoritySection.indexOf(token));
+  assert.ok(authorityIndexes.every((index) => index >= 0),
+    'root orientation names every current authority tier');
+  assert.deepEqual([...authorityIndexes].sort((a, b) => a - b), authorityIndexes,
+    'root orientation carries the current authority order instead of historical Alpha routing');
 
   const alphaProgram = await readFile(path.join(PROJECT_ROOT, 'design/vision/ALPHA_PROGRAM.md'), 'utf8');
-  assert.ok(
-    /\| 0\.1 \|[^\n]+\| Complete \|/.test(alphaProgram),
-    'Task 0.1 is complete only after independent spec and quality approval',
-  );
+  assert.match(alphaProgram,
+    /\| 0\.1 \|[^\n]+\| Contract complete; live corpus RED \|/,
+    'Task 0.1 distinguishes the approved checker contract from the still-red live corpus');
   assert.match(alphaProgram, /independent spec and quality reviews approved/i,
     'Task 0.1 completion records both independent approvals');
   assert.ok(alphaProgram.includes('npm run check:alpha:evidence:contract'), 'ledger names the clean-CI contract command');

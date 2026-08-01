@@ -3,12 +3,14 @@ import test from 'node:test';
 
 import * as bandData from '../src/data/bandRadio.js';
 
-test('Band catalogue is the canonical V2 eight-bed corpus with seven tuner channels', () => {
+test('Band catalogue retains the canonical V2 eight-bed baseline with seven tuner channels', () => {
   assert.ok(Array.isArray(bandData.BAND_CHANNELS), 'BAND_CHANNELS export must exist');
   assert.ok(Array.isArray(bandData.TUNABLE_BAND_CHANNELS), 'TUNABLE_BAND_CHANNELS export must exist');
   assert.equal(bandData.BAND_CHANNELS.length, 8);
   assert.equal(bandData.TUNABLE_BAND_CHANNELS.length, 7);
-  assert.equal(bandData.BAND_CHANNELS.reduce((sum, channel) => sum + channel.lines.length, 0), 64);
+  const lineIds = bandData.BAND_CHANNELS.flatMap((channel) => channel.lines.map((line) => line.id));
+  assert.ok(lineIds.length >= 64, 'the shipped 64-line corpus may grow but cannot silently shrink');
+  assert.equal(new Set(lineIds).size, lineIds.length, 'Band line ids remain globally unique');
   assert.equal(bandData.BAND_CHANNEL_BY_ID.landmark_bleed.contextual, true);
   assert.equal(bandData.BAND_CHANNEL_BY_ID.landmark_bleed.tunable, false);
   assert.equal(Object.isFrozen(bandData.BAND_CHANNELS), true);

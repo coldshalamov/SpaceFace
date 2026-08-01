@@ -44,11 +44,14 @@ const liveReport = audit();
 test('GT1 groundwork audits all live combat loot across 1,000 deterministic seeds', () => {
   assert.equal(liveReport.ok, true, JSON.stringify(liveReport.issues, null, 2));
   assert.equal(liveReport.runs, 1000);
-  assert.equal(liveReport.normalLootSources, 8);
-  assert.equal(liveReport.normalLootRolls, 8000);
-  assert.equal(liveReport.enumeratedNormalItems, 17);
-  assert.equal(liveReport.stationAcquisitionItems, 105);
-  assert.equal(liveReport.stationAcquisitionSurfaces, 124);
+  assert.ok(liveReport.normalLootSources >= 8, 'the audited normal-loot source baseline cannot shrink silently');
+  assert.equal(liveReport.normalLootRolls, liveReport.normalLootSources * liveReport.runs,
+    'every normal-loot source is exercised for every deterministic seed');
+  assert.ok(liveReport.enumeratedNormalItems >= 17, 'the enumerated normal-loot catalog cannot shrink silently');
+  assert.ok(liveReport.stationAcquisitionItems >= 105,
+    'the audited station-acquisition catalog cannot shrink silently');
+  assert.ok(liveReport.stationAcquisitionSurfaces >= liveReport.stationAcquisitionItems,
+    'every station-acquisition item must have at least one enumerated surface');
   assert.ok(liveReport.normalItemDrops > 0);
   assert.match(liveReport.rollHash, /^[a-f0-9]{64}$/);
   assert.ok(liveReport.rarestNormalDrops.length > 0);

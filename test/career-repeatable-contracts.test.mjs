@@ -12,6 +12,7 @@ import {
   validateCareerContractCatalog,
 } from '../src/data/careerContracts.js';
 import { getRegionalEcologyProfile } from '../src/data/regionalEcology.js';
+import { PRODUCTION_INIT_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import {
   buildCareerContractOffer,
   careerContracts,
@@ -271,7 +272,19 @@ test('career-chain state survives JSON save and missions owns the real external 
 test('default registry wires the event-driven career contract system after missions without UI hooks', () => {
   const source = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   assert.match(source, /import \{ careerContracts \} from '\.\.\/systems\/careerContracts\.js';/);
-  assert.match(source, /careerLadders, liveCareerLadderBranches, missions, careerContracts, economyContracts/);
+  assert.match(source, /\['careerContracts',\s*careerContracts\]/,
+    'registry materializes the canonical career-contract system');
+  const careerLaddersIndex = PRODUCTION_INIT_ORDER.indexOf('careerLadders');
+  const liveBranchesIndex = PRODUCTION_INIT_ORDER.indexOf('liveCareerLadderBranches');
+  const missionsIndex = PRODUCTION_INIT_ORDER.indexOf('missions');
+  const careerContractsIndex = PRODUCTION_INIT_ORDER.indexOf('careerContracts');
+  const economyContractsIndex = PRODUCTION_INIT_ORDER.indexOf('economyContracts');
+  assert.ok(careerLaddersIndex >= 0 && liveBranchesIndex > careerLaddersIndex,
+    'career ladder owners run in canonical order');
+  assert.ok(missionsIndex > liveBranchesIndex && careerContractsIndex > missionsIndex,
+    'career contracts run after ladders and missions');
+  assert.ok(economyContractsIndex > careerContractsIndex,
+    'economy contracts consume career-contract output afterward');
   const systemSource = readFileSync(new URL('../src/systems/careerContracts.js', import.meta.url), 'utf8');
   assert.doesNotMatch(systemSource, /Math\.random|Date\.now|src\/ui|\.\.\/ui\//);
   assert.doesNotMatch(systemSource, /player\.credits\s*=|cargo\.items\s*=|factions\[[^\]]+\]\.rep\s*=/);

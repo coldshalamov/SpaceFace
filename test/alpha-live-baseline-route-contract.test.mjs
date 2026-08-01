@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { countGateInvocations, resolveAggregateCommand } from '../scripts/lib/ciGateGraph.mjs';
+
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const CHECK_PATH = path.join(ROOT, 'scripts', 'check-alpha-live-baseline-browser.mjs');
 const ROUTE_PATH = path.join(ROOT, 'scripts', 'lib', 'alphaLiveBaselineRoute.mjs');
@@ -45,12 +47,12 @@ assert.equal(
 );
 for (const scriptName of ['check', 'check:ci']) {
   assert.equal(
-    String(pkg.scripts[scriptName]).split('npm run check:alpha:baseline:contracts').length - 1,
+    countGateInvocations(pkg.scripts, scriptName, 'check:alpha:baseline:contracts'),
     1,
     `${scriptName} wires the non-headed baseline contract gate exactly once`,
   );
   assert.match(
-    pkg.scripts[scriptName],
+    resolveAggregateCommand(pkg.scripts, scriptName),
     /check:alpha:evidence:contract && npm run check:alpha:baseline:contracts && npm run check:launch-policy/,
     `${scriptName} keeps the baseline contracts next to the alpha evidence contract`,
   );
@@ -59,8 +61,8 @@ const contractGateConsumers = Object.entries(pkg.scripts)
   .filter(([, command]) => String(command).includes('npm run check:alpha:baseline:contracts'))
   .map(([name]) => name)
   .sort();
-assert.deepEqual(contractGateConsumers, ['check', 'check:alpha:baseline:browser', 'check:alpha:baseline:electron', 'check:ci'],
-  'the non-headed baseline contract gate is consumed only by check, check:ci, and the headed browser/Electron preflights');
+assert.deepEqual(contractGateConsumers, ['check', 'check:alpha:baseline:browser', 'check:alpha:baseline:electron'],
+  'the non-headed baseline contract gate is directly consumed only by check and the headed browser/Electron preflights');
 for (const [name, command] of Object.entries(pkg.scripts)) {
   if (name === 'check:alpha:baseline:browser') continue;
   assert.equal(
@@ -127,7 +129,8 @@ for (const required of [
   /#sf-galaxymap/,
   /keyboard\.press\(['"]\/['"]\)/,
   /keyboard\.type\(['"]Helios Station['"]\)/,
-  /keyboard\.press\(['"]KeyE['"]\)/,
+  /keyboard\.down\(['"]KeyE['"]\)/,
+  /keyboard\.up\(['"]KeyE['"]\)/,
   /\.sf-alert--dock/,
   /\[data-screen=["']station["']\]/,
   /#sf-dock-overlay/,

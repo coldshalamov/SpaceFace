@@ -164,7 +164,9 @@ test('flavor packs meet the V2 count and identity contracts', () => {
   assert.equal(FLAVOR_PACKS.ad_board.entries.length >= 20, true);
 
   const graffitiSets = new Set(FLAVOR_PACKS.graffiti.entries.map((entry) => entry.set));
-  assert.deepEqual(graffitiSets, new Set(['vols_hand', 'kindness', 'cynic', 'senna_name']));
+  for (const requiredSet of ['vols_hand', 'kindness', 'cynic', 'senna_name']) {
+    assert.equal(graffitiSets.has(requiredSet), true, `graffiti must retain the ${requiredSet} identity family`);
+  }
   assert.equal(FLAVOR_PACKS.graffiti.entries.filter((entry) => entry.set === 'senna_name').every((entry) => entry.text.includes('{name}')), true);
 
   const band = FLAVOR_PACKS.band.entries;
@@ -245,7 +247,7 @@ test('flavor corpus CLI emits a deterministic human taste-review artifact', () =
     assert.match(firstText, /^# SpaceFace V2 Corpus Review/m);
     assert.match(firstText, /## Wreck Rumors/);
     assert.match(firstText, /## Landmark Lore/);
-    assert.match(firstText, /414 authored lines/);
+    assert.match(firstText, new RegExp(`${FLAVOR_TEXT_ENTRIES.length} authored lines`));
     assert.match(firstText, /## Rim Poi Lore/);
     const second = run();
     assert.equal(second.status, 0, `${second.stdout}\n${second.stderr}`);

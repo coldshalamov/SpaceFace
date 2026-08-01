@@ -244,7 +244,10 @@ STORY_BEATS.forEach((sb, i) => {
 });
 assert.equal(STORY_BEATS[0].id, 'cold_start', 'first story beat should be the cold-start objective');
 assert.ok(!STORY_BEATS[0].objective.includes('Mine 10u Silicate'), 'story tracker must not keep mining-first cold-start copy');
-assert.ok(STORY_BEATS[0].objective.includes('47-A mass signal'), 'story tracker should carry 47-A cold-open intent');
+assert.ok(STORY_BEATS[0].objective.includes('47-A'),
+  'story tracker should carry the authored Contract 47-A identity');
+assert.match(STORY_BEATS[0].objective, /mass discrepancy/i,
+  'story tracker should carry the authored mass-discrepancy cold-open intent');
 assert.ok(STORY_BEATS[0].objective.includes('Helios'), 'story tracker should still point the player back to Helios');
 // Cross-contract: every beat index the tracker can show (0..7) must have a matching BEAT_CONTENT
 // entry with a hint (the flavor line). A missing BEAT_CONTENT[beat] would make the tracker show the

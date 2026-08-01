@@ -18,6 +18,7 @@ import {
   postEndingReplay,
 } from '../src/systems/postEndingReplay.js';
 import { missions } from '../src/systems/missions.js';
+import { PRODUCTION_INIT_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 
 class Bus {
   constructor() { this.handlers = new Map(); this.log = []; }
@@ -272,7 +273,16 @@ test('missions boards and JSON save preserve a mid-choice replay without materia
 test('default registry wires replay after missions/career contracts with no UI, asset, or direct-authority writes', () => {
   const registry = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   assert.match(registry, /import \{ postEndingReplay \} from '\.\.\/systems\/postEndingReplay\.js';/);
-  assert.match(registry, /missions, careerContracts, economyContracts, postEndingReplay/);
+  assert.match(registry, /\['postEndingReplay',\s*postEndingReplay\]/,
+    'registry materializes the canonical post-ending replay system');
+  const missionsIndex = PRODUCTION_INIT_ORDER.indexOf('missions');
+  const careerContractsIndex = PRODUCTION_INIT_ORDER.indexOf('careerContracts');
+  const economyContractsIndex = PRODUCTION_INIT_ORDER.indexOf('economyContracts');
+  const replayIndex = PRODUCTION_INIT_ORDER.indexOf('postEndingReplay');
+  assert.ok(missionsIndex >= 0 && careerContractsIndex > missionsIndex,
+    'career contracts initialize after missions');
+  assert.ok(economyContractsIndex > careerContractsIndex && replayIndex > economyContractsIndex,
+    'post-ending replay initializes after the contract authority systems');
   const source = readFileSync(new URL('../src/systems/postEndingReplay.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /Math\.random|Date\.now|\.\.\/ui\/|\.\.\/render\/|\.\.\/audio\//);
   assert.doesNotMatch(source, /economy:grantCredits|player\.credits\s*=|cargo\.items\s*=|\.rep\s*=/);

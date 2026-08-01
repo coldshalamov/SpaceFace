@@ -753,9 +753,10 @@ export function createMarketPanel(ctx) {
     const stationId = panel.stationId;
     const owned = (state.player.cargo.items[cmdtyId]) || 0;
 
-    // Background clicks open the chart; the chart opener also syncs the inline analysis stage.
+    // Background clicks select the persistent inline intelligence stage. The explicit expand action
+    // below owns the fullscreen chart so an ordinary row selection never covers the comparison view.
     if (!btn) {
-      openChartModal(cmdtyId);
+      selectCommodity(cmdtyId);
       return;
     }
 
