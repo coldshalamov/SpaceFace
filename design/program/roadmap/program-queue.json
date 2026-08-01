@@ -3398,7 +3398,7 @@
       "priority": 201,
       "title": "Wreck Cathedral game-camera art review",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-020.ceres-h1-capture"
       ],
@@ -3409,8 +3409,91 @@
         "design/program/roadmap/evidence/h1/row5-pq020-ceres-route/"
       ],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-018-cathedral-art-verdict-REPORT.md"
+      ],
       "brief": "Judge the frozen Cathedral at close, default, far, and in motion only after a repaired Ceres route capture reaches it.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-018.cathedral-reauthor",
+      "parentId": "PQ-018",
+      "priority": 230,
+      "title": "Re-author the Wreck Cathedral's dominant hull and rupture story",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-018.art-verdict"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "assets/ships/parts/blender/place_landmark_wreck_cathedral.blend",
+        "assets/ships/parts/places/place_landmark_wreck_cathedral.glb",
+        "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb",
+        "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/",
+        "assets/ships/parts/parts_manifest.json",
+        "assets/ships/release/release_manifest.json"
+      ],
+      "checks": [
+        "node --test test/pq018-wreck-cathedral.test.mjs test/pq018-wreck-cathedral-admission.test.mjs",
+        "npm run check:graphics:asset-receipts",
+        "npm run check:asset-reachability",
+        "node scripts/check-pq018-coordinate-reservation.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Preserve the exact identity, two-half envelope, fly-through, sockets, markers, coordinate, proxies and useful authored work while replacing dominant primitive slabs, unrooted bar families, weak fracture transitions and clay-dark material allocation with capital-scale manufactured shells, rooted exposed structure, causal rupture and distinct armor/frame/propulsion/service responses.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-018.cathedral-reauthor-h1",
+      "parentId": "PQ-018",
+      "priority": 231,
+      "title": "Capture the revised Wreck Cathedral candidate",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-018.cathedral-reauthor"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "design/program/roadmap/evidence/h1/row5-pq020-ceres-route/",
+        "design/program/roadmap/active/PQ-018.md"
+      ],
+      "checks": [
+        "npm run check:asset-reachability",
+        "npm run check:assets:live",
+        "npm run check:visual-stability"
+      ],
+      "receiptRefs": [],
+      "brief": "Capture exact-source neutral diagnostics plus target-visible close/default/far/arrival and bounded motion evidence in Browser and source Electron for only the revised Cathedral; retain the accepted Ceres functional route facts.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-018.cathedral-reauthor-review",
+      "parentId": "PQ-018",
+      "priority": 232,
+      "title": "Causally review the revised Wreck Cathedral",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-018.cathedral-reauthor-h1"
+      ],
+      "mutexes": [
+        "evidence-review"
+      ],
+      "paths": [
+        "design/program/roadmap/evidence/h1/row5-pq020-ceres-route/",
+        "design/program/roadmap/active/PQ-018.md"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Review only whether the revised exact candidate closes the recorded whole-asset G1, G2 and G4 defects across dominant source and production-runtime views while preserving identity, cavity, components and monumental presence.",
       "blocker": null
     },
     {
@@ -3588,6 +3671,7 @@
       "state": "ready",
       "dependsOn": [
         "PQ-018.art-verdict",
+        "PQ-018.cathedral-reauthor-review",
         "PQ-020.h2-verdict",
         "PQ-020.pocket-presentation-review",
         "PQ-020.h3-performance"

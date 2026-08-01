@@ -140,6 +140,10 @@ player-ship-dominant or edge-cropped and do not independently carry place identi
 far/default/close/arrival framing is unmistakably monumental. Receipt:
 [PQ-020 H2 review](receipts/PQ-020-h2-pocket-cathedral-REPORT.md).
 
+The separate exact-source whole-asset review does not confuse presence with finish: it returns
+**REVISE** for the frozen Cathedral's dominant primitive slab/bar construction and clay-dark material
+allocation. Receipt: [PQ-018 Cathedral art verdict](receipts/PQ-018-cathedral-art-verdict-REPORT.md).
+
 ---
 
 ## Decision 5 — PQ-021 Ledger legibility
