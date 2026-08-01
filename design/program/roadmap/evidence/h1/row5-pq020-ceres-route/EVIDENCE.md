@@ -1,117 +1,80 @@
 # H1 row 5 — PQ-020 Ceres functional route
 
-**Overall result: FAIL — HARNESS (partial functional evidence survives).**
+**Overall result: PASS — Browser/Electron functional pair accepted.**
 
-The one permitted Browser acceptance attempt was consumed through the registered broker manifest:
-
-```text
-node scripts/validation-broker-cli.mjs --manifest pq020-ceres-topology
-```
-
-The broker issued one claim at fixed seed `47`, launched one owned headed Browser process, and did not
-time out. It recorded one Browser launch and zero Electron launches. Per the one-attempt rule, the
-Browser route was not retried; the Electron parity entry correctly refused to launch because the
-Browser receipt was not `PASS`.
-
-## Exact failure and why it is HARNESS
-
-The public route successfully selected **Ceres Belt** from **Helios Prime**, charged the production
-jump, entered Ceres, and returned to `jump.state: IDLE`. The route then evaluated two endpoint
-assertions in order:
-
-1. the Ceres arrival must be closest to the gate back to the source endpoint — **passed** for Helios;
-2. that source gate must also be at most `300 WU` away — **failed** at `429.564 WU`.
-
-The saved stack identifies the second assertion:
+The registered fixed-seed route passed once in headed Chromium, then passed through the distinct
+source-Electron wrapper on the same pushed candidate. Both runtimes produced all 21 declared frames,
+reported real Intel ANGLE/D3D11, recorded zero page/request issues, and agreed on normalized gameplay
+facts. Electron also closed its owned runtime and profile cleanly.
 
 ```text
-[pq020-ceres-topology] FAIL in helios-to-ceres-jump
-  - Ceres entry from sector_helios_prime landed 429.564 WU from its endpoint gate
-
-at assertEndpointApproach (scripts/lib/pq020CeresFunctionalRoute.mjs:671)
+candidate commit: 04514d0bfe3c1b1a7ea9b85a02905418ad675033
+manifest: pq020-ceres-topology
+fixed seed: 47
+Browser claim: 26052-3223fa474a1b497e1638943b
+candidate digest: c864caec77a6ba911efab9c2dbae1ae3f11bf2a2bbb1bc7fde993830a49f7f46
+Browser receipt SHA-256: 70687669c36a30233c0c3afd27b27be376a2bd355d00da49d0fab6ee86c29ef1
+Electron receipt SHA-256: ae10134fa9905117667a5e8466e12504be41fec1f510692ce71bdadb2e4feca0
 ```
 
-The `300 WU` ceiling was invented by the H1 harness. Neither the packet nor the production owner
-specifies that absolute tolerance. `world._entryPointFor()` promises an arrival “near the gate back to
-where we came from, facing inward”; source-direction identity is the observable contract.
+## Accepted functional route
 
-Geometry reconstructed from the recorded entry point and the committed Ceres gate positions:
+- Public Star Chart selection and the production jump FSM carried the player from Helios Prime into
+  Ceres. The arrival was closest to the Helios return gate (`429.564 WU` versus `1573.512 WU` to the
+  Tethys gate).
+- Public map selection plus natural production autopilot reached Ceres Refinery, Belt Outpost,
+  Throughline Weigh Beacon, and Wreck Cathedral. All four arrivals terminated successfully with the
+  player alive at `140` hull.
+- The Cathedral admitted its exact authored identity and all seven components. The actor reached it
+  naturally, then used the shipped `+`/`-` camera controls for declared far/default/close zooms
+  `112/72/64`; every framing kept the site in frame.
+- F5, canonical cold reload, and the visible Continue control restored Ceres at seed `47`, exactly
+  one beacon entity and fifteen Cathedral entities. Pose delta was `0.149 WU` in Browser and
+  `0.198 WU` in Electron.
+- Repeated post-Continue beacon and Cathedral selection succeeded.
+- The route then travelled Ceres → Tethys → Ceres. The return arrival was closest to the Tethys gate
+  (`430.001 WU` versus `2327.817 WU` to the Helios gate), proving the opposite endpoint direction.
 
-| Endpoint gate | Global position | Distance from recorded entry |
-|---|---:|---:|
-| back to Helios Prime | `(-9422, 6282)` | `429.564 WU` |
-| back to Tethys Junction | `(-8844, 8192)` | `1573.512 WU` |
+## Accessibility and semantics
 
-The valid source-side relation therefore held by a wide margin. The harness rejected it only because
-of its unsupported absolute threshold. This is **HARNESS**, not PRODUCT or ENVIRONMENT.
+The actor used both keyboard and pointer map selection. The map remained a named dialog with a named
+search control; its focused action exposed `Track Target` or `Set Course & Jump` as appropriate, and
+the inspector carried identity and route meaning in text rather than color alone. This is functional
+keyboard/pointer reachability, not a claim that a physical controller was attached.
 
-This classification does not upgrade the rest of the route. It says the one attempt stopped on a
-false-negative assertion before those claims were exercised.
+## Review frames
 
-## Functional evidence that survived
+- Maps and pocket arrivals: `03`–`09`.
+- Cathedral far/default/close/arrival: `10`–`13`.
+- Save/Continue restoration and repeated selections: `14`–`18`.
+- Opposite endpoint direction: `19`–`21`.
+- The `electron/` directory contains the matching 21-frame source-Electron sequence.
 
-- New Game used fixed seed `47`.
-- The visible Star Chart selected **Ceres Belt** while **Helios Prime** was the current sector.
-- Production trace:
-  - tick `126`: `jump:chargeStart`, target Ceres, `via: gate`;
-  - tick `307`: `jump:start`, Helios → Ceres;
-  - tick `379`: `sector:enter`, Ceres at the recorded source-specific entry point;
-  - tick `379`: `jump:arrive`, not interdicted, zero ambushes.
-- At classification time the player was alive at `140` hull and the jump state was `IDLE`.
-- Ceres materialized exactly one Throughline Weigh Beacon entity.
-- Ceres materialized exactly fifteen Wreck Cathedral World Site entities.
-- `pageIssues` was empty.
+The older `failure-row5.png` and `latest-acceptance-failure.json` remain only as historical defect
+diagnostics. They are superseded by this green candidate and do not classify current H1 evidence.
 
-Reviewable frames:
+## Harness repair boundary
 
-- [public Helios → Ceres Star Chart selection](01-helios-to-ceres-map.png)
-- [post-arrival failure frame in Ceres](failure-row5.png)
+The accepted pair follows the proven fix for the final Electron false negative. The shared actor used
+to navigate to `rootUrl` after Electron's canonical first window had already loaded that same URL,
+aborting the first document's lazy imports. Browser still performs its required initial navigation;
+Electron now asserts the first-window URL and continues without a duplicate navigation. A bounded
+native regression pins exactly two canonical document requests: first window plus the deliberate
+cold reload. No accepted route claim relies on a broad ignored-error window.
 
-The first frame proves the public selection context. The second is a failure diagnostic, not a
-Cathedral or pocket-distinctness art frame.
+## NOT performance or H2 evidence
 
-## Claims left unproven by the stopped attempt
-
-- Ceres Refinery selection and natural autopilot travel;
-- Belt Outpost selection and natural autopilot travel;
-- Throughline Weigh Beacon selection and natural autopilot travel;
-- Wreck Cathedral selection and natural approach;
-- Cathedral far/default/close/arrival presentation stills;
-- F5 save, canonical reload, visible Continue, and pose/content restoration;
-- repeated beacon and Cathedral selections after Continue;
-- Ceres → Tethys → Ceres source-direction proof;
-- Electron functional parity;
-- H2 pocket-distinctness and Cathedral-presence verdicts.
-
-H2 must therefore **defer** Decision 4 rather than infer an art verdict from these diagnostic frames.
-
-## Deterministic preflight and broker boundary
-
-Before the one-use claim was issued, all declared fast gates passed:
-
-- `npm run check:pq020:proofs` — 14/14;
-- `npm run check:pq020:ceres-topology` — PASS;
-- `npm run check:sim:compare` — deterministic, `hashEqual: true`, no divergent tick;
-- `node --test test/pq020-ceres-topology-manifest.test.mjs` — 13/13.
-
-The candidate digest is
-`0de1ed5ca1a348ed95c786ec0f217551508e10b5d79dd790f2a9b9684936da5b`; `launch-counts.json`
-binds it to exactly one acceptance launch. No retry was attempted.
-
-## NOT performance evidence
-
-This row makes no speed, frame-time, percentile, hitch, or representative-performance claim.
-`route-receipt.json` preserves a production `save:completed` event whose payload incidentally contains
-timing diagnostics, and `latest-run-result.json` preserves broker process-duration metadata. Both
-committed copies are stamped `"informational_contended": true`; every time-valued field is excluded
-from H1 evidence. Matched performance remains Phase H3.
+The route receipts intentionally set `noPerformanceEvidence: true`. Broker process duration and any
+incidental timing payload are not representative measurements. Pocket visual distinctness,
+Cathedral artistic presence, and matched H3 performance remain separate decisions.
 
 ## Machine-readable files
 
-- `classification.json` — H1 classification, source-gate geometry, and claim boundary;
-- `route-receipt.json` — raw functional failure receipt, with incidental timings marked contended;
-- `fast-gate.json` — broker fast-gate digest receipt;
-- `launch-counts.json` — one-use candidate launch record;
-- `latest-acceptance-failure.json` — broker failure fingerprint;
-- `latest-run-result.json` — owned process record, with timing metadata marked contended;
-- `broker-run.log` — exact terminal summary from the one attempt.
+- `browser-claim.json` — consumed one-use Browser claim and candidate binding;
+- `route-receipt.json` — accepted Browser facts;
+- `electron/route-receipt.json` — accepted Electron facts, semantic parity, and owned teardown;
+- `fast-gate.json` — candidate/route/regression digest binding;
+- `launch-counts.json` — candidate-scoped one-use history;
+- `latest-run-result.json` — successful owned Browser process result;
+- `classification.json` — current H1 disposition and historical-artifact boundary;
+- `broker-run.log` — compact terminal result for the accepted pair.

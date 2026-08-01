@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.pq020-ceres-functional-route.v1",
-  "runtime": "browser-chromium-headed",
+  "runtime": "electron",
   "disposition": "PASS",
   "problems": [],
   "fixedSeed": 47,
@@ -83,7 +83,7 @@
       },
       "endpointGates": [
         {
-          "id": 310,
+          "id": 309,
           "gateTo": "sector_tethys_junction",
           "name": "Gate → Tethys Junction",
           "pos": {
@@ -93,7 +93,7 @@
           "distance": 430.0013769422855
         },
         {
-          "id": 309,
+          "id": 308,
           "gateTo": "sector_helios_prime",
           "name": "Gate → Helios Prime",
           "pos": {
@@ -159,16 +159,16 @@
           "alive": true,
           "hull": 140,
           "pos": {
-            "x": -11427.297119140625,
-            "z": 7212.444274902344
+            "x": -11427.550048828125,
+            "z": 7211.9034423828125
           },
-          "speed": 4.587036624021646
+          "speed": 4.005209918209566
         },
         "autopilot": {
           "active": false,
           "label": "Belt Outpost",
           "status": "arrived",
-          "distance": 90.02920598462977,
+          "distance": 90.0224449585009,
           "arrivalRadius": 90
         }
       }
@@ -192,16 +192,16 @@
           "alive": true,
           "hull": 140,
           "pos": {
-            "x": -9295.596435546875,
-            "z": 7277.242858886719
+            "x": -9295.646606445312,
+            "z": 7277.132995605469
           },
-          "speed": 4.6905265177340425
+          "speed": 4.620248655412141
         },
         "autopilot": {
           "active": false,
           "label": "Throughline Weigh Beacon",
           "status": "arrived",
-          "distance": 48.03598968126091,
+          "distance": 48.07725031261309,
           "arrivalRadius": 48
         }
       }
@@ -219,16 +219,16 @@
           "alive": true,
           "hull": 140,
           "pos": {
-            "x": -11941.802001953125,
-            "z": 10904.720947265625
+            "x": -11942.126708984375,
+            "z": 10905.7744140625
           },
-          "speed": 4.74301676182774
+          "speed": 4.709585531728228
         },
         "autopilot": {
           "active": false,
           "label": "Wreck Cathedral",
           "status": "arrived",
-          "distance": 48.070761658820444,
+          "distance": 48.0487864292445,
           "arrivalRadius": 48
         }
       }
@@ -249,11 +249,11 @@
         "terminal": true,
         "ok": true,
         "name": "far",
-        "distance": 30.73942667137944,
+        "distance": 30.824703126214093,
         "projection": {
-          "x": 0.6233802625432181,
-          "y": -0.2418152642532961,
-          "z": 0.9674379647377975,
+          "x": 0.5258284594330264,
+          "y": -0.25610530435412954,
+          "z": 0.9680008149290451,
           "inFrame": true
         },
         "admission": {
@@ -269,11 +269,11 @@
         "terminal": true,
         "ok": true,
         "name": "default",
-        "distance": 30.318342314404912,
+        "distance": 30.054654360604914,
         "projection": {
-          "x": 0.49754211933625575,
-          "y": -0.19320194639006322,
-          "z": 0.9736455293865758,
+          "x": 0.38381275885639615,
+          "y": -0.1865952896846151,
+          "z": 0.9759459274825797,
           "inFrame": true
         },
         "admission": {
@@ -289,11 +289,11 @@
         "terminal": true,
         "ok": true,
         "name": "close",
-        "distance": 29.86759311840638,
+        "distance": 29.254205536912735,
         "projection": {
-          "x": 0.5557148313407254,
-          "y": -0.2157305556272718,
-          "z": 0.970216957254467,
+          "x": 0.48418008940377905,
+          "y": -0.23565220607995438,
+          "z": 0.9689512672075471,
           "inFrame": true
         },
         "admission": {
@@ -313,8 +313,8 @@
       "sectorId": "sector_ceres_belt",
       "seed": 47,
       "playerPos": {
-        "x": -11960.120361328125,
-        "z": 10899.67626953125
+        "x": -11961.030029296875,
+        "z": 10900.104736328125
       },
       "beaconEntities": 1,
       "cathedralEntities": 15
@@ -323,10 +323,10 @@
       "sectorId": "sector_ceres_belt",
       "seed": 47,
       "playerPos": {
-        "x": -11960.293487548828,
-        "z": 10899.63037109375
+        "x": -11961.242584228516,
+        "z": 10900.038696289062
       },
-      "poseDelta": 0.14853951123616796,
+      "poseDelta": 0.19787836985285037,
       "poseRestored": true,
       "beaconEntities": 1,
       "cathedralEntities": 15
@@ -341,7 +341,7 @@
       "searchAriaLabel": "Search map",
       "actionLabel": "Track Target",
       "actionFocused": true,
-      "inspectorText": "Contact record Throughline Weigh Beacon Object Class TypePOI FactionUnaffiliated HostileNO Distance4530 u Speed0 u/s"
+      "inspectorText": "Contact record Throughline Weigh Beacon Object Class TypePOI FactionUnaffiliated HostileNO Distance4531 u Speed0 u/s"
     },
     "cathedral": {
       "name": "Wreck Cathedral",
@@ -351,7 +351,7 @@
       "searchAriaLabel": "Search map",
       "actionLabel": "Track Target",
       "actionFocused": true,
-      "inspectorText": "Contact record Wreck Cathedral Object Class TypePOI FactionUnaffiliated HostileNO Distance28 u Speed0 u/s"
+      "inspectorText": "Contact record Wreck Cathedral Object Class TypePOI FactionUnaffiliated HostileNO Distance27 u Speed0 u/s"
     }
   },
   "transit": {
@@ -426,113 +426,111 @@
       "status": "route-plotted"
     }
   },
-  "brokerManifestId": "pq020-ceres-topology",
-  "launchContract": "one headed system-Browser process; one route; Electron runs only after Browser closes",
   "screenshots": [
     {
-      "path": ".devshots/pq020-ceres-topology/01-helios-to-ceres-map.png",
-      "bytes": 464054,
-      "sha256": "65ba983bf3b156903906a20326f896344cd2c9bf43459e99fab558dc2deb0d00"
+      "path": ".devshots/pq020-ceres-topology/electron/01-helios-to-ceres-map.png",
+      "bytes": 602050,
+      "sha256": "3a8f7c691ee331969e3dfb4356a7aac4cd39bc1b71dc53e2d41d89267914d48b"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/02-ceres-helios-entry.png",
-      "bytes": 478885,
-      "sha256": "81b95b92bffa96786ff8d0113162342ba8099dd05cc1e7c981b6bafabab5d351"
+      "path": ".devshots/pq020-ceres-topology/electron/02-ceres-helios-entry.png",
+      "bytes": 594966,
+      "sha256": "5758cd19bb4181baacdbfbc17de6cc7a3eab81f8ad50a02744267b5f119af327"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/03-refinery-map.png",
-      "bytes": 463632,
-      "sha256": "7c9f3ecb801559354696b01c665aa8c3c7524c8ea89388c43e0e75577f26c048"
+      "path": ".devshots/pq020-ceres-topology/electron/03-refinery-map.png",
+      "bytes": 609391,
+      "sha256": "967f14d3ee5eb55925f8c8d403701f6e4a9f82cf8b4a9cfc05b5ac5cc90b89f1"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/04-refinery-flight.png",
-      "bytes": 410295,
-      "sha256": "16c96f5ebd976c0bf926de78a0190aa018007213fbb60960b54dede01266f5f6"
+      "path": ".devshots/pq020-ceres-topology/electron/04-refinery-flight.png",
+      "bytes": 505114,
+      "sha256": "2a8d32ab3cda8e8b70bc8f4770f7b945f6b05793275bfb84499f83ec5c610657"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/05-belt-outpost-map.png",
-      "bytes": 477974,
-      "sha256": "bf8970234545e27845b6d2dd3b465f2b9773612515b48848f2ef4f48fd83d00e"
+      "path": ".devshots/pq020-ceres-topology/electron/05-belt-outpost-map.png",
+      "bytes": 625921,
+      "sha256": "f56d300b77289042d4f5cb4039a18feb4a4b9370adabc5daac5f38faaab527aa"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/06-belt-outpost-flight.png",
-      "bytes": 501917,
-      "sha256": "ccb1a2cfc6d1f71bd41b513fec2158e1ac78425518d3b3091d741e3b9e4caaa8"
+      "path": ".devshots/pq020-ceres-topology/electron/06-belt-outpost-flight.png",
+      "bytes": 620691,
+      "sha256": "352fa0ca1c4716a645ffae419f0b9b48ff4f43e01b9750975c89fe69155f3ae4"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/07-beacon-map.png",
-      "bytes": 473300,
-      "sha256": "7260a0e79a11c48e775ba60dc12ac8efb9a03eb8cf287265d7ad0349a9dbdc3e"
+      "path": ".devshots/pq020-ceres-topology/electron/07-beacon-map.png",
+      "bytes": 618764,
+      "sha256": "ec180300aafe7bf8f9f656c42d9dc90ce6bb600ce9c8b9aa4f11a36fcf18495f"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/08-beacon-flight.png",
-      "bytes": 386932,
-      "sha256": "879cdb29e9b35d99e15d6d6147950ab04e4c72e3895d387a5117cb8cef81ee3e"
+      "path": ".devshots/pq020-ceres-topology/electron/08-beacon-flight.png",
+      "bytes": 481676,
+      "sha256": "9d90731bdc459c3d1f02f6ba2aa199ac06d8f04990259ea3ad619ece1cb398d1"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/09-cathedral-map.png",
-      "bytes": 475365,
-      "sha256": "d29ee7345d4cbffa4f3c0af2032ec13d3b0a2b775dca745852a28cc07d8142ea"
+      "path": ".devshots/pq020-ceres-topology/electron/09-cathedral-map.png",
+      "bytes": 624684,
+      "sha256": "f65d8f1241a26c0cb901827ee18176f0ca57f41aca61913b87daf1101ee763a3"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/10-cathedral-far.png",
-      "bytes": 744687,
-      "sha256": "1b6417f471abd548f29a15ce18f8162ddde333b058e49dd080c7da1d326ee497"
+      "path": ".devshots/pq020-ceres-topology/electron/10-cathedral-far.png",
+      "bytes": 954541,
+      "sha256": "11c8a7e08087769130ed90b89364a083b100b65a7d4e0df45df4430c51feda40"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/11-cathedral-default.png",
-      "bytes": 747248,
-      "sha256": "5a7614b5fd6d4926894da4c111bef904107f929203108d7eaaa6f8e97d5132e1"
+      "path": ".devshots/pq020-ceres-topology/electron/11-cathedral-default.png",
+      "bytes": 1394529,
+      "sha256": "92e509819b45994378eee7d045f907d024ad997014616463b843061288fb5bda"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/12-cathedral-close.png",
-      "bytes": 745896,
-      "sha256": "39b2ae7eea89db06855a623166b4b7384ae55b43485216950c3aa7680458f1ed"
+      "path": ".devshots/pq020-ceres-topology/electron/12-cathedral-close.png",
+      "bytes": 955076,
+      "sha256": "10344563c01d46902899060cdc71e8cb4abac453918b409465bc5400e9ae8144"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/13-cathedral-arrival.png",
-      "bytes": 746401,
-      "sha256": "4f6848a252ae640494c8c9d18f28351be1a4217e7f2379dc928a9619fcc9cba3"
+      "path": ".devshots/pq020-ceres-topology/electron/13-cathedral-arrival.png",
+      "bytes": 954180,
+      "sha256": "38c770251821da24ed62852c3a311622d15ad155e20b36636ba2a56c39cfe33a"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/14-pre-save.png",
-      "bytes": 741888,
-      "sha256": "974b8808fca21d7be0490ee3f8e3987e9afef29c6b020619f22bacfa77557d1d"
+      "path": ".devshots/pq020-ceres-topology/electron/14-pre-save.png",
+      "bytes": 953406,
+      "sha256": "c6bf8b7faeb2c2b88eb0f3cfe72eccc828840fc150d710b03315f3f9da4913e7"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/15-continue-menu.png",
-      "bytes": 1432177,
-      "sha256": "04035b7f9cf9c71a0e57920d090c060cefdd45c0f3c07fdca3d1f63355a3a71d"
+      "path": ".devshots/pq020-ceres-topology/electron/15-continue-menu.png",
+      "bytes": 1805819,
+      "sha256": "e0970ce6ed9b6c37ccdd0bdbdc20eaa9bf79d6919dec4216335cf072f9c7bddc"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/16-continue-restored.png",
-      "bytes": 313257,
-      "sha256": "1a47d552861d2063179019fcaadd939135271ccd1281f7373d58297fbfffd196"
+      "path": ".devshots/pq020-ceres-topology/electron/16-continue-restored.png",
+      "bytes": 465822,
+      "sha256": "6238ed354a8d5b5ec4f70163dba740fa4bc513def47c58bd39833035ff5cf058"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/17-repeat-beacon-map.png",
-      "bytes": 477892,
-      "sha256": "3638b88c8f96a15688155482a1d7097ef9fc2726fa00b290e7e2b3734d6cdcea"
+      "path": ".devshots/pq020-ceres-topology/electron/17-repeat-beacon-map.png",
+      "bytes": 625749,
+      "sha256": "62b8e632098ac049bceb2daef1717a12690240ab0b3a8e824d9d93473f74d5d4"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/18-repeat-cathedral-map.png",
-      "bytes": 477243,
-      "sha256": "8f7f624bd3a9ae3c661ea9807ee903fbdc5840873a95d61bea01e22e4681abf6"
+      "path": ".devshots/pq020-ceres-topology/electron/18-repeat-cathedral-map.png",
+      "bytes": 626683,
+      "sha256": "0154d32c44c304e62332761ae8d99270659ebdadbd841883f27b4dba1811c926"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/19-ceres-to-tethys-map.png",
-      "bytes": 483547,
-      "sha256": "23f59e67b3b00e8143812825c0fce4b7b14fec90491ee019cb0d529dcdcefe57"
+      "path": ".devshots/pq020-ceres-topology/electron/19-ceres-to-tethys-map.png",
+      "bytes": 627910,
+      "sha256": "a651baa50da689468a6ad5943069f07b27d9907907bc4d93a2f04693bb9575b2"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/20-tethys-to-ceres-map.png",
-      "bytes": 457024,
-      "sha256": "b1102896b7887f3b95c34f16b20cf91588f12c94c687c5d290ac4ebeb91e456a"
+      "path": ".devshots/pq020-ceres-topology/electron/20-tethys-to-ceres-map.png",
+      "bytes": 594631,
+      "sha256": "709237aa0462fa3b0f46bc4740a23e5b1d3288ebef54ccfeb7d6b1b5f7e4e5e6"
     },
     {
-      "path": ".devshots/pq020-ceres-topology/21-ceres-tethys-entry.png",
-      "bytes": 452097,
-      "sha256": "4995d3f0eff61b9840065642e28c1beef66eb0a0367559ccfef7702c51ab1ada"
+      "path": ".devshots/pq020-ceres-topology/electron/21-ceres-tethys-entry.png",
+      "bytes": 568645,
+      "sha256": "e46c2a031b8fbfe62a34c7f49f6f84756ff933f59f21b736ef7c16011ac37f3c"
     }
   ],
   "expectedScreenshots": [
@@ -559,5 +557,100 @@
     "21-ceres-tethys-entry.png"
   ],
   "pageIssues": [],
-  "ignoredPageIssues": []
+  "ignoredPageIssues": [],
+  "pageIssueDetails": [],
+  "ignoredPageIssueDetails": [],
+  "crossRuntimeParity": {
+    "comparedAgainst": ".devshots/pq020-ceres-topology/route-receipt.json",
+    "pass": true,
+    "projection": {
+      "schema": "spaceface.pq020-ceres-functional-route.v1",
+      "disposition": "PASS",
+      "fixedSeed": 47,
+      "recordedSeed": 47,
+      "gpuAvailable": true,
+      "endpointApproaches": {
+        "fromHelios": {
+          "sourceSectorId": "sector_helios_prime",
+          "targetSectorId": "sector_ceres_belt",
+          "closestEndpointGateTo": "sector_helios_prime"
+        },
+        "fromTethys": {
+          "sourceSectorId": "sector_tethys_junction",
+          "targetSectorId": "sector_ceres_belt",
+          "closestEndpointGateTo": "sector_tethys_junction"
+        }
+      },
+      "itinerary": [
+        {
+          "id": "station_ceres",
+          "arrival": {
+            "sectorId": "sector_ceres_belt",
+            "currentZoneId": "zone_ceres_refinery",
+            "currentZoneName": "Ceres Refinery Approach",
+            "autopilotStatus": "arrived"
+          }
+        },
+        {
+          "id": "station_beltout",
+          "arrival": {
+            "sectorId": "sector_ceres_belt",
+            "currentZoneId": "zone_ceres_belt",
+            "currentZoneName": "Ceres Mining Belt",
+            "autopilotStatus": "arrived"
+          }
+        },
+        {
+          "id": "poi_ceres_throughline",
+          "arrival": {
+            "sectorId": "sector_ceres_belt",
+            "currentZoneId": "zone_ceres_throughline",
+            "currentZoneName": "Throughline Weigh",
+            "autopilotStatus": "arrived"
+          }
+        },
+        {
+          "id": "world_site_wreck_cathedral",
+          "arrival": {
+            "sectorId": "sector_ceres_belt",
+            "currentZoneId": null,
+            "currentZoneName": null,
+            "autopilotStatus": "arrived"
+          }
+        }
+      ],
+      "cathedralFramings": [
+        {
+          "name": "far",
+          "inFrame": true,
+          "admitted": true,
+          "authored": true
+        },
+        {
+          "name": "default",
+          "inFrame": true,
+          "admitted": true,
+          "authored": true
+        },
+        {
+          "name": "close",
+          "inFrame": true,
+          "admitted": true,
+          "authored": true
+        }
+      ],
+      "saveContinue": {
+        "sectorId": "sector_ceres_belt",
+        "seed": 47,
+        "beaconEntities": 1,
+        "cathedralEntities": 15,
+        "poseRestored": true
+      },
+      "repeatedSelections": {
+        "beacon": "Throughline Weigh Beacon",
+        "cathedral": "Wreck Cathedral"
+      }
+    }
+  },
+  "ownedRuntimeClosed": true
 }

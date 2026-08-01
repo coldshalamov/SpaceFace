@@ -2,76 +2,43 @@
   "schema": "spaceface.h1-row-classification.v1",
   "row": 5,
   "subject": "PQ-020 Ceres functional route and relocated PQ-018 Phase-4 route claim",
-  "result": "FAIL",
-  "classification": "HARNESS",
-  "attemptsConsumed": 1,
-  "retryPerformed": false,
+  "result": "PASS",
+  "classification": "FUNCTIONAL_ACCEPTANCE",
   "manifestId": "pq020-ceres-topology",
+  "candidateCommit": "04514d0bfe3c1b1a7ea9b85a02905418ad675033",
   "fixedSeed": 47,
-  "candidateDigest": "0de1ed5ca1a348ed95c786ec0f217551508e10b5d79dd790f2a9b9684936da5b",
-  "routeDigest": "1bd97d1ab4ef378ea0420a6d8a0de939e88d70451c1c13c0740348093f69f753",
-  "regressionDigest": "48931386d5cc693dfd7e154cbac42ef5138ac10ce1cde1a626dc53f90646dedf",
-  "failureFingerprint": "197801541ea5ccd6ab394b3f756e35c1ae44f70abba165192421fb7284b246f2",
-  "launches": {
-    "browser": 1,
-    "electron": 0
+  "browserClaimId": "26052-3223fa474a1b497e1638943b",
+  "candidateDigest": "c864caec77a6ba911efab9c2dbae1ae3f11bf2a2bbb1bc7fde993830a49f7f46",
+  "browser": {
+    "disposition": "PASS",
+    "declaredFrames": 21,
+    "pageIssues": 0,
+    "gpu": "Intel ANGLE D3D11",
+    "receiptSha256": "70687669c36a30233c0c3afd27b27be376a2bd355d00da49d0fab6ee86c29ef1"
   },
-  "failure": {
-    "phase": "helios-to-ceres-jump",
-    "message": "Ceres entry from sector_helios_prime landed 429.564 WU from its endpoint gate",
-    "site": "scripts/lib/pq020CeresFunctionalRoute.mjs:671 assertEndpointApproach",
-    "rejectedPredicate": "sourceGate.distance <= 300"
+  "electron": {
+    "disposition": "PASS",
+    "declaredFrames": 21,
+    "pageIssues": 0,
+    "gpu": "Intel ANGLE D3D11",
+    "normalizedGameplayParity": true,
+    "ownedRuntimeClosed": true,
+    "receiptSha256": "ae10134fa9905117667a5e8466e12504be41fec1f510692ce71bdadb2e4feca0"
   },
-  "endpointGeometry": {
-    "entryPoint": {
-      "x": -9367.359559472121,
-      "z": 6708.074322227316
-    },
-    "heliosReturnGate": {
-      "x": -9422,
-      "z": 6282,
-      "distanceWu": 429.564
-    },
-    "tethysReturnGate": {
-      "x": -8844,
-      "z": 8192,
-      "distanceWu": 1573.512
-    },
-    "closestEndpointGateTo": "sector_helios_prime"
-  },
-  "classificationBasis": [
-    "The public production jump completed CHARGING, JUMPING, sector entry, and arrival into sector_ceres_belt.",
-    "The route's load-bearing directional assertion passed: the arrival was closest to the gate back to sector_helios_prime.",
-    "The next assertion imposed an absolute 300-WU tolerance that is absent from the packet and production contract.",
-    "The recorded entry was 429.564 WU from the Helios return gate and 1573.512 WU from the Tethys return gate, preserving source-direction identity.",
-    "The runtime remained healthy: the player was alive, one beacon and fifteen Cathedral entities materialized, and pageIssues was empty.",
-    "The attempt did not time out, the owned Browser and server shut down, and Electron correctly did not launch after Browser failure."
+  "acceptedClaims": [
+    "public Helios-to-Ceres and Tethys-to-Ceres source-direction arrivals",
+    "natural production-autopilot arrival at refinery, Belt Outpost, beacon, and Cathedral",
+    "authored Cathedral admission with seven components and public-control far/default/close framing",
+    "F5, canonical cold reload, visible Continue, pose restoration, and exact static-entity counts",
+    "repeated post-Continue beacon and Cathedral selection",
+    "keyboard and pointer map selection with non-color text semantics"
   ],
-  "survivingClaims": [
-    "fixed-seed 47 New Game",
-    "public Star Chart selection of Ceres Belt from Helios Prime",
-    "production gate-jump FSM from Helios Prime into Ceres Belt",
-    "source-specific Helios-side endpoint identity",
-    "one Throughline Weigh Beacon entity materialized",
-    "fifteen Wreck Cathedral World Site entities materialized",
-    "zero recorded page issues"
-  ],
-  "unprovenClaims": [
-    "Ceres Refinery selection and travel",
-    "Belt Outpost selection and travel",
-    "Throughline Weigh Beacon selection and travel",
-    "Wreck Cathedral selection and travel",
-    "Cathedral close, default, far, and arrival presentation frames",
-    "F5 save, cold reload, and Continue restoration",
-    "repeated beacon and Cathedral selections after Continue",
-    "Ceres to Tethys to Ceres endpoint-direction proof",
-    "Browser and Electron functional parity",
-    "pocket distinctness and Cathedral human-eye verdict"
-  ],
-  "informationalContendedArtifacts": [
-    "route-receipt.json failureSnapshot.trace save:completed timing fields",
-    "latest-run-result.json process duration fields"
+  "historicalSupersededArtifacts": [
+    "failure-row5.png",
+    "latest-acceptance-failure.json",
+    "design/program/roadmap/receipts/PQ-020-ceres-h1-capture-BLOCKER.md"
   ],
   "noPerformanceEvidence": true,
-  "matchedPerformancePhase": "H3"
+  "h2VerdictClaimed": false,
+  "physicalControllerClaimed": false
 }

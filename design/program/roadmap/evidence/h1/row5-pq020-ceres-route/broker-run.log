@@ -1,20 +1,19 @@
 $ node scripts/validation-broker-cli.mjs --manifest pq020-ceres-topology
 
-[validation-broker] status: fail
+[validation-broker] status: pass
 [validation-broker] fixedSeed: 47
-[validation-broker] pid: 6628 exit=1 signal=null
-[validation-broker] launchCounts global=1 browser=1 electron=0
-[pq020-ceres-topology] FAIL in helios-to-ceres-jump
-  - Ceres entry from sector_helios_prime landed 429.564 WU from its endpoint gate
+[validation-broker] Browser claim: 26052-3223fa474a1b497e1638943b
+[validation-broker] candidateDigest: c864caec77a6ba911efab9c2dbae1ae3f11bf2a2bbb1bc7fde993830a49f7f46
+[pq020-ceres-topology] PASS: 21/21 declared Browser frames, zero page issues, Intel ANGLE/D3D11
 
-candidateDigest: 0de1ed5ca1a348ed95c786ec0f217551508e10b5d79dd790f2a9b9684936da5b
-routeDigest: 1bd97d1ab4ef378ea0420a6d8a0de939e88d70451c1c13c0740348093f69f753
-regressionDigest: 48931386d5cc693dfd7e154cbac42ef5138ac10ce1cde1a626dc53f90646dedf
-failureFingerprint: 197801541ea5ccd6ab394b3f756e35c1ae44f70abba165192421fb7284b246f2
-timedOut: false
-browserOwned: true
-serverOwned: true
+$ node scripts/check-pq020-ceres-topology-electron.mjs
 
-H1 classification: FAIL — HARNESS
-Retry performed: no
-Electron launched: no (Browser PASS guard correctly held)
+[pq020-ceres-topology-electron] PASS: 21/21 declared Electron frames
+[pq020-ceres-topology-electron] normalized Browser parity: true
+[pq020-ceres-topology-electron] page issues: 0
+[pq020-ceres-topology-electron] GPU: Intel ANGLE/D3D11
+[pq020-ceres-topology-electron] owned runtime closed: true
+
+H1 classification: PASS — FUNCTIONAL_ACCEPTANCE
+Performance evidence: not claimed
+H2 visual verdict: not claimed

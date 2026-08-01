@@ -26,7 +26,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 | 2 | PQ-021 broker cell + Electron parity | **PASS** | [row2-pq021-ledger](evidence/h1/row2-pq021-ledger/EVIDENCE.md) |
 | 3 | PQ-019A presentation + counts | **PASS — facilities/counts retained; brokered capsule continuation accepted at runtime zooms 45/66/108** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
 | 4 | `pq019-surface-heist` broker manifest | **PASS — retained DOM/lawful evidence plus accepted fence/confiscation/destruction/recovery continuation** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
-| 5 | PQ-020 Ceres functional route | **READY FOR FRESH PAIR / NO H1 PROMOTION YET — candidate `48f95b59` plus phase telemetry proved a duplicate Electron boot navigation; the one-navigation repair and native regression pass** | [historical failure receipt](receipts/PQ-020-ceres-h1-capture-BLOCKER.md) |
+| 5 | PQ-020 Ceres functional route | **PASS — fresh candidate-bound Browser/Electron pair accepted, 21/21 frames in each runtime with exact semantic parity** | [row5-pq020-ceres-route](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) |
 | 6 | PQ-023 cues in motion | **PASS — retained combat motion plus accepted Cathedral Browser/Electron continuation** | [row6-pq023-cues](evidence/h1/row6-pq023-cues/EVIDENCE.md) |
 | 7 | PQ-022 asset leaves | **PASS — one Browser launch; 11 exact identities, 13 admitted stills** | [row7-pq022-asset-leaves](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md) |
 | 8 | Electron end-to-end smoke | **PASS — accepted source-Electron menu→physical dock→Ledger chain** | [row8-electron-e2e](evidence/h1/row8-electron-e2e/EVIDENCE.md) |
@@ -123,19 +123,17 @@ a *different place*, or does Ceres read as one undifferentiated field with diffe
 **Question, part B:** Does the Wreck Cathedral have presence — does it land as a landmark worth
 travelling to — at close, default and far framing?
 
-**Evidence:** [row 5 original attempt](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) and the
-[current blocker receipt](receipts/PQ-020-ceres-h1-capture-BLOCKER.md). Candidate `1c9d317d` later
-completed the Browser route 21/21. Electron completed the same 21 frames, matched all normalized
-gameplay facts, and closed its owned runtime, but eight varying module requests remained hard
-`net::ERR_ABORTED` with no authoritative document/teardown provenance. Under the pair contract the
-Electron receipt is red, so none of those candidate frames or semantic facts are promoted into H2.
-The exact application/context provenance repair and its bounded native regression now pass; a fresh
-candidate-bound pair is the only remaining H1 step.
+**Evidence:** [accepted row 5 Browser/Electron pair](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md)
+and [exact H1 receipt](receipts/PQ-020-ceres-h1-capture-REPORT.md). Candidate `04514d0b` passed all
+21 frames in both runtimes at fixed seed `47`, with exact normalized gameplay parity, zero issues,
+real Intel ANGLE/D3D11, and clean Electron teardown. Review maps/arrivals `03`–`09` and the
+Cathedral far/default/close/arrival sequence `10`–`13`; the `electron/` directory carries the paired
+source-Electron views.
 
-**Continuation:** both visual questions remain deferred only until the fresh Browser/Electron pair
-passes. PQ-020 integration and the relocated PQ-018 Phase-4 closure remain open.
+**Continuation:** H1 is accepted. This exact review now decides whether PQ-020 proceeds directly to
+H3 or routes any weak presentation surface into a named correction.
 
-**Verdict:** DEFER — the repair is green; fresh paired H1 evidence has not yet been issued
+**Verdict:** READY — accepted paired evidence is available for the integrator's visual review
 
 ---
 
