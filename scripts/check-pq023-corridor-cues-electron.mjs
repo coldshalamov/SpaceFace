@@ -43,6 +43,7 @@ const FIXED_SEED = SMALL_DESTRUCTION_SALIENCE_ONLY
 const TASK_ID = SMALL_DESTRUCTION_SALIENCE_ONLY
   ? 'pq023-small-destruction-salience'
   : COMBAT_READABILITY_ONLY ? 'pq023-combat-readability' : 'pq023-corridor-cues';
+const COMBAT_CAPTURE_TIME_SOURCE = 'h1:pq023-electron-combat-capture';
 const RECEIPT_SCHEMA = SMALL_DESTRUCTION_SALIENCE_ONLY
   ? 'spaceface.pq023-small-destruction-salience-electron.v1'
   : COMBAT_READABILITY_ONLY
@@ -237,6 +238,9 @@ try {
     noPerformanceEvidence: true,
   };
 } finally {
+  if (page && !page.isClosed()) {
+    await releaseElectronCombatReadabilityTarget(page).catch(() => {});
+  }
   let cleanupReport = null;
   try {
     cleanupReport = await closeOwnedElectronRuntime({
@@ -449,7 +453,7 @@ async function captureElectronCombatReadability(targetPage, impactProfiles) {
 }
 
 async function prepareElectronCombatReadabilityTarget(targetPage) {
-  const spatial = await targetPage.evaluate(async () => {
+  const spatial = await targetPage.evaluate(async (captureTimeSource) => {
     const sf = window.SF;
     const state = sf.state;
     const player = state.entities.get(state.playerId);
@@ -499,7 +503,11 @@ async function prepareElectronCombatReadabilityTarget(targetPage) {
       pathLength: Math.hypot(targetContact.x - muzzle.x, targetContact.z - muzzle.z),
     };
 
-    state.timeScale = 0;
+    const timeEffects = sf.timeEffects || sf.ctx?.timeEffects;
+    if (!timeEffects?.set || !timeEffects?.clear) {
+      throw new Error('Electron combat-readability target requires the public timeEffects authority');
+    }
+    timeEffects.set(captureTimeSource, { scale: 0 });
     state.accumulator = 0;
     const originalUpdate = vfx.update;
     window.__sfOriginalCombatVfxUpdate = originalUpdate;
@@ -532,9 +540,27 @@ async function prepareElectronCombatReadabilityTarget(targetPage) {
     state.render?.cameraCtrl?.snapToPlayer?.();
     await new Promise((resolve) => setTimeout(resolve, 900));
     return window.__sfCombatSpatialContract;
-  });
+  }, COMBAT_CAPTURE_TIME_SOURCE);
   assert.ok(spatial.pathLength > 10, 'Electron combat-readability fire axis must be nontrivial');
   return spatial;
+}
+
+async function releaseElectronCombatReadabilityTarget(targetPage) {
+  await targetPage.evaluate((captureTimeSource) => {
+    const sf = window.SF;
+    const vfx = sf?.registry?.get?.('vfx');
+    window.__sfResetCombatVfx?.();
+    if (vfx && typeof window.__sfOriginalCombatVfxUpdate === 'function') {
+      vfx.update = window.__sfOriginalCombatVfxUpdate;
+    }
+    window.__sfCombatVfxCaptureTarget?.removeFromParent?.();
+    sf?.timeEffects?.clear?.(captureTimeSource);
+    delete window.__sfCombatVfxCaptureTarget;
+    delete window.__sfCombatSpatialContract;
+    delete window.__sfOriginalCombatVfxUpdate;
+    delete window.__sfResetCombatVfx;
+    delete window.__sfFreezeCombatVfx;
+  }, COMBAT_CAPTURE_TIME_SOURCE);
 }
 
 async function setElectronCombatTargetVisible(targetPage, visible) {

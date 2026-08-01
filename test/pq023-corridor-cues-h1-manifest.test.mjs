@@ -229,6 +229,11 @@ test('the final small-destruction continuation recaptures only its three owned c
   assert.ok(electronSource.includes("process.argv.includes('--small-destruction-salience-only')"));
   assert.ok(electronSource.includes('captureElectronSmallDestructionSalience(page)'));
   assert.ok(electronSource.includes('validatePq023SmallDestructionSalienceProjection'));
+  assert.ok(electronSource.includes("timeEffects.set(captureTimeSource, { scale: 0 })"));
+  assert.ok(electronSource.includes('targetPage.evaluate(async (captureTimeSource) =>'));
+  assert.ok(electronSource.includes('timeEffects?.clear?.(captureTimeSource)'));
+  assert.equal(electronSource.includes('state.timeScale = 0'), false,
+    'Electron continuation must freeze through the sole timeEffects writer');
 });
 
 test('the combat-readability projection fails closed on all five executed runtime grammars', () => {
