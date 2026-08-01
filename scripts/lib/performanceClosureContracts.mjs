@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 export const PERFORMANCE_CLOSURE_SCHEMA = 'spaceface.performanceClosure.v1';
 export const PERFORMANCE_WINDOW_SCHEMA = 'spaceface.performanceWindow.v1';
 export const PERFORMANCE_SCENARIO_SCHEMA = 'spaceface.performanceScenarioMatrix.v1';
+export const PERFORMANCE_MEASUREMENT_VALIDITY_SCHEMA = 'spaceface.performanceMeasurementValidity.v1';
 export const PERFORMANCE_BUDGETS = Object.freeze({
   targetFrameP95Ms: 16.7,
   floorFrameP95Ms: 33.3,
@@ -24,6 +25,7 @@ const PERFORMANCE_ROUTE_DIGEST_FIELDS = Object.freeze([
 const SHA256_PATTERN = /^[a-f0-9]{64}$/i;
 const COMMIT_PATTERN = /^[a-f0-9]{40}$/i;
 const ISO_8601_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+const SOFTWARE_RENDERER_PATTERN = /swiftshader|llvmpipe|software rasterizer|microsoft basic render/i;
 const ARRAY_SORT = Function.call.bind(Array.prototype.sort);
 const REGEXP_TEST = Function.call.bind(RegExp.prototype.test);
 const STRING_TRIM = Function.call.bind(String.prototype.trim);
@@ -218,6 +220,110 @@ export function comparePerformanceWindows(before, after) {
   };
 }
 
+export function evaluatePerformanceMeasurementValidity(report) {
+  const checks = [];
+  const add = (id, pass, reason) => {
+    checks.push({ id, pass: pass === true });
+    return pass === true ? null : reason;
+  };
+  const reasons = [];
+  const worktree = report?.worktree;
+  const start = worktree?.fingerprints?.start;
+  const end = worktree?.fingerprints?.end;
+  const stableWorktree = worktree?.dirty === false
+    && start?.changedFileCount === 0
+    && end?.changedFileCount === 0
+    && nonempty(start?.id)
+    && start.id === end?.id
+    && start.digest === end?.digest
+    && start.head === end?.head
+    && start.branch === end?.branch;
+  reasons.push(add('worktree.clean-stable', stableWorktree, 'worktree-not-clean-and-stable'));
+
+  const activity = report?.environment?.activity;
+  const quietActivity = activity?.start?.active === false && activity?.end?.active === false;
+  reasons.push(add(
+    'environment.activity-quiet',
+    quietActivity,
+    'contaminating-process-or-authoring-activity',
+  ));
+
+  const gpu = report?.environment?.gpu;
+  const renderer = nonempty(gpu?.renderer) ? gpu.renderer : '';
+  const rendererValid = gpu?.source === 'game-renderer'
+    && nonempty(gpu?.vendor)
+    && nonempty(renderer)
+    && !REGEXP_TEST(SOFTWARE_RENDERER_PATTERN, renderer);
+  reasons.push(add('environment.game-renderer', rendererValid, 'wrong-or-fallback-renderer'));
+
+  const cleanup = report?.cleanup;
+  const cleanupValid = cleanup?.pass === true
+    && ['pageClosed', 'browserClosed', 'serverReleased', 'portsReleased', 'measurementDisabled']
+      .every((key) => cleanup?.[key] === true);
+  reasons.push(add('cleanup.complete', cleanupValid, 'cleanup-or-measurement-gate-incomplete'));
+
+  const errorKeys = ['pageErrors', 'requestFailures', 'consoleErrors', 'httpErrors', 'glErrors', 'warnings'];
+  const errorsValid = errorKeys.every((key) => Array.isArray(report?.errors?.[key]) && report.errors[key].length === 0);
+  reasons.push(add('runtime.errors-empty', errorsValid, 'runtime-errors-observed-or-unreported'));
+
+  const windows = Array.isArray(report?.windows) ? report.windows : [];
+  reasons.push(add('windows.present', windows.length > 0, 'measurement-windows-missing'));
+  for (let index = 0; index < windows.length; index += 1) {
+    const window = windows[index];
+    const timer = window?.gpu;
+    const queryCounts = timer?.queryCounts;
+    const gpuTimerValid = timer?.available === true
+      && timer?.captureValid === true
+      && timer?.lastDisjoint === false
+      && timer?.lastInvalidation == null
+      && timer?.pending === 0
+      && Number.isFinite(queryCounts?.completed)
+      && queryCounts.completed > 0
+      && queryCounts.pending === 0
+      && queryCounts.dropped === 0
+      && queryCounts.rejected === 0
+      && Array.isArray(timer?.terminals)
+      && timer.terminals.length > 0;
+    reasons.push(add(
+      `windows[${index}].gpu-timer-valid`,
+      gpuTimerValid,
+      `windows[${index}]-gpu-timer-invalid`,
+    ));
+
+    const pipelineStart = window?.pipeline?.start;
+    const pipelineEnd = window?.pipeline?.end;
+    const pipelineStable = finiteOrNull(pipelineStart?.programCount) != null
+      && finiteOrNull(pipelineEnd?.programCount) != null
+      && Number(pipelineStart.programCount) === Number(pipelineEnd.programCount)
+      && Number(pipelineStart.activeAdmissionJobs) === 0
+      && Number(pipelineEnd.activeAdmissionJobs) === 0
+      && Number(pipelineStart.meshBuildQueueRemaining) === 0
+      && Number(pipelineEnd.meshBuildQueueRemaining) === 0;
+    reasons.push(add(
+      `windows[${index}].pipeline-cache-stable`,
+      pipelineStable,
+      `windows[${index}]-pipeline-cache-mismatch`,
+    ));
+
+    const routeStable = window?.memory?.comparableState?.pass === true
+      && window?.restoration?.restored === true
+      && window?.restoration?.measurementDisabled === true;
+    reasons.push(add(
+      `windows[${index}].route-state-stable`,
+      routeStable,
+      `windows[${index}]-route-state-diverged`,
+    ));
+  }
+
+  const boundedReasons = reasons.filter(Boolean);
+  return {
+    schema: PERFORMANCE_MEASUREMENT_VALIDITY_SCHEMA,
+    pass: boundedReasons.length === 0,
+    reasons: boundedReasons,
+    checks,
+  };
+}
+
 export function validatePerformanceClosureReport(report) {
   const failures = [];
   if (!report || typeof report !== 'object') return { pass: false, failures: ['report must be an object'] };
@@ -230,6 +336,11 @@ export function validatePerformanceClosureReport(report) {
   validateArtifacts(report.artifacts, failures);
   validateCleanup(report.cleanup, failures);
   validateErrors(report.errors, failures);
+  const measurementValidity = evaluatePerformanceMeasurementValidity(report);
+  for (const reason of measurementValidity.reasons) failures.push(`measurement invalid: ${reason}`);
+  if (stableStringify(report.measurementValidity) !== stableStringify(measurementValidity)) {
+    failures.push('measurementValidity verdict does not match recomputed evidence');
+  }
   return { pass: failures.length === 0, failures: [...new Set(failures)] };
 }
 
@@ -263,6 +374,7 @@ export function buildPerformanceClosureReport({
     errors,
     notes,
   };
+  report.measurementValidity = evaluatePerformanceMeasurementValidity(report);
   report.validation = validatePerformanceClosureReport(report);
   return report;
 }

@@ -92,6 +92,11 @@ test('profile and closure probes share scene metrics and bounded measurement gat
   assert.match(probe, /setRenderWorkEnabled\(false\)/);
   assert.match(probe, /setSystemTimingEnabled\(false\)/);
   assert.match(probe, /timers\.setEnabled\(false\)/);
+  assert.match(probe, /captureValid:\s*gpu\?\.captureValid\s*===\s*true/);
+  assert.match(probe, /lastInvalidation:\s*gpu\?\.lastInvalidation\s*\|\|\s*null/);
+  assert.match(probe, /queryCounts:\s*gpu\?\.queryCounts\s*\|\|\s*null/);
+  assert.match(probe, /terminals:\s*gpu\?\.terminals\s*\|\|\s*null/);
+  assert.match(probe, /blender\|blender-launcher\|blender-mcp\|chrome\|msedge\|msedgewebview2\|electron/i);
   assert.match(probe, /performance-windows\.json/);
   assert.match(probe, /strictWorktreeFingerprint/);
   assert.match(command, /--full-matrix/);

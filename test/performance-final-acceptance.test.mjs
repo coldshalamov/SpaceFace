@@ -84,6 +84,22 @@ test('fails closed when residency or admission metrics are absent', () => {
   assert.match(result.failures.join('\n'), /background-job evidence/);
 });
 
+test('fails closed when accepted runtime evidence or a matrix is measurement-invalid', () => {
+  const input = fixture();
+  input.runtimePairs[0].browser.document.closure.measurementValidity = {
+    schema: 'spaceface.performanceMeasurementValidity.v1',
+    pass: false,
+    reasons: ['contaminating-process-or-authoring-activity'],
+    checks: [],
+  };
+  input.matrices[1].document.environment.activity.end.active = true;
+  const result = evaluatePerformanceFinalAcceptance(input);
+  assert.equal(result.pass, false);
+  assert.match(result.failures.join('\n'), /runtimePairs\[0\]\.browser measurement validity failed/);
+  assert.match(result.failures.join('\n'), /contaminating-process-or-authoring-activity/);
+  assert.match(result.failures.join('\n'), /matrices\[1\].*measurement invalid/);
+});
+
 function fixture() {
   return {
     expectedCommit: COMMIT,
@@ -130,7 +146,15 @@ function runtimeEvidence({ index, runtimeKind, sourceCandidateDigest, candidateD
     rawTraceDigest,
     digests: { sourceCandidateDigest, candidateDigest },
     artifacts: { rawTrace: { kind: 'raw-evidence', path: `${runtimeKind}-${index}.json`, bytes: 100, sha256: rawTraceDigest } },
-    closure: { worktree: { commit: COMMIT } },
+    closure: {
+      worktree: { commit: COMMIT },
+      measurementValidity: {
+        schema: 'spaceface.performanceMeasurementValidity.v1',
+        pass: true,
+        reasons: [],
+        checks: [],
+      },
+    },
   };
 }
 
@@ -193,9 +217,14 @@ function matrix(index) {
     runtimeKind: 'browser',
     seed: 47,
     browser: { version: '150', userAgent: 'Chrome/150' },
-    gpu: { api: 'webgl2', renderer: 'ANGLE test GPU' },
+    gpu: {
+      api: 'webgl2',
+      renderer: 'ANGLE test GPU',
+      vendor: 'test vendor',
+      source: 'game-renderer',
+    },
     viewport: { width: 1440, height: 900 },
-    activity: {},
+    activity: { start: { active: false }, end: { active: false } },
     defaultSettings: { video: VIDEO },
   };
   const windows = PERFORMANCE_SCENARIO_IDS.map((scenarioId) => performanceWindow(scenarioId, environment));
@@ -250,7 +279,7 @@ function performanceWindow(scenarioId, environment) {
         records: [],
       },
     },
-    gpu: {},
+    gpu: gpuTimer(),
     scene: {},
     pipeline: {
       start: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 20 },
@@ -275,6 +304,28 @@ function receipt(name, document) {
     sha256: Buffer.from(name).toString('hex').padEnd(64, '0').slice(0, 64),
     document,
     ...(name.includes('evidence-') ? { artifactValidation: { pass: true, failures: [], verified: [] } } : {}),
+  };
+}
+
+function gpuTimer() {
+  return {
+    available: true,
+    status: 'available',
+    enabled: true,
+    lastDisjoint: false,
+    pending: 0,
+    lastInvalidation: null,
+    captureValid: true,
+    queryCounts: {
+      attempted: 1,
+      issued: 1,
+      completed: 1,
+      pending: 0,
+      dropped: 0,
+      rejected: 0,
+    },
+    terminals: [{ queryId: 1, state: 'completed' }],
+    passes: {},
   };
 }
 

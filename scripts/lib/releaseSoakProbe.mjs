@@ -1044,6 +1044,10 @@ async function sampleRafWindow(page, {
           enabled: gpu?.enabled === true,
           lastDisjoint: gpu?.lastDisjoint === true,
           pending: gpu?.pending,
+          lastInvalidation: gpu?.lastInvalidation || null,
+          queryCounts: gpu?.queryCounts || null,
+          captureValid: gpu?.captureValid === true,
+          terminals: gpu?.terminals || null,
           passes: gpu?.passes || null,
         },
         capturedAt: new Date().toISOString(),
@@ -2089,14 +2093,17 @@ async function inspectPerformanceActivity(root) {
   const [releaseLock, releaseBuilding, processes] = await Promise.all([
     inspectActivityPath(lockRoot, path.join(lockRoot, 'owner.json')),
     inspectActivityPath(buildingPath, buildingPath),
-    inspectAuthoringProcesses(),
+    inspectPerformanceContaminants(),
   ]);
+  const active = releaseLock.active === true || releaseBuilding.active === true || processes.names.length > 0
+    ? true
+    : (releaseLock.active === false && releaseBuilding.active === false && processes.available === true ? false : null);
   return {
     capturedAt: new Date().toISOString(),
     releaseLock,
     releaseBuilding,
-    authoringProcesses: processes,
-    active: releaseLock.active === true || releaseBuilding.active === true || processes.names.length > 0,
+    contaminatingProcesses: processes,
+    active,
   };
 }
 
@@ -2134,17 +2141,21 @@ function sanitizeActivityOwner(value) {
   return result;
 }
 
-async function inspectAuthoringProcesses() {
-  if (process.platform !== 'win32') return { available: false, names: [], reason: `unsupported-platform:${process.platform}` };
+async function inspectPerformanceContaminants() {
+  if (process.platform !== 'win32') return { available: false, names: [], entries: [], reason: `unsupported-platform:${process.platform}` };
   try {
     const stdout = await captureProcessOutput('tasklist', ['/FO', 'CSV', '/NH']);
-    const names = [...new Set(stdout.split(/\r?\n/)
-      .map((line) => /^"((?:[^"]|"")*)"/.exec(line)?.[1]?.replace(/""/g, '"') || '')
-      .filter((name) => /^(?:blender|blender-launcher|blender-mcp)(?:\.exe)?$/i.test(name)))]
+    const processPattern = /^(?:blender|blender-launcher|blender-mcp|chrome|msedge|msedgewebview2|electron)(?:\.exe)?$/i;
+    const entries = stdout.split(/\r?\n/).map((line) => {
+      const match = /^"((?:[^"]|"")*)","(\d+)"/.exec(line);
+      return match ? { name: match[1].replace(/""/g, '"'), pid: Number(match[2]) } : null;
+    }).filter((entry) => entry && processPattern.test(entry.name))
+      .sort((a, b) => a.name.localeCompare(b.name) || a.pid - b.pid);
+    const names = [...new Set(entries.map((entry) => entry.name))]
       .sort((a, b) => a.localeCompare(b));
-    return { available: true, names };
+    return { available: true, names, entries };
   } catch (error) {
-    return { available: false, names: [], reason: error?.message || String(error) };
+    return { available: false, names: [], entries: [], reason: error?.message || String(error) };
   }
 }
 
@@ -2534,6 +2545,7 @@ async function publishPerformanceAttributionAuthorityEvidence({
       taskId: closureReport.taskId,
       generatedAt: closureReport.generatedAt,
       worktree: closureReport.worktree,
+      measurementValidity: closureReport.measurementValidity,
       validation: closureReport.validation,
     },
   };

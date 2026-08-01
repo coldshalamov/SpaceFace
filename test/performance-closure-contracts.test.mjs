@@ -10,6 +10,7 @@ import {
   buildPerformanceClosureReport,
   comparePerformanceWindows,
   comparisonKey,
+  evaluatePerformanceMeasurementValidity,
   evaluatePerformanceWindowBudgets,
   performanceScenario,
   resolvePerformanceScenarios,
@@ -22,8 +23,16 @@ const environment = {
   seed: 47,
   viewport: { width: 1440, height: 900, deviceScaleFactor: 1 },
   browser: { name: 'Chrome', version: '150', userAgent: 'fixture' },
-  gpu: { renderer: 'ANGLE fixture', vendor: 'fixture' },
-  activity: { releaseLock: null, releaseBuilding: null, processHints: [] },
+  gpu: {
+    api: 'webgl2',
+    renderer: 'ANGLE fixture',
+    vendor: 'fixture',
+    source: 'game-renderer',
+  },
+  activity: {
+    start: { active: false },
+    end: { active: false },
+  },
   defaultSettings: {
     video: { renderScale: 0.85, pixelRatioCap: 2, bloom: true, shadows: false, particleQuality: 'medium' },
   },
@@ -66,11 +75,14 @@ function windowFixture(overrides = {}) {
     settings: { start: settings, end: settings },
     comparisonKey: comparisonKey({ scenarioId, environment, settings }),
     cpu: {},
-    gpu: {},
+    gpu: gpuTimerFixture(),
     scene: {},
-    pipeline: {},
-    memory: {},
-    restoration: { restored: true },
+    pipeline: {
+      start: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 20 },
+      end: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 20 },
+    },
+    memory: { comparableState: { pass: true } },
+    restoration: { restored: true, measurementDisabled: true },
     pageErrors: [],
     ...overrides,
   };
@@ -81,6 +93,32 @@ function windowFixture(overrides = {}) {
     evidenceKind: fixture.evidenceKind,
   });
   return fixture;
+}
+
+function gpuTimerFixture(overrides = {}) {
+  return {
+    available: true,
+    status: 'available',
+    enabled: true,
+    lastDisjoint: false,
+    pending: 0,
+    lastInvalidation: null,
+    captureValid: true,
+    queryCounts: {
+      attempted: 300,
+      issued: 300,
+      completed: 300,
+      pending: 0,
+      dropped: 0,
+      rejected: 0,
+    },
+    terminals: [
+      { queryId: 1, state: 'completed' },
+      { queryId: 2, state: 'completed' },
+    ],
+    passes: {},
+    ...overrides,
+  };
 }
 
 function reportFixture(window = windowFixture()) {
@@ -105,7 +143,7 @@ function reportFixture(window = windowFixture()) {
       portsReleased: true,
       measurementDisabled: true,
     },
-    errors: { pageErrors: [], requestFailures: [], consoleErrors: [], httpErrors: [], warnings: [] },
+    errors: { pageErrors: [], requestFailures: [], consoleErrors: [], httpErrors: [], glErrors: [], warnings: [] },
   });
 }
 
@@ -180,16 +218,24 @@ test('digest-less v1 comparison keys remain backward compatible', () => {
   const legacyKey = 'decab6bdca2a64e8556e94834c3f7c564dc43f4e2981680cf767584bed0e47fc';
   assert.equal(comparisonKey({
     scenarioId: 'flight_steady',
-    environment,
+    environment: {
+      runtimeKind: 'browser',
+      seed: 47,
+      viewport: { width: 1440, height: 900, deviceScaleFactor: 1 },
+      browser: { name: 'Chrome', version: '150', userAgent: 'fixture' },
+      gpu: { renderer: 'ANGLE fixture', vendor: 'fixture' },
+      activity: { releaseLock: null, releaseBuilding: null, processHints: [] },
+      defaultSettings: environment.defaultSettings,
+    },
     settings,
   }), legacyKey);
 
-  const legacy = reportFixture(windowFixture({ comparisonKey: legacyKey }));
+  const legacy = reportFixture(windowFixture());
   assert.equal(legacy.validation.pass, true, legacy.validation.failures.join('\n'));
 });
 
 test('digest-less reports ignore inherited route digest fields', () => {
-  const legacyKey = 'decab6bdca2a64e8556e94834c3f7c564dc43f4e2981680cf767584bed0e47fc';
+  const legacyKey = comparisonKey({ scenarioId: 'flight_steady', environment, settings });
   const window = windowFixture({ comparisonKey: legacyKey });
   const descriptor = Object.getOwnPropertyDescriptor(
     Object.prototype,
@@ -454,6 +500,39 @@ test('closure report validates identity, hashes, cleanup, raw-summary truth, and
   assert.equal(validatePerformanceClosureReport(missingCleanup).pass, false);
   const missingArtifacts = { ...report, artifacts: [] };
   assert.equal(validatePerformanceClosureReport(missingArtifacts).pass, false);
+});
+
+test('measurement validity fails closed on contamination, fallback GPU identity, disjoint timing, and cache drift', () => {
+  const valid = reportFixture();
+  assert.deepEqual(evaluatePerformanceMeasurementValidity(valid), valid.measurementValidity);
+  assert.equal(valid.measurementValidity.pass, true, valid.measurementValidity.reasons.join('\n'));
+
+  const contaminated = structuredClone(valid);
+  contaminated.environment.activity.start.active = true;
+  let verdict = evaluatePerformanceMeasurementValidity(contaminated);
+  assert.equal(verdict.pass, false);
+  assert.ok(verdict.reasons.includes('contaminating-process-or-authoring-activity'));
+  assert.equal(validatePerformanceClosureReport(contaminated).pass, false);
+
+  const fallbackRenderer = structuredClone(valid);
+  fallbackRenderer.environment.gpu.source = 'probe-fallback';
+  verdict = evaluatePerformanceMeasurementValidity(fallbackRenderer);
+  assert.equal(verdict.pass, false);
+  assert.ok(verdict.reasons.includes('wrong-or-fallback-renderer'));
+
+  const disjoint = structuredClone(valid);
+  disjoint.windows[0].gpu.captureValid = false;
+  disjoint.windows[0].gpu.lastDisjoint = true;
+  disjoint.windows[0].gpu.lastInvalidation = { reason: 'gpu-disjoint' };
+  verdict = evaluatePerformanceMeasurementValidity(disjoint);
+  assert.equal(verdict.pass, false);
+  assert.ok(verdict.reasons.includes('windows[0]-gpu-timer-invalid'));
+
+  const cacheDrift = structuredClone(valid);
+  cacheDrift.windows[0].pipeline.end.programCount += 1;
+  verdict = evaluatePerformanceMeasurementValidity(cacheDrift);
+  assert.equal(verdict.pass, false);
+  assert.ok(verdict.reasons.includes('windows[0]-pipeline-cache-mismatch'));
 });
 
 test('primary windows fail closed on injected state or non-player input', () => {

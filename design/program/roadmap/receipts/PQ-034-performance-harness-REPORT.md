@@ -137,9 +137,33 @@ evidence.
 - `npm run check:perf-packets` — PASS 39/39;
 - no broker claim, browser, Electron, GPU capture, or performance conclusion was spent.
 
+## Measurement-validity slice
+
+Closure reports now recompute a versioned measurement-validity verdict from the evidence they carry.
+The verdict rejects dirty/drifting worktrees, active or unknown release/authoring/foreign-browser
+activity, fallback or software renderer identity, unavailable/disjoint/incomplete GPU timers, active/changing program or
+asset-admission state, route/restoration drift, incomplete cleanup, and non-empty or missing runtime
+error arrays. A stale or forged declared verdict disagrees with recomputation and also fails.
+
+The bounded boundary census records exact matching process names/PIDs for Blender, Chrome, Edge,
+WebView2, and Electron without polling during the route. The live attribution window retains the GPU
+timer's full capture-validity, invalidation, query-count, and bounded terminal record. Passing accepted Browser/Electron evidence carries measurement validity
+into final acceptance, which rejects both invalid runtime evidence and invalid matrices.
+
+- characterization: the focused contract first failed at module import because no validity evaluator
+  existed; the probe contract then failed because the live window discarded capture-validity fields;
+  final acceptance initially ignored an injected invalid runtime verdict;
+- closure validity, production-field retention, and final-acceptance set — PASS 24/24;
+- full current PERF-00 focused suite plus authored queue ownership — PASS 132/132;
+- program docs — PASS with 0 warnings; program-control tools — PASS 9/9;
+- `npm run check:baseline` — PASS 10/10 in 57.902 s;
+- injected contamination, fallback renderer, disjoint timer, and pipeline-cache drift each fail with
+  a stable explicit reason;
+- no broker claim, browser, Electron, GPU capture, or performance conclusion was spent.
+
 ## Honest residual
 
-This is not the terminal dispatch receipt. Explicit comparison invalidation, clean matched evidence,
-overhead measurement, and independent causal review remain open. The current driver and paired
+This is not the terminal dispatch receipt. Noise-aware improvement and combined verdict publication,
+clean matched evidence, overhead measurement, and independent causal review remain open. The current driver and paired
 authority are focused-green but intentionally unspent while the machine remains ineligible for a
 quiet L4 capture.

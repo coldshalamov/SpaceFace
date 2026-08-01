@@ -1,5 +1,6 @@
 import {
   PERFORMANCE_BUDGETS,
+  PERFORMANCE_MEASUREMENT_VALIDITY_SCHEMA,
   PERFORMANCE_SCENARIO_IDS,
   validatePerformanceClosureReport,
 } from './performanceClosureContracts.mjs';
@@ -125,6 +126,14 @@ function validateRuntimeEvidence(input, prefix, expectedRuntimeKind, expectedCom
   if (evidence.closure?.worktree?.commit !== expectedCommit) {
     failures.push(`${prefix} commit does not match expectedCommit`);
   }
+  const measurementValidity = evidence.closure?.measurementValidity;
+  if (measurementValidity?.schema !== PERFORMANCE_MEASUREMENT_VALIDITY_SCHEMA
+    || measurementValidity?.pass !== true) {
+    failures.push(`${prefix} measurement validity failed`);
+    for (const reason of measurementValidity?.reasons || []) {
+      failures.push(`${prefix}: ${reason}`);
+    }
+  }
   return runtimeEvidenceSummary(input, evidence);
 }
 
@@ -140,6 +149,7 @@ function runtimeEvidenceSummary(input, evidence) {
     candidateDigest: evidence?.candidateDigest || null,
     rawTraceDigest: evidence?.rawTraceDigest || null,
     commit: evidence?.closure?.worktree?.commit || null,
+    measurementValidity: evidence?.closure?.measurementValidity || null,
   };
 }
 
