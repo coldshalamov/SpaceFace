@@ -4,13 +4,15 @@
 ```yaml
 packet: PQ-034
 dispatchUnit: PQ-034.native-closure
-lifecycleClaim: claimed
+lifecycleClaim: blocked
 acceptanceClaim: focused_green_partial
-terminalDisposition: pending
+terminalDisposition: BLOCKED
 claimBase: 9d8f3984d9bb846e9aa42dba8929ac78c99ac5eb
+terminalCandidate: cc3340c268769d69c985902f5a019f57a11b09c2
 headedRuntimeLaunched: false
 performanceEvidenceClaimed: false
 protectedWorktreeMutated: false
+leasesReleased: true
 ```
 
 ## Frame-linked GPU authority slice
@@ -251,10 +253,27 @@ Browser/Electron performance matrices terminated cleanly.
   named reasons; baseline-against-baseline remains `neutral` rather than improved;
 - no production broker claim, headed runtime, GPU capture, or live overhead conclusion was spent.
 
-## Honest residual
+## Terminal blocked disposition
 
-This is not the terminal dispatch receipt. Clean matched evidence, instrumentation overhead
-measurement with instrumentation enabled, live Browser/Electron matrix termination/cleanup, and
-independent causal review remain open. The current driver and paired
-authority are focused-green but intentionally unspent while the machine remains ineligible for a
-quiet L4 capture.
+This is the terminal receipt for the present claim, with a `BLOCKED` disposition rather than a false
+pass. The exact pushed candidate is `cc3340c268769d69c985902f5a019f57a11b09c2`; program docs,
+program-control tools, all changed-lane gates, and the exit baseline are green. The protected
+candidate worktrees remain untouched.
+
+At `2026-07-31T21:50:02-04:00`, the read-only host census found:
+
+- Blender: 1 process, protected PID 32140;
+- Chrome: 22 processes;
+- WebView2: 30 processes;
+- SpaceFace/Electron: 0 processes.
+
+This is an `ENVIRONMENT` blocker under the fail-closed preflight, so no claim, headed runtime, or L4
+sample was spent. Required upstream change: named owner **SpaceFace quiet-machine performance
+operator** supplies an uncontended window, then runs exactly three baseline/candidate Browser and
+Electron pairs to prove enabled instrumentation below 1% median owner/callback overhead, absolute
+budgets, bounded artifacts, and owned teardown. Named owner **independent performance harness
+reviewer** then issues the candidate/evidence-bound causal verdict. Until both close, the Phase 2
+enabled-overhead and Phase 4 live-matrix checkboxes stay open.
+
+`browser-gpu`, `performance-evidence`, and `validation-broker` are released. The unit may be reclaimed
+only against a clean exact revision after revalidating the census and broker digests.

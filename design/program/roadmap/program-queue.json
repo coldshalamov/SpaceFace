@@ -3130,8 +3130,7 @@
       "priority": 200,
       "title": "Close PERF-00 equivalence and native evidence authority",
       "kind": "performance",
-      "state": "claimed",
-      "owner": "Codex primary integrator",
+      "state": "blocked",
       "dependsOn": [
         "PQ-034.candidate-audit"
       ],
@@ -3151,10 +3150,11 @@
         "node scripts/validation-broker-cli.mjs --manifest performance-closure-electron"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-034-candidate-audit-REPORT.md"
+        "design/program/roadmap/receipts/PQ-034-candidate-audit-REPORT.md",
+        "design/program/roadmap/receipts/PQ-034-performance-harness-REPORT.md"
       ],
       "brief": "After the candidate audit lands, run the exact matched Browser/Electron authority and write the terminal PERF-00 receipt.",
-      "blocker": null
+      "blocker": "Named owners: SpaceFace quiet-machine performance operator and independent performance harness reviewer. At clean pushed candidate cc3340c2 the 2026-07-31T21:50:02-04:00 census found protected Blender PID 32140, 22 Chrome processes, and 30 WebView2 processes, so the fail-closed host preflight forbids spending the paired claims. Remaining evidence is enabled-under-1% matched-route overhead, three clean baseline/candidate Browser/Electron pairs with bounded cleanup, absolute budgets, and independent causal review. All machine-only contracts are focused-green; browser-gpu, performance-evidence, and validation-broker leases are released."
     },
     {
       "id": "PQ-018.art-verdict",
