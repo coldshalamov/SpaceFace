@@ -624,6 +624,7 @@ class FakeElement {
     this.attributes = new Map();
     this.listeners = new Map();
     this.classList = new FakeClassList();
+    this.dataset = {};
     this.style = {};
     this.hidden = false;
     this.textContent = '';
