@@ -26,7 +26,9 @@ latestBrowserClaimAccepted: false
 latestBrowserCandidate: 5473dab9b24ddfbd1adebcb27f8ecf946e0a16be
 latestBrowserClaimId: 7344-04c1b7704fa773e53b8f5ad4
 latestBrowserSourceCandidateDigest: 948af238401dd8c4da1f51ada35faa4b8e6a05e9ad3e3adf86ef2c67fa04115b
-latestBrowserRepairCandidate: 12b6b905b36b9820f2e7cd02b49b1a4f61b7f5c4
+latestVfxCacheRepairCandidate: 12b6b905b36b9820f2e7cd02b49b1a4f61b7f5c4
+latestBrowserRepairCandidate: e343fe57ba0e727318b31161e535caa3aae1cf5e
+latestBrokerPrelaunchDisposition: regression-required-after-acceptance-failure
 firstFailedElectronCandidate: b1b15ee9a5f3a9cc3e6a77c41dabe36370d3fe0c
 firstFailedElectronClaimId: 25476-83c733557dbe390afc61eedb
 firstFailedElectronSourceCandidateDigest: 96cfc12382d3fb0b3eee146953c07023df8d6c2a0fd9e0d11ebfdae90a2b7047
@@ -710,3 +712,27 @@ wake. Retained-material disposal is separately pinned at zero.
 
 No timing conclusion is promoted from the failed claim. One fresh Browser claim on the clean pushed
 repair is required before a source-paired Electron claim.
+
+## Broker retry binding repair
+
+The next broker request did not launch a runtime or consume another claim. It stopped at the
+unchanged-failure guard with `blocked_unresolved_failure: regression-required-after-acceptance-failure`.
+The VFX cache-key repair and its real-WebGL regression were already green, but the paired manifest's
+declared regression/source paths did not include those repair owners. As a result, the immutable
+regression digest still matched the ninth failed claim and the broker had no machine-readable basis
+for authorizing a retry.
+
+Candidate `e343fe57ba0e727318b31161e535caa3aae1cf5e` closes that authority defect. Both paired manifests
+now bind `authored-precompile-residency`, Electron shell lifecycle, and trail-streak instancing
+regressions; `electron/main.cjs`, the live ribbon/precompile/VFX owners; and the Electron-platform and
+real-WebGL executable checks. Focused evidence:
+
+- manifest/runtime authority — PASS 12/12;
+- exact repair regressions — PASS 11/11;
+- `npm run check:vfx:trail-instancing` — PASS with programs fixed at `14` through first live
+  trail/seam/ribbon/sprite wakes;
+- Electron 43.2.0 platform contracts — PASS.
+
+`browserClaimsConsumed` remains `9`; no headed or timing evidence is inferred from the prelaunch
+stop. The next valid action is one fresh Browser claim on a clean pushed program-doc-synchronized
+candidate, followed by Electron only if Browser passes on that identical source digest.
