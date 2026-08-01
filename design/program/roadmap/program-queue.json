@@ -3490,7 +3490,7 @@
       "priority": 205,
       "title": "Ceres pocket-distinctness and Cathedral-presence review",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-020.ceres-h1-capture"
       ],
@@ -3501,8 +3501,60 @@
         "design/program/roadmap/H2_REVIEW_INDEX.md"
       ],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-020-h2-pocket-cathedral-REPORT.md"
+      ],
       "brief": "Review all four pockets plus Cathedral approach after the repaired route produces valid evidence.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-020.pocket-presentation-recapture",
+      "parentId": "PQ-020",
+      "priority": 228,
+      "title": "Capture target-visible Ceres pocket approaches",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-020.h2-verdict",
+        "PQ-022.refinery-reauthor-review"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "scripts/lib/pq020CeresFunctionalRoute.mjs",
+        "test/pq020-ceres-topology-manifest.test.mjs",
+        "design/program/roadmap/evidence/h1/row5-pq020-ceres-route/"
+      ],
+      "checks": [
+        "node --test test/pq020-ceres-topology-manifest.test.mjs",
+        "npm run check:pq020:proofs"
+      ],
+      "receiptRefs": [],
+      "brief": "After the revised refinery passes causal review, characterize and repair only the presentation capture seam, add a seconds-scale regression, then capture target-visible public-control approach/arrival evidence for the refinery, retained Belt Outpost, and Throughline beacon in Browser and Electron without rerunning unrelated accepted route claims.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-020.pocket-presentation-review",
+      "parentId": "PQ-020",
+      "priority": 229,
+      "title": "Causally review revised Ceres pocket presentation",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-020.pocket-presentation-recapture"
+      ],
+      "mutexes": [
+        "evidence-review"
+      ],
+      "paths": [
+        "design/program/roadmap/H2_REVIEW_INDEX.md",
+        "design/program/roadmap/evidence/h1/row5-pq020-ceres-route/"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Review only whether the refinery, retained Belt Outpost, and Throughline beacon now carry distinct target-visible place identity during the ordinary route; retain the accepted topology, functional pair, and Cathedral-presence verdict.",
       "blocker": null
     },
     {
@@ -3537,6 +3589,7 @@
       "dependsOn": [
         "PQ-018.art-verdict",
         "PQ-020.h2-verdict",
+        "PQ-020.pocket-presentation-review",
         "PQ-020.h3-performance"
       ],
       "mutexes": [

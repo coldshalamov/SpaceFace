@@ -130,10 +130,15 @@ real Intel ANGLE/D3D11, and clean Electron teardown. Review maps/arrivals `03`�
 Cathedral far/default/close/arrival sequence `10`–`13`; the `electron/` directory carries the paired
 source-Electron views.
 
-**Continuation:** H1 is accepted. This exact review now decides whether PQ-020 proceeds directly to
-H3 or routes any weak presentation surface into a named correction.
+**Continuation:** the accepted topology and Cathedral-presence evidence remain valid. The refinery's
+existing re-author chain and a targeted three-pocket presentation recapture/review own the weak
+flight reads; H3 remains independent.
 
-**Verdict:** READY — accepted paired evidence is available for the integrator's visual review
+**Verdict:** PASS review — **REVISE pocket flight presentation / KEEP Cathedral presence**. Maps
+prove distinct spatial/semantic pockets, but the refinery, outpost, and beacon arrival stills are
+player-ship-dominant or edge-cropped and do not independently carry place identity. Cathedral
+far/default/close/arrival framing is unmistakably monumental. Receipt:
+[PQ-020 H2 review](receipts/PQ-020-h2-pocket-cathedral-REPORT.md).
 
 ---
 
