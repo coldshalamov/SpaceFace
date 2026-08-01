@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   classifyPerformanceProcessActivity,
+  inspectPerformanceContaminants,
   performanceAttributionRuntimePlan,
   runPerformanceAttributionProbe,
 } from '../scripts/lib/releaseSoakProbe.mjs';
@@ -85,6 +86,53 @@ test('bounded activity distinguishes idle protected processes from real contamin
   assert.match(unavailable.reasons.join('\n'), /snapshot-unavailable/);
 });
 
+test('preflight requires a fresh bounded quiet sample after transient churn-only activity', async () => {
+  const stableChrome = (cpuSeconds) => ({ name: 'chrome.exe', pid: 48, cpuSeconds });
+  const snapshots = [
+    [stableChrome(12.5), { name: 'msedgewebview2.exe', pid: 49, cpuSeconds: 0.34375 }],
+    [stableChrome(12.501)],
+    [stableChrome(12.501)],
+    [stableChrome(12.502)],
+  ];
+  const result = await inspectPerformanceContaminants({
+    platform: 'win32',
+    sampleMs: 100,
+    maxAttempts: 2,
+    waitFn: async () => {},
+    snapshotReader: async () => snapshots.shift(),
+  });
+  assert.equal(result.available, true);
+  assert.equal(result.active, false);
+  assert.equal(result.attemptCount, 2);
+  assert.equal(result.settledAfterTransientChurn, true);
+  assert.deepEqual(result.attempts.map((attempt) => attempt.reasons), [['process-churn'], []]);
+  assert.equal(snapshots.length, 0);
+});
+
+test('preflight remains fail-closed when process churn persists through the bounded retry', async () => {
+  const stableChrome = (cpuSeconds) => ({ name: 'chrome.exe', pid: 48, cpuSeconds });
+  const snapshots = [
+    [stableChrome(12.5), { name: 'msedgewebview2.exe', pid: 49, cpuSeconds: 0.1 }],
+    [stableChrome(12.501)],
+    [stableChrome(12.501), { name: 'msedgewebview2.exe', pid: 50, cpuSeconds: 0.1 }],
+    [stableChrome(12.502)],
+  ];
+  const result = await inspectPerformanceContaminants({
+    platform: 'win32',
+    sampleMs: 100,
+    maxAttempts: 2,
+    waitFn: async () => {},
+    snapshotReader: async () => snapshots.shift(),
+  });
+  assert.equal(result.available, true);
+  assert.equal(result.active, true);
+  assert.equal(result.attemptCount, 2);
+  assert.equal(result.settledAfterTransientChurn, false);
+  assert.deepEqual(result.attempts.map((attempt) => attempt.reasons), [['process-churn'], ['process-churn']]);
+  assert.deepEqual(result.reasons, ['process-churn']);
+  assert.equal(snapshots.length, 0);
+});
+
 test('the current attribution entry is broker-gated before either headed runtime launches', async () => {
   const [command, probe] = await Promise.all([
     readFile(new URL('../scripts/check-performance-attribution.mjs', import.meta.url), 'utf8'),
@@ -95,6 +143,7 @@ test('the current attribution entry is broker-gated before either headed runtime
   assert.match(command, /runPerformanceAttributionProbe/);
   assert.match(command, /runtimeKind/);
   assert.match(probe, /requireBrokerClaimOrDiagnostic/);
+  assert.match(probe, /activityInspector\(root, \{ settleTransientProcessChurn: true \}\)/);
   assert.match(probe, /primaryAcceptance/);
   assert.match(probe, /createCanonicalUrlTracker/);
   assert.match(probe, /createElectronCanonicalUrlTracker/);

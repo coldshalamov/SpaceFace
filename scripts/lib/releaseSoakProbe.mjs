@@ -2250,6 +2250,8 @@ function withTimeout(promise, timeoutMs, label) {
 async function inspectPerformanceActivity(root, {
   processSampleMs = PERFORMANCE_ACTIVITY_SAMPLE_MS,
   processSnapshotReader = readPerformanceProcessSnapshot,
+  processWaitFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  settleTransientProcessChurn = false,
 } = {}) {
   const lockRoot = path.join(root, 'assets', 'ships', 'release.__lock');
   const buildingPath = path.join(root, 'assets', 'ships', 'release.__building');
@@ -2259,6 +2261,8 @@ async function inspectPerformanceActivity(root, {
     inspectPerformanceContaminants({
       sampleMs: processSampleMs,
       snapshotReader: processSnapshotReader,
+      waitFn: processWaitFn,
+      maxAttempts: settleTransientProcessChurn ? 3 : 1,
     }),
   ]);
   const active = releaseLock.active === true || releaseBuilding.active === true || processes.active === true
@@ -2311,27 +2315,69 @@ function sanitizeActivityOwner(value) {
 async function inspectPerformanceContaminants({
   sampleMs = PERFORMANCE_ACTIVITY_SAMPLE_MS,
   snapshotReader = readPerformanceProcessSnapshot,
+  waitFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  maxAttempts = 1,
+  platform = process.platform,
 } = {}) {
-  if (process.platform !== 'win32') {
+  if (platform !== 'win32') {
     return {
       available: false,
       active: null,
       names: [],
       entries: [],
-      reasons: [`unsupported-platform:${process.platform}`],
+      reasons: [`unsupported-platform:${platform}`],
     };
   }
   try {
-    const before = await snapshotReader();
-    await new Promise((resolve) => setTimeout(resolve, sampleMs));
-    const after = await snapshotReader();
-    return classifyPerformanceProcessActivity({ before, after, sampleMs });
+    assert(Number.isInteger(maxAttempts) && maxAttempts >= 1 && maxAttempts <= 3,
+      'performance activity attempts must be an integer from 1 to 3');
+    assert.equal(typeof waitFn, 'function', 'performance activity waitFn must be callable');
+    const attempts = [];
+    let sawTransientChurn = false;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const before = await snapshotReader();
+      await waitFn(sampleMs);
+      const after = await snapshotReader();
+      const result = classifyPerformanceProcessActivity({ before, after, sampleMs });
+      attempts.push({
+        attempt,
+        available: result.available,
+        active: result.active,
+        processCount: result.processCount,
+        aggregateCpuDeltaSeconds: result.aggregateCpuDeltaSeconds,
+        aggregateCpuCoreFraction: result.aggregateCpuCoreFraction,
+        started: result.started,
+        ended: result.ended,
+        reasons: result.reasons,
+      });
+      const transientChurnOnly = result.available === true
+        && result.active === true
+        && result.reasons.length === 1
+        && result.reasons[0] === 'process-churn';
+      if (transientChurnOnly && attempt < maxAttempts) {
+        // A terminated process has unknowable post-snapshot CPU, so never accept this sample.
+        // Preflight may instead require a wholly new bounded sample; end-of-run callers use one try.
+        sawTransientChurn = true;
+        continue;
+      }
+      return {
+        ...result,
+        attemptCount: attempt,
+        settledAfterTransientChurn: sawTransientChurn && result.active === false,
+        attempts,
+      };
+    }
+    throw new Error('performance activity census exhausted without a terminal result');
   } catch (error) {
     return {
       available: false,
       active: null,
+      sampleMs: Number.isFinite(sampleMs) ? sampleMs : null,
       names: [],
       entries: [],
+      attemptCount: 0,
+      settledAfterTransientChurn: false,
+      attempts: [],
       reasons: [error?.message || String(error)],
     };
   }
@@ -2897,7 +2943,9 @@ async function runPerformanceAttributionProbe({
   let activity = null;
   if (mode === 'acceptance') {
     try {
-      activity = await activityInspector(root);
+      // Settle churn only before consuming the claim. The retained start authority is the fresh
+      // quiet sample; end-of-run activity remains a single fail-closed observation.
+      activity = await activityInspector(root, { settleTransientProcessChurn: true });
     } catch (error) {
       activity = { capturedAt: new Date().toISOString(), active: null, error: error?.message || String(error) };
     }
@@ -3247,6 +3295,7 @@ export {
   disableMeasurementGates,
   buildClosureWindows,
   inspectPerformanceActivity,
+  inspectPerformanceContaminants,
   readPerformanceRouteFailureState,
   runPerformanceAttributionProbe,
 };
