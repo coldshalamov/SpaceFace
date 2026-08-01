@@ -495,7 +495,13 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       // In the same `finally` as recordFrameCallback so a frame that threw still closes its counter
       // frame. Without this an error would fold two frames' counts into one and silently understate
       // the per-frame peak, which is the number the zero-budgets are actually about.
-      if (perf) perf.tier1?.endFrame();
+      if (perf) {
+        // Renderer diagnostics publish the completed multipass frame after renderUpdate. Sampling
+        // here binds draw/triangle and residency facts to this presentation frame; sampling at the
+        // opening boundary would silently report the preceding frame instead.
+        perf.tier1?.sampleRendererFrame(renderedSnapshot ? state.render?.diagnostics?.info : null);
+        perf.tier1?.endFrame();
+      }
     }
 
     if (restoring && renderedSnapshot && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {

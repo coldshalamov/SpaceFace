@@ -953,7 +953,7 @@ function createRafPump() {
   };
 }
 
-function startHeapTestLoop() {
+function startHeapTestLoop({ rendererFrames = [] } = {}) {
   const raf = createRafPump();
   const state = {
     accumulator: 0,
@@ -970,13 +970,23 @@ function startHeapTestLoop() {
       actions: {},
     },
   };
+  if (rendererFrames.length > 0) {
+    state.render = {
+      diagnostics: {
+        info: { calls: 0, triangles: 0, geometries: 0, textures: 0, programs: 0 },
+      },
+    };
+  }
   const registry = {
     step(dt, tickBoundary) {
       state.tick++;
       state.simTime += dt;
       tickBoundary.publishInputCommand(state.input, state.tick);
     },
-    renderUpdate() {},
+    renderUpdate() {
+      const next = rendererFrames.shift();
+      if (next) Object.assign(state.render.diagnostics.info, next);
+    },
     get() { return null; },
   };
   const controller = startLoop(state, registry, {
@@ -1041,4 +1051,121 @@ test('a missing performance.memory is a per-frame no-op, never a frame error', (
     console.error = originalError;
     loop.controller.destroy();
   }
+});
+
+test('the presentation loop samples renderer facts after the current frame completes', () => {
+  const loop = startHeapTestLoop({ rendererFrames: [
+    { calls: 11, triangles: 110, geometries: 3, textures: 5, programs: 2 },
+    { calls: 7, triangles: 90, geometries: 4, textures: 6, programs: 3 },
+  ] });
+  const tier1 = ensurePerfRuntime(loop.state).tier1;
+  tier1.setEnabled(true);
+  try {
+    loop.raf.flushOne(1020);
+    loop.raf.flushOne(1040);
+    const renderer = tier1.snapshot().nondeterministic.renderer;
+    assert.equal(renderer.samples, 2);
+    assert.deepEqual(renderer.residency.baseline, { geometries: 3, textures: 5, programs: 2 });
+    assert.deepEqual(renderer.residency.end, { geometries: 4, textures: 6, programs: 3 });
+    assert.equal(renderer.drawTriangleCounts.drawCallsTotal, 18);
+    assert.equal(renderer.drawTriangleCounts.trianglesTotal, 200);
+  } finally {
+    loop.controller.destroy();
+  }
+});
+
+test('perfRuntime publishes bounded raw callback intervals with p50 and p99 after ring wrap', () => {
+  const perf = ensurePerfRuntime({ entityList: [], settings: {} });
+  let callbackStartMs = 1_000;
+  perf.beginFrame(0, callbackStartMs);
+  perf.recordFrameCallback(0);
+  for (let i = 1; i <= perf.RING_N + 5; i++) {
+    callbackStartMs += i;
+    perf.beginFrame(i / 1000, callbackStartMs);
+    perf.recordFrameCallback(0);
+  }
+
+  const frame = perf.getReport().frameCallbackInterval;
+  assert.equal(frame.samples, perf.RING_N);
+  assert.deepEqual(frame.raw.slice(0, 3), [6, 7, 8], 'raw samples stay chronological after wrap');
+  assert.deepEqual(frame.raw.slice(-3), [183, 184, 185]);
+  assert.equal(frame.p50, 95);
+  assert.equal(frame.p95, 176);
+  assert.equal(frame.p99, 183);
+  assert.equal(frame.max, 185);
+});
+
+test('perfRuntime missed-vsync accounting requires an explicit display interval', () => {
+  const perf = ensurePerfRuntime({ entityList: [], settings: {} });
+  perf.beginFrame(0.0501);
+  assert.deepEqual(perf.getReport().displayCadence, {
+    valid: false,
+    displayIntervalMs: null,
+    observedIntervals: 0,
+    missedVsync: 0,
+  });
+
+  assert.throws(() => perf.setDisplayIntervalMs(0), /positive finite/);
+  assert.throws(() => perf.setDisplayIntervalMs(16.7), /must be reset/,
+    'calibration may not be mixed into already sampled timing data');
+  perf.reset();
+  perf.setDisplayIntervalMs(16.7);
+  let callbackStartMs = 1_000;
+  perf.beginFrame(0, callbackStartMs);
+  perf.recordFrameCallback(0);
+  for (const ms of [10, 16.7, 33.4, 50.1]) {
+    callbackStartMs += ms;
+    perf.beginFrame(ms / 1000, callbackStartMs);
+    perf.recordFrameCallback(0);
+  }
+  assert.deepEqual(perf.getReport().displayCadence, {
+    valid: true,
+    displayIntervalMs: 16.7,
+    observedIntervals: 4,
+    missedVsync: 3,
+  });
+});
+
+test('renderer owner sampling records baseline, component peaks, end, and draw totals', () => {
+  const counters = createPerfCounters();
+  const sampleA = { calls: 10, triangles: 100, geometries: 4, textures: 7, programs: 3 };
+  const sampleB = { calls: 14, triangles: 80, geometries: 6, textures: 5, programs: 4 };
+  const sampleC = { calls: 8, triangles: 120, geometries: 5, textures: 9, programs: 2 };
+
+  assert.equal(counters.sampleRendererFrame(sampleA), false, 'disabled sampling is an inert branch');
+  counters.setEnabled(true);
+  assert.equal(counters.sampleRendererFrame(sampleA), true);
+  assert.equal(counters.sampleRendererFrame(sampleB), true);
+  assert.equal(counters.sampleRendererFrame(sampleC), true);
+  assert.equal(counters.sampleRendererFrame({ calls: 1 }), false, 'partial diagnostics are unavailable');
+
+  const renderer = counters.snapshot().nondeterministic.renderer;
+  assert.equal(renderer.samples, 3);
+  assert.equal(renderer.unavailableSamples, 1);
+  assert.deepEqual(renderer.residency.baseline, { geometries: 4, textures: 7, programs: 3 });
+  assert.deepEqual(renderer.residency.peak, { geometries: 6, textures: 9, programs: 4 });
+  assert.deepEqual(renderer.residency.end, { geometries: 5, textures: 9, programs: 2 });
+  assert.deepEqual(renderer.drawTriangleCounts, {
+    samples: 3,
+    drawCallsTotal: 32,
+    trianglesTotal: 300,
+    drawCallsPeak: 14,
+    trianglesPeak: 120,
+    drawCallsEnd: 8,
+    trianglesEnd: 120,
+  });
+
+  counters.reset();
+  assert.equal(counters.snapshot().nondeterministic.renderer.samples, 0);
+});
+
+test('heap owner sampling records baseline, peak, and end residency without entering equivalence', () => {
+  const counters = createPerfCounters();
+  counters.setEnabled(true);
+  for (const bytes of [100, 140, 90, 120]) counters.sampleHeap(bytes);
+  const allocation = counters.snapshot().nondeterministic.allocation;
+  assert.equal(allocation.baselineHeapBytes, 100);
+  assert.equal(allocation.peakHeapBytes, 140);
+  assert.equal(allocation.endHeapBytes, 120);
+  for (const field of DETERMINISTIC_FIELDS) assert.ok(!/residency|renderer|triangle|heap/i.test(field));
 });

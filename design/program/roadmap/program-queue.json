@@ -3573,6 +3573,7 @@
       "paths": [
         "src/core/perfRuntime.js",
         "src/core/perfCounters.js",
+        "src/core/presentationRunner.js",
         "scripts/lib/goldCorridorAcceptanceContracts.mjs"
       ],
       "checks": [

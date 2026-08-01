@@ -59,11 +59,10 @@ function nonEmptyString(value) {
 // owner symbol was read; `absent` rows are Phase-0 stop-condition findings that require a narrow
 // owner-owned READ SEAM (never an acceptance-only gameplay event).
 //
-// OBSERVER SEAM NOTE (applies to every `projection` row): projections are reachable only through
-// the debug-gated `window.SF` handle installed in src/main.js:189/198 under `SF_DEBUG`. Electron
-// loads the same localhost source as Browser (electron/main.cjs:149), so the seam is shared across
-// both runtimes, but any packaged/production build strips it. This is a single point of failure
-// for all projection-kind evidence and is recorded once here rather than repeated per row.
+// OBSERVER SEAM NOTE: gameplay projections are reached through the debug-gated `window.SF` handle.
+// Performance projections below instead use the parity-safe `window.__SPACEFACE_PERF__` surface,
+// which is intentionally available on both Browser and Electron routes. Every projection row names
+// its concrete symbol so qualification cannot silently substitute one surface for the other.
 
 export const OWNER_EVIDENCE_KINDS = Object.freeze(['event', 'projection', 'receipt', 'absent']);
 export const OWNER_CONFIDENCE = Object.freeze(['verified', 'degraded', 'unknown', 'absent']);
@@ -355,53 +354,53 @@ export const SEMANTIC_OUTCOME_MAP = deepFreeze([
   },
   {
     outcome: 'perf.p50',
-    owner: null,
-    module: null,
-    symbol: null,
-    evidenceKind: 'absent',
-    rawRef: 'src/core/perfRuntime.js:42-67 (reportStat returns {last,avg,min,max,p95,samples} only)',
-    confidence: 'absent',
-    note: 'STOP-CONDITION FINDING. p50 is required by the packet performance contract. reportStat exposes no median and does not expose the raw sample array (stat.values is internal), so p50 is not derivable read-only. Needs a narrow owner read seam.',
+    owner: 'perfRuntime',
+    module: 'src/core/perfRuntime.js',
+    symbol: 'getReport().frameCallbackInterval.p50 / raw',
+    evidenceKind: 'projection',
+    rawRef: 'src/core/perfRuntime.js beginFrame(), reportStat(), getReport()',
+    confidence: 'verified',
+    note: 'Bounded chronological raw frame samples and their p50 owner projection.',
   },
   {
     outcome: 'perf.p99',
-    owner: null,
-    module: null,
-    symbol: null,
-    evidenceKind: 'absent',
-    rawRef: 'grep p99 over src/ and scripts/ returns no metric occurrence',
-    confidence: 'absent',
-    note: 'STOP-CONDITION FINDING. p99 is required per attempt and does not exist anywhere in the product or harness. Needs a narrow owner read seam.',
+    owner: 'perfRuntime',
+    module: 'src/core/perfRuntime.js',
+    symbol: 'getReport().frameCallbackInterval.p99 / raw',
+    evidenceKind: 'projection',
+    rawRef: 'src/core/perfRuntime.js beginFrame(), reportStat(), getReport()',
+    confidence: 'verified',
+    note: 'Bounded raw samples remain available for independent percentile verification.',
   },
   {
     outcome: 'perf.missedVsync',
-    owner: null,
-    module: null,
-    symbol: null,
-    evidenceKind: 'absent',
-    rawRef: 'grep missedVsync|missed-vsync over src/ and scripts/ returns nothing',
-    confidence: 'absent',
-    note: 'STOP-CONDITION FINDING. Missed-vsync is required per attempt and has no owner or harness surface. Needs a narrow owner read seam.',
+    owner: 'perfRuntime',
+    module: 'src/core/perfRuntime.js',
+    symbol: 'setDisplayIntervalMs() / getReport().displayCadence',
+    evidenceKind: 'projection',
+    rawRef: 'src/core/perfRuntime.js setDisplayIntervalMs(), beginFrame(), getReport()',
+    confidence: 'verified',
+    note: 'Fails closed until the measurement adapter supplies an explicit calibrated display interval.',
   },
   {
     outcome: 'perf.residency',
-    owner: 'harness-side only',
-    module: 'scripts/lib/releaseSoakProbe.mjs',
-    symbol: 'performance.memory.usedJSHeapSize',
-    evidenceKind: 'absent',
-    rawRef: 'scripts/lib/releaseSoakProbe.mjs:804-806; scripts/lib/pq017WorldSitePublicRoute.mjs:7176-7183',
-    confidence: 'absent',
-    note: 'STOP-CONDITION FINDING (owner surface). Residency baseline/peak/end is required per attempt. The product publishes no memory-residency metric; only harness probes read the Chrome-only performance.memory API, which is unavailable in other runtimes. Not an owner fact.',
+    owner: 'perfCounters',
+    module: 'src/core/perfCounters.js',
+    symbol: 'sampleHeap() / sampleRendererFrame() / snapshot().nondeterministic',
+    evidenceKind: 'projection',
+    rawRef: 'src/core/perfCounters.js sampleHeap(), sampleRendererFrame(), snapshot()',
+    confidence: 'verified',
+    note: 'Baseline/peak/end renderer resources are cross-route owner facts; Chromium heap residency is additive when available.',
   },
   {
     outcome: 'perf.drawTriangleCounts',
-    owner: null,
-    module: null,
-    symbol: null,
-    evidenceKind: 'absent',
-    rawRef: 'src/core/perfRuntime.js (no drawCalls/triangles in the perf report)',
-    confidence: 'absent',
-    note: 'STOP-CONDITION FINDING. Draw/triangle/particle/light counts are required per attempt; perfRuntime reports entity counts only. Needs a narrow owner read seam.',
+    owner: 'perfCounters + perfRuntime',
+    module: 'src/core/perfCounters.js; src/core/perfRuntime.js',
+    symbol: 'sampleRendererFrame() / counters.vfxSubsystems',
+    evidenceKind: 'projection',
+    rawRef: 'src/core/perfCounters.js sampleRendererFrame(); src/core/perfRuntime.js recordVfxSubsystems()',
+    confidence: 'verified',
+    note: 'Completed-frame draw/triangle totals and peaks compose with current particle/light owner counts.',
   },
 ]);
 
@@ -816,8 +815,141 @@ export const PROFILE_THRESHOLDS = deepFreeze({
 export const REQUIRED_PERFORMANCE_METRICS = Object.freeze([
   'p50Ms', 'p95Ms', 'p99Ms', 'maxMs', 'rawThresholdCounts', 'missedVsync', 'multiStepFrames',
   'backlog', 'phaseCosts', 'entityCounts', 'residencyBaseline', 'residencyPeak', 'residencyEnd',
-  'saveBlockingMs',
+  'drawTriangleCounts', 'saveBlockingMs',
 ]);
+
+function ownerPercentile(sorted, fraction) {
+  if (sorted.length === 0) return null;
+  return sorted[Math.min(sorted.length - 1, Math.floor(fraction * (sorted.length - 1)))];
+}
+
+function validRendererResidency(value) {
+  return value && ['geometries', 'textures', 'programs']
+    .every((field) => Number.isFinite(value[field]) && value[field] >= 0);
+}
+
+/**
+ * Compose the five read-only owner facts into PQ-025's attempt metric shape. This does not run a
+ * scenario or bless a measurement: missing calibration, raw samples, or completed renderer frames
+ * returns a fail-closed result for the later qualification adapter to retain.
+ */
+export function normalizePerformanceOwnerFacts({ perfReport, counterSnapshot } = {}) {
+  const failures = [];
+  const frame = perfReport?.frameCallbackInterval;
+  const raw = Array.isArray(frame?.raw) ? frame.raw : null;
+  if (!raw || raw.length === 0) failures.push('raw-frame-samples-missing');
+  else if (raw.some((value) => !Number.isFinite(value) || value < 0)) failures.push('raw-frame-samples-invalid');
+  if (!Number.isSafeInteger(frame?.samples) || frame.samples !== raw?.length) {
+    failures.push('raw-frame-sample-count-mismatch');
+  }
+
+  let calculated = null;
+  if (raw && raw.length > 0 && raw.every((value) => Number.isFinite(value) && value >= 0)) {
+    const sorted = [...raw].sort((a, b) => a - b);
+    calculated = {
+      p50: ownerPercentile(sorted, 0.50),
+      p95: ownerPercentile(sorted, 0.95),
+      p99: ownerPercentile(sorted, 0.99),
+      max: sorted[sorted.length - 1],
+    };
+    if (frame.p50 !== calculated.p50 || frame.p95 !== calculated.p95
+      || frame.p99 !== calculated.p99 || frame.max !== calculated.max) {
+      failures.push('frame-summary-does-not-match-raw');
+    }
+  }
+
+  const cadence = perfReport?.displayCadence;
+  if (cadence?.valid !== true || !Number.isFinite(cadence.displayIntervalMs)
+    || cadence.displayIntervalMs <= 0) failures.push('display-cadence-uncalibrated');
+  if (!Number.isSafeInteger(cadence?.observedIntervals)
+    || cadence.observedIntervals < (raw?.length || 0)
+    || !Number.isSafeInteger(cadence?.missedVsync) || cadence.missedVsync < 0) {
+    failures.push('display-cadence-invalid');
+  }
+
+  if (counterSnapshot?.schema !== 'spaceface.perfCounters.v1') failures.push('counter-snapshot-schema-invalid');
+  if (counterSnapshot?.enabled !== true) failures.push('counter-capture-disabled');
+  const captureFrames = counterSnapshot?.framesObserved;
+  if (!Number.isSafeInteger(captureFrames) || captureFrames <= 0) {
+    failures.push('counter-frame-count-invalid');
+  } else if (cadence?.observedIntervals !== captureFrames - 1) {
+    failures.push('capture-window-frame-count-mismatch');
+  }
+  const renderer = counterSnapshot?.nondeterministic?.renderer;
+  if (!Number.isSafeInteger(renderer?.samples) || renderer.samples <= 0) {
+    failures.push('renderer-owner-samples-missing');
+  }
+  if (!Number.isSafeInteger(renderer?.unavailableSamples) || renderer.unavailableSamples > 0) {
+    failures.push('renderer-owner-samples-incomplete');
+  }
+  if (Number.isSafeInteger(captureFrames)
+    && (renderer?.samples || 0) + (renderer?.unavailableSamples || 0) !== captureFrames) {
+    failures.push('renderer-frame-count-mismatch');
+  }
+  for (const [label, value] of Object.entries({
+    baseline: renderer?.residency?.baseline,
+    peak: renderer?.residency?.peak,
+    end: renderer?.residency?.end,
+  })) {
+    if (!validRendererResidency(value)) failures.push(`renderer-residency-${label}-invalid`);
+  }
+  const draw = renderer?.drawTriangleCounts;
+  if (!draw || ['samples', 'drawCallsTotal', 'trianglesTotal', 'drawCallsPeak', 'trianglesPeak', 'drawCallsEnd', 'trianglesEnd']
+    .some((field) => !Number.isFinite(draw[field]) || draw[field] < 0)
+    || draw.samples !== renderer?.samples) {
+    failures.push('draw-triangle-counts-invalid');
+  }
+
+  const saveBlockingMs = Number(perfReport?.saves?.maxBlockingSlice?.max);
+  if (!Number.isFinite(saveBlockingMs) || saveBlockingMs < 0) failures.push('save-blocking-owner-invalid');
+
+  if (failures.length > 0 || !calculated) {
+    return deepFreeze({ ok: false, failures, sample: null });
+  }
+
+  const allocation = counterSnapshot.nondeterministic?.allocation || {};
+  const heapPoint = (field) => Number.isFinite(allocation[field]) ? allocation[field] : null;
+  const phaseCosts = {};
+  for (const [name, stat] of Object.entries(perfReport.phases || {})) {
+    if (Number.isFinite(stat?.p95) && stat.p95 >= 0) phaseCosts[name] = stat.p95;
+  }
+  const residencyPoint = (label, heapField) => ({
+    jsHeapBytes: heapPoint(heapField),
+    renderer: { ...renderer.residency[label] },
+  });
+  const vfx = perfReport.counters?.vfxSubsystems || {};
+  const sample = {
+    p50Ms: calculated.p50,
+    p95Ms: calculated.p95,
+    p99Ms: calculated.p99,
+    maxMs: calculated.max,
+    rawFrameSamplesMs: [...raw],
+    rawThresholdCounts: {
+      over16_7Ms: raw.filter((value) => value > 16.7).length,
+      over32Ms: raw.filter((value) => value > 32).length,
+    },
+    missedVsync: cadence.missedVsync,
+    multiStepFrames: Number(perfReport.loop?.multiStepFrames) || 0,
+    backlog: {
+      shedBacklogFrames: Number(perfReport.loop?.shedBacklogFrames) || 0,
+      shedStepsTotal: Number(perfReport.loop?.shedStepsTotal) || 0,
+      maxStepsThisFrame: Number(perfReport.loop?.maxStepsThisFrame) || 0,
+      causeCounts: { ...(perfReport.loop?.backlogCauseCounts || {}) },
+    },
+    phaseCosts,
+    entityCounts: { ...(perfReport.entities || {}) },
+    residencyBaseline: residencyPoint('baseline', 'baselineHeapBytes'),
+    residencyPeak: residencyPoint('peak', 'peakHeapBytes'),
+    residencyEnd: residencyPoint('end', 'endHeapBytes'),
+    drawTriangleCounts: {
+      ...draw,
+      particlesEnd: Number(vfx.particles) || 0,
+      lightsEnd: Number(vfx.eventLights) || 0,
+    },
+    saveBlockingMs,
+  };
+  return deepFreeze({ ok: true, failures: [], sample });
+}
 
 /**
  * Freeze a profile assignment BEFORE a run. Assignment may never be inferred from measured cadence,
@@ -1199,6 +1331,7 @@ export default {
   appendAttempt,
   verifyLedgerContinuity,
   evaluatePerformanceSample,
+  normalizePerformanceOwnerFacts,
   reconcileNativeDuration,
   normalizeOwnerEvidence,
 };

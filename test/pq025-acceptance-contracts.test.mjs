@@ -39,6 +39,7 @@ import {
   createAttemptLedger, appendAttempt, verifyLedgerContinuity, verifyLedgerIntegrity, attemptsForCell,
   FAILURE_CLASSES, isHardFailureClass, evaluateRerunRequest,
   PROFILE_THRESHOLDS, freezeProfileAssignment, evaluatePerformanceSample, evaluateResourceStability,
+  normalizePerformanceOwnerFacts,
   assertQualityUnchanged,
   ACCESSIBILITY_PROFILES, ACCESSIBILITY_REQUIRED_CHECKS, evaluateAccessibilitySample,
   reconcileNativeDuration,
@@ -92,6 +93,7 @@ function perfSample(overrides = {}) {
     phaseCosts: { sim: 4.1, render: 7.2 },
     entityCounts: { ships: 22, projectiles: 8 },
     residencyBaseline: 180_000_000, residencyPeak: 240_000_000, residencyEnd: 195_000_000,
+    drawTriangleCounts: { drawCallsTotal: 1200, trianglesTotal: 240_000 },
     saveBlockingMs: 3.4,
     ...overrides,
   };
@@ -147,17 +149,15 @@ test('phase0: every required semantic outcome family is represented', () => {
   }
 });
 
-test('phase0: absent owner facts are recorded honestly, not faked', () => {
+test('phase0: the five performance owner facts are read-only verified projections', () => {
   const absent = absentSemanticRows();
-  const names = absent.map((row) => row.outcome);
-  // These are the Phase-0 stop-condition findings located by reading the live source.
   for (const expected of ['perf.p50', 'perf.p99', 'perf.missedVsync', 'perf.residency', 'perf.drawTriangleCounts']) {
-    assert.ok(names.includes(expected), `expected ${expected} to be recorded as an absent owner fact`);
+    const row = semanticRow(expected);
+    assert.equal(row.confidence, 'verified', `${expected} must name its live owner`);
+    assert.equal(row.evidenceKind, 'projection');
+    assert.ok(row.symbol);
   }
-  for (const row of absent) {
-    assert.equal(row.confidence, 'absent');
-    assert.ok(row.note && row.note.includes('STOP-CONDITION'), `${row.outcome} must be flagged as a stop-condition finding`);
-  }
+  assert.equal(absent.length, 0, 'all five former Phase-0 stop conditions are now owned');
 });
 
 test('phase0: the degraded massline selection receipt is recorded and is not the attach authority', () => {
@@ -488,11 +488,82 @@ test('ADV-12a..f: a sample missing any required metric is rejected', () => {
     assert.match(result.reason, new RegExp(`missing-required-metric:.*${metric}`), `${id}: ${result.reason}`);
   }
   // p50 and the remaining residency points are equally required.
-  for (const metric of ['p50Ms', 'residencyBaseline', 'residencyEnd', 'backlog', 'phaseCosts', 'rawThresholdCounts', 'entityCounts']) {
+  for (const metric of ['p50Ms', 'residencyBaseline', 'residencyEnd', 'backlog', 'phaseCosts', 'rawThresholdCounts', 'entityCounts', 'drawTriangleCounts']) {
     const sample = perfSample();
     delete sample[metric];
     assert.equal(evaluatePerformanceSample(assignment, sample).ok, false, `missing ${metric} must reject`);
   }
+});
+
+test('performance owner normalizer composes complete qualification facts from owner reports', () => {
+  const perfReport = {
+    frameCallbackInterval: { raw: [10, 12, 18, 40], samples: 4, p50: 12, p95: 18, p99: 18, max: 40 },
+    displayCadence: { valid: true, displayIntervalMs: 16.7, observedIntervals: 4, missedVsync: 1 },
+    loop: { multiStepFrames: 2, shedBacklogFrames: 1, shedStepsTotal: 3, maxStepsThisFrame: 4, backlogCauseCounts: { simulation: 1 } },
+    phases: { sim: { p95: 3 }, render: { p95: 7 }, ui: { p95: 1 } },
+    entities: { ship: 5, projectile: 8, total: 13 },
+    saves: { maxBlockingSlice: { max: 2.5 } },
+    counters: { vfxSubsystems: { particles: 21, eventLights: 4 } },
+  };
+  const counterSnapshot = {
+    schema: 'spaceface.perfCounters.v1', enabled: true, framesObserved: 5,
+    nondeterministic: {
+      allocation: { samples: 3, baselineHeapBytes: 100, peakHeapBytes: 160, endHeapBytes: 120 },
+      renderer: {
+        samples: 5, unavailableSamples: 0,
+        residency: {
+          baseline: { geometries: 10, textures: 20, programs: 5 },
+          peak: { geometries: 12, textures: 24, programs: 7 },
+          end: { geometries: 11, textures: 21, programs: 6 },
+        },
+        drawTriangleCounts: {
+          samples: 5, drawCallsTotal: 500, trianglesTotal: 10_000,
+          drawCallsPeak: 120, trianglesPeak: 2_400, drawCallsEnd: 90, trianglesEnd: 1_800,
+        },
+      },
+    },
+  };
+
+  const normalized = normalizePerformanceOwnerFacts({ perfReport, counterSnapshot });
+  assert.equal(normalized.ok, true, normalized.failures?.join(','));
+  assert.deepEqual(normalized.sample.rawThresholdCounts, { over16_7Ms: 2, over32Ms: 1 });
+  assert.equal(normalized.sample.p50Ms, 12);
+  assert.equal(normalized.sample.p99Ms, 18);
+  assert.equal(normalized.sample.missedVsync, 1);
+  assert.equal(normalized.sample.residencyPeak.jsHeapBytes, 160);
+  assert.equal(normalized.sample.residencyPeak.renderer.textures, 24);
+  assert.equal(normalized.sample.drawTriangleCounts.particlesEnd, 21);
+  assert.equal(normalized.sample.drawTriangleCounts.lightsEnd, 4);
+
+  const assignment = freezeProfileAssignment({ profileClass: 'floor', hardwareProfileId: 'hw-1', executionProfileId: 'ex-1' });
+  assert.equal(evaluatePerformanceSample(assignment, normalized.sample).ok, true);
+
+  const mismatchedWindow = normalizePerformanceOwnerFacts({
+    perfReport,
+    counterSnapshot: { ...counterSnapshot, framesObserved: 6 },
+  });
+  assert.equal(mismatchedWindow.ok, false);
+  assert.ok(mismatchedWindow.failures.includes('capture-window-frame-count-mismatch'));
+  assert.ok(mismatchedWindow.failures.includes('renderer-frame-count-mismatch'));
+});
+
+test('performance owner normalizer fails closed on uncalibrated cadence or incomplete renderer capture', () => {
+  const base = {
+    perfReport: {
+      frameCallbackInterval: { raw: [10], samples: 1, p50: 10, p95: 10, p99: 10, max: 10 },
+      displayCadence: { valid: false, displayIntervalMs: null, observedIntervals: 1, missedVsync: 0 },
+      loop: {}, phases: {}, entities: {}, saves: { maxBlockingSlice: { max: 0 } }, counters: { vfxSubsystems: {} },
+    },
+    counterSnapshot: {
+      schema: 'spaceface.perfCounters.v1', enabled: true, framesObserved: 2,
+      nondeterministic: { allocation: { samples: 0 }, renderer: { samples: 0, unavailableSamples: 1 } },
+    },
+  };
+  const result = normalizePerformanceOwnerFacts(base);
+  assert.equal(result.ok, false);
+  assert.ok(result.failures.includes('display-cadence-uncalibrated'));
+  assert.ok(result.failures.includes('renderer-owner-samples-missing'));
+  assert.equal(result.sample, null);
 });
 
 test('ADV-14: reducing default quality to pass is rejected', () => {
@@ -639,12 +710,12 @@ test('ADV-17: unknown owner evidence is never a warning or a pass', () => {
   assert.equal(unknown.confidence, 'unknown');
   assert.equal(unknown.reason, 'unknown-owner-evidence-is-never-a-pass');
 
-  // An outcome whose owner fact does not exist cannot be talked into a pass by claiming `verified`.
-  const absent = normalizeOwnerEvidence({
-    outcome: 'perf.p99', observation: { value: 21 }, rawRef: 'made-up', confidence: 'verified',
+  // A newly owned performance fact still cannot pass when the observation remains unknown.
+  const performanceUnknown = normalizeOwnerEvidence({
+    outcome: 'perf.p99', observation: { value: 21 }, rawRef: 'owner-report', confidence: 'unknown',
   });
-  assert.equal(absent.satisfied, false);
-  assert.equal(absent.reason, 'owner-fact-absent-at-this-revision');
+  assert.equal(performanceUnknown.satisfied, false);
+  assert.equal(performanceUnknown.reason, 'unknown-owner-evidence-is-never-a-pass');
 
   // A claim with no observation, and one with no raw reference, are both unknown.
   assert.equal(normalizeOwnerEvidence({ outcome: 'save.write', rawRef: 'src/save/saveSystem.js:707', confidence: 'verified' }).satisfied, false);

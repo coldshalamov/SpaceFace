@@ -175,7 +175,37 @@ export function createPerfCounters() {
 
   // Nondeterministic by construction (G). Kept apart from the field bags so it cannot be mistaken
   // for a Tier-1 signal or accidentally swept into the equivalence gate.
-  const allocation = { heapBytesDeltaTotal: 0, collectionsDetected: 0, samples: 0, lastHeapBytes: 0 };
+  const allocation = {
+    heapBytesDeltaTotal: 0,
+    collectionsDetected: 0,
+    samples: 0,
+    lastHeapBytes: 0,
+    baselineHeapBytes: null,
+    peakHeapBytes: null,
+    endHeapBytes: null,
+  };
+  // Renderer.info is presentation-timing-dependent, so these owner facts are also segregated from
+  // deterministic equivalence. All mutable storage is allocated once; the completed-frame producer
+  // writes scalars only while Tier-1 is enabled.
+  const renderer = {
+    samples: 0,
+    unavailableSamples: 0,
+    baselineGeometries: 0,
+    baselineTextures: 0,
+    baselinePrograms: 0,
+    peakGeometries: 0,
+    peakTextures: 0,
+    peakPrograms: 0,
+    endGeometries: 0,
+    endTextures: 0,
+    endPrograms: 0,
+    drawCallsTotal: 0,
+    trianglesTotal: 0,
+    drawCallsPeak: 0,
+    trianglesPeak: 0,
+    drawCallsEnd: 0,
+    trianglesEnd: 0,
+  };
 
   /**
    * The one accumulation path. Every counter routes through here.
@@ -313,14 +343,53 @@ export function createPerfCounters() {
 
     /** Nondeterministic (G): a heap-size sample. A drop is read as a collection. */
     sampleHeap(usedBytes) {
-      if (!enabled || !Number.isFinite(usedBytes)) return;
+      if (!enabled || !Number.isFinite(usedBytes) || usedBytes < 0) return;
+      if (allocation.samples === 0) allocation.baselineHeapBytes = usedBytes;
       if (allocation.samples > 0) {
         const delta = usedBytes - allocation.lastHeapBytes;
         if (delta < 0) allocation.collectionsDetected++;
         else allocation.heapBytesDeltaTotal += delta;
       }
       allocation.lastHeapBytes = usedBytes;
+      allocation.endHeapBytes = usedBytes;
+      allocation.peakHeapBytes = allocation.peakHeapBytes === null
+        ? usedBytes
+        : Math.max(allocation.peakHeapBytes, usedBytes);
       allocation.samples++;
+    },
+
+    /** Completed presentation-frame renderer.info mirror. Nondeterministic and default-off. */
+    sampleRendererFrame(info) {
+      if (!enabled) return false;
+      const calls = Number(info?.calls);
+      const triangles = Number(info?.triangles);
+      const geometries = Number(info?.geometries);
+      const textures = Number(info?.textures);
+      const programs = Number(info?.programs);
+      if (![calls, triangles, geometries, textures, programs]
+        .every((value) => Number.isFinite(value) && value >= 0)) {
+        renderer.unavailableSamples++;
+        return false;
+      }
+      if (renderer.samples === 0) {
+        renderer.baselineGeometries = geometries;
+        renderer.baselineTextures = textures;
+        renderer.baselinePrograms = programs;
+      }
+      renderer.samples++;
+      renderer.peakGeometries = Math.max(renderer.peakGeometries, geometries);
+      renderer.peakTextures = Math.max(renderer.peakTextures, textures);
+      renderer.peakPrograms = Math.max(renderer.peakPrograms, programs);
+      renderer.endGeometries = geometries;
+      renderer.endTextures = textures;
+      renderer.endPrograms = programs;
+      renderer.drawCallsTotal += calls;
+      renderer.trianglesTotal += triangles;
+      renderer.drawCallsPeak = Math.max(renderer.drawCallsPeak, calls);
+      renderer.trianglesPeak = Math.max(renderer.trianglesPeak, triangles);
+      renderer.drawCallsEnd = calls;
+      renderer.trianglesEnd = triangles;
+      return true;
     },
 
     recordEvent(kind, detail) {
@@ -349,6 +418,10 @@ export function createPerfCounters() {
       allocation.collectionsDetected = 0;
       allocation.samples = 0;
       allocation.lastHeapBytes = 0;
+      allocation.baselineHeapBytes = null;
+      allocation.peakHeapBytes = null;
+      allocation.endHeapBytes = null;
+      for (const key of Object.keys(renderer)) renderer[key] = 0;
     },
 
     /** Caller-owned snapshot. Allocates, so this is a report-time call, never a per-frame one. */
@@ -376,6 +449,36 @@ export function createPerfCounters() {
         // Segregated, and labelled, so no reader mistakes it for a bisectable counter.
         nondeterministic: {
           allocation: { ...allocation },
+          renderer: {
+            samples: renderer.samples,
+            unavailableSamples: renderer.unavailableSamples,
+            residency: {
+              baseline: {
+                geometries: renderer.baselineGeometries,
+                textures: renderer.baselineTextures,
+                programs: renderer.baselinePrograms,
+              },
+              peak: {
+                geometries: renderer.peakGeometries,
+                textures: renderer.peakTextures,
+                programs: renderer.peakPrograms,
+              },
+              end: {
+                geometries: renderer.endGeometries,
+                textures: renderer.endTextures,
+                programs: renderer.endPrograms,
+              },
+            },
+            drawTriangleCounts: {
+              samples: renderer.samples,
+              drawCallsTotal: renderer.drawCallsTotal,
+              trianglesTotal: renderer.trianglesTotal,
+              drawCallsPeak: renderer.drawCallsPeak,
+              trianglesPeak: renderer.trianglesPeak,
+              drawCallsEnd: renderer.drawCallsEnd,
+              trianglesEnd: renderer.trianglesEnd,
+            },
+          },
         },
         events: events.slice(),
         eventsDropped,

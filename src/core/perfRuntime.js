@@ -42,31 +42,42 @@ function sample(stat, ms) {
   if (ms > stat.max) stat.max = ms;
 }
 
-function reportStat(stat) {
+function reportStat(stat, includeRaw = false) {
   let min = Infinity;
   let max = 0;
+  const raw = includeRaw ? new Array(stat.count) : null;
+  const start = (stat.head - stat.count + RING_N) % RING_N;
   for (let i = 0; i < stat.count; i++) {
-    const v = stat.values[i];
+    const v = stat.values[(start + i) % RING_N];
+    if (raw) raw[i] = v;
     stat.scratch[i] = v;
     if (v < min) min = v;
     if (v > max) max = v;
   }
+  let p50 = 0;
   let p95 = 0;
+  let p99 = 0;
   if (stat.count > 0) {
     const sub = stat.scratch.subarray(0, stat.count);
     Array.prototype.sort.call(sub, (a, b) => a - b);
+    p50 = sub[Math.min(stat.count - 1, Math.floor(0.50 * (stat.count - 1)))];
     p95 = sub[Math.min(stat.count - 1, Math.floor(0.95 * (stat.count - 1)))];
+    p99 = sub[Math.min(stat.count - 1, Math.floor(0.99 * (stat.count - 1)))];
   } else {
     min = 0;
   }
-  return {
+  const report = {
     last: stat.last,
     avg: stat.count ? stat.total / stat.count : 0,
     min,
     max,
+    p50,
     p95,
+    p99,
     samples: stat.count,
   };
+  if (raw) report.raw = raw;
+  return report;
 }
 
 function entityCounts(state) {
@@ -144,6 +155,9 @@ export function ensurePerfRuntime(state) {
   let previousPresentationMs = 0;
   let previousUiMs = 0;
   let fixedFrameBudgetMs = 1000 / 60;
+  let displayIntervalMs = null;
+  let displayCadenceObservedIntervals = 0;
+  let missedVsync = 0;
   const framePhaseMs = {
     sim: 0,
     simFrame: 0,
@@ -410,6 +424,18 @@ export function ensurePerfRuntime(state) {
       backgroundJobTrackingEnabled = next;
       return backgroundJobTrackingEnabled;
     },
+    setDisplayIntervalMs(intervalMs) {
+      if (!Number.isFinite(intervalMs) || intervalMs <= 0) {
+        throw new TypeError('performance display interval must be a positive finite number');
+      }
+      if (frameStats.count !== 0) {
+        throw new Error('performance timing report must be reset before setting display interval');
+      }
+      displayIntervalMs = intervalMs;
+      displayCadenceObservedIntervals = 0;
+      missedVsync = 0;
+      return displayIntervalMs;
+    },
     beginBackgroundJob(kind, { sourceSequence = null } = {}) {
       if (!backgroundJobTrackingEnabled) return null;
       if (typeof kind !== 'string' || !kind.trim()) {
@@ -468,6 +494,17 @@ export function ensurePerfRuntime(state) {
       loop.callbackIntervalMs = currentCallbackStartMs !== null && previousCallbackStartMs !== null
         ? Math.max(0, currentCallbackStartMs - previousCallbackStartMs)
         : 0;
+      if (currentCallbackStartMs !== null && previousCallbackStartMs !== null) {
+        sample(frameCallbackIntervalStats, loop.callbackIntervalMs);
+        if (displayIntervalMs !== null) {
+          displayCadenceObservedIntervals++;
+          const elapsedIntervals = Math.max(
+            1,
+            Math.floor((loop.callbackIntervalMs / displayIntervalMs) + 0.5),
+          );
+          missedVsync += Math.max(0, elapsedIntervals - 1);
+        }
+      }
       frameAdmissionMs = pendingAdmissionMs;
       frameExternalAdmissionMs = pendingExternalAdmissionMs;
       pendingAdmissionMs = 0;
@@ -484,7 +521,6 @@ export function ensurePerfRuntime(state) {
       loop.backlogCause = 'none';
       frameAccountedMs = 0;
       sample(frameStats, ms);
-      sample(frameCallbackIntervalStats, loop.callbackIntervalMs);
       sample(frameExternalGapStats, loop.externalCallbackGapMs);
       sample(frameDispatchLagStats, loop.callbackDispatchLagMs);
       sample(phaseStats.admission, frameAdmissionMs);
@@ -698,6 +734,8 @@ export function ensurePerfRuntime(state) {
       previousPresentationMs = 0;
       previousUiMs = 0;
       fixedFrameBudgetMs = 1000 / 60;
+      displayCadenceObservedIntervals = 0;
+      missedVsync = 0;
       framePhaseMs.sim = 0;
       framePhaseMs.simFrame = 0;
       framePhaseMs.presentation = 0;
@@ -780,9 +818,15 @@ export function ensurePerfRuntime(state) {
         frame: reportStat(frameStats),
         frameCallback: reportStat(frameCallbackStats),
         frameUntracked: reportStat(frameUntrackedStats),
-        frameCallbackInterval: reportStat(frameCallbackIntervalStats),
+        frameCallbackInterval: reportStat(frameCallbackIntervalStats, true),
         frameExternalGap: reportStat(frameExternalGapStats),
         frameDispatchLag: reportStat(frameDispatchLagStats),
+        displayCadence: {
+          valid: displayIntervalMs !== null,
+          displayIntervalMs,
+          observedIntervals: displayCadenceObservedIntervals,
+          missedVsync,
+        },
         loop: {
           ...loop,
           backlogCauseCounts: { ...backlogCauseCounts },
