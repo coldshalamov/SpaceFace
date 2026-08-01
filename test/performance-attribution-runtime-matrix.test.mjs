@@ -8,10 +8,12 @@ import { fileURLToPath } from 'node:url';
 
 import {
   classifyPerformanceProcessActivity,
+  collectOwnedProcessTreePids,
   inspectPerformanceContaminants,
   performanceAttributionRuntimePlan,
   provisionPerformanceAttributionElectronRuntime,
   runPerformanceAttributionProbe,
+  waitForOwnedProcessTreeExit,
 } from '../scripts/lib/releaseSoakProbe.mjs';
 import browserManifest from '../scripts/validation-manifests/performance-closure-browser.mjs';
 import {
@@ -163,6 +165,48 @@ test('preflight remains fail-closed when process churn persists through the boun
   assert.deepEqual(result.attempts.map((attempt) => attempt.reasons), [['process-churn'], ['process-churn']]);
   assert.deepEqual(result.reasons, ['process-churn']);
   assert.equal(snapshots.length, 0);
+});
+
+test('Browser cleanup owns the complete descendant tree and waits for it before the end census', async () => {
+  const initial = [
+    { name: 'chrome.exe', pid: 100, parentPid: 7 },
+    { name: 'chrome.exe', pid: 101, parentPid: 100 },
+    { name: 'chrome.exe', pid: 102, parentPid: 101 },
+    { name: 'chrome.exe', pid: 900, parentPid: 8 },
+  ];
+  assert.deepEqual(collectOwnedProcessTreePids(initial, 100), [100, 101, 102],
+    'an unrelated Chrome tree must never be classified as owned cleanup');
+
+  const snapshots = [
+    [{ name: 'chrome.exe', pid: 102, parentPid: 101 }, { name: 'chrome.exe', pid: 900, parentPid: 8 }],
+    [{ name: 'chrome.exe', pid: 900, parentPid: 8 }],
+  ];
+  const settled = await waitForOwnedProcessTreeExit({
+    rootPid: 100,
+    initialPids: [100, 101, 102],
+    platform: 'win32',
+    timeoutMs: 250,
+    pollMs: 25,
+    waitFn: async () => {},
+    snapshotReader: async () => snapshots.shift(),
+  });
+  assert.equal(settled.pass, true);
+  assert.deepEqual(settled.observedPids, [100, 101, 102]);
+  assert.deepEqual(settled.lingeringPids, []);
+  assert.equal(settled.attempts, 2);
+  assert.equal(snapshots.length, 0);
+
+  const persistent = await waitForOwnedProcessTreeExit({
+    rootPid: 100,
+    initialPids: [100, 101],
+    platform: 'win32',
+    timeoutMs: 250,
+    pollMs: 25,
+    waitFn: async () => {},
+    snapshotReader: async () => [{ name: 'chrome.exe', pid: 101, parentPid: 100 }],
+  });
+  assert.equal(persistent.pass, false, 'a persistent owned child must keep cleanup fail-closed');
+  assert.deepEqual(persistent.lingeringPids, [101]);
 });
 
 test('the current attribution entry is broker-gated before either headed runtime launches', async () => {

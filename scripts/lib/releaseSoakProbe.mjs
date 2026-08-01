@@ -88,6 +88,14 @@ const PERFORMANCE_PROCESS_SNAPSHOT_SCRIPT = [
   'ConvertTo-Json -Compress -InputObject $rows',
 ].join(';');
 
+const WINDOWS_BROWSER_PROCESS_TREE_SCRIPT = [
+  "$names=@('chrome.exe','msedge.exe')",
+  '$rows=@(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object { $names -contains $_.Name } | ForEach-Object {',
+  '[pscustomobject]@{name=[string]$_.Name;pid=[int]$_.ProcessId;parentPid=[int]$_.ParentProcessId}',
+  '})',
+  'ConvertTo-Json -Compress -InputObject $rows',
+].join(';');
+
 export function performanceAttributionRuntimePlan(runtimeKind) {
   assert(['browser', 'electron'].includes(runtimeKind), 'runtimeKind must be browser or electron');
   return runtimeKind === 'browser'
@@ -2478,6 +2486,97 @@ async function readPerformanceProcessSnapshot() {
   return Array.isArray(parsed) ? parsed : [parsed];
 }
 
+async function readWindowsBrowserProcessTreeSnapshot() {
+  const stdout = await captureProcessOutput('powershell.exe', [
+    '-NoProfile',
+    '-NonInteractive',
+    '-Command',
+    WINDOWS_BROWSER_PROCESS_TREE_SCRIPT,
+  ]);
+  const parsed = JSON.parse(stdout || '[]');
+  return Array.isArray(parsed) ? parsed : [parsed];
+}
+
+export function collectOwnedProcessTreePids(snapshot, rootPid) {
+  const root = Number(rootPid);
+  if (!Number.isSafeInteger(root) || root <= 0) return [];
+  const rows = (Array.isArray(snapshot) ? snapshot : []).map((entry) => ({
+    pid: Number(entry?.pid),
+    parentPid: Number(entry?.parentPid),
+  })).filter((entry) => Number.isSafeInteger(entry.pid) && entry.pid > 0
+    && Number.isSafeInteger(entry.parentPid) && entry.parentPid >= 0);
+  const owned = new Set([root]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const row of rows) {
+      if (!owned.has(row.pid) && owned.has(row.parentPid)) {
+        owned.add(row.pid);
+        changed = true;
+      }
+    }
+  }
+  return [...owned].sort((a, b) => a - b);
+}
+
+export async function waitForOwnedProcessTreeExit({
+  rootPid,
+  initialPids = [],
+  platform = process.platform,
+  snapshotReader = readWindowsBrowserProcessTreeSnapshot,
+  waitFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  timeoutMs = 5_000,
+  pollMs = 250,
+} = {}) {
+  const root = Number(rootPid);
+  if (platform !== 'win32') {
+    return { available: false, pass: true, rootPid: Number.isSafeInteger(root) ? root : null, observedPids: [], lingeringPids: [], attempts: 0 };
+  }
+  assert(Number.isSafeInteger(root) && root > 0, 'owned browser process tree requires a positive root pid');
+  assert.equal(typeof snapshotReader, 'function', 'owned browser process tree snapshot reader must be callable');
+  assert.equal(typeof waitFn, 'function', 'owned browser process tree wait function must be callable');
+  assert(Number.isFinite(timeoutMs) && timeoutMs >= 250 && timeoutMs <= 10_000,
+    'owned browser process tree timeout must be between 250 and 10000 ms');
+  assert(Number.isFinite(pollMs) && pollMs >= 25 && pollMs <= timeoutMs,
+    'owned browser process tree poll interval must be bounded by its timeout');
+
+  const observed = new Set([root, ...(Array.isArray(initialPids) ? initialPids : [])]
+    .map(Number).filter((pid) => Number.isSafeInteger(pid) && pid > 0));
+  const maxAttempts = Math.ceil(timeoutMs / pollMs) + 1;
+  let attempts = 0;
+  let lingeringPids = [];
+  while (attempts < maxAttempts) {
+    attempts += 1;
+    const snapshot = await snapshotReader();
+    for (const pid of collectOwnedProcessTreePids(snapshot, root)) observed.add(pid);
+    const livePids = new Set((Array.isArray(snapshot) ? snapshot : [])
+      .map((entry) => Number(entry?.pid))
+      .filter((pid) => Number.isSafeInteger(pid) && pid > 0));
+    lingeringPids = [...observed].filter((pid) => livePids.has(pid)).sort((a, b) => a - b);
+    if (lingeringPids.length === 0) {
+      return {
+        available: true,
+        pass: true,
+        rootPid: root,
+        observedPids: [...observed].sort((a, b) => a - b),
+        lingeringPids: [],
+        attempts,
+      };
+    }
+    if (attempts >= maxAttempts) break;
+    await waitFn(pollMs);
+  }
+
+  return {
+    available: true,
+    pass: false,
+    rootPid: root,
+    observedPids: [...observed].sort((a, b) => a - b),
+    lingeringPids,
+    attempts,
+  };
+}
+
 export function classifyPerformanceProcessActivity({
   before,
   after,
@@ -2763,7 +2862,18 @@ async function closeAttributionResources({
         rootUrl,
       });
     }
-    return await closeOwnedResources({
+    let processTree = null;
+    if (process.platform === 'win32' && Number.isSafeInteger(Number(browserChildProcess?.pid))) {
+      // BrowserServer.close() awaits its direct Chrome child, but Windows may retain a renderer or
+      // GPU descendant for another scheduler turn. Capture the owned tree while its parent links
+      // are still intact, then prove every descendant is gone before the one-shot end census.
+      const snapshot = await readWindowsBrowserProcessTreeSnapshot();
+      processTree = {
+        rootPid: Number(browserChildProcess.pid),
+        initialPids: collectOwnedProcessTreePids(snapshot, browserChildProcess.pid),
+      };
+    }
+    const report = await closeOwnedResources({
       page,
       context,
       browser,
@@ -2772,6 +2882,23 @@ async function closeAttributionResources({
       server: ownedServer,
       canonicalUrlTracker,
     });
+    if (processTree) {
+      report.browserProcessTree = await waitForOwnedProcessTreeExit(processTree);
+      if (report.browserProcessTree.pass !== true) {
+        report.pass = false;
+        report.failures.push({
+          name: 'browser-process-tree-exit',
+          error: { message: `owned Chrome descendants remained after bounded cleanup: ${report.browserProcessTree.lingeringPids.join(', ')}` },
+        });
+        const error = new AggregateError(
+          report.failures.map((failure) => new Error(`${failure.name}: ${failure.error.message}`)),
+          'owned runtime cleanup failed',
+        );
+        error.cleanupReport = report;
+        throw error;
+      }
+    }
+    return report;
   } catch (error) {
     if (runtimeKind === 'electron') {
       return error?.cleanupReport || {
