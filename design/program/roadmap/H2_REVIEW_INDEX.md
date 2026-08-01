@@ -28,7 +28,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 | 3 | PQ-019A presentation + counts | **PASS — facilities/counts retained; brokered capsule continuation accepted at runtime zooms 45/66/108** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
 | 4 | `pq019-surface-heist` broker manifest | **PASS — retained DOM/lawful evidence plus accepted fence/confiscation/destruction/recovery continuation** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
 | 5 | PQ-020 Ceres functional route | **PASS — fresh candidate-bound Browser/Electron pair accepted, 21/21 frames in each runtime with exact semantic parity** | [row5-pq020-ceres-route](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) |
-| 6 | PQ-023 cues in motion | **PASS — retained combat motion plus accepted Cathedral Browser/Electron continuation** | [row6-pq023-cues](evidence/h1/row6-pq023-cues/EVIDENCE.md) |
+| 6 | PQ-023 cues in motion | **PASS — all causal cue reviews accepted; H3 remains separate** | [base cues](evidence/h1/row6-pq023-cues/EVIDENCE.md), [combat continuation](evidence/h1/row6-pq023-combat-readability/EVIDENCE.md), [final small continuation](evidence/h1/row6-pq023-small-destruction-salience/EVIDENCE.md) |
 | 7 | PQ-022 asset leaves | **PASS — one Browser launch; 11 exact identities, 13 admitted stills** | [row7-pq022-asset-leaves](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md) |
 | 8 | Electron end-to-end smoke | **PASS — accepted source-Electron menu→physical dock→Ledger chain** | [row8-electron-e2e](evidence/h1/row8-electron-e2e/EVIDENCE.md) |
 
@@ -132,6 +132,14 @@ the preserved reduced fallback. Dense composition, cleanup, Cathedral, ordinary/
 and cross-runtime parity remain KEEP. The next exact chain is a normal-mode small-only repair,
 targeted recapture, and causal re-review; accepted cells are retained. Receipt:
 [PQ-023 combat-readability review](receipts/PQ-023-combat-readability-review-REPORT.md).
+
+**Final small-destruction causal re-review, candidate `dfecee8f`: PASS / KEEP.** The matched
+before/after opening frames and declared motion windows show that the normal event now opens with a
+bright sustained core, a wider three-point asymmetric breakup, and an offset lobe at the ordinary
+camera. It remains the smallest hierarchy member, borrows no ordinary ring, and is no longer weaker
+than the retained reduced fallback. Browser/source-Electron projections match exactly; dense
+composition, cleanup, flak distinction, Cathedral, and larger destruction remain KEEP. Receipt:
+[PQ-023 final small-destruction review](receipts/PQ-023-small-destruction-salience-review-REPORT.md).
 
 ---
 

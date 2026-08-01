@@ -4083,7 +4083,7 @@
       "priority": 241,
       "title": "Causally review final small-destruction salience",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-023.small-destruction-salience-h1"
       ],
@@ -4095,7 +4095,9 @@
         "design/program/roadmap/evidence/h1/row6-pq023-small-destruction-salience/"
       ],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-023-small-destruction-salience-review-REPORT.md"
+      ],
       "brief": "Judge only whether the final full-motion small-destruction event lands at the ordinary camera while the accepted reduced fallback, dense composition, cleanup, flak distinction, and larger hierarchy remain intact.",
       "blocker": null
     },

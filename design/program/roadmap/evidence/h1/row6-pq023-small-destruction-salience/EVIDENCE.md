@@ -49,10 +49,16 @@ measurements. The Electron receipt is SHA-256
   frames extracted from the declared `31.027-32.062 s` normal-small motion window, and derived review
   sheets. The motion review sheet is SHA-256
   `8cbf6dd8e2377259673dd9d7dcc71a8a73b665d600aafc442948635608e69e00`.
+- The causal review additionally binds six full-resolution frames extracted from the retained
+  pre-repair `39.543-40.561 s` window. The two-row before/after motion sheet is SHA-256
+  `448caf62de5dd6809c3c4bbb1c36229ec6cea47fd632061436e8a7794decaee9`; the matched
+  `18/70/150 ms` opening-detail sheet is
+  `9bcd5b61f60494e53e284d61b62cf9df7aa6595c2fdc27a55b09fd1af49abcfd`.
 - [`electron/`](electron/) contains all three original-resolution frames, the exact route receipt,
   and derived whole-frame/detail sheets.
 
-This is functional H1 evidence. It proves candidate identity, live-route execution, accessibility
-ownership, Browser/Electron parity, dense preservation, and cleanup. The independent causal
-self-review is the next exact unit. No matched-performance, physical-controller, or milestone
-promotion claim is made; all time-valued run fields are contended diagnostics only.
+This directory is the accepted functional H1 substrate and the source material for the separate
+causal review receipt. It proves candidate identity, live-route execution, accessibility ownership,
+Browser/Electron parity, dense preservation, and cleanup. No matched-performance,
+physical-controller, or milestone-promotion claim is made; all run-duration fields are contended
+diagnostics, while the declared WebM offsets are editorial navigation metadata only.
