@@ -3546,7 +3546,7 @@
       "priority": 203,
       "title": "PQ-019 matched facility and heist-route performance",
       "kind": "performance",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-019.capsule-h1-capture",
         "PQ-019.surface-heist-h1-capture",
@@ -3557,10 +3557,27 @@
         "performance-evidence",
         "validation-broker"
       ],
-      "paths": [],
-      "checks": [],
-      "receiptRefs": [],
-      "brief": "Capture matched normal and traffic-loaded facility/heist routes in a quiet window.",
+      "paths": [
+        "design/program/NOW.md",
+        "design/program/roadmap/active/PQ-019.md",
+        "design/program/roadmap/program-queue.json",
+        "design/program/roadmap/receipts/PQ-019-h3-performance-REPORT.md",
+        "scripts/capture-pq019-h3-performance.mjs",
+        "scripts/lib/pq019H3Performance.mjs",
+        "scripts/validation-manifests/pq019-h3-performance.mjs",
+        "test/pq019-h3-performance.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq019-h3-performance.test.mjs",
+        "npm run check:pq019a:facility-embodiment",
+        "npm run check:pq019c:mission",
+        "node scripts/validation-broker-cli.mjs --manifest pq019-h3-performance",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-019-h3-performance-REPORT.md"
+      ],
+      "brief": "Build and spend one brokered target-profile cell that alternates current-source normal and traffic-loaded facility/heist windows on the same fixed-seed public route. Bind raw frame intervals, p50/p95/p99/max, hitch/missed-vsync, owner phases, entities/colliders/queries, draw/triangle/program/residency facts, settings, viewport, Intel D3D11 identity, cleanup, and exact source/runtime digests without claiming an optimization delta.",
       "blocker": null
     },
     {
