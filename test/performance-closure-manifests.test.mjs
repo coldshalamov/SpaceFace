@@ -29,6 +29,21 @@ test('paired PERF-00 manifests pin distinct runtime authority over one source an
     assert.ok(manifest.fastGateCommands.includes(
       'node --test test/performance-closure-manifests.test.mjs test/performance-attribution-runtime-matrix.test.mjs',
     ));
+    assert.ok(manifest.fastGateCommands.includes('npm run check:vfx:trail-instancing'));
+    for (const source of [
+      'test/authored-precompile-residency.test.mjs',
+      'test/electron-shell-lifecycle.test.mjs',
+      'test/trail-streak-instancing.test.mjs',
+    ]) assert.ok(manifest.regressionSourcePaths.includes(source), source);
+    for (const source of [
+      'electron/main.cjs',
+      'src/render/engineTrailSurfaces.js',
+      'src/render/precompile.js',
+      'src/render/vfx.js',
+    ]) assert.ok(manifest.productionSourcePaths.includes(source), source);
+    assert.ok(manifest.harnessSourcePaths.includes(
+      'scripts/check-trail-streak-instancing-webgl.mjs',
+    ));
   }
 
   assert.deepEqual(browserManifest.scenarioPaths, electronManifest.scenarioPaths);

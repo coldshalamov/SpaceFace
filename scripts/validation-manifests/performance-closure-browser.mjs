@@ -29,6 +29,9 @@ export const PERFORMANCE_CLOSURE_SOURCE_IDENTITY = Object.freeze({
 const FAST_GATES = Object.freeze([
   'node --test test/performance-closure-manifests.test.mjs test/performance-attribution-runtime-matrix.test.mjs',
   'node --test test/performance-closure-contracts.test.mjs test/performance-closure-probe-contract.test.mjs test/performance-final-acceptance.test.mjs',
+  'node --test test/authored-precompile-residency.test.mjs test/electron-shell-lifecycle.test.mjs',
+  'npm run check:vfx:trail-instancing',
+  'node scripts/check-electron-platform-contracts.mjs',
   'npm run check:sim:compare',
 ]);
 
@@ -38,6 +41,8 @@ const SCENARIO_PATHS = Object.freeze([
 ]);
 
 const REGRESSION_PATHS = Object.freeze([
+  'test/authored-precompile-residency.test.mjs',
+  'test/electron-shell-lifecycle.test.mjs',
   'test/performance-attribution.test.mjs',
   'test/performance-attribution-runtime-matrix.test.mjs',
   'test/performance-closure-contracts.test.mjs',
@@ -48,21 +53,28 @@ const REGRESSION_PATHS = Object.freeze([
   'test/performance-scenario-driver.test.mjs',
   'test/performance-scenario-manifest.test.mjs',
   'test/performance-scene-metrics.test.mjs',
+  'test/trail-streak-instancing.test.mjs',
   'test/validation-broker.test.mjs',
   'test/validation-manifest-registry.test.mjs',
 ]);
 
 const PRODUCTION_PATHS = Object.freeze([
+  'electron/main.cjs',
   'package.json',
   'src/core/perfRuntime.js',
   'src/render/bloom.js',
+  'src/render/engineTrailSurfaces.js',
   'src/render/gpuTimers.js',
   'src/render/postTelemetry.js',
+  'src/render/precompile.js',
   'src/render/renderer.js',
+  'src/render/vfx.js',
 ]);
 
 const HARNESS_PATHS = Object.freeze([
+  'scripts/check-electron-platform-contracts.mjs',
   'scripts/check-performance-attribution.mjs',
+  'scripts/check-trail-streak-instancing-webgl.mjs',
   'scripts/lib/alphaLiveBaselineContracts.mjs',
   'scripts/lib/alphaLiveBaselineElectronContracts.mjs',
   'scripts/lib/browser-issues.mjs',
