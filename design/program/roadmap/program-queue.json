@@ -3562,7 +3562,8 @@
       "priority": 218,
       "title": "Land the five qualification performance owner facts",
       "kind": "implementation",
-      "state": "ready",
+      "state": "claimed",
+      "owner": "Codex primary integrator",
       "dependsOn": [
         "PQ-034.candidate-audit"
       ],
