@@ -29,6 +29,7 @@ export const PERFORMANCE_CLOSURE_SOURCE_IDENTITY = Object.freeze({
 const FAST_GATES = Object.freeze([
   'node --test test/performance-closure-manifests.test.mjs test/performance-attribution-runtime-matrix.test.mjs',
   'node --test test/performance-closure-contracts.test.mjs test/performance-closure-probe-contract.test.mjs test/performance-final-acceptance.test.mjs',
+  'node --test test/alpha-live-baseline-contracts.test.mjs test/authored-entity-plan-budget.test.mjs test/render-target-pipeline-warmup.test.mjs',
   'node --test test/authored-precompile-residency.test.mjs test/electron-shell-lifecycle.test.mjs',
   'npm run check:vfx:trail-instancing',
   'node scripts/check-electron-platform-contracts.mjs',
@@ -41,6 +42,8 @@ const SCENARIO_PATHS = Object.freeze([
 ]);
 
 const REGRESSION_PATHS = Object.freeze([
+  'test/alpha-live-baseline-contracts.test.mjs',
+  'test/authored-entity-plan-budget.test.mjs',
   'test/authored-precompile-residency.test.mjs',
   'test/electron-shell-lifecycle.test.mjs',
   'test/performance-attribution.test.mjs',
@@ -53,6 +56,7 @@ const REGRESSION_PATHS = Object.freeze([
   'test/performance-scenario-driver.test.mjs',
   'test/performance-scenario-manifest.test.mjs',
   'test/performance-scene-metrics.test.mjs',
+  'test/render-target-pipeline-warmup.test.mjs',
   'test/trail-streak-instancing.test.mjs',
   'test/validation-broker.test.mjs',
   'test/validation-manifest-registry.test.mjs',
@@ -66,6 +70,8 @@ const PRODUCTION_PATHS = Object.freeze([
   'src/render/engineTrailSurfaces.js',
   'src/render/gpuTimers.js',
   'src/render/postTelemetry.js',
+  'src/render/partsLibrary.js',
+  'src/render/pipelineReadiness.js',
   'src/render/precompile.js',
   'src/render/renderer.js',
   'src/render/vfx.js',
