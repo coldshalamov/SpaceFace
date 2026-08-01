@@ -13,9 +13,10 @@ firstFailedBrowserCandidate: 2ab10f91483b38a4cfbd2197d99d7bfa84ae198f
 secondFailedBrowserCandidate: dc8a4ae8148bf771188a2e982f0ba7c55da8bd4d
 thirdFailedBrowserCandidate: da98b9645e5096390990a0962c91fdd1c685d092
 fourthFailedBrowserCandidate: cc88a5d8b1d0f68198b0e3f08badaebb46a8e84c
-browserClaimsConsumed: 4
+fifthFailedBrowserCandidate: 1ad68828dff71d599b2e14f8639677837af2dab1
+browserClaimsConsumed: 5
 browserClaimAccepted: false
-latestBrowserRepairCandidate: 89470005843bca49a3b140f7e3f8931b4da671b3
+latestBrowserRepairCandidate: c812ca50651c48265915de3df3a21b1a7bdaac55
 headedRuntimeLaunched: true
 performanceEvidenceClaimed: false
 protectedWorktreeMutated: false
@@ -465,3 +466,34 @@ rule remains binding, and the observer does not force GPU completion with `gl.fi
 
 The exact unit remains `IN_PROGRESS`. One fresh Browser claim on the changed clean pushed candidate is
 next; Electron remains unspent until Browser passes.
+
+## Fifth Browser attempt: transient preflight process churn
+
+The one-use broker attempt on clean pushed candidate `1ad68828dff71d599b2e14f8639677837af2dab1`
+stopped at the preflight census before Browser launch or acceptance artifact allocation. At
+`2026-08-01T10:58:36.434Z`, both release authoring signals were inactive. The surviving 53 protected
+Blender, Chrome, and WebView processes accumulated `0.171875` CPU-seconds over five seconds, or
+`0.034375` of one core, below the `0.125` aggregate and `0.075` per-process thresholds. No process
+started, but `msedgewebview2.exe` PID 11512 ended between snapshots. Its post-snapshot CPU is
+unknowable, so `process-churn` correctly invalidated that sample. The broker recorded one Browser
+launch authorization for the candidate, while the probe launched no Browser and claimed no timing.
+
+Candidate `c812ca50651c48265915de3df3a21b1a7bdaac55` repairs the inability to autonomously settle that
+transient condition. Before claim consumption only, a census whose sole reason is `process-churn` may
+be discarded and followed by a wholly new five-second sample. The bound is three total attempts, and
+the retained start authority records every attempt plus whether a later sample settled. A sample with
+CPU activity, malformed/unavailable data, counter regression, or any non-churn reason never retries.
+Persistent churn still fails after the bound. End-of-run activity remains one fail-closed sample, so
+activity during or after the measured route cannot be waited away.
+
+- the churn-only regression failed before implementation and now requires a fresh quiet sample;
+- the persistent-churn counterexample remains fail-closed after the bounded retry;
+- selected PERF-00/broker regression set — PASS 146/146 in 16.291 s;
+- `npm run check:perf-counters` — PASS 35/35;
+- `npm run check:perf-packets` — PASS 39/39;
+- `npm run check:sim:compare` — PASS, deterministic and hash-equal;
+- `npm run check:launch-policy` — PASS;
+- `npm run check:baseline` — PASS 10/10 in 45.404 s.
+
+No performance conclusion is promoted. The exact unit remains `IN_PROGRESS`; a fresh Browser claim on
+the changed clean pushed candidate is next, and Electron remains unspent until Browser passes.
