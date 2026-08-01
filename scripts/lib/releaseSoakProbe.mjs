@@ -1634,7 +1634,11 @@ async function disableMeasurementGates(page) {
  * Each diagnostic variant body is failure-atomic: restore settings/timeScale + disable
  * measurement gates in finally.
  */
-const CLEANUP_SCOPED_ATTRIBUTION_ROUTES = new Set(['jump_asset_admission']);
+const POST_DIAGNOSTIC_ATTRIBUTION_ROUTE_ORDER = Object.freeze([
+  'context_recover_steady',
+  'jump_asset_admission',
+]);
+const POST_DIAGNOSTIC_ATTRIBUTION_ROUTES = new Set(POST_DIAGNOSTIC_ATTRIBUTION_ROUTE_ORDER);
 
 function performanceAttributionExecutionPlan({
   routes = ['flight_steady', 'docked_market_ui'],
@@ -1642,18 +1646,24 @@ function performanceAttributionExecutionPlan({
   variantScenarioIds = ['flight_steady'],
 } = {}) {
   const ordinary = [];
-  const cleanupScoped = [];
+  const postDiagnosticByRoute = new Map(
+    POST_DIAGNOSTIC_ATTRIBUTION_ROUTE_ORDER.map((routeTag) => [routeTag, []]),
+  );
   for (const variantId of variants) {
     for (const routeTag of routes) {
       if (variantId !== 'baseline' && !variantScenarioIds.includes(routeTag)) continue;
-      if (CLEANUP_SCOPED_ATTRIBUTION_ROUTES.has(routeTag) && variantId !== 'baseline') {
-        throw new Error(`cleanup-scoped attribution route ${routeTag} only supports the baseline variant`);
+      if (POST_DIAGNOSTIC_ATTRIBUTION_ROUTES.has(routeTag) && variantId !== 'baseline') {
+        throw new Error(`post-diagnostic attribution route ${routeTag} only supports the baseline variant`);
       }
       const cell = { variantId, routeTag };
-      (CLEANUP_SCOPED_ATTRIBUTION_ROUTES.has(routeTag) ? cleanupScoped : ordinary).push(cell);
+      const postDiagnostic = postDiagnosticByRoute.get(routeTag);
+      (postDiagnostic || ordinary).push(cell);
     }
   }
-  return [...ordinary, ...cleanupScoped];
+  return [
+    ...ordinary,
+    ...POST_DIAGNOSTIC_ATTRIBUTION_ROUTE_ORDER.flatMap((routeTag) => postDiagnosticByRoute.get(routeTag)),
+  ];
 }
 
 function groupAttributionExecutionPasses(cells) {

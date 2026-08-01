@@ -19,9 +19,9 @@ import {
 
 const ROOT = new URL('../', import.meta.url);
 
-test('cleanup-scoped jump progression is the final attribution cell', () => {
+test('cache-destructive context recovery and cleanup-scoped jump follow every reversible cell', () => {
   assert.deepEqual(performanceAttributionExecutionPlan({
-    routes: ['docked_market_ui', 'flight_steady', 'jump_asset_admission'],
+    routes: ['docked_market_ui', 'flight_steady', 'context_recover_steady', 'jump_asset_admission'],
     variants: ['baseline', 'sim_paused', 'material_depth_override'],
     variantScenarioIds: ['flight_steady'],
   }), [
@@ -29,6 +29,7 @@ test('cleanup-scoped jump progression is the final attribution cell', () => {
     { variantId: 'baseline', routeTag: 'flight_steady' },
     { variantId: 'sim_paused', routeTag: 'flight_steady' },
     { variantId: 'material_depth_override', routeTag: 'flight_steady' },
+    { variantId: 'baseline', routeTag: 'context_recover_steady' },
     { variantId: 'baseline', routeTag: 'jump_asset_admission' },
   ]);
 });
