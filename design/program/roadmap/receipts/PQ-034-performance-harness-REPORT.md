@@ -4,15 +4,15 @@
 ```yaml
 packet: PQ-034
 dispatchUnit: PQ-034.native-closure
-lifecycleClaim: blocked
-acceptanceClaim: focused_green_partial
-terminalDisposition: BLOCKED
-claimBase: 9d8f3984d9bb846e9aa42dba8929ac78c99ac5eb
-terminalCandidate: cc3340c268769d69c985902f5a019f57a11b09c2
+lifecycleClaim: implemented
+acceptanceClaim: focused_green
+terminalDisposition: IN_PROGRESS
+claimBase: 070064b4ff9aff9c4addb54d876c7ad877ba8e53
+activityAuthorityCandidate: 52cd5eb3949bfb0e88fd8a2c10d37cd1c149fe65
 headedRuntimeLaunched: false
 performanceEvidenceClaimed: false
 protectedWorktreeMutated: false
-leasesReleased: true
+leasesReleased: false
 ```
 
 ## Frame-linked GPU authority slice
@@ -253,10 +253,10 @@ Browser/Electron performance matrices terminated cleanly.
   named reasons; baseline-against-baseline remains `neutral` rather than improved;
 - no production broker claim, headed runtime, GPU capture, or live overhead conclusion was spent.
 
-## Terminal blocked disposition
+## Historical blocked disposition (superseded)
 
-This is the terminal receipt for the present claim, with a `BLOCKED` disposition rather than a false
-pass. The exact pushed candidate is `cc3340c268769d69c985902f5a019f57a11b09c2`; program docs,
+This was the terminal receipt for the 2026-07-31 claim, with a `BLOCKED` disposition rather than a
+false pass. The exact pushed candidate was `cc3340c268769d69c985902f5a019f57a11b09c2`; program docs,
 program-control tools, all changed-lane gates, and the exit baseline are green. The protected
 candidate worktrees remain untouched.
 
@@ -275,5 +275,40 @@ budgets, bounded artifacts, and owned teardown. Named owner **independent perfor
 reviewer** then issues the candidate/evidence-bound causal verdict. Until both close, the Phase 2
 enabled-overhead and Phase 4 live-matrix checkboxes stay open.
 
-`browser-gpu`, `performance-evidence`, and `validation-broker` are released. The unit may be reclaimed
-only against a clean exact revision after revalidating the census and broker digests.
+`browser-gpu`, `performance-evidence`, and `validation-broker` were released. The recovery claim
+below supersedes this disposition without erasing its historical evidence.
+
+## Recovery activity-authority repair
+
+The primary integrator reclaimed `PQ-034.native-closure` on 2026-08-01 and reproduced the actual
+admission defect: the census declared any named process active solely because it existed. That made
+days-old protected Blender, Chrome, and WebView2 roots an automatic blocker even when their bounded
+activity was negligible. The initial regression failed before implementation because no activity
+classifier existed.
+
+Candidate `52cd5eb3949bfb0e88fd8a2c10d37cd1c149fe65` replaces that existence test with a recorded
+five-second pair of Windows CPU snapshots. It still fails closed on unavailable/invalid data,
+process churn, CPU counter regression, aggregate use above `0.125` of one core, or a single named
+process above `0.075` of a core. The thresholds deliberately sit above Windows scheduler-quantized
+idle ticks; they do not waive the route's slow-no-op control, GPU query validity, real-renderer,
+worktree/source-drift, cleanup, or end-census gates.
+
+Live read-only characterization at `2026-08-01T09:32:04Z` retained 53 protected process identities,
+measured `0.234375` CPU-seconds over five seconds (`0.046875` of one core), found no churn, and
+returned `active=false`. No process was stopped, hidden, or excluded. A separate instantaneous GPU
+counter read found no utilization attributable to the named Blender/Chrome/WebView2 set; the headed
+route must still prove its own GPU and no-op validity.
+
+- bounded idle/active/churn/unavailable regression plus broker preflight — PASS 6/6;
+- paired manifest gates — PASS 9/9 and 27/27;
+- full PERF-00/broker/registry contract set — PASS 183/183;
+- `npm run check:perf-counters` — PASS 35/35;
+- `npm run check:perf-packets` — PASS 39/39;
+- `npm run check:sim:compare` — PASS, deterministic and hash-equal;
+- `npm run check:launch-policy` — PASS;
+- `npm run check:baseline` — PASS 10/10 in 44.419 s;
+- no production claim, runtime launch, GPU timing conclusion, or performance promotion was spent.
+
+The exact unit remains `IN_PROGRESS`: the next bounded work is one clean Browser claim, followed by
+its source-paired Electron claim if Browser passes, then integrator causal review. The primary
+integrator owns that review; no separate human reviewer exists or is required.
