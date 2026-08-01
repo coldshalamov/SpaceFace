@@ -847,3 +847,10 @@ Focused and live evidence:
 No failed artifact is retroactively promoted. The next bounded action is one fresh Browser claim on
 the clean pushed program-doc-synchronized source, followed by Electron only after Browser passes on
 that identical `sourceCandidateDigest`.
+
+The pre-claim authority audit then found that the paired manifests already hashed the changed
+renderer and soak harness but omitted `src/render/partsLibrary.js`,
+`src/render/pipelineReadiness.js`, and the three new regressions. No claim was issued with that
+incomplete source identity. Candidate `965c8dfb` adds all five exact paths to both paired digests and
+runs the regressions as a manifest fast gate. The paired manifest/repair set passes 31/31 and
+`npm run check:baseline` remains 10/10 in 40.679 seconds.
