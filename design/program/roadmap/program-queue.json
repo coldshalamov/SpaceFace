@@ -3562,7 +3562,7 @@
       "priority": 218,
       "title": "Land the five qualification performance owner facts",
       "kind": "implementation",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-034.candidate-audit"
       ],
@@ -3580,7 +3580,7 @@
       ],
       "receiptRefs": [],
       "brief": "Resolve p50 raw samples, p99, missed-vsync, residency, and draw/triangle owner facts from accepted PERF-00 work without duplicating harness-side guesses.",
-      "blocker": "The ten-commit PERF candidate containing part of this work has not been audited."
+      "blocker": null
     },
     {
       "id": "PQ-025.calibration-qualification",
