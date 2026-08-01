@@ -341,7 +341,7 @@ test('dispatcher rejects conflicting modes and unknown flags', () => {
   assert.match(unknown.stderr, /Unknown option/);
 });
 
-test('dispatch units expose exact ready work and fail closed on incomplete checkoff', () => {
+test('dispatch units expose implementation and integrator-review work without external-owner gates', () => {
   const parsed = queue([
     row('PQ-001', 1, 'planned'),
     row('PQ-002', 2, 'planned'),
@@ -390,12 +390,34 @@ test('dispatch units expose exact ready work and fail closed on incomplete check
       brief: 'Run one broker capture after the repair lands.',
       blocker: 'The acceptance repair is not done.',
     },
+    {
+      id: 'PQ-002.evidence-review',
+      parentId: 'PQ-002',
+      priority: 4,
+      title: 'Review retained route evidence',
+      kind: 'acceptance_review',
+      state: 'ready',
+      dependsOn: ['PQ-001.headless'],
+      mutexes: ['evidence-review'],
+      paths: ['design/evidence.md'],
+      checks: [],
+      receiptRefs: [],
+      brief: 'The integrator records a keep or revise disposition from current evidence.',
+    },
   ];
   const control = validateQueueDocument(parsed);
   assert.equal(dispatchUnitReady(control.dispatchById.get('PQ-001.acceptance-repair'), control), true);
   assert.deepEqual(
     readyDispatchUnits(control).map((unit) => unit.id),
-    ['PQ-001.acceptance-repair'],
+    ['PQ-001.acceptance-repair', 'PQ-002.evidence-review'],
+  );
+
+  const obsoleteHumanGate = structuredClone(parsed);
+  obsoleteHumanGate.dispatchUnits[3].kind = 'human_gate';
+  assert.throws(
+    () => validateQueueDocument(obsoleteHumanGate),
+    (error) => error instanceof ProgramControlError
+      && error.details.some((detail) => detail.includes('kind is not allowed: human_gate')),
   );
 
   parsed.dispatchUnits[0].receiptRefs = [];

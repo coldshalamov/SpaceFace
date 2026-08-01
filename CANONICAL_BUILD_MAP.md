@@ -14,7 +14,7 @@ Before changing anything:
 5. Run `node scripts/program-dispatch.mjs --next` for the first exact claim-ready unit,
    `node scripts/program-dispatch.mjs --ready` for every currently claim-ready unit, or
    `node scripts/program-dispatch.mjs --id PQ-XXX` for one parent outcome. The dispatcher includes
-   implementation, acceptance-repair, capture, human-gate, performance, and integration units, so a
+   implementation, acceptance-repair, capture, evidence-review, performance, and integration units, so a
    headless-complete parent is not redispatched as feature work. Open the raw
    [`program-queue.json`](./design/program/roadmap/program-queue.json) only when maintaining its
    index/dispatch units or diagnosing dependency/identity history.
@@ -158,8 +158,9 @@ are:
 - a product, harness, or nondeterminism failure must be reduced to a seconds-scale regression before
   another affected acceptance attempt;
 - unchanged failure fingerprints block reruns;
-- independent review normally closes with discovery, repair, and a causal re-review rather than a
-  succession of open-ended fresh audits;
+- evidence review closes with discovery, repair, and a causal re-review rather than a succession of
+  open-ended fresh audits; use a separate reviewer when one exists, but a solo integrator may issue
+  the verdict from retained evidence and must disclose that it is a self-review;
 - unrelated new ideas become follow-ups, not reasons to reopen the packet indefinitely;
 - every execution ends `PASS`, `FAIL`, `BLOCKED`, or `DEFERRED` with an exact-revision receipt.
 

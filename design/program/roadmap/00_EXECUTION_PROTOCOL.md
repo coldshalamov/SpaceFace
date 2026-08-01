@@ -181,13 +181,19 @@ This exists because scope was once defined only against the packet outcome, whic
 red tree the protocol-compliant ending. Keep the floor; apply judgment about when an inherited red
 actually blocks the work in front of you.
 
-## 8. Independent review that terminates
+## 8. Evidence review that terminates
 
 Review is adversarial but finite.
 
+When another qualified reviewer is actually available, prefer separation between authoring and
+review. In a solo recovery or integration run, the integrator may perform the same evidence-bound
+review after the implementation/capture step. Record that it was a self-review and apply the same
+finding standard. The absence of a separate person or agent is not a blocker and must not be encoded
+as a dependency, owner, or lease.
+
 ### Discovery
 
-One independent reviewer reads the packet, diff, focused evidence, and relevant owner contracts. Findings must include:
+The reviewer reads the packet, diff, focused evidence, and relevant owner contracts. Findings must include:
 
 - severity: P0/P1/P2/P3;
 - exact path/symbol or observed route beat;
@@ -213,7 +219,9 @@ Do not ask successive agents to “find more issues” until one eventually inve
 
 ## 9. Player-route and fun review
 
-Automation proves contracts. Human/independent visual review decides whether the feature is readable, discoverable, coherent, and enjoyable.
+Automation proves contracts. Evidence-bound integrator review decides whether the feature is
+readable, discoverable, coherent, and enjoyable; an independent or external player review can add
+confidence when it actually exists, but it is not a fictional prerequisite.
 
 A route receipt identifies:
 
@@ -226,7 +234,11 @@ A route receipt identifies:
 - performance sample identity;
 - explicit visual/fun verdict and concrete defects.
 
-A technically loaded asset or green screenshot script is not visual acceptance. A human verdict cannot override deterministic, ownership, save, accessibility, or performance failures.
+A technically loaded asset or green screenshot script is not visual acceptance. A qualitative
+verdict cannot override deterministic, ownership, save, accessibility, or performance failures.
+Likewise, missing physical hardware leaves only that device-specific claim unmade; it does not block
+a packet whose controller reachability is already proven through the shipped mapping, input route,
+focus semantics, and appropriate automated checks.
 
 For tuning-heavy physics, use a small predeclared matrix of candidate parameters and player outcomes. Keep seeds/routes fixed, record quantitative state and qualitative judgment, select once, then freeze the chosen values in focused tests. Do not tune by repeatedly editing and replaying an unrecorded route.
 

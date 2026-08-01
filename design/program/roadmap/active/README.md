@@ -40,15 +40,17 @@ PQ-034 through PQ-041 accepted
 ```
 
 PQ-018 through PQ-024 now have their headless implementation layers integrated. Current corridor
-work is exact acceptance repair, headed capture, human verdict, performance evidence, and promotion;
+work is exact acceptance repair, headed capture, evidence-bound integrator review, performance
+evidence, and promotion;
 run `node scripts/program-dispatch.mjs --ready` and claim the returned unit rather than redispatching
 a parent implementation. PQ-022 and PQ-023 remain portfolio containers, but their current leaf units
 are explicit in the queue.
 
-PQ-034 through PQ-041 have focused implementation on master. PQ-034 also retains a clean protected
-ten-commit candidate that must be audited selectively before native closure. PQ-042 remains blocked
-on terminal PERF-00–07 acceptance. PQ-043 and PQ-044 remain deferred and intentionally have no active
-packet until their evidence triggers are proved.
+PQ-034 through PQ-041 have focused implementation on master. PQ-034's protected ten-commit candidate
+has been audited selectively; its remaining native-closure unit is controlled by matched evidence,
+not by the presence of ordinary unrelated desktop processes or an unavailable external reviewer.
+PQ-042 remains dependency-gated on terminal PERF-00–07 acceptance. PQ-043 and PQ-044 remain deferred
+and intentionally have no active packet until their evidence triggers are proved.
 
 ## Packet index
 

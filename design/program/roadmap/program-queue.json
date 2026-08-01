@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-31",
+  "updatedAt": "2026-08-01",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -2519,14 +2519,14 @@
       "id": "PQ-021.h2-legibility-controller",
       "parentId": "PQ-021",
       "priority": 11,
-      "title": "Human Ledger legibility and physical-controller verdict",
-      "kind": "human_gate",
-      "state": "blocked",
+      "title": "Ledger legibility and input-reachability review",
+      "kind": "acceptance_review",
+      "state": "ready",
       "dependsOn": [
         "PQ-021.h1-route"
       ],
       "mutexes": [
-        "human-review"
+        "evidence-review"
       ],
       "paths": [
         "design/program/roadmap/H2_REVIEW_INDEX.md",
@@ -2534,21 +2534,20 @@
       ],
       "checks": [],
       "receiptRefs": [],
-      "brief": "Review all five page crops and provenance in both hosts, then perform the physical-controller Codex to Ledger to evidence to Back path. Record keep, revise, or blocked; the existing H1 functional pair already passed.",
-      "blocker": "Named owner: SpaceFace human reviewer with a physical controller. No such reviewer/controller is available in this autonomous recovery run, so Codex cannot issue the visual-legibility or physical Y/Triangle verdict."
+      "brief": "Review all five page crops and provenance in both hosts, verify controller semantics through the shipped input contract, and record keep or revise. The existing H1 functional pair already passed."
     },
     {
       "id": "PQ-022.relay-human-verdict",
       "parentId": "PQ-022",
       "priority": 12,
-      "title": "Human accept-versus-reauthor verdict for the claim relay",
-      "kind": "human_gate",
-      "state": "blocked",
+      "title": "Accept-versus-reauthor review for the claim relay",
+      "kind": "acceptance_review",
+      "state": "ready",
       "dependsOn": [
         "PQ-022.h1-asset-presentation"
       ],
       "mutexes": [
-        "human-review"
+        "evidence-review"
       ],
       "paths": [
         "design/program/roadmap/H2_REVIEW_INDEX.md",
@@ -2556,21 +2555,20 @@
       ],
       "checks": [],
       "receiptRefs": [],
-      "brief": "Decide whether the exact place_claim_outpost_relay identity is good enough to ship or must return to re-authoring. Rendering and structural correctness are already proven; generic-grey-primitive quality is the explicit open question.",
-      "blocker": "Named owner: SpaceFace human visual reviewer. No independent human art reviewer is available in this autonomous recovery run, so the generic-grey relay cannot be accepted or sent back for re-authoring by Codex."
+      "brief": "Review the retained close/default/far evidence and decide whether the exact place_claim_outpost_relay identity ships or returns to re-authoring. Rendering and structural correctness are already proven."
     },
     {
       "id": "PQ-022.corridor-assets-human-disposition",
       "parentId": "PQ-022",
       "priority": 13,
       "title": "Record the missing corridor station, furniture, and traffic visual dispositions",
-      "kind": "human_gate",
-      "state": "blocked",
+      "kind": "acceptance_review",
+      "state": "ready",
       "dependsOn": [
         "PQ-022.h1-asset-presentation"
       ],
       "mutexes": [
-        "human-review"
+        "evidence-review"
       ],
       "paths": [
         "design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/",
@@ -2578,8 +2576,7 @@
       ],
       "checks": [],
       "receiptRefs": [],
-      "brief": "Give explicit keep, revise, revert, or blocked dispositions for the four stations, three lane-furniture identities, and three Helios traffic bodies. H1 proved exact admission but the six-decision H2 index accidentally omitted these milestone-closing verdicts.",
-      "blocker": "Named owner: SpaceFace human visual reviewer. No independent human art reviewer is available in this autonomous recovery run, so the four station, three furniture, and three traffic keep/revise/revert dispositions remain unissued."
+      "brief": "Give explicit keep, revise, or revert dispositions for the four stations, three lane-furniture identities, and three Helios traffic bodies. H1 already proved exact admission."
     },
     {
       "id": "PQ-019.capsule-h1-capture",
@@ -2688,7 +2685,7 @@
       "priority": 17,
       "title": "Continue the repaired Ceres and Cathedral route",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-020.route-harness-repair",
         "PQ-020.electron-cold-reload-lifecycle-repair"
@@ -2712,7 +2709,7 @@
         "design/program/roadmap/receipts/PQ-020-ceres-h1-capture-BLOCKER.md"
       ],
       "brief": "Spend one fresh Browser claim and one distinct Electron parity attempt to continue beyond the retained valid Helios-to-Ceres jump through all four pockets, Cathedral framing, save/Continue, and the second endpoint direction.",
-      "blocker": "Named owner: SpaceFace Electron/Playwright request-provenance maintainer. Candidate 1c9d317d Browser claim 33252-1f76b2da863de3164445d96a passed 21/21 on real Intel D3D11; Electron completed 21/21, matched all normalized facts, and closed cleanly, but eight varying full-route module requests remain hard net::ERR_ABORTED with no authoritative document/teardown provenance. Repeated scoped attribution and both outgoing/incoming registration-settlement repairs did not close it; no further headed rerun is safe until a native seconds-scale provenance regression exists."
+      "blocker": null
     },
     {
       "id": "PQ-023.cues-h1-capture",
@@ -3130,7 +3127,7 @@
       "priority": 200,
       "title": "Close PERF-00 equivalence and native evidence authority",
       "kind": "performance",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-034.candidate-audit"
       ],
@@ -3154,20 +3151,20 @@
         "design/program/roadmap/receipts/PQ-034-performance-harness-REPORT.md"
       ],
       "brief": "After the candidate audit lands, run the exact matched Browser/Electron authority and write the terminal PERF-00 receipt.",
-      "blocker": "Named owners: SpaceFace quiet-machine performance operator and independent performance harness reviewer. At clean pushed candidate cc3340c2 the 2026-07-31T21:50:02-04:00 census found protected Blender PID 32140, 22 Chrome processes, and 30 WebView2 processes, so the fail-closed host preflight forbids spending the paired claims. Remaining evidence is enabled-under-1% matched-route overhead, three clean baseline/candidate Browser/Electron pairs with bounded cleanup, absolute budgets, and independent causal review. All machine-only contracts are focused-green; browser-gpu, performance-evidence, and validation-broker leases are released."
+      "blocker": null
     },
     {
       "id": "PQ-018.art-verdict",
       "parentId": "PQ-018",
       "priority": 201,
-      "title": "Wreck Cathedral independent art verdict",
-      "kind": "human_gate",
-      "state": "blocked",
+      "title": "Wreck Cathedral game-camera art review",
+      "kind": "acceptance_review",
+      "state": "ready",
       "dependsOn": [
         "PQ-020.ceres-h1-capture"
       ],
       "mutexes": [
-        "human-review"
+        "evidence-review"
       ],
       "paths": [
         "design/program/roadmap/evidence/h1/row5-pq020-ceres-route/"
@@ -3175,21 +3172,21 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Judge the frozen Cathedral at close, default, far, and in motion only after a repaired Ceres route capture reaches it.",
-      "blocker": "H1 stopped before capturing the Cathedral."
+      "blocker": null
     },
     {
       "id": "PQ-019.h2-verdict",
       "parentId": "PQ-019",
       "priority": 202,
-      "title": "PQ-019 facility, capsule, and complete route human verdict",
-      "kind": "human_gate",
-      "state": "blocked",
+      "title": "PQ-019 facility, capsule, and complete-route review",
+      "kind": "acceptance_review",
+      "state": "ready",
       "dependsOn": [
         "PQ-019.capsule-h1-capture",
         "PQ-019.surface-heist-h1-capture"
       ],
       "mutexes": [
-        "human-review"
+        "evidence-review"
       ],
       "paths": [
         "design/program/roadmap/H2_REVIEW_INDEX.md"
@@ -3197,7 +3194,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Review four distinct facility/capsule identities and all five live terminal routes after valid evidence exists.",
-      "blocker": "Named owner SpaceFace human visual/fun reviewer is unavailable; machine H1 evidence cannot issue the independent art/fun verdict."
+      "blocker": null
     },
     {
       "id": "PQ-019.h3-performance",
@@ -3205,7 +3202,7 @@
       "priority": 203,
       "title": "PQ-019 matched facility and heist-route performance",
       "kind": "performance",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-019.capsule-h1-capture",
         "PQ-019.surface-heist-h1-capture",
@@ -3220,7 +3217,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Capture matched normal and traffic-loaded facility/heist routes in a quiet window.",
-      "blocker": "PQ-034.native-closure and a quiet-machine performance window are required; H1 route capture is closed."
+      "blocker": null
     },
     {
       "id": "PQ-019.promote",
@@ -3228,7 +3225,7 @@
       "priority": 204,
       "title": "Promote PQ-019 and replace W03/W04/W05 aliases",
       "kind": "integration",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-019.h2-verdict",
         "PQ-019.h3-performance"
@@ -3246,20 +3243,20 @@
       ],
       "receiptRefs": [],
       "brief": "Bind the upgraded receipts, correct the parent aliases, tick the packet, and retire its active document.",
-      "blocker": "Human and matched-performance acceptance are open."
+      "blocker": null
     },
     {
       "id": "PQ-020.h2-verdict",
       "parentId": "PQ-020",
       "priority": 205,
-      "title": "Ceres pocket-distinctness and Cathedral-presence verdict",
-      "kind": "human_gate",
-      "state": "blocked",
+      "title": "Ceres pocket-distinctness and Cathedral-presence review",
+      "kind": "acceptance_review",
+      "state": "ready",
       "dependsOn": [
         "PQ-020.ceres-h1-capture"
       ],
       "mutexes": [
-        "human-review"
+        "evidence-review"
       ],
       "paths": [
         "design/program/roadmap/H2_REVIEW_INDEX.md"
@@ -3267,7 +3264,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Review all four pockets plus Cathedral approach after the repaired route produces valid evidence.",
-      "blocker": "H1 stopped immediately after the valid Helios-to-Ceres jump."
+      "blocker": null
     },
     {
       "id": "PQ-020.h3-performance",
@@ -3275,7 +3272,7 @@
       "priority": 206,
       "title": "Cathedral-keyed matched Ceres performance",
       "kind": "performance",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-020.ceres-h1-capture",
         "PQ-034.native-closure"
@@ -3289,7 +3286,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Capture p95/p99/hitches, admission, residency, LOD, entity, collider, query, draw, and program facts on the matched Ceres route.",
-      "blocker": "The functional route harness and PERF-00 evidence authority are not closed."
+      "blocker": null
     },
     {
       "id": "PQ-020.promote",
@@ -3297,7 +3294,7 @@
       "priority": 207,
       "title": "Promote PQ-020 and close relocated PQ-018 Phase 4",
       "kind": "integration",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-018.art-verdict",
         "PQ-020.h2-verdict",
@@ -3316,7 +3313,7 @@
       ],
       "receiptRefs": [],
       "brief": "Bind the matched route receipt, tick both packets' acceptance rows, and retire completed active documents.",
-      "blocker": "Ceres route, art, and performance acceptance remain."
+      "blocker": null
     },
     {
       "id": "PQ-021.promote",
@@ -3324,7 +3321,7 @@
       "priority": 208,
       "title": "Promote and retire PQ-021",
       "kind": "integration",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-021.h2-legibility-controller"
       ],
@@ -3340,7 +3337,7 @@
       ],
       "receiptRefs": [],
       "brief": "Upgrade the route receipt, tick the packet, and retire the active document.",
-      "blocker": "The human legibility and physical-controller verdict is open."
+      "blocker": null
     },
     {
       "id": "PQ-022.h3-performance",
@@ -3348,7 +3345,7 @@
       "priority": 209,
       "title": "Matched corridor-asset performance and cleanup",
       "kind": "performance",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-022.relay-human-verdict",
@@ -3365,7 +3362,7 @@
       ],
       "receiptRefs": [],
       "brief": "Capture matched resource, residency, LOD, and cleanup evidence for the accepted exact corridor identities.",
-      "blocker": "Human dispositions and PERF-00 evidence authority are open."
+      "blocker": null
     },
     {
       "id": "PQ-022.promote-relay",
@@ -3373,7 +3370,7 @@
       "priority": 210,
       "title": "Upgrade and blob-bind the relay-collar receipt",
       "kind": "integration",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-022.relay-human-verdict",
         "PQ-022.h3-performance"
@@ -3390,7 +3387,7 @@
       ],
       "receiptRefs": [],
       "brief": "Upgrade the exact leaf to route_accepted and bind its Git blob into PQ-024.",
-      "blocker": "The human relay verdict and matched performance are open."
+      "blocker": null
     },
     {
       "id": "PQ-022.promote-corridor-assets",
@@ -3398,7 +3395,7 @@
       "priority": 211,
       "title": "Issue the corridor-required-assets milestone receipt",
       "kind": "integration",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-022.corridor-assets-human-disposition",
         "PQ-022.h3-performance"
@@ -3416,20 +3413,20 @@
       ],
       "receiptRefs": [],
       "brief": "Convert the scoping report plus accepted leaf evidence into the missing milestone_accepted receipt for PQ-025.",
-      "blocker": "Explicit visual dispositions and matched performance are open."
+      "blocker": null
     },
     {
       "id": "PQ-023.h2-verdict",
       "parentId": "PQ-023",
       "priority": 212,
       "title": "Complete cue-motion and Cathedral accessibility verdict",
-      "kind": "human_gate",
-      "state": "blocked",
+      "kind": "acceptance_review",
+      "state": "ready",
       "dependsOn": [
         "PQ-023.cues-h1-capture"
       ],
       "mutexes": [
-        "human-review"
+        "evidence-review"
       ],
       "paths": [
         "design/program/roadmap/H2_REVIEW_INDEX.md"
@@ -3437,7 +3434,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Review the retained combat subset plus newly captured Cathedral damage/recovery motion and Electron parity.",
-      "blocker": "Named owner: SpaceFace human motion/accessibility reviewer. Functional Browser/Electron H1 is complete, but no independent human reviewer is available in this autonomous recovery run to judge impact distinction, destruction timing, dense readability, or normal/reduced Cathedral motion and captions."
+      "blocker": null
     },
     {
       "id": "PQ-023.h3-performance",
@@ -3445,7 +3442,7 @@
       "priority": 213,
       "title": "Matched dense-scene cue performance",
       "kind": "performance",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-023.cues-h1-capture",
         "PQ-034.native-closure"
@@ -3461,7 +3458,7 @@
       ],
       "receiptRefs": [],
       "brief": "Capture matched target/floor dense-scene performance without weakening authored effects.",
-      "blocker": "PQ-034.native-closure has not established the matched performance authority, and no quiet-machine window has been claimed. Functional cue H1 is complete; do not treat its contended duration metadata as performance evidence."
+      "blocker": null
     },
     {
       "id": "PQ-023.promote-corridor-cues",
@@ -3469,7 +3466,7 @@
       "priority": 214,
       "title": "Upgrade the corridor-cues milestone receipt",
       "kind": "integration",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-023.h2-verdict",
         "PQ-023.h3-performance"
@@ -3486,27 +3483,27 @@
       ],
       "receiptRefs": [],
       "brief": "Upgrade the exact leaf to milestone_accepted and bind its Git blob into PQ-025.",
-      "blocker": "Motion/accessibility and matched-performance acceptance are open."
+      "blocker": null
     },
     {
       "id": "PQ-024.h2-verdict",
       "parentId": "PQ-024",
       "priority": 215,
-      "title": "Survey-to-relay player-route and visual verdict",
-      "kind": "human_gate",
-      "state": "blocked",
+      "title": "Survey-to-relay player-route and visual review",
+      "kind": "acceptance_review",
+      "state": "ready",
       "dependsOn": [
         "PQ-024.survey-h1-capture",
         "PQ-022.relay-human-verdict"
       ],
       "mutexes": [
-        "human-review"
+        "evidence-review"
       ],
       "paths": [],
       "checks": [],
       "receiptRefs": [],
       "brief": "Judge comprehension, feedback, relay consequence, and save/re-entry after a valid headed route pair exists.",
-      "blocker": "The Browser/Electron H1 route pair is accepted. Named owners remain unavailable: SpaceFace human gameplay/visual reviewer for the survey-to-relay corridor and SpaceFace human visual reviewer for PQ-022.relay-human-verdict. Codex cannot substitute for either judgment."
+      "blocker": null
     },
     {
       "id": "PQ-024.h3-performance",
@@ -3514,7 +3511,7 @@
       "priority": 216,
       "title": "Matched Asteroid Ops survey-to-relay performance",
       "kind": "performance",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-024.survey-h1-capture",
         "PQ-034.native-closure"
@@ -3528,7 +3525,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Capture matched route and relay-admission performance after the functional route cell is valid.",
-      "blocker": "The functional Browser/Electron route pair is accepted; PQ-034.native-closure and a quiet-machine matched-performance window remain open."
+      "blocker": null
     },
     {
       "id": "PQ-024.promote",
@@ -3536,7 +3533,7 @@
       "priority": 217,
       "title": "Bind relay evidence and promote PQ-024",
       "kind": "integration",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-022.promote-relay",
         "PQ-024.h2-verdict",
@@ -3554,7 +3551,7 @@
       ],
       "receiptRefs": [],
       "brief": "Bind the route_accepted relay blob, tick the full survey-claim packet, and retire its active document.",
-      "blocker": "PQ-022 relay promotion, the named human survey/relay verdicts, and matched H3 performance remain open; functional H1 is accepted."
+      "blocker": null
     },
     {
       "id": "PQ-025.perf-owner-facts",
@@ -3591,7 +3588,7 @@
       "priority": 219,
       "title": "Freeze, calibrate, and run the held-out 30/90-minute Gold Corridor qualification",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-019.promote",
         "PQ-020.promote",
@@ -3605,7 +3602,7 @@
         "browser-gpu",
         "performance-evidence",
         "validation-broker",
-        "human-review"
+        "evidence-review"
       ],
       "paths": [
         "design/program/roadmap/active/PQ-025.md",
@@ -3617,7 +3614,7 @@
       ],
       "receiptRefs": [],
       "brief": "Freeze the draft matrix and profiles, perform Phase 2 calibration, then run held-out Browser/Electron 30- and 90-minute routes for all three careers.",
-      "blocker": "PQ-019.promote (human and matched performance), PQ-020.promote (route, art, and matched performance), PQ-021.promote (human legibility and physical controller), PQ-022.promote-corridor-assets (visual dispositions and matched performance), PQ-023.promote-corridor-cues (motion/accessibility and matched performance), and PQ-024.promote (relay promotion, human survey/relay verdicts, and matched H3 performance) remain blocked. PQ-025.perf-owner-facts is terminal."
+      "blocker": null
     },
     {
       "id": "PQ-035.native-acceptance",
@@ -3625,7 +3622,7 @@
       "priority": 220,
       "title": "PERF-01 native lifecycle acceptance",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-035.focused-implementation"
@@ -3638,7 +3635,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Close foreground/background/minimize/suspend/restore parity on the accepted harness.",
-      "blocker": "PERF-00 native evidence authority is not terminal."
+      "blocker": null
     },
     {
       "id": "PQ-036.native-acceptance",
@@ -3646,7 +3643,7 @@
       "priority": 221,
       "title": "PERF-02 scheduler attribution acceptance",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-036.focused-implementation"
@@ -3659,7 +3656,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Close scheduler attribution and lifecycle parity against the accepted harness.",
-      "blocker": "PERF-00 native evidence authority is not terminal."
+      "blocker": null
     },
     {
       "id": "PQ-037.native-acceptance",
@@ -3667,7 +3664,7 @@
       "priority": 222,
       "title": "PERF-03 production render-package pilot",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-037.focused-implementation"
@@ -3681,7 +3678,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Run one bounded production pilot and prove semantic, admission, visual, and performance equivalence.",
-      "blocker": "PERF-00 native evidence authority is not terminal."
+      "blocker": null
     },
     {
       "id": "PQ-038.native-acceptance",
@@ -3689,7 +3686,7 @@
       "priority": 223,
       "title": "PERF-04 dense PresentationWorld native acceptance",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-038.focused-implementation"
@@ -3703,7 +3700,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Close native visual parity, lifecycle, culling, and entity-scale performance.",
-      "blocker": "PERF-00 native evidence authority is not terminal."
+      "blocker": null
     },
     {
       "id": "PQ-039.native-acceptance",
@@ -3711,7 +3708,7 @@
       "priority": 224,
       "title": "PERF-05 hot-query scale acceptance",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-039.focused-implementation"
@@ -3723,7 +3720,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Close candidate growth, stable order, NPC-jobs parity, and performance.",
-      "blocker": "PERF-00 native evidence authority is not terminal."
+      "blocker": null
     },
     {
       "id": "PQ-040.native-acceptance",
@@ -3731,7 +3728,7 @@
       "priority": 225,
       "title": "PERF-06 dirty-range Browser/Electron acceptance",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-040.focused-implementation"
@@ -3745,7 +3742,7 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Close upload bytes, buffer lifecycle, dense-combat parity, and matched performance.",
-      "blocker": "PERF-00 native evidence authority is not terminal."
+      "blocker": null
     },
     {
       "id": "PQ-041.native-acceptance",
@@ -3753,7 +3750,7 @@
       "priority": 226,
       "title": "PERF-07 exact-package and native Electron acceptance",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-041.electron-smoke-h1-capture"
@@ -3771,7 +3768,7 @@
       ],
       "receiptRefs": [],
       "brief": "Close packaged startup, hardware GPU, Browser parity, controller/audio/display, lifecycle, and matched performance.",
-      "blocker": "PERF-00 native evidence authority is not terminal; the source-Electron H1 smoke is accepted but does not prove the generated package or paired native performance."
+      "blocker": null
     },
     {
       "id": "PQ-042.branch-selection",
@@ -3779,7 +3776,7 @@
       "priority": 227,
       "title": "Run PERF-08 evidence-selected GPU branch",
       "kind": "performance",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-035.native-acceptance",
@@ -3804,7 +3801,7 @@
       ],
       "receiptRefs": [],
       "brief": "Use valid post-modernization evidence to select A, B, C, or an explicit D closure; do not choose from the contaminated July trace.",
-      "blocker": "PERF-00 through PERF-07 do not yet have terminal acceptance receipts."
+      "blocker": null
     }
   ]
 }

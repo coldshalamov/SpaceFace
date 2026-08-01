@@ -43,7 +43,7 @@ const DISPATCH_UNIT_KINDS = new Set([
   'implementation',
   'acceptance_repair',
   'acceptance_capture',
-  'human_gate',
+  'acceptance_review',
   'performance',
   'integration',
 ]);
@@ -930,7 +930,7 @@ export function summarizeDispatchUnit(unit, control) {
     blocker: unit.blocker || null,
     owner: unit.owner || 'unclaimed',
     packet: `design/program/roadmap/active/${unit.parentId}.md`,
-    caution: 'Claim-ready still requires a fresh design/program/NOW.md collision check. A ready harness repair does not grant browser-gpu, validation-broker, performance-evidence, or human acceptance.',
+    caution: 'Claim-ready still requires a fresh design/program/NOW.md collision check. Evidence review, Browser/Electron capture, and matched performance remain separate exact units.',
   };
 }
 

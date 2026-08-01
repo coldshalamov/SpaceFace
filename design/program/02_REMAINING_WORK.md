@@ -3,40 +3,37 @@
 This is the canonical roll-up of everything still required from the Full Solo Alpha and the Depth
 Program. Detailed behavior remains in the linked source plans; this file owns status and next action.
 
-## Recovered dispatch index — 2026-07-30
+## Recovery-wave dispatch index — 2026-08-01
 
-The old parent queue had mixed implementation lifecycle with acceptance status, so completed
-PQ-019–PQ-024 work appeared redispatchable while a stale PQ-034 lease made every real residual look
-blocked. The machine queue now owns exact `dispatchUnits`. Use:
+The old parent queue mixed implementation lifecycle, acceptance status, and nonexistent external
+review roles. That left every unfinished exact unit manually `blocked` even though its real
+dependencies were satisfied. The machine queue now owns exact `dispatchUnits`; unfinished units are
+dependency-driven and evidence reviews are performed by the active integrator. Use:
 
 ```text
 node scripts/program-dispatch.mjs --next
 node scripts/program-dispatch.mjs --ready
 ```
 
-Claim-ready agent work, in order:
+The implementation/harness recovery cells listed in the previous snapshot are complete, including
+the protected PQ-034 candidate audit, PQ-019A/PQ-019C/PQ-020/PQ-023/PQ-041 harness repairs, PQ-024
+route harness, PQ-007 route acceptance, and the H1 captures that followed. Do not redispatch them.
+
+Current recovery order is:
 
 | Unit | Exact result |
 |---|---|
-| `PQ-034.candidate-audit` | Review/selectively integrate the clean ten-commit PERF candidate; write the missing terminal/residual PERF-00 receipt. |
-| `PQ-019.capsule-capture-repair` | Fix offscreen moving-capsule framing and fake seed metadata; no headed run. |
-| `PQ-019.route-harness-repair` | Replace the wall-clock-only capsule wait with simulation/terminal evidence; no headed run. |
-| `PQ-020.route-harness-repair` | Remove the unsupported 300-WU endpoint threshold and pin the valid 429.564-WU arrival. |
-| `PQ-023.cues-harness-repair` | Move into Cathedral admission range before waiting for authored presentation. |
-| `PQ-041.electron-smoke-harness-repair` | Replace the Main Menu visibility false negative with one semantic authority. |
-| `PQ-024.survey-route-harness` | Build/register the missing survey→commit→produce→relay→Continue broker cell. |
-| `PQ-007.route-acceptance` | Close the user-directed G auto-target/draw-to-fly Browser/Electron route. |
+| Retained-evidence H2 reviews | Issue keep/revise/revert decisions for PQ-021, PQ-022, PQ-019, and PQ-023. A negative verdict creates an executable repair leaf; it does not become a reviewer blocker. |
+| `PQ-020.ceres-h1-capture` | Resolve the Electron aborted-request provenance policy with a seconds-scale regression, then promote the already-matched route facts or spend one bounded causal pair if the repair changes the claim. |
+| `PQ-034.native-closure` | Run matched Browser/Electron performance authority. Process census is diagnostic evidence; unrelated desktop activity is not itself a veto. Report uncertainty/variance honestly. |
+| H3 and H4 units | Consume newly satisfied dependencies, run matched performance, bind exact receipt blobs, and promote the corridor packets in dependency order. |
+| PQ-025 qualification | Calibrate and run only after its exact corridor/performance dependencies are accepted. |
 
-Human gates ready from already-valid H1 evidence:
-
-- `PQ-021.h2-legibility-controller`;
-- `PQ-022.relay-human-verdict`;
-- `PQ-022.corridor-assets-human-disposition`.
-
-After those units close, the queue unlocks the H2 verdicts that lacked evidence, H3 matched
-performance, H4 receipt/blob binding and parent promotion, then PQ-025 calibration/qualification.
-PQ-042 remains behind terminal PERF-00–07 acceptance; PQ-043/PQ-044 remain deliberately deferred.
-This section supersedes dated “immediate queue” prose below when the two disagree.
+Run `--ready` after every coherent unit because the exact list changes as reviews, repairs, and
+promotions land. PQ-042 remains dependency-gated on terminal PERF-00–07 acceptance; PQ-043/PQ-044
+remain deliberately deferred. The Alpha/Depth table below is the broader lifetime roadmap, not a
+claim that every row is part of this recovery wave. This section supersedes dated “immediate queue”
+prose below when the two disagree.
 
 ## Alpha M0–M6
 
