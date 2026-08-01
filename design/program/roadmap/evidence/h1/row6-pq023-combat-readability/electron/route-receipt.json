@@ -1,0 +1,344 @@
+{
+  "schema": "spaceface.pq023-combat-readability-electron.v1",
+  "disposition": "PASS",
+  "runtime": "electron",
+  "fixedSeed": 47,
+  "gpu": {
+    "available": true,
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "semanticProjection": {
+    "schema": "spaceface.pq023-combat-readability-projection.v1",
+    "impactProfiles": {
+      "autocannon": {
+        "weaponId": "wpn_autocannon_m",
+        "family": "kinetic",
+        "variant": "autocannon",
+        "mode": "directional-fragments",
+        "primaryShape": "spray",
+        "fragmentCount": 12,
+        "lightPeak": 2.2
+      },
+      "flak": {
+        "weaponId": "wpn_flak_turret_s",
+        "family": "kinetic",
+        "variant": "flak",
+        "mode": "proximity-burst",
+        "primaryShape": "fragment-cloud",
+        "fragmentCount": 24,
+        "lightPeak": 1.6
+      }
+    },
+    "cells": [
+      {
+        "key": "autocannon",
+        "runtime": {
+          "particles": 7,
+          "sprites": 0,
+          "spriteKinds": [],
+          "trailStreaks": 5,
+          "combatBeams": 0,
+          "motionReduce": false,
+          "flashReduce": false
+        }
+      },
+      {
+        "key": "flak",
+        "runtime": {
+          "particles": 15,
+          "sprites": 1,
+          "spriteKinds": [
+            0
+          ],
+          "trailStreaks": 6,
+          "combatBeams": 0,
+          "motionReduce": false,
+          "flashReduce": false
+        }
+      },
+      {
+        "key": "small",
+        "runtime": {
+          "particles": 0,
+          "sprites": 2,
+          "spriteKinds": [
+            0,
+            4
+          ],
+          "trailStreaks": 2,
+          "combatBeams": 0,
+          "motionReduce": false,
+          "flashReduce": false
+        }
+      },
+      {
+        "key": "small-reduced",
+        "runtime": {
+          "particles": 4,
+          "sprites": 7,
+          "spriteKinds": [
+            2,
+            2,
+            2,
+            4,
+            4,
+            4,
+            4
+          ],
+          "trailStreaks": 6,
+          "combatBeams": 0,
+          "motionReduce": true,
+          "flashReduce": true
+        }
+      },
+      {
+        "key": "dense",
+        "runtime": {
+          "particles": 50,
+          "sprites": 62,
+          "spriteKinds": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4
+          ],
+          "trailStreaks": 31,
+          "combatBeams": 1,
+          "motionReduce": false,
+          "flashReduce": false
+        }
+      }
+    ]
+  },
+  "crossRuntimeParity": {
+    "pass": true,
+    "comparedAgainst": ".devshots/pq023-combat-readability/report.json"
+  },
+  "screenshots": [
+    {
+      "key": "autocannon",
+      "path": ".devshots/pq023-combat-readability/electron/01-autocannon-impact.png",
+      "bytes": 602745,
+      "sha256": "9605300644a0f1f806e8b55bbf3d9d9b60c0cd85fe84e8d5401dbd16f1c9b4d8",
+      "runtime": {
+        "particles": 7,
+        "sprites": 0,
+        "spriteKinds": [],
+        "trailStreaks": 5,
+        "combatBeams": 0,
+        "settings": {
+          "motionReduce": false,
+          "flashReduce": false
+        }
+      }
+    },
+    {
+      "key": "flak",
+      "path": ".devshots/pq023-combat-readability/electron/02-flak-impact.png",
+      "bytes": 562206,
+      "sha256": "595f6da657ada86b0abf8296f1e053c0a84709e5f234bfbb320e40ad6094ea24",
+      "runtime": {
+        "particles": 15,
+        "sprites": 1,
+        "spriteKinds": [
+          0
+        ],
+        "trailStreaks": 6,
+        "combatBeams": 0,
+        "settings": {
+          "motionReduce": false,
+          "flashReduce": false
+        }
+      }
+    },
+    {
+      "key": "small",
+      "path": ".devshots/pq023-combat-readability/electron/03-small-destruction.png",
+      "bytes": 535861,
+      "sha256": "97e85d1635f12138a7349b69bd2aa30816901e4034e644c7601737395c1bff23",
+      "runtime": {
+        "particles": 0,
+        "sprites": 2,
+        "spriteKinds": [
+          0,
+          4
+        ],
+        "trailStreaks": 2,
+        "combatBeams": 0,
+        "settings": {
+          "motionReduce": false,
+          "flashReduce": false
+        }
+      }
+    },
+    {
+      "key": "small-reduced",
+      "path": ".devshots/pq023-combat-readability/electron/04-small-destruction-reduced.png",
+      "bytes": 531581,
+      "sha256": "96b68afa95f1026490c5daebcf31797ed029f5ee97ade9c7a6cc291a3bcc19c8",
+      "runtime": {
+        "particles": 4,
+        "sprites": 7,
+        "spriteKinds": [
+          2,
+          2,
+          2,
+          4,
+          4,
+          4,
+          4
+        ],
+        "trailStreaks": 6,
+        "combatBeams": 0,
+        "settings": {
+          "motionReduce": true,
+          "flashReduce": true
+        }
+      }
+    },
+    {
+      "key": "dense",
+      "path": ".devshots/pq023-combat-readability/electron/05-dense-representative.png",
+      "bytes": 595885,
+      "sha256": "e31585de7b169445b2c47ca2063caa8652b01e55e993063bae0608631291a31a",
+      "runtime": {
+        "particles": 50,
+        "sprites": 62,
+        "spriteKinds": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "trailStreaks": 31,
+        "combatBeams": 1,
+        "settings": {
+          "motionReduce": false,
+          "flashReduce": false
+        }
+      }
+    }
+  ],
+  "pageIssues": [],
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran contended by design. This receipt contains functional cue identity, accessibility, fixture-state, and screenshot evidence only. No time-valued field is performance evidence. Matched performance remains Phase H3.",
+  "noPerformanceEvidence": true,
+  "ownedRuntimeClosed": true
+}

@@ -3965,7 +3965,7 @@
       "priority": 237,
       "title": "Capture revised flak and small-destruction readability",
       "kind": "acceptance_capture",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-023.combat-readability-repair"
       ],
@@ -3986,7 +3986,9 @@
         "npm run check:pq023:corridor-cues",
         "npm run check:presentation"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-023-combat-readability-h1-REPORT.md"
+      ],
       "brief": "Add a targeted continuation that captures only autocannon, flak, small destruction, reduced small destruction, and one dense representative in Browser plus source Electron; retain the accepted Cathedral and unrelated combat cells.",
       "blocker": null
     },
@@ -4005,7 +4007,8 @@
       ],
       "paths": [
         "design/program/roadmap/H2_REVIEW_INDEX.md",
-        "design/program/roadmap/evidence/h1/row6-pq023-cues/"
+        "design/program/roadmap/evidence/h1/row6-pq023-cues/",
+        "design/program/roadmap/evidence/h1/row6-pq023-combat-readability/"
       ],
       "checks": [],
       "receiptRefs": [],
