@@ -556,6 +556,23 @@ function validateEnvironment(environment, failures) {
   if (!environment.gpu || typeof environment.gpu !== 'object') failures.push('GPU/ANGLE identity is required');
   if (!environment.activity || typeof environment.activity !== 'object') failures.push('release/authoring activity state is required');
   if (!environment.defaultSettings?.video || typeof environment.defaultSettings.video !== 'object') failures.push('default video settings are required');
+  if (environment.runtimeKind === 'electron') {
+    const runtime = environment.electronRuntime;
+    if (!runtime || typeof runtime !== 'object') {
+      failures.push('Electron package/binary runtime identity is required');
+    } else {
+      if (!nonempty(runtime.packageVersion) || !nonempty(runtime.runtimeVersion)) {
+        failures.push('Electron package and binary versions are required');
+      } else if (runtime.packageVersion !== runtime.runtimeVersion) {
+        failures.push('Electron package and binary versions must match');
+      }
+      if (!nonempty(runtime.runtimePath)) failures.push('Electron runtime executable path is required');
+      if (typeof runtime.provisioned !== 'boolean') failures.push('Electron runtime provisioning truth is required');
+      if (!String(environment.browser?.userAgent || '').includes(`Electron/${runtime.runtimeVersion}`)) {
+        failures.push('Electron renderer user agent must confirm the provisioned binary version');
+      }
+    }
+  }
 }
 
 function validateWindow(window, index, environment, failures) {

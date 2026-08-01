@@ -15,12 +15,17 @@ import {
   assertIsolatedElectronRootUrl,
   createIsolatedElectronLaunch,
 } from './lib/electronTestIsolation.mjs';
+import { provisionElectronRuntime } from './lib/electronRuntimeProvisioning.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const REPORT_PATH = '.devshots/electron-new-game-launch.json';
-const FLIGHT_TIMEOUT_MS = 120000;
+const FLIGHT_TIMEOUT_MS = Number(process.env.SF_ELECTRON_NEW_GAME_TIMEOUT_MS) || 120000;
+assert(Number.isInteger(FLIGHT_TIMEOUT_MS) && FLIGHT_TIMEOUT_MS >= 5_000,
+  'SF_ELECTRON_NEW_GAME_TIMEOUT_MS must be an integer of at least 5000ms');
 
+const electronRuntime = provisionElectronRuntime({ root: ROOT });
 const { _electron: electron } = await loadPlaywright();
 
 let app = null;
@@ -30,6 +35,7 @@ let processMonitor = null;
 let canonicalUrlTracker = null;
 let isolatedLaunch = null;
 let rootUrl = null;
+let pageIssues = null;
 let primaryError = null;
 const processMessages = [];
 
@@ -41,18 +47,24 @@ try {
   captureElectronProcess(app);
 
   page = await app.firstWindow({ timeout: 90000 });
+  installCspSafePlaywrightPolling(page);
   canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
     bootstrapTimeoutMs: 10_000,
     pollIntervalMs: 75,
     allowAnyLoopbackPort: true,
   });
   rootUrl = assertIsolatedElectronRootUrl(await canonicalUrlTracker.waitForCanonicalRoot(10_000));
-  const pageIssues = collectPageIssues(page, { ignoreProbeWarnings: true });
+  pageIssues = collectPageIssues(page, { ignoreProbeWarnings: true });
 
   await page.waitForLoadState('domcontentloaded', { timeout: 90000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 90000 });
-  await page.locator('text=New Game').first().click({ timeout: 30000 });
-  await page.locator('button', { hasText: /^Launch$/i }).click({ timeout: 30000 });
+  const splash = page.locator('#cinematic-splash');
+  if (await splash.isVisible().catch(() => false)) {
+    await page.keyboard.press('Space');
+    await splash.waitFor({ state: 'hidden', timeout: 5_000 });
+  }
+  await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'Launch', exact: true }).click({ timeout: 30_000 });
   await page.waitForFunction(flightReadyInPage, null, { timeout: FLIGHT_TIMEOUT_MS });
   await page.waitForTimeout(1200);
 
@@ -126,6 +138,12 @@ try {
       rootUrl,
       listenerPort: Number(new URL(rootUrl).port),
       userDataDir: isolatedLaunch.userDataDir,
+      electronRuntime: {
+        packageVersion: electronRuntime.packageVersion,
+        runtimeVersion: electronRuntime.runtimeVersion,
+        runtimePath: electronRuntime.runtimePath,
+        provisioned: electronRuntime.provisioned === true,
+      },
     },
     pass: report.mode === 'flight'
       && report.player && report.player.alive
@@ -161,6 +179,31 @@ try {
   console.log(`[electron-new-game] report: ${REPORT_PATH}`);
 } catch (error) {
   primaryError = error;
+  if (page && !page.isClosed()) {
+    const failureSnapshot = await collectFailureSnapshot(page).catch((snapshotError) => ({
+      snapshotError: snapshotError?.message || String(snapshotError),
+    }));
+    writeReport({
+      schema: 'spaceface.electronNewGameLaunch.v1',
+      generatedAt: new Date().toISOString(),
+      pass: false,
+      failure: { name: error?.name || 'Error', message: error?.message || String(error) },
+      launch: {
+        mode: isolatedLaunch?.mode || null,
+        rootUrl,
+        electronRuntime: {
+          packageVersion: electronRuntime.packageVersion,
+          runtimeVersion: electronRuntime.runtimeVersion,
+          runtimePath: electronRuntime.runtimePath,
+          provisioned: electronRuntime.provisioned === true,
+        },
+      },
+      failureSnapshot,
+      pageIssues: summarizeIssues(pageIssues?.errorIssues?.() || []),
+      ignoredPageIssues: summarizeIssues(pageIssues?.ignoredIssues || []),
+      processMessages,
+    });
+  }
 } finally {
   let cleanupReport = null;
   if (app) {
@@ -194,6 +237,48 @@ try {
 }
 
 if (primaryError) throw primaryError;
+
+async function collectFailureSnapshot(targetPage) {
+  return targetPage.evaluate(async () => {
+    const state = window.SF?.state;
+    const readyPromise = state?.render?.authoredPartLibraryReady;
+    let preload = { requested: !!readyPromise, status: 'missing' };
+    if (readyPromise && typeof readyPromise.then === 'function') {
+      const pending = Symbol('pending');
+      const raced = await Promise.race([
+        Promise.resolve(readyPromise).then(
+          (value) => ({ status: 'resolved', valueKind: value == null ? 'null' : typeof value }),
+          (reason) => ({ status: 'rejected', reason: reason?.message || String(reason) }),
+        ),
+        new Promise((resolve) => queueMicrotask(() => resolve(pending))),
+      ]);
+      preload = raced === pending ? { requested: true, status: 'pending' } : { requested: true, ...raced };
+    }
+    const player = state?.entityList?.find((entity) => entity?.id === state.playerId);
+    return {
+      userAgent: navigator.userAgent,
+      mode: state?.mode || null,
+      tick: Number(state?.tick || 0),
+      player: player ? {
+        id: player.id,
+        alive: player.alive !== false,
+        authoredAssetState: player.mesh?.userData?.authoredAssetState || null,
+      } : null,
+      preload,
+      pipeline: {
+        activeAdmissionJobs: Number(state?.render?.pipelineReadiness?.activeAdmissionJobs || 0),
+        meshBuildQueueRemaining: Number(state?.render?.pipelineReadiness?.meshBuildQueueRemaining || 0),
+        contextLost: state?.render?.renderer?.getContext?.()?.isContextLost?.() ?? null,
+      },
+      recentResources: performance.getEntriesByType('resource').slice(-20).map((entry) => ({
+        name: entry.name,
+        durationMs: entry.duration,
+        transferSize: entry.transferSize,
+      })),
+      visibleText: document.body?.innerText?.replace(/\s+/g, ' ').trim().slice(0, 1_000) || '',
+    };
+  });
+}
 
 function captureElectronProcess(target) {
   const proc = target && typeof target.process === 'function' ? target.process() : null;

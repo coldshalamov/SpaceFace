@@ -109,6 +109,7 @@ function createGameServer(opts) {
   const root = path.resolve(opts.root);
   const useAsync = opts.async !== false;
   const extraRoutes = opts.extraRoutes || [];
+  const staticHeaders = Object.freeze({ ...(opts.staticHeaders || {}) });
   const devDiagnostics = opts.devDiagnostics !== false;
   const devFreshnessPayload = makeFreshnessTracker(root, { async: useAsync });
 
@@ -157,6 +158,7 @@ function createGameServer(opts) {
 
       const body = useAsync ? await fsp.readFile(file) : fs.readFileSync(file);
       res.writeHead(200, {
+        ...staticHeaders,
         'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
         'Cache-Control': 'no-cache',
       });

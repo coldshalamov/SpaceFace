@@ -18,6 +18,7 @@ import {
   createIsolatedElectronLaunch,
 } from './electronTestIsolation.mjs';
 import { loadPlaywright } from './load-playwright.mjs';
+import { installCspSafePlaywrightPolling } from './playwrightCspPolling.mjs';
 import {
   RELEASE_SOAK_SCHEMA,
   PERFORMANCE_ATTRIBUTION_SCHEMA,
@@ -45,6 +46,7 @@ import {
   createElectronProcessMonitor,
   createStrictElectronApplicationIssueTracker,
 } from './alphaLiveBaselineElectronContracts.mjs';
+import { provisionElectronRuntime } from './electronRuntimeProvisioning.mjs';
 import { runBrowserPublicRoute } from './alphaLiveBaselineRoute.mjs';
 import { acquireVisualProbeServer } from './visualProbeServer.mjs';
 import {
@@ -102,6 +104,29 @@ export function performanceAttributionRuntimePlan(runtimeKind) {
       issueTracker: 'electron-application',
       cleanupOwner: 'closeOwnedElectronRuntime',
     };
+}
+
+export function provisionPerformanceAttributionElectronRuntime(
+  root,
+  provision = provisionElectronRuntime,
+) {
+  assert(root, 'Electron attribution runtime provisioning requires a repository root');
+  assert.equal(typeof provision, 'function', 'Electron attribution runtime provisioner must be callable');
+  const runtime = provision({ root });
+  assert.equal(runtime?.ready, true, 'Electron attribution requires a provisioned runtime');
+  assert(
+    runtime.packageVersion
+      && runtime.packageVersion === runtime.declaredVersion
+      && runtime.packageVersion === runtime.runtimeVersion,
+    'Electron package and binary must match the declared Electron runtime',
+  );
+  assert(runtime.runtimePath, 'Electron attribution requires an exact runtime executable path');
+  return {
+    packageVersion: runtime.packageVersion,
+    runtimeVersion: runtime.runtimeVersion,
+    runtimePath: runtime.runtimePath,
+    provisioned: runtime.provisioned === true,
+  };
 }
 
 export async function runReleaseSoakProbe({
@@ -353,10 +378,14 @@ async function launchBrowser(viewport) {
 }
 
 async function launchElectron(root, onOwnership = () => {}, taskId = 'release-soak-electron') {
+  const runtimeProvisioning = provisionPerformanceAttributionElectronRuntime(root);
   const { _electron: electron } = await loadPlaywright();
   const isolatedLaunch = createIsolatedElectronLaunch({ root, taskId });
   let electronApp;
   try {
+    // Omit executablePath intentionally. Playwright resolves this already-verified package and,
+    // only on that package-resolution path, installs its Electron readiness loader before app
+    // startup. Supplying the same binary path explicitly bypasses that loader in Playwright 1.61.
     electronApp = await electron.launch(isolatedLaunch.options);
   } catch (error) {
     throw error;
@@ -367,7 +396,16 @@ async function launchElectron(root, onOwnership = () => {}, taskId = 'release-so
   onOwnership({ electronApp, processMonitor, childProcess, pageIssueTracker });
   assert(childProcess, 'Electron launch must expose its owned child process');
   const page = await electronApp.firstWindow({ timeout: 90_000 });
-  return { electronApp, processMonitor, childProcess, pageIssueTracker, page, isolatedLaunch };
+  installCspSafePlaywrightPolling(page);
+  return {
+    electronApp,
+    processMonitor,
+    childProcess,
+    pageIssueTracker,
+    page,
+    isolatedLaunch,
+    runtimeProvisioning,
+  };
 }
 
 async function runSoakCycle(page, { index, outputDir, log }) {
@@ -2517,7 +2555,15 @@ function captureProcessOutput(command, args, maxBytes = 4 * 1024 * 1024) {
   });
 }
 
-async function readAttributionEnvironment(page, browser, viewport, seed, activity, runtimeKind) {
+async function readAttributionEnvironment(
+  page,
+  browser,
+  viewport,
+  seed,
+  activity,
+  runtimeKind,
+  electronRuntime = null,
+) {
   const browserVersion = typeof browser?.version === 'function' ? browser.version() : null;
   const live = await page.evaluate(() => {
     const gameRenderer = window.SF?.state?.render?.renderer;
@@ -2572,6 +2618,7 @@ async function readAttributionEnvironment(page, browser, viewport, seed, activit
     },
     defaultSettings: live.defaultSettings,
     activity,
+    ...(runtimeKind === 'electron' ? { electronRuntime } : {}),
   };
 }
 
@@ -2702,6 +2749,7 @@ async function finalizePerformanceAttributionRun({
   startFingerprint,
   activity,
   runtimeKind,
+  electronRuntime,
   authority,
   pageIssueTracker,
   page,
@@ -2729,6 +2777,7 @@ async function finalizePerformanceAttributionRun({
     seed,
     { start: activity, end: null },
     runtimeKind,
+    electronRuntime,
   );
   await page.screenshot({
     path: path.join(outputDir, 'performance-closure-overview.png'),
@@ -3002,6 +3051,7 @@ async function runPerformanceAttributionProbe({
   let childProcess = null;
   let processMonitor = null;
   let isolatedLaunch = null;
+  let electronRuntime = null;
   let rootUrl = null;
 
   try {
@@ -3027,6 +3077,7 @@ async function runPerformanceAttributionProbe({
         processMonitor,
         pageIssueTracker,
         isolatedLaunch,
+        runtimeProvisioning: electronRuntime,
       } = launched);
       canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
         bootstrapTimeoutMs: 10_000,
@@ -3153,6 +3204,7 @@ async function runPerformanceAttributionProbe({
       startFingerprint,
       activity,
       runtimeKind,
+      electronRuntime,
       authority,
       pageIssueTracker,
       page,

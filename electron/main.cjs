@@ -30,6 +30,7 @@ const BUNDLE_ROOT = path.join(PROJECT_ROOT, 'build', 'web');
 // prior save becomes invisible. A fixed port keeps the origin stable across relaunches → saves persist.
 const PORT = 41788;
 const ISOLATED_PORT_RETRY_LIMIT = 3;
+const ELECTRON_CONTENT_SECURITY_POLICY = "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' blob: ws: wss:; worker-src 'self' blob:; media-src 'self' data: blob:";
 const launchConfig = resolveElectronLaunchConfig(process.env);
 const launchPort = launchConfig.isolatedEvidence ? launchConfig.port : PORT;
 // Player windows use normal Chromium throttling. A temporary evidence profile may opt out only
@@ -90,7 +91,12 @@ async function startServer() {
 
 function listenGameServer(root, requestedPort) {
   return new Promise((resolve, reject) => {
-    const server = createGameServer({ root, async: false, devDiagnostics: !app.isPackaged });
+    const server = createGameServer({
+      root,
+      async: false,
+      devDiagnostics: !app.isPackaged,
+      staticHeaders: { 'Content-Security-Policy': ELECTRON_CONTENT_SECURITY_POLICY },
+    });
     // Keep the fixed origin authoritative. An ephemeral fallback hides the actual port owner and
     // makes existing localStorage saves disappear for the run, so classify contention instead.
     server.once('error', async (err) => {

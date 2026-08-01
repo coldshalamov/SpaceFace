@@ -23,6 +23,9 @@ test('Electron shell keeps an explicit secure renderer boundary', () => {
   assert.match(main, /setPermissionRequestHandler/);
   assert.match(main, /permission !== 'pointerLock'/);
   assert.match(main, /webContents !== win\.webContents/);
+  assert.match(main, /ELECTRON_CONTENT_SECURITY_POLICY/);
+  assert.match(main, /staticHeaders:\s*\{\s*'Content-Security-Policy': ELECTRON_CONTENT_SECURITY_POLICY\s*\}/);
+  assert.doesNotMatch(main, /script-src[^;]*'unsafe-eval'/i);
 });
 
 test('packaged Electron includes only production shell entry points', () => {

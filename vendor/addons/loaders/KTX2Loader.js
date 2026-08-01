@@ -109,6 +109,152 @@ let _activeLoaders = 0;
 
 let _zstd;
 
+const BASIS_DYNAMIC_INVOKER = 'var invokerFn=newFunc(Function,args)(...closureArgs);';
+const BASIS_CSP_SAFE_INVOKER = 'var invokerFn=createCspSafeBasisInvoker(humanName,argTypes,classType,cppInvokerFunc,cppTargetFunc,{throwBindingError,runDestructors,createNamedFunction});';
+const BASIS_DYNAMIC_METHOD_CALLER = 'var invokerFunction=newFunc(Function,params)(...args);';
+const BASIS_CSP_SAFE_METHOD_CALLER = 'var invokerFunction=createCspSafeBasisMethodCaller(types,retType,kind,{emval_returnValue});';
+
+/**
+ * Emscripten's stock Basis wrapper builds embind call shims with the Function constructor. That
+ * optimization is forbidden by the Electron shell's strict CSP and leaves KTX2 worker requests
+ * pending forever. Preserve the same wire conversion and destructor semantics with a closure.
+ */
+function createCspSafeBasisInvoker( humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc, helpers ) {
+
+	const { throwBindingError, runDestructors, createNamedFunction } = helpers;
+	const argCount = argTypes.length;
+	const isClassMethod = argTypes[ 1 ] !== null && classType !== null;
+	const returns = argTypes[ 0 ].name !== 'void';
+	let needsDestructorStack = false;
+
+	for ( let i = 1; i < argTypes.length; i ++ ) {
+
+		if ( argTypes[ i ] !== null && argTypes[ i ].destructorFunction === undefined ) {
+
+			needsDestructorStack = true;
+			break;
+
+		}
+
+	}
+
+	const invoker = function ( ...callArgs ) {
+
+		if ( callArgs.length !== argCount - 2 ) {
+
+			throwBindingError( 'function ' + humanName + ' called with ' + callArgs.length + ' arguments, expected ' + ( argCount - 2 ) );
+
+		}
+
+		const destructors = needsDestructorStack ? [] : null;
+		const wiredArgs = [];
+		let thisWired;
+
+		if ( isClassMethod ) thisWired = argTypes[ 1 ].toWireType( destructors, this );
+
+		for ( let i = 0; i < callArgs.length; i ++ ) {
+
+			wiredArgs.push( argTypes[ i + 2 ].toWireType( destructors, callArgs[ i ] ) );
+
+		}
+
+		const result = isClassMethod
+			? cppInvokerFunc( cppTargetFunc, thisWired, ...wiredArgs )
+			: cppInvokerFunc( cppTargetFunc, ...wiredArgs );
+
+		if ( needsDestructorStack ) {
+
+			runDestructors( destructors );
+
+		} else {
+
+			if ( isClassMethod && argTypes[ 1 ].destructorFunction !== null ) {
+
+				argTypes[ 1 ].destructorFunction( thisWired );
+
+			}
+
+			for ( let i = 2; i < argTypes.length; i ++ ) {
+
+				if ( argTypes[ i ].destructorFunction !== null ) {
+
+					argTypes[ i ].destructorFunction( wiredArgs[ i - 2 ] );
+
+				}
+
+			}
+
+		}
+
+		if ( returns ) return argTypes[ 0 ].fromWireType( result );
+
+	};
+
+	return createNamedFunction( humanName, invoker );
+
+}
+
+/** Replace Emscripten's second dynamic shim: pointer-backed JavaScript method calls. */
+function createCspSafeBasisMethodCaller( types, retType, kind, helpers ) {
+
+	const { emval_returnValue } = helpers;
+
+	return function ( obj, func, destructorsRef, argsPointer ) {
+
+		let offset = 0;
+		const values = [];
+
+		for ( const type of types ) {
+
+			values.push( type.readValueFromPointer( argsPointer + offset ) );
+			offset += type.argPackAdvance;
+
+		}
+
+		let result;
+		if ( kind === 1 ) {
+
+			result = Reflect.construct( func, values );
+
+		} else if ( kind === 0 ) {
+
+			result = func.call( obj, ...values );
+
+		} else {
+
+			// Generated embind uses `func.call(arg0, arg1, ...)` for free functions: the first
+			// wire value is the receiver consumed by Function.prototype.call, not an argument.
+			result = func.call( ...values );
+
+		}
+
+		if ( ! retType.isVoid ) return emval_returnValue( retType, destructorsRef, result );
+
+	};
+
+}
+
+function rewriteBasisTranscoderForStrictCsp( source ) {
+
+	const input = String( source );
+	const invokerIndex = input.indexOf( BASIS_DYNAMIC_INVOKER );
+	const methodIndex = input.indexOf( BASIS_DYNAMIC_METHOD_CALLER );
+
+	if ( invokerIndex < 0
+		|| input.indexOf( BASIS_DYNAMIC_INVOKER, invokerIndex + BASIS_DYNAMIC_INVOKER.length ) >= 0
+		|| methodIndex < 0
+		|| input.indexOf( BASIS_DYNAMIC_METHOD_CALLER, methodIndex + BASIS_DYNAMIC_METHOD_CALLER.length ) >= 0 ) {
+
+		throw new Error( 'THREE.KTX2Loader: Basis CSP bridge expected exactly two known dynamic shims.' );
+
+	}
+
+	return input
+		.replace( BASIS_DYNAMIC_INVOKER, BASIS_CSP_SAFE_INVOKER )
+		.replace( BASIS_DYNAMIC_METHOD_CALLER, BASIS_CSP_SAFE_METHOD_CALLER );
+
+}
+
 /**
  * A loader for KTX 2.0 GPU Texture containers.
  *
@@ -297,6 +443,7 @@ class KTX2Loader extends Loader {
 				.then( ( [ jsContent, binaryContent ] ) => {
 
 					const fn = KTX2Loader.BasisWorker.toString();
+					const cspSafeJsContent = rewriteBasisTranscoderForStrictCsp( jsContent );
 
 					const body = [
 						'/* constants */',
@@ -304,8 +451,11 @@ class KTX2Loader extends Loader {
 						'let _EngineType = ' + JSON.stringify( KTX2Loader.EngineType ),
 						'let _TranscoderFormat = ' + JSON.stringify( KTX2Loader.TranscoderFormat ),
 						'let _BasisFormat = ' + JSON.stringify( KTX2Loader.BasisFormat ),
+						'/* strict-CSP embind invoker */',
+						createCspSafeBasisInvoker.toString(),
+						createCspSafeBasisMethodCaller.toString(),
 						'/* basis_transcoder.js */',
-						jsContent,
+						cspSafeJsContent,
 						'/* worker */',
 						fn.substring( fn.indexOf( '{' ) + 1, fn.lastIndexOf( '}' ) )
 					].join( '\n' );
@@ -1254,4 +1404,9 @@ function parseColorSpace( container ) {
 
 }
 
-export { KTX2Loader };
+export {
+	KTX2Loader,
+	createCspSafeBasisInvoker,
+	createCspSafeBasisMethodCaller,
+	rewriteBasisTranscoderForStrictCsp,
+};

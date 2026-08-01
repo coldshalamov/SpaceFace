@@ -30,4 +30,8 @@ test('Electron normal route proves authored release identities without an artifi
     'the terminal assertion must reject every ship that fails the shared release predicate');
   assert.match(electronSource, /report\.mode === 'flight'/,
     'the proof remains a real playable-route handoff, not an isolated asset viewer');
+  assert.match(electronSource, /getByRole\('button', \{ name: 'New Game', exact: true \}\)/,
+    'the diagnostic must click the New Game control rather than the identically named heading');
+  assert.match(electronSource, /getByRole\('button', \{ name: 'Launch', exact: true \}\)/,
+    'the diagnostic must bind Launch to its exact button role');
 });

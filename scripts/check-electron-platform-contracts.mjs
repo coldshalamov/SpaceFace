@@ -67,6 +67,18 @@ assert.match(electronMain, /webContents !== win\.webContents/);
 assert.match(electronMain, /console-message', \(_event, details\)/,
   'Electron 43 console messages must consume the details object');
 assert.doesNotMatch(electronMain, /console-message', \(_event, _level, message\)/);
+assert.match(electronMain, /const ELECTRON_CONTENT_SECURITY_POLICY\s*=/,
+  'the Electron shell must publish an explicit Content Security Policy');
+assert.match(electronMain, /script-src\s+'self'/i,
+  'the Electron CSP must restrict scripts to the application origin');
+assert.match(electronMain, /object-src\s+'none'/i,
+  'the Electron CSP must disable plugin/object content');
+assert.match(electronMain, /connect-src[^;]*\bblob:/i,
+  'the Electron CSP must preserve GLTF embedded-texture blob fetches');
+assert.doesNotMatch(electronMain, /script-src[^;]*'unsafe-eval'/i,
+  'the Electron CSP must never grant string evaluation');
+assert.match(electronMain, /staticHeaders:\s*\{\s*'Content-Security-Policy': ELECTRON_CONTENT_SECURITY_POLICY\s*\}/,
+  'the Electron-owned server must attach the policy to the canonical route response');
 
 const runtime = inspectElectronRuntime({ root: ROOT });
 assert.equal(runtime.packageVersion, '43.2.0', 'installed Electron package metadata must match the lockfile target');

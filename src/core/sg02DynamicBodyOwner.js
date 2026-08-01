@@ -16,6 +16,7 @@ import {
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
 import { frameToGlobal, globalToFrame } from './coordinates.js';
+import { loadRapierCompatRuntime } from './rapierCompatRuntime.js';
 
 export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
@@ -99,8 +100,6 @@ const SANE_MAX_YAW_RATE = 6.0;   // absolute yaw-rate ceiling, above every legit
 const CCD_GATE_ENABLE_SPEED = 150;   // wu/s, above every authored cruise max (~147)
 const CCD_GATE_DISABLE_SPEED = 120;  // hysteresis floor while enabled
 
-const RAPIER_COMPAT_INIT_WARNING = 'using deprecated parameters for the initialization function';
-let rapierInitPromise = null;
 
 export async function createSg02DynamicBodyOwner(options = {}) {
   const RAPIER = options.RAPIER || await loadRapierCompat();
@@ -1190,35 +1189,7 @@ export class Sg02DynamicBodyOwner {
 }
 
 async function loadRapierCompat() {
-  const mod = await import('@dimforge/rapier3d-compat');
-  const RAPIER = mod.default || mod;
-  if (!rapierInitPromise) {
-    rapierInitPromise = runRapierInitWithFilteredWarning(RAPIER).catch((err) => {
-      rapierInitPromise = null;
-      throw err;
-    });
-  }
-  await rapierInitPromise;
-  return RAPIER;
-}
-
-async function runRapierInitWithFilteredWarning(RAPIER) {
-  if (!RAPIER || typeof RAPIER.init !== 'function') return;
-  if (typeof console === 'undefined' || typeof console.warn !== 'function') {
-    await RAPIER.init();
-    return;
-  }
-  const originalWarn = console.warn;
-  console.warn = (...args) => {
-    const text = args.map(String).join(' ');
-    if (text.includes(RAPIER_COMPAT_INIT_WARNING)) return;
-    originalWarn.apply(console, args);
-  };
-  try {
-    await RAPIER.init();
-  } finally {
-    console.warn = originalWarn;
-  }
+  return loadRapierCompatRuntime();
 }
 
 function resetBodyForces(body) {

@@ -3,7 +3,9 @@ import { test } from 'node:test';
 
 import {
   collectContextLossRoots,
+  deferWebGlContextRestore,
   detachStaleWebGlDisposeListeners,
+  isWebGlContextUnavailable,
 } from '../src/render/contextResourceLifecycle.js';
 
 test('context loss detaches only stale Three renderer GPU dispose listeners', () => {
@@ -68,6 +70,38 @@ test('context loss root collection includes scene, background, bloom, graph, and
   });
 
   assert.deepEqual(roots, [scene, environment, backgroundTarget, bloomTarget, graphTarget, entityMesh]);
+});
+
+test('context restore rebuild stays paused until every listener in the restore event has returned', () => {
+  const order = [];
+  let queued = null;
+
+  const receipt = deferWebGlContextRestore(
+    () => order.push('spaceface-rebuild'),
+    (callback) => { queued = callback; },
+  );
+  order.push('three-context-cache-reset');
+
+  assert.deepEqual(order, ['three-context-cache-reset']);
+  assert.equal(receipt.pending, true);
+  assert.equal(typeof queued, 'function');
+
+  queued();
+  assert.deepEqual(order, ['three-context-cache-reset', 'spaceface-rebuild']);
+  assert.equal(receipt.pending, false);
+});
+
+test('draw boundary observes a lost GL context before its asynchronous event arrives', () => {
+  assert.equal(isWebGlContextUnavailable(true, null), true);
+  assert.equal(isWebGlContextUnavailable(false, {
+    getContext: () => ({ isContextLost: () => true }),
+  }), true);
+  assert.equal(isWebGlContextUnavailable(false, {
+    getContext: () => ({ isContextLost: () => false }),
+  }), false);
+  assert.equal(isWebGlContextUnavailable(false, {
+    getContext() { throw new Error('driver unavailable'); },
+  }), true);
 });
 
 function resource(fields, listeners) {

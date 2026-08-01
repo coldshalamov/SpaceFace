@@ -14,6 +14,49 @@ const THREE_GPU_DISPOSE_LISTENER_NAMES = Object.freeze(new Set([
   'onRenderTargetDispose',
 ]));
 
+export function deferWebGlContextRestore(rebuild, enqueue = enqueueRestoreMicrotask) {
+  if (typeof rebuild !== 'function') {
+    throw new TypeError('deferWebGlContextRestore requires a rebuild callback');
+  }
+  if (typeof enqueue !== 'function') {
+    throw new TypeError('deferWebGlContextRestore requires a microtask scheduler');
+  }
+  const receipt = {
+    pending: true,
+    ran: false,
+    cancelled: false,
+    cancel() {
+      if (!receipt.pending) return false;
+      receipt.pending = false;
+      receipt.cancelled = true;
+      return true;
+    },
+  };
+  enqueue(() => {
+    if (!receipt.pending) return;
+    receipt.pending = false;
+    receipt.ran = true;
+    rebuild();
+  });
+  return receipt;
+}
+
+/**
+ * The context becomes unusable before the asynchronous `webglcontextlost` event updates application
+ * state. Query the live GL object at each draw boundary so that short event-delivery gap cannot feed
+ * now-invalid program handles back into Three.js.
+ */
+export function isWebGlContextUnavailable(explicitlyLost, renderer) {
+  if (explicitlyLost) return true;
+  try {
+    const gl = renderer && typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+    return !!(gl && typeof gl.isContextLost === 'function' && gl.isContextLost());
+  } catch (_) {
+    // A context getter/query throwing is itself proof that a draw is unsafe this frame.
+    return true;
+  }
+}
+
 export function collectContextLossRoots({
   scene = null,
   environment = null,
@@ -113,4 +156,9 @@ function visitMaterialValue(value, visitResource, depth) {
   if (typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, 'value')) {
     visitMaterialValue(value.value, visitResource, depth + 1);
   }
+}
+
+function enqueueRestoreMicrotask(callback) {
+  if (typeof queueMicrotask === 'function') queueMicrotask(callback);
+  else Promise.resolve().then(callback);
 }

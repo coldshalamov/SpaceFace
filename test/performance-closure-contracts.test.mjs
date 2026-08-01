@@ -164,6 +164,35 @@ function reportFixture(window = windowFixture()) {
   });
 }
 
+test('Electron closure evidence is bound to the exact provisioned package and binary', () => {
+  const missing = structuredClone(reportFixture());
+  missing.environment.runtimeKind = 'electron';
+  assert.match(
+    validatePerformanceClosureReport(missing).failures.join('\n'),
+    /Electron package\/binary runtime identity is required/,
+  );
+
+  missing.environment.electronRuntime = {
+    packageVersion: '43.2.0',
+    runtimeVersion: '43.2.0',
+    runtimePath: 'C:\\electron-43\\electron.exe',
+    provisioned: false,
+  };
+  missing.environment.browser.userAgent = 'fixture Electron/43.2.0';
+  missing.windows[0].comparisonKey = comparisonKey({
+    scenarioId: missing.windows[0].scenarioId,
+    environment: missing.environment,
+    settings,
+  });
+  assert.equal(validatePerformanceClosureReport(missing).pass, true);
+
+  missing.environment.electronRuntime.runtimeVersion = '31.7.7';
+  assert.match(
+    validatePerformanceClosureReport(missing).failures.join('\n'),
+    /Electron package and binary versions must match/,
+  );
+});
+
 test('scenario matrix covers every closure workload and exact fleet scales', () => {
   for (const id of [
     'flight_steady', 'mining_tether_active', 'docked_market_ui', 'context_recover_steady',

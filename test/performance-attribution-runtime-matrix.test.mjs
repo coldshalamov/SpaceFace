@@ -10,6 +10,7 @@ import {
   classifyPerformanceProcessActivity,
   inspectPerformanceContaminants,
   performanceAttributionRuntimePlan,
+  provisionPerformanceAttributionElectronRuntime,
   runPerformanceAttributionProbe,
 } from '../scripts/lib/releaseSoakProbe.mjs';
 import browserManifest from '../scripts/validation-manifests/performance-closure-browser.mjs';
@@ -40,6 +41,37 @@ test('runtime plans share route policy while pinning distinct launcher and clean
     cleanupOwner: 'closeOwnedElectronRuntime',
   });
   assert.throws(() => performanceAttributionRuntimePlan('synthetic'), /browser or electron/);
+});
+
+test('Electron attribution provisions and pins the declared desktop runtime before launch', () => {
+  const calls = [];
+  const receipt = provisionPerformanceAttributionElectronRuntime(ROOT, (options) => {
+    calls.push(options);
+    return {
+      ready: true,
+      packageVersion: '43.2.0',
+      declaredVersion: '43.2.0',
+      runtimeVersion: '43.2.0',
+      runtimePath: 'C:\\electron-43\\electron.exe',
+      provisioned: false,
+    };
+  });
+  assert.deepEqual(calls, [{ root: ROOT }]);
+  assert.deepEqual(receipt, {
+    packageVersion: '43.2.0',
+    runtimeVersion: '43.2.0',
+    runtimePath: 'C:\\electron-43\\electron.exe',
+    provisioned: false,
+  });
+  assert.throws(
+    () => provisionPerformanceAttributionElectronRuntime(ROOT, () => ({
+      ready: true,
+      packageVersion: '31.7.7',
+      declaredVersion: '43.2.0',
+      runtimeVersion: '31.7.7',
+    })),
+    /must match the declared Electron runtime/,
+  );
 });
 
 test('bounded activity distinguishes idle protected processes from real contamination', () => {

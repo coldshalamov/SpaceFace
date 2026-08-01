@@ -13,18 +13,14 @@ import {
   proxyScaleFor,
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
-
-const RAPIER_COMPAT_INIT_WARNING = 'using deprecated parameters for the initialization function';
-let rapierInitPromise = null;
+import { loadRapierCompatRuntime } from './rapierCompatRuntime.js';
 
 export async function createRapierDynamicsWorld() {
   return createRapierCollisionWorld();
 }
 
 export async function createRapierCollisionWorld() {
-  const mod = await import('@dimforge/rapier3d-compat');
-  const RAPIER = mod.default || mod;
-  await initRapierCompat(RAPIER);
+  const RAPIER = await loadRapierCompatRuntime();
 
   const world = new RAPIER.World({ x: 0, y: 0, z: 0 });
   const eventQueue = new RAPIER.EventQueue(false);
@@ -241,35 +237,4 @@ function wantsDynamic(e) {
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
-}
-
-async function initRapierCompat(RAPIER) {
-  if (!RAPIER || typeof RAPIER.init !== 'function') return;
-  if (!rapierInitPromise) {
-    rapierInitPromise = runRapierInitWithFilteredWarning(RAPIER).catch((err) => {
-      rapierInitPromise = null;
-      throw err;
-    });
-  }
-  await rapierInitPromise;
-}
-
-async function runRapierInitWithFilteredWarning(RAPIER) {
-  if (typeof console === 'undefined' || typeof console.warn !== 'function') {
-    await RAPIER.init();
-    return;
-  }
-
-  const originalWarn = console.warn;
-  console.warn = (...args) => {
-    const text = args.map(String).join(' ');
-    if (text.includes(RAPIER_COMPAT_INIT_WARNING)) return;
-    originalWarn.apply(console, args);
-  };
-
-  try {
-    await RAPIER.init();
-  } finally {
-    console.warn = originalWarn;
-  }
 }

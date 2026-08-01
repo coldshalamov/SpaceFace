@@ -73,7 +73,12 @@ import { getAssetResidency } from './assetResidency.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import { createPipelineAdmissionTracker } from './pipelineReadiness.js';
 import { prepareStartupGpuResidency, yieldToBrowser } from './startupGpuResidency.js';
-import { collectContextLossRoots, detachStaleWebGlDisposeListeners } from './contextResourceLifecycle.js';
+import {
+  collectContextLossRoots,
+  deferWebGlContextRestore,
+  detachStaleWebGlDisposeListeners,
+  isWebGlContextUnavailable,
+} from './contextResourceLifecycle.js';
 import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
@@ -821,6 +826,8 @@ export const render = {
       canvas.addEventListener('webglcontextlost', (ev) => {
         ev.preventDefault();        // allow restoration
         if (this._contextLost) return;
+        this._contextRestoreReceipt?.cancel?.();
+        this._contextRestoreReceipt = null;
         this._contextLost = true;
         dynamicBuffers.handleContextLost();
         const contextRoots = collectContextLossRoots({
@@ -861,58 +868,63 @@ export const render = {
         bus.emit('toast', { text: 'Graphics context lost — recovering…', kind: 'warn', ttl: 4 });
       }, false);
       canvas.addEventListener('webglcontextrestored', () => {
-        if (typeof console !== 'undefined') console.warn('[render] WebGL context restored — rebuilding GPU resources');
-        this._contextLost = false;
-        dynamicBuffers.handleContextRestored();
-        try {
-          // Re-apply renderer config that the new context defaults lose.
-          this.renderer.setClearColor(0x060912, 1);
-          if (this._shadowSettingOn && this._keyLight) this.renderer.shadowMap.enabled = false; // re-gated by _syncShadowMapEnabled on next frame
-          // Refill context-derived background/planet render targets in place. Their visible mesh and
-          // texture identities stay stable; no old-context object is disposed through the new GL.
-          if (this.spaceBg && typeof this.spaceBg.onContextRestore === 'function') this.spaceBg.onContextRestore();
-          // Re-bake the PMREM env (the old render-target content is gone) and redirect explicit
-          // chrome material envMap references without disposing any old-context handle.
-          this._bakeEnv({
-            previousEnvMap: this._lostEnvMap,
-            disposePrevious: false,
-          });
-          this._lostEnvMap = null;
-          // Fresh GPU timer set bound to the restored context (default OFF).
+        // Three.js owns an earlier listener that replaces its context-bound caches. Keep the
+        // application paused until the complete restore-listener stack has returned, then rebuild
+        // application-owned resources against the settled renderer context.
+        this._contextRestoreReceipt = deferWebGlContextRestore(() => {
+          if (typeof console !== 'undefined') console.warn('[render] WebGL context restored — rebuilding GPU resources');
+          this._contextLost = false;
+          dynamicBuffers.handleContextRestored();
           try {
-            const glRestored = this.renderer.getContext && this.renderer.getContext();
-            this._gpuTimers = createGpuTimers(glRestored);
-            state.render.gpuTimers = this._gpuTimers;
-          } catch (timerErr) {
-            if (typeof console !== 'undefined') console.warn('[render] gpu timers recreate failed:', timerErr);
-            this._gpuTimers = null;
-            state.render.gpuTimers = null;
+            // Re-apply renderer config that the new context defaults lose.
+            this.renderer.setClearColor(0x060912, 1);
+            if (this._shadowSettingOn && this._keyLight) this.renderer.shadowMap.enabled = false; // re-gated by _syncShadowMapEnabled on next frame
+            // Refill context-derived background/planet render targets in place. Their visible mesh and
+            // texture identities stay stable; no old-context object is disposed through the new GL.
+            if (this.spaceBg && typeof this.spaceBg.onContextRestore === 'function') this.spaceBg.onContextRestore();
+            // Re-bake the PMREM env (the old render-target content is gone) and redirect explicit
+            // chrome material envMap references without disposing any old-context handle.
+            this._bakeEnv({
+              previousEnvMap: this._lostEnvMap,
+              disposePrevious: false,
+            });
+            this._lostEnvMap = null;
+            // Fresh GPU timer set bound to the restored context (default OFF).
+            try {
+              const glRestored = this.renderer.getContext && this.renderer.getContext();
+              this._gpuTimers = createGpuTimers(glRestored);
+              state.render.gpuTimers = this._gpuTimers;
+            } catch (timerErr) {
+              if (typeof console !== 'undefined') console.warn('[render] gpu timers recreate failed:', timerErr);
+              this._gpuTimers = null;
+              state.render.gpuTimers = null;
+            }
+            // Re-apply post uniforms directly. Emitting a generic settings:changed event here used to
+            // call onResize(), whose space-background rebuild disposed the complete old-context graph
+            // after the NEW context was active. Canvas dimensions/settings did not change, so retain
+            // the full-quality background graph and let THREE re-upload it like every other root.
+            this._invalidatePostOptionsCache();
+            this._syncPostOptions(true);
+            this._contextRecovery.restores++;
+            this._contextRecovery.generation++;
+            this._contextRecovery.pending = false;
+            if (this._assetResidency) this._assetResidency.handleContextRestored();
+            state.render.pipelinePrecompileReady = precompileGlobalPipelines(renderer, scene, cam.obj, {
+              incremental: true,
+              preparePipelines: compileForCurrentTarget,
+              video: state.settings && state.settings.video,
+              yieldToMain: yieldToBrowser,
+            }).catch((error) => {
+              console.warn('[render] restored-context pipeline precompile failed', error);
+              return null;
+            });
+            this._publishAssetResidencyDiagnostics();
+            bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
+          } catch (err) {
+            this._contextRecovery.lastError = String(err && err.message ? err.message : err);
+            if (typeof console !== 'undefined') console.error('[render] context-restore rebuild failed', err);
           }
-          // Re-apply post uniforms directly. Emitting a generic settings:changed event here used to
-          // call onResize(), whose space-background rebuild disposed the complete old-context graph
-          // after the NEW context was active. Canvas dimensions/settings did not change, so retain
-          // the full-quality background graph and let THREE re-upload it like every other root.
-          this._invalidatePostOptionsCache();
-          this._syncPostOptions(true);
-          this._contextRecovery.restores++;
-          this._contextRecovery.generation++;
-          this._contextRecovery.pending = false;
-          if (this._assetResidency) this._assetResidency.handleContextRestored();
-          state.render.pipelinePrecompileReady = precompileGlobalPipelines(renderer, scene, cam.obj, {
-            incremental: true,
-            preparePipelines: compileForCurrentTarget,
-            video: state.settings && state.settings.video,
-            yieldToMain: yieldToBrowser,
-          }).catch((error) => {
-            console.warn('[render] restored-context pipeline precompile failed', error);
-            return null;
-          });
-          this._publishAssetResidencyDiagnostics();
-          bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
-        } catch (err) {
-          this._contextRecovery.lastError = String(err && err.message ? err.message : err);
-          if (typeof console !== 'undefined') console.error('[render] context-restore rebuild failed', err);
-        }
+        });
       }, false);
     }
 
@@ -2240,7 +2252,7 @@ export const render = {
   },
 
   drawPreparedFrame() {
-    if (this._contextLost) return false;
+    if (isWebGlContextUnavailable(this._contextLost, this.renderer)) return false;
     // The DOM loading shell completely covers the canvas. Drawing the hidden world here used to
     // trigger the entire first texture/shader upload during a progress yield, freezing that shell
     // for 5-8 seconds on SwiftShader and low-end drivers.

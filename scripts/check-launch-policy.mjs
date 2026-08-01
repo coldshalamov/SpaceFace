@@ -47,7 +47,7 @@ assert.match(
 assert.match(electronMain, /const \{ createGameServer \}/, 'Electron main must destructure createGameServer from the shared module');
 assert.match(
   electronMain,
-  /createGameServer\(\s*\{\s*root,\s*async:\s*false,\s*devDiagnostics:\s*!app\.isPackaged\s*\}\s*\)/,
+  /createGameServer\(\s*\{\s*root,\s*async:\s*false,\s*devDiagnostics:\s*!app\.isPackaged,[\s\S]*?staticHeaders:[\s\S]*?ELECTRON_CONTENT_SECURITY_POLICY[\s\S]*?\}\s*\)/,
   'Electron main must build its server via createGameServer (not inline its own HTTP server)'
 );
 assert.match(electronMain, /const PORT = 41788;/, 'Electron must use the fixed packaged-app port so localStorage saves survive relaunches');
