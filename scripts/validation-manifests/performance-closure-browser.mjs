@@ -29,6 +29,7 @@ export const PERFORMANCE_CLOSURE_SOURCE_IDENTITY = Object.freeze({
 const FAST_GATES = Object.freeze([
   'node --test test/loop-orchestration-perf.test.mjs test/performance-scenario-driver.test.mjs',
   'node --test test/performance-closure-manifests.test.mjs test/performance-attribution-runtime-matrix.test.mjs',
+  'node --test test/performance-instrumentation-overhead.test.mjs',
   'node --test test/performance-closure-contracts.test.mjs test/performance-closure-probe-contract.test.mjs test/performance-final-acceptance.test.mjs',
   'node --test test/alpha-live-baseline-contracts.test.mjs test/authored-entity-plan-budget.test.mjs test/render-target-pipeline-warmup.test.mjs',
   'node --test test/authored-precompile-residency.test.mjs test/electron-shell-lifecycle.test.mjs',
@@ -54,6 +55,7 @@ const REGRESSION_PATHS = Object.freeze([
   'test/performance-closure-manifests.test.mjs',
   'test/performance-closure-probe-contract.test.mjs',
   'test/performance-final-acceptance.test.mjs',
+  'test/performance-instrumentation-overhead.test.mjs',
   'test/performance-runtime-identities.test.mjs',
   'test/performance-scenario-driver.test.mjs',
   'test/performance-scenario-manifest.test.mjs',
@@ -91,6 +93,7 @@ const HARNESS_PATHS = Object.freeze([
   'scripts/lib/load-playwright.mjs',
   'scripts/lib/performanceClosureContracts.mjs',
   'scripts/lib/performanceFinalAcceptance.mjs',
+  'scripts/lib/performanceInstrumentationOverhead.mjs',
   'scripts/lib/performanceSceneMetrics.mjs',
   'scripts/lib/releaseSoakContracts.mjs',
   'scripts/lib/releaseSoakProbe.mjs',
