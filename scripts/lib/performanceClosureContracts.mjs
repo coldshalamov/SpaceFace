@@ -442,7 +442,7 @@ export function evaluatePerformanceMeasurementValidity(report) {
       : pipelinePolicy === 'admission'
         && window?.action?.kind === 'jump_request'
         && window?.action?.dispatched === true
-        && Number(pipelineEnd?.programCount) >= Number(pipelineStart?.programCount);
+        && hasNewCompletedAuthoredAdmission(pipelineStart, pipelineEnd);
     const pipelineValid = pipelineBoundariesSettled && pipelineProgramsValid;
     reasons.push(add(
       `windows[${index}].pipeline-${pipelinePolicy}`,
@@ -467,6 +467,24 @@ export function evaluatePerformanceMeasurementValidity(report) {
     reasons: boundedReasons,
     checks,
   };
+}
+
+function hasNewCompletedAuthoredAdmission(start, end) {
+  let startSequence = -1;
+  const startEntries = Array.isArray(start?.recentAdmissions) ? start.recentAdmissions : [];
+  for (const entry of startEntries) {
+    const sequence = finiteOrNull(entry?.sequence);
+    if (Number.isInteger(sequence) && sequence > startSequence) startSequence = sequence;
+  }
+  const endEntries = Array.isArray(end?.recentAdmissions) ? end.recentAdmissions : [];
+  for (const entry of endEntries) {
+    const sequence = finiteOrNull(entry?.sequence);
+    if (Number.isInteger(sequence)
+        && sequence > startSequence
+        && entry?.status === 'authored'
+        && finiteOrNull(entry?.endedAtMs) != null) return true;
+  }
+  return false;
 }
 
 export function validatePerformanceClosureReport(report) {

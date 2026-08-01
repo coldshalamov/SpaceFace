@@ -664,16 +664,36 @@ test('measurement validity fails closed on contamination, fallback GPU identity,
     action: { kind: 'jump_request', dispatched: true },
     pipeline: {
       warmup: pipelineWarmupFixture(),
-      start: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 20 },
-      end: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 28 },
+      start: {
+        activeAdmissionJobs: 0,
+        meshBuildQueueRemaining: 0,
+        programCount: 20,
+        recentAdmissions: [{ sequence: 40, status: 'authored', endedAtMs: 100 }],
+      },
+      end: {
+        activeAdmissionJobs: 0,
+        meshBuildQueueRemaining: 0,
+        programCount: 28,
+        recentAdmissions: [
+          { sequence: 40, status: 'authored', endedAtMs: 100 },
+          { sequence: 41, status: 'authored', endedAtMs: 200 },
+        ],
+      },
     },
   }));
   verdict = evaluatePerformanceMeasurementValidity(jumpAdmission);
   assert.equal(verdict.pass, true, verdict.reasons.join('\n'));
 
-  const regressingAdmission = structuredClone(jumpAdmission);
-  regressingAdmission.windows[0].pipeline.end.programCount = 19;
-  verdict = evaluatePerformanceMeasurementValidity(regressingAdmission);
+  const releaseDominantAdmission = structuredClone(jumpAdmission);
+  releaseDominantAdmission.windows[0].pipeline.end.programCount = 19;
+  verdict = evaluatePerformanceMeasurementValidity(releaseDominantAdmission);
+  assert.equal(verdict.pass, true,
+    'a route transition may release more old-sector programs than its completed admission adds');
+
+  const missingAdmission = structuredClone(jumpAdmission);
+  missingAdmission.windows[0].pipeline.end.recentAdmissions =
+    missingAdmission.windows[0].pipeline.start.recentAdmissions;
+  verdict = evaluatePerformanceMeasurementValidity(missingAdmission);
   assert.equal(verdict.pass, false);
   assert.ok(verdict.reasons.includes('windows[0]-pipeline-cache-mismatch'));
 });

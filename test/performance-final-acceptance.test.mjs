@@ -348,6 +348,10 @@ function performanceWindow(scenarioId, environment, frameMs = 16.5) {
     ? { timing: { maxBlockingSliceMs: 10 }, events: [{ event: 'save:completed' }] }
     : null;
   const settings = { video: VIDEO, timeScale: 1 };
+  const admissionStart = [{ sequence: 40, status: 'authored', endedAtMs: 100 }];
+  const admissionEnd = scenarioId === 'jump_asset_admission'
+    ? [...admissionStart, { sequence: 41, status: 'authored', endedAtMs: 200 }]
+    : admissionStart;
   return {
     schema: PERFORMANCE_WINDOW_SCHEMA,
     scenarioId,
@@ -386,8 +390,18 @@ function performanceWindow(scenarioId, environment, frameMs = 16.5) {
         observationCount: 301,
         transitionCount: 0,
       },
-      start: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 20 },
-      end: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 20 },
+      start: {
+        activeAdmissionJobs: 0,
+        meshBuildQueueRemaining: 0,
+        programCount: 20,
+        recentAdmissions: admissionStart,
+      },
+      end: {
+        activeAdmissionJobs: 0,
+        meshBuildQueueRemaining: 0,
+        programCount: 20,
+        recentAdmissions: admissionEnd,
+      },
     },
     memory: {
       comparableState: { pass: true },
