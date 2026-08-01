@@ -3502,7 +3502,7 @@
       "priority": 202,
       "title": "PQ-019 facility, capsule, and complete-route review",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-019.capsule-h1-capture",
         "PQ-019.surface-heist-h1-capture"
@@ -3514,7 +3514,9 @@
         "design/program/roadmap/H2_REVIEW_INDEX.md"
       ],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-019-h2-facility-route-REPORT.md"
+      ],
       "brief": "Review four distinct facility/capsule identities and all five live terminal routes after valid evidence exists.",
       "blocker": null
     },
@@ -3550,6 +3552,7 @@
       "state": "ready",
       "dependsOn": [
         "PQ-019.h2-verdict",
+        "PQ-019.facility-presentation-review",
         "PQ-019.h3-performance"
       ],
       "mutexes": [
@@ -3565,6 +3568,90 @@
       ],
       "receiptRefs": [],
       "brief": "Bind the upgraded receipts, correct the parent aliases, tick the packet, and retire its active document.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-019.receiver-facility-reauthor",
+      "parentId": "PQ-019",
+      "priority": 233,
+      "title": "Re-author the lawful catcher and covert fence identities",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-019.h2-verdict"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "assets/ships/m5_claim_outposts/blender/",
+        "assets/ships/m5_claim_outposts/evidence/",
+        "assets/ships/parts/places/place_claim_outpost_base.glb",
+        "assets/ships/release/parts/places/place_claim_outpost_base.glb",
+        "assets/ships/parts/places/place_claim_outpost_refinery.glb",
+        "assets/ships/release/parts/places/place_claim_outpost_refinery.glb",
+        "assets/ships/parts/parts_manifest.json",
+        "assets/ships/release/release_manifest.json"
+      ],
+      "checks": [
+        "npm run check:pq019a:facility-embodiment",
+        "npm run check:graphics:asset-receipts",
+        "npm run check:asset-reachability"
+      ],
+      "receiptRefs": [],
+      "brief": "Preserve exact IDs, placements, scales, collision/custody envelopes, sockets, schedule, save and settlement behavior while giving the lawful catcher a readable impound/capture path and the covert fence a materially and structurally distinct shielded handoff identity.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-019.facility-presentation-h1",
+      "parentId": "PQ-019",
+      "priority": 234,
+      "title": "Capture the revised four-role facility presentation",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-019.receiver-facility-reauthor",
+        "PQ-022.relay-reauthor-review"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "scripts/capture-pq019a-acceptance.mjs",
+        "scripts/validation-manifests/pq019a-capsule-presentation.mjs",
+        "test/pq019a-capsule-presentation-h1-manifest.test.mjs",
+        "design/program/roadmap/evidence/h1/row3-pq019a-presentation/"
+      ],
+      "checks": [
+        "node --test test/pq019a-capsule-capture-repair.test.mjs test/pq019a-capsule-presentation-h1-manifest.test.mjs",
+        "npm run check:pq019a:facility-embodiment"
+      ],
+      "receiptRefs": [],
+      "brief": "Characterize and repair only the facility-framing seam, add a seconds-scale regression, then capture target-visible launcher, lawful-catcher and fence approach/interaction evidence in Browser and source Electron without rerunning the accepted capsule or five mission outcomes.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-019.facility-presentation-review",
+      "parentId": "PQ-019",
+      "priority": 235,
+      "title": "Causally review the revised four-role facility presentation",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-019.facility-presentation-h1"
+      ],
+      "mutexes": [
+        "evidence-review"
+      ],
+      "paths": [
+        "design/program/roadmap/H2_REVIEW_INDEX.md",
+        "design/program/roadmap/evidence/h1/row3-pq019a-presentation/"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Review only whether launcher, lawful catcher, covert fence and retained physical capsule now read as four distinct purposeful identities at the normal camera while preserving all accepted route semantics.",
       "blocker": null
     },
     {

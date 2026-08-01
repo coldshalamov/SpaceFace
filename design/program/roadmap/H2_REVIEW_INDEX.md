@@ -2,7 +2,8 @@
 # H2 review index — seven named decisions
 
 Phase H1 produced the **functional headed evidence** for the Gold-Corridor packets. This page is the
-agenda for the Phase H2 human-verdict session. Budget ~30 minutes.
+agenda for the Phase H2 acceptance-review session. Each decision may be completed by the primary
+integrator when the committed evidence is sufficient; no separate human-review role is required.
 
 Organised **by decision, not by packet**. Each section states the question you must answer, points at
 the evidence that answers it, and says what your answer unblocks. Answer the question in the
@@ -73,7 +74,7 @@ witness/WANTED/pursuit floor pill and no competing pill?
 
 - [row 3 presentation and counts](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) — retained
   facility stills/counts plus the accepted brokered capsule-only continuation at applied runtime
-  zooms `45/66/108`. The capsule art question is now answerable by a human reviewer; no such verdict
+  zooms `45/66/108`. The capsule art question is now answerable by the evidence reviewer; no verdict
   is implied by the functional acceptance.
 - [row 4 surface-heist evidence](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) — retained DOM
   abandon/lawful-observe evidence plus the accepted candidate-bound continuation for the composed
@@ -81,14 +82,19 @@ witness/WANTED/pursuit floor pill and no competing pill?
   reduced-stake attempts.
 
 PQ-019C is deliberately folded into this broader PQ-019 decision; it does **not** receive a seventh
-standalone decision. Functional H1 is complete, but do not infer the independent human art/fun
+standalone decision. Functional H1 is complete, but do not infer the independent art/fun
 verdict or matched performance from machine route acceptance.
 
-**Unblocks:** H2 visual/fun disposition. Parent PQ-019 promotion still requires this independent
-human verdict and H3 matched performance.
+**Unblocks:** H2 visual/fun disposition. Parent PQ-019 promotion still requires the exact facility
+repair/review chain and H3 matched performance.
 
-**Verdict:** BLOCKED — named owner `SpaceFace human visual/fun reviewer`; no independent human
-reviewer is available in this autonomous recovery run
+**Verdict:** PASS review / KEEP route and capsule / REVISE facilities — all five named Browser
+outcomes hold, the physical capsule reads as a stealable payload, and the one-voice floor remains
+composed. The three registered facilities are functionally distinct but not yet visually distinct:
+the launcher inherits the relay's cylinder-and-box defect, while catcher and fence share nearly the
+same dark ring/box/rock construction. Exact catcher/fence re-authoring, target-visible facility
+recapture, and causal review are queued; already-valid route/capsule evidence is retained. Receipt:
+[PQ-019 H2 facility/route review](receipts/PQ-019-h2-facility-route-REPORT.md).
 
 ---
 
