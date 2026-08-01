@@ -23,14 +23,26 @@ try {
     const {
       createSeamMarkerPipelineMesh,
       createVfxPrecompileSalvo,
+      eventLightPoolSizeFor,
     } = await import('/src/render/vfx.js');
+    const {
+      getPrecompileKeepAliveDiagnostics,
+      precompileGlobalPipelines,
+    } = await import('/src/render/precompile.js');
     const { createDynamicBufferCoordinator } = await import('/src/render/dynamicBufferRanges.js');
     const { findLinkedProgramActiveAttributes } = await import('/scripts/lib/webglProgramEvidence.mjs');
     const {
+      createRibbonTrail,
       initTrailStreakPool,
       updateTrailStreakInstance,
       commitTrailStreakInstances,
     } = await import('/src/render/engineTrailSurfaces.js');
+    const {
+      commitInstancedSpriteBuckets,
+      createInstancedSpriteBuckets,
+      resetInstancedSpriteBuckets,
+      writeInstancedSprite,
+    } = await import('/src/render/combat/instancedSpritePool.js');
 
     const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
     renderer.setSize(96, 96, false);
@@ -43,13 +55,19 @@ try {
     camera.lookAt(0, 0, 0);
     camera.updateMatrixWorld(true);
 
-    const salvo = createVfxPrecompileSalvo();
-    scene.add(salvo);
-    await renderer.compileAsync(scene, camera, scene);
-    const staged = salvo.getObjectByName('SF_Precompile_TrailStreak');
-    const stagedSeams = salvo.getObjectByName('SF_Precompile_SeamMarkers');
+    const structuralSalvo = createVfxPrecompileSalvo();
+    const staged = structuralSalvo.getObjectByName('SF_Precompile_TrailStreak');
+    const stagedSeams = structuralSalvo.getObjectByName('SF_Precompile_SeamMarkers');
+    await precompileGlobalPipelines(renderer, scene, camera, {
+      video: { particleQuality: 'high' },
+    });
     const programsAfterPrecompile = renderer.info.programs.length;
-    scene.remove(salvo);
+    const retainedPipelines = getPrecompileKeepAliveDiagnostics(renderer).retainedPipelines;
+    for (let i = 0; i < eventLightPoolSizeFor({ particleQuality: 'high' }); i++) {
+      const light = new THREE.PointLight(0xffffff, 0, 400, 2);
+      light.name = `SF_Test_Live_EventLight_${i}`;
+      scene.add(light);
+    }
 
     const dynamicBuffers = createDynamicBufferCoordinator(scene);
     const pool = initTrailStreakPool(scene, 96);
@@ -85,6 +103,40 @@ try {
     scene.add(liveSeams);
     renderer.render(scene, camera);
     const programsAfterFirstLiveSeam = renderer.info.programs.length;
+    const ribbon = createRibbonTrail(scene, '#7fe0ff', 30, 5);
+    ribbon.push(-2, 0, 0);
+    ribbon.push(2, 0, 0);
+    ribbon.rebuild(0.5, 0.17, 0.8);
+    renderer.render(scene, camera);
+    const programsAfterFirstLiveRibbon = renderer.info.programs.length;
+    const texture = (rgba) => {
+      const value = new THREE.DataTexture(new Uint8Array(rgba), 1, 1, THREE.RGBAFormat);
+      value.needsUpdate = true;
+      return value;
+    };
+    const sprites = createInstancedSpriteBuckets(
+      scene,
+      6,
+      texture([255, 255, 255, 255]),
+      texture([255, 255, 255, 255]),
+      texture([128, 128, 128, 180]),
+      texture([255, 96, 20, 255]),
+    );
+    resetInstancedSpriteBuckets(sprites);
+    writeInstancedSprite(sprites, false, {
+      x: -1, y: 0.5, z: 0, scale: 2, opacity: 0.8, roll: 0, r: 1, g: 0.8, b: 0.4,
+    });
+    writeInstancedSprite(sprites, 'smoke', {
+      x: 1, y: 0.5, z: 0, scale: 2, opacity: 0.5, roll: 0, r: 0.4, g: 0.4, b: 0.4,
+    });
+    commitInstancedSpriteBuckets(sprites);
+    epoch = dynamicBuffers.arm();
+    try {
+      renderer.render(scene, camera);
+    } finally {
+      dynamicBuffers.disarm(epoch);
+    }
+    const programsAfterFirstLiveSprites = renderer.info.programs.length;
     const gl = renderer.getContext();
     const requiredTrailAttributes = ['instanceMatrix', 'aTrailColor', 'aTrailOpacity'];
     // Three's private material.currentProgram pointer can be transiently absent even after a
@@ -113,8 +165,11 @@ try {
       stagedSeamIsInstancedMesh: !!(stagedSeams && stagedSeams.isInstancedMesh),
       stagedSeamCount: stagedSeams && stagedSeams.count,
       programsAfterPrecompile,
+      retainedPipelines,
       programsAfterFirstLiveTrail,
       programsAfterFirstLiveSeam,
+      programsAfterFirstLiveRibbon,
+      programsAfterFirstLiveSprites,
       activeAttributes,
       litPixels,
       glError,
@@ -133,10 +188,16 @@ try {
     'precompile WebGL scene must contain the exact seam-marker InstancedMesh');
   assert.equal(report.stagedSeamCount, 1,
     'precompile must compile one initialized seam-marker instance');
+  assert(report.retainedPipelines.includes('vfx-salvo'),
+    'the production precompile lifecycle must retain the off-scene VFX material owners');
   assert.equal(report.programsAfterFirstLiveTrail, report.programsAfterPrecompile,
     'the first live trail must reuse the precompiled program');
   assert.equal(report.programsAfterFirstLiveSeam, report.programsAfterPrecompile,
     'the first nearby asteroid seam must reuse the precompiled program');
+  assert.equal(report.programsAfterFirstLiveRibbon, report.programsAfterPrecompile,
+    'the first lazily-created ribbon must reuse the retained precompiled program');
+  assert.equal(report.programsAfterFirstLiveSprites, report.programsAfterPrecompile,
+    'the first pooled glow/smoke sprites must reuse retained precompiled programs');
   for (const name of ['instanceMatrix', 'aTrailColor', 'aTrailOpacity']) {
     assert(report.activeAttributes.includes(name),
       `linked WebGL trail program must consume ${name}; active=${report.activeAttributes.join(',')}`);

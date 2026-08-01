@@ -54,6 +54,11 @@ const {
 }
 
 const precompileSalvo = createVfxPrecompileSalvo();
+const precompileRibbon = precompileSalvo.getObjectByName('SF_Precompile_RibbonTrail');
+const liveRibbonScene = new THREE.Scene();
+const liveRibbon = surfaces.createRibbonTrail(liveRibbonScene, '#7fe0ff', 30, 5).getMesh();
+assert.deepEqual(Object.keys(precompileRibbon.geometry.attributes), Object.keys(liveRibbon.geometry.attributes),
+  'precompile ribbon must carry the exact live position/aTrailUv geometry contract');
 const precompileStreak = precompileSalvo.getObjectByName('SF_Precompile_TrailStreak');
 assert(precompileStreak instanceof THREE.InstancedMesh,
   'precompile must stage the live instanced streak program, not the obsolete single-mesh material');

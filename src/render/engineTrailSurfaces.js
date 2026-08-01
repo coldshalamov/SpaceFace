@@ -408,10 +408,16 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
 }
 
 export function createPrecompileTrailSurfaces() {
-  const ribbon = new THREE.Mesh(
-    new THREE.PlaneGeometry(6, 2, 4, 2),
-    createRibbonTrailMaterial('#7fe0ff'),
-  );
+  // Use the live lazy-ribbon factory. A PlaneGeometry approximation carries standard normal/uv
+  // attributes while production carries position/aTrailUv; Three includes those geometry defines
+  // in the program key even though both materials share the same shader source.
+  const ribbonStaging = new THREE.Group();
+  const ribbonOwner = createRibbonTrail(ribbonStaging, '#7fe0ff', 30, 5);
+  ribbonOwner.push(-3, 0, 0);
+  ribbonOwner.push(3, 0, 0);
+  ribbonOwner.rebuild(0.5, 0.17, 0.8);
+  const ribbon = ribbonOwner.getMesh();
+  ribbon.removeFromParent();
   ribbon.name = 'SF_Precompile_RibbonTrail';
   const streakPool = createTrailStreakPool(1);
   updateTrailStreakInstance(streakPool, 0, {

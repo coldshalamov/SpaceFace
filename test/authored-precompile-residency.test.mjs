@@ -56,6 +56,8 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   let canopyVariants = [];
   let lateWorldOwners = [];
   let retainedPipelineOwners = [];
+  let retainedVfxMaterialCount = 0;
+  let disposedRetainedVfxMaterials = 0;
   const renderer = {
     compileAsync: async () => { legacyCompileCalls++; },
     info: { programs: [] },
@@ -74,11 +76,23 @@ test('synthetic shader precompile creates zero authored asset residency demand',
       canopyVariants = [];
       lateWorldOwners = [];
       retainedPipelineOwners = [];
+      retainedVfxMaterialCount = 0;
+      disposedRetainedVfxMaterials = 0;
       subject.traverse((object) => {
         if (object.name === 'SF_Precompile_L5b_Wormhole'
           || object.name === 'Spindle_Locked_Core_Glow') lateWorldOwners.push(object.name);
         if (object.userData?.precompileRetainedPipeline) {
           retainedPipelineOwners.push(object.userData.precompileRetainedPipeline);
+        }
+        let owner = object;
+        while (owner && owner !== subject
+          && owner.userData?.precompileRetainedPipeline !== 'vfx-salvo') owner = owner.parent;
+        if (owner?.userData?.precompileRetainedPipeline === 'vfx-salvo' && object.material) {
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          for (const material of materials) {
+            retainedVfxMaterialCount++;
+            material.addEventListener('dispose', () => { disposedRetainedVfxMaterials++; });
+          }
         }
         if (!object.userData?.precompileCanopyVariant) return;
         const material = object.material;
@@ -104,11 +118,16 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   assert.equal(result.retainedCanopyVariants, 3);
   assert.equal(exactTargetPrepareCalls, 1);
   assert.equal(legacyCompileCalls, 0);
+  assert.ok(retainedVfxMaterialCount > 4, 'fixture must cover the retained VFX material family');
+  assert.equal(disposedRetainedVfxMaterials, 0,
+    'the production precompile teardown must not dispose retained VFX program owners');
   assert.deepEqual(lateWorldOwners.sort(), ['SF_Precompile_L5b_Wormhole', 'Spindle_Locked_Core_Glow']);
-  assert.deepEqual(retainedPipelineOwners.sort(), ['hitch-main-plume', 'ship-shield-bubble']);
+  assert.deepEqual(retainedPipelineOwners.sort(), [
+    'hitch-main-plume', 'ship-shield-bubble', 'vfx-salvo',
+  ]);
   assert.deepEqual(
     getPrecompileKeepAliveDiagnostics(renderer).retainedPipelines.sort(),
-    ['hitch-main-plume', 'ship-shield-bubble'],
+    ['hitch-main-plume', 'ship-shield-bubble', 'vfx-salvo'],
   );
   assert.deepEqual(canopyVariants, [
     {

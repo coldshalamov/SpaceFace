@@ -68,6 +68,7 @@ async function precompileNow(
   staging.userData.precompileStaging = true;
   staging.position.set(-50000, -50000, -50000);
   scene.add(staging);
+  let lightStaging = null;
   let canopyPipelineWarmup = null;
   let keepWarmupPrograms = false;
   let stagingAttached = true;
@@ -90,11 +91,21 @@ async function precompileNow(
     const targetPointLights = eventLightPoolSizeFor(options.video);
     let visiblePointLights = 0;
     scene.traverseVisible((object) => { if (object.isPointLight) visiblePointLights++; });
-    for (let i = visiblePointLights; i < targetPointLights; i++) {
-      const standIn = new THREE.PointLight(0xffffff, 0, 400, 2.0);
-      standIn.name = `SF_Precompile_EventLight_${i}`;
-      standIn.position.set(i * 24, 10, 0);
-      staging.add(standIn);
+    if (visiblePointLights < targetPointLights) {
+      // WebGLRenderer.compile(staging, camera, scene) gathers target-scene lights and then gathers
+      // lights from the staging subject. A stand-in parented under staging is therefore visited
+      // twice because staging is already attached to scene, producing a 12-light shader key for
+      // the six-light live pool. Keep temporary lights as a target-scene sibling so each is counted
+      // exactly once while every compiled material still sees the production light cardinality.
+      lightStaging = new THREE.Group();
+      lightStaging.name = 'SF_Precompile_EventLight_Staging';
+      scene.add(lightStaging);
+      for (let i = visiblePointLights; i < targetPointLights; i++) {
+        const standIn = new THREE.PointLight(0xffffff, 0, 400, 2.0);
+        standIn.name = `SF_Precompile_EventLight_${i}`;
+        standIn.position.set(i * 24, 10, 0);
+        lightStaging.add(standIn);
+      }
     }
 
     if (incremental) await yieldToMain();
@@ -148,6 +159,7 @@ async function precompileNow(
     // should receive bufferData under the loading shell.
     scene.remove(staging);
     stagingAttached = false;
+    if (lightStaging) lightStaging.removeFromParent();
     if (canopyPipelineWarmup) canopyPipelineWarmup.removeFromParent();
 
     const stillCurrent = precompileGenerationFor(renderer) === generation;
@@ -178,6 +190,10 @@ async function precompileNow(
     };
   } finally {
     if (stagingAttached) scene.remove(staging);
+    if (lightStaging) {
+      lightStaging.removeFromParent();
+      lightStaging.clear();
+    }
     if (canopyPipelineWarmup) {
       canopyPipelineWarmup.removeFromParent();
       if (keepWarmupPrograms) retainPipelineWarmup(renderer, canopyPipelineWarmup);
@@ -541,13 +557,18 @@ function addLateWorldPipelineWarmup(root) {
 }
 
 function retainVfxPipelineWarmups(vfxWarmup, retainedRoot) {
+  if (!vfxWarmup || !retainedRoot) return;
+  // compileAsync() only links a program while a material owns it. Disposing the synthetic salvo
+  // immediately releases every rare VFX program whose zero-count live pool was skipped by the
+  // current-scene compile. Keep the bounded off-scene salvo beside the canopy probes so first-use
+  // ribbon, seam, particle, and sprite wakes cannot relink shaders during exposed flight.
+  vfxWarmup.userData.precompileRetainedPipeline = 'vfx-salvo';
   let plume = null;
   vfxWarmup.traverse((object) => {
     if (!plume && object.userData?.continuousPlume) plume = object;
   });
-  if (!plume) return;
-  plume.userData.precompileRetainedPipeline = 'hitch-main-plume';
-  retainedRoot.add(plume);
+  if (plume) plume.userData.precompileRetainedPipeline = 'hitch-main-plume';
+  retainedRoot.add(vfxWarmup);
 }
 
 function addShipAuxPipelineWarmup(scene, retainedRoot) {
