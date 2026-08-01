@@ -25,7 +25,9 @@ export function createDamageRouter(context, statusService, options = {}) {
     const packet = normalizeDamagePacket(input && input.packet, catalog.damageModel.channelOrder);
     // Run difficulty only scales hits involving the local player (outgoing or incoming). Ambient
     // NPC brawls stay on the authored baseline so sector ecology is not difficulty-rewritten.
-    const diffScale = difficultyDamageScale(state, input && input.attackerId, input && input.targetId);
+    const diffScale = difficultyInvariantDisablePacket(packet)
+      ? 1
+      : difficultyDamageScale(state, input && input.attackerId, input && input.targetId);
     if (diffScale !== 1) {
       for (const channel of catalog.damageModel.channelOrder) {
         packet.channels[channel] = (packet.channels[channel] || 0) * diffScale;
@@ -225,6 +227,19 @@ export function createDamageRouter(context, statusService, options = {}) {
       else fallbackKill(target, result.attackerId);
     }
     return result;
+  }
+
+  function difficultyInvariantDisablePacket(packet) {
+    // The canonical EMP is a non-lethal capability verb, tuned to the 45-point starter drive.
+    // Scaling its pure subsystem packet turns the Fulfillment's authored stop-and-board route into
+    // an effectively unreachable multi-hit lottery. Keep the authored 45 damage—never a boosted
+    // shortcut—while ordinary hull, heat, mixed-ion, and legacy packets retain difficulty scaling.
+    const channels = packet && packet.channels;
+    return packet && channels && packet.subsystemShare === 1 && packet.shieldBypass === 1
+      && packet.source && packet.source.kind === 'weapon'
+      && packet.source.weaponId === 'wpn_emp_disruptor_m'
+      && channels.kinetic === 0 && channels.thermal === 0
+      && channels.plasma === 0 && channels.phase === 0;
   }
 
   function applyImpulse(target, attacker, packet, input, origin) {

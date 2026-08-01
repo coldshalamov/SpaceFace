@@ -430,8 +430,19 @@ function allocateCombatTargets(squad, tactic, contacts, focus) {
     const role = squad.roles.get(member.id);
     if (role === SquadRole.LEADER || role === SquadRole.STRIKER || role === SquadRole.SUPPORT) members.push(member);
   }
-  members.sort((a, b) => assignmentRoleRank(squad.roles.get(a.id)) - assignmentRoleRank(squad.roles.get(b.id))
-    || stableId(a.id).localeCompare(stableId(b.id)));
+  members.sort((a, b) => {
+    // A contain-and-disable squad must put at least one authored disable verb in the fire lane.
+    // Otherwise the generic leader/striker ordering can consume a light target's two attacker
+    // slots before its disable-capable support member is considered, leaving a nominally
+    // non-lethal squad to fire only ordinary weapons forever.
+    if (tactic === 'contain_and_disable') {
+      const disableRank = Number(!a.capabilities.includes('disable'))
+        - Number(!b.capabilities.includes('disable'));
+      if (disableRank !== 0) return disableRank;
+    }
+    return assignmentRoleRank(squad.roles.get(a.id)) - assignmentRoleRank(squad.roles.get(b.id))
+      || stableId(a.id).localeCompare(stableId(b.id));
+  });
 
   for (const member of members) {
     let assigned = null;

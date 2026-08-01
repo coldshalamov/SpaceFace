@@ -19,7 +19,7 @@ import { makeShipEntitySpec } from '../src/systems/ships.js';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const REPORT_PATH = resolve(ROOT, '.devshots', 'depth-program-k1-behavior.json');
 const DT = 1 / 60;
-const TICKS = 1200;
+const TICKS = 1800;
 const POST_DISABLE_TICKS = 120;
 const SEED = 0x4b310047;
 const CHILD_FLAG = '--capture-one';
@@ -219,16 +219,23 @@ async function captureScenario({ factionId, sectorId }) {
 
     const portDiagnostics = registry.get('aiPorts').inspect();
     const physicsDiagnostics = state.physicsRuntime && state.physicsRuntime.diagnostics;
+    const finalTacticalResult = registry.get('tacticalAI').inspect().lastResult;
     const actorRows = actors.map((actor, actorIndex) => {
       const telemetry = readPhysicsTelemetry(actor);
+      const finalDecision = finalTacticalResult && finalTacticalResult.decisions
+        && finalTacticalResult.decisions.find((decision) => decision.entityId === actor.id);
       return {
         actorIndex,
+        actorId: actor.id,
+        defId: actor.data && actor.data.defId || null,
+        capabilities: actor.data && actor.data.ai && actor.data.ai.capabilities || [],
         alive: actor.alive !== false,
         displacement: round3(distance(start.get(actor.id), actor.pos)),
         pathDistance: round3(pathDistance.get(actor.id)),
         dynamic: !!telemetry && telemetry.mode === 'rapier-dynamic' && telemetry.dynamic === true,
         finalFireBlockReason: actor.data && actor.data.intent && actor.data.intent.fireBlockReason || null,
         finalCombatTargetId: actor.data && actor.data.combat && actor.data.combat.targetId || null,
+        finalObjective: finalDecision && finalDecision.directive && finalDecision.directive.objective || null,
         aggressionTrace: actor.data && actor.data.ai && actor.data.ai.lastAggressionTrace || null,
       };
     });
@@ -781,6 +788,15 @@ function assertReport(report) {
   assert.equal(fulfillment.disableEvidence.fixtureDisableTick, null);
   assert(fulfillment.atlasIds.includes(fulfillment.disableEvidence.event.attackerId),
     'the live disable must be attributed to an authored-route Atlas');
+  const atlasActor = fulfillment.actors.find((actor) => fulfillment.atlasIds.includes(actor.actorId));
+  assert(atlasActor && atlasActor.aggressionTrace,
+    'the mixed convoy must commit its real disable-capable Atlas to the player target');
+  const reserveActor = fulfillment.actors.find((actor) => actor.finalObjective
+    && actor.finalObjective.kind === 'screen');
+  assert(reserveActor && reserveActor.capabilities.includes('disable') === false,
+    'an ordinary gunner must hold the overflow screen lane instead of displacing the EMP carrier');
+  assert.equal(reserveActor.aggressionTrace, null,
+    'the screen reserve may not be rewritten into a combat-doctrine fire target');
   assert.equal(fulfillment.playerHullAlive, true);
   assertEvidenceChain(fulfillment, [
     'player_fire', 'player_projectile_hit', 'player_damage_provokes',

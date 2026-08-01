@@ -130,25 +130,44 @@ test('real subsystem damage drives Fulfillment blackout, routing, cargo-owner re
   assert.equal(attacker.data.ai.activity.kind, provokedKind,
     'route-anchor updates preserve the offensive activity selected by provocation');
 
-  const damage = kernel.routeDamage({
-    attackerId: attacker.id,
+  state.settings.gameplay.difficulty = 'casual';
+  const scaledControl = kernel.routeDamage({
+    attackerId: atlas.id,
     targetId: player.id,
     packet: {
-      channels: { ion: 50 },
+      channels: { ion: 10 },
+      penetration: 0,
+      shieldBypass: 1,
+      subsystemShare: 1,
+      hit: { subsystemId: 'subsystem_weapon' },
+      source: { kind: 'legacy', id: 'difficulty-control' },
+    },
+    origin: { kind: 'test', id: 'difficulty-control' },
+  });
+  assert.equal(scaledControl.rawTotal, 4,
+    'ordinary incoming subsystem damage retains the casual difficulty scale');
+  const damage = kernel.routeDamage({
+    attackerId: atlas.id,
+    targetId: player.id,
+    packet: {
+      channels: { ion: 45 },
       penetration: 0,
       shieldBypass: 1,
       subsystemShare: 1,
       hit: { subsystemId: 'subsystem_drive' },
+      source: { kind: 'weapon', weaponId: 'wpn_emp_disruptor_m' },
     },
-    origin: { kind: 'test', id: 'held-out-fulfillment-disable' },
+    origin: { kind: 'weapon', id: 'wpn_emp_disruptor_m' },
   });
   assert.equal(damage.ok, true);
+  assert.equal(damage.rawTotal, 45,
+    'difficulty must not inflate or soften the canonical non-lethal EMP verb');
   assert.equal(damage.subsystemResult && damage.subsystemResult.after, 0, JSON.stringify(damage));
   state.tick += 1;
   kernel.prePhysics(1 / 60);
   const disabled = events.find((row) => row.event === 'combat:subsystemDisabled');
   assert.ok(disabled, JSON.stringify(kernel.inspect({ entityId: player.id })));
-  assert.equal(disabled.payload.attackerId, attacker.id);
+  assert.equal(disabled.payload.attackerId, atlas.id);
   assert.equal(state.factionPresence.boarding.phase, 'blackout');
   assert.equal(state.player.cargo.items.cmdty_munitions, 3);
   assert.equal(player.vel.x, 0);

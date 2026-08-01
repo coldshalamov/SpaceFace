@@ -136,9 +136,16 @@ export class TacticalAIStack {
         const directive = overrideDirectiveForWingOrder(squadDirective, perception, freeze);
         const doctrineId = normalizeCombatDoctrineId(directive.combatDoctrineId, perception.self && perception.self.combatDoctrineId);
         const retreatOrdered = directive.objective && directive.objective.kind === ObjectiveKind.RETREAT;
-        if (retreatOrdered && doctrineId) this.combatDoctrine.forget(member.id);
+        const objectiveKind = directive.objective && directive.objective.kind;
+        const combatOrdered = objectiveKind === ObjectiveKind.ENGAGE
+          || objectiveKind === ObjectiveKind.FOCUS
+          || objectiveKind === ObjectiveKind.TUG;
+        // Squad allocation owns the number and kind of committed attackers. Running a combat
+        // doctrine for an overflow SCREEN/HOLD member used to replace that reserve objective with
+        // FOCUS, allowing ordinary gunners to consume the attacker cap ahead of a specialist.
+        if (!combatOrdered && doctrineId) this.combatDoctrine.forget(member.id);
         const doctrinePerception = perceptionForWingOrderCombatDoctrine(perception, directive, freeze);
-        const combatDoctrine = doctrineId && !retreatOrdered ? this.combatDoctrine.update({
+        const combatDoctrine = doctrineId && combatOrdered ? this.combatDoctrine.update({
           tick, entityId: member.id, doctrineId, perception: doctrinePerception, directive,
         }) : null;
         const priorDecision = this.lastDecisionByEntity.get(member.id);

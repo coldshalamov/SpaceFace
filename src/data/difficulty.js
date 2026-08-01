@@ -37,8 +37,10 @@ export function difficultyProfile(state) {
 }
 
 /**
- * Scale applied to a damage packet when the local player is attacker or target.
- * NPC↔NPC combat is always 1 so ambient brawls stay independent of run difficulty.
+ * Scale applied to an ordinary damage packet when the local player is attacker or target.
+ * NPC↔NPC combat is always 1 so ambient brawls stay independent of run difficulty. The combat
+ * router preserves the canonical non-lethal EMP disable verb separately; difficulty still scales
+ * lethal, heat, mixed-ion, and legacy damage.
  */
 export function difficultyDamageScale(state, attackerId, targetId) {
   if (!state) return 1;

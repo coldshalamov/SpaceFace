@@ -351,6 +351,40 @@ test('SquadCommander consumes pursuit, formation, and retreat threshold without 
   assert.equal(second.directives.get(7).objective.kind, 'retreat');
 });
 
+test('contain-and-disable reserves a light-target lane for the convoy disable specialist', () => {
+  const profile = sampleFactionBehavior('faction_fulfillment', 0x47a, 3)[0];
+  const commander = new SquadCommander({ seed: 0x47a, config: { minTacticTicks: 0 } });
+  commander.registerSquad({
+    id: 'k1_fulfillment_mixed_convoy',
+    doctrine: 'balanced',
+    faction: 'faction_fulfillment',
+    formation: 'line',
+    factionBehavior: profile,
+    members: [
+      { id: 8, capabilities: ['ranged'], combatDoctrineId: profile.combatDoctrineId },
+      { id: 9, capabilities: ['disable', 'ranged'], combatDoctrineId: profile.combatDoctrineId },
+      { id: 10, capabilities: ['ranged'], combatDoctrineId: profile.combatDoctrineId },
+    ],
+  });
+  const perceptions = new Map([8, 9, 10].map((id) => {
+    const perception = tacticalPerception(profile, 0.95);
+    perception.self = {
+      ...perception.self,
+      id,
+      capabilities: id === 9 ? ['disable', 'ranged'] : ['ranged'],
+    };
+    return [id, perception];
+  }));
+
+  const result = commander.update('k1_fulfillment_mixed_convoy', 60, perceptions);
+  assert.equal(result.tactic, 'contain_and_disable');
+  assert.equal(result.directives.get(9).objective.kind, 'engage',
+    'the EMP carrier must own one of the two light-target attack slots');
+  assert.equal(result.directives.get(9).objective.reason, 'disable_assignment');
+  assert.equal([8, 10].filter((id) => result.directives.get(id).objective.kind === 'screen').length, 1,
+    'one ordinary gunner screens instead of displacing the only disable verb');
+});
+
 test('CombatDoctrineRuntime consumes sampled range and egresses when disable-then-run succeeds', () => {
   const profile = sampleFactionBehavior('faction_pitborn', 0x47a, 1)[0];
   const runtime = new CombatDoctrineRuntime({ seed: 0x47a });
