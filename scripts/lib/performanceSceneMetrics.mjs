@@ -7,6 +7,15 @@ const PERFORMANCE_RENDER_PREFETCH_RADIUS = 5200;
 
 export const PERFORMANCE_PIPELINE_WARMUP_SCHEMA = 'spaceface.performancePipelineWarmup.v1';
 
+// Authored-runway prediction is expressed in simulation seconds, while performance samples are
+// bounded in wall milliseconds. Map the upcoming wall window through the live simulation scale so
+// docked and diagnostic-paused routes do not invent motion that cannot occur during measurement.
+export function performanceAdmissionHorizonMs(sampleMs, timeScale = 1) {
+  const durationMs = Math.max(0, Number(sampleMs) || 0);
+  const scale = Number.isFinite(timeScale) ? Math.max(0, timeScale) : 1;
+  return durationMs * scale;
+}
+
 export function collectPerformanceSceneStructure({ state = globalThis.SF?.state, diagnostics = readDiagnostics() } = {}) {
   const renderState = state?.render || null;
   const scene = renderState?.scene || null;

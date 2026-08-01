@@ -866,6 +866,7 @@ async function sampleRafWindow(page, {
       collectPerformancePipelineReadiness,
       collectPerformanceSceneStructure,
       isPerformancePipelineSettled,
+      performanceAdmissionHorizonMs,
       performancePipelineFingerprint,
       PERFORMANCE_PIPELINE_WARMUP_SCHEMA,
     } = await import('/scripts/lib/performanceSceneMetrics.mjs');
@@ -878,6 +879,7 @@ async function sampleRafWindow(page, {
     if (needDockedFlag) {
       if (state?.ui?.docked !== true) throw new Error(`steady-state ${tag} requires docked UI path`);
     }
+    const admissionMeasurementHorizonMs = performanceAdmissionHorizonMs(duration, state?.timeScale);
 
     function readSettingsSlice() {
       const video = state?.settings?.video || {};
@@ -1173,7 +1175,7 @@ async function sampleRafWindow(page, {
       state,
       registry: window.SF?.registry,
       resourceStartTime: pipelineWarmupStartedAt,
-      measurementHorizonMs: duration,
+      measurementHorizonMs: admissionMeasurementHorizonMs,
     });
     let pipelineFingerprint = performancePipelineFingerprint(pipelineReadiness);
     const pipelineStartFingerprint = pipelineFingerprint;
@@ -1192,7 +1194,7 @@ async function sampleRafWindow(page, {
           state,
           registry: window.SF?.registry,
           resourceStartTime: pipelineWarmupStartedAt,
-          measurementHorizonMs: duration,
+          measurementHorizonMs: admissionMeasurementHorizonMs,
         });
         const nextFingerprint = performancePipelineFingerprint(pipelineReadiness);
         const nextFingerprintKey = JSON.stringify(nextFingerprint);
@@ -1251,7 +1253,7 @@ async function sampleRafWindow(page, {
       state,
       registry: window.SF?.registry,
       resourceStartTime,
-      measurementHorizonMs: duration,
+      measurementHorizonMs: admissionMeasurementHorizonMs,
     });
     const heapStart = readHeapSlice();
     const longTasks = [];
@@ -1384,7 +1386,7 @@ async function sampleRafWindow(page, {
         state,
         registry: window.SF?.registry,
         resourceStartTime,
-        measurementHorizonMs: duration,
+        measurementHorizonMs: admissionMeasurementHorizonMs,
       });
       const heapEnd = readHeapSlice();
 

@@ -6,6 +6,7 @@ import {
   collectPerformancePipelineReadiness,
   collectPerformanceSceneStructure,
   isPerformancePipelineSettled,
+  performanceAdmissionHorizonMs,
   performancePipelineFingerprint,
 } from '../scripts/lib/performanceSceneMetrics.mjs';
 
@@ -215,6 +216,17 @@ test('pipeline warmup predicts inbound authored admission across the measured ho
   assert.deepEqual(measured.authoredPendingAdmissionRiskEntities.map((entity) => entity.id), [2]);
   assert.equal(isPerformancePipelineSettled(measured), false,
     'an inbound boundary that will enter the runway during sampling must hold the warmup gate');
+
+  assert.equal(performanceAdmissionHorizonMs(5_000, 1), 5_000);
+  assert.equal(performanceAdmissionHorizonMs(5_000, 0.5), 2_500);
+  assert.equal(performanceAdmissionHorizonMs(5_000, 0), 0);
+  const docked = collectPerformancePipelineReadiness({
+    ...options,
+    measurementHorizonMs: performanceAdmissionHorizonMs(5_000, 0),
+  });
+  assert.equal(docked.authoredPendingAdmissionRiskCount, 0,
+    'a timeScale=0 docked sample must not project frozen entity velocity into its wall-time window');
+  assert.equal(isPerformancePipelineSettled(docked), true);
 });
 
 test('invisible pending authored admission is not misreported as a procedural fallback', () => {

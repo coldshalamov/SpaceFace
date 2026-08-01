@@ -96,8 +96,10 @@ test('profile and closure probes share scene metrics and bounded measurement gat
   assert.match(probe, /pipelineSettleTimeoutMs = 20_000/);
   assert.match(probe, /await awaitPipelinePrerequisites\(pipelineTimeout\)/,
     'presence-only readiness promises must settle before the stable observation begins');
-  assert.match(probe, /measurementHorizonMs: duration/,
-    'warmup must predict authored admissions across the upcoming sample window');
+  assert.match(probe, /performanceAdmissionHorizonMs\(duration, state\?\.timeScale\)/,
+    'warmup must convert the wall-time sample window into the live simulation horizon');
+  assert.match(probe, /measurementHorizonMs: admissionMeasurementHorizonMs/,
+    'every readiness snapshot must use the simulation-scaled admission horizon');
   assert.match(probe, /pipeline:\s*\{ warmup: pipelineWarmup, start: pipelineStart, end: pipelineEnd \}/);
   assert.match(probe, /isPerformancePipelineSettled\(pipelineReadiness\)/);
   assert.doesNotMatch(probe, /^[ \t]*gl\.finish\s*\(/m,
