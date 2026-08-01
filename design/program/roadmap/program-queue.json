@@ -3404,7 +3404,7 @@
         "design/program/roadmap/receipts/PQ-034-candidate-audit-REPORT.md",
         "design/program/roadmap/receipts/PQ-034-performance-harness-REPORT.md"
       ],
-      "brief": "The tenth Browser claim completed all 25 windows with the prior fleet/bloom drift fixed, then failed only a docked-window false motion projection: wall time was used despite timeScale=0, fixed tick/program/residency, and zero simulation/admission work. Repair d521232a scales runway lookahead by simulation time and is focused-green. Run one fresh Browser claim and, only after it passes, Electron on that same clean source; then prove enabled overhead, perform the integrator causal review, and write the terminal PERF-00 receipt.",
+      "brief": "The eleventh Browser claim proved the docked/fleet/bloom repairs and completed all 25 windows, then failed only because valid Ceres admission released one net old-sector program. Repair 20f78f49 replaces monotonic cache growth with a required newer terminal authored-admission sequence, so real admission passes and a no-op fails. Run one fresh Browser claim and, only after it passes, Electron on that same clean source; then prove enabled overhead, perform the integrator causal review, and write the terminal PERF-00 receipt.",
       "blocker": null
     },
     {

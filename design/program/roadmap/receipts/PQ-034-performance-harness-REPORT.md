@@ -17,17 +17,17 @@ fifthFailedBrowserCandidate: 1ad68828dff71d599b2e14f8639677837af2dab1
 acceptedBrowserCandidate: b847320e4aa0f864e2f6c4862de306fddd773a6b
 acceptedBrowserClaimId: 4256-1baf8886d6425c5283c0dd78
 acceptedBrowserSourceCandidateDigest: b8193f952d13371c586753168dc3c4fa762d9c0dec3f59c8a2b61e8654cc5645
-browserClaimsConsumed: 10
+browserClaimsConsumed: 11
 browserClaimAccepted: true
-latestFailedBrowserCandidate: 85f12646805f41adae32c3b7f17e3d51fa8b83e4
-latestFailedBrowserClaimId: 9824-4daa4c2591fd966a3d776dd4
-latestFailedBrowserSourceCandidateDigest: 193c6f951c2e41a6af6f5f81fa02c1eed4bf294fb275e35099ff3748c10ac75c
+latestFailedBrowserCandidate: 937fe965357a7ef8e20aa009819ad42a2a979752
+latestFailedBrowserClaimId: 18776-f52e09cf45f6f2f38ae80cec
+latestFailedBrowserSourceCandidateDigest: 22012469e3a95f26e3d06b6446c611283560e0d8bdb014f05d2c0aaa2b518e99
 latestBrowserClaimAccepted: false
-latestBrowserCandidate: 85f12646805f41adae32c3b7f17e3d51fa8b83e4
-latestBrowserClaimId: 9824-4daa4c2591fd966a3d776dd4
-latestBrowserSourceCandidateDigest: 193c6f951c2e41a6af6f5f81fa02c1eed4bf294fb275e35099ff3748c10ac75c
+latestBrowserCandidate: 937fe965357a7ef8e20aa009819ad42a2a979752
+latestBrowserClaimId: 18776-f52e09cf45f6f2f38ae80cec
+latestBrowserSourceCandidateDigest: 22012469e3a95f26e3d06b6446c611283560e0d8bdb014f05d2c0aaa2b518e99
 latestVfxCacheRepairCandidate: 12b6b905b36b9820f2e7cd02b49b1a4f61b7f5c4
-latestBrowserRepairCandidate: d521232acf5a08420c6cf061c8f108a8ff91623c
+latestBrowserRepairCandidate: 20f78f492b32de7ce8c4932c5f0b5612110c12a7
 latestBrokerPrelaunchDisposition: regression-required-after-acceptance-failure
 firstFailedElectronCandidate: b1b15ee9a5f3a9cc3e6a77c41dabe36370d3fe0c
 firstFailedElectronClaimId: 25476-83c733557dbe390afc61eedb
@@ -770,3 +770,34 @@ eligibility.
 No performance conclusion is promoted from the failed claim. The regression digest changes on this
 repair, so the next bounded action is one fresh Browser claim followed by Electron only after an
 accepted Browser result on the identical clean pushed source.
+
+## Eleventh Browser claim: semantic route-admission repair
+
+Claim `18776-f52e09cf45f6f2f38ae80cec` ran once on clean pushed candidate
+`937fe965357a7ef8e20aa009819ad42a2a979752` with source digest
+`22012469e3a95f26e3d06b6446c611283560e0d8bdb014f05d2c0aaa2b518e99`. Its retained artifact is
+`.devshots/perf/closure/browser/performance-closure-browser-2026-08-01T14-54-35-026Z-20616-7cce371d/`.
+All 25 windows, GPU queries, routes, runtime issues, restoration, context recovery, and cleanup
+completed. The repaired docked route passed, as did every previously failing fleet/bloom/VFX cache
+boundary. The run failed only `windows[24]-pipeline-cache-mismatch`; Electron was not spent.
+
+`jump_asset_admission` had already settled from 78 to 85 programs before measurement. During the
+measured transition, new-sector station 179 completed authored-admission sequence 104 in 124.2 ms,
+all queues remained empty, and residency stayed at 34 assets / 895 resources / 1,561,576,534 bytes.
+The scene moved from 104 to 81 geometries and 85 to 84 programs as old-sector presentation released.
+The prior `pipelinePolicy=admission` predicate required `endPrograms >= startPrograms`; it therefore
+confused safe release with missing admission and, conversely, could accept an equal-count no-op.
+
+Candidate `20f78f492b32de7ce8c4932c5f0b5612110c12a7` makes this transition policy semantic. The start
+snapshot establishes the highest admission sequence. The end snapshot must contain a strictly newer,
+terminal `status=authored` entry with a finite completion time. Stable-route equality remains
+unchanged; only the explicit jump-admission policy allows net program release after that positive
+receipt.
+
+- focused closure/final/runtime/manifest contracts — PASS 40/40;
+- retained claim recomputation — PASS, all 25 validity rows green under the corrected predicate;
+- `npm run check:baseline` — PASS 10/10 in 46.854 seconds.
+
+The failed artifact remains historical rather than retroactively promoted. Because the authority
+code changed, one fresh Browser claim and then Electron on the exact same clean pushed source remain
+required.
