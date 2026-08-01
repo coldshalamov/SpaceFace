@@ -25,7 +25,7 @@ Current recovery order is:
 |---|---|
 | Retained-evidence H2 reviews | Issue keep/revise/revert decisions for PQ-021, PQ-022, PQ-019, and PQ-023. A negative verdict creates an executable repair leaf; it does not become a reviewer blocker. |
 | `PQ-020.ceres-h1-capture` | Resolve the Electron aborted-request provenance policy with a seconds-scale regression, then promote the already-matched route facts or spend one bounded causal pair if the repair changes the claim. |
-| `PQ-034.native-closure` | Browser passed on source `191857fd`; the paired Electron matrix completed and isolated a deprecated console callback plus one missing seam-marker precompile. Exact repairs `7a5820a4` and `429f36f0` are pushed, including a real-WebGL no-new-program regression. Run one fresh Browser claim and, only after it passes, Electron on the same repaired source, then close overhead and causal review. Report uncertainty/variance honestly. |
+| `PQ-034.native-closure` | The ninth Browser claim isolated the deeper rare-VFX cache mismatch: doubled temporary-light cardinality, non-live ribbon attributes, and disposed salvo owners. Exact repair `12b6b905` is pushed; production-lifecycle WebGL proves first trail/seam/ribbon/sprite wakes add zero programs, and baseline is green. Run one fresh Browser claim and, only after it passes, Electron on the same repaired source, then close overhead and causal review. Report uncertainty/variance honestly. |
 | H3 and H4 units | Consume newly satisfied dependencies, run matched performance, bind exact receipt blobs, and promote the corridor packets in dependency order. |
 | PQ-025 qualification | Calibrate and run only after its exact corridor/performance dependencies are accepted. |
 

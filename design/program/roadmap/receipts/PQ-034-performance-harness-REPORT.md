@@ -17,16 +17,16 @@ fifthFailedBrowserCandidate: 1ad68828dff71d599b2e14f8639677837af2dab1
 acceptedBrowserCandidate: b847320e4aa0f864e2f6c4862de306fddd773a6b
 acceptedBrowserClaimId: 4256-1baf8886d6425c5283c0dd78
 acceptedBrowserSourceCandidateDigest: b8193f952d13371c586753168dc3c4fa762d9c0dec3f59c8a2b61e8654cc5645
-browserClaimsConsumed: 8
+browserClaimsConsumed: 9
 browserClaimAccepted: true
 latestFailedBrowserCandidate: 4240fb429a46af03c3f3ee5bea55ddc5a8920477
 latestFailedBrowserClaimId: 16368-9b4a75a2c2720889162335f7
 latestFailedBrowserSourceCandidateDigest: 286995aa07ab1f051178315571a2294893b6d2541adfc33ab80ee935720105d3
-latestBrowserClaimAccepted: true
-latestBrowserCandidate: 191857fdc8aa44f1b77a20b4578e1b62d4118ead
-latestBrowserClaimId: 32112-9404c78daa9d2a9c5b1c8d1e
-latestBrowserSourceCandidateDigest: c8a6cd7f2f232a74810c9a5e1c8cfb45a5914bd2d2964e6b6bd625aaddcfdb7f
-latestBrowserRepairCandidate: 429f36f0
+latestBrowserClaimAccepted: false
+latestBrowserCandidate: 5473dab9b24ddfbd1adebcb27f8ecf946e0a16be
+latestBrowserClaimId: 7344-04c1b7704fa773e53b8f5ad4
+latestBrowserSourceCandidateDigest: 948af238401dd8c4da1f51ada35faa4b8e6a05e9ad3e3adf86ef2c67fa04115b
+latestBrowserRepairCandidate: 12b6b905b36b9820f2e7cd02b49b1a4f61b7f5c4
 firstFailedElectronCandidate: b1b15ee9a5f3a9cc3e6a77c41dabe36370d3fe0c
 firstFailedElectronClaimId: 25476-83c733557dbe390afc61eedb
 firstFailedElectronSourceCandidateDigest: 96cfc12382d3fb0b3eee146953c07023df8d6c2a0fd9e0d11ebfdae90a2b7047
@@ -673,3 +673,40 @@ No Electron or paired performance conclusion is promoted from the failed matrix.
 repairs changed source after the accepted Browser run, one fresh Browser claim and then one Electron
 claim must pass on the same clean pushed repair before overhead and terminal causal review close the
 unit.
+
+## Ninth Browser claim: exact VFX cache-key ownership repair
+
+Claim `7344-04c1b7704fa773e53b8f5ad4` ran once on clean pushed candidate
+`5473dab9b24ddfbd1adebcb27f8ecf946e0a16be` with source digest
+`948af238401dd8c4da1f51ada35faa4b8e6a05e9ad3e3adf86ef2c67fa04115b`. The retained artifact is
+`.devshots/perf/closure/browser/performance-closure-browser-2026-08-01T14-08-52-310Z-28068-d538392b/`.
+All 25 scenarios, public route, real Intel D3D11 GPU queries, activity boundaries, runtime issue
+arrays, restoration, context recovery, measurement disablement, and owned cleanup passed. The run
+correctly remained failed evidence because `fleet_full_render_25` changed programs `89 → 90` and
+`bloom_off` changed `100 → 101`; Electron was not spent.
+
+Neither cell had an authored admission, pending request, residency change, route divergence, or
+cleanup failure. Both grew one lazy VFX owner and two geometries; the second cell also woke three
+instanced sprite roots. The retained source and a real-WebGL reduction exposed the common cache-key
+cause. If global precompile runs before the live event-light pool is attached, its six stand-in
+lights were children of the compiled staging subtree while that subtree was already a child of the
+target scene. Three gathered them through both traversals and compiled a 12-light key for the live
+six-light route. The synthetic ribbon also used `PlaneGeometry` (`normal/uv`) instead of the live
+`position/aTrailUv` geometry, and teardown retained only one plume while disposing the other salvo
+program owners.
+
+Candidate `12b6b905b36b9820f2e7cd02b49b1a4f61b7f5c4` fixes all three exact ownership mismatches. Event
+light stand-ins are target-scene siblings and are counted once; the precompile ribbon is built by the
+live lazy-ribbon factory; and the bounded off-scene VFX salvo remains owned with the canopy probes
+until renderer invalidation. The production-lifecycle WebGL regression starts without live event
+lights, runs real global precompile plus teardown, attaches the six-light live pool, then wakes live
+trail, seam, ribbon, and additive/normal sprite paths. Program count remains exactly `14` after every
+wake. Retained-material disposal is separately pinned at zero.
+
+- focused render/performance contracts — PASS 39/39;
+- `npm run check:vfx:trail-instancing` — PASS, including real WebGL and zero new programs;
+- VFX additive contract — PASS;
+- `npm run check:baseline` — PASS 10/10 in 43.801 seconds.
+
+No timing conclusion is promoted from the failed claim. One fresh Browser claim on the clean pushed
+repair is required before a source-paired Electron claim.
