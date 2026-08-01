@@ -1736,6 +1736,37 @@ export const vfx = {
     const burst = this._burst || 1;
 
     switch (profile.mode) {
+      case 'proximity-burst': {
+        // Flak is a proximity-fuzed volume event, not a surface incidence gouge. The profile had
+        // declared this mode since PQ-023, but without a renderer branch it fell through to the
+        // autocannon default below. Keep the core compact and the light below autocannon so dense
+        // point-defense fire does not wash the scene; the primary identity is the full-volume
+        // fragment spread and its longer outward release.
+        this._spawnSprite(SPR_FLASH, surfaceX, 0.28, surfaceZ,
+          profile.life * 0.68, 0.85 * scale, 3.4 * scale, 0.82, 0,
+          profile.coreColor, nx * 1.2, nz * 1.2, 1.35, normalAngle);
+        const fragmentStreaks = Math.max(6, Math.round(6 * burst));
+        for (let k = 0; k < fragmentStreaks; k++) {
+          const a = normalAngle + (k / fragmentStreaks) * Math.PI * 2
+            + (k % 2 ? 0.10 : -0.06);
+          const speed = (18 + (k % 3) * 6) * scale;
+          this._spawnProjectileTrailStreak(
+            surfaceX + Math.cos(a) * 0.22 * scale, 0.20,
+            surfaceZ + Math.sin(a) * 0.22 * scale,
+            profile.life * (1.05 + (k % 3) * 0.12),
+            (0.12 + (k % 2) * 0.035) * scale,
+            (3.0 + (k % 3) * 0.72) * scale,
+            k % 2 ? 0.66 : 0.78,
+            k % 2 ? profile.accentColor : profile.coreColor,
+            Math.cos(a) * speed, Math.sin(a) * speed,
+            Math.cos(a), Math.sin(a));
+        }
+        this._impactParticleCone(surfaceX, surfaceZ, normalAngle, Math.PI * 2,
+          16, 48, Math.max(12, Math.round(profile.fragmentCount * burst * 0.8)),
+          profile.life * 1.35, 1.15 * scale,
+          profile.coreColor, '#6b5545', 1.65);
+        break;
+      }
       case 'penetration-streak': {
         // Rail contact leaves a narrow axial cut fixed at the contact while a much smaller exit fan
         // departs along the surface normal. The cooler ionized scar survives the launch-white core,
@@ -2423,7 +2454,8 @@ export const vfx = {
     // Radius already carries most of the visual scale. A large extra class multiplier made capital
     // events cover half the gameplay frame with one texture card, so class identity now comes from
     // phase count, spread, duration and debris structure instead of an unchecked size multiplier.
-    const classScale = entry.classId === 'capital' ? 1.12 : (entry.classId === 'small' ? 0.72 : 1);
+    const isSmall = entry.classId === 'small';
+    const classScale = entry.classId === 'capital' ? 1.12 : (isSmall ? 0.90 : 1);
     const scale = classScale * Math.max(0.78, Math.min(1.65, Math.sqrt(r / 8)));
     const burst = this._burst || 1;
     const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
@@ -2453,9 +2485,9 @@ export const vfx = {
           ? 0.38 + explosionPattern01(entry.serial, phase, k, 2) * 0.12
           : 0.16 + explosionPattern01(entry.serial, phase, k, 2) * 0.06;
         this._spawnSprite(SPR_COMBUSTION, px, 0.25 - k * 0.008, pz, life,
-          r * (hot ? 0.075 : 0.058) * scale,
-          r * (entry.classId === 'capital' ? 0.17 : 0.22) * scale,
-          hot ? 0.68 : 0.48, 0,
+          r * (isSmall ? 0.095 : (hot ? 0.075 : 0.058)) * scale,
+          r * (entry.classId === 'capital' ? 0.17 : (isSmall ? 0.30 : 0.22)) * scale,
+          isSmall ? 0.82 : (hot ? 0.68 : 0.48), 0,
           hot ? '#fff3d5' : (k % 2 ? '#ff9a3a' : '#ff6a28'),
           entry.dirX * (1.0 + k * 0.35) + tangentX * centered * 0.8,
           entry.dirZ * (1.0 + k * 0.35) + tangentZ * centered * 0.8,
@@ -2470,16 +2502,31 @@ export const vfx = {
       //
       // These two additions are small, short and near-white. They are the hot core the phase always
       // implied, and because they are compact they add heat without adding coverage.
-      const ignitionCore = r * 0.06 * scale;
+      const ignitionCore = r * (isSmall ? 0.10 : 0.06) * scale;
       this._spawnSprite(SPR_FLASH, x, 0.30, z,
         entry.classId === 'capital' ? 0.13 : 0.09,
-        ignitionCore, ignitionCore * 2.6,
+        ignitionCore, ignitionCore * (isSmall ? 3.25 : 2.6),
         reduced ? 0.72 : 1.0, 0.0, '#ffffff',
         entry.dirX * 2, entry.dirZ * 2);
-      this._spawnSprite(SPR_RING, x, 0.28, z,
-        entry.classId === 'capital' ? 0.30 : 0.20,
-        r * 0.05 * scale, r * (entry.classId === 'capital' ? 0.55 : 0.40) * scale,
-        reduced ? 0.30 : 0.52, 0.0, '#fff0c0', 0, 0);
+      if (isSmall) {
+        // A compact body's identity is a hot asymmetric snap and two departing fragments. It must
+        // not be the accepted ordinary shock ring merely scaled down until it becomes invisible.
+        for (const side of [-1, 1]) {
+          const a = dirAngle + side * 0.46;
+          this._spawnProjectileTrailStreak(
+            x + Math.cos(a) * r * 0.04, 0.23,
+            z + Math.sin(a) * r * 0.04,
+            0.30, 0.09 * scale, 2.8 * scale,
+            reduced ? 0.34 : 0.68, side < 0 ? '#fff0c0' : '#ff8a38',
+            Math.cos(a) * 18 * scale, Math.sin(a) * 18 * scale,
+            Math.cos(a), Math.sin(a));
+        }
+      } else {
+        this._spawnSprite(SPR_RING, x, 0.28, z,
+          entry.classId === 'capital' ? 0.30 : 0.20,
+          r * 0.05 * scale, r * (entry.classId === 'capital' ? 0.55 : 0.40) * scale,
+          reduced ? 0.30 : 0.52, 0.0, '#fff0c0', 0, 0);
+      }
       this._flashLight({ x, z }, '#fff0c0', (entry.classId === 'capital' ? 12 : 7.5) * scale, 11, 120 + r * 5);
       return;
     }
@@ -2553,7 +2600,7 @@ export const vfx = {
       // Uneven overlapping combustion volumes form a biased tear, never a radial flower. Thin hot
       // tongues are intentionally limited to one or two forward-biased fragments; the later debris
       // phase owns the wider structural fan.
-      const lobeBase = entry.classId === 'capital' ? 9 : (entry.classId === 'small' ? 3 : 6);
+      const lobeBase = entry.classId === 'capital' ? 9 : (isSmall ? 4 : 6);
       const lobeCount = Math.max(3, Math.round(lobeBase * burst * (reduced ? 0.68 : 1)));
       for (let k = 0; k < lobeCount; k++) {
         const normalized = lobeCount > 1 ? k / (lobeCount - 1) - 0.5 : 0;
@@ -2625,15 +2672,17 @@ export const vfx = {
           x + entry.dirX * coreAlong + tangentX * coreAcross, 0.30,
           z + entry.dirZ * coreAlong + tangentZ * coreAcross,
           entry.classId === 'capital' ? 0.20 : 0.13,
-          r * scale * 0.07, r * scale * 0.19,
+          r * scale * (isSmall ? 0.10 : 0.07), r * scale * (isSmall ? 0.30 : 0.19),
           reduced ? 0.62 : (side < 0 ? 1.0 : 0.78), 0.0, side < 0 ? '#ffffff' : '#fff3d0',
           entry.dirX * (5 + 3 * side) * scale, entry.dirZ * (5 + 3 * side) * scale,
           1.6 + 0.5 * side, dirAngle + side * 0.22);
       }
-      this._spawnSprite(SPR_RING, x, 0.26, z,
-        entry.classId === 'capital' ? 0.46 : 0.32,
-        r * scale * 0.10, r * scale * (entry.classId === 'capital' ? 0.95 : 0.72),
-        reduced ? 0.26 : 0.46, 0.0, '#ffb060', 0, 0);
+      if (!isSmall) {
+        this._spawnSprite(SPR_RING, x, 0.26, z,
+          entry.classId === 'capital' ? 0.46 : 0.32,
+          r * scale * 0.10, r * scale * (entry.classId === 'capital' ? 0.95 : 0.72),
+          reduced ? 0.26 : 0.46, 0.0, '#ffb060', 0, 0);
+      }
       this._flashLight({ x, z }, '#ffa050', (entry.classId === 'capital' ? 13 : 8.0) * scale, 5.5, 180 + r * 7);
       const shake = entry.classId === 'capital' ? 0.62 : (entry.classId === 'small' ? 0.16 : 0.34);
       // A ship blowing up is a WORLD event: send where it happened so the consumer can fall it off
@@ -2646,7 +2695,7 @@ export const vfx = {
     if (phase === 'debris') {
       // Debris is made of narrow moving fragments with a few subordinate sparks. Large point
       // sprites became floating orange beads after the combustion phase had cooled.
-      const fanCount = Math.max(3, Math.round((entry.classId === 'capital' ? 14 : entry.classId === 'small' ? 4 : 8)
+      const fanCount = Math.max(3, Math.round((entry.classId === 'capital' ? 14 : isSmall ? 5 : 8)
         * burst * (reduced ? 0.65 : 1)));
       const fanSpread = entry.classId === 'capital' ? 1.92 : 1.52;
       for (let k = 0; k < fanCount; k++) {

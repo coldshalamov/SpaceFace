@@ -38,6 +38,7 @@ import { presentationAdapters } from '../src/systems/presentationAdapters.js';
 import { installWorldSitePresentation } from '../src/render/worldSitePresentation.js';
 import { worldSiteManifestById } from '../src/data/worldSiteManifests.js';
 import { resolveImpactPresentationProfile } from '../src/render/vfxProfiles.js';
+import { vfx } from '../src/render/vfx.js';
 
 // ---------------------------------------------------------------- harness
 
@@ -486,4 +487,82 @@ test('(a) the impact families remain mutually distinct', () => {
   ];
   const modes = ids.map((id) => resolveImpactPresentationProfile(id).mode);
   assert.equal(new Set(modes).size, modes.length, `impact modes must be unique, got ${modes.join(',')}`);
+});
+
+function captureImpactGrammar(weaponId) {
+  const calls = { sprites: [], streaks: [], cones: [], lights: [] };
+  const host = Object.create(vfx);
+  host._scene = {};
+  host._burst = 1;
+  host._posFrom = () => ({ x: 10, z: 20 });
+  host._ent = () => ({ factionId: 'test', shield: 0 });
+  host._shieldColor = () => '#66ccff';
+  host._spawnSprite = (...args) => calls.sprites.push(args);
+  host._spawnProjectileTrailStreak = (...args) => calls.streaks.push(args);
+  host._impactParticleCone = (...args) => calls.cones.push(args);
+  host._flashLight = (...args) => calls.lights.push(args);
+  host._onProjectileHit({
+    weaponId,
+    targetId: 17,
+    approach: { x: 1, z: 0 },
+    normal: { x: -1, z: 0 },
+  });
+  return calls;
+}
+
+test('(a) flak executes an outward volume burst instead of the autocannon fallback branch', () => {
+  const autocannon = captureImpactGrammar('wpn_autocannon_m');
+  const flak = captureImpactGrammar('wpn_flak_turret_s');
+
+  assert.equal(autocannon.sprites.length, 0,
+    'the autocannon remains an attached gouge and directional fragment fan');
+  assert.ok(flak.sprites.length >= 1,
+    'a proximity burst needs a compact visible core at the ordinary camera');
+  assert.ok(flak.streaks.length >= 6,
+    `flak needs an outward fragment volume, got ${flak.streaks.length} streaks`);
+  assert.ok(flak.cones[0][3] >= Math.PI * 1.9,
+    `flak particle spread must cover a volume, got ${flak.cones[0][3]}`);
+  assert.ok(flak.cones[0][3] > autocannon.cones[0][3] * 4,
+    'flak spread must remain plainly wider than the autocannon incidence fan');
+});
+
+function captureExplosionPhase(classId, phase) {
+  const calls = { sprites: [], streaks: [], cones: [], lights: [], bus: [] };
+  const host = Object.create(vfx);
+  host._scene = {};
+  host._burst = 1;
+  host.state = { settings: { video: {}, accessibility: {} } };
+  host.bus = { emit: (...args) => calls.bus.push(args) };
+  host._spawnSprite = (...args) => calls.sprites.push(args);
+  host._spawnProjectileTrailStreak = (...args) => calls.streaks.push(args);
+  host._impactParticleCone = (...args) => calls.cones.push(args);
+  host._flashLight = (...args) => calls.lights.push(args);
+  host._emitExplosionPhase(phase, {
+    classId,
+    x: 0,
+    z: 0,
+    radius: 6,
+    dirX: 1,
+    dirZ: 0,
+    serial: 7,
+  });
+  return calls;
+}
+
+test('(b) small destruction opens with a compact readable breakup, not an ordinary ring scaled down', () => {
+  const small = captureExplosionPhase('small', 'ignition');
+  const ordinary = captureExplosionPhase('ordinary', 'ignition');
+  const SPR_FLASH = 0;
+  const SPR_RING = 1;
+
+  assert.equal(small.sprites.some((args) => args[0] === SPR_RING), false,
+    'small destruction must not borrow the ordinary expanding-ring grammar');
+  assert.equal(ordinary.sprites.some((args) => args[0] === SPR_RING), true,
+    'ordinary destruction retains its accepted hot ring');
+  const hotCore = small.sprites.find((args) => args[0] === SPR_FLASH);
+  assert.ok(hotCore, 'small destruction needs a compact hot core');
+  assert.ok(hotCore[6] >= 6 * 0.25,
+    `small hot-core release must remain readable relative to its radius, got ${hotCore[6]}`);
+  assert.ok(small.streaks.length >= 2,
+    'small destruction needs an asymmetric fragment break at ignition');
 });

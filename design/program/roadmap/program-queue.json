@@ -3936,7 +3936,7 @@
       "priority": 236,
       "title": "Repair flak impact dispatch and small-destruction salience",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-023.h2-verdict"
       ],
@@ -3953,7 +3953,9 @@
         "npm run check:pq023:corridor-cues",
         "npm run check:presentation"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-023-combat-readability-repair-REPORT.md"
+      ],
       "brief": "Add a real proximity-burst renderer branch so flak cannot fall through the autocannon incidence-fan default, and strengthen the compact small-destruction hot-core/asymmetric breakup without borrowing ordinary/capital ring grammar, changing mechanics, or weakening cue budgets and cleanup. Add seconds-scale regressions for both reproduced defects.",
       "blocker": null
     },
