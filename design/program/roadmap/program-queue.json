@@ -3914,7 +3914,7 @@
       "state": "ready",
       "dependsOn": [
         "PQ-023.cues-h1-capture",
-        "PQ-023.combat-readability-review",
+        "PQ-023.small-destruction-salience-review",
         "PQ-034.native-closure"
       ],
       "mutexes": [
@@ -3998,7 +3998,7 @@
       "priority": 238,
       "title": "Causally review revised combat-cue readability",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-023.combat-readability-h1"
       ],
@@ -4011,8 +4011,88 @@
         "design/program/roadmap/evidence/h1/row6-pq023-combat-readability/"
       ],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-023-combat-readability-review-REPORT.md"
+      ],
       "brief": "Review only whether flak now reads as a volume/proximity burst distinct from autocannon's directional incidence fan and whether small destruction lands while preserving reduced-mode, dense-scene, cleanup, and the accepted larger hierarchy.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-023.small-destruction-salience-repair",
+      "parentId": "PQ-023",
+      "priority": 239,
+      "title": "Strengthen normal-mode small-destruction salience",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-023.combat-readability-review"
+      ],
+      "mutexes": [
+        "render-vfx"
+      ],
+      "paths": [
+        "src/render/vfx.js",
+        "test/pq023-corridor-cues.test.mjs"
+      ],
+      "checks": [
+        "npm run check:pq023:corridor-cues",
+        "npm run check:presentation"
+      ],
+      "receiptRefs": [],
+      "brief": "Increase only the full-motion small-destruction hot core and asymmetric fragment envelope enough to land at the ordinary chase camera. Preserve the no-ordinary-ring grammar, reduced fallback, larger hierarchy, dense budgets, mechanics, determinism, and cleanup; reproduce the salience defect with a seconds-scale regression before editing production.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-023.small-destruction-salience-h1",
+      "parentId": "PQ-023",
+      "priority": 240,
+      "title": "Capture the final small-destruction candidate",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-023.small-destruction-salience-repair"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "scripts/capture-combat-vfx-acceptance.mjs",
+        "scripts/check-pq023-corridor-cues-electron.mjs",
+        "scripts/probe-pq023-combat-readability.mjs",
+        "scripts/lib/pq023CombatReadabilityProjection.mjs",
+        "scripts/validation-manifests/pq023-small-destruction-salience.mjs",
+        "test/pq023-corridor-cues-h1-manifest.test.mjs",
+        "design/program/roadmap/evidence/h1/row6-pq023-small-destruction-salience/"
+      ],
+      "checks": [
+        "npm run check:pq023:corridor-cues",
+        "npm run check:presentation"
+      ],
+      "receiptRefs": [],
+      "brief": "Run a candidate-bound small-only Browser and source-Electron continuation covering normal small destruction, reduced small destruction, and one dense representative. Retain accepted flak, Cathedral, unrelated weapons, and larger destruction cells.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-023.small-destruction-salience-review",
+      "parentId": "PQ-023",
+      "priority": 241,
+      "title": "Causally review final small-destruction salience",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-023.small-destruction-salience-h1"
+      ],
+      "mutexes": [
+        "evidence-review"
+      ],
+      "paths": [
+        "design/program/roadmap/H2_REVIEW_INDEX.md",
+        "design/program/roadmap/evidence/h1/row6-pq023-small-destruction-salience/"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Judge only whether the final full-motion small-destruction event lands at the ordinary camera while the accepted reduced fallback, dense composition, cleanup, flak distinction, and larger hierarchy remain intact.",
       "blocker": null
     },
     {

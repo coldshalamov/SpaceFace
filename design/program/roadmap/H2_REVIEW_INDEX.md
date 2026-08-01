@@ -124,6 +124,15 @@ branch and falls through the autocannon default, matching the near-identical ord
 The small lifecycle is bounded but too faint to read as a destruction event. Exact repair, targeted
 recapture, and causal review are queued. Receipt: [PQ-023 H2 cue review](receipts/PQ-023-h2-cue-motion-accessibility-REPORT.md).
 
+**Targeted causal re-review, candidate `b626a8b3`:** KEEP flak / REVISE only full-motion small
+destruction. The new four-frame and motion evidence makes flak's compact bright core plus irregular
+radial cloud visibly distinct from autocannon's narrow incidence fan in both hosts. Full-motion small
+destruction remains a minute speck/two-fragment event at ordinary framing and is less legible than
+the preserved reduced fallback. Dense composition, cleanup, Cathedral, ordinary/capital hierarchy,
+and cross-runtime parity remain KEEP. The next exact chain is a normal-mode small-only repair,
+targeted recapture, and causal re-review; accepted cells are retained. Receipt:
+[PQ-023 combat-readability review](receipts/PQ-023-combat-readability-review-REPORT.md).
+
 ---
 
 ## Decision 4 — PQ-020 pocket distinctness and Cathedral presence
