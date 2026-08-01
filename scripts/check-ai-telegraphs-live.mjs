@@ -152,6 +152,8 @@ function runProductionDefaultBatchCase() {
     'production default should stagger member decisions across intervening simulation ticks');
   const decisionAtTick2 = tacticalAI.stack.lastResult.decisions.find((entry) => entry.entityId === 2);
   assert(sensorCalls.includes('2:2'), 'authored doctrine member receives its deterministic three-tick stagger slot');
+  assert.equal(decisionAtTick2.directive.objective.kind, 'focus',
+    'telegraph fixture actor must own a current squad attack allocation');
   assert.equal(decisionAtTick2.combatDoctrine.targetId, null, 'fresh negative frame clears stale doctrine target');
   assert.equal(decisionAtTick2.action.actionId, null, 'fresh negative frame cannot start an attack action');
   assert.equal(state.entities.get(2).data.intent.fire, false);
@@ -322,7 +324,12 @@ function defaultBatchRoster(actorIds) {
     id: 'production_default_five_ship', doctrine: 'scavenger', faction: 'fixture', formation: 'wedge',
     members: actorIds.map((id) => ({
       id,
-      capabilities: ['drive', 'sensor', 'weapon', 'ranged'],
+      // id 2 is the doctrine refresh probe. Keep it in a striker lane; an authored ranged support
+      // correctly screens after the two light-target attacker slots are allocated and must not run
+      // a combat doctrine from reserve.
+      capabilities: id === 2
+        ? ['drive', 'sensor', 'weapon']
+        : ['drive', 'sensor', 'weapon', 'ranged'],
       combatDoctrineId: id === 2 ? CombatDoctrineId.INTERCEPTOR_FLYBY : null,
     })),
   }];

@@ -65,7 +65,10 @@ const DEFAULTS = Object.freeze({
   shipCollisionClearance: 34,
   shipCollisionWeight: 0.72,
   heavyTargetClearance: 24,
-  capitalTargetClearance: 52,
+  // The one-second hostile telegraph floor still leaves an interceptor carrying closing momentum.
+  // Preserve eight units of braking reserve beyond the 132-unit geometric envelope so ordinary
+  // attack runs do not spend that player response window by skimming a capital hull.
+  capitalTargetClearance: 60,
   heavyTargetClosingSpeed: 22,
   capitalTargetClosingSpeed: 16,
   massApproachRangeMult: 2.8,

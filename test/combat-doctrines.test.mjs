@@ -539,7 +539,12 @@ for (const ship of ambush.ships) {
           id: 'five_ship_default_batch', doctrine: 'scavenger', faction: 'fixture', formation: 'wedge',
           members: actorIds.map((id) => ({
             id,
-            capabilities: ['drive', 'sensor', 'weapon', 'ranged'],
+            // Keep the doctrine actor in an allocated striker lane. A ranged role would make id 2
+            // the squad support member, which correctly screens once the two light-target attack
+            // slots are owned; that reserve must not run a combat doctrine.
+            capabilities: id === 2
+              ? ['drive', 'sensor', 'weapon']
+              : ['drive', 'sensor', 'weapon', 'ranged'],
             combatDoctrineId: id === 2 ? CombatDoctrineId.INTERCEPTOR_FLYBY : null,
           })),
         }];
@@ -551,6 +556,8 @@ for (const ship of ambush.ships) {
   tactical.init({ state, bus: null, helpers: {} });
   tactical.update(1 / 60, state);
   let doctrineDecision = tactical.stack.lastResult.decisions.find((entry) => entry.entityId === 2);
+  assert.equal(doctrineDecision.directive.objective.kind, 'focus',
+    'doctrine fixture actor must own a current squad attack allocation');
   assert.equal(doctrineDecision.combatDoctrine.phase, 'engine_flare',
     'default-stack doctrine actor starts from a current live sensor frame');
 
