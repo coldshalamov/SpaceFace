@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-30",
+  "updatedAt": "2026-07-31",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -3562,8 +3562,7 @@
       "priority": 218,
       "title": "Land the five qualification performance owner facts",
       "kind": "implementation",
-      "state": "claimed",
-      "owner": "Codex primary integrator",
+      "state": "done",
       "dependsOn": [
         "PQ-034.candidate-audit"
       ],
@@ -3580,7 +3579,9 @@
         "npm run check:perf-counters",
         "node --test test/pq025-acceptance-contracts.test.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-025-performance-owner-facts-REPORT.md"
+      ],
       "brief": "Resolve p50 raw samples, p99, missed-vsync, residency, and draw/triangle owner facts from accepted PERF-00 work without duplicating harness-side guesses.",
       "blocker": null
     },
@@ -3616,7 +3617,7 @@
       ],
       "receiptRefs": [],
       "brief": "Freeze the draft matrix and profiles, perform Phase 2 calibration, then run held-out Browser/Electron 30- and 90-minute routes for all three careers.",
-      "blocker": "The corridor parents, two milestone leaf receipts, and performance owner facts are not terminal."
+      "blocker": "PQ-019.promote (human and matched performance), PQ-020.promote (route, art, and matched performance), PQ-021.promote (human legibility and physical controller), PQ-022.promote-corridor-assets (visual dispositions and matched performance), PQ-023.promote-corridor-cues (motion/accessibility and matched performance), and PQ-024.promote (relay promotion, human survey/relay verdicts, and matched H3 performance) remain blocked. PQ-025.perf-owner-facts is terminal."
     },
     {
       "id": "PQ-035.native-acceptance",

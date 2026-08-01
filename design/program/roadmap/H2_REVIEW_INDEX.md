@@ -26,7 +26,7 @@ the evidence that answers it, and says what your answer unblocks. Answer the que
 | 2 | PQ-021 broker cell + Electron parity | **PASS** | [row2-pq021-ledger](evidence/h1/row2-pq021-ledger/EVIDENCE.md) |
 | 3 | PQ-019A presentation + counts | **PASS — facilities/counts retained; brokered capsule continuation accepted at runtime zooms 45/66/108** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
 | 4 | `pq019-surface-heist` broker manifest | **PASS — retained DOM/lawful evidence plus accepted fence/confiscation/destruction/recovery continuation** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
-| 5 | PQ-020 Ceres functional route | **REPAIR PASS / H1 CONTINUATION READY (valid Helios→Ceres jump survives; remainder unproven)** | [row5-pq020-ceres-route](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) |
+| 5 | PQ-020 Ceres functional route | **BLOCKED / NO H1 PROMOTION — Browser passed 21/21 and Electron matched gameplay facts, but eight unattributed `ERR_ABORTED` module requests keep the Electron receipt red** | [exact blocker receipt](receipts/PQ-020-ceres-h1-capture-BLOCKER.md) |
 | 6 | PQ-023 cues in motion | **PASS — retained combat motion plus accepted Cathedral Browser/Electron continuation** | [row6-pq023-cues](evidence/h1/row6-pq023-cues/EVIDENCE.md) |
 | 7 | PQ-022 asset leaves | **PASS — one Browser launch; 11 exact identities, 13 admitted stills** | [row7-pq022-asset-leaves](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md) |
 | 8 | Electron end-to-end smoke | **PASS — accepted source-Electron menu→physical dock→Ledger chain** | [row8-electron-e2e](evidence/h1/row8-electron-e2e/EVIDENCE.md) |
@@ -120,18 +120,19 @@ a *different place*, or does Ceres read as one undifferentiated field with diffe
 **Question, part B:** Does the Wreck Cathedral have presence — does it land as a landmark worth
 travelling to — at close, default and far framing?
 
-**Evidence:** [row 5 Ceres route attempt](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md).
-The one Browser attempt made a valid public Helios → Ceres production jump, then stopped immediately
-on an unsupported absolute endpoint-distance assertion. It never reached the refinery, outpost,
-beacon, Cathedral approach, save/Continue, second endpoint direction, or Electron parity. The two
-surviving frames are route/failure diagnostics, not pocket-distinctness or Cathedral-presence art
-evidence.
+**Evidence:** [row 5 original attempt](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) and the
+[current blocker receipt](receipts/PQ-020-ceres-h1-capture-BLOCKER.md). Candidate `1c9d317d` later
+completed the Browser route 21/21. Electron completed the same 21 frames, matched all normalized
+gameplay facts, and closed its owned runtime, but eight varying module requests remained hard
+`net::ERR_ABORTED` with no authoritative document/teardown provenance. Under the pair contract the
+Electron receipt is red, so none of those candidate frames or semantic facts are promoted into H2.
 
-**Unblocks:** nothing from H2 yet. Both visual questions must be **deferred** until a valid future
-capture reaches the four pockets and the Cathedral's close/default/far framings. PQ-020 integration
-and the relocated PQ-018 Phase-4 closure remain open.
+**Unblocks:** nothing from H2 yet. Both visual questions remain **deferred** until the named
+`SpaceFace Electron/Playwright request-provenance maintainer` supplies a native provenance regression
+and a new candidate-bound Browser/Electron pair passes. PQ-020 integration and the relocated PQ-018
+Phase-4 closure remain open.
 
-**Verdict:** DEFER — valid presentation evidence not captured
+**Verdict:** DEFER — paired evidence remains red on the named request-provenance blocker
 
 ---
 
