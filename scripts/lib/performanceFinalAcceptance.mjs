@@ -2,12 +2,19 @@ import {
   PERFORMANCE_BUDGETS,
   PERFORMANCE_MEASUREMENT_VALIDITY_SCHEMA,
   PERFORMANCE_SCENARIO_IDS,
+  evaluatePerformanceImprovement,
   validatePerformanceClosureReport,
 } from './performanceClosureContracts.mjs';
+import {
+  PRESENTATION_SEMANTIC_COMPARISON_SCHEMA,
+  SIMULATION_EQUIVALENCE_SCHEMA,
+  composePerformanceVerdict,
+} from './performanceEquivalence.mjs';
 
-export const PERFORMANCE_FINAL_ACCEPTANCE_SCHEMA = 'spaceface.performanceFinalAcceptance.v2';
+export const PERFORMANCE_FINAL_ACCEPTANCE_SCHEMA = 'spaceface.performanceFinalAcceptance.v3';
 export const PERFORMANCE_FINAL_ACCEPTANCE_RUNS = 3;
 export const PERFORMANCE_CLOSURE_ACCEPTANCE_SCHEMA = 'spaceface.performanceClosureAcceptance.v2';
+export const PERFORMANCE_EQUIVALENCE_EVIDENCE_SCHEMA = 'spaceface.performanceEquivalenceEvidence.v1';
 
 const PROFILE_SCHEMA = 'spaceface.performanceProfile.v1';
 const STEADY_RESIDENCY_SCENARIOS = new Set([
@@ -20,8 +27,11 @@ export function evaluatePerformanceFinalAcceptance({
   expectedCommit,
   currentWorktree,
   profiles = [],
+  baselineMatrices = [],
   matrices = [],
   runtimePairs = [],
+  equivalence = null,
+  improvementScenarioId = null,
 } = {}) {
   const failures = [];
   if (!/^[a-f0-9]{40}$/i.test(String(expectedCommit || ''))) {
@@ -29,21 +39,60 @@ export function evaluatePerformanceFinalAcceptance({
   }
   validateCurrentWorktree(currentWorktree, expectedCommit, failures);
   requireExactRunCount('profiles', profiles, failures);
+  requireExactRunCount('baselineMatrices', baselineMatrices, failures);
   requireExactRunCount('matrices', matrices, failures);
   requireExactRunCount('runtimePairs', runtimePairs, failures);
 
+  const baselineCommit = baselineMatrices?.[0]?.document?.worktree?.commit;
+  if (!/^[a-f0-9]{40}$/i.test(String(baselineCommit || ''))) {
+    failures.push('baselineMatrices require one exact baseline commit');
+  }
   const profileRuns = profiles.map((input, index) => validateProfile(input, index, expectedCommit, failures));
+  const baselineMatrixRuns = baselineMatrices.map((input, index) => validateMatrix(
+    input,
+    index,
+    baselineCommit,
+    failures,
+    { label: 'baselineMatrices', requireBudgets: false },
+  ));
   const matrixRuns = matrices.map((input, index) => validateMatrix(input, index, expectedCommit, failures));
   const pairedRuns = runtimePairs.map((input, index) => validateRuntimePair(input, index, expectedCommit, failures));
 
   validateUniqueReceipts('profiles', profiles, failures);
+  validateUniqueReceipts('baselineMatrices', baselineMatrices, failures);
   validateUniqueReceipts('matrices', matrices, failures);
   validateUniqueReceipts('runtimePairs.browser', runtimePairs.map((pair) => pair?.browser), failures);
   validateUniqueReceipts('runtimePairs.electron', runtimePairs.map((pair) => pair?.electron), failures);
   validateChronology('profiles', profileRuns, failures);
+  validateChronology('baselineMatrices', baselineMatrixRuns, failures);
   validateChronology('matrices', matrixRuns, failures);
   validateComparableProfiles(profileRuns, failures);
-  validateComparableMatrices(matrixRuns, failures);
+  validateComparableMatrices(baselineMatrixRuns, failures, 'baselineMatrices');
+  validateComparableMatrices(matrixRuns, failures, 'matrices');
+
+  const equivalenceVerdict = validateEquivalenceEvidence(
+    equivalence,
+    baselineCommit,
+    expectedCommit,
+  );
+  const improvementVerdict = evaluatePerformanceImprovement({
+    baselineWindows: scenarioWindows(baselineMatrices, improvementScenarioId),
+    candidateWindows: scenarioWindows(matrices, improvementScenarioId),
+  });
+  const measurementValidity = evaluateMeasurementValidityDimension(
+    baselineMatrices,
+    matrices,
+    runtimePairs,
+  );
+  const absoluteBudget = evaluateAbsoluteBudgetDimension(profiles, matrices);
+  const verdict = composePerformanceVerdict({
+    equivalence: equivalenceVerdict,
+    measurementValidity,
+    improvement: improvementVerdict,
+    absoluteBudget,
+  });
+  const allFailures = [...new Set([...failures, ...verdict.failures])];
+  const status = failures.length > 0 ? 'fail' : verdict.status;
 
   return {
     schema: PERFORMANCE_FINAL_ACCEPTANCE_SCHEMA,
@@ -52,16 +101,132 @@ export function evaluatePerformanceFinalAcceptance({
     requiredConsecutiveRuns: PERFORMANCE_FINAL_ACCEPTANCE_RUNS,
     evidenceSemantics: {
       profiles: 'primary-player-route-acceptance',
+      baselineMatrices: 'historical-clean-matched-diagnostic-reference',
       matrices: 'diagnostic-controlled-scenario-coverage',
       diagnosticCannotWaivePrimaryBudgets: true,
       runtimePairing: 'same-source-distinct-runtime-candidate-and-raw-trace',
     },
     worktree: currentWorktree || null,
     profiles: profileRuns,
+    baselineCommit: baselineCommit || null,
+    baselineMatrices: baselineMatrixRuns,
     matrices: matrixRuns,
     runtimePairs: pairedRuns,
-    pass: failures.length === 0,
-    failures: [...new Set(failures)],
+    improvementScenarioId: improvementScenarioId || null,
+    equivalence: equivalenceSummary(equivalence),
+    verdict,
+    pass: failures.length === 0 && verdict.pass,
+    status,
+    failures: allFailures,
+  };
+}
+
+function validateEquivalenceEvidence(input, baselineCommit, candidateCommit) {
+  const reasons = [];
+  const document = input?.document;
+  if (!nonempty(input?.path) || !Number.isInteger(input?.bytes) || input.bytes < 1 || !sha256(input?.sha256)) {
+    reasons.push('equivalence evidence receipt identity is invalid');
+  }
+  if (input?.artifactValidation?.pass !== true) reasons.push('equivalence raw artifacts failed content validation');
+  if (document?.schema !== PERFORMANCE_EQUIVALENCE_EVIDENCE_SCHEMA) reasons.push('equivalence evidence schema is invalid');
+  if (!isIso8601(document?.generatedAt)) reasons.push('equivalence generatedAt is invalid');
+  if (document?.baselineCommit !== baselineCommit) reasons.push('equivalence baseline commit does not match baseline matrices');
+  if (document?.candidateCommit !== candidateCommit) reasons.push('equivalence candidate commit does not match expectedCommit');
+  if (!sha256(document?.comparisonIdentity)) reasons.push('equivalence comparison identity must be SHA-256');
+  validateEquivalenceReport(document?.simulation, SIMULATION_EQUIVALENCE_SCHEMA, 'simulation', reasons);
+  validateEquivalenceReport(document?.presentation, PRESENTATION_SEMANTIC_COMPARISON_SCHEMA, 'presentation', reasons);
+  validateEquivalenceReport(input?.recomputed?.simulation, SIMULATION_EQUIVALENCE_SCHEMA, 'recomputed simulation', reasons);
+  validateEquivalenceReport(input?.recomputed?.presentation, PRESENTATION_SEMANTIC_COMPARISON_SCHEMA, 'recomputed presentation', reasons);
+  if (stableStringify(document?.simulation) !== stableStringify(input?.recomputed?.simulation)) {
+    reasons.push('declared simulation equivalence does not match raw artifact recomputation');
+  }
+  if (stableStringify(document?.presentation) !== stableStringify(input?.recomputed?.presentation)) {
+    reasons.push('declared presentation equivalence does not match raw artifact recomputation');
+  }
+  const artifacts = document?.artifacts;
+  const requiredKinds = new Set([
+    'baseline-simulation',
+    'candidate-simulation',
+    'baseline-presentation',
+    'candidate-presentation',
+  ]);
+  if (!Array.isArray(artifacts) || artifacts.length !== requiredKinds.size
+    || artifacts.some((artifact) => !requiredKinds.has(artifact?.kind)
+      || !nonempty(artifact?.path) || !Number.isInteger(artifact?.bytes) || artifact.bytes < 1
+      || !sha256(artifact?.sha256))
+    || new Set(artifacts.map((artifact) => artifact.kind)).size !== requiredKinds.size
+    || new Set(artifacts.map((artifact) => artifact.sha256)).size !== requiredKinds.size) {
+    reasons.push('equivalence evidence requires four content-hashed raw artifacts');
+  }
+  return {
+    pass: reasons.length === 0,
+    status: reasons.length === 0 ? 'equivalent' : 'different-or-invalid',
+    reasons,
+    report: document ? {
+      simulation: document.simulation || null,
+      presentation: document.presentation || null,
+    } : null,
+  };
+}
+
+function validateEquivalenceReport(report, schema, label, reasons) {
+  if (report?.schema !== schema || report?.valid !== true || report?.equivalent !== true
+    || report?.firstDivergence != null || !Array.isArray(report?.failures) || report.failures.length !== 0) {
+    reasons.push(`${label} semantic equivalence failed`);
+  }
+}
+
+function scenarioWindows(inputs, scenarioId) {
+  if (!PERFORMANCE_SCENARIO_IDS.includes(scenarioId)) return [];
+  return inputs.map((input) => (input?.document?.windows || []).find(
+    (window) => window?.diagnosticVariant === 'baseline' && window?.scenarioId === scenarioId,
+  ));
+}
+
+function evaluateMeasurementValidityDimension(baselineMatrices, matrices, runtimePairs) {
+  const reasons = [];
+  for (const [label, inputs] of [['baselineMatrices', baselineMatrices], ['matrices', matrices]]) {
+    inputs.forEach((input, index) => {
+      for (const reason of input?.document?.measurementValidity?.reasons || []) {
+        reasons.push(`${label}[${index}]: ${reason}`);
+      }
+      if (input?.document?.measurementValidity?.pass !== true) reasons.push(`${label}[${index}] measurement invalid`);
+    });
+  }
+  runtimePairs.forEach((pair, index) => {
+    for (const runtimeKind of ['browser', 'electron']) {
+      const validity = pair?.[runtimeKind]?.document?.closure?.measurementValidity;
+      for (const reason of validity?.reasons || []) reasons.push(`runtimePairs[${index}].${runtimeKind}: ${reason}`);
+      if (validity?.pass !== true) reasons.push(`runtimePairs[${index}].${runtimeKind} measurement invalid`);
+    }
+  });
+  return { pass: reasons.length === 0, status: reasons.length === 0 ? 'valid' : 'invalid', reasons };
+}
+
+function evaluateAbsoluteBudgetDimension(profiles, matrices) {
+  const reasons = [];
+  profiles.forEach((input, index) => {
+    const scenario = input?.document?.scenarios?.[0];
+    if (scenario?.pass !== true || input?.document?.summary?.pass !== true) reasons.push(`profiles[${index}] absolute budget failed`);
+  });
+  matrices.forEach((input, index) => {
+    const baselines = (input?.document?.windows || []).filter((window) => window?.diagnosticVariant === 'baseline');
+    if (baselines.length !== PERFORMANCE_SCENARIO_IDS.length || baselines.some((window) => window?.budgets?.pass !== true)) {
+      reasons.push(`matrices[${index}] absolute budget failed`);
+    }
+  });
+  return { pass: reasons.length === 0, status: reasons.length === 0 ? 'within-budget' : 'over-budget', reasons };
+}
+
+function equivalenceSummary(input) {
+  return {
+    path: input?.path || null,
+    bytes: input?.bytes || null,
+    sha256: input?.sha256 || null,
+    generatedAt: input?.document?.generatedAt || null,
+    baselineCommit: input?.document?.baselineCommit || null,
+    candidateCommit: input?.document?.candidateCommit || null,
+    comparisonIdentity: input?.document?.comparisonIdentity || null,
   };
 }
 
@@ -243,8 +408,11 @@ function requireProfileBudget(scenario, name, operator, limit, prefix, failures,
   }
 }
 
-function validateMatrix(input, index, expectedCommit, failures) {
-  const prefix = `matrices[${index}]`;
+function validateMatrix(input, index, expectedCommit, failures, {
+  label = 'matrices',
+  requireBudgets = true,
+} = {}) {
+  const prefix = `${label}[${index}]`;
   validateInputReceipt(input, prefix, failures);
   const report = input?.document;
   if (!report || typeof report !== 'object') {
@@ -282,13 +450,15 @@ function validateMatrix(input, index, expectedCommit, failures) {
     keys.set(scenarioId, window.comparisonKey);
     if (window.evidenceKind !== 'diagnostic') failures.push(`${windowPrefix} must remain labeled diagnostic`);
     if (window.defaultQuality !== true) failures.push(`${windowPrefix} must use default quality`);
-    if (window.budgets?.pass !== true) failures.push(`${windowPrefix} performance budgets did not pass`);
-    requireWindowBudget(window, 'frame.p95.target', PERFORMANCE_BUDGETS.targetFrameP95Ms, windowPrefix, failures);
-    requireWindowBudget(window, 'frame.p95.floor', PERFORMANCE_BUDGETS.floorFrameP95Ms, windowPrefix, failures);
-    requireWindowBudget(window, 'frame.framesAbove32.max', 0, windowPrefix, failures);
-    requireWindowBudget(window, 'frame.framesAbove50.max', 0, windowPrefix, failures);
-    if (scenarioId === 'autosave_under_load') {
-      requireWindowBudget(window, 'autosave.maxBlockingSlice.hard', PERFORMANCE_BUDGETS.autosaveHardBlockingSliceMs, windowPrefix, failures);
+    if (requireBudgets) {
+      if (window.budgets?.pass !== true) failures.push(`${windowPrefix} performance budgets did not pass`);
+      requireWindowBudget(window, 'frame.p95.target', PERFORMANCE_BUDGETS.targetFrameP95Ms, windowPrefix, failures);
+      requireWindowBudget(window, 'frame.p95.floor', PERFORMANCE_BUDGETS.floorFrameP95Ms, windowPrefix, failures);
+      requireWindowBudget(window, 'frame.framesAbove32.max', 0, windowPrefix, failures);
+      requireWindowBudget(window, 'frame.framesAbove50.max', 0, windowPrefix, failures);
+      if (scenarioId === 'autosave_under_load') {
+        requireWindowBudget(window, 'autosave.maxBlockingSlice.hard', PERFORMANCE_BUDGETS.autosaveHardBlockingSliceMs, windowPrefix, failures);
+      }
     }
     if (window.memory?.comparableState?.pass !== true) failures.push(`${windowPrefix} memory endpoints are not comparable`);
     const rendererDelta = window.memory?.renderer?.delta;
@@ -393,16 +563,16 @@ function validateComparableProfiles(runs, failures) {
   }
 }
 
-function validateComparableMatrices(runs, failures) {
+function validateComparableMatrices(runs, failures, label = 'matrices') {
   if (runs.length !== PERFORMANCE_FINAL_ACCEPTANCE_RUNS) return;
   const environmentKeys = runs.map((run) => run.environmentKey).filter(Boolean);
   if (environmentKeys.length === PERFORMANCE_FINAL_ACCEPTANCE_RUNS && new Set(environmentKeys).size !== 1) {
-    failures.push('matrices do not share the same browser/GPU/default-quality environment');
+    failures.push(`${label} do not share the same browser/GPU/default-quality environment`);
   }
   for (const scenarioId of PERFORMANCE_SCENARIO_IDS) {
     const keys = runs.map((run) => run.comparisonKeys?.[scenarioId]).filter(Boolean);
     if (keys.length === PERFORMANCE_FINAL_ACCEPTANCE_RUNS && new Set(keys).size !== 1) {
-      failures.push(`matrix scenario ${scenarioId} is not comparable across all three runs`);
+      failures.push(`${label} scenario ${scenarioId} is not comparable across all three runs`);
     }
   }
 }

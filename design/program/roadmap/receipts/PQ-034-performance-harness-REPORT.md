@@ -178,9 +178,30 @@ Within-noise evidence is `neutral`; a candidate slower beyond the same bound is 
 - baseline-against-identical-baseline reports zero improvement and a nonzero noise floor;
 - no browser, Electron, broker claim, or live performance conclusion was spent.
 
+## Final-arbiter four-dimension slice
+
+Final acceptance v3 now requires three clean historical baseline matrices alongside the three
+candidate matrices, an explicit improvement scenario, and a content-hashed equivalence document.
+The CLI rereads the four declared raw simulation/presentation artifacts, recomputes both semantic
+comparisons with the existing bounded comparators, and requires byte-stable report agreement before
+the equivalence dimension can pass.
+
+The final report publishes equivalence, measurement validity, noise-aware improvement, and absolute
+budget separately. General evidence-identity failures remain fatal. A semantic mutation fails only
+equivalence; a contaminated runtime/matrix keeps equivalence green but fails validity; a fully valid
+equivalent result inside measured noise is non-promoting `neutral` rather than a false improvement.
+
+- characterization: the final arbiter originally ignored baseline/equivalence inputs and returned no
+  dimension report; the new tests failed on those missing surfaces before implementation;
+- final acceptance and CLI binding — PASS 8/8; closure/equivalence/final combined set — PASS 54/54;
+- expanded PERF-00, broker, and manifest-registry set — PASS 179/179;
+- program docs — PASS with 0 warnings; program-control tools — PASS 9/9;
+- `npm run check:baseline` — PASS 10/10 in 42.066 s after the final artifact-alias guard;
+- no Browser, Electron, broker claim, raw trace, or performance conclusion was fabricated or spent.
+
 ## Honest residual
 
-This is not the terminal dispatch receipt. Final-arbiter baseline/equivalence input binding and
-combined verdict publication, clean matched evidence, overhead measurement, and independent causal review remain open. The current driver and paired
+This is not the terminal dispatch receipt. Clean matched evidence, instrumentation overhead
+measurement, broker preflight, bounded termination proof, and independent causal review remain open. The current driver and paired
 authority are focused-green but intentionally unspent while the machine remains ineligible for a
 quiet L4 capture.

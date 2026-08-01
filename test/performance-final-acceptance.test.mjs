@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import {
@@ -13,6 +14,7 @@ import {
 import { evaluatePerformanceFinalAcceptance } from '../scripts/lib/performanceFinalAcceptance.mjs';
 
 const COMMIT = 'a'.repeat(40);
+const BASELINE_COMMIT = '9'.repeat(40);
 const BRANCH = 'codex/performance-final-test';
 const DIGEST = 'b'.repeat(64);
 const VIDEO = { renderScale: 0.85, bloom: true, shadows: false };
@@ -21,8 +23,13 @@ test('requires three clean, same-commit, directly comparable passing runs', () =
   const result = evaluatePerformanceFinalAcceptance(fixture());
   assert.equal(result.pass, true, result.failures.join('\n'));
   assert.equal(result.profiles.length, 3);
+  assert.equal(result.baselineMatrices.length, 3);
   assert.equal(result.runtimePairs.length, 3);
   assert.equal(result.matrices.every((run) => run.scenarioCount === PERFORMANCE_SCENARIO_IDS.length), true);
+  assert.equal(result.verdict.equivalence.pass, true);
+  assert.equal(result.verdict.measurementValidity.pass, true);
+  assert.equal(result.verdict.improvement.status, 'improved');
+  assert.equal(result.verdict.absoluteBudget.pass, true);
 });
 
 test('requires source-paired Browser/Electron evidence with distinct candidates and raw traces', () => {
@@ -95,9 +102,47 @@ test('fails closed when accepted runtime evidence or a matrix is measurement-inv
   input.matrices[1].document.environment.activity.end.active = true;
   const result = evaluatePerformanceFinalAcceptance(input);
   assert.equal(result.pass, false);
+  assert.equal(result.verdict.equivalence.pass, true);
+  assert.equal(result.verdict.measurementValidity.pass, false);
   assert.match(result.failures.join('\n'), /runtimePairs\[0\]\.browser measurement validity failed/);
   assert.match(result.failures.join('\n'), /contaminating-process-or-authoring-activity/);
   assert.match(result.failures.join('\n'), /matrices\[1\].*measurement invalid/);
+});
+
+test('keeps equivalence, validity, improvement, and absolute budget as independent final dimensions', () => {
+  const semanticFailure = fixture();
+  semanticFailure.equivalence.document.simulation.equivalent = false;
+  semanticFailure.equivalence.document.simulation.firstDivergence = { tick: 47, field: 'player.hull' };
+  let result = evaluatePerformanceFinalAcceptance(semanticFailure);
+  assert.equal(result.pass, false);
+  assert.equal(result.verdict.equivalence.pass, false);
+  assert.equal(result.verdict.measurementValidity.pass, true);
+  assert.equal(result.verdict.improvement.pass, true);
+
+  const aliasedRaw = fixture();
+  aliasedRaw.equivalence.document.artifacts[1].sha256 = aliasedRaw.equivalence.document.artifacts[0].sha256;
+  result = evaluatePerformanceFinalAcceptance(aliasedRaw);
+  assert.equal(result.pass, false);
+  assert.match(result.failures.join('\n'), /four content-hashed raw artifacts/);
+
+  const neutral = fixture();
+  neutral.baselineMatrices = [0, 1, 2].map((index) => ({
+    ...receipt(`baseline-matrix-neutral-${index}`, matrix(index, { commit: BASELINE_COMMIT, frameMs: 16.5 })),
+    artifactValidation: { pass: true, failures: [], verified: [] },
+  }));
+  result = evaluatePerformanceFinalAcceptance(neutral);
+  assert.equal(result.pass, false);
+  assert.equal(result.status, 'neutral');
+  assert.equal(result.verdict.equivalence.pass, true);
+  assert.equal(result.verdict.measurementValidity.pass, true);
+  assert.equal(result.verdict.improvement.status, 'neutral');
+  assert.equal(result.verdict.absoluteBudget.pass, true);
+
+  const missing = fixture();
+  missing.baselineMatrices = [];
+  result = evaluatePerformanceFinalAcceptance(missing);
+  assert.equal(result.pass, false);
+  assert.match(result.failures.join('\n'), /baselineMatrices must contain exactly 3 consecutive runs/);
 });
 
 function fixture() {
@@ -105,11 +150,59 @@ function fixture() {
     expectedCommit: COMMIT,
     currentWorktree: fingerprint(),
     profiles: [0, 1, 2].map((index) => receipt(`profile-${index}`, profile(index))),
+    baselineMatrices: [0, 1, 2].map((index) => ({
+      ...receipt(`baseline-matrix-${index}`, matrix(index, { commit: BASELINE_COMMIT, frameMs: 18.5 })),
+      artifactValidation: { pass: true, failures: [], verified: [] },
+    })),
     matrices: [0, 1, 2].map((index) => ({
       ...receipt(`matrix-${index}`, matrix(index)),
       artifactValidation: { pass: true, failures: [], verified: [] },
     })),
     runtimePairs: [0, 1, 2].map(runtimePair),
+    equivalence: equivalenceInput(),
+    improvementScenarioId: 'flight_steady',
+  };
+}
+
+function equivalenceInput() {
+  const document = equivalenceEvidence();
+  return {
+    ...receipt('equivalence', document),
+    artifactValidation: { pass: true, failures: [], verified: [] },
+    recomputed: {
+      simulation: structuredClone(document.simulation),
+      presentation: structuredClone(document.presentation),
+    },
+  };
+}
+
+function equivalenceEvidence() {
+  return {
+    schema: 'spaceface.performanceEquivalenceEvidence.v1',
+    generatedAt: new Date(Date.UTC(2026, 6, 19, 11, 0, 0)).toISOString(),
+    baselineCommit: BASELINE_COMMIT,
+    candidateCommit: COMMIT,
+    comparisonIdentity: '8'.repeat(64),
+    simulation: {
+      schema: 'spaceface.performanceSimulationEquivalence.v1',
+      valid: true,
+      equivalent: true,
+      firstDivergence: null,
+      failures: [],
+    },
+    presentation: {
+      schema: 'spaceface.presentationSemanticComparison.v1',
+      valid: true,
+      equivalent: true,
+      firstDivergence: null,
+      failures: [],
+    },
+    artifacts: [
+      { kind: 'baseline-simulation', path: '.devshots/perf/baseline-sim.json', bytes: 10, sha256: '1'.repeat(64) },
+      { kind: 'candidate-simulation', path: '.devshots/perf/candidate-sim.json', bytes: 10, sha256: '2'.repeat(64) },
+      { kind: 'baseline-presentation', path: '.devshots/perf/baseline-presentation.json', bytes: 10, sha256: '3'.repeat(64) },
+      { kind: 'candidate-presentation', path: '.devshots/perf/candidate-presentation.json', bytes: 10, sha256: '4'.repeat(64) },
+    ],
   };
 }
 
@@ -212,7 +305,7 @@ function profile(index) {
   };
 }
 
-function matrix(index) {
+function matrix(index, { commit = COMMIT, frameMs = 16.5 } = {}) {
   const environment = {
     runtimeKind: 'browser',
     seed: 47,
@@ -227,10 +320,10 @@ function matrix(index) {
     activity: { start: { active: false }, end: { active: false } },
     defaultSettings: { video: VIDEO },
   };
-  const windows = PERFORMANCE_SCENARIO_IDS.map((scenarioId) => performanceWindow(scenarioId, environment));
+  const windows = PERFORMANCE_SCENARIO_IDS.map((scenarioId) => performanceWindow(scenarioId, environment, frameMs));
   const report = buildPerformanceClosureReport({
     taskId: `matrix-${index}`,
-    fingerprints: { start: fingerprint(), end: fingerprint() },
+    fingerprints: { start: fingerprint(commit), end: fingerprint(commit) },
     environment,
     windows,
     artifacts: [{ kind: 'json', path: `.devshots/perf/matrix-${index}.json`, bytes: 10, sha256: `${index + 1}`.repeat(64) }],
@@ -248,8 +341,8 @@ function matrix(index) {
   return report;
 }
 
-function performanceWindow(scenarioId, environment) {
-  const rawSamples = [{ frameMs: 16 }, { frameMs: 16.5 }];
+function performanceWindow(scenarioId, environment, frameMs = 16.5) {
+  const rawSamples = [{ frameMs: frameMs - 0.5 }, { frameMs }];
   const summary = summarizeFrameSamples(rawSamples);
   const autosave = scenarioId === 'autosave_under_load'
     ? { timing: { maxBlockingSliceMs: 10 }, events: [{ event: 'save:completed' }] }
@@ -329,10 +422,19 @@ function gpuTimer() {
   };
 }
 
-function fingerprint() {
-  return { id: `${COMMIT.slice(0, 12)}-${DIGEST.slice(0, 16)}`, digest: DIGEST, head: COMMIT, branch: BRANCH, changedFileCount: 0 };
+function fingerprint(commit = COMMIT) {
+  return { id: `${commit.slice(0, 12)}-${DIGEST.slice(0, 16)}`, digest: DIGEST, head: commit, branch: BRANCH, changedFileCount: 0 };
 }
 
 function budget(name, value, limit) {
   return { name, value, op: '<=', limit, pass: value <= limit, severity: 'required' };
 }
+
+test('final CLI loads baseline matrices and recomputes declared semantic equivalence', async () => {
+  const source = await readFile(new URL('../scripts/check-performance-final-acceptance.mjs', import.meta.url), 'utf8');
+  assert.match(source, /readList\('baseline-matrices'\)/);
+  assert.match(source, /readArg\('equivalence'/);
+  assert.match(source, /compareAuthoritativeSimulationRecords/);
+  assert.match(source, /comparePresentationSemanticRecords/);
+  assert.match(source, /improvement-scenario/);
+});
