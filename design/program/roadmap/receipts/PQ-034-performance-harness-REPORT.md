@@ -11,9 +11,10 @@ claimBase: 070064b4ff9aff9c4addb54d876c7ad877ba8e53
 activityAuthorityCandidate: 52cd5eb3949bfb0e88fd8a2c10d37cd1c149fe65
 firstFailedBrowserCandidate: 2ab10f91483b38a4cfbd2197d99d7bfa84ae198f
 secondFailedBrowserCandidate: dc8a4ae8148bf771188a2e982f0ba7c55da8bd4d
-browserClaimsConsumed: 2
+thirdFailedBrowserCandidate: da98b9645e5096390990a0962c91fdd1c685d092
+browserClaimsConsumed: 3
 browserClaimAccepted: false
-latestBrowserRepairCandidate: fc18ed4680711da7d88e97080ab8129ebfd523d7
+latestBrowserRepairCandidate: 243d3bce9f5865a81faafb7fb7c2e02ee1f42c42
 headedRuntimeLaunched: true
 performanceEvidenceClaimed: false
 protectedWorktreeMutated: false
@@ -390,3 +391,36 @@ new order regression failed before implementation because the planner did not ex
 
 The exact unit remains `IN_PROGRESS`. The next action is one fresh Browser claim on the changed,
 clean pushed candidate. Electron remains unspent until Browser passes.
+
+## Third Browser claim: context recovery preceded reversible diagnostics
+
+The claim on clean pushed candidate `da98b9645e5096390990a0962c91fdd1c685d092` ran once and is
+retained at
+`.devshots/perf/closure/browser/performance-closure-browser-2026-08-01T10-23-39-163Z-36568-6fba6fd4/`.
+Its window order proves the terminal-jump repair: all reversible cells ran first and
+`jump_asset_admission` ran last as window 24. Runtime/page/GL/request errors were empty, all GPU query
+drains completed, exact docked-idle and jump-admission policies passed, route state and context proof
+passed, both activity boundaries were quiet, and cleanup passed. The sole failure was
+`windows[16]-pipeline-cache-mismatch`.
+
+Window 16 was `flight_steady @ bloom_off`. Its authored pending count stayed `1`, resident assets
+stayed `27`, resident resources stayed `845`, active admission jobs stayed `0`, and the mesh queue
+stayed `0`; this was not asset streaming. Context recovery at window 14 had reset the program cache
+from 89 to 79. Window 15 was `sim_paused`, so it could not exercise moving-flight visibility. Window
+16 resumed simulation and one remaining ordinary pipeline compiled inside the measured arm, moving
+program count `80 → 81`. The stable-window rejection is therefore retained.
+
+Candidate `243d3bce9f5865a81faafb7fb7c2e02ee1f42c42` extends the explicit execution plan: reversible
+baseline and diagnostic cells run first, cache-destructive context recovery runs next, and
+cleanup-scoped jump progression remains last. It refuses non-baseline variants for either terminal
+cell. The order regression failed before implementation and now pins the exact sequence.
+
+- selected PERF-00/broker regression set — PASS 143/143 in 14.740 s;
+- `npm run check:perf-counters` — PASS 35/35;
+- `npm run check:perf-packets` — PASS 39/39;
+- `npm run check:sim:compare` — PASS, deterministic and hash-equal;
+- `npm run check:launch-policy` — PASS;
+- `npm run check:baseline` — PASS 10/10 in 45.886 s.
+
+No timing conclusion from this claim is promoted. The exact unit remains `IN_PROGRESS`; one fresh
+Browser claim on the changed clean candidate is next, while Electron remains unspent.
