@@ -1,25 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { SET_PIECE_MISSIONS } from '../src/data/missions.js';
 import { runSp1NativeDurationAudit } from '../scripts/check-depth-program-sp1-duration.mjs';
 
-test('SP1 completes all six authored routes through native objective events inside their deadlines', async () => {
+test('SP1 completes every authored route through native objective events inside its deadlines', async () => {
   const report = await runSp1NativeDurationAudit();
+  const expectedRoutes = new Set(SET_PIECE_MISSIONS.flatMap((definition) => (
+    definition.branches.map((branch) => `${definition.id}/${branch.id}`)
+  )));
 
   assert.equal(report.schemaVersion, 1);
   assert.equal(report.claim, 'native-objective-event audit; modeled travel/action time, not a human playtime claim');
   assert.equal(report.driverShortcutCount, 0, 'the audit source contains no direct settlement invocation');
-  assert.equal(report.routes.length, 6);
+  assert.equal(report.routes.length, expectedRoutes.size);
   assert.deepEqual(
     new Set(report.routes.map((route) => `${route.archetypeId}/${route.branchId}`)),
-    new Set([
-      'long_read/lawful',
-      'long_read/quiet',
-      'witness_run/publish',
-      'witness_run/shelter',
-      'hearing/defend',
-      'hearing/expedite',
-    ]),
+    expectedRoutes,
   );
 
   for (const route of report.routes) {
@@ -46,4 +43,8 @@ test('SP1 completes all six authored routes through native objective events insi
   const defend = report.routes.find((route) => route.archetypeId === 'hearing' && route.branchId === 'defend');
   assert.equal(defend.combatKillCount, 3, 'defend route resolves its siege screen through three tagged kills');
   assert.ok(defend.nativeEvents.includes('entity:killed'));
+
+  const investigationRoutes = report.routes.filter((route) => route.archetypeId === 'investigation_chain');
+  assert.ok(investigationRoutes.every((route) => route.nativeEvents.includes('salvage:completed')),
+    'both investigation outcomes physically recover a wreck before the disposition choice');
 });

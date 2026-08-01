@@ -378,6 +378,56 @@ test('The Long Read executes rumor purchase, bearing survey, complicated salvage
     'each of the three accepted obligations settles exactly once');
 });
 
+test('Investigation Chain black-box recovery requires native wreck salvage in the authored sector', async () => {
+  const api = await runtimeApi();
+  const state = baseState({ seed: 4801 });
+  const bus = new Bus();
+  const missionSystem = { ...missions };
+  missionSystem.init({ state, bus, helpers: missionHelpers(), registry: { get: () => null } });
+
+  const offer = api.buildSetPieceMissionOffers(state, {
+    archetypeId: 'investigation_chain',
+    startEpoch: 48,
+    stageIndex: 1,
+    branchId: null,
+    attempt: 0,
+  })[0];
+  assert.equal(offer.params.setPieceObjective, 'investigation_recover_box');
+  bus.emit('mission:offered', clone(offer));
+  assert.equal(missionSystem.acceptMission(offer.id), true);
+  const activeId = state.missions.active[0].id;
+
+  bus.emit('dock:docked', { stationId: offer.stationId });
+  bus.emit('salvage:completed', { wreckId: 'missing_wreck', loot: { cmdty_salvage_electronics: 1 } });
+  assert.equal(state.missions.active[0].id, activeId,
+    'docking and an unbound salvage payload cannot settle physical recovery');
+
+  const wreck = {
+    id: 'investigation_duration_wreck',
+    type: 'wreck',
+    alive: true,
+    pos: { x: 400, z: 0 },
+    data: { salvagePool: { cmdty_salvage_electronics: 1 } },
+  };
+  state.entities.set(wreck.id, wreck);
+  state.entityList.push(wreck);
+  bus.emit('salvage:completed', { wreckId: wreck.id, loot: { cmdty_salvage_electronics: 1 } });
+  assert.equal(state.missions.active[0].id, activeId,
+    'wreck salvage outside the authored sector cannot settle recovery');
+
+  state.world.currentSectorId = offer.destSectorId;
+  bus.emit('salvage:completed', { wreckId: wreck.id, loot: { cmdty_salvage_electronics: 1 } });
+  assert.equal(state.missions.active.length, 0,
+    'native wreck salvage in the authored sector settles the black-box stage');
+  assert.equal(state.missions.receipts.filter((receipt) => (
+    receipt.causeFingerprint === offer.cause.fingerprint && receipt.outcome === 'completed'
+  )).length, 1, 'the native salvage receipt settles exactly once');
+  assert.equal(Object.values(state.missions.boards).flatMap((board) => board.slots || [])
+    .filter((candidate) => candidate.cause && candidate.cause.chainId === offer.cause.chainId
+      && candidate.cause.stageIndex === 2).length, 2,
+  'black-box recovery opens the two authored disposition choices');
+});
+
 test('a native wreck choice made before fence acceptance keeps only the matching completable row', async () => {
   const api = await runtimeApi();
   const state = baseState({ seed: 1048 });

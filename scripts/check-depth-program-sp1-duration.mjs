@@ -26,6 +26,7 @@ for (const sector of SECTORS) {
 const NATIVE_OBJECTIVE_EVENTS = new Set([
   'sector:enter',
   'scan:completed',
+  'salvage:completed',
   'dock:docked',
   'entity:killed',
   'uniqueWreck:bearingFixed',
@@ -307,6 +308,26 @@ function driveOrdinaryObjective(state, missionSystem, bus, mission) {
     }
     return elapsed;
   }
+  if (mission.params && mission.params.setPieceObjective === 'investigation_recover_box') {
+    advanceClock(state, missionSystem, 30);
+    elapsed += 30;
+    const wreck = {
+      id: `duration_audit_wreck_${mission.cause.fingerprint}`,
+      type: 'wreck',
+      alive: true,
+      pos: { x: 600, z: 0 },
+      vel: { x: 0, z: 0 },
+      data: { salvagePool: { cmdty_salvage_electronics: 1 } },
+    };
+    state.entities.set(wreck.id, wreck);
+    state.entityList.push(wreck);
+    bus.emit('salvage:completed', {
+      wreckId: wreck.id,
+      loot: { cmdty_salvage_electronics: 1 },
+      source: 'modeled-native-wreck-salvage',
+    });
+    return elapsed;
+  }
   if (mission.type === 'escort') return driveEscort(state, missionSystem, bus, mission);
   if (['cargo_delivery', 'passenger_transport', 'salvage_retrieval', 'smuggling_run'].includes(mission.type)) {
     ensureStation(state, mission.destStationId, mission.distance);
@@ -452,7 +473,11 @@ export async function runSp1NativeDurationAudit() {
 
 async function main() {
   const report = await runSp1NativeDurationAudit();
+  const authoredRouteCount = SET_PIECE_MISSIONS.reduce((sum, definition) => (
+    sum + (definition.branches || []).length
+  ), 0);
   assert.equal(report.driverShortcutCount, 0, 'duration driver must not call settlement helpers directly');
+  assert.equal(report.routes.length, authoredRouteCount, 'duration audit must cover every authored branch');
   for (const route of report.routes) {
     assert.equal(route.status, 'completed');
     assert.equal(route.deadlineBreaches, 0);
@@ -460,7 +485,7 @@ async function main() {
     assert.equal(route.terminalReceiptCount, 1);
     console.log(`ok   ${route.archetypeId}/${route.branchId} ${route.elapsedS}s ${route.stageRows.length} stages`);
   }
-  console.log(`PASS SP1 native duration audit (${report.routes.length}/6 routes)`);
+  console.log(`PASS SP1 native duration audit (${report.routes.length}/${authoredRouteCount} routes)`);
   console.log(report.claim);
 }
 

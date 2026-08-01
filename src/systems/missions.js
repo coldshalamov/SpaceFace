@@ -424,6 +424,9 @@ function missionNavReason(m, station, sector) {
     const choice = p.wreckChoiceId === 'authority_handover' ? 'authority handover' : 'hardware claim';
     return `Confirm the ${choice} disposition for ${wreckName}`;
   }
+  if (p.setPieceObjective === 'investigation_recover_box') {
+    return `Salvage a wreck in ${sectorName} and recover its black box`;
+  }
   if (m.storyTag === CONTRACT_47A_B0_TAG) {
     return p.sampleRecovered
       ? 'Deliver the 47-A sample to Helios Station'
@@ -533,6 +536,10 @@ export const missions = {
     bus.on('economy:tradeCompleted', (p) => this._onTrade(p));
     // mining_quota: aggregate mined units of the target commodity.
     bus.on('mining:yield', (p) => this._onMiningYield(p));
+    // The Investigation Chain's black-box stage consumes the native mining-owned wreck salvage
+    // receipt. It has no synthetic cargo or destination dock: the physical wreck recovery is the
+    // objective, and missions remains the settlement authority.
+    bus.on('salvage:completed', (p) => this._onSalvageCompleted(p));
     // bulk_haul: tethered bulk chunks delivered at refinery docks.
     bus.on('mining:bulkHaulDelivered', (p) => this._onBulkHaulDelivered(p));
     // bounty_hunt / patrol_clear: a tagged hostile died to the player.
@@ -2504,6 +2511,23 @@ export const missions = {
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
+  },
+
+  _onSalvageCompleted(p) {
+    if (!p || p.wreckId == null) return false;
+    const wreck = this.state.entities && this.state.entities.get(p.wreckId);
+    if (!wreck || wreck.type !== 'wreck') return false;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!m || m.status !== 'active' || m.type !== 'salvage_retrieval') continue;
+      if (!m.params || m.params.setPieceObjective !== 'investigation_recover_box') continue;
+      if (this.state.world.currentSectorId !== m.destSectorId) continue;
+      m.params.recoveredWreckId = p.wreckId;
+      m.objectiveProgress = m.objectiveTarget;
+      this._completeMission(m, i);
+      return true;
+    }
+    return false;
   },
 
   _onKill(p) {

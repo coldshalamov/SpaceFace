@@ -1,6 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+import { SET_PIECE_MISSIONS } from '../src/data/missions.js';
+
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 const steps = [
@@ -36,5 +38,8 @@ for (const step of steps) {
   if (result.status !== 0) process.exit(result.status || 1);
 }
 
-console.log('\nPASS SP1 aggregate: focused contracts, clause checker, and 6 modeled deterministic native-event routes.');
+const authoredRouteCount = SET_PIECE_MISSIONS.reduce((sum, definition) => (
+  sum + (definition.branches || []).length
+), 0);
+console.log(`\nPASS SP1 aggregate: focused contracts, clause checker, and ${authoredRouteCount} modeled deterministic native-event routes.`);
 console.log('Duration evidence is modeled deterministic native-event route duration, not human playtime.');
