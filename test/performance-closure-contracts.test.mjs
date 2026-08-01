@@ -105,6 +105,7 @@ function gpuTimerFixture(overrides = {}) {
     pending: 0,
     lastInvalidation: null,
     captureValid: true,
+    drain: { drained: true, timedOut: false, polls: 1, pending: 0 },
     queryCounts: {
       attempted: 300,
       issued: 300,
@@ -160,6 +161,10 @@ test('scenario matrix covers every closure workload and exact fleet scales', () 
     resolvePerformanceScenarios(['fleet_full_render_10', 'fleet_full_render_25', 'fleet_full_render_50']).map((entry) => entry.fleetCount),
     [10, 25, 50],
   );
+  assert.equal(performanceScenario('docked_market_ui').gpuTimingPolicy, 'idle-3d');
+  assert.equal(performanceScenario('jump_asset_admission').pipelinePolicy, 'admission');
+  assert.equal(performanceScenario('flight_steady').gpuTimingPolicy, 'required');
+  assert.equal(performanceScenario('flight_steady').pipelinePolicy, 'stable');
   assert.throws(() => resolvePerformanceScenarios(['unknown']), /unknown performance scenario/);
 });
 
@@ -574,6 +579,48 @@ test('measurement validity fails closed on contamination, fallback GPU identity,
   const cacheDrift = structuredClone(valid);
   cacheDrift.windows[0].pipeline.end.programCount += 1;
   verdict = evaluatePerformanceMeasurementValidity(cacheDrift);
+  assert.equal(verdict.pass, false);
+  assert.ok(verdict.reasons.includes('windows[0]-pipeline-cache-mismatch'));
+
+  const dockedIdle = reportFixture(windowFixture({
+    scenarioId: 'docked_market_ui',
+    routeProof: { mode: 'flight', docked: true, uiOnlyPath: true },
+    gpu: gpuTimerFixture({
+      captureValid: false,
+      queryCounts: {
+        attempted: 0,
+        issued: 0,
+        completed: 0,
+        pending: 0,
+        dropped: 0,
+        rejected: 0,
+      },
+      terminals: [],
+    }),
+  }));
+  verdict = evaluatePerformanceMeasurementValidity(dockedIdle);
+  assert.equal(verdict.pass, true, verdict.reasons.join('\n'));
+
+  const mislabeledIdle = structuredClone(dockedIdle);
+  mislabeledIdle.windows[0].scenarioId = 'flight_steady';
+  verdict = evaluatePerformanceMeasurementValidity(mislabeledIdle);
+  assert.equal(verdict.pass, false);
+  assert.ok(verdict.reasons.includes('windows[0]-gpu-timer-invalid'));
+
+  const jumpAdmission = reportFixture(windowFixture({
+    scenarioId: 'jump_asset_admission',
+    action: { kind: 'jump_request', dispatched: true },
+    pipeline: {
+      start: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 20 },
+      end: { activeAdmissionJobs: 0, meshBuildQueueRemaining: 0, programCount: 28 },
+    },
+  }));
+  verdict = evaluatePerformanceMeasurementValidity(jumpAdmission);
+  assert.equal(verdict.pass, true, verdict.reasons.join('\n'));
+
+  const regressingAdmission = structuredClone(jumpAdmission);
+  regressingAdmission.windows[0].pipeline.end.programCount = 19;
+  verdict = evaluatePerformanceMeasurementValidity(regressingAdmission);
   assert.equal(verdict.pass, false);
   assert.ok(verdict.reasons.includes('windows[0]-pipeline-cache-mismatch'));
 });

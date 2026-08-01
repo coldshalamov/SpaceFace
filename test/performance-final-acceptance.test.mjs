@@ -387,6 +387,9 @@ function performanceWindow(scenarioId, environment, frameMs = 16.5) {
     restoration: { restored: true, measurementDisabled: true },
     pageErrors: [],
     autosave,
+    action: scenarioId === 'jump_asset_admission'
+      ? { kind: 'jump_request', dispatched: true }
+      : null,
   };
 }
 
@@ -409,6 +412,7 @@ function gpuTimer() {
     pending: 0,
     lastInvalidation: null,
     captureValid: true,
+    drain: { drained: true, timedOut: false, polls: 1, pending: 0 },
     queryCounts: {
       attempted: 1,
       issued: 1,

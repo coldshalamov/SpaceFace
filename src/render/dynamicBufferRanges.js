@@ -60,7 +60,36 @@ function acknowledgeUpload(binding, callbackAttribute) {
   uploadCallbackBinding = binding;
   try {
     if (!snapshot.active) {
-      markOwnerInvalid(owner, `${owner.id}:${binding.name} received an unsolicited upload callback`, 'callbackViolations');
+      if (!binding.contextRestoreUploadPending) {
+        markOwnerInvalid(owner, `${owner.id}:${binding.name} received an unsolicited upload callback`, 'callbackViolations');
+      }
+      if (callbackAttribute !== binding.attribute) {
+        markOwnerInvalid(owner, `${owner.id}:${binding.name} restored-context callback used a stale attribute`, 'callbackViolations');
+      }
+      if (binding.attribute.onUploadCallback !== binding.callback) {
+        markOwnerInvalid(owner, `${owner.id}:${binding.name} restored-context callback identity changed`, 'callbackViolations');
+      }
+      if (binding.attribute.version !== binding.knownVersion) {
+        markOwnerInvalid(owner, `${owner.id}:${binding.name} restored-context upload version changed outside its owner`, 'callbackViolations');
+      }
+      if (binding.attribute.updateRanges.length !== 0) {
+        markOwnerInvalid(owner, `${owner.id}:${binding.name} restored-context upload retained foreign update ranges`, 'callbackViolations');
+      }
+
+      // THREE discards its WebGLAttributes cache when a context is restored and
+      // performs a fresh bufferData upload from the current CPU array. That
+      // upload preserves BufferAttribute.version and therefore has no owned
+      // publication snapshot. Accept exactly the one callback armed by the
+      // restore event; the full driver upload also consumes every dirty span.
+      binding.contextRestoreUploadPending = false;
+      binding.forceFull = false;
+      binding.forceReason = null;
+      resetBindingPending(binding);
+      owner.diagnostics.acknowledgements++;
+      owner.diagnostics.contextRestoreAcknowledgements++;
+      owner.coordinator.diagnostics.acknowledgedUploads++;
+      owner.coordinator.diagnostics.contextRestoreAcknowledgements++;
+      return;
     }
     if (callbackAttribute !== binding.attribute || snapshot.attribute !== binding.attribute) {
       markOwnerInvalid(owner, `${owner.id}:${binding.name} upload callback used a stale attribute`, 'callbackViolations');
@@ -82,6 +111,7 @@ function acknowledgeUpload(binding, callbackAttribute) {
     snapshot.active = false;
     snapshot.attribute = null;
     snapshot.record = null;
+    binding.contextRestoreUploadPending = false;
     binding.acknowledgedGeneration = snapshot.generation;
     owner.diagnostics.acknowledgedGeneration = Math.max(
       owner.diagnostics.acknowledgedGeneration,
@@ -169,6 +199,7 @@ function publishBinding(binding, epoch, forceFull) {
 
   binding.knownVersion = attribute.version;
   binding.publishedGeneration = generation;
+  binding.contextRestoreUploadPending = false;
   binding.forceFull = false;
   binding.forceReason = null;
 
@@ -316,6 +347,7 @@ export function createDynamicBufferCoordinator(scene) {
     eligibilityViolations: 0,
     contextLosses: 0,
     contextRestores: 0,
+    contextRestoreAcknowledgements: 0,
     invalid: false,
     lastError: null,
     owners: [],
@@ -408,14 +440,22 @@ export function createDynamicBufferCoordinator(scene) {
   coordinator.handleContextLost = () => {
     diagnostics.contextLosses++;
     for (let index = 0; index < coordinator.owners.length; index++) {
-      forceOwnerFull(coordinator.owners[index], 'context-loss');
+      const owner = coordinator.owners[index];
+      forceOwnerFull(owner, 'context-loss');
+      for (let bindingIndex = 0; bindingIndex < owner.bindings.length; bindingIndex++) {
+        owner.bindings[bindingIndex].contextRestoreUploadPending = false;
+      }
     }
   };
 
   coordinator.handleContextRestored = () => {
     diagnostics.contextRestores++;
     for (let index = 0; index < coordinator.owners.length; index++) {
-      forceOwnerFull(coordinator.owners[index], 'context-restore');
+      const owner = coordinator.owners[index];
+      forceOwnerFull(owner, 'context-restore');
+      for (let bindingIndex = 0; bindingIndex < owner.bindings.length; bindingIndex++) {
+        owner.bindings[bindingIndex].contextRestoreUploadPending = true;
+      }
     }
   };
 
@@ -456,6 +496,7 @@ export function registerDynamicBufferOwner(scene, spec) {
       forceFullUploads: 0,
       partialUploads: 0,
       acknowledgements: 0,
+      contextRestoreAcknowledgements: 0,
       pendingGeneration: 0,
       publishedGeneration: 0,
       acknowledgedGeneration: 0,
@@ -494,6 +535,7 @@ export function registerDynamicBufferOwner(scene, spec) {
       publishedGeneration: 0,
       acknowledgedGeneration: 0,
       supersededGeneration: 0,
+      contextRestoreUploadPending: false,
       callback: null,
       snapshot: {
         active: false,

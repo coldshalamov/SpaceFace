@@ -35,7 +35,10 @@ const JSON_STRINGIFY = JSON.stringify;
 const SCENARIOS = [
   scenario('flight_steady', 'steady-flight', { primaryCapable: true }),
   scenario('mining_tether_active', 'mining-tether', { injectedState: true }),
-  scenario('docked_market_ui', 'docked-ui', { primaryCapable: true }),
+  scenario('docked_market_ui', 'docked-ui', {
+    primaryCapable: true,
+    gpuTimingPolicy: 'idle-3d',
+  }),
   scenario('context_recover_steady', 'context-recovery', { primaryCapable: true }),
   ...FULL_RENDER_FLEET_COUNTS.map((count) => scenario(`fleet_full_render_${count}`, 'full-render-fleet', {
     injectedState: true,
@@ -63,6 +66,7 @@ const SCENARIOS = [
   scenario('jump_asset_admission', 'jump-asset-admission', {
     transitionWindow: true,
     primaryCapable: true,
+    pipelinePolicy: 'admission',
   }),
   scenario('autosave_under_load', 'autosave-under-load', {
     injectedState: true,
@@ -348,9 +352,14 @@ export function evaluatePerformanceMeasurementValidity(report) {
   reasons.push(add('windows.present', windows.length > 0, 'measurement-windows-missing'));
   for (let index = 0; index < windows.length; index += 1) {
     const window = windows[index];
+    const definition = performanceScenario(window?.scenarioId);
     const timer = window?.gpu;
     const queryCounts = timer?.queryCounts;
-    const gpuTimerValid = timer?.available === true
+    const drainValid = timer?.drain?.drained === true
+      && timer?.drain?.timedOut === false
+      && timer?.drain?.pending === 0;
+    const completedGpuTimerValid = drainValid
+      && timer?.available === true
       && timer?.captureValid === true
       && timer?.lastDisjoint === false
       && timer?.lastInvalidation == null
@@ -362,6 +371,26 @@ export function evaluatePerformanceMeasurementValidity(report) {
       && queryCounts.rejected === 0
       && Array.isArray(timer?.terminals)
       && timer.terminals.length > 0;
+    const idleGpuTimerValid = definition?.gpuTimingPolicy === 'idle-3d'
+      && drainValid
+      && window?.routeProof?.mode === 'flight'
+      && window?.routeProof?.docked === true
+      && window?.routeProof?.uiOnlyPath === true
+      && timer?.available === true
+      && timer?.enabled === true
+      && timer?.captureValid === false
+      && timer?.lastDisjoint === false
+      && timer?.lastInvalidation == null
+      && timer?.pending === 0
+      && queryCounts?.attempted === 0
+      && queryCounts?.issued === 0
+      && queryCounts?.completed === 0
+      && queryCounts?.pending === 0
+      && queryCounts?.dropped === 0
+      && queryCounts?.rejected === 0
+      && Array.isArray(timer?.terminals)
+      && timer.terminals.length === 0;
+    const gpuTimerValid = completedGpuTimerValid || idleGpuTimerValid;
     reasons.push(add(
       `windows[${index}].gpu-timer-valid`,
       gpuTimerValid,
@@ -370,16 +399,23 @@ export function evaluatePerformanceMeasurementValidity(report) {
 
     const pipelineStart = window?.pipeline?.start;
     const pipelineEnd = window?.pipeline?.end;
-    const pipelineStable = finiteOrNull(pipelineStart?.programCount) != null
+    const pipelineBoundariesSettled = finiteOrNull(pipelineStart?.programCount) != null
       && finiteOrNull(pipelineEnd?.programCount) != null
-      && Number(pipelineStart.programCount) === Number(pipelineEnd.programCount)
       && Number(pipelineStart.activeAdmissionJobs) === 0
       && Number(pipelineEnd.activeAdmissionJobs) === 0
       && Number(pipelineStart.meshBuildQueueRemaining) === 0
       && Number(pipelineEnd.meshBuildQueueRemaining) === 0;
+    const pipelinePolicy = definition?.pipelinePolicy || 'stable';
+    const pipelineProgramsValid = pipelinePolicy === 'stable'
+      ? Number(pipelineStart?.programCount) === Number(pipelineEnd?.programCount)
+      : pipelinePolicy === 'admission'
+        && window?.action?.kind === 'jump_request'
+        && window?.action?.dispatched === true
+        && Number(pipelineEnd?.programCount) >= Number(pipelineStart?.programCount);
+    const pipelineValid = pipelineBoundariesSettled && pipelineProgramsValid;
     reasons.push(add(
-      `windows[${index}].pipeline-cache-stable`,
-      pipelineStable,
+      `windows[${index}].pipeline-${pipelinePolicy}`,
+      pipelineValid,
       `windows[${index}]-pipeline-cache-mismatch`,
     ));
 
@@ -652,6 +688,8 @@ function scenario(id, workloadClass, extra = {}) {
     transitionWindow: false,
     actualRenderedEntitiesRequired: false,
     leaseGate: null,
+    gpuTimingPolicy: 'required',
+    pipelinePolicy: 'stable',
     ...extra,
   };
 }

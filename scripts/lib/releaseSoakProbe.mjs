@@ -868,7 +868,7 @@ async function sampleRafWindow(page, {
         docked,
         uiOnlyPath: docked === true,
         uiOnlyPathNote: docked
-          ? 'Docked station market/hub — UI-dominant path; renderer still runs (not zero-cost).'
+          ? 'Docked station market/hub — rAF and UI remain live while the 3D renderer is deliberately idle.'
           : null,
         stationScreenVisible: stationVisible,
         entityCounts: entities,
@@ -939,6 +939,7 @@ async function sampleRafWindow(page, {
       saveEvents,
       actionReceipt,
       transitionBreakdown,
+      gpuDrain,
     }) {
       const perf = window.__SPACEFACE_PERF__ && typeof window.__SPACEFACE_PERF__.getReport === 'function'
         ? window.__SPACEFACE_PERF__.getReport()
@@ -1064,6 +1065,7 @@ async function sampleRafWindow(page, {
           lastInvalidation: gpu?.lastInvalidation || null,
           queryCounts: gpu?.queryCounts || null,
           captureValid: gpu?.captureValid === true,
+          drain: gpuDrain || null,
           terminals: gpu?.terminals || null,
           passes: gpu?.passes || null,
         },
@@ -1207,11 +1209,22 @@ async function sampleRafWindow(page, {
         actionReceipt.settleTimedOut = !terminalSaveEvent();
       }
 
-      // Allow a couple of frames so async GPU query readback can settle without spinning.
-      await raf();
-      await raf();
-      if (state?.render?.gpuTimers && typeof state.render.gpuTimers.poll === 'function') {
-        try { state.render.gpuTimers.poll(); } catch (_) { /* ignore */ }
+      // Close the timing window before reading it. Merely polling twice leaves a
+      // normal multi-frame driver queue unresolved and makes every otherwise
+      // valid window fail. drainPending pauses new submissions, performs only
+      // non-blocking availability checks, and fails closed on its bounded
+      // two-second deadline without ever calling gl.finish().
+      const timers = state?.render?.gpuTimers;
+      let gpuDrain = null;
+      if (gpuOn && timers && typeof timers.drainPending === 'function') {
+        gpuDrain = await timers.drainPending({
+          maxPolls: 120,
+          timeoutMs: 2_000,
+          yieldFn: raf,
+        });
+      } else if (timers && typeof timers.poll === 'function') {
+        timers.poll();
+        gpuDrain = { drained: false, timedOut: false, pending: null, reason: 'drain-unavailable' };
       }
 
       const settingsEnd = readSettingsSlice();
@@ -1268,6 +1281,7 @@ async function sampleRafWindow(page, {
         saveEvents,
         actionReceipt,
         transitionBreakdown,
+        gpuDrain,
       });
       return { samples, attribution };
     } finally {

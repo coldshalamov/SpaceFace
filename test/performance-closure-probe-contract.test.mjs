@@ -92,6 +92,11 @@ test('profile and closure probes share scene metrics and bounded measurement gat
   assert.match(probe, /setRenderWorkEnabled\(false\)/);
   assert.match(probe, /setSystemTimingEnabled\(false\)/);
   assert.match(probe, /timers\.setEnabled\(false\)/);
+  assert.match(
+    probe,
+    /await timers\.drainPending\(\{[\s\S]{0,260}maxPolls:\s*120[\s\S]{0,260}timeoutMs:\s*2_000[\s\S]{0,260}yieldFn:\s*raf[\s\S]{0,120}\}\)/,
+    'each measured window must pause submissions and boundedly drain delayed GPU queries before reporting',
+  );
   assert.match(probe, /captureValid:\s*gpu\?\.captureValid\s*===\s*true/);
   assert.match(probe, /lastInvalidation:\s*gpu\?\.lastInvalidation\s*\|\|\s*null/);
   assert.match(probe, /queryCounts:\s*gpu\?\.queryCounts\s*\|\|\s*null/);

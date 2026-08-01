@@ -141,6 +141,35 @@ test('context loss supersedes an unacknowledged generation and restore forces a 
   assert.equal(fixture.coordinator.getDiagnostics().contextRestores, 1);
 });
 
+test('context restoration accepts Three driver re-upload without weakening unsolicited callback detection', () => {
+  const fixture = makeOwnerFixture();
+  let epoch = beginSceneRender(fixture);
+  acknowledgeInitial(fixture.attribute);
+  fixture.coordinator.disarm(epoch);
+
+  const versionBeforeRestore = fixture.attribute.version;
+  fixture.coordinator.handleContextLost();
+  fixture.coordinator.handleContextRestored();
+
+  // Three recreates WebGLAttributes after a restored context and invokes the
+  // attribute callback for its full bufferData upload without incrementing the
+  // CPU-side BufferAttribute version or entering our renderer epoch.
+  assert.doesNotThrow(() => fixture.attribute.onUploadCallback());
+  assert.equal(fixture.attribute.version, versionBeforeRestore);
+
+  epoch = beginSceneRender(fixture);
+  assert.equal(fixture.attribute.updateRanges.length, 0,
+    'the acknowledged restored-context buffer must not be uploaded a second time');
+  fixture.coordinator.disarm(epoch);
+
+  assert.equal(fixture.coordinator.getDiagnostics().contextRestoreAcknowledgements, 1);
+  assert.throws(
+    () => fixture.attribute.onUploadCallback(),
+    /received an unsolicited upload callback/,
+    'only the one explicitly armed restored-context upload is accepted',
+  );
+});
+
 test('live sprite and trail owners publish only their packed prefixes after initial residency', () => {
   const scene = new THREE.Scene();
   const coordinator = createDynamicBufferCoordinator(scene);
