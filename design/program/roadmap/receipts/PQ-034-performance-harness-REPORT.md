@@ -220,9 +220,41 @@ census, rejects before launch, and remains valid and unconsumed afterward.
 - the blocked-host test allocates no run artifact and invokes no Browser or Electron launcher;
 - no production broker claim, headed runtime, GPU capture, or performance conclusion was spent.
 
+## Machine-only disabled-path and process-control slice
+
+The original inventory found browser callback delay, owned callback work, GPU query completion, and
+background admission without one shared causal identity. The integrated schemas now separate
+external callback gap/dispatch lag from owned phase work, bind deterministic simulation ticks and
+presentation snapshots, and carry display/render/simulation/query/background-job identity through
+bounded records. The scenario compiler and both semantic comparators are versioned, path-safe,
+bounded, deterministic, and fail closed on structural hazards.
+
+Disabled-path proof now reaches the production call sites. Detailed system/render recording returns
+without inspecting a record key; CPU clocks remain behind `useCpu`; renderer frame identity reuses
+caller-owned storage; GPU `begin` returns before reading the origin or creating a query; post-target
+frame linkage uses integer state; and the authored-upgrade caller guards before constructing its job
+options/record. The enabled stores remain fixed-capacity with explicit loss/refusal accounting.
+
+The broker child foundation separately proves a hard timeout, Windows process-tree cleanup, clean
+and nonzero exits, already-dead PID safety, fast exit during slow spawn accounting, timeout-timer
+cancellation, and protection against recycled-PID termination. This does not claim that the unrun
+Browser/Electron performance matrices terminated cleanly.
+
+- disabled instrumentation plus process-control contracts — PASS 21/21 in 1.727 s;
+- versioned manifest, semantic mutation, measurement-validity, and final-dimension contracts — PASS
+  100/100 in 0.402 s;
+- expanded PERF-00, broker, manifest-registry, and process-control set — PASS 194/194;
+- `npm run check:perf-counters` — PASS 29/29; `npm run check:perf-packets` — PASS 39/39;
+- program docs — PASS with 0 warnings; program-control tools — PASS 9/9;
+- `npm run check:baseline` — PASS 10/10 in 44.968 s;
+- authoritative field, presentation domain, and validity-control mutations all fail with bounded
+  named reasons; baseline-against-baseline remains `neutral` rather than improved;
+- no production broker claim, headed runtime, GPU capture, or live overhead conclusion was spent.
+
 ## Honest residual
 
 This is not the terminal dispatch receipt. Clean matched evidence, instrumentation overhead
-measurement, bounded termination proof, and independent causal review remain open. The current driver and paired
+measurement with instrumentation enabled, live Browser/Electron matrix termination/cleanup, and
+independent causal review remain open. The current driver and paired
 authority are focused-green but intentionally unspent while the machine remains ineligible for a
 quiet L4 capture.

@@ -54,6 +54,23 @@ function origin(displayFrameId, renderFrameId, simTick) {
   return { displayFrameId, renderFrameId, simTick };
 }
 
+test('disabled GPU timing rejects before inspecting or allocating a query origin', () => {
+  const fake = createFakeTimerGl();
+  const timers = createGpuTimers(fake.gl);
+  const poisonOrigin = new Proxy({}, {
+    get() {
+      throw new Error('disabled GPU timer inspected query origin');
+    },
+  });
+
+  assert.equal(timers.enabled, false);
+  assert.doesNotThrow(() => {
+    assert.equal(timers.begin('drawPreparedFrame', poisonOrigin), false);
+  });
+  assert.deepEqual(timers.getReport().terminals, []);
+  assert.equal(timers.getReport().queryCounts.issued, 0);
+});
+
 test('delayed GPU completion retains immutable monotonic query and frame origins', () => {
   const fake = createFakeTimerGl();
   const timers = createGpuTimers(fake.gl);

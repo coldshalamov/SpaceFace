@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
 import { ensurePerfRuntime } from '../src/core/perfRuntime.js';
@@ -126,4 +127,38 @@ test('background job evidence is bounded and disabling closes active records exp
   assert.equal(report.droppedRecords, 2);
   assert.equal(report.activeCount, 0);
   assert.equal(report.records.at(-1).terminal, 'measurement-disabled');
+});
+
+test('disabled attribution hot paths reuse caller storage and branch before detailed records', async () => {
+  const perf = ensurePerfRuntime({ entityList: [], settings: { video: {} } });
+  const poisonName = {
+    [Symbol.toPrimitive]() {
+      throw new Error('disabled timing path inspected a record key');
+    },
+  };
+
+  assert.equal(perf.systemTimingEnabled, false);
+  assert.equal(perf.renderWorkEnabled, false);
+  assert.doesNotThrow(() => perf.recordSystem(poisonName, 1));
+  assert.doesNotThrow(() => perf.recordRenderWork(poisonName, 1));
+
+  const frameOrigin = {};
+  perf.beginFrame(1 / 60);
+  perf.beginRenderFrame(1);
+  assert.equal(perf.readFrameIdentity(frameOrigin), frameOrigin);
+  perf.beginFrame(1 / 60);
+  perf.beginRenderFrame(2);
+  assert.equal(perf.readFrameIdentity(frameOrigin), frameOrigin);
+  assert.equal(frameOrigin.displayFrameId, 2);
+  assert.equal(frameOrigin.renderFrameId, 2);
+
+  const [renderer, bloom, partsLibrary] = await Promise.all([
+    readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/render/bloom.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8'),
+  ]);
+  assert.match(renderer, /const t0 = useCpu \? performance\.now\(\) : 0/);
+  assert.match(bloom, /const t0 = useCpu \? performance\.now\(\) : 0/);
+  assert.match(renderer, /this\._perfFrameOrigin = this\._perfFrameOrigin \|\| \{\};[\s\S]*perf\.readFrameIdentity\(this\._perfFrameOrigin\)/);
+  assert.match(partsLibrary, /perf\?\.backgroundJobTrackingEnabled === true[\s\S]*perf\.beginBackgroundJob\('authored-upgrade'/);
 });
