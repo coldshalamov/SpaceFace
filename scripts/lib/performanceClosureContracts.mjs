@@ -68,6 +68,10 @@ const SCENARIOS = [
     transitionWindow: true,
     primaryCapable: true,
     pipelinePolicy: 'admission',
+    // This terminal route follows every reversible arm. Retained evidence observed a legitimate
+    // final cache-hit admission at 18.1 s; keep the five-second stable fingerprint intact and give
+    // only this cleanup-scoped route enough bounded time to prove it.
+    pipelineSettleTimeoutMs: 30_000,
   }),
   scenario('autosave_under_load', 'autosave-under-load', {
     injectedState: true,
@@ -224,6 +228,11 @@ export function comparePerformanceWindows(before, after) {
       estimatedMissedVsyncs: afterSummary.estimatedMissedVsyncs - beforeSummary.estimatedMissedVsyncs,
     },
   };
+}
+
+export function performanceScenarioPipelineSettleTimeoutMs(id) {
+  const timeoutMs = Number(performanceScenario(id)?.pipelineSettleTimeoutMs);
+  return Number.isFinite(timeoutMs) && timeoutMs >= 5_000 ? timeoutMs : 20_000;
 }
 
 export function evaluatePerformanceImprovement({
@@ -410,7 +419,7 @@ export function evaluatePerformanceMeasurementValidity(report) {
       && pipelineStableMs >= 5_000
       && pipelineMaxWaitMs != null
       && pipelineMaxWaitMs >= pipelineStableMs
-      && pipelineMaxWaitMs <= 20_000
+      && pipelineMaxWaitMs <= performanceScenarioPipelineSettleTimeoutMs(window?.scenarioId)
       && pipelineElapsedMs != null
       && pipelineElapsedMs >= pipelineStableMs
       && pipelineElapsedMs <= pipelineMaxWaitMs + 250
@@ -756,6 +765,7 @@ function scenario(id, workloadClass, extra = {}) {
     leaseGate: null,
     gpuTimingPolicy: 'required',
     pipelinePolicy: 'stable',
+    pipelineSettleTimeoutMs: 20_000,
     ...extra,
   };
 }

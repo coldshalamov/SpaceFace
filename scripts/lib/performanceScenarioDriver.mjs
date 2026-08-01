@@ -1,8 +1,11 @@
 import {
   PERFORMANCE_SCENARIO_IDS,
   performanceScenario,
+  performanceScenarioPipelineSettleTimeoutMs,
   resolvePerformanceScenarios,
 } from './performanceClosureContracts.mjs';
+
+export { performanceScenarioPipelineSettleTimeoutMs };
 
 const ROUTE_ORDER = Object.freeze([
   'docked_market_ui',
@@ -33,15 +36,6 @@ export function performanceScenarioExecutionOrder(ids = PERFORMANCE_SCENARIO_IDS
 
 export function performanceScenarioHoldsMeasuredPose(definition) {
   return definition?.injectedState === true && definition?.transitionWindow !== true;
-}
-
-export function performanceScenarioPipelineSettleTimeoutMs(scenarioId) {
-  // The cleanup-scoped jump runs after every reversible matrix arm. Its warmup can inherit a final
-  // cache-hit authored admission from the prior route; retained failure evidence observed that
-  // transition at 18.1 s, leaving only 1.9 s of the required 5 s stability proof. Preserve the
-  // stability rule and give this terminal route one bounded 30 s envelope instead of weakening the
-  // fingerprint or retrying the same 20 s race. Ordinary routes retain the 20 s ceiling.
-  return scenarioId === 'jump_asset_admission' ? 30_000 : 20_000;
 }
 
 export async function preparePerformanceScenario(page, scenarioId, { seed = 47, log = () => {} } = {}) {

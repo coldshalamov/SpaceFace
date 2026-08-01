@@ -684,6 +684,17 @@ test('measurement validity fails closed on contamination, fallback GPU identity,
   verdict = evaluatePerformanceMeasurementValidity(jumpAdmission);
   assert.equal(verdict.pass, true, verdict.reasons.join('\n'));
 
+  const boundedTerminalWarmup = structuredClone(jumpAdmission);
+  boundedTerminalWarmup.windows[0].pipeline.warmup.maxWaitMs = 30_000;
+  verdict = evaluatePerformanceMeasurementValidity(boundedTerminalWarmup);
+  assert.equal(verdict.pass, true, verdict.reasons.join('\n'));
+
+  const oversizedOrdinaryWarmup = structuredClone(valid);
+  oversizedOrdinaryWarmup.windows[0].pipeline.warmup.maxWaitMs = 30_000;
+  verdict = evaluatePerformanceMeasurementValidity(oversizedOrdinaryWarmup);
+  assert.equal(verdict.pass, false);
+  assert.ok(verdict.reasons.includes('windows[0]-pipeline-warmup-unsettled'));
+
   const releaseDominantAdmission = structuredClone(jumpAdmission);
   releaseDominantAdmission.windows[0].pipeline.end.programCount = 19;
   verdict = evaluatePerformanceMeasurementValidity(releaseDominantAdmission);
