@@ -60,7 +60,14 @@ test('a clock that remains too coarse after blocking fails closed', () => {
 });
 
 test('malformed analysis cannot pass', () => {
-  const result = evaluatePerformanceInstrumentationOverhead({});
+  const result = evaluatePerformanceInstrumentationOverhead({
+    matchedPairCount: null,
+    matchedBlockCount: null,
+    matchedBlockPairCount: null,
+    matchedBlockMedianOverheadPct: null,
+    callbackResolutionMs: null,
+    disabledCallbackMedianMs: null,
+  });
 
   assert.equal(result.pass, false);
   assert.ok(result.failures.includes('matched-pairs-insufficient'));

@@ -5,10 +5,11 @@ const BACKGROUND_JOB_RING_N = 128;
 const MAX_QUALIFICATION_INTERVAL_SAMPLES = 2_000_000;
 // Detailed per-system timing is an attribution sampler, not an always-on trace. A prime-length
 // schedule avoids locking onto common 2/3/4/5/6/10/12/15-tick owner cadences while retaining
-// 16 representative ticks per 31-tick cycle. A five-second 60 Hz window still yields about 155
-// samples per owner (inside the 180-value ring) and pays roughly half the clock/sample tax.
+// 8 representative ticks per 31-tick cycle. A five-second 60 Hz window still yields about 77
+// samples per owner—enough for bounded attribution—while paying roughly one quarter of the full
+// per-system clock/sample tax.
 export const SYSTEM_TIMING_SAMPLE_PERIOD_TICKS = 31;
-export const SYSTEM_TIMING_SAMPLES_PER_PERIOD = 16;
+export const SYSTEM_TIMING_SAMPLES_PER_PERIOD = 8;
 
 export function shouldSampleSystemTimingTick(simTick) {
   if (!Number.isSafeInteger(simTick) || simTick < 0) return true;

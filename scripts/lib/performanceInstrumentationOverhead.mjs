@@ -17,10 +17,12 @@ const DEFAULTS = Object.freeze({
 });
 
 function finite(value) {
+  if (value === null || value === undefined || value === '') return null;
   return Number.isFinite(Number(value)) ? Number(value) : null;
 }
 
 function integer(value) {
+  if (value === null || value === undefined || value === '') return null;
   return Number.isSafeInteger(Number(value)) ? Number(value) : null;
 }
 

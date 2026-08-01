@@ -48,6 +48,14 @@ test('system timing uses a prime-period bounded sampler without aliasing common 
     (_, tick) => shouldSampleSystemTimingTick(tick),
   );
   assert.equal(onePeriod.filter(Boolean).length, SYSTEM_TIMING_SAMPLES_PER_PERIOD);
+  assert.equal(SYSTEM_TIMING_SAMPLES_PER_PERIOD, 8,
+    'the enabled attribution sampler must retain the overhead-bounded quarter-rate contract');
+  const fiveSecondSampleCount = Array.from(
+    { length: 300 },
+    (_, tick) => shouldSampleSystemTimingTick(tick),
+  ).filter(Boolean).length;
+  assert.ok(fiveSecondSampleCount >= 75 && fiveSecondSampleCount <= 80,
+    `five-second attribution should retain about 77 owner samples, got ${fiveSecondSampleCount}`);
   assert.deepEqual(
     Array.from(
       { length: SYSTEM_TIMING_SAMPLE_PERIOD_TICKS },
