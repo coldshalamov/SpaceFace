@@ -67,6 +67,23 @@ import { requireBrokerClaimOrDiagnostic } from './validationBroker.mjs';
 
 export const DEFAULT_VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 export const DEFAULT_CYCLES = Object.freeze({ browser: 2, electron: 2, local: 6 });
+// Get-Process CPU time advances in scheduler-sized quanta on Windows, so a near-zero threshold
+// mistakes ordinary dormant desktop roots for foreground work. Sample long enough to average those
+// ticks and reject sustained work (or churn); the route's no-op control and GPU validity checks remain
+// the timing authority once the bounded admission sample passes.
+export const PERFORMANCE_ACTIVITY_SAMPLE_MS = 5_000;
+export const PERFORMANCE_ACTIVITY_MAX_AGGREGATE_CPU_CORE_FRACTION = 0.125;
+export const PERFORMANCE_ACTIVITY_MAX_PROCESS_CPU_CORE_FRACTION = 0.075;
+
+const PERFORMANCE_CONTAMINANT_PATTERN =
+  /^(?:blender|blender-launcher|blender-mcp|chrome|msedge|msedgewebview2|electron)(?:\.exe)?$/i;
+const PERFORMANCE_PROCESS_SNAPSHOT_SCRIPT = [
+  "$names=@('blender','blender-launcher','blender-mcp','chrome','msedge','msedgewebview2','electron')",
+  '$rows=@(Get-Process -ErrorAction SilentlyContinue | Where-Object { $names -contains $_.ProcessName } | ForEach-Object {',
+  "[pscustomobject]@{name=($_.ProcessName+'.exe');pid=[int]$_.Id;cpuSeconds=if($null -eq $_.CPU){0}else{[double]$_.CPU}}",
+  '})',
+  'ConvertTo-Json -Compress -InputObject $rows',
+].join(';');
 
 export function performanceAttributionRuntimePlan(runtimeKind) {
   assert(['browser', 'electron'].includes(runtimeKind), 'runtimeKind must be browser or electron');
@@ -2087,17 +2104,24 @@ function withTimeout(promise, timeoutMs, label) {
   return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs} ms`)), timeoutMs); })]).finally(() => clearTimeout(timer));
 }
 
-async function inspectPerformanceActivity(root) {
+async function inspectPerformanceActivity(root, {
+  processSampleMs = PERFORMANCE_ACTIVITY_SAMPLE_MS,
+  processSnapshotReader = readPerformanceProcessSnapshot,
+} = {}) {
   const lockRoot = path.join(root, 'assets', 'ships', 'release.__lock');
   const buildingPath = path.join(root, 'assets', 'ships', 'release.__building');
   const [releaseLock, releaseBuilding, processes] = await Promise.all([
     inspectActivityPath(lockRoot, path.join(lockRoot, 'owner.json')),
     inspectActivityPath(buildingPath, buildingPath),
-    inspectPerformanceContaminants(),
+    inspectPerformanceContaminants({
+      sampleMs: processSampleMs,
+      snapshotReader: processSnapshotReader,
+    }),
   ]);
-  const active = releaseLock.active === true || releaseBuilding.active === true || processes.names.length > 0
+  const active = releaseLock.active === true || releaseBuilding.active === true || processes.active === true
     ? true
-    : (releaseLock.active === false && releaseBuilding.active === false && processes.available === true ? false : null);
+    : (releaseLock.active === false && releaseBuilding.active === false
+      && processes.available === true && processes.active === false ? false : null);
   return {
     capturedAt: new Date().toISOString(),
     releaseLock,
@@ -2141,22 +2165,146 @@ function sanitizeActivityOwner(value) {
   return result;
 }
 
-async function inspectPerformanceContaminants() {
-  if (process.platform !== 'win32') return { available: false, names: [], entries: [], reason: `unsupported-platform:${process.platform}` };
-  try {
-    const stdout = await captureProcessOutput('tasklist', ['/FO', 'CSV', '/NH']);
-    const processPattern = /^(?:blender|blender-launcher|blender-mcp|chrome|msedge|msedgewebview2|electron)(?:\.exe)?$/i;
-    const entries = stdout.split(/\r?\n/).map((line) => {
-      const match = /^"((?:[^"]|"")*)","(\d+)"/.exec(line);
-      return match ? { name: match[1].replace(/""/g, '"'), pid: Number(match[2]) } : null;
-    }).filter((entry) => entry && processPattern.test(entry.name))
-      .sort((a, b) => a.name.localeCompare(b.name) || a.pid - b.pid);
-    const names = [...new Set(entries.map((entry) => entry.name))]
-      .sort((a, b) => a.localeCompare(b));
-    return { available: true, names, entries };
-  } catch (error) {
-    return { available: false, names: [], entries: [], reason: error?.message || String(error) };
+async function inspectPerformanceContaminants({
+  sampleMs = PERFORMANCE_ACTIVITY_SAMPLE_MS,
+  snapshotReader = readPerformanceProcessSnapshot,
+} = {}) {
+  if (process.platform !== 'win32') {
+    return {
+      available: false,
+      active: null,
+      names: [],
+      entries: [],
+      reasons: [`unsupported-platform:${process.platform}`],
+    };
   }
+  try {
+    const before = await snapshotReader();
+    await new Promise((resolve) => setTimeout(resolve, sampleMs));
+    const after = await snapshotReader();
+    return classifyPerformanceProcessActivity({ before, after, sampleMs });
+  } catch (error) {
+    return {
+      available: false,
+      active: null,
+      names: [],
+      entries: [],
+      reasons: [error?.message || String(error)],
+    };
+  }
+}
+
+async function readPerformanceProcessSnapshot() {
+  const stdout = await captureProcessOutput('powershell.exe', [
+    '-NoProfile',
+    '-NonInteractive',
+    '-Command',
+    PERFORMANCE_PROCESS_SNAPSHOT_SCRIPT,
+  ]);
+  const parsed = JSON.parse(stdout || '[]');
+  return Array.isArray(parsed) ? parsed : [parsed];
+}
+
+export function classifyPerformanceProcessActivity({
+  before,
+  after,
+  sampleMs,
+  maxAggregateCpuCoreFraction = PERFORMANCE_ACTIVITY_MAX_AGGREGATE_CPU_CORE_FRACTION,
+  maxProcessCpuCoreFraction = PERFORMANCE_ACTIVITY_MAX_PROCESS_CPU_CORE_FRACTION,
+} = {}) {
+  const reasons = [];
+  if (!Array.isArray(before) || !Array.isArray(after)
+    || !Number.isFinite(sampleMs) || sampleMs < 100
+    || !Number.isFinite(maxAggregateCpuCoreFraction) || maxAggregateCpuCoreFraction < 0
+    || !Number.isFinite(maxProcessCpuCoreFraction) || maxProcessCpuCoreFraction < 0) {
+    return {
+      available: false,
+      active: null,
+      sampleMs: Number.isFinite(sampleMs) ? sampleMs : null,
+      processCount: 0,
+      names: [],
+      entries: [],
+      aggregateCpuDeltaSeconds: null,
+      aggregateCpuCoreFraction: null,
+      started: [],
+      ended: [],
+      reasons: ['snapshot-unavailable-or-invalid'],
+    };
+  }
+
+  const normalize = (entries) => entries.map((entry) => ({
+    name: String(entry?.name || '').trim().toLowerCase(),
+    pid: Number(entry?.pid),
+    cpuSeconds: Number(entry?.cpuSeconds),
+  })).filter((entry) => PERFORMANCE_CONTAMINANT_PATTERN.test(entry.name));
+  const normalizedBefore = normalize(before);
+  const normalizedAfter = normalize(after);
+  const snapshotsValid = [...normalizedBefore, ...normalizedAfter].every((entry) => (
+    entry.name && Number.isInteger(entry.pid) && entry.pid > 0
+    && Number.isFinite(entry.cpuSeconds) && entry.cpuSeconds >= 0
+  ));
+  if (!snapshotsValid) {
+    return {
+      available: false,
+      active: null,
+      sampleMs,
+      processCount: 0,
+      names: [],
+      entries: [],
+      aggregateCpuDeltaSeconds: null,
+      aggregateCpuCoreFraction: null,
+      started: [],
+      ended: [],
+      reasons: ['snapshot-invalid-process-record'],
+    };
+  }
+
+  const byPidBefore = new Map(normalizedBefore.map((entry) => [entry.pid, entry]));
+  const byPidAfter = new Map(normalizedAfter.map((entry) => [entry.pid, entry]));
+  const started = normalizedAfter.filter((entry) => !byPidBefore.has(entry.pid)
+    || byPidBefore.get(entry.pid).name !== entry.name);
+  const ended = normalizedBefore.filter((entry) => !byPidAfter.has(entry.pid)
+    || byPidAfter.get(entry.pid).name !== entry.name);
+  if (started.length > 0 || ended.length > 0) reasons.push('process-churn');
+
+  const entries = normalizedAfter.map((entry) => {
+    const prior = byPidBefore.get(entry.pid);
+    const rawDelta = prior && prior.name === entry.name ? entry.cpuSeconds - prior.cpuSeconds : 0;
+    if (rawDelta < -1e-6) reasons.push(`process-cpu-regressed:${entry.name}:${entry.pid}`);
+    return {
+      name: entry.name,
+      pid: entry.pid,
+      cpuDeltaSeconds: Number(Math.max(0, rawDelta).toFixed(6)),
+    };
+  }).sort((a, b) => a.name.localeCompare(b.name) || a.pid - b.pid);
+  const aggregateCpuDeltaSeconds = Number(entries
+    .reduce((sum, entry) => sum + entry.cpuDeltaSeconds, 0).toFixed(6));
+  const sampleSeconds = sampleMs / 1_000;
+  const aggregateCpuCoreFraction = aggregateCpuDeltaSeconds / sampleSeconds;
+  if (aggregateCpuCoreFraction > maxAggregateCpuCoreFraction) reasons.push('aggregate-cpu-delta');
+  for (const entry of entries) {
+    if (entry.cpuDeltaSeconds / sampleSeconds > maxProcessCpuCoreFraction) {
+      reasons.push(`process-cpu-delta:${entry.name}:${entry.pid}`);
+    }
+  }
+
+  return {
+    available: true,
+    active: reasons.length > 0,
+    sampleMs,
+    thresholds: {
+      maxAggregateCpuCoreFraction,
+      maxProcessCpuCoreFraction,
+    },
+    processCount: entries.length,
+    names: [...new Set(entries.map((entry) => entry.name))].sort((a, b) => a.localeCompare(b)),
+    entries,
+    aggregateCpuDeltaSeconds,
+    aggregateCpuCoreFraction,
+    started,
+    ended,
+    reasons: [...new Set(reasons)],
+  };
 }
 
 function captureProcessOutput(command, args, maxBytes = 4 * 1024 * 1024) {

@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  classifyPerformanceProcessActivity,
   performanceAttributionRuntimePlan,
   runPerformanceAttributionProbe,
 } from '../scripts/lib/releaseSoakProbe.mjs';
@@ -38,6 +39,50 @@ test('runtime plans share route policy while pinning distinct launcher and clean
     cleanupOwner: 'closeOwnedElectronRuntime',
   });
   assert.throws(() => performanceAttributionRuntimePlan('synthetic'), /browser or electron/);
+});
+
+test('bounded activity distinguishes idle protected processes from real contamination', () => {
+  const before = [
+    { name: 'blender.exe', pid: 47, cpuSeconds: 120.125 },
+    { name: 'chrome.exe', pid: 48, cpuSeconds: 12.5 },
+  ];
+  const idle = classifyPerformanceProcessActivity({
+    before,
+    after: [
+      { name: 'blender.exe', pid: 47, cpuSeconds: 120.129 },
+      { name: 'chrome.exe', pid: 48, cpuSeconds: 12.512 },
+    ],
+    sampleMs: 2_000,
+  });
+  assert.equal(idle.available, true);
+  assert.equal(idle.active, false);
+  assert.equal(idle.processCount, 2);
+  assert.equal(idle.aggregateCpuDeltaSeconds, 0.016);
+  assert.deepEqual(idle.reasons, []);
+
+  const active = classifyPerformanceProcessActivity({
+    before,
+    after: [
+      { name: 'blender.exe', pid: 47, cpuSeconds: 120.525 },
+      { name: 'chrome.exe', pid: 48, cpuSeconds: 12.512 },
+    ],
+    sampleMs: 2_000,
+  });
+  assert.equal(active.active, true);
+  assert.match(active.reasons.join('\n'), /aggregate-cpu-delta|process-cpu-delta/);
+
+  const churn = classifyPerformanceProcessActivity({
+    before,
+    after: [...before, { name: 'electron.exe', pid: 49, cpuSeconds: 0.01 }],
+    sampleMs: 2_000,
+  });
+  assert.equal(churn.active, true);
+  assert.match(churn.reasons.join('\n'), /process-churn/);
+
+  const unavailable = classifyPerformanceProcessActivity({ before: null, after: null, sampleMs: 2_000 });
+  assert.equal(unavailable.available, false);
+  assert.equal(unavailable.active, null);
+  assert.match(unavailable.reasons.join('\n'), /snapshot-unavailable/);
 });
 
 test('the current attribution entry is broker-gated before either headed runtime launches', async () => {
