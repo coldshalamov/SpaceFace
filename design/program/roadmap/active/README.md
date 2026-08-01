@@ -38,7 +38,7 @@ PQ-034 through PQ-041 accepted
         └─> PQ-044 PERF-10 WebGPU/TSL slice (deferred unless triggered)
 ```
 
-PQ-021 is checked off and retained under `../retired/`. PQ-018, PQ-019, PQ-020, PQ-022, PQ-023, and
+PQ-021 and PQ-034 are checked off and retained under `../retired/`. PQ-018, PQ-019, PQ-020, PQ-022, PQ-023, and
 PQ-024 have their headless implementation layers integrated. Current corridor
 work is exact acceptance repair, headed capture, evidence-bound integrator review, performance
 evidence, and promotion;
@@ -46,11 +46,11 @@ run `node scripts/program-dispatch.mjs --ready` and claim the returned unit rath
 a parent implementation. PQ-022 and PQ-023 remain portfolio containers, but their current leaf units
 are explicit in the queue.
 
-PQ-034 through PQ-041 have focused implementation on master. PQ-034's protected ten-commit candidate
-has been audited selectively; its remaining native-closure unit is controlled by matched evidence,
-not by the presence of ordinary unrelated desktop processes or an unavailable external reviewer.
-PQ-042 remains dependency-gated on terminal PERF-00–07 acceptance. PQ-043 and PQ-044 remain deferred
-and intentionally have no active packet until their evidence triggers are proved.
+PQ-034 is route-accepted and retired after selective candidate audit, source-paired Browser/Electron
+qualification, exact cleanup, and enabled-overhead proof. PQ-035 through PQ-041 have focused
+implementation on master and their native continuation units are now dispatchable in dependency
+order. PQ-042 remains dependency-gated on terminal PERF-01–07 acceptance. PQ-043 and PQ-044 remain
+deferred and intentionally have no active packet until their evidence triggers are proved.
 
 ## Packet index
 
@@ -63,8 +63,7 @@ and intentionally have no active packet until their evidence triggers are proved
 | [`PQ-023.md`](./PQ-023.md) | implement physics-readable presentation as separate cue-family leaves | current owner events and shared presentation lease |
 | [`PQ-024.md`](./PQ-024.md) | one transient survey target, Core commitment, real-output producing receipt, one exterior consequence | PQ-017 seam rebound; one accepted exterior visual |
 | [`PQ-025.md`](./PQ-025.md) | observational held-out qualification, not a feature branch | PQ-019–024 exact integrated receipts and frozen owner evidence map |
-| [`PQ-034.md`](./PQ-034.md) | establish separate equivalence, measurement-validity, and improvement authority | focused implementation on master; clean ten-commit candidate audit is the first unit |
-| [`PQ-035.md`](./PQ-035.md) | foreground/background lifecycle correctness | focused implementation on master; native acceptance waits on terminal PERF-00 |
+| [`PQ-035.md`](./PQ-035.md) | foreground/background lifecycle correctness | focused implementation on master; native acceptance is unblocked by terminal PERF-00 |
 | [`PQ-036.md`](./PQ-036.md) | main-thread simulation/presentation ownership plus journals | focused implementation on master; native attribution acceptance remains |
 | [`PQ-037.md`](./PQ-037.md) | compile deterministic render packages outside gameplay | foundation on master; bounded production pilot and native acceptance remain |
 | [`PQ-038.md`](./PQ-038.md) | dense generation-safe PresentationWorld | focused implementation on master; native dense-route acceptance remains |

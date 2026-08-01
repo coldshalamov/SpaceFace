@@ -19,19 +19,19 @@ The implementation/harness recovery cells listed in the previous snapshot are co
 the protected PQ-034 candidate audit, PQ-019A/PQ-019C/PQ-020/PQ-023/PQ-041 harness repairs, PQ-024
 route harness, PQ-007 route acceptance, and the H1 captures that followed. Do not redispatch them.
 
-Current recovery order is:
+Current recovery state and order is:
 
 | Unit | Exact result |
 |---|---|
-| Retained-evidence H2 reviews | Issue keep/revise/revert decisions for PQ-021, PQ-022, PQ-019, and PQ-023. A negative verdict creates an executable repair leaf; it does not become a reviewer blocker. |
-| `PQ-020.ceres-h1-capture` | Resolve the Electron aborted-request provenance policy with a seconds-scale regression, then promote the already-matched route facts or spend one bounded causal pair if the repair changes the claim. |
-| `PQ-034.native-closure` | The twelfth Browser claim completed the full matrix and exposed two exact defects: cleanup did not own/await its Chrome OS child, and bloom-off compiled installed authored variants during measurement. Repair `ddc9c1f5` owns BrowserServer teardown, routes resident plans through frame-bounded admission, compiles the installed scene for the selected target, and proves a `133 → 133` zero-addition bloom window. Run one fresh Browser claim and, only after it passes, Electron on the same repaired source, then close overhead and causal review. Report uncertainty/variance honestly. |
-| H3 and H4 units | Consume newly satisfied dependencies, run matched performance, bind exact receipt blobs, and promote the corridor packets in dependency order. |
+| Retained-evidence H2 reviews | Accepted for PQ-021, PQ-022, PQ-019, PQ-020, and PQ-023. Their exact repair leaves were created and completed where the evidence said revise; there is no external-review residual. PQ-024 remains coupled to its declared relay-presentation dependency. |
+| `PQ-020.ceres-h1-capture` | Done. The Electron cold-reload/aborted-request lifecycle policy has a seconds-scale regression and the source-paired Ceres H1 route is accepted. Do not recapture it as a ritual. |
+| `PQ-034.native-closure` | **ROUTE ACCEPTED / RETIRED** on clean source `4f602802`. Browser claim `22380-df81be7b607f4276302e6ac8` and Electron claim `32560-97a1a4a4e9dade4d4ce87d91` share source digest `8948e0ad…`, pass 25/25 validity rows per runtime, and clean up their owned process trees. Enabled instrumentation overhead is resolution-capable and accepted at `0.772627%`. No optimization gain or absolute-budget waiver is claimed. |
+| H3 and H4 units | **NEXT NON-ASSET WORK.** Consume newly satisfied dependencies, run matched performance, bind exact receipt blobs, and promote the corridor packets in dependency order. |
 | PQ-025 qualification | Calibrate and run only after its exact corridor/performance dependencies are accepted. |
 
 Run `--ready` after every coherent unit because the exact list changes as reviews, repairs, and
-promotions land. PQ-042 remains dependency-gated on terminal PERF-00–07 acceptance; PQ-043/PQ-044
-remain deliberately deferred. The Alpha/Depth table below is the broader lifetime roadmap, not a
+promotions land. PQ-042 remains dependency-gated on the remaining terminal PERF-01–07 acceptances;
+PQ-043/PQ-044 remain deliberately deferred. The Alpha/Depth table below is the broader lifetime roadmap, not a
 claim that every row is part of this recovery wave. This section supersedes dated “immediate queue”
 prose below when the two disagree.
 

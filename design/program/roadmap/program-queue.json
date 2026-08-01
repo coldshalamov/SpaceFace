@@ -1732,7 +1732,7 @@
       "id": "PQ-034",
       "priority": 34,
       "title": "PERF-00 Equivalence and attribution harness",
-      "state": "implemented",
+      "state": "integrated",
       "canonical": [
         "PERF-00"
       ],
@@ -1759,7 +1759,10 @@
         "electron",
         "performance"
       ],
-      "brief": "Build the versioned matched baseline/candidate harness that separately decides semantic equivalence, capture validity, and measured improvement before later modernization packets may close."
+      "brief": "Build the versioned matched baseline/candidate harness that separately decides semantic equivalence, capture validity, and measured improvement before later modernization packets may close.",
+      "integratedCommit": "4f602802d1f9377db4e2bc0a9efe24a1ba528d56",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-034-performance-harness-REPORT.md#terminal-source-paired-acceptance-and-integrator-review",
+      "receipt": "design/program/roadmap/receipts/PQ-034-performance-harness-REPORT.md"
     },
     {
       "id": "PQ-035",
@@ -2158,7 +2161,7 @@
       ],
       "paths": [
         "claude/perf00-20260727",
-        "design/program/roadmap/active/PQ-034.md",
+        "design/program/roadmap/retired/PQ-034.md",
         "design/program/roadmap/receipts/"
       ],
       "checks": [
@@ -3366,7 +3369,7 @@
       "priority": 200,
       "title": "Close PERF-00 equivalence and native evidence authority",
       "kind": "performance",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-034.candidate-audit"
       ],
@@ -3376,7 +3379,7 @@
         "validation-broker"
       ],
       "paths": [
-        "design/program/roadmap/active/PQ-034.md",
+        "design/program/roadmap/retired/PQ-034.md",
         "electron/main.cjs",
         "electron/shipPreview.cjs",
         "scripts/validation-manifests/",
@@ -3406,7 +3409,7 @@
         "design/program/roadmap/receipts/PQ-034-candidate-audit-REPORT.md",
         "design/program/roadmap/receipts/PQ-034-performance-harness-REPORT.md"
       ],
-      "brief": "A clean dc3fffd4 Browser/Electron pair passed 25/25 per runtime but became historical after necessary source repairs. Browser claim 26188-b177fe4f5ba9036b8f779059 proved all 25 window rows and failed only old cleanup descendant churn; 98012cdb now proves the exact owned Windows Chrome tree reaches zero. e4d9afdf closes enabled instrumentation overhead at a resolution-capable 0.772627% with 75-80 owner samples per five seconds. Run one fresh Browser claim and, only after it passes, Electron on that same clean source; then perform the integrator causal review and write the terminal PERF-00 receipt.",
+      "brief": "Route-accepted on clean 4f602802. Browser claim 22380-df81be7b607f4276302e6ac8 and Electron claim 32560-97a1a4a4e9dade4d4ce87d91 share source digest 8948e0ad while retaining distinct runtime candidates/raw traces; both pass 25/25 windows, quiet activity, Intel D3D11, restoration, context recovery, and owned cleanup. Enabled overhead is 0.772627%; the integrator review claims no optimization gain or budget waiver.",
       "blocker": null
     },
     {

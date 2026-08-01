@@ -4,9 +4,9 @@
 ```yaml
 packet: PQ-034
 dispatchUnit: PQ-034.native-closure
-lifecycleClaim: implemented
-acceptanceClaim: focused_green
-terminalDisposition: IN_PROGRESS
+lifecycleClaim: integrated
+acceptanceClaim: route_accepted
+terminalDisposition: PASS
 claimBase: 070064b4ff9aff9c4addb54d876c7ad877ba8e53
 activityAuthorityCandidate: 52cd5eb3949bfb0e88fd8a2c10d37cd1c149fe65
 firstFailedBrowserCandidate: 2ab10f91483b38a4cfbd2197d99d7bfa84ae198f
@@ -17,15 +17,17 @@ fifthFailedBrowserCandidate: 1ad68828dff71d599b2e14f8639677837af2dab1
 acceptedBrowserCandidate: b847320e4aa0f864e2f6c4862de306fddd773a6b
 acceptedBrowserClaimId: 4256-1baf8886d6425c5283c0dd78
 acceptedBrowserSourceCandidateDigest: b8193f952d13371c586753168dc3c4fa762d9c0dec3f59c8a2b61e8654cc5645
-browserClaimsConsumed: 14
+browserClaimsConsumed: 15
 browserClaimAccepted: true
 latestFailedBrowserCandidate: f252108c408b77dafd7d72f6c74051a8204925bb
 latestFailedBrowserClaimId: 26188-b177fe4f5ba9036b8f779059
 latestFailedBrowserSourceCandidateDigest: e64d83a1bdbe86e9cacb20a6cc026c47ce21cc0cad26804ef6723d7acfedfa79
-latestBrowserClaimAccepted: false
-latestBrowserCandidate: f252108c408b77dafd7d72f6c74051a8204925bb
-latestBrowserClaimId: 26188-b177fe4f5ba9036b8f779059
-latestBrowserSourceCandidateDigest: e64d83a1bdbe86e9cacb20a6cc026c47ce21cc0cad26804ef6723d7acfedfa79
+latestBrowserClaimAccepted: true
+latestBrowserCandidate: 4f602802d1f9377db4e2bc0a9efe24a1ba528d56
+latestBrowserClaimId: 22380-df81be7b607f4276302e6ac8
+latestBrowserSourceCandidateDigest: 8948e0ada5a785347f2b66fccd6c75a38be7aac56f54248fce3f252cbc9913e4
+latestBrowserRuntimeCandidateDigest: 5ab495d086e1ecfc4beb917e61ba9f6431d3e134ab446cc7ca5cd3bf003bda41
+latestBrowserRawTraceDigest: e7c1b490edf749a63a0a16b6e7594976378f4465be840ec656acb1636fb286a9
 latestVfxCacheRepairCandidate: 12b6b905b36b9820f2e7cd02b49b1a4f61b7f5c4
 latestBrowserRepairCandidate: 98012cdb8fddd1fa9e34ccc3497d15b0c23da09a
 latestTimeoutAuthorityCandidate: f252108c408b77dafd7d72f6c74051a8204925bb
@@ -38,17 +40,21 @@ latestFailedElectronCandidate: 191857fdc8aa44f1b77a20b4578e1b62d4118ead
 latestFailedElectronClaimId: 2612-798b762726a8c0634f5a3e40
 latestFailedElectronSourceCandidateDigest: c8a6cd7f2f232a74810c9a5e1c8cfb45a5914bd2d2964e6b6bd625aaddcfdb7f
 latestElectronRepairCandidate: 429f36f0
-electronClaimsConsumed: 3
+electronClaimsConsumed: 4
 electronClaimAccepted: true
-latestElectronCandidate: dc3fffd47ae5b4c09d12be08d321990a1e9cfbf0
-latestElectronClaimId: 13324-8c09c47a327e4a7f8e5a024e
-latestElectronSourceCandidateDigest: 3b2a850c43d7883869b107637eea8bf306c2a7841e9b9d744b5585b7cee8328a
-sourcePairedEvidenceCurrent: false
+latestElectronCandidate: 4f602802d1f9377db4e2bc0a9efe24a1ba528d56
+latestElectronClaimId: 32560-97a1a4a4e9dade4d4ce87d91
+latestElectronSourceCandidateDigest: 8948e0ada5a785347f2b66fccd6c75a38be7aac56f54248fce3f252cbc9913e4
+latestElectronRuntimeCandidateDigest: be091e8b0cc16b3bf5c6393d8f678ce87aeba162cd591e9b20cce78d64efb7d1
+latestElectronRawTraceDigest: 953445fb821746ddc91eb72a2e5db7ac091e9d777e8e720c862e2f0d48ef20b1
+sourcePairedEvidenceCurrent: true
 headedRuntimeLaunched: true
-performanceEvidenceClaimed: false
+performanceEvidenceClaimed: true
+performanceImprovementClaimed: false
+absoluteBudgetWaiverClaimed: false
 overheadEvidenceAccepted: true
 protectedWorktreeMutated: false
-leasesReleased: false
+leasesReleased: true
 ```
 
 ## Frame-linked GPU authority slice
@@ -906,5 +912,45 @@ The final clean pushed Browser record is
 - system, render-work, and background-job gates all restore disabled; Browser/server cleanup passes;
 - focused 13/13, manifest 3/3, program docs, and baseline 10/10 in 44.307 seconds pass.
 
-Overhead is accepted. The exact unit remains `IN_PROGRESS` only for a fresh Browser/Electron pair on
-the same post-repair source and the primary integrator's terminal causal review.
+At this checkpoint overhead was accepted; the exact unit remained `IN_PROGRESS` only for the fresh
+Browser/Electron pair and terminal causal review recorded immediately below.
+
+## Terminal source-paired acceptance and integrator review
+
+Disposition: **PASS / ROUTE ACCEPTED** on clean pushed source
+`4f602802d1f9377db4e2bc0a9efe24a1ba528d56`.
+
+| Authority | Browser | Electron |
+|---|---|---|
+| claim | `22380-df81be7b607f4276302e6ac8` | `32560-97a1a4a4e9dade4d4ce87d91` |
+| source digest | `8948e0ada5a785347f2b66fccd6c75a38be7aac56f54248fce3f252cbc9913e4` | same |
+| runtime candidate | `5ab495d086e1ecfc4beb917e61ba9f6431d3e134ab446cc7ca5cd3bf003bda41` | `be091e8b0cc16b3bf5c6393d8f678ce87aeba162cd591e9b20cce78d64efb7d1` |
+| raw trace | `e7c1b490edf749a63a0a16b6e7594976378f4465be840ec656acb1636fb286a9` | `953445fb821746ddc91eb72a2e5db7ac091e9d777e8e720c862e2f0d48ef20b1` |
+| activity start/end | `0.0375 / 0.046875` | `0.025 / 0.028125` |
+| windows | 25/25 valid | 25/25 valid |
+| cleanup | PASS; root `24876` + seven descendants, zero lingering | PASS; owned Electron tree closed |
+
+Immutable roots:
+
+- Browser:
+  `.devshots/perf/closure/browser/performance-closure-browser-2026-08-01T17-52-53-795Z-17088-b2ad8adc/`;
+- Electron:
+  `.devshots/perf/closure/electron/performance-closure-electron-2026-08-01T18-01-01-024Z-41096-60744158/`;
+- broker projections: `.devshots/perf/closure/browser/browser/evidence.json` and
+  `.devshots/perf/closure/electron/electron/evidence.json`.
+
+Both projections are primary passing evidence on the same clean commit. They prove the public route,
+real Intel D3D11 GPU authority, all GPU-query and pipeline/admission checks, scenario restoration,
+context recovery, empty error arrays, quiet activity, and owned cleanup. Source/scenario identity is
+shared exactly; runtime candidate and raw-trace identity remains distinct.
+
+The causal review keeps all four dimensions honest. Semantic/evidence authority and measurement
+validity pass. No optimization candidate exists in PERF-00, so improvement is not claimed. Absolute
+budgets are not waived or promoted; downstream PERF packets must provide the generic final arbiter's
+three-run baseline/candidate matrices, profiles, selected improvement scenario, and content-hashed
+equivalence bundle. A bounded one-pair invocation correctly failed those missing campaign inputs,
+while the arbiter's focused suite passes 8/8. It cannot be used to turn this harness-qualification
+pair into a performance gain.
+
+Enabled overhead is independently accepted at `0.772627%`. All packet questions are answered, no
+external reviewer or hardware owner remains, and all three mutexes are released.
