@@ -64,6 +64,22 @@ assert(precompileStreak.geometry.getAttribute('aTrailOpacity'),
   'precompile geometry must carry the live per-instance opacity attribute');
 assert(precompileStreak.material.vertexShader.includes('instanceMatrix'));
 
+const precompileSeams = precompileSalvo.getObjectByName('SF_Precompile_SeamMarkers');
+assert(precompileSeams instanceof THREE.InstancedMesh,
+  'precompile must stage the seam-marker instanced program before a nearby asteroid wakes it');
+assert.equal(precompileSeams.count, 1,
+  'precompile must expose one seam-marker instance to the driver compiler');
+const seamSystem = Object.create(vfx);
+seamSystem._scene = new THREE.Scene();
+seamSystem._initSeamMarkers();
+const liveSeams = seamSystem._seamMarkers.mesh;
+assert.deepEqual(Object.keys(precompileSeams.geometry.attributes), Object.keys(liveSeams.geometry.attributes));
+assert.equal(precompileSeams.geometry.index.count, liveSeams.geometry.index.count);
+assert.equal(precompileSeams.instanceColor.itemSize, liveSeams.instanceColor.itemSize);
+for (const property of [
+  'type', 'transparent', 'opacity', 'depthWrite', 'blending', 'side', 'forceSinglePass',
+]) assert.equal(precompileSeams.material[property], liveSeams.material[property], property);
+
 const railDiagnostic = runProjectileTrailEmissionSelfCheck().rail;
 assert(railDiagnostic.width < 0.2,
   `rail diagnostics must report the active instance width, got ${railDiagnostic.width}`);

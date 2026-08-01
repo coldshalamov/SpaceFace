@@ -3597,21 +3597,7 @@ export const vfx = {
   // -------------------------------------------------------------------------
   _initSeamMarkers() {
     if (!this._scene) return;
-    const CAP = 96;
-    const geo = new THREE.CircleGeometry(1.5, 10);
-    geo.rotateX(-Math.PI / 2);
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0xffffff, transparent: true, opacity: 0.9,
-      depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-      forceSinglePass: true,
-    });
-    const mesh = new THREE.InstancedMesh(geo, mat, CAP);
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(CAP * 3), 3);
-    mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
-    mesh.frustumCulled = false;
-    mesh.renderOrder = 8;
-    mesh.count = 0;
+    const { mesh, capacity: CAP } = createSeamMarkerPipelineMesh();
     this._scene.add(mesh);
     this._seamMarkers = { mesh, CAP };
     this._seamMat4 = new THREE.Matrix4();
@@ -7370,6 +7356,14 @@ export function createVfxPrecompileSalvo() {
   group.add(precompileTrail.ribbon);
   group.add(precompileTrail.streak);
 
+  // Seam markers are instanced, vertex-coloured, additive, double-sided circles. None of the
+  // generic sprite or trail probes has that exact program key, so an inactive seam pool can leave
+  // its shader unlinked until a nearby asteroid wakes it during a measured flight window.
+  const seamMarkers = createSeamMarkerPipelineMesh({ visibleInstances: 1 });
+  seamMarkers.mesh.name = 'SF_Precompile_SeamMarkers';
+  seamMarkers.mesh.position.set(0, 0.1, -7);
+  group.add(seamMarkers.mesh);
+
   const spriteBatches = createInstancedSpriteBuckets(group, 6, glow, ring, smoke, combustion);
   resetInstancedSpriteBuckets(spriteBatches);
   writeInstancedSprite(spriteBatches, false, {
@@ -7423,6 +7417,31 @@ export function createVfxPrecompileSalvo() {
   // pool count. An extra salvo light would warm shaders against count+1 — every warmed program
   // would then miss the cache in real gameplay and recompile mid-combat.
   return group;
+}
+
+export function createSeamMarkerPipelineMesh({ visibleInstances = 0 } = {}) {
+  const capacity = 96;
+  const geometry = new THREE.CircleGeometry(1.5, 10);
+  geometry.rotateX(-Math.PI / 2);
+  const material = new THREE.MeshBasicMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.9,
+    depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    forceSinglePass: true,
+  });
+  const mesh = new THREE.InstancedMesh(geometry, material, capacity);
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
+  mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+  mesh.frustumCulled = false;
+  mesh.renderOrder = 8;
+  mesh.count = Math.max(0, Math.min(capacity, Math.floor(Number(visibleInstances) || 0)));
+  if (mesh.count > 0) {
+    mesh.setMatrixAt(0, new THREE.Matrix4());
+    mesh.instanceColor.setXYZ(0, 1, 0.7, 0.36);
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.instanceColor.needsUpdate = true;
+  }
+  return { mesh, capacity };
 }
 
 // ---------------------------------------------------------------------------

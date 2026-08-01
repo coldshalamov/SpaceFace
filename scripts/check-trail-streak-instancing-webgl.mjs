@@ -20,7 +20,10 @@ try {
 
   const report = await page.evaluate(async () => {
     const THREE = await import('three');
-    const { createVfxPrecompileSalvo } = await import('/src/render/vfx.js');
+    const {
+      createSeamMarkerPipelineMesh,
+      createVfxPrecompileSalvo,
+    } = await import('/src/render/vfx.js');
     const { createDynamicBufferCoordinator } = await import('/src/render/dynamicBufferRanges.js');
     const { findLinkedProgramActiveAttributes } = await import('/scripts/lib/webglProgramEvidence.mjs');
     const {
@@ -44,6 +47,7 @@ try {
     scene.add(salvo);
     await renderer.compileAsync(scene, camera, scene);
     const staged = salvo.getObjectByName('SF_Precompile_TrailStreak');
+    const stagedSeams = salvo.getObjectByName('SF_Precompile_SeamMarkers');
     const programsAfterPrecompile = renderer.info.programs.length;
     scene.remove(salvo);
 
@@ -77,6 +81,10 @@ try {
     }
 
     const programsAfterFirstLiveTrail = renderer.info.programs.length;
+    const liveSeams = createSeamMarkerPipelineMesh({ visibleInstances: 1 }).mesh;
+    scene.add(liveSeams);
+    renderer.render(scene, camera);
+    const programsAfterFirstLiveSeam = renderer.info.programs.length;
     const gl = renderer.getContext();
     const requiredTrailAttributes = ['instanceMatrix', 'aTrailColor', 'aTrailOpacity'];
     // Three's private material.currentProgram pointer can be transiently absent even after a
@@ -102,8 +110,11 @@ try {
       stagedCount: staged && staged.count,
       stagedColorAttribute: !!(staged && staged.geometry.getAttribute('aTrailColor')),
       stagedOpacityAttribute: !!(staged && staged.geometry.getAttribute('aTrailOpacity')),
+      stagedSeamIsInstancedMesh: !!(stagedSeams && stagedSeams.isInstancedMesh),
+      stagedSeamCount: stagedSeams && stagedSeams.count,
       programsAfterPrecompile,
       programsAfterFirstLiveTrail,
+      programsAfterFirstLiveSeam,
       activeAttributes,
       litPixels,
       glError,
@@ -118,8 +129,14 @@ try {
   assert.equal(report.stagedCount, 1, 'precompile must compile one initialized trail instance');
   assert.equal(report.stagedColorAttribute, true);
   assert.equal(report.stagedOpacityAttribute, true);
+  assert.equal(report.stagedSeamIsInstancedMesh, true,
+    'precompile WebGL scene must contain the exact seam-marker InstancedMesh');
+  assert.equal(report.stagedSeamCount, 1,
+    'precompile must compile one initialized seam-marker instance');
   assert.equal(report.programsAfterFirstLiveTrail, report.programsAfterPrecompile,
     'the first live trail must reuse the precompiled program');
+  assert.equal(report.programsAfterFirstLiveSeam, report.programsAfterPrecompile,
+    'the first nearby asteroid seam must reuse the precompiled program');
   for (const name of ['instanceMatrix', 'aTrailColor', 'aTrailOpacity']) {
     assert(report.activeAttributes.includes(name),
       `linked WebGL trail program must consume ${name}; active=${report.activeAttributes.join(',')}`);
