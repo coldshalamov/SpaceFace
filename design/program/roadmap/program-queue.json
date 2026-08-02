@@ -3997,7 +3997,7 @@
       "priority": 213,
       "title": "Matched dense-scene cue performance",
       "kind": "performance",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-023.cues-h1-capture",
         "PQ-023.small-destruction-salience-review",
@@ -4008,12 +4008,29 @@
         "performance-evidence",
         "validation-broker"
       ],
-      "paths": [],
-      "checks": [
-        "npm run check:pq023:corridor-cues"
+      "paths": [
+        "design/program/NOW.md",
+        "design/program/roadmap/active/PQ-023.md",
+        "design/program/roadmap/program-queue.json",
+        "design/program/roadmap/receipts/PQ-023-h3-performance-REPORT.md",
+        "scripts/capture-pq023-h3-performance.mjs",
+        "scripts/lib/pq023DensePerformanceScenario.mjs",
+        "scripts/lib/pq023H3Performance.mjs",
+        "scripts/validation-manifests/pq023-h3-performance.mjs",
+        "test/pq023-h3-performance.test.mjs"
       ],
-      "receiptRefs": [],
-      "brief": "Capture matched target/floor dense-scene performance without weakening authored effects.",
+      "checks": [
+        "node --test test/pq023-h3-performance.test.mjs",
+        "npm run check:pq023:corridor-cues",
+        "npm run check:presentation",
+        "npm run check:sim:compare",
+        "node scripts/validation-broker-cli.mjs --manifest pq023-h3-performance",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-023-h3-performance-REPORT.md"
+      ],
+      "brief": "Claimed by the Codex primary integrator at e996a83778b2729e358f5abd5485a9c33413ed5a after a clean 24-worktree collision scan. Build a fail-closed three-pair Browser cell at fixed seed 47 and 1830x973@1: ordinary authored Helios flight floor versus the accepted dense composition driven through the live VFX owner with the same player pose, camera, target, settings, renderer and route. Bind raw intervals, owner attribution, separately drained GPU timers, active/capacity/cleanup facts for particle/sprite/streak/beam/explosion pools, critical-cue survival, renderer/resource deltas, target selection, default accessibility/quality, real Intel D3D11 identity, and owned cleanup. No accepted visual, pool capacity, default quality, source asset, or content may be removed to pass.",
       "blocker": null
     },
     {
