@@ -28,6 +28,7 @@ const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
 const AUTHORED_CARGO_CAPSULE_FILE = 'pods/pod_cargo_container.glb';
 const WRECK_CATHEDRAL_PLACE_ID = 'place_landmark_wreck_cathedral';
+const CLAIM_RELAY_PLACE_ID = 'place_claim_outpost_relay';
 const WRECK_CATHEDRAL_CLOSED_MATERIAL_ROLES = new Set([
   'copper_coil',
   'heat_affected_alloy',
@@ -1414,6 +1415,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
   centerAuthoredPlaceRoot(root, record, scale);
   installWorldSitePresentation(root, entity);
   installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings);
+  specializeClaimRelayOpaqueMaterials(root, placeId);
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
   root.userData.authoredSourceEnvelope = authoredEnvelope;
@@ -1433,6 +1435,47 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
     root,
     authoredParts: [record.url],
     authoredSlots: { place: [record.url] },
+  };
+}
+
+function specializeClaimRelayOpaqueMaterials(root, placeId) {
+  if (!root || placeId !== CLAIM_RELAY_PLACE_ID) return;
+  const variants = new Map();
+  const roles = new Set();
+  let packedOrmMaterialCount = 0;
+
+  root.traverse((object) => {
+    if (!object.isMesh || object.userData?.spacefaceStaticBatch !== true || !object.material) return;
+    const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material];
+    const specialized = sourceMaterials.map((source) => {
+      if (!source) return source;
+      let variant = variants.get(source);
+      if (!variant) {
+        variant = source.clone();
+        variant.name = `${source.name || 'ClaimRelayMaterial'}_ClosedFrontPackedOrm`;
+        variant.side = THREE.FrontSide;
+        variant.userData = {
+          ...(source.userData || {}),
+          spacefaceClaimRelayClosedSurface: true,
+        };
+        installSingleSamplePackedOrmShader(variant);
+        if (variant.userData.spacefacePackedOrmSingleSample === true) packedOrmMaterialCount += 1;
+        const role = String(variant.userData.spacefaceMaterialRole || variant.name || '').trim();
+        if (role) roles.add(role);
+        variants.set(source, variant);
+      }
+      return variant;
+    });
+    object.material = Array.isArray(object.material) ? specialized : specialized[0];
+  });
+
+  root.userData.claimRelayMaterialPolicy = {
+    assetId: placeId,
+    surfaceContract: 'closed-authored-primitives-front-sided',
+    packedOrmContract: 'one-shared-fetch-for-ao-roughness-metalness',
+    materialCount: variants.size,
+    packedOrmMaterialCount,
+    roles: [...roles].sort(),
   };
 }
 
@@ -1873,7 +1916,7 @@ function installSingleSamplePackedOrmShader(material) {
     ];
     for (const [needle, replacement] of replacements) {
       if (!shader.fragmentShader.includes(needle)) {
-        throw new Error(`[render] Cathedral packed-ORM shader contract changed: missing ${needle}`);
+        throw new Error(`[render] packed-ORM shader contract changed: missing ${needle}`);
       }
       shader.fragmentShader = shader.fragmentShader.replace(needle, replacement);
     }

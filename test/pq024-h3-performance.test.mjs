@@ -10,6 +10,7 @@ import {
   PQ024_H3_RECEIPT_SCHEMA,
   validatePq024H3PerformanceReceipt,
 } from '../scripts/lib/pq024H3Performance.mjs';
+import { summarizeFrameSamples } from '../scripts/lib/performanceClosureContracts.mjs';
 import manifest from '../scripts/validation-manifests/pq024-h3-performance.mjs';
 import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
@@ -62,6 +63,18 @@ function gpuTerminals(frameMs = 9) {
   return rows;
 }
 
+function bindFrameSummary(run) {
+  const summary = summarizeFrameSamples(run.rawSamples);
+  run.attribution.frameMs = {
+    sampleCount: summary.sampleCount,
+    p50: summary.p50,
+    p95: summary.p95,
+    p99: summary.p99,
+    max: summary.max,
+    hitchesOver32Ms: summary.framesAbove32Ms,
+  };
+}
+
 function routeFacts(profileId, index) {
   const target = profileId === 'producing-one-relay-target';
   return {
@@ -101,6 +114,22 @@ function routeFacts(profileId, index) {
         siteId: 'site_1',
         presentationAdmission: 'ready',
         assetState: 'authored',
+        rendering: {
+          appliedLod: 'lod1',
+          visibleMeshes: 1,
+          visibleDrawCalls: 5,
+          visibleTriangles: 21_532,
+          visibleMaterialCount: 5,
+          packedOrmMaterialCount: 5,
+          closedFrontMaterialCount: 5,
+          materialPolicy: {
+            assetId: 'place_claim_outpost_relay',
+            surfaceContract: 'closed-authored-primitives-front-sided',
+            packedOrmContract: 'one-shared-fetch-for-ao-roughness-metalness',
+            materialCount: 5,
+            packedOrmMaterialCount: 5,
+          },
+        },
       }
       : { count: 0 },
     timeEffects: { measurementStartMs: 0, measurementEndMs: 5_000, samples: [], events: [] },
@@ -123,6 +152,7 @@ function repetition(profileId, index, frameMs = profileId === PQ024_H3_PROFILE_I
         hitchesOver32Ms: 0,
       },
       cpu: {
+        frameCallback: { p95: 9.4 },
         phases: {
           sim: { p95: 3.1 }, render: { p95: 4.8 }, vfx: { p95: 0.7 }, ui: { p95: 0.4 },
         },
@@ -221,10 +251,12 @@ test('PQ-024 H3 fails closed on lifecycle, receipt, and relay substitutions', ()
   invalid.profiles[1].repetitions[0].routeFacts.production.receipt.positiveQuantity = 0;
   invalid.profiles[1].repetitions[1].routeFacts.relay.count = 2;
   invalid.profiles[1].repetitions[2].routeFacts.relay.presentationAdmission = 'pending';
+  invalid.profiles[1].repetitions[2].routeFacts.relay.rendering.packedOrmMaterialCount = 4;
   const failures = validatePq024H3PerformanceReceipt(invalid).failures.join('\n');
   assert.match(failures, /floor must be one committed Core/);
   assert.match(failures, /authoritative positive production event/);
   assert.match(failures, /exactly one admitted authored exterior relay/);
+  assert.match(failures, /exact optimized authored relay LOD1 material path/);
 });
 
 test('PQ-024 H3 requires the same asteroid, site, Core, pose, camera, and settings', () => {
@@ -317,9 +349,11 @@ test('PQ-024 H3 requires separated exact GPU attribution and correlated frame gr
   invalid.profiles[1].repetitions[0].attribution.measurementIsolation.frameTimingGpuTimersEnabled = true;
   invalid.profiles[1].repetitions[1].attribution.gpuTimers.queryCounts.completed = 449;
   invalid.profiles[1].repetitions[2].attribution.gpuTimers.terminals = [];
+  delete invalid.profiles[0].repetitions[0].attribution.cpu.frameCallback;
   const failures = validatePq024H3PerformanceReceipt(invalid).failures.join('\n');
   assert.match(failures, /isolated GPU attribution/);
   assert.match(failures, /complete correlated GPU frames/);
+  assert.match(failures, /cpu frameCallback\.p95 is missing/);
 });
 
 test('PQ-024 H3 rejects matched timing, product-hitch, long-frame, and backlog regressions', () => {
@@ -333,12 +367,15 @@ test('PQ-024 H3 rejects matched timing, product-hitch, long-frame, and backlog r
   Object.assign(invalid.profiles[1].repetitions[0].rawSamples[20], {
     frameMs: 55, callbackMs: 30, simFrameMs: 3, presentationMs: 2,
   });
-  invalid.profiles[1].repetitions[0].attribution.frameMs.max = 55;
-  invalid.profiles[1].repetitions[0].attribution.frameMs.hitchesOver32Ms = 1;
+  Object.assign(invalid.profiles[1].repetitions[1].rawSamples[20], {
+    frameMs: 33.3, callbackMs: 30, simFrameMs: 3, presentationMs: 2,
+  });
+  bindFrameSummary(invalid.profiles[1].repetitions[0]);
+  bindFrameSummary(invalid.profiles[1].repetitions[1]);
   invalid.profiles[1].repetitions[1].rawSamples[30].shedBacklog = true;
   const failures = validatePq024H3PerformanceReceipt(invalid).failures.join('\n');
   assert.match(failures, /median p95 regresses/);
-  assert.match(failures, /product-attributed hitch count increases/);
+  assert.match(failures, /median product-attributed hitch rate increases/);
   assert.match(failures, /frames above 50 ms/);
   assert.match(failures, /backlog-shedding/);
 });
@@ -372,6 +409,34 @@ test('PQ-024 H3 permits bounded external scheduling but rejects systematic rende
   assert.match(result.failures.join('\n'), /median renderer geometries admission exceeds/);
 });
 
+test('PQ-024 H3 tolerates one noisy run but rejects systematic CPU-work regression', () => {
+  const noisy = receipt();
+  const noisyRun = noisy.profiles[1].repetitions[1];
+  for (const index of [20, 40]) {
+    Object.assign(noisyRun.rawSamples[index], {
+      frameMs: 33.3,
+      callbackMs: 21,
+      simFrameMs: 12.6,
+      presentationMs: 8.4,
+      externalCallbackGapMs: 9.8,
+      callbackDispatchLagMs: 13.6,
+      shedBacklog: false,
+    });
+  }
+  bindFrameSummary(noisyRun);
+  let result = validatePq024H3PerformanceReceipt(noisy);
+  assert.equal(result.pass, true, result.failures.join('\n'));
+  assert.equal(result.hitchAttribution.target.productAttributed, 2);
+  assert.equal(result.hitchAttribution.target.medianProductAttributedRate, 0);
+
+  const regressed = receipt();
+  for (const index of [0, 1]) {
+    regressed.profiles[1].repetitions[index].attribution.cpu.phases.render.p95 += 1;
+  }
+  result = validatePq024H3PerformanceReceipt(regressed);
+  assert.match(result.failures.join('\n'), /median renderPhase CPU p95 regresses/);
+});
+
 test('PQ-024 H3 keeps the absolute target separate from matched feature acceptance', () => {
   const slow = receipt();
   for (const profile of slow.profiles) {
@@ -400,6 +465,13 @@ test('PQ-024 H3 is one brokered cell over the accepted public actor', () => {
   assert.equal(manifest.cleanupPolicy, 'kill-tree');
   assert.ok(manifest.harnessSourcePaths.includes('scripts/probe-pq024-asteroid-claim.mjs'));
   assert.ok(manifest.harnessSourcePaths.includes('scripts/lib/releaseSoakProbe.mjs'));
+  assert.ok(manifest.regressionSourcePaths.includes('test/station-docking-corridor.test.mjs'));
+  assert.ok(manifest.regressionSourcePaths.includes('test/authored-admission-no-visible-fallback.test.mjs'));
+  assert.ok(manifest.regressionSourcePaths.includes('test/pq022-relay-collar-admission.test.mjs'));
+  assert.ok(manifest.productionSourcePaths.includes('src/data/collisionProxyManifests.js'));
+  assert.ok(manifest.productionSourcePaths.includes('src/render/partsLibrary.js'));
+  assert.ok(manifest.productionSourcePaths.includes('src/systems/dockingCorridor.js'));
+  assert.ok(manifest.productionSourcePaths.includes('src/systems/flightV3.js'));
   assert.equal(PQ024_H3_PIPELINE_SETTLE_TIMEOUT_MS, 30_000);
   assert.match(WRAPPER_SOURCE, /--h3-performance/);
   assert.match(WRAPPER_SOURCE, /probe-pq024-asteroid-claim\.mjs/);

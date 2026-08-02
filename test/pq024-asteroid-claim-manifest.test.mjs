@@ -7,7 +7,11 @@ import manifest, {
   createPq024AsteroidClaimManifest,
   PQ024_ASTEROID_CLAIM_FIXED_SEED,
 } from '../scripts/validation-manifests/pq024-asteroid-claim.mjs';
-import { projectPq024RouteSemantics } from '../scripts/lib/pq024AsteroidClaimParity.mjs';
+import {
+  formatPq024DockApproachTimeout,
+  formatPq024MasslineReleaseTimeout,
+  projectPq024RouteSemantics,
+} from '../scripts/lib/pq024AsteroidClaimParity.mjs';
 import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const PROBE_URL = new URL('../scripts/probe-pq024-asteroid-claim.mjs', import.meta.url);
@@ -139,6 +143,8 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     'a zero-duration chord may vanish between fixed input ticks');
   assert.match(source, /releaseMassline[\s\S]*keyboard\.down\('Space'\)[\s\S]*actions\?\.massline\?\.source === 'keyboard'[\s\S]*keyboard\.up\('Space'\)[\s\S]*tether\?\.active !== true/,
     'Massline release must cross a fixed input tick before the public key is released');
+  assert.match(source, /Number\(window\.SF\?\.state\?\.tick\) > tick/,
+    'Massline cleanup must retain the key for a distinct fixed tick before release');
   assert.doesNotMatch(source, /releaseMassline[\s\S]{0,220}keyboard\.press\('Space'\)/,
     'a zero-duration Massline cut may vanish between fixed input ticks');
 
@@ -148,6 +154,8 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
   assert.match(source, /positiveQuantity/);
   assert.match(source, /place_claim_outpost_relay/);
   assert.match(source, /survey\.lifecycle\s*===\s*['"]producing['"]/);
+  assert.match(source, /readPq024DockApproachSnapshot/,
+    'a dock timeout must retain exact navigation, corridor, input, and physics-owner evidence');
 
   for (const forbidden of [
     /\bworld\.enterSector\s*\(/,
@@ -161,6 +169,54 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
   ]) {
     assert.doesNotMatch(source, forbidden, `probe contains forbidden terminal mutation ${forbidden}`);
   }
+});
+
+test('PQ-024 dock timeout reports the reproduced route stall as structured evidence', () => {
+  const last = {
+    tick: 7200,
+    player: { alive: true, pos: { x: 1234, z: -489 }, speed: 0 },
+    autopilot: { active: true, status: 'braking', targetEntityId: 286 },
+    resolvedTarget: { dockingStage: 'berth', x: 1234, z: -489 },
+    dockingCorridor: { phase: 'approach', distToBerth: 115.11, inCapture: false },
+    physicsDockStationId: null,
+  };
+  const message = formatPq024DockApproachTimeout({
+    timeoutMs: 120_000,
+    sampleCount: 240,
+    bestBerthDistance: 115.11,
+    bestCenterDistance: 83.4,
+    last,
+  });
+  assert.match(message, /^public Helios approach did not expose the dock prompt; evidence=/);
+  const evidence = JSON.parse(message.slice(message.indexOf('evidence=') + 'evidence='.length));
+  assert.deepEqual(evidence, {
+    timeoutMs: 120_000,
+    sampleCount: 240,
+    bestBerthDistance: 115.11,
+    bestCenterDistance: 83.4,
+    last,
+  });
+  assert.equal(evidence.last.autopilot.status, 'braking');
+  assert.equal(evidence.last.dockingCorridor.inCapture, false);
+  assert.equal(evidence.last.physicsDockStationId, null);
+});
+
+test('PQ-024 Massline cleanup reports the reproduced release stall as structured evidence', () => {
+  const samples = [{
+    label: 'release-timeout',
+    tick: 9000,
+    spaceHeld: false,
+    command: { phase: 'latched', cut: false, source: null },
+    tether: { active: true, targetId: 44, attachmentId: 7 },
+    owner: { active: { targetId: 44 }, pendingCut: null },
+  }];
+  const events = [];
+  const message = formatPq024MasslineReleaseTimeout({ samples, events });
+  assert.match(message, /^public Massline tap did not release the active tether; evidence=/);
+  const evidence = JSON.parse(message.slice(message.indexOf('evidence=') + 'evidence='.length));
+  assert.deepEqual(evidence, { samples, events });
+  assert.equal(evidence.samples[0].tether.active, true);
+  assert.equal(evidence.samples[0].spaceHeld, false);
 });
 
 test('PQ-024 Electron parity reuses one public actor after Browser PASS and owns teardown', () => {

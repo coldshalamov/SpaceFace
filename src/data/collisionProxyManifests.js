@@ -137,7 +137,10 @@ export const COLLISION_PROXY_MANIFESTS = Object.freeze({
         // Open deck between ring2 and ring1 on the corridor lane. A ship of radius ~0.16R (14 wu
         // at R=90) berthed here clears the core surface (0.46R) and every proxy primitive.
         radius: 0.72,              // normalized station-local berth distance (open deck)
-        dockRadius: 18,            // wu: dock:range requires berth proximity within this
+        // Live PQ-024 pair 2 reached a solver-resting 18.878 WU from this point before the nearby
+        // compound proxy expelled it. Keep two WU of contact tolerance so a physically settled
+        // radius-14 player can receive the public dock prompt before contact response wins.
+        dockRadius: 20,            // wu: dock:range requires berth proximity within this
         speedGate: 12,             // wu/s at the berth
       }),
       assist: Object.freeze({

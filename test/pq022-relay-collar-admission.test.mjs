@@ -57,12 +57,14 @@ const LOD_TRIANGLES = Object.freeze({ LOD0: 59052, LOD1: 21532, LOD2: 5264 });
 const AUTHORED_X_LENGTH_M = 104.3364;
 
 const JSON_CHUNK = 0x4e4f534a;
+const BIN_CHUNK = 0x004e4942;
 
 function readGlb(path) {
   const bytes = readFileSync(path);
   assert.equal(bytes.readUInt32LE(0), 0x46546c67, `${path}: GLB magic`);
   assert.equal(bytes.readUInt32LE(8), bytes.length, `${path}: declared length`);
   let json = null;
+  let binary = Buffer.alloc(0);
   for (let offset = 12; offset < bytes.length;) {
     const length = bytes.readUInt32LE(offset);
     const type = bytes.readUInt32LE(offset + 4);
@@ -70,10 +72,56 @@ function readGlb(path) {
     if (type === JSON_CHUNK) {
       json = JSON.parse(bytes.subarray(offset + 8, offset + 8 + length).toString('utf8').replace(/\0+$/, '').trim());
     }
+    if (type === BIN_CHUNK) binary = bytes.subarray(offset + 8, offset + 8 + length);
     offset += 8 + length;
   }
   assert.ok(json, `${path}: JSON chunk`);
-  return { bytes, json, sha256: createHash('sha256').update(bytes).digest('hex') };
+  return { bytes, json, binary, sha256: createHash('sha256').update(bytes).digest('hex') };
+}
+
+function accessorValues(glb, accessorIndex) {
+  const accessor = glb.json.accessors[accessorIndex];
+  const components = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[accessor.type];
+  const component = {
+    5121: { bytes: 1, read: (offset) => glb.binary.readUInt8(offset) },
+    5123: { bytes: 2, read: (offset) => glb.binary.readUInt16LE(offset) },
+    5125: { bytes: 4, read: (offset) => glb.binary.readUInt32LE(offset) },
+    5126: { bytes: 4, read: (offset) => glb.binary.readFloatLE(offset) },
+  }[accessor.componentType];
+  assert.ok(components && component && accessor.sparse == null, 'relay accessor must use supported dense data');
+  const view = glb.json.bufferViews[accessor.bufferView];
+  assert.equal(view.buffer ?? 0, 0, 'relay source accessors stay in the embedded BIN chunk');
+  const packedStride = component.bytes * components;
+  const stride = view.byteStride ?? packedStride;
+  const start = (view.byteOffset ?? 0) + (accessor.byteOffset ?? 0);
+  return Array.from({ length: accessor.count }, (_, index) => {
+    const row = Array.from({ length: components }, (_unused, axis) => (
+      component.read(start + index * stride + axis * component.bytes)
+    ));
+    return components === 1 ? row[0] : row;
+  });
+}
+
+function nonManifoldEdgeCount(glb, primitive) {
+  const positions = accessorValues(glb, primitive.attributes.POSITION);
+  const indices = primitive.indices == null
+    ? Array.from({ length: positions.length }, (_, index) => index)
+    : accessorValues(glb, primitive.indices);
+  const weldedByPosition = new Map();
+  const weldedByVertex = positions.map((position) => {
+    const key = position.map((value) => Math.round(value * 1e6)).join(':');
+    if (!weldedByPosition.has(key)) weldedByPosition.set(key, weldedByPosition.size);
+    return weldedByPosition.get(key);
+  });
+  const edges = new Map();
+  for (let offset = 0; offset + 2 < indices.length; offset += 3) {
+    const triangle = indices.slice(offset, offset + 3).map((index) => weldedByVertex[index]);
+    for (const [left, right] of [[triangle[0], triangle[1]], [triangle[1], triangle[2]], [triangle[2], triangle[0]]]) {
+      const key = left < right ? `${left}:${right}` : `${right}:${left}`;
+      edges.set(key, (edges.get(key) || 0) + 1);
+    }
+  }
+  return [...edges.values()].filter((count) => count !== 2).length;
 }
 
 function nodesByName(json) {
@@ -214,6 +262,19 @@ test('release optimization preserves the authored contract surface', () => {
     assert.deepEqual(after.scale ?? [1, 1, 1], before.scale ?? [1, 1, 1], `${name}: scale`);
     assert.equal(after.mesh, undefined, `${name}: stays a marker`);
   }
+});
+
+test('every visible relay mesh is closed, so runtime front-face culling preserves its authored surface', () => {
+  const offenders = [];
+  for (const node of source.json.nodes || []) {
+    if (!/^LOD[012]_/.test(node.name || '') || node.mesh == null) continue;
+    for (const [index, primitive] of (source.json.meshes[node.mesh].primitives || []).entries()) {
+      const nonManifoldEdges = nonManifoldEdgeCount(source, primitive);
+      if (nonManifoldEdges > 0) offenders.push({ node: node.name, primitive: index, nonManifoldEdges });
+    }
+  }
+  assert.deepEqual(offenders, [],
+    'the hash-pinned authored relay has no open/non-manifold edge that would need a visible back face');
 });
 
 test('every release node of the admitted relay satisfies the authored transform contract', () => {

@@ -31,6 +31,7 @@ import {
 } from '../src/systems/flightV3.js';
 import { consumePhysicsCommand, writePhysicsControl } from '../src/core/physicsAuthority.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
+import { physics } from '../src/core/physics.js';
 
 const HELIOS = COLLISION_PROXY_MANIFESTS.helios_trade_hub;
 const DEG = Math.PI / 180;
@@ -215,6 +216,39 @@ test('speed gates: corridor admits ≤55, capture admits ≤26, berth admits ≤
   // At the gates exactly: 26 inbound in the lane is capture; 55 inbound in the corridor is corridor.
   assert.equal(classify(99, 0, frameVel(-26)).phase, 'capture');
   assert.equal(classify(117, 0, frameVel(-55)).phase, 'corridor');
+});
+
+test('live PQ-024 contact floor still emits dock range before the compound proxy can expel the ship', () => {
+  const station = heliosStation();
+  const berth = resolveBerthWorld(station, HELIOS);
+  const capturedBestDistance = 18.878271755769823;
+  const player = {
+    id: 'player', type: 'ship', alive: true, radius: 14,
+    pos: { x: berth.x + capturedBestDistance, z: berth.z },
+    vel: { x: -0.17821618914604187, z: 0.1807979941368103 },
+  };
+  const events = [];
+  const state = {
+    playerId: player.id,
+    entities: new Map([[player.id, player], [station.id, station]]),
+    entityIndex: { stations: [station] },
+    entityList: [player, station],
+  };
+  const host = {
+    _dockStationId: null,
+    _gateEntityId: null,
+    bus: { emit: (name, payload) => events.push({ name, payload }) },
+  };
+
+  const corridor = corridorStateFor(HELIOS, station, player.pos, player.vel);
+  assert.equal(corridor.phase, 'berthed',
+    'the exact live closest approach must count as physically dockable');
+  physics.updateDockRange.call(host, state);
+  assert.equal(host._dockStationId, 'station_helios');
+  assert.deepEqual(events, [{
+    name: 'dock:range',
+    payload: { stationId: 'station_helios', shipId: 'player', inRange: true },
+  }], 'the physics owner must expose the public dock prompt at the live contact floor');
 });
 
 test('heading gate: outbound and tangential motion are rejected, near-stationary is always ok', () => {

@@ -34,7 +34,11 @@ import {
   PQ024_H3_REPETITIONS,
   validatePq024H3PerformanceReceipt,
 } from './lib/pq024H3Performance.mjs';
-import { projectPq024RouteSemantics } from './lib/pq024AsteroidClaimParity.mjs';
+import {
+  formatPq024DockApproachTimeout,
+  formatPq024MasslineReleaseTimeout,
+  projectPq024RouteSemantics,
+} from './lib/pq024AsteroidClaimParity.mjs';
 import { sampleRafWindow } from './lib/releaseSoakProbe.mjs';
 import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
@@ -895,8 +899,11 @@ async function waitForAdmittedExteriorRelay(page, siteId) {
     const relayEntity = relays[0];
     const root = relayEntity.mesh || relayEntity.view?.root || null;
     const rawAssetState = root?.userData?.authoredAssetState || null;
+    const materialPolicy = root?.userData?.hull?.userData?.claimRelayMaterialPolicy || null;
     if (relayEntity.presentationAdmission !== 'ready'
-        || !String(rawAssetState || '').startsWith('authored')) return null;
+        || !String(rawAssetState || '').startsWith('authored')
+        || materialPolicy?.materialCount !== 5
+        || materialPolicy?.packedOrmMaterialCount !== 5) return null;
     return {
       count: 1,
       entityId: relayEntity.id,
@@ -905,6 +912,7 @@ async function waitForAdmittedExteriorRelay(page, siteId) {
       presentationAdmission: relayEntity.presentationAdmission,
       assetState: 'authored',
       rawAssetState,
+      materialPolicy,
     };
   }, siteId, { timeout: 90_000 });
   return handle.jsonValue();
@@ -933,6 +941,47 @@ async function readPq024H3RouteFacts(page, {
     const relayEntity = relays[0] || null;
     const relayRoot = relayEntity?.mesh || relayEntity?.view?.root || null;
     const relayRawAssetState = relayRoot?.userData?.authoredAssetState || null;
+    const relayAuthoredRoot = relayRoot?.userData?.hull || null;
+    const relayRendering = relayAuthoredRoot ? (() => {
+      const materials = new Set();
+      let visibleMeshes = 0;
+      let visibleDrawCalls = 0;
+      let visibleTriangles = 0;
+      relayAuthoredRoot.traverse((object) => {
+        if (!object.isMesh || object.userData?.spacefaceStaticBatch !== true) return;
+        let visible = object.visible !== false;
+        for (let parent = object.parent; visible && parent && parent !== relayAuthoredRoot.parent; parent = parent.parent) {
+          if (parent.visible === false) visible = false;
+        }
+        if (!visible) return;
+        visibleMeshes += 1;
+        const list = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of list) if (material) materials.add(material);
+        const groups = Array.isArray(object.geometry?.groups) ? object.geometry.groups : [];
+        visibleDrawCalls += Array.isArray(object.material) && groups.length > 0 ? groups.length : 1;
+        const indices = Number(object.geometry?.index?.count);
+        const positions = Number(object.geometry?.getAttribute?.('position')?.count);
+        visibleTriangles += Number.isFinite(indices) && indices > 0
+          ? indices / 3
+          : (Number.isFinite(positions) ? positions / 3 : 0);
+      });
+      const materialPolicy = relayAuthoredRoot.userData?.claimRelayMaterialPolicy || null;
+      return {
+        appliedLod: relayRoot?.userData?.lod?.level || null,
+        visibleMeshes,
+        visibleDrawCalls,
+        visibleTriangles,
+        visibleMaterialCount: materials.size,
+        packedOrmMaterialCount: [...materials].filter((material) => (
+          material?.userData?.spacefacePackedOrmSingleSample === true
+        )).length,
+        closedFrontMaterialCount: [...materials].filter((material) => (
+          material?.userData?.spacefaceClaimRelayClosedSurface === true
+            && material.side === 0
+        )).length,
+        materialPolicy,
+      };
+    })() : null;
     const events = window.__PQ024_H1_TRACE__?.production || [];
     const physicsOwner = window.SF.registry.get('physics')?._sg02;
     const playerBody = physicsOwner?.records?.get?.(playerEntity.id)?.body;
@@ -988,6 +1037,7 @@ async function readPq024H3RouteFacts(page, {
           ? 'authored'
           : relayRawAssetState,
         rawAssetState: relayRawAssetState,
+        rendering: relayRendering,
       } : { count: 0 },
       timeEffects: window.__PQ024_H3__.snapshotTimeEffects(
         input.measurementStartMs,
@@ -1170,8 +1220,7 @@ async function dockAtHelios(page) {
   const waypoint = page.getByRole('button', { name: 'Set Waypoint', exact: true });
   await waypoint.waitFor({ state: 'visible' });
   await waypoint.click();
-  const prompt = page.locator('.sf-alert--dock');
-  await prompt.waitFor({ state: 'visible', timeout: 120_000 });
+  const prompt = await waitForPq024DockPrompt(page, { timeoutMs: 120_000 });
   assert.match(await prompt.innerText(), /\bE\b.*\bDOCK\b|\bDOCK\b.*\bE\b/i);
   for (let attempt = 0; attempt < 8; attempt += 1) {
     try {
@@ -1189,6 +1238,152 @@ async function dockAtHelios(page) {
   }
   await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 5_000 });
   await waitVisible(page, '[data-screen="station"]', 'station hub');
+}
+
+async function waitForPq024DockPrompt(page, { timeoutMs }) {
+  const prompt = page.locator('.sf-alert--dock').first();
+  const deadline = Date.now() + timeoutMs;
+  let sampleCount = 0;
+  let bestBerthDistance = Infinity;
+  let bestCenterDistance = Infinity;
+  let last = null;
+  while (Date.now() < deadline) {
+    if (await prompt.isVisible().catch(() => false)) return prompt;
+    last = await readPq024DockApproachSnapshot(page);
+    sampleCount += 1;
+    if (Number.isFinite(last?.dockingCorridor?.distToBerth)) {
+      bestBerthDistance = Math.min(bestBerthDistance, last.dockingCorridor.distToBerth);
+    }
+    if (Number.isFinite(last?.dockingCorridor?.distCenter)) {
+      bestCenterDistance = Math.min(bestCenterDistance, last.dockingCorridor.distCenter);
+    }
+    assert.equal(last?.player?.alive, true,
+      `player died during the public Helios approach; evidence=${JSON.stringify(last)}`);
+    await page.waitForTimeout(Math.min(500, Math.max(1, deadline - Date.now())));
+  }
+  const error = new Error(formatPq024DockApproachTimeout({
+    timeoutMs,
+    sampleCount,
+    bestBerthDistance,
+    bestCenterDistance,
+    last,
+  }));
+  error.code = 'PQ024_DOCK_PROMPT_TIMEOUT';
+  error.dockApproach = last;
+  throw error;
+}
+
+async function readPq024DockApproachSnapshot(page) {
+  return page.evaluate(() => {
+    const finite = (value) => Number.isFinite(value) ? Number(value) : null;
+    const point = (value) => value ? { x: finite(value.x), z: finite(value.z) } : null;
+    const state = window.SF?.state;
+    const player = state?.entities?.get?.(state.playerId);
+    const nav = state?.nav || {};
+    const autopilot = nav.autopilot || null;
+    const requestedTargetId = autopilot?.targetEntityId;
+    const requestedTarget = requestedTargetId != null
+      ? state?.entities?.get?.(requestedTargetId)
+        || state?.entities?.get?.(Number(requestedTargetId))
+      : null;
+    const station = requestedTarget?.type === 'station'
+      ? requestedTarget
+      : [...(state?.entityList || [])].find((entity) => (
+        entity?.type === 'station' && entity?.data?.stationId === 'station_helios'
+      ));
+    const telemetry = state?.input?.autopilot;
+    const resolvedTarget = telemetry && typeof telemetry === 'object' ? telemetry.target : null;
+    const corridor = state?.dockingCorridor || null;
+    const prompt = document.querySelector('.sf-alert--dock');
+    const promptStyle = prompt ? getComputedStyle(prompt) : null;
+    const promptVisible = !!(prompt && !prompt.hidden && promptStyle?.display !== 'none'
+      && promptStyle?.visibility !== 'hidden' && Number(promptStyle?.opacity || 1) > 0.01);
+    return {
+      tick: finite(state?.tick),
+      simTime: finite(state?.simTime),
+      mode: state?.mode || null,
+      screenStack: Array.isArray(state?.ui?.screenStack) ? [...state.ui.screenStack] : [],
+      docked: state?.ui?.docked === true,
+      dockedStationId: state?.ui?.dockedStationId || null,
+      prompt: {
+        visible: promptVisible,
+        text: promptVisible ? String(prompt.textContent || '').trim().slice(0, 160) : '',
+      },
+      player: player ? {
+        id: player.id ?? null,
+        alive: player.alive !== false && Number(player.hull) > 0,
+        hull: finite(player.hull),
+        pos: point(player.pos),
+        vel: point(player.vel),
+        speed: finite(Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0))),
+        rot: finite(player.rot),
+        radius: finite(player.radius),
+        dockedFlag: player.flags?.docked === true,
+      } : null,
+      station: station ? {
+        id: station.id ?? null,
+        stationId: station.data?.stationId || null,
+        name: station.data?.name || station.name || null,
+        pos: point(station.pos),
+        rot: finite(station.rot),
+        radius: finite(station.radius),
+        dockRadius: finite(station.data?.dockRadius),
+        collisionProxy: station.data?.collisionProxy || null,
+        corridorBearingDeg: finite(station.data?.corridorBearingDeg),
+      } : null,
+      waypoint: nav.waypoint ? {
+        kind: nav.waypoint.kind || null,
+        label: nav.waypoint.label || null,
+        pos: point(nav.waypoint.pos),
+        entityId: nav.waypoint.entityId ?? nav.waypoint.targetEntityId ?? null,
+      } : null,
+      autopilot: autopilot ? {
+        active: autopilot.active === true,
+        status: autopilot.status || null,
+        label: autopilot.label || null,
+        distance: finite(autopilot.distance),
+        arrivalRadius: finite(autopilot.arrivalRadius),
+        initialDistance: finite(autopilot.initialDistance),
+        targetEntityId: autopilot.targetEntityId ?? null,
+        target: point(autopilot.target),
+      } : null,
+      resolvedTarget: resolvedTarget ? {
+        x: finite(resolvedTarget.x),
+        z: finite(resolvedTarget.z),
+        arrivalRadius: finite(resolvedTarget.arrivalRadius),
+        dockingProxyId: resolvedTarget.dockingProxyId || null,
+        dockingStage: resolvedTarget.dockingStage || null,
+        entityId: resolvedTarget.entity?.id ?? null,
+      } : null,
+      input: {
+        moveX: finite(state?.input?.moveX),
+        moveZ: finite(state?.input?.moveZ),
+        turnIntent: finite(state?.input?.turnIntent),
+        boost: state?.input?.boost === true,
+        brake: state?.input?.brake === true,
+        actionBrake: state?.input?.actions?.brake === true,
+        autopilotPublished: !!telemetry,
+      },
+      dockingCorridor: corridor ? {
+        stationId: corridor.stationId || null,
+        proxyId: corridor.proxyId || null,
+        phase: corridor.phase || null,
+        distToBerth: finite(corridor.distToBerth),
+        distCenter: finite(corridor.distCenter),
+        speed: finite(corridor.speed),
+        headingOk: corridor.headingOk === true,
+        inCorridor: corridor.inCorridor === true,
+        inCapture: corridor.inCapture === true,
+        berthed: corridor.berthed === true,
+        berth: point(corridor.berth),
+        assist: corridor.assist ? {
+          ax: finite(corridor.assist.ax),
+          az: finite(corridor.assist.az),
+        } : null,
+      } : null,
+      physicsDockStationId: window.SF?.registry?.get?.('physics')?._dockStationId ?? null,
+    };
+  });
 }
 
 async function buyConstructionCargo(page) {
@@ -1538,15 +1733,102 @@ async function assertExactlyOneExteriorRelay(page, siteId) {
 async function releaseMassline(page) {
   const active = await page.evaluate(() => window.SF?.state?.player?.tether?.active === true);
   if (!active) return;
+  await page.evaluate(() => {
+    const events = [];
+    const unsubs = [];
+    const bus = window.SF?.bus;
+    for (const name of ['tether:cut', 'tether:released', 'tether:broke', 'tether:releaseRated']) {
+      if (typeof bus?.on === 'function') {
+        unsubs.push(bus.on(name, (payload) => events.push({
+          name,
+          tick: Number(window.SF?.state?.tick) || 0,
+          payload: payload && typeof payload === 'object' ? JSON.parse(JSON.stringify(payload)) : payload,
+        })));
+      }
+    }
+    window.__PQ024_MASSLINE_RELEASE__ = {
+      events,
+      cleanup() {
+        for (const unsub of unsubs) unsub();
+        unsubs.length = 0;
+      },
+    };
+  });
+  const samples = [await readPq024MasslineReleaseSnapshot(page, 'before-keydown')];
   await page.keyboard.down('Space');
   try {
-    await page.waitForFunction(() => (
-      window.SF?.state?.input?.actions?.massline?.source === 'keyboard'
-    ), null, { timeout: 2_000 });
+    const heldTickHandle = await page.waitForFunction(() => {
+      const state = window.SF?.state;
+      return state?.input?.actions?.massline?.source === 'keyboard'
+        ? Number(state.tick) : null;
+    }, null, { timeout: 2_000 });
+    const heldTick = await heldTickHandle.jsonValue();
+    await page.waitForFunction((tick) => Number(window.SF?.state?.tick) > tick,
+      heldTick, { timeout: 2_000 });
+    samples.push(await readPq024MasslineReleaseSnapshot(page, 'keydown-received'));
   } finally {
     await page.keyboard.up('Space');
   }
-  await page.waitForFunction(() => window.SF?.state?.player?.tether?.active !== true);
+  const released = await page.waitForFunction(() => window.SF?.state?.player?.tether?.active !== true,
+    null, { timeout: 5_000 }).then(() => true, () => false);
+  samples.push(await readPq024MasslineReleaseSnapshot(page, released ? 'released' : 'release-timeout'));
+  const events = await page.evaluate(() => {
+    const trace = window.__PQ024_MASSLINE_RELEASE__;
+    const rows = Array.isArray(trace?.events) ? trace.events : [];
+    trace?.cleanup?.();
+    delete window.__PQ024_MASSLINE_RELEASE__;
+    return rows;
+  });
+  if (!released) {
+    const error = new Error(formatPq024MasslineReleaseTimeout({ samples, events }));
+    error.code = 'PQ024_MASSLINE_RELEASE_TIMEOUT';
+    error.masslineRelease = { samples, events };
+    throw error;
+  }
+}
+
+async function readPq024MasslineReleaseSnapshot(page, label) {
+  return page.evaluate((sampleLabel) => {
+    const state = window.SF?.state;
+    const inputOwner = window.SF?.registry?.get?.('input');
+    const tetherOwner = window.SF?.registry?.get?.('tetherGameplay');
+    const command = state?.input?.actions?.massline;
+    const tether = state?.player?.tether;
+    const clone = (value) => {
+      if (!value || typeof value !== 'object') return value ?? null;
+      try { return JSON.parse(JSON.stringify(value)); } catch (_) { return { uncloneable: true }; }
+    };
+    return {
+      label: sampleLabel,
+      tick: Number(state?.tick) || 0,
+      simTime: Number(state?.simTime) || 0,
+      mode: state?.mode || null,
+      screenStack: Array.isArray(state?.ui?.screenStack) ? [...state.ui.screenStack] : [],
+      spaceHeld: inputOwner?._keys?.Space === true,
+      command: command ? {
+        phase: command.phase || null,
+        latch: command.latch === true,
+        cut: command.cut === true,
+        lineControl: command.lineControl === true,
+        lineLength: Number(command.lineLength) || 0,
+        source: command.source || null,
+      } : null,
+      grammar: clone(inputOwner?._masslineGrammar?.snapshot?.()),
+      tether: tether ? {
+        active: tether.active === true,
+        targetId: tether.targetId ?? null,
+        attachmentId: tether.attachmentId ?? null,
+        phase: tether.phase || null,
+      } : null,
+      owner: tetherOwner ? {
+        active: clone(tetherOwner._active),
+        pendingCut: clone(tetherOwner._pendingCut),
+        ignoreReleaseCutUntilReelIdle: tetherOwner._ignoreReleaseCutUntilReelIdle === true,
+        latchGraceUntil: Number(tetherOwner._latchGraceUntil) || 0,
+        noRelatchUntil: Number(tetherOwner._noRelatchUntil) || 0,
+      } : null,
+    };
+  }, label);
 }
 
 async function quickSave(page) {

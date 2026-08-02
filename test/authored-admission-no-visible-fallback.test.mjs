@@ -491,6 +491,97 @@ test('authored place LODs remain under the stable boundary and switch by authore
   assert.deepEqual(visibility(), { lod0: false, lod1: true, lod2: false });
 });
 
+test('the claim relay keeps exact closed surfaces while sampling its packed ORM once', async () => {
+  const entity = {
+    id: 28,
+    type: 'fx',
+    alive: true,
+    radius: 6,
+    data: {
+      placeId: 'place_claim_outpost_relay',
+      placeScale: 0.16,
+      worldDressing: true,
+    },
+  };
+  const boundary = buildAuthoredPlaceProp(entity, { releaseMode: true });
+  const fallbackRoot = boundary.children[0];
+  const scene = new THREE.Scene();
+  scene.add(boundary);
+  const packedOrm = new THREE.Texture();
+  packedOrm.channel = 0;
+  const sourceMaterial = new THREE.MeshStandardMaterial({
+    side: THREE.DoubleSide,
+    aoMap: packedOrm,
+    roughnessMap: packedOrm,
+    metalnessMap: packedOrm,
+  });
+  sourceMaterial.name = 'Material_Hull';
+  sourceMaterial.userData.spacefaceMaterialRole = 'hull';
+  const record = {
+    url: 'assets/ships/release/parts/places/place_claim_outpost_relay.glb',
+    assetId: 'place_claim_outpost_relay',
+    slot: 'place',
+    bounds: { size: [104, 55, 96], center: [0, 0, 0] },
+    primitives: ['lod0', 'lod1', 'lod2'].map((lod, index) => ({
+      key: `${lod}:0`,
+      name: `${lod}_RelayHull`,
+      geometry: new THREE.BoxGeometry(104 - index * 12, 55 - index * 6, 96 - index * 10),
+      material: sourceMaterial,
+      matrix: new THREE.Matrix4(),
+      tags: { lod },
+    })),
+    markers: [],
+  };
+
+  const swapped = await upgradeAuthoredPlaceBoundaryForProbe(
+    boundary,
+    fallbackRoot,
+    entity,
+    'places/place_claim_outpost_relay.glb',
+    {},
+    scene,
+    { releaseMode: true, loadAuthoredPart: async () => record },
+  );
+  const authoredRoot = boundary.userData.hull;
+  const relayMaterials = new Set();
+  authoredRoot.traverse((object) => {
+    if (!object.userData?.spacefaceStaticBatch) return;
+    for (const material of [].concat(object.material || [])) relayMaterials.add(material);
+  });
+
+  assert.equal(swapped, true);
+  assert.deepEqual(authoredRoot.userData.claimRelayMaterialPolicy, {
+    assetId: 'place_claim_outpost_relay',
+    surfaceContract: 'closed-authored-primitives-front-sided',
+    packedOrmContract: 'one-shared-fetch-for-ao-roughness-metalness',
+    materialCount: 1,
+    packedOrmMaterialCount: 1,
+    roles: ['hull'],
+  });
+  assert.equal(relayMaterials.size, 1, 'one specialized variant is shared by all three authored LODs');
+  const [material] = relayMaterials;
+  assert.notEqual(material, sourceMaterial);
+  assert.equal(material.side, THREE.FrontSide,
+    'the relay builder uses only closed primitives, so hidden back faces need no rasterization');
+  assert.equal(material.userData.spacefaceClaimRelayClosedSurface, true);
+  assert.equal(material.userData.spacefacePackedOrmSingleSample, true);
+  assert.match(material.customProgramCacheKey(), /spaceface-packed-orm-single-sample-v1/);
+  const shader = {
+    fragmentShader: [
+      '#include <roughnessmap_fragment>',
+      '#include <metalnessmap_fragment>',
+      '#include <aomap_fragment>',
+    ].join('\n'),
+  };
+  material.onBeforeCompile(shader, {});
+  assert.equal((shader.fragmentShader.match(/texture2D/g) || []).length, 1);
+  assert.match(shader.fragmentShader, /sfPackedOrmTexel\.r/);
+  assert.match(shader.fragmentShader, /sfPackedOrmTexel\.g/);
+  assert.match(shader.fragmentShader, /sfPackedOrmTexel\.b/);
+  assert.equal(sourceMaterial.side, THREE.DoubleSide, 'the resident source material stays immutable');
+  assert.equal(sourceMaterial.userData.spacefacePackedOrmSingleSample, undefined);
+});
+
 test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', async () => {
   const entity = {
     id: 29,

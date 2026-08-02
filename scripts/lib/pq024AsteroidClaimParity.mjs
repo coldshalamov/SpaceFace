@@ -53,6 +53,31 @@ export function projectPq024RouteSemantics(receipt) {
   };
 }
 
+export function formatPq024DockApproachTimeout({
+  timeoutMs,
+  sampleCount,
+  bestBerthDistance,
+  bestCenterDistance,
+  last,
+} = {}) {
+  const evidence = {
+    timeoutMs: finiteOrNull(timeoutMs),
+    sampleCount: finiteOrNull(sampleCount),
+    bestBerthDistance: finiteOrNull(bestBerthDistance),
+    bestCenterDistance: finiteOrNull(bestCenterDistance),
+    last: last && typeof last === 'object' ? last : null,
+  };
+  return `public Helios approach did not expose the dock prompt; evidence=${JSON.stringify(evidence)}`;
+}
+
+export function formatPq024MasslineReleaseTimeout({ samples, events } = {}) {
+  const evidence = {
+    samples: Array.isArray(samples) ? samples : [],
+    events: Array.isArray(events) ? events : [],
+  };
+  return `public Massline tap did not release the active tether; evidence=${JSON.stringify(evidence)}`;
+}
+
 function normalizeCell(cell) {
   return {
     col: Number(cell?.col),
@@ -66,4 +91,8 @@ function normalizeRelay(relay) {
     placeId: relay?.placeId || null,
     siteId: relay?.siteId || null,
   };
+}
+
+function finiteOrNull(value) {
+  return Number.isFinite(value) ? Number(value) : null;
 }

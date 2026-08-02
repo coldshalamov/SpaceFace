@@ -14,9 +14,9 @@ export const PQ024_H3_BUDGETS = Object.freeze({
   targetSamplingEnvelopeP95Ms: 17.5,
   matchedP95ToleranceMs: 0.8,
   matchedP99ToleranceMs: 0.8,
+  matchedCpuWorkP95ToleranceMs: 0.8,
   maxFrameMs: 50,
   maxBacklogSheddingFrames: 0,
-  maxExternalSchedulingMedianHitchDelta: 2,
   maxSeparatedGpuEnvelopeMs: 17.5,
 });
 
@@ -283,6 +283,9 @@ function validateAttribution(label, attribution, failures) {
       failures.push(`${label} cpu phase ${key}.p95 is missing`);
     }
   }
+  if (!finiteNonnegative(attribution?.cpu?.frameCallback?.p95)) {
+    failures.push(`${label} cpu frameCallback.p95 is missing`);
+  }
   if (!attribution?.cpu?.systems || typeof attribution.cpu.systems !== 'object') {
     failures.push(`${label} system attribution is missing`);
   }
@@ -360,6 +363,22 @@ function validateRouteFacts(label, id, expectedIndex, expectedSeed, facts, failu
       || relay.assetState !== 'authored') {
     failures.push(`${label} target must bind exactly one admitted authored exterior relay`);
   }
+  const rendering = relay.rendering || {};
+  const materialPolicy = rendering.materialPolicy || {};
+  if (rendering.appliedLod !== 'lod1'
+      || rendering.visibleMeshes !== 1
+      || rendering.visibleDrawCalls !== 5
+      || rendering.visibleTriangles !== 21_532
+      || rendering.visibleMaterialCount !== 5
+      || rendering.packedOrmMaterialCount !== 5
+      || rendering.closedFrontMaterialCount !== 5
+      || materialPolicy.assetId !== 'place_claim_outpost_relay'
+      || materialPolicy.surfaceContract !== 'closed-authored-primitives-front-sided'
+      || materialPolicy.packedOrmContract !== 'one-shared-fetch-for-ao-roughness-metalness'
+      || materialPolicy.materialCount !== 5
+      || materialPolicy.packedOrmMaterialCount !== 5) {
+    failures.push(`${label} target must bind the exact optimized authored relay LOD1 material path`);
+  }
 }
 
 function validateMatchedProfiles(floor, target, failures) {
@@ -410,13 +429,15 @@ function validateMatchedProfiles(floor, target, failures) {
   }
   const floorHitches = summarizeHitchAttribution(floorRuns);
   const targetHitches = summarizeHitchAttribution(targetRuns);
-  if (targetHitches.productAttributed > floorHitches.productAttributed) {
-    failures.push('relay target product-attributed hitch count increases from the committed floor');
+  if (targetHitches.medianProductAttributedRate > floorHitches.medianProductAttributedRate) {
+    failures.push('relay target median product-attributed hitch rate increases from the committed floor');
   }
-  if (targetHitches.medianExternalScheduling
-      > floorHitches.medianExternalScheduling
-        + PQ024_H3_BUDGETS.maxExternalSchedulingMedianHitchDelta) {
-    failures.push('relay target median external-scheduling hitch count exceeds the matched noise envelope');
+  const cpuWorkEnvelope = summarizeCpuWorkEnvelope(floorRuns, targetRuns);
+  for (const [key, row] of Object.entries(cpuWorkEnvelope)) {
+    if (finiteNumber(row.floorMedianP95) && finiteNumber(row.targetMedianP95)
+        && row.targetMedianP95 > row.floorMedianP95 + PQ024_H3_BUDGETS.matchedCpuWorkP95ToleranceMs) {
+      failures.push(`relay target median ${key} CPU p95 regresses by more than ${PQ024_H3_BUDGETS.matchedCpuWorkP95ToleranceMs} ms`);
+    }
   }
   if (sum(targetSummaries, 'framesAbove50Ms') > 0) {
     failures.push('relay target contains one or more frames above 50 ms');
@@ -438,7 +459,7 @@ function validateMatchedProfiles(floor, target, failures) {
       || gpuFrameEnvelope.target.medianP95 > PQ024_H3_BUDGETS.maxSeparatedGpuEnvelopeMs) {
     failures.push(`relay target correlated GPU-frame median p95 exceeds ${PQ024_H3_BUDGETS.maxSeparatedGpuEnvelopeMs} ms`);
   }
-  return { floor: floorHitches, target: targetHitches, rendererAdmission, gpuFrameEnvelope };
+  return { floor: floorHitches, target: targetHitches, cpuWorkEnvelope, rendererAdmission, gpuFrameEnvelope };
 }
 
 function validateStablePose(left, right, pairIndex, failures) {
@@ -454,7 +475,8 @@ function validateStablePose(left, right, pairIndex, failures) {
 
 function summarizeHitchAttribution(runs) {
   const perRun = runs.map((run) => {
-    const hitches = (Array.isArray(run?.rawSamples) ? run.rawSamples : [])
+    const samples = Array.isArray(run?.rawSamples) ? run.rawSamples : [];
+    const hitches = samples
       .filter((sample) => Number(sample?.frameMs) > 32);
     const externalScheduling = hitches.filter((sample) => (
       finiteNonnegative(sample?.callbackMs)
@@ -466,16 +488,40 @@ function summarizeHitchAttribution(runs) {
       && sample?.shedBacklog !== true
       && (Number(sample?.externalCallbackGapMs) > 0 || Number(sample?.callbackDispatchLagMs) > 0)
     )).length;
-    return { raw: hitches.length, externalScheduling, productAttributed: hitches.length - externalScheduling };
+    const productAttributed = hitches.length - externalScheduling;
+    const denominator = Math.max(1, samples.length);
+    return {
+      sampleCount: samples.length,
+      raw: hitches.length,
+      rawRate: hitches.length / denominator,
+      externalScheduling,
+      externalSchedulingRate: externalScheduling / denominator,
+      productAttributed,
+      productAttributedRate: productAttributed / denominator,
+    };
   });
   return {
     raw: sum(perRun, 'raw'),
     externalScheduling: sum(perRun, 'externalScheduling'),
     productAttributed: sum(perRun, 'productAttributed'),
     medianExternalScheduling: medianValue(perRun.map((row) => row.externalScheduling)),
+    medianExternalSchedulingRate: medianValue(perRun.map((row) => row.externalSchedulingRate)),
     medianProductAttributed: medianValue(perRun.map((row) => row.productAttributed)),
+    medianProductAttributedRate: medianValue(perRun.map((row) => row.productAttributedRate)),
     perRun,
   };
+}
+
+function summarizeCpuWorkEnvelope(floorRuns, targetRuns) {
+  const selectors = {
+    frameCallback: (run) => run?.attribution?.cpu?.frameCallback?.p95,
+    renderPhase: (run) => run?.attribution?.cpu?.phases?.render?.p95,
+    simPhase: (run) => run?.attribution?.cpu?.phases?.sim?.p95,
+  };
+  return Object.fromEntries(Object.entries(selectors).map(([key, select]) => [key, {
+    floorMedianP95: medianValue(floorRuns.map((run) => Number(select(run)))),
+    targetMedianP95: medianValue(targetRuns.map((run) => Number(select(run)))),
+  }]));
 }
 
 function correlatedGpuFrameSummary(terminals) {
