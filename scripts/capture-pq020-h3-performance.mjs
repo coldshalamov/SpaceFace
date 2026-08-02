@@ -26,6 +26,8 @@ import {
   PQ020_H3_PROFILE_IDS,
   PQ020_H3_RECEIPT_SCHEMA,
   PQ020_H3_REPETITIONS,
+  classifyPq020H3ProbeFailure,
+  validatePq020H3IncompleteReceipt,
   validatePq020H3PerformanceReceipt,
 } from './lib/pq020CeresH3Performance.mjs';
 import { sampleRafWindow } from './lib/releaseSoakProbe.mjs';
@@ -197,13 +199,16 @@ try {
       animations: 'allow',
     }).catch(() => {});
   }
+  const classification = classifyPq020H3ProbeFailure(error, {
+    phase: activePhase,
+    completedPairCount: completed.length,
+  });
   receipt = {
     schema: PQ020_H3_RECEIPT_SCHEMA,
     runtime: 'browser-chromium-headed',
     disposition: 'FAIL',
-    failureClass: 'UNCLASSIFIED_BY_PROBE',
-    phase: error?.routePhase || activePhase,
-    problems: [error?.message || String(error)],
+    ...classification,
+    problems: [classification.problem],
     stack: error?.stack || null,
     fixedSeed: FIXED_SEED,
     gpu,
@@ -219,7 +224,9 @@ try {
 }
 
 receipt.cleanup = { browserClosed, serverClosed };
-const validation = validatePq020H3PerformanceReceipt(receipt);
+const validation = receipt.productEvidenceValid === false
+  ? validatePq020H3IncompleteReceipt(receipt)
+  : validatePq020H3PerformanceReceipt(receipt);
 receipt.validation = validation;
 if (!validation.pass) {
   receipt.disposition = 'FAIL';

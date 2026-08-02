@@ -21,7 +21,75 @@ export const PQ020_H3_BUDGETS = Object.freeze({
   maxBacklogSheddingFrames: 0,
 });
 
+export const PQ020_H3_PROBE_FAILURE_CLASSES = Object.freeze({
+  BROWSER_CONTEXT_CLOSED: 'BROWSER_CONTEXT_CLOSED_BEFORE_CELL_COMPLETION',
+  PROBE_FAILURE: 'PROBE_FAILURE_BEFORE_CELL_COMPLETION',
+});
+
 const SOFTWARE_RENDERER = /swiftshader|llvmpipe|software rasterizer|microsoft basic render/i;
+const BROWSER_CONTEXT_CLOSED = /target page, context or browser has been closed/i;
+
+export function classifyPq020H3ProbeFailure(error, {
+  phase = 'unknown',
+  completedPairCount = 0,
+} = {}) {
+  const problem = String(error?.message || error || 'unknown PQ-020 H3 probe failure');
+  const infrastructureInterrupted = BROWSER_CONTEXT_CLOSED.test(problem);
+  return {
+    failureClass: infrastructureInterrupted
+      ? PQ020_H3_PROBE_FAILURE_CLASSES.BROWSER_CONTEXT_CLOSED
+      : PQ020_H3_PROBE_FAILURE_CLASSES.PROBE_FAILURE,
+    infrastructureInterrupted,
+    productEvidenceValid: false,
+    retryableAfterRegression: infrastructureInterrupted,
+    phase: String(error?.routePhase || phase || 'unknown'),
+    completedPairCount: Number.isInteger(completedPairCount) && completedPairCount >= 0
+      ? completedPairCount
+      : 0,
+    problem,
+  };
+}
+
+export function validatePq020H3IncompleteReceipt(receipt = {}) {
+  const classificationFailures = [];
+  if (receipt?.schema !== PQ020_H3_RECEIPT_SCHEMA) {
+    classificationFailures.push(`schema must be ${PQ020_H3_RECEIPT_SCHEMA}`);
+  }
+  if (receipt?.disposition !== 'FAIL') classificationFailures.push('incomplete receipt disposition must be FAIL');
+  if (receipt?.productEvidenceValid !== false) {
+    classificationFailures.push('incomplete receipt must explicitly reject product evidence');
+  }
+  if (!Object.values(PQ020_H3_PROBE_FAILURE_CLASSES).includes(receipt?.failureClass)) {
+    classificationFailures.push('incomplete receipt must use a known probe failure class');
+  }
+  if (receipt?.infrastructureInterrupted === true
+      && receipt?.failureClass !== PQ020_H3_PROBE_FAILURE_CLASSES.BROWSER_CONTEXT_CLOSED) {
+    classificationFailures.push('Browser interruption must use the Browser-context-closed failure class');
+  }
+  if (typeof receipt?.phase !== 'string' || receipt.phase.length === 0) {
+    classificationFailures.push('incomplete receipt must name the interrupted phase');
+  }
+  if (!Number.isInteger(receipt?.completedPairCount) || receipt.completedPairCount < 0) {
+    classificationFailures.push('incomplete receipt must count completed matched pairs');
+  }
+  if (receipt?.cleanup?.browserClosed !== true || receipt?.cleanup?.serverClosed !== true) {
+    classificationFailures.push('incomplete receipt must prove owned Browser and server cleanup');
+  }
+
+  const conclusion = receipt?.infrastructureInterrupted === true
+    ? `owned Browser context closed during ${receipt.phase} after ${receipt.completedPairCount} complete pair(s); cell is incomplete and makes no product performance conclusion`
+    : `probe stopped during ${receipt?.phase || 'unknown'} after ${receipt?.completedPairCount ?? 0} complete pair(s); cell is incomplete and makes no product performance conclusion`;
+
+  return {
+    pass: false,
+    classificationPass: classificationFailures.length === 0,
+    evidenceStatus: 'INCOMPLETE_NO_PRODUCT_CONCLUSION',
+    failures: classificationFailures.length > 0 ? classificationFailures : [conclusion],
+    profiles: [],
+    budgets: PQ020_H3_BUDGETS,
+    absoluteBudget: null,
+  };
+}
 
 export function validatePq020H3PerformanceReceipt(receipt = {}) {
   const failures = [];

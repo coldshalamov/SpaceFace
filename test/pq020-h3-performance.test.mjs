@@ -7,7 +7,10 @@ import {
   PQ020_H3_BUDGETS,
   PQ020_H3_PIPELINE_SETTLE_TIMEOUT_MS,
   PQ020_H3_PROFILE_IDS,
+  PQ020_H3_PROBE_FAILURE_CLASSES,
   PQ020_H3_RECEIPT_SCHEMA,
+  classifyPq020H3ProbeFailure,
+  validatePq020H3IncompleteReceipt,
   validatePq020H3PerformanceReceipt,
 } from '../scripts/lib/pq020CeresH3Performance.mjs';
 import manifest from '../scripts/validation-manifests/pq020-h3-performance.mjs';
@@ -250,6 +253,46 @@ test('PQ-020 H3 keeps the absolute target separate from matched feature acceptan
   assert.equal(result.absoluteBudget.pass, false);
 });
 
+test('PQ-020 H3 classifies an interrupted Browser context without a product-validation cascade', () => {
+  const classified = classifyPq020H3ProbeFailure(
+    new Error('page.waitForFunction: Target page, context or browser has been closed'),
+    { phase: 'pq020-h3-pair-2', completedPairCount: 1 },
+  );
+  assert.deepEqual(classified, {
+    failureClass: PQ020_H3_PROBE_FAILURE_CLASSES.BROWSER_CONTEXT_CLOSED,
+    infrastructureInterrupted: true,
+    productEvidenceValid: false,
+    retryableAfterRegression: true,
+    phase: 'pq020-h3-pair-2',
+    completedPairCount: 1,
+    problem: 'page.waitForFunction: Target page, context or browser has been closed',
+  });
+
+  const validation = validatePq020H3IncompleteReceipt({
+    schema: PQ020_H3_RECEIPT_SCHEMA,
+    disposition: 'FAIL',
+    ...classified,
+    cleanup: { browserClosed: true, serverClosed: true },
+  });
+  assert.equal(validation.pass, false);
+  assert.equal(validation.classificationPass, true);
+  assert.equal(validation.evidenceStatus, 'INCOMPLETE_NO_PRODUCT_CONCLUSION');
+  assert.equal(validation.failures.length, 1);
+  assert.match(validation.failures[0], /no product performance conclusion/);
+  assert.doesNotMatch(validation.failures.join('\n'), /missing required profile|hardware GPU|viewport/);
+});
+
+test('PQ-020 H3 keeps ordinary probe failures distinct from Browser infrastructure interruption', () => {
+  const classified = classifyPq020H3ProbeFailure(
+    new Error('pair 1: Cathedral admission timed out'),
+    { phase: 'pq020-h3-pair-1', completedPairCount: 0 },
+  );
+  assert.equal(classified.failureClass, PQ020_H3_PROBE_FAILURE_CLASSES.PROBE_FAILURE);
+  assert.equal(classified.infrastructureInterrupted, false);
+  assert.equal(classified.productEvidenceValid, false);
+  assert.equal(classified.retryableAfterRegression, false);
+});
+
 test('PQ-020 H3 is a one-use brokered cell over the accepted public route drivers', () => {
   assert.equal(manifest.id, 'pq020-h3-performance');
   assert.equal(manifest.runtimeKind, 'browser');
@@ -270,6 +313,8 @@ test('PQ-020 H3 is a one-use brokered cell over the accepted public route driver
   assert.equal(PQ020_H3_PIPELINE_SETTLE_TIMEOUT_MS, 30_000);
   assert.match(ACTOR_SOURCE, /for \(let repetition = 1; repetition <= PQ020_H3_REPETITIONS/);
   assert.match(ACTOR_SOURCE, /runPq020H3PerformancePair/);
+  assert.match(ACTOR_SOURCE, /validatePq020H3IncompleteReceipt/,
+    'an interrupted cell must use the bounded incomplete-receipt validator');
   assert.match(ACTOR_SOURCE, /pq020FunctionalRouteDrivers/);
   assert.match(ACTOR_SOURCE, /phaseTag: 'flight_steady'/,
     'the Ceres entry floor must use the sampler-supported flight profile');
