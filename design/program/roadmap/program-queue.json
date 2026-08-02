@@ -3546,7 +3546,7 @@
       "priority": 203,
       "title": "PQ-019 matched facility and heist-route performance",
       "kind": "performance",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-019.capsule-h1-capture",
         "PQ-019.surface-heist-h1-capture",
