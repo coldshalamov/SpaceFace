@@ -480,12 +480,96 @@ test('authored place LODs remain under the stable boundary and switch by authore
   assert.ok(boundary.userData.lod, 'the stable outer boundary owns screen-size LOD state');
   assert.equal(typeof boundary.userData.updateLod, 'function');
   assert.equal(typeof authoredRoot.userData.updateLod, 'function');
+  assert.equal(authoredRoot.userData.opaqueDepthPrepass, undefined,
+    'ordinary authored places do not pay the Cathedral-specific depth pass');
   assert.deepEqual(visibility(), { lod0: true, lod1: false, lod2: false });
   boundary.userData.updateLod('lod2');
   assert.equal(boundary.userData.hull, authoredRoot, 'LOD changes never replace the entity root');
   assert.deepEqual(visibility(), { lod0: false, lod1: false, lod2: true });
   boundary.userData.updateLod('lod1');
   assert.deepEqual(visibility(), { lod0: false, lod1: true, lod2: false });
+});
+
+test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', async () => {
+  const entity = {
+    id: 29,
+    type: 'fx',
+    alive: true,
+    radius: 120,
+    data: {
+      placeId: 'place_landmark_wreck_cathedral',
+      placeTargetRadius: 120,
+    },
+  };
+  const boundary = buildAuthoredPlaceProp(entity, { releaseMode: true });
+  const fallbackRoot = boundary.children[0];
+  const scene = new THREE.Scene();
+  scene.add(boundary);
+  const record = {
+    url: 'assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb',
+    assetId: 'place_landmark_wreck_cathedral',
+    slot: 'place',
+    bounds: { size: [240, 80, 120], center: [0, 0, 0] },
+    primitives: ['lod0', 'lod1', 'lod2'].map((lod, index) => ({
+      key: `${lod}:0`,
+      name: `${lod}_Cathedral`,
+      geometry: new THREE.BoxGeometry(240 - index * 40, 80 - index * 10, 120 - index * 20),
+      material: new THREE.MeshStandardMaterial({ side: THREE.DoubleSide }),
+      matrix: new THREE.Matrix4(),
+      tags: { lod },
+    })),
+    markers: [],
+  };
+
+  const swapped = await upgradeAuthoredPlaceBoundaryForProbe(
+    boundary,
+    fallbackRoot,
+    entity,
+    'places/place_landmark_wreck_cathedral.glb',
+    {},
+    scene,
+    { releaseMode: true, loadAuthoredPart: async () => record },
+  );
+  const authoredRoot = boundary.userData.hull;
+  const sources = [];
+  const prepasses = [];
+  authoredRoot.traverse((object) => {
+    if (object.userData?.spacefaceDepthPrepass) prepasses.push(object);
+    else if (object.userData?.spacefaceStaticBatch) sources.push(object);
+  });
+
+  assert.equal(swapped, true);
+  assert.equal(sources.length, 3);
+  assert.equal(prepasses.length, 3, 'the active LOD pays one depth-only draw, not one draw per material');
+  for (const prepass of prepasses) {
+    const lod = prepass.userData.spacefaceTags.lod;
+    const source = sources.find((candidate) => candidate.userData.spacefaceTags.lod === lod);
+    const sourceMaterials = Array.isArray(source.material) ? source.material : [source.material];
+    assert.equal(prepass.geometry, source.geometry, `${lod} reuses exact authored geometry without another GPU buffer`);
+    assert.equal(prepass.material.colorWrite, false);
+    assert.equal(prepass.material.depthTest, true);
+    assert.equal(prepass.material.depthWrite, true);
+    assert.equal(prepass.material.side, THREE.DoubleSide, `${lod} retains open-shell interior coverage`);
+    assert.ok(prepass.renderOrder < source.renderOrder);
+    assert.equal(prepass.castShadow, false);
+    assert.equal(prepass.receiveShadow, false);
+    assert.ok(sourceMaterials.every((material) => material.side === THREE.DoubleSide),
+      `${lod} authored PBR material remains unchanged`);
+  }
+  assert.deepEqual(authoredRoot.userData.opaqueDepthPrepass, {
+    assetId: 'place_landmark_wreck_cathedral',
+    drawables: 3,
+    geometry: 'shared-authored',
+    material: 'depth-only-double-sided',
+  });
+
+  const visibility = () => Object.fromEntries(['lod0', 'lod1', 'lod2'].map((lod) => [
+    lod,
+    prepasses.find((object) => object.userData.spacefaceTags.lod === lod).visible,
+  ]));
+  assert.deepEqual(visibility(), { lod0: true, lod1: false, lod2: false });
+  boundary.userData.updateLod('lod2');
+  assert.deepEqual(visibility(), { lod0: false, lod1: false, lod2: true });
 });
 
 test('a synchronous authored geology builder error keeps the procedural geology identity', () => {

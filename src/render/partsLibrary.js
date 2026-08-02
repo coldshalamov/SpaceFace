@@ -27,6 +27,7 @@ import {
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
 const AUTHORED_CARGO_CAPSULE_FILE = 'pods/pod_cargo_container.glb';
+const WRECK_CATHEDRAL_PLACE_ID = 'place_landmark_wreck_cathedral';
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 const INSTANCE_CHUNK_SIZE = 64;
 const INSTANCE_FAR_CULL_RADIUS = 9000;
@@ -1398,6 +1399,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
   normalizePlacePropBindings(bindings);
   centerAuthoredPlaceRoot(root, record, scale);
   installWorldSitePresentation(root, entity);
+  installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings);
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
   root.userData.authoredSourceEnvelope = authoredEnvelope;
@@ -1441,6 +1443,74 @@ function centerAuthoredPlaceRoot(root, record, scale) {
       (Number(record.bounds.size && record.bounds.size[2]) || 0) * s,
     ],
   };
+}
+
+function installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
+  if (!root || placeId !== WRECK_CATHEDRAL_PLACE_ID) return;
+  const sources = [];
+  root.traverse((object) => {
+    if (object.isMesh && object.userData?.spacefaceStaticBatch && opaqueDoubleSidedDepthSource(object)) {
+      sources.push(object);
+    }
+  });
+  if (sources.length === 0) return;
+
+  // The Cathedral is a close-range, double-sided capital-wreck shell. Its eight authored PBR
+  // material groups are already merged into one mesh per LOD, but shading every hidden fragment
+  // made the target route GPU-bound. One shared depth-only material preserves the exact PBR pass,
+  // geometry, open-shell interiors, LOD choice, and default quality while rejecting hidden work.
+  const material = new THREE.MeshBasicMaterial({
+    color: 0x000000,
+    colorWrite: false,
+    depthTest: true,
+    depthWrite: true,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+  });
+  material.name = 'SF_WreckCathedral_OpaqueDepthPrepass';
+  const prepasses = [];
+  for (const source of sources) {
+    const tags = clonePrimitiveTags(source.userData.spacefaceTags);
+    const prepass = new THREE.Mesh(source.geometry, material);
+    prepass.name = `${source.name}_OpaqueDepthPrepass`;
+    prepass.position.copy(source.position);
+    prepass.quaternion.copy(source.quaternion);
+    prepass.scale.copy(source.scale);
+    prepass.matrixAutoUpdate = source.matrixAutoUpdate;
+    if (!source.matrixAutoUpdate) prepass.matrix.copy(source.matrix);
+    prepass.layers.mask = source.layers.mask;
+    prepass.frustumCulled = source.frustumCulled;
+    prepass.renderOrder = Math.min(-1, source.renderOrder - 1);
+    prepass.castShadow = false;
+    prepass.receiveShadow = false;
+    prepass.visible = source.visible;
+    prepass.userData = {
+      spacefaceDepthPrepass: true,
+      spacefacePartUrl: source.userData.spacefacePartUrl,
+      spacefacePartUrls: source.userData.spacefacePartUrls,
+      spacefaceTags: tags,
+    };
+    root.add(prepass);
+    registerBinding(prepass, tags, bindings);
+    prepasses.push(prepass);
+  }
+  root.userData.opaqueDepthPrepass = {
+    assetId: placeId,
+    drawables: prepasses.length,
+    geometry: 'shared-authored',
+    material: 'depth-only-double-sided',
+  };
+}
+
+function opaqueDoubleSidedDepthSource(object) {
+  const materials = Array.isArray(object.material) ? object.material : [object.material];
+  return materials.length > 0 && materials.every((material) => material
+    && material.visible !== false
+    && material.transparent !== true
+    && material.depthWrite !== false
+    && (!(Number(material.alphaTest) > 0))
+    && (!Number.isFinite(Number(material.opacity)) || Number(material.opacity) >= 1)
+    && material.side === THREE.DoubleSide);
 }
 
 function normalizePlacePropBindings(bindings) {
