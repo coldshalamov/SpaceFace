@@ -4390,7 +4390,7 @@
       "priority": 220,
       "title": "PERF-01 native lifecycle acceptance",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-035.focused-implementation"
@@ -4399,10 +4399,29 @@
         "validation-broker",
         "browser-gpu"
       ],
-      "paths": [],
-      "checks": [],
-      "receiptRefs": [],
-      "brief": "Close foreground/background/minimize/suspend/restore parity on the accepted harness.",
+      "paths": [
+        "scripts/check-performance-lifecycle.mjs",
+        "scripts/lib/performanceLifecycleContracts.mjs",
+        "scripts/lib/performanceLifecycleProbe.mjs",
+        "scripts/validation-manifests/performance-lifecycle-browser.mjs",
+        "scripts/validation-manifests/performance-lifecycle-electron.mjs",
+        "test/performance-lifecycle-contracts.test.mjs",
+        "test/performance-lifecycle-manifests.test.mjs",
+        "design/program/roadmap/active/PQ-035.md",
+        "design/program/roadmap/receipts/PQ-035-lifecycle-REPORT.md"
+      ],
+      "checks": [
+        "node --test test/performance-lifecycle-contracts.test.mjs test/performance-lifecycle-manifests.test.mjs",
+        "node --test test/loop-lifecycle.test.mjs test/loop-orchestration-perf.test.mjs test/electron-shell-lifecycle.test.mjs test/audio-lifecycle.test.mjs test/input-lifecycle.test.mjs",
+        "npm run check:launch-policy",
+        "node scripts/validation-broker-cli.mjs --manifest performance-lifecycle-browser",
+        "node scripts/validation-broker-cli.mjs --manifest performance-lifecycle-electron",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-035-lifecycle-REPORT.md"
+      ],
+      "brief": "Build and run paired one-use broker cells for actual Browser visibility plus native Electron blur, minimize, hide, show, restore, input/audio recovery, zero hidden submission, bounded repeated transitions, foreground equivalence, and owned cleanup. Physical OS suspend/lock remains a separately named non-synthetic evidence boundary if this process cannot safely drive it.",
       "blocker": null
     },
     {
