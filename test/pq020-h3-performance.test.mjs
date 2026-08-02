@@ -79,31 +79,49 @@ function routeFacts(profileId, index) {
       admittedComponentCount: 7,
       rootAdmission: 'ready',
       rootAssetState: 'authored',
-      appliedLod: cathedral ? 'LOD0' : null,
+      appliedLod: cathedral ? 'lod0' : null,
       inFrame: cathedral,
       cameraZoom: cathedral ? 72 : null,
       distanceToPlayer: cathedral ? 180 : 3200,
       geometry: {
         color: {
-          drawables: 22,
-          indexedDrawables: 22,
-          partitionedDrawables: 22,
+          drawables: 1,
+          indexedDrawables: 1,
           uniqueVertices: 70822,
-          triangleIndices: 275724,
-          triangles: 91908,
-          spatialCellSize: 96,
-          spatialCells: Array.from({ length: 22 }, (_, cell) => `cell-${cell}`),
+          triangleIndices: 259983,
+          triangles: 86661,
+          packedOrmSingleSampleMaterialRoles: [
+            'copper_coil', 'exposed_alloy', 'heat_affected_alloy', 'hull',
+            'maintenance_mark', 'mechanical', 'signal', 'warning',
+          ],
+          ordinaryOpenDepthMaterialRoles: ['exposed_alloy'],
+          minimalPositionDepthShaderDrawables: 0,
         },
         depthPrepass: {
-          drawables: 40,
-          indexedDrawables: 40,
-          partitionedDrawables: 40,
+          drawables: 1,
+          indexedDrawables: 1,
           uniqueVertices: 70822,
-          triangleIndices: 275724,
-          triangles: 91908,
-          spatialCellSize: 96,
-          spatialCells: Array.from({ length: 22 }, (_, cell) => `cell-${cell}`),
-          roles: ['closed-front', 'open-double'],
+          triangleIndices: 254337,
+          triangles: 84779,
+          packedOrmSingleSampleMaterialRoles: [],
+          ordinaryOpenDepthMaterialRoles: [],
+          minimalPositionDepthShaderDrawables: 1,
+          roles: ['closed-front'],
+          trianglesByRole: { 'closed-front': 84779 },
+        },
+        depthTopology: {
+          geometry: 'indexed-zero-area-pruned-closed-depth-open-color',
+          activeLod: 'lod0',
+          report: {
+            sourceTriangles: 91908,
+            retainedTriangles: 86661,
+            removedDegenerateTriangles: 5247,
+            closedDepthTriangles: 84779,
+            ordinaryOpenColorTriangles: 1882,
+            closedExposedTriangles: 36268,
+            openExposedTriangles: 1882,
+            colorMaterialGroups: 8,
+          },
         },
         prepassSharesColorAttributes: true,
       },
@@ -144,7 +162,28 @@ function repetition(profileId, index, frameMs = profileId === 'ceres-entry-floor
         start: { video: { ...VIDEO }, dynResScale: 1, timeScale: 1 },
         end: { video: { ...VIDEO }, dynResScale: 1, timeScale: 1 },
       },
-      gpuTimers: { available: true, captureValid: true, lastDisjoint: false },
+      gpuTimers: {
+        available: true,
+        enabled: true,
+        captureValid: true,
+        lastDisjoint: false,
+        drain: { drained: true, timedOut: false, pending: 0 },
+        queryCounts: { completed: 450 },
+        passes: {
+          bloomScene: { max: 8 },
+          bloomDownsample: { max: 0.8 },
+          bloomUpsample: { max: 0 },
+          bloomComposite: { max: 1.2 },
+        },
+      },
+      measurementIsolation: {
+        frameTimingGpuTimersEnabled: false,
+        gpuAttributionSeparated: true,
+        gpuAttributionFrameCount: 150,
+        gpuAttributionDurationMs: 2500,
+        settingsStable: true,
+        routeStable: true,
+      },
       memory: { comparableState: { pass: true } },
     },
   };
@@ -219,21 +258,40 @@ test('PQ-020 H3 requires exact Ceres, Cathedral, admission, framing, and LOD fac
   const failures = validatePq020H3PerformanceReceipt(invalid).failures.join('\n');
   assert.match(failures, /sector_ceres_belt/);
   assert.match(failures, /Cathedral must be in frame/);
-  assert.match(failures, /applied LOD/);
+  assert.match(failures, /lod0 geometry/);
 });
 
-test('PQ-020 H3 requires spatially partitioned Cathedral color and shared prepass topology', () => {
+test('PQ-020 H3 requires indexed Cathedral color and shared prepass topology', () => {
   const expanded = receipt();
   const geometry = expanded.profiles[1].repetitions[0].routeFacts.cathedral.geometry;
   geometry.color.indexedDrawables = 0;
-  geometry.color.uniqueVertices = geometry.color.triangleIndices;
   let failures = validatePq020H3PerformanceReceipt(expanded).failures.join('\n');
-  assert.match(failures, /spatially partitioned indexed topology/);
+  assert.match(failures, /one-draw indexed/);
 
   const copied = receipt();
   copied.profiles[1].repetitions[1].routeFacts.cathedral.geometry.depthPrepass.roles.pop();
   failures = validatePq020H3PerformanceReceipt(copied).failures.join('\n');
-  assert.match(failures, /role-split cell coverage/);
+  assert.match(failures, /shared-position closed-depth/);
+
+  const genericDepth = receipt();
+  genericDepth.profiles[1].repetitions[1].routeFacts.cathedral.geometry.depthPrepass
+    .minimalPositionDepthShaderDrawables = 0;
+  failures = validatePq020H3PerformanceReceipt(genericDepth).failures.join('\n');
+  assert.match(failures, /shared-position closed-depth/);
+
+  const staleTopology = receipt();
+  staleTopology.profiles[1].repetitions[2].routeFacts.cathedral.geometry.depthTopology.report
+    .removedDegenerateTriangles = 0;
+  failures = validatePq020H3PerformanceReceipt(staleTopology).failures.join('\n');
+  assert.match(failures, /exact lod0 zero-area/);
+});
+
+test('PQ-020 H3 requires the live single-sample packed ORM shader on every Cathedral role', () => {
+  const missing = receipt();
+  missing.profiles[1].repetitions[0].routeFacts.cathedral.geometry.color
+    .packedOrmSingleSampleMaterialRoles.pop();
+  const failures = validatePq020H3PerformanceReceipt(missing).failures.join('\n');
+  assert.match(failures, /reuse one packed ORM sample/);
 });
 
 test('PQ-020 H3 predeclares map-open and sector-entry thresholds', () => {
@@ -262,6 +320,57 @@ test('PQ-020 H3 rejects target p95, p99, hitch, long-frame, and backlog regressi
   assert.match(failures, /backlog shedding increases/);
 });
 
+test('PQ-020 H3 bounds externally scheduled hitches without laundering product work', () => {
+  const attributed = receipt();
+  for (let runIndex = 0; runIndex < 2; runIndex += 1) {
+    const run = attributed.profiles[1].repetitions[runIndex];
+    Object.assign(run.rawSamples[20], {
+      frameMs: 33.3,
+      callbackMs: 7,
+      simFrameMs: 4,
+      presentationMs: 2,
+      externalCallbackGapMs: 25,
+      callbackDispatchLagMs: 0.5,
+      backlogCause: 'external-scheduling',
+    });
+    run.attribution.frameMs.max = 33.3;
+    run.attribution.frameMs.hitchesOver32Ms = 1;
+  }
+  let result = validatePq020H3PerformanceReceipt(attributed);
+  assert.equal(result.pass, true, result.failures.join('\n'));
+  assert.deepEqual(result.hitchAttribution.target, {
+    raw: 2,
+    externalScheduling: 2,
+    productAttributed: 0,
+    perRun: [
+      { raw: 1, externalScheduling: 1, productAttributed: 0, separatedGpuEnvelopeMs: 10 },
+      { raw: 1, externalScheduling: 1, productAttributed: 0, separatedGpuEnvelopeMs: 10 },
+      { raw: 0, externalScheduling: 0, productAttributed: 0, separatedGpuEnvelopeMs: 10 },
+    ],
+  });
+
+  const productWork = structuredClone(attributed);
+  productWork.profiles[1].repetitions[0].rawSamples[20].callbackMs = 20;
+  result = validatePq020H3PerformanceReceipt(productWork);
+  assert.match(result.failures.join('\n'), /product-attributed hitch count increases/);
+
+  const noisy = structuredClone(attributed);
+  const run = noisy.profiles[1].repetitions[2];
+  Object.assign(run.rawSamples[20], {
+    frameMs: 33.3,
+    callbackMs: 7,
+    simFrameMs: 4,
+    presentationMs: 2,
+    externalCallbackGapMs: 25,
+    callbackDispatchLagMs: 0.5,
+    backlogCause: 'external-scheduling',
+  });
+  run.attribution.frameMs.max = 33.3;
+  run.attribution.frameMs.hitchesOver32Ms = 1;
+  result = validatePq020H3PerformanceReceipt(noisy);
+  assert.match(result.failures.join('\n'), /declared matched noise envelope/);
+});
+
 test('PQ-020 H3 rejects software GPU, quality mutation, diagnostic evidence, or a fake delta', () => {
   const invalid = receipt();
   invalid.gpu.renderer = 'Google SwiftShader';
@@ -274,6 +383,15 @@ test('PQ-020 H3 rejects software GPU, quality mutation, diagnostic evidence, or 
   assert.match(failures, /settings changed/);
   assert.match(failures, /primary broker acceptance/);
   assert.match(failures, /must not claim an optimization improvement/);
+});
+
+test('PQ-020 H3 rejects GPU query instrumentation inside the accepted frame-timing window', () => {
+  const invalid = receipt();
+  invalid.profiles[1].repetitions[0].attribution.measurementIsolation
+    .frameTimingGpuTimersEnabled = true;
+  invalid.profiles[1].repetitions[1].attribution.gpuTimers.queryCounts.completed = 0;
+  const failures = validatePq020H3PerformanceReceipt(invalid).failures.join('\n');
+  assert.match(failures, /isolate frame timing/);
 });
 
 test('PQ-020 H3 keeps the absolute target separate from matched feature acceptance', () => {

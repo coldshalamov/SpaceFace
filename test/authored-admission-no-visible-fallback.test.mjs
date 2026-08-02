@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 import {
   authoredBootstrapPreloadPlan,
@@ -490,7 +491,7 @@ test('authored place LODs remain under the stable boundary and switch by authore
   assert.deepEqual(visibility(), { lod0: false, lod1: true, lod2: false });
 });
 
-test('the Wreck Cathedral spatially partitions exact color and role-sided depth indices', async () => {
+test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', async () => {
   const entity = {
     id: 29,
     type: 'fx',
@@ -516,9 +517,15 @@ test('the Wreck Cathedral spatially partitions exact color and role-sided depth 
     'warning',
   ];
   const authoredMaterials = new Map(materialRoles.map((role, index) => {
+    const packedOrm = new THREE.Texture();
+    packedOrm.name = `Texture_${role}_PackedOrm`;
+    packedOrm.channel = 0;
     const material = new THREE.MeshStandardMaterial({
       color: 0x182430 + index * 0x10101,
       side: THREE.DoubleSide,
+      aoMap: packedOrm,
+      roughnessMap: packedOrm,
+      metalnessMap: packedOrm,
     });
     material.name = `Material_${role}`;
     material.userData.spacefaceMaterialRole = role;
@@ -529,18 +536,27 @@ test('the Wreck Cathedral spatially partitions exact color and role-sided depth 
     assetId: 'place_landmark_wreck_cathedral',
     slot: 'place',
     bounds: { size: [240, 80, 120], center: [0, 0, 0] },
-    primitives: ['lod0', 'lod1', 'lod2'].flatMap((lod, index) => materialRoles.map((role, roleIndex) => ({
-      key: `${lod}:${roleIndex}`,
-      name: `${lod}_Cathedral_${role}`,
-      geometry: new THREE.BoxGeometry(
+    primitives: ['lod0', 'lod1', 'lod2'].flatMap((lod, index) => materialRoles.map((role, roleIndex) => {
+      const box = new THREE.BoxGeometry(
         26 - index * 4,
         18 - index * 2,
         14 - index * 2,
-      ),
-      material: authoredMaterials.get(role),
-      matrix: new THREE.Matrix4().makeTranslation(roleIndex * 28 - 98, 0, 0),
-      tags: { lod },
-    }))),
+      );
+      let geometry = box;
+      if (role === 'exposed_alloy') {
+        const openSheet = new THREE.PlaneGeometry(8, 6);
+        openSheet.translate(0, 22, 0);
+        geometry = mergeGeometries([box, openSheet], false);
+      }
+      return {
+        key: `${lod}:${roleIndex}`,
+        name: `${lod}_Cathedral_${role}`,
+        geometry,
+        material: authoredMaterials.get(role),
+        matrix: new THREE.Matrix4().makeTranslation(roleIndex * 28 - 98, 0, 0),
+        tags: { lod },
+      };
+    })),
     markers: [],
   };
 
@@ -562,60 +578,35 @@ test('the Wreck Cathedral spatially partitions exact color and role-sided depth 
   });
 
   assert.equal(swapped, true);
-  assert.equal(sources.length, 24, 'the fixture produces eight deterministic XZ cells per LOD');
-  const closedRoles = new Set(materialRoles.filter((role) => role !== 'exposed_alloy'));
-  let expectedPrepassCount = 0;
+  assert.equal(sources.length, 3);
+  assert.equal(prepasses.length, 3, 'each LOD pays one closed-surface depth draw');
   for (const lod of ['lod0', 'lod1', 'lod2']) {
-    const lodSources = sources.filter((candidate) => candidate.userData.spacefaceTags.lod === lod);
-    assert.equal(lodSources.length, 8);
-    assert.equal(new Set(lodSources.map((source) => source.userData.spacefaceSpatialCell)).size, 8);
-    assert.equal(new Set(lodSources.map((source) => source.geometry.getAttribute('position'))).size, 1,
-      `${lod} cells share one exact authored vertex buffer`);
-    assert.equal(lodSources.reduce((total, source) => total + source.geometry.index.count, 0),
-      materialRoles.length * 36, `${lod} partitions every authored triangle index exactly once`);
-
-    for (const source of lodSources) {
-      const sourceMaterials = Array.isArray(source.material) ? source.material : [source.material];
-      const sourceRoles = new Set(source.geometry.groups.map((group) => (
-        sourceMaterials[group.materialIndex]?.userData?.spacefaceMaterialRole
-      )));
-      const expectedRoles = [];
-      if ([...sourceRoles].some((role) => closedRoles.has(role))) expectedRoles.push('closed-front');
-      if (sourceRoles.has('exposed_alloy')) expectedRoles.push('open-double');
-      const cellPrepasses = prepasses.filter((candidate) => (
-        candidate.userData.spacefaceTags.lod === lod
-        && candidate.userData.spacefaceSpatialCell === source.userData.spacefaceSpatialCell
-      ));
-      expectedPrepassCount += expectedRoles.length;
-      assert.deepEqual(cellPrepasses.map((prepass) => prepass.userData.spacefaceDepthRole).sort(), expectedRoles);
-      assert.equal(cellPrepasses.reduce((total, prepass) => total + prepass.geometry.index.count, 0),
-        source.geometry.index.count, `${lod}/${source.userData.spacefaceSpatialCell} depth covers every color index`);
-      assert.ok(source.geometry.index, `${lod} retains indexed topology`);
-      assert.equal(source.geometry.getAttribute('position').count, materialRoles.length * 24,
-        `${lod} does not expand every box index into a duplicate vertex`);
-      assert.equal(source.geometry.userData.spacefaceSpatialIndexView, true);
-      assert.equal(source.userData.spacefaceSpatialChunk, true);
-      assert.equal(source.userData.spacefaceSpatialCellSize, 96);
-      assert.ok(source.geometry.boundingBox && source.geometry.boundingSphere,
-        `${lod} cell has an index-scoped frustum bound`);
-      for (const prepass of cellPrepasses) {
-        assert.notEqual(prepass.geometry, source.geometry);
-        assert.equal(prepass.geometry.getAttribute('position'), source.geometry.getAttribute('position'),
-          `${lod} depth shares the exact authored vertex buffer`);
-        assert.equal(prepass.material.colorWrite, false);
-        assert.equal(prepass.material.depthTest, true);
-        assert.equal(prepass.material.depthWrite, true);
-        assert.equal(prepass.material.side,
-          prepass.userData.spacefaceDepthRole === 'closed-front' ? THREE.FrontSide : THREE.DoubleSide);
-        assert.ok(prepass.renderOrder < source.renderOrder);
-        assert.equal(prepass.castShadow, false);
-        assert.equal(prepass.receiveShadow, false);
-      }
-    }
-
-    const sourceMaterials = Array.isArray(lodSources[0].material)
-      ? lodSources[0].material
-      : [lodSources[0].material];
+    const source = sources.find((candidate) => candidate.userData.spacefaceTags.lod === lod);
+    const sourceMaterials = Array.isArray(source.material) ? source.material : [source.material];
+    const closedPrepass = prepasses.find((candidate) => candidate.userData.spacefaceTags.lod === lod
+      && candidate.userData.spacefaceDepthRole === 'closed-front');
+    assert.ok(source.geometry.index, `${lod} retains the authored indexed topology`);
+    assert.equal(source.geometry.getAttribute('position').count, materialRoles.length * 24 + 4,
+      `${lod} does not expand every box index into a duplicate vertex`);
+    assert.equal(source.geometry.index.count, materialRoles.length * 36 + 6,
+      `${lod} retains every nonzero-area authored triangle index`);
+    assert.notEqual(closedPrepass.geometry, source.geometry);
+    assert.equal(closedPrepass.geometry.getAttribute('position'), source.geometry.getAttribute('position'),
+      `${lod} closed depth shares the exact authored vertex buffer`);
+    assert.deepEqual(Object.keys(closedPrepass.geometry.attributes), ['position'],
+      `${lod} depth binds only the position buffer used by its minimal shader`);
+    assert.equal(closedPrepass.geometry.index.count, materialRoles.length * 36,
+      `${lod} closed depth includes the closed exposed-alloy box without adding a color draw`);
+    assert.equal(closedPrepass.material.isShaderMaterial, true);
+    assert.equal(closedPrepass.material.userData.spacefaceMinimalPositionDepthShader, true);
+    assert.match(closedPrepass.material.vertexShader, /projectionMatrix \* modelViewMatrix/);
+    assert.equal(closedPrepass.material.colorWrite, false);
+    assert.equal(closedPrepass.material.depthTest, true);
+    assert.equal(closedPrepass.material.depthWrite, true);
+    assert.ok(closedPrepass.renderOrder < source.renderOrder);
+    assert.equal(closedPrepass.castShadow, false);
+    assert.equal(closedPrepass.receiveShadow, false);
+    assert.equal(closedPrepass.material.side, THREE.FrontSide);
     const sourceByRole = new Map(sourceMaterials.map((material) => [
       material.userData.spacefaceMaterialRole,
       material,
@@ -623,11 +614,30 @@ test('the Wreck Cathedral spatially partitions exact color and role-sided depth 
     assert.deepEqual([...sourceByRole.keys()].sort(), [...materialRoles].sort());
     for (const role of materialRoles) {
       const material = sourceByRole.get(role);
+      assert.equal(material.userData.spacefacePackedOrmSingleSample, true,
+        `${lod} ${role} compiles its shared packed ORM as one texture sample`);
+      assert.equal(material.userData.spacefacePackedOrmTextureSamples, 1);
+      assert.match(material.customProgramCacheKey(), /spaceface-packed-orm-single-sample-v1/);
+      const shader = {
+        fragmentShader: [
+          '#include <roughnessmap_fragment>',
+          '#include <metalnessmap_fragment>',
+          '#include <aomap_fragment>',
+        ].join('\n'),
+      };
+      material.onBeforeCompile(shader, {});
+      assert.equal((shader.fragmentShader.match(/texture2D/g) || []).length, 1,
+        `${lod} ${role} reuses one fetched ORM texel for AO, roughness, and metalness`);
+      assert.match(shader.fragmentShader, /sfPackedOrmTexel\.r/);
+      assert.match(shader.fragmentShader, /sfPackedOrmTexel\.g/);
+      assert.match(shader.fragmentShader, /sfPackedOrmTexel\.b/);
       if (role === 'exposed_alloy') {
         assert.equal(material.side, THREE.DoubleSide, `${lod} retains open engine-bell interiors`);
-        assert.equal(material.depthFunc, THREE.EqualDepth, `${lod} open shells reuse their double-sided prepass`);
-        assert.equal(material.depthWrite, false);
-        assert.equal(material.userData.spacefaceCathedralEqualDepth, true);
+        assert.equal(material.depthFunc, THREE.LessEqualDepth,
+          `${lod} open shells use the ordinary opaque color/depth path`);
+        assert.equal(material.depthWrite, true);
+        assert.equal(material.userData.spacefaceCathedralEqualDepth, false);
+        assert.equal(material.userData.spacefaceCathedralOrdinaryOpenDepth, true);
       } else {
         assert.equal(material.side, THREE.FrontSide, `${lod} culls the closed ${role} family`);
         assert.equal(material.depthFunc, THREE.EqualDepth, `${lod} reuses prepass depth for ${role}`);
@@ -636,21 +646,25 @@ test('the Wreck Cathedral spatially partitions exact color and role-sided depth 
       }
     }
   }
-  assert.equal(prepasses.length, expectedPrepassCount);
   assert.deepEqual(authoredRoot.userData.opaqueDepthPrepass, {
     assetId: 'place_landmark_wreck_cathedral',
-    drawables: expectedPrepassCount,
-    geometry: 'shared-authored-attributes-role-split-indices',
-    material: 'depth-only-role-sided',
+    drawables: 3,
+    geometry: 'shared-authored-position-closed-indices',
+    material: 'position-only-front-sided',
   });
-  assert.equal(authoredRoot.userData.cathedralSpatialPartition.cellSize, 96);
-  assert.equal(authoredRoot.userData.cathedralSpatialPartition.axes, 'xz');
-  assert.equal(authoredRoot.userData.cathedralSpatialPartition.geometry,
-    'shared-authored-attributes-cell-indices');
+  assert.equal(authoredRoot.userData.cathedralDepthTopology.geometry,
+    'indexed-zero-area-pruned-closed-depth-open-color');
   for (const lod of ['lod0', 'lod1', 'lod2']) {
-    assert.equal(authoredRoot.userData.cathedralSpatialPartition.byLod[lod].drawables, 8);
-    assert.equal(authoredRoot.userData.cathedralSpatialPartition.byLod[lod].triangles, 96);
-    assert.equal(authoredRoot.userData.cathedralSpatialPartition.byLod[lod].cells.length, 8);
+    assert.deepEqual(authoredRoot.userData.cathedralDepthTopology.byLod[lod], {
+      sourceTriangles: 98,
+      retainedTriangles: 98,
+      removedDegenerateTriangles: 0,
+      closedDepthTriangles: 96,
+      ordinaryOpenColorTriangles: 2,
+      closedExposedTriangles: 12,
+      openExposedTriangles: 2,
+      colorMaterialGroups: 8,
+    });
   }
   assert.deepEqual(authoredRoot.userData.cathedralSurfaceCulling, {
     frontSideRoles: [
@@ -663,30 +677,22 @@ test('the Wreck Cathedral spatially partitions exact color and role-sided depth 
       'warning',
     ],
     retainedDoubleSideRoles: ['exposed_alloy'],
-    depthContract: 'role-split-prepass-equal',
+    depthContract: 'closed-prepass-equal-open-color-depth',
   });
   for (const material of authoredMaterials.values()) {
     assert.equal(material.side, THREE.DoubleSide, `${material.name} source material stays immutable`);
     assert.equal(material.depthWrite, true);
+    assert.equal(material.userData.spacefacePackedOrmSingleSample, undefined,
+      `${material.name} source shader stays immutable`);
   }
 
-  const visibility = () => Object.fromEntries(['lod0', 'lod1', 'lod2'].map((lod) => [lod, {
-    color: sources.filter((object) => object.userData.spacefaceTags.lod === lod && object.visible).length,
-    depth: prepasses.filter((object) => object.userData.spacefaceTags.lod === lod && object.visible).length,
-  }]));
-  const lod0Depth = prepasses.filter((object) => object.userData.spacefaceTags.lod === 'lod0').length;
-  const lod2Depth = prepasses.filter((object) => object.userData.spacefaceTags.lod === 'lod2').length;
-  assert.deepEqual(visibility(), {
-    lod0: { color: 8, depth: lod0Depth },
-    lod1: { color: 0, depth: 0 },
-    lod2: { color: 0, depth: 0 },
-  });
+  const visibility = () => Object.fromEntries(['lod0', 'lod1', 'lod2'].map((lod) => [
+    lod,
+    prepasses.filter((object) => object.userData.spacefaceTags.lod === lod && object.visible).length,
+  ]));
+  assert.deepEqual(visibility(), { lod0: 1, lod1: 0, lod2: 0 });
   boundary.userData.updateLod('lod2');
-  assert.deepEqual(visibility(), {
-    lod0: { color: 0, depth: 0 },
-    lod1: { color: 0, depth: 0 },
-    lod2: { color: 8, depth: lod2Depth },
-  });
+  assert.deepEqual(visibility(), { lod0: 0, lod1: 0, lod2: 1 });
 });
 
 test('a synchronous authored geology builder error keeps the procedural geology identity', () => {

@@ -281,10 +281,11 @@ async function runPq020H3PerformancePair({ page, rootUrl, repetition, screenshot
     pipelineStableMs: 5_000,
     pipelineSettleTimeoutMs: PQ020_H3_PIPELINE_SETTLE_TIMEOUT_MS,
     sampleMs: 5_000,
-    enableGpuTimers: true,
+    enableGpuTimers: false,
     requireAuthoredFlight: true,
     requireDocked: false,
   });
+  await attachSeparatedGpuAttribution(page, floorWindow);
   const floorFacts = await readPq020H3RouteFacts(page, {
     profileId: PQ020_H3_PROFILE_IDS[0],
     repetition,
@@ -318,10 +319,11 @@ async function runPq020H3PerformancePair({ page, rootUrl, repetition, screenshot
     pipelineStableMs: 5_000,
     pipelineSettleTimeoutMs: PQ020_H3_PIPELINE_SETTLE_TIMEOUT_MS,
     sampleMs: 5_000,
-    enableGpuTimers: true,
+    enableGpuTimers: false,
     requireAuthoredFlight: true,
     requireDocked: false,
   });
+  await attachSeparatedGpuAttribution(page, targetWindow);
   const targetFacts = await readPq020H3RouteFacts(page, {
     profileId: PQ020_H3_PROFILE_IDS[1],
     repetition,
@@ -371,6 +373,89 @@ async function measurePublicMapOpen(page) {
   await page.keyboard.press('Escape');
   await page.locator('[data-screen="galaxyMap"]').first().waitFor({ state: 'hidden', timeout: 30_000 });
   return endedAtMs - startedAtMs;
+}
+
+async function attachSeparatedGpuAttribution(page, timingWindow) {
+  const gpuCapture = await page.evaluate(async ({ requiredFrames }) => {
+    const state = window.SF?.state;
+    const timers = state?.render?.gpuTimers;
+    assertGpuTimerCapability(timers);
+    const raf = () => new Promise((resolve) => requestAnimationFrame(resolve));
+    const settingsSlice = () => JSON.stringify({
+      video: state?.settings?.video || null,
+      dynResScale: Number.isFinite(state?.render?.dynResScale) ? state.render.dynResScale : null,
+      timeScale: Number.isFinite(state?.timeScale) ? state.timeScale : null,
+    });
+    const routeSlice = () => JSON.stringify({
+      mode: state?.mode || null,
+      docked: state?.ui?.docked === true,
+      jumpState: state?.jump?.state || null,
+      visibility: document.visibilityState,
+    });
+    const settingsStart = settingsSlice();
+    const routeStart = routeSlice();
+    const startedAt = performance.now();
+    let frameCount = 0;
+    let drain = null;
+    let report = null;
+    try {
+      timers.reset();
+      timers.setEnabled(true);
+      while (frameCount < requiredFrames) {
+        await raf();
+        frameCount += 1;
+      }
+      drain = await timers.drainPending({
+        maxPolls: 120,
+        timeoutMs: 2_000,
+        yieldFn: raf,
+      });
+      report = timers.getReport();
+    } finally {
+      timers.setEnabled(false);
+    }
+    return {
+      frameCount,
+      durationMs: performance.now() - startedAt,
+      settingsStable: settingsSlice() === settingsStart,
+      routeStable: routeSlice() === routeStart,
+      gpuTimers: {
+        available: report?.available === true,
+        status: report?.status || (report?.available ? 'available' : 'unavailable'),
+        reason: report?.reason || null,
+        extension: report?.extension || null,
+        enabled: report?.enabled === true,
+        lastDisjoint: report?.lastDisjoint === true,
+        pending: report?.pending,
+        lastInvalidation: report?.lastInvalidation || null,
+        queryCounts: report?.queryCounts || null,
+        captureValid: report?.captureValid === true,
+        drain,
+        terminals: report?.terminals || null,
+        passes: report?.passes || null,
+      },
+    };
+
+    function assertGpuTimerCapability(candidate) {
+      if (!candidate
+          || typeof candidate.reset !== 'function'
+          || typeof candidate.setEnabled !== 'function'
+          || typeof candidate.drainPending !== 'function'
+          || typeof candidate.getReport !== 'function') {
+        throw new Error('PQ-020 H3 requires the live GPU timer capability');
+      }
+    }
+  }, { requiredFrames: 150 });
+
+  timingWindow.attribution.gpuTimers = gpuCapture.gpuTimers;
+  timingWindow.attribution.measurementIsolation = {
+    frameTimingGpuTimersEnabled: false,
+    gpuAttributionSeparated: true,
+    gpuAttributionFrameCount: gpuCapture.frameCount,
+    gpuAttributionDurationMs: gpuCapture.durationMs,
+    settingsStable: gpuCapture.settingsStable,
+    routeStable: gpuCapture.routeStable,
+  };
 }
 
 async function installH3TimingObservers(page) {
@@ -437,51 +522,63 @@ async function readPq020H3RouteFacts(page, {
     const rootRawAssetState = rootMesh?.userData?.authoredAssetState || null;
     const activeStaticBatches = [];
     const activeDepthPrepasses = [];
+    let cathedralDepthTopology = null;
     rootMesh?.traverse?.((object) => {
-      if (!object?.isMesh || object.visible === false) return;
+      if (!object || object.visible === false) return;
+      if (!cathedralDepthTopology && object.userData?.cathedralDepthTopology) {
+        cathedralDepthTopology = object.userData.cathedralDepthTopology;
+      }
+      if (!object.isMesh) return;
       if (object.userData?.spacefaceStaticBatch) activeStaticBatches.push(object);
       if (object.userData?.spacefaceDepthPrepass) activeDepthPrepasses.push(object);
     });
-    const geometrySummary = (objects) => {
-      const summary = {
-        drawables: 0,
-        indexedDrawables: 0,
-        partitionedDrawables: 0,
-        uniqueVertices: 0,
-        triangleIndices: 0,
-        triangles: 0,
-        spatialCellSize: null,
-        spatialCells: [],
-        roles: [],
-      };
-      const positionAttributes = new Set();
-      const spatialCells = new Set();
-      const roles = new Set();
-      for (const object of objects) {
-        const geometry = object.geometry;
-        const positions = geometry?.getAttribute?.('position');
-        const count = Number(geometry?.index?.count || positions?.count || 0);
-        summary.drawables += 1;
-        summary.indexedDrawables += geometry?.index ? 1 : 0;
-        summary.partitionedDrawables += object.userData?.spacefaceSpatialChunk === true ? 1 : 0;
-        if (positions && !positionAttributes.has(positions)) {
-          positionAttributes.add(positions);
-          summary.uniqueVertices += Number(positions.count || 0);
+    const geometrySummary = (objects) => objects.reduce((summary, object) => {
+      const geometry = object.geometry;
+      const positions = geometry?.getAttribute?.('position');
+      const count = Number(geometry?.index?.count || positions?.count || 0);
+      summary.drawables += 1;
+      summary.indexedDrawables += geometry?.index ? 1 : 0;
+      summary.uniqueVertices += Number(positions?.count || 0);
+      summary.triangleIndices += count;
+      summary.triangles += count / 3;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of materials) {
+        const role = String(material?.userData?.spacefaceMaterialRole || '').trim().toLowerCase();
+        if (role && material?.userData?.spacefacePackedOrmSingleSample === true) {
+          summary.packedOrmSingleSampleMaterialRoles.push(role);
         }
-        summary.triangleIndices += count;
-        summary.triangles += count / 3;
-        if (object.userData?.spacefaceSpatialCell) spatialCells.add(object.userData.spacefaceSpatialCell);
-        if (Number.isFinite(Number(object.userData?.spacefaceSpatialCellSize))) {
-          summary.spatialCellSize = Number(object.userData.spacefaceSpatialCellSize);
+        if (role && material?.userData?.spacefaceCathedralOrdinaryOpenDepth === true) {
+          summary.ordinaryOpenDepthMaterialRoles.push(role);
         }
-        if (object.userData?.spacefaceDepthRole) roles.add(object.userData.spacefaceDepthRole);
+        if (material?.userData?.spacefaceMinimalPositionDepthShader === true) {
+          summary.minimalPositionDepthShaderDrawables += 1;
+        }
       }
-      summary.spatialCells = [...spatialCells].sort();
-      summary.roles = [...roles].sort();
+      if (object.userData?.spacefaceDepthRole) {
+        const role = object.userData.spacefaceDepthRole;
+        summary.roles.push(role);
+        summary.trianglesByRole[role] = (summary.trianglesByRole[role] || 0) + count / 3;
+      }
       return summary;
-    };
+    }, {
+      drawables: 0,
+      indexedDrawables: 0,
+      uniqueVertices: 0,
+      triangleIndices: 0,
+      triangles: 0,
+      packedOrmSingleSampleMaterialRoles: [],
+      ordinaryOpenDepthMaterialRoles: [],
+      minimalPositionDepthShaderDrawables: 0,
+      roles: [],
+      trianglesByRole: {},
+    });
     const colorGeometry = geometrySummary(activeStaticBatches);
     const depthGeometry = geometrySummary(activeDepthPrepasses);
+    colorGeometry.packedOrmSingleSampleMaterialRoles.sort();
+    colorGeometry.ordinaryOpenDepthMaterialRoles.sort();
+    depthGeometry.packedOrmSingleSampleMaterialRoles.sort();
+    depthGeometry.ordinaryOpenDepthMaterialRoles.sort();
+    depthGeometry.roles.sort();
     const admittedComponentCount = cathedralEntities.filter((entity) => (
       entity.data?.role === 'world_site_component'
       && entity.data?.worldSitePresentationAdmitted === true
@@ -511,6 +608,12 @@ async function readPq020H3RouteFacts(page, {
       .filter((entity) => !!entity.data?.trafficRole)
       .map((entity) => entity.id)
       .sort((left, right) => String(left).localeCompare(String(right)));
+    const appliedLod = rootMesh?.userData?.lod?.level || null;
+    const activeDepthTopology = cathedralDepthTopology ? {
+      geometry: cathedralDepthTopology.geometry || null,
+      activeLod: appliedLod,
+      report: cathedralDepthTopology.byLod?.[appliedLod] || null,
+    } : null;
     return {
       profileId: input.profileId,
       repetition: input.repetition,
@@ -539,7 +642,7 @@ async function readPq020H3RouteFacts(page, {
         rootAssetState: String(rootRawAssetState || '').startsWith('authored')
           ? 'authored'
           : rootRawAssetState,
-        appliedLod: rootMesh?.userData?.lod?.level || null,
+        appliedLod,
         inFrame: projection?.inFrame === true,
         projection,
         cameraZoom: target ? Number(state.camera?.zoom) : null,
@@ -549,6 +652,7 @@ async function readPq020H3RouteFacts(page, {
         geometry: {
           color: colorGeometry,
           depthPrepass: depthGeometry,
+          depthTopology: activeDepthTopology,
           prepassSharesColorAttributes: activeDepthPrepasses.length > 0
             && activeDepthPrepasses.every((prepass) => activeStaticBatches.some(
               (source) => source.geometry?.getAttribute?.('position')

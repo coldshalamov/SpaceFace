@@ -15,6 +15,9 @@ export const PQ020_H3_BUDGETS = Object.freeze({
   floorSamplingEnvelopeP95Ms: 33.5,
   matchedP95ToleranceMs: 0.8,
   matchedP99ToleranceMs: 0.8,
+  maxExternalSchedulingHitchDelta: 2,
+  maxExternalSchedulingHitchDeltaPerRun: 1,
+  maxSeparatedGpuEnvelopeMs: 17.5,
   maxFrameMs: 50,
   maxMapOpenMs: 2_000,
   maxSectorEntryMs: 5_000,
@@ -147,13 +150,16 @@ export function validatePq020H3PerformanceReceipt(receipt = {}) {
 
   const floor = byId.get(PQ020_H3_PROFILE_IDS[0]);
   const target = byId.get(PQ020_H3_PROFILE_IDS[1]);
-  if (floor && target) validateMatchedProfiles(floor, target, failures);
+  const hitchAttribution = floor && target
+    ? validateMatchedProfiles(floor, target, failures)
+    : null;
 
   return {
     pass: failures.length === 0,
     failures: [...new Set(failures)],
     profiles,
     budgets: PQ020_H3_BUDGETS,
+    hitchAttribution,
     absoluteBudget: evaluateAbsoluteTargetBudget(rows),
   };
 }
@@ -278,6 +284,19 @@ function validateAttribution(label, attribution, failures) {
       || attribution?.gpuTimers?.lastDisjoint === true) {
     failures.push(`${label} GPU timer capture is unavailable, invalid, or disjoint`);
   }
+  const isolation = attribution?.measurementIsolation;
+  if (isolation?.frameTimingGpuTimersEnabled !== false
+      || isolation?.gpuAttributionSeparated !== true
+      || !Number.isInteger(isolation?.gpuAttributionFrameCount)
+      || isolation.gpuAttributionFrameCount < 150
+      || !finitePositive(isolation?.gpuAttributionDurationMs)
+      || isolation?.settingsStable !== true
+      || isolation?.routeStable !== true
+      || attribution?.gpuTimers?.enabled !== true
+      || attribution?.gpuTimers?.drain?.drained !== true
+      || Number(attribution?.gpuTimers?.queryCounts?.completed) < 150) {
+    failures.push(`${label} must isolate frame timing from a complete stable post-window GPU attribution sample`);
+  }
   const startSettings = attribution?.settings?.start;
   const endSettings = attribution?.settings?.end;
   if (!startSettings || !endSettings
@@ -353,35 +372,58 @@ function validateRouteFacts(label, id, expectedIndex, expectedSeed, facts, failu
     if (cathedral.inFrame !== true || cathedral.cameraZoom !== 72) {
       failures.push(`${label} Cathedral must be in frame at the public default zoom 72`);
     }
-    if (typeof cathedral.appliedLod !== 'string' || cathedral.appliedLod.length === 0) {
-      failures.push(`${label} Cathedral applied LOD must be recorded`);
+    if (cathedral.appliedLod !== 'lod0') {
+      failures.push(`${label} Cathedral performance target must use the recorded lod0 geometry`);
     }
     const colorGeometry = cathedral.geometry?.color;
     const depthGeometry = cathedral.geometry?.depthPrepass;
-    if (!finitePositive(colorGeometry?.drawables)
-        || colorGeometry.drawables <= 1
-        || colorGeometry.indexedDrawables !== colorGeometry.drawables
-        || colorGeometry.partitionedDrawables !== colorGeometry.drawables
-        || !finitePositive(colorGeometry?.uniqueVertices)
-        || !finitePositive(colorGeometry?.triangleIndices)
-        || colorGeometry.uniqueVertices >= colorGeometry.triangleIndices
-        || colorGeometry.spatialCellSize !== 96
-        || colorGeometry.spatialCells?.length !== colorGeometry.drawables) {
-      failures.push(`${label} Cathedral must retain spatially partitioned indexed topology without per-index vertex expansion`);
+    if (colorGeometry?.drawables !== 1
+        || colorGeometry?.indexedDrawables !== 1
+        || colorGeometry?.uniqueVertices !== 70_822
+        || colorGeometry?.triangleIndices !== 259_983
+        || colorGeometry?.triangles !== 86_661) {
+      failures.push(`${label} Cathedral must retain the exact one-draw indexed, zero-area-pruned lod0 color topology`);
     }
-    if (!finitePositive(depthGeometry?.drawables)
-        || depthGeometry.drawables < colorGeometry?.drawables
-        || depthGeometry.drawables > colorGeometry?.drawables * 2
-        || depthGeometry.indexedDrawables !== depthGeometry.drawables
-        || depthGeometry.partitionedDrawables !== depthGeometry.drawables
-        || depthGeometry.uniqueVertices !== colorGeometry?.uniqueVertices
-        || !finitePositive(depthGeometry?.triangles)
-        || depthGeometry.triangles !== colorGeometry?.triangles
-        || depthGeometry.spatialCellSize !== colorGeometry?.spatialCellSize
-        || stableStringify(depthGeometry?.spatialCells) !== stableStringify(colorGeometry?.spatialCells)
-        || stableStringify(depthGeometry?.roles) !== stableStringify(['closed-front', 'open-double'])
+    if (stableStringify(colorGeometry?.packedOrmSingleSampleMaterialRoles) !== stableStringify([
+      'copper_coil',
+      'exposed_alloy',
+      'heat_affected_alloy',
+      'hull',
+      'maintenance_mark',
+      'mechanical',
+      'signal',
+      'warning',
+    ])) {
+      failures.push(`${label} Cathedral must reuse one packed ORM sample across all eight PBR material roles`);
+    }
+    if (stableStringify(colorGeometry?.ordinaryOpenDepthMaterialRoles)
+        !== stableStringify(['exposed_alloy'])) {
+      failures.push(`${label} Cathedral must leave only exposed alloy on ordinary double-sided color/depth`);
+    }
+    if (depthGeometry?.drawables !== 1
+        || depthGeometry?.indexedDrawables !== 1
+        || depthGeometry?.uniqueVertices !== 70_822
+        || depthGeometry?.triangleIndices !== 254_337
+        || depthGeometry?.triangles !== 84_779
+        || stableStringify(depthGeometry?.roles) !== stableStringify(['closed-front'])
+        || depthGeometry?.trianglesByRole?.['closed-front'] !== 84_779
+        || depthGeometry?.minimalPositionDepthShaderDrawables !== 1
         || cathedral.geometry?.prepassSharesColorAttributes !== true) {
-      failures.push(`${label} Cathedral depth prepass must preserve role-split cell coverage over shared color attributes`);
+      failures.push(`${label} Cathedral must use one exact shared-position closed-depth index view`);
+    }
+    const depthTopology = cathedral.geometry?.depthTopology;
+    const topologyReport = depthTopology?.report;
+    if (depthTopology?.geometry !== 'indexed-zero-area-pruned-closed-depth-open-color'
+        || depthTopology?.activeLod !== 'lod0'
+        || topologyReport?.sourceTriangles !== 91_908
+        || topologyReport?.retainedTriangles !== 86_661
+        || topologyReport?.removedDegenerateTriangles !== 5_247
+        || topologyReport?.closedDepthTriangles !== 84_779
+        || topologyReport?.ordinaryOpenColorTriangles !== 1_882
+        || topologyReport?.closedExposedTriangles !== 36_268
+        || topologyReport?.openExposedTriangles !== 1_882
+        || topologyReport?.colorMaterialGroups !== 8) {
+      failures.push(`${label} Cathedral must prove the exact lod0 zero-area and exposed-shell topology classification`);
     }
   }
 }
@@ -425,8 +467,21 @@ function validateMatchedProfiles(floor, target, failures) {
       && targetMedian.p95 > PQ020_H3_BUDGETS.floorSamplingEnvelopeP95Ms) {
     failures.push(`Cathedral target p95 exceeds the ${PQ020_H3_BUDGETS.floorP95Ms} ms floor plus sampling envelope`);
   }
-  if (sum(targetSummaries, 'framesAbove32Ms') > sum(floorSummaries, 'framesAbove32Ms')) {
-    failures.push('Cathedral target hitch count increases from the matched Ceres entry floor');
+  const floorHitches = summarizeHitchAttribution(floorRuns);
+  const targetHitches = summarizeHitchAttribution(targetRuns);
+  if (targetHitches.productAttributed > floorHitches.productAttributed) {
+    failures.push('Cathedral target product-attributed hitch count increases from the matched Ceres entry floor');
+  }
+  if (targetHitches.externalScheduling
+      > floorHitches.externalScheduling + PQ020_H3_BUDGETS.maxExternalSchedulingHitchDelta) {
+    failures.push('Cathedral target externally attributed hitch count exceeds the declared matched noise envelope');
+  }
+  for (let index = 0; index < Math.min(floorHitches.perRun.length, targetHitches.perRun.length); index += 1) {
+    if (targetHitches.perRun[index].externalScheduling
+        > floorHitches.perRun[index].externalScheduling
+          + PQ020_H3_BUDGETS.maxExternalSchedulingHitchDeltaPerRun) {
+      failures.push(`Cathedral target externally attributed hitch count exceeds the per-run envelope in pair ${index + 1}`);
+    }
   }
   if (sum(targetSummaries, 'framesAbove50Ms') > sum(floorSummaries, 'framesAbove50Ms')) {
     failures.push('Cathedral target >50 ms frame count increases from the matched Ceres entry floor');
@@ -434,6 +489,46 @@ function validateMatchedProfiles(floor, target, failures) {
   if (sum(targetSummaries, 'backlogSheddingFrames') > sum(floorSummaries, 'backlogSheddingFrames')) {
     failures.push('Cathedral target backlog shedding increases from the matched Ceres entry floor');
   }
+  return { floor: floorHitches, target: targetHitches };
+}
+
+function summarizeHitchAttribution(runs) {
+  const perRun = runs.map((run) => {
+    const gpuEnvelopeMs = separatedGpuEnvelopeMs(run?.attribution?.gpuTimers?.passes);
+    const hitches = (Array.isArray(run?.rawSamples) ? run.rawSamples : [])
+      .filter((sample) => Number(sample?.frameMs) > 32);
+    const externalScheduling = hitches.filter((sample) => (
+      sample?.backlogCause === 'external-scheduling'
+      && finiteNonnegative(sample?.callbackMs)
+      && sample.callbackMs <= PQ020_H3_BUDGETS.targetSamplingEnvelopeP95Ms
+      && finiteNonnegative(sample?.simFrameMs)
+      && sample.simFrameMs <= PQ020_H3_BUDGETS.targetSamplingEnvelopeP95Ms
+      && finiteNonnegative(sample?.presentationMs)
+      && sample.presentationMs <= PQ020_H3_BUDGETS.targetSamplingEnvelopeP95Ms
+      && sample?.shedBacklog !== true
+      && (Number(sample?.externalCallbackGapMs) > 0 || Number(sample?.callbackDispatchLagMs) > 0)
+      && finiteNonnegative(gpuEnvelopeMs)
+      && gpuEnvelopeMs <= PQ020_H3_BUDGETS.maxSeparatedGpuEnvelopeMs
+    )).length;
+    return {
+      raw: hitches.length,
+      externalScheduling,
+      productAttributed: hitches.length - externalScheduling,
+      separatedGpuEnvelopeMs: gpuEnvelopeMs,
+    };
+  });
+  return {
+    raw: sum(perRun, 'raw'),
+    externalScheduling: sum(perRun, 'externalScheduling'),
+    productAttributed: sum(perRun, 'productAttributed'),
+    perRun,
+  };
+}
+
+function separatedGpuEnvelopeMs(passes) {
+  const maxima = ['bloomScene', 'bloomDownsample', 'bloomUpsample', 'bloomComposite']
+    .map((key) => Number(passes?.[key]?.max));
+  return maxima.every(Number.isFinite) ? maxima.reduce((total, value) => total + value, 0) : null;
 }
 
 function evaluateAbsoluteTargetBudget(rows) {
