@@ -367,8 +367,11 @@ function validateRouteFacts(label, id, expectedIndex, expectedSeed, facts, failu
   const materialPolicy = rendering.materialPolicy || {};
   if (rendering.appliedLod !== 'lod1'
       || rendering.visibleMeshes !== 1
+      || rendering.visibleIndexedMeshes !== 1
       || rendering.visibleDrawCalls !== 5
       || rendering.visibleTriangles !== 21_532
+      || rendering.visibleVertices !== 42_786
+      || rendering.visibleIndices !== 64_596
       || rendering.visibleMaterialCount !== 5
       || rendering.packedOrmMaterialCount !== 5
       || rendering.closedFrontMaterialCount !== 5

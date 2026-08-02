@@ -628,6 +628,7 @@ async function runPq024H3PerformancePair({ page, rootUrl, repetition, screenshot
     await exitAsteroidOps(page);
     production = await waitForPositiveProduction(page, core.siteId);
     relay = await waitForAdmittedExteriorRelay(page, core.siteId);
+    await restorePq024H3MatchedPose(page, floorFacts.pose);
     await setPq024H3ClaimCamera(page, 88);
 
     activePhase = `${pairId}:producing-relay-target`;
@@ -740,6 +741,11 @@ async function installPq024H3PerformanceIsolation(page) {
         z: Number(player.prevPos?.z) || 0,
       },
       entityVel: { x: Number(player.vel?.x) || 0, y: Number(player.vel?.y) || 0, z: Number(player.vel?.z) || 0 },
+      entityRot: Number(player.rot) || 0,
+      entityPrevRotHadOwn: Object.hasOwn(player, 'prevRot'),
+      entityPrevRot: player.prevRot,
+      entityAngVelHadOwn: Object.hasOwn(player, 'angVel'),
+      entityAngVel: player.angVel,
       cameraZoom: Number(state.camera?.zoom) || null,
     };
     player.flags ||= {};
@@ -811,6 +817,36 @@ async function installPq024H3PerformanceIsolation(page) {
           ))),
         };
       },
+      restoreMatchedPose(pose) {
+        if (this.disposed) throw new Error('PQ-024 H3 isolation is already disposed');
+        const x = Number(pose?.x);
+        const z = Number(pose?.z);
+        const rot = Number(pose?.rot);
+        if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(rot)) {
+          throw new Error('PQ-024 H3 matched pose must be finite');
+        }
+        const selectedTargetId = state.targetId ?? state.ui?.targetId ?? state.combat?.targetId ?? null;
+        if (selectedTargetId !== (pose?.selectedTargetId ?? null)) {
+          throw new Error('PQ-024 H3 target selection changed before matched-pose restore');
+        }
+        const local = physicsOwner._globalPointToFrameLocal?.({ x, y: 0, z }, playerBody.translation());
+        if (!local || !Number.isFinite(local.x) || !Number.isFinite(local.z)) {
+          throw new Error('PQ-024 H3 could not project the matched pose into the physics frame');
+        }
+        const halfYaw = rot * 0.5;
+        player.pos.set(x, Number(player.pos?.y) || 0, z);
+        player.prevPos.copy(player.pos);
+        player.vel.set(0, 0, 0);
+        player.rot = rot;
+        player.prevRot = rot;
+        player.angVel = 0;
+        playerBody.setTranslation({ x: local.x, y: 0, z: local.z }, true);
+        playerBody.setRotation({ x: 0, y: Math.sin(halfYaw), z: 0, w: Math.cos(halfYaw) }, true);
+        playerBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+        playerBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
+        this.matchedPoseRestore = { x, z, rot, selectedTargetId, tick: Number(state.tick) || 0 };
+        return { ...this.matchedPoseRestore };
+      },
       cleanup() {
         if (this.disposed) return this.cleanupReceipt;
         this.disposed = true;
@@ -824,6 +860,11 @@ async function installPq024H3PerformanceIsolation(page) {
         player.pos.set(safety.entityPos.x, safety.entityPos.y, safety.entityPos.z);
         player.prevPos.set(safety.entityPrevPos.x, safety.entityPrevPos.y, safety.entityPrevPos.z);
         player.vel.set(safety.entityVel.x, safety.entityVel.y, safety.entityVel.z);
+        player.rot = safety.entityRot;
+        if (safety.entityPrevRotHadOwn) player.prevRot = safety.entityPrevRot;
+        else delete player.prevRot;
+        if (safety.entityAngVelHadOwn) player.angVel = safety.entityAngVel;
+        else delete player.angVel;
         playerBody.setBodyType(safety.bodyType, true);
         playerBody.setTranslation(safety.bodyTranslation, true);
         playerBody.setRotation(safety.bodyRotation, true);
@@ -873,6 +914,22 @@ async function setPq024H3ClaimCamera(page, cameraZoom) {
   await page.evaluate((level) => window.SF?.bus?.emit('camera:zoom', { level }), cameraZoom);
   await page.waitForFunction((level) => Math.abs(Number(window.SF?.state?.camera?.zoom) - level) < 1e-9,
     cameraZoom, { timeout: 10_000 });
+}
+
+async function restorePq024H3MatchedPose(page, pose) {
+  const restored = await page.evaluate((expected) => (
+    window.__PQ024_H3__?.restoreMatchedPose?.(expected) || null
+  ), pose);
+  assert(restored, 'PQ-024 H3 matched-pose isolation must be installed');
+  await page.waitForFunction((expected) => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get?.(state.playerId);
+    const currentTargetId = state?.targetId ?? state?.ui?.targetId ?? state?.combat?.targetId ?? null;
+    return Number(state?.tick) > expected.tick
+      && Math.hypot(Number(player?.pos?.x) - expected.x, Number(player?.pos?.z) - expected.z) <= 0.01
+      && Math.abs(Number(player?.rot) - expected.rot) <= 0.001
+      && currentTargetId === expected.selectedTargetId;
+  }, restored, { timeout: 10_000 });
 }
 
 async function assertNoExteriorRelay(page, siteId) {
@@ -945,8 +1002,11 @@ async function readPq024H3RouteFacts(page, {
     const relayRendering = relayAuthoredRoot ? (() => {
       const materials = new Set();
       let visibleMeshes = 0;
+      let visibleIndexedMeshes = 0;
       let visibleDrawCalls = 0;
       let visibleTriangles = 0;
+      let visibleVertices = 0;
+      let visibleIndices = 0;
       relayAuthoredRoot.traverse((object) => {
         if (!object.isMesh || object.userData?.spacefaceStaticBatch !== true) return;
         let visible = object.visible !== false;
@@ -955,12 +1015,15 @@ async function readPq024H3RouteFacts(page, {
         }
         if (!visible) return;
         visibleMeshes += 1;
+        if (object.geometry?.index) visibleIndexedMeshes += 1;
         const list = Array.isArray(object.material) ? object.material : [object.material];
         for (const material of list) if (material) materials.add(material);
         const groups = Array.isArray(object.geometry?.groups) ? object.geometry.groups : [];
         visibleDrawCalls += Array.isArray(object.material) && groups.length > 0 ? groups.length : 1;
         const indices = Number(object.geometry?.index?.count);
         const positions = Number(object.geometry?.getAttribute?.('position')?.count);
+        visibleVertices += Number.isFinite(positions) ? positions : 0;
+        visibleIndices += Number.isFinite(indices) ? indices : 0;
         visibleTriangles += Number.isFinite(indices) && indices > 0
           ? indices / 3
           : (Number.isFinite(positions) ? positions / 3 : 0);
@@ -969,8 +1032,11 @@ async function readPq024H3RouteFacts(page, {
       return {
         appliedLod: relayRoot?.userData?.lod?.level || null,
         visibleMeshes,
+        visibleIndexedMeshes,
         visibleDrawCalls,
         visibleTriangles,
+        visibleVertices,
+        visibleIndices,
         visibleMaterialCount: materials.size,
         packedOrmMaterialCount: [...materials].filter((material) => (
           material?.userData?.spacefacePackedOrmSingleSample === true

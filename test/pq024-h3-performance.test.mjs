@@ -117,8 +117,11 @@ function routeFacts(profileId, index) {
         rendering: {
           appliedLod: 'lod1',
           visibleMeshes: 1,
+          visibleIndexedMeshes: 1,
           visibleDrawCalls: 5,
           visibleTriangles: 21_532,
+          visibleVertices: 42_786,
+          visibleIndices: 64_596,
           visibleMaterialCount: 5,
           packedOrmMaterialCount: 5,
           closedFrontMaterialCount: 5,
@@ -270,6 +273,33 @@ test('PQ-024 H3 requires the same asteroid, site, Core, pose, camera, and settin
   assert.match(failures, /changed asteroid, site, survey, or Core identity/);
   assert.match(failures, /changed player pose, camera, or target selection/);
   assert.match(failures, /uses different settings/);
+});
+
+test('PQ-024 H3 restores the frozen physics body to the recorded floor pose before target sampling', () => {
+  const reproduced = receipt();
+  reproduced.profiles[1].repetitions[1].routeFacts.pose.x += 0.462;
+  reproduced.profiles[1].repetitions[1].routeFacts.pose.z -= 0.281;
+  assert.match(
+    validatePq024H3PerformanceReceipt(reproduced).failures.join('\n'),
+    /matched pair 2 changed player pose, camera, or target selection/,
+    'the reproduced 0.540 WU target re-entry drift must fail the 0.500 WU pose contract',
+  );
+
+  const restoreCall = ACTOR_SOURCE.indexOf(
+    'await restorePq024H3MatchedPose(page, floorFacts.pose);',
+  );
+  const targetWindow = ACTOR_SOURCE.indexOf(
+    'const targetWindow = await sampleRafWindow',
+    restoreCall,
+  );
+  assert.ok(restoreCall >= 0 && targetWindow > restoreCall,
+    'the target window must begin only after restoring the exact recorded floor pose');
+  assert.match(ACTOR_SOURCE,
+    /restoreMatchedPose\(pose\)[\s\S]*_globalPointToFrameLocal[\s\S]*player\.pos\.set[\s\S]*playerBody\.setTranslation[\s\S]*playerBody\.setRotation/,
+    'matched-pose restore must synchronize both global entity state and frame-local Rapier state');
+  assert.match(ACTOR_SOURCE,
+    /Number\(state\?\.tick\) > expected\.tick[\s\S]*Math\.hypot[\s\S]*<= 0\.01/,
+    'the actor must observe the restored pose across a distinct fixed tick before measuring');
 });
 
 test('PQ-024 H3 recomputes raw timing and requires visible controllable flight', () => {

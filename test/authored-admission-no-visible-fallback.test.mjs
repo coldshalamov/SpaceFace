@@ -544,8 +544,10 @@ test('the claim relay keeps exact closed surfaces while sampling its packed ORM 
   );
   const authoredRoot = boundary.userData.hull;
   const relayMaterials = new Set();
+  const relayBatches = [];
   authoredRoot.traverse((object) => {
     if (!object.userData?.spacefaceStaticBatch) return;
+    relayBatches.push(object);
     for (const material of [].concat(object.material || [])) relayMaterials.add(material);
   });
 
@@ -566,6 +568,14 @@ test('the claim relay keeps exact closed surfaces while sampling its packed ORM 
   assert.equal(material.userData.spacefaceClaimRelayClosedSurface, true);
   assert.equal(material.userData.spacefacePackedOrmSingleSample, true);
   assert.match(material.customProgramCacheKey(), /spaceface-packed-orm-single-sample-v1/);
+  assert.equal(relayBatches.length, 3, 'the three authored LODs retain one static batch each');
+  for (const batch of relayBatches) {
+    assert.ok(batch.geometry.index, `${batch.userData.spacefaceTags.lod} retains indexed relay topology`);
+    assert.equal(batch.geometry.getAttribute('position').count, 24,
+      `${batch.userData.spacefaceTags.lod} does not duplicate one vertex per triangle index`);
+    assert.equal(batch.geometry.index.count, 36,
+      `${batch.userData.spacefaceTags.lod} retains every authored triangle index`);
+  }
   const shader = {
     fragmentShader: [
       '#include <roughnessmap_fragment>',

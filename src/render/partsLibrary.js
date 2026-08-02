@@ -1384,11 +1384,12 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
 
   const bindings = createBindings();
   const mutableMaterials = new Map();
-  // The Cathedral's three authored LODs are uniformly indexed. Keep that topology through its
-  // static merge so the close-range color + depth passes do not transform one duplicate vertex per
-  // triangle index. Mixed/index-less authored places retain the conservative ordinary path.
+  // The Cathedral and claim relay authored LODs are uniformly indexed. Keep that topology through
+  // their static merges so the runtime does not transform one duplicate vertex per triangle index.
+  // Mixed/index-less authored places retain the conservative ordinary path.
   const staticBatches = createStaticBatchCollector(root, bindings, {
-    preserveIndexedGeometry: placeId === WRECK_CATHEDRAL_PLACE_ID,
+    preserveIndexedGeometry: placeId === WRECK_CATHEDRAL_PLACE_ID
+      || placeId === CLAIM_RELAY_PLACE_ID,
   });
   const authoredLength = Math.max(record.bounds && record.bounds.size && record.bounds.size[0] || 1, 1e-6);
   const rawScale = Number(data.placeScale);
@@ -3917,8 +3918,9 @@ function promoteStaticPositionToFloat(geometry) {
 
 function normalizeStaticBatchGeometries(geometries, options = {}) {
   const available = geometries.filter(Boolean);
-  // BufferGeometryUtils can merge an all-indexed set directly. Only the explicitly qualified
-  // Cathedral path opts in; any mixed set still normalizes to the established non-indexed shape.
+  // BufferGeometryUtils can merge an all-indexed set directly. Only explicitly qualified,
+  // topology-proven place paths opt in; any mixed set still normalizes to the established
+  // non-indexed shape.
   const preserveIndexedGeometry = options.preserveIndexedGeometry === true
     && available.length > 0
     && available.every((geometry) => !!geometry.index);
