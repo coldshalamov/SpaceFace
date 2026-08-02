@@ -21,6 +21,10 @@ const ROOT = new URL('../', import.meta.url);
 const read = (relative) => readFileSync(new URL(relative, ROOT), 'utf8');
 const abs = (relative) => fileURLToPath(new URL(relative, ROOT));
 const probe = () => read('scripts/probe-pq019-surface-heist.mjs');
+const h1RouteContexts = (source) => source.slice(
+  source.indexOf('// H1_ROUTE_CONTEXTS_BEGIN'),
+  source.indexOf('// H1_ROUTE_CONTEXTS_END'),
+);
 
 test('the pq019-surface-heist manifest is a one-use headed Browser acceptance cell', () => {
   assert.equal(manifest.id, 'pq019-surface-heist');
@@ -215,11 +219,12 @@ test('terminal routes use production ownership seams and never assign terminal s
 
 test('one headed Browser process runs the six isolated contexts sequentially', () => {
   const source = probe();
+  const h1Contexts = h1RouteContexts(source);
   assert.equal((source.match(/chromium\.launch\(/g) || []).length, 1,
     'the whole row owns one Browser launch');
   assert.ok(/chromium\.launch\(\{[\s\S]*?headless:\s*false/.test(source),
     'H1 requires a visible headed Browser route');
-  assert.equal((source.match(/await runScenario\(/g) || []).length, 6,
+  assert.equal((h1Contexts.match(/await runScenario\(/g) || []).length, 6,
     'DOM abandon plus five terminal routes run as six sequential contexts');
   assert.equal((source.match(/browser\.newContext\(/g) || []).length, 1,
     'all contexts must be created through the one sequential route helper');
@@ -231,8 +236,8 @@ test('one headed Browser process runs the six isolated contexts sequentially', (
 test('the fresh H1 claim executes only the four missing route contexts', () => {
   const source = probe();
   assert.ok(source.includes("const CONTINUATION_ONLY = process.argv.includes('--continuation-only')"));
-  assert.match(source, /if \(!DIAGNOSTIC && !CONTINUATION_ONLY\)[\s\S]*?process\.exit\(2\)/,
-    'an acceptance claim must fail closed before consumption unless it is the declared continuation');
+  assert.match(source, /if \(!DIAGNOSTIC && !CONTINUATION_ONLY && !H3_PERFORMANCE\)[\s\S]*?process\.exit\(2\)/,
+    'an H1 acceptance claim must fail closed before consumption unless it is the declared continuation');
   assert.match(source, /const abandon = CONTINUATION_ONLY \? null : await runScenario\('dom-abandon'/);
   assert.match(source, /const lawful = CONTINUATION_ONLY \? null : await runScenario\('lawful-observe'/);
   assert.match(source, /CONTINUATION_ONLY[\s\S]*?assertContinuationContract\(\{ fenced, confiscated, destroyed, recovery \}\)/);

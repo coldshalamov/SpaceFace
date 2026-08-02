@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // PQ-019C surface-heist route — broker-authorized headed Browser acceptance.
 //
-// One headed system-Chrome process runs six isolated, sequential contexts:
+// H1 mode uses one headed system-Chrome process for six isolated, sequential contexts:
 //   * the real Tethys station Missions DOM accepts the authored offer;
 //   * the real J Mission Log DOM abandons it through the danger confirmation;
 //   * fresh fixed-seed routes settle lawful arrival, fence success, confiscation, destruction, and
@@ -22,22 +22,41 @@ import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import {
+  PQ019_H3_PROFILE_IDS,
+  PQ019_H3_RECEIPT_SCHEMA,
+  PQ019_H3_REPETITIONS,
+  validatePq019H3PerformanceReceipt,
+} from './lib/pq019H3Performance.mjs';
+import { sampleRafWindow } from './lib/releaseSoakProbe.mjs';
 import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
-import manifest, {
+import surfaceHeistManifest, {
   classifyPq019CapsuleWaitSnapshot,
   createPq019SurfaceHeistManifest,
   PQ019_SURFACE_HEIST_FIXED_SEED,
 } from './validation-manifests/pq019-surface-heist.mjs';
+import {
+  createPq019H3PerformanceManifest,
+  PQ019_H3_FIXED_SEED,
+  PQ019_H3_VIEWPORT,
+} from './validation-manifests/pq019-h3-performance.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const ARTIFACT_ROOT = path.join(ROOT, '.devshots', 'pq019-surface-heist');
-const VIEWPORT = Object.freeze({ width: 1460, height: 900 });
 const DIAGNOSTIC = process.argv.includes('--diagnostic');
 const CONTINUATION_ONLY = process.argv.includes('--continuation-only');
+const H3_PERFORMANCE = process.argv.includes('--h3-performance');
+const ACTIVE_MANIFEST = H3_PERFORMANCE
+  ? createPq019H3PerformanceManifest()
+  : createPq019SurfaceHeistManifest();
+const ARTIFACT_ROOT = path.resolve(ROOT, ACTIVE_MANIFEST.artifactRoot);
+const VIEWPORT = H3_PERFORMANCE
+  ? PQ019_H3_VIEWPORT
+  : Object.freeze({ width: 1460, height: 900, deviceScaleFactor: 1 });
+const RECEIPT_FILENAME = H3_PERFORMANCE ? 'performance-receipt.json' : 'route-receipt.json';
 const FIXED_SEED = Number(process.env.SF_PROBE_SEED) > 0
   ? Number(process.env.SF_PROBE_SEED)
-  : PQ019_SURFACE_HEIST_FIXED_SEED;
+  : (H3_PERFORMANCE ? PQ019_H3_FIXED_SEED : PQ019_SURFACE_HEIST_FIXED_SEED);
 const HEIST_TYPE = 'heist_intercept';
 const HEIST_STATION_ID = 'station_tethys';
 const HEIST_SECTOR_ID = 'sector_tethys_junction';
@@ -47,14 +66,14 @@ const ACCEPTANCE_SETUP_ID = 'h1:pq019-surface-heist';
 const ACCEPTANCE_PATROL_PHASE_S = 120;
 const ACCEPTANCE_PATROL_DURABILITY = 1_000_000;
 
-if (!DIAGNOSTIC && !CONTINUATION_ONLY) {
+if (!DIAGNOSTIC && !CONTINUATION_ONLY && !H3_PERFORMANCE) {
   console.error('[pq019-surface-heist] CONTINUATION_ONLY_REQUIRED: retained DOM-abandon and lawful-observe evidence must not be rerun');
   process.exit(2);
 }
 
 const brokerGate = await requireBrokerClaimOrDiagnostic({
   outputRoot: ARTIFACT_ROOT,
-  manifest: createPq019SurfaceHeistManifest(),
+  manifest: ACTIVE_MANIFEST,
   tokenOrPath: process.env.SF_BROKER_CLAIM ?? null,
   diagnostic: DIAGNOSTIC,
   explicitDiagnostic: DIAGNOSTIC,
@@ -62,8 +81,9 @@ const brokerGate = await requireBrokerClaimOrDiagnostic({
 });
 
 if (!brokerGate.ok) {
-  console.error(`[pq019-surface-heist] BROKER_CLAIM_REQUIRED: ${brokerGate.reason}`);
-  console.error('[pq019-surface-heist] invoke via: node scripts/validation-broker-cli.mjs --manifest pq019-surface-heist');
+  const label = H3_PERFORMANCE ? 'pq019-h3-performance' : 'pq019-surface-heist';
+  console.error(`[${label}] BROKER_CLAIM_REQUIRED: ${brokerGate.reason}`);
+  console.error(`[${label}] invoke via: node scripts/validation-broker-cli.mjs --manifest ${ACTIVE_MANIFEST.id}`);
   console.error('[pq019-surface-heist] or pass --diagnostic for non-promoting local inspection');
   process.exit(2);
 }
@@ -76,6 +96,8 @@ let activePage = null;
 let activeScenario = null;
 let receipt = null;
 let gpu = null;
+let browserClosed = false;
+let serverClosed = false;
 const completed = [];
 
 try {
@@ -105,9 +127,9 @@ try {
   const runScenario = async (id, options, body) => {
     activeScenario = id;
     const context = await browser.newContext({
-      viewport: VIEWPORT,
-      screen: VIEWPORT,
-      deviceScaleFactor: 1,
+      viewport: { width: VIEWPORT.width, height: VIEWPORT.height },
+      screen: { width: VIEWPORT.width, height: VIEWPORT.height },
+      deviceScaleFactor: VIEWPORT.deviceScaleFactor,
       locale: 'en-US',
       colorScheme: 'dark',
       reducedMotion: options.reducedMotion ? 'reduce' : 'no-preference',
@@ -155,6 +177,57 @@ try {
     }
   };
 
+  if (H3_PERFORMANCE) {
+    const pairs = [];
+    for (let repetition = 1; repetition <= PQ019_H3_REPETITIONS; repetition += 1) {
+      const pair = await runScenario(`h3-matched-performance-${repetition}`, {}, async ({ page, screenshot }) => (
+        runPq019H3PerformancePair({ page, screenshot, repetition })
+      ));
+      pairs.push(pair);
+    }
+    receipt = {
+      schema: PQ019_H3_RECEIPT_SCHEMA,
+      disposition: 'PASS',
+      fixedSeed: FIXED_SEED,
+      viewport: {
+        width: VIEWPORT.width,
+        height: VIEWPORT.height,
+        deviceScaleFactor: VIEWPORT.deviceScaleFactor,
+      },
+      runtime: 'browser-chromium-headed',
+      gpu,
+      qualityPreserving: {
+        settingsOverridesApplied: false,
+        defaultQualityRetained: true,
+        performanceImprovementClaimed: false,
+      },
+      broker: {
+        reason: brokerGate.reason,
+        diagnostic: !!brokerGate.diagnostic,
+        primaryAcceptance: !!brokerGate.primaryAcceptance,
+        claimId: brokerGate.claim?.claimId || brokerGate.claim?.id || null,
+      },
+      route: {
+        pairCount: pairs.length,
+        declaredRoute:
+          'New Game -> registered Tethys travel -> authored launcher flight -> station Missions DOM accept '
+          + '-> live capsule launch -> production tether latch -> witnessed WANTED pursuit',
+        retainedEvidenceReferences: [
+          'design/program/roadmap/receipts/PQ-019-capsule-h1-capture-REPORT.md',
+          'design/program/roadmap/receipts/PQ-019-surface-heist-h1-capture-REPORT.md',
+        ],
+        pairs: pairs.map((pair) => pair.route),
+      },
+      profiles: [
+        { id: PQ019_H3_PROFILE_IDS[0], repetitions: pairs.map((pair) => pair.normal) },
+        { id: PQ019_H3_PROFILE_IDS[1], repetitions: pairs.map((pair) => pair.loaded) },
+      ],
+      pageIssues: pairs.flatMap((pair) => pair.pageIssues),
+      screenshots: pairs.flatMap((pair) => pair.screenshots),
+      cleanup: { browserClosed: false, serverClosed: false },
+    };
+  } else {
+  // H1_ROUTE_CONTEXTS_BEGIN — keep static H1 authority checks scoped to this branch.
   const abandon = CONTINUATION_ONLY ? null : await runScenario('dom-abandon', {}, async ({ page, screenshot }) => {
     const fixture = await prepareFixture(page, { recoveryEnabled: false });
     const accepted = await acceptOfferThroughStationDom(page, fixture.offer.id, {
@@ -347,6 +420,8 @@ try {
   receipt = CONTINUATION_ONLY
     ? assertContinuationContract({ fenced, confiscated, destroyed, recovery })
     : assertAcceptanceContract({ abandon, lawful, fenced, confiscated, destroyed, recovery });
+  // H1_ROUTE_CONTEXTS_END
+  }
 } catch (error) {
   if (activePage && !activePage.isClosed()) {
     await activePage.screenshot({
@@ -356,7 +431,7 @@ try {
     }).catch(() => {});
   }
   receipt = {
-    schema: 'spaceface.pq019-surface-heist.v1',
+    schema: H3_PERFORMANCE ? PQ019_H3_RECEIPT_SCHEMA : 'spaceface.pq019-surface-heist.v1',
     runtime: 'browser-chromium-headed',
     disposition: 'FAIL',
     failureClass: 'UNCLASSIFIED_BY_PROBE',
@@ -366,25 +441,229 @@ try {
     fixedSeed: FIXED_SEED,
     gpu,
     completed,
-    noPerformanceEvidence: true,
+    noPerformanceEvidence: !H3_PERFORMANCE,
   };
 } finally {
-  if (browser) await browser.close().catch(() => {});
-  if (server) await server.close().catch(() => {});
+  if (browser) {
+    try { await browser.close(); browserClosed = true; } catch (_) { browserClosed = false; }
+  } else browserClosed = true;
+  if (server) {
+    try { await server.close(); serverClosed = true; } catch (_) { serverClosed = false; }
+  } else serverClosed = true;
 }
 
-await writeFile(path.join(ARTIFACT_ROOT, 'route-receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+if (H3_PERFORMANCE) {
+  receipt.cleanup = { browserClosed, serverClosed };
+  const validation = validatePq019H3PerformanceReceipt(receipt);
+  receipt.validation = validation;
+  if (!validation.pass) {
+    receipt.disposition = 'FAIL';
+    receipt.problems = [...new Set([...(receipt.problems || []), ...validation.failures])];
+  }
+}
+
+await writeFile(path.join(ARTIFACT_ROOT, RECEIPT_FILENAME), `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
 
 if (receipt.disposition !== 'PASS') {
-  console.error(`[pq019-surface-heist] FAIL in ${receipt.phase || 'unknown phase'}`);
+  const label = H3_PERFORMANCE ? 'pq019-h3-performance' : 'pq019-surface-heist';
+  console.error(`[${label}] FAIL in ${receipt.phase || 'unknown phase'}`);
   for (const problem of receipt.problems || []) console.error(`  - ${problem}`);
   process.exit(1);
 }
 
-console.log(CONTINUATION_ONLY
-  ? '[pq019-surface-heist] PASS — four missing terminal/composition routes; retained contexts skipped'
-  : '[pq019-surface-heist] PASS — five terminal routes plus DOM abandonment');
-console.log(`  receipt: ${repoRel(path.join(ARTIFACT_ROOT, 'route-receipt.json'))}`);
+console.log(H3_PERFORMANCE
+  ? '[pq019-h3-performance] PASS — three matched normal and traffic-loaded heist windows'
+  : (CONTINUATION_ONLY
+    ? '[pq019-surface-heist] PASS — four missing terminal/composition routes; retained contexts skipped'
+    : '[pq019-surface-heist] PASS — five terminal routes plus DOM abandonment'));
+console.log(`  receipt: ${repoRel(path.join(ARTIFACT_ROOT, RECEIPT_FILENAME))}`);
+
+async function runPq019H3PerformancePair({ page, screenshot, repetition }) {
+  const pairId = `pq019-h3-pair-${repetition}`;
+  const fixture = await prepareFixture(page, { recoveryEnabled: false });
+
+  await page.waitForFunction(() => window.SF.state.entityList.some((entity) => (
+    entity?.alive !== false && entity.data?.heistFacilityRole === 'heist_launcher_visual'
+  )), null, { timeout: 60_000 });
+  await clearVoiceAndStage(page, 'heist_launcher_visual');
+  await waitForPq019H3Pose(page, { requireCapsule: false });
+
+  const normalWindow = await sampleRafWindow(page, {
+    phaseTag: 'station_visible_steady',
+    warmupMs: 2_000,
+    pipelineStableMs: 5_000,
+    pipelineSettleTimeoutMs: 20_000,
+    sampleMs: 5_000,
+    enableGpuTimers: true,
+    requireAuthoredFlight: true,
+    requireDocked: false,
+  });
+  const normalFacts = await readPq019H3RouteFacts(page, {
+    profileId: PQ019_H3_PROFILE_IDS[0],
+    repetition,
+    pairId,
+  });
+  await screenshot(`pair-${repetition}-facility-normal.png`);
+
+  const accepted = await acceptOfferThroughStationDom(page, fixture.offer.id);
+  await waitForCapsule(page, accepted.mission.id);
+  const theft = await latchAndPresentTheft(page);
+  assertComposedFloor(await readFloor(page));
+  await unfreeze(page);
+  await waitForPq019H3Pose(page, { requireCapsule: true });
+
+  const loadedWindow = await sampleRafWindow(page, {
+    phaseTag: 'flight_steady',
+    warmupMs: 2_000,
+    pipelineStableMs: 5_000,
+    pipelineSettleTimeoutMs: 20_000,
+    sampleMs: 5_000,
+    enableGpuTimers: true,
+    requireAuthoredFlight: true,
+    requireDocked: false,
+  });
+  const loadedFacts = await readPq019H3RouteFacts(page, {
+    profileId: PQ019_H3_PROFILE_IDS[1],
+    repetition,
+    pairId,
+  });
+  await screenshot(`pair-${repetition}-traffic-loaded-heist.png`);
+
+  return {
+    route: {
+      pairId,
+      repetition,
+      recordedSeed: fixture.recordedSeed,
+      offerId: fixture.offer.id,
+      missionId: accepted.mission.id,
+      lawIncidentReceiptId: theft.lawIncidentReceiptId,
+      normalAmbientTrafficIds: normalFacts.ambientTrafficIds,
+      loadedAmbientTrafficIds: loadedFacts.ambientTrafficIds,
+      declaredCompressions: [
+        'registered world.enterSector travel instead of manual Helios-to-Tethys flight',
+        'station dock state entered through the shipped dock event before real Missions DOM interaction',
+        'player staged beside the live launcher/capsule; no mission, traffic, timing, ownership, heat, or performance state assigned',
+      ],
+    },
+    normal: {
+      index: repetition,
+      routeFacts: normalFacts,
+      rawSamples: normalWindow.samples,
+      attribution: normalWindow.attribution,
+    },
+    loaded: {
+      index: repetition,
+      routeFacts: loadedFacts,
+      rawSamples: loadedWindow.samples,
+      attribution: loadedWindow.attribution,
+    },
+  };
+}
+
+async function waitForPq019H3Pose(page, { requireCapsule }) {
+  await page.waitForFunction((capsuleRequired) => {
+    const state = window.SF?.state;
+    if (!state || state.world?.currentSectorId !== 'sector_tethys_junction'
+        || state.mode !== 'flight' || state.ui?.docked !== false) return false;
+    const player = state.entities.get(state.playerId);
+    if (player?.presentationAdmission !== 'ready'
+        || player?.mesh?.userData?.authoredAssetState !== 'authored') return false;
+
+    const wantedRole = capsuleRequired ? 'cargo_capsule' : 'heist_launcher_visual';
+    const subject = state.entityList.find((entity) => (
+      entity?.alive !== false && entity.data?.heistFacilityRole === wantedRole
+    ));
+    if (subject?.presentationAdmission !== 'ready'
+        || !String(subject?.mesh?.userData?.authoredAssetState || '').startsWith('authored')) return false;
+    if (!capsuleRequired) {
+      return !(state.missions?.active || []).some((mission) => mission?.heist);
+    }
+
+    const mission = (state.missions?.active || []).find((candidate) => candidate?.heist) || null;
+    const ownedCapsuleId = state.heistFacilities?.capsuleEntityId ?? null;
+    return mission != null
+      && subject.id === ownedCapsuleId
+      && mission.heist?.possessed === true
+      && !!mission.heist?.lawIncidentReceiptId
+      && (mission.heist?.leases?.length || 0) >= 1
+      && Number(state.player?.heat) > 0;
+  }, requireCapsule, { timeout: 120_000 });
+}
+
+async function readPq019H3RouteFacts(page, { profileId, repetition, pairId }) {
+  return page.evaluate(({ wantedProfileId, wantedRepetition, wantedPairId }) => {
+    const state = window.SF.state;
+    const perfOwner = window.__SPACEFACE_PERF__ || state.perfRuntime;
+    const perf = typeof perfOwner?.getReport === 'function' ? perfOwner.getReport() : null;
+    const alive = state.entityList.filter((entity) => entity?.alive !== false);
+    const activeHeists = (state.missions?.active || []).filter((mission) => mission?.heist);
+    const mission = activeHeists[0] || null;
+    const capsuleId = state.heistFacilities?.capsuleEntityId ?? null;
+    const capsule = capsuleId == null ? null : state.entities.get(capsuleId);
+    const facilityRoles = [
+      'heist_launcher_visual',
+      'lawful_catcher_visual',
+      'fence_receiver_visual',
+    ].map((role) => {
+      const entity = alive.find((candidate) => candidate.data?.heistFacilityRole === role) || null;
+      const rawAssetState = entity?.mesh?.userData?.authoredAssetState || null;
+      return {
+        entityId: entity?.id ?? null,
+        role,
+        admission: entity?.presentationAdmission || null,
+        assetState: String(rawAssetState || '').startsWith('authored') ? 'authored' : rawAssetState,
+        rawAssetState,
+      };
+    });
+    const subjectRole = wantedProfileId === 'facility-normal'
+      ? 'heist_launcher_visual'
+      : 'cargo_capsule';
+    const subject = alive.find((entity) => entity.data?.heistFacilityRole === subjectRole) || null;
+    const subjectRawAssetState = subject?.mesh?.userData?.authoredAssetState || null;
+    const ambientTrafficIds = alive
+      .filter((entity) => !!entity.data?.trafficRole)
+      .map((entity) => entity.id)
+      .sort((left, right) => String(left).localeCompare(String(right)));
+    return {
+      profileId: wantedProfileId,
+      repetition: wantedRepetition,
+      pairId: wantedPairId,
+      recordedSeed: state.meta?.seed ?? null,
+      sectorId: state.world?.currentSectorId || null,
+      mode: state.mode || null,
+      docked: state.ui?.docked === true,
+      facilityRoles,
+      performanceSubject: {
+        entityId: subject?.id ?? null,
+        role: subjectRole,
+        admission: subject?.presentationAdmission || null,
+        assetState: String(subjectRawAssetState || '').startsWith('authored')
+          ? 'authored'
+          : subjectRawAssetState,
+        rawAssetState: subjectRawAssetState,
+      },
+      trafficRuntime: 'ordinary-sector-traffic',
+      ambientTrafficIds,
+      ambientTrafficCount: ambientTrafficIds.length,
+      entityCount: alive.length,
+      colliderCount: alive.filter((entity) => entity.collides === true).length,
+      spatialHash: {
+        queries: Number(perf?.counters?.spatialHash?.queries) || 0,
+        candidates: Number(perf?.counters?.spatialHash?.candidates) || 0,
+      },
+      activeHeistCount: activeHeists.length,
+      capsulePresent: !!capsule && capsule.alive !== false,
+      capsuleAdmission: capsule?.presentationAdmission || null,
+      capsuleAssetState: String(capsule?.mesh?.userData?.authoredAssetState || '').startsWith('authored')
+        ? 'authored'
+        : (capsule?.mesh?.userData?.authoredAssetState || null),
+      possessed: mission?.heist?.possessed === true,
+      lawIncidentReceiptId: mission?.heist?.lawIncidentReceiptId || null,
+      responderLeaseCount: mission?.heist?.leases?.length || 0,
+      heat: Number(state.player?.heat) || 0,
+    };
+  }, { wantedProfileId: profileId, wantedRepetition: repetition, wantedPairId: pairId });
+}
 
 function assertContinuationContract({ fenced, confiscated, destroyed, recovery }) {
   assert.equal(fenced.terminal.outcome, 'fenced_success');
@@ -420,7 +699,7 @@ function assertContinuationContract({ fenced, confiscated, destroyed, recovery }
     fixedSeed: FIXED_SEED,
     recordedSeeds: all.map((row) => ({ id: row.id, seed: row.recordedSeed ?? row.fixture?.recordedSeed })),
     gpu,
-    brokerManifestId: manifest.id,
+    brokerManifestId: surfaceHeistManifest.id,
     launchContract: 'one headed browser process; four missing isolated route contexts run sequentially',
     noPerformanceEvidence: true,
     noPerformanceEvidenceNote:
@@ -462,7 +741,7 @@ function assertAcceptanceContract({ abandon, lawful, fenced, confiscated, destro
     fixedSeed: FIXED_SEED,
     recordedSeeds: all.map((row) => ({ id: row.id, seed: row.recordedSeed ?? row.fixture?.recordedSeed })),
     gpu,
-    brokerManifestId: manifest.id,
+    brokerManifestId: surfaceHeistManifest.id,
     launchContract: 'one headed browser process; isolated route contexts run sequentially',
     noPerformanceEvidence: true,
     noPerformanceEvidenceNote:

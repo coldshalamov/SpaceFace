@@ -3564,8 +3564,10 @@
         "design/program/roadmap/receipts/PQ-019-h3-performance-REPORT.md",
         "scripts/capture-pq019-h3-performance.mjs",
         "scripts/lib/pq019H3Performance.mjs",
+        "scripts/probe-pq019-surface-heist.mjs",
         "scripts/validation-manifests/pq019-h3-performance.mjs",
-        "test/pq019-h3-performance.test.mjs"
+        "test/pq019-h3-performance.test.mjs",
+        "test/pq019-surface-heist-manifest.test.mjs"
       ],
       "checks": [
         "node --test test/pq019-h3-performance.test.mjs",
