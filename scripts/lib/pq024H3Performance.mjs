@@ -15,6 +15,7 @@ export const PQ024_H3_BUDGETS = Object.freeze({
   matchedP95ToleranceMs: 0.8,
   matchedP99ToleranceMs: 0.8,
   matchedCpuWorkP95ToleranceMs: 0.8,
+  matchedGpuP95ToleranceMs: 0.8,
   maxFrameMs: 50,
   maxBacklogSheddingFrames: 0,
   maxSeparatedGpuEnvelopeMs: 17.5,
@@ -82,7 +83,10 @@ export function validatePq024H3PerformanceReceipt(receipt = {}) {
   const hitchAttribution = floor && target
     ? validateMatchedProfiles(floor, target, failures)
     : null;
-  const absoluteBudget = evaluateAbsoluteTargetBudget(summariesById);
+  const absoluteBudget = evaluateAbsoluteTargetBudget(
+    summariesById,
+    hitchAttribution?.gpuFrameEnvelope,
+  );
 
   return {
     pass: failures.length === 0,
@@ -457,10 +461,16 @@ function validateMatchedProfiles(floor, target, failures) {
   const gpuFrameEnvelope = {
     floor: { perRun: floorGpuFrames, medianP95: medianValue(floorGpuFrames.map((row) => row.p95)) },
     target: { perRun: targetGpuFrames, medianP95: medianValue(targetGpuFrames.map((row) => row.p95)) },
+    pairedP95Deltas: targetGpuFrames.map((row, index) => (
+      finiteNumber(row.p95) && finiteNumber(floorGpuFrames[index]?.p95)
+        ? row.p95 - floorGpuFrames[index].p95
+        : null
+    )),
   };
-  if (!finiteNumber(gpuFrameEnvelope.target.medianP95)
-      || gpuFrameEnvelope.target.medianP95 > PQ024_H3_BUDGETS.maxSeparatedGpuEnvelopeMs) {
-    failures.push(`relay target correlated GPU-frame median p95 exceeds ${PQ024_H3_BUDGETS.maxSeparatedGpuEnvelopeMs} ms`);
+  gpuFrameEnvelope.medianPairedP95Delta = medianValue(gpuFrameEnvelope.pairedP95Deltas);
+  if (!finiteNumber(gpuFrameEnvelope.medianPairedP95Delta)
+      || gpuFrameEnvelope.medianPairedP95Delta > PQ024_H3_BUDGETS.matchedGpuP95ToleranceMs) {
+    failures.push(`relay target matched correlated GPU-frame p95 regresses by more than ${PQ024_H3_BUDGETS.matchedGpuP95ToleranceMs} ms`);
   }
   return { floor: floorHitches, target: targetHitches, cpuWorkEnvelope, rendererAdmission, gpuFrameEnvelope };
 }
@@ -481,16 +491,7 @@ function summarizeHitchAttribution(runs) {
     const samples = Array.isArray(run?.rawSamples) ? run.rawSamples : [];
     const hitches = samples
       .filter((sample) => Number(sample?.frameMs) > 32);
-    const externalScheduling = hitches.filter((sample) => (
-      finiteNonnegative(sample?.callbackMs)
-      && sample.callbackMs <= PQ024_H3_BUDGETS.targetSamplingEnvelopeP95Ms
-      && finiteNonnegative(sample?.simFrameMs)
-      && sample.simFrameMs <= PQ024_H3_BUDGETS.targetSamplingEnvelopeP95Ms
-      && finiteNonnegative(sample?.presentationMs)
-      && sample.presentationMs <= PQ024_H3_BUDGETS.targetSamplingEnvelopeP95Ms
-      && sample?.shedBacklog !== true
-      && (Number(sample?.externalCallbackGapMs) > 0 || Number(sample?.callbackDispatchLagMs) > 0)
-    )).length;
+    const externalScheduling = hitches.filter(isExternallyScheduledHitch).length;
     const productAttributed = hitches.length - externalScheduling;
     const denominator = Math.max(1, samples.length);
     return {
@@ -513,6 +514,37 @@ function summarizeHitchAttribution(runs) {
     medianProductAttributedRate: medianValue(perRun.map((row) => row.productAttributedRate)),
     perRun,
   };
+}
+
+function isExternallyScheduledHitch(sample) {
+  const callbackMs = normalizedSingleStepCallbackMs(sample);
+  const simMs = normalizedSingleStepSimMs(sample);
+  return finiteNonnegative(callbackMs)
+    && callbackMs <= PQ024_H3_BUDGETS.targetSamplingEnvelopeP95Ms
+    && finiteNonnegative(simMs)
+    && simMs <= PQ024_H3_BUDGETS.targetSamplingEnvelopeP95Ms
+    && finiteNonnegative(sample?.presentationMs)
+    && sample.presentationMs <= PQ024_H3_BUDGETS.targetSamplingEnvelopeP95Ms
+    && sample?.shedBacklog !== true
+    && (Number(sample?.externalCallbackGapMs) > 0 || Number(sample?.callbackDispatchLagMs) > 0);
+}
+
+function normalizedSingleStepSimMs(sample) {
+  const simMs = Number(sample?.simFrameMs);
+  if (!finiteNonnegative(simMs)) return NaN;
+  const steps = Number.isInteger(sample?.stepsThisFrame) && sample.stepsThisFrame > 0
+    ? sample.stepsThisFrame
+    : 1;
+  return simMs / steps;
+}
+
+function normalizedSingleStepCallbackMs(sample) {
+  const callbackMs = Number(sample?.callbackMs);
+  const simMs = Number(sample?.simFrameMs);
+  const singleStepSimMs = normalizedSingleStepSimMs(sample);
+  if (!finiteNonnegative(callbackMs) || !finiteNonnegative(simMs)
+      || !finiteNonnegative(singleStepSimMs)) return NaN;
+  return Math.max(0, callbackMs - simMs + singleStepSimMs);
 }
 
 function summarizeCpuWorkEnvelope(floorRuns, targetRuns) {
@@ -554,8 +586,9 @@ function correlatedGpuFrameSummary(terminals) {
   };
 }
 
-function evaluateAbsoluteTargetBudget(summariesById) {
+function evaluateAbsoluteTargetBudget(summariesById, gpuFrameEnvelope) {
   const profiles = [];
+  const gpuProfiles = [];
   const failures = [];
   for (const id of PQ024_H3_PROFILE_IDS) {
     const median = medianSummary(summariesById.get(id) || []);
@@ -566,7 +599,17 @@ function evaluateAbsoluteTargetBudget(summariesById) {
       failures.push(`${id} median p95 misses the ${PQ024_H3_BUDGETS.targetSamplingEnvelopeP95Ms} ms sampling envelope`);
     }
   }
-  return { pass: failures.length === 0, failures, profiles };
+  for (const id of PQ024_H3_PROFILE_IDS) {
+    const key = id === PQ024_H3_PROFILE_IDS[0] ? 'floor' : 'target';
+    const medianP95 = gpuFrameEnvelope?.[key]?.medianP95 ?? null;
+    const targetP95Pass = finiteNumber(medianP95)
+      && medianP95 <= PQ024_H3_BUDGETS.maxSeparatedGpuEnvelopeMs;
+    gpuProfiles.push({ id, medianP95, targetP95Pass });
+    if (!targetP95Pass) {
+      failures.push(`${id} correlated GPU-frame median p95 misses the ${PQ024_H3_BUDGETS.maxSeparatedGpuEnvelopeMs} ms sampling envelope`);
+    }
+  }
+  return { pass: failures.length === 0, failures, profiles, gpuProfiles };
 }
 
 function medianSummary(summaries) {

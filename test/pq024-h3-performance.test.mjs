@@ -439,6 +439,29 @@ test('PQ-024 H3 permits bounded external scheduling but rejects systematic rende
   assert.match(result.failures.join('\n'), /median renderer geometries admission exceeds/);
 });
 
+test('PQ-024 H3 normalizes externally scheduled catch-up work to one fixed step', () => {
+  const caughtUp = receipt();
+  for (const index of [0, 1]) {
+    const run = caughtUp.profiles[1].repetitions[index];
+    Object.assign(run.rawSamples[20], {
+      frameMs: 33.3,
+      callbackMs: 23.6,
+      simFrameMs: 16.8,
+      presentationMs: 6.6,
+      stepsThisFrame: 2,
+      externalCallbackGapMs: 23.1,
+      callbackDispatchLagMs: 1.2,
+      shedBacklog: false,
+    });
+    bindFrameSummary(run);
+  }
+  const result = validatePq024H3PerformanceReceipt(caughtUp);
+  assert.equal(result.pass, true, result.failures.join('\n'));
+  assert.equal(result.hitchAttribution.target.externalScheduling, 2);
+  assert.equal(result.hitchAttribution.target.productAttributed, 0,
+    'a delayed two-step callback must not compare aggregate catch-up work to a one-step envelope');
+});
+
 test('PQ-024 H3 tolerates one noisy run but rejects systematic CPU-work regression', () => {
   const noisy = receipt();
   const noisyRun = noisy.profiles[1].repetitions[1];
@@ -481,6 +504,27 @@ test('PQ-024 H3 keeps the absolute target separate from matched feature acceptan
   assert.equal(result.pass, true, result.failures.join('\n'));
   assert.equal(result.absoluteBudget.pass, false);
   assert.equal(PQ024_H3_BUDGETS.targetSamplingEnvelopeP95Ms, 17.5);
+});
+
+test('PQ-024 H3 reports absolute GPU load separately but rejects a matched relay regression', () => {
+  const loaded = receipt();
+  for (const profile of loaded.profiles) {
+    for (const run of profile.repetitions) {
+      run.attribution.gpuTimers.terminals = gpuTerminals(18);
+    }
+  }
+  let result = validatePq024H3PerformanceReceipt(loaded);
+  assert.equal(result.pass, true, result.failures.join('\n'));
+  assert.equal(result.hitchAttribution.gpuFrameEnvelope.medianPairedP95Delta, 0);
+  assert.equal(result.absoluteBudget.pass, false);
+  assert.match(result.absoluteBudget.failures.join('\n'), /correlated GPU-frame median p95 misses/);
+
+  const regressed = receipt();
+  for (const run of regressed.profiles[1].repetitions) {
+    run.attribution.gpuTimers.terminals = gpuTerminals(10);
+  }
+  result = validatePq024H3PerformanceReceipt(regressed);
+  assert.match(result.failures.join('\n'), /matched correlated GPU-frame p95 regresses by more than 0\.8 ms/);
 });
 
 test('PQ-024 H3 is one brokered cell over the accepted public actor', () => {
