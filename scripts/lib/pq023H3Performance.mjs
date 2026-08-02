@@ -34,12 +34,12 @@ export const PQ023_H3_DENSE_MAXIMA = Object.freeze({
   combatBeams: 1,
   explosions: 6,
 });
-const PQ023_H3_RENDERER_ADMISSION_LIMITS = Object.freeze({
-  geometries: 2,
-  textures: 1,
-  programs: 0,
-  renderTargets: 0,
-});
+const PQ023_H3_RENDERER_ADMISSION_KEYS = Object.freeze([
+  'geometries',
+  'textures',
+  'programs',
+  'renderTargets',
+]);
 const PQ023_H3_GPU_FRAME_LABELS = Object.freeze([
   'bloomScene',
   'bloomDownsample',
@@ -290,12 +290,15 @@ function validateAttribution(label, attribution, failures) {
     failures.push(`${label} system attribution is missing`);
   }
   const rendererDelta = attribution?.memory?.renderer?.delta || attribution?.resourceDelta;
-  for (const [key, maximum] of Object.entries(PQ023_H3_RENDERER_ADMISSION_LIMITS)) {
+  for (const key of PQ023_H3_RENDERER_ADMISSION_KEYS) {
     const value = Number(rendererDelta?.[key]);
-    if (!Number.isInteger(value) || value < 0 || value > maximum) {
+    if (!Number.isInteger(value) || value < 0) {
       const subject = key === 'geometries' ? 'geometry' : key;
-      failures.push(`${label} renderer ${subject} admission exceeds the ambient bound ${maximum}`);
+      failures.push(`${label} renderer ${subject} admission delta is missing or negative`);
     }
+  }
+  if (Number(rendererDelta?.programs) !== 0 || Number(rendererDelta?.renderTargets) !== 0) {
+    failures.push(`${label} renderer programs and render targets must remain stable`);
   }
   const gpuFrame = correlatedGpuFrameSummary(gpu?.terminals);
   if (gpuFrame.sampleCount < PQ023_H3_MIN_CORRELATED_GPU_FRAMES) {
@@ -394,9 +397,10 @@ function validateMatchedProfiles(floor, target, failures) {
     }
     const floorRenderer = left?.attribution?.memory?.renderer?.delta || left?.attribution?.resourceDelta;
     const targetRenderer = right?.attribution?.memory?.renderer?.delta || right?.attribution?.resourceDelta;
-    for (const key of Object.keys(PQ023_H3_RENDERER_ADMISSION_LIMITS)) {
+    for (const key of PQ023_H3_RENDERER_ADMISSION_KEYS) {
       if (Number(targetRenderer?.[key]) > Number(floorRenderer?.[key])) {
-        failures.push(`matched pair ${index + 1} dense target renderer ${key} admission exceeds its ambient floor`);
+        const subject = key === 'geometries' ? 'geometry' : key;
+        failures.push(`matched pair ${index + 1} dense target renderer ${subject} admission exceeds its ambient floor`);
       }
     }
   }

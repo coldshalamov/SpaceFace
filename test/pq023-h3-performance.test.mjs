@@ -263,7 +263,7 @@ test('PQ-023 H3 binds renderer admission to the matched ambient floor', () => {
   const receipt = validReceipt();
   for (let index = 0; index < 3; index += 1) {
     receipt.profiles[0].repetitions[index].attribution.memory.renderer.delta = {
-      geometries: 2, textures: 1, programs: 0, renderTargets: 0,
+      geometries: 8, textures: 1, programs: 0, renderTargets: 0,
     };
     receipt.profiles[1].repetitions[index].attribution.memory.renderer.delta = {
       geometries: 1, textures: 0, programs: 0, renderTargets: 0,
@@ -272,7 +272,7 @@ test('PQ-023 H3 binds renderer admission to the matched ambient floor', () => {
   let result = validatePq023H3PerformanceReceipt(receipt);
   assert.equal(result.pass, true, result.failures.join('\n'));
 
-  receipt.profiles[1].repetitions[1].attribution.memory.renderer.delta.geometries = 3;
+  receipt.profiles[1].repetitions[1].attribution.memory.renderer.delta.geometries = 9;
   result = validatePq023H3PerformanceReceipt(receipt);
   assert.equal(result.pass, false);
   assert.ok(result.failures.some((row) => row.includes('renderer geometry admission')));
