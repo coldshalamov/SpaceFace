@@ -261,7 +261,17 @@ export function maintainFirstSessionAttackerOwnership(state) {
   }
   const runtime = FIRST_SESSION_OWNERSHIP.get(state);
   if (!runtime) return 0;
-  reconcileOwnership(state, runtime);
+  let changed = false;
+  for (const [actorId, targetId] of runtime.candidateTargetByActor) {
+    const actor = entityById(state, actorId);
+    const target = entityById(state, targetId);
+    if (ownershipEligible(state, actor, target)) continue;
+    runtime.candidateTargetByActor.delete(actorId);
+    changed = true;
+  }
+  // No new candidates enter between decision batches. Preserve the already-sorted owner/waiting
+  // slots unless a live eligibility change actually removed a candidate.
+  if (changed) reconcileOwnership(state, runtime);
   return runtime.byTarget.size;
 }
 
@@ -339,6 +349,10 @@ function doctrinePhase(reason, doctrineId) {
 }
 
 function stationEntities(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready && Array.isArray(index.stations)) {
+    return index.stations;
+  }
   if (Array.isArray(state.entityList)) return state.entityList.filter((entity) => entity && entity.type === 'station');
   if (state.entities && typeof state.entities.values === 'function') {
     return [...state.entities.values()].filter((entity) => entity && entity.type === 'station');
@@ -361,6 +375,18 @@ function ownershipRuntime(state) {
 }
 
 function claimFirstSessionAttackerOwnership(state, actor, target) {
+  const prepared = FIRST_SESSION_OWNERSHIP.get(state);
+  if (prepared?.candidateTargetByActor.get(actor?.id) === target?.id) {
+    if (!ownershipEligible(state, actor, target)) {
+      prepared.candidateTargetByActor.delete(actor.id);
+      reconcileOwnership(state, prepared);
+      return false;
+    }
+    const targetState = prepared.byTarget.get(target.id);
+    // refreshFirstSessionAttackerOwnership/maintainFirstSessionAttackerOwnership already settled
+    // this exact batch. Do not rebuild every target map once per firing actor in the same tick.
+    return !!targetState && targetState.owners.includes(actor.id);
+  }
   const runtime = ownershipRuntime(state);
   if (!ownershipEligible(state, actor, target)) {
     if (actor && actor.id != null) runtime.candidateTargetByActor.delete(actor.id);

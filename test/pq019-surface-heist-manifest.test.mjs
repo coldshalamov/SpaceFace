@@ -266,6 +266,14 @@ test('one headed Browser process runs the six isolated contexts sequentially', (
     'the functional receipt must not silently come from software rendering');
 });
 
+test('H3 keeps only the required voice observer and excludes H1-only VFX cloning from measurement', () => {
+  const source = probe();
+  assert.ok(source.includes('installObservers(page, { performanceMode: H3_PERFORMANCE })'));
+  assert.match(source,
+    /bus\.on\('voice:surface'[\s\S]*?if \(!isPerformanceMode\) \{[\s\S]*?bus\.on\('presentation:vfxCue'/,
+    'voice proof remains shared while high-rate functional tracing is outside the H3 branch');
+});
+
 test('the fresh H1 claim executes only the four missing route contexts', () => {
   const source = probe();
   assert.ok(source.includes("const CONTINUATION_ONLY = process.argv.includes('--continuation-only')"));

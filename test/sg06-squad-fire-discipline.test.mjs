@@ -119,6 +119,48 @@ test('production firing adapter holds fire for an ally in the predicted lane and
   assert.equal(shooter.data.intent.fire, true, 'ally behind the target does not block the shot');
 });
 
+test('production firing scans the ready ship-like index instead of the full dense world', () => {
+  const state = createGameState(191);
+  state.tick = 190;
+  state.mode = 'flight';
+  state.world.currentSectorId = 'sector_ceres_belt';
+  state.world.sectors.sector_ceres_belt = { id: 'sector_ceres_belt', tier: 2, security: 0.35 };
+  const shooter = ship(10, 1, 0, 0, combatAI());
+  const target = ship(20, 0, 320, 0, null);
+  const ally = ship(11, 1, 150, 0, combatAI());
+  state.playerId = target.id;
+  installEntities(state, [
+    shooter,
+    target,
+    ally,
+    ...Array.from({ length: 400 }, (_, index) => ({
+      id: 1_000 + index,
+      type: 'asteroid',
+      alive: true,
+      pos: { x: index, z: index },
+    })),
+  ]);
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    ready: true,
+    shipLike: [shooter, target, ally],
+    stations: [],
+  };
+  state.entityList = new Proxy(state.entityList, {
+    get(array, property, receiver) {
+      if (property === 'filter' || property === Symbol.iterator) {
+        throw new Error('full dense entity list must not be scanned by firing authority');
+      }
+      return Reflect.get(array, property, receiver);
+    },
+  });
+
+  applyAIFiringIntent(firingDecision(shooter.id, target.id), state);
+  assert.equal(shooter.data.intent.fire, false);
+  assert.equal(shooter.data.intent.fireBlockerId, ally.id,
+    'the indexed view must preserve the exact allied blocker result');
+});
+
 function squadHarness() {
   const state = createGameState(47);
   state.mode = 'flight';

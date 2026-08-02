@@ -157,7 +157,7 @@ try {
         `${id}: acceptance requires the real GPU path, got ${scenarioGpu.renderer}`);
       if (!gpu) gpu = scenarioGpu;
       else assert.equal(scenarioGpu.renderer, gpu.renderer, `${id}: GPU renderer changed between contexts`);
-      await installObservers(page);
+      await installObservers(page, { performanceMode: H3_PERFORMANCE });
       const result = await body({ page, screenshot });
       const pageIssues = issueTracker.errorIssues();
       assert.deepEqual(pageIssues, [], `${id}: the live route emitted page errors`);
@@ -800,8 +800,8 @@ async function bootSeededFlight(page, baseUrl) {
   });
 }
 
-async function installObservers(page) {
-  await page.evaluate(() => {
+async function installObservers(page, { performanceMode = false } = {}) {
+  await page.evaluate((isPerformanceMode) => {
     const clone = (value) => {
       try { return JSON.parse(JSON.stringify(value)); } catch (_) { return { uncloneable: true }; }
     };
@@ -810,17 +810,19 @@ async function installObservers(page) {
       capsuleWaits: [],
     };
     const bus = window.SF.bus;
-    bus.on('heist:missionCue', (payload) => trace.cues.push(clone(payload)));
     bus.on('voice:surface', (payload) => trace.surfaces.push(clone(payload)));
-    bus.on('voice:clear', (payload) => trace.clears.push(clone(payload)));
-    bus.on('mission:completed', (payload) => trace.settlements.push({ kind: 'completed', ...clone(payload) }));
-    bus.on('mission:failed', (payload) => trace.settlements.push({ kind: 'failed', ...clone(payload) }));
-    bus.on('mission:expired', (payload) => trace.settlements.push({ kind: 'expired', ...clone(payload) }));
-    bus.on('economy:grantCredits', (payload) => trace.grants.push(clone(payload)));
-    bus.on('ui:acceptMission', (payload) => trace.accepts.push(clone(payload)));
-    bus.on('presentation:vfxCue', (payload) => trace.vfxCues.push(clone(payload)));
+    if (!isPerformanceMode) {
+      bus.on('heist:missionCue', (payload) => trace.cues.push(clone(payload)));
+      bus.on('voice:clear', (payload) => trace.clears.push(clone(payload)));
+      bus.on('mission:completed', (payload) => trace.settlements.push({ kind: 'completed', ...clone(payload) }));
+      bus.on('mission:failed', (payload) => trace.settlements.push({ kind: 'failed', ...clone(payload) }));
+      bus.on('mission:expired', (payload) => trace.settlements.push({ kind: 'expired', ...clone(payload) }));
+      bus.on('economy:grantCredits', (payload) => trace.grants.push(clone(payload)));
+      bus.on('ui:acceptMission', (payload) => trace.accepts.push(clone(payload)));
+      bus.on('presentation:vfxCue', (payload) => trace.vfxCues.push(clone(payload)));
+    }
     window.__PQ019_H1_MISSIONS__ = Object.create(null);
-  });
+  }, performanceMode);
 }
 
 async function prepareFixture(page, { recoveryEnabled }) {

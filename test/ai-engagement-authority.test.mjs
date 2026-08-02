@@ -124,6 +124,31 @@ test('response/telegraph window and exact doctrine fire phase are authoritative'
   })), { ok: true, reason: 'authorized' });
 });
 
+test('station protection uses the live station index without scanning unrelated entities', () => {
+  const state = stateWith(authorizedAI({ lawful: true, engagementTrigger: 'wanted_status' }), {
+    wanted: true,
+    sectorId: 'sector_tethys_junction',
+    playerPos: { x: 40, z: 0 },
+    stationPos: { x: 0, z: 0 },
+  });
+  const station = state.entities.get(3);
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    ready: true,
+    stations: [station],
+  };
+  state.entityList = new Proxy(state.entityList, {
+    get(target, property, receiver) {
+      if (property === 'filter' || property === Symbol.iterator) {
+        throw new Error('full entity list must not be scanned when the station index is ready');
+      }
+      return Reflect.get(target, property, receiver);
+    },
+  });
+
+  assert.equal(protectedStationAt(state, state.entities.get(state.playerId))?.entityId, station.id);
+});
+
 test('sub-second response windows fail closed at the production engagement seam', () => {
   const state = stateWith(authorizedAI({ noFireResponseWindowS: 0.5 }), {
     tick: 160,
@@ -182,6 +207,19 @@ test('four offensive actors receive two stable ownership slots across ingress, c
     owners: [2, 3],
     waiting: [4, 5],
   }, 'phase, cooldown, denied-fire, and non-burst action changes cannot churn ownership');
+});
+
+test('prepared ownership slots still fail closed when an actor leaves the ship authority', () => {
+  const state = ownershipState([2]);
+  const actor = state.entities.get(2);
+  refreshFirstSessionAttackerOwnership(state, [ownershipDecision(2, 'strike', 'action_burst')]);
+  actor.type = 'drone';
+
+  assert.deepEqual(authorize(state, { self: actor }), {
+    ok: false,
+    reason: 'first_session_attacker_cap',
+  });
+  assert.equal(inspectFirstSessionAttackerOwnership(state, state.playerId), null);
 });
 
 test('death and disengage release immediately and promote overflow in stable order without starvation', () => {

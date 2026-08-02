@@ -109,7 +109,7 @@ export function applyAIFiringIntent(decision, state) {
     shooter: e,
     target,
     aimAngle,
-    entities: state.entityList || state.entities,
+    entities: friendlyFireLaneEntities(state),
   });
   if (!lane.clear && target.type !== 'projectile') {
     clearFire(intent, lane.reason, lane.blockerId);
@@ -122,6 +122,19 @@ export function applyAIFiringIntent(decision, state) {
   intent.fireBlockerId = null;
   intent.aimAngle = aimAngle;
   ai.lastAggressionTrace = aggressionTrace(decision, state, targetId, ai);
+}
+
+/**
+ * The lane gate only considers ships and drones. The live entity index is refreshed before
+ * tactical AI, so use its exact ship-like view instead of rescanning asteroids, stations, FX, and
+ * payloads for every armed actor. Headless/minimal states retain the complete fallback.
+ */
+export function friendlyFireLaneEntities(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready && Array.isArray(index.shipLike)) {
+    return index.shipLike;
+  }
+  return state?.entityList || state?.entities;
 }
 
 /**
