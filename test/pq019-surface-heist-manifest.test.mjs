@@ -10,7 +10,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import manifest, {
+  classifyPq019CapsuleWaitHarnessGuard,
   classifyPq019CapsuleWaitSnapshot,
+  PQ019_CAPSULE_WAIT_HARD_WALL_MS,
+  PQ019_CAPSULE_WAIT_NO_PROGRESS_MS,
   createPq019SurfaceHeistManifest,
   PQ019_CAPSULE_LAUNCH_GRACE_S,
   PQ019_SURFACE_HEIST_FIXED_SEED,
@@ -92,7 +95,7 @@ test('the deterministic mission, seam, facility, and sim gates run before claim 
   ]);
 });
 
-test('capsule readiness is decided by simulation progress and terminal state, never wall time', () => {
+test('capsule readiness is decided by simulation state while wall time only guards harness liveness', () => {
   const oldWallTimeoutFingerprint = {
     startedAtSimT: 100,
     simTime: 102,
@@ -154,6 +157,36 @@ test('capsule readiness is decided by simulation progress and terminal state, ne
     capsule: { id: 77, role: 'cargo_capsule', hull: 160 },
   };
   assert.equal(classifyPq019CapsuleWaitSnapshot(liveCapsule).status, 'ready');
+
+  const wallStart = 1_000;
+  assert.deepEqual(classifyPq019CapsuleWaitHarnessGuard({
+    startedAtWallMs: wallStart,
+    lastProgressAtWallMs: wallStart + 44_900,
+    nowWallMs: wallStart + 45_000,
+  }), {
+    status: 'continue',
+    reason: 'simulation_progress_within_guard',
+    wallElapsedMs: 45_000,
+    noProgressElapsedMs: 100,
+  }, 'the reproduced 45-second wall fingerprint must continue while simulation time advances');
+
+  assert.deepEqual(classifyPq019CapsuleWaitHarnessGuard({
+    startedAtWallMs: wallStart,
+    lastProgressAtWallMs: wallStart,
+    nowWallMs: wallStart + PQ019_CAPSULE_WAIT_NO_PROGRESS_MS,
+  }), {
+    status: 'stalled',
+    reason: 'simulation_progress_stalled',
+    wallElapsedMs: PQ019_CAPSULE_WAIT_NO_PROGRESS_MS,
+    noProgressElapsedMs: PQ019_CAPSULE_WAIT_NO_PROGRESS_MS,
+  }, 'a genuinely frozen simulation must release the Browser lease with an exact harness reason');
+
+  assert.equal(classifyPq019CapsuleWaitHarnessGuard({
+    startedAtWallMs: wallStart,
+    lastProgressAtWallMs: wallStart + PQ019_CAPSULE_WAIT_HARD_WALL_MS - 1,
+    nowWallMs: wallStart + PQ019_CAPSULE_WAIT_HARD_WALL_MS,
+  }).reason, 'hard_wall_limit_without_simulation_verdict',
+  'continued but pathologically slow simulation must still respect the bounded cell');
 });
 
 test('the tracked registry resolves pq019-surface-heist', async () => {

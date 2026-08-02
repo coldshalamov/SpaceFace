@@ -3567,6 +3567,7 @@
         "scripts/lib/pq019H3Performance.mjs",
         "scripts/probe-pq019-surface-heist.mjs",
         "scripts/validation-manifests/pq019-h3-performance.mjs",
+        "scripts/validation-manifests/pq019-surface-heist.mjs",
         "src/render/partsLibrary.js",
         "src/render/pipelineReadiness.js",
         "src/render/renderer.js",
@@ -3581,6 +3582,7 @@
       ],
       "checks": [
         "node --test test/pq019-h3-performance.test.mjs",
+        "node --test test/pq019-surface-heist-manifest.test.mjs",
         "node --test test/authored-entity-plan-budget.test.mjs test/authored-preload-scope.test.mjs test/render-target-pipeline-warmup.test.mjs",
         "node --test test/startup-gpu-residency.test.mjs test/performance-scene-metrics.test.mjs",
         "npm run check:pq019a:facility-embodiment",

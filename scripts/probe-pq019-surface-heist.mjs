@@ -32,6 +32,7 @@ import { sampleRafWindow } from './lib/releaseSoakProbe.mjs';
 import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 import surfaceHeistManifest, {
+  classifyPq019CapsuleWaitHarnessGuard,
   classifyPq019CapsuleWaitSnapshot,
   createPq019SurfaceHeistManifest,
   PQ019_SURFACE_HEIST_FIXED_SEED,
@@ -994,10 +995,11 @@ async function acceptOfferThroughStationDom(page, offerId, { screenshot = null, 
 
 async function waitForCapsule(page, missionId) {
   const startedAtSimT = await page.evaluate(() => Number(window.SF.state.simTime) || 0);
-  const protectiveWallDeadline = Date.now() + 45_000;
-  let latestSnapshot = null;
+  const startedAtWallMs = Date.now();
+  let lastProgressAtWallMs = startedAtWallMs;
+  let latestObservedSimT = startedAtSimT;
 
-  while (Date.now() < protectiveWallDeadline) {
+  while (true) {
     const snapshot = await page.evaluate(({ id, started }) => {
       const sf = window.SF;
       const state = sf.state;
@@ -1044,7 +1046,11 @@ async function waitForCapsule(page, missionId) {
           : null,
       };
     }, { id: missionId, started: startedAtSimT });
-    latestSnapshot = snapshot;
+    const nowWallMs = Date.now();
+    if (Number.isFinite(snapshot.simTime) && snapshot.simTime > latestObservedSimT + 1e-6) {
+      latestObservedSimT = snapshot.simTime;
+      lastProgressAtWallMs = nowWallMs;
+    }
     const verdict = classifyPq019CapsuleWaitSnapshot(snapshot);
     if (verdict.status === 'ready') {
       const evidence = { missionId, verdict, snapshot };
@@ -1057,14 +1063,21 @@ async function waitForCapsule(page, missionId) {
         snapshot,
       })}`);
     }
+    const guard = classifyPq019CapsuleWaitHarnessGuard({
+      startedAtWallMs,
+      lastProgressAtWallMs,
+      nowWallMs,
+    });
+    if (guard.status === 'stalled') {
+      throw new Error(`PQ019_CAPSULE_WAIT_HARNESS_STALLED ${JSON.stringify({
+        reason: guard.reason,
+        guard,
+        verdict,
+        snapshot,
+      })}`);
+    }
     await page.waitForTimeout(50);
   }
-
-  throw new Error(`PQ019_CAPSULE_WAIT_HARNESS_STALLED ${JSON.stringify({
-    reason: 'protective_wall_deadline_without_simulation_verdict',
-    verdict: classifyPq019CapsuleWaitSnapshot(latestSnapshot || { startedAtSimT }),
-    snapshot: latestSnapshot,
-  })}`);
 }
 
 async function clearVoiceAndStage(page, role) {

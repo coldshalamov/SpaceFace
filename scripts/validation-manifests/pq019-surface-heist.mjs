@@ -24,6 +24,14 @@ export const PQ019_SURFACE_HEIST_FIXED_SEED = 19019;
 /** One simulation second after the scheduled launch is enough to observe the facility owner's spawn. */
 export const PQ019_CAPSULE_LAUNCH_GRACE_S = 1;
 
+/**
+ * Wall time is only a harness-liveness guard. A headed target-profile route can render well below
+ * real time while the simulation is still healthy, so it gets a generous bounded window as long as
+ * the simulation clock continues to advance.
+ */
+export const PQ019_CAPSULE_WAIT_HARD_WALL_MS = 180_000;
+export const PQ019_CAPSULE_WAIT_NO_PROGRESS_MS = 45_000;
+
 const finiteOrNull = (value) => (
   value === null || value === undefined || value === ''
     ? null
@@ -69,6 +77,50 @@ export function classifyPq019CapsuleWaitSnapshot(snapshot = {}) {
     simElapsedS,
     launchLagS,
   };
+}
+
+/**
+ * Decide whether a still-pending capsule wait is alive or the harness itself has stalled.
+ * Product readiness remains entirely simulation-classified above; this guard only prevents an
+ * unbounded Browser lease when the simulation stops advancing or the bounded cell is exhausted.
+ */
+export function classifyPq019CapsuleWaitHarnessGuard({
+  startedAtWallMs,
+  lastProgressAtWallMs,
+  nowWallMs,
+  hardWallMs = PQ019_CAPSULE_WAIT_HARD_WALL_MS,
+  noProgressMs = PQ019_CAPSULE_WAIT_NO_PROGRESS_MS,
+} = {}) {
+  const started = finiteOrNull(startedAtWallMs);
+  const lastProgress = finiteOrNull(lastProgressAtWallMs);
+  const now = finiteOrNull(nowWallMs);
+  const hardLimit = finiteOrNull(hardWallMs);
+  const progressLimit = finiteOrNull(noProgressMs);
+
+  if (started == null || lastProgress == null || now == null
+    || hardLimit == null || hardLimit <= 0 || progressLimit == null || progressLimit <= 0) {
+    return { status: 'stalled', reason: 'invalid_harness_guard_state' };
+  }
+
+  const wallElapsedMs = Math.max(0, Math.round(now - started));
+  const noProgressElapsedMs = Math.max(0, Math.round(now - lastProgress));
+  if (wallElapsedMs >= hardLimit) {
+    return {
+      status: 'stalled',
+      reason: 'hard_wall_limit_without_simulation_verdict',
+      wallElapsedMs,
+      noProgressElapsedMs,
+    };
+  }
+  if (noProgressElapsedMs >= progressLimit) {
+    return {
+      status: 'stalled',
+      reason: 'simulation_progress_stalled',
+      wallElapsedMs,
+      noProgressElapsedMs,
+    };
+  }
+  return { status: 'continue', reason: 'simulation_progress_within_guard', wallElapsedMs, noProgressElapsedMs };
 }
 
 export function createPq019SurfaceHeistManifest(overrides = {}) {
