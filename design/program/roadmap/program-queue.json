@@ -4259,7 +4259,7 @@
       "priority": 216,
       "title": "Matched Asteroid Ops survey-to-relay performance",
       "kind": "performance",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-024.survey-h1-capture",
         "PQ-034.native-closure"
@@ -4292,7 +4292,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-024-h3-performance-REPORT.md"
       ],
-      "brief": "Claimed by the Codex primary integrator at 02d2c877f3966df6c89904c3dd6d29490f87c70a after a clean current-worktree collision check. Repair the formerly empty dispatch contract by extending the already-accepted public PQ-024 actor, not duplicating or rerunning H1: three fresh fixed-seed same-context pairs measure the committed Core/no-extractor/no-relay exterior floor, then publicly re-enter Asteroid Ops, install the real extractor, await one authoritative positive-output receipt and exact relay admission, and measure the producing/one-relay target at the same route, pose, camera, settings, viewport, and GPU. Require raw p50/p95/p99/max, hitch/backlog, owner/draw/resource facts, separated correlated-GPU attribution, exact lifecycle/receipt/relay identity, and owned teardown. This H3 cell makes no relay visual-quality or historical optimization claim.",
+      "brief": "Accepted on candidate 2509a168446f0622b943084c97849a65c84346ea under Browser claim 33596-be4c6688b2df89754fd8285d, digest 293e69663d1fe379cc80f4e2c1a6d05f84021f11e687f58715e5c6d1e405ecb5, and exact receipt PQ-024-h3-performance-REPORT.md. Three fixed-seed same-context pairs compared the publicly committed Core/no-extractor/no-relay exterior floor with real extractor output/producing/one-relay target at exact matched pose, camera, settings, viewport, route, runtime, and Intel D3D11 GPU. Floor/target median p50/p95/p99 were 16.7/16.8/17.2 ms and 16.7/16.8/17.2 ms; both absolute profiles and the +0.627916 ms matched correlated-GPU median p95 delta pass. Product-attributed hitches, >50 ms frames, backlog shedding, renderer admission, page issues, and cleanup failures were zero. Four prior failed claims remain causal harness evidence. H1 was retained and no relay visual-quality, historical optimization, or program-wide absolute claim is made.",
       "blocker": null
     },
     {
