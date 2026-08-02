@@ -1,12 +1,55 @@
 <!-- PROGRAM_EVIDENCE_RECEIPT
 packetId: PQ-023
 leafId: PQ-023.gold-corridor-required-cues
-acceptance: focused_green
+acceptance: milestone_accepted
 disposition: PASS
-candidateCommit: acddb2de611a9c462347f81072861976f6e2c69e
+candidateCommit: 93c76f6529e709ac6dc552b4611571dee590ca72
 -->
 
 # PQ-023 — `gold-corridor-required-cues` leaf receipt
+
+## Milestone upgrade — 2026-08-02
+
+```yaml
+packet: PQ-023
+leafId: PQ-023.gold-corridor-required-cues
+promotionUnit: PQ-023.promote-corridor-cues
+promotionBase: f720eb186cc9290ababcb28b3dca05166c222010
+candidateCommit: 93c76f6529e709ac6dc552b4611571dee590ca72
+lifecycleClaim: integrated
+acceptanceClaim: milestone_accepted
+disposition: PASS
+browserElectronFunctionalRoute: PASS
+integratorMotionAccessibilityReview: PASS
+matchedPerformanceCleanup: PASS
+physicalControllerClaimed: false
+newHeadedEvidenceSpent: false
+```
+
+**PROMOTE this exact leaf to `milestone_accepted`.** The original implementation evidence below is
+unchanged. Its formerly open route, review, repair, accessibility, dense-composition, performance,
+and cleanup rows now have committed exact-candidate receipts. The primary integrator reviewed those
+receipts against live ancestry and found no unresolved cue-family gate. This is evidence
+reconciliation only; it reruns no accepted Browser/Electron cell and changes no runtime, visual,
+asset, default-quality, or pool-capacity path.
+
+| Accepted layer | Exact evidence | Git blob |
+|---|---|---|
+| Cathedral cue Browser/source-Electron H1 | `PQ-023-cues-h1-capture-REPORT.md` | `0d81ba727568808e09d6aaed1a32ebfc001ba09a` |
+| Initial cue-motion/accessibility disposition | `PQ-023-h2-cue-motion-accessibility-REPORT.md` | `7be55feba58b459b133b07bf79fc85b1c6d56d08` |
+| Targeted flak/small Browser/source-Electron H1 | `PQ-023-combat-readability-h1-REPORT.md` | `1137b30aed42f52fc71682df50d585b635add55b` |
+| Flak KEEP / small REVISE causal review | `PQ-023-combat-readability-review-REPORT.md` | `72716d81455e2c23c38f939422bc2d21975f9bea` |
+| Localized small-destruction repair | `PQ-023-small-destruction-salience-repair-REPORT.md` | `d17ff9f0c26c4e47a14bad41c51c1a4b575bfda2` |
+| Final small-only Browser/source-Electron H1 | `PQ-023-small-destruction-salience-h1-REPORT.md` | `6c94d2b6c5e999924745daf2670aa21cb361a768` |
+| Final small-destruction KEEP review | `PQ-023-small-destruction-salience-review-REPORT.md` | `51353847571d48e81f9fa572923854615d42eef1` |
+| Three-pair headed Browser H3 | `PQ-023-h3-performance-REPORT.md` | `0eef5830fc4a75ac9ff0e32f8a098319efc8718e` |
+
+The final route state keeps Cathedral damage/recovery semantics, reduced motion/flash and noncolor
+text/shape equivalents, ordinary/capital hierarchy, dense critical-cue survival, repaired flak
+identity, and repaired full-motion small destruction. Browser/source-Electron functional semantics
+are accepted; H3 passes at target median p50/p95/p99 `16.7/16.8/17.3 ms`, zero target
+`>32/>50 ms`, zero target backlog/product hitches, correlated GPU median p95 `10.403488 ms`, bounded
+default pools, restored benchmark state, and clean Browser/server teardown on real Intel D3D11.
 
 - **Branch:** `claude/pq023-corridor-cues-20260728` (base `b6b6422d`)
 - **Scope:** the six cue families the Gold Corridor (PQ-025) requires. Propulsion, camera language,
@@ -177,7 +220,7 @@ damage/recovery cues. `worldSiteDamageStates` likewise has two: the fixture rend
 path. No propulsion, no `check-vfx-frame-sleep.mjs`, no HUD anchor layout, no voice-arbiter rules,
 no protected asset families were touched.
 
-## 7. H1 headed result and remaining open rows
+## 7. Accepted route, review, and performance closure
 
 The original fixed-seed H1 attempt produced a reviewable WebM plus impact, destruction,
 reduced-profile, and dense-scene frame sequences, then stopped before the first Cathedral frame on
@@ -190,17 +233,18 @@ in `design/program/roadmap/evidence/h1/row6-pq023-cues/EVIDENCE.md`.
 | Row | Status |
 |---|---|
 | Normal-route Browser evidence with source fingerprint and exact cue IDs | **PASS** — retained combat motion plus candidate `f373e8a7`, claim `40008-bf8ebe348500b65aa41197e6`, digest `3b31ee47…`; complete Browser report and World Site semantic projection committed in row 6. |
-| Independent motion / normal-camera review (impacts, destruction, reduced variants, dense overlap) | **PARTIAL** — committed WebM and frame sequences are reviewable in H2; the human verdict is still required. |
-| Pixel stills and motion of Cathedral damage/recovery at the normal camera | **FUNCTIONAL PASS / HUMAN VERDICT OPEN** — motion reel plus 12 Browser and four Electron frames cover normal/reduced recovery and damage. |
+| Independent motion / normal-camera review (impacts, destruction, reduced variants, dense overlap) | **PASS** — the solo integrator review kept Cathedral/accessibility, ordinary/capital, reduced, and dense composition; targeted causal reviews then kept repaired flak and final small destruction. |
+| Pixel stills and motion of Cathedral damage/recovery at the normal camera | **PASS** — motion reel plus 12 Browser and four Electron frames cover normal/reduced recovery and damage; H2 keeps the caption, noncolor-shape, urgency, and static-dim semantics. |
 | Electron semantic parity | **PASS** — exact four-transition/caption/accessibility projection matches Browser on real Intel ANGLE/D3D11 with zero issues and clean teardown. |
-| Matched target/floor performance: frame phases, particles/sprites/lights, draw calls, hitches, cleanup | **OPEN — Phase H3**. H1 makes no performance claim; all time-valued diagnostics are informational/contended only. |
-| `milestone_accepted` upgrade | **OPEN** — PQ-025's binding requires `milestone_accepted`; the named human H2 verdict and H3 matched performance remain missing. This leaf continues to claim `focused_green` only. |
+| Matched target/floor performance: frame phases, particles/sprites/lights, draw calls, hitches, cleanup | **PASS** — claim `25092-dc1e123131f87f9b970e8185`, candidate `93c76f65`, six matched windows, absolute cell budget green, exact cue/pool topology, and clean teardown. |
+| `milestone_accepted` upgrade | **PASS** — all required receipts above are committed and ancestry-valid; this receipt now exposes the exact milestone evidence contract consumed by PQ-025. |
 
-## 8. Implementation blockers
+## 8. Residuals
 
-None. Every owner event this leaf needed already existed and was unambiguous
+None for this leaf. Every owner event this leaf needed already existed and was unambiguous
 (`worldSite:failureReceipt`, `worldSite:operationReceipt`, `combat:damage`, `entity:killed`), so no
-family had to be stopped under the packet's ambiguous-owner stop condition. The independent human H2
-verdict and H3 matched performance remain acceptance blockers as recorded above.
+family had to be stopped under the packet's ambiguous-owner stop condition. The integrator-owned H2
+review, both targeted repair/re-review chains, and H3 matched performance are complete. Physical
+controller behavior is neither required by nor claimed for this cue-family milestone.
 
-A leaf worker never marks PQ-023 complete; parent coverage is the integrator's.
+The receipt's committed blob is bound into PQ-025 only after this upgraded revision lands in Git.
