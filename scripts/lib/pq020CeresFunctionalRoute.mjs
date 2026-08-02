@@ -556,7 +556,11 @@ async function installObservers(page) {
       'hazard:enter', 'hazard:exit', 'save:completed', 'save:loaded',
     ]) {
       bus.on(event, (payload) => {
-        trace.events.push({ event, tick: window.SF?.state?.tick ?? null, payload: clone(payload) });
+        trace.events.push({
+          event,
+          tick: window.SF?.state?.tick ?? null,
+          payload: clone(payload),
+        });
         if (trace.events.length > 240) trace.events.splice(0, trace.events.length - 240);
       });
     }
@@ -1008,6 +1012,21 @@ async function readGpu(page) {
     };
   });
 }
+
+// H3 reuses these exact public-control drivers instead of cloning or weakening the accepted route.
+// The surface deliberately excludes save/reload internals and direct state/event mutation seams.
+export const pq020FunctionalRouteDrivers = Object.freeze({
+  bootSeededFlight,
+  installObservers,
+  selectMapTarget,
+  waitForJumpArrival,
+  waitForAutopilotArrival,
+  waitForCathedralAdmission,
+  waitForCathedralFraming,
+  waitForShipSettled,
+  readFunctionalSnapshot,
+  readGpu,
+});
 
 async function waitVisible(page, selector, label, timeout) {
   try {
