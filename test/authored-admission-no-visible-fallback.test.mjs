@@ -563,29 +563,39 @@ test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', 
 
   assert.equal(swapped, true);
   assert.equal(sources.length, 3);
-  assert.equal(prepasses.length, 3, 'the active LOD pays one depth-only draw, not one draw per material');
-  for (const prepass of prepasses) {
-    const lod = prepass.userData.spacefaceTags.lod;
+  assert.equal(prepasses.length, 6, 'each LOD pays one closed and one open-shell depth draw');
+  for (const lod of ['lod0', 'lod1', 'lod2']) {
     const source = sources.find((candidate) => candidate.userData.spacefaceTags.lod === lod);
     const sourceMaterials = Array.isArray(source.material) ? source.material : [source.material];
+    const closedPrepass = prepasses.find((candidate) => candidate.userData.spacefaceTags.lod === lod
+      && candidate.userData.spacefaceDepthRole === 'closed-front');
+    const openPrepass = prepasses.find((candidate) => candidate.userData.spacefaceTags.lod === lod
+      && candidate.userData.spacefaceDepthRole === 'open-double');
     assert.ok(source.geometry.index, `${lod} retains the authored indexed topology`);
     assert.equal(source.geometry.getAttribute('position').count, materialRoles.length * 24,
       `${lod} does not expand every box index into a duplicate vertex`);
     assert.equal(source.geometry.index.count, materialRoles.length * 36,
       `${lod} retains every authored triangle index`);
-    assert.notEqual(prepass.geometry, source.geometry,
-      `${lod} uses a closed-surface index view instead of redrawing the open alloy family`);
-    assert.equal(prepass.geometry.getAttribute('position'), source.geometry.getAttribute('position'),
-      `${lod} shares the exact authored vertex buffer`);
-    assert.equal(prepass.geometry.index.count, (materialRoles.length - 1) * 36,
-      `${lod} excludes only the exposed-alloy triangle indices`);
-    assert.equal(prepass.material.colorWrite, false);
-    assert.equal(prepass.material.depthTest, true);
-    assert.equal(prepass.material.depthWrite, true);
-    assert.equal(prepass.material.side, THREE.FrontSide, `${lod} prewrites only source-valid front faces`);
-    assert.ok(prepass.renderOrder < source.renderOrder);
-    assert.equal(prepass.castShadow, false);
-    assert.equal(prepass.receiveShadow, false);
+    assert.notEqual(closedPrepass.geometry, source.geometry);
+    assert.notEqual(openPrepass.geometry, source.geometry);
+    assert.equal(closedPrepass.geometry.getAttribute('position'), source.geometry.getAttribute('position'),
+      `${lod} closed depth shares the exact authored vertex buffer`);
+    assert.equal(openPrepass.geometry.getAttribute('position'), source.geometry.getAttribute('position'),
+      `${lod} open depth shares the exact authored vertex buffer`);
+    assert.equal(closedPrepass.geometry.index.count, (materialRoles.length - 1) * 36,
+      `${lod} closed depth contains the seven closed families`);
+    assert.equal(openPrepass.geometry.index.count, 36,
+      `${lod} open depth contains only exposed-alloy indices`);
+    for (const prepass of [closedPrepass, openPrepass]) {
+      assert.equal(prepass.material.colorWrite, false);
+      assert.equal(prepass.material.depthTest, true);
+      assert.equal(prepass.material.depthWrite, true);
+      assert.ok(prepass.renderOrder < source.renderOrder);
+      assert.equal(prepass.castShadow, false);
+      assert.equal(prepass.receiveShadow, false);
+    }
+    assert.equal(closedPrepass.material.side, THREE.FrontSide);
+    assert.equal(openPrepass.material.side, THREE.DoubleSide);
     const sourceByRole = new Map(sourceMaterials.map((material) => [
       material.userData.spacefaceMaterialRole,
       material,
@@ -595,7 +605,9 @@ test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', 
       const material = sourceByRole.get(role);
       if (role === 'exposed_alloy') {
         assert.equal(material.side, THREE.DoubleSide, `${lod} retains open engine-bell interiors`);
-        assert.equal(material.depthWrite, true);
+        assert.equal(material.depthFunc, THREE.EqualDepth, `${lod} open shells reuse their double-sided prepass`);
+        assert.equal(material.depthWrite, false);
+        assert.equal(material.userData.spacefaceCathedralEqualDepth, true);
       } else {
         assert.equal(material.side, THREE.FrontSide, `${lod} culls the closed ${role} family`);
         assert.equal(material.depthFunc, THREE.EqualDepth, `${lod} reuses prepass depth for ${role}`);
@@ -606,9 +618,9 @@ test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', 
   }
   assert.deepEqual(authoredRoot.userData.opaqueDepthPrepass, {
     assetId: 'place_landmark_wreck_cathedral',
-    drawables: 3,
-    geometry: 'shared-authored-attributes-closed-indices',
-    material: 'depth-only-front-sided',
+    drawables: 6,
+    geometry: 'shared-authored-attributes-role-split-indices',
+    material: 'depth-only-role-sided',
   });
   assert.deepEqual(authoredRoot.userData.cathedralSurfaceCulling, {
     frontSideRoles: [
@@ -621,7 +633,7 @@ test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', 
       'warning',
     ],
     retainedDoubleSideRoles: ['exposed_alloy'],
-    depthContract: 'prepass-equal',
+    depthContract: 'role-split-prepass-equal',
   });
   for (const material of authoredMaterials.values()) {
     assert.equal(material.side, THREE.DoubleSide, `${material.name} source material stays immutable`);
@@ -630,11 +642,11 @@ test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', 
 
   const visibility = () => Object.fromEntries(['lod0', 'lod1', 'lod2'].map((lod) => [
     lod,
-    prepasses.find((object) => object.userData.spacefaceTags.lod === lod).visible,
+    prepasses.filter((object) => object.userData.spacefaceTags.lod === lod && object.visible).length,
   ]));
-  assert.deepEqual(visibility(), { lod0: true, lod1: false, lod2: false });
+  assert.deepEqual(visibility(), { lod0: 2, lod1: 0, lod2: 0 });
   boundary.userData.updateLod('lod2');
-  assert.deepEqual(visibility(), { lod0: false, lod1: false, lod2: true });
+  assert.deepEqual(visibility(), { lod0: 0, lod1: 0, lod2: 2 });
 });
 
 test('a synchronous authored geology builder error keeps the procedural geology identity', () => {

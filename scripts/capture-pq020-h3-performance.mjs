@@ -451,10 +451,19 @@ async function readPq020H3RouteFacts(page, {
       summary.uniqueVertices += Number(positions?.count || 0);
       summary.triangleIndices += count;
       summary.triangles += count / 3;
+      if (object.userData?.spacefaceDepthRole) summary.roles.push(object.userData.spacefaceDepthRole);
       return summary;
-    }, { drawables: 0, indexedDrawables: 0, uniqueVertices: 0, triangleIndices: 0, triangles: 0 });
+    }, {
+      drawables: 0,
+      indexedDrawables: 0,
+      uniqueVertices: 0,
+      triangleIndices: 0,
+      triangles: 0,
+      roles: [],
+    });
     const colorGeometry = geometrySummary(activeStaticBatches);
     const depthGeometry = geometrySummary(activeDepthPrepasses);
+    depthGeometry.roles.sort();
     const admittedComponentCount = cathedralEntities.filter((entity) => (
       entity.data?.role === 'world_site_component'
       && entity.data?.worldSitePresentationAdmitted === true

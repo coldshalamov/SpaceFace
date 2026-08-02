@@ -1471,9 +1471,9 @@ function installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
 
   // The Cathedral is a close-range capital-wreck shell. Its eight authored PBR material groups are
   // already merged into one mesh per LOD, but shading every hidden fragment made the target route
-  // GPU-bound. One shared front-face depth pass preserves exact geometry, open-shell interiors, LOD
-  // choice, and default quality while giving closed material families an equal-depth color pass.
-  const material = new THREE.MeshBasicMaterial({
+  // GPU-bound. Role-sided depth passes preserve exact geometry, open-shell interiors, LOD choice,
+  // and default quality while giving every opaque material family an equal-depth color pass.
+  const closedDepthMaterial = new THREE.MeshBasicMaterial({
     color: 0x000000,
     colorWrite: false,
     depthTest: true,
@@ -1481,63 +1481,81 @@ function installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
     side: THREE.FrontSide,
     toneMapped: false,
   });
-  material.name = 'SF_WreckCathedral_OpaqueDepthPrepass';
+  closedDepthMaterial.name = 'SF_WreckCathedral_ClosedDepthPrepass';
+  const openDepthMaterial = closedDepthMaterial.clone();
+  openDepthMaterial.name = 'SF_WreckCathedral_OpenShellDepthPrepass';
+  openDepthMaterial.side = THREE.DoubleSide;
   const prepasses = [];
   for (const source of sources) {
     const tags = clonePrimitiveTags(source.userData.spacefaceTags);
-    const depthGeometry = wreckCathedralClosedDepthGeometry(source) || source.geometry;
-    const prepass = new THREE.Mesh(depthGeometry, material);
-    prepass.name = `${source.name}_OpaqueDepthPrepass`;
-    prepass.position.copy(source.position);
-    prepass.quaternion.copy(source.quaternion);
-    prepass.scale.copy(source.scale);
-    prepass.matrixAutoUpdate = source.matrixAutoUpdate;
-    if (!source.matrixAutoUpdate) prepass.matrix.copy(source.matrix);
-    prepass.layers.mask = source.layers.mask;
-    prepass.frustumCulled = source.frustumCulled;
-    prepass.renderOrder = Math.min(-1, source.renderOrder - 1);
-    prepass.castShadow = false;
-    prepass.receiveShadow = false;
-    prepass.visible = source.visible;
-    prepass.userData = {
-      spacefaceDepthPrepass: true,
-      spacefacePartUrl: source.userData.spacefacePartUrl,
-      spacefacePartUrls: source.userData.spacefacePartUrls,
-      spacefaceTags: tags,
-      spacefaceDepthIndexView: depthGeometry !== source.geometry,
-    };
-    root.add(prepass);
-    registerBinding(prepass, tags, bindings);
-    prepasses.push(prepass);
+    const depthSpecs = [
+      {
+        role: 'closed-front',
+        material: closedDepthMaterial,
+        geometry: wreckCathedralDepthGeometryForRoles(source, WRECK_CATHEDRAL_CLOSED_MATERIAL_ROLES),
+      },
+      {
+        role: 'open-double',
+        material: openDepthMaterial,
+        geometry: wreckCathedralDepthGeometryForRoles(source, new Set(['exposed_alloy'])),
+      },
+    ];
+    for (const spec of depthSpecs) {
+      if (!spec.geometry) continue;
+      const prepass = new THREE.Mesh(spec.geometry, spec.material);
+      prepass.name = `${source.name}_${spec.role}_DepthPrepass`;
+      prepass.position.copy(source.position);
+      prepass.quaternion.copy(source.quaternion);
+      prepass.scale.copy(source.scale);
+      prepass.matrixAutoUpdate = source.matrixAutoUpdate;
+      if (!source.matrixAutoUpdate) prepass.matrix.copy(source.matrix);
+      prepass.layers.mask = source.layers.mask;
+      prepass.frustumCulled = source.frustumCulled;
+      prepass.renderOrder = Math.min(-1, source.renderOrder - 1);
+      prepass.castShadow = false;
+      prepass.receiveShadow = false;
+      prepass.visible = source.visible;
+      prepass.userData = {
+        spacefaceDepthPrepass: true,
+        spacefaceDepthRole: spec.role,
+        spacefacePartUrl: source.userData.spacefacePartUrl,
+        spacefacePartUrls: source.userData.spacefacePartUrls,
+        spacefaceTags: tags,
+        spacefaceDepthIndexView: true,
+      };
+      root.add(prepass);
+      registerBinding(prepass, tags, bindings);
+      prepasses.push(prepass);
+    }
   }
   root.userData.opaqueDepthPrepass = {
     assetId: placeId,
     drawables: prepasses.length,
-    geometry: 'shared-authored-attributes-closed-indices',
-    material: 'depth-only-front-sided',
+    geometry: 'shared-authored-attributes-role-split-indices',
+    material: 'depth-only-role-sided',
   };
   root.userData.cathedralSurfaceCulling = specializeWreckCathedralClosedSurfaces(sources);
 }
 
-function wreckCathedralClosedDepthGeometry(source) {
+function wreckCathedralDepthGeometryForRoles(source, acceptedRoles) {
   const geometry = source?.geometry;
   const index = geometry?.index;
   const materials = Array.isArray(source?.material) ? source.material : [source?.material];
   const groups = Array.isArray(geometry?.groups) ? geometry.groups : [];
   if (!index?.array || groups.length === 0) return null;
 
-  const closedGroups = groups.filter((group) => {
+  const selectedGroups = groups.filter((group) => {
     const material = materials[Number(group.materialIndex) || 0];
     const role = String(material?.userData?.spacefaceMaterialRole || '').trim().toLowerCase();
-    return WRECK_CATHEDRAL_CLOSED_MATERIAL_ROLES.has(role);
+    return acceptedRoles.has(role);
   });
-  const count = closedGroups.reduce((total, group) => total + Number(group.count || 0), 0);
-  if (closedGroups.length === 0 || count <= 0 || count >= index.count) return null;
+  const count = selectedGroups.reduce((total, group) => total + Number(group.count || 0), 0);
+  if (selectedGroups.length === 0 || count <= 0 || count >= index.count) return null;
 
   const IndexArray = index.array.constructor;
   const indices = new IndexArray(count);
   let offset = 0;
-  for (const group of closedGroups) {
+  for (const group of selectedGroups) {
     const start = Number(group.start || 0);
     const end = start + Number(group.count || 0);
     indices.set(index.array.subarray(start, end), offset);
@@ -1552,9 +1570,9 @@ function wreckCathedralClosedDepthGeometry(source) {
   depthGeometry.boundingBox = geometry.boundingBox?.clone?.() || null;
   depthGeometry.boundingSphere = geometry.boundingSphere?.clone?.() || null;
   depthGeometry.userData = {
-    spacefaceCathedralClosedDepthIndices: true,
+    spacefaceCathedralRoleDepthIndices: true,
     sourceIndexCount: index.count,
-    closedIndexCount: count,
+    selectedIndexCount: count,
   };
   return depthGeometry;
 }
@@ -1578,21 +1596,24 @@ function specializeWreckCathedralClosedSurfaces(sources) {
     const sourceMaterials = Array.isArray(source.material) ? source.material : [source.material];
     const specialized = sourceMaterials.map((material) => {
       const role = String(material?.userData?.spacefaceMaterialRole || '').trim().toLowerCase();
-      if (!WRECK_CATHEDRAL_CLOSED_MATERIAL_ROLES.has(role)) {
-        if (role && material?.side === THREE.DoubleSide) retainedDoubleSideRoles.add(role);
+      const closed = WRECK_CATHEDRAL_CLOSED_MATERIAL_ROLES.has(role);
+      const open = role === 'exposed_alloy' && material?.side === THREE.DoubleSide;
+      if (!closed && !open) {
         return material;
       }
-      frontSideRoles.add(role);
+      if (closed) frontSideRoles.add(role);
+      if (open) retainedDoubleSideRoles.add(role);
       let variant = variants.get(material);
       if (!variant) {
         variant = material.clone();
-        variant.name = `${material.name || 'CathedralMaterial'}_ClosedFront`;
-        variant.side = THREE.FrontSide;
+        variant.name = `${material.name || 'CathedralMaterial'}_${closed ? 'ClosedFront' : 'OpenDouble'}`;
+        variant.side = closed ? THREE.FrontSide : THREE.DoubleSide;
         variant.depthFunc = THREE.EqualDepth;
         variant.depthWrite = false;
         variant.userData = {
           ...(material.userData || {}),
-          spacefaceCathedralClosedSurfaceCulled: true,
+          spacefaceCathedralClosedSurfaceCulled: closed,
+          spacefaceCathedralEqualDepth: true,
         };
         variant.needsUpdate = true;
         variants.set(material, variant);
@@ -1604,7 +1625,7 @@ function specializeWreckCathedralClosedSurfaces(sources) {
   return {
     frontSideRoles: [...frontSideRoles].sort(),
     retainedDoubleSideRoles: [...retainedDoubleSideRoles].sort(),
-    depthContract: 'prepass-equal',
+    depthContract: 'role-split-prepass-equal',
   };
 }
 

@@ -365,11 +365,13 @@ function validateRouteFacts(label, id, expectedIndex, expectedSeed, facts, failu
         || colorGeometry.uniqueVertices >= colorGeometry.triangleIndices) {
       failures.push(`${label} Cathedral must retain indexed static-batch topology without per-index vertex expansion`);
     }
-    if (!finitePositive(depthGeometry?.drawables)
+    if (depthGeometry?.drawables !== 2
+        || depthGeometry?.indexedDrawables !== 2
         || !finitePositive(depthGeometry?.triangles)
-        || depthGeometry.triangles >= colorGeometry?.triangles
+        || depthGeometry.triangles !== colorGeometry?.triangles
+        || stableStringify(depthGeometry?.roles) !== stableStringify(['closed-front', 'open-double'])
         || cathedral.geometry?.prepassSharesColorAttributes !== true) {
-      failures.push(`${label} Cathedral depth prepass must share color attributes and exclude open-shell indices`);
+      failures.push(`${label} Cathedral depth prepass must role-split full coverage over shared color attributes`);
     }
   }
 }
