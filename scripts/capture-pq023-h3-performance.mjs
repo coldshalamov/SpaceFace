@@ -162,6 +162,8 @@ try {
     qualityPreserving: {
       settingsOverridesApplied: false,
       defaultQualityRetained: true,
+      playerDefeatIsolationDisclosed: true,
+      playerContactIsolationDisclosed: true,
       performanceImprovementClaimed: false,
       absoluteTargetClaimed: false,
       absoluteBudgetWaiverGranted: false,
@@ -176,7 +178,9 @@ try {
       pairCount: pairs.length,
       declaredRoute:
         'fixed-seed New Game -> authored Helios flight -> accepted live-hardpoint target floor '
-        + '-> sustained accepted PQ-023 dense destruction/connected-beam target in the same context',
+        + '-> sustained accepted PQ-023 dense destruction/connected-beam target in the same context; '
+        + 'benchmark-scoped player defeat/contact isolation retains live NPC combat and ambient VFX '
+        + 'while preventing berth respawn or contact drift from changing the matched camera',
       retainedEvidenceReferences: [
         'design/program/roadmap/receipts/PQ-023-cues-h1-capture-REPORT.md',
         'design/program/roadmap/receipts/PQ-023-h2-cue-motion-accessibility-REPORT.md',
@@ -281,6 +285,8 @@ async function runPq023H3PerformancePair({ page, rootUrl, repetition, screenshot
   await attachPq023SeparatedGpuAttribution(page, floorWindow);
   const floorFacts = await readPq023DensePerformanceFacts(page, {
     profileId: PQ023_H3_PROFILE_IDS[0], repetition, pairId,
+    measurementStartMs: floorWindow.samples[0]?.atMs,
+    measurementEndMs: floorWindow.samples.at(-1)?.atMs,
   });
   await screenshot(`pair-${repetition}-authored-helios-flight-floor.png`);
 
@@ -298,6 +304,8 @@ async function runPq023H3PerformancePair({ page, rootUrl, repetition, screenshot
   await attachPq023SeparatedGpuAttribution(page, targetWindow);
   const targetFacts = await readPq023DensePerformanceFacts(page, {
     profileId: PQ023_H3_PROFILE_IDS[1], repetition, pairId,
+    measurementStartMs: targetWindow.samples[0]?.atMs,
+    measurementEndMs: targetWindow.samples.at(-1)?.atMs,
   });
   await screenshot(`pair-${repetition}-dense-cue-target.png`);
   const cleanup = await cleanupPq023DensePerformanceScenario(page);

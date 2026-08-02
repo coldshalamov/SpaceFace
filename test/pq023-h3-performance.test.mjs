@@ -132,6 +132,12 @@ function routeFacts(profileId, repetition) {
     player: { entityId: 1, admission: 'ready', assetState: 'authored' },
     pose: { x: 10, z: 20, rot: 0.25, cameraZoom: 88, selectedTargetId: null },
     spatialContract: { sourceEntityId: 1, fittedWeaponId: 'wpn_autocannon_m', pathLength: 31.5 },
+    performanceIsolation: {
+      playerDefeatSuppressed: true,
+      playerContactSuppressed: true,
+      npcCombatRetained: true,
+      ambientVfxRetained: true,
+    },
     poolCapacities: poolCapacities(),
     livePools: target
       ? { particles: 58, sprites: 68, trailStreaks: 34, combatBeams: 1, explosions: 6 }
@@ -178,6 +184,7 @@ function cleanPair(repetition) {
     cleanup: {
       driverStopped: true,
       targetRemoved: true,
+      playerSafetyRestored: true,
       livePools: { particles: 0, sprites: 0, trailStreaks: 0, combatBeams: 0, explosions: 0 },
       poolCapacities: poolCapacities(),
     },
@@ -215,6 +222,8 @@ function validReceipt() {
     qualityPreserving: {
       settingsOverridesApplied: false,
       defaultQualityRetained: true,
+      playerDefeatIsolationDisclosed: true,
+      playerContactIsolationDisclosed: true,
       performanceImprovementClaimed: false,
       absoluteTargetClaimed: false,
       absoluteBudgetWaiverGranted: false,
@@ -272,10 +281,31 @@ test('PQ-023 H3 binds renderer admission to the matched ambient floor', () => {
   let result = validatePq023H3PerformanceReceipt(receipt);
   assert.equal(result.pass, true, result.failures.join('\n'));
 
+  receipt.profiles[1].repetitions[0].attribution.memory.renderer.delta.geometries = 9;
   receipt.profiles[1].repetitions[1].attribution.memory.renderer.delta.geometries = 9;
   result = validatePq023H3PerformanceReceipt(receipt);
   assert.equal(result.pass, false);
   assert.ok(result.failures.some((row) => row.includes('renderer geometry admission')));
+});
+
+test('PQ-023 H3 uses three-run admission medians for unrelated late ambient assets', () => {
+  const receipt = validReceipt();
+  const floor = receipt.profiles[0].repetitions;
+  const target = receipt.profiles[1].repetitions;
+  [1, 0, 8].forEach((value, index) => {
+    floor[index].attribution.memory.renderer.delta.geometries = value;
+  });
+  [3, 0, 0].forEach((value, index) => {
+    target[index].attribution.memory.renderer.delta.geometries = value;
+  });
+  target[2].attribution.memory.renderer.delta.textures = 1;
+
+  const result = validatePq023H3PerformanceReceipt(receipt);
+  assert.equal(result.pass, true, result.failures.join('\n'));
+  assert.deepEqual(result.hitchAttribution.rendererAdmission, {
+    floor: { geometries: 1, textures: 0, programs: 0, renderTargets: 0 },
+    target: { geometries: 0, textures: 0, programs: 0, renderTargets: 0 },
+  });
 });
 
 test('PQ-023 H3 groups GPU terminals by exact frame and uses the three-run median', () => {
@@ -349,6 +379,65 @@ test('PQ-023 H3 recomputes raw timing and rejects route discontinuity', () => {
   assert.equal(result.pass, false);
   assert.ok(result.failures.some((row) => row.includes('does not match recomputed')));
   assert.ok(result.failures.some((row) => row.includes('visible controllable flight')));
+});
+
+test('PQ-023 H3 admits only a bounded source-attributed gameplay hit-stop pulse', () => {
+  const receipt = validReceipt();
+  const run = receipt.profiles[0].repetitions[0];
+  run.rawSamples[127] = {
+    ...run.rawSamples[127],
+    atMs: 35_088.5,
+    tick: 984,
+    timeScale: 0.12,
+  };
+  run.routeFacts.timeEffects = {
+    measurementStartMs: 32_950,
+    measurementEndMs: 37_950,
+    samples: [{
+      atMs: 35_088.5,
+      tick: 984,
+      scale: 0.12,
+      source: 'feel:hit-stop',
+      remainingMs: 23.2,
+    }],
+    events: [{
+      atMs: 35_084.1,
+      tick: 984,
+      event: 'combat:damage',
+      hitStopActive: true,
+      brokeShield: true,
+    }],
+  };
+  run.attribution.frameMs = liveFrameSummary(run.rawSamples);
+
+  let result = validatePq023H3PerformanceReceipt(receipt);
+  assert.equal(result.pass, true, result.failures.join('\n'));
+
+  run.routeFacts.timeEffects.samples[0].source = 'unattributed';
+  result = validatePq023H3PerformanceReceipt(receipt);
+  assert.equal(result.pass, false);
+  assert.ok(result.failures.some((row) => row.includes('source-attributed')));
+
+  run.routeFacts.timeEffects.samples[0].source = 'feel:hit-stop';
+  for (let index = 0; index < 7; index += 1) {
+    run.rawSamples[index] = {
+      ...run.rawSamples[index],
+      atMs: 33_000 + index * 16.7,
+      tick: 850 + index,
+      timeScale: 0.12,
+    };
+    run.routeFacts.timeEffects.samples.push({
+      atMs: 33_000 + index * 16.7,
+      tick: 850 + index,
+      scale: 0.12,
+      source: 'feel:hit-stop',
+      remainingMs: 100 - index * 16.7,
+    });
+  }
+  run.attribution.frameMs = liveFrameSummary(run.rawSamples);
+  result = validatePq023H3PerformanceReceipt(receipt);
+  assert.equal(result.pass, false);
+  assert.ok(result.failures.some((row) => row.includes('bounded gameplay hit-stop')));
 });
 
 test('PQ-023 H3 requires isolated and fully drained GPU attribution', () => {

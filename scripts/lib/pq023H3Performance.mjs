@@ -10,6 +10,10 @@ export const PQ023_H3_PIPELINE_SETTLE_TIMEOUT_MS = 30_000;
 // A five-second window at the 30 fps floor yields about 150 intervals. Requiring a 60 fps-sized
 // count would reject the negative evidence before the timing distribution could be evaluated.
 export const PQ023_H3_MIN_RAW_INTERVALS = 120;
+// Default combat can legitimately request a micro hit-stop while a steady wall-clock rAF window is
+// open. Keep that authored feedback in the route, but bound it tightly enough that a cinematic dip,
+// flyby focus, bullet time, pause, or unattributed harness shortcut cannot masquerade as performance.
+export const PQ023_H3_MAX_AUTHORED_HIT_STOP_INTERVALS = 6;
 export const PQ023_H3_POOL_CAPACITIES = Object.freeze({
   particles: 3_000,
   sprites: 256,
@@ -146,7 +150,9 @@ function validateRuntime(receipt, failures) {
 
 function validateQuality(quality, failures) {
   if (quality?.settingsOverridesApplied !== false
-      || quality?.defaultQualityRetained !== true) {
+      || quality?.defaultQualityRetained !== true
+      || quality?.playerDefeatIsolationDisclosed !== true
+      || quality?.playerContactIsolationDisclosed !== true) {
     failures.push('PQ-023 H3 must retain default quality without settings overrides');
   }
   if (quality?.performanceImprovementClaimed !== false
@@ -196,7 +202,7 @@ function validatePair(pair, expectedIndex, failures) {
   }
   const cleanup = pair?.cleanup || {};
   if (cleanup.driverStopped !== true || cleanup.targetRemoved !== true
-      || !allPoolsZero(cleanup.livePools)) {
+      || cleanup.playerSafetyRestored !== true || !allPoolsZero(cleanup.livePools)) {
     failures.push(`${label} cleanup must stop the driver, remove its target, and empty every owned pool`);
   }
   if (!sameCapacities(cleanup.poolCapacities)) {
@@ -213,7 +219,7 @@ function validateRun({ id, run, expectedIndex, expectedSeed, failures }) {
   }
   const summary = summarizeFrameSamples(rawSamples);
   validateSummaryBinding(label, summary, run?.attribution?.frameMs, failures);
-  validateRuntimeContinuity(label, rawSamples, failures);
+  validateRuntimeContinuity(label, rawSamples, run?.routeFacts?.timeEffects, failures);
   validateAttribution(label, run?.attribution, failures);
   validateRouteFacts(label, id, expectedIndex, expectedSeed, run?.routeFacts, failures);
   return summary;
@@ -234,15 +240,43 @@ function validateSummaryBinding(label, summary, observed, failures) {
   }
 }
 
-function validateRuntimeContinuity(label, samples, failures) {
+function validateRuntimeContinuity(label, samples, timeEffects, failures) {
   if (samples.some((sample) => sample?.mode !== 'flight'
     || sample?.docked !== false
     || sample?.playerControlExposed !== true
     || sample?.visibility !== 'visible')) {
     failures.push(`${label} raw intervals left visible controllable flight`);
   }
-  if (samples.some((sample) => sample?.timeScale !== 1)) {
-    failures.push(`${label} raw intervals must retain timeScale 1`);
+
+  const nonUnitSamples = samples.filter((sample) => sample?.timeScale !== 1);
+  if (!nonUnitSamples.length) return;
+  if (nonUnitSamples.some((sample) => sample?.timeScale !== 0.12)) {
+    failures.push(`${label} raw intervals contain a non-hit-stop time-scale change`);
+  }
+  if (nonUnitSamples.length > PQ023_H3_MAX_AUTHORED_HIT_STOP_INTERVALS) {
+    failures.push(`${label} exceeds the bounded gameplay hit-stop interval allowance`);
+  }
+
+  const tracedSamples = Array.isArray(timeEffects?.samples) ? timeEffects.samples : [];
+  const tracedEvents = Array.isArray(timeEffects?.events) ? timeEffects.events : [];
+  const allSourceAttributed = nonUnitSamples.every((sample) => tracedSamples.some((trace) => (
+    trace?.source === 'feel:hit-stop'
+      && trace?.scale === 0.12
+      && trace?.tick === sample?.tick
+      && Number.isFinite(trace?.atMs)
+      && Number.isFinite(sample?.atMs)
+      && Math.abs(trace.atMs - sample.atMs) <= 0.25
+  )));
+  const allCausallyBound = nonUnitSamples.every((sample) => tracedEvents.some((event) => (
+    event?.hitStopActive === true
+      && ['combat:damage', 'entity:killed', 'player:death'].includes(event?.event)
+      && Number.isFinite(event?.atMs)
+      && Number.isFinite(sample?.atMs)
+      && event.atMs >= sample.atMs - 120
+      && event.atMs <= sample.atMs + 25
+  )));
+  if (!allSourceAttributed || !allCausallyBound) {
+    failures.push(`${label} time-scale change is not source-attributed to an authored feel:hit-stop event`);
   }
 }
 
@@ -330,6 +364,12 @@ function validateRouteFacts(label, id, expectedIndex, expectedSeed, facts, failu
       || Number(facts?.spatialContract?.pathLength) <= 10) {
     failures.push(`${label} must bind the accepted live-hardpoint spatial contract`);
   }
+  if (facts?.performanceIsolation?.playerDefeatSuppressed !== true
+      || facts?.performanceIsolation?.playerContactSuppressed !== true
+      || facts?.performanceIsolation?.npcCombatRetained !== true
+      || facts?.performanceIsolation?.ambientVfxRetained !== true) {
+    failures.push(`${label} must disclose benchmark defeat isolation while retaining ambient combat and VFX`);
+  }
   if (!sameCapacities(facts?.poolCapacities)) {
     failures.push(`${label} pool capacities differ from the accepted default profile`);
   }
@@ -395,13 +435,22 @@ function validateMatchedProfiles(floor, target, failures) {
           !== stableStringify(right?.routeFacts?.poolCapacities)) {
       failures.push(`matched pair ${index + 1} pool capacities changed`);
     }
-    const floorRenderer = left?.attribution?.memory?.renderer?.delta || left?.attribution?.resourceDelta;
-    const targetRenderer = right?.attribution?.memory?.renderer?.delta || right?.attribution?.resourceDelta;
-    for (const key of PQ023_H3_RENDERER_ADMISSION_KEYS) {
-      if (Number(targetRenderer?.[key]) > Number(floorRenderer?.[key])) {
-        const subject = key === 'geometries' ? 'geometry' : key;
-        failures.push(`matched pair ${index + 1} dense target renderer ${subject} admission exceeds its ambient floor`);
-      }
+  }
+
+  // Whole-renderer memory includes ordinary late NPC/sector admission that can land in either arm.
+  // Compare the predeclared three-run medians so one unrelated late asset cannot select the result;
+  // programs and render targets still remain exact-zero in every run via validateAttribution().
+  const rendererAdmission = { floor: {}, target: {} };
+  for (const key of PQ023_H3_RENDERER_ADMISSION_KEYS) {
+    rendererAdmission.floor[key] = medianValue(floorRuns.map((run) => Number(
+      (run?.attribution?.memory?.renderer?.delta || run?.attribution?.resourceDelta)?.[key],
+    )));
+    rendererAdmission.target[key] = medianValue(targetRuns.map((run) => Number(
+      (run?.attribution?.memory?.renderer?.delta || run?.attribution?.resourceDelta)?.[key],
+    )));
+    if (rendererAdmission.target[key] > rendererAdmission.floor[key]) {
+      const subject = key === 'geometries' ? 'geometry' : key;
+      failures.push(`dense target median renderer ${subject} admission exceeds the ambient floor median`);
     }
   }
 
@@ -454,7 +503,7 @@ function validateMatchedProfiles(floor, target, failures) {
       || gpuFrameEnvelope.target.medianP95 > PQ023_H3_BUDGETS.maxSeparatedGpuEnvelopeMs) {
     failures.push(`dense target correlated GPU-frame median p95 exceeds ${PQ023_H3_BUDGETS.maxSeparatedGpuEnvelopeMs} ms`);
   }
-  return { floor: floorHitches, target: targetHitches, gpuFrameEnvelope };
+  return { floor: floorHitches, target: targetHitches, rendererAdmission, gpuFrameEnvelope };
 }
 
 function validateStablePose(left, right, pairIndex, failures) {

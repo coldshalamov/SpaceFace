@@ -38,14 +38,15 @@ export async function installPq023DensePerformanceScenario(page) {
     const state = sf?.state;
     const player = state?.entities?.get(state.playerId);
     const vfx = sf?.registry?.get?.('vfx');
+    const feel = sf?.registry?.get?.('feel');
     const weapons = sf?.registry?.get?.('weapons');
     const orchestrator = sf?.registry?.get?.('presentationOrchestrator');
     const fittedWeapon = player?.data?.weapons?.find((weapon) => weapon && weapon.slotIndex === 0)
       || player?.data?.weapons?.[0];
     const parent = player?.mesh?.parent || vfx?._scene;
-    if (!state || !player?.mesh || !vfx || !weapons || !orchestrator?._emitCue
+    if (!state || !player?.mesh || !vfx || !feel || !weapons || !orchestrator?._emitCue
         || !fittedWeapon || !parent) {
-      throw new Error('PQ-023 H3 requires authored player, VFX, weapons, cue owner, and render scene');
+      throw new Error('PQ-023 H3 requires authored player, VFX, feel, weapons, cue owner, and render scene');
     }
 
     const direction = weapons._hardpointDir(player, fittedWeapon, player.rot, 0);
@@ -64,6 +65,50 @@ export async function installPq023DensePerformanceScenario(page) {
     sf.bus.emit('camera:zoom', { level: 88 });
     const previous = window.__PQ023_H3__;
     previous?.dispose?.();
+    const previousInvuln = player.flags?.invuln === true;
+    const previousInvulnUntil = player._invulnUntil;
+    player.flags ||= {};
+    // One pair spends roughly thirty seconds warming and measuring a deliberately stationary camera.
+    // The ordinary Helios battle can otherwise kill and berth-respawn that idle player between arms,
+    // changing the camera by hundreds of world units. Isolate defeat and player contact response only;
+    // NPC combat and ambient VFX remain live, and the exact player flags/body are restored in cleanup.
+    player.flags.invuln = true;
+    player._invulnUntil = Infinity;
+    const physicsOwner = sf.registry?.get?.('physics')?._sg02;
+    const playerRecord = physicsOwner?.records?.get?.(player.id);
+    const playerBody = playerRecord?.body;
+    const fixedBodyType = physicsOwner?.RAPIER?.RigidBodyType?.Fixed;
+    if (!playerBody || !Number.isInteger(fixedBodyType)
+        || typeof playerBody.setBodyType !== 'function') {
+      throw new Error('PQ-023 H3 requires the live SG-02 physics owner for exact pose isolation');
+    }
+    const playerSafety = {
+      invuln: previousInvuln,
+      invulnUntil: previousInvulnUntil,
+      bodyType: playerBody.bodyType(),
+      bodyTranslation: { ...playerBody.translation() },
+      bodyRotation: { ...playerBody.rotation() },
+      bodyLinvel: { ...playerBody.linvel() },
+      bodyAngvel: { ...playerBody.angvel() },
+      entityPos: { x: Number(player.pos?.x) || 0, y: Number(player.pos?.y) || 0, z: Number(player.pos?.z) || 0 },
+      entityPrevPos: {
+        x: Number(player.prevPos?.x) || 0,
+        y: Number(player.prevPos?.y) || 0,
+        z: Number(player.prevPos?.z) || 0,
+      },
+      entityVel: { x: Number(player.vel?.x) || 0, y: Number(player.vel?.y) || 0, z: Number(player.vel?.z) || 0 },
+    };
+    // Rapier Fixed bodies preserve their exact pose and still participate in the ordinary contact
+    // broad phase; the benchmark does not remove a renderer entity or alter the surrounding battle.
+    playerBody.setBodyType(fixedBodyType, true);
+    playerBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    playerBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    player.vel.set(0, 0, 0);
+    player.prevPos.copy(player.pos);
+    const playerPhysicsIsolated = playerBody.bodyType() === fixedBodyType;
+    if (!playerPhysicsIsolated) {
+      throw new Error('PQ-023 H3 could not isolate the benchmark player from contact drift');
+    }
     const oldTarget = window.__PQ023_H3_TARGET__;
     if (oldTarget?.parent) oldTarget.parent.remove(oldTarget);
     const target = player.mesh.clone(true);
@@ -136,6 +181,7 @@ export async function installPq023DensePerformanceScenario(page) {
       flavorAttempted: 0,
       flavorSuppressed: 0,
       peakPools: emptyPools(),
+      timeEffects: { samples: [], events: [] },
     });
 
     const harness = {
@@ -147,6 +193,9 @@ export async function installPq023DensePerformanceScenario(page) {
       burstTimer: null,
       beamTimer: null,
       monitorFrame: null,
+      timeEffectUnsubs: [],
+      playerSafety,
+      playerPhysicsIsolated,
       disposed: false,
       updatePeak() {
         const pools = readPools();
@@ -156,6 +205,53 @@ export async function installPq023DensePerformanceScenario(page) {
       },
       resetTrace(mode) {
         this.trace = newTrace(mode);
+      },
+      recordTimeEffectEvent(event, payload = {}) {
+        const row = {
+          atMs: performance.now(),
+          tick: Number(state.tick) || 0,
+          event,
+          hitStopActive: Number(feel._hsTimer) > 0,
+        };
+        if (event === 'combat:damage') {
+          row.targetId = payload.targetId ?? null;
+          row.attackerId = payload.attackerId ?? null;
+          row.amount = Number(payload.amount) || 0;
+          row.brokeShield = payload.brokeShield === true;
+          row.armorHit = payload.armorHit === true;
+          row.hullHit = payload.hullHit === true;
+          row.killing = payload.killing === true;
+        } else if (event === 'entity:killed') {
+          row.entityId = payload.id ?? null;
+          row.killerId = payload.killerId ?? null;
+          row.capital = payload.capital === true;
+        }
+        this.trace.timeEffects.events.push(row);
+        if (this.trace.timeEffects.events.length > 256) this.trace.timeEffects.events.shift();
+      },
+      recordTimeEffectSample(atMs) {
+        const scale = Number(state.timeScale);
+        if (!Number.isFinite(scale) || scale === 1) return;
+        const feelScale = Number(feel._hsRequest?.scale);
+        const focus = state.player?.flybyFocus;
+        const bulletTime = state.massline2?.bulletTime;
+        let source = 'unattributed';
+        if (Number(feel._hsTimer) > 0 && Number.isFinite(feelScale)
+            && Math.abs(feelScale - scale) <= 1e-9) {
+          source = 'feel:hit-stop';
+        } else if (focus?.active === true && scale === 0.5) {
+          source = 'flyby-focus';
+        } else if (bulletTime?.active === true && scale === 0.35) {
+          source = 'player:bullet-time';
+        }
+        this.trace.timeEffects.samples.push({
+          atMs,
+          tick: Number(state.tick) || 0,
+          scale,
+          source,
+          remainingMs: source === 'feel:hit-stop' ? Math.max(0, Number(feel._hsTimer) * 1_000) : null,
+        });
+        if (this.trace.timeEffects.samples.length > 256) this.trace.timeEffects.samples.shift();
       },
       stopTimers() {
         if (this.burstTimer != null) clearInterval(this.burstTimer);
@@ -280,10 +376,22 @@ export async function installPq023DensePerformanceScenario(page) {
         this.trace.active = false;
         resetPools();
       },
-      snapshot(profileId, repetition, pairId) {
+      snapshot(profileId, repetition, pairId, measurementStartMs, measurementEndMs) {
         this.updatePeak();
         const playerMesh = player.mesh || player.view?.root || null;
         const rawAssetState = playerMesh?.userData?.authoredAssetState || null;
+        const effectStart = Number(measurementStartMs);
+        const effectEnd = Number(measurementEndMs);
+        const effectSamples = this.trace.timeEffects.samples.filter((row) => (
+          Number.isFinite(effectStart) && Number.isFinite(effectEnd)
+            && row.atMs >= effectStart - 0.25 && row.atMs <= effectEnd + 0.25
+        ));
+        const effectEvents = this.trace.timeEffects.events.filter((row) => (
+          Number.isFinite(effectStart) && Number.isFinite(effectEnd)
+            && row.atMs >= effectStart - 120 && row.atMs <= effectEnd + 25
+        ));
+        const dense = structuredClone(this.trace);
+        delete dense.timeEffects;
         return {
           profileId,
           repetition,
@@ -312,7 +420,21 @@ export async function installPq023DensePerformanceScenario(page) {
           },
           poolCapacities: readCapacities(),
           livePools: readPools(),
-          dense: structuredClone(this.trace),
+          dense,
+          performanceIsolation: {
+            playerDefeatSuppressed: player.flags?.invuln === true
+              && player._invulnUntil === Infinity,
+            playerContactSuppressed: this.playerPhysicsIsolated === true
+              && playerBody.bodyType() === fixedBodyType,
+            npcCombatRetained: true,
+            ambientVfxRetained: true,
+          },
+          timeEffects: {
+            measurementStartMs: effectStart,
+            measurementEndMs: effectEnd,
+            samples: structuredClone(effectSamples),
+            events: structuredClone(effectEvents),
+          },
         };
       },
       cleanup() {
@@ -324,11 +446,41 @@ export async function installPq023DensePerformanceScenario(page) {
         this.disposed = true;
         if (this.monitorFrame != null) cancelAnimationFrame(this.monitorFrame);
         this.monitorFrame = null;
+        for (const unsub of this.timeEffectUnsubs) unsub();
+        this.timeEffectUnsubs.length = 0;
+        player.flags.invuln = this.playerSafety.invuln;
+        player._invulnUntil = this.playerSafety.invulnUntil;
+        player.pos.set(
+          this.playerSafety.entityPos.x,
+          this.playerSafety.entityPos.y,
+          this.playerSafety.entityPos.z,
+        );
+        player.prevPos.set(
+          this.playerSafety.entityPrevPos.x,
+          this.playerSafety.entityPrevPos.y,
+          this.playerSafety.entityPrevPos.z,
+        );
+        player.vel.set(
+          this.playerSafety.entityVel.x,
+          this.playerSafety.entityVel.y,
+          this.playerSafety.entityVel.z,
+        );
+        playerBody.setBodyType(this.playerSafety.bodyType, true);
+        playerBody.setTranslation(this.playerSafety.bodyTranslation, true);
+        playerBody.setRotation(this.playerSafety.bodyRotation, true);
+        playerBody.setLinvel(this.playerSafety.bodyLinvel, true);
+        playerBody.setAngvel(this.playerSafety.bodyAngvel, true);
+        const playerSafetyRestored = player.flags.invuln === this.playerSafety.invuln
+          && Object.is(player._invulnUntil, this.playerSafety.invulnUntil)
+          && playerBody.bodyType() === this.playerSafety.bodyType
+          && physicsOwner.records?.get?.(player.id)?.body === playerBody;
         return {
           driverStopped: this.burstTimer == null && this.beamTimer == null,
           targetRemoved: !target.parent,
           livePools: readPools(),
           poolCapacities: readCapacities(),
+          timeEffectListenersRemoved: this.timeEffectUnsubs.length === 0,
+          playerSafetyRestored,
         };
       },
       dispose() {
@@ -336,9 +488,14 @@ export async function installPq023DensePerformanceScenario(page) {
       },
     };
 
-    const monitor = () => {
+    for (const event of ['combat:damage', 'entity:killed', 'player:death']) {
+      harness.timeEffectUnsubs.push(sf.bus.on(event, (payload) => harness.recordTimeEffectEvent(event, payload)));
+    }
+
+    const monitor = (atMs) => {
       if (harness.disposed) return;
       harness.updatePeak();
+      harness.recordTimeEffectSample(atMs);
       harness.monitorFrame = requestAnimationFrame(monitor);
     };
     harness.monitorFrame = requestAnimationFrame(monitor);
@@ -394,10 +551,19 @@ export async function startPq023DenseTarget(page) {
   }, null, { timeout: 30_000 });
 }
 
-export async function readPq023DensePerformanceFacts(page, { profileId, repetition, pairId }) {
+export async function readPq023DensePerformanceFacts(
+  page,
+  { profileId, repetition, pairId, measurementStartMs, measurementEndMs },
+) {
   return page.evaluate((input) => (
-    window.__PQ023_H3__.snapshot(input.profileId, input.repetition, input.pairId)
-  ), { profileId, repetition, pairId });
+    window.__PQ023_H3__.snapshot(
+      input.profileId,
+      input.repetition,
+      input.pairId,
+      input.measurementStartMs,
+      input.measurementEndMs,
+    )
+  ), { profileId, repetition, pairId, measurementStartMs, measurementEndMs });
 }
 
 export async function cleanupPq023DensePerformanceScenario(page) {
