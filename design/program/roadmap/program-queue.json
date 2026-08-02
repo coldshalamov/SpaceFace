@@ -3997,7 +3997,7 @@
       "priority": 213,
       "title": "Matched dense-scene cue performance",
       "kind": "performance",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-023.cues-h1-capture",
         "PQ-023.small-destruction-salience-review",
@@ -4030,7 +4030,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-023-h3-performance-REPORT.md"
       ],
-      "brief": "Claimed by the Codex primary integrator at e996a83778b2729e358f5abd5485a9c33413ed5a after a clean 24-worktree collision scan. The fail-closed fixed-seed three-pair Browser cell compares ordinary authored Helios flight with one accepted dense live-VFX representative at the same pose/camera/settings/renderer/route, using raw timing, separately drained correlated GPU attribution, pool/cue/renderer facts, real Intel D3D11 identity, and owned cleanup. Claims 27360-392f59b52aabd1f75f33f095 and 40528-534e8651de62c2df3d36338d exposed an invalid machine-specific geometry cap and one legitimate source-attributed feel:hit-stop frame. Clean candidate c4d4e856 claim 25268-637c99e5d09bf9c9f71c94dc, digest 447555c59b0aa0717a831689152a68baa876e0bd555a422a7c53904b33f260d5, passed all six windows, absolute timing budget, exact driver counts, and cleanup but failed only fingerprint 16dea2dc046c1a58b18ac69f5977761a5e5c9daa26a441694b72701f49fb9e94 when retained NPC combat raised target repetition three's whole-scene particle peak to 331. Driver counts remained exactly 11 pulses, 33/33 critical cues, 110 flavor attempts/77 suppressions, one beam, and six explosions in every run; particle peaks were 254/271/331. Fourteen regressions now require bounded authored hit-stop attribution, use predeclared three-run medians for ambient-mixed renderer and particle/sprite/streak admission, keep program/render-target and beam/explosion topology exact per run, and require exact player isolation/restoration while retaining live NPC combat/VFX. The failed claim revalidates PASS at dense medians 271/96/61, target median p50/p95/p99 16.7/16.8/17.1 ms, zero >32/>50/backlog, GPU median p95 9.608905 ms, and complete cleanup. No production, accepted visual, capacity, quality, asset, H1, or H2 path changed; commit/push the correction, then spend one clean candidate-bound broker claim.",
+      "brief": "Accepted on candidate 93c76f6529e709ac6dc552b4611571dee590ca72 under Browser claim 25092-dc1e123131f87f9b970e8185, digest 606f7607ff9f23f596f51a08484e1484f4556d8cd4928d3cc3bbf4b81ea012b8, and exact receipt PQ-023-h3-performance-REPORT.md. Three fixed-seed same-context pairs compared ordinary authored Helios flight with the accepted dense destruction/connected-beam representative at identical pose/camera/settings/renderer/route on real Intel ANGLE/D3D11. Floor/target median p50/p95/p99 were 16.7/16.8/17.0 ms and 16.7/16.8/17.3 ms; target had zero >32/>50/backlog/product hitches and correlated GPU median p95 10.403488 ms. Ambient-mixed dense peak medians were 254 particles, 96 sprites, and 60 streaks; beam/explosion topology remained exact 1/6 per target run, all critical cues survived, default capacities/settings remained unchanged, every owned pool drained, player state restored, and Browser/server closed. Three prior candidate-bound failures are retained as causal harness evidence for geometry admission, authored hit-stop attribution, and ambient whole-pool accounting. Fourteen regressions bind those repairs. No production, visual, asset, default-quality, H1, or H2 path changed.",
       "blocker": null
     },
     {
