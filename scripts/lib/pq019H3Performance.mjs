@@ -6,6 +6,10 @@ export const PQ019_H3_PROFILE_IDS = Object.freeze([
   'traffic-loaded-heist',
 ]);
 export const PQ019_H3_REPETITIONS = 3;
+// The first cold Tethys context has produced an 18.5 s final residency transition. The sampler
+// still needs five uninterrupted stable seconds after that transition, so use the shared probe's
+// bounded 30 s ceiling rather than a 20 s window that is mathematically unable to prove stability.
+export const PQ019_H3_PIPELINE_SETTLE_TIMEOUT_MS = 30_000;
 // A five-second window at the 30 fps floor yields about 150 intervals. Keep enough tail samples to
 // recompute p95 while allowing a genuine below-floor result to remain valid negative evidence.
 export const PQ019_H3_MIN_RAW_INTERVALS = 120;
@@ -171,6 +175,7 @@ function validateRun({ id, run, expectedIndex, expectedSeed, failures }) {
   const summary = summarizeFrameSamples(rawSamples);
   validateSummaryBinding(label, summary, run?.attribution?.frameMs, failures);
   validateBudgets(label, id, summary, failures);
+  validateRuntimeContinuity(label, rawSamples, failures);
   validateAttribution(label, run?.attribution, failures);
   validateRouteFacts(label, id, expectedIndex, expectedSeed, run?.routeFacts, failures);
   return { index: run?.index ?? null, summary, routeFacts: run?.routeFacts ?? null };
@@ -213,11 +218,15 @@ function validateAttribution(label, attribution, failures) {
   }
   const startSettings = attribution?.settings?.start;
   const endSettings = attribution?.settings?.end;
-  if (!startSettings || !endSettings || stableStringify(startSettings) !== stableStringify(endSettings)) {
+  if (!startSettings || !endSettings
+      || stableStringify(qualitySettingsSlice(startSettings)) !== stableStringify(qualitySettingsSlice(endSettings))) {
     failures.push(`${label} settings changed during measurement`);
   }
   if (startSettings?.dynResScale !== 1 || startSettings?.timeScale !== 1) {
     failures.push(`${label} requires default dynamic resolution and time scale`);
+  }
+  if (!finiteUnitScale(endSettings?.timeScale)) {
+    failures.push(`${label} end time scale is missing or outside the runtime authority range`);
   }
   for (const key of ['calls', 'triangles', 'geometries', 'textures', 'programs']) {
     if (!finiteNonnegative(attribution?.draw?.[key])) failures.push(`${label} draw.${key} is missing`);
@@ -230,6 +239,29 @@ function validateAttribution(label, attribution, failures) {
   if (!attribution?.cpu?.systems || typeof attribution.cpu.systems !== 'object') {
     failures.push(`${label} system attribution is missing`);
   }
+}
+
+function validateRuntimeContinuity(label, samples, failures) {
+  const routeChanged = samples.some((sample) => sample?.mode !== 'flight'
+    || sample?.docked !== false
+    || sample?.playerControlExposed !== true
+    || sample?.visibility !== 'visible');
+  if (routeChanged) failures.push(`${label} raw intervals left visible controllable flight`);
+  if (samples.some((sample) => !finiteUnitScale(sample?.timeScale))) {
+    failures.push(`${label} raw intervals require bounded time-scale evidence`);
+  }
+}
+
+function qualitySettingsSlice(settings) {
+  if (!settings || typeof settings !== 'object') return null;
+  return {
+    video: settings.video || null,
+    dynResScale: settings.dynResScale,
+  };
+}
+
+function finiteUnitScale(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
 function validateRouteFacts(label, id, expectedIndex, expectedSeed, facts, failures) {

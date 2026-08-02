@@ -24,6 +24,7 @@ import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import {
   PQ019_H3_PROFILE_IDS,
+  PQ019_H3_PIPELINE_SETTLE_TIMEOUT_MS,
   PQ019_H3_RECEIPT_SCHEMA,
   PQ019_H3_REPETITIONS,
   validatePq019H3PerformanceReceipt,
@@ -498,7 +499,7 @@ async function runPq019H3PerformancePair({ page, screenshot, repetition }) {
     phaseTag: 'station_visible_steady',
     warmupMs: 2_000,
     pipelineStableMs: 5_000,
-    pipelineSettleTimeoutMs: 20_000,
+    pipelineSettleTimeoutMs: PQ019_H3_PIPELINE_SETTLE_TIMEOUT_MS,
     sampleMs: 5_000,
     enableGpuTimers: true,
     requireAuthoredFlight: true,
@@ -522,7 +523,7 @@ async function runPq019H3PerformancePair({ page, screenshot, repetition }) {
     phaseTag: 'flight_steady',
     warmupMs: 2_000,
     pipelineStableMs: 5_000,
-    pipelineSettleTimeoutMs: 20_000,
+    pipelineSettleTimeoutMs: PQ019_H3_PIPELINE_SETTLE_TIMEOUT_MS,
     sampleMs: 5_000,
     enableGpuTimers: true,
     requireAuthoredFlight: true,

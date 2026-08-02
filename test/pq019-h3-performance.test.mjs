@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 import {
   PQ019_H3_FACILITY_VISUAL_ROLES,
+  PQ019_H3_PIPELINE_SETTLE_TIMEOUT_MS,
   PQ019_H3_PROFILE_IDS,
   PQ019_H3_RECEIPT_SCHEMA,
   validatePq019H3PerformanceReceipt,
@@ -28,6 +29,7 @@ function samples(frameMs = 16.6, count = 300) {
     phaseTag: 'flight_steady',
     tick: 1000 + index,
     mode: 'flight',
+    timeScale: 1,
     docked: false,
     jumpState: 'IDLE',
     playerControlExposed: true,
@@ -176,6 +178,11 @@ test('PQ-019 H3 rejects missing profiles, repetitions, or raw intervals', () => 
   const thin = receipt();
   thin.profiles[0].repetitions[0].rawSamples = samples(16.6, 30);
   assert.match(validatePq019H3PerformanceReceipt(thin).failures.join('\n'), /at least 120 raw frame intervals/);
+
+  const missingRuntimeScale = receipt();
+  delete missingRuntimeScale.profiles[0].repetitions[0].rawSamples[0].timeScale;
+  assert.match(validatePq019H3PerformanceReceipt(missingRuntimeScale).failures.join('\n'),
+    /bounded time-scale evidence/);
 });
 
 test('PQ-019 H3 rejects stale route identity and an unproved loaded heist', () => {
@@ -208,6 +215,29 @@ test('PQ-019 H3 rejects software rendering, quality changes, and diagnostic clai
   assert.match(failures, /hardware GPU/);
   assert.match(failures, /settings changed/);
   assert.match(failures, /primary broker acceptance/);
+});
+
+test('PQ-019 H3 records authored hit-stop as runtime state without laundering quality or control', () => {
+  const hitStop = receipt();
+  const run = hitStop.profiles[1].repetitions[2];
+  run.rawSamples.at(-1).timeScale = 0.12;
+  run.attribution.settings.end.timeScale = 0.12;
+  assert.equal(validatePq019H3PerformanceReceipt(hitStop).pass, true,
+    'a visible controllable shield-hit frame is gameplay, not a settings mutation');
+
+  run.rawSamples.at(-1).playerControlExposed = false;
+  assert.match(validatePq019H3PerformanceReceipt(hitStop).failures.join('\n'),
+    /left visible controllable flight/,
+    'a pause or covered route must still fail closed even when its scalar is numerically valid');
+});
+
+test('PQ-019 H3 cold-pipeline ceiling can prove five stable seconds after the observed late transition', () => {
+  const observedLastTransitionMs = 18_500;
+  assert.ok(PQ019_H3_PIPELINE_SETTLE_TIMEOUT_MS >= observedLastTransitionMs + 5_000);
+  assert.equal(PQ019_H3_PIPELINE_SETTLE_TIMEOUT_MS, 30_000,
+    'the route remains inside the shared sampler hard ceiling');
+  assert.equal((PROBE_SOURCE.match(/pipelineSettleTimeoutMs: PQ019_H3_PIPELINE_SETTLE_TIMEOUT_MS/g) || []).length, 2,
+    'both normal and loaded arms use the bounded route-specific ceiling');
 });
 
 test('PQ-019 H3 recomputes raw percentiles and fails floor, hitch, or backlog regressions', () => {

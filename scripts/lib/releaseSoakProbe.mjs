@@ -1369,6 +1369,10 @@ async function sampleRafWindow(page, {
             phaseTag: tag,
             tick: Number(window.SF?.state?.tick),
             mode: window.SF?.state?.mode || null,
+            // timeScale is authored transient runtime state (hit-stop/focus), not a quality
+            // setting. Bind it to every raw interval so route validators can distinguish visible
+            // gameplay dilation from a pause or settings shortcut without hiding either.
+            timeScale: Number.isFinite(window.SF?.state?.timeScale) ? window.SF.state.timeScale : null,
             docked: window.SF?.state?.ui?.docked === true,
             jumpState: window.SF?.state?.jump?.state || null,
             playerControlExposed: window.SF?.state?.mode === 'flight'

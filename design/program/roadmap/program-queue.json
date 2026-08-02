@@ -3565,6 +3565,7 @@
         "scripts/capture-pq019-h3-performance.mjs",
         "scripts/lib/performanceSceneMetrics.mjs",
         "scripts/lib/pq019H3Performance.mjs",
+        "scripts/lib/releaseSoakProbe.mjs",
         "scripts/probe-pq019-surface-heist.mjs",
         "scripts/validation-manifests/pq019-h3-performance.mjs",
         "scripts/validation-manifests/pq019-surface-heist.mjs",
