@@ -3793,7 +3793,7 @@
       "priority": 206,
       "title": "Cathedral-keyed matched Ceres performance",
       "kind": "performance",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-020.ceres-h1-capture",
         "PQ-034.native-closure"
@@ -3803,10 +3803,33 @@
         "performance-evidence",
         "validation-broker"
       ],
-      "paths": [],
-      "checks": [],
-      "receiptRefs": [],
-      "brief": "Capture p95/p99/hitches, admission, residency, LOD, entity, collider, query, draw, and program facts on the matched Ceres route.",
+      "paths": [
+        "design/program/NOW.md",
+        "design/program/roadmap/active/PQ-020.md",
+        "design/program/roadmap/program-queue.json",
+        "design/program/roadmap/receipts/PQ-020-h3-performance-REPORT.md",
+        "scripts/capture-pq020-h3-performance.mjs",
+        "scripts/lib/performanceSceneMetrics.mjs",
+        "scripts/lib/pq020CeresFunctionalRoute.mjs",
+        "scripts/lib/pq020CeresH3Performance.mjs",
+        "scripts/lib/releaseSoakProbe.mjs",
+        "scripts/validation-manifests/pq020-h3-performance.mjs",
+        "test/pq020-ceres-topology-manifest.test.mjs",
+        "test/pq020-h3-performance.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq020-h3-performance.test.mjs",
+        "node --test test/pq020-ceres-topology-manifest.test.mjs",
+        "npm run check:pq020:proofs",
+        "npm run check:pq020:ceres-topology",
+        "npm run check:sim:compare",
+        "node scripts/validation-broker-cli.mjs --manifest pq020-h3-performance",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-020-h3-performance-REPORT.md"
+      ],
+      "brief": "Run three fixed-seed matched pairs in one headed Browser process: the ordinary Ceres endpoint-entry floor and the publicly selected, admitted, default-framed Wreck Cathedral target. Bind map-open and sector-entry spans, raw p50/p95/p99/max/hitches, owner phases, admission/LOD, entities/colliders/queries, draw/triangle/program/residency facts, settings, target Intel D3D11 identity, and clean teardown without lowering quality or claiming an optimization delta.",
       "blocker": null
     },
     {
