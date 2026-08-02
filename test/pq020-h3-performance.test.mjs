@@ -260,6 +260,11 @@ test('PQ-020 H3 is a one-use brokered cell over the accepted public route driver
   assert.equal(manifest.requireFastReceipt, true);
   assert.equal(manifest.requireBrokerClaim, true);
   assert.equal(manifest.cleanupPolicy, 'kill-tree');
+  assert.ok(manifest.regressionSourcePaths.includes('test/authored-admission-no-visible-fallback.test.mjs'),
+    'the Cathedral owner regression must change the post-failure regression digest');
+  assert.ok(manifest.fastGateCommands.includes(
+    'node --test test/authored-admission-no-visible-fallback.test.mjs',
+  ), 'the broker must execute the Cathedral owner regression before another GPU claim');
   assert.ok(manifest.harnessSourcePaths.includes('scripts/lib/pq020CeresFunctionalRoute.mjs'));
   assert.ok(manifest.harnessSourcePaths.includes('scripts/lib/releaseSoakProbe.mjs'));
   assert.equal(PQ020_H3_PIPELINE_SETTLE_TIMEOUT_MS, 30_000);

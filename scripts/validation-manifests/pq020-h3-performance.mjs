@@ -18,6 +18,7 @@ export function createPq020H3PerformanceManifest(overrides = {}) {
     commandArgs: ['scripts/capture-pq020-h3-performance.mjs'],
     mode: 'acceptance',
     fastGateCommands: [
+      'node --test test/authored-admission-no-visible-fallback.test.mjs',
       'node --test test/pq020-h3-performance.test.mjs',
       'node --test test/pq020-ceres-topology-manifest.test.mjs',
       'node --test test/performance-scene-metrics.test.mjs test/render-target-pipeline-warmup.test.mjs',
@@ -28,6 +29,7 @@ export function createPq020H3PerformanceManifest(overrides = {}) {
     scenarioPaths: [],
     regressionSourcePaths: [...new Set([
       ...functionalRoute.regressionSourcePaths,
+      'test/authored-admission-no-visible-fallback.test.mjs',
       'test/performance-scene-metrics.test.mjs',
       'test/pq020-h3-performance.test.mjs',
       'test/render-target-pipeline-warmup.test.mjs',
