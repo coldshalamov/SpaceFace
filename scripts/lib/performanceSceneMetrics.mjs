@@ -263,6 +263,8 @@ export function collectPerformancePipelineReadiness({
     meshReconcileDirty: renderSystem?._meshReconcileDirty === true,
     pipelineCompilePending: finiteOrNull(renderState.pipelineAdmissions?.pending),
     programCount: finiteOrNull(diagnostics?.memory?.programs),
+    geometryCount: finiteOrNull(diagnostics?.memory?.geometries),
+    textureCount: finiteOrNull(diagnostics?.memory?.textures),
     recentResources: resources,
     recentAdmissions: Array.isArray(upgrade?.jobs) ? upgrade.jobs.slice(-128).map(plainAdmission) : [],
     activeAdmissionJobs: finiteOrNull(upgrade?.activeJobs),
@@ -314,6 +316,8 @@ export function performancePipelineFingerprint(readiness = {}) {
   const residency = readiness?.assetResidency || {};
   return {
     programCount: finiteOrNull(readiness?.programCount),
+    geometryCount: finiteOrNull(readiness?.geometryCount),
+    textureCount: finiteOrNull(readiness?.textureCount),
     activeAdmissionJobs: finiteOrNull(readiness?.activeAdmissionJobs),
     meshBuildQueueRemaining: finiteOrNull(readiness?.meshBuildQueueRemaining),
     meshReconcileDirty: readiness?.meshReconcileDirty === true,
@@ -328,6 +332,8 @@ export function performancePipelineFingerprint(readiness = {}) {
 export function isPerformancePipelineSettled(readiness = {}) {
   const fingerprint = performancePipelineFingerprint(readiness);
   return fingerprint.programCount != null
+    && fingerprint.geometryCount != null
+    && fingerprint.textureCount != null
     && fingerprint.activeAdmissionJobs === 0
     && fingerprint.meshBuildQueueRemaining === 0
     && fingerprint.meshReconcileDirty === false

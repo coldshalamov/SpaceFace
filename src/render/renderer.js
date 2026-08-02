@@ -72,7 +72,11 @@ import { SHIPS } from '../data/ships.js';
 import { getAssetResidency } from './assetResidency.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import { createPipelineAdmissionTracker } from './pipelineReadiness.js';
-import { prepareStartupGpuResidency, yieldToBrowser } from './startupGpuResidency.js';
+import {
+  collectStartupTextures,
+  prepareStartupGpuResidency,
+  yieldToBrowser,
+} from './startupGpuResidency.js';
 import {
   collectContextLossRoots,
   deferWebGlContextRestore,
@@ -1256,9 +1260,16 @@ export const render = {
         const entity = state.entities && state.entities.get ? state.entities.get(id) : null;
         if (isInitialAuthoredCompositionEntity(entity, state)) roots.push(mesh);
       }
-      const result = await prepareStartupGpuResidency(renderer, roots, {
+      const vfxRoots = typeof state.render.collectVfxGpuResidencyRoots === 'function'
+        ? state.render.collectVfxGpuResidencyRoots()
+        : [];
+      const vfxTextures = collectStartupTextures(vfxRoots);
+      const result = await prepareStartupGpuResidency(renderer, [...roots, ...vfxRoots], {
         yieldToMain: yieldToBrowser,
       });
+      result.openingCompositionRoots = roots.length;
+      result.vfxRoots = vfxRoots.length;
+      result.vfxTextures = vfxTextures.length;
       if (this.bloom && typeof this.bloom.prepareResources === 'function') {
         result.post = await this.bloom.prepareResources(yieldToBrowser);
       }

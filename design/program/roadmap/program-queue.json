@@ -3563,14 +3563,20 @@
         "design/program/roadmap/program-queue.json",
         "design/program/roadmap/receipts/PQ-019-h3-performance-REPORT.md",
         "scripts/capture-pq019-h3-performance.mjs",
+        "scripts/lib/performanceSceneMetrics.mjs",
         "scripts/lib/pq019H3Performance.mjs",
         "scripts/probe-pq019-surface-heist.mjs",
         "scripts/validation-manifests/pq019-h3-performance.mjs",
+        "src/render/renderer.js",
+        "src/render/vfx.js",
+        "test/performance-scene-metrics.test.mjs",
         "test/pq019-h3-performance.test.mjs",
-        "test/pq019-surface-heist-manifest.test.mjs"
+        "test/pq019-surface-heist-manifest.test.mjs",
+        "test/startup-gpu-residency.test.mjs"
       ],
       "checks": [
         "node --test test/pq019-h3-performance.test.mjs",
+        "node --test test/startup-gpu-residency.test.mjs test/performance-scene-metrics.test.mjs",
         "npm run check:pq019a:facility-embodiment",
         "npm run check:pq019c:mission",
         "node scripts/validation-broker-cli.mjs --manifest pq019-h3-performance",

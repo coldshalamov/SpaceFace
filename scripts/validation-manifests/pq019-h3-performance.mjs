@@ -18,6 +18,7 @@ export function createPq019H3PerformanceManifest(overrides = {}) {
     mode: 'acceptance',
     fastGateCommands: [
       'node --test test/pq019-h3-performance.test.mjs',
+      'node --test test/startup-gpu-residency.test.mjs test/performance-scene-metrics.test.mjs',
       'npm run check:pq019a:facility-embodiment',
       'npm run check:pq019b:seams',
       'npm run check:pq019c:mission',
@@ -26,7 +27,9 @@ export function createPq019H3PerformanceManifest(overrides = {}) {
     scenarioPaths: [],
     regressionSourcePaths: [...new Set([
       ...functionalRoute.regressionSourcePaths,
+      'test/performance-scene-metrics.test.mjs',
       'test/pq019-h3-performance.test.mjs',
+      'test/startup-gpu-residency.test.mjs',
     ])],
     productionSourcePaths: [...new Set([
       ...functionalRoute.productionSourcePaths,

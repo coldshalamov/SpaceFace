@@ -548,6 +548,14 @@ export const vfx = {
     this._cFaction = new THREE.Color('#88aaff');
 
     this._initPools();
+    // The renderer's loading-stage residency pass runs after every system has initialized. Publish
+    // the exact live VFX roots so their already-created textures are uploaded under the loading
+    // shell instead of on the first ambient impact during exposed flight. The getter stays live
+    // because particle-quality changes can replace the point-cloud geometry without changing the
+    // renderer/VFX ownership boundary.
+    if (ctx.state && ctx.state.render) {
+      ctx.state.render.collectVfxGpuResidencyRoots = () => this._vfxOwnerRoots();
+    }
     // Measurement-only VFX owner seam. It snapshots only roots this system owns;
     // event lights remain visible/intensity-driven to avoid shader recompiles.
     this._perfVfxIsolationRestore = null;
@@ -566,7 +574,7 @@ export const vfx = {
     this._subscribe();
   },
 
-  _perfVfxRoots() {
+  _vfxOwnerRoots() {
     const roots = [];
     const seen = new Set();
     const add = (object) => {
@@ -594,6 +602,10 @@ export const vfx = {
     }
     for (const trail of this._ribbonTrails?.values?.() || []) add(trail.getMesh?.());
     return roots;
+  },
+
+  _perfVfxRoots() {
+    return this._vfxOwnerRoots();
   },
 
   _hidePerfVfxRoots() {

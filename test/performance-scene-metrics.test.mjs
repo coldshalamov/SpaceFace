@@ -136,7 +136,7 @@ test('pipeline readiness exposes queue, fallback, admission, residency, and rece
     const result = collectPerformancePipelineReadiness({
       state,
       registry: { get: () => renderSystem },
-      diagnostics: { memory: { programs: 9 } },
+      diagnostics: { memory: { programs: 9, geometries: 7, textures: 8 } },
       resourceStartTime: 10,
     });
     assert.equal(result.authoredReady, false);
@@ -144,6 +144,8 @@ test('pipeline readiness exposes queue, fallback, admission, residency, and rece
     assert.equal(result.meshBuildQueueRemaining, 2);
     assert.equal(result.meshReconcileDirty, true);
     assert.equal(result.programCount, 9);
+    assert.equal(result.geometryCount, 7);
+    assert.equal(result.textureCount, 8);
     assert.equal(result.recentResources.length, 1);
     assert.equal(result.recentAdmissions[0].status, 'authored');
     assert.deepEqual(result.assetResidency, { residentBytes: 123 });
@@ -155,6 +157,8 @@ test('pipeline readiness exposes queue, fallback, admission, residency, and rece
 test('pipeline warmup fingerprint tracks compile, admission, queue, and residency quiescence', () => {
   const readiness = {
     programCount: 42,
+    geometryCount: 65,
+    textureCount: 198,
     activeAdmissionJobs: 0,
     meshBuildQueueRemaining: 0,
     meshReconcileDirty: false,
@@ -166,6 +170,8 @@ test('pipeline warmup fingerprint tracks compile, admission, queue, and residenc
   };
   assert.deepEqual(performancePipelineFingerprint(readiness), {
     programCount: 42,
+    geometryCount: 65,
+    textureCount: 198,
     activeAdmissionJobs: 0,
     meshBuildQueueRemaining: 0,
     meshReconcileDirty: false,
@@ -184,6 +190,8 @@ test('pipeline warmup fingerprint tracks compile, admission, queue, and residenc
     { pipelineCompilePending: 1 },
     { authoredPendingAdmissionRiskCount: 1 },
     { programCount: null },
+    { geometryCount: null },
+    { textureCount: null },
   ]) {
     assert.equal(isPerformancePipelineSettled({ ...readiness, ...unsettled }), false);
   }
@@ -231,7 +239,7 @@ test('pipeline warmup predicts inbound authored admission across the measured ho
   const options = {
     state,
     registry: { get: () => renderSystem },
-    diagnostics: { memory: { programs: 9 } },
+    diagnostics: { memory: { programs: 9, geometries: 7, textures: 8 } },
   };
 
   const now = collectPerformancePipelineReadiness(options);
