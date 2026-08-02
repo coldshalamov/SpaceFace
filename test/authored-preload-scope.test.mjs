@@ -116,20 +116,28 @@ test('world-place upgrades share the same bounded authored admission queue', () 
   assert.match(source, /typeof job\.run === 'function'/);
 });
 
-test('authored visual admission awaits the exact GPU pipeline compiler when available', async () => {
+test('authored visual admission awaits exact pipelines and hidden-LOD GPU residency in order', async () => {
   assert.equal(typeof partsLibrary.prepareAuthoredVisualPipelines, 'function');
   const root = new THREE.Group();
   const calls = [];
 
   const result = await partsLibrary.prepareAuthoredVisualPipelines(root, {
     prepareAuthoredPipelines: async (subject) => {
-      calls.push(subject);
+      calls.push(['pipelines', subject]);
       return { skipped: false, programCount: 12 };
+    },
+    prepareAuthoredGpuResidency: async (subject) => {
+      calls.push(['residency', subject]);
+      return { skipped: false, textures: 21 };
     },
   });
 
-  assert.deepEqual(calls, [root]);
-  assert.deepEqual(result, { skipped: false, programCount: 12 });
+  assert.deepEqual(calls, [['pipelines', root], ['residency', root]]);
+  assert.deepEqual(result, {
+    skipped: false,
+    pipelines: { skipped: false, programCount: 12 },
+    gpuResidency: { skipped: false, textures: 21 },
+  });
   await assert.rejects(
     partsLibrary.prepareAuthoredVisualPipelines(root, {
       prepareAuthoredPipelines: async () => { throw new Error('pipeline rejected'); },

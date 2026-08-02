@@ -1249,6 +1249,11 @@ export const render = {
       deferAutoFlush: () => state.mode === 'loading',
     });
     state.render.compileObjectPipelines = (subject) => pipelineAdmissions.compile(subject);
+    state.render.prepareAuthoredGpuResidency = (subject) => prepareStartupGpuResidency(
+      renderer,
+      subject,
+      { yieldToMain: yieldToBrowser },
+    );
     state.render.compileCurrentPipelines = () => pipelineAdmissions.compileCurrent(scene);
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
     state.render.prepareOpeningGpuResources = async () => {

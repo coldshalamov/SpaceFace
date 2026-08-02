@@ -552,8 +552,11 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
   const priorRaf = globalThis.requestAnimationFrame;
   const scheduledFrames = [];
   let compiledRoot = null;
+  let residentRoot = null;
   let releasePipeline;
+  let releaseResidency;
   const pipelineGate = new Promise((resolve) => { releasePipeline = resolve; });
+  const residencyGate = new Promise((resolve) => { releaseResidency = resolve; });
   globalThis.requestAnimationFrame = (callback) => {
     scheduledFrames.push(callback);
     return scheduledFrames.length;
@@ -569,6 +572,10 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
           compileObjectPipelines(root) {
             compiledRoot = root;
             return pipelineGate;
+          },
+          prepareAuthoredGpuResidency(root) {
+            residentRoot = root;
+            return residencyGate;
           },
         },
       },
@@ -597,6 +604,17 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
     assert.equal(compiledRoot.parent, null, 'pipeline admission compiles the detached authored root');
 
     releasePipeline({ skipped: false, programCount: 1 });
+    for (let turn = 0; turn < 50 && !residentRoot; turn++) {
+      await Promise.resolve();
+    }
+
+    assert.equal(residentRoot, compiledRoot,
+      'the exact compiled root must enter texture residency before publication');
+    assert.equal(boundary.userData.authoredAssetState, 'compiling-pipelines');
+    assert.equal(boundary.children.includes(fallback), true,
+      'pipeline readiness alone cannot publish a root whose hidden LOD textures are not resident');
+
+    releaseResidency({ skipped: false, textures: 3 });
     for (let turn = 0; turn < 50 && boundary.userData.authoredAssetState !== 'authored'; turn++) {
       await Promise.resolve();
     }

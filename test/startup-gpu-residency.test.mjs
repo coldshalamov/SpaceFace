@@ -15,10 +15,17 @@ test('startup GPU residency uploads shared textures once and yields between each
   const shared = new THREE.Texture();
   const normal = new THREE.Texture();
   const root = new THREE.Group();
-  root.add(
-    new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ map: shared, normalMap: normal })),
-    new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ map: shared })),
+  const visible = new THREE.Mesh(
+    new THREE.BoxGeometry(),
+    new THREE.MeshStandardMaterial({ map: shared, normalMap: normal }),
   );
+  const hiddenLod = new THREE.Mesh(
+    new THREE.BoxGeometry(),
+    new THREE.MeshStandardMaterial({ map: shared }),
+  );
+  hiddenLod.visible = false;
+  hiddenLod.userData.spacefaceTags = { lod: 'lod2' };
+  root.add(visible, hiddenLod);
   assert.deepEqual(new Set(collectStartupTextures(root)), new Set([shared, normal]));
 
   const timeline = [];

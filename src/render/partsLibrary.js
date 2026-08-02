@@ -1649,6 +1649,10 @@ function residencyOptionsForBoundary(entity, boundary, renderer) {
       && typeof liveState.render.compileObjectPipelines === 'function'
       ? (root) => liveState.render.compileObjectPipelines(root)
       : null,
+    prepareAuthoredGpuResidency: liveState && liveState.render
+      && typeof liveState.render.prepareAuthoredGpuResidency === 'function'
+      ? (root) => liveState.render.prepareAuthoredGpuResidency(root)
+      : null,
     overlapAuthoredPipelineCompile: !!(liveState && liveState.mode !== 'flight'),
   };
 }
@@ -2067,12 +2071,26 @@ export function preloadAuthoredAssetsForEntity(renderer, entity, options = {}) {
 }
 
 /** GPU admission gate shared by ships and authored world places. Composition may finish on the CPU
- * while the driver's exact HDR material programs are still absent; do not publish that object until
- * this promise settles. Preview/test harnesses without a live pipeline compiler remain supported. */
+ * while the driver's exact HDR material programs or hidden-LOD textures are still absent; do not
+ * publish that object until both preparations settle. Preview/test harnesses without live GPU
+ * preparation hooks remain supported. */
 export async function prepareAuthoredVisualPipelines(root, options = {}) {
-  const prepare = options && options.prepareAuthoredPipelines;
-  if (typeof prepare !== 'function') return { skipped: true, reason: 'pipeline compiler unavailable' };
-  return prepare(root);
+  const preparePipelines = options && options.prepareAuthoredPipelines;
+  const prepareResidency = options && options.prepareAuthoredGpuResidency;
+  if (typeof preparePipelines !== 'function' && typeof prepareResidency !== 'function') {
+    return { skipped: true, reason: 'GPU preparation unavailable' };
+  }
+  const pipelines = typeof preparePipelines === 'function'
+    ? await preparePipelines(root)
+    : { skipped: true, reason: 'pipeline compiler unavailable' };
+  const gpuResidency = typeof prepareResidency === 'function'
+    ? await prepareResidency(root)
+    : { skipped: true, reason: 'GPU residency uploader unavailable' };
+  return {
+    skipped: pipelines?.skipped === true && gpuResidency?.skipped === true,
+    pipelines,
+    gpuResidency,
+  };
 }
 
 export async function retryAuthoredPartLibrary(renderer, options = {}) {
