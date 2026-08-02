@@ -4259,7 +4259,7 @@
       "priority": 216,
       "title": "Matched Asteroid Ops survey-to-relay performance",
       "kind": "performance",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-024.survey-h1-capture",
         "PQ-034.native-closure"
@@ -4269,10 +4269,30 @@
         "performance-evidence",
         "validation-broker"
       ],
-      "paths": [],
-      "checks": [],
-      "receiptRefs": [],
-      "brief": "Capture matched route and relay-admission performance after the functional route cell is valid.",
+      "paths": [
+        "design/program/NOW.md",
+        "design/program/roadmap/active/PQ-024.md",
+        "design/program/roadmap/program-queue.json",
+        "design/program/roadmap/receipts/PQ-024-h3-performance-REPORT.md",
+        "scripts/capture-pq024-h3-performance.mjs",
+        "scripts/lib/pq024H3Performance.mjs",
+        "scripts/probe-pq024-asteroid-claim.mjs",
+        "scripts/validation-manifests/pq024-h3-performance.mjs",
+        "test/pq024-asteroid-claim-manifest.test.mjs",
+        "test/pq024-h3-performance.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq024-h3-performance.test.mjs",
+        "node --test test/pq024-asteroid-claim-manifest.test.mjs",
+        "npm run check:pq024:survey-claim",
+        "npm run check:sim:compare",
+        "node scripts/validation-broker-cli.mjs --manifest pq024-h3-performance",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-024-h3-performance-REPORT.md"
+      ],
+      "brief": "Claimed by the Codex primary integrator at 02d2c877f3966df6c89904c3dd6d29490f87c70a after a clean current-worktree collision check. Repair the formerly empty dispatch contract by extending the already-accepted public PQ-024 actor, not duplicating or rerunning H1: three fresh fixed-seed same-context pairs measure the committed Core/no-extractor/no-relay exterior floor, then publicly re-enter Asteroid Ops, install the real extractor, await one authoritative positive-output receipt and exact relay admission, and measure the producing/one-relay target at the same route, pose, camera, settings, viewport, and GPU. Require raw p50/p95/p99/max, hitch/backlog, owner/draw/resource facts, separated correlated-GPU attribution, exact lifecycle/receipt/relay identity, and owned teardown. This H3 cell makes no relay visual-quality or historical optimization claim.",
       "blocker": null
     },
     {
