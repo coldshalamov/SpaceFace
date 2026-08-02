@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-01",
+  "updatedAt": "2026-08-02",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -3793,7 +3793,7 @@
       "priority": 206,
       "title": "Cathedral-keyed matched Ceres performance",
       "kind": "performance",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-020.ceres-h1-capture",
         "PQ-034.native-closure"
@@ -3832,7 +3832,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-020-h3-performance-REPORT.md"
       ],
-      "brief": "Run three fixed-seed matched pairs in one headed Browser process: the ordinary Ceres endpoint-entry floor and the publicly selected, admitted, default-framed Wreck Cathedral target. Bind map-open and sector-entry spans, raw p50/p95/p99/max/hitches, owner phases, admission/LOD, entities/colliders/queries, draw/triangle/program/residency facts, settings, target Intel D3D11 identity, and clean teardown. Indexed claim 2804-206cae6d7bab4c958e5bac7c proved live LOD0 at 70,822 vertices/275,724 indices/91,908 triangles with shared prepass attributes and cut target hitches from 107 to 46, but retained p95/p99/hitches under fingerprint 4fb14400539085eb838db8a33b6a0ddf8df209fecfef0c2b33646a69efce8bd8: floor median p95/p99 16.8/17.2 ms and zero >32 ms; target 33.2/33.4 ms, zero >50 ms/backlog. Target GPU scene averages fell to 4.63/10.82/11.24 ms. The current repair excludes only the 43,396-triangle open exposed-alloy family from the prepass because it keeps ordinary double-sided depth and never uses equal-depth color, reducing the LOD0 depth index view from 91,908 to 48,512 triangles while sharing exact color vertex attributes. Owner and H3 regressions bind the live topology. Source/release bytes, exposed-alloy color shells, textures, color geometry, LOD policy, default quality, and budgets remain unchanged.",
+      "brief": "Accepted at f7464211dc175b1741b3d63724d9ce34cb61883a under Browser claim 27012-047cbbea6c18528dea331f95 and receipt PQ-020-h3-performance-REPORT.md. Three fixed-seed matched pairs each supplied 300 visible/controllable intervals on real Intel ANGLE/D3D11 at default quality. Floor median p50/p95/p99 was 16.7/16.8/17.1 ms; publicly selected/admitted/default-framed Cathedral target was 16.7/16.8/16.9 ms. All six windows had zero raw/product-attributed hitches, zero >32 ms, zero >50 ms, zero backlog, stable settings/route, zero page issues, and clean teardown. Exact topology pruning retains one indexed 86,661-triangle/eight-role color batch, only 1,882 genuinely open exposed-alloy triangles, one position-only 84,779-triangle closed prepass, shared positions, and one packed ORM sample per role. Source/release assets, pixels, role identities, LOD, defaults, and content are unchanged. GPU timers are isolated to separately drained 150-frame attribution segments.",
       "blocker": null
     },
     {
