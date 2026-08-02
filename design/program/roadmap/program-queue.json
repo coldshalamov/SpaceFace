@@ -1407,7 +1407,7 @@
           "leafId": "PQ-023.gold-corridor-required-cues",
           "requiredAcceptance": "milestone_accepted",
           "receipt": "design/program/roadmap/receipts/PQ-023-gold-corridor-required-cues-REPORT.md",
-          "receiptBlob": null
+          "receiptBlob": "599a0f44502054b994ddc3827d12e9c669e6fed5"
         }
       ],
       "mutexes": [
@@ -4210,7 +4210,7 @@
       "priority": 214,
       "title": "Upgrade the corridor-cues milestone receipt",
       "kind": "integration",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-023.h2-verdict",
         "PQ-023.h3-performance"
@@ -4219,6 +4219,8 @@
         "program-control"
       ],
       "paths": [
+        "design/program/NOW.md",
+        "design/program/roadmap/active/PQ-023.md",
         "design/program/roadmap/receipts/PQ-023-gold-corridor-required-cues-REPORT.md",
         "design/program/roadmap/program-queue.json"
       ],
@@ -4228,7 +4230,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-023-gold-corridor-required-cues-REPORT.md"
       ],
-      "brief": "Claimed by the Codex primary integrator at f720eb186cc9290ababcb28b3dca05166c222010 after a clean current-worktree and program-control collision check. Upgrade the existing exact leaf receipt from focused_green to milestone_accepted using the committed H1, solo-integrator H2 and causal-review, targeted repair/recapture, and H3 receipts without rerunning accepted headed evidence. Commit the upgraded receipt first, verify its Git blob, then bind that blob into PQ-025 and release program-control.",
+      "brief": "Completed by the Codex primary integrator from clean promotion base f720eb186cc9290ababcb28b3dca05166c222010. Commit d13fd041 upgraded the existing exact PQ-023.gold-corridor-required-cues receipt from focused_green to milestone_accepted using ancestry-valid H1, solo-integrator H2 and causal-review, targeted repair/recapture, and H3 receipts without rerunning accepted headed evidence. Verified receipt blob 599a0f44502054b994ddc3827d12e9c669e6fed5 is bound into PQ-025's structured evidence dependency. No runtime, asset, visual, quality, pool-capacity, or accepted evidence path changed; program-control is released.",
       "blocker": null
     },
     {
