@@ -6,7 +6,8 @@
 //
 // The actor uses shipped DOM/pointer/keyboard controls. Page observers choose a rendered map dot,
 // read placement validity, and collect system receipts; they never write cargo, survey, producing,
-// site, or exterior state. This is functional H1 evidence, not performance evidence.
+// site, or exterior state. Default and Electron modes produce functional H1 evidence; the explicit
+// H3 mode measures a matched Core-only/producing-relay pair without replacing that retained H1.
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -26,22 +27,44 @@ import {
   createIsolatedElectronLaunch,
 } from './lib/electronTestIsolation.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import {
+  PQ024_H3_PIPELINE_SETTLE_TIMEOUT_MS,
+  PQ024_H3_PROFILE_IDS,
+  PQ024_H3_RECEIPT_SCHEMA,
+  PQ024_H3_REPETITIONS,
+  validatePq024H3PerformanceReceipt,
+} from './lib/pq024H3Performance.mjs';
 import { projectPq024RouteSemantics } from './lib/pq024AsteroidClaimParity.mjs';
+import { sampleRafWindow } from './lib/releaseSoakProbe.mjs';
 import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 import manifest, {
   createPq024AsteroidClaimManifest,
   PQ024_ASTEROID_CLAIM_FIXED_SEED,
 } from './validation-manifests/pq024-asteroid-claim.mjs';
+import h3Manifest, {
+  createPq024H3PerformanceManifest,
+  PQ024_H3_VIEWPORT,
+} from './validation-manifests/pq024-h3-performance.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const ELECTRON_PARITY = process.argv.includes('--electron-parity');
+const H3_PERFORMANCE = process.argv.includes('--h3-performance');
+assert(!(ELECTRON_PARITY && H3_PERFORMANCE), 'PQ-024 H3 is Browser-only and cannot run as Electron parity');
 const BASE_ARTIFACT_ROOT = path.join(ROOT, '.devshots', 'pq024-asteroid-claim');
-const ARTIFACT_ROOT = ELECTRON_PARITY
-  ? path.join(BASE_ARTIFACT_ROOT, 'electron')
-  : BASE_ARTIFACT_ROOT;
+const ARTIFACT_ROOT = H3_PERFORMANCE
+  ? path.resolve(ROOT, h3Manifest.artifactRoot)
+  : ELECTRON_PARITY
+    ? path.join(BASE_ARTIFACT_ROOT, 'electron')
+    : BASE_ARTIFACT_ROOT;
 const BROWSER_RECEIPT_PATH = path.join(BASE_ARTIFACT_ROOT, 'route-receipt.json');
-const VIEWPORT = Object.freeze({ width: 1460, height: 900 });
+const RECEIPT_PATH = path.join(
+  ARTIFACT_ROOT,
+  H3_PERFORMANCE ? 'performance-receipt.json' : 'route-receipt.json',
+);
+const VIEWPORT = H3_PERFORMANCE
+  ? PQ024_H3_VIEWPORT
+  : Object.freeze({ width: 1460, height: 900, deviceScaleFactor: 1 });
 const DIAGNOSTIC = process.argv.includes('--diagnostic');
 const FIXED_SEED = Number(process.env.SF_PROBE_SEED) > 0
   ? Number(process.env.SF_PROBE_SEED)
@@ -56,7 +79,9 @@ const SCREENSHOTS = Object.freeze([
 
 const brokerGate = ELECTRON_PARITY ? { ok: true } : await requireBrokerClaimOrDiagnostic({
   outputRoot: ARTIFACT_ROOT,
-  manifest: createPq024AsteroidClaimManifest(),
+  manifest: H3_PERFORMANCE
+    ? createPq024H3PerformanceManifest()
+    : createPq024AsteroidClaimManifest(),
   tokenOrPath: process.env.SF_BROKER_CLAIM ?? null,
   diagnostic: DIAGNOSTIC,
   explicitDiagnostic: DIAGNOSTIC,
@@ -64,9 +89,10 @@ const brokerGate = ELECTRON_PARITY ? { ok: true } : await requireBrokerClaimOrDi
 });
 
 if (!brokerGate.ok) {
-  console.error(`[pq024-asteroid-claim] BROKER_CLAIM_REQUIRED: ${brokerGate.reason}`);
-  console.error('[pq024-asteroid-claim] invoke via: node scripts/validation-broker-cli.mjs --manifest pq024-asteroid-claim');
-  console.error('[pq024-asteroid-claim] or pass --diagnostic for non-promoting inspection');
+  const id = H3_PERFORMANCE ? 'pq024-h3-performance' : 'pq024-asteroid-claim';
+  console.error(`[${id}] BROKER_CLAIM_REQUIRED: ${brokerGate.reason}`);
+  console.error(`[${id}] invoke via: node scripts/validation-broker-cli.mjs --manifest ${id}`);
+  console.error(`[${id}] or pass --diagnostic for non-promoting inspection`);
   process.exit(2);
 }
 
@@ -84,6 +110,11 @@ let issueTracker = null;
 let receipt = null;
 let browserReceipt = null;
 let rootUrl = null;
+let browserClosed = false;
+let serverClosed = false;
+let activePhase = 'bootstrap';
+let h3Gpu = null;
+const h3Completed = [];
 const screenshots = [];
 
 try {
@@ -131,56 +162,62 @@ try {
         '--force-device-scale-factor=1',
       ],
     });
-    const context = await browser.newContext({
-      viewport: VIEWPORT,
-      screen: VIEWPORT,
-      deviceScaleFactor: 1,
-      locale: 'en-US',
-      colorScheme: 'dark',
-      reducedMotion: 'no-preference',
-    });
-    page = await context.newPage();
+    if (!H3_PERFORMANCE) {
+      const context = await browser.newContext({
+        viewport: { width: VIEWPORT.width, height: VIEWPORT.height },
+        screen: { width: VIEWPORT.width, height: VIEWPORT.height },
+        deviceScaleFactor: VIEWPORT.deviceScaleFactor,
+        locale: 'en-US',
+        colorScheme: 'dark',
+        reducedMotion: 'no-preference',
+      });
+      page = await context.newPage();
+    }
   }
-  page.setDefaultTimeout(30_000);
-  page.setDefaultNavigationTimeout(90_000);
-  await page.addInitScript(() => {
-    try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
-  });
-  issueTracker = collectPageIssues(page, { includeWarnings: false });
-  const screenshot = async (name) => {
-    assert(SCREENSHOTS.includes(name), `undeclared PQ-024 screenshot ${name}`);
-    const file = path.join(ARTIFACT_ROOT, name);
-    await page.screenshot({ path: file, type: 'png', animations: 'allow' });
-    const [info, bytes] = await Promise.all([stat(file), readFile(file)]);
-    assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${name} must be a PNG`);
-    const row = {
-      path: repoRel(file),
-      bytes: info.size,
-      sha256: createHash('sha256').update(bytes).digest('hex'),
+  if (H3_PERFORMANCE) {
+    receipt = await runPq024H3PerformanceCampaign(browser, rootUrl);
+  } else {
+    page.setDefaultTimeout(30_000);
+    page.setDefaultNavigationTimeout(90_000);
+    await page.addInitScript(() => {
+      try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
+    });
+    issueTracker = collectPageIssues(page, { includeWarnings: false });
+    const screenshot = async (name) => {
+      assert(SCREENSHOTS.includes(name), `undeclared PQ-024 screenshot ${name}`);
+      const file = path.join(ARTIFACT_ROOT, name);
+      await page.screenshot({ path: file, type: 'png', animations: 'allow' });
+      const [info, bytes] = await Promise.all([stat(file), readFile(file)]);
+      assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${name} must be a PNG`);
+      const row = {
+        path: repoRel(file),
+        bytes: info.size,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+      };
+      screenshots.push(row);
+      return row;
     };
-    screenshots.push(row);
-    return row;
-  };
 
-  receipt = await runDefaultRoute(page, rootUrl, screenshot, {
-    runtime: ELECTRON_PARITY ? 'electron' : 'browser-chromium-headed',
-    navigateInitialRoot: !ELECTRON_PARITY,
-    pageIssueTracker: issueTracker,
-  });
-  receipt.screenshots = screenshots;
-  receipt.pageIssues = summarizeIssues(issueTracker.errorIssues());
-  assert.equal(receipt.pageIssues.length, 0, `page issues: ${JSON.stringify(receipt.pageIssues)}`);
-  receipt.semanticProjection = projectPq024RouteSemantics(receipt);
-  if (ELECTRON_PARITY) {
-    assert.deepEqual(
-      receipt.semanticProjection,
-      projectPq024RouteSemantics(browserReceipt),
-      'PQ-024 Electron route semantics must match the accepted Browser route',
-    );
-    receipt.crossRuntimeParity = {
-      pass: true,
-      comparedAgainst: repoRel(BROWSER_RECEIPT_PATH),
-    };
+    receipt = await runDefaultRoute(page, rootUrl, screenshot, {
+      runtime: ELECTRON_PARITY ? 'electron' : 'browser-chromium-headed',
+      navigateInitialRoot: !ELECTRON_PARITY,
+      pageIssueTracker: issueTracker,
+    });
+    receipt.screenshots = screenshots;
+    receipt.pageIssues = summarizeIssues(issueTracker.errorIssues());
+    assert.equal(receipt.pageIssues.length, 0, `page issues: ${JSON.stringify(receipt.pageIssues)}`);
+    receipt.semanticProjection = projectPq024RouteSemantics(receipt);
+    if (ELECTRON_PARITY) {
+      assert.deepEqual(
+        receipt.semanticProjection,
+        projectPq024RouteSemantics(browserReceipt),
+        'PQ-024 Electron route semantics must match the accepted Browser route',
+      );
+      receipt.crossRuntimeParity = {
+        pass: true,
+        comparedAgainst: repoRel(BROWSER_RECEIPT_PATH),
+      };
+    }
   }
 } catch (error) {
   if (page && !page.isClosed()) {
@@ -191,17 +228,27 @@ try {
     }).catch(() => {});
   }
   receipt = {
-    schema: 'spaceface.pq024-asteroid-claim-route.v1',
+    schema: H3_PERFORMANCE
+      ? PQ024_H3_RECEIPT_SCHEMA
+      : 'spaceface.pq024-asteroid-claim-route.v1',
     runtime: ELECTRON_PARITY ? 'electron' : 'browser-chromium-headed',
     disposition: 'FAIL',
-    phase: error?.routePhase || null,
+    phase: error?.routePhase || activePhase || null,
     problems: [error?.message || String(error)],
     stack: error?.stack || null,
     fixedSeed: FIXED_SEED,
-    brokerManifestId: manifest.id,
+    brokerManifestId: H3_PERFORMANCE ? h3Manifest.id : manifest.id,
     screenshots,
     pageIssues: issueTracker ? summarizeIssues(issueTracker.errorIssues()) : [],
-    noPerformanceEvidence: true,
+    noPerformanceEvidence: !H3_PERFORMANCE,
+    gpu: h3Gpu,
+    completed: h3Completed,
+    broker: H3_PERFORMANCE ? {
+      reason: brokerGate.reason,
+      diagnostic: !!brokerGate.diagnostic,
+      primaryAcceptance: !!brokerGate.primaryAcceptance,
+      claimId: brokerGate.claim?.claimId || brokerGate.claim?.id || null,
+    } : undefined,
   };
 } finally {
   if (ELECTRON_PARITY) {
@@ -241,25 +288,48 @@ try {
       receipt.problems.push(`owned Electron cleanup failed: ${(cleanup?.failures || []).join('; ')}`);
     }
   } else {
-    if (browser) await browser.close().catch(() => {});
-    if (server) await server.close().catch(() => {});
+    if (browser) {
+      try { await browser.close(); browserClosed = true; } catch (_) { browserClosed = false; }
+    } else browserClosed = true;
+    if (server) {
+      try { await server.close(); serverClosed = true; } catch (_) { serverClosed = false; }
+    } else serverClosed = true;
+  }
+}
+
+if (H3_PERFORMANCE) {
+  receipt.cleanup = { browserClosed, serverClosed };
+  if (receipt.disposition === 'PASS') {
+    const validation = validatePq024H3PerformanceReceipt(receipt);
+    receipt.validation = validation;
+    if (!validation.pass) {
+      receipt.disposition = 'FAIL';
+      receipt.problems = [...new Set([...(receipt.problems || []), ...validation.failures])];
+    }
   }
 }
 
 await writeFile(
-  path.join(ARTIFACT_ROOT, 'route-receipt.json'),
+  RECEIPT_PATH,
   `${JSON.stringify(receipt, null, 2)}\n`,
   'utf8',
 );
 
 if (receipt.disposition !== 'PASS') {
-  console.error(`[pq024-asteroid-claim] FAIL in ${receipt.phase || 'route contract'}`);
+  console.error(`[${H3_PERFORMANCE ? 'pq024-h3-performance' : 'pq024-asteroid-claim'}] FAIL in ${receipt.phase || 'route contract'}`);
   for (const problem of receipt.problems || []) console.error(`  - ${problem}`);
   process.exit(1);
 }
 
-console.log(`[pq024-asteroid-claim/${ELECTRON_PARITY ? 'electron' : 'browser'}] PASS — public claim route survived save/Continue/re-entry`);
-console.log(`  receipt: ${repoRel(path.join(ARTIFACT_ROOT, 'route-receipt.json'))}`);
+if (H3_PERFORMANCE) {
+  console.log('[pq024-h3-performance] PASS — three matched committed-Core and producing-relay windows');
+  if (receipt.validation?.absoluteBudget?.pass !== true) {
+    console.log('[pq024-h3-performance] ABSOLUTE TARGET OPEN — matched feature result passes without a target waiver');
+  }
+} else {
+  console.log(`[pq024-asteroid-claim/${ELECTRON_PARITY ? 'electron' : 'browser'}] PASS — public claim route survived save/Continue/re-entry`);
+}
+console.log(`  receipt: ${repoRel(RECEIPT_PATH)}`);
 
 async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
   let phase = 'boot';
@@ -371,6 +441,662 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
     error.routePhase ||= phase;
     throw error;
   }
+}
+
+async function runPq024H3PerformanceCampaign(browserHandle, rootUrl) {
+  const pairs = [];
+  for (let repetition = 1; repetition <= PQ024_H3_REPETITIONS; repetition += 1) {
+    activePhase = `pq024-h3-pair-${repetition}`;
+    const context = await browserHandle.newContext({
+      viewport: { width: PQ024_H3_VIEWPORT.width, height: PQ024_H3_VIEWPORT.height },
+      screen: { width: PQ024_H3_VIEWPORT.width, height: PQ024_H3_VIEWPORT.height },
+      deviceScaleFactor: PQ024_H3_VIEWPORT.deviceScaleFactor,
+      locale: 'en-US',
+      colorScheme: 'dark',
+      reducedMotion: 'no-preference',
+    });
+    const pairPage = await context.newPage();
+    page = pairPage;
+    pairPage.setDefaultTimeout(30_000);
+    pairPage.setDefaultNavigationTimeout(90_000);
+    await pairPage.addInitScript(() => {
+      try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
+    });
+    const pairIssueTracker = collectPageIssues(pairPage, { includeWarnings: false });
+    issueTracker = pairIssueTracker;
+    const pairScreenshots = [];
+    const screenshot = async (name) => {
+      const row = await capturePq024H3Png(pairPage, name);
+      pairScreenshots.push(row);
+      return row;
+    };
+    try {
+      const pair = await runPq024H3PerformancePair({
+        page: pairPage,
+        rootUrl,
+        repetition,
+        screenshot,
+      });
+      const pageIssues = summarizeIssues(pairIssueTracker.errorIssues());
+      assert.deepEqual(pageIssues, [], `pair ${repetition}: the live route emitted page errors`);
+      pair.pageIssues = pageIssues;
+      pair.screenshots = pairScreenshots;
+      pairs.push(pair);
+      h3Completed.push({
+        repetition,
+        pairId: pair.route.pairId,
+        pageIssues,
+        screenshots: pairScreenshots,
+      });
+    } catch (error) {
+      await pairPage.screenshot({
+        path: path.join(ARTIFACT_ROOT, `failure-pair-${repetition}.png`),
+        type: 'png',
+        animations: 'allow',
+      }).catch(() => {});
+      error.routePhase ||= activePhase;
+      throw error;
+    } finally {
+      page = null;
+      issueTracker = null;
+      await context.close().catch(() => {});
+    }
+  }
+
+  return {
+    schema: PQ024_H3_RECEIPT_SCHEMA,
+    disposition: 'PASS',
+    fixedSeed: FIXED_SEED,
+    viewport: { ...PQ024_H3_VIEWPORT },
+    runtime: 'browser-chromium-headed',
+    gpu: h3Gpu,
+    qualityPreserving: {
+      settingsOverridesApplied: false,
+      defaultQualityRetained: true,
+      playerDefeatIsolationDisclosed: true,
+      playerContactIsolationDisclosed: true,
+      relayVisualQualityClaimed: false,
+      performanceImprovementClaimed: false,
+      absoluteTargetClaimed: false,
+      absoluteBudgetWaiverGranted: false,
+    },
+    broker: {
+      reason: brokerGate.reason,
+      diagnostic: !!brokerGate.diagnostic,
+      primaryAcceptance: !!brokerGate.primaryAcceptance,
+      claimId: brokerGate.claim?.claimId || brokerGate.claim?.id || null,
+    },
+    route: {
+      pairCount: pairs.length,
+      declaredRoute:
+        'New Game -> Helios public market -> local-map asteroid course -> Massline -> Asteroid Ops '
+        + '-> public survey + committed Core -> same-pose no-relay flight floor -> public Asteroid Ops '
+        + 're-entry -> real extractor output -> exactly one admitted exterior relay target',
+      retainedEvidenceReferences: [
+        'design/program/roadmap/receipts/PQ-024-survey-h1-capture-REPORT.md',
+      ],
+      pairs: pairs.map((pair) => pair.route),
+    },
+    profiles: [
+      { id: PQ024_H3_PROFILE_IDS[0], repetitions: pairs.map((pair) => pair.floor) },
+      { id: PQ024_H3_PROFILE_IDS[1], repetitions: pairs.map((pair) => pair.target) },
+    ],
+    pageIssues: pairs.flatMap((pair) => pair.pageIssues),
+    screenshots: pairs.flatMap((pair) => pair.screenshots),
+    cleanup: { browserClosed: false, serverClosed: false },
+  };
+}
+
+async function runPq024H3PerformancePair({ page, rootUrl, repetition, screenshot }) {
+  const pairId = `pq024-h3-pair-${repetition}`;
+  let isolationInstalled = false;
+  let pairResult = null;
+  let pairCleanup = null;
+  let asteroid = null;
+  let surveyReveal = null;
+  let core = null;
+  let extractor = null;
+  let production = null;
+  let relay = null;
+  try {
+    activePhase = `${pairId}:boot`;
+    const boot = await bootSeededFlight(page, rootUrl);
+    const pairGpu = await readGpuContract(page);
+    assert.equal(pairGpu.available, true, `pair ${repetition}: WebGL must be available`);
+    assert.doesNotMatch(pairGpu.renderer || '', /SwiftShader|llvmpipe|software/i,
+      `pair ${repetition}: acceptance requires a real GPU path, got ${pairGpu.renderer}`);
+    if (!h3Gpu) h3Gpu = pairGpu;
+    else assert.equal(pairGpu.renderer, h3Gpu.renderer, `pair ${repetition}: GPU renderer changed`);
+    await installObservers(page);
+
+    activePhase = `${pairId}:dock-helios`;
+    await dockAtHelios(page);
+    await openStationMarket(page);
+    const cargo = await buyConstructionCargo(page);
+    await publicUndock(page);
+
+    activePhase = `${pairId}:asteroid-course`;
+    asteroid = await selectAsteroidOnLocalMap(page);
+    await waitForAutopilotArrival(page, asteroid);
+    await enterAsteroidOps(page, asteroid.targetEntityId);
+
+    activePhase = `${pairId}:survey-core`;
+    await carveCoreBuildCorridor(page);
+    surveyReveal = await pulseSurveyReveal(page);
+    const corePlan = await planCorePlacement(page);
+    core = await placeSiteMachine(page, 'sm_massline_core', corePlan);
+    await exitAsteroidOps(page);
+    const floorRelay = await assertNoExteriorRelay(page, core.siteId);
+
+    activePhase = `${pairId}:isolate-floor`;
+    await installPq024H3PerformanceIsolation(page);
+    isolationInstalled = true;
+    await setPq024H3ClaimCamera(page, 88);
+    const floorWindow = await sampleRafWindow(page, {
+      phaseTag: 'flight_steady',
+      warmupMs: 2_000,
+      pipelineStableMs: 5_000,
+      pipelineSettleTimeoutMs: PQ024_H3_PIPELINE_SETTLE_TIMEOUT_MS,
+      sampleMs: 5_000,
+      enableGpuTimers: false,
+      requireAuthoredFlight: true,
+      requireDocked: false,
+    });
+    await attachPq024SeparatedGpuAttribution(page, floorWindow);
+    const floorFacts = await readPq024H3RouteFacts(page, {
+      profileId: PQ024_H3_PROFILE_IDS[0],
+      repetition,
+      pairId,
+      asteroid,
+      surveyReveal,
+      core,
+      measurementStartMs: floorWindow.samples[0]?.atMs,
+      measurementEndMs: floorWindow.samples.at(-1)?.atMs,
+    });
+    assert.equal(floorFacts.relay.count, floorRelay.count,
+      `pair ${repetition}: floor relay count changed before evidence was bound`);
+    await screenshot(`pair-${repetition}-committed-no-relay-floor.png`);
+
+    activePhase = `${pairId}:public-extractor`;
+    await enterAsteroidOps(page, asteroid.targetEntityId);
+    const extractorPlan = await planExtractorPlacement(page, core, { fromAvatar: true });
+    extractor = await placeSiteMachine(page, 'sm_extractor', extractorPlan);
+    await exitAsteroidOps(page);
+    production = await waitForPositiveProduction(page, core.siteId);
+    relay = await waitForAdmittedExteriorRelay(page, core.siteId);
+    await setPq024H3ClaimCamera(page, 88);
+
+    activePhase = `${pairId}:producing-relay-target`;
+    const targetWindow = await sampleRafWindow(page, {
+      phaseTag: 'flight_steady',
+      warmupMs: 2_000,
+      pipelineStableMs: 5_000,
+      pipelineSettleTimeoutMs: PQ024_H3_PIPELINE_SETTLE_TIMEOUT_MS,
+      sampleMs: 5_000,
+      enableGpuTimers: false,
+      requireAuthoredFlight: true,
+      requireDocked: false,
+    });
+    await attachPq024SeparatedGpuAttribution(page, targetWindow);
+    const targetFacts = await readPq024H3RouteFacts(page, {
+      profileId: PQ024_H3_PROFILE_IDS[1],
+      repetition,
+      pairId,
+      asteroid,
+      surveyReveal,
+      core,
+      measurementStartMs: targetWindow.samples[0]?.atMs,
+      measurementEndMs: targetWindow.samples.at(-1)?.atMs,
+    });
+    await screenshot(`pair-${repetition}-producing-one-relay-target.png`);
+
+    pairResult = {
+      route: {
+        pairId,
+        repetition,
+        recordedSeed: boot.recordedSeed,
+        sameContext: true,
+        publicRoute: true,
+        asteroid,
+        surveyReveal,
+        core,
+        extractor,
+        production,
+        relay,
+        cargo,
+        declaredCompressions: [
+          'retained H1 owns save/Continue, Electron parity, and re-entry persistence',
+          'H3 stops after live relay admission and makes no relay visual-quality claim',
+        ],
+        cleanup: null,
+      },
+      floor: {
+        index: repetition,
+        routeFacts: floorFacts,
+        rawSamples: floorWindow.samples,
+        attribution: floorWindow.attribution,
+      },
+      target: {
+        index: repetition,
+        routeFacts: targetFacts,
+        rawSamples: targetWindow.samples,
+        attribution: targetWindow.attribution,
+      },
+    };
+  } catch (error) {
+    error.routePhase ||= activePhase;
+    throw error;
+  } finally {
+    activePhase = `${pairId}:cleanup`;
+    let masslineReleased = false;
+    let isolationCleanup = {
+      playerSafetyRestored: isolationInstalled !== true,
+      timeEffectListenersRemoved: isolationInstalled !== true,
+    };
+    try {
+      await releaseMassline(page);
+      masslineReleased = await page.evaluate(() => window.SF?.state?.player?.tether?.active !== true);
+    } finally {
+      if (isolationInstalled) isolationCleanup = await cleanupPq024H3PerformanceIsolation(page);
+    }
+    pairCleanup = { ...isolationCleanup, masslineReleased };
+  }
+  assert(pairResult, `pair ${repetition}: no matched result was produced`);
+  pairResult.route.cleanup = pairCleanup;
+  return pairResult;
+}
+
+async function installPq024H3PerformanceIsolation(page) {
+  return page.evaluate(() => {
+    const sf = window.SF;
+    const state = sf?.state;
+    const player = state?.entities?.get(state.playerId);
+    const feel = sf?.registry?.get?.('feel');
+    const physicsOwner = sf?.registry?.get?.('physics')?._sg02;
+    const playerBody = physicsOwner?.records?.get?.(player?.id)?.body;
+    const fixedBodyType = physicsOwner?.RAPIER?.RigidBodyType?.Fixed;
+    if (!state || !player || !feel || !playerBody || !Number.isInteger(fixedBodyType)
+        || typeof playerBody.setBodyType !== 'function') {
+      throw new Error('PQ-024 H3 requires the live player, feel owner, and SG-02 physics authority');
+    }
+    window.__PQ024_H3__?.cleanup?.();
+    const safety = {
+      invulnHadOwn: Object.hasOwn(player.flags || {}, 'invuln'),
+      invuln: player.flags?.invuln,
+      invulnUntil: player._invulnUntil,
+      bodyType: playerBody.bodyType(),
+      bodyTranslation: { ...playerBody.translation() },
+      bodyRotation: { ...playerBody.rotation() },
+      bodyLinvel: { ...playerBody.linvel() },
+      bodyAngvel: { ...playerBody.angvel() },
+      entityPos: { x: Number(player.pos?.x) || 0, y: Number(player.pos?.y) || 0, z: Number(player.pos?.z) || 0 },
+      entityPrevPos: {
+        x: Number(player.prevPos?.x) || 0,
+        y: Number(player.prevPos?.y) || 0,
+        z: Number(player.prevPos?.z) || 0,
+      },
+      entityVel: { x: Number(player.vel?.x) || 0, y: Number(player.vel?.y) || 0, z: Number(player.vel?.z) || 0 },
+      cameraZoom: Number(state.camera?.zoom) || null,
+    };
+    player.flags ||= {};
+    player.flags.invuln = true;
+    player._invulnUntil = Infinity;
+    playerBody.setBodyType(fixedBodyType, true);
+    playerBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    playerBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    player.vel.set(0, 0, 0);
+    player.prevPos.copy(player.pos);
+    if (playerBody.bodyType() !== fixedBodyType) {
+      throw new Error('PQ-024 H3 could not isolate the benchmark player from contact drift');
+    }
+
+    const trace = { samples: [], events: [] };
+    const unsubs = [];
+    const harness = {
+      safety,
+      trace,
+      unsubs,
+      monitorFrame: null,
+      disposed: false,
+      recordEvent(event, payload = {}) {
+        const row = {
+          atMs: performance.now(),
+          tick: Number(state.tick) || 0,
+          event,
+          hitStopActive: Number(feel._hsTimer) > 0,
+        };
+        if (event === 'combat:damage') {
+          row.targetId = payload.targetId ?? null;
+          row.attackerId = payload.attackerId ?? null;
+          row.amount = Number(payload.amount) || 0;
+        }
+        trace.events.push(row);
+        if (trace.events.length > 256) trace.events.shift();
+      },
+      recordSample(atMs) {
+        const scale = Number(state.timeScale);
+        if (!Number.isFinite(scale) || scale === 1) return;
+        const feelScale = Number(feel._hsRequest?.scale);
+        let source = 'unattributed';
+        if (Number(feel._hsTimer) > 0 && Number.isFinite(feelScale)
+            && Math.abs(feelScale - scale) <= 1e-9) source = 'feel:hit-stop';
+        else if (state.player?.flybyFocus?.active === true && scale === 0.5) source = 'flyby-focus';
+        else if (state.massline2?.bulletTime?.active === true && scale === 0.35) source = 'player:bullet-time';
+        trace.samples.push({
+          atMs,
+          tick: Number(state.tick) || 0,
+          scale,
+          source,
+          remainingMs: source === 'feel:hit-stop' ? Math.max(0, Number(feel._hsTimer) * 1_000) : null,
+        });
+        if (trace.samples.length > 256) trace.samples.shift();
+      },
+      snapshotTimeEffects(startMs, endMs) {
+        const start = Number(startMs);
+        const end = Number(endMs);
+        return {
+          measurementStartMs: start,
+          measurementEndMs: end,
+          samples: structuredClone(trace.samples.filter((row) => (
+            Number.isFinite(start) && Number.isFinite(end)
+              && row.atMs >= start - 0.25 && row.atMs <= end + 0.25
+          ))),
+          events: structuredClone(trace.events.filter((row) => (
+            Number.isFinite(start) && Number.isFinite(end)
+              && row.atMs >= start - 120 && row.atMs <= end + 25
+          ))),
+        };
+      },
+      cleanup() {
+        if (this.disposed) return this.cleanupReceipt;
+        this.disposed = true;
+        if (this.monitorFrame != null) cancelAnimationFrame(this.monitorFrame);
+        this.monitorFrame = null;
+        for (const unsub of unsubs) unsub();
+        unsubs.length = 0;
+        if (safety.invulnHadOwn) player.flags.invuln = safety.invuln;
+        else delete player.flags.invuln;
+        player._invulnUntil = safety.invulnUntil;
+        player.pos.set(safety.entityPos.x, safety.entityPos.y, safety.entityPos.z);
+        player.prevPos.set(safety.entityPrevPos.x, safety.entityPrevPos.y, safety.entityPrevPos.z);
+        player.vel.set(safety.entityVel.x, safety.entityVel.y, safety.entityVel.z);
+        playerBody.setBodyType(safety.bodyType, true);
+        playerBody.setTranslation(safety.bodyTranslation, true);
+        playerBody.setRotation(safety.bodyRotation, true);
+        playerBody.setLinvel(safety.bodyLinvel, true);
+        playerBody.setAngvel(safety.bodyAngvel, true);
+        if (Number.isFinite(safety.cameraZoom)) sf.bus.emit('camera:zoom', { level: safety.cameraZoom });
+        const invulnRestored = safety.invulnHadOwn
+          ? Object.hasOwn(player.flags, 'invuln') && Object.is(player.flags.invuln, safety.invuln)
+          : !Object.hasOwn(player.flags, 'invuln');
+        this.cleanupReceipt = {
+          playerSafetyRestored: invulnRestored
+            && Object.is(player._invulnUntil, safety.invulnUntil)
+            && playerBody.bodyType() === safety.bodyType
+            && physicsOwner.records?.get?.(player.id)?.body === playerBody,
+          timeEffectListenersRemoved: unsubs.length === 0 && this.monitorFrame == null,
+        };
+        return this.cleanupReceipt;
+      },
+    };
+    for (const event of ['combat:damage', 'entity:killed', 'player:death']) {
+      unsubs.push(sf.bus.on(event, (payload) => harness.recordEvent(event, payload)));
+    }
+    const monitor = (atMs) => {
+      if (harness.disposed) return;
+      harness.recordSample(atMs);
+      harness.monitorFrame = requestAnimationFrame(monitor);
+    };
+    harness.monitorFrame = requestAnimationFrame(monitor);
+    window.__PQ024_H3__ = harness;
+    return {
+      playerDefeatSuppressed: player.flags.invuln === true && player._invulnUntil === Infinity,
+      playerContactSuppressed: playerBody.bodyType() === fixedBodyType,
+      npcCombatRetained: true,
+      ambientVfxRetained: true,
+    };
+  });
+}
+
+async function cleanupPq024H3PerformanceIsolation(page) {
+  return page.evaluate(() => window.__PQ024_H3__?.cleanup?.() || {
+    playerSafetyRestored: false,
+    timeEffectListenersRemoved: false,
+  });
+}
+
+async function setPq024H3ClaimCamera(page, cameraZoom) {
+  await page.evaluate((level) => window.SF?.bus?.emit('camera:zoom', { level }), cameraZoom);
+  await page.waitForFunction((level) => Math.abs(Number(window.SF?.state?.camera?.zoom) - level) < 1e-9,
+    cameraZoom, { timeout: 10_000 });
+}
+
+async function assertNoExteriorRelay(page, siteId) {
+  const row = await page.evaluate((id) => {
+    const relays = [...(window.SF?.state?.entities?.values?.() || [])].filter((entity) => (
+      entity?.alive !== false
+      && entity.data?.siteBeacon === id
+      && entity.data?.placeId === 'place_claim_outpost_relay'
+    ));
+    return { count: relays.length };
+  }, siteId);
+  assert.equal(row.count, 0, 'committed Core floor must contain no exterior relay');
+  return row;
+}
+
+async function waitForAdmittedExteriorRelay(page, siteId) {
+  const handle = await page.waitForFunction((id) => {
+    const relays = [...(window.SF?.state?.entities?.values?.() || [])].filter((entity) => (
+      entity?.alive !== false
+      && entity.data?.siteBeacon === id
+      && entity.data?.placeId === 'place_claim_outpost_relay'
+    ));
+    if (relays.length !== 1) return null;
+    const relayEntity = relays[0];
+    const root = relayEntity.mesh || relayEntity.view?.root || null;
+    const rawAssetState = root?.userData?.authoredAssetState || null;
+    if (relayEntity.presentationAdmission !== 'ready'
+        || !String(rawAssetState || '').startsWith('authored')) return null;
+    return {
+      count: 1,
+      entityId: relayEntity.id,
+      placeId: relayEntity.data.placeId,
+      siteId: relayEntity.data.siteBeacon,
+      presentationAdmission: relayEntity.presentationAdmission,
+      assetState: 'authored',
+      rawAssetState,
+    };
+  }, siteId, { timeout: 90_000 });
+  return handle.jsonValue();
+}
+
+async function readPq024H3RouteFacts(page, {
+  profileId,
+  repetition,
+  pairId,
+  asteroid,
+  surveyReveal,
+  core,
+  measurementStartMs,
+  measurementEndMs,
+}) {
+  return page.evaluate((input) => {
+    const state = window.SF.state;
+    const owner = window.SF.registry.get('asteroidSites');
+    const site = owner.getSite(input.core.siteId);
+    const playerEntity = state.entities.get(state.playerId);
+    const relays = [...state.entities.values()].filter((entity) => (
+      entity?.alive !== false
+      && entity.data?.siteBeacon === site.id
+      && entity.data?.placeId === 'place_claim_outpost_relay'
+    ));
+    const relayEntity = relays[0] || null;
+    const relayRoot = relayEntity?.mesh || relayEntity?.view?.root || null;
+    const relayRawAssetState = relayRoot?.userData?.authoredAssetState || null;
+    const events = window.__PQ024_H1_TRACE__?.production || [];
+    const physicsOwner = window.SF.registry.get('physics')?._sg02;
+    const playerBody = physicsOwner?.records?.get?.(playerEntity.id)?.body;
+    const fixedBodyType = physicsOwner?.RAPIER?.RigidBodyType?.Fixed;
+    const machineCount = (defId) => site.machines.filter((machine) => machine.defId === defId).length;
+    return {
+      profileId: input.profileId,
+      repetition: input.repetition,
+      pairId: input.pairId,
+      recordedSeed: state.meta?.seed ?? null,
+      sectorId: state.world?.currentSectorId || null,
+      mode: state.mode || null,
+      docked: state.ui?.docked === true,
+      playerControlExposed: state.mode === 'flight'
+        && state.ui?.docked !== true
+        && state.jump?.state === 'IDLE',
+      asteroidTargetId: input.asteroid.targetEntityId,
+      siteId: site.id,
+      survey: input.surveyReveal,
+      core: input.core,
+      pose: {
+        x: Number(playerEntity.pos?.x),
+        z: Number(playerEntity.pos?.z),
+        rot: Number(playerEntity.rot) || 0,
+        cameraZoom: Number(state.camera?.zoom) || null,
+        selectedTargetId: state.targetId ?? state.ui?.targetId ?? state.combat?.targetId ?? null,
+      },
+      performanceIsolation: {
+        playerDefeatSuppressed: playerEntity.flags?.invuln === true
+          && playerEntity._invulnUntil === Infinity,
+        playerContactSuppressed: playerBody?.bodyType?.() === fixedBodyType,
+        npcCombatRetained: true,
+        ambientVfxRetained: true,
+      },
+      site: {
+        lifecycle: site.survey?.lifecycle || null,
+        anchored: site.anchored === true,
+        machineCount: site.machines.length,
+        coreCount: machineCount('sm_massline_core'),
+        extractorCount: machineCount('sm_extractor'),
+      },
+      production: {
+        receipt: site.survey?.receipt ? { ...site.survey.receipt } : null,
+        eventCount: events.filter((event) => event.siteId === site.id).length,
+      },
+      relay: relayEntity ? {
+        count: relays.length,
+        entityId: relayEntity.id,
+        placeId: relayEntity.data.placeId,
+        siteId: relayEntity.data.siteBeacon,
+        presentationAdmission: relayEntity.presentationAdmission || null,
+        assetState: String(relayRawAssetState || '').startsWith('authored')
+          ? 'authored'
+          : relayRawAssetState,
+        rawAssetState: relayRawAssetState,
+      } : { count: 0 },
+      timeEffects: window.__PQ024_H3__.snapshotTimeEffects(
+        input.measurementStartMs,
+        input.measurementEndMs,
+      ),
+    };
+  }, {
+    profileId,
+    repetition,
+    pairId,
+    asteroid,
+    surveyReveal,
+    core,
+    measurementStartMs,
+    measurementEndMs,
+  });
+}
+
+async function attachPq024SeparatedGpuAttribution(page, timingWindow) {
+  const gpuCapture = await page.evaluate(async ({ requiredFrames }) => {
+    const state = window.SF?.state;
+    const timers = state?.render?.gpuTimers;
+    if (!timers || typeof timers.reset !== 'function' || typeof timers.setEnabled !== 'function'
+        || typeof timers.drainPending !== 'function' || typeof timers.getReport !== 'function') {
+      throw new Error('PQ-024 H3 requires the live GPU timer capability');
+    }
+    const raf = () => new Promise((resolve) => requestAnimationFrame(resolve));
+    const settingsSlice = () => JSON.stringify({
+      video: state?.settings?.video || null,
+      dynResScale: Number.isFinite(state?.render?.dynResScale) ? state.render.dynResScale : null,
+      timeScale: Number.isFinite(state?.timeScale) ? state.timeScale : null,
+    });
+    const routeSlice = () => {
+      const siteId = window.__PQ024_H1_TRACE__?.commitments?.at(-1)?.siteId || null;
+      const site = siteId ? window.SF?.registry?.get?.('asteroidSites')?.getSite?.(siteId) : null;
+      const relayCount = siteId ? [...(state?.entities?.values?.() || [])].filter((entity) => (
+        entity?.alive !== false && entity.data?.siteBeacon === siteId
+      )).length : 0;
+      return JSON.stringify({
+        mode: state?.mode || null,
+        docked: state?.ui?.docked === true,
+        visibility: document.visibilityState,
+        siteId,
+        lifecycle: site?.survey?.lifecycle || null,
+        relayCount,
+      });
+    };
+    const settingsStart = settingsSlice();
+    const routeStart = routeSlice();
+    const startedAt = performance.now();
+    let frameCount = 0;
+    let drain = null;
+    let report = null;
+    try {
+      timers.reset();
+      timers.setEnabled(true);
+      while (frameCount < requiredFrames) {
+        await raf();
+        frameCount += 1;
+      }
+      drain = await timers.drainPending({ maxPolls: 120, timeoutMs: 2_000, yieldFn: raf });
+      report = timers.getReport();
+    } finally {
+      timers.setEnabled(false);
+    }
+    return {
+      frameCount,
+      durationMs: performance.now() - startedAt,
+      settingsStable: settingsSlice() === settingsStart,
+      routeStable: routeSlice() === routeStart,
+      gpuTimers: {
+        available: report?.available === true,
+        status: report?.status || (report?.available ? 'available' : 'unavailable'),
+        reason: report?.reason || null,
+        extension: report?.extension || null,
+        enabled: report?.enabled === true,
+        lastDisjoint: report?.lastDisjoint === true,
+        pending: report?.pending,
+        lastInvalidation: report?.lastInvalidation || null,
+        queryCounts: report?.queryCounts || null,
+        captureValid: report?.captureValid === true,
+        drain,
+        terminals: report?.terminals || null,
+        passes: report?.passes || null,
+      },
+    };
+  }, { requiredFrames: 150 });
+  assert(timingWindow?.attribution, 'PQ-024 H3 timing-window attribution is required');
+  timingWindow.attribution.gpuTimers = gpuCapture.gpuTimers;
+  timingWindow.attribution.measurementIsolation = {
+    frameTimingGpuTimersEnabled: false,
+    gpuAttributionSeparated: true,
+    gpuAttributionFrameCount: gpuCapture.frameCount,
+    gpuAttributionDurationMs: gpuCapture.durationMs,
+    settingsStable: gpuCapture.settingsStable,
+    routeStable: gpuCapture.routeStable,
+  };
+}
+
+async function capturePq024H3Png(page, name) {
+  const file = path.join(ARTIFACT_ROOT, name);
+  await page.screenshot({ path: file, type: 'png', animations: 'allow' });
+  const [info, bytes] = await Promise.all([stat(file), readFile(file)]);
+  assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${name} must be a PNG`);
+  return {
+    path: repoRel(file),
+    bytes: info.size,
+    sha256: createHash('sha256').update(bytes).digest('hex'),
+  };
 }
 
 async function bootSeededFlight(page, rootUrl, { navigateInitialRoot = true } = {}) {
@@ -694,8 +1420,8 @@ async function planCorePlacement(page) {
   });
 }
 
-async function planExtractorPlacement(page, core) {
-  return page.evaluate(({ coreCell, siteId }) => {
+async function planExtractorPlacement(page, core, { fromAvatar = false } = {}) {
+  return page.evaluate(({ coreCell, siteId, useAvatar }) => {
     const state = window.SF.state;
     const owner = window.SF.registry.get('asteroidSites');
     const d = state.drill;
@@ -710,11 +1436,11 @@ async function planExtractorPlacement(page, core) {
         row,
       });
       if (check.ok && Number(check.profile?.solid) > 0) {
-        return { from: { ...coreCell }, to: { col, row }, siteId };
+        return { from: useAvatar ? { ...d.avatar } : { ...coreCell }, to: { col, row }, siteId };
       }
     }
     return null;
-  }, { coreCell: core.cell, siteId: core.siteId }).then((plan) => {
+  }, { coreCell: core.cell, siteId: core.siteId, useAvatar: fromAvatar }).then((plan) => {
     assert(plan, 'no powered, geology-contacting extractor placement exists beside the Core');
     return plan;
   });
