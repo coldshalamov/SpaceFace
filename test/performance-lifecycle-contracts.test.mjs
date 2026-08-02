@@ -13,6 +13,7 @@ import {
   PLAYWRIGHT_BACKGROUND_EXECUTION_SWITCHES,
   createBrowserWindowLifecycleDriver,
   createElectronLifecycleLaunchOptions,
+  extractLifecycleClaimIdentity,
   findPresentLifecycleBackgroundSwitches,
   focusRuntimeForLifecycleSample,
   isHiddenLifecycleReady,
@@ -263,6 +264,25 @@ test('Electron cadence sampling restores native focus before observing foregroun
     ['window', 'restore'],
     ['wait', 'page', 'electron foreground sample focus'],
   ]);
+});
+
+test('broker claim identity is extracted from authoritative nested digests', () => {
+  const identity = extractLifecycleClaimIdentity({
+    claimId: 'claim-nested',
+    digests: {
+      candidateDigest: 'a'.repeat(64),
+      sourceCandidateDigest: 'b'.repeat(64),
+      productionDigest: 'c'.repeat(64),
+      regressionDigest: 'd'.repeat(64),
+    },
+  });
+  assert.deepEqual(identity, {
+    claimId: 'claim-nested',
+    candidateDigest: 'a'.repeat(64),
+    sourceCandidateDigest: 'b'.repeat(64),
+    routeDigest: 'c'.repeat(64),
+    regressionDigest: 'd'.repeat(64),
+  });
 });
 
 test('Browser and Electron native lifecycle evidence pass the same fail-closed contract', () => {

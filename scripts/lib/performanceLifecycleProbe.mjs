@@ -76,6 +76,20 @@ export function findPresentLifecycleBackgroundSwitches(commandLine = []) {
   ));
 }
 
+export function extractLifecycleClaimIdentity(claim) {
+  if (!claim || typeof claim !== 'object') return null;
+  const digests = claim.digests || {};
+  const receipt = claim.receipt || {};
+  return {
+    claimId: claim.claimId || null,
+    candidateDigest: digests.candidateDigest ?? receipt.candidateDigest ?? null,
+    sourceCandidateDigest: digests.sourceCandidateDigest ?? receipt.sourceCandidateDigest ?? null,
+    routeDigest: digests.routeDigest ?? digests.productionDigest
+      ?? receipt.routeDigest ?? receipt.productionDigest ?? null,
+    regressionDigest: digests.regressionDigest ?? receipt.regressionDigest ?? null,
+  };
+}
+
 export async function runPerformanceLifecycleProbe({
   root,
   runtimeKind,
@@ -162,13 +176,7 @@ export async function runPerformanceLifecycleProbe({
       runtimeKind,
       fixedSeed: PERFORMANCE_LIFECYCLE_FIXED_SEED,
       candidateCommit,
-      claim: gate.claim ? {
-        claimId: gate.claim.claimId,
-        candidateDigest: gate.claim.candidateDigest,
-        routeDigest: gate.claim.routeDigest,
-        regressionDigest: gate.claim.regressionDigest,
-        sourceCandidateDigest: gate.claim.sourceCandidateDigest || null,
-      } : null,
+      claim: extractLifecycleClaimIdentity(gate.claim),
       route: {
         canonicalRoot: runtime.canonicalRootCheck().failures.length === 0,
         mode: routeAfter.mode,
