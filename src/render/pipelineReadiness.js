@@ -99,6 +99,35 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   };
 }
 
+/** Track authored-root GPU uploads independently from shader compilation. The loading route flushes
+ * deferred shader batches before flight; texture uploads begin in the resolved compile continuations
+ * and can otherwise outlive that flush. Exposing one aggregate promise lets startup wait for the
+ * exact roots to finish residency and publish, without coupling the renderer to boundary internals. */
+export function createGpuResidencyAdmissionTracker(prepare) {
+  if (typeof prepare !== 'function') throw new TypeError('GPU residency tracker requires prepare()');
+  const pending = new Set();
+
+  async function waitForPending() {
+    while (pending.size > 0) await Promise.all([...pending]);
+    // Boundary admission commits in the await continuation registered before this aggregate wait.
+    // Give that continuation a deterministic turn before startup checks committed visual readiness.
+    await Promise.resolve();
+    await Promise.resolve();
+    return { skipped: false, pendingCount: 0 };
+  }
+
+  return {
+    prepare(subject) {
+      const preparation = Promise.resolve().then(() => prepare(subject));
+      const tracked = preparation.finally(() => pending.delete(tracked));
+      pending.add(tracked);
+      return tracked;
+    },
+    waitForPending,
+    get pendingCount() { return pending.size; },
+  };
+}
+
 /**
  * Gate flight on both the procedural shader probes and the exact material graph currently installed
  * in the scene. The second phase is intentionally invoked only after authored visual readiness:
@@ -118,7 +147,14 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
   const exact = Promise.resolve().then(() => render.compileCurrentPipelines());
   render.exactPipelineWarmupReady = exact;
   const result = await settleWithin(exact, timeoutMs);
-  return result.ok;
+  if (!result.ok) return false;
+
+  const waitForResidency = render.waitForAuthoredGpuResidency;
+  if (typeof waitForResidency !== 'function') return true;
+  const residency = Promise.resolve().then(() => waitForResidency());
+  render.authoredGpuAdmissionReady = residency;
+  const residencyResult = await settleWithin(residency, timeoutMs);
+  return residencyResult.ok;
 }
 
 export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {

@@ -3568,6 +3568,7 @@
         "scripts/probe-pq019-surface-heist.mjs",
         "scripts/validation-manifests/pq019-h3-performance.mjs",
         "src/render/partsLibrary.js",
+        "src/render/pipelineReadiness.js",
         "src/render/renderer.js",
         "src/render/vfx.js",
         "test/authored-entity-plan-budget.test.mjs",
@@ -3575,11 +3576,12 @@
         "test/performance-scene-metrics.test.mjs",
         "test/pq019-h3-performance.test.mjs",
         "test/pq019-surface-heist-manifest.test.mjs",
+        "test/render-target-pipeline-warmup.test.mjs",
         "test/startup-gpu-residency.test.mjs"
       ],
       "checks": [
         "node --test test/pq019-h3-performance.test.mjs",
-        "node --test test/authored-entity-plan-budget.test.mjs test/authored-preload-scope.test.mjs",
+        "node --test test/authored-entity-plan-budget.test.mjs test/authored-preload-scope.test.mjs test/render-target-pipeline-warmup.test.mjs",
         "node --test test/startup-gpu-residency.test.mjs test/performance-scene-metrics.test.mjs",
         "npm run check:pq019a:facility-embodiment",
         "npm run check:pq019c:mission",

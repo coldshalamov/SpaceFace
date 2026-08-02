@@ -10,6 +10,7 @@ import {
   warmScenePipelinesForRenderTarget,
 } from '../src/render/bloom.js';
 import {
+  createGpuResidencyAdmissionTracker,
   createPipelineAdmissionTracker,
   waitForCurrentRenderPipelines,
 } from '../src/render/pipelineReadiness.js';
@@ -223,6 +224,50 @@ test('startup waits for procedural warm-up, then compiles the installed authored
   assert.equal(ready, true);
   assert.deepEqual(timeline, ['procedural', 'authored-hdr']);
   assert.equal(typeof state.render.exactPipelineWarmupReady?.then, 'function');
+});
+
+test('startup cannot outrun authored GPU residency after the deferred shader flush', async () => {
+  const timeline = [];
+  const upload = deferred();
+  const tracker = createGpuResidencyAdmissionTracker(async () => {
+    timeline.push('gpu:start');
+    await upload.promise;
+    timeline.push('gpu:ready');
+    return { skipped: false, textures: 21 };
+  });
+  let publication = null;
+  const state = {
+    render: {
+      compileCurrentPipelines() {
+        timeline.push('pipelines:ready');
+        publication = tracker.prepare({ name: 'detached-authored-root' }).then(() => {
+          timeline.push('authored:published');
+        });
+      },
+      waitForAuthoredGpuResidency: () => tracker.waitForPending(),
+    },
+  };
+
+  let settled = false;
+  const readiness = waitForCurrentRenderPipelines(state, 1_000).then((value) => {
+    settled = true;
+    return value;
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(settled, false, 'a fast shader compile cannot publish flight while textures are pending');
+  assert.deepEqual(timeline, ['pipelines:ready', 'gpu:start']);
+
+  upload.resolve();
+  assert.equal(await readiness, true);
+  await publication;
+  assert.deepEqual(timeline, [
+    'pipelines:ready',
+    'gpu:start',
+    'gpu:ready',
+    'authored:published',
+  ]);
+  assert.equal(typeof state.render.authoredGpuAdmissionReady?.then, 'function');
 });
 
 test('startup fails closed when exact authored pipeline compilation rejects', async () => {

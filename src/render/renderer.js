@@ -71,7 +71,10 @@ import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
 import { getAssetResidency } from './assetResidency.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
-import { createPipelineAdmissionTracker } from './pipelineReadiness.js';
+import {
+  createGpuResidencyAdmissionTracker,
+  createPipelineAdmissionTracker,
+} from './pipelineReadiness.js';
 import {
   collectStartupTextures,
   prepareStartupGpuResidency,
@@ -1248,12 +1251,13 @@ export const render = {
     const pipelineAdmissions = createPipelineAdmissionTracker(compileForCurrentTarget, {
       deferAutoFlush: () => state.mode === 'loading',
     });
+    const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker((subject) => (
+      prepareStartupGpuResidency(renderer, subject, { yieldToMain: yieldToBrowser })
+    ));
     state.render.compileObjectPipelines = (subject) => pipelineAdmissions.compile(subject);
-    state.render.prepareAuthoredGpuResidency = (subject) => prepareStartupGpuResidency(
-      renderer,
-      subject,
-      { yieldToMain: yieldToBrowser },
-    );
+    state.render.prepareAuthoredGpuResidency = (subject) => gpuResidencyAdmissions.prepare(subject);
+    state.render.waitForAuthoredGpuResidency = () => gpuResidencyAdmissions.waitForPending();
+    state.render.pendingAuthoredGpuResidency = () => gpuResidencyAdmissions.pendingCount;
     state.render.compileCurrentPipelines = () => pipelineAdmissions.compileCurrent(scene);
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
     state.render.prepareOpeningGpuResources = async () => {
