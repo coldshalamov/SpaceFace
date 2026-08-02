@@ -85,18 +85,24 @@ function routeFacts(profileId, index) {
       distanceToPlayer: cathedral ? 180 : 3200,
       geometry: {
         color: {
-          drawables: 1,
-          indexedDrawables: 1,
+          drawables: 22,
+          indexedDrawables: 22,
+          partitionedDrawables: 22,
           uniqueVertices: 70822,
           triangleIndices: 275724,
           triangles: 91908,
+          spatialCellSize: 96,
+          spatialCells: Array.from({ length: 22 }, (_, cell) => `cell-${cell}`),
         },
         depthPrepass: {
-          drawables: 2,
-          indexedDrawables: 2,
-          uniqueVertices: 141644,
+          drawables: 40,
+          indexedDrawables: 40,
+          partitionedDrawables: 40,
+          uniqueVertices: 70822,
           triangleIndices: 275724,
           triangles: 91908,
+          spatialCellSize: 96,
+          spatialCells: Array.from({ length: 22 }, (_, cell) => `cell-${cell}`),
           roles: ['closed-front', 'open-double'],
         },
         prepassSharesColorAttributes: true,
@@ -216,18 +222,18 @@ test('PQ-020 H3 requires exact Ceres, Cathedral, admission, framing, and LOD fac
   assert.match(failures, /applied LOD/);
 });
 
-test('PQ-020 H3 requires indexed Cathedral color and shared prepass topology', () => {
+test('PQ-020 H3 requires spatially partitioned Cathedral color and shared prepass topology', () => {
   const expanded = receipt();
   const geometry = expanded.profiles[1].repetitions[0].routeFacts.cathedral.geometry;
   geometry.color.indexedDrawables = 0;
   geometry.color.uniqueVertices = geometry.color.triangleIndices;
   let failures = validatePq020H3PerformanceReceipt(expanded).failures.join('\n');
-  assert.match(failures, /indexed static-batch topology/);
+  assert.match(failures, /spatially partitioned indexed topology/);
 
   const copied = receipt();
   copied.profiles[1].repetitions[1].routeFacts.cathedral.geometry.depthPrepass.roles.pop();
   failures = validatePq020H3PerformanceReceipt(copied).failures.join('\n');
-  assert.match(failures, /role-split full coverage/);
+  assert.match(failures, /role-split cell coverage/);
 });
 
 test('PQ-020 H3 predeclares map-open and sector-entry thresholds', () => {

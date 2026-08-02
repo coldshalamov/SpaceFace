@@ -442,28 +442,46 @@ async function readPq020H3RouteFacts(page, {
       if (object.userData?.spacefaceStaticBatch) activeStaticBatches.push(object);
       if (object.userData?.spacefaceDepthPrepass) activeDepthPrepasses.push(object);
     });
-    const geometrySummary = (objects) => objects.reduce((summary, object) => {
-      const geometry = object.geometry;
-      const positions = geometry?.getAttribute?.('position');
-      const count = Number(geometry?.index?.count || positions?.count || 0);
-      summary.drawables += 1;
-      summary.indexedDrawables += geometry?.index ? 1 : 0;
-      summary.uniqueVertices += Number(positions?.count || 0);
-      summary.triangleIndices += count;
-      summary.triangles += count / 3;
-      if (object.userData?.spacefaceDepthRole) summary.roles.push(object.userData.spacefaceDepthRole);
+    const geometrySummary = (objects) => {
+      const summary = {
+        drawables: 0,
+        indexedDrawables: 0,
+        partitionedDrawables: 0,
+        uniqueVertices: 0,
+        triangleIndices: 0,
+        triangles: 0,
+        spatialCellSize: null,
+        spatialCells: [],
+        roles: [],
+      };
+      const positionAttributes = new Set();
+      const spatialCells = new Set();
+      const roles = new Set();
+      for (const object of objects) {
+        const geometry = object.geometry;
+        const positions = geometry?.getAttribute?.('position');
+        const count = Number(geometry?.index?.count || positions?.count || 0);
+        summary.drawables += 1;
+        summary.indexedDrawables += geometry?.index ? 1 : 0;
+        summary.partitionedDrawables += object.userData?.spacefaceSpatialChunk === true ? 1 : 0;
+        if (positions && !positionAttributes.has(positions)) {
+          positionAttributes.add(positions);
+          summary.uniqueVertices += Number(positions.count || 0);
+        }
+        summary.triangleIndices += count;
+        summary.triangles += count / 3;
+        if (object.userData?.spacefaceSpatialCell) spatialCells.add(object.userData.spacefaceSpatialCell);
+        if (Number.isFinite(Number(object.userData?.spacefaceSpatialCellSize))) {
+          summary.spatialCellSize = Number(object.userData.spacefaceSpatialCellSize);
+        }
+        if (object.userData?.spacefaceDepthRole) roles.add(object.userData.spacefaceDepthRole);
+      }
+      summary.spatialCells = [...spatialCells].sort();
+      summary.roles = [...roles].sort();
       return summary;
-    }, {
-      drawables: 0,
-      indexedDrawables: 0,
-      uniqueVertices: 0,
-      triangleIndices: 0,
-      triangles: 0,
-      roles: [],
-    });
+    };
     const colorGeometry = geometrySummary(activeStaticBatches);
     const depthGeometry = geometrySummary(activeDepthPrepasses);
-    depthGeometry.roles.sort();
     const admittedComponentCount = cathedralEntities.filter((entity) => (
       entity.data?.role === 'world_site_component'
       && entity.data?.worldSitePresentationAdmitted === true

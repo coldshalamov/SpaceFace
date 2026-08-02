@@ -490,7 +490,7 @@ test('authored place LODs remain under the stable boundary and switch by authore
   assert.deepEqual(visibility(), { lod0: false, lod1: true, lod2: false });
 });
 
-test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', async () => {
+test('the Wreck Cathedral spatially partitions exact color and role-sided depth indices', async () => {
   const entity = {
     id: 29,
     type: 'fx',
@@ -562,40 +562,60 @@ test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', 
   });
 
   assert.equal(swapped, true);
-  assert.equal(sources.length, 3);
-  assert.equal(prepasses.length, 6, 'each LOD pays one closed and one open-shell depth draw');
+  assert.equal(sources.length, 24, 'the fixture produces eight deterministic XZ cells per LOD');
+  const closedRoles = new Set(materialRoles.filter((role) => role !== 'exposed_alloy'));
+  let expectedPrepassCount = 0;
   for (const lod of ['lod0', 'lod1', 'lod2']) {
-    const source = sources.find((candidate) => candidate.userData.spacefaceTags.lod === lod);
-    const sourceMaterials = Array.isArray(source.material) ? source.material : [source.material];
-    const closedPrepass = prepasses.find((candidate) => candidate.userData.spacefaceTags.lod === lod
-      && candidate.userData.spacefaceDepthRole === 'closed-front');
-    const openPrepass = prepasses.find((candidate) => candidate.userData.spacefaceTags.lod === lod
-      && candidate.userData.spacefaceDepthRole === 'open-double');
-    assert.ok(source.geometry.index, `${lod} retains the authored indexed topology`);
-    assert.equal(source.geometry.getAttribute('position').count, materialRoles.length * 24,
-      `${lod} does not expand every box index into a duplicate vertex`);
-    assert.equal(source.geometry.index.count, materialRoles.length * 36,
-      `${lod} retains every authored triangle index`);
-    assert.notEqual(closedPrepass.geometry, source.geometry);
-    assert.notEqual(openPrepass.geometry, source.geometry);
-    assert.equal(closedPrepass.geometry.getAttribute('position'), source.geometry.getAttribute('position'),
-      `${lod} closed depth shares the exact authored vertex buffer`);
-    assert.equal(openPrepass.geometry.getAttribute('position'), source.geometry.getAttribute('position'),
-      `${lod} open depth shares the exact authored vertex buffer`);
-    assert.equal(closedPrepass.geometry.index.count, (materialRoles.length - 1) * 36,
-      `${lod} closed depth contains the seven closed families`);
-    assert.equal(openPrepass.geometry.index.count, 36,
-      `${lod} open depth contains only exposed-alloy indices`);
-    for (const prepass of [closedPrepass, openPrepass]) {
-      assert.equal(prepass.material.colorWrite, false);
-      assert.equal(prepass.material.depthTest, true);
-      assert.equal(prepass.material.depthWrite, true);
-      assert.ok(prepass.renderOrder < source.renderOrder);
-      assert.equal(prepass.castShadow, false);
-      assert.equal(prepass.receiveShadow, false);
+    const lodSources = sources.filter((candidate) => candidate.userData.spacefaceTags.lod === lod);
+    assert.equal(lodSources.length, 8);
+    assert.equal(new Set(lodSources.map((source) => source.userData.spacefaceSpatialCell)).size, 8);
+    assert.equal(new Set(lodSources.map((source) => source.geometry.getAttribute('position'))).size, 1,
+      `${lod} cells share one exact authored vertex buffer`);
+    assert.equal(lodSources.reduce((total, source) => total + source.geometry.index.count, 0),
+      materialRoles.length * 36, `${lod} partitions every authored triangle index exactly once`);
+
+    for (const source of lodSources) {
+      const sourceMaterials = Array.isArray(source.material) ? source.material : [source.material];
+      const sourceRoles = new Set(source.geometry.groups.map((group) => (
+        sourceMaterials[group.materialIndex]?.userData?.spacefaceMaterialRole
+      )));
+      const expectedRoles = [];
+      if ([...sourceRoles].some((role) => closedRoles.has(role))) expectedRoles.push('closed-front');
+      if (sourceRoles.has('exposed_alloy')) expectedRoles.push('open-double');
+      const cellPrepasses = prepasses.filter((candidate) => (
+        candidate.userData.spacefaceTags.lod === lod
+        && candidate.userData.spacefaceSpatialCell === source.userData.spacefaceSpatialCell
+      ));
+      expectedPrepassCount += expectedRoles.length;
+      assert.deepEqual(cellPrepasses.map((prepass) => prepass.userData.spacefaceDepthRole).sort(), expectedRoles);
+      assert.equal(cellPrepasses.reduce((total, prepass) => total + prepass.geometry.index.count, 0),
+        source.geometry.index.count, `${lod}/${source.userData.spacefaceSpatialCell} depth covers every color index`);
+      assert.ok(source.geometry.index, `${lod} retains indexed topology`);
+      assert.equal(source.geometry.getAttribute('position').count, materialRoles.length * 24,
+        `${lod} does not expand every box index into a duplicate vertex`);
+      assert.equal(source.geometry.userData.spacefaceSpatialIndexView, true);
+      assert.equal(source.userData.spacefaceSpatialChunk, true);
+      assert.equal(source.userData.spacefaceSpatialCellSize, 96);
+      assert.ok(source.geometry.boundingBox && source.geometry.boundingSphere,
+        `${lod} cell has an index-scoped frustum bound`);
+      for (const prepass of cellPrepasses) {
+        assert.notEqual(prepass.geometry, source.geometry);
+        assert.equal(prepass.geometry.getAttribute('position'), source.geometry.getAttribute('position'),
+          `${lod} depth shares the exact authored vertex buffer`);
+        assert.equal(prepass.material.colorWrite, false);
+        assert.equal(prepass.material.depthTest, true);
+        assert.equal(prepass.material.depthWrite, true);
+        assert.equal(prepass.material.side,
+          prepass.userData.spacefaceDepthRole === 'closed-front' ? THREE.FrontSide : THREE.DoubleSide);
+        assert.ok(prepass.renderOrder < source.renderOrder);
+        assert.equal(prepass.castShadow, false);
+        assert.equal(prepass.receiveShadow, false);
+      }
     }
-    assert.equal(closedPrepass.material.side, THREE.FrontSide);
-    assert.equal(openPrepass.material.side, THREE.DoubleSide);
+
+    const sourceMaterials = Array.isArray(lodSources[0].material)
+      ? lodSources[0].material
+      : [lodSources[0].material];
     const sourceByRole = new Map(sourceMaterials.map((material) => [
       material.userData.spacefaceMaterialRole,
       material,
@@ -616,12 +636,22 @@ test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', 
       }
     }
   }
+  assert.equal(prepasses.length, expectedPrepassCount);
   assert.deepEqual(authoredRoot.userData.opaqueDepthPrepass, {
     assetId: 'place_landmark_wreck_cathedral',
-    drawables: 6,
+    drawables: expectedPrepassCount,
     geometry: 'shared-authored-attributes-role-split-indices',
     material: 'depth-only-role-sided',
   });
+  assert.equal(authoredRoot.userData.cathedralSpatialPartition.cellSize, 96);
+  assert.equal(authoredRoot.userData.cathedralSpatialPartition.axes, 'xz');
+  assert.equal(authoredRoot.userData.cathedralSpatialPartition.geometry,
+    'shared-authored-attributes-cell-indices');
+  for (const lod of ['lod0', 'lod1', 'lod2']) {
+    assert.equal(authoredRoot.userData.cathedralSpatialPartition.byLod[lod].drawables, 8);
+    assert.equal(authoredRoot.userData.cathedralSpatialPartition.byLod[lod].triangles, 96);
+    assert.equal(authoredRoot.userData.cathedralSpatialPartition.byLod[lod].cells.length, 8);
+  }
   assert.deepEqual(authoredRoot.userData.cathedralSurfaceCulling, {
     frontSideRoles: [
       'copper_coil',
@@ -640,13 +670,23 @@ test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', 
     assert.equal(material.depthWrite, true);
   }
 
-  const visibility = () => Object.fromEntries(['lod0', 'lod1', 'lod2'].map((lod) => [
-    lod,
-    prepasses.filter((object) => object.userData.spacefaceTags.lod === lod && object.visible).length,
-  ]));
-  assert.deepEqual(visibility(), { lod0: 2, lod1: 0, lod2: 0 });
+  const visibility = () => Object.fromEntries(['lod0', 'lod1', 'lod2'].map((lod) => [lod, {
+    color: sources.filter((object) => object.userData.spacefaceTags.lod === lod && object.visible).length,
+    depth: prepasses.filter((object) => object.userData.spacefaceTags.lod === lod && object.visible).length,
+  }]));
+  const lod0Depth = prepasses.filter((object) => object.userData.spacefaceTags.lod === 'lod0').length;
+  const lod2Depth = prepasses.filter((object) => object.userData.spacefaceTags.lod === 'lod2').length;
+  assert.deepEqual(visibility(), {
+    lod0: { color: 8, depth: lod0Depth },
+    lod1: { color: 0, depth: 0 },
+    lod2: { color: 0, depth: 0 },
+  });
   boundary.userData.updateLod('lod2');
-  assert.deepEqual(visibility(), { lod0: 0, lod1: 0, lod2: 2 });
+  assert.deepEqual(visibility(), {
+    lod0: { color: 0, depth: 0 },
+    lod1: { color: 0, depth: 0 },
+    lod2: { color: 8, depth: lod2Depth },
+  });
 });
 
 test('a synchronous authored geology builder error keeps the procedural geology identity', () => {

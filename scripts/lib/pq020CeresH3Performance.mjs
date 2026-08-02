@@ -359,19 +359,29 @@ function validateRouteFacts(label, id, expectedIndex, expectedSeed, facts, failu
     const colorGeometry = cathedral.geometry?.color;
     const depthGeometry = cathedral.geometry?.depthPrepass;
     if (!finitePositive(colorGeometry?.drawables)
+        || colorGeometry.drawables <= 1
         || colorGeometry.indexedDrawables !== colorGeometry.drawables
+        || colorGeometry.partitionedDrawables !== colorGeometry.drawables
         || !finitePositive(colorGeometry?.uniqueVertices)
         || !finitePositive(colorGeometry?.triangleIndices)
-        || colorGeometry.uniqueVertices >= colorGeometry.triangleIndices) {
-      failures.push(`${label} Cathedral must retain indexed static-batch topology without per-index vertex expansion`);
+        || colorGeometry.uniqueVertices >= colorGeometry.triangleIndices
+        || colorGeometry.spatialCellSize !== 96
+        || colorGeometry.spatialCells?.length !== colorGeometry.drawables) {
+      failures.push(`${label} Cathedral must retain spatially partitioned indexed topology without per-index vertex expansion`);
     }
-    if (depthGeometry?.drawables !== 2
-        || depthGeometry?.indexedDrawables !== 2
+    if (!finitePositive(depthGeometry?.drawables)
+        || depthGeometry.drawables < colorGeometry?.drawables
+        || depthGeometry.drawables > colorGeometry?.drawables * 2
+        || depthGeometry.indexedDrawables !== depthGeometry.drawables
+        || depthGeometry.partitionedDrawables !== depthGeometry.drawables
+        || depthGeometry.uniqueVertices !== colorGeometry?.uniqueVertices
         || !finitePositive(depthGeometry?.triangles)
         || depthGeometry.triangles !== colorGeometry?.triangles
+        || depthGeometry.spatialCellSize !== colorGeometry?.spatialCellSize
+        || stableStringify(depthGeometry?.spatialCells) !== stableStringify(colorGeometry?.spatialCells)
         || stableStringify(depthGeometry?.roles) !== stableStringify(['closed-front', 'open-double'])
         || cathedral.geometry?.prepassSharesColorAttributes !== true) {
-      failures.push(`${label} Cathedral depth prepass must role-split full coverage over shared color attributes`);
+      failures.push(`${label} Cathedral depth prepass must preserve role-split cell coverage over shared color attributes`);
     }
   }
 }

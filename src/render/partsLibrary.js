@@ -28,6 +28,7 @@ const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
 const AUTHORED_CARGO_CAPSULE_FILE = 'pods/pod_cargo_container.glb';
 const WRECK_CATHEDRAL_PLACE_ID = 'place_landmark_wreck_cathedral';
+const WRECK_CATHEDRAL_SPATIAL_CELL_SIZE = 96;
 const WRECK_CATHEDRAL_CLOSED_MATERIAL_ROLES = new Set([
   'copper_coil',
   'heat_affected_alloy',
@@ -1384,10 +1385,13 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
   const bindings = createBindings();
   const mutableMaterials = new Map();
   // The Cathedral's three authored LODs are uniformly indexed. Keep that topology through its
-  // static merge so the close-range color + depth passes do not transform one duplicate vertex per
-  // triangle index. Mixed/index-less authored places retain the conservative ordinary path.
+  // static merge and cell index views so close-range color + depth passes neither duplicate every
+  // vertex nor submit off-camera sections. Mixed/index-less places retain the ordinary path.
   const staticBatches = createStaticBatchCollector(root, bindings, {
     preserveIndexedGeometry: placeId === WRECK_CATHEDRAL_PLACE_ID,
+    spatialPartitionCellSize: placeId === WRECK_CATHEDRAL_PLACE_ID
+      ? WRECK_CATHEDRAL_SPATIAL_CELL_SIZE
+      : null,
   });
   const authoredLength = Math.max(record.bounds && record.bounds.size && record.bounds.size[0] || 1, 1e-6);
   const rawScale = Number(data.placeScale);
@@ -1470,9 +1474,9 @@ function installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
   if (sources.length === 0) return;
 
   // The Cathedral is a close-range capital-wreck shell. Its eight authored PBR material groups are
-  // already merged into one mesh per LOD, but shading every hidden fragment made the target route
-  // GPU-bound. Role-sided depth passes preserve exact geometry, open-shell interiors, LOD choice,
-  // and default quality while giving every opaque material family an equal-depth color pass.
+  // merged once, then exposed through bounded shared-attribute index cells. Role-sided depth passes
+  // preserve exact geometry, open-shell interiors, LOD choice, and default quality while giving
+  // every opaque material family an equal-depth color pass.
   const closedDepthMaterial = new THREE.MeshBasicMaterial({
     color: 0x000000,
     colorWrite: false,
@@ -1518,6 +1522,9 @@ function installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
       prepass.userData = {
         spacefaceDepthPrepass: true,
         spacefaceDepthRole: spec.role,
+        spacefaceSpatialChunk: source.userData.spacefaceSpatialChunk === true,
+        spacefaceSpatialCell: source.userData.spacefaceSpatialCell,
+        spacefaceSpatialCellSize: source.userData.spacefaceSpatialCellSize,
         spacefacePartUrl: source.userData.spacefacePartUrl,
         spacefacePartUrls: source.userData.spacefacePartUrls,
         spacefaceTags: tags,
@@ -1550,7 +1557,7 @@ function wreckCathedralDepthGeometryForRoles(source, acceptedRoles) {
     return acceptedRoles.has(role);
   });
   const count = selectedGroups.reduce((total, group) => total + Number(group.count || 0), 0);
-  if (selectedGroups.length === 0 || count <= 0 || count >= index.count) return null;
+  if (selectedGroups.length === 0 || count <= 0 || count > index.count) return null;
 
   const IndexArray = index.array.constructor;
   const indices = new IndexArray(count);
@@ -3556,7 +3563,148 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
     for (const fallback of buckets) flushStaticBatch(parent, bindings, fallback, options);
     return;
   }
+  if (addSpatiallyPartitionedStaticBatchMeshes(
+    parent,
+    bindings,
+    merged,
+    materials,
+    buckets[0].tags,
+    [...urls],
+    `StaticGroup_${partCount}_${materials.length}`,
+    options,
+  )) return;
   addStaticBatchMesh(parent, bindings, merged, materials, buckets[0].tags, [...urls], `StaticGroup_${partCount}_${materials.length}`);
+}
+
+function addSpatiallyPartitionedStaticBatchMeshes(
+  parent,
+  bindings,
+  geometry,
+  material,
+  tags,
+  urls,
+  label,
+  options = {},
+) {
+  const cellSize = Number(options.spatialPartitionCellSize);
+  if (!(Number.isFinite(cellSize) && cellSize > 0)) return false;
+  const chunks = partitionIndexedStaticBatchGeometry(geometry, cellSize);
+  if (chunks.length <= 1) return false;
+
+  const level = tags?.lod || 'always';
+  const byLod = parent.userData.cathedralSpatialPartition?.byLod || {};
+  byLod[level] = {
+    drawables: chunks.length,
+    triangles: chunks.reduce((total, chunk) => total + chunk.geometry.index.count / 3, 0),
+    cells: chunks.map((chunk) => chunk.cell),
+  };
+  parent.userData.cathedralSpatialPartition = {
+    cellSize,
+    axes: 'xz',
+    geometry: 'shared-authored-attributes-cell-indices',
+    byLod,
+  };
+
+  for (const chunk of chunks) {
+    const mesh = addStaticBatchMesh(
+      parent,
+      bindings,
+      chunk.geometry,
+      material,
+      tags,
+      urls,
+      `${label}_Cell_${chunk.cell}`,
+    );
+    mesh.userData.spacefaceSpatialChunk = true;
+    mesh.userData.spacefaceSpatialCell = chunk.cell;
+    mesh.userData.spacefaceSpatialCellSize = cellSize;
+  }
+  return true;
+}
+
+function partitionIndexedStaticBatchGeometry(geometry, cellSize) {
+  const index = geometry?.index;
+  const position = geometry?.getAttribute?.('position');
+  if (!index?.array || !position || index.count < 3) return [];
+  const groups = geometry.groups?.length > 0
+    ? geometry.groups
+    : [{ start: 0, count: index.count, materialIndex: 0 }];
+  const cells = new Map();
+
+  for (const group of groups) {
+    const materialIndex = Number(group.materialIndex) || 0;
+    const start = Math.max(0, Number(group.start) || 0);
+    const end = Math.min(index.count, start + Math.max(0, Number(group.count) || 0));
+    for (let offset = start; offset + 2 < end; offset += 3) {
+      const a = index.getX(offset);
+      const b = index.getX(offset + 1);
+      const c = index.getX(offset + 2);
+      const centerX = (position.getX(a) + position.getX(b) + position.getX(c)) / 3;
+      const centerZ = (position.getZ(a) + position.getZ(b) + position.getZ(c)) / 3;
+      const cellX = Number.isFinite(centerX) ? Math.floor(centerX / cellSize) : 0;
+      const cellZ = Number.isFinite(centerZ) ? Math.floor(centerZ / cellSize) : 0;
+      const key = `${cellX}:${cellZ}`;
+      let cell = cells.get(key);
+      if (!cell) {
+        cell = {
+          key,
+          x: cellX,
+          z: cellZ,
+          indicesByMaterial: new Map(),
+          bounds: new THREE.Box3(),
+        };
+        cells.set(key, cell);
+      }
+      let indices = cell.indicesByMaterial.get(materialIndex);
+      if (!indices) {
+        indices = [];
+        cell.indicesByMaterial.set(materialIndex, indices);
+      }
+      indices.push(a, b, c);
+      expandBoundsForStaticTriangle(cell.bounds, position, a, b, c);
+    }
+  }
+
+  const IndexArray = index.array.constructor;
+  return [...cells.values()]
+    .sort((left, right) => left.x - right.x || left.z - right.z)
+    .map((cell) => {
+      const orderedGroups = [...cell.indicesByMaterial.entries()]
+        .sort(([left], [right]) => left - right);
+      const count = orderedGroups.reduce((total, [, indices]) => total + indices.length, 0);
+      const indices = new IndexArray(count);
+      const chunkGeometry = new THREE.BufferGeometry();
+      for (const [name, attribute] of Object.entries(geometry.attributes || {})) {
+        chunkGeometry.setAttribute(name, attribute);
+      }
+      chunkGeometry.morphAttributes = geometry.morphAttributes;
+      chunkGeometry.morphTargetsRelative = geometry.morphTargetsRelative;
+      let cursor = 0;
+      for (const [materialIndex, groupIndices] of orderedGroups) {
+        indices.set(groupIndices, cursor);
+        chunkGeometry.addGroup(cursor, groupIndices.length, materialIndex);
+        cursor += groupIndices.length;
+      }
+      chunkGeometry.setIndex(new THREE.BufferAttribute(indices, 1, index.normalized));
+      chunkGeometry.boundingBox = cell.bounds.clone();
+      chunkGeometry.boundingSphere = cell.bounds.getBoundingSphere(new THREE.Sphere());
+      chunkGeometry.userData = {
+        spacefaceSpatialIndexView: true,
+        spacefaceSpatialCell: cell.key,
+        spacefaceSpatialCellSize: cellSize,
+        sourceIndexCount: index.count,
+        selectedIndexCount: count,
+      };
+      return { cell: cell.key, geometry: chunkGeometry };
+    });
+}
+
+function expandBoundsForStaticTriangle(bounds, position, ...indices) {
+  const point = new THREE.Vector3();
+  for (const index of indices) {
+    point.fromBufferAttribute(position, index);
+    bounds.expandByPoint(point);
+  }
 }
 
 function buildStaticBatchGeometry(bucket, options = {}) {
