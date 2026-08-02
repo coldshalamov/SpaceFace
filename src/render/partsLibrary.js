@@ -28,6 +28,15 @@ const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
 const AUTHORED_CARGO_CAPSULE_FILE = 'pods/pod_cargo_container.glb';
 const WRECK_CATHEDRAL_PLACE_ID = 'place_landmark_wreck_cathedral';
+const WRECK_CATHEDRAL_CLOSED_MATERIAL_ROLES = new Set([
+  'copper_coil',
+  'heat_affected_alloy',
+  'hull',
+  'maintenance_mark',
+  'mechanical',
+  'signal',
+  'warning',
+]);
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 const INSTANCE_CHUNK_SIZE = 64;
 const INSTANCE_FAR_CULL_RADIUS = 9000;
@@ -1455,16 +1464,16 @@ function installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
   });
   if (sources.length === 0) return;
 
-  // The Cathedral is a close-range, double-sided capital-wreck shell. Its eight authored PBR
-  // material groups are already merged into one mesh per LOD, but shading every hidden fragment
-  // made the target route GPU-bound. One shared depth-only material preserves the exact PBR pass,
-  // geometry, open-shell interiors, LOD choice, and default quality while rejecting hidden work.
+  // The Cathedral is a close-range capital-wreck shell. Its eight authored PBR material groups are
+  // already merged into one mesh per LOD, but shading every hidden fragment made the target route
+  // GPU-bound. One shared front-face depth pass preserves exact geometry, open-shell interiors, LOD
+  // choice, and default quality while giving closed material families an equal-depth color pass.
   const material = new THREE.MeshBasicMaterial({
     color: 0x000000,
     colorWrite: false,
     depthTest: true,
     depthWrite: true,
-    side: THREE.DoubleSide,
+    side: THREE.FrontSide,
     toneMapped: false,
   });
   material.name = 'SF_WreckCathedral_OpaqueDepthPrepass';
@@ -1498,8 +1507,9 @@ function installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
     assetId: placeId,
     drawables: prepasses.length,
     geometry: 'shared-authored',
-    material: 'depth-only-double-sided',
+    material: 'depth-only-front-sided',
   };
+  root.userData.cathedralSurfaceCulling = specializeWreckCathedralClosedSurfaces(sources);
 }
 
 function opaqueDoubleSidedDepthSource(object) {
@@ -1511,6 +1521,44 @@ function opaqueDoubleSidedDepthSource(object) {
     && (!(Number(material.alphaTest) > 0))
     && (!Number.isFinite(Number(material.opacity)) || Number(material.opacity) >= 1)
     && material.side === THREE.DoubleSide);
+}
+
+function specializeWreckCathedralClosedSurfaces(sources) {
+  const variants = new Map();
+  const frontSideRoles = new Set();
+  const retainedDoubleSideRoles = new Set();
+  for (const source of sources) {
+    const sourceMaterials = Array.isArray(source.material) ? source.material : [source.material];
+    const specialized = sourceMaterials.map((material) => {
+      const role = String(material?.userData?.spacefaceMaterialRole || '').trim().toLowerCase();
+      if (!WRECK_CATHEDRAL_CLOSED_MATERIAL_ROLES.has(role)) {
+        if (role && material?.side === THREE.DoubleSide) retainedDoubleSideRoles.add(role);
+        return material;
+      }
+      frontSideRoles.add(role);
+      let variant = variants.get(material);
+      if (!variant) {
+        variant = material.clone();
+        variant.name = `${material.name || 'CathedralMaterial'}_ClosedFront`;
+        variant.side = THREE.FrontSide;
+        variant.depthFunc = THREE.EqualDepth;
+        variant.depthWrite = false;
+        variant.userData = {
+          ...(material.userData || {}),
+          spacefaceCathedralClosedSurfaceCulled: true,
+        };
+        variant.needsUpdate = true;
+        variants.set(material, variant);
+      }
+      return variant;
+    });
+    source.material = Array.isArray(source.material) ? specialized : specialized[0];
+  }
+  return {
+    frontSideRoles: [...frontSideRoles].sort(),
+    retainedDoubleSideRoles: [...retainedDoubleSideRoles].sort(),
+    depthContract: 'prepass-equal',
+  };
 }
 
 function normalizePlacePropBindings(bindings) {

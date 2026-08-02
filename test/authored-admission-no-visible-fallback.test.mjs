@@ -505,19 +505,42 @@ test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', 
   const fallbackRoot = boundary.children[0];
   const scene = new THREE.Scene();
   scene.add(boundary);
+  const materialRoles = [
+    'hull',
+    'heat_affected_alloy',
+    'maintenance_mark',
+    'mechanical',
+    'exposed_alloy',
+    'copper_coil',
+    'signal',
+    'warning',
+  ];
+  const authoredMaterials = new Map(materialRoles.map((role, index) => {
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x182430 + index * 0x10101,
+      side: THREE.DoubleSide,
+    });
+    material.name = `Material_${role}`;
+    material.userData.spacefaceMaterialRole = role;
+    return [role, material];
+  }));
   const record = {
     url: 'assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb',
     assetId: 'place_landmark_wreck_cathedral',
     slot: 'place',
     bounds: { size: [240, 80, 120], center: [0, 0, 0] },
-    primitives: ['lod0', 'lod1', 'lod2'].map((lod, index) => ({
-      key: `${lod}:0`,
-      name: `${lod}_Cathedral`,
-      geometry: new THREE.BoxGeometry(240 - index * 40, 80 - index * 10, 120 - index * 20),
-      material: new THREE.MeshStandardMaterial({ side: THREE.DoubleSide }),
-      matrix: new THREE.Matrix4(),
+    primitives: ['lod0', 'lod1', 'lod2'].flatMap((lod, index) => materialRoles.map((role, roleIndex) => ({
+      key: `${lod}:${roleIndex}`,
+      name: `${lod}_Cathedral_${role}`,
+      geometry: new THREE.BoxGeometry(
+        26 - index * 4,
+        18 - index * 2,
+        14 - index * 2,
+      ),
+      material: authoredMaterials.get(role),
+      matrix: new THREE.Matrix4().makeTranslation(roleIndex * 28 - 98, 0, 0),
       tags: { lod },
-    })),
+    }))),
     markers: [],
   };
 
@@ -549,19 +572,51 @@ test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', 
     assert.equal(prepass.material.colorWrite, false);
     assert.equal(prepass.material.depthTest, true);
     assert.equal(prepass.material.depthWrite, true);
-    assert.equal(prepass.material.side, THREE.DoubleSide, `${lod} retains open-shell interior coverage`);
+    assert.equal(prepass.material.side, THREE.FrontSide, `${lod} prewrites only source-valid front faces`);
     assert.ok(prepass.renderOrder < source.renderOrder);
     assert.equal(prepass.castShadow, false);
     assert.equal(prepass.receiveShadow, false);
-    assert.ok(sourceMaterials.every((material) => material.side === THREE.DoubleSide),
-      `${lod} authored PBR material remains unchanged`);
+    const sourceByRole = new Map(sourceMaterials.map((material) => [
+      material.userData.spacefaceMaterialRole,
+      material,
+    ]));
+    assert.deepEqual([...sourceByRole.keys()].sort(), [...materialRoles].sort());
+    for (const role of materialRoles) {
+      const material = sourceByRole.get(role);
+      if (role === 'exposed_alloy') {
+        assert.equal(material.side, THREE.DoubleSide, `${lod} retains open engine-bell interiors`);
+        assert.equal(material.depthWrite, true);
+      } else {
+        assert.equal(material.side, THREE.FrontSide, `${lod} culls the closed ${role} family`);
+        assert.equal(material.depthFunc, THREE.EqualDepth, `${lod} reuses prepass depth for ${role}`);
+        assert.equal(material.depthWrite, false, `${lod} does not rewrite prepass depth for ${role}`);
+        assert.equal(material.userData.spacefaceCathedralClosedSurfaceCulled, true);
+      }
+    }
   }
   assert.deepEqual(authoredRoot.userData.opaqueDepthPrepass, {
     assetId: 'place_landmark_wreck_cathedral',
     drawables: 3,
     geometry: 'shared-authored',
-    material: 'depth-only-double-sided',
+    material: 'depth-only-front-sided',
   });
+  assert.deepEqual(authoredRoot.userData.cathedralSurfaceCulling, {
+    frontSideRoles: [
+      'copper_coil',
+      'heat_affected_alloy',
+      'hull',
+      'maintenance_mark',
+      'mechanical',
+      'signal',
+      'warning',
+    ],
+    retainedDoubleSideRoles: ['exposed_alloy'],
+    depthContract: 'prepass-equal',
+  });
+  for (const material of authoredMaterials.values()) {
+    assert.equal(material.side, THREE.DoubleSide, `${material.name} source material stays immutable`);
+    assert.equal(material.depthWrite, true);
+  }
 
   const visibility = () => Object.fromEntries(['lod0', 'lod1', 'lod2'].map((lod) => [
     lod,
