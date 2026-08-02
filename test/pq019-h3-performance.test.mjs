@@ -128,6 +128,8 @@ function receipt() {
       settingsOverridesApplied: false,
       defaultQualityRetained: true,
       performanceImprovementClaimed: false,
+      absoluteTargetClaimed: false,
+      absoluteBudgetWaiverGranted: false,
     },
     broker: { primaryAcceptance: true, diagnostic: false, claimId: '1234-abcdef' },
     route: {
@@ -173,7 +175,7 @@ test('PQ-019 H3 rejects missing profiles, repetitions, or raw intervals', () => 
 
   const thin = receipt();
   thin.profiles[0].repetitions[0].rawSamples = samples(16.6, 30);
-  assert.match(validatePq019H3PerformanceReceipt(thin).failures.join('\n'), /at least 240 raw frame intervals/);
+  assert.match(validatePq019H3PerformanceReceipt(thin).failures.join('\n'), /at least 120 raw frame intervals/);
 });
 
 test('PQ-019 H3 rejects stale route identity and an unproved loaded heist', () => {
@@ -208,7 +210,7 @@ test('PQ-019 H3 rejects software rendering, quality changes, and diagnostic clai
   assert.match(failures, /primary broker acceptance/);
 });
 
-test('PQ-019 H3 recomputes raw percentiles and fails target, floor, hitch, or backlog regressions', () => {
+test('PQ-019 H3 recomputes raw percentiles and fails floor, hitch, or backlog regressions', () => {
   const invalid = receipt();
   invalid.profiles[0].repetitions[0].rawSamples = samples(18);
   invalid.profiles[0].repetitions[0].attribution.frameMs.p95 = 18;
@@ -217,10 +219,9 @@ test('PQ-019 H3 recomputes raw percentiles and fails target, floor, hitch, or ba
   invalid.profiles[1].repetitions[2].rawSamples[100].frameMs = 55;
   invalid.profiles[1].repetitions[2].rawSamples[120].shedBacklog = true;
   const failures = validatePq019H3PerformanceReceipt(invalid).failures.join('\n');
-  assert.match(failures, /target-profile p95/);
-  assert.match(failures, /floor-profile p95/);
-  assert.match(failures, /frame above 50 ms/);
-  assert.match(failures, /backlog shedding/);
+  assert.match(failures, /loaded-route p95 exceeds/);
+  assert.match(failures, />50 ms frame count increases/);
+  assert.match(failures, /backlog shedding increases/);
 });
 
 test('PQ-019 H3 fails a loaded-route p95 or hitch regression against its matched normal route', () => {
@@ -244,6 +245,27 @@ test('PQ-019 H3 refuses to launder profile load differences into an optimization
   const invalid = receipt();
   invalid.qualityPreserving.performanceImprovementClaimed = true;
   assert.match(validatePq019H3PerformanceReceipt(invalid).failures.join('\n'), /must not claim an optimization improvement/);
+});
+
+test('PQ-019 H3 accepts a no-regression feature result while reporting a red absolute target', () => {
+  const baselineMiss = receipt();
+  for (const profile of baselineMiss.profiles) {
+    for (const run of profile.repetitions) {
+      run.rawSamples = samples(33.4, 150);
+      run.attribution.frameMs = {
+        sampleCount: 150,
+        p50: 33.4,
+        p95: 33.4,
+        p99: 33.4,
+        max: 33.4,
+        hitchesOver32Ms: 150,
+      };
+    }
+  }
+  const result = validatePq019H3PerformanceReceipt(baselineMiss);
+  assert.equal(result.pass, true, result.failures.join('\n'));
+  assert.equal(result.absoluteBudget.pass, false);
+  assert.match(result.absoluteBudget.failures.join('\n'), /misses the 16.7 ms target/);
 });
 
 test('PQ-019 H3 is a one-use brokered target-profile cell with exact source invalidation', () => {

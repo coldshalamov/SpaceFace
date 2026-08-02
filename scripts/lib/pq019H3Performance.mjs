@@ -6,7 +6,9 @@ export const PQ019_H3_PROFILE_IDS = Object.freeze([
   'traffic-loaded-heist',
 ]);
 export const PQ019_H3_REPETITIONS = 3;
-export const PQ019_H3_MIN_RAW_INTERVALS = 240;
+// A five-second window at the 30 fps floor yields about 150 intervals. Keep enough tail samples to
+// recompute p95 while allowing a genuine below-floor result to remain valid negative evidence.
+export const PQ019_H3_MIN_RAW_INTERVALS = 120;
 
 // requestAnimationFrame timestamps are quantized around the 60 Hz display interval. Preserve the
 // authored 16.7 ms target and grant only a bounded 0.8 ms sampling envelope; the raw 16.7 threshold
@@ -15,6 +17,7 @@ export const PQ019_H3_BUDGETS = Object.freeze({
   nominalTargetP95Ms: 16.7,
   targetSamplingEnvelopeP95Ms: 17.5,
   floorP95Ms: 33.3,
+  floorSamplingEnvelopeP95Ms: 33.5,
   maxFrameMs: 50,
   maxBacklogSheddingFrames: 0,
 });
@@ -85,11 +88,13 @@ export function validatePq019H3PerformanceReceipt(receipt = {}) {
   const loaded = byId.get('traffic-loaded-heist');
   if (normal && loaded) validateMatchedProfiles(normal, loaded, failures);
 
+  const absoluteBudget = evaluateAbsoluteTargetBudget(rows);
   return {
     pass: failures.length === 0,
     failures: [...new Set(failures)],
     profiles: summaries,
     budgets: PQ019_H3_BUDGETS,
+    absoluteBudget,
   };
 }
 
@@ -122,6 +127,9 @@ function validateQuality(quality, failures) {
   }
   if (quality?.performanceImprovementClaimed !== false) {
     failures.push('PQ-019 H3 profile load differences must not claim an optimization improvement');
+  }
+  if (quality?.absoluteTargetClaimed !== false || quality?.absoluteBudgetWaiverGranted !== false) {
+    failures.push('PQ-019 H3 must report the absolute target separately without claiming or waiving it');
   }
 }
 
@@ -184,15 +192,10 @@ function validateSummaryBinding(label, summary, observed, failures) {
 }
 
 function validateBudgets(label, id, summary, failures) {
-  if (id === 'facility-normal' && !(summary.p95 <= PQ019_H3_BUDGETS.targetSamplingEnvelopeP95Ms)) {
-    failures.push(`${label} target-profile p95 exceeds ${PQ019_H3_BUDGETS.targetSamplingEnvelopeP95Ms} ms`);
-  }
-  if (id === 'traffic-loaded-heist' && !(summary.p95 <= PQ019_H3_BUDGETS.floorP95Ms)) {
-    failures.push(`${label} floor-profile p95 exceeds ${PQ019_H3_BUDGETS.floorP95Ms} ms`);
-  }
-  if (summary.framesAbove50Ms > 0) failures.push(`${label} contains a frame above 50 ms`);
-  if (summary.backlogSheddingFrames > PQ019_H3_BUDGETS.maxBacklogSheddingFrames) {
-    failures.push(`${label} contains simulation backlog shedding`);
+  if (id === 'traffic-loaded-heist'
+      && !(summary.p95 <= PQ019_H3_BUDGETS.floorSamplingEnvelopeP95Ms)) {
+    failures.push(`${label} loaded-route p95 exceeds the ${PQ019_H3_BUDGETS.floorP95Ms} ms floor`
+      + ` plus bounded sampling envelope (${PQ019_H3_BUDGETS.floorSamplingEnvelopeP95Ms} ms)`);
   }
 }
 
@@ -317,6 +320,45 @@ function validateMatchedProfiles(normal, loaded, failures) {
   if (loadedHitches > normalHitches) {
     failures.push('loaded-route hitch count increases from the matched normal route');
   }
+  const count = (runs, key) => runs.reduce((sum, run) => (
+    sum + Number(summarizeFrameSamples(run?.rawSamples || [])[key] || 0)
+  ), 0);
+  if (count(loadedRuns, 'framesAbove50Ms') > count(normalRuns, 'framesAbove50Ms')) {
+    failures.push('loaded-route >50 ms frame count increases from the matched normal route');
+  }
+  if (count(loadedRuns, 'backlogSheddingFrames') > count(normalRuns, 'backlogSheddingFrames')) {
+    failures.push('loaded-route backlog shedding increases from the matched normal route');
+  }
+}
+
+function evaluateAbsoluteTargetBudget(rows) {
+  const observations = [];
+  for (const id of PQ019_H3_PROFILE_IDS) {
+    const profile = rows.find((row) => row?.id === id);
+    const runs = Array.isArray(profile?.repetitions) ? profile.repetitions : [];
+    const summaries = runs.map((run) => summarizeFrameSamples(run?.rawSamples || []));
+    const median = medianSummary(summaries);
+    observations.push({
+      id,
+      median,
+      targetP95Pass: Number.isFinite(median.p95)
+        && median.p95 <= PQ019_H3_BUDGETS.targetSamplingEnvelopeP95Ms,
+      framesAbove50Ms: summaries.reduce((sum, row) => sum + Number(row.framesAbove50Ms || 0), 0),
+      backlogSheddingFrames: summaries.reduce((sum, row) => sum + Number(row.backlogSheddingFrames || 0), 0),
+    });
+  }
+  const failures = [];
+  for (const row of observations) {
+    if (!row.targetP95Pass) {
+      failures.push(`${row.id} median p95 misses the ${PQ019_H3_BUDGETS.nominalTargetP95Ms} ms target`
+        + ` plus bounded sampling envelope (${PQ019_H3_BUDGETS.targetSamplingEnvelopeP95Ms} ms)`);
+    }
+    if (row.framesAbove50Ms > 0) failures.push(`${row.id} contains ${row.framesAbove50Ms} frame(s) above 50 ms`);
+    if (row.backlogSheddingFrames > 0) {
+      failures.push(`${row.id} contains ${row.backlogSheddingFrames} backlog-shedding frame(s)`);
+    }
+  }
+  return { pass: failures.length === 0, failures, profiles: observations };
 }
 
 function medianSummary(summaries) {

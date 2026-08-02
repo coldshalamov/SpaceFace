@@ -200,6 +200,8 @@ try {
         settingsOverridesApplied: false,
         defaultQualityRetained: true,
         performanceImprovementClaimed: false,
+        absoluteTargetClaimed: false,
+        absoluteBudgetWaiverGranted: false,
       },
       broker: {
         reason: brokerGate.reason,
@@ -475,7 +477,10 @@ console.log(H3_PERFORMANCE
   ? '[pq019-h3-performance] PASS — three matched normal and traffic-loaded heist windows'
   : (CONTINUATION_ONLY
     ? '[pq019-surface-heist] PASS — four missing terminal/composition routes; retained contexts skipped'
-    : '[pq019-surface-heist] PASS — five terminal routes plus DOM abandonment'));
+     : '[pq019-surface-heist] PASS — five terminal routes plus DOM abandonment'));
+if (H3_PERFORMANCE && receipt.validation?.absoluteBudget?.pass !== true) {
+  console.log('[pq019-h3-performance] ABSOLUTE TARGET OPEN — matched feature result passes without a target waiver');
+}
 console.log(`  receipt: ${repoRel(path.join(ARTIFACT_ROOT, RECEIPT_FILENAME))}`);
 
 async function runPq019H3PerformancePair({ page, screenshot, repetition }) {
