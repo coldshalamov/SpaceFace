@@ -1383,7 +1383,12 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
 
   const bindings = createBindings();
   const mutableMaterials = new Map();
-  const staticBatches = createStaticBatchCollector(root, bindings);
+  // The Cathedral's three authored LODs are uniformly indexed. Keep that topology through its
+  // static merge so the close-range color + depth passes do not transform one duplicate vertex per
+  // triangle index. Mixed/index-less authored places retain the conservative ordinary path.
+  const staticBatches = createStaticBatchCollector(root, bindings, {
+    preserveIndexedGeometry: placeId === WRECK_CATHEDRAL_PLACE_ID,
+  });
   const authoredLength = Math.max(record.bounds && record.bounds.size && record.bounds.size[0] || 1, 1e-6);
   const rawScale = Number(data.placeScale);
   const targetRadius = Number(data.placeTargetRadius);
@@ -3385,7 +3390,7 @@ function textureMatrixSig(texture) {
   return Array.prototype.map.call(elements, (value) => Number.isFinite(value) ? Number(value).toFixed(4) : 'x').join(',');
 }
 
-function createStaticBatchCollector(parent, bindings) {
+function createStaticBatchCollector(parent, bindings, options = {}) {
   const buckets = new Map();
   return {
     add({ record, primitive, partRoot, material }) {
@@ -3415,7 +3420,7 @@ function createStaticBatchCollector(parent, bindings) {
         }
         group.push(bucket);
       }
-      for (const group of groups.values()) flushStaticBatchGroup(parent, bindings, group);
+      for (const group of groups.values()) flushStaticBatchGroup(parent, bindings, group, options);
       buckets.clear();
     },
   };
@@ -3437,9 +3442,9 @@ function staticBatchGroupKey(tags = {}) {
   ].join('|');
 }
 
-function flushStaticBatch(parent, bindings, bucket) {
+function flushStaticBatch(parent, bindings, bucket, options = {}) {
   const material = resolveCanonicalHullMaterial(bucket.material);
-  const merged = buildStaticBatchGeometry(bucket);
+  const merged = buildStaticBatchGeometry(bucket, options);
   if (!merged) {
     for (const entry of bucket.entries) {
       const geometry = entry.primitive.geometry.clone();
@@ -3453,10 +3458,10 @@ function flushStaticBatch(parent, bindings, bucket) {
   addStaticBatchMesh(parent, bindings, merged, material, bucket.tags, [...bucket.urls], `StaticBatch_${bucket.entries.length}`);
 }
 
-function flushStaticBatchGroup(parent, bindings, buckets) {
+function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
   if (!buckets || buckets.length === 0) return;
   if (buckets.length === 1) {
-    flushStaticBatch(parent, bindings, buckets[0]);
+    flushStaticBatch(parent, bindings, buckets[0], options);
     return;
   }
 
@@ -3465,12 +3470,12 @@ function flushStaticBatchGroup(parent, bindings, buckets) {
   const urls = new Set();
   let partCount = 0;
   for (const bucket of buckets) {
-    const geometry = buildStaticBatchGeometry(bucket);
+    const geometry = buildStaticBatchGeometry(bucket, options);
     if (!geometry) {
       for (const pending of geometries) {
         if (pending && typeof pending.dispose === 'function') pending.dispose();
       }
-      for (const fallback of buckets) flushStaticBatch(parent, bindings, fallback);
+      for (const fallback of buckets) flushStaticBatch(parent, bindings, fallback, options);
       return;
     }
     geometries.push(geometry);
@@ -3479,26 +3484,26 @@ function flushStaticBatchGroup(parent, bindings, buckets) {
     for (const url of bucket.urls) urls.add(url);
   }
 
-  const normalized = normalizeStaticBatchGeometries(geometries);
+  const normalized = normalizeStaticBatchGeometries(geometries, options);
   const merged = canMergeStaticBatchGeometries(normalized) ? mergeGeometries(normalized, true) : null;
   for (const geometry of normalized) {
     if (geometry && typeof geometry.dispose === 'function') geometry.dispose();
   }
   if (!merged) {
-    for (const fallback of buckets) flushStaticBatch(parent, bindings, fallback);
+    for (const fallback of buckets) flushStaticBatch(parent, bindings, fallback, options);
     return;
   }
   addStaticBatchMesh(parent, bindings, merged, materials, buckets[0].tags, [...urls], `StaticGroup_${partCount}_${materials.length}`);
 }
 
-function buildStaticBatchGeometry(bucket) {
+function buildStaticBatchGeometry(bucket, options = {}) {
   const geometries = normalizeStaticBatchGeometries(bucket.entries.map((entry) => {
     const geometry = entry.primitive.geometry.clone();
     promoteStaticPositionToFloat(geometry);
     geometry.applyMatrix4(entry.primitive.matrix);
     geometry.applyMatrix4(entry.partMatrix);
     return geometry;
-  }));
+  }), options);
   const merged = canMergeStaticBatchGeometries(geometries) ? mergeGeometries(geometries, false) : null;
   for (const geometry of geometries) {
     if (geometry && typeof geometry.dispose === 'function') geometry.dispose();
@@ -3526,11 +3531,17 @@ function promoteStaticPositionToFloat(geometry) {
   return geometry;
 }
 
-function normalizeStaticBatchGeometries(geometries) {
-  const normalized = geometries.map((geometry) => {
+function normalizeStaticBatchGeometries(geometries, options = {}) {
+  const available = geometries.filter(Boolean);
+  // BufferGeometryUtils can merge an all-indexed set directly. Only the explicitly qualified
+  // Cathedral path opts in; any mixed set still normalizes to the established non-indexed shape.
+  const preserveIndexedGeometry = options.preserveIndexedGeometry === true
+    && available.length > 0
+    && available.every((geometry) => !!geometry.index);
+  const normalized = available.map((geometry) => {
     if (!geometry) return geometry;
     let next = geometry;
-    if (next.index && typeof next.toNonIndexed === 'function') {
+    if (!preserveIndexedGeometry && next.index && typeof next.toNonIndexed === 'function') {
       next = next.toNonIndexed();
       if (next !== geometry && typeof geometry.dispose === 'function') geometry.dispose();
     }

@@ -435,6 +435,26 @@ async function readPq020H3RouteFacts(page, {
     )) || null;
     const rootMesh = cathedralRoot?.mesh || cathedralRoot?.view?.root || null;
     const rootRawAssetState = rootMesh?.userData?.authoredAssetState || null;
+    const activeStaticBatches = [];
+    const activeDepthPrepasses = [];
+    rootMesh?.traverse?.((object) => {
+      if (!object?.isMesh || object.visible === false) return;
+      if (object.userData?.spacefaceStaticBatch) activeStaticBatches.push(object);
+      if (object.userData?.spacefaceDepthPrepass) activeDepthPrepasses.push(object);
+    });
+    const geometrySummary = (objects) => objects.reduce((summary, object) => {
+      const geometry = object.geometry;
+      const positions = geometry?.getAttribute?.('position');
+      const count = Number(geometry?.index?.count || positions?.count || 0);
+      summary.drawables += 1;
+      summary.indexedDrawables += geometry?.index ? 1 : 0;
+      summary.uniqueVertices += Number(positions?.count || 0);
+      summary.triangleIndices += count;
+      summary.triangles += count / 3;
+      return summary;
+    }, { drawables: 0, indexedDrawables: 0, uniqueVertices: 0, triangleIndices: 0, triangles: 0 });
+    const colorGeometry = geometrySummary(activeStaticBatches);
+    const depthGeometry = geometrySummary(activeDepthPrepasses);
     const admittedComponentCount = cathedralEntities.filter((entity) => (
       entity.data?.role === 'world_site_component'
       && entity.data?.worldSitePresentationAdmitted === true
@@ -499,6 +519,14 @@ async function readPq020H3RouteFacts(page, {
         distanceToPlayer: cathedralRoot && player
           ? Math.hypot(cathedralRoot.pos.x - player.pos.x, cathedralRoot.pos.z - player.pos.z)
           : null,
+        geometry: {
+          color: colorGeometry,
+          depthPrepass: depthGeometry,
+          prepassSharesColorGeometry: activeDepthPrepasses.length > 0
+            && activeDepthPrepasses.every((prepass) => activeStaticBatches.some(
+              (source) => source.geometry === prepass.geometry,
+            )),
+        },
       },
       performanceSubject: {
         role: target ? 'cathedral-root' : 'ceres-entry-floor',

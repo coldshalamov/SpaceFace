@@ -568,6 +568,11 @@ test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', 
     const lod = prepass.userData.spacefaceTags.lod;
     const source = sources.find((candidate) => candidate.userData.spacefaceTags.lod === lod);
     const sourceMaterials = Array.isArray(source.material) ? source.material : [source.material];
+    assert.ok(source.geometry.index, `${lod} retains the authored indexed topology`);
+    assert.equal(source.geometry.getAttribute('position').count, materialRoles.length * 24,
+      `${lod} does not expand every box index into a duplicate vertex`);
+    assert.equal(source.geometry.index.count, materialRoles.length * 36,
+      `${lod} retains every authored triangle index`);
     assert.equal(prepass.geometry, source.geometry, `${lod} reuses exact authored geometry without another GPU buffer`);
     assert.equal(prepass.material.colorWrite, false);
     assert.equal(prepass.material.depthTest, true);

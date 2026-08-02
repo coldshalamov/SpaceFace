@@ -356,6 +356,20 @@ function validateRouteFacts(label, id, expectedIndex, expectedSeed, facts, failu
     if (typeof cathedral.appliedLod !== 'string' || cathedral.appliedLod.length === 0) {
       failures.push(`${label} Cathedral applied LOD must be recorded`);
     }
+    const colorGeometry = cathedral.geometry?.color;
+    const depthGeometry = cathedral.geometry?.depthPrepass;
+    if (!finitePositive(colorGeometry?.drawables)
+        || colorGeometry.indexedDrawables !== colorGeometry.drawables
+        || !finitePositive(colorGeometry?.uniqueVertices)
+        || !finitePositive(colorGeometry?.triangleIndices)
+        || colorGeometry.uniqueVertices >= colorGeometry.triangleIndices) {
+      failures.push(`${label} Cathedral must retain indexed static-batch topology without per-index vertex expansion`);
+    }
+    if (!finitePositive(depthGeometry?.drawables)
+        || depthGeometry?.triangles !== colorGeometry?.triangles
+        || cathedral.geometry?.prepassSharesColorGeometry !== true) {
+      failures.push(`${label} Cathedral depth prepass must share the indexed color geometry and triangle count`);
+    }
   }
 }
 
