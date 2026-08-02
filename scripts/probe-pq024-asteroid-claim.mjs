@@ -36,6 +36,7 @@ import {
 } from './lib/pq024H3Performance.mjs';
 import {
   formatPq024DockApproachTimeout,
+  formatPq024MasslineLatchTimeout,
   formatPq024MasslineReleaseTimeout,
   projectPq024RouteSemantics,
 } from './lib/pq024AsteroidClaimParity.mjs';
@@ -1262,12 +1263,20 @@ async function installObservers(page) {
       commitments: [],
       production: [],
       saves: [],
+      massline: [],
     };
     const bus = window.SF.bus;
     bus.on('site:surveyDetected', (payload) => trace.surveys.push(clone(payload)));
     bus.on('site:surveyCommitted', (payload) => trace.commitments.push(clone(payload)));
     bus.on('site:producing', (payload) => trace.production.push(clone(payload)));
     bus.on('save:completed', (payload) => trace.saves.push(clone(payload)));
+    for (const name of ['tether:latched', 'tether:latchDenied', 'tether:broke', 'tether:released']) {
+      bus.on(name, (payload) => trace.massline.push({
+        name,
+        tick: Number(window.SF?.state?.tick) || 0,
+        payload: clone(payload),
+      }));
+    }
   });
 }
 
@@ -1593,30 +1602,129 @@ async function waitForAutopilotArrival(page, target) {
 }
 
 async function enterAsteroidOps(page, targetEntityId) {
-  const current = await page.evaluate(() => ({
+  let current = await page.evaluate(() => ({
     active: window.SF?.state?.player?.tether?.active === true,
     targetId: window.SF?.state?.player?.tether?.targetId ?? null,
   }));
-  if (!(current.active && current.targetId === targetEntityId)) {
-    // Ctrl+Massline is the shipped explicit nearest-target override. Keep the chord down until the
-    // 60 Hz input owner has consumed its edge; Playwright's zero-duration press can deliver both
-    // DOM edges between fixed ticks and intermittently produce no gameplay command at all.
-    await page.keyboard.down('Control');
+  if (current.active && String(current.targetId) !== String(targetEntityId)) {
+    await releaseMassline(page);
+    current = { active: false, targetId: null };
+  }
+  if (!(current.active && String(current.targetId) === String(targetEntityId))) {
+    const samples = [await readPq024MasslineLatchSnapshot(page, 'before-acquisition', targetEntityId)];
+    const acquired = await page.waitForFunction((id) => {
+      const state = window.SF?.state;
+      const receipt = state?.masslineAcquisition;
+      const selected = receipt?.selected;
+      return String(selected?.targetId) === String(id)
+        && selected?.status === 'ready'
+        && Number(receipt?.validUntil) >= Number(state?.simTime)
+        ? { id: receipt.id, publishedTick: receipt.publishedTick } : null;
+    }, targetEntityId, { timeout: 5_000 }).then(() => true, () => false);
+    samples.push(await readPq024MasslineLatchSnapshot(
+      page,
+      acquired ? 'acquisition-ready' : 'acquisition-timeout',
+      targetEntityId,
+    ));
+    if (!acquired) throw await createPq024MasslineLatchError(page, targetEntityId, samples);
+
+    // The ordinary Massline press consumes the exact route-anchor receipt that was just rendered.
+    // Keep the key down until the 60 Hz input owner has consumed its edge; a zero-duration press can
+    // deliver both DOM edges between fixed ticks and intermittently produce no gameplay command.
     await page.keyboard.down('Space');
+    let latched = false;
+    let inputError = null;
     try {
-      await page.waitForFunction((id) => {
+      const heldTickHandle = await page.waitForFunction(() => {
+        const state = window.SF?.state;
+        return state?.input?.actions?.massline?.source === 'keyboard'
+          && state.input.actions.massline.latch === true
+          ? Number(state.tick) : null;
+      }, null, { timeout: 2_000 });
+      const heldTick = await heldTickHandle.jsonValue();
+      await page.waitForFunction((tick) => Number(window.SF?.state?.tick) > tick,
+        heldTick, { timeout: 2_000 });
+      latched = await page.waitForFunction((id) => {
         const tether = window.SF?.state?.player?.tether;
-        return tether?.active === true && tether.targetId === id;
-      }, targetEntityId, { timeout: 10_000 });
+        return tether?.active === true && String(tether.targetId) === String(id);
+      }, targetEntityId, { timeout: 5_000 }).then(() => true, () => false);
+    } catch (error) {
+      inputError = error;
     } finally {
       await page.keyboard.up('Space');
-      await page.keyboard.up('Control');
+    }
+    samples.push(await readPq024MasslineLatchSnapshot(
+      page,
+      latched ? 'latched' : 'latch-timeout',
+      targetEntityId,
+    ));
+    if (!latched) {
+      const error = await createPq024MasslineLatchError(page, targetEntityId, samples);
+      if (inputError) error.cause = inputError;
+      throw error;
     }
   }
   await page.keyboard.press('KeyB');
   await waitVisible(page, '[data-screen="drill"]', 'Asteroid Ops');
   await page.waitForFunction((id) => window.SF?.state?.drill?.active === true
     && window.SF.state.drill.asteroidId === id, targetEntityId);
+}
+
+async function createPq024MasslineLatchError(page, targetEntityId, samples) {
+  const events = await page.evaluate(() => (
+    Array.isArray(window.__PQ024_H1_TRACE__?.massline)
+      ? window.__PQ024_H1_TRACE__.massline.slice(-20)
+      : []
+  ));
+  const error = new Error(formatPq024MasslineLatchTimeout({ targetEntityId, samples, events }));
+  error.code = 'PQ024_MASSLINE_LATCH_TIMEOUT';
+  error.masslineLatch = { targetEntityId, samples, events };
+  return error;
+}
+
+async function readPq024MasslineLatchSnapshot(page, label, targetEntityId) {
+  return page.evaluate(({ sampleLabel, desiredId }) => {
+    const state = window.SF?.state;
+    const playerEntity = state?.entities?.get?.(state.playerId);
+    const desired = state?.entities?.get?.(desiredId);
+    const acquisition = state?.masslineAcquisition;
+    const tetherOwner = window.SF?.registry?.get?.('tetherGameplay');
+    const clone = (value) => {
+      if (!value || typeof value !== 'object') return value ?? null;
+      try { return JSON.parse(JSON.stringify(value)); } catch (_) { return { uncloneable: true }; }
+    };
+    const centerDistance = playerEntity && desired
+      ? Math.hypot(desired.pos.x - playerEntity.pos.x, desired.pos.z - playerEntity.pos.z)
+      : null;
+    return {
+      label: sampleLabel,
+      tick: Number(state?.tick) || 0,
+      simTime: Number(state?.simTime) || 0,
+      desired: desired ? {
+        id: desired.id,
+        type: desired.type || null,
+        alive: desired.alive !== false,
+        pos: clone(desired.pos),
+        radius: Number(desired.radius) || 0,
+        centerDistance,
+        surfaceDistance: centerDistance == null
+          ? null : Math.max(0, centerDistance - Math.max(0, Number(desired.radius) || 0)),
+      } : null,
+      player: playerEntity ? { pos: clone(playerEntity.pos), targetId: state?.player?.targetId ?? null } : null,
+      waypoint: clone(state?.nav?.waypoint),
+      autopilot: clone(state?.nav?.autopilot),
+      acquisition: clone(acquisition),
+      input: {
+        tetherMode: state?.input?.tetherMode || null,
+        command: clone(state?.input?.actions?.massline),
+      },
+      tether: clone(state?.player?.tether),
+      owner: tetherOwner ? {
+        active: clone(tetherOwner._active),
+        lastLatchDenial: clone(tetherOwner._lastLatchDenial),
+      } : null,
+    };
+  }, { sampleLabel: label, desiredId: targetEntityId });
 }
 
 async function pulseSurveyReveal(page) {

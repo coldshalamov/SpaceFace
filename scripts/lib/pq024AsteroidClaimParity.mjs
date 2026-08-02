@@ -78,6 +78,15 @@ export function formatPq024MasslineReleaseTimeout({ samples, events } = {}) {
   return `public Massline tap did not release the active tether; evidence=${JSON.stringify(evidence)}`;
 }
 
+export function formatPq024MasslineLatchTimeout({ targetEntityId, samples, events } = {}) {
+  const evidence = {
+    targetEntityId: targetEntityId ?? null,
+    samples: Array.isArray(samples) ? samples : [],
+    events: Array.isArray(events) ? events : [],
+  };
+  return `public Massline did not latch the selected asteroid; evidence=${JSON.stringify(evidence)}`;
+}
+
 function normalizeCell(cell) {
   return {
     col: Number(cell?.col),

@@ -9,6 +9,7 @@ import manifest, {
 } from '../scripts/validation-manifests/pq024-asteroid-claim.mjs';
 import {
   formatPq024DockApproachTimeout,
+  formatPq024MasslineLatchTimeout,
   formatPq024MasslineReleaseTimeout,
   projectPq024RouteSemantics,
 } from '../scripts/lib/pq024AsteroidClaimParity.mjs';
@@ -85,7 +86,6 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     '#sf-galaxymap',
     '_clickTargets',
     '#gm-set-course-btn',
-    "page.keyboard.down('Control')",
     "page.keyboard.down('Space')",
     "page.keyboard.press('KeyB')",
     '.ao-survey',
@@ -137,8 +137,15 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     'the public route must pre-bore a deterministic dogleg before Survey/Core placement');
   assert.ok(source.indexOf('carveCoreBuildCorridor(page)') < source.indexOf('pulseSurveyReveal(page)'),
     'the route must not mutate the formation after recording the volatile survey');
-  assert.match(source, /enterAsteroidOps[\s\S]*keyboard\.down\('Control'\)[\s\S]*keyboard\.down\('Space'\)[\s\S]*tether\?\.active === true[\s\S]*keyboard\.up\('Space'\)[\s\S]*keyboard\.up\('Control'\)/,
-    'Asteroid Ops entry must hold the shipped nearest-target chord across an input tick and verify its exact rock');
+  const enterStart = source.indexOf('async function enterAsteroidOps');
+  const enterEnd = source.indexOf('async function createPq024MasslineLatchError', enterStart);
+  const enterSource = source.slice(enterStart, enterEnd);
+  assert.match(enterSource, /masslineAcquisition[\s\S]*selected\?\.targetId[\s\S]*selected\?\.status === 'ready'/,
+    'Asteroid Ops entry must wait until the exact route-anchor acquisition is visibly ready');
+  assert.match(enterSource, /keyboard\.down\('Space'\)[\s\S]*actions\?\.massline\?\.source === 'keyboard'[\s\S]*Number\(window\.SF\?\.state\?\.tick\) > tick[\s\S]*tether\?\.active === true[\s\S]*keyboard\.up\('Space'\)/,
+    'Asteroid Ops entry must hold the ordinary Massline input across a fixed tick and verify its exact rock');
+  assert.doesNotMatch(enterSource, /keyboard\.(?:down|press)\(['"]Control/,
+    'Asteroid Ops entry must not replace the selected asteroid with the nearest-surface override');
   assert.doesNotMatch(source, /keyboard\.press\('Control\+Space'\)/,
     'a zero-duration chord may vanish between fixed input ticks');
   assert.match(source, /releaseMassline[\s\S]*keyboard\.down\('Space'\)[\s\S]*actions\?\.massline\?\.source === 'keyboard'[\s\S]*keyboard\.up\('Space'\)[\s\S]*tether\?\.active !== true/,
@@ -217,6 +224,26 @@ test('PQ-024 Massline cleanup reports the reproduced release stall as structured
   assert.deepEqual(evidence, { samples, events });
   assert.equal(evidence.samples[0].tether.active, true);
   assert.equal(evidence.samples[0].spaceHeld, false);
+});
+
+test('PQ-024 Massline latch timeout preserves exact route-vs-nearest evidence', () => {
+  const samples = [{
+    label: 'latch-timeout',
+    desired: { id: 88, type: 'asteroid', centerDistance: 156, radius: 18, surfaceDistance: 138 },
+    waypoint: { targetEntityId: 88 },
+    acquisition: { selected: { targetId: 88, status: 'ready', context: 'route-anchor' } },
+    input: { tetherMode: 'nearest', command: { latch: true, source: 'keyboard' } },
+    tether: { active: true, targetId: 12 },
+  }];
+  const events = [{ name: 'tether:latched', tick: 500, payload: { targetId: 12 } }];
+  const message = formatPq024MasslineLatchTimeout({ targetEntityId: 88, samples, events });
+  assert.match(message, /^public Massline did not latch the selected asteroid; evidence=/);
+  const evidence = JSON.parse(message.slice(message.indexOf('evidence=') + 'evidence='.length));
+  assert.deepEqual(evidence, { targetEntityId: 88, samples, events });
+  assert.equal(evidence.samples[0].acquisition.selected.context, 'route-anchor');
+  assert.equal(evidence.samples[0].tether.targetId, 12);
+  assert.notEqual(evidence.samples[0].tether.targetId, evidence.targetEntityId,
+    'the regression fixture retains the competing nearest-surface latch');
 });
 
 test('PQ-024 Electron parity reuses one public actor after Browser PASS and owns teardown', () => {
