@@ -268,6 +268,23 @@ test('PQ-023 H3 rejects an unwarmed route or a multiplied dense representative',
   assert.ok(result.failures.some((row) => row.includes('multiplies')));
 });
 
+test('PQ-023 H3 separates one ambient whole-pool burst from systematic dense multiplication', () => {
+  const receipt = validReceipt();
+  const target = receipt.profiles[1].repetitions;
+  [254, 271, 331].forEach((value, index) => {
+    target[index].routeFacts.dense.peakPools.particles = value;
+  });
+
+  let result = validatePq023H3PerformanceReceipt(receipt);
+  assert.equal(result.pass, true, result.failures.join('\n'));
+  assert.equal(result.hitchAttribution.densePoolEnvelope.particles, 271);
+
+  for (const run of target) run.routeFacts.dense.peakPools.particles = 331;
+  result = validatePq023H3PerformanceReceipt(receipt);
+  assert.equal(result.pass, false);
+  assert.ok(result.failures.some((row) => row.includes('median particles peak')));
+});
+
 test('PQ-023 H3 binds renderer admission to the matched ambient floor', () => {
   const receipt = validReceipt();
   for (let index = 0; index < 3; index += 1) {

@@ -38,6 +38,15 @@ export const PQ023_H3_DENSE_MAXIMA = Object.freeze({
   combatBeams: 1,
   explosions: 6,
 });
+const PQ023_H3_AMBIENT_MIXED_POOL_KEYS = Object.freeze([
+  'particles',
+  'sprites',
+  'trailStreaks',
+]);
+const PQ023_H3_EXACT_POOL_KEYS = Object.freeze([
+  'combatBeams',
+  'explosions',
+]);
 const PQ023_H3_RENDERER_ADMISSION_KEYS = Object.freeze([
   'geometries',
   'textures',
@@ -409,7 +418,8 @@ function validateRouteFacts(label, id, expectedIndex, expectedSeed, facts, failu
       failures.push(`${label} dense ${subject} peak is below the accepted representative minimum ${minimum}`);
     }
   }
-  for (const [key, maximum] of Object.entries(PQ023_H3_DENSE_MAXIMA)) {
+  for (const key of PQ023_H3_EXACT_POOL_KEYS) {
+    const maximum = PQ023_H3_DENSE_MAXIMA[key];
     if (Number(dense?.peakPools?.[key]) > maximum) {
       failures.push(`${label} harness multiplies the accepted dense ${key} representative above ${maximum}`);
     }
@@ -451,6 +461,21 @@ function validateMatchedProfiles(floor, target, failures) {
     if (rendererAdmission.target[key] > rendererAdmission.floor[key]) {
       const subject = key === 'geometries' ? 'geometry' : key;
       failures.push(`dense target median renderer ${subject} admission exceeds the ambient floor median`);
+    }
+  }
+
+  // Particles, sprites, and trail streaks share the live whole-scene pools with retained NPC
+  // combat and ambient sector VFX. The driver trace already binds the exact pulse/cue attempt
+  // counts in every run, so use the predeclared three-run peak median to reject systematic harness
+  // multiplication without misclassifying one unrelated ambient burst. Beam/explosion pools remain
+  // exact per run above because the accepted representative owns their one/six topology directly.
+  const densePoolEnvelope = {};
+  for (const key of PQ023_H3_AMBIENT_MIXED_POOL_KEYS) {
+    densePoolEnvelope[key] = medianValue(targetRuns.map((run) => (
+      Number(run?.routeFacts?.dense?.peakPools?.[key])
+    )));
+    if (densePoolEnvelope[key] > PQ023_H3_DENSE_MAXIMA[key]) {
+      failures.push(`dense target median ${key} peak multiplies the accepted representative above ${PQ023_H3_DENSE_MAXIMA[key]}`);
     }
   }
 
@@ -503,7 +528,13 @@ function validateMatchedProfiles(floor, target, failures) {
       || gpuFrameEnvelope.target.medianP95 > PQ023_H3_BUDGETS.maxSeparatedGpuEnvelopeMs) {
     failures.push(`dense target correlated GPU-frame median p95 exceeds ${PQ023_H3_BUDGETS.maxSeparatedGpuEnvelopeMs} ms`);
   }
-  return { floor: floorHitches, target: targetHitches, rendererAdmission, gpuFrameEnvelope };
+  return {
+    floor: floorHitches,
+    target: targetHitches,
+    densePoolEnvelope,
+    rendererAdmission,
+    gpuFrameEnvelope,
+  };
 }
 
 function validateStablePose(left, right, pairIndex, failures) {
