@@ -98,6 +98,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   let pendingJournalEnd = 0;
   let pendingJournalFullRebuild = false;
   let pendingJournalRebuildGeneration = 0;
+  let postRestoreFramePending = false;
   let acknowledgedJournalSequence = presentationJournal
     && presentationJournal.getPendingCount?.() > 0
     && presentationJournal.getOldestSequence?.() > 0
@@ -144,6 +145,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     invalidShellCommandCount: 0,
     timestampResetCount: 0,
     restoreFrameCount: 0,
+    postRestoreFrameCount: 0,
+    postRestoreShedBacklogCount: 0,
+    postRestoreMaxStepsObserved: 0,
+    lastPostRestoreFrameDt: 0,
     stepsThisFrame: 0,
     maxStepsObserved: 0,
     shedBacklogFrames: 0,
@@ -206,6 +211,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     diagnostics.suspended = true;
     diagnostics.restoreTarget = null;
     diagnostics.stepsThisFrame = 0;
+    postRestoreFramePending = false;
     recordState(next, reason);
     cancelScheduledFrame();
     if (!wasSuspended) {
@@ -437,6 +443,17 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         ? simulationRunner.prepareWithoutAdvance()
         : simulationRunner.advance(frameDt, state.timeScale);
 
+      if (!restoring && postRestoreFramePending) {
+        diagnostics.postRestoreFrameCount++;
+        diagnostics.lastPostRestoreFrameDt = frameDt;
+        diagnostics.postRestoreMaxStepsObserved = Math.max(
+          diagnostics.postRestoreMaxStepsObserved,
+          stepResult.steps,
+        );
+        if (stepResult.shedBacklog) diagnostics.postRestoreShedBacklogCount++;
+        postRestoreFramePending = false;
+      }
+
       diagnostics.stepsThisFrame = stepResult.steps;
       diagnostics.maxStepsObserved = Math.max(diagnostics.maxStepsObserved, stepResult.steps);
       if (stepResult.shedBacklog) diagnostics.shedBacklogFrames++;
@@ -513,6 +530,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       // foreground simulation time. Start the ordinary fixed-step clock after that work commits.
       last = nowMs();
       diagnostics.timestampResetCount++;
+      postRestoreFramePending = true;
     }
     schedule();
   }

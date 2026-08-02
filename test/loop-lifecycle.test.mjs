@@ -198,6 +198,8 @@ test('restore publishes one coherent zero-delta snapshot before simulation resum
   assert.equal(h.calls[0].frameDt, 0);
   assert.equal(h.controller.getLifecycleState(), LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE);
   assert.equal(h.controller.getDiagnostics().restoreFrameCount, 1);
+  assert.equal(h.controller.getDiagnostics().postRestoreFrameCount, 0,
+    'the coherent restore snapshot is not the first ordinary post-restore frame');
   assert.deepEqual(h.audioTransitions, [
     { type: 'suspend', reason: 'document-visibility' },
     { type: 'resume', reason: 'restore-frame-complete' },
@@ -212,6 +214,9 @@ test('restore publishes one coherent zero-delta snapshot before simulation resum
   assert.equal(h.calls.find((call) => call.type === 'render').frameDt, 0.05);
   assert.ok(Math.abs(h.state.accumulator - expected.accumulator) < 1e-12);
   assert.equal(h.controller.getDiagnostics().shedBacklogFrames, 0);
+  assert.equal(h.controller.getDiagnostics().postRestoreFrameCount, 1);
+  assert.equal(h.controller.getDiagnostics().postRestoreShedBacklogCount, 0);
+  assert.ok(h.controller.getDiagnostics().postRestoreMaxStepsObserved <= 4);
   assert.ok(stepsBeforeHide >= 1);
   h.controller.destroy();
 });
@@ -239,6 +244,9 @@ test('restore callback cost is excluded from the next simulation delta', () => {
   assert.equal(countCalls(h, 'render'), 1);
   assert.ok(Math.abs(h.calls.find((call) => call.type === 'render').frameDt - 0.016667) < 1e-12);
   assert.equal(h.controller.getDiagnostics().shedBacklogFrames, 0);
+  assert.equal(h.controller.getDiagnostics().postRestoreFrameCount, 1);
+  assert.equal(h.controller.getDiagnostics().postRestoreShedBacklogCount, 0);
+  assert.ok(Math.abs(h.controller.getDiagnostics().lastPostRestoreFrameDt - 0.016667) < 1e-12);
   h.controller.destroy();
 });
 
