@@ -95,10 +95,10 @@ function routeFacts(profileId, index) {
           drawables: 1,
           indexedDrawables: 1,
           uniqueVertices: 70822,
-          triangleIndices: 275724,
-          triangles: 91908,
+          triangleIndices: 145536,
+          triangles: 48512,
         },
-        prepassSharesColorGeometry: true,
+        prepassSharesColorAttributes: true,
       },
     },
     performanceSubject: cathedral
@@ -224,9 +224,9 @@ test('PQ-020 H3 requires indexed Cathedral color and shared prepass topology', (
   assert.match(failures, /indexed static-batch topology/);
 
   const copied = receipt();
-  copied.profiles[1].repetitions[1].routeFacts.cathedral.geometry.prepassSharesColorGeometry = false;
+  copied.profiles[1].repetitions[1].routeFacts.cathedral.geometry.prepassSharesColorAttributes = false;
   failures = validatePq020H3PerformanceReceipt(copied).failures.join('\n');
-  assert.match(failures, /share the indexed color geometry/);
+  assert.match(failures, /share color attributes and exclude open-shell indices/);
 });
 
 test('PQ-020 H3 predeclares map-open and sector-entry thresholds', () => {

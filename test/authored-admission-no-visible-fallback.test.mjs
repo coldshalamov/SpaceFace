@@ -573,7 +573,12 @@ test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', 
       `${lod} does not expand every box index into a duplicate vertex`);
     assert.equal(source.geometry.index.count, materialRoles.length * 36,
       `${lod} retains every authored triangle index`);
-    assert.equal(prepass.geometry, source.geometry, `${lod} reuses exact authored geometry without another GPU buffer`);
+    assert.notEqual(prepass.geometry, source.geometry,
+      `${lod} uses a closed-surface index view instead of redrawing the open alloy family`);
+    assert.equal(prepass.geometry.getAttribute('position'), source.geometry.getAttribute('position'),
+      `${lod} shares the exact authored vertex buffer`);
+    assert.equal(prepass.geometry.index.count, (materialRoles.length - 1) * 36,
+      `${lod} excludes only the exposed-alloy triangle indices`);
     assert.equal(prepass.material.colorWrite, false);
     assert.equal(prepass.material.depthTest, true);
     assert.equal(prepass.material.depthWrite, true);
@@ -602,7 +607,7 @@ test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', 
   assert.deepEqual(authoredRoot.userData.opaqueDepthPrepass, {
     assetId: 'place_landmark_wreck_cathedral',
     drawables: 3,
-    geometry: 'shared-authored',
+    geometry: 'shared-authored-attributes-closed-indices',
     material: 'depth-only-front-sided',
   });
   assert.deepEqual(authoredRoot.userData.cathedralSurfaceCulling, {

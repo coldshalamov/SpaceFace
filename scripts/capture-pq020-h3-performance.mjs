@@ -522,9 +522,10 @@ async function readPq020H3RouteFacts(page, {
         geometry: {
           color: colorGeometry,
           depthPrepass: depthGeometry,
-          prepassSharesColorGeometry: activeDepthPrepasses.length > 0
+          prepassSharesColorAttributes: activeDepthPrepasses.length > 0
             && activeDepthPrepasses.every((prepass) => activeStaticBatches.some(
-              (source) => source.geometry === prepass.geometry,
+              (source) => source.geometry?.getAttribute?.('position')
+                === prepass.geometry?.getAttribute?.('position'),
             )),
         },
       },

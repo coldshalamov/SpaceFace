@@ -366,9 +366,10 @@ function validateRouteFacts(label, id, expectedIndex, expectedSeed, facts, failu
       failures.push(`${label} Cathedral must retain indexed static-batch topology without per-index vertex expansion`);
     }
     if (!finitePositive(depthGeometry?.drawables)
-        || depthGeometry?.triangles !== colorGeometry?.triangles
-        || cathedral.geometry?.prepassSharesColorGeometry !== true) {
-      failures.push(`${label} Cathedral depth prepass must share the indexed color geometry and triangle count`);
+        || !finitePositive(depthGeometry?.triangles)
+        || depthGeometry.triangles >= colorGeometry?.triangles
+        || cathedral.geometry?.prepassSharesColorAttributes !== true) {
+      failures.push(`${label} Cathedral depth prepass must share color attributes and exclude open-shell indices`);
     }
   }
 }

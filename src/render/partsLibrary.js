@@ -1485,7 +1485,8 @@ function installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
   const prepasses = [];
   for (const source of sources) {
     const tags = clonePrimitiveTags(source.userData.spacefaceTags);
-    const prepass = new THREE.Mesh(source.geometry, material);
+    const depthGeometry = wreckCathedralClosedDepthGeometry(source) || source.geometry;
+    const prepass = new THREE.Mesh(depthGeometry, material);
     prepass.name = `${source.name}_OpaqueDepthPrepass`;
     prepass.position.copy(source.position);
     prepass.quaternion.copy(source.quaternion);
@@ -1503,6 +1504,7 @@ function installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
       spacefacePartUrl: source.userData.spacefacePartUrl,
       spacefacePartUrls: source.userData.spacefacePartUrls,
       spacefaceTags: tags,
+      spacefaceDepthIndexView: depthGeometry !== source.geometry,
     };
     root.add(prepass);
     registerBinding(prepass, tags, bindings);
@@ -1511,10 +1513,50 @@ function installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
   root.userData.opaqueDepthPrepass = {
     assetId: placeId,
     drawables: prepasses.length,
-    geometry: 'shared-authored',
+    geometry: 'shared-authored-attributes-closed-indices',
     material: 'depth-only-front-sided',
   };
   root.userData.cathedralSurfaceCulling = specializeWreckCathedralClosedSurfaces(sources);
+}
+
+function wreckCathedralClosedDepthGeometry(source) {
+  const geometry = source?.geometry;
+  const index = geometry?.index;
+  const materials = Array.isArray(source?.material) ? source.material : [source?.material];
+  const groups = Array.isArray(geometry?.groups) ? geometry.groups : [];
+  if (!index?.array || groups.length === 0) return null;
+
+  const closedGroups = groups.filter((group) => {
+    const material = materials[Number(group.materialIndex) || 0];
+    const role = String(material?.userData?.spacefaceMaterialRole || '').trim().toLowerCase();
+    return WRECK_CATHEDRAL_CLOSED_MATERIAL_ROLES.has(role);
+  });
+  const count = closedGroups.reduce((total, group) => total + Number(group.count || 0), 0);
+  if (closedGroups.length === 0 || count <= 0 || count >= index.count) return null;
+
+  const IndexArray = index.array.constructor;
+  const indices = new IndexArray(count);
+  let offset = 0;
+  for (const group of closedGroups) {
+    const start = Number(group.start || 0);
+    const end = start + Number(group.count || 0);
+    indices.set(index.array.subarray(start, end), offset);
+    offset += end - start;
+  }
+
+  const depthGeometry = new THREE.BufferGeometry();
+  for (const [name, attribute] of Object.entries(geometry.attributes || {})) {
+    depthGeometry.setAttribute(name, attribute);
+  }
+  depthGeometry.setIndex(new THREE.BufferAttribute(indices, 1, index.normalized));
+  depthGeometry.boundingBox = geometry.boundingBox?.clone?.() || null;
+  depthGeometry.boundingSphere = geometry.boundingSphere?.clone?.() || null;
+  depthGeometry.userData = {
+    spacefaceCathedralClosedDepthIndices: true,
+    sourceIndexCount: index.count,
+    closedIndexCount: count,
+  };
+  return depthGeometry;
 }
 
 function opaqueDoubleSidedDepthSource(object) {
