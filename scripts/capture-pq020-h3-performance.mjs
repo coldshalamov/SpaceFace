@@ -269,7 +269,7 @@ async function runPq020H3PerformancePair({ page, rootUrl, repetition, screenshot
   await pq020FunctionalRouteDrivers.waitForShipSettled(page);
 
   const floorWindow = await sampleRafWindow(page, {
-    phaseTag: 'ceres_entry_steady',
+    phaseTag: 'flight_steady',
     warmupMs: 2_000,
     pipelineStableMs: 5_000,
     pipelineSettleTimeoutMs: PQ020_H3_PIPELINE_SETTLE_TIMEOUT_MS,
@@ -306,7 +306,7 @@ async function runPq020H3PerformancePair({ page, rootUrl, repetition, screenshot
   });
 
   const targetWindow = await sampleRafWindow(page, {
-    phaseTag: 'cathedral_visible_steady',
+    phaseTag: 'station_visible_steady',
     warmupMs: 2_000,
     pipelineStableMs: 5_000,
     pipelineSettleTimeoutMs: PQ020_H3_PIPELINE_SETTLE_TIMEOUT_MS,

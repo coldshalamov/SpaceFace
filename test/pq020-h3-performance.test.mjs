@@ -266,6 +266,12 @@ test('PQ-020 H3 is a one-use brokered cell over the accepted public route driver
   assert.match(ACTOR_SOURCE, /for \(let repetition = 1; repetition <= PQ020_H3_REPETITIONS/);
   assert.match(ACTOR_SOURCE, /runPq020H3PerformancePair/);
   assert.match(ACTOR_SOURCE, /pq020FunctionalRouteDrivers/);
+  assert.match(ACTOR_SOURCE, /phaseTag: 'flight_steady'/,
+    'the Ceres entry floor must use the sampler-supported flight profile');
+  assert.match(ACTOR_SOURCE, /phaseTag: 'station_visible_steady'/,
+    'the admitted Cathedral target must use the sampler-supported visible-site profile');
+  assert.doesNotMatch(ACTOR_SOURCE, /phaseTag: '(?:ceres_entry|cathedral_visible)_steady'/,
+    'packet labels are not valid sampleRafWindow phase tags');
   assert.doesNotMatch(ACTOR_SOURCE, /world\.enterSector|player\.pos\s*=|camera\.zoom\s*=/,
     'the H3 actor must use the accepted public route rather than direct gameplay mutation');
   assert.match(ROUTE_SOURCE, /pq020FunctionalRouteDrivers/,
